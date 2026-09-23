@@ -728,6 +728,8 @@ const UI = {
         <div class="prof-btns"><button class="btn small ghost look-btn">Изменить облик</button><button class="btn small ghost journal-btn">Дневник</button></div>
         <div class="prof-name">${U.esc(d.name)}</div>
         <div class="prof-rank">${this.rank(d.level)} Ордена Оберега · уровень ${d.level}</div>
+        ${d.clan ? `<div class="prof-clan">${Clans.badge(d.clan)} <small>защитников поставлено: ${d.stats.defends || 0} · Капищ освобождено: ${d.stats.freed || 0}</small></div>`
+          : d.level >= CLAN_LEVEL ? '<button class="btn small primary clan-btn">Выбрать дружину</button>' : ''}
         <div class="pbar big"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
         <small>${d.level >= MAX_LEVEL ? 'Максимальный уровень' : `${U.fmtNum(d.xp - cur)} / ${U.fmtNum(next - cur)} опыта до ${d.level + 1} уровня`}</small>
         <div class="prof-stats">
@@ -756,6 +758,7 @@ const UI = {
       </div>`, 'prof-screen');
     scr.addEventListener('click', e => {
       if (e.target.closest('.journal-btn')) { J.screen(); return; }
+      if (e.target.closest('.clan-btn')) { Clans.choose(() => { this.closeScreen(scr); this.profile(); }); return; }
       if (e.target.closest('.look-btn')) {
         this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); this.refreshHud(); });
         return;
@@ -1027,7 +1030,7 @@ const UI = {
       if (Encounter.st || Raid.st || Duel.st) { this._lv.unshift(lv); this._lvOpen = false; return; }
       const got = lv.got || [];
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
-      const unlock = l === 8 ? '<p class="unlock">Открыт <b>Серебряный оберег</b>!</p>' : l === 16 ? '<p class="unlock">Открыт <b>Золотой оберег</b>!</p>' : l === 5 ? '<p class="unlock">Ты теперь <b>Ловчий</b>. Разломы ждут!</p>' : '';
+      const unlock = l === 8 ? '<p class="unlock">Открыт <b>Серебряный оберег</b>!</p>' : l === 16 ? '<p class="unlock">Открыт <b>Золотой оберег</b>!</p>' : l === 5 ? '<p class="unlock">Ты теперь <b>Ловчий</b>. Разломы ждут — и можно вступить в <b>дружину</b>: открой любое Капище!</p>' : '';
       this.modal({
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">Новый уровень!</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${x.label} ×${x.n}</span></div>`).join('')}</div>`,

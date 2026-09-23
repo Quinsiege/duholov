@@ -30,6 +30,7 @@ const Order = {
     try {
       const r = await Game.act('daily');
       if (r && !r.already) this.streakModal(r);
+      await Clans.tribute(); // дань с Капищ — тоже раз в день
     } catch (e) { /* без связи — при следующей проверке */ }
     this._daily = false;
   },

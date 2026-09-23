@@ -45,6 +45,7 @@
   <script src="../www/js/journal.js"></script>
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/order.js"></script>
+  <script src="../www/js/clans.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
@@ -339,7 +340,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {} };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -370,6 +371,15 @@
       const rows = Object.values(DB.order).filter(r => r.week === week && r.n > 0), me = rows.find(r => r.pid === pid);
       return { players: rows.length, total: rows.reduce((a, r) => a + r.n, 0), mine: me ? me.n : null, top: rows.sort((a, b) => b.n - a.n).slice(0, 10).map(r => ({ pid: r.pid, name: r.name, n: r.n })) };
     },
+    holdGet: async poi => { const h = DB.holds[poi]; return h && h.holders.length ? JSON.parse(JSON.stringify(h)) : null; },
+    holdDefend: async (poi, lat, lng, clan, holder) => {
+      const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 };
+      if (h.holders.length && h.clan !== clan) return false;
+      if (h.holders.length >= 6 || h.holders.some(x => x.pid === holder.pid)) return false;
+      h.clan = clan; h.holders.push(holder); h.ver++; return true;
+    },
+    holdDefeat: async (poi, ver) => { const h = DB.holds[poi]; if (!h || h.ver !== ver) return false; h.holders = []; h.ver++; return true; },
+    myHolds: async pid => Object.values(DB.holds).filter(h => h.holders.some(x => x.pid === pid)).length,
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
@@ -678,6 +688,52 @@
     const B = await newPlayer('uv', 43.2, 76.9, 'Алма');
     B.data.tut = 0;
     ok((await must(B, 'spring', { poi: { id: 'osm:n7003', lat: B.lat, lng: B.lng, name: 'Фонтан' } })).got.length > 0);
+  });
+  atest('Сервер: дружины — защитник на Капище, бой с защитниками, дань', async () => {
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => !W.riftAt(i, hour), 61000);
+    const [lat, lng] = [55.58, 37.46];
+    const shrine = { id, lat, lng, name: 'Старый вяз' };
+    const mk = async (uid, name) => {
+      const P = await newPlayer(uid, lat, lng, name);
+      P.data.level = 5; P.data.tut = 0;
+      ['kapelka', 'mshonok'].forEach(sid => P.data.spirits.push(asPlayer(P, () => S.makeSpirit(sid, 12, sid + uid))));
+      await must(P, 'team', { uids: P.data.spirits.map(x => x.uid) });
+      return P;
+    };
+    const A = await mk('uw', 'Сокольник'), B = await mk('ux', 'Медвежич'), C = await mk('uy', 'Второй сокол');
+    A.data.level = 4;
+    await refuse(A, 'clanJoin', { clan: 'sokol' }, /5 уровня/);
+    A.data.level = 5;
+    await refuse(A, 'clanJoin', { clan: 'orel' }, /нет/);
+    await must(A, 'clanJoin', { clan: 'sokol' }); eq(A.data.clan, 'sokol');
+    await refuse(A, 'clanJoin', { clan: 'volk' }, /уже выбрана/);
+    await must(B, 'clanJoin', { clan: 'medved' }); await must(C, 'clanJoin', { clan: 'sokol' });
+    // свободное Капище: сначала победа над хранителем, потом защитник
+    await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /Сначала победи/);
+    await must(A, 'duelStart', { shrine });
+    A.srv.battle.start -= 200000;
+    await must(A, 'duelEnd', { win: true });
+    await must(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid });
+    eq(DB.holds[id].clan, 'sokol'); eq(DB.holds[id].holders.length, 1);
+    await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[1].uid }, /уже стоит/);
+    await must(C, 'shrineDefend', { shrine, uid: C.data.spirits[0].uid }); // своя дружина — без боя
+    await refuse(C, 'duelStart', { shrine }, /твоя дружина/);
+    // чужая дружина: бой с защитниками
+    const st = await must(B, 'duelStart', { shrine });
+    eq(st.clan, 'sokol'); eq(st.foe.length, 2); eq(st.holders.join(), 'Сокольник,Второй сокол');
+    await refuse(B, 'duelEnd', { win: true }, /слишком быстрая/);
+    await refuse(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid }, /другая дружина/);
+    await must(B, 'duelStart', { shrine });
+    B.srv.battle.start -= 200000;
+    const r = await must(B, 'duelEnd', { win: true });
+    ok(r.win && r.freed, 'Капище освобождено'); eq(DB.holds[id].holders.length, 0);
+    await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid });
+    eq(DB.holds[id].clan, 'medved');
+    // дань — раз в день за каждое Капище с моим защитником
+    const t = await must(B, 'tribute'); eq(t.n, 1); ok(t.got.some(x => x.k === 'sparks'));
+    ok((await must(B, 'tribute')).already, 'второй раз за день — нет');
+    eq((await must(A, 'tribute')).n, 0, 'защитника Сокольника прогнали');
   });
 
   /* ---------- вывод ---------- */

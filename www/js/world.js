@@ -149,7 +149,8 @@ const W = {
     const id = p.id;
     const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
     const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
-    return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today() };
+    const hold = typeof Clans !== 'undefined' ? Clans.info(id) : null; // на сервере сводки нет — он спрашивает базу сам
+    return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
   },
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {

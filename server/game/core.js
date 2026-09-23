@@ -186,6 +186,11 @@ const GameCore = {
     return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
       purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? String(x.nick).slice(0, 16) : null };
   },
+  // Защитники Капища в бою — три сильнейших
+  holdTeam(hold) {
+    return hold.holders.filter(h => h && h.sp && SP[h.sp.sid]).map((h, i) => this.cleanSpirit(h.sp, i))
+      .map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, 3).map(o => o.x);
+  },
   // Три сильнейших духа друга
   topSpirits(d, n = 3) {
     const list = (Array.isArray(d.spirits) ? d.spirits : []).filter(x => x && SP[x.sid]).map((x, i) => this.cleanSpirit(x, i));
@@ -585,25 +590,76 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
+      const hold = await ctx.env.holdGet(p.id);
+      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, 'Капище держит твоя дружина — здесь можно поставить защитника');
+      const ht = hold ? this.holdTeam(hold) : [], foe = ht.length ? ht : null;
       this.limit(ctx, 'duel', 40, 3600000);
-      ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid) };
-      return { id: e.id, tier: e.tier };
+      ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid),
+        foe, hold: hold ? { clan: hold.clan, ver: hold.ver } : null };
+      return { id: e.id, tier: e.tier, foe, clan: hold ? hold.clan : null, holders: hold ? hold.holders.map(h => String(h.name || 'Ловчий').slice(0, 20)) : null };
     },
-    duelEnd(a, ctx) {
+    async duelEnd(a, ctx) {
       const b = this.endBattle(ctx, 'duel');
       if (!a.win) return { win: false };
       const e = { id: b.id, tier: b.tier, name: b.name };
-      this.plausibleDuel(ctx, b, W.guardian(e).team);
+      this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team);
       const T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier;
       S.d.shrines[e.id] = U.today();
-      J.add('duel', { name: e.name, guard: W.guardian(e).name, tier: t });
+      let freed = false;
+      if (b.hold) {
+        freed = await ctx.env.holdDefeat(e.id, b.hold.ver); // защитники могли смениться за время боя — тогда Капище не освобождается
+        if (freed) S.d.stats.freed = (S.d.stats.freed || 0) + 1;
+      }
+      J.add('duel', { name: e.name, guard: b.hold ? CLANS[b.hold.clan].name : W.guardian(e).name, tier: t });
       S.d.stats.duels++;
       S.progress('duel', 1);
       const rw = S.giveRewards({ xp: T.xp * mul, sparks: T.sparks * mul, charm: 5 * mul, honey: t * mul, water: 2, charm2: t >= 2 ? 3 * mul : 0, charm3: t === 3 ? 2 * mul : 0 });
       const am = S.rollAmulet(0.15 * t, e.id);
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
-      return { win: true, rw };
+      return { win: true, rw, freed, clan: b.hold ? b.hold.clan : null };
     },
+
+    /* ----- дружины ----- */
+    clanJoin(a) {
+      this.need(S.d.level >= CLAN_LEVEL, `Дружину можно выбрать с ${CLAN_LEVEL} уровня`);
+      this.need(!S.d.clan, 'Дружина уже выбрана');
+      this.need(CLANS[a.clan], 'Такой дружины нет');
+      S.d.clan = a.clan;
+      J.add('clan', { clan: a.clan });
+      return { clan: a.clan };
+    },
+    // Поставить духа защищать Капище: свободное — после своей победы здесь сегодня, своей дружины — если есть место
+    async shrineDefend(a, ctx) {
+      this.need(S.d.clan, 'Сначала выбери дружину');
+      const p = await this.place(a.shrine, ctx, 'shrine');
+      this.near(ctx, p.lat, p.lng, W.BATTLE_R);
+      const sp = this.spirit(a.uid);
+      const hold = await ctx.env.holdGet(p.id);
+      if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), 'Сначала победи на этом Капище');
+      else {
+        this.need(hold.clan === S.d.clan, 'Капище держит другая дружина — сначала победи её защитников');
+        this.need(hold.holders.length < HOLD_MAX, `На Капище уже ${HOLD_MAX} защитников`);
+        this.need(!hold.holders.some(h => h.pid === S.d.pid), 'Твой защитник уже стоит здесь');
+      }
+      this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, `Твои защитники уже стоят на ${HOLD_MY_MAX} Капищах`);
+      this.limit(ctx, 'defend', 30, 3600000);
+      const ok = await ctx.env.holdDefend(p.id, p.lat, p.lng, S.d.clan, { pid: S.d.pid, name: S.d.name, sp: this.cleanSpirit(sp, 0), t: ctx.now });
+      this.need(ok, 'Капище только что изменилось — открой его заново');
+      S.d.stats.defends = (S.d.stats.defends || 0) + 1;
+      J.add('defend', { name: p.name, sid: sp.sid });
+      return { ok: true, clan: S.d.clan };
+    },
+    // Дань: раз в день — за каждое Капище, где стоит мой защитник
+    async tribute(a, ctx) {
+      this.need(S.d.clan, 'Сначала выбери дружину');
+      if (S.d.tributeDay === U.today(ctx.now)) return { n: 0, already: true };
+      const n = Math.min(HOLD_MY_MAX, await ctx.env.myHolds(S.d.pid));
+      S.d.tributeDay = U.today(ctx.now);
+      if (!n) return { n: 0, got: [] };
+      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n }) };
+    },
+
     async invStart(a, ctx) {
       const p = await this.place(a.spring, ctx, 'spring');
       const e = W.springFor(p, 0);
