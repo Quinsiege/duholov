@@ -109,6 +109,8 @@ const Shop = {
   price(it) { return it.cur === 'sparks' ? `✦ ${U.fmtNum(it.price)}` : `${Art.item('zlat')} ${U.fmtNum(it.price)}`; },
   wallet() { return `<div class="shop-wallet"><span class="spark">✦ ${U.fmtNum(S.d.sparks)} искр</span><span class="zlat">${Art.item('zlat')} ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, 'златник', 'златника', 'златников')}</span></div>`; },
 
+  // На покупку не хватает валюты
+  poor(it) { return (S.d[it.cur === 'sparks' ? 'sparks' : 'zlat'] || 0) < it.price; },
   // Обменов сегодня осталось
   exLeft() { const ex = S.d.shop.ex; return Rules.EXCHANGE.DAY - (ex && ex.day === U.today() ? ex.n : 0); },
   exchangeHtml() {
@@ -132,7 +134,7 @@ const Shop = {
         const lock = lvlLock(it), left = it.bag ? Rules.BAG_MAX_UP - S.d.bagExtra : 1;
         const icon = it.bag ? `<div class="shop-ico bag">${UI.I.bag}</div>` : `<div class="shop-ico">${Loot.art(it.give ? Object.keys(it.give)[0] : it.cocoon ? 'cocoon' : 'amulet', it)}</div>`;
         return `<div class="shop-row ${lock || !left ? 'off' : ''}">${icon}<div class="row-main"><b>${it.name}</b><small>${it.desc || ''}${extra}</small></div>
-          <button class="btn small ${it.cur === 'zlat' ? 'primary' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : 'Максимум')}</button></div>`;
+          <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : 'Максимум')}</button></div>`;
       };
       const bag = { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) };
       const cloaks = LOOK.cloak.filter(c => c.shop);
@@ -144,7 +146,7 @@ const Shop = {
         <h3 class="prof-h">Припасы</h3>
         ${Rules.SHOP.filter(x => !x.bag).map(x => row(x, x.id)).join('')}
         <h3 class="prof-h">Облик</h3>
-        <div class="shop-cloaks">${cloaks.map(c => `<button class="shop-cloak ${S.d.owned[c.c] ? 'owned' : ''}" data-id="look:${c.c}" ${S.d.owned[c.c] ? 'disabled' : ''}>
+        <div class="shop-cloaks">${cloaks.map(c => `<button class="shop-cloak ${S.d.owned[c.c] ? 'owned' : this.poor({ cur: 'zlat', price: c.shop }) ? 'poor' : ''}" data-id="look:${c.c}" ${S.d.owned[c.c] ? 'disabled' : ''}>
           <div class="shop-ava">${Art.avatar({ cloak: c.c, eyes: S.d.look.eyes, emblem: S.d.look.emblem })}</div><b>${c.name}</b><small>${S.d.owned[c.c] ? 'Уже твой' : this.price({ cur: 'zlat', price: c.shop })}</small></button>`).join('')}</div>
         <div class="q-note">Златники дают за серию дней (на 7-й день — 30), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.</div>`;
     };
@@ -163,6 +165,12 @@ const Shop = {
         return;
       }
       const b = e.target.closest('[data-id]'); if (!b || b.disabled) return;
+      // не хватает валюты — сразу подсказка, где её взять, без окна покупки
+      if (b.classList.contains('poor')) {
+        const zl = b.classList.contains('primary') || b.classList.contains('shop-cloak');
+        UI.toast(zl ? 'Не хватает златников — обменяй искры в Обменнике или загляни в Казну' : 'Не хватает искр — их дают за поимки, родники и бои');
+        return;
+      }
       const id = b.dataset.id, deal = id === 'deal';
       const it = deal ? Rules.shopDeal(U.today()) : id === 'bag' ? { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) }
         : id.startsWith('look:') ? (c => ({ name: `Плащ «${c.name}»`, cur: 'zlat', price: c.shop }))(LOOK.cloak.find(c => c.c === id.slice(5))) : Rules.SHOP.find(x => x.id === id);
