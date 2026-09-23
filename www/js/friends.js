@@ -7,6 +7,7 @@
 const Friends = {
   /* ---------- взаимная дружба через сервер ---------- */
   registered: false, busy: false,
+  PID: /^[a-z0-9]{8,40}$/,  // такой код игрока принимает сервер
 
   async sync() {
     if (!Cloud.configured() || !S.d || Sync.moved) return;
@@ -26,10 +27,12 @@ const Friends = {
       }
       // мои добавления, которых сервер ещё не знает (в том числе сделанные до версии 2.2)
       for (const f of S.d.friends.filter(x => !x.linked)) {
+        if (!this.PID.test(f.id)) { f.linked = 'skip'; continue; } // старый код без взаимности
         const { error } = await sb.rpc('add_friend', { p_to: f.id, p_name: S.d.name, p_level: S.d.level });
-        if (error) { console.warn('Дружба:', error.message); break; }
-        f.linked = true; S.save();
+        if (error) { console.warn('Дружба:', f.name, error.message); continue; }
+        f.linked = true;
       }
+      S.save();
       // кто добавил меня
       const { data: rows, error } = await sb.from('friend_links').select('from_pid, from_name, from_level, created_at').eq('to_pid', S.d.pid);
       if (error) throw new Error(error.message);
@@ -46,7 +49,7 @@ const Friends = {
     const seen = S.d.friendLinks = S.d.friendLinks || {};
     const added = [];
     rows.forEach(r => {
-      if (!r.from_pid || r.from_pid === S.d.pid || seen[r.from_pid] === r.created_at) return;
+      if (!r.from_pid || !this.PID.test(r.from_pid) || r.from_pid === S.d.pid || seen[r.from_pid] === r.created_at) return;
       seen[r.from_pid] = r.created_at;
       const f = this.find(r.from_pid);
       if (f) { f.name = String(r.from_name).slice(0, 20); f.lvl = r.from_level; return; }

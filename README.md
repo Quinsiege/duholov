@@ -90,6 +90,10 @@
 - Если в радиусе 1 км нет ни одного Родника, раз в сутки приходит «Посылка из Ордена» с оберегами.
 - После обновления игра показывает окно «Игра обновлена» со списком изменений.
 
+### Версия 2.2.0 — взаимная дружба
+- Код дружбы содержит код игрока (pid). Когда игрок добавляет чужой код, на сервере появляется связь (`friend_links`), и игра друга сама добавляет его в ответ — при запуске, раз в 3 минуты и при открытии «Друзей». Друзья, добавленные до 2.2, отправляются на сервер автоматически.
+- Код игрока закреплён за входом (`players`, `register_pid`), видеть связи может только одна из двух сторон; не больше 50 новых друзей в сутки. Перенос прогресса переносит и код игрока.
+
 ## Прод
 - Игра: https://quinsiege.github.io/duholov/ · APK: https://quinsiege.github.io/duholov/duholov.apk
 - Репозиторий: https://github.com/Quinsiege/duholov · Облако: Supabase-проект `duholov` (прогресс, места игроков, модерация, таблица Лиги)
@@ -122,7 +126,7 @@ http://localhost:8766/tests/index.html — автотесты в браузер�
 ## Подключение сервера (Supabase, бесплатно)
 1. supabase.com → **Sign in with GitHub** → **New project** (регион — ближайший, пароль БД сохраните у себя).
 2. **Authentication → Sign In / Providers → Anonymous sign-ins: включить.**
-3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`.
+3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`.
    **Authentication → URL Configuration**: Site URL = адрес игры, Redirect URLs = `<адрес игры>/**` (для входа модераторов по ссылке из письма).
 4. **Project Settings → API Keys**: **Project URL** и **publishable key** → `www/js/config.js` (публичные параметры; секретные ключи в игру не кладите никогда).
 5. Изменение — через Pull Request, как описано выше.
@@ -157,7 +161,7 @@ www/                 игра (HTML/CSS/JS, без сборки)
   js/album.js        альбом снимков духов
   js/league.js       Лига Ордена и турниры
   js/journal.js      дневник Ловчего
-  js/friends.js      друзья и подарки
+  js/friends.js      друзья (взаимная дружба через сервер) и подарки
   js/coop.js         совместные разломы (PeerJS/WebRTC)
   js/cloud.js        облако Supabase: вход и таблица Лиги
   js/sync.js         прогресс на сервере, перенос на другое устройство

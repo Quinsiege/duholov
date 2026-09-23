@@ -9,7 +9,11 @@ create table if not exists public.players (
   user_id    uuid not null unique references auth.users (id) on delete cascade,
   created_at timestamptz not null default now()
 );
-alter table public.players enable row level security; -- напрямую недоступна, только через функции ниже
+alter table public.players enable row level security; -- пишется только через функции ниже
+grant select on public.players to authenticated;
+-- игрок видит только свою строку (нужно правилу доступа к friend_links)
+drop policy if exists "players read own" on public.players;
+create policy "players read own" on public.players for select to authenticated using (user_id = auth.uid());
 
 -- Закрепить pid своего прогресса за своим входом. 'taken' — pid уже принадлежит другому игроку.
 create or replace function public.register_pid(p_pid text) returns text
