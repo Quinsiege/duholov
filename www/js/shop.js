@@ -34,6 +34,70 @@ const Loot = {
   },
 };
 
+// Казна Ордена: златники за рубли. Страница оплаты — ЮKassa (карта, СБП, SberPay, T-Pay, ЮMoney, баланс телефона);
+// итог сервер узнаёт у ЮKassa сам (Game.pay('sync')), а начисляет действие payClaim.
+const Treasury = {
+  KEY: 'duholov.pay.open', // ждём итог оплаты (удобство: проверить при возвращении в игру)
+  info: null,
+  async load() {
+    if (!this.info) { try { this.info = await Game.pay('info'); } catch (e) { return { on: false }; } }
+    return this.info;
+  },
+  waiting() { try { return +localStorage.getItem(this.KEY) || 0; } catch (e) { return 0; } },
+  setWaiting(v) { try { v ? localStorage.setItem(this.KEY, String(Date.now())) : localStorage.removeItem(this.KEY); } catch (e) {} },
+  html(info) {
+    if (!info.on) return '';
+    return `<h3 class="prof-h">Казна Ордена <small>златники за рубли</small></h3>
+      <div class="pay-packs">${Rules.PAY.map(p => `<button class="pay-pack ${p.hot ? 'hot' : ''}" data-pay="${p.id}">
+        ${p.hot ? '<span class="pay-hot">Выгодно</span>' : p.bonus ? `<span class="pay-bonus">+${p.bonus}%</span>` : ''}
+        <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, 'златник', 'златника', 'златников')}</small>
+        <span class="pay-price">${U.fmtNum(p.rub)} ₽</span></button>`).join('')}</div>
+      <div class="q-note">Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.${this.waiting() ? ' <button class="linkish pay-recheck">Я оплатил — проверить</button>' : ''}</div>`;
+  },
+  buy(id, info, onDone) {
+    const p = Rules.PAY.find(x => x.id === id);
+    const m = UI.modal({
+      title: 'Казна Ордена', cls: 'pay-modal',
+      html: `<div class="pay-sum">${Art.item('zlat')}<div><b>${U.fmtNum(p.zlat)} ${U.plural(p.zlat, 'златник', 'златника', 'златников')}</b><small>${p.bonus ? `с бонусом +${p.bonus}%` : 'набор'}</small></div><span>${U.fmtNum(p.rub)} ₽</span></div>
+        ${info.receipt ? '<input type="email" class="pay-email" placeholder="Почта для чека" autocomplete="email" inputmode="email">' : ''}
+        <p class="pay-note">Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney или баланс телефона. После оплаты вернись в игру — златники придут сами.</p>`,
+      buttons: [{ label: 'Отмена' }, { label: `Оплатить ${U.fmtNum(p.rub)} ₽`, cls: 'primary', keep: true, fn: async () => {
+        const email = info.receipt ? m.querySelector('.pay-email').value.trim() : '';
+        if (m._busy) return;
+        m._busy = true;
+        try {
+          const r = await Game.pay('create', { pack: id, email });
+          this.setWaiting(true);
+          m.close();
+          location.href = r.url; // в приложении откроется браузер, в браузере — страница оплаты
+        } catch (e) { UI.toast(e.message, 'bad'); } finally { m._busy = false; }
+        onDone && onDone();
+      } }],
+    });
+  },
+  // Итог оплаты: сервер спрашивает ЮKassa и начисляет оплаченное
+  async check(force) {
+    if (this.waiting() && Date.now() - this.waiting() > 3 * 86400000) this.setWaiting(false); // старше 3 дней — не ждём
+    if (!S.d || this._checking || (!force && !this.waiting())) return;
+    this._checking = true;
+    try {
+      const s = await Game.pay('sync');
+      if (s.paid) {
+        const r = await Game.try('payClaim');
+        if (r && r.zlat) {
+          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+          UI.modal({ title: 'Казна Ордена', html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>+${U.fmtNum(r.zlat)} ${U.plural(r.zlat, 'златник', 'златника', 'златников')}</span></div></div><p>Спасибо, что поддерживаешь Орден!</p>`, buttons: [{ label: 'Отлично', cls: 'primary' }] });
+          UI.refreshHud();
+        }
+      }
+      if (!s.open) this.setWaiting(false);
+      else if (force) UI.toast('Оплата ещё не завершена — если ты оплатил, проверь через минуту');
+      if (force && !s.paid && !s.open) UI.toast('Оплаченных наборов не найдено');
+    } catch (e) { if (force) UI.toast(e.message, 'bad'); }
+    finally { this._checking = false; }
+  },
+};
+
 const Shop = {
   // Товар дня ещё не куплен — значок на плитке меню
   dealFresh() { return S.d && S.d.shop.deal !== U.today(); },
@@ -67,7 +131,7 @@ const Shop = {
       };
       const bag = { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) };
       const cloaks = LOOK.cloak.filter(c => c.shop);
-      box.innerHTML = `${this.wallet()}
+      box.innerHTML = `${this.wallet()}${Treasury.html(pay)}
         <div class="shop-deal ${dealBought ? 'off' : ''}"><div class="shop-tag">Товар дня · −40%</div>${row(deal, 'deal', dealBought ? ' · куплен, завтра будет новый' : '')}</div>
         ${this.exchangeHtml()}
         <h3 class="prof-h">Сумка <small>${S.bagCount()} / ${S.bagLimit()}</small></h3>
@@ -80,6 +144,8 @@ const Shop = {
         <div class="q-note">Златники дают за серию дней (на 7-й день — 30), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.</div>`;
     };
     box.addEventListener('click', async e => {
+      const pk = e.target.closest('[data-pay]'); if (pk) { Treasury.buy(pk.dataset.pay, pay, render); return; }
+      if (e.target.closest('.pay-recheck')) { await Treasury.check(true); render(); return; }
       const x = e.target.closest('[data-ex]');
       if (x && !x.disabled) {
         const n = +x.dataset.ex, E = Rules.EXCHANGE;
@@ -102,7 +168,9 @@ const Shop = {
         render(); UI.refreshHud();
       });
     });
+    let pay = { on: false };
     render();
+    Treasury.load().then(i => { pay = i; if (scr.isConnected) render(); });
   },
 };
 

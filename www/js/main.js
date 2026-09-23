@@ -39,6 +39,7 @@ window.addEventListener('load', () => {
     setTimeout(() => Clans.refresh(), 5000); // кто держит Капища вокруг
     setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); Hints.check(); } }, 60000);
     Updater.init();
+    setTimeout(() => Treasury.check(), 3000); // Казна: итог оплаты, если игрок вернулся со страницы оплаты
   };
 
   // Прогресс хранится на сервере: без связи игра ждёт её
@@ -70,7 +71,7 @@ window.addEventListener('load', () => {
   document.addEventListener('visibilitychange', () => {
     if (!S.d) return;
     if (document.hidden) Game.flushMove();
-    else Game.act('tick').then(() => { UI.refreshHud(); MapView.refresh(); Order.daily(); }).catch(() => {});
+    else { Game.act('tick').then(() => { UI.refreshHud(); MapView.refresh(); Order.daily(); }).catch(() => {}); Treasury.check(); }
   });
 
   // Кнопка «Назад» в Android-обёртке: true — можно закрывать приложение

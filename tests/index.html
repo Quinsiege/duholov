@@ -373,7 +373,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {} };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [] };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -428,6 +428,8 @@
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
     myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
+    paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
+    payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
@@ -929,6 +931,22 @@
     // старые сохранения: гривны переходят в златники один к одному
     A.data.grivna = 77; A.data.zlat = 3;
     await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
+  });
+  atest('Сервер: Казна — оплаченные наборы начисляются ровно один раз', async () => {
+    const A = await newPlayer('vl', 55.50, 37.38, 'Меценат'), B = await newPlayer('vm', 55.50, 37.38, 'Сосед');
+    A.data.zlat = 0;
+    DB.payments.push({ id: 'p1', uid: 'vl', pack: 'z330', zlat: 330, status: 'succeeded', credited: false },
+      { id: 'p2', uid: 'vl', pack: 'z100', zlat: 100, status: 'pending', credited: false },
+      { id: 'p3', uid: 'vm', pack: 'z2600', zlat: 2600, status: 'succeeded', credited: false });
+    const r = await must(A, 'payClaim'); eq(r.zlat, 330); eq(A.data.zlat, 330, 'только оплаченный и только свой');
+    ok(DB.payments[0].credited, 'отмечено в таблице'); ok(A.data.paid.p1, 'номер оплаты — в прогрессе');
+    // отметка в таблице не записалась — повторно не начисляем
+    DB.payments[0].credited = false;
+    eq((await must(A, 'payClaim')).zlat, 0); eq(A.data.zlat, 330);
+    // оплата прошла позже
+    DB.payments[1].status = 'succeeded';
+    eq((await must(A, 'payClaim')).zlat, 100); eq(A.data.zlat, 430);
+    eq((await must(B, 'payClaim')).zlat, 2600, 'у соседа — своя оплата');
   });
   atest('Сервер: Сезонная тропа — очки за игру, ступени, Золотая тропа', async () => {
     const A = await newPlayer('vi', 55.53, 37.41, 'Путник');

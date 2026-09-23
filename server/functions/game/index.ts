@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.14.0';
+const APP_VERSION = '3.15.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1638,6 +1638,7 @@ const J = {
       case 'shop': return { ico: glyph('☉', 'gold'), title: `Покупка в Лавке: ${e.name || ''}`, sub: '' };
       case 'passGold': return { ico: glyph('★', 'gold'), title: 'Открыта Золотая тропа', sub: e.season || '' };
       case 'exchange': return { ico: glyph('⇄', 'gold'), title: 'Обмен в Лавке', sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${e.zlat || 0} златников` };
+      case 'pay': return { ico: glyph('☉', 'gold'), title: 'Казна Ордена', sub: `+${e.zlat || 0} златников` };
       case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
     }
@@ -2841,6 +2842,14 @@ const Rules = {
   // Златники — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
   ZLAT: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
+  // 3.15: Казна — златники за рубли (оплата через ЮKassa; цену и число златников сервер берёт отсюда, а не с телефона)
+  PAY: [
+    { id: 'z100',  zlat: 100,  rub: 99 },
+    { id: 'z330',  zlat: 330,  rub: 299,  bonus: 10 },
+    { id: 'z575',  zlat: 575,  rub: 499,  bonus: 15 },
+    { id: 'z1200', zlat: 1200, rub: 999,  bonus: 20, hot: true },
+    { id: 'z2600', zlat: 2600, rub: 1990, bonus: 30 },
+  ],
   // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
   EXCHANGE: { SPARKS: 500, ZLAT: 10, DAY: 10 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
@@ -3779,6 +3788,25 @@ const GameCore = {
       return { got, price: it.price, cur: key };
     },
 
+    // Казна: начислить оплаченные наборы златников. Номер оплаты запоминается в прогрессе (paid) —
+    // так начисление ровно одно, даже если отметка в таблице payments не успела записаться
+    async payClaim(a, ctx) {
+      const rows = await ctx.env.paidList();
+      S.d.paid = S.d.paid || {};
+      let zlat = 0;
+      const packs = [];
+      for (const r of rows) {
+        if (S.d.paid[r.id]) continue;
+        S.d.paid[r.id] = 1;
+        zlat += r.zlat; packs.push(r.pack);
+      }
+      if (zlat) {
+        S.d.zlat = (S.d.zlat || 0) + zlat;
+        J.add('pay', { zlat });
+      }
+      if (rows.length) ctx.after.push(() => ctx.env.payCredited(rows.map(r => r.id)));
+      return { zlat, n: packs.length };
+    },
     // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
@@ -4150,6 +4178,86 @@ const verCmp = (a, b) => {
   return 0;
 };
 
+/* ---------- Казна: покупка златников через ЮKassa ----------
+   Секреты задаёт владелец в Supabase → Edge Functions → Secrets:
+     YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY — магазин ЮKassa (для проверки — тестовый магазин);
+     PAY_RECEIPT=on — передавать чек по 54-ФЗ (тогда игрок вводит почту);
+     PAY_RETURN_URL — куда вернуть игрока после оплаты (по умолчанию paid.html сайта игры).
+   Телефону не верим: пакет, сумма и число златников — из Rules.PAY; итог платежа сервер
+   сам спрашивает у ЮKassa (sync), а начисляет его действие игры payClaim. */
+const PAY = {
+  shop: Deno.env.get('YOOKASSA_SHOP_ID') || '',
+  key: Deno.env.get('YOOKASSA_SECRET_KEY') || '',
+  receipt: Deno.env.get('PAY_RECEIPT') === 'on',
+  ret: Deno.env.get('PAY_RETURN_URL') || 'https://quinsiege.github.io/duholov/paid.html',
+};
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/i;
+async function yk(method, path, body, idem) {
+  const r = await fetch('https://api.yookassa.ru/v3' + path, {
+    method,
+    headers: { Authorization: 'Basic ' + btoa(`${PAY.shop}:${PAY.key}`), 'Content-Type': 'application/json', ...(idem ? { 'Idempotence-Key': idem } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(15000),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`ЮKassa ${r.status}: ${j.description || j.code || ''}`);
+  return j;
+}
+const Pay = {
+  on() { return !!(PAY.shop && PAY.key); },
+  async handle(uid, op, a) {
+    if (op === 'info') return { ok: true, on: this.on(), receipt: PAY.receipt };
+    if (!this.on()) return { ok: false, error: 'Покупки пока не подключены' };
+    try {
+      if (op === 'create') return await this.create(uid, a || {});
+      if (op === 'sync') return await this.sync(uid);
+    } catch (e) {
+      console.error('Казна:', String(e));
+      return { ok: false, error: 'Платёжный сервис не ответил — попробуй чуть позже' };
+    }
+    return { ok: false, error: 'Неизвестная операция' };
+  },
+  async create(uid, a) {
+    const pack = Rules.PAY.find(p => p.id === a.pack);
+    if (!pack) return { ok: false, error: 'Такого набора нет' };
+    const email = String(a.email || '').trim();
+    if (PAY.receipt && !EMAIL.test(email)) return { ok: false, error: 'Укажи почту — на неё придёт чек' };
+    const since = new Date(Date.now() - 3600000).toISOString();
+    const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
+    if ((count || 0) >= 10) return { ok: false, error: 'Слишком много попыток оплаты — подожди немного' };
+    const amount = pack.rub.toFixed(2), title = `${pack.zlat} златников — «Духолов»`;
+    const row = must(await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount }).select('id').single());
+    const p = await yk('POST', '/payments', {
+      amount: { value: amount, currency: 'RUB' },
+      capture: true,
+      confirmation: { type: 'redirect', return_url: PAY.ret },
+      description: title,
+      metadata: { order_id: row.id, user_id: uid, pack: pack.id },
+      ...(PAY.receipt ? { receipt: { customer: { email }, items: [{ description: title, quantity: '1.00', amount: { value: amount, currency: 'RUB' },
+        vat_code: 1, payment_mode: 'full_payment', payment_subject: 'service' }] } } : {}),
+    }, row.id);
+    must(await db.from('payments').update({ ext_id: p.id, status: p.status, updated_at: new Date().toISOString() }).eq('id', row.id));
+    if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: 'Платёжный сервис не выдал страницу оплаты' };
+    return { ok: true, order: row.id, url: p.confirmation.confirmation_url };
+  },
+  // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня)
+  async sync(uid) {
+    const since = new Date(Date.now() - 3 * 86400000).toISOString();
+    const rows = must(await db.from('payments').select('id, ext_id, amount').eq('user_id', uid)
+      .in('status', ['pending', 'waiting_for_capture']).not('ext_id', 'is', null).gte('created_at', since).limit(20)) || [];
+    for (const r of rows) {
+      const p = await yk('GET', `/payments/${encodeURIComponent(r.ext_id)}`);
+      // платёж должен быть именно этим заказом и на эту сумму
+      const same = p.metadata && p.metadata.order_id === r.id && p.amount && (+p.amount.value).toFixed(2) === (+r.amount).toFixed(2) && p.amount.currency === 'RUB';
+      const status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
+      must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
+    }
+    const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'succeeded').eq('credited', false);
+    const { count: open } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).in('status', ['pending', 'waiting_for_capture']).gte('created_at', since);
+    return { ok: true, paid: count || 0, open: open || 0 };
+  },
+};
+
 // Доступ к общим таблицам для GameCore (от имени сервера, в пределах одного игрока uid)
 function makeEnv(uid) {
   return {
@@ -4271,6 +4379,9 @@ function makeEnv(uid) {
       return rows && rows[0] || null;
     },
     async roomLeave(code, pid) { must(await db.rpc('raid_room_leave', { p_code: code, p_pid: pid })); },
+    // Казна: оплаченные, но ещё не начисленные наборы златников; отметка «начислено»
+    async paidList() { return must(await db.from('payments').select('id, pack, zlat').eq('user_id', uid).eq('status', 'succeeded').eq('credited', false).limit(50)) || []; },
+    async payCredited(ids) { must(await db.from('payments').update({ credited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));
@@ -4288,6 +4399,8 @@ Deno.serve(async req => {
   let body;
   try { body = await req.json(); } catch { return reply({ ok: false, error: 'Некорректный запрос' }, 400); }
   if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: 'Вышла новая версия игры — обнови её' });
+  // Казна: создать оплату / узнать итог — вне очереди игровых действий (ждём ответа ЮKassa)
+  if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));
   const env = makeEnv(uid);
 
   try {
