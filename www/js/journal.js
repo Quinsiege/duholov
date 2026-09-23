@@ -43,6 +43,7 @@ const J = {
       case 'passGold': return { ico: glyph('★', 'gold'), title: 'Открыта Золотая тропа', sub: e.season || '' };
       case 'exchange': return { ico: glyph('⇄', 'gold'), title: 'Обмен в Лавке', sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${e.zlat || 0} златников` };
       case 'pay': return { ico: glyph('☉', 'gold'), title: 'Казна Ордена', sub: `+${e.zlat || 0} златников` };
+      case 'auction': return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? `Куплен на аукционе: ${SP[e.sid] ? SP[e.sid].name : ''}` : e.dir === 'sold' ? `Продан на аукционе: ${SP[e.sid] ? SP[e.sid].name : ''}` : `Выставлен на аукцион: ${SP[e.sid] ? SP[e.sid].name : ''}`, sub: `${e.cur === 'zlat' ? '' : '✦ '}${U.fmtNum(e.price || 0)}${e.cur === 'zlat' ? ' златников' : ''}${e.who ? ' · ' + e.who : ''}` };
       case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
     }

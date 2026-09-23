@@ -58,6 +58,9 @@ const Rules = {
     { id: 'z1200', zlat: 1200, rub: 999,  bonus: 20, hot: true },
     { id: 'z2600', zlat: 2600, rub: 1990, bonus: 30 },
   ],
+  // 3.17: Аукцион духов — с LEVEL уровня; лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
+  AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
+  auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
   // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
   EXCHANGE: { SPARKS: 500, ZLAT: 10, DAY: 10 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
