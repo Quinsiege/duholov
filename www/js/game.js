@@ -43,6 +43,17 @@ const Game = {
     return res;
   },
 
+  // Казна: запрос к оплате (info / create / sync) — отдельно от игровых действий
+  async pay(op, args = {}) {
+    if (!this.on()) throw new PlayError('Нет связи с сервером игры');
+    const sb = await Cloud.client();
+    const r = await sb.functions.invoke('game', { body: { pay: op, args, v: APP_VERSION } }).catch(() => ({ error: true }));
+    let res = r.data;
+    if (r.error) { try { res = r.error.context && await r.error.context.json(); } catch (e) { res = null; } }
+    if (!res || !res.ok) throw new PlayError((res && res.error) || 'Нет связи с сервером игры — проверь интернет');
+    return res;
+  },
+
   // Действие игрока. Запросы идут строго по очереди.
   act(type, args = {}) {
     const run = () => this._act(type, args);

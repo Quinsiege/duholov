@@ -786,6 +786,25 @@ const GameCore = {
       return { got, price: it.price, cur: key };
     },
 
+    // Казна: начислить оплаченные наборы златников. Номер оплаты запоминается в прогрессе (paid) —
+    // так начисление ровно одно, даже если отметка в таблице payments не успела записаться
+    async payClaim(a, ctx) {
+      const rows = await ctx.env.paidList();
+      S.d.paid = S.d.paid || {};
+      let zlat = 0;
+      const packs = [];
+      for (const r of rows) {
+        if (S.d.paid[r.id]) continue;
+        S.d.paid[r.id] = 1;
+        zlat += r.zlat; packs.push(r.pack);
+      }
+      if (zlat) {
+        S.d.zlat = (S.d.zlat || 0) + zlat;
+        J.add('pay', { zlat });
+      }
+      if (rows.length) ctx.after.push(() => ctx.env.payCredited(rows.map(r => r.id)));
+      return { zlat, n: packs.length };
+    },
     // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
