@@ -23,6 +23,7 @@ window.addEventListener('load', () => {
     const ready = S.readyCocoons().length;
     if (ready) setTimeout(() => UI.toast(`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);
     setInterval(() => { W.prune(); S.ensureQuests(); }, 60000);
+    Updater.init();
   };
 
   if (S.load()) start();
@@ -38,8 +39,7 @@ window.addEventListener('load', () => {
   // Кнопка «Назад» в Android-обёртке: true — можно закрывать приложение
   window.nativeBack = () => (S.d ? UI.back() : true);
 
-  const inApp = location.hostname === 'appassets.androidplatform.net';
-  if ('serviceWorker' in navigator && !inApp && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || DEV)) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 });

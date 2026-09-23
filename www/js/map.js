@@ -32,7 +32,7 @@ const MapView = {
     window.addEventListener('keydown', e => { this.keys[e.key.toLowerCase()] = true; });
     window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; });
 
-    if (S.d.settings.demo) this.startDemo(); else this.startGPS();
+    if (S.d.settings.demo && DEV) this.startDemo(); else this.startGPS();
     this.refresh();
     // в режиме экономии батареи карта обновляется вдвое реже
     document.body.classList.toggle('eco', !!S.d.settings.eco);
@@ -143,8 +143,20 @@ const MapView = {
   offerDemo(reason = 'GPS не отвечает.') {
     if (this._offered) return;
     this._offered = true;
-    UI.confirm('Нет сигнала GPS', `${reason} Можно играть в демо-режиме: двигайся джойстиком по карте. Переключить обратно можно в настройках.`,
-      'Демо-режим', () => { S.d.settings.demo = true; S.save(); this.startDemo(); }, 'Ждать GPS');
+    if (DEV) {
+      UI.confirm('Нет сигнала GPS', `${reason} Включить демо-режим (джойстик)? Доступен только при разработке.`,
+        'Демо-режим', () => { S.d.settings.demo = true; S.save(); this.startDemo(); }, 'Ждать GPS');
+      return;
+    }
+    // в проде — подсказка, как включить геолокацию
+    UI.modal({
+      title: 'Нет сигнала GPS',
+      html: `<p>${reason}</p><ul class="gps-help">
+        <li>Включи геолокацию (местоположение) в шторке уведомлений телефона.</li>
+        <li>Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.</li>
+        <li>Выйди на открытое место: в помещении спутники ловятся хуже.</li></ul>`,
+      buttons: [{ label: 'Позже' }, { label: 'Повторить', cls: 'primary', fn: () => { this._offered = false; this.startGPS(); } }],
+    });
   },
 
   /* ---------------- ДЕМО-РЕЖИМ ---------------- */

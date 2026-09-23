@@ -11,8 +11,9 @@ android {
         applicationId = "ru.duholov.game"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // versionCode = MainActivity.WRAPPER_VERSION = minApk в www/version.json
+        versionCode = 2
+        versionName = "2.0.0"
     }
 
     buildTypes {
@@ -27,9 +28,7 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
-    // Игра берётся прямо из общей папки www — править код нужно только там
-    sourceSets["main"].assets.srcDirs("../../www")
+    // Игра открывается с сайта (MainActivity.HOME); в APK лежит только страница «Нет подключения».
 }
 
 dependencies {

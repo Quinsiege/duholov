@@ -2,12 +2,16 @@ package ru.duholov.game
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -19,10 +23,18 @@ import androidx.core.content.ContextCompat
 import androidx.webkit.WebViewAssetLoader
 
 /**
- * Обёртка над веб-версией игры (папка www). Файлы отдаются через WebViewAssetLoader
- * с https-адреса, поэтому в WebView работают геолокация, камера и localStorage.
+ * Приложение-обёртка: открывает игру с сайта, поэтому обновления игры приходят без переустановки.
+ * Без сети (и если игра ещё не закэширована) показывается встроенная страница «Нет подключения».
+ * Версия обёртки передаётся игре в User-Agent («DuholovApp/N») — по ней игра просит обновить само приложение.
  */
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        const val HOME = "https://quinsiege.github.io/duholov/"
+        const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
+        const val WRAPPER_VERSION = 2 // увеличивать вместе с versionCode и minApk в www/version.json
+        private val OWN_HOSTS = setOf("quinsiege.github.io", "appassets.androidplatform.net")
+    }
 
     private lateinit var web: WebView
     private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
@@ -46,6 +58,10 @@ class MainActivity : ComponentActivity() {
     private fun has(permission: String) =
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
+    private fun openExternal(uri: Uri) {
+        try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (e: ActivityNotFoundException) { /* нет браузера */ }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,12 +79,27 @@ class MainActivity : ComponentActivity() {
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
             setGeolocationEnabled(true)
+            userAgentString = "$userAgentString DuholovApp/$WRAPPER_VERSION"
         }
 
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                 assetLoader.shouldInterceptRequest(request.url)
+
+            // свои страницы — внутри приложения; внешние ссылки и APK — в браузере
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url
+                if (url.host in OWN_HOSTS && url.path?.endsWith(".apk") != true) return false
+                openExternal(url)
+                return true
+            }
+
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                if (request.isForMainFrame && request.url.host == Uri.parse(HOME).host) view.loadUrl(OFFLINE)
+            }
         }
+
+        web.setDownloadListener { url, _, _, _, _ -> openExternal(Uri.parse(url)) }
 
         web.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
@@ -108,7 +139,7 @@ class MainActivity : ComponentActivity() {
         })
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState)
-        else web.loadUrl("https://appassets.androidplatform.net/assets/index.html")
+        else web.loadUrl(HOME)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

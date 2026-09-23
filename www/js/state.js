@@ -22,6 +22,7 @@ const S = {
     const d = this.d;
     d.settings = Object.assign({ demo: false, ar: false, sound: true, vibro: true, weather: true, music: true, cloud: true }, d.settings || {});
     d.stats = Object.assign({ caught: 0, springs: 0, raids: 0, evolved: 0, hatched: 0, km: 0, throwsGreat: 0, shiny: 0, duels: 0 }, d.stats || {});
+    if (!DEV) d.settings.demo = false; // демо-режим (джойстик) — только для разработки
     d.shrines = d.shrines || {};
     d.team = d.team || [];
     d.sent = d.sent || [];
