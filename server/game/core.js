@@ -167,6 +167,29 @@ const GameCore = {
     return { week: w, total, players, goal: Rules.orderGoal(players), n: mine.n, got: mine.got.slice(), top, endsAt: ((w + 1) * 7 - 3) * 86400000 };
   },
 
+  // Друг, который тоже добавил тебя: его запись у меня и его сохранение
+  async mutual(ctx, pid, what) {
+    const f = S.d.friends.find(x => x.id === pid);
+    this.need(f, 'Такого друга нет');
+    const s = await ctx.env.friendSave(f.id);
+    this.need(s && s.data, 'Ловчий не найден');
+    const d = s.data;
+    this.need((d.friends || []).some(x => x.id === S.d.pid), `${what}, когда ${f.name} тоже добавит тебя в друзья`);
+    return { f, d, s };
+  },
+  // Дух из чужого сохранения: только известные поля и допустимые значения
+  cleanSpirit(x, i) {
+    const iv = (Array.isArray(x.iv) ? x.iv : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
+    while (iv.length < 3) iv.push(0);
+    return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
+      purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? String(x.nick).slice(0, 16) : null };
+  },
+  // Три сильнейших духа друга
+  topSpirits(d, n = 3) {
+    const list = (Array.isArray(d.spirits) ? d.spirits : []).filter(x => x && SP[x.sid]).map((x, i) => this.cleanSpirit(x, i));
+    return list.map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, n).map(o => o.x);
+  },
+
   /* ---------- действия ---------- */
   H: {
     async load(a, ctx) {
@@ -711,13 +734,8 @@ const GameCore = {
     },
     // Профиль друга — только если дружба взаимная (он тоже добавил тебя)
     async friendProfile(a, ctx) {
-      const f = S.d.friends.find(x => x.id === a.pid);
-      this.need(f, 'Такого друга нет');
       this.limit(ctx, 'profile', 60, 3600000);
-      const s = await ctx.env.friendSave(f.id);
-      this.need(s && s.data, 'Ловчий не найден');
-      const d = s.data;
-      this.need((d.friends || []).some(x => x.id === S.d.pid), `Профиль откроется, когда ${f.name} тоже добавит тебя в друзья`);
+      const { f, d, s } = await this.mutual(ctx, a.pid, 'Профиль откроется');
       // чужое сохранение могло быть записано ещё телефоном (до 3.0) — только числа и известные значения
       const num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       f.name = String(d.name || f.name).slice(0, 20); f.lvl = num(d.level, MAX_LEVEL) || f.lvl;
@@ -726,8 +744,7 @@ const GameCore = {
         ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
       if (look) f.look = look;
       const st = d.stats || {}, spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
-      const top = spirits.map(x => ({ sid: x.sid, lvl: num(x.lvl, 40), shiny: !!x.shiny, dark: !!x.dark, nick: x.nick ? String(x.nick).slice(0, 16) : null, power: (() => { try { return S.power(x) || 0; } catch (e) { return 0; } })() }))
-        .sort((x, y) => y.power - x.power).slice(0, 3);
+      const top = this.topSpirits(d).map(x => ({ ...x, power: S.power(x) }));
       const buddy = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
       const L = d.league || {};
       return {
@@ -737,6 +754,30 @@ const GameCore = {
         medals: Object.values(d.medals || {}).filter(t => t >= 3).length, rank: num(L.best, LEAGUE_RANKS.length - 1),
         buddy: buddy ? buddy.sid : null, top, pts: f.pts,
       };
+    },
+    // Поединок с другом: его три сильнейших духа под управлением игры. Награда — раз в день за каждого друга.
+    async sparStart(a, ctx) {
+      this.limit(ctx, 'spar', 30, 3600000);
+      const { f, d } = await this.mutual(ctx, a.pid, 'Поединок откроется');
+      const foe = this.topSpirits(d);
+      this.need(foe.length, `У ${f.name} пока нет духов`);
+      const team = S.team();
+      this.need(team.length, 'Нужна команда');
+      ctx.srv.battle = { type: 'spar', pid: f.id, foe, start: ctx.now, team: team.map(x => x.uid) };
+      return { foe, name: f.name, look: f.look || null, rewarded: f.spar === U.today(ctx.now) };
+    },
+    sparEnd(a, ctx) {
+      const b = this.endBattle(ctx, 'spar');
+      if (!a.win) return { win: false };
+      this.plausibleDuel(ctx, b, b.foe);
+      const f = S.d.friends.find(x => x.id === b.pid);
+      this.need(f, 'Такого друга нет');
+      J.add('spar', { name: f.name });
+      if (f.spar === U.today(ctx.now)) return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true };
+      f.spar = U.today(ctx.now);
+      const rw = S.giveRewards({ xp: 800, sparks: 500, charm: 3, honey: 1 });
+      this.friendPoint(f);
+      return { win: true, rw, pts: f.pts };
     },
     friendRemove(a) { S.d.friends = S.d.friends.filter(f => f.id !== a.pid); return { ok: true }; },
     // Кто добавил меня (дружба взаимная) + подарки, которые ждут открытия

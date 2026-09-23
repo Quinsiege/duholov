@@ -641,6 +641,28 @@
     const p2 = await must(A, 'friendProfile', { pid: B.data.pid });
     eq(p2.look, null, 'неизвестный облик не передаётся'); eq(p2.caught, 0); eq(p2.level, 1);
   });
+  atest('Сервер: поединок с другом — взаимность, честная победа, награда раз в день', async () => {
+    const A = await newPlayer('us', 55.62, 37.50, 'Добрыня'), B = await newPlayer('ut', 55.62, 37.50, 'Забава', 'kapelka');
+    await must(A, 'friendAdd', { pid: B.data.pid });
+    await refuse(A, 'sparStart', { pid: B.data.pid }, /Поединок откроется/);
+    await must(B, 'friendsSync');
+    DB.saves.ut.spirits.push({ uid: 'bad', sid: 'ugolek', lvl: '<img>', iv: ['a', 99], amulet: '<x>' });
+    const s = await must(A, 'sparStart', { pid: B.data.pid });
+    eq(s.name, 'Забава'); eq(s.foe.length, 2); eq(s.rewarded, false);
+    const bad = s.foe.find(x => x.sid === 'ugolek');
+    eq(bad.lvl, 1); eq(bad.iv.join(), '0,15,0'); eq(bad.amulet, null, 'чужие данные очищены');
+    await refuse(A, 'sparEnd', { win: true }, /слишком быстрая/);
+    await must(A, 'sparStart', { pid: B.data.pid });
+    A.srv.battle.start -= 200000; // бой дошёл до таймера
+    const pts0 = A.data.friends[0].pts;
+    const r = await must(A, 'sparEnd', { win: true });
+    ok(r.win && !r.practice && r.rw.length > 1, 'награда дня'); eq(A.data.friends[0].pts, pts0 + 1, '+1 к дружбе');
+    await must(A, 'sparStart', { pid: B.data.pid });
+    A.srv.battle.start -= 200000;
+    const r2 = await must(A, 'sparEnd', { win: true });
+    ok(r2.practice, 'второй раз за день — тренировка'); eq(A.data.friends[0].pts, pts0 + 1);
+    await refuse(A, 'sparEnd', { win: true }, /Бой не найден/);
+  });
 
   /* ---------- вывод ---------- */
   (async () => {

@@ -63,6 +63,38 @@ const Duel = {
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
   },
 
+  // Поединок с другом: его сильнейшие духи под управлением игры (команду присылает сервер)
+  openSpar(f, top) {
+    let team = S.team();
+    const today = f.spar === U.today();
+    const html = `
+      <div class="shrine-view spar">
+        <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>Дружеский поединок</small></div></div>
+        <div class="rift-team-title">Сильнейшие духи друга</div>
+        <div class="rift-team">${UI.teamHtml(top)}</div>
+        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="rift-tip">${today ? 'Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).' : 'Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.'}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
+      </div>`;
+    const scr = UI.screen('Поединок с другом', html, 'shrine-screen');
+    scr.querySelector('.duel-go').onclick = async () => {
+      if (this.st || this._starting) return;
+      this._starting = true;
+      const r = await Game.try('sparStart', { pid: f.id });
+      this._starting = false;
+      if (!r) return;
+      UI.closeScreen(scr);
+      const color = (r.look && r.look.cloak) || GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)];
+      this.start({ kind: 'spar', name: f.name, T: { speed: 0.72, shield: 0.6 } }, { name: U.esc(r.name), color, team: r.foe }, S.team());
+    };
+    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => {
+      team = S.team();
+      scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team);
+      scr.querySelector('.duel-go').disabled = !team.length;
+    });
+  },
+
   // Начало боя отмечает сервер (он же проверит правдоподобие победы в конце)
   async begin(type, args) {
     if (this.st || this._starting) return false;
@@ -71,7 +103,7 @@ const Duel = {
     this._starting = false;
     return !!ok;
   },
-  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : 'duelEnd'; },
+  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : kind === 'spar' ? 'sparEnd' : 'duelEnd'; },
 
   fighter(sp) {
     const x = S.battle(sp);
@@ -398,6 +430,7 @@ const Duel = {
       return;
     }
     if (st.e.kind === 'invasion') return this.finishInvasion(win, r);
+    if (st.e.kind === 'spar') return this.finishSpar(win, r);
     if (win) {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
@@ -412,6 +445,26 @@ const Duel = {
         <div class="res-note">«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.</div>`;
     }
     const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">На карту</button></div></div>`);
+    res.querySelector('button').onclick = () => this.close();
+    st.root.appendChild(res);
+    UI.refreshHud();
+  },
+  finishSpar(win, r) {
+    const st = this.st, g = st.g;
+    let html;
+    if (win) {
+      Sfx.play('win'); U.vibrate([50, 50, 120]);
+      html = `<div class="res-title">Победа!</div>
+        <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
+        <div class="res-note">${r.practice ? `Хорошая тренировка! Награда за поединок с ${g.name} сегодня уже получена.` : `${g.name} жмёт тебе руку: «Честный бой!» Дружба крепнет.`}</div>
+        <div class="res-rw">${r.rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}${r.practice ? '' : '<div><b>+1 ★</b> дружбы</div>'}</div>`;
+    } else {
+      Sfx.play('lose');
+      html = `<div class="res-title lose">Поражение</div>
+        <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
+        <div class="res-note">Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.</div>`;
+    }
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">Готово</button></div></div>`);
     res.querySelector('button').onclick = () => this.close();
     st.root.appendChild(res);
     UI.refreshHud();
