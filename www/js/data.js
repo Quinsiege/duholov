@@ -257,6 +257,29 @@ const QUEST_TEMPLATES = [
   { t: 'raid',    min: 1, max: 1,  text: () => `Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
 ];
 
+/* ---------- Поручения из родников (3.2): задание → встреча с духом ---------- */
+// tier: 1 — лёгкое (обычные и необычные духи), 2 — среднее (необычные и редкие), 3 — трудное (редкие и эпические)
+const TASK_TEMPLATES = [
+  { t: 'catch',    tier: 1, min: 5, max: 8, text: n => `Поймай ${n} духов` },
+  { t: 'spring',   tier: 1, min: 3, max: 5, text: n => `Зачерпни силы из ${n} родников` },
+  { t: 'power',    tier: 1, min: 3, max: 5, text: n => `Усиль духов ${n} раз(а)` },
+  { t: 'photo',    tier: 1, min: 1, max: 1, text: () => 'Сфотографируй духа во время встречи' },
+  { t: 'catchEl',  tier: 2, min: 3, max: 5, text: (n, el) => `Поймай ${n} духов стихии «${ELEMENTS[el].name}»` },
+  { t: 'throw',    tier: 2, min: 3, max: 5, text: n => `Сделай ${n} отличных бросков` },
+  { t: 'walk',     tier: 2, min: 1, max: 2, text: n => `Пройди ${n} км` },
+  { t: 'evolve',   tier: 2, min: 1, max: 1, text: () => 'Преврати духа' },
+  { t: 'duel',     tier: 2, min: 1, max: 1, lvl: 3, text: () => 'Победи хранителя капища' },
+  { t: 'hatch',    tier: 3, min: 1, max: 1, text: () => 'Выведи духа из кокона' },
+  { t: 'invasion', tier: 3, min: 1, max: 1, lvl: 4, text: () => 'Освободи родник от прислужников Нави' },
+  { t: 'raid',     tier: 3, min: 1, max: 1, lvl: 5, text: () => 'Закрой разлом' },
+];
+const TASK_TIERS = {
+  1: { rar: [1, 2], lvl: 12, reward: { charm: 3 } },
+  2: { rar: [2, 3], lvl: 18, reward: { charm: 5, honey: 1 } },
+  3: { rar: [3, 4], lvl: 25, reward: { charm2: 3, honey: 2 } },
+};
+const TASK_LIMIT = 5;
+
 
 const LORE = [
   '2031 год. Геомагнитная буря, которую потом назовут <b>Тонкой ночью</b>, истончила границу между Явью — нашим миром — и Навью, миром духов.',

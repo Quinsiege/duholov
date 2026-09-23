@@ -114,7 +114,7 @@ const Friends = {
       scr.querySelector('.fr-list').innerHTML = S.d.friends.length ? [...S.d.friends].sort((a, b) => b.pts - a.pts).map(f => {
         const lv = this.level(f), next = FRIEND_LEVELS[lv + 1];
         return `<div class="row fr-row" data-id="${f.id}">
-          <div class="fr-ava">${Art.avatar({ cloak: GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)], eyes: '#5eead4', emblem: 'charm' })}</div>
+          <div class="fr-ava">${Art.avatar(f.look || { cloak: GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)], eyes: '#5eead4', emblem: 'charm' })}</div>
           <div class="row-main"><b>${U.esc(f.name)}</b><small>${FRIEND_LEVELS[lv].name}${next ? ` · ★ ${f.pts}/${next.pts}` : ' · высший уровень'}${f.recv === today ? ' · подарок получен' : ''}</small>
             <div class="pbar"><i style="width:${next ? Math.min(100, (f.pts - FRIEND_LEVELS[lv].pts) / (next.pts - FRIEND_LEVELS[lv].pts) * 100) : 100}%"></i></div></div>
           <button class="btn small ${f.sent === today ? 'ghost' : 'primary'} send-gift" ${f.sent === today ? 'disabled' : ''}>${f.sent === today ? 'Отправлен' : 'Подарок'}</button>
@@ -153,9 +153,38 @@ const Friends = {
         }
         return;
       }
-      UI.confirm(U.esc(f.name), `Уровень дружбы: ${FRIEND_LEVELS[this.level(f)].name} (★ ${f.pts}). В друзьях с ${new Date(f.added).toLocaleDateString('ru-RU')}.`, 'Удалить из друзей',
-        async () => { if (await Game.try('friendRemove', { pid: f.id })) render(); }, 'Закрыть', true);
+      this.profile(f, render);
     });
+  },
+  // Профиль друга: уровень, спутник, сильнейшие духи, успехи (данные — с сервера, только для взаимных друзей)
+  async profile(f, render) {
+    const since = `В друзьях с ${new Date(f.added).toLocaleDateString('ru-RU')} · ${FRIEND_LEVELS[this.level(f)].name} (★ ${f.pts})`;
+    const m = UI.modal({
+      title: U.esc(f.name), cls: 'fr-prof-modal',
+      html: `<div class="fr-prof"><p class="small">Загружаю профиль…</p></div><p class="small fr-since">${since}</p>`,
+      buttons: [
+        { label: 'Удалить', cls: 'danger', fn: () => UI.confirm(U.esc(f.name), 'Удалить из друзей? Уровень дружбы пропадёт.', 'Удалить', async () => { if (await Game.try('friendRemove', { pid: f.id })) render(); }, 'Отмена', true) },
+        { label: 'Закрыть', cls: 'primary' },
+      ],
+    });
+    let p = null;
+    try { p = await Game.act('friendProfile', { pid: f.id }); } catch (e) { p = { error: e.message }; }
+    const box = m.querySelector('.fr-prof');
+    if (!box) return;
+    if (p.error) { box.innerHTML = `<p class="small">${U.esc(p.error)}</p>`; return; }
+    const seen = p.seen ? Date.now() - new Date(p.seen).getTime() : null;
+    const seenText = seen == null ? '' : seen < 15 * 60000 ? 'в игре сейчас' : seen < 86400000 ? `был в игре ${new Date(p.seen).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : `был в игре ${new Date(p.seen).toLocaleDateString('ru-RU')}`;
+    const spirit = x => `<div class="fr-sp">${Art.img(x.sid, x.shiny, x.dark)}<b>${U.esc(x.nick || SP[x.sid].name)}</b><small>СИЛА ${x.power}</small></div>`;
+    box.innerHTML = `
+      <div class="fr-prof-head"><div class="fr-prof-ava">${Art.avatar(p.look || undefined)}</div>
+        <div><b class="fr-prof-lvl">Уровень ${p.level}</b><small>${UI.rank(p.level)}${seenText ? ' · ' + seenText : ''}</small>
+        ${p.buddy ? `<small>Спутник: ${SP[p.buddy].name}</small>` : ''}</div></div>
+      <div class="prof-stats fr-prof-stats">
+        <div><b>${p.caught}</b><span>поймано</span></div><div><b>${p.dex}</b><span>видов</span></div><div><b>${U.fmtDist(p.km * 1000)}</b><span>пройдено</span></div>
+        <div><b>${p.raids}</b><span>разломов</span></div><div><b>${p.medals}</b><span>золотых знаков</span></div><div><b>${p.rank ? LEAGUE_RANKS[p.rank].name : '—'}</b><span>Лига</span></div>
+      </div>
+      ${p.top.length ? `<div class="fr-sub">Сильнейшие духи</div><div class="fr-top">${p.top.map(spirit).join('')}</div>` : ''}`;
+    render();
   },
   async shareText(text) {
     if (navigator.share) { try { await navigator.share({ title: 'Духолов', text }); return; } catch (e) { if (e.name === 'AbortError') return; } }

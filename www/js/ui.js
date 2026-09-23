@@ -596,7 +596,7 @@ const UI = {
   /* ---------------- ЗАДАНИЯ ---------------- */
   quests(tab) {
     this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
-    const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button><button data-tab="order">Орден${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
+    const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? ' •' : ''}</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button><button data-tab="order">Орден${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const rwText = rw => Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${n}` : `${ITEMS[k].name} ×${n}`).join(', ');
     const BONUS = Rules.QUEST_BONUS;
     const renderStory = () => {
@@ -637,7 +637,7 @@ const UI = {
           ${q.claimed ? '<span class="q-ok">✓</span>' : done ? `<button class="btn small primary claim" data-i="${i}">Забрать</button>` : ''}</div>`;
       }).join('') + `<div class="quest bonus ${Q.bonus ? 'claimed' : all ? 'done' : ''}"><div class="q-main"><b>Сундук дня</b><small>Выполни все три задания. Награда: ${rwText(BONUS)}</small></div>
         ${Q.bonus ? '<span class="q-ok">✓</span>' : all ? '<button class="btn small primary claim-bonus">Открыть</button>' : ''}</div>
-        <div class="q-note">Новые задания появятся в полночь.</div>`;
+        <div class="q-note">Новые задания появятся в полночь.</div>` + this.tasksHtml();
     };
     scr.addEventListener('click', e => {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
@@ -664,6 +664,24 @@ const UI = {
         Encounter.start({ mode: 'story', seed: 'gift' + S.d.created });
         return;
       }
+      const tc = e.target.closest('.t-claim'), td = e.target.closest('.t-drop'), tm = e.target.closest('.t-meet');
+      if (tc) {
+        tc.disabled = true;
+        Game.try('taskClaim', { id: tc.dataset.id }).then(r => {
+          if (r) { Sfx.play('spin'); this.toast(`Поручение сдано: ${r.got.map(x => `${x.label} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }
+          render(); this.refreshHud();
+        });
+        return;
+      }
+      if (td) {
+        this.confirm('Отказаться от поручения?', 'Поручение исчезнет, новое можно получить у родника.', 'Отказаться', () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), 'Оставить', true);
+        return;
+      }
+      if (tm) {
+        this.closeScreen(scr);
+        Encounter.start({ mode: 'task', spawnId: tm.dataset.id, seed: 'task:' + tm.dataset.id });
+        return;
+      }
       const claim = (type, args, title, sound) => Game.try(type, args).then(r => {
         if (!r) return;
         Sfx.play(sound); this.toast(title + r.got.map(x => `${x.label} +${x.n}`).join(', '), 'good');
@@ -673,6 +691,20 @@ const UI = {
       else if (b) claim('questBonus', {}, 'Сундук: ', 'levelup');
     });
     render();
+  },
+
+  // Поручения из родников: задание → предметы и встреча с духом
+  tasksHtml() {
+    const d = S.d;
+    const meets = d.taskMeet.map(m => `<div class="quest done t-row"><div class="t-sp">${Art.img(m.sid)}</div><div class="q-main"><b>Встреча: ${SP[m.sid].name}</b><small>${RARITY[SP[m.sid].rar].name} · ур. ${m.lvl}. Не сбежит, пока не поймаешь.</small></div>
+      <button class="btn small primary t-meet" data-id="${m.id}">Встретить</button></div>`).join('');
+    const tasks = d.tasks.map(q => {
+      const done = q.p >= q.n, pv = q.t === 'walk' ? `${q.p.toFixed(2)} / ${q.n}` : `${Math.floor(q.p)} / ${q.n}`;
+      return `<div class="quest t-row ${done ? 'done' : ''}"><div class="t-sp mystery">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class="q-main"><b>${q.text}</b><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><small>${pv} · Награда: встреча с духом</small></div>
+        ${done ? `<button class="btn small primary t-claim" data-id="${q.id}">Сдать</button>` : `<button class="btn-round small t-drop" data-id="${q.id}" aria-label="Отказаться">${this.I.close}</button>`}</div>`;
+    }).join('');
+    return `<h3 class="q-h">Поручения родников <small>${d.tasks.length} / ${TASK_LIMIT}</small></h3>${meets}${tasks ||
+      (meets ? '' : '<div class="q-note">Родники иногда дают поручения: первое за день — всегда. За выполненное — предметы и встреча с духом, которого на улице не найти так просто.</div>')}`;
   },
 
   /* ---------------- ПРОФИЛЬ ---------------- */
@@ -936,7 +968,8 @@ const UI = {
       const got = r.got;
       const cocoonHtml = r.cocoon ? `<div class="loot-item" style="animation-delay:${got.length * 0.12}s">${Art.cocoon(r.cocoon.km)}<span>Кокон ${r.cocoon.km} км</span></div>` : '';
       scr.querySelector('.spring-loot').innerHTML = got.filter(x => x.k !== 'xp').map((x, i) => `<div class="loot-item" style="animation-delay:${i * 0.12}s">${Art.item(x.k)}<span>${x.label} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `<div class="loot-xp">+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта${r.full ? ' · Сумка полна!' : ''}</div>`;
+        `<div class="loot-xp">+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта${r.full ? ' · Сумка полна!' : ''}</div>` +
+        (r.task ? `<div class="loot-task">Новое поручение: <b>${r.task.text}</b><small>Награда — встреча с духом. Смотри «Меню → Задания».</small></div>` : '');
       hint.textContent = '';
       go.textContent = 'Готово';
       go.disabled = false;

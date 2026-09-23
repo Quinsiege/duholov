@@ -54,7 +54,8 @@ const Rules = {
   catchChance(o) {
     const s = SP[o.sid];
     if (o.mode === 'tut') return 1; // учебного духа поймать можно всегда
-    const base = o.mode === 'story' ? 0.5 : o.mode === 'raid' ? (s.legend ? 0.1 : 0.2) : RARITY[s.rar].base * U.clamp(1.15 - o.lvl / 60, 0.55, 1.15);
+    const base = o.mode === 'story' ? 0.5 : o.mode === 'raid' ? (s.legend ? 0.1 : 0.2)
+      : RARITY[s.rar].base * U.clamp(1.15 - o.lvl / 60, 0.55, 1.15) * (o.mode === 'task' ? 1.5 : 1); // дух за поручение ловится легче
     const cm = o.mode === 'raid' ? 1.5 : ITEMS[o.item].mult;
     const mult = cm * (o.honey ? 1.5 : 1) * (o.mul || 1);
     return 1 - Math.pow(1 - U.clamp(base, 0.02, 0.95), mult);

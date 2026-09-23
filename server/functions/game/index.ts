@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.2.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -274,6 +274,29 @@ const QUEST_TEMPLATES = [
   { t: 'evolve',  min: 1, max: 1,  text: () => `Преврати одного духа`,              reward: { incense: 1 } },
   { t: 'raid',    min: 1, max: 1,  text: () => `Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
 ];
+
+/* ---------- Поручения из родников (3.2): задание → встреча с духом ---------- */
+// tier: 1 — лёгкое (обычные и необычные духи), 2 — среднее (необычные и редкие), 3 — трудное (редкие и эпические)
+const TASK_TEMPLATES = [
+  { t: 'catch',    tier: 1, min: 5, max: 8, text: n => `Поймай ${n} духов` },
+  { t: 'spring',   tier: 1, min: 3, max: 5, text: n => `Зачерпни силы из ${n} родников` },
+  { t: 'power',    tier: 1, min: 3, max: 5, text: n => `Усиль духов ${n} раз(а)` },
+  { t: 'photo',    tier: 1, min: 1, max: 1, text: () => 'Сфотографируй духа во время встречи' },
+  { t: 'catchEl',  tier: 2, min: 3, max: 5, text: (n, el) => `Поймай ${n} духов стихии «${ELEMENTS[el].name}»` },
+  { t: 'throw',    tier: 2, min: 3, max: 5, text: n => `Сделай ${n} отличных бросков` },
+  { t: 'walk',     tier: 2, min: 1, max: 2, text: n => `Пройди ${n} км` },
+  { t: 'evolve',   tier: 2, min: 1, max: 1, text: () => 'Преврати духа' },
+  { t: 'duel',     tier: 2, min: 1, max: 1, lvl: 3, text: () => 'Победи хранителя капища' },
+  { t: 'hatch',    tier: 3, min: 1, max: 1, text: () => 'Выведи духа из кокона' },
+  { t: 'invasion', tier: 3, min: 1, max: 1, lvl: 4, text: () => 'Освободи родник от прислужников Нави' },
+  { t: 'raid',     tier: 3, min: 1, max: 1, lvl: 5, text: () => 'Закрой разлом' },
+];
+const TASK_TIERS = {
+  1: { rar: [1, 2], lvl: 12, reward: { charm: 3 } },
+  2: { rar: [2, 3], lvl: 18, reward: { charm: 5, honey: 1 } },
+  3: { rar: [3, 4], lvl: 25, reward: { charm2: 3, honey: 2 } },
+};
+const TASK_LIMIT = 5;
 
 
 const LORE = [
@@ -1052,6 +1075,8 @@ const S = {
     d.order = d.order || {}; // вклад в общее дело Ордена: неделя → { n, got: [ступени] }
     d.stats.streakBest = d.stats.streakBest || 0;
     d.stats.orderPts = d.stats.orderPts || 0;
+    d.tasks = d.tasks || []; // поручения из родников
+    d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     if (!d.pid) d.pid = U.uid() + U.uid();
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
     d.stats.byEl = d.stats.byEl || {};
@@ -1382,6 +1407,14 @@ const S = {
       changed = true;
       if (q.p >= q.n) Bus.emit('questDone', q);
     });
+    // поручения из родников
+    this.d.tasks.forEach(q => {
+      if (q.t !== type || q.p >= q.n) return;
+      if (type === 'catchEl' && meta.el !== q.el) return;
+      q.p = Math.min(q.n, q.p + amount);
+      changed = true;
+      if (q.p >= q.n) Bus.emit('toast', { text: `Поручение выполнено: ${q.text}`, cls: 'good' });
+    });
     // Летопись
     const ch = STORY[this.d.story.ch];
     if (ch) ch.steps.forEach((s, i) => {
@@ -1395,7 +1428,15 @@ const S = {
   },
   questsClaimable() {
     const daily = this.d.quests ? this.d.quests.list.filter(q => q.p >= q.n && !q.claimed).length : 0;
-    return daily + (this.storyReady() ? 1 : 0);
+    return daily + (this.storyReady() ? 1 : 0) + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
+  },
+  // Новое поручение (выдаёт сервер у родника): задание и дух, который встретится в награду
+  makeTask() {
+    const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
+    const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
+    const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
+    const sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.season && T.rar.includes(s.rar));
+    return { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
   },
 
   /* ---------- Летопись ---------- */
@@ -2547,7 +2588,8 @@ const Rules = {
   catchChance(o) {
     const s = SP[o.sid];
     if (o.mode === 'tut') return 1; // учебного духа поймать можно всегда
-    const base = o.mode === 'story' ? 0.5 : o.mode === 'raid' ? (s.legend ? 0.1 : 0.2) : RARITY[s.rar].base * U.clamp(1.15 - o.lvl / 60, 0.55, 1.15);
+    const base = o.mode === 'story' ? 0.5 : o.mode === 'raid' ? (s.legend ? 0.1 : 0.2)
+      : RARITY[s.rar].base * U.clamp(1.15 - o.lvl / 60, 0.55, 1.15) * (o.mode === 'task' ? 1.5 : 1); // дух за поручение ловится легче
     const cm = o.mode === 'raid' ? 1.5 : ITEMS[o.item].mult;
     const mult = cm * (o.honey ? 1.5 : 1) * (o.mul || 1);
     return 1 - Math.pow(1 - U.clamp(base, 0.02, 0.95), mult);
@@ -2927,6 +2969,11 @@ const GameCore = {
         ctx.srv.rescue = null;
         return this.openEnc(ctx, { mode: 'rescue', sid: r.sid, lvl: r.lvl, dark: true, seed: r.seed });
       }
+      if (kind === 'task') {
+        const m = S.d.taskMeet.find(x => x.id === a.id);
+        this.need(m, 'Встреча за поручение не найдена');
+        return this.openEnc(ctx, { mode: 'task', sid: m.sid, lvl: m.lvl, seed: 'task:' + m.id, taskId: m.id });
+      }
       if (kind === 'story') {
         this.need(S.d.storyGift && SP[S.d.storyGift], 'Встреча Летописи недоступна');
         return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: 25, seed: 'gift' + S.d.created });
@@ -2984,6 +3031,7 @@ const GameCore = {
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
       if (e.mode === 'tut' && S.d.tut === 1) S.d.tut = 2;
       if (e.mode === 'story') S.d.storyGift = null;
+      if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
       return { wobbles: 3, caught: true, label: bonus.label, uid: sp.uid, isNew, xp: Math.round(rw.xp * Ev.xpMul()), sparks: rw.sparks, ess: rw.ess };
     },
@@ -3005,7 +3053,14 @@ const GameCore = {
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
       if (S.d.tut === 2) S.d.tut = 3;
-      return { got, cocoon: coc, full: S.bagCount() >= BAG_LIMIT };
+      // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
+      let task = null;
+      if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
+        S.d.taskDay = U.today(ctx.now);
+        task = S.makeTask();
+        S.d.tasks.push(task);
+      }
+      return { got, cocoon: coc, task, full: S.bagCount() >= BAG_LIMIT };
     },
     incense(a, ctx) {
       this.need(!S.incenseActive(), 'Ладан ещё горит');
@@ -3100,6 +3155,24 @@ const GameCore = {
       if (res.ch.gift) S.d.storyGift = res.ch.gift;
       J.add('story', { title: res.ch.title });
       return { ch, got: res.got };
+    },
+    // Поручение выполнено: предметы сразу, дух — во встрече (ждёт в «Заданиях», пока не пойман)
+    taskClaim(a) {
+      const q = S.d.tasks.find(x => x.id === a.id);
+      this.need(q && q.p >= q.n, 'Поручение ещё не выполнено');
+      this.need(S.d.taskMeet.length < TASK_LIMIT, 'Сначала встреть духов за прошлые поручения');
+      S.d.tasks = S.d.tasks.filter(x => x !== q);
+      const T = TASK_TIERS[q.tier];
+      const got = S.giveRewards({ ...T.reward, xp: 250 * q.tier });
+      const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.maxLvl()) };
+      S.d.taskMeet.push(m);
+      return { got, meet: m };
+    },
+    taskDrop(a) {
+      const n = S.d.tasks.length;
+      S.d.tasks = S.d.tasks.filter(x => x.id !== a.id);
+      this.need(S.d.tasks.length < n, 'Поручение не найдено');
+      return { ok: true };
     },
     tutFinish(a) {
       this.need(S.d.tut, 'Обучение уже пройдено');
@@ -3322,6 +3395,35 @@ const GameCore = {
       await ctx.env.link(S.d.pid, pid, S.d.name, S.d.level);
       return { name: f.name, isNew };
     },
+    // Профиль друга — только если дружба взаимная (он тоже добавил тебя)
+    async friendProfile(a, ctx) {
+      const f = S.d.friends.find(x => x.id === a.pid);
+      this.need(f, 'Такого друга нет');
+      this.limit(ctx, 'profile', 60, 3600000);
+      const s = await ctx.env.friendSave(f.id);
+      this.need(s && s.data, 'Ловчий не найден');
+      const d = s.data;
+      this.need((d.friends || []).some(x => x.id === S.d.pid), `Профиль откроется, когда ${f.name} тоже добавит тебя в друзья`);
+      // чужое сохранение могло быть записано ещё телефоном (до 3.0) — только числа и известные значения
+      const num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
+      f.name = String(d.name || f.name).slice(0, 20); f.lvl = num(d.level, MAX_LEVEL) || f.lvl;
+      // облик — только из известных вариантов (он попадает в картинку)
+      const lk = d.look || {}, look = LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
+        ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
+      if (look) f.look = look;
+      const st = d.stats || {}, spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
+      const top = spirits.map(x => ({ sid: x.sid, lvl: num(x.lvl, 40), shiny: !!x.shiny, dark: !!x.dark, nick: x.nick ? String(x.nick).slice(0, 16) : null, power: (() => { try { return S.power(x) || 0; } catch (e) { return 0; } })() }))
+        .sort((x, y) => y.power - x.power).slice(0, 3);
+      const buddy = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
+      const L = d.league || {};
+      return {
+        name: f.name, level: num(d.level, MAX_LEVEL) || 1, look, seen: s.seen || null,
+        dex: Object.values(d.dex || {}).filter(x => x && x.caught).length, caught: num(st.caught, 1e7), km: U.clamp(+st.km || 0, 0, 1e5),
+        raids: num(st.raids, 1e6), duels: num(st.duels, 1e6), streak: num(d.streak && d.streak.n, 1e5),
+        medals: Object.values(d.medals || {}).filter(t => t >= 3).length, rank: num(L.best, LEAGUE_RANKS.length - 1),
+        buddy: buddy ? buddy.sid : null, top, pts: f.pts,
+      };
+    },
     friendRemove(a) { S.d.friends = S.d.friends.filter(f => f.id !== a.pid); return { ok: true }; },
     // Кто добавил меня (дружба взаимная) + подарки, которые ждут открытия
     async friendsSync(a, ctx) {
@@ -3430,6 +3532,13 @@ function makeEnv(uid) {
       if (!p) return null;
       const s = must(await db.from('saves').select('data->name, data->level').eq('user_id', p.user_id).maybeSingle());
       return s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null;
+    },
+    // Сохранение другого Ловчего (для профиля друга; взаимность проверяет GameCore)
+    async friendSave(pid) {
+      const p = must(await db.from('players').select('user_id').eq('pid', pid).maybeSingle());
+      if (!p) return null;
+      const s = must(await db.from('saves').select('data, updated_at').eq('user_id', p.user_id).maybeSingle());
+      return s ? { data: s.data, seen: s.updated_at } : null;
     },
     async link(from, to, name, level) {
       must(await db.from('friend_links').upsert({ from_pid: from, to_pid: to, from_name: String(name).slice(0, 20), from_level: level, created_at: new Date().toISOString() }, { onConflict: 'from_pid,to_pid' }));
