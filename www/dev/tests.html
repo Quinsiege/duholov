@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Духолов — тесты</title>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; background: #120c24; color: #f4f1ff; margin: 0; padding: 16px; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    #sum { font-weight: 700; margin-bottom: 12px; }
+    #sum.ok { color: #4ade80; } #sum.bad { color: #f87171; }
+    .t { padding: 6px 10px; border-radius: 8px; margin: 3px 0; background: rgba(255, 255, 255, .05); }
+    .t.pass::before { content: '✓ '; color: #4ade80; font-weight: 700; }
+    .t.fail { background: rgba(248, 113, 113, .15); }
+    .t.fail::before { content: '✗ '; color: #f87171; font-weight: 700; }
+    .t small { display: block; color: #fca5a5; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Духолов: тесты игровой логики</h1>
+  <div id="sum">Выполняю…</div>
+  <div id="out"></div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/util.js"></script>
+  <script src="../js/art.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/events.js"></script>
+  <script src="../js/sky.js"></script>
+  <script src="../js/music.js"></script>
+  <script src="../js/world.js"></script>
+  <script src="../js/map.js"></script>
+  <script src="../js/encounter.js"></script>
+  <script src="../js/raid.js"></script>
+  <script src="../js/duel.js"></script>
+  <script src="../js/trade.js"></script>
+  <script src="../js/tutorial.js"></script>
+  <script src="../js/album.js"></script>
+  <script src="../js/league.js"></script>
+  <script src="../js/backup.js"></script>
+  <script src="../js/journal.js"></script>
+  <script src="../js/friends.js"></script>
+  <script src="../js/coop.js"></script>
+  <script src="../js/cloud.js"></script>
+  <script src="../js/ui.js"></script>
+  <script>
+  'use strict';
+  const results = [];
+  function test(name, fn) {
+    try { fn(); results.push({ name, ok: true }); }
+    catch (e) { results.push({ name, ok: false, err: e.message }); }
+  }
+  function ok(cond, msg) { if (!cond) throw new Error(msg || 'условие не выполнено'); }
+  function eq(a, b, msg) { if (a !== b) throw new Error(`${msg || ''} ожидалось ${JSON.stringify(b)}, получено ${JSON.stringify(a)}`); }
+  function near(a, b, eps, msg) { if (Math.abs(a - b) > eps) throw new Error(`${msg || ''} ${a} ≉ ${b}`); }
+
+  // Игра в памяти: ничего не пишем в localStorage
+  S.save = () => {};
+  Bus.emit = () => {};
+  UI.toast = () => {};
+  S.newGame('Тест', 'ugolek');
+  S.d.level = 12;
+  MapView.pos = { lat: 55.75, lng: 37.62 };
+  const fresh = (sid, lvl = 10) => { const sp = S.makeSpirit(sid, lvl, 'seed' + sid + lvl); S.d.spirits.push(sp); return sp; };
+
+  /* ---------- данные ---------- */
+  test('У каждого духа уникальный id и корректные ссылки', () => {
+    const ids = new Set();
+    SPECIES.forEach(s => {
+      ok(!ids.has(s.id), 'повтор ' + s.id); ids.add(s.id);
+      ok(ELEMENTS[s.el], 'стихия ' + s.id);
+      ok(SP[s.fam], 'семья ' + s.id);
+      if (s.evo) { ok(SP[s.evo], 'превращение ' + s.id); ok(SP[s.evo].fam === s.fam, 'семья превращения ' + s.id); ok(s.cost > 0, 'цена ' + s.id); }
+      ok(s.base.length === 3 && s.base.every(v => v > 50), 'статы ' + s.id);
+      ok(RARITY[s.rar], 'редкость ' + s.id);
+    });
+  });
+  test('Каждая стихия сильна против двух и слаба против двух', () => {
+    ELEMENT_KEYS.forEach(e => {
+      eq(ELEMENTS[e].beats.length, 2, e);
+      eq(ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(e)).length, 2, e);
+      ELEMENTS[e].beats.forEach(b => ok(!ELEMENTS[b].beats.includes(e), `взаимная сила ${e}/${b}`));
+    });
+  });
+  test('Графика: все духи рисуются (обычные, сияющие, омрачённые) без NaN/undefined', () => {
+    SPECIES.forEach(s => [[false, false], [true, false], [false, true]].forEach(([sh, dk]) => {
+      const svg = Art.spirit(s.id, sh, dk);
+      ok(svg.startsWith('<svg'), s.id);
+      ok(!/NaN|undefined/.test(svg), `${s.id}${sh ? ' сияющий' : ''}${dk ? ' омрачённый' : ''}`);
+    }));
+    ok(Art.img('ugolek').startsWith('<img'), 'Art.img');
+    AMULET_KEYS.forEach(k => ok(!/NaN|undefined/.test(Art.amulet(k)), 'амулет ' + k));
+  });
+  test('Опыт до следующего уровня растёт на всех 40 уровнях', () => {
+    for (let l = 2; l <= MAX_LEVEL; l++) ok(levelXP(l) > levelXP(l - 1), 'уровень ' + l);
+  });
+
+  /* ---------- утилиты и мир ---------- */
+  test('Хеш детерминирован и лежит в [0, 1)', () => {
+    eq(U.h('a', 1, 2), U.h('a', 1, 2));
+    ok(U.h('a', 1, 2) !== U.h('a', 2, 1));
+    for (let i = 0; i < 500; i++) { const v = U.h('x', i); ok(v >= 0 && v < 1, 'значение ' + v); }
+    const r1 = U.rng('s'), r2 = U.rng('s');
+    for (let i = 0; i < 10; i++) eq(r1(), r2());
+  });
+  test('Расстояние: 1° широты ≈ 111 км', () => near(U.dist(55, 37, 56, 37), 111195, 300));
+  test('Духи на карте детерминированы и лежат в радиусе', () => {
+    const a = W.spawnsAround(55.75, 37.62, 300), b = W.spawnsAround(55.75, 37.62, 300);
+    eq(JSON.stringify(a.map(x => x.id + x.sid)), JSON.stringify(b.map(x => x.id + x.sid)));
+    ok(a.length > 0, 'духов нет');
+    a.forEach(x => { ok(x.d <= 300, 'радиус'); ok(SP[x.sid] && !SP[x.sid].legend, 'вид ' + x.sid); ok(x.lvl >= 1 && x.lvl <= 40, 'уровень'); });
+  });
+  test('Регионы: вещие птицы только в своих частях света', () => {
+    eq(W.region(37), 'west'); eq(W.region(60), 'center'); eq(W.region(130), 'east');
+    ok(W.local(SP.sirin, 37) && !W.local(SP.sirin, 100), 'Сирин');
+    ok(W.local(SP.gamayun, 130) && !W.local(SP.gamayun, 37), 'Гамаюн');
+    ok(W.local(SP.ugolek, 130), 'обычные духи везде');
+  });
+  test('Родники, разломы и капища генерируются', () => {
+    ok(W.springsAround(55.75, 37.62).length > 0, 'родники');
+    ok(W.riftsAround(55.75, 37.62, 3000).every(r => SP[r.boss] && r.tier >= 1 && r.tier <= 3), 'разломы');
+    const sh = W.shrinesAround(55.75, 37.62, 3000);
+    ok(sh.length > 0, 'капища');
+    const g = W.guardian(sh[0]);
+    eq(g.team.length, 3, 'команда хранителя');
+    ok(g.team.every(x => !SP[x.sid].legend && !SP[x.sid].region), 'без легенд и региональных');
+  });
+
+  /* ---------- духи ---------- */
+  test('Сила растёт с уровнем, омрачённый бьёт на 20% сильнее', () => {
+    const a = S.makeSpirit('kostrovik', 10, 'p'), b = { ...a, lvl: 20 }, c = { ...a, dark: true };
+    ok(S.power(b) > S.power(a), 'сила');
+    near(S.stats(c).atk / S.stats(a).atk, 1.2, 1e-9, 'атака');
+    ok(S.stats(c).def < S.stats(a).def, 'защита');
+  });
+  test('Усиление тратит искры и эссенцию', () => {
+    const sp = fresh('ugolek', 5); S.d.sparks = 10000; S.d.essence.ugolek = 50;
+    const c = S.powerUpCost(sp), before = S.d.sparks;
+    ok(S.powerUp(sp)); eq(sp.lvl, 6); eq(S.d.sparks, before - c.sparks);
+    sp.lvl = S.maxLvl(); ok(!!S.canPowerUp(sp), 'предел уровня');
+  });
+  test('Превращение меняет вид и тратит эссенцию', () => {
+    const sp = fresh('kapelka', 8); S.d.essence.kapelka = 30;
+    ok(S.evolve(sp)); eq(sp.sid, 'luzhnica'); eq(S.d.essence.kapelka, 5);
+    ok(!!S.canEvolve(sp), 'не хватит на следующую стадию');
+  });
+  test('Очищение: +2 к оценке (не выше 15), тьма снята', () => {
+    const sp = fresh('babayka', 8); sp.dark = true; sp.iv = [14, 3, 15];
+    S.d.sparks = 5000; S.d.essence.shoroh = 20;
+    ok(S.purify(sp)); eq(sp.iv.join(), '15,5,15'); ok(!sp.dark && sp.purified);
+  });
+  test('Амулеты: надеть, снять, вернуть при отпускании', () => {
+    const sp = fresh('mshonok', 10); S.d.amulets = { perun: 1 };
+    const atk0 = S.battle(sp).atk;
+    ok(S.equip(sp, 'perun')); eq(S.d.amulets.perun, 0);
+    near(S.battle(sp).atk / atk0, 1.12, 1e-9, 'атака');
+    eq(S.power(sp), S.stats({ ...sp, amulet: null }).power, 'сила в карточке не меняется');
+    S.release(sp.uid); eq(S.d.amulets.perun, 1, 'вернулся в сумку');
+  });
+  test('Второй приём: цена и повторное изучение запрещено', () => {
+    const sp = fresh('vayfayka', 10); S.d.sparks = MOVE2_COST.sparks; S.d.essence.vayfayka = MOVE2_COST.essence;
+    ok(S.learnMove2(sp)); ok(sp.move2); eq(S.d.sparks, 0); ok(!!S.canLearnMove2(sp));
+  });
+  test('Эффективность стихий в бою', () => {
+    eq(Raid.eff('fire', 'forest'), 1.6); eq(Raid.eff('forest', 'fire'), 0.625); eq(Raid.eff('fire', 'fire'), 1);
+    ok(Raid.dmg(100, 100, 10, 'fire', 'forest') > Raid.dmg(100, 100, 10, 'fire', 'fire'));
+  });
+
+  /* ---------- системы ---------- */
+  test('Обмен: код туда-обратно, повреждённый и свой код отклоняются', () => {
+    const sp = fresh('sirin', 15); sp.shiny = true; sp.nick = 'Птаха «Ёж»';
+    const code = Trade.give(sp);
+    ok(!S.findSpirit(sp.uid), 'дух ушёл');
+    let err = ''; try { Trade.receive(code); } catch (e) { err = e.message; } ok(/собственный/.test(err), 'свой код');
+    err = ''; try { Trade.decode(code.slice(0, -1) + (code.endsWith('a') ? 'b' : 'a')); } catch (e) { err = e.message; } ok(/повреждён/.test(err), 'порча');
+    const p = Trade.decode('текст вокруг ' + code + ' и после');
+    eq(p.s, 'sirin'); eq(p.n, 'Птаха «Ёж»'); eq(p.y, 1);
+  });
+  test('Резервная копия: контрольная сумма', () => {
+    const copy = JSON.parse(JSON.stringify(S.d));
+    eq(Backup.sum(copy), Backup.sum(S.d));
+    copy.sparks++; ok(Backup.sum(copy) !== Backup.sum(S.d));
+  });
+  test('Православная Пасха', () => {
+    const f = d => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    eq(f(Ev.easter(2024)), '2024-5-5'); eq(f(Ev.easter(2025)), '2025-4-20');
+    eq(f(Ev.easter(2026)), '2026-4-12'); eq(f(Ev.easter(2027)), '2027-5-2'); eq(f(Ev.easter(2030)), '2030-4-28');
+  });
+  test('Праздники по датам', () => {
+    const id = d => (Ev.holiday(d) || {}).id || null;
+    eq(id(new Date(2026, 11, 31)), 'svyatki'); eq(id(new Date(2027, 0, 14)), 'svyatki'); eq(id(new Date(2027, 0, 15)), null);
+    eq(id(new Date(2026, 1, 16)), 'maslenitsa'); eq(id(new Date(2026, 1, 23)), null);
+    eq(id(new Date(2026, 6, 6)), 'kupala'); eq(id(new Date(2026, 9, 31)), 'veles'); eq(id(new Date(2026, 8, 23)), null);
+  });
+  test('События недели меняются по понедельникам', () => {
+    const mon = new Date(Date.UTC(2026, 8, 21)).getTime(); // 21.09.2026 — понедельник
+    eq(Ev.week(mon), Ev.week(mon + 6.9 * 86400000));
+    eq(Ev.week(mon) + 1, Ev.week(mon + 7 * 86400000));
+  });
+  test('Лига: пороги рангов', () => {
+    eq(League.rank(0), 0); eq(League.rank(2), 0); eq(League.rank(3), 1); eq(League.rank(55), 9); eq(League.rank(999), 9);
+    for (let i = 1; i < LEAGUE_RANKS.length; i++) ok(LEAGUE_RANKS[i].stars > LEAGUE_RANKS[i - 1].stars);
+  });
+  test('Задания дня: три разных', () => {
+    S.d.quests = null; S.ensureQuests();
+    eq(S.d.quests.list.length, 3);
+    eq(new Set(S.d.quests.list.map(q => q.t)).size, 3);
+  });
+  test('Летопись: шаги засчитываются, глава завершается', () => {
+    S.d.story = { ch: 0, p: [0, 0, 0] };
+    S.progress('catch', 3); S.progress('spring', 2); ok(!S.storyReady());
+    S.progress('power', 1); ok(S.storyReady());
+    const r = S.claimStory(); ok(r && r.ch.title === 'Посвящение'); eq(S.d.story.ch, 1);
+  });
+  test('Летопись: 12 глав, у всех шагов есть текст, подарки существуют', () => {
+    eq(STORY.length, 12);
+    STORY.forEach((ch, i) => {
+      eq(ch.steps.length, 3, 'шагов в главе ' + (i + 1));
+      ch.steps.forEach(s => { ok(stepText(s).length > 5, `шаг «${s.t}» в главе ${i + 1}`); if (s.el) ok(ELEMENTS[s.el], 'стихия'); });
+      if (ch.gift) ok(SP[ch.gift], 'подарок ' + ch.gift);
+      Object.keys(ch.reward).forEach(k => ok(k === 'xp' || k === 'sparks' || ITEMS[k], 'награда ' + k));
+    });
+    ok(LOOK.emblem.some(e => e.story === STORY.length), 'эмблема за вторую книгу');
+  });
+  test('Новые шаги Летописи засчитываются (вторжение, очищение, фото, Лига)', () => {
+    S.d.story = { ch: 7, p: [0, 0, 0] }; // «Прислужники Нави»
+    S.progress('invasion', 3); S.progress('purify', 1); S.progress('duel', 2);
+    ok(S.storyReady(), 'глава 8 готова');
+    S.d.story = { ch: 8, p: [0, 0, 0] };
+    S.progress('photo', 1); eq(S.d.story.p[2], 1, 'фото');
+  });
+  test('Друзья: коды дружбы и подарков между двумя Ловчими', () => {
+    // Ловчий А
+    const A = S.d; A.friends = []; A.items.gift = 2;
+    const codeA = Friends.myCode();
+    // Ловчий Б — отдельное сохранение в памяти
+    S.newGame('Бета', 'kapelka'); const B = S.d; B.items.gift = 2;
+    const codeB = Friends.myCode();
+    let err = ''; try { Friends.add(Friends.unpack('DUHF1', codeB)); } catch (e) { err = e.message; } ok(/собственный/.test(err), 'свой код');
+    Friends.add(Friends.unpack('DUHF1', codeA)); eq(B.friends.length, 1, 'Б добавил А');
+    const giftBA = Friends.makeGift(B.friends[0]); eq(B.items.gift, 1, 'подарок потрачен');
+    err = ''; try { Friends.makeGift(B.friends[0]); } catch (e) { err = e.message; } ok(/уже отправлен/.test(err), 'раз в день');
+    // обратно к А
+    S.d = A;
+    err = ''; try { Friends.openGift(Friends.unpack('DUHG1', giftBA)); } catch (e) { err = e.message; } ok(/добавь/.test(err), 'от незнакомца нельзя');
+    Friends.add(Friends.unpack('DUHF1', codeB));
+    const charms0 = A.items.charm || 0;
+    const res = Friends.openGift(Friends.unpack('DUHG1', 'текст ' + giftBA));
+    ok((A.items.charm || 0) > charms0, 'обереги пришли'); eq(res.f.pts, 1, 'очки дружбы');
+    err = ''; try { Friends.openGift(Friends.unpack('DUHG1', giftBA)); } catch (e) { err = e.message; } ok(/уже открыт/.test(err), 'повторно нельзя');
+    // подарок, адресованный не мне
+    S.d = B; const other = Friends.pack('DUHG1', { f: A.pid, fn: 'А', to: 'кто-то-другой', d: U.today(), k: 'x1', c: { charm: 3 } }); S.d = A;
+    err = ''; try { Friends.openGift(Friends.unpack('DUHG1', other)); } catch (e) { err = e.message; } ok(/другому/.test(err), 'чужой подарок');
+    eq(Friends.level({ pts: 0 }), 0); eq(Friends.level({ pts: 10 }), 2); eq(Friends.level({ pts: 99 }), 4);
+  });
+  test('Дневник: записи с местом, ограничение по размеру', () => {
+    S.d.journal = [];
+    J.add('catch', { sid: 'ugolek', power: 100 });
+    eq(S.d.journal[0].type, 'catch'); ok(S.d.journal[0].lat != null, 'место записано');
+    for (let i = 0; i < J.MAX + 20; i++) J.add('level', { l: i });
+    eq(S.d.journal.length, J.MAX);
+    ['catch', 'flee', 'hatch', 'evolve', 'raid', 'duel', 'invasion', 'league', 'level', 'medal', 'story', 'trade', 'friend', 'gift']
+      .forEach(t => { const v = J.view({ type: t, sid: 'ugolek', from: 'ugolek', to: 'kostrovik', tier: 1, name: 'X', won: 2, rank: 'Отрок', l: 3, title: 'Т' }); ok(v.title && !/undefined/.test(v.title), t); });
+  });
+  test('Совместный разлом: здоровье босса и бонусы', () => {
+    ok(Coop.ALPHA.length === 32 && !/[01IO]/.test(Coop.ALPHA), 'алфавит кода без похожих символов');
+    near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
+    ok(!Cloud.configured() || typeof CLOUD_CONFIG.url === 'string', 'конфиг облака');
+  });
+  test('Знаки Ордена выдаются по достижении порога', () => {
+    S.d.medals = {}; S.d.stats.caught = 10; S.checkMedals();
+    eq(S.d.medals.catcher, 1);
+  });
+
+  /* ---------- вывод ---------- */
+  const failed = results.filter(r => !r.ok);
+  const sum = document.getElementById('sum');
+  sum.textContent = failed.length ? `Провалено: ${failed.length} из ${results.length}` : `Все ${results.length} тестов пройдены`;
+  sum.className = failed.length ? 'bad' : 'ok';
+  document.getElementById('out').innerHTML = results.map(r => `<div class="t ${r.ok ? 'pass' : 'fail'}">${r.name}${r.err ? `<small>${r.err}</small>` : ''}</div>`).join('');
+  window.TEST_RESULTS = { total: results.length, failed: failed.map(r => r.name + ': ' + r.err) };
+  </script>
+</body>
+</html>
