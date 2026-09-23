@@ -387,7 +387,7 @@ body.night .range-circle { fill-opacity: .1; }
 .prof-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 18px 0 12px; }
 .prof-stats div { background: rgba(255, 255, 255, .06); border: 1px solid var(--line); border-radius: 14px; padding: 12px 4px; }
 .prof-stats b { display: block; font-size: 17px; } .prof-stats span { font-size: 11px; color: var(--muted); }
-.prof-since { color: var(--muted); font-size: 12px; }
+.prof-since { color: var(--muted); font-size: 12px; text-align: center; margin: 18px 0 4px; }
 
 /* родник */
 .spring-screen { background: radial-gradient(90% 60% at 50% 40%, #134e4a 0%, #0b1f2a 55%, var(--bg) 100%); }
@@ -664,7 +664,8 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 .pb-main { flex: 1; } .pb-main b { display: block; color: #fda4af; } .pb-main small { display: block; }
 .medals { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-bottom: 18px; }
 .medal { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: 14px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); font-size: 12px; }
-.medal .pbar { width: 80%; height: 5px; }
+.medal .pbar { width: 80%; height: 5px; margin-top: auto; } /* полоса — по низу карточки, даже если название в две строки */
+.medal b { flex: 1; display: flex; align-items: center; text-align: center; line-height: 1.15; }
 .medal-art { width: 56px; height: 56px; }
 .gold-t { color: var(--gold) !important; font-weight: 700; }
 .medal-big { width: 120px; height: 120px; margin: 0 auto 8px; }
@@ -1098,3 +1099,8 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
   .ex-btns { gap: 4px; } .ex-btns .btn { padding: 6px 9px; min-height: 36px; }
   .shop-ex { gap: 8px; padding: 10px; }
 }
+/* иконка валюты внутри текста (цена в окне покупки, в кнопках) — размером с букву */
+.cur { display: inline-flex; vertical-align: -0.18em; } .cur .art { width: 1.15em; height: 1.15em; }
+.fr-top + .btn.wide { margin-top: 14px; }
+.album-empty { padding: 14px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px dashed var(--line); color: var(--muted); font-size: 14px; text-align: center; }
+.fr-prof-modal .fr-since { margin: 12px 0 0; text-align: center; }

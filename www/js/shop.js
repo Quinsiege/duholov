@@ -106,7 +106,7 @@ const Treasury = {
 const Shop = {
   // Товар дня ещё не куплен — значок на плитке меню
   dealFresh() { return S.d && S.d.shop.deal !== U.today(); },
-  price(it) { return it.cur === 'sparks' ? `✦ ${U.fmtNum(it.price)}` : `${Art.item('zlat')} ${U.fmtNum(it.price)}`; },
+  price(it) { return it.cur === 'sparks' ? `✦ ${U.fmtNum(it.price)}` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(it.price)}`; },
   wallet() { return `<div class="shop-wallet"><span class="spark">✦ ${U.fmtNum(S.d.sparks)} искр</span><span class="zlat">${Art.item('zlat')} ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, 'златник', 'златника', 'златников')}</span></div>`; },
 
   // На покупку не хватает валюты
@@ -174,7 +174,8 @@ const Shop = {
       const id = b.dataset.id, deal = id === 'deal';
       const it = deal ? Rules.shopDeal(U.today()) : id === 'bag' ? { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) }
         : id.startsWith('look:') ? (c => ({ name: `Плащ «${c.name}»`, cur: 'zlat', price: c.shop }))(LOOK.cloak.find(c => c.c === id.slice(5))) : Rules.SHOP.find(x => x.id === id);
-      UI.confirm(it.name, `Купить за ${this.price(it)}?`, 'Купить', async () => {
+      const cur = it.cur === 'sparks' ? 'sparks' : 'zlat', left = (S.d[cur] || 0) - it.price;
+      UI.confirm(it.name, `Купить за ${this.price(it)}? После покупки останется ${this.price({ cur: it.cur, price: left })}.`, 'Купить', async () => {
         const r = await Game.try('shopBuy', deal ? { deal: true } : { id });
         if (!r) return;
         Sfx.play('spin'); U.vibrate(20);

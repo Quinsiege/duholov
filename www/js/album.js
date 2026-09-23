@@ -57,6 +57,6 @@ const Album = {
   html() {
     const a = this.list();
     return a.length ? `<div class="album">${a.map((p, i) => `<button class="album-item" data-i="${i}"><img src="${p.img}" alt=""></button>`).join('')}</div>`
-      : '<div class="prof-buddy empty-b">Снимков пока нет. Нажми на камеру во время встречи с духом.</div>';
+      : '<div class="album-empty">Снимков пока нет. Нажми на камеру во время встречи с духом.</div>';
   },
 };
