@@ -1,13 +1,13 @@
 /* Service worker: офлайн-запуск и доставка обновлений.
    Код игры всегда перепроверяется на сервере (cache: 'no-cache' → быстрый ответ 304, если не менялся),
    кэш используется только без сети. Название кэша меняется вместе с версией из js/version.js. */
-importScripts('js/version.js');
+importScripts('js/version.js?v=dev');
 const VERSION = 'duholov-v' + APP_VERSION;
 const CORE = [
-  './', './index.html', './manifest.webmanifest', './css/style.css',
-  './js/version.js', './js/config.js', './js/data.js', './js/util.js', './js/art.js', './js/state.js', './js/events.js', './js/sky.js', './js/music.js', './js/world.js',
-  './js/map.js', './js/encounter.js', './js/raid.js', './js/duel.js', './js/trade.js', './js/tutorial.js', './js/album.js', './js/league.js',
-  './js/journal.js', './js/friends.js', './js/coop.js', './js/cloud.js', './js/sync.js', './js/exif.js', './js/osm.js', './js/pois.js', './js/propose.js', './js/updater.js', './js/ui.js', './js/main.js',
+  './', './index.html', './manifest.webmanifest', './css/style.css?v=dev',
+  './js/version.js?v=dev', './js/config.js?v=dev', './js/data.js?v=dev', './js/util.js?v=dev', './js/art.js?v=dev', './js/state.js?v=dev', './js/events.js?v=dev', './js/sky.js?v=dev', './js/music.js?v=dev', './js/world.js?v=dev',
+  './js/map.js?v=dev', './js/encounter.js?v=dev', './js/raid.js?v=dev', './js/duel.js?v=dev', './js/trade.js?v=dev', './js/tutorial.js?v=dev', './js/album.js?v=dev', './js/league.js?v=dev',
+  './js/journal.js?v=dev', './js/friends.js?v=dev', './js/coop.js?v=dev', './js/cloud.js?v=dev', './js/sync.js?v=dev', './js/exif.js?v=dev', './js/osm.js?v=dev', './js/pois.js?v=dev', './js/propose.js?v=dev', './js/updater.js?v=dev', './js/ui.js?v=dev', './js/main.js?v=dev',
   './icons/icon-192.png', './icons/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',

@@ -63,6 +63,14 @@ jobs:
           name: duholov-apk
           path: www
       - run: mv www/app-debug.apk www/duholov.apk
+      # Метка версии в адресах файлов (?v=dev → ?v=2.1.1): CDN GitHub Pages кэширует файлы на 10 минут,
+      # а новые адреса он берёт с сервера — новая страница никогда не получит старые скрипты.
+      - name: Метка версии в адресах файлов
+        run: |
+          V=$(node -p "require('./www/version.json').version")
+          sed -i "s/?v=dev/?v=$V/g" www/index.html www/admin.html www/sw.js
+          if grep -q '?v=dev' www/index.html www/admin.html www/sw.js; then echo 'осталась метка ?v=dev'; exit 1; fi
+          echo "Версия $V"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

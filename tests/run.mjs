@@ -17,6 +17,17 @@ if (!vJs) fail('APP_VERSION не найден в www/js/version.js');
 else if (vJs[1] !== vJson.version) fail(`версии не совпадают: version.js=${vJs[1]}, version.json=${vJson.version}`);
 else console.log(`✓ версия ${vJson.version} одинакова в version.js и version.json`);
 
+// 1б. У всех своих скриптов и стилей есть метка версии ?v=dev (при публикации она заменяется на номер версии)
+for (const f of ['www/index.html', 'www/admin.html']) {
+  const html = await readFile(join(root, f), 'utf8');
+  const bare = [...html.matchAll(/(?:src|href)="((?:js|css)\/[^"?]+)"/g)].map(m => m[1]);
+  if (bare.length) fail(`${f}: нет метки ?v=dev у ${bare.join(', ')}`);
+}
+const sw = await readFile(join(root, 'www/sw.js'), 'utf8');
+const swBare = [...sw.matchAll(/'(\.\/(?:js|css)\/[^'?]+)'/g)].map(m => m[1]);
+if (swBare.length) fail(`www/sw.js: нет метки ?v=dev у ${swBare.join(', ')}`);
+if (!failed) console.log('✓ метки версии у файлов на месте');
+
 // 2. Тестовая страница в браузере
 const server = createServer(async (req, res) => {
   try {

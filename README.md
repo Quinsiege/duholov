@@ -103,6 +103,7 @@
    - `www/js/version.js` → `APP_VERSION`,
    - `www/version.json` → `version` и `notes` (эти строки игроки увидят в окне обновления).
    CI проверяет, что версии совпадают.
+   Свои скрипты и стили подключаются с меткой `?v=dev` (в `index.html`, `admin.html` и списке `sw.js`); при публикации CI меняет её на номер версии, чтобы CDN GitHub Pages не отдавал игрокам смесь старых и новых файлов. Забытую метку поймает CI.
 3. Если меняется Android-обёртка: `WRAPPER_VERSION` в `MainActivity.kt` = `versionCode` в `android/app/build.gradle.kts` = `minApk` в `www/version.json`.
 4. `git push` ветки → Pull Request в `main`. Workflow **«Проверки»** запускает автотесты в Chromium (`tests/`) и сборку APK.
 5. Когда проверки зелёные — слияние (squash). Workflow **«Публикация»** снова прогоняет тесты, собирает APK и выкладывает сайт; открытые клиенты получат окно обновления.

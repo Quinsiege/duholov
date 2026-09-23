@@ -26,7 +26,7 @@ const Updater = {
   whatsNew() {
     let seen = null;
     try { seen = localStorage.getItem(this.SEEN); localStorage.setItem(this.SEEN, APP_VERSION); } catch (e) { return; }
-    if (!seen && S.d && Date.now() - S.d.created > 600000) seen = '2.0.0'; // игроки 2.0.0 ещё не хранили версию
+    if (!seen && S.d && Date.now() - S.d.created > 60000) seen = '2.0.0'; // игроки 2.0.0 ещё не хранили версию
     if (!seen || this.cmp(APP_VERSION, seen) <= 0) return;
     fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null).then(v => {
       const notes = v && v.version === APP_VERSION && Array.isArray(v.notes) ? v.notes : [];
@@ -49,8 +49,17 @@ const Updater = {
       v = await r.json();
     } catch (e) { return; } // нет сети — проверим в следующий раз
     if (this.IN_APP && v.minApk && this.APK < v.minApk) return this.promptApk(v);
-    if (this.cmp(v.version, APP_VERSION) > 0) this.prompt(v);
+    if (this.cmp(v.version, APP_VERSION) <= 0) return;
+    // только что обновлялись, а версия всё ещё старая — новая ещё расходится по серверам; повторим сами
+    let tried = null;
+    try { tried = JSON.parse(sessionStorage.getItem(this.TRIED)); } catch (e) {}
+    if (tried && tried.v === v.version && Date.now() - tried.t < 3 * 60000) {
+      setTimeout(() => this.apply(v.version), 20000);
+      return;
+    }
+    this.prompt(v);
   },
+  TRIED: 'duholov.updTried',
 
   prompt(v) {
     this.shown = true;
@@ -59,7 +68,7 @@ const Updater = {
       html: `<div class="upd-ver">${U.esc(APP_VERSION)} → <b>${U.esc(v.version)}</b></div>
         ${Array.isArray(v.notes) && v.notes.length ? `<ul class="upd-notes">${v.notes.map(n => `<li>${U.esc(n)}</li>`).join('')}</ul>` : ''}
         <p class="small">Прогресс сохранится. Обновление займёт несколько секунд.</p>`,
-      buttons: [{ label: 'Обновить', cls: 'primary', keep: true, fn: w => { w.querySelector('.btn.primary').textContent = 'Обновляю…'; this.apply(); } }],
+      buttons: [{ label: 'Обновить', cls: 'primary', keep: true, fn: w => { w.querySelector('.btn.primary').textContent = 'Обновляю…'; this.apply(v.version); } }],
     });
   },
 
@@ -73,7 +82,8 @@ const Updater = {
     });
   },
 
-  async apply() {
+  async apply(version) {
+    try { sessionStorage.setItem(this.TRIED, JSON.stringify({ v: version, t: Date.now() })); } catch (e) {}
     try { S.save(true); await Promise.race([Sync.push(), U.wait(3000)]); } catch (e) {}
     try {
       if ('serviceWorker' in navigator) {
@@ -85,6 +95,7 @@ const Updater = {
         await Promise.all(keys.filter(k => k.startsWith('duholov-v')).map(k => caches.delete(k)));
       }
     } catch (e) {}
-    location.reload();
+    // новый адрес страницы: CDN не отдаст закэшированную старую index.html (метка убирается при загрузке, см. main.js)
+    location.replace(location.pathname + '?u=' + Date.now());
   },
 };

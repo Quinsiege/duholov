@@ -4,6 +4,9 @@
 // Предложение установить PWA может прийти ещё до загрузки — запоминаем для кнопки в настройках
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installPrompt = e; });
 
+// после обновления страница открывается с меткой ?u=… (обход кэша CDN) — убираем её из адреса
+if (/[?&]u=\d+/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
+
 window.addEventListener('load', () => {
   if (typeof L === 'undefined') {
     document.body.appendChild(U.el(`<div class="fatal"><h2>Нет связи с Навью</h2><p>Не удалось загрузить карту. Проверь подключение к интернету.</p><button class="btn primary" onclick="location.reload()">Повторить</button></div>`));
