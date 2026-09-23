@@ -46,6 +46,7 @@
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/order.js"></script>
   <script src="../www/js/clans.js"></script>
+  <script src="../www/js/hints.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
@@ -323,6 +324,21 @@
     const found = new Set();
     for (let k = 0; k < 400; k++) found.add(W.pickSpecies(U.rng('land' + k), 'water', false, 49.12, 55.79));
     ok(![...found].some(sid => SP[sid].land && SP[sid].land !== 'volga'), 'в Казани — только духи Поволжья');
+  });
+  test('Советы Велимира: подсказки по делу и в нужном порядке', () => {
+    const keep = S.d;
+    S.d = JSON.parse(JSON.stringify(keep));
+    S.d.level = 6; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
+    S.d.spirits = [S.makeSpirit('ugolek', 5, 'h1')]; S.d.essence = { ugolek: 30 };
+    S.d.story = { ch: 0, p: [3, 2, 0] };
+    let ids = Hints.list().map(h => h.id);
+    eq(ids.join(), 'power,evolve:ugolek,clan', 'усиление, превращение, дружина');
+    S.d.story = { ch: 0, p: [3, 2, 1] }; // глава готова
+    ids = Hints.list().map(h => h.id);
+    eq(ids[0], 'story:0', 'сначала — готовая глава'); ok(!ids.includes('power'), 'усиливать уже умеет');
+    S.d.clan = 'volk'; S.d.essence = {}; S.d.story = { ch: 1, p: [0, 0, 0] };
+    eq(Hints.list().length, 0, 'без повода — без советов');
+    S.d = keep;
   });
   test('Обновления: сравнение версий', () => {
     eq(Updater.cmp('2.0.0', '2.0.0'), 0); eq(Updater.cmp('2.0.1', '2.0.0'), 1); eq(Updater.cmp('2.0.0', '2.1.0'), -1);

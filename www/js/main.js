@@ -35,7 +35,7 @@ window.addEventListener('load', () => {
     setTimeout(() => Order.daily(), 2500); // серия дней: награда за первый вход за день
     setTimeout(() => Order.refresh(), 8000); // общее дело Ордена — для значка меню
     setTimeout(() => Clans.refresh(), 5000); // кто держит Капища вокруг
-    setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); } }, 60000);
+    setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); Hints.check(); } }, 60000);
     Updater.init();
   };
 

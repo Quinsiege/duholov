@@ -50,6 +50,7 @@ const UI = {
     U.$('#eventChip').onclick = () => this.eventInfo();
     this.applyA11y();
     U.$('#tracker .tr-x').onclick = e => { e.stopPropagation(); MapView.untrack(); };
+    U.$('#storyPill').onclick = () => { Sfx.init(); Sfx.play('tap'); this.quests('story'); };
     U.$('#tracker').onclick = () => { if (MapView.tracking) MapView.flyTo(MapView.tracking); };
     U.$('#profileBtn .ava-art').innerHTML = Art.avatar(S.d.look);
     this.refreshEvent();
@@ -169,11 +170,35 @@ const UI = {
     U.$('#hudName').textContent = d.name;
     U.$('#hudXp').style.width = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%';
     if (Tut.step()) Tut.show();
+    this.storyPill();
+    Hints.check();
     const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); b.textContent = badge;
     const inc = U.$('#incenseChip');
     if (S.incenseActive()) { inc.classList.remove('hidden'); inc.innerHTML = `${Art.item('incense')}<span>${U.fmtTime(d.incenseUntil - Date.now())}</span>`; }
     else inc.classList.add('hidden');
+  },
+  // Летопись на карте: текущий шаг главы или «глава завершена» — чтобы сюжет не терялся в меню
+  storyPill() {
+    const el = U.$('#storyPill'); if (!el) return;
+    const d = S.d, ch = STORY[d.story.ch], gift = d.storyGift;
+    if (Tut.step() || (!ch && !gift)) { el.classList.add('hidden'); return; }
+    let t, s, ready = false;
+    if (!ch) { t = 'Летопись дочитана'; s = `Встреча ждёт: ${SP[gift].name}`; ready = true; }
+    else if (S.storyReady()) { t = `Глава ${d.story.ch + 1}: «${ch.title}»`; s = 'Глава завершена — забери награду!'; ready = true; }
+    else {
+      const i = ch.steps.findIndex((x, k) => d.story.p[k] < x.n), step = ch.steps[i], p = d.story.p[i];
+      t = `Глава ${d.story.ch + 1}: «${ch.title}»`;
+      s = `${stepText(step).replace(/:\s*[\d.]+$/, '').replace(/^Пройди [\d.]+ км$/, 'Пройди пешком')} · ${step.t === 'walk' ? p.toFixed(1) : Math.floor(p)}/${step.n}${step.t === 'walk' ? ' км' : ''}`;
+    }
+    const key = t + s + ready;
+    if (el._key === key && !el.classList.contains('hidden')) return;
+    el._key = key;
+    el.classList.remove('hidden');
+    el.classList.toggle('ready', ready);
+    el.querySelector('.sp-ico').innerHTML = this.I.scroll;
+    el.querySelector('.sp-t').textContent = t;
+    el.querySelector('.sp-s').textContent = s;
   },
   setGps(state, acc) {
     const c = U.$('#gpsChip');
@@ -376,6 +401,11 @@ const UI = {
           <button class="det-name">${U.esc(sp.nick || s.name)} ${this.I.edit}</button>
           <div class="det-hp">ОЗ ${st.hp} · №${String(s.num).padStart(2, '0')} ${s.name}</div>
           <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${sp.shiny ? '<span class="shiny-t">✦ Сияющий</span>' : ''}${sp.dark ? '<span class="dark-t">Омрачённый</span>' : ''}${sp.purified ? '<span class="pure-t">Очищенный</span>' : ''}</div>
+          <div class="det-actions top">
+            <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' : ''}>Усилить<small>✦ ${pc.sparks} · ${pc.essence} эсс.</small></button>
+            ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${SP[s.evo].name}</small></button>` : ''}
+          </div>
+          <div class="panel res"><span>✦ ${U.fmtNum(S.d.sparks)} искр</span><span>Эссенция «${fam.name}»: <b>${ess}</b></span></div>
           ${sp.dark ? `<div class="panel dark-panel"><b>Дух омрачён Навью</b><small>Атака +20%, защита −17%. Очищение снимет тьму: оценка +2 к каждому показателю, уровень до 25.</small>
             <button class="btn act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>Очистить<small>✦ ${S.PURIFY.sparks} · ${S.PURIFY.essence} эсс.</small></button></div>` : ''}
           ${isBuddy
@@ -391,11 +421,6 @@ const UI = {
           <div class="panel amulet-slot">
             ${sp.amulet ? `<div class="am-ico">${Art.amulet(sp.amulet)}</div><div class="row-main"><b>${AMULETS[sp.amulet].name}</b><small>${AMULETS[sp.amulet].desc}</small></div><button class="btn small ghost act-unequip">Снять</button>`
               : `<div class="am-ico empty"></div><div class="row-main"><b>Амулет не надет</b><small>В сумке: ${Object.values(S.d.amulets).reduce((a, b) => a + b, 0)}</small></div><button class="btn small ghost act-equip">Надеть</button>`}
-          </div>
-          <div class="panel res"><span>✦ ${U.fmtNum(S.d.sparks)} искр</span><span>Эссенция «${fam.name}»: <b>${ess}</b></span></div>
-          <div class="det-actions">
-            <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' : ''}>Усилить<small>✦ ${pc.sparks} · ${pc.essence} эсс.</small></button>
-            ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${SP[s.evo].name}</small></button>` : ''}
           </div>
           <p class="det-desc">${s.desc}</p>
           ${sp.from ? `<p class="small">Получен в подарок от Ловчего ${U.esc(sp.from)}</p>` : ''}
