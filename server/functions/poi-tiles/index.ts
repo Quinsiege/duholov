@@ -1,16 +1,18 @@
 // Духолов: заполнение карты реальными объектами из OpenStreetMap.
-// Клиент присылает квадраты карты (0.02° × 0.02°), функция один раз загружает их из Overpass API,
+// Клиент присылает квадраты карты (0.01° × 0.01°, ближние первыми), функция загружает их из Overpass API,
 // отбирает заметные объекты (памятники, храмы, фонтаны, арт-объекты, парки…) и сохраняет в таблицу pois.
 // Деплой: Supabase → Edge Functions → poi-tiles (код этого файла).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const TILE = 0.02;
-const MAX_TILES = 12;          // квадратов в одном запросе
-const MAX_FETCH = 3;           // из них загружаем из OSM за один вызов
+const TILE = 0.01;
+const MAX_TILES = 30;          // квадратов в одном запросе
+const MAX_FETCH = 1;           // из них загружаем из OSM за один вызов (публичные серверы Overpass перегружены)
+const BUDGET = 45000;          // сколько функция готова ждать Overpass, мс
 const REFRESH_DAYS = 60;       // через сколько дней обновлять квадрат
 const MIN_GAP = 35;            // минимум метров между объектами
 const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
 ];
@@ -56,7 +58,7 @@ const CATS: Record<string, { name: string; shrine: boolean }> = {
 
 function query(s: number, w: number, n: number, e: number) {
   const bb = `(${s},${w},${n},${e})`;
-  return `[out:json][timeout:25];(
+  return `[out:json][timeout:20];(
 nwr["historic"~"^(monument|memorial|castle|ruins|archaeological_site|manor|city_gate|wayside_cross|wayside_shrine|boundary_stone)$"]${bb};
 nwr["tourism"~"^(artwork|attraction|viewpoint|museum)$"]${bb};
 nwr["amenity"~"^(place_of_worship|fountain|library|theatre|arts_centre|clock)$"]${bb};
@@ -105,21 +107,26 @@ function pick(elements: El[]) {
   return kept.map(({ score: _s, ...rest }) => rest);
 }
 
-async function overpass(q: string) {
-  let last = '';
-  for (const url of OVERPASS) {
+// Публичные серверы Overpass часто перегружены (504/429): пробуем по очереди, пока есть время
+async function overpass(q: string, deadline: number) {
+  const errs: string[] = [];
+  const start = Math.floor(Math.random() * 2); // первые два сервера чередуем, чтобы делить нагрузку
+  const order = [...OVERPASS.slice(start, 2), ...OVERPASS.slice(0, start), ...OVERPASS.slice(2)];
+  for (const url of order) {
+    const left = deadline - Date.now();
+    if (left < 5000) break;
     try {
       const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Duholov/2.1 (github.com/Quinsiege/duholov)' },
         body: 'data=' + encodeURIComponent(q),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(Math.min(25000, left)),
       });
       if (r.ok) return (await r.json()).elements as El[];
-      last = `${url}: ${r.status}`;
-    } catch (e) { last = `${url}: ${e}`; }
+      errs.push(`${new URL(url).host}: ${r.status}`);
+    } catch (e) { errs.push(`${new URL(url).host}: ${(e as Error).name}`); }
   }
-  throw new Error('Overpass недоступен — ' + last);
+  throw new Error('Overpass недоступен — ' + errs.join('; '));
 }
 
 // секретный ключ проекта (новая схема ключей Supabase, с запасным вариантом для старой)
@@ -148,30 +155,36 @@ Deno.serve(async req => {
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   const { data: who } = token ? await db.auth.getUser(token) : { data: null };
   if (!who?.user) return json({ error: 'Нужен вход в игру' }, 401);
-  const ids = tiles.map(([x, y]) => `${x}:${y}`);
+  // в таблице квадраты хранятся с масштабом в имени: «100/x:y» — квадрат 0.01°
+  const key = (x: number, y: number) => `${Math.round(1 / TILE)}/${x}:${y}`;
+  const ids = tiles.map(([x, y]) => key(x, y));
   const { data: have, error } = await db.from('osm_tiles').select('id, fetched_at').in('id', ids);
   if (error) return json({ error: error.message }, 500);
   const fresh = new Set((have || []).filter(t => Date.now() - Date.parse(t.fetched_at) < REFRESH_DAYS * 864e5).map(t => t.id));
 
+  const deadline = Date.now() + BUDGET;
   const todo = tiles.filter((_, i) => !fresh.has(ids[i]));
-  const done: string[] = [], failed: string[] = [];
+  const done: [number, number][] = [], failed: [number, number][] = [];
   for (const [x, y] of todo.slice(0, MAX_FETCH)) {
-    const id = `${x}:${y}`;
     try {
-      const els = await overpass(query(y * TILE, x * TILE, (y + 1) * TILE, (x + 1) * TILE));
+      const els = await overpass(query(y * TILE, x * TILE, (y + 1) * TILE, (x + 1) * TILE), deadline);
       const rows = pick(els);
       for (let i = 0; i < rows.length; i += 500) {
         // существующие объекты не трогаем: модератор мог их переименовать или скрыть
         const { error: e } = await db.from('pois').upsert(rows.slice(i, i + 500), { onConflict: 'id', ignoreDuplicates: true });
         if (e) throw new Error(e.message);
       }
-      await db.from('osm_tiles').upsert({ id, count: rows.length, fetched_at: new Date().toISOString() });
-      done.push(id);
+      await db.from('osm_tiles').upsert({ id: key(x, y), count: rows.length, fetched_at: new Date().toISOString() });
+      done.push([x, y]);
     } catch (e) {
-      console.error(id, String(e));
-      failed.push(id);
+      console.error(key(x, y), String(e));
+      failed.push([x, y]);
     }
   }
-  const pending = todo.slice(MAX_FETCH).map(([x, y]) => `${x}:${y}`);
-  return json({ ready: [...fresh, ...done], failed, pending });
+  const name = ([x, y]: [number, number]) => `${x}:${y}`;
+  return json({
+    ready: [...tiles.filter((_, i) => fresh.has(ids[i])), ...done].map(name),
+    failed: failed.map(name),
+    pending: todo.slice(MAX_FETCH).map(name),
+  });
 });

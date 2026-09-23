@@ -144,10 +144,10 @@
     ok(g.team.every(x => !SP[x.sid].legend && !SP[x.sid].region), 'без легенд и региональных');
   });
   test('Квадраты карты и поиск объектов рядом', () => {
-    eq(Poi.tileId(55.751, 37.619), '1880:2787');
-    eq(Poi.tileId(-33.87, 151.21), '7560:-1694', 'южное и восточное полушарие');
-    const t = Poi.tilesAround(55.75, 37.62, 1600);
-    ok(t.length >= 4 && t.length <= 12, 'квадратов вокруг: ' + t.length);
+    eq(Poi.tileId(55.7515, 37.6195), '3761:5575');
+    eq(Poi.tileId(-33.875, 151.215), '15121:-3388', 'южное и восточное полушарие');
+    const t = Poi.tilesAround(55.75, 37.62, Poi.LOAD_R);
+    ok(t.length >= 4 && t.length <= 30, 'квадратов вокруг: ' + t.length);
     ok(t.some(([x, y]) => `${x}:${y}` === Poi.tileId(55.75, 37.62)), 'свой квадрат');
     const n = Poi.near(55.75, 37.62, 500);
     ok(n.every(p => p.d <= 500), 'радиус');
