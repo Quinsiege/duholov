@@ -342,6 +342,7 @@
   const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
+    poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
     registerPid: async pid => {
       const o = DB.players[pid];
       if (o && o !== who.uid) return 'taken';
@@ -662,6 +663,21 @@
     const r2 = await must(A, 'sparEnd', { win: true });
     ok(r2.practice, 'второй раз за день — тренировка'); eq(A.data.friends[0].pts, pts0 + 1);
     await refuse(A, 'sparEnd', { win: true }, /Бой не найден/);
+  });
+  atest('Сервер: там, где места загружены импортом, объекты сверяются с базой', async () => {
+    const A = await newPlayer('uu', 55.61, 37.49, 'Святогор');
+    A.data.tut = 0;
+    DB.pois['osm:n7001'] = { id: 'osm:n7001', kind: 'spring', lat: 55.6101, lng: 37.4901, name: 'Почта', active: true, imported: true };
+    await refuse(A, 'spring', { poi: { id: 'osm:n7002', lat: A.lat, lng: A.lng, name: 'Выдуманный родник' } }, /нет на карте/);
+    const r = await must(A, 'spring', { poi: { id: 'osm:n7001', lat: 0, lng: 0, name: 'подмена' } });
+    ok(r.got.length > 0, 'родник из базы работает, координаты — из базы');
+    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /3 уровня|нет такого объекта/);
+    A.data.level = 3;
+    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /нет такого объекта/);
+    // вдали от загруженных мест (за пределами России) — объекты OSM с телефона, как раньше
+    const B = await newPlayer('uv', 43.2, 76.9, 'Алма');
+    B.data.tut = 0;
+    ok((await must(B, 'spring', { poi: { id: 'osm:n7003', lat: B.lat, lng: B.lng, name: 'Фонтан' } })).got.length > 0);
   });
 
   /* ---------- вывод ---------- */

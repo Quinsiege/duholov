@@ -1,9 +1,10 @@
 'use strict';
 /* Реальные объекты на карте: Родники и Капища стоят у настоящих мест.
-   1) OpenStreetMap: памятники, храмы, фонтаны, арт-объекты, парки… Телефон сам запрашивает их у Overpass API
-      квадратами 0.01° × 0.01° (≈ 1 км), ближние — первыми, и хранит неделю (см. osm.js).
-   2) Сервер игры (таблица pois): места, предложенные игроками и одобренные модерацией,
-      а также правки модераторов к объектам OSM (скрыть, переименовать, сменить тип). */
+   1) Сервер игры (таблица pois): объекты OpenStreetMap по всей России (раз в неделю их загружает импорт,
+      tools/osm-import), места, предложенные игроками и одобренные модерацией, и правки модераторов.
+      Телефон читает их квадратами 0.01° × 0.01° (≈ 1 км).
+   2) Там, куда импорт не дотягивается (за пределами России), телефон сам спрашивает Overpass API
+      и хранит ответ неделю (см. osm.js). */
 
 const Poi = {
   TILE: 0.01,
@@ -44,10 +45,16 @@ const Poi = {
     this.osm = keep(this.osm); this.srv = keep(this.srv);
     try { localStorage.setItem(this.KEY, JSON.stringify({ v: 3, osm: this.osm, srv: this.srv })); } catch (e) {}
   },
+  // Места вокруг загружены импортом — телефону не нужно спрашивать OpenStreetMap самому
+  covered() {
+    const pos = MapView.pos;
+    if (!pos) return false;
+    return this.tilesAround(pos.lat, pos.lng, this.LOAD_R).some(([x, y]) => { const t = this.srv[`${x}:${y}`]; return t && (t.items || []).some(p => p.imported); });
+  },
   // OSM + правки модераторов + места игроков → один список
   rebuild() {
     const m = new Map();
-    for (const tile of Object.values(this.osm)) (tile.items || []).forEach(p => m.set(p.id, p));
+    if (!this.covered()) for (const tile of Object.values(this.osm)) (tile.items || []).forEach(p => m.set(p.id, p));
     for (const tile of Object.values(this.srv)) (tile.items || []).forEach(p => { if (p.active === false) m.delete(p.id); else m.set(p.id, p); });
     for (const p of m.values()) p.t = this.tileId(p.lat, p.lng);
     this.list = m;
@@ -86,21 +93,21 @@ const Poi = {
     const around = this.tilesAround(lat, lng, this.LOAD_R)
       .sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
     const needSrv = Cloud.configured() ? around.filter(t => this.stale(this.srv, t.join(':'), this.SRV_TTL)) : [];
-    const needOsm = around.filter(t => this.stale(this.osm, t.join(':'), this.OSM_TTL));
-    if (!needSrv.length && !needOsm.length) return;
+    const needOsm = () => this.covered() ? [] : around.filter(t => this.stale(this.osm, t.join(':'), this.OSM_TTL));
+    if (!needSrv.length && !needOsm().length) return;
     this.busy = true;
-    if (!this.near(lat, lng, this.LOAD_R).length && !this._hinted && needOsm.length) {
+    if (!this.near(lat, lng, this.LOAD_R).length && !this._hinted) {
       this._hinted = true;
       UI.toast('Ищу настоящие места вокруг — Родники и Капища появятся через несколько секунд');
     }
     // 1) сервер игры: одним запросом на все квадраты
     if (needSrv.length) {
       try { await this.pullServer(needSrv); }
-      catch (e) { console.warn('Места игроков:', e.message); needSrv.forEach(t => { this.srv[t.join(':')] = { t: Date.now(), fail: true, items: (this.srv[t.join(':')] || {}).items || [] }; }); }
+      catch (e) { console.warn('Места:', e.message); needSrv.forEach(t => { this.srv[t.join(':')] = { t: Date.now(), fail: true, items: (this.srv[t.join(':')] || {}).items || [] }; }); }
       this.rebuild(); MapView.refresh();
     }
-    // 2) OpenStreetMap: по одному квадрату, начиная с ближнего
-    for (const [x, y] of needOsm) {
+    // 2) OpenStreetMap напрямую — только там, где мест из импорта нет: по одному квадрату, начиная с ближнего
+    for (const [x, y] of needOsm()) {
       const id = `${x}:${y}`;
       try {
         const items = await Osm.fetch(y * this.TILE, x * this.TILE, (y + 1) * this.TILE, (x + 1) * this.TILE);
@@ -124,21 +131,23 @@ const Poi = {
     const w = Math.min(...xs) * this.TILE, e = (Math.max(...xs) + 1) * this.TILE;
     const rows = [];
     for (let from = 0; from < 20000; from += 1000) {
-      const { data, error } = await sb.from('pois').select('id, name, kind, cat, lat, lng, photo, active')
+      const { data, error } = await sb.from('pois').select('id, name, kind, cat, lat, lng, photo, active, imported')
         .gte('lat', s).lt('lat', n).gte('lng', w).lt('lng', e).order('id').range(from, from + 999);
       if (error) throw new Error(error.message);
       rows.push(...data);
       if (data.length < 1000) break;
     }
     const now = Date.now();
-    tiles.forEach(t => { this.srv[t.join(':')] = { t: now, items: [] }; });
-    rows.forEach(p => { const k = this.tileId(p.lat, p.lng); if (this.srv[k]) this.srv[k].items.push(p); });
+    const fresh = new Set(tiles.map(t => t.join(':')));
+    fresh.forEach(k => { this.srv[k] = { t: now, items: [] }; });
+    rows.forEach(p => { const k = this.tileId(p.lat, p.lng); if (fresh.has(k)) this.srv[k].items.push(p); });
   },
 
   // Если в округе совсем нет Родников — раз в сутки Орден присылает посылку, чтобы было чем ловить
   checkSupply() {
     const { lat, lng } = MapView.pos;
-    const loaded = this.tilesAround(lat, lng, 1000).every(([x, y]) => { const o = this.osm[`${x}:${y}`]; return o && !o.fail; });
+    const store = this.covered() ? this.srv : this.osm;
+    const loaded = this.tilesAround(lat, lng, 1000).every(([x, y]) => { const o = store[`${x}:${y}`]; return o && !o.fail; });
     if (!loaded || this.near(lat, lng, 1000, 'spring').length || S.d.supplyDay === U.today() || this._supplying) return;
     this._supplying = true;
     Game.act('supply').then(r => { this._supplying = false; this.showSupply(r.got); }).catch(() => { this._supplying = false; });
