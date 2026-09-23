@@ -44,6 +44,7 @@
   <script src="../www/js/league.js"></script>
   <script src="../www/js/journal.js"></script>
   <script src="../www/js/friends.js"></script>
+  <script src="../www/js/order.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
@@ -338,7 +339,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [] };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     registerPid: async pid => {
@@ -362,6 +363,11 @@
     tradeTake: async (code, pid) => { const t = DB.trades[code]; if (!t || t.taken_by) return null; if (t.from_pid === pid) return { own: true }; t.taken_by = pid; return t; },
     mySubmissions: async () => DB.subs.filter(s => s.user === who.uid),
     leagueScore: async x => { DB.league.push({ user: who.uid, ...x }); },
+    orderPut: async x => { DB.order[x.week + ':' + x.pid] = { ...x }; },
+    orderStats: async (week, pid) => {
+      const rows = Object.values(DB.order).filter(r => r.week === week && r.n > 0), me = rows.find(r => r.pid === pid);
+      return { players: rows.length, total: rows.reduce((a, r) => a + r.n, 0), mine: me ? me.n : null, top: rows.sort((a, b) => b.n - a.n).slice(0, 10).map(r => ({ pid: r.pid, name: r.name, n: r.n })) };
+    },
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
@@ -557,6 +563,44 @@
     const r = await must(A, 'placeRewards');
     eq(r.list.length, 2); ok(A.data.sparks > sparks0, 'награда');
     eq((await must(A, 'placeRewards')).list.length, 0, 'повторно не выдаётся');
+  });
+  atest('Сервер: серия дней — награда раз в день, пропуск начинает серию заново', async () => {
+    const A = await newPlayer('um', 55.66, 37.54, 'Рада');
+    const day = k => asPlayer(A, () => U.today(Date.now() - k * 86400000));
+    const r1 = await must(A, 'daily'); eq(r1.n, 1); ok(r1.got.length > 0, 'награда первого дня');
+    ok((await must(A, 'daily')).already, 'второй раз за день — без награды');
+    A.data.streak = { n: 1, day: day(1) };
+    eq((await must(A, 'daily')).n, 2, 'вчера заходил — серия растёт');
+    A.data.streak = { n: 6, day: day(1) };
+    const c0 = A.data.cocoons.length, r7 = await must(A, 'daily');
+    eq(r7.n, 7); eq(A.data.cocoons.length, c0 + 1, 'на 7-й день кокон'); ok(r7.got.some(x => x.k === 'cocoon'));
+    ok(A.data.stats.streakBest >= 7, 'лучшая серия');
+    A.data.streak = { n: 9, day: day(2) };
+    eq((await must(A, 'daily')).n, 1, 'пропуск дня — серия сначала');
+  });
+  atest('Сервер: общее дело Ордена — очки, ступени, награда только участникам', async () => {
+    DB.order = {};
+    const w = Ev.week(Date.now());
+    const A = await newPlayer('un', 55.65, 37.53, 'Велимир'), B = await newPlayer('uo', 55.65, 37.53, 'Злата', 'kapelka');
+    await must(A, 'spring', { poi: { id: 'osm:n901', lat: A.lat, lng: A.lng, name: 'Родник' } });
+    ok(A.data.order[w].n > 0, 'родник принёс очки'); eq(DB.order[w + ':' + A.data.pid].n, A.data.order[w].n, 'вклад записан в общую таблицу');
+    await must(B, 'spring', { poi: { id: 'osm:n902', lat: B.lat, lng: B.lng, name: 'Родник' } });
+    A.data.order[w].n = 100; // будто Велимир много ловил на этой неделе
+    const o = await must(A, 'order');
+    eq(o.cur.players, 2); eq(o.cur.goal, Rules.orderGoal(2)); eq(o.cur.total, 100 + B.data.order[w].n);
+    ok(o.cur.top[0].me && o.cur.top[0].n === 100, 'сам в таблице недели'); eq(o.prev, null);
+    const g = await must(A, 'orderClaim', { week: w, i: 0 }); ok(g.got.length > 0, 'награда первой ступени');
+    await refuse(A, 'orderClaim', { week: w, i: 0 }, /уже получена/);
+    await refuse(A, 'orderClaim', { week: w, i: 1 }, /не дошёл/);
+    await refuse(B, 'orderClaim', { week: w, i: 0 }, /не меньше 15/);
+    // прошлая неделя: Орден дошёл до конца, у Велимира 50 очков — хватает на две ступени из трёх
+    DB.order[(w - 1) + ':x'] = { week: w - 1, pid: 'x', name: 'Другой', n: 400 };
+    A.data.order[w - 1] = { n: 50, got: [] };
+    const o2 = await must(A, 'order'); ok(o2.prev && o2.prev.week === w - 1, 'прошлая неделя с наградой');
+    await must(A, 'orderClaim', { week: w - 1, i: 1 });
+    await refuse(A, 'orderClaim', { week: w - 1, i: 2 }, /не меньше 80/);
+    await refuse(A, 'orderClaim', { week: w - 2, i: 0 }, /закончилась/);
+    ok(A.data.journal.some(e => e.type === 'order'), 'запись в дневнике');
   });
 
   /* ---------- вывод ---------- */

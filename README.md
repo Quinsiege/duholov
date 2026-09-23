@@ -103,6 +103,12 @@
 - Время игры: «сейчас» — по часам сервера, «сегодня», ночь и праздники — в часовом поясе игрока (`U.now`, `U.local`).
 - Сервер собирается из общих модулей скриптом `tools/build-server.ps1` в `server/functions/game/index.ts` (CI проверяет, что сборка свежая). Развёртывание: Supabase → Edge Functions → `game` → код этого файла, «Verify JWT» выключен (функция сама проверяет вход).
 
+### Версия 3.1.0 — общее дело Ордена и серия дней
+- **Общее дело Ордена** («Меню → Задания → Орден»): все Ловчие неделю (с понедельника, по UTC) вместе копят очки — поимка, родник, 500 м пути — 1, кокон, победа в капище, вторжение — 3, разлом — 5. Событие недели удваивает очки своего дела (неделя стихии — поимки духов этой стихии по 3 очка). Цель — `max(300, 120 × участники)`, три ступени (⅓, ⅔ и вся цель); награду ступени забирает каждый, кто сам внёс 15 / 40 / 80 очков. Награды прошлой недели можно забрать всю следующую неделю. Видна десятка лучших Ловчих недели.
+- Очки считает сервер по изменению счётчиков прогресса после каждого запроса (`Rules.orderPoints`), вклад пишется в `order_players` (`server/006_order.sql`), итоги недели — функция `order_stats`. Телефону доступа к таблице нет.
+- **Серия дней**: первый вход за день (по часам игрока) — награда, растущая 7 дней по кругу, на 7-й день кокон 10 км. Пропуск дня начинает серию заново.
+- Новые знаки: «Верность» (7 / 30 / 100 дней подряд) и «Соратник» (100 / 1000 / 10 000 очков общего дела).
+
 ## Прод
 - Игра: https://quinsiege.github.io/duholov/ · APK: https://quinsiege.github.io/duholov/duholov.apk
 - Репозиторий: https://github.com/Quinsiege/duholov · Облако: Supabase-проект `duholov` (прогресс, места игроков, модерация, таблица Лиги)
@@ -135,7 +141,7 @@ http://localhost:8766/tests/index.html — автотесты в браузер�
 ## Подключение сервера (Supabase, бесплатно)
 1. supabase.com → **Sign in with GitHub** → **New project** (регион — ближайший, пароль БД сохраните у себя).
 2. **Authentication → Sign In / Providers → Anonymous sign-ins: включить.**
-3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`, `server/005_server_authority.sql`; развернуть Edge Function `game` (см. «Версия 3.0.0»).
+3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`, `server/005_server_authority.sql`, `server/006_order.sql`; развернуть Edge Function `game` (см. «Версия 3.0.0»).
    **Authentication → URL Configuration**: Site URL = адрес игры, Redirect URLs = `<адрес игры>/**` (для входа модераторов по ссылке из письма).
 4. **Project Settings → API Keys**: **Project URL** и **publishable key** → `www/js/config.js` (публичные параметры; секретные ключи в игру не кладите никогда).
 5. Изменение — через Pull Request, как описано выше.

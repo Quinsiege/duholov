@@ -10,6 +10,46 @@ const Rules = {
   THROWABLE: ['charm', 'charm2', 'charm3'],
   COUNTDOWN: 3.2, // секунды обратного отсчёта перед боем
 
+  // Серия дней: награда за первый вход в игру за день, по кругу из 7 дней
+  STREAK: [
+    { charm: 5, xp: 200 },
+    { honey: 3, xp: 300 },
+    { charm: 8, water: 1, xp: 400 },
+    { charm2: 3, gift: 1, xp: 500 },
+    { incense: 1, honey: 2, xp: 600 },
+    { charm2: 5, water: 2, xp: 800 },
+    { charm3: 3, sparks: 1500, xp: 1500 }, // 7-й день — ещё и кокон 10 км
+  ],
+
+  /* Общее дело Ордена: все Ловчие неделю вместе копят очки. Цель растёт с числом участников.
+     Награда ступени — тем, кто сам внёс не меньше need очков, когда Орден дошёл до ступени. */
+  ORDER: {
+    PER: 120, MIN: 300, // цель = max(MIN, PER × участники)
+    STEPS: [
+      { at: 1 / 3, need: 15, reward: { charm: 10, honey: 3, sparks: 1000 } },
+      { at: 2 / 3, need: 40, reward: { charm2: 5, water: 2, incense: 1 } },
+      { at: 1,     need: 80, reward: { charm3: 3, sparks: 3000 } }, // и кокон 10 км
+    ],
+  },
+  orderGoal(players) { return Math.max(this.ORDER.MIN, this.ORDER.PER * (players || 0)); },
+  // Очки за изменения счётчиков (до → после). Задание недели удваивает очки своего дела.
+  orderPoints(a, b, ev) {
+    const d = k => Math.max(0, (b[k] || 0) - (a[k] || 0));
+    const caught = d('caught');
+    const elCatch = ev.el ? Math.min(caught, Math.max(0, ((b.byEl || {})[ev.el] || 0) - ((a.byEl || {})[ev.el] || 0))) : 0;
+    const km = Math.max(0, Math.floor((b.km || 0) * 2) - Math.floor((a.km || 0) * 2)); // очко за каждые 500 м
+    return caught + elCatch * 2
+      + d('springs') * (ev.loot ? 2 : 1)
+      + d('raids') * (ev.rifts ? 10 : 5)
+      + d('duels') * (ev.duel ? 6 : 3)
+      + d('invasions') * 3
+      + d('hatched') * (ev.km ? 6 : 3)
+      + km * (ev.km ? 2 : 1);
+  },
+  ORDER_RULES: [
+    ['Поимка духа', 1], ['Родник', 1], ['500 м пути', 1], ['Кокон', 3], ['Победа в капище', 3], ['Вторжение', 3], ['Разлом', 5],
+  ],
+
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
   catchChance(o) {
     const s = SP[o.sid];

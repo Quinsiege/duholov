@@ -298,6 +298,8 @@ const MEDALS = [
   { id: 'hatch',   name: 'Наседка',       desc: 'Вылупи духов из коконов',      stat: 'hatched',     tiers: [3, 30, 200] },
   { id: 'evolve',  name: 'Алхимик',       desc: 'Преврати духов',               stat: 'evolved',     tiers: [3, 30, 200] },
   { id: 'shiny',   name: 'Искатель сияния', desc: 'Поймай сияющих духов',       stat: 'shiny',       tiers: [1, 10, 50] },
+  { id: 'streak',  name: 'Верность',      desc: 'Дней подряд в игре',           stat: 'streakBest',  tiers: [7, 30, 100] },
+  { id: 'order',   name: 'Соратник',      desc: 'Очков в общем деле Ордена',    stat: 'orderPts',    tiers: [100, 1000, 10000] },
   { id: 'el_fire',    name: 'Истопник',   desc: 'Поймай духов Огня',            stat: 'el:fire',     tiers: [10, 50, 200] },
   { id: 'el_water',   name: 'Лодочник',   desc: 'Поймай духов Воды',            stat: 'el:water',    tiers: [10, 50, 200] },
   { id: 'el_forest',  name: 'Лесничий',   desc: 'Поймай духов Леса',            stat: 'el:forest',   tiers: [10, 50, 200] },

@@ -39,12 +39,14 @@ const GameCore = {
 
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
       this.need(actions.length, 'Пустой запрос');
+      const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
       for (const a of actions) {
         const h = this.H[a && a.type];
         this.need(h, 'Неизвестное действие');
         if (!['newGame', 'load'].includes(a.type)) this.need(S.d, 'Прогресс не найден');
         ctx.results.push(await h.call(this, a.args || {}, ctx));
       }
+      if (S.d && stats0) this.orderAdd(ctx, Rules.orderPoints(stats0, S.d.stats, Ev.cur));
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
     } catch (e) {
@@ -144,6 +146,27 @@ const GameCore = {
     }
   },
 
+  // Общее дело Ордена: очки игрока за неделю; в общую таблицу — после сохранения прогресса
+  orderAdd(ctx, pts) {
+    if (!(pts > 0)) return;
+    const w = Ev.week(ctx.now), O = S.d.order;
+    const o = O[w] = O[w] || { n: 0, got: [] };
+    o.n += pts;
+    S.d.stats.orderPts += pts;
+    Object.keys(O).forEach(k => { if (+k < w - 1) delete O[k]; }); // храним эту и прошлую неделю
+    const row = { week: w, pid: S.d.pid, name: S.d.name, n: o.n };
+    ctx.after.push(() => ctx.env.orderPut(row));
+  },
+  // Состояние недели w для экрана: общая сумма с учётом ещё не записанного вклада игрока
+  async orderState(ctx, w) {
+    const s = (await ctx.env.orderStats(w, S.d.pid)) || {};
+    const mine = S.d.order[w] || { n: 0, got: [] }, dbMine = +s.mine || 0;
+    const players = (+s.players || 0) + (mine.n > 0 && !(dbMine > 0) ? 1 : 0);
+    const total = (+s.total || 0) - dbMine + mine.n;
+    const top = (Array.isArray(s.top) ? s.top : []).map(r => ({ name: String(r.name || 'Ловчий').slice(0, 20), n: r.pid === S.d.pid ? mine.n : +r.n || 0, me: r.pid === S.d.pid }));
+    return { week: w, total, players, goal: Rules.orderGoal(players), n: mine.n, got: mine.got.slice(), top, endsAt: ((w + 1) * 7 - 3) * 86400000 };
+  },
+
   /* ---------- действия ---------- */
   H: {
     async load(a, ctx) {
@@ -169,6 +192,46 @@ const GameCore = {
       return { ok: true };
     },
     tick() { return { ok: true }; },
+
+    // Серия дней: первый вход за день (по часам игрока) — награда; пропуск дня начинает серию заново
+    daily(a, ctx) {
+      const st = S.d.streak, today = U.today(ctx.now);
+      if (st.day === today) return { n: st.n, already: true };
+      st.n = st.day === U.today(ctx.now - 86400000) ? st.n + 1 : 1;
+      st.day = today;
+      if (st.n > S.d.stats.streakBest) S.d.stats.streakBest = st.n;
+      const i = (st.n - 1) % Rules.STREAK.length, got = S.giveRewards(Rules.STREAK[i]);
+      if (i === Rules.STREAK.length - 1 && S.d.cocoons.length < 9) {
+        S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
+        got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
+      }
+      return { n: st.n, got };
+    },
+
+    // Общее дело Ордена: эта неделя и прошлая, если за неё осталась несобранная награда
+    async order(a, ctx) {
+      const w = Ev.week(ctx.now), cur = await this.orderState(ctx, w);
+      const p = S.d.order[w - 1];
+      const prev = p && Rules.ORDER.STEPS.some((s, i) => p.n >= s.need && !p.got.includes(i)) ? await this.orderState(ctx, w - 1) : null;
+      return { cur, prev };
+    },
+    async orderClaim(a, ctx) {
+      const w = a.week | 0, now = Ev.week(ctx.now), i = a.i | 0, step = Rules.ORDER.STEPS[i];
+      this.need(step && (w === now || w === now - 1), 'Эта неделя уже закончилась');
+      const mine = S.d.order[w];
+      this.need(mine && mine.n >= step.need, `Для этой награды внеси в общее дело не меньше ${step.need} очков`);
+      this.need(!mine.got.includes(i), 'Награда уже получена');
+      const s = await this.orderState(ctx, w);
+      this.need(s.total >= Math.ceil(step.at * s.goal), 'Орден ещё не дошёл до этой ступени');
+      mine.got.push(i);
+      const got = S.giveRewards(step.reward);
+      if (i === Rules.ORDER.STEPS.length - 1 && S.d.cocoons.length < 9) {
+        S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
+        got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
+      }
+      J.add('order', { i });
+      return { got };
+    },
 
     // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.
     move(a, ctx) {

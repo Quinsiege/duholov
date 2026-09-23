@@ -288,6 +288,25 @@ body.night .range-circle { fill-opacity: .1; }
 .quest.claimed { opacity: .55; }
 .quest.bonus { background: linear-gradient(135deg, rgba(251, 191, 36, .14), rgba(167, 139, 250, .1)); }
 .q-ok { color: var(--good); font-size: 22px; font-weight: 900; }
+/* серия дней и общее дело Ордена (3.1) */
+.st-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px; }
+.st-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0 6px; border-radius: 10px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
+.st-day small { font-size: 11px; color: var(--muted); }
+.st-day .art { width: 28px; height: 28px; } .st-day .big-n { font-size: 16px; line-height: 28px; }
+.st-day.past { opacity: .45; }
+.st-day.now { border-color: var(--gold); background: rgba(251, 191, 36, .16); box-shadow: 0 0 12px rgba(251, 191, 36, .35); }
+.st-hint { text-align: center; color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+.o-card h3 { margin: 4px 0 8px; }
+.o-bar { position: relative; overflow: visible; }
+.o-bar i { border-radius: 6px; }
+.o-bar em { position: absolute; top: -3px; width: 2px; height: 18px; margin-left: -1px; background: var(--gold2); border-radius: 1px; }
+.o-bar em:last-child { margin-left: -2px; }
+.o-me { margin: 8px 0 0; font-size: 13px; color: var(--muted); } .o-me b { color: var(--text); }
+.o-top { margin: 4px 0 10px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
+.o-sub { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.o-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 14px; }
+.o-row span { width: 18px; color: var(--muted); text-align: right; } .o-row b { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .o-row i { font-style: normal; color: var(--gold2); font-weight: 700; }
+.o-row.me b { color: var(--gold2); font-weight: 700; }
 .q-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 10px; }
 
 /* профиль */

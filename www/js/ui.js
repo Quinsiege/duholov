@@ -169,7 +169,7 @@ const UI = {
     U.$('#hudName').textContent = d.name;
     U.$('#hudXp').style.width = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%';
     if (Tut.step()) Tut.show();
-    const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length; // задания, коконы и подарки от друзей
+    const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); b.textContent = badge;
     const inc = U.$('#incenseChip');
     if (S.incenseActive()) { inc.classList.remove('hidden'); inc.innerHTML = `${Art.item('incense')}<span>${U.fmtTime(d.incenseUntil - Date.now())}</span>`; }
@@ -193,7 +193,7 @@ const UI = {
   /* ---------------- МЕНЮ ---------------- */
   menu() {
     Sfx.init(); Sfx.play('tap');
-    const q = S.questsClaimable(), eggs = S.readyCocoons().length;
+    const q = S.questsClaimable() + Order.claimable(), eggs = S.readyCocoons().length;
     const tiles = [
       ['spirits', 'Духи', () => this.collection(), S.d.spirits.length],
       ['book', 'Бестиарий', () => this.dex()],
@@ -596,7 +596,7 @@ const UI = {
   /* ---------------- ЗАДАНИЯ ---------------- */
   quests(tab) {
     this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
-    const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
+    const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button><button data-tab="order">Орден${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const rwText = rw => Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${n}` : `${ITEMS[k].name} ×${n}`).join(', ');
     const BONUS = Rules.QUEST_BONUS;
     const renderStory = () => {
@@ -625,6 +625,11 @@ const UI = {
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.qTab));
       if (this.qTab === 'story') return renderStory();
+      if (this.qTab === 'order') {
+        Order.render(scr.querySelector('.quests'));
+        if (!this._orderAsked) { this._orderAsked = true; Order.refresh(true).then(() => { this._orderAsked = false; if (scr.isConnected && this.qTab === 'order') Order.render(scr.querySelector('.quests')); }); }
+        return;
+      }
       const Q = S.d.quests, all = Q.list.every(q => q.claimed);
       scr.querySelector('.quests').innerHTML = Q.list.map((q, i) => {
         const done = q.p >= q.n, pv = q.t === 'walk' ? `${q.p.toFixed(2)} / ${q.n}` : `${Math.floor(q.p)} / ${q.n}`;
@@ -638,6 +643,8 @@ const UI = {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
       const tab = e.target.closest('[data-tab]');
       if (tab) { this.qTab = tab.dataset.tab; Sfx.play('tap'); render(); return; }
+      const oc = e.target.closest('.o-claim');
+      if (oc) { oc.disabled = true; Order.claim(+oc.dataset.w, +oc.dataset.i).then(() => { render(); this.refreshHud(); }); return; }
       if (e.target.closest('.claim-story')) {
         Game.try('storyClaim').then(res => {
           if (!res) return;
