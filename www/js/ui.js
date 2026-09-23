@@ -1006,7 +1006,7 @@ const UI = {
     const scr = this.screen('', `
       <div class="spring-view">
         <div class="spring-title">${U.esc(e.name)}</div>
-        <div class="spring-disc"><div class="runes"></div>${e.photo ? `<div class="well photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="well">${Art.springIcon(!e.ready)}</div>`}</div>
+        <div class="spring-disc"><div class="runes"></div>${Poi.photoUrl(e.photo) ? `<div class="well photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="well">${Art.springIcon(!e.ready)}</div>`}</div>
         <div class="spring-hint"></div>
         <div class="spring-loot"></div>
         <button class="btn primary wide spring-go">Зачерпнуть силу</button>

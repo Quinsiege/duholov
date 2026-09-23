@@ -180,7 +180,7 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-me').innerHTML = Art.of(m.sp);
     st.$('.raid-me').classList.remove('swap'); void st.$('.raid-me').offsetWidth; st.$('.raid-me').classList.add('swap');
-    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${m.sp.nick || SP[m.sp.sid].name} <small>СИЛА ${m.power}</small>`;
+    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>СИЛА ${m.power}</small>`;
     st.$('.raid-team').innerHTML = st.team.map((x, i) => `<i class="${x.cur <= 0 ? 'dead' : i === st.idx ? 'on' : ''}"></i>`).join('');
   },
   dmg(att, def, power, attEl, defEl) {
@@ -221,15 +221,17 @@ const Raid = {
   },
   remoteState(hp, time) { // у гостя: состояние от хозяина
     const st = this.st; if (!st || st.over) return;
-    st.bossHp = Math.max(hp > 0 ? 1 : 0, Math.min(st.bossHp, hp));
-    st.time = time;
+    if (!Number.isFinite(+hp) || !Number.isFinite(+time)) return; // сообщение из открытого канала — только числа
+    st.bossHp = Math.max(+hp > 0 ? 1 : 0, Math.min(st.bossHp, +hp));
+    st.time = +time;
     this.render();
   },
   remoteEnd(win) { const st = this.st; if (st && !st.over) { clearTimeout(st._wait); this.finish(win); } },
   renderAllies(list) {
     const st = this.st; if (!st || !st.coop) return;
     const box = st.$('.raid-allies'); if (!box) return;
-    box.innerHTML = (list || []).map(a => `<span><i>${Art.avatar(a.look || undefined)}</i>${U.esc(a.name)} <b>${U.fmtNum(a.n)}</b></span>`).join('');
+    // список приходит по открытому каналу разлома — берём не больше 4 записей и только проверенные поля
+    box.innerHTML = (Array.isArray(list) ? list.slice(0, 4) : []).filter(a => a && typeof a === 'object').map(a => `<span><i>${Art.avatar(a.look)}</i>${U.esc(String(a.name || '').slice(0, 20))} <b>${U.fmtNum(+a.n || 0)}</b></span>`).join('');
   },
   fast(x, y) {
     const st = this.st;

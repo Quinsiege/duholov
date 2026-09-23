@@ -127,7 +127,7 @@ const Game = {
     this._movedShown = true;
     UI.modal({
       title: 'Прогресс перенесён', dismiss: false,
-      html: '<p>Твой прогресс перенесён на другое устройство и продолжается там. На этом устройстве можно начать заново.</p>',
+      html: '<p>Твой прогресс перенесён на другое устройство и продолжается там. На этом устройстве можно начать заново.</p><p class="warn-box">Если ты <b>не</b> переносил прогресс — не начинай заново: напиши на почту из «Оферты» (Лавка → Казна) и укажи имя Ловчего и когда это случилось. Прогресс можно вернуть.</p>',
       buttons: [{ label: 'Начать заново', cls: 'primary', fn: () => this.startOver() }],
     });
   },
@@ -143,8 +143,9 @@ const Game = {
   },
   async claim(code) {
     const sb = await Cloud.client();
-    const { error } = await sb.rpc('claim_transfer', { p_code: code });
+    const { data, error } = await sb.rpc('claim_transfer', { p_code: code });
     if (error) throw new Error(error.message);
+    if (data && data.error) throw new Error(data.error); // неверный код (попытки считает сервер)
     this.rev = 0;
     await this.load();
   },
@@ -152,6 +153,7 @@ const Game = {
     const m = UI.modal({
       title: 'Перенести прогресс сюда',
       html: `<p>На старом устройстве открой «Настройки → Перенести на другое устройство» и введи полученный код.${S.d ? ' Текущий прогресс на этом устройстве будет заменён.' : ''}</p>
+        <p class="small">Вводи только код со своего же устройства. Если код прислал кто-то другой — это может быть обман.</p>
         <input class="input code-in" maxlength="16" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off">`,
       buttons: [{ label: 'Отмена' }, { label: 'Перенести', cls: 'primary', keep: true, fn: async w => {
         const code = w.querySelector('.code-in').value.trim();
@@ -168,9 +170,10 @@ const Game = {
     try { code = await this.makeCode(); } catch (e) { UI.toast(U.esc(e.message)); return; }
     UI.modal({
       title: 'Код переноса',
-      html: `<p>Введи этот код на новом устройстве: при первом запуске — «У меня уже есть прогресс», или «Настройки → Перенести прогресс сюда». Код действует 24 часа и один раз.</p>
+      html: `<p>Введи этот код на новом устройстве: при первом запуске — «У меня уже есть прогресс», или «Настройки → Перенести прогресс сюда». Код действует 30 минут и один раз.</p>
         <div class="transfer-code">${U.esc(code)}</div>
-        <p class="small">После переноса прогресс продолжится на новом устройстве, а здесь можно будет начать заново. Никому не сообщай код.</p>`,
+        <p class="small">После переноса прогресс продолжится на новом устройстве, а здесь можно будет начать заново.</p>
+        <p class="warn-box"><b>Никому не сообщай этот код.</b> По нему забирают весь прогресс — духов, златники и покупки. Орден, модераторы и друзья никогда не просят код; «подарок за код» — это обман.</p>`,
       buttons: [{ label: 'Скопировать', keep: true, fn: async () => { try { await navigator.clipboard.writeText(code); UI.toast('Код скопирован', 'good'); } catch (e) { UI.toast('Не удалось скопировать'); } } },
         { label: 'Готово', cls: 'primary' }],
     });

@@ -240,13 +240,28 @@ function makeEnv(uid) {
   };
 }
 
+// Защита от перебора и наводнения запросами: не больше FLOOD запросов в минуту от одного игрока
+// и не больше BAD_TOKENS неверных входов в минуту с одного адреса (в пределах экземпляра функции)
+const FLOOD = 150, BAD_TOKENS = 20;
+const hits = new Map(), badTokens = new Map();
+const tooMany = (map, key, max) => {
+  const now = Date.now(), m = Math.floor(now / 60000);
+  const h = map.get(key);
+  if (!h || h.m !== m) { map.set(key, { m, n: 1 }); if (map.size > 20000) map.clear(); return false; }
+  return ++h.n > max;
+};
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+  const bad = badTokens.get(ip);
+  if (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS) return reply({ ok: false, error: 'Слишком много попыток — подожди минуту' }, 429);
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   const who = token ? (await db.auth.getUser(token)).data : null;
-  if (!who || !who.user) return reply({ ok: false, error: 'Нужен вход в игру', auth: true }, 401);
+  if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: 'Нужен вход в игру', auth: true }, 401); }
   const uid = who.user.id;
+  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: 'Слишком много запросов — подожди минуту' }, 429);
   let body;
   try { body = await req.json(); } catch { return reply({ ok: false, error: 'Некорректный запрос' }, 400); }
   if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: 'Вышла новая версия игры — обнови её' });
@@ -260,7 +275,10 @@ Deno.serve(async req => {
       if (row && row.moved_to) return reply({ ok: false, moved: true, error: 'Прогресс перенесён на другое устройство' });
       const srvRow = must(await db.from('save_srv').select('srv').eq('user_id', uid).maybeSingle());
       const res = await exclusive(() => GameCore.run(body, { data: row ? row.data : null, srv: srvRow ? srvRow.srv : {} }, env));
-      if (!res.ok) return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
+      if (!res.ok) {
+        if (res.rl) must(await db.from('save_srv').upsert({ user_id: uid, srv: { ...(srvRow ? srvRow.srv : {}), rl: res.rl }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
+        return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
+      }
 
       let rev = row ? row.rev : 0;
       if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });

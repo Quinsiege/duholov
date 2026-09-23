@@ -4,6 +4,7 @@
 
 const Trade = {
   QR_LIB: 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
+  QR_SRI: 'sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1',
 
   async give(sp) { const r = await Game.try('tradeGive', { uid: sp.uid }); return r && r.code; },
   async receive(code) {
@@ -15,7 +16,7 @@ const Trade = {
     if (this._qrP) return this._qrP;
     this._qrP = new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = this.QR_LIB; s.onload = () => res(window.qrcode); s.onerror = () => { this._qrP = null; rej(); };
+      s.src = this.QR_LIB; s.integrity = this.QR_SRI; s.crossOrigin = 'anonymous'; s.onload = () => res(window.qrcode); s.onerror = () => { this._qrP = null; rej(); };
       document.head.appendChild(s);
     });
     return this._qrP;
@@ -38,7 +39,7 @@ const Trade = {
       html: `<div class="trade-sp">${Art.of(item)}</div>
         <p class="small">Покажи QR-код другу или отправь код в мессенджер. ${s.name} появится у того, кто первым его примет.</p>
         <div class="qr-box"><span class="small">Рисую QR-код…</span></div>
-        <textarea class="input code-text" readonly rows="3">${item.code}</textarea>`,
+        <textarea class="input code-text" readonly rows="3">${U.esc(item.code)}</textarea>`,
       buttons: [
         { label: 'Копировать', keep: true, fn: w => this.copy(w.querySelector('.code-text')) },
         { label: 'Поделиться', cls: 'primary', keep: true, fn: () => this.share(item) },

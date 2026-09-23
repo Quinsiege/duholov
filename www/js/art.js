@@ -486,13 +486,17 @@ const Art = (() => {
     crown: '<path d="M41 90V78l4.5 5 4.5-7 4.5 7 4.5-5v12z" fill="#fbbf24" stroke="#92400e" stroke-width="1.4" stroke-linejoin="round"/><circle cx="50" cy="86" r="1.8" fill="#e11d48"/>',
     star: '<path d="M50 75l2.6 5.4 5.9.9-4.3 4.1 1 5.9L50 88.5l-5.2 2.8 1-5.9-4.3-4.1 5.9-.9z" fill="#fde047" stroke="#a16207" stroke-width="1"/>',
   };
-  function avatar(look = { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }) {
+  // цвет — только #rrggbb: облик приходит и от других игроков (Лига, разломы), в атрибут SVG попадает лишь проверенное
+  const HEX = /^#[0-9a-f]{6}$/i;
+  function avatar(look) {
+    look = look || {};
+    const cloak = HEX.test(look.cloak) ? look.cloak : '#6d28d9', eyes = HEX.test(look.eyes) ? look.eyes : '#5eead4';
     return `<svg viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="48" fill="#241a45"/>` +
-      `<path d="M50 14 C70 14 80 34 80 54 L84 96 H16 L20 54 C20 34 30 14 50 14Z" fill="${look.cloak}"/>` +
+      `<path d="M50 14 C70 14 80 34 80 54 L84 96 H16 L20 54 C20 34 30 14 50 14Z" fill="${cloak}"/>` +
       `<path d="M50 14 C70 14 80 34 80 54 L84 96 H70 L66 58 C66 40 60 26 50 22Z" fill="#000" opacity=".18"/>` +
       `<path d="M50 22 C64 22 70 38 70 52 C70 62 62 70 50 70 C38 70 30 62 30 52 C30 38 36 22 50 22Z" fill="#150d2b"/>` +
-      `<ellipse cx="42" cy="50" rx="4" ry="2.6" fill="${look.eyes}"/><ellipse cx="58" cy="50" rx="4" ry="2.6" fill="${look.eyes}"/>` +
-      (EMBLEM[look.emblem] || EMBLEM.charm) + `</svg>`;
+      `<ellipse cx="42" cy="50" rx="4" ry="2.6" fill="${eyes}"/><ellipse cx="58" cy="50" rx="4" ry="2.6" fill="${eyes}"/>` +
+      ((Object.prototype.hasOwnProperty.call(EMBLEM, look.emblem) && EMBLEM[look.emblem]) || EMBLEM.charm) + `</svg>`;
   }
 
   return { spirit, of, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar };
