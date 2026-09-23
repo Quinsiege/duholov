@@ -41,7 +41,15 @@ const game = await browser.newPage();
 game.on('pageerror', e => fail('ошибка в игре: ' + e.message));
 await game.goto('http://localhost:8123/www/index.html');
 await game.waitForTimeout(3000);
+if (!(await game.$('.onb'))) fail('игра: не показан стартовый экран');
 console.log('✓ игра открылась');
+
+// 4. Панель модерации открывается (без входа — форма входа)
+const admin = await browser.newPage();
+admin.on('pageerror', e => fail('ошибка в панели модерации: ' + e.message));
+await admin.goto('http://localhost:8123/www/admin.html');
+await admin.waitForSelector('.login', { timeout: 15000 }).catch(() => fail('панель модерации: нет формы входа'));
+console.log('✓ панель модерации открылась');
 
 await browser.close();
 server.close();

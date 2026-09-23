@@ -14,7 +14,12 @@ window.addEventListener('load', () => {
     S.ensureQuests();
     W.prune();
     UI.init();
+    Poi.init();
     MapView.init();
+    Poi.ensure();
+    if (Sync.moved) Sync.onMoved();
+    else if (Sync.note) setTimeout(() => UI.toast(Sync.note, 'good'), 1200);
+    setTimeout(() => Propose.checkResults(), 6000);
     Sky.init();
     Music.init();
     Music.play('map');
@@ -26,8 +31,16 @@ window.addEventListener('load', () => {
     Updater.init();
   };
 
-  if (S.load()) start();
-  else UI.onboarding(start);
+  // Сначала сверяемся с сервером: главная копия прогресса хранится там
+  const boot = async () => {
+    S.load();
+    const splash = setTimeout(() => document.body.appendChild(U.el('<div class="boot-splash"><div class="onb-charm">' + Art.charm('charm3') + '</div><p>Связь с Навью…</p></div>')), 400);
+    await Sync.boot();
+    clearTimeout(splash);
+    const sp = U.$('.boot-splash'); if (sp) sp.remove();
+    if (S.d) start(); else UI.onboarding(start);
+  };
+  boot();
 
   // Звук можно включить только после первого касания
   const unlock = () => { Sfx.init(); Music.apply(); window.removeEventListener('pointerdown', unlock); };

@@ -14,8 +14,9 @@ const Duel = {
     let team = S.team();
     const html = `
       <div class="shrine-view t${e.tier}">
-        <div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>
-        <div class="rift-title">${e.name} <span class="stars">${'★'.repeat(e.tier)}</span></div>
+        ${e.photo ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
+        <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
+        <div class="rift-meta">Капище ${e.god}</div>
         <div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>Хранитель · ${g.title}</small></div></div>
         <div class="rift-team-title">Духи хранителя</div>
         <div class="rift-team">${UI.teamHtml(g.team)}</div>
@@ -39,7 +40,7 @@ const Duel = {
     const html = `
       <div class="shrine-view invasion">
         <div class="shrine-idol">${Art.springIcon(false, true)}</div>
-        <div class="rift-title">${e.name} захвачен Навью!</div>
+        <div class="rift-title">Родник «${U.esc(e.name)}» захвачен Навью!</div>
         <div class="guard"><div class="guard-ava dark">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${g.title}</small></div></div>
         <div class="grunt-quote">«${g.quote}»</div>
         <div class="rift-team-title">Омрачённые духи</div>
@@ -383,7 +384,7 @@ const Duel = {
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       html = `<div class="res-title">Победа!</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">«Достойно, Ловчий», — ${st.g.name} склоняет голову. ${st.e.name} освящено тобой до конца дня.</div>
+        <div class="res-note">«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>`;
     } else {
       Sfx.play('lose');

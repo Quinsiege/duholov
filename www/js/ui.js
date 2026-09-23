@@ -201,7 +201,7 @@ const UI = {
       ['egg', 'Коконы', () => this.cocoons(), eggs ? '!' : ''],
       ['scroll', 'Задания', () => this.quests(), q ? '!' : ''],
       ['swap', 'Друзья', () => Friends.screen(), S.d.items.gift ? S.d.items.gift : ''],
-      ['user', 'Профиль', () => this.profile()],
+      ['pin', 'Места', () => Propose.screen(), Propose.badge()],
       ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.st().tickets || ''],
       ['gear', 'Настройки', () => this.settings()],
     ];
@@ -797,9 +797,9 @@ const UI = {
         ${Cloud.configured() ? row('cloud', 'Онлайн-таблица Лиги', 'Отправлять имя, облик, уровень и звёзды Лиги на сервер игры.') : ''}
       </div>
       <div class="list">
-        <button class="row link backup-save"><div class="row-main"><b>Сохранить резервную копию</b><small>Файл с прогрессом — на случай смены телефона или очистки браузера</small></div></button>
-        <button class="row link backup-load"><div class="row-main"><b>Восстановить из копии</b><small>Загрузить файл duholov-….json</small></div></button>
-        <input type="file" class="backup-file hidden" accept=".json,application/json">
+        <div class="row"><div class="row-main"><b>Прогресс на сервере</b><small class="sync-state"></small></div></div>
+        <button class="row link tr-out"><div class="row-main"><b>Перенести на другое устройство</b><small>Получить одноразовый код для нового телефона</small></div></button>
+        <button class="row link tr-in"><div class="row-main"><b>Перенести прогресс сюда</b><small>Ввести код со старого устройства</small></div></button>
       </div>
       <div class="list">
         <button class="row link about"><div class="row-main"><b>Об игре и мире</b><small>История Тонкой ночи и правила</small></div></button>
@@ -835,13 +835,21 @@ const UI = {
     }
     const il = scr.querySelector('.install-list');
     if (!il.querySelector('.row:not(.hidden)')) il.classList.add('empty-list');
-    scr.querySelector('.backup-save').onclick = () => Backup.save();
-    const fileIn = scr.querySelector('.backup-file');
-    scr.querySelector('.backup-load').onclick = () => fileIn.click();
-    fileIn.onchange = () => { if (fileIn.files[0]) Backup.load(fileIn.files[0]); fileIn.value = ''; };
+    const syncState = () => {
+      if (!scr.isConnected) return clearInterval(st);
+      scr.querySelector('.sync-state').textContent = !Sync.on() ? 'Сервер не настроен' : Sync.st.dirty
+        ? (Sync.online ? 'Сохраняется…' : 'Нет связи — сохранится, когда появится интернет') : 'Всё сохранено';
+    };
+    const st = setInterval(syncState, 1000);
+    syncState();
+    scr.querySelector('.tr-out').onclick = () => Sync.codeDialog();
+    scr.querySelector('.tr-in').onclick = () => Sync.claimDialog();
     scr.querySelector('.about').onclick = () => this.about();
-    scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены навсегда.', 'Сбросить', () => {
-      this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', () => { S.reset(); location.reload(); }, 'Нет', true);
+    scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены навсегда — и на телефоне, и на сервере.', 'Сбросить', () => {
+      this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', async () => {
+        try { if (Sync.on()) await Sync.wipe(); } catch (e) { this.toast('Нужен интернет, чтобы удалить прогресс с сервера'); return; }
+        S.reset(); location.reload();
+      }, 'Нет', true);
     }, 'Отмена', true);
   },
   about() {
@@ -853,8 +861,8 @@ const UI = {
           <li><b>Духи</b> появляются на карте вокруг тебя. Подойди ближе ${W.INTERACT} м и коснись духа.</li>
           <li><b>Бросок</b>: смахни оберег вверх. Сила свайпа — дальность. Попадание во внутреннее кольцо, пока оно маленькое, повышает шанс.</li>
           <li><b>Цвет кольца</b>: зелёный — лёгкий дух, красный — трудный. Мёд и серебряные/золотые обереги помогают.</li>
-          <li><b>Родники</b> (синие колодцы) дают обереги, мёд, живую воду и коконы. Перезаряжаются 5 минут.</li>
-          <li><b>Разломы</b> (порталы со звёздами) — битвы с боссами. Тапай для атаки, уклоняйся при «!». Победа — шанс поймать босса. Боссы меняются каждый час.</li>
+          <li><b>Родники</b> (синие колодцы) стоят у настоящих мест — памятников, фонтанов, арт-объектов, храмов. Дают обереги, мёд, живую воду и коконы. Перезаряжаются 5 минут.</li>
+          <li><b>Разломы</b> (порталы со звёздами) открываются у Капищ на час — битвы с боссами. Тапай для атаки, уклоняйся при «!». Победа — шанс поймать босса. Боссы меняются каждый час.</li>
           <li><b>Стихии</b>: ${ELEMENT_KEYS.map(e => `${ELEMENTS[e].name} бьёт ${ELEMENTS[e].beats.map(b => ELEMENTS[b].name).join(' и ')}`).join('; ')}.</li>
           <li><b>Ночью</b> чаще встречаются духи Тени и Ветра, в каждом районе города — своя любимая стихия.</li>
           <li><b>Погода</b> усиливает две стихии: таких духов больше, они сильнее и дают больше искр. В <b>полнолуние</b> выходят Русалки и Навки, в <b>новолуние</b> чаще сияющие духи.</li>
@@ -873,7 +881,8 @@ const UI = {
           <li><b>Дневник Ловчего</b> (в профиле) хранит историю поимок и побед, любую запись можно показать на карте.</li>
           <li>В настройках есть <b>крупный текст</b>, <b>бросок одним касанием</b> и режим <b>«меньше движения»</b>.</li>
           <li><b>Следопыт</b>: в «Рядом» коснись духа или выбери «К роднику» / «К капищу» — стрелка вверху покажет направление.</li>
-          <li><b>Резервная копия</b> прогресса — в настройках. Сохраняй её перед сменой телефона или очисткой браузера.</li>
+          <li><b>Прогресс хранится на сервере игры</b>. Новый телефон? «Настройки → Перенести на другое устройство» даст одноразовый код.</li>
+          <li><b>Места</b>: знаешь интересный объект рядом? Сфотографируй его в «Меню → Места». Снимок получает геометку, модераторы проверяют заявку, и на карте появляется новый Родник или Капище.</li>
           <li><b>События недели</b> меняются каждый понедельник: неделя стихии, Звездопад с двойным опытом, Родниковая неделя и другие.</li>
         </ul>
         <p class="small">Играй внимательно: смотри по сторонам, а не только в телефон.</p>`,
@@ -885,8 +894,8 @@ const UI = {
   spring(e) {
     const scr = this.screen('', `
       <div class="spring-view">
-        <div class="spring-title">${e.name}</div>
-        <div class="spring-disc"><div class="runes"></div><div class="well">${Art.springIcon(!e.ready)}</div></div>
+        <div class="spring-title">${U.esc(e.name)}</div>
+        <div class="spring-disc"><div class="runes"></div>${e.photo ? `<div class="well photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="well">${Art.springIcon(!e.ready)}</div>`}</div>
         <div class="spring-hint"></div>
         <div class="spring-loot"></div>
         <button class="btn primary wide spring-go">Зачерпнуть силу</button>
@@ -967,7 +976,7 @@ const UI = {
     const e = MapView.nearest(type);
     if (!e) { this.toast(type === 'spring' ? 'Рядом нет готовых родников' : 'Рядом нет свободных капищ'); return; }
     MapView.track(e); MapView.flyTo(e);
-    this.toast(`Следопыт: ${e.name}, ${U.fmtDist(e.d)}`);
+    this.toast(`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);
   },
 
   /* ---------------- УРОВЕНЬ ---------------- */
@@ -1007,14 +1016,14 @@ const UI = {
       if (n === 0) html = `
         <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
         <div class="onb-spirits">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
-        <button class="btn primary wide next">Начать</button>`;
+        <button class="btn primary wide next">Начать</button>${Sync.on() ? '<button class="btn ghost wide have">У меня уже есть прогресс</button>' : ''}`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
       if (n === 3) html = `<div class="onb-q"><h2>Выбери первого духа</h2><p>Он будет с тобой с первого дня.</p></div>
         <div class="onb-starters">${['ugolek', 'kapelka', 'mshonok'].map(id => `<button class="starter el-${SP[id].el}" data-id="${id}">${Art.spirit(id)}<b>${SP[id].name}</b><span>${Art.elIcon(SP[id].el, 16)} ${ELEMENTS[SP[id].el].name}</span></button>`).join('')}</div>
         <div class="onb-desc"></div><button class="btn primary wide next" disabled>Выбрать</button>`;
       if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>Духи живут рядом с тобой</h2>
-        <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Точные координаты не покидают телефон (для погоды отправляется район с точностью ~1 км, это можно выключить в настройках).</p></div>
+        <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; в нём есть дневник с местами поимок. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.</p></div>
         <button class="btn primary wide gps">Разрешить геопозицию</button>${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
       root.appendChild(U.el(`<div class="onb-step s${n}">${html}</div>`));
       const nx = root.querySelector('.next');
@@ -1037,6 +1046,8 @@ const UI = {
         const demoBtn = root.querySelector('.demo');
         if (demoBtn) demoBtn.onclick = () => finish(true);
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n + 1); };
+      const have = root.querySelector('.have');
+      if (have) have.onclick = () => Sync.claimDialog(() => { root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); });
     };
     step(0);
   },

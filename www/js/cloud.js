@@ -1,12 +1,13 @@
 'use strict';
-/* Облако (Supabase): анонимный вход и общая таблица сезона Лиги.
-   Отправляются только имя Ловчего, облик, уровень и звёзды Лиги. */
+/* Облако (Supabase): анонимный вход, прогресс (sync.js), объекты карты (pois.js), заявки мест (propose.js)
+   и общая таблица сезона Лиги (имя Ловчего, облик, уровень и звёзды). */
 
 const Cloud = {
   LIB: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
   sb: null,
 
-  configured() { return !!(CLOUD_CONFIG.url && CLOUD_CONFIG.anonKey); },
+  // автотесты (браузер под управлением Playwright) на боевой сервер не ходят
+  configured() { return !!(CLOUD_CONFIG.url && CLOUD_CONFIG.anonKey) && !navigator.webdriver; },
   enabled() { return this.configured() && S.d && S.d.settings.cloud !== false; },
 
   async client() {
