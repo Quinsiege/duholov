@@ -31,6 +31,8 @@ const S = {
     d.order = d.order || {}; // вклад в общее дело Ордена: неделя → { n, got: [ступени] }
     d.stats.streakBest = d.stats.streakBest || 0;
     d.stats.orderPts = d.stats.orderPts || 0;
+    d.tasks = d.tasks || []; // поручения из родников
+    d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     if (!d.pid) d.pid = U.uid() + U.uid();
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
     d.stats.byEl = d.stats.byEl || {};
@@ -361,6 +363,14 @@ const S = {
       changed = true;
       if (q.p >= q.n) Bus.emit('questDone', q);
     });
+    // поручения из родников
+    this.d.tasks.forEach(q => {
+      if (q.t !== type || q.p >= q.n) return;
+      if (type === 'catchEl' && meta.el !== q.el) return;
+      q.p = Math.min(q.n, q.p + amount);
+      changed = true;
+      if (q.p >= q.n) Bus.emit('toast', { text: `Поручение выполнено: ${q.text}`, cls: 'good' });
+    });
     // Летопись
     const ch = STORY[this.d.story.ch];
     if (ch) ch.steps.forEach((s, i) => {
@@ -374,7 +384,15 @@ const S = {
   },
   questsClaimable() {
     const daily = this.d.quests ? this.d.quests.list.filter(q => q.p >= q.n && !q.claimed).length : 0;
-    return daily + (this.storyReady() ? 1 : 0);
+    return daily + (this.storyReady() ? 1 : 0) + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
+  },
+  // Новое поручение (выдаёт сервер у родника): задание и дух, который встретится в награду
+  makeTask() {
+    const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
+    const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
+    const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
+    const sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.season && T.rar.includes(s.rar));
+    return { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
   },
 
   /* ---------- Летопись ---------- */

@@ -47,6 +47,13 @@ function makeEnv(uid) {
       const s = must(await db.from('saves').select('data->name, data->level').eq('user_id', p.user_id).maybeSingle());
       return s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null;
     },
+    // Сохранение другого Ловчего (для профиля друга; взаимность проверяет GameCore)
+    async friendSave(pid) {
+      const p = must(await db.from('players').select('user_id').eq('pid', pid).maybeSingle());
+      if (!p) return null;
+      const s = must(await db.from('saves').select('data, updated_at').eq('user_id', p.user_id).maybeSingle());
+      return s ? { data: s.data, seen: s.updated_at } : null;
+    },
     async link(from, to, name, level) {
       must(await db.from('friend_links').upsert({ from_pid: from, to_pid: to, from_name: String(name).slice(0, 20), from_level: level, created_at: new Date().toISOString() }, { onConflict: 'from_pid,to_pid' }));
     },

@@ -350,6 +350,7 @@
       return 'ok';
     },
     player: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { name: d.name, level: d.level } : null; },
+    friendSave: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { data: JSON.parse(JSON.stringify(d)), seen: new Date().toISOString() } : null; },
     link: async (from, to, name, level) => {
       DB.links = DB.links.filter(l => !(l.from_pid === from && l.to_pid === to));
       DB.links.push({ from_pid: from, to_pid: to, from_name: name, from_level: level, created_at: new Date().toISOString() });
@@ -601,6 +602,44 @@
     await refuse(A, 'orderClaim', { week: w - 1, i: 2 }, /не меньше 80/);
     await refuse(A, 'orderClaim', { week: w - 2, i: 0 }, /закончилась/);
     ok(A.data.journal.some(e => e.type === 'order'), 'запись в дневнике');
+  });
+  atest('Сервер: поручения родников — выдача, прогресс, награда-встреча', async () => {
+    const A = await newPlayer('up', 55.64, 37.52, 'Мирон');
+    A.data.tut = 0;
+    const r1 = await must(A, 'spring', { poi: { id: 'osm:n911', lat: A.lat, lng: A.lng, name: 'Родник' } });
+    ok(r1.task && A.data.tasks.length === 1, 'первое поручение дня — всегда');
+    const r2 = await withRandom(0.99, () => must(A, 'spring', { poi: { id: 'osm:n912', lat: A.lat, lng: A.lng, name: 'Родник' } }));
+    eq(r2.task, null, 'дальше — не в каждом роднике');
+    A.data.tasks = [{ id: 't1', t: 'photo', n: 1, el: 'fire', p: 0, tier: 3, sid: 'domovoy', text: 'Сфотографируй духа' }];
+    await refuse(A, 'taskClaim', { id: 't1' }, /не выполнено/);
+    await must(A, 'photo');
+    eq(A.data.tasks[0].p, 1, 'прогресс поручения');
+    const c = await must(A, 'taskClaim', { id: 't1' });
+    ok(c.got.length > 0, 'предметы'); eq(c.meet.sid, 'domovoy'); eq(A.data.tasks.length, 0); eq(A.data.taskMeet.length, 1);
+    const enc = await must(A, 'encStart', { kind: 'task', id: 't1' }); eq(enc.sid, 'domovoy');
+    const miss = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+    ok(!miss.caught && !miss.fled, 'дух за поручение не сбегает'); eq(A.data.taskMeet.length, 1);
+    const got = await withRandom(0, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+    ok(got.caught, 'пойман'); eq(A.data.taskMeet.length, 0, 'встреча использована');
+    await refuse(A, 'encStart', { kind: 'task', id: 't1' }, /не найдена/);
+    await refuse(A, 'taskDrop', { id: 'нет' }, /не найдено/);
+    A.data.tasks = Array.from({ length: TASK_LIMIT }, (_, i) => ({ id: 'x' + i, t: 'catch', n: 5, p: 0, tier: 1, sid: 'ugolek', text: '' }));
+    const r3 = await withRandom(0, () => must(A, 'spring', { poi: { id: 'osm:n913', lat: A.lat, lng: A.lng, name: 'Родник' } }));
+    eq(r3.task, null, 'не больше пяти поручений');
+    await must(A, 'taskDrop', { id: 'x0' }); eq(A.data.tasks.length, TASK_LIMIT - 1);
+  });
+  atest('Сервер: профиль друга — только при взаимной дружбе, чужие данные очищаются', async () => {
+    const A = await newPlayer('uq', 55.63, 37.51, 'Любава'), B = await newPlayer('ur', 55.63, 37.51, 'Ратибор', 'mshonok');
+    await refuse(A, 'friendProfile', { pid: B.data.pid }, /Такого друга нет/);
+    await must(A, 'friendAdd', { pid: B.data.pid });
+    await refuse(A, 'friendProfile', { pid: B.data.pid }, /тоже добавит/);
+    await must(B, 'friendsSync');
+    const p = await must(A, 'friendProfile', { pid: B.data.pid });
+    eq(p.name, 'Ратибор'); eq(p.top.length, 1); eq(p.top[0].sid, 'mshonok'); ok(p.look && p.look.cloak, 'облик');
+    const d = DB.saves.ur;
+    d.look = { cloak: '"><script>', eyes: 'x', emblem: 'y' }; d.stats.caught = '<img src=x>'; d.level = 'много';
+    const p2 = await must(A, 'friendProfile', { pid: B.data.pid });
+    eq(p2.look, null, 'неизвестный облик не передаётся'); eq(p2.caught, 0); eq(p2.level, 1);
   });
 
   /* ---------- вывод ---------- */

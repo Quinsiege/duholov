@@ -283,6 +283,11 @@ const GameCore = {
         ctx.srv.rescue = null;
         return this.openEnc(ctx, { mode: 'rescue', sid: r.sid, lvl: r.lvl, dark: true, seed: r.seed });
       }
+      if (kind === 'task') {
+        const m = S.d.taskMeet.find(x => x.id === a.id);
+        this.need(m, 'Встреча за поручение не найдена');
+        return this.openEnc(ctx, { mode: 'task', sid: m.sid, lvl: m.lvl, seed: 'task:' + m.id, taskId: m.id });
+      }
       if (kind === 'story') {
         this.need(S.d.storyGift && SP[S.d.storyGift], 'Встреча Летописи недоступна');
         return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: 25, seed: 'gift' + S.d.created });
@@ -340,6 +345,7 @@ const GameCore = {
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
       if (e.mode === 'tut' && S.d.tut === 1) S.d.tut = 2;
       if (e.mode === 'story') S.d.storyGift = null;
+      if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
       return { wobbles: 3, caught: true, label: bonus.label, uid: sp.uid, isNew, xp: Math.round(rw.xp * Ev.xpMul()), sparks: rw.sparks, ess: rw.ess };
     },
@@ -361,7 +367,14 @@ const GameCore = {
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
       if (S.d.tut === 2) S.d.tut = 3;
-      return { got, cocoon: coc, full: S.bagCount() >= BAG_LIMIT };
+      // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
+      let task = null;
+      if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
+        S.d.taskDay = U.today(ctx.now);
+        task = S.makeTask();
+        S.d.tasks.push(task);
+      }
+      return { got, cocoon: coc, task, full: S.bagCount() >= BAG_LIMIT };
     },
     incense(a, ctx) {
       this.need(!S.incenseActive(), 'Ладан ещё горит');
@@ -456,6 +469,24 @@ const GameCore = {
       if (res.ch.gift) S.d.storyGift = res.ch.gift;
       J.add('story', { title: res.ch.title });
       return { ch, got: res.got };
+    },
+    // Поручение выполнено: предметы сразу, дух — во встрече (ждёт в «Заданиях», пока не пойман)
+    taskClaim(a) {
+      const q = S.d.tasks.find(x => x.id === a.id);
+      this.need(q && q.p >= q.n, 'Поручение ещё не выполнено');
+      this.need(S.d.taskMeet.length < TASK_LIMIT, 'Сначала встреть духов за прошлые поручения');
+      S.d.tasks = S.d.tasks.filter(x => x !== q);
+      const T = TASK_TIERS[q.tier];
+      const got = S.giveRewards({ ...T.reward, xp: 250 * q.tier });
+      const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.maxLvl()) };
+      S.d.taskMeet.push(m);
+      return { got, meet: m };
+    },
+    taskDrop(a) {
+      const n = S.d.tasks.length;
+      S.d.tasks = S.d.tasks.filter(x => x.id !== a.id);
+      this.need(S.d.tasks.length < n, 'Поручение не найдено');
+      return { ok: true };
     },
     tutFinish(a) {
       this.need(S.d.tut, 'Обучение уже пройдено');
@@ -677,6 +708,35 @@ const GameCore = {
       f.linked = true;
       await ctx.env.link(S.d.pid, pid, S.d.name, S.d.level);
       return { name: f.name, isNew };
+    },
+    // Профиль друга — только если дружба взаимная (он тоже добавил тебя)
+    async friendProfile(a, ctx) {
+      const f = S.d.friends.find(x => x.id === a.pid);
+      this.need(f, 'Такого друга нет');
+      this.limit(ctx, 'profile', 60, 3600000);
+      const s = await ctx.env.friendSave(f.id);
+      this.need(s && s.data, 'Ловчий не найден');
+      const d = s.data;
+      this.need((d.friends || []).some(x => x.id === S.d.pid), `Профиль откроется, когда ${f.name} тоже добавит тебя в друзья`);
+      // чужое сохранение могло быть записано ещё телефоном (до 3.0) — только числа и известные значения
+      const num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
+      f.name = String(d.name || f.name).slice(0, 20); f.lvl = num(d.level, MAX_LEVEL) || f.lvl;
+      // облик — только из известных вариантов (он попадает в картинку)
+      const lk = d.look || {}, look = LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
+        ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
+      if (look) f.look = look;
+      const st = d.stats || {}, spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
+      const top = spirits.map(x => ({ sid: x.sid, lvl: num(x.lvl, 40), shiny: !!x.shiny, dark: !!x.dark, nick: x.nick ? String(x.nick).slice(0, 16) : null, power: (() => { try { return S.power(x) || 0; } catch (e) { return 0; } })() }))
+        .sort((x, y) => y.power - x.power).slice(0, 3);
+      const buddy = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
+      const L = d.league || {};
+      return {
+        name: f.name, level: num(d.level, MAX_LEVEL) || 1, look, seen: s.seen || null,
+        dex: Object.values(d.dex || {}).filter(x => x && x.caught).length, caught: num(st.caught, 1e7), km: U.clamp(+st.km || 0, 0, 1e5),
+        raids: num(st.raids, 1e6), duels: num(st.duels, 1e6), streak: num(d.streak && d.streak.n, 1e5),
+        medals: Object.values(d.medals || {}).filter(t => t >= 3).length, rank: num(L.best, LEAGUE_RANKS.length - 1),
+        buddy: buddy ? buddy.sid : null, top, pts: f.pts,
+      };
     },
     friendRemove(a) { S.d.friends = S.d.friends.filter(f => f.id !== a.pid); return { ok: true }; },
     // Кто добавил меня (дружба взаимная) + подарки, которые ждут открытия
