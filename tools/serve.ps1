@@ -1,6 +1,8 @@
 # Simple local static server for the www folder (desktop testing): http://localhost:8765
-param([int]$Port = 8765)
-$root = Join-Path $PSScriptRoot '..\www' | Resolve-Path
+param([int]$Port = 8765, [string]$Dir = 'www')
+# -Dir www   : the game (dev mode: demo joystick, ?hol= preview)
+# -Dir .     : repo root, tests at /tests/index.html
+$root = Join-Path (Join-Path $PSScriptRoot '..') $Dir | Resolve-Path
 $mime = @{ '.html' = 'text/html; charset=utf-8'; '.js' = 'text/javascript; charset=utf-8'; '.css' = 'text/css; charset=utf-8';
   '.png' = 'image/png'; '.svg' = 'image/svg+xml'; '.json' = 'application/json'; '.webmanifest' = 'application/manifest+json' }
 $l = New-Object System.Net.HttpListener

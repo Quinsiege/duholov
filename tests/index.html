@@ -21,29 +21,31 @@
   <div id="sum">Выполняю…</div>
   <div id="out"></div>
 
-  <script src="../js/config.js"></script>
-  <script src="../js/data.js"></script>
-  <script src="../js/util.js"></script>
-  <script src="../js/art.js"></script>
-  <script src="../js/state.js"></script>
-  <script src="../js/events.js"></script>
-  <script src="../js/sky.js"></script>
-  <script src="../js/music.js"></script>
-  <script src="../js/world.js"></script>
-  <script src="../js/map.js"></script>
-  <script src="../js/encounter.js"></script>
-  <script src="../js/raid.js"></script>
-  <script src="../js/duel.js"></script>
-  <script src="../js/trade.js"></script>
-  <script src="../js/tutorial.js"></script>
-  <script src="../js/album.js"></script>
-  <script src="../js/league.js"></script>
-  <script src="../js/backup.js"></script>
-  <script src="../js/journal.js"></script>
-  <script src="../js/friends.js"></script>
-  <script src="../js/coop.js"></script>
-  <script src="../js/cloud.js"></script>
-  <script src="../js/ui.js"></script>
+  <script src="../www/js/version.js"></script>
+  <script src="../www/js/config.js"></script>
+  <script src="../www/js/data.js"></script>
+  <script src="../www/js/util.js"></script>
+  <script src="../www/js/art.js"></script>
+  <script src="../www/js/state.js"></script>
+  <script src="../www/js/events.js"></script>
+  <script src="../www/js/sky.js"></script>
+  <script src="../www/js/music.js"></script>
+  <script src="../www/js/world.js"></script>
+  <script src="../www/js/map.js"></script>
+  <script src="../www/js/encounter.js"></script>
+  <script src="../www/js/raid.js"></script>
+  <script src="../www/js/duel.js"></script>
+  <script src="../www/js/trade.js"></script>
+  <script src="../www/js/tutorial.js"></script>
+  <script src="../www/js/album.js"></script>
+  <script src="../www/js/league.js"></script>
+  <script src="../www/js/backup.js"></script>
+  <script src="../www/js/journal.js"></script>
+  <script src="../www/js/friends.js"></script>
+  <script src="../www/js/coop.js"></script>
+  <script src="../www/js/cloud.js"></script>
+  <script src="../www/js/updater.js"></script>
+  <script src="../www/js/ui.js"></script>
   <script>
   'use strict';
   const results = [];
@@ -267,6 +269,11 @@
     ok(Coop.ALPHA.length === 32 && !/[01IO]/.test(Coop.ALPHA), 'алфавит кода без похожих символов');
     near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
     ok(!Cloud.configured() || typeof CLOUD_CONFIG.url === 'string', 'конфиг облака');
+  });
+  test('Обновления: сравнение версий', () => {
+    eq(Updater.cmp('2.0.0', '2.0.0'), 0); eq(Updater.cmp('2.0.1', '2.0.0'), 1); eq(Updater.cmp('2.0.0', '2.1.0'), -1);
+    eq(Updater.cmp('10.0.0', '9.9.9'), 1); eq(Updater.cmp('2.1', '2.0.9'), 1);
+    ok(/^\d+\.\d+\.\d+$/.test(APP_VERSION), 'формат версии');
   });
   test('Знаки Ордена выдаются по достижении порога', () => {
     S.d.medals = {}; S.d.stats.caught = 10; S.checkMedals();

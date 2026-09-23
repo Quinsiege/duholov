@@ -775,7 +775,7 @@ const UI = {
     const row = (k, title, sub) => `<label class="row toggle"><div class="row-main"><b>${title}</b><small>${sub}</small></div><input type="checkbox" data-k="${k}" ${s[k] ? 'checked' : ''}><i></i></label>`;
     const scr = this.screen('Настройки', `
       <div class="list">
-        ${row('demo', 'Демо-режим', 'Ходи по карте джойстиком вместо GPS. Для игры дома или проверки.')}
+        ${DEV ? row('demo', 'Демо-режим (разработка)', 'Джойстик вместо GPS. Доступен только на локальном сервере.') : ''}
         ${row('ar', 'AR-камера', 'Духи появляются поверх изображения с камеры.')}
         ${row('music', 'Музыка', 'Спокойные «гусли» на карте и боевая тема в сражениях.')}
         ${row('sound', 'Звук', 'Звуковые эффекты.')}
@@ -805,7 +805,7 @@ const UI = {
         <button class="row link about"><div class="row-main"><b>Об игре и мире</b><small>История Тонкой ночи и правила</small></div></button>
         <button class="row link reset"><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div></button>
       </div>
-      <div class="ver">Духолов · v1.9 · Карта © участники OpenStreetMap</div>`, 'set-screen');
+      <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
     scr.addEventListener('change', e => {
       const k = e.target.dataset.k; if (!k) return;
       s[k] = e.target.checked; S.save();
@@ -825,8 +825,12 @@ const UI = {
     // установка: кнопка PWA (если браузер предложил) и APK (если он собран и лежит рядом с сайтом)
     const pwa = scr.querySelector('.inst-pwa'), apk = scr.querySelector('.inst-apk');
     if (window.__installPrompt) pwa.classList.remove('hidden');
+    scr.querySelector('.check-upd').onclick = async () => {
+      await Updater.check(true);
+      if (!Updater.shown) this.toast(`У тебя последняя версия — ${APP_VERSION}`, 'good');
+    };
     pwa.onclick = async () => { const p = window.__installPrompt; if (!p) return; p.prompt(); await p.userChoice; window.__installPrompt = null; pwa.classList.add('hidden'); };
-    if (location.hostname !== 'appassets.androidplatform.net' && /Android/i.test(navigator.userAgent + ' ' + location.search)) {
+    if (!Updater.IN_APP && /Android/i.test(navigator.userAgent)) {
       fetch('duholov.apk', { method: 'HEAD' }).then(r => { if (r.ok) { apk.classList.remove('hidden'); il.classList.remove('empty-list'); } }).catch(() => {});
     }
     const il = scr.querySelector('.install-list');
@@ -1010,9 +1014,8 @@ const UI = {
         <div class="onb-starters">${['ugolek', 'kapelka', 'mshonok'].map(id => `<button class="starter el-${SP[id].el}" data-id="${id}">${Art.spirit(id)}<b>${SP[id].name}</b><span>${Art.elIcon(SP[id].el, 16)} ${ELEMENTS[SP[id].el].name}</span></button>`).join('')}</div>
         <div class="onb-desc"></div><button class="btn primary wide next" disabled>Выбрать</button>`;
       if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>Духи живут рядом с тобой</h2>
-        <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Она не покидает телефон.</p>
-        <p class="small">Нет возможности гулять? Включи демо-режим и ходи джойстиком.</p></div>
-        <button class="btn primary wide gps">Разрешить геопозицию</button><button class="btn ghost wide demo">Играть в демо-режиме</button>`;
+        <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Точные координаты не покидают телефон (для погоды отправляется район с точностью ~1 км, это можно выключить в настройках).</p></div>
+        <button class="btn primary wide gps">Разрешить геопозицию</button>${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
       root.appendChild(U.el(`<div class="onb-step s${n}">${html}</div>`));
       const nx = root.querySelector('.next');
       if (n === 2) {
@@ -1031,7 +1034,8 @@ const UI = {
       } else if (n === 4) {
         const finish = demo => { S.d.settings.demo = demo; S.save(true); root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); };
         root.querySelector('.gps').onclick = () => finish(false);
-        root.querySelector('.demo').onclick = () => finish(true);
+        const demoBtn = root.querySelector('.demo');
+        if (demoBtn) demoBtn.onclick = () => finish(true);
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n + 1); };
     };
     step(0);

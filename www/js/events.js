@@ -1,6 +1,6 @@
 'use strict';
 /* События: неделя (с понедельника 00:00 UTC, по кругу из WEEK_EVENTS) и праздники по календарю.
-   Для предпросмотра праздника: ?hol=svyatki | maslenitsa | kupala | veles */
+   В разработке (localhost) праздник можно посмотреть заранее: ?hol=svyatki | maslenitsa | kupala | veles */
 
 const Ev = {
   week(t = Date.now()) { return Math.floor((t / 86400000 + 3) / 7); }, // 01.01.1970 — четверг
@@ -16,7 +16,7 @@ const Ev = {
   },
   // Праздник на дату: { id, ...HOLIDAYS[id], start, end } или null
   holiday(now = new Date()) {
-    const forced = new URLSearchParams(location.search).get('hol');
+    const forced = DEV && new URLSearchParams(location.search).get('hol');
     if (forced && HOLIDAYS[forced]) return { id: forced, ...HOLIDAYS[forced], end: new Date(now.getTime() + 86400000) };
     const y = now.getFullYear();
     const day = (m, d, yy = y) => new Date(yy, m - 1, d);

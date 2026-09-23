@@ -1,6 +1,6 @@
-# Сборка APK и публикация игры на GitHub Pages при каждом push в main.
-# Однократно включить: Settings → Pages → Build and deployment → Source: «GitHub Actions».
-name: Сборка и публикация
+# Прод: после слияния Pull Request в main — тесты, сборка APK и публикация на GitHub Pages.
+# Сайт выкладывается только если всё зелёное. Pages: Settings → Pages → Source: «GitHub Actions».
+name: Публикация
 
 on:
   push:
@@ -14,9 +14,23 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  tests:
+    name: Автотесты
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - working-directory: tests
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npm test
+
   apk:
     name: APK для Android
     runs-on: ubuntu-latest
@@ -29,8 +43,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-      - name: Сборка debug APK
-        run: gradle -p android assembleDebug --no-daemon
+      - run: gradle -p android assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: duholov-apk
@@ -38,21 +51,18 @@ jobs:
 
   pages:
     name: Сайт игры
-    needs: apk
-    if: ${{ always() }}   # сайт публикуется, даже если APK не собрался
+    needs: [tests, apk]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Положить APK рядом с сайтом
-        uses: actions/download-artifact@v4
-        continue-on-error: true
+      - uses: actions/download-artifact@v4
         with:
           name: duholov-apk
           path: www
-      - run: if [ -f www/app-debug.apk ]; then mv www/app-debug.apk www/duholov.apk; fi
+      - run: mv www/app-debug.apk www/duholov.apk
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
