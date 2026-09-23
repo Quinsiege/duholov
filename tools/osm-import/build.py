@@ -32,7 +32,7 @@ CATS = {
     'community_centre': ('Дом культуры', 1), 'post_office': ('Почта', 0), 'station': ('Станция', 1), 'halt': ('Платформа', 0),
 }
 KEYS = ('historic', 'tourism', 'amenity', 'natural', 'leisure', 'man_made', 'railway')
-NEED_NAME = {'garden', 'boundary_stone', 'park', 'station', 'halt'}  # без названия почти не видны на местности
+NEED_NAME = {'garden', 'boundary_stone', 'park', 'station', 'halt', 'peak'}  # без названия почти не видны на местности
 MIN_GAP = 35
 # населённые пункты: радиус, в котором уже должно быть место; радиус, в котором должно быть Капище
 PLACES = {'city': (3000, 0), 'town': (1500, 2500), 'village': (700, 1500), 'hamlet': (400, 0)}

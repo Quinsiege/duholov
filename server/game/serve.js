@@ -94,6 +94,18 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
+    // Дружины: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    async holdGet(poi) {
+      const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
+      return r && Array.isArray(r.holders) && r.holders.length ? r : null;
+    },
+    async holdDefend(poi, lat, lng, clan, holder) { return !!must(await db.rpc('shrine_defend', { p_poi: poi, p_lat: lat, p_lng: lng, p_clan: clan, p_holder: holder })); },
+    async holdDefeat(poi, ver) { return !!must(await db.rpc('shrine_defeat', { p_poi: poi, p_ver: ver })); },
+    async myHolds(pid) {
+      const { count, error } = await db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).contains('holders', JSON.stringify([{ pid }]));
+      if (error) throw new Error(error.message);
+      return count || 0;
+    },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));

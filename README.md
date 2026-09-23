@@ -122,6 +122,14 @@
 - Телефон берёт места из базы; сам спрашивает Overpass только там, где загруженных мест нет (за пределами России). Сервер там, где места загружены, принимает только объекты из базы — выдуманный «родник» с телефона не пройдёт.
 - Настройка: `server/007_places_russia.sql`; секрет репозитория `SUPABASE_DB_URL` — строка подключения Session pooler из Supabase (Connect). Без секрета workflow только собирает места (CSV в артефакте запуска).
 
+### Версия 3.5.0 — Дружины
+- С 5 уровня игрок выбирает одну из трёх дружин — **Сокола**, **Медведя** или **Волка** (навсегда).
+- **Капище под знаменем.** Победив на Капище (хранителя или чужих защитников), можно поставить туда духа-защитника — Капище переходит к твоей дружине и получает на карте её цвет (флажок и основание). Защитников — до 6, от игрока — один дух на Капище, одновременно — до 10 Капищ. Дух остаётся у игрока, на Капище встаёт его отражение.
+- **Бой за Капище.** На чужом Капище вместо хранителя сражаются три сильнейших защитника; победа освобождает Капище (если за время боя защитники не сменились). На Капище своей дружины можно только поставить защитника.
+- **Дань** — раз в день ✦ 100 и оберег за каждое Капище, где стоит твой защитник.
+- Устройство: таблица `shrine_holds` и функции `shrine_defend` / `shrine_defeat` / `shrines_in_box` (`server/008_clans.sql`); действия сервера `clanJoin`, `shrineDefend`, `tribute`, бой — `duelStart` / `duelEnd`. Телефон получает сводку занятых Капищ вокруг без кодов игроков (`www/js/clans.js`).
+- Импорт мест: безымянные вершины больше не становятся Родниками.
+
 ## Прод
 - Игра: https://quinsiege.github.io/duholov/ · APK: https://quinsiege.github.io/duholov/duholov.apk
 - Репозиторий: https://github.com/Quinsiege/duholov · Облако: Supabase-проект `duholov` (прогресс, места игроков, модерация, таблица Лиги)
@@ -154,7 +162,7 @@ http://localhost:8766/tests/index.html — автотесты в браузер�
 ## Подключение сервера (Supabase, бесплатно)
 1. supabase.com → **Sign in with GitHub** → **New project** (регион — ближайший, пароль БД сохраните у себя).
 2. **Authentication → Sign In / Providers → Anonymous sign-ins: включить.**
-3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`, `server/005_server_authority.sql`, `server/006_order.sql`, `server/007_places_russia.sql`; развернуть Edge Function `game` (см. «Версия 3.0.0»).
+3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`, `server/005_server_authority.sql`, `server/006_order.sql`, `server/007_places_russia.sql`, `server/008_clans.sql`; развернуть Edge Function `game` (см. «Версия 3.0.0»).
    **Authentication → URL Configuration**: Site URL = адрес игры, Redirect URLs = `<адрес игры>/**` (для входа модераторов по ссылке из письма).
 4. **Project Settings → API Keys**: **Project URL** и **publishable key** → `www/js/config.js` (публичные параметры; секретные ключи в игру не кладите никогда).
 5. Изменение — через Pull Request, как описано выше.

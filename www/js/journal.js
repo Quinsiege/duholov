@@ -36,6 +36,8 @@ const J = {
       case 'trade': return { ico: icon(e.sid), title: e.dir === 'out' ? `${sp(e.sid)} упакован для друга` : `${sp(e.sid)} получен от ${e.who || 'друга'}`, sub: 'Обмен' };
       case 'friend': return { ico: glyph('♥', 'pink'), title: `Новый друг: ${e.name}`, sub: '' };
       case 'spar': return { ico: glyph('⚔'), title: `Победа в поединке с другом`, sub: e.name || '' };
+      case 'clan': return { ico: glyph('⚑', 'gold'), title: `Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : 'дружина'}`, sub: '' };
+      case 'defend': return { ico: icon(e.sid), title: `Защитник на Капище`, sub: e.name || '' };
       case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
     }
