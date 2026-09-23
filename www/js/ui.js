@@ -21,6 +21,8 @@ const UI = {
       swap: s('<path d="M4 8h13l-3-3M20 16H7l3 3"/>'),
       info: s('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'),
       trophy: s('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/>'),
+      shop: s('<path d="M4 10h16v10H4z"/><path d="M3 10l2-6h14l2 6"/><path d="M9 20v-5h6v5"/><path d="M3 10c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3"/>'),
+      trail: s('<path d="M5 21c0-4 3-5 6-7s5-4 3-8"/><path d="M14 6l-1-3 3 1"/><circle cx="6" cy="8" r="1.3" fill="currentColor"/><circle cx="18" cy="14" r="1.3" fill="currentColor"/><path d="M16 21h5"/>'),
     };
   })(),
 
@@ -228,11 +230,13 @@ const UI = {
       ['swap', 'Друзья', () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
       ['pin', 'Места', () => Propose.screen(), Propose.badge()],
       ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.view().tickets || ''],
+      ['shop', 'Лавка', () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
+      ['trail', 'Тропа', () => Pass.screen(), Pass.claimable() || ''],
       ['gear', 'Настройки', () => this.settings()],
     ];
     if (Tut.step() === 3) setTimeout(() => Tut.finish(), 400);
     const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div><div class="menu-grid">${tiles.map((t, i) => `<button class="tile" data-i="${i}">${this.I[t[0]]}<span>${t[1]}</span>${t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`).join('')}</div>
-      <div class="sheet-foot"><span>${Art.item('charm')} ${S.d.items.charm || 0}</span><span class="spark">✦ ${U.fmtNum(S.d.sparks)} искр</span><span>${U.fmtDist(S.d.stats.km * 1000)} пройдено</span></div></div></div>`);
+      <div class="sheet-foot"><span>${Art.item('charm')} ${S.d.items.charm || 0}</span><span class="spark">✦ ${U.fmtNum(S.d.sparks)}</span><span class="grivna">${Art.item('grivna')} ${U.fmtNum(S.d.grivna || 0)} гривен</span></div></div></div>`);
     const close = () => { this.popLayer(close); sheet.classList.add('out'); setTimeout(() => sheet.remove(), 200); };
     sheet.addEventListener('click', e => {
       const t = e.target.closest('.tile');
@@ -549,7 +553,7 @@ const UI = {
   bag() {
     const scr = this.screen('Сумка', '<div class="list bag"></div>', 'bag-screen');
     const render = () => {
-      scr.querySelector('.head-extra').textContent = `${S.bagCount()}/${BAG_LIMIT}`;
+      scr.querySelector('.head-extra').textContent = `${S.bagCount()}/${S.bagLimit()}`;
       const keys = Object.keys(ITEMS).filter(k => (S.d.items[k] || 0) > 0);
       const ams = AMULET_KEYS.filter(k => S.d.amulets[k] > 0);
       scr.querySelector('.list').innerHTML = ams.map(k => `
@@ -814,11 +818,15 @@ const UI = {
     const m = this.modal({
       title: 'Облик Ловчего', cls: 'look-modal',
       html: `<div class="look-prev"></div>
-        ${sw('Плащ', LOOK.cloak, x => `<button class="sw ${x.lvl > lvl ? 'locked' : ''}" data-k="cloak" data-v="${x.c}" data-l="${x.lvl}" title="${x.name}" style="--sw:${x.c}"></button>`)}
+        ${sw('Плащ', LOOK.cloak, x => {
+          // плащи из Лавки и с Золотой тропы открываются покупкой
+          const lk = (x.shop || x.pass) && !S.d.owned[x.c] ? (x.shop ? 'shop' : 'pass') : x.lvl;
+          return `<button class="sw ${lk === 'shop' || lk === 'pass' || x.lvl > lvl ? 'locked' : ''} ${x.shop || x.pass ? 'special' : ''}" data-k="cloak" data-v="${x.c}" data-l="${lk}" title="${x.name}" style="--sw:${x.c}"></button>`;
+        })}
         ${sw('Глаза', LOOK.eyes, x => `<button class="sw ${x.lvl > lvl ? 'locked' : ''}" data-k="eyes" data-v="${x.c}" data-l="${x.lvl}" title="${x.name}" style="--sw:${x.c}"></button>`)}
         ${sw('Эмблема', LOOK.emblem, x => {
           // особые эмблемы: за ранг Лиги и за вторую книгу Летописи
-          const lk = x.league && League.view().best < x.league ? 'league' : x.story && S.d.story.ch < x.story ? 'story' : x.lvl;
+          const lk = x.league && League.view().best < x.league ? 'league' : x.story && S.d.story.ch < x.story ? 'story' : x.pass && !S.d.owned[x.id] ? 'pass' : x.lvl;
           const locked = x.lvl > lvl || typeof lk === 'string';
           return `<button class="sw em ${locked ? 'locked' : ''}" data-k="emblem" data-v="${x.id}" data-l="${lk}" title="${x.name}">${Art.avatar({ cloak: '#241a45', eyes: '#241a45', emblem: x.id }).replace('viewBox="0 0 100 100"', 'viewBox="36 70 28 28"')}</button>`;
         })}
@@ -832,7 +840,9 @@ const UI = {
     m.addEventListener('click', e => {
       const b = e.target.closest('.sw'); if (!b) return;
       if (b.dataset.l === 'league') { this.toast('Венец Лиги — награда за ранг «Хранитель Лиги»'); return; }
-      if (b.dataset.l === 'story') { this.toast('Игла Кощея — награда за вторую книгу Летописи'); return; }
+      if (b.dataset.l === 'story') { this.toast('Эта эмблема — награда за Летопись'); return; }
+      if (b.dataset.l === 'shop') { this.toast('Этот плащ продаётся в Лавке Ордена за гривны'); return; }
+      if (b.dataset.l === 'pass') { this.toast('Награда Золотой сезонной тропы'); return; }
       if (+b.dataset.l > lvl) { this.toast(`Откроется на ${b.dataset.l} уровне`); return; }
       look[b.dataset.k] = b.dataset.v; Sfx.play('tap'); render();
     });
@@ -997,7 +1007,7 @@ const UI = {
       const got = r.got;
       const cocoonHtml = r.cocoon ? `<div class="loot-item" style="animation-delay:${got.length * 0.12}s">${Art.cocoon(r.cocoon.km)}<span>Кокон ${r.cocoon.km} км</span></div>` : '';
       scr.querySelector('.spring-loot').innerHTML = got.filter(x => x.k !== 'xp').map((x, i) => `<div class="loot-item" style="animation-delay:${i * 0.12}s">${Art.item(x.k)}<span>${x.label} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `<div class="loot-xp">+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта${r.full ? ' · Сумка полна!' : ''}</div>` +
+        `<div class="loot-xp">+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта${r.full ? ' · Сумка полна! Расширь её в Лавке Ордена' : ''}</div>` +
         (r.task ? `<div class="loot-task">Новое поручение: <b>${r.task.text}</b><small>Награда — встреча с духом. Смотри «Меню → Задания».</small></div>` : '');
       hint.textContent = '';
       go.textContent = 'Готово';

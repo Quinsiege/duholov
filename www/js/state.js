@@ -34,6 +34,11 @@ const S = {
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
+    d.grivna = d.grivna || 0; // гривны — вторая валюта (3.12)
+    d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
+    d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
+    d.shop = d.shop || {}; // Лавка: { deal: день покупки товара дня }
+    d.pass = d.pass || null; // Сезонная тропа: { season, pts, gold, got: { free: [], gold: [] } }
     if (!d.pid) d.pid = U.uid() + U.uid();
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
     d.stats.byEl = d.stats.byEl || {};
@@ -248,9 +253,10 @@ const S = {
   },
 
   /* ---------- предметы ---------- */
+  bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
   addItem(k, n = 1) {
-    const room = BAG_LIMIT - this.bagCount();
+    const room = this.bagLimit() - this.bagCount();
     const add = Math.max(0, Math.min(n, room));
     this.d.items[k] = (this.d.items[k] || 0) + add;
     this.save();
@@ -262,6 +268,7 @@ const S = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
+      else if (k === 'grivna') { this.d.grivna = (this.d.grivna || 0) + n; out.push({ k, n, label: 'Гривны' }); }
       else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
       else if (ITEMS[k]) { const a = this.addItem(k, n); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
@@ -289,7 +296,7 @@ const S = {
     this.save();
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3 };
+    const r = { charm: 10 + l, honey: 3, water: 3, grivna: Rules.GRIVNA.level };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;
@@ -404,7 +411,7 @@ const S = {
   claimStory() {
     const ch = STORY[this.d.story.ch];
     if (!ch || !this.storyReady()) return null;
-    const got = this.giveRewards(ch.reward);
+    const got = this.giveRewards({ ...ch.reward, grivna: Rules.GRIVNA.story });
     this.d.story = { ch: this.d.story.ch + 1, p: [0, 0, 0] };
     this.save();
     return { ch, got };

@@ -47,6 +47,7 @@
   <script src="../www/js/order.js"></script>
   <script src="../www/js/clans.js"></script>
   <script src="../www/js/hints.js"></script>
+  <script src="../www/js/shop.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
@@ -860,6 +861,54 @@
     // накрутка: подарков за приглашения — не больше INVITE_MAX
     for (let i = 0; i < GameCore.INVITE_MAX + 2; i++) await must({ uid: 'vg' + i, lat: 55.55, lng: 37.43, data: null, srv: {} }, 'newGame', { name: 'Бот' + i, starter: 'ugolek', ref: A.data.pid });
     eq(DB.gifts.filter(x => x.to_pid === A.data.pid && x.contents.invite === 1).length, GameCore.INVITE_MAX, 'не больше десяти подарков');
+  });
+  atest('Сервер: Лавка Ордена — сумка, припасы, товар дня, плащи', async () => {
+    const A = await newPlayer('vh', 55.54, 37.42, 'Покупатель');
+    A.data.tut = 0;
+    await refuse(A, 'shopBuy', { id: 'bag' }, /гривен/);
+    A.data.grivna = 1000; A.data.sparks = 5000;
+    const b = await must(A, 'shopBuy', { id: 'bag' });
+    eq(A.data.bagExtra, 1); eq(A.data.grivna, 1000 - Rules.bagPrice(0)); eq(b.got[0].k, 'bag');
+    eq(asPlayer(A, () => S.bagLimit()), BAG_LIMIT + Rules.BAG_STEP, 'сумка больше');
+    await must(A, 'shopBuy', { id: 'bag' }); eq(A.data.grivna, 1000 - Rules.bagPrice(0) - Rules.bagPrice(1), 'цена растёт');
+    const c0 = A.data.items.charm;
+    await must(A, 'shopBuy', { id: 'charm20' }); eq(A.data.items.charm, c0 + 20); eq(A.data.sparks, 3500);
+    await refuse(A, 'shopBuy', { id: 'charm3x' }, /16 уровне/);
+    await refuse(A, 'shopBuy', { id: 'nichego' }, /нет/);
+    await must(A, 'shopBuy', { deal: true });
+    await refuse(A, 'shopBuy', { deal: true }, /уже куплен/);
+    await refuse(A, 'look', { look: { cloak: '#7c2d12', eyes: '#5eead4', emblem: 'charm' } }, /Лавке/);
+    await must(A, 'shopBuy', { id: 'look:#7c2d12' });
+    await must(A, 'look', { look: { cloak: '#7c2d12', eyes: '#5eead4', emblem: 'charm' } }); eq(A.data.look.cloak, '#7c2d12');
+    await refuse(A, 'shopBuy', { id: 'look:#7c2d12' }, /уже твой/);
+    // гривны приходят за серию дней
+    const g0 = A.data.grivna;
+    const dl = await must(A, 'daily'); // опыт серии может поднять уровень — за него свои гривны
+    eq(dl.got.find(x => x.k === 'grivna').n, Rules.GRIVNA.streak); ok(A.data.grivna >= g0 + Rules.GRIVNA.streak);
+  });
+  atest('Сервер: Сезонная тропа — очки за игру, ступени, Золотая тропа', async () => {
+    const A = await newPlayer('vi', 55.53, 37.41, 'Путник');
+    A.data.tut = 0;
+    await must(A, 'spring', { poi: freeSpring(A, 93000) });
+    ok(A.data.pass && A.data.pass.pts > 0, 'очки Тропы за родник');
+    const season = A.data.pass.season;
+    A.data.pass = { season, pts: Rules.PASS.PER * 2 + 5, gold: false, got: { free: [], gold: [] } };
+    const r = await must(A, 'passClaim', { lvl: 1, track: 'free' }); ok(r.got.length > 0, 'награда ступени 1');
+    await refuse(A, 'passClaim', { lvl: 1, track: 'free' }, /уже получена/);
+    await refuse(A, 'passClaim', { lvl: 3, track: 'free' }, /не пройдена/);
+    await refuse(A, 'passClaim', { lvl: 1, track: 'gold' }, /Золотую тропу/);
+    await refuse(A, 'passGold', {}, /гривен/);
+    A.data.grivna = Rules.PASS.GOLD;
+    await must(A, 'passGold'); eq(A.data.grivna, 0); ok(A.data.pass.gold);
+    await must(A, 'passClaim', { lvl: 1, track: 'gold' });
+    // вершина Золотой тропы — Знак Тропы
+    A.data.pass.pts = Rules.PASS.PER * Rules.PASS.LEVELS;
+    await must(A, 'passClaim', { lvl: 30, track: 'gold' }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'trail' } });
+    // новый сезон — тропа с нуля
+    A.data.pass.season = '1999-1';
+    await must(A, 'tick'); await must(A, 'spring', { poi: freeSpring(A, 93100) });
+    eq(A.data.pass.gold, false); ok(A.data.pass.season !== '1999-1', 'сезон сменился');
   });
 
   /* ---------- вывод ---------- */
