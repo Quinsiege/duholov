@@ -59,13 +59,15 @@ jobs:
         run: |
           out=$(DB=' "postgresql://postgres:[p@ss/w#rd]@aws-1-eu-west-1.pooler.supabase.com:5432/postgres" ' python3 tools/osm-import/dburl.py)
           test "$out" = 'postgresql://postgres.abc:p%40ss%2Fw%23rd@aws-1-eu-west-1.pooler.supabase.com:5432/postgres'
-          if DB='postgres' python3 tools/osm-import/dburl.py; then exit 1; fi
+          test "$(DB='p@ss w' POOLER_HOST=h python3 tools/osm-import/dburl.py 2>/dev/null)" = ''
+          test "$(DB='p@ss/w#rd' POOLER_HOST=h.pooler.supabase.com python3 tools/osm-import/dburl.py)" = 'postgresql://postgres.abc:p%40ss%2Fw%23rd@h.pooler.supabase.com:5432/postgres'
           if DB='postgresql://postgres.abc:[YOUR-PASSWORD]@h.pooler.supabase.com:5432/postgres' python3 tools/osm-import/dburl.py; then exit 1; fi
           echo 'Разбор строки подключения работает'
       - name: Загрузка в базу игры
         if: github.event_name != 'pull_request' && env.DB != ''
         env:
           PROJECT_REF: cthqhwjnhqomlhrlberb
+          POOLER_HOST: aws-1-eu-west-1.pooler.supabase.com
         run: |
           DB_URL=$(python3 tools/osm-import/dburl.py)
           echo "::add-mask::$DB_URL"
