@@ -52,15 +52,16 @@ const Treasury = {
         ${p.hot ? '<span class="pay-hot">Выгодно</span>' : p.bonus ? `<span class="pay-bonus">+${p.bonus}%</span>` : ''}
         <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, 'златник', 'златника', 'златников')}</small>
         <span class="pay-price">${U.fmtNum(p.rub)} ₽</span></button>`).join('')}</div>
-      <div class="q-note">Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.${this.waiting() ? ' <button class="linkish pay-recheck">Я оплатил — проверить</button>' : ''}</div>`;
+      <div class="q-note">Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa. <button class="linkish pay-offer">Оферта</button>${this.waiting() ? ' <button class="linkish pay-recheck">Я оплатил — проверить</button>' : ''}</div>`;
   },
   buy(id, info, onDone) {
     const p = Rules.PAY.find(x => x.id === id);
     const m = UI.modal({
-      title: 'Казна Ордена', cls: 'pay-modal',
+      title: 'Казна Ордена', cls: 'pay-modal pay-buy',
       html: `<div class="pay-sum">${Art.item('zlat')}<div><b>${U.fmtNum(p.zlat)} ${U.plural(p.zlat, 'златник', 'златника', 'златников')}</b><small>${p.bonus ? `с бонусом +${p.bonus}%` : 'набор'}</small></div><span>${U.fmtNum(p.rub)} ₽</span></div>
         ${info.receipt ? '<input type="email" class="pay-email" placeholder="Почта для чека" autocomplete="email" inputmode="email">' : ''}
-        <p class="pay-note">Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney или баланс телефона. После оплаты вернись в игру — златники придут сами.</p>`,
+        <p class="pay-note">Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney или баланс телефона. После оплаты вернись в игру — златники придут сами.</p>
+        <p class="pay-note">Оплачивая, ты принимаешь условия <button class="linkish pay-offer">публичной оферты</button>.</p>`,
       buttons: [{ label: 'Отмена' }, { label: `Оплатить ${U.fmtNum(p.rub)} ₽`, cls: 'primary', keep: true, fn: async () => {
         const email = info.receipt ? m.querySelector('.pay-email').value.trim() : '';
         if (m._busy) return;
@@ -74,7 +75,10 @@ const Treasury = {
         onDone && onDone();
       } }],
     });
+    m.querySelector('.pay-offer').onclick = () => this.offer();
   },
+  // Публичная оферта — экраном внутри игры (в приложении ссылка на свой сайт заменила бы игру)
+  offer() { UI.screen('Публичная оферта', '<iframe class="offer-frame" src="offer.html" title="Публичная оферта"></iframe>', 'offer-screen'); },
   // Итог оплаты: сервер спрашивает ЮKassa и начисляет оплаченное
   async check(force) {
     if (this.waiting() && Date.now() - this.waiting() > 3 * 86400000) this.setWaiting(false); // старше 3 дней — не ждём
@@ -146,6 +150,7 @@ const Shop = {
     box.addEventListener('click', async e => {
       const pk = e.target.closest('[data-pay]'); if (pk) { Treasury.buy(pk.dataset.pay, pay, render); return; }
       if (e.target.closest('.pay-recheck')) { await Treasury.check(true); render(); return; }
+      if (e.target.closest('.pay-offer')) { Treasury.offer(); return; }
       const x = e.target.closest('[data-ex]');
       if (x && !x.disabled) {
         const n = +x.dataset.ex, E = Rules.EXCHANGE;
