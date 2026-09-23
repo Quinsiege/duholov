@@ -11,7 +11,9 @@ if (/[?&](u|ref)=/.test(location.search)) history.replaceState(null, '', locatio
 
 window.addEventListener('load', () => {
   if (typeof L === 'undefined') {
-    document.body.appendChild(U.el(`<div class="fatal"><h2>Нет связи с Навью</h2><p>Не удалось загрузить карту. Проверь подключение к интернету.</p><button class="btn primary" onclick="location.reload()">Повторить</button></div>`));
+    const f = U.el(`<div class="fatal"><h2>Нет связи с Навью</h2><p>Не удалось загрузить карту. Проверь подключение к интернету.</p><button class="btn primary">Повторить</button></div>`);
+    f.querySelector("button").onclick = () => location.reload();
+    document.body.appendChild(f);
     return;
   }
 

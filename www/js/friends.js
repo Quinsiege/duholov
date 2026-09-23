@@ -217,7 +217,7 @@ const Friends = {
   showQR(title, code, shareText) {
     const m = UI.modal({
       title, cls: 'trade-modal',
-      html: `<div class="qr-box"><span class="small">Рисую QR-код…</span></div><textarea class="input code-text" readonly rows="3">${code}</textarea>`,
+      html: `<div class="qr-box"><span class="small">Рисую QR-код…</span></div><textarea class="input code-text" readonly rows="3">${U.esc(code)}</textarea>`,
       buttons: [
         { label: 'Копировать', keep: true, fn: w => Trade.copy(w.querySelector('.code-text')) },
         { label: 'Поделиться', cls: 'primary', keep: true, fn: () => this.shareText(shareText || code) },

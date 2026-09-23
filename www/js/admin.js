@@ -5,7 +5,8 @@
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dist = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
-const photoUrl = p => `${CLOUD_CONFIG.url}/storage/v1/object/public/poi-photos/${p}`;
+// путь снимка — только «<id игрока>/<id>.jpg» (заявку игрок пишет сам; иначе строка вырвалась бы из атрибута разметки)
+const photoUrl = p => /^[0-9a-f-]{36}\/[A-Za-z0-9-]{6,64}\.jpg$/.test(p || '') ? `${CLOUD_CONFIG.url}/storage/v1/object/public/poi-photos/${p}` : 'icons/icon-192.png';
 const KIND = { spring: 'Родник', shrine: 'Капище' };
 const REASONS = ['Объекта нет на фото или его не видно', 'Геометка не совпадает с местом объекта', 'Такой объект уже есть на карте',
   'Частная территория, школа или детский сад', 'Опасное место (дорога, стройка)', 'Неприемлемое содержание', 'Неинтересный объект'];

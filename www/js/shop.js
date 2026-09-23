@@ -70,8 +70,9 @@ const Treasury = {
           const r = await Game.pay('create', { pack: id, email });
           this.setWaiting(true);
           m.close();
+          if (!/^https:\/\/([a-z0-9-]+\.)*(yoomoney\.ru|yookassa\.ru)\//i.test(r.url || '')) throw new Error('Неверная ссылка на оплату');
           location.href = r.url; // в приложении откроется браузер, в браузере — страница оплаты
-        } catch (e) { UI.toast(e.message, 'bad'); } finally { m._busy = false; }
+        } catch (e) { UI.toast(U.esc(e.message), 'bad'); } finally { m._busy = false; }
         onDone && onDone();
       } }],
     });
@@ -97,7 +98,7 @@ const Treasury = {
       if (!s.open) this.setWaiting(false);
       else if (force) UI.toast('Оплата ещё не завершена — если ты оплатил, проверь через минуту');
       if (force && !s.paid && !s.open) UI.toast('Оплаченных наборов не найдено');
-    } catch (e) { if (force) UI.toast(e.message, 'bad'); }
+    } catch (e) { if (force) UI.toast(U.esc(e.message), 'bad'); }
     finally { this._checking = false; }
   },
 };

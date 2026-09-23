@@ -4,6 +4,7 @@
 
 const Cloud = {
   LIB: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
+  LIB_SRI: 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug', // проверка целостности: подменённый файл CDN не выполнится
   sb: null,
 
   // автотесты (браузер под управлением Playwright) на боевой сервер не ходят
@@ -15,7 +16,7 @@ const Cloud = {
     if (!window.supabase) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = this.LIB; s.onload = res; s.onerror = () => rej(new Error('Не удалось загрузить облачную библиотеку'));
+        s.src = this.LIB; s.integrity = this.LIB_SRI; s.crossOrigin = 'anonymous'; s.onload = res; s.onerror = () => rej(new Error('Не удалось загрузить облачную библиотеку'));
         document.head.appendChild(s);
       });
     }

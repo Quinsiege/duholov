@@ -69,7 +69,9 @@ const Poi = {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) out.push([x, y]);
     return out;
   },
-  photoUrl(path) { return path ? `${CLOUD_CONFIG.url}/storage/v1/object/public/poi-photos/${path}` : null; },
+  // путь снимка — только «<id игрока>/<id>.jpg»: иначе строка из базы могла бы вырваться из атрибута разметки
+  PHOTO: /^[0-9a-f-]{36}\/[A-Za-z0-9-]{6,64}\.jpg$/,
+  photoUrl(path) { return path && this.PHOTO.test(path) ? `${CLOUD_CONFIG.url}/storage/v1/object/public/poi-photos/${path}` : null; },
 
   // объекты в радиусе, с расстоянием
   near(lat, lng, r, kind) {

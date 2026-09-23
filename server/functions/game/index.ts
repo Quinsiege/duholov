@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.15.2';
+const APP_VERSION = '3.16.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -629,6 +629,8 @@ const U = {
     return entries[entries.length - 1][0];
   },
   uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); },
+  // Случайный код из криптостойкого генератора (коды посылок и комнат нельзя предсказать по уже виденным). 32 символа алфавита делят 256 — без перекоса
+  code(n, alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789') { const b = new Uint8Array(n); crypto.getRandomValues(b); return Array.from(b, x => alpha[x % alpha.length]).join(''); },
 
   /* Время игры. Сервер и телефон должны считать одинаково: «сейчас» — по часам сервера
      (U.skew — поправка телефона), «сегодня» и «ночь» — в часовом поясе игрока (U.tz, минуты к UTC). */
@@ -1339,7 +1341,7 @@ const S = {
         const n = it === 'charm' ? 3 : 1;
         if (this.addItem(it, n)) extra = ` и ${ITEMS[it].name.toLowerCase()} ×${n}`;
       }
-      Bus.emit('buddyFind', `Спутник «${sp.nick || s.name}» принёс 3 эссенции${extra}!`);
+      Bus.emit('buddyFind', `Спутник «${U.esc(sp.nick || s.name)}» принёс 3 эссенции${extra}!`);
     }
   },
   addEssence(fam, n) { this.d.essence[fam] = (this.d.essence[fam] || 0) + n; },
@@ -2009,7 +2011,7 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-me').innerHTML = Art.of(m.sp);
     st.$('.raid-me').classList.remove('swap'); void st.$('.raid-me').offsetWidth; st.$('.raid-me').classList.add('swap');
-    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${m.sp.nick || SP[m.sp.sid].name} <small>СИЛА ${m.power}</small>`;
+    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>СИЛА ${m.power}</small>`;
     st.$('.raid-team').innerHTML = st.team.map((x, i) => `<i class="${x.cur <= 0 ? 'dead' : i === st.idx ? 'on' : ''}"></i>`).join('');
   },
   dmg(att, def, power, attEl, defEl) {
@@ -2050,15 +2052,17 @@ const Raid = {
   },
   remoteState(hp, time) { // у гостя: состояние от хозяина
     const st = this.st; if (!st || st.over) return;
-    st.bossHp = Math.max(hp > 0 ? 1 : 0, Math.min(st.bossHp, hp));
-    st.time = time;
+    if (!Number.isFinite(+hp) || !Number.isFinite(+time)) return; // сообщение из открытого канала — только числа
+    st.bossHp = Math.max(+hp > 0 ? 1 : 0, Math.min(st.bossHp, +hp));
+    st.time = +time;
     this.render();
   },
   remoteEnd(win) { const st = this.st; if (st && !st.over) { clearTimeout(st._wait); this.finish(win); } },
   renderAllies(list) {
     const st = this.st; if (!st || !st.coop) return;
     const box = st.$('.raid-allies'); if (!box) return;
-    box.innerHTML = (list || []).map(a => `<span><i>${Art.avatar(a.look || undefined)}</i>${U.esc(a.name)} <b>${U.fmtNum(a.n)}</b></span>`).join('');
+    // список приходит по открытому каналу разлома — берём не больше 4 записей и только проверенные поля
+    box.innerHTML = (Array.isArray(list) ? list.slice(0, 4) : []).filter(a => a && typeof a === 'object').map(a => `<span><i>${Art.avatar(a.look)}</i>${U.esc(String(a.name || '').slice(0, 20))} <b>${U.fmtNum(+a.n || 0)}</b></span>`).join('');
   },
   fast(x, y) {
     const st = this.st;
@@ -2269,7 +2273,7 @@ const Duel = {
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Бросить вызов</button>`;
     const html = `
       <div class="shrine-view t${e.tier}">
-        ${e.photo ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
+        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
         <div class="rift-meta">Капище ${e.god}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}</div>
         ${who}
@@ -3010,7 +3014,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.14.0', // 3.14: гривны стали златниками — старый клиент показал бы пустой кошелёк
+  MIN_CLIENT: '3.16.0', // 3.16: защита от внедрения кода (CSP, проверка облика и путей снимков) — старые клиенты уязвимы
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -3043,7 +3047,7 @@ const GameCore = {
       this.need(actions.length, 'Пустой запрос');
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
       for (const a of actions) {
-        const h = this.H[a && a.type];
+        const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
         this.need(h, 'Неизвестное действие');
         if (!['newGame', 'load'].includes(a.type)) this.need(S.d, 'Прогресс не найден');
         ctx.results.push(await h.call(this, a.args || {}, ctx));
@@ -3052,7 +3056,8 @@ const GameCore = {
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
     } catch (e) {
-      if (e instanceof GameError) return { ok: false, error: e.message };
+      // при отказе сохраняются только счётчики частоты (rl): иначе неудачные попытки перебора не считались бы
+      if (e instanceof GameError) return { ok: false, error: e.message, rl: ctx.srv.rl || null };
       throw e;
     } finally {
       Bus.emit = saved.emit; S.save = saved.save; S.d = saved.d; U.tz = saved.tz; U.skew = saved.skew; Sky.w = saved.w; MapView.pos = saved.pos;
@@ -3207,7 +3212,7 @@ const GameCore = {
     const iv = (Array.isArray(x.iv) ? x.iv : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
     return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
-      purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? String(x.nick).slice(0, 16) : null };
+      purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? this.cleanText(x.nick, 16) || null : null };
   },
   // Приглашение: новичок по ссылке друга сразу в друзьях у него, оба получают подарки.
   // Пригласивший — подарком в «Друзья» (не больше INVITE_MAX за все приглашения, чтобы не накручивали).
@@ -3228,6 +3233,8 @@ const GameCore = {
   // Совместный разлом: участник комнаты и то, что видит телефон (без кодов игроков)
   ROOM_ALPHA: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
   // Облик — только из известных вариантов (он попадает в картинку у других игроков)
+  // Текст от игрока (имя, кличка духа): без управляющих символов и символов разметки, пробелы схлопнуты
+  cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>"'`&\\]/g, '').trim().replace(/\s+/g, ' ').slice(0, max); },
   safeLook(lk) {
     lk = lk || {};
     return LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
@@ -3263,7 +3270,7 @@ const GameCore = {
     },
     async newGame(a, ctx) {
       this.need(!S.d, 'Прогресс уже есть');
-      const name = String(a.name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
+      const name = this.cleanText(a.name, 16);
       this.need(name.length >= 1, 'Назови себя');
       this.need(this.STARTERS.includes(a.starter), 'Выбери первого духа');
       S.newGame(name, a.starter);
@@ -3490,7 +3497,7 @@ const GameCore = {
     /* ----- коллекция ----- */
     fav(a) { const sp = this.spirit(a.uid); sp.fav = !!a.on; return { ok: true }; },
     nick(a) {
-      const sp = this.spirit(a.uid), v = String(a.nick || '').trim().slice(0, 16);
+      const sp = this.spirit(a.uid), v = this.cleanText(a.nick, 16);
       sp.nick = v && v !== SP[sp.sid].name ? v : null;
       return { ok: true };
     },
@@ -3645,7 +3652,7 @@ const GameCore = {
       this.limit(ctx, 'room', 20, 3600000);
       const rift = { id: r.id, tier: r.tier, boss: r.boss, endsAt: r.endsAt, poi: p.id, lat: p.lat, lng: p.lng, place: p.name }; // как у разлома на карте
       for (let i = 0; i < 5; i++) {
-        const code = Array.from({ length: 5 }, () => this.ROOM_ALPHA[Math.floor(Math.random() * this.ROOM_ALPHA.length)]).join('');
+        const code = U.code(5, this.ROOM_ALPHA);
         const room = await ctx.env.roomCreate({ code, host_pid: S.d.pid, rift, members: [this.roomMember()] });
         if (room) return this.roomView(room);
       }
@@ -3988,7 +3995,7 @@ const GameCore = {
       this.need(S.d.spirits.length > 1, 'Нельзя отдать последнего духа');
       this.limit(ctx, 'trade', 20, 86400000);
       if (sp.amulet) S.unequip(sp); // амулет остаётся у хозяина
-      const code = Array.from({ length: 10 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+      const code = U.code(10);
       await ctx.env.tradeCreate(code, S.d.pid, S.d.name, { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 });
       S.d.spirits.splice(S.d.spirits.indexOf(sp), 1);
       if (S.d.buddy && S.d.buddy.uid === sp.uid) { S.d.buddy = null; Bus.emit('buddyChanged'); }
@@ -4002,12 +4009,13 @@ const GameCore = {
     async tradeReceive(a, ctx) {
       const m = String(a.code || '').toUpperCase().match(/DUH2\.([A-Z2-9]{10})/);
       this.need(m, /DUH1\./i.test(a.code || '') ? 'Это код старой версии игры — попроси друга упаковать духа заново' : 'Это не код посылки');
+      this.limit(ctx, 'tradeTry', 30, 3600000); // перебор кодов посылок
       const t = await ctx.env.tradeTake(m[1], S.d.pid);
       this.need(t, 'Посылка не найдена или её уже открыли');
       this.need(!t.own, 'Это твоя собственная посылка — отдай код другу');
       const p = t.spirit;
       this.need(SP[p.s], 'Посылка повреждена');
-      const sp = { uid: U.uid(), sid: p.s, lvl: Math.min(p.l, S.maxLvl()), iv: p.i, t: ctx.now, fav: false, nick: p.n || null, from: String(t.from_name || '').slice(0, 20) };
+      const sp = { uid: U.uid(), sid: p.s, lvl: Math.min(p.l, S.maxLvl()), iv: p.i, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null, from: this.cleanText(t.from_name, 20) };
       if (p.y) sp.shiny = true;
       if (p.d) sp.dark = true;
       if (p.p) sp.purified = true;
@@ -4025,6 +4033,7 @@ const GameCore = {
       const pid = String(a.pid || '');
       this.need(this.PID.test(pid), 'В коде ошибка');
       this.need(pid !== S.d.pid, 'Это твой собственный код дружбы');
+      this.limit(ctx, 'friendAdd', 30, 3600000); // перебор кодов дружбы
       const who = await ctx.env.player(pid);
       this.need(who, 'Ловчий с таким кодом не найден — пусть он обновит игру');
       let f = S.d.friends.find(x => x.id === pid), isNew = false;
@@ -4389,13 +4398,28 @@ function makeEnv(uid) {
   };
 }
 
+// Защита от перебора и наводнения запросами: не больше FLOOD запросов в минуту от одного игрока
+// и не больше BAD_TOKENS неверных входов в минуту с одного адреса (в пределах экземпляра функции)
+const FLOOD = 150, BAD_TOKENS = 20;
+const hits = new Map(), badTokens = new Map();
+const tooMany = (map, key, max) => {
+  const now = Date.now(), m = Math.floor(now / 60000);
+  const h = map.get(key);
+  if (!h || h.m !== m) { map.set(key, { m, n: 1 }); if (map.size > 20000) map.clear(); return false; }
+  return ++h.n > max;
+};
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+  const bad = badTokens.get(ip);
+  if (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS) return reply({ ok: false, error: 'Слишком много попыток — подожди минуту' }, 429);
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   const who = token ? (await db.auth.getUser(token)).data : null;
-  if (!who || !who.user) return reply({ ok: false, error: 'Нужен вход в игру', auth: true }, 401);
+  if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: 'Нужен вход в игру', auth: true }, 401); }
   const uid = who.user.id;
+  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: 'Слишком много запросов — подожди минуту' }, 429);
   let body;
   try { body = await req.json(); } catch { return reply({ ok: false, error: 'Некорректный запрос' }, 400); }
   if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: 'Вышла новая версия игры — обнови её' });
@@ -4409,7 +4433,10 @@ Deno.serve(async req => {
       if (row && row.moved_to) return reply({ ok: false, moved: true, error: 'Прогресс перенесён на другое устройство' });
       const srvRow = must(await db.from('save_srv').select('srv').eq('user_id', uid).maybeSingle());
       const res = await exclusive(() => GameCore.run(body, { data: row ? row.data : null, srv: srvRow ? srvRow.srv : {} }, env));
-      if (!res.ok) return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
+      if (!res.ok) {
+        if (res.rl) must(await db.from('save_srv').upsert({ user_id: uid, srv: { ...(srvRow ? srvRow.srv : {}), rl: res.rl }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
+        return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
+      }
 
       let rev = row ? row.rev : 0;
       if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });

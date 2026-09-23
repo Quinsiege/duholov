@@ -32,6 +32,8 @@ const U = {
     return entries[entries.length - 1][0];
   },
   uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); },
+  // Случайный код из криптостойкого генератора (коды посылок и комнат нельзя предсказать по уже виденным). 32 символа алфавита делят 256 — без перекоса
+  code(n, alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789') { const b = new Uint8Array(n); crypto.getRandomValues(b); return Array.from(b, x => alpha[x % alpha.length]).join(''); },
 
   /* Время игры. Сервер и телефон должны считать одинаково: «сейчас» — по часам сервера
      (U.skew — поправка телефона), «сегодня» и «ночь» — в часовом поясе игрока (U.tz, минуты к UTC). */

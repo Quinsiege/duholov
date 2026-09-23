@@ -8,7 +8,7 @@
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.14.0', // 3.14: гривны стали златниками — старый клиент показал бы пустой кошелёк
+  MIN_CLIENT: '3.16.0', // 3.16: защита от внедрения кода (CSP, проверка облика и путей снимков) — старые клиенты уязвимы
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -41,7 +41,7 @@ const GameCore = {
       this.need(actions.length, 'Пустой запрос');
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
       for (const a of actions) {
-        const h = this.H[a && a.type];
+        const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
         this.need(h, 'Неизвестное действие');
         if (!['newGame', 'load'].includes(a.type)) this.need(S.d, 'Прогресс не найден');
         ctx.results.push(await h.call(this, a.args || {}, ctx));
@@ -50,7 +50,8 @@ const GameCore = {
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
     } catch (e) {
-      if (e instanceof GameError) return { ok: false, error: e.message };
+      // при отказе сохраняются только счётчики частоты (rl): иначе неудачные попытки перебора не считались бы
+      if (e instanceof GameError) return { ok: false, error: e.message, rl: ctx.srv.rl || null };
       throw e;
     } finally {
       Bus.emit = saved.emit; S.save = saved.save; S.d = saved.d; U.tz = saved.tz; U.skew = saved.skew; Sky.w = saved.w; MapView.pos = saved.pos;
@@ -205,7 +206,7 @@ const GameCore = {
     const iv = (Array.isArray(x.iv) ? x.iv : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
     return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
-      purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? String(x.nick).slice(0, 16) : null };
+      purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? this.cleanText(x.nick, 16) || null : null };
   },
   // Приглашение: новичок по ссылке друга сразу в друзьях у него, оба получают подарки.
   // Пригласивший — подарком в «Друзья» (не больше INVITE_MAX за все приглашения, чтобы не накручивали).
@@ -226,6 +227,8 @@ const GameCore = {
   // Совместный разлом: участник комнаты и то, что видит телефон (без кодов игроков)
   ROOM_ALPHA: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
   // Облик — только из известных вариантов (он попадает в картинку у других игроков)
+  // Текст от игрока (имя, кличка духа): без управляющих символов и символов разметки, пробелы схлопнуты
+  cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>"'`&\\]/g, '').trim().replace(/\s+/g, ' ').slice(0, max); },
   safeLook(lk) {
     lk = lk || {};
     return LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
@@ -261,7 +264,7 @@ const GameCore = {
     },
     async newGame(a, ctx) {
       this.need(!S.d, 'Прогресс уже есть');
-      const name = String(a.name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
+      const name = this.cleanText(a.name, 16);
       this.need(name.length >= 1, 'Назови себя');
       this.need(this.STARTERS.includes(a.starter), 'Выбери первого духа');
       S.newGame(name, a.starter);
@@ -488,7 +491,7 @@ const GameCore = {
     /* ----- коллекция ----- */
     fav(a) { const sp = this.spirit(a.uid); sp.fav = !!a.on; return { ok: true }; },
     nick(a) {
-      const sp = this.spirit(a.uid), v = String(a.nick || '').trim().slice(0, 16);
+      const sp = this.spirit(a.uid), v = this.cleanText(a.nick, 16);
       sp.nick = v && v !== SP[sp.sid].name ? v : null;
       return { ok: true };
     },
@@ -643,7 +646,7 @@ const GameCore = {
       this.limit(ctx, 'room', 20, 3600000);
       const rift = { id: r.id, tier: r.tier, boss: r.boss, endsAt: r.endsAt, poi: p.id, lat: p.lat, lng: p.lng, place: p.name }; // как у разлома на карте
       for (let i = 0; i < 5; i++) {
-        const code = Array.from({ length: 5 }, () => this.ROOM_ALPHA[Math.floor(Math.random() * this.ROOM_ALPHA.length)]).join('');
+        const code = U.code(5, this.ROOM_ALPHA);
         const room = await ctx.env.roomCreate({ code, host_pid: S.d.pid, rift, members: [this.roomMember()] });
         if (room) return this.roomView(room);
       }
@@ -986,7 +989,7 @@ const GameCore = {
       this.need(S.d.spirits.length > 1, 'Нельзя отдать последнего духа');
       this.limit(ctx, 'trade', 20, 86400000);
       if (sp.amulet) S.unequip(sp); // амулет остаётся у хозяина
-      const code = Array.from({ length: 10 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+      const code = U.code(10);
       await ctx.env.tradeCreate(code, S.d.pid, S.d.name, { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 });
       S.d.spirits.splice(S.d.spirits.indexOf(sp), 1);
       if (S.d.buddy && S.d.buddy.uid === sp.uid) { S.d.buddy = null; Bus.emit('buddyChanged'); }
@@ -1000,12 +1003,13 @@ const GameCore = {
     async tradeReceive(a, ctx) {
       const m = String(a.code || '').toUpperCase().match(/DUH2\.([A-Z2-9]{10})/);
       this.need(m, /DUH1\./i.test(a.code || '') ? 'Это код старой версии игры — попроси друга упаковать духа заново' : 'Это не код посылки');
+      this.limit(ctx, 'tradeTry', 30, 3600000); // перебор кодов посылок
       const t = await ctx.env.tradeTake(m[1], S.d.pid);
       this.need(t, 'Посылка не найдена или её уже открыли');
       this.need(!t.own, 'Это твоя собственная посылка — отдай код другу');
       const p = t.spirit;
       this.need(SP[p.s], 'Посылка повреждена');
-      const sp = { uid: U.uid(), sid: p.s, lvl: Math.min(p.l, S.maxLvl()), iv: p.i, t: ctx.now, fav: false, nick: p.n || null, from: String(t.from_name || '').slice(0, 20) };
+      const sp = { uid: U.uid(), sid: p.s, lvl: Math.min(p.l, S.maxLvl()), iv: p.i, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null, from: this.cleanText(t.from_name, 20) };
       if (p.y) sp.shiny = true;
       if (p.d) sp.dark = true;
       if (p.p) sp.purified = true;
@@ -1023,6 +1027,7 @@ const GameCore = {
       const pid = String(a.pid || '');
       this.need(this.PID.test(pid), 'В коде ошибка');
       this.need(pid !== S.d.pid, 'Это твой собственный код дружбы');
+      this.limit(ctx, 'friendAdd', 30, 3600000); // перебор кодов дружбы
       const who = await ctx.env.player(pid);
       this.need(who, 'Ловчий с таким кодом не найден — пусть он обновит игру');
       let f = S.d.friends.find(x => x.id === pid), isNew = false;

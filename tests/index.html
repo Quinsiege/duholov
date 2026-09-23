@@ -166,7 +166,9 @@
     ok(n.every(p => p.d <= 500), 'радиус');
     const nr = Poi.nearest(fakePois[5].lat, fakePois[5].lng, 5);
     eq(nr && nr.id, fakePois[5].id, 'ближайший');
-    ok(Poi.photoUrl('a/b.jpg').endsWith('/storage/v1/object/public/poi-photos/a/b.jpg'), 'адрес фото');
+    const good = '0b9f1c2e-1111-4a4a-9b9b-123456789abc/5f0c7d2a-2222-4b4b-8c8c-abcdefabcdef.jpg';
+    ok(Poi.photoUrl(good).endsWith('/storage/v1/object/public/poi-photos/' + good), 'адрес фото');
+    eq(Poi.photoUrl("x/a.jpg')\"><img src=x onerror=alert(1)>"), null, 'чужая строка вместо пути — отбрасывается');
   });
   test('Места из OpenStreetMap: отбор, названия, разрежение', () => {
     const els = [
@@ -434,6 +436,7 @@
   });
   async function call(who, type, args = {}) {
     const res = await GameCore.run({ a: [{ type, args }], tz: 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: APP_VERSION }, { data: who.data, srv: who.srv }, envFor(who));
+    if (!res.ok && res.rl) who.srv = { ...who.srv, rl: res.rl }; // как на сервере: счётчики частоты сохраняются и при отказе
     if (res.ok) {
       who.data = res.data; who.srv = res.srv;
       if (res.data) DB.saves[who.uid] = res.data; else delete DB.saves[who.uid];
@@ -931,6 +934,28 @@
     // старые сохранения: гривны переходят в златники один к одному
     A.data.grivna = 77; A.data.zlat = 3;
     await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
+  });
+  atest('Безопасность: облик, имена, служебные действия, коды, перебор', async () => {
+    // облик от другого игрока не вырывается из атрибута SVG
+    const bad = Art.avatar({ cloak: '#fff"/><script>alert(1)<\/script>', eyes: 'red" onload="x', emblem: '__proto__' });
+    ok(!/script|onload|__proto__/.test(bad), 'в облике только проверенные цвета');
+    ok(Art.avatar({ cloak: '#0c4a6e', eyes: '#5eead4', emblem: 'charm' }).includes('#0c4a6e'), 'свой цвет плаща сохраняется');
+    // имена и клички на сервере — без символов разметки
+    eq(GameCore.cleanText('  <img src=x onerror="a">Вася  ', 40), 'img src=x onerror=aВася', 'разметка вычищена');
+    eq(GameCore.cleanText('Ёжик   в\nтумане', 16), 'Ёжик в тумане');
+    const A = await newPlayer('vn', 55.49, 37.37, '<b>Хакер</b>');
+    eq(A.data.name, 'bХакер/b', 'имя без разметки');
+    await must(A, 'nick', { uid: A.data.spirits[0].uid, nick: '<svg onload=1>' }); ok(!/[<>]/.test(A.data.spirits[0].nick), 'кличка без разметки');
+    // служебные поля объекта не вызываются как действия
+    for (const type of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) await refuse(A, type, {}, /Неизвестное действие/);
+    // коды — из криптостойкого генератора, нужной длины и алфавита
+    const codes = new Set(Array.from({ length: 200 }, () => U.code(10)));
+    eq(codes.size, 200, 'коды не повторяются'); ok([...codes].every(c => /^[A-HJ-NP-Z2-9]{10}$/.test(c)), 'алфавит без похожих символов');
+    // перебор кодов посылок и дружбы ограничен
+    for (let i = 0; i < 30; i++) await refuse(A, 'tradeReceive', { code: 'DUH2.' + U.code(10) }, /не найдена/);
+    await refuse(A, 'tradeReceive', { code: 'DUH2.' + U.code(10) }, /часто/);
+    for (let i = 0; i < 30; i++) await refuse(A, 'friendAdd', { pid: 'zz' + U.code(12).toLowerCase() }, /не найден/);
+    await refuse(A, 'friendAdd', { pid: 'zz' + U.code(12).toLowerCase() }, /часто/);
   });
   atest('Оферта: наборы и цены совпадают с Казной (Rules.PAY)', async () => {
     const html = await fetch('../www/offer.html?t=' + Date.now()).then(r => r.text());

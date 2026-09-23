@@ -188,7 +188,7 @@ const S = {
         const n = it === 'charm' ? 3 : 1;
         if (this.addItem(it, n)) extra = ` и ${ITEMS[it].name.toLowerCase()} ×${n}`;
       }
-      Bus.emit('buddyFind', `Спутник «${sp.nick || s.name}» принёс 3 эссенции${extra}!`);
+      Bus.emit('buddyFind', `Спутник «${U.esc(sp.nick || s.name)}» принёс 3 эссенции${extra}!`);
     }
   },
   addEssence(fam, n) { this.d.essence[fam] = (this.d.essence[fam] || 0) + n; },
