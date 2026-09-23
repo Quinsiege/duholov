@@ -647,8 +647,34 @@ const GameCore = {
       const ok = await ctx.env.holdDefend(p.id, p.lat, p.lng, S.d.clan, { pid: S.d.pid, name: S.d.name, sp: this.cleanSpirit(sp, 0), t: ctx.now });
       this.need(ok, 'Капище только что изменилось — открой его заново');
       S.d.stats.defends = (S.d.stats.defends || 0) + 1;
+      S.d.guards.push({ id: p.id, name: String(p.name || 'Капище').slice(0, 80), sid: sp.sid, t: ctx.now });
       J.add('defend', { name: p.name, sid: sp.sid });
       return { ok: true, clan: S.d.clan };
+    },
+    // Мои защитники: где стоят; кого прогнали — вернулись домой с искрами за время на посту
+    async myGuards(a, ctx) {
+      if (!S.d.clan) return { list: [], back: [], got: [] };
+      const list = await ctx.env.myHoldsList(S.d.pid);
+      const standing = new Set(list.map(x => x.id)), back = [];
+      S.d.guards = S.d.guards.filter(g => {
+        if (standing.has(g.id)) return true;
+        back.push({ ...g, hours: Math.round(Math.max(0, ctx.now - g.t) / 360000) / 10 });
+        return false;
+      });
+      // защитники, поставленные до 3.6, — тоже в список
+      list.forEach(x => { if (!S.d.guards.some(g => g.id === x.id)) S.d.guards.push({ id: x.id, name: x.name, sid: x.sid, t: x.t || ctx.now }); });
+      let got = [];
+      if (back.length) {
+        got = S.giveRewards({ sparks: back.reduce((s, g) => s + Rules.guardPay(g.hours), 0) });
+        back.forEach(g => J.add('guardBack', { name: g.name, sid: g.sid, hours: g.hours }));
+      }
+      return { list, back, got };
+    },
+    // Сколько Капищ держит каждая дружина: по всей России и в округе ~5 км
+    async clanStats(a, ctx) {
+      const p = ctx.pos;
+      const box = p ? [p.lat - 0.045, p.lng - 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)), p.lat + 0.045, p.lng + 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180))] : null;
+      return { all: await ctx.env.clanCounts(null), near: box ? await ctx.env.clanCounts(box) : null };
     },
     // Дань: раз в день — за каждое Капище, где стоит мой защитник
     async tribute(a, ctx) {

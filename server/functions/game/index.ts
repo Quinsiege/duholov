@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.5.0';
+const APP_VERSION = '3.6.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1089,6 +1089,7 @@ const S = {
     d.stats.orderPts = d.stats.orderPts || 0;
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
+    d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     if (!d.pid) d.pid = U.uid() + U.uid();
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
     d.stats.byEl = d.stats.byEl || {};
@@ -1528,6 +1529,7 @@ const J = {
       case 'friend': return { ico: glyph('♥', 'pink'), title: `Новый друг: ${e.name}`, sub: '' };
       case 'spar': return { ico: glyph('⚔'), title: `Победа в поединке с другом`, sub: e.name || '' };
       case 'clan': return { ico: glyph('⚑', 'gold'), title: `Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : 'дружина'}`, sub: '' };
+      case 'guardBack': return { ico: icon(e.sid), title: 'Защитник вернулся с Капища', sub: `${e.name || ''} · стоял ${e.hours} ч` };
       case 'defend': return { ico: icon(e.sid), title: `Защитник на Капище`, sub: e.name || '' };
       case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
@@ -2683,6 +2685,8 @@ const Rules = {
       + d('hatched') * (ev.km ? 6 : 3)
       + km * (ev.km ? 2 : 1);
   },
+  // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
+  guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
   ORDER_RULES: [
     ['Поимка духа', 1], ['Родник', 1], ['500 м пути', 1], ['Кокон', 3], ['Победа в капище', 3], ['Вторжение', 3], ['Разлом', 5],
   ],
@@ -3436,8 +3440,34 @@ const GameCore = {
       const ok = await ctx.env.holdDefend(p.id, p.lat, p.lng, S.d.clan, { pid: S.d.pid, name: S.d.name, sp: this.cleanSpirit(sp, 0), t: ctx.now });
       this.need(ok, 'Капище только что изменилось — открой его заново');
       S.d.stats.defends = (S.d.stats.defends || 0) + 1;
+      S.d.guards.push({ id: p.id, name: String(p.name || 'Капище').slice(0, 80), sid: sp.sid, t: ctx.now });
       J.add('defend', { name: p.name, sid: sp.sid });
       return { ok: true, clan: S.d.clan };
+    },
+    // Мои защитники: где стоят; кого прогнали — вернулись домой с искрами за время на посту
+    async myGuards(a, ctx) {
+      if (!S.d.clan) return { list: [], back: [], got: [] };
+      const list = await ctx.env.myHoldsList(S.d.pid);
+      const standing = new Set(list.map(x => x.id)), back = [];
+      S.d.guards = S.d.guards.filter(g => {
+        if (standing.has(g.id)) return true;
+        back.push({ ...g, hours: Math.round(Math.max(0, ctx.now - g.t) / 360000) / 10 });
+        return false;
+      });
+      // защитники, поставленные до 3.6, — тоже в список
+      list.forEach(x => { if (!S.d.guards.some(g => g.id === x.id)) S.d.guards.push({ id: x.id, name: x.name, sid: x.sid, t: x.t || ctx.now }); });
+      let got = [];
+      if (back.length) {
+        got = S.giveRewards({ sparks: back.reduce((s, g) => s + Rules.guardPay(g.hours), 0) });
+        back.forEach(g => J.add('guardBack', { name: g.name, sid: g.sid, hours: g.hours }));
+      }
+      return { list, back, got };
+    },
+    // Сколько Капищ держит каждая дружина: по всей России и в округе ~5 км
+    async clanStats(a, ctx) {
+      const p = ctx.pos;
+      const box = p ? [p.lat - 0.045, p.lng - 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)), p.lat + 0.045, p.lng + 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180))] : null;
+      return { all: await ctx.env.clanCounts(null), near: box ? await ctx.env.clanCounts(box) : null };
     },
     // Дань: раз в день — за каждое Капище, где стоит мой защитник
     async tribute(a, ctx) {
@@ -3793,6 +3823,29 @@ function makeEnv(uid) {
       const { count, error } = await db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).contains('holders', JSON.stringify([{ pid }]));
       if (error) throw new Error(error.message);
       return count || 0;
+    },
+    // Капища, где стоят защитники игрока: название — из таблицы мест
+    async myHoldsList(pid) {
+      const rows = must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(HOLD_MY_MAX + 5)) || [];
+      const ids = rows.map(r => r.poi_id);
+      const names = ids.length ? must(await db.from('pois').select('id, name').in('id', ids)) || [] : [];
+      return rows.map(r => {
+        const h = (r.holders || []).find(x => x.pid === pid) || {};
+        const p = names.find(x => x.id === r.poi_id);
+        return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
+      });
+    },
+    // Сколько Капищ держит каждая дружина (во всей стране или в прямоугольнике [s, w, n, e])
+    async clanCounts(box) {
+      const out = {};
+      for (const k of Object.keys(CLANS)) {
+        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).eq('clan', k).neq('holders', '[]');
+        if (box) q = q.gte('lat', box[0]).lte('lat', box[2]).gte('lng', box[1]).lte('lng', box[3]);
+        const { count, error } = await q;
+        if (error) throw new Error(error.message);
+        out[k] = count || 0;
+      }
+      return out;
     },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));

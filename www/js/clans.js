@@ -83,6 +83,67 @@ const Clans = {
     });
   },
 
+  // Не вернулись ли защитники (их прогнали соперники) — раз в несколько минут
+  async checkGuards(force) {
+    if (!S.d || !S.d.clan || this._guards || (!force && Date.now() - (this._gt || 0) < 4 * 60000)) return this.guards;
+    this._guards = true; this._gt = Date.now();
+    try {
+      const r = await Game.act('myGuards');
+      this.guards = r.list;
+      if (r.back.length) {
+        Sfx.play('miss');
+        const names = r.back.map(g => `«${U.esc(g.name)}»`).join(', ');
+        UI.toast(`${r.back.length > 1 ? 'Защитники вернулись' : 'Защитник вернулся'} с ${names}: соперники победили. За службу: ${r.got.map(x => `${x.label} +${x.n}`).join(', ')}`);
+        this.refresh(true);
+      }
+    } catch (e) { /* позже */ }
+    this._guards = false;
+    return this.guards;
+  },
+
+  // Экран дружины: мои защитники и сколько Капищ у каждой дружины
+  async screen() {
+    if (!S.d.clan) { this.choose(() => this.screen()); return; }
+    const c = CLANS[S.d.clan];
+    const scr = UI.screen('Дружина', `<div class="clan-view" style="--cc:${c.color}">
+        <div class="clan-head"><i></i><div><b>${c.name}</b><small>${c.motto}</small></div></div>
+        <div class="clan-body"><div class="empty">Узнаём, как дела у дружин…</div></div>
+      </div>`, 'clan-screen');
+    let stats = null;
+    const [guards] = await Promise.all([this.checkGuards(true), Game.act('clanStats').then(r => { stats = r; }).catch(() => {})]);
+    if (!scr.isConnected) return;
+    const pos = MapView.pos, list = guards || [];
+    const bars = (counts, title) => {
+      if (!counts) return '';
+      const max = Math.max(1, ...Object.values(counts));
+      return `<div class="clan-stat"><div class="o-sub">${title}</div>${Object.entries(CLANS).map(([k, x]) => `
+        <div class="clan-row ${k === S.d.clan ? 'mine' : ''}" style="--cc:${x.color}"><span>${x.short}</span><div class="clan-bar"><i style="width:${counts[k] / max * 100}%"></i></div><b>${U.fmtNum(counts[k] || 0)}</b></div>`).join('')}</div>`;
+    };
+    const guardRow = g => {
+      const d = pos ? U.dist(pos.lat, pos.lng, g.lat, g.lng) : null;
+      const h = g.t ? Math.max(0, (U.now() - g.t) / 3600000) : 0;
+      return `<div class="row guard-row" data-id="${U.esc(g.id)}"><div class="row-ico">${g.sp && SP[g.sp.sid] ? Art.imgOf(g.sp) : ''}</div>
+        <div class="row-main"><b>${U.esc(g.name)}</b><small>на посту ${h < 1 ? 'меньше часа' : `${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small></div>
+        <button class="btn small ghost show-guard">Показать</button></div>`;
+    };
+    scr.querySelector('.clan-body').innerHTML = `
+      ${bars(stats && stats.near, 'Капища рядом (≈5 км)')}
+      ${bars(stats && stats.all, 'Капища по всей России')}
+      <h3 class="prof-h">Мои защитники <small>${list.length} из ${HOLD_MY_MAX}</small></h3>
+      <div class="list">${list.map(guardRow).join('') || '<div class="row"><div class="row-main"><small>Пока нигде. Победи на Капище и поставь защитника — каждый день будет приходить дань.</small></div></div>'}</div>
+      <div class="q-note">Дань — ✦ ${TRIBUTE.sparks} и оберег в день за каждое Капище с твоим защитником. Если соперники его победят, защитник вернётся с искрами за время на посту.</div>`;
+    scr.querySelector('.clan-body').addEventListener('click', e => {
+      const row = e.target.closest('.guard-row');
+      if (!row || !e.target.closest('.show-guard')) return;
+      const g = list.find(x => x.id === row.dataset.id);
+      if (!g) return;
+      UI.closeScreen(scr);
+      for (let i = 0; i < 5 && UI.blocking(); i++) UI.back(); // закрыть профиль и меню — к карте
+      MapView.track({ id: g.id, type: 'shrine', lat: g.lat, lng: g.lng, name: g.name });
+      UI.toast(`Следопыт ведёт к Капищу «${U.esc(g.name)}»`);
+    });
+  },
+
   // Дань с Капищ — раз в день, вместе с наградой за серию дней
   async tribute() {
     if (!S.d || !S.d.clan || S.d.tributeDay === U.today() || this._tribute) return;

@@ -33,6 +33,7 @@ const S = {
     d.stats.orderPts = d.stats.orderPts || 0;
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
+    d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     if (!d.pid) d.pid = U.uid() + U.uid();
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
     d.stats.byEl = d.stats.byEl || {};

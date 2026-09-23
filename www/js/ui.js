@@ -728,7 +728,7 @@ const UI = {
         <div class="prof-btns"><button class="btn small ghost look-btn">Изменить облик</button><button class="btn small ghost journal-btn">Дневник</button></div>
         <div class="prof-name">${U.esc(d.name)}</div>
         <div class="prof-rank">${this.rank(d.level)} Ордена Оберега · уровень ${d.level}</div>
-        ${d.clan ? `<div class="prof-clan">${Clans.badge(d.clan)} <small>защитников поставлено: ${d.stats.defends || 0} · Капищ освобождено: ${d.stats.freed || 0}</small></div>`
+        ${d.clan ? `<div class="prof-clan">${Clans.badge(d.clan)} <button class="btn small ghost clan-open">Дружина</button><small>защитников поставлено: ${d.stats.defends || 0} · Капищ освобождено: ${d.stats.freed || 0}</small></div>`
           : d.level >= CLAN_LEVEL ? '<button class="btn small primary clan-btn">Выбрать дружину</button>' : ''}
         <div class="pbar big"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
         <small>${d.level >= MAX_LEVEL ? 'Максимальный уровень' : `${U.fmtNum(d.xp - cur)} / ${U.fmtNum(next - cur)} опыта до ${d.level + 1} уровня`}</small>
@@ -759,6 +759,7 @@ const UI = {
     scr.addEventListener('click', e => {
       if (e.target.closest('.journal-btn')) { J.screen(); return; }
       if (e.target.closest('.clan-btn')) { Clans.choose(() => { this.closeScreen(scr); this.profile(); }); return; }
+      if (e.target.closest('.clan-open')) { Clans.screen(); return; }
       if (e.target.closest('.look-btn')) {
         this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); this.refreshHud(); });
         return;
