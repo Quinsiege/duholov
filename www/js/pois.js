@@ -1,36 +1,52 @@
 'use strict';
 /* Реальные объекты на карте: Родники и Капища стоят у настоящих мест.
-   Источники: OpenStreetMap (памятники, храмы, фонтаны, арт-объекты, парки…) и заявки игроков,
-   одобренные модерацией. Сервер отдаёт объекты квадратами 0.01° × 0.01° (≈ 1 км), ближние — первыми;
-   на телефоне хранится кэш, чтобы карта открывалась сразу. */
+   1) OpenStreetMap: памятники, храмы, фонтаны, арт-объекты, парки… Телефон сам запрашивает их у Overpass API
+      квадратами 0.01° × 0.01° (≈ 1 км), ближние — первыми, и хранит неделю (см. osm.js).
+   2) Сервер игры (таблица pois): места, предложенные игроками и одобренные модерацией,
+      а также правки модераторов к объектам OSM (скрыть, переименовать, сменить тип). */
 
 const Poi = {
   TILE: 0.01,
-  KEY: 'duholov.pois.v2',
+  KEY: 'duholov.pois.v3',
   LOAD_R: 1200,             // вокруг игрока держим объекты в этом радиусе, м
-  TTL: 6 * 3600000,         // как часто перепроверять квадрат
-  RETRY: 2 * 60000,         // повтор, если OpenStreetMap не ответил
+  OSM_TTL: 7 * 86400000,    // данные OSM обновляются раз в неделю
+  SRV_TTL: 20 * 60000,      // заявки игроков и правки модераторов — каждые 20 минут
+  RETRY: 2 * 60000,         // повтор, если сервер не ответил
   CACHE_R: 6000,            // что хранить в кэше на телефоне, м
-  list: new Map(),          // id → { id, name, kind, cat, lat, lng, photo, t }
-  tiles: {},                // «x:y» → когда загружен (или когда повторить)
+  osm: {},                  // «x:y» → { t, items }
+  srv: {},                  // «x:y» → { t, items }
+  list: new Map(),          // итог: id → { id, name, kind, cat, lat, lng, photo, t }
   busy: false,
 
   init() {
     try {
-      localStorage.removeItem('duholov.pois.v1'); // кэш версии с квадратами 0.02°
+      ['duholov.pois.v1', 'duholov.pois.v2'].forEach(k => localStorage.removeItem(k));
       const c = JSON.parse(localStorage.getItem(this.KEY));
-      if (c && c.v === 2) { this.tiles = c.tiles || {}; (c.pois || []).forEach(p => { p.t = this.tileId(p.lat, p.lng); this.list.set(p.id, p); }); }
+      if (c && c.v === 3) { this.osm = c.osm || {}; this.srv = c.srv || {}; }
     } catch (e) {}
+    this.rebuild();
     setInterval(() => this.ensure(), 15000);
   },
   persist() {
     const pos = MapView.pos;
-    const pois = [...this.list.values()].filter(p => !pos || U.dist(pos.lat, pos.lng, p.lat, p.lng) < this.CACHE_R)
-      .map(({ id, name, kind, cat, lat, lng, photo }) => ({ id, name, kind, cat, lat, lng, photo }));
-    const tiles = {};
-    for (const [k, t] of Object.entries(this.tiles)) if (Date.now() - t < 7 * 86400000) tiles[k] = t;
-    this.tiles = tiles;
-    try { localStorage.setItem(this.KEY, JSON.stringify({ v: 2, tiles, pois })); } catch (e) {}
+    const keep = obj => {
+      const out = {};
+      for (const [k, v] of Object.entries(obj)) {
+        const [x, y] = k.split(':').map(Number);
+        if (!pos || U.dist(pos.lat, pos.lng, (y + 0.5) * this.TILE, (x + 0.5) * this.TILE) < this.CACHE_R) out[k] = v;
+      }
+      return out;
+    };
+    this.osm = keep(this.osm); this.srv = keep(this.srv);
+    try { localStorage.setItem(this.KEY, JSON.stringify({ v: 3, osm: this.osm, srv: this.srv })); } catch (e) {}
+  },
+  // OSM + правки модераторов + места игроков → один список
+  rebuild() {
+    const m = new Map();
+    for (const tile of Object.values(this.osm)) (tile.items || []).forEach(p => m.set(p.id, p));
+    for (const tile of Object.values(this.srv)) (tile.items || []).forEach(p => { if (p.active === false) m.delete(p.id); else m.set(p.id, p); });
+    for (const p of m.values()) p.t = this.tileId(p.lat, p.lng);
+    this.list = m;
   },
 
   tileXY(lat, lng) { return [Math.floor(lng / this.TILE), Math.floor(lat / this.TILE)]; },
@@ -57,65 +73,68 @@ const Poi = {
   },
   nearest(lat, lng, r = 100) { return this.near(lat, lng, r).sort((a, b) => a.d - b.d)[0] || null; },
 
-  // Подгрузить недостающие квадраты вокруг игрока: по одному, начиная с ближайшего
+  stale(store, id, ttl) { const t = store[id]; return !t || Date.now() - t.t > (t.fail ? this.RETRY : ttl); },
+
+  // Подгрузить недостающие квадраты вокруг игрока
   async ensure() {
-    if (this.busy || !MapView.pos || !Cloud.configured()) return;
+    if (this.busy || !MapView.pos) return;
     const { lat, lng } = MapView.pos, [cx, cy] = this.tileXY(lat, lng);
-    let need = this.tilesAround(lat, lng, this.LOAD_R)
-      .filter(([x, y]) => Date.now() - (this.tiles[`${x}:${y}`] || 0) > this.TTL)
-      .sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy))
-      .slice(0, 30);
-    if (!need.length) return;
+    const around = this.tilesAround(lat, lng, this.LOAD_R)
+      .sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
+    const needSrv = Cloud.configured() ? around.filter(t => this.stale(this.srv, t.join(':'), this.SRV_TTL)) : [];
+    const needOsm = around.filter(t => this.stale(this.osm, t.join(':'), this.OSM_TTL));
+    if (!needSrv.length && !needOsm.length) return;
     this.busy = true;
-    if (!this.near(lat, lng, this.LOAD_R).length && !this._hinted) {
+    if (!this.near(lat, lng, this.LOAD_R).length && !this._hinted && needOsm.length) {
       this._hinted = true;
       UI.toast('Ищу настоящие места вокруг — Родники и Капища появятся через несколько секунд');
     }
-    try {
-      const sb = await Cloud.client();
-      for (let round = 0; round < 40 && need.length; round++) {
-        const { data, error } = await sb.functions.invoke('poi-tiles', { body: { tiles: need } });
-        if (error) throw new Error(error.message);
-        const ready = data.ready.map(id => id.split(':').map(Number));
-        if (ready.length) await this.pull(sb, ready);
-        const now = Date.now();
-        data.ready.forEach(id => { this.tiles[id] = now; });
-        data.failed.forEach(id => { this.tiles[id] = now - this.TTL + this.RETRY; });
-        need = need.filter(([x, y]) => data.pending.includes(`${x}:${y}`));
-        this.persist();
-        MapView.refresh();
-        // ушли далеко — начнём заново от новой точки
-        if (MapView.pos && this.tileId(MapView.pos.lat, MapView.pos.lng) !== `${cx}:${cy}`) break;
-      }
-      this.checkSupply();
-    } catch (e) {
-      console.warn('Объекты карты:', e.message);
-      need.forEach(([x, y]) => { const id = `${x}:${y}`; this.tiles[id] = Math.max(this.tiles[id] || 0, Date.now() - this.TTL + this.RETRY); });
+    // 1) сервер игры: одним запросом на все квадраты
+    if (needSrv.length) {
+      try { await this.pullServer(needSrv); }
+      catch (e) { console.warn('Места игроков:', e.message); needSrv.forEach(t => { this.srv[t.join(':')] = { t: Date.now(), fail: true, items: (this.srv[t.join(':')] || {}).items || [] }; }); }
+      this.rebuild(); MapView.refresh();
     }
+    // 2) OpenStreetMap: по одному квадрату, начиная с ближнего
+    for (const [x, y] of needOsm) {
+      const id = `${x}:${y}`;
+      try {
+        const items = await Osm.fetch(y * this.TILE, x * this.TILE, (y + 1) * this.TILE, (x + 1) * this.TILE);
+        this.osm[id] = { t: Date.now(), items };
+      } catch (e) {
+        console.warn('OpenStreetMap:', e.message);
+        this.osm[id] = { t: Date.now(), fail: true, items: (this.osm[id] || {}).items || [] };
+        break; // серверы OSM перегружены — попробуем позже
+      }
+      this.rebuild(); MapView.refresh();
+      if (MapView.pos && this.tileId(MapView.pos.lat, MapView.pos.lng) !== `${cx}:${cy}`) break; // ушли — начнём от новой точки
+    }
+    this.persist();
     this.busy = false;
+    this.checkSupply();
   },
-  // прочитать объекты готовых квадратов с сервера
-  async pull(sb, tiles) {
-    const ids = new Set(tiles.map(t => t.join(':')));
+  async pullServer(tiles) {
+    const sb = await Cloud.client();
     const xs = tiles.map(t => t[0]), ys = tiles.map(t => t[1]);
     const s = Math.min(...ys) * this.TILE, n = (Math.max(...ys) + 1) * this.TILE;
     const w = Math.min(...xs) * this.TILE, e = (Math.max(...xs) + 1) * this.TILE;
     const rows = [];
     for (let from = 0; from < 20000; from += 1000) {
-      const { data, error } = await sb.from('pois').select('id, name, kind, cat, lat, lng, photo')
+      const { data, error } = await sb.from('pois').select('id, name, kind, cat, lat, lng, photo, active')
         .gte('lat', s).lt('lat', n).gte('lng', w).lt('lng', e).order('id').range(from, from + 999);
       if (error) throw new Error(error.message);
       rows.push(...data);
       if (data.length < 1000) break;
     }
-    for (const [id, p] of this.list) if (ids.has(p.t)) this.list.delete(id);
-    rows.forEach(p => { p.t = this.tileId(p.lat, p.lng); if (ids.has(p.t)) this.list.set(p.id, p); });
+    const now = Date.now();
+    tiles.forEach(t => { this.srv[t.join(':')] = { t: now, items: [] }; });
+    rows.forEach(p => { const k = this.tileId(p.lat, p.lng); if (this.srv[k]) this.srv[k].items.push(p); });
   },
 
   // Если в округе совсем нет Родников — раз в сутки Орден присылает посылку, чтобы было чем ловить
   checkSupply() {
     const { lat, lng } = MapView.pos;
-    const loaded = this.tilesAround(lat, lng, 1000).every(([x, y]) => Date.now() - (this.tiles[`${x}:${y}`] || 0) < this.TTL - this.RETRY);
+    const loaded = this.tilesAround(lat, lng, 1000).every(([x, y]) => { const o = this.osm[`${x}:${y}`]; return o && !o.fail; });
     if (!loaded || this.near(lat, lng, 1000, 'spring').length || S.d.supplyDay === U.today()) return;
     S.d.supplyDay = U.today();
     const got = S.giveRewards({ charm: 15, honey: 2, water: 1 });

@@ -125,7 +125,7 @@ const Propose = {
     c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
     for (const q of [0.85, 0.72, 0.6]) {
       const b = await new Promise(r => c.toBlob(r, 'image/jpeg', q));
-      const out = new Blob([Exif.embed(await b.arrayBuffer(), fix)], { type: 'image/jpeg' });
+      const out = new Blob([Exif.embed(await b.arrayBuffer(), { lat: fix.lat, lng: fix.lng, acc: fix.acc, time: fix.t })], { type: 'image/jpeg' });
       if (out.size < 950000) return out;
     }
     throw new Error('Слишком большой снимок');

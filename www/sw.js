@@ -7,7 +7,7 @@ const CORE = [
   './', './index.html', './manifest.webmanifest', './css/style.css',
   './js/version.js', './js/config.js', './js/data.js', './js/util.js', './js/art.js', './js/state.js', './js/events.js', './js/sky.js', './js/music.js', './js/world.js',
   './js/map.js', './js/encounter.js', './js/raid.js', './js/duel.js', './js/trade.js', './js/tutorial.js', './js/album.js', './js/league.js',
-  './js/journal.js', './js/friends.js', './js/coop.js', './js/cloud.js', './js/sync.js', './js/exif.js', './js/pois.js', './js/propose.js', './js/updater.js', './js/ui.js', './js/main.js',
+  './js/journal.js', './js/friends.js', './js/coop.js', './js/cloud.js', './js/sync.js', './js/exif.js', './js/osm.js', './js/pois.js', './js/propose.js', './js/updater.js', './js/ui.js', './js/main.js',
   './icons/icon-192.png', './icons/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',

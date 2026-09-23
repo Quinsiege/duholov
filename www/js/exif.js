@@ -38,6 +38,7 @@ const Exif = {
   },
   // TIFF-блок с IFD0 → EXIF и GPS
   tiff({ lat, lng, acc, time }) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(time)) throw new Error('Нет координат или времени снимка');
     const dt = this.stamp(time);
     const ifd0 = [[0x010F, 2, 'Duholov'], [0x0131, 2, 'Duholov ' + APP_VERSION], [0x0132, 2, dt], [0x8769, 4, 0], [0x8825, 4, 0]];
     const exif = [[0x9003, 2, dt]];

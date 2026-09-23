@@ -45,6 +45,7 @@
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/sync.js"></script>
   <script src="../www/js/exif.js"></script>
+  <script src="../www/js/osm.js"></script>
   <script src="../www/js/pois.js"></script>
   <script src="../www/js/propose.js"></script>
   <script src="../www/js/updater.js"></script>
@@ -154,6 +155,30 @@
     const nr = Poi.nearest(fakePois[5].lat, fakePois[5].lng, 5);
     eq(nr && nr.id, fakePois[5].id, 'ближайший');
     ok(Poi.photoUrl('a/b.jpg').endsWith('/storage/v1/object/public/poi-photos/a/b.jpg'), 'адрес фото');
+  });
+  test('Места из OpenStreetMap: отбор, названия, разрежение', () => {
+    const els = [
+      { type: 'node', id: 1, lat: 55.75, lon: 37.62, tags: { historic: 'monument', name: 'Памятник А' } },
+      { type: 'node', id: 2, lat: 55.75005, lon: 37.62005, tags: { amenity: 'fountain' } },               // 7 м от первого — отсеется
+      { type: 'way', id: 3, center: { lat: 55.752, lon: 37.622 }, tags: { leisure: 'park', name: 'Сквер', 'name:ru': 'Сквер Б' } },
+      { type: 'node', id: 4, lat: 55.754, lon: 37.624, tags: { tourism: 'artwork' } },
+      { type: 'node', id: 5, lat: 55.756, lon: 37.626, tags: { historic: 'memorial', access: 'private' } },  // частное
+      { type: 'node', id: 6, lat: 55.758, lon: 37.628, tags: { shop: 'bakery', name: 'Булочная' } },       // не наша категория
+      { type: 'node', id: 7, lat: 55.759, lon: 37.629, tags: { leisure: 'garden' } },                      // безымянный сад
+      { type: 'node', id: 8, lat: 55.7605, lon: 37.63, tags: { amenity: 'place_of_worship', name: 'Храм В' } },
+      { type: 'node', id: 9, lat: 55.762, lon: 37.632, tags: { historic: 'monument', name: 'В. Ф. Снегирёву' } },
+      { type: 'node', id: 10, lat: 55.764, lon: 37.634, tags: { historic: 'memorial', memorial: 'plaque' } },
+    ];
+    const p = Osm.pick(els), ids = p.map(x => x.id);
+    eq(ids.slice().sort().join(), ['osm:n1', 'osm:n10', 'osm:n4', 'osm:n8', 'osm:n9', 'osm:w3'].join(), 'отобранные');
+    eq(p.find(x => x.id === 'osm:n9').name, 'Памятник В. Ф. Снегирёву', 'памятник по надписи');
+    eq(p.find(x => x.id === 'osm:n1').name, 'Памятник А', 'без повтора');
+    eq(p.find(x => x.id === 'osm:n10').name, 'Мемориальная доска', 'табличка');
+    eq(p.find(x => x.id === 'osm:w3').name, 'Сквер Б', 'русское название');
+    eq(p.find(x => x.id === 'osm:n4').name, 'Арт-объект', 'название по категории');
+    eq(p.find(x => x.id === 'osm:n8').kind, 'spring', 'храм — всегда Родник');
+    eq(JSON.stringify(Osm.pick(els)), JSON.stringify(p), 'детерминированно');
+    ok(/historic.*bbox|\(55\.75,37\.62,55\.76,37\.63\)/.test(Osm.query(55.75, 37.62, 55.76, 37.63)), 'запрос с рамкой');
   });
   test('Геометка снимка: запись и чтение EXIF', () => {
     // минимальный JPEG-заголовок с JFIF — Exif.embed заменяет его на APP1

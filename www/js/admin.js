@@ -65,7 +65,8 @@ async function queue() {
   app.innerHTML = '<p class="muted">Загружаю заявки…</p>';
   const { data, error } = await sb.from('poi_submissions').select('*').eq('status', 'pending').order('created_at').limit(100);
   if (error) { app.innerHTML = `<p class="muted">Ошибка: ${esc(error.message)}</p>`; return; }
-  $('.tabs [data-t="queue"]').textContent = `Заявки (${data.length})`;
+  const tab = $('.tabs [data-t="queue"]');
+  if (tab) tab.textContent = `Заявки (${data.length})`;
   if (!data.length) { app.innerHTML = '<div class="card"><h2>Очередь пуста</h2><p class="muted">Новых заявок нет.</p></div>'; return; }
   app.innerHTML = `<div class="queue"><div class="qlist">${data.map((s, i) => `
     <button class="qitem" data-i="${i}"><img src="${photoUrl(s.photo)}" alt="" loading="lazy">
@@ -130,9 +131,9 @@ async function detail(s, done) {
   }).catch(() => { const li = $('.exif', box); li.className = 'bad'; li.textContent = 'Не удалось прочитать файл снимка'; });
 
   const d = 0.003;
-  sb.from('pois').select('id, name, kind, lat, lng').gte('lat', s.lat - d).lte('lat', s.lat + d).gte('lng', s.lng - d * 2).lte('lng', s.lng + d * 2).then(({ data }) => {
+  placesIn(s.lat - d, s.lng - d * 2, s.lat + d, s.lng + d * 2).then(list => {
     const li = $('.dups', box);
-    const near = (data || []).map(p => ({ ...p, d: dist(s.lat, s.lng, p.lat, p.lng) })).sort((a, b) => a.d - b.d);
+    const near = list.filter(p => p.active !== false).map(p => ({ ...p, d: dist(s.lat, s.lng, p.lat, p.lng) })).sort((a, b) => a.d - b.d);
     near.forEach(p => L.circleMarker([p.lat, p.lng], { radius: 6, className: p.kind === 'shrine' ? 'pin-shrine' : 'pin-poi' }).bindTooltip(esc(p.name)).addTo(m));
     const close = near.filter(p => p.d < 30);
     li.className = close.length ? 'warn' : 'ok';
@@ -152,44 +153,63 @@ async function detail(s, done) {
   $('.nope', box).onclick = () => decide(false);
 }
 
-/* ---------- все объекты на карте ---------- */
+/* ---------- места: OpenStreetMap + правки и места игроков с сервера (как видит игра) ---------- */
+async function placesIn(s, w, n, e) {
+  const [osm, srv] = await Promise.all([
+    Osm.fetch(s, w, n, e).catch(err => { console.warn(err); return []; }),
+    sb.from('pois').select('id, name, kind, cat, source, active, lat, lng, photo').gte('lat', s).lte('lat', n).gte('lng', w).lte('lng', e).limit(5000)
+      .then(({ data }) => data || []),
+  ]);
+  const m = new Map();
+  osm.forEach(p => m.set(p.id, { ...p, source: 'osm', active: true, srv: false }));
+  srv.forEach(p => m.set(p.id, { ...p, srv: true }));
+  return [...m.values()];
+}
+
 function poiMap() {
-  app.innerHTML = '<div class="bigmap"></div><p class="small muted">Объекты загружаются при масштабе от 15. Бирюзовые — Родники, оранжевые — Капища, серые — скрытые, с белой обводкой — от игроков. Клик — изменить.</p>';
-  const m = L.map($('.bigmap')).setView([55.7539, 37.6208], 15);
+  app.innerHTML = '<div class="bigmap"></div><p class="small muted"><b class="st"></b> Места загружаются при масштабе от 16. Бирюзовые — Родники, оранжевые — Капища, серые — скрытые, с белой обводкой — от игроков. Клик — изменить.</p>';
+  const m = L.map($('.bigmap')).setView([55.7539, 37.6208], 16);
   maps.push(m);
   tiles().addTo(m);
   navigator.geolocation && navigator.geolocation.getCurrentPosition(p => m.setView([p.coords.latitude, p.coords.longitude], 16), () => {}, { timeout: 8000 });
-  const layer = L.layerGroup().addTo(m);
-  let seq = 0;
-  const load = async () => {
-    if (m.getZoom() < 15) { layer.clearLayers(); return; }
-    const b = m.getBounds(), my = ++seq;
-    const { data, error } = await sb.from('pois').select('id, name, kind, cat, source, active, lat, lng, photo')
-      .gte('lat', b.getSouth()).lte('lat', b.getNorth()).gte('lng', b.getWest()).lte('lng', b.getEast()).limit(2000);
-    if (error || my !== seq) return;
+  const layer = L.layerGroup().addTo(m), st = $('.st');
+  let seq = 0, loaded = null;
+  // грузим с запасом вокруг видимой области; пока карта в её пределах (например, сдвиг при открытии подсказки) — не перегружаем
+  const load = async force => {
+    if (m.getZoom() < 16) { layer.clearLayers(); loaded = null; st.textContent = ''; return; }
+    if (force !== true && loaded && loaded.contains(m.getBounds())) return;
+    const b = m.getBounds().pad(0.3), my = ++seq;
+    loaded = b;
+    st.textContent = 'Загружаю места…';
+    const list = await placesIn(b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
+    if (my !== seq) return;
+    st.textContent = `Мест: ${list.length}.`;
     layer.clearLayers();
-    data.forEach(p => {
+    list.forEach(p => {
       const cls = (p.active ? (p.kind === 'shrine' ? 'pin-shrine' : 'pin-poi') : 'pin-off') + (p.source === 'player' ? ' pin-player' : '');
-      L.circleMarker([p.lat, p.lng], { radius: 7, className: cls }).addTo(layer).bindPopup(() => editor(p));
+      L.circleMarker([p.lat, p.lng], { radius: 7, className: cls }).addTo(layer).bindPopup(() => editor(p, () => load(true)));
     });
   };
-  m.on('moveend', load);
+  m.on('moveend', () => load());
   load();
 }
 
-function editor(p) {
+// Правка места. Для объекта OSM создаётся запись-правка на сервере с тем же id.
+function editor(p, reload) {
   const el = document.createElement('div');
   el.innerHTML = `${p.photo ? `<img src="${photoUrl(p.photo)}" style="width:100%;border-radius:8px">` : ''}
-    <div class="small muted">${esc(p.id)} · ${esc(p.cat || '')} · ${p.source === 'osm' ? 'OpenStreetMap' : 'заявка игрока'}</div>
+    <div class="small muted">${esc(p.id)} · ${esc(p.cat || '')} · ${p.source === 'osm' ? 'OpenStreetMap' : 'заявка игрока'}${p.source === 'osm' && p.srv ? ' · есть правка' : ''}</div>
     <input class="input nm" maxlength="80" value="${esc(p.name)}">
     <select class="input kd"><option value="spring" ${p.kind === 'spring' ? 'selected' : ''}>Родник</option><option value="shrine" ${p.kind === 'shrine' ? 'selected' : ''}>Капище</option></select>
     <label class="small"><input type="checkbox" class="ac" ${p.active ? 'checked' : ''}> показывать на карте</label>
     <div class="row"><button class="btn primary sv">Сохранить</button><span class="small msg"></span></div>`;
   $('.sv', el).onclick = async () => {
     const upd = { name: $('.nm', el).value.trim().slice(0, 80) || p.name, kind: $('.kd', el).value, active: $('.ac', el).checked, updated_at: new Date().toISOString() };
-    const { error } = await sb.from('pois').update(upd).eq('id', p.id);
-    $('.msg', el).textContent = error ? 'Ошибка: ' + error.message : 'Сохранено';
-    if (!error) Object.assign(p, upd);
+    const { error } = p.srv
+      ? await sb.from('pois').update(upd).eq('id', p.id)
+      : await sb.from('pois').insert({ id: p.id, source: 'osm', cat: p.cat, lat: p.lat, lng: p.lng, ...upd });
+    $('.msg', el).textContent = error ? 'Ошибка: ' + error.message : 'Сохранено — игроки увидят изменение в течение 20 минут';
+    if (!error) { Object.assign(p, upd, { srv: true }); setTimeout(reload, 1200); }
   };
   return el;
 }
