@@ -277,15 +277,16 @@
     S.progress('power', 1); ok(S.storyReady());
     const r = S.claimStory(); ok(r && r.ch.title === 'Посвящение'); eq(S.d.story.ch, 1);
   });
-  test('Летопись: 12 глав, у всех шагов есть текст, подарки существуют', () => {
-    eq(STORY.length, 12);
+  test('Летопись: 18 глав, у всех шагов есть текст, подарки существуют', () => {
+    eq(STORY.length, 18);
     STORY.forEach((ch, i) => {
       eq(ch.steps.length, 3, 'шагов в главе ' + (i + 1));
       ch.steps.forEach(s => { ok(stepText(s).length > 5, `шаг «${s.t}» в главе ${i + 1}`); if (s.el) ok(ELEMENTS[s.el], 'стихия'); });
       if (ch.gift) ok(SP[ch.gift], 'подарок ' + ch.gift);
       Object.keys(ch.reward).forEach(k => ok(k === 'xp' || k === 'sparks' || ITEMS[k], 'награда ' + k));
     });
-    ok(LOOK.emblem.some(e => e.story === STORY.length), 'эмблема за вторую книгу');
+    ok(LOOK.emblem.some(e => e.story === 12) && LOOK.emblem.some(e => e.story === STORY.length), 'эмблемы за вторую и третью книги');
+    ok(SP.indrik.legend && SP.indrik.story, 'Индрик — легенда Летописи');
   });
   test('Новые шаги Летописи засчитываются (вторжение, очищение, фото, Лига)', () => {
     S.d.story = { ch: 7, p: [0, 0, 0] }; // «Прислужники Нави»
@@ -803,6 +804,26 @@
     ok(r.win && r.allies === 1, 'победа гостя засчитана с союзником');
     await refuse(C, 'raidStart', { rift, coop: { code: room.code } }, /не в этом разломе/);
     await must(A, 'roomLeave', { code: room.code });
+  });
+  atest('Сервер: третья книга Летописи — новые шаги, Индрик и эмблема', async () => {
+    const A = await newPlayer('vc', 55.56, 37.44, 'Летописец');
+    A.data.tut = 0;
+    // «Весть с окраин»: поручение засчитывается шагом Летописи
+    A.data.story = { ch: 12, p: [0, 0, 0] };
+    A.data.tasks = [{ id: 't9', t: 'photo', n: 1, el: 'fire', p: 1, tier: 1, sid: 'ugolek', text: 'Фото' }];
+    await must(A, 'taskClaim', { id: 't9' });
+    eq(A.data.story.p[0], 1, 'поручение — шаг главы 13');
+    // Индрик — только награда Летописи: в разломах его нет
+    const hour = Math.floor(Date.now() / 3600000);
+    for (let i = 0; i < 300; i++) { const r = asPlayer(A, () => W.riftFor({ id: 'osm:n' + (70000 + i), lat: 55.5, lng: 37.4 }, 0, hour)); ok(!r || r.boss !== 'indrik', 'Индрика нет в разломах'); }
+    // финал книги: встреча с Индриком и эмблема
+    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }, /Летопись/);
+    A.data.story = { ch: 17, p: STORY[17].steps.map(s => s.n) };
+    const r = await must(A, 'storyClaim');
+    eq(r.ch, 17); eq(A.data.storyGift, 'indrik');
+    const enc = await must(A, 'encStart', { kind: 'story' }); eq(enc.sid, 'indrik');
+    await must(A, 'encEnd');
+    await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }); eq(A.data.look.emblem, 'horn');
   });
 
   /* ---------- вывод ---------- */

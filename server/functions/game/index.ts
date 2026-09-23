@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.8.0';
+const APP_VERSION = '3.9.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -248,6 +248,11 @@ const SPECIES = [
   { id: 'kutkh', name: 'Кутх', el: 'shadow', rar: 4, stage: 1, fam: 'kutkh', base: [220, 190, 200], land: 'fareast',
     desc: 'Ворон-творец из сказаний Камчатки: говорят, это он вытащил землю из моря. Прилетает только на Дальний Восток.',
     look: { shape: 'bird', c1: '#64748b', c2: '#0f172a', c3: '#f59e0b', eye: '#fbbf24', eyes: 'glow', mouth: 'beak', back: ['wings', 'tail'], feats: ['crest'] } },
+
+  // ---------- v3.9: легенда третьей книги Летописи (только награда, в разломах не встречается) ----------
+  { id: 'indrik', name: 'Индрик-зверь', el: 'water', rar: 5, stage: 1, fam: 'indrik', legend: true, story: true, base: [292, 244, 256],
+    desc: 'Легенда. Всем зверям отец: ходит под землёй, как солнце по небу, и прочищает подземные реки, чтобы родники не иссякли.',
+    look: { shape: 'blob', c1: '#e0e7ff', c2: '#4338ca', c3: '#67e8f9', eye: '#a5f3fc', eyes: 'glow', mouth: 'none', back: ['aura', 'mane', 'tail', 'unihorn'], feats: [] } },
 ];
 // Земли России для духов родных земель (грубо, по широте и долготе)
 const LANDS = {
@@ -400,6 +405,12 @@ function stepText(s) {
     case 'purify': return `Очисти омрачённого духа: ${s.n}`;
     case 'photo': return `Сфотографируй духа: ${s.n}`;
     case 'league': return `Выиграй поединков в Лиге: ${s.n}`;
+    case 'task': return `Выполни поручений родников: ${s.n}`;
+    case 'defend': return `Поставь защитника на Капище: ${s.n}`;
+    case 'land': return `Поймай духа родной земли: ${s.n}`;
+    case 'spar': return `Победи друга в поединке: ${s.n}`;
+    case 'coop': return `Закрой совместный разлом: ${s.n}`;
+    case 'gift': return `Отправь подарков друзьям: ${s.n}`;
   }
   return '';
 }
@@ -466,6 +477,38 @@ const STORY = [
     steps: [{ t: 'raid', n: 5 }, { t: 'invasion', n: 5 }, { t: 'catchEl', el: 'shadow', n: 10 }],
     reward: { charm3: 15, incense: 3, sparks: 10000, xp: 20000 }, gift: 'koschey', emblem: 'needle',
     outro: 'Игла сломалась с тихим звоном. В последнем разломе стоял Кощей — не бессмертный царь, а уставший старик. «Ты сломал мою смерть, — сказал он. — Значит, теперь я могу просто жить». И шагнул к тебе в оберег. <br><br><i>Конец второй книги. Эмблема «Игла Кощея» открыта в облике Ловчего.</i>' },
+
+  // ---------- Книга третья «Земли Руси» (v3.9) ----------
+  { title: 'Весть с окраин',
+    intro: 'Велимир разбирает груду писем: из Мурманска, Казани, Иркутска, из деревень, которых нет ни на одной туристической карте. «Тонкая ночь дошла до самых окраин, — говорит он. — Родники проснулись везде. Орден теперь — это вся страна».',
+    steps: [{ t: 'task', n: 3 }, { t: 'spring', n: 20 }, { t: 'walk', n: 5 }],
+    reward: { charm2: 10, honey: 10, sparks: 3000, xp: 15000 },
+    outro: '«Родники раздают поручения — значит, они нас зовут, — Велимир складывает письма в Летопись. — Кто-то под землёй очень хочет, чтобы мы шли дальше».' },
+  { title: 'Знамя над капищем',
+    intro: 'Дружины Сокола, Медведя и Волка спорят за капища, как когда-то князья за города. Велимир хмурится: «Спорьте, но помните — капище стоит, пока его кто-то бережёт».',
+    steps: [{ t: 'duel', n: 5 }, { t: 'defend', n: 2 }, { t: 'throw', n: 15 }],
+    reward: { charm3: 5, water: 10, sparks: 4000, xp: 15000 },
+    outro: 'Над капищем, где стоит твой защитник, ветер треплет знамя дружины. «Хорошо, — говорит Велимир. — Теперь капище знает твоё имя».' },
+  { title: 'Дух родной земли',
+    intro: 'В старых записях Ордена сказано: у каждого края есть свой дух-хранитель — Берегиня, Сполох, Жигуль, Тур, Хозяйка Медной горы, Бабр и Кутх. «Найди своего, — говорит Велимир. — Земля должна тебя признать».',
+    steps: [{ t: 'land', n: 1 }, { t: 'catch', n: 50 }, { t: 'photo', n: 3 }],
+    reward: { incense: 3, charm2: 15, sparks: 5000, xp: 20000 },
+    outro: 'Дух родной земли посмотрел на тебя долго и серьёзно, будто сверял с кем-то давно знакомым. А потом позволил сфотографировать себя — в Летописи это считается знаком доверия.' },
+  { title: 'Долгая дорога',
+    intro: 'Родники шепчут одно и то же слово: «ниже». Велимир достаёт карту подземных рек — старую, ещё дореволюционную. «Они текут под всей страной. Чтобы услышать их, придётся много ходить».',
+    steps: [{ t: 'walk', n: 20 }, { t: 'hatch', n: 5 }, { t: 'task', n: 5 }],
+    reward: { charm3: 8, sparks: 6000, xp: 20000 },
+    outro: 'Коконы, что ты носил в пути, вылупились с каплями воды на крыльях. «Подземная вода, — шепчет Велимир. — Мы близко».' },
+  { title: 'Подземные реки',
+    intro: 'Прислужники Нави перекрывают родники: хотят, чтобы подземные реки остановились и Навь затопила Явь. Духи воды тревожатся и собираются у фонтанов.',
+    steps: [{ t: 'catchEl', el: 'water', n: 20 }, { t: 'invasion', n: 8 }, { t: 'purify', n: 3 }],
+    reward: { water: 15, incense: 3, sparks: 8000, xp: 25000 },
+    outro: 'Из-под земли донёсся гул, похожий на дыхание огромного зверя. Родники вздрогнули и снова забили ключом. «Он проснулся», — только и сказал Велимир.' },
+  { title: 'Индрик-зверь',
+    intro: '«Индрик-зверь всем зверям отец, — читает Велимир из Голубиной книги. — Ходит под землёю, как солнце по небу, прочищает реки и ручьи». Чтобы он поднялся в Явь, нужны сила разломов, мастерство Лиги и знамёна дружин.',
+    steps: [{ t: 'raid', n: 8 }, { t: 'league', n: 6 }, { t: 'defend', n: 5 }],
+    reward: { charm3: 15, incense: 3, sparks: 12000, xp: 30000 }, gift: 'indrik', emblem: 'horn',
+    outro: 'Земля мягко качнулась, и у ближайшего родника поднялся зверь с единственным рогом, сияющим, как лёд на солнце. Он опустил голову, и родник под ним засмеялся звонко, по-весеннему. <br><br><i>Конец третьей книги. Эмблема «Рог Индрика» открыта в облике Ловчего.</i>' },
 ];
 
 const SHINY_RATE = 1 / 128;
@@ -540,6 +583,7 @@ const LOOK = {
     { id: 'leaf', name: 'Лист', lvl: 11 }, { id: 'bolt', name: 'Молния', lvl: 16 }, { id: 'star', name: 'Звезда', lvl: 22 },
     { id: 'crown', name: 'Венец Лиги', lvl: 1, league: 9 },
     { id: 'needle', name: 'Игла Кощея', lvl: 1, story: 12 },
+    { id: 'horn', name: 'Рог Индрика', lvl: 1, story: 18 },
   ],
 };
 
@@ -1000,7 +1044,7 @@ const W = {
     const r = U.rng(id);
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
+    if (tier === 3) pool = SPECIES.filter(s => s.legend && !s.story && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')); // легенды Летописи — только в награду
     else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
     else pool = SPECIES.filter(s => s.rar === 2);
     // в неделю стихии разломы чаще охраняют духи этой стихии
@@ -3229,6 +3273,7 @@ const GameCore = {
       S.d.stats.caught++;
       S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
+      if (s.land) S.progress('land', 1); // дух родной земли — для Летописи
       if (e.mode === 'tut' && S.d.tut === 1) S.d.tut = 2;
       if (e.mode === 'story') S.d.storyGift = null;
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
@@ -3316,7 +3361,7 @@ const GameCore = {
       this.need(c && e && m, 'Такого облика нет');
       this.need(c.lvl <= lvl && e.lvl <= lvl && m.lvl <= lvl, 'Этот облик ещё не открыт');
       this.need(!m.league || League.st().best >= m.league, 'Венец Лиги — награда за ранг «Хранитель Лиги»');
-      this.need(!m.story || S.d.story.ch >= m.story, 'Эта эмблема — награда за вторую книгу Летописи');
+      this.need(!m.story || S.d.story.ch >= m.story, 'Эта эмблема — награда за Летопись');
       S.d.look = { cloak: c.c, eyes: e.c, emblem: m.id };
       return { ok: true };
     },
@@ -3365,6 +3410,7 @@ const GameCore = {
       const T = TASK_TIERS[q.tier];
       const got = S.giveRewards({ ...T.reward, xp: 250 * q.tier });
       const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.maxLvl()) };
+      S.progress('task', 1);
       S.d.taskMeet.push(m);
       return { got, meet: m };
     },
@@ -3478,6 +3524,7 @@ const GameCore = {
       J.add('raid', { sid: b.boss, tier, coop: allies });
       S.d.stats.raids++;
       S.progress('raid', 1);
+      if (b.coop && b.coop.allies > 0) S.progress('coop', 1);
       const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 400 * tier, charm: 5, honey: 2 + tier, water: 2, charm2: tier >= 2 ? 3 : 0 });
       const am = S.rollAmulet([0.25, 0.4, 0.7][tier - 1], b.rid);
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
@@ -3556,6 +3603,7 @@ const GameCore = {
       this.need(ok, 'Капище только что изменилось — открой его заново');
       S.d.stats.defends = (S.d.stats.defends || 0) + 1;
       S.d.guards.push({ id: p.id, name: String(p.name || 'Капище').slice(0, 80), sid: sp.sid, t: ctx.now });
+      S.progress('defend', 1);
       J.add('defend', { name: p.name, sid: sp.sid });
       return { ok: true, clan: S.d.clan };
     },
@@ -3766,6 +3814,7 @@ const GameCore = {
       J.add('spar', { name: f.name });
       if (f.spar === U.today(ctx.now)) return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true };
       f.spar = U.today(ctx.now);
+      S.progress('spar', 1);
       const rw = S.giveRewards({ xp: 800, sparks: 500, charm: 3, honey: 1 });
       this.friendPoint(f);
       return { win: true, rw, pts: f.pts };
@@ -3804,6 +3853,7 @@ const GameCore = {
       if (r() < 0.12 + lv * 0.03) c.cocoon = 5;
       await ctx.env.giftCreate(S.d.pid, f.id, S.d.name, c);
       f.sent = U.today();
+      S.progress('gift', 1);
       this.friendPoint(f);
       J.add('gift', { dir: 'out', name: f.name });
       return { ok: true };
