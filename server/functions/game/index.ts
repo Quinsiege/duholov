@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.11.0';
+const APP_VERSION = '3.12.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -573,6 +573,9 @@ const LOOK = {
     { c: '#6d28d9', name: 'Фиалковый', lvl: 1 }, { c: '#1d4ed8', name: 'Синий', lvl: 1 }, { c: '#15803d', name: 'Лесной', lvl: 1 },
     { c: '#b91c1c', name: 'Алый', lvl: 5 }, { c: '#0f766e', name: 'Бирюзовый', lvl: 8 }, { c: '#a16207', name: 'Охряный', lvl: 10 },
     { c: '#1f2937', name: 'Полночный', lvl: 15 }, { c: '#e2e8f0', name: 'Снежный', lvl: 20 }, { c: '#be185d', name: 'Малиновый', lvl: 25 }, { c: '#ca8a04', name: 'Золотой', lvl: 30 },
+    // 3.12: из Лавки Ордена (за гривны) и с Золотой тропы — открываются покупкой, а не уровнем
+    { c: '#7c2d12', name: 'Бронзовый', lvl: 1, shop: 250 }, { c: '#0c4a6e', name: 'Глубинный', lvl: 1, shop: 250 }, { c: '#4a044e', name: 'Навья ночь', lvl: 1, shop: 400 },
+    { c: '#065f46', name: 'Сезонная тропа', lvl: 1, pass: true },
   ],
   eyes: [
     { c: '#5eead4', name: 'Бирюза', lvl: 1 }, { c: '#fde047', name: 'Янтарь', lvl: 1 }, { c: '#f87171', name: 'Жар', lvl: 6 },
@@ -584,6 +587,7 @@ const LOOK = {
     { id: 'crown', name: 'Венец Лиги', lvl: 1, league: 9 },
     { id: 'needle', name: 'Игла Кощея', lvl: 1, story: 12 },
     { id: 'horn', name: 'Рог Индрика', lvl: 1, story: 18 },
+    { id: 'trail', name: 'Знак Тропы', lvl: 1, pass: true },
   ],
 };
 
@@ -1180,6 +1184,11 @@ const S = {
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
+    d.grivna = d.grivna || 0; // гривны — вторая валюта (3.12)
+    d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
+    d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
+    d.shop = d.shop || {}; // Лавка: { deal: день покупки товара дня }
+    d.pass = d.pass || null; // Сезонная тропа: { season, pts, gold, got: { free: [], gold: [] } }
     if (!d.pid) d.pid = U.uid() + U.uid();
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
     d.stats.byEl = d.stats.byEl || {};
@@ -1394,9 +1403,10 @@ const S = {
   },
 
   /* ---------- предметы ---------- */
+  bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
   addItem(k, n = 1) {
-    const room = BAG_LIMIT - this.bagCount();
+    const room = this.bagLimit() - this.bagCount();
     const add = Math.max(0, Math.min(n, room));
     this.d.items[k] = (this.d.items[k] || 0) + add;
     this.save();
@@ -1408,6 +1418,7 @@ const S = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
+      else if (k === 'grivna') { this.d.grivna = (this.d.grivna || 0) + n; out.push({ k, n, label: 'Гривны' }); }
       else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
       else if (ITEMS[k]) { const a = this.addItem(k, n); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
@@ -1435,7 +1446,7 @@ const S = {
     this.save();
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3 };
+    const r = { charm: 10 + l, honey: 3, water: 3, grivna: Rules.GRIVNA.level };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;
@@ -1550,7 +1561,7 @@ const S = {
   claimStory() {
     const ch = STORY[this.d.story.ch];
     if (!ch || !this.storyReady()) return null;
-    const got = this.giveRewards(ch.reward);
+    const got = this.giveRewards({ ...ch.reward, grivna: Rules.GRIVNA.story });
     this.d.story = { ch: this.d.story.ch + 1, p: [0, 0, 0] };
     this.save();
     return { ch, got };
@@ -1622,6 +1633,8 @@ const J = {
       case 'clan': return { ico: glyph('⚑', 'gold'), title: `Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : 'дружина'}`, sub: '' };
       case 'guardBack': return { ico: icon(e.sid), title: 'Защитник вернулся с Капища', sub: `${e.name || ''} · стоял ${e.hours} ч` };
       case 'defend': return { ico: icon(e.sid), title: `Защитник на Капище`, sub: e.name || '' };
+      case 'shop': return { ico: glyph('₴', 'gold'), title: `Покупка в Лавке: ${e.name || ''}`, sub: '' };
+      case 'passGold': return { ico: glyph('★', 'gold'), title: 'Открыта Золотая тропа', sub: e.season || '' };
       case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
     }
@@ -2776,6 +2789,48 @@ const Rules = {
       + d('hatched') * (ev.km ? 6 : 3)
       + km * (ev.km ? 2 : 1);
   },
+  /* ---------- 3.12: гривны, Лавка Ордена, Сезонная тропа ---------- */
+  // Гривны — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
+  GRIVNA: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
+  BAG_STEP: 50, BAG_MAX_UP: 10,
+  // cur — валюта: sparks (искры) или grivna (гривны). give — предметы; cocoon — кокон; amulet — случайный амулет
+  SHOP: [
+    { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'grivna', bag: true },
+    { id: 'charm20',  name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
+    { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
+    { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'grivna', price: 60,  give: { charm2: 10 }, lvl: 8 },
+    { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'grivna', price: 120, give: { charm3: 10 }, lvl: 16 },
+    { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'grivna', price: 50,  give: { incense: 1 } },
+    { id: 'cocoon5',  name: 'Кокон 5 км',          desc: 'Необычные и редкие духи',                  cur: 'grivna', price: 80,  cocoon: 5 },
+    { id: 'cocoon10', name: 'Кокон 10 км',         desc: 'Редкие и эпические духи',                  cur: 'grivna', price: 150, cocoon: 10 },
+    { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'grivna', price: 200, amulet: true },
+  ],
+  bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
+  // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
+  shopDeal(day) {
+    const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl); // товар дня доступен любому уровню
+    const it = pool[Math.floor(U.h('deal', day) * pool.length)];
+    return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
+  },
+  // Сезонная тропа: сезон — календарный месяц, 30 ступеней по 40 очков (очки — как в общем деле Ордена)
+  PASS: { LEVELS: 30, PER: 40, GOLD: 600 },
+  passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
+  // Награда ступени: free — всем, gold — на Золотой тропе
+  passReward(track, lvl) {
+    if (track === 'free') {
+      if (lvl === 30) return { charm3: 5, grivna: 50 };
+      if (lvl % 10 === 0) return { cocoon: 5, grivna: 20 };
+      if (lvl % 5 === 0) return { incense: 1, grivna: 15 };
+      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 300 };
+    }
+    if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
+    if (lvl === 15) return { look: '#065f46', grivna: 50 };
+    if (lvl % 10 === 0) return { cocoon: 10, grivna: 40 };
+    if (lvl % 5 === 0) return { amulet: 1, grivna: 30 };
+    if (lvl % 3 === 0) return { charm3: 3, grivna: 15 };
+    return lvl % 2 ? { charm2: 5, sparks: 500 } : { water: 3, sparks: 800 };
+  },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
   ORDER_RULES: [
@@ -2930,7 +2985,7 @@ const GameCore = {
         if (!['newGame', 'load'].includes(a.type)) this.need(S.d, 'Прогресс не найден');
         ctx.results.push(await h.call(this, a.args || {}, ctx));
       }
-      if (S.d && stats0) this.orderAdd(ctx, Rules.orderPoints(stats0, S.d.stats, Ev.cur));
+      if (S.d && stats0) { const pts = Rules.orderPoints(stats0, S.d.stats, Ev.cur); this.orderAdd(ctx, pts); this.passAdd(ctx, pts); }
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
     } catch (e) {
@@ -3043,6 +3098,27 @@ const GameCore = {
     const row = { week: w, pid: S.d.pid, name: S.d.name, n: o.n };
     ctx.after.push(() => ctx.env.orderPut(row));
   },
+  // Сезонная тропа: сезон — календарный месяц по часам игрока
+  passSeason(ctx) { const d = U.local(ctx.now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`; },
+  passState(ctx) {
+    const season = this.passSeason(ctx);
+    if (!S.d.pass || S.d.pass.season !== season) S.d.pass = { season, pts: 0, gold: false, got: { free: [], gold: [] } };
+    return S.d.pass;
+  },
+  passAdd(ctx, pts) { if (pts > 0) this.passState(ctx).pts += pts; },
+  // Награда: предметы, искры, гривны + кокон, случайный амулет, облик
+  grant(rw) {
+    const { cocoon, amulet, look, ...rest } = rw;
+    const got = S.giveRewards(rest);
+    if (cocoon) { S.d.cocoons.push({ id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, km: cocoon, label: `Кокон ${cocoon} км` }); }
+    if (amulet) { const am = S.rollAmulet(1, 'gift' + U.uid()); got.push({ k: 'amulet', n: 1, id: am, label: AMULETS[am].name }); }
+    if (look) {
+      S.d.owned[look] = true;
+      const x = LOOK.cloak.find(c => c.c === look) || LOOK.emblem.find(m => m.id === look);
+      got.push({ k: 'look', n: 1, look, label: x ? `Облик: ${x.name}` : 'Облик' });
+    }
+    return got;
+  },
   // Состояние недели w для экрана: общая сумма с учётом ещё не записанного вклада игрока
   async orderState(ctx, w) {
     const s = (await ctx.env.orderStats(w, S.d.pid)) || {};
@@ -3147,7 +3223,8 @@ const GameCore = {
       st.n = st.day === U.today(ctx.now - 86400000) ? st.n + 1 : 1;
       st.day = today;
       if (st.n > S.d.stats.streakBest) S.d.stats.streakBest = st.n;
-      const i = (st.n - 1) % Rules.STREAK.length, got = S.giveRewards(Rules.STREAK[i]);
+      const i = (st.n - 1) % Rules.STREAK.length;
+      const got = S.giveRewards({ ...Rules.STREAK[i], grivna: i === Rules.STREAK.length - 1 ? Rules.GRIVNA.streak7 : Rules.GRIVNA.streak });
       if (i === Rules.STREAK.length - 1 && S.d.cocoons.length < 9) {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
         got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
@@ -3322,7 +3399,7 @@ const GameCore = {
         task = S.makeTask();
         S.d.tasks.push(task);
       }
-      return { got, cocoon: coc, task, full: S.bagCount() >= BAG_LIMIT };
+      return { got, cocoon: coc, task, full: S.bagCount() >= S.bagLimit() };
     },
     incense(a, ctx) {
       this.need(!S.incenseActive(), 'Ладан ещё горит');
@@ -3379,6 +3456,8 @@ const GameCore = {
       this.need(c.lvl <= lvl && e.lvl <= lvl && m.lvl <= lvl, 'Этот облик ещё не открыт');
       this.need(!m.league || League.st().best >= m.league, 'Венец Лиги — награда за ранг «Хранитель Лиги»');
       this.need(!m.story || S.d.story.ch >= m.story, 'Эта эмблема — награда за Летопись');
+      this.need((!c.shop && !c.pass) || S.d.owned[c.c], c.shop ? 'Этот плащ продаётся в Лавке Ордена' : 'Этот плащ — награда Золотой тропы');
+      this.need(!m.pass || S.d.owned[m.id], 'Знак Тропы — награда Золотой тропы');
       S.d.look = { cloak: c.c, eyes: e.c, emblem: m.id };
       return { ok: true };
     },
@@ -3409,7 +3488,7 @@ const GameCore = {
       const Q = S.d.quests;
       this.need(Q.list.every(q => q.claimed) && !Q.bonus, 'Сундук ещё закрыт');
       Q.bonus = true;
-      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000 }) };
+      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000, grivna: Rules.GRIVNA.questBonus }) };
     },
     storyClaim() {
       const ch = S.d.story.ch, res = S.claimStory();
@@ -3592,6 +3671,66 @@ const GameCore = {
       return { win: true, rw, freed, clan: b.hold ? b.hold.clan : null };
     },
 
+    /* ----- Лавка Ордена ----- */
+    shopBuy(a, ctx) {
+      const today = U.today(ctx.now), id = String(a.id || '');
+      let it;
+      if (a.deal) {
+        it = Rules.shopDeal(today);
+        this.need(S.d.shop.deal !== today, 'Товар дня уже куплен — завтра будет новый');
+      } else if (id.startsWith('look:')) {
+        const key = id.slice(5), x = LOOK.cloak.find(c => c.c === key && c.shop);
+        this.need(x, 'Такого товара нет');
+        this.need(!S.d.owned[key], 'Этот плащ уже твой');
+        it = { id, name: `Плащ «${x.name}»`, cur: 'grivna', price: x.shop, look: key };
+      } else {
+        it = Rules.SHOP.find(x => x.id === id);
+        this.need(it, 'Такого товара нет');
+      }
+      if (it.bag) {
+        this.need(S.d.bagExtra < Rules.BAG_MAX_UP, 'Сумка уже расширена до предела');
+        it = { ...it, price: Rules.bagPrice(S.d.bagExtra) };
+      }
+      this.need(!it.lvl || S.d.level >= it.lvl, `Откроется на ${it.lvl} уровне`);
+      if (it.cocoon) this.need(S.d.cocoons.length < 9, 'Коконов уже девять — выведи кого-нибудь');
+      if (it.give) {
+        const n = Object.values(it.give).reduce((s, x) => s + x, 0);
+        this.need(S.bagCount() + n <= S.bagLimit(), 'Сумка полна — освободи место или расширь её');
+      }
+      const key = it.cur === 'sparks' ? 'sparks' : 'grivna';
+      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? 'Не хватает искр' : 'Не хватает гривен');
+      this.limit(ctx, 'shop', 120, 3600000);
+      S.d[key] -= it.price;
+      let got;
+      if (it.bag) { S.d.bagExtra++; got = [{ k: 'bag', n: Rules.BAG_STEP, label: 'Мест в сумке' }]; }
+      else got = this.grant({ ...(it.give || {}), cocoon: it.cocoon || 0, amulet: it.amulet ? 1 : 0, look: it.look || null });
+      if (a.deal) S.d.shop.deal = today;
+      J.add('shop', { name: it.name });
+      return { got, price: it.price, cur: key };
+    },
+
+    /* ----- Сезонная тропа ----- */
+    passClaim(a, ctx) {
+      const P = this.passState(ctx), lvl = a.lvl | 0, track = a.track === 'gold' ? 'gold' : 'free';
+      this.need(lvl >= 1 && lvl <= Rules.PASS.LEVELS, 'Такой ступени нет');
+      this.need(Rules.passLevel(P.pts) >= lvl, 'Ступень ещё не пройдена');
+      this.need(track === 'free' || P.gold, 'Сначала открой Золотую тропу');
+      this.need(!P.got[track].includes(lvl), 'Награда уже получена');
+      P.got[track].push(lvl);
+      let rw = Rules.passReward(track, lvl);
+      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, grivna: (rw.grivna || 0) + 40 }; // коконов некуда класть — гривнами
+      return { got: this.grant(rw) };
+    },
+    passGold(a, ctx) {
+      const P = this.passState(ctx);
+      this.need(!P.gold, 'Золотая тропа уже открыта');
+      this.need(S.d.grivna >= Rules.PASS.GOLD, `Нужно ${Rules.PASS.GOLD} гривен`);
+      S.d.grivna -= Rules.PASS.GOLD;
+      P.gold = true;
+      J.add('passGold', { season: P.season });
+      return { ok: true };
+    },
+
     /* ----- дружины ----- */
     clanJoin(a) {
       this.need(S.d.level >= CLAN_LEVEL, `Дружину можно выбрать с ${CLAN_LEVEL} уровня`);
@@ -3656,7 +3795,7 @@ const GameCore = {
       const n = Math.min(HOLD_MY_MAX, await ctx.env.myHolds(S.d.pid));
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
-      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n }) };
+      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, grivna: Rules.GRIVNA.tribute * n }) };
     },
 
     async invStart(a, ctx) {

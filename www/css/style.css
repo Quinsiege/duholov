@@ -990,3 +990,39 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 /* приглашение друга (3.11) */
 .onb-invite { margin: 0 auto 12px; max-width: 320px; padding: 10px 14px; border-radius: 14px; background: rgba(74, 222, 128, .12); border: 1px solid rgba(74, 222, 128, .5); color: #bbf7d0; font-size: 14px; text-align: center; }
 .my-invite { margin-top: 10px; }
+/* Лавка Ордена и Сезонная тропа (3.12) */
+.sheet-foot .grivna { display: inline-flex; align-items: center; gap: 4px; color: #e2e8f0; }
+.sheet-foot .grivna .art, .shop-wallet .art, .btn .art { width: 18px; height: 18px; vertical-align: -4px; }
+.shop-wallet { display: flex; justify-content: space-around; gap: 10px; padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); font-weight: 700; margin-bottom: 12px; }
+.shop-wallet .spark { color: var(--gold2); } .shop-wallet .grivna { display: inline-flex; align-items: center; gap: 6px; }
+.shop-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); margin-bottom: 8px; }
+.shop-row.off { opacity: .55; }
+.shop-row .row-main { flex: 1; min-width: 0; } .shop-row small { color: var(--muted); font-size: 12px; }
+.shop-row .buy { white-space: nowrap; display: inline-flex; flex-direction: row; align-items: center; gap: 4px; }
+.shop-ico { width: 44px; height: 44px; flex: none; display: grid; place-items: center; }
+.shop-ico .art { width: 44px; height: 44px; } .shop-ico.bag .ico { width: 30px; height: 30px; color: var(--gold2); }
+.shop-deal { position: relative; padding: 12px 10px 2px; border-radius: 18px; background: linear-gradient(135deg, rgba(251, 191, 36, .16), rgba(167, 139, 250, .1)); border: 1.5px solid rgba(251, 191, 36, .6); margin-bottom: 8px; }
+.shop-deal.off { opacity: .6; } .shop-deal .shop-row { background: transparent; border: 0; padding: 4px 2px 10px; margin: 0; }
+.shop-tag { position: absolute; top: -10px; left: 14px; padding: 2px 10px; border-radius: 999px; background: var(--gold); color: #3b2300; font-size: 11px; font-weight: 800; }
+.shop-cloaks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.shop-cloak { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); color: var(--text); }
+.shop-cloak.owned { opacity: .6; } .shop-cloak b { font-size: 12px; } .shop-cloak small { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--muted); }
+.shop-ava { width: 56px; height: 56px; } .shop-cloak small .art { width: 16px; height: 16px; }
+.sw.special::after { content: '₴'; position: absolute; right: -3px; top: -5px; font-size: 10px; font-weight: 800; color: var(--gold2); text-shadow: 0 1px 2px #000; }
+.sw { position: relative; }
+.pass-head h3 { margin: 4px 0 8px; } .pass-head > small { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; }
+.pass-buy { margin-top: 12px; display: inline-flex; flex-direction: row; justify-content: center; align-items: center; gap: 6px; }
+.pass-note { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; }
+.pass-gold { margin-top: 12px; text-align: center; font-weight: 800; color: var(--gold2); }
+.pass-cols { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 8px; margin: 14px 0 6px; font-size: 11px; color: var(--muted); text-align: center; }
+.pass-row { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 8px; margin-bottom: 8px; align-items: stretch; }
+.pass-l { display: grid; place-items: center; border-radius: 12px; background: rgba(255, 255, 255, .05); font-weight: 800; color: var(--muted); }
+.pass-row.open .pass-l { background: rgba(94, 234, 212, .15); color: var(--teal); }
+.pass-cell { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); color: var(--text); text-align: left; min-height: 56px; }
+.pass-cell.gold { background: rgba(251, 191, 36, .06); border-color: rgba(251, 191, 36, .25); }
+.pass-cell .pc-art { width: 36px; height: 36px; flex: none; display: grid; place-items: center; } .pass-cell .pc-art .art, .pass-cell .pc-art svg { width: 36px; height: 36px; }
+.pass-cell .pc-art .big-n { font-size: 18px; line-height: 36px; }
+.pass-cell small { font-size: 11px; line-height: 1.25; color: var(--muted); min-width: 0; }
+.pass-cell.can { border-color: var(--gold); box-shadow: 0 0 12px rgba(251, 191, 36, .4); } .pass-cell.can small { color: var(--text); }
+.pass-cell.got { opacity: .5; } .pass-cell.got i { position: absolute; right: 6px; top: 4px; font-style: normal; color: #4ade80; font-weight: 800; }
+.pass-cell.lock { opacity: .45; filter: saturate(.5); }
