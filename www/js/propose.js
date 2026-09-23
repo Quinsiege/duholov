@@ -67,6 +67,7 @@ const Propose = {
         } else UI.toast(`Место «${U.esc(r.name)}» отклонено${r.reason ? ': ' + U.esc(r.reason) : ''}`);
       });
       if (rows.length) { this.unseen = rows.length; S.save(); UI.refreshHud(); }
+      if (rows.some(r => r.status === 'approved')) Poi.refreshServer(); // новое место — сразу на карту
     } catch (e) { console.warn('Заявки:', e.message); }
   },
 

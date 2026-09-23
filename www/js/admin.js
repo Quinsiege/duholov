@@ -61,21 +61,22 @@ function login() {
 }
 
 /* ---------- очередь заявок ---------- */
-async function queue() {
+async function queue(note) {
   app.innerHTML = '<p class="muted">Загружаю заявки…</p>';
+  const noteHtml = note ? `<p class="card small" style="margin:0 0 16px">${esc(note)}</p>` : '';
   const { data, error } = await sb.from('poi_submissions').select('*').eq('status', 'pending').order('created_at').limit(100);
   if (error) { app.innerHTML = `<p class="muted">Ошибка: ${esc(error.message)}</p>`; return; }
   const tab = $('.tabs [data-t="queue"]');
   if (tab) tab.textContent = `Заявки (${data.length})`;
-  if (!data.length) { app.innerHTML = '<div class="card"><h2>Очередь пуста</h2><p class="muted">Новых заявок нет.</p></div>'; return; }
-  app.innerHTML = `<div class="queue"><div class="qlist">${data.map((s, i) => `
+  if (!data.length) { app.innerHTML = noteHtml + '<div class="card"><h2>Очередь пуста</h2><p class="muted">Новых заявок нет.</p></div>'; return; }
+  app.innerHTML = noteHtml + `<div class="queue"><div class="qlist">${data.map((s, i) => `
     <button class="qitem" data-i="${i}"><img src="${photoUrl(s.photo)}" alt="" loading="lazy">
       <div><b>${esc(s.name)}</b><span class="small muted">${KIND[s.kind]} · ${new Date(s.created_at).toLocaleString('ru-RU')}</span></div></button>`).join('')}</div>
     <div class="card qdetail"></div></div>`;
   const list = $('.qlist');
   const open = i => {
     list.querySelectorAll('.qitem').forEach(b => b.classList.toggle('on', +b.dataset.i === i));
-    detail(data[i], () => { data.splice(i, 1); queue(); });
+    detail(data[i], note => { data.splice(i, 1); queue(note); });
   };
   list.onclick = e => { const b = e.target.closest('.qitem'); if (b) open(+b.dataset.i); };
   open(0);
@@ -145,9 +146,12 @@ async function detail(s, done) {
     const reason = approve ? null : (rs.value || rs2.value.trim());
     if (!approve && !reason) { msg.textContent = 'Укажите причину отказа'; return; }
     box.querySelectorAll('.btn').forEach(b => { b.disabled = true; });
-    const { error } = await sb.rpc('moderate', { p_id: s.id, p_approve: approve, p_reason: reason, p_name: $('.nm', box).value.trim(), p_kind: $('.kd', box).value });
+    const name = $('.nm', box).value.trim() || s.name;
+    const { error } = await sb.rpc('moderate', { p_id: s.id, p_approve: approve, p_reason: reason, p_name: name, p_kind: $('.kd', box).value });
     if (error) { msg.textContent = 'Ошибка: ' + error.message; box.querySelectorAll('.btn').forEach(b => { b.disabled = false; }); return; }
-    done();
+    done(approve
+      ? `«${name}» одобрено. Автор увидит место на карте в течение 3 минут (или сразу после перезапуска игры), остальные игроки — в течение 5 минут.`
+      : `Заявка «${s.name}» отклонена, автору придёт уведомление с причиной.`);
   };
   $('.yes', box).onclick = () => decide(true);
   $('.nope', box).onclick = () => decide(false);
