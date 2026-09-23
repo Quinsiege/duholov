@@ -8,7 +8,7 @@ const Cloud = {
 
   // автотесты (браузер под управлением Playwright) на боевой сервер не ходят
   configured() { return !!(CLOUD_CONFIG.url && CLOUD_CONFIG.anonKey) && !navigator.webdriver; },
-  enabled() { return this.configured() && S.d && S.d.settings.cloud !== false; },
+  enabled() { return this.configured(); }, // таблицу видят все; Cfg.s.cloud — показывать ли в ней себя
 
   async client() {
     if (this.sb) return this.sb;
@@ -29,20 +29,7 @@ const Cloud = {
     return sb;
   },
 
-  async submitLeague() {
-    if (!this.enabled()) return;
-    try {
-      const sb = await this.client();
-      const L = League.st();
-      const { data: { user } } = await sb.auth.getUser();
-      await sb.from('league_scores').upsert({
-        user_id: user.id, season: L.season, name: S.d.name.slice(0, 20), stars: L.stars,
-        rank: League.rank(L.stars), level: S.d.level, look: S.d.look, updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,season' });
-    } catch (e) { console.warn(e); }
-  },
-
-  // Топ-50 сезона и место игрока
+  // Топ-50 сезона и место игрока (строки таблицы пишет сервер игры после турниров)
   async top(season) {
     const sb = await this.client();
     const { data, error } = await sb.from('league_scores').select('user_id,name,stars,rank,level,look')

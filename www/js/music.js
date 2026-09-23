@@ -13,7 +13,7 @@ const Music = {
   play(mode) { this.want = mode; this.apply(); },
   apply() {
     const ctx = Sfx.ctx;
-    const on = !!(S.d && S.d.settings.music && ctx && !document.hidden);
+    const on = !!(S.d && Cfg.s.music && ctx && !document.hidden);
     const mode = on ? this.want : null;
     if (mode === this.mode) return;
     clearInterval(this.timer); this.timer = null;

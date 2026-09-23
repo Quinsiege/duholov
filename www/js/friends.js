@@ -1,67 +1,12 @@
 'use strict';
-/* Друзья: коды дружбы (DUHF1) и подарков (DUHG1).
-   Дружба взаимная через сервер: кто добавил код друга, оставляет на сервере связь «я → друг»,
-   и игра друга сама добавляет его в ответ (см. sync). Подарок адресован конкретному другу,
-   открывается один раз, от каждого друга — раз в день. */
+/* Друзья и подарки — через сервер игры.
+   Код дружбы (DUHF1) несёт код игрока: кто добавил код друга, тот становится его другом, а сервер
+   сообщает об этом второму — дружба взаимная. Подарки отправляются одной кнопкой и ждут друга
+   в «Друзьях»: от каждого друга — один раз в день. */
 
 const Friends = {
-  /* ---------- взаимная дружба через сервер ---------- */
-  registered: false, busy: false,
-  PID: /^[a-z0-9]{8,40}$/,  // такой код игрока принимает сервер
-
-  async sync() {
-    if (!Cloud.configured() || !S.d || Sync.moved) return;
-    if (this.busy) { this.again = true; return; }
-    this.busy = true;
-    try {
-      const sb = await Cloud.client();
-      if (!this.registered) {
-        const { data, error } = await sb.rpc('register_pid', { p_pid: S.d.pid });
-        if (error) throw new Error(error.message);
-        if (data === 'taken') { // такой код уже у другого игрока — берём новый
-          S.d.pid = U.uid() + U.uid(); S.save();
-          const r = await sb.rpc('register_pid', { p_pid: S.d.pid });
-          if (r.error || r.data !== 'ok') throw new Error('Не удалось закрепить код игрока');
-        }
-        this.registered = true;
-      }
-      // мои добавления, которых сервер ещё не знает (в том числе сделанные до версии 2.2)
-      for (const f of S.d.friends.filter(x => !x.linked)) {
-        if (!this.PID.test(f.id)) { f.linked = 'skip'; continue; } // старый код без взаимности
-        const { error } = await sb.rpc('add_friend', { p_to: f.id, p_name: S.d.name, p_level: S.d.level });
-        if (error) { console.warn('Дружба:', f.name, error.message); continue; }
-        f.linked = true;
-      }
-      S.save();
-      // кто добавил меня
-      const { data: rows, error } = await sb.from('friend_links').select('from_pid, from_name, from_level, created_at').eq('to_pid', S.d.pid);
-      if (error) throw new Error(error.message);
-      const added = this.applyIncoming(rows || []);
-      added.forEach(f => UI.toast(`Новый друг: ${U.esc(f.name)} — вы теперь в друзьях друг у друга`, 'good'));
-      if (added.length) { Sfx.play('catch'); Bus.emit('friends'); }
-    } catch (e) { console.warn('Друзья:', e.message); }
-    this.busy = false;
-    if (this.again) { this.again = false; this.sync(); }
-  },
-  // Входящие связи → друзья. Каждую связь обрабатываем один раз: удалённый друг сам не вернётся,
-  // пока снова не добавит мой код.
-  applyIncoming(rows) {
-    const seen = S.d.friendLinks = S.d.friendLinks || {};
-    const added = [];
-    rows.forEach(r => {
-      if (!r.from_pid || !this.PID.test(r.from_pid) || r.from_pid === S.d.pid || seen[r.from_pid] === r.created_at) return;
-      seen[r.from_pid] = r.created_at;
-      const f = this.find(r.from_pid);
-      if (f) { f.name = String(r.from_name).slice(0, 20); f.lvl = r.from_level; return; }
-      if (S.d.friends.length >= 50) return;
-      const nf = { id: r.from_pid, name: String(r.from_name).slice(0, 20), lvl: r.from_level || 1, pts: 0, added: Date.now(), sent: '', recv: '', linked: false };
-      S.d.friends.push(nf);
-      J.add('friend', { name: nf.name });
-      added.push(nf);
-    });
-    if (rows.length) S.save();
-    return added;
-  },
+  inbox: [],   // подарки, которые ждут открытия (присылает сервер)
+  busy: false,
 
   pack(prefix, obj) {
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -81,91 +26,57 @@ const Friends = {
   level(f) { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; },
   find(id) { return S.d.friends.find(f => f.id === id); },
 
-  addPoint(f) {
-    const before = this.level(f);
-    f.pts++;
-    const after = this.level(f);
-    if (after > before) {
-      const L = FRIEND_LEVELS[after];
-      S.addXP(L.xp);
-      UI.toast(`Дружба с ${U.esc(f.name)}: теперь «${L.name}»! +${U.fmtNum(L.xp * Ev.xpMul())} опыта`, 'good');
-      Sfx.play('levelup');
-    }
-  },
-
-  add(p) {
-    if (!p.i || !p.n) throw new Error('В коде ошибка');
-    if (p.i === S.d.pid) throw new Error('Это твой собственный код дружбы');
-    let f = this.find(p.i);
-    if (f) { f.name = String(p.n).slice(0, 20); f.lvl = p.l; f.linked = false; S.save(); this.sync(); return { f, isNew: false }; }
-    if (S.d.friends.length >= 50) throw new Error('Друзей уже 50 — это максимум');
-    f = { id: p.i, name: String(p.n).slice(0, 20), lvl: p.l || 1, pts: 0, added: Date.now(), sent: '', recv: '', linked: false };
-    S.d.friends.push(f);
-    J.add('friend', { name: f.name });
-    S.save();
-    this.sync(); // сообщить серверу — друг получит меня в ответ
-    return { f, isNew: true };
-  },
-  remove(id) { S.d.friends = S.d.friends.filter(f => f.id !== id); S.save(); },
-
-  // Подарок: содержимое решается при упаковке и лучше на высоких уровнях дружбы
-  makeGift(f) {
-    const today = U.today();
-    if (f.sent === today) throw new Error('Сегодня этому другу подарок уже отправлен');
-    if (!S.useItem('gift')) throw new Error('Подарков нет — они попадаются в родниках');
-    const r = U.rng(U.uid()), lv = this.level(f);
-    const c = { charm: 3 + Math.floor(r() * 4) };
-    if (r() < 0.6) c.honey = 1 + Math.floor(r() * 2);
-    if (r() < 0.4) c.water = 1;
-    if (lv >= 2 && r() < 0.5) c.charm2 = 2;
-    if (lv >= 3 && r() < 0.3) c.charm3 = 1;
-    if (r() < 0.12 + lv * 0.03) c.cocoon = 5;
-    f.sent = today;
-    this.addPoint(f);
-    J.add('gift', { dir: 'out', name: f.name });
-    S.save();
-    return this.pack('DUHG1', { f: S.d.pid, fn: S.d.name, to: f.id, d: today, k: U.uid(), c });
-  },
-  openGift(p) {
-    if (p.to !== S.d.pid) throw new Error('Этот подарок адресован другому Ловчему');
-    if (S.d.giftsOpened[p.k]) throw new Error('Этот подарок уже открыт');
-    const f = this.find(p.f);
-    if (!f) throw new Error(`Сначала добавь ${p.fn || 'отправителя'} в друзья — попроси его код дружбы`);
-    if (f.recv === U.today()) throw new Error('Сегодня ты уже открывал подарок от этого друга — попробуй завтра');
-    S.d.giftsOpened[p.k] = Date.now();
-    f.recv = U.today();
-    const { cocoon, ...items } = p.c || {};
-    const got = S.giveRewards({ ...items, xp: 200 + this.level(f) * 100 });
-    if (cocoon && S.d.cocoons.length < 9) { S.d.cocoons.push({ id: U.uid(), km: 5, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, label: 'Кокон 5 км' }); }
-    this.addPoint(f);
-    J.add('gift', { dir: 'in', name: f.name });
-    S.save();
-    return { f, got };
-  },
-
-  // Один вход для всех кодов: дух (DUH1), дружба (DUHF1), подарок (DUHG1)
-  accept(code, after) {
+  // Кто добавил меня и какие подарки ждут — спрашиваем у сервера
+  async sync() {
+    if (!Game.on() || !S.d || this.busy) return;
+    this.busy = true;
     try {
-      const txt = String(code);
+      const r = await Game.act('friendsSync');
+      r.added.forEach(n => UI.toast(`Новый друг: ${U.esc(n)} — вы теперь в друзьях друг у друга`, 'good'));
+      if (r.added.length) Sfx.play('catch');
+      const before = this.inbox.length;
+      this.inbox = r.inbox;
+      if (r.inbox.length > before) UI.toast(`Тебе пришли подарки: ${r.inbox.length}. Открой «Меню → Друзья»`, 'good');
+      Bus.emit('friends');
+      UI.refreshHud();
+    } catch (e) { console.warn('Друзья:', e.message); }
+    this.busy = false;
+  },
+
+  // Один вход для всех кодов: дружба (DUHF1), посылка с духом (DUH2)
+  async accept(code, after) {
+    const txt = String(code);
+    try {
       if (/DUHF1\./.test(txt)) {
-        const { f, isNew } = this.add(this.unpack('DUHF1', txt));
+        const p = this.unpack('DUHF1', txt);
+        if (!p || !p.i) throw new Error('В коде ошибка');
+        const r = await Game.act('friendAdd', { pid: p.i });
         Sfx.play('catch');
-        UI.toast(isNew ? `${U.esc(f.name)} теперь в друзьях!` : `Данные друга ${U.esc(f.name)} обновлены`, 'good');
+        UI.toast(r.isNew ? `${U.esc(r.name)} теперь в друзьях!` : `Данные друга ${U.esc(r.name)} обновлены`, 'good');
       } else if (/DUHG1\./.test(txt)) {
-        const { f, got } = this.openGift(this.unpack('DUHG1', txt));
-        Sfx.play('hatch'); U.vibrate([30, 50, 80]);
-        UI.modal({
-          title: `Подарок от ${U.esc(f.name)}`, cls: 'gift-modal',
-          html: `<div class="trade-sp">${Art.item('gift')}</div><div class="lvl-rw">${got.map(x => `<div>${x.k === 'xp' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : x.k === 'cocoon' ? Art.cocoon(5) : Art.item(x.k)}<span>${x.label}${x.k === 'xp' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>
-            <p class="small">Дружба: ${FRIEND_LEVELS[this.level(f)].name} (${f.pts} ★)</p>`,
-          buttons: [{ label: 'Спасибо!', cls: 'primary' }],
-        });
-      } else if (/DUH1\./.test(txt)) {
-        Trade.welcome(Trade.receive(txt));
+        throw new Error('Подарки теперь приходят сами — загляни в «Друзья»');
+      } else if (/DUH[12]\./i.test(txt)) {
+        Trade.welcome(await Trade.receive(txt));
       } else throw new Error('Не похоже на код Духолова');
       after && after();
       UI.refreshHud();
-    } catch (e) { UI.toast(e.message || 'Не получилось'); Sfx.play('miss'); }
+    } catch (e) { UI.toast(U.esc(e.message || 'Не получилось')); Sfx.play('miss'); }
+  },
+
+  async openGift(g, done) {
+    const r = await Game.try('giftOpen', { id: g.id });
+    if (!r) return;
+    this.inbox = this.inbox.filter(x => x.id !== g.id);
+    Sfx.play('hatch'); U.vibrate([30, 50, 80]);
+    const f = this.find(g.from);
+    UI.modal({
+      title: `Подарок от ${U.esc(r.name)}`, cls: 'gift-modal',
+      html: `<div class="trade-sp">${Art.item('gift')}</div><div class="lvl-rw">${r.got.map(x => `<div>${x.k === 'xp' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : x.k === 'cocoon' ? Art.cocoon(5) : Art.item(x.k)}<span>${x.label}${x.k === 'xp' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>
+        ${f ? `<p class="small">Дружба: ${FRIEND_LEVELS[this.level(f)].name} (${f.pts} ★)</p>` : ''}`,
+      buttons: [{ label: 'Спасибо!', cls: 'primary' }],
+    });
+    done && done();
+    UI.refreshHud();
   },
 
   /* ---------------- ЭКРАН ---------------- */
@@ -176,11 +87,12 @@ const Friends = {
         <small>Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной. Дарите друг другу подарки каждый день.</small>
         <div class="fr-btns"><button class="btn small my-qr">Показать QR</button><button class="btn small primary my-share">Поделиться</button></div>
       </div>
+      <div class="fr-inbox"></div>
       <div class="panel trade-in">
         <b>Вставить код</b>
-        <small>Код дружбы, подарок или посылку с духом — игра сама поймёт, что это.</small>
+        <small>Код дружбы или посылку с духом — игра сама поймёт, что это.</small>
         ${Trade.canScan() ? '<button class="btn wide scan-btn">Сканировать QR-код</button>' : ''}
-        <textarea class="input code-in" rows="3" placeholder="DUHF1… / DUHG1… / DUH1…"></textarea>
+        <textarea class="input code-in" rows="3" placeholder="DUHF1… / DUH2…"></textarea>
         <button class="btn primary wide accept-btn">Принять</button>
       </div>
       <div class="panel trade-in coop-join">
@@ -192,8 +104,12 @@ const Friends = {
       <div class="list fr-list"></div>
       <button class="btn ghost wide to-trade">Обмен духами →</button>`, 'friends-screen');
     const render = () => {
+      if (!scr.isConnected) return;
       scr.querySelector('.fr-count').textContent = S.d.friends.length;
       scr.querySelector('.gift-n').textContent = S.d.items.gift || 0;
+      scr.querySelector('.fr-inbox').innerHTML = this.inbox.length ? `<div class="panel gift-inbox"><b>Подарки от друзей</b>${this.inbox.map(g => `
+        <div class="row gift-row" data-id="${g.id}"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${U.esc(g.name)}</b><small>${new Date(g.t).toLocaleString('ru-RU')}</small></div>
+        <button class="btn small primary open-gift">Открыть</button></div>`).join('')}</div>` : '';
       const today = U.today();
       scr.querySelector('.fr-list').innerHTML = S.d.friends.length ? [...S.d.friends].sort((a, b) => b.pts - a.pts).map(f => {
         const lv = this.level(f), next = FRIEND_LEVELS[lv + 1];
@@ -206,9 +122,8 @@ const Friends = {
       }).join('') : '<div class="row"><div class="row-main"><small>Пока никого. Обменяйтесь кодами дружбы!</small></div></div>';
     };
     render();
-    // проверить, не добавил ли кто-нибудь меня, пока экран открыт
-    const onFriends = () => { if (scr.isConnected) render(); };
-    Bus.on('friends', onFriends);
+    // проверить, не добавил ли кто-нибудь меня и не пришли ли подарки, пока экран открыт
+    Bus.on('friends', render);
     this.sync();
     const input = scr.querySelector('.code-in');
     scr.querySelector('.accept-btn').onclick = () => this.accept(input.value, () => { input.value = ''; render(); });
@@ -222,19 +137,24 @@ const Friends = {
       UI.closeScreen(scr);
       Coop.join(code);
     };
-    scr.querySelector('.fr-list').addEventListener('click', e => {
+    scr.querySelector('.fr-inbox').addEventListener('click', e => {
+      const row = e.target.closest('.gift-row'); if (!row || !e.target.closest('.open-gift')) return;
+      const g = this.inbox.find(x => x.id === row.dataset.id);
+      if (g) this.openGift(g, render);
+    });
+    scr.querySelector('.fr-list').addEventListener('click', async e => {
       const row = e.target.closest('.fr-row'); if (!row) return;
-      const f = this.find(row.dataset.id);
+      const f = this.find(row.dataset.id); if (!f) return;
       if (e.target.closest('.send-gift')) {
-        try {
-          const code = this.makeGift(f);
+        if (await Game.try('giftSend', { pid: f.id })) {
           Sfx.play('spin');
+          UI.toast(`Подарок отправлен: ${U.esc(f.name)} получит его в «Друзьях»`, 'good');
           render();
-          this.showQR(`Подарок для ${U.esc(f.name)}`, code, `Лови подарок в Духолове! «Меню → Друзья» → вставь код:\n${code}`);
-        } catch (err) { UI.toast(err.message); }
+        }
         return;
       }
-      UI.confirm(U.esc(f.name), `Уровень дружбы: ${FRIEND_LEVELS[this.level(f)].name} (★ ${f.pts}). В друзьях с ${new Date(f.added).toLocaleDateString('ru-RU')}.`, 'Удалить из друзей', () => { this.remove(f.id); render(); }, 'Закрыть', true);
+      UI.confirm(U.esc(f.name), `Уровень дружбы: ${FRIEND_LEVELS[this.level(f)].name} (★ ${f.pts}). В друзьях с ${new Date(f.added).toLocaleDateString('ru-RU')}.`, 'Удалить из друзей',
+        async () => { if (await Game.try('friendRemove', { pid: f.id })) render(); }, 'Закрыть', true);
     });
   },
   async shareText(text) {

@@ -28,7 +28,10 @@ const Duel = {
       </div>`;
     const scr = UI.screen('Капище', html, 'shrine-screen');
     const go = scr.querySelector('.duel-go');
-    if (go) go.onclick = () => { UI.closeScreen(scr); this.start(e, g, team); };
+    if (go) go.onclick = async () => {
+      if (!await this.begin('duelStart', { shrine: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
+      UI.closeScreen(scr); this.start({ ...e, kind: 'shrine' }, g, S.team());
+    };
     const edit = scr.querySelector('.team-edit');
     if (edit) edit.onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
   },
@@ -52,12 +55,23 @@ const Duel = {
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
       </div>`;
     const scr = UI.screen('Вторжение Нави', html, 'shrine-screen invasion-screen');
-    scr.querySelector('.duel-go').onclick = () => {
+    scr.querySelector('.duel-go').onclick = async () => {
+      if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
-      this.start({ ...e, kind: 'invasion', tier: 1, T: { speed: 0.75, shield: 0.5 } }, g, team);
+      this.start({ ...e, kind: 'invasion', tier: 1, T: { speed: 0.75, shield: 0.5 } }, g, S.team());
     };
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
   },
+
+  // Начало боя отмечает сервер (он же проверит правдоподобие победы в конце)
+  async begin(type, args) {
+    if (this.st || this._starting) return false;
+    this._starting = true;
+    const ok = await Game.try(type, args);
+    this._starting = false;
+    return !!ok;
+  },
+  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : 'duelEnd'; },
 
   fighter(sp) {
     const x = S.battle(sp);
@@ -370,18 +384,23 @@ const Duel = {
     await U.wait(500);
     if (this.st !== st) return;
     let html;
-    if (st.e.kind === 'invasion') return this.finishInvasion(win);
     if (st.e.kind === 'league') return League.afterDuel(win, st);
+    // итог боя проверяет сервер: победа засчитывается, если команда могла нанести столько урона за это время
+    let r = null;
+    try { r = await Game.act(this.endType(st.e.kind), { win: !!win }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
+    if (this.st !== st) return;
+    if (win && !(r && r.win)) {
+      html = `<div class="res-title lose">Победа не засчитана</div>
+        <div class="res-note">Сервер не подтвердил этот бой. Проверь интернет и попробуй снова.</div>`;
+      const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide">На карту</button></div></div>`);
+      res.querySelector('button').onclick = () => this.close();
+      st.root.appendChild(res);
+      return;
+    }
+    if (st.e.kind === 'invasion') return this.finishInvasion(win, r);
     if (win) {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
-      const T = st.T, mul = Ev.duelMul(), t = st.e.tier;
-      S.d.shrines[st.e.id] = U.today();
-      J.add('duel', { name: st.e.name, guard: st.g.name, tier: t });
-      S.d.stats.duels++;
-      S.progress('duel', 1);
-      const rw = S.giveRewards({ xp: T.xp * mul, sparks: T.sparks * mul, charm: 5 * mul, honey: t * mul, water: 2, charm2: t >= 2 ? 3 * mul : 0, charm3: t === 3 ? 2 * mul : 0 });
-      const am = S.rollAmulet(0.15 * t, st.e.id);
-      if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
+      const rw = r.rw;
       html = `<div class="res-title">Победа!</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
         <div class="res-note">«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.</div>
@@ -397,19 +416,13 @@ const Duel = {
     st.root.appendChild(res);
     UI.refreshHud();
   },
-  finishInvasion(win) {
+  finishInvasion(win, r) {
     const st = this.st, e = st.e, g = st.g;
     let html, rescue = null;
     if (win) {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
-      S.d.freed[e.invId] = true;
-      S.d.stats.invasions++;
-      S.progress('invasion', 1);
-      J.add('invasion', { name: e.name });
-      const rw = S.giveRewards({ xp: 1000, sparks: 500, charm: 6, honey: 2, water: 2 });
-      const am = S.rollAmulet(0.15, e.invId);
-      if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
-      rescue = g.team[Math.floor(U.h('rescue', e.invId) * g.team.length)];
+      const rw = r.rw;
+      rescue = g.team.find(x => x.sid === r.rescue.sid) || g.team[0];
       html = `<div class="res-title">Родник освобождён!</div>
         <div class="res-art">${Art.of(rescue)}</div>
         <div class="res-note">Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!</div>
@@ -426,7 +439,7 @@ const Duel = {
     const rb = res.querySelector('.rescue');
     if (rb) rb.onclick = () => {
       this.close();
-      Encounter.start({ mode: 'rescue', sid: rescue.sid, lvl: Math.min(rescue.lvl, S.maxLvl()), seed: e.invId + ':rescue', dark: true });
+      Encounter.start({ mode: 'rescue', seed: e.invId + ':rescue' });
     };
     st.root.appendChild(res);
     UI.refreshHud();
@@ -439,6 +452,11 @@ const Duel = {
   },
   close() {
     const st = this.st; if (!st) return;
+    // сдался или вышел до конца боя — это поражение
+    if (!st.over) {
+      Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false }).catch(() => {});
+      if (st.e.kind === 'league') League.carry = null;
+    }
     st.over = true;
     st.root.remove();
     this.st = null;

@@ -1,6 +1,7 @@
 'use strict';
 /* Мир: духи появляются детерминированно по реальным координатам (одна точка в одно время — одно и то же),
-   а Родники, Капища и Разломы стоят у настоящих объектов (pois.js). */
+   а Родники, Капища и Разломы стоят у настоящих объектов (pois.js).
+   Этот же код работает на сервере игры: он пересчитывает, был ли дух, родник или разлом там, где его нашёл игрок. */
 
 const W = {
   SPAWN_CELL: 0.00055,   // ≈ 60 м
@@ -8,6 +9,7 @@ const W = {
   SLOT: 15 * 60 * 1000,  // дух живёт на карте 15 минут
   get SPRING_COOLDOWN() { return Ev.springCooldown(); },
   INTERACT: 70,          // радиус взаимодействия, м
+  BATTLE_R: 100,         // радиус для капищ и разломов, м
   VIEW: 320,             // радиус видимости, м
 
   // Перебор клеток сетки в радиусе. Шаг по долготе подгоняется под широту, чтобы клетки были «квадратными».
@@ -27,8 +29,8 @@ const W = {
     const i = Math.floor(lat / this.BIOME_CELL), j = Math.floor(lng / this.BIOME_CELL);
     return ELEMENT_KEYS[Math.floor(U.h('biome', i, j) * ELEMENT_KEYS.length)];
   },
-  timeBonus(el, d = new Date()) {
-    const h = d.getHours();
+  timeBonus(el, t) {
+    const h = U.hour(t);
     if (h >= 21 || h < 5) return el === 'shadow' || el === 'wind' ? 2 : 1;
     if (h >= 17) return el === 'current' || el === 'fire' ? 2 : 1;
     if (h < 10) return el === 'water' || el === 'forest' ? 2 : 1;
@@ -49,7 +51,7 @@ const W = {
       return [e, w];
     }), r());
     const RW = { 1: 60, 2: 24, 3: 8, 4: 2 };
-    const h = new Date().getHours();
+    const h = U.hour();
     const pool = SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng)).map(s => {
       let w = RW[s.rar] || 0;
       if (s.stage === 3) w *= 0.3;
@@ -62,7 +64,7 @@ const W = {
   },
 
   spawnsAround(lat, lng, radius = this.VIEW) {
-    const now = Date.now(), out = [];
+    const now = U.now(), out = [];
     const P = S.incenseActive() ? 0.3 : 0.14;
     const night = U.isNight();
     this.cells(lat, lng, this.SPAWN_CELL, radius, (i, j, la, ln, sz, lsz) => {
@@ -88,43 +90,43 @@ const W = {
   },
 
   /* ---------- Родники: у реальных объектов (см. pois.js) ---------- */
+  // p — объект карты { id, lat, lng, name, photo }; d — расстояние до игрока
+  springFor(p, d) {
+    const slot = Math.floor(U.now() / 7200000), id = p.id, last = S.d.springs[id] || 0;
+    // вторжение Нави: ~12% родников захвачены на двухчасовое окно (с 4 уровня)
+    const invId = `${id}:${slot}`;
+    const invaded = S.d.level >= 4 && U.h('inv', id, slot) < 0.12 && !S.d.freed[invId];
+    return { type: 'spring', id, invId, invaded, lat: p.lat, lng: p.lng, d, name: p.name, photo: p.photo,
+      ready: U.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN };
+  },
   springsAround(lat, lng, radius = this.VIEW + 150) {
-    const slot = Math.floor(Date.now() / 7200000);
-    return Poi.near(lat, lng, radius, 'spring').map(p => {
-      const id = p.id, last = S.d.springs[id] || 0;
-      // вторжение Нави: ~12% родников захвачены на двухчасовое окно (с 4 уровня)
-      const invId = `${id}:${slot}`;
-      const invaded = S.d.level >= 4 && U.h('inv', id, slot) < 0.12 && !S.d.freed[invId];
-      return { type: 'spring', id, invId, invaded, lat: p.lat, lng: p.lng, d: p.d, name: p.name, photo: p.photo,
-        ready: Date.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN };
-    });
+    return Poi.near(lat, lng, radius, 'spring').map(p => this.springFor(p, p.d));
   },
 
   /* ---------- Разломы: каждый час открываются у части Капищ ---------- */
   riftAt(id, hour) { return U.h('rr', id, hour) < 0.35; },
+  // Разлом у капища p в этот час (или null)
+  riftFor(p, d, hour = Math.floor(U.now() / 3600000)) {
+    if (!this.riftAt(p.id, hour)) return null;
+    const id = `${p.id}:${hour}`;
+    const r = U.rng(id);
+    const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
+    let pool;
+    if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
+    else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng) && Ev.seasonal(s) > 0);
+    else pool = SPECIES.filter(s => s.rar === 2);
+    // в неделю стихии разломы чаще охраняют духи этой стихии
+    const evPool = pool.filter(s => s.el === Ev.cur.el);
+    if (evPool.length && r() < 0.6) pool = evPool;
+    const boss = pool[Math.floor(r() * pool.length)].id;
+    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
+  },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
-    const out = [], hour = Math.floor(Date.now() / 3600000);
-    Poi.near(lat, lng, radius, 'shrine').forEach(p => {
-      if (!this.riftAt(p.id, hour)) return;
-      const pLat = p.lat, pLng = p.lng, d = p.d;
-      const id = `${p.id}:${hour}`;
-      const r = U.rng(id);
-      const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
-      let pool;
-      if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
-      else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, pLng) && Ev.seasonal(s) > 0);
-      else pool = SPECIES.filter(s => s.rar === 2);
-      // в неделю стихии разломы чаще охраняют духи этой стихии
-      const evPool = pool.filter(s => s.el === Ev.cur.el);
-      if (evPool.length && r() < 0.6) pool = evPool;
-      const boss = pool[Math.floor(r() * pool.length)].id;
-      out.push({ type: 'rift', id, lat: pLat, lng: pLng, d, tier, boss, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 });
-    });
-    return out;
+    return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
   },
 
   springLoot(id) {
-    const r = U.rng(id + Date.now());
+    const r = U.rng(id + Math.random());
     const lvl = S.d.level, loot = {};
     const n = (4 + Math.floor(r() * 3)) * Ev.lootMul();
     for (let k = 0; k < n; k++) {
@@ -143,15 +145,16 @@ const W = {
   },
 
   /* ---------- Капища ---------- */
+  shrineFor(p, d) {
+    const id = p.id;
+    const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
+    const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
+    return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today() };
+  },
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
-    const day = U.today(), hour = Math.floor(Date.now() / 3600000);
-    return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => {
-      const id = p.id;
-      const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
-      const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
-      return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d: p.d, won: S.d.shrines[id] === day };
-    });
+    const hour = Math.floor(U.now() / 3600000);
+    return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
   // Прислужник Нави на захваченном роднике: трое омрачённых духов одной стихии
   grunt(e) {
@@ -195,8 +198,9 @@ const W = {
     return { name, color, title: T.title, team };
   },
 
+  // Уборка устаревших отметок (выполняется на сервере)
   prune() {
-    const now = Date.now(), hour = Math.floor(now / 3600000);
+    const now = U.now(), hour = Math.floor(now / 3600000);
     for (const k in S.d.caught) if (now - S.d.caught[k] > 2 * this.SLOT) delete S.d.caught[k];
     for (const k in S.d.springs) if (now - S.d.springs[k] > this.SPRING_COOLDOWN * 2) delete S.d.springs[k];
     for (const k in S.d.rifts) if (+k.split(':').pop() < hour - 1) delete S.d.rifts[k];

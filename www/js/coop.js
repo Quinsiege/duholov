@@ -31,7 +31,8 @@ const Coop = {
     try { await this.load(); } catch (e) { UI.toast(e.message); return; }
     this.reset();
     this.host = true;
-    this.rift = { id: r.id, tier: r.tier, boss: r.boss, endsAt: r.endsAt };
+    // место разлома нужно каждому участнику: сервер проверяет, что разлом существует
+    this.rift = { id: r.id, tier: r.tier, boss: r.boss, endsAt: r.endsAt, poi: r.poi, lat: r.lat, lng: r.lng, place: r.place };
     this.code = Array.from({ length: 5 }, () => this.ALPHA[Math.floor(Math.random() * this.ALPHA.length)]).join('');
     this.peer = new Peer(this.PREFIX + this.code);
     this.peer.on('open', () => { this.members = [{ id: 'host', ...this.me() }]; this.lobby(); });
@@ -133,7 +134,7 @@ const Coop = {
   /* ---------------- ОБЩЕЕ ---------------- */
   launch(hpMul) {
     if (this.scr) { UI.closeScreen(this.scr); this.scr = null; }
-    Raid.battle(this.rift, S.team(), { host: this.host, hpMul, allies: this.members.length - 1 });
+    Raid.battle(this.rift, S.team(), { host: this.host, hpMul, allies: this.members.length - 1 }).then(ok => { if (!ok) this.leave(); });
   },
   lobby() {
     if (this.scr && this.scr.isConnected) { this.renderLobby(); return; }

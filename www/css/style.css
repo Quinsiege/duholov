@@ -890,3 +890,12 @@ a.row.link { color: inherit; text-decoration: none; }
   .screen-body { max-width: 720px; margin: 0 auto; width: 100%; }
   .screen-head { max-width: 720px; margin: 0 auto; width: 100%; }
 }
+
+/* ---------- 3.0: сервер игры ---------- */
+/* пока сервер отвечает дольше обычного — тонкая полоска вверху экрана */
+body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--gold2), transparent); background-size: 50% 100%; background-repeat: no-repeat;
+  animation: net-busy 1s linear infinite; }
+@keyframes net-busy { from { background-position: -50% 0; } to { background-position: 150% 0; } }
+.gift-inbox { display: flex; flex-direction: column; gap: 6px; border-color: rgba(251, 191, 36, .45); }
+.gift-inbox .row { padding: 6px 0; }

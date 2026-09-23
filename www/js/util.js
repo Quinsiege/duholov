@@ -32,6 +32,16 @@ const U = {
     return entries[entries.length - 1][0];
   },
   uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); },
+
+  /* Время игры. Сервер и телефон должны считать одинаково: «сейчас» — по часам сервера
+     (U.skew — поправка телефона), «сегодня» и «ночь» — в часовом поясе игрока (U.tz, минуты к UTC). */
+  skew: 0,
+  tz: null,
+  now() { return Date.now() + this.skew; },
+  tzMin() { return this.tz != null ? this.tz : -new Date().getTimezoneOffset(); },
+  // Дата, у которой getUTC*() — это местные дата и время игрока
+  local(t = this.now()) { return new Date(t + this.tzMin() * 60000); },
+  hour(t) { return this.local(t).getUTCHours(); },
   clamp: (v, a, b) => Math.max(a, Math.min(b, v)),
   lerp: (a, b, t) => a + (b - a) * t,
 
@@ -48,8 +58,8 @@ const U = {
     return m >= 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m}:${String(ss).padStart(2, '0')}`;
   },
   fmtNum(n) { return Math.round(n).toLocaleString('ru-RU'); },
-  today() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; },
-  isNight(d = new Date()) { const h = d.getHours(); return h >= 20 || h < 6; },
+  today(t) { const d = this.local(t); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; },
+  isNight(t) { const h = this.hour(t); return h >= 20 || h < 6; },
 
   $(sel, root = document) { return root.querySelector(sel); },
   $$(sel, root = document) { return [...root.querySelectorAll(sel)]; },
@@ -60,7 +70,7 @@ const U = {
   vibrate(p) {
     try {
       const active = !navigator.userActivation || navigator.userActivation.hasBeenActive;
-      if (active && S.d && S.d.settings.vibro && navigator.vibrate) navigator.vibrate(p);
+      if (active && Cfg.s.vibro && navigator.vibrate) navigator.vibrate(p);
     } catch (e) {}
   },
 };
@@ -80,7 +90,7 @@ const Sfx = {
     try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   },
   tone(freq, dur, { type = 'sine', vol = 0.12, when = 0, to = null } = {}) {
-    if (!this.ctx || !S.d || !S.d.settings.sound) return;
+    if (!this.ctx || !Cfg.s.sound) return;
     if (this.ctx.state === 'suspended') this.ctx.resume();
     const t0 = this.ctx.currentTime + when;
     const o = this.ctx.createOscillator(), g = this.ctx.createGain();
@@ -94,7 +104,7 @@ const Sfx = {
   },
   // Шум через фильтр — для треска огня, свиста ветра, шелеста листвы
   noise(dur, { vol = 0.1, when = 0, type = 'lowpass', f = 1000, to = null, q = 1 } = {}) {
-    if (!this.ctx || !S.d || !S.d.settings.sound) return;
+    if (!this.ctx || !Cfg.s.sound) return;
     const ctx = this.ctx;
     if (!this.nbuf) {
       this.nbuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);

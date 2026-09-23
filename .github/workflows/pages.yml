@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Сервер игры собран из текущего кода
+        shell: pwsh
+        run: ./tools/build-server.ps1 -Check
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

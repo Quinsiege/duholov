@@ -1,21 +1,28 @@
 'use strict';
-/* Встреча с духом: бросок оберега свайпом, сжимающееся кольцо, покачивания, AR-камера */
+/* Встреча с духом: бросок оберега свайпом, сжимающееся кольцо, покачивания, AR-камера.
+   Попадание и кольцо определяет телефон (это ловкость игрока), а поймался ли дух, сбежал ли он
+   и какая награда — решает сервер (действия encStart / encThrow / encHoney / encEnd). */
 
 const Encounter = {
   st: null,
   lastType: 'charm',
 
-  throwables() { return ['charm', 'charm2', 'charm3'].filter(k => (S.d.items[k] || 0) > 0); },
+  throwables() { return Rules.THROWABLE.filter(k => (S.d.items[k] || 0) > 0); },
 
-  start(o) {
-    if (this.st) return;
+  // o: { mode: 'wild'|'raid'|'rescue'|'story', tut, spawnId, seed, onEnd } — вид и уровень духа сообщает сервер
+  async start(o) {
+    if (this.st || this._opening) return;
     if (o.mode !== 'raid' && !this.throwables().length) { UI.toast('Обереги закончились! Загляни к роднику.'); return; }
+    this._opening = true;
+    const r = await Game.try('encStart', { kind: o.tut ? 'tut' : o.mode, id: o.spawnId });
+    this._opening = false;
+    if (!r) { MapView.refresh(); return; }
+    o = { ...o, mode: r.mode, sid: r.sid, lvl: r.lvl, shiny: r.shiny, dark: r.dark, boost: r.boost, charms: r.charms };
     const s = SP[o.sid];
     const sp = S.makeSpirit(o.sid, o.lvl, o.seed + ':iv', { ivMin: o.mode === 'wild' ? 0 : 10 });
     if (o.shiny) sp.shiny = true;
     if (o.dark) sp.dark = true;
-    S.seen(o.sid);
-    const power = S.power(sp);
+    const power = r.power;
     const root = U.el(`
       <div class="enc">
         <video class="enc-cam" playsinline muted autoplay></video>
@@ -31,7 +38,7 @@ const Encounter = {
             ${sp.dark ? '<div class="enc-tag dark">Омрачённый Навью</div>' : ''}
           </div>
           <div class="enc-tr">
-            <button class="btn-round enc-ar ${S.d.settings.ar ? 'on' : ''}" aria-label="AR">AR</button>
+            <button class="btn-round enc-ar ${Cfg.s.ar ? 'on' : ''}" aria-label="AR">AR</button>
             <button class="btn-round enc-photo" aria-label="Фото"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
           </div>
         </div>
@@ -43,7 +50,7 @@ const Encounter = {
         <div class="enc-ball"></div>
         <div class="enc-bottom">
           <button class="enc-honey"><div class="ico">${Art.item('honey')}</div><span></span></button>
-          <div class="enc-hint">${S.d.settings.tapThrow ? 'Коснись оберега — он полетит в духа.' : 'Смахни оберег вверх.'}<br>Попади в кольцо, когда оно маленькое!</div>
+          <div class="enc-hint">${Cfg.s.tapThrow ? 'Коснись оберега — он полетит в духа.' : 'Смахни оберег вверх.'}<br>Попади в кольцо, когда оно маленькое!</div>
           <button class="enc-type"><div class="ico"></div><span></span></button>
         </div>
       </div>`);
@@ -60,9 +67,9 @@ const Encounter = {
 
     st.$('.enc-run').onclick = () => this.run();
     st.$('.enc-ar').onclick = e => {
-      S.d.settings.ar = !S.d.settings.ar; S.save();
-      e.currentTarget.classList.toggle('on', S.d.settings.ar);
-      S.d.settings.ar ? this.startCam() : this.stopCam();
+      Cfg.s.ar = !Cfg.s.ar; Cfg.save();
+      e.currentTarget.classList.toggle('on', Cfg.s.ar);
+      Cfg.s.ar ? this.startCam() : this.stopCam();
     };
     st.$('.enc-photo').onclick = () => this.photo();
     st.$('.enc-honey').onclick = () => this.useHoney();
@@ -71,9 +78,9 @@ const Encounter = {
     this.layout();
     this._onResize = () => this.layout();
     window.addEventListener('resize', this._onResize);
-    this._onTilt = e => { if (this.st && S.d.settings.ar && e.gamma != null) this.st.tilt = U.clamp(-e.gamma * 4, -80, 80); };
+    this._onTilt = e => { if (this.st && Cfg.s.ar && e.gamma != null) this.st.tilt = U.clamp(-e.gamma * 4, -80, 80); };
     window.addEventListener('deviceorientation', this._onTilt);
-    if (S.d.settings.ar) this.startCam();
+    if (Cfg.s.ar) this.startCam();
     this.updateBottom();
     requestAnimationFrame(this._loop = t => this.loop(t));
     // появление
@@ -141,13 +148,10 @@ const Encounter = {
   },
 
   /* ---------------- ШАНС ---------------- */
+  // только для цвета кольца: сам бросок считает сервер по тем же правилам (rules.js)
   chance(throwMul = 1) {
-    const st = this.st, { s, sp, o } = st;
-    if (o.tut) return 1; // учебного духа поймать можно всегда
-    const base = o.mode === 'story' ? 0.5 : o.mode === 'raid' ? (s.legend ? 0.1 : 0.2) : RARITY[s.rar].base * U.clamp(1.15 - sp.lvl / 60, 0.55, 1.15);
-    const cm = o.mode === 'raid' ? 1.5 : ITEMS[st.charmType].mult;
-    const mult = cm * (st.honey ? 1.5 : 1) * throwMul;
-    return 1 - Math.pow(1 - U.clamp(base, 0.02, 0.95), mult);
+    const st = this.st, { sp, o } = st;
+    return Rules.catchChance({ mode: o.mode, sid: sp.sid, lvl: sp.lvl, item: o.mode === 'raid' ? null : st.charmType, honey: st.honey, mul: throwMul });
   },
   ringColor() {
     const c = this.chance(1);
@@ -157,7 +161,7 @@ const Encounter = {
   /* ---------------- НИЖНЯЯ ПАНЕЛЬ ---------------- */
   updateBottom() {
     const st = this.st;
-    const cnt = st.o.mode === 'raid' ? st.raidLeft : (S.d.items[st.charmType] || 0);
+    const cnt = st.o.mode === 'raid' ? st.raidLeft : Math.max(0, (S.d.items[st.charmType] || 0) - (st.spent || 0));
     st.ballEl.innerHTML = Art.charm(st.charmType);
     st.$('.enc-type .ico').innerHTML = Art.charm(st.charmType);
     st.$('.enc-type span').textContent = cnt;
@@ -175,11 +179,15 @@ const Encounter = {
     this.flash(ITEMS[st.charmType].name);
     this.updateBottom();
   },
-  useHoney() {
+  async useHoney() {
     const st = this.st;
-    if (st.phase !== 'aim') return;
+    if (st.phase !== 'aim' || st.honeyBusy) return;
     if (st.honey) { this.flash('Дух уже лакомится мёдом'); return; }
-    if (!S.useItem('honey')) { UI.toast('Мёда нет. Его можно найти у родников.'); return; }
+    if (!(S.d.items.honey > 0)) { UI.toast('Мёда нет. Его можно найти у родников.'); return; }
+    st.honeyBusy = true;
+    const r = await Game.try('encHoney');
+    st.honeyBusy = false;
+    if (!r || this.st !== st) return;
     st.honey = true;
     Sfx.play('spin');
     this.flash('Дух ест мёд и успокаивается');
@@ -219,7 +227,7 @@ const Encounter = {
       const vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt;
       const moved = Math.hypot(e.clientX - s0.x, e.clientY - s0.y);
       if (vy < -0.35 && st.phase === 'aim') this.throwCharm(vx, vy);
-      else if (S.d.settings.tapThrow && moved < 14 && st.phase === 'aim') {
+      else if (Cfg.s.tapThrow && moved < 14 && st.phase === 'aim') {
         // доступность: касание без свайпа — точный бросок в духа (бонус кольца зависит от момента касания)
         st.ball.x = st.rest.x; st.ball.y = st.rest.y;
         this.throwCharm((st.cx - st.rest.x) / 240, -1.6 * Math.max(480, st.H) / 800);
@@ -236,7 +244,8 @@ const Encounter = {
     const st = this.st;
     if (st.phase !== 'aim') return;
     if (st.o.mode === 'raid') { if (st.raidLeft <= 0) return; st.raidLeft--; }
-    else if (!S.useItem(st.charmType)) { UI.toast('Обереги этого вида закончились'); return; }
+    else if (!((S.d.items[st.charmType] || 0) - (st.spent || 0) > 0)) { UI.toast('Обереги этого вида закончились'); return; }
+    else st.spent = (st.spent || 0) + 1; // пока летит, счётчик показываем без него — спишет сервер
     st.throws++;
     st.phase = 'fly';
     const hand = st.root.querySelector('.tut-hand'); if (hand) hand.remove();
@@ -246,7 +255,7 @@ const Encounter = {
     const f = 1 + U.clamp((power - 1.6) / 1.6, -1, 1) * 0.55;
     const x0 = st.ball.x, y0 = st.ball.y;
     const x1 = x0 + vx * 240, y1 = y0 - (y0 - st.cy0) * f;
-    st.fl = { t0: performance.now(), dur: 620, x0, y0, x1, y1, qx: (x0 + x1) / 2, qy: Math.min(y0, y1) - st.H * 0.2, ring: st.ring };
+    st.fl = { t0: performance.now(), dur: 620, x0, y0, x1, y1, qx: (x0 + x1) / 2, qy: Math.min(y0, y1) - st.H * 0.2, ring: st.ring, item: st.charmType };
     this.updateBottom();
   },
   stepFlight(t) {
@@ -258,29 +267,42 @@ const Encounter = {
     b.rot += 14;
     if (p >= 1) { st.phase = 'resolve'; this.resolve(); }
   },
+  // Бросок долетел: попадание и кольцо — отсюда, результат — с сервера
+  send(hit, ring) {
+    const st = this.st;
+    const req = Game.act('encThrow', { item: st.fl.item, hit, ring });
+    req.finally(() => { if (this.st === st) { st.spent = 0; this.updateBottom(); } }).catch(() => {});
+    return req;
+  },
   async resolve() {
     const st = this.st, b = st.ball;
     const dx = b.x - st.cx, dy = b.y - st.cy;
     const dist = Math.hypot(dx, dy * 0.85);
-    if (dist > st.R * 1.15) return this.miss();
+    if (dist > st.R * 1.15) return this.miss(this.send(false, null));
     // бонус за кольцо
-    let bonus = { mul: 1, xp: 0, label: '' };
-    if (Math.hypot(dx, dy) <= st.ringR * st.fl.ring + 10) {
-      const r = st.fl.ring;
-      bonus = r > 0.7 ? { mul: 1.2, xp: 10, label: 'Хорошо!' } : r > 0.4 ? { mul: 1.5, xp: 50, label: 'Отлично!' } : { mul: 1.8, xp: 100, label: 'Превосходно!' };
-      if (r <= 0.7) { S.progress('throw', 1); S.d.stats.throwsGreat++; }
-      this.flash(bonus.label, 'bonus');
-    }
+    const inRing = Math.hypot(dx, dy) <= st.ringR * st.fl.ring + 10;
+    const bonus = Rules.ringBonus(inRing ? st.fl.ring : null);
+    if (inRing) this.flash(bonus.label, 'bonus');
     Sfx.play('hit'); U.vibrate(30);
-    await this.capture(bonus);
+    await this.capture(this.send(true, inRing ? +st.fl.ring.toFixed(3) : null));
   },
-  async miss() {
+  async miss(req) {
     const st = this.st, b = st.ball;
     Sfx.play('miss');
     this.flash('Мимо!');
     const x0 = b.x, y0 = b.y;
     await this.anim(420, p => { b.y = y0 + p * p * st.H * 0.35; b.x = x0 + p * 20; b.op = 1 - p; b.sc = 0.5 - p * 0.1; });
+    let r;
+    try { r = await req; } catch (e) { UI.toast(U.esc(e.message)); }
+    if (this.st !== st) return;
+    if (r && r.over) return this.over(r);
     this.afterThrow();
+  },
+  // встреча закончилась без поимки (решение сервера)
+  over(r) {
+    if (r.fled) return this.fleeOut(r.text);
+    UI.toast('Обереги закончились!');
+    return this.end('noCharms');
   },
   afterThrow() {
     const st = this.st; if (!st) return;
@@ -295,7 +317,7 @@ const Encounter = {
   },
 
   /* ---------------- ПОИМКА ---------------- */
-  async capture(bonus) {
+  async capture(req) {
     const st = this.st, b = st.ball;
     st.phase = 'capture';
     const hx = b.x, hy = b.y, cx = st.cx, top = st.cy - st.size * 0.12;
@@ -308,30 +330,31 @@ const Encounter = {
     const ground = st.cy0 + st.size * 0.32;
     await this.anim(360, p => { b.y = U.lerp(top, ground, p * p); });
     await this.anim(220, p => { b.y = ground - Math.sin(p * Math.PI) * 16; });
-    const chance = this.chance(bonus.mul), q = Math.pow(chance, 1 / 3);
+    let r;
+    try { r = await req; } catch (e) { UI.toast(U.esc(e.message)); }
+    if (this.st !== st) return;
     st.honey = false; this.updateBottom();
+    if (!r) return this.breakOut(null); // нет связи — бросок не засчитан
     for (let k = 0; k < 3; k++) {
       await U.wait(420);
       if (!this.st) return;
-      const ok = Math.random() < q;
       Sfx.play('wobble'); U.vibrate(20);
       st.ballEl.classList.add('glow');
       await this.anim(460, p => { b.rot = Math.sin(p * Math.PI * 2) * 26; b.x = cx + Math.sin(p * Math.PI * 2) * 6; });
       st.ballEl.classList.remove('glow');
-      if (!ok) return this.breakOut();
+      if (k >= r.wobbles) return this.breakOut(r);
     }
     await U.wait(300);
-    this.success(bonus);
+    this.success(r);
   },
-  async breakOut() {
+  async breakOut(r) {
     const st = this.st, b = st.ball;
     Sfx.play('escape'); U.vibrate([40, 30, 40]);
     st.$('.enc-fx').appendChild(U.el(`<div class="fx-burst out" style="left:${b.x}px;top:${b.y}px"></div>`));
     await this.anim(380, p => { st.k = p < 0.7 ? p / 0.7 * 1.12 : 1.12 - (p - 0.7) / 0.3 * 0.12; b.op = 1 - p; b.sc = 0.55 + p * 0.4; });
     if (!this.st) return;
     this.flash(['Дух вырвался!', 'Почти получилось!', 'Ай! Вырвался!'][Math.floor(Math.random() * 3)]);
-    const flee = st.o.mode !== 'wild' ? 0 : RARITY[st.s.rar].flee * (st.throws > 3 ? 1.5 : 1);
-    if (Math.random() < flee) { await U.wait(700); return this.fleeOut('Дух ускользнул в Навь…'); }
+    if (r && r.over) { await U.wait(700); return this.over(r); }
     this.afterThrow();
   },
   async fleeOut(text) {
@@ -341,50 +364,35 @@ const Encounter = {
     this.flash(text);
     st.creatureEl.classList.add('flee');
     await this.anim(700, p => { st.k = 1 - p; st.cy0 -= 2; });
-    if (st.o.spawnId) S.d.caught[st.o.spawnId] = Date.now();
-    J.add('flee', { sid: st.s.id });
     await U.wait(700);
     this.end('fled');
   },
-  async success(bonus) {
-    const st = this.st, { s, sp, o } = st;
+  // Пойман: сервер уже записал духа и награду, здесь — только показ
+  async success(r) {
+    const st = this.st, { s, sp } = st;
     st.phase = 'done';
     Sfx.play('catch'); U.vibrate([30, 60, 30, 60, 80]);
     st.$('.enc-fx').appendChild(U.el(`<div class="fx-stars" style="left:${st.ball.x}px;top:${st.ball.y}px">${'<i></i>'.repeat(10)}</div>`));
     await U.wait(900);
     if (!this.st) return;
-    if (o.spawnId) S.d.caught[o.spawnId] = Date.now();
-    const isNew = S.addSpirit(sp);
-    J.add('catch', { sid: s.id, shiny: !!sp.shiny, dark: !!sp.dark, power: S.power(sp) });
-    const raid = o.mode === 'raid';
-    const special = o.mode !== 'wild';
-    const xp = (special ? 300 : 100) + (isNew ? 500 : 0) + bonus.xp + (st.throws === 1 ? 50 : 0) + (sp.shiny ? 500 : 0);
-    const ess = special ? 10 : s.stage === 3 ? 10 : s.stage === 2 ? 5 : 3;
-    const sparks = Math.round((special ? 300 : 100) * (o.boost ? 1.25 : 1));
-    S.addEssence(s.fam, ess);
-    S.d.sparks += sparks;
-    S.d.stats.caught++;
-    S.addXP(xp);
-    S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
-    if (o.tut) Tut.advance(2);
-    S.save();
+    const mine = S.findSpirit(r.uid) || sp;
     const card = U.el(`
       <div class="enc-result"><div class="res-card">
         <div class="res-title">Пойман!</div>
-        <div class="res-art">${Art.of(sp)}</div>
-        <div class="res-name">${sp.shiny ? '✦ ' : ''}${s.name}</div>
-        <div class="res-power">СИЛА ${S.power(sp)}</div>
-        ${isNew ? '<div class="badge-new">Новая запись в Бестиарии!</div>' : ''}
-        ${sp.shiny ? '<div class="badge-new shiny">Сияющий дух — редкая удача!</div>' : ''}
+        <div class="res-art">${Art.of(mine)}</div>
+        <div class="res-name">${mine.shiny ? '✦ ' : ''}${s.name}</div>
+        <div class="res-power">СИЛА ${S.power(mine)}</div>
+        ${r.isNew ? '<div class="badge-new">Новая запись в Бестиарии!</div>' : ''}
+        ${mine.shiny ? '<div class="badge-new shiny">Сияющий дух — редкая удача!</div>' : ''}
         <div class="res-rw">
-          <div><b>+${Math.round(xp * Ev.xpMul())}</b> опыта${Ev.xpMul() > 1 ? ' (Звездопад ×2)' : ''}</div><div><b>+${sparks}</b> искр</div><div><b>+${ess}</b> эссенции «${SP[s.fam].name}»</div>
+          <div><b>+${U.fmtNum(r.xp)}</b> опыта${Ev.xpMul() > 1 ? ' (Звездопад ×2)' : ''}</div><div><b>+${r.sparks}</b> искр</div><div><b>+${r.ess}</b> эссенции «${SP[s.fam].name}»</div>
         </div>
         <button class="btn primary wide">Отлично</button>
       </div></div>`);
     card.querySelector('button').onclick = () => { Sfx.play('tap'); this.end('caught'); };
     st.root.appendChild(card);
+    if (st.o.tut) Tut.sync();
   },
-
   /* ---------------- ФОТО ---------------- */
   // Снимок: кадр камеры (в AR) или сцена + дух + подпись; превью, «Поделиться», запись в альбом
   async photo() {
@@ -428,7 +436,7 @@ const Encounter = {
       const t = document.createElement('canvas'); t.width = 360; t.height = Math.round(360 * H / W);
       t.getContext('2d').drawImage(c, 0, 0, t.width, t.height);
       Album.add({ img: t.toDataURL('image/jpeg', 0.72), sid: st.s.id, t: Date.now() });
-      S.progress('photo', 1);
+      Game.act('photo').catch(() => {}); // задание «сфотографируй духа» засчитывает сервер
       Album.preview(blob, `${st.s.name}.jpg`);
     } catch (e) { UI.toast('Не удалось сделать снимок'); }
     this._shooting = false;
@@ -439,13 +447,13 @@ const Encounter = {
     const st = this.st; if (!st) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-      if (!this.st || !S.d.settings.ar) { stream.getTracks().forEach(t => t.stop()); return; }
+      if (!this.st || !Cfg.s.ar) { stream.getTracks().forEach(t => t.stop()); return; }
       st.stream = stream;
       const v = st.$('.enc-cam'); v.srcObject = stream; v.play().catch(() => {});
       st.root.classList.add('ar');
     } catch (e) {
       UI.toast('Камера недоступна — AR выключен');
-      S.d.settings.ar = false; S.save();
+      Cfg.s.ar = false; Cfg.save();
       st.$('.enc-ar').classList.remove('on');
     }
   },
@@ -473,6 +481,7 @@ const Encounter = {
     st.root.classList.add('closing');
     setTimeout(() => st.root.remove(), 250);
     this.st = null;
+    if (result !== 'caught' && result !== 'fled' && result !== 'noCharms') Game.act('encEnd').catch(() => {});
     UI.popLayer();
     MapView.refresh();
     UI.refreshHud();

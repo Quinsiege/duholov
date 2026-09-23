@@ -139,9 +139,11 @@ const Poi = {
   checkSupply() {
     const { lat, lng } = MapView.pos;
     const loaded = this.tilesAround(lat, lng, 1000).every(([x, y]) => { const o = this.osm[`${x}:${y}`]; return o && !o.fail; });
-    if (!loaded || this.near(lat, lng, 1000, 'spring').length || S.d.supplyDay === U.today()) return;
-    S.d.supplyDay = U.today();
-    const got = S.giveRewards({ charm: 15, honey: 2, water: 1 });
+    if (!loaded || this.near(lat, lng, 1000, 'spring').length || S.d.supplyDay === U.today() || this._supplying) return;
+    this._supplying = true;
+    Game.act('supply').then(r => { this._supplying = false; this.showSupply(r.got); }).catch(() => { this._supplying = false; });
+  },
+  showSupply(got) {
     UI.modal({
       title: 'Посылка из Ордена',
       html: `<p>Поблизости пока нет ни одного Родника, поэтому Орден раз в день присылает припасы: ${got.map(x => `${x.label} ×${x.n}`).join(', ')}.</p>

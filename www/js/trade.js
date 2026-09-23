@@ -1,64 +1,15 @@
 'use strict';
-/* Обмен без сервера: дух упаковывается в код (DUH1.<данные>.<контрольная сумма>),
-   код можно отправить в мессенджер или показать QR-кодом. Отданный дух покидает коллекцию,
-   каждый код принимается только один раз на устройстве. */
+/* Обмен духами через сервер: отданный дух уходит в «посылку» на сервере, а другу передаётся короткий код
+   (DUH2.XXXXXXXXXX) — текстом или QR-кодом. Посылку может открыть только один человек и только однажды. */
 
 const Trade = {
-  PREFIX: 'DUH1',
   QR_LIB: 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
 
-  sum(b64) { return Math.floor(U.h('duholov-trade', b64) * 2176782336).toString(36).padStart(6, '0'); },
-  encode(sp) {
-    const payload = { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', f: S.d.name, k: U.uid() };
-    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    return `${this.PREFIX}.${b64}.${this.sum(b64)}`;
+  async give(sp) { const r = await Game.try('tradeGive', { uid: sp.uid }); return r && r.code; },
+  async receive(code) {
+    const r = await Game.act('tradeReceive', { code });
+    return { sp: S.findSpirit(r.uid), isNew: r.isNew };
   },
-  decode(code) {
-    const m = String(code).replace(/\s+/g, '').match(/DUH1\.([A-Za-z0-9_-]+)\.([0-9a-z]{6})/);
-    if (!m) throw new Error('Это не код Духолова');
-    if (this.sum(m[1]) !== m[2]) throw new Error('Код повреждён — скопируй его целиком');
-    let p;
-    try {
-      const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
-      p = JSON.parse(decodeURIComponent(escape(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)))));
-    } catch (e) { throw new Error('Не удалось прочитать код'); }
-    const okIv = Array.isArray(p.i) && p.i.length === 3 && p.i.every(v => Number.isInteger(v) && v >= 0 && v <= 15);
-    if (!SP[p.s] || !Number.isInteger(p.l) || p.l < 1 || p.l > 40 || !okIv || !p.k) throw new Error('В коде ошибка');
-    return p;
-  },
-
-  // Отдать: дух покидает коллекцию, код сохраняется в «Отправленных»
-  give(sp) {
-    if (sp.amulet) S.unequip(sp); // амулет остаётся у хозяина
-    const code = this.encode(sp);
-    const i = S.d.spirits.indexOf(sp);
-    if (i >= 0) S.d.spirits.splice(i, 1);
-    if (S.d.buddy && S.d.buddy.uid === sp.uid) { S.d.buddy = null; Bus.emit('buddyChanged'); }
-    S.d.team = S.d.team.filter(u => u !== sp.uid);
-    S.d.sent.unshift({ code, k: this.decode(code).k, sid: sp.sid, shiny: !!sp.shiny, dark: !!sp.dark, t: Date.now() });
-    S.d.sent = S.d.sent.slice(0, 20);
-    S.d.stats.traded++;
-    J.add('trade', { sid: sp.sid, dir: 'out' });
-    S.save();
-    return code;
-  },
-  receive(code) {
-    const p = this.decode(code);
-    if (S.d.gifts[p.k]) throw new Error('Этот дух уже принят на этом устройстве');
-    if (S.d.sent.some(x => x.k === p.k)) throw new Error('Это твой собственный код — отдай его другу');
-    const sp = { uid: U.uid(), sid: p.s, lvl: Math.min(p.l, S.maxLvl()), iv: p.i, t: Date.now(), fav: false, nick: p.n || null, from: String(p.f || '').slice(0, 20) };
-    if (p.y) sp.shiny = true;
-    if (p.d) sp.dark = true;
-    S.d.gifts[p.k] = Date.now();
-    const isNew = S.addSpirit(sp);
-    S.addEssence(SP[sp.sid].fam, 5);
-    J.add('trade', { sid: sp.sid, dir: 'in', who: sp.from });
-    S.d.stats.traded++;
-    S.addXP(isNew ? 1000 : 300);
-    S.save();
-    return { sp, isNew };
-  },
-
   loadQR() {
     if (window.qrcode) return Promise.resolve(window.qrcode);
     if (this._qrP) return this._qrP;
@@ -111,8 +62,8 @@ const Trade = {
   offer(sp, after) {
     if (S.d.spirits.length <= 1) { UI.toast('Нельзя отдать последнего духа'); return; }
     const name = sp.nick || SP[sp.sid].name;
-    UI.confirm('Передать другу?', `«${name}» (СИЛА ${S.power(sp)}) покинет твою коллекцию и превратится в код-посылку. Её сможет принять только один человек.`, 'Упаковать', () => {
-      this.give(sp);
+    UI.confirm('Передать другу?', `«${U.esc(name)}» (СИЛА ${S.power(sp)}) покинет твою коллекцию и превратится в код-посылку. Её сможет принять только один человек.`, 'Упаковать', async () => {
+      if (!await this.give(sp)) return;
       Sfx.play('spin');
       after && after();
       this.showCode(S.d.sent[0]);
@@ -127,7 +78,7 @@ const Trade = {
         <b>Получить духа</b>
         <p class="small">Попроси друга упаковать духа (карточка духа → «Передать другу») и прими его код.</p>
         ${this.canScan() ? '<button class="btn primary wide scan-btn">Сканировать QR-код</button>' : ''}
-        <textarea class="input code-in" rows="3" placeholder="Вставь код DUH1…"></textarea>
+        <textarea class="input code-in" rows="3" placeholder="Вставь код DUH2…"></textarea>
         <button class="btn wide accept-btn">Принять духа</button>
       </div>
       <div class="list sent-list"></div>`, 'trade-screen');
@@ -180,7 +131,7 @@ const Trade = {
       await U.wait(300);
       try {
         const codes = await det.detect(v);
-        const hit = codes.find(c => c.rawValue && /DUH[1FG]/.test(c.rawValue));
+        const hit = codes.find(c => c.rawValue && /DUH[12FG]/.test(c.rawValue));
         if (hit) { stop(); m.close(); onCode(hit.rawValue); return; }
       } catch (e) { /* кадр ещё не готов */ }
     }

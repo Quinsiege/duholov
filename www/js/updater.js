@@ -84,7 +84,7 @@ const Updater = {
 
   async apply(version) {
     try { sessionStorage.setItem(this.TRIED, JSON.stringify({ v: version, t: Date.now() })); } catch (e) {}
-    try { S.save(true); await Promise.race([Sync.push(), U.wait(3000)]); } catch (e) {}
+    try { await Promise.race([Game.flushMove(), U.wait(3000)]); } catch (e) {} // прогресс и так на сервере
     try {
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.getRegistration();

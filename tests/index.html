@@ -23,8 +23,10 @@
 
   <script src="../www/js/version.js"></script>
   <script src="../www/js/config.js"></script>
+  <script src="../www/js/settings.js"></script>
   <script src="../www/js/data.js"></script>
   <script src="../www/js/util.js"></script>
+  <script src="../www/js/diff.js"></script>
   <script src="../www/js/art.js"></script>
   <script src="../www/js/state.js"></script>
   <script src="../www/js/events.js"></script>
@@ -35,6 +37,7 @@
   <script src="../www/js/encounter.js"></script>
   <script src="../www/js/raid.js"></script>
   <script src="../www/js/duel.js"></script>
+  <script src="../www/js/rules.js"></script>
   <script src="../www/js/trade.js"></script>
   <script src="../www/js/tutorial.js"></script>
   <script src="../www/js/album.js"></script>
@@ -43,13 +46,14 @@
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
-  <script src="../www/js/sync.js"></script>
+  <script src="../www/js/game.js"></script>
   <script src="../www/js/exif.js"></script>
   <script src="../www/js/osm.js"></script>
   <script src="../www/js/pois.js"></script>
   <script src="../www/js/propose.js"></script>
   <script src="../www/js/updater.js"></script>
   <script src="../www/js/ui.js"></script>
+  <script src="../server/game/core.js"></script>
   <script>
   'use strict';
   const results = [];
@@ -60,12 +64,15 @@
   function ok(cond, msg) { if (!cond) throw new Error(msg || 'условие не выполнено'); }
   function eq(a, b, msg) { if (a !== b) throw new Error(`${msg || ''} ожидалось ${JSON.stringify(b)}, получено ${JSON.stringify(a)}`); }
   function near(a, b, eps, msg) { if (Math.abs(a - b) > eps) throw new Error(`${msg || ''} ${a} ≉ ${b}`); }
+  const pending = [];
+  function atest(name, fn) { pending.push({ name, fn }); }
 
   // Игра в памяти: ничего не пишем в localStorage
   S.save = () => {};
   Bus.emit = () => {};
   UI.toast = () => {};
   Friends.sync = () => {}; // без обращений к серверу
+  Game.on = () => false;
   S.newGame('Тест', 'ugolek');
   S.d.level = 12;
   MapView.pos = { lat: 55.75, lng: 37.62 };
@@ -196,14 +203,6 @@
     });
     eq(Exif.read(jfif.buffer), null, 'без геометки');
   });
-  test('На сервер не уходит последняя точка игрока', () => {
-    S.d.lastPos = [55.75, 37.62]; S.d.tutPos = [55.75, 37.62];
-    const p = Sync.payload();
-    ok(!('lastPos' in p) && !('tutPos' in p), 'координаты убраны');
-    ok(S.d.lastPos, 'в локальной копии остались');
-    eq(p.name, S.d.name);
-  });
-
   /* ---------- духи ---------- */
   test('Сила растёт с уровнем, омрачённый бьёт на 20% сильнее', () => {
     const a = S.makeSpirit('kostrovik', 10, 'p'), b = { ...a, lvl: 20 }, c = { ...a, dark: true };
@@ -245,25 +244,16 @@
   });
 
   /* ---------- системы ---------- */
-  test('Обмен: код туда-обратно, повреждённый и свой код отклоняются', () => {
-    const sp = fresh('sirin', 15); sp.shiny = true; sp.nick = 'Птаха «Ёж»';
-    const code = Trade.give(sp);
-    ok(!S.findSpirit(sp.uid), 'дух ушёл');
-    let err = ''; try { Trade.receive(code); } catch (e) { err = e.message; } ok(/собственный/.test(err), 'свой код');
-    err = ''; try { Trade.decode(code.slice(0, -1) + (code.endsWith('a') ? 'b' : 'a')); } catch (e) { err = e.message; } ok(/повреждён/.test(err), 'порча');
-    const p = Trade.decode('текст вокруг ' + code + ' и после');
-    eq(p.s, 'sirin'); eq(p.n, 'Птаха «Ёж»'); eq(p.y, 1);
-  });
   test('Православная Пасха', () => {
-    const f = d => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    const f = d => `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
     eq(f(Ev.easter(2024)), '2024-5-5'); eq(f(Ev.easter(2025)), '2025-4-20');
     eq(f(Ev.easter(2026)), '2026-4-12'); eq(f(Ev.easter(2027)), '2027-5-2'); eq(f(Ev.easter(2030)), '2030-4-28');
   });
   test('Праздники по датам', () => {
     const id = d => (Ev.holiday(d) || {}).id || null;
-    eq(id(new Date(2026, 11, 31)), 'svyatki'); eq(id(new Date(2027, 0, 14)), 'svyatki'); eq(id(new Date(2027, 0, 15)), null);
-    eq(id(new Date(2026, 1, 16)), 'maslenitsa'); eq(id(new Date(2026, 1, 23)), null);
-    eq(id(new Date(2026, 6, 6)), 'kupala'); eq(id(new Date(2026, 9, 31)), 'veles'); eq(id(new Date(2026, 8, 23)), null);
+    eq(id(new Date(Date.UTC(2026, 11, 31))), 'svyatki'); eq(id(new Date(Date.UTC(2027, 0, 14))), 'svyatki'); eq(id(new Date(Date.UTC(2027, 0, 15))), null);
+    eq(id(new Date(Date.UTC(2026, 1, 16))), 'maslenitsa'); eq(id(new Date(Date.UTC(2026, 1, 23))), null);
+    eq(id(new Date(Date.UTC(2026, 6, 6))), 'kupala'); eq(id(new Date(Date.UTC(2026, 9, 31))), 'veles'); eq(id(new Date(Date.UTC(2026, 8, 23))), null);
   });
   test('События недели меняются по понедельникам', () => {
     const mon = new Date(Date.UTC(2026, 8, 21)).getTime(); // 21.09.2026 — понедельник
@@ -302,50 +292,6 @@
     S.d.story = { ch: 8, p: [0, 0, 0] };
     S.progress('photo', 1); eq(S.d.story.p[2], 1, 'фото');
   });
-  test('Друзья: коды дружбы и подарков между двумя Ловчими', () => {
-    // Ловчий А
-    const A = S.d; A.friends = []; A.items.gift = 2;
-    const codeA = Friends.myCode();
-    // Ловчий Б — отдельное сохранение в памяти
-    S.newGame('Бета', 'kapelka'); const B = S.d; B.items.gift = 2;
-    const codeB = Friends.myCode();
-    let err = ''; try { Friends.add(Friends.unpack('DUHF1', codeB)); } catch (e) { err = e.message; } ok(/собственный/.test(err), 'свой код');
-    Friends.add(Friends.unpack('DUHF1', codeA)); eq(B.friends.length, 1, 'Б добавил А');
-    const giftBA = Friends.makeGift(B.friends[0]); eq(B.items.gift, 1, 'подарок потрачен');
-    err = ''; try { Friends.makeGift(B.friends[0]); } catch (e) { err = e.message; } ok(/уже отправлен/.test(err), 'раз в день');
-    // обратно к А
-    S.d = A;
-    err = ''; try { Friends.openGift(Friends.unpack('DUHG1', giftBA)); } catch (e) { err = e.message; } ok(/добавь/.test(err), 'от незнакомца нельзя');
-    Friends.add(Friends.unpack('DUHF1', codeB));
-    const charms0 = A.items.charm || 0;
-    const res = Friends.openGift(Friends.unpack('DUHG1', 'текст ' + giftBA));
-    ok((A.items.charm || 0) > charms0, 'обереги пришли'); eq(res.f.pts, 1, 'очки дружбы');
-    err = ''; try { Friends.openGift(Friends.unpack('DUHG1', giftBA)); } catch (e) { err = e.message; } ok(/уже открыт/.test(err), 'повторно нельзя');
-    // подарок, адресованный не мне
-    S.d = B; const other = Friends.pack('DUHG1', { f: A.pid, fn: 'А', to: 'кто-то-другой', d: U.today(), k: 'x1', c: { charm: 3 } }); S.d = A;
-    err = ''; try { Friends.openGift(Friends.unpack('DUHG1', other)); } catch (e) { err = e.message; } ok(/другому/.test(err), 'чужой подарок');
-    eq(Friends.level({ pts: 0 }), 0); eq(Friends.level({ pts: 10 }), 2); eq(Friends.level({ pts: 99 }), 4);
-  });
-  test('Взаимная дружба: входящие связи с сервера', () => {
-    S.newGame('Гамма', 'mshonok');
-    const me = S.d.pid, t1 = '2026-09-23T12:00:00Z', t2 = '2026-09-23T13:00:00Z';
-    const code = Friends.add(Friends.unpack('DUHF1', Friends.pack('DUHF1', { i: 'drug1abcdefgh', n: 'Друг', l: 5 }))).f;
-    eq(code.linked, false, 'новый друг ждёт отправки на сервер');
-    // меня добавили двое: один уже в друзьях, второй новый; третья связь — от меня самого
-    let added = Friends.applyIncoming([
-      { from_pid: 'drug1abcdefgh', from_name: 'Друг', from_level: 6, created_at: t1 },
-      { from_pid: 'novyi2abcdefg', from_name: 'Новенький', from_level: 3, created_at: t1 },
-      { from_pid: me, from_name: 'Я', from_level: 1, created_at: t1 },
-    ]);
-    eq(added.map(f => f.name).join(), 'Новенький', 'добавлен только новый');
-    eq(S.d.friends.length, 2); eq(Friends.find('drug1abcdefgh').lvl, 6, 'уровень друга обновился');
-    eq(Friends.find('novyi2abcdefg').linked, false, 'ответная связь уйдёт на сервер');
-    // удалил друга — та же связь его не вернёт, а повторное добавление мной (новое время) — вернёт
-    Friends.remove('novyi2abcdefg');
-    eq(Friends.applyIncoming([{ from_pid: 'novyi2abcdefg', from_name: 'Новенький', from_level: 3, created_at: t1 }]).length, 0, 'не вернулся');
-    eq(Friends.applyIncoming([{ from_pid: 'novyi2abcdefg', from_name: 'Новенький', from_level: 3, created_at: t2 }]).length, 1, 'снова добавил меня');
-    ok(/^[a-z0-9]{8,40}$/.test(me), 'код игрока подходит серверу: ' + me);
-  });
   test('Дневник: записи с местом, ограничение по размеру', () => {
     S.d.journal = [];
     J.add('catch', { sid: 'ugolek', power: 100 });
@@ -370,13 +316,262 @@
     eq(S.d.medals.catcher, 1);
   });
 
+  test('Настройки и позиция на карте не входят в прогресс', () => {
+    const keep = S.d, d = { ...JSON.parse(JSON.stringify(S.d)), settings: { sound: true }, lastPos: [1, 2], tutPos: [1, 2] };
+    S.d = d; S.migrate(); S.d = keep;
+    ok(!('settings' in d) && !('lastPos' in d) && !('tutPos' in d));
+  });
+  test('Время игры: «сегодня», час и ночь — в часовом поясе игрока', () => {
+    const t = Date.UTC(2026, 8, 23, 22, 30), saved = U.tz;
+    U.tz = 180; eq(U.today(t), '2026-9-24'); eq(U.hour(t), 1); ok(U.isNight(t), 'ночь в Москве');
+    U.tz = -300; eq(U.today(t), '2026-9-23'); eq(U.hour(t), 17); ok(!U.isNight(t), 'вечер в Нью-Йорке');
+    U.tz = saved;
+  });
+  test('Разница прогресса: запись, удаление, добавление в начало и в конец', () => {
+    const a = { x: 1, o: { y: 2, z: [1, 2, 3] }, j: [{ t: 1 }, { t: 2 }], s: [1, 2], del: 5, sp: [{ uid: 'a', lvl: 1 }, { uid: 'b', lvl: 2 }] };
+    const b = JSON.parse(JSON.stringify(a));
+    b.x = 2; b.o.z[1] = 9; b.j.unshift({ t: 0 }); b.j.length = 2; b.s.push(3, 4); delete b.del; b.n = { k: 1 }; b.sp[1].lvl = 3; b.sp.splice(0, 1);
+    const ops = Diff.make(a, b);
+    eq(JSON.stringify(Diff.apply(JSON.parse(JSON.stringify(a)), ops)), JSON.stringify(b));
+    ok(ops.some(o => o.unshift), 'новые записи в начале'); ok(ops.some(o => o.push), 'добавление в конец');
+    eq(Diff.make(b, b).length, 0, 'без изменений — пусто');
+  });
+
+  /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [] };
+  const envFor = who => ({
+    poi: async id => DB.pois[id] || null,
+    registerPid: async pid => {
+      const o = DB.players[pid];
+      if (o && o !== who.uid) return 'taken';
+      for (const k in DB.players) if (DB.players[k] === who.uid) delete DB.players[k];
+      DB.players[pid] = who.uid;
+      return 'ok';
+    },
+    player: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { name: d.name, level: d.level } : null; },
+    link: async (from, to, name, level) => {
+      DB.links = DB.links.filter(l => !(l.from_pid === from && l.to_pid === to));
+      DB.links.push({ from_pid: from, to_pid: to, from_name: name, from_level: level, created_at: new Date().toISOString() });
+    },
+    linksTo: async pid => DB.links.filter(l => l.to_pid === pid),
+    giftsTo: async pid => DB.gifts.filter(g => g.to_pid === pid && !g.opened_at),
+    giftCreate: async (from, to, name, contents) => { DB.gifts.push({ id: 'gift' + DB.gifts.length, from_pid: from, to_pid: to, from_name: name, contents, created_at: new Date().toISOString() }); },
+    gift: async id => DB.gifts.find(g => g.id === id) || null,
+    giftTake: async (id, pid) => { const g = DB.gifts.find(x => x.id === id && x.to_pid === pid && !x.opened_at); if (!g) return false; g.opened_at = Date.now(); return true; },
+    tradeCreate: async (code, pid, name, spirit) => { DB.trades[code] = { code, from_pid: pid, from_name: name, spirit }; },
+    tradeTake: async (code, pid) => { const t = DB.trades[code]; if (!t || t.taken_by) return null; if (t.from_pid === pid) return { own: true }; t.taken_by = pid; return t; },
+    mySubmissions: async () => DB.subs.filter(s => s.user === who.uid),
+    leagueScore: async x => { DB.league.push({ user: who.uid, ...x }); },
+    deleteSave: async () => { delete DB.saves[who.uid]; },
+  });
+  async function call(who, type, args = {}) {
+    const res = await GameCore.run({ a: [{ type, args }], tz: 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: '3.0.0' }, { data: who.data, srv: who.srv }, envFor(who));
+    if (res.ok) {
+      who.data = res.data; who.srv = res.srv;
+      if (res.data) DB.saves[who.uid] = res.data; else delete DB.saves[who.uid];
+      for (const fn of res.after) await fn();
+    }
+    return res;
+  }
+  const must = async (who, type, args) => { const r = await call(who, type, args); if (!r.ok) throw new Error(`${type}: ${r.error}`); return r.results[0]; };
+  const refuse = async (who, type, args, re) => {
+    const r = await call(who, type, args);
+    if (r.ok) throw new Error(`${type} должно быть отклонено`);
+    if (re && !re.test(r.error)) throw new Error(`${type}: неожиданная ошибка «${r.error}»`);
+  };
+  // сервер сам бросает кубики — для проверки исходов подменяем Math.random
+  const withRandom = async (v, fn) => { const m = Math.random; Math.random = () => v; try { return await fn(); } finally { Math.random = m; } };
+  // взгляд на мир глазами игрока (поиск духов и разломов)
+  const asPlayer = (who, fn) => { const d = S.d, tz = U.tz; S.d = who.data; U.tz = 180; try { return fn(); } finally { S.d = d; U.tz = tz; } };
+  const newPlayer = async (uid, lat, lng, name, starter = 'ugolek') => {
+    const p = { uid, lat, lng, data: null, srv: {} };
+    await must(p, 'newGame', { name, starter });
+    return p;
+  };
+  const poiId = (test, from = 90000) => { for (let i = from; i < from + 3000; i++) if (test('osm:n' + i)) return 'osm:n' + i; return null; };
+
+  atest('Сервер: новая игра, загрузка, неизвестные действия', async () => {
+    const A = { uid: 'ua', lat: 55.75, lng: 37.62, data: null, srv: {} };
+    await refuse(A, 'spring', {}, /Прогресс не найден/);
+    eq((await must(A, 'load')).empty, true);
+    await refuse(A, 'newGame', { name: '   ', starter: 'ugolek' }, /Назови/);
+    await refuse(A, 'newGame', { name: 'Альфа', starter: 'koschey' }, /первого духа/);
+    await must(A, 'newGame', { name: '  Альфа  ', starter: 'ugolek' });
+    eq(A.data.name, 'Альфа'); eq(A.data.spirits.length, 1); eq(DB.players[A.data.pid], 'ua', 'код игрока закреплён');
+    await refuse(A, 'newGame', { name: 'Ещё', starter: 'ugolek' }, /уже есть/);
+    await refuse(A, 'hack', {}, /Неизвестное действие/);
+    await refuse(A, 'encLost', {}, /Неизвестное действие/);
+  });
+  atest('Сервер: родник — только рядом, с перезарядкой; скрытое модератором недоступно', async () => {
+    const A = await newPlayer('ub', 55.76, 37.63, 'Бета');
+    const poi = { id: 'osm:n777', lat: 55.7601, lng: 37.6301, name: 'Фонтан' };
+    const r = await must(A, 'spring', { poi });
+    ok(r.got.length > 0, 'добыча'); ok(A.data.springs['osm:n777'] > 0, 'отметка перезарядки');
+    await refuse(A, 'spring', { poi }, /набирает силу/);
+    await refuse(A, 'spring', { poi: { ...poi, id: 'osm:n778', lat: 55.77 } }, /далеко/);
+    await refuse(A, 'spring', { poi: { id: 'usr:00000000-0000-0000-0000-000000000000', lat: 55.76, lng: 37.63 } }, /не найдено/);
+    DB.pois['osm:n779'] = { id: 'osm:n779', kind: 'spring', lat: 55.76, lng: 37.63, name: 'Скрыт', active: false };
+    await refuse(A, 'spring', { poi: { id: 'osm:n779', lat: 55.76, lng: 37.63 } }, /больше нет/);
+    await refuse(A, 'spring', { poi: { id: '../../etc', lat: 1, lng: 1 } }, /Неизвестное место/);
+  });
+  atest('Сервер: поимка — дух должен быть рядом, исход решает сервер', async () => {
+    // сначала ищем место, где сейчас есть дух, и «ставим» игрока туда (перемещение скачком сервер не примет)
+    const probe = { data: asPlayer({ data: S.d }, () => JSON.parse(JSON.stringify(S.d))) };
+    probe.data.level = 1; probe.data.caught = {}; probe.data.incenseUntil = 0; probe.data.tut = 0;
+    let e = null;
+    for (let k = 0; k < 40 && !e; k++) {
+      const lat = 55.75 + k * 0.001;
+      e = asPlayer(probe, () => W.spawnsAround(lat, 37.62, 60).find(x => !x.tut));
+    }
+    ok(e, 'рядом нашёлся дух');
+    const A = await newPlayer('uc', e.lat, e.lng, 'Гамма');
+    await refuse(A, 'encStart', { kind: 'wild', id: 's:1:2:3' }, /растворился/);
+    const st = await must(A, 'encStart', { kind: 'wild', id: e.id });
+    eq(st.sid, e.sid); eq(st.lvl, e.lvl);
+    const charm0 = A.data.items.charm, n0 = A.data.spirits.length;
+    const miss = await must(A, 'encThrow', { item: 'charm', hit: false });
+    ok(miss.miss, 'промах'); eq(A.data.items.charm, charm0 - 1, 'промах тоже тратит оберег');
+    const escape = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+    eq(escape.wobbles, 0, 'вырвался сразу'); ok(!escape.caught);
+    const r = await withRandom(0, () => must(A, 'encThrow', { item: 'charm', hit: true, ring: 0.3 }));
+    ok(r.caught, 'пойман'); eq(r.wobbles, 3); eq(A.data.spirits.length, n0 + 1); ok(A.data.caught[e.id], 'дух больше не на карте');
+    eq(r.label, 'Превосходно!'); ok(A.data.stats.throwsGreat >= 1, 'отличный бросок засчитан');
+    await refuse(A, 'encThrow', { item: 'charm', hit: true }, /закончилась/);
+    await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /растворился/);
+    A.data.items.charm = 0; A.data.items.charm2 = 0; A.data.items.charm3 = 0;
+    await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /Обереги закончились/);
+  });
+  atest('Сервер: обучение — учебный дух ловится всегда, дальше шаг «родник»', async () => {
+    const A = await newPlayer('ud', 55.73, 37.61, 'Дельта');
+    eq(A.data.tut, 1);
+    await must(A, 'encStart', { kind: 'tut' });
+    const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+    ok(r.caught, 'учебный дух пойман'); eq(A.data.tut, 2);
+    await refuse(A, 'encStart', { kind: 'tut' }, /пройдено/);
+    await must(A, 'spring', { poi: { id: 'osm:n555', lat: A.lat, lng: A.lng, name: 'Родник' } });
+    eq(A.data.tut, 3);
+    const f = await must(A, 'tutFinish', {});
+    ok(f.got.length > 0, 'награда за обучение'); eq(A.data.tut, 0);
+  });
+  atest('Сервер: коллекция — усиление, превращение, отпускание, команда, облик', async () => {
+    const A = await newPlayer('ue', 55.72, 37.60, 'Ёлка');
+    const uid = A.data.spirits[0].uid;
+    A.data.sparks = 0;
+    await refuse(A, 'powerUp', { uid }, /искр/);
+    A.data.sparks = 100000; A.data.essence.ugolek = 200;
+    const lvl0 = A.data.spirits[0].lvl;
+    await must(A, 'powerUp', { uid }); eq(A.data.spirits[0].lvl, lvl0 + 1);
+    const ev = await must(A, 'evolve', { uid }); eq(ev.from, 'ugolek'); eq(A.data.spirits[0].sid, SP.ugolek.evo);
+    await refuse(A, 'release', { uids: [uid] }, /всех/);
+    await must(A, 'team', { uids: [uid, 'чужой'] }); eq(A.data.team.join(), uid);
+    await refuse(A, 'powerUp', { uid: 'нет-такого' }, /не найден/);
+    await must(A, 'nick', { uid, nick: 'Жарок' }); eq(A.data.spirits[0].nick, 'Жарок');
+    await refuse(A, 'look', { look: { cloak: '#ca8a04', eyes: '#5eead4', emblem: 'charm' } }, /не открыт/);
+    await must(A, 'look', { look: { cloak: '#1d4ed8', eyes: '#fde047', emblem: 'charm' } }); eq(A.data.look.cloak, '#1d4ed8');
+    await refuse(A, 'equip', { uid, k: 'perun' }, /амулета нет/);
+  });
+  atest('Сервер: разлом — нельзя победить мгновенно; награда и поимка босса', async () => {
+    const A = await newPlayer('uf', 55.74, 37.60, 'Жар');
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }));
+    ok(id, 'нашёлся малый разлом');
+    const rift = { id, lat: A.lat, lng: A.lng, name: 'Памятник' };
+    await refuse(A, 'raidStart', { rift: { ...rift, lat: A.lat + 0.01 } }, /далеко/);
+    const st = await must(A, 'raidStart', { rift });
+    await refuse(A, 'raidEnd', { win: true }, /слишком быстрая/);
+    await must(A, 'raidStart', { rift });
+    A.srv.battle.start -= 85000; // бой длился 85 секунд
+    const r = await must(A, 'raidEnd', { win: true });
+    ok(r.win && r.charms >= Raid.TIER[1].charms, 'обереги разлома'); ok(A.data.rifts[st.rid], 'разлом закрыт');
+    const enc = await must(A, 'encStart', { kind: 'raid' }); eq(enc.sid, st.boss); eq(enc.charms, r.charms);
+    await refuse(A, 'raidStart', { rift }, /уже закрыл/);
+    await refuse(A, 'encStart', { kind: 'raid' }, /закрылся/);
+  });
+  atest('Сервер: капище — с 3 уровня, раз в день, без мгновенных побед', async () => {
+    const A = await newPlayer('ug', 55.71, 37.59, 'Зоря');
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => !W.riftAt(i, hour), 50000);
+    const shrine = { id, lat: A.lat, lng: A.lng, name: 'Старый дуб' };
+    await refuse(A, 'duelStart', { shrine }, /3 уровня/);
+    A.data.level = 3;
+    await must(A, 'duelStart', { shrine });
+    await refuse(A, 'duelEnd', { win: true }, /слишком быстрая/);
+    await must(A, 'duelStart', { shrine });
+    A.srv.battle.start -= 200000; // бой дошёл до таймера
+    const r = await must(A, 'duelEnd', { win: true });
+    ok(r.win && r.rw.length > 0, 'награда'); eq(A.data.shrines[id], asPlayer(A, () => U.today()));
+    await refuse(A, 'duelStart', { shrine }, /уже победил/);
+  });
+  atest('Сервер: Лига — жетоны, турнир, таблица сезона', async () => {
+    const A = await newPlayer('uh', 55.70, 37.58, 'Искра');
+    await refuse(A, 'leagueStart', {}, /5 уровня/);
+    A.data.level = 5;
+    await refuse(A, 'leagueStart', {}, /три духа/);
+    ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, sid))));
+    await must(A, 'leagueStart', {});
+    eq(A.data.league.tickets, 2); ok(A.data.league.run, 'турнир начат');
+    await must(A, 'leagueEnd', { win: false });
+    eq(A.data.league.run, null, 'поражение завершает турнир');
+    eq(DB.league.filter(x => x.user === 'uh').length, 1, 'строка таблицы сезона записана сервером');
+    await refuse(A, 'leagueEnd', { win: true }, /не найден/);
+  });
+  atest('Сервер: взаимная дружба, подарки и посылки между двумя Ловчими', async () => {
+    const A = await newPlayer('ui', 55.69, 37.57, 'Ярослава'), B = await newPlayer('uj', 55.69, 37.57, 'Всеслав', 'kapelka');
+    await refuse(A, 'friendAdd', { pid: A.data.pid }, /собственный/);
+    await refuse(A, 'friendAdd', { pid: 'nikogonet123' }, /не найден/);
+    const r = await must(A, 'friendAdd', { pid: B.data.pid }); eq(r.name, 'Всеслав'); ok(r.isNew);
+    const s = await must(B, 'friendsSync'); eq(s.added.join(), 'Ярослава'); eq(B.data.friends[0].id, A.data.pid);
+    await refuse(A, 'giftSend', { pid: B.data.pid }, /Подарков нет/);
+    A.data.items.gift = 2;
+    await must(A, 'giftSend', { pid: B.data.pid }); eq(A.data.items.gift, 1);
+    await refuse(A, 'giftSend', { pid: B.data.pid }, /уже отправлен/);
+    const inbox = (await must(B, 'friendsSync')).inbox; eq(inbox.length, 1);
+    const charm0 = B.data.items.charm || 0;
+    const g = await must(B, 'giftOpen', { id: inbox[0].id }); eq(g.name, 'Ярослава'); ok((B.data.items.charm || 0) > charm0, 'обереги пришли');
+    await refuse(B, 'giftOpen', { id: inbox[0].id }, /уже открыт/);
+    await refuse(A, 'giftOpen', { id: inbox[0].id }, /не найден/);
+    A.data.spirits.push(asPlayer(A, () => S.makeSpirit('sirin', 15, 'trade')));
+    const uid = A.data.spirits[1].uid;
+    const t = await must(A, 'tradeGive', { uid }); ok(/^DUH2\.[A-Z2-9]{10}$/.test(t.code), 'код посылки');
+    ok(!A.data.spirits.some(x => x.uid === uid), 'дух ушёл');
+    await refuse(A, 'tradeReceive', { code: t.code }, /собственная/);
+    const got = await must(B, 'tradeReceive', { code: 'лови: ' + t.code.toLowerCase() + ' !' });
+    ok(B.data.spirits.some(x => x.uid === got.uid && x.sid === 'sirin'), 'дух пришёл');
+    await refuse(B, 'tradeReceive', { code: t.code }, /не найдена/);
+    await refuse(B, 'tradeReceive', { code: 'DUH1.abc.123456' }, /старой версии/);
+  });
+  atest('Сервер: путь пешком засчитывается, транспорт и скачки — нет', async () => {
+    const A = await newPlayer('uk', 55.68, 37.56, 'Лада');
+    const t0 = Date.now() - 60000, pts = [];
+    for (let i = 0; i <= 12; i++) pts.push([55.68 + i * 0.00005, 37.56, t0 + i * 5000, 10]);
+    await must(A, 'move', { pts });
+    near(A.data.stats.km * 1000, 12 * 5.56, 3, 'метры');
+    const km0 = A.data.stats.km;
+    await must(A, 'move', { pts: [[55.69, 37.56, Date.now() - 5000, 10], [55.692, 37.56, Date.now(), 10]] });
+    eq(A.data.stats.km, km0, 'транспорт не считается');
+  });
+  atest('Сервер: награда за одобренное место — один раз', async () => {
+    const A = await newPlayer('ul', 55.67, 37.55, 'Мила');
+    DB.subs.push({ user: 'ul', id: 's1', name: 'Мозаика', status: 'approved' }, { user: 'ul', id: 's2', name: 'Забор', status: 'rejected', reason: 'Неинтересный объект' }, { user: 'ul', id: 's3', name: 'Ждёт', status: 'pending' });
+    const sparks0 = A.data.sparks;
+    const r = await must(A, 'placeRewards');
+    eq(r.list.length, 2); ok(A.data.sparks > sparks0, 'награда');
+    eq((await must(A, 'placeRewards')).list.length, 0, 'повторно не выдаётся');
+  });
+
   /* ---------- вывод ---------- */
-  const failed = results.filter(r => !r.ok);
-  const sum = document.getElementById('sum');
-  sum.textContent = failed.length ? `Провалено: ${failed.length} из ${results.length}` : `Все ${results.length} тестов пройдены`;
-  sum.className = failed.length ? 'bad' : 'ok';
-  document.getElementById('out').innerHTML = results.map(r => `<div class="t ${r.ok ? 'pass' : 'fail'}">${r.name}${r.err ? `<small>${r.err}</small>` : ''}</div>`).join('');
-  window.TEST_RESULTS = { total: results.length, failed: failed.map(r => r.name + ': ' + r.err) };
+  (async () => {
+    for (const t of pending) {
+      try { await t.fn(); results.push({ name: t.name, ok: true }); }
+      catch (e) { results.push({ name: t.name, ok: false, err: e.message }); }
+    }
+    const failed = results.filter(r => !r.ok);
+    const sum = document.getElementById('sum');
+    sum.textContent = failed.length ? `Провалено: ${failed.length} из ${results.length}` : `Все ${results.length} тестов пройдены`;
+    sum.className = failed.length ? 'bad' : 'ok';
+    document.getElementById('out').innerHTML = results.map(r => `<div class="t ${r.ok ? 'pass' : 'fail'}">${r.name}${r.err ? `<small>${r.err}</small>` : ''}</div>`).join('');
+    window.TEST_RESULTS = { total: results.length, failed: failed.map(r => r.name + ': ' + r.err) };
+  })();
   </script>
 </body>
 </html>

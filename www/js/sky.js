@@ -16,7 +16,7 @@ const Sky = {
     const stale = !this.w || Date.now() - this.w.at > 30 * 60000 || U.dist(p.lat, p.lng, this.w.lat, this.w.lng) > 5000;
     if (!stale && !force) return;
     let w = null;
-    if (S.d.settings.weather) { try { w = await this.fetchReal(p); } catch (e) { w = null; } }
+    if (Cfg.s.weather) { try { w = await this.fetchReal(p); } catch (e) { w = null; } }
     if (!w) w = this.simulate(p);
     const changed = !this.w || this.w.key !== w.key;
     this.w = w;
@@ -46,8 +46,8 @@ const Sky = {
     return 'clear';
   },
   simulate(p) {
-    const slot = Math.floor(Date.now() / (2 * 3600000));
-    const m = new Date().getMonth();
+    const slot = Math.floor(U.now() / (2 * 3600000));
+    const m = Ev.month();
     const winter = m >= 10 || m <= 2;
     const key = U.weighted([
       ['clear', 4], ['partly', 4], ['overcast', 3], ['rain', winter ? 0.5 : 2], ['fog', 1],
