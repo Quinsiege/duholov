@@ -10,7 +10,7 @@ const Poi = {
   KEY: 'duholov.pois.v3',
   LOAD_R: 1200,             // вокруг игрока держим объекты в этом радиусе, м
   OSM_TTL: 7 * 86400000,    // данные OSM обновляются раз в неделю
-  SRV_TTL: 20 * 60000,      // заявки игроков и правки модераторов — каждые 20 минут
+  SRV_TTL: 5 * 60000,       // места игроков и правки модераторов — каждые 5 минут и при каждом запуске
   RETRY: 2 * 60000,         // повтор, если сервер не ответил
   CACHE_R: 6000,            // что хранить в кэше на телефоне, м
   osm: {},                  // «x:y» → { t, items }
@@ -24,9 +24,13 @@ const Poi = {
       const c = JSON.parse(localStorage.getItem(this.KEY));
       if (c && c.v === 3) { this.osm = c.osm || {}; this.srv = c.srv || {}; }
     } catch (e) {}
+    this.expireServer(); // кэш с сервера показываем сразу, но при запуске перечитываем
     this.rebuild();
     setInterval(() => this.ensure(), 15000);
   },
+  // Перечитать места игроков и правки модераторов (например, когда одобрили мою заявку)
+  expireServer() { for (const t of Object.values(this.srv)) t.t = 0; },
+  refreshServer() { this.expireServer(); this.ensure(); },
   persist() {
     const pos = MapView.pos;
     const keep = obj => {

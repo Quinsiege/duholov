@@ -23,6 +23,7 @@ window.addEventListener('load', () => {
     if (Sync.moved) Sync.onMoved();
     else if (Sync.note) setTimeout(() => UI.toast(Sync.note, 'good'), 1200);
     setTimeout(() => Propose.checkResults(), 6000);
+    setInterval(() => { if (!document.hidden) Propose.checkResults(); }, 3 * 60000);
     Sky.init();
     Music.init();
     Music.play('map');
