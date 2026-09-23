@@ -25,6 +25,10 @@ const UI = {
       trail: s('<path d="M5 21c0-4 3-5 6-7s5-4 3-8"/><path d="M14 6l-1-3 3 1"/><circle cx="6" cy="8" r="1.3" fill="currentColor"/><circle cx="18" cy="14" r="1.3" fill="currentColor"/><path d="M16 21h5"/>'),
       rift: s('<circle cx="12" cy="12" r="9"/><path d="M10 4l3 5-3 3 4 3-2 5"/>'),
       trash: s('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'),
+      gavel: s('<path d="M14 4l6 6M11 7l6 6M12.5 5.5l-5 5M18.5 11.5l-5 5M9 12l-6 6M4 20h9"/>'),
+      shield: s('<path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>'),
+      journal: s('<path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18M10 8h6M10 12h6M10 16h4"/>'),
+      qr: s('<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2v2M18 18h2v2h-2"/>'),
     };
   })(),
 
@@ -219,6 +223,44 @@ const UI = {
     box.innerHTML = list.slice(0, 3).map(e => `<div>${Art.img(e.sid)}</div>`).join('');
   },
 
+  /* ---------------- СВАЙП ПО ВКЛАДКАМ ---------------- */
+  // Свайп влево/вправо по экрану переключает вкладки: tabs — ключи по порядку, get() — текущая, set(key, dir) — показать.
+  // На касаниях (touch), а не pointer: вертикальная прокрутка не отменяет жест. Не срабатывает на полях ввода,
+  // ползунках, лентах с прокруткой вбок и карте.
+  noSwipe(t) {
+    for (let p = t; p && p !== document.body; p = p.parentElement) {
+      if (p.matches && p.matches('input, textarea, select, .chips, .leaflet-container, .menu-pages, [data-noswipe]')) return true;
+      if (p.matches && p.matches('.screen-body, .modal-body')) continue; // вертикальная прокрутка экрана — не лента вбок
+      const o = getComputedStyle(p).overflowX;
+      if ((o === 'auto' || o === 'scroll') && p.scrollWidth > p.clientWidth + 2) return true;
+    }
+    return false;
+  },
+  swipeTabs(el, tabs, get, set) {
+    let x0 = null, y0 = 0, t0 = 0;
+    const start = (x, y, target) => { if (this.noSwipe(target)) { x0 = null; return; } x0 = x; y0 = y; t0 = Date.now(); };
+    const end = (x, y) => {
+      if (x0 == null) return;
+      const dx = x - x0, dy = y - y0; x0 = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6 || Date.now() - t0 > 800) return;
+      const dir = dx < 0 ? 1 : -1, i = tabs.indexOf(get()) + dir;
+      if (i < 0 || i >= tabs.length) return;
+      Sfx.play('tap'); set(tabs[i], dir);
+    };
+    el.addEventListener('touchstart', e => { const t = e.touches[0]; if (e.touches.length === 1) start(t.clientX, t.clientY, e.target); else x0 = null; }, { passive: true });
+    el.addEventListener('touchend', e => { const t = e.changedTouches[0]; end(t.clientX, t.clientY); }, { passive: true });
+    el.addEventListener('touchcancel', () => { x0 = null; }, { passive: true });
+    // мышь (компьютер): то же перетаскиванием
+    el.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button === 0) start(e.clientX, e.clientY, e.target); });
+    el.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') end(e.clientX, e.clientY); });
+  },
+  // лёгкий сдвиг содержимого при смене вкладки: видно, в какую сторону перелистнули
+  slideIn(el, dir) {
+    if (!el || !dir) return;
+    el.classList.remove('slide-l', 'slide-r'); void el.offsetWidth; el.classList.add(dir > 0 ? 'slide-l' : 'slide-r');
+    clearTimeout(el._slideT); el._slideT = setTimeout(() => el.classList.remove('slide-l', 'slide-r'), 300); // и если анимация не проигралась
+  },
+
   /* ---------------- МЕНЮ ---------------- */
   menu() {
     Sfx.init(); Sfx.play('tap');
@@ -235,18 +277,36 @@ const UI = {
       ['shop', 'Лавка', () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
       ['trail', 'Тропа', () => Pass.screen(), Pass.claimable() || ''],
       ['rift', 'Разломы', () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
+      ['gavel', 'Аукцион', () => Auction.screen(), Auction.badge()],
+      // вторая страница
+      ['user', 'Ловчий', () => this.profile()],
+      ['shield', 'Дружина', () => { if (S.d.level < CLAN_LEVEL) { this.toast(`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
+      ['journal', 'Дневник', () => J.screen()],
+      ['qr', 'Обмен', () => Trade.screen()],
       ['gear', 'Настройки', () => this.settings()],
     ];
     if (Tut.step() === 3) setTimeout(() => Tut.finish(), 400);
-    const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div><div class="menu-grid">${tiles.map((t, i) => `<button class="tile" data-i="${i}">${this.I[t[0]]}<span>${t[1]}</span>${t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`).join('')}</div>
+    // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
+    const PER = 12, pages = [];
+    for (let i = 0; i < tiles.length; i += PER) pages.push(tiles.slice(i, i + PER).map((t, j) => [t, i + j]));
+    const tile = ([t, i]) => `<button class="tile" data-i="${i}">${this.I[t[0]]}<span>${t[1]}</span>${t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`;
+    const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
+      <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
+      ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="Страница ${i + 1}"></button>`).join('')}</div>` : ''}
       <div class="sheet-foot"><span>${Art.item('charm')} ${S.d.items.charm || 0}</span><span class="spark">✦ ${U.fmtNum(S.d.sparks)}</span><span class="zlat">${Art.item('zlat')} ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, 'златник', 'златника', 'златников')}</span></div></div></div>`);
     const close = () => { this.popLayer(close); sheet.classList.add('out'); setTimeout(() => sheet.remove(), 200); };
+    const box = sheet.querySelector('.menu-pages'), dots = [...sheet.querySelectorAll('.menu-dots button')];
+    const page = () => Math.round(box.scrollLeft / Math.max(1, box.clientWidth));
+    box.addEventListener('scroll', () => { const p = page(); dots.forEach((d, i) => d.classList.toggle('on', i === p)); this.menuPage = p; }, { passive: true });
     sheet.addEventListener('click', e => {
+      const d = e.target.closest('[data-p]');
+      if (d) { box.scrollTo({ left: +d.dataset.p * box.clientWidth, behavior: 'smooth' }); return; }
       const t = e.target.closest('.tile');
       if (t) { close(); Sfx.play('tap'); tiles[+t.dataset.i][2](); }
       else if (e.target === sheet) close();
     });
     document.body.appendChild(sheet);
+    if (this.menuPage) box.scrollLeft = this.menuPage * box.clientWidth; // открываем на той странице, где закрыли
     this.pushLayer(close);
   },
 
@@ -703,7 +763,10 @@ const UI = {
     scr.addEventListener('click', e => {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
       const tab = e.target.closest('[data-tab]');
-      if (tab) { this.qTab = tab.dataset.tab; Sfx.play('tap'); render(); return; }
+      if (tab) {
+        const order = ['day', 'story', 'order'], dir = Math.sign(order.indexOf(tab.dataset.tab) - order.indexOf(this.qTab));
+        this.qTab = tab.dataset.tab; Sfx.play('tap'); render(); this.slideIn(scr.querySelector('.quests'), dir); return;
+      }
       const oc = e.target.closest('.o-claim');
       if (oc) { oc.disabled = true; Order.claim(+oc.dataset.w, +oc.dataset.i).then(() => { render(); this.refreshHud(); }); return; }
       if (e.target.closest('.claim-story')) {
@@ -751,6 +814,7 @@ const UI = {
       if (c) claim('questClaim', { i: +c.dataset.i }, 'Получено: ', 'spin');
       else if (b) claim('questBonus', {}, 'Сундук: ', 'levelup');
     });
+    this.swipeTabs(scr, ['day', 'story', 'order'], () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
   },
 

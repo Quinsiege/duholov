@@ -230,6 +230,56 @@ function makeEnv(uid) {
       return rows && rows[0] || null;
     },
     async roomLeave(code, pid) { must(await db.rpc('raid_room_leave', { p_code: code, p_pid: pid })); },
+    // Аукцион. Смена статуса — одним условным update (гонка двух покупателей невозможна);
+    // если update ничего не нашёл, но лот уже «мой» и не выдан — возвращаем его (повтор запроса после сбоя сохранения)
+    async lotCreate(row) { return must(await db.from('auction_lots').insert({ ...row, seller_uid: uid }).select('*').single()); },
+    async lotsFind(f) {
+      let q = db.from('auction_lots').select('id, seller_name, spirit, sid, lvl, power, iv_pct, iv_a, iv_d, iv_s, shiny, cur, price, expires_at')
+        .eq('status', 'open').gt('expires_at', new Date().toISOString());
+      if (f.sids) q = q.in('sid', f.sids);
+      if (f.el) q = q.eq('el', f.el);
+      if (f.rar) q = q.eq('rar', f.rar);
+      if (f.cur) q = q.eq('cur', f.cur);
+      if (f.shiny) q = q.eq('shiny', true);
+      for (const [k, col] of [['minIv', 'iv_pct'], ['minA', 'iv_a'], ['minD', 'iv_d'], ['minS', 'iv_s'], ['minPower', 'power'], ['minLvl', 'lvl']]) if (f[k]) q = q.gte(col, f[k]);
+      if (f.maxPrice) q = q.lte('price', f.maxPrice);
+      if (f.notPid) q = q.neq('seller_pid', f.notPid);
+      const [col, asc] = { new: ['created_at', false], cheap: ['price', true], dear: ['price', false], power: ['power', false], iv: ['iv_pct', false] }[f.sort] || ['created_at', false];
+      return must(await q.order(col, { ascending: asc }).order('id').range(f.from, f.from + 29)) || [];
+    },
+    async lotsMine(pid) {
+      const since = new Date(Date.now() - 7 * 86400000).toISOString();
+      return must(await db.from('auction_lots').select('id, spirit, sid, lvl, power, iv_pct, cur, price, status, buyer_name, created_at, expires_at, closed_at, settled')
+        .eq('seller_pid', pid).or(`status.eq.open,created_at.gte."${since}"`).order('created_at', { ascending: false }).limit(40)) || [];
+    },
+    async lotsOpenCount(pid) {
+      const { count, error } = await db.from('auction_lots').select('id', { count: 'exact', head: true }).eq('seller_pid', pid).eq('status', 'open');
+      if (error) throw new Error(error.message);
+      return count || 0;
+    },
+    async lotBuy(id, pid, name) {
+      if (!UUID.test(id)) return null;
+      const now = new Date().toISOString();
+      const rows = must(await db.from('auction_lots').update({ status: 'sold', buyer_pid: pid, buyer_name: String(name).slice(0, 20), closed_at: now })
+        .eq('id', id).eq('status', 'open').gt('expires_at', now).neq('seller_pid', pid).select('*'));
+      if (rows && rows[0]) return rows[0];
+      return must(await db.from('auction_lots').select('*').eq('id', id).eq('status', 'sold').eq('buyer_pid', pid).eq('delivered', false).maybeSingle());
+    },
+    async lotGet(id) { return UUID.test(id) ? must(await db.from('auction_lots').select('id, seller_pid, status, cur, price, expires_at').eq('id', id).maybeSingle()) : null; },
+    async lotCancel(id, pid) {
+      if (!UUID.test(id)) return null;
+      const rows = must(await db.from('auction_lots').update({ status: 'cancelled', closed_at: new Date().toISOString() })
+        .eq('id', id).eq('seller_pid', pid).eq('status', 'open').select('*'));
+      if (rows && rows[0]) return rows[0];
+      return must(await db.from('auction_lots').select('*').eq('id', id).eq('seller_pid', pid).eq('status', 'cancelled').eq('settled', false).maybeSingle());
+    },
+    // Итоги для продавца: истёкшие лоты закрываются; проданные, снятые и истёкшие — ещё не рассчитанные
+    async lotsToSettle(pid) {
+      const now = new Date().toISOString();
+      must(await db.from('auction_lots').update({ status: 'expired', closed_at: now }).eq('seller_pid', pid).eq('status', 'open').lt('expires_at', now));
+      return must(await db.from('auction_lots').select('*').eq('seller_pid', pid).eq('settled', false).in('status', ['sold', 'cancelled', 'expired']).limit(50)) || [];
+    },
+    async lotsDone(ids, field) { if (ids.length) must(await db.from('auction_lots').update({ [field]: true }).in('id', ids)); },
     // Казна: оплаченные, но ещё не начисленные наборы златников; отметка «начислено»
     async paidList() { return must(await db.from('payments').select('id, pack, zlat').eq('user_id', uid).eq('status', 'succeeded').eq('credited', false).limit(50)) || []; },
     async payCredited(ids) { must(await db.from('payments').update({ credited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },

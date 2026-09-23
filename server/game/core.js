@@ -227,6 +227,53 @@ const GameCore = {
   // Совместный разлом: участник комнаты и то, что видит телефон (без кодов игроков)
   ROOM_ALPHA: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
   // Облик — только из известных вариантов (он попадает в картинку у других игроков)
+  // Аукцион: расчёт с продавцом — выручка за проданные (минус комиссия), духи снятых и истёкших лотов — обратно.
+  // Номера рассчитанных лотов запоминаются в прогрессе (auc), поэтому расчёт ровно один, даже если отметка
+  // settled в таблице не успела записаться
+  async auctionSettle(ctx) {
+    const A = S.d.auc = S.d.auc || { got: {}, back: {}, paid: {} };
+    for (const m of [A.got, A.back, A.paid]) for (const k of Object.keys(m)) if (ctx.now - m[k] > 14 * 86400000) delete m[k];
+    const rows = await ctx.env.lotsToSettle(S.d.pid), got = [];
+    for (const r of rows) {
+      if (!r.spirit || !SP[r.spirit.s]) continue;
+      if (r.status === 'sold') {
+        if (A.paid[r.id]) continue;
+        const cur = r.cur === 'zlat' ? 'zlat' : 'sparks', net = r.price - Rules.auctionFee(r.price);
+        S.d[cur] = (S.d[cur] || 0) + net;
+        A.paid[r.id] = ctx.now;
+        got.push({ type: 'sold', sid: r.spirit.s, cur, price: r.price, net, buyer: String(r.buyer_name || '').slice(0, 20) });
+        J.add('auction', { sid: r.spirit.s, dir: 'sold', cur, price: net, who: r.buyer_name });
+      } else {
+        if (A.back[r.id]) continue;
+        S.addSpirit(this.unpackSpirit(r.spirit, ctx));
+        A.back[r.id] = ctx.now;
+        got.push({ type: r.status, sid: r.spirit.s });
+      }
+    }
+    if (rows.length) ctx.after.push(() => ctx.env.lotsDone(rows.map(r => r.id), 'settled'));
+    return got;
+  },
+  // Дух покидает коллекцию (посылка, аукцион): амулет — в сумку, из команды и спутников убирается
+  detachSpirit(sp) {
+    if (sp.amulet) S.unequip(sp);
+    S.d.spirits.splice(S.d.spirits.indexOf(sp), 1);
+    if (S.d.buddy && S.d.buddy.uid === sp.uid) { S.d.buddy = null; Bus.emit('buddyChanged'); }
+    S.d.team = S.d.team.filter(u => u !== sp.uid);
+  },
+  // Упаковка духа для посылки и лота аукциона — и обратно (уровень — не выше доступного получателю)
+  packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 }; },
+  unpackSpirit(p, ctx, from) {
+    this.need(p && SP[p.s], 'Посылка повреждена');
+    const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
+    while (iv.length < 3) iv.push(0);
+    const sp = { uid: U.uid(), sid: p.s, lvl: U.clamp(Math.min(+p.l || 1, S.maxLvl()), 1, 50), iv, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null };
+    if (from) sp.from = this.cleanText(from, 20);
+    if (p.y) sp.shiny = true;
+    if (p.d) sp.dark = true;
+    if (p.p) sp.purified = true;
+    if (p.m) sp.move2 = true;
+    return sp;
+  },
   // Текст от игрока (имя, кличка духа): без управляющих символов и символов разметки, пробелы схлопнуты
   cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>"'`&\\]/g, '').trim().replace(/\s+/g, ' ').slice(0, max); },
   safeLook(lk) {
@@ -988,12 +1035,9 @@ const GameCore = {
       const sp = this.spirit(a.uid);
       this.need(S.d.spirits.length > 1, 'Нельзя отдать последнего духа');
       this.limit(ctx, 'trade', 20, 86400000);
-      if (sp.amulet) S.unequip(sp); // амулет остаётся у хозяина
       const code = U.code(10);
-      await ctx.env.tradeCreate(code, S.d.pid, S.d.name, { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 });
-      S.d.spirits.splice(S.d.spirits.indexOf(sp), 1);
-      if (S.d.buddy && S.d.buddy.uid === sp.uid) { S.d.buddy = null; Bus.emit('buddyChanged'); }
-      S.d.team = S.d.team.filter(u => u !== sp.uid);
+      await ctx.env.tradeCreate(code, S.d.pid, S.d.name, this.packSpirit(sp));
+      this.detachSpirit(sp); // амулет остаётся у хозяина
       S.d.sent.unshift({ code: 'DUH2.' + code, sid: sp.sid, shiny: !!sp.shiny, dark: !!sp.dark, t: ctx.now });
       S.d.sent = S.d.sent.slice(0, 20);
       S.d.stats.traded++;
@@ -1007,19 +1051,87 @@ const GameCore = {
       const t = await ctx.env.tradeTake(m[1], S.d.pid);
       this.need(t, 'Посылка не найдена или её уже открыли');
       this.need(!t.own, 'Это твоя собственная посылка — отдай код другу');
-      const p = t.spirit;
-      this.need(SP[p.s], 'Посылка повреждена');
-      const sp = { uid: U.uid(), sid: p.s, lvl: Math.min(p.l, S.maxLvl()), iv: p.i, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null, from: this.cleanText(t.from_name, 20) };
-      if (p.y) sp.shiny = true;
-      if (p.d) sp.dark = true;
-      if (p.p) sp.purified = true;
-      if (p.m) sp.move2 = true;
+      const sp = this.unpackSpirit(t.spirit, ctx, t.from_name);
       const isNew = S.addSpirit(sp);
       S.addEssence(SP[sp.sid].fam, 5);
       J.add('trade', { sid: sp.sid, dir: 'in', who: sp.from });
       S.d.stats.traded++;
       S.addXP(isNew ? 1000 : 300);
       return { uid: sp.uid, isNew };
+    },
+
+    /* ----- аукцион духов ----- */
+    // Поиск лотов: фильтры по виду, стихии, редкости, оценке Ордена и каждому показателю, силе, цене и валюте
+    async auctionFind(a, ctx) {
+      this.need(S.d.level >= Rules.AUCTION.LEVEL, `Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
+      this.limit(ctx, 'aucFind', 240, 3600000);
+      const f = a.f || {}, n = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
+      const q = { from: n(a.from, 3000), sort: ['new', 'cheap', 'dear', 'power', 'iv'].includes(f.sort) ? f.sort : 'new', notPid: S.d.pid };
+      const sids = Array.isArray(f.sids) ? f.sids.filter(s => SP[s]).slice(0, 60) : null;
+      if (sids && sids.length) q.sids = sids;
+      if (ELEMENTS[f.el]) q.el = f.el;
+      if (RARITY[f.rar]) q.rar = +f.rar;
+      if (f.cur === 'sparks' || f.cur === 'zlat') q.cur = f.cur;
+      if (f.shiny) q.shiny = true;
+      q.minIv = n(f.minIv, 100); q.minA = n(f.minA, 15); q.minD = n(f.minD, 15); q.minS = n(f.minS, 15);
+      q.minPower = n(f.minPower, 1e6); q.minLvl = n(f.minLvl, 50); q.maxPrice = n(f.maxPrice, 1e9);
+      const rows = await ctx.env.lotsFind(q);
+      return { lots: rows.filter(r => r.spirit && SP[r.spirit.s]) };
+    },
+    // Мои лоты; заодно — выручка за проданные и возврат снятых и истёкших духов
+    async auctionMine(a, ctx) {
+      this.need(S.d.level >= Rules.AUCTION.LEVEL, `Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
+      const got = await this.auctionSettle(ctx);
+      return { got, lots: await ctx.env.lotsMine(S.d.pid), open: await ctx.env.lotsOpenCount(S.d.pid) };
+    },
+    async auctionSell(a, ctx) {
+      const A = Rules.AUCTION;
+      this.need(S.d.level >= A.LEVEL, `Аукцион открывается с ${A.LEVEL} уровня Ловчего`);
+      const sp = this.spirit(a.uid);
+      this.need(S.d.spirits.length > 1, 'Нельзя продать последнего духа');
+      this.need(!sp.fav, 'Сними с духа отметку «избранный», чтобы продать его');
+      const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
+      this.need(price >= A.MIN[cur] && price <= A.MAX[cur], `Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} ${cur === 'zlat' ? 'златников' : 'искр'}`);
+      this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, `Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);
+      this.limit(ctx, 'aucSell', A.PER_DAY, 86400000);
+      const iv = sp.iv, s = SP[sp.sid];
+      const lot = await ctx.env.lotCreate({ seller_pid: S.d.pid, seller_name: S.d.name, spirit: this.packSpirit(sp), sid: sp.sid, el: s.el, rar: s.rar,
+        lvl: sp.lvl, power: S.power(sp), iv_pct: S.ivPct(sp), iv_a: iv[0], iv_d: iv[1], iv_s: iv[2], shiny: !!sp.shiny, cur, price,
+        expires_at: new Date(ctx.now + A.HOURS * 3600000).toISOString() });
+      this.detachSpirit(sp);
+      J.add('auction', { sid: sp.sid, dir: 'sell', cur, price });
+      return { id: lot.id, fee: Rules.auctionFee(price) };
+    },
+    async auctionBuy(a, ctx) {
+      this.need(S.d.level >= Rules.AUCTION.LEVEL, `Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
+      const id = String(a.id || '');
+      const pre = await ctx.env.lotGet(id);
+      this.need(pre, 'Лот не найден');
+      this.need(pre.seller_pid !== S.d.pid, 'Это твой собственный лот');
+      S.d.auc = S.d.auc || { got: {}, back: {}, paid: {} };
+      this.need(!S.d.auc.got[id], 'Этот лот уже у тебя');
+      // деньги проверяем ДО покупки, по цене из базы (цену с телефона не принимаем): иначе лот
+      // пометился бы проданным, а покупатель ушёл бы ни с чем
+      const cur = pre.cur === 'zlat' ? 'zlat' : 'sparks';
+      this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? 'Не хватает златников' : 'Не хватает искр');
+      this.limit(ctx, 'aucBuy', 60, 3600000);
+      const lot = await ctx.env.lotBuy(id, S.d.pid, S.d.name);
+      this.need(lot && lot.price === pre.price && lot.cur === pre.cur, 'Лот уже купили или сняли с продажи');
+      S.d[cur] -= lot.price;
+      const sp = this.unpackSpirit(lot.spirit, ctx, lot.seller_name);
+      const isNew = S.addSpirit(sp);
+      S.d.auc.got[lot.id] = ctx.now;
+      ctx.after.push(() => ctx.env.lotsDone([lot.id], 'delivered'));
+      J.add('auction', { sid: sp.sid, dir: 'buy', cur, price: lot.price, who: sp.from });
+      return { uid: sp.uid, isNew, cur, price: lot.price };
+    },
+    async auctionCancel(a, ctx) {
+      const lot = await ctx.env.lotCancel(String(a.id || ''), S.d.pid);
+      this.need(lot, 'Лот уже продан или снят');
+      S.d.auc = S.d.auc || { got: {}, back: {}, paid: {} };
+      if (!S.d.auc.back[lot.id]) { S.addSpirit(this.unpackSpirit(lot.spirit, ctx)); S.d.auc.back[lot.id] = ctx.now; }
+      ctx.after.push(() => ctx.env.lotsDone([lot.id], 'settled'));
+      return { sid: lot.spirit.s };
     },
 
     /* ----- друзья и подарки ----- */

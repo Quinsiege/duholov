@@ -48,6 +48,7 @@
   <script src="../www/js/clans.js"></script>
   <script src="../www/js/hints.js"></script>
   <script src="../www/js/shop.js"></script>
+  <script src="../www/js/auction.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
@@ -375,7 +376,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [] };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [] };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -430,6 +431,29 @@
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
     myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
+    // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
+    lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
+    lotsFind: async f => DB.lots.filter(l => l.status === 'open' && Date.parse(l.expires_at) > Date.now() && (!f.sids || f.sids.includes(l.sid)) && (!f.el || l.el === f.el) && (!f.rar || l.rar === f.rar) && (!f.cur || l.cur === f.cur) && (!f.shiny || l.shiny)
+      && l.iv_pct >= (f.minIv || 0) && l.iv_a >= (f.minA || 0) && l.iv_d >= (f.minD || 0) && l.iv_s >= (f.minS || 0) && l.power >= (f.minPower || 0) && (!f.maxPrice || l.price <= f.maxPrice) && l.seller_pid !== f.notPid)
+      .sort((a, b) => f.sort === 'cheap' ? a.price - b.price : f.sort === 'iv' ? b.iv_pct - a.iv_pct : 0).slice(f.from, f.from + 30).map(l => ({ ...l })),
+    lotsMine: async pid => DB.lots.filter(l => l.seller_pid === pid).map(l => ({ ...l })),
+    lotsOpenCount: async pid => DB.lots.filter(l => l.seller_pid === pid && l.status === 'open').length,
+    lotGet: async id => { const l = DB.lots.find(x => x.id === id); return l ? { ...l } : null; },
+    lotBuy: async (id, pid, name) => {
+      const l = DB.lots.find(x => x.id === id);
+      if (l && l.status === 'open' && Date.parse(l.expires_at) > Date.now() && l.seller_pid !== pid) { Object.assign(l, { status: 'sold', buyer_pid: pid, buyer_name: name }); return { ...l }; }
+      return l && l.status === 'sold' && l.buyer_pid === pid && !l.delivered ? { ...l } : null;
+    },
+    lotCancel: async (id, pid) => {
+      const l = DB.lots.find(x => x.id === id && x.seller_pid === pid);
+      if (l && l.status === 'open') { l.status = 'cancelled'; return { ...l }; }
+      return l && l.status === 'cancelled' && !l.settled ? { ...l } : null;
+    },
+    lotsToSettle: async pid => {
+      DB.lots.forEach(l => { if (l.seller_pid === pid && l.status === 'open' && Date.parse(l.expires_at) < Date.now()) l.status = 'expired'; });
+      return DB.lots.filter(l => l.seller_pid === pid && !l.settled && ['sold', 'cancelled', 'expired'].includes(l.status)).map(l => ({ ...l }));
+    },
+    lotsDone: async (ids, field) => { DB.lots.forEach(l => { if (ids.includes(l.id)) l[field] = true; }); },
     paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
     payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
     deleteSave: async () => { delete DB.saves[who.uid]; },
@@ -934,6 +958,61 @@
     // старые сохранения: гривны переходят в златники один к одному
     A.data.grivna = 77; A.data.zlat = 3;
     await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
+  });
+  atest('Сервер: аукцион — выставить, фильтры, купить с комиссией, без двойных покупок и потерь', async () => {
+    const S1 = await newPlayer('va', 55.48, 37.36, 'Продавец'), B1 = await newPlayer('vb', 55.48, 37.36, 'Покупатель'), C1 = await newPlayer('vc', 55.48, 37.36, 'Второй');
+    for (const P of [S1, B1, C1]) { P.data.tut = 0; P.data.level = 10; P.data.sparks = 100000; P.data.zlat = 500; }
+    S1.data.level = 3; await refuse(S1, 'auctionFind', {}, /уровня/); S1.data.level = 10;
+    // продавцу — три духа с разной оценкой
+    const mk = (iv, sid) => ({ uid: U.uid(), sid, lvl: 20, iv, t: Date.now(), fav: false });
+    const good = mk([15, 14, 15], 'kapelka'), weak = mk([2, 3, 1], 'mshonok'), fav = { ...mk([10, 10, 10], 'ugolek'), fav: true };
+    S1.data.spirits.push(good, weak, fav);
+    await refuse(S1, 'auctionSell', { uid: fav.uid, cur: 'sparks', price: 500 }, /избранный/);
+    await refuse(S1, 'auctionSell', { uid: good.uid, cur: 'zlat', price: 0 }, /Цена/);
+    await refuse(S1, 'auctionSell', { uid: good.uid, cur: 'sparks', price: 50 }, /Цена/);
+    S1.data.team = [good.uid]; S1.data.buddy = { uid: good.uid, km: 0, finds: 0 };
+    const sold = await must(S1, 'auctionSell', { uid: good.uid, cur: 'zlat', price: 200 });
+    eq(sold.fee, 20, 'комиссия 10%'); ok(!S1.data.spirits.some(s => s.uid === good.uid), 'дух ушёл в лот');
+    ok(!S1.data.team.includes(good.uid) && !S1.data.buddy, 'и из команды, и из спутников');
+    await must(S1, 'auctionSell', { uid: weak.uid, cur: 'sparks', price: 1000 });
+    // фильтры: оценка Ордена, показатели, валюта; свои лоты в поиске не видны
+    eq((await must(S1, 'auctionFind', {})).lots.length, 0, 'своих лотов в поиске нет');
+    eq((await must(B1, 'auctionFind', {})).lots.length, 2);
+    eq((await must(B1, 'auctionFind', { f: { minIv: 90 } })).lots.length, 1, 'по оценке Ордена');
+    eq((await must(B1, 'auctionFind', { f: { minA: 15, minS: 15 } })).lots[0].sid, 'kapelka', 'по показателям');
+    eq((await must(B1, 'auctionFind', { f: { cur: 'sparks' } })).lots[0].price, 1000, 'по валюте');
+    eq((await must(B1, 'auctionFind', { f: { sids: ['mshonok'] } })).lots.length, 1, 'по виду');
+    eq((await must(B1, 'auctionFind', { f: { el: SP.kapelka.el } })).lots.length, 1, 'по стихии');
+    // покупка: денег не хватает — лот остаётся открытым
+    B1.data.zlat = 10;
+    await refuse(B1, 'auctionBuy', { id: sold.id }, /златников/);
+    eq(DB.lots.find(l => l.id === sold.id).status, 'open', 'лот не застрял проданным');
+    B1.data.zlat = 500;
+    await refuse(S1, 'auctionBuy', { id: sold.id }, /собственный/);
+    const n0 = B1.data.spirits.length, got = await must(B1, 'auctionBuy', { id: sold.id });
+    eq(B1.data.zlat, 300, 'списана цена лота'); eq(B1.data.spirits.length, n0 + 1, 'дух у покупателя');
+    const bought = B1.data.spirits.find(s => s.uid === got.uid); eq(bought.iv.join(), '15,14,15', 'показатели сохранились'); eq(bought.from, 'Продавец');
+    await refuse(C1, 'auctionBuy', { id: sold.id }, /купили|снял/);
+    // повтор после сбоя сохранения: лот уже «мой», но отметка delivered не записалась — второй раз не выдаётся
+    DB.lots.find(l => l.id === sold.id).delivered = false;
+    await refuse(B1, 'auctionBuy', { id: sold.id }, /уже у тебя/); eq(B1.data.spirits.length, n0 + 1);
+    // продавец заходит в аукцион — выручка минус комиссия, один раз
+    const z0 = S1.data.zlat, mine = await must(S1, 'auctionMine');
+    eq(S1.data.zlat, z0 + 180, 'выручка 200 − 20'); eq(mine.got[0].type, 'sold');
+    DB.lots.find(l => l.id === sold.id).settled = false; await must(S1, 'auctionMine'); eq(S1.data.zlat, z0 + 180, 'второй раз не начисляется');
+    // снятие лота возвращает духа; истёкший — тоже
+    const weakLot = DB.lots.find(l => l.sid === 'mshonok');
+    const c0 = S1.data.spirits.length; await must(S1, 'auctionCancel', { id: weakLot.id }); eq(S1.data.spirits.length, c0 + 1, 'снятый дух вернулся');
+    await refuse(S1, 'auctionCancel', { id: weakLot.id }, /продан или снят/);
+    const back = S1.data.spirits.find(s => s.sid === 'mshonok' && s.iv.join() === '2,3,1');
+    const exp = await must(S1, 'auctionSell', { uid: back.uid, cur: 'sparks', price: 777 });
+    DB.lots.find(l => l.id === exp.id).expires_at = new Date(Date.now() - 1000).toISOString();
+    await refuse(B1, 'auctionBuy', { id: exp.id }, /купили|снял/);
+    const r = await must(S1, 'auctionMine'); eq(r.got[0].type, 'expired'); ok(S1.data.spirits.some(s => s.sid === 'mshonok'), 'истёкший дух вернулся');
+    // не больше 5 открытых лотов
+    for (let i = 0; i < 5; i++) { const x = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(x); await must(S1, 'auctionSell', { uid: x.uid, cur: 'sparks', price: 100 + i }); }
+    const extra = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(extra);
+    await refuse(S1, 'auctionSell', { uid: extra.uid, cur: 'sparks', price: 100 }, /не больше 5/);
   });
   atest('Безопасность: облик, имена, служебные действия, коды, перебор', async () => {
     // облик от другого игрока не вырывается из атрибута SVG
