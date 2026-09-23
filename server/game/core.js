@@ -389,6 +389,7 @@ const GameCore = {
       S.d.stats.caught++;
       S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
+      if (s.land) S.progress('land', 1); // дух родной земли — для Летописи
       if (e.mode === 'tut' && S.d.tut === 1) S.d.tut = 2;
       if (e.mode === 'story') S.d.storyGift = null;
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
@@ -476,7 +477,7 @@ const GameCore = {
       this.need(c && e && m, 'Такого облика нет');
       this.need(c.lvl <= lvl && e.lvl <= lvl && m.lvl <= lvl, 'Этот облик ещё не открыт');
       this.need(!m.league || League.st().best >= m.league, 'Венец Лиги — награда за ранг «Хранитель Лиги»');
-      this.need(!m.story || S.d.story.ch >= m.story, 'Эта эмблема — награда за вторую книгу Летописи');
+      this.need(!m.story || S.d.story.ch >= m.story, 'Эта эмблема — награда за Летопись');
       S.d.look = { cloak: c.c, eyes: e.c, emblem: m.id };
       return { ok: true };
     },
@@ -525,6 +526,7 @@ const GameCore = {
       const T = TASK_TIERS[q.tier];
       const got = S.giveRewards({ ...T.reward, xp: 250 * q.tier });
       const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.maxLvl()) };
+      S.progress('task', 1);
       S.d.taskMeet.push(m);
       return { got, meet: m };
     },
@@ -638,6 +640,7 @@ const GameCore = {
       J.add('raid', { sid: b.boss, tier, coop: allies });
       S.d.stats.raids++;
       S.progress('raid', 1);
+      if (b.coop && b.coop.allies > 0) S.progress('coop', 1);
       const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 400 * tier, charm: 5, honey: 2 + tier, water: 2, charm2: tier >= 2 ? 3 : 0 });
       const am = S.rollAmulet([0.25, 0.4, 0.7][tier - 1], b.rid);
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
@@ -716,6 +719,7 @@ const GameCore = {
       this.need(ok, 'Капище только что изменилось — открой его заново');
       S.d.stats.defends = (S.d.stats.defends || 0) + 1;
       S.d.guards.push({ id: p.id, name: String(p.name || 'Капище').slice(0, 80), sid: sp.sid, t: ctx.now });
+      S.progress('defend', 1);
       J.add('defend', { name: p.name, sid: sp.sid });
       return { ok: true, clan: S.d.clan };
     },
@@ -926,6 +930,7 @@ const GameCore = {
       J.add('spar', { name: f.name });
       if (f.spar === U.today(ctx.now)) return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true };
       f.spar = U.today(ctx.now);
+      S.progress('spar', 1);
       const rw = S.giveRewards({ xp: 800, sparks: 500, charm: 3, honey: 1 });
       this.friendPoint(f);
       return { win: true, rw, pts: f.pts };
@@ -964,6 +969,7 @@ const GameCore = {
       if (r() < 0.12 + lv * 0.03) c.cocoon = 5;
       await ctx.env.giftCreate(S.d.pid, f.id, S.d.name, c);
       f.sent = U.today();
+      S.progress('gift', 1);
       this.friendPoint(f);
       J.add('gift', { dir: 'out', name: f.name });
       return { ok: true };

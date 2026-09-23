@@ -18,7 +18,7 @@ const Art = (() => {
       detail: '<path d="M70 84 L76 150 M128 90 Q122 120 132 152 M92 150 Q100 140 108 152" stroke="#000" stroke-opacity=".12" stroke-width="3" fill="none" stroke-linecap="round"/>' },
   };
 
-  const BACK = ['aura', 'heads3', 'cattail', 'backpack', 'handlebar', 'tail', 'wings', 'mane', 'halo', 'hair', 'ripples', 'flame', 'horns', 'ears', 'antlers', 'sprout', 'antenna', 'wifi', 'crest', 'pantograph', 'handles', 'sign', 'wheat', 'steam'];
+  const BACK = ['aura', 'unihorn', 'heads3', 'cattail', 'backpack', 'handlebar', 'tail', 'wings', 'mane', 'halo', 'hair', 'ripples', 'flame', 'horns', 'ears', 'antlers', 'sprout', 'antenna', 'wifi', 'crest', 'pantograph', 'handles', 'sign', 'wheat', 'steam'];
 
   function shade(hex, amt) { // amt < 0 — темнее, > 0 — светлее
     const n = parseInt(hex.slice(1), 16);
@@ -117,6 +117,9 @@ const Art = (() => {
         const cy = t - 28;
         return [14, 23].map((r, i) => `<path class="art-blink" style="animation-delay:${i * 0.25}s" d="M${100 - r * 0.72} ${cy - r * 0.7} A${r} ${r} 0 0 1 ${100 + r * 0.72} ${cy - r * 0.7}" stroke="${c3}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`).join('');
       }
+      case 'unihorn': // единственный витой рог (Индрик-зверь)
+        return `<path d="M91 ${t + 12} L100 ${t - 40} L109 ${t + 12}Z" fill="#e0f2fe" stroke="${shade(c2, -0.2)}" stroke-width="2.2" stroke-linejoin="round"/>` +
+          `<path d="M93.5 ${t + 1}l12 -4M95.5 ${t - 11}l9 -3.5M97.5 ${t - 23}l5.5 -2.5" stroke="${shade(c2, -0.2)}" stroke-width="1.6" stroke-linecap="round"/>`;
       case 'crest':
         return [-1, 0, 1].map(i => `<path d="M${100 + i * 6} ${t + 8} Q${100 + i * 14} ${t - 14} ${100 + i * 22} ${t - 24}" stroke="${c3}" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="${100 + i * 22}" cy="${t - 25}" r="4.5" fill="${c1}"/>`).join('');
       case 'wings': {
@@ -471,6 +474,7 @@ const Art = (() => {
     moon: '<path d="M53 76a8 8 0 1 0 5 13 7 7 0 1 1-5-13z" fill="#e0e7ff"/>',
     leaf: '<path d="M42 90c0-9 6-14 16-14 0 9-6 14-16 14zM42 90l9-8" fill="#4ade80" stroke="#166534" stroke-width="1.5"/>',
     bolt: '<path d="M52 74l-8 11h6l-2 10 9-12h-6z" fill="#fde047" stroke="#a16207" stroke-width="1.2"/>',
+    horn: '<circle cx="50" cy="84" r="9" fill="#67e8f9" opacity=".25"/><path d="M45 93 L57 74 L53 93 Z" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.3" stroke-linejoin="round"/><path d="M47.5 89l6-1.5M49.5 85l5-1.5M51.5 81l3.5-1" stroke="#4338ca" stroke-width="1"/>',
     needle: '<circle cx="50" cy="84" r="9" fill="#4ade80" opacity=".25"/><path d="M42 93 L58 75" stroke="#e2e8f0" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="56.6" cy="76.6" rx="1.5" ry="3.2" transform="rotate(42 56.6 76.6)" fill="none" stroke="#1b1030" stroke-width="1.2"/>',
     crown: '<path d="M41 90V78l4.5 5 4.5-7 4.5 7 4.5-5v12z" fill="#fbbf24" stroke="#92400e" stroke-width="1.4" stroke-linejoin="round"/><circle cx="50" cy="86" r="1.8" fill="#e11d48"/>',
     star: '<path d="M50 75l2.6 5.4 5.9.9-4.3 4.1 1 5.9L50 88.5l-5.2 2.8 1-5.9-4.3-4.1 5.9-.9z" fill="#fde047" stroke="#a16207" stroke-width="1"/>',
