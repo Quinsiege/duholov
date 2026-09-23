@@ -60,8 +60,8 @@ const UI = {
   },
 
   applyA11y() {
-    document.documentElement.classList.toggle('big-text', !!S.d.settings.bigText);
-    document.body.classList.toggle('calm', !!S.d.settings.calm);
+    document.documentElement.classList.toggle('big-text', !!Cfg.s.bigText);
+    document.body.classList.toggle('calm', !!Cfg.s.calm);
   },
 
   refreshSky() {
@@ -276,12 +276,12 @@ const UI = {
       if (e.target.closest('.sel-release')) {
         if (!sel.size) { this.toast('Никто не выбран'); return; }
         if (sel.size >= S.d.spirits.length) { this.toast('Нельзя отпустить всех духов'); return; }
-        this.confirm('Отпустить?', `Духов: ${sel.size}. Они вернутся в Навь, а ты получишь эссенцию.`, 'Отпустить', () => {
-          const n = sel.size;
-          [...sel].forEach(uid => S.release(uid));
+        this.confirm('Отпустить?', `Духов: ${sel.size}. Они вернутся в Навь, а ты получишь эссенцию.`, 'Отпустить', async () => {
+          const r = await Game.try('release', { uids: [...sel] });
+          if (!r) return;
           sel.clear(); selecting = false;
-          Sfx.play('flee'); this.toast(`Отпущено духов: ${n}. Получено эссенции: ${n}`, 'good');
-          render();
+          Sfx.play('flee'); this.toast(`Отпущено духов: ${r.n}. Получено эссенции: ${r.n}`, 'good');
+          render(); updateBar();
         }, 'Отмена', true);
         return;
       }
@@ -313,7 +313,8 @@ const UI = {
       html: `<p class="small">Выбери до трёх духов. Совет: бери стихии, которые сильнее противника.</p><div class="grid cards team-grid">${list.map(x => `
         <button class="card el-${SP[x.sid].el}" data-uid="${x.uid}"><div class="card-pw">СИЛА <b>${S.power(x)}</b></div>
         <div class="card-art">${Art.imgOf(x)}</div><div class="card-name">${Art.elIcon(SP[x.sid].el, 14)} ${U.esc(x.nick || SP[x.sid].name)}</div></button>`).join('')}</div>`,
-      buttons: [{ label: 'Сильнейшие', fn: () => { S.setTeam([]); done(); } }, { label: 'Готово', cls: 'primary', fn: () => { S.setTeam(chosen); done(); } }],
+      buttons: [{ label: 'Сильнейшие', fn: async () => { if (await Game.try('team', { uids: [] })) done(); } },
+        { label: 'Готово', cls: 'primary', fn: async () => { if (await Game.try('team', { uids: chosen })) done(); } }],
     });
     const mark = () => U.$$('.card', m).forEach(c => { const i = chosen.indexOf(c.dataset.uid); c.classList.toggle('selected', i >= 0); c.dataset.n = i >= 0 ? i + 1 : ''; });
     m.querySelector('.team-grid').addEventListener('click', e => {
@@ -338,7 +339,7 @@ const UI = {
       hc.innerHTML = `<b class="ev-star">${icon}</b><span>${h.name}</span>`;
       hc.onclick = () => this.modal({
         title: h.name, cls: 'event-modal',
-        html: `<p>${h.desc}</p>${h.seasonal ? `<div class="chain">${h.seasonal.map(id => `<div>${Art.spirit(id)}</div>`).join('')}</div>` : ''}<p class="small">Праздник продлится до ${h.end.toLocaleDateString('ru-RU')}.</p>`,
+        html: `<p>${h.desc}</p>${h.seasonal ? `<div class="chain">${h.seasonal.map(id => `<div>${Art.spirit(id)}</div>`).join('')}</div>` : ''}<p class="small">Праздник продлится до ${h.end.toLocaleDateString('ru-RU', { timeZone: 'UTC' })}.</p>`,
         buttons: [{ label: 'Ура!', cls: 'primary' }],
       });
     }
@@ -355,9 +356,11 @@ const UI = {
   },
 
   detail(uid, onChange) {
-    const sp = S.findSpirit(uid); if (!sp) return;
+    if (!S.findSpirit(uid)) return;
     const scr = this.screen('', '', 'det-screen', onChange);
     const render = () => {
+      const sp = S.findSpirit(uid);
+      if (!sp) { this.closeScreen(scr); return; }
       const s = SP[sp.sid], st = S.stats(sp), fam = SP[s.fam], ess = S.d.essence[s.fam] || 0;
       const pc = S.powerUpCost(sp), pErr = S.canPowerUp(sp), eErr = S.canEvolve(sp);
       const iv = S.ivPct(sp), stars = iv >= 100 ? 4 : iv >= 82 ? 3 : iv >= 67 ? 2 : iv >= 50 ? 1 : 0;
@@ -403,47 +406,47 @@ const UI = {
         </div>`;
       U.$$('[data-err]', scr).forEach(b => b.classList.add('disabled'));
     };
+    // действие над духом — на сервере; после ответа карточка перерисовывается
+    const act = async (type, args, ok) => {
+      const r = await Game.try(type, { uid, ...args });
+      if (!r || !scr.isConnected) return r;
+      render(); ok && ok(r);
+      return r;
+    };
+    const pulse = () => { const a = scr.querySelector('.det-art'); if (a) a.classList.add('pulse'); };
     scr.addEventListener('click', e => {
       const t = e.target.closest('button'); if (!t) return;
+      const sp = S.findSpirit(uid); if (!sp) return;
       if (t.dataset.err) { this.toast(t.dataset.err); return; }
-      if (t.classList.contains('favbtn')) { sp.fav = !sp.fav; S.save(); render(); }
+      if (t.classList.contains('favbtn')) act('fav', { on: !sp.fav });
       else if (t.classList.contains('det-name')) this.rename(sp, render);
       else if (t.classList.contains('act-trade')) Trade.offer(sp, () => this.closeScreen(scr));
       else if (t.classList.contains('act-move2')) {
-        this.confirm('Второй приём', `Научить «${sp.nick || SP[sp.sid].name}» приёму «${ELEMENTS[SP[sp.sid].el].charge2}» за ✦ ${MOVE2_COST.sparks} и ${MOVE2_COST.essence} эссенции?`, 'Научить', () => {
-          if (S.learnMove2(sp)) { Sfx.play('levelup'); this.toast('Новый приём выучен!', 'good'); render(); }
-        });
-      } else if (t.classList.contains('act-unequip')) { S.unequip(sp); Sfx.play('tap'); render(); }
+        this.confirm('Второй приём', `Научить «${U.esc(sp.nick || SP[sp.sid].name)}» приёму «${ELEMENTS[SP[sp.sid].el].charge2}» за ✦ ${MOVE2_COST.sparks} и ${MOVE2_COST.essence} эссенции?`, 'Научить',
+          () => act('move2', {}, () => { Sfx.play('levelup'); this.toast('Новый приём выучен!', 'good'); }));
+      } else if (t.classList.contains('act-unequip')) act('unequip', {}, () => Sfx.play('tap'));
       else if (t.classList.contains('act-equip')) this.pickAmulet(sp, render);
       else if (t.classList.contains('act-purify')) {
-        this.confirm('Очистить духа?', `Тьма Нави покинет «${sp.nick || SP[sp.sid].name}». Стоимость: ✦ ${S.PURIFY.sparks} и ${S.PURIFY.essence} эссенции.`, 'Очистить', () => {
-          if (!S.purify(sp)) return;
-          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
-          this.toast('Дух очищен! Оценка выросла', 'good');
-          render();
-          scr.querySelector('.det-art').classList.add('pulse');
-        });
+        this.confirm('Очистить духа?', `Тьма Нави покинет «${U.esc(sp.nick || SP[sp.sid].name)}». Стоимость: ✦ ${S.PURIFY.sparks} и ${S.PURIFY.essence} эссенции.`, 'Очистить',
+          () => act('purify', {}, () => { Sfx.play('levelup'); U.vibrate([40, 60, 120]); this.toast('Дух очищен! Оценка выросла', 'good'); pulse(); }));
       }
       else if (t.classList.contains('act-buddy')) {
-        S.setBuddy(sp.uid); Sfx.play('catch'); U.vibrate(30);
-        this.toast(`${sp.nick || SP[sp.sid].name} теперь твой спутник!`, 'good');
-        render();
+        act('buddy', {}, () => { Sfx.play('catch'); U.vibrate(30); this.toast(`${U.esc(sp.nick || SP[sp.sid].name)} теперь твой спутник!`, 'good'); MapView.updateBuddy(); });
       }
       else if (t.classList.contains('act-power')) {
-        if (S.powerUp(sp)) {
-          Sfx.play('spin'); U.vibrate(20); render();
-          const a = scr.querySelector('.det-art'); a.classList.add('pulse');
-        }
+        if (t._busy) return;
+        t._busy = true;
+        act('powerUp', {}, () => { Sfx.play('spin'); U.vibrate(20); pulse(); }).finally(() => { t._busy = false; });
       } else if (t.classList.contains('act-evo')) {
         const s = SP[sp.sid];
-        this.confirm('Превращение', `Превратить «${sp.nick || s.name}» в ${SP[s.evo].name}? Потратится ${s.cost} эссенции.`, 'Превратить', () => {
-          const from = sp.sid, r = S.evolve(sp);
-          if (r) this.evolveAnim(from, sp.sid, r.isNew, render, sp.shiny);
+        this.confirm('Превращение', `Превратить «${U.esc(sp.nick || s.name)}» в ${SP[s.evo].name}? Потратится ${s.cost} эссенции.`, 'Превратить', async () => {
+          const r = await Game.try('evolve', { uid });
+          if (r) this.evolveAnim(r.from, r.to, r.isNew, render, sp.shiny);
         });
       } else if (t.classList.contains('act-release')) {
         if (S.d.spirits.length <= 1) { this.toast('Нельзя отпустить последнего духа'); return; }
-        this.confirm('Отпустить?', `«${sp.nick || SP[sp.sid].name}» (СИЛА ${S.power(sp)}) вернётся в Навь. Взамен — 1 эссенция.`, 'Отпустить', () => {
-          S.release(sp.uid); Sfx.play('flee'); this.closeScreen(scr);
+        this.confirm('Отпустить?', `«${U.esc(sp.nick || SP[sp.sid].name)}» (СИЛА ${S.power(sp)}) вернётся в Навь. Взамен — 1 эссенция.`, 'Отпустить', async () => {
+          if (await Game.try('release', { uids: [uid] })) { Sfx.play('flee'); this.closeScreen(scr); }
         }, 'Отмена', true);
       }
     });
@@ -457,19 +460,22 @@ const UI = {
       html: `<div class="list">${have.map(k => `<button class="row am-pick" data-k="${k}"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}</small></div><span class="cnt">×${S.d.amulets[k]}</span></button>`).join('')}</div>`,
       buttons: [{ label: 'Отмена' }],
     });
-    m.addEventListener('click', e => {
+    m.addEventListener('click', async e => {
       const b = e.target.closest('.am-pick'); if (!b) return;
-      S.equip(sp, b.dataset.k); Sfx.play('spin'); m.close(); done();
+      m.close();
+      if (await Game.try('equip', { uid: sp.uid, k: b.dataset.k })) { Sfx.play('spin'); done(); }
     });
   },
   rename(sp, done) {
     const m = this.modal({
       title: 'Имя духа', html: `<input class="input" maxlength="16" value="${U.esc(sp.nick || SP[sp.sid].name)}">`,
-      buttons: [{ label: 'Отмена' }, { label: 'Сохранить', cls: 'primary', fn: w => { const v = w.querySelector('input').value.trim(); sp.nick = v && v !== SP[sp.sid].name ? v : null; S.save(); done(); } }],
+      buttons: [{ label: 'Отмена' }, { label: 'Сохранить', cls: 'primary', fn: async w => {
+        const v = w.querySelector('input').value.trim();
+        if (await Game.try('nick', { uid: sp.uid, nick: v })) done();
+      } }],
     });
     setTimeout(() => m.querySelector('input').select(), 50);
-  },
-  evolveAnim(from, to, isNew, done, shiny) {
+  },  evolveAnim(from, to, isNew, done, shiny) {
     Sfx.play('levelup'); U.vibrate([40, 80, 40, 80, 120]);
     const m = this.modal({
       cls: 'evo-modal', dismiss: false,
@@ -528,11 +534,10 @@ const UI = {
         <div class="row-side"><span class="cnt">×${S.d.items[k]}</span>${k === 'incense' ? `<button class="btn small primary use-inc">${S.incenseActive() ? 'Горит' : 'Зажечь'}</button>` : ''}</div></div>`).join('')
         || '<div class="empty">Сумка пуста. Загляни к ближайшему роднику!</div>';
     };
-    scr.addEventListener('click', e => {
+    scr.addEventListener('click', async e => {
       if (!e.target.closest('.use-inc')) return;
-      if (S.incenseActive()) { this.toast(`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - Date.now())}`); return; }
-      if (S.useItem('incense')) {
-        S.d.incenseUntil = Date.now() + 30 * 60000; S.save();
+      if (S.incenseActive()) { this.toast(`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - U.now())}`); return; }
+      if (await Game.try('incense')) {
         Sfx.play('spin'); this.toast('Ладан зажжён — духи потянулись к тебе', 'good');
         MapView.refresh(); this.refreshHud(); render();
       }
@@ -557,16 +562,20 @@ const UI = {
         </div>`;
       }).join('') || '<div class="empty">Коконов нет. Иногда их можно найти в роднике.</div>';
     };
-    scr.addEventListener('click', e => {
+    scr.addEventListener('click', async e => {
       const card = e.target.closest('.coc-card'); if (!card) return;
       const c = S.d.cocoons.find(x => x.id === card.dataset.id); if (!c) return;
-      if (e.target.closest('.warm-btn')) { if (S.incubating() < 3) { c.inc = true; S.save(); Sfx.play('tap'); render(); } }
-      else if (e.target.closest('.hatch')) this.hatchAnim(c, () => { render(); this.refreshHud(); });
+      if (e.target.closest('.warm-btn')) { if (await Game.try('warm', { id: c.id })) { Sfx.play('tap'); render(); } }
+      else if (e.target.closest('.hatch')) {
+        const r = await Game.try('hatch', { id: c.id });
+        if (r) this.hatchAnim(c, r, () => { render(); this.refreshHud(); });
+      }
     });
     render();
   },
-  hatchAnim(c, done) {
-    const res = S.hatch(c);
+  // r — ответ сервера: кто вылупился и что получено
+  hatchAnim(c, r, done) {
+    const res = { sp: S.findSpirit(r.uid) || S.makeSpirit(r.sid, 1, 'x'), isNew: r.isNew, essence: r.essence, sparks: r.sparks };
     Sfx.play('wobble');
     const m = this.modal({
       cls: 'hatch-modal', dismiss: false, buttons: [],
@@ -586,11 +595,10 @@ const UI = {
 
   /* ---------------- ЗАДАНИЯ ---------------- */
   quests(tab) {
-    S.ensureQuests();
     this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
     const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const rwText = rw => Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${n}` : `${ITEMS[k].name} ×${n}`).join(', ');
-    const BONUS = { charm: 10, honey: 3, incense: 1, sparks: 1000 };
+    const BONUS = Rules.QUEST_BONUS;
     const renderStory = () => {
       const st = S.d.story, ch = STORY[st.ch];
       const gift = S.d.storyGift;
@@ -631,37 +639,31 @@ const UI = {
       const tab = e.target.closest('[data-tab]');
       if (tab) { this.qTab = tab.dataset.tab; Sfx.play('tap'); render(); return; }
       if (e.target.closest('.claim-story')) {
-        const res = S.claimStory();
-        if (!res) return;
-        if (res.ch.gift) { S.d.storyGift = res.ch.gift; S.save(); }
-        J.add('story', { title: res.ch.title });
-        Sfx.play('levelup'); U.vibrate([40, 60, 120]);
-        this.modal({
-          cls: 'story-modal', title: `«${res.ch.title}» — глава завершена`,
-          html: `<p class="story-text">${res.ch.outro}</p><div class="lvl-rw">${res.got.map(x => `<div>${x.k === 'xp' || x.k === 'sparks' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : Art.item(x.k)}<span>${x.label}${x.k === 'xp' || x.k === 'sparks' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>`,
-          buttons: [{ label: 'Дальше', cls: 'primary', fn: () => render() }],
+        Game.try('storyClaim').then(res => {
+          if (!res) return;
+          const ch = STORY[res.ch];
+          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+          this.modal({
+            cls: 'story-modal', title: `«${ch.title}» — глава завершена`,
+            html: `<p class="story-text">${ch.outro}</p><div class="lvl-rw">${res.got.map(x => `<div>${x.k === 'xp' || x.k === 'sparks' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : Art.item(x.k)}<span>${x.label}${x.k === 'xp' || x.k === 'sparks' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>`,
+            buttons: [{ label: 'Дальше', cls: 'primary', fn: () => render() }],
+          });
+          render(); this.refreshHud();
         });
-        render(); this.refreshHud();
         return;
       }
       if (e.target.closest('.story-gift')) {
-        const sid = S.d.storyGift;
         this.closeScreen(scr);
-        Encounter.start({ mode: 'story', sid, lvl: 25, seed: 'gift' + S.d.created, onEnd: r => { if (r === 'caught') { S.d.storyGift = null; S.save(); } } });
+        Encounter.start({ mode: 'story', seed: 'gift' + S.d.created });
         return;
       }
-      if (c) {
-        const q = S.d.quests.list[+c.dataset.i];
-        if (q.claimed) return;
-        q.claimed = true;
-        const got = S.giveRewards({ ...q.reward, xp: 300 });
-        Sfx.play('spin'); this.toast('Получено: ' + got.map(x => `${x.label} +${x.n}`).join(', '), 'good');
-      } else if (b) {
-        S.d.quests.bonus = true;
-        const got = S.giveRewards({ ...BONUS, xp: 1000 });
-        Sfx.play('levelup'); this.toast('Сундук: ' + got.map(x => `${x.label} +${x.n}`).join(', '), 'good');
-      } else return;
-      S.save(); render(); this.refreshHud();
+      const claim = (type, args, title, sound) => Game.try(type, args).then(r => {
+        if (!r) return;
+        Sfx.play(sound); this.toast(title + r.got.map(x => `${x.label} +${x.n}`).join(', '), 'good');
+        render(); this.refreshHud();
+      });
+      if (c) claim('questClaim', { i: +c.dataset.i }, 'Получено: ', 'spin');
+      else if (b) claim('questBonus', {}, 'Сундук: ', 'levelup');
     });
     render();
   },
@@ -753,7 +755,7 @@ const UI = {
           return `<button class="sw em ${locked ? 'locked' : ''}" data-k="emblem" data-v="${x.id}" data-l="${lk}" title="${x.name}">${Art.avatar({ cloak: '#241a45', eyes: '#241a45', emblem: x.id }).replace('viewBox="0 0 100 100"', 'viewBox="36 70 28 28"')}</button>`;
         })}
         <p class="small look-hint">Новые цвета и эмблемы открываются с уровнем.</p>`,
-      buttons: [{ label: 'Отмена' }, { label: 'Сохранить', cls: 'primary', fn: () => { S.d.look = look; S.save(); done && done(); } }],
+      buttons: [{ label: 'Отмена' }, { label: 'Сохранить', cls: 'primary', fn: async () => { if (await Game.try('look', { look })) done && done(); } }],
     });
     const render = () => {
       m.querySelector('.look-prev').innerHTML = Art.avatar(look);
@@ -771,7 +773,7 @@ const UI = {
 
   /* ---------------- НАСТРОЙКИ ---------------- */
   settings() {
-    const s = S.d.settings;
+    const s = Cfg.s;
     const row = (k, title, sub) => `<label class="row toggle"><div class="row-main"><b>${title}</b><small>${sub}</small></div><input type="checkbox" data-k="${k}" ${s[k] ? 'checked' : ''}><i></i></label>`;
     const scr = this.screen('Настройки', `
       <div class="list">
@@ -808,7 +810,7 @@ const UI = {
       <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
     scr.addEventListener('change', e => {
       const k = e.target.dataset.k; if (!k) return;
-      s[k] = e.target.checked; S.save();
+      s[k] = e.target.checked; Cfg.save();
       if (k === 'demo') { s.demo ? MapView.startDemo() : (MapView._offered = false, MapView.startGPS()); }
       if (k === 'sound' && s.sound) { Sfx.init(); Sfx.play('tap'); }
       if (k === 'weather') Sky.update(true);
@@ -818,7 +820,7 @@ const UI = {
     });
     scr.querySelector('.map-theme').addEventListener('click', e => {
       const b = e.target.closest('[data-theme]'); if (!b) return;
-      s.mapTheme = b.dataset.theme; S.save();
+      s.mapTheme = b.dataset.theme; Cfg.save();
       U.$$('[data-theme]', scr).forEach(x => x.classList.toggle('on', x === b));
       MapView.night = null; MapView.setTiles();
     });
@@ -837,18 +839,17 @@ const UI = {
     if (!il.querySelector('.row:not(.hidden)')) il.classList.add('empty-list');
     const syncState = () => {
       if (!scr.isConnected) return clearInterval(st);
-      scr.querySelector('.sync-state').textContent = !Sync.on() ? 'Сервер не настроен' : Sync.st.dirty
-        ? (Sync.online ? 'Сохраняется…' : 'Нет связи — сохранится, когда появится интернет') : 'Всё сохранено';
+      scr.querySelector('.sync-state').textContent = !Game.on() ? 'Сервер не настроен' : Game.online
+        ? 'Каждое действие сразу проверяет и сохраняет сервер игры' : 'Нет связи с сервером — проверь интернет';
     };
     const st = setInterval(syncState, 1000);
     syncState();
-    scr.querySelector('.tr-out').onclick = () => Sync.codeDialog();
-    scr.querySelector('.tr-in').onclick = () => Sync.claimDialog();
+    scr.querySelector('.tr-out').onclick = () => Game.codeDialog();
+    scr.querySelector('.tr-in').onclick = () => Game.claimDialog();
     scr.querySelector('.about').onclick = () => this.about();
-    scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены навсегда — и на телефоне, и на сервере.', 'Сбросить', () => {
+    scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены с сервера навсегда.', 'Сбросить', () => {
       this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', async () => {
-        try { if (Sync.on()) await Sync.wipe(); } catch (e) { this.toast('Нужен интернет, чтобы удалить прогресс с сервера'); return; }
-        S.reset(); location.reload();
+        if (await Game.try('reset')) location.reload();
       }, 'Нет', true);
     }, 'Отмена', true);
   },
@@ -901,12 +902,12 @@ const UI = {
         <button class="btn primary wide spring-go">Зачерпнуть силу</button>
       </div>`, 'spring-screen');
     const hint = scr.querySelector('.spring-hint'), go = scr.querySelector('.spring-go');
-    const ready = () => Date.now() - (S.d.springs[e.id] || 0) > W.SPRING_COOLDOWN;
+    const ready = () => U.now() - (S.d.springs[e.id] || 0) > W.SPRING_COOLDOWN;
     const update = () => {
       if (!scr.isConnected) return clearInterval(timer);
       if (scr._done) return;
       if (!ready()) {
-        hint.textContent = `Родник набирает силу: ${U.fmtTime((S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - Date.now())}`;
+        hint.textContent = `Родник набирает силу: ${U.fmtTime((S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now())}`;
         go.disabled = true; scr.querySelector('.spring-view').classList.add('used');
       } else {
         hint.textContent = 'Смахни по кругу или нажми кнопку';
@@ -915,27 +916,20 @@ const UI = {
     };
     const timer = setInterval(update, 1000);
     update();
-    const take = () => {
+    // Добычу выдаёт сервер: он проверяет, что ты рядом и родник готов
+    const take = async () => {
       if (!ready() || scr._done) return;
       scr._done = true;
       const disc = scr.querySelector('.spring-disc');
       disc.classList.add('spin');
       Sfx.play('spin'); U.vibrate([20, 40, 20]);
-      S.d.springs[e.id] = Date.now();
-      if (Tut.step() === 2) setTimeout(() => Tut.advance(3), 600);
-      const { loot, cocoon } = W.springLoot(e.id);
-      const got = S.giveRewards({ ...loot, xp: 50 });
-      S.d.stats.springs++;
-      S.progress('spring', 1);
-      let cocoonHtml = '';
-      if (cocoon) {
-        S.d.cocoons.push({ id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 });
-        cocoonHtml = `<div class="loot-item" style="animation-delay:${got.length * 0.12}s">${Art.cocoon(cocoon)}<span>Кокон ${cocoon} км</span></div>`;
-      }
-      S.save();
-      const full = S.bagCount() >= BAG_LIMIT;
+      const r = await Game.try('spring', { poi: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } });
+      if (!scr.isConnected) return;
+      if (!r) { scr._done = false; disc.classList.remove('spin'); update(); return; }
+      const got = r.got;
+      const cocoonHtml = r.cocoon ? `<div class="loot-item" style="animation-delay:${got.length * 0.12}s">${Art.cocoon(r.cocoon.km)}<span>Кокон ${r.cocoon.km} км</span></div>` : '';
       scr.querySelector('.spring-loot').innerHTML = got.filter(x => x.k !== 'xp').map((x, i) => `<div class="loot-item" style="animation-delay:${i * 0.12}s">${Art.item(x.k)}<span>${x.label} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `<div class="loot-xp">+50 опыта${full ? ' · Сумка полна!' : ''}</div>`;
+        `<div class="loot-xp">+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта${r.full ? ' · Сумка полна!' : ''}</div>`;
       hint.textContent = '';
       go.textContent = 'Готово';
       go.disabled = false;
@@ -980,19 +974,18 @@ const UI = {
   },
 
   /* ---------------- УРОВЕНЬ ---------------- */
-  levelUp(l) {
-    (this._lv = this._lv || []).push(l);
-    J.add('level', { l });
+  // lv: { l, got } — новый уровень и награда, которую уже выдал сервер
+  levelUp(lv) {
+    (this._lv = this._lv || []).push(lv);
     this.flushLevelUps();
   },
   flushLevelUps() {
     if (!this._lv || !this._lv.length || Encounter.st || Raid.st || Duel.st || this._lvOpen) return;
-    const l = this._lv.shift();
+    const lv = this._lv.shift(), l = lv.l;
     this._lvOpen = true;
-    const rw = S.levelRewards(l);
     setTimeout(() => {
-      if (Encounter.st || Raid.st || Duel.st) { this._lv.unshift(l); this._lvOpen = false; return; }
-      const got = S.giveRewards(rw);
+      if (Encounter.st || Raid.st || Duel.st) { this._lv.unshift(lv); this._lvOpen = false; return; }
+      const got = lv.got || [];
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
       const unlock = l === 8 ? '<p class="unlock">Открыт <b>Серебряный оберег</b>!</p>' : l === 16 ? '<p class="unlock">Открыт <b>Золотой оберег</b>!</p>' : l === 5 ? '<p class="unlock">Ты теперь <b>Ловчий</b>. Разломы ждут!</p>' : '';
       this.modal({
@@ -1016,14 +1009,14 @@ const UI = {
       if (n === 0) html = `
         <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
         <div class="onb-spirits">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
-        <button class="btn primary wide next">Начать</button>${Sync.on() ? '<button class="btn ghost wide have">У меня уже есть прогресс</button>' : ''}`;
+        <button class="btn primary wide next">Начать</button>${Game.on() ? '<button class="btn ghost wide have">У меня уже есть прогресс</button>' : ''}`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
       if (n === 3) html = `<div class="onb-q"><h2>Выбери первого духа</h2><p>Он будет с тобой с первого дня.</p></div>
         <div class="onb-starters">${['ugolek', 'kapelka', 'mshonok'].map(id => `<button class="starter el-${SP[id].el}" data-id="${id}">${Art.spirit(id)}<b>${SP[id].name}</b><span>${Art.elIcon(SP[id].el, 16)} ${ELEMENTS[SP[id].el].name}</span></button>`).join('')}</div>
         <div class="onb-desc"></div><button class="btn primary wide next" disabled>Выбрать</button>`;
       if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>Духи живут рядом с тобой</h2>
-        <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; в нём есть дневник с местами поимок. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.</p></div>
+        <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие (поэтому нужен интернет), в прогрессе есть дневник с местами поимок. Для проверки действий на карте сервер получает твоё местоположение. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.</p></div>
         <button class="btn primary wide gps">Разрешить геопозицию</button>${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
       root.appendChild(U.el(`<div class="onb-step s${n}">${html}</div>`));
       const nx = root.querySelector('.next');
@@ -1039,15 +1032,20 @@ const UI = {
           root.querySelector('.onb-desc').textContent = SP[starter].desc;
           nx.disabled = false;
         });
-        nx.onclick = () => { S.newGame(name, starter); Sfx.play('catch'); step(4); };
+        nx.onclick = async () => {
+          nx.disabled = true;
+          const r = await Game.try('newGame', { name, starter });
+          if (!r) { nx.disabled = false; return; }
+          Sfx.play('catch'); step(4);
+        };
       } else if (n === 4) {
-        const finish = demo => { S.d.settings.demo = demo; S.save(true); root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); };
+        const finish = demo => { Cfg.s.demo = demo; Cfg.save(); root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); };
         root.querySelector('.gps').onclick = () => finish(false);
         const demoBtn = root.querySelector('.demo');
         if (demoBtn) demoBtn.onclick = () => finish(true);
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n + 1); };
       const have = root.querySelector('.have');
-      if (have) have.onclick = () => Sync.claimDialog(() => { root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); });
+      if (have) have.onclick = () => Game.claimDialog(() => { root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); });
     };
     step(0);
   },

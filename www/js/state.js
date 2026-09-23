@@ -3,28 +3,16 @@
 
 const SAVE_KEY = 'duholov.save.v1';
 
+/* Прогресс меняет только сервер игры (server/game/core.js запускает эти же функции у себя).
+   На телефоне S.d — копия, присланная сервером; методы-изменения здесь вызываются только сервером. */
 const S = {
   d: null,
-  _t: null,
 
-  load() {
-    try { const raw = localStorage.getItem(SAVE_KEY); if (raw) this.d = JSON.parse(raw); } catch (e) { this.d = null; }
-    if (this.d) this.migrate();
-    return !!this.d;
-  },
-  // Локальный кэш пишется сразу, на сервер изменения уходят пачкой (см. sync.js)
-  save(now = false) {
-    clearTimeout(this._t);
-    const doIt = () => { if (!this.d) return; this.writeLocal(); Sync.touch(now); };
-    if (now) doIt(); else this._t = setTimeout(() => { this.checkMedals(); doIt(); }, 400);
-  },
-  writeLocal() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.d)); } catch (e) {} },
-  reset() { clearTimeout(this._t); try { localStorage.removeItem(SAVE_KEY); } catch (e) {} this.d = null; },
+  save() {}, // сохранением занимается сервер
   migrate() {
     const d = this.d;
-    d.settings = Object.assign({ demo: false, ar: false, sound: true, vibro: true, weather: true, music: true, cloud: true }, d.settings || {});
+    delete d.settings; delete d.lastPos; delete d.tutPos; // настройки и позиция — на телефоне (settings.js)
     d.stats = Object.assign({ caught: 0, springs: 0, raids: 0, evolved: 0, hatched: 0, km: 0, throwsGreat: 0, shiny: 0, duels: 0 }, d.stats || {});
-    if (!DEV) d.settings.demo = false; // демо-режим (джойстик) — только для разработки
     d.shrines = d.shrines || {};
     d.team = d.team || [];
     d.sent = d.sent || [];
@@ -40,7 +28,6 @@ const S = {
     d.props = d.props || {}; // решения по моим заявкам мест, о которых уже сообщили
     d.friendLinks = d.friendLinks || {}; // обработанные входящие дружбы: pid → время связи
     if (!d.pid) d.pid = U.uid() + U.uid();
-    if (d.settings.calm === undefined) d.settings.calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
     d.stats.byEl = d.stats.byEl || {};
     d.items = d.items || {}; d.essence = d.essence || {}; d.dex = d.dex || {};
@@ -285,7 +272,12 @@ const S = {
       this.d.level++;
       leveled.push(this.d.level);
     }
-    leveled.forEach(l => Bus.emit('levelup', l));
+    // награда за уровень выдаётся сразу (на сервере), телефон только показывает окно
+    leveled.forEach(l => {
+      const got = this.giveRewards(this.levelRewards(l));
+      J.add('level', { l });
+      Bus.emit('levelup', { l, got });
+    });
     Bus.emit('xp');
     this.save();
   },

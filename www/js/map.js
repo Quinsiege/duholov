@@ -7,7 +7,9 @@ const MapView = {
   joy: { x: 0, y: 0 }, keys: {},
 
   init() {
-    const start = S.d.lastPos || [55.7539, 37.6208];
+    let start = null;
+    try { start = JSON.parse(localStorage.getItem('duholov.lastPos')); } catch (e) {}
+    if (!Array.isArray(start)) start = [55.7539, 37.6208];
     this.pos = { lat: start[0], lng: start[1] };
     this.map = L.map('map', { zoomControl: false, minZoom: 15, maxZoom: 19, zoomSnap: 0.25, tap: true })
       .setView([this.pos.lat, this.pos.lng], 17.5);
@@ -32,19 +34,19 @@ const MapView = {
     window.addEventListener('keydown', e => { this.keys[e.key.toLowerCase()] = true; });
     window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; });
 
-    if (S.d.settings.demo && DEV) this.startDemo(); else this.startGPS();
+    if (Cfg.s.demo && DEV) this.startDemo(); else this.startGPS();
     this.refresh();
     // в режиме экономии батареи карта обновляется вдвое реже
-    document.body.classList.toggle('eco', !!S.d.settings.eco);
+    document.body.classList.toggle('eco', !!Cfg.s.eco);
     let tickN = 0;
-    setInterval(() => { if (!S.d.settings.eco || ++tickN % 2 === 0) this.refresh(); }, 1500);
+    setInterval(() => { if (!Cfg.s.eco || ++tickN % 2 === 0) this.refresh(); }, 1500);
     let last = performance.now();
     const loop = t => { this.tick(Math.min(0.1, (t - last) / 1000)); last = t; requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   },
 
   setTiles() {
-    const theme = S.d.settings.mapTheme || 'auto';
+    const theme = Cfg.s.mapTheme || 'auto';
     const night = theme === 'auto' ? U.isNight() : theme === 'dark';
     if (night === this.night) return;
     this.night = night;
@@ -96,8 +98,8 @@ const MapView = {
     }
     const el = this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading}deg)`;
-    S.d.lastPos = [lat, lng];
-    S.save();
+    // последняя точка — только на этом телефоне, чтобы карта открывалась на привычном месте
+    if (Date.now() - (this._lpT || 0) > 10000) { this._lpT = Date.now(); try { localStorage.setItem('duholov.lastPos', JSON.stringify([+lat.toFixed(5), +lng.toFixed(5)])); } catch (e) {} }
     if (this.tracking) this.updateTracker();
   },
 
@@ -108,7 +110,7 @@ const MapView = {
     UI.setGps('search');
     if (this.watchId != null) navigator.geolocation.clearWatch(this.watchId);
     this.watchId = navigator.geolocation.watchPosition(p => this.onFix(p), e => this.gpsFail(e),
-      { enableHighAccuracy: true, maximumAge: S.d.settings.eco ? 5000 : 1000, timeout: 30000 });
+      { enableHighAccuracy: true, maximumAge: Cfg.s.eco ? 5000 : 1000, timeout: 30000 });
     clearTimeout(this._gpsTimer);
     this._gpsTimer = setTimeout(() => { if (!this.gpsOK && !this.demo) this.offerDemo(); }, 15000);
   },
@@ -122,12 +124,13 @@ const MapView = {
     const { latitude: lat, longitude: lng, accuracy } = p.coords;
     const first = !this.gpsOK;
     this.gpsOK = true;
+    this.acc = accuracy;
+    Game.addPoint(lat, lng, accuracy); // путь считает сервер (быстрее ~32 км/ч — не засчитывается)
     UI.setGps(accuracy <= 40 ? 'ok' : 'weak', accuracy);
     if (this.lastGps && accuracy <= 40) {
       const d = U.dist(this.lastGps.lat, this.lastGps.lng, lat, lng);
       const dt = (p.timestamp - this.lastGps.t) / 1000;
       if (d >= 4 && dt > 0) {
-        if (d / dt < 9) S.addDistance(d); // быстрее ~32 км/ч — не считаем (транспорт)
         this.heading = Math.atan2((lng - this.lastGps.lng) * Math.cos(lat * Math.PI / 180), lat - this.lastGps.lat) * 180 / Math.PI;
         this.lastGps = { lat, lng, t: p.timestamp };
       }
@@ -145,7 +148,7 @@ const MapView = {
     this._offered = true;
     if (DEV) {
       UI.confirm('Нет сигнала GPS', `${reason} Включить демо-режим (джойстик)? Доступен только при разработке.`,
-        'Демо-режим', () => { S.d.settings.demo = true; S.save(); this.startDemo(); }, 'Ждать GPS');
+        'Демо-режим', () => { Cfg.s.demo = true; Cfg.save(); this.startDemo(); }, 'Ждать GPS');
       return;
     }
     // в проде — подсказка, как включить геолокацию
@@ -203,7 +206,7 @@ const MapView = {
     const lng = this.pos.lng + (x / n) * m / (111320 * Math.cos(this.pos.lat * Math.PI / 180));
     this.heading = Math.atan2(x, -y) * 180 / Math.PI;
     this._demoAcc = (this._demoAcc || 0) + m;
-    if (this._demoAcc > 5) { S.addDistance(this._demoAcc); this._demoAcc = 0; }
+    if (this._demoAcc > 5) { Game.addPoint(lat, lng, 5); this._demoAcc = 0; }
     this.moveTo(lat, lng, false);
   },
 

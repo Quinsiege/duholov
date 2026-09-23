@@ -55,19 +55,17 @@ const Propose = {
   },
 
   // При входе в игру: сообщить о решениях по заявкам и выдать награду за одобренные
+  // Сервер сверяет решения модераторов с отметками игрока и выдаёт награду за одобренные места
   async checkResults() {
-    if (!Cloud.configured()) return;
+    if (!Game.on() || !S.d) return;
     try {
-      const rows = (await this.mine()).filter(r => r.status !== 'pending' && !S.d.props[r.id]);
-      rows.reverse().forEach(r => {
-        S.d.props[r.id] = r.status;
-        if (r.status === 'approved') {
-          const got = S.giveRewards({ xp: 1000, sparks: 500, charm: 10 });
-          UI.toast(`Место «${U.esc(r.name)}» одобрено и появилось на карте! ${got.map(x => `${x.label} +${U.fmtNum(x.n)}`).join(', ')}`, 'good');
-        } else UI.toast(`Место «${U.esc(r.name)}» отклонено${r.reason ? ': ' + U.esc(r.reason) : ''}`);
+      const { list } = await Game.act('placeRewards');
+      list.forEach(r => {
+        if (r.status === 'approved') UI.toast(`Место «${U.esc(r.name)}» одобрено и появилось на карте! ${r.got.map(x => `${x.label} +${U.fmtNum(x.n)}`).join(', ')}`, 'good');
+        else UI.toast(`Место «${U.esc(r.name)}» отклонено${r.reason ? ': ' + U.esc(r.reason) : ''}`);
       });
-      if (rows.length) { this.unseen = rows.length; S.save(); UI.refreshHud(); }
-      if (rows.some(r => r.status === 'approved')) Poi.refreshServer(); // новое место — сразу на карту
+      if (list.length) { this.unseen = list.length; UI.refreshHud(); }
+      if (list.some(r => r.status === 'approved')) Poi.refreshServer(); // новое место — сразу на карту
     } catch (e) { console.warn('Заявки:', e.message); }
   },
 

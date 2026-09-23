@@ -14,17 +14,13 @@ window.addEventListener('load', () => {
   }
 
   const start = () => {
-    S.ensureQuests();
-    W.prune();
     UI.init();
     Poi.init();
     MapView.init();
     Poi.ensure();
-    if (Sync.moved) Sync.onMoved();
-    else if (Sync.note) setTimeout(() => UI.toast(Sync.note, 'good'), 1200);
     setTimeout(() => Propose.checkResults(), 6000);
     setInterval(() => { if (!document.hidden) Propose.checkResults(); }, 3 * 60000);
-    setTimeout(() => Friends.sync(), 8000); // взаимная дружба: кто добавил меня по коду
+    setTimeout(() => Friends.sync(), 4000); // взаимная дружба и подарки
     setInterval(() => { if (!document.hidden) Friends.sync(); }, 3 * 60000);
     Sky.init();
     Music.init();
@@ -33,18 +29,31 @@ window.addEventListener('load', () => {
     Bus.on('cocoonReady', c => UI.toast(`${COCOON_TIERS[c.km].name} готов вылупиться!`, 'good'));
     const ready = S.readyCocoons().length;
     if (ready) setTimeout(() => UI.toast(`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);
-    setInterval(() => { W.prune(); S.ensureQuests(); }, 60000);
+    // пройденный путь уходит на сервер пачками; раз в 5 минут сервер обновляет задания дня и отметки
+    setInterval(() => Game.flushMove(), 45000);
+    setInterval(() => { if (!document.hidden) Game.act('tick').then(() => UI.refreshHud()).catch(() => {}); }, 5 * 60000);
     Updater.init();
   };
 
-  // Сначала сверяемся с сервером: главная копия прогресса хранится там
+  // Прогресс хранится на сервере: без связи игра ждёт её
+  const offline = msg => new Promise(res => {
+    const el = U.el(`<div class="fatal"><h2>Нет связи с Навью</h2><p>${U.esc(msg)}</p><p class="small">Прогресс хранится на сервере игры, поэтому нужен интернет.</p><button class="btn primary">Повторить</button></div>`);
+    el.querySelector('button').onclick = () => { el.remove(); res(); };
+    document.body.appendChild(el);
+  });
   const boot = async () => {
-    S.load();
     const splash = setTimeout(() => document.body.appendChild(U.el('<div class="boot-splash"><div class="onb-charm">' + Art.charm('charm3') + '</div><p>Связь с Навью…</p></div>')), 400);
-    await Sync.boot();
+    if (Game.on()) {
+      for (;;) {
+        try { await Game.load(); break; }
+        catch (e) { const sp = U.$('.boot-splash'); if (sp) sp.remove(); await offline(e.message); }
+      }
+    }
     clearTimeout(splash);
     const sp = U.$('.boot-splash'); if (sp) sp.remove();
-    if (S.d) start(); else UI.onboarding(start);
+    if (Game.moved) Game.onMoved();
+    else if (S.d) start();
+    else UI.onboarding(start);
   };
   boot();
 
@@ -52,8 +61,11 @@ window.addEventListener('load', () => {
   const unlock = () => { Sfx.init(); Music.apply(); window.removeEventListener('pointerdown', unlock); };
   window.addEventListener('pointerdown', unlock);
 
-  document.addEventListener('visibilitychange', () => { if (document.hidden && S.d) S.save(true); });
-  window.addEventListener('pagehide', () => { if (S.d) S.save(true); });
+  document.addEventListener('visibilitychange', () => {
+    if (!S.d) return;
+    if (document.hidden) Game.flushMove();
+    else Game.act('tick').then(() => { UI.refreshHud(); MapView.refresh(); }).catch(() => {});
+  });
 
   // Кнопка «Назад» в Android-обёртке: true — можно закрывать приложение
   window.nativeBack = () => (S.d ? UI.back() : true);

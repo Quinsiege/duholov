@@ -43,15 +43,25 @@ const Raid = {
       </div>`;
     const scr = UI.screen('Разлом', html, 'rift-screen');
     const go = scr.querySelector('.rift-go');
-    if (go) go.onclick = () => { UI.closeScreen(scr); this.battle(r, team); };
+    if (go) go.onclick = async () => { if (await this.battle(r, this.team())) UI.closeScreen(scr); };
     const cb = scr.querySelector('.rift-coop');
     if (cb) cb.onclick = () => { UI.closeScreen(scr); Coop.hostRift(r); };
     const edit = scr.querySelector('.team-edit');
     if (edit) edit.onclick = () => UI.pickTeam(() => { team = this.team(); scr.querySelector('.rift-team').innerHTML = UI.teamHtml(team); });
   },
 
-  // coop: { host, hpMul, allies } — совместный бой (см. coop.js)
-  battle(r, team, coop) {
+  // Сервер проверяет, что разлом открыт здесь и сейчас, и запоминает начало боя.
+  // coop: { host, hpMul, allies } — совместный бой (см. coop.js). Возвращает true, если бой начался.
+  async battle(r, team, coop) {
+    if (this.st || this._starting) return false;
+    this._starting = true;
+    const ok = await Game.try('raidStart', { rift: { id: r.poi, lat: r.lat, lng: r.lng, name: r.place }, coop: coop ? { host: !!coop.host, allies: coop.allies || 0 } : null });
+    this._starting = false;
+    if (!ok) return false;
+    this.start(r, team, coop);
+    return true;
+  },
+  start(r, team, coop) {
     const s = SP[r.boss], T = this.TIER[r.tier], bs = this.bossStats(r);
     if (coop) bs.hp = Math.round(bs.hp * coop.hpMul);
     const root = U.el(`
@@ -207,13 +217,17 @@ const Raid = {
     me.style.setProperty('--dx', dir * 70 + 'px');
     me.classList.remove('dodge'); void me.offsetWidth; me.classList.add('dodge');
   },
-  water() {
+  async water() {
     const st = this.st;
-    if (!st || !st.running || st.over) return;
+    if (!st || !st.running || st.over || st.drinking) return;
     const m = this.cur();
     if (st.waters >= 3) { UI.toast('За бой можно выпить не больше 3 флаконов'); return; }
     if (m.cur >= m.max) { UI.toast('Дух и так полон сил'); return; }
-    if (!S.useItem('water')) { UI.toast('Живой воды нет'); return; }
+    if (!(S.d.items.water > 0)) { UI.toast('Живой воды нет'); return; }
+    st.drinking = true;
+    const ok = await Game.try('water');
+    st.drinking = false;
+    if (!ok || this.st !== st || st.over) return;
     st.waters++;
     m.cur = Math.min(m.max, m.cur + m.max / 2);
     Sfx.play('hatch');
@@ -289,20 +303,13 @@ const Raid = {
     clearTimeout(st._wait);
     if (st.coop && st.coop.host) Coop.hostEnd(win);
     await U.wait(400);
-    const allies = st.coop ? st.coop.allies : 0;
-    if (win) {
+    // итог боя проверяет сервер: победа засчитывается, если команда могла нанести столько урона за это время
+    let r = null;
+    try { r = await Game.act('raidEnd', { win: !!win }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
+    if (this.st !== st) return;
+    if (win && r && r.win) {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
-      S.d.rifts[st.r.id] = true;
-      J.add('raid', { sid: st.s.id, tier: st.r.tier, coop: allies });
-      S.d.stats.raids++;
-      S.progress('raid', 1);
-      const t = st.r.tier;
-      // в совместном бою опыта на четверть больше
-      const rw = S.giveRewards({ xp: Math.round(1000 * t * (allies ? 1.25 : 1)), sparks: 400 * t, charm: 5, honey: 2 + t, water: 2, charm2: t >= 2 ? 3 : 0 });
-      const am = S.rollAmulet([0.25, 0.4, 0.7][t - 1], st.r.id);
-      if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
-      const bonus = Math.max(0, Math.floor(st.time / 15));
-      const charms = this.TIER[t].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
+      const rw = r.rw, charms = r.charms, bonus = r.bonus, allies = r.allies;
       const res = U.el(`<div class="raid-result"><div class="res-card">
         <div class="res-title">Разлом закрыт!</div>
         <div class="res-art">${Art.spirit(st.s.id)}</div>
@@ -311,9 +318,15 @@ const Raid = {
         <button class="btn primary wide">Ловить!</button></div></div>`);
       res.querySelector('button').onclick = () => {
         this.close();
-        const shiny = U.h('rshiny', st.r.id, S.d.created) < Sky.shinyRate(1 / 20);
-        Encounter.start({ mode: 'raid', sid: st.s.id, lvl: this.TIER[t].lvl, seed: st.r.id, charms, shiny, boost: Sky.boosted(st.s.el) });
+        Encounter.start({ mode: 'raid', seed: st.r.id });
       };
+      st.root.appendChild(res);
+    } else if (win) {
+      // сервер не засчитал победу (нет связи или неправдоподобный бой)
+      const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Победа не засчитана</div>
+        <div class="res-note">Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.</div>
+        <button class="btn wide">На карту</button></div></div>`);
+      res.querySelector('button').onclick = () => this.close();
       st.root.appendChild(res);
     } else {
       Sfx.play('lose');
@@ -334,6 +347,7 @@ const Raid = {
   },
   close() {
     const st = this.st; if (!st) return;
+    if (!st.over) Game.act('raidEnd', { win: false }).catch(() => {}); // вышел из боя
     st.over = true;
     st.root.remove();
     this.st = null;
