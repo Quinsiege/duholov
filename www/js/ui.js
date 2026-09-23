@@ -24,6 +24,7 @@ const UI = {
       shop: s('<path d="M4 10h16v10H4z"/><path d="M3 10l2-6h14l2 6"/><path d="M9 20v-5h6v5"/><path d="M3 10c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3"/>'),
       trail: s('<path d="M5 21c0-4 3-5 6-7s5-4 3-8"/><path d="M14 6l-1-3 3 1"/><circle cx="6" cy="8" r="1.3" fill="currentColor"/><circle cx="18" cy="14" r="1.3" fill="currentColor"/><path d="M16 21h5"/>'),
       rift: s('<circle cx="12" cy="12" r="9"/><path d="M10 4l3 5-3 3 4 3-2 5"/>'),
+      trash: s('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'),
     };
   })(),
 
@@ -238,7 +239,7 @@ const UI = {
     ];
     if (Tut.step() === 3) setTimeout(() => Tut.finish(), 400);
     const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div><div class="menu-grid">${tiles.map((t, i) => `<button class="tile" data-i="${i}">${this.I[t[0]]}<span>${t[1]}</span>${t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`).join('')}</div>
-      <div class="sheet-foot"><span>${Art.item('charm')} ${S.d.items.charm || 0}</span><span class="spark">✦ ${U.fmtNum(S.d.sparks)}</span><span class="grivna">${Art.item('grivna')} ${U.fmtNum(S.d.grivna || 0)} гривен</span></div></div></div>`);
+      <div class="sheet-foot"><span>${Art.item('charm')} ${S.d.items.charm || 0}</span><span class="spark">✦ ${U.fmtNum(S.d.sparks)}</span><span class="zlat">${Art.item('zlat')} ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, 'златник', 'златника', 'златников')}</span></div></div></div>`);
     const close = () => { this.popLayer(close); sheet.classList.add('out'); setTimeout(() => sheet.remove(), 200); };
     sheet.addEventListener('click', e => {
       const t = e.target.closest('.tile');
@@ -562,10 +563,12 @@ const UI = {
         <div class="row"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}. Надевается на карточке духа.</small></div>
         <div class="row-side"><span class="cnt">×${S.d.amulets[k]}</span></div></div>`).join('') + keys.map(k => `
         <div class="row"><div class="row-ico">${Art.item(k)}</div><div class="row-main"><b>${ITEMS[k].name}</b><small>${ITEMS[k].desc}</small></div>
-        <div class="row-side"><span class="cnt">×${S.d.items[k]}</span>${k === 'incense' ? `<button class="btn small primary use-inc">${S.incenseActive() ? 'Горит' : 'Зажечь'}</button>` : ''}</div></div>`).join('')
+        <div class="row-side"><span class="cnt">×${S.d.items[k]}</span><div class="row-acts">${k === 'incense' ? `<button class="btn small primary use-inc">${S.incenseActive() ? 'Горит' : 'Зажечь'}</button>` : ''}<button class="btn-round small drop" data-k="${k}" aria-label="Выбросить">${this.I.trash}</button></div></div></div>`).join('')
         || '<div class="empty">Сумка пуста. Загляни к ближайшему роднику!</div>';
     };
     scr.addEventListener('click', async e => {
+      const drop = e.target.closest('.drop');
+      if (drop) { this.discard(drop.dataset.k, () => { render(); this.refreshHud(); }); return; }
       if (!e.target.closest('.use-inc')) return;
       if (S.incenseActive()) { this.toast(`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - U.now())}`); return; }
       if (await Game.try('incense')) {
@@ -574,6 +577,33 @@ const UI = {
       }
     });
     render();
+  },
+
+  // Выбросить предметы из сумки: сколько — выбирает игрок (кнопки, ползунок или число)
+  discard(k, done) {
+    const max = S.d.items[k] || 0;
+    if (!max) return;
+    let n = 1;
+    const m = this.modal({
+      title: 'Выбросить', cls: 'drop-modal',
+      html: `<div class="drop-item">${Art.item(k)}<div><b>${ITEMS[k].name}</b><small>В сумке: ${max}</small></div></div>
+        <div class="drop-step"><button class="btn-round step" data-d="-1">−</button><input type="number" class="drop-n" min="1" max="${max}" value="1" inputmode="numeric"><button class="btn-round step" data-d="1">+</button></div>
+        <input type="range" class="drop-range" min="1" max="${max}" value="1">
+        <div class="drop-quick">${[...new Set([1, 10, Math.ceil(max / 2), max])].filter(v => v >= 1 && v <= max).map(v => `<button class="btn small ghost" data-v="${v}">${v === max ? `Все (${v})` : v}</button>`).join('')}</div>`,
+      buttons: [{ label: 'Отмена' }, { label: 'Выбросить', cls: 'danger', keep: true, fn: async () => {
+        const r = await Game.try('discard', { k, n });
+        if (!r) return;
+        m.close(); Sfx.play('tap');
+        this.toast(`Выброшено: ${ITEMS[k].name} ×${r.n}`);
+        done && done();
+      } }],
+    });
+    const inp = m.querySelector('.drop-n'), range = m.querySelector('.drop-range');
+    const set = v => { n = U.clamp(Math.round(+v || 1), 1, max); inp.value = n; range.value = n; };
+    m.querySelector('.drop-step').addEventListener('click', e => { const b = e.target.closest('.step'); if (b) set(n + +b.dataset.d); });
+    m.querySelector('.drop-quick').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) set(b.dataset.v); });
+    range.addEventListener('input', () => set(range.value));
+    inp.addEventListener('change', () => set(inp.value));
   },
 
   /* ---------------- КОКОНЫ ---------------- */
@@ -843,7 +873,7 @@ const UI = {
       const b = e.target.closest('.sw'); if (!b) return;
       if (b.dataset.l === 'league') { this.toast('Венец Лиги — награда за ранг «Хранитель Лиги»'); return; }
       if (b.dataset.l === 'story') { this.toast('Эта эмблема — награда за Летопись'); return; }
-      if (b.dataset.l === 'shop') { this.toast('Этот плащ продаётся в Лавке Ордена за гривны'); return; }
+      if (b.dataset.l === 'shop') { this.toast('Этот плащ продаётся в Лавке Ордена за златники'); return; }
       if (b.dataset.l === 'pass') { this.toast('Награда Золотой сезонной тропы'); return; }
       if (+b.dataset.l > lvl) { this.toast(`Откроется на ${b.dataset.l} уровне`); return; }
       look[b.dataset.k] = b.dataset.v; Sfx.play('tap'); render();
