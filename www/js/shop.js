@@ -46,13 +46,13 @@ const Treasury = {
   waiting() { try { return +localStorage.getItem(this.KEY) || 0; } catch (e) { return 0; } },
   setWaiting(v) { try { v ? localStorage.setItem(this.KEY, String(Date.now())) : localStorage.removeItem(this.KEY); } catch (e) {} },
   html(info) {
-    if (!info.on) return '';
+    // наборы с ценами видны всегда; пока оплата не подключена (info.on = false), купить нельзя
     return `<h3 class="prof-h">Казна Ордена <small>златники за рубли</small></h3>
       <div class="pay-packs">${Rules.PAY.map(p => `<button class="pay-pack ${p.hot ? 'hot' : ''}" data-pay="${p.id}">
         ${p.hot ? '<span class="pay-hot">Выгодно</span>' : p.bonus ? `<span class="pay-bonus">+${p.bonus}%</span>` : ''}
         <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, 'златник', 'златника', 'златников')}</small>
         <span class="pay-price">${U.fmtNum(p.rub)} ₽</span></button>`).join('')}</div>
-      <div class="q-note">Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa. <button class="linkish pay-offer">Оферта</button>${this.waiting() ? ' <button class="linkish pay-recheck">Я оплатил — проверить</button>' : ''}</div>`;
+      <div class="q-note">${info.on ? '' : '<b>Оплата скоро откроется.</b> '}Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa. <button class="linkish pay-offer">Оферта</button>${this.waiting() ? ' <button class="linkish pay-recheck">Я оплатил — проверить</button>' : ''}</div>`;
   },
   buy(id, info, onDone) {
     const p = Rules.PAY.find(x => x.id === id);
@@ -148,7 +148,7 @@ const Shop = {
         <div class="q-note">Златники дают за серию дней (на 7-й день — 30), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.</div>`;
     };
     box.addEventListener('click', async e => {
-      const pk = e.target.closest('[data-pay]'); if (pk) { Treasury.buy(pk.dataset.pay, pay, render); return; }
+      const pk = e.target.closest('[data-pay]'); if (pk) { if (pay.on) Treasury.buy(pk.dataset.pay, pay, render); else UI.toast('Оплата скоро откроется — следи за обновлениями'); return; }
       if (e.target.closest('.pay-recheck')) { await Treasury.check(true); render(); return; }
       if (e.target.closest('.pay-offer')) { Treasury.offer(); return; }
       const x = e.target.closest('[data-ex]');

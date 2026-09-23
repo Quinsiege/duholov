@@ -1083,3 +1083,4 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .offer-screen { z-index: 2100; } /* поверх окна оплаты */
 .offer-screen .screen-body { padding: 0; overflow: hidden; display: flex; }
 .offer-frame { flex: 1; width: 100%; border: 0; background: #140f2b; }
+.onb-offer { display: block; margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted); text-decoration: underline; }
