@@ -8,7 +8,7 @@
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.8.0', // 3.8: духи родных земель меняют, кто где появляется — старым клиентам нужно обновиться
+  MIN_CLIENT: '3.14.0', // 3.14: гривны стали златниками — старый клиент показал бы пустой кошелёк
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -167,7 +167,7 @@ const GameCore = {
     return S.d.pass;
   },
   passAdd(ctx, pts) { if (pts > 0) this.passState(ctx).pts += pts; },
-  // Награда: предметы, искры, гривны + кокон, случайный амулет, облик
+  // Награда: предметы, искры, златники + кокон, случайный амулет, облик
   grant(rw) {
     const { cocoon, amulet, look, ...rest } = rw;
     const got = S.giveRewards(rest);
@@ -285,7 +285,7 @@ const GameCore = {
       st.day = today;
       if (st.n > S.d.stats.streakBest) S.d.stats.streakBest = st.n;
       const i = (st.n - 1) % Rules.STREAK.length;
-      const got = S.giveRewards({ ...Rules.STREAK[i], grivna: i === Rules.STREAK.length - 1 ? Rules.GRIVNA.streak7 : Rules.GRIVNA.streak });
+      const got = S.giveRewards({ ...Rules.STREAK[i], zlat: i === Rules.STREAK.length - 1 ? Rules.ZLAT.streak7 : Rules.ZLAT.streak });
       if (i === Rules.STREAK.length - 1 && S.d.cocoons.length < 9) {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
         got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
@@ -470,6 +470,14 @@ const GameCore = {
       S.d.incenseUntil = ctx.now + 30 * 60000;
       return { until: S.d.incenseUntil };
     },
+    // Выбросить предметы из сумки (освободить место)
+    discard(a) {
+      const k = String(a.k || ''), have = (ITEMS[k] && S.d.items[k]) || 0, n = Math.floor(+a.n);
+      this.need(have > 0, 'Такого предмета в сумке нет');
+      this.need(n >= 1 && n <= have, `Можно выбросить от 1 до ${have}`);
+      S.d.items[k] -= n;
+      return { k, n, left: S.d.items[k] };
+    },
     supply(a, ctx) {
       this.need(S.d.supplyDay !== U.today(), 'Посылка сегодня уже была');
       S.d.supplyDay = U.today();
@@ -551,7 +559,7 @@ const GameCore = {
       const Q = S.d.quests;
       this.need(Q.list.every(q => q.claimed) && !Q.bonus, 'Сундук ещё закрыт');
       Q.bonus = true;
-      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000, grivna: Rules.GRIVNA.questBonus }) };
+      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000, zlat: Rules.ZLAT.questBonus }) };
     },
     storyClaim() {
       const ch = S.d.story.ch, res = S.claimStory();
@@ -751,7 +759,7 @@ const GameCore = {
         const key = id.slice(5), x = LOOK.cloak.find(c => c.c === key && c.shop);
         this.need(x, 'Такого товара нет');
         this.need(!S.d.owned[key], 'Этот плащ уже твой');
-        it = { id, name: `Плащ «${x.name}»`, cur: 'grivna', price: x.shop, look: key };
+        it = { id, name: `Плащ «${x.name}»`, cur: 'zlat', price: x.shop, look: key };
       } else {
         it = Rules.SHOP.find(x => x.id === id);
         this.need(it, 'Такого товара нет');
@@ -766,8 +774,8 @@ const GameCore = {
         const n = Object.values(it.give).reduce((s, x) => s + x, 0);
         this.need(S.bagCount() + n <= S.bagLimit(), 'Сумка полна — освободи место или расширь её');
       }
-      const key = it.cur === 'sparks' ? 'sparks' : 'grivna';
-      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? 'Не хватает искр' : 'Не хватает гривен');
+      const key = it.cur === 'sparks' ? 'sparks' : 'zlat';
+      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? 'Не хватает искр' : 'Не хватает златников');
       this.limit(ctx, 'shop', 120, 3600000);
       S.d[key] -= it.price;
       let got;
@@ -776,6 +784,19 @@ const GameCore = {
       if (a.deal) S.d.shop.deal = today;
       J.add('shop', { name: it.name });
       return { got, price: it.price, cur: key };
+    },
+
+    // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
+    exchange(a, ctx) {
+      const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
+      const ex = S.d.shop.ex && S.d.shop.ex.day === today ? S.d.shop.ex : (S.d.shop.ex = { day: today, n: 0 });
+      this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? 'Обменник на сегодня закрыт — приходи завтра' : `Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);
+      this.need(S.d.sparks >= E.SPARKS * n, 'Не хватает искр');
+      S.d.sparks -= E.SPARKS * n;
+      S.d.zlat = (S.d.zlat || 0) + E.ZLAT * n;
+      ex.n += n;
+      J.add('exchange', { sparks: E.SPARKS * n, zlat: E.ZLAT * n });
+      return { sparks: E.SPARKS * n, zlat: E.ZLAT * n, left: E.DAY - ex.n };
     },
 
     /* ----- Сезонная тропа ----- */
@@ -787,14 +808,14 @@ const GameCore = {
       this.need(!P.got[track].includes(lvl), 'Награда уже получена');
       P.got[track].push(lvl);
       let rw = Rules.passReward(track, lvl);
-      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, grivna: (rw.grivna || 0) + 40 }; // коконов некуда класть — гривнами
+      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 40 }; // коконов некуда класть — златниками
       return { got: this.grant(rw) };
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
       this.need(!P.gold, 'Золотая тропа уже открыта');
-      this.need(S.d.grivna >= Rules.PASS.GOLD, `Нужно ${Rules.PASS.GOLD} гривен`);
-      S.d.grivna -= Rules.PASS.GOLD;
+      this.need(S.d.zlat >= Rules.PASS.GOLD, `Нужно ${Rules.PASS.GOLD} златников`);
+      S.d.zlat -= Rules.PASS.GOLD;
       P.gold = true;
       J.add('passGold', { season: P.season });
       return { ok: true };
@@ -864,7 +885,7 @@ const GameCore = {
       const n = Math.min(HOLD_MY_MAX, await ctx.env.myHolds(S.d.pid));
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
-      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, grivna: Rules.GRIVNA.tribute * n }) };
+      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, zlat: Rules.ZLAT.tribute * n }) };
     },
 
     async invStart(a, ctx) {

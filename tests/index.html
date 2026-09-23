@@ -889,12 +889,12 @@
   atest('Сервер: Лавка Ордена — сумка, припасы, товар дня, плащи', async () => {
     const A = await newPlayer('vh', 55.54, 37.42, 'Покупатель');
     A.data.tut = 0;
-    await refuse(A, 'shopBuy', { id: 'bag' }, /гривен/);
-    A.data.grivna = 1000; A.data.sparks = 5000;
+    await refuse(A, 'shopBuy', { id: 'bag' }, /златников/);
+    A.data.zlat = 1000; A.data.sparks = 5000;
     const b = await must(A, 'shopBuy', { id: 'bag' });
-    eq(A.data.bagExtra, 1); eq(A.data.grivna, 1000 - Rules.bagPrice(0)); eq(b.got[0].k, 'bag');
+    eq(A.data.bagExtra, 1); eq(A.data.zlat, 1000 - Rules.bagPrice(0)); eq(b.got[0].k, 'bag');
     eq(asPlayer(A, () => S.bagLimit()), BAG_LIMIT + Rules.BAG_STEP, 'сумка больше');
-    await must(A, 'shopBuy', { id: 'bag' }); eq(A.data.grivna, 1000 - Rules.bagPrice(0) - Rules.bagPrice(1), 'цена растёт');
+    await must(A, 'shopBuy', { id: 'bag' }); eq(A.data.zlat, 1000 - Rules.bagPrice(0) - Rules.bagPrice(1), 'цена растёт');
     const c0 = A.data.items.charm;
     await must(A, 'shopBuy', { id: 'charm20' }); eq(A.data.items.charm, c0 + 20); eq(A.data.sparks, 3500);
     await refuse(A, 'shopBuy', { id: 'charm3x' }, /16 уровне/);
@@ -905,10 +905,30 @@
     await must(A, 'shopBuy', { id: 'look:#7c2d12' });
     await must(A, 'look', { look: { cloak: '#7c2d12', eyes: '#5eead4', emblem: 'charm' } }); eq(A.data.look.cloak, '#7c2d12');
     await refuse(A, 'shopBuy', { id: 'look:#7c2d12' }, /уже твой/);
-    // гривны приходят за серию дней
-    const g0 = A.data.grivna;
-    const dl = await must(A, 'daily'); // опыт серии может поднять уровень — за него свои гривны
-    eq(dl.got.find(x => x.k === 'grivna').n, Rules.GRIVNA.streak); ok(A.data.grivna >= g0 + Rules.GRIVNA.streak);
+    // златники приходят за серию дней
+    const g0 = A.data.zlat;
+    const dl = await must(A, 'daily'); // опыт серии может поднять уровень — за него свои златники
+    eq(dl.got.find(x => x.k === 'zlat').n, Rules.ZLAT.streak); ok(A.data.zlat >= g0 + Rules.ZLAT.streak);
+  });
+  atest('Сервер: выбросить из сумки, обменник искр, гривны → златники', async () => {
+    const A = await newPlayer('vk', 55.51, 37.39, 'Бережливый');
+    A.data.tut = 0;
+    const c0 = A.data.items.charm;
+    await refuse(A, 'discard', { k: 'charm', n: 0 }, /от 1 до/);
+    await refuse(A, 'discard', { k: 'charm', n: c0 + 1 }, /от 1 до/);
+    await refuse(A, 'discard', { k: 'nichego', n: 1 }, /нет/);
+    const d = await must(A, 'discard', { k: 'charm', n: 3 }); eq(d.n, 3); eq(A.data.items.charm, c0 - 3);
+    await must(A, 'discard', { k: 'charm', n: c0 - 3 }); eq(A.data.items.charm, 0, 'выброшены все');
+    // обменник
+    A.data.sparks = Rules.EXCHANGE.SPARKS * 3; A.data.zlat = 0;
+    await refuse(A, 'exchange', { n: 4 }, /искр/);
+    const x = await must(A, 'exchange', { n: 3 }); eq(A.data.sparks, 0); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * 3); eq(x.left, Rules.EXCHANGE.DAY - 3);
+    A.data.sparks = 1e6;
+    await must(A, 'exchange', { n: Rules.EXCHANGE.DAY - 3 });
+    await refuse(A, 'exchange', { n: 1 }, /закрыт/);
+    // старые сохранения: гривны переходят в златники один к одному
+    A.data.grivna = 77; A.data.zlat = 3;
+    await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
   });
   atest('Сервер: Сезонная тропа — очки за игру, ступени, Золотая тропа', async () => {
     const A = await newPlayer('vi', 55.53, 37.41, 'Путник');
@@ -921,9 +941,9 @@
     await refuse(A, 'passClaim', { lvl: 1, track: 'free' }, /уже получена/);
     await refuse(A, 'passClaim', { lvl: 3, track: 'free' }, /не пройдена/);
     await refuse(A, 'passClaim', { lvl: 1, track: 'gold' }, /Золотую тропу/);
-    await refuse(A, 'passGold', {}, /гривен/);
-    A.data.grivna = Rules.PASS.GOLD;
-    await must(A, 'passGold'); eq(A.data.grivna, 0); ok(A.data.pass.gold);
+    await refuse(A, 'passGold', {}, /златников/);
+    A.data.zlat = Rules.PASS.GOLD;
+    await must(A, 'passGold'); eq(A.data.zlat, 0); ok(A.data.pass.gold);
     await must(A, 'passClaim', { lvl: 1, track: 'gold' });
     // вершина Золотой тропы — Знак Тропы
     A.data.pass.pts = Rules.PASS.PER * Rules.PASS.LEVELS;

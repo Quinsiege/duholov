@@ -46,26 +46,28 @@ const Rules = {
       + d('hatched') * (ev.km ? 6 : 3)
       + km * (ev.km ? 2 : 1);
   },
-  /* ---------- 3.12: гривны, Лавка Ордена, Сезонная тропа ---------- */
-  // Гривны — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
-  GRIVNA: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
+  /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
+  // Златники — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
+  ZLAT: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
+  // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
+  EXCHANGE: { SPARKS: 500, ZLAT: 10, DAY: 10 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
-  // cur — валюта: sparks (искры) или grivna (гривны). give — предметы; cocoon — кокон; amulet — случайный амулет
+  // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
-    { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'grivna', bag: true },
+    { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'zlat', bag: true },
     { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
-    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'grivna', price: 90,  give: { farpass: 3 } },
+    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 90,  give: { farpass: 3 } },
     { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
     { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
-    { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'grivna', price: 60,  give: { charm2: 10 }, lvl: 8 },
-    { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'grivna', price: 120, give: { charm3: 10 }, lvl: 16 },
-    { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'grivna', price: 50,  give: { incense: 1 } },
-    { id: 'cocoon5',  name: 'Кокон 5 км',          desc: 'Необычные и редкие духи',                  cur: 'grivna', price: 80,  cocoon: 5 },
-    { id: 'cocoon10', name: 'Кокон 10 км',         desc: 'Редкие и эпические духи',                  cur: 'grivna', price: 150, cocoon: 10 },
-    { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'grivna', price: 200, amulet: true },
+    { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
+    { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
+    { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'zlat', price: 50,  give: { incense: 1 } },
+    { id: 'cocoon5',  name: 'Кокон 5 км',          desc: 'Необычные и редкие духи',                  cur: 'zlat', price: 80,  cocoon: 5 },
+    { id: 'cocoon10', name: 'Кокон 10 км',         desc: 'Редкие и эпические духи',                  cur: 'zlat', price: 150, cocoon: 10 },
+    { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'zlat', price: 200, amulet: true },
   ],
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
   // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
@@ -80,16 +82,16 @@ const Rules = {
   // Награда ступени: free — всем, gold — на Золотой тропе
   passReward(track, lvl) {
     if (track === 'free') {
-      if (lvl === 30) return { charm3: 5, grivna: 50 };
-      if (lvl % 10 === 0) return { cocoon: 5, grivna: 20 };
-      if (lvl % 5 === 0) return { incense: 1, grivna: 15 };
+      if (lvl === 30) return { charm3: 5, zlat: 50 };
+      if (lvl % 10 === 0) return { cocoon: 5, zlat: 20 };
+      if (lvl % 5 === 0) return { incense: 1, zlat: 15 };
       return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 300 };
     }
     if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
-    if (lvl === 15) return { look: '#065f46', grivna: 50 };
-    if (lvl % 10 === 0) return { cocoon: 10, grivna: 40 };
-    if (lvl % 5 === 0) return { amulet: 1, grivna: 30 };
-    if (lvl % 3 === 0) return { charm3: 3, grivna: 15 };
+    if (lvl === 15) return { look: '#065f46', zlat: 50 };
+    if (lvl % 10 === 0) return { cocoon: 10, zlat: 40 };
+    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
+    if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
     return lvl % 2 ? { charm2: 5, sparks: 500 } : { water: 3, sparks: 800 };
   },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)

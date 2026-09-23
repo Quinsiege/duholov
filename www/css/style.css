@@ -135,6 +135,7 @@ body.night .range-circle { fill-opacity: .1; }
 .btn.ghost { background: transparent; }
 .btn.ghost.danger { color: var(--danger); background: transparent; border-color: rgba(248, 113, 113, .35); }
 .btn.wide { width: 100%; }
+.btn.wide + * { margin-top: 10px; } /* кнопка во всю ширину не слипается с тем, что под ней */
 .btn.small { min-height: 34px; padding: 6px 14px; font-size: 13px; border-radius: 11px; }
 .btn:disabled, .btn.disabled { filter: grayscale(.9) brightness(.7); }
 .input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .3); color: var(--text); font-size: 16px; outline: none; }
@@ -185,7 +186,7 @@ body.night .range-circle { fill-opacity: .1; }
 .seg { display: flex; background: rgba(255, 255, 255, .07); border-radius: 12px; padding: 3px; }
 .seg button { flex: 1; padding: 8px 4px; border-radius: 9px; font-size: 13px; font-weight: 500; color: var(--muted); }
 .seg button.on { background: rgba(255, 255, 255, .14); color: var(--text); }
-.chips { display: flex; gap: 6px; overflow-x: auto; }
+.chips { display: flex; gap: 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; } .chips::-webkit-scrollbar { display: none; }
 .chips button { flex: none; display: grid; place-items: center; height: 34px; min-width: 42px; padding: 0 10px; border-radius: 17px; background: rgba(255, 255, 255, .07); font-size: 13px; border: 1px solid transparent; }
 .chips button.on { border-color: var(--gold); background: rgba(251, 191, 36, .12); }
 
@@ -410,9 +411,9 @@ body.night .range-circle { fill-opacity: .1; }
 
 /* разлом (экран предпросмотра) */
 .rift-screen { background: radial-gradient(90% 60% at 50% 30%, #3b0764 0%, #150828 55%, var(--bg) 100%); }
-.rift-view { position: relative; text-align: center; }
+.rift-view { position: relative; text-align: center; padding-bottom: 12px; }
 .rift-portal { position: absolute; left: 50%; top: 10px; width: 260px; height: 260px; margin-left: -130px; opacity: .8; }
-.rift-boss { position: relative; width: 210px; height: 210px; margin: 28px auto 6px; animation: bob 2.4s ease-in-out infinite; }
+.rift-boss { position: relative; width: 210px; height: 210px; margin: 28px auto 16px; animation: bob 2.4s ease-in-out infinite; }
 .rift-title { color: var(--gold2); font-weight: 700; letter-spacing: .5px; }
 .rift-title .stars { letter-spacing: 2px; }
 .rift-name { font-size: 28px; font-weight: 900; margin: 4px 0; }
@@ -991,10 +992,10 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .onb-invite { margin: 0 auto 12px; max-width: 320px; padding: 10px 14px; border-radius: 14px; background: rgba(74, 222, 128, .12); border: 1px solid rgba(74, 222, 128, .5); color: #bbf7d0; font-size: 14px; text-align: center; }
 .my-invite { margin-top: 10px; }
 /* Лавка Ордена и Сезонная тропа (3.12) */
-.sheet-foot .grivna { display: inline-flex; align-items: center; gap: 4px; color: #e2e8f0; }
-.sheet-foot .grivna .art, .shop-wallet .art, .btn .art { width: 18px; height: 18px; vertical-align: -4px; }
+.sheet-foot .zlat { display: inline-flex; align-items: center; gap: 4px; color: #fcd34d; }
+.sheet-foot .zlat .art, .shop-wallet .art, .btn .art { width: 18px; height: 18px; vertical-align: -4px; }
 .shop-wallet { display: flex; justify-content: space-around; gap: 10px; padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); font-weight: 700; margin-bottom: 12px; }
-.shop-wallet .spark { color: var(--gold2); } .shop-wallet .grivna { display: inline-flex; align-items: center; gap: 6px; }
+.shop-wallet .spark { color: var(--gold2); } .shop-wallet .zlat { display: inline-flex; align-items: center; gap: 6px; }
 .shop-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); margin-bottom: 8px; }
 .shop-row.off { opacity: .55; }
 .shop-row .row-main { flex: 1; min-width: 0; } .shop-row small { color: var(--muted); font-size: 12px; }
@@ -1036,6 +1037,29 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .rr-boss { width: 48px; height: 48px; flex: none; } .rr-boss .art { width: 48px; height: 48px; }
 .rr-d { flex: none; font-size: 13px; font-weight: 800; color: var(--teal); }
 .rift-go.far, .rift-shop { flex-direction: row; gap: 8px; }
-.rift-tiers { margin: 0 0 10px; } .rift-tiers .chip { color: var(--text); box-shadow: none; flex: none; flex-direction: row; white-space: nowrap; } .rift-tiers .chip small { color: var(--muted); }
-.rift-tiers .chip.on { background: rgba(167, 139, 250, .25); border-color: #a78bfa; }
 .rift-far { display: block; text-align: center; color: var(--muted); }
+
+/* 3.14: выбросить из сумки */
+.row-acts { display: flex; align-items: center; gap: 8px; }
+.btn-round.small { width: 34px; height: 34px; box-shadow: none; }
+.btn-round.drop { color: var(--muted); } .btn-round.drop .ico { width: 18px; height: 18px; }
+.drop-item { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; text-align: left; }
+.drop-item .art { width: 52px; height: 52px; flex: none; } .drop-item small { display: block; color: var(--muted); font-size: 13px; }
+.drop-step { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; }
+.drop-step .step { font-size: 22px; font-weight: 800; color: var(--text); }
+.drop-n { width: 90px; height: 44px; text-align: center; font-size: 20px; font-weight: 800; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); color: var(--text); }
+.drop-range { width: 100%; margin: 0 0 12px; accent-color: #fb7185; }
+.drop-quick { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+
+/* 3.14: обменник */
+.shop-ex { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: rgba(94, 234, 212, .07); border: 1px solid rgba(94, 234, 212, .35); margin-bottom: 8px; }
+.shop-ex .row-main { flex: 1; min-width: 0; } .shop-ex small { display: block; color: var(--muted); font-size: 12px; }
+.ex-rate { flex: none; display: flex; flex-direction: column; align-items: center; font-weight: 800; font-size: 13px; line-height: 1.2; }
+.ex-rate .spark { color: var(--gold2); } .ex-rate b { color: var(--muted); font-size: 11px; transform: rotate(90deg); }
+.ex-rate .zlat { display: inline-flex; align-items: center; gap: 4px; }
+.ex-rate .art { width: 16px; height: 16px; }
+.ex-btns { display: flex; gap: 6px; flex: none; }
+.rift-tiers { margin: 0 0 12px; }
+.chips.rift-tiers button { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-weight: 700; }
+.chips.rift-tiers button small { min-width: 22px; padding: 1px 6px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: var(--muted); font-size: 11px; font-weight: 800; line-height: 16px; text-align: center; }
+.chips.rift-tiers button.on { border-color: #a78bfa; background: rgba(167, 139, 250, .22); } .chips.rift-tiers button.on small { background: #a78bfa; color: #1e1b4b; }

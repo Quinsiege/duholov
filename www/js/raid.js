@@ -72,7 +72,7 @@ const Raid = {
     const render = () => {
       const passes = S.d.items.farpass || 0;
       const shown = rifts.map((r, i) => ({ r, i })).filter(x => !tier || x.r.tier === tier), more = Math.max(0, shown.length - 40);
-      box.innerHTML = `<div class="shop-wallet"><span class="grivna">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через ${U.fmtTime(Math.max(0, (hour + 1) * 3600000 - U.now()))}</span></div>
+      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через ${U.fmtTime(Math.max(0, (hour + 1) * 3600000 - U.now()))}</span></div>
         <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : 'Все'} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>

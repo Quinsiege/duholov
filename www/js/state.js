@@ -34,7 +34,8 @@ const S = {
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
-    d.grivna = d.grivna || 0; // гривны — вторая валюта (3.12)
+    // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
+    d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
     d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
     d.shop = d.shop || {}; // Лавка: { deal: день покупки товара дня }
@@ -268,7 +269,7 @@ const S = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
-      else if (k === 'grivna') { this.d.grivna = (this.d.grivna || 0) + n; out.push({ k, n, label: 'Гривны' }); }
+      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: 'Златники' }); }
       else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
       else if (ITEMS[k]) { const a = this.addItem(k, n); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
@@ -296,7 +297,7 @@ const S = {
     this.save();
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3, grivna: Rules.GRIVNA.level };
+    const r = { charm: 10 + l, honey: 3, water: 3, zlat: Rules.ZLAT.level };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;
@@ -411,7 +412,7 @@ const S = {
   claimStory() {
     const ch = STORY[this.d.story.ch];
     if (!ch || !this.storyReady()) return null;
-    const got = this.giveRewards({ ...ch.reward, grivna: Rules.GRIVNA.story });
+    const got = this.giveRewards({ ...ch.reward, zlat: Rules.ZLAT.story });
     this.d.story = { ch: this.d.story.ch + 1, p: [0, 0, 0] };
     this.save();
     return { ch, got };

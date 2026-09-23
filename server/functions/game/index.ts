@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.13.0';
+const APP_VERSION = '3.14.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -574,7 +574,7 @@ const LOOK = {
     { c: '#6d28d9', name: 'Фиалковый', lvl: 1 }, { c: '#1d4ed8', name: 'Синий', lvl: 1 }, { c: '#15803d', name: 'Лесной', lvl: 1 },
     { c: '#b91c1c', name: 'Алый', lvl: 5 }, { c: '#0f766e', name: 'Бирюзовый', lvl: 8 }, { c: '#a16207', name: 'Охряный', lvl: 10 },
     { c: '#1f2937', name: 'Полночный', lvl: 15 }, { c: '#e2e8f0', name: 'Снежный', lvl: 20 }, { c: '#be185d', name: 'Малиновый', lvl: 25 }, { c: '#ca8a04', name: 'Золотой', lvl: 30 },
-    // 3.12: из Лавки Ордена (за гривны) и с Золотой тропы — открываются покупкой, а не уровнем
+    // 3.12: из Лавки Ордена (за златники) и с Золотой тропы — открываются покупкой, а не уровнем
     { c: '#7c2d12', name: 'Бронзовый', lvl: 1, shop: 250 }, { c: '#0c4a6e', name: 'Глубинный', lvl: 1, shop: 250 }, { c: '#4a044e', name: 'Навья ночь', lvl: 1, shop: 400 },
     { c: '#065f46', name: 'Сезонная тропа', lvl: 1, pass: true },
   ],
@@ -1185,7 +1185,8 @@ const S = {
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
-    d.grivna = d.grivna || 0; // гривны — вторая валюта (3.12)
+    // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
+    d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
     d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
     d.shop = d.shop || {}; // Лавка: { deal: день покупки товара дня }
@@ -1419,7 +1420,7 @@ const S = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
-      else if (k === 'grivna') { this.d.grivna = (this.d.grivna || 0) + n; out.push({ k, n, label: 'Гривны' }); }
+      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: 'Златники' }); }
       else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
       else if (ITEMS[k]) { const a = this.addItem(k, n); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
@@ -1447,7 +1448,7 @@ const S = {
     this.save();
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3, grivna: Rules.GRIVNA.level };
+    const r = { charm: 10 + l, honey: 3, water: 3, zlat: Rules.ZLAT.level };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;
@@ -1562,7 +1563,7 @@ const S = {
   claimStory() {
     const ch = STORY[this.d.story.ch];
     if (!ch || !this.storyReady()) return null;
-    const got = this.giveRewards({ ...ch.reward, grivna: Rules.GRIVNA.story });
+    const got = this.giveRewards({ ...ch.reward, zlat: Rules.ZLAT.story });
     this.d.story = { ch: this.d.story.ch + 1, p: [0, 0, 0] };
     this.save();
     return { ch, got };
@@ -1634,8 +1635,9 @@ const J = {
       case 'clan': return { ico: glyph('⚑', 'gold'), title: `Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : 'дружина'}`, sub: '' };
       case 'guardBack': return { ico: icon(e.sid), title: 'Защитник вернулся с Капища', sub: `${e.name || ''} · стоял ${e.hours} ч` };
       case 'defend': return { ico: icon(e.sid), title: `Защитник на Капище`, sub: e.name || '' };
-      case 'shop': return { ico: glyph('₴', 'gold'), title: `Покупка в Лавке: ${e.name || ''}`, sub: '' };
+      case 'shop': return { ico: glyph('☉', 'gold'), title: `Покупка в Лавке: ${e.name || ''}`, sub: '' };
       case 'passGold': return { ico: glyph('★', 'gold'), title: 'Открыта Золотая тропа', sub: e.season || '' };
+      case 'exchange': return { ico: glyph('⇄', 'gold'), title: 'Обмен в Лавке', sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${e.zlat || 0} златников` };
       case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
     }
@@ -1898,7 +1900,7 @@ const Raid = {
     const render = () => {
       const passes = S.d.items.farpass || 0;
       const shown = rifts.map((r, i) => ({ r, i })).filter(x => !tier || x.r.tier === tier), more = Math.max(0, shown.length - 40);
-      box.innerHTML = `<div class="shop-wallet"><span class="grivna">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через ${U.fmtTime(Math.max(0, (hour + 1) * 3600000 - U.now()))}</span></div>
+      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через ${U.fmtTime(Math.max(0, (hour + 1) * 3600000 - U.now()))}</span></div>
         <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : 'Все'} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>
@@ -2835,26 +2837,28 @@ const Rules = {
       + d('hatched') * (ev.km ? 6 : 3)
       + km * (ev.km ? 2 : 1);
   },
-  /* ---------- 3.12: гривны, Лавка Ордена, Сезонная тропа ---------- */
-  // Гривны — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
-  GRIVNA: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
+  /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
+  // Златники — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
+  ZLAT: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
+  // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
+  EXCHANGE: { SPARKS: 500, ZLAT: 10, DAY: 10 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
-  // cur — валюта: sparks (искры) или grivna (гривны). give — предметы; cocoon — кокон; amulet — случайный амулет
+  // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
-    { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'grivna', bag: true },
+    { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'zlat', bag: true },
     { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
-    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'grivna', price: 90,  give: { farpass: 3 } },
+    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 90,  give: { farpass: 3 } },
     { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
     { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
-    { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'grivna', price: 60,  give: { charm2: 10 }, lvl: 8 },
-    { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'grivna', price: 120, give: { charm3: 10 }, lvl: 16 },
-    { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'grivna', price: 50,  give: { incense: 1 } },
-    { id: 'cocoon5',  name: 'Кокон 5 км',          desc: 'Необычные и редкие духи',                  cur: 'grivna', price: 80,  cocoon: 5 },
-    { id: 'cocoon10', name: 'Кокон 10 км',         desc: 'Редкие и эпические духи',                  cur: 'grivna', price: 150, cocoon: 10 },
-    { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'grivna', price: 200, amulet: true },
+    { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
+    { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
+    { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'zlat', price: 50,  give: { incense: 1 } },
+    { id: 'cocoon5',  name: 'Кокон 5 км',          desc: 'Необычные и редкие духи',                  cur: 'zlat', price: 80,  cocoon: 5 },
+    { id: 'cocoon10', name: 'Кокон 10 км',         desc: 'Редкие и эпические духи',                  cur: 'zlat', price: 150, cocoon: 10 },
+    { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'zlat', price: 200, amulet: true },
   ],
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
   // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
@@ -2869,16 +2873,16 @@ const Rules = {
   // Награда ступени: free — всем, gold — на Золотой тропе
   passReward(track, lvl) {
     if (track === 'free') {
-      if (lvl === 30) return { charm3: 5, grivna: 50 };
-      if (lvl % 10 === 0) return { cocoon: 5, grivna: 20 };
-      if (lvl % 5 === 0) return { incense: 1, grivna: 15 };
+      if (lvl === 30) return { charm3: 5, zlat: 50 };
+      if (lvl % 10 === 0) return { cocoon: 5, zlat: 20 };
+      if (lvl % 5 === 0) return { incense: 1, zlat: 15 };
       return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 300 };
     }
     if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
-    if (lvl === 15) return { look: '#065f46', grivna: 50 };
-    if (lvl % 10 === 0) return { cocoon: 10, grivna: 40 };
-    if (lvl % 5 === 0) return { amulet: 1, grivna: 30 };
-    if (lvl % 3 === 0) return { charm3: 3, grivna: 15 };
+    if (lvl === 15) return { look: '#065f46', zlat: 50 };
+    if (lvl % 10 === 0) return { cocoon: 10, zlat: 40 };
+    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
+    if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
     return lvl % 2 ? { charm2: 5, sparks: 500 } : { water: 3, sparks: 800 };
   },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
@@ -2997,7 +3001,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.8.0', // 3.8: духи родных земель меняют, кто где появляется — старым клиентам нужно обновиться
+  MIN_CLIENT: '3.14.0', // 3.14: гривны стали златниками — старый клиент показал бы пустой кошелёк
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -3156,7 +3160,7 @@ const GameCore = {
     return S.d.pass;
   },
   passAdd(ctx, pts) { if (pts > 0) this.passState(ctx).pts += pts; },
-  // Награда: предметы, искры, гривны + кокон, случайный амулет, облик
+  // Награда: предметы, искры, златники + кокон, случайный амулет, облик
   grant(rw) {
     const { cocoon, amulet, look, ...rest } = rw;
     const got = S.giveRewards(rest);
@@ -3274,7 +3278,7 @@ const GameCore = {
       st.day = today;
       if (st.n > S.d.stats.streakBest) S.d.stats.streakBest = st.n;
       const i = (st.n - 1) % Rules.STREAK.length;
-      const got = S.giveRewards({ ...Rules.STREAK[i], grivna: i === Rules.STREAK.length - 1 ? Rules.GRIVNA.streak7 : Rules.GRIVNA.streak });
+      const got = S.giveRewards({ ...Rules.STREAK[i], zlat: i === Rules.STREAK.length - 1 ? Rules.ZLAT.streak7 : Rules.ZLAT.streak });
       if (i === Rules.STREAK.length - 1 && S.d.cocoons.length < 9) {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
         got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
@@ -3459,6 +3463,14 @@ const GameCore = {
       S.d.incenseUntil = ctx.now + 30 * 60000;
       return { until: S.d.incenseUntil };
     },
+    // Выбросить предметы из сумки (освободить место)
+    discard(a) {
+      const k = String(a.k || ''), have = (ITEMS[k] && S.d.items[k]) || 0, n = Math.floor(+a.n);
+      this.need(have > 0, 'Такого предмета в сумке нет');
+      this.need(n >= 1 && n <= have, `Можно выбросить от 1 до ${have}`);
+      S.d.items[k] -= n;
+      return { k, n, left: S.d.items[k] };
+    },
     supply(a, ctx) {
       this.need(S.d.supplyDay !== U.today(), 'Посылка сегодня уже была');
       S.d.supplyDay = U.today();
@@ -3540,7 +3552,7 @@ const GameCore = {
       const Q = S.d.quests;
       this.need(Q.list.every(q => q.claimed) && !Q.bonus, 'Сундук ещё закрыт');
       Q.bonus = true;
-      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000, grivna: Rules.GRIVNA.questBonus }) };
+      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000, zlat: Rules.ZLAT.questBonus }) };
     },
     storyClaim() {
       const ch = S.d.story.ch, res = S.claimStory();
@@ -3740,7 +3752,7 @@ const GameCore = {
         const key = id.slice(5), x = LOOK.cloak.find(c => c.c === key && c.shop);
         this.need(x, 'Такого товара нет');
         this.need(!S.d.owned[key], 'Этот плащ уже твой');
-        it = { id, name: `Плащ «${x.name}»`, cur: 'grivna', price: x.shop, look: key };
+        it = { id, name: `Плащ «${x.name}»`, cur: 'zlat', price: x.shop, look: key };
       } else {
         it = Rules.SHOP.find(x => x.id === id);
         this.need(it, 'Такого товара нет');
@@ -3755,8 +3767,8 @@ const GameCore = {
         const n = Object.values(it.give).reduce((s, x) => s + x, 0);
         this.need(S.bagCount() + n <= S.bagLimit(), 'Сумка полна — освободи место или расширь её');
       }
-      const key = it.cur === 'sparks' ? 'sparks' : 'grivna';
-      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? 'Не хватает искр' : 'Не хватает гривен');
+      const key = it.cur === 'sparks' ? 'sparks' : 'zlat';
+      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? 'Не хватает искр' : 'Не хватает златников');
       this.limit(ctx, 'shop', 120, 3600000);
       S.d[key] -= it.price;
       let got;
@@ -3765,6 +3777,19 @@ const GameCore = {
       if (a.deal) S.d.shop.deal = today;
       J.add('shop', { name: it.name });
       return { got, price: it.price, cur: key };
+    },
+
+    // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
+    exchange(a, ctx) {
+      const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
+      const ex = S.d.shop.ex && S.d.shop.ex.day === today ? S.d.shop.ex : (S.d.shop.ex = { day: today, n: 0 });
+      this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? 'Обменник на сегодня закрыт — приходи завтра' : `Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);
+      this.need(S.d.sparks >= E.SPARKS * n, 'Не хватает искр');
+      S.d.sparks -= E.SPARKS * n;
+      S.d.zlat = (S.d.zlat || 0) + E.ZLAT * n;
+      ex.n += n;
+      J.add('exchange', { sparks: E.SPARKS * n, zlat: E.ZLAT * n });
+      return { sparks: E.SPARKS * n, zlat: E.ZLAT * n, left: E.DAY - ex.n };
     },
 
     /* ----- Сезонная тропа ----- */
@@ -3776,14 +3801,14 @@ const GameCore = {
       this.need(!P.got[track].includes(lvl), 'Награда уже получена');
       P.got[track].push(lvl);
       let rw = Rules.passReward(track, lvl);
-      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, grivna: (rw.grivna || 0) + 40 }; // коконов некуда класть — гривнами
+      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 40 }; // коконов некуда класть — златниками
       return { got: this.grant(rw) };
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
       this.need(!P.gold, 'Золотая тропа уже открыта');
-      this.need(S.d.grivna >= Rules.PASS.GOLD, `Нужно ${Rules.PASS.GOLD} гривен`);
-      S.d.grivna -= Rules.PASS.GOLD;
+      this.need(S.d.zlat >= Rules.PASS.GOLD, `Нужно ${Rules.PASS.GOLD} златников`);
+      S.d.zlat -= Rules.PASS.GOLD;
       P.gold = true;
       J.add('passGold', { season: P.season });
       return { ok: true };
@@ -3853,7 +3878,7 @@ const GameCore = {
       const n = Math.min(HOLD_MY_MAX, await ctx.env.myHolds(S.d.pid));
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
-      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, grivna: Rules.GRIVNA.tribute * n }) };
+      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, zlat: Rules.ZLAT.tribute * n }) };
     },
 
     async invStart(a, ctx) {
