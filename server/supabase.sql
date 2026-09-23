@@ -17,6 +17,10 @@ create index if not exists league_scores_top on public.league_scores (season, st
 
 alter table public.league_scores enable row level security;
 
+-- права для Data API (строки всё равно ограничены правилами RLS ниже)
+grant select on public.league_scores to anon, authenticated;
+grant insert, update on public.league_scores to authenticated;
+
 -- читать таблицу могут все игроки
 drop policy if exists "league read" on public.league_scores;
 create policy "league read" on public.league_scores
