@@ -27,7 +27,7 @@ const Poi = {
     } catch (e) {}
     this.expireServer(); // кэш с сервера показываем сразу, но при запуске перечитываем
     this.rebuild();
-    setInterval(() => this.ensure(), 15000);
+    setInterval(() => { this.ensure(); if (MapView.pos) this.shrinesFar(MapView.pos.lat, MapView.pos.lng, Rules.FAR.R); }, 15000);
   },
   // Перечитать места игроков и правки модераторов (например, когда одобрили мою заявку)
   expireServer() { for (const t of Object.values(this.srv)) t.t = 0; },
@@ -81,6 +81,33 @@ const Poi = {
       if (d <= r) out.push(Object.assign({ d }, p));
     }
     return out;
+  },
+  // Капища в радиусе r (для дальних Разломов): с сервера одним запросом, кэш на 10 минут; вне России — что загружено
+  far: null,
+  async shrinesFar(lat, lng, r) {
+    if (this._farBusy) await this._farBusy; // один запрос за раз
+    const key = this.tilesAround(lat, lng, 0)[0].map(v => Math.floor(v / 2)).join(':');
+    if (!this.far || this.far.key !== key || Date.now() - this.far.t > 600000) {
+      this._farBusy = this.loadFar(lat, lng, r, key);
+      try { await this._farBusy; } finally { this._farBusy = null; }
+    }
+    return this.far.items.map(p => Object.assign({}, p, { d: U.dist(lat, lng, p.lat, p.lng) })).filter(p => p.d <= r);
+  },
+  async loadFar(lat, lng, r, key) {
+    const items = new Map(this.near(lat, lng, r, 'shrine').map(p => [p.id, p])); let fail = false;
+    if (Cloud.configured()) {
+      try {
+        const sb = await Cloud.client(), dLat = r / 111320 + 0.02, dLng = dLat / Math.max(0.2, Math.cos(lat * Math.PI / 180));
+        for (let from = 0; from < 3000; from += 1000) {
+          const { data, error } = await sb.from('pois').select('id, name, kind, lat, lng, active').eq('kind', 'shrine')
+            .gte('lat', lat - dLat).lt('lat', lat + dLat).gte('lng', lng - dLng).lt('lng', lng + dLng).order('id').range(from, from + 999);
+          if (error) throw new Error(error.message);
+          data.forEach(p => { if (p.active === false) items.delete(p.id); else items.set(p.id, p); });
+          if (data.length < 1000) break;
+        }
+      } catch (e) { console.warn('Дальние Капища:', e.message); fail = true; }
+    }
+    this.far = { key, t: Date.now() - (fail ? 540000 : 0), items: [...items.values()] }; // сервер не ответил — повторим через минуту
   },
   nearest(lat, lng, r = 100) { return this.near(lat, lng, r).sort((a, b) => a.d - b.d)[0] || null; },
 

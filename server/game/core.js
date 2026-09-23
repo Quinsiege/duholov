@@ -290,6 +290,8 @@ const GameCore = {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
         got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
       }
+      // Дальний пропуск дня — чтобы Разломы были доступны и тем, кому до Капища далеко
+      if ((S.d.items.farpass || 0) < Rules.FAR.KEEP) got.push(...S.giveRewards({ farpass: 1 }));
       return { n: st.n, got };
     },
 
@@ -610,12 +612,18 @@ const GameCore = {
       const r = W.riftFor(p, 0, hour) || (ctx.now % 3600000 < 90000 ? W.riftFor(p, 0, hour - 1) : null);
       this.need(r, 'Разлом уже закрылся');
       this.need(!S.d.rifts[r.id], 'Этот разлом ты уже закрыл');
-      if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
+      // дальний бой: вместо того чтобы подойти — грамота Ордена (до Rules.FAR.R от игрока)
+      const far = !coop && !!a.far;
+      if (far) {
+        this.near(ctx, p.lat, p.lng, Rules.FAR.R);
+        this.need((S.d.items.farpass || 0) > 0, 'Нужен Дальний пропуск — его можно купить в Лавке');
+      } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
       this.limit(ctx, 'raid', 30, 3600000);
-      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0 };
-      return { rid: r.id, tier: r.tier, boss: r.boss };
+      if (far) S.d.items.farpass--;
+      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0, far };
+      return { rid: r.id, tier: r.tier, boss: r.boss, far };
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {

@@ -259,6 +259,7 @@ const MapView = {
     Sfx.init(); Sfx.play('tap');
     const d = U.dist(this.pos.lat, this.pos.lng, e.lat, e.lng);
     const range = e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT;
+    if (d > range && e.type === 'rift' && d <= Rules.FAR.R) { Raid.open(e); return; } // дальний бой по пропуску
     if (d > range) {
       const what = e.type === 'spirit' ? SP[e.sid].name : e.type === 'spring' || e.type === 'shrine' ? e.name : 'Разлом';
       UI.toast(`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);

@@ -48,6 +48,11 @@ const Hints = {
     if (canEvo) out.push({ id: 'evolve:' + canEvo.sid, btn: 'Показать',
       text: `Эссенции хватает: «${U.esc(canEvo.nick || SP[canEvo.sid].name)}» может превратиться в <b>${SP[SP[canEvo.sid].evo].name}</b>. Превращённый дух намного сильнее.`,
       go: () => this.openCard(canEvo.uid, '.act-evo') });
+    // Летопись ждёт закрытого Разлома, а до Капищ далеко — есть Дальний пропуск
+    const ch = STORY[d.story.ch], ri = ch ? ch.steps.findIndex(s => s.t === 'raid') : -1;
+    if (ri >= 0 && d.story.p[ri] < ch.steps[ri].n && d.items.farpass) out.push({ id: 'rifts:' + d.story.ch, btn: 'Разломы вокруг',
+      text: 'Летопись ждёт, когда ты закроешь <b>Разлом</b>. Не обязательно идти к Капищу: в «Меню → Разломы» видны все Разломы на 5 км вокруг, а <b>Дальний пропуск</b> позволяет сразиться издалека. Один пропуск Орден дарит каждый день.',
+      go: () => Raid.list() });
     // на Сезонной тропе ждут награды (раз в сезон)
     if (Pass.claimable() > 0) out.push({ id: 'pass:' + Pass.season(), btn: 'К Тропе',
       text: 'Ты уже прошёл первые ступени <b>Сезонной тропы</b> — награды ждут! Очки Тропы дают за обычную игру: поимки, родники, прогулки и бои.',
