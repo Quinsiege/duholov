@@ -207,7 +207,40 @@ const SPECIES = [
   { id: 'kurernik', name: 'Курьерник', el: 'wind', rar: 2, stage: 1, fam: 'kurernik', base: [158, 150, 156],
     desc: 'Дух доставки. Всегда «будет через 5 минут». Путает подъезды, зато никогда не опаздывает на встречу с Ловчим.',
     look: { shape: 'round', c1: '#fdba74', c2: '#c2410c', c3: '#fef3c7', eyes: 'round', mouth: 'smile', back: ['backpack'], feats: ['hat', 'cheeks'] } },
+
+  // ---------- v3.8: духи родных земель — у каждого края России свой ----------
+  { id: 'bereginya', name: 'Берегиня', el: 'water', rar: 4, stage: 1, fam: 'bereginya', base: [206, 214, 208], land: 'center',
+    desc: 'Хранительница речных берегов и бродов. Живёт в Центре и на Северо-Западе — от Калининграда до Нижнего Новгорода.',
+    look: { shape: 'robe', c1: '#bae6fd', c2: '#0369a1', c3: '#fef08a', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'halo'], feats: ['crown'] } },
+  { id: 'spoloh', name: 'Сполох', el: 'wind', rar: 4, stage: 1, fam: 'spoloh', base: [222, 188, 196], land: 'north',
+    desc: 'Дух северного сияния. Пляшет над тундрой и Белым морем, а в полярную ночь спускается к самым крышам. Только на Севере.',
+    look: { shape: 'wisp', c1: '#86efac', c2: '#0f766e', c3: '#c084fc', eyes: 'glow', mouth: 'none', back: ['aura', 'ripples'], feats: ['swirl'] } },
+  { id: 'zhigul', name: 'Жигуль', el: 'forest', rar: 4, stage: 1, fam: 'zhigul', base: [214, 216, 200], land: 'volga',
+    desc: 'Лесной великан Жигулёвских гор. Сторожит излучину Волги и гудит, как пароход. Водится в Поволжье.',
+    look: { shape: 'tall', c1: '#a3e635', c2: '#365314', c3: '#b45309', eyes: 'round', mouth: 'teeth', back: ['antlers', 'sprout'], feats: ['leaves'] } },
+  { id: 'tur', name: 'Горный Тур', el: 'wind', rar: 4, stage: 1, fam: 'tur', base: [226, 200, 186], land: 'caucasus',
+    desc: 'Дух горных круч, скачет по скалам выше облаков. Встречается на Юге России и на Кавказе.',
+    look: { shape: 'round', c1: '#e7e5e4', c2: '#57534e', c3: '#a8a29e', eyes: 'angry', mouth: 'none', back: ['horns', 'mane'], feats: ['snout', 'beard'] } },
+  { id: 'mednaya', name: 'Хозяйка Медной горы', el: 'current', rar: 4, stage: 1, fam: 'mednaya', base: [218, 204, 198], land: 'ural',
+    desc: 'Владычица уральских недр: хранит малахит, медь и самоцветы. Показывается только на Урале.',
+    look: { shape: 'robe', c1: '#34d399', c2: '#065f46', c3: '#f59e0b', eye: '#fde047', eyes: 'glow', mouth: 'smile', back: ['hair', 'aura'], feats: ['crown', 'runes'] } },
+  { id: 'babr', name: 'Бабр', el: 'fire', rar: 4, stage: 1, fam: 'babr', base: [232, 180, 196], land: 'siberia',
+    desc: 'Огненный зверь сибирской тайги — тот самый, что держит соболя на гербе Иркутска. Водится в Сибири.',
+    look: { shape: 'round', c1: '#fb923c', c2: '#7c2d12', c3: '#1c1917', eyes: 'angry', mouth: 'teeth', back: ['cattail', 'ears'], feats: ['whiskers'] } },
+  { id: 'kutkh', name: 'Кутх', el: 'shadow', rar: 4, stage: 1, fam: 'kutkh', base: [220, 190, 200], land: 'fareast',
+    desc: 'Ворон-творец из сказаний Камчатки: говорят, это он вытащил землю из моря. Прилетает только на Дальний Восток.',
+    look: { shape: 'bird', c1: '#64748b', c2: '#0f172a', c3: '#f59e0b', eye: '#fbbf24', eyes: 'glow', mouth: 'beak', back: ['wings', 'tail'], feats: ['crest'] } },
 ];
+// Земли России для духов родных земель (грубо, по широте и долготе)
+const LANDS = {
+  center:   { name: 'Центр и Северо-Запад', where: 'западнее 44° в. д., от Кавказа до 64° с. ш.' },
+  north:    { name: 'Север',                where: 'севернее 64° с. ш.' },
+  volga:    { name: 'Поволжье',             where: '44–55° в. д.' },
+  caucasus: { name: 'Юг и Кавказ',          where: 'южнее 46,5° с. ш., 36–55° в. д.' },
+  ural:     { name: 'Урал',                 where: '55–66° в. д.' },
+  siberia:  { name: 'Сибирь',               where: '66–105° в. д.' },
+  fareast:  { name: 'Дальний Восток',       where: 'восточнее 105° в. д.' },
+};
 const REGIONS = {
   west:   { name: 'Запад',  range: 'до 40° в. д.' },
   center: { name: 'Центр',  range: '40–90° в. д.' },
@@ -323,6 +356,7 @@ const MEDALS = [
   { id: 'shiny',   name: 'Искатель сияния', desc: 'Поймай сияющих духов',       stat: 'shiny',       tiers: [1, 10, 50] },
   { id: 'streak',  name: 'Верность',      desc: 'Дней подряд в игре',           stat: 'streakBest',  tiers: [7, 30, 100] },
   { id: 'order',   name: 'Соратник',      desc: 'Очков в общем деле Ордена',    stat: 'orderPts',    tiers: [100, 1000, 10000] },
+  { id: 'lands',   name: 'Землепроходец', desc: 'Поймай духов родных земель',   stat: 'lands',       tiers: [1, 3, 7] },
   { id: 'el_fire',    name: 'Истопник',   desc: 'Поймай духов Огня',            stat: 'el:fire',     tiers: [10, 50, 200] },
   { id: 'el_water',   name: 'Лодочник',   desc: 'Поймай духов Воды',            stat: 'el:water',    tiers: [10, 50, 200] },
   { id: 'el_forest',  name: 'Лесничий',   desc: 'Поймай духов Леса',            stat: 'el:forest',   tiers: [10, 50, 200] },
