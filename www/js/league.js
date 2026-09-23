@@ -111,7 +111,7 @@ const League = {
   // Вызывается из Duel.finish: итог боя засчитывает сервер
   async afterDuel(win, st) {
     let r = null;
-    try { r = await Game.act('leagueEnd', { win: !!win }); } catch (e) { UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('leagueEnd', { win: !!win, board: Cfg.s.cloud !== false }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (Duel.st !== st) return;
     if (!r) {
       const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Бой не засчитан</div>

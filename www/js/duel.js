@@ -454,7 +454,7 @@ const Duel = {
     const st = this.st; if (!st) return;
     // сдался или вышел до конца боя — это поражение
     if (!st.over) {
-      Game.act(this.endType(st.e.kind), { win: false }).catch(() => {});
+      Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false }).catch(() => {});
       if (st.e.kind === 'league') League.carry = null;
     }
     st.over = true;

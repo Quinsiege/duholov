@@ -169,7 +169,7 @@ const UI = {
     U.$('#hudName').textContent = d.name;
     U.$('#hudXp').style.width = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%';
     if (Tut.step()) Tut.show();
-    const badge = S.questsClaimable() + S.readyCocoons().length;
+    const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length; // задания, коконы и подарки от друзей
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); b.textContent = badge;
     const inc = U.$('#incenseChip');
     if (S.incenseActive()) { inc.classList.remove('hidden'); inc.innerHTML = `${Art.item('incense')}<span>${U.fmtTime(d.incenseUntil - Date.now())}</span>`; }
@@ -200,7 +200,7 @@ const UI = {
       ['bag', 'Сумка', () => this.bag()],
       ['egg', 'Коконы', () => this.cocoons(), eggs ? '!' : ''],
       ['scroll', 'Задания', () => this.quests(), q ? '!' : ''],
-      ['swap', 'Друзья', () => Friends.screen(), S.d.items.gift ? S.d.items.gift : ''],
+      ['swap', 'Друзья', () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
       ['pin', 'Места', () => Propose.screen(), Propose.badge()],
       ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.st().tickets || ''],
       ['gear', 'Настройки', () => this.settings()],
@@ -796,7 +796,7 @@ const UI = {
       <div class="list install-list">
         <button class="row link inst-pwa hidden"><div class="row-main"><b>Установить на главный экран</b><small>Духолов откроется на весь экран, как обычное приложение</small></div></button>
         <a class="row link inst-apk hidden" href="duholov.apk" download><div class="row-main"><b>Скачать APK для Android</b><small>Приложение-обёртка: разреши установку из этого источника</small></div></a>
-        ${Cloud.configured() ? row('cloud', 'Онлайн-таблица Лиги', 'Отправлять имя, облик, уровень и звёзды Лиги на сервер игры.') : ''}
+        ${Cloud.configured() ? row('cloud', 'Общая таблица Лиги', 'Показывать твоё имя, облик, уровень и звёзды в таблице сезона.') : ''}
       </div>
       <div class="list">
         <div class="row"><div class="row-main"><b>Прогресс на сервере</b><small class="sync-state"></small></div></div>

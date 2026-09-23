@@ -131,7 +131,8 @@ const GameCore = {
     this.need(t >= 5, 'Бой не засчитан: слишком быстрая победа');
     if (t >= Duel.TIME - 5) return;
     this.need(Rules.duelMaxDamage(this.team(b.team), foe, t) >= Rules.duelFoeHp(foe), 'Бой не засчитан: слишком быстрая победа');
-  },  friendPoint(f) {
+  },
+  friendPoint(f) {
     const lv = L => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (L >= x.pts) r = i; }); return r; };
     const before = lv(f.pts);
     f.pts++;
@@ -549,7 +550,7 @@ const GameCore = {
       if (last) {
         J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
         L.run = null;
-        ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
+        if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
       } else {
         run.k++;
         ctx.srv.battle = { type: 'league', k: run.k, start: ctx.now, team: run.team };

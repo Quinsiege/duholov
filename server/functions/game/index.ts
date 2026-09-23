@@ -1612,7 +1612,7 @@ const League = {
   // Вызывается из Duel.finish: итог боя засчитывает сервер
   async afterDuel(win, st) {
     let r = null;
-    try { r = await Game.act('leagueEnd', { win: !!win }); } catch (e) { UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('leagueEnd', { win: !!win, board: Cfg.s.cloud !== false }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (Duel.st !== st) return;
     if (!r) {
       const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Бой не засчитан</div>
@@ -2466,7 +2466,7 @@ const Duel = {
     const st = this.st; if (!st) return;
     // сдался или вышел до конца боя — это поражение
     if (!st.over) {
-      Game.act(this.endType(st.e.kind), { win: false }).catch(() => {});
+      Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false }).catch(() => {});
       if (st.e.kind === 'league') League.carry = null;
     }
     st.over = true;
@@ -2723,7 +2723,8 @@ const GameCore = {
     this.need(t >= 5, 'Бой не засчитан: слишком быстрая победа');
     if (t >= Duel.TIME - 5) return;
     this.need(Rules.duelMaxDamage(this.team(b.team), foe, t) >= Rules.duelFoeHp(foe), 'Бой не засчитан: слишком быстрая победа');
-  },  friendPoint(f) {
+  },
+  friendPoint(f) {
     const lv = L => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (L >= x.pts) r = i; }); return r; };
     const before = lv(f.pts);
     f.pts++;
@@ -3141,7 +3142,7 @@ const GameCore = {
       if (last) {
         J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
         L.run = null;
-        ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
+        if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
       } else {
         run.k++;
         ctx.srv.battle = { type: 'league', k: run.k, start: ctx.now, team: run.team };
