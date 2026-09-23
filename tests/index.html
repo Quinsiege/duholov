@@ -380,6 +380,8 @@
     },
     holdDefeat: async (poi, ver) => { const h = DB.holds[poi]; if (!h || h.ver !== ver) return false; h.holders = []; h.ver++; return true; },
     myHolds: async pid => Object.values(DB.holds).filter(h => h.holders.some(x => x.pid === pid)).length,
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
@@ -738,6 +740,15 @@
     const t = await must(B, 'tribute'); eq(t.n, 1); ok(t.got.some(x => x.k === 'sparks'));
     ok((await must(B, 'tribute')).already, 'второй раз за день — нет');
     eq((await must(A, 'tribute')).n, 0, 'защитника Сокольника прогнали');
+    // защитник Сокольника вернулся домой — с искрами за время на посту
+    A.data.guards[0].t -= 3 * 3600000; // будто стоял 3 часа
+    const sparks0 = A.data.sparks;
+    const g = await must(A, 'myGuards');
+    eq(g.list.length, 0); eq(g.back.length, 1); eq(A.data.sparks - sparks0, Rules.guardPay(3));
+    eq(A.data.guards.length, 0); ok(A.data.journal.some(e => e.type === 'guardBack'), 'в дневнике');
+    eq((await must(A, 'myGuards')).back.length, 0, 'второй раз не возвращается');
+    const gb = await must(B, 'myGuards'); eq(gb.list.length, 1); eq(gb.list[0].sid, B.data.spirits[0].sid);
+    const cs = await must(B, 'clanStats'); eq(cs.all.medved, 1); eq(cs.all.sokol, 0);
   });
 
   /* ---------- вывод ---------- */

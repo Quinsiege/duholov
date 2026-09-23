@@ -106,6 +106,29 @@ function makeEnv(uid) {
       if (error) throw new Error(error.message);
       return count || 0;
     },
+    // Капища, где стоят защитники игрока: название — из таблицы мест
+    async myHoldsList(pid) {
+      const rows = must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(HOLD_MY_MAX + 5)) || [];
+      const ids = rows.map(r => r.poi_id);
+      const names = ids.length ? must(await db.from('pois').select('id, name').in('id', ids)) || [] : [];
+      return rows.map(r => {
+        const h = (r.holders || []).find(x => x.pid === pid) || {};
+        const p = names.find(x => x.id === r.poi_id);
+        return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
+      });
+    },
+    // Сколько Капищ держит каждая дружина (во всей стране или в прямоугольнике [s, w, n, e])
+    async clanCounts(box) {
+      const out = {};
+      for (const k of Object.keys(CLANS)) {
+        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).eq('clan', k).neq('holders', '[]');
+        if (box) q = q.gte('lat', box[0]).lte('lat', box[2]).gte('lng', box[1]).lte('lng', box[3]);
+        const { count, error } = await q;
+        if (error) throw new Error(error.message);
+        out[k] = count || 0;
+      }
+      return out;
+    },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));

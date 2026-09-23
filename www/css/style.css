@@ -308,6 +308,17 @@ body.night .range-circle { fill-opacity: .1; }
 .mk-flag { position: absolute; right: 0; top: 0; width: 16px; height: 21px; background: var(--cc); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%); border-radius: 2px; box-shadow: 0 1px 3px #000; z-index: 1; }
 .prof-clan { margin: 6px 0 4px; } .prof-clan small { display: block; color: var(--muted); margin-top: 4px; }
 .clan-btn { margin: 8px auto 4px; display: block; }
+/* экран дружины (3.6) */
+.clan-head { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 18px; background: color-mix(in srgb, var(--cc) 16%, rgba(255, 255, 255, .04)); border: 1.5px solid color-mix(in srgb, var(--cc) 70%, transparent); margin-bottom: 14px; }
+.clan-head i { width: 30px; height: 30px; margin: 6px; border-radius: 7px; background: var(--cc); transform: rotate(45deg); box-shadow: 0 0 16px var(--cc); flex: none; }
+.clan-head b { display: block; font-size: 18px; } .clan-head small { color: var(--muted); }
+.clan-stat { padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); margin-bottom: 10px; }
+.clan-row { display: grid; grid-template-columns: 70px 1fr 48px; align-items: center; gap: 10px; padding: 4px 0; font-size: 14px; }
+.clan-row b { text-align: right; } .clan-row.mine span { font-weight: 700; color: var(--cc); }
+.clan-bar { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.clan-bar i { display: block; height: 100%; min-width: 2px; background: var(--cc); border-radius: 5px; }
+.guard-row .row-ico .art { width: 44px; height: 44px; }
+.prof-clan .clan-open { margin-left: 6px; }
 
 /* поручения родников и профиль друга (3.2) */
 .q-h { font-size: 16px; margin: 22px 0 10px; display: flex; align-items: baseline; gap: 8px; } .q-h small { color: var(--muted); font-weight: 500; font-size: 13px; }
