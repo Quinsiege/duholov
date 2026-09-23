@@ -66,7 +66,13 @@ function makeEnv(uid) {
     },
     async linksTo(pid) { return must(await db.from('friend_links').select('from_pid, from_name, from_level, created_at').eq('to_pid', pid).limit(200)) || []; },
     async giftsTo(pid) {
-      return must(await db.from('gifts').select('id, from_pid, from_name, created_at').eq('to_pid', pid).is('opened_at', null).order('created_at').limit(50)) || [];
+      return must(await db.from('gifts').select('id, from_pid, from_name, created_at, invite:contents->invite').eq('to_pid', pid).is('opened_at', null).order('created_at').limit(50)) || [];
+    },
+    // Сколько подарков «за приглашение» уже получил игрок
+    async invitesTo(pid) {
+      const { count, error } = await db.from('gifts').select('id', { count: 'exact', head: true }).eq('to_pid', pid).eq('contents->>invite', '1');
+      if (error) throw new Error(error.message);
+      return count || 0;
     },
     async giftCreate(from, to, name, contents) { must(await db.from('gifts').insert({ from_pid: from, to_pid: to, from_name: String(name).slice(0, 20), contents })); },
     async gift(id) { return UUID.test(id) ? must(await db.from('gifts').select('*').eq('id', id).maybeSingle()) : null; },

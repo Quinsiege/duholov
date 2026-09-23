@@ -987,3 +987,6 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 @keyframes net-busy { from { background-position: -50% 0; } to { background-position: 150% 0; } }
 .gift-inbox { display: flex; flex-direction: column; gap: 6px; border-color: rgba(251, 191, 36, .45); }
 .gift-inbox .row { padding: 6px 0; }
+/* приглашение друга (3.11) */
+.onb-invite { margin: 0 auto 12px; max-width: 320px; padding: 10px 14px; border-radius: 14px; background: rgba(74, 222, 128, .12); border: 1px solid rgba(74, 222, 128, .5); color: #bbf7d0; font-size: 14px; text-align: center; }
+.my-invite { margin-top: 10px; }

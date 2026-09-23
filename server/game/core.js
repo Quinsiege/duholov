@@ -186,6 +186,22 @@ const GameCore = {
     return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
       purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? String(x.nick).slice(0, 16) : null };
   },
+  // Приглашение: новичок по ссылке друга сразу в друзьях у него, оба получают подарки.
+  // Пригласивший — подарком в «Друзья» (не больше INVITE_MAX за все приглашения, чтобы не накручивали).
+  INVITE_MAX: 10,
+  INVITE_GIFT: { charm2: 5, charm3: 2, incense: 1, invite: 1 },
+  INVITE_WELCOME: { charm: 20, honey: 5, sparks: 1000 },
+  async invite(ctx, ref) {
+    if (!this.PID.test(ref) || ref === S.d.pid) return null;
+    const who = await ctx.env.player(ref);
+    if (!who) return null;
+    S.d.friends.push({ id: ref, name: who.name, lvl: who.level, pts: 1, added: ctx.now, sent: '', recv: '', linked: true, invitedBy: true });
+    await ctx.env.link(S.d.pid, ref, S.d.name, S.d.level); // пригласивший увидит новичка в друзьях
+    S.giveRewards(this.INVITE_WELCOME);
+    J.add('friend', { name: who.name });
+    if ((await ctx.env.invitesTo(ref)) < this.INVITE_MAX) await ctx.env.giftCreate(S.d.pid, ref, S.d.name, this.INVITE_GIFT);
+    return who.name;
+  },
   // Совместный разлом: участник комнаты и то, что видит телефон (без кодов игроков)
   ROOM_ALPHA: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
   // Облик — только из известных вариантов (он попадает в картинку у других игроков)
@@ -230,7 +246,8 @@ const GameCore = {
       S.newGame(name, a.starter);
       await ctx.env.registerPid(S.d.pid);
       ctx.full = true;
-      return { ok: true };
+      const invitedBy = await this.invite(ctx, String(a.ref || ''));
+      return { ok: true, invitedBy };
     },
     async reset(a, ctx) {
       await ctx.env.deleteSave();
@@ -952,7 +969,7 @@ const GameCore = {
         J.add('friend', { name: r.from_name });
         added.push(String(r.from_name).slice(0, 20));
       });
-      const inbox = (await ctx.env.giftsTo(S.d.pid)).map(g => ({ id: g.id, from: g.from_pid, name: g.from_name, t: g.created_at }));
+      const inbox = (await ctx.env.giftsTo(S.d.pid)).map(g => ({ id: g.id, from: g.from_pid, name: g.from_name, t: g.created_at, invite: !!g.invite }));
       return { added, inbox };
     },
     async giftSend(a, ctx) {

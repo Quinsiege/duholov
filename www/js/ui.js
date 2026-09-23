@@ -1078,6 +1078,7 @@ const UI = {
       if (n === 0) html = `
         <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
         <div class="onb-spirits">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
+        ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
         <button class="btn primary wide next">Начать</button>${Game.on() ? '<button class="btn ghost wide have">У меня уже есть прогресс</button>' : ''}`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
@@ -1103,8 +1104,9 @@ const UI = {
         });
         nx.onclick = async () => {
           nx.disabled = true;
-          const r = await Game.try('newGame', { name, starter });
+          const r = await Game.try('newGame', { name, starter, ref: Invite.ref() });
           if (!r) { nx.disabled = false; return; }
+          Invite.done(r.invitedBy);
           Sfx.play('catch'); step(4);
         };
       } else if (n === 4) {
