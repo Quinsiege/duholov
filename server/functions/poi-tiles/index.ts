@@ -123,7 +123,8 @@ async function overpass(q: string, deadline: number) {
         signal: AbortSignal.timeout(Math.min(25000, left)),
       });
       if (r.ok) return (await r.json()).elements as El[];
-      errs.push(`${new URL(url).host}: ${r.status}`);
+      const why = (await r.text().catch(() => '')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+      errs.push(`${new URL(url).host}: ${r.status} ${why}`);
     } catch (e) { errs.push(`${new URL(url).host}: ${(e as Error).name}`); }
   }
   throw new Error('Overpass недоступен — ' + errs.join('; '));
