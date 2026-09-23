@@ -61,6 +61,11 @@ def title(cat, tags, named):
         return base
     if cat in ('monument', 'memorial') and not MARK.search(named):
         return f'{base} {named}'
+    # почты в OSM часто подписаны индексом, станции — только названием посёлка
+    if cat == 'post_office' and not re.search(r'почт', named, re.IGNORECASE):
+        return f'{base} {named}'
+    if cat in ('station', 'halt') and not re.search(r'станц|платф|вокзал|остановоч|разъезд|\bо\.\s?п\.', named, re.IGNORECASE):
+        return f'{base} {named}'
     return named
 
 
