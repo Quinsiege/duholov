@@ -770,7 +770,8 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 .scan-box { position: relative; width: 100%; aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: #000; }
 .scan-box video { width: 100%; height: 100%; object-fit: cover; }
 .scan-box i { position: absolute; inset: 18%; border: 3px solid var(--gold2); border-radius: 14px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
-.det-actions .btn.ghost { flex-direction: row; gap: 6px; font-size: 14px; }
+.det-actions .btn.ghost { flex-direction: row; gap: 6px; font-size: 14px; padding: 10px 12px; white-space: nowrap; }
+.det-actions .btn.act-release { flex-direction: column; gap: 0; } .det-actions .act-release small { font-size: 11px; }
 .det-actions .btn.ghost .ico { width: 18px; height: 18px; }
 .menu-grid .tile { padding: 14px 6px 12px; }
 
@@ -871,7 +872,7 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 .fr-ava { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; flex: none; }
 .fr-row .pbar { height: 5px; margin: 4px 0 0; }
 .fr-row { cursor: pointer; }
-.prof-btns { display: flex; justify-content: center; gap: 8px; margin: -2px 0 6px; }
+.prof-btns { display: flex; justify-content: center; align-items: center; gap: 8px; margin: -2px 0 6px; } .prof-btns .btn { margin: 0; }
 
 .j-filters { margin-bottom: 8px; }
 .j-day { margin: 14px 0 6px; font-size: 12px; font-weight: 700; color: var(--violet); }
@@ -999,7 +1000,7 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .shop-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); margin-bottom: 8px; }
 .shop-row.off { opacity: .55; }
 .shop-row .row-main { flex: 1; min-width: 0; } .shop-row small { color: var(--muted); font-size: 12px; }
-.shop-row .buy { white-space: nowrap; display: inline-flex; flex-direction: row; align-items: center; gap: 4px; }
+.shop-row .buy { white-space: nowrap; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 4px; min-width: 88px; padding: 8px 12px; flex: none; }
 .shop-ico { width: 44px; height: 44px; flex: none; display: grid; place-items: center; }
 .shop-ico .art { width: 44px; height: 44px; } .shop-ico.bag .ico { width: 30px; height: 30px; color: var(--gold2); }
 .shop-deal { position: relative; padding: 12px 10px 2px; border-radius: 18px; background: linear-gradient(135deg, rgba(251, 191, 36, .16), rgba(167, 139, 250, .1)); border: 1.5px solid rgba(251, 191, 36, .6); margin-bottom: 8px; }
@@ -1065,7 +1066,7 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .chips.rift-tiers button.on { border-color: #a78bfa; background: rgba(167, 139, 250, .22); } .chips.rift-tiers button.on small { background: #a78bfa; color: #1e1b4b; }
 
 /* 3.15: Казна Ордена */
-.pay-packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 4px; }
+.pay-packs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 4px; } .pay-packs .pay-pack { flex: 0 0 calc((100% - 16px) / 3); }
 .pay-pack { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 6px 10px; border-radius: 16px; background: linear-gradient(180deg, rgba(251, 191, 36, .12), rgba(255, 255, 255, .04)); border: 1px solid rgba(251, 191, 36, .35); color: var(--text); }
 .pay-pack.hot { border-color: var(--gold); box-shadow: 0 0 14px rgba(251, 191, 36, .35); }
 .pay-pack b { font-size: 18px; font-weight: 900; } .pay-pack small { color: var(--muted); font-size: 11px; }
@@ -1085,3 +1086,15 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .offer-frame { flex: 1; width: 100%; border: 0; background: #140f2b; }
 .onb-offer { display: block; margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted); text-decoration: underline; }
 .warn-box { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(244, 63, 94, .12); border: 1px solid rgba(244, 63, 94, .45); font-size: 13px; text-align: left; }
+/* кнопки цен: за искры — золотая обводка (раньше выглядели неактивными); не хватает валюты — приглушены */
+.btn.spark-btn { background: rgba(251, 191, 36, .1); border-color: rgba(251, 191, 36, .5); color: var(--gold2); }
+.btn.poor { opacity: .5; filter: saturate(.6); }
+.ex-btns .btn:not(.primary) { background: rgba(251, 191, 36, .1); border-color: rgba(251, 191, 36, .5); color: var(--gold2); }
+.ex-btns .btn:disabled { opacity: .4; }
+.shop-cloak.poor { opacity: .55; }
+/* узкие телефоны (до 360 px): кнопки Лавки компактнее, чтобы подписи не сжимались в столбик */
+@media (max-width: 360px) {
+  .shop-row .buy { min-width: 76px; padding: 8px 10px; }
+  .ex-btns { gap: 4px; } .ex-btns .btn { padding: 6px 9px; min-height: 36px; }
+  .shop-ex { gap: 8px; padding: 10px; }
+}
