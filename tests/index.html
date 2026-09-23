@@ -308,6 +308,21 @@
     near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
     ok(!Cloud.configured() || typeof CLOUD_CONFIG.url === 'string', 'конфиг облака');
   });
+  test('Духи родных земель: у каждого края свой, в чужих краях не встречаются', () => {
+    const cities = [['Москва', 55.75, 37.62, 'center'], ['Калининград', 54.71, 20.51, 'center'], ['Мурманск', 68.97, 33.07, 'north'], ['Казань', 55.79, 49.12, 'volga'],
+      ['Сочи', 43.59, 39.72, 'caucasus'], ['Екатеринбург', 56.84, 60.61, 'ural'], ['Новосибирск', 55.03, 82.92, 'siberia'], ['Владивосток', 43.12, 131.89, 'fareast']];
+    cities.forEach(([n, lat, lng, land]) => eq(W.land(lat, lng), land, n));
+    const lands = SPECIES.filter(s => s.land);
+    eq(lands.length, Object.keys(LANDS).length, 'по духу на каждую землю');
+    ok(lands.every(s => LANDS[s.land] && s.rar === 4 && Art.spirit(s.id).startsWith('<svg')), 'данные и рисунки');
+    // местный дух доступен у себя и недоступен в чужом краю
+    cities.forEach(([n, lat, lng, land]) => lands.forEach(s => eq(W.local(s, lng, lat), s.land === land, `${s.name} в ${n}`)));
+    // и никогда не попадает в поединки, Лигу и поручения
+    ok(!W.grunt({ invId: 'x:1' }).team.some(x => SP[x.sid].land), 'не у прислужников');
+    const found = new Set();
+    for (let k = 0; k < 400; k++) found.add(W.pickSpecies(U.rng('land' + k), 'water', false, 49.12, 55.79));
+    ok(![...found].some(sid => SP[sid].land && SP[sid].land !== 'volga'), 'в Казани — только духи Поволжья');
+  });
   test('Обновления: сравнение версий', () => {
     eq(Updater.cmp('2.0.0', '2.0.0'), 0); eq(Updater.cmp('2.0.1', '2.0.0'), 1); eq(Updater.cmp('2.0.0', '2.1.0'), -1);
     eq(Updater.cmp('10.0.0', '9.9.9'), 1); eq(Updater.cmp('2.1', '2.0.9'), 1);
@@ -397,7 +412,7 @@
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
-    const res = await GameCore.run({ a: [{ type, args }], tz: 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: '3.0.0' }, { data: who.data, srv: who.srv }, envFor(who));
+    const res = await GameCore.run({ a: [{ type, args }], tz: 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: APP_VERSION }, { data: who.data, srv: who.srv }, envFor(who));
     if (res.ok) {
       who.data = res.data; who.srv = res.srv;
       if (res.data) DB.saves[who.uid] = res.data; else delete DB.saves[who.uid];

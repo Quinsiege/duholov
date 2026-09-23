@@ -40,7 +40,7 @@ const League = {
     const r = this.rank(L.stars), seed = L.run ? L.run.seed : 0;
     const rng = U.rng(`league:${L.season}:${L.stars}:${k}:${seed}`);
     const maxStage = r <= 2 ? 1 : r <= 5 ? 2 : 3, maxRar = r <= 2 ? 2 : r <= 5 ? 3 : 4;
-    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.season && s.rar <= maxRar && s.stage <= maxStage);
+    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && s.rar <= maxRar && s.stage <= maxStage);
     const top = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3);
     const avg = top.length ? top.reduce((a, x) => a + x.lvl, 0) / top.length : S.d.level;
     const lvl = U.clamp(Math.round(Math.min(avg, S.d.level + 2) + (r - 3) * 0.8 + k), 3, 40);

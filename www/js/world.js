@@ -38,10 +38,22 @@ const W = {
   },
 
   region(lng) { return lng < 40 ? 'west' : lng < 90 ? 'center' : 'east'; },
-  // региональные духи водятся только в своей части света
-  local(s, lng = MapView.pos ? MapView.pos.lng : 37) { return !s.region || s.region === this.region(lng); },
+  // Край России (для духов родных земель) — грубо, по широте и долготе
+  land(lat, lng) {
+    if (lat >= 64) return 'north';
+    if (lng >= 105) return 'fareast';
+    if (lng >= 66) return 'siberia';
+    if (lng >= 55) return 'ural';
+    if (lat < 46.5 && lng >= 36) return 'caucasus';
+    if (lng >= 44) return 'volga';
+    return 'center';
+  },
+  // региональные духи водятся только в своей части света, духи земель — только в своём краю
+  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
+    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng));
+  },
 
-  pickSpecies(r, biome, night, lng) {
+  pickSpecies(r, biome, night, lng, lat) {
     const fullMoon = night && Sky.moonEvent() === 'full';
     const el = U.weighted(ELEMENT_KEYS.map(e => {
       let w = (e === biome ? 3 : 1) * this.timeBonus(e);
@@ -52,7 +64,7 @@ const W = {
     }), r());
     const RW = { 1: 60, 2: 24, 3: 8, 4: 2 };
     const h = U.hour();
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng)).map(s => {
+    const pool = SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)).map(s => {
       let w = RW[s.rar] || 0;
       if (s.stage === 3) w *= 0.3;
       if (s.time === 'night') w *= night ? (fullMoon ? 4 : 1.5) : 0.35;
@@ -77,7 +89,7 @@ const W = {
       const pLat = la + (0.15 + r() * 0.7) * sz, pLng = ln + (0.15 + r() * 0.7) * lsz;
       const d = U.dist(lat, lng, pLat, pLng);
       if (d > radius) return;
-      const sid = this.pickSpecies(r, this.biome(pLat, pLng), night, pLng);
+      const sid = this.pickSpecies(r, this.biome(pLat, pLng), night, pLng, pLat);
       const boost = Sky.boosted(SP[sid].el);
       const maxL = Math.min(30, S.d.level + 2) + (boost ? 5 : 0);
       const lvl = Math.max(boost ? 6 : 1, Math.min(maxL, Math.round(1 + r() * maxL)));
@@ -113,7 +125,7 @@ const W = {
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
     if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
-    else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng) && Ev.seasonal(s) > 0);
+    else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
     else pool = SPECIES.filter(s => s.rar === 2);
     // в неделю стихии разломы чаще охраняют духи этой стихии
     const evPool = pool.filter(s => s.el === Ev.cur.el);
@@ -161,7 +173,7 @@ const W = {
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.season && s.rar <= 3);
+    const pool = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3);
     const top = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3);
     const avg = top.length ? top.reduce((a, x) => a + x.lvl, 0) / top.length : S.d.level;
     const lvl = U.clamp(Math.round(Math.min(avg, S.d.level + 2)) - 1, 3, 40);
@@ -184,7 +196,7 @@ const W = {
     // Ученик — только первые стадии, Мастер — до второй, Старейшина — любые, включая редких
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
-    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.season && rars.includes(s.rar) && s.stage <= maxStage);
+    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage);
     // ориентир — средний уровень трёх сильнейших духов игрока (но не выше уровня Ловчего +2)
     const top = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3);
     const avg = top.length ? top.reduce((a, x) => a + x.lvl, 0) / top.length : S.d.level;
