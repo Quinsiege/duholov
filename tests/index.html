@@ -932,6 +932,18 @@
     A.data.grivna = 77; A.data.zlat = 3;
     await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
   });
+  atest('Оферта: наборы и цены совпадают с Казной (Rules.PAY)', async () => {
+    const html = await fetch('../www/offer.html?t=' + Date.now()).then(r => r.text());
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const rows = [...doc.querySelectorAll('#packs tr')];
+    eq(rows.length, Rules.PAY.length, 'все наборы в оферте');
+    Rules.PAY.forEach(p => {
+      const tr = doc.querySelector(`#packs tr[data-pack="${p.id}"]`);
+      ok(tr, 'набор ' + p.id);
+      const [name, price] = [...tr.children].map(td => td.textContent.replace(/\s/g, ''));
+      eq(name, `${p.zlat}златников`); eq(price, `${p.rub}₽`);
+    });
+  });
   atest('Сервер: Казна — оплаченные наборы начисляются ровно один раз', async () => {
     const A = await newPlayer('vl', 55.50, 37.38, 'Меценат'), B = await newPlayer('vm', 55.50, 37.38, 'Сосед');
     A.data.zlat = 0;
