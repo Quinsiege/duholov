@@ -27,7 +27,14 @@ def main():
     if not s:
         fail('секрет пустой')
     if '://' not in s:
-        fail(f'нет адреса вида postgresql://… (длина значения {len(s)}). Скопируйте строку из Supabase → Connect → Session pooler')
+        # в секрете только пароль — адрес Session pooler и пользователя знаем сами
+        host, ref = os.environ.get('POOLER_HOST', ''), os.environ.get('PROJECT_REF', '')
+        if any(c.isspace() for c in s) or '=' in s or not host or not ref:
+            fail(f'нет адреса вида postgresql://… (длина значения {len(s)}). Скопируйте строку из Supabase → Connect → Session pooler')
+        pwd = s[1:-1] if s.startswith('[') and s.endswith(']') else s
+        print(f'Сервер: {host}, пользователь: postgres.{ref}, длина пароля: {len(pwd)}; в секрете только пароль — адрес подставлен автоматически', file=sys.stderr)
+        print(f'postgresql://postgres.{ref}:{up.quote(pwd, safe="")}@{host}:5432/postgres')
+        return
     scheme, rest = s.split('://', 1)
     if scheme not in ('postgresql', 'postgres'):
         fail(f'строка должна начинаться с postgresql://, а начинается с «{scheme[:12]}://»')
