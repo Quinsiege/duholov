@@ -1026,3 +1026,16 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .pass-cell.can { border-color: var(--gold); box-shadow: 0 0 12px rgba(251, 191, 36, .4); } .pass-cell.can small { color: var(--text); }
 .pass-cell.got { opacity: .5; } .pass-cell.got i { position: absolute; right: 6px; top: 4px; font-style: normal; color: #4ade80; font-weight: 800; }
 .pass-cell.lock { opacity: .45; filter: saturate(.5); }
+
+/* 3.13: Разломы вокруг */
+.rift-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin-bottom: 8px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); color: var(--text); text-align: left; }
+.rift-row.t2 { border-color: rgba(167, 139, 250, .45); } .rift-row.t3 { border-color: rgba(251, 191, 36, .6); background: rgba(251, 191, 36, .06); }
+.rift-row.done { opacity: .5; }
+.rift-row .row-main { flex: 1; min-width: 0; } .rift-row small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rift-row .stars { color: var(--gold2); font-size: 12px; }
+.rr-boss { width: 48px; height: 48px; flex: none; } .rr-boss .art { width: 48px; height: 48px; }
+.rr-d { flex: none; font-size: 13px; font-weight: 800; color: var(--teal); }
+.rift-go.far, .rift-shop { flex-direction: row; gap: 8px; }
+.rift-tiers { margin: 0 0 10px; } .rift-tiers .chip { color: var(--text); box-shadow: none; flex: none; flex-direction: row; white-space: nowrap; } .rift-tiers .chip small { color: var(--muted); }
+.rift-tiers .chip.on { background: rgba(167, 139, 250, .25); border-color: #a78bfa; }
+.rift-far { display: block; text-align: center; color: var(--muted); }

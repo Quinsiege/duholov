@@ -23,6 +23,7 @@ const UI = {
       trophy: s('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/>'),
       shop: s('<path d="M4 10h16v10H4z"/><path d="M3 10l2-6h14l2 6"/><path d="M9 20v-5h6v5"/><path d="M3 10c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3"/>'),
       trail: s('<path d="M5 21c0-4 3-5 6-7s5-4 3-8"/><path d="M14 6l-1-3 3 1"/><circle cx="6" cy="8" r="1.3" fill="currentColor"/><circle cx="18" cy="14" r="1.3" fill="currentColor"/><path d="M16 21h5"/>'),
+      rift: s('<circle cx="12" cy="12" r="9"/><path d="M10 4l3 5-3 3 4 3-2 5"/>'),
     };
   })(),
 
@@ -232,6 +233,7 @@ const UI = {
       ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.view().tickets || ''],
       ['shop', 'Лавка', () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
       ['trail', 'Тропа', () => Pass.screen(), Pass.claimable() || ''],
+      ['rift', 'Разломы', () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
       ['gear', 'Настройки', () => this.settings()],
     ];
     if (Tut.step() === 3) setTimeout(() => Tut.finish(), 400);

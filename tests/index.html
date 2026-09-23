@@ -555,6 +555,30 @@
     await refuse(A, 'raidStart', { rift }, /уже закрыл/);
     await refuse(A, 'encStart', { kind: 'raid' }, /закрылся/);
   });
+  atest('Сервер: дальний Разлом — по Дальнему пропуску до 5 км, пропуск дня', async () => {
+    const A = await newPlayer('vj', 55.52, 37.40, 'Дальний');
+    A.data.tut = 0;
+    const hour = Math.floor(Date.now() / 3600000);
+    const riftId = from => poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), from);
+    const rift = { id: riftId(94000), lat: A.lat + 0.02, lng: A.lng, name: 'Дальнее Капище' }; // ≈ 2,2 км
+    const tooFar = { id: riftId(95000), lat: A.lat + 0.06, lng: A.lng, name: 'Совсем далеко' }; // ≈ 6,7 км
+    await refuse(A, 'raidStart', { rift }, /далеко/);
+    A.data.items.farpass = 0;
+    await refuse(A, 'raidStart', { rift, far: true }, /Дальний пропуск/);
+    const dl = await must(A, 'daily');
+    ok(dl.got.some(x => x.k === 'farpass'), 'пропуск дня'); eq(A.data.items.farpass, 1);
+    await refuse(A, 'raidStart', { rift: tooFar, far: true }, /далеко/);
+    eq(A.data.items.farpass, 1, 'за отказ пропуск не списан');
+    const st = await must(A, 'raidStart', { rift, far: true });
+    ok(st.far && A.srv.battle.far, 'дальний бой'); eq(A.data.items.farpass, 0, 'пропуск списан');
+    A.srv.battle.start -= 85000;
+    await must(A, 'raidEnd', { win: true }); ok(A.data.rifts[st.rid], 'дальний разлом закрыт');
+    // пропусков уже три — в подарок не дают
+    A.data.items.farpass = Rules.FAR.KEEP; A.data.streak.day = asPlayer(A, () => U.today(Date.now() - 86400000));
+    const d2 = await must(A, 'daily'); ok(!d2.got.some(x => x.k === 'farpass'), 'запас полон'); eq(A.data.items.farpass, Rules.FAR.KEEP);
+    // в Лавке — за искры
+    A.data.sparks = 1000; await must(A, 'shopBuy', { id: 'farpass' }); eq(A.data.items.farpass, Rules.FAR.KEEP + 1);
+  });
   atest('Сервер: капище — с 3 уровня, раз в день, без мгновенных побед', async () => {
     const A = await newPlayer('ug', 55.71, 37.59, 'Зоря');
     const hour = Math.floor(Date.now() / 3600000);

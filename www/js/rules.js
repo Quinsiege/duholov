@@ -50,10 +50,14 @@ const Rules = {
   // Гривны — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
   GRIVNA: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
+  // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
+  FAR: { R: 5000, KEEP: 3 },
   // cur — валюта: sparks (искры) или grivna (гривны). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
     { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'grivna', bag: true },
-    { id: 'charm20',  name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
+    { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
+    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'grivna', price: 90,  give: { farpass: 3 } },
+    { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
     { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
     { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'grivna', price: 60,  give: { charm2: 10 }, lvl: 8 },

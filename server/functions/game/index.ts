@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.12.0';
+const APP_VERSION = '3.13.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -279,7 +279,8 @@ const ITEMS = {
   honey:   { name: 'Мёд',                desc: 'Духи обожают мёд. Успокаивает духа: шанс поимки ×1,5 на один бросок.' },
   water:   { name: 'Живая вода',         desc: 'Восстанавливает половину сил духа прямо во время битвы в разломе.' },
   incense: { name: 'Ладан',              desc: 'Дымок приманивает духов: 30 минут их вокруг вдвое больше.' },
-  gift:    { name: 'Подарок',            desc: 'Узелок для друга: обереги, мёд, иногда кокон. Отправляется в «Меню → Друзья», раз в день каждому.' },
+  farpass: { name: 'Дальний пропуск',    desc: 'Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.' },
+  gift:    { name: 'Подарок',           desc: 'Узелок для друга: обереги, мёд, иногда кокон. Отправляется в «Меню → Друзья», раз в день каждому.' },
 };
 const GIFT_LIMIT = 10;
 
@@ -1850,6 +1851,12 @@ const Raid = {
     const s = SP[r.boss], T = this.TIER[r.tier];
     let team = this.team();
     const counters = SPECIES.filter(x => ELEMENTS[x.el].beats.includes(s.el)).map(x => x.el).filter((v, i, a) => a.indexOf(v) === i);
+    // до Разлома дальше 100 м — бой по Дальнему пропуску (совместный бой — только рядом)
+    const d = MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, r.lat, r.lng) : 0;
+    const far = d > W.BATTLE_R, passes = S.d.items.farpass || 0;
+    const goBtn = !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>Сразиться</button>`
+      : passes ? `<button class="btn primary wide rift-go far" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} Дальний бой · пропусков: ${passes}</button>`
+      : `<button class="btn primary wide rift-shop">${Art.item('farpass')} Нужен Дальний пропуск — в Лавку</button>`;
     const html = `
       <div class="rift-view t${r.tier}">
         <div class="rift-portal">${Art.riftIcon(r.tier)}</div>
@@ -1863,24 +1870,63 @@ const Raid = {
         ${r.done ? '<div class="rift-done">Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.</div>' : `
         <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
         <div class="rift-team">${UI.teamHtml(team)}</div>
-        <button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
-        <button class="btn ghost wide rift-coop">Позвать друзей — совместный бой</button>`}
+        ${goBtn}
+        ${far ? `<div class="rift-tip rift-far">До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.</div>`
+          : '<button class="btn ghost wide rift-coop">Позвать друзей — совместный бой</button>'}`}
       </div>`;
     const scr = UI.screen('Разлом', html, 'rift-screen');
     const go = scr.querySelector('.rift-go');
-    if (go) go.onclick = async () => { if (await this.battle(r, this.team())) UI.closeScreen(scr); };
+    if (go) go.onclick = async () => { if (await this.battle(r, this.team(), null, far)) UI.closeScreen(scr); };
+    const shop = scr.querySelector('.rift-shop');
+    if (shop) shop.onclick = () => { UI.closeScreen(scr); Shop.screen(); };
     const cb = scr.querySelector('.rift-coop');
     if (cb) cb.onclick = () => { UI.closeScreen(scr); Coop.hostRift(r); };
     const edit = scr.querySelector('.team-edit');
     if (edit) edit.onclick = () => UI.pickTeam(() => { team = this.team(); scr.querySelector('.rift-team').innerHTML = UI.teamHtml(team); });
   },
 
+  // Разломы вокруг: все открытые в этот час Разломы до Rules.FAR.R от игрока
+  async list() {
+    Sfx.init(); Sfx.play('tap');
+    const scr = UI.screen('Разломы вокруг', '<div class="rift-list"><div class="q-note">Ищу Разломы у Капищ вокруг…</div></div>', 'rifts-screen');
+    const box = scr.querySelector('.rift-list'), pos = MapView.pos;
+    if (!pos) { box.innerHTML = '<div class="q-note">Жду, когда найдётся твоё место на карте…</div>'; return; }
+    const hour = Math.floor(U.now() / 3600000);
+    const shrines = await Poi.shrinesFar(pos.lat, pos.lng, Rules.FAR.R);
+    const rifts = shrines.map(p => W.riftFor(p, p.d, hour)).filter(Boolean).sort((a, b) => (a.done - b.done) || (a.d - b.d));
+    let tier = 0; // 0 — все, иначе только разломы этой силы
+    const render = () => {
+      const passes = S.d.items.farpass || 0;
+      const shown = rifts.map((r, i) => ({ r, i })).filter(x => !tier || x.r.tier === tier), more = Math.max(0, shown.length - 40);
+      box.innerHTML = `<div class="shop-wallet"><span class="grivna">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через ${U.fmtTime(Math.max(0, (hour + 1) * 3600000 - U.now()))}</span></div>
+        <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : 'Все'} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
+        ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
+          <div class="rr-boss">${Art.spirit(r.boss)}</div>
+          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || 'Капище')}</small></div>
+          <div class="rr-d">${r.done ? '✓ закрыт' : r.d <= W.BATTLE_R ? 'рядом' : U.fmtDist(r.d)}</div></button>`).join('')
+          : '<div class="q-note">Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.</div>'}
+        ${more ? `<div class="q-note">…и ещё ${more} дальше</div>` : ''}
+        <div class="q-note">Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.</div>`;
+    };
+    box.addEventListener('click', e => {
+      const c = e.target.closest('.chip'); if (c) { tier = +c.dataset.t; render(); return; }
+      const b = e.target.closest('.rift-row'); if (b) this.open(rifts[+b.dataset.i]);
+    });
+    render();
+  },
+  // Разломов вокруг (незакрытых) — для значка в меню; считаем по уже загруженному списку
+  openCount() {
+    if (!Poi.far || !MapView.pos) return 0;
+    const hour = Math.floor(U.now() / 3600000);
+    return Poi.far.items.filter(p => U.dist(MapView.pos.lat, MapView.pos.lng, p.lat, p.lng) <= Rules.FAR.R).map(p => W.riftFor(p, 0, hour)).filter(r => r && !r.done).length;
+  },
+
   // Сервер проверяет, что разлом открыт здесь и сейчас, и запоминает начало боя.
   // coop: { host, hpMul, allies, code } — совместный бой (см. coop.js), союзников сервер считает по комнате. Возвращает true, если бой начался.
-  async battle(r, team, coop) {
+  async battle(r, team, coop, far) {
     if (this.st || this._starting) return false;
     this._starting = true;
-    const ok = await Game.try('raidStart', { rift: { id: r.poi, lat: r.lat, lng: r.lng, name: r.place }, coop: coop ? { code: coop.code } : null });
+    const ok = await Game.try('raidStart', { rift: { id: r.poi, lat: r.lat, lng: r.lng, name: r.place }, coop: coop ? { code: coop.code } : null, far: !!far });
     this._starting = false;
     if (!ok) return false;
     this.start(r, team, coop);
@@ -2793,10 +2839,14 @@ const Rules = {
   // Гривны — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
   GRIVNA: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
+  // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
+  FAR: { R: 5000, KEEP: 3 },
   // cur — валюта: sparks (искры) или grivna (гривны). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
     { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'grivna', bag: true },
-    { id: 'charm20',  name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
+    { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
+    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'grivna', price: 90,  give: { farpass: 3 } },
+    { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
     { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
     { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'grivna', price: 60,  give: { charm2: 10 }, lvl: 8 },
@@ -3229,6 +3279,8 @@ const GameCore = {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
         got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
       }
+      // Дальний пропуск дня — чтобы Разломы были доступны и тем, кому до Капища далеко
+      if ((S.d.items.farpass || 0) < Rules.FAR.KEEP) got.push(...S.giveRewards({ farpass: 1 }));
       return { n: st.n, got };
     },
 
@@ -3549,12 +3601,18 @@ const GameCore = {
       const r = W.riftFor(p, 0, hour) || (ctx.now % 3600000 < 90000 ? W.riftFor(p, 0, hour - 1) : null);
       this.need(r, 'Разлом уже закрылся');
       this.need(!S.d.rifts[r.id], 'Этот разлом ты уже закрыл');
-      if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
+      // дальний бой: вместо того чтобы подойти — грамота Ордена (до Rules.FAR.R от игрока)
+      const far = !coop && !!a.far;
+      if (far) {
+        this.near(ctx, p.lat, p.lng, Rules.FAR.R);
+        this.need((S.d.items.farpass || 0) > 0, 'Нужен Дальний пропуск — его можно купить в Лавке');
+      } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
       this.limit(ctx, 'raid', 30, 3600000);
-      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0 };
-      return { rid: r.id, tier: r.tier, boss: r.boss };
+      if (far) S.d.items.farpass--;
+      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0, far };
+      return { rid: r.id, tier: r.tier, boss: r.boss, far };
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {
