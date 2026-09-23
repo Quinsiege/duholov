@@ -51,7 +51,7 @@ const Game = {
     return p;
   },
   async _act(type, args) {
-    if (DEV && this._snap && S.d && JSON.stringify(S.d) !== this._snap) console.error('Прогресс изменён на телефоне в обход сервера!');
+    if (DEV && this._snap && S.d && JSON.stringify(S.d) !== this._snap) console.error('Прогресс изменён на телефоне в обход сервера:', Diff.make(JSON.parse(this._snap), S.d).map(o => o.p.join('.')).join(', '));
     const res = await this.call([{ type, args }]);
     if (!res || !res.ok) {
       if (res && res.moved) this.onMoved();

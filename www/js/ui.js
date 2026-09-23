@@ -202,7 +202,7 @@ const UI = {
       ['scroll', 'Задания', () => this.quests(), q ? '!' : ''],
       ['swap', 'Друзья', () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
       ['pin', 'Места', () => Propose.screen(), Propose.badge()],
-      ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.st().tickets || ''],
+      ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.view().tickets || ''],
       ['gear', 'Настройки', () => this.settings()],
     ];
     if (Tut.step() === 3) setTimeout(() => Tut.finish(), 400);
@@ -750,7 +750,7 @@ const UI = {
         ${sw('Глаза', LOOK.eyes, x => `<button class="sw ${x.lvl > lvl ? 'locked' : ''}" data-k="eyes" data-v="${x.c}" data-l="${x.lvl}" title="${x.name}" style="--sw:${x.c}"></button>`)}
         ${sw('Эмблема', LOOK.emblem, x => {
           // особые эмблемы: за ранг Лиги и за вторую книгу Летописи
-          const lk = x.league && League.st().best < x.league ? 'league' : x.story && S.d.story.ch < x.story ? 'story' : x.lvl;
+          const lk = x.league && League.view().best < x.league ? 'league' : x.story && S.d.story.ch < x.story ? 'story' : x.lvl;
           const locked = x.lvl > lvl || typeof lk === 'string';
           return `<button class="sw em ${locked ? 'locked' : ''}" data-k="emblem" data-v="${x.id}" data-l="${lk}" title="${x.name}">${Art.avatar({ cloak: '#241a45', eyes: '#241a45', emblem: x.id }).replace('viewBox="0 0 100 100"', 'viewBox="36 70 28 28"')}</button>`;
         })}
