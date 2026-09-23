@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.2.0';
+const APP_VERSION = '3.3.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1483,7 +1483,7 @@ const S = {
 const J = {
   MAX: 250,
   FILTERS: [['all', 'Всё'], ['catch', 'Поимки'], ['battle', 'Битвы'], ['other', 'Прочее']],
-  GROUP: { catch: 'catch', flee: 'catch', hatch: 'catch', raid: 'battle', duel: 'battle', invasion: 'battle', league: 'battle' },
+  GROUP: { catch: 'catch', flee: 'catch', hatch: 'catch', raid: 'battle', duel: 'battle', invasion: 'battle', league: 'battle', spar: 'battle' },
   filter: 'all',
 
   add(type, data = {}) {
@@ -1514,6 +1514,7 @@ const J = {
       case 'story': return { ico: glyph('✎'), title: `Глава Летописи: «${e.title}»`, sub: 'Завершена' };
       case 'trade': return { ico: icon(e.sid), title: e.dir === 'out' ? `${sp(e.sid)} упакован для друга` : `${sp(e.sid)} получен от ${e.who || 'друга'}`, sub: 'Обмен' };
       case 'friend': return { ico: glyph('♥', 'pink'), title: `Новый друг: ${e.name}`, sub: '' };
+      case 'spar': return { ico: glyph('⚔'), title: `Победа в поединке с другом`, sub: e.name || '' };
       case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
     }
@@ -2128,6 +2129,38 @@ const Duel = {
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
   },
 
+  // Поединок с другом: его сильнейшие духи под управлением игры (команду присылает сервер)
+  openSpar(f, top) {
+    let team = S.team();
+    const today = f.spar === U.today();
+    const html = `
+      <div class="shrine-view spar">
+        <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>Дружеский поединок</small></div></div>
+        <div class="rift-team-title">Сильнейшие духи друга</div>
+        <div class="rift-team">${UI.teamHtml(top)}</div>
+        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="rift-tip">${today ? 'Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).' : 'Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.'}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
+      </div>`;
+    const scr = UI.screen('Поединок с другом', html, 'shrine-screen');
+    scr.querySelector('.duel-go').onclick = async () => {
+      if (this.st || this._starting) return;
+      this._starting = true;
+      const r = await Game.try('sparStart', { pid: f.id });
+      this._starting = false;
+      if (!r) return;
+      UI.closeScreen(scr);
+      const color = (r.look && r.look.cloak) || GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)];
+      this.start({ kind: 'spar', name: f.name, T: { speed: 0.72, shield: 0.6 } }, { name: U.esc(r.name), color, team: r.foe }, S.team());
+    };
+    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => {
+      team = S.team();
+      scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team);
+      scr.querySelector('.duel-go').disabled = !team.length;
+    });
+  },
+
   // Начало боя отмечает сервер (он же проверит правдоподобие победы в конце)
   async begin(type, args) {
     if (this.st || this._starting) return false;
@@ -2136,7 +2169,7 @@ const Duel = {
     this._starting = false;
     return !!ok;
   },
-  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : 'duelEnd'; },
+  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : kind === 'spar' ? 'sparEnd' : 'duelEnd'; },
 
   fighter(sp) {
     const x = S.battle(sp);
@@ -2463,6 +2496,7 @@ const Duel = {
       return;
     }
     if (st.e.kind === 'invasion') return this.finishInvasion(win, r);
+    if (st.e.kind === 'spar') return this.finishSpar(win, r);
     if (win) {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
@@ -2477,6 +2511,26 @@ const Duel = {
         <div class="res-note">«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.</div>`;
     }
     const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">На карту</button></div></div>`);
+    res.querySelector('button').onclick = () => this.close();
+    st.root.appendChild(res);
+    UI.refreshHud();
+  },
+  finishSpar(win, r) {
+    const st = this.st, g = st.g;
+    let html;
+    if (win) {
+      Sfx.play('win'); U.vibrate([50, 50, 120]);
+      html = `<div class="res-title">Победа!</div>
+        <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
+        <div class="res-note">${r.practice ? `Хорошая тренировка! Награда за поединок с ${g.name} сегодня уже получена.` : `${g.name} жмёт тебе руку: «Честный бой!» Дружба крепнет.`}</div>
+        <div class="res-rw">${r.rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}${r.practice ? '' : '<div><b>+1 ★</b> дружбы</div>'}</div>`;
+    } else {
+      Sfx.play('lose');
+      html = `<div class="res-title lose">Поражение</div>
+        <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
+        <div class="res-note">Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.</div>`;
+    }
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">Готово</button></div></div>`);
     res.querySelector('button').onclick = () => this.close();
     st.root.appendChild(res);
     UI.refreshHud();
@@ -2851,6 +2905,29 @@ const GameCore = {
     const total = (+s.total || 0) - dbMine + mine.n;
     const top = (Array.isArray(s.top) ? s.top : []).map(r => ({ name: String(r.name || 'Ловчий').slice(0, 20), n: r.pid === S.d.pid ? mine.n : +r.n || 0, me: r.pid === S.d.pid }));
     return { week: w, total, players, goal: Rules.orderGoal(players), n: mine.n, got: mine.got.slice(), top, endsAt: ((w + 1) * 7 - 3) * 86400000 };
+  },
+
+  // Друг, который тоже добавил тебя: его запись у меня и его сохранение
+  async mutual(ctx, pid, what) {
+    const f = S.d.friends.find(x => x.id === pid);
+    this.need(f, 'Такого друга нет');
+    const s = await ctx.env.friendSave(f.id);
+    this.need(s && s.data, 'Ловчий не найден');
+    const d = s.data;
+    this.need((d.friends || []).some(x => x.id === S.d.pid), `${what}, когда ${f.name} тоже добавит тебя в друзья`);
+    return { f, d, s };
+  },
+  // Дух из чужого сохранения: только известные поля и допустимые значения
+  cleanSpirit(x, i) {
+    const iv = (Array.isArray(x.iv) ? x.iv : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
+    while (iv.length < 3) iv.push(0);
+    return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
+      purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? String(x.nick).slice(0, 16) : null };
+  },
+  // Три сильнейших духа друга
+  topSpirits(d, n = 3) {
+    const list = (Array.isArray(d.spirits) ? d.spirits : []).filter(x => x && SP[x.sid]).map((x, i) => this.cleanSpirit(x, i));
+    return list.map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, n).map(o => o.x);
   },
 
   /* ---------- действия ---------- */
@@ -3397,13 +3474,8 @@ const GameCore = {
     },
     // Профиль друга — только если дружба взаимная (он тоже добавил тебя)
     async friendProfile(a, ctx) {
-      const f = S.d.friends.find(x => x.id === a.pid);
-      this.need(f, 'Такого друга нет');
       this.limit(ctx, 'profile', 60, 3600000);
-      const s = await ctx.env.friendSave(f.id);
-      this.need(s && s.data, 'Ловчий не найден');
-      const d = s.data;
-      this.need((d.friends || []).some(x => x.id === S.d.pid), `Профиль откроется, когда ${f.name} тоже добавит тебя в друзья`);
+      const { f, d, s } = await this.mutual(ctx, a.pid, 'Профиль откроется');
       // чужое сохранение могло быть записано ещё телефоном (до 3.0) — только числа и известные значения
       const num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       f.name = String(d.name || f.name).slice(0, 20); f.lvl = num(d.level, MAX_LEVEL) || f.lvl;
@@ -3412,8 +3484,7 @@ const GameCore = {
         ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
       if (look) f.look = look;
       const st = d.stats || {}, spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
-      const top = spirits.map(x => ({ sid: x.sid, lvl: num(x.lvl, 40), shiny: !!x.shiny, dark: !!x.dark, nick: x.nick ? String(x.nick).slice(0, 16) : null, power: (() => { try { return S.power(x) || 0; } catch (e) { return 0; } })() }))
-        .sort((x, y) => y.power - x.power).slice(0, 3);
+      const top = this.topSpirits(d).map(x => ({ ...x, power: S.power(x) }));
       const buddy = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
       const L = d.league || {};
       return {
@@ -3423,6 +3494,30 @@ const GameCore = {
         medals: Object.values(d.medals || {}).filter(t => t >= 3).length, rank: num(L.best, LEAGUE_RANKS.length - 1),
         buddy: buddy ? buddy.sid : null, top, pts: f.pts,
       };
+    },
+    // Поединок с другом: его три сильнейших духа под управлением игры. Награда — раз в день за каждого друга.
+    async sparStart(a, ctx) {
+      this.limit(ctx, 'spar', 30, 3600000);
+      const { f, d } = await this.mutual(ctx, a.pid, 'Поединок откроется');
+      const foe = this.topSpirits(d);
+      this.need(foe.length, `У ${f.name} пока нет духов`);
+      const team = S.team();
+      this.need(team.length, 'Нужна команда');
+      ctx.srv.battle = { type: 'spar', pid: f.id, foe, start: ctx.now, team: team.map(x => x.uid) };
+      return { foe, name: f.name, look: f.look || null, rewarded: f.spar === U.today(ctx.now) };
+    },
+    sparEnd(a, ctx) {
+      const b = this.endBattle(ctx, 'spar');
+      if (!a.win) return { win: false };
+      this.plausibleDuel(ctx, b, b.foe);
+      const f = S.d.friends.find(x => x.id === b.pid);
+      this.need(f, 'Такого друга нет');
+      J.add('spar', { name: f.name });
+      if (f.spar === U.today(ctx.now)) return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true };
+      f.spar = U.today(ctx.now);
+      const rw = S.giveRewards({ xp: 800, sparks: 500, charm: 3, honey: 1 });
+      this.friendPoint(f);
+      return { win: true, rw, pts: f.pts };
     },
     friendRemove(a) { S.d.friends = S.d.friends.filter(f => f.id !== a.pid); return { ok: true }; },
     // Кто добавил меня (дружба взаимная) + подарки, которые ждут открытия

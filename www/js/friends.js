@@ -183,7 +183,10 @@ const Friends = {
         <div><b>${p.caught}</b><span>поймано</span></div><div><b>${p.dex}</b><span>видов</span></div><div><b>${U.fmtDist(p.km * 1000)}</b><span>пройдено</span></div>
         <div><b>${p.raids}</b><span>разломов</span></div><div><b>${p.medals}</b><span>золотых знаков</span></div><div><b>${p.rank ? LEAGUE_RANKS[p.rank].name : '—'}</b><span>Лига</span></div>
       </div>
-      ${p.top.length ? `<div class="fr-sub">Сильнейшие духи</div><div class="fr-top">${p.top.map(spirit).join('')}</div>` : ''}`;
+      ${p.top.length ? `<div class="fr-sub">Сильнейшие духи</div><div class="fr-top">${p.top.map(spirit).join('')}</div>
+        <button class="btn primary wide fr-spar">Поединок ${f.spar === U.today() ? '(тренировка)' : '— награда дня'}</button>` : ''}`;
+    const sb = box.querySelector('.fr-spar');
+    if (sb) sb.onclick = () => { m.close(); Duel.openSpar(this.find(f.id) || f, p.top); };
     render();
   },
   async shareText(text) {
