@@ -75,6 +75,11 @@ function makeEnv(uid) {
       must(await db.from('league_scores').upsert({ user_id: uid, season: x.season, name: String(x.name).slice(0, 20), stars: Math.min(1000, x.stars), rank: x.rank,
         level: x.level, look: x.look, updated_at: new Date().toISOString() }, { onConflict: 'user_id,season' }));
     },
+    // Общее дело Ордена: вклад игрока за неделю (n только растёт) и итоги недели
+    async orderPut(x) {
+      must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
+    },
+    async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));

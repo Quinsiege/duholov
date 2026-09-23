@@ -55,7 +55,12 @@ const U = {
   fmtTime(ms) {
     const s = Math.max(0, Math.round(ms / 1000));
     const m = Math.floor(s / 60), ss = s % 60;
+    if (m >= 48 * 60) return `${Math.floor(m / 1440)} дн ${Math.floor(m / 60) % 24} ч`;
     return m >= 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m}:${String(ss).padStart(2, '0')}`;
+  },
+  plural(n, one, few, many) {
+    const a = Math.abs(n) % 100, b = a % 10;
+    return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many;
   },
   fmtNum(n) { return Math.round(n).toLocaleString('ru-RU'); },
   today(t) { const d = this.local(t); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; },

@@ -31,7 +31,9 @@ window.addEventListener('load', () => {
     if (ready) setTimeout(() => UI.toast(`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);
     // пройденный путь уходит на сервер пачками; раз в 5 минут сервер обновляет задания дня и отметки
     setInterval(() => Game.flushMove(), 45000);
-    setInterval(() => { if (!document.hidden) Game.act('tick').then(() => UI.refreshHud()).catch(() => {}); }, 5 * 60000);
+    setInterval(() => { if (!document.hidden) Game.act('tick').then(() => { UI.refreshHud(); Order.daily(); Order.refresh(); }).catch(() => {}); }, 5 * 60000);
+    setTimeout(() => Order.daily(), 2500); // серия дней: награда за первый вход за день
+    setTimeout(() => Order.refresh(), 8000); // общее дело Ордена — для значка меню
     Updater.init();
   };
 
@@ -64,7 +66,7 @@ window.addEventListener('load', () => {
   document.addEventListener('visibilitychange', () => {
     if (!S.d) return;
     if (document.hidden) Game.flushMove();
-    else Game.act('tick').then(() => { UI.refreshHud(); MapView.refresh(); }).catch(() => {});
+    else Game.act('tick').then(() => { UI.refreshHud(); MapView.refresh(); Order.daily(); }).catch(() => {});
   });
 
   // Кнопка «Назад» в Android-обёртке: true — можно закрывать приложение
