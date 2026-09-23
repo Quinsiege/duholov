@@ -1,8 +1,65 @@
 'use strict';
-/* Друзья без сервера: коды дружбы (DUHF1) и подарков (DUHG1).
-   Подарок адресован конкретному другу, открывается один раз, от каждого друга — раз в день. */
+/* Друзья: коды дружбы (DUHF1) и подарков (DUHG1).
+   Дружба взаимная через сервер: кто добавил код друга, оставляет на сервере связь «я → друг»,
+   и игра друга сама добавляет его в ответ (см. sync). Подарок адресован конкретному другу,
+   открывается один раз, от каждого друга — раз в день. */
 
 const Friends = {
+  /* ---------- взаимная дружба через сервер ---------- */
+  registered: false, busy: false,
+
+  async sync() {
+    if (!Cloud.configured() || !S.d || Sync.moved) return;
+    if (this.busy) { this.again = true; return; }
+    this.busy = true;
+    try {
+      const sb = await Cloud.client();
+      if (!this.registered) {
+        const { data, error } = await sb.rpc('register_pid', { p_pid: S.d.pid });
+        if (error) throw new Error(error.message);
+        if (data === 'taken') { // такой код уже у другого игрока — берём новый
+          S.d.pid = U.uid() + U.uid(); S.save();
+          const r = await sb.rpc('register_pid', { p_pid: S.d.pid });
+          if (r.error || r.data !== 'ok') throw new Error('Не удалось закрепить код игрока');
+        }
+        this.registered = true;
+      }
+      // мои добавления, которых сервер ещё не знает (в том числе сделанные до версии 2.2)
+      for (const f of S.d.friends.filter(x => !x.linked)) {
+        const { error } = await sb.rpc('add_friend', { p_to: f.id, p_name: S.d.name, p_level: S.d.level });
+        if (error) { console.warn('Дружба:', error.message); break; }
+        f.linked = true; S.save();
+      }
+      // кто добавил меня
+      const { data: rows, error } = await sb.from('friend_links').select('from_pid, from_name, from_level, created_at').eq('to_pid', S.d.pid);
+      if (error) throw new Error(error.message);
+      const added = this.applyIncoming(rows || []);
+      added.forEach(f => UI.toast(`Новый друг: ${U.esc(f.name)} — вы теперь в друзьях друг у друга`, 'good'));
+      if (added.length) { Sfx.play('catch'); Bus.emit('friends'); }
+    } catch (e) { console.warn('Друзья:', e.message); }
+    this.busy = false;
+    if (this.again) { this.again = false; this.sync(); }
+  },
+  // Входящие связи → друзья. Каждую связь обрабатываем один раз: удалённый друг сам не вернётся,
+  // пока снова не добавит мой код.
+  applyIncoming(rows) {
+    const seen = S.d.friendLinks = S.d.friendLinks || {};
+    const added = [];
+    rows.forEach(r => {
+      if (!r.from_pid || r.from_pid === S.d.pid || seen[r.from_pid] === r.created_at) return;
+      seen[r.from_pid] = r.created_at;
+      const f = this.find(r.from_pid);
+      if (f) { f.name = String(r.from_name).slice(0, 20); f.lvl = r.from_level; return; }
+      if (S.d.friends.length >= 50) return;
+      const nf = { id: r.from_pid, name: String(r.from_name).slice(0, 20), lvl: r.from_level || 1, pts: 0, added: Date.now(), sent: '', recv: '', linked: false };
+      S.d.friends.push(nf);
+      J.add('friend', { name: nf.name });
+      added.push(nf);
+    });
+    if (rows.length) S.save();
+    return added;
+  },
+
   pack(prefix, obj) {
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     return `${prefix}.${b64}.${Math.floor(U.h('duholov-' + prefix, b64) * 2176782336).toString(36).padStart(6, '0')}`;
@@ -37,12 +94,13 @@ const Friends = {
     if (!p.i || !p.n) throw new Error('В коде ошибка');
     if (p.i === S.d.pid) throw new Error('Это твой собственный код дружбы');
     let f = this.find(p.i);
-    if (f) { f.name = String(p.n).slice(0, 20); f.lvl = p.l; S.save(); return { f, isNew: false }; }
+    if (f) { f.name = String(p.n).slice(0, 20); f.lvl = p.l; f.linked = false; S.save(); this.sync(); return { f, isNew: false }; }
     if (S.d.friends.length >= 50) throw new Error('Друзей уже 50 — это максимум');
-    f = { id: p.i, name: String(p.n).slice(0, 20), lvl: p.l || 1, pts: 0, added: Date.now(), sent: '', recv: '' };
+    f = { id: p.i, name: String(p.n).slice(0, 20), lvl: p.l || 1, pts: 0, added: Date.now(), sent: '', recv: '', linked: false };
     S.d.friends.push(f);
     J.add('friend', { name: f.name });
     S.save();
+    this.sync(); // сообщить серверу — друг получит меня в ответ
     return { f, isNew: true };
   },
   remove(id) { S.d.friends = S.d.friends.filter(f => f.id !== id); S.save(); },
@@ -112,7 +170,7 @@ const Friends = {
     const scr = UI.screen('Друзья', `
       <div class="panel fr-me">
         <b>Мой код дружбы</b>
-        <small>Отправь его другу, а его код добавь к себе — и дарите друг другу подарки каждый день.</small>
+        <small>Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной. Дарите друг другу подарки каждый день.</small>
         <div class="fr-btns"><button class="btn small my-qr">Показать QR</button><button class="btn small primary my-share">Поделиться</button></div>
       </div>
       <div class="panel trade-in">
@@ -145,6 +203,10 @@ const Friends = {
       }).join('') : '<div class="row"><div class="row-main"><small>Пока никого. Обменяйтесь кодами дружбы!</small></div></div>';
     };
     render();
+    // проверить, не добавил ли кто-нибудь меня, пока экран открыт
+    const onFriends = () => { if (scr.isConnected) render(); };
+    Bus.on('friends', onFriends);
+    this.sync();
     const input = scr.querySelector('.code-in');
     scr.querySelector('.accept-btn').onclick = () => this.accept(input.value, () => { input.value = ''; render(); });
     const sb = scr.querySelector('.scan-btn');

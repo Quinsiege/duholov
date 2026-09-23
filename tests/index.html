@@ -65,6 +65,7 @@
   S.save = () => {};
   Bus.emit = () => {};
   UI.toast = () => {};
+  Friends.sync = () => {}; // без обращений к серверу
   S.newGame('Тест', 'ugolek');
   S.d.level = 12;
   MapView.pos = { lat: 55.75, lng: 37.62 };
@@ -324,6 +325,26 @@
     S.d = B; const other = Friends.pack('DUHG1', { f: A.pid, fn: 'А', to: 'кто-то-другой', d: U.today(), k: 'x1', c: { charm: 3 } }); S.d = A;
     err = ''; try { Friends.openGift(Friends.unpack('DUHG1', other)); } catch (e) { err = e.message; } ok(/другому/.test(err), 'чужой подарок');
     eq(Friends.level({ pts: 0 }), 0); eq(Friends.level({ pts: 10 }), 2); eq(Friends.level({ pts: 99 }), 4);
+  });
+  test('Взаимная дружба: входящие связи с сервера', () => {
+    S.newGame('Гамма', 'mshonok');
+    const me = S.d.pid, t1 = '2026-09-23T12:00:00Z', t2 = '2026-09-23T13:00:00Z';
+    const code = Friends.add(Friends.unpack('DUHF1', Friends.pack('DUHF1', { i: 'drug1abcdefgh', n: 'Друг', l: 5 }))).f;
+    eq(code.linked, false, 'новый друг ждёт отправки на сервер');
+    // меня добавили двое: один уже в друзьях, второй новый; третья связь — от меня самого
+    let added = Friends.applyIncoming([
+      { from_pid: 'drug1abcdefgh', from_name: 'Друг', from_level: 6, created_at: t1 },
+      { from_pid: 'novyi2abcdefg', from_name: 'Новенький', from_level: 3, created_at: t1 },
+      { from_pid: me, from_name: 'Я', from_level: 1, created_at: t1 },
+    ]);
+    eq(added.map(f => f.name).join(), 'Новенький', 'добавлен только новый');
+    eq(S.d.friends.length, 2); eq(Friends.find('drug1abcdefgh').lvl, 6, 'уровень друга обновился');
+    eq(Friends.find('novyi2abcdefg').linked, false, 'ответная связь уйдёт на сервер');
+    // удалил друга — та же связь его не вернёт, а повторное добавление мной (новое время) — вернёт
+    Friends.remove('novyi2abcdefg');
+    eq(Friends.applyIncoming([{ from_pid: 'novyi2abcdefg', from_name: 'Новенький', from_level: 3, created_at: t1 }]).length, 0, 'не вернулся');
+    eq(Friends.applyIncoming([{ from_pid: 'novyi2abcdefg', from_name: 'Новенький', from_level: 3, created_at: t2 }]).length, 1, 'снова добавил меня');
+    ok(/^[a-z0-9]{8,40}$/.test(me), 'код игрока подходит серверу: ' + me);
   });
   test('Дневник: записи с местом, ограничение по размеру', () => {
     S.d.journal = [];

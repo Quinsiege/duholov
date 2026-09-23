@@ -24,6 +24,8 @@ window.addEventListener('load', () => {
     else if (Sync.note) setTimeout(() => UI.toast(Sync.note, 'good'), 1200);
     setTimeout(() => Propose.checkResults(), 6000);
     setInterval(() => { if (!document.hidden) Propose.checkResults(); }, 3 * 60000);
+    setTimeout(() => Friends.sync(), 8000); // взаимная дружба: кто добавил меня по коду
+    setInterval(() => { if (!document.hidden) Friends.sync(); }, 3 * 60000);
     Sky.init();
     Music.init();
     Music.play('map');

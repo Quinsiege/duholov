@@ -38,6 +38,7 @@ const S = {
     d.friends = d.friends || [];
     d.giftsOpened = d.giftsOpened || {};
     d.props = d.props || {}; // решения по моим заявкам мест, о которых уже сообщили
+    d.friendLinks = d.friendLinks || {}; // обработанные входящие дружбы: pid → время связи
     if (!d.pid) d.pid = U.uid() + U.uid();
     if (d.settings.calm === undefined) d.settings.calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});
