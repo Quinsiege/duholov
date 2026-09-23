@@ -33,6 +33,13 @@ const verCmp = (a, b) => {
 function makeEnv(uid) {
   return {
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
+    // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
+    async poiCovered(lat, lng) {
+      const dLng = 0.011 / Math.max(0.2, Math.cos(lat * Math.PI / 180));
+      const rows = must(await db.from('pois').select('id').eq('imported', true)
+        .gte('lat', lat - 0.011).lte('lat', lat + 0.011).gte('lng', lng - dLng).lte('lng', lng + dLng).limit(1));
+      return !!(rows && rows.length);
+    },
     async registerPid(pid) {
       const row = must(await db.from('players').select('user_id').eq('pid', pid).maybeSingle());
       if (row && row.user_id === uid) return 'ok';

@@ -101,6 +101,8 @@ const GameCore = {
       return { id: row.id, lat: row.lat, lng: row.lng, name: row.name, photo: row.photo || null };
     }
     this.need(p.id.startsWith('osm:'), 'Место не найдено');
+    // там, где места загружены из OpenStreetMap в базу (вся Россия), других объектов нет
+    this.need(!(await ctx.env.poiCovered(+p.lat, +p.lng)), 'Этого места нет на карте — обнови игру');
     return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null };
   },
   team(uids) { return (uids || []).map(u => S.findSpirit(u)).filter(Boolean); },

@@ -116,6 +116,12 @@
 ### Версия 3.3.0 — поединок с другом
 - Из профиля друга — «Поединок»: бой 3 на 3 с тремя сильнейшими духами друга под управлением игры (команду присылает сервер, духи очищаются от недопустимых значений). Первая победа за день над каждым другом — 800 опыта, ✦ 500, обереги, мёд и +1 ★ дружбы; дальше — тренировка (+100 опыта). Победа проверяется, как в капищах (`plausibleDuel`). Только при взаимной дружбе.
 
+### Версия 3.4.0 — места по всей России
+- **Объекты OpenStreetMap всей России хранятся в базе игры** (таблица `pois`, `imported = true`). Раз в неделю (по понедельникам) workflow **«Места России»** (`.github/workflows/places.yml`) скачивает свежую выгрузку России с Geofabrik, отбирает объекты (`tools/osm-import/filter.txt`, `build.py` — те же правила, что у телефона, плюс дома культуры, почты, станции и платформы) и загружает их (`load.sql`): новые добавляются, изменившиеся обновляются, исчезнувшие удаляются. Правки модераторов и места игроков (`edited = true`) импорт не трогает. Неполная выгрузка (меньше 150 000 мест) в базу не попадает.
+- **У каждого населённого пункта есть места**: если у центра деревни в радиусе 400–700 м нет ни одного объекта, там появляется Родник «Околица …» (у городов — «Центр …»); в сёлах и городках с двумя и более местами одно обязательно становится Капищем (а у Капищ открываются Разломы).
+- Телефон берёт места из базы; сам спрашивает Overpass только там, где загруженных мест нет (за пределами России). Сервер там, где места загружены, принимает только объекты из базы — выдуманный «родник» с телефона не пройдёт.
+- Настройка: `server/007_places_russia.sql`; секрет репозитория `SUPABASE_DB_URL` — строка подключения Session pooler из Supabase (Connect). Без секрета workflow только собирает места (CSV в артефакте запуска).
+
 ## Прод
 - Игра: https://quinsiege.github.io/duholov/ · APK: https://quinsiege.github.io/duholov/duholov.apk
 - Репозиторий: https://github.com/Quinsiege/duholov · Облако: Supabase-проект `duholov` (прогресс, места игроков, модерация, таблица Лиги)
@@ -148,7 +154,7 @@ http://localhost:8766/tests/index.html — автотесты в браузер�
 ## Подключение сервера (Supabase, бесплатно)
 1. supabase.com → **Sign in with GitHub** → **New project** (регион — ближайший, пароль БД сохраните у себя).
 2. **Authentication → Sign In / Providers → Anonymous sign-ins: включить.**
-3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`, `server/005_server_authority.sql`, `server/006_order.sql`; развернуть Edge Function `game` (см. «Версия 3.0.0»).
+3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`, `server/005_server_authority.sql`, `server/006_order.sql`, `server/007_places_russia.sql`; развернуть Edge Function `game` (см. «Версия 3.0.0»).
    **Authentication → URL Configuration**: Site URL = адрес игры, Redirect URLs = `<адрес игры>/**` (для входа модераторов по ссылке из письма).
 4. **Project Settings → API Keys**: **Project URL** и **publishable key** → `www/js/config.js` (публичные параметры; секретные ключи в игру не кладите никогда).
 5. Изменение — через Pull Request, как описано выше.

@@ -1,0 +1,60 @@
+# Места по всей России: раз в неделю — свежая выгрузка OpenStreetMap (Geofabrik) → отбор объектов
+# для игры (tools/osm-import/build.py) → загрузка в таблицу pois (load.sql).
+# Для загрузки нужен секрет SUPABASE_DB_URL: Supabase → Connect → Session pooler (строка подключения
+# с паролем БД). Без секрета workflow только собирает места и прикладывает CSV к запуску.
+# На Pull Request (изменения в tools/osm-import) — проверка на небольшом регионе, без загрузки.
+name: Места России
+
+on:
+  schedule:
+    - cron: '0 1 * * 1' # по понедельникам, 04:00 по Москве
+  workflow_dispatch:
+  pull_request:
+    paths: ['tools/osm-import/**', '.github/workflows/places.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: places
+  cancel-in-progress: false
+
+jobs:
+  import:
+    name: Импорт мест из OpenStreetMap
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      DB: ${{ secrets.SUPABASE_DB_URL }}
+      # на проверке PR — небольшой регион и без загрузки в базу
+      REGION: ${{ github.event_name == 'pull_request' && 'russia/kaliningrad' || 'russia' }}
+      MIN: ${{ github.event_name == 'pull_request' && '1000' || '150000' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Инструменты
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool postgresql-client
+      - name: Выгрузка OpenStreetMap (${{ env.REGION }})
+        run: |
+          curl -fsSL --retry 5 --retry-delay 30 -o region.osm.pbf "https://download.geofabrik.de/${REGION}-latest.osm.pbf"
+          ls -lh region.osm.pbf
+      - name: Нужные игре объекты
+        run: |
+          osmium tags-filter region.osm.pbf --expressions=tools/osm-import/filter.txt -o filtered.osm.pbf --overwrite
+          rm region.osm.pbf
+          osmium export filtered.osm.pbf -f geojsonseq -a type,id --geometry-types=point,linestring,polygon -o objects.geojsonseq --overwrite
+          ls -lh filtered.osm.pbf objects.geojsonseq
+      - name: Места для игры
+        run: python3 tools/osm-import/build.py objects.geojsonseq pois.csv "$MIN"
+      - name: Образец
+        run: head -n 20 pois.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pois-csv
+          path: pois.csv
+          retention-days: 14
+      - name: Загрузка в базу игры
+        if: github.event_name != 'pull_request' && env.DB != ''
+        run: psql "$DB" -v min="$MIN" -f tools/osm-import/load.sql
+      - name: Секрет не задан
+        if: github.event_name != 'pull_request' && env.DB == ''
+        run: echo "::warning::Секрет SUPABASE_DB_URL не задан — места собраны (артефакт pois-csv), но в базу не загружены"

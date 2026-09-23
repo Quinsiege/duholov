@@ -1,0 +1,9 @@
+# Какие объекты OpenStreetMap нужны игре (osmium tags-filter). Отбор и правила — build.py.
+nwr/historic=monument,memorial,castle,ruins,archaeological_site,manor,city_gate,wayside_cross,wayside_shrine,boundary_stone
+nwr/tourism=artwork,attraction,viewpoint,museum
+nwr/amenity=place_of_worship,fountain,library,theatre,arts_centre,clock,community_centre,post_office
+nwr/natural=spring,peak
+nwr/leisure=park,garden
+nwr/man_made=water_tower,lighthouse,windmill,watermill
+n/railway=station,halt
+n/place=city,town,village,hamlet
