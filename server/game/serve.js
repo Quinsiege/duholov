@@ -129,6 +129,21 @@ function makeEnv(uid) {
       }
       return out;
     },
+    // Совместные разломы: комнаты (код, участники, начало боя)
+    async roomCreate(row) {
+      await db.from('raid_rooms').delete().lt('created_at', new Date(Date.now() - 86400000).toISOString()); // старые комнаты
+      const { data, error } = await db.from('raid_rooms').insert(row).select('*').maybeSingle();
+      if (error) { if (/duplicate/i.test(error.message)) return null; throw new Error(error.message); }
+      return data;
+    },
+    async roomGet(code) { return must(await db.from('raid_rooms').select('*').eq('code', code).maybeSingle()); },
+    async roomJoin(code, member) { return must(await db.rpc('raid_room_join', { p_code: code, p_member: member })); },
+    async roomStart(code, pid) {
+      const rows = must(await db.from('raid_rooms').update({ status: 'started', started_at: new Date().toISOString() })
+        .eq('code', code).eq('host_pid', pid).eq('status', 'lobby').select('*'));
+      return rows && rows[0] || null;
+    },
+    async roomLeave(code, pid) { must(await db.rpc('raid_room_leave', { p_code: code, p_pid: pid })); },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));

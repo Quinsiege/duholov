@@ -51,11 +51,11 @@ const Raid = {
   },
 
   // Сервер проверяет, что разлом открыт здесь и сейчас, и запоминает начало боя.
-  // coop: { host, hpMul, allies } — совместный бой (см. coop.js). Возвращает true, если бой начался.
+  // coop: { host, hpMul, allies, code } — совместный бой (см. coop.js), союзников сервер считает по комнате. Возвращает true, если бой начался.
   async battle(r, team, coop) {
     if (this.st || this._starting) return false;
     this._starting = true;
-    const ok = await Game.try('raidStart', { rift: { id: r.poi, lat: r.lat, lng: r.lng, name: r.place }, coop: coop ? { host: !!coop.host, allies: coop.allies || 0 } : null });
+    const ok = await Game.try('raidStart', { rift: { id: r.poi, lat: r.lat, lng: r.lng, name: r.place }, coop: coop ? { code: coop.code } : null });
     this._starting = false;
     if (!ok) return false;
     this.start(r, team, coop);
@@ -184,7 +184,7 @@ const Raid = {
   renderAllies(list) {
     const st = this.st; if (!st || !st.coop) return;
     const box = st.$('.raid-allies'); if (!box) return;
-    box.innerHTML = (list || []).map(a => `<span><i>${Art.avatar(a.look)}</i>${U.esc(a.name)} <b>${U.fmtNum(a.n)}</b></span>`).join('');
+    box.innerHTML = (list || []).map(a => `<span><i>${Art.avatar(a.look || undefined)}</i>${U.esc(a.name)} <b>${U.fmtNum(a.n)}</b></span>`).join('');
   },
   fast(x, y) {
     const st = this.st;

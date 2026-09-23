@@ -39,7 +39,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   const sameOrigin = url.origin === location.origin;
-  // version.json, APK и серверы (Supabase, PeerJS, погода) — всегда напрямую из сети
+  // version.json, APK и серверы (Supabase, погода) — всегда напрямую из сети
   if (sameOrigin && (url.pathname.endsWith('version.json') || url.pathname.endsWith('.apk'))) return;
   const cdn = url.hostname === 'cdnjs.cloudflare.com' || url.hostname === 'cdn.jsdelivr.net' || url.hostname.includes('fonts.g');
   if (!sameOrigin && !cdn) return;

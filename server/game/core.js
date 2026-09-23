@@ -186,6 +186,22 @@ const GameCore = {
     return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
       purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? String(x.nick).slice(0, 16) : null };
   },
+  // Совместный разлом: участник комнаты и то, что видит телефон (без кодов игроков)
+  ROOM_ALPHA: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+  // Облик — только из известных вариантов (он попадает в картинку у других игроков)
+  safeLook(lk) {
+    lk = lk || {};
+    return LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
+      ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
+  },
+  roomMember() {
+    const team = S.team();
+    return { pid: S.d.pid, name: String(S.d.name).slice(0, 20), look: this.safeLook(S.d.look), lvl: S.d.level, power: team.reduce((a, x) => a + S.power(x), 0), sid: team[0] ? team[0].sid : null };
+  },
+  roomView(r) {
+    return { code: r.code, status: r.status, rift: r.rift, isHost: r.host_pid === S.d.pid, hpMul: 1 + 0.8 * (r.members.length - 1),
+      members: r.members.map((m, i) => ({ name: String(m.name || 'Ловчий').slice(0, 20), look: m.look, lvl: m.lvl, power: m.power, sid: m.sid, host: i === 0, me: m.pid === S.d.pid })) };
+  },
   // Защитники Капища в бою — три сильнейших
   holdTeam(hold) {
     return hold.holders.filter(h => h && h.sp && SP[h.sp.sid]).map((h, i) => this.cleanSpirit(h.sp, i))
@@ -536,8 +552,16 @@ const GameCore = {
 
     /* ----- бои: разлом ----- */
     async raidStart(a, ctx) {
-      const coop = a.coop && typeof a.coop === 'object' ? { host: !!a.coop.host, allies: U.clamp(a.coop.allies | 0, 0, 3) } : null;
-      const p = await this.place(a.rift, ctx, 'shrine');
+      // совместный бой: число союзников и место разлома — из комнаты на сервере, а не со слов телефона
+      let coop = null, rift = a.rift;
+      if (a.coop && a.coop.code) {
+        const room = await ctx.env.roomGet(String(a.coop.code).toUpperCase());
+        this.need(room && room.status === 'started' && ctx.now - Date.parse(room.started_at) < 10 * 60000, 'Совместный бой не найден — начните заново');
+        this.need(room.members.some(m => m.pid === S.d.pid), 'Ты не в этом разломе');
+        coop = { host: room.host_pid === S.d.pid, allies: U.clamp(room.members.length - 1, 0, 3), code: room.code };
+        rift = { id: room.rift.poi, lat: room.rift.lat, lng: room.rift.lng, name: room.rift.place };
+      }
+      const p = await this.place(rift, ctx, 'shrine');
       const hour = Math.floor(ctx.now / 3600000);
       // бой мог начаться за минуту до смены часа
       const r = W.riftFor(p, 0, hour) || (ctx.now % 3600000 < 90000 ? W.riftFor(p, 0, hour - 1) : null);
@@ -550,6 +574,50 @@ const GameCore = {
       ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0 };
       return { rid: r.id, tier: r.tier, boss: r.boss };
     },
+    /* ----- совместный разлом: комната на сервере ----- */
+    async roomCreate(a, ctx) {
+      const p = await this.place(a.rift, ctx, 'shrine');
+      const r = W.riftFor(p, 0, Math.floor(ctx.now / 3600000));
+      this.need(r, 'Разлом уже закрылся');
+      this.need(!S.d.rifts[r.id], 'Этот разлом ты уже закрыл');
+      this.near(ctx, p.lat, p.lng, W.BATTLE_R);
+      this.limit(ctx, 'room', 20, 3600000);
+      const rift = { id: r.id, tier: r.tier, boss: r.boss, endsAt: r.endsAt, poi: p.id, lat: p.lat, lng: p.lng, place: p.name }; // как у разлома на карте
+      for (let i = 0; i < 5; i++) {
+        const code = Array.from({ length: 5 }, () => this.ROOM_ALPHA[Math.floor(Math.random() * this.ROOM_ALPHA.length)]).join('');
+        const room = await ctx.env.roomCreate({ code, host_pid: S.d.pid, rift, members: [this.roomMember()] });
+        if (room) return this.roomView(room);
+      }
+      this.fail('Не получилось создать разлом — попробуй ещё раз');
+    },
+    async roomJoin(a, ctx) {
+      const code = String(a.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      this.need(code.length === 5, 'Код разлома — 5 символов');
+      this.limit(ctx, 'roomJoin', 60, 3600000);
+      const r = await ctx.env.roomJoin(code, this.roomMember());
+      this.need(r && !r.error, (r && r.error) || 'Разлом с таким кодом не найден');
+      return this.roomView(r);
+    },
+    async roomState(a, ctx) {
+      const r = await ctx.env.roomGet(String(a.code || '').toUpperCase());
+      this.need(r && r.status !== 'closed', 'Хозяин закрыл разлом');
+      this.need(r.members.some(m => m.pid === S.d.pid), 'Ты больше не в этом разломе');
+      return this.roomView(r);
+    },
+    async roomStart(a, ctx) {
+      const code = String(a.code || '').toUpperCase(), r = await ctx.env.roomGet(code);
+      this.need(r && r.host_pid === S.d.pid, 'Начать бой может только хозяин разлома');
+      this.need(r.members.length >= 2, 'Ждём хотя бы одного друга');
+      const s = await ctx.env.roomStart(code, S.d.pid);
+      this.need(s, 'Бой уже начался');
+      return this.roomView(s);
+    },
+    async roomLeave(a, ctx) {
+      const code = String(a.code || '').toUpperCase();
+      if (/^[A-Z0-9]{5}$/.test(code)) await ctx.env.roomLeave(code, S.d.pid);
+      return { ok: true };
+    },
+
     water(a, ctx) {
       const b = ctx.srv.battle;
       this.need(b && b.type === 'raid', 'Живая вода — только в бою');
@@ -824,8 +892,7 @@ const GameCore = {
       const num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       f.name = String(d.name || f.name).slice(0, 20); f.lvl = num(d.level, MAX_LEVEL) || f.lvl;
       // облик — только из известных вариантов (он попадает в картинку)
-      const lk = d.look || {}, look = LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
-        ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
+      const look = this.safeLook(d.look);
       if (look) f.look = look;
       const st = d.stats || {}, spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
       const top = this.topSpirits(d).map(x => ({ ...x, power: S.power(x) }));

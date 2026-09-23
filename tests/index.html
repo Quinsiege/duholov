@@ -304,7 +304,7 @@
       .forEach(t => { const v = J.view({ type: t, sid: 'ugolek', from: 'ugolek', to: 'kostrovik', tier: 1, name: 'X', won: 2, rank: 'Отрок', l: 3, title: 'Т' }); ok(v.title && !/undefined/.test(v.title), t); });
   });
   test('Совместный разлом: здоровье босса и бонусы', () => {
-    ok(Coop.ALPHA.length === 32 && !/[01IO]/.test(Coop.ALPHA), 'алфавит кода без похожих символов');
+    ok(GameCore.ROOM_ALPHA.length === 32 && !/[01IO]/.test(GameCore.ROOM_ALPHA), 'алфавит кода без похожих символов');
     near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
     ok(!Cloud.configured() || typeof CLOUD_CONFIG.url === 'string', 'конфиг облака');
   });
@@ -340,7 +340,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {} };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -380,6 +380,18 @@
     },
     holdDefeat: async (poi, ver) => { const h = DB.holds[poi]; if (!h || h.ver !== ver) return false; h.holders = []; h.ver++; return true; },
     myHolds: async pid => Object.values(DB.holds).filter(h => h.holders.some(x => x.pid === pid)).length,
+    roomCreate: async row => { if (DB.rooms[row.code]) return null; DB.rooms[row.code] = { ...JSON.parse(JSON.stringify(row)), status: 'lobby', created_at: new Date().toISOString(), started_at: null }; return JSON.parse(JSON.stringify(DB.rooms[row.code])); },
+    roomGet: async code => DB.rooms[code] ? JSON.parse(JSON.stringify(DB.rooms[code])) : null,
+    roomJoin: async (code, m) => {
+      const r = DB.rooms[code];
+      if (!r || r.status === 'closed') return { error: 'Разлом с таким кодом не найден' };
+      const i = r.members.findIndex(x => x.pid === m.pid);
+      if (i >= 0) r.members[i] = m;
+      else { if (r.status !== 'lobby') return { error: 'Бой уже начался' }; if (r.members.length >= 4) return { error: 'В разломе уже 4 Ловчих' }; r.members.push(m); }
+      return JSON.parse(JSON.stringify(r));
+    },
+    roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
+    roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
     myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
     deleteSave: async () => { delete DB.saves[who.uid]; },
@@ -749,6 +761,33 @@
     eq((await must(A, 'myGuards')).back.length, 0, 'второй раз не возвращается');
     const gb = await must(B, 'myGuards'); eq(gb.list.length, 1); eq(gb.list[0].sid, B.data.spirits[0].sid);
     const cs = await must(B, 'clanStats'); eq(cs.all.medved, 1); eq(cs.all.sokol, 0);
+  });
+  atest('Сервер: совместный разлом — комната на сервере, союзников считает сервер', async () => {
+    const A = await newPlayer('uz', 55.57, 37.45, 'Хозяйка');
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), 62000);
+    const rift = { id, lat: A.lat, lng: A.lng, name: 'Старая мельница' };
+    const B = await newPlayer('va', 59.93, 30.31, 'Гость из Питера'), C = await newPlayer('vb', 59.93, 30.31, 'Опоздавший');
+    await refuse(B, 'roomCreate', { rift }, /далеко/);
+    const room = await must(A, 'roomCreate', { rift });
+    ok(/^[A-Z2-9]{5}$/.test(room.code), 'код комнаты'); ok(room.isHost); eq(room.members.length, 1);
+    await refuse(B, 'roomJoin', { code: 'ZZZZZ' }, /не найден/);
+    const j = await must(B, 'roomJoin', { code: room.code.toLowerCase() });
+    eq(j.members.length, 2); ok(!j.isHost); ok(j.members.every(m => !('pid' in m)), 'коды игроков не видны');
+    await refuse(B, 'roomStart', { code: room.code }, /только хозяин/);
+    // до начала боя союзников на сервере нет: гость не может начать бой издалека
+    await refuse(B, 'raidStart', { rift, coop: { code: room.code } }, /не найден/);
+    await must(A, 'roomStart', { code: room.code });
+    await refuse(C, 'roomJoin', { code: room.code }, /уже начался/);
+    // старый способ «у меня три союзника» больше не работает: без комнаты — одиночный бой, нужно быть рядом
+    await refuse(B, 'raidStart', { rift, coop: { host: false, allies: 3 } }, /далеко/);
+    await must(B, 'raidStart', { rift: { id: 'osm:n1', lat: 0, lng: 0 }, coop: { code: room.code } });
+    eq(B.srv.battle.coop.allies, 1, 'союзников — по комнате'); eq(B.srv.battle.rid, asPlayer(A, () => W.riftFor({ id, lat: A.lat, lng: A.lng }, 0, hour).id), 'разлом — из комнаты');
+    B.srv.battle.start -= 85000;
+    const r = await must(B, 'raidEnd', { win: true });
+    ok(r.win && r.allies === 1, 'победа гостя засчитана с союзником');
+    await refuse(C, 'raidStart', { rift, coop: { code: room.code } }, /не в этом разломе/);
+    await must(A, 'roomLeave', { code: room.code });
   });
 
   /* ---------- вывод ---------- */
