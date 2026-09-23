@@ -4,6 +4,24 @@
    сообщает об этом второму — дружба взаимная. Подарки отправляются одной кнопкой и ждут друга
    в «Друзьях»: от каждого друга — один раз в день. */
 
+// Приглашение по ссылке ?ref=<код игрока>: новичок сразу в друзьях у пригласившего, оба получают подарки (считает сервер)
+const Invite = {
+  KEY: 'duholov.ref',
+  grab() {
+    const m = location.search.match(/[?&]ref=([a-z0-9]{8,40})(&|$)/);
+    if (m) { try { localStorage.setItem(this.KEY, m[1]); } catch (e) {} }
+  },
+  ref() { try { return localStorage.getItem(this.KEY) || ''; } catch (e) { return ''; } },
+  done(name) {
+    try { localStorage.removeItem(this.KEY); } catch (e) {}
+    if (name) UI.toast(`Ты и ${U.esc(name)} теперь друзья! Стартовый подарок уже в сумке.`, 'good');
+  },
+  link() { return `${location.origin}${location.pathname}?ref=${S.d.pid}`; },
+  share() {
+    Friends.shareText(`Лови духов вместе со мной в «Духолове»! Открой ссылку — мы сразу станем друзьями, а тебе достанется стартовый подарок:\n${this.link()}`);
+  },
+};
+
 const Friends = {
   inbox: [],   // подарки, которые ждут открытия (присылает сервер)
   busy: false,
@@ -70,7 +88,7 @@ const Friends = {
     Sfx.play('hatch'); U.vibrate([30, 50, 80]);
     const f = this.find(g.from);
     UI.modal({
-      title: `Подарок от ${U.esc(r.name)}`, cls: 'gift-modal',
+      title: g.invite ? `Подарок за приглашение: ${U.esc(r.name)}` : `Подарок от ${U.esc(r.name)}`, cls: 'gift-modal',
       html: `<div class="trade-sp">${Art.item('gift')}</div><div class="lvl-rw">${r.got.map(x => `<div>${x.k === 'xp' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : x.k === 'cocoon' ? Art.cocoon(5) : Art.item(x.k)}<span>${x.label}${x.k === 'xp' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>
         ${f ? `<p class="small">Дружба: ${FRIEND_LEVELS[this.level(f)].name} (${f.pts} ★)</p>` : ''}`,
       buttons: [{ label: 'Спасибо!', cls: 'primary' }],
@@ -85,7 +103,9 @@ const Friends = {
       <div class="panel fr-me">
         <b>Мой код дружбы</b>
         <small>Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной. Дарите друг другу подарки каждый день.</small>
-        <div class="fr-btns"><button class="btn small my-qr">Показать QR</button><button class="btn small primary my-share">Поделиться</button></div>
+        <div class="fr-btns"><button class="btn small my-qr">Показать QR</button><button class="btn small my-share">Код дружбы</button></div>
+        <button class="btn primary wide my-invite">Позвать друга по ссылке</button>
+        <small>Друг откроет ссылку — и вы сразу станете друзьями, а вам обоим придут подарки.</small>
       </div>
       <div class="fr-inbox"></div>
       <div class="panel trade-in">
@@ -108,7 +128,7 @@ const Friends = {
       scr.querySelector('.fr-count').textContent = S.d.friends.length;
       scr.querySelector('.gift-n').textContent = S.d.items.gift || 0;
       scr.querySelector('.fr-inbox').innerHTML = this.inbox.length ? `<div class="panel gift-inbox"><b>Подарки от друзей</b>${this.inbox.map(g => `
-        <div class="row gift-row" data-id="${g.id}"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${U.esc(g.name)}</b><small>${new Date(g.t).toLocaleString('ru-RU')}</small></div>
+        <div class="row gift-row" data-id="${g.id}"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${U.esc(g.name)}</b><small>${g.invite ? 'за приглашение · ' : ''}${new Date(g.t).toLocaleString('ru-RU')}</small></div>
         <button class="btn small primary open-gift">Открыть</button></div>`).join('')}</div>` : '';
       const today = U.today();
       scr.querySelector('.fr-list').innerHTML = S.d.friends.length ? [...S.d.friends].sort((a, b) => b.pts - a.pts).map(f => {
@@ -131,6 +151,7 @@ const Friends = {
     if (sb) sb.onclick = () => Trade.scan(code => this.accept(code, render));
     scr.querySelector('.my-share').onclick = () => this.shareText(`Добавь меня в друзья в Духолове! «Меню → Друзья» → вставь код:\n${this.myCode()}`);
     scr.querySelector('.my-qr').onclick = () => this.showQR('Мой код дружбы', this.myCode());
+    scr.querySelector('.my-invite').onclick = () => Invite.share();
     scr.querySelector('.to-trade').onclick = () => Trade.screen();
     scr.querySelector('.coop-join-btn').onclick = () => {
       const code = scr.querySelector('.coop-code-in').value;

@@ -4,8 +4,10 @@
 // Предложение установить PWA может прийти ещё до загрузки — запоминаем для кнопки в настройках
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installPrompt = e; });
 
-// после обновления страница открывается с меткой ?u=… (обход кэша CDN) — убираем её из адреса
-if (/[?&]u=\d+/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
+// ссылка-приглашение ?ref=… — код друга запоминается до создания Ловчего
+Invite.grab();
+// после обновления страница открывается с меткой ?u=… (обход кэша CDN) — убираем её (и приглашение) из адреса
+if (/[?&](u|ref)=/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
 
 window.addEventListener('load', () => {
   if (typeof L === 'undefined') {

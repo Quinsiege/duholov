@@ -390,7 +390,8 @@
       DB.links.push({ from_pid: from, to_pid: to, from_name: name, from_level: level, created_at: new Date().toISOString() });
     },
     linksTo: async pid => DB.links.filter(l => l.to_pid === pid),
-    giftsTo: async pid => DB.gifts.filter(g => g.to_pid === pid && !g.opened_at),
+    giftsTo: async pid => DB.gifts.filter(g => g.to_pid === pid && !g.opened_at).map(g => ({ ...g, invite: g.contents && g.contents.invite })),
+    invitesTo: async pid => DB.gifts.filter(g => g.to_pid === pid && g.contents && g.contents.invite === 1).length,
     giftCreate: async (from, to, name, contents) => { DB.gifts.push({ id: 'gift' + DB.gifts.length, from_pid: from, to_pid: to, from_name: name, contents, created_at: new Date().toISOString() }); },
     gift: async id => DB.gifts.find(g => g.id === id) || null,
     giftTake: async (id, pid) => { const g = DB.gifts.find(x => x.id === id && x.to_pid === pid && !x.opened_at); if (!g) return false; g.opened_at = Date.now(); return true; },
@@ -840,6 +841,25 @@
     const enc = await must(A, 'encStart', { kind: 'story' }); eq(enc.sid, 'indrik');
     await must(A, 'encEnd');
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }); eq(A.data.look.emblem, 'horn');
+  });
+  atest('Сервер: приглашение по ссылке — сразу друзья и подарки обоим, без накрутки', async () => {
+    const A = await newPlayer('vd', 55.55, 37.43, 'Зазывала');
+    const B = { uid: 've', lat: 55.55, lng: 37.43, data: null, srv: {} };
+    const r = await must(B, 'newGame', { name: 'Новичок', starter: 'kapelka', ref: A.data.pid });
+    eq(r.invitedBy, 'Зазывала'); eq(B.data.friends[0].id, A.data.pid, 'пригласивший — в друзьях');
+    ok(B.data.items.charm >= 30 + 20 && B.data.sparks >= 1500, 'стартовый подарок новичку');
+    const s = await must(A, 'friendsSync');
+    eq(s.added.join(), 'Новичок', 'новичок сам появился у пригласившего');
+    const inv = s.inbox.find(g => g.invite); ok(inv, 'подарок за приглашение ждёт в «Друзьях»');
+    const g = await must(A, 'giftOpen', { id: inv.id });
+    ok(g.got.some(x => x.k === 'charm3'), 'золотые обереги за приглашение');
+    // свой код и чужой несуществующий — без приглашения
+    const C = { uid: 'vf', lat: 55.55, lng: 37.43, data: null, srv: {} };
+    eq((await must(C, 'newGame', { name: 'Одиночка', starter: 'ugolek', ref: 'nikogonet123' })).invitedBy, null);
+    eq(C.data.friends.length, 0);
+    // накрутка: подарков за приглашения — не больше INVITE_MAX
+    for (let i = 0; i < GameCore.INVITE_MAX + 2; i++) await must({ uid: 'vg' + i, lat: 55.55, lng: 37.43, data: null, srv: {} }, 'newGame', { name: 'Бот' + i, starter: 'ugolek', ref: A.data.pid });
+    eq(DB.gifts.filter(x => x.to_pid === A.data.pid && x.contents.invite === 1).length, GameCore.INVITE_MAX, 'не больше десяти подарков');
   });
 
   /* ---------- вывод ---------- */
