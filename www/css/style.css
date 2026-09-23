@@ -844,6 +844,45 @@ a.row.link { color: inherit; text-decoration: none; }
 .gps-help li { margin-bottom: 6px; }
 .link-btn { color: var(--teal); text-decoration: underline; font-size: inherit; }
 
+/* ---------- 2.1: реальные места, заявки, прогресс на сервере ---------- */
+.boot-splash { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg); color: var(--muted); }
+.spring-disc .well.photo { width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; background: center / cover no-repeat; border: 4px solid rgba(94, 234, 212, .8); box-shadow: 0 0 30px rgba(94, 234, 212, .5); }
+.place-photo { width: 150px; height: 150px; margin: 0 auto 10px; border-radius: 20px; background: center / cover no-repeat; border: 3px solid var(--gold); box-shadow: 0 0 24px rgba(251, 191, 36, .35); }
+.transfer-code { margin: 12px 0; padding: 14px; border-radius: 14px; background: rgba(0, 0, 0, .35); border: 1px dashed var(--gold); font: 700 24px/1 ui-monospace, Consolas, monospace; letter-spacing: 2px; text-align: center; color: var(--gold2); user-select: all; }
+.code-in { margin-top: 10px; text-transform: uppercase; letter-spacing: 2px; text-align: center; font-family: ui-monospace, Consolas, monospace; }
+
+.prop-intro p { margin: 0 0 8px; }
+.prop-rules { padding-left: 18px; margin: 0 0 14px; font-size: 14px; color: var(--muted); }
+.prop-rules li { margin-bottom: 6px; }
+.prop-rules b { color: var(--text); }
+.center { text-align: center; }
+.prop-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.prop-thumb { flex: none; width: 52px; height: 52px; border-radius: 12px; background: #000 center / cover no-repeat; }
+.prop-item .row-main { flex: 1; min-width: 0; }
+.prop-item .row-main small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.prop-st { flex: none; font-size: 12px; padding: 4px 8px; border-radius: 999px; background: rgba(255, 255, 255, .1); }
+.prop-st.approved { background: rgba(34, 197, 94, .25); color: #86efac; }
+.prop-st.rejected { background: rgba(239, 68, 68, .22); color: #fca5a5; }
+.prop-st.pending { background: rgba(251, 191, 36, .2); color: var(--gold2); }
+.prop-form { display: flex; flex-direction: column; gap: 6px; padding-bottom: 20px; }
+.prop-photo { width: 100%; aspect-ratio: 4 / 3; border-radius: 16px; background: #000 center / cover no-repeat; margin-bottom: 6px; }
+.prop-label { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.prop-descr { resize: none; font-family: inherit; }
+.prop-kind-hint { margin: 2px 0 0; color: var(--muted); }
+.prop-map { height: 220px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
+.prop-zone { stroke: var(--gold); stroke-dasharray: 6 6; fill: var(--gold); fill-opacity: .08; }
+.prop-me { stroke: #fff; fill: #38bdf8; fill-opacity: 1; }
+.prop-exist { stroke: #0f766e; fill: #5eead4; fill-opacity: .9; }
+.prop-warn { color: #fca5a5; min-height: 1em; }
+.cam-screen { position: fixed; inset: 0; z-index: 3000; background: #000; }
+.cam-screen video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-top { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; align-items: center; justify-content: space-between; }
+.cam-gps { padding: 6px 12px; border-radius: 999px; background: rgba(0, 0, 0, .55); font-size: 13px; }
+.cam-gps.ok { color: #86efac; } .cam-gps.weak { color: var(--gold2); } .cam-gps.bad { color: #fca5a5; }
+.cam-hint { position: absolute; left: 0; right: 0; bottom: calc(120px + env(safe-area-inset-bottom)); text-align: center; font-size: 14px; text-shadow: 0 1px 4px #000; }
+.cam-shot { position: absolute; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); width: 76px; height: 76px; margin-left: -38px; border-radius: 50%; background: #fff; border: 6px solid rgba(255, 255, 255, .45); background-clip: padding-box; }
+.cam-shot:active { transform: scale(.92); }
+
 .fatal { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; background: var(--bg); }
 
 @media (min-width: 700px) {

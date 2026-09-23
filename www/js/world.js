@@ -1,13 +1,10 @@
 'use strict';
-/* Мир: детерминированная генерация духов, родников и разломов по реальным координатам.
-   Одна и та же точка в одно и то же время всегда даёт одно и то же — как в настоящей гео-игре. */
+/* Мир: духи появляются детерминированно по реальным координатам (одна точка в одно время — одно и то же),
+   а Родники, Капища и Разломы стоят у настоящих объектов (pois.js). */
 
 const W = {
   SPAWN_CELL: 0.00055,   // ≈ 60 м
-  SPRING_CELL: 0.0016,   // ≈ 180 м
-  RIFT_CELL: 0.0055,     // ≈ 600 м
   BIOME_CELL: 0.006,     // ≈ 650 м — «район» с любимой стихией
-  SHRINE_CELL: 0.0035,   // ≈ 390 м
   SLOT: 15 * 60 * 1000,  // дух живёт на карте 15 минут
   get SPRING_COOLDOWN() { return Ev.springCooldown(); },
   INTERACT: 70,          // радиус взаимодействия, м
@@ -90,37 +87,27 @@ const W = {
     return out;
   },
 
-  springName(id) {
-    const a = SPRING_ADJ[Math.floor(U.h('sa', id) * SPRING_ADJ.length)];
-    const n = SPRING_NOUN[Math.floor(U.h('sn', id) * SPRING_NOUN.length)];
-    return `${a} ${n}`;
-  },
+  /* ---------- Родники: у реальных объектов (см. pois.js) ---------- */
   springsAround(lat, lng, radius = this.VIEW + 150) {
-    const out = [];
-    this.cells(lat, lng, this.SPRING_CELL, radius, (i, j, la, ln, sz, lsz) => {
-      if (U.h('pr', i, j) > 0.6) return;
-      const id = `p:${i}:${j}`;
-      const pLat = la + (0.2 + U.h('px', id) * 0.6) * sz, pLng = ln + (0.2 + U.h('py', id) * 0.6) * lsz;
-      const d = U.dist(lat, lng, pLat, pLng);
-      if (d > radius) return;
-      const last = S.d.springs[id] || 0;
+    const slot = Math.floor(Date.now() / 7200000);
+    return Poi.near(lat, lng, radius, 'spring').map(p => {
+      const id = p.id, last = S.d.springs[id] || 0;
       // вторжение Нави: ~12% родников захвачены на двухчасовое окно (с 4 уровня)
-      const slot = Math.floor(Date.now() / 7200000), invId = `${id}:${slot}`;
+      const invId = `${id}:${slot}`;
       const invaded = S.d.level >= 4 && U.h('inv', id, slot) < 0.12 && !S.d.freed[invId];
-      out.push({ type: 'spring', id, invId, invaded, lat: pLat, lng: pLng, d, name: this.springName(id), ready: Date.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN });
+      return { type: 'spring', id, invId, invaded, lat: p.lat, lng: p.lng, d: p.d, name: p.name, photo: p.photo,
+        ready: Date.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN };
     });
-    return out;
   },
 
+  /* ---------- Разломы: каждый час открываются у части Капищ ---------- */
+  riftAt(id, hour) { return U.h('rr', id, hour) < 0.35; },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
     const out = [], hour = Math.floor(Date.now() / 3600000);
-    this.cells(lat, lng, this.RIFT_CELL, radius, (i, j, la, ln, sz, lsz) => {
-      if (U.h('rr', i, j) > 0.55) return;
-      const cid = `r:${i}:${j}`;
-      const pLat = la + (0.25 + U.h('rx', cid) * 0.5) * sz, pLng = ln + (0.25 + U.h('ry', cid) * 0.5) * lsz;
-      const d = U.dist(lat, lng, pLat, pLng);
-      if (d > radius) return;
-      const id = `${cid}:${hour}`;
+    Poi.near(lat, lng, radius, 'shrine').forEach(p => {
+      if (!this.riftAt(p.id, hour)) return;
+      const pLat = p.lat, pLng = p.lng, d = p.d;
+      const id = `${p.id}:${hour}`;
       const r = U.rng(id);
       const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
       let pool;
@@ -131,7 +118,7 @@ const W = {
       const evPool = pool.filter(s => s.el === Ev.cur.el);
       if (evPool.length && r() < 0.6) pool = evPool;
       const boss = pool[Math.floor(r() * pool.length)].id;
-      out.push({ type: 'rift', id, lat: pLat, lng: pLng, d, tier, boss, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 });
+      out.push({ type: 'rift', id, lat: pLat, lng: pLng, d, tier, boss, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 });
     });
     return out;
   },
@@ -156,19 +143,15 @@ const W = {
   },
 
   /* ---------- Капища ---------- */
+  // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
-    const out = [], day = U.today();
-    this.cells(lat, lng, this.SHRINE_CELL, radius, (i, j, la, ln, sz, lsz) => {
-      if (U.h('kr', i, j) > 0.42) return;
-      const id = `k:${i}:${j}`;
-      const pLat = la + (0.3 + U.h('kx', id) * 0.4) * sz, pLng = ln + (0.3 + U.h('ky', id) * 0.4) * lsz;
-      const d = U.dist(lat, lng, pLat, pLng);
-      if (d > radius) return;
+    const day = U.today(), hour = Math.floor(Date.now() / 3600000);
+    return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => {
+      const id = p.id;
       const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
-      const name = 'Капище ' + SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
-      out.push({ type: 'shrine', id, tier, name, lat: pLat, lng: pLng, d, won: S.d.shrines[id] === day });
+      const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
+      return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d: p.d, won: S.d.shrines[id] === day };
     });
-    return out;
   },
   // Прислужник Нави на захваченном роднике: трое омрачённых духов одной стихии
   grunt(e) {

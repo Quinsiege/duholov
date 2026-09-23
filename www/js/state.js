@@ -12,12 +12,14 @@ const S = {
     if (this.d) this.migrate();
     return !!this.d;
   },
+  // Локальный кэш пишется сразу, на сервер изменения уходят пачкой (см. sync.js)
   save(now = false) {
     clearTimeout(this._t);
-    const doIt = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.d)); } catch (e) {} };
+    const doIt = () => { if (!this.d) return; this.writeLocal(); Sync.touch(now); };
     if (now) doIt(); else this._t = setTimeout(() => { this.checkMedals(); doIt(); }, 400);
   },
-  reset() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} this.d = null; },
+  writeLocal() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.d)); } catch (e) {} },
+  reset() { clearTimeout(this._t); try { localStorage.removeItem(SAVE_KEY); } catch (e) {} this.d = null; },
   migrate() {
     const d = this.d;
     d.settings = Object.assign({ demo: false, ar: false, sound: true, vibro: true, weather: true, music: true, cloud: true }, d.settings || {});
@@ -35,6 +37,7 @@ const S = {
     d.journal = d.journal || [];
     d.friends = d.friends || [];
     d.giftsOpened = d.giftsOpened || {};
+    d.props = d.props || {}; // решения по моим заявкам мест, о которых уже сообщили
     if (!d.pid) d.pid = U.uid() + U.uid();
     if (d.settings.calm === undefined) d.settings.calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     d.look = Object.assign({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' }, d.look || {});

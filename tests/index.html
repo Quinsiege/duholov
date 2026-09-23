@@ -39,11 +39,14 @@
   <script src="../www/js/tutorial.js"></script>
   <script src="../www/js/album.js"></script>
   <script src="../www/js/league.js"></script>
-  <script src="../www/js/backup.js"></script>
   <script src="../www/js/journal.js"></script>
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
+  <script src="../www/js/sync.js"></script>
+  <script src="../www/js/exif.js"></script>
+  <script src="../www/js/pois.js"></script>
+  <script src="../www/js/propose.js"></script>
   <script src="../www/js/updater.js"></script>
   <script src="../www/js/ui.js"></script>
   <script>
@@ -119,14 +122,60 @@
     ok(W.local(SP.gamayun, 130) && !W.local(SP.gamayun, 37), 'Гамаюн');
     ok(W.local(SP.ugolek, 130), 'обычные духи везде');
   });
-  test('Родники, разломы и капища генерируются', () => {
-    ok(W.springsAround(55.75, 37.62).length > 0, 'родники');
-    ok(W.riftsAround(55.75, 37.62, 3000).every(r => SP[r.boss] && r.tier >= 1 && r.tier <= 3), 'разломы');
-    const sh = W.shrinesAround(55.75, 37.62, 3000);
+  // Реальные объекты: подкладываем набор «с сервера»
+  const fakePois = [];
+  for (let i = 0; i < 60; i++) {
+    const id = 'osm:n' + (1000 + i);
+    fakePois.push({ id, name: 'Объект ' + i, kind: i % 3 ? 'spring' : 'shrine', lat: 55.75 + (U.h('la', i) - 0.5) * 0.02, lng: 37.62 + (U.h('ln', i) - 0.5) * 0.03, photo: i === 1 ? 'u/p.jpg' : null });
+  }
+  fakePois.forEach(p => { p.t = Poi.tileId(p.lat, p.lng); Poi.list.set(p.id, p); });
+  test('Родники, разломы и капища стоят у реальных объектов', () => {
+    const sp = W.springsAround(55.75, 37.62, 2000);
+    ok(sp.length > 0, 'родники');
+    ok(sp.every(s => Poi.list.get(s.id) && Poi.list.get(s.id).kind === 'spring'), 'родник = объект типа «родник»');
+    const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
+    ok(rf.every(r => SP[r.boss] && r.tier >= 1 && r.tier <= 3 && r.place), 'разломы');
     ok(sh.length > 0, 'капища');
+    const shrines = fakePois.filter(p => p.kind === 'shrine' && U.dist(55.75, 37.62, p.lat, p.lng) <= 3000).length;
+    eq(rf.length + sh.length, shrines, 'разлом открывается вместо капища');
+    ok(!sh.some(s => rf.some(r => r.id.startsWith(s.id + ':'))), 'капище с разломом скрыто');
     const g = W.guardian(sh[0]);
     eq(g.team.length, 3, 'команда хранителя');
     ok(g.team.every(x => !SP[x.sid].legend && !SP[x.sid].region), 'без легенд и региональных');
+  });
+  test('Квадраты карты и поиск объектов рядом', () => {
+    eq(Poi.tileId(55.751, 37.619), '1880:2787');
+    eq(Poi.tileId(-33.87, 151.21), '7560:-1694', 'южное и восточное полушарие');
+    const t = Poi.tilesAround(55.75, 37.62, 1600);
+    ok(t.length >= 4 && t.length <= 12, 'квадратов вокруг: ' + t.length);
+    ok(t.some(([x, y]) => `${x}:${y}` === Poi.tileId(55.75, 37.62)), 'свой квадрат');
+    const n = Poi.near(55.75, 37.62, 500);
+    ok(n.every(p => p.d <= 500), 'радиус');
+    const nr = Poi.nearest(fakePois[5].lat, fakePois[5].lng, 5);
+    eq(nr && nr.id, fakePois[5].id, 'ближайший');
+    ok(Poi.photoUrl('a/b.jpg').endsWith('/storage/v1/object/public/poi-photos/a/b.jpg'), 'адрес фото');
+  });
+  test('Геометка снимка: запись и чтение EXIF', () => {
+    // минимальный JPEG-заголовок с JFIF — Exif.embed заменяет его на APP1
+    const jfif = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0, 16, 0x4A, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xFF, 0xDA, 0, 2, 0xFF, 0xD9]);
+    const t = new Date(2026, 8, 23, 14, 5, 9).getTime();
+    [[55.751244, 37.618423], [-33.856784, 151.215297], [40.689247, -74.044502]].forEach(([lat, lng]) => {
+      const out = Exif.embed(jfif.buffer, { lat, lng, acc: 7.5, time: t });
+      eq(out[2], 0xFF); eq(out[3], 0xE1, 'APP1 сразу после SOI');
+      const g = Exif.read(out.buffer);
+      ok(g, 'геометка прочитана');
+      ok(U.dist(lat, lng, g.lat, g.lng) < 0.05, `координаты ${lat},${lng} → ${g.lat},${g.lng}`);
+      near(g.acc, 7.5, 1e-9, 'точность');
+      eq(g.time, t, 'время');
+    });
+    eq(Exif.read(jfif.buffer), null, 'без геометки');
+  });
+  test('На сервер не уходит последняя точка игрока', () => {
+    S.d.lastPos = [55.75, 37.62]; S.d.tutPos = [55.75, 37.62];
+    const p = Sync.payload();
+    ok(!('lastPos' in p) && !('tutPos' in p), 'координаты убраны');
+    ok(S.d.lastPos, 'в локальной копии остались');
+    eq(p.name, S.d.name);
   });
 
   /* ---------- духи ---------- */
@@ -178,11 +227,6 @@
     err = ''; try { Trade.decode(code.slice(0, -1) + (code.endsWith('a') ? 'b' : 'a')); } catch (e) { err = e.message; } ok(/повреждён/.test(err), 'порча');
     const p = Trade.decode('текст вокруг ' + code + ' и после');
     eq(p.s, 'sirin'); eq(p.n, 'Птаха «Ёж»'); eq(p.y, 1);
-  });
-  test('Резервная копия: контрольная сумма', () => {
-    const copy = JSON.parse(JSON.stringify(S.d));
-    eq(Backup.sum(copy), Backup.sum(S.d));
-    copy.sparks++; ok(Backup.sum(copy) !== Backup.sum(S.d));
   });
   test('Православная Пасха', () => {
     const f = d => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;

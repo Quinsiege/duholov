@@ -133,7 +133,7 @@ const MapView = {
       }
     } else if (!this.lastGps || accuracy <= 40) this.lastGps = { lat, lng, t: p.timestamp };
     this.moveTo(lat, lng, first);
-    if (first) this.refresh();
+    if (first) { this.refresh(); Poi.ensure(); }
   },
   gpsFail(err) {
     if (this.demo) return;
@@ -258,7 +258,7 @@ const MapView = {
     const range = e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT;
     if (d > range) {
       const what = e.type === 'spirit' ? SP[e.sid].name : e.type === 'spring' || e.type === 'shrine' ? e.name : 'Разлом';
-      UI.toast(`${what}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);
+      UI.toast(`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);
       return;
     }
     if (this.tracking && this.tracking.id === e.id) this.untrack();

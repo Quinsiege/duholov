@@ -52,7 +52,7 @@ const J = {
         const d = new Date(e.t), ds = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' });
         if (ds !== day) { day = ds; html += `<div class="j-day">${ds}</div>`; }
         const v = this.view(e);
-        html += `<div class="j-row ${v.cls || ''}">${v.ico}<div class="row-main"><b>${v.title}</b><small>${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${v.sub ? ' · ' + v.sub : ''}</small></div>
+        html += `<div class="j-row ${v.cls || ''}">${v.ico}<div class="row-main"><b>${U.esc(v.title)}</b><small>${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${v.sub ? ' · ' + U.esc(v.sub) : ''}</small></div>
           ${e.lat != null ? `<button class="btn small ghost j-map" data-i="${S.d.journal.indexOf(e)}" title="На карте">${UI.I.pin}</button>` : ''}</div>`;
       });
       scr.querySelector('.j-list').innerHTML = html || '<div class="empty">Записей пока нет. Лови духов — дневник заполнится сам.</div>';

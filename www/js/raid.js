@@ -31,6 +31,7 @@ const Raid = {
         <div class="rift-boss">${Art.spirit(r.boss)}</div>
         <div class="rift-title">${T.name} <span class="stars">${'★'.repeat(r.tier)}</span></div>
         <div class="rift-name">${Art.elIcon(s.el, 20)} ${s.name}</div>
+        ${r.place ? `<div class="rift-meta">Разлом открылся у «${U.esc(r.place)}»</div>` : ''}
         <div class="rift-meta">Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через ${U.fmtTime(r.endsAt - Date.now())}</div>
         <div class="rift-tip">Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}</div>
         ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(' и ')}</div>` : ''}

@@ -16,8 +16,27 @@ const Updater = {
   },
 
   init() {
+    this.whatsNew();
     this.check();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.check(); });
+  },
+
+  // Первый запуск после обновления: показать, что нового
+  SEEN: 'duholov.seenVersion',
+  whatsNew() {
+    let seen = null;
+    try { seen = localStorage.getItem(this.SEEN); localStorage.setItem(this.SEEN, APP_VERSION); } catch (e) { return; }
+    if (!seen && S.d && Date.now() - S.d.created > 600000) seen = '2.0.0'; // игроки 2.0.0 ещё не хранили версию
+    if (!seen || this.cmp(APP_VERSION, seen) <= 0) return;
+    fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null).then(v => {
+      const notes = v && v.version === APP_VERSION && Array.isArray(v.notes) ? v.notes : [];
+      UI.modal({
+        title: 'Игра обновлена', cls: 'update-modal',
+        html: `<div class="upd-ver">${U.esc(seen)} → <b>${U.esc(APP_VERSION)}</b></div>
+          ${notes.length ? `<ul class="upd-notes">${notes.map(n => `<li>${U.esc(n)}</li>`).join('')}</ul>` : ''}`,
+        buttons: [{ label: 'Отлично', cls: 'primary' }],
+      });
+    });
   },
 
   async check(force) {
@@ -55,7 +74,7 @@ const Updater = {
   },
 
   async apply() {
-    try { S.save(true); } catch (e) {}
+    try { S.save(true); await Promise.race([Sync.push(), U.wait(3000)]); } catch (e) {}
     try {
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.getRegistration();
