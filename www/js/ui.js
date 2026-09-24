@@ -318,11 +318,14 @@ const UI = {
         <rect x="16" y="12" width="68" height="16" rx="8" fill="#fde68a" stroke="#92400e" stroke-width="3.5"/><rect x="16" y="74" width="68" height="16" rx="8" fill="#fde68a" stroke="#92400e" stroke-width="3.5"/>
         <path d="M34 40 H66 M34 50 H66 M34 60 H54" stroke="#b45309" stroke-width="4" stroke-linecap="round" opacity=".55"/>
         <circle cx="66" cy="66" r="10" fill="#dc2626" stroke="#7f1d1d" stroke-width="3"/><path d="M62 66 L66 62 L70 66 L66 70Z" fill="#fca5a5"/>` + hl(28, 17, 7, 2.5, 0),
-      // Друзья: двое духов и сердечко
-      swap: sh(34) + `<circle cx="66" cy="58" r="21" fill="#f9a8d4" stroke="#9d174d" stroke-width="3.5"/><circle cx="34" cy="60" r="23" fill="#93c5fd" stroke="#1e3a8a" stroke-width="3.5"/>
-        <circle cx="27" cy="58" r="3.6" fill="#1e1b4b"/><circle cx="41" cy="58" r="3.6" fill="#1e1b4b"/><path d="M29 68 Q34 72 39 68" stroke="#1e1b4b" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <circle cx="62" cy="55" r="3.3" fill="#1e1b4b"/><circle cx="75" cy="55" r="3.3" fill="#1e1b4b"/><path d="M64 64 Q68.5 67.5 73 64" stroke="#1e1b4b" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M50 30 C44 20 30 24 36 34 L50 44 L64 34 C70 24 56 20 50 30Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3" stroke-linejoin="round"/>` + hl(26, 46, 6, 3.5) + hl(42, 26, 3, 1.8),
+      // Друзья: два духа обнялись, над ними сердечко
+      swap: sh(36) + `<path d="M64 28 C50 28 44 40 44 52 V84 L51 79 L58 85 L65 79 L72 85 L79 79 L86 84 V52 C86 40 78 28 64 28Z" fill="#f9a8d4" stroke="#9d174d" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M56 51 Q60 46 64 51 M68 51 Q72 46 76 51" stroke="#500724" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="80" cy="60" rx="4" ry="2.4" fill="#f43f5e" opacity=".5"/>
+        <path d="M36 32 C22 32 14 44 14 56 V86 L21 81 L28 87 L35 81 L42 87 L49 81 L56 86 V56 C56 44 50 32 36 32Z" fill="#a5f3fc" stroke="#155e75" stroke-width="3.5" stroke-linejoin="round"/>
+        <ellipse cx="29" cy="55" rx="3.8" ry="5" fill="#083344"/><ellipse cx="43" cy="55" rx="3.8" ry="5" fill="#083344"/><circle cx="30.2" cy="53.3" r="1.5" fill="#fff"/><circle cx="44.2" cy="53.3" r="1.5" fill="#fff"/>
+        <path d="M32 65 Q36 69 40 65" stroke="#083344" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="22" cy="63" rx="4" ry="2.4" fill="#f472b6" opacity=".5"/>
+        <path d="M52 62 C60 58 66 60 68 66" stroke="#155e75" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M52 62 C60 58 66 60 68 66" stroke="#a5f3fc" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M50 22 C45 12 32 15 37 25 L50 35 L63 25 C68 15 55 12 50 22Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3" stroke-linejoin="round"/>` + hl(26, 44, 6, 3.5) + hl(43, 20, 3, 1.8),
       // Чат: реплики-берестяные грамотки
       chat: sh(30) + `<path d="M18 14 H62 Q70 14 70 22 V44 Q70 52 62 52 H36 L24 62 V52 H18 Q10 52 10 44 V22 Q10 14 18 14Z" fill="#bfdbfe" stroke="#1e3a8a" stroke-width="3.5" stroke-linejoin="round"/>
         <path d="M40 38 H82 Q90 38 90 46 V70 Q90 78 82 78 H78 V88 L66 78 H40 Q32 78 32 70 V46 Q32 38 40 38Z" fill="#f0f9ff" stroke="#1e3a8a" stroke-width="3.5" stroke-linejoin="round"/>
@@ -344,22 +347,34 @@ const UI = {
         <path d="M78 50 H28 L18 60 L28 70 H78Z" fill="#e7c49a" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
         <path d="M30 32 H62 M36 60 H70" stroke="#78350f" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="5 5" opacity=".6"/>
         <path d="M50 10 C54 4 62 6 60 12 C58 16 52 16 50 10Z" fill="#4ade80" stroke="#166534" stroke-width="2.5"/>` + hl(30, 27, 5, 2, 0),
-      // Разломы: светящаяся трещина-портал
-      rift: `<ellipse cx="50" cy="52" rx="34" ry="42" fill="#a855f7" opacity=".25"/>` + sh(22) + `<path d="M50 8 C70 26 72 72 50 92 C28 72 30 26 50 8Z" fill="#7c3aed" stroke="#3b0764" stroke-width="3.5"/>
-        <path d="M50 20 C62 34 63 66 50 80 C37 66 38 34 50 20Z" fill="#1e0b36"/><path d="M52 28 L45 42 L55 52 L46 64 L51 74" stroke="#e9d5ff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M20 26 L23 32 L29 35 L23 38 L20 44 L17 38 L11 35 L17 32Z" fill="#fde047"/><circle cx="82" cy="66" r="3.5" fill="#fde047"/><circle cx="78" cy="22" r="2.5" fill="#e9d5ff"/>` + hl(42, 24, 3, 7, 20),
-      // Аукцион: деревянный молоток
-      gavel: sh(30) + `<rect x="46" y="76" width="42" height="12" rx="3" fill="#a16207" stroke="#78350f" stroke-width="3.5"/>
-        <g transform="rotate(-40 42 40)"><rect x="37" y="42" width="10" height="46" rx="4" fill="#d6a36b" stroke="#78350f" stroke-width="3.5"/>
-        <rect x="18" y="20" width="48" height="24" rx="5" fill="#b45309" stroke="#78350f" stroke-width="3.5"/><rect x="26" y="18" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>
-        <rect x="51" y="18" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/></g>` + hl(30, 30, 5, 2.5, -40),
+      // Разломы: каменная арка с руной, внутри — вихрь Нави
+      rift: `<ellipse cx="50" cy="60" rx="30" ry="32" fill="#a855f7" opacity=".3"/>` + sh(36) + `<path d="M32 90 V50 A18 18 0 0 1 68 50 V90Z" fill="#6d28d9"/>
+        <path d="M50 52 C58 52 60 62 52 64 C44 66 40 56 48 50 C58 43 70 54 64 66 C58 78 38 76 36 62" stroke="#c4b5fd" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="58" r="4.5" fill="#f5d0fe"/><circle cx="50" cy="58" r="10" fill="#f0abfc" opacity=".35"/>
+        <path d="M14 90 V48 A36 36 0 0 1 86 48 V90 H68 V50 A18 18 0 0 0 32 50 V90Z" fill="#9ca3af" stroke="#374151" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M14 70 H32 M68 70 H86 M18 36 L34 42 M82 36 L66 42 M31 20 L40 34 M69 20 L60 34" stroke="#4b5563" stroke-width="3" stroke-linecap="round"/>
+        <path d="M68 50 A18 18 0 0 0 60 35 L69 20 A36 36 0 0 1 86 48 V90 H68Z" fill="#374151" opacity=".3"/>
+        <rect x="41" y="8" width="18" height="18" rx="3" fill="#6b7280" stroke="#374151" stroke-width="3.5"/><path d="M50 11 V23 M50 15 L45 11 M50 15 L55 11" stroke="#e879f9" stroke-width="2.8" stroke-linecap="round"/>
+        <path d="M8 26 L10.5 31 L15.5 33.5 L10.5 36 L8 41 L5.5 36 L0.5 33.5 L5.5 31Z" fill="#fde047"/><circle cx="92" cy="30" r="2.6" fill="#e9d5ff"/>` + hl(24, 44, 6, 2.5, -60),
+      // Аукцион: молоток бьёт по подставке (головкой вниз)
+      gavel: sh(32) + `<rect x="34" y="76" width="50" height="13" rx="3.5" fill="#a16207" stroke="#78350f" stroke-width="3.5"/><path d="M38 79 H80" stroke="#fde68a" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+        <path d="M72 66 L78 60 M78 72 L86 70 M66 62 L68 54" stroke="#fde047" stroke-width="3.5" stroke-linecap="round"/>
+        <g transform="translate(42 54) rotate(40)"><rect x="-5" y="-58" width="10" height="48" rx="4" fill="#d6a36b" stroke="#78350f" stroke-width="3.5"/>
+        <rect x="-25" y="-12" width="50" height="24" rx="5" fill="#b45309" stroke="#78350f" stroke-width="3.5"/><rect x="-18" y="-14" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>
+        <rect x="11" y="-14" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/><ellipse cx="-4" cy="-6" rx="6" ry="2.2" fill="#fff" opacity=".45"/></g>`,
       // Места: метка на карте
       pin: sh(18) + `<path d="M50 90 C50 90 20 60 20 38 A30 30 0 0 1 80 38 C80 60 50 90 50 90Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/>
         <path d="M66 20 A30 30 0 0 1 80 38 C80 60 50 90 50 90 C60 70 70 52 66 20Z" fill="#b91c1c" opacity=".45"/><circle cx="50" cy="38" r="12" fill="#fff" stroke="#7f1d1d" stroke-width="3"/>` + hl(34, 24, 6, 3.5, -40),
-      // Ловчий: капюшон со светящимися глазами
-      user: sh(28) + `<path d="M50 8 C28 8 16 28 16 50 C16 68 22 80 28 88 H72 C78 80 84 68 84 50 C84 28 72 8 50 8Z" fill="#7c3aed" stroke="#3b0764" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M70 18 C80 28 84 40 84 50 C84 68 78 80 72 88 H62 C72 72 76 44 70 18Z" fill="#5b21b6" opacity=".6"/><ellipse cx="50" cy="52" rx="20" ry="23" fill="#1e0b36"/>
-        <ellipse cx="42" cy="50" rx="4" ry="5.5" fill="#5eead4"/><ellipse cx="58" cy="50" rx="4" ry="5.5" fill="#5eead4"/><circle cx="50" cy="80" r="5" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>` + hl(32, 24, 8, 4, -40),
+      // Ловчий: по пояс, в плаще с капюшоном (цвет плаща и глаз — из «Облика» игрока), застёжка-оберег
+      user: (() => { const lk = (S.d && S.d.look) || {}, hex = /^#[0-9a-f]{6}$/i;
+        const c = hex.test(lk.cloak) ? lk.cloak : '#6d28d9', eye = hex.test(lk.eyes) ? lk.eyes : '#5eead4', ol = Art.shade(c, -0.55);
+        return sh(32) + `<path d="M12 92 C12 74 24 62 38 58 H62 C76 62 88 74 88 92Z" fill="${c}" stroke="${ol}" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M62 58 C76 62 88 74 88 92 H72 C72 78 68 66 62 58Z" fill="#000" opacity=".2"/>
+        <path d="M50 6 C32 10 22 26 22 44 C22 56 28 64 38 66 H62 C72 64 78 56 78 44 C78 26 68 10 50 6Z" fill="${c}" stroke="${ol}" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M58 10 C70 18 78 30 78 44 C78 56 72 64 62 66 C68 56 70 34 58 10Z" fill="#000" opacity=".2"/>
+        <path d="M50 24 C62 24 66 36 66 46 C66 56 59 62 50 62 C41 62 34 56 34 46 C34 36 38 24 50 24Z" fill="#150d2b" stroke="${ol}" stroke-width="2"/>
+        <ellipse cx="43" cy="46" rx="4" ry="2.8" fill="${eye}"/><ellipse cx="57" cy="46" rx="4" ry="2.8" fill="${eye}"/><ellipse cx="50" cy="46" rx="14" ry="6" fill="${eye}" opacity=".15"/>
+        <circle cx="50" cy="74" r="8" fill="#fbbf24" stroke="#92400e" stroke-width="3"/><path d="M50 69 V79 M45.5 71.5 L54.5 76.5 M54.5 71.5 L45.5 76.5" stroke="#fff7d6" stroke-width="2" stroke-linecap="round"/>` + hl(34, 22, 7, 3.5, -45); })(),
       // Дружина: славянский щит с умбоном
       shield: sh(26) + `<path d="M50 8 L84 20 V46 C84 70 68 84 50 92 C32 84 16 70 16 46 V20Z" fill="#dc2626" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/>
         <path d="M50 8 V92 C68 84 84 70 84 46 V20Z" fill="#991b1b" opacity=".5"/><path d="M50 16 L76 25 V46 C76 64 64 76 50 83 C36 76 24 64 24 46 V25Z" fill="none" stroke="#fbbf24" stroke-width="3" opacity=".9"/>
