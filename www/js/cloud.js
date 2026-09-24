@@ -1,6 +1,6 @@
 'use strict';
-/* Облако (Supabase): анонимный вход, прогресс (sync.js), объекты карты (pois.js), заявки мест (propose.js)
-   и общая таблица сезона Лиги (имя Ловчего, облик, уровень и звёзды). */
+/* Облако (Supabase): анонимный вход (в закрытом тестовом контуре — с ключом доступа). Через него работают сервер игры
+   (game.js), объекты карты (pois.js) и заявки мест (propose.js). Таблицу сезона Лиги отдаёт только сервер игры. */
 
 const Cloud = {
   LIB: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
@@ -68,14 +68,4 @@ const Cloud = {
   },
   forgetKey() { try { localStorage.removeItem(this.KEY_STORE); } catch (e) {} },
   async headers() { const k = await this.accessKey(); return k ? { 'x-duholov-access': k } : {}; },
-
-  // Топ-50 сезона и место игрока (строки таблицы пишет сервер игры после турниров)
-  async top(season) {
-    const sb = await this.client();
-    const { data, error } = await sb.from('league_scores').select('user_id,name,stars,rank,level,look')
-      .eq('season', season).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50);
-    if (error) throw new Error(error.message);
-    const { data: { user } } = await sb.auth.getUser();
-    return { rows: data || [], me: user && user.id };
-  },
 };
