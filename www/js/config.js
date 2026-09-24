@@ -19,3 +19,5 @@ const CLOUD_PROJECTS = {
   },
 };
 const CLOUD_CONFIG = DEV ? CLOUD_PROJECTS.test : CLOUD_PROJECTS.prod;
+// 3.36: значки меню в стиле игры (золотой символ на ночном медальоне, как оберег) — пока только в тестовом контуре
+const MENU_ICONS_GAME = DEV;
