@@ -31,7 +31,7 @@ const Duel = {
         <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
         <div class="rift-tip">${hold ? 'Победа освободит Капище от защитников. ' : ''}Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы${mul > 1 ? ' (Неделя поединков ×2)' : ''}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Бросить вызов</button>`;
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Бросить вызов</button>${Rules.dayLine(S.d, 'duels', 'Побед на Капищах')}`;
     const html = `
       <div class="shrine-view t${e.tier}">
         ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
@@ -80,6 +80,7 @@ const Duel = {
         <div class="rift-tip">Слабость отряда: ${ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el)).map(x => `${Art.elIcon(x, 16)} ${ELEMENTS[x].name}`).join(' ')}</div>
         <div class="rift-tip">Победа освободит родник и позволит спасти одного из омрачённых духов.</div>
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
+        ${Rules.dayLine(S.d, 'invasions', 'Вторжений отбито')}
       </div>`;
     const scr = UI.screen('Вторжение Нави', html, 'shrine-screen invasion-screen');
     scr.querySelector('.duel-go').onclick = async () => {

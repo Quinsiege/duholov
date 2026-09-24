@@ -1169,3 +1169,7 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .chat-bar { display: flex; gap: 8px; padding: 8px 12px calc(10px + var(--sb)); background: rgba(12, 8, 26, .92); border-top: 1px solid var(--line); }
 .chat-bar .chat-in { flex: 1; min-width: 0; height: 44px; }
 .chat-bar .chat-send { flex: none; width: 48px; min-height: 44px; padding: 0; font-size: 18px; }
+.day-left { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; } .day-left b { color: var(--text); } .day-left.out { color: #fb7185; } .day-left.out b { color: #fb7185; }
+.day-limits { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 12px; }
+.day-limits div { padding: 6px 2px; border-radius: 12px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); text-align: center; }
+.day-limits b { display: block; font-size: 14px; } .day-limits small { font-size: 10px; color: var(--muted); } .day-limits .out b { color: #fb7185; }

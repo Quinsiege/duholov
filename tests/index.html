@@ -1045,6 +1045,32 @@
     const extra = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(extra);
     await refuse(S1, 'auctionSell', { uid: extra.uid, cur: 'sparks', price: 100 }, /не больше 5/);
   });
+  atest('Сервер: дневные лимиты объектов — родники, разломы, капища, вторжения, поимки', async () => {
+    const A = await newPlayer('da', 55.46, 37.34, 'Фармер');
+    A.data.tut = 0; A.data.level = 10;
+    // 30 родников в день: каждый — отдельный объект, откат не мешает
+    for (let i = 0; i < Rules.DAILY.springs; i++) {
+      const sp = freeSpring(A, 96000 + i * 37);
+      A.srv.rl = {}; await must(A, 'spring', { poi: sp });
+    }
+    eq(A.data.dayc.springs, 30, 'засчитано 30');
+    A.srv.rl = {}; await refuse(A, 'spring', { poi: freeSpring(A, 99000) }, /30 родников/);
+    // исчерпанные лимиты остальных объектов
+    const today = asPlayer(A, () => U.today());
+    A.data.dayc = { day: today, springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 };
+    A.data.items.farpass = 2;
+    const hour = Math.floor(Date.now() / 3600000);
+    const rid = poiId(i => asPlayer(A, () => !!W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour)), 97000);
+    await refuse(A, 'raidStart', { rift: { id: rid, lat: A.lat + 0.01, lng: A.lng, name: 'Разлом' }, far: true }, /Разломов/);
+    eq(A.data.items.farpass, 2, 'пропуск не списан');
+    const sid = poiId(i => asPlayer(A, () => !W.riftAt(i, hour)), 98000);
+    await refuse(A, 'duelStart', { shrine: { id: sid, lat: A.lat, lng: A.lng, name: 'Капище' } }, /Капищах/);
+    const sp = asPlayer(A, () => W.spawnsAround(A.lat, A.lng, W.INTERACT).find(x => !x.tut));
+    if (sp) await refuse(A, 'encStart', { kind: 'wild', id: sp.id }, /120 духов/);
+    // новый день — счёт с нуля
+    A.data.dayc.day = '2000-1-1'; A.srv.rl = {};
+    await must(A, 'spring', { poi: freeSpring(A, 99500) }); eq(A.data.dayc.springs, 1, 'новый день');
+  });
   atest('Сервер: чат — каналы, уровень, ссылки, частота, фильтр слов, жалобы', async () => {
     const A = await newPlayer('ca', 55.47, 37.35, 'Болтун'), B = await newPlayer('cb', 55.47, 37.35, 'Слушатель'), C = await newPlayer('cc', 55.47, 37.35, 'Третий'), D2 = await newPlayer('cd', 55.47, 37.35, 'Четвёртый');
     for (const P of [A, B, C, D2]) { P.data.tut = 0; P.data.level = 5; }
