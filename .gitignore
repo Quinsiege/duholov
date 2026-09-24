@@ -8,3 +8,5 @@ android/local.properties
 www/duholov.apk
 tests/node_modules/
 tests/package-lock.json
+# исходники графики (листы ChatGPT, черновики) — тяжёлые; готовые картинки лежат в www/art
+design/

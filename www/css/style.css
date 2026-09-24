@@ -41,6 +41,8 @@ small, .small { color: var(--muted); font-size: 12px; }
 .art-spin-soft { animation: wobbleSoft 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .art-aura { animation: auraPulse 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .art-eyes { animation: eyeBlink 5s infinite; transform-box: fill-box; transform-origin: center; }
+.art-breathe { animation: breathe 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 94%; } /* 3.33: PNG-духи «дышат» */
+@keyframes breathe { 50% { transform: scale(.985, 1.025); } }
 @keyframes flicker { from { transform: scaleY(.9) skewX(-3deg); } to { transform: scaleY(1.08) skewX(3deg); } }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
@@ -871,7 +873,7 @@ html.big-text .modal-body, html.big-text .det-desc, html.big-text .story-text, h
 html.big-text .row-main b, html.big-text .quest b, html.big-text .btn { font-size: 17px; }
 html.big-text .chip { font-size: 14px; }
 /* меньше движения */
-.calm .art-flicker, .calm .art-blink, .calm .art-float, .calm .art-sway, .calm .art-wing, .calm .art-spin, .calm .art-spin-soft, .calm .art-aura, .calm .art-eyes,
+.calm .art-breathe, .calm .art-flicker, .calm .art-blink, .calm .art-float, .calm .art-sway, .calm .art-wing, .calm .art-spin, .calm .art-spin-soft, .calm .art-aura, .calm .art-eyes,
 .calm .mk-spirit, .calm .orb svg, .calm .enc-motes i, .calm .mk-player .pulse, .calm .det-art, .calm .res-art, .calm .raid-bg::after,
 .calm .mk-rift .mk-boss, .calm .mk-pin, .calm .onb-spirits div, .calm .raid-boss .art, .calm .duel-foe .art, .calm .spring-disc .runes, .calm .coc-art.warm { animation: none !important; }
 .calm #wxfx { display: none; }
