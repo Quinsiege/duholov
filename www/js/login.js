@@ -183,7 +183,7 @@ const Login = {
     const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
     const panel = guest
       ? this.panel('<b>Сохрани прогресс</b><small>Привяжи вход — и прогресс откроется на любом устройстве</small>', this.buttons('link'))
-      : this.panel('<b>Другой аккаунт</b><small>Войди в другую учётную запись</small>',
+      : this.panel('<b>Другой аккаунт</b><small>Текущий прогресс останется в своей учётной записи</small>',
         avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''));
     root.innerHTML = `<div class="onb-step s0 gate">
       <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>С возвращением, Ловчий!</p></div>
@@ -192,11 +192,11 @@ const Login = {
           <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div></div>
         <div class="acc-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>духов</span></div><div><b>${dex}/${SPECIES.length}</b><span>бестиарий</span></div>
           <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>поймано</span></div></div>
-        ${Game.on() ? `<div class="acc-foot ${guest ? 'warn' : 'ok'}"><span>${guest ? `${UI.I.user}Прогресс только на этом устройстве` : `${UI.I.cloud}Прогресс сохранён в учётной записи`}</span>
+        ${Game.on() ? `<div class="acc-foot ${guest ? 'warn' : 'ok'}"><span>${guest ? `${UI.I.user}Прогресс только на этом устройстве` : `${UI.I.cloud}Прогресс в облаке`}</span>
           <button class="acc-exit" aria-label="Выйти из учётной записи">${UI.I.logout}Выйти</button></div>` : ''}
       </div>
       <button class="btn primary wide go">Продолжить</button>
-      ${Game.on() ? panel : ''}
+      ${!Game.on() ? '' : guest ? panel : `<button class="gate-more" aria-expanded="false">${UI.I.swap}<span>Войти в другой аккаунт</span><i class="gm-chev">›</i></button><div class="gate-other hidden">${panel}</div>`}
     </div>`;
     document.body.appendChild(root);
     const close = () => { root.classList.add('out'); setTimeout(() => root.remove(), 400); };
@@ -205,6 +205,13 @@ const Login = {
     root.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
     const mail = root.querySelector('.mail-login');
     if (mail) mail.onclick = () => this.emailForm();
+    // 3.34: у вошедшего «Другой аккаунт» свёрнут — чаще всего нужен просто «Продолжить»
+    const more = root.querySelector('.gate-more');
+    if (more) more.onclick = () => {
+      const box = root.querySelector('.gate-other'), open = box.classList.toggle('hidden') === false;
+      more.setAttribute('aria-expanded', open); more.classList.toggle('open', open);
+      if (open) setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    };
     const out = root.querySelector('.acc-exit');
     if (out) out.onclick = () => this.askSignOut();
   },
