@@ -5,7 +5,6 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
 // секретный ключ проекта (новая схема ключей Supabase, с запасным вариантом для старой)
 function serviceKey() {
@@ -364,8 +363,18 @@ const tooMany = (map, key, max) => {
   return ++h.n > max;
 };
 
+// Контуры (3.22.1): код функции один и тот же, а с каких страниц её можно вызывать — задаёт секрет проекта
+// ALLOWED_ORIGINS (через запятую). Боевой проект — только сайт игры (так по умолчанию), тестовый — только localhost.
+// Запросы не из браузера (без заголовка Origin) проверяются как обычно — по входу игрока.
+const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || 'https://quinsiege.github.io').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+
 Deno.serve(async req => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  const origin = req.headers.get('origin');
+  const allowed = !origin || ORIGINS.includes(origin);
+  const headers = { ...CORS, 'Access-Control-Allow-Origin': allowed && origin ? origin : ORIGINS[0], Vary: 'Origin' };
+  const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers });
+  if (!allowed) return reply({ ok: false, error: 'Этот сервер игры не принимает запросы с этой страницы' }, 403);
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);
   const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
   const bad = badTokens.get(ip);
