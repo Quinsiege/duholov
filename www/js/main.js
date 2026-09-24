@@ -63,10 +63,10 @@ window.addEventListener('load', () => {
     // вернулись со страницы сервиса входа — довести вход до конца (учётная запись могла смениться — тогда заново)
     if (Game.on() && !Game.moved) {
       if (await Login.resume()) { location.reload(); return; }
-      if (S.d) Login.load(); else await Login.load(); // новичку кнопки входа нужны сразу
+      await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
     if (Game.moved) Game.onMoved();
-    else if (S.d) start();
+    else if (S.d) Login.gate(start); // экран входа: чей прогресс, «Продолжить» (3.28)
     else UI.onboarding(start);
   };
   boot();

@@ -1417,7 +1417,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .quest.qd .q-main > b + .qd-rws { margin-top: 6px; }
 
 /* ---------- 3.27: вход через сервисы ---------- */
-.login-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; width: 100%; }
+.login-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; width: 100%; }
 .login-btn { flex-direction: row; gap: 8px; min-height: 44px; padding: 8px 12px; font-size: 14px; background: rgba(255, 255, 255, .92); color: #1f2937; border-color: rgba(255, 255, 255, .9); }
 .login-btn:active { transform: scale(.97); }
 .lg-ic { width: 20px; height: 20px; flex: none; display: inline-grid; place-items: center; }
@@ -1426,5 +1426,44 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .onb-or::before, .onb-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .onb .login-row, .onb .onb-or { max-width: 360px; margin-top: -8px; margin-bottom: -4px; }
 .onb-note { color: var(--muted); text-align: center; margin: 4px 0 10px; }
-.acc-box .acc-linked .row-main { display: flex; align-items: center; gap: 10px; }
 .acc-box .acc-add { padding-top: 4px; }
+
+/* ---------- 3.28: настройки, экран входа, учётная запись ---------- */
+.set-h { margin: 18px 4px 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.set-screen .screen-body > .set-h:first-child { margin-top: 4px; }
+.set-screen .list { margin-bottom: 4px; }
+.set-row { gap: 12px; }
+.set-ico { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; background: rgba(167, 139, 250, .14); color: var(--violet); }
+.set-ico .ico { width: 18px; height: 18px; }
+.set-ico.danger { background: rgba(248, 113, 113, .14); color: var(--danger); }
+.set-ico.warn { background: rgba(251, 191, 36, .16); color: var(--gold2); }
+.set-chev { color: var(--muted); font-size: 22px; line-height: 1; margin-left: 4px; }
+.set-row .row-main { min-width: 0; }
+.set-row:has(.map-theme) { flex-wrap: wrap; }
+.set-row .seg.map-theme { flex: 1 0 calc(100% - 46px); margin-left: 46px; }
+.acc-linked .lg-ic { width: 34px; height: 34px; border-radius: 10px; background: #fff; }
+.acc-linked .lg-ic svg { width: 20px; height: 20px; }
+.acc-guest { background: rgba(251, 191, 36, .07); }
+.acc-add .row-main { display: flex; flex-direction: column; gap: 8px; }
+.acc-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.acc-tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 12px; font-size: 12px; font-weight: 600; background: rgba(255, 255, 255, .1); }
+.acc-tag .lg-ic { width: 18px; height: 18px; border-radius: 50%; background: #fff; }
+.acc-tag .lg-ic svg { width: 14px; height: 14px; }
+.acc-tag.guest { padding-left: 10px; color: var(--gold2); background: rgba(251, 191, 36, .12); }
+/* экран входа вернувшегося Ловчего */
+.onb .gate { gap: 14px; }
+.gate .onb-logo h1 { margin-bottom: 0; }
+.acc-card { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 360px; padding: 14px 16px; border-radius: 20px; text-align: left;
+  background: radial-gradient(130% 120% at 0% 0%, color-mix(in srgb, var(--cc) 30%, transparent), transparent 70%), rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
+.acc-card .pc-ava { width: 64px; height: 64px; border-color: var(--cc); }
+.acc-card .acc-ava { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.acc-card .acc-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.acc-card .acc-main b { font-size: 19px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-card .acc-main small { color: var(--muted); font-size: 12px; }
+.acc-card .acc-tags { margin-top: 4px; }
+.gate .btn.ghost.out { color: var(--muted); }
+/* профиль Ловчего: учётная запись */
+.prof-acc { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 10px 0 2px; }
+.prof-acc.guest { padding: 10px 12px; border-radius: 16px; background: rgba(251, 191, 36, .06); border: 1px dashed rgba(251, 191, 36, .35); }
+.prof-acc small { color: var(--muted); font-size: 12px; }
+.prof-acc .login-row { max-width: 360px; }

@@ -6,6 +6,21 @@ const UI = {
     const s = (d, extra = '') => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
     return {
       close: s('<path d="M6 6L18 18M18 6L6 18"/>'),
+      // 3.28: значки настроек
+      music: s('<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>'),
+      sound: s('<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>'),
+      vibro: s('<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8"/>'),
+      sun: s('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+      battery: s('<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2M6 10v4M10 10v4"/>'),
+      text: s('<path d="M4 7V5h11v2M9.5 5v14M7 19h5M14 12h6M17 12v7M15.5 19h3"/>'),
+      hand: s('<path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v7M14 10.5V6a1.5 1.5 0 0 1 3 0v7a7 7 0 0 1-7 7 6 6 0 0 1-5-2.7L3.4 14a1.5 1.5 0 0 1 2.5-1.6L8 15"/>'),
+      calm: s('<path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M2 17c2-3 4-3 6 0s4 3 6 0 4-3 6 0" opacity=".5"/>'),
+      map: s('<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>'),
+      camera: s('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
+      download: s('<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'),
+      cloud: s('<path d="M7 18a4 4 0 0 1-.6-8 6 6 0 0 1 11.6 1.5A3.5 3.5 0 0 1 17.5 18z"/>'),
+      key: s('<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/>'),
+      logout: s('<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/>'),
       back: s('<path d="M15 5L8 12L15 19"/>'),
       target: s('<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>'),
       spirits: s('<path d="M5 20V11a7 7 0 0 1 14 0v9l-2.3-1.6L14.3 20 12 18.4 9.7 20l-2.4-1.6z"/><circle cx="9.5" cy="11" r="1" fill="currentColor"/><circle cx="14.5" cy="11" r="1" fill="currentColor"/>'),
@@ -902,6 +917,8 @@ const UI = {
           <small>${d.level >= MAX_LEVEL ? 'Максимальный уровень' : `${U.fmtNum(d.xp - cur)} / ${U.fmtNum(next - cur)} опыта до ${d.level + 1} уровня`}</small></div>
         <div class="prof-btns"><button class="btn small look-btn">Облик</button><button class="btn small journal-btn">Дневник</button>
           ${d.clan ? '<button class="btn small clan-open">Дружина</button>' : d.level >= CLAN_LEVEL ? '<button class="btn small primary clan-btn">Выбрать дружину</button>' : ''}</div>
+        ${Game.on() ? `<div class="prof-acc ${Login.isGuest() ? 'guest' : ''}"><div class="acc-tags">${Login.accountTags()}</div>
+          ${Login.isGuest() && Login.available().length ? `<small>Привяжи вход — прогресс откроется на любом устройстве:</small><div class="login-row">${Login.buttons('link')}</div>` : ''}</div>` : ''}
         <div class="prof-stats">
           <div><b>${U.fmtNum(d.stats.caught)}</b><span>поймано духов</span></div>
           <div><b>${caught}/${SPECIES.length}</b><span>видов в бестиарии</span></div>
@@ -926,6 +943,7 @@ const UI = {
         <div class="prof-since">В Ордене с ${new Date(d.created).toLocaleDateString('ru-RU')}</div>
       </div>`, 'prof-screen');
     scr.addEventListener('click', e => {
+      const lg = e.target.closest('[data-login]'); if (lg) { Login.start(lg.dataset.login, lg.dataset.mode); return; }
       if (e.target.closest('.journal-btn')) { J.screen(); return; }
       if (e.target.closest('.clan-btn')) { Clans.choose(() => { this.closeScreen(scr); this.profile(); }); return; }
       if (e.target.closest('.clan-open')) { Clans.screen(); return; }
@@ -992,39 +1010,48 @@ const UI = {
   /* ---------------- НАСТРОЙКИ ---------------- */
   settings() {
     const s = Cfg.s;
-    const row = (k, title, sub) => `<label class="row toggle"><div class="row-main"><b>${title}</b><small>${sub}</small></div><input type="checkbox" data-k="${k}" ${s[k] ? 'checked' : ''}><i></i></label>`;
+    // 3.28: разделы с заголовками, у каждого пункта — значок
+    const row = (k, ico, title, sub) => `<label class="row toggle set-row"><span class="set-ico">${this.I[ico]}</span><div class="row-main"><b>${title}</b><small>${sub}</small></div><input type="checkbox" data-k="${k}" ${s[k] ? 'checked' : ''}><i></i></label>`;
+    const link = (cls, ico, title, sub) => `<button class="row link set-row ${cls}"><span class="set-ico">${this.I[ico]}</span><div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="set-chev">›</span></button>`;
+    const sec = t => `<div class="set-h">${t}</div>`;
     const scr = this.screen('Настройки', `
+      ${Game.on() ? `${sec('Учётная запись')}<div class="list acc-box"></div>` : ''}
+      ${DEV ? `${sec('Разработка')}<div class="list">${row('demo', 'target', 'Демо-режим', 'Джойстик вместо GPS. Доступен только на локальном сервере.')}</div>` : ''}
+      ${sec('Звук и отклик')}
       <div class="list">
-        ${DEV ? row('demo', 'Демо-режим (разработка)', 'Джойстик вместо GPS. Доступен только на локальном сервере.') : ''}
-        ${row('ar', 'AR-камера', 'Духи появляются поверх изображения с камеры.')}
-        ${row('music', 'Музыка', 'Спокойные «гусли» на карте и боевая тема в сражениях.')}
-        ${row('sound', 'Звук', 'Звуковые эффекты.')}
-        ${row('vibro', 'Вибрация', 'Отклик при бросках и попаданиях.')}
-        ${row('weather', 'Настоящая погода', 'Узнавать погоду через Open-Meteo (отправляются координаты с точностью ~1 км). Выключено — погода Нави моделируется.')}
-        ${row('eco', 'Экономия батареи', 'Меньше анимаций на карте, реже обновление и запросы GPS.')}
+        ${row('music', 'music', 'Музыка', 'Спокойные «гусли» на карте и боевая тема в сражениях.')}
+        ${row('sound', 'sound', 'Звук', 'Звуковые эффекты.')}
+        ${row('vibro', 'vibro', 'Вибрация', 'Отклик при бросках и попаданиях.')}
       </div>
+      ${sec('Игра')}
       <div class="list">
-        <div class="row"><div class="row-main"><b>Доступность и вид</b></div></div>
-        ${row('bigText', 'Крупный текст', 'Увеличенный шрифт в меню, карточках и подсказках.')}
-        ${row('tapThrow', 'Бросок одним касанием', 'Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.')}
-        ${row('calm', 'Меньше движения', 'Без покачиваний, мерцания и погодных эффектов.')}
-        <div class="row"><div class="row-main"><b>Тема карты</b><small>Авто — тёмная с 20:00 до 6:00</small></div>
+        ${row('ar', 'camera', 'AR-камера', 'Духи появляются поверх изображения с камеры.')}
+        ${row('tapThrow', 'hand', 'Бросок одним касанием', 'Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.')}
+        ${row('weather', 'sun', 'Настоящая погода', 'Погода через Open-Meteo (координаты с точностью ~1 км). Выключено — погода Нави моделируется.')}
+        ${Cloud.configured() ? row('cloud', 'trophy', 'Общая таблица Лиги', 'Показывать твоё имя, облик, уровень и звёзды в таблице сезона.') : ''}
+      </div>
+      ${sec('Вид')}
+      <div class="list">
+        <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>Тема карты</b><small>Авто — тёмная с 20:00 до 6:00</small></div>
           <div class="seg map-theme">${[['auto', 'Авто'], ['light', 'День'], ['dark', 'Ночь']].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+        ${row('bigText', 'text', 'Крупный текст', 'Увеличенный шрифт в меню, карточках и подсказках.')}
+        ${row('calm', 'calm', 'Меньше движения', 'Без покачиваний, мерцания и погодных эффектов.')}
+        ${row('eco', 'battery', 'Экономия батареи', 'Меньше анимаций на карте, реже обновление и запросы GPS.')}
+      </div>
+      ${sec('Устройство и прогресс')}
+      <div class="list">
+        <div class="row set-row"><span class="set-ico">${this.I.cloud}</span><div class="row-main"><b>Прогресс на сервере</b><small class="sync-state"></small></div></div>
+        ${link('tr-out', 'key', 'Перенести на другое устройство', 'Одноразовый код для нового телефона')}
+        ${link('tr-in', 'swap', 'Перенести прогресс сюда', 'Ввести код со старого устройства')}
       </div>
       <div class="list install-list">
-        <button class="row link inst-pwa hidden"><div class="row-main"><b>Установить на главный экран</b><small>Духолов откроется на весь экран, как обычное приложение</small></div></button>
-        <a class="row link inst-apk hidden" href="duholov.apk" download><div class="row-main"><b>Скачать APK для Android</b><small>Приложение-обёртка: разреши установку из этого источника</small></div></a>
-        ${Cloud.configured() ? row('cloud', 'Общая таблица Лиги', 'Показывать твоё имя, облик, уровень и звёзды в таблице сезона.') : ''}
+        <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>Установить на главный экран</b><small>Духолов откроется на весь экран, как обычное приложение</small></div><span class="set-chev">›</span></button>
+        <a class="row link set-row inst-apk hidden" href="duholov.apk" download><span class="set-ico">${this.I.download}</span><div class="row-main"><b>Скачать APK для Android</b><small>Приложение-обёртка: разреши установку из этого источника</small></div><span class="set-chev">›</span></a>
       </div>
-      ${Game.on() ? '<div class="list acc-box"></div>' : ''}
+      ${sec('Об игре')}
       <div class="list">
-        <div class="row"><div class="row-main"><b>Прогресс на сервере</b><small class="sync-state"></small></div></div>
-        <button class="row link tr-out"><div class="row-main"><b>Перенести на другое устройство</b><small>Получить одноразовый код для нового телефона</small></div></button>
-        <button class="row link tr-in"><div class="row-main"><b>Перенести прогресс сюда</b><small>Ввести код со старого устройства</small></div></button>
-      </div>
-      <div class="list">
-        <button class="row link about"><div class="row-main"><b>Об игре и мире</b><small>История Тонкой ночи и правила</small></div></button>
-        <button class="row link reset"><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div></button>
+        ${link('about', 'info', 'Об игре и мире', 'История Тонкой ночи и правила')}
+        <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div><span class="set-chev">›</span></button>
       </div>
       <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
     scr.addEventListener('change', e => {
@@ -1063,19 +1090,18 @@ const UI = {
     };
     const st = setInterval(syncState, 1000);
     syncState();
-    // 3.27: учётная запись — гость или вход через сервис; привязать ещё один вход, выйти
+    // 3.27–3.28: учётная запись — гость или вход через сервис; привязать ещё один вход, выйти
     const acc = scr.querySelector('.acc-box');
     const renderAcc = () => {
       if (!acc || !scr.isConnected) return;
       const links = Login.linked(), avail = Login.available().filter(k => !links.some(l => l.provider === k));
-      acc.innerHTML = `<div class="row"><div class="row-main"><b>Учётная запись</b><small>${links.length
-        ? `Вход через ${links.map(l => `${Login.NAMES[l.provider]}${l.name ? ` (${U.esc(l.name)})` : ''}`).join(', ')} — прогресс откроется на любом устройстве`
-        : 'Гость: прогресс только на этом устройстве. Привяжи вход — и он не потеряется.'}</small></div></div>
-        ${links.length ? links.map(l => `<div class="row acc-linked"><div class="row-main">${Login.icon(l.provider)}<b>${Login.NAMES[l.provider]}</b></div><span class="q-ok">✓</span></div>`).join('') : ''}
-        ${avail.length ? `<div class="row acc-add"><div class="login-row">${Login.buttons('link')}</div></div>` : ''}
-        ${Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через Яндекс, VK и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div></div>' : ''}
-        ${!links.length && !avail.length && !Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через Google, Яндекс, VK и Telegram скоро появится. А пока — перенос по коду ниже.</small></div></div>' : ''}
-        ${links.length ? '<button class="row link acc-out"><div class="row-main"><b>Выйти</b><small>На этом устройстве начнётся новая гостевая игра; войти обратно — той же кнопкой сервиса</small></div></button>' : ''}`;
+      acc.innerHTML = (links.length
+        ? links.map(l => `<div class="row set-row acc-linked">${Login.icon(l.provider)}<div class="row-main"><b>${Login.NAMES[l.provider]}</b><small>${l.name ? U.esc(l.name) + ' · ' : ''}вход привязан — прогресс откроется на любом устройстве</small></div><span class="q-ok">✓</span></div>`).join('')
+        : `<div class="row set-row acc-guest"><span class="set-ico warn">${this.I.user}</span><div class="row-main"><b>Гость</b><small>Прогресс только на этом устройстве. Привяжи вход — и он не потеряется.</small></div></div>`)
+        + (avail.length ? `<div class="row acc-add"><div class="row-main">${links.length ? '<small>Привязать ещё один вход</small>' : ''}<div class="login-row">${Login.buttons('link', avail)}</div></div></div>` : '')
+        + (Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div></div>' : '')
+        + (!links.length && !avail.length && !Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через сервисы скоро появится. А пока — перенос по коду ниже.</small></div></div>' : '')
+        + (links.length ? `<button class="row link set-row acc-out"><span class="set-ico">${this.I.logout}</span><div class="row-main"><b>Выйти</b><small>На этом устройстве начнётся гостевая игра; вернуться — входом через сервис</small></div><span class="set-chev">›</span></button>` : '');
       acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
       const out = acc.querySelector('.acc-out');
       if (out) out.onclick = () => this.confirm('Выйти?', 'Прогресс останется в твоей учётной записи — вернуться в неё можно входом через привязанный сервис.', 'Выйти', () => Login.signOut());
@@ -1252,8 +1278,7 @@ const UI = {
         ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
         <button class="btn primary wide next">Начать гостем</button>
         ${Login.available().length ? `<div class="onb-or"><span>или войди — прогресс не потеряется</span></div><div class="login-row">${Login.buttons('start')}</div>` : ''}
-        ${Login.appTooOld() ? '<p class="small onb-note">Вход через Яндекс, VK и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
-        ${Game.on() ? '<button class="btn ghost wide have">У меня уже есть прогресс</button>' : ''}
+        ${Login.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
         <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
