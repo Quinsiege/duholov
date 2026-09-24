@@ -23,12 +23,30 @@ const Cloud = {
     const sb = window.supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: CLOUD_CONFIG.auth } });
     const { data } = await sb.auth.getSession();
     if (!data.session) {
-      const { error } = await sb.auth.signInAnonymously();
+      const key = this.accessKey();
+      const { error } = await sb.auth.signInAnonymously(key ? { options: { data: { access: key } } } : undefined);
+      if (error && CLOUD_CONFIG.locked) this.forgetKey();
       if (error) throw new Error('Облако: ' + error.message);
     }
     this.sb = sb;
     return sb;
   },
+
+  // Закрытый контур (тестовый проект): ключ доступа знает только владелец — его нет в коде и репозитории.
+  // Передаётся при входе (хук Before User Created) и с каждым запросом к серверу игры (заголовок x-duholov-access).
+  KEY_STORE: 'duholov.test.key',
+  accessKey() {
+    if (!CLOUD_CONFIG.locked) return '';
+    let k = '';
+    try { k = localStorage.getItem(this.KEY_STORE) || ''; } catch (e) {}
+    if (!k) {
+      k = String(window.prompt('Ключ доступа к тестовому контуру duholov-test:') || '').trim();
+      if (k) { try { localStorage.setItem(this.KEY_STORE, k); } catch (e) {} }
+    }
+    return k;
+  },
+  forgetKey() { try { localStorage.removeItem(this.KEY_STORE); } catch (e) {} },
+  headers() { const k = this.accessKey(); return k ? { 'x-duholov-access': k } : {}; },
 
   // Топ-50 сезона и место игрока (строки таблицы пишет сервер игры после турниров)
   async top(season) {

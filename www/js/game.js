@@ -24,12 +24,12 @@ const Game = {
     for (let attempt = 0; attempt < 2; attempt++) {
       const busy = setTimeout(() => document.body.classList.add('net-busy'), 350);
       try {
-        const r = await sb.functions.invoke('game', { body });
+        const r = await sb.functions.invoke('game', { body, headers: Cloud.headers() });
         if (r.error) {
           let payload = null;
           try { payload = r.error.context && await r.error.context.json(); } catch (e) {}
           if (payload && payload.auth && attempt === 0) { await sb.auth.refreshSession().catch(() => {}); continue; }
-          if (payload && payload.error) { res = payload; break; }
+          if (payload && payload.error) { if (/ключ доступа/.test(payload.error)) Cloud.forgetKey(); res = payload; break; }
           throw new Error(r.error.message);
         }
         res = r.data;
@@ -47,7 +47,7 @@ const Game = {
   async pay(op, args = {}) {
     if (!this.on()) throw new PlayError('Нет связи с сервером игры');
     const sb = await Cloud.client();
-    const r = await sb.functions.invoke('game', { body: { pay: op, args, v: APP_VERSION } }).catch(() => ({ error: true }));
+    const r = await sb.functions.invoke('game', { body: { pay: op, args, v: APP_VERSION }, headers: Cloud.headers() }).catch(() => ({ error: true }));
     let res = r.data;
     if (r.error) { try { res = r.error.context && await r.error.context.json(); } catch (e) { res = null; } }
     if (!res || !res.ok) throw new PlayError((res && res.error) || 'Нет связи с сервером игры — проверь интернет');

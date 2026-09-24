@@ -15,6 +15,7 @@ const CLOUD_PROJECTS = {
     url: 'https://xktcxvotugcmlwbuasbg.supabase.co', // duholov-test
     anonKey: 'sb_publishable_owai4hZ9PApJRB1bALj7eA_NE_qrgi4', // публичный (publishable) ключ
     auth: 'duholov.test.auth', admin: 'duholov.test.admin',
+    locked: true, // закрытый контур: нужен ключ доступа (спрашивается один раз, хранится только в этом браузере)
   },
 };
 const CLOUD_CONFIG = DEV ? CLOUD_PROJECTS.test : CLOUD_PROJECTS.prod;
