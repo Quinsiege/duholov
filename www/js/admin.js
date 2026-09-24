@@ -45,19 +45,22 @@ function show(tab) {
 }
 
 function login() {
+  // 4.1: вход по почте и паролю (на своём сервере нет рассылки писем; пароль модератору задаёт владелец на сервере)
   app.innerHTML = `<div class="card login"><h2>Вход для модераторов</h2>
-    <p class="muted small">Введите почту — придёт письмо со ссылкой для входа.</p>
-    <input class="input em" type="email" placeholder="почта" autocomplete="email">
-    <div class="row"><button class="btn primary go">Получить ссылку</button></div>
+    <form class="lf"><input class="input em" type="email" placeholder="почта" autocomplete="username" required>
+    <input class="input pw" type="password" placeholder="пароль" autocomplete="current-password" required>
+    <div class="row"><button class="btn primary go">Войти</button></div></form>
     <p class="small msg"></p></div>`;
   const go = $('.go'), msg = $('.msg');
-  go.onclick = async () => {
-    const email = $('.em').value.trim();
+  $('.lf').onsubmit = async e => {
+    e.preventDefault();
+    const email = $('.em').value.trim(), password = $('.pw').value;
     if (!/^\S+@\S+\.\S+$/.test(email)) { msg.textContent = 'Проверьте адрес почты'; return; }
-    go.disabled = true;
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    go.disabled = true; msg.textContent = '';
+    const { error } = await sb.auth.signInWithPassword({ email, password });
     go.disabled = false;
-    msg.textContent = error ? 'Ошибка: ' + error.message : 'Письмо отправлено. Откройте ссылку из него в этом же браузере.';
+    if (error) { msg.textContent = /rate|many/i.test(error.message) ? 'Слишком много попыток — подождите минуту' : 'Неверная почта или пароль'; return; }
+    location.reload();
   };
 }
 
