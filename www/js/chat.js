@@ -54,6 +54,7 @@ const Chat = {
     const hideJump = () => { unseen = 0; jump.classList.add('hidden'); };
     jump.onclick = () => { body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' }); hideJump(); };
     const body = scr.querySelector('.screen-body'), list = scr.querySelector('.chat-list'), tabs = scr.querySelector('.chat-tabs');
+    scr.insertBefore(tabs, body); // вкладки — над лентой, вне прокрутки: без подложки, которая не совпадала с фоном экрана
     const renderTabs = () => { tabs.innerHTML = this.channels().map(([k, t]) => `<button data-ch="${k}" class="${k === this.ch ? 'on' : ''}">${t}</button>`).join(''); };
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 80;
     const render = (stick) => {

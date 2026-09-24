@@ -1403,3 +1403,15 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .chat-count { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .chat-count.max { color: var(--danger); }
 .chat-bar .chat-send:disabled { filter: grayscale(.7); opacity: .55; box-shadow: none; }
+
+/* ---------- 3.26: чат — вкладки над лентой, мягкий край; награды картинками ---------- */
+.chat-screen .chat-tabs { position: static; background: none; padding: 0 14px 8px; margin: 0; flex: none; }
+.chat-screen .screen-body { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16px); mask-image: linear-gradient(180deg, transparent 0, #000 16px); padding-top: 10px; }
+.qd-rw.xp { padding-left: 8px; color: var(--teal); }
+.qd-rw.legend { padding-left: 2px; color: var(--gold2); }
+.qd-rw.legend .art, .qd-rw.legend img { width: 22px; height: 22px; }
+.qd-rw .art { flex: none; }
+.qd-ico.o-step { font-weight: 900; font-size: 17px; color: var(--gold2); }
+.quest.claimed .qd-ico.o-step { color: var(--good); }
+.o-why { display: block; color: var(--muted); font-size: 12px; margin: 4px 0 6px; }
+.quest.qd .q-main > b + .qd-rws { margin-top: 6px; }

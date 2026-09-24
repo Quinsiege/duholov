@@ -726,7 +726,6 @@ const UI = {
   quests(tab) {
     this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
     const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? ' •' : ''}</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button><button data-tab="order">Орден${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
-    const rwText = rw => Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${n}` : `${ITEMS[k].name} ×${n}`).join(', ');
     const BONUS = Rules.QUEST_BONUS;
     const renderStory = () => {
       const st = S.d.story, ch = STORY[st.ch];
@@ -744,10 +743,13 @@ const UI = {
           <p class="story-text">${ch.intro}</p>
         </div>
         ${ch.steps.map((s, i) => {
-          const p = st.p[i], done = p >= s.n, pv = s.t === 'walk' ? `${p.toFixed(2)} / ${s.n}` : `${Math.floor(p)} / ${s.n}`;
-          return `<div class="quest ${done ? 'done' : ''}"><div class="q-main"><b>${stepText(s)}</b><div class="pbar"><i style="width:${p / s.n * 100}%"></i></div><small>${pv}</small></div>${done ? '<span class="q-ok">✓</span>' : ''}</div>`;
+          const p = st.p[i], done = p >= s.n, pv = s.t === 'walk' ? `${Math.min(p, s.n).toFixed(2)} / ${s.n} км` : `${Math.min(Math.floor(p), s.n)} / ${s.n}`;
+          return `<div class="quest qd ${done ? 'done' : ''}"><div class="qd-ico">${this.qIcon(s.t, s.el)}</div>
+            <div class="q-main"><b>${stepText(s)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, p / s.n * 100)}%"></i></div><span>${pv}</span></div></div>${done ? '<span class="q-ok" aria-label="Готово">✓</span>' : ''}</div>`;
         }).join('')}
-        <div class="quest bonus ${ready ? 'done' : ''}"><div class="q-main"><b>Награда главы</b><small>${rwText(ch.reward)}${ch.gift ? ` и встреча с легендой: ${SP[ch.gift].name}` : ''}</small></div>
+        <div class="quest bonus qd-chest ${ready ? 'done' : ''}"><div class="qd-ico chest">${ch.gift ? Art.spirit(ch.gift) : Art.item('gift')}</div>
+          <div class="q-main"><b>Награда главы</b><div class="qd-pips">${ch.steps.map((s, i) => `<i class="${st.p[i] >= s.n ? 'on' : ''}"></i>`).join('')}<small>${ready ? 'можно завершить' : 'выполни все шаги главы'}</small></div>
+          ${this.rwChips(ch.reward, true, ch.gift ? `<span class="qd-rw legend">${Art.spirit(ch.gift)}встреча: ${SP[ch.gift].name}</span>` : '')}</div>
           ${ready ? '<button class="btn small primary claim-story">Завершить</button>' : ''}</div>
         ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} Встретить: ${SP[gift].name}</button>` : ''}`;
     };
@@ -761,9 +763,7 @@ const UI = {
       }
       // 3.25: сводка дня (кольцо и таймер), значок задания, прогресс числом, награды — картинками
       const Q = S.d.quests, all = Q.list.every(q => q.claimed), doneN = Q.list.filter(q => q.p >= q.n).length;
-      const rwChips = rw => Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks'
-        ? `<span class="qd-rw spark">✦ ${U.fmtNum(n)}</span>` : `<span class="qd-rw">${Art.item(k)}×${n}</span>`).join('');
-      const ico = q => q.t === 'catchEl' ? Art.elIcon(q.el, 22) : this.I[{ catch: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield' }[q.t] || 'scroll'];
+      const rwChips = rw => this.rwChips(rw, false), ico = q => this.qIcon(q.t, q.el);
       const ring = (n, of) => { const L = 2 * Math.PI * 22; return `<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" class="qd-bg"/><circle cx="26" cy="26" r="22" class="qd-fg" style="stroke-dasharray:${L};stroke-dashoffset:${L * (1 - n / of)}"/></svg><b>${n}<small>/${of}</small></b>`; };
       scr.querySelector('.quests').innerHTML = `
         <div class="qd-head ${doneN >= Q.list.length ? 'full' : ''}"><div class="qd-ring">${ring(doneN, Q.list.length)}</div>
@@ -840,6 +840,21 @@ const UI = {
     const tm = setInterval(() => { if (!scr.isConnected) { clearInterval(tm); return; } const el = scr.querySelector('.qd-left'); if (el) el.textContent = U.fmtTime(this.toMidnight()); }, 1000);
   },
   toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
+  // Награды «картинками»: предметы с иконкой, искры, опыт; extra — дополнительные плашки (кокон, встреча с легендой)
+  rwChips(rw, wrap = true, extra = '') {
+    const chips = Object.entries(rw || {}).map(([k, n]) => {
+      if (k === 'xp') return `<span class="qd-rw xp">+${U.fmtNum(n)} опыта</span>`;
+      if (k === 'sparks') return `<span class="qd-rw spark">✦ ${U.fmtNum(n)}</span>`;
+      const a = Art.item(k);
+      return a ? `<span class="qd-rw">${a}×${n}</span>` : '';
+    }).join('') + extra;
+    return wrap ? `<div class="qd-rws">${chips}</div>` : chips;
+  },
+  // Значок задания по его типу (задания дня, Летопись)
+  qIcon(t, el) {
+    if (t === 'catchEl' && el) return Art.elIcon(el, 22);
+    return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin' }[t] || 'scroll'];
+  },
   // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня
   dayLimitsHtml() {
     return `<h3 class="prof-h">Лимиты дня <small>обновятся в полночь</small></h3><div class="day-limits">${Object.keys(Rules.DAILY).map(k => {
