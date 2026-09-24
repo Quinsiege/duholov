@@ -72,7 +72,7 @@ const Rules = {
   SHOP: [
     { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'zlat', bag: true },
     { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
-    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 90,  give: { farpass: 3 } },
+    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
     { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
     { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
@@ -135,7 +135,7 @@ const Rules = {
     const s = SP[o.sid], special = o.mode !== 'wild' && o.mode !== 'tut';
     return {
       xp: (special ? 300 : 100) + (o.isNew ? 500 : 0) + (o.ringXp || 0) + (o.throws === 1 ? 50 : 0) + (o.shiny ? 500 : 0),
-      ess: special ? 10 : s.stage === 3 ? 10 : s.stage === 2 ? 5 : 3,
+      ess: (special ? 10 : s.stage === 3 ? 10 : s.stage === 2 ? 5 : 3) + (s.rar - 1) * 2, // редкие — больше эссенции (эпический 1-й стадии: 9 вместо 3)
       sparks: Math.round((special ? 300 : 100) * (o.boost ? 1.25 : 1)),
     };
   },

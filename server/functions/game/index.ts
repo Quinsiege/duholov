@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.18.0';
+const APP_VERSION = '3.19.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -299,8 +299,11 @@ const COCOON_TIERS = {
   5:  { name: 'Синий кокон',    color: '#7dd3fc', pool: { 1: 3, 2: 4, 3: 1 } },
   10: { name: 'Лиловый кокон',  color: '#d8b4fe', pool: { 2: 2, 3: 3, 4: 2 } },
 };
-
-function levelXP(n) { return n <= 1 ? 0 : Math.round(400 * Math.pow(n - 1, 1.75) / 50) * 50; }
+// Опыт на уровень n. До 10 уровня — прежняя пологая кривая (новичок растёт быстро), дальше каждый уровень
+// на 17% дороже предыдущего: 20 ≈ 90 тыс., 30 ≈ 430 тыс., 40 ≈ 2,1 млн (3.19: раньше 40 уровень был за 243 тыс. —
+// одна Летопись давала почти весь путь, игроки доходили до потолка за пару недель)
+function levelXPOld(n) { return n <= 1 ? 0 : Math.round(400 * Math.pow(n - 1, 1.75) / 50) * 50; }
+function levelXP(n) { return n <= 10 ? levelXPOld(n) : Math.round(levelXPOld(10) * Math.pow(1.17, n - 10) / 50) * 50; }
 const MAX_LEVEL = 40;
 
 const QUEST_TEMPLATES = [
@@ -483,32 +486,32 @@ const STORY = [
   { title: 'Весть с окраин',
     intro: 'Велимир разбирает груду писем: из Мурманска, Казани, Иркутска, из деревень, которых нет ни на одной туристической карте. «Тонкая ночь дошла до самых окраин, — говорит он. — Родники проснулись везде. Орден теперь — это вся страна».',
     steps: [{ t: 'task', n: 3 }, { t: 'spring', n: 20 }, { t: 'walk', n: 5 }],
-    reward: { charm2: 10, honey: 10, sparks: 3000, xp: 15000 },
+    reward: { charm2: 10, honey: 10, sparks: 5000, xp: 15000 },
     outro: '«Родники раздают поручения — значит, они нас зовут, — Велимир складывает письма в Летопись. — Кто-то под землёй очень хочет, чтобы мы шли дальше».' },
   { title: 'Знамя над капищем',
     intro: 'Дружины Сокола, Медведя и Волка спорят за капища, как когда-то князья за города. Велимир хмурится: «Спорьте, но помните — капище стоит, пока его кто-то бережёт».',
     steps: [{ t: 'duel', n: 5 }, { t: 'defend', n: 2 }, { t: 'throw', n: 15 }],
-    reward: { charm3: 5, water: 10, sparks: 4000, xp: 15000 },
+    reward: { charm3: 5, water: 10, sparks: 6000, xp: 15000 },
     outro: 'Над капищем, где стоит твой защитник, ветер треплет знамя дружины. «Хорошо, — говорит Велимир. — Теперь капище знает твоё имя».' },
   { title: 'Дух родной земли',
     intro: 'В старых записях Ордена сказано: у каждого края есть свой дух-хранитель — Берегиня, Сполох, Жигуль, Тур, Хозяйка Медной горы, Бабр и Кутх. «Найди своего, — говорит Велимир. — Земля должна тебя признать».',
     steps: [{ t: 'land', n: 1 }, { t: 'catch', n: 50 }, { t: 'photo', n: 3 }],
-    reward: { incense: 3, charm2: 15, sparks: 5000, xp: 20000 },
+    reward: { incense: 3, charm2: 15, sparks: 7000, xp: 20000 },
     outro: 'Дух родной земли посмотрел на тебя долго и серьёзно, будто сверял с кем-то давно знакомым. А потом позволил сфотографировать себя — в Летописи это считается знаком доверия.' },
   { title: 'Долгая дорога',
     intro: 'Родники шепчут одно и то же слово: «ниже». Велимир достаёт карту подземных рек — старую, ещё дореволюционную. «Они текут под всей страной. Чтобы услышать их, придётся много ходить».',
     steps: [{ t: 'walk', n: 20 }, { t: 'hatch', n: 5 }, { t: 'task', n: 5 }],
-    reward: { charm3: 8, sparks: 6000, xp: 20000 },
+    reward: { charm3: 8, sparks: 8000, xp: 20000 },
     outro: 'Коконы, что ты носил в пути, вылупились с каплями воды на крыльях. «Подземная вода, — шепчет Велимир. — Мы близко».' },
   { title: 'Подземные реки',
     intro: 'Прислужники Нави перекрывают родники: хотят, чтобы подземные реки остановились и Навь затопила Явь. Духи воды тревожатся и собираются у фонтанов.',
     steps: [{ t: 'catchEl', el: 'water', n: 20 }, { t: 'invasion', n: 8 }, { t: 'purify', n: 3 }],
-    reward: { water: 15, incense: 3, sparks: 8000, xp: 25000 },
+    reward: { water: 15, incense: 3, sparks: 10000, xp: 25000 },
     outro: 'Из-под земли донёсся гул, похожий на дыхание огромного зверя. Родники вздрогнули и снова забили ключом. «Он проснулся», — только и сказал Велимир.' },
   { title: 'Индрик-зверь',
     intro: '«Индрик-зверь всем зверям отец, — читает Велимир из Голубиной книги. — Ходит под землёю, как солнце по небу, прочищает реки и ручьи». Чтобы он поднялся в Явь, нужны сила разломов, мастерство Лиги и знамёна дружин.',
     steps: [{ t: 'raid', n: 8 }, { t: 'league', n: 6 }, { t: 'defend', n: 5 }],
-    reward: { charm3: 15, incense: 3, sparks: 12000, xp: 30000 }, gift: 'indrik', emblem: 'horn',
+    reward: { charm3: 15, incense: 3, sparks: 15000, xp: 30000 }, gift: 'indrik', emblem: 'horn',
     outro: 'Земля мягко качнулась, и у ближайшего родника поднялся зверь с единственным рогом, сияющим, как лёд на солнце. Он опустил голову, и родник под ним засмеялся звонко, по-весеннему. <br><br><i>Конец третьей книги. Эмблема «Рог Индрика» открыта в облике Ловчего.</i>' },
 ];
 
@@ -1018,7 +1021,7 @@ const W = {
       if (d > radius) return;
       const sid = this.pickSpecies(r, this.biome(pLat, pLng), night, pLng, pLat);
       const boost = Sky.boosted(SP[sid].el);
-      const maxL = Math.min(30, S.d.level + 2) + (boost ? 5 : 0);
+      const maxL = Math.min(Math.min(30, S.d.level + 2) + (boost ? 5 : 0), S.maxLvl()); // погода: сильнее, но не выше доступного уровня
       const lvl = Math.max(boost ? 6 : 1, Math.min(maxL, Math.round(1 + r() * maxL)));
       const shiny = U.h('shiny', id) < Sky.shinyRate();
       out.push({ type: 'spirit', id, sid, lvl, boost, shiny, lat: pLat, lng: pLng, d, expires: (slot + 1) * this.SLOT - phase });
@@ -1189,6 +1192,17 @@ const S = {
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
+    // 3.19: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается)
+    if (!d.xpv) {
+      const L = d.level || 1;
+      if (L >= MAX_LEVEL) d.xp = Math.max(d.xp || 0, levelXP(MAX_LEVEL));
+      else if (L >= 10) {
+        const o0 = levelXPOld(L), o1 = levelXPOld(L + 1), n0 = levelXP(L), n1 = levelXP(L + 1);
+        const f = U.clamp(((d.xp || 0) - o0) / (o1 - o0), 0, 0.999);
+        d.xp = Math.round(n0 + f * (n1 - n0));
+      }
+      d.xpv = 2;
+    }
     d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
     d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
     d.shop = d.shop || {}; // Лавка: { deal: день покупки товара дня }
@@ -1362,7 +1376,7 @@ const S = {
     this.save();
     return true;
   },
-  PURIFY: { sparks: 1000, essence: 10 },
+  PURIFY: { sparks: 3000, essence: 25 }, // 3.19: было 1000 и 10 — дешевле, чем усилить духа до 25 уровня (16 800 ✦)
   canPurify(sp) {
     if (!sp.dark) return 'Дух не омрачён';
     if (this.d.sparks < this.PURIFY.sparks) return `Нужно ✦ ${this.PURIFY.sparks}`;
@@ -1409,22 +1423,24 @@ const S = {
   /* ---------- предметы ---------- */
   bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
-  addItem(k, n = 1) {
-    const room = this.bagLimit() - this.bagCount();
+  // over — награда за достижение (уровень, серия дней, задание, Летопись, Тропа, бой): кладётся и сверх лимита сумки,
+  // иначе она молча пропадала бы. Добыча родника и находки спутника лимит соблюдают
+  addItem(k, n = 1, over = false) {
+    const room = over ? n : this.bagLimit() - this.bagCount();
     const add = Math.max(0, Math.min(n, room));
     this.d.items[k] = (this.d.items[k] || 0) + add;
     this.save();
     return add;
   },
   useItem(k) { if ((this.d.items[k] || 0) <= 0) return false; this.d.items[k]--; this.save(); return true; },
-  giveRewards(rw) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа
+  giveRewards(rw, over = true) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа; over — см. addItem
     const out = [];
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
       else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: 'Златники' }); }
       else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
-      else if (ITEMS[k]) { const a = this.addItem(k, n); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
+      else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
     this.save();
     return out;
@@ -1476,7 +1492,8 @@ const S = {
   hatch(c) {
     const tier = COCOON_TIERS[c.km], r = U.rng(c.id + 'hatch');
     const rar = U.weighted(Object.entries(tier.pool).map(([k, w]) => [+k, w]), r());
-    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && (s.stage === 1 || rar >= 3) && W.local(s) && !s.season);
+    // из кокона — только первая стадия (3.19: раньше редкие коконы давали сразу превращённых духов)
+    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season && !s.story);
     if (!pool.length) pool = SPECIES.filter(s => s.stage === 1 && !s.legend);
     const s = pool[Math.floor(r() * pool.length)];
     const sp = this.makeSpirit(s.id, Math.min(this.d.level, 20), c.id, { ivMin: 10 });
@@ -2869,7 +2886,7 @@ const Rules = {
   SHOP: [
     { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'zlat', bag: true },
     { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
-    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 90,  give: { farpass: 3 } },
+    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
     { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
     { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
@@ -2932,7 +2949,7 @@ const Rules = {
     const s = SP[o.sid], special = o.mode !== 'wild' && o.mode !== 'tut';
     return {
       xp: (special ? 300 : 100) + (o.isNew ? 500 : 0) + (o.ringXp || 0) + (o.throws === 1 ? 50 : 0) + (o.shiny ? 500 : 0),
-      ess: special ? 10 : s.stage === 3 ? 10 : s.stage === 2 ? 5 : 3,
+      ess: (special ? 10 : s.stage === 3 ? 10 : s.stage === 2 ? 5 : 3) + (s.rar - 1) * 2, // редкие — больше эссенции (эпический 1-й стадии: 9 вместо 3)
       sparks: Math.round((special ? 300 : 100) * (o.boost ? 1.25 : 1)),
     };
   },
@@ -3021,7 +3038,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.16.0', // 3.16: защита от внедрения кода (CSP, проверка облика и путей снимков) — старые клиенты уязвимы
+  MIN_CLIENT: '3.19.0', // 3.19: новая кривая опыта — старый клиент показывал бы неверную полосу уровня
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -3462,7 +3479,7 @@ const GameCore = {
       }
       if (kind === 'story') {
         this.need(S.d.storyGift && SP[S.d.storyGift], 'Встреча Летописи недоступна');
-        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: 25, seed: 'gift' + S.d.created });
+        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.maxLvl()), seed: 'gift' + S.d.created });
       }
       this.fail('Неизвестная встреча');
     },
@@ -3534,7 +3551,7 @@ const GameCore = {
       this.need(e.ready, 'Родник ещё набирает силу');
       S.d.springs[p.id] = ctx.now;
       const { loot, cocoon } = W.springLoot(p.id);
-      const got = S.giveRewards({ ...loot, xp: 50 });
+      const got = S.giveRewards({ ...loot, xp: 50 }, false); // добыча родника соблюдает лимит сумки
       S.d.stats.springs++;
       S.progress('spring', 1);
       let coc = null;
@@ -3789,7 +3806,8 @@ const GameCore = {
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
       const shiny = U.h('rshiny', b.rid, S.d.created) < Sky.shinyRate(1 / 20);
-      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Raid.TIER[tier].lvl, charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
+      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.maxLvl()), // не выше доступного игроку уровня
+        charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
       return { win: true, rw, charms, bonus, allies };
     },
 
@@ -4249,7 +4267,11 @@ const GameCore = {
       const f = S.d.friends.find(x => x.id === b.pid);
       this.need(f, 'Такого друга нет');
       J.add('spar', { name: f.name });
-      if (f.spar === U.today(ctx.now)) return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true };
+      // полная награда — раз в день за каждого друга и не больше 3 раз в день всего (3.19: было без общего предела —
+      // с 50 друзьями до 25 000 ✦ и 40 000 опыта в день)
+      const sd = S.d.sparDay = S.d.sparDay && S.d.sparDay.day === U.today(ctx.now) ? S.d.sparDay : { day: U.today(ctx.now), n: 0 };
+      if (f.spar === U.today(ctx.now) || sd.n >= 3) { f.spar = U.today(ctx.now); return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true }; }
+      sd.n++;
       f.spar = U.today(ctx.now);
       S.progress('spar', 1);
       const rw = S.giveRewards({ xp: 800, sparks: 500, charm: 3, honey: 1 });
