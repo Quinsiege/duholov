@@ -1173,3 +1173,4 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .day-limits { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 12px; }
 .day-limits div { padding: 6px 2px; border-radius: 12px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); text-align: center; }
 .day-limits b { display: block; font-size: 14px; } .day-limits small { font-size: 10px; color: var(--muted); } .day-limits .out b { color: #fb7185; }
+.chat-hint .chat-unhide { display: inline; margin-left: 4px; font-size: 12px; }
