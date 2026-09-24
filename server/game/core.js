@@ -12,6 +12,7 @@ const GameCore = {
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
+  TZ_LOCK: 7 * 86400000, // часовой пояс игрока меняется не чаще раза в неделю
 
   fail(msg) { throw new GameError(msg); },
   need(cond, msg) { if (!cond) this.fail(msg); },
@@ -24,7 +25,11 @@ const GameCore = {
     const ctx = { now: Date.now(), env, srv: JSON.parse(JSON.stringify(save.srv || {})), events: [], results: [], after: [], full: false, reset: false };
     const saved = { emit: Bus.emit, save: S.save, d: S.d, tz: U.tz, skew: U.skew, w: Sky.w, pos: MapView.pos };
     try {
-      U.tz = Number.isFinite(+req.tz) ? U.clamp(Math.round(+req.tz), -840, 840) : 0;
+      // 4.1: часовой пояс игрока запоминает сервер и меняет не чаще раза в неделю — иначе, переключая пояс
+      // от запроса к запросу, можно было снова и снова «начинать новый день» (дневные лимиты, дань, награда за вход)
+      const tz = Number.isFinite(+req.tz) ? U.clamp(Math.round(+req.tz), -840, 840) : 0, z = ctx.srv.tz;
+      if (!z || (z.v !== tz && ctx.now - z.t >= this.TZ_LOCK)) ctx.srv.tz = { v: tz, t: ctx.now };
+      U.tz = ctx.srv.tz.v;
       U.skew = 0;
       Sky.w = req.wx && WEATHER[req.wx] ? { key: req.wx } : null;
       const p = req.pos;
