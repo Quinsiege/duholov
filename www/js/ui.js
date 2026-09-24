@@ -285,7 +285,8 @@ const UI = {
   },
 
   /* ---------------- МЕНЮ ---------------- */
-  // 3.35: цветные значки меню — своя плашка-«камешек» с объёмом и блеском, на ней двухтоновый символ раздела
+  // 3.36: значки меню в стиле игры — мультяшный медальон, как оберег на заставке: толстая золотая кайма с обводкой и бликом,
+  // ночной диск; символ раздела — яркий, с глянцевым верхом и толстой тёмной обводкой по силуэту (как у духов)
   menuIcon(k) {
     const P = { // цвета плашки: светлый верх, тёмный низ, тёмный для деталей символа
       spirits: ['#c4b5fd', '#6d28d9', '#3b0764'], book: ['#5eead4', '#0f766e', '#134e4a'], bag: ['#fcd34d', '#b45309', '#78350f'],
@@ -295,9 +296,7 @@ const UI = {
       pin: ['#fda4af', '#be123c', '#881337'], user: ['#a5b4fc', '#4338ca', '#1e1b4b'], shield: ['#bfdbfe', '#1e40af', '#172554'],
       journal: ['#e2b48a', '#7c4a26', '#3f2212'], gear: ['#cbd5e1', '#475569', '#1e293b'],
     }[k] || ['#e9d5ff', '#6d28d9', '#3b0764'];
-    // 3.36 (тестовый контур): мультяшные значки «в стиле игры» — см. ниже
-    const game = typeof MENU_ICONS_GAME !== 'undefined' && MENU_ICONS_GAME;
-    const [lt, dk, ink0] = P, g = 'mi-' + k, W = game ? `url(#${g}-au)` : '#fff', ink = game ? '#2a1147' : ink0, S = 'fill-opacity=".6"';
+    const [lt, dk] = P, g = 'mi-' + k, W = `url(#${g}-au)`, ink = '#2a1147', S = 'fill-opacity=".6"';
     const gear = (() => { let d = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 16, r = i % 2 ? 9.2 : 12.4;
       d += (i ? 'L' : 'M') + (24 + r * Math.cos(a)).toFixed(1) + ' ' + (24 + r * Math.sin(a)).toFixed(1) + ' ' + (24 + r * Math.cos(a + Math.PI / 8)).toFixed(1) + ' ' + (24 + r * Math.sin(a + Math.PI / 8)).toFixed(1); }
       return d + 'Z'; })();
@@ -352,9 +351,7 @@ const UI = {
         <path d="M33.5 26.5l4.5-4.5 2 2-4.5 4.5-2.8.8z" fill="#fbbf24"/>`,
       gear: `<path d="${gear}" fill="${W}"/><circle cx="24" cy="24" r="4.6" fill="${ink}"/><circle cx="24" cy="24" r="7.2" fill="none" stroke="${ink}" stroke-width="1.2" opacity=".25"/>`,
     };
-    // 3.36 (тестовый контур): мультяшный медальон, как оберег на заставке — толстая золотая кайма с обводкой и бликом,
-    // внутри ночной диск; символ раздела — яркий, с глянцевым верхом и толстой тёмной обводкой по силуэту (как у духов)
-    if (game) return `<svg class="mi mi-game" viewBox="0 0 48 48" aria-hidden="true"><defs>
+    return `<svg class="mi mi-game" viewBox="0 0 48 48" aria-hidden="true"><defs>
         <linearGradient id="${g}-au" gradientUnits="userSpaceOnUse" x1="0" y1="8" x2="0" y2="44"><stop offset="0" stop-color="#fff"/><stop offset=".32" stop-color="${lt}"/><stop offset="1" stop-color="${dk}"/></linearGradient>
         <linearGradient id="${g}-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef08a"/><stop offset=".5" stop-color="#fbbf24"/><stop offset="1" stop-color="#b45309"/></linearGradient>
         <radialGradient id="${g}-bg" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="#4c2a91"/><stop offset="1" stop-color="#1a0d38"/></radialGradient>
@@ -371,11 +368,6 @@ const UI = {
       <ellipse cx="14.2" cy="8.6" rx="4.6" ry="1.9" transform="rotate(-30 14.2 8.6)" fill="#fff" opacity=".75"/>
       <circle cx="36.5" cy="39.2" r="1.2" fill="#fff" opacity=".35"/>
       <g transform="translate(24 24.2) scale(.86) translate(-24 -24)" filter="url(#${g}-ol)">${G[k] || ''}</g></svg>`;
-    return `<svg class="mi" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lt}"/><stop offset="1" stop-color="${dk}"/></linearGradient></defs>
-      <rect x="1" y="2" width="46" height="45" rx="14" fill="${ink}" opacity=".55"/><rect x="1" y="1" width="46" height="44" rx="14" fill="url(#${g})"/>
-      <path d="M8 3.5h32a7 7 0 0 1 6 5c-9 4-29 4-44 0a7 7 0 0 1 6-5z" fill="#fff" opacity=".22"/>
-      <rect x="1.5" y="1.5" width="45" height="43" rx="13.5" fill="none" stroke="#fff" stroke-opacity=".28"/>
-      <g style="filter:drop-shadow(0 1.4px 0 rgba(0,0,0,.28))">${G[k] || ''}</g></svg>`;
   },
   menu() {
     Sfx.init(); Sfx.play('tap');
