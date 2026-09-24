@@ -1188,6 +1188,7 @@ const UI = {
         ${link('about', 'info', 'Книга Ордена', 'Мир, духи и все правила игры; трейлер')}
         ${link('privacy', 'info', 'Персональные данные', 'Какие данные хранит игра и как их удалить')}
         <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div><span class="set-chev">›</span></button>
+        ${Game.on() ? `<button class="row link set-row del-acc"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Удалить учётную запись</b><small>Прогресс, способы входа и все данные — навсегда</small></div></button>` : ''}
       </div>
       <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
     scr.addEventListener('change', e => {
@@ -1244,6 +1245,15 @@ const UI = {
     Login.load().then(renderAcc);
     scr.querySelector('.about').onclick = () => Book.screen(); // 4.0: вместо списка «Об игре»
     scr.querySelector('.privacy').onclick = () => UI.screen('Персональные данные', '<iframe class="offer-frame" src="privacy.html" title="Политика обработки персональных данных"></iframe>', 'offer-screen');
+    // 4.1: полное удаление учётной записи (152-ФЗ) — после двух подтверждений; платежи остаются без привязки
+    const del = scr.querySelector('.del-acc');
+    if (del) del.onclick = () => this.confirm('Удалить учётную запись?', 'Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные златники не вернутся.', 'Удалить', () => {
+      this.confirm('Точно удалить?', 'Восстановить учётную запись будет нельзя.', 'Да, удалить навсегда', async () => {
+        try { await Game.auth('delete', { confirm: 'УДАЛИТЬ' }); } catch (e) { UI.toast(U.esc(e.message)); return; }
+        try { localStorage.removeItem(CLOUD_CONFIG.auth); } catch (e) {}
+        location.reload();
+      }, 'Нет', true);
+    });
     scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены с сервера навсегда.', 'Сбросить', () => {
       this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', async () => {
         if (await Game.try('reset')) location.reload();

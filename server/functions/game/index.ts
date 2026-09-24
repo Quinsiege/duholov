@@ -4924,6 +4924,14 @@ const Auth = {
       const links = must(await db.from('auth_links').select('provider, name, created_at').eq('user_id', uid)) || [];
       return { ok: true, providers: this.providers(), links };
     }
+    // 4.1: удалить учётную запись целиком (152-ФЗ): прогресс, способы входа, лоты, место в Лиге — всё, что связано
+    // с ней в базе, удаляется вместе с ней; записи о платежах остаются без привязки (налоговый учёт, 018)
+    if (op === 'delete') {
+      if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: 'Нужно подтверждение' };
+      const { error } = await db.auth.admin.deleteUser(uid);
+      if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: 'Не получилось удалить — попробуй ещё раз' }; }
+      return { ok: true };
+    }
     if (op !== 'signin') return { ok: false, error: 'Неизвестная операция' };
     const provider = String(a.provider || '');
     if (!this.providers()[provider]) return { ok: false, error: 'Этот способ входа пока не подключён' };
