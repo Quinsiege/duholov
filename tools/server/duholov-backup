@@ -1,0 +1,13 @@
+#!/bin/sh
+# Ежедневная копия базы Духолова: сжатый дамп (public, auth, storage) — 14 последних дней.
+# Копия уходит и в S3 (если настроен /root/.duholov-s3, см. README) — на случай потери сервера.
+set -e
+D=/var/backups/duholov; F=$D/duholov-$(date -u +%Y%m%d-%H%M).dump
+docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --schema=public --schema=auth --schema=storage > "$F.part"
+mv "$F.part" "$F"; chmod 600 "$F"
+find "$D" -name 'duholov-*.dump' -mtime +14 -delete
+if [ -f /root/.duholov-s3 ] && command -v aws >/dev/null; then
+  . /root/.duholov-s3
+  aws --endpoint-url "$S3_ENDPOINT" s3 cp "$F" "s3://$S3_BUCKET/db/$(basename "$F")" --only-show-errors
+fi
+echo "backup ok: $F ($(du -h "$F" | cut -f1))"

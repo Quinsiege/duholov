@@ -1,0 +1,23 @@
+#!/bin/bash
+# Подключить копии базы к S3 Timeweb Cloud. Ключи — в панели: Хранилище S3 → бакет → «Ключи доступа».
+set -euo pipefail
+read -rp "Имя бакета [duholov-backup]: " B; B=${B:-duholov-backup}
+read -rp "Access key: " AK
+read -rsp "Secret key: " SK; echo
+umask 077
+cat > /root/.duholov-s3 <<Y
+export AWS_ACCESS_KEY_ID='$AK'
+export AWS_SECRET_ACCESS_KEY='$SK'
+export AWS_DEFAULT_REGION=ru-1
+S3_ENDPOINT=https://s3.timeweb.cloud
+S3_BUCKET='$B'
+Y
+. /root/.duholov-s3
+echo "проверка $(date -u)" > /tmp/s3-check.txt
+if aws --endpoint-url "$S3_ENDPOINT" s3 cp /tmp/s3-check.txt "s3://$S3_BUCKET/check.txt" --only-show-errors; then
+  echo "S3 подключено. Делаю копию базы…"; /usr/local/bin/duholov-backup
+  aws --endpoint-url "$S3_ENDPOINT" s3 ls "s3://$S3_BUCKET/db/" | tail -2
+else
+  echo "Не получилось: проверь имя бакета и ключи и запусти ещё раз"; rm -f /root/.duholov-s3
+fi
+rm -f /tmp/s3-check.txt
