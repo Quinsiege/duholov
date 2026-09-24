@@ -343,7 +343,7 @@ const UI = {
         name: (a, b) => (a.nick || SP[a.sid].name).localeCompare(b.nick || SP[b.sid].name, 'ru'),
       }[this.colSort];
       list.sort((a, b) => (b.fav - a.fav) || cmp(a, b));
-      scr.querySelector('.head-extra').textContent = `${S.d.spirits.length}`;
+      scr.querySelector('.head-extra').textContent = `${S.d.spirits.length} ${U.plural(S.d.spirits.length, 'дух', 'духа', 'духов')}`;
       U.$$('[data-sort]', scr).forEach(b => b.classList.toggle('on', b.dataset.sort === this.colSort));
       U.$$('[data-el]', scr).forEach(b => b.classList.toggle('on', b.dataset.el === this.colEl));
       scr.querySelector('.grid').innerHTML = list.map(x => `
@@ -476,6 +476,7 @@ const UI = {
             <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' : ''}>Усилить<small>✦ ${pc.sparks} · ${pc.essence} эсс.</small></button>
             ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${SP[s.evo].name}</small></button>` : ''}
           </div>
+          ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
           <div class="panel res"><span>✦ ${U.fmtNum(S.d.sparks)} искр</span><span>Эссенция «${fam.name}»: <b>${ess}</b></span></div>
           ${sp.dark ? `<div class="panel dark-panel"><b>Дух омрачён Навью</b><small>Атака +20%, защита −17%. Очищение снимет тьму: оценка +2 к каждому показателю, уровень до 25.</small>
             <button class="btn act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>Очистить<small>✦ ${S.PURIFY.sparks} · ${S.PURIFY.essence} эсс.</small></button></div>` : ''}
@@ -590,7 +591,7 @@ const UI = {
     const caught = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].caught).length;
     const seen = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].seen).length;
     const scr = this.screen('Бестиарий', `
-      <div class="dex-sum">Поймано <b>${caught}</b> из ${SPECIES.length} · встречено ${seen}</div>
+      <div class="dex-sum">Поймано <b>${caught}</b> из ${SPECIES.length} · встречено ${seen}</div><div class="pbar dex-prog"><i style="width:${caught / SPECIES.length * 100}%"></i></div>
       <div class="grid dex">${SPECIES.map(s => {
         const d = S.d.dex[s.id] || {};
         const cls = d.caught ? 'caught' : d.seen ? 'seen' : 'unknown';
@@ -670,12 +671,12 @@ const UI = {
 
   /* ---------------- КОКОНЫ ---------------- */
   cocoons() {
-    const scr = this.screen('Коконы', '<div class="coc-info"></div><div class="grid coc"></div>', 'coc-screen');
+    const scr = this.screen('Коконы', '<div class="coc-info"></div><div class="coc-box"></div>', 'coc-screen');
     const render = () => {
       const inc = S.incubating();
       scr.querySelector('.head-extra').textContent = `${S.d.cocoons.length}/9`;
-      scr.querySelector('.coc-info').innerHTML = `Коконы согреваются, пока ты ходишь. Одновременно можно греть <b>3</b> кокона (сейчас ${inc}).<br>Пройдено всего: <b>${U.fmtDist(S.d.stats.km * 1000)}</b>`;
-      scr.querySelector('.grid').innerHTML = S.d.cocoons.map(c => {
+      scr.querySelector('.coc-info').innerHTML = `Коконы согреваются, пока ты ходишь. Пройдено всего: <b>${U.fmtDist(S.d.stats.km * 1000)}</b>`;
+      const card = c => {
         const ready = c.inc && c.walked >= c.km;
         return `<div class="coc-card ${ready ? 'ready' : ''}" data-id="${c.id}">
           <div class="coc-art ${c.inc ? 'warm' : ''}">${Art.cocoon(c.km)}</div>
@@ -683,7 +684,12 @@ const UI = {
           ${c.inc ? `<div class="pbar"><i style="width:${Math.min(100, c.walked / c.km * 100)}%"></i></div><small>${c.walked.toFixed(2)} / ${c.km} км</small>` : ''}
           ${ready ? '<button class="btn small primary hatch">Вылупить!</button>' : c.inc ? '' : `<button class="btn small warm-btn" ${inc >= 3 ? 'disabled' : ''}>Греть</button>`}
         </div>`;
-      }).join('') || '<div class="empty">Коконов нет. Иногда их можно найти в роднике.</div>';
+      };
+      // греются — три места (свободные видны), ждут — остальные
+      const warm = S.d.cocoons.filter(c => c.inc), wait = S.d.cocoons.filter(c => !c.inc);
+      scr.querySelector('.coc-box').innerHTML = !S.d.cocoons.length ? '<div class="empty">Коконов нет. Иногда их можно найти в роднике.</div>'
+        : `<h3 class="prof-h">Греются <small>${warm.length} из 3</small></h3><div class="grid coc">${warm.map(card).join('')}${`<div class="coc-card coc-slot"><div class="coc-art"></div><b>Свободно</b><small>${wait.length ? 'нажми «Греть» у кокона ниже' : 'коконы находят в родниках'}</small></div>`.repeat(Math.max(0, 3 - warm.length))}</div>
+          ${wait.length ? `<h3 class="prof-h">Ждут <small>${wait.length}</small></h3><div class="grid coc">${wait.map(card).join('')}</div>` : ''}`;
     };
     scr.addEventListener('click', async e => {
       const card = e.target.closest('.coc-card'); if (!card) return;
@@ -857,30 +863,30 @@ const UI = {
     }).join('');
     const scr = this.screen('Ловчий', `
       <div class="prof">
-        <div class="prof-ava">${this.avatar()}</div>
-        <div class="prof-btns"><button class="btn small ghost look-btn">Изменить облик</button><button class="btn small ghost journal-btn">Дневник</button></div>
-        <div class="prof-name">${U.esc(d.name)}</div>
-        <div class="prof-rank">${this.rank(d.level)} Ордена Оберега · уровень ${d.level}</div>
-        ${d.clan ? `<div class="prof-clan">${Clans.badge(d.clan)} <button class="btn small ghost clan-open">Дружина</button><small>защитников поставлено: ${d.stats.defends || 0} · Капищ освобождено: ${d.stats.freed || 0}</small></div>`
-          : d.level >= CLAN_LEVEL ? '<button class="btn small primary clan-btn">Выбрать дружину</button>' : ''}
-        <div class="pbar big"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
-        <small>${d.level >= MAX_LEVEL ? 'Максимальный уровень' : `${U.fmtNum(d.xp - cur)} / ${U.fmtNum(next - cur)} опыта до ${d.level + 1} уровня`}</small>
+        <div class="pc-hero prof-hero" style="--cc:${d.clan ? CLANS[d.clan].color : '#fbbf24'}">
+          <div class="pc-ava prof-ava-wrap"><div class="prof-ava">${this.avatar()}</div><span class="pc-lvl">${d.level}</span></div>
+          <div class="pc-id"><b class="pc-name">${U.esc(d.name)}</b><small>${this.rank(d.level)} Ордена Оберега</small>
+            <div class="pc-tags">${d.clan ? `<span class="pc-tag clan">${CLANS[d.clan].short}</span>` : ''}<span class="pc-tag">в Ордене ${(n => `${n} ${U.plural(n, 'день', 'дня', 'дней')}`)(Math.max(1, Math.ceil((Date.now() - d.created) / 864e5)))}</span></div></div>
+        </div>
+        <div class="prof-xp"><div class="pbar big"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
+          <small>${d.level >= MAX_LEVEL ? 'Максимальный уровень' : `${U.fmtNum(d.xp - cur)} / ${U.fmtNum(next - cur)} опыта до ${d.level + 1} уровня`}</small></div>
+        <div class="prof-btns"><button class="btn small look-btn">Облик</button><button class="btn small journal-btn">Дневник</button>
+          ${d.clan ? '<button class="btn small clan-open">Дружина</button>' : d.level >= CLAN_LEVEL ? '<button class="btn small primary clan-btn">Выбрать дружину</button>' : ''}</div>
         <div class="prof-stats">
-          <div><b>${d.stats.caught}</b><span>поймано духов</span></div>
+          <div><b>${U.fmtNum(d.stats.caught)}</b><span>поймано духов</span></div>
           <div><b>${caught}/${SPECIES.length}</b><span>видов в бестиарии</span></div>
           <div><b>${U.fmtDist(d.stats.km * 1000)}</b><span>пройдено</span></div>
           <div><b>${d.stats.springs}</b><span>родников</span></div>
           <div><b>${d.stats.raids}</b><span>закрыто разломов</span></div>
+          <div><b>${d.stats.duels}</b><span>побед в капищах</span></div>
           <div><b>${d.stats.evolved}</b><span>превращений</span></div>
           <div><b>${d.stats.hatched}</b><span>из коконов</span></div>
-          <div><b>${d.stats.duels}</b><span>побед в капищах</span></div>
-          <div><b>${d.stats.traded}</b><span>обменов</span></div>
           <div><b>${d.stats.shiny}</b><span>сияющих</span></div>
           <div><b>${d.stats.invasions}</b><span>вторжений отбито</span></div>
           <div><b>${d.stats.purified}</b><span>очищено духов</span></div>
           <div><b>${d.stats.throwsGreat}</b><span>отличных бросков</span></div>
-          <div><b>✦ ${U.fmtNum(d.sparks)}</b><span>искр</span></div>
         </div>
+        ${d.clan ? `<div class="prof-clan-line">${Clans.badge(d.clan)}<small>защитников поставлено: ${d.stats.defends || 0} · Капищ освобождено: ${d.stats.freed || 0}</small></div>` : ''}
         <h3 class="prof-h">Спутник</h3>
         ${buddyHtml}
         <h3 class="prof-h">Знаки Ордена <small>${Object.values(d.medals).reduce((a, b) => a + b, 0)} / ${MEDALS.length * 3}</small></h3>

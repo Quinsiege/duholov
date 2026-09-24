@@ -100,28 +100,25 @@ const Friends = {
   /* ---------------- ЭКРАН ---------------- */
   screen() {
     const scr = UI.screen('Друзья', `
+      <div class="fr-inbox"></div>
+      <div class="fr-head"><h3 class="prof-h">Друзья <small class="fr-count"></small></h3><span class="small">Подарков в сумке: <b class="gift-n"></b></span></div>
+      <div class="list fr-list"></div>
       <div class="panel fr-me">
-        <b>Мой код дружбы</b>
+        <b>Добавить друга</b>
         <small>Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной. Дарите друг другу подарки каждый день.</small>
-        <div class="fr-btns"><button class="btn small my-qr">Показать QR</button><button class="btn small my-share">Код дружбы</button></div>
         <button class="btn primary wide my-invite">Позвать друга по ссылке</button>
         <small>Друг откроет ссылку — и вы сразу станете друзьями, а вам обоим придут подарки.</small>
-      </div>
-      <div class="fr-inbox"></div>
-      <div class="panel trade-in">
-        <b>Вставить код</b>
-        <small>Код дружбы от другого Ловчего.</small>
+        <div class="fr-btns"><button class="btn small my-qr">Мой QR-код</button><button class="btn small my-share">Мой код дружбы</button></div>
+        <div class="fr-or"><span>или код друга</span></div>
         ${Trade.canScan() ? '<button class="btn wide scan-btn">Сканировать QR-код</button>' : ''}
-        <textarea class="input code-in" rows="3" placeholder="DUHF1…"></textarea>
-        <button class="btn primary wide accept-btn">Принять</button>
+        <textarea class="input code-in" rows="2" placeholder="Вставь код: DUHF1…"></textarea>
+        <button class="btn wide accept-btn">Добавить по коду</button>
       </div>
       <div class="panel trade-in coop-join">
         <b>Совместный разлом</b>
         <small>Друг у разлома нажал «Позвать друзей» и прислал код из 5 символов? Введи его — и в бой вместе, где бы ты ни был.</small>
         <div class="fr-btns"><input class="input coop-code-in" maxlength="5" placeholder="КОД" autocapitalize="characters"><button class="btn primary coop-join-btn">Войти</button></div>
       </div>
-      <div class="fr-head"><h3 class="prof-h">Друзья <small class="fr-count"></small></h3><span class="small">Подарков в сумке: <b class="gift-n"></b></span></div>
-      <div class="list fr-list"></div>
       `, 'friends-screen');
     const render = () => {
       if (!scr.isConnected) return;
@@ -135,11 +132,11 @@ const Friends = {
         const lv = this.level(f), next = FRIEND_LEVELS[lv + 1];
         return `<div class="row fr-row" data-id="${f.id}">
           <div class="fr-ava">${Art.avatar(f.look || { cloak: GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)], eyes: '#5eead4', emblem: 'charm' })}</div>
-          <div class="row-main"><b>${U.esc(f.name)}</b><small>${FRIEND_LEVELS[lv].name}${next ? ` · ★ ${f.pts}/${next.pts}` : ' · высший уровень'}${f.recv === today ? ' · подарок получен' : ''}</small>
+          <div class="row-main"><b>${U.esc(f.name)}${f.lvl ? ` <span class="fr-lvl">ур. ${f.lvl}</span>` : ''}${f.recv === today ? ' <span class="fr-got" title="Подарок от друга сегодня получен">🎁</span>' : ''}</b><small>${FRIEND_LEVELS[lv].name}${next ? ` · ★ ${f.pts}/${next.pts}` : ' · высший уровень'}</small>
             <div class="pbar"><i style="width:${next ? Math.min(100, (f.pts - FRIEND_LEVELS[lv].pts) / (next.pts - FRIEND_LEVELS[lv].pts) * 100) : 100}%"></i></div></div>
           <button class="btn small ${f.sent === today ? 'ghost' : 'primary'} send-gift" ${f.sent === today ? 'disabled' : ''}>${f.sent === today ? 'Отправлен' : 'Подарок'}</button>
         </div>`;
-      }).join('') : '<div class="row"><div class="row-main"><small>Пока никого. Обменяйтесь кодами дружбы!</small></div></div>';
+      }).join('') : '<div class="row"><div class="row-main"><small>Пока никого — позови друга по ссылке или добавь его код ниже.</small></div></div>';
     };
     render();
     // проверить, не добавил ли кто-нибудь меня и не пришли ли подарки, пока экран открыт
