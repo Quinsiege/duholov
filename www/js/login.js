@@ -14,6 +14,11 @@ const Login = {
 
   async load() {
     try { this.info = await Game.auth('info'); } catch (e) { this.info = this.info || { providers: {}, links: [] }; }
+    // 3.29: вход по почте и паролю (учётные записи создаёт владелец в Supabase — например, для проверки магазином)
+    try {
+      const u = ((await (await Cloud.client()).auth.getSession()).data.session || {}).user;
+      this.email = u && !u.is_anonymous && u.email && !/\.invalid$/i.test(u.email) ? u.email : null;
+    } catch (e) { this.email = null; }
     return this.info;
   },
   // приложение для Android до 3-й версии открывало страницы сервисов во внешнем браузере; Google не пускает во встроенные окна
@@ -24,7 +29,7 @@ const Login = {
   },
   appTooOld() { const app = this.app(); return app > 0 && app < 3 && this.ORDER.some(k => this.info && this.info.providers && this.info.providers[k]); },
   linked() { return (this.info && this.info.links) || []; },
-  isGuest() { return !this.linked().length; },
+  isGuest() { return !this.linked().length && !this.email; },
   icon(k) {
     const I = {
       google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.3H12v4.3h5.9a5 5 0 0 1-2.2 3.3v2.8h3.5c2.1-1.9 3.3-4.8 3.3-8.1z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.8c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.9A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14c-.2-.7-.4-1.4-.4-2s.1-1.4.4-2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1L5.7 10C6.6 7.4 9.1 5.4 12 5.4z"/></svg>',
@@ -114,8 +119,31 @@ const Login = {
   // плашки учётной записи: сервисы, через которые привязан вход, или «Гость»
   accountTags() {
     const links = this.linked();
-    return links.length ? links.map(l => `<span class="acc-tag">${this.icon(l.provider)}${this.NAMES[l.provider]}${l.name ? ` · ${U.esc(l.name)}` : ''}</span>`).join('')
+    const mail = this.email ? `<span class="acc-tag mail">${UI.I.key}${U.esc(this.email)}</span>` : '';
+    return links.length || mail ? mail + links.map(l => `<span class="acc-tag">${this.icon(l.provider)}${this.NAMES[l.provider]}${l.name ? ` · ${U.esc(l.name)}` : ''}</span>`).join('')
       : '<span class="acc-tag guest">Гость</span>';
+  },
+  // Вход по почте и паролю: учётную запись заранее создаёт владелец (Supabase → Authentication → Users)
+  emailForm() {
+    const m = UI.modal({
+      title: 'Вход по почте', cls: 'mail-modal',
+      html: `<p class="small">Для учётных записей, выданных Орденом (например, для проверки). Обычным игрокам удобнее войти через сервис или гостем.</p>
+        <form class="mail-form"><input class="input" name="email" type="email" autocomplete="username" placeholder="Почта" required>
+        <input class="input" name="password" type="password" autocomplete="current-password" placeholder="Пароль" required>
+        <button class="btn primary wide">Войти</button></form>`,
+      buttons: [],
+    });
+    const f = m.querySelector('.mail-form');
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const b = f.querySelector('button'); b.disabled = true;
+      try {
+        const sb = await Cloud.client();
+        const { error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
+        if (error) { UI.toast('Неверная почта или пароль'); b.disabled = false; return; }
+        location.reload();
+      } catch (err) { UI.toast('Нет связи с сервером — попробуй ещё раз'); b.disabled = false; }
+    };
   },
   // Вернувшийся Ловчий: чей это прогресс, «Продолжить»; гостю — привязать вход, вошедшему — другой аккаунт или выйти
   gate(done) {
@@ -127,17 +155,19 @@ const Login = {
         <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div>
       </div>
       <button class="btn primary wide go">Продолжить</button>
-      ${links.length
+      ${!this.isGuest()
         ? `${avail.length ? `<div class="onb-or"><span>войти в другой аккаунт</span></div><div class="login-row">${avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join('')}</div>` : ''}
            <button class="btn ghost wide out">Выйти и начать гостем</button>`
         : avail.length ? `<div class="onb-or"><span>сохрани прогресс — привяжи вход</span></div><div class="login-row">${this.buttons('link')}</div>` : ''}
       ${this.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
+      <button class="linkish mail-login">Войти по почте и паролю</button>
     </div>`;
     document.body.appendChild(root);
     const close = () => { root.classList.add('out'); setTimeout(() => root.remove(), 400); };
     root.querySelector('.go').onclick = () => { Sfx.init(); Sfx.play('tap'); close(); done(); };
     root.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => this.start(b.dataset.login, 'link'); });
     root.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
+    root.querySelector('.mail-login').onclick = () => this.emailForm();
     const out = root.querySelector('.out');
     if (out) out.onclick = () => UI.confirm('Выйти?', 'Твой прогресс останется в учётной записи — вернуться в неё можно входом через привязанный сервис. На этом устройстве начнётся новая гостевая игра.', 'Выйти', () => this.signOut());
   },

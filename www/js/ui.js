@@ -1095,13 +1095,14 @@ const UI = {
     const renderAcc = () => {
       if (!acc || !scr.isConnected) return;
       const links = Login.linked(), avail = Login.available().filter(k => !links.some(l => l.provider === k));
-      acc.innerHTML = (links.length
+      const mail = Login.email ? `<div class="row set-row acc-linked"><span class="set-ico">${this.I.key}</span><div class="row-main"><b>Почта</b><small>${U.esc(Login.email)} · вход по почте и паролю</small></div><span class="q-ok">✓</span></div>` : '';
+      acc.innerHTML = mail + (links.length || Login.email
         ? links.map(l => `<div class="row set-row acc-linked">${Login.icon(l.provider)}<div class="row-main"><b>${Login.NAMES[l.provider]}</b><small>${l.name ? U.esc(l.name) + ' · ' : ''}вход привязан — прогресс откроется на любом устройстве</small></div><span class="q-ok">✓</span></div>`).join('')
         : `<div class="row set-row acc-guest"><span class="set-ico warn">${this.I.user}</span><div class="row-main"><b>Гость</b><small>Прогресс только на этом устройстве. Привяжи вход — и он не потеряется.</small></div></div>`)
         + (avail.length ? `<div class="row acc-add"><div class="row-main">${links.length ? '<small>Привязать ещё один вход</small>' : ''}<div class="login-row">${Login.buttons('link', avail)}</div></div></div>` : '')
         + (Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div></div>' : '')
         + (!links.length && !avail.length && !Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через сервисы скоро появится. А пока — перенос по коду ниже.</small></div></div>' : '')
-        + (links.length ? `<button class="row link set-row acc-out"><span class="set-ico">${this.I.logout}</span><div class="row-main"><b>Выйти</b><small>На этом устройстве начнётся гостевая игра; вернуться — входом через сервис</small></div><span class="set-chev">›</span></button>` : '');
+        + (!Login.isGuest() ? `<button class="row link set-row acc-out"><span class="set-ico">${this.I.logout}</span><div class="row-main"><b>Выйти</b><small>На этом устройстве начнётся гостевая игра; вернуться — входом через сервис</small></div><span class="set-chev">›</span></button>` : '');
       acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
       const out = acc.querySelector('.acc-out');
       if (out) out.onclick = () => this.confirm('Выйти?', 'Прогресс останется в твоей учётной записи — вернуться в неё можно входом через привязанный сервис.', 'Выйти', () => Login.signOut());
@@ -1279,6 +1280,7 @@ const UI = {
         <button class="btn primary wide next">Начать гостем</button>
         ${Login.available().length ? `<div class="onb-or"><span>или войди — прогресс не потеряется</span></div><div class="login-row">${Login.buttons('start')}</div>` : ''}
         ${Login.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
+        ${Game.on() ? '<button class="linkish mail-login">Войти по почте и паролю</button>' : ''}
         <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
@@ -1291,6 +1293,7 @@ const UI = {
       root.appendChild(U.el(`<div class="onb-step s${n}">${html}</div>`));
       const nx = root.querySelector('.next');
       root.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
+      root.querySelectorAll('.mail-login').forEach(b => { b.onclick = () => Login.emailForm(); });
       if (n === 2) {
         const inp = root.querySelector('input');
         inp.focus();
