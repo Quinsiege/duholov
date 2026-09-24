@@ -1415,3 +1415,16 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .quest.claimed .qd-ico.o-step { color: var(--good); }
 .o-why { display: block; color: var(--muted); font-size: 12px; margin: 4px 0 6px; }
 .quest.qd .q-main > b + .qd-rws { margin-top: 6px; }
+
+/* ---------- 3.27: вход через сервисы ---------- */
+.login-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; width: 100%; }
+.login-btn { flex-direction: row; gap: 8px; min-height: 44px; padding: 8px 12px; font-size: 14px; background: rgba(255, 255, 255, .92); color: #1f2937; border-color: rgba(255, 255, 255, .9); }
+.login-btn:active { transform: scale(.97); }
+.lg-ic { width: 20px; height: 20px; flex: none; display: inline-grid; place-items: center; }
+.lg-ic svg { width: 20px; height: 20px; display: block; }
+.onb-or { display: flex; align-items: center; gap: 10px; width: 100%; margin: 14px 0 10px; color: var(--muted); font-size: 12px; }
+.onb-or::before, .onb-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.onb .login-row, .onb .onb-or { max-width: 360px; margin-top: -8px; margin-bottom: -4px; }
+.onb-note { color: var(--muted); text-align: center; margin: 4px 0 10px; }
+.acc-box .acc-linked .row-main { display: flex; align-items: center; gap: 10px; }
+.acc-box .acc-add { padding-top: 4px; }

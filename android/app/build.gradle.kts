@@ -11,9 +11,9 @@ android {
         applicationId = "ru.duholov.game"
         minSdk = 24
         targetSdk = 34
-        // versionCode = MainActivity.WRAPPER_VERSION = minApk в www/version.json
-        versionCode = 2
-        versionName = "2.0.0"
+        // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
+        versionCode = 3
+        versionName = "3.0.0"
     }
 
     buildTypes {

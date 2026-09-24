@@ -71,8 +71,8 @@ jobs:
       - name: Метка версии в адресах файлов
         run: |
           V=$(node -p "require('./www/version.json').version")
-          sed -i "s/?v=dev/?v=$V/g" www/index.html www/admin.html www/sw.js
-          if grep -q '?v=dev' www/index.html www/admin.html www/sw.js; then echo 'осталась метка ?v=dev'; exit 1; fi
+          sed -i "s/?v=dev/?v=$V/g" www/index.html www/admin.html www/auth.html www/sw.js
+          if grep -q '?v=dev' www/index.html www/admin.html www/auth.html www/sw.js; then echo 'осталась метка ?v=dev'; exit 1; fi
           echo "Версия $V"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
