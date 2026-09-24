@@ -38,7 +38,7 @@ const Chat = {
     });
   },
   channels() { return Rules.CHAT_CHANNELS.filter(([k]) => k !== 'clan' || S.d.clan); },
-  time(t) { const d = new Date(t), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }); },
+  time(t) { return new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }, // дата — в разделителе дня
 
   screen() {
     Sfx.init(); Sfx.play('tap');
@@ -57,10 +57,19 @@ const Chat = {
       const who = m => this.people[m.pid] || cur[m.pid] || m;
       const hint = { all: 'Общий разговор Ловчих.', trade: 'Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.', raid: 'Ищите команду для Разломов: пишите код комнаты и место.', help: 'Вопросы новичков и советы бывалых.', clan: 'Канал твоей дружины — его видят только свои.' }[this.ch];
       const nh = hid.length;
-      list.innerHTML = `<div class="chat-hint">${hint} Ссылки запрещены, грубость скрывается.${nh ? ` <button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map(m => `
-        <div class="msg ${m.mine ? 'mine' : ''}" data-id="${m.id}">
-          ${m.mine ? '' : `<button class="msg-who" data-pid="${U.esc(m.pid)}" data-name="${U.esc(who(m).name)}"><b class="${who(m).clan ? 'cl-' + U.esc(who(m).clan) : ''}">${U.esc(who(m).name)}</b><small>ур. ${who(m).lvl | 0}</small></button>`}
-          <div class="msg-text">${U.esc(m.text)}</div><time>${this.time(m.t)}</time></div>`).join('') : '<div class="q-note">Здесь пока тихо. Напиши первым!</div>');
+      // разделитель дня: «Сегодня», «Вчера» или дата — перед первым сообщением нового дня
+      let lastDay = '';
+      const dayLine = t => {
+        const d = new Date(t), k = d.toDateString();
+        if (k === lastDay) return '';
+        lastDay = k;
+        const y = new Date(); y.setDate(y.getDate() - 1);
+        return `<div class="chat-day"><span>${k === new Date().toDateString() ? 'Сегодня' : k === y.toDateString() ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span></div>`;
+      };
+      list.innerHTML = `<div class="chat-hint">${hint} Ссылки запрещены, грубость скрывается.${nh ? ` <button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map((m, i) => { const day = dayLine(m.t), p = ms[i - 1], cont = !day && p && p.pid === m.pid && m.t - p.t < 300000; return `${day}
+        <div class="msg ${m.mine ? 'mine' : ''} ${cont ? 'cont' : ''}" data-id="${m.id}">
+          ${m.mine || cont ? '' : `<button class="msg-who" data-pid="${U.esc(m.pid)}" data-name="${U.esc(who(m).name)}"><b class="${who(m).clan ? 'cl-' + U.esc(who(m).clan) : ''}">${U.esc(who(m).name)}</b><small>ур. ${who(m).lvl | 0}</small></button>`}
+          <div class="msg-text">${U.esc(m.text)}</div><time>${this.time(m.t)}</time></div>`; }).join('') :'<div class="q-note">Здесь пока тихо. Напиши первым!</div>');
       if (stick) body.scrollTop = body.scrollHeight;
     };
     let polls = 0;

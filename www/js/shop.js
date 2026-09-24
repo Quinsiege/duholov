@@ -222,7 +222,7 @@ const Pass = {
       };
       box.innerHTML = `
         <div class="story-card pass-head">
-          <div class="story-num">${month} тропа · до конца ${U.fmtTime(Math.max(0, this.endsAt() - U.now()))}</div>
+          <div class="story-num">${month} тропа · <span class="nowrap">до конца ${U.fmtTime(Math.max(0, this.endsAt() - U.now()))}</span></div>
           <h3>Ступень ${L} из ${max}</h3>
           <div class="pbar big"><i style="width:${inLvl / per * 100}%"></i></div>
           <small>${L >= max ? 'Тропа пройдена!' : `${inLvl} / ${per} очков до ступени ${L + 1}`} · очки — за поимки, родники, прогулки, коконы и бои</small>

@@ -294,7 +294,7 @@ const QUEST_TEMPLATES = [
   { t: 'spring',  min: 3, max: 5,  text: n => `Зачерпни силы из ${n} родников`,     reward: { charm: 5, water: 2 } },
   { t: 'throw',   min: 2, max: 4,  text: n => `Сделай ${n} отличных бросков`,       reward: { honey: 2, sparks: 300 } },
   { t: 'walk',    min: 1, max: 2,  text: n => `Пройди ${n} км`,                     reward: { charm: 10, sparks: 500 } },
-  { t: 'power',   min: 2, max: 4,  text: n => `Усиль духов ${n} раз(а)`,            reward: { water: 3, sparks: 200 } },
+  { t: 'power',   min: 2, max: 4,  text: n => `Усиль духов ${n} ${U.plural(n, "раз", "раза", "раз")}`,            reward: { water: 3, sparks: 200 } },
   { t: 'evolve',  min: 1, max: 1,  text: () => `Преврати одного духа`,              reward: { incense: 1 } },
   { t: 'raid',    min: 1, max: 1,  text: () => `Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
 ];
@@ -304,7 +304,7 @@ const QUEST_TEMPLATES = [
 const TASK_TEMPLATES = [
   { t: 'catch',    tier: 1, min: 5, max: 8, text: n => `Поймай ${n} духов` },
   { t: 'spring',   tier: 1, min: 3, max: 5, text: n => `Зачерпни силы из ${n} родников` },
-  { t: 'power',    tier: 1, min: 3, max: 5, text: n => `Усиль духов ${n} раз(а)` },
+  { t: 'power',    tier: 1, min: 3, max: 5, text: n => `Усиль духов ${n} ${U.plural(n, "раз", "раза", "раз")}` },
   { t: 'photo',    tier: 1, min: 1, max: 1, text: () => 'Сфотографируй духа во время встречи' },
   { t: 'catchEl',  tier: 2, min: 3, max: 5, text: (n, el) => `Поймай ${n} духов стихии «${ELEMENTS[el].name}»` },
   { t: 'throw',    tier: 2, min: 3, max: 5, text: n => `Сделай ${n} отличных бросков` },
