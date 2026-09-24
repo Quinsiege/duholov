@@ -90,21 +90,37 @@ const Pay = {
     if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: 'Платёжный сервис не выдал страницу оплаты' };
     return { ok: true, order: row.id, url: p.confirmation.confirmation_url };
   },
-  // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня)
+  // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня); остальные доводит уведомление ЮKassa (notify)
   async sync(uid) {
     const since = new Date(Date.now() - 3 * 86400000).toISOString();
-    const rows = must(await db.from('payments').select('id, ext_id, amount').eq('user_id', uid)
+    const rows = must(await db.from('payments').select('id, ext_id, amount, status, credited').eq('user_id', uid)
       .in('status', ['pending', 'waiting_for_capture']).not('ext_id', 'is', null).gte('created_at', since).limit(20)) || [];
-    for (const r of rows) {
-      const p = await yk('GET', `/payments/${encodeURIComponent(r.ext_id)}`);
-      // платёж должен быть именно этим заказом и на эту сумму
-      const same = p.metadata && p.metadata.order_id === r.id && p.amount && (+p.amount.value).toFixed(2) === (+r.amount).toFixed(2) && p.amount.currency === 'RUB';
-      const status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
-      must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
-    }
+    for (const r of rows) await this.refresh(r);
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'succeeded').eq('credited', false);
     const { count: open } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).in('status', ['pending', 'waiting_for_capture']).gte('created_at', since);
     return { ok: true, paid: count || 0, open: open || 0 };
+  },
+  // Итог платежа — только из ответа ЮKassa (платёж должен быть именно этим заказом и на эту сумму)
+  async refresh(r) {
+    const p = await yk('GET', `/payments/${encodeURIComponent(r.ext_id)}`);
+    const same = p.metadata && p.metadata.order_id === r.id && p.amount && (+p.amount.value).toFixed(2) === (+r.amount).toFixed(2) && p.amount.currency === 'RUB';
+    let status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
+    if (same && p.refunded_amount && +p.refunded_amount.value > 0) status = 'refunded';
+    if (status === r.status) return status;
+    // возврат уже начисленного платежа — владельцу видно в журнале (списывать златники вручную по обращению)
+    if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
+    // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
+    must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
+    return status;
+  },
+  // 4.1: HTTP-уведомление ЮKassa (Интеграция → HTTP-уведомления: https://api.duholov.ru/functions/v1/game/yookassa).
+  // Телу уведомления не верим — берём из него только номер платежа и сами спрашиваем ЮKassa.
+  async notify(body) {
+    if (!this.on() || !body || !body.object) return;
+    const ext = String((String(body.event || '').startsWith('refund.') ? body.object.payment_id : body.object.id) || '').slice(0, 64);
+    if (!/^[0-9a-f-]{20,64}$/i.test(ext)) return;
+    const r = must(await db.from('payments').select('id, ext_id, amount, status, credited').eq('ext_id', ext).maybeSingle());
+    if (r) await this.refresh(r);
   },
 };
 
@@ -485,6 +501,11 @@ Deno.serve(async req => {
   const headers = { ...CORS, 'Access-Control-Allow-Origin': allowed && origin ? origin : ORIGINS[0], Vary: 'Origin' };
   const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
+  // уведомление ЮKassa о платеже: итог проверяем сами (Pay.notify); при сбое — 500, и ЮKassa повторит уведомление позже
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/yookassa')) {
+    try { await Pay.notify(await req.json().catch(() => null)); return new Response('ok'); }
+    catch (e) { console.error('Казна, уведомление:', String(e)); return new Response('retry', { status: 500 }); }
+  }
   if (!allowed) return reply({ ok: false, error: 'Этот сервер игры не принимает запросы с этой страницы' }, 403);
   if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: 'Закрытый контур: нужен ключ доступа' }, 403);
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);

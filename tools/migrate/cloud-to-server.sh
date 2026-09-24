@@ -60,6 +60,8 @@ log "Загрузка данных"
 { echo "SET session_replication_role = replica;"; cat "$W/data.sql"; } | LPSQL
 log "Правила хранилища"
 [ -s "$W/storage-policies.sql" ] && LPSQL < "$W/storage-policies.sql" || echo "(нет)"
+log "Миграции, которых ещё нет в облаке (018+)"
+for f in /opt/duholov/migrate/sql/01[8-9]_*.sql /opt/duholov/migrate/sql/0[2-9][0-9]_*.sql; do [ -f "$f" ] && { echo "  $f"; LPSQL < "$f"; }; done
 docker compose restart rest >/dev/null   # PostgREST перечитывает схему
 
 log "Фотографии мест"
