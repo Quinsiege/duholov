@@ -9,7 +9,7 @@ const Login = {
   info: null,                      // { providers: { google: { client_id }, … }, links: [{ provider, name }] }
   PEND: 'duholov.login',           // что начали: сервис, цель, state, nonce, code_verifier (sessionStorage)
   CB: 'duholov.logincb',           // что вернул сервис (пишет auth.html)
-  ORDER: ['google', 'yandex', 'vk', 'telegram'],
+  ORDER: ['google', 'yandex', 'telegram'], // VK ID — позже (код входа готов, кнопку вернуть сюда)
   NAMES: { google: 'Google', yandex: 'Яндекс', vk: 'VK', telegram: 'Telegram' },
 
   async load() {
@@ -34,8 +34,8 @@ const Login = {
     };
     return `<span class="lg-ic">${I[k] || ''}</span>`;
   },
-  buttons(mode) {
-    return this.available().map(k => `<button class="btn login-btn" data-login="${k}" data-mode="${mode}">${this.icon(k)}${this.NAMES[k]}</button>`).join('');
+  buttons(mode, only) {
+    return (only || this.available()).map(k => `<button class="btn login-btn" data-login="${k}" data-mode="${mode}">${this.icon(k)}${this.NAMES[k]}</button>`).join('');
   },
 
   /* ---------- уйти на страницу сервиса ---------- */
@@ -108,6 +108,46 @@ const Login = {
       }));
     }
     return false;
+  },
+
+  /* ---------- 3.28: экран входа при каждом запуске ---------- */
+  // плашки учётной записи: сервисы, через которые привязан вход, или «Гость»
+  accountTags() {
+    const links = this.linked();
+    return links.length ? links.map(l => `<span class="acc-tag">${this.icon(l.provider)}${this.NAMES[l.provider]}${l.name ? ` · ${U.esc(l.name)}` : ''}</span>`).join('')
+      : '<span class="acc-tag guest">Гость</span>';
+  },
+  // Вернувшийся Ловчий: чей это прогресс, «Продолжить»; гостю — привязать вход, вошедшему — другой аккаунт или выйти
+  gate(done) {
+    const root = U.el('<div class="onb"></div>'), d = S.d, links = this.linked(), avail = this.available();
+    root.innerHTML = `<div class="onb-step s0 gate">
+      <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1></div>
+      <div class="acc-card" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
+        <div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
+        <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div>
+      </div>
+      <button class="btn primary wide go">Продолжить</button>
+      ${links.length
+        ? `${avail.length ? `<div class="onb-or"><span>войти в другой аккаунт</span></div><div class="login-row">${avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join('')}</div>` : ''}
+           <button class="btn ghost wide out">Выйти и начать гостем</button>`
+        : avail.length ? `<div class="onb-or"><span>сохрани прогресс — привяжи вход</span></div><div class="login-row">${this.buttons('link')}</div>` : ''}
+      ${this.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
+    </div>`;
+    document.body.appendChild(root);
+    const close = () => { root.classList.add('out'); setTimeout(() => root.remove(), 400); };
+    root.querySelector('.go').onclick = () => { Sfx.init(); Sfx.play('tap'); close(); done(); };
+    root.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => this.start(b.dataset.login, 'link'); });
+    root.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
+    const out = root.querySelector('.out');
+    if (out) out.onclick = () => UI.confirm('Выйти?', 'Твой прогресс останется в учётной записи — вернуться в неё можно входом через привязанный сервис. На этом устройстве начнётся новая гостевая игра.', 'Выйти', () => this.signOut());
+  },
+  // Войти в другой аккаунт: выйти из текущего (он сохранён за сервисом) и войти через выбранный сервис
+  async switchTo(provider) {
+    if (this.isGuest()) return this.start(provider, 'link');
+    try { const sb = await Cloud.client(); await sb.auth.signOut(); } catch (e) {}
+    Cloud.sb = null;
+    // новый гость создастся при возвращении; если вход через сервис уже привязан — игра сразу откроет ту учётную запись
+    return this.start(provider, 'start');
   },
 
   // Выйти (только если вход привязан — иначе прогресс гостя был бы потерян)
