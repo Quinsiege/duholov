@@ -759,14 +759,26 @@ const UI = {
         if (!this._orderAsked) { this._orderAsked = true; Order.refresh(true).then(() => { this._orderAsked = false; if (scr.isConnected && this.qTab === 'order') Order.render(scr.querySelector('.quests')); }); }
         return;
       }
-      const Q = S.d.quests, all = Q.list.every(q => q.claimed);
-      scr.querySelector('.quests').innerHTML = Q.list.map((q, i) => {
-        const done = q.p >= q.n, pv = q.t === 'walk' ? `${q.p.toFixed(2)} / ${q.n}` : `${Math.floor(q.p)} / ${q.n}`;
-        return `<div class="quest ${q.claimed ? 'claimed' : done ? 'done' : ''}"><div class="q-main"><b>${q.text}</b><div class="pbar"><i style="width:${q.p / q.n * 100}%"></i></div><small>${pv} · Награда: ${rwText(q.reward)}</small></div>
-          ${q.claimed ? '<span class="q-ok">✓</span>' : done ? `<button class="btn small primary claim" data-i="${i}">Забрать</button>` : ''}</div>`;
-      }).join('') + `<div class="quest bonus ${Q.bonus ? 'claimed' : all ? 'done' : ''}"><div class="q-main"><b>Сундук дня</b><small>Выполни все три задания. Награда: ${rwText(BONUS)}</small></div>
-        ${Q.bonus ? '<span class="q-ok">✓</span>' : all ? '<button class="btn small primary claim-bonus">Открыть</button>' : ''}</div>
-        <div class="q-note">Новые задания появятся в полночь.</div>` + this.dayLimitsHtml() + this.tasksHtml();
+      // 3.25: сводка дня (кольцо и таймер), значок задания, прогресс числом, награды — картинками
+      const Q = S.d.quests, all = Q.list.every(q => q.claimed), doneN = Q.list.filter(q => q.p >= q.n).length;
+      const rwChips = rw => Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks'
+        ? `<span class="qd-rw spark">✦ ${U.fmtNum(n)}</span>` : `<span class="qd-rw">${Art.item(k)}×${n}</span>`).join('');
+      const ico = q => q.t === 'catchEl' ? Art.elIcon(q.el, 22) : this.I[{ catch: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield' }[q.t] || 'scroll'];
+      const ring = (n, of) => { const L = 2 * Math.PI * 22; return `<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" class="qd-bg"/><circle cx="26" cy="26" r="22" class="qd-fg" style="stroke-dasharray:${L};stroke-dashoffset:${L * (1 - n / of)}"/></svg><b>${n}<small>/${of}</small></b>`; };
+      scr.querySelector('.quests').innerHTML = `
+        <div class="qd-head ${doneN >= Q.list.length ? 'full' : ''}"><div class="qd-ring">${ring(doneN, Q.list.length)}</div>
+          <div class="row-main"><b>${doneN >= Q.list.length ? (Q.bonus ? 'Все задания дня выполнены' : 'Все задания выполнены — забери награды') : `Выполнено ${doneN} из ${Q.list.length}`}</b>
+          <small>Новые задания через <span class="qd-left">${U.fmtTime(this.toMidnight())}</span></small></div></div>`
+        + Q.list.map((q, i) => {
+          const done = q.p >= q.n, pv = q.t === 'walk' ? `${Math.min(q.p, q.n).toFixed(2)} / ${q.n} км` : `${Math.min(Math.floor(q.p), q.n)} / ${q.n}`;
+          return `<div class="quest qd ${q.claimed ? 'claimed' : done ? 'done' : ''}"><div class="qd-ico">${ico(q)}</div>
+            <div class="q-main"><b>${q.text}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><span>${pv}</span></div><div class="qd-rws">${rwChips(q.reward)}</div></div>
+            ${q.claimed ? '<span class="q-ok" aria-label="Получено">✓</span>' : done ? `<button class="btn small primary claim" data-i="${i}">Забрать</button>` : ''}</div>`;
+        }).join('')
+        + `<div class="quest bonus qd-chest ${Q.bonus ? 'claimed' : all ? 'done' : ''}"><div class="qd-ico chest">${Art.item('gift')}</div>
+          <div class="q-main"><b>Сундук дня</b><div class="qd-pips">${Q.list.map(q => `<i class="${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}"></i>`).join('')}<small>${Q.bonus ? 'открыт' : all ? 'можно открыть' : 'забери награды всех трёх заданий'}</small></div><div class="qd-rws">${rwChips(BONUS)}</div></div>
+          ${Q.bonus ? '<span class="q-ok" aria-label="Открыт">✓</span>' : all ? '<button class="btn small primary claim-bonus">Открыть</button>' : ''}</div>`
+        + this.dayLimitsHtml() + this.tasksHtml();
     };
     scr.addEventListener('click', e => {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
@@ -824,7 +836,10 @@ const UI = {
     });
     this.swipeTabs(scr, ['day', 'story', 'order'], () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
+    // таймер до новых заданий — каждую секунду, пока экран открыт
+    const tm = setInterval(() => { if (!scr.isConnected) { clearInterval(tm); return; } const el = scr.querySelector('.qd-left'); if (el) el.textContent = U.fmtTime(this.toMidnight()); }, 1000);
   },
+  toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
   // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня
   dayLimitsHtml() {
     return `<h3 class="prof-h">Лимиты дня <small>обновятся в полночь</small></h3><div class="day-limits">${Object.keys(Rules.DAILY).map(k => {

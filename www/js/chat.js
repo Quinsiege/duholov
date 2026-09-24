@@ -45,8 +45,14 @@ const Chat = {
     if (!this.channels().some(([k]) => k === this.ch)) this.ch = 'all';
     const scr = UI.screen('Чат Ордена', `<div class="chips chat-tabs"></div><div class="chat-list"></div>`, 'chat-screen');
     const bar = U.el(`<form class="chat-bar"><input class="input chat-in" maxlength="${Rules.CHAT.MAX}" placeholder="${S.d.level >= Rules.CHAT.LEVEL ? 'Сообщение…' : `Писать можно с ${Rules.CHAT.LEVEL} уровня`}" autocomplete="off" enterkeyhint="send" ${S.d.level >= Rules.CHAT.LEVEL ? '' : 'disabled'}>
-      <button class="btn primary chat-send" aria-label="Отправить" ${S.d.level >= Rules.CHAT.LEVEL ? '' : 'disabled'}>➤</button></form>`);
+      <span class="chat-count hidden"></span><button class="btn primary chat-send" aria-label="Отправить" disabled>➤</button></form>`);
     scr.appendChild(bar);
+    // 3.25: пролистал вверх, а пришли новые — кнопка «↓ Новые»
+    const jump = U.el('<button type="button" class="chat-jump hidden"></button>');
+    bar.appendChild(jump); // над полем ввода (привязка к панели, а не к высоте экрана)
+    let unseen = 0;
+    const hideJump = () => { unseen = 0; jump.classList.add('hidden'); };
+    jump.onclick = () => { body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' }); hideJump(); };
     const body = scr.querySelector('.screen-body'), list = scr.querySelector('.chat-list'), tabs = scr.querySelector('.chat-tabs');
     const renderTabs = () => { tabs.innerHTML = this.channels().map(([k, t]) => `<button data-ch="${k}" class="${k === this.ch ? 'on' : ''}">${t}</button>`).join(''); };
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 80;
@@ -66,12 +72,20 @@ const Chat = {
         const y = new Date(); y.setDate(y.getDate() - 1);
         return `<div class="chat-day"><span>${k === new Date().toDateString() ? 'Сегодня' : k === y.toDateString() ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span></div>`;
       };
-      list.innerHTML = `<div class="chat-hint">${hint} Ссылки запрещены, грубость скрывается.${nh ? ` <button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map((m, i) => { const day = dayLine(m.t), p = ms[i - 1], cont = !day && p && p.pid === m.pid && m.t - p.t < 300000; return `${day}
-        <div class="msg ${m.mine ? 'mine' : ''} ${cont ? 'cont' : ''}" data-id="${m.id}">
-          ${m.mine || cont ? '' : `<button class="msg-who" data-pid="${U.esc(m.pid)}" data-name="${U.esc(who(m).name)}"><b class="${who(m).clan ? 'cl-' + U.esc(who(m).clan) : ''}">${U.esc(who(m).name)}</b><small>ур. ${who(m).lvl | 0}</small></button>`}
-          <div class="msg-text">${U.esc(m.text)}</div><time>${this.time(m.t)}</time></div>`; }).join('') :'<div class="q-note">Здесь пока тихо. Напиши первым!</div>');
-      if (stick) body.scrollTop = body.scrollHeight;
+      // 3.25: у чужих сообщений — кружок с первой буквой имени (цвет дружины), подряд идущие — без повторного имени
+      const ava = w => { const c = CLANS[w.clan] ? CLANS[w.clan].color : GUARD_COLORS[Math.floor(U.h('ava' + w.name) * GUARD_COLORS.length)]; return `style="--ac:${c}"`; };
+      list.innerHTML = `<div class="chat-hint"><span>${hint} Ссылки запрещены, грубость скрывается.</span>${nh ? `<button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map((m, i) => {
+        const day = dayLine(m.t), p = ms[i - 1], cont = !day && p && p.pid === m.pid && m.t - p.t < 300000, w = who(m);
+        const whoAttr = `data-pid="${U.esc(m.pid)}" data-name="${U.esc(w.name)}"`;
+        return `${day}<div class="mrow ${m.mine ? 'mine' : ''} ${cont ? 'cont' : ''}">
+          ${m.mine ? '' : cont ? '<span class="m-ava sp"></span>' : `<button class="m-ava msg-who" ${whoAttr} ${ava(w)} aria-label="${U.esc(w.name)}">${U.esc(String(w.name).trim().charAt(0).toUpperCase() || '?')}</button>`}
+          <div class="msg ${m.mine ? 'mine' : ''} ${cont ? 'cont' : ''}" data-id="${m.id}">
+          ${m.mine || cont ? '' : `<button class="msg-who" ${whoAttr}><b class="${w.clan ? 'cl-' + U.esc(w.clan) : ''}">${U.esc(w.name)}</b><small>ур. ${w.lvl | 0}</small></button>`}
+          <div class="msg-text">${U.esc(m.text)}</div><time>${this.time(m.t)}</time></div></div>`;
+      }).join('') : `<div class="chat-empty"><div class="ce-ico">${UI.I.chat}</div><b>Здесь пока тихо</b><small>Напиши первым — тебя увидят все Ловчие ${this.ch === 'clan' ? 'твоей дружины' : 'Ордена'}.</small></div>`);
+      if (stick) { body.scrollTop = body.scrollHeight; hideJump(); }
     };
+    body.addEventListener('scroll', () => { if (unseen && atBottom()) hideJump(); }, { passive: true });
     let polls = 0;
     const load = async (full) => {
       const ch = this.ch, have = this.msgs[ch] || [];
@@ -85,8 +99,10 @@ const Chat = {
       const before = JSON.stringify(this.people);
       Object.assign(this.people, r.who || {});
       r.msgs.forEach(m => { this.people[m.pid] = { name: m.name, lvl: m.lvl, clan: m.clan }; });
+      const fresh = full ? [] : r.msgs.filter(m => !m.mine && !have.some(x => x.id === m.id));
       this.msgs[ch] = (full ? r.msgs : have.concat(r.msgs.filter(m => !have.some(x => x.id === m.id)))).slice(-150);
       if (full || r.msgs.length || JSON.stringify(this.people) !== before) render(stick);
+      if (!stick && fresh.length) { unseen += fresh.length; jump.textContent = `↓ Новые сообщения: ${unseen}`; jump.classList.remove('hidden'); }
     };
     const show = (ch, dir) => { this.ch = ch; renderTabs(); render(true); UI.slideIn(list, dir); load(true); };
     tabs.addEventListener('click', e => {
@@ -98,7 +114,7 @@ const Chat = {
     list.addEventListener('click', e => {
       if (e.target.closest('.chat-unhide')) { this.hiddenModal(() => render(false)); return; }
       const w = e.target.closest('.msg-who'); if (!w) return;
-      const msg = w.closest('.msg'), pid = w.dataset.pid, name = w.dataset.name;
+      const msg = w.closest('.mrow').querySelector('.msg'), pid = w.dataset.pid, name = w.dataset.name;
       Friends.card(pid, { name, chat: {
         report: () => UI.confirm('Пожаловаться?', `На сообщение Ловчего «${U.esc(name)}». После трёх жалоб от разных Ловчих оно скрывается для всех.`, 'Пожаловаться', async () => {
           if (await Game.try('chatReport', { id: +msg.dataset.id })) UI.toast('Жалоба отправлена — спасибо');
@@ -108,7 +124,17 @@ const Chat = {
         }),
       } });
     });
-    const input = bar.querySelector('.chat-in');
+    const input = bar.querySelector('.chat-in'), send = bar.querySelector('.chat-send'), count = bar.querySelector('.chat-count');
+    const canWrite = S.d.level >= Rules.CHAT.LEVEL;
+    // кнопка активна, только когда есть текст; счётчик — ближе к пределу длины
+    const onInput = () => {
+      const n = input.value.length;
+      send.disabled = !canWrite || !input.value.trim();
+      count.classList.toggle('hidden', n < Rules.CHAT.MAX * 0.8);
+      count.textContent = `${n}/${Rules.CHAT.MAX}`;
+      count.classList.toggle('max', n >= Rules.CHAT.MAX);
+    };
+    input.addEventListener('input', onInput);
     bar.addEventListener('submit', async e => {
       e.preventDefault();
       const text = input.value.trim();
@@ -117,7 +143,7 @@ const Chat = {
       const r = await Game.try('chatSend', { ch: this.ch, text });
       bar._busy = false;
       if (!r) return;
-      input.value = '';
+      input.value = ''; onInput();
       const have = this.msgs[this.ch] || [];
       if (!have.some(m => m.id === r.msg.id)) have.push(r.msg);
       this.msgs[this.ch] = have;
