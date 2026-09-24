@@ -18,10 +18,12 @@ window.addEventListener('load', () => {
   }
 
   const start = () => {
+    Loader.show('Загружаю карту…'); Loader.set(60); // карта грузится под экраном загрузки
     UI.init();
     Poi.init();
     MapView.init();
     Poi.ensure();
+    Loader.waitMap().then(() => Loader.hide());
     setTimeout(() => Propose.checkResults(), 6000);
     setInterval(() => { if (!document.hidden) Propose.checkResults(); }, 3 * 60000);
     setTimeout(() => Friends.sync(), 4000); // взаимная дружба и подарки
@@ -51,25 +53,26 @@ window.addEventListener('load', () => {
     document.body.appendChild(el);
   });
   const boot = async () => {
-    const splash = setTimeout(() => document.body.appendChild(U.el('<div class="boot-splash"><div class="onb-charm">' + Art.charm('charm3') + '</div><p>Связь с Навью…</p></div>')), 400);
+    // 3.31: экран загрузки с прогрессом и подсказками — вместо заставки «Связь с Навью…»
+    Loader.show('Связь с Навью…'); Loader.set(12);
     if (Game.on()) {
       for (;;) {
         try { await Game.load(); break; }
-        catch (e) { const sp = U.$('.boot-splash'); if (sp) sp.remove(); await offline(e.message); }
+        catch (e) { Loader.hide(); await offline(e.message); Loader.show('Связь с Навью…'); }
       }
     }
-    clearTimeout(splash);
-    const sp = U.$('.boot-splash'); if (sp) sp.remove();
+    Loader.set(45, 'Прогресс загружен');
     // вернулись со страницы сервиса входа — довести вход до конца (учётная запись могла смениться — тогда заново)
     if (Game.on() && !Game.moved) {
       if (await Login.resume()) { location.reload(); return; }
       await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
+    Loader.set(58);
     // только что вошёл через сервис или по почте — сразу в игру (или к истории новичка), без экрана входа (3.30)
     const logged = Login.justLogged();
-    if (Game.moved) Game.onMoved();
-    else if (S.d) logged ? start() : Login.gate(start); // экран входа: чей прогресс, «Продолжить» (3.28)
-    else UI.onboarding(start, logged ? 1 : 0);
+    if (Game.moved) { Loader.hide(); Game.onMoved(); }
+    else if (S.d && logged) start();
+    else { Loader.hide(); if (S.d) Login.gate(start); else UI.onboarding(start, logged ? 1 : 0); } // экран входа: чей прогресс, «Продолжить» (3.28)
   };
   boot();
 

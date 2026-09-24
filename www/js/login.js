@@ -123,26 +123,44 @@ const Login = {
     return links.length || mail ? mail + links.map(l => `<span class="acc-tag">${this.icon(l.provider)}${this.NAMES[l.provider]}${l.name ? ` · ${U.esc(l.name)}` : ''}</span>`).join('')
       : '<span class="acc-tag guest">Гость</span>';
   },
-  // Вход по почте и паролю: учётную запись заранее создаёт владелец (Supabase → Authentication → Users)
+  // Вход по почте и паролю (3.31 — своё оформление): учётную запись заранее создаёт владелец (Supabase → Authentication → Users)
   emailForm() {
     const m = UI.modal({
-      title: 'Вход по почте', cls: 'mail-modal',
-      html: `<p class="small">Для учётных записей, выданных Орденом (например, для проверки). Обычным игрокам удобнее войти через сервис или гостем.</p>
-        <form class="mail-form"><input class="input" name="email" type="email" autocomplete="username" placeholder="Почта" required>
-        <input class="input" name="password" type="password" autocomplete="current-password" placeholder="Пароль" required>
-        <button class="btn primary wide">Войти</button></form>`,
-      buttons: [],
+      cls: 'mail-modal', buttons: [],
+      html: `<div class="mail-head"><span class="mail-ic">${UI.I.key}</span><b>Вход по почте</b><small>Для учётных записей, выданных Орденом</small></div>
+        <form class="mail-form" novalidate>
+          <label class="fld"><span class="fld-ic">${UI.I.mail}</span><input name="email" type="email" inputmode="email" autocomplete="username" placeholder="Почта" required></label>
+          <label class="fld"><span class="fld-ic">${UI.I.lock}</span><input name="password" type="password" autocomplete="current-password" placeholder="Пароль" required>
+            <button type="button" class="fld-eye" aria-label="Показать пароль">${UI.I.eye}</button></label>
+          <div class="mail-err" role="alert"></div>
+          <button class="btn primary wide mail-go">Войти</button>
+          <button type="button" class="linkish mail-cancel">Отмена</button>
+        </form>`,
     });
-    const f = m.querySelector('.mail-form');
+    const f = m.querySelector('.mail-form'), err = f.querySelector('.mail-err'), go = f.querySelector('.mail-go'), eye = f.querySelector('.fld-eye');
+    const fail = text => { err.textContent = text; f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); go.disabled = false; go.textContent = 'Войти'; };
+    setTimeout(() => f.email.focus(), 250);
+    f.querySelector('.mail-cancel').onclick = () => m.close();
+    eye.onclick = () => {
+      const show = f.password.type === 'password';
+      f.password.type = show ? 'text' : 'password';
+      eye.innerHTML = show ? UI.I.eyeOff : UI.I.eye;
+      eye.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+    };
+    f.oninput = () => { err.textContent = ''; };
     f.onsubmit = async e => {
       e.preventDefault();
-      const b = f.querySelector('button'); b.disabled = true;
+      const email = f.email.value.trim(), password = f.password.value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fail('Проверь почту'); f.email.focus(); return; }
+      if (!password) { fail('Введи пароль'); f.password.focus(); return; }
+      go.disabled = true; go.textContent = 'Вхожу…'; err.textContent = '';
       try {
         const sb = await Cloud.client();
-        const { error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
-        if (error) { UI.toast('Неверная почта или пароль'); b.disabled = false; return; }
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { fail(/rate|many/i.test(error.message) ? 'Слишком много попыток — подожди минуту' : 'Неверная почта или пароль'); return; }
+        go.textContent = 'Готово!';
         this.markLogged(); location.reload();
-      } catch (err) { UI.toast('Нет связи с сервером — попробуй ещё раз'); b.disabled = false; }
+      } catch (x) { fail('Нет связи с сервером — попробуй ещё раз'); }
     };
   },
   // Панель входа (3.30): заголовок, кнопки сервисов, внизу — почта и пароль (+ extra, например «Выйти»)
