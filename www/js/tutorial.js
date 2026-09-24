@@ -44,28 +44,96 @@ const Tut = {
     if (newCh && st.kind !== 'talk') this.titleCard(st.ch, go); else go();
   },
 
-  /* ---------- подсказка-наставник над картой ---------- */
+  /* ---------- наставник поверх интерфейса: подсветка цели и умное место ---------- */
+  // Что подсветить на шаге — первое видимое по списку. Если открыт экран, где цели нет, — его кнопка «Назад».
+  TARGET: {
+    catch1: ['.tut-ring'], catch2: ['.tut-ring'],
+    menu: ['#menuBtn'],
+    spirits: ['.tile[data-k="spirits"]', '#menuBtn'],
+    card: ['.screen .grid.cards .card', '.tile[data-k="spirits"]', '#menuBtn'],
+    power: ['.screen .act-power', '.screen .grid.cards .card', '.tile[data-k="spirits"]', '#menuBtn'],
+    dex: ['.tile[data-k="book"]', '#menuBtn'],
+    spring: ['#tracker', '.mk-spring'],
+    bag: ['.tile[data-k="bag"]', '#menuBtn'],
+    cocoons: ['.tile[data-k="egg"]', '#menuBtn'],
+    quests: ['.tile[data-k="scroll"]', '#menuBtn'],
+    path: ['.tile[data-k="path"]', '#menuBtn'],
+  },
+  // важное, что наставник не должен закрывать (кроме самой цели)
+  KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.sheet-foot', '.menu-dots'],
   coach(st) {
     if (!this.el) {
-      this.el = U.el(`<div id="coach" class="tut-coach"><div class="coach-ava">${Art.guardian('#15803d')}</div>
+      this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${Art.guardian('#15803d')}</div>
         <div class="coach-main"><div class="coach-top"><b>Велимир</b><span class="coach-ch"></span></div><div class="coach-text"></div>
         <div class="coach-bar"><i></i></div></div></div>`);
-      document.body.appendChild(this.el);
+      this.ring = U.el('<div id="tutRing" class="hidden"><i></i></div>');
+      document.body.append(this.ring, this.el);
+      this.loop = setInterval(() => this.track(), 300);
+      addEventListener('resize', this._rs = () => this.track());
     }
     const n = this.step();
     this.el.querySelector('.coach-ch').textContent = `Посвящение · ${n}/${TUT.length}`;
     this.el.querySelector('.coach-bar i').style.width = ((n - 1) / TUT.length * 100) + '%';
+    this._hint = st.hint; this._back = null;
     this.el.querySelector('.coach-text').innerHTML = st.hint;
     this.el.classList.remove('bump'); void this.el.offsetWidth; this.el.classList.add('bump');
-    this.show();
+    this.track();
   },
-  show() {
-    const st = this.at();
-    if (this.el) this.el.classList.toggle('hidden', !st || st.kind === 'talk' || UI.blocking());
-    U.$('#menuBtn').classList.toggle('tut-pulse', !!st && st.kind === 'ui' && st.id === 'menu'
-      || !!st && st.kind === 'ui' && !!this.UI_TILE[st.id]);
+  vis(e) { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; },
+  findTarget(st) {
+    const top = U.$$('.screen').filter(s => !s.classList.contains('out')).pop(), sheet = U.$$('.sheet-wrap').filter(s => !s.classList.contains('out')).pop();
+    for (const sel of this.TARGET[st.id] || []) {
+      const el = U.$$(sel).find(e => this.vis(e));
+      if (!el) continue;
+      if (sheet && !sheet.contains(el)) continue;            // под открытым меню не нажать
+      if (!sheet && top && !top.contains(el)) continue;      // под открытым экраном не нажать
+      return { el };
+    }
+    if (sheet) return null;                                  // меню открыто, а цель не в нём — закрыть меню подскажет текст
+    if (top) { const b = top.querySelector('.back'); return b ? { el: b, back: true } : null; }
+    return null;
   },
-  hideCoach() { if (this.el) this.el.classList.add('hidden'); U.$('#menuBtn').classList.remove('tut-pulse'); },
+  // Раз в 300 мс: где цель, куда поставить наставника, чтобы не закрыть ни её, ни важное
+  track() {
+    if (!this.el) return;
+    const st = this.at(), busy = !st || st.kind === 'talk' || this.sc || Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st)
+      || U.$$('.modal-wrap').some(m => !m.classList.contains('out') && !m.classList.contains('sheet-wrap')) || document.querySelector('.onb, .tut-title, .tut-final, .trl');
+    this.el.classList.toggle('hidden', !!busy);
+    U.$('#menuBtn').classList.remove('tut-pulse');
+    if (busy) { this.ring.classList.add('hidden'); return; }
+    const t = this.findTarget(st);
+    // текст: если цель — «Назад», сначала вернуться
+    const back = !!(t && t.back);
+    if (back !== this._back) {
+      this._back = back;
+      this.el.querySelector('.coach-text').innerHTML = back ? `${this._hint}<small class="coach-back">Сначала вернись назад — кнопка подсвечена.</small>` : this._hint;
+    }
+    let tr = null;
+    if (t && t.el) {
+      tr = t.el.getBoundingClientRect();
+      const pad = 6, R = this.ring.style, round = t.el.matches('#menuBtn, .tut-ring, .btn-round, .back');
+      R.left = (tr.left - pad) + 'px'; R.top = (tr.top - pad) + 'px'; R.width = (tr.width + pad * 2) + 'px'; R.height = (tr.height + pad * 2) + 'px';
+      this.ring.classList.toggle('round', round);
+      this.ring.classList.remove('hidden');
+    } else this.ring.classList.add('hidden');
+    // место: сверху или снизу — где меньше перекрытий с целью (втройне важна) и важными элементами
+    // учитываем только видимое сверху: открытый экран или меню закрывают всё, что под ними
+    const layer = U.$$('.sheet-wrap').filter(s => !s.classList.contains('out')).pop() || U.$$('.screen').filter(s => !s.classList.contains('out')).pop();
+    const keep = this.KEEP.flatMap(s => U.$$(s)).filter(e => this.vis(e) && (!layer || layer.contains(e)) && (!t || !t.el || !e.contains(t.el))).map(e => [e.getBoundingClientRect(), 1]);
+    if (tr) keep.push([tr, 3]);
+    const cost = pos => {
+      this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
+      const c = this.el.getBoundingClientRect();
+      return keep.reduce((a, [r, w]) => a + w * Math.max(0, Math.min(c.right, r.right) - Math.max(c.left, r.left)) * Math.max(0, Math.min(c.bottom, r.bottom) - Math.max(c.top, r.top)), 0);
+    };
+    const cur = this._pos || 'bottom', other = cur === 'top' ? 'bottom' : 'top';
+    const a = cost(cur), b = cost(other), pos = b + 500 < a ? other : cur; // без дёрганья: меняем место, только если заметно лучше
+    this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
+    this.el.classList.toggle('in-screen', !!U.$$('.screen').find(s => !s.classList.contains('out')));
+    this._pos = pos;
+  },
+  show() { this.track(); },
+  hideCoach() { if (this.el) this.el.classList.add('hidden'); if (this.ring) this.ring.classList.add('hidden'); U.$('#menuBtn').classList.remove('tut-pulse'); },
 
   /* ---------- сцена с Велимиром ---------- */
   scene(st) {
@@ -154,7 +222,8 @@ const Tut = {
 
   close() {
     U.$('#menuBtn').classList.remove('tut-pulse');
-    if (this.el) { this.el.remove(); this.el = null; }
+    if (this.el) { this.el.remove(); this.el = null; clearInterval(this.loop); removeEventListener('resize', this._rs); }
+    if (this.ring) { this.ring.remove(); this.ring = null; }
     this.closeScene();
     MapView.refresh(true);
   },
