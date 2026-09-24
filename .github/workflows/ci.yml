@@ -24,14 +24,28 @@ jobs:
       - name: Сервер игры собран из текущего кода
         shell: pwsh
         run: ./tools/build-server.ps1 -Check
+      # 4.1: собранный сервер проверяет Deno (как на сервере игры) — опечатка в общем коде не доедет до выкладки
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Проверка сервера (Deno)
+        run: deno check server/functions/game/index.ts
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Браузер для тестов (кэш)
+        id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tests/package-lock.json') }}
       - name: Установка Playwright
         working-directory: tests
         run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          npm ci --no-audit --no-fund
+          if [ '${{ steps.pw.outputs.cache-hit }}' = 'true' ]; then npx playwright install-deps chromium; else npx playwright install --with-deps chromium; fi
       - name: Тесты
         working-directory: tests
         run: npm test
