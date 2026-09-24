@@ -44,8 +44,6 @@ const UI = {
     U.$('#profileBtn').onclick = () => this.profile();
     U.$('#menuBtn').onclick = () => this.menu();
     U.$('#nearbyBtn').onclick = () => this.nearbyList();
-    U.$('#questBtn .q-ico').innerHTML = this.I.scroll;
-    U.$('#questBtn').onclick = () => { Sfx.init(); Sfx.play('tap'); this.quests(); };
     U.$('#incenseChip').onclick = () => this.toast(`Ладан курится ещё ${U.fmtTime(S.d.incenseUntil - Date.now())}`);
     Bus.on('xp', () => this.refreshHud());
     Bus.on('levelup', l => this.levelUp(l));
@@ -186,24 +184,11 @@ const UI = {
     if (Tut.step()) Tut.show();
     this.storyPill();
     Hints.check();
-    const badge = S.readyCocoons().length + Friends.inbox.length; // коконы и подарки (задания и общее дело — на кнопке заданий)
+    const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); b.textContent = badge;
-    this.questBtn();
     const inc = U.$('#incenseChip');
     if (S.incenseActive()) { inc.classList.remove('hidden'); inc.innerHTML = `${Art.item('incense')}<span>${U.fmtTime(d.incenseUntil - Date.now())}</span>`; }
     else inc.classList.add('hidden');
-  },
-  // 3.24: кнопка заданий на карте — кольцо прогресса дня (три задания и сундук) и число наград, которые можно забрать
-  questBtn() {
-    const el = U.$('#questBtn'), Q = S.d.quests; if (!el || !Q) return;
-    el.classList.toggle('hidden', !!Tut.step()); // пока идёт обучение — не отвлекаем
-    const total = Q.list.length + 1, done = Q.list.filter(q => q.p >= q.n).length + (Q.bonus ? 1 : 0);
-    const len = 2 * Math.PI * 27, fg = el.querySelector('.qr-fg');
-    fg.style.strokeDasharray = len; fg.style.strokeDashoffset = len * (1 - done / total);
-    const n = S.questsClaimable() + Order.claimable() + (!Q.bonus && Q.list.every(q => q.claimed) ? 1 : 0);
-    const bd = el.querySelector('.badge'); bd.classList.toggle('hidden', !n); bd.textContent = n;
-    el.classList.toggle('full', done >= total);
-    el.setAttribute('aria-label', `Задания: выполнено ${done} из ${total}${n ? `, наград: ${n}` : ''}`);
   },
   // Летопись на карте: текущий шаг главы или «глава завершена» — чтобы сюжет не терялся в меню
   storyPill() {
