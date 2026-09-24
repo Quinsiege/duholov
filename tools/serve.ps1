@@ -20,7 +20,17 @@ while ($l.IsListening) {
     $ext = [IO.Path]::GetExtension($file).ToLower()
     $res.ContentType = if ($mime[$ext]) { $mime[$ext] } else { 'application/octet-stream' }
     $res.Headers.Add('Cache-Control', 'no-cache')
-    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+    $res.Headers.Add('Accept-Ranges', 'bytes')
+    # карта (tiles/*.pmtiles) читается кусками: Range: bytes=a-b → 206
+    $range = $ctx.Request.Headers['Range']
+    if ($range -match '^bytes=(\d+)-(\d*)$') {
+      $a = [long]$Matches[1]; $b = if ($Matches[2]) { [Math]::Min([long]$Matches[2], $bytes.Length - 1) } else { $bytes.Length - 1 }
+      $res.StatusCode = 206
+      $res.Headers.Add('Content-Range', "bytes $a-$b/$($bytes.Length)")
+      $res.OutputStream.Write($bytes, [int]$a, [int]($b - $a + 1))
+    } else {
+      $res.OutputStream.Write($bytes, 0, $bytes.Length)
+    }
   } else { $res.StatusCode = 404 }
   $res.Close()
 }

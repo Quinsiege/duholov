@@ -27,19 +27,38 @@ api.duholov.ru {
 duholov.ru {
 	import security
 	header X-Frame-Options DENY
-	root * /srv/www/prod
-	@immutable {
-		query v=*
-	}
-	header @immutable Cache-Control "public, max-age=31536000, immutable"
-	@vendor path /vendor/*
-	header @vendor Cache-Control "public, max-age=31536000, immutable"
-	@html path / /*.html
-	header @html Cache-Control "no-cache"
-	@sw path /sw.js /version.json
-	header @sw Cache-Control "no-cache"
 	encode zstd gzip
-	file_server
+
+	# карта: векторные тайлы России (/srv/tiles/*.pmtiles, читаются кусками Range); имя файла с датой — кэш надолго.
+	# Тестовый сайт и старый адрес берут её отсюда же (CORS)
+	@tiles path /tiles/*
+	handle @tiles {
+		@cors header_regexp Origin ^(https://test\.duholov\.ru|https://quinsiege\.github\.io|http://localhost:878[01])$
+		header @cors Access-Control-Allow-Origin {http.request.header.Origin}
+		header @cors Access-Control-Allow-Headers Range
+		header @cors Access-Control-Expose-Headers "ETag, Content-Range, Content-Length, Accept-Ranges"
+		header Vary Origin
+		header Cache-Control "public, max-age=2592000, immutable"
+		@preflight method OPTIONS
+		respond @preflight 204
+		root * /srv
+		file_server
+	}
+
+	handle {
+		root * /srv/www/prod
+		@immutable {
+			query v=*
+		}
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@vendor path /vendor/*
+		header @vendor Cache-Control "public, max-age=31536000, immutable"
+		@html path / /*.html
+		header @html Cache-Control "no-cache"
+		@sw path /sw.js /version.json
+		header @sw Cache-Control "no-cache"
+		file_server
+	}
 }
 
 www.duholov.ru {
