@@ -258,12 +258,12 @@
 ```bash
 powershell -ExecutionPolicy Bypass -File tools/serve.ps1
 ```
-http://localhost:8765 — игра в режиме разработки: в настройках есть демо-режим (джойстик / WASD), праздник можно посмотреть заранее через `?hol=svyatki` (`maslenitsa`, `kupala`, `veles`).
+http://localhost:8780 — игра в режиме разработки: в настройках есть демо-режим (джойстик / WASD), праздник можно посмотреть заранее через `?hol=svyatki` (`maslenitsa`, `kupala`, `veles`).
 
 ```bash
-powershell -ExecutionPolicy Bypass -File tools/serve.ps1 -Port 8766 -Dir .
+powershell -ExecutionPolicy Bypass -File tools/serve.ps1 -Port 8781 -Dir .
 ```
-http://localhost:8766/tests/index.html — автотесты в браузере. В CI они запускаются командой `npm test` в папке `tests` (Playwright).
+http://localhost:8781/tests/index.html — автотесты в браузере. В CI они запускаются командой `npm test` в папке `tests` (Playwright).
 
 ## Подключение сервера (Supabase, бесплатно)
 1. supabase.com → **Sign in with GitHub** → **New project** (регион — ближайший, пароль БД сохраните у себя).

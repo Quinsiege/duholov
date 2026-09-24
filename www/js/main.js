@@ -55,6 +55,11 @@ window.addEventListener('load', () => {
   });
   const boot = async () => {
     // 3.31: экран загрузки с прогрессом и подсказками — вместо заставки «Связь с Навью…»
+    // 4.0.2: сначала — есть ли обновление: новая версия ставится прямо с экрана загрузки, до входа в игру
+    Loader.show('Проверяю обновления…'); Loader.set(6);
+    const upd = await Updater.boot();
+    if (upd === 'apk') { Loader.hide(); Updater.promptApk(); return; }
+    if (upd) { Loader.set(30, `Загружаю обновление ${upd.version}…`); await Updater.apply(upd.version); return; }
     Loader.show('Связь с Навью…'); Loader.set(12);
     if (Game.on()) {
       for (;;) {
