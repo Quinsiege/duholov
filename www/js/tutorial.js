@@ -22,17 +22,18 @@ const Tut = {
     this.sync(true);
   },
 
-  // Сервер перевёл обучение на новый шаг (или игра только что запустилась)
+  // Сервер перевёл обучение на новый шаг (или игра только что запустилась).
+  // Новый шаг показывается не мгновенно: сначала игрок видит итог действия (поимку, родник, усиление),
+  // а сцены и заставки глав ждут, пока закроется экран встречи или боя.
   sync(first) {
     if (!this.started) return;
     const s = this.step();
     if (s === this.shown) return;
-    this.shown = s;
+    this.shown = s; this.opened = null;
     if (!s) { this.close(); this.refreshTiles(); return; }
     this.refreshTiles();
     const st = this.at(), newCh = st.ch !== this.ch;
     this.ch = st.ch;
-    if (!first) Sfx.play('spin');
     const go = () => {
       if (st.kind === 'talk') { this.hideCoach(); this.scene(st); return; }
       this.coach(st);
@@ -40,8 +41,18 @@ const Tut = {
       // на шаге «родник» Следопыт сам показывает дорогу к ближайшему
       if (st.kind === 'spring') setTimeout(() => { const n = MapView.nearest('spring'); if (n) MapView.track(n); }, 800);
     };
-    // новая глава — сначала её заставка (кроме глав, что начинаются со сцены: там заставка внутри сцены)
-    if (newCh && st.kind !== 'talk') this.titleCard(st.ch, go); else go();
+    const run = () => {
+      if (this.step() !== s) return; // пока ждали, шаг уже сменился — покажет следующий вызов
+      this._pending = false;
+      if (!first) Sfx.play('spin');
+      // новая глава — сначала её заставка (кроме глав, что начинаются со сцены: там заставка внутри сцены)
+      if (newCh && st.kind !== 'talk') this.titleCard(st.ch, go); else go();
+    };
+    if (first) { run(); return; }
+    this._pending = true; this.hideCoach();
+    const free = () => !(Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st) || document.querySelector('.enc, .tut-title'));
+    const when = () => free() ? run() : setTimeout(when, 400);
+    setTimeout(when, 1100);
   },
 
   /* ---------- наставник поверх интерфейса: подсветка цели и умное место ---------- */
@@ -68,14 +79,18 @@ const Tut = {
         <div class="coach-bar"><i></i></div></div></div>`);
       this.ring = U.el('<div id="tutRing" class="hidden"><i></i></div>');
       document.body.append(this.ring, this.el);
+      this.el.addEventListener('click', e => { if (e.target.closest('.coach-ok')) this.gotIt(); });
       this.loop = setInterval(() => this.track(), 300);
       addEventListener('resize', this._rs = () => this.track());
     }
     const n = this.step();
     this.el.querySelector('.coach-ch').textContent = `Посвящение · ${n}/${TUT.length}`;
     this.el.querySelector('.coach-bar i').style.width = ((n - 1) / TUT.length * 100) + '%';
-    this._hint = st.hint; this._back = null;
-    this.el.querySelector('.coach-text').innerHTML = st.hint;
+    // открыл нужный раздел — объяснение экрана и «Понятно» (шаг засчитывается только по кнопке)
+    const info = st.kind === 'ui' && this.opened === st.id;
+    this._hint = info ? `${st.info}<button class="btn primary coach-ok">Понятно ›</button>` : st.hint; this._back = null;
+    this.el.querySelector('.coach-text').innerHTML = this._hint;
+    this.el.classList.toggle('info', info);
     this.el.classList.remove('bump'); void this.el.offsetWidth; this.el.classList.add('bump');
     this.track();
   },
@@ -96,12 +111,12 @@ const Tut = {
   // Раз в 300 мс: где цель, куда поставить наставника, чтобы не закрыть ни её, ни важное
   track() {
     if (!this.el) return;
-    const st = this.at(), busy = !st || st.kind === 'talk' || this.sc || Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st)
+    const st = this.at(), busy = !st || this._pending || st.kind === 'talk' || this.sc || Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st)
       || U.$$('.modal-wrap').some(m => !m.classList.contains('out') && !m.classList.contains('sheet-wrap')) || document.querySelector('.onb, .tut-title, .tut-final, .trl');
     this.el.classList.toggle('hidden', !!busy);
     U.$('#menuBtn').classList.remove('tut-pulse');
     if (busy) { this.ring.classList.add('hidden'); return; }
-    const t = this.findTarget(st);
+    const t = st.kind === 'ui' && this.opened === st.id ? null : this.findTarget(st); // объясняет экран — подсвечивать нечего
     // текст: если цель — «Назад», сначала вернуться
     const back = !!(t && t.back);
     if (back !== this._back) {
@@ -251,12 +266,21 @@ const Tut = {
       const li = t.querySelector('i.lock'); if (!lock && li) li.remove();
     });
   },
-  // Игрок открыл раздел: если это текущий шаг — засчитать
-  async ui(id) {
+  // Игрок открыл раздел текущего шага: Велимир объясняет, что это за экран; дальше — только по «Понятно»
+  ui(id) {
     const st = this.at();
-    if (!st || st.kind !== 'ui' || st.id !== id || this._uiBusy) return;
+    if (!st || st.kind !== 'ui' || st.id !== id || this.opened === id) return;
+    this.opened = id;
+    this.coach(st);
+  },
+  async gotIt() {
+    const st = this.at();
+    if (!st || st.kind !== 'ui' || this.opened !== st.id || this._uiBusy) return;
     this._uiBusy = true;
-    try { await Game.act('tutNext', { id }); } catch (e) {} finally { this._uiBusy = false; }
+    const b = this.el && this.el.querySelector('.coach-ok'); if (b) b.disabled = true;
+    try { Sfx.play('tap'); await Game.act('tutNext', { id: st.id }); }
+    catch (e) { UI.toast(U.esc(e.message)); if (b) b.disabled = false; }
+    finally { this._uiBusy = false; }
   },
 
   // Учебный дух держится в ~25 м от игрока, пока его не поймают (на шагах «поймай»)

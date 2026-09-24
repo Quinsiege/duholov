@@ -1865,3 +1865,5 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes tutRing { 50% { box-shadow: 0 0 0 9px rgba(253, 224, 71, .12), 0 0 34px rgba(253, 224, 71, .8); } }
 @keyframes tutArrow { 50% { transform: translateY(-6px); } }
 .calm #tutRing, .calm #tutRing i { animation: none; }
+#coach .coach-ok { display: flex; width: auto; min-height: 36px; margin-top: 8px; padding: 6px 18px; font-size: 13.5px; }
+#coach.info { border-color: rgba(253, 224, 71, .55); }
