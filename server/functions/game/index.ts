@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.20.0';
+const APP_VERSION = '3.20.1';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1781,13 +1781,20 @@ const League = {
           <div class="row ${L.best >= i + 1 ? 'got' : ''}"><div class="lg-mini r${i + 1}">${i + 2}</div><div class="row-main"><b>${x.name}</b><small>★ ${x.stars} · ${UI.rwText(x.reward)}${(i + 1) % 3 === 0 ? ' + амулет' : ''}${i + 1 === 9 ? ' + эмблема «Венец»' : ''}</small></div>${L.got[i + 1] ? '<span class="q-ok">✓</span>' : ''}</div>`).join('')}</div>
       </div>`, 'league-screen');
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { this.closeAndReopen(scr); });
+    // таблица сезона — сразу и потом каждые 5 секунд, пока экран открыт (места меняются в реальном времени)
+    const loadTop = () => Cloud.top(L.season).then(({ rows, me }) => {
+      const box = scr.querySelector('.lg-top'); if (!box) return;
+      const html = rows.length ? rows.map((x, i) => `<div class="row ${x.user_id === me ? 'lg-me' : ''}"><b class="lg-pos">${i + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
+        <div class="row-main"><b>${U.esc(x.name)}</b><small>${LEAGUE_RANKS[x.rank] ? LEAGUE_RANKS[x.rank].name : ''} · ур. ${x.level}</small></div><span class="cnt">★ ${x.stars}</span></div>`).join('')
+        : '<div class="row"><div class="row-main"><small>В этом сезоне ещё никто не играл — будь первым!</small></div></div>';
+      if (box._html !== html) { box.innerHTML = html; box._html = html; } // перерисовка — только если что-то изменилось
+    }).catch(e => {
+      const box = scr.querySelector('.lg-top');
+      if (box && !box._html) box.innerHTML = `<div class="row"><div class="row-main"><small>Таблица недоступна: ${U.esc(e.message)}</small></div></div>`; // уже показанную не стираем
+    });
     if (Cloud.enabled()) {
-      Cloud.top(L.season).then(({ rows, me }) => {
-        const box = scr.querySelector('.lg-top'); if (!box) return;
-        box.innerHTML = rows.length ? rows.map((x, i) => `<div class="row ${x.user_id === me ? 'lg-me' : ''}"><b class="lg-pos">${i + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
-          <div class="row-main"><b>${U.esc(x.name)}</b><small>${LEAGUE_RANKS[x.rank] ? LEAGUE_RANKS[x.rank].name : ''} · ур. ${x.level}</small></div><span class="cnt">★ ${x.stars}</span></div>`).join('')
-          : '<div class="row"><div class="row-main"><small>В этом сезоне ещё никто не играл — будь первым!</small></div></div>';
-      }).catch(e => { const box = scr.querySelector('.lg-top'); if (box) box.innerHTML = `<div class="row"><div class="row-main"><small>Таблица недоступна: ${U.esc(e.message)}</small></div></div>`; });
+      loadTop();
+      const t = setInterval(() => { if (!scr.isConnected) { clearInterval(t); return; } if (!document.hidden) loadTop(); }, 5000);
     }
     scr.querySelector('.lg-go').onclick = async () => {
       if (S.team().length < 3) return;
@@ -1887,7 +1894,7 @@ const Raid = {
         <div class="rift-title">${T.name} <span class="stars">${'★'.repeat(r.tier)}</span></div>
         <div class="rift-name">${Art.elIcon(s.el, 20)} ${s.name}</div>
         ${r.place ? `<div class="rift-meta">Разлом открылся у «${U.esc(r.place)}»</div>` : ''}
-        <div class="rift-meta">Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через ${U.fmtTime(r.endsAt - Date.now())}</div>
+        <div class="rift-meta">Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через <b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b></div>
         <div class="rift-tip">Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}</div>
         ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(' и ')}</div>` : ''}
         ${r.done ? '<div class="rift-done">Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.</div>' : `
@@ -1899,6 +1906,7 @@ const Raid = {
           : '<button class="btn ghost wide rift-coop">Позвать друзей — совместный бой</button>'}`}
       </div>`;
     const scr = UI.screen('Разлом', html, 'rift-screen');
+    scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
     const go = scr.querySelector('.rift-go');
     if (go) go.onclick = async () => { if (await this.battle(r, this.team(), null, far)) UI.closeScreen(scr); };
     const shop = scr.querySelector('.rift-shop');
@@ -1907,6 +1915,17 @@ const Raid = {
     if (cb) cb.onclick = () => { UI.closeScreen(scr); Coop.hostRift(r); };
     const edit = scr.querySelector('.team-edit');
     if (edit) edit.onclick = () => UI.pickTeam(() => { team = this.team(); scr.querySelector('.rift-team').innerHTML = UI.teamHtml(team); });
+    // каждую секунду: таймер; разлом закрыт (победа) или его час прошёл — вместо кнопок сообщение
+    const timer = setInterval(() => {
+      if (!scr.isConnected) { clearInterval(timer); return; }
+      const t = scr.querySelector('.rift-left'); if (t) t.textContent = U.fmtTime(Math.max(0, r.endsAt - U.now()));
+      const done = !!S.d.rifts[r.id], gone = U.now() >= r.endsAt;
+      if ((done || gone) && !scr._ended) {
+        scr._ended = true;
+        scr.querySelectorAll('.rift-go, .rift-shop, .rift-coop, .rift-far, .rift-team-title, .rift-team, .day-left').forEach(x => x.remove());
+        scr.querySelector('.rift-view').insertAdjacentHTML('beforeend', `<div class="rift-done">${done ? 'Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.' : 'Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.'}</div>`);
+      }
+    }, 1000);
   },
 
   // Разломы вокруг: все открытые в этот час Разломы до Rules.FAR.R от игрока
@@ -1915,14 +1934,20 @@ const Raid = {
     const scr = UI.screen('Разломы вокруг', '<div class="rift-list"><div class="q-note">Ищу Разломы у Капищ вокруг…</div></div>', 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
     if (!pos) { box.innerHTML = '<div class="q-note">Жду, когда найдётся твоё место на карте…</div>'; return; }
-    const hour = Math.floor(U.now() / 3600000);
     const shrines = await Poi.shrinesFar(pos.lat, pos.lng, Rules.FAR.R);
-    const rifts = shrines.map(p => W.riftFor(p, p.d, hour)).filter(Boolean).sort((a, b) => (a.done - b.done) || (a.d - b.d));
+    // Разломы часа: пересчитываются каждую секунду — закрытый только что помечается сразу, в начале часа приходят новые
+    let hour = Math.floor(U.now() / 3600000), rifts = [], sig = '';
+    const calc = () => {
+      hour = Math.floor(U.now() / 3600000);
+      rifts = shrines.map(p => W.riftFor(p, p.d, hour)).filter(Boolean).sort((a, b) => (a.done - b.done) || (a.d - b.d));
+      return rifts.map(r => r.id + (r.done ? '+' : '')).join() + '|' + (S.d.items.farpass || 0);
+    };
     let tier = 0; // 0 — все, иначе только разломы этой силы
+    const left = () => U.fmtTime(Math.max(0, (hour + 1) * 3600000 - U.now()));
     const render = () => {
       const passes = S.d.items.farpass || 0;
       const shown = rifts.map((r, i) => ({ r, i })).filter(x => !tier || x.r.tier === tier), more = Math.max(0, shown.length - 40);
-      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через ${U.fmtTime(Math.max(0, (hour + 1) * 3600000 - U.now()))}</span></div>
+      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через <b class="rl-left">${left()}</b></span></div>
         <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : 'Все'} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>
@@ -1936,7 +1961,13 @@ const Raid = {
       const c = e.target.closest('.chip'); if (c) { tier = +c.dataset.t; render(); return; }
       const b = e.target.closest('.rift-row'); if (b) this.open(rifts[+b.dataset.i]);
     });
-    render();
+    sig = calc(); render();
+    const timer = setInterval(() => {
+      if (!scr.isConnected) { clearInterval(timer); return; }
+      const s = calc();
+      if (s !== sig) { sig = s; render(); } // сменился набор разломов или чей-то статус — перерисовать
+      else { const t = box.querySelector('.rl-left'); if (t) t.textContent = left(); } // иначе — только таймер
+    }, 1000);
   },
   // Разломов вокруг (незакрытых) — для значка в меню; считаем по уже загруженному списку
   openCount() {

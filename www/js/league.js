@@ -82,13 +82,20 @@ const League = {
           <div class="row ${L.best >= i + 1 ? 'got' : ''}"><div class="lg-mini r${i + 1}">${i + 2}</div><div class="row-main"><b>${x.name}</b><small>★ ${x.stars} · ${UI.rwText(x.reward)}${(i + 1) % 3 === 0 ? ' + амулет' : ''}${i + 1 === 9 ? ' + эмблема «Венец»' : ''}</small></div>${L.got[i + 1] ? '<span class="q-ok">✓</span>' : ''}</div>`).join('')}</div>
       </div>`, 'league-screen');
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { this.closeAndReopen(scr); });
+    // таблица сезона — сразу и потом каждые 5 секунд, пока экран открыт (места меняются в реальном времени)
+    const loadTop = () => Cloud.top(L.season).then(({ rows, me }) => {
+      const box = scr.querySelector('.lg-top'); if (!box) return;
+      const html = rows.length ? rows.map((x, i) => `<div class="row ${x.user_id === me ? 'lg-me' : ''}"><b class="lg-pos">${i + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
+        <div class="row-main"><b>${U.esc(x.name)}</b><small>${LEAGUE_RANKS[x.rank] ? LEAGUE_RANKS[x.rank].name : ''} · ур. ${x.level}</small></div><span class="cnt">★ ${x.stars}</span></div>`).join('')
+        : '<div class="row"><div class="row-main"><small>В этом сезоне ещё никто не играл — будь первым!</small></div></div>';
+      if (box._html !== html) { box.innerHTML = html; box._html = html; } // перерисовка — только если что-то изменилось
+    }).catch(e => {
+      const box = scr.querySelector('.lg-top');
+      if (box && !box._html) box.innerHTML = `<div class="row"><div class="row-main"><small>Таблица недоступна: ${U.esc(e.message)}</small></div></div>`; // уже показанную не стираем
+    });
     if (Cloud.enabled()) {
-      Cloud.top(L.season).then(({ rows, me }) => {
-        const box = scr.querySelector('.lg-top'); if (!box) return;
-        box.innerHTML = rows.length ? rows.map((x, i) => `<div class="row ${x.user_id === me ? 'lg-me' : ''}"><b class="lg-pos">${i + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
-          <div class="row-main"><b>${U.esc(x.name)}</b><small>${LEAGUE_RANKS[x.rank] ? LEAGUE_RANKS[x.rank].name : ''} · ур. ${x.level}</small></div><span class="cnt">★ ${x.stars}</span></div>`).join('')
-          : '<div class="row"><div class="row-main"><small>В этом сезоне ещё никто не играл — будь первым!</small></div></div>';
-      }).catch(e => { const box = scr.querySelector('.lg-top'); if (box) box.innerHTML = `<div class="row"><div class="row-main"><small>Таблица недоступна: ${U.esc(e.message)}</small></div></div>`; });
+      loadTop();
+      const t = setInterval(() => { if (!scr.isConnected) { clearInterval(t); return; } if (!document.hidden) loadTop(); }, 5000);
     }
     scr.querySelector('.lg-go').onclick = async () => {
       if (S.team().length < 3) return;
