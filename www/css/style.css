@@ -1496,34 +1496,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .auth-panel .login-row { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; }
 .auth-panel .login-btn { padding: 8px 6px; gap: 6px; font-size: 13px; min-height: 42px; }
 
-/* ---------- 3.31: экран загрузки ---------- */
-.loader { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; padding: calc(30px + var(--st)) 24px calc(30px + var(--sb));
-  background: radial-gradient(120% 70% at 50% 0%, #3b1d7a 0%, #160d30 55%, #0a0616 100%); text-align: center; transition: opacity .45s; }
-.loader.out { opacity: 0; pointer-events: none; }
-.ld-logo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.ld-logo .onb-charm { width: 96px; height: 96px; animation: ldFloat 3s ease-in-out infinite; }
-.ld-logo h1 { margin: 0; }
-@keyframes ldFloat { 50% { transform: translateY(-6px) rotate(4deg); } }
-.ld-prog { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 8px; }
-.ld-bar { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, .1); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4); }
-.ld-bar i { display: block; height: 100%; width: 0; border-radius: 5px; transition: width .35s ease-out;
-  background: linear-gradient(90deg, var(--teal), var(--gold2)); box-shadow: 0 0 10px rgba(253, 224, 71, .45); position: relative; overflow: hidden; }
-.ld-bar i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .45), transparent); animation: ldShine 1.4s linear infinite; }
-@keyframes ldShine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-.ld-text { font-size: 13px; color: var(--muted); min-height: 18px; }
-.ld-hint { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 380px; }
-.ld-tip { flex: 1; min-height: 96px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 14px 16px; border-radius: 18px;
-  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); }
-.ld-tip small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold2); }
-.ld-tip p { margin: 0; font-size: 14px; line-height: 1.45; }
-.ld-tip p.in { animation: ldIn .35s ease-out; }
-@keyframes ldIn { from { opacity: 0; transform: translateY(6px); } }
-.ld-arrow { width: 36px; height: 36px; flex: none; border-radius: 50%; font-size: 24px; line-height: 1; color: var(--muted); background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
-.ld-arrow:active { transform: scale(.92); color: var(--text); }
-.ld-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 260px; }
-.ld-dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .2); cursor: pointer; transition: width .2s, background .2s; }
-.ld-dots i.on { width: 16px; background: var(--gold); }
-.eco .ld-logo .onb-charm, .calm .ld-logo .onb-charm, .calm .ld-bar i::after { animation: none; }
+/* 3.31: экран загрузки — стили в index.html (рисуется до загрузки этого файла) */
 
 /* ---------- 3.31: вход по почте ---------- */
 .mail-modal { padding: 22px 18px 16px; }

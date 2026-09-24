@@ -62,6 +62,7 @@ const Login = {
     } else if (provider === 'telegram') url = 'https://oauth.telegram.org/auth?' + q({ bot_id: p.bot_id, origin: location.origin, return_to: redirect, request_access: 'write' });
     if (!url) return;
     Sfx.play('tap');
+    this.leaving(provider);
     location.href = url;
   },
 
@@ -208,16 +209,30 @@ const Login = {
   // Войти в другой аккаунт: выйти из текущего (он сохранён за сервисом) и войти через выбранный сервис
   async switchTo(provider) {
     if (this.isGuest()) return this.start(provider, 'link');
-    try { const sb = await Cloud.client(); await sb.auth.signOut(); } catch (e) {}
-    Cloud.sb = null;
+    this.leaving(provider);
+    await this.dropSession();
     // новый гость создастся при возвращении; если вход через сервис уже привязан — игра сразу откроет ту учётную запись
     return this.start(provider, 'start');
+  },
+  // 3.31.1: выйти только на этом устройстве и не дольше 1,5 с. Раньше sb.auth.signOut() шёл на сервер и ждал
+  // внутреннюю блокировку клиента — после нажатия кнопки входа до 15 с ничего не происходило
+  async dropSession() {
+    try { const sb = await Cloud.client(); await Promise.race([sb.auth.signOut({ scope: 'local' }), new Promise(r => setTimeout(r, 1500))]); } catch (e) {}
+    try { localStorage.removeItem(CLOUD_CONFIG.auth); } catch (e) {}
+    Cloud.sb = null;
+  },
+  // Сразу показать, что нажатие принято: страница сервиса может открываться несколько секунд
+  leaving(provider) {
+    Loader.show(`Открываю ${this.NAMES[provider] || 'вход'}…`); Loader.set(30);
+    // вернулся кнопкой «Назад» (страница из кэша браузера) — убрать экран
+    window.addEventListener('pageshow', e => { if (e.persisted) Loader.hide(); }, { once: true });
   },
 
   // Выйти (только если вход привязан — иначе прогресс гостя был бы потерян)
   async signOut() {
     if (this.isGuest()) return;
-    try { const sb = await Cloud.client(); await sb.auth.signOut(); } catch (e) {}
+    Loader.show('Выхожу…'); Loader.set(40);
+    await this.dropSession();
     location.reload();
   },
 };

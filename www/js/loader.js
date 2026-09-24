@@ -1,7 +1,7 @@
 'use strict';
 /* Экран загрузки (3.31): прогресс-бар и подсказки Ордена, которые можно листать.
    Держится, пока грузится прогресс, а после входа в игру — пока карта не найдёт Ловчего и не подгрузит подложку
-   (раньше игрока встречала серая недогруженная карта). */
+   (раньше игрока встречала серая недогруженная карта). 3.31.1: сам экран есть в index.html — виден с первой секунды. */
 
 const Loader = {
   el: null, pct: 0, hint: 0, rot: null,
@@ -22,18 +22,31 @@ const Loader = {
 
   show(text) {
     if (!this.el) {
-      this.hint = Math.floor(Math.random() * this.HINTS.length);
-      this.el = U.el(`<div class="loader" role="status" aria-live="polite">
-        <div class="ld-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1></div>
-        <div class="ld-prog"><div class="ld-bar"><i></i></div><div class="ld-text"></div></div>
-        <div class="ld-hint">
-          <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
-          <div class="ld-tip"><small>Совет Ордена</small><p></p></div>
-          <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
-        </div>
-        <div class="ld-dots">${this.HINTS.map((_, i) => `<i data-i="${i}"></i>`).join('')}</div>
-      </div>`);
-      document.body.appendChild(this.el);
+      // первый раз — подхватываем экран из index.html (он виден с первой секунды), потом создаём такой же
+      const boot = document.getElementById('bootLoader');
+      if (boot) {
+        boot.removeAttribute('id');
+        this.el = boot;
+        this.hint = 0; // совет, который уже на экране
+        const bar = boot.querySelector('.ld-bar i'), w = bar.getBoundingClientRect().width / (bar.parentNode.getBoundingClientRect().width || 1);
+        this.pct = Math.round(w * 100);
+        bar.style.width = this.pct + '%';
+        bar.classList.remove('boot');
+      } else {
+        this.hint = Math.floor(Math.random() * this.HINTS.length);
+        this.el = U.el(`<div class="loader" role="status" aria-live="polite">
+          <div class="ld-logo"><div class="ld-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1></div>
+          <div class="ld-prog"><div class="ld-bar"><i></i></div><div class="ld-text"></div></div>
+          <div class="ld-hint">
+            <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
+            <div class="ld-tip"><small>Совет Ордена</small><p></p></div>
+            <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
+          </div>
+          <div class="ld-dots"></div>
+        </div>`);
+        document.body.appendChild(this.el);
+      }
+      this.el.querySelector('.ld-dots').innerHTML = this.HINTS.map((_, i) => `<i data-i="${i}"></i>`).join('');
       this.el.querySelector('.prev').onclick = () => this.go(-1, true);
       this.el.querySelector('.next').onclick = () => this.go(1, true);
       this.el.querySelector('.ld-dots').onclick = e => { const d = e.target.closest('[data-i]'); if (d) { this.hint = +d.dataset.i; this.go(0, true); } };
@@ -42,17 +55,17 @@ const Loader = {
       const tip = this.el.querySelector('.ld-hint');
       tip.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
       tip.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) this.go(dx < 0 ? 1 : -1, true); }, { passive: true });
-      this.go(0);
+      this.go(0, false, !!boot);
       this.rot = setInterval(() => this.go(1), 7000);
     }
     if (text) this.set(this.pct, text);
   },
-  go(step, manual) {
+  go(step, manual, quiet) {
     if (!this.el) return;
     const n = this.HINTS.length;
     this.hint = (this.hint + step + n) % n;
     const p = this.el.querySelector('.ld-tip p');
-    p.classList.remove('in'); void p.offsetWidth; p.classList.add('in');
+    if (!quiet) { p.classList.remove('in'); void p.offsetWidth; p.classList.add('in'); }
     p.textContent = this.HINTS[this.hint];
     this.el.querySelectorAll('.ld-dots i').forEach((d, i) => d.classList.toggle('on', i === this.hint));
     if (manual) { clearInterval(this.rot); this.rot = setInterval(() => this.go(1), 9000); } // пролистал сам — даём дочитать
