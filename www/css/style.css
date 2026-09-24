@@ -1545,3 +1545,16 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .mail-cancel { align-self: center; color: var(--muted); font-size: 13px; text-decoration: none; margin-top: 2px; }
 .mail-form.shake { animation: mailShake .35s; }
 @keyframes mailShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+/* 3.31: «Почта и пароль» — кнопкой, под разделителем «или» */
+.auth-or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .16), transparent); }
+.auth-foot { flex-direction: column; gap: 8px; }
+.auth-foot .auth-dot { display: none; }
+.btn.mail-login { width: 100%; min-height: 46px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 14px; font-size: 14px; font-weight: 700; color: var(--text);
+  background: linear-gradient(180deg, rgba(167, 139, 250, .16), rgba(167, 139, 250, .07)); border: 1px solid rgba(167, 139, 250, .38); box-shadow: none; }
+.btn.mail-login:active { transform: scale(.98); background: rgba(167, 139, 250, .22); }
+.ml-ic { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--gold2); background: rgba(0, 0, 0, .25); }
+.ml-ic .ico { width: 18px; height: 18px; }
+.ml-t { flex: 1; text-align: left; }
+.ml-chev { color: var(--muted); font-size: 20px; line-height: 1; }
