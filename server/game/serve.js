@@ -168,6 +168,29 @@ function makeEnv(uid) {
       const rows = must(await db.from('trades').update({ taken_by: pid, taken_at: new Date().toISOString() }).eq('code', code).is('taken_by', null).select('code'));
       return rows && rows.length ? t : null;
     },
+    // Чат: последние 50 сообщений канала (или новые после after); отправка; жалоба (после 3 — сообщение скрыто)
+    async chatList(channel, after) {
+      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').eq('channel', channel).eq('hidden', false);
+      if (after) q = q.gt('id', after);
+      const rows = must(await q.order('id', { ascending: false }).limit(50)) || [];
+      return rows.reverse();
+    },
+    async chatInsert(row) {
+      if (Math.random() < 0.02) await db.from('chat_messages').delete().lt('created_at', new Date(Date.now() - 7 * 86400000).toISOString()); // старше недели
+      return must(await db.from('chat_messages').insert({ ...row, uid }).select('id, pid, name, lvl, clan, text, created_at').single());
+    },
+    async chatReport(id, pid) {
+      const { error } = await db.from('chat_reports').insert({ message_id: id, reporter: pid });
+      if (error && !/duplicate/i.test(error.message)) throw new Error(error.message);
+      const { count } = await db.from('chat_reports').select('message_id', { count: 'exact', head: true }).eq('message_id', id);
+      if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
+      return count || 0;
+    },
+    // 3.18: неоткрытую посылку забирает сам отправитель (передача духов закрыта)
+    async tradeReclaim(code, pid) {
+      const rows = must(await db.from('trades').update({ taken_by: pid, taken_at: new Date().toISOString() }).eq('code', code).eq('from_pid', pid).is('taken_by', null).select('*'));
+      return rows && rows[0] || null;
+    },
     async mySubmissions() {
       return must(await db.from('poi_submissions').select('id, name, status, reason').eq('user_id', uid).order('created_at', { ascending: false }).limit(50)) || [];
     },

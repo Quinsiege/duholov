@@ -61,7 +61,7 @@ const Friends = {
     this.busy = false;
   },
 
-  // Один вход для всех кодов: дружба (DUHF1), посылка с духом (DUH2)
+  // Код дружбы (DUHF1). Посылки с духами (DUH2) закрыты с 3.18 — духов продают на аукционе
   async accept(code, after) {
     const txt = String(code);
     try {
@@ -74,7 +74,7 @@ const Friends = {
       } else if (/DUHG1\./.test(txt)) {
         throw new Error('Подарки теперь приходят сами — загляни в «Друзья»');
       } else if (/DUH[12]\./i.test(txt)) {
-        Trade.welcome(await Trade.receive(txt));
+        throw new Error('Передача духов по коду закрыта — продавай и покупай духов на Аукционе');
       } else throw new Error('Не похоже на код Духолова');
       after && after();
       UI.refreshHud();
@@ -110,9 +110,9 @@ const Friends = {
       <div class="fr-inbox"></div>
       <div class="panel trade-in">
         <b>Вставить код</b>
-        <small>Код дружбы или посылку с духом — игра сама поймёт, что это.</small>
+        <small>Код дружбы от другого Ловчего.</small>
         ${Trade.canScan() ? '<button class="btn wide scan-btn">Сканировать QR-код</button>' : ''}
-        <textarea class="input code-in" rows="3" placeholder="DUHF1… / DUH2…"></textarea>
+        <textarea class="input code-in" rows="3" placeholder="DUHF1…"></textarea>
         <button class="btn primary wide accept-btn">Принять</button>
       </div>
       <div class="panel trade-in coop-join">
@@ -122,7 +122,7 @@ const Friends = {
       </div>
       <div class="fr-head"><h3 class="prof-h">Друзья <small class="fr-count"></small></h3><span class="small">Подарков в сумке: <b class="gift-n"></b></span></div>
       <div class="list fr-list"></div>
-      <button class="btn ghost wide to-trade">Обмен духами →</button>`, 'friends-screen');
+      `, 'friends-screen');
     const render = () => {
       if (!scr.isConnected) return;
       scr.querySelector('.fr-count').textContent = S.d.friends.length;
@@ -152,7 +152,6 @@ const Friends = {
     scr.querySelector('.my-share').onclick = () => this.shareText(`Добавь меня в друзья в Духолове! «Меню → Друзья» → вставь код:\n${this.myCode()}`);
     scr.querySelector('.my-qr').onclick = () => this.showQR('Мой код дружбы', this.myCode());
     scr.querySelector('.my-invite').onclick = () => Invite.share();
-    scr.querySelector('.to-trade').onclick = () => Trade.screen();
     scr.querySelector('.coop-join-btn').onclick = () => {
       const code = scr.querySelector('.coop-code-in').value;
       UI.closeScreen(scr);

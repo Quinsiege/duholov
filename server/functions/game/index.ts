@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.17.0';
+const APP_VERSION = '3.18.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -373,7 +373,7 @@ const MEDALS = [
   { id: 'raids',   name: 'Затворник',     desc: 'Закрой разломов',              stat: 'raids',       tiers: [3, 30, 200] },
   { id: 'dex',     name: 'Летописец',     desc: 'Видов духов в бестиарии',      stat: 'dex',         tiers: [5, 20, SPECIES.length] },
   { id: 'purify',  name: 'Очиститель',    desc: 'Победи прислужников Нави',     stat: 'invasions',   tiers: [3, 30, 200] },
-  { id: 'trade',   name: 'Щедрая душа',   desc: 'Передай или получи духов',     stat: 'traded',      tiers: [1, 10, 50] },
+  { id: 'trade',   name: 'Щедрая душа',   desc: 'Купи или продай духов на Аукционе',     stat: 'traded',      tiers: [1, 10, 50] },
   { id: 'throws',  name: 'Меткий глаз',   desc: 'Отличных бросков',             stat: 'throwsGreat', tiers: [20, 200, 1000] },
   { id: 'hatch',   name: 'Наседка',       desc: 'Вылупи духов из коконов',      stat: 'hatched',     tiers: [3, 30, 200] },
   { id: 'evolve',  name: 'Алхимик',       desc: 'Преврати духов',               stat: 'evolved',     tiers: [3, 30, 200] },
@@ -2855,6 +2855,9 @@ const Rules = {
     { id: 'z1200', zlat: 1200, rub: 999,  bonus: 20, hot: true },
     { id: 'z2600', zlat: 2600, rub: 1990, bonus: 30 },
   ],
+  // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
+  CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
+  CHAT_CHANNELS: [['all', 'Общий'], ['trade', 'Торговля'], ['raid', 'Разломы'], ['help', 'Помощь'], ['clan', 'Дружина']],
   // 3.17: Аукцион духов — с LEVEL уровня; лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
   AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
@@ -3251,6 +3254,7 @@ const GameCore = {
         const cur = r.cur === 'zlat' ? 'zlat' : 'sparks', net = r.price - Rules.auctionFee(r.price);
         S.d[cur] = (S.d[cur] || 0) + net;
         A.paid[r.id] = ctx.now;
+        S.d.stats.traded++;
         got.push({ type: 'sold', sid: r.spirit.s, cur, price: r.price, net, buyer: String(r.buyer_name || '').slice(0, 20) });
         J.add('auction', { sid: r.spirit.s, dir: 'sold', cur, price: net, who: r.buyer_name });
       } else {
@@ -3262,6 +3266,26 @@ const GameCore = {
     }
     if (rows.length) ctx.after.push(() => ctx.env.lotsDone(rows.map(r => r.id), 'settled'));
     return got;
+  },
+  // Канал чата: общий, торговля, разломы, помощь или своя дружина
+  chatChannel(ch) {
+    if (ch === 'clan') { this.need(S.d.clan, 'Канал дружины — для тех, кто в дружине'); return 'clan:' + S.d.clan; }
+    this.need(['all', 'trade', 'raid', 'help'].includes(ch), 'Такого канала нет');
+    return ch;
+  },
+  // Текст сообщения: без разметки и управляющих символов; грубые слова — звёздочками
+  chatClean(s) {
+    const t = String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>`\\]/g, '').trim().replace(/\s+/g, ' ').slice(0, Rules.CHAT.MAX);
+    return t.replace(/[a-zа-яё]+/gi, w => (this.rude(w) ? '*'.repeat(Math.min(w.length, 6)) : w));
+  },
+  // Грубое слово: начинается с корня (или приставка + корень). Только начало слова — чтобы не задеть
+  // «корабля», «ребус», «застрахуй», «себастьян»
+  RUDE_ROOTS: ['хуй', 'хуе', 'хуя', 'хуи', 'хую', 'пизд', 'еба', 'ебу', 'ебл', 'ебн', 'бля', 'мудак', 'мудил', 'пидор', 'пидар', 'гандон', 'шлюх', 'залуп'],
+  RUDE_PRE: ['', 'на', 'по', 'за', 'от', 'вы', 'до', 'рас', 'раз', 'у', 'об', 'при', 'пере', 'не'],
+  rude(w) {
+    const x = w.toLowerCase().replace(/ё/g, 'е');
+    if (/^(сука|суки|суке|суку|сучка|сучара)$/.test(x)) return true;
+    return this.RUDE_PRE.some(p => this.RUDE_ROOTS.some(r => x.startsWith(p + r)));
   },
   // Дух покидает коллекцию (посылка, аукцион): амулет — в сумку, из команды и спутников убирается
   detachSpirit(sp) {
@@ -3317,6 +3341,7 @@ const GameCore = {
       if (!S.d) return { empty: true };
       const r = await ctx.env.registerPid(S.d.pid);
       if (r === 'taken') { S.d.pid = U.uid() + U.uid(); await ctx.env.registerPid(S.d.pid); }
+      if (!S.d.tradeClosed) await this.H.tradeReclaimAll.call(this, {}, ctx); // 3.18: вернуть неоткрытые посылки
       return { ok: true };
     },
     async newGame(a, ctx) {
@@ -4041,33 +4066,23 @@ const GameCore = {
     },
 
     /* ----- обмен духами ----- */
-    async tradeGive(a, ctx) {
-      const sp = this.spirit(a.uid);
-      this.need(S.d.spirits.length > 1, 'Нельзя отдать последнего духа');
-      this.limit(ctx, 'trade', 20, 86400000);
-      const code = U.code(10);
-      await ctx.env.tradeCreate(code, S.d.pid, S.d.name, this.packSpirit(sp));
-      this.detachSpirit(sp); // амулет остаётся у хозяина
-      S.d.sent.unshift({ code: 'DUH2.' + code, sid: sp.sid, shiny: !!sp.shiny, dark: !!sp.dark, t: ctx.now });
-      S.d.sent = S.d.sent.slice(0, 20);
-      S.d.stats.traded++;
-      J.add('trade', { sid: sp.sid, dir: 'out' });
-      return { code: 'DUH2.' + code };
-    },
-    async tradeReceive(a, ctx) {
-      const m = String(a.code || '').toUpperCase().match(/DUH2\.([A-Z2-9]{10})/);
-      this.need(m, /DUH1\./i.test(a.code || '') ? 'Это код старой версии игры — попроси друга упаковать духа заново' : 'Это не код посылки');
-      this.limit(ctx, 'tradeTry', 30, 3600000); // перебор кодов посылок
-      const t = await ctx.env.tradeTake(m[1], S.d.pid);
-      this.need(t, 'Посылка не найдена или её уже открыли');
-      this.need(!t.own, 'Это твоя собственная посылка — отдай код другу');
-      const sp = this.unpackSpirit(t.spirit, ctx, t.from_name);
-      const isNew = S.addSpirit(sp);
-      S.addEssence(SP[sp.sid].fam, 5);
-      J.add('trade', { sid: sp.sid, dir: 'in', who: sp.from });
-      S.d.stats.traded++;
-      S.addXP(isNew ? 1000 : 300);
-      return { uid: sp.uid, isNew };
+    // 3.18: передача духов по коду закрыта — ею обходили аукцион (и его комиссию). Духов продают на аукционе
+    async tradeGive() { this.need(false, 'Передача духов по коду закрыта — выставь духа на Аукцион'); },
+    async tradeReceive() { this.need(false, 'Передача духов по коду закрыта — продавай и покупай духов на Аукционе'); },
+    // Неоткрытые посылки, отправленные до 3.18, возвращаются отправителю (при загрузке игры, один раз)
+    async tradeReclaimAll(a, ctx) {
+      if (S.d.tradeClosed || !(S.d.sent || []).length) { S.d.tradeClosed = 1; return 0; }
+      let n = 0;
+      for (const s of S.d.sent) {
+        const m = String(s.code || '').match(/DUH2\.([A-Z2-9]{10})/);
+        if (!m) continue;
+        const t = await ctx.env.tradeReclaim(m[1], S.d.pid);
+        if (t && t.spirit && SP[t.spirit.s]) { S.addSpirit(this.unpackSpirit(t.spirit, ctx)); n++; }
+      }
+      S.d.sent = [];
+      S.d.tradeClosed = 1;
+      if (n) Bus.emit('toast', { text: `Неоткрытые посылки вернулись: духов — ${n}. Передача духов закрыта, теперь есть Аукцион.`, cls: 'good' });
+      return n;
     },
 
     /* ----- аукцион духов ----- */
@@ -4131,6 +4146,7 @@ const GameCore = {
       const sp = this.unpackSpirit(lot.spirit, ctx, lot.seller_name);
       const isNew = S.addSpirit(sp);
       S.d.auc.got[lot.id] = ctx.now;
+      S.d.stats.traded++; // знак «Щедрая душа»
       ctx.after.push(() => ctx.env.lotsDone([lot.id], 'delivered'));
       J.add('auction', { sid: sp.sid, dir: 'buy', cur, price: lot.price, who: sp.from });
       return { uid: sp.uid, isNew, cur, price: lot.price };
@@ -4142,6 +4158,35 @@ const GameCore = {
       if (!S.d.auc.back[lot.id]) { S.addSpirit(this.unpackSpirit(lot.spirit, ctx)); S.d.auc.back[lot.id] = ctx.now; }
       ctx.after.push(() => ctx.env.lotsDone([lot.id], 'settled'));
       return { sid: lot.spirit.s };
+    },
+
+    /* ----- чат Ордена ----- */
+    async chatList(a, ctx) {
+      const ch = this.chatChannel(a.ch);
+      this.limit(ctx, 'chatRead', 1200, 3600000);
+      const rows = await ctx.env.chatList(ch, Math.max(0, Math.floor(+a.after) || 0));
+      return { ch: a.ch, msgs: rows.map(m => ({ id: m.id, pid: m.pid, name: m.name, lvl: m.lvl, clan: m.clan, text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid })) };
+    },
+    async chatSend(a, ctx) {
+      const C = Rules.CHAT, ch = this.chatChannel(a.ch);
+      this.need(S.d.level >= C.LEVEL, `Писать в чат можно с ${C.LEVEL} уровня Ловчего — читать можно уже сейчас`);
+      const text = this.chatClean(a.text);
+      this.need(text.length >= 1, 'Напиши сообщение');
+      this.need(!/(https?:\/\/|www\.|t\.me\/|\b[a-z0-9-]{2,}\.(ru|com|net|org|me|io|su|xyz|рф)\b)/i.test(text), 'Ссылки в чате запрещены — так безопаснее для всех');
+      const c = ctx.srv.chat = ctx.srv.chat || { t: 0, last: '' };
+      this.need(ctx.now - c.t >= C.GAP, 'Не так быстро — подожди пару секунд');
+      this.need(!(text === c.last && ctx.now - c.t < 60000), 'Это сообщение уже отправлено');
+      this.limit(ctx, 'chat', C.PER_DAY, 86400000);
+      c.t = ctx.now; c.last = text;
+      const m = await ctx.env.chatInsert({ channel: ch, pid: S.d.pid, name: S.d.name, lvl: S.d.level, clan: S.d.clan || null, text });
+      return { msg: { id: m.id, pid: m.pid, name: m.name, lvl: m.lvl, clan: m.clan, text: m.text, t: Date.parse(m.created_at), mine: true } };
+    },
+    async chatReport(a, ctx) {
+      const id = Math.floor(+a.id);
+      this.need(id > 0, 'Сообщение не найдено');
+      this.limit(ctx, 'chatReport', 30, 86400000);
+      await ctx.env.chatReport(id, S.d.pid);
+      return { ok: true };
     },
 
     /* ----- друзья и подарки ----- */
@@ -4441,6 +4486,29 @@ function makeEnv(uid) {
       if (t.from_pid === pid) return { own: true };
       const rows = must(await db.from('trades').update({ taken_by: pid, taken_at: new Date().toISOString() }).eq('code', code).is('taken_by', null).select('code'));
       return rows && rows.length ? t : null;
+    },
+    // Чат: последние 50 сообщений канала (или новые после after); отправка; жалоба (после 3 — сообщение скрыто)
+    async chatList(channel, after) {
+      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').eq('channel', channel).eq('hidden', false);
+      if (after) q = q.gt('id', after);
+      const rows = must(await q.order('id', { ascending: false }).limit(50)) || [];
+      return rows.reverse();
+    },
+    async chatInsert(row) {
+      if (Math.random() < 0.02) await db.from('chat_messages').delete().lt('created_at', new Date(Date.now() - 7 * 86400000).toISOString()); // старше недели
+      return must(await db.from('chat_messages').insert({ ...row, uid }).select('id, pid, name, lvl, clan, text, created_at').single());
+    },
+    async chatReport(id, pid) {
+      const { error } = await db.from('chat_reports').insert({ message_id: id, reporter: pid });
+      if (error && !/duplicate/i.test(error.message)) throw new Error(error.message);
+      const { count } = await db.from('chat_reports').select('message_id', { count: 'exact', head: true }).eq('message_id', id);
+      if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
+      return count || 0;
+    },
+    // 3.18: неоткрытую посылку забирает сам отправитель (передача духов закрыта)
+    async tradeReclaim(code, pid) {
+      const rows = must(await db.from('trades').update({ taken_by: pid, taken_at: new Date().toISOString() }).eq('code', code).eq('from_pid', pid).is('taken_by', null).select('*'));
+      return rows && rows[0] || null;
     },
     async mySubmissions() {
       return must(await db.from('poi_submissions').select('id, name, status, reason').eq('user_id', uid).order('created_at', { ascending: false }).limit(50)) || [];

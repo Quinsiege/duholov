@@ -49,6 +49,7 @@
   <script src="../www/js/hints.js"></script>
   <script src="../www/js/shop.js"></script>
   <script src="../www/js/auction.js"></script>
+  <script src="../www/js/chat.js"></script>
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
@@ -376,7 +377,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [] };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [] };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -401,6 +402,7 @@
     giftTake: async (id, pid) => { const g = DB.gifts.find(x => x.id === id && x.to_pid === pid && !x.opened_at); if (!g) return false; g.opened_at = Date.now(); return true; },
     tradeCreate: async (code, pid, name, spirit) => { DB.trades[code] = { code, from_pid: pid, from_name: name, spirit }; },
     tradeTake: async (code, pid) => { const t = DB.trades[code]; if (!t || t.taken_by) return null; if (t.from_pid === pid) return { own: true }; t.taken_by = pid; return t; },
+    tradeReclaim: async (code, pid) => { const t = DB.trades[code]; if (!t || t.taken_by || t.from_pid !== pid) return null; t.taken_by = pid; return t; },
     mySubmissions: async () => DB.subs.filter(s => s.user === who.uid),
     leagueScore: async x => { DB.league.push({ user: who.uid, ...x }); },
     orderPut: async x => { DB.order[x.week + ':' + x.pid] = { ...x }; },
@@ -454,6 +456,9 @@
       return DB.lots.filter(l => l.seller_pid === pid && !l.settled && ['sold', 'cancelled', 'expired'].includes(l.status)).map(l => ({ ...l }));
     },
     lotsDone: async (ids, field) => { DB.lots.forEach(l => { if (ids.includes(l.id)) l[field] = true; }); },
+    chatList: async (ch, after) => DB.chat.filter(m => m.channel === ch && !m.hidden && m.id > (after || 0)).slice(-50).map(m => ({ ...m })),
+    chatInsert: async row => { const m = { id: DB.chat.length + 1, created_at: new Date().toISOString(), hidden: false, ...row }; DB.chat.push(m); return { ...m }; },
+    chatReport: async (id, pid) => { if (!DB.reports.some(r => r.id === id && r.pid === pid)) DB.reports.push({ id, pid }); const n = DB.reports.filter(r => r.id === id).length; if (n >= 3) DB.chat.find(m => m.id === id).hidden = true; return n; },
     paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
     payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
     deleteSave: async () => { delete DB.saves[who.uid]; },
@@ -651,15 +656,17 @@
     const g = await must(B, 'giftOpen', { id: inbox[0].id }); eq(g.name, 'Ярослава'); ok((B.data.items.charm || 0) > charm0, 'обереги пришли');
     await refuse(B, 'giftOpen', { id: inbox[0].id }, /уже открыт/);
     await refuse(A, 'giftOpen', { id: inbox[0].id }, /не найден/);
+    // 3.18: передача духов по коду закрыта; неоткрытая посылка, отправленная раньше, возвращается отправителю
     A.data.spirits.push(asPlayer(A, () => S.makeSpirit('sirin', 15, 'trade')));
     const uid = A.data.spirits[1].uid;
-    const t = await must(A, 'tradeGive', { uid }); ok(/^DUH2\.[A-Z2-9]{10}$/.test(t.code), 'код посылки');
-    ok(!A.data.spirits.some(x => x.uid === uid), 'дух ушёл');
-    await refuse(A, 'tradeReceive', { code: t.code }, /собственная/);
-    const got = await must(B, 'tradeReceive', { code: 'лови: ' + t.code.toLowerCase() + ' !' });
-    ok(B.data.spirits.some(x => x.uid === got.uid && x.sid === 'sirin'), 'дух пришёл');
-    await refuse(B, 'tradeReceive', { code: t.code }, /не найдена/);
-    await refuse(B, 'tradeReceive', { code: 'DUH1.abc.123456' }, /старой версии/);
+    await refuse(A, 'tradeGive', { uid }, /закрыта/);
+    await refuse(B, 'tradeReceive', { code: 'DUH2.ABCDEFGHJK' }, /закрыта/);
+    ok(A.data.spirits.some(x => x.uid === uid), 'дух остался у хозяина');
+    DB.trades.OLDCODE234 = { code: 'OLDCODE234', from_pid: A.data.pid, from_name: 'Ярослава', spirit: { s: 'gamayun', l: 12, i: [9, 9, 9], y: 0, d: 0, n: '', p: 0, m: 0 } };
+    A.data.sent = [{ code: 'DUH2.OLDCODE234', sid: 'gamayun', t: Date.now() }]; delete A.data.tradeClosed;
+    const n0 = A.data.spirits.length;
+    await must(A, 'load'); eq(A.data.spirits.length, n0 + 1, 'неоткрытая посылка вернулась'); ok(A.data.spirits.some(x => x.sid === 'gamayun'));
+    ok(DB.trades.OLDCODE234.taken_by, 'посылка закрыта'); await must(A, 'load'); eq(A.data.spirits.length, n0 + 1, 'второй раз не возвращается');
   });
   atest('Сервер: путь пешком засчитывается, транспорт и скачки — нет', async () => {
     const A = await newPlayer('uk', 55.68, 37.56, 'Лада');
@@ -1014,6 +1021,36 @@
     const extra = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(extra);
     await refuse(S1, 'auctionSell', { uid: extra.uid, cur: 'sparks', price: 100 }, /не больше 5/);
   });
+  atest('Сервер: чат — каналы, уровень, ссылки, частота, фильтр слов, жалобы', async () => {
+    const A = await newPlayer('ca', 55.47, 37.35, 'Болтун'), B = await newPlayer('cb', 55.47, 37.35, 'Слушатель'), C = await newPlayer('cc', 55.47, 37.35, 'Третий'), D2 = await newPlayer('cd', 55.47, 37.35, 'Четвёртый');
+    for (const P of [A, B, C, D2]) { P.data.tut = 0; P.data.level = 5; }
+    A.data.level = 1; await refuse(A, 'chatSend', { ch: 'all', text: 'привет' }, /3 уровня/);
+    eq((await must(A, 'chatList', { ch: 'all' })).msgs.length, 0, 'читать можно и новичку');
+    A.data.level = 5;
+    await refuse(A, 'chatSend', { ch: 'nowhere', text: 'x' }, /канала нет/);
+    await refuse(A, 'chatSend', { ch: 'clan', text: 'x' }, /дружине/);
+    await refuse(A, 'chatSend', { ch: 'all', text: '   ' }, /Напиши/);
+    await refuse(A, 'chatSend', { ch: 'all', text: 'заходи на https://evil.example' }, /Ссылки/);
+    await refuse(A, 'chatSend', { ch: 'all', text: 'пиши мне в t.me/scam' }, /Ссылки/);
+    const s = await must(A, 'chatSend', { ch: 'all', text: '<b>Привет</b>, Орден!' });
+    ok(!/[<>]/.test(s.msg.text) && s.msg.mine, 'разметка вычищена');
+    await refuse(A, 'chatSend', { ch: 'all', text: 'ещё' }, /быстро/);
+    A.srv.chat.t -= 5000; await refuse(A, 'chatSend', { ch: 'all', text: '<b>Привет</b>, Орден!' }, /уже отправлено/);
+    // фильтр слов — только начало слова, обычные слова не трогает
+    eq(GameCore.chatClean('корабля ребус застрахуй себастьян худой'), 'корабля ребус застрахуй себастьян худой', 'без ложных срабатываний');
+    ok(/\*{3}/.test(GameCore.chatClean('ну ты и мудак')) && !/мудак/.test(GameCore.chatClean('ну ты и мудак')), 'грубое слово скрыто');
+    // канал дружины видят только свои
+    A.data.clan = 'medved'; B.data.clan = 'volk';
+    A.srv.chat.t -= 5000; await must(A, 'chatSend', { ch: 'clan', text: 'Медведи, на Капище!' });
+    eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 0, 'чужая дружина не видит');
+    B.data.clan = 'medved'; eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 1, 'своя видит');
+    // новые после after; жалобы: после трёх разных — скрыто
+    const all = (await must(B, 'chatList', { ch: 'all' })).msgs; eq(all.length, 1); ok(!all[0].mine);
+    eq((await must(B, 'chatList', { ch: 'all', after: all[0].id })).msgs.length, 0, 'только новые');
+    await must(B, 'chatReport', { id: all[0].id }); await must(B, 'chatReport', { id: all[0].id }); await must(C, 'chatReport', { id: all[0].id });
+    eq((await must(B, 'chatList', { ch: 'all' })).msgs.length, 1, 'две разных жалобы — ещё видно');
+    await must(D2, 'chatReport', { id: all[0].id }); eq((await must(B, 'chatList', { ch: 'all' })).msgs.length, 0, 'после трёх — скрыто');
+  });
   atest('Безопасность: облик, имена, служебные действия, коды, перебор', async () => {
     // облик от другого игрока не вырывается из атрибута SVG
     const bad = Art.avatar({ cloak: '#fff"/><script>alert(1)<\/script>', eyes: 'red" onload="x', emblem: '__proto__' });
@@ -1031,8 +1068,6 @@
     const codes = new Set(Array.from({ length: 200 }, () => U.code(10)));
     eq(codes.size, 200, 'коды не повторяются'); ok([...codes].every(c => /^[A-HJ-NP-Z2-9]{10}$/.test(c)), 'алфавит без похожих символов');
     // перебор кодов посылок и дружбы ограничен
-    for (let i = 0; i < 30; i++) await refuse(A, 'tradeReceive', { code: 'DUH2.' + U.code(10) }, /не найдена/);
-    await refuse(A, 'tradeReceive', { code: 'DUH2.' + U.code(10) }, /часто/);
     for (let i = 0; i < 30; i++) await refuse(A, 'friendAdd', { pid: 'zz' + U.code(12).toLowerCase() }, /не найден/);
     await refuse(A, 'friendAdd', { pid: 'zz' + U.code(12).toLowerCase() }, /часто/);
   });
