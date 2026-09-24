@@ -5,7 +5,7 @@ importScripts('js/version.js?v=dev');
 const VERSION = 'duholov-v' + APP_VERSION;
 const CORE = [
   './', './index.html', './manifest.webmanifest', './css/style.css?v=dev',
-  './js/version.js?v=dev', './js/config.js?v=dev', './js/settings.js?v=dev', './js/data.js?v=dev', './js/util.js?v=dev', './js/diff.js?v=dev', './js/artpng.js?v=dev', './js/art.js?v=dev', './js/state.js?v=dev', './js/events.js?v=dev', './js/sky.js?v=dev', './js/music.js?v=dev', './js/world.js?v=dev',
+  './js/version.js?v=dev', './js/config.js?v=dev', './js/settings.js?v=dev', './js/data.js?v=dev', './js/util.js?v=dev', './js/diff.js?v=dev', './js/art.js?v=dev', './js/state.js?v=dev', './js/events.js?v=dev', './js/sky.js?v=dev', './js/music.js?v=dev', './js/world.js?v=dev',
   './js/map.js?v=dev', './js/encounter.js?v=dev', './js/raid.js?v=dev', './js/duel.js?v=dev', './js/rules.js?v=dev', './js/trade.js?v=dev', './js/tutorial.js?v=dev', './js/album.js?v=dev', './js/league.js?v=dev',
   './js/journal.js?v=dev', './js/friends.js?v=dev', './js/order.js?v=dev', './js/clans.js?v=dev', './js/hints.js?v=dev', './js/shop.js?v=dev', './js/auction.js?v=dev', './js/chat.js?v=dev', './js/coop.js?v=dev', './js/cloud.js?v=dev', './js/game.js?v=dev', './js/login.js?v=dev', './js/exif.js?v=dev', './js/osm.js?v=dev', './js/pois.js?v=dev', './js/propose.js?v=dev', './js/updater.js?v=dev', './js/ui.js?v=dev', './js/loader.js?v=dev', './js/main.js?v=dev',
   './icons/icon-192.png', './icons/icon-512.png',

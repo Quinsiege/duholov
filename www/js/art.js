@@ -284,20 +284,14 @@ const Art = (() => {
   function shinyHue(sid) { return 90 + Math.round(U.h('shinyhue', sid) * 180); }
   const DARK_AURA = `<g class="art-aura" opacity=".85"><circle cx="100" cy="118" r="78" fill="#3b0764" opacity=".35"/><circle cx="86" cy="104" r="56" fill="#581c87" opacity=".3"/><circle cx="118" cy="128" r="50" fill="#1e0b36" opacity=".35"/></g>` +
     `<g class="art-flicker" fill="#a21caf" opacity=".75"><path d="M40 176 C34 150 52 140 48 118 C62 136 66 154 60 176Z"/><path d="M160 176 C166 150 148 140 152 118 C138 136 134 154 140 176Z"/><path d="M92 180 C88 162 100 156 98 140 C108 154 110 166 106 180Z" opacity=".7"/></g>`;
-  // 3.33: новая PNG-графика (www/art/spirits, список — artpng.js); пока включена только в тестовом контуре (ART_PNG_ON)
-  const png = sid => typeof ART_PNG !== 'undefined' && ART_PNG_ON && ART_PNG.has(sid);
-  const stageScale = sp => sp.stage === 3 ? 1 : sp.stage === 2 ? 0.9 : (sp.evo ? 0.78 : 0.92); // малыши семейства меньше взрослых
-  // у картинки 512×512 объект занимает 88%, низ — на 94% высоты: ставим его на ту же «землю» (y = 180), что и SVG-духов
-  const buildPng = sid => { const k = stageScale(SP[sid]);
-    return `<svg class="art" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><ellipse class="art-shadow" cx="100" cy="180" rx="0" ry="0"/>` +
-      `<g class="art-body" transform="translate(100 180) scale(${k}) translate(-100 -180)"><image class="art-breathe" href="art/spirits/${sid}.png" x="5" y="1.4" width="190" height="190"/></g></svg>`; };
-  const tint = (sid, shiny, dark) => [shiny ? `hue-rotate(${shinyHue(sid)}deg) saturate(1.3) brightness(1.05)` : '', dark ? 'saturate(.7) brightness(.85) contrast(1.1)' : ''].filter(Boolean).join(' ');
   // shiny — сияющий вариант (другой оттенок и искры), dark — омрачённый Навью
   function spirit(sid, shiny, dark) {
-    if (!cache[sid]) cache[sid] = png(sid) ? buildPng(sid) : build(SP[sid]);
+    if (!cache[sid]) cache[sid] = build(SP[sid]);
     let s = cache[sid].replace(/__ID__/g, 'a' + (++seq));
-    const filter = tint(sid, shiny, dark);
-    if (filter) s = s.replace('<g class="art-body"', `<g class="art-body" style="filter:${filter}"`);
+    const filters = [];
+    if (shiny) filters.push(`hue-rotate(${shinyHue(sid)}deg) saturate(1.3) brightness(1.05)`);
+    if (dark) filters.push('saturate(.7) brightness(.85) contrast(1.1)');
+    if (filters.length) s = s.replace('<g class="art-body"', `<g class="art-body" style="filter:${filters.join(' ')}"`);
     if (dark) s = s.replace('<ellipse class="art-shadow"', DARK_AURA + '<ellipse class="art-shadow"');
     if (shiny) s = s.replace(/<\/svg>$/, SPARKLES + '</svg>');
     return s;
@@ -308,9 +302,6 @@ const Art = (() => {
   // рисуется как обычная картинка — вместо сотен DOM-узлов на каждого духа
   const imgCache = {};
   function img(sid, shiny, dark) {
-    // PNG-дух — сразу картинкой 192 px (размер семейства и оттенок — стилем)
-    if (png(sid)) { const f = tint(sid, shiny, dark);
-      return `<img class="art art-png" src="art/spirits/sm/${sid}.png" style="transform:scale(${stageScale(SP[sid])});transform-origin:50% 94%${f ? ';filter:' + f : ''}" alt="" draggable="false">`; }
     const k = sid + (shiny ? ':s' : '') + (dark ? ':d' : '');
     if (!imgCache[k]) imgCache[k] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(spirit(sid, shiny, dark));
     return `<img class="art" src="${imgCache[k]}" alt="" draggable="false">`;
