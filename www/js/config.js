@@ -19,3 +19,5 @@ const CLOUD_PROJECTS = {
   },
 };
 const CLOUD_CONFIG = DEV ? CLOUD_PROJECTS.test : CLOUD_PROJECTS.prod;
+// 3.33: новая PNG-графика духов (ChatGPT, tools/png-publish.ps1) — пока только в тестовом контуре, в проде прежний SVG
+const ART_PNG_ON = DEV;
