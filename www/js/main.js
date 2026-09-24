@@ -83,7 +83,14 @@ window.addEventListener('load', () => {
     else if (S.d && logged) start();
     else { Loader.hide(); if (S.d) Login.gate(start); else UI.onboarding(start, logged ? 1 : 0); } // экран входа: чей прогресс, «Продолжить» (3.28)
   };
-  boot();
+  // 4.1: сбой при запуске — не вечный экран загрузки, а понятная ошибка с повтором (и отчёт на сервер)
+  boot().catch(e => {
+    Errors.report('boot: ' + ((e && e.message) || e), 'main.js', 0, e && e.stack);
+    Loader.hide();
+    const f = U.el('<div class="fatal"><h2>Не получилось запустить игру</h2><p>Проверь подключение к интернету и попробуй ещё раз.</p><button class="btn primary">Повторить</button></div>');
+    f.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(f);
+  });
 
   // Звук можно включить только после первого касания
   const unlock = () => { Sfx.init(); Music.apply(); window.removeEventListener('pointerdown', unlock); };

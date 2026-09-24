@@ -477,7 +477,7 @@ function makeEnv(uid) {
 const FLOOD = 150, BAD_TOKENS = 20;
 // Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
 const LOCK_MS = 30000, LOCK_TRIES = 25;
-const hits = new Map(), badTokens = new Map();
+const hits = new Map(), badTokens = new Map(), errHits = new Map();
 const tooMany = (map, key, max) => {
   const now = Date.now(), m = Math.floor(now / 60000);
   const h = map.get(key);
@@ -507,6 +507,19 @@ Deno.serve(async req => {
     catch (e) { console.error('Казна, уведомление:', String(e)); return new Response('retry', { status: 500 }); }
   }
   if (!allowed) return reply({ ok: false, error: 'Этот сервер игры не принимает запросы с этой страницы' }, 403);
+  // 4.1: ошибка из браузера игрока (www/js/errors.js) — в client_errors; не больше 20 в минуту с адреса, хранится 14 дней
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/log')) {
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+    if (tooMany(errHits, ip, 20)) return reply({ ok: false }, 429);
+    const b = await req.json().catch(() => null), s = (x, n) => String((x == null ? '' : x)).slice(0, n);
+    if (b && b.msg) {
+      const { error } = await db.from('client_errors').insert({ v: s(b.v, 20), page: s(b.page, 100), msg: s(b.msg, 500), src: s(b.src, 200),
+        line: Number.isFinite(+b.line) ? +b.line | 0 : null, stack: s(b.stack, 2000), ua: s(req.headers.get('user-agent'), 300) });
+      if (error) console.error('client_errors:', error.message);
+      if (Math.random() < 0.01) await db.from('client_errors').delete().lt('at', new Date(Date.now() - 14 * 86400000).toISOString());
+    }
+    return reply({ ok: true });
+  }
   if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: 'Закрытый контур: нужен ключ доступа' }, 403);
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);
   const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
