@@ -295,7 +295,9 @@ const UI = {
       pin: ['#fda4af', '#be123c', '#881337'], user: ['#a5b4fc', '#4338ca', '#1e1b4b'], shield: ['#bfdbfe', '#1e40af', '#172554'],
       journal: ['#e2b48a', '#7c4a26', '#3f2212'], gear: ['#cbd5e1', '#475569', '#1e293b'],
     }[k] || ['#e9d5ff', '#6d28d9', '#3b0764'];
-    const [lt, dk, ink] = P, g = 'mi-' + k, W = '#fff', S = 'fill-opacity=".6"';
+    // 3.36 (тестовый контур): «в стиле игры» — символ золотом на ночном медальоне с золотой каймой, как оберег на заставке
+    const game = typeof MENU_ICONS_GAME !== 'undefined' && MENU_ICONS_GAME;
+    const [lt, dk, ink0] = P, g = 'mi-' + k, W = game ? `url(#${g}-au)` : '#fff', ink = game ? '#2a1147' : ink0, S = 'fill-opacity=".6"';
     const gear = (() => { let d = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 16, r = i % 2 ? 9.2 : 12.4;
       d += (i ? 'L' : 'M') + (24 + r * Math.cos(a)).toFixed(1) + ' ' + (24 + r * Math.sin(a)).toFixed(1) + ' ' + (24 + r * Math.cos(a + Math.PI / 8)).toFixed(1) + ' ' + (24 + r * Math.sin(a + Math.PI / 8)).toFixed(1); }
       return d + 'Z'; })();
@@ -350,6 +352,17 @@ const UI = {
         <path d="M33.5 26.5l4.5-4.5 2 2-4.5 4.5-2.8.8z" fill="#fbbf24"/>`,
       gear: `<path d="${gear}" fill="${W}"/><circle cx="24" cy="24" r="4.6" fill="${ink}"/><circle cx="24" cy="24" r="7.2" fill="none" stroke="${ink}" stroke-width="1.2" opacity=".25"/>`,
     };
+    if (game) return `<svg class="mi mi-game" viewBox="0 0 48 48" aria-hidden="true"><defs>
+        <linearGradient id="${g}-au" gradientUnits="userSpaceOnUse" x1="0" y1="9" x2="0" y2="40"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#d97706"/></linearGradient>
+        <linearGradient id="${g}-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fef3c7"/><stop offset=".5" stop-color="#f59e0b"/><stop offset="1" stop-color="#92400e"/></linearGradient>
+        <radialGradient id="${g}-bg" cx=".5" cy=".38" r=".7"><stop offset="0" stop-color="#3b1d7a"/><stop offset="1" stop-color="#140a2c"/></radialGradient>
+        <radialGradient id="${g}-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${lt}" stop-opacity=".55"/><stop offset="1" stop-color="${lt}" stop-opacity="0"/></radialGradient></defs>
+      <circle cx="24" cy="25" r="22" fill="#0a0616" opacity=".6"/>
+      <circle cx="24" cy="24" r="22" fill="url(#${g}-bg)"/><circle cx="24" cy="24" r="16" fill="url(#${g}-glow)"/>
+      <circle cx="24" cy="24" r="18.3" fill="none" stroke="#fde047" stroke-opacity=".32" stroke-width="1" stroke-dasharray="2.4 2.2"/>
+      <circle cx="24" cy="24" r="21.6" fill="none" stroke="url(#${g}-rim)" stroke-width="2.4"/>
+      <path d="M11 13.5a17 17 0 0 1 26 0" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="1.6" stroke-linecap="round"/>
+      <g transform="translate(24 24.5) scale(.8) translate(-24 -24)" style="filter:drop-shadow(0 1.2px 0 #1a0b2e) drop-shadow(0 0 3px rgba(253,224,71,.35))">${G[k] || ''}</g></svg>`;
     return `<svg class="mi" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lt}"/><stop offset="1" stop-color="${dk}"/></linearGradient></defs>
       <rect x="1" y="2" width="46" height="45" rx="14" fill="${ink}" opacity=".55"/><rect x="1" y="1" width="46" height="44" rx="14" fill="url(#${g})"/>
       <path d="M8 3.5h32a7 7 0 0 1 6 5c-9 4-29 4-44 0a7 7 0 0 1 6-5z" fill="#fff" opacity=".22"/>
