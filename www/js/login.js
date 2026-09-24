@@ -91,7 +91,7 @@ const Login = {
     catch (e) { UI.toast(U.esc(e.message)); return false; }
     const name = this.NAMES[pend.provider];
     if (r.linked) {
-      await this.load();
+      await this.load(); this.markLogged(); // сразу в игру, без экрана входа
       UI.toast(r.already ? `Вход через ${name} уже привязан` : `Готово: вход через ${name} привязан — прогресс не потеряется`, 'good');
       return false;
     }
@@ -101,7 +101,7 @@ const Login = {
         const sb = await Cloud.client();
         const { error } = await sb.auth.verifyOtp({ token_hash: r.token_hash, type: 'email' });
         if (error) { UI.toast('Не удалось войти — попробуй ещё раз'); return false; }
-        return true;
+        this.markLogged(); return true;
       };
       if (!S.d || pend.mode === 'start') return go();
       const who = r.player ? `«${U.esc(r.player.name)}» (${r.player.level} ур.)` : 'другому Ловчему';
@@ -141,35 +141,50 @@ const Login = {
         const sb = await Cloud.client();
         const { error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
         if (error) { UI.toast('Неверная почта или пароль'); b.disabled = false; return; }
-        location.reload();
+        this.markLogged(); location.reload();
       } catch (err) { UI.toast('Нет связи с сервером — попробуй ещё раз'); b.disabled = false; }
     };
   },
-  // Вернувшийся Ловчий: чей это прогресс, «Продолжить»; гостю — привязать вход, вошедшему — другой аккаунт или выйти
+  // Панель входа (3.30): заголовок, кнопки сервисов, внизу — почта и пароль (+ extra, например «Выйти»)
+  panel(head, buttons, extra = '') {
+    return `<div class="auth-panel"><div class="auth-head">${head}</div>
+      ${buttons ? `<div class="login-row">${buttons}</div>` : ''}
+      ${this.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
+      <div class="auth-foot"><button class="linkish mail-login">${UI.I.key}Почта и пароль</button>${extra}</div></div>`;
+  },
+  // Только что вошёл (через сервис или по почте) — экран входа при следующем запуске страницы не нужен
+  SKIP: 'duholov.justLogged',
+  markLogged() { try { sessionStorage.setItem(this.SKIP, '1'); } catch (e) {} },
+  justLogged() { let v = null; try { v = sessionStorage.getItem(this.SKIP); sessionStorage.removeItem(this.SKIP); } catch (e) {} return !!v; },
+  // Вернувшийся Ловчий: «С возвращением», чей это прогресс, «Продолжить»; ниже — панель входа
   gate(done) {
-    const root = U.el('<div class="onb"></div>'), d = S.d, links = this.linked(), avail = this.available();
+    const root = U.el('<div class="onb"></div>'), d = S.d, avail = this.available(), guest = this.isGuest();
+    const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
+    const panel = guest
+      ? this.panel('<b>Сохрани прогресс</b><small>Привяжи вход — и прогресс откроется на любом устройстве</small>', this.buttons('link'))
+      : this.panel('<b>Другой аккаунт</b><small>Войди через другой сервис — или выйди и начни гостем</small>',
+        avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''),
+        `<span class="auth-dot">·</span><button class="linkish out">${UI.I.logout}Выйти</button>`);
     root.innerHTML = `<div class="onb-step s0 gate">
-      <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1></div>
+      <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>С возвращением, Ловчий!</p></div>
       <div class="acc-card" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
-        <div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
-        <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div>
+        <div class="acc-top"><div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
+          <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div></div>
+        <div class="acc-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>духов</span></div><div><b>${dex}/${SPECIES.length}</b><span>бестиарий</span></div>
+          <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>поймано</span></div></div>
       </div>
       <button class="btn primary wide go">Продолжить</button>
-      ${!this.isGuest()
-        ? `${avail.length ? `<div class="onb-or"><span>войти в другой аккаунт</span></div><div class="login-row">${avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join('')}</div>` : ''}
-           <button class="btn ghost wide out">Выйти и начать гостем</button>`
-        : avail.length ? `<div class="onb-or"><span>сохрани прогресс — привяжи вход</span></div><div class="login-row">${this.buttons('link')}</div>` : ''}
-      ${this.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
-      <button class="linkish mail-login">Войти по почте и паролю</button>
+      ${Game.on() ? panel : ''}
     </div>`;
     document.body.appendChild(root);
     const close = () => { root.classList.add('out'); setTimeout(() => root.remove(), 400); };
     root.querySelector('.go').onclick = () => { Sfx.init(); Sfx.play('tap'); close(); done(); };
     root.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => this.start(b.dataset.login, 'link'); });
     root.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
-    root.querySelector('.mail-login').onclick = () => this.emailForm();
+    const mail = root.querySelector('.mail-login');
+    if (mail) mail.onclick = () => this.emailForm();
     const out = root.querySelector('.out');
-    if (out) out.onclick = () => UI.confirm('Выйти?', 'Твой прогресс останется в учётной записи — вернуться в неё можно входом через привязанный сервис. На этом устройстве начнётся новая гостевая игра.', 'Выйти', () => this.signOut());
+    if (out) out.onclick = () => UI.confirm('Выйти?', 'Твой прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.', 'Выйти', () => this.signOut());
   },
   // Войти в другой аккаунт: выйти из текущего (он сохранён за сервисом) и войти через выбранный сервис
   async switchTo(provider) {

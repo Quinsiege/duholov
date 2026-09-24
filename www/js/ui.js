@@ -1266,7 +1266,7 @@ const UI = {
   },
 
   /* ---------------- ЗНАКОМСТВО ---------------- */
-  onboarding(done) {
+  onboarding(done, from = 0) { // from: 1 — сразу к истории (новичок только что вошёл через сервис или по почте)
     const root = U.el('<div class="onb"></div>');
     document.body.appendChild(root);
     let name = '', starter = null;
@@ -1278,9 +1278,7 @@ const UI = {
         <div class="onb-spirits">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
         ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
         <button class="btn primary wide next">Начать гостем</button>
-        ${Login.available().length ? `<div class="onb-or"><span>или войди — прогресс не потеряется</span></div><div class="login-row">${Login.buttons('start')}</div>` : ''}
-        ${Login.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
-        ${Game.on() ? '<button class="linkish mail-login">Войти по почте и паролю</button>' : ''}
+        ${Game.on() ? Login.panel(`<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>`, Login.buttons('start'), '') : ''}
         <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
@@ -1322,6 +1320,6 @@ const UI = {
       const have = root.querySelector('.have');
       if (have) have.onclick = () => Game.claimDialog(() => { root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); });
     };
-    step(0);
+    step(from);
   },
 };

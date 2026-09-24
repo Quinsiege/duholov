@@ -1475,3 +1475,24 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .acc-tag.mail { padding-left: 8px; }
 .acc-tag.mail .ico { width: 14px; height: 14px; color: var(--violet); }
 .onb ~ .modal-wrap { z-index: 2600; } /* окна поверх экрана входа (почта, «Выйти?», подтверждения) */
+
+/* ---------- 3.30: экран входа ---------- */
+.onb .gate { gap: 14px; }
+.gate .onb-logo p { color: var(--gold2); font-weight: 600; }
+.acc-card { flex-direction: column; align-items: stretch; gap: 12px; }
+.acc-card .acc-top { display: flex; align-items: center; gap: 14px; }
+.acc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.acc-stats div { padding: 7px 4px; border-radius: 12px; background: rgba(0, 0, 0, .18); }
+.acc-stats b { display: block; font-size: 15px; } .acc-stats span { font-size: 10.5px; color: var(--muted); }
+.auth-panel { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 20px;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.auth-head { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.auth-head b { font-size: 15px; } .auth-head small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.auth-panel .login-row { margin: 0; max-width: none; }
+.auth-foot { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.auth-foot .linkish { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; text-decoration: none; }
+.auth-foot .linkish .ico { width: 15px; height: 15px; }
+.auth-foot .linkish:active { color: var(--text); }
+.auth-dot { color: var(--muted); }
+.auth-panel .login-row { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; }
+.auth-panel .login-btn { padding: 8px 6px; gap: 6px; font-size: 13px; min-height: 42px; }

@@ -65,9 +65,11 @@ window.addEventListener('load', () => {
       if (await Login.resume()) { location.reload(); return; }
       await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
+    // только что вошёл через сервис или по почте — сразу в игру (или к истории новичка), без экрана входа (3.30)
+    const logged = Login.justLogged();
     if (Game.moved) Game.onMoved();
-    else if (S.d) Login.gate(start); // экран входа: чей прогресс, «Продолжить» (3.28)
-    else UI.onboarding(start);
+    else if (S.d) logged ? start() : Login.gate(start); // экран входа: чей прогресс, «Продолжить» (3.28)
+    else UI.onboarding(start, logged ? 1 : 0);
   };
   boot();
 
