@@ -1327,3 +1327,4 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .chat-day span { padding: 2px 10px; border-radius: 10px; background: rgba(255, 255, 255, .06); }
 .msg.cont { margin-top: -5px; border-top-left-radius: 6px; }
 .msg.mine.cont { border-top-left-radius: 16px; border-top-right-radius: 6px; }
+.modal-wrap:has(.key-modal) { z-index: 9500; } /* окно ключа тестового контура — поверх заставки загрузки */
