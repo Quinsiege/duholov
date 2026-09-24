@@ -295,7 +295,7 @@ const UI = {
       pin: ['#fda4af', '#be123c', '#881337'], user: ['#a5b4fc', '#4338ca', '#1e1b4b'], shield: ['#bfdbfe', '#1e40af', '#172554'],
       journal: ['#e2b48a', '#7c4a26', '#3f2212'], gear: ['#cbd5e1', '#475569', '#1e293b'],
     }[k] || ['#e9d5ff', '#6d28d9', '#3b0764'];
-    // 3.36 (тестовый контур): «в стиле игры» — символ золотом на ночном медальоне с золотой каймой, как оберег на заставке
+    // 3.36 (тестовый контур): мультяшные значки «в стиле игры» — см. ниже
     const game = typeof MENU_ICONS_GAME !== 'undefined' && MENU_ICONS_GAME;
     const [lt, dk, ink0] = P, g = 'mi-' + k, W = game ? `url(#${g}-au)` : '#fff', ink = game ? '#2a1147' : ink0, S = 'fill-opacity=".6"';
     const gear = (() => { let d = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 16, r = i % 2 ? 9.2 : 12.4;
@@ -352,17 +352,25 @@ const UI = {
         <path d="M33.5 26.5l4.5-4.5 2 2-4.5 4.5-2.8.8z" fill="#fbbf24"/>`,
       gear: `<path d="${gear}" fill="${W}"/><circle cx="24" cy="24" r="4.6" fill="${ink}"/><circle cx="24" cy="24" r="7.2" fill="none" stroke="${ink}" stroke-width="1.2" opacity=".25"/>`,
     };
+    // 3.36 (тестовый контур): мультяшный медальон, как оберег на заставке — толстая золотая кайма с обводкой и бликом,
+    // внутри ночной диск; символ раздела — яркий, с глянцевым верхом и толстой тёмной обводкой по силуэту (как у духов)
     if (game) return `<svg class="mi mi-game" viewBox="0 0 48 48" aria-hidden="true"><defs>
-        <linearGradient id="${g}-au" gradientUnits="userSpaceOnUse" x1="0" y1="9" x2="0" y2="40"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#d97706"/></linearGradient>
-        <linearGradient id="${g}-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fef3c7"/><stop offset=".5" stop-color="#f59e0b"/><stop offset="1" stop-color="#92400e"/></linearGradient>
-        <radialGradient id="${g}-bg" cx=".5" cy=".38" r=".7"><stop offset="0" stop-color="#3b1d7a"/><stop offset="1" stop-color="#140a2c"/></radialGradient>
-        <radialGradient id="${g}-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${lt}" stop-opacity=".55"/><stop offset="1" stop-color="${lt}" stop-opacity="0"/></radialGradient></defs>
-      <circle cx="24" cy="25" r="22" fill="#0a0616" opacity=".6"/>
-      <circle cx="24" cy="24" r="22" fill="url(#${g}-bg)"/><circle cx="24" cy="24" r="16" fill="url(#${g}-glow)"/>
-      <circle cx="24" cy="24" r="18.3" fill="none" stroke="#fde047" stroke-opacity=".32" stroke-width="1" stroke-dasharray="2.4 2.2"/>
-      <circle cx="24" cy="24" r="21.6" fill="none" stroke="url(#${g}-rim)" stroke-width="2.4"/>
-      <path d="M11 13.5a17 17 0 0 1 26 0" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="1.6" stroke-linecap="round"/>
-      <g transform="translate(24 24.5) scale(.8) translate(-24 -24)" style="filter:drop-shadow(0 1.2px 0 #1a0b2e) drop-shadow(0 0 3px rgba(253,224,71,.35))">${G[k] || ''}</g></svg>`;
+        <linearGradient id="${g}-au" gradientUnits="userSpaceOnUse" x1="0" y1="8" x2="0" y2="44"><stop offset="0" stop-color="#fff"/><stop offset=".32" stop-color="${lt}"/><stop offset="1" stop-color="${dk}"/></linearGradient>
+        <linearGradient id="${g}-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef08a"/><stop offset=".5" stop-color="#fbbf24"/><stop offset="1" stop-color="#b45309"/></linearGradient>
+        <radialGradient id="${g}-bg" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="#4c2a91"/><stop offset="1" stop-color="#1a0d38"/></radialGradient>
+        <radialGradient id="${g}-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${lt}" stop-opacity=".5"/><stop offset="1" stop-color="${lt}" stop-opacity="0"/></radialGradient>
+        <filter id="${g}-ol" x="-25%" y="-25%" width="150%" height="150%"><feMorphology in="SourceAlpha" operator="dilate" radius="1.7" result="d"/>
+          <feFlood flood-color="#1c0b33"/><feComposite in2="d" operator="in" result="o"/><feOffset in="o" dy="1.3" result="s"/>
+          <feMerge><feMergeNode in="s"/><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <ellipse cx="24" cy="45.2" rx="15" ry="2.6" fill="#000" opacity=".35"/>
+      <circle cx="24" cy="24" r="23" fill="#1c0b33"/>
+      <circle cx="24" cy="24" r="20.9" fill="none" stroke="url(#${g}-rim)" stroke-width="3.8"/>
+      <circle cx="24" cy="24" r="18.6" fill="url(#${g}-bg)" stroke="#1c0b33" stroke-width="1.3"/>
+      <circle cx="24" cy="24" r="15.5" fill="url(#${g}-glow)"/>
+      <circle cx="24" cy="24" r="16.4" fill="none" stroke="#fde047" stroke-opacity=".22" stroke-width="1" stroke-dasharray="2.2 2.2"/>
+      <ellipse cx="14.2" cy="8.6" rx="4.6" ry="1.9" transform="rotate(-30 14.2 8.6)" fill="#fff" opacity=".75"/>
+      <circle cx="36.5" cy="39.2" r="1.2" fill="#fff" opacity=".35"/>
+      <g transform="translate(24 24.2) scale(.86) translate(-24 -24)" filter="url(#${g}-ol)">${G[k] || ''}</g></svg>`;
     return `<svg class="mi" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lt}"/><stop offset="1" stop-color="${dk}"/></linearGradient></defs>
       <rect x="1" y="2" width="46" height="45" rx="14" fill="${ink}" opacity=".55"/><rect x="1" y="1" width="46" height="44" rx="14" fill="url(#${g})"/>
       <path d="M8 3.5h32a7 7 0 0 1 6 5c-9 4-29 4-44 0a7 7 0 0 1 6-5z" fill="#fff" opacity=".22"/>
