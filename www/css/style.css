@@ -1846,3 +1846,24 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .bk-tag { padding: 4px 10px; border-radius: 12px; font-size: 12.5px; font-weight: 700; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); }
 .bk-chip { padding: 5px 10px; border-radius: 12px; font-size: 12.5px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); color: var(--muted); }
 .bk-chip.on { color: var(--text); border-color: rgba(253, 224, 71, .5); background: rgba(251, 191, 36, .12); }
+
+/* ---------- 4.0: наставник поверх интерфейса, подсветка цели ---------- */
+#coach.tut-coach { z-index: 2300; padding: 10px 12px; gap: 10px; max-width: 520px; margin: 0 auto; transition: none; } /* без анимации места: его меряет Tut.track() */
+#coach.tut-coach .coach-ava { width: 38px; height: 38px; }
+#coach.tut-coach .coach-main { font-size: 13.5px; line-height: 1.38; }
+#coach.tut-coach .coach-bar { margin-top: 7px; }
+#coach.tut-coach.pos-top { top: calc(84px + var(--st)); bottom: auto; }
+#coach.tut-coach.pos-bottom { top: auto; bottom: calc(118px + var(--sb)); }
+#coach.tut-coach.in-screen.pos-top { top: calc(68px + var(--st)); }
+#coach.tut-coach.in-screen.pos-bottom { bottom: calc(12px + var(--sb)); }
+.coach-back { display: block; margin-top: 4px; font-size: 12px; color: #fde68a; }
+#tutRing { position: fixed; z-index: 2290; pointer-events: none; border-radius: 18px; border: 3px solid var(--gold2);
+  box-shadow: 0 0 0 4px rgba(253, 224, 71, .25), 0 0 24px rgba(253, 224, 71, .6); transition: left .2s, top .2s, width .2s, height .2s; animation: tutRing 1.2s ease-in-out infinite; }
+#tutRing.round { border-radius: 50%; }
+#tutRing i { position: absolute; left: 50%; top: -30px; width: 0; height: 0; margin-left: -9px; border: 9px solid transparent; border-top: 14px solid var(--gold2);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .5)); animation: tutArrow 1s ease-in-out infinite; }
+@keyframes tutRing { 50% { box-shadow: 0 0 0 9px rgba(253, 224, 71, .12), 0 0 34px rgba(253, 224, 71, .8); } }
+@keyframes tutArrow { 50% { transform: translateY(-6px); } }
+.calm #tutRing, .calm #tutRing i { animation: none; }
+#coach .coach-ok { display: flex; width: auto; min-height: 36px; margin-top: 8px; padding: 6px 18px; font-size: 13.5px; }
+#coach.info { border-color: rgba(253, 224, 71, .55); }
