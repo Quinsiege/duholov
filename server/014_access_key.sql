@@ -11,6 +11,7 @@ create table if not exists private.settings (
   v text not null
 );
 revoke all on schema private from public, anon, authenticated;
+alter table private.settings enable row level security;   -- политик нет: читает только хук (владелец таблицы)
 revoke all on private.settings from public, anon, authenticated;
 
 create or replace function public.before_user_created(event jsonb)
