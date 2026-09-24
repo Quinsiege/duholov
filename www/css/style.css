@@ -1604,3 +1604,49 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   color: var(--text); background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); box-shadow: none; }
 .btn.acc-link:active { transform: scale(.96); background: rgba(255, 255, 255, .14); }
 .onb .s0 { gap: 14px; }
+
+/* ---------- 3.34: профиль Ловчего ---------- */
+.prof-hero { flex-direction: column; align-items: stretch; gap: 14px; padding: 18px 16px 16px; }
+.prof-top { display: flex; align-items: center; gap: 14px; }
+.prof-top .pc-id { flex: 1; }
+.prof-top .acc-tags { margin-top: 6px; }
+.prof-hero .prof-xp { margin: 0; text-align: left; }
+.prof-xp-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 12px; }
+.prof-xp-row b { font-size: 13px; } .prof-xp-row span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.prof-hero .prof-xp .pbar { margin: 0; }
+.prof-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.pa { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 11px; border-radius: 16px; text-align: center;
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+.pa b { font-size: 13px; line-height: 1.2; } .pa small { font-size: 10.5px; color: var(--muted); margin-top: -3px; }
+.pa-ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: var(--violet); background: rgba(167, 139, 250, .14); }
+.pa-ic .ico { width: 20px; height: 20px; }
+.pa:active { transform: scale(.96); background: rgba(255, 255, 255, .09); }
+.pa.hot { border-color: rgba(251, 191, 36, .5); background: rgba(251, 191, 36, .1); } .pa.hot .pa-ic { color: var(--gold2); background: rgba(251, 191, 36, .18); }
+.pa.off { opacity: .55; }
+.prof > .prof-acc.guest { margin: 0 0 12px; }
+.prof-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.prof-key > div { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px 14px; border-radius: 16px; text-align: center; overflow: hidden;
+  background: linear-gradient(180deg, rgba(251, 191, 36, .1), rgba(255, 255, 255, .03)); border: 1px solid rgba(251, 191, 36, .22); }
+.pk-ic { color: var(--gold2); margin-bottom: 2px; } .pk-ic .ico { width: 20px; height: 20px; }
+.prof-key b { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; } .prof-key b em { font-style: normal; font-size: 13px; color: var(--muted); font-weight: 700; }
+.prof-key small { font-size: 11px; color: var(--muted); }
+.pk-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255, 255, 255, .08); }
+.pk-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--teal), var(--gold2)); }
+.prof-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-radius: 18px; overflow: hidden; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+.pr-row { display: flex; align-items: center; gap: 8px; padding: 10px 12px; min-width: 0; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.pr-row:nth-child(odd) { border-right: 1px solid rgba(255, 255, 255, .06); }
+.pr-ic { color: var(--violet); flex: none; } .pr-ic .ico { width: 16px; height: 16px; }
+.pr-t { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); line-height: 1.25; }
+.pr-row b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.prof-actions .pa { margin: 0; width: auto; }
+.prof-rows, .prof-hero { text-align: left; }
+
+/* ---------- 3.34: экран входа — «Другой аккаунт» свёрнут ---------- */
+.gate-more { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; color: var(--muted);
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+.gate-more .ico { width: 16px; height: 16px; }
+.gm-chev { font-style: normal; font-size: 18px; line-height: 1; transition: transform .2s; }
+.gate-more.open { color: var(--text); } .gate-more.open .gm-chev { transform: rotate(90deg); }
+.gate-more:active { transform: scale(.97); }
+.gate-other { width: 100%; max-width: 360px; animation: fadeUp .25s ease-out; }
+.gate-other .auth-panel { max-width: none; }

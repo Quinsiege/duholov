@@ -902,6 +902,7 @@ const UI = {
     const d = S.d, cur = levelXP(d.level), next = levelXP(d.level + 1);
     const caught = SPECIES.filter(s => d.dex[s.id] && d.dex[s.id].caught).length;
     const bsp = S.buddySpirit();
+    const days = Math.max(1, Math.ceil((Date.now() - d.created) / 864e5));
     const buddyHtml = bsp ? `<div class="prof-buddy"><div class="pb-art">${Art.of(bsp)}</div><div class="pb-main"><b>♥ ${U.esc(bsp.nick || SP[bsp.sid].name)}</b><small>Спутник · находок: ${d.buddy.finds}</small>
       <div class="pbar"><i style="width:${Math.min(100, d.buddy.km / S.buddyDist(bsp) * 100)}%"></i></div><small>${d.buddy.km.toFixed(2)} / ${S.buddyDist(bsp)} км до находки</small></div></div>`
       : '<div class="prof-buddy empty-b">Спутника нет. Выбери его на карточке духа.</div>';
@@ -913,31 +914,37 @@ const UI = {
     const scr = this.screen('Ловчий', `
       <div class="prof">
         <div class="pc-hero prof-hero" style="--cc:${d.clan ? CLANS[d.clan].color : '#fbbf24'}">
-          <div class="pc-ava prof-ava-wrap"><div class="prof-ava">${this.avatar()}</div><span class="pc-lvl">${d.level}</span></div>
-          <div class="pc-id"><b class="pc-name">${U.esc(d.name)}</b><small>${this.rank(d.level)} Ордена Оберега</small>
-            <div class="pc-tags">${d.clan ? `<span class="pc-tag clan">${CLANS[d.clan].short}</span>` : ''}<span class="pc-tag">в Ордене ${(n => `${n} ${U.plural(n, 'день', 'дня', 'дней')}`)(Math.max(1, Math.ceil((Date.now() - d.created) / 864e5)))}</span></div></div>
+          <div class="prof-top">
+            <div class="pc-ava prof-ava-wrap"><div class="prof-ava">${this.avatar()}</div><span class="pc-lvl">${d.level}</span></div>
+            <div class="pc-id"><b class="pc-name">${U.esc(d.name)}</b><small>${this.rank(d.level)} Ордена Оберега</small>
+              <div class="pc-tags">${d.clan ? `<span class="pc-tag clan">${CLANS[d.clan].short}</span>` : ''}<span class="pc-tag">в Ордене ${days} ${U.plural(days, 'день', 'дня', 'дней')}</span></div>
+              ${Game.on() ? `<div class="acc-tags">${Login.accountTags()}</div>` : ''}</div>
+          </div>
+          <div class="prof-xp">
+            <div class="prof-xp-row"><b>${d.level >= MAX_LEVEL ? 'Максимальный уровень' : `${d.level} → ${d.level + 1} уровень`}</b>${d.level >= MAX_LEVEL ? '' : `<span>${U.fmtNum(d.xp - cur)} / ${U.fmtNum(next - cur)}</span>`}</div>
+            <div class="pbar big"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
+          </div>
         </div>
-        <div class="prof-xp"><div class="pbar big"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
-          <small>${d.level >= MAX_LEVEL ? 'Максимальный уровень' : `${U.fmtNum(d.xp - cur)} / ${U.fmtNum(next - cur)} опыта до ${d.level + 1} уровня`}</small></div>
-        <div class="prof-btns"><button class="btn small look-btn">Облик</button><button class="btn small journal-btn">Дневник</button>
-          ${d.clan ? '<button class="btn small clan-open">Дружина</button>' : d.level >= CLAN_LEVEL ? '<button class="btn small primary clan-btn">Выбрать дружину</button>' : ''}</div>
-        ${Game.on() ? `<div class="prof-acc ${Login.isGuest() ? 'guest' : ''}"><div class="acc-tags">${Login.accountTags()}</div>
-          ${Login.isGuest() && Login.available().length ? `<small>Привяжи вход — прогресс откроется на любом устройстве:</small><div class="login-row">${Login.buttons('link')}</div>` : ''}</div>` : ''}
-        <div class="prof-stats">
-          <div><b>${U.fmtNum(d.stats.caught)}</b><span>поймано духов</span></div>
-          <div><b>${caught}/${SPECIES.length}</b><span>видов в бестиарии</span></div>
-          <div><b>${U.fmtDist(d.stats.km * 1000)}</b><span>пройдено</span></div>
-          <div><b>${d.stats.springs}</b><span>родников</span></div>
-          <div><b>${d.stats.raids}</b><span>закрыто разломов</span></div>
-          <div><b>${d.stats.duels}</b><span>побед в капищах</span></div>
-          <div><b>${d.stats.evolved}</b><span>превращений</span></div>
-          <div><b>${d.stats.hatched}</b><span>из коконов</span></div>
-          <div><b>${d.stats.shiny}</b><span>сияющих</span></div>
-          <div><b>${d.stats.invasions}</b><span>вторжений отбито</span></div>
-          <div><b>${d.stats.purified}</b><span>очищено духов</span></div>
-          <div><b>${d.stats.throwsGreat}</b><span>отличных бросков</span></div>
+        <div class="prof-actions">
+          <button class="pa look-btn"><span class="pa-ic">${this.I.edit}</span><b>Облик</b></button>
+          <button class="pa journal-btn"><span class="pa-ic">${this.I.journal}</span><b>Дневник</b></button>
+          ${d.clan ? `<button class="pa clan-open"><span class="pa-ic">${this.I.shield}</span><b>Дружина</b></button>`
+            : d.level >= CLAN_LEVEL ? `<button class="pa hot clan-btn"><span class="pa-ic">${this.I.shield}</span><b>Выбрать дружину</b></button>`
+            : `<button class="pa off" disabled><span class="pa-ic">${this.I.shield}</span><b>Дружина</b><small>с ${CLAN_LEVEL} уровня</small></button>`}
         </div>
-        ${d.clan ? `<div class="prof-clan-line">${Clans.badge(d.clan)}<small>защитников поставлено: ${d.stats.defends || 0} · Капищ освобождено: ${d.stats.freed || 0}</small></div>` : ''}
+        ${Game.on() && Login.isGuest() && Login.available().length ? `<div class="prof-acc guest"><small>Привяжи вход — прогресс откроется на любом устройстве:</small><div class="login-row">${Login.buttons('link')}</div></div>` : ''}
+        <div class="prof-key">
+          <div><span class="pk-ic">${this.I.spirits}</span><b>${U.fmtNum(d.stats.caught)}</b><small>поймано духов</small></div>
+          <div><span class="pk-ic">${this.I.book}</span><b>${caught}<em>/${SPECIES.length}</em></b><small>бестиарий</small><i class="pk-bar"><i style="width:${caught / SPECIES.length * 100}%"></i></i></div>
+          <div><span class="pk-ic">${this.I.trail}</span><b>${U.fmtDist(d.stats.km * 1000)}</b><small>пройдено</small></div>
+        </div>
+        <h3 class="prof-h">Достижения</h3>
+        <div class="prof-rows">${[
+          ['pin', 'Родников', d.stats.springs], ['rift', 'Закрыто разломов', d.stats.raids], ['shield', 'Побед на Капищах', d.stats.duels],
+          ['target', 'Вторжений отбито', d.stats.invasions], ['star', 'Превращений', d.stats.evolved], ['egg', 'Из коконов', d.stats.hatched],
+          ['star', 'Сияющих', d.stats.shiny], ['spirits', 'Очищено духов', d.stats.purified], ['target', 'Отличных бросков', d.stats.throwsGreat],
+          ...(d.clan ? [['shield', 'Защитников поставлено', d.stats.defends || 0], ['trophy', 'Капищ освобождено', d.stats.freed || 0]] : []),
+        ].map(([ic, t, v]) => `<div class="pr-row"><span class="pr-ic">${this.I[ic]}</span><span class="pr-t">${t}</span><b>${U.fmtNum(v || 0)}</b></div>`).join('')}</div>
         <h3 class="prof-h">Спутник</h3>
         ${buddyHtml}
         <h3 class="prof-h">Знаки Ордена <small>${Object.values(d.medals).reduce((a, b) => a + b, 0)} / ${MEDALS.length * 3}</small></h3>
