@@ -22,9 +22,8 @@ const Coop = {
     if (m.t === 'lobby') this.poll(); // кто-то вошёл или вышел — спросим сервер
     else if (m.t === 'start' && !this.host && !this.running) this.poll();
     else if (m.t === 'dmg' && this.host && this.running) {
-      const k = String(m.from);
-      this.dmgBy[k] = { name: String(m.name || 'Союзник').slice(0, 20), n: ((this.dmgBy[k] || {}).n || 0) + (+m.n || 0) };
-      Raid.remoteHit(this.dmgBy[k].name, +m.n || 0);
+      const k = String(m.from), n = Raid.remoteHit(String(m.name || 'Союзник').slice(0, 20), m.n);
+      if (n) this.dmgBy[k] = { name: String(m.name || 'Союзник').slice(0, 20), n: ((this.dmgBy[k] || {}).n || 0) + n };
     } else if (m.t === 'state' && !this.host) { Raid.remoteState(m.hp, m.time); Raid.renderAllies(m.dmg); }
     else if (m.t === 'end' && !this.host) { Raid.renderAllies(m.dmg); Raid.remoteEnd(m.win); }
   },

@@ -236,13 +236,22 @@ const Raid = {
   },
 
   /* ---------- совместный бой ---------- */
-  remoteHit(name, n) { // у хозяина: урон союзника
-    const st = this.st; if (!st || st.over) return;
+  remoteHit(name, n) { // у хозяина: урон союзника. Возвращает засчитанный урон.
+    // 4.1: сообщение из открытого канала — только разумные числа: не больше 4% здоровья босса за удар и 12% за секунду от всех союзников
+    const st = this.st; if (!st || st.over) return 0;
+    n = Math.floor(+n);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    const max = st.bs.hp, now = Date.now(), w = st.allyWin || (st.allyWin = { t: now, n: 0 });
+    n = Math.min(n, Math.ceil(max * 0.04));
+    if (now - w.t > 1000) { w.t = now; w.n = 0; }
+    if (w.n + n > max * 0.12) return 0;
+    w.n += n;
     st.bossHp = Math.max(0, st.bossHp - n);
     const b = st.$('.raid-boss').getBoundingClientRect();
     this.float(`${n}`, b.left + b.width * (0.15 + Math.random() * 0.7), b.top + b.height * 0.55, 'ally');
     if (st.bossHp <= 0) this.finish(true);
     this.render();
+    return n;
   },
   remoteState(hp, time) { // у гостя: состояние от хозяина
     const st = this.st; if (!st || st.over) return;

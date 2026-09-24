@@ -566,13 +566,15 @@ Deno.serve(async req => {
       return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
     }
     if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });
-    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: res.data || null, p_srv: res.srv,
-      p_ver: String(body.v || '').slice(0, 20) }));
+    // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
+    const ops = row && res.data ? Diff.make(row.data, res.data) : null;
+    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
+      p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
     if (rev == null) return reply({ ok: false, error: 'Прогресс изменился на другом устройстве — повтори действие' });
     locked = false; // замок снят вместе с сохранением
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
-    const patch = !res.full && row && body.rev === row.rev ? Diff.make(row.data, res.data) : null;
+    const patch = !res.full && row && body.rev === row.rev ? ops : null;
     return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
   } catch (e) {
     console.error(String(e && e.stack || e));

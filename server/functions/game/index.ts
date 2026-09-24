@@ -2326,13 +2326,22 @@ const Raid = {
   },
 
   /* ---------- совместный бой ---------- */
-  remoteHit(name, n) { // у хозяина: урон союзника
-    const st = this.st; if (!st || st.over) return;
+  remoteHit(name, n) { // у хозяина: урон союзника. Возвращает засчитанный урон.
+    // 4.1: сообщение из открытого канала — только разумные числа: не больше 4% здоровья босса за удар и 12% за секунду от всех союзников
+    const st = this.st; if (!st || st.over) return 0;
+    n = Math.floor(+n);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    const max = st.bs.hp, now = Date.now(), w = st.allyWin || (st.allyWin = { t: now, n: 0 });
+    n = Math.min(n, Math.ceil(max * 0.04));
+    if (now - w.t > 1000) { w.t = now; w.n = 0; }
+    if (w.n + n > max * 0.12) return 0;
+    w.n += n;
     st.bossHp = Math.max(0, st.bossHp - n);
     const b = st.$('.raid-boss').getBoundingClientRect();
     this.float(`${n}`, b.left + b.width * (0.15 + Math.random() * 0.7), b.top + b.height * 0.55, 'ally');
     if (st.bossHp <= 0) this.finish(true);
     this.render();
+    return n;
   },
   remoteState(hp, time) { // у гостя: состояние от хозяина
     const st = this.st; if (!st || st.over) return;
@@ -3408,12 +3417,13 @@ const GameCore = {
     if (row) {
       this.need(row.active !== false, 'Этого места больше нет на карте');
       this.need(!kind || row.kind === kind, 'Здесь нет такого объекта');
-      return { id: row.id, lat: row.lat, lng: row.lng, name: row.name, photo: row.photo || null };
+      return { id: row.id, lat: row.lat, lng: row.lng, name: row.name, photo: row.photo || null, verified: true };
     }
     this.need(p.id.startsWith('osm:'), 'Место не найдено');
     // там, где места загружены из OpenStreetMap в базу (вся Россия), других объектов нет
     this.need(!(await ctx.env.poiCovered(+p.lat, +p.lng)), 'Этого места нет на карте — обнови игру');
-    return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null };
+    // 4.1: такое место сервер проверить не может (id и координаты — от телефона): на нём нет легендарных разломов и удержания Капищ
+    return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null, verified: false };
   },
   team(uids) { return (uids || []).map(u => S.findSpirit(u)).filter(Boolean); },
   battleTime(ctx, b) { return (ctx.now - b.start) / 1000 - Rules.COUNTDOWN; },
@@ -3796,6 +3806,9 @@ const GameCore = {
     encThrow(a, ctx) {
       const e = ctx.srv.enc;
       this.need(e, 'Встреча закончилась');
+      // 4.1: бросок с полётом занимает больше секунды — сильно чаще бросает только программа (запас — на скачки сети)
+      this.need(!e.lastThrow || ctx.now - e.lastThrow >= 400, 'Слишком быстро — дух ещё не опомнился');
+      e.lastThrow = ctx.now;
       const raid = e.mode === 'raid';
       let item = 'rift';
       if (raid) { this.need(e.charms > 0, 'Обереги разлома кончились'); e.charms--; }
@@ -3809,7 +3822,12 @@ const GameCore = {
         if (!left()) return this.encLost(ctx, e, raid ? 'Обереги кончились — дух вернулся в Навь…' : null, { miss: true });
         return { miss: true, left: left() };
       }
-      const bonus = Rules.ringBonus(a.ring);
+      // точность броска присылает телефон: если «отличные» броски подозрительно часты (больше 70% из 20+ последних) — без бонуса
+      let bonus = Rules.ringBonus(a.ring);
+      const th = ctx.srv.thr || (ctx.srv.thr = { n: 0, g: 0 });
+      if (bonus.great && th.n >= 20 && th.g / th.n > 0.7) bonus = Rules.ringBonus(null);
+      th.n++; if (bonus.great) th.g++;
+      if (th.n >= 60) { th.n = Math.round(th.n / 2); th.g = Math.round(th.g / 2); }
       if (bonus.great) { S.progress('throw', 1); S.d.stats.throwsGreat++; }
       const chance = Rules.catchChance({ mode: e.mode, sid: e.sid, lvl: e.lvl, item, honey: e.honey, mul: bonus.mul });
       const q = Math.pow(chance, 1 / 3);
@@ -4027,6 +4045,7 @@ const GameCore = {
       // бой мог начаться за минуту до смены часа
       const r = W.riftFor(p, 0, hour) || (ctx.now % 3600000 < 90000 ? W.riftFor(p, 0, hour - 1) : null);
       this.need(r, 'Разлом уже закрылся');
+      this.need(p.verified || r.tier < 3, 'Легендарные разломы открываются только у мест, известных Ордену');
       this.need(!S.d.rifts[r.id], 'Этот разлом ты уже закрыл');
       // дальний бой: вместо того чтобы подойти — грамота Ордена (до Rules.FAR.R от игрока)
       const far = !coop && !!a.far;
@@ -4047,6 +4066,7 @@ const GameCore = {
       const p = await this.place(a.rift, ctx, 'shrine');
       const r = W.riftFor(p, 0, Math.floor(ctx.now / 3600000));
       this.need(r, 'Разлом уже закрылся');
+      this.need(p.verified || r.tier < 3, 'Легендарные разломы открываются только у мест, известных Ордену');
       this.need(!S.d.rifts[r.id], 'Этот разлом ты уже закрыл');
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       this.limit(ctx, 'room', 20, 3600000);
@@ -4266,6 +4286,7 @@ const GameCore = {
     async shrineDefend(a, ctx) {
       this.need(S.d.clan, 'Сначала выбери дружину');
       const p = await this.place(a.shrine, ctx, 'shrine');
+      this.need(p.verified, 'Защищать можно только Капища, известные Ордену');
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const sp = this.spirit(a.uid);
       const hold = await ctx.env.holdGet(p.id);
@@ -5271,13 +5292,15 @@ Deno.serve(async req => {
       return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
     }
     if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });
-    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: res.data || null, p_srv: res.srv,
-      p_ver: String(body.v || '').slice(0, 20) }));
+    // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
+    const ops = row && res.data ? Diff.make(row.data, res.data) : null;
+    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
+      p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
     if (rev == null) return reply({ ok: false, error: 'Прогресс изменился на другом устройстве — повтори действие' });
     locked = false; // замок снят вместе с сохранением
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
-    const patch = !res.full && row && body.rev === row.rev ? Diff.make(row.data, res.data) : null;
+    const patch = !res.full && row && body.rev === row.rev ? ops : null;
     return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
   } catch (e) {
     console.error(String(e && e.stack || e));
