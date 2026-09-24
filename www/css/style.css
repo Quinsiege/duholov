@@ -1651,11 +1651,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .gate-other { width: 100%; max-width: 360px; animation: fadeUp .25s ease-out; }
 .gate-other .auth-panel { max-width: none; }
 
-/* ---------- 3.35: цветные значки меню ---------- */
-.tile .mi { width: 48px; height: 48px; display: block; overflow: visible; filter: drop-shadow(0 5px 8px rgba(0, 0, 0, .35)); transition: transform .15s; }
+/* ---------- 3.35–3.37: значки меню ---------- */
+.tile .mi { width: 52px; height: 52px; display: block; overflow: visible; transition: transform .15s; } /* 3.37: как вещи в Сумке */
 .tile:active .mi { transform: scale(.92) translateY(1px); }
 .menu-grid .tile { gap: 7px; padding: 14px 6px 11px; }
 .menu-grid .tile span { font-size: 12.5px; font-weight: 700; }
-/* 3.36 (тестовый контур): медальоны меню в стиле игры */
-.tile .mi-game { filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .45)) drop-shadow(0 0 10px rgba(251, 191, 36, .12)); }
-.tile .mi-game { width: 54px; height: 54px; margin-top: -3px; }

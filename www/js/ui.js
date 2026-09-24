@@ -285,89 +285,96 @@ const UI = {
   },
 
   /* ---------------- МЕНЮ ---------------- */
-  // 3.36: значки меню в стиле игры — мультяшный медальон, как оберег на заставке: толстая золотая кайма с обводкой и бликом,
-  // ночной диск; символ раздела — яркий, с глянцевым верхом и толстой тёмной обводкой по силуэту (как у духов)
+  // 3.37: значки меню — в стиле вещей из Сумки (Art.item): отдельный предмет без плашки, яркая заливка,
+  // толстая обводка тёмным оттенком своего цвета, тень снизу и белый блик
   menuIcon(k) {
-    const P = { // цвета плашки: светлый верх, тёмный низ, тёмный для деталей символа
-      spirits: ['#c4b5fd', '#6d28d9', '#3b0764'], book: ['#5eead4', '#0f766e', '#134e4a'], bag: ['#fcd34d', '#b45309', '#78350f'],
-      egg: ['#86efac', '#15803d', '#14532d'], scroll: ['#fde68a', '#d97706', '#78350f'], swap: ['#f9a8d4', '#be185d', '#831843'],
-      chat: ['#93c5fd', '#1d4ed8', '#1e3a8a'], trophy: ['#fdba74', '#c2410c', '#7c2d12'], shop: ['#fca5a5', '#b91c1c', '#7f1d1d'],
-      trail: ['#6ee7b7', '#047857', '#064e3b'], rift: ['#d8b4fe', '#6b21a8', '#3b0764'], gavel: ['#e7c49a', '#8a5a2b', '#4a2c12'],
-      pin: ['#fda4af', '#be123c', '#881337'], user: ['#a5b4fc', '#4338ca', '#1e1b4b'], shield: ['#bfdbfe', '#1e40af', '#172554'],
-      journal: ['#e2b48a', '#7c4a26', '#3f2212'], gear: ['#cbd5e1', '#475569', '#1e293b'],
-    }[k] || ['#e9d5ff', '#6d28d9', '#3b0764'];
-    const [lt, dk] = P, g = 'mi-' + k, W = `url(#${g}-au)`, ink = '#2a1147', S = 'fill-opacity=".6"';
-    const gear = (() => { let d = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 16, r = i % 2 ? 9.2 : 12.4;
-      d += (i ? 'L' : 'M') + (24 + r * Math.cos(a)).toFixed(1) + ' ' + (24 + r * Math.sin(a)).toFixed(1) + ' ' + (24 + r * Math.cos(a + Math.PI / 8)).toFixed(1) + ' ' + (24 + r * Math.sin(a + Math.PI / 8)).toFixed(1); }
+    const hl = (x, y, rx, ry, r = -25) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="#fff" opacity=".5"/>`;
+    const sh = (rx = 30) => `<ellipse cx="50" cy="93" rx="${rx}" ry="5" fill="#000" opacity=".28"/>`;
+    const gear = (() => { let d = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 16, r = i % 2 ? 26 : 35;
+      d += (i ? 'L' : 'M') + (50 + r * Math.cos(a)).toFixed(1) + ' ' + (50 + r * Math.sin(a)).toFixed(1) + ' ' + (50 + r * Math.cos(a + Math.PI / 8)).toFixed(1) + ' ' + (50 + r * Math.sin(a + Math.PI / 8)).toFixed(1); }
       return d + 'Z'; })();
-    const G = {
-      spirits: `<path d="M24 10.5c-7.2 0-11.5 5.3-11.5 12.3V36l3.8-2.8 3.9 2.8 3.8-2.8 3.8 2.8 3.9-2.8 3.8 2.8V22.8c0-7-4.3-12.3-11.5-12.3z" fill="${W}"/>
-        <ellipse cx="19.6" cy="23" rx="2.3" ry="3.1" fill="${ink}"/><ellipse cx="28.4" cy="23" rx="2.3" ry="3.1" fill="${ink}"/>
-        <circle cx="20.3" cy="22" r=".9" fill="${W}"/><circle cx="29.1" cy="22" r=".9" fill="${W}"/><path d="M21.5 29c1.6 1.2 3.4 1.2 5 0" stroke="${ink}" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-        <path d="M37 9.5l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1z" fill="#fde68a"/>`,
-      book: `<rect x="13" y="9.5" width="23" height="29" rx="3" fill="${W}"/><rect x="13" y="9.5" width="5.5" height="29" rx="2.5" fill="${W}" ${S}/>
-        <path d="M27.2 16.5l4.3 7.5-4.3 7.5-4.3-7.5z" fill="none" stroke="${ink}" stroke-width="1.9" stroke-linejoin="round"/><circle cx="27.2" cy="24" r="1.6" fill="${ink}"/>
-        <path d="M31 9.5v8l2-1.6 2 1.6v-8" fill="#f43f5e"/>`,
-      bag: `<path d="M17.5 19.5c-4.3 2.8-6.5 7.4-6.5 11.4 0 5.2 5.3 8.1 13 8.1s13-2.9 13-8.1c0-4-2.2-8.6-6.5-11.4z" fill="${W}"/>
-        <path d="M19.5 19.5c-.6-3.6.7-8 4.5-8s5.1 4.4 4.5 8z" fill="${W}" ${S}/><path d="M17 19.3h14" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>
-        <path d="M31 19.3l3.2 3.4" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round"/>
-        <rect x="26.5" y="27.5" width="7" height="6.5" rx="1.6" transform="rotate(-8 30 30.7)" fill="${ink}" opacity=".22"/><path d="M29.3 28.8l1.2 1.8-1.2 1.8-1.2-1.8z" fill="${ink}" opacity=".5"/>`,
-      egg: `<path d="M24 8v3" stroke="${W}" stroke-width="1.6" stroke-linecap="round" opacity=".8"/><ellipse cx="24" cy="25.5" rx="9.5" ry="13.5" fill="${W}"/>
-        <path d="M15.5 21c5 2.5 12 2.5 17 0M15 27.5c5.5 2.6 12.5 2.6 18 0M17 33.5c4.5 2 9.5 2 14 0" stroke="${ink}" stroke-width="1.4" fill="none" opacity=".3"/>
-        <path d="M22.5 17.5l2.5 3-2 3 2.5 3" stroke="#facc15" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
-      scroll: `<rect x="14" y="12" width="20" height="24" fill="${W}"/><rect x="11" y="8.5" width="26" height="6.5" rx="3.2" fill="${W}"/><rect x="11" y="33" width="26" height="6.5" rx="3.2" fill="${W}"/>
-        <rect x="11" y="8.5" width="26" height="6.5" rx="3.2" fill="${ink}" opacity=".18"/><rect x="11" y="33" width="26" height="6.5" rx="3.2" fill="${ink}" opacity=".18"/>
-        <path d="M18 19.5h12M18 23.5h12M18 27.5h7" stroke="${ink}" stroke-width="1.8" stroke-linecap="round" opacity=".55"/><circle cx="30.5" cy="29.5" r="3.4" fill="#dc2626"/>`,
-      swap: `<circle cx="29.5" cy="17.5" r="4.6" fill="${W}" ${S}/><path d="M21.5 35c0-5.6 3.6-9.5 8-9.5s8 3.9 8 9.5z" fill="${W}" ${S}/>
-        <circle cx="18.5" cy="19" r="5.2" fill="${W}"/><path d="M9.5 37.5c0-6.2 4-10.5 9-10.5s9 4.3 9 10.5z" fill="${W}"/>
-        <path d="M34.5 8.4c1-1.4 3.4-1.1 3.4 1 0 1.8-2.4 3.3-3.4 4-1-.7-3.4-2.2-3.4-4 0-2.1 2.4-2.4 3.4-1z" fill="#fde047"/>`,
-      chat: `<path d="M13 10h16a4.5 4.5 0 0 1 4.5 4.5v6A4.5 4.5 0 0 1 29 25H18l-5 4v-4.2A4.5 4.5 0 0 1 8.5 20.5v-6A4.5 4.5 0 0 1 13 10z" fill="${W}" ${S}/>
-        <path d="M20 18.5h15a4.5 4.5 0 0 1 4.5 4.5v7a4.5 4.5 0 0 1-4.5 4.5h-1v4.2l-5-4.2h-9a4.5 4.5 0 0 1-4.5-4.5v-7a4.5 4.5 0 0 1 4.5-4.5z" fill="${W}"/>
-        <circle cx="22.5" cy="26.5" r="1.7" fill="${ink}"/><circle cx="27.5" cy="26.5" r="1.7" fill="${ink}"/><circle cx="32.5" cy="26.5" r="1.7" fill="${ink}"/>`,
-      trophy: `<path d="M16.5 12.5c-4 0-5.5 2-5.5 4.2 0 3.3 3 5.8 6.6 6.3M31.5 12.5c4 0 5.5 2 5.5 4.2 0 3.3-3 5.8-6.6 6.3" stroke="${W}" stroke-width="2.6" fill="none" opacity=".75"/>
-        <path d="M15.5 9.5h17v8c0 5.4-3.8 9.5-8.5 9.5s-8.5-4.1-8.5-9.5z" fill="${W}"/><rect x="21.5" y="26.5" width="5" height="5" fill="${W}" ${S}/>
-        <rect x="16" y="31" width="16" height="6.5" rx="2" fill="${W}"/><path d="M24 12.8l1.5 3.1 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z" fill="#f59e0b"/>`,
-      shop: `<rect x="12.5" y="22" width="23" height="15.5" rx="1.5" fill="${W}" ${S}/><rect x="20.5" y="27" width="7" height="10.5" rx="1" fill="${ink}" opacity=".55"/>
-        <path d="M10 18l3.2-8h21.6l3.2 8z" fill="${W}"/><path d="M17.5 10l-1.7 8M24 10v8M30.5 10l1.7 8" stroke="#ef4444" stroke-width="3"/>
-        <path d="M10 18a3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0z" fill="${W}"/>`,
-      trail: `<path d="M11 38.5c6-1 11-3.5 10.5-8S13.5 24.5 17 20s11-2.5 14-5" stroke="${W}" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-dasharray="4.2 3.4"/>
-        <path d="M32.5 23V8.5" stroke="${W}" stroke-width="2.2" stroke-linecap="round"/><path d="M33 8.5h8.5l-2.4 3.4 2.4 3.4H33z" fill="#facc15"/><ellipse cx="32.5" cy="23.3" rx="3" ry="1.1" fill="${ink}" opacity=".4"/>`,
-      rift: `<ellipse cx="24" cy="24" rx="10.5" ry="15.5" fill="${W}" opacity=".22"/><path d="M24 8c6.4 8.4 6.4 23.6 0 32-6.4-8.4-6.4-23.6 0-32z" fill="${W}"/>
-        <path d="M24 13.5c3.4 5.8 3.4 15.2 0 21-3.4-5.8-3.4-15.2 0-21z" fill="${ink}"/><path d="M24.6 17l-1.8 4 2 2.6-1.6 4.6" stroke="#e9d5ff" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-        <circle cx="12.5" cy="15" r="1.3" fill="${W}"/><circle cx="36" cy="30.5" r="1.5" fill="${W}"/><circle cx="35" cy="13" r=".9" fill="${W}"/>`,
-      gavel: `<g transform="rotate(-40 22 20)"><rect x="13" y="12.5" width="18" height="8.5" rx="2" fill="${W}"/><rect x="11" y="11.5" width="3.5" height="10.5" rx="1.2" fill="${W}" ${S}/>
-        <rect x="29.5" y="11.5" width="3.5" height="10.5" rx="1.2" fill="${W}" ${S}/><rect x="20.5" y="21" width="3.2" height="14" rx="1.4" fill="${W}"/></g>
-        <rect x="23" y="33" width="15" height="5.5" rx="1.8" fill="${W}" ${S}/>`,
-      pin: `<ellipse cx="24" cy="38.5" rx="7" ry="2" fill="${ink}" opacity=".35"/><path d="M24 38s11-9.4 11-18a11 11 0 0 0-22 0c0 8.6 11 18 11 18z" fill="${W}"/>
-        <circle cx="24" cy="20" r="4.4" fill="${ink}"/><circle cx="22.7" cy="18.7" r="1.3" fill="${W}" opacity=".7"/>`,
-      user: `<path d="M24 8.5c-7.5 0-12.5 6.2-12.5 14 0 5.5 2.4 10.4 5.5 13.5h14c3.1-3.1 5.5-8 5.5-13.5 0-7.8-5-14-12.5-14z" fill="${W}"/>
-        <path d="M11 39.5c1-3.5 3.5-5.5 6-5.5h14c2.5 0 5 2 6 5.5z" fill="${W}" ${S}/><ellipse cx="24" cy="24" rx="7" ry="8" fill="${ink}"/>
-        <ellipse cx="21.3" cy="23.8" rx="1.5" ry="2" fill="#5eead4"/><ellipse cx="26.7" cy="23.8" rx="1.5" ry="2" fill="#5eead4"/>`,
-      shield: `<path d="M24 8.5l12 4.3v9.3c0 8.2-5.3 14-12 17.4-6.7-3.4-12-9.2-12-17.4v-9.3z" fill="${W}"/>
-        <path d="M24 12.5l8.5 3v6.6c0 6-3.7 10.3-8.5 12.9z" fill="${ink}" opacity=".3"/>
-        <path d="M24 17.3l1.9 3.8 4.2.6-3 3 .7 4.2-3.8-2-3.8 2 .7-4.2-3-3 4.2-.6z" fill="#facc15"/>`,
-      journal: `<rect x="13" y="9" width="22" height="30" rx="3" fill="${W}"/><path d="M17.5 9v30" stroke="${ink}" stroke-width="1.4" opacity=".35"/>
-        <path d="M21 17h10M21 21.5h10M21 26h7" stroke="${ink}" stroke-width="1.7" stroke-linecap="round" opacity=".5"/><path d="M29 9v9.5l2.4-1.8 2.4 1.8V9" fill="#f43f5e"/>
-        <path d="M33.5 26.5l4.5-4.5 2 2-4.5 4.5-2.8.8z" fill="#fbbf24"/>`,
-      gear: `<path d="${gear}" fill="${W}"/><circle cx="24" cy="24" r="4.6" fill="${ink}"/><circle cx="24" cy="24" r="7.2" fill="none" stroke="${ink}" stroke-width="1.2" opacity=".25"/>`,
+    const A = {
+      // Духи: дух-привидение
+      spirits: sh(26) + `<path d="M50 10 C30 10 20 26 20 44 V84 L30 77 L40 85 L50 77 L60 85 L70 77 L80 84 V44 C80 26 70 10 50 10Z" fill="#c4b5fd" stroke="#5b21b6" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M22 60 C30 72 70 72 78 60 V84 L70 77 L60 85 L50 77 L40 85 L30 77 L22 84Z" fill="#8b5cf6" opacity=".45"/>
+        <ellipse cx="39" cy="45" rx="6" ry="8" fill="#2e1065"/><ellipse cx="61" cy="45" rx="6" ry="8" fill="#2e1065"/><circle cx="41" cy="42" r="2.4" fill="#fff"/><circle cx="63" cy="42" r="2.4" fill="#fff"/>
+        <ellipse cx="31" cy="56" rx="4.5" ry="2.6" fill="#f472b6" opacity=".6"/><ellipse cx="69" cy="56" rx="4.5" ry="2.6" fill="#f472b6" opacity=".6"/><path d="M45 58 Q50 62 55 58" stroke="#2e1065" stroke-width="3" fill="none" stroke-linecap="round"/>` + hl(34, 22, 8, 4.5),
+      // Бестиарий: книга с руной
+      book: sh(28) + `<path d="M24 16 H74 Q80 16 80 22 V82 Q80 88 74 88 H24Z" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
+        <path d="M20 12 H70 Q76 12 76 18 V78 Q76 84 70 84 H20 Q16 84 16 80 V16 Q16 12 20 12Z" fill="#14b8a6" stroke="#134e4a" stroke-width="3.5"/>
+        <path d="M16 20 H26 V84 H20 Q16 84 16 80Z" fill="#0f766e"/><path d="M50 30 L62 48 L50 66 L38 48Z" fill="#fde047" stroke="#92400e" stroke-width="3" stroke-linejoin="round"/>
+        <circle cx="50" cy="48" r="4.5" fill="#92400e"/><path d="M62 12 V30 L67 26 L72 30 V12" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.5" stroke-linejoin="round"/>` + hl(38, 22, 9, 3.5, -10),
+      // Сумка: котомка с завязкой
+      bag: sh(30) + `<path d="M34 36 C20 44 16 58 16 68 C16 84 30 90 50 90 C70 90 84 84 84 68 C84 58 80 44 66 36Z" fill="#d6a36b" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M18 72 C24 84 76 84 82 72 C82 84 70 90 50 90 C30 90 18 84 18 72Z" fill="#a16207" opacity=".45"/>
+        <path d="M38 36 C34 24 40 12 50 12 C60 12 66 24 62 36Z" fill="#e7c49a" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M32 36 H68" stroke="#dc2626" stroke-width="6" stroke-linecap="round"/><path d="M66 38 L74 48 M66 38 L62 50" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
+        <rect x="54" y="58" width="16" height="14" rx="3" transform="rotate(-8 62 65)" fill="#b45309" stroke="#78350f" stroke-width="2.5"/>
+        <path d="M58 61 L66 69 M66 61 L58 69" stroke="#fde68a" stroke-width="2" stroke-linecap="round"/>` + hl(32, 52, 7, 4, -40),
+      // Коконы: как в разделе «Коконы»
+      egg: Art.cocoon(2).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''),
+      // Задания: свиток с печатью
+      scroll: sh(30) + `<rect x="24" y="22" width="52" height="58" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
+        <rect x="16" y="12" width="68" height="16" rx="8" fill="#fde68a" stroke="#92400e" stroke-width="3.5"/><rect x="16" y="74" width="68" height="16" rx="8" fill="#fde68a" stroke="#92400e" stroke-width="3.5"/>
+        <path d="M34 40 H66 M34 50 H66 M34 60 H54" stroke="#b45309" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+        <circle cx="66" cy="66" r="10" fill="#dc2626" stroke="#7f1d1d" stroke-width="3"/><path d="M62 66 L66 62 L70 66 L66 70Z" fill="#fca5a5"/>` + hl(28, 17, 7, 2.5, 0),
+      // Друзья: двое духов и сердечко
+      swap: sh(34) + `<circle cx="66" cy="58" r="21" fill="#f9a8d4" stroke="#9d174d" stroke-width="3.5"/><circle cx="34" cy="60" r="23" fill="#93c5fd" stroke="#1e3a8a" stroke-width="3.5"/>
+        <circle cx="27" cy="58" r="3.6" fill="#1e1b4b"/><circle cx="41" cy="58" r="3.6" fill="#1e1b4b"/><path d="M29 68 Q34 72 39 68" stroke="#1e1b4b" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="62" cy="55" r="3.3" fill="#1e1b4b"/><circle cx="75" cy="55" r="3.3" fill="#1e1b4b"/><path d="M64 64 Q68.5 67.5 73 64" stroke="#1e1b4b" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M50 30 C44 20 30 24 36 34 L50 44 L64 34 C70 24 56 20 50 30Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3" stroke-linejoin="round"/>` + hl(26, 46, 6, 3.5) + hl(42, 26, 3, 1.8),
+      // Чат: реплики-берестяные грамотки
+      chat: sh(30) + `<path d="M18 14 H62 Q70 14 70 22 V44 Q70 52 62 52 H36 L24 62 V52 H18 Q10 52 10 44 V22 Q10 14 18 14Z" fill="#bfdbfe" stroke="#1e3a8a" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M40 38 H82 Q90 38 90 46 V70 Q90 78 82 78 H78 V88 L66 78 H40 Q32 78 32 70 V46 Q32 38 40 38Z" fill="#f0f9ff" stroke="#1e3a8a" stroke-width="3.5" stroke-linejoin="round"/>
+        <circle cx="48" cy="58" r="4.5" fill="#2563eb"/><circle cx="61" cy="58" r="4.5" fill="#2563eb"/><circle cx="74" cy="58" r="4.5" fill="#2563eb"/>` + hl(22, 22, 7, 3, -15),
+      // Лига: золотой кубок
+      trophy: sh(24) + `<path d="M28 20 C12 20 10 32 14 40 C18 48 28 50 34 50" stroke="#92400e" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M28 20 C12 20 10 32 14 40 C18 48 28 50 34 50" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M72 20 C88 20 90 32 86 40 C82 48 72 50 66 50" stroke="#92400e" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M72 20 C88 20 90 32 86 40 C82 48 72 50 66 50" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path d="M24 12 H76 V34 C76 52 64 62 50 62 C36 62 24 52 24 34Z" fill="#fbbf24" stroke="#92400e" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M60 14 H74 V34 C74 46 68 54 60 58Z" fill="#d97706" opacity=".5"/><rect x="43" y="60" width="14" height="14" fill="#f59e0b" stroke="#92400e" stroke-width="3"/>
+        <rect x="28" y="72" width="44" height="16" rx="4" fill="#b45309" stroke="#78350f" stroke-width="3.5"/><path d="M50 22 L54 31 L64 32 L57 38 L59 48 L50 43 L41 48 L43 38 L36 32 L46 31Z" fill="#fef3c7" stroke="#92400e" stroke-width="2" stroke-linejoin="round"/>` + hl(33, 22, 4, 7, 10),
+      // Лавка: лоток с полосатым навесом
+      shop: sh(34) + `<rect x="18" y="44" width="64" height="44" rx="3" fill="#d6a36b" stroke="#78350f" stroke-width="3.5"/><rect x="40" y="58" width="20" height="30" rx="2" fill="#92400e" stroke="#78350f" stroke-width="3"/>
+        <path d="M18 60 H82" stroke="#a16207" stroke-width="3" opacity=".5"/><rect x="24" y="50" width="12" height="10" rx="2" fill="#fde047" stroke="#78350f" stroke-width="2.5"/><rect x="64" y="50" width="12" height="10" rx="2" fill="#86efac" stroke="#78350f" stroke-width="2.5"/>
+        <path d="M12 38 L22 12 H78 L88 38Z" fill="#fff" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/><path d="M34 12 L28 38 H40 L44 12Z M56 12 L60 38 H72 L66 12Z" fill="#ef4444"/>
+        <path d="M12 38 Q18 48 24 38 Q30 48 36 38 Q42 48 48 38 Q54 48 60 38 Q66 48 72 38 Q78 48 84 38 Q86 42 88 38" fill="#ef4444" stroke="#7f1d1d" stroke-width="3" stroke-linejoin="round"/>` + hl(24, 18, 5, 2.5, -60),
+      // Тропа: дорожный указатель
+      trail: sh(26) + `<rect x="45" y="18" width="10" height="72" rx="3" fill="#a16207" stroke="#78350f" stroke-width="3.5"/>
+        <path d="M22 22 H72 L82 32 L72 42 H22Z" fill="#d6a36b" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M78 50 H28 L18 60 L28 70 H78Z" fill="#e7c49a" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M30 32 H62 M36 60 H70" stroke="#78350f" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="5 5" opacity=".6"/>
+        <path d="M50 10 C54 4 62 6 60 12 C58 16 52 16 50 10Z" fill="#4ade80" stroke="#166534" stroke-width="2.5"/>` + hl(30, 27, 5, 2, 0),
+      // Разломы: светящаяся трещина-портал
+      rift: `<ellipse cx="50" cy="52" rx="34" ry="42" fill="#a855f7" opacity=".25"/>` + sh(22) + `<path d="M50 8 C70 26 72 72 50 92 C28 72 30 26 50 8Z" fill="#7c3aed" stroke="#3b0764" stroke-width="3.5"/>
+        <path d="M50 20 C62 34 63 66 50 80 C37 66 38 34 50 20Z" fill="#1e0b36"/><path d="M52 28 L45 42 L55 52 L46 64 L51 74" stroke="#e9d5ff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20 26 L23 32 L29 35 L23 38 L20 44 L17 38 L11 35 L17 32Z" fill="#fde047"/><circle cx="82" cy="66" r="3.5" fill="#fde047"/><circle cx="78" cy="22" r="2.5" fill="#e9d5ff"/>` + hl(42, 24, 3, 7, 20),
+      // Аукцион: деревянный молоток
+      gavel: sh(30) + `<rect x="46" y="76" width="42" height="12" rx="3" fill="#a16207" stroke="#78350f" stroke-width="3.5"/>
+        <g transform="rotate(-40 42 40)"><rect x="37" y="42" width="10" height="46" rx="4" fill="#d6a36b" stroke="#78350f" stroke-width="3.5"/>
+        <rect x="18" y="20" width="48" height="24" rx="5" fill="#b45309" stroke="#78350f" stroke-width="3.5"/><rect x="26" y="18" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>
+        <rect x="51" y="18" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/></g>` + hl(30, 30, 5, 2.5, -40),
+      // Места: метка на карте
+      pin: sh(18) + `<path d="M50 90 C50 90 20 60 20 38 A30 30 0 0 1 80 38 C80 60 50 90 50 90Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M66 20 A30 30 0 0 1 80 38 C80 60 50 90 50 90 C60 70 70 52 66 20Z" fill="#b91c1c" opacity=".45"/><circle cx="50" cy="38" r="12" fill="#fff" stroke="#7f1d1d" stroke-width="3"/>` + hl(34, 24, 6, 3.5, -40),
+      // Ловчий: капюшон со светящимися глазами
+      user: sh(28) + `<path d="M50 8 C28 8 16 28 16 50 C16 68 22 80 28 88 H72 C78 80 84 68 84 50 C84 28 72 8 50 8Z" fill="#7c3aed" stroke="#3b0764" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M70 18 C80 28 84 40 84 50 C84 68 78 80 72 88 H62 C72 72 76 44 70 18Z" fill="#5b21b6" opacity=".6"/><ellipse cx="50" cy="52" rx="20" ry="23" fill="#1e0b36"/>
+        <ellipse cx="42" cy="50" rx="4" ry="5.5" fill="#5eead4"/><ellipse cx="58" cy="50" rx="4" ry="5.5" fill="#5eead4"/><circle cx="50" cy="80" r="5" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>` + hl(32, 24, 8, 4, -40),
+      // Дружина: славянский щит с умбоном
+      shield: sh(26) + `<path d="M50 8 L84 20 V46 C84 70 68 84 50 92 C32 84 16 70 16 46 V20Z" fill="#dc2626" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M50 8 V92 C68 84 84 70 84 46 V20Z" fill="#991b1b" opacity=".5"/><path d="M50 16 L76 25 V46 C76 64 64 76 50 83 C36 76 24 64 24 46 V25Z" fill="none" stroke="#fbbf24" stroke-width="3" opacity=".9"/>
+        <circle cx="50" cy="48" r="12" fill="#fbbf24" stroke="#92400e" stroke-width="3"/><circle cx="50" cy="48" r="5" fill="#fde68a"/>` + hl(30, 26, 6, 3, -30),
+      // Дневник: кожаная тетрадь с закладкой и пером
+      journal: sh(28) + `<rect x="22" y="12" width="54" height="76" rx="5" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
+        <rect x="18" y="10" width="54" height="76" rx="5" fill="#92400e" stroke="#451a03" stroke-width="3.5"/><rect x="18" y="10" width="12" height="76" rx="4" fill="#78350f"/>
+        <rect x="36" y="26" width="28" height="18" rx="3" fill="#fef3c7" stroke="#451a03" stroke-width="2.5"/><path d="M41 32 H59 M41 38 H53" stroke="#b45309" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M58 10 V32 L63 28 L68 32 V10" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M86 44 L56 80 L52 90 L62 84 L90 48Z" fill="#fde68a" stroke="#92400e" stroke-width="3" stroke-linejoin="round"/>` + hl(38, 18, 7, 2.5, 0),
+      // Настройки: железная шестерня
+      gear: sh(28) + `<path d="${gear}" fill="#94a3b8" stroke="#334155" stroke-width="3.5" stroke-linejoin="round"/>
+        <circle cx="50" cy="50" r="20" fill="#64748b" opacity=".45"/><circle cx="50" cy="50" r="11" fill="#1e293b" stroke="#334155" stroke-width="3"/>` + hl(36, 30, 7, 3.5, -40),
     };
-    return `<svg class="mi mi-game" viewBox="0 0 48 48" aria-hidden="true"><defs>
-        <linearGradient id="${g}-au" gradientUnits="userSpaceOnUse" x1="0" y1="8" x2="0" y2="44"><stop offset="0" stop-color="#fff"/><stop offset=".32" stop-color="${lt}"/><stop offset="1" stop-color="${dk}"/></linearGradient>
-        <linearGradient id="${g}-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef08a"/><stop offset=".5" stop-color="#fbbf24"/><stop offset="1" stop-color="#b45309"/></linearGradient>
-        <radialGradient id="${g}-bg" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="#4c2a91"/><stop offset="1" stop-color="#1a0d38"/></radialGradient>
-        <radialGradient id="${g}-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${lt}" stop-opacity=".5"/><stop offset="1" stop-color="${lt}" stop-opacity="0"/></radialGradient>
-        <filter id="${g}-ol" x="-25%" y="-25%" width="150%" height="150%"><feMorphology in="SourceAlpha" operator="dilate" radius="1.7" result="d"/>
-          <feFlood flood-color="#1c0b33"/><feComposite in2="d" operator="in" result="o"/><feOffset in="o" dy="1.3" result="s"/>
-          <feMerge><feMergeNode in="s"/><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-      <ellipse cx="24" cy="45.2" rx="15" ry="2.6" fill="#000" opacity=".35"/>
-      <circle cx="24" cy="24" r="23" fill="#1c0b33"/>
-      <circle cx="24" cy="24" r="20.9" fill="none" stroke="url(#${g}-rim)" stroke-width="3.8"/>
-      <circle cx="24" cy="24" r="18.6" fill="url(#${g}-bg)" stroke="#1c0b33" stroke-width="1.3"/>
-      <circle cx="24" cy="24" r="15.5" fill="url(#${g}-glow)"/>
-      <circle cx="24" cy="24" r="16.4" fill="none" stroke="#fde047" stroke-opacity=".22" stroke-width="1" stroke-dasharray="2.2 2.2"/>
-      <ellipse cx="14.2" cy="8.6" rx="4.6" ry="1.9" transform="rotate(-30 14.2 8.6)" fill="#fff" opacity=".75"/>
-      <circle cx="36.5" cy="39.2" r="1.2" fill="#fff" opacity=".35"/>
-      <g transform="translate(24 24.2) scale(.86) translate(-24 -24)" filter="url(#${g}-ol)">${G[k] || ''}</g></svg>`;
+    return `<svg class="mi art" viewBox="0 0 100 100" aria-hidden="true">${A[k] || ''}</svg>`;
   },
   menu() {
     Sfx.init(); Sfx.play('tap');
