@@ -32,17 +32,20 @@ const Loader = {
         this.pct = Math.round(w * 100);
         bar.style.width = this.pct + '%';
         bar.classList.remove('boot');
+        boot.querySelector('.ld-pct').textContent = this.pct + '%';
       } else {
         this.hint = Math.floor(Math.random() * this.HINTS.length);
         this.el = U.el(`<div class="loader" role="status" aria-live="polite">
-          <div class="ld-logo"><div class="ld-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1></div>
-          <div class="ld-prog"><div class="ld-bar"><i></i></div><div class="ld-text"></div></div>
-          <div class="ld-hint">
-            <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
-            <div class="ld-tip"><small>Совет Ордена</small><p></p></div>
-            <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
+          <div class="ld-logo"><div class="ld-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
+          <div class="ld-foot">
+            <div class="ld-hint">
+              <div class="ld-tip"><small>✦ Совет Ордена</small><p></p></div>
+              <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
+              <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
+            </div>
+            <div class="ld-dots"></div>
+            <div class="ld-prog"><div class="ld-row"><span class="ld-text"></span><b class="ld-pct"></b></div><div class="ld-bar"><i></i></div></div>
           </div>
-          <div class="ld-dots"></div>
         </div>`);
         document.body.appendChild(this.el);
       }
@@ -75,6 +78,7 @@ const Loader = {
     if (!this.el) return;
     this.pct = Math.max(this.pct, Math.min(100, pct));
     this.el.querySelector('.ld-bar i').style.width = this.pct + '%';
+    this.el.querySelector('.ld-pct').textContent = Math.round(this.pct) + '%';
     if (text) this.el.querySelector('.ld-text').textContent = text;
   },
   hide() {
