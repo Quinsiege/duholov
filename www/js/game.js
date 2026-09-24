@@ -22,19 +22,28 @@ const Game = {
     const body = { a: actions, rev: this.rev, tz: -new Date().getTimezoneOffset(), wx: Sky.w ? Sky.w.key : null, pos: p, v: APP_VERSION };
     let res;
     for (let attempt = 0; attempt < 2; attempt++) {
+      const headers = await Cloud.headers(); // в закрытом контуре — ключ доступа (спросит окном, если его нет)
       const busy = setTimeout(() => document.body.classList.add('net-busy'), 350);
       try {
-        const r = await sb.functions.invoke('game', { body, headers: Cloud.headers() });
+        const r = await sb.functions.invoke('game', { body, headers });
         if (r.error) {
           let payload = null;
           try { payload = r.error.context && await r.error.context.json(); } catch (e) {}
-          if (payload && payload.auth && attempt === 0) { await sb.auth.refreshSession().catch(() => {}); continue; }
-          if (payload && payload.error) { if (/ключ доступа/.test(payload.error)) Cloud.forgetKey(); res = payload; break; }
+          // вход устарел: обновить; в тестовом контуре, если нельзя (пользователя удалили), — войти заново
+          if (payload && payload.auth && attempt === 0) {
+            const { error } = await sb.auth.refreshSession().catch(e => ({ error: e }));
+            if (error && CLOUD_CONFIG.locked) await Cloud.relogin(); // только в тесте: в бою новый вход = новый пустой аккаунт
+            continue;
+          }
+          // неверный ключ закрытого контура — забыть и спросить снова
+          if (payload && payload.error && /ключ доступа/.test(payload.error) && attempt === 0) { Cloud.forgetKey(); continue; }
+          if (payload && payload.error) { res = payload; break; }
           throw new Error(r.error.message);
         }
         res = r.data;
         break;
       } catch (e) {
+        console.warn('Сервер игры:', e && e.message);
         this.online = false;
         throw new PlayError('Нет связи с сервером игры — проверь интернет');
       } finally { clearTimeout(busy); document.body.classList.remove('net-busy'); }
@@ -47,7 +56,7 @@ const Game = {
   async pay(op, args = {}) {
     if (!this.on()) throw new PlayError('Нет связи с сервером игры');
     const sb = await Cloud.client();
-    const r = await sb.functions.invoke('game', { body: { pay: op, args, v: APP_VERSION }, headers: Cloud.headers() }).catch(() => ({ error: true }));
+    const r = await sb.functions.invoke('game', { body: { pay: op, args, v: APP_VERSION }, headers: await Cloud.headers() }).catch(() => ({ error: true }));
     let res = r.data;
     if (r.error) { try { res = r.error.context && await r.error.context.json(); } catch (e) { res = null; } }
     if (!res || !res.ok) throw new PlayError((res && res.error) || 'Нет связи с сервером игры — проверь интернет');
