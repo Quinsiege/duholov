@@ -1086,14 +1086,17 @@ const UI = {
     const renderAcc = () => {
       if (!acc || !scr.isConnected) return;
       const d = S.d, guest = Login.isGuest(), links = Login.linked(), avail = Login.available().filter(k => !links.some(l => l.provider === k));
-      const way = (ic, title, sub) => `<div class="acc-way">${ic}<div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="acc-ok">✓</span></div>`;
+      const way = (ic, title, sub, end = '<span class="acc-ok">✓</span>') => `<div class="acc-way">${ic}<div class="row-main"><b>${title}</b><small>${sub}</small></div>${end}</div>`;
+      // 3.33: у кого вход уже есть — непривязанные сервисы строками того же списка с небольшой кнопкой; гостю — крупные кнопки
+      const addRows = guest ? '' : avail.map(k => way(Login.icon(k), Login.NAMES[k], 'ещё один способ входа',
+        `<button class="btn acc-link" data-login="${k}" data-mode="link">Привязать</button>`)).join('');
       acc.innerHTML = `<div class="acc-hero ${guest ? 'guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
           <div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
           <div class="acc-main"><b>${U.esc(d.name)}</b><small>${this.rank(d.level)} · ${d.level} уровень</small>
-            <span class="acc-status ${guest ? 'warn' : 'ok'}">${guest ? `${this.I.user}Гость — прогресс только на этом устройстве` : `${this.I.cloud}Прогресс сохранён в учётной записи`}</span></div>
+            <span class="acc-status ${guest ? 'warn' : 'ok'}">${guest ? `${this.I.user}Гость · только на этом устройстве` : `${this.I.cloud}Прогресс в облаке`}</span></div>
         </div>`
-        + (links.length || Login.email ? `<div class="acc-ways">${Login.email ? way(`<span class="lg-ic mail">${this.I.mail}</span>`, 'Почта', U.esc(Login.email)) : ''}${links.map(l => way(Login.icon(l.provider), Login.NAMES[l.provider], l.name ? U.esc(l.name) : 'вход привязан')).join('')}</div>` : '')
-        + (avail.length ? `<div class="acc-add"><small>${guest ? 'Привяжи вход — прогресс откроется на любом устройстве' : 'Привязать ещё один вход'}</small><div class="login-row">${Login.buttons('link', avail)}</div></div>` : '')
+        + (links.length || Login.email ? `<div class="acc-ways"><div class="acc-cap">Способы входа</div>${Login.email ? way(`<span class="lg-ic mail">${this.I.mail}</span>`, 'Почта', U.esc(Login.email)) : ''}${links.map(l => way(Login.icon(l.provider), Login.NAMES[l.provider], l.name ? U.esc(l.name) : 'вход привязан')).join('')}${addRows}</div>` : '')
+        + (guest && avail.length ? `<div class="acc-add"><small>Привяжи вход — прогресс откроется на любом устройстве</small><div class="login-row">${Login.buttons('link', avail)}</div></div>` : '')
         + (Login.appTooOld() ? '<div class="acc-add"><small>Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div>' : '')
         + `<button class="row link set-row acc-out"><span class="set-ico out">${this.I.logout}</span><div class="row-main"><b>Выйти из учётной записи</b><small>${guest ? 'Прогресс гостя будет потерян' : 'Вернуться можно тем же входом'}</small></div><span class="set-chev">›</span></button>`;
       acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
@@ -1265,9 +1268,9 @@ const UI = {
       let html = '';
       if (n === 0) html = `
         <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
-        <div class="onb-spirits">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
+        <div class="onb-stage">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
         ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
-        <button class="btn primary wide next">Начать гостем</button>
+        <div class="onb-cta"><button class="btn primary wide next">Начать игру</button><small>Без регистрации — вход можно привязать позже</small></div>
         ${Game.on() ? Login.panel(`<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>`, Login.buttons('start'), '') : ''}
         <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;

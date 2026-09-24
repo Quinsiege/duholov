@@ -590,9 +590,14 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 .onb-logo h1 { font-size: 48px; font-weight: 900; margin: 6px 0 4px; letter-spacing: 3px; background: linear-gradient(180deg, #fffbeb, var(--gold2) 55%, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 16px rgba(251, 191, 36, .4)); }
 .onb-logo p { color: var(--muted); margin: 0; }
 .onb-charm { width: 110px; height: 110px; margin: 0 auto; animation: bob 3s ease-in-out infinite; filter: drop-shadow(0 0 24px rgba(253, 224, 71, .5)); }
-.onb-spirits { display: flex; justify-content: center; }
-.onb-spirits div { width: 76px; height: 76px; margin: 0 -6px; animation: bob 2.6s ease-in-out infinite; }
-.onb-spirits div:nth-child(2) { animation-delay: -.5s; } .onb-spirits div:nth-child(3) { animation-delay: -1s; width: 92px; height: 92px; } .onb-spirits div:nth-child(4) { animation-delay: -1.5s; } .onb-spirits div:nth-child(5) { animation-delay: -2s; }
+/* 3.33: духи на светящейся поляне — дугой: в центре крупный, по краям мельче и дальше */
+.onb-stage { position: relative; display: flex; justify-content: center; align-items: flex-end; width: 100%; max-width: 380px; height: 132px; margin: 0 auto; }
+.onb-stage::before { content: ""; position: absolute; left: 6%; right: 6%; bottom: -6px; height: 40px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(167, 139, 250, .5), rgba(167, 139, 250, .12) 60%, transparent); }
+.onb-stage div { position: relative; width: 78px; height: 78px; margin: 0 -10px 20px; animation: bob 2.6s ease-in-out infinite; opacity: .92; }
+.onb-stage div:nth-child(2), .onb-stage div:nth-child(4) { width: 96px; height: 96px; margin-bottom: 6px; z-index: 1; opacity: 1; }
+.onb-stage div:nth-child(3) { width: 124px; height: 124px; margin-bottom: -8px; z-index: 2; opacity: 1; filter: drop-shadow(0 0 18px rgba(56, 189, 248, .35)); }
+.onb-stage div:nth-child(2) { animation-delay: -.5s; } .onb-stage div:nth-child(3) { animation-delay: -1s; } .onb-stage div:nth-child(4) { animation-delay: -1.5s; } .onb-stage div:nth-child(5) { animation-delay: -2s; }
 .onb-lore p { font-size: 17px; line-height: 1.55; color: #e7e1fb; margin: 0 0 16px; animation: fadeUp .7s backwards; }
 .onb-lore b { color: var(--gold2); }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } }
@@ -873,7 +878,7 @@ html.big-text .chip { font-size: 14px; }
 /* меньше движения */
 .calm .art-flicker, .calm .art-blink, .calm .art-float, .calm .art-sway, .calm .art-wing, .calm .art-spin, .calm .art-spin-soft, .calm .art-aura, .calm .art-eyes,
 .calm .mk-spirit, .calm .orb svg, .calm .enc-motes i, .calm .mk-player .pulse, .calm .det-art, .calm .res-art, .calm .raid-bg::after,
-.calm .mk-rift .mk-boss, .calm .mk-pin, .calm .onb-spirits div, .calm .raid-boss .art, .calm .duel-foe .art, .calm .spring-disc .runes, .calm .coc-art.warm { animation: none !important; }
+.calm .mk-rift .mk-boss, .calm .mk-pin, .calm .onb-stage div, .calm .raid-boss .art, .calm .duel-foe .art, .calm .spring-disc .runes, .calm .coc-art.warm { animation: none !important; }
 .calm #wxfx { display: none; }
 
 /* ---------- v1.9: совместные разломы, облако, установка ---------- */
@@ -1583,3 +1588,19 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .acc-foot.warn > span { color: var(--gold2); } .acc-foot.ok > span { color: var(--good); }
 .acc-card .acc-exit { align-self: center; }
 @media (max-height: 680px) { .onb .gate { gap: 10px; padding-top: calc(14px + var(--st)); } .gate .onb-charm { width: 52px; height: 52px; } .gate .onb-logo h1 { font-size: 30px; } .gate .onb-logo p { font-size: 13px; } }
+
+/* ---------- 3.33: стартовый экран ---------- */
+.onb-cta { width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.onb-cta .btn { font-size: 17px; min-height: 54px; }
+.onb-cta small { font-size: 12px; color: var(--muted); }
+.onb .s0 .onb-logo p { font-size: 14.5px; }
+.onb-offer { margin-top: 6px; font-size: 12px; opacity: .75; text-decoration: none; border-bottom: 1px dashed rgba(179, 170, 203, .5); display: inline-block; align-self: center; }
+
+/* ---------- 3.33: учётная запись — компактнее ---------- */
+.acc-status { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.acc-cap { padding: 10px 14px 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.acc-way + .acc-way { border-top-color: rgba(255, 255, 255, .06); }
+.btn.acc-link { flex: none; width: auto; min-height: 34px; padding: 6px 14px; border-radius: 11px; font-size: 13px; font-weight: 700;
+  color: var(--text); background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); box-shadow: none; }
+.btn.acc-link:active { transform: scale(.96); background: rgba(255, 255, 255, .14); }
+.onb .s0 { gap: 14px; }

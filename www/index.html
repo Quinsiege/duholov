@@ -56,20 +56,44 @@
     .ld-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 260px; min-height: 6px; }
     .ld-dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .2); cursor: pointer; transition: width .2s, background .2s; }
     .ld-dots i.on { width: 16px; background: var(--gold); }
+    /* 3.33: логотип — по центру, всё, чего касаются пальцы (совет, стрелки, прогресс), — внизу */
+    .loader { justify-content: space-between; gap: 0; padding: calc(24px + var(--st)) 20px calc(26px + var(--sb)); }
+    .ld-logo { flex: 1; justify-content: center; gap: 10px; }
+    .ld-charm { width: 112px; height: 112px; }
+    .ld-logo h1 { font-size: 48px; filter: drop-shadow(0 4px 16px rgba(251, 191, 36, .35)); }
+    .ld-logo p { margin: 0; font-size: 14px; color: var(--muted); }
+    .ld-foot { width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+    .ld-hint { position: relative; max-width: none; }
+    .ld-tip { min-height: 104px; padding: 16px 46px; background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .04));
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    .ld-tip p { font-size: 14.5px; }
+    .ld-arrow { position: absolute; top: 50%; margin-top: -18px; width: 36px; height: 36px; border: 0; background: transparent; font-size: 28px; }
+    .ld-arrow.prev { left: 4px; } .ld-arrow.next { right: 4px; }
+    .ld-arrow:active { transform: scale(.88); }
+    .ld-dots { align-self: center; }
+    .ld-prog { max-width: none; gap: 7px; }
+    .ld-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .ld-text { min-height: 0; }
+    .ld-pct { font-size: 13px; font-weight: 700; color: var(--gold2); font-variant-numeric: tabular-nums; }
+    .ld-bar { height: 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .08); }
+    .ld-bar i { border-radius: 6px; }
+    @media (max-height: 640px) { .ld-charm { width: 80px; height: 80px; } .ld-logo h1 { font-size: 38px; } .ld-tip { min-height: 88px; } }
     .eco .ld-charm, .calm .ld-charm, .calm .ld-bar i::after { animation: none; }
   </style>
 </head>
 <body>
   <!-- 3.31.1: экран загрузки — первое, что видит игрок (его подхватывает js/loader.js) -->
   <div class="loader" id="bootLoader" role="status" aria-live="polite">
-    <div class="ld-logo"><div class="ld-charm"><svg viewBox="0 0 100 100"><defs><radialGradient id="ldc" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#a16207"/></radialGradient></defs><path d="M50 8 L40 0 M50 8 L60 0" stroke="#a16207" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="54" r="40" fill="url(#ldc)" stroke="#a16207" stroke-width="4"/><circle cx="50" cy="54" r="27" fill="none" stroke="#fffbeb" stroke-width="2.5" stroke-dasharray="6 5" opacity=".9"/><path d="M50 32 V76 M35 43 L65 65 M65 43 L35 65" stroke="#fffbeb" stroke-width="4" stroke-linecap="round" opacity=".95"/><circle cx="50" cy="54" r="7" fill="#fffbeb"/><circle cx="50" cy="10" r="6" fill="#fde047" stroke="#a16207" stroke-width="3"/></svg></div><h1>ДУХОЛОВ</h1></div>
-    <div class="ld-prog"><div class="ld-bar"><i class="boot"></i></div><div class="ld-text">Загрузка…</div></div>
-    <div class="ld-hint">
-      <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
-      <div class="ld-tip"><small>Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>
-      <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
+    <div class="ld-logo"><div class="ld-charm"><svg viewBox="0 0 100 100"><defs><radialGradient id="ldc" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#a16207"/></radialGradient></defs><path d="M50 8 L40 0 M50 8 L60 0" stroke="#a16207" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="54" r="40" fill="url(#ldc)" stroke="#a16207" stroke-width="4"/><circle cx="50" cy="54" r="27" fill="none" stroke="#fffbeb" stroke-width="2.5" stroke-dasharray="6 5" opacity=".9"/><path d="M50 32 V76 M35 43 L65 65 M65 43 L35 65" stroke="#fffbeb" stroke-width="4" stroke-linecap="round" opacity=".95"/><circle cx="50" cy="54" r="7" fill="#fffbeb"/><circle cx="50" cy="10" r="6" fill="#fde047" stroke="#a16207" stroke-width="3"/></svg></div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
+    <div class="ld-foot">
+      <div class="ld-hint">
+        <div class="ld-tip"><small>✦ Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>
+        <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
+        <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
+      </div>
+      <div class="ld-dots"></div>
+      <div class="ld-prog"><div class="ld-row"><span class="ld-text">Загрузка…</span><b class="ld-pct"></b></div><div class="ld-bar"><i class="boot"></i></div></div>
     </div>
-    <div class="ld-dots"></div>
   </div>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
