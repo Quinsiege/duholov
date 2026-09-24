@@ -346,17 +346,6 @@ body.night .range-circle { fill-opacity: .1; }
 .t-drop { width: 32px; height: 32px; flex: none; opacity: .6; } .t-drop .ico { width: 16px; height: 16px; }
 .loot-task { margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(251, 191, 36, .12); border: 1px solid rgba(251, 191, 36, .45); text-align: center; font-size: 14px; animation: popIn .4s .5s both; }
 .loot-task small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-.fr-prof-head { display: flex; align-items: center; gap: 14px; text-align: left; }
-.fr-prof-ava { width: 64px; height: 64px; flex: none; } .fr-prof-ava svg { width: 100%; height: 100%; }
-.fr-prof-head small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-.fr-prof-lvl { font-size: 18px; }
-.fr-prof-stats { margin: 14px 0 10px; text-align: center; } .fr-prof-stats b { font-size: 15px; }
-.fr-sub { font-size: 12px; color: var(--muted); margin: 6px 0; text-align: left; }
-.fr-top { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.fr-sp { display: flex; flex-direction: column; align-items: center; padding: 8px 4px; border-radius: 14px; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); min-width: 0; }
-.fr-sp img, .fr-sp .art { width: 52px; height: 52px; }
-.fr-sp b { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .fr-sp small { font-size: 10px; color: var(--muted); }
-.fr-since { margin: 10px 0 0; }
 
 /* серия дней и общее дело Ордена (3.1) */
 .st-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px; }
@@ -1081,9 +1070,7 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 }
 /* иконка валюты внутри текста (цена в окне покупки, в кнопках) — размером с букву */
 .cur { display: inline-flex; vertical-align: -0.18em; } .cur .art { width: 1.15em; height: 1.15em; }
-.fr-top + .btn.wide { margin-top: 14px; }
 .album-empty { padding: 14px; border-radius: 16px; background: rgba(255, 255, 255, .05); border: 1px dashed var(--line); color: var(--muted); font-size: 14px; text-align: center; }
-.fr-prof-modal .fr-since { margin: 12px 0 0; text-align: center; }
 
 /* 3.17: меню страницами (по 12 плиток), свайп вбок, точки страниц */
 .menu-pages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; margin: 0 -16px; } /* страницы — на всю ширину листа */
@@ -1288,3 +1275,17 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .pc-acts:empty { display: none; }
 .pc-acts2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pc-acts2 .btn { min-height: 38px; padding: 6px 8px; }
+.lgx-sub { display: flex; align-items: center; gap: 8px; margin: 4px 2px 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.lgx-sub .lg-mini { width: 22px; height: 22px; font-size: 11px; }
+.pc-fr { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(94, 234, 212, .07); border: 1px solid rgba(94, 234, 212, .25); display: flex; flex-direction: column; gap: 6px; }
+.pc-fr-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pc-fr-top small, .pc-fr > small { color: var(--muted); font-size: 12px; }
+.pc-fr .pbar { margin: 0; }
+.pc-sub { font-size: 12px; font-weight: 600; color: var(--muted); margin: 12px 2px 8px; }
+.pc-sps.three .pc-sp img, .pc-sps.three .pc-sp .art { width: 52px; height: 52px; }
+.pc-sps.three .pc-sp b { font-size: 12px; }
+.pc-acts2.one { grid-template-columns: 1fr; }
+.pc-sps.solo .pc-sp { display: grid; grid-template-columns: 52px 1fr; grid-template-rows: auto auto auto; column-gap: 12px; row-gap: 0; align-items: center; text-align: left; padding: 8px 12px; }
+.pc-sps.solo .pc-sp img, .pc-sps.solo .pc-sp .art { grid-column: 1; grid-row: 1 / 4; width: 52px; height: 52px; }
+.pc-sps.solo .pc-sp > :not(img):not(.art) { grid-column: 2; }
+.pc-sps.three .pc-sp small { font-size: 10px; white-space: nowrap; }
