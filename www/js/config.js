@@ -9,10 +9,12 @@ const CLOUD_PROJECTS = {
   prod: {
     url: 'https://cthqhwjnhqomlhrlberb.supabase.co',
     anonKey: 'sb_publishable__EG6d35UtqI_7b4ZvLVd8g_PyENCyoA', // публичный (publishable) ключ
+    auth: 'duholov.auth', admin: 'duholov.admin', // где браузер хранит вход (у каждого контура — свой)
   },
   test: {
     url: 'https://xktcxvotugcmlwbuasbg.supabase.co', // duholov-test
     anonKey: 'sb_publishable_owai4hZ9PApJRB1bALj7eA_NE_qrgi4', // публичный (publishable) ключ
+    auth: 'duholov.test.auth', admin: 'duholov.test.admin',
   },
 };
 const CLOUD_CONFIG = DEV ? CLOUD_PROJECTS.test : CLOUD_PROJECTS.prod;

@@ -12,7 +12,7 @@ const REASONS = ['Объекта нет на фото или его не вид�
   'Частная территория, школа или детский сад', 'Опасное место (дорога, стройка)', 'Неприемлемое содержание', 'Неинтересный объект'];
 const tiles = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
 
-const sb = supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: 'duholov.admin', detectSessionInUrl: true } });
+const sb = supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: CLOUD_CONFIG.admin, detectSessionInUrl: true } });
 const app = $('#app');
 let maps = [];
 const clearMaps = () => { maps.forEach(m => m.remove()); maps = []; };
