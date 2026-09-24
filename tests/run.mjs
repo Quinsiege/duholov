@@ -52,6 +52,9 @@ const game = await browser.newPage();
 game.on('pageerror', e => fail('ошибка в игре: ' + e.message));
 await game.goto('http://localhost:8123/www/index.html');
 await game.waitForTimeout(3000);
+// 4.0: сначала трейлер «Тонкая ночь» (один раз на устройстве) — его можно пропустить, дальше стартовый экран
+if (!(await game.$('.trl'))) fail('игра: не показан трейлер');
+else { await game.click('.trl-skip'); await game.waitForTimeout(1500); }
 if (!(await game.$('.onb'))) fail('игра: не показан стартовый экран');
 console.log('✓ игра открылась');
 

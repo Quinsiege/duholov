@@ -69,6 +69,8 @@ window.addEventListener('load', () => {
       await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
     Loader.set(58);
+    // 4.0: трейлер «Тонкая ночь» — один раз на устройстве после обновления до 4.0 (потом — из «Книги Ордена»)
+    if (!Game.moved && Trailer.due()) { Loader.hide(); await Trailer.play(); }
     // только что вошёл через сервис или по почте — сразу в игру (или к истории новичка), без экрана входа (3.30)
     const logged = Login.justLogged();
     if (Game.moved) { Loader.hide(); Game.onMoved(); }

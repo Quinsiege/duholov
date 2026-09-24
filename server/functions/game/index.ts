@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.37.1';
+const APP_VERSION = '4.0.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -253,6 +253,26 @@ const SPECIES = [
   { id: 'indrik', name: 'Индрик-зверь', el: 'water', rar: 5, stage: 1, fam: 'indrik', legend: true, story: true, base: [292, 244, 256],
     desc: 'Легенда. Всем зверям отец: ходит под землёй, как солнце по небу, и прочищает подземные реки, чтобы родники не иссякли.',
     look: { shape: 'blob', c1: '#e0e7ff', c2: '#4338ca', c3: '#67e8f9', eye: '#a5f3fc', eyes: 'glow', mouth: 'none', back: ['aura', 'mane', 'tail', 'unihorn'], feats: [] } },
+
+  // ---------- 4.0 «Осень Нави»: дубовое семейство, Самоварник, осенняя Листопадница и легенда четвёртой книги ----------
+  { id: 'zheludok', name: 'Желудок', el: 'forest', rar: 1, stage: 1, fam: 'zheludok', evo: 'dubovik', cost: 25, base: [110, 116, 118],
+    desc: 'Скатился с дуба прямо в городской сквер. Мечтает вырасти большим и сильным, а пока катается по дорожкам и прячется в листве.',
+    look: { shape: 'round', c1: '#d9a066', c2: '#7c4a1d', c3: '#a3e635', eyes: 'round', mouth: 'smile', back: [], feats: ['acorn', 'cheeks'] } },
+  { id: 'dubovik', name: 'Дубовик', el: 'forest', rar: 2, stage: 2, fam: 'zheludok', evo: 'dubynya', cost: 100, base: [158, 170, 160],
+    desc: 'Подросший Желудок. Кора у него крепкая, как кольчуга, а в дупле хранится запас желудей на чёрный день.',
+    look: { shape: 'tall', c1: '#a16207', c2: '#422006', c3: '#84cc16', eyes: 'angry', mouth: 'smile', back: ['antlers'], feats: ['leaves', 'beard'] } },
+  { id: 'dubynya', name: 'Дубыня', el: 'forest', rar: 3, stage: 3, fam: 'zheludok', base: [226, 232, 204],
+    desc: 'Богатырь-дубодёр из былин. Выворачивает с корнем деревья, сломанные бурей, и сажает на их место новые.',
+    look: { shape: 'robe', c1: '#854d0e', c2: '#3f2a14', c3: '#65a30d', eyes: 'angry', mouth: 'none', back: ['aura', 'antlers'], feats: ['beard', 'leaves', 'runes'] } },
+  { id: 'samovarnik', name: 'Самоварник', el: 'fire', rar: 3, stage: 1, fam: 'samovarnik', base: [196, 192, 196],
+    desc: 'Дух бабушкиного самовара. Где он пыхтит — там чай с пряниками и разговоры до полуночи. Не любит, когда пьют из пакетиков.',
+    look: { shape: 'box', c1: '#fbbf24', c2: '#92400e', c3: '#ef4444', eyes: 'round', mouth: 'smile', back: ['steam', 'handles'], feats: ['cheeks'] } },
+  { id: 'listopadnica', name: 'Листопадница', el: 'wind', rar: 3, stage: 1, fam: 'listopadnica', base: [198, 176, 188], season: 'autumn',
+    desc: 'Осенний дух листопада. Кружит жёлтые листья над дворами, а на Покров укрывает землю первым инеем. Появляется только осенью.',
+    look: { shape: 'ghost', c1: '#fdba74', c2: '#c2410c', c3: '#facc15', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'aura'], feats: ['leaves', 'cheeks'] } },
+  { id: 'svyatogor', name: 'Святогор', el: 'forest', rar: 5, stage: 1, fam: 'svyatogor', legend: true, story: true, base: [302, 252, 262],
+    desc: 'Легенда. Богатырь, которого не держит мать сыра земля. Спит в Святых горах и встаёт, только когда Руси грозит беда.',
+    look: { shape: 'robe', c1: '#94a3b8', c2: '#1e293b', c3: '#fbbf24', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['aura', 'halo'], feats: ['beard', 'crown', 'runes'] } },
 ];
 // Земли России для духов родных земель (грубо, по широте и долготе)
 const LANDS = {
@@ -513,6 +533,23 @@ const STORY = [
     steps: [{ t: 'raid', n: 8 }, { t: 'league', n: 6 }, { t: 'defend', n: 5 }],
     reward: { charm3: 15, incense: 3, sparks: 15000, xp: 30000 }, gift: 'indrik', emblem: 'horn',
     outro: 'Земля мягко качнулась, и у ближайшего родника поднялся зверь с единственным рогом, сияющим, как лёд на солнце. Он опустил голову, и родник под ним засмеялся звонко, по-весеннему. <br><br><i>Конец третьей книги. Эмблема «Рог Индрика» открыта в облике Ловчего.</i>' },
+
+  // ---------- Книга четвёртая «Осень Нави» (4.0) ----------
+  { title: 'Дубовая роща',
+    intro: 'Индрик ушёл под землю, а в скверах вдруг зашуршали Желудки — сотни круглых духов в шапочках. «Они не просто так проросли, — говорит Велимир, пересчитывая жёлуди в ладони. — Старые дубы помнят богатырей. Кто-то их будит».',
+    steps: [{ t: 'catchEl', el: 'forest', n: 15 }, { t: 'evolve', n: 3 }, { t: 'walk', n: 10 }],
+    reward: { charm2: 15, honey: 10, sparks: 8000, xp: 20000 },
+    outro: 'Самый старый Дубыня в роще склонил перед тобой ветви. «Святогор ворочается во сне, — прогудел он. — Горы трещат. Скоро и в городе почувствуют».' },
+  { title: 'Покровские туманы',
+    intro: 'Над городом легли туманы — густые, как молоко. Листопадницы кружат над дворами, а прислужники Нави прячутся в тумане у самых родников. «Покров должен укрыть землю, а не Навь», — хмурится Велимир.',
+    steps: [{ t: 'spring', n: 30 }, { t: 'invasion', n: 6 }, { t: 'catch', n: 60 }],
+    reward: { charm3: 8, water: 10, sparks: 10000, xp: 25000 },
+    outro: 'Туман рассеялся к утру, и на каждой крыше лежал тонкий иней — ровный, как вышивка. «Первый снег, — улыбнулся Велимир. — Значит, Покров за нас».' },
+  { title: 'Святогор',
+    intro: '«Святогора не держит земля, — читает Велимир из старой былины. — Но если весь Орден встанет рядом, он сможет подняться». Нужна сила разломов, капищ и Лиги — всего, чему ты научился.',
+    steps: [{ t: 'raid', n: 10 }, { t: 'duel', n: 10 }, { t: 'league', n: 8 }],
+    reward: { charm3: 20, incense: 5, sparks: 20000, xp: 40000 }, gift: 'svyatogor', emblem: 'oak',
+    outro: 'Земля загудела, как колокол, и над окраиной поднялся богатырь ростом с телебашню — а потом стал маленьким, как все духи, и шагнул к тебе. «Спасибо, что разбудил, Ловчий, — сказал Святогор. — Теперь я постою за Русь рядом с тобой».' },
 ];
 
 const SHINY_RATE = 1 / 128;
@@ -558,6 +595,7 @@ const HOLIDAYS = {
   svyatki:     { name: 'Святки',          desc: 'Зимние праздники: Морозко и Снегурка выходят к людям, духи Ветра и Воды встречаются чаще, в родниках — подарки.', el: ['wind', 'water'], loot: 1.5, seasonal: ['morozko', 'snegurka'] },
   maslenitsa:  { name: 'Масленица',       desc: 'Провожаем зиму! Духи Огня встречаются вдвое чаще, в родниках много мёда («блинов»), опыт ×1,5.', el: ['fire'], honey: true, xp: 1.5 },
   kupala:      { name: 'Купальская ночь', desc: 'Цветёт папоротник: Купалинка повсюду, духи Огня, Воды и Леса чаще, ночью сияющие — вдвое чаще.', el: ['fire', 'water', 'forest'], shinyNight: 2, seasonal: ['kupalinka'] },
+  pokrov:      { name: 'Покров', desc: 'Первые туманы и иней: духи Ветра и Воды встречаются чаще, Листопадница — повсюду, в родниках больше добычи.', el: ['wind', 'water'], loot: 1.5, seasonal: ['listopadnica'] },
   veles:       { name: 'Велесова ночь',   desc: 'Граница миров тоньше всего: духи Тени втрое чаще, в великих разломах ждёт Кощей, сияющие Тени вдвое чаще.', el: ['shadow'], elMul: 3, koschey: true, shiny: 2 },
 };
 
@@ -591,12 +629,75 @@ const LOOK = {
     { id: 'crown', name: 'Венец Лиги', lvl: 1, league: 9 },
     { id: 'needle', name: 'Игла Кощея', lvl: 1, story: 12 },
     { id: 'horn', name: 'Рог Индрика', lvl: 1, story: 18 },
+    { id: 'oak', name: 'Дубовый венок', lvl: 1, story: 21 }, // 4.0: за четвёртую книгу Летописи
     { id: 'trail', name: 'Знак Тропы', lvl: 1, pass: true },
   ],
 };
 
 MEDALS.splice(4, 0, { id: 'duels', name: 'Поединщик', desc: 'Победи хранителей капищ', stat: 'duels', tiers: [5, 50, 300] });
 QUEST_TEMPLATES.push({ t: 'duel', min: 1, max: 2, text: n => `Победи хранителей капищ: ${n}`, reward: { charm2: 4, sparks: 600 } });
+
+/* ---------- 4.0: «Посвящение в Ловчие» — обучение ----------
+   Пропустить нельзя: шаги ведёт сервер (S.d.tut — номер текущего шага, 0 — пройдено), после перезахода игра
+   продолжает с того же места. kind: talk — сцена с Велимиром; ui — открыть раздел; catch — поймать учебного
+   духа (sid); spring — зачерпнуть из родника; power — усилить духа. За каждую главу — награда. */
+const TUT_CHAPTERS = [
+  { title: 'Тонкая ночь',     reward: { charm: 5, sparks: 200, xp: 100 } },
+  { title: 'Первый дух',      reward: { charm: 10, honey: 3, sparks: 300, xp: 300 } },
+  { title: 'Твои духи',       reward: { sparks: 500, xp: 300 } },
+  { title: 'Родники',         reward: { charm: 15, water: 3, xp: 400 } },
+  { title: 'Дорога Ловчего',  reward: { incense: 1, sparks: 500, xp: 400 } },
+  { title: 'Клятва Ордена',   reward: { charm: 20, honey: 5, water: 3, sparks: 1000, zlat: 20, xp: 1000 } },
+];
+const TUT = [
+  { ch: 0, kind: 'talk', id: 'meet', lines: [
+    ['n', 'Ночь. Пустой двор. Фонарь над подъездом мигает, хотя ветра нет.'],
+    ['n', 'В луже у бордюра что-то светится — и смотрит на тебя.'],
+    ['v', 'Не бойся. Раз ты их видишь — значит, ты из наших.'],
+    ['v', 'Меня зовут <b>Велимир</b>. Я старший Ловчий <b>Ордена Оберега</b>. Мы бережём границу между Явью — нашим миром — и Навью, миром духов.'],
+    ['you', 'Духов? Каких ещё духов?'],
+    ['v', 'Тех, что прячутся в проводах, лужах и старых фонарях. В <b>Тонкую ночь</b> граница истончилась — и они хлынули в город.'] ] },
+  { ch: 0, kind: 'talk', id: 'lore', lines: [
+    ['v', 'Духи не злые. Они растерялись: Навь тянет их обратно, а здесь им холодно и страшно.'],
+    ['v', 'Ловчий ловит духа <b>оберегом</b> — узелком с заговорённой травой. С тобой дух окрепнет и станет другом.'],
+    ['v', 'Но есть и те, кого Навь уже омрачила. Они бродят в <b>разломах</b>. А за всем этим стоит <b>Кощей</b>…'],
+    ['you', 'И что мне делать?'],
+    ['v', 'Учиться. Посвящение займёт немного времени, но пропустить его нельзя — Орден не пускает на улицы неподготовленных.'],
+    ['v', 'Смотри: рядом с тобой уже появился дух. Начнём!'] ] },
+  { ch: 1, kind: 'catch', id: 'catch1', sid: 'vayfayka', hint: 'Рядом появился дух — видишь светящийся круг на карте? <b>Коснись духа</b>, а потом <b>смахни оберег вверх</b>, прямо в него.' },
+  { ch: 1, kind: 'talk', id: 'ring', lines: [
+    ['v', 'Поймал! Для первого раза — отлично.'],
+    ['v', 'Видел кольцо вокруг духа? Оно сжимается. Бросай, когда кольцо <b>маленькое</b> — выйдет «Отлично!»: больше опыта и выше шанс поймать.'],
+    ['v', 'Цвет кольца — это нрав духа: <b>зелёный</b> — покладистый, <b>красный</b> — упрямый. Упрямым помогают мёд и серебряные обереги.'],
+    ['v', 'Ещё один дух ждёт неподалёку. Попробуй попасть в маленькое кольцо!'] ] },
+  { ch: 1, kind: 'catch', id: 'catch2', sid: 'mshonok', hint: 'Второй учебный дух рядом. Коснись его и <b>дождись, пока кольцо станет маленьким</b> — тогда бросай!' },
+  { ch: 2, kind: 'ui', id: 'menu', hint: 'Каждый пойманный дух — твой. Открой <b>меню</b> — золотой оберег внизу экрана.' },
+  { ch: 2, kind: 'ui', id: 'spirits', hint: 'Это разделы Ордена. Открой <b>«Духи»</b> — там твоя коллекция.' },
+  { ch: 2, kind: 'ui', id: 'card', hint: 'Коснись любого духа, чтобы открыть его <b>карточку</b>.' },
+  { ch: 2, kind: 'power', id: 'power', hint: 'На карточке — сила духа. Нажми <b>«Усилить»</b>: за искры и эссенцию дух станет сильнее. Эссенцию приносят поимки духов того же семейства.' },
+  { ch: 2, kind: 'ui', id: 'dex', hint: 'Теперь загляни в <b>«Бестиарий»</b> (меню) — там все виды духов. Сколько найдёшь ты?' },
+  { ch: 3, kind: 'talk', id: 'springs', lines: [
+    ['v', 'Обереги тратятся быстро. Пополняют их <b>родники</b> — старые колодцы, где бьёт живая сила.'],
+    ['v', 'Родники стоят у настоящих мест: памятников, фонтанов, храмов, арт-объектов. На карте это синие колодцы со столбом света.'],
+    ['v', 'Из родника выпадают обереги, мёд, живая вода, а иногда — <b>коконы</b> с духами внутри.'],
+    ['v', 'Стрелка вверху экрана покажет дорогу к ближайшему. Пойдём, прогуляемся!'] ] },
+  { ch: 3, kind: 'spring', id: 'spring', hint: 'Иди к роднику по <b>стрелке вверху</b> и коснись его, когда подойдёшь. Родники есть почти в каждом районе — если рядом нет, прогуляйся.' },
+  { ch: 3, kind: 'ui', id: 'bag', hint: 'Добыча уже в <b>Сумке</b>. Открой меню → «Сумка» и посмотри, что у тебя есть.' },
+  { ch: 4, kind: 'talk', id: 'road', lines: [
+    ['v', 'Ловчий — это ходок. Каждый пройденный шаг идёт в дело.'],
+    ['v', 'Твой первый дух идёт рядом с тобой — это <b>спутник</b>. В пути он находит эссенцию.'],
+    ['v', '<b>Коконы</b> греются шагами: пройдёшь нужное расстояние — и из кокона вылупится дух.'],
+    ['v', 'Каждый день Орден даёт <b>задания</b>, а в <b>Летописи</b> записана наша история — глава за главой.'] ] },
+  { ch: 4, kind: 'ui', id: 'cocoons', hint: 'Открой меню → <b>«Коконы»</b>. Первый кокон уже греется — пройди 2 км, и он вылупится.' },
+  { ch: 4, kind: 'ui', id: 'quests', hint: 'Открой <b>«Задания»</b> — там задания дня и Летопись Ордена.' },
+  { ch: 4, kind: 'ui', id: 'path', hint: 'И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.' },
+  { ch: 5, kind: 'talk', id: 'oath', lines: [
+    ['v', 'Ты поймал первых духов, нашёл родник и знаешь, куда идти дальше.'],
+    ['v', 'Впереди — капища предков, разломы с боссами, Лига и дружины. Всё откроется, когда будешь готов.'],
+    ['v', 'Повторяй за мной — это клятва Ордена.'],
+    ['you', '<b>Беречь духов. Беречь границу. Беречь друг друга.</b>'],
+    ['v', 'Добро пожаловать в Орден Оберега, Ловчий. Держи — это твоё первое снаряжение.'] ] },
+];
 
 // ===== www/js/util.js =====
 /* Утилиты: детерминированный хеш/ГСЧ, гео, DOM, звук, вибрация, события */
@@ -812,6 +913,7 @@ const Ev = {
       ['svyatki', day(12, 25, y - 1), day(1, 15)],
       ['svyatki', day(12, 25), day(1, 15, y + 1)],
       ['kupala', day(7, 5), day(7, 9)],
+      ['pokrov', day(10, 12), day(10, 17)], // 4.0: Покров день — 14 октября
       ['veles', day(10, 30), day(11, 3)],
     ];
     const e = this.easter(y);
@@ -841,7 +943,7 @@ const Ev = {
   duelMul() { return this.cur.duel || 1; },
   springCooldown() { return (this.cur.cooldown || 5) * 60000; },
 
-  // Сезонные духи: зимние — с декабря по февраль и на Святки, Купалинка — летом и на Купалу
+  // Сезонные духи: зимние — с декабря по февраль и на Святки, Купалинка — летом и на Купалу, осенние — с сентября по ноябрь
   seasonal(s) {
     if (!s.season) return 1;
     const h = this.hol, m = this.month();
@@ -849,6 +951,7 @@ const Ev = {
     if (boosted) return 6;
     if (s.season === 'winter') return m === 11 || m <= 1 ? 1 : 0;
     if (s.season === 'kupala') return m === 5 || m === 6 ? 0.6 : 0;
+    if (s.season === 'autumn') return m >= 8 && m <= 10 ? 0.6 : 0; // 4.0: Листопадница — с сентября по ноябрь
     return 0;
   },
 };
@@ -1214,6 +1317,8 @@ const S = {
     d.spirits = d.spirits || []; d.cocoons = d.cocoons || []; d.springs = d.springs || {}; d.rifts = d.rifts || {}; d.caught = d.caught || {};
     d.medals = d.medals || {};
     d.story = d.story || { ch: 0, p: [0, 0, 0] };
+    // 4.0: обучение стало длиннее — шаги прежнего (1 поймать, 2 родник, 3 меню) переводятся в новые
+    if (d.tut && d.tutV !== 4) { d.tut = { 1: 1, 2: TUT.findIndex(s => s.id === 'springs') + 1, 3: TUT.findIndex(s => s.id === 'road') + 1 }[d.tut] || 1; d.tutV = 4; }
     if (d.buddy === undefined) d.buddy = null;
   },
 
@@ -1229,7 +1334,7 @@ const S = {
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
-    this.d.tut = 1; // обучение для новых игроков
+    this.d.tut = 1; this.d.tutV = 4; // обучение «Посвящение в Ловчие» (4.0)
     this.ensureQuests();
     this.save(true);
   },
@@ -1373,6 +1478,7 @@ const S = {
     this.d.sparks -= c.sparks; this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.lvl++;
     this.progress('power', 1);
+    this.tutAdvance('power'); // 4.0: шаг обучения «Усиль духа»
     this.save();
     return true;
   },
@@ -1574,6 +1680,19 @@ const S = {
     return { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
   },
 
+
+  /* ---------- 4.0: обучение «Посвящение в Ловчие» ---------- */
+  tutAt() { return (this.d && this.d.tut && TUT[this.d.tut - 1]) || null; },
+  // Шаг выполнен: kind — что сделал игрок, id — для сцен и разделов. В конце главы — её награда.
+  tutAdvance(kind, id) {
+    const st = this.tutAt();
+    if (!st || st.kind !== kind || (id && st.id !== id)) return null;
+    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward) : [];
+    this.d.tut = next ? this.d.tut + 1 : 0;
+    if (got.length) Bus.emit('tutChapter', { ch: st.ch, got, done: !next });
+    this.save();
+    return { got, done: !next };
+  },
   /* ---------- Летопись ---------- */
   storyReady() {
     const ch = STORY[this.d.story.ch];
@@ -2966,7 +3085,6 @@ const Duel = {
 
 const Rules = {
   QUEST_BONUS: { charm: 10, honey: 3, incense: 1, sparks: 1000 },
-  TUT_REWARD: { charm: 10, honey: 3, xp: 300 },
   PLACE_REWARD: { xp: 1000, sparks: 500, charm: 10 },
   SUPPLY: { charm: 15, honey: 2, water: 1 },
   THROWABLE: ['charm', 'charm2', 'charm3'],
@@ -3194,7 +3312,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.21.0', // 3.23: таблицу сезона клиент до 3.21 читал напрямую из базы — теперь это закрыто
+  MIN_CLIENT: '4.0.0', // 4.0: новые духи меняют появление духов на карте, обучение ведёт сервер — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -3634,8 +3752,9 @@ const GameCore = {
         return this.openEnc(ctx, { mode: 'wild', sid: e.sid, lvl: e.lvl, shiny: e.shiny, boost: e.boost, seed: e.id, spawnId: e.id });
       }
       if (kind === 'tut') {
-        this.need(S.d.tut === 1, 'Обучение уже пройдено');
-        return this.openEnc(ctx, { mode: 'tut', sid: Tut.SID, lvl: 2, seed: 'tut' });
+        const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
+        this.need(st && st.kind === 'catch', 'Учебный дух сейчас не нужен');
+        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: 2, seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -3711,7 +3830,7 @@ const GameCore = {
       S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
       if (s.land) S.progress('land', 1); // дух родной земли — для Летописи
-      if (e.mode === 'tut' && S.d.tut === 1) S.d.tut = 2;
+      if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'story') S.d.storyGift = null;
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
@@ -3736,7 +3855,7 @@ const GameCore = {
       S.progress('spring', 1);
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
-      if (S.d.tut === 2) S.d.tut = 3;
+      S.tutAdvance('spring');
       // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
       let task = null;
       if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
@@ -3869,12 +3988,14 @@ const GameCore = {
       this.need(S.d.tasks.length < n, 'Поручение не найдено');
       return { ok: true };
     },
-    tutFinish(a) {
-      this.need(S.d.tut, 'Обучение уже пройдено');
-      const done = !a.skip && S.d.tut === 3;
-      S.d.tut = 0;
-      return { got: done ? S.giveRewards(Rules.TUT_REWARD) : [] };
+    // 4.0: сцены и разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
+    tutNext(a) {
+      const st = S.tutAt();
+      this.need(st, 'Обучение уже пройдено');
+      this.need((st.kind === 'talk' || st.kind === 'ui') && st.id === a.id, 'Сначала выполни текущий шаг обучения');
+      return S.tutAdvance(st.kind, st.id);
     },
+    tutFinish() { this.need(false, 'Обучение нельзя пропустить'); },
     async placeRewards(a, ctx) {
       const rows = await ctx.env.mySubmissions();
       const out = [];

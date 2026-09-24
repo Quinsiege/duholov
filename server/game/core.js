@@ -8,7 +8,7 @@
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.21.0', // 3.23: таблицу сезона клиент до 3.21 читал напрямую из базы — теперь это закрыто
+  MIN_CLIENT: '4.0.0', // 4.0: новые духи меняют появление духов на карте, обучение ведёт сервер — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -448,8 +448,9 @@ const GameCore = {
         return this.openEnc(ctx, { mode: 'wild', sid: e.sid, lvl: e.lvl, shiny: e.shiny, boost: e.boost, seed: e.id, spawnId: e.id });
       }
       if (kind === 'tut') {
-        this.need(S.d.tut === 1, 'Обучение уже пройдено');
-        return this.openEnc(ctx, { mode: 'tut', sid: Tut.SID, lvl: 2, seed: 'tut' });
+        const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
+        this.need(st && st.kind === 'catch', 'Учебный дух сейчас не нужен');
+        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: 2, seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -525,7 +526,7 @@ const GameCore = {
       S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
       if (s.land) S.progress('land', 1); // дух родной земли — для Летописи
-      if (e.mode === 'tut' && S.d.tut === 1) S.d.tut = 2;
+      if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'story') S.d.storyGift = null;
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
@@ -550,7 +551,7 @@ const GameCore = {
       S.progress('spring', 1);
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
-      if (S.d.tut === 2) S.d.tut = 3;
+      S.tutAdvance('spring');
       // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
       let task = null;
       if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
@@ -683,12 +684,14 @@ const GameCore = {
       this.need(S.d.tasks.length < n, 'Поручение не найдено');
       return { ok: true };
     },
-    tutFinish(a) {
-      this.need(S.d.tut, 'Обучение уже пройдено');
-      const done = !a.skip && S.d.tut === 3;
-      S.d.tut = 0;
-      return { got: done ? S.giveRewards(Rules.TUT_REWARD) : [] };
+    // 4.0: сцены и разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
+    tutNext(a) {
+      const st = S.tutAt();
+      this.need(st, 'Обучение уже пройдено');
+      this.need((st.kind === 'talk' || st.kind === 'ui') && st.id === a.id, 'Сначала выполни текущий шаг обучения');
+      return S.tutAdvance(st.kind, st.id);
     },
+    tutFinish() { this.need(false, 'Обучение нельзя пропустить'); },
     async placeRewards(a, ctx) {
       const rows = await ctx.env.mySubmissions();
       const out = [];

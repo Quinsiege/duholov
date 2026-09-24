@@ -40,6 +40,9 @@
   <script src="../www/js/rules.js"></script>
   <script src="../www/js/trade.js"></script>
   <script src="../www/js/tutorial.js"></script>
+  <script src="../www/js/path.js"></script>
+  <script src="../www/js/book.js"></script>
+  <script src="../www/js/trailer.js"></script>
   <script src="../www/js/album.js"></script>
   <script src="../www/js/league.js"></script>
   <script src="../www/js/journal.js"></script>
@@ -307,16 +310,17 @@
     S.progress('power', 1); ok(S.storyReady());
     const r = S.claimStory(); ok(r && r.ch.title === 'Посвящение'); eq(S.d.story.ch, 1);
   });
-  test('Летопись: 18 глав, у всех шагов есть текст, подарки существуют', () => {
-    eq(STORY.length, 18);
+  test('Летопись: 21 глава, у всех шагов есть текст, подарки существуют', () => {
+    eq(STORY.length, 21);
     STORY.forEach((ch, i) => {
       eq(ch.steps.length, 3, 'шагов в главе ' + (i + 1));
       ch.steps.forEach(s => { ok(stepText(s).length > 5, `шаг «${s.t}» в главе ${i + 1}`); if (s.el) ok(ELEMENTS[s.el], 'стихия'); });
       if (ch.gift) ok(SP[ch.gift], 'подарок ' + ch.gift);
       Object.keys(ch.reward).forEach(k => ok(k === 'xp' || k === 'sparks' || ITEMS[k], 'награда ' + k));
     });
-    ok(LOOK.emblem.some(e => e.story === 12) && LOOK.emblem.some(e => e.story === STORY.length), 'эмблемы за вторую и третью книги');
+    ok([12, 18, STORY.length].every(n => LOOK.emblem.some(e => e.story === n)), 'эмблемы за вторую, третью и четвёртую книги');
     ok(SP.indrik.legend && SP.indrik.story, 'Индрик — легенда Летописи');
+    ok(SP.svyatogor.legend && SP.svyatogor.story && STORY[STORY.length - 1].gift === 'svyatogor', 'Святогор — легенда четвёртой книги');
   });
   test('Новые шаги Летописи засчитываются (вторжение, очищение, фото, Лига)', () => {
     S.d.story = { ch: 7, p: [0, 0, 0] }; // «Прислужники Нави»
@@ -576,17 +580,44 @@
     A.data.items.charm = 0; A.data.items.charm2 = 0; A.data.items.charm3 = 0;
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /Обереги закончились/);
   });
-  atest('Сервер: обучение — учебный дух ловится всегда, дальше шаг «родник»', async () => {
+  atest('Сервер: обучение 4.0 — пропустить нельзя, шаги строго по порядку, награды за главы', async () => {
     const A = await newPlayer('ud', 55.73, 37.61, 'Дельта');
-    eq(A.data.tut, 1);
-    await must(A, 'encStart', { kind: 'tut' });
-    const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
-    ok(r.caught, 'учебный дух пойман'); eq(A.data.tut, 2);
-    await refuse(A, 'encStart', { kind: 'tut' }, /пройдено/);
+    const at = () => TUT[A.data.tut - 1], idx = id => TUT.findIndex(s => s.id === id) + 1;
+    eq(A.data.tut, 1); eq(at().id, 'meet');
+    await refuse(A, 'tutFinish', {}, /нельзя пропустить/);
+    await refuse(A, 'encStart', { kind: 'tut' }, /не нужен/);
+    await refuse(A, 'tutNext', { id: 'lore' }, /текущий шаг/);
+    const charm0 = A.data.items.charm;
+    await must(A, 'tutNext', { id: 'meet' });
+    const g0 = await must(A, 'tutNext', { id: 'lore' });
+    ok(g0.got.length > 0 && A.data.items.charm > charm0, 'награда за первую главу'); eq(at().id, 'catch1');
+    // шаги «поймай» засчитывает поимка учебного духа (его вид — из шага)
+    for (const id of ['catch1', 'catch2']) {
+      eq(at().id, id);
+      await must(A, 'encStart', { kind: 'tut' });
+      const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+      ok(r.caught, 'учебный дух пойман'); eq(A.data.spirits[A.data.spirits.length - 1].sid, TUT[idx(id) - 1].sid);
+      if (id === 'catch1') { await refuse(A, 'encStart', { kind: 'tut' }, /не нужен/); await must(A, 'tutNext', { id: 'ring' }); }
+    }
+    for (const id of ['menu', 'spirits', 'card']) await must(A, 'tutNext', { id });
+    eq(at().id, 'power');
+    await refuse(A, 'tutNext', { id: 'power' }, /текущий шаг/); // усиление нельзя «отметить» — только сделать
+    await must(A, 'powerUp', { uid: A.data.spirits[0].uid });
+    eq(at().id, 'dex');
+    await must(A, 'tutNext', { id: 'dex' }); await must(A, 'tutNext', { id: 'springs' });
+    eq(at().id, 'spring');
+    await refuse(A, 'tutNext', { id: 'spring' }, /текущий шаг/);
     await must(A, 'spring', { poi: { id: 'osm:n555', lat: A.lat, lng: A.lng, name: 'Родник' } });
-    eq(A.data.tut, 3);
-    const f = await must(A, 'tutFinish', {});
-    ok(f.got.length > 0, 'награда за обучение'); eq(A.data.tut, 0);
+    for (const id of ['bag', 'road', 'cocoons', 'quests', 'path']) await must(A, 'tutNext', { id });
+    eq(at().id, 'oath');
+    const zl = A.data.zlat || 0, fin = await must(A, 'tutNext', { id: 'oath' });
+    ok(fin.done && fin.got.length > 0, 'финальная награда'); eq(A.data.tut, 0); ok((A.data.zlat || 0) > zl, 'златники за клятву');
+    await refuse(A, 'tutNext', { id: 'oath' }, /пройдено/);
+    // прежнее обучение (шаг «родник» из 3.x) продолжается с того же места в новом
+    const B = await newPlayer('ud2', 55.731, 37.611, 'Ясень');
+    B.data.tut = 2; delete B.data.tutV;
+    await must(B, 'tutNext', { id: 'springs' });
+    eq(TUT[B.data.tut - 1].id, 'spring');
   });
   atest('Сервер: коллекция — усиление, превращение, отпускание, команда, облик', async () => {
     const A = await newPlayer('ue', 55.72, 37.60, 'Ёлка');
