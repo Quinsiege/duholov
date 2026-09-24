@@ -60,6 +60,11 @@ window.addEventListener('load', () => {
     }
     clearTimeout(splash);
     const sp = U.$('.boot-splash'); if (sp) sp.remove();
+    // вернулись со страницы сервиса входа — довести вход до конца (учётная запись могла смениться — тогда заново)
+    if (Game.on() && !Game.moved) {
+      if (await Login.resume()) { location.reload(); return; }
+      if (S.d) Login.load(); else await Login.load(); // новичку кнопки входа нужны сразу
+    }
     if (Game.moved) Game.onMoved();
     else if (S.d) start();
     else UI.onboarding(start);

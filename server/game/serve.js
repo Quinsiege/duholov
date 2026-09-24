@@ -108,6 +108,110 @@ const Pay = {
   },
 };
 
+/* ---------- Вход через сервисы (3.27): Google, Яндекс, VK, Telegram ----------
+   Игрок всегда сначала гость (анонимный вход Supabase). «Войти через …» — сервер сам проверяет вход у сервиса и:
+   · если этот вход ещё ни к кому не привязан — привязывает его к текущему игроку (таблица auth_links) и превращает
+     гостя в постоянную учётную запись (служебная почта в зоне .invalid — письма на неё доставить нельзя);
+   · если привязан к другому игроку (новое устройство) — выдаёт одноразовый вход в его учётную запись (token_hash).
+   Настройки владелец задаёт в Supabase → Edge Functions → Secrets (публичные номера приложений уходят клиенту, секреты — нет):
+     GOOGLE_CLIENT_ID · YANDEX_CLIENT_ID · VK_CLIENT_ID · TELEGRAM_BOT_TOKEN. Не задан — сервиса нет в списке. */
+const AUTHP = {
+  google: Deno.env.get('GOOGLE_CLIENT_ID') || '',
+  yandex: Deno.env.get('YANDEX_CLIENT_ID') || '',
+  vk: Deno.env.get('VK_CLIENT_ID') || '',
+  telegram: Deno.env.get('TELEGRAM_BOT_TOKEN') || '',
+};
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const getJson = async (url, init) => {
+  const r = await fetch(url, { ...init, signal: AbortSignal.timeout(12000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error_description || j.error || `ответ ${r.status}`);
+  return j;
+};
+const Auth = {
+  // публичные параметры для кнопок входа: номера приложений (не секреты)
+  providers() {
+    const p = {};
+    if (AUTHP.google) p.google = { client_id: AUTHP.google };
+    if (AUTHP.yandex) p.yandex = { client_id: AUTHP.yandex };
+    if (AUTHP.vk) p.vk = { client_id: AUTHP.vk };
+    if (AUTHP.telegram) p.telegram = { bot_id: AUTHP.telegram.split(':')[0] };
+    return p;
+  },
+  // Проверка входа у сервиса → { sub, name }
+  async verify(provider, a) {
+    if (provider === 'google') {
+      const t = await getJson('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(String(a.id_token || '')));
+      if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error('вход Google не подтверждён');
+      if (!a.nonce || t.nonce !== a.nonce) throw new Error('вход Google не подтверждён');
+      return { sub: String(t.sub), name: t.name || t.email || 'Google' };
+    }
+    if (provider === 'yandex') {
+      const t = await getJson('https://login.yandex.ru/info?format=json', { headers: { Authorization: 'OAuth ' + String(a.access_token || '') } });
+      if (String(t.client_id) !== AUTHP.yandex || !t.id) throw new Error('вход Яндекса не подтверждён'); // токен выдан именно нашему приложению
+      return { sub: String(t.id), name: t.display_name || t.real_name || t.login || 'Яндекс' };
+    }
+    if (provider === 'vk') {
+      const form = new URLSearchParams({ grant_type: 'authorization_code', code: String(a.code || ''), code_verifier: String(a.code_verifier || ''),
+        client_id: AUTHP.vk, device_id: String(a.device_id || ''), redirect_uri: String(a.redirect_uri || ''), state: String(a.state || '') });
+      const t = await getJson('https://id.vk.com/oauth2/auth', { method: 'POST', body: form });
+      if (!t.user_id || !t.access_token) throw new Error('вход VK не подтверждён');
+      let name = 'VK';
+      try {
+        const u = await getJson('https://id.vk.com/oauth2/user_info', { method: 'POST', body: new URLSearchParams({ client_id: AUTHP.vk, access_token: t.access_token }) });
+        if (u.user) name = [u.user.first_name, u.user.last_name].filter(Boolean).join(' ') || name;
+      } catch { /* имя не обязательно */ }
+      return { sub: String(t.user_id), name };
+    }
+    if (provider === 'telegram') {
+      // подпись Telegram Login: HMAC-SHA256 от строк «ключ=значение» (по алфавиту, без hash) на ключе SHA256(токена бота)
+      const d = a.data && typeof a.data === 'object' ? a.data : {};
+      if (!d.id || !d.hash || !d.auth_date) throw new Error('вход Telegram не подтверждён');
+      if (Date.now() / 1000 - +d.auth_date > 86400) throw new Error('вход Telegram устарел — попробуй ещё раз');
+      const check = Object.keys(d).filter(k => k !== 'hash').sort().map(k => `${k}=${d[k]}`).join('\n');
+      const secret = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(AUTHP.telegram));
+      const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const sig = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(check)));
+      if (sig !== String(d.hash)) throw new Error('вход Telegram не подтверждён');
+      return { sub: String(d.id), name: [d.first_name, d.last_name].filter(Boolean).join(' ') || (d.username ? '@' + d.username : 'Telegram') };
+    }
+    throw new Error('Такого способа входа нет');
+  },
+  async handle(uid, op, a) {
+    if (op === 'info') {
+      const links = must(await db.from('auth_links').select('provider, name, created_at').eq('user_id', uid)) || [];
+      return { ok: true, providers: this.providers(), links };
+    }
+    if (op !== 'signin') return { ok: false, error: 'Неизвестная операция' };
+    const provider = String(a.provider || '');
+    if (!this.providers()[provider]) return { ok: false, error: 'Этот способ входа пока не подключён' };
+    let who;
+    try { who = await this.verify(provider, a.proof || {}); }
+    catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: `Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }
+    const name = String(who.name).slice(0, 60);
+    const row = must(await db.from('auth_links').select('user_id').eq('provider', provider).eq('subject', who.sub).maybeSingle());
+    if (row && row.user_id === uid) return { ok: true, linked: true, already: true };
+    if (row) {
+      // вход уже привязан к другому Ловчему — одноразовый вход в его учётную запись
+      const { data: u, error } = await db.auth.admin.getUserById(row.user_id);
+      if (error || !u || !u.user || !u.user.email) return { ok: false, error: 'Учётная запись не найдена' };
+      const { data: link, error: le } = await db.auth.admin.generateLink({ type: 'magiclink', email: u.user.email });
+      if (le || !link || !link.properties) return { ok: false, error: 'Не удалось войти — попробуй ещё раз' };
+      const s = must(await db.from('saves').select('name:data->name, level:data->level').eq('user_id', row.user_id).maybeSingle());
+      return { ok: true, switch: true, token_hash: link.properties.hashed_token, player: s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null };
+    }
+    // новый вход — привязываем к текущему игроку; гость становится постоянной учётной записью
+    const { data: me } = await db.auth.admin.getUserById(uid);
+    if (me && me.user && !me.user.email) {
+      const { error } = await db.auth.admin.updateUserById(uid, { email: `u${uid.replace(/-/g, '')}@users.duholov.invalid`, email_confirm: true });
+      if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: 'Не удалось сохранить вход — попробуй ещё раз' }; }
+    }
+    const { error: ie } = await db.from('auth_links').insert({ provider, subject: who.sub, user_id: uid, name });
+    if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? 'Этот вход уже привязан — попробуй ещё раз' : 'Не удалось сохранить вход' };
+    return { ok: true, linked: true, name };
+  },
+};
+
 // Доступ к общим таблицам для GameCore (от имени сервера, в пределах одного игрока uid)
 function makeEnv(uid) {
   return {
@@ -395,6 +499,8 @@ Deno.serve(async req => {
   if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: 'Вышла новая версия игры — обнови её' });
   // Казна: создать оплату / узнать итог — вне очереди игровых действий (ждём ответа ЮKassa)
   if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));
+  // Вход через сервисы: список, привязка и переключение учётной записи — тоже вне очереди игровых действий
+  if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: 'Ошибка входа — попробуй ещё раз' }, 500); } }
   const env = makeEnv(uid);
 
   try {

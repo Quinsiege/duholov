@@ -1,0 +1,119 @@
+'use strict';
+/* Вход через сервисы (3.27): Google, Яндекс, VK, Telegram — или просто гость.
+   Игрок всегда сначала гость. Кнопка «Войти через …» уводит на страницу сервиса, тот возвращает на auth.html,
+   а игра отдаёт полученное серверу (Game.auth('signin')). Сервер сам проверяет вход у сервиса и либо привязывает его
+   к текущему Ловчему, либо (вход уже привязан к другому — новое устройство) выдаёт одноразовый вход в ту учётную запись.
+   Какие сервисы подключены и их публичные номера приложений, знает сервер (Game.auth('info')). */
+
+const Login = {
+  info: null,                      // { providers: { google: { client_id }, … }, links: [{ provider, name }] }
+  PEND: 'duholov.login',           // что начали: сервис, цель, state, nonce, code_verifier (sessionStorage)
+  CB: 'duholov.logincb',           // что вернул сервис (пишет auth.html)
+  ORDER: ['google', 'yandex', 'vk', 'telegram'],
+  NAMES: { google: 'Google', yandex: 'Яндекс', vk: 'VK', telegram: 'Telegram' },
+
+  async load() {
+    try { this.info = await Game.auth('info'); } catch (e) { this.info = this.info || { providers: {}, links: [] }; }
+    return this.info;
+  },
+  // приложение для Android до 3-й версии открывало страницы сервисов во внешнем браузере; Google не пускает во встроенные окна
+  app() { const m = /DuholovApp\/(\d+)/.exec(navigator.userAgent); return m ? +m[1] : 0; },
+  available() {
+    const p = (this.info && this.info.providers) || {}, app = this.app();
+    return this.ORDER.filter(k => p[k] && !(app && (app < 3 || k === 'google')));
+  },
+  appTooOld() { const app = this.app(); return app > 0 && app < 3 && this.ORDER.some(k => this.info && this.info.providers && this.info.providers[k]); },
+  linked() { return (this.info && this.info.links) || []; },
+  isGuest() { return !this.linked().length; },
+  icon(k) {
+    const I = {
+      google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.3H12v4.3h5.9a5 5 0 0 1-2.2 3.3v2.8h3.5c2.1-1.9 3.3-4.8 3.3-8.1z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.8c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.9A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14c-.2-.7-.4-1.4-.4-2s.1-1.4.4-2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1L5.7 10C6.6 7.4 9.1 5.4 12 5.4z"/></svg>',
+      yandex: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#FC3F1D"/><path fill="#fff" d="M13.3 6.2h-1.1c-2 0-3.1 1-3.1 2.6 0 1.8.8 2.6 2.4 3.7l1.3.9-3.8 5.6H6.2l3.4-5c-2-1.4-3.1-2.6-3.1-4.9 0-2.9 2-4.8 5.7-4.8h3.7v14.7h-2.6z"/></svg>',
+      vk: '<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0077FF"/><path fill="#fff" d="M12.8 17.3c-5.3 0-8.3-3.6-8.4-9.6h2.6c.1 4.4 2 6.3 3.6 6.7V7.7h2.5v3.8c1.5-.2 3.1-1.9 3.6-3.8h2.4a7.2 7.2 0 0 1-3.3 4.7 7.5 7.5 0 0 1 3.9 4.9h-2.7c-.6-1.8-2-3.2-3.9-3.4v3.4z"/></svg>',
+      telegram: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#27A7E7"/><path fill="#fff" d="M17.6 7.2 15.6 17c-.1.7-.6.9-1.1.5l-3.1-2.3-1.5 1.4c-.2.2-.3.3-.6.3l.2-3.2 5.8-5.2c.3-.2-.1-.4-.4-.2L7.8 12.8l-3.1-1c-.7-.2-.7-.7.1-1l12-4.6c.6-.2 1 .1.8 1z"/></svg>',
+    };
+    return `<span class="lg-ic">${I[k] || ''}</span>`;
+  },
+  buttons(mode) {
+    return this.available().map(k => `<button class="btn login-btn" data-login="${k}" data-mode="${mode}">${this.icon(k)}${this.NAMES[k]}</button>`).join('');
+  },
+
+  /* ---------- уйти на страницу сервиса ---------- */
+  cbUrl() { return new URL('auth.html', location.href.split(/[?#]/)[0]).href; },
+  rand(n = 32) { const a = new Uint8Array(n); crypto.getRandomValues(a); return btoa(String.fromCharCode(...a)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+  async start(provider, mode) {
+    const p = this.info && this.info.providers && this.info.providers[provider];
+    if (!p) { UI.toast('Этот способ входа пока не подключён'); return; }
+    const state = this.rand(16), nonce = this.rand(16), verifier = this.rand(48), redirect = this.cbUrl();
+    const pend = { provider, mode, state, nonce, verifier, redirect, t: Date.now() };
+    try { sessionStorage.setItem(this.PEND, JSON.stringify(pend)); } catch (e) { UI.toast('Браузер не даёт сохранить вход — проверь настройки'); return; }
+    const q = o => new URLSearchParams(o).toString();
+    let url;
+    if (provider === 'google') url = 'https://accounts.google.com/o/oauth2/v2/auth?' + q({ client_id: p.client_id, redirect_uri: redirect, response_type: 'id_token', scope: 'openid profile', nonce, state, prompt: 'select_account' });
+    else if (provider === 'yandex') url = 'https://oauth.yandex.ru/authorize?' + q({ response_type: 'token', client_id: p.client_id, redirect_uri: redirect, state });
+    else if (provider === 'vk') {
+      const ch = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      url = 'https://id.vk.com/authorize?' + q({ response_type: 'code', client_id: p.client_id, redirect_uri: redirect, state, code_challenge: ch, code_challenge_method: 'S256', scope: 'vkid.personal_info' });
+    } else if (provider === 'telegram') url = 'https://oauth.telegram.org/auth?' + q({ bot_id: p.bot_id, origin: location.origin, return_to: redirect, request_access: 'write' });
+    if (!url) return;
+    Sfx.play('tap');
+    location.href = url;
+  },
+
+  /* ---------- вернулись со страницы сервиса (вызывается при запуске, после загрузки прогресса) ---------- */
+  // true — учётная запись сменилась, страницу нужно перезагрузить
+  async resume() {
+    let pend = null, cb = null;
+    try { pend = JSON.parse(sessionStorage.getItem(this.PEND)); cb = JSON.parse(sessionStorage.getItem(this.CB)); } catch (e) {}
+    try { sessionStorage.removeItem(this.PEND); sessionStorage.removeItem(this.CB); } catch (e) {}
+    if (!pend || !cb) return false;
+    if (Date.now() - pend.t > 15 * 60000) { UI.toast('Вход устарел — попробуй ещё раз'); return false; }
+    if (cb.error) { UI.toast(cb.error_description ? `Вход не выполнен: ${U.esc(cb.error_description)}` : 'Вход отменён'); return false; }
+    let proof;
+    if (pend.provider === 'telegram') {
+      let data = null;
+      try { data = JSON.parse(decodeURIComponent(escape(atob(String(cb.tgAuthResult || '').replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) {}
+      if (!data) { UI.toast('Вход через Telegram отменён'); return false; }
+      proof = { data };
+    } else {
+      if (cb.state !== pend.state) { UI.toast('Вход не подтверждён — попробуй ещё раз'); return false; } // защита от подмены ответа
+      if (pend.provider === 'google') proof = { id_token: cb.id_token, nonce: pend.nonce };
+      if (pend.provider === 'yandex') proof = { access_token: cb.access_token };
+      if (pend.provider === 'vk') proof = { code: cb.code, device_id: cb.device_id, code_verifier: pend.verifier, redirect_uri: pend.redirect, state: cb.state };
+    }
+    let r;
+    try { r = await Game.auth('signin', { provider: pend.provider, proof }); }
+    catch (e) { UI.toast(U.esc(e.message)); return false; }
+    const name = this.NAMES[pend.provider];
+    if (r.linked) {
+      await this.load();
+      UI.toast(r.already ? `Вход через ${name} уже привязан` : `Готово: вход через ${name} привязан — прогресс не потеряется`, 'good');
+      return false;
+    }
+    if (r.switch) {
+      // вход привязан к другому Ловчему: на новом устройстве (без прогресса) — сразу туда, иначе спросить
+      const go = async () => {
+        const sb = await Cloud.client();
+        const { error } = await sb.auth.verifyOtp({ token_hash: r.token_hash, type: 'email' });
+        if (error) { UI.toast('Не удалось войти — попробуй ещё раз'); return false; }
+        return true;
+      };
+      if (!S.d || pend.mode === 'start') return go();
+      const who = r.player ? `«${U.esc(r.player.name)}» (${r.player.level} ур.)` : 'другому Ловчему';
+      return new Promise(res => UI.modal({
+        title: 'Вход уже привязан',
+        html: `<p>Вход через ${name} привязан к Ловчему ${who}.</p><p class="small">Перейти в ту учётную запись? Текущий прогресс на этом устройстве ${this.isGuest() ? 'гостевой — он останется в прежней учётной записи, вернуться в неё будет нельзя' : 'останется в своей учётной записи'}.</p>`,
+        buttons: [{ label: 'Остаться', fn: () => res(false) }, { label: 'Перейти', cls: 'primary', fn: async () => res(await go()) }],
+        dismiss: false,
+      }));
+    }
+    return false;
+  },
+
+  // Выйти (только если вход привязан — иначе прогресс гостя был бы потерян)
+  async signOut() {
+    if (this.isGuest()) return;
+    try { const sb = await Cloud.client(); await sb.auth.signOut(); } catch (e) {}
+    location.reload();
+  },
+};

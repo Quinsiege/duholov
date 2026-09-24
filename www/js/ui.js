@@ -1016,6 +1016,7 @@ const UI = {
         <a class="row link inst-apk hidden" href="duholov.apk" download><div class="row-main"><b>Скачать APK для Android</b><small>Приложение-обёртка: разреши установку из этого источника</small></div></a>
         ${Cloud.configured() ? row('cloud', 'Общая таблица Лиги', 'Показывать твоё имя, облик, уровень и звёзды в таблице сезона.') : ''}
       </div>
+      ${Game.on() ? '<div class="list acc-box"></div>' : ''}
       <div class="list">
         <div class="row"><div class="row-main"><b>Прогресс на сервере</b><small class="sync-state"></small></div></div>
         <button class="row link tr-out"><div class="row-main"><b>Перенести на другое устройство</b><small>Получить одноразовый код для нового телефона</small></div></button>
@@ -1062,6 +1063,25 @@ const UI = {
     };
     const st = setInterval(syncState, 1000);
     syncState();
+    // 3.27: учётная запись — гость или вход через сервис; привязать ещё один вход, выйти
+    const acc = scr.querySelector('.acc-box');
+    const renderAcc = () => {
+      if (!acc || !scr.isConnected) return;
+      const links = Login.linked(), avail = Login.available().filter(k => !links.some(l => l.provider === k));
+      acc.innerHTML = `<div class="row"><div class="row-main"><b>Учётная запись</b><small>${links.length
+        ? `Вход через ${links.map(l => `${Login.NAMES[l.provider]}${l.name ? ` (${U.esc(l.name)})` : ''}`).join(', ')} — прогресс откроется на любом устройстве`
+        : 'Гость: прогресс только на этом устройстве. Привяжи вход — и он не потеряется.'}</small></div></div>
+        ${links.length ? links.map(l => `<div class="row acc-linked"><div class="row-main">${Login.icon(l.provider)}<b>${Login.NAMES[l.provider]}</b></div><span class="q-ok">✓</span></div>`).join('') : ''}
+        ${avail.length ? `<div class="row acc-add"><div class="login-row">${Login.buttons('link')}</div></div>` : ''}
+        ${Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через Яндекс, VK и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div></div>' : ''}
+        ${!links.length && !avail.length && !Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через Google, Яндекс, VK и Telegram скоро появится. А пока — перенос по коду ниже.</small></div></div>' : ''}
+        ${links.length ? '<button class="row link acc-out"><div class="row-main"><b>Выйти</b><small>На этом устройстве начнётся новая гостевая игра; войти обратно — той же кнопкой сервиса</small></div></button>' : ''}`;
+      acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
+      const out = acc.querySelector('.acc-out');
+      if (out) out.onclick = () => this.confirm('Выйти?', 'Прогресс останется в твоей учётной записи — вернуться в неё можно входом через привязанный сервис.', 'Выйти', () => Login.signOut());
+    };
+    renderAcc();
+    Login.load().then(renderAcc);
     scr.querySelector('.tr-out').onclick = () => Game.codeDialog();
     scr.querySelector('.tr-in').onclick = () => Game.claimDialog();
     scr.querySelector('.about').onclick = () => this.about();
@@ -1230,7 +1250,10 @@ const UI = {
         <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
         <div class="onb-spirits">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
         ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
-        <button class="btn primary wide next">Начать</button>${Game.on() ? '<button class="btn ghost wide have">У меня уже есть прогресс</button>' : ''}
+        <button class="btn primary wide next">Начать гостем</button>
+        ${Login.available().length ? `<div class="onb-or"><span>или войди — прогресс не потеряется</span></div><div class="login-row">${Login.buttons('start')}</div>` : ''}
+        ${Login.appTooOld() ? '<p class="small onb-note">Вход через Яндекс, VK и Telegram — в новой версии приложения: <a href="duholov.apk">скачать</a>.</p>' : ''}
+        ${Game.on() ? '<button class="btn ghost wide have">У меня уже есть прогресс</button>' : ''}
         <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
@@ -1242,6 +1265,7 @@ const UI = {
         <button class="btn primary wide gps">Разрешить геопозицию</button>${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
       root.appendChild(U.el(`<div class="onb-step s${n}">${html}</div>`));
       const nx = root.querySelector('.next');
+      root.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
       if (n === 2) {
         const inp = root.querySelector('input');
         inp.focus();
