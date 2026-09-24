@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.0.3';
+const APP_VERSION = '4.1.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -4744,7 +4744,7 @@ const PAY = {
   shop: Deno.env.get('YOOKASSA_SHOP_ID') || '',
   key: Deno.env.get('YOOKASSA_SECRET_KEY') || '',
   receipt: Deno.env.get('PAY_RECEIPT') === 'on',
-  ret: Deno.env.get('PAY_RETURN_URL') || 'https://quinsiege.github.io/duholov/paid.html',
+  ret: Deno.env.get('PAY_RETURN_URL') || 'https://duholov.ru/paid.html',
 };
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/i;
 async function yk(method, path, body, idem) {
@@ -5177,7 +5177,7 @@ const tooMany = (map, key, max) => {
 // Контуры (3.22.1): код функции один и тот же, а с каких страниц её можно вызывать — задаёт секрет проекта
 // ALLOWED_ORIGINS (через запятую). Боевой проект — только сайт игры (так по умолчанию), тестовый — только localhost.
 // Запросы не из браузера (без заголовка Origin) проверяются как обычно — по входу игрока.
-const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || 'https://quinsiege.github.io').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || 'https://duholov.ru,https://quinsiege.github.io').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
 // Закрытый контур (тестовый проект): секрет ACCESS_KEY — без заголовка x-duholov-access с этим ключом запросы
 // отклоняются (Origin подделывает любой скрипт, а адрес и публичный ключ проекта лежат в открытом репозитории).
 // В боевом проекте секрет не задан — игра открыта всем.

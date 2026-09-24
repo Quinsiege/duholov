@@ -1234,7 +1234,7 @@ const UI = {
         </div>`
         + (links.length || Login.email ? `<div class="acc-ways"><div class="acc-cap">Способы входа</div>${Login.email ? way(`<span class="lg-ic mail">${this.I.mail}</span>`, 'Почта', U.esc(Login.email)) : ''}${links.map(l => way(Login.icon(l.provider), Login.NAMES[l.provider], l.name ? U.esc(l.name) : 'вход привязан')).join('')}${addRows}</div>` : '')
         + (guest && avail.length ? `<div class="acc-add"><small>Привяжи вход — прогресс откроется на любом устройстве</small><div class="login-row">${Login.buttons('link', avail)}</div></div>` : '')
-        + (Login.appTooOld() ? '<div class="acc-add"><small>Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div>' : '')
+        + (Updater.oldApp() ? `<div class="acc-add"><small><b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: ${guest ? '<b>сначала привяжи вход выше</b> (иначе прогресс гостя пропадёт), потом ' : ''}удали это приложение и установи новое.</small><a class="btn primary" href="duholov.apk">Скачать новое приложение</a></div>` : '')
         + `<button class="row link set-row acc-out"><span class="set-ico out">${this.I.logout}</span><div class="row-main"><b>Выйти из учётной записи</b><small>${guest ? 'Прогресс гостя будет потерян' : 'Вернуться можно тем же входом'}</small></div><span class="set-chev">›</span></button>`;
       acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
       acc.querySelector('.acc-out').onclick = () => Login.askSignOut();

@@ -10,6 +10,7 @@ Invite.grab();
 if (/[?&](u|ref)=/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
 
 window.addEventListener('load', () => {
+  if (Move.moving) return; // 4.1: старый адрес — браузер уже уходит на duholov.ru
   if (typeof L === 'undefined') {
     const bl = document.getElementById('bootLoader'); if (bl) bl.remove(); // экран загрузки из index.html не должен закрыть ошибку
     const f = U.el(`<div class="fatal"><h2>Нет связи с Навью</h2><p>Не удалось загрузить карту. Проверь подключение к интернету.</p><button class="btn primary">Повторить</button></div>`);

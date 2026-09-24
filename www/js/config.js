@@ -1,14 +1,14 @@
 'use strict';
 /* Облачный сервер (Supabase). Два контура с одинаковой схемой и одной и той же функцией game:
-   сайт игры (и приложение, которое его открывает) — боевой проект, localhost — тестовый.
+   сайт игры duholov.ru (и приложение, которое его открывает) — боевой сервер, localhost и test.duholov.ru — тестовый.
    Тестовые данные не попадают в бой и наоборот: сервер каждого проекта принимает запросы только
    со своих страниц (секрет ALLOWED_ORIGINS функции game).
    url и anonKey — публичные параметры проекта (Project Settings → API), их можно хранить в коде:
    доступ к данным ограничивают правила RLS и сервер игры. Пока у контура поля пустые, облака нет. */
 const CLOUD_PROJECTS = {
   prod: {
-    url: 'https://cthqhwjnhqomlhrlberb.supabase.co',
-    anonKey: 'sb_publishable__EG6d35UtqI_7b4ZvLVd8g_PyENCyoA', // публичный (publishable) ключ
+    url: 'https://api.duholov.ru', // 4.1: свой сервер в России (Supabase на Timeweb Cloud, Москва)
+    anonKey: 'sb_publishable_s0Jgf2QiqOiCo4WYjn9duN_dghTO1_z', // публичный (publishable) ключ
     auth: 'duholov.auth', admin: 'duholov.admin', // где браузер хранит вход (у каждого контура — свой)
   },
   test: {

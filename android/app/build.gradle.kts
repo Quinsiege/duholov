@@ -12,13 +12,29 @@ android {
         minSdk = 24
         targetSdk = 34
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
-        versionCode = 3
-        versionName = "3.0.0"
+        versionCode = 4
+        versionName = "4.1.0"
+    }
+
+    // 4.1: релизная подпись постоянным ключом — иначе новое приложение не ставится поверх старого.
+    // Ключ и пароль — в секретах GitHub (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD), CI кладёт файл
+    // и передаёт путь в ANDROID_KEYSTORE_FILE. Без них (проверки Pull Request) собирается только debug.
+    val keystore = System.getenv("ANDROID_KEYSTORE_FILE")
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = "duholov"
+                keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (keystore != null) signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

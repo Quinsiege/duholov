@@ -21,7 +21,13 @@ const Cloud = {
       });
     }
     const sb = window.supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: CLOUD_CONFIG.auth } });
-    const { data } = await sb.auth.getSession();
+    let { data } = await sb.auth.getSession();
+    // 4.1: вход, принесённый со старого адреса игры (move.js), — меняем его ключ на свой, прежний перестаёт действовать
+    if (!data.session && typeof Move !== 'undefined' && Move.handoff && !CLOUD_CONFIG.locked) {
+      const r = await sb.auth.refreshSession({ refresh_token: Move.handoff }).catch(() => null);
+      Move.handoff = null;
+      if (r && r.data && r.data.session) data = r.data;
+    }
     if (!data.session) await this.signIn(sb);
     this.sb = sb;
     return sb;

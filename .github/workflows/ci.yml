@@ -1,5 +1,5 @@
 # Проверки каждого Pull Request: автотесты в Chromium и сборка APK.
-# Слить PR в main можно только когда обе проверки зелёные (правило ветки main).
+# Слить PR в main можно только когда обе проверки зелёные (правило ветки main). Сборка PR выкладывается на test.duholov.ru.
 name: Проверки
 
 on:
@@ -49,3 +49,26 @@ jobs:
         with:
           gradle-version: '8.7'
       - run: gradle -p android assembleDebug --no-daemon
+
+  # Сборка Pull Request на test.duholov.ru (тестовый контур) — проверить с телефона до слияния
+  test-site:
+    name: Тестовый сайт
+    needs: [tests]
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      SERVER: 147.45.100.117
+      SERVER_KEY: 147.45.100.117 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICge10MuS0gBYz/ZbkMeN15+FwpVl5EZWdzjEEGMqh12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Метка версии в адресах файлов
+        run: sh tools/stamp-version.sh
+      - name: Выкладка на test.duholov.ru
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          echo "$SERVER_KEY" > ~/.ssh/known_hosts
+          rsync -rlptz --delete www/ deploy@$SERVER:/srv/www/test/
+          echo "https://test.duholov.ru/ — сборка ${GITHUB_SHA::7}"
