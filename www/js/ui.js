@@ -285,6 +285,77 @@ const UI = {
   },
 
   /* ---------------- МЕНЮ ---------------- */
+  // 3.35: цветные значки меню — своя плашка-«камешек» с объёмом и блеском, на ней двухтоновый символ раздела
+  menuIcon(k) {
+    const P = { // цвета плашки: светлый верх, тёмный низ, тёмный для деталей символа
+      spirits: ['#c4b5fd', '#6d28d9', '#3b0764'], book: ['#5eead4', '#0f766e', '#134e4a'], bag: ['#fcd34d', '#b45309', '#78350f'],
+      egg: ['#86efac', '#15803d', '#14532d'], scroll: ['#fde68a', '#d97706', '#78350f'], swap: ['#f9a8d4', '#be185d', '#831843'],
+      chat: ['#93c5fd', '#1d4ed8', '#1e3a8a'], trophy: ['#fdba74', '#c2410c', '#7c2d12'], shop: ['#fca5a5', '#b91c1c', '#7f1d1d'],
+      trail: ['#6ee7b7', '#047857', '#064e3b'], rift: ['#d8b4fe', '#6b21a8', '#3b0764'], gavel: ['#e7c49a', '#8a5a2b', '#4a2c12'],
+      pin: ['#fda4af', '#be123c', '#881337'], user: ['#a5b4fc', '#4338ca', '#1e1b4b'], shield: ['#bfdbfe', '#1e40af', '#172554'],
+      journal: ['#e2b48a', '#7c4a26', '#3f2212'], gear: ['#cbd5e1', '#475569', '#1e293b'],
+    }[k] || ['#e9d5ff', '#6d28d9', '#3b0764'];
+    const [lt, dk, ink] = P, g = 'mi-' + k, W = '#fff', S = 'fill-opacity=".6"';
+    const gear = (() => { let d = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 16, r = i % 2 ? 9.2 : 12.4;
+      d += (i ? 'L' : 'M') + (24 + r * Math.cos(a)).toFixed(1) + ' ' + (24 + r * Math.sin(a)).toFixed(1) + ' ' + (24 + r * Math.cos(a + Math.PI / 8)).toFixed(1) + ' ' + (24 + r * Math.sin(a + Math.PI / 8)).toFixed(1); }
+      return d + 'Z'; })();
+    const G = {
+      spirits: `<path d="M24 10.5c-7.2 0-11.5 5.3-11.5 12.3V36l3.8-2.8 3.9 2.8 3.8-2.8 3.8 2.8 3.9-2.8 3.8 2.8V22.8c0-7-4.3-12.3-11.5-12.3z" fill="${W}"/>
+        <ellipse cx="19.6" cy="23" rx="2.3" ry="3.1" fill="${ink}"/><ellipse cx="28.4" cy="23" rx="2.3" ry="3.1" fill="${ink}"/>
+        <circle cx="20.3" cy="22" r=".9" fill="${W}"/><circle cx="29.1" cy="22" r=".9" fill="${W}"/><path d="M21.5 29c1.6 1.2 3.4 1.2 5 0" stroke="${ink}" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <path d="M37 9.5l1 2.4 2.4 1-2.4 1-1 2.4-1-2.4-2.4-1 2.4-1z" fill="#fde68a"/>`,
+      book: `<rect x="13" y="9.5" width="23" height="29" rx="3" fill="${W}"/><rect x="13" y="9.5" width="5.5" height="29" rx="2.5" fill="${W}" ${S}/>
+        <path d="M27.2 16.5l4.3 7.5-4.3 7.5-4.3-7.5z" fill="none" stroke="${ink}" stroke-width="1.9" stroke-linejoin="round"/><circle cx="27.2" cy="24" r="1.6" fill="${ink}"/>
+        <path d="M31 9.5v8l2-1.6 2 1.6v-8" fill="#f43f5e"/>`,
+      bag: `<path d="M17.5 19.5c-4.3 2.8-6.5 7.4-6.5 11.4 0 5.2 5.3 8.1 13 8.1s13-2.9 13-8.1c0-4-2.2-8.6-6.5-11.4z" fill="${W}"/>
+        <path d="M19.5 19.5c-.6-3.6.7-8 4.5-8s5.1 4.4 4.5 8z" fill="${W}" ${S}/><path d="M17 19.3h14" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>
+        <path d="M31 19.3l3.2 3.4" stroke="#dc2626" stroke-width="2.4" stroke-linecap="round"/>
+        <rect x="26.5" y="27.5" width="7" height="6.5" rx="1.6" transform="rotate(-8 30 30.7)" fill="${ink}" opacity=".22"/><path d="M29.3 28.8l1.2 1.8-1.2 1.8-1.2-1.8z" fill="${ink}" opacity=".5"/>`,
+      egg: `<path d="M24 8v3" stroke="${W}" stroke-width="1.6" stroke-linecap="round" opacity=".8"/><ellipse cx="24" cy="25.5" rx="9.5" ry="13.5" fill="${W}"/>
+        <path d="M15.5 21c5 2.5 12 2.5 17 0M15 27.5c5.5 2.6 12.5 2.6 18 0M17 33.5c4.5 2 9.5 2 14 0" stroke="${ink}" stroke-width="1.4" fill="none" opacity=".3"/>
+        <path d="M22.5 17.5l2.5 3-2 3 2.5 3" stroke="#facc15" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+      scroll: `<rect x="14" y="12" width="20" height="24" fill="${W}"/><rect x="11" y="8.5" width="26" height="6.5" rx="3.2" fill="${W}"/><rect x="11" y="33" width="26" height="6.5" rx="3.2" fill="${W}"/>
+        <rect x="11" y="8.5" width="26" height="6.5" rx="3.2" fill="${ink}" opacity=".18"/><rect x="11" y="33" width="26" height="6.5" rx="3.2" fill="${ink}" opacity=".18"/>
+        <path d="M18 19.5h12M18 23.5h12M18 27.5h7" stroke="${ink}" stroke-width="1.8" stroke-linecap="round" opacity=".55"/><circle cx="30.5" cy="29.5" r="3.4" fill="#dc2626"/>`,
+      swap: `<circle cx="29.5" cy="17.5" r="4.6" fill="${W}" ${S}/><path d="M21.5 35c0-5.6 3.6-9.5 8-9.5s8 3.9 8 9.5z" fill="${W}" ${S}/>
+        <circle cx="18.5" cy="19" r="5.2" fill="${W}"/><path d="M9.5 37.5c0-6.2 4-10.5 9-10.5s9 4.3 9 10.5z" fill="${W}"/>
+        <path d="M34.5 8.4c1-1.4 3.4-1.1 3.4 1 0 1.8-2.4 3.3-3.4 4-1-.7-3.4-2.2-3.4-4 0-2.1 2.4-2.4 3.4-1z" fill="#fde047"/>`,
+      chat: `<path d="M13 10h16a4.5 4.5 0 0 1 4.5 4.5v6A4.5 4.5 0 0 1 29 25H18l-5 4v-4.2A4.5 4.5 0 0 1 8.5 20.5v-6A4.5 4.5 0 0 1 13 10z" fill="${W}" ${S}/>
+        <path d="M20 18.5h15a4.5 4.5 0 0 1 4.5 4.5v7a4.5 4.5 0 0 1-4.5 4.5h-1v4.2l-5-4.2h-9a4.5 4.5 0 0 1-4.5-4.5v-7a4.5 4.5 0 0 1 4.5-4.5z" fill="${W}"/>
+        <circle cx="22.5" cy="26.5" r="1.7" fill="${ink}"/><circle cx="27.5" cy="26.5" r="1.7" fill="${ink}"/><circle cx="32.5" cy="26.5" r="1.7" fill="${ink}"/>`,
+      trophy: `<path d="M16.5 12.5c-4 0-5.5 2-5.5 4.2 0 3.3 3 5.8 6.6 6.3M31.5 12.5c4 0 5.5 2 5.5 4.2 0 3.3-3 5.8-6.6 6.3" stroke="${W}" stroke-width="2.6" fill="none" opacity=".75"/>
+        <path d="M15.5 9.5h17v8c0 5.4-3.8 9.5-8.5 9.5s-8.5-4.1-8.5-9.5z" fill="${W}"/><rect x="21.5" y="26.5" width="5" height="5" fill="${W}" ${S}/>
+        <rect x="16" y="31" width="16" height="6.5" rx="2" fill="${W}"/><path d="M24 12.8l1.5 3.1 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z" fill="#f59e0b"/>`,
+      shop: `<rect x="12.5" y="22" width="23" height="15.5" rx="1.5" fill="${W}" ${S}/><rect x="20.5" y="27" width="7" height="10.5" rx="1" fill="${ink}" opacity=".55"/>
+        <path d="M10 18l3.2-8h21.6l3.2 8z" fill="${W}"/><path d="M17.5 10l-1.7 8M24 10v8M30.5 10l1.7 8" stroke="#ef4444" stroke-width="3"/>
+        <path d="M10 18a3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0z" fill="${W}"/>`,
+      trail: `<path d="M11 38.5c6-1 11-3.5 10.5-8S13.5 24.5 17 20s11-2.5 14-5" stroke="${W}" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-dasharray="4.2 3.4"/>
+        <path d="M32.5 23V8.5" stroke="${W}" stroke-width="2.2" stroke-linecap="round"/><path d="M33 8.5h8.5l-2.4 3.4 2.4 3.4H33z" fill="#facc15"/><ellipse cx="32.5" cy="23.3" rx="3" ry="1.1" fill="${ink}" opacity=".4"/>`,
+      rift: `<ellipse cx="24" cy="24" rx="10.5" ry="15.5" fill="${W}" opacity=".22"/><path d="M24 8c6.4 8.4 6.4 23.6 0 32-6.4-8.4-6.4-23.6 0-32z" fill="${W}"/>
+        <path d="M24 13.5c3.4 5.8 3.4 15.2 0 21-3.4-5.8-3.4-15.2 0-21z" fill="${ink}"/><path d="M24.6 17l-1.8 4 2 2.6-1.6 4.6" stroke="#e9d5ff" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <circle cx="12.5" cy="15" r="1.3" fill="${W}"/><circle cx="36" cy="30.5" r="1.5" fill="${W}"/><circle cx="35" cy="13" r=".9" fill="${W}"/>`,
+      gavel: `<g transform="rotate(-40 22 20)"><rect x="13" y="12.5" width="18" height="8.5" rx="2" fill="${W}"/><rect x="11" y="11.5" width="3.5" height="10.5" rx="1.2" fill="${W}" ${S}/>
+        <rect x="29.5" y="11.5" width="3.5" height="10.5" rx="1.2" fill="${W}" ${S}/><rect x="20.5" y="21" width="3.2" height="14" rx="1.4" fill="${W}"/></g>
+        <rect x="23" y="33" width="15" height="5.5" rx="1.8" fill="${W}" ${S}/>`,
+      pin: `<ellipse cx="24" cy="38.5" rx="7" ry="2" fill="${ink}" opacity=".35"/><path d="M24 38s11-9.4 11-18a11 11 0 0 0-22 0c0 8.6 11 18 11 18z" fill="${W}"/>
+        <circle cx="24" cy="20" r="4.4" fill="${ink}"/><circle cx="22.7" cy="18.7" r="1.3" fill="${W}" opacity=".7"/>`,
+      user: `<path d="M24 8.5c-7.5 0-12.5 6.2-12.5 14 0 5.5 2.4 10.4 5.5 13.5h14c3.1-3.1 5.5-8 5.5-13.5 0-7.8-5-14-12.5-14z" fill="${W}"/>
+        <path d="M11 39.5c1-3.5 3.5-5.5 6-5.5h14c2.5 0 5 2 6 5.5z" fill="${W}" ${S}/><ellipse cx="24" cy="24" rx="7" ry="8" fill="${ink}"/>
+        <ellipse cx="21.3" cy="23.8" rx="1.5" ry="2" fill="#5eead4"/><ellipse cx="26.7" cy="23.8" rx="1.5" ry="2" fill="#5eead4"/>`,
+      shield: `<path d="M24 8.5l12 4.3v9.3c0 8.2-5.3 14-12 17.4-6.7-3.4-12-9.2-12-17.4v-9.3z" fill="${W}"/>
+        <path d="M24 12.5l8.5 3v6.6c0 6-3.7 10.3-8.5 12.9z" fill="${ink}" opacity=".3"/>
+        <path d="M24 17.3l1.9 3.8 4.2.6-3 3 .7 4.2-3.8-2-3.8 2 .7-4.2-3-3 4.2-.6z" fill="#facc15"/>`,
+      journal: `<rect x="13" y="9" width="22" height="30" rx="3" fill="${W}"/><path d="M17.5 9v30" stroke="${ink}" stroke-width="1.4" opacity=".35"/>
+        <path d="M21 17h10M21 21.5h10M21 26h7" stroke="${ink}" stroke-width="1.7" stroke-linecap="round" opacity=".5"/><path d="M29 9v9.5l2.4-1.8 2.4 1.8V9" fill="#f43f5e"/>
+        <path d="M33.5 26.5l4.5-4.5 2 2-4.5 4.5-2.8.8z" fill="#fbbf24"/>`,
+      gear: `<path d="${gear}" fill="${W}"/><circle cx="24" cy="24" r="4.6" fill="${ink}"/><circle cx="24" cy="24" r="7.2" fill="none" stroke="${ink}" stroke-width="1.2" opacity=".25"/>`,
+    };
+    return `<svg class="mi" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="${g}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lt}"/><stop offset="1" stop-color="${dk}"/></linearGradient></defs>
+      <rect x="1" y="2" width="46" height="45" rx="14" fill="${ink}" opacity=".55"/><rect x="1" y="1" width="46" height="44" rx="14" fill="url(#${g})"/>
+      <path d="M8 3.5h32a7 7 0 0 1 6 5c-9 4-29 4-44 0a7 7 0 0 1 6-5z" fill="#fff" opacity=".22"/>
+      <rect x="1.5" y="1.5" width="45" height="43" rx="13.5" fill="none" stroke="#fff" stroke-opacity=".28"/>
+      <g style="filter:drop-shadow(0 1.4px 0 rgba(0,0,0,.28))">${G[k] || ''}</g></svg>`;
+  },
   menu() {
     Sfx.init(); Sfx.play('tap');
     const q = S.questsClaimable() + Order.claimable(), eggs = S.readyCocoons().length;
@@ -312,7 +383,7 @@ const UI = {
     // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
     const PER = 12, pages = [];
     for (let i = 0; i < tiles.length; i += PER) pages.push(tiles.slice(i, i + PER).map((t, j) => [t, i + j]));
-    const tile = ([t, i]) => `<button class="tile" data-i="${i}">${this.I[t[0]]}<span>${t[1]}</span>${t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`;
+    const tile = ([t, i]) => `<button class="tile" data-i="${i}">${this.menuIcon(t[0])}<span>${t[1]}</span>${t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`;
     const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
       <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
       ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="Страница ${i + 1}"></button>`).join('')}</div>` : ''}

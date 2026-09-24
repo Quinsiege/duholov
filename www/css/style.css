@@ -1650,3 +1650,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .gate-more:active { transform: scale(.97); }
 .gate-other { width: 100%; max-width: 360px; animation: fadeUp .25s ease-out; }
 .gate-other .auth-panel { max-width: none; }
+
+/* ---------- 3.35: цветные значки меню ---------- */
+.tile .mi { width: 48px; height: 48px; display: block; overflow: visible; filter: drop-shadow(0 5px 8px rgba(0, 0, 0, .35)); transition: transform .15s; }
+.tile:active .mi { transform: scale(.92) translateY(1px); }
+.menu-grid .tile { gap: 7px; padding: 14px 6px 11px; }
+.menu-grid .tile span { font-size: 12.5px; font-weight: 700; }
