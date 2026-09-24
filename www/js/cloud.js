@@ -20,7 +20,7 @@ const Cloud = {
         document.head.appendChild(s);
       });
     }
-    const sb = window.supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: 'duholov.auth' } });
+    const sb = window.supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: CLOUD_CONFIG.auth } });
     const { data } = await sb.auth.getSession();
     if (!data.session) {
       const { error } = await sb.auth.signInAnonymously();
