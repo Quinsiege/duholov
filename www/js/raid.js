@@ -45,6 +45,7 @@ const Raid = {
         <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
         <div class="rift-team">${UI.teamHtml(team)}</div>
         ${goBtn}
+        ${Rules.dayLine(S.d, 'raids', 'Разломов закрыто')}
         ${far ? `<div class="rift-tip rift-far">До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.</div>`
           : '<button class="btn ghost wide rift-coop">Позвать друзей — совместный бой</button>'}`}
       </div>`;

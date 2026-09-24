@@ -254,6 +254,21 @@ const GameCore = {
     if (rows.length) ctx.after.push(() => ctx.env.lotsDone(rows.map(r => r.id), 'settled'));
     return got;
   },
+  // Дневные лимиты (Rules.DAILY): счётчики за сегодняшний день игрока хранятся в прогрессе (dayc)
+  dayc(ctx) {
+    const today = U.today(ctx.now);
+    if (!S.d.dayc || S.d.dayc.day !== today) S.d.dayc = { day: today };
+    return S.d.dayc;
+  },
+  DAY_MSG: {
+    springs: 'Сегодня ты уже зачерпнул силу из 30 родников — они снова откроются завтра',
+    raids: 'Сегодня закрыто уже 6 Разломов — Навь затихла до завтра',
+    duels: 'Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра',
+    invasions: 'Сегодня отбито уже 6 вторжений — Навь вернётся завтра',
+    catches: 'Сегодня поймано уже 120 духов — обереги отдохнут до завтра',
+  },
+  dayNeed(ctx, key) { this.need((this.dayc(ctx)[key] || 0) < Rules.DAILY[key], this.DAY_MSG[key]); },
+  dayAdd(ctx, key) { const c = this.dayc(ctx); c[key] = (c[key] || 0) + 1; },
   // Канал чата: общий, торговля, разломы, помощь или своя дружина
   chatChannel(ch) {
     if (ch === 'clan') { this.need(S.d.clan, 'Канал дружины — для тех, кто в дружине'); return 'clan:' + S.d.clan; }
@@ -419,6 +434,7 @@ const GameCore = {
     encStart(a, ctx) {
       const kind = a.kind;
       if (kind === 'wild') {
+        this.dayNeed(ctx, 'catches');
         this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), 'Обереги закончились! Загляни к роднику.');
         const p = this.here(ctx);
         const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit' && !x.tut);
@@ -494,6 +510,7 @@ const GameCore = {
       // пойман
       const sp = e.sp, s = SP[e.sid];
       if (e.spawnId) S.d.caught[e.spawnId] = ctx.now;
+      if (e.mode === 'wild') this.dayAdd(ctx, 'catches');
       const isNew = S.addSpirit(sp);
       J.add('catch', { sid: s.id, shiny: !!sp.shiny, dark: !!sp.dark, power: S.power(sp) });
       const rw = Rules.catchReward({ mode: e.mode, sid: e.sid, isNew, ringXp: bonus.xp, throws: e.throws, shiny: sp.shiny, boost: e.boost });
@@ -516,10 +533,12 @@ const GameCore = {
       const p = await this.place(a.poi, ctx, 'spring');
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       this.limit(ctx, 'spring', 60, 3600000);
+      this.dayNeed(ctx, 'springs');
       const e = W.springFor(p, 0);
       this.need(!e.invaded, 'Родник захвачен Навью');
       this.need(e.ready, 'Родник ещё набирает силу');
       S.d.springs[p.id] = ctx.now;
+      this.dayAdd(ctx, 'springs');
       const { loot, cocoon } = W.springLoot(p.id);
       const got = S.giveRewards({ ...loot, xp: 50 }, false); // добыча родника соблюдает лимит сумки
       S.d.stats.springs++;
@@ -700,6 +719,7 @@ const GameCore = {
       } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.dayNeed(ctx, 'raids'); // до списания Дальнего пропуска
       this.limit(ctx, 'raid', 30, 3600000);
       if (far) S.d.items.farpass--;
       ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0, far };
@@ -768,6 +788,7 @@ const GameCore = {
       const allies = b.coop ? b.coop.allies : 0, tier = b.tier;
       J.add('raid', { sid: b.boss, tier, coop: allies });
       S.d.stats.raids++;
+      this.dayAdd(ctx, 'raids');
       S.progress('raid', 1);
       if (b.coop && b.coop.allies > 0) S.progress('coop', 1);
       const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 400 * tier, charm: 5, honey: 2 + tier, water: 2, charm2: tier >= 2 ? 3 : 0 });
@@ -795,6 +816,7 @@ const GameCore = {
       const hold = await ctx.env.holdGet(p.id);
       this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, 'Капище держит твоя дружина — здесь можно поставить защитника');
       const ht = hold ? this.holdTeam(hold) : [], foe = ht.length ? ht : null;
+      this.dayNeed(ctx, 'duels');
       this.limit(ctx, 'duel', 40, 3600000);
       ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid),
         foe, hold: hold ? { clan: hold.clan, ver: hold.ver } : null };
@@ -814,6 +836,7 @@ const GameCore = {
       }
       J.add('duel', { name: e.name, guard: b.hold ? CLANS[b.hold.clan].name : W.guardian(e).name, tier: t });
       S.d.stats.duels++;
+      this.dayAdd(ctx, 'duels');
       S.progress('duel', 1);
       const rw = S.giveRewards({ xp: T.xp * mul, sparks: T.sparks * mul, charm: 5 * mul, honey: t * mul, water: 2, charm2: t >= 2 ? 3 * mul : 0, charm3: t === 3 ? 2 * mul : 0 });
       const am = S.rollAmulet(0.15 * t, e.id);
@@ -987,6 +1010,7 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
       ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid) };
       return { invId: e.invId };
@@ -998,6 +1022,7 @@ const GameCore = {
       this.plausibleDuel(ctx, b, g.team);
       S.d.freed[b.invId] = true;
       S.d.stats.invasions++;
+      this.dayAdd(ctx, 'invasions');
       S.progress('invasion', 1);
       J.add('invasion', { name: b.name });
       const rw = S.giveRewards({ xp: 1000, sparks: 500, charm: 6, honey: 2, water: 2 });

@@ -760,7 +760,7 @@ const UI = {
           ${q.claimed ? '<span class="q-ok">✓</span>' : done ? `<button class="btn small primary claim" data-i="${i}">Забрать</button>` : ''}</div>`;
       }).join('') + `<div class="quest bonus ${Q.bonus ? 'claimed' : all ? 'done' : ''}"><div class="q-main"><b>Сундук дня</b><small>Выполни все три задания. Награда: ${rwText(BONUS)}</small></div>
         ${Q.bonus ? '<span class="q-ok">✓</span>' : all ? '<button class="btn small primary claim-bonus">Открыть</button>' : ''}</div>
-        <div class="q-note">Новые задания появятся в полночь.</div>` + this.tasksHtml();
+        <div class="q-note">Новые задания появятся в полночь.</div>` + this.dayLimitsHtml() + this.tasksHtml();
     };
     scr.addEventListener('click', e => {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
@@ -819,7 +819,13 @@ const UI = {
     this.swipeTabs(scr, ['day', 'story', 'order'], () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
   },
-
+  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня
+  dayLimitsHtml() {
+    return `<h3 class="prof-h">Лимиты дня <small>обновятся в полночь</small></h3><div class="day-limits">${Object.keys(Rules.DAILY).map(k => {
+      const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
+      return `<div class="${u >= m ? 'out' : ''}"><b>${u}/${m}</b><small>${Rules.DAILY_NAMES[k]}</small></div>`;
+    }).join('')}</div>`;
+  },
   // Поручения из родников: задание → предметы и встреча с духом
   tasksHtml() {
     const d = S.d;
@@ -1076,6 +1082,7 @@ const UI = {
         <div class="spring-hint"></div>
         <div class="spring-loot"></div>
         <button class="btn primary wide spring-go">Зачерпнуть силу</button>
+        ${Rules.dayLine(S.d, 'springs', 'Родников')}
       </div>`, 'spring-screen');
     const hint = scr.querySelector('.spring-hint'), go = scr.querySelector('.spring-go');
     const ready = () => U.now() - (S.d.springs[e.id] || 0) > W.SPRING_COOLDOWN;

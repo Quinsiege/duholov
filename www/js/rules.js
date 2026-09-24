@@ -58,6 +58,14 @@ const Rules = {
     { id: 'z1200', zlat: 1200, rub: 999,  bonus: 20, hot: true },
     { id: 'z2600', zlat: 2600, rub: 1990, bonus: 30 },
   ],
+  // 3.20: дневные лимиты объектов карты (сутки — по часам игрока). Считаются только успехи: зачерпнутый родник,
+  // победа в Разломе, на Капище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
+  // 10–20 родников в день), а бесконечный фарм и боты упираются в потолок
+  DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
+  DAILY_NAMES: { springs: 'Родники', raids: 'Разломы', duels: 'Капища', invasions: 'Вторжения', catches: 'Поимки' },
+  dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
+  // строка «Родников сегодня: 12 из 30» для окон объектов
+  dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${what} сегодня: <b>${u}</b> из ${m}${u >= m ? ' — завтра снова' : ''}</div>`; },
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
   CHAT_CHANNELS: [['all', 'Общий'], ['trade', 'Торговля'], ['raid', 'Разломы'], ['help', 'Помощь'], ['clan', 'Дружина']],
