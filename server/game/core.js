@@ -8,7 +8,7 @@
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.16.0', // 3.16: защита от внедрения кода (CSP, проверка облика и путей снимков) — старые клиенты уязвимы
+  MIN_CLIENT: '3.19.0', // 3.19: новая кривая опыта — старый клиент показывал бы неверную полосу уровня
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -449,7 +449,7 @@ const GameCore = {
       }
       if (kind === 'story') {
         this.need(S.d.storyGift && SP[S.d.storyGift], 'Встреча Летописи недоступна');
-        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: 25, seed: 'gift' + S.d.created });
+        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.maxLvl()), seed: 'gift' + S.d.created });
       }
       this.fail('Неизвестная встреча');
     },
@@ -521,7 +521,7 @@ const GameCore = {
       this.need(e.ready, 'Родник ещё набирает силу');
       S.d.springs[p.id] = ctx.now;
       const { loot, cocoon } = W.springLoot(p.id);
-      const got = S.giveRewards({ ...loot, xp: 50 });
+      const got = S.giveRewards({ ...loot, xp: 50 }, false); // добыча родника соблюдает лимит сумки
       S.d.stats.springs++;
       S.progress('spring', 1);
       let coc = null;
@@ -776,7 +776,8 @@ const GameCore = {
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
       const shiny = U.h('rshiny', b.rid, S.d.created) < Sky.shinyRate(1 / 20);
-      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Raid.TIER[tier].lvl, charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
+      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.maxLvl()), // не выше доступного игроку уровня
+        charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
       return { win: true, rw, charms, bonus, allies };
     },
 
@@ -1236,7 +1237,11 @@ const GameCore = {
       const f = S.d.friends.find(x => x.id === b.pid);
       this.need(f, 'Такого друга нет');
       J.add('spar', { name: f.name });
-      if (f.spar === U.today(ctx.now)) return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true };
+      // полная награда — раз в день за каждого друга и не больше 3 раз в день всего (3.19: было без общего предела —
+      // с 50 друзьями до 25 000 ✦ и 40 000 опыта в день)
+      const sd = S.d.sparDay = S.d.sparDay && S.d.sparDay.day === U.today(ctx.now) ? S.d.sparDay : { day: U.today(ctx.now), n: 0 };
+      if (f.spar === U.today(ctx.now) || sd.n >= 3) { f.spar = U.today(ctx.now); return { win: true, rw: S.giveRewards({ xp: 100 }), practice: true }; }
+      sd.n++;
       f.spar = U.today(ctx.now);
       S.progress('spar', 1);
       const rw = S.giveRewards({ xp: 800, sparks: 500, charm: 3, honey: 1 });

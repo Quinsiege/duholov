@@ -231,8 +231,31 @@
   });
   test('Очищение: +2 к оценке (не выше 15), тьма снята', () => {
     const sp = fresh('babayka', 8); sp.dark = true; sp.iv = [14, 3, 15];
-    S.d.sparks = 5000; S.d.essence.shoroh = 20;
+    S.d.sparks = 5000; S.d.essence.shoroh = 30; // очищение с 3.19: ✦ 3000 и 25 эссенции
     ok(S.purify(sp)); eq(sp.iv.join(), '15,5,15'); ok(!sp.dark && sp.purified);
+  });
+  test('Баланс 3.19: кривая уровней, перенос опыта, коконы, сумка, эссенция', () => {
+    // кривая: до 10 как раньше, дальше круче; растёт строго
+    for (let n = 2; n <= 10; n++) eq(levelXP(n), levelXPOld(n), 'до 10 уровня без изменений');
+    for (let n = 2; n <= 40; n++) ok(levelXP(n) > levelXP(n - 1), 'растёт');
+    ok(levelXP(20) > 80000 && levelXP(20) < 100000, 'L20 ≈ 90 тыс.'); ok(levelXP(40) > 1.8e6 && levelXP(40) < 2.4e6, 'L40 ≈ 2,1 млн');
+    // перенос опыта: уровень не падает, место внутри уровня сохраняется
+    const keep = S.d;
+    S.d = { level: 21, xp: 77180, spirits: [], items: {}, stats: {} }; S.migrate();
+    eq(S.d.level, 21); ok(S.d.xp >= levelXP(21) && S.d.xp < levelXP(22), 'опыт внутри 21 уровня по новой кривой'); eq(S.d.xpv, 2);
+    const x1 = S.d.xp; S.migrate(); eq(S.d.xp, x1, 'второй раз не переносится');
+    S.d = { level: 5, xp: 5000, spirits: [], items: {}, stats: {} }; S.migrate(); eq(S.d.xp, 5000, 'новичков не трогает');
+    S.d = keep;
+    // коконы — только первая стадия
+    for (let i = 0; i < 60; i++) { const km = [2, 5, 10][i % 3]; const r = S.hatch({ id: 'balance' + i, km }); eq(SP[r.sp.sid].stage, 1, 'из кокона первая стадия'); }
+    // сумка полна: награда за достижение приходит, добыча родника — нет
+    S.d.items = { charm: S.bagLimit() };
+    const got = S.giveRewards({ honey: 3 }); eq(S.d.items.honey, 3, 'награда сверх лимита'); eq(got[0].n, 3);
+    const loot = S.giveRewards({ water: 2 }, false); ok(!S.d.items.water && !loot.length, 'родник лимит соблюдает');
+    S.d.items = { charm: 50 };
+    // эссенция растёт с редкостью
+    const common = SPECIES.find(s => s.rar === 1 && s.stage === 1), epic = SPECIES.find(s => s.rar === 4 && s.stage === 1);
+    eq(Rules.catchReward({ sid: common.id, mode: 'wild' }).ess, 3); eq(Rules.catchReward({ sid: epic.id, mode: 'wild' }).ess, 9, 'эпический — 9 эссенции');
   });
   test('Амулеты: надеть, снять, вернуть при отпускании', () => {
     const sp = fresh('mshonok', 10); S.d.amulets = { perun: 1 };
@@ -585,6 +608,7 @@
     A.srv.battle.start -= 85000; // бой длился 85 секунд
     const r = await must(A, 'raidEnd', { win: true });
     ok(r.win && r.charms >= Raid.TIER[1].charms, 'обереги разлома'); ok(A.data.rifts[st.rid], 'разлом закрыт');
+    ok(A.srv.raidWin.lvl <= A.data.level + 5 && A.srv.raidWin.lvl < Raid.TIER[1].lvl, 'босс новичку — не выше его доступного уровня (3.19)');
     const enc = await must(A, 'encStart', { kind: 'raid' }); eq(enc.sid, st.boss); eq(enc.charms, r.charms);
     await refuse(A, 'raidStart', { rift }, /уже закрыл/);
     await refuse(A, 'encStart', { kind: 'raid' }, /закрылся/);

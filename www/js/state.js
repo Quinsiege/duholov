@@ -36,6 +36,17 @@ const S = {
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
+    // 3.19: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается)
+    if (!d.xpv) {
+      const L = d.level || 1;
+      if (L >= MAX_LEVEL) d.xp = Math.max(d.xp || 0, levelXP(MAX_LEVEL));
+      else if (L >= 10) {
+        const o0 = levelXPOld(L), o1 = levelXPOld(L + 1), n0 = levelXP(L), n1 = levelXP(L + 1);
+        const f = U.clamp(((d.xp || 0) - o0) / (o1 - o0), 0, 0.999);
+        d.xp = Math.round(n0 + f * (n1 - n0));
+      }
+      d.xpv = 2;
+    }
     d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
     d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
     d.shop = d.shop || {}; // Лавка: { deal: день покупки товара дня }
@@ -209,7 +220,7 @@ const S = {
     this.save();
     return true;
   },
-  PURIFY: { sparks: 1000, essence: 10 },
+  PURIFY: { sparks: 3000, essence: 25 }, // 3.19: было 1000 и 10 — дешевле, чем усилить духа до 25 уровня (16 800 ✦)
   canPurify(sp) {
     if (!sp.dark) return 'Дух не омрачён';
     if (this.d.sparks < this.PURIFY.sparks) return `Нужно ✦ ${this.PURIFY.sparks}`;
@@ -256,22 +267,24 @@ const S = {
   /* ---------- предметы ---------- */
   bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
-  addItem(k, n = 1) {
-    const room = this.bagLimit() - this.bagCount();
+  // over — награда за достижение (уровень, серия дней, задание, Летопись, Тропа, бой): кладётся и сверх лимита сумки,
+  // иначе она молча пропадала бы. Добыча родника и находки спутника лимит соблюдают
+  addItem(k, n = 1, over = false) {
+    const room = over ? n : this.bagLimit() - this.bagCount();
     const add = Math.max(0, Math.min(n, room));
     this.d.items[k] = (this.d.items[k] || 0) + add;
     this.save();
     return add;
   },
   useItem(k) { if ((this.d.items[k] || 0) <= 0) return false; this.d.items[k]--; this.save(); return true; },
-  giveRewards(rw) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа
+  giveRewards(rw, over = true) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа; over — см. addItem
     const out = [];
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
       else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: 'Златники' }); }
       else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
-      else if (ITEMS[k]) { const a = this.addItem(k, n); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
+      else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
     this.save();
     return out;
@@ -323,7 +336,8 @@ const S = {
   hatch(c) {
     const tier = COCOON_TIERS[c.km], r = U.rng(c.id + 'hatch');
     const rar = U.weighted(Object.entries(tier.pool).map(([k, w]) => [+k, w]), r());
-    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && (s.stage === 1 || rar >= 3) && W.local(s) && !s.season);
+    // из кокона — только первая стадия (3.19: раньше редкие коконы давали сразу превращённых духов)
+    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season && !s.story);
     if (!pool.length) pool = SPECIES.filter(s => s.stage === 1 && !s.legend);
     const s = pool[Math.floor(r() * pool.length)];
     const sp = this.makeSpirit(s.id, Math.min(this.d.level, 20), c.id, { ivMin: 10 });
