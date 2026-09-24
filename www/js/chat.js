@@ -51,11 +51,14 @@ const Chat = {
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 80;
     const render = (stick) => {
       const hid = this.hidden(), ms = (this.msgs[this.ch] || []).filter(m => !hid.includes(m.pid));
+      // уровень, имя и дружина пишутся в сообщение при отправке — показываем у всех сообщений Ловчего самые свежие
+      const cur = {}; Object.values(this.msgs).flat().forEach(m => { if (!cur[m.pid] || m.id > cur[m.pid].id) cur[m.pid] = m; });
+      const who = m => cur[m.pid] || m;
       const hint = { all: 'Общий разговор Ловчих.', trade: 'Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.', raid: 'Ищите команду для Разломов: пишите код комнаты и место.', help: 'Вопросы новичков и советы бывалых.', clan: 'Канал твоей дружины — его видят только свои.' }[this.ch];
       const nh = hid.length;
       list.innerHTML = `<div class="chat-hint">${hint} Ссылки запрещены, грубость скрывается.${nh ? ` <button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map(m => `
         <div class="msg ${m.mine ? 'mine' : ''}" data-id="${m.id}">
-          ${m.mine ? '' : `<button class="msg-who" data-pid="${U.esc(m.pid)}" data-name="${U.esc(m.name)}"><b class="${m.clan ? 'cl-' + U.esc(m.clan) : ''}">${U.esc(m.name)}</b><small>ур. ${m.lvl | 0}</small></button>`}
+          ${m.mine ? '' : `<button class="msg-who" data-pid="${U.esc(m.pid)}" data-name="${U.esc(who(m).name)}"><b class="${who(m).clan ? 'cl-' + U.esc(who(m).clan) : ''}">${U.esc(who(m).name)}</b><small>ур. ${who(m).lvl | 0}</small></button>`}
           <div class="msg-text">${U.esc(m.text)}</div><time>${this.time(m.t)}</time></div>`).join('') : '<div class="q-note">Здесь пока тихо. Напиши первым!</div>');
       if (stick) body.scrollTop = body.scrollHeight;
     };
