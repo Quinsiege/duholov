@@ -4,7 +4,6 @@
 
 const Rules = {
   QUEST_BONUS: { charm: 10, honey: 3, incense: 1, sparks: 1000 },
-  TUT_REWARD: { charm: 10, honey: 3, xp: 300 },
   PLACE_REWARD: { xp: 1000, sparks: 500, charm: 10 },
   SUPPLY: { charm: 15, honey: 2, water: 1 },
   THROWABLE: ['charm', 'charm2', 'charm3'],

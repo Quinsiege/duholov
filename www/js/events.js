@@ -25,6 +25,7 @@ const Ev = {
       ['svyatki', day(12, 25, y - 1), day(1, 15)],
       ['svyatki', day(12, 25), day(1, 15, y + 1)],
       ['kupala', day(7, 5), day(7, 9)],
+      ['pokrov', day(10, 12), day(10, 17)], // 4.0: Покров день — 14 октября
       ['veles', day(10, 30), day(11, 3)],
     ];
     const e = this.easter(y);
@@ -54,7 +55,7 @@ const Ev = {
   duelMul() { return this.cur.duel || 1; },
   springCooldown() { return (this.cur.cooldown || 5) * 60000; },
 
-  // Сезонные духи: зимние — с декабря по февраль и на Святки, Купалинка — летом и на Купалу
+  // Сезонные духи: зимние — с декабря по февраль и на Святки, Купалинка — летом и на Купалу, осенние — с сентября по ноябрь
   seasonal(s) {
     if (!s.season) return 1;
     const h = this.hol, m = this.month();
@@ -62,6 +63,7 @@ const Ev = {
     if (boosted) return 6;
     if (s.season === 'winter') return m === 11 || m <= 1 ? 1 : 0;
     if (s.season === 'kupala') return m === 5 || m === 6 ? 0.6 : 0;
+    if (s.season === 'autumn') return m >= 8 && m <= 10 ? 0.6 : 0; // 4.0: Листопадница — с сентября по ноябрь
     return 0;
   },
 };

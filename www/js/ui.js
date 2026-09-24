@@ -385,6 +385,19 @@ const UI = {
         <rect x="36" y="26" width="28" height="18" rx="3" fill="#fef3c7" stroke="#451a03" stroke-width="2.5"/><path d="M41 32 H59 M41 38 H53" stroke="#b45309" stroke-width="2.5" stroke-linecap="round"/>
         <path d="M58 10 V32 L63 28 L68 32 V10" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.5" stroke-linejoin="round"/>
         <path d="M86 44 L56 80 L52 90 L62 84 L90 48Z" fill="#fde68a" stroke="#92400e" stroke-width="3" stroke-linejoin="round"/>` + hl(38, 18, 7, 2.5, 0),
+      // 4.0 Путь Ловчего: карта-пергамент с пунктирной тропой к звезде
+      path: sh(32) + `<path d="M12 22 L36 14 L64 22 L88 14 V78 L64 86 L36 78 L12 86Z" fill="#fef3c7" stroke="#92400e" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M36 14 V78 M64 22 V86" stroke="#d6a36b" stroke-width="2.5"/><path d="M64 22 L88 14 V78 L64 86Z" fill="#fde68a" opacity=".6"/>
+        <path d="M20 72 C30 70 30 58 40 56 S54 52 56 44 S66 32 74 30" stroke="#dc2626" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-dasharray="4 5"/>
+        <circle cx="20" cy="72" r="4.5" fill="#15803d" stroke="#14532d" stroke-width="2"/>
+        <path d="M76 18 L79 25 L86 26 L81 31 L82 38 L76 34 L70 38 L71 31 L66 26 L73 25Z" fill="#fbbf24" stroke="#92400e" stroke-width="2.5" stroke-linejoin="round"/>` + hl(22, 28, 6, 2.2, -18),
+      // 4.0 Книга Ордена: толстый фолиант с золотыми уголками и оберегом на обложке
+      orderbook: sh(30) + `<path d="M22 14 H80 Q86 14 86 20 V84 Q86 90 80 90 H22Z" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
+        <path d="M78 22 V84 M74 22 V84" stroke="#e7c49a" stroke-width="2"/>
+        <rect x="14" y="10" width="62" height="78" rx="6" fill="#6d28d9" stroke="#2e1065" stroke-width="3.5"/><rect x="14" y="10" width="12" height="78" rx="5" fill="#4c1d95"/>
+        <path d="M14 22 V16 Q14 10 20 10 H28 Z M76 22 V16 Q76 10 70 10 H62 Z M14 76 V82 Q14 88 20 88 H28 Z M76 76 V82 Q76 88 70 88 H62 Z" fill="#fbbf24" stroke="#92400e" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="48" cy="49" r="15" fill="#fbbf24" stroke="#92400e" stroke-width="3"/><circle cx="48" cy="49" r="10" fill="none" stroke="#fef3c7" stroke-width="1.8" stroke-dasharray="3 3"/>
+        <path d="M48 41 V57 M41 45 L55 53 M55 45 L41 53" stroke="#fff7d6" stroke-width="2.6" stroke-linecap="round"/>` + hl(34, 20, 8, 3, -10),
       // Настройки: железная шестерня
       gear: sh(28) + `<path d="${gear}" fill="#94a3b8" stroke="#334155" stroke-width="3.5" stroke-linejoin="round"/>
         <circle cx="50" cy="50" r="20" fill="#64748b" opacity=".45"/><circle cx="50" cy="50" r="11" fill="#1e293b" stroke="#334155" stroke-width="3"/>` + hl(36, 30, 7, 3.5, -40),
@@ -393,6 +406,7 @@ const UI = {
   },
   menu() {
     Sfx.init(); Sfx.play('tap');
+    const ml = Tut.menuLock(); if (ml) { this.toast(ml); return; } // 4.0: меню открывается по ходу обучения
     const q = S.questsClaimable() + Order.claimable(), eggs = S.readyCocoons().length;
     const tiles = [
       ['spirits', 'Духи', () => this.collection(), S.d.spirits.length],
@@ -406,19 +420,23 @@ const UI = {
       ['shop', 'Лавка', () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
       ['trail', 'Тропа', () => Pass.screen(), Pass.claimable() || ''],
       ['rift', 'Разломы', () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
-      ['gavel', 'Аукцион', () => Auction.screen(), Auction.badge()],
+      ['path', 'Путь', () => Path.screen()],
       // вторая страница
+      ['gavel', 'Аукцион', () => Auction.screen(), Auction.badge()],
+      ['orderbook', 'Книга Ордена', () => Book.screen()],
       ['pin', 'Места', () => Propose.screen(), Propose.badge()],
       ['user', 'Ловчий', () => this.profile()],
       ['shield', 'Дружина', () => { if (S.d.level < CLAN_LEVEL) { this.toast(`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
       ['journal', 'Дневник', () => J.screen()],
       ['gear', 'Настройки', () => this.settings()],
     ];
-    if (Tut.step() === 3) setTimeout(() => Tut.finish(), 400);
+    Tut.ui('menu'); // 4.0: шаг обучения «открой меню»
     // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
     const PER = 12, pages = [];
     for (let i = 0; i < tiles.length; i += PER) pages.push(tiles.slice(i, i + PER).map((t, j) => [t, i + j]));
-    const tile = ([t, i]) => `<button class="tile" data-i="${i}">${this.menuIcon(t[0])}<span>${t[1]}</span>${t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`;
+    // 4.0: во время обучения — замки на ещё не пройденных разделах и подсветка нужного
+    const tile = ([t, i]) => { const lock = Tut.tileLock(t[0]);
+      return `<button class="tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${lock ? '<i class="lock">🔒</i>' : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
     const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
       <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
       ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="Страница ${i + 1}"></button>`).join('')}</div>` : ''}
@@ -431,7 +449,7 @@ const UI = {
       const d = e.target.closest('[data-p]');
       if (d) { box.scrollTo({ left: +d.dataset.p * box.clientWidth, behavior: 'smooth' }); return; }
       const t = e.target.closest('.tile');
-      if (t) { close(); Sfx.play('tap'); tiles[+t.dataset.i][2](); }
+      if (t) { const lk = Tut.tileLock(tiles[+t.dataset.i][0]); if (lk) { this.toast(lk); Sfx.play('miss'); return; } close(); Sfx.play('tap'); tiles[+t.dataset.i][2](); }
       else if (e.target === sheet) close();
     });
     document.body.appendChild(sheet);
@@ -441,6 +459,7 @@ const UI = {
 
   /* ---------------- КОЛЛЕКЦИЯ ---------------- */
   collection() {
+    Tut.ui('spirits'); // 4.0: шаг обучения
     const scr = this.screen('Духи', `
       <div class="toolbar">
         <div class="seg">${[['power', 'Сила'], ['new', 'Новые'], ['num', 'Номер'], ['name', 'Имя']].map(([k, t]) => `<button data-sort="${k}">${t}</button>`).join('')}</div>
@@ -556,7 +575,7 @@ const UI = {
     const h = Ev.hol, hc = U.$('#holChip');
     hc.classList.toggle('hidden', !h);
     if (h) {
-      const icon = { svyatki: '❄', maslenitsa: '☀', kupala: '✿', veles: '☾' }[h.id];
+      const icon = { svyatki: '❄', maslenitsa: '☀', kupala: '✿', pokrov: '🍂', veles: '☾' }[h.id];
       hc.innerHTML = `<b class="ev-star">${icon}</b><span>${h.name}</span>`;
       hc.onclick = () => this.modal({
         title: h.name, cls: 'event-modal',
@@ -577,6 +596,7 @@ const UI = {
   },
 
   detail(uid, onChange) {
+    Tut.ui('card'); // 4.0: шаг обучения
     if (!S.findSpirit(uid)) return;
     const scr = this.screen('', '', 'det-screen', onChange);
     const render = () => {
@@ -713,6 +733,7 @@ const UI = {
 
   /* ---------------- БЕСТИАРИЙ ---------------- */
   dex() {
+    Tut.ui('dex'); // 4.0: шаг обучения
     const caught = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].caught).length;
     const seen = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].seen).length;
     const scr = this.screen('Бестиарий', `
@@ -730,7 +751,7 @@ const UI = {
       this.modal({
         cls: 'dex-modal', title: `№${String(s.num).padStart(2, '0')} ${s.name}`,
         html: `<div class="dex-art el-${s.el}">${Art.spirit(s.id)}</div>
-          <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${s.time === 'night' ? '<span>Чаще ночью</span>' : ''}${s.time === 'day' ? '<span>Только днём</span>' : ''}${s.region ? `<span>Регион: ${REGIONS[s.region].name} (${REGIONS[s.region].range})</span>` : ''}${s.land ? `<span>Земля: ${LANDS[s.land].name} (${LANDS[s.land].where})</span>` : ''}${s.legend ? `<span>${s.story ? 'Награда Летописи' : 'Только в разломах'}</span>` : ''}${s.season === 'winter' ? '<span>Зимний: дек–фев и Святки</span>' : ''}${s.season === 'kupala' ? '<span>Летний: июнь–июль и Купала</span>' : ''}</div>
+          <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${s.time === 'night' ? '<span>Чаще ночью</span>' : ''}${s.time === 'day' ? '<span>Только днём</span>' : ''}${s.region ? `<span>Регион: ${REGIONS[s.region].name} (${REGIONS[s.region].range})</span>` : ''}${s.land ? `<span>Земля: ${LANDS[s.land].name} (${LANDS[s.land].where})</span>` : ''}${s.legend ? `<span>${s.story ? 'Награда Летописи' : 'Только в разломах'}</span>` : ''}${s.season === 'winter' ? '<span>Зимний: дек–фев и Святки</span>' : ''}${s.season === 'kupala' ? '<span>Летний: июнь–июль и Купала</span>' : ''}${s.season === 'autumn' ? '<span>Осенний: сен–ноя и Покров</span>' : ''}</div>
           <p>${s.desc}</p>
           ${chain.length > 1 ? `<div class="chain">${chain.map((x, i) => `${i ? '<span class="arr">→</span>' : ''}<div class="${S.d.dex[x.id] && S.d.dex[x.id].seen ? '' : 'unknown'}">${Art.spirit(x.id)}</div>`).join('')}</div>` : ''}
           ${d.shiny ? `<div class="chain"><div>${Art.spirit(s.id, true)}</div></div><div class="dex-stat shiny-t">✦ Сияющих поймано: ${d.shiny}</div>` : ''}
@@ -742,6 +763,7 @@ const UI = {
 
   /* ---------------- СУМКА ---------------- */
   bag() {
+    Tut.ui('bag'); // 4.0: шаг обучения
     const scr = this.screen('Сумка', '<div class="list bag"></div>', 'bag-screen');
     const render = () => {
       scr.querySelector('.head-extra').textContent = `${S.bagCount()}/${S.bagLimit()}`;
@@ -796,6 +818,7 @@ const UI = {
 
   /* ---------------- КОКОНЫ ---------------- */
   cocoons() {
+    Tut.ui('cocoons'); // 4.0: шаг обучения
     const scr = this.screen('Коконы', '<div class="coc-info"></div><div class="coc-box"></div>', 'coc-screen');
     const render = () => {
       const inc = S.incubating();
@@ -849,6 +872,7 @@ const UI = {
 
   /* ---------------- ЗАДАНИЯ ---------------- */
   quests(tab) {
+    Tut.ui('quests'); // 4.0: шаг обучения
     this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
     const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? ' •' : ''}</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button><button data-tab="order">Орден${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const BONUS = Rules.QUEST_BONUS;
@@ -1161,7 +1185,7 @@ const UI = {
       </div>
       ${sec('Об игре')}
       <div class="list">
-        ${link('about', 'info', 'Об игре и мире', 'История Тонкой ночи и правила')}
+        ${link('about', 'info', 'Книга Ордена', 'Мир, духи и все правила игры; трейлер')}
         <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div><span class="set-chev">›</span></button>
       </div>
       <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
@@ -1217,51 +1241,13 @@ const UI = {
     };
     renderAcc();
     Login.load().then(renderAcc);
-    scr.querySelector('.about').onclick = () => this.about();
+    scr.querySelector('.about').onclick = () => Book.screen(); // 4.0: вместо списка «Об игре»
     scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены с сервера навсегда.', 'Сбросить', () => {
       this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', async () => {
         if (await Game.try('reset')) location.reload();
       }, 'Нет', true);
     }, 'Отмена', true);
   },
-  about() {
-    this.modal({
-      title: 'Духолов', cls: 'about-modal',
-      html: LORE.map(p => `<p>${p}</p>`).join('') + `
-        <h4>Как играть</h4>
-        <ul>
-          <li><b>Духи</b> появляются на карте вокруг тебя. Подойди ближе ${W.INTERACT} м и коснись духа.</li>
-          <li><b>Бросок</b>: смахни оберег вверх. Сила свайпа — дальность. Попадание во внутреннее кольцо, пока оно маленькое, повышает шанс.</li>
-          <li><b>Цвет кольца</b>: зелёный — лёгкий дух, красный — трудный. Мёд и серебряные/золотые обереги помогают.</li>
-          <li><b>Родники</b> (синие колодцы) стоят у настоящих мест — памятников, фонтанов, арт-объектов, храмов. Дают обереги, мёд, живую воду и коконы. Перезаряжаются 5 минут.</li>
-          <li><b>Разломы</b> (порталы со звёздами) открываются у Капищ на час — битвы с боссами. Тапай для атаки, уклоняйся при «!». Победа — шанс поймать босса. Боссы меняются каждый час.</li>
-          <li><b>Стихии</b>: ${ELEMENT_KEYS.map(e => `${ELEMENTS[e].name} бьёт ${ELEMENTS[e].beats.map(b => ELEMENTS[b].name).join(' и ')}`).join('; ')}.</li>
-          <li><b>Ночью</b> чаще встречаются духи Тени и Ветра, в каждом районе города — своя любимая стихия.</li>
-          <li><b>Погода</b> усиливает две стихии: таких духов больше, они сильнее и дают больше искр. В <b>полнолуние</b> выходят Русалки и Навки, в <b>новолуние</b> чаще сияющие духи.</li>
-          <li><b>Сияющие духи</b> — редкие цветовые варианты (примерно 1 из 128, в разломах 1 из 20).</li>
-          <li><b>Спутник</b> ходит с тобой по карте и приносит эссенцию. Выбери его на карточке духа.</li>
-          <li><b>Летопись Ордена</b> — сюжетные главы во вкладке заданий. <b>Знаки Ордена</b> — медали в профиле.</li>
-          <li><b>Капища</b> (деревянные идолы) — поединки 3 на 3 с хранителями, с 3 уровня. Тап — атака, «Приём» — особый удар (тапай по сфере, чтобы усилить), 2 щита спасают от приёмов хранителя. Каждое капище можно освятить раз в день.</li>
-          <li><b>Региональные духи</b> — вещие птицы Сирин, Алконост и Гамаюн — живут каждая в своей части света. Остальных можно получить через <b>Обмен</b>: карточка духа → «Передать другу», друг принимает код или QR в «Меню → Обмен».</li>
-          <li><b>Вторжения Нави</b> (с 4 уровня): захваченные родники светятся лиловым. Победи прислужника — родник освободится, а омрачённого духа можно спасти. Омрачённые бьют сильнее, но их можно <b>очистить</b> на карточке духа.</li>
-          <li><b>Праздники</b>: Святки, Масленица, Купальская ночь, Велесова ночь — с сезонными духами Морозко, Снегуркой и Купалинкой.</li>
-          <li><b>Фото</b>: кнопка камеры во время встречи делает снимок духа (в AR — поверх камеры). Снимки — в Профиле, в Альбоме.</li>
-          <li><b>Лига Ордена</b> (с 5 уровня): турнир из трёх поединков подряд без лечения. Звёзды за победы, 10 рангов с наградами, сезон — месяц. 3 жетона в день.</li>
-          <li><b>Амулеты</b> (Перуна, Мокоши, Велеса, Сварога, Лады) надеваются на духа — по одному — и усиливают его в битвах. Выпадают за победы и ранги Лиги.</li>
-          <li><b>Второй особый приём</b> учится на карточке духа: в поединках он дешевле основного (⚡35 вместо 50), но слабее.</li>
-          <li><b>Друзья</b>: обменяйтесь кодами дружбы в «Меню → Друзья». Подарки из родников можно отправлять каждому другу раз в день — растёт уровень дружбы.</li>
-          <li><b>Дневник Ловчего</b> (в профиле) хранит историю поимок и побед, любую запись можно показать на карте.</li>
-          <li>В настройках есть <b>крупный текст</b>, <b>бросок одним касанием</b> и режим <b>«меньше движения»</b>.</li>
-          <li><b>Следопыт</b>: в «Рядом» коснись духа или выбери «К роднику» / «К капищу» — стрелка вверху покажет направление.</li>
-          <li><b>Прогресс хранится на сервере игры</b>. Привяжи вход через сервис в «Настройках» — и прогресс откроется на любом устройстве.</li>
-          <li><b>Места</b>: знаешь интересный объект рядом? Сфотографируй его в «Меню → Места». Снимок получает геометку, модераторы проверяют заявку, и на карте появляется новый Родник или Капище.</li>
-          <li><b>События недели</b> меняются каждый понедельник: неделя стихии, Звездопад с двойным опытом, Родниковая неделя и другие.</li>
-        </ul>
-        <p class="small">Играй внимательно: смотри по сторонам, а не только в телефон.</p>`,
-      buttons: [{ label: 'Понятно', cls: 'primary' }],
-    });
-  },
-
   /* ---------------- РОДНИК ---------------- */
   spring(e) {
     const scr = this.screen('', `

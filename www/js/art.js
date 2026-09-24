@@ -149,6 +149,12 @@ const Art = (() => {
         return `<path d="M${100 - w} ${y} Q${100 - w * 0.8} ${y + len * 0.85} 100 ${y + len} Q${100 + w * 0.8} ${y + len * 0.85} ${100 + w} ${y} Q100 ${y + 16} ${100 - w} ${y}Z" fill="${c3}" stroke="${shade(c3, -0.3)}" stroke-width="2"/>` +
           `<path d="M100 ${y + 4} Q${100 - w * 0.4} ${y - 4} ${100 - w * 0.85} ${y + 6} M100 ${y + 4} Q${100 + w * 0.4} ${y - 4} ${100 + w * 0.85} ${y + 6}" stroke="${shade(c3, -0.15)}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
       }
+      // 4.0: шапочка-жёлудь (Желудок)
+      case 'acorn':
+        return `<path d="M${100 - hw * 0.95} ${t + 16} Q${100 - hw * 0.95} ${t - 14} 100 ${t - 16} Q${100 + hw * 0.95} ${t - 14} ${100 + hw * 0.95} ${t + 16} Q100 ${t + 6} ${100 - hw * 0.95} ${t + 16}Z" fill="#92400e" stroke="#451a03" stroke-width="3" stroke-linejoin="round"/>` +
+          `<path d="M${100 - hw * 0.6} ${t + 4} L${100 - hw * 0.2} ${t - 10} M${100 - hw * 0.2} ${t + 8} L${100 + hw * 0.2} ${t - 12} M${100 + hw * 0.2} ${t + 8} L${100 + hw * 0.6} ${t - 8} M${100 - hw * 0.6} ${t - 6} L${100 - hw * 0.2} ${t + 8} M${100 + hw * 0.2} ${t - 10} L${100 + hw * 0.6} ${t + 4}" stroke="#b45309" stroke-width="2" opacity=".7"/>` +
+          `<path d="M99 ${t - 15} Q98 ${t - 26} 106 ${t - 30}" stroke="#451a03" stroke-width="4.5" fill="none" stroke-linecap="round"/>` +
+          `<ellipse cx="${100 - hw * 0.45}" cy="${t - 4}" rx="7" ry="3" transform="rotate(-20 ${100 - hw * 0.45} ${t - 4})" fill="#fff" opacity=".3"/>`;
       case 'hat':
         return `<path d="M${100 - hw * 0.8} ${t + 16} Q${100 - hw * 0.6} ${t - 8} ${100 - hw * 0.2} ${t - 26} Q${100 + hw * 0.1} ${t - 44} ${100 + hw * 0.5} ${t - 34} Q${100 + hw * 0.3} ${t - 22} ${100 + hw * 0.8} ${t + 16}Z" fill="#dc2626" stroke="#7f1d1d" stroke-width="2" stroke-linejoin="round"/>` +
           `<path d="M${100 - hw * 0.86} ${t + 16} Q100 ${t + 2} ${100 + hw * 0.86} ${t + 16} Q100 ${t + 28} ${100 - hw * 0.86} ${t + 16}Z" fill="#fef3c7" stroke="#a16207" stroke-width="1.5"/>` +
@@ -484,6 +490,7 @@ const Art = (() => {
     horn: '<circle cx="50" cy="84" r="9" fill="#67e8f9" opacity=".25"/><path d="M45 93 L57 74 L53 93 Z" fill="#e0e7ff" stroke="#4338ca" stroke-width="1.3" stroke-linejoin="round"/><path d="M47.5 89l6-1.5M49.5 85l5-1.5M51.5 81l3.5-1" stroke="#4338ca" stroke-width="1"/>',
     needle: '<circle cx="50" cy="84" r="9" fill="#4ade80" opacity=".25"/><path d="M42 93 L58 75" stroke="#e2e8f0" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="56.6" cy="76.6" rx="1.5" ry="3.2" transform="rotate(42 56.6 76.6)" fill="none" stroke="#1b1030" stroke-width="1.2"/>',
     crown: '<path d="M41 90V78l4.5 5 4.5-7 4.5 7 4.5-5v12z" fill="#fbbf24" stroke="#92400e" stroke-width="1.4" stroke-linejoin="round"/><circle cx="50" cy="86" r="1.8" fill="#e11d48"/>',
+    oak: '<circle cx="50" cy="84" r="9" fill="#a3e635" opacity=".22"/><path d="M40 89c0-7 5-11 12-11-1 7-5 11-12 11z" fill="#65a30d" stroke="#365314" stroke-width="1.3"/><ellipse cx="56" cy="87.5" rx="4.5" ry="5.5" fill="#d9a066" stroke="#78350f" stroke-width="1.3"/><path d="M51.3 84.2h9.4a4.7 3.2 0 0 0-9.4 0z" fill="#78350f"/>',
     star: '<path d="M50 75l2.6 5.4 5.9.9-4.3 4.1 1 5.9L50 88.5l-5.2 2.8 1-5.9-4.3-4.1 5.9-.9z" fill="#fde047" stroke="#a16207" stroke-width="1"/>',
   };
   // цвет — только #rrggbb: облик приходит и от других игроков (Лига, разломы), в атрибут SVG попадает лишь проверенное

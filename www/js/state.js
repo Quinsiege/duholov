@@ -58,6 +58,8 @@ const S = {
     d.spirits = d.spirits || []; d.cocoons = d.cocoons || []; d.springs = d.springs || {}; d.rifts = d.rifts || {}; d.caught = d.caught || {};
     d.medals = d.medals || {};
     d.story = d.story || { ch: 0, p: [0, 0, 0] };
+    // 4.0: обучение стало длиннее — шаги прежнего (1 поймать, 2 родник, 3 меню) переводятся в новые
+    if (d.tut && d.tutV !== 4) { d.tut = { 1: 1, 2: TUT.findIndex(s => s.id === 'springs') + 1, 3: TUT.findIndex(s => s.id === 'road') + 1 }[d.tut] || 1; d.tutV = 4; }
     if (d.buddy === undefined) d.buddy = null;
   },
 
@@ -73,7 +75,7 @@ const S = {
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
-    this.d.tut = 1; // обучение для новых игроков
+    this.d.tut = 1; this.d.tutV = 4; // обучение «Посвящение в Ловчие» (4.0)
     this.ensureQuests();
     this.save(true);
   },
@@ -217,6 +219,7 @@ const S = {
     this.d.sparks -= c.sparks; this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.lvl++;
     this.progress('power', 1);
+    this.tutAdvance('power'); // 4.0: шаг обучения «Усиль духа»
     this.save();
     return true;
   },
@@ -418,6 +421,19 @@ const S = {
     return { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
   },
 
+
+  /* ---------- 4.0: обучение «Посвящение в Ловчие» ---------- */
+  tutAt() { return (this.d && this.d.tut && TUT[this.d.tut - 1]) || null; },
+  // Шаг выполнен: kind — что сделал игрок, id — для сцен и разделов. В конце главы — её награда.
+  tutAdvance(kind, id) {
+    const st = this.tutAt();
+    if (!st || st.kind !== kind || (id && st.id !== id)) return null;
+    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward) : [];
+    this.d.tut = next ? this.d.tut + 1 : 0;
+    if (got.length) Bus.emit('tutChapter', { ch: st.ch, got, done: !next });
+    this.save();
+    return { got, done: !next };
+  },
   /* ---------- Летопись ---------- */
   storyReady() {
     const ch = STORY[this.d.story.ch];
