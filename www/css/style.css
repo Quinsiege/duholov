@@ -1467,3 +1467,11 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .prof-acc.guest { padding: 10px 12px; border-radius: 16px; background: rgba(251, 191, 36, .06); border: 1px dashed rgba(251, 191, 36, .35); }
 .prof-acc small { color: var(--muted); font-size: 12px; }
 .prof-acc .login-row { max-width: 360px; }
+
+/* ---------- 3.29: вход по почте и паролю ---------- */
+.mail-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.mail-form .input { user-select: text; -webkit-user-select: text; }
+.onb .mail-login { color: var(--muted); font-size: 13px; margin-top: -4px; }
+.acc-tag.mail { padding-left: 8px; }
+.acc-tag.mail .ico { width: 14px; height: 14px; color: var(--violet); }
+.onb ~ .modal-wrap { z-index: 2600; } /* окна поверх экрана входа (почта, «Выйти?», подтверждения) */
