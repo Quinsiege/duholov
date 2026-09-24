@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.0.2';
+const APP_VERSION = '4.0.3';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -3316,6 +3316,7 @@ const GameCore = {
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
+  TZ_LOCK: 7 * 86400000, // часовой пояс игрока меняется не чаще раза в неделю
 
   fail(msg) { throw new GameError(msg); },
   need(cond, msg) { if (!cond) this.fail(msg); },
@@ -3328,7 +3329,11 @@ const GameCore = {
     const ctx = { now: Date.now(), env, srv: JSON.parse(JSON.stringify(save.srv || {})), events: [], results: [], after: [], full: false, reset: false };
     const saved = { emit: Bus.emit, save: S.save, d: S.d, tz: U.tz, skew: U.skew, w: Sky.w, pos: MapView.pos };
     try {
-      U.tz = Number.isFinite(+req.tz) ? U.clamp(Math.round(+req.tz), -840, 840) : 0;
+      // 4.1: часовой пояс игрока запоминает сервер и меняет не чаще раза в неделю — иначе, переключая пояс
+      // от запроса к запросу, можно было снова и снова «начинать новый день» (дневные лимиты, дань, награда за вход)
+      const tz = Number.isFinite(+req.tz) ? U.clamp(Math.round(+req.tz), -840, 840) : 0, z = ctx.srv.tz;
+      if (!z || (z.v !== tz && ctx.now - z.t >= this.TZ_LOCK)) ctx.srv.tz = { v: tz, t: ctx.now };
+      U.tz = ctx.srv.tz.v;
       U.skew = 0;
       Sky.w = req.wx && WEATHER[req.wx] ? { key: req.wx } : null;
       const p = req.pos;
@@ -5159,6 +5164,8 @@ function makeEnv(uid) {
 // Защита от перебора и наводнения запросами: не больше FLOOD запросов в минуту от одного игрока
 // и не больше BAD_TOKENS неверных входов в минуту с одного адреса (в пределах экземпляра функции)
 const FLOOD = 150, BAD_TOKENS = 20;
+// Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
+const LOCK_MS = 30000, LOCK_TRIES = 25;
 const hits = new Map(), badTokens = new Map();
 const tooMany = (map, key, max) => {
   const now = Date.now(), m = Math.floor(now / 60000);
@@ -5203,40 +5210,45 @@ Deno.serve(async req => {
   if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: 'Ошибка входа — попробуй ещё раз' }, 500); } }
   const env = makeEnv(uid);
 
+  // 4.1: действия одного игрока выполняются строго по очереди — на всех экземплярах функции (замок в базе, 017_request_lock.sql).
+  // Прогресс и служебные данные сервера записываются одной транзакцией вместе со снятием замка.
+  const tok = crypto.randomUUID();
+  let locked = false;
+  const release = async srv => {
+    if (!locked) return;
+    locked = false;
+    const { error } = await db.rpc('game_release', { p_uid: uid, p_token: tok, p_srv: srv || null });
+    if (error) console.error('Замок:', error.message);
+  };
   try {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const row = must(await db.from('saves').select('data, rev, moved_to').eq('user_id', uid).maybeSingle());
-      if (row && row.moved_to) return reply({ ok: false, moved: true, error: 'Прогресс перенесён на другое устройство' });
-      const srvRow = must(await db.from('save_srv').select('srv').eq('user_id', uid).maybeSingle());
-      const res = await exclusive(() => GameCore.run(body, { data: row ? row.data : null, srv: srvRow ? srvRow.srv : {} }, env));
-      if (!res.ok) {
-        if (res.rl) must(await db.from('save_srv').upsert({ user_id: uid, srv: { ...(srvRow ? srvRow.srv : {}), rl: res.rl }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
-        return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
-      }
-
-      let rev = row ? row.rev : 0;
-      if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });
-      if (res.data) {
-        if (!row) {
-          const ins = await db.from('saves').insert({ user_id: uid, data: res.data, rev: 1, app_version: String(body.v || '').slice(0, 20) });
-          if (ins.error) { if (/duplicate/i.test(ins.error.message)) continue; throw new Error(ins.error.message); }
-          rev = 1;
-        } else {
-          const upd = must(await db.from('saves').update({ data: res.data, rev: row.rev + 1, app_version: String(body.v || '').slice(0, 20), updated_at: new Date().toISOString() })
-            .eq('user_id', uid).eq('rev', row.rev).select('rev'));
-          if (!upd || !upd.length) continue; // прогресс изменился параллельно (второе устройство) — повторим
-          rev = row.rev + 1;
-        }
-      }
-      must(await db.from('save_srv').upsert({ user_id: uid, srv: res.srv, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }));
-      for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
-      // разница — только если телефон знает предыдущую версию прогресса
-      const patch = !res.full && row && body.rev === row.rev ? Diff.make(row.data, res.data) : null;
-      return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
+    let got = null;
+    for (let i = 0; i < LOCK_TRIES; i++) {
+      got = must(await db.rpc('game_begin', { p_uid: uid, p_token: tok, p_ms: LOCK_MS }));
+      if (got && !got.locked) break;
+      await new Promise(r => setTimeout(r, 200));
     }
-    return reply({ ok: false, error: 'Сервер занят — повтори действие' });
+    if (!got || got.locked) return reply({ ok: false, error: 'Предыдущее действие ещё выполняется — повтори' });
+    locked = true;
+    const row = got.row, srv = got.srv || {};
+    if (row && row.moved_to) return reply({ ok: false, moved: true, error: 'Прогресс перенесён на другое устройство' });
+    const res = await exclusive(() => GameCore.run(body, { data: row ? row.data : null, srv }, env));
+    if (!res.ok) {
+      if (res.rl) await release({ ...srv, rl: res.rl });
+      return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
+    }
+    if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });
+    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: res.data || null, p_srv: res.srv,
+      p_ver: String(body.v || '').slice(0, 20) }));
+    if (rev == null) return reply({ ok: false, error: 'Прогресс изменился на другом устройстве — повтори действие' });
+    locked = false; // замок снят вместе с сохранением
+    for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
+    // разница — только если телефон знает предыдущую версию прогресса
+    const patch = !res.full && row && body.rev === row.rev ? Diff.make(row.data, res.data) : null;
+    return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
   } catch (e) {
     console.error(String(e && e.stack || e));
     return reply({ ok: false, error: 'Ошибка сервера — попробуй ещё раз' }, 500);
+  } finally {
+    await release();
   }
 });

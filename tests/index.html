@@ -501,7 +501,7 @@
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
-    const res = await GameCore.run({ a: [{ type, args }], tz: 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: APP_VERSION }, { data: who.data, srv: who.srv }, envFor(who));
+    const res = await GameCore.run({ a: [{ type, args }], tz: who.tz != null ? who.tz : 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: APP_VERSION }, { data: who.data, srv: who.srv }, envFor(who));
     if (!res.ok && res.rl) who.srv = { ...who.srv, rl: res.rl }; // как на сервере: счётчики частоты сохраняются и при отказе
     if (res.ok) {
       who.data = res.data; who.srv = res.srv;
@@ -540,6 +540,16 @@
     await refuse(A, 'newGame', { name: 'Ещё', starter: 'ugolek' }, /уже есть/);
     await refuse(A, 'hack', {}, /Неизвестное действие/);
     await refuse(A, 'encLost', {}, /Неизвестное действие/);
+  });
+  atest('Сервер: часовой пояс запоминается — сменой пояса не начать новый день', async () => {
+    const A = await newPlayer('u-tz', 55.75, 37.62, 'Пояс');
+    eq(A.srv.tz.v, 180, 'пояс с первого запроса');
+    ok((await must(A, 'daily')).n >= 1, 'награда за вход');
+    A.tz = 840; ok((await must(A, 'daily')).already, 'другой пояс — тот же день: награды нет');
+    eq(A.srv.tz.v, 180, 'пояс не сменился');
+    A.tz = -840; ok((await must(A, 'daily')).already, 'и в обратную сторону — тоже');
+    A.srv.tz.t -= GameCore.TZ_LOCK; A.tz = 240;
+    await must(A, 'tick'); eq(A.srv.tz.v, 240, 'через неделю пояс можно сменить (переезд)');
   });
   atest('Сервер: родник — только рядом, с перезарядкой; скрытое модератором недоступно', async () => {
     const A = await newPlayer('ub', 55.76, 37.63, 'Бета');
