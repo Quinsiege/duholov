@@ -186,6 +186,43 @@ function makeEnv(uid) {
       if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
       return count || 0;
     },
+    // 3.21: текущие имя, уровень, дружина и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
+    async briefByUid(uids) {
+      const out = {};
+      if (!uids.length) return out;
+      const rows = must(await db.from('saves').select('user_id, name:data->name, level:data->level, clan:data->clan, look:data->look').in('user_id', uids)) || [];
+      rows.forEach(r => { out[r.user_id] = { name: r.name, level: r.level, clan: r.clan, look: r.look }; });
+      return out;
+    },
+    async briefByPid(pids) {
+      const out = {};
+      if (!pids.length) return out;
+      const ps = must(await db.from('players').select('pid, user_id').in('pid', pids)) || [];
+      const by = await this.briefByUid(ps.map(p => p.user_id));
+      ps.forEach(p => { if (by[p.user_id]) out[p.pid] = by[p.user_id]; });
+      return out;
+    },
+    // Таблица сезона: топ-50 с текущими данными Ловчих, сколько всего участников и место игрока, если он ниже
+    async leagueTop(season) {
+      const rows = must(await db.from('league_scores').select('user_id, name, stars, rank, level, look, updated_at')
+        .eq('season', season).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
+      const uids = rows.map(r => r.user_id);
+      const ps = uids.length ? must(await db.from('players').select('pid, user_id').in('user_id', uids)) || [] : [];
+      const pid = {}; ps.forEach(p => { pid[p.user_id] = p.pid; });
+      const cur = await this.briefByUid(uids);
+      const { count: total, error } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season);
+      if (error) throw new Error(error.message);
+      let me = null;
+      if (!rows.some(r => r.user_id === uid)) {
+        const my = must(await db.from('league_scores').select('stars, updated_at').eq('season', season).eq('user_id', uid).maybeSingle());
+        if (my) {
+          const { count } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season)
+            .or(`stars.gt.${my.stars | 0},and(stars.eq.${my.stars | 0},updated_at.lt."${my.updated_at}")`);
+          me = { place: (count || 0) + 1, stars: my.stars };
+        }
+      }
+      return { rows: rows.map(r => ({ ...r, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null })), total: total || 0, me };
+    },
     // 3.18: неоткрытую посылку забирает сам отправитель (передача духов закрыта)
     async tradeReclaim(code, pid) {
       const rows = must(await db.from('trades').update({ taken_by: pid, taken_at: new Date().toISOString() }).eq('code', code).eq('from_pid', pid).is('taken_by', null).select('*'));

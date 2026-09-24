@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.20.3';
+const APP_VERSION = '3.21.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1700,7 +1700,9 @@ const J = {
 // ===== www/js/league.js =====
 /* Лига Ордена: турнир — три поединка подряд с Ловчими Лиги, раны между боями не лечатся.
    Победа — звезда, три победы подряд — ещё одна. Сезон длится месяц, в начале нового звёзды делятся пополам.
-   Жетоны, звёзды и награды ведёт сервер (leagueStart / leagueEnd), телефон показывает бои. */
+   Жетоны, звёзды и награды ведёт сервер (leagueStart / leagueEnd), телефон показывает бои.
+   Экран (3.21): герб ранга и место в таблице, вкладки «Турнир», «Таблица» (живая, с текущими уровнями — leagueTop)
+   и «Ранги»; строка таблицы открывает карточку Ловчего. */
 
 const LEAGUE_RANKS = [
   { name: 'Новик', stars: 0 },
@@ -1717,10 +1719,13 @@ const LEAGUE_RANKS = [
 
 const League = {
   TICKETS: 3,
+  LEVEL: 5,    // с какого уровня Ловчего открыта Лига (проверяет сервер)
   carry: null, // раны духов между боями турнира (только на телефоне)
+  tab: 'play',
+  TABS: ['play', 'table', 'ranks'],
 
   season(d = U.local()) { return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; },
-  seasonName() { return U.local().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' }); },
+  seasonName() { return U.local().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' }).replace(/\s*г\.?$/, ''); },
   seasonEnds() { const d = U.local(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); },
   // новый сезон — звёзды пополам, новый день — снова три жетона
   norm(L) {
@@ -1732,6 +1737,7 @@ const League = {
   st() { return (S.d.league = this.norm(S.d.league)); },                                      // сервер
   view() { return this.norm(S.d.league ? JSON.parse(JSON.stringify(S.d.league)) : null); },   // телефон
   rank(stars) { let r = 0; LEAGUE_RANKS.forEach((x, i) => { if (stars >= x.stars) r = i; }); return r; },
+  rwLine(i) { const x = LEAGUE_RANKS[i]; return x.reward ? UI.rwText(x.reward) + (i % 3 === 0 ? ' + амулет' : '') + (i === 9 ? ' + эмблема «Венец»' : '') : ''; },
 
   // Соперник: сила растёт с рангом, ориентир — средний уровень твоих трёх сильнейших.
   // Одинаков на телефоне и сервере: зависит от звёзд, номера боя и зерна турнира.
@@ -1757,55 +1763,163 @@ const League = {
     };
   },
 
-  screen() {
-    const L = this.view(), r = this.rank(L.stars), next = LEAGUE_RANKS[r + 1];
-    const team = S.team();
-    const pct = next ? (L.stars - LEAGUE_RANKS[r].stars) / (next.stars - LEAGUE_RANKS[r].stars) * 100 : 100;
-    const scr = UI.screen('Лига Ордена', `
-      <div class="league">
-        <div class="lg-badge r${Math.min(9, r)}"><span>${r + 1}</span></div>
-        <div class="lg-rank">${LEAGUE_RANKS[r].name}</div>
-        <div class="lg-season">Сезон: ${this.seasonName()} · до ${this.seasonEnds().toLocaleDateString('ru-RU', { timeZone: 'UTC' })}</div>
-        <div class="pbar big"><i style="width:${pct}%"></i></div>
-        <small>★ ${L.stars}${next ? ` / ${next.stars} до ранга «${next.name}»` : ' — высший ранг!'}</small>
-        <div class="lg-tickets">${'<i class="on"></i>'.repeat(L.tickets)}${'<i></i>'.repeat(this.TICKETS - L.tickets)}<span>Жетоны турнира: ${L.tickets} из ${this.TICKETS} (обновятся завтра)</span></div>
-        <div class="panel lg-rules"><b>Турнир</b><small>Три поединка подряд с Ловчими Лиги. Раны духов между боями не лечатся, щиты — восстанавливаются. Победа — ★, три победы подряд — ещё ★. Поражение звёзд не отнимает.</small></div>
-        <div class="rift-team-title">Команда на турнир <button class="btn small ghost team-edit">Изменить</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <button class="btn primary wide lg-go" ${L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${team.length < 3 ? 'Нужно три духа' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра'}</button>
-        <h3 class="prof-h">Таблица сезона</h3>
-        <div class="list lg-top">${Cloud.enabled() ? '<div class="row"><div class="row-main"><small>Загружаю…</small></div></div>'
-          : '<div class="row"><div class="row-main"><small>Общая таблица всех Ловчих появится, когда к игре подключат облачный сервер.</small></div></div>'}</div>
-        <h3 class="prof-h">Награды за ранги</h3>
-        <div class="list lg-rewards">${LEAGUE_RANKS.slice(1).map((x, i) => `
-          <div class="row ${L.best >= i + 1 ? 'got' : ''}"><div class="lg-mini r${i + 1}">${i + 2}</div><div class="row-main"><b>${x.name}</b><small>★ ${x.stars} · ${UI.rwText(x.reward)}${(i + 1) % 3 === 0 ? ' + амулет' : ''}${i + 1 === 9 ? ' + эмблема «Венец»' : ''}</small></div>${L.got[i + 1] ? '<span class="q-ok">✓</span>' : ''}</div>`).join('')}</div>
-      </div>`, 'league-screen');
-    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { this.closeAndReopen(scr); });
-    // таблица сезона — сразу и потом каждые 5 секунд, пока экран открыт (места меняются в реальном времени)
-    const loadTop = () => Cloud.top(L.season).then(({ rows, me }) => {
-      const box = scr.querySelector('.lg-top'); if (!box) return;
-      const html = rows.length ? rows.map((x, i) => `<div class="row ${x.user_id === me ? 'lg-me' : ''}"><b class="lg-pos">${i + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
-        <div class="row-main"><b>${U.esc(x.name)}</b><small>${LEAGUE_RANKS[x.rank] ? LEAGUE_RANKS[x.rank].name : ''} · ур. ${x.level}</small></div><span class="cnt">★ ${x.stars}</span></div>`).join('')
-        : '<div class="row"><div class="row-main"><small>В этом сезоне ещё никто не играл — будь первым!</small></div></div>';
-      if (box._html !== html) { box.innerHTML = html; box._html = html; } // перерисовка — только если что-то изменилось
-    }).catch(e => {
-      const box = scr.querySelector('.lg-top');
-      if (box && !box._html) box.innerHTML = `<div class="row"><div class="row-main"><small>Таблица недоступна: ${U.esc(e.message)}</small></div></div>`; // уже показанную не стираем
-    });
-    if (Cloud.enabled()) {
-      loadTop();
-      const t = setInterval(() => { if (!scr.isConnected) { clearInterval(t); return; } if (!document.hidden) loadTop(); }, 5000);
-    }
-    scr.querySelector('.lg-go').onclick = async () => {
-      if (S.team().length < 3) return;
-      const r0 = await Game.try('leagueStart');
-      if (!r0) return;
-      UI.closeScreen(scr);
-      this.carry = null;
-      this.next();
-    };
+  // «6 дн 11 ч», «5 ч 12 мин», «12 мин 05 с»
+  left(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24, m = Math.floor(s / 60) % 60;
+    return d ? `${d} дн ${h} ч` : h ? `${h} ч ${m} мин` : `${m} мин ${String(s % 60).padStart(2, '0')} с`;
   },
-  closeAndReopen(scr) { UI.closeScreen(scr); setTimeout(() => this.screen(), 230); },
+  toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
+
+  // Таблица сезона: с сервера (текущие уровни и имена, коды для карточки); запасной путь — прямое чтение таблицы
+  async top() {
+    try { return await Game.act('leagueTop'); } catch (e) {
+      const { rows, me } = await Cloud.top(this.view().season);
+      return { rows: rows.map(x => ({ pid: null, name: x.name, lvl: x.level, clan: null, look: x.look, stars: x.stars, rank: x.rank, me: x.user_id === me })), total: rows.length, me: null };
+    }
+  },
+
+  screen() {
+    Sfx.init();
+    let L = this.view(), r = this.rank(L.stars);
+    const next = LEAGUE_RANKS[r + 1], base = LEAGUE_RANKS[r].stars;
+    const pips = next ? Array.from({ length: next.stars - base }, (_, i) => `<i class="${i < L.stars - base ? 'on' : ''}"></i>`).join('') : '';
+    const scr = UI.screen('Лига Ордена', `
+      <section class="lgx-hero r${r}">
+        <div class="lgx-top"><span class="lgx-chip">Сезон · ${this.seasonName()}</span><span class="lgx-chip" title="До конца сезона">⏳ <b class="lgx-ends"></b></span></div>
+        <div class="lgx-crest"><div class="lgx-hex r${r}"><span>${r + 1}</span></div></div>
+        <div class="lgx-rank">${LEAGUE_RANKS[r].name}</div>
+        <div class="lgx-place">${Cloud.enabled() ? 'Ищу тебя в таблице…' : ''}</div>
+        ${next ? `<div class="lgx-pips">${pips}</div><small class="lgx-next">★ ${L.stars} · до ранга «${next.name}» ещё ${next.stars - L.stars} ★</small>`
+          : `<small class="lgx-next">★ ${L.stars} · высший ранг Лиги!</small>`}
+      </section>
+      <div class="seg lgx-tabs"><button data-tab="play">Турнир</button><button data-tab="table">Таблица</button><button data-tab="ranks">Ранги</button></div>
+      <div class="lgx-pane"></div>`, 'league-screen');
+    const body = scr.querySelector('.screen-body'), pane = scr.querySelector('.lgx-pane');
+    let data = null, moves = {}, prevPos = null, loading = false;
+
+    const tickets = () => `
+      <div class="lgx-card lgx-tix">
+        <div class="lgx-tokens">${Array.from({ length: this.TICKETS }, (_, i) => `<span class="${i < L.tickets ? 'on' : ''}"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.8z"/></svg></span>`).join('')}</div>
+        <div class="row-main"><b>Жетоны турнира: ${L.tickets} из ${this.TICKETS}</b><small>${L.tickets < this.TICKETS ? `Новые через <span class="lgx-mid"></span>` : 'Один жетон — один турнир'}</small></div>
+      </div>`;
+    const renderPlay = () => {
+      const team = S.team(), locked = S.d.level < this.LEVEL, power = team.reduce((a, x) => a + S.power(x), 0);
+      const slots = UI.teamHtml(team).replace('<i>Нет духов</i>', '') + '<button class="mini lgx-slot team-slot" aria-label="Выбрать духа">+</button>'.repeat(Math.max(0, 3 - team.length));
+      const btn = locked ? `Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? 'Нужно три духа' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра';
+      pane.innerHTML = `
+        ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
+        ${tickets()}
+        <div class="lgx-card lgx-path">
+          <div class="lgx-steps">
+            ${[1, 2, 3].map(k => `<div class="lgx-step"><span>${k}</span><small>+1 ★</small></div><i></i>`).join('')}
+            <div class="lgx-step bonus"><span>★</span><small>+1 ★ за 3 из 3</small></div>
+          </div>
+          <small class="lgx-rules">Три боя подряд с Ловчими Лиги. Раны духов между боями не лечатся, щиты восстанавливаются. Поражение звёзд не отнимает.</small>
+        </div>
+        <div class="lgx-team-head"><b>Команда на турнир</b>${power ? `<span>сила ${U.fmtNum(power)}</span>` : ''}<button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team my lgx-team">${slots}</div>
+        ${next ? `<div class="lgx-card lgx-goal"><div class="lg-mini r${r + 1}">${r + 2}</div><div class="row-main"><small>Следующая награда · ещё ${next.stars - L.stars} ★</small><b>${next.name}: ${this.rwLine(r + 1)}</b></div></div>` : ''}
+        <button class="btn primary wide lg-go" ${!locked && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
+    };
+
+    const who = x => `${U.esc(x.name)}${CLANS[x.clan] ? `<i class="lgx-clan" style="background:${CLANS[x.clan].color}" title="${CLANS[x.clan].name}"></i>` : ''}`;
+    const move = x => { const d = x.pid && moves[x.pid]; return d && Date.now() - d.t < 20000 ? `<span class="lgx-move ${d.d > 0 ? 'up' : 'down'}">${d.d > 0 ? '▲' : '▼'}${Math.abs(d.d)}</span>` : ''; };
+    const renderTable = () => {
+      if (!Cloud.enabled()) { pane.innerHTML = '<div class="lgx-card"><small>Общая таблица всех Ловчих появится, когда к игре подключат облачный сервер.</small></div>'; return; }
+      const head = `<div class="lgx-live"><i></i>Обновляется в реальном времени${data ? `<span>${data.total} ${U.plural(data.total, 'Ловчий', 'Ловчих', 'Ловчих')} в сезоне</span>` : ''}</div>`;
+      if (!data) { pane.innerHTML = head + '<div class="lgx-card"><small>Загружаю таблицу…</small></div>'; return; }
+      if (data.error) { pane.innerHTML = head + `<div class="lgx-card"><small>Таблица недоступна: ${U.esc(data.error)}</small></div>`; return; }
+      const rows = data.rows;
+      if (!rows.length) { pane.innerHTML = head + '<div class="lgx-card"><small>В этом сезоне ещё никто не сыграл турнир — будь первым!</small></div>'; return; }
+      const pod = [1, 0, 2].filter(i => rows[i]).map(i => { const x = rows[i]; return `
+        <button class="lgx-pod p${i + 1} ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
+          <div class="lgx-pod-ava">${Art.avatar(x.look || undefined)}<span>${i + 1}</span></div>
+          <b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small>
+          <div class="lgx-pod-base">★ ${x.stars}${move(x)}</div></button>`; }).join('');
+      const list = rows.slice(3).map((x, j) => `
+        <button class="lgx-row ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
+          <b class="lgx-pos">${j + 4}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
+          <div class="row-main"><b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small></div>
+          ${move(x)}<span class="lgx-stars">★ ${x.stars}</span></button>`).join('');
+      const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>Ты</b><small>${LEAGUE_RANKS[r].name} · ур. ${S.d.level}</small></div><span class="lgx-stars">★ ${data.me.stars}</span></div>` : '';
+      pane.innerHTML = head + `<div class="lgx-podium">${pod}</div>${list ? `<div class="list lgx-list">${list}</div>` : ''}${mine}
+        ${Cfg.s.cloud === false ? '<div class="q-note">Тебя нет в таблице: так выбрано в Настройках.</div>' : '<div class="q-note">Нажми на Ловчего, чтобы открыть его карточку.</div>'}`;
+    };
+
+    const renderRanks = () => {
+      pane.innerHTML = `<div class="lgx-ladder">${LEAGUE_RANKS.map((x, i) => `
+        <div class="lgx-rung ${i < r ? 'past' : i === r ? 'cur' : ''}">
+          <div class="lg-mini r${i}">${i + 1}</div>
+          <div class="row-main"><b>${x.name}${i === r ? ' <span class="lgx-you">ты здесь</span>' : ''}</b><small>★ ${x.stars}${x.reward ? ' · ' + this.rwLine(i) : ' · начало пути'}</small></div>
+          ${L.got[i] ? '<span class="q-ok" title="Получено в этом сезоне">✓</span>' : i > r ? `<span class="lgx-need">ещё ${x.stars - L.stars} ★</span>` : ''}
+        </div>`).join('')}</div>
+        <div class="q-note">Награду за ранг дают один раз за сезон. В начале нового сезона звёзды делятся пополам — и награды можно получить снова. На рангах 4, 7 и 10 — ещё и амулет.</div>`;
+    };
+
+    const place = () => {
+      const el = scr.querySelector('.lgx-place'); if (!el || !data || data.error) return;
+      const i = data.rows.findIndex(x => x.me);
+      el.innerHTML = i >= 0 ? `<b>${i + 1}-е место</b> из ${data.total} в сезоне` : data.me ? `<b>${data.me.place}-е место</b> из ${data.total} в сезоне`
+        : Cfg.s.cloud === false ? 'Тебя нет в таблице (Настройки)' : 'Сыграй турнир, чтобы попасть в таблицу';
+    };
+    const render = () => {
+      U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.tab));
+      if (this.tab === 'table') renderTable(); else if (this.tab === 'ranks') renderRanks(); else renderPlay();
+      tick();
+    };
+    const show = (t, dir) => { this.tab = t; render(); UI.slideIn(pane, dir); };
+    // таблица — сразу и потом каждые 5 секунд, пока экран открыт; перерисовка — только если что-то изменилось
+    const load = async () => {
+      if (loading || !Cloud.enabled()) return;
+      loading = true;
+      let d;
+      try { d = await this.top(); } catch (e) { d = data && !data.error ? data : { error: e.message }; }
+      loading = false;
+      if (!scr.isConnected) return;
+      if (!d.error) {
+        const pos = {}; d.rows.forEach((x, i) => { if (x.pid) pos[x.pid] = i; });
+        if (prevPos) Object.keys(pos).forEach(p => { if (prevPos[p] != null && prevPos[p] !== pos[p]) moves[p] = { d: prevPos[p] - pos[p], t: Date.now() }; });
+        prevPos = pos;
+      }
+      const changed = JSON.stringify(d) !== JSON.stringify(data) || Object.values(moves).some(m => Date.now() - m.t < 25000);
+      data = d; place();
+      if (changed && this.tab === 'table') renderTable();
+    };
+    const tick = () => {
+      const e = scr.querySelector('.lgx-ends'); if (e) e.textContent = this.left(this.seasonEnds().getTime() - U.local().getTime());
+      const m = scr.querySelector('.lgx-mid'); if (m) m.textContent = this.left(this.toMidnight());
+    };
+
+    scr.addEventListener('click', async e => {
+      const tb = e.target.closest('[data-tab]');
+      if (tb) { if (tb.dataset.tab !== this.tab) { Sfx.play('tap'); show(tb.dataset.tab, Math.sign(this.TABS.indexOf(tb.dataset.tab) - this.TABS.indexOf(this.tab))); } return; }
+      if (e.target.closest('.team-edit, .team-slot')) { UI.pickTeam(() => { if (scr.isConnected && this.tab === 'play') renderPlay(); }); return; }
+      const row = e.target.closest('[data-pid]');
+      if (row) {
+        const x = data && data.rows && data.rows.find(y => y.pid && y.pid === row.dataset.pid);
+        if (x) Friends.card(x.pid, { name: x.name, look: x.look }); else UI.toast('Карточка откроется после обновления сервера'); return; }
+      const go = e.target.closest('.lg-go');
+      if (go) {
+        if (S.team().length < 3) return;
+        go.disabled = true;
+        const r0 = await Game.try('leagueStart');
+        if (!r0) { go.disabled = false; return; }
+        UI.closeScreen(scr);
+        this.carry = null;
+        this.next();
+      }
+    });
+    UI.swipeTabs(body, this.TABS, () => this.tab, show);
+    render(); load();
+    let n = 0;
+    const t = setInterval(() => {
+      if (!scr.isConnected) { clearInterval(t); return; }
+      tick();
+      // жетоны вернулись в полночь — перерисовать вкладку турнира
+      if (L.day !== U.today()) { L = this.view(); r = this.rank(L.stars); if (this.tab === 'play') renderPlay(); }
+      if (++n % 5 === 0 && !document.hidden) load();
+    }, 1000);
+  },
 
   next() {
     const run = this.view().run;
@@ -3388,6 +3502,11 @@ const GameCore = {
     return LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
       ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
   },
+  // 3.21: текущие данные Ловчего из его сохранения — только проверенные значения (попадают в разметку)
+  brief(b) {
+    if (!b) return null;
+    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: CLANS[b.clan] ? b.clan : null, look: this.safeLook(b.look) };
+  },
   roomMember() {
     const team = S.team();
     return { pid: S.d.pid, name: String(S.d.name).slice(0, 20), look: this.safeLook(S.d.look), lvl: S.d.level, power: team.reduce((a, x) => a + S.power(x), 0), sid: team[0] ? team[0].sid : null };
@@ -4249,7 +4368,11 @@ const GameCore = {
       const ch = this.chatChannel(a.ch);
       this.limit(ctx, 'chatRead', 1200, 3600000);
       const rows = await ctx.env.chatList(ch, Math.max(0, Math.floor(+a.after) || 0));
-      return { ch: a.ch, msgs: rows.map(m => ({ id: m.id, pid: m.pid, name: m.name, lvl: m.lvl, clan: m.clan, text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid })) };
+      // 3.21: имя, уровень и дружина в сообщении — на момент отправки; отдаём текущие (a.who — Ловчие уже показанных сообщений)
+      const ask = [...new Set(rows.map(m => m.pid).concat(Array.isArray(a.who) ? a.who.slice(0, 40).map(String) : []))].filter(p => this.PID.test(p)).slice(0, 90);
+      const who = {};
+      try { const cur = await ctx.env.briefByPid(ask); Object.keys(cur).forEach(p => { const w = this.brief(cur[p]); who[p] = { name: w.name, lvl: w.lvl, clan: w.clan }; }); } catch (e) { /* покажем данные из сообщений */ }
+      return { ch: a.ch, who, msgs: rows.map(m => { const w = who[m.pid]; return { id: m.id, pid: m.pid, name: w ? w.name : m.name, lvl: w ? w.lvl : m.lvl, clan: w ? w.clan : m.clan, text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid }; }) };
     },
     async chatSend(a, ctx) {
       const C = Rules.CHAT, ch = this.chatChannel(a.ch);
@@ -4271,6 +4394,47 @@ const GameCore = {
       this.limit(ctx, 'chatReport', 30, 86400000);
       await ctx.env.chatReport(id, S.d.pid);
       return { ok: true };
+    },
+
+    /* ----- карточка Ловчего и таблица Лиги (3.21) ----- */
+    // Открытая карточка любого Ловчего (из чата или таблицы Лиги): облик, уровень, дружина, Лига, успехи, спутник
+    async playerCard(a, ctx) {
+      const pid = String(a.pid || '');
+      this.need(this.PID.test(pid), 'Ловчий не найден');
+      this.limit(ctx, 'card', 150, 3600000);
+      const s = await ctx.env.friendSave(pid);
+      this.need(s && s.data, 'Ловчий не найден — возможно, он давно не заходил в игру');
+      const d = s.data, num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
+      const b = this.brief(d), st = d.stats || {}, L = d.league || {};
+      const spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
+      const bud = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
+      const buddy = bud ? this.cleanSpirit(bud, 0) : null, best = this.topSpirits(d, 1)[0] || null;
+      const stars = L.season === League.season() ? num(L.stars, 1000) : Math.floor(num(L.stars, 1000) / 2); // новый сезон — звёзды пополам
+      const ago = s.seen ? ctx.now - Date.parse(s.seen) : Infinity;
+      const mine = S.d.friends.some(x => x.id === pid), theirs = (Array.isArray(d.friends) ? d.friends : []).some(x => x && x.id === S.d.pid);
+      const sp = x => x && { sid: x.sid, lvl: x.lvl, shiny: x.shiny, dark: x.dark, nick: x.nick, power: S.power(x) };
+      return {
+        pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, me: pid === S.d.pid,
+        seen: ago < 15 * 60000 ? 'now' : ago < 86400000 ? 'today' : ago < 7 * 86400000 ? 'week' : 'long',
+        days: +d.created > 0 ? Math.max(1, Math.ceil((ctx.now - Math.min(+d.created, ctx.now)) / 86400000)) : 0,
+        dex: Object.values(d.dex || {}).filter(x => x && x.caught).length, caught: num(st.caught, 1e7), km: U.clamp(+st.km || 0, 0, 1e5),
+        raids: num(st.raids, 1e6), duels: num(st.duels, 1e6), medals: Object.values(d.medals || {}).filter(t => t >= 3).length,
+        league: { stars, rank: League.rank(stars), best: num(L.best, LEAGUE_RANKS.length - 1) },
+        buddy: sp(buddy), best: sp(best),
+        friend: mine && theirs ? 'mutual' : mine ? 'sent' : theirs ? 'wants' : null,
+      };
+    },
+    // Таблица сезона Лиги с текущими уровнями, именами и обликами (user_id наружу не отдаём)
+    async leagueTop(a, ctx) {
+      this.limit(ctx, 'leagueTop', 1500, 3600000);
+      const season = League.season(), r = await ctx.env.leagueTop(season);
+      return {
+        season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, stars: r.me.stars | 0 } : null,
+        rows: r.rows.map(x => {
+          const b = this.brief(x.cur) || this.brief({ name: x.name, level: x.level, look: x.look });
+          return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, stars: U.clamp(x.stars | 0, 0, 1000), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
+        }),
+      };
     },
 
     /* ----- друзья и подарки ----- */
@@ -4592,6 +4756,43 @@ function makeEnv(uid) {
       const { count } = await db.from('chat_reports').select('message_id', { count: 'exact', head: true }).eq('message_id', id);
       if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
       return count || 0;
+    },
+    // 3.21: текущие имя, уровень, дружина и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
+    async briefByUid(uids) {
+      const out = {};
+      if (!uids.length) return out;
+      const rows = must(await db.from('saves').select('user_id, name:data->name, level:data->level, clan:data->clan, look:data->look').in('user_id', uids)) || [];
+      rows.forEach(r => { out[r.user_id] = { name: r.name, level: r.level, clan: r.clan, look: r.look }; });
+      return out;
+    },
+    async briefByPid(pids) {
+      const out = {};
+      if (!pids.length) return out;
+      const ps = must(await db.from('players').select('pid, user_id').in('pid', pids)) || [];
+      const by = await this.briefByUid(ps.map(p => p.user_id));
+      ps.forEach(p => { if (by[p.user_id]) out[p.pid] = by[p.user_id]; });
+      return out;
+    },
+    // Таблица сезона: топ-50 с текущими данными Ловчих, сколько всего участников и место игрока, если он ниже
+    async leagueTop(season) {
+      const rows = must(await db.from('league_scores').select('user_id, name, stars, rank, level, look, updated_at')
+        .eq('season', season).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
+      const uids = rows.map(r => r.user_id);
+      const ps = uids.length ? must(await db.from('players').select('pid, user_id').in('user_id', uids)) || [] : [];
+      const pid = {}; ps.forEach(p => { pid[p.user_id] = p.pid; });
+      const cur = await this.briefByUid(uids);
+      const { count: total, error } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season);
+      if (error) throw new Error(error.message);
+      let me = null;
+      if (!rows.some(r => r.user_id === uid)) {
+        const my = must(await db.from('league_scores').select('stars, updated_at').eq('season', season).eq('user_id', uid).maybeSingle());
+        if (my) {
+          const { count } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season)
+            .or(`stars.gt.${my.stars | 0},and(stars.eq.${my.stars | 0},updated_at.lt."${my.updated_at}")`);
+          me = { place: (count || 0) + 1, stars: my.stars };
+        }
+      }
+      return { rows: rows.map(r => ({ ...r, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null })), total: total || 0, me };
     },
     // 3.18: неоткрытую посылку забирает сам отправитель (передача духов закрыта)
     async tradeReclaim(code, pid) {
