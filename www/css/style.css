@@ -1531,3 +1531,55 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .ml-ic .ico { width: 18px; height: 18px; }
 .ml-t { flex: 1; text-align: left; }
 .ml-chev { color: var(--muted); font-size: 20px; line-height: 1; }
+
+/* ---------- 3.32: учётная запись в настройках ---------- */
+.acc-hero { display: flex; align-items: center; gap: 14px; padding: 16px 14px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--cc) 16%, transparent), transparent 70%); }
+.acc-hero.guest { background: linear-gradient(135deg, rgba(251, 191, 36, .12), transparent 70%); }
+.acc-hero .pc-ava { width: 60px; height: 60px; }
+.acc-hero .acc-ava { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.acc-hero .acc-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.acc-hero .acc-main b { font-size: 18px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-hero .acc-main small { color: var(--muted); font-size: 12px; }
+.acc-status { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; padding: 3px 9px 3px 7px; border-radius: 10px; font-size: 11.5px; font-weight: 600; line-height: 1.3; }
+.acc-status .ico { width: 13px; height: 13px; flex: none; }
+.acc-status.ok { color: var(--good); background: rgba(74, 222, 128, .12); }
+.acc-status.warn { color: var(--gold2); background: rgba(251, 191, 36, .14); }
+.acc-ways { display: flex; flex-direction: column; border-bottom: 1px solid var(--line); }
+.acc-way { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.acc-way + .acc-way { border-top: 1px solid rgba(255, 255, 255, .06); }
+.acc-way .lg-ic { width: 34px; height: 34px; border-radius: 10px; background: #fff; }
+.acc-way .lg-ic svg { width: 20px; height: 20px; }
+.acc-way .lg-ic.mail { background: rgba(167, 139, 250, .16); color: var(--violet); }
+.acc-way .lg-ic.mail .ico { width: 18px; height: 18px; }
+.acc-way .row-main { min-width: 0; flex: 1; }
+.acc-way .row-main small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-ok { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 900; color: #06281a; background: var(--good); }
+.acc-box .acc-add { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.acc-add > small { color: var(--muted); font-size: 12px; }
+.acc-add .login-row { margin: 0; max-width: none; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.acc-box .acc-out { border-bottom: 0; }
+.set-ico.out { background: rgba(248, 113, 113, .12); color: var(--danger); }
+
+/* ---------- 3.32: экран входа — компактнее, «Выйти» на карточке ---------- */
+.onb .gate { gap: 12px; justify-content: flex-start; padding-top: calc(22px + var(--st)); }
+.gate .onb-logo { display: flex; flex-direction: column; align-items: center; }
+.gate .onb-charm { width: 76px; height: 76px; }
+.gate .onb-logo h1 { font-size: 38px; margin: 2px 0 0; }
+.gate .onb-logo p { font-size: 14px; }
+.acc-card .acc-top { position: relative; }
+.acc-card .acc-main { flex: 1; }
+.acc-exit { align-self: flex-start; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 6px 9px; border-radius: 11px; font-size: 12px; font-weight: 600;
+  color: var(--muted); background: rgba(255, 255, 255, .06); border: 1px solid var(--line); }
+.acc-exit .ico { width: 14px; height: 14px; }
+.acc-exit:active { color: var(--danger); border-color: rgba(248, 113, 113, .4); transform: scale(.96); }
+
+.acc-card.is-guest { border-color: rgba(251, 191, 36, .28); }
+@media (min-height: 760px) { .onb .gate { justify-content: center; padding-top: calc(30px + var(--st)); } .gate .onb-charm { width: 92px; height: 92px; } .gate .onb-logo h1 { font-size: 44px; } }
+.mail-head small.mail-note { margin-top: 6px; padding: 6px 10px; border-radius: 10px; color: var(--gold2); background: rgba(251, 191, 36, .1); }
+.acc-foot { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 10px; border-radius: 12px; font-size: 12px; background: rgba(0, 0, 0, .18); }
+.acc-foot > span { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; line-height: 1.3; }
+.acc-foot > span .ico { width: 14px; height: 14px; flex: none; }
+.acc-foot.warn > span { color: var(--gold2); } .acc-foot.ok > span { color: var(--good); }
+.acc-card .acc-exit { align-self: center; }
+@media (max-height: 680px) { .onb .gate { gap: 10px; padding-top: calc(14px + var(--st)); } .gate .onb-charm { width: 52px; height: 52px; } .gate .onb-logo h1 { font-size: 30px; } .gate .onb-logo p { font-size: 13px; } }

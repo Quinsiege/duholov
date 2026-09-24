@@ -1042,12 +1042,6 @@ const UI = {
         ${row('calm', 'calm', 'Меньше движения', 'Без покачиваний, мерцания и погодных эффектов.')}
         ${row('eco', 'battery', 'Экономия батареи', 'Меньше анимаций на карте, реже обновление и запросы GPS.')}
       </div>
-      ${sec('Устройство и прогресс')}
-      <div class="list">
-        <div class="row set-row"><span class="set-ico">${this.I.cloud}</span><div class="row-main"><b>Прогресс на сервере</b><small class="sync-state"></small></div></div>
-        ${link('tr-out', 'key', 'Перенести на другое устройство', 'Одноразовый код для нового телефона')}
-        ${link('tr-in', 'swap', 'Перенести прогресс сюда', 'Ввести код со старого устройства')}
-      </div>
       <div class="list install-list">
         <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>Установить на главный экран</b><small>Духолов откроется на весь экран, как обычное приложение</small></div><span class="set-chev">›</span></button>
         <a class="row link set-row inst-apk hidden" href="duholov.apk" download><span class="set-ico">${this.I.download}</span><div class="row-main"><b>Скачать APK для Android</b><small>Приложение-обёртка: разреши установку из этого источника</small></div><span class="set-chev">›</span></a>
@@ -1087,34 +1081,26 @@ const UI = {
     }
     const il = scr.querySelector('.install-list');
     if (!il.querySelector('.row:not(.hidden)')) il.classList.add('empty-list');
-    const syncState = () => {
-      if (!scr.isConnected) return clearInterval(st);
-      scr.querySelector('.sync-state').textContent = !Game.on() ? 'Сервер не настроен' : Game.online
-        ? 'Каждое действие сразу проверяет и сохраняет сервер игры' : 'Нет связи с сервером — проверь интернет';
-    };
-    const st = setInterval(syncState, 1000);
-    syncState();
-    // 3.27–3.28: учётная запись — гость или вход через сервис; привязать ещё один вход, выйти
+    // 3.27–3.32: учётная запись — чей прогресс, какими входами открывается, привязать ещё вход, выйти
     const acc = scr.querySelector('.acc-box');
     const renderAcc = () => {
       if (!acc || !scr.isConnected) return;
-      const links = Login.linked(), avail = Login.available().filter(k => !links.some(l => l.provider === k));
-      const mail = Login.email ? `<div class="row set-row acc-linked"><span class="set-ico">${this.I.key}</span><div class="row-main"><b>Почта</b><small>${U.esc(Login.email)} · вход по почте и паролю</small></div><span class="q-ok">✓</span></div>` : '';
-      acc.innerHTML = mail + (links.length || Login.email
-        ? links.map(l => `<div class="row set-row acc-linked">${Login.icon(l.provider)}<div class="row-main"><b>${Login.NAMES[l.provider]}</b><small>${l.name ? U.esc(l.name) + ' · ' : ''}вход привязан — прогресс откроется на любом устройстве</small></div><span class="q-ok">✓</span></div>`).join('')
-        : `<div class="row set-row acc-guest"><span class="set-ico warn">${this.I.user}</span><div class="row-main"><b>Гость</b><small>Прогресс только на этом устройстве. Привяжи вход — и он не потеряется.</small></div></div>`)
-        + (avail.length ? `<div class="row acc-add"><div class="row-main">${links.length ? '<small>Привязать ещё один вход</small>' : ''}<div class="login-row">${Login.buttons('link', avail)}</div></div></div>` : '')
-        + (Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div></div>' : '')
-        + (!links.length && !avail.length && !Login.appTooOld() ? '<div class="row"><div class="row-main"><small>Вход через сервисы скоро появится. А пока — перенос по коду ниже.</small></div></div>' : '')
-        + (!Login.isGuest() ? `<button class="row link set-row acc-out"><span class="set-ico">${this.I.logout}</span><div class="row-main"><b>Выйти</b><small>На этом устройстве начнётся гостевая игра; вернуться — входом через сервис</small></div><span class="set-chev">›</span></button>` : '');
+      const d = S.d, guest = Login.isGuest(), links = Login.linked(), avail = Login.available().filter(k => !links.some(l => l.provider === k));
+      const way = (ic, title, sub) => `<div class="acc-way">${ic}<div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="acc-ok">✓</span></div>`;
+      acc.innerHTML = `<div class="acc-hero ${guest ? 'guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
+          <div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
+          <div class="acc-main"><b>${U.esc(d.name)}</b><small>${this.rank(d.level)} · ${d.level} уровень</small>
+            <span class="acc-status ${guest ? 'warn' : 'ok'}">${guest ? `${this.I.user}Гость — прогресс только на этом устройстве` : `${this.I.cloud}Прогресс сохранён в учётной записи`}</span></div>
+        </div>`
+        + (links.length || Login.email ? `<div class="acc-ways">${Login.email ? way(`<span class="lg-ic mail">${this.I.mail}</span>`, 'Почта', U.esc(Login.email)) : ''}${links.map(l => way(Login.icon(l.provider), Login.NAMES[l.provider], l.name ? U.esc(l.name) : 'вход привязан')).join('')}</div>` : '')
+        + (avail.length ? `<div class="acc-add"><small>${guest ? 'Привяжи вход — прогресс откроется на любом устройстве' : 'Привязать ещё один вход'}</small><div class="login-row">${Login.buttons('link', avail)}</div></div>` : '')
+        + (Login.appTooOld() ? '<div class="acc-add"><small>Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div>' : '')
+        + `<button class="row link set-row acc-out"><span class="set-ico out">${this.I.logout}</span><div class="row-main"><b>Выйти из учётной записи</b><small>${guest ? 'Прогресс гостя будет потерян' : 'Вернуться можно тем же входом'}</small></div><span class="set-chev">›</span></button>`;
       acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
-      const out = acc.querySelector('.acc-out');
-      if (out) out.onclick = () => this.confirm('Выйти?', 'Прогресс останется в твоей учётной записи — вернуться в неё можно входом через привязанный сервис.', 'Выйти', () => Login.signOut());
+      acc.querySelector('.acc-out').onclick = () => Login.askSignOut();
     };
     renderAcc();
     Login.load().then(renderAcc);
-    scr.querySelector('.tr-out').onclick = () => Game.codeDialog();
-    scr.querySelector('.tr-in').onclick = () => Game.claimDialog();
     scr.querySelector('.about').onclick = () => this.about();
     scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены с сервера навсегда.', 'Сбросить', () => {
       this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', async () => {
@@ -1151,7 +1137,7 @@ const UI = {
           <li><b>Дневник Ловчего</b> (в профиле) хранит историю поимок и побед, любую запись можно показать на карте.</li>
           <li>В настройках есть <b>крупный текст</b>, <b>бросок одним касанием</b> и режим <b>«меньше движения»</b>.</li>
           <li><b>Следопыт</b>: в «Рядом» коснись духа или выбери «К роднику» / «К капищу» — стрелка вверху покажет направление.</li>
-          <li><b>Прогресс хранится на сервере игры</b>. Новый телефон? «Настройки → Перенести на другое устройство» даст одноразовый код.</li>
+          <li><b>Прогресс хранится на сервере игры</b>. Привяжи вход через сервис в «Настройках» — и прогресс откроется на любом устройстве.</li>
           <li><b>Места</b>: знаешь интересный объект рядом? Сфотографируй его в «Меню → Места». Снимок получает геометку, модераторы проверяют заявку, и на карте появляется новый Родник или Капище.</li>
           <li><b>События недели</b> меняются каждый понедельник: неделя стихии, Звездопад с двойным опытом, Родниковая неделя и другие.</li>
         </ul>

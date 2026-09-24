@@ -128,7 +128,7 @@ const Login = {
   emailForm() {
     const m = UI.modal({
       cls: 'mail-modal', buttons: [],
-      html: `<div class="mail-head"><span class="mail-ic">${UI.I.key}</span><b>Вход по почте</b><small>Для учётных записей, выданных Орденом</small></div>
+      html: `<div class="mail-head"><span class="mail-ic">${UI.I.key}</span><b>Вход по почте</b><small>Для учётных записей, выданных Орденом</small>${S.d && this.isGuest() ? '<small class="mail-note">Гостевой прогресс на этом устройстве сменится прогрессом этой учётной записи</small>' : ''}</div>
         <form class="mail-form" novalidate>
           <label class="fld"><span class="fld-ic">${UI.I.mail}</span><input name="email" type="email" inputmode="email" autocomplete="username" placeholder="Почта" required></label>
           <label class="fld"><span class="fld-ic">${UI.I.lock}</span><input name="password" type="password" autocomplete="current-password" placeholder="Пароль" required>
@@ -176,22 +176,24 @@ const Login = {
   SKIP: 'duholov.justLogged',
   markLogged() { try { sessionStorage.setItem(this.SKIP, '1'); } catch (e) {} },
   justLogged() { let v = null; try { v = sessionStorage.getItem(this.SKIP); sessionStorage.removeItem(this.SKIP); } catch (e) {} return !!v; },
-  // Вернувшийся Ловчий: «С возвращением», чей это прогресс, «Продолжить»; ниже — панель входа
+  // Вернувшийся Ловчий: «С возвращением», чей это прогресс, «Продолжить»; ниже — панель входа.
+  // 3.32: компактнее (всё видно без прокрутки), «Выйти» — прямо на карточке учётной записи
   gate(done) {
     const root = U.el('<div class="onb"></div>'), d = S.d, avail = this.available(), guest = this.isGuest();
     const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
     const panel = guest
       ? this.panel('<b>Сохрани прогресс</b><small>Привяжи вход — и прогресс откроется на любом устройстве</small>', this.buttons('link'))
-      : this.panel('<b>Другой аккаунт</b><small>Войди через другой сервис — или выйди и начни гостем</small>',
-        avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''),
-        `<span class="auth-dot">·</span><button class="linkish out">${UI.I.logout}Выйти</button>`);
+      : this.panel('<b>Другой аккаунт</b><small>Войди в другую учётную запись</small>',
+        avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''));
     root.innerHTML = `<div class="onb-step s0 gate">
       <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>С возвращением, Ловчий!</p></div>
-      <div class="acc-card" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
+      <div class="acc-card ${guest ? 'is-guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
         <div class="acc-top"><div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
           <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div></div>
         <div class="acc-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>духов</span></div><div><b>${dex}/${SPECIES.length}</b><span>бестиарий</span></div>
           <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>поймано</span></div></div>
+        ${Game.on() ? `<div class="acc-foot ${guest ? 'warn' : 'ok'}"><span>${guest ? `${UI.I.user}Прогресс только на этом устройстве` : `${UI.I.cloud}Прогресс сохранён в учётной записи`}</span>
+          <button class="acc-exit" aria-label="Выйти из учётной записи">${UI.I.logout}Выйти</button></div>` : ''}
       </div>
       <button class="btn primary wide go">Продолжить</button>
       ${Game.on() ? panel : ''}
@@ -203,10 +205,9 @@ const Login = {
     root.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
     const mail = root.querySelector('.mail-login');
     if (mail) mail.onclick = () => this.emailForm();
-    const out = root.querySelector('.out');
-    if (out) out.onclick = () => UI.confirm('Выйти?', 'Твой прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.', 'Выйти', () => this.signOut());
+    const out = root.querySelector('.acc-exit');
+    if (out) out.onclick = () => this.askSignOut();
   },
-  // Войти в другой аккаунт: выйти из текущего (он сохранён за сервисом) и войти через выбранный сервис
   async switchTo(provider) {
     if (this.isGuest()) return this.start(provider, 'link');
     this.leaving(provider);
@@ -228,9 +229,18 @@ const Login = {
     window.addEventListener('pageshow', e => { if (e.persisted) Loader.hide(); }, { once: true });
   },
 
-  // Выйти (только если вход привязан — иначе прогресс гостя был бы потерян)
-  async signOut() {
-    if (this.isGuest()) return;
+  // 3.32: выйти из текущей учётной записи. У гостя нет входа, чтобы вернуться, — предупреждаем прямо
+  askSignOut() {
+    if (!this.isGuest()) {
+      UI.confirm('Выйти?', 'Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.', 'Выйти', () => this.signOut());
+      return;
+    }
+    const names = this.available().map(k => this.NAMES[k]);
+    UI.confirm('Выйти из гостевой игры?', `<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.${names.length ? ` Чтобы сохранить его, сначала привяжи вход через ${names.join(' или ')}.` : ''}`,
+      'Выйти', () => this.signOut(true), 'Отмена', true);
+  },
+  async signOut(guest) {
+    if (this.isGuest() && !guest) return;
     Loader.show('Выхожу…'); Loader.set(40);
     await this.dropSession();
     location.reload();
