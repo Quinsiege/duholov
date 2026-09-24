@@ -414,13 +414,13 @@
     player: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { name: d.name, level: d.level } : null; },
     friendSave: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { data: JSON.parse(JSON.stringify(d)), seen: new Date().toISOString() } : null; },
     briefByPid: async pids => { const o = {}; pids.forEach(p => { const d = DB.saves[DB.players[p]]; if (d) o[p] = { name: d.name, level: d.level, clan: d.clan, look: d.look }; }); return o; },
-    leagueTop: async season => {
+    leagueTop: async (season, rank) => {
       const last = {}; DB.league.filter(x => x.season === season).forEach(x => { last[x.user] = x; });
       const all = Object.values(last).sort((a, b) => b.stars - a.stars), rows = all.slice(0, 50);
       const pidOf = u => Object.keys(DB.players).find(p => DB.players[p] === u) || null;
       const i = all.findIndex(x => x.user === who.uid);
-      return { total: all.length, me: i >= 50 ? { place: i + 1, stars: all[i].stars } : null,
-        rows: rows.map(x => { const d = DB.saves[x.user]; return { user_id: x.user, name: x.name, stars: x.stars, rank: x.rank, level: x.level, look: x.look, pid: pidOf(x.user), me: x.user === who.uid, cur: d ? { name: d.name, level: d.level, clan: d.clan, look: d.look } : null }; }) };
+      const view = x => { const d = DB.saves[x.user]; return { user_id: x.user, name: x.name, stars: x.stars, rank: x.rank, level: x.level, look: x.look, pid: pidOf(x.user), me: x.user === who.uid, cur: d ? { name: d.name, level: d.level, clan: d.clan, look: d.look } : null }; };
+      return { total: all.length, me: i >= 50 ? { place: i + 1, stars: all[i].stars } : null, rows: rows.map(view), tier: all.filter(x => x.rank === rank).slice(0, 3).map(view) };
     },
     link: async (from, to, name, level) => {
       DB.links = DB.links.filter(l => !(l.from_pid === from && l.to_pid === to));
@@ -1138,6 +1138,12 @@
     const ra = t.rows.find(x => x.pid === A.data.pid), rb = t.rows.find(x => x.pid === B.data.pid);
     ok(t.total >= 2 && ra && rb); eq(ra.name, 'Илья', 'текущее имя'); eq(ra.lvl, 10, 'текущий уровень'); eq(ra.stars, 12);
     ok(rb.me && !ra.me, 'своя строка отмечена'); ok(!JSON.stringify(t).includes('user_id'), 'user_id наружу не уходит');
+    // своя строка отстала от звёзд (брошенный турнир) — сервер поправляет; пьедестал — тройка своего ранга
+    B.data.league = { season: League.season(), stars: 9, best: 2, tickets: 3, day: U.today(), got: {}, run: null };
+    const t2 = await must(B, 'leagueTop', {});
+    eq(t2.rows.find(x => x.me).stars, 9, 'строка догнала звёзды'); eq(t2.rows.find(x => x.me).rank, 2);
+    eq(t2.tier.rank, 2); ok(t2.tier.rows.length >= 1 && t2.tier.rows.every(x => x.rank === 2) && t2.tier.rows[0].me, 'пьедестал — свой ранг');
+    B.data.league.stars = 10; const n = DB.league.length; await must(B, 'leagueTop', { board: false }); eq(DB.league.length, n, 'скрытый из таблицы — не пишем');
   });
   atest('Безопасность: облик, имена, служебные действия, коды, перебор', async () => {
     // облик от другого игрока не вырывается из атрибута SVG

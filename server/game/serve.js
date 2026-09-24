@@ -203,13 +203,16 @@ function makeEnv(uid) {
       return out;
     },
     // Таблица сезона: топ-50 с текущими данными Ловчих, сколько всего участников и место игрока, если он ниже
-    async leagueTop(season) {
-      const rows = must(await db.from('league_scores').select('user_id, name, stars, rank, level, look, updated_at')
-        .eq('season', season).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
-      const uids = rows.map(r => r.user_id);
+    // tier — тройка лучших в ранге rank (пьедестал)
+    async leagueTop(season, rank) {
+      const q = () => db.from('league_scores').select('user_id, name, stars, rank, level, look, updated_at').eq('season', season);
+      const rows = must(await q().order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
+      const tier = must(await q().eq('rank', rank | 0).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(3)) || [];
+      const uids = [...new Set(rows.concat(tier).map(r => r.user_id))];
       const ps = uids.length ? must(await db.from('players').select('pid, user_id').in('user_id', uids)) || [] : [];
       const pid = {}; ps.forEach(p => { pid[p.user_id] = p.pid; });
       const cur = await this.briefByUid(uids);
+      const view = r => ({ ...r, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null });
       const { count: total, error } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season);
       if (error) throw new Error(error.message);
       let me = null;
@@ -221,7 +224,7 @@ function makeEnv(uid) {
           me = { place: (count || 0) + 1, stars: my.stars };
         }
       }
-      return { rows: rows.map(r => ({ ...r, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null })), total: total || 0, me };
+      return { rows: rows.map(view), tier: tier.map(view), total: total || 0, me };
     },
     // 3.18: неоткрытую посылку забирает сам отправитель (передача духов закрыта)
     async tradeReclaim(code, pid) {

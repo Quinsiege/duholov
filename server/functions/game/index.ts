@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.21.0';
+const APP_VERSION = '3.21.1';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1772,9 +1772,10 @@ const League = {
 
   // Таблица сезона: с сервера (текущие уровни и имена, коды для карточки); запасной путь — прямое чтение таблицы
   async top() {
-    try { return await Game.act('leagueTop'); } catch (e) {
-      const { rows, me } = await Cloud.top(this.view().season);
-      return { rows: rows.map(x => ({ pid: null, name: x.name, lvl: x.level, clan: null, look: x.look, stars: x.stars, rank: x.rank, me: x.user_id === me })), total: rows.length, me: null };
+    try { return await Game.act('leagueTop', { board: Cfg.s.cloud !== false }); } catch (e) {
+      const { rows, me } = await Cloud.top(this.view().season), rank = this.rank(this.view().stars);
+      const all = rows.map(x => ({ pid: null, name: x.name, lvl: x.level, clan: null, look: x.look, stars: x.stars, rank: x.rank, me: x.user_id === me }));
+      return { rows: all, total: all.length, me: null, tier: { rank, rows: all.filter(x => x.rank === rank).slice(0, 3) } };
     }
   },
 
@@ -1829,21 +1830,25 @@ const League = {
       const head = `<div class="lgx-live"><i></i>Обновляется в реальном времени${data ? `<span>${data.total} ${U.plural(data.total, 'Ловчий', 'Ловчих', 'Ловчих')} в сезоне</span>` : ''}</div>`;
       if (!data) { pane.innerHTML = head + '<div class="lgx-card"><small>Загружаю таблицу…</small></div>'; return; }
       if (data.error) { pane.innerHTML = head + `<div class="lgx-card"><small>Таблица недоступна: ${U.esc(data.error)}</small></div>`; return; }
-      const rows = data.rows;
+      const rows = data.rows, tier = data.tier || { rank: r, rows: [] };
       if (!rows.length) { pane.innerHTML = head + '<div class="lgx-card"><small>В этом сезоне ещё никто не сыграл турнир — будь первым!</small></div>'; return; }
-      const pod = [1, 0, 2].filter(i => rows[i]).map(i => { const x = rows[i]; return `
+      // пьедестал — тройка лучших в твоём ранге; ниже — остальные из топ-50 сезона (с их местом в сезоне)
+      const key = x => x.pid || x.name, onPod = new Set(tier.rows.map(key));
+      const seat = x => rows.findIndex(y => key(y) === key(x)) + 1;
+      const pod = [1, 0, 2].filter(i => tier.rows[i]).map(i => { const x = tier.rows[i], p = seat(x); return `
         <button class="lgx-pod p${i + 1} ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
           <div class="lgx-pod-ava">${Art.avatar(x.look || undefined)}<span>${i + 1}</span></div>
-          <b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small>
+          <b>${who(x)}</b><small>${p ? `${p}-е место · ` : ''}ур. ${x.lvl}</small>
           <div class="lgx-pod-base">★ ${x.stars}${move(x)}</div></button>`; }).join('');
-      const list = rows.slice(3).map((x, j) => `
+      const list = rows.map((x, j) => ({ x, j })).filter(o => !onPod.has(key(o.x))).map(({ x, j }) => `
         <button class="lgx-row ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
-          <b class="lgx-pos">${j + 4}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
+          <b class="lgx-pos">${j + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
           <div class="row-main"><b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small></div>
           ${move(x)}<span class="lgx-stars">★ ${x.stars}</span></button>`).join('');
       const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>Ты</b><small>${LEAGUE_RANKS[r].name} · ур. ${S.d.level}</small></div><span class="lgx-stars">★ ${data.me.stars}</span></div>` : '';
-      pane.innerHTML = head + `<div class="lgx-podium">${pod}</div>${list ? `<div class="list lgx-list">${list}</div>` : ''}${mine}
-        ${Cfg.s.cloud === false ? '<div class="q-note">Тебя нет в таблице: так выбрано в Настройках.</div>' : '<div class="q-note">Нажми на Ловчего, чтобы открыть его карточку.</div>'}`;
+      pane.innerHTML = head + (pod ? `<div class="lgx-sub"><div class="lg-mini r${tier.rank}">${tier.rank + 1}</div>Лучшие в ранге «${LEAGUE_RANKS[tier.rank].name}»</div><div class="lgx-podium">${pod}</div>` : '')
+        + (list ? `<div class="lgx-sub">Топ-50 сезона</div><div class="list lgx-list">${list}</div>` : '') + mine
+        + (Cfg.s.cloud === false ? '<div class="q-note">Тебя нет в таблице: так выбрано в Настройках.</div>' : '<div class="q-note">Нажми на Ловчего, чтобы открыть его карточку.</div>');
     };
 
     const renderRanks = () => {
@@ -1896,7 +1901,7 @@ const League = {
       if (e.target.closest('.team-edit, .team-slot')) { UI.pickTeam(() => { if (scr.isConnected && this.tab === 'play') renderPlay(); }); return; }
       const row = e.target.closest('[data-pid]');
       if (row) {
-        const x = data && data.rows && data.rows.find(y => y.pid && y.pid === row.dataset.pid);
+        const x = data && data.rows && data.rows.concat(data.tier ? data.tier.rows : []).find(y => y.pid && y.pid === row.dataset.pid);
         if (x) Friends.card(x.pid, { name: x.name, look: x.look }); else UI.toast('Карточка откроется после обновления сервера'); return; }
       const go = e.target.closest('.lg-go');
       if (go) {
@@ -4257,10 +4262,11 @@ const GameCore = {
       if (rNew > L.best) L.best = rNew;
       S.addXP(win ? 400 + run.k * 200 : 100);
       const res = { win, gained, last, k: run.k, won: run.won, stars: L.stars, starsGot: L.stars - run.stars0, rNew, rank0: run.rank0, rewards };
+      // строка таблицы сезона — после каждой победы (3.21.1: писалась только в конце турнира, и звёзды брошенного турнира в неё не попадали)
+      if (a.board !== false && (gained || last)) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
       if (last) {
         J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
         L.run = null;
-        if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
       } else {
         run.k++;
         ctx.srv.battle = { type: 'league', k: run.k, start: ctx.now, team: run.team };
@@ -4425,16 +4431,22 @@ const GameCore = {
       };
     },
     // Таблица сезона Лиги с текущими уровнями, именами и обликами (user_id наружу не отдаём)
+    // tier — тройка лучших в ранге игрока (пьедестал), rows — топ-50 сезона
     async leagueTop(a, ctx) {
       this.limit(ctx, 'leagueTop', 1500, 3600000);
-      const season = League.season(), r = await ctx.env.leagueTop(season);
-      return {
-        season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, stars: r.me.stars | 0 } : null,
-        rows: r.rows.map(x => {
-          const b = this.brief(x.cur) || this.brief({ name: x.name, level: x.level, look: x.look });
-          return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, stars: U.clamp(x.stars | 0, 0, 1000), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
-        }),
+      const L = League.st(), season = L.season, rank = League.rank(L.stars);
+      let r = await ctx.env.leagueTop(season, rank);
+      // своя строка отстала от звёзд (турниры, брошенные до 3.21.1) — поправить и перечитать
+      const mine = r.rows.find(x => x.me), had = mine ? mine.stars : r.me ? r.me.stars : null;
+      if (a.board !== false && L.stars > 0 && had !== L.stars) {
+        await ctx.env.leagueScore({ season, name: S.d.name, stars: L.stars, rank, level: S.d.level, look: S.d.look });
+        r = await ctx.env.leagueTop(season, rank);
+      }
+      const row = x => {
+        const b = this.brief(x.cur) || this.brief({ name: x.name, level: x.level, look: x.look });
+        return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, stars: U.clamp(x.stars | 0, 0, 1000), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
       };
+      return { season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, stars: r.me.stars | 0 } : null, rows: r.rows.map(row), tier: { rank, rows: (r.tier || []).map(row) } };
     },
 
     /* ----- друзья и подарки ----- */
@@ -4774,13 +4786,16 @@ function makeEnv(uid) {
       return out;
     },
     // Таблица сезона: топ-50 с текущими данными Ловчих, сколько всего участников и место игрока, если он ниже
-    async leagueTop(season) {
-      const rows = must(await db.from('league_scores').select('user_id, name, stars, rank, level, look, updated_at')
-        .eq('season', season).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
-      const uids = rows.map(r => r.user_id);
+    // tier — тройка лучших в ранге rank (пьедестал)
+    async leagueTop(season, rank) {
+      const q = () => db.from('league_scores').select('user_id, name, stars, rank, level, look, updated_at').eq('season', season);
+      const rows = must(await q().order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
+      const tier = must(await q().eq('rank', rank | 0).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(3)) || [];
+      const uids = [...new Set(rows.concat(tier).map(r => r.user_id))];
       const ps = uids.length ? must(await db.from('players').select('pid, user_id').in('user_id', uids)) || [] : [];
       const pid = {}; ps.forEach(p => { pid[p.user_id] = p.pid; });
       const cur = await this.briefByUid(uids);
+      const view = r => ({ ...r, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null });
       const { count: total, error } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season);
       if (error) throw new Error(error.message);
       let me = null;
@@ -4792,7 +4807,7 @@ function makeEnv(uid) {
           me = { place: (count || 0) + 1, stars: my.stars };
         }
       }
-      return { rows: rows.map(r => ({ ...r, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null })), total: total || 0, me };
+      return { rows: rows.map(view), tier: tier.map(view), total: total || 0, me };
     },
     // 3.18: неоткрытую посылку забирает сам отправитель (передача духов закрыта)
     async tradeReclaim(code, pid) {

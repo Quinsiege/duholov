@@ -73,9 +73,10 @@ const League = {
 
   // Таблица сезона: с сервера (текущие уровни и имена, коды для карточки); запасной путь — прямое чтение таблицы
   async top() {
-    try { return await Game.act('leagueTop'); } catch (e) {
-      const { rows, me } = await Cloud.top(this.view().season);
-      return { rows: rows.map(x => ({ pid: null, name: x.name, lvl: x.level, clan: null, look: x.look, stars: x.stars, rank: x.rank, me: x.user_id === me })), total: rows.length, me: null };
+    try { return await Game.act('leagueTop', { board: Cfg.s.cloud !== false }); } catch (e) {
+      const { rows, me } = await Cloud.top(this.view().season), rank = this.rank(this.view().stars);
+      const all = rows.map(x => ({ pid: null, name: x.name, lvl: x.level, clan: null, look: x.look, stars: x.stars, rank: x.rank, me: x.user_id === me }));
+      return { rows: all, total: all.length, me: null, tier: { rank, rows: all.filter(x => x.rank === rank).slice(0, 3) } };
     }
   },
 
@@ -130,21 +131,25 @@ const League = {
       const head = `<div class="lgx-live"><i></i>Обновляется в реальном времени${data ? `<span>${data.total} ${U.plural(data.total, 'Ловчий', 'Ловчих', 'Ловчих')} в сезоне</span>` : ''}</div>`;
       if (!data) { pane.innerHTML = head + '<div class="lgx-card"><small>Загружаю таблицу…</small></div>'; return; }
       if (data.error) { pane.innerHTML = head + `<div class="lgx-card"><small>Таблица недоступна: ${U.esc(data.error)}</small></div>`; return; }
-      const rows = data.rows;
+      const rows = data.rows, tier = data.tier || { rank: r, rows: [] };
       if (!rows.length) { pane.innerHTML = head + '<div class="lgx-card"><small>В этом сезоне ещё никто не сыграл турнир — будь первым!</small></div>'; return; }
-      const pod = [1, 0, 2].filter(i => rows[i]).map(i => { const x = rows[i]; return `
+      // пьедестал — тройка лучших в твоём ранге; ниже — остальные из топ-50 сезона (с их местом в сезоне)
+      const key = x => x.pid || x.name, onPod = new Set(tier.rows.map(key));
+      const seat = x => rows.findIndex(y => key(y) === key(x)) + 1;
+      const pod = [1, 0, 2].filter(i => tier.rows[i]).map(i => { const x = tier.rows[i], p = seat(x); return `
         <button class="lgx-pod p${i + 1} ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
           <div class="lgx-pod-ava">${Art.avatar(x.look || undefined)}<span>${i + 1}</span></div>
-          <b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small>
+          <b>${who(x)}</b><small>${p ? `${p}-е место · ` : ''}ур. ${x.lvl}</small>
           <div class="lgx-pod-base">★ ${x.stars}${move(x)}</div></button>`; }).join('');
-      const list = rows.slice(3).map((x, j) => `
+      const list = rows.map((x, j) => ({ x, j })).filter(o => !onPod.has(key(o.x))).map(({ x, j }) => `
         <button class="lgx-row ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
-          <b class="lgx-pos">${j + 4}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
+          <b class="lgx-pos">${j + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
           <div class="row-main"><b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small></div>
           ${move(x)}<span class="lgx-stars">★ ${x.stars}</span></button>`).join('');
       const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>Ты</b><small>${LEAGUE_RANKS[r].name} · ур. ${S.d.level}</small></div><span class="lgx-stars">★ ${data.me.stars}</span></div>` : '';
-      pane.innerHTML = head + `<div class="lgx-podium">${pod}</div>${list ? `<div class="list lgx-list">${list}</div>` : ''}${mine}
-        ${Cfg.s.cloud === false ? '<div class="q-note">Тебя нет в таблице: так выбрано в Настройках.</div>' : '<div class="q-note">Нажми на Ловчего, чтобы открыть его карточку.</div>'}`;
+      pane.innerHTML = head + (pod ? `<div class="lgx-sub"><div class="lg-mini r${tier.rank}">${tier.rank + 1}</div>Лучшие в ранге «${LEAGUE_RANKS[tier.rank].name}»</div><div class="lgx-podium">${pod}</div>` : '')
+        + (list ? `<div class="lgx-sub">Топ-50 сезона</div><div class="list lgx-list">${list}</div>` : '') + mine
+        + (Cfg.s.cloud === false ? '<div class="q-note">Тебя нет в таблице: так выбрано в Настройках.</div>' : '<div class="q-note">Нажми на Ловчего, чтобы открыть его карточку.</div>');
     };
 
     const renderRanks = () => {
@@ -197,7 +202,7 @@ const League = {
       if (e.target.closest('.team-edit, .team-slot')) { UI.pickTeam(() => { if (scr.isConnected && this.tab === 'play') renderPlay(); }); return; }
       const row = e.target.closest('[data-pid]');
       if (row) {
-        const x = data && data.rows && data.rows.find(y => y.pid && y.pid === row.dataset.pid);
+        const x = data && data.rows && data.rows.concat(data.tier ? data.tier.rows : []).find(y => y.pid && y.pid === row.dataset.pid);
         if (x) Friends.card(x.pid, { name: x.name, look: x.look }); else UI.toast('Карточка откроется после обновления сервера'); return; }
       const go = e.target.closest('.lg-go');
       if (go) {

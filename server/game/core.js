@@ -1072,10 +1072,11 @@ const GameCore = {
       if (rNew > L.best) L.best = rNew;
       S.addXP(win ? 400 + run.k * 200 : 100);
       const res = { win, gained, last, k: run.k, won: run.won, stars: L.stars, starsGot: L.stars - run.stars0, rNew, rank0: run.rank0, rewards };
+      // строка таблицы сезона — после каждой победы (3.21.1: писалась только в конце турнира, и звёзды брошенного турнира в неё не попадали)
+      if (a.board !== false && (gained || last)) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
       if (last) {
         J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
         L.run = null;
-        if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
       } else {
         run.k++;
         ctx.srv.battle = { type: 'league', k: run.k, start: ctx.now, team: run.team };
@@ -1240,16 +1241,22 @@ const GameCore = {
       };
     },
     // Таблица сезона Лиги с текущими уровнями, именами и обликами (user_id наружу не отдаём)
+    // tier — тройка лучших в ранге игрока (пьедестал), rows — топ-50 сезона
     async leagueTop(a, ctx) {
       this.limit(ctx, 'leagueTop', 1500, 3600000);
-      const season = League.season(), r = await ctx.env.leagueTop(season);
-      return {
-        season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, stars: r.me.stars | 0 } : null,
-        rows: r.rows.map(x => {
-          const b = this.brief(x.cur) || this.brief({ name: x.name, level: x.level, look: x.look });
-          return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, stars: U.clamp(x.stars | 0, 0, 1000), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
-        }),
+      const L = League.st(), season = L.season, rank = League.rank(L.stars);
+      let r = await ctx.env.leagueTop(season, rank);
+      // своя строка отстала от звёзд (турниры, брошенные до 3.21.1) — поправить и перечитать
+      const mine = r.rows.find(x => x.me), had = mine ? mine.stars : r.me ? r.me.stars : null;
+      if (a.board !== false && L.stars > 0 && had !== L.stars) {
+        await ctx.env.leagueScore({ season, name: S.d.name, stars: L.stars, rank, level: S.d.level, look: S.d.look });
+        r = await ctx.env.leagueTop(season, rank);
+      }
+      const row = x => {
+        const b = this.brief(x.cur) || this.brief({ name: x.name, level: x.level, look: x.look });
+        return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, stars: U.clamp(x.stars | 0, 0, 1000), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
       };
+      return { season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, stars: r.me.stars | 0 } : null, rows: r.rows.map(row), tier: { rank, rows: (r.tier || []).map(row) } };
     },
 
     /* ----- друзья и подарки ----- */
