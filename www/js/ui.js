@@ -86,7 +86,7 @@ const UI = {
     U.$('#profileBtn .ava-art').innerHTML = Art.avatar(S.d.look);
     this.refreshEvent();
     setInterval(() => this.refreshEvent(), 60000);
-    setInterval(() => this.refreshHud(), 1000);
+    setInterval(() => { if (!document.hidden) this.refreshHud(); }, 1000);
     this.refreshHud();
     this.refreshSky();
   },

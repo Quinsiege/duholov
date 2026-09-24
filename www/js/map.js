@@ -35,11 +35,16 @@ const MapView = {
     window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; });
 
     if (Cfg.s.demo && DEV) this.startDemo(); else this.startGPS();
+    // 4.1: свёрнутая игра не держит GPS (батарея); при возвращении — сразу свежая точка
+    document.addEventListener('visibilitychange', () => {
+      if (this.demo) return;
+      if (document.hidden) this.stopGPS(); else if (this.watchId == null) this.startGPS();
+    });
     this.refresh();
     // в режиме экономии батареи карта обновляется вдвое реже
     document.body.classList.toggle('eco', !!Cfg.s.eco);
     let tickN = 0;
-    setInterval(() => { if (!Cfg.s.eco || ++tickN % 2 === 0) this.refresh(); }, 1500);
+    setInterval(() => { if (!document.hidden && (!Cfg.s.eco || ++tickN % 2 === 0)) this.refresh(); }, 1500);
     let last = performance.now();
     const loop = t => { this.tick(Math.min(0.1, (t - last) / 1000)); last = t; requestAnimationFrame(loop); };
     requestAnimationFrame(loop);

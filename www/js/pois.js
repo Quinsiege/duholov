@@ -27,7 +27,7 @@ const Poi = {
     } catch (e) {}
     this.expireServer(); // кэш с сервера показываем сразу, но при запуске перечитываем
     this.rebuild();
-    setInterval(() => { this.ensure(); if (MapView.pos) this.shrinesFar(MapView.pos.lat, MapView.pos.lng, Rules.FAR.R); }, 15000);
+    setInterval(() => { if (document.hidden) return; this.ensure(); if (MapView.pos) this.shrinesFar(MapView.pos.lat, MapView.pos.lng, Rules.FAR.R); }, 15000);
   },
   // Перечитать места игроков и правки модераторов (например, когда одобрили мою заявку)
   expireServer() { for (const t of Object.values(this.srv)) t.t = 0; },
