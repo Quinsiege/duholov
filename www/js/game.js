@@ -152,7 +152,7 @@ const Game = {
     });
   },
   async startOver() {
-    try { const sb = await Cloud.client(); await sb.auth.signOut(); } catch (e) {}
+    await Login.dropSession(); // быстро и только на этом устройстве (3.31.1)
     location.reload();
   },
   async makeCode() {
