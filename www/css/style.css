@@ -1343,3 +1343,63 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   box-shadow: 0 6px 18px rgba(8, 5, 18, .38), inset 0 1px 0 rgba(255, 255, 255, .08); }
 #hud .chip.event { border-color: rgba(251, 191, 36, .45); }
 #hud .chip.hol { border-color: rgba(94, 234, 212, .6); }
+
+/* ---------- 3.25: задания дня ---------- */
+.qd-head { display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 10px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, .16), rgba(94, 234, 212, .06)); border: 1px solid rgba(167, 139, 250, .3); }
+.qd-head.full { background: linear-gradient(135deg, rgba(74, 222, 128, .14), rgba(251, 191, 36, .08)); border-color: rgba(74, 222, 128, .35); }
+.qd-head .row-main small { color: var(--muted); font-size: 12px; }
+.qd-left { color: var(--text); font-variant-numeric: tabular-nums; }
+.qd-ring { position: relative; width: 52px; height: 52px; flex: none; display: grid; place-items: center; }
+.qd-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.qd-ring circle { fill: none; stroke-width: 5; }
+.qd-ring .qd-bg { stroke: rgba(255, 255, 255, .12); }
+.qd-ring .qd-fg { stroke: var(--gold); stroke-linecap: round; transition: stroke-dashoffset .6s; }
+.qd-head.full .qd-fg { stroke: var(--good); }
+.qd-ring b { position: relative; font-size: 17px; font-weight: 900; } .qd-ring b small { font-size: 11px; color: var(--muted); font-weight: 600; }
+.quest.qd { align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.qd-ico { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center; background: rgba(255, 255, 255, .07); color: var(--gold2); }
+.qd-ico .ico { width: 22px; height: 22px; }
+.qd-ico .art, .qd-ico img { width: 30px; height: 30px; }
+.quest.done .qd-ico { background: rgba(251, 191, 36, .16); }
+.qd-bar { display: flex; align-items: center; gap: 8px; margin: 6px 0 6px; }
+.qd-bar .pbar { flex: 1; margin: 0; }
+.qd-bar span { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.quest.done .qd-bar span { color: var(--gold2); }
+.qd-rws { display: flex; flex-wrap: wrap; gap: 6px; }
+.qd-rw { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 4px; border-radius: 10px; background: rgba(255, 255, 255, .07); font-size: 12px; font-weight: 600; }
+.qd-rw .art { width: 18px; height: 18px; }
+.qd-rw.spark { padding-left: 8px; color: var(--gold2); }
+.quest.qd .btn { align-self: center; }
+.quest.qd .q-ok, .qd-chest .q-ok { align-self: center; }
+.qd-chest { align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.qd-ico.chest { background: rgba(251, 191, 36, .12); }
+.qd-pips { display: flex; align-items: center; gap: 5px; margin: 6px 0; }
+.qd-pips i { width: 22px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .14); }
+.qd-pips i.half { background: rgba(251, 191, 36, .5); } .qd-pips i.on { background: var(--gold); }
+.qd-pips small { margin-left: 4px; color: var(--muted); font-size: 11px; }
+
+/* ---------- 3.25: чат ---------- */
+.chat-hint { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 2px 12px 12px; padding: 7px 12px; border-radius: 12px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); line-height: 1.35; }
+.chat-hint .chat-unhide { margin: 0; }
+.mrow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.mrow.cont { margin-top: -4px; }
+.mrow.mine { justify-content: flex-end; }
+.mrow .msg { margin: 0; max-width: calc(84% - 40px); }
+.mrow.mine .msg { max-width: 84%; }
+.mrow .msg.cont { margin-top: 0; }
+.m-ava { width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 14px; color: #fff; padding: 0;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--ac) 80%, #fff), var(--ac) 60%, color-mix(in srgb, var(--ac) 70%, #000));
+  border: 2px solid rgba(255, 255, 255, .15); text-shadow: 0 1px 2px rgba(0, 0, 0, .5); margin-top: 2px; }
+.m-ava.sp { visibility: hidden; }
+.chat-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 24px; text-align: center; color: var(--muted); }
+.chat-empty .ce-ico { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 4px; color: var(--violet); background: rgba(167, 139, 250, .1); border: 1px solid rgba(167, 139, 250, .3); }
+.chat-empty .ce-ico .ico { width: 30px; height: 30px; }
+.chat-empty b { color: var(--text); font-size: 16px; }
+.chat-empty small { font-size: 13px; max-width: 260px; line-height: 1.4; }
+.chat-jump { position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); z-index: 3; white-space: nowrap; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  background: var(--gold); color: #3b2300; box-shadow: 0 6px 16px rgba(0, 0, 0, .4); animation: popIn .25s; }
+.chat-bar { align-items: center; position: relative; }
+.chat-count { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chat-count.max { color: var(--danger); }
+.chat-bar .chat-send:disabled { filter: grayscale(.7); opacity: .55; box-shadow: none; }
