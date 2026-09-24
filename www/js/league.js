@@ -71,13 +71,9 @@ const League = {
   },
   toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
 
-  // Таблица сезона: с сервера (текущие уровни и имена, коды для карточки); запасной путь — прямое чтение таблицы
+  // Таблица сезона — только с сервера игры (текущие уровни и имена, коды для карточки)
   async top() {
-    try { return await Game.act('leagueTop', { board: Cfg.s.cloud !== false }); } catch (e) {
-      const { rows, me } = await Cloud.top(this.view().season), rank = this.rank(this.view().stars);
-      const all = rows.map(x => ({ pid: null, name: x.name, lvl: x.level, clan: null, look: x.look, stars: x.stars, rank: x.rank, me: x.user_id === me }));
-      return { rows: all, total: all.length, me: null, tier: { rank, rows: all.filter(x => x.rank === rank).slice(0, 3) } };
-    }
+    return Game.act('leagueTop', { board: Cfg.s.cloud !== false }); // таблицу напрямую не читает никто (3.23): только через сервер игры
   },
 
   screen() {

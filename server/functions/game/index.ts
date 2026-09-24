@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '3.22.3';
+const APP_VERSION = '3.23.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1770,13 +1770,9 @@ const League = {
   },
   toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
 
-  // Таблица сезона: с сервера (текущие уровни и имена, коды для карточки); запасной путь — прямое чтение таблицы
+  // Таблица сезона — только с сервера игры (текущие уровни и имена, коды для карточки)
   async top() {
-    try { return await Game.act('leagueTop', { board: Cfg.s.cloud !== false }); } catch (e) {
-      const { rows, me } = await Cloud.top(this.view().season), rank = this.rank(this.view().stars);
-      const all = rows.map(x => ({ pid: null, name: x.name, lvl: x.level, clan: null, look: x.look, stars: x.stars, rank: x.rank, me: x.user_id === me }));
-      return { rows: all, total: all.length, me: null, tier: { rank, rows: all.filter(x => x.rank === rank).slice(0, 3) } };
-    }
+    return Game.act('leagueTop', { board: Cfg.s.cloud !== false }); // таблицу напрямую не читает никто (3.23): только через сервер игры
   },
 
   screen() {
@@ -3198,7 +3194,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.19.0', // 3.19: новая кривая опыта — старый клиент показывал бы неверную полосу уровня
+  MIN_CLIENT: '3.21.0', // 3.23: таблицу сезона клиент до 3.21 читал напрямую из базы — теперь это закрыто
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],

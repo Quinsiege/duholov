@@ -8,7 +8,7 @@
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '3.19.0', // 3.19: новая кривая опыта — старый клиент показывал бы неверную полосу уровня
+  MIN_CLIENT: '3.21.0', // 3.23: таблицу сезона клиент до 3.21 читал напрямую из базы — теперь это закрыто
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
