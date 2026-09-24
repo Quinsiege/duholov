@@ -3,8 +3,8 @@
    (game.js), объекты карты (pois.js) и заявки мест (propose.js). Таблицу сезона Лиги отдаёт только сервер игры. */
 
 const Cloud = {
-  LIB: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
-  LIB_SRI: 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug', // проверка целостности: подменённый файл CDN не выполнится
+  LIB: 'vendor/supabase.min.js', // 4.1: свой файл вместо CDN (jsdelivr в России бывает заблокирован)
+  LIB_SRI: 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug', // проверка целостности: подменённый файл не выполнится
   sb: null,
 
   // автотесты (браузер под управлением Playwright) на боевой сервер не ходят
