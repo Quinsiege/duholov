@@ -39,6 +39,25 @@ const Updater = {
     });
   },
 
+  // 4.0.2: проверка на экране загрузки, ещё до входа в игру. Возвращает: null — всё свежее (или нет сети:
+  // не держим загрузку дольше 4 с), 'apk' — нужно новое приложение, иначе — данные новой версии для apply()
+  async boot() {
+    let v = null;
+    try {
+      const r = await Promise.race([fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }), U.wait(4000).then(() => null)]);
+      if (r && r.ok) v = await r.json();
+    } catch (e) {}
+    this.lastCheck = Date.now();
+    if (!v) return null;
+    if (this.IN_APP && v.minApk && this.APK < v.minApk) return 'apk';
+    if (this.cmp(v.version, APP_VERSION) <= 0) return null;
+    // только что обновлялись, а версия всё ещё старая — CDN ещё раздаёт прежнюю: входим, check() повторит позже
+    let tried = null;
+    try { tried = JSON.parse(sessionStorage.getItem(this.TRIED)); } catch (e) {}
+    if (tried && tried.v === v.version && Date.now() - tried.t < 3 * 60000) { this.lastCheck = 0; return null; }
+    return v;
+  },
+
   async check(force) {
     if (this.shown || (!force && Date.now() - this.lastCheck < 5 * 60000)) return;
     this.lastCheck = Date.now();

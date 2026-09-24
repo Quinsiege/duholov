@@ -1,5 +1,5 @@
-# Simple local static server for the www folder (desktop testing): http://localhost:8765
-param([int]$Port = 8765, [string]$Dir = 'www')
+# Simple local static server for the www folder (desktop testing): http://localhost:8780 (8765/8766 Windows может зарезервировать)
+param([int]$Port = 8780, [string]$Dir = 'www')
 # -Dir www   : the game (dev mode: demo joystick, ?hol= preview)
 # -Dir .     : repo root, tests at /tests/index.html
 $root = Join-Path (Join-Path $PSScriptRoot '..') $Dir | Resolve-Path
