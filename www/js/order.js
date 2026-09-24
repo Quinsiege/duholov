@@ -61,10 +61,12 @@ const Order = {
     const pct = Math.min(100, w.total / w.goal * 100), ev = title ? null : Ev.cur;
     const steps = Rules.ORDER.STEPS.map((s, i) => {
       const at = Math.ceil(s.at * w.goal), reached = w.total >= at, got = w.got.includes(i), can = this.canClaim(w, i);
-      const rw = Object.entries(s.reward).map(([k, n]) => k === 'sparks' ? `✦ ${U.fmtNum(n)}` : `${ITEMS[k].name} ×${n}`).join(', ') + (i === Rules.ORDER.STEPS.length - 1 ? ', кокон 10 км' : '');
+      // 3.26: награда ступени — картинками (как в заданиях дня), условие — отдельной строкой
+      const rw = UI.rwChips(s.reward, true, i === Rules.ORDER.STEPS.length - 1 ? `<span class="qd-rw">${Art.cocoon(10)}кокон 10 км</span>` : '');
       const why = got ? '' : !reached ? `Ордену осталось ${U.fmtNum(at - w.total)}` : w.n < s.need ? `Твой вклад: ${w.n} из ${s.need}` : '';
-      return `<div class="quest ${got ? 'claimed' : can ? 'done' : ''}"><div class="q-main"><b>Ступень ${i + 1} · ${U.fmtNum(at)} очков</b><small>${rw}${why ? `<br>${why}` : ''}</small></div>
-        ${got ? '<span class="q-ok">✓</span>' : can ? `<button class="btn small primary o-claim" data-w="${w.week}" data-i="${i}">Забрать</button>` : ''}</div>`;
+      return `<div class="quest qd ${got ? 'claimed' : can ? 'done' : ''}"><div class="qd-ico o-step">${i + 1}</div>
+        <div class="q-main"><b>Ступень ${i + 1} · ${U.fmtNum(at)} очков</b>${why ? `<small class="o-why">${why}</small>` : ''}${rw}</div>
+        ${got ? '<span class="q-ok" aria-label="Получено">✓</span>' : can ? `<button class="btn small primary o-claim" data-w="${w.week}" data-i="${i}">Забрать</button>` : ''}</div>`;
     }).join('');
     const marks = Rules.ORDER.STEPS.map(s => `<em style="left:${s.at * 100}%"></em>`).join('');
     const top = w.top.length ? `<div class="o-top"><div class="o-sub">Лучшие Ловчие недели</div>${w.top.map((r, i) => `<div class="o-row ${r.me ? 'me' : ''}"><span>${i + 1}</span><b>${U.esc(r.name)}</b><i>${U.fmtNum(r.n)}</i></div>`).join('')}</div>` : '';
