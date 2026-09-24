@@ -11,8 +11,8 @@ const CLOUD_PROJECTS = {
     anonKey: 'sb_publishable__EG6d35UtqI_7b4ZvLVd8g_PyENCyoA', // публичный (publishable) ключ
   },
   test: {
-    url: '',
-    anonKey: '',
+    url: 'https://xktcxvotugcmlwbuasbg.supabase.co', // duholov-test
+    anonKey: 'sb_publishable_owai4hZ9PApJRB1bALj7eA_NE_qrgi4', // публичный (publishable) ключ
   },
 };
 const CLOUD_CONFIG = DEV ? CLOUD_PROJECTS.test : CLOUD_PROJECTS.prod;
