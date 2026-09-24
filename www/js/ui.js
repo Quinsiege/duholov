@@ -22,10 +22,14 @@ const UI = {
       info: s('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'),
       trophy: s('<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M9 17h6"/>'),
       shop: s('<path d="M4 10h16v10H4z"/><path d="M3 10l2-6h14l2 6"/><path d="M9 20v-5h6v5"/><path d="M3 10c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3"/>'),
-      trail: s('<path d="M5 21c0-4 3-5 6-7s5-4 3-8"/><path d="M14 6l-1-3 3 1"/><circle cx="6" cy="8" r="1.3" fill="currentColor"/><circle cx="18" cy="14" r="1.3" fill="currentColor"/><path d="M16 21h5"/>'),
-      rift: s('<circle cx="12" cy="12" r="9"/><path d="M10 4l3 5-3 3 4 3-2 5"/>'),
       trash: s('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'),
-      gavel: s('<path d="M14 4l6 6M11 7l6 6M12.5 5.5l-5 5M18.5 11.5l-5 5M9 12l-6 6M4 20h9"/>'),
+      // Тропа — ступени сезона с флажком на вершине
+      trail: s('<path d="M3 20h5v-4h5v-4h5V8"/><path d="M18 8V3l3.6 1.6L18 6.2"/>'),
+      // Разлом — трещина в портале
+      rift: s('<path d="M12.4 2.6l-2.3 5.6 3.4 2.6-2.9 4.7 1.7 6"/><path d="M7.4 5.4C5.2 7.3 4 9.6 4 12s1.2 4.7 3.4 6.6M16.6 5.4C18.8 7.3 20 9.6 20 12s-1.2 4.7-3.4 6.6"/>'),
+      // Аукцион — молоток на подставке
+      gavel: s('<rect x="10.5" y="2.8" width="5" height="10" rx="1.3" transform="rotate(-45 13 7.8)"/><path d="M11.2 9.6L4 16.8M12.5 21h8.5"/>'),
+      chat: s('<path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9.5h8M8 12.8h5"/>'),
       shield: s('<path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/>'),
       journal: s('<path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18M10 8h6M10 12h6M10 16h4"/>'),
       qr: s('<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2v2M18 18h2v2h-2"/>'),
@@ -272,17 +276,17 @@ const UI = {
       ['egg', 'Коконы', () => this.cocoons(), eggs ? '!' : ''],
       ['scroll', 'Задания', () => this.quests(), q ? '!' : ''],
       ['swap', 'Друзья', () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
-      ['pin', 'Места', () => Propose.screen(), Propose.badge()],
+      ['chat', 'Чат', () => Chat.screen(), Chat.badge()],
       ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.view().tickets || ''],
       ['shop', 'Лавка', () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
       ['trail', 'Тропа', () => Pass.screen(), Pass.claimable() || ''],
       ['rift', 'Разломы', () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
       ['gavel', 'Аукцион', () => Auction.screen(), Auction.badge()],
       // вторая страница
+      ['pin', 'Места', () => Propose.screen(), Propose.badge()],
       ['user', 'Ловчий', () => this.profile()],
       ['shield', 'Дружина', () => { if (S.d.level < CLAN_LEVEL) { this.toast(`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
       ['journal', 'Дневник', () => J.screen()],
-      ['qr', 'Обмен', () => Trade.screen()],
       ['gear', 'Настройки', () => this.settings()],
     ];
     if (Tut.step() === 3) setTimeout(() => Tut.finish(), 400);
@@ -492,7 +496,6 @@ const UI = {
           <p class="det-desc">${s.desc}</p>
           ${sp.from ? `<p class="small">Получен в подарок от Ловчего ${U.esc(sp.from)}</p>` : ''}
           <div class="det-actions">
-            <button class="btn ghost act-trade">${this.I.swap} Передать другу</button>
             <button class="btn ghost danger act-release">Отпустить <small>+1 эссенция</small></button>
           </div>
         </div>`;
@@ -512,7 +515,6 @@ const UI = {
       if (t.dataset.err) { this.toast(t.dataset.err); return; }
       if (t.classList.contains('favbtn')) act('fav', { on: !sp.fav });
       else if (t.classList.contains('det-name')) this.rename(sp, render);
-      else if (t.classList.contains('act-trade')) Trade.offer(sp, () => this.closeScreen(scr));
       else if (t.classList.contains('act-move2')) {
         this.confirm('Второй приём', `Научить «${U.esc(sp.nick || SP[sp.sid].name)}» приёму «${ELEMENTS[SP[sp.sid].el].charge2}» за ✦ ${MOVE2_COST.sparks} и ${MOVE2_COST.essence} эссенции?`, 'Научить',
           () => act('move2', {}, () => { Sfx.play('levelup'); this.toast('Новый приём выучен!', 'good'); }));

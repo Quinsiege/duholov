@@ -355,7 +355,7 @@ const MEDALS = [
   { id: 'raids',   name: 'Затворник',     desc: 'Закрой разломов',              stat: 'raids',       tiers: [3, 30, 200] },
   { id: 'dex',     name: 'Летописец',     desc: 'Видов духов в бестиарии',      stat: 'dex',         tiers: [5, 20, SPECIES.length] },
   { id: 'purify',  name: 'Очиститель',    desc: 'Победи прислужников Нави',     stat: 'invasions',   tiers: [3, 30, 200] },
-  { id: 'trade',   name: 'Щедрая душа',   desc: 'Передай или получи духов',     stat: 'traded',      tiers: [1, 10, 50] },
+  { id: 'trade',   name: 'Щедрая душа',   desc: 'Купи или продай духов на Аукционе',     stat: 'traded',      tiers: [1, 10, 50] },
   { id: 'throws',  name: 'Меткий глаз',   desc: 'Отличных бросков',             stat: 'throwsGreat', tiers: [20, 200, 1000] },
   { id: 'hatch',   name: 'Наседка',       desc: 'Вылупи духов из коконов',      stat: 'hatched',     tiers: [3, 30, 200] },
   { id: 'evolve',  name: 'Алхимик',       desc: 'Преврати духов',               stat: 'evolved',     tiers: [3, 30, 200] },
