@@ -1776,7 +1776,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes trlCap { 0% { opacity: 0; transform: translateY(12px); letter-spacing: .06em; } 15% { opacity: 1; transform: none; letter-spacing: 0; } 85% { opacity: 1; } 100% { opacity: 0; } }
 .trl-bars::before, .trl-bars::after { content: ""; position: fixed; left: 0; right: 0; height: 7vh; background: #000; z-index: 2; }
 .trl-bars::before { top: 0; } .trl-bars::after { bottom: 0; }
-.trl-skip { position: absolute; z-index: 5; right: 14px; top: calc(7vh + 10px); padding: 7px 14px; border-radius: 14px; font-size: 13px; font-weight: 700; color: #e9e3ff; background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .2); }
+.trl-skip { position: absolute; z-index: 7; right: 14px; top: calc(7vh + 10px); padding: 7px 14px; border-radius: 14px; font-size: 13px; font-weight: 700; color: #e9e3ff; background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .2); }
 .trl-start { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(5, 2, 13, .78); cursor: pointer; }
 .trl-play { width: 86px; height: 86px; border-radius: 50%; display: grid; place-items: center; font-size: 34px; color: #1c0b33; background: linear-gradient(180deg, #fde68a, #f59e0b); box-shadow: 0 0 40px rgba(251, 191, 36, .6); animation: tutPulse 1.4s ease-in-out infinite; padding-left: 6px; }
 .trl-start b { font-size: 24px; font-weight: 900; } .trl-start small { color: var(--muted); }
