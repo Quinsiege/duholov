@@ -413,6 +413,15 @@
     },
     player: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { name: d.name, level: d.level } : null; },
     friendSave: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { data: JSON.parse(JSON.stringify(d)), seen: new Date().toISOString() } : null; },
+    briefByPid: async pids => { const o = {}; pids.forEach(p => { const d = DB.saves[DB.players[p]]; if (d) o[p] = { name: d.name, level: d.level, clan: d.clan, look: d.look }; }); return o; },
+    leagueTop: async season => {
+      const last = {}; DB.league.filter(x => x.season === season).forEach(x => { last[x.user] = x; });
+      const all = Object.values(last).sort((a, b) => b.stars - a.stars), rows = all.slice(0, 50);
+      const pidOf = u => Object.keys(DB.players).find(p => DB.players[p] === u) || null;
+      const i = all.findIndex(x => x.user === who.uid);
+      return { total: all.length, me: i >= 50 ? { place: i + 1, stars: all[i].stars } : null,
+        rows: rows.map(x => { const d = DB.saves[x.user]; return { user_id: x.user, name: x.name, stars: x.stars, rank: x.rank, level: x.level, look: x.look, pid: pidOf(x.user), me: x.user === who.uid, cur: d ? { name: d.name, level: d.level, clan: d.clan, look: d.look } : null }; }) };
+    },
     link: async (from, to, name, level) => {
       DB.links = DB.links.filter(l => !(l.from_pid === from && l.to_pid === to));
       DB.links.push({ from_pid: from, to_pid: to, from_name: name, from_level: level, created_at: new Date().toISOString() });
@@ -1100,6 +1109,35 @@
     await must(B, 'chatReport', { id: all[0].id }); await must(B, 'chatReport', { id: all[0].id }); await must(C, 'chatReport', { id: all[0].id });
     eq((await must(B, 'chatList', { ch: 'all' })).msgs.length, 1, 'две разных жалобы — ещё видно');
     await must(D2, 'chatReport', { id: all[0].id }); eq((await must(B, 'chatList', { ch: 'all' })).msgs.length, 0, 'после трёх — скрыто');
+  });
+  atest('Сервер: текущий уровень в чате, карточка Ловчего, таблица Лиги', async () => {
+    const A = await newPlayer('pa', 55.47, 37.35, 'Илья'), B = await newPlayer('pb', 55.47, 37.35, 'Гость');
+    for (const P of [A, B]) { P.data.tut = 0; P.data.level = 5; }
+    await must(A, 'chatSend', { ch: 'help', text: 'Всем привет!' });
+    A.data.level = 9; A.data.clan = 'sokol';
+    const m = (await must(B, 'chatList', { ch: 'help' })).msgs[0];
+    eq(m.lvl, 9, 'в сообщении — текущий уровень, а не на момент отправки'); eq(m.clan, 'sokol');
+    A.data.level = 10;
+    const r = await must(B, 'chatList', { ch: 'help', after: m.id, who: [A.data.pid, 'bad pid<>'] });
+    eq(r.msgs.length, 0); eq(r.who[A.data.pid].lvl, 10, 'уровни уже показанных Ловчих обновляются'); eq(Object.keys(r.who).length, 1, 'чужие коды отброшены');
+    // карточка: только открытые данные, дружба, проверка кода
+    A.data.clan = 'чужая'; A.data.look = { cloak: '#fff"/><script>', eyes: 'x', emblem: 'y' };
+    const c = await must(B, 'playerCard', { pid: A.data.pid });
+    eq(c.name, 'Илья'); eq(c.lvl, 10); eq(c.clan, null, 'неизвестная дружина отброшена'); eq(c.look, null, 'облик — только из известных');
+    ok(c.buddy && SP[c.buddy.sid] && c.best && c.best.power > 0, 'спутник и сильнейший дух'); eq(c.friend, null); eq(c.seen, 'now'); ok(!c.me);
+    ok(!('spirits' in c) && !('items' in c) && !('zlat' in c), 'сохранение целиком не отдаётся');
+    await must(B, 'friendAdd', { pid: A.data.pid }); eq((await must(B, 'playerCard', { pid: A.data.pid })).friend, 'sent');
+    eq((await must(A, 'playerCard', { pid: B.data.pid })).friend, 'wants', 'он уже добавил меня');
+    ok((await must(B, 'playerCard', { pid: B.data.pid })).me, 'своя карточка');
+    await refuse(B, 'playerCard', { pid: '../x' }, /не найден/);
+    await refuse(B, 'playerCard', { pid: 'zzzzzzzzzzzz' }, /не найден/);
+    // таблица Лиги: текущие данные, код для карточки, без user_id
+    DB.league.push({ user: 'pa', season: League.season(), name: 'Старое имя', stars: 12, rank: 3, level: 6, look: null });
+    DB.league.push({ user: 'pb', season: League.season(), name: 'Гость', stars: 4, rank: 1, level: 5, look: null });
+    const t = await must(B, 'leagueTop', {});
+    const ra = t.rows.find(x => x.pid === A.data.pid), rb = t.rows.find(x => x.pid === B.data.pid);
+    ok(t.total >= 2 && ra && rb); eq(ra.name, 'Илья', 'текущее имя'); eq(ra.lvl, 10, 'текущий уровень'); eq(ra.stars, 12);
+    ok(rb.me && !ra.me, 'своя строка отмечена'); ok(!JSON.stringify(t).includes('user_id'), 'user_id наружу не уходит');
   });
   atest('Безопасность: облик, имена, служебные действия, коды, перебор', async () => {
     // облик от другого игрока не вырывается из атрибута SVG

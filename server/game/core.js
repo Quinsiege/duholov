@@ -317,6 +317,11 @@ const GameCore = {
     return LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
       ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
   },
+  // 3.21: текущие данные Ловчего из его сохранения — только проверенные значения (попадают в разметку)
+  brief(b) {
+    if (!b) return null;
+    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: CLANS[b.clan] ? b.clan : null, look: this.safeLook(b.look) };
+  },
   roomMember() {
     const team = S.team();
     return { pid: S.d.pid, name: String(S.d.name).slice(0, 20), look: this.safeLook(S.d.look), lvl: S.d.level, power: team.reduce((a, x) => a + S.power(x), 0), sid: team[0] ? team[0].sid : null };
@@ -1178,7 +1183,11 @@ const GameCore = {
       const ch = this.chatChannel(a.ch);
       this.limit(ctx, 'chatRead', 1200, 3600000);
       const rows = await ctx.env.chatList(ch, Math.max(0, Math.floor(+a.after) || 0));
-      return { ch: a.ch, msgs: rows.map(m => ({ id: m.id, pid: m.pid, name: m.name, lvl: m.lvl, clan: m.clan, text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid })) };
+      // 3.21: имя, уровень и дружина в сообщении — на момент отправки; отдаём текущие (a.who — Ловчие уже показанных сообщений)
+      const ask = [...new Set(rows.map(m => m.pid).concat(Array.isArray(a.who) ? a.who.slice(0, 40).map(String) : []))].filter(p => this.PID.test(p)).slice(0, 90);
+      const who = {};
+      try { const cur = await ctx.env.briefByPid(ask); Object.keys(cur).forEach(p => { const w = this.brief(cur[p]); who[p] = { name: w.name, lvl: w.lvl, clan: w.clan }; }); } catch (e) { /* покажем данные из сообщений */ }
+      return { ch: a.ch, who, msgs: rows.map(m => { const w = who[m.pid]; return { id: m.id, pid: m.pid, name: w ? w.name : m.name, lvl: w ? w.lvl : m.lvl, clan: w ? w.clan : m.clan, text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid }; }) };
     },
     async chatSend(a, ctx) {
       const C = Rules.CHAT, ch = this.chatChannel(a.ch);
@@ -1200,6 +1209,47 @@ const GameCore = {
       this.limit(ctx, 'chatReport', 30, 86400000);
       await ctx.env.chatReport(id, S.d.pid);
       return { ok: true };
+    },
+
+    /* ----- карточка Ловчего и таблица Лиги (3.21) ----- */
+    // Открытая карточка любого Ловчего (из чата или таблицы Лиги): облик, уровень, дружина, Лига, успехи, спутник
+    async playerCard(a, ctx) {
+      const pid = String(a.pid || '');
+      this.need(this.PID.test(pid), 'Ловчий не найден');
+      this.limit(ctx, 'card', 150, 3600000);
+      const s = await ctx.env.friendSave(pid);
+      this.need(s && s.data, 'Ловчий не найден — возможно, он давно не заходил в игру');
+      const d = s.data, num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
+      const b = this.brief(d), st = d.stats || {}, L = d.league || {};
+      const spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
+      const bud = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
+      const buddy = bud ? this.cleanSpirit(bud, 0) : null, best = this.topSpirits(d, 1)[0] || null;
+      const stars = L.season === League.season() ? num(L.stars, 1000) : Math.floor(num(L.stars, 1000) / 2); // новый сезон — звёзды пополам
+      const ago = s.seen ? ctx.now - Date.parse(s.seen) : Infinity;
+      const mine = S.d.friends.some(x => x.id === pid), theirs = (Array.isArray(d.friends) ? d.friends : []).some(x => x && x.id === S.d.pid);
+      const sp = x => x && { sid: x.sid, lvl: x.lvl, shiny: x.shiny, dark: x.dark, nick: x.nick, power: S.power(x) };
+      return {
+        pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, me: pid === S.d.pid,
+        seen: ago < 15 * 60000 ? 'now' : ago < 86400000 ? 'today' : ago < 7 * 86400000 ? 'week' : 'long',
+        days: +d.created > 0 ? Math.max(1, Math.ceil((ctx.now - Math.min(+d.created, ctx.now)) / 86400000)) : 0,
+        dex: Object.values(d.dex || {}).filter(x => x && x.caught).length, caught: num(st.caught, 1e7), km: U.clamp(+st.km || 0, 0, 1e5),
+        raids: num(st.raids, 1e6), duels: num(st.duels, 1e6), medals: Object.values(d.medals || {}).filter(t => t >= 3).length,
+        league: { stars, rank: League.rank(stars), best: num(L.best, LEAGUE_RANKS.length - 1) },
+        buddy: sp(buddy), best: sp(best),
+        friend: mine && theirs ? 'mutual' : mine ? 'sent' : theirs ? 'wants' : null,
+      };
+    },
+    // Таблица сезона Лиги с текущими уровнями, именами и обликами (user_id наружу не отдаём)
+    async leagueTop(a, ctx) {
+      this.limit(ctx, 'leagueTop', 1500, 3600000);
+      const season = League.season(), r = await ctx.env.leagueTop(season);
+      return {
+        season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, stars: r.me.stars | 0 } : null,
+        rows: r.rows.map(x => {
+          const b = this.brief(x.cur) || this.brief({ name: x.name, level: x.level, look: x.look });
+          return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, stars: U.clamp(x.stars | 0, 0, 1000), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
+        }),
+      };
     },
 
     /* ----- друзья и подарки ----- */

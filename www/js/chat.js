@@ -6,6 +6,7 @@
 const Chat = {
   ch: 'all',
   msgs: {},          // канал → сообщения
+  people: {},        // код Ловчего → текущие имя, уровень и дружина (3.21)
   KEY: 'duholov.chat.hide', // скрытые игроки (удобство на этом телефоне)
   POLL: 4000,
 
@@ -51,9 +52,9 @@ const Chat = {
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 80;
     const render = (stick) => {
       const hid = this.hidden(), ms = (this.msgs[this.ch] || []).filter(m => !hid.includes(m.pid));
-      // уровень, имя и дружина пишутся в сообщение при отправке — показываем у всех сообщений Ловчего самые свежие
+      // уровень, имя и дружина — текущие: сервер присылает их для новых сообщений и раз в ~20 с для уже показанных (who)
       const cur = {}; Object.values(this.msgs).flat().forEach(m => { if (!cur[m.pid] || m.id > cur[m.pid].id) cur[m.pid] = m; });
-      const who = m => cur[m.pid] || m;
+      const who = m => this.people[m.pid] || cur[m.pid] || m;
       const hint = { all: 'Общий разговор Ловчих.', trade: 'Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.', raid: 'Ищите команду для Разломов: пишите код комнаты и место.', help: 'Вопросы новичков и советы бывалых.', clan: 'Канал твоей дружины — его видят только свои.' }[this.ch];
       const nh = hid.length;
       list.innerHTML = `<div class="chat-hint">${hint} Ссылки запрещены, грубость скрывается.${nh ? ` <button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map(m => `
@@ -62,15 +63,21 @@ const Chat = {
           <div class="msg-text">${U.esc(m.text)}</div><time>${this.time(m.t)}</time></div>`).join('') : '<div class="q-note">Здесь пока тихо. Напиши первым!</div>');
       if (stick) body.scrollTop = body.scrollHeight;
     };
+    let polls = 0;
     const load = async (full) => {
       const ch = this.ch, have = this.msgs[ch] || [];
       const after = full || !have.length ? 0 : have[have.length - 1].id;
+      // раз в пять опросов — спросить текущие уровни Ловчих, чьи сообщения уже на экране
+      const ask = !full && ++polls % 5 === 0 ? [...new Set(have.filter(m => !m.mine).map(m => m.pid))].slice(-40) : null;
       let r;
-      try { r = await Game.act('chatList', { ch, after }); } catch (e) { if (full) list.innerHTML = `<div class="q-note">${U.esc(e.message)}</div>`; return; }
+      try { r = await Game.act('chatList', ask && ask.length ? { ch, after, who: ask } : { ch, after }); } catch (e) { if (full) list.innerHTML = `<div class="q-note">${U.esc(e.message)}</div>`; return; }
       if (ch !== this.ch || !scr.isConnected) return;
       const stick = full || atBottom();
+      const before = JSON.stringify(this.people);
+      Object.assign(this.people, r.who || {});
+      r.msgs.forEach(m => { this.people[m.pid] = { name: m.name, lvl: m.lvl, clan: m.clan }; });
       this.msgs[ch] = (full ? r.msgs : have.concat(r.msgs.filter(m => !have.some(x => x.id === m.id)))).slice(-150);
-      if (full || r.msgs.length) render(stick);
+      if (full || r.msgs.length || JSON.stringify(this.people) !== before) render(stick);
     };
     const show = (ch, dir) => { this.ch = ch; renderTabs(); render(true); UI.slideIn(list, dir); load(true); };
     tabs.addEventListener('click', e => {
@@ -83,16 +90,14 @@ const Chat = {
       if (e.target.closest('.chat-unhide')) { this.hiddenModal(() => render(false)); return; }
       const w = e.target.closest('.msg-who'); if (!w) return;
       const msg = w.closest('.msg'), pid = w.dataset.pid, name = w.dataset.name;
-      UI.modal({
-        title: U.esc(name), html: '<p class="small">Что сделать?</p>',
-        buttons: [
-          { label: 'В друзья', cls: 'primary', fn: async () => { const r = await Game.try('friendAdd', { pid }); if (r) UI.toast(`${U.esc(r.name)} теперь в друзьях!`, 'good'); } },
-          { label: 'Пожаловаться', fn: async () => { if (await Game.try('chatReport', { id: +msg.dataset.id })) UI.toast('Жалоба отправлена — спасибо'); } },
-          { label: 'Скрыть', cls: 'danger', fn: () => UI.confirm('Скрыть сообщения?', `Сообщения Ловчего «${U.esc(name)}» перестанут показываться на этом телефоне. Вернуть можно в любой момент — строкой «Скрытых Ловчих» вверху чата.`, 'Скрыть', () => {
-            this.hide(pid, name); render(false); UI.toast('Скрыто. Вернуть — «Скрытых Ловчих» вверху чата');
-          }) },
-        ],
-      });
+      Friends.card(pid, { name, chat: {
+        report: () => UI.confirm('Пожаловаться?', `На сообщение Ловчего «${U.esc(name)}». После трёх жалоб от разных Ловчих оно скрывается для всех.`, 'Пожаловаться', async () => {
+          if (await Game.try('chatReport', { id: +msg.dataset.id })) UI.toast('Жалоба отправлена — спасибо');
+        }),
+        hide: () => UI.confirm('Скрыть сообщения?', `Сообщения Ловчего «${U.esc(name)}» перестанут показываться на этом телефоне. Вернуть можно в любой момент — строкой «Скрытых Ловчих» вверху чата.`, 'Скрыть', () => {
+          this.hide(pid, name); render(false); UI.toast('Скрыто. Вернуть — «Скрытых Ловчих» вверху чата');
+        }),
+      } });
     });
     const input = bar.querySelector('.chat-in');
     bar.addEventListener('submit', async e => {
