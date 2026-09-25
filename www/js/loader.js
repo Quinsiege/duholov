@@ -95,12 +95,12 @@ const Loader = {
     if (text) this.el.querySelector('.ld-text').textContent = text;
     clearTimeout(this._rt); this._rt = setTimeout(() => this.runes(), 320); // руна — когда огонь дойдёт до неё (полоса едет .35 с)
   },
-  // 4.6: чтение заклинания — руны проступают по одной, только целиком пройденные огнём; новая вспыхивает
+  // 4.6: чтение заклинания — руны проступают по одной, когда огонь дошёл до середины руны; новая вспыхивает
   runes() {
     const el = this.el && this.el.querySelector('.ld-runes'), bar = el && el.parentNode;
     if (!el || !bar.clientWidth) return;
     const CELL = 22, OFF = 5, fill = bar.clientWidth * this.pct / 100;
-    const n = Math.max(0, Math.min(Math.floor((bar.clientWidth - OFF) / CELL), Math.floor((fill - OFF) / CELL)));
+    const n = Math.max(0, Math.min(Math.floor((bar.clientWidth - OFF) / CELL), Math.floor((fill - OFF + CELL / 2) / CELL)));
     el.style.width = n ? (OFF + n * CELL) + 'px' : '0';
     if (n > (this.lit || 0)) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
     this.lit = n;
