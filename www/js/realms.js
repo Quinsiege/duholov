@@ -22,6 +22,8 @@ const REALMS = [
 
 const Realms = {
   KEY: 'duholov-realm',
+  // пока данные — образец, выбор сервера виден только на тестовом контуре (localhost, test.duholov.ru): игрокам не показываем выдуманные серверы и друзей
+  on: DEV,
   current() {
     let id = null;
     try { id = localStorage.getItem(this.KEY); } catch (e) {}
@@ -67,12 +69,14 @@ const Realms = {
 
   // кнопка на экране входа
   chip() {
+    if (!this.on) return '';
     const r = this.current(), L = this.load(r);
     return `<button class="realm-chip" aria-label="Сервер: ${U.esc(r.name)}. Сменить">${this.crest(r, 30)}` +
       `<span class="rc-main"><small>Сервер</small><b>${U.esc(r.name)}</b></span><i class="rc-dot" style="--c:${L.c}"></i><svg class="rc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
   },
   // крупная витрина сервера — в середине стартового экрана
   banner() {
+    if (!this.on) return '';
     const r = this.current(), L = this.load(r), bars = this.bars(r.ping);
     return `<button class="realm-hero" style="--rc:${r.color};--lc:${L.c}" aria-label="Сервер: ${U.esc(r.name)}. Сменить">
       <span class="rh-crest"><i class="rh-ring"></i>${this.crest(r, 92)}</span>
