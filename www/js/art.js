@@ -523,25 +523,39 @@ const Art = (() => {
   }
 
   /* ---------------- КАПИЩЕ И ХРАНИТЕЛЬ ---------------- */
-  // 4.6: капище — резной чур на каменном основании, глаза и знаки светятся цветом капища, над ним — навес с флажком
+  // 4.6: капище — святилище: резные врата из двух идолов под балкой с коньками, между ними на каменном круге — священный огонь цвета капища
   function shrineIcon(tier, won) {
-    const flag = won ? '#fbbf24' : tier === 3 ? '#ef4444' : tier === 2 ? '#a78bfa' : '#5eead4', id = 'sh' + (++seq);
+    const fire = won ? '#fbbf24' : tier === 3 ? '#f43f5e' : tier === 2 ? '#c084fc' : '#2dd4bf', id = 'sh' + (++seq);
+    const post = x => `<path d="M${x - 6} 92 V44 Q${x - 6} 36 ${x} 33 Q${x + 6} 36 ${x + 6} 44 V92Z" fill="url(#${id}w)" stroke="#2a1508" stroke-width="2" stroke-linejoin="round"/>` +
+      `<path d="M${x - 6} 56 H${x + 6} M${x - 6} 72 H${x + 6}" stroke="#2a1508" stroke-width="1.5"/>` +
+      `<path d="M${x - 5} 61 l2.5 3 2.5-3 2.5 3 2.5-3" stroke="#e3b27a" stroke-width="1.1" fill="none"/>` +
+      `<circle cx="${x - 2.4}" cy="45" r="1.7" fill="${fire}"/><circle cx="${x + 2.4}" cy="45" r="1.7" fill="${fire}"/>` +
+      `<path d="M${x - 2.5} 50 Q${x} 52 ${x + 2.5} 50" stroke="#2a1508" stroke-width="1.3" fill="none" stroke-linecap="round"/>`;
     return `<svg viewBox="0 -6 80 116" class="art"><defs>` +
-      `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6b3a15"/><stop offset=".35" stop-color="#c98a4b"/><stop offset=".7" stop-color="#9a5b2a"/><stop offset="1" stop-color="#4a2610"/></linearGradient>` +
-      `<linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8a29e"/><stop offset="1" stop-color="#57534e"/></linearGradient><radialGradient id="${id}a"><stop offset="0" stop-color="${flag}" stop-opacity="${won ? 0.55 : 0.35}"/><stop offset="1" stop-color="${flag}" stop-opacity="0"/></radialGradient></defs>` +
-      `<circle class="art-aura" cx="40" cy="48" r="${won ? 42 : 34}" fill="url(#${id}a)"/>` +
-      `<ellipse cx="40" cy="101" rx="32" ry="7" fill="#000" opacity=".35"/>` +
-      `<path d="M12 101 L18 88 H62 L68 101Z" fill="url(#${id}s)" stroke="#292524" stroke-width="2" stroke-linejoin="round"/><path d="M24 94h8M42 96h10" stroke="#292524" stroke-width="1.2" opacity=".6"/>` +
-      `<path d="M26 90 V30 Q26 20 40 20 Q54 20 54 30 V90Z" fill="url(#${id})" stroke="#2a1508" stroke-width="2.4" stroke-linejoin="round"/>` +
-      `<path d="M26 42 H54 M26 64 H54 M26 80 H54" stroke="#2a1508" stroke-width="1.8"/>` +
-      `<path d="M28 46 l4 4 4-4 4 4 4-4 4 4 4-4" stroke="#e3b27a" stroke-width="1.3" fill="none" opacity=".8"/>` +
-      `<ellipse cx="34" cy="31" rx="3" ry="2.2" fill="${flag}"/><ellipse cx="46" cy="31" rx="3" ry="2.2" fill="${flag}"/>` +
-      `<ellipse cx="34" cy="31" rx="5" ry="3.6" fill="${flag}" opacity=".3" class="art-blink"/><ellipse cx="46" cy="31" rx="5" ry="3.6" fill="${flag}" opacity=".3" class="art-blink"/>` +
-      `<path d="M34 37 Q40 40 46 37" stroke="#2a1508" stroke-width="2" fill="none" stroke-linecap="round"/>` +
-      `<path d="M33 54 L40 61 L47 54 M40 61 V64" stroke="${flag}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<path d="M34 70 l6 5 6-5" stroke="#2a1508" stroke-width="1.8" fill="none"/>` +
-      `<path d="M18 24 L40 6 L62 24 L57 26 L40 12 L23 26Z" fill="#4a2610" stroke="#2a1508" stroke-width="1.8" stroke-linejoin="round"/>` +
-      `<path d="M40 6 V-3" stroke="#2a1508" stroke-width="2"/><path class="art-sway" d="M40 -3 L58 2 L40 7Z" fill="${flag}" stroke="#2a1508" stroke-width="1"/>` +
+      `<linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e3314"/><stop offset=".4" stop-color="#c98a4b"/><stop offset="1" stop-color="#4a2610"/></linearGradient>` +
+      `<linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b07040"/><stop offset="1" stop-color="#4a2610"/></linearGradient>` +
+      `<linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8b2ad"/><stop offset="1" stop-color="#57534e"/></linearGradient>` +
+      `<radialGradient id="${id}g"><stop offset="0" stop-color="${fire}" stop-opacity="${won ? 0.65 : 0.5}"/><stop offset="1" stop-color="${fire}" stop-opacity="0"/></radialGradient>` +
+      `<linearGradient id="${id}f" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${fire}"/><stop offset=".7" stop-color="${shade(fire, 0.55)}"/><stop offset="1" stop-color="#fff"/></linearGradient></defs>` +
+      `<circle class="art-aura" cx="40" cy="70" r="${won ? 44 : 36}" fill="url(#${id}g)"/>` +
+      `<ellipse cx="40" cy="103" rx="34" ry="6" fill="#000" opacity=".35"/>` +
+      // каменный круг
+      `<ellipse cx="40" cy="95" rx="30" ry="9" fill="#44403c" stroke="#1c1917" stroke-width="1.8"/><ellipse cx="40" cy="92" rx="30" ry="9" fill="url(#${id}s)" stroke="#1c1917" stroke-width="1.8"/>` +
+      `<ellipse cx="40" cy="91.5" rx="17" ry="4.6" fill="#1c1917" opacity=".55"/>` +
+      `<path d="M16 91l4 1.5M28 97l3-2.4M50 97l-2-2.6M62 92l-4 1" stroke="#1c1917" stroke-width="1.2" opacity=".6"/>` +
+      // врата
+      post(16) + post(64) +
+      `<path d="M5 30 Q12 32 16 28 H64 Q68 32 75 30 L73 36 Q67 38 63 35 H17 Q13 38 7 36Z" fill="url(#${id}b)" stroke="#2a1508" stroke-width="1.8" stroke-linejoin="round"/>` +
+      `<path d="M5 30 C1 26 3 20 8 22 C11 23 10 27 7 27M75 30 C79 26 77 20 72 22 C69 23 70 27 73 27" fill="none" stroke="#2a1508" stroke-width="2.2" stroke-linecap="round"/>` +
+      `<path d="M22 31.5 h36" stroke="#e3b27a" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".8"/>` +
+      `<path d="M40 28 V17" stroke="#2a1508" stroke-width="1.8"/><path class="art-sway" d="M40 17 L55 21 L40 25Z" fill="${fire}" stroke="#2a1508" stroke-width="1"/>` +
+      // оберег на балке
+      `<circle cx="40" cy="41" r="5.5" fill="none" stroke="${fire}" stroke-width="1.6"/><path d="M40 37v8M36 41h8" stroke="${fire}" stroke-width="1.4"/>` +
+      // огонь на кругу
+      `<g class="art-flicker"><path d="M40 60 C47 70 51 76 48 84 C46 90 34 90 32 84 C29 76 34 72 36 66 C38 71 40 70 40 60Z" fill="url(#${id}f)"/>` +
+      `<path d="M40 72 C44 77 45 81 43 85 C41 88 38 88 37 85 C35 81 38 78 40 72Z" fill="#fffbeb" opacity=".9"/></g>` +
+      `<path d="M31 88 L49 84 M31 84 L49 88" stroke="#3b1f0e" stroke-width="3" stroke-linecap="round"/>` +
+      `<circle class="art-float" cx="32" cy="58" r="1.5" fill="${fire}"/><circle class="art-float" style="animation-delay:.8s" cx="47" cy="52" r="1.2" fill="#fff" opacity=".85"/>` +
       `</svg>`;
   }
   function guardian(color) {

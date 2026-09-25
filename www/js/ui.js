@@ -174,14 +174,15 @@ const UI = {
   _rid: 0,
   runeShape(kind) {
     const id = 'rn' + (++this._rid), gold = kind === 'gold';
-    const outer = 'M16 1H324L339 32L324 63H16L1 32Z', inner = 'M21 6H319L332 32L319 58H21L8 32Z';
+    // 4.6: округлая форма, орнамент — гравированная линия и ромбы у краёв
+    const outer = 'M13 1H327Q339 1 339 13V51Q339 63 327 63H13Q1 63 1 51V13Q1 1 13 1Z', inner = 'M13 6H327Q334 6 334 13V51Q334 58 327 58H13Q6 58 6 51V13Q6 6 13 6Z';
     return `<svg class="rn-bg" viewBox="0 0 340 64" preserveAspectRatio="none" aria-hidden="true"><defs>
       ${gold ? `<linearGradient id="${id}g" x2="0" y2="1"><stop offset="0" stop-color="#fff7c7"/><stop offset=".32" stop-color="#fcd34d"/><stop offset=".72" stop-color="#f59e0b"/><stop offset="1" stop-color="#b45309"/></linearGradient>` : ''}
       <clipPath id="${id}c"><path d="${outer}"/></clipPath></defs>
       <path d="${outer}" fill="${gold ? `url(#${id}g)` : 'rgba(255,255,255,.07)'}" ${gold ? '' : 'stroke="rgba(255,255,255,.28)" stroke-width="1.2" vector-effect="non-scaling-stroke"'}/>
-      ${gold ? '<path d="M21 6H319L325 18H15Z" fill="rgba(255,255,255,.38)"/>' : ''}
+      ${gold ? '<path d="M13 6H327Q334 6 334 13V18H6V13Q6 6 13 6Z" fill="rgba(255,255,255,.38)"/>' : ''}
       <path d="${inner}" fill="none" stroke="${gold ? 'rgba(124,45,18,.5)' : 'rgba(255,255,255,.12)'}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
-      <path d="M8 32l5-4 5 4-5 4zM322 32l5-4 5 4-5 4z" fill="${gold ? 'rgba(124,45,18,.55)' : 'rgba(253,224,71,.55)'}"/>
+      <path d="M14 32l5-4 5 4-5 4zM316 32l5-4 5 4-5 4zM27 32l2.5-2.5 2.5 2.5-2.5 2.5zM308 32l2.5-2.5 2.5 2.5-2.5 2.5z" fill="${gold ? 'rgba(124,45,18,.55)' : 'rgba(253,224,71,.55)'}"/>
       ${gold ? `<g clip-path="url(#${id}c)"><rect class="rn-shine" x="-120" y="0" width="70" height="64" fill="rgba(255,255,255,.55)" transform="skewX(-20)"/></g>` : ''}</svg>`;
   },
   rune(label, cls = '', icon = '') { return `<button class="rune ${cls}">${this.runeShape('gold')}<span class="rn-t">${icon}${label}</span></button>`; },
