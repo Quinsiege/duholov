@@ -45,9 +45,13 @@ const MapView = {
     document.body.classList.toggle('eco', !!Cfg.s.eco);
     let tickN = 0;
     setInterval(() => { if (!document.hidden && (!Cfg.s.eco || ++tickN % 2 === 0)) this.refresh(); }, 1500);
+  },
+  // 4.6.3: цикл кадров нужен только демо-ходьбе (джойстик, клавиши) — без неё страница не просыпается 120 раз в секунду
+  runLoop() {
+    if (this._raf || !this.demo) return;
     let last = performance.now();
-    const loop = t => { this.tick(Math.min(0.1, (t - last) / 1000)); last = t; requestAnimationFrame(loop); };
-    requestAnimationFrame(loop);
+    const loop = t => { if (!this.demo) { this._raf = 0; return; } this.tick(Math.min(0.1, (t - last) / 1000)); last = t; this._raf = requestAnimationFrame(loop); };
+    this._raf = requestAnimationFrame(loop);
   },
 
   // 4.1: своя карта — векторные тайлы России (Protomaps, данные OpenStreetMap) одним файлом на сервере игры;
@@ -66,12 +70,34 @@ const MapView = {
         this.tiles = protomapsL.leafletLayer({
           url: ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES,
           flavor: 'light', lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
-        }).addTo(this.map);
+        });
+        this.bakeTiles(this.tiles);
+        this.tiles.addTo(this.map);
       } else {
         this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
       }
     }
     document.body.classList.toggle('night', night);
+    if (this._baked) {
+      const f = getComputedStyle(this._baked).getPropertyValue('--tile-f').trim();
+      if (f !== this.tileF) { const redraw = this.tileF != null; this.tileF = f; if (redraw) this.tiles.rerenderTiles(); }
+    }
+  },
+  // 4.6.3: фильтр тонов Нави (--tile-f в style.css) вшивается в плитку один раз, когда она нарисована, —
+  // вместо CSS-фильтра всего слоя, который видеокарта пересчитывала в каждом кадре любой анимации на экране
+  bakeTiles(layer) {
+    const box = U.$('#map');
+    if (!box || typeof CanvasRenderingContext2D === 'undefined' || !('filter' in CanvasRenderingContext2D.prototype)) return;
+    const self = this, orig = layer.renderTile;
+    layer.renderTile = function (coords, el, key, done) {
+      return orig.call(this, coords, el, key, () => {
+        const f = self.tileF, x = el.getContext('2d');
+        if (f && f !== 'none') { x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'copy'; x.filter = f; x.drawImage(el, 0, 0); x.restore(); }
+        if (done) done();
+      });
+    };
+    this._baked = box;
+    box.classList.add('baked');
   },
 
   updateBuddy() {
@@ -182,6 +208,7 @@ const MapView = {
     this.demo = true;
     U.$('#joystick').classList.remove('hidden');
     UI.setGps('demo');
+    this.runLoop();
   },
   stopDemo() {
     this.demo = false;
@@ -233,7 +260,7 @@ const MapView = {
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
-        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`)}</div>` });
+        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}</div>` });
     }
     if (e.type === 'shrine') {
       return L.divIcon({ className: 'mk', iconSize: [54, 76], iconAnchor: [27, 72],

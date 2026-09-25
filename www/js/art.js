@@ -638,7 +638,143 @@ const Art = (() => {
   const refsOf = s => [...s.matchAll(/url\(#([^)"']+)\)|href="#([^"]+)"/g)].map(m => m[1] || m[2]);
   const stackCache = {};
   let stkN = 0;
-  function layers(svg) {
+  // 4.6.3: движущаяся часть — тоже картинка (обрезанная по её границам), а само движение — у картинки:
+  // видеокарта двигает готовый снимок, телефону не нужно перерисовывать рисунок каждый кадр.
+  // Точка вращения и сдвиги пересчитываются из рисунка, поэтому движение то же. Если часть так не переводится
+  // (вложенная анимация, обрезка или поворот у родителя, своё transform) — она остаётся встроенным SVG, как раньше.
+  const CALM = /(^|\s)(art-(?:flicker|blink|float|sway|wing|spin|spin-soft|aura|eyes)|ty-lamp|ty-puddle)(\s|$)/;
+  const KF_OK = /^(rotate|rotateZ|scale|scaleX|scaleY|skew|skewX|skewY|translate|translateX|translateY)$/;
+  const kfCache = {};
+  let kfSheet = null, kfN = 0;
+  // кадры анимации из таблиц стилей игры: [{key, transform, opacity, easing}] или null, если там есть что-то кроме движения и прозрачности
+  function kfOf(name) {
+    if (name in kfCache) return kfCache[name];
+    let rule = null;
+    for (const sh of document.styleSheets) {
+      let rs; try { rs = sh.cssRules; } catch (e) { continue; }
+      for (const r of rs) if (r.type === 7 && r.name === name) rule = r;
+    }
+    let out = null;
+    if (rule) {
+      out = [];
+      for (const k of rule.cssRules) {
+        const st = k.style, f = { key: k.keyText };
+        for (let i = 0; i < st.length; i++) {
+          const p = st[i];
+          if (p === 'transform') f.transform = st.transform;
+          else if (p === 'opacity') f.opacity = st.opacity;
+          else if (p === 'animation-timing-function') f.easing = st.animationTimingFunction;
+          else { out = null; break; }
+        }
+        if (!out) break;
+        out.push(f);
+      }
+    }
+    return (kfCache[name] = out);
+  }
+  // сдвиги в единицах рисунка → проценты от картинки части; остальное (поворот, масштаб, скос) не меняется
+  function kfMove(tr, sx, sy) {
+    if (!tr || tr === 'none') return tr;
+    let ok = true;
+    const out = tr.replace(/([a-zA-Z]+)\(([^)]*)\)/g, (m, fn, args) => {
+      if (!KF_OK.test(fn)) { ok = false; return m; }
+      if (!/^translate/.test(fn)) return m;
+      const a = args.split(',').map(x => x.trim()), pct = (x, k) => {
+        const n = /^(-?[\d.]+)(px)?$/.exec(x);
+        if (!n || (!n[2] && +n[1] !== 0)) { ok = false; return x; }
+        return `${+(+n[1] * k).toFixed(4)}%`;
+      };
+      if (fn === 'translateX') return `translateX(${pct(a[0], sx)})`;
+      if (fn === 'translateY') return `translateY(${pct(a[0], sy)})`;
+      return `translate(${pct(a[0], sx)}, ${pct(a[1] || '0', sy)})`;
+    });
+    return ok ? out : null;
+  }
+  function kfRule(frames) {
+    const css = frames.map(f => `${f.key}{${f.transform != null ? `transform:${f.transform};` : ''}${f.opacity != null ? `opacity:${f.opacity};` : ''}${f.easing ? `animation-timing-function:${f.easing};` : ''}}`).join('');
+    if (kfCache['@' + css]) return kfCache['@' + css];
+    if (!kfSheet) { kfSheet = document.createElement('style'); kfSheet.id = 'stk-kf'; document.head.appendChild(kfSheet); }
+    const name = 'stkA' + (++kfN);
+    kfSheet.sheet.insertRule(`@keyframes ${name}{${css}}`, kfSheet.sheet.cssRules.length);
+    return (kfCache['@' + css] = name);
+  }
+  const r4 = x => +x.toFixed(4);
+  // измеряет рисунок в невидимом месте страницы: {индекс части: {crop, css, op, calm}}
+  function probe(root, vb, units, ctx) {
+    const moved = {};
+    if (typeof document === 'undefined' || !document.documentElement || !units.some(u => u.anim)) return moved;
+    const host = document.createElement('div');
+    host.className = `art art-stack ${ctx || ''}`;
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText = `position:fixed;left:-99999px;top:0;width:${vb[2]}px;height:${vb[3]}px;visibility:hidden;pointer-events:none;contain:strict`;
+    try {
+      host.innerHTML = new XMLSerializer().serializeToString(root);
+      const svg = host.firstElementChild;
+      svg.setAttribute('width', vb[2]); svg.setAttribute('height', vb[3]);
+      document.documentElement.appendChild(host);
+      const byId = id => svg.querySelector(`[id="${CSS.escape(id)}"]`);
+      units.forEach((u, i) => {
+        if (!u.anim) return;
+        const el = svg.querySelector(`[data-u="${i}"]`);
+        // своё transform заменяется анимацией, вложенная анимация замрёт в картинке — такие части не трогаем
+        if (!el || el.hasAttribute('transform') || [...el.querySelectorAll('*')].some(d => getComputedStyle(d).animationName !== 'none')) return;
+        const cs = getComputedStyle(el), name = cs.animationName;
+        if (!name || name === 'none' || name.includes(',')) return;
+        // родители: без обрезки, масок и размывающих фильтров
+        for (let p = el.parentNode; p && p !== svg; p = p.parentNode) {
+          if (p.hasAttribute('clip-path') || p.hasAttribute('mask') || p.hasAttribute('filter')) return;
+          const f = getComputedStyle(p).filter;
+          if (f && f !== 'none' && /url|blur|drop-shadow/.test(f)) return;
+          if (getComputedStyle(p).animationName !== 'none') return;
+        }
+        const P = el.parentNode.getCTM();
+        if (!P || Math.abs(P.b) > 1e-6 || Math.abs(P.c) > 1e-6 || Math.abs(P.a - P.d) > 1e-6 || P.a <= 0) return;
+        const s = P.a, frames = kfOf(name);
+        if (!frames) return;
+        const hasT = frames.some(f => f.transform), op = frames.some(f => f.opacity != null);
+        if (hasT && cs.transformBox !== 'fill-box' && frames.some(f => f.transform && /(rotate|scale|skew)/.test(f.transform))) return;
+        const b = el.getBBox();
+        if (!(b.width > 0 && b.height > 0)) return;
+        // поля: обводки и области фильтров внутри части
+        let pad = 0;
+        for (const d of [el, ...el.querySelectorAll('*')]) {
+          const dc = getComputedStyle(d);
+          if (dc.stroke && dc.stroke !== 'none') { const m = d.getCTM(); pad = Math.max(pad, (parseFloat(dc.strokeWidth) || 1) * (m ? Math.hypot(m.a, m.b) : s) / 2 * 1.5); }
+          const fu = (d.getAttribute('filter') || '').match(/url\(#([^)"']+)\)/) || (dc.filter || '').match(/url\("?#([^)"']+)"?\)/);
+          if (fu) {
+            const F = byId(fu[1]);
+            if (!F || F.getAttribute('filterUnits') === 'userSpaceOnUse') return;
+            const fx = parseFloat(F.getAttribute('x') || '-10%') / (/%/.test(F.getAttribute('x') || '%') ? 100 : 1);
+            const fy = parseFloat(F.getAttribute('y') || '-10%') / (/%/.test(F.getAttribute('y') || '%') ? 100 : 1);
+            const fw = parseFloat(F.getAttribute('width') || '120%') / (/%/.test(F.getAttribute('width') || '%') ? 100 : 1);
+            const fh = parseFloat(F.getAttribute('height') || '120%') / (/%/.test(F.getAttribute('height') || '%') ? 100 : 1);
+            pad = Math.max(pad, Math.max(-fx, fx + fw - 1) * b.width * s, Math.max(-fy, fy + fh - 1) * b.height * s);
+          } else if (dc.filter && dc.filter !== 'none' && /blur|drop-shadow/.test(dc.filter)) return;
+        }
+        pad += 1.5 + 0.04 * Math.max(b.width, b.height) * s;
+        const cx = r4(P.a * b.x + P.e + vb[0] - pad), cy = r4(P.d * b.y + P.f + vb[1] - pad);
+        const cw = r4(b.width * s + 2 * pad), ch = r4(b.height * s + 2 * pad);
+        // сдвиги: 1 единица части = s единиц рисунка = s/cw ширины картинки
+        let anim = name;
+        if (frames.some(f => f.transform && /translate/.test(f.transform))) {
+          const fr = frames.map(f => ({ ...f, transform: f.transform && kfMove(f.transform, 100 * s / cw, 100 * s / ch) }));
+          if (fr.some((f, j) => frames[j].transform && !f.transform)) return;
+          anim = kfRule(fr);
+        } else if (frames.some(f => f.transform && !kfMove(f.transform, 1, 1))) return;
+        const o = cs.transformOrigin.split(' ').map(parseFloat);
+        const ox = P.a * (b.x + o[0]) + P.e + vb[0], oy = P.d * (b.y + o[1]) + P.f + vb[1];
+        const own = op ? parseFloat(el.getAttribute('opacity') || el.style.opacity || '1') : 1;
+        moved[i] = {
+          crop: [cx, cy, cw, ch], op, calm: CALM.test(el.getAttribute('class') || ''),
+          css: `left:${r4((cx - vb[0]) / vb[2] * 100)}%;top:${r4((cy - vb[1]) / vb[3] * 100)}%;width:${r4(cw / vb[2] * 100)}%;height:${r4(ch / vb[3] * 100)}%;` +
+            `transform-origin:${r4((ox - cx) / cw * 100)}% ${r4((oy - cy) / ch * 100)}%;${own !== 1 ? `opacity:${own};` : ''}` +
+            `animation:${anim} ${cs.animationDuration} ${cs.animationTimingFunction} ${cs.animationDelay} ${cs.animationIterationCount} ${cs.animationDirection} ${cs.animationFillMode}`,
+        };
+      });
+    } catch (e) { /* что не измерилось — остаётся встроенным SVG */ } finally { host.remove(); }
+    return moved;
+  }
+  function layers(svg, ctx) {
     if (!/xmlns=/.test(svg.slice(0, 200))) svg = svg.replace('<svg ', `<svg xmlns="${NS}" `);
     const vb = (/viewBox="([^"]+)"/.exec(svg) || [])[1] || '0 0 100 100', v = vb.split(/[\s,]+/).map(Number), ar = `${v[2]} / ${v[3]}`;
     if (typeof DOMParser === 'undefined') return { ar, parts: [{ svg }] };
@@ -670,9 +806,16 @@ const Art = (() => {
     const groups = [];
     units.forEach((u, i) => { const last = groups[groups.length - 1]; if (last && !u.anim && !last.anim) last.ids.add(i); else groups.push({ anim: u.anim, ids: new Set([i]) }); });
     const ser = new XMLSerializer();
+    const moved = probe(root, v, units, ctx);
     const parts = groups.map(gr => {
       const c = root.cloneNode(true);
-      c.querySelectorAll('[data-u]').forEach(e => { if (gr.ids.has(+e.getAttribute('data-u'))) e.removeAttribute('data-u'); else e.remove(); });
+      const mv = gr.anim && moved[[...gr.ids][0]];
+      c.querySelectorAll('[data-u]').forEach(e => {
+        if (!gr.ids.has(+e.getAttribute('data-u'))) return e.remove();
+        e.removeAttribute('data-u');
+        // своя прозрачность части становится исходным значением картинки (анимация её заменяет, а не умножает)
+        if (mv && mv.op) { e.removeAttribute('opacity'); e.style && e.style.removeProperty('opacity'); if (e.getAttribute('style') === '') e.removeAttribute('style'); }
+      });
       // из defs — только то, на что ссылается этот слой
       const defs = [...c.querySelectorAll('defs > [id]')], body = ser.serializeToString(c).replace(/<defs[\s\S]*?<\/defs>/g, '');
       const need = new Set(refsOf(body));
@@ -682,7 +825,9 @@ const Art = (() => {
       }
       defs.forEach(d => { if (!need.has(d.id)) d.remove(); });
       c.setAttribute('class', 'stk');
+      if (mv) { c.setAttribute('viewBox', mv.crop.join(' ')); c.removeAttribute('width'); c.removeAttribute('height'); }
       let s = ser.serializeToString(c);
+      if (mv) return { img: toUrl(s), css: mv.css, cls: mv.calm ? 'sa sa-c' : 'sa' };
       if (!gr.anim) return { img: toUrl(s) };
       // встроенный слой: свои id на каждой вставке (__L__ подменяется при выдаче)
       const ids = [...s.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
@@ -692,13 +837,14 @@ const Art = (() => {
     return { ar, parts };
   }
   // key — кэш слоёв одинаковых рисунков (дух, знак карты, Велимир); cls — доп. классы обёртки
-  function stack(svg, key, cls = '') {
-    const L = key ? (stackCache[key] || (stackCache[key] = layers(svg))) : layers(svg);
+  // ctx — классы места, от которых зависит анимация (например, луч родника движется только на карте)
+  function stack(svg, key, cls = '', ctx = '') {
+    const L = key ? (stackCache[key] || (stackCache[key] = layers(svg, `${cls} ${ctx}`))) : layers(svg, `${cls} ${ctx}`);
     const n = 'k' + (++stkN);
     return `<span class="art art-stack${cls ? ' ' + cls : ''}" style="aspect-ratio:${L.ar}">` +
-      L.parts.map(p => p.img ? `<img class="stk" src="${p.img}" alt="" draggable="false">` : p.svg.replace(/__L__/g, n)).join('') + '</span>';
+      L.parts.map(p => p.img ? `<img class="stk${p.cls ? ' ' + p.cls : ''}" src="${p.img}" alt="" draggable="false"${p.css ? ` style="${p.css}"` : ''}>` : p.svg.replace(/__L__/g, n)).join('') + '</span>';
   }
-  const asImg = (svg, key) => stack(svg, key);
+  const asImg = (svg, key, ctx) => stack(svg, key, '', ctx);
   const spiritK = (sid, shiny, dark) => stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`);
   return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
 })();
