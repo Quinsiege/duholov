@@ -1863,8 +1863,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes fmArcFlash { 0% { opacity: .9; transform: scale(1); } 33% { opacity: .4; transform: scale(.8); } 66% { opacity: 1; transform: scale(1.15); } }
 .fm-spark { opacity: 0; animation: fmSpark .8s cubic-bezier(.2, .6, .6, 1) infinite; animation-delay: calc(var(--i) * -.08s); filter: drop-shadow(0 0 3px #fde047); }
 @keyframes fmSpark { 0% { opacity: 1; transform: translate(0, 0); } 40% { opacity: 1; transform: translate(calc(var(--x) * .7), calc(var(--y) * .1 - 8px)); } 100% { opacity: 0; transform: translate(var(--x), var(--y)); } }
-.s-hide .fm-hp { animation: fmPanel 1.8s ease both; } .s-hide .fm-hp.puddle { animation-delay: 1.8s; } .s-hide .fm-hp.wires { animation-delay: 3.6s; animation-duration: 1.9s; animation-fill-mode: both; }
-.s-hide .fm-hs { animation: fmPeek 1.8s cubic-bezier(.3, 1.4, .5, 1) both; } .s-hide .puddle .fm-hs { animation-delay: 1.8s; } .s-hide .wires .fm-hs { animation-delay: 3.6s; }
+.s-hide .fm-hp { animation: fmPanel 2.4s ease both; } .s-hide .fm-hp.puddle { animation-delay: 2.4s; } .s-hide .fm-hp.wires { animation-delay: 4.8s; animation-duration: 2.5s; animation-fill-mode: both; }
+.s-hide .fm-hs { animation: fmPeek 2.4s cubic-bezier(.3, 1.4, .5, 1) both; } .s-hide .puddle .fm-hs { animation-delay: 2.4s; } .s-hide .wires .fm-hs { animation-delay: 4.8s; }
 @keyframes fmPanel { 0% { opacity: 0; transform: scale(1.18); } 14% { opacity: 1; } 86% { opacity: 1; } 100% { opacity: 0; transform: scale(1); } }
 @keyframes fmPeek { 0% { transform: translateY(30%) scale(.6); opacity: 0; } 25% { transform: none; opacity: 1; } 100% { transform: translateY(-4%); opacity: 1; } }
 
@@ -1872,11 +1872,11 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 /* карта: золотые улицы уходят вдаль, круг Ловчего, духи выскакивают рядом */
 .s-map .fm-map { opacity: 1; }
 .fm-map { background: radial-gradient(80% 60% at 50% 60%, #1b1040, #07030f 80%); } .fm-map::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 52%; background: linear-gradient(#07030f 18%, rgba(7, 3, 15, .85) 45%, rgba(27, 16, 64, .35) 75%, transparent); pointer-events: none; }
-.fm-plane { position: absolute; left: 50%; top: 60%; width: 300vmax; height: 300vmax; margin: -150vmax 0 0 -150vmax; transform: perspective(900px) rotateX(60deg); }
-.fm-roads { position: absolute; inset: 0; opacity: .95; background-size: 64vmin 64vmin !important;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23120b25'/%3E%3Cg fill='%232c2154' stroke='%23e0b45a' stroke-opacity='.35' stroke-width='1'%3E%3Crect x='14' y='14' width='70' height='54'/%3E%3Crect x='104' y='14' width='40' height='70'/%3E%3Crect x='158' y='20' width='30' height='40'/%3E%3Crect x='14' y='90' width='50' height='40'/%3E%3Crect x='80' y='104' width='66' height='36'/%3E%3Crect x='160' y='80' width='30' height='60'/%3E%3Crect x='20' y='150' width='40' height='40'/%3E%3Crect x='80' y='158' width='54' height='30'/%3E%3Crect x='150' y='156' width='40' height='34'/%3E%3C/g%3E%3Cg stroke='%23f3cf6b' stroke-width='4' fill='none'%3E%3Cpath d='M0 3H200M0 97H200M0 146H200M3 0V200M96 0V200M152 0V200'/%3E%3C/g%3E%3Cg fill='%23ffe7a3'%3E%3Ccircle cx='50' cy='3' r='2.4'/%3E%3Ccircle cx='130' cy='97' r='2.4'/%3E%3Ccircle cx='96' cy='60' r='2.4'/%3E%3Ccircle cx='152' cy='170' r='2.4'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 34vmin 34vmin; }
-.s-map .fm-roads { animation: fmWalk 5.2s linear forwards; }
-@keyframes fmWalk { to { background-position: 0 26vmin; } }
+.fm-plane { position: absolute; left: 50%; top: 60%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax; transform: perspective(900px) rotateX(60deg); }
+.fm-roads { position: absolute; inset: -6% 0; opacity: 1; background-size: 100% 100% !important; background-repeat: no-repeat !important;
+  -webkit-mask: radial-gradient(closest-side, #000 72%, transparent); mask: radial-gradient(closest-side, #000 72%, transparent); background-color: #120b25; }
+.s-map .fm-roads { animation: fmWalk 7s linear forwards; }
+@keyframes fmWalk { from { transform: translateY(-3%); } to { transform: translateY(3%); } }
 .fm-ring { position: absolute; left: 50%; top: 50%; width: 64vmin; height: 64vmin; margin: -32vmin 0 0 -32vmin; opacity: .85; }
 .fm-ring i { position: absolute; inset: 0; border-radius: 50%; }
 .fm-ring .r1 { background: var(--rz-runes) center / 100% 100% no-repeat; animation: spin 30s linear infinite; }
@@ -1994,8 +1994,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm-cap { position: absolute; z-index: 5; left: 6%; right: 6%; bottom: calc(10vh + 16px); text-align: center; font-family: 'Philosopher', serif; font-style: italic;
   font-size: min(5.4vmin, 28px); line-height: 1.35; text-shadow: 0 2px 10px #000, 0 0 30px rgba(0, 0, 0, .8); opacity: 0; }
 .fm-cap b { font-style: normal; font-weight: 700; color: #fde68a; text-shadow: 0 0 14px rgba(253, 224, 71, .5), 0 2px 8px #000; }
-.fm-cap.in { animation: fmCap 4.6s ease forwards; }
-@keyframes fmCap { 0% { opacity: 0; filter: blur(8px); letter-spacing: .12em; transform: translateY(8px); } 14% { opacity: 1; filter: none; letter-spacing: 0; transform: none; } 86% { opacity: 1; } 100% { opacity: 0; } }
+.fm-cap.in { animation: fmCap var(--cd, 5s) ease forwards; }
+@keyframes fmCap { 0% { opacity: 0; filter: blur(8px); letter-spacing: .12em; transform: translateY(8px); } 7% { opacity: 1; filter: none; letter-spacing: 0; transform: none; } 93% { opacity: 1; } 100% { opacity: 0; } }
 .fm-bars i { position: absolute; left: 0; right: 0; z-index: 5; height: 9vh; background: #000; transition: transform .8s ease; }
 .fm-bars i:first-child { top: 0; } .fm-bars i:last-child { bottom: 0; }
 .s-logo .fm-bars i:first-child { transform: translateY(-100%); } .s-logo .fm-bars i:last-child { transform: translateY(100%); }
@@ -2197,41 +2197,41 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm-toast { position: absolute; left: 16px; right: 16px; top: 18px; z-index: 4; display: flex; justify-content: center; opacity: 0; }
 .fm-toast .toast { animation: none; }
 /* за открытым окном интерфейс мягко темнеет и размывается (а не прямоугольная шторка) */
-.s-auction .fm-scr { animation: fmAucDim 7.6s linear both; }
+.s-auction .fm-scr { animation: fmAucDim 9.5s linear both; }
 @keyframes fmAucDim { 0%, 19% { filter: none; } 22%, 39% { filter: brightness(.5) blur(1.5px); } 42%, 64% { filter: none; } 67%, 87% { filter: brightness(.5) blur(1.5px); } 90%, 100% { filter: none; } }
-/* 7,6 с: лот (1,37) → окно лота → «Купить» (2,89) → уведомление → «Мои лоты» (4,26) → итоги (5,0) → «Отлично» (6,38) */
-.s-auction .fm-am { animation: fmAucModal 7.6s linear both; }
+/* 9,5 с: лот (1,7) → окно лота → «Купить» (3,6) → уведомление → «Мои лоты» (5,3) → итоги (6,3) → «Отлично» (8,0) */
+.s-auction .fm-am { animation: fmAucModal 9.5s linear both; }
 @keyframes fmAucModal { 0%, 19% { opacity: 0; } 21%, 40% { opacity: 1; } 42%, 100% { opacity: 0; } }
-.s-auction .fm-am .modal { animation: fmAucPop 7.6s cubic-bezier(.2, 1.4, .4, 1) both; }
+.s-auction .fm-am .modal { animation: fmAucPop 9.5s cubic-bezier(.2, 1.4, .4, 1) both; }
 @keyframes fmAucPop { 0%, 19% { transform: scale(.82) translateY(20px); } 23%, 39% { transform: none; } 42%, 100% { transform: scale(.92); } }
-.s-auction .fm-toast { animation: fmAucToast 7.6s cubic-bezier(.2, 1.3, .4, 1) both; }
+.s-auction .fm-toast { animation: fmAucToast 9.5s cubic-bezier(.2, 1.3, .4, 1) both; }
 @keyframes fmAucToast { 0%, 41% { opacity: 0; transform: translateY(-16px) scale(.9); } 44%, 58% { opacity: 1; transform: none; } 61%, 100% { opacity: 0; transform: translateY(-10px); } }
-.s-auction .fm-tabs .tb, .s-auction .fm-av.mine { animation: fmAucMine 7.6s linear both; }
-.s-auction .fm-av.buy { animation: fmAucBuy 7.6s linear both; }
+.s-auction .fm-tabs .tb, .s-auction .fm-av.mine { animation: fmAucMine 9.5s linear both; }
+.s-auction .fm-av.buy { animation: fmAucBuy 9.5s linear both; }
 @keyframes fmAucMine { 0%, 56% { opacity: 0; transform: translateX(14px); } 59%, 100% { opacity: 1; transform: none; } }
 @keyframes fmAucBuy { 0%, 56% { opacity: 1; transform: none; } 59%, 100% { opacity: 0; transform: translateX(-14px); } }
-.s-auction .fm-gm { animation: fmAucGot 7.6s linear both; }
+.s-auction .fm-gm { animation: fmAucGot 9.5s linear both; }
 @keyframes fmAucGot { 0%, 65% { opacity: 0; } 68%, 87% { opacity: 1; } 90%, 100% { opacity: 0; } }
-.s-auction .fm-gm .modal { animation: fmAucGotPop 7.6s cubic-bezier(.2, 1.4, .4, 1) both; }
+.s-auction .fm-gm .modal { animation: fmAucGotPop 9.5s cubic-bezier(.2, 1.4, .4, 1) both; }
 @keyframes fmAucGotPop { 0%, 65% { transform: scale(.82) translateY(20px); } 69%, 87% { transform: none; } 90%, 100% { transform: scale(.92); } }
 /* нажатия: элемент вдавливается и вспыхивает, от места касания расходится волна */
 .fm-phone .fm-av.buy .au-lot:first-child, .fm-buy, .fm-tmine, .fm-gm .btn { position: relative; overflow: hidden; }
 .fm-phone .fm-av.buy .au-lot:first-child::after, .fm-buy::after, .fm-tmine::after, .fm-gm .btn::after { content: ''; position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; margin: -130px 0 0 -130px;
   border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .55), rgba(253, 230, 138, .25) 45%, transparent 70%); opacity: 0; pointer-events: none; }
-.s-auction .fm-av.buy .au-lot:first-child { animation: fmPressLot 7.6s linear both; }
-.s-auction .fm-av.buy .au-lot:first-child::after { animation: fmRipLot 7.6s ease-out both; }
+.s-auction .fm-av.buy .au-lot:first-child { animation: fmPressLot 9.5s linear both; }
+.s-auction .fm-av.buy .au-lot:first-child::after { animation: fmRipLot 9.5s ease-out both; }
 @keyframes fmPressLot { 0%, 17% { transform: none; filter: none; } 18%, 19.5% { transform: scale(.96); filter: brightness(1.35); box-shadow: 0 0 0 2px #fde047, 0 0 26px rgba(253, 224, 71, .6); } 21%, 100% { transform: none; filter: none; } }
 @keyframes fmRipLot { 0%, 17.5% { opacity: 0; transform: scale(.1); } 18% { opacity: 1; transform: scale(.2); } 22%, 100% { opacity: 0; transform: scale(1.3); } }
-.s-auction .fm-buy { animation: fmPressBuy 7.6s linear both; }
-.s-auction .fm-buy::after { animation: fmRipBuy 7.6s ease-out both; }
+.s-auction .fm-buy { animation: fmPressBuy 9.5s linear both; }
+.s-auction .fm-buy::after { animation: fmRipBuy 9.5s ease-out both; }
 @keyframes fmPressBuy { 0%, 37.5% { transform: none; filter: none; } 38%, 39.5% { transform: scale(.92); filter: brightness(1.45); box-shadow: 0 0 30px rgba(253, 224, 71, .9); } 41%, 100% { transform: none; filter: none; } }
 @keyframes fmRipBuy { 0%, 37.5% { opacity: 0; transform: scale(.1); } 38% { opacity: 1; transform: scale(.2); } 42%, 100% { opacity: 0; transform: scale(1.2); } }
-.s-auction .fm-tmine { animation: fmPressTab 7.6s linear both; }
-.s-auction .fm-tmine::after { animation: fmRipTab 7.6s ease-out both; }
+.s-auction .fm-tmine { animation: fmPressTab 9.5s linear both; }
+.s-auction .fm-tmine::after { animation: fmRipTab 9.5s ease-out both; }
 @keyframes fmPressTab { 0%, 55.5% { transform: none; } 56%, 57.5% { transform: scale(.93); filter: brightness(1.4); } 59%, 100% { transform: none; filter: none; } }
 @keyframes fmRipTab { 0%, 55.5% { opacity: 0; transform: scale(.1); } 56% { opacity: 1; transform: scale(.2); } 60%, 100% { opacity: 0; transform: scale(1.1); } }
-.s-auction .fm-gm .btn { animation: fmPressOk 7.6s linear both; }
-.s-auction .fm-gm .btn::after { animation: fmRipOk 7.6s ease-out both; }
+.s-auction .fm-gm .btn { animation: fmPressOk 9.5s linear both; }
+.s-auction .fm-gm .btn::after { animation: fmRipOk 9.5s ease-out both; }
 @keyframes fmPressOk { 0%, 83.5% { transform: none; } 84%, 85.5% { transform: scale(.92); filter: brightness(1.45); box-shadow: 0 0 30px rgba(253, 224, 71, .9); } 87%, 100% { transform: none; filter: none; } }
 @keyframes fmRipOk { 0%, 83.5% { opacity: 0; transform: scale(.1); } 84% { opacity: 1; transform: scale(.2); } 88%, 100% { opacity: 0; transform: scale(1.2); } }
 /* палец: мягкий светящийся след касания, при нажатии сжимается */
@@ -2239,8 +2239,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   background: radial-gradient(circle, rgba(255, 255, 255, .92) 0 22%, rgba(255, 255, 255, .45) 34%, rgba(253, 224, 138, .18) 56%, transparent 70%);
   box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
 .fm-finger i { position: absolute; inset: 0; border-radius: 50%; border: 2.5px solid rgba(253, 230, 138, .95); box-shadow: 0 0 14px rgba(253, 224, 71, .8); opacity: 0; }
-.s-auction .fm-finger { animation: fmFinger 7.6s cubic-bezier(.45, 0, .2, 1) both; }
-.s-auction .fm-finger i { animation: fmTap 7.6s ease-out both; }
+.s-auction .fm-finger { animation: fmFinger 9.5s cubic-bezier(.45, 0, .2, 1) both; }
+.s-auction .fm-finger i { animation: fmTap 9.5s ease-out both; }
 @keyframes fmFinger {
   0% { opacity: 0; transform: translate(300px, 760px); }
   8% { opacity: 1; transform: translate(290px, 600px); }
@@ -2255,7 +2255,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   61%, 83.5% { opacity: 0; transform: scale(.5); } 84% { opacity: 1; transform: scale(.55); } 88%, 100% { opacity: 0; transform: scale(2); } }
 .fm-coins i { position: absolute; left: var(--x); top: -8vmin; width: 7vmin; opacity: 0; }
 .fm-coins svg, .fm-coins .art { width: 100%; height: auto; }
-.s-auction .fm-coins i { animation: fmCoin 1.6s ease-in infinite; animation-delay: calc(5s + var(--i) * .15s); }
+.s-auction .fm-coins i { animation: fmCoin 1.6s ease-in infinite; animation-delay: calc(6.3s + var(--i) * .15s); }
 @keyframes fmCoin { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0; transform: translateY(110vh) rotate(540deg); } }
 .calm .fm-coins i { animation: none !important; }
 
@@ -2265,8 +2265,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm-wp.rain { background: linear-gradient(#1e293b, #334155 55%, #0f172a); }
 .fm-wp.snow { background: linear-gradient(#1e3a5f, #93c5fd 60%, #e0f2fe); }
 .fm-wp.moon { background: radial-gradient(40% 30% at 50% 28%, rgba(253, 230, 138, .35), transparent 70%), linear-gradient(#070318, #1e1045 60%, #0a0518); }
-.s-weather .fm-wp { animation: fmPanel 1.6s ease both; animation-delay: calc(var(--i) * 1.6s); }
-.s-weather .fm-wp.moon { animation: fmPanelLast 1.8s ease both 4.8s; }
+.s-weather .fm-wp { animation: fmPanel 2s ease both; animation-delay: calc(var(--i) * 2s); }
+.s-weather .fm-wp.moon { animation: fmPanelLast 2s ease both 6s; }
 @keyframes fmPanelLast { 0% { opacity: 0; transform: scale(1.18); } 14% { opacity: 1; } 100% { opacity: 1; transform: scale(1); } }
 .fm-wi { position: absolute; left: 50%; top: 18%; width: 30vmin; margin-left: -15vmin; filter: drop-shadow(0 0 24px rgba(255, 255, 255, .5)); }
 .fm-wi svg, .fm-wi .art { width: 100%; height: auto; }

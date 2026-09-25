@@ -13,25 +13,25 @@ const Trailer = {
 
   // Сцены: [длительность, сцена, подпись]; подписи внутри сцены — в CUES
   SCENES: [
-    [5000, 'city', 'Твой город. Обычная ночь.'],
-    [5000, 'crack', 'Но раз в тысячу лет граница между <b>Явью</b> и <b>Навью</b> истончается…'],
-    [5600, 'koschey', '…и <b>Кощей Бессмертный</b> распахивает врата.'],
-    [4400, 'swarm', 'Сотни <b>духов Нави</b> вырвались в наш мир.'],
-    [5400, 'hide', 'Они прячутся <b>в фонарях</b>…'],
-    [5200, 'map', 'Выйди на улицу — <b>духи уже рядом</b>.'],
-    [5400, 'springs', 'Родники у настоящих мест города дарят <b>обереги</b>.'],
-    [4800, 'catch', 'Брось оберег — и дух <b>твой</b>.'],
-    [6000, 'evolve', 'Расти духов — и они <b>превращаются</b>.'],
-    [5600, 'cocoon', 'Гуляй — и из <b>коконов</b> вылупятся редкие духи.'],
-    [6400, 'dex', ''],
-    [4600, 'clans', 'Вступи в <b>дружину</b>. Держите Капища вместе.'],
-    [5800, 'duel', 'Бейся за <b>Капища</b>: дух против духа.'],
-    [7000, 'raid', 'Разломы открываются каждый час. Собери <b>отряд</b> и одолей стража Нави.'],
-    [7600, 'auction', 'Покупай и продавай духов на <b>аукционе</b>.'],
-    [6400, 'weather', 'Настоящая <b>погода</b> и <b>луна</b> решают, кто выйдет на улицы.'],
-    [5400, 'wardrobe', 'Собери свой <b>облик</b> Ловчего.'],
-    [5400, 'league', 'Поднимайся в <b>Лиге</b> — стань лучшим Ловчим сезона.'],
-    [5600, 'mentor', '«Ордену нужен новый Ловчий…»'],
+    [6000, 'city', 'Твой город. Обычная ночь.'],
+    [6500, 'crack', 'Но раз в тысячу лет граница между <b>Явью</b> и <b>Навью</b> истончается…'],
+    [7000, 'koschey', '…и <b>Кощей Бессмертный</b> распахивает врата.'],
+    [5500, 'swarm', 'Сотни <b>духов Нави</b> вырвались в наш мир.'],
+    [7200, 'hide', 'Они прячутся <b>в фонарях</b>…'],
+    [7000, 'map', 'Выйди на улицу — <b>духи уже рядом</b>.'],
+    [7000, 'springs', 'Родники у настоящих мест города дарят <b>обереги</b>.'],
+    [6500, 'catch', 'Брось оберег — и дух <b>твой</b>.'],
+    [7500, 'evolve', 'Расти духов — и они <b>превращаются</b>.'],
+    [7000, 'cocoon', 'Гуляй — и из <b>коконов</b> вылупятся редкие духи.'],
+    [8000, 'dex', ''],
+    [6500, 'clans', 'Вступи в <b>дружину</b>. Держите Капища вместе.'],
+    [7200, 'duel', 'Бейся за <b>Капища</b>: дух против духа.'],
+    [8500, 'raid', 'Разломы открываются каждый час. Собери <b>отряд</b> и одолей стража Нави.'],
+    [9500, 'auction', 'Покупай и продавай духов на <b>аукционе</b>.'],
+    [8000, 'weather', 'Настоящая <b>погода</b> и <b>луна</b> решают, кто выйдет на улицы.'],
+    [6500, 'wardrobe', 'Собери свой <b>облик</b> Ловчего.'],
+    [6500, 'league', 'Поднимайся в <b>Лиге</b> — стань лучшим Ловчим сезона.'],
+    [7000, 'mentor', '«Ордену нужен новый Ловчий…»'],
     [0, 'logo', ''],
   ],
   // события внутри сцен: [сцена, через сколько мс, что сделать]
@@ -41,8 +41,8 @@ const Trailer = {
     ['koschey', 0, t => { t.hit(2); t.fx.burst({ x: .5, y: .8, n: 110, c: ['187,247,208', '255,255,255', '192,132,252'] }); }],
     ['koschey', 1400, t => { t.hit(1); t.fx.burst({ x: .5, y: .8, n: 50, c: ['187,247,208', '255,255,255'], rings: 1 }); }],
     ['koschey', 2600, t => t.hit(1)],
-    ['hide', 1800, t => t.cap('…<b>в лужах</b>…')],
-    ['hide', 3600, t => t.cap('…и <b>в проводах</b>.')],
+    ['hide', 2400, t => t.cap('…<b>в лужах</b>…', 2400)],
+    ['hide', 4800, t => t.cap('…и <b>в проводах</b>.', 2400)],
     ['catch', 2100, t => { t.hit(1); t.fx.burst(); }],
     ['evolve', 2050, t => { t.hit(1); t.fx.burst({ y: .46, n: 70, c: ['253,224,71', '255,140,60', '255,255,255'] }); }],
     ['evolve', 3950, t => { t.hit(2); t.fx.burst({ y: .46, n: 130, c: ['253,224,71', '255,140,60', '255,255,255'] }); }],
@@ -53,7 +53,7 @@ const Trailer = {
     ['duel', 4400, t => { t.hit(2); t.fx.burst({ x: .75, y: .5, n: 80, c: ['254,240,138', '167,139,250', '255,255,255'] }); }],
     ['raid', 2300, t => t.hit(1)], ['raid', 3000, t => t.hit(1)], ['raid', 3700, t => t.hit(1)], ['raid', 4400, t => t.hit(1)],
     ['raid', 5200, t => { t.hit(2); t.fx.burst({ y: .36, n: 140, c: ['249,115,22', '253,224,71', '255,255,255', '192,132,252'] }); }],
-    ['weather', 3200, t => t.fx.mode('snow')], ['weather', 4800, t => t.fx.mode('weather')],
+    ['weather', 4000, t => t.fx.mode('snow')], ['weather', 6000, t => t.fx.mode('weather')],
     ['league', 2900, t => { const e = t.q('.fm-row.me em'); if (e) e.textContent = '1'; }],
     ['league', 3500, t => t.fx.burst({ y: .5, n: 90, c: ['253,224,71', '244,114,182', '96,165,250', '134,239,172'] })],
     ['mentor', 2800, t => t.cap('«…и он уже здесь. Это — <b>ты</b>.»')],
@@ -201,34 +201,6 @@ const Trailer = {
       <g fill="#fff3b0">${Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + (i - 4.5) * .32; return `<circle class="fm-spark" style="--i:${i};--x:${(Math.cos(a) * (18 + (i % 3) * 8)).toFixed(1)}px;--y:${(Math.sin(a) * 14 + 34 + (i % 4) * 6).toFixed(1)}px" cx="183" cy="83" r="${1 + (i % 3) * .4}"/>`; }).join('')}</g>
     </svg>`;
   },
-  // кусок «Карты Нави» для сцены с картой: кварталы с объёмными домами и окнами, парк с ёлочками, канал с мостами,
-  // золотые проспекты со свечением, фонари — узор повторяется, но крупно и вдали растворяется в дымке
-  mapTile() {
-    let s = `<rect width="400" height="400" fill="#120b25"/>`;
-    // решётка земли
-    for (let y = 0; y < 400; y += 20) for (let x = (y / 20) % 2 ? 10 : 0; x < 400; x += 20) s += `<path d="M${x + 10} ${y + 2}l8 8-8 8-8-8z" fill="none" stroke="#f3cf6b" stroke-opacity=".05"/>`;
-    // парк
-    s += `<rect x="228" y="22" width="164" height="118" rx="6" fill="#0f2c24" stroke="#1d5a44" stroke-width="1.5"/>`;
-    for (let i = 0; i < 26; i++) { const tx = 240 + (i * 53) % 140, ty = 34 + (i * 37) % 96; s += `<path d="M${tx} ${ty - 7}l5 9h-10z" fill="#34d399" fill-opacity=".35"/>`; }
-    // канал
-    s += `<rect x="0" y="268" width="400" height="24" fill="#0b3142"/><path d="M0 268H400M0 292H400" stroke="#2dd4bf" stroke-opacity=".6" stroke-width="1.4"/>`;
-    // дома: крыша, южная стена с окнами, золотая кромка
-    const B = [[20, 22, 70, 50, 14], [104, 20, 44, 72, 20], [160, 30, 50, 40, 10], [20, 96, 56, 44, 12], [96, 116, 112, 34, 16], [20, 162, 42, 54, 18], [84, 166, 60, 40, 12], [160, 170, 50, 60, 22], [236, 168, 70, 38, 12], [322, 160, 66, 56, 16], [236, 222, 150, 26, 8], [20, 306, 80, 56, 14], [120, 312, 50, 70, 20], [190, 306, 90, 40, 12], [300, 310, 88, 62, 18]];
-    for (const [x, y, w, h, d] of B) {
-      s += `<rect x="${x}" y="${y + d}" width="${w}" height="${h}" fill="#150e2e"/>`; // тень-стена
-      for (let wx = x + 4; wx < x + w - 3; wx += 6) if ((wx * 7 + y) % 3) s += `<rect x="${wx}" y="${y + h + 2}" width="2" height="${Math.max(2, d - 5)}" fill="#ffc466" fill-opacity="${((wx * 13) % 5) / 8 + .2}"/>`;
-      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="#2c2154" stroke="#f3cf6b" stroke-opacity=".45" stroke-width="1"/>`;
-    }
-    // дороги: свечение, кайма, золото, блик; мосты через канал
-    const R = 'M0 10H400M200 0V400M0 150H400M72 150V400M320 0V150';
-    s += `<path d="${R}" stroke="#fbbf24" stroke-opacity=".14" stroke-width="22" fill="none"/><path d="${R}" stroke="#06030d" stroke-width="10" fill="none"/>`
-      + `<path d="${R}" stroke="#e0b45a" stroke-width="6.5" fill="none"/><path d="${R}" stroke="#fff6d6" stroke-opacity=".55" stroke-width="1.4" fill="none"/>`
-      + `<path d="M190 264h20v32h-20zM62 264h20v32h-20z" fill="#e0b45a" opacity=".9"/>`;
-    // фонари
-    for (const [x, y] of [[40, 10], [120, 10], [280, 10], [360, 10], [200, 60], [200, 110], [200, 200], [200, 330], [30, 150], [140, 150], [260, 150], [380, 150], [72, 220], [72, 360], [320, 60]])
-      s += `<circle cx="${x}" cy="${y}" r="9" fill="#ffc466" fill-opacity=".16"/><circle cx="${x}" cy="${y}" r="2.2" fill="#fff0c8"/>`;
-    return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">${s}</svg>`)}")`;
-  },
 
   /* ---------- 4.14: сцены с механиками, стена бестиария, удар молнии при появлении Кощея ---------- */
   // удар молнии в землю там, где встаёт Кощей: толстый разряд с ветвями, вспышка у земли; дуги Нави вокруг него
@@ -344,6 +316,8 @@ const Trailer = {
     at('.fm-av.buy .au-lot', 'a'); at('.fm-buy', 'b'); at('.fm-tmine', 'c'); at('.fm-gm .btn', 'd');
   },
 
+  // настоящая «Карта Нави» для сцены с картой (www/img/trailer-map.webp: ночной Арбат, отрисован NavMap) — путь от скрипта
+  get MAP_IMG() { const sc = document.querySelector('script[src*="trailer.js"]'); return sc ? sc.src.replace(/js\/trailer\.js.*$/, 'img/trailer-map.webp') : 'img/trailer-map.webp'; },
   play(o = {}) {
     return new Promise(done => {
       Sfx.init();
@@ -379,7 +353,7 @@ const Trailer = {
             <div class="fm-hp wires"><div class="fm-hb">${this.wires()}<div class="fm-hs">${Art.spirit('vayfayka')}</div></div></div>
           </div>
           <div class="fm-map">
-            <div class="fm-plane"><i class="fm-roads" style='background-image:${this.mapTile()}'></i><i class="fm-ring"><i class="r1"></i><i class="r2"></i></i></div>
+            <div class="fm-plane"><i class="fm-roads" style="background-image:url('${this.MAP_IMG}')"></i><i class="fm-ring"><i class="r1"></i><i class="r2"></i></i></div>
             <div class="fm-sps">${['kapelka', 'ugolek', 'mshonok'].map((id, i) => `<div style="--i:${i}">${Art.spirit(id)}</div>`).join('')}</div>
             <div class="fm-me"><i></i></div>
           </div>
@@ -406,7 +380,7 @@ const Trailer = {
       document.body.appendChild(root);
       this.fitAuction(root);
       const capEl = root.querySelector('.fm-cap');
-      let timers = [], ended = false, music = null;
+      let timers = [], ended = false, music = null, capDur = 5000;
       const at = (ms, fn) => timers.push(setTimeout(fn, ms));
       const fx = this.particles(root.querySelector('.fm-fx'), calm);
       const t = {
@@ -419,7 +393,7 @@ const Trailer = {
           const tick = () => { if (ended) return; const k = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = (a + (b - a) * e).toFixed(dec); if (k < 1) requestAnimationFrame(tick); };
           tick();
         }),
-        cap: html => { capEl.classList.remove('in'); void capEl.offsetWidth; capEl.innerHTML = html; if (html) capEl.classList.add('in'); },
+        cap: (html, ms) => { capEl.style.setProperty('--cd', (ms || capDur) + 'ms'); capEl.classList.remove('in'); void capEl.offsetWidth; capEl.innerHTML = html; if (html) capEl.classList.add('in'); },
         // удар: вспышка и тряска камеры (сила 1–2)
         hit: k => {
           const f = root.querySelector('.fm-flash');
@@ -455,6 +429,7 @@ const Trailer = {
         this.SCENES.slice(i0, o.only ? i0 + 1 : undefined).forEach(([dur, cls, text]) => {
           at(tt, () => {
             root.className = 'fm on s-' + cls;
+            capDur = dur || 6000;
             t.cap(text);
             fx.mode(cls);
             this.sound(cls);
@@ -595,7 +570,7 @@ const Trailer = {
       case 'koschey': [0, 1.4, 2.6].forEach((w, i) => { N(.3, { vol: .24 - i * .05, type: 'highpass', f: 3500, to: 500, when: w }); N(2.2, { vol: .22 - i * .04, f: 500, to: 40, when: w + .04 }); T(42, 1.6, { vol: .2 - i * .05, to: 26, when: w }); });
         T(49, 4.5, { type: 'sawtooth', vol: 0.035 }); pad([98, 146.8, 155.6], 4.4, 0.03); break;
       case 'swarm': for (let i = 0; i < 7; i++) whoosh(i * 0.55, 0.06 + (i % 2) * .02); T(98, 4.2, { type: 'triangle', vol: 0.035 }); break;
-      case 'hide': [0, 1.8, 3.6].forEach((w, i) => { T([523.3, 587.3, 659.3][i], 0.6, { vol: 0.05, when: w }); T([1046.5, 1174.7, 1318.5][i], 0.4, { vol: 0.02, when: w + .08 }); }); break;
+      case 'hide': [0, 2.4, 4.8].forEach((w, i) => { T([523.3, 587.3, 659.3][i], 0.6, { vol: 0.05, when: w }); T([1046.5, 1174.7, 1318.5][i], 0.4, { vol: 0.02, when: w + .08 }); }); break;
       case 'map': [0.6, 1.5, 2.4].forEach((w, i) => T([784, 880, 1046.5][i], 0.35, { type: 'triangle', vol: 0.05, when: w })); break;
       case 'catch': whoosh(1.4, .09); T(1318.5, .5, { vol: .06, when: 2.1 }); [0, .09, .18, .27].forEach((w, i) => T([659.3, 784, 987.8, 1318.5][i], .5, { type: 'triangle', vol: .05, when: 2.3 + w })); boom(2.1, .12); break;
       case 'clans': [0.2, 0.9, 1.6].forEach(w => { boom(w, .1); }); pad([196, 246.9, 293.7], 4.2, 0.03); break;
@@ -605,8 +580,8 @@ const Trailer = {
       case 'cocoon': for (let i = 0; i < 8; i++) N(.12, { vol: .05, f: 400, to: 200, when: i * .28 }); N(.4, { vol: .12, type: 'highpass', f: 2000, to: 800, when: 3 }); boom(3.5, .12); [0, .1, .2].forEach((w, i) => T([784, 987.8, 1318.5][i], 1, { type: 'triangle', vol: .06, when: 3.55 + w })); break;
       case 'duel': [1.2, 2.2, 3.2].forEach(w => { N(.35, { vol: .12, type: 'bandpass', f: 2500, to: 600, when: w, q: 2 }); T(220, .3, { type: 'square', vol: .03, to: 80, when: w }); }); T(880, .6, { type: 'sawtooth', vol: .04, to: 220, when: 2.9 }); boom(4.4, .2); break;
       case 'raid': T(55, 7, { type: 'sawtooth', vol: .03 }); N(1.5, { vol: .08, f: 200, to: 1200, when: .4 }); for (let i = 0; i < 9; i++) whoosh(2 + i * .36, .05); [2.3, 3, 3.7, 4.4].forEach(w => boom(w, .1)); boom(5.2, .26); [0, .15, .3, .45].forEach((w, i) => T([392, 523.3, 659.3, 784][i], 1.4, { type: 'triangle', vol: .07, when: 5.6 + w })); break;
-      case 'auction': [1.37, 2.89, 4.26, 6.38].forEach(w => { T(1400, .05, { vol: .05, when: w }); N(.05, { vol: .04, type: 'highpass', f: 4000, when: w }); }); [0, .09, .18, .27].forEach((w, i) => T([659.3, 784, 987.8, 1318.5][i], .5, { type: 'triangle', vol: .05, when: 3.08 + w })); [0, .12, .24, .36, .48].forEach((w, i) => T(1800 + i * 150, .09, { vol: .05, when: 5.05 + w })); break;
-      case 'weather': [0, 1.6, 3.2, 4.8].forEach(w => whoosh(w, .07)); N(1.6, { vol: .06, f: 3000, to: 3000, when: 1.6 }); pad([220, 277.2, 329.6], 6, .02); break;
+      case 'auction': [1.71, 3.61, 5.32, 7.98].forEach(w => { T(1400, .05, { vol: .05, when: w }); N(.05, { vol: .04, type: 'highpass', f: 4000, when: w }); }); [0, .09, .18, .27].forEach((w, i) => T([659.3, 784, 987.8, 1318.5][i], .5, { type: 'triangle', vol: .05, when: 3.85 + w })); [0, .12, .24, .36, .48].forEach((w, i) => T(1800 + i * 150, .09, { vol: .05, when: 6.3 + w })); break;
+      case 'weather': [0, 2, 4, 6].forEach(w => whoosh(w, .07)); N(2, { vol: .06, f: 3000, to: 3000, when: 2 }); pad([220, 277.2, 329.6], 6, .02); break;
       case 'wardrobe': for (let i = 0; i < 10; i++) T(1046.5 + i * 60, .12, { type: 'triangle', vol: .04, when: .2 + i * .5 }); [0, .12, .24].forEach((w, i) => T([784, 987.8, 1174.7][i], 1.2, { type: 'triangle', vol: .06, when: 4.7 + w })); break;
       case 'league': for (let i = 0; i < 14; i++) N(.08, { vol: .07, f: 300, to: 200, when: 2.4 + i * .07 }); boom(3.4, .14); [0, .15, .3, .45].forEach((w, i) => T([523.3, 659.3, 784, 1046.5][i], 1.6, { type: 'triangle', vol: .07, when: 3.5 + w })); break;
       case 'mentor': pad([220, 277.2, 329.6], 5.2, 0.03); T(659.3, 1.5, { vol: .03, when: 2.8 }); break;
