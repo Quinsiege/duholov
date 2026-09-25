@@ -2802,3 +2802,169 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 }
 /* плашки над картой без размытия фона: их фон почти непрозрачный, а размытие пересчитывалось при каждом движении на карте */
 #hud .profile, #hud .chip, #hud .nearby, #storyPill, #tracker { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ================= 4.7: главный экран — лаковые таблички Нави с золотом (круг меню не трогаем) =================
+   Все таблички — одна форма: скругление 14px, золотая кайма, лак с мягким бликом сверху;
+   поверх углов — золотая дуга точно по скруглению каймы и ромб на её середине. */
+:root {
+  --hud-r: 14px;
+  --hc-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg transform=''%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff6c8'/%3E%3Cstop offset='.5' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23b3701c'/%3E%3C/linearGradient%3E%3ClinearGradient id='h' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='w' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M2.5 16A13.5 13.5 0 0 1 16 2.5' fill='none' stroke='url(%23g)' stroke-width='2'/%3E%3Cpath d='M16 1.5H25V3.5H16z' fill='url(%23h)'/%3E%3Cpath d='M1.5 16V25H3.5V16z' fill='url(%23w)'/%3E%3Cpath d='M6.5 1.9L11.1 6.5 6.5 11.1 1.9 6.5z' fill='url(%23g)' stroke='%233a1d06' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M6.5 4.6L8.4 6.5 6.5 8.4 4.6 6.5z' fill='%23231445'/%3E%3C/g%3E%3C/svg%3E");
+  --hc-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg transform='matrix(-1 0 0 1 28 0)'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff6c8'/%3E%3Cstop offset='.5' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23b3701c'/%3E%3C/linearGradient%3E%3ClinearGradient id='h' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='w' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M2.5 16A13.5 13.5 0 0 1 16 2.5' fill='none' stroke='url(%23g)' stroke-width='2'/%3E%3Cpath d='M16 1.5H25V3.5H16z' fill='url(%23h)'/%3E%3Cpath d='M1.5 16V25H3.5V16z' fill='url(%23w)'/%3E%3Cpath d='M6.5 1.9L11.1 6.5 6.5 11.1 1.9 6.5z' fill='url(%23g)' stroke='%233a1d06' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M6.5 4.6L8.4 6.5 6.5 8.4 4.6 6.5z' fill='%23231445'/%3E%3C/g%3E%3C/svg%3E");
+  --hc-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg transform='matrix(1 0 0 -1 0 28)'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff6c8'/%3E%3Cstop offset='.5' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23b3701c'/%3E%3C/linearGradient%3E%3ClinearGradient id='h' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='w' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M2.5 16A13.5 13.5 0 0 1 16 2.5' fill='none' stroke='url(%23g)' stroke-width='2'/%3E%3Cpath d='M16 1.5H25V3.5H16z' fill='url(%23h)'/%3E%3Cpath d='M1.5 16V25H3.5V16z' fill='url(%23w)'/%3E%3Cpath d='M6.5 1.9L11.1 6.5 6.5 11.1 1.9 6.5z' fill='url(%23g)' stroke='%233a1d06' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M6.5 4.6L8.4 6.5 6.5 8.4 4.6 6.5z' fill='%23231445'/%3E%3C/g%3E%3C/svg%3E");
+  --hc-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg transform='matrix(-1 0 0 -1 28 28)'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff6c8'/%3E%3Cstop offset='.5' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23b3701c'/%3E%3C/linearGradient%3E%3ClinearGradient id='h' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='w' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23f3cf6b' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M2.5 16A13.5 13.5 0 0 1 16 2.5' fill='none' stroke='url(%23g)' stroke-width='2'/%3E%3Cpath d='M16 1.5H25V3.5H16z' fill='url(%23h)'/%3E%3Cpath d='M1.5 16V25H3.5V16z' fill='url(%23w)'/%3E%3Cpath d='M6.5 1.9L11.1 6.5 6.5 11.1 1.9 6.5z' fill='url(%23g)' stroke='%233a1d06' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M6.5 4.6L8.4 6.5 6.5 8.4 4.6 6.5z' fill='%23231445'/%3E%3C/g%3E%3C/svg%3E");
+  --hud-bg: linear-gradient(180deg, rgba(255, 236, 190, .07), rgba(255, 236, 190, 0) 45%), var(--lacq),
+    linear-gradient(180deg, rgba(58, 39, 116, .97), rgba(31, 20, 68, .97) 48%, rgba(15, 9, 36, .98));
+  --hud-sh: 0 0 0 1px rgba(6, 3, 18, .7), 0 10px 22px rgba(6, 3, 18, .5), inset 0 1px 0 rgba(255, 240, 200, .14), inset 0 -10px 18px rgba(0, 0, 0, .22);
+  --hud-w: min(198px, calc(100vw - 160px));
+  --tn-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 16'%3E%3Cpath d='M3 3l5 5-5 5' fill='none' stroke='%23f3cf6b' stroke-opacity='.45' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M9 3l5 5-5 5' fill='none' stroke='%23fde68a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/* лёгкая дымка у краёв — таблички читаются на любой карте, днём и ночью */
+#hud::before, #hud::after { content: ''; position: absolute; left: 0; right: 0; z-index: -1; pointer-events: none; }
+#hud::before { top: 0; height: calc(180px + var(--st)); background: linear-gradient(180deg, rgba(14, 7, 34, .44), rgba(14, 7, 34, .16) 55%, rgba(14, 7, 34, 0)); }
+#hud::after { bottom: 0; height: calc(190px + var(--sb)); background: linear-gradient(0deg, rgba(14, 7, 34, .4), rgba(14, 7, 34, .12) 55%, rgba(14, 7, 34, 0)); }
+
+/* общая табличка */
+#hud .profile, #hud .chip, #storyPill, #tracker, #hud .nearby, #hud .recenter {
+  border-radius: var(--hud-r); border: 1px solid rgba(243, 207, 107, .62); outline: none;
+  background: var(--hud-bg); box-shadow: var(--hud-sh); color: #f5efff; }
+/* золотые уголки поверх каймы */
+#hud .chip { position: relative; }
+#hud .profile::after, #hud .chip::after, #storyPill::after, #tracker::after, #hud .nearby::after, #hud .recenter::after {
+  content: ''; position: absolute; inset: -2px; pointer-events: none;
+  background: var(--hc-tl) left top / 28px 28px no-repeat, var(--hc-tr) right top / 28px 28px no-repeat,
+    var(--hc-bl) left bottom / 28px 28px no-repeat, var(--hc-br) right bottom / 28px 28px no-repeat; }
+
+/* профиль: портрет в золотой раме, печать уровня, имя золотом, шкала опыта с насечками */
+#hud .profile { position: relative; width: var(--hud-w); gap: 10px; padding: 7px 14px 7px 8px; }
+#hud .avatar { flex: none; width: 40px; height: 40px; padding: 2px; border-radius: 9px;
+  background: linear-gradient(145deg, #fff6c8, #f3cf6b 28%, #b8691a 52%, #fde68a 76%, #a8560f);
+  box-shadow: 0 0 0 1px rgba(70, 30, 4, .9), 0 0 12px rgba(251, 191, 36, .35), 0 4px 10px rgba(0, 0, 0, .45); }
+#hud .avatar::before { content: none; }
+#hud .avatar .ava-art { border-radius: 7px; background: radial-gradient(circle at 50% 35%, #33206a, #120a2a 75%); box-shadow: inset 0 0 0 1px rgba(50, 20, 3, .9), inset 0 0 10px rgba(0, 0, 0, .6); }
+#hud .avatar span { right: -6px; bottom: -5px; min-width: 19px; height: 17px; padding: 0 4px; border-radius: 5px; font-family: var(--f-display); font-weight: 400; font-size: 10.5px; line-height: 1; color: #3b1a02;
+  background: linear-gradient(180deg, #fffbe0, #f3cf6b 50%, #c47a1c); border: 1.5px solid #1a0f36; box-shadow: 0 0 0 1px #f3cf6b, 0 3px 8px rgba(0, 0, 0, .5); }
+#hud .pinfo { flex: 1; min-width: 0; }
+#hudName { display: block; font-family: var(--f-display); font-weight: 400; font-size: 14px; letter-spacing: .3px; line-height: 1.2; max-width: none; padding-right: 2px;
+  background: linear-gradient(180deg, #fffbea, #f7dd8f 55%, #e0a93e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#hud .xpbar { position: relative; height: 6px; margin: 6px 6px 0 0; border-radius: 3px; overflow: visible;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(243, 207, 107, .22) calc(10% - 1px) 10%), rgba(6, 3, 16, .85);
+  box-shadow: 0 0 0 1px rgba(243, 207, 107, .5), 0 0 0 2px rgba(6, 3, 16, .6), inset 0 1px 3px rgba(0, 0, 0, .7); }
+#hud .xpbar i { position: relative; min-width: 4px; border-radius: 3px; background: linear-gradient(90deg, #2dd4bf, #86efac 40%, #fde047 78%, #fff7d6); box-shadow: 0 0 8px rgba(253, 224, 71, .45); }
+#hud .xpbar i::after { content: ''; position: absolute; right: -5px; top: 50%; width: 8px; height: 8px; margin-top: -4px; transform: rotate(45deg);
+  background: linear-gradient(135deg, #fffbeb, #f59e0b); border: 1px solid #7c3a0a; box-shadow: 0 0 7px rgba(251, 191, 36, .9); }
+
+/* чипы справа — одной высоты, значок в печати */
+#hud .hud-right { gap: 8px; }
+#hud .chip { gap: 7px; height: 34px; padding: 0 14px 0 11px; }
+/* значок чипа — без рамки, просто золотой знак со свечением */
+#hud .chip > :first-child:not(span) { flex: none; width: 20px; height: 20px; display: grid; place-items: center; color: #fde68a; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .45)); }
+#hud .chip:not(:has(span)) { padding: 0 10px; }
+#hud .chip span { font-family: var(--f-head); font-weight: 700; font-size: 11.5px; }
+#hud .chip-row { gap: 8px; }
+#hud .chip.ok .ico { color: #4ade80; } #hud .chip.warn .ico { color: #fcd34d; } #hud .chip.bad .ico { color: #f87171; } #hud .chip.demo .ico { color: #c4b5fd; }
+/* событие недели и праздник — кайма из кованого золота (бирюзы) */
+#hud .chip.event { border: 1.5px solid transparent; color: #fff4c7; outline-color: rgba(253, 224, 71, .22);
+  background: var(--hud-bg), linear-gradient(100deg, #9a4a0c, #fde68a 30%, #f59e0b 55%, #fff3b0 75%, #9a4a0c) border-box;
+  background-clip: padding-box, padding-box, padding-box, border-box; /* три слоя таблички + золотая кайма */
+  box-shadow: var(--hud-sh), 0 0 16px rgba(251, 191, 36, .3); }
+#hud .chip.event .ev-star { color: #fde68a; font-size: 16px; text-shadow: 0 0 8px rgba(251, 191, 36, .8); }
+#hud .chip.hol { border: 1.5px solid transparent; outline-color: rgba(94, 234, 212, .2);
+  background: var(--hud-bg), linear-gradient(100deg, #0f766e, #99f6e4 40%, #2dd4bf 70%, #0f766e) border-box;
+  background-clip: padding-box, padding-box, padding-box, border-box; /* три слоя таблички + золотая кайма */ }
+
+/* Летопись и Следопыт — той же ширины, что и профиль */
+#storyPill, #tracker { width: var(--hud-w); max-width: none; top: calc(74px + var(--st)); }
+#storyPill:not(.hidden) ~ #tracker { top: calc(126px + var(--st)); } /* зазоры между табличками — 8px, как у чипов справа */
+#storyPill { gap: 9px; padding: 7px 14px 7px 8px; }
+/* значок главы — свиток «Заданий» без рамки */
+#storyPill .sp-ico { flex: none; width: 28px; height: 28px; margin: 0; transform: none; border-radius: 0; background: none; box-shadow: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .45)); }
+#storyPill .sp-ico .mi { display: block; width: 100%; height: 100%; }
+#storyPill .sp-t { font-family: var(--f-head); font-size: 9.5px; letter-spacing: .4px; color: #d9c48a; }
+#storyPill .sp-s { font-family: var(--f-head); font-size: 11.5px; color: #f7f1ff; }
+#storyPill.ready, #tracker.near { border-color: rgba(253, 224, 71, .95); box-shadow: var(--hud-sh), 0 0 18px rgba(251, 191, 36, .45); }
+#storyPill.ready .sp-ico { filter: drop-shadow(0 0 6px rgba(251, 191, 36, .8)); }
+#tracker { gap: 8px; padding: 7px 10px 7px 8px; }
+/* стрелка Следопыта — без рамки, как значки чипов; поворачивается только она */
+#tracker .tr-arrow { width: 22px; height: 22px; margin-right: -4px; border-radius: 0; background: none; box-shadow: none; color: #5eead4; transform: none !important; transition: none; filter: drop-shadow(0 0 4px rgba(94, 234, 212, .5)); }
+#tracker .tr-arrow svg { width: 20px; height: 20px; transition: transform .3s; }
+#tracker .tr-ico { width: 22px; height: 22px; }
+#tracker.near .tr-arrow { color: #fde68a; filter: drop-shadow(0 0 5px rgba(251, 191, 36, .8)); }
+/* пульс «на месте» — через scale у места стрелки: поворот к цели (transform у svg) не сбивается */
+#tracker.near .tr-arrow { animation: trNear 1s ease-in-out infinite !important; }
+@keyframes trNear { 50% { scale: 1.18; } }
+.calm #tracker.near .tr-arrow { animation: none !important; }
+#tracker .tr-main { flex: 1; }
+#tracker .tr-main b { font-family: var(--f-head); font-size: 11.5px; color: #f7f1ff; }
+#tracker .tr-main small { font-family: var(--f-head); font-size: 10px; line-height: 1.25; color: #d9c48a; }
+#tracker .tr-x { color: #d9c48a; }
+
+/* «К себе» — табличка-компас той же формы */
+#hud .recenter { width: 40px; height: 40px; color: #fde68a; }
+#hud .recenter::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; border: 1px dashed rgba(243, 207, 107, .4); pointer-events: none; }
+#hud .recenter .ico { position: relative; width: 19px; height: 19px; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .5)); }
+
+/* «Рядом» — духи на светящихся подставках, подпись между ромбами */
+#hud .nearby { padding: 8px 12px 6px; }
+#hud .nearby .nb-arts { gap: 3px; min-height: 26px; min-width: 80px; }
+#hud .nearby .nb-arts div { position: relative; width: 26px; height: 26px; }
+#hud .nearby .nb-arts div::before { content: ''; position: absolute; left: 0; right: 0; bottom: -3px; height: 10px; border-radius: 50%; background: radial-gradient(closest-side, rgba(253, 224, 71, .45), rgba(253, 224, 71, 0)); }
+#hud .nearby .nb-arts div > * { position: relative; }
+#hud .nearby span { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 1px; font-family: var(--f-head); font-weight: 700; font-size: 11.5px; letter-spacing: .5px; color: #fde68a; }
+#hud .nearby span::before, #hud .nearby span::after { content: ''; width: 5px; height: 5px; transform: rotate(45deg); background: #f3cf6b; box-shadow: 0 0 5px rgba(251, 191, 36, .7); }
+
+/* ================= 4.7: подсветка обучения — затемнение вокруг цели, золотая рамка, волна и указатель ================= */
+#tutRing { border: 0; border-radius: 20px; animation: none; box-shadow: 0 0 0 200vmax rgba(7, 3, 20, .52);
+  transition: left .3s cubic-bezier(.2, .9, .3, 1), top .3s cubic-bezier(.2, .9, .3, 1), width .3s cubic-bezier(.2, .9, .3, 1), height .3s cubic-bezier(.2, .9, .3, 1); }
+#tutRing.round { border-radius: 50%; }
+#tutRing > b { position: absolute; display: block; border-radius: inherit; pointer-events: none; }
+#tutRing .tr-f { inset: 0; border: 2px solid #f3cf6b; box-shadow: 0 0 0 1px rgba(70, 30, 4, .7), inset 0 0 0 1px rgba(70, 30, 4, .5), inset 0 0 18px rgba(253, 224, 71, .25); }
+#tutRing .tr-g { inset: -6px; box-shadow: 0 0 22px 6px rgba(253, 224, 71, .55); animation: trGlow 1.6s ease-in-out infinite; }
+#tutRing .tr-w { inset: 0; border: 2px solid rgba(253, 224, 71, .85); animation: trWave 1.6s ease-out infinite; }
+#tutRing .tr-r { inset: -10px; border-radius: 50%; border: 1.5px dashed rgba(253, 224, 71, .75); display: none; animation: spin 9s linear infinite; }
+#tutRing.round .tr-r { display: block; }
+#tutRing .tr-c { width: 24px; height: 24px; border-radius: 0; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .7)); }
+#tutRing .c1 { left: -10px; top: -10px; background: var(--tl) 0 0 / 100% 100%; } #tutRing .c2 { right: -10px; top: -10px; background: var(--tr) 0 0 / 100% 100%; }
+#tutRing .c3 { left: -10px; bottom: -10px; background: var(--bl) 0 0 / 100% 100%; } #tutRing .c4 { right: -10px; bottom: -10px; background: var(--br) 0 0 / 100% 100%; }
+#tutRing.round .tr-c { display: none; }
+#tutRing i.tr-p { position: absolute; left: 50%; top: -52px; width: 32px; height: 42px; margin-left: -16px; border: 0; animation: trPoint 1s ease-in-out infinite;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 42'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fffbe0'/%3E%3Cstop offset='.45' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23c2711a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 1.5l5 5-5 5-5-5z' fill='url(%23g)' stroke='%235a2a06' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M3 16l13 24 13-24-8 3.5L16 13l-5 6.5z' fill='url(%23g)' stroke='%235a2a06' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M16 17.5v17' stroke='%23fffbe0' stroke-width='1.4' stroke-linecap='round' opacity='.8'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, .8)) drop-shadow(0 3px 4px rgba(0, 0, 0, .5)); }
+#tutRing.below i.tr-p { top: auto; bottom: -52px; animation-name: trPointUp; }
+@keyframes trGlow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes trWave { from { transform: scale(1); opacity: .9; } to { transform: scale(1.18); opacity: 0; } }
+@keyframes trPoint { 0%, 100% { transform: translateY(-4px); } 50% { transform: translateY(4px); } }
+@keyframes trPointUp { 0%, 100% { transform: translateY(4px) scaleY(-1); } 50% { transform: translateY(-4px) scaleY(-1); } }
+.calm #tutRing > b, .calm #tutRing i.tr-p { animation: none; }
+.calm #tutRing.below i.tr-p { transform: scaleY(-1); }
+/* нужная плитка меню больше не раздувается (её обрезало краем меню) — светится внутри, рамку рисует подсветка */
+.tile.tut-target { animation: none; transform: none; border-color: rgba(253, 224, 71, .9); box-shadow: inset 0 0 22px rgba(253, 224, 71, .22);
+  background: radial-gradient(70% 55% at 50% 40%, rgba(253, 224, 71, .26), transparent 70%), rgba(255, 255, 255, .08); }
+
+/* ================= 4.7: реплики Велимира — без кнопок: «Дальше ›» подписью справа внизу, нажать можно по всей плашке ================= */
+.ts-box { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ts-foot { align-items: flex-end; }
+.ts-next, #coach .coach-ok { display: inline-flex; align-items: center; gap: 6px; width: auto; min-height: 0; margin: 0; padding: 2px 0 0 12px; border: 0; background: none; box-shadow: none;
+  font-family: var(--f-head); font-weight: 700; font-size: 15px; letter-spacing: .4px; color: #fde68a; text-shadow: 0 0 10px rgba(251, 191, 36, .35); }
+#coach .coach-ok { display: flex; justify-content: flex-end; margin-top: 6px; font-size: 14px; }
+.tn-a { flex: none; width: 18px; height: 16px; background: var(--tn-arrow) center / contain no-repeat; animation: tnNudge 1.2s ease-in-out infinite; }
+@keyframes tnNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
+.calm .tn-a { animation: none; }
+#coach.info { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#coach.info:active, .ts-box:active { filter: brightness(1.06); }
+#coach.wait .coach-ok, .ts-box.wait .ts-next { opacity: .45; }
+
+/* ================= 4.7: поворот карты и компас ================= */
+/* пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют), повёрнутый вокруг центра экрана */
+#map.rot { inset: auto; left: 50%; top: 50%; width: var(--md); height: var(--md); margin: calc(var(--md) / -2) 0 0 calc(var(--md) / -2); transform: rotate(var(--mrot, 0deg)); }
+#map.rot .leaflet-control-container { display: none; }
+#mapAttr { position: fixed; right: 0; bottom: var(--sb); z-index: 1; padding: 0 5px; font-size: 9px; line-height: 1.5; border-radius: 6px 0 0 0; background: rgba(18, 12, 36, .55); color: #cfc8e6; }
+#mapAttr a { color: #e9e3ff; }
+/* компас — без фона, едва заметный, ярче, когда карта повёрнута; касание — север вверх */
+#hud .compass { position: absolute; left: 14px; bottom: calc(30px + var(--sb)); width: 56px; height: 56px; padding: 0; border: 0; border-radius: 50%; background: none;
+  opacity: .6; transition: opacity .3s; filter: drop-shadow(0 0 1.5px rgba(10, 5, 26, .85)) drop-shadow(0 3px 6px rgba(6, 3, 18, .35)); -webkit-tap-highlight-color: transparent; }
+#hud .compass.turned { opacity: .9; }
+#hud .compass:active { opacity: 1; }
+#hud .compass svg { display: block; width: 100%; height: 100%; }
+#hud .compass text { font-family: var(--f-display); font-size: 9.5px; fill: #efe9ff; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: rgba(14, 7, 34, .8); stroke-width: 2.4px; stroke-linejoin: round; }
+#hud .compass text.n { font-size: 11.5px; fill: #fcd34d; }
+#joystick:not(.hidden) ~ .compass { bottom: calc(156px + var(--sb)); }

@@ -29,6 +29,7 @@ const MapView = {
 
     this.map.on('dragstart', () => { this.follow = false; U.$('#recenterBtn').classList.add('show'); });
     U.$('#recenterBtn').onclick = () => this.recenter();
+    this.initRotate();
 
     this.initJoystick();
     window.addEventListener('keydown', e => { this.keys[e.key.toLowerCase()] = true; });
@@ -137,7 +138,7 @@ const MapView = {
       else this.map.panTo(ll, { animate: false });
     }
     const el = this.player.getElement();
-    if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading}deg)`;
+    if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + this.rot}deg)`; // с учётом поворота карты
     // последняя точка — только на этом телефоне, чтобы карта открывалась на привычном месте
     if (Date.now() - (this._lpT || 0) > 10000) { this._lpT = Date.now(); try { localStorage.setItem('duholov.lastPos', JSON.stringify([+lat.toFixed(5), +lng.toFixed(5)])); } catch (e) {} }
     if (this.tracking) this.updateTracker();
@@ -200,6 +201,116 @@ const MapView = {
         <li>Выйди на открытое место: в помещении спутники ловятся хуже.</li></ul>`,
       buttons: [{ label: 'Позже' }, { label: 'Повторить', cls: 'primary', fn: () => { this._offered = false; this.startGPS(); } }],
     });
+  },
+
+  /* ---------------- 4.7: ПОВОРОТ КАРТЫ И КОМПАС ---------------- */
+  // Карту крутят двумя пальцами; компас слева внизу показывает север, касание — вернуть север вверх.
+  // Leaflet поворот не умеет: пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют),
+  // повёрнутый CSS; значки на ней стоят прямо, а сдвиг пальца пересчитывается в оси повёрнутой карты.
+  rot: 0,
+  initRotate() {
+    const self = this, box = U.$('#map');
+    // перетаскивание: сдвиг пальца — в осях повёрнутой карты; масштаб слоя Leaflet под поворотом считает неверно
+    const d = this.map.dragging && this.map.dragging._draggable;
+    if (d) {
+      const down = d._onDown, move = d._onMove;
+      d.disable();
+      d._onDown = function (e) { down.call(this, e); this._parentScale = { x: 1, y: 1 }; };
+      d._onMove = function (e) {
+        if (!self.rot || (e.touches && e.touches.length > 1) || !this._startPoint) return move.call(this, e);
+        const f = e.touches && e.touches.length === 1 ? e.touches[0] : e, s = this._startPoint;
+        const a = -self.rot * Math.PI / 180, dx = f.clientX - s.x, dy = f.clientY - s.y;
+        const p = { clientX: s.x + dx * Math.cos(a) - dy * Math.sin(a), clientY: s.y + dx * Math.sin(a) + dy * Math.cos(a) };
+        return move.call(this, { type: e.type, target: e.target, srcElement: e.srcElement, touches: e.touches ? [p] : undefined, clientX: p.clientX, clientY: p.clientY,
+          preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation() });
+      };
+      d.enable();
+    }
+    // значки на карте стоят прямо: поворот в обратную сторону вокруг точки привязки
+    const setPos = L.Marker.prototype._setPos;
+    L.Marker.prototype._setPos = function (p) {
+      setPos.call(this, p);
+      const el = this._icon;
+      if (!el || this._map !== self.map || !self.rot) return;
+      el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
+      el.style.transform += ` rotate(${-self.rot}deg)`;
+    };
+    // жест: два пальца поворачиваются — карта за ними (с порогом, чтобы щипок-масштаб не крутил карту)
+    let g = null;
+    const ang = t => Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX) * 180 / Math.PI;
+    const norm = a => ((a % 360) + 540) % 360 - 180;
+    box.addEventListener('touchstart', e => { g = e.touches.length === 2 ? { a: ang(e.touches), r: this.rot, on: false } : null; }, { passive: true });
+    box.addEventListener('touchmove', e => {
+      if (!g || e.touches.length !== 2) return;
+      let da = norm(ang(e.touches) - g.a);
+      if (!g.on) { if (Math.abs(da) < 14) return; g.on = true; g.a += Math.sign(da) * 14; da = norm(ang(e.touches) - g.a); }
+      this.setRot(g.r + da);
+    }, { passive: true });
+    const end = e => { if (g && e.touches.length < 2) { const was = g.on; g = null; if (was && Math.abs(this.rot) < 6) this.northUp(); } };
+    box.addEventListener('touchend', end, { passive: true });
+    box.addEventListener('touchcancel', end, { passive: true });
+    // компас
+    const c = U.$('#compassBtn');
+    if (c) { c.innerHTML = this.compassSvg(); c.onclick = () => { Sfx.play('tap'); this.northUp(); }; }
+    addEventListener('resize', () => { if (this._sq) this.square(true); });
+  },
+  // слой карты — квадрат с диагональю экрана, пока карта повёрнута (иначе — обычный, меньше плиток)
+  square(on) {
+    const box = U.$('#map');
+    this._sq = on;
+    if (on) box.style.setProperty('--md', Math.ceil(Math.hypot(innerWidth, innerHeight)) + 2 + 'px');
+    box.classList.toggle('rot', on);
+    this.map.invalidateSize({ animate: false });
+    // подпись OpenStreetMap остаётся видна: у повёрнутой карты — копия в углу экрана
+    const at = U.$('#mapAttr');
+    if (at) { at.classList.toggle('hidden', !on); if (on) at.innerHTML = this.map.attributionControl.getContainer().innerHTML; }
+  },
+  setRot(r) {
+    r = ((r % 360) + 540) % 360 - 180;
+    if (Math.abs(r) < 0.05) r = 0;
+    if (!!r !== !!this._sq) this.square(!!r);
+    this.rot = r;
+    U.$('#map').style.setProperty('--mrot', r + 'deg');
+    // при повороте масштаб — вокруг центра (точку между пальцами Leaflet у повёрнутого слоя считает неверно)
+    const o = this.map.options; o.touchZoom = o.scrollWheelZoom = o.doubleClickZoom = r ? 'center' : true;
+    this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
+    const el = this.player && this.player.getElement();
+    if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + r}deg)`;
+    const c = U.$('#compassBtn');
+    if (c) { c.firstElementChild.style.transform = `rotate(${r}deg)`; c.classList.toggle('turned', !!r); }
+    if (this.tracking) this.updateTracker();
+  },
+  northUp() {
+    const from = this.rot, t0 = performance.now();
+    if (!from) return;
+    const step = t => {
+      const k = Math.min(1, (t - t0) / 350), e = 1 - Math.pow(1 - k, 3);
+      this.setRot(from * (1 - e));
+      if (k < 1) requestAnimationFrame(step); else this.setRot(0);
+    };
+    requestAnimationFrame(step);
+  },
+  // компас Нави без фона: золотая роза ветров, С — огненно-золотая, деления по кругу
+  compassSvg() {
+    let ticks = '';
+    for (let i = 0; i < 72; i++) {
+      const a = i * 5, big = a % 45 === 0, mid = a % 15 === 0;
+      ticks += `<path d="M0 -46.5V${big ? -41 : mid ? -43 : -44.5}" transform="rotate(${a})" stroke="#f3cf6b" stroke-opacity="${big ? .95 : mid ? .6 : .35}" stroke-width="${big ? 1.4 : .8}"/>`;
+    }
+    const pt = (a, len, w, l, r) => `<g transform="rotate(${a})"><path d="M0 ${-len}L${-w} ${-w}L0 0Z" fill="${l}"/><path d="M0 ${-len}L${w} ${-w}L0 0Z" fill="${r}"/></g>`;
+    const lt = [['С', 0, 'n'], ['В', 90, ''], ['Ю', 180, ''], ['З', 270, '']].map(([t, a, c]) => {
+      const x = (34 * Math.sin(a * Math.PI / 180)).toFixed(2), y = (-34 * Math.cos(a * Math.PI / 180)).toFixed(2);
+      return `<text x="${x}" y="${y}" transform="rotate(${a} ${x} ${y})" class="${c}">${t}</text>`;
+    }).join('');
+    return `<svg viewBox="-50 -50 100 100" aria-hidden="true">
+      <circle r="48" fill="none" stroke="#f3cf6b" stroke-opacity=".75" stroke-width="1.3"/>
+      <circle r="39.5" fill="none" stroke="#f3cf6b" stroke-opacity=".28" stroke-width=".7" stroke-dasharray="1.2 2.6"/>
+      ${ticks}
+      ${[45, 135, 225, 315].map(a => pt(a, 20, 3.2, '#b98c3a', '#e9c874')).join('')}
+      ${[90, 180, 270].map(a => pt(a, 27, 4.4, '#8f82c9', '#d9d1f5')).join('')}
+      ${pt(0, 29, 4.8, '#fff1b8', '#d9480f')}
+      <circle r="4.6" fill="#f3cf6b" stroke="#3a1d06" stroke-width=".9"/><circle r="1.9" fill="#231445"/>
+      ${lt}</svg>`;
   },
 
   /* ---------------- ДЕМО-РЕЖИМ ---------------- */
@@ -346,7 +457,7 @@ const MapView = {
     box.classList.toggle('near', near);
     const ico = t.type === 'spirit' ? Art.img(t.sid) : t.type === 'spring' ? Art.springIcon(false) : Art.shrineIcon(1, false);
     if (box._id !== t.id) { box._id = t.id; box.querySelector('.tr-ico').innerHTML = ico; }
-    box.querySelector('.tr-arrow').style.transform = `rotate(${brg}deg)`;
+    box.querySelector('.tr-arrow svg').style.transform = `rotate(${brg + this.rot}deg)`; // 4.7: вращается только стрелка; с учётом поворота карты
     box.querySelector('.tr-name').textContent = t.name;
     box.querySelector('.tr-dist').textContent = near ? 'Ты на месте — коснись цели!' : U.fmtDist(d);
   },

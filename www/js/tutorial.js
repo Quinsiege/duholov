@@ -71,15 +71,16 @@ const Tut = {
     path: ['.tile[data-k="path"]', '#menuBtn'],
   },
   // важное, что наставник не должен закрывать (кроме самой цели)
-  KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.sheet-foot', '.menu-dots'],
+  KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots'],
   coach(st) {
     if (!this.el) {
       this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${Art.stack(CutArt.velimir(true).replace('class="vm-breath"', ''), 'velimir-mini')}</div>
         <div class="coach-main"><div class="coach-top"><b>Велимир</b><span class="coach-ch"></span></div><div class="coach-text"></div>
         <div class="coach-bar"><i></i></div></div></div>`);
-      this.ring = U.el('<div id="tutRing" class="hidden"><i></i></div>');
+      // 4.7: подсветка — затемнение вокруг цели, золотая рамка с уголками, волна и указатель
+      this.ring = U.el('<div id="tutRing" class="hidden"><b class="tr-g"></b><b class="tr-w"></b><b class="tr-f"></b><b class="tr-r"></b><b class="tr-c c1"></b><b class="tr-c c2"></b><b class="tr-c c3"></b><b class="tr-c c4"></b><i class="tr-p"></i></div>');
       document.body.append(this.ring, this.el);
-      this.el.addEventListener('click', e => { if (e.target.closest('.coach-ok')) this.gotIt(); });
+      this.el.addEventListener('click', () => { if (this.el.classList.contains('info')) this.gotIt(); }); // «Понятно» — касанием в любом месте плашки
       this.loop = setInterval(() => this.track(), 300);
       addEventListener('resize', this._rs = () => this.track());
     }
@@ -88,7 +89,7 @@ const Tut = {
     this.el.querySelector('.coach-bar i').style.width = ((n - 1) / TUT.length * 100) + '%';
     // открыл нужный раздел — объяснение экрана и «Понятно» (шаг засчитывается только по кнопке)
     const info = st.kind === 'ui' && this.opened === st.id;
-    this._hint = info ? `${st.info}<button class="btn primary coach-ok">Понятно ›</button>` : st.hint; this._back = null;
+    this._hint = info ? `${st.info}<span class="coach-ok"><span>Понятно</span><i class="tn-a"></i></span>` : st.hint; this._back = null;
     this.el.querySelector('.coach-text').innerHTML = this._hint;
     this.el.classList.toggle('info', info);
     this.el.classList.remove('bump'); void this.el.offsetWidth; this.el.classList.add('bump');
@@ -129,13 +130,19 @@ const Tut = {
       const pad = 6, R = this.ring.style, round = t.el.matches('#menuBtn, .tut-ring, .btn-round, .back');
       R.left = (tr.left - pad) + 'px'; R.top = (tr.top - pad) + 'px'; R.width = (tr.width + pad * 2) + 'px'; R.height = (tr.height + pad * 2) + 'px';
       this.ring.classList.toggle('round', round);
+      this.ring.classList.toggle('below', tr.top < 96 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--st')) || 0)); // у верхнего края — указатель снизу
       this.ring.classList.remove('hidden');
     } else this.ring.classList.add('hidden');
     // место: сверху или снизу — где меньше перекрытий с целью (втройне важна) и важными элементами
     // учитываем только видимое сверху: открытый экран или меню закрывают всё, что под ними
     const layer = U.$$('.sheet-wrap').filter(s => !s.classList.contains('out')).pop() || U.$$('.screen').filter(s => !s.classList.contains('out')).pop();
     const keep = this.KEEP.flatMap(s => U.$$(s)).filter(e => this.vis(e) && (!layer || layer.contains(e)) && (!t || !t.el || !e.contains(t.el))).map(e => [e.getBoundingClientRect(), 1]);
-    if (tr) keep.push([tr, 3]);
+    if (tr) {
+      keep.push([tr, 3]);
+      // указатель над целью (или под ней у верхнего края) тоже не закрываем
+      const below = this.ring.classList.contains('below');
+      keep.push([{ left: tr.left + tr.width / 2 - 18, right: tr.left + tr.width / 2 + 18, top: below ? tr.bottom : tr.top - 60, bottom: below ? tr.bottom + 60 : tr.top }, 2]);
+    }
     const cost = pos => {
       this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
       const c = this.el.getBoundingClientRect();
@@ -160,12 +167,12 @@ const Tut = {
       <div class="ts-film"><i></i><i></i></div>
       <div class="ts-chap"></div>
       <div class="ts-stage"><div class="ts-mentor"><i class="ts-halo"></i>${Art.stack(CutArt.velimir().replace('class="vm-breath"', ''), 'velimir')}</div><div class="ts-me"><div class="ts-hero">${Art.stack(CutArt.hero(S.d.look).replace('class="vm-breath"', ''))}</div><span class="ts-me-name">${U.esc(S.d.name || 'Ты')}</span></div></div>
-      <div class="ts-box"><div class="ts-who"></div><div class="ts-line"></div><div class="ts-foot"><span class="ts-prog"></span><button class="btn primary small ts-next">Дальше</button></div></div>
+      <div class="ts-box"><div class="ts-who"></div><div class="ts-line"></div><div class="ts-foot"><span class="ts-prog"></span><span class="ts-next"><span class="tn-t">Дальше</span><i class="tn-a"></i></span></div></div>
     </div>`);
     document.body.appendChild(root);
     UI.pushLayer(this._noBack = () => {}); // «Назад» сцену не закрывает — обучение не пропустить
-    const box = root.querySelector('.ts-box'), who = root.querySelector('.ts-who'), line = root.querySelector('.ts-line'), btn = root.querySelector('.ts-next');
-    let i = -1, typing = null;
+    const box = root.querySelector('.ts-box'), who = root.querySelector('.ts-who'), line = root.querySelector('.ts-line'), btn = root.querySelector('.ts-next .tn-t');
+    let i = -1, typing = null, busy = false;
     const say = () => {
       const [w, text] = st.lines[i];
       root.dataset.who = w;
@@ -191,13 +198,14 @@ const Tut = {
     const next = async () => {
       if (typing) { clearInterval(typing); typing = null; line.innerHTML = line._full; return; }
       if (i < st.lines.length - 1) { i++; Sfx.play('tap'); say(); return; }
-      btn.disabled = true;
+      if (busy) return;
+      busy = true; box.classList.add('wait');
       const r = await Game.try('tutNext', { id: st.id });
-      if (!r) { btn.disabled = false; return; }
+      busy = false; box.classList.remove('wait');
+      if (!r) return;
       this.closeScene();
       this.sync();
     };
-    btn.onclick = e => { e.stopPropagation(); next(); };
     box.onclick = () => next();
     const start = () => { root.classList.add('talk'); i = 0; say(); };
     if (first) this.titleCard(st.ch, start, root.querySelector('.ts-chap')); else start();
@@ -279,10 +287,10 @@ const Tut = {
     const st = this.at();
     if (!st || st.kind !== 'ui' || this.opened !== st.id || this._uiBusy) return;
     this._uiBusy = true;
-    const b = this.el && this.el.querySelector('.coach-ok'); if (b) b.disabled = true;
+    if (this.el) this.el.classList.add('wait');
     try { Sfx.play('tap'); await Game.act('tutNext', { id: st.id }); }
-    catch (e) { UI.toast(U.esc(e.message)); if (b) b.disabled = false; }
-    finally { this._uiBusy = false; }
+    catch (e) { UI.toast(U.esc(e.message)); }
+    finally { this._uiBusy = false; if (this.el) this.el.classList.remove('wait'); }
   },
 
   // Учебный дух держится в ~25 м от игрока, пока его не поймают (на шагах «поймай»)
