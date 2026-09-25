@@ -1871,3 +1871,100 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .onb-cta .onb-agree { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.4; }
 .onb-agree a { color: inherit; text-decoration: underline; }
 .age-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 4px; border: 1.5px solid currentColor; border-radius: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; opacity: .9; }
+
+/* ================= 4.4: экран входа — сцена «3D» (js/scene.js), знак Ордена, стеклянная панель ================= */
+.onb.lg { overflow: hidden; background: #0b0620; }
+.lg-scene { position: absolute; inset: 0; overflow: hidden; perspective: 900px; }
+.lg-body { position: absolute; inset: 0; overflow-y: auto; z-index: 1; }
+.scene .sc-cam { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
+.scene .sc-l { position: absolute; inset: -7%; will-change: transform; }
+.scene .sc-l > svg { width: 100%; height: 100%; display: block; }
+.scene .sc-img { position: absolute; inset: 0; }
+.scene .sc-sky { background: linear-gradient(180deg, #06031a 0%, #150a36 34%, #33175f 58%, #5a2a7c 72%, #2a1350 100%); }
+.sc-stars circle { fill: #fff; }
+.sc-stars .tw1 { animation: scTw 3.4s ease-in-out infinite; }
+.sc-stars .tw2 { animation: scTw 5.1s ease-in-out -1.7s infinite; }
+.sc-stars .tw3 { animation: scTw 6.7s ease-in-out -3.1s infinite; opacity: .7; }
+@keyframes scTw { 50% { opacity: .2; } }
+.sc-moon { filter: drop-shadow(0 0 22px rgba(253, 230, 138, .6)); }
+.scene .sc-mist i { position: absolute; left: -35%; width: 95%; height: 18%; border-radius: 50%; opacity: .85;
+  background: radial-gradient(closest-side, rgba(196, 181, 253, .3), rgba(196, 181, 253, 0)); animation: scMist 40s ease-in-out infinite alternate; }
+.scene .sc-mist i:nth-child(1) { top: 50%; }
+.scene .sc-mist i:nth-child(2) { top: 57%; left: 5%; width: 80%; animation-duration: 55s; animation-direction: alternate-reverse; }
+.scene .sc-mist i:nth-child(3) { top: 45%; left: -10%; width: 70%; height: 12%; opacity: .6; animation-duration: 47s; }
+@keyframes scMist { to { transform: translateX(40%); } }
+.scene .sc-sp-l { inset: 0; }
+.scene .sc-sp { position: absolute; animation: scBob 4.4s ease-in-out infinite; filter: drop-shadow(0 0 18px rgba(165, 243, 252, .45)); }
+.scene .sc-sp svg { width: 100%; height: 100%; display: block; overflow: visible; }
+@keyframes scBob { 50% { transform: translateY(-14px) rotate(-3deg); } }
+.scene .sc-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.scene .sc-shade { position: absolute; inset: 0; pointer-events: none; transition: background .6s;
+  background: linear-gradient(180deg, rgba(6, 3, 18, .5) 0%, rgba(6, 3, 18, 0) 26%, rgba(6, 3, 18, 0) 48%, rgba(6, 3, 18, calc(.55 + var(--sc-shade, .25) * .45)) 100%); }
+.onb.lg.deep .sc-shade { background: rgba(6, 3, 18, .62); }
+.onb.lg.deep .sc-sp-l { opacity: .35; transition: opacity .6s; }
+/* анимации слоёв-картинок из scenes.json */
+.scene .sc-a-sway { transform-origin: 50% 100%; animation: scSway 9s ease-in-out infinite; }
+.scene .sc-a-drift { animation: scDrift 60s linear infinite alternate; }
+.scene .sc-a-float { animation: scBob 7s ease-in-out infinite; }
+.scene .sc-a-pulse { animation: scPulse 5s ease-in-out infinite; }
+@keyframes scSway { 50% { transform: rotate(1.2deg); } }
+@keyframes scDrift { to { transform: translateX(6%); } }
+@keyframes scPulse { 50% { opacity: .55; } }
+.calm .scene *, .calm .lg-charm { animation: none !important; }
+
+.lg-wrap { position: relative; min-height: 100%; max-width: 460px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 20px;
+  padding: calc(34px + var(--st)) 16px calc(16px + var(--sb)); }
+.lg-top { text-align: center; animation: lgIn .9s cubic-bezier(.2, .8, .2, 1) both; }
+.lg-charm { width: 78px; height: 78px; margin: 0 auto 4px; animation: bob 3.2s ease-in-out infinite; filter: drop-shadow(0 0 26px rgba(253, 224, 71, .6)); }
+.lg-charm svg { width: 100%; height: 100%; overflow: visible; }
+.lg-title { margin: 0; font-size: 50px; line-height: 1.05; font-weight: 900; letter-spacing: 4px; color: transparent;
+  background: linear-gradient(180deg, #fffbeb 10%, var(--gold2) 55%, #f59e0b 95%); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 4px 18px rgba(251, 191, 36, .45)) drop-shadow(0 2px 0 rgba(0, 0, 0, .35)); }
+.lg-top p { margin: 6px 0 0; color: #ddd4f5; font-size: 14.5px; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+.lg-panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 26px; animation: lgUp .8s .15s cubic-bezier(.2, .8, .2, 1) both;
+  background: linear-gradient(180deg, rgba(34, 20, 68, .58), rgba(14, 8, 32, .82)); border: 1px solid rgba(255, 255, 255, .13);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .09); }
+.lg-panel .btn.wide { max-width: none; width: 100%; }
+.lg-panel .btn.primary { min-height: 54px; font-size: 17px; }
+.lg-panel .acc-card { max-width: none; background: rgba(255, 255, 255, .05); box-shadow: none; }
+.lg-panel .acc-top { position: relative; }
+.lg-panel .acc-exit { position: absolute; top: -2px; right: -4px; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%;
+  background: rgba(255, 255, 255, .06); border: 1px solid var(--line); color: var(--muted); }
+.lg-panel .acc-exit .ico { width: 17px; height: 17px; }
+.lg-panel .acc-main { flex: 1; min-width: 0; padding-right: 38px; }
+.lg-link { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 6px 10px; border: 0; border-radius: 14px; background: none;
+  color: #cfc6ea; font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
+.lg-link .ico { width: 18px; height: 18px; }
+.lg-link:active { background: rgba(255, 255, 255, .06); }
+.lg-save { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 16px; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .45); }
+.lg-save > .ico { width: 24px; height: 24px; color: var(--gold2); flex: none; }
+.lg-save span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.lg-save b { font-size: 15px; }
+.lg-save small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.lg-save i { font-style: normal; font-size: 22px; color: var(--muted); }
+.lg-panel .onb-agree { margin: 0; }
+.lg-panel .onb-invite { margin: 0; max-width: none; }
+.lg-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 14px; }
+.lg-links a { color: var(--muted); font-size: 11.5px; text-decoration: none; opacity: .85; }
+.lg-links a:active { text-decoration: underline; }
+@keyframes lgIn { from { opacity: 0; transform: translateY(-16px) scale(.96); } }
+@keyframes lgUp { from { opacity: 0; transform: translateY(26px); } }
+.onb.lg .onb-step { position: relative; }
+/* выезжающая панель входа */
+.lg-sheet { position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-end; background: rgba(4, 2, 12, .6); animation: lgFade .25s both; }
+.lg-sheet.out { animation: lgFade .25s reverse both; }
+.lg-sheet-card { position: relative; width: 100%; max-width: 460px; margin: 0 auto; box-sizing: border-box; padding: 18px 16px calc(18px + var(--sb));
+  border-radius: 26px 26px 0 0; background: linear-gradient(180deg, #221444, #140c2c); border: 1px solid rgba(255, 255, 255, .12); border-bottom: 0;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, .5); animation: lgSheet .32s cubic-bezier(.2, .9, .3, 1) both; }
+.lg-sheet.out .lg-sheet-card { animation: lgSheet .25s reverse both; }
+.lg-sheet-card::before { content: ""; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(255, 255, 255, .2); }
+.lg-sheet-x { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .08); color: #d8d0f0; cursor: pointer; }
+.lg-sheet-x .ico { width: 16px; height: 16px; }
+.lg-sheet .auth-head { padding-right: 40px; }
+.lg-sheet .auth-panel { max-width: none; padding: 6px 0 0; background: none; border: 0; box-shadow: none; }
+@keyframes lgFade { from { opacity: 0; } }
+@keyframes lgSheet { from { transform: translateY(100%); } }
+@media (max-height: 680px) { .lg-charm { width: 60px; height: 60px; } .lg-title { font-size: 40px; } .lg-wrap { padding-top: calc(20px + var(--st)); } }
+@media (max-width: 360px) { .lg-wrap { padding-left: 10px; padding-right: 10px; } .lg-panel { padding: 12px; } .lg-panel .acc-card { padding: 12px; } .lg-title { font-size: 42px; letter-spacing: 3px; } }

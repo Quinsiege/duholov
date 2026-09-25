@@ -1,0 +1,13 @@
+{
+  "login": {
+    "layers": [],
+    "particles": "fireflies",
+    "shade": 0.25
+  },
+  "loading": {
+    "images": [],
+    "mode": "random",
+    "shade": 0.25
+  },
+  "variants": []
+}
