@@ -170,7 +170,6 @@ const MapView = {
     const ll = [lat, lng];
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
-    this.drawTrail(lat, lng);
     if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.12: туман Нави рассеивается там, где прошёл Ловчий
     if (this.follow) {
       if (jump) this.map.setView(ll, 17.5, { animate: false });
@@ -507,35 +506,10 @@ const MapView = {
       Duel.open(e);
     } else Raid.open(e);
   },
-  /* ---------------- 4.10: СЛЕД ЛОВЧЕГО, ЗЕМЛИ ДРУЖИН, МАРЕВО РАЗЛОМОВ ---------------- */
+  /* ---------------- 4.10: ЗЕМЛИ ДРУЖИН, МАРЕВО РАЗЛОМОВ ---------------- */
   // радиус в пикселях: meters метров вокруг ll на масштабе z
   pxR(ll, meters, z) {
     return Math.abs(this.map.project(ll, z).y - this.map.project(L.latLng(ll.lat + meters / 111320, ll.lng), z).y);
-  },
-  // след Ловчего — тающая золотая нить пройденного пути (последние ~400 м): старые участки бледнее
-  trail: [],
-  drawTrail(lat, lng) {
-    const t = this.trail, last = t[t.length - 1];
-    if (last && U.dist(last[0], last[1], lat, lng) < 4) return;
-    if (last && U.dist(last[0], last[1], lat, lng) > 300) t.length = 0; // прыжок (демо, перезаход) — нить заново
-    t.push([lat, lng]);
-    for (let i = t.length - 1, len = 0; i > 0; i--) {
-      len += U.dist(t[i][0], t[i][1], t[i - 1][0], t[i - 1][1]);
-      if (len > 400) { t.splice(0, i - 1); break; }
-    }
-    const N = 5, OP = [.14, .3, .5, .75, 1];
-    if (!this._trail) {
-      this._trail = OP.map(() => [
-        L.polyline([], { className: 'trail-glow', color: '#fbbf24', weight: 9, opacity: 0, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(this.map),
-        L.polyline([], { className: 'trail-core', color: '#fff1bf', weight: 2.6, opacity: 0, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(this.map),
-      ]);
-    }
-    const per = Math.max(1, Math.ceil((t.length - 1) / N));
-    this._trail.forEach(([glow, core], i) => {
-      const part = t.slice(i * per, (i + 1) * per + 1);
-      glow.setLatLngs(part); core.setLatLngs(part);
-      glow.setStyle({ opacity: OP[i] * .22 }); core.setStyle({ opacity: OP[i] * .9 });
-    });
   },
   // земли дружин (сияние цвета дружины вокруг Капища) и марево Нави вокруг открытых разломов
   zones: new Map(),
