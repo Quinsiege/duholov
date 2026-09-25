@@ -373,8 +373,9 @@ Object.assign(UI, {
       </div>
       ${sec('Вид')}
       <div class="list">
-        <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>Тема карты</b><small>Авто — тёмная с 20:00 до 6:00</small></div>
+        <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>Тема карты</b><small>Авто — по солнцу: рассвет, день, закат и ночь</small></div>
           <div class="seg map-theme">${[['auto', 'Авто'], ['light', 'День'], ['dark', 'Ночь']].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+        ${row('tilt3d', 'map', 'Объёмная карта', 'Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.')}
         ${row('bigText', 'text', 'Крупный текст', 'Увеличенный шрифт в меню, карточках и подсказках.')}
         ${row('calm', 'calm', 'Меньше движения', 'Без покачиваний, мерцания и погодных эффектов.')}
         ${row('eco', 'battery', 'Экономия батареи', 'Меньше анимаций на карте, реже обновление и запросы GPS.')}
@@ -407,6 +408,7 @@ Object.assign(UI, {
       if (k === 'music') { Sfx.init(); Music.apply(); }
       if (k === 'eco') { document.body.classList.toggle('eco', s.eco); if (!s.demo) MapView.startGPS(); }
       if (k === 'bigText' || k === 'calm') this.applyA11y();
+      if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
     });
     scr.querySelector('.map-theme').addEventListener('click', e => {
       const b = e.target.closest('[data-theme]'); if (!b) return;
