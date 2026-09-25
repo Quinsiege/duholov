@@ -136,10 +136,12 @@ const GameCore = {
     ctx.srv.enc = null;
     return { ...res, fled: !!text, text, over: true };
   },
-  // Победа засчитывается, если команда могла нанести столько урона за это время (или бой дошёл до таймера)
-  plausibleDuel(ctx, b, foe) {
+  // Победа засчитывается, если с такой командой против такого соперника (speed — скорость его ударов) она вообще
+  // возможна (4.3) и команда могла нанести столько урона за это время (или бой дошёл до таймера)
+  plausibleDuel(ctx, b, foe, speed) {
     const t = this.battleTime(ctx, b);
     this.need(t >= 5, 'Бой не засчитан: слишком быстрая победа');
+    this.need(Rules.duelWinnable(this.team(b.team), foe, speed), 'Бой не засчитан: эта команда не могла победить такого соперника');
     if (t >= Duel.TIME - 5) return;
     this.need(Rules.duelMaxDamage(this.team(b.team), foe, t) >= Rules.duelFoeHp(foe), 'Бой не засчитан: слишком быстрая победа');
   },
@@ -850,7 +852,7 @@ const GameCore = {
       const b = this.endBattle(ctx, 'duel');
       if (!a.win) return { win: false };
       const e = { id: b.id, tier: b.tier, name: b.name };
-      this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team);
+      this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team, SHRINE_TIERS[e.tier].speed);
       const T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier;
       S.d.shrines[e.id] = U.today();
       let freed = false;
@@ -1044,7 +1046,7 @@ const GameCore = {
       const b = this.endBattle(ctx, 'inv');
       if (!a.win) return { win: false };
       const g = W.grunt({ invId: b.invId });
-      this.plausibleDuel(ctx, b, g.team);
+      this.plausibleDuel(ctx, b, g.team, Duel.FOE.invasion.speed);
       S.d.freed[b.invId] = true;
       S.d.stats.invasions++;
       this.dayAdd(ctx, 'invasions');
@@ -1075,7 +1077,7 @@ const GameCore = {
       const b = this.endBattle(ctx, 'league');
       this.need(b.k === run.k, 'Турнир не найден');
       const win = !!a.win;
-      if (win) this.plausibleDuel(ctx, b, League.opponent(run.k).team);
+      if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
       let gained = 0;
       if (win) { run.won++; gained++; S.progress('league', 1); }
       const last = !win || run.k >= 2;
@@ -1335,7 +1337,7 @@ const GameCore = {
     sparEnd(a, ctx) {
       const b = this.endBattle(ctx, 'spar');
       if (!a.win) return { win: false };
-      this.plausibleDuel(ctx, b, b.foe);
+      this.plausibleDuel(ctx, b, b.foe, Duel.FOE.spar.speed);
       const f = S.d.friends.find(x => x.id === b.pid);
       this.need(f, 'Такого друга нет');
       J.add('spar', { name: f.name });

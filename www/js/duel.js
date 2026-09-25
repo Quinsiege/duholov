@@ -6,6 +6,8 @@
 const Duel = {
   st: null,
   FAST: 6, CHARGE: 65, COST: 50, TIME: 180, HPX: 3, SWITCH_CD: 25,
+  // соперники без уровня Капища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
+  FOE: { invasion: { speed: 0.75, shield: 0.5 }, spar: { speed: 0.72, shield: 0.6 } },
 
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
@@ -86,7 +88,7 @@ const Duel = {
     scr.querySelector('.duel-go').onclick = async () => {
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
-      this.start({ ...e, kind: 'invasion', tier: 1, T: { speed: 0.75, shield: 0.5 } }, g, S.team());
+      this.start({ ...e, kind: 'invasion', tier: 1, T: this.FOE.invasion }, g, S.team());
     };
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
   },
@@ -114,7 +116,7 @@ const Duel = {
       if (!r) return;
       UI.closeScreen(scr);
       const color = (r.look && r.look.cloak) || GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)];
-      this.start({ kind: 'spar', name: f.name, T: { speed: 0.72, shield: 0.6 } }, { name: U.esc(r.name), color, team: r.foe }, S.team());
+      this.start({ kind: 'spar', name: f.name, T: this.FOE.spar }, { name: U.esc(r.name), color, team: r.foe }, S.team());
     };
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => {
       team = S.team();
