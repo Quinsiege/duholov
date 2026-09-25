@@ -260,8 +260,8 @@ const Trailer = {
     const cocoon = `<div class="fm-coc"><div class="fm-km"><b>0.0</b> км</div><div class="fm-steps">${'<i></i>'.repeat(8)}</div>
       <div class="fm-cocoon">${Art.cocoon(10)}</div><i class="fm-cflash"></i><div class="fm-hatch">${Art.spirit('rusalka')}</div></div>`;
     const duel = `<div class="fm-duel"><i class="fm-dfloor"></i>
-      <div class="fm-df me"><div class="fm-hp"><i></i></div>${Art.spirit('gromovik')}</div>
-      <div class="fm-df foe"><div class="fm-hp"><i></i></div>${Art.spirit('leshiy')}</div>
+      <div class="fm-df me"><div class="fm-hpbar"><i></i></div>${Art.spirit('gromovik')}</div>
+      <div class="fm-df foe"><div class="fm-hpbar"><i></i></div>${Art.spirit('leshiy')}</div>
       <svg class="fm-dbeam" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">${[1, 2, 3].map(k => `<path class="v v${k}" d="${this.bolt(90, 60, 310, 60, 13 + k * 17, 40, true)}"/>`).join('')}</svg>
       <div class="fm-move">Шаровая молния!</div><div class="fm-flag">${Art.clanCrest('sokol')}</div></div>`;
     const raid = `<div class="fm-raid"><div class="fm-portal"><i class="p1"></i><i class="p2"></i><i class="p3"></i></div>
@@ -331,15 +331,15 @@ const Trailer = {
   fitAuction(root) {
     const ph = root.querySelector('.fm-phone');
     if (!ph) return;
-    const k = Math.min(innerWidth * .94 / 410, innerHeight * .74 / 800);
+    const k = Math.min(innerWidth / 390, innerHeight * .74 / 700);
     ph.style.setProperty('--ps', k.toFixed(3));
     const pr = ph.getBoundingClientRect();
     const at = (sel, n) => {
       const e = ph.querySelector(sel);
       if (!e) return;
       const r = e.getBoundingClientRect();
-      ph.style.setProperty(`--${n}x`, ((r.left + r.width * .5 - pr.left) / k - 10).toFixed(0) + 'px');
-      ph.style.setProperty(`--${n}y`, ((r.top + r.height * .5 - pr.top) / k - 10).toFixed(0) + 'px');
+      ph.style.setProperty(`--${n}x`, ((r.left + r.width * .5 - pr.left) / k).toFixed(0) + 'px');
+      ph.style.setProperty(`--${n}y`, ((r.top + r.height * .5 - pr.top) / k).toFixed(0) + 'px');
     };
     at('.fm-av.buy .au-lot', 'a'); at('.fm-buy', 'b'); at('.fm-tmine', 'c');
   },

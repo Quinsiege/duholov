@@ -2056,7 +2056,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), inset 0 -1.2vmin 1.6vmin -1vmin color-mix(in srgb, var(--rc) 45%, transparent), 0 .6vmin 1.4vmin rgba(0, 0, 0, .55); }
 .fm-cd .f::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 45%; background: linear-gradient(rgba(255, 255, 255, .1), transparent); pointer-events: none; }
 .fm-cd .f::after { content: ''; position: absolute; left: 12%; right: 12%; bottom: 0; height: .5vmin; border-radius: .5vmin .5vmin 0 0; background: var(--rc); box-shadow: 0 0 1vmin var(--rc); }
-.fm-cd .f .art { width: 84%; margin-bottom: 4%; filter: drop-shadow(0 .5vmin .6vmin rgba(0, 0, 0, .45)); }
+.fm-cd .f > .art { position: absolute; left: 50%; top: 47%; width: 78% !important; height: auto !important; max-width: none; margin: 0 !important; transform: translate(-50%, -50%); filter: drop-shadow(0 .5vmin .6vmin rgba(0, 0, 0, .45)); }
 .fm-cd .gem { position: absolute; right: 7%; top: 6%; width: 1.5vmin; height: 1.5vmin; transform: rotate(45deg); background: var(--rc); border: .2vmin solid rgba(27, 15, 58, .9); box-shadow: 0 0 .8vmin var(--rc); }
 .fm-cd .b { transform: rotateY(180deg); border: 1px solid #c9962b;
   background: radial-gradient(circle, #fde68a 0 9%, #b7791f 10% 12%, transparent 13%), repeating-conic-gradient(from 0deg, rgba(253, 224, 71, .14) 0 10deg, transparent 10deg 20deg), linear-gradient(160deg, #3b1d73, #160a33);
@@ -2132,9 +2132,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes fmLunge { 30% { transform: translateX(4vmin); } }
 @keyframes fmHitR { 10% { transform: translateX(3vmin); filter: brightness(2.5); } 30% { transform: none; filter: none; } }
 @keyframes fmKO { to { transform: translateY(8vmin) rotate(20deg); opacity: 0; filter: grayscale(1) brightness(.5); } }
-.fm-hp { position: relative; height: 2vmin; margin: 0 10% 2vmin; border-radius: 2vmin; background: rgba(0, 0, 0, .5); border: .3vmin solid rgba(243, 207, 107, .6); overflow: hidden; }
-.fm-hp i { position: absolute; inset: 0; background: linear-gradient(90deg, #22c55e, #86efac); transform-origin: left; }
-.s-duel .fm-df.foe .fm-hp i { animation: fmHpFoe 4.4s steps(1) forwards; }
+.fm-hpbar { position: relative; height: 2vmin; margin: 0 10% 2vmin; border-radius: 2vmin; background: rgba(0, 0, 0, .5); border: .3vmin solid rgba(243, 207, 107, .6); overflow: hidden; }
+.fm-hpbar i { position: absolute; inset: 0; background: linear-gradient(90deg, #22c55e, #86efac); transform-origin: left; }
+.s-duel .fm-df.foe .fm-hpbar i { animation: fmHpFoe 4.4s steps(1) forwards; }
 @keyframes fmHpFoe { 0% { transform: scaleX(1); } 30% { transform: scaleX(.72); background: linear-gradient(90deg, #eab308, #fde047); } 52% { transform: scaleX(.46); background: linear-gradient(90deg, #eab308, #fde047); } 75% { transform: scaleX(.18); background: linear-gradient(90deg, #dc2626, #f87171); } 100% { transform: scaleX(0); } }
 .fm-dbeam { position: absolute; left: 10%; right: 10%; top: 42%; height: 14vmin; width: 80%; opacity: 0; }
 .fm-dbeam path { fill: none; stroke: #fef9c3; stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 5px #facc15) drop-shadow(0 0 14px #a78bfa); opacity: 0; animation: fmCrackle .24s steps(1) infinite; }
@@ -2178,13 +2178,11 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .s-raid .fm-won { animation: fmStamp .6s cubic-bezier(.2, 1.6, .4, 1) 5.6s forwards; }
 
 /* аукцион: настоящий экран игры в телефоне, палец покупает лот и смотрит итоги продажи */
-.fm-phone { position: absolute; left: 50%; top: 47%; width: 390px; height: 800px; margin: -400px 0 0 -195px; transform: scale(var(--ps, .6)); transform-origin: 50% 50%;
-  border-radius: 46px; overflow: hidden; border: 10px solid #0b0716; background: var(--bg);
-  box-shadow: 0 0 0 2px rgba(243, 207, 107, .45), 0 30px 80px rgba(0, 0, 0, .7), 0 0 80px rgba(124, 58, 237, .45); }
-.fm-phone::before { content: ''; position: absolute; left: 50%; top: 8px; width: 110px; height: 26px; margin-left: -55px; border-radius: 14px; background: #0b0716; z-index: 9; }
+.fm-phone { position: absolute; left: 50%; top: 9vh; width: 390px; height: 700px; margin-left: -195px; transform: scale(var(--ps, .8)); transform-origin: 50% 0; overflow: hidden;
+  -webkit-mask: linear-gradient(transparent, #000 3%, #000 86%, transparent); mask: linear-gradient(transparent, #000 3%, #000 86%, transparent); }
 .s-auction .fm-phone { animation: fmPhoneIn .7s cubic-bezier(.2, 1.1, .4, 1) both; }
-@keyframes fmPhoneIn { from { opacity: 0; transform: translateY(30%) scale(calc(var(--ps, .6) * .9)); } to { opacity: 1; transform: scale(var(--ps, .6)); } }
-.fm-phone .screen { position: absolute; inset: 0; z-index: 0; animation: none; padding-top: 26px; }
+@keyframes fmPhoneIn { from { opacity: 0; transform: translateY(4%) scale(var(--ps, .8)); } to { opacity: 1; transform: scale(var(--ps, .8)); } }
+.fm-phone .screen { position: absolute; inset: 0; z-index: 0; animation: none; }
 .fm-phone .screen-body { overflow: hidden; }
 .fm-phone .modal-wrap { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(6, 3, 16, .6); opacity: 0; }
 .fm-phone .modal { animation: none; max-height: none; }
@@ -2291,6 +2289,15 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .s-league .fm-row.me em { animation: fmRank 0s 2.9s forwards; } @keyframes fmRank { to { color: #fde047; } }
 .calm .fm-ka, .calm .fm-ka path, .calm .fm-dbeam path, .calm .fm-portal i, .calm .fm-coins i, .calm .fm-wrays, .calm .fm-wring, .calm .fm-lotc .shine { animation: none !important; }
 
+/* 4.14: тексты трейлера — основной шрифт игры с обводкой (как в игре: обводка под заливкой, paint-order) */
+.fm-cap, .fm-count span, .fm-km, .fm-wt span, .fm-lgh span, .fm-row, .fm-logo p, .fm-start small, .fm-skip {
+  font-family: var(--f-head); font-weight: 700; font-style: normal; letter-spacing: .2px; paint-order: stroke fill; -webkit-text-stroke: .2em rgba(18, 8, 40, .92); }
+.fm-cap { font-size: min(5.6vmin, 28px); color: #fff8e7; text-shadow: 0 3px 10px rgba(0, 0, 0, .8), 0 0 24px rgba(0, 0, 0, .6); }
+.fm-cap b { font-weight: 700; color: #fde68a; text-shadow: 0 0 16px rgba(253, 224, 71, .55), 0 3px 10px rgba(0, 0, 0, .8); }
+.fm-skip { -webkit-text-stroke: 0; }
+.fm-got, .fm-bbar b, .fm-won, .fm-move, .fm-ename b, .fm-sk b, .fm-cl b, .fm-lgh b, .fm-wt b, .fm-start b, .fm-tp b {
+  paint-order: stroke fill; -webkit-text-stroke: .14em rgba(27, 10, 50, .95); }
+.fm-count span { font-size: min(5.2vmin, 26px); }
 /* ---------- 4.0: «Путь Ловчего» ---------- */
 .pth-head { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; border: 1px solid var(--line);
   background: radial-gradient(130% 120% at 0% 0%, color-mix(in srgb, var(--cc) 35%, transparent), rgba(255, 255, 255, .03) 70%); }
