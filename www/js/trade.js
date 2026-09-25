@@ -2,7 +2,7 @@
 /* QR-код и сканер для кода дружбы. Передача духов по коду (посылки DUH2) закрыта в 3.18 — духов продают на аукционе. */
 
 const Trade = {
-  QR_LIB: 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
+  QR_LIB: 'vendor/qrcode.min.js',
   QR_SRI: 'sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1',
 
   loadQR() {

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Ежедневная уборка базы (020_cleanup.sql). cron: /etc/cron.d/duholov-cleanup
+docker exec supabase-db psql -U supabase_admin -d postgres -tAc "select now()::timestamp(0) || ' ' || public.duholov_cleanup()"

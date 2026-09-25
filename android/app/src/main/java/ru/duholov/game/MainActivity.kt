@@ -30,10 +30,12 @@ import androidx.webkit.WebViewAssetLoader
 class MainActivity : ComponentActivity() {
 
     companion object {
-        const val HOME = "https://quinsiege.github.io/duholov/"
+        const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 3 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
-        private val OWN_HOSTS = setOf("quinsiege.github.io", "appassets.androidplatform.net")
+        const val WRAPPER_VERSION = 4 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
+        // геолокацию и камеру получает только сама игра, не страницы сервисов входа
+        private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
         // 3: вход через Яндекс, VK и Telegram — внутри приложения, чтобы сервис вернул игрока прямо в игру
         // (Google во встроенные окна не пускает — эту кнопку игра в приложении не показывает)
         private fun isAuthHost(host: String?) = host != null && (host == "oauth.yandex.ru" || host.endsWith(".yandex.ru") || host.endsWith(".yandex.com") ||
@@ -107,7 +109,9 @@ class MainActivity : ComponentActivity() {
 
         web.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
-                if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                if (!isOwnOrigin(origin)) {
+                    callback.invoke(origin, false, false)
+                } else if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION)) {
                     callback.invoke(origin, true, false)
                 } else {
                     pendingGeo = origin to callback
@@ -119,7 +123,7 @@ class MainActivity : ComponentActivity() {
 
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread {
-                    if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in request.resources) {
+                    if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in request.resources && isOwnOrigin(request.origin.toString())) {
                         if (has(Manifest.permission.CAMERA)) {
                             request.grant(arrayOf(PermissionRequest.RESOURCE_VIDEO_CAPTURE))
                         } else {
@@ -154,9 +158,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         web.onResume()
+        web.resumeTimers()
     }
 
     override fun onPause() {
+        web.pauseTimers() // таймеры игры не тикают в фоне (батарея)
         web.onPause()
         super.onPause()
     }

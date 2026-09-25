@@ -86,7 +86,7 @@ const UI = {
     U.$('#profileBtn .ava-art').innerHTML = Art.avatar(S.d.look);
     this.refreshEvent();
     setInterval(() => this.refreshEvent(), 60000);
-    setInterval(() => this.refreshHud(), 1000);
+    setInterval(() => { if (!document.hidden) this.refreshHud(); }, 1000);
     this.refreshHud();
     this.refreshSky();
   },
@@ -1186,7 +1186,9 @@ const UI = {
       ${sec('Об игре')}
       <div class="list">
         ${link('about', 'info', 'Книга Ордена', 'Мир, духи и все правила игры; трейлер')}
+        ${link('privacy', 'info', 'Персональные данные', 'Какие данные хранит игра и как их удалить')}
         <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div><span class="set-chev">›</span></button>
+        ${Game.on() ? `<button class="row link set-row del-acc"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Удалить учётную запись</b><small>Прогресс, способы входа и все данные — навсегда</small></div></button>` : ''}
       </div>
       <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
     scr.addEventListener('change', e => {
@@ -1234,7 +1236,7 @@ const UI = {
         </div>`
         + (links.length || Login.email ? `<div class="acc-ways"><div class="acc-cap">Способы входа</div>${Login.email ? way(`<span class="lg-ic mail">${this.I.mail}</span>`, 'Почта', U.esc(Login.email)) : ''}${links.map(l => way(Login.icon(l.provider), Login.NAMES[l.provider], l.name ? U.esc(l.name) : 'вход привязан')).join('')}${addRows}</div>` : '')
         + (guest && avail.length ? `<div class="acc-add"><small>Привяжи вход — прогресс откроется на любом устройстве</small><div class="login-row">${Login.buttons('link', avail)}</div></div>` : '')
-        + (Login.appTooOld() ? '<div class="acc-add"><small>Вход через Яндекс и Telegram — в новой версии приложения: <a href="duholov.apk">скачать и установить поверх</a>, прогресс сохранится.</small></div>' : '')
+        + (Updater.oldApp() ? `<div class="acc-add"><small><b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: ${guest ? '<b>сначала привяжи вход выше</b> (иначе прогресс гостя пропадёт), потом ' : ''}удали это приложение и установи новое.</small><a class="btn primary" href="duholov.apk">Скачать новое приложение</a></div>` : '')
         + `<button class="row link set-row acc-out"><span class="set-ico out">${this.I.logout}</span><div class="row-main"><b>Выйти из учётной записи</b><small>${guest ? 'Прогресс гостя будет потерян' : 'Вернуться можно тем же входом'}</small></div><span class="set-chev">›</span></button>`;
       acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
       acc.querySelector('.acc-out').onclick = () => Login.askSignOut();
@@ -1242,6 +1244,16 @@ const UI = {
     renderAcc();
     Login.load().then(renderAcc);
     scr.querySelector('.about').onclick = () => Book.screen(); // 4.0: вместо списка «Об игре»
+    scr.querySelector('.privacy').onclick = () => UI.screen('Персональные данные', '<iframe class="offer-frame" src="privacy.html" title="Политика обработки персональных данных"></iframe>', 'offer-screen');
+    // 4.1: полное удаление учётной записи (152-ФЗ) — после двух подтверждений; платежи остаются без привязки
+    const del = scr.querySelector('.del-acc');
+    if (del) del.onclick = () => this.confirm('Удалить учётную запись?', 'Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные златники не вернутся.', 'Удалить', () => {
+      this.confirm('Точно удалить?', 'Восстановить учётную запись будет нельзя.', 'Да, удалить навсегда', async () => {
+        try { await Game.auth('delete', { confirm: 'УДАЛИТЬ' }); } catch (e) { UI.toast(U.esc(e.message)); return; }
+        try { localStorage.removeItem(CLOUD_CONFIG.auth); } catch (e) {}
+        location.reload();
+      }, 'Нет', true);
+    });
     scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены с сервера навсегда.', 'Сбросить', () => {
       this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', async () => {
         if (await Game.try('reset')) location.reload();
@@ -1371,7 +1383,7 @@ const UI = {
         ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
         <div class="onb-cta"><button class="btn primary wide next">Начать игру</button><small>Без регистрации — вход можно привязать позже</small></div>
         ${Game.on() ? Login.panel(`<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>`, Login.buttons('start'), '') : ''}
-        <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a>`;
+        <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a><a class="onb-offer" href="privacy.html">Политика обработки персональных данных</a>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
       if (n === 3) html = `<div class="onb-q"><h2>Выбери первого духа</h2><p>Он будет с тобой с первого дня.</p></div>

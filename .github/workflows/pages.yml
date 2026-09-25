@@ -1,5 +1,6 @@
-# Прод: после слияния Pull Request в main — тесты, сборка APK и публикация на GitHub Pages.
-# Сайт выкладывается только если всё зелёное. Pages: Settings → Pages → Source: «GitHub Actions».
+# Прод: после слияния Pull Request в main — тесты, сборка APK, выкладка на сервер игры (duholov.ru)
+# и на GitHub Pages (старый адрес quinsiege.github.io/duholov: переводит браузеры на duholov.ru, его открывает
+# приложение старой версии). Выкладка — только если всё зелёное.
 name: Публикация
 
 on:
@@ -16,23 +17,46 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  SERVER: 147.45.100.117
+  # отпечаток ключа сервера (ssh-keyscan): подключаемся только к своему серверу
+  SERVER_KEY: 147.45.100.117 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICge10MuS0gBYz/ZbkMeN15+FwpVl5EZWdzjEEGMqh12
+
 jobs:
   tests:
     name: Автотесты
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # сервер игры (server/functions/game) собирается из тех же модулей, что и игра: он должен быть пересобран
       - name: Сервер игры собран из текущего кода
         shell: pwsh
         run: ./tools/build-server.ps1 -Check
+      # 4.1: собранный сервер проверяет Deno (как на сервере игры) — опечатка в общем коде не доедет до выкладки
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Проверка сервера (Deno)
+        run: deno check server/functions/game/index.ts
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - working-directory: tests
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - name: Браузер для тестов (кэш)
+        id: pw
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tests/package-lock.json') }}
+      - name: Установка Playwright
+        working-directory: tests
         run: |
-          npm install --no-audit --no-fund
-          npx playwright install --with-deps chromium
-          npm test
+          npm ci --no-audit --no-fund
+          if [ '${{ steps.pw.outputs.cache-hit }}' = 'true' ]; then npx playwright install-deps chromium; else npx playwright install --with-deps chromium; fi
+      - name: Тесты
+        working-directory: tests
+        run: npm test
 
   apk:
     name: APK для Android
@@ -46,14 +70,61 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-      - run: gradle -p android assembleDebug --no-daemon
+      # релизная подпись постоянным ключом (секреты ANDROID_KEYSTORE_*); без ключа выпуск не собирается
+      - name: Ключ подписи
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE" || { echo 'нет секрета ANDROID_KEYSTORE_BASE64'; exit 1; }
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/duholov.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/duholov.jks" >> "$GITHUB_ENV"
+      - name: Сборка
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          gradle -p android assembleRelease --no-daemon
+          mv android/app/build/outputs/apk/release/app-release.apk duholov.apk
       - uses: actions/upload-artifact@v4
         with:
           name: duholov-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: duholov.apk
+
+  server:
+    name: Сервер игры (duholov.ru)
+    needs: [tests, apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: duholov-apk
+          path: www
+      - name: Метка версии в адресах файлов
+        run: sh tools/stamp-version.sh
+      - name: Доступ к серверу
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          echo "$SERVER_KEY" > ~/.ssh/known_hosts
+      # сначала функция (новый клиент может звать новые действия), потом сайт
+      - name: Функция game
+        run: |
+          scp -q server/functions/game/index.ts deploy@$SERVER:/opt/duholov/volumes/functions/game/index.ts.new
+          ssh deploy@$SERVER 'mv /opt/duholov/volumes/functions/game/index.ts.new /opt/duholov/volumes/functions/game/index.ts && sudo -n docker restart supabase-edge-functions'
+      - name: Сайт
+        run: rsync -rlptz --delete --exclude='.well-known' www/ deploy@$SERVER:/srv/www/prod/
+      - name: Проверка
+        run: |
+          sleep 5
+          V=$(node -p "require('./www/version.json').version")
+          test "$(curl -fsS https://duholov.ru/version.json | node -p 'JSON.parse(require("fs").readFileSync(0)).version')" = "$V"
+          curl -fsS -X POST -H 'Origin: https://duholov.ru' -H 'Content-Type: application/json' -d '{}' https://api.duholov.ru/functions/v1/game | grep -q 'auth'
+          echo "duholov.ru: $V"
 
   pages:
-    name: Сайт игры
+    name: Старый адрес (GitHub Pages)
     needs: [tests, apk]
     runs-on: ubuntu-latest
     environment:
@@ -65,15 +136,8 @@ jobs:
         with:
           name: duholov-apk
           path: www
-      - run: mv www/app-debug.apk www/duholov.apk
-      # Метка версии в адресах файлов (?v=dev → ?v=2.1.1): CDN GitHub Pages кэширует файлы на 10 минут,
-      # а новые адреса он берёт с сервера — новая страница никогда не получит старые скрипты.
       - name: Метка версии в адресах файлов
-        run: |
-          V=$(node -p "require('./www/version.json').version")
-          sed -i "s/?v=dev/?v=$V/g" www/index.html www/admin.html www/auth.html www/sw.js
-          if grep -q '?v=dev' www/index.html www/admin.html www/auth.html www/sw.js; then echo 'осталась метка ?v=dev'; exit 1; fi
-          echo "Версия $V"
+        run: sh tools/stamp-version.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -3,8 +3,8 @@
    (game.js), объекты карты (pois.js) и заявки мест (propose.js). Таблицу сезона Лиги отдаёт только сервер игры. */
 
 const Cloud = {
-  LIB: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
-  LIB_SRI: 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug', // проверка целостности: подменённый файл CDN не выполнится
+  LIB: 'vendor/supabase.min.js', // 4.1: свой файл вместо CDN (jsdelivr в России бывает заблокирован)
+  LIB_SRI: 'sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug', // проверка целостности: подменённый файл не выполнится
   sb: null,
 
   // автотесты (браузер под управлением Playwright) на боевой сервер не ходят
@@ -21,7 +21,13 @@ const Cloud = {
       });
     }
     const sb = window.supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: CLOUD_CONFIG.auth } });
-    const { data } = await sb.auth.getSession();
+    let { data } = await sb.auth.getSession();
+    // 4.1: вход, принесённый со старого адреса игры (move.js), — меняем его ключ на свой, прежний перестаёт действовать
+    if (!data.session && typeof Move !== 'undefined' && Move.handoff && !CLOUD_CONFIG.locked) {
+      const r = await sb.auth.refreshSession({ refresh_token: Move.handoff }).catch(() => null);
+      Move.handoff = null;
+      if (r && r.data && r.data.session) data = r.data;
+    }
     if (!data.session) await this.signIn(sb);
     this.sb = sb;
     return sb;

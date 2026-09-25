@@ -39,7 +39,7 @@ const PAY = {
   shop: Deno.env.get('YOOKASSA_SHOP_ID') || '',
   key: Deno.env.get('YOOKASSA_SECRET_KEY') || '',
   receipt: Deno.env.get('PAY_RECEIPT') === 'on',
-  ret: Deno.env.get('PAY_RETURN_URL') || 'https://quinsiege.github.io/duholov/paid.html',
+  ret: Deno.env.get('PAY_RETURN_URL') || 'https://duholov.ru/paid.html',
 };
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/i;
 async function yk(method, path, body, idem) {
@@ -90,21 +90,37 @@ const Pay = {
     if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: 'Платёжный сервис не выдал страницу оплаты' };
     return { ok: true, order: row.id, url: p.confirmation.confirmation_url };
   },
-  // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня)
+  // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня); остальные доводит уведомление ЮKassa (notify)
   async sync(uid) {
     const since = new Date(Date.now() - 3 * 86400000).toISOString();
-    const rows = must(await db.from('payments').select('id, ext_id, amount').eq('user_id', uid)
+    const rows = must(await db.from('payments').select('id, ext_id, amount, status, credited').eq('user_id', uid)
       .in('status', ['pending', 'waiting_for_capture']).not('ext_id', 'is', null).gte('created_at', since).limit(20)) || [];
-    for (const r of rows) {
-      const p = await yk('GET', `/payments/${encodeURIComponent(r.ext_id)}`);
-      // платёж должен быть именно этим заказом и на эту сумму
-      const same = p.metadata && p.metadata.order_id === r.id && p.amount && (+p.amount.value).toFixed(2) === (+r.amount).toFixed(2) && p.amount.currency === 'RUB';
-      const status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
-      must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
-    }
+    for (const r of rows) await this.refresh(r);
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'succeeded').eq('credited', false);
     const { count: open } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).in('status', ['pending', 'waiting_for_capture']).gte('created_at', since);
     return { ok: true, paid: count || 0, open: open || 0 };
+  },
+  // Итог платежа — только из ответа ЮKassa (платёж должен быть именно этим заказом и на эту сумму)
+  async refresh(r) {
+    const p = await yk('GET', `/payments/${encodeURIComponent(r.ext_id)}`);
+    const same = p.metadata && p.metadata.order_id === r.id && p.amount && (+p.amount.value).toFixed(2) === (+r.amount).toFixed(2) && p.amount.currency === 'RUB';
+    let status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
+    if (same && p.refunded_amount && +p.refunded_amount.value > 0) status = 'refunded';
+    if (status === r.status) return status;
+    // возврат уже начисленного платежа — владельцу видно в журнале (списывать златники вручную по обращению)
+    if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
+    // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
+    must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
+    return status;
+  },
+  // 4.1: HTTP-уведомление ЮKassa (Интеграция → HTTP-уведомления: https://api.duholov.ru/functions/v1/game/yookassa).
+  // Телу уведомления не верим — берём из него только номер платежа и сами спрашиваем ЮKassa.
+  async notify(body) {
+    if (!this.on() || !body || !body.object) return;
+    const ext = String((String(body.event || '').startsWith('refund.') ? body.object.payment_id : body.object.id) || '').slice(0, 64);
+    if (!/^[0-9a-f-]{20,64}$/i.test(ext)) return;
+    const r = must(await db.from('payments').select('id, ext_id, amount, status, credited').eq('ext_id', ext).maybeSingle());
+    if (r) await this.refresh(r);
   },
 };
 
@@ -181,6 +197,14 @@ const Auth = {
     if (op === 'info') {
       const links = must(await db.from('auth_links').select('provider, name, created_at').eq('user_id', uid)) || [];
       return { ok: true, providers: this.providers(), links };
+    }
+    // 4.1: удалить учётную запись целиком (152-ФЗ): прогресс, способы входа, лоты, место в Лиге — всё, что связано
+    // с ней в базе, удаляется вместе с ней; записи о платежах остаются без привязки (налоговый учёт, 018)
+    if (op === 'delete') {
+      if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: 'Нужно подтверждение' };
+      const { error } = await db.auth.admin.deleteUser(uid);
+      if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: 'Не получилось удалить — попробуй ещё раз' }; }
+      return { ok: true };
     }
     if (op !== 'signin') return { ok: false, error: 'Неизвестная операция' };
     const provider = String(a.provider || '');
@@ -461,7 +485,7 @@ function makeEnv(uid) {
 const FLOOD = 150, BAD_TOKENS = 20;
 // Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
 const LOCK_MS = 30000, LOCK_TRIES = 25;
-const hits = new Map(), badTokens = new Map();
+const hits = new Map(), badTokens = new Map(), errHits = new Map();
 const tooMany = (map, key, max) => {
   const now = Date.now(), m = Math.floor(now / 60000);
   const h = map.get(key);
@@ -472,7 +496,7 @@ const tooMany = (map, key, max) => {
 // Контуры (3.22.1): код функции один и тот же, а с каких страниц её можно вызывать — задаёт секрет проекта
 // ALLOWED_ORIGINS (через запятую). Боевой проект — только сайт игры (так по умолчанию), тестовый — только localhost.
 // Запросы не из браузера (без заголовка Origin) проверяются как обычно — по входу игрока.
-const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || 'https://quinsiege.github.io').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || 'https://duholov.ru,https://quinsiege.github.io').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
 // Закрытый контур (тестовый проект): секрет ACCESS_KEY — без заголовка x-duholov-access с этим ключом запросы
 // отклоняются (Origin подделывает любой скрипт, а адрес и публичный ключ проекта лежат в открытом репозитории).
 // В боевом проекте секрет не задан — игра открыта всем.
@@ -485,7 +509,25 @@ Deno.serve(async req => {
   const headers = { ...CORS, 'Access-Control-Allow-Origin': allowed && origin ? origin : ORIGINS[0], Vary: 'Origin' };
   const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
+  // уведомление ЮKassa о платеже: итог проверяем сами (Pay.notify); при сбое — 500, и ЮKassa повторит уведомление позже
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/yookassa')) {
+    try { await Pay.notify(await req.json().catch(() => null)); return new Response('ok'); }
+    catch (e) { console.error('Казна, уведомление:', String(e)); return new Response('retry', { status: 500 }); }
+  }
   if (!allowed) return reply({ ok: false, error: 'Этот сервер игры не принимает запросы с этой страницы' }, 403);
+  // 4.1: ошибка из браузера игрока (www/js/errors.js) — в client_errors; не больше 20 в минуту с адреса, хранится 14 дней
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/log')) {
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+    if (tooMany(errHits, ip, 20)) return reply({ ok: false }, 429);
+    const b = await req.json().catch(() => null), s = (x, n) => String((x == null ? '' : x)).slice(0, n);
+    if (b && b.msg) {
+      const { error } = await db.from('client_errors').insert({ v: s(b.v, 20), page: s(b.page, 100), msg: s(b.msg, 500), src: s(b.src, 200),
+        line: Number.isFinite(+b.line) ? +b.line | 0 : null, stack: s(b.stack, 2000), ua: s(req.headers.get('user-agent'), 300) });
+      if (error) console.error('client_errors:', error.message);
+      if (Math.random() < 0.01) await db.from('client_errors').delete().lt('at', new Date(Date.now() - 14 * 86400000).toISOString());
+    }
+    return reply({ ok: true });
+  }
   if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: 'Закрытый контур: нужен ключ доступа' }, 403);
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);
   const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
@@ -532,13 +574,15 @@ Deno.serve(async req => {
       return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
     }
     if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });
-    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: res.data || null, p_srv: res.srv,
-      p_ver: String(body.v || '').slice(0, 20) }));
+    // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
+    const ops = row && res.data ? Diff.make(row.data, res.data) : null;
+    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
+      p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
     if (rev == null) return reply({ ok: false, error: 'Прогресс изменился на другом устройстве — повтори действие' });
     locked = false; // замок снят вместе с сохранением
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
-    const patch = !res.full && row && body.rev === row.rev ? Diff.make(row.data, res.data) : null;
+    const patch = !res.full && row && body.rev === row.rev ? ops : null;
     return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
   } catch (e) {
     console.error(String(e && e.stack || e));

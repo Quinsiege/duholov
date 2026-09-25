@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <!-- CSP: чужие скрипты (в том числе внедрённые через данные игроков) не выполнятся; список адресов — все, к которым ходит игра -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://cdnjs.cloudflare.com https://cthqhwjnhqomlhrlberb.supabase.co https://xktcxvotugcmlwbuasbg.supabase.co; connect-src 'self' https://cthqhwjnhqomlhrlberb.supabase.co wss://cthqhwjnhqomlhrlberb.supabase.co https://xktcxvotugcmlwbuasbg.supabase.co wss://xktcxvotugcmlwbuasbg.supabase.co https://api.open-meteo.com https://overpass-api.de https://overpass.private.coffee https://maps.mail.ru; media-src 'self' blob: data:; frame-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://tile.openstreetmap.org https://api.duholov.ru https://xktcxvotugcmlwbuasbg.supabase.co; connect-src 'self' https://duholov.ru https://api.duholov.ru wss://api.duholov.ru https://xktcxvotugcmlwbuasbg.supabase.co wss://xktcxvotugcmlwbuasbg.supabase.co https://api.open-meteo.com https://overpass-api.de https://overpass.private.coffee https://maps.mail.ru; media-src 'self' blob: data:; frame-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#120c24">
   <meta name="mobile-web-app-capable" content="yes">
@@ -13,8 +13,6 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="https://oauth.yandex.ru">
   <link rel="dns-prefetch" href="https://passport.yandex.ru">
   <link rel="dns-prefetch" href="https://accounts.google.com">
@@ -95,8 +93,8 @@
       <div class="ld-prog"><div class="ld-row"><span class="ld-text">Загрузка…</span><b class="ld-pct"></b></div><div class="ld-bar"><i class="boot"></i></div></div>
     </div>
   </div>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
+  <link rel="stylesheet" href="vendor/fonts/rubik.css?v=dev">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.min.css?v=dev" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb">
   <link rel="stylesheet" href="css/style.css?v=dev">
   <div id="map"></div>
   <div id="mapShade"></div>
@@ -134,9 +132,12 @@
 
   <div id="toasts"></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous"></script>
+  <script src="vendor/leaflet/leaflet.min.js?v=dev" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO"></script>
+  <script src="vendor/protomaps/protomaps-leaflet.min.js?v=dev" integrity="sha384-pAKrddYWxjFAIJwatOtmmtq9ebz3ZwluHCEg3pqOMpOporUofLqz/l5hs+0LAWaH"></script>
   <script src="js/version.js?v=dev"></script>
   <script src="js/config.js?v=dev"></script>
+  <script src="js/move.js?v=dev"></script>
+  <script src="js/errors.js?v=dev"></script>
   <script src="js/settings.js?v=dev"></script>
   <script src="js/data.js?v=dev"></script>
   <script src="js/util.js?v=dev"></script>

@@ -501,6 +501,7 @@
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
+    if (type === 'encThrow' && who.srv && who.srv.enc && who.srv.enc.lastThrow) who.srv.enc.lastThrow -= 5000; // живой игрок бросает не чаще раза в секунду
     const res = await GameCore.run({ a: [{ type, args }], tz: who.tz != null ? who.tz : 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: APP_VERSION }, { data: who.data, srv: who.srv }, envFor(who));
     if (!res.ok && res.rl) who.srv = { ...who.srv, rl: res.rl }; // как на сервере: счётчики частоты сохраняются и при отказе
     if (res.ok) {
@@ -653,6 +654,9 @@
     ok(id, 'нашёлся малый разлом');
     const rift = { id, lat: A.lat, lng: A.lng, name: 'Памятник' };
     await refuse(A, 'raidStart', { rift: { ...rift, lat: A.lat + 0.01 } }, /далеко/);
+    // 4.1: легендарный разлом у места не из базы (id и координаты — от телефона) не открывается
+    const leg = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 3; }), 20000);
+    if (leg) await refuse(A, 'raidStart', { rift: { id: leg, lat: A.lat, lng: A.lng, name: 'Выдумка' } }, /известных Ордену/);
     const st = await must(A, 'raidStart', { rift });
     await refuse(A, 'raidEnd', { win: true }, /слишком быстрая/);
     await must(A, 'raidStart', { rift });
@@ -896,6 +900,9 @@
     await must(A, 'clanJoin', { clan: 'sokol' }); eq(A.data.clan, 'sokol');
     await refuse(A, 'clanJoin', { clan: 'volk' }, /уже выбрана/);
     await must(B, 'clanJoin', { clan: 'medved' }); await must(C, 'clanJoin', { clan: 'sokol' });
+    // 4.1: Капище, которого нет в базе мест (id и координаты — от телефона), защищать нельзя
+    await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /известные Ордену/);
+    DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Старый вяз', active: true };
     // свободное Капище: сначала победа над хранителем, потом защитник
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /Сначала победи/);
     await must(A, 'duelStart', { shrine });

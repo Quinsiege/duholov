@@ -35,27 +35,41 @@ const MapView = {
     window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; });
 
     if (Cfg.s.demo && DEV) this.startDemo(); else this.startGPS();
+    // 4.1: свёрнутая игра не держит GPS (батарея); при возвращении — сразу свежая точка
+    document.addEventListener('visibilitychange', () => {
+      if (this.demo) return;
+      if (document.hidden) this.stopGPS(); else if (this.watchId == null) this.startGPS();
+    });
     this.refresh();
     // в режиме экономии батареи карта обновляется вдвое реже
     document.body.classList.toggle('eco', !!Cfg.s.eco);
     let tickN = 0;
-    setInterval(() => { if (!Cfg.s.eco || ++tickN % 2 === 0) this.refresh(); }, 1500);
+    setInterval(() => { if (!document.hidden && (!Cfg.s.eco || ++tickN % 2 === 0)) this.refresh(); }, 1500);
     let last = performance.now();
     const loop = t => { this.tick(Math.min(0.1, (t - last) / 1000)); last = t; requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   },
 
+  // 4.1: своя карта — векторные тайлы России (Protomaps, данные OpenStreetMap) одним файлом на сервере игры;
+  // за пределами вырезки — стандартные тайлы OSM. Ночной вид и тона Нави — CSS-фильтр слоя (style.css).
+  TILES: 'tiles/russia-20260924.pmtiles',
+  COVER: [19.5, 41.1, 180, 72], // рамка вырезки: долгота, широта (юго-запад → северо-восток)
+  covered(p) { const b = this.COVER; return !!p && p.lng >= b[0] && p.lng <= b[2] && p.lat >= b[1] && p.lat <= b[3]; },
   setTiles() {
     const theme = Cfg.s.mapTheme || 'auto';
     const night = theme === 'auto' ? U.isNight() : theme === 'dark';
     if (night === this.night) return;
     this.night = night;
-    // Стандартные тайлы OSM; ночной вид делается CSS-фильтром (см. style.css)
     if (!this.tiles) {
-      this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(this.map);
+      const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+      if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
+        this.tiles = protomapsL.leafletLayer({
+          url: ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES,
+          flavor: 'light', lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
+        }).addTo(this.map);
+      } else {
+        this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
+      }
     }
     document.body.classList.toggle('night', night);
   },

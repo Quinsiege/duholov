@@ -237,9 +237,22 @@
 - Код из ссылки хранится на телефоне до создания Ловчего и убирается из адреса.
 
 ## Прод
-- Игра: https://quinsiege.github.io/duholov/ · APK: https://quinsiege.github.io/duholov/duholov.apk
-- Репозиторий: https://github.com/Quinsiege/duholov · Облако: Supabase-проект `duholov` (прогресс, места игроков, модерация, таблица Лиги)
-- Модерация: https://quinsiege.github.io/duholov/admin.html
+- Игра: https://duholov.ru/ · APK: https://duholov.ru/duholov.apk · Модерация: https://duholov.ru/admin.html
+- Тестовый сайт (сборка последнего Pull Request, тестовый контур): https://test.duholov.ru/
+- Старый адрес https://quinsiege.github.io/duholov/ сам переводит браузер на duholov.ru вместе со входом (`www/js/move.js`); его же открывает приложение Android до версии 4.
+- Репозиторий: https://github.com/Quinsiege/duholov
+
+## Сервер (с 4.1.0)
+Свой сервер в России — данные игроков хранятся в РФ (152-ФЗ): Timeweb Cloud, Москва, `147.45.100.117`, Ubuntu 24.04.
+- **Supabase self-hosted** в `/opt/duholov` (официальный `supabase/docker`): база, вход, функции (`game`), хранилище, realtime.
+  Порты открыты только на `127.0.0.1`; снаружи — через **Caddy** (`/opt/caddy`, HTTPS Let's Encrypt):
+  `duholov.ru` → `/srv/www/prod`, `test.duholov.ru` → `/srv/www/test`, `api.duholov.ru` → только публичные пути Supabase
+  (`/auth`, `/rest`, `/realtime`, `/storage`, `/functions`). Панель Studio наружу не открыта: `ssh -L 8000:127.0.0.1:8000 root@147.45.100.117` → http://localhost:8000.
+- Секреты функции `game` (ЮKassa, сервисы входа, `ALLOWED_ORIGINS`) — `/opt/duholov/functions.env` на сервере, после правки: `cd /opt/duholov && docker compose up -d functions`.
+- **Выкладка** — только CI: после слияния PR workflow «Публикация» кладёт функцию `game` и сайт на сервер (пользователь `deploy`, секрет `DEPLOY_SSH_KEY`) и старый адрес на GitHub Pages. SQL-миграции: `docker exec -i supabase-db psql -U supabase_admin -d postgres < server/0NN_….sql` (и в тестовом проекте).
+- **Копии базы**: `duholov-backup` каждую ночь (03:17 UTC), 14 дней на сервере + S3 Timeweb (`duholov-backup`). Плюс ежедневные снимки всего сервера в панели Timeweb. Восстановление: `pg_restore` из `/var/backups/duholov/*.dump`.
+- Пароль модератора: `duholov-set-password` на сервере. Скрипты сервера — `tools/server/`, перенос из облака — `tools/migrate/`.
+- Доступ по SSH — только по ключам, файрвол ufw (22, 80, 443), fail2ban, автообновления безопасности.
 
 ## Как выпускаются изменения
 Ветка `main` защищена: изменения попадают в прод **только через Pull Request**.
@@ -249,31 +262,24 @@
    - `www/js/version.js` → `APP_VERSION`,
    - `www/version.json` → `version` и `notes` (эти строки игроки увидят в окне обновления).
    CI проверяет, что версии совпадают.
-   Свои скрипты и стили подключаются с меткой `?v=dev` (в `index.html`, `admin.html` и списке `sw.js`); при публикации CI меняет её на номер версии, чтобы CDN GitHub Pages не отдавал игрокам смесь старых и новых файлов. Забытую метку поймает CI.
-3. Если меняется Android-обёртка: `WRAPPER_VERSION` в `MainActivity.kt` = `versionCode` в `android/app/build.gradle.kts` = `minApk` в `www/version.json`.
-4. `git push` ветки → Pull Request в `main`. Workflow **«Проверки»** запускает автотесты в Chromium (`tests/`) и сборку APK.
-5. Когда проверки зелёные — слияние (squash). Workflow **«Публикация»** снова прогоняет тесты, собирает APK и выкладывает сайт; открытые клиенты получат окно обновления.
+   Свои скрипты и стили подключаются с меткой `?v=dev` (в `index.html`, `admin.html` и списке `sw.js`); при публикации CI меняет её на номер версии (`tools/stamp-version.sh`). Забытую метку поймает CI.
+3. Если меняется Android-обёртка: `WRAPPER_VERSION` в `MainActivity.kt` = `versionCode` в `android/app/build.gradle.kts`; `minApk` в `www/version.json` поднимать, только если старое приложение работать не должно. APK подписывается постоянным ключом (секреты `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`; сам ключ хранит владелец — без него обновить приложение невозможно).
+4. `git push` ветки → Pull Request в `main`. Workflow **«Проверки»** запускает автотесты в Chromium (`tests/`), сборку APK и выкладывает сборку на https://test.duholov.ru/.
+5. Когда проверки зелёные — слияние (squash). Workflow **«Публикация»** снова прогоняет тесты, собирает подписанный APK и выкладывает функцию и сайт; открытые клиенты получат окно обновления.
 
 ## Разработка
 ```bash
 powershell -ExecutionPolicy Bypass -File tools/serve.ps1
 ```
-http://localhost:8780 — игра в режиме разработки: в настройках есть демо-режим (джойстик / WASD), праздник можно посмотреть заранее через `?hol=svyatki` (`maslenitsa`, `kupala`, `veles`).
+http://localhost:8780 — игра в режиме разработки (тестовый контур): в настройках есть демо-режим (джойстик / WASD), праздник можно посмотреть заранее через `?hol=svyatki` (`maslenitsa`, `kupala`, `veles`).
 
 ```bash
 powershell -ExecutionPolicy Bypass -File tools/serve.ps1 -Port 8781 -Dir .
 ```
 http://localhost:8781/tests/index.html — автотесты в браузере. В CI они запускаются командой `npm test` в папке `tests` (Playwright).
 
-## Подключение сервера (Supabase, бесплатно)
-1. supabase.com → **Sign in with GitHub** → **New project** (регион — ближайший, пароль БД сохраните у себя).
-2. **Authentication → Sign In / Providers → Anonymous sign-ins: включить.**
-3. **SQL Editor** → по очереди выполнить `server/supabase.sql`, `server/002_objects_and_saves.sql`, `server/003_osm_on_clients.sql`, `server/004_friends.sql`, `server/005_server_authority.sql`, `server/006_order.sql`, `server/007_places_russia.sql`, `server/008_clans.sql`; развернуть Edge Function `game` (см. «Версия 3.0.0»).
-   **Authentication → URL Configuration**: Site URL = адрес игры, Redirect URLs = `<адрес игры>/**` (для входа модераторов по ссылке из письма).
-4. **Project Settings → API Keys**: **Project URL** и **publishable key** → `www/js/config.js` (публичные параметры; секретные ключи в игру не кладите никогда).
-5. Изменение — через Pull Request, как описано выше.
-6. **Модератор**: открыть `admin.html`, войти по ссылке из письма — панель покажет ID учётной записи. Затем в SQL Editor: `insert into public.admins (user_id) values ('<ID>');`
-
+## Модератор
+Владелец задаёт пароль учётной записи на сервере (`duholov-set-password`), затем модератор входит в `admin.html` — панель покажет ID. Права: `insert into public.admins (user_id) values ('<ID>');`
 ## Первый запуск на телефоне — чек-лист
 - [ ] Откройте адрес игры в **Chrome на Android** → разрешите геолокацию.
 - [ ] «Настройки → Установить на главный экран» (или меню Chrome ⋮ → «Установить приложение»).

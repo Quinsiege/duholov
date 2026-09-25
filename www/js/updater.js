@@ -15,9 +15,26 @@ const Updater = {
     return 0;
   },
 
+  // 4.1: приложение до переезда на duholov.ru (подписано другим ключом — новое ставится только заново)
+  oldApp() { return this.IN_APP && this.APK < 4; },
+  // раз в 3 дня напомнить: привязать вход, удалить старое приложение, установить новое
+  OLD_APP: 'duholov.oldAppHint',
+  oldAppHint() {
+    if (!this.oldApp() || this.shown) return;
+    try { if (Date.now() - (+localStorage.getItem(this.OLD_APP) || 0) < 3 * 86400000) return; localStorage.setItem(this.OLD_APP, Date.now()); } catch (e) { return; }
+    UI.modal({
+      title: 'Новое приложение', cls: 'update-modal',
+      html: `<p>Игра переехала на свой сервер в России — <b>duholov.ru</b>. Для этого вышло новое приложение: его нужно установить заново.</p>
+        <ol class="upd-notes"><li>Привяжи вход: Меню → Настройки → Учётная запись (Google, Яндекс, VK, Telegram или почта). Без этого прогресс гостя не перенесётся.</li>
+        <li>Удали это приложение.</li><li>Скачай и установи новое — войди тем же способом.</li></ol>`,
+      buttons: [{ label: 'Позже' }, { label: 'Скачать', cls: 'primary', fn: () => { location.href = 'duholov.apk'; } }],
+    });
+  },
+
   init() {
     this.whatsNew();
     this.check();
+    setTimeout(() => this.oldAppHint(), 20000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.check(); });
   },
 

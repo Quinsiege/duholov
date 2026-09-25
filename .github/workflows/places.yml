@@ -1,7 +1,7 @@
 # Места по всей России: раз в неделю — свежая выгрузка OpenStreetMap (Geofabrik) → отбор объектов
 # для игры (tools/osm-import/build.py) → загрузка в таблицу pois (load.sql).
-# Для загрузки нужен секрет SUPABASE_DB_URL: Supabase → Connect → Session pooler (строка подключения
-# с паролем БД). Без секрета workflow только собирает места и прикладывает CSV к запуску.
+# Загрузка — на сервер игры (duholov.ru) по SSH: нужен секрет DEPLOY_SSH_KEY (ключ пользователя deploy).
+# Без секрета workflow только собирает места и прикладывает CSV к запуску.
 # На Pull Request (изменения в tools/osm-import) — проверка на небольшом регионе, без загрузки.
 name: Места России
 
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 150
     env:
-      DB: ${{ secrets.SUPABASE_DB_URL }}
+      KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       # на проверке PR — небольшой регион и без загрузки в базу
       REGION: ${{ github.event_name == 'pull_request' && 'russia/kaliningrad' || 'russia' }}
       MIN: ${{ github.event_name == 'pull_request' && '1000' || '150000' }}
@@ -52,26 +52,19 @@ jobs:
           name: pois-csv
           path: pois.csv
           retention-days: 14
-      - name: Разбор строки подключения (самопроверка)
-        if: github.event_name == 'pull_request'
-        env:
-          PROJECT_REF: abc
-        run: |
-          out=$(DB=' "postgresql://postgres:[p@ss/w#rd]@aws-1-eu-west-1.pooler.supabase.com:5432/postgres" ' python3 tools/osm-import/dburl.py)
-          test "$out" = 'postgresql://postgres.abc:p%40ss%2Fw%23rd@aws-1-eu-west-1.pooler.supabase.com:5432/postgres'
-          test "$(DB='p@ss w' POOLER_HOST=h python3 tools/osm-import/dburl.py 2>/dev/null)" = ''
-          test "$(DB='p@ss/w#rd' POOLER_HOST=h.pooler.supabase.com python3 tools/osm-import/dburl.py)" = 'postgresql://postgres.abc:p%40ss%2Fw%23rd@h.pooler.supabase.com:5432/postgres'
-          if DB='postgresql://postgres.abc:[YOUR-PASSWORD]@h.pooler.supabase.com:5432/postgres' python3 tools/osm-import/dburl.py; then exit 1; fi
-          echo 'Разбор строки подключения работает'
+      # 4.1: база игры — на своём сервере (duholov.ru). Места уходят туда по SSH, загружает их серверный скрипт
+      # duholov-load-places (SQL — только load.sql, лежащий на сервере).
       - name: Загрузка в базу игры
-        if: github.event_name != 'pull_request' && env.DB != ''
+        if: github.event_name != 'pull_request' && env.KEY != ''
         env:
-          PROJECT_REF: cthqhwjnhqomlhrlberb
-          POOLER_HOST: aws-1-eu-west-1.pooler.supabase.com
+          SERVER: 147.45.100.117
+          SERVER_KEY: 147.45.100.117 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICge10MuS0gBYz/ZbkMeN15+FwpVl5EZWdzjEEGMqh12
         run: |
-          DB_URL=$(python3 tools/osm-import/dburl.py)
-          echo "::add-mask::$DB_URL"
-          psql "$DB_URL" -v min="$MIN" -f tools/osm-import/load.sql
-      - name: Секрет не задан
-        if: github.event_name != 'pull_request' && env.DB == ''
-        run: echo "::warning::Секрет SUPABASE_DB_URL не задан — места собраны (артефакт pois-csv), но в базу не загружены"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          echo "$SERVER_KEY" > ~/.ssh/known_hosts
+          scp -q pois.csv deploy@$SERVER:places/pois.csv
+          ssh deploy@$SERVER "sudo -n /usr/local/bin/duholov-load-places $MIN"
+      - name: Ключ сервера не задан
+        if: github.event_name != 'pull_request' && env.KEY == ''
+        run: echo "::warning::Секрет DEPLOY_SSH_KEY не задан — места собраны (артефакт pois-csv), но в базу не загружены"
