@@ -19,7 +19,7 @@ const MapView = {
 
     // 4.8.1: зона досягаемости — круг Ловчего (свечение, кольцо рун, волна); размер — радиус взаимодействия на текущем масштабе
     this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000, flat: true,
-      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><svg class="rz-vis" viewBox="-1 -1 2 2" preserveAspectRatio="none" aria-hidden="true"><path d="M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z"/></svg><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
+      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><svg class="rz-vis" viewBox="-1 -1 2 2" preserveAspectRatio="none" aria-hidden="true"><path d="M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z"/></svg><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div><svg class="rz-beam" viewBox="-1 -1.25 2 2.25" preserveAspectRatio="none" aria-hidden="true"><g></g></svg>' }) }).addTo(this.map);
     this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
     this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); this.shapeRange(); });
     this.fitRange();
@@ -146,6 +146,13 @@ const MapView = {
     box.style.transition = anim ? 'width .25s cubic-bezier(0,0,.25,1), height .25s cubic-bezier(0,0,.25,1), margin .25s cubic-bezier(0,0,.25,1)' : 'none';
     box.style.width = box.style.height = r * 2 + 'px';
     box.style.margin = -r + 'px 0 0 ' + -r + 'px';
+    // стена света выше круга: её рамка поднята на четверть радиуса (см. viewBox в разметке)
+    const beam = el.querySelector('.rz-beam');
+    if (beam) {
+      beam.style.transition = box.style.transition;
+      beam.style.width = r * 2 + 'px'; beam.style.height = r * 2.25 + 'px';
+      beam.style.margin = -r * 1.25 + 'px 0 0 ' + -r + 'px';
+    }
   },
 
   /* 4.13: круг Ловчего лежит на земле. Из игрока во все стороны идут лучи и останавливаются у первой стены —
@@ -182,7 +189,7 @@ const MapView = {
           for (const f of list) {
             const dy = NavMap.lift(NavMap.height(f), zd) / perData, b = f.bbox;
             if (b.maxX + ox < -rU || b.minX + ox > rU || b.maxY + oy < -rU || b.minY + oy - dy > rU) continue;
-            const rings = f.geom.map(r => r.map(q => ({ x: q.x + ox, y: q.y + oy, out: q.x < 0 || q.x > S || q.y < 0 || q.y > S })));
+            const rings = f.geom.map(r => r.map(q => ({ x: q.x + ox, y: q.y + oy, out: q.x <= .5 || q.x >= S - .5 || q.y <= .5 || q.y >= S - .5 })));
             // игрок внутри дома (неточный GPS) — этот дом не заслоняет
             let inside = false;
             const r0 = rings[0];
@@ -191,7 +198,7 @@ const MapView = {
             if (inside) continue;
             for (const r of rings) for (let i = 0; i < r.length; i++) {
               const a = r[i], c = r[(i + 1) % r.length];
-              if (a.out && c.out) continue; // край обрезки плитки — не настоящая стена
+              if (a.out && c.out) continue; // срез по краю плитки (дом лежит на двух плитках) — не настоящая стена
               edges.push(a.x, a.y, c.x, c.y);
             }
             blds.push({ rings, dy });
@@ -238,6 +245,22 @@ const MapView = {
     // сама досягаемая земля: лёгкая заливка и золотая кромка вдоль стен (у края круга её продолжают руны)
     const vp = box.querySelector('.rz-vis path');
     if (vp) vp.setAttribute('d', vis);
+    // 4.13: невысокая стена света по краю досягаемой земли — золото у земли тает кверху (как дома, «вверх» по экрану)
+    const beam = this.range.getElement().querySelector('.rz-beam');
+    if (beam) {
+      const H = .2, K = 14;
+      let g = '';
+      for (let i = 0; i < K; i++) {
+        const a = Math.pow(1 - i / K, 1.8) * .5;
+        g += '<path d="' + vis + '" transform="translate(0 ' + f3(-(i + .5) * H / K) + ')" stroke-width="' + f3(H / K * 2) + '" stroke-opacity="' + f3(a) + '"/>';
+      }
+      beam.firstElementChild.innerHTML = g;
+      const bsvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1.25 2 2.25"><rect x="-1" y="-1.25" width="2" height="2.25" fill="#fff"/>'
+        + (sil ? '<path d="' + sil + '" fill="#000"/>' : '') + '</svg>';
+      const bu = 'url("data:image/svg+xml,' + encodeURIComponent(bsvg) + '")';
+      // маска по яркости: чёрные дома — вырез
+      beam.style.webkitMaskImage = bu; beam.style.maskImage = bu;
+    }
   },
 
   moveTo(lat, lng, jump) {

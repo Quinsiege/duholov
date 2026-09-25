@@ -3036,6 +3036,15 @@ body.tilt #mapHaze { opacity: 1; }
 .rz-vis { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .rz-vis path { fill: rgba(42, 27, 90, .1); stroke: rgba(201, 150, 43, .85); stroke-width: 1.6px; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 3px rgba(251, 191, 36, .5)); }
 body.night .rz-vis path { fill: rgba(167, 139, 250, .13); stroke: rgba(243, 207, 107, .8); }
+/* стена света по краю зоны: слои контура, всё прозрачнее кверху; дома впереди заслоняют (маска по яркости) */
+.rz-beam { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; animation: rzBeam 3.6s ease-in-out infinite;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; mask-mode: luminance; }
+.rz-beam path { fill: none; stroke: #f5c451; stroke-linejoin: round; }
+body.night .rz-beam path { stroke: #ffd976; }
+body:not(.night) .rz-beam { mix-blend-mode: multiply; } body:not(.night) .rz-beam path { stroke: #d9a13a; }
+body.night .rz-beam { mix-blend-mode: screen; }
+@keyframes rzBeam { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+.calm .rz-beam { animation: none; }
 .rz > i { position: absolute; inset: 0; display: block; border-radius: 50%; }
 .rz-fill { background: radial-gradient(circle, rgba(42, 27, 90, 0) 45%, rgba(42, 27, 90, .12) 70%, rgba(42, 27, 90, .3) 92%, rgba(243, 207, 107, .22) 99%, transparent 100%); }
 .rz-edge { background: var(--rz-edge) center / 100% 100% no-repeat; filter: drop-shadow(0 0 5px rgba(251, 191, 36, .45)); }
