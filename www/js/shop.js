@@ -21,7 +21,7 @@ const Loot = {
       else if (k === 'zlat') out.push({ k, n, label: `${n} ${U.plural(n, 'златник', 'златника', 'златников')}` });
       else if (k === 'cocoon') out.push({ k, n: 1, label: `Кокон ${n} км`, cocoon: n });
       else if (k === 'amulet') out.push({ k, n: 1, label: 'Амулет' });
-      else if (k === 'look') { const x = LOOK.cloak.find(c => c.c === n) || LOOK.emblem.find(m => m.id === n); out.push({ k, n: 1, label: x ? x.name : 'Облик', look: n }); }
+      else if (k === 'look') { const x = LOOK.cloak.find(c => c.c === n) || LOOK.emblem.find(m => m.id === n) || LOOK.skin.find(k => `skin:${k.id}` === n) || LOOK.bg.find(k => `bg:${k.id}` === n) || LOOK.frame.find(k => `frame:${k.id}` === n); out.push({ k, n: 1, label: x ? x.name : 'Облик', look: n }); }
       else if (ITEMS[k]) out.push({ k, n, label: n > 1 ? `${ITEMS[k].name} ×${n}` : ITEMS[k].name });
     }
     return out;
@@ -146,6 +146,7 @@ const Shop = {
         <h3 class="prof-h">Припасы</h3>
         ${Rules.SHOP.filter(x => !x.bag).map(x => row(x, x.id)).join('')}
         <h3 class="prof-h">Облик</h3>
+        <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>Гардероб Ловчего</b><small>${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} златников</small></span><span class="sw-go">›</span></button>
         <div class="shop-cloaks">${cloaks.map(c => `<button class="shop-cloak ${S.d.owned[c.c] ? 'owned' : this.poor({ cur: 'zlat', price: c.shop }) ? 'poor' : ''}" data-id="look:${c.c}" ${S.d.owned[c.c] ? 'disabled' : ''}>
           <div class="shop-ava">${Art.avatar({ cloak: c.c, eyes: S.d.look.eyes, emblem: S.d.look.emblem })}</div><b>${c.name}</b><small>${S.d.owned[c.c] ? 'Уже твой' : this.price({ cur: 'zlat', price: c.shop })}</small></button>`).join('')}</div>
         <div class="q-note">Златники дают за серию дней (на 7-й день — 30), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.</div>`;
@@ -164,6 +165,7 @@ const Shop = {
         render(); UI.refreshHud();
         return;
       }
+      if (e.target.closest('.shop-wd')) { UI.editLook(() => { UI.refreshHud(); render(); }); return; } // 4.6: облики-скины
       const b = e.target.closest('[data-id]'); if (!b || b.disabled) return;
       // не хватает валюты — сразу подсказка, где её взять, без окна покупки
       if (b.classList.contains('poor')) {

@@ -189,7 +189,7 @@ Object.assign(UI, {
           </div>
         </div>
         <div class="prof-actions">
-          <button class="pa look-btn"><span class="pa-ic">${this.I.edit}</span><b>Облик</b></button>
+          <button class="pa look-btn"><span class="pa-ic">${this.I.edit}</span><b>Гардероб</b></button>
           <button class="pa journal-btn"><span class="pa-ic">${this.I.journal}</span><b>Дневник</b></button>
           ${d.clan ? `<button class="pa clan-open"><span class="pa-ic">${this.I.shield}</span><b>Дружина</b></button>`
             : d.level >= CLAN_LEVEL ? `<button class="pa hot clan-btn"><span class="pa-ic">${this.I.shield}</span><b>Выбрать дружину</b></button>`
@@ -216,13 +216,14 @@ Object.assign(UI, {
         <div class="album-box">${Album.html()}</div>
         <div class="prof-since">В Ордене с ${new Date(d.created).toLocaleDateString('ru-RU')}</div>
       </div>`, 'prof-screen');
+    Art.cardSkin(scr.querySelector('.prof-hero'), d.look); // 4.6: фон и рамка карточки из Гардероба
     scr.addEventListener('click', e => {
       const lg = e.target.closest('[data-login]'); if (lg) { Login.start(lg.dataset.login, lg.dataset.mode); return; }
       if (e.target.closest('.journal-btn')) { J.screen(); return; }
       if (e.target.closest('.clan-btn')) { Clans.choose(() => { this.closeScreen(scr); this.profile(); }); return; }
       if (e.target.closest('.clan-open')) { Clans.screen(); return; }
       if (e.target.closest('.look-btn')) {
-        this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); this.refreshHud(); });
+        this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); Art.cardSkin(scr.querySelector('.prof-hero'), S.d.look); this.refreshHud(); });
         return;
       }
       const ai = e.target.closest('.album-item');
@@ -243,40 +244,105 @@ Object.assign(UI, {
     });
   },
   avatar() { return Art.avatar(S.d ? S.d.look : undefined); },
-  // Облик: плащ, глаза, эмблема; варианты открываются с уровнем
+  // 4.6: Гардероб Ловчего — облики-скины, фон и рамка портрета (за златники или с уровнем), плащ, глаза, эмблема; примерка до сохранения
   editLook(done) {
-    const look = { ...S.d.look }, lvl = S.d.level;
-    const sw = (group, items, render) => `<div class="look-row"><small>${group}</small><div class="look-sw">${items.map(render).join('')}</div></div>`;
-    const m = this.modal({
-      title: 'Облик Ловчего', cls: 'look-modal',
-      html: `<div class="look-prev"></div>
-        ${sw('Плащ', LOOK.cloak, x => {
-          // плащи из Лавки и с Золотой тропы открываются покупкой
-          const lk = (x.shop || x.pass) && !S.d.owned[x.c] ? (x.shop ? 'shop' : 'pass') : x.lvl;
-          return `<button class="sw ${lk === 'shop' || lk === 'pass' || x.lvl > lvl ? 'locked' : ''} ${x.shop || x.pass ? 'special' : ''}" data-k="cloak" data-v="${x.c}" data-l="${lk}" title="${x.name}" style="--sw:${x.c}"></button>`;
-        })}
-        ${sw('Глаза', LOOK.eyes, x => `<button class="sw ${x.lvl > lvl ? 'locked' : ''}" data-k="eyes" data-v="${x.c}" data-l="${x.lvl}" title="${x.name}" style="--sw:${x.c}"></button>`)}
-        ${sw('Эмблема', LOOK.emblem, x => {
-          // особые эмблемы: за ранг Лиги и за вторую книгу Летописи
-          const lk = x.league && League.view().best < x.league ? 'league' : x.story && S.d.story.ch < x.story ? 'story' : x.pass && !S.d.owned[x.id] ? 'pass' : x.lvl;
-          const locked = x.lvl > lvl || typeof lk === 'string';
-          return `<button class="sw em ${locked ? 'locked' : ''}" data-k="emblem" data-v="${x.id}" data-l="${lk}" title="${x.name}">${Art.avatar({ cloak: '#241a45', eyes: '#241a45', emblem: x.id }).replace('viewBox="0 0 100 100"', 'viewBox="36 70 28 28"')}</button>`;
-        })}
-        <p class="small look-hint">Новые цвета и эмблемы открываются с уровнем.</p>`,
-      buttons: [{ label: 'Отмена' }, { label: 'Сохранить', cls: 'primary', fn: async () => { if (await Game.try('look', { look })) done && done(); } }],
-    });
-    const render = () => {
-      m.querySelector('.look-prev').innerHTML = Art.avatar(look);
-      U.$$('.sw', m).forEach(b => b.classList.toggle('on', look[b.dataset.k] === b.dataset.v));
+    const look = { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', ...S.d.look };
+    const DEF = { skin: 'hood', bg: 'night', frame: 'none' };
+    for (const k in DEF) look[k] = look[k] || DEF[k];
+    const lvl = S.d.level;
+    const KIND = { skin: 'Облик', bg: 'Фон', frame: 'Рамка' };
+    let tab = 'skin';
+    const scr = this.screen('Гардероб', `<div class="wd">
+      <div class="wd-hero"><div class="wd-stage"><i class="wd-ring"></i><div class="wd-ava"></div></div>
+        <div class="wd-cardprev pc-hero"><div class="pc-ava"><div class="wd-cp-ava"></div><span class="pc-lvl">${S.d.level}</span></div><div class="pc-id"><b class="pc-name">${U.esc(S.d.name)}</b><small>${this.rank(S.d.level)} Ордена Оберега</small></div></div>
+        <div class="wd-title"><b class="wd-name"></b><span class="wd-rar"></span></div><p class="wd-desc"></p></div>
+      <div class="seg wd-tabs"><button data-t="skin" class="on">Облики</button><button data-t="bg">Фон</button><button data-t="frame">Рамка</button><button data-t="more">Детали</button></div>
+      <div class="wd-body"></div>
+      <div class="wd-foot"></div></div>`, 'wd-screen');
+    const $ = s => scr.querySelector(s);
+    const item = (kind, id) => LOOK[kind].find(x => x.id === id) || LOOK[kind][0];
+    const has = (kind, x) => x.shop ? !!S.d.owned[`${kind}:${x.id}`] : (x.lvl || 1) <= lvl;
+    const worn = (kind, id) => ((S.d.look || {})[kind] || DEF[kind]) === id;
+    const saved = () => { const c = S.d.look || {}; return c.cloak === look.cloak && c.eyes === look.eyes && c.emblem === look.emblem && Object.keys(DEF).every(k => (c[k] || DEF[k]) === look[k]); };
+    // что ещё не куплено из примеряемого — сначала облик, потом фон, потом рамка
+    const pending = () => Object.keys(DEF).map(k => [k, item(k, look[k])]).find(([k, x]) => x.shop && !has(k, x));
+    const hero = () => {
+      // на вкладках фона и рамки — всегда превью карточки; на остальных — облик (или то, что ждёт покупки)
+      const [k, x] = tab === 'bg' || tab === 'frame' ? [tab, item(tab, look[tab])] : pending() || ['skin', item('skin', look.skin)];
+      const R = SKIN_RAR[x.rar || 0];
+      const cardMode = k === 'bg' || k === 'frame';
+      $('.wd-hero').classList.toggle('card-mode', cardMode);
+      $('.wd-ava').innerHTML = Art.avatar(look);
+      $('.wd-cp-ava').innerHTML = Art.avatar(look); Art.cardSkin($('.wd-cardprev'), look);
+      $('.wd-stage').style.setProperty('--rc', R.c);
+      $('.wd-name').textContent = x.name;
+      $('.wd-rar').textContent = `${KIND[k]} · ${R.name}`; $('.wd-rar').style.color = R.c;
+      $('.wd-desc').textContent = x.desc || (k === 'bg' ? 'Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.' : k === 'frame' ? 'Рамка твоей карточки Ловчего — её видят все, кто откроет карточку.' : '');
     };
-    m.addEventListener('click', e => {
-      const b = e.target.closest('.sw'); if (!b) return;
-      if (b.dataset.l === 'league') { this.toast('Венец Лиги — награда за ранг «Хранитель Лиги»'); return; }
-      if (b.dataset.l === 'story') { this.toast('Эта эмблема — награда за Летопись'); return; }
-      if (b.dataset.l === 'shop') { this.toast('Этот плащ продаётся в Лавке Ордена за златники'); return; }
-      if (b.dataset.l === 'pass') { this.toast('Награда Золотой сезонной тропы'); return; }
-      if (+b.dataset.l > lvl) { this.toast(`Откроется на ${b.dataset.l} уровне`); return; }
-      look[b.dataset.k] = b.dataset.v; Sfx.play('tap'); render();
+    const wide = kind => kind === 'bg' || kind === 'frame';
+    const cards = kind => `<div class="wd-grid ${wide(kind) ? 'wide' : ''}">${LOOK[kind].map(x => {
+      const R = SKIN_RAR[x.rar || 0], own = has(kind, x), on = look[kind] === x.id, lvLock = !x.shop && !own;
+      const tag = own ? (worn(kind, x.id) ? '✓ Надет' : on ? 'Примеряешь' : 'Твой') : lvLock ? `с ${x.lvl} ур.` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;
+      return `<button class="wd-card ${on ? 'on' : ''} ${own ? 'own' : ''} ${lvLock ? 'lv' : ''} r${x.rar || 0}" data-kind="${kind}" data-id="${x.id}" data-lv="${lvLock ? x.lvl : ''}" style="--rc:${R.c}">
+        ${wide(kind) ? `<span class="wd-mini" data-mini="${x.id}"><i>${Art.avatar(look)}</i></span>` : `<span class="wd-c-ava">${Art.avatar({ ...look, [kind]: x.id })}</span>`}<b>${x.name}</b><span class="wd-c-tag">${tag}</span></button>`;
+    }).join('')}</div>`;
+    const lockOf = (x, kind) => {
+      if (kind === 'cloak') return (x.shop || x.pass) && !S.d.owned[x.c] ? (x.shop ? 'shop' : 'pass') : x.lvl > lvl ? x.lvl : '';
+      if (kind === 'eyes') return x.lvl > lvl ? x.lvl : '';
+      return x.league && League.view().best < x.league ? 'league' : x.story && S.d.story.ch < x.story ? 'story' : x.pass && !S.d.owned[x.id] ? 'pass' : x.lvl > lvl ? x.lvl : '';
+    };
+    const swatches = (kind, title) => `<h3 class="wd-h">${title}</h3><div class="wd-sw">${LOOK[kind].map(x => {
+      const v = kind === 'emblem' ? x.id : x.c, lk = lockOf(x, kind), on = look[kind] === v;
+      const face = kind === 'emblem' ? `<svg viewBox="36 70 28 28" class="art">${Art.emblem(x.id)}</svg>` : '';
+      return `<button class="wd-s ${kind} ${on ? 'on' : ''} ${lk !== '' ? 'locked' : ''}" data-k="${kind}" data-v="${v}" data-l="${lk}" title="${x.name}" style="--sw:${kind === 'emblem' ? '#241a45' : v}">${face}<small>${x.name}</small></button>`;
+    }).join('')}</div>`;
+    const body = () => {
+      $('.wd-body').innerHTML = tab === 'more'
+        ? (look.skin !== 'hood' ? '<p class="wd-note">Цвет плаща виден у облика «Ловчий». У особых обликов — свой наряд, а глаза и эмблема — твои.</p>' : '') +
+          swatches('cloak', 'Плащ') + swatches('eyes', 'Глаза') + swatches('emblem', 'Эмблема')
+        : cards(tab);
+      if (tab === 'bg' || tab === 'frame') scr.querySelectorAll('.wd-mini').forEach(el => Art.cardSkin(el, { ...look, [tab]: el.dataset.mini }));
+    };
+    const foot = () => {
+      const p = pending();
+      if (p) {
+        const [k, x] = p;
+        $('.wd-foot').innerHTML = this.rune(`Купить: ${KIND[k].toLowerCase()} за <span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`, 'wd-buy') + `<p class="wd-wallet">У тебя <span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(S.d.zlat || 0)}</p>`;
+      } else $('.wd-foot').innerHTML = this.rune(saved() ? 'Облик надет' : 'Надеть облик', 'wd-save' + (saved() ? ' wd-done' : ''));
+    };
+    const render = () => { hero(); body(); foot(); };
+    scr.addEventListener('click', async e => {
+      const t = e.target.closest('.wd-tabs button');
+      if (t) { tab = t.dataset.t; scr.querySelectorAll('.wd-tabs button').forEach(b => b.classList.toggle('on', b === t)); hero(); body(); return; }
+      const c = e.target.closest('.wd-card');
+      if (c) {
+        if (c.dataset.lv) return this.toast(`Откроется на ${c.dataset.lv} уровне`);
+        look[c.dataset.kind] = c.dataset.id; Sfx.play('tap'); render(); return;
+      }
+      const sw = e.target.closest('.wd-s');
+      if (sw) {
+        const l = sw.dataset.l;
+        if (l === 'league') return this.toast('Венец Лиги — награда за ранг «Хранитель Лиги»');
+        if (l === 'story') return this.toast('Эта эмблема — награда за Летопись');
+        if (l === 'shop') return this.toast('Этот плащ продаётся в Лавке Ордена за златники');
+        if (l === 'pass') return this.toast('Награда Золотой сезонной тропы');
+        if (l) return this.toast(`Откроется на ${l} уровне`);
+        look[sw.dataset.k] = sw.dataset.v; Sfx.play('tap'); render(); return;
+      }
+      if (e.target.closest('.wd-buy')) {
+        const [k, x] = pending();
+        if ((S.d.zlat || 0) < x.shop) { this.toast('Не хватает златников — их можно добыть в Казне Ордена'); return; }
+        this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}Цена: <b>${U.fmtNum(x.shop)}</b> златников.`, 'Купить', async () => {
+          const r = await Game.try('shopBuy', { id: `${k}:${x.id}` });
+          if (!r) return;
+          Sfx.play('catch'); this.toast(`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
+        });
+        return;
+      }
+      if (e.target.closest('.wd-save') && !saved()) {
+        const send = { cloak: look.cloak, eyes: look.eyes, emblem: look.emblem, skin: look.skin, bg: look.bg, frame: look.frame };
+        if (await Game.try('look', { look: send })) { Sfx.play('levelup'); this.toast('Облик надет', 'good'); render(); done && done(); }
+      }
     });
     render();
   },

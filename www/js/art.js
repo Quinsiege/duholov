@@ -584,6 +584,9 @@ const Art = (() => {
   const HEX = /^#[0-9a-f]{6}$/i;
   function avatar(look) {
     look = look || {};
+    // 4.6: облик-скин (js/skins-art.js) — поверх него те же глаза и эмблема
+    // только облики из списка LOOK.skin: облик приходит и от других игроков ('constructor', 'draw' и т. п. — мимо)
+    if (look.skin && look.skin !== 'hood' && typeof SkinArt !== 'undefined' && LOOK.skin.some(k => k.id === look.skin)) return SkinArt.draw(look.skin, look);
     const cloak = HEX.test(look.cloak) ? look.cloak : '#6d28d9', eyes = HEX.test(look.eyes) ? look.eyes : '#5eead4';
     return `<svg viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="48" fill="#241a45"/>` +
       `<path d="M50 14 C70 14 80 34 80 54 L84 96 H16 L20 54 C20 34 30 14 50 14Z" fill="${cloak}"/>` +
@@ -593,5 +596,19 @@ const Art = (() => {
       ((Object.prototype.hasOwnProperty.call(EMBLEM, look.emblem) && EMBLEM[look.emblem]) || EMBLEM.charm) + `</svg>`;
   }
 
-  return { spirit, of, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar };
+  // 4.6: фон и рамка карточки Ловчего (Гардероб): только значения из LOOK.bg / LOOK.frame; картинки — js/looks-art.js
+  const cardUrl = {};
+  function cardSkin(el, look) {
+    if (!el) return;
+    look = look || {};
+    const url = (k, make) => cardUrl[k] || (cardUrl[k] = `url("data:image/svg+xml,${encodeURIComponent(make())}")`);
+    const ok = typeof LookArt !== 'undefined' && typeof LookArt.cardBg === 'function' && typeof LookArt.cardFrame === 'function';
+    const bg = ok && look.bg && look.bg !== 'night' && LOOK.bg.some(x => x.id === look.bg) ? look.bg : null;
+    const fr = ok && look.frame && look.frame !== 'none' && LOOK.frame.some(x => x.id === look.frame) ? look.frame : null;
+    el.classList.toggle('card-bg', !!bg); el.classList.toggle('card-fr', !!fr);
+    if (bg) el.style.setProperty('--card-bg', url('b:' + bg, () => LookArt.cardBg(bg))); else el.style.removeProperty('--card-bg');
+    if (fr) el.style.setProperty('--card-fr', url('f:' + fr, () => LookArt.cardFrame(fr))); else el.style.removeProperty('--card-fr');
+  }
+  const emblem = id => (Object.prototype.hasOwnProperty.call(EMBLEM, id) && EMBLEM[id]) || EMBLEM.charm;
+  return { spirit, of, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
 })();
