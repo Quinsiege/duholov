@@ -34,6 +34,8 @@ const Trailer = {
     [7000, 'mentor', '«Ордену нужен новый Ловчий…»'],
     [0, 'logo', ''],
   ],
+  // сцены, которые продолжают предыдущую без склейки (общее небо, разлом и Кощей)
+  JOINED: ['crack', 'koschey', 'swarm'],
   // события внутри сцен: [сцена, через сколько мс, что сделать]
   CUES: [
     ['crack', 4300, t => t.hit(2)],
@@ -397,7 +399,7 @@ const Trailer = {
           <div class="fm-men"><div class="fm-vm"><i></i>${Art.stack(CutArt.velimir().replace('class="vm-breath"', ''), 'velimir')}</div>${hero ? `<div class="fm-hero"><i></i>${hero}</div>` : ''}</div>
         </div>
         <canvas class="fm-fx"></canvas>
-        <div class="fm-flash"></div><div class="fm-grain"></div><div class="fm-vig"></div>
+        <div class="fm-flash"></div><div class="fm-grain"></div><div class="fm-vig"></div><i class="fm-dip"></i>
         <div class="fm-logo"><div class="fm-lcharm"><i></i>${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p>
           <span class="fm-ver">v${APP_VERSION}</span><button class="btn primary wide fm-go">${o.replay ? 'Закрыть' : 'Начать'}</button></div>
         <div class="fm-cap"></div>
@@ -454,9 +456,19 @@ const Trailer = {
         const i0 = o.from ? Math.max(0, this.SCENES.findIndex(x => x[1] === o.from)) : 0;
         let tt = 0;
         // o.only — только эта сцена (для съёмки кадров)
-        this.SCENES.slice(i0, o.only ? i0 + 1 : undefined).forEach(([dur, cls, text]) => {
+        this.SCENES.slice(i0, o.only ? i0 + 1 : undefined).forEach(([dur, cls, text], k) => {
+          // склейка: эффекты прошлой сцены не попадают в новую. Кадр на миг уходит в темноту, частицы, вспышка и тряска
+          // сбрасываются, старые слои гаснут мгновенно (без переходов), новая сцена проявляется. Вступление
+          // (разлом → Кощей → рой) — одна история на общем небе: там только сброс частиц и вспышки.
+          const joined = this.JOINED.includes(cls), dip = k > 0 && !joined;
+          if (dip) at(tt - 220, () => root.classList.add('dip'));
           at(tt, () => {
-            root.className = 'fm on s-' + cls;
+            fx.clear();
+            root.querySelector('.fm-flash').classList.remove('on');
+            root.querySelector('.fm-cam').classList.remove('shake', 'shake2');
+            if (dip) { root.className = 'fm on dip cut'; void root.offsetWidth; }
+            root.className = 'fm on' + (dip ? ' dip' : '') + ' s-' + cls;
+            if (dip) timers.push(setTimeout(() => root.classList.remove('dip'), 60));
             capDur = dur || 6000;
             t.cap(text);
             fx.mode(cls);
@@ -571,6 +583,8 @@ const Trailer = {
     raf = requestAnimationFrame(step);
     return {
       mode: m => { mode = m; },
+      // смена сцены: все искры, взрывы и волны прошлой сцены исчезают
+      clear: () => { parts = []; rings = []; },
       // оберег попал: вспышка, взрыв золотых искр с хвостами и две ударные волны
       burst: (o = {}) => {
         const cx = W * (o.x == null ? .5 : o.x), cy = H * (o.y == null ? .42 : o.y), cols = o.c || [GOLD, WHITE, EMBER];

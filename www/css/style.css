@@ -1985,6 +1985,10 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
 @keyframes fmGrain { 0% { transform: translate(0, 0); } 20% { transform: translate(-6%, 4%); } 40% { transform: translate(5%, -3%); } 60% { transform: translate(-3%, -6%); } 80% { transform: translate(4%, 5%); } }
 .fm-vig { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 50%, rgba(0, 0, 0, .75) 100%); }
+/* склейка сцен: короткое затемнение; на время смены все переходы выключены — старые слои гаснут сразу, а не тянутся в новую сцену */
+.fm-dip { position: absolute; inset: 0; z-index: 6; background: #04020b; opacity: 0; pointer-events: none; transition: opacity .38s ease-out; }
+.fm.dip .fm-dip { opacity: 1; transition: opacity .2s ease-in; }
+.fm.cut *:not(.fm-dip) { transition: none !important; }
 
 /* логотип */
 .fm-logo { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; opacity: 0; pointer-events: none; transition: opacity .6s;
