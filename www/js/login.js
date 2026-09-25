@@ -176,42 +176,64 @@ const Login = {
   SKIP: 'duholov.justLogged',
   markLogged() { try { sessionStorage.setItem(this.SKIP, '1'); } catch (e) {} },
   justLogged() { let v = null; try { v = sessionStorage.getItem(this.SKIP); sessionStorage.removeItem(this.SKIP); } catch (e) {} return !!v; },
-  // Вернувшийся Ловчий: «С возвращением», чей это прогресс, «Продолжить»; ниже — панель входа.
-  // 3.32: компактнее (всё видно без прокрутки), «Выйти» — прямо на карточке учётной записи
-  gate(done) {
-    const root = U.el('<div class="onb"></div>'), d = S.d, avail = this.available(), guest = this.isGuest();
-    const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
-    const panel = guest
-      ? this.panel('<b>Сохрани прогресс</b><small>Привяжи вход — и прогресс откроется на любом устройстве</small>', this.buttons('link'))
-      : this.panel('<b>Другой аккаунт</b><small>Текущий прогресс останется в своей учётной записи</small>',
-        avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''));
-    root.innerHTML = `<div class="onb-step s0 gate">
-      <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>С возвращением, Ловчий!</p></div>
-      <div class="acc-card ${guest ? 'is-guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
-        <div class="acc-top"><div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
-          <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div></div>
-        <div class="acc-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>духов</span></div><div><b>${dex}/${SPECIES.length}</b><span>бестиарий</span></div>
-          <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>поймано</span></div></div>
-        ${Game.on() ? `<div class="acc-foot ${guest ? 'warn' : 'ok'}"><span>${guest ? `${UI.I.user}Прогресс только на этом устройстве` : `${UI.I.cloud}Прогресс в облаке`}</span>
-          <button class="acc-exit" aria-label="Выйти из учётной записи">${UI.I.logout}Выйти</button></div>` : ''}
-      </div>
-      <button class="btn primary wide go">Продолжить</button>
-      ${!Game.on() ? '' : guest ? panel : `<button class="gate-more" aria-expanded="false">${UI.I.swap}<span>Войти в другой аккаунт</span><i class="gm-chev">›</i></button><div class="gate-other hidden">${panel}</div>`}
-    </div>`;
+  // 4.4: экран входа — сцена во весь экран (Scene, «3D» от наклона телефона), наверху знак Ордена, внизу стеклянная панель.
+  // Вход через сервисы — выезжающая снизу панель (sheet), а не всегда на экране
+  logo(sub) {
+    return `<div class="lg-top"><div class="lg-charm">${Art.charm('charm3')}</div><h1 class="lg-title">ДУХОЛОВ</h1><p>${sub}</p></div>`;
+  },
+  // корень экрана входа: сцена + содержимое; spirits — кто парит в сцене
+  screenRoot(spirits) {
+    const root = U.el('<div class="onb lg"><div class="lg-scene"></div><div class="lg-body"></div></div>');
     document.body.appendChild(root);
-    const close = () => { root.classList.add('out'); setTimeout(() => root.remove(), 400); };
-    root.querySelector('.go').onclick = () => { Sfx.init(); Sfx.play('tap'); close(); done(); };
-    root.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => this.start(b.dataset.login, 'link'); });
-    root.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
-    const mail = root.querySelector('.mail-login');
+    Scene.mount(root.querySelector('.lg-scene'), 'login', { spirits }).then(sc => { root._scene = sc; });
+    return root;
+  },
+  close(root, done) {
+    root.classList.add('out');
+    setTimeout(() => { if (root._scene) root._scene.stop(); root.remove(); }, 450);
+    if (done) done();
+  },
+  // выезжающая панель входа поверх экрана
+  sheet(root, head, buttons) {
+    let sh = root.querySelector('.lg-sheet');
+    if (sh) sh.remove();
+    sh = U.el(`<div class="lg-sheet" role="dialog" aria-modal="true"><div class="lg-sheet-card">
+      <button class="lg-sheet-x" aria-label="Закрыть">${UI.I.close}</button>${this.panel(head, buttons)}</div></div>`);
+    root.appendChild(sh);
+    const hide = () => { sh.classList.add('out'); setTimeout(() => sh.remove(), 260); };
+    sh.onclick = e => { if (e.target === sh || e.target.closest('.lg-sheet-x')) hide(); };
+    sh.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => this.start(b.dataset.login, b.dataset.mode || 'link'); });
+    sh.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
+    const mail = sh.querySelector('.mail-login');
     if (mail) mail.onclick = () => this.emailForm();
-    // 3.34: у вошедшего «Другой аккаунт» свёрнут — чаще всего нужен просто «Продолжить»
-    const more = root.querySelector('.gate-more');
-    if (more) more.onclick = () => {
-      const box = root.querySelector('.gate-other'), open = box.classList.toggle('hidden') === false;
-      more.setAttribute('aria-expanded', open); more.classList.toggle('open', open);
-      if (open) setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
-    };
+    return sh;
+  },
+  // Вернувшийся Ловчий: «С возвращением», карточка (чей прогресс), «Продолжить»; другой аккаунт или привязка — в панели снизу
+  gate(done) {
+    const d = S.d, avail = this.available(), guest = this.isGuest();
+    const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
+    const team = (d.team || []).map(u => (d.spirits.find(s => s.uid === u) || {}).sid).filter(Boolean);
+    const root = this.screenRoot(team.length ? team : undefined);
+    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap">${this.logo('С возвращением, Ловчий!')}
+      <div class="lg-panel">
+        <div class="acc-card ${guest ? 'is-guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
+          <div class="acc-top"><div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
+            <div class="acc-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div>
+            ${Game.on() ? `<button class="acc-exit" aria-label="Выйти из учётной записи">${UI.I.logout}</button>` : ''}</div>
+          <div class="acc-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>духов</span></div><div><b>${dex}/${SPECIES.length}</b><span>бестиарий</span></div>
+            <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>поймано</span></div></div>
+        </div>
+        <button class="btn primary wide lg-go">Продолжить</button>
+        ${!Game.on() ? '' : guest
+          ? `<button class="lg-save">${UI.I.cloud}<span><b>Сохрани прогресс</b><small>Привяжи вход — прогресс откроется на любом устройстве</small></span><i>›</i></button>`
+          : `<button class="lg-link lg-more">${UI.I.swap}<span>Войти в другой аккаунт</span></button>`}
+      </div></div>`;
+    root.querySelector('.lg-go').onclick = () => { Sfx.init(); Sfx.play('tap'); this.close(root, done); };
+    const save = root.querySelector('.lg-save');
+    if (save) save.onclick = () => this.sheet(root, '<b>Сохрани прогресс</b><small>Привяжи вход — и прогресс откроется на любом устройстве</small>', this.buttons('link'));
+    const more = root.querySelector('.lg-more');
+    if (more) more.onclick = () => this.sheet(root, '<b>Другой аккаунт</b><small>Текущий прогресс останется в своей учётной записи</small>',
+      avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''));
     const out = root.querySelector('.acc-exit');
     if (out) out.onclick = () => this.askSignOut();
   },

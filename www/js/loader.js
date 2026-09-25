@@ -4,7 +4,7 @@
    (раньше игрока встречала серая недогруженная карта). 3.31.1: сам экран есть в index.html — виден с первой секунды. */
 
 const Loader = {
-  el: null, pct: 0, hint: 0, rot: null,
+  el: null, pct: 0, hint: 0, rot: null, tpl: null,
   HINTS: [
     'Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.',
     'Родники наполняются снова через несколько минут — прогулка по кругу приносит припасы.',
@@ -26,6 +26,7 @@ const Loader = {
       const boot = document.getElementById('bootLoader');
       if (boot) {
         boot.removeAttribute('id');
+        this.tpl = boot.cloneNode(true); // для следующих показов — такой же экран
         this.el = boot;
         this.hint = 0; // совет, который уже на экране
         const bar = boot.querySelector('.ld-bar i'), w = bar.getBoundingClientRect().width / (bar.parentNode.getBoundingClientRect().width || 1);
@@ -33,9 +34,18 @@ const Loader = {
         bar.style.width = this.pct + '%';
         bar.classList.remove('boot');
         boot.querySelector('.ld-pct').textContent = this.pct + '%';
+      } else if (this.tpl) {
+        // 4.4: тот же экран, что в index.html (со сценой), — копия, снятая при первом показе
+        this.hint = Math.floor(Math.random() * this.HINTS.length);
+        this.el = this.tpl.cloneNode(true);
+        const bar = this.el.querySelector('.ld-bar i');
+        bar.classList.remove('boot'); bar.style.width = '0%';
+        this.el.querySelector('.ld-pct').textContent = '';
+        this.el.querySelector('.ld-text').textContent = '';
+        document.body.appendChild(this.el);
       } else {
         this.hint = Math.floor(Math.random() * this.HINTS.length);
-        this.el = U.el(`<div class="loader" role="status" aria-live="polite">
+        this.el = U.el(`<div class="loader" role="status" aria-live="polite"><div class="ld-scene"></div><div class="ld-bg"></div><div class="ld-shade"></div>
           <div class="ld-logo"><div class="ld-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
           <div class="ld-foot">
             <div class="ld-hint">
@@ -59,6 +69,7 @@ const Loader = {
       tip.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
       tip.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) this.go(dx < 0 ? 1 : -1, true); }, { passive: true });
       this.go(0, false, !!boot);
+      if (typeof Scene !== 'undefined') Scene.loading(this.el); // 4.4: фон из scenes.json
       this.rot = setInterval(() => this.go(1), 7000);
     }
     if (text) this.set(this.pct, text);

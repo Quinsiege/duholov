@@ -19,69 +19,89 @@
   <link rel="dns-prefetch" href="https://oauth.telegram.org">
   <!-- 3.31.1: экран загрузки рисуется сразу — его стили здесь, а таблицы стилей игры подключаются в body после него -->
   <style>
-    :root { --bg: #120c24; --text: #f4f1ff; --muted: #b3aacb; --line: rgba(255, 255, 255, .12); --gold: #fbbf24; --gold2: #fde047; --teal: #5eead4;
+    /* 4.4: экран загрузки — ночная сцена (как на экране входа, js/scene.js), знак Ордена, стеклянная панель с советом и прогрессом.
+       Картинка из scenes/scenes.json (loading.images) плавно ложится поверх нарисованной сцены (Scene.loading) */
+    :root { --bg: #0b0620; --text: #f4f1ff; --muted: #b3aacb; --line: rgba(255, 255, 255, .12); --gold: #fbbf24; --gold2: #fde047; --teal: #5eead4;
       --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px); color-scheme: dark; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 15px; }
-    .loader { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; box-sizing: border-box;
-      padding: calc(30px + var(--st)) 24px calc(30px + var(--sb)); background: radial-gradient(120% 70% at 50% 0%, #3b1d7a 0%, #160d30 55%, #0a0616 100%);
-      text-align: center; transition: opacity .45s; user-select: none; -webkit-user-select: none; }
+    .loader { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: space-between; box-sizing: border-box; overflow: hidden;
+      padding: calc(24px + var(--st)) 18px calc(22px + var(--sb)); background: #0b0620; text-align: center; transition: opacity .45s; user-select: none; -webkit-user-select: none; }
     .loader.out { opacity: 0; pointer-events: none; }
-    .ld-logo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-    .ld-charm { width: 96px; height: 96px; filter: drop-shadow(0 0 24px rgba(253, 224, 71, .5)); animation: ldFloat 3s ease-in-out infinite; }
+    .ld-scene, .ld-bg, .ld-shade { position: absolute; inset: 0; pointer-events: none; }
+    .ld-scene { background: linear-gradient(180deg, #06031a 0%, #150a36 34%, #33175f 56%, #5a2a7c 68%, #2a1350 100%); }
+    .ld-scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .ld-stars { animation: ldTw 6s ease-in-out infinite alternate; }
+    @keyframes ldTw { to { opacity: .55; } }
+    .ld-mist { position: absolute; left: -30%; width: 90%; height: 16%; border-radius: 50%; background: radial-gradient(closest-side, rgba(196, 181, 253, .28), rgba(196, 181, 253, 0));
+      animation: ldMist 36s ease-in-out infinite alternate; }
+    .ld-mist.m1 { top: 50%; } .ld-mist.m2 { top: 57%; left: 10%; width: 75%; animation-duration: 50s; animation-direction: alternate-reverse; }
+    @keyframes ldMist { to { transform: translateX(40%); } }
+    .ld-bg { background: center / cover no-repeat; opacity: 0; transform: scale(1.06); transition: opacity 1s, transform 12s ease-out; }
+    .ld-bg.on { opacity: 1; transform: scale(1); }
+    .ld-shade { background: linear-gradient(180deg, rgba(6, 3, 18, .45) 0%, rgba(6, 3, 18, 0) 28%, rgba(6, 3, 18, 0) 46%, rgba(6, 3, 18, calc(.6 + var(--ld-shade, .25) * .4)) 100%); }
+    .ld-logo { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+    .ld-charm { width: 104px; height: 104px; filter: drop-shadow(0 0 28px rgba(253, 224, 71, .6)); animation: ldFloat 3.2s ease-in-out infinite; }
     .ld-charm svg { width: 100%; height: 100%; display: block; overflow: visible; }
-    .ld-logo h1 { margin: 0; font-size: 44px; font-weight: 900; letter-spacing: 3px; background: linear-gradient(180deg, #fffbeb, var(--gold2) 55%, #f59e0b);
-      -webkit-background-clip: text; background-clip: text; color: transparent; }
-    @keyframes ldFloat { 50% { transform: translateY(-6px) rotate(4deg); } }
-    .ld-prog { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 8px; }
-    .ld-bar { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, .1); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4); }
-    .ld-bar i { display: block; height: 100%; width: 0; border-radius: 5px; transition: width .35s ease-out; position: relative; overflow: hidden;
-      background: linear-gradient(90deg, var(--teal), var(--gold2)); box-shadow: 0 0 10px rgba(253, 224, 71, .45); }
-    .ld-bar i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards; } /* пока грузится код игры — ползёт сам */
-    @keyframes ldBoot { from { width: 3%; } to { width: 11%; } }
-    .ld-bar i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .45), transparent); animation: ldShine 1.4s linear infinite; }
-    @keyframes ldShine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-    .ld-text { font-size: 13px; color: var(--muted); min-height: 18px; }
-    .ld-hint { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 380px; }
-    .ld-tip { flex: 1; min-height: 96px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 14px 16px; border-radius: 18px;
-      background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); }
-    .ld-tip small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold2); }
-    .ld-tip p { margin: 0; font-size: 14px; line-height: 1.45; }
+    @keyframes ldFloat { 50% { transform: translateY(-7px) rotate(4deg); } }
+    .ld-logo h1 { margin: 0; font-size: 50px; line-height: 1.05; font-weight: 900; letter-spacing: 4px; color: transparent;
+      background: linear-gradient(100deg, #fde047 0%, #fbbf24 38%, #fffbeb 48%, #fbbf24 58%, #f59e0b 100%); background-size: 250% 100%;
+      -webkit-background-clip: text; background-clip: text; animation: ldGlint 4.5s ease-in-out infinite;
+      filter: drop-shadow(0 4px 18px rgba(251, 191, 36, .45)) drop-shadow(0 2px 0 rgba(0, 0, 0, .35)); }
+    @keyframes ldGlint { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
+    .ld-logo p { margin: 0; font-size: 14.5px; color: #ddd4f5; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+    .ld-foot { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 14px; padding: 16px; box-sizing: border-box; border-radius: 26px;
+      background: linear-gradient(180deg, rgba(34, 20, 68, .55), rgba(14, 8, 32, .8)); border: 1px solid rgba(255, 255, 255, .13);
+      -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: 0 24px 60px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .09); }
+    .ld-hint { position: relative; }
+    .ld-tip { min-height: 92px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 4px 38px; }
+    .ld-tip small { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold2); }
+    .ld-tip p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #efeaff; }
     .ld-tip p.in { animation: ldIn .35s ease-out; }
     @keyframes ldIn { from { opacity: 0; transform: translateY(6px); } }
-    .ld-arrow { width: 36px; height: 36px; flex: none; padding: 0; border-radius: 50%; font: inherit; font-size: 24px; line-height: 1; color: var(--muted); cursor: pointer;
-      background: rgba(255, 255, 255, .06); border: 1px solid var(--line); -webkit-tap-highlight-color: transparent; }
-    .ld-arrow:active { transform: scale(.92); color: var(--text); }
-    .ld-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 260px; min-height: 6px; }
+    .ld-arrow { position: absolute; top: 50%; margin-top: -18px; width: 34px; height: 36px; padding: 0; border: 0; background: none; font: inherit; font-size: 28px; line-height: 1;
+      color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .ld-arrow.prev { left: -4px; } .ld-arrow.next { right: -4px; }
+    .ld-arrow:active { transform: scale(.88); color: var(--text); }
+    .ld-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 6px; }
     .ld-dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .2); cursor: pointer; transition: width .2s, background .2s; }
     .ld-dots i.on { width: 16px; background: var(--gold); }
-    /* 3.33: логотип — по центру, всё, чего касаются пальцы (совет, стрелки, прогресс), — внизу */
-    .loader { justify-content: space-between; gap: 0; padding: calc(24px + var(--st)) 20px calc(26px + var(--sb)); }
-    .ld-logo { flex: 1; justify-content: center; gap: 10px; }
-    .ld-charm { width: 112px; height: 112px; }
-    .ld-logo h1 { font-size: 48px; filter: drop-shadow(0 4px 16px rgba(251, 191, 36, .35)); }
-    .ld-logo p { margin: 0; font-size: 14px; color: var(--muted); }
-    .ld-foot { width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
-    .ld-hint { position: relative; max-width: none; }
-    .ld-tip { min-height: 104px; padding: 16px 46px; background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .04));
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-    .ld-tip p { font-size: 14.5px; }
-    .ld-arrow { position: absolute; top: 50%; margin-top: -18px; width: 36px; height: 36px; border: 0; background: transparent; font-size: 28px; }
-    .ld-arrow.prev { left: 4px; } .ld-arrow.next { right: 4px; }
-    .ld-arrow:active { transform: scale(.88); }
-    .ld-dots { align-self: center; }
-    .ld-prog { max-width: none; gap: 7px; }
-    .ld-row { display: flex; justify-content: space-between; align-items: baseline; }
-    .ld-text { min-height: 0; }
+    .ld-prog { display: flex; flex-direction: column; gap: 8px; }
+    .ld-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .ld-text { font-size: 13px; color: var(--muted); text-align: left; }
     .ld-pct { font-size: 13px; font-weight: 700; color: var(--gold2); font-variant-numeric: tabular-nums; }
-    .ld-bar { height: 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .08); }
-    .ld-bar i { border-radius: 6px; }
-    @media (max-height: 640px) { .ld-charm { width: 80px; height: 80px; } .ld-logo h1 { font-size: 38px; } .ld-tip { min-height: 88px; } }
-    .eco .ld-charm, .calm .ld-charm, .calm .ld-bar i::after { animation: none; }
+    .ld-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45); }
+    .ld-bar i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .35s ease-out; position: relative;
+      background: linear-gradient(90deg, var(--teal), var(--gold2)); box-shadow: 0 0 12px rgba(253, 224, 71, .55); }
+    .ld-bar i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards; } /* пока грузится код игры — ползёт сам */
+    @keyframes ldBoot { from { width: 3%; } to { width: 11%; } }
+    .ld-bar i::after { content: ""; position: absolute; right: -5px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%;
+      background: radial-gradient(circle, #fffbeb 0%, #fde047 45%, rgba(253, 224, 71, 0) 70%); animation: ldSpark 1.2s ease-in-out infinite; }
+    @keyframes ldSpark { 50% { transform: scale(1.5); opacity: .7; } }
+    @media (max-height: 640px) { .ld-charm { width: 76px; height: 76px; } .ld-logo h1 { font-size: 40px; } .ld-tip { min-height: 80px; } }
+    .calm .ld-charm, .calm .ld-logo h1, .calm .ld-mist, .calm .ld-stars, .calm .ld-bar i::after { animation: none; }
+    @media (prefers-reduced-motion: reduce) { .ld-charm, .ld-logo h1, .ld-mist, .ld-stars, .ld-bar i::after { animation: none; } }
   </style>
 </head>
 <body>
-  <!-- 3.31.1: экран загрузки — первое, что видит игрок (его подхватывает js/loader.js) -->
+  <!-- 4.4: экран загрузки — первое, что видит игрок (его подхватывает js/loader.js); нарисованная ночь, поверх — картинка из scenes.json -->
   <div class="loader" id="bootLoader" role="status" aria-live="polite">
+    <div class="ld-scene" aria-hidden="true">
+      <svg viewBox="0 0 600 900" preserveAspectRatio="xMidYMid slice"><defs>
+        <pattern id="ldSt" width="97" height="83" patternUnits="userSpaceOnUse"><circle cx="11" cy="17" r="1.1" fill="#fff"/><circle cx="61" cy="9" r=".7" fill="#fff"/><circle cx="83" cy="52" r="1.3" fill="#fff" opacity=".8"/><circle cx="34" cy="66" r=".6" fill="#fff"/><circle cx="47" cy="38" r=".9" fill="#fff" opacity=".7"/></pattern>
+        <pattern id="ldSt2" width="151" height="127" patternUnits="userSpaceOnUse" x="40" y="23"><circle cx="23" cy="94" r=".8" fill="#fff" opacity=".8"/><circle cx="118" cy="31" r="1.4" fill="#fff" opacity=".9"/><circle cx="76" cy="112" r=".6" fill="#fff"/><circle cx="139" cy="81" r=".7" fill="#fff" opacity=".6"/></pattern>
+        <radialGradient id="ldHalo"><stop offset="0" stop-color="#fde68a" stop-opacity=".35"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>
+        <radialGradient id="ldMoon" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbeb"/><stop offset=".6" stop-color="#fde68a"/><stop offset="1" stop-color="#d6a84a"/></radialGradient></defs>
+        <rect class="ld-stars" width="600" height="500" fill="url(#ldSt)" opacity=".75"/><rect width="600" height="520" fill="url(#ldSt2)"/><circle cx="478" cy="92" r="96" fill="url(#ldHalo)"/><circle cx="478" cy="92" r="26" fill="url(#ldMoon)"/></svg>
+      <svg viewBox="0 0 600 900" preserveAspectRatio="xMidYMax slice"><defs>
+        <pattern id="ldPine" width="26" height="80" patternUnits="userSpaceOnUse" y="490"><path d="M13 4 5 34h4L3 58h6L1 80h24l-8-22h6l-6-24h4Z" fill="#170b31"/></pattern>
+        <pattern id="ldPine2" width="38" height="120" patternUnits="userSpaceOnUse" x="9" y="470"><path d="M19 2 8 46h5L4 82h8L0 120h38L26 82h8l-9-36h5Z" fill="#170b31"/></pattern></defs>
+        <path d="M-40 470 Q20 400 80 452 T200 430 T320 446 T440 418 T560 440 T680 430 V900 H-40Z" fill="#2b1656"/>
+        <path d="M-40 520 Q30 470 100 505 T240 490 T380 500 T520 480 T660 500 V900 H-40Z" fill="#211046"/>
+        <rect y="470" width="600" height="120" fill="url(#ldPine2)"/><rect y="490" width="600" height="80" fill="url(#ldPine)"/>
+        <rect y="568" width="600" height="332" fill="#170b31"/></svg>
+      <i class="ld-mist m1"></i><i class="ld-mist m2"></i>
+    </div>
+    <div class="ld-bg"></div><div class="ld-shade"></div>
     <div class="ld-logo"><div class="ld-charm"><svg viewBox="0 0 100 100"><defs><radialGradient id="ldc" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#a16207"/></radialGradient></defs><path d="M50 8 L40 0 M50 8 L60 0" stroke="#a16207" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="54" r="40" fill="url(#ldc)" stroke="#a16207" stroke-width="4"/><circle cx="50" cy="54" r="27" fill="none" stroke="#fffbeb" stroke-width="2.5" stroke-dasharray="6 5" opacity=".9"/><path d="M50 32 V76 M35 43 L65 65 M65 43 L35 65" stroke="#fffbeb" stroke-width="4" stroke-linecap="round" opacity=".95"/><circle cx="50" cy="54" r="7" fill="#fffbeb"/><circle cx="50" cy="10" r="6" fill="#fde047" stroke="#a16207" stroke-width="3"/></svg></div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
     <div class="ld-foot">
       <div class="ld-hint">
@@ -177,6 +197,7 @@
   <script src="js/ui.js?v=dev"></script>
   <script src="js/ui-spirits.js?v=dev"></script>
   <script src="js/ui-player.js?v=dev"></script>
+  <script src="js/scene.js?v=dev"></script>
   <script src="js/loader.js?v=dev"></script>
   <script src="js/path.js?v=dev"></script>
   <script src="js/book.js?v=dev"></script>

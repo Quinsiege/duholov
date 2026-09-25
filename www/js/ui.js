@@ -599,19 +599,21 @@ const UI = {
 
   /* ---------------- ЗНАКОМСТВО ---------------- */
   onboarding(done, from = 0) { // from: 1 — сразу к истории (новичок только что вошёл через сервис или по почте)
-    const root = U.el('<div class="onb"></div>');
-    document.body.appendChild(root);
+    // 4.4: сцена экрана входа остаётся на всех шагах знакомства, шаги рисуются поверх неё
+    const root = Login.screenRoot(), body = root.querySelector('.lg-body');
     let name = '', starter = null;
     const step = n => {
-      root.innerHTML = '';
+      body.innerHTML = '';
+      root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
-      if (n === 0) html = `
-        <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
-        <div class="onb-stage">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
-        ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
-        <div class="onb-cta"><button class="btn primary wide next">Начать игру</button><small>Без регистрации — вход можно привязать позже</small><small class="onb-agree"><span class="age-badge">12+</span>Нажимая «Начать игру», ты принимаешь <a href="terms.html">Соглашение</a> и <a href="privacy.html">Политику</a></small></div>
-        ${Game.on() ? Login.panel(`<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>`, Login.buttons('start'), '') : ''}
-        <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a><a class="onb-offer" href="privacy.html">Политика обработки персональных данных</a><a class="onb-offer" href="terms.html">Пользовательское соглашение · 12+</a>`;
+      if (n === 0) html = `${Login.logo('Лови духов Нави на улицах своего города')}
+        <div class="lg-panel">
+          ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
+          <button class="btn primary wide next">Начать игру</button>
+          ${Game.on() ? '<button class="lg-link lg-have">Уже играю — войти</button>' : ''}
+          <small class="onb-agree"><span class="age-badge">12+</span>Без регистрации. Нажимая «Начать игру», ты принимаешь <a href="terms.html">Соглашение</a> и <a href="privacy.html">Политику</a></small>
+          <div class="lg-links"><a href="offer.html">Казна и оферта</a><a href="privacy.html">Персональные данные</a><a href="terms.html">Правила игры</a></div>
+        </div>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
       if (n === 3) html = `<div class="onb-q"><h2>Выбери первого духа</h2><p>Он будет с тобой с первого дня.</p></div>
@@ -620,10 +622,10 @@ const UI = {
       if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>Духи живут рядом с тобой</h2>
         <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие (поэтому нужен интернет), в прогрессе есть дневник с местами поимок. Для проверки действий на карте сервер получает твоё местоположение. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.</p></div>
         <button class="btn primary wide gps">Разрешить геопозицию</button>${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
-      root.appendChild(U.el(`<div class="onb-step s${n}">${html}</div>`));
-      const nx = root.querySelector('.next');
-      root.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
-      root.querySelectorAll('.mail-login').forEach(b => { b.onclick = () => Login.emailForm(); });
+      body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
+      const nx = body.querySelector('.next');
+      const have = body.querySelector('.lg-have');
+      if (have) have.onclick = () => Login.sheet(root, '<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>', Login.buttons('start'));
       if (n === 2) {
         const inp = root.querySelector('input');
         inp.focus();
@@ -644,13 +646,11 @@ const UI = {
           Sfx.play('catch'); step(4);
         };
       } else if (n === 4) {
-        const finish = demo => { Cfg.s.demo = demo; Cfg.save(); root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); };
-        root.querySelector('.gps').onclick = () => finish(false);
-        const demoBtn = root.querySelector('.demo');
+        const finish = demo => { Cfg.s.demo = demo; Cfg.save(); Login.close(root, done); };
+        body.querySelector('.gps').onclick = () => finish(false);
+        const demoBtn = body.querySelector('.demo');
         if (demoBtn) demoBtn.onclick = () => finish(true);
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n + 1); };
-      const have = root.querySelector('.have');
-      if (have) have.onclick = () => Game.claimDialog(() => { root.classList.add('out'); setTimeout(() => root.remove(), 400); done(); });
     };
     step(from);
   },
