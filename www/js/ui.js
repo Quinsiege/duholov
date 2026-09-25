@@ -169,6 +169,24 @@ const UI = {
   confirm(title, text, okLabel, onOk, cancelLabel = 'Отмена', danger = false) {
     return this.modal({ title, html: `<p>${text}</p>`, buttons: [{ label: cancelLabel }, { label: okLabel, cls: danger ? 'danger' : 'primary', fn: onOk }] });
   },
+  /* 4.5: кнопки дизайн-системы. rune — главная («оберег»: золото, гравировка, наконечники, блик), glass — второстепенная
+     (стекло той же формы). Форма — SVG под текстом, растягивается по ширине кнопки. */
+  _rid: 0,
+  runeShape(kind) {
+    const id = 'rn' + (++this._rid), gold = kind === 'gold';
+    const outer = 'M16 1H324L339 32L324 63H16L1 32Z', inner = 'M21 6H319L332 32L319 58H21L8 32Z';
+    return `<svg class="rn-bg" viewBox="0 0 340 64" preserveAspectRatio="none" aria-hidden="true"><defs>
+      ${gold ? `<linearGradient id="${id}g" x2="0" y2="1"><stop offset="0" stop-color="#fff7c7"/><stop offset=".32" stop-color="#fcd34d"/><stop offset=".72" stop-color="#f59e0b"/><stop offset="1" stop-color="#b45309"/></linearGradient>` : ''}
+      <clipPath id="${id}c"><path d="${outer}"/></clipPath></defs>
+      <path d="${outer}" fill="${gold ? `url(#${id}g)` : 'rgba(255,255,255,.07)'}" ${gold ? '' : 'stroke="rgba(255,255,255,.28)" stroke-width="1.2" vector-effect="non-scaling-stroke"'}/>
+      ${gold ? '<path d="M21 6H319L325 18H15Z" fill="rgba(255,255,255,.38)"/>' : ''}
+      <path d="${inner}" fill="none" stroke="${gold ? 'rgba(124,45,18,.5)' : 'rgba(255,255,255,.12)'}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+      <path d="M8 32l5-4 5 4-5 4zM322 32l5-4 5 4-5 4z" fill="${gold ? 'rgba(124,45,18,.55)' : 'rgba(253,224,71,.55)'}"/>
+      ${gold ? `<g clip-path="url(#${id}c)"><rect class="rn-shine" x="-120" y="0" width="70" height="64" fill="rgba(255,255,255,.55)" transform="skewX(-20)"/></g>` : ''}</svg>`;
+  },
+  rune(label, cls = '', icon = '') { return `<button class="rune ${cls}">${this.runeShape('gold')}<span class="rn-t">${icon}${label}</span></button>`; },
+  glass(label, cls = '', icon = '') { return `<button class="rune glass ${cls}">${this.runeShape('glass')}<span class="rn-t">${icon}${label}</span></button>`; },
+
   // 4.1.2: документ сайта (соглашение, политика, оферта) — внутри игры, в том же окне
   doc(title, src) { return this.screen(title, `<iframe class="offer-frame" src="${src}" title="${U.esc(title)}"></iframe>`, 'offer-screen'); },
   screen(title, html, cls = '', onClose) {
@@ -606,13 +624,13 @@ const UI = {
       body.innerHTML = '';
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
-      if (n === 0) html = `${Login.logo('Лови духов Нави на улицах своего города')}
-        <div class="lg-panel">
-          ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
-          <button class="btn primary wide next">Начать игру</button>
-          ${Game.on() ? '<button class="lg-link lg-have">Уже играю — войти</button>' : ''}
-          <small class="onb-agree"><span class="age-badge">12+</span>Без регистрации. Нажимая «Начать игру», ты принимаешь <a href="terms.html">Соглашение</a> и <a href="privacy.html">Политику</a></small>
-          <div class="lg-links"><a href="offer.html">Казна и оферта</a><a href="privacy.html">Персональные данные</a><a href="terms.html">Правила игры</a></div>
+      // 4.5: без коробки — сцена во весь экран, «оберег» и стеклянная кнопка прямо на ней; 12+ — значок в углу
+      if (n === 0) html = `<span class="age-chip" title="Возрастная категория">12+</span>${Login.logo('Лови духов Нави на улицах своего города')}
+        <div class="lg-cta">
+          ${Invite.ref() ? '<div class="lg-invite">✦ Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок</div>' : ''}
+          ${this.rune('Начать игру', 'next')}
+          ${Game.on() ? this.glass('Уже играю — войти', 'lg-have', this.I.key) : ''}
+          <p class="lg-legal">Без регистрации. Продолжая, ты принимаешь <a href="terms.html">Соглашение</a>, <a href="privacy.html">Политику</a> и <a href="offer.html">Оферту</a></p>
         </div>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;

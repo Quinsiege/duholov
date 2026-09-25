@@ -1921,34 +1921,6 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   background: linear-gradient(180deg, #fffbeb 10%, var(--gold2) 55%, #f59e0b 95%); -webkit-background-clip: text; background-clip: text;
   filter: drop-shadow(0 4px 18px rgba(251, 191, 36, .45)) drop-shadow(0 2px 0 rgba(0, 0, 0, .35)); }
 .lg-top p { margin: 6px 0 0; color: #ddd4f5; font-size: 14.5px; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
-.lg-panel { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 26px; animation: lgUp .8s .15s cubic-bezier(.2, .8, .2, 1) both;
-  background: linear-gradient(180deg, rgba(34, 20, 68, .58), rgba(14, 8, 32, .82)); border: 1px solid rgba(255, 255, 255, .13);
-  -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .09); }
-.lg-panel .btn.wide { max-width: none; width: 100%; }
-.lg-panel .btn.primary { min-height: 54px; font-size: 17px; }
-.lg-panel .acc-card { max-width: none; background: rgba(255, 255, 255, .05); box-shadow: none; }
-.lg-panel .acc-top { position: relative; }
-.lg-panel .acc-exit { position: absolute; top: -2px; right: -4px; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%;
-  background: rgba(255, 255, 255, .06); border: 1px solid var(--line); color: var(--muted); }
-.lg-panel .acc-exit .ico { width: 17px; height: 17px; }
-.lg-panel .acc-main { flex: 1; min-width: 0; padding-right: 38px; }
-.lg-link { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 6px 10px; border: 0; border-radius: 14px; background: none;
-  color: #cfc6ea; font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; }
-.lg-link .ico { width: 18px; height: 18px; }
-.lg-link:active { background: rgba(255, 255, 255, .06); }
-.lg-save { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border-radius: 16px; text-align: left; cursor: pointer; font: inherit; color: inherit;
-  background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .45); }
-.lg-save > .ico { width: 24px; height: 24px; color: var(--gold2); flex: none; }
-.lg-save span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.lg-save b { font-size: 15px; }
-.lg-save small { color: var(--muted); font-size: 12px; line-height: 1.35; }
-.lg-save i { font-style: normal; font-size: 22px; color: var(--muted); }
-.lg-panel .onb-agree { margin: 0; }
-.lg-panel .onb-invite { margin: 0; max-width: none; }
-.lg-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 14px; }
-.lg-links a { color: var(--muted); font-size: 11.5px; text-decoration: none; opacity: .85; }
-.lg-links a:active { text-decoration: underline; }
 @keyframes lgIn { from { opacity: 0; transform: translateY(-16px) scale(.96); } }
 @keyframes lgUp { from { opacity: 0; transform: translateY(26px); } }
 .onb.lg .onb-step { position: relative; }
@@ -1968,3 +1940,63 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes lgSheet { from { transform: translateY(100%); } }
 @media (max-height: 680px) { .lg-charm { width: 60px; height: 60px; } .lg-title { font-size: 40px; } .lg-wrap { padding-top: calc(20px + var(--st)); } }
 @media (max-width: 360px) { .lg-wrap { padding-left: 10px; padding-right: 10px; } .lg-panel { padding: 12px; } .lg-panel .acc-card { padding: 12px; } .lg-title { font-size: 42px; letter-spacing: 3px; } }
+
+/* ================= 4.5: дизайн-система «сказочная Навь» — шрифты, кнопки-обереги, экран входа ================= */
+:root { --f-display: 'Ruslan Display', 'Philosopher', Georgia, serif; --f-head: 'Philosopher', 'Rubik', Georgia, serif; }
+/* кнопки: rune — главная (золотой оберег), rune.glass — второстепенная (стекло той же формы) */
+.rune { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 62px; padding: 0 30px; border: 0; background: none;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: var(--f-head); font-weight: 700; font-size: 21px; letter-spacing: .3px; color: #3b1a02;
+  filter: drop-shadow(0 10px 22px rgba(245, 158, 11, .38)) drop-shadow(0 2px 0 rgba(90, 30, 5, .75)); transition: transform .12s, filter .2s; }
+.rune .rn-bg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rune .rn-t { position: relative; display: inline-flex; align-items: center; gap: 10px; text-shadow: 0 1px 0 rgba(255, 245, 210, .7); }
+.rune .rn-t .ico { width: 20px; height: 20px; }
+.rune .rn-shine { animation: rnShine 4.2s ease-in-out 1.2s infinite; }
+@keyframes rnShine { 0% { transform: skewX(-20deg) translateX(0); } 35%, 100% { transform: skewX(-20deg) translateX(560px); } }
+.rune:active { transform: scale(.97); filter: drop-shadow(0 4px 12px rgba(245, 158, 11, .5)) drop-shadow(0 1px 0 rgba(90, 30, 5, .75)) brightness(1.06); }
+.rune:disabled { opacity: .55; cursor: default; }
+.rune.glass { height: 54px; font-size: 17px; color: #efe8ff; filter: none; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  clip-path: polygon(4.7% 0, 95.3% 0, 100% 50%, 95.3% 100%, 4.7% 100%, 0 50%); } /* размытие фона — ровно по форме оберега */
+.rune.glass .rn-t { text-shadow: 0 1px 6px rgba(0, 0, 0, .5); }
+.rune.glass .rn-t .ico { color: var(--gold2); width: 19px; height: 19px; }
+.rune.glass:active { transform: scale(.97); background: none; }
+.calm .rune .rn-shine { animation: none; }
+
+/* экран входа 4.5: без коробки — сцена во весь экран, кнопки прямо на ней */
+.lg-title { font-family: var(--f-display); font-weight: 400; font-size: 60px; letter-spacing: 1px; line-height: 1; padding: 4px 8px 0;
+  filter: drop-shadow(0 3px 0 rgba(80, 28, 4, .9)) drop-shadow(0 6px 22px rgba(251, 191, 36, .45)); }
+.lg-top p { font-family: var(--f-head); font-size: 17px; color: #eee6ff; margin-top: 8px; }
+.lg-charm { width: 70px; height: 70px; }
+.lg-cta { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 380px; margin: 0 auto; animation: lgUp .8s .15s cubic-bezier(.2, .8, .2, 1) both; }
+.lg-legal { margin: 2px 6px 0; text-align: center; font-size: 11.5px; line-height: 1.5; color: rgba(226, 218, 248, .62); text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
+.lg-legal a { color: rgba(240, 234, 255, .88); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.lg-invite { padding: 9px 14px; border-radius: 14px; text-align: center; font-size: 13.5px; color: #d9f99d; background: rgba(132, 204, 22, .12); border: 1px solid rgba(132, 204, 22, .4);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.age-chip { position: absolute; top: calc(12px + var(--st)); left: 12px; z-index: 2; padding: 2px 6px; border-radius: 6px; border: 1.5px solid rgba(255, 255, 255, .45);
+  font-size: 11px; font-weight: 700; letter-spacing: .3px; color: rgba(255, 255, 255, .75); background: rgba(6, 3, 18, .3); }
+/* карточка-медальон вернувшегося Ловчего */
+.hero { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 14px; align-items: center; padding: 14px 14px 12px; border-radius: 22px;
+  background: linear-gradient(180deg, rgba(44, 26, 88, .74), rgba(16, 9, 36, .86)); border: 1px solid rgba(253, 224, 71, .22);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); box-shadow: 0 18px 44px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08); }
+.hero-ava { position: relative; width: 64px; height: 64px; border-radius: 50%; padding: 3px; background: conic-gradient(from 200deg, #fde047, #f59e0b, var(--cc), #fde047);
+  box-shadow: 0 0 18px rgba(253, 224, 71, .35); }
+.hero-ava .acc-ava { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #1a0f36; }
+.hero-lvl { position: absolute; right: -4px; bottom: -4px; min-width: 24px; height: 24px; padding: 0 5px; box-sizing: border-box; display: grid; place-items: center; border-radius: 12px;
+  font-size: 12px; font-weight: 900; color: #3b1a02; background: linear-gradient(180deg, #fff3b0, #f59e0b); border: 2px solid #1a0f36; }
+.hero-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hero-main b { font-family: var(--f-head); font-size: 22px; font-weight: 700; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hero-main small { color: var(--muted); font-size: 12.5px; }
+.hero-main .acc-tags { margin-top: 3px; }
+.hero-exit { align-self: start; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%; cursor: pointer;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); color: var(--muted); }
+.hero-exit .ico { width: 17px; height: 17px; }
+.hero-stats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.hero-stats div { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.hero-stats div + div { border-left: 1px solid rgba(255, 255, 255, .08); }
+.hero-stats b { font-family: var(--f-head); font-size: 20px; font-weight: 700; color: #fff; }
+.hero-stats b small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.hero-stats span { font-size: 11.5px; color: var(--muted); }
+.hero.is-guest { border-color: rgba(251, 191, 36, .4); }
+/* выезжающая панель входа — заголовок тем же шрифтом */
+.lg-sheet .auth-head b { font-family: var(--f-head); font-size: 20px; }
+@media (max-width: 360px) { .lg-title { font-size: 50px; } .rune { font-size: 19px; } }
+@media (max-height: 680px) { .lg-title { font-size: 48px; } .lg-charm { width: 56px; height: 56px; } }
