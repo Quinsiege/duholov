@@ -558,44 +558,108 @@ const Art = (() => {
       `<circle class="art-float" cx="32" cy="58" r="1.5" fill="${fire}"/><circle class="art-float" style="animation-delay:.8s" cx="47" cy="52" r="1.2" fill="#fff" opacity=".85"/>` +
       `</svg>`;
   }
-  // 4.7: герб дружины — щит с золотой каймой, поле цвета дружины, золотой зверь (сокол, медведь, волк)
+  // 4.7: герб дружины — щит в рельефной золотой кайме с заклёпками, венец с самоцветом, за щитом скрещённое оружие,
+  // на поле — объёмный зверь с тенями и бликами: сокол (крылья из перьев), рычащий медведь, серебряный волк
   const CREST = {
-    // сокол с поднятыми крыльями, голова в профиль, клюв крючком
-    sokol: { f: ['#fca5a5', '#dc2626', '#5f0f0f'],
-      e: `<path d="M46 53 L15 25 L21 37 L10 37 L21 45 L10 49 L23 54 L16 59 L32 62 L45 62Z"/><path d="M54 53 L85 25 L79 37 L90 37 L79 45 L90 49 L77 54 L84 59 L68 62 L55 62Z"/>
-        <path d="M43 74 L39 90 L46 83 L50 92 L54 83 L61 90 L57 74Z"/><ellipse cx="50" cy="60" rx="9" ry="16"/><circle cx="51" cy="39" r="8"/><path d="M44 36 C38 36 35.5 40 37 45 L40 43 L44 42.5Z"/>`,
-      d: `<circle cx="49" cy="37.5" r="2.2" fill="#fffbe6" stroke="#3a1d06" stroke-width=".8"/><circle cx="49" cy="37.5" r="1"/><path d="M24 43 L41 55 M22 50 L40 59 M76 43 L59 55 M78 50 L60 59 M45 55 Q50 58 55 55 M45 62 Q50 65 55 62" fill="none" stroke="#6b3408" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>` },
-    // голова медведя анфас: тяжёлые брови, светлая морда
-    medved: { f: ['#93c5fd', '#2563eb', '#0f1f5c'],
-      e: `<circle cx="32" cy="38" r="9"/><circle cx="68" cy="38" r="9"/><path d="M27 56 C26 38 74 38 73 56 C74 73 63 86 50 88 C37 86 26 73 27 56Z"/>`,
-      d: `<circle cx="32" cy="38" r="4.3" fill="#8a4a0e" opacity=".6"/><circle cx="68" cy="38" r="4.3" fill="#8a4a0e" opacity=".6"/><ellipse cx="50" cy="72" rx="12.5" ry="10" fill="#fff4d0" stroke="#3a1d06" stroke-width=".8"/>
-        <path d="M44.5 65 Q50 62.5 55.5 65 Q53 70 50 70.5 Q47 70 44.5 65Z"/><path d="M50 70.5 V75.5 M44.5 78.5 Q50 75.5 55.5 78.5" fill="none" stroke="#3a1d06" stroke-width="1.4" stroke-linecap="round"/>
-        <ellipse cx="41" cy="57" rx="2.4" ry="2.8"/><ellipse cx="59" cy="57" rx="2.4" ry="2.8"/><path d="M34.5 51.5 L46 54.5 M65.5 51.5 L54 54.5" fill="none" stroke="#3a1d06" stroke-width="2.4" stroke-linecap="round"/>` },
-    // серебряный волк на янтарном поле: острые уши, меховые скулы, длинная морда, раскосые глаза
-    volk: { f: ['#fbbf24', '#9a5b06', '#2a1603'], m: ['#ffffff', '#dfe6f0', '#8b9bb4'],
-      e: `<path d="M50 91 L42 81 L33 73 L24 63 L28 53 L26 26 L40 41 L50 38 L60 41 L74 26 L72 53 L76 63 L67 73 L58 81Z"/>`,
-      d: `<path d="M29.5 33 L38 44 L31.5 47Z M70.5 33 L62 44 L68.5 47Z" fill="#7a5a3a" opacity=".55"/><path d="M43.5 60 L50 57 L56.5 60 L55 80 L50 86 L45 80Z" fill="none" stroke="#3a1d06" stroke-width=".9" opacity=".45"/>
-        <path d="M46 81 L54 81 L50 87Z"/><path d="M35.5 55 L45.5 57.5 L38 60.5Z M64.5 55 L54.5 57.5 L62 60.5Z"/><circle cx="41.5" cy="57.5" r=".8" fill="#fcd34d"/><circle cx="58.5" cy="57.5" r=".8" fill="#fcd34d"/>
-        <path d="M33.5 51 L45 54 M66.5 51 L55 54 M26 62 L33 64 M74 62 L67 64 M29 68 L35 69 M71 68 L65 69 M50 44 V52" fill="none" stroke="#3a1d06" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>` },
+    sokol: { f: ['#fca5a5', '#dc2626', '#4c0808'], gem: '#ef4444', gl: '#fecaca', arm: 'arrow' },
+    medved: { f: ['#bfdbfe', '#2563eb', '#0b1a4d'], gem: '#3b82f6', gl: '#bfdbfe', arm: 'axe' },
+    volk: { f: ['#fcd34d', '#a16207', '#2a1603'], gem: '#eab308', gl: '#fef08a', arm: 'spear', silver: true },
   };
   function clanCrest(k) {
-    const c = CREST[k] || CREST.sokol, id = 'cr' + k, m = c.m || ['#fffbe6', '#f7d77e', '#c98a2c'];
-    const shield = 'M50 5 L89 14 C91 52 79 84 50 104 C21 84 9 52 11 14Z';
-    return `<svg viewBox="-4 -3 108 112" class="art crest" aria-hidden="true"><defs>
-      <radialGradient id="${id}f" cx=".45" cy=".3" r=".85"><stop offset="0" stop-color="${c.f[0]}"/><stop offset=".45" stop-color="${c.f[1]}"/><stop offset="1" stop-color="${c.f[2]}"/></radialGradient>
-      <linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6c8"/><stop offset=".45" stop-color="#f3cf6b"/><stop offset="1" stop-color="#b3701c"/></linearGradient>
-      <linearGradient id="${id}e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m[0]}"/><stop offset=".5" stop-color="${m[1]}"/><stop offset="1" stop-color="${m[2]}"/></linearGradient>
-      <pattern id="${id}p" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M5 1L9 5 5 9 1 5Z" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width=".8"/></pattern></defs>
-      <path d="${shield}" fill="#1a0c06" transform="translate(0 3)" opacity=".45"/>
-      <path d="${shield}" fill="url(#${id}f)"/><path d="${shield}" fill="url(#${id}p)"/>
-      <path d="M50 12 L82 20 C83 52 73 79 50 96 C27 79 17 52 18 20Z" fill="none" stroke="#fde68a" stroke-opacity=".55" stroke-width="1"/>
-      <ellipse cx="42" cy="26" rx="22" ry="9" fill="#fff" opacity=".13" transform="rotate(-12 42 26)"/>
-      <g fill="url(#${id}e)" stroke="#3a1d06" stroke-width="1.3" stroke-linejoin="round">${c.e}</g>
-      <g fill="#3a1d06">${c.d}</g>
-      <path d="${shield}" fill="none" stroke="url(#${id}g)" stroke-width="4.5" stroke-linejoin="round"/>
-      <path d="${shield}" fill="none" stroke="#3a1d06" stroke-width=".9" stroke-linejoin="round" opacity=".7"/>
-      <path d="M50 -1 L55 5 L50 11 L45 5Z" fill="url(#${id}g)" stroke="#3a1d06" stroke-width=".9"/>
-      <path d="M11 14 L4 9 L8 17Z M89 14 L96 9 L92 17Z" fill="url(#${id}g)" stroke="#3a1d06" stroke-width=".8"/></svg>`;
+    const c = CREST[k] || CREST.sokol, id = 'cr' + k, O = '#2a1405';
+    const G = `url(#${id}g)`, M = `url(#${id}m)`, f2 = n => n.toFixed(1);
+    const S = 'M60 16 L98 22 Q104 23 104 29 V62 C104 94 84 114 60 126 C36 114 16 94 16 62 V29 Q16 23 22 22Z';
+    const S2 = 'M60 23 L94 28 Q97 28.5 97 32 V62 C97 90 80 107 60 118 C40 107 23 90 23 62 V32 Q23 28.5 26 28Z';
+    // перо: лист от основания вверх, повёрнутый на a градусов
+    const feather = (x, y, a, L, w, fill) => `<g transform="translate(${x} ${y}) rotate(${a})"><path d="M0 0 C${w} ${f2(-L * .3)} ${f2(w * .7)} ${f2(-L * .82)} 0 ${-L} C${f2(-w * .7)} ${f2(-L * .86)} ${-w} ${f2(-L * .3)} 0 0Z" fill="${fill}" stroke="${O}" stroke-width=".8"/><path d="M0 -2 V${f2(-L * .8)}" stroke="${O}" stroke-width=".5" opacity=".45"/></g>`;
+    // оружие за щитом: вертикально, потом поворот вокруг центра щита
+    const weapon = rot => {
+      const head = c.arm === 'arrow'
+        ? `<path d="M0 -84 L6 -69 L0 -72 L-6 -69Z" fill="${G}" stroke="${O}" stroke-width=".9"/><path d="M0 50 L-6 57 L-6 66 L0 60 L6 66 L6 57Z" fill="${c.gem}" stroke="${O}" stroke-width=".8"/>`
+        : c.arm === 'axe'
+          ? `<path d="M0 -74 C8 -71 17 -74 19 -86 C14 -92 6 -92 0 -88Z" fill="${M}" stroke="${O}" stroke-width=".9"/><path d="M0 -94 L3 -86 L-3 -86Z" fill="${G}" stroke="${O}" stroke-width=".7"/><circle cy="60" r="3" fill="${G}" stroke="${O}" stroke-width=".8"/>`
+          : `<path d="M0 -92 C6 -83 6 -74 0 -68 C-6 -74 -6 -83 0 -92Z" fill="${M}" stroke="${O}" stroke-width=".9"/><path d="M-6 -67 H6" stroke="${G}" stroke-width="2.6" stroke-linecap="round"/><path d="M-6 -67 H6" stroke="${O}" stroke-width=".6" opacity=".6"/><circle cy="60" r="2.8" fill="${G}" stroke="${O}" stroke-width=".8"/>`;
+      return `<g transform="translate(60 66) rotate(${rot})"><path d="M0 -70 V58" stroke="${O}" stroke-width="4.2" stroke-linecap="round"/><path d="M0 -70 V58" stroke="url(#${id}w)" stroke-width="2.4" stroke-linecap="round"/>${head}</g>`;
+    };
+    let beast = '';
+    if (k === 'sokol') {
+      // сокол: крылья подняты, два яруса перьев, хвост веером, голова в профиль с крючковатым клювом и «усами»
+      let wing = '';
+      [-12, -26, -40, -54, -68, -82, -96].forEach((a, i) => { wing += feather(51, 60, a, 34 - Math.abs(i - 2) * 1.6, 5.2, `url(#${id}e2)`); });
+      [-20, -38, -56, -74, -92].forEach((a, i) => { wing += feather(52, 60, a, 19 - i * .6, 5, G); });
+      let tail = '';
+      [158, 169, 180, 191, 202].forEach(a => { tail += feather(60, 92, a, 22, 4.4, `url(#${id}e2)`); });
+      let scales = '';
+      for (let r = 0; r < 4; r++) for (let j = -1 - (r > 1 ? 0 : 0); j <= 1; j++) scales += `<path d="M${f2(60 + j * 5.2 - 2.6)} ${f2(66 + r * 6)} q2.6 3 5.2 0" fill="none" stroke="${O}" stroke-width=".6" opacity=".45"/>`;
+      beast = `${tail}${wing}<g transform="translate(120 0) scale(-1 1)">${wing}</g>
+        <path d="M54 92 L50 100 M50 100 L46 101 M50 100 L48 104 M50 100 L52 104 M66 92 L70 100 M70 100 L74 101 M70 100 L72 104 M70 100 L68 104" stroke="${O}" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M54 92 L50 100 M50 100 L46 101 M50 100 L48 104 M50 100 L52 104 M66 92 L70 100 M70 100 L74 101 M70 100 L72 104 M70 100 L68 104" stroke="${G}" stroke-width="1.2" stroke-linecap="round"/>
+        <path d="M60 52 C71 52 73 64 71 77 C69 89 64 95 60 97 C56 95 51 89 49 77 C47 64 49 52 60 52Z" fill="${G}" stroke="${O}" stroke-width="1"/>
+        <path d="M60 56 C66 57 67 66 66 76 C65 86 62 91 60 92 C58 91 55 86 54 76 C53 66 54 57 60 56Z" fill="#fff6d0" opacity=".45"/>${scales}
+        <path d="M60 36 C67 36 69 43 67 49 C65 54 60 56 56 55 C51 54 49 49 50 44 C51 39 55 36 60 36Z" fill="${G}" stroke="${O}" stroke-width="1"/>
+        <path d="M51 40 C46 38.6 41.6 40.6 40.6 45.2 C40.4 46.8 40.9 48.2 41.8 49.2 C42.2 47.2 43.4 46 45.2 45.8 C45 46.8 45.6 47.6 46.8 47.8 L51.2 47Z" fill="url(#${id}e2)" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><path d="M44 42 C46 41 48.5 41 50.5 41.8" stroke="#fff" stroke-width=".8" fill="none" opacity=".6" stroke-linecap="round"/>
+        <path d="M55.2 44.6 C53.6 47.6 54 51 56.6 53.4 C57.8 50.4 57.8 47.2 56.8 44.8Z" fill="${O}" opacity=".6"/>
+        <path d="M52.5 39.6 Q57 37.2 61 39.8" stroke="${O}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <circle cx="56.5" cy="42.3" r="2.5" fill="${c.gem}" stroke="${O}" stroke-width=".9"/><circle cx="55.8" cy="41.6" r=".8" fill="#fff"/>
+        <path d="M58 38 C62 37.5 65 39.5 66 43" stroke="#fff" stroke-width="1" fill="none" opacity=".55" stroke-linecap="round"/>`;
+    } else if (k === 'medved') {
+      // медведь: зубчатая грива, уши, тяжёлые брови, светлая морда, раскрытая пасть с клыками
+      beast = `        <circle cx="37" cy="48" r="9.5" fill="${G}" stroke="${O}" stroke-width="1"/><circle cx="83" cy="48" r="9.5" fill="${G}" stroke="${O}" stroke-width="1"/>
+        <circle cx="37.5" cy="48.5" r="5" fill="#7a4a12" opacity=".75"/><circle cx="82.5" cy="48.5" r="5" fill="#7a4a12" opacity=".75"/>
+        <path d="M31 73 C29 49 91 49 89 73 C90 94 76 108 60 110 C44 108 30 94 31 73Z" fill="${G}" stroke="${O}" stroke-width="1"/><path d="M33 80 C34 94 46 106 60 108 C74 106 86 94 87 80 C84 94 72 103 60 104 C48 103 36 94 33 80Z" fill="${O}" opacity=".18"/>
+        <path d="M38 61 Q48 55 57 64 L56 68 Q48 61 39 65Z M82 61 Q72 55 63 64 L64 68 Q72 61 81 65Z" fill="${O}" opacity=".3"/>
+        <path d="M40 60.5 Q48.5 56 56.5 64.5 M80 60.5 Q71.5 56 63.5 64.5" stroke="${O}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path d="M44 66.5 L55 68.8 L46.5 71.5Z M76 66.5 L65 68.8 L73.5 71.5Z" fill="#fff3b0" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><circle cx="50" cy="69" r="1.3" fill="${O}"/><circle cx="70" cy="69" r="1.3" fill="${O}"/>
+        <ellipse cx="60" cy="88" rx="16" ry="14" fill="url(#${id}mz)" stroke="${O}" stroke-width=".8"/>
+        <path d="M52.5 79.5 Q60 75 67.5 79.5 Q64.5 86 60 86 Q55.5 86 52.5 79.5Z" fill="#20100a" stroke="${O}" stroke-width=".8"/><ellipse cx="57.5" cy="79.2" rx="2.4" ry="1.1" fill="#fff" opacity=".55"/>
+        <path d="M60 86 V89" stroke="${O}" stroke-width="1.3"/>
+        <path d="M49 91 Q60 87 71 91 Q67 102 60 103 Q53 102 49 91Z" fill="#5c0d0d" stroke="${O}" stroke-width="1"/><path d="M54 98 Q60 95 66 98 Q63 102 60 102 Q57 102 54 98Z" fill="#b91c1c" opacity=".8"/>
+        <path d="M51.5 90.5 L53.5 96.5 L55.5 89.6Z M68.5 90.5 L66.5 96.5 L64.5 89.6Z M53.5 101 L55 96.5 L56.8 101.6Z M66.5 101 L65 96.5 L63.2 101.6Z" fill="#fffbe6" stroke="${O}" stroke-width=".6" stroke-linejoin="round"/>
+        <path d="M44 52 Q52 48 60 49 M34 76 L40 78.5 M33 82 L39 83.5 M35 88 L40.5 88.5 M86 76 L80 78.5 M87 82 L81 83.5 M85 88 L79.5 88.5" stroke="${O}" stroke-width="1" fill="none" stroke-linecap="round" opacity=".4"/>
+        <path d="M46 54 Q55 50 64 52" stroke="#fff" stroke-width="1.3" fill="none" opacity=".45" stroke-linecap="round"/>`;
+    } else {
+      // волк: острые уши, меховые скулы, тёмная маска, раскосые янтарные глаза, длинная морда и оскал
+      beast = `<g transform="translate(60 72) scale(.9) translate(-60 -72)"><path d="M60 110 L53 103 L47 97 L41 94 L36 89 L29 88 L32 83 L25 79 L31 75 L26 69 L32 66 L30 50 L27 28 L42 43 L51 41 L60 39 L69 41 L78 43 L93 28 L90 50 L88 66 L94 69 L89 75 L95 79 L88 83 L91 88 L84 89 L79 94 L73 97 L67 103Z" fill="${M}" stroke="${O}" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M30.5 33 L41 45.5 L33.5 50Z M89.5 33 L79 45.5 L86.5 50Z" fill="#4b5568" stroke="${O}" stroke-width=".7" stroke-linejoin="round"/><path d="M32 37 L37 46 M88 37 L83 46" stroke="#e5e7eb" stroke-width=".7" opacity=".7"/>
+        <path d="M60 43 L68 56 L63 66 L60 70 L57 66 L52 56Z M36 60 L50 62 L52 70 L42 74Z M84 60 L70 62 L68 70 L78 74Z" fill="#4b5568" opacity=".45"/>
+        <path d="M49 69 C53 66.5 67 66.5 71 69 C71.5 80 68 92 60 103 C52 92 48.5 80 49 69Z" fill="url(#${id}mz)" opacity=".75"/><path d="M60 68 V90" stroke="${O}" stroke-width=".8" opacity=".3"/><path d="M52 72 C53 82 56 90 60 96" stroke="#fff" stroke-width="1.1" fill="none" opacity=".7" stroke-linecap="round"/>
+        <path d="M36 56.5 L51 60.5 M84 56.5 L69 60.5" stroke="${O}" stroke-width="2.3" stroke-linecap="round"/>
+        <path d="M39 61 L52 63.5 L42.5 67.5Z M81 61 L68 63.5 L77.5 67.5Z" fill="#fbbf24" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><path d="M46 62.3 L47 66 M74 62.3 L73 66" stroke="${O}" stroke-width="1.3"/>
+        <path d="M54.5 91 L65.5 91 L60 98Z" fill="#141a26" stroke="${O}" stroke-width=".8" stroke-linejoin="round"/><ellipse cx="58" cy="92.2" rx="2" ry=".9" fill="#fff" opacity=".6"/>
+        <path d="M60 98 V100.5 M53.5 101 Q60 104.5 66.5 101" stroke="${O}" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        <path d="M54.8 101.5 L56.2 106 L57.6 102.4Z M65.2 101.5 L63.8 106 L62.4 102.4Z" fill="#fffbe6" stroke="${O}" stroke-width=".6"/>
+        <path d="M33 74 L39 76 M31 80 L37 81 M87 74 L81 76 M89 80 L83 81 M40 88 L45 90 M80 88 L75 90" stroke="${O}" stroke-width="1" stroke-linecap="round" opacity=".45"/>
+        <path d="M44 46 Q52 43 60 44 M62 44 Q68 43.5 74 46" stroke="#fff" stroke-width="1.2" fill="none" opacity=".7" stroke-linecap="round"/></g>`;
+    }
+    const rivets = [[22, 28], [98, 28], [16.5, 50], [103.5, 50], [19, 80], [101, 80], [35, 107], [85, 107], [60, 122]]
+      .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.7" fill="#fff4c4" stroke="${O}" stroke-width=".7"/>`).join('');
+    return `<svg viewBox="0 0 120 132" class="art crest" aria-hidden="true"><defs>
+      <radialGradient id="${id}f" cx=".42" cy=".3" r=".9"><stop offset="0" stop-color="${c.f[0]}"/><stop offset=".42" stop-color="${c.f[1]}"/><stop offset="1" stop-color="${c.f[2]}"/></radialGradient>
+      <radialGradient id="${id}h" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${c.gem}" stop-opacity=".55"/><stop offset="1" stop-color="${c.gem}" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".3" stop-color="#f7d77e"/><stop offset=".58" stop-color="#d59a36"/><stop offset=".82" stop-color="#8a5a14"/><stop offset="1" stop-color="#e9bd5a"/></linearGradient>
+      <linearGradient id="${id}e2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7d77e"/><stop offset=".6" stop-color="#b97a22"/><stop offset="1" stop-color="#6e430c"/></linearGradient>
+      <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1">${c.silver ? '<stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#e3e8f0"/><stop offset=".65" stop-color="#a7b2c4"/><stop offset=".88" stop-color="#5d6a80"/><stop offset="1" stop-color="#c9d2e0"/>' : '<stop offset="0" stop-color="#f1f5f9"/><stop offset=".5" stop-color="#b6c0cf"/><stop offset="1" stop-color="#5d6a80"/>'}</linearGradient>
+      <radialGradient id="${id}mz" cx=".5" cy=".3" r=".8"><stop offset="0" stop-color="${c.silver ? '#ffffff' : '#fff6d6'}"/><stop offset="1" stop-color="${c.silver ? '#c3ccda' : '#e6bc68'}"/></radialGradient>
+      <linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6b4222"/><stop offset=".5" stop-color="#c08a4f"/><stop offset="1" stop-color="#6b4222"/></linearGradient>
+      <linearGradient id="${id}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".35" stop-color="#f3cf6b"/><stop offset=".7" stop-color="#a86a18"/><stop offset="1" stop-color="#f0c75e"/></linearGradient>
+      <pattern id="${id}p" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M4 .8L7.2 4 4 7.2 .8 4Z" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width=".7"/></pattern>
+      <radialGradient id="${id}v" cx=".5" cy=".42" r=".62"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></radialGradient>
+      <clipPath id="${id}c"><path d="${S2}"/></clipPath></defs>
+      <circle cx="60" cy="68" r="60" fill="url(#${id}h)"/>
+      ${weapon(-45)}${weapon(45)}
+      <path d="${S}" fill="#140804" transform="translate(0 3)" opacity=".5"/>
+      <path d="${S}" fill="url(#${id}r)" stroke="${O}" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="${S2}" fill="url(#${id}f)"/>
+      <g clip-path="url(#${id}c)"><rect x="16" y="20" width="90" height="100" fill="url(#${id}p)"/><path d="${S2}" fill="url(#${id}v)"/><ellipse cx="46" cy="36" rx="30" ry="11" fill="#fff" opacity=".12" transform="rotate(-14 46 36)"/></g>
+      <path d="${S2}" fill="none" stroke="${O}" stroke-width="1.1" stroke-linejoin="round"/>
+      <path d="M60 25.5 L92.5 30.3 Q94.8 30.7 94.8 33.2 V62 C94.8 88.5 78.5 104.5 60 115" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="1"/>
+      ${rivets}
+      <g stroke-linejoin="round">${beast}</g>
+      <path d="M42 18.5 L44.5 7.5 L51.5 12.5 L60 2.5 L68.5 12.5 L75.5 7.5 L78 18.5 Q60 14.5 42 18.5Z" fill="${G}" stroke="${O}" stroke-width="1"/>
+      <path d="M42 18.5 Q60 14.5 78 18.5 L77.4 21.8 Q60 18 42.6 21.8Z" fill="url(#${id}e2)" stroke="${O}" stroke-width=".9"/>
+      <circle cx="44.5" cy="6.8" r="2" fill="#fffbe6" stroke="${O}" stroke-width=".7"/><circle cx="60" cy="2" r="2.2" fill="#fffbe6" stroke="${O}" stroke-width=".7"/><circle cx="75.5" cy="6.8" r="2" fill="#fffbe6" stroke="${O}" stroke-width=".7"/>
+      <path d="M60 9 L63.4 13 L60 17 L56.6 13Z" fill="${c.gem}" stroke="${O}" stroke-width=".8"/><path d="M60 10 L61.6 13 L60 13.6Z" fill="${c.gl}" opacity=".9"/>
+      <circle cx="50" cy="19" r="1.3" fill="${c.gem}" stroke="${O}" stroke-width=".5"/><circle cx="70" cy="19" r="1.3" fill="${c.gem}" stroke="${O}" stroke-width=".5"/></svg>`;
   }
   function guardian(color) {
     return `<svg viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="48" fill="#241a45"/>` +
