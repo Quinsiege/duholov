@@ -120,7 +120,8 @@ jobs:
           sleep 5
           V=$(node -p "require('./www/version.json').version")
           test "$(curl -fsS https://duholov.ru/version.json | node -p 'JSON.parse(require("fs").readFileSync(0)).version')" = "$V"
-          curl -fsS -X POST -H 'Origin: https://duholov.ru' -H 'Content-Type: application/json' -d '{}' https://api.duholov.ru/functions/v1/game | grep -q 'auth'
+          # без входа функция отвечает 401 «Нужен вход в игру» — это и есть признак, что она работает
+          curl -sS -X POST -H 'Origin: https://duholov.ru' -H 'Content-Type: application/json' -d '{}' https://api.duholov.ru/functions/v1/game | grep -q '"auth":true'
           echo "duholov.ru: $V"
 
   pages:
