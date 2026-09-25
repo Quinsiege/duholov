@@ -2837,7 +2837,7 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
   background: var(--hc-tl) left top / 28px 28px no-repeat, var(--hc-tr) right top / 28px 28px no-repeat,
     var(--hc-bl) left bottom / 28px 28px no-repeat, var(--hc-br) right bottom / 28px 28px no-repeat; }
 /* общая печать для значков */
-#hud .chip > :first-child:not(span), #storyPill .sp-ico, #tracker .tr-arrow {
+#storyPill .sp-ico, #tracker .tr-arrow {
   flex: none; box-sizing: border-box; display: grid; place-items: center; border-radius: var(--hud-seal-r); background: var(--hud-seal); box-shadow: var(--hud-seal-sh); }
 
 /* профиль: портрет в золотой раме, печать уровня, имя золотом, шкала опыта с насечками */
@@ -2861,21 +2861,19 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 
 /* чипы справа — одной высоты, значок в печати */
 #hud .hud-right { gap: 8px; }
-#hud .chip { gap: 8px; height: 34px; padding: 0 14px 0 8px; }
-#hud .chip > :first-child:not(span) { width: 22px; height: 22px; padding: 3px; }
-#hud .chip:not(:has(span)) { padding: 0 8px; }
+#hud .chip { gap: 7px; height: 34px; padding: 0 14px 0 11px; }
+/* значок чипа — без рамки, просто золотой знак со свечением */
+#hud .chip > :first-child:not(span) { flex: none; width: 20px; height: 20px; display: grid; place-items: center; color: #fde68a; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .45)); }
+#hud .chip:not(:has(span)) { padding: 0 10px; }
 #hud .chip span { font-family: var(--f-head); font-weight: 700; font-size: 11.5px; }
 #hud .chip-row { gap: 8px; }
 #hud .chip.ok .ico { color: #4ade80; } #hud .chip.warn .ico { color: #fcd34d; } #hud .chip.bad .ico { color: #f87171; } #hud .chip.demo .ico { color: #c4b5fd; }
-#hud .chip.ok > :first-child { box-shadow: 0 0 0 1px rgba(74, 222, 128, .75), 0 0 0 2px rgba(10, 5, 26, .9), 0 0 8px rgba(74, 222, 128, .35), inset 0 1px 0 rgba(255, 255, 255, .14); }
-#hud .chip.bad > :first-child { box-shadow: 0 0 0 1px rgba(248, 113, 113, .8), 0 0 0 2px rgba(10, 5, 26, .9), 0 0 8px rgba(248, 113, 113, .4), inset 0 1px 0 rgba(255, 255, 255, .14); }
 /* событие недели и праздник — кайма из кованого золота (бирюзы) */
 #hud .chip.event { border: 1.5px solid transparent; color: #fff4c7; outline-color: rgba(253, 224, 71, .22);
   background: var(--hud-bg), linear-gradient(100deg, #9a4a0c, #fde68a 30%, #f59e0b 55%, #fff3b0 75%, #9a4a0c) border-box;
   background-clip: padding-box, padding-box, padding-box, border-box; /* три слоя таблички + золотая кайма */
   box-shadow: var(--hud-sh), 0 0 16px rgba(251, 191, 36, .3); }
-#hud .chip.event > :first-child:not(span) { background: linear-gradient(180deg, #fff3b0, #f59e0b 60%, #92400e); box-shadow: 0 0 0 1px #5a2a06, 0 0 0 2px rgba(10, 5, 26, .9), 0 0 10px rgba(251, 191, 36, .55); color: #3b1a02; }
-#hud .chip.event .ev-star { color: #3b1a02; font-size: 12px; }
+#hud .chip.event .ev-star { color: #fde68a; font-size: 16px; text-shadow: 0 0 8px rgba(251, 191, 36, .8); }
 #hud .chip.hol { border: 1.5px solid transparent; outline-color: rgba(94, 234, 212, .2);
   background: var(--hud-bg), linear-gradient(100deg, #0f766e, #99f6e4 40%, #2dd4bf 70%, #0f766e) border-box;
   background-clip: padding-box, padding-box, padding-box, border-box; /* три слоя таблички + золотая кайма */ }
