@@ -20,8 +20,8 @@ const MapView = {
     // 4.8.1: зона досягаемости — круг Ловчего (свечение, кольцо рун, волна); размер — радиус взаимодействия на текущем масштабе
     this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000,
       icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
-    this.map.on('zoomanim', e => this.fitRange(e.zoom, true));
-    this.map.on('zoomend viewreset resize', () => this.fitRange());
+    this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
+    this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); });
     this.fitRange();
     this.player = L.marker([this.pos.lat, this.pos.lng], {
       interactive: false, zIndexOffset: 1000,
@@ -30,7 +30,7 @@ const MapView = {
     }).addTo(this.map);
     this.updateBuddy();
     Bus.on('buddyChanged', () => this.updateBuddy());
-    Bus.on('weather', () => { this.setWeatherFx(); this.refresh(true); });
+    Bus.on('weather', () => { this.setWeatherFx(); this.setTiles(); this.refresh(true); });
 
     this.map.on('dragstart', () => { this.follow = false; U.$('#recenterBtn').classList.add('show'); });
     U.$('#recenterBtn').onclick = () => this.recenter();
@@ -65,11 +65,19 @@ const MapView = {
   TILES: 'tiles/russia-20260924.pmtiles',
   COVER: [19.5, 41.1, 180, 72], // рамка вырезки: долгота, широта (юго-запад → северо-восток)
   covered(p) { const b = this.COVER; return !!p && p.lng >= b[0] && p.lng <= b[2] && p.lat >= b[1] && p.lat <= b[3]; },
+  // 4.10: облик карты — время суток по настоящему солнцу над игроком, время года и снег (зимой и в снегопад);
+  // в настройках можно закрепить день или ночь
+  look() {
+    const theme = Cfg.s.mapTheme || 'auto', p = this.pos || { lat: 55.75, lng: 37.62 }, nav = typeof NavMap !== 'undefined';
+    const phase = theme === 'light' ? 'day' : theme === 'dark' ? 'night' : nav ? NavMap.phase(p.lat, p.lng) : U.isNight() ? 'night' : 'day';
+    const season = nav ? NavMap.season() : 'summer', snow = season === 'winter' || !!(Sky.w && Sky.w.key === 'snow');
+    return { phase, season, snow, night: phase === 'night' || phase === 'dusk', key: [phase, season, snow].join(':') };
+  },
   setTiles() {
-    const theme = Cfg.s.mapTheme || 'auto';
-    const night = theme === 'auto' ? U.isNight() : theme === 'dark';
-    if (night === this.night) return;
-    this.night = night;
+    const lk = this.look();
+    if (lk.key === this._look) return;
+    this._look = lk.key;
+    const night = this.night = lk.night;
     const nav = typeof NavMap !== 'undefined';
     if (!this.tiles) {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -77,7 +85,7 @@ const MapView = {
         // 4.9: «Карта Нави» — своя отрисовка (js/navmap.js); без неё — стандартная светлая с CSS-фильтром тонов Нави
         this.tiles = protomapsL.leafletLayer({
           url: ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES,
-          lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`, ...(nav ? NavMap.theme(night) : { flavor: 'light' }),
+          lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`, ...(nav ? NavMap.theme(lk.phase, lk.season, lk.snow) : { flavor: 'light' }),
         }).addTo(this.map);
         if (nav) {
           U.$('#map').classList.add('navmap');
@@ -89,8 +97,8 @@ const MapView = {
         this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
       }
     } else if (nav && this.tiles.rerenderTiles) {
-      // день ↔ ночь: другая палитра — перерисовать плитки и подписи
-      Object.assign(this.tiles, NavMap.theme(night));
+      // сменилось время суток, сезон или пошёл снег — другая палитра: перерисовать плитки и подписи
+      Object.assign(this.tiles, NavMap.theme(lk.phase, lk.season, lk.snow));
       this.tiles.clearLayout(); this.tiles.rerenderTiles();
     }
     document.body.classList.toggle('night', night);
@@ -140,6 +148,7 @@ const MapView = {
     const ll = [lat, lng];
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
+    this.drawTrail(lat, lng);
     if (this.follow) {
       if (jump) this.map.setView(ll, 17.5, { animate: false });
       else this.map.panTo(ll, { animate: false });
@@ -410,6 +419,7 @@ const MapView = {
       if (el) el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
     });
     for (const [id, m] of this.markers) if (!seen.has(id)) { m.remove(); this.markers.delete(id); }
+    this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     UI.updateNearby(this.nearby);
     if (this.tracking) this.updateTracker();
@@ -435,6 +445,63 @@ const MapView = {
       Duel.open(e);
     } else Raid.open(e);
   },
+  /* ---------------- 4.10: СЛЕД ЛОВЧЕГО, ЗЕМЛИ ДРУЖИН, МАРЕВО РАЗЛОМОВ ---------------- */
+  // радиус в пикселях: meters метров вокруг ll на масштабе z
+  pxR(ll, meters, z) {
+    return Math.abs(this.map.project(ll, z).y - this.map.project(L.latLng(ll.lat + meters / 111320, ll.lng), z).y);
+  },
+  // след Ловчего — тающая золотая нить пройденного пути (последние ~400 м): старые участки бледнее
+  trail: [],
+  drawTrail(lat, lng) {
+    const t = this.trail, last = t[t.length - 1];
+    if (last && U.dist(last[0], last[1], lat, lng) < 4) return;
+    if (last && U.dist(last[0], last[1], lat, lng) > 300) t.length = 0; // прыжок (демо, перезаход) — нить заново
+    t.push([lat, lng]);
+    for (let i = t.length - 1, len = 0; i > 0; i--) {
+      len += U.dist(t[i][0], t[i][1], t[i - 1][0], t[i - 1][1]);
+      if (len > 400) { t.splice(0, i - 1); break; }
+    }
+    const N = 5, OP = [.14, .3, .5, .75, 1];
+    if (!this._trail) {
+      this._trail = OP.map(() => [
+        L.polyline([], { className: 'trail-glow', color: '#fbbf24', weight: 9, opacity: 0, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(this.map),
+        L.polyline([], { className: 'trail-core', color: '#fff1bf', weight: 2.6, opacity: 0, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(this.map),
+      ]);
+    }
+    const per = Math.max(1, Math.ceil((t.length - 1) / N));
+    this._trail.forEach(([glow, core], i) => {
+      const part = t.slice(i * per, (i + 1) * per + 1);
+      glow.setLatLngs(part); core.setLatLngs(part);
+      glow.setStyle({ opacity: OP[i] * .22 }); core.setStyle({ opacity: OP[i] * .9 });
+    });
+  },
+  // земли дружин (сияние цвета дружины вокруг Капища) и марево Нави вокруг открытых разломов
+  zones: new Map(),
+  syncZones(ents) {
+    const want = new Map();
+    ents.forEach(e => {
+      if (e.type === 'shrine' && e.clan && CLANS[e.clan]) want.set('z:' + e.id, { e, r: 100, cls: 'clan', css: `--cc:${CLANS[e.clan].color}`, inner: '<i class="zn-glow"></i><i class="zn-ring"></i><i class="zn-ring2"></i>' });
+      if (e.type === 'rift' && !e.done) want.set('z:' + e.id, { e, r: 90, cls: 'rift', css: '', inner: '<i class="zn-haze"></i><i class="zn-cracks"></i>' });
+    });
+    for (const [id, z] of this.zones) if (!want.has(id) || want.get(id).css !== z.css) { z.m.remove(); this.zones.delete(id); }
+    for (const [id, w] of want) {
+      if (this.zones.has(id)) continue;
+      const m = L.marker([w.e.lat, w.e.lng], { interactive: false, keyboard: false, zIndexOffset: -4000,
+        icon: L.divIcon({ className: 'mk-zone', iconSize: [0, 0], iconAnchor: [0, 0], html: `<div class="zn ${w.cls}" style="${w.css}">${w.inner}</div>` }) }).addTo(this.map);
+      this.zones.set(id, { m, r: w.r, css: w.css });
+      this.fitZone(m, w.r);
+    }
+  },
+  fitZone(m, r, z, anim) {
+    const box = m.getElement() && m.getElement().firstElementChild;
+    if (!box) return;
+    const px = this.pxR(m.getLatLng(), r, z == null ? this.map.getZoom() : z);
+    box.style.transition = anim ? 'width .25s cubic-bezier(0,0,.25,1), height .25s cubic-bezier(0,0,.25,1), margin .25s cubic-bezier(0,0,.25,1)' : 'none';
+    box.style.width = box.style.height = px * 2 + 'px';
+    box.style.margin = -px + 'px 0 0 ' + -px + 'px';
+  },
+  fitZones(z, anim) { for (const { m, r } of this.zones.values()) this.fitZone(m, r, z, anim); },
+
   /* ---------------- СЛЕДОПЫТ ---------------- */
   // Стрелка в HUD указывает направление на цель (карта всегда ориентирована на север)
   track(e) {
