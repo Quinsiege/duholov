@@ -1749,7 +1749,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm-stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; animation: blink 2.8s ease-in-out infinite; animation-delay: calc(-1 * var(--d)); }
 .fm-stars i:nth-child(3n) { width: 3px; height: 3px; }
 .fm-moon { position: absolute; right: 13%; top: 11%; width: 17vmin; height: 17vmin; border-radius: 50%; transition: all 2s;
-  background: radial-gradient(circle at 36% 34%, #fffbeb, #fde68a 55%, #d8a43a); box-shadow: 0 0 40px rgba(253, 230, 138, .55), 0 0 120px rgba(253, 230, 138, .25); }
+  background: radial-gradient(circle at 62% 38%, rgba(160, 110, 30, .22) 0 9%, transparent 10%), radial-gradient(circle at 34% 62%, rgba(160, 110, 30, .2) 0 12%, transparent 13%), radial-gradient(circle at 70% 70%, rgba(160, 110, 30, .16) 0 6%, transparent 7%), radial-gradient(circle at 44% 30%, rgba(160, 110, 30, .14) 0 5%, transparent 6%), radial-gradient(circle at 36% 34%, #fffbeb, #fde68a 55%, #d8a43a);
+  box-shadow: 0 0 0 6px rgba(253, 230, 138, .08), 0 0 0 16px rgba(253, 230, 138, .04), 0 0 40px rgba(253, 224, 138, .55), 0 0 120px rgba(253, 224, 138, .25); }
 .fm.on .fm-sky { animation: fmPushSky 22s ease-out forwards; }
 @keyframes fmPushSky { to { transform: scale(1.08) translateY(1.5%); } }
 
@@ -1762,7 +1763,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm.on .fm-city.mid { animation: fmPan 22s linear forwards; --px: -5%; }
 .fm.on .fm-city.near { animation: fmPan 22s linear forwards; --px: -9%; }
 @keyframes fmPan { to { transform: translateX(var(--px)) scale(1.04); } }
-.fm-w0 { animation: blink 3.4s ease-in-out infinite; } .fm-w1 { animation: blink 4.6s ease-in-out -1.7s infinite; } .fm-w2 { opacity: .85; }
+.fm-city.mid .fm-wins { animation: blink 4.6s ease-in-out infinite; } .fm-city.near .fm-wins { animation: blink 3.4s ease-in-out -1.7s infinite; }
+.fm-red { animation: blink 1.4s steps(2) infinite; }
 
 /* разлом */
 .fm-rift { position: absolute; left: 42%; top: 0; width: 16%; height: 64%; opacity: 0; transition: opacity .4s, transform 1.4s cubic-bezier(.2, .8, .2, 1); transform-origin: 50% 40%;
@@ -1776,9 +1778,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes fmDraw { to { stroke-dashoffset: 0; } }
 @keyframes fmFlick { 50% { opacity: .75; } }
 .s-crack .fm-aur, .s-koschey .fm-aur, .s-swarm .fm-aur { opacity: 1; }
-.s-crack .fm-moon, .s-koschey .fm-moon, .s-swarm .fm-moon { background: radial-gradient(circle at 36% 34%, #fdf4ff, #d8b4fe 55%, #7c3aed); box-shadow: 0 0 50px rgba(192, 132, 252, .8), 0 0 140px rgba(168, 85, 247, .45); }
+.s-crack .fm-moon, .s-koschey .fm-moon, .s-swarm .fm-moon { background: radial-gradient(circle at 62% 38%, rgba(76, 29, 149, .3) 0 9%, transparent 10%), radial-gradient(circle at 34% 62%, rgba(76, 29, 149, .28) 0 12%, transparent 13%), radial-gradient(circle at 70% 70%, rgba(76, 29, 149, .22) 0 6%, transparent 7%), radial-gradient(circle at 36% 34%, #fdf4ff, #d8b4fe 55%, #7c3aed); box-shadow: 0 0 50px rgba(192, 132, 252, .8), 0 0 140px rgba(168, 85, 247, .45); }
 .s-crack .fm-sky { filter: hue-rotate(12deg) saturate(1.3); }
-.s-crack .fm-w0, .s-crack .fm-w1, .s-koschey .fm-w0, .s-koschey .fm-w1 { animation: fmOut .3s steps(2) 3 forwards; }
+.s-crack .fm-city g[filter], .s-crack .fm-wins, .s-koschey .fm-city g[filter], .s-koschey .fm-wins, .s-swarm .fm-city g[filter], .s-swarm .fm-wins { animation: fmOut .3s steps(2) 3 forwards; }
 @keyframes fmOut { to { opacity: .08; } }
 
 /* Кощей поднимается из-за города */
@@ -1801,8 +1803,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   100% { transform: translate(var(--x), var(--y)) scale(2.8) rotate(var(--r)); opacity: 0; filter: blur(3px); } }
 
 /* вне города — свои кадры; небо остаётся фоном, приглушённым */
-.s-hide .fm-city, .s-map .fm-city, .s-catch .fm-city, .s-clans .fm-city, .s-dex .fm-city, .s-mentor .fm-city, .s-logo .fm-city { opacity: 0; }
+.s-map .fm-city, .s-catch .fm-city, .s-clans .fm-city, .s-dex .fm-city, .s-mentor .fm-city, .s-logo .fm-city { opacity: 0; }
 .s-hide .fm-sky, .s-map .fm-sky, .s-catch .fm-sky, .s-clans .fm-sky, .s-dex .fm-sky, .s-mentor .fm-sky, .s-logo .fm-sky { filter: brightness(.45); }
+.s-hide .fm-city { filter: brightness(.4) blur(1.5px); } .s-hide .fm-city.near { opacity: 0; }
 .fm-hide, .fm-map, .fm-catch, .fm-clans, .fm-dex, .fm-men { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .45s; }
 
 /* где прячутся духи: три коротких кадра */
@@ -1813,27 +1816,35 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm-hs { position: absolute; }
 .fm-hs .art { width: 100%; }
 .fm-hp.lamp { background: radial-gradient(60% 45% at 50% 34%, rgba(253, 224, 138, .28), transparent 70%); }
-.fm-hp.lamp .fm-hb { width: 50vmin; height: 100vmin; } .fm-hp.lamp .fm-hs { width: 62%; left: 44%; top: 17%; }
-.fm-hp.puddle { background: radial-gradient(60% 40% at 50% 62%, rgba(45, 212, 191, .25), transparent 70%); }
-.fm-hp.puddle .fm-hb { width: 86vmin; height: 70vmin; } .fm-hp.puddle svg { top: 40%; height: 60%; } .fm-hp.puddle .fm-hs { width: 44%; left: 28%; top: 6%; }
+.fm-hp.lamp .fm-hb { width: 50vmin; height: 100vmin; } .fm-hp.lamp .fm-hs { width: 56%; left: 54%; top: 8%; }
+.fm-moth { animation: fmMoth 2.6s ease-in-out infinite; animation-delay: calc(var(--i) * -.5s); transform-box: fill-box; }
+@keyframes fmMoth { 25% { transform: translate(4px, -3px); } 50% { transform: translate(-2px, 3px); } 75% { transform: translate(3px, 2px); } }
+.fm-hp.puddle { background: radial-gradient(60% 30% at 50% 60%, rgba(45, 212, 191, .22), transparent 70%), linear-gradient(transparent 38%, #120c22 52%, #0a0714 70%, #06040d); }
+.fm-hp.puddle .fm-hb { width: 96vmin; height: 70vmin; } .fm-hp.puddle svg { top: 22%; height: 78%; } .fm-hp.puddle .fm-hs { width: 36%; left: 32%; top: 18%; }
+.fm-hp.puddle .fm-hs.refl { top: 74%; opacity: .3; transform: scaleY(-.6); transform-origin: 50% 0; filter: blur(1.5px) hue-rotate(-10deg);
+  -webkit-mask: linear-gradient(#000, transparent 70%); mask: linear-gradient(#000, transparent 70%); animation: none !important; }
+.fm-rain { position: absolute; inset: 0; opacity: .5; background: repeating-linear-gradient(104deg, transparent 0 22px, rgba(191, 219, 254, .35) 22px 23px, transparent 23px 60px) 0 0 / 100% 180px; animation: fmRain .5s linear infinite; }
+@keyframes fmRain { to { background-position: -40px 180px; } }
 .fm-hp.wires { background: radial-gradient(60% 40% at 50% 40%, rgba(250, 204, 21, .18), rgba(124, 58, 237, .18) 50%, transparent 75%); }
-.fm-hp.wires .fm-hb { width: 100vw; height: 70vmin; } .fm-hp.wires .fm-hs { width: 34vmin; left: calc(50% - 17vmin); top: 4%; }
+.fm-hp.wires .fm-hb { width: max(100vw, 150vmin); height: max(60vw, 90vmin); } .fm-hp.wires .fm-hs { width: 26%; left: 24.5%; top: -9%; }
+.fm-spark { animation: fmSpark .9s ease-out infinite; animation-delay: calc(var(--i) * -.22s); transform-box: fill-box; }
+@keyframes fmSpark { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(6px, 10px) scale(.4); } }
 .s-hide .fm-hp { animation: fmPanel 1.8s ease both; } .s-hide .fm-hp.puddle { animation-delay: 1.8s; } .s-hide .fm-hp.wires { animation-delay: 3.6s; animation-duration: 1.9s; animation-fill-mode: both; }
 .s-hide .fm-hs { animation: fmPeek 1.8s cubic-bezier(.3, 1.4, .5, 1) both; } .s-hide .puddle .fm-hs { animation-delay: 1.8s; } .s-hide .wires .fm-hs { animation-delay: 3.6s; }
 @keyframes fmPanel { 0% { opacity: 0; transform: scale(1.18); } 14% { opacity: 1; } 86% { opacity: 1; } 100% { opacity: 0; transform: scale(1); } }
 @keyframes fmPeek { 0% { transform: translateY(30%) scale(.6); opacity: 0; } 25% { transform: none; opacity: 1; } 100% { transform: translateY(-4%); opacity: 1; } }
-.fm-hp .rip { animation: fmRip 1.4s ease-out infinite; transform-origin: 100px 60px; } .fm-hp .rip.b { animation-delay: .7s; }
+.fm-hp .rip { animation: fmRip 1.6s ease-out infinite; transform-box: fill-box; transform-origin: center; } .fm-hp .rip.b { animation-delay: .8s; } .fm-hp .rip.c { animation-delay: .3s; } .fm-hp .rip.d { animation-delay: 1.1s; }
 @keyframes fmRip { from { transform: scale(.4); opacity: .9; } to { transform: scale(2.6); opacity: 0; } }
 .fm-hp .zap { animation: fmFlick .15s steps(2) infinite; filter: drop-shadow(0 0 6px #fde047); }
 
 /* карта: золотые улицы уходят вдаль, круг Ловчего, духи выскакивают рядом */
 .s-map .fm-map { opacity: 1; }
 .fm-map { background: radial-gradient(80% 60% at 50% 60%, #1b1040, #07030f 80%); } .fm-map::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 52%; background: linear-gradient(#07030f 18%, rgba(7, 3, 15, .85) 45%, rgba(27, 16, 64, .35) 75%, transparent); pointer-events: none; }
-.fm-plane { position: absolute; left: 50%; top: 60%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax; transform: perspective(900px) rotateX(60deg); }
-.fm-roads { position: absolute; inset: 0; opacity: .95;
+.fm-plane { position: absolute; left: 50%; top: 60%; width: 300vmax; height: 300vmax; margin: -150vmax 0 0 -150vmax; transform: perspective(900px) rotateX(60deg); }
+.fm-roads { position: absolute; inset: 0; opacity: .95; background-size: 64vmin 64vmin !important;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23120b25'/%3E%3Cg fill='%232c2154' stroke='%23e0b45a' stroke-opacity='.35' stroke-width='1'%3E%3Crect x='14' y='14' width='70' height='54'/%3E%3Crect x='104' y='14' width='40' height='70'/%3E%3Crect x='158' y='20' width='30' height='40'/%3E%3Crect x='14' y='90' width='50' height='40'/%3E%3Crect x='80' y='104' width='66' height='36'/%3E%3Crect x='160' y='80' width='30' height='60'/%3E%3Crect x='20' y='150' width='40' height='40'/%3E%3Crect x='80' y='158' width='54' height='30'/%3E%3Crect x='150' y='156' width='40' height='34'/%3E%3C/g%3E%3Cg stroke='%23f3cf6b' stroke-width='4' fill='none'%3E%3Cpath d='M0 3H200M0 97H200M0 146H200M3 0V200M96 0V200M152 0V200'/%3E%3C/g%3E%3Cg fill='%23ffe7a3'%3E%3Ccircle cx='50' cy='3' r='2.4'/%3E%3Ccircle cx='130' cy='97' r='2.4'/%3E%3Ccircle cx='96' cy='60' r='2.4'/%3E%3Ccircle cx='152' cy='170' r='2.4'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 34vmin 34vmin; }
 .s-map .fm-roads { animation: fmWalk 5.2s linear forwards; }
-@keyframes fmWalk { to { background-position: 0 30vmin; } }
+@keyframes fmWalk { to { background-position: 0 26vmin; } }
 .fm-ring { position: absolute; left: 50%; top: 50%; width: 64vmin; height: 64vmin; margin: -32vmin 0 0 -32vmin; opacity: .85; }
 .fm-ring i { position: absolute; inset: 0; border-radius: 50%; }
 .fm-ring .r1 { background: var(--rz-runes) center / 100% 100% no-repeat; animation: spin 30s linear infinite; }
@@ -1852,6 +1863,10 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 /* поимка: цель сжимается, оберег летит по дуге, вспышка — «Поймано!» */
 .s-catch .fm-catch { opacity: 1; }
 .fm-catch { background: radial-gradient(60% 50% at 50% 42%, rgba(249, 115, 22, .3), rgba(88, 28, 135, .25) 55%, transparent 80%); }
+.fm-circ { position: absolute; left: 50%; top: 42%; width: 92vmin; height: 92vmin; margin: -46vmin 0 0 -46vmin; opacity: .5;
+  background: var(--rz-runes) center / 100% 100% no-repeat; animation: spin 40s linear infinite; filter: drop-shadow(0 0 12px rgba(251, 146, 60, .6)); }
+.fm-arena { position: absolute; left: 50%; top: 60%; width: 80vmin; height: 18vmin; margin-left: -40vmin; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(251, 146, 60, .45), rgba(124, 58, 237, .2) 60%, transparent); }
 .fm-bird { position: absolute; left: 50%; top: 42%; width: 50vmin; margin: -25vmin 0 0 -25vmin; }
 .fm-bird .art { width: 100%; filter: drop-shadow(0 0 30px rgba(251, 146, 60, .8)); }
 .s-catch .fm-bird { animation: fmBob 2s ease-in-out infinite, fmCaught .5s ease-in 2.1s forwards; }
@@ -1875,6 +1890,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 
 /* дружины: гербы с ударами барабана, над ними — Капище */
 .s-clans .fm-clans { opacity: 1; }
+.fm-clans::before { content: ""; position: absolute; left: 50%; top: 34%; width: 150vmax; height: 150vmax; margin: -75vmax 0 0 -75vmax; opacity: .35;
+  background: repeating-conic-gradient(rgba(253, 224, 71, .35) 0 5deg, transparent 5deg 15deg); -webkit-mask: radial-gradient(circle, #000 5%, transparent 45%); mask: radial-gradient(circle, #000 5%, transparent 45%); animation: spin 60s linear infinite; }
 .fm-clans { display: flex; justify-content: center; align-items: center; gap: 3vmin; padding-bottom: 30vh; }
 .fm-cl { position: relative; width: 27vmin; display: flex; flex-direction: column; align-items: center; gap: 1vmin; opacity: 0; }
 .fm-cl svg, .fm-cl .art { width: 100%; height: auto; position: relative; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .6)); }
@@ -1890,6 +1907,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 /* бестиарий: стена духов, камера отъезжает */
 .s-dex .fm-dex { opacity: 1; animation: fmPull 4.4s cubic-bezier(.2, .7, .3, 1) forwards; }
 .fm-dex { display: grid; grid-template-columns: repeat(5, min(15vmin, 11vh)); gap: 1.8vmin; place-content: center; padding-bottom: 10vh; }
+.fm-dex::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, .22) 50%, transparent 65%) -100% 0 / 200% 100% no-repeat; pointer-events: none; }
+.s-dex .fm-dex::after { animation: fmSweep 1.6s ease-in-out 2.2s both; }
+@keyframes fmSweep { from { background-position: 150% 0; } to { background-position: -150% 0; } }
 .fm-dex div { aspect-ratio: .82; border-radius: 2.4vmin; display: grid; place-items: center; padding: 1vmin; opacity: 0;
   background: linear-gradient(180deg, rgba(76, 42, 145, .7), rgba(20, 10, 45, .85)); border: 1px solid rgba(243, 207, 107, .4); box-shadow: 0 6px 16px rgba(0, 0, 0, .5); }
 .fm-dex .art { width: 100%; }
@@ -1898,6 +1918,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 
 /* наставник и сам игрок */
 .s-mentor .fm-men { opacity: 1; }
+.fm-men::before { content: ""; position: absolute; left: 50%; bottom: 17vh; width: 110vmin; height: 16vmin; margin-left: -55vmin; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(253, 224, 71, .3), rgba(74, 222, 128, .15) 55%, transparent); }
+.fm-men::after { content: ""; position: absolute; inset: 0 0 40%; background: radial-gradient(50% 60% at 30% 20%, rgba(74, 222, 128, .18), transparent 70%), radial-gradient(50% 60% at 75% 25%, rgba(192, 132, 252, .2), transparent 70%); pointer-events: none; }
 .fm-men { display: flex; justify-content: center; align-items: flex-end; gap: 2vmin; padding-bottom: 20vh; }
 .fm-vm, .fm-hero { position: relative; width: 46vmin; }
 .fm-vm .art, .fm-hero .art { width: 100%; position: relative; }
@@ -1960,7 +1983,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm-play i { position: absolute; left: 38%; top: 30%; border-left: 26px solid #2a1253; border-top: 17px solid transparent; border-bottom: 17px solid transparent; }
 .fm-start b { font-family: 'Ruslan Display', serif; font-weight: 400; font-size: 30px; color: #fde68a; letter-spacing: .06em; text-shadow: 0 0 20px rgba(253, 224, 71, .5); }
 .fm-start small { color: #cfc4ef; }
-.calm .fm-grain, .calm .fm-stars i, .calm .fm-w0, .calm .fm-w1, .calm .fm-kglow, .calm .fm-ring i, .calm .fm-lcharm i, .calm .fm-play { animation: none; }
+.calm .fm-rain, .calm .fm-circ, .calm .fm-clans::before, .calm .fm-grain, .calm .fm-stars i, .calm .fm-w0, .calm .fm-w1, .calm .fm-kglow, .calm .fm-ring i, .calm .fm-lcharm i, .calm .fm-play { animation: none; }
 
 /* ---------- 4.0: «Путь Ловчего» ---------- */
 .pth-head { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; border: 1px solid var(--line);

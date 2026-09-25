@@ -37,28 +37,135 @@ const Trailer = {
     ['logo', 0, t => t.hit(2)],
   ],
 
-  // ночной город: дома разной высоты, у части — купола-луковки и шпили, окна горят не все
-  skyline(seed, color, hMin, hMax, win, domes) {
+  /* ---------- рисунки трейлера ---------- */
+  // ночной город: объём градиентом, лунная кромка крыш, окна со свечением; у разных слоёв — свои детали:
+  // дальний — телебашня с мигающим огнём, средний — церкви с золотыми луковками, ближний — трубы и водонапорная башня
+  skyline(id, seed, o) {
     let r = seed;
-    const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
-    let s = '', x = 0;
+    const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647, f = v => v.toFixed(1);
+    let b = '', rim = '', win = '', gold = '', extra = '', x = 0;
     while (x < 1600) {
-      const w = 16 + rnd() * 38, h = hMin + rnd() * (hMax - hMin), top = 400 - h;
-      s += `<rect x="${x.toFixed(0)}" y="${top.toFixed(0)}" width="${(w + 1).toFixed(0)}" height="${h.toFixed(0)}"/>`;
-      const k = rnd();
-      if (domes && k < .22) { // церковь: барабан и луковка с крестом
-        const cx = x + w / 2, dw = Math.min(w * .5, 16);
-        s += `<rect x="${(cx - dw * .45).toFixed(0)}" y="${(top - dw * .7).toFixed(0)}" width="${(dw * .9).toFixed(0)}" height="${(dw * .7 + 1).toFixed(0)}"/>`
-          + `<path d="M${(cx - dw / 2).toFixed(1)} ${(top - dw * .7).toFixed(1)}q0 -${(dw * .7).toFixed(1)} ${(dw / 2).toFixed(1)} -${(dw * 1.2).toFixed(1)}q${(dw / 2).toFixed(1)} ${(dw * .5).toFixed(1)} ${(dw / 2).toFixed(1)} ${(dw * 1.2).toFixed(1)}z"/>`
-          + `<rect x="${(cx - .8).toFixed(1)}" y="${(top - dw * 2.3).toFixed(1)}" width="1.6" height="${(dw * .5).toFixed(1)}"/><rect x="${(cx - 4).toFixed(1)}" y="${(top - dw * 2.15).toFixed(1)}" width="8" height="1.6"/>`;
-      } else if (k < .34) s += `<rect x="${(x + w * .45).toFixed(0)}" y="${(top - 14).toFixed(0)}" width="1.2" height="14"/>`; // антенна
-      else if (k < .42) s += `<path d="M${x.toFixed(0)} ${top.toFixed(0)}l${(w / 2).toFixed(0)} -${(w * .35).toFixed(0)}l${(w / 2).toFixed(0)} ${(w * .35).toFixed(0)}z"/>`; // крыша
-      // окна
-      if (win) for (let wy = top + 7; wy < 394; wy += 9) for (let wx = x + 4; wx < x + w - 5; wx += 7)
-        if (rnd() < win) s += `<rect class="fm-w${Math.floor(rnd() * 3)}" x="${wx.toFixed(0)}" y="${wy.toFixed(0)}" width="3.2" height="4.4" fill="#ffd27a"/>`;
+      const w = 16 + rnd() * 38, h = o.hMin + rnd() * (o.hMax - o.hMin), top = 400 - h, k = rnd();
+      b += `<rect x="${f(x)}" y="${f(top)}" width="${f(w + .6)}" height="${f(h)}"/>`;
+      rim += `<rect x="${f(x)}" y="${f(top)}" width="${f(w)}" height="1.3"/>`;
+      if (o.domes && k < .2) { // церковь: барабан, золотая луковка, крест
+        const cx = x + w / 2, dw = Math.min(w * .52, 16);
+        b += `<rect x="${f(cx - dw * .42)}" y="${f(top - dw * .8)}" width="${f(dw * .84)}" height="${f(dw * .8 + 1)}"/>`;
+        gold += `<path d="M${f(cx - dw / 2)} ${f(top - dw * .8)}q0 -${f(dw * .75)} ${f(dw / 2)} -${f(dw * 1.25)}q${f(dw / 2)} ${f(dw * .5)} ${f(dw / 2)} ${f(dw * 1.25)}z"/>`
+          + `<rect x="${f(cx - .7)}" y="${f(top - dw * 2.45)}" width="1.4" height="${f(dw * .5)}"/><rect x="${f(cx - 3.2)}" y="${f(top - dw * 2.3)}" width="6.4" height="1.3"/>`;
+      } else if (o.chimneys && k < .3) { // трубы
+        b += `<rect x="${f(x + w * .2)}" y="${f(top - 9)}" width="4" height="9"/><rect x="${f(x + w * .6)}" y="${f(top - 6)}" width="3" height="6"/>`;
+      } else if (k < .4) b += `<rect x="${f(x + w * .45)}" y="${f(top - 14)}" width="1.2" height="14"/><rect x="${f(x + w * .45 - 3)}" y="${f(top - 10)}" width="7" height="1"/>`; // антенна
+      else if (k < .48) b += `<path d="M${f(x)} ${f(top)}l${f(w / 2)} -${f(w * .38)}l${f(w / 2)} ${f(w * .38)}z"/>`; // крыша-шатёр
+      if (o.win) for (let wy = top + 7; wy < 394; wy += 9) {
+        const row = rnd() < .25; // целый освещённый этаж — как в офисах
+        for (let wx = x + 4; wx < x + w - 5; wx += 7) if (row ? rnd() < .8 : rnd() < o.win) win += `<rect x="${f(wx)}" y="${f(wy)}" width="3.2" height="4.4"/>`;
+      }
       x += w;
     }
-    return `<svg viewBox="0 0 1600 400" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g fill="${color}">${s}</g></svg>`;
+    if (o.tower) { // телебашня: игла с площадками и красным огнём
+      const cx = 1060;
+      extra += `<path d="M${cx - 16} 400L${cx - 3} 70h6L${cx + 16} 400z"/><rect x="${cx - 12}" y="150" width="24" height="10" rx="3"/><rect x="${cx - 8}" y="110" width="16" height="6" rx="2"/><rect x="${cx - 1}" y="18" width="2" height="54"/>`;
+      extra += `<circle class="fm-red" cx="${cx}" cy="18" r="3.4" fill="#ff4d6d"/><circle class="fm-red" cx="${cx}" cy="18" r="10" fill="#ff4d6d" opacity=".35"/>`;
+    }
+    if (o.waterTower) {
+      const cx = 420;
+      extra += `<rect x="${cx - 2}" y="238" width="4" height="162"/><rect x="${cx - 14}" y="262" width="3" height="138"/><rect x="${cx + 11}" y="262" width="3" height="138"/><path d="M${cx - 20} 262h40v-22q-20 -16 -40 0z"/>`;
+    }
+    return `<svg viewBox="0 0 1600 400" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs>
+      <linearGradient id="fmg-${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${o.top}"/><stop offset="1" stop-color="${o.bot}"/></linearGradient>
+      <linearGradient id="fmd-${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8a5a12"/><stop offset=".45" stop-color="#ffe7a3"/><stop offset="1" stop-color="#a86a18"/></linearGradient>
+      <filter id="fmb-${id}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.4"/></filter></defs>
+      <g fill="url(#fmg-${id})">${b}${extra}</g>
+      <g fill="${o.rim}" opacity=".75">${rim}</g>
+      ${gold ? `<g fill="url(#fmd-${id})" opacity="${o.goldA || .8}">${gold}</g>` : ''}
+      ${win ? `<g fill="#ffb347" filter="url(#fmb-${id})" opacity=".85">${win}</g><g class="fm-wins" fill="#ffe2a0">${win}</g>` : ''}
+    </svg>`;
+  },
+  // кованый фонарь: столб с кольцами и завитками, стеклянный плафон, конус света, лужица света на земле
+  lamp() {
+    return `<svg viewBox="0 0 120 240" aria-hidden="true"><defs>
+      <linearGradient id="fml-cone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7a3" stop-opacity=".55"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></linearGradient>
+      <radialGradient id="fml-halo"><stop offset="0" stop-color="#fff3c4" stop-opacity=".9"/><stop offset=".35" stop-color="#ffcf6b" stop-opacity=".45"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+      <radialGradient id="fml-pool"><stop offset="0" stop-color="#ffd27a" stop-opacity=".6"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+      <linearGradient id="fml-iron" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#120c24"/><stop offset=".35" stop-color="#3a2f63"/><stop offset=".55" stop-color="#1c1538"/><stop offset="1" stop-color="#0b0718"/></linearGradient>
+      <radialGradient id="fml-glass" cx=".5" cy=".4"><stop offset="0" stop-color="#fffbeb"/><stop offset=".5" stop-color="#ffe08a"/><stop offset="1" stop-color="#f59e0b"/></radialGradient></defs>
+      <path d="M50 66L4 240H116L70 66z" fill="url(#fml-cone)"/>
+      <ellipse cx="60" cy="234" rx="54" ry="9" fill="url(#fml-pool)"/>
+      <circle cx="60" cy="54" r="40" fill="url(#fml-halo)"/>
+      <path d="M52 240L55 224H65L68 240z" fill="url(#fml-iron)"/><rect x="50" y="222" width="20" height="4" rx="1.5" fill="#2a2046"/>
+      <rect x="56.5" y="72" width="7" height="152" fill="url(#fml-iron)"/>
+      <rect x="54" y="128" width="12" height="4" rx="2" fill="#2f2552"/><rect x="54" y="186" width="12" height="4" rx="2" fill="#2f2552"/>
+      <path d="M57 92c-10 0-14-8-8-12s10 2 6 5M63 92c10 0 14-8 8-12s-10 2-6 5" fill="none" stroke="#2f2552" stroke-width="2.4" stroke-linecap="round"/>
+      <rect x="52" y="66" width="16" height="7" rx="2" fill="#241b44"/>
+      <path d="M47 42h26l-3 24H50z" fill="url(#fml-glass)"/>
+      <path d="M47 42h26l-3 24H50zM60 42v24M53.5 42l-1.6 24M66.5 42l1.6 24" fill="none" stroke="#1c1538" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M43 43L60 28 77 43z" fill="#241b44"/><path d="M43 43L60 28 77 43" fill="none" stroke="#f3cf6b" stroke-opacity=".5" stroke-width="1"/>
+      <circle cx="60" cy="25" r="3.2" fill="#2f2552"/><circle cx="60" cy="25" r="1.2" fill="#f3cf6b" opacity=".7"/>
+      <g fill="#fff3c4">${[[30, 40], [88, 60], [40, 86], [82, 30], [95, 96]].map(([cx, cy], i) => `<circle class="fm-moth" style="--i:${i}" cx="${cx}" cy="${cy}" r="1.3"/>`).join('')}</g>
+    </svg>`;
+  },
+  // мокрый асфальт, лужа с отражением луны, круги от капель
+  puddle() {
+    return `<svg viewBox="0 0 300 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
+      <linearGradient id="fmp-ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c0818" stop-opacity="0"/><stop offset=".35" stop-color="#140e26"/><stop offset="1" stop-color="#090611"/></linearGradient>
+      <linearGradient id="fmp-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3f7a"/><stop offset=".5" stop-color="#15294f"/><stop offset="1" stop-color="#0b1a33"/></linearGradient>
+      <radialGradient id="fmp-moon"><stop offset="0" stop-color="#fff7d6" stop-opacity=".95"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>
+      <filter id="fmp-soft"><feGaussianBlur stdDeviation="1.6"/></filter></defs>
+      
+      <g fill="#2a2046" opacity=".5">${Array.from({ length: 40 }, (_, i) => `<circle cx="${(i * 73) % 300}" cy="${70 + (i * 37) % 100}" r="${.6 + (i % 3) * .4}"/>`).join('')}</g>
+      <ellipse cx="150" cy="118" rx="126" ry="36" fill="url(#fmp-water)"/>
+      <ellipse cx="150" cy="118" rx="126" ry="36" fill="none" stroke="#7fe8dc" stroke-opacity=".35" stroke-width="1.4"/>
+      <ellipse cx="206" cy="110" rx="16" ry="5" fill="url(#fmp-moon)" filter="url(#fmp-soft)"/>
+      <path d="M60 112h60M70 124h90M180 128h50" stroke="#9fd8ff" stroke-opacity=".18" stroke-width="1.2" stroke-linecap="round"/>
+      <ellipse class="rip" cx="150" cy="118" rx="26" ry="7" fill="none" stroke="#bff6ee" stroke-width="1.2"/>
+      <ellipse class="rip b" cx="150" cy="118" rx="26" ry="7" fill="none" stroke="#bff6ee" stroke-width="1.2"/>
+      <ellipse class="rip c" cx="96" cy="124" rx="12" ry="3.4" fill="none" stroke="#bff6ee" stroke-width="1"/>
+      <ellipse class="rip d" cx="214" cy="126" rx="12" ry="3.4" fill="none" stroke="#bff6ee" stroke-width="1"/>
+    </svg>`;
+  },
+  // деревянный столб с изоляторами, провисшие провода со свечением, электрическая дуга
+  wires() {
+    const W = ['M40 37Q220 118 420 60', 'M64 37Q230 128 420 76', 'M88 37Q240 138 420 92'];
+    return `<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
+      <linearGradient id="fmw-pole" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1a1024"/><stop offset=".4" stop-color="#4a3040"/><stop offset="1" stop-color="#140c1c"/></linearGradient>
+      <radialGradient id="fmw-ins" cx=".35" cy=".3"><stop offset="0" stop-color="#e0fffb"/><stop offset=".5" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></radialGradient>
+      <filter id="fmw-glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+      <path d="M56 240L60 34h8l4 206z" fill="url(#fmw-pole)"/>
+      <rect x="26" y="44" width="76" height="7" rx="2" fill="#3a2433"/><rect x="26" y="44" width="76" height="1.6" fill="#8a5a6a" opacity=".6"/>
+      ${[40, 64, 88].map(cx => `<rect x="${cx - 1.4}" y="38" width="2.8" height="8" fill="#241827"/><ellipse cx="${cx}" cy="37" rx="5" ry="4" fill="url(#fmw-ins)"/>`).join('')}
+      <g fill="none" stroke-linecap="round">${W.map(d => `<path d="${d}" stroke="#a78bfa" stroke-opacity=".45" stroke-width="7" filter="url(#fmw-glow)"/><path d="${d}" stroke="#241a45" stroke-width="2.6"/><path d="${d}" stroke="#c4b5fd" stroke-opacity=".5" stroke-width=".8"/>`).join('')}</g>
+      <g class="zap" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M225 83l6 6-4 2 8 5-3 2 15 3" stroke="#fde047" stroke-width="6" opacity=".4" filter="url(#fmw-glow)"/><path d="M225 83l6 6-4 2 8 5-3 2 15 3" stroke="#fffbeb" stroke-width="1.8"/></g>
+      <g fill="#fde047">${[[222, 80], [238, 92], [250, 104], [232, 99]].map(([cx, cy], i) => `<circle class="fm-spark" style="--i:${i}" cx="${cx}" cy="${cy}" r="1.8"/>`).join('')}</g>
+    </svg>`;
+  },
+  // кусок «Карты Нави» для сцены с картой: кварталы с объёмными домами и окнами, парк с ёлочками, канал с мостами,
+  // золотые проспекты со свечением, фонари — узор повторяется, но крупно и вдали растворяется в дымке
+  mapTile() {
+    let s = `<rect width="400" height="400" fill="#120b25"/>`;
+    // решётка земли
+    for (let y = 0; y < 400; y += 20) for (let x = (y / 20) % 2 ? 10 : 0; x < 400; x += 20) s += `<path d="M${x + 10} ${y + 2}l8 8-8 8-8-8z" fill="none" stroke="#f3cf6b" stroke-opacity=".05"/>`;
+    // парк
+    s += `<rect x="228" y="22" width="164" height="118" rx="6" fill="#0f2c24" stroke="#1d5a44" stroke-width="1.5"/>`;
+    for (let i = 0; i < 26; i++) { const tx = 240 + (i * 53) % 140, ty = 34 + (i * 37) % 96; s += `<path d="M${tx} ${ty - 7}l5 9h-10z" fill="#34d399" fill-opacity=".35"/>`; }
+    // канал
+    s += `<rect x="0" y="268" width="400" height="24" fill="#0b3142"/><path d="M0 268H400M0 292H400" stroke="#2dd4bf" stroke-opacity=".6" stroke-width="1.4"/>`;
+    // дома: крыша, южная стена с окнами, золотая кромка
+    const B = [[20, 22, 70, 50, 14], [104, 20, 44, 72, 20], [160, 30, 50, 40, 10], [20, 96, 56, 44, 12], [96, 116, 112, 34, 16], [20, 162, 42, 54, 18], [84, 166, 60, 40, 12], [160, 170, 50, 60, 22], [236, 168, 70, 38, 12], [322, 160, 66, 56, 16], [236, 222, 150, 26, 8], [20, 306, 80, 56, 14], [120, 312, 50, 70, 20], [190, 306, 90, 40, 12], [300, 310, 88, 62, 18]];
+    for (const [x, y, w, h, d] of B) {
+      s += `<rect x="${x}" y="${y + d}" width="${w}" height="${h}" fill="#150e2e"/>`; // тень-стена
+      for (let wx = x + 4; wx < x + w - 3; wx += 6) if ((wx * 7 + y) % 3) s += `<rect x="${wx}" y="${y + h + 2}" width="2" height="${Math.max(2, d - 5)}" fill="#ffc466" fill-opacity="${((wx * 13) % 5) / 8 + .2}"/>`;
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="#2c2154" stroke="#f3cf6b" stroke-opacity=".45" stroke-width="1"/>`;
+    }
+    // дороги: свечение, кайма, золото, блик; мосты через канал
+    const R = 'M0 10H400M200 0V400M0 150H400M72 150V400M320 0V150';
+    s += `<path d="${R}" stroke="#fbbf24" stroke-opacity=".14" stroke-width="22" fill="none"/><path d="${R}" stroke="#06030d" stroke-width="10" fill="none"/>`
+      + `<path d="${R}" stroke="#e0b45a" stroke-width="6.5" fill="none"/><path d="${R}" stroke="#fff6d6" stroke-opacity=".55" stroke-width="1.4" fill="none"/>`
+      + `<path d="M190 264h20v32h-20zM62 264h20v32h-20z" fill="#e0b45a" opacity=".9"/>`;
+    // фонари
+    for (const [x, y] of [[40, 10], [120, 10], [280, 10], [360, 10], [200, 60], [200, 110], [200, 200], [200, 330], [30, 150], [140, 150], [260, 150], [380, 150], [72, 220], [72, 360], [320, 60]])
+      s += `<circle cx="${x}" cy="${y}" r="9" fill="#ffc466" fill-opacity=".16"/><circle cx="${x}" cy="${y}" r="2.2" fill="#fff0c8"/>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">${s}</svg>`)}")`;
   },
 
   play(o = {}) {
@@ -76,25 +183,25 @@ const Trailer = {
           <div class="fm-sky"><i class="fm-aur"></i><div class="fm-stars">${stars}</div><div class="fm-moon"></div></div>
           <svg class="fm-rift" viewBox="0 0 100 300" preserveAspectRatio="none" aria-hidden="true"><path class="g" d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/><path d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/></svg>
           <div class="fm-kos"><i class="fm-kglow"></i>${Art.spirit('koschey')}</div>
-          <div class="fm-city far">${this.skyline(7, '#2a1c5e', 170, 360, .04, true)}</div>
-          <div class="fm-city mid">${this.skyline(19, '#170e3a', 120, 290, .2, true)}</div>
-          <div class="fm-city near">${this.skyline(31, '#07030f', 70, 200, .16, false)}</div>
+          <div class="fm-city far">${this.skyline('far', 7, { hMin: 170, hMax: 360, top: '#34256e', bot: '#1a1142', rim: '#8b7fd6', win: .03, tower: true })}</div>
+          <div class="fm-city mid">${this.skyline('mid', 19, { hMin: 120, hMax: 290, top: '#241752', bot: '#0f0826', rim: '#b7a6f2', win: .2, domes: true })}</div>
+          <div class="fm-city near">${this.skyline('near', 31, { hMin: 70, hMax: 200, top: '#140b2b', bot: '#05020b', rim: '#6d5ca6', win: .16, chimneys: true, waterTower: true })}</div>
           <div class="fm-swarm">${swarm.map((id, i) => {
             const a = (i / swarm.length) * Math.PI * 2 + (i % 3) * .4, d = 42 + (i % 4) * 9;
             return `<div style="--i:${i};--x:${(Math.cos(a) * d).toFixed(1)}vmax;--y:${(Math.sin(a) * d * .8 + 10).toFixed(1)}vmax;--r:${((i % 5) - 2) * 14}deg">${Art.spirit(id)}</div>`;
           }).join('')}</div>
           <div class="fm-hide">
-            <div class="fm-hp lamp"><div class="fm-hb"><svg viewBox="0 0 100 200" aria-hidden="true"><rect x="47" y="60" width="6" height="140" fill="#1a1236"/><path d="M36 60h28l-5-16H41z" fill="#2a1f52"/><ellipse cx="50" cy="64" rx="22" ry="7" fill="#ffe7a3" opacity=".9"/></svg><div class="fm-hs">${Art.spirit('fonarnik')}</div></div></div>
-            <div class="fm-hp puddle"><div class="fm-hb"><svg viewBox="0 0 200 100" aria-hidden="true"><ellipse cx="100" cy="60" rx="90" ry="24" fill="#0e3a52"/><ellipse class="rip" cx="100" cy="60" rx="30" ry="8" fill="none" stroke="#7fe8dc"/><ellipse class="rip b" cx="100" cy="60" rx="30" ry="8" fill="none" stroke="#7fe8dc"/></svg><div class="fm-hs">${Art.spirit('kapelka')}</div></div></div>
-            <div class="fm-hp wires"><div class="fm-hb"><svg viewBox="0 0 200 120" aria-hidden="true"><path d="M0 30Q100 70 200 26M0 50Q100 96 200 48M0 70Q100 118 200 72" fill="none" stroke="#3b2d72" stroke-width="3"/><path class="zap" d="M92 58l8 10-6 2 9 12" fill="none" stroke="#fde047" stroke-width="3"/></svg><div class="fm-hs">${Art.spirit('vayfayka')}</div></div></div>
+            <div class="fm-hp lamp"><div class="fm-hb">${this.lamp()}<div class="fm-hs">${Art.spirit('fonarnik')}</div></div></div>
+            <div class="fm-hp puddle"><i class="fm-rain"></i><div class="fm-hb">${this.puddle()}<div class="fm-hs refl">${Art.spirit('kapelka')}</div><div class="fm-hs">${Art.spirit('kapelka')}</div></div></div>
+            <div class="fm-hp wires"><div class="fm-hb">${this.wires()}<div class="fm-hs">${Art.spirit('vayfayka')}</div></div></div>
           </div>
           <div class="fm-map">
-            <div class="fm-plane"><i class="fm-roads"></i><i class="fm-ring"><i class="r1"></i><i class="r2"></i></i></div>
+            <div class="fm-plane"><i class="fm-roads" style='background-image:${this.mapTile()}'></i><i class="fm-ring"><i class="r1"></i><i class="r2"></i></i></div>
             <div class="fm-sps">${['kapelka', 'ugolek', 'mshonok'].map((id, i) => `<div style="--i:${i}">${Art.spirit(id)}</div>`).join('')}</div>
             <div class="fm-me"><i></i></div>
           </div>
           <div class="fm-catch">
-            <div class="fm-bird">${Art.spirit('zharptica')}<i class="fm-tgt"></i></div>
+            <i class="fm-circ"></i><i class="fm-arena"></i><div class="fm-bird">${Art.spirit('zharptica')}<i class="fm-tgt"></i></div>
             <div class="fm-throw">${Art.charm('charm3')}</div>
             <div class="fm-got">Поймано!</div>
           </div>
