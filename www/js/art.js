@@ -613,7 +613,11 @@ const Art = (() => {
     const P = fr && typeof LookArt.frameParts === 'function' ? LookArt.frameParts(fr) : null;
     if (P) {
       const n = 'cf' + (++cfN);
-      const sv = (cls, vb, body) => body ? `<svg class="cf ${cls}" viewBox="${vb}" aria-hidden="true">${body}</svg>` : '';
+      // части рамки — слоями (неподвижное картинкой, анимированное — лёгким SVG), кэш по рамке и месту
+      // общие градиенты и штампы части рамки держат в defs одного угла — каждой части (отдельному рисунку) даём все defs, лишнее отсечёт stack
+      const DEFS = /<defs>[\s\S]*?<\/defs>/g;
+      const allDefs = [P.corner, ...(P.corners || []), P.crest, P.foot].filter(Boolean).map(b => (b.match(DEFS) || []).join('')).join('').replace(/<\/?defs>/g, '');
+      const sv = (cls, vb, body) => body ? stack(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}"><defs>${allDefs.replace(/__ID__/g, 'cz')}</defs>${body.replace(DEFS, '').replace(/__ID__/g, 'cz')}</svg>`, `cf:${fr}:${cls}`, `cf ${cls}`) : '';
       const one = !Array.isArray(P.corners), c = one ? [P.corner, P.corner, P.corner, P.corner] : P.corners;
       el.insertAdjacentHTML('beforeend', (`<div class="cf-ov" aria-hidden="true">${sv('tl', '0 0 80 80', c[0])}${sv('tr' + (one ? ' mir' : ''), '0 0 80 80', c[1])}` +
         `${sv('bl' + (one ? ' mir' : ''), '0 0 80 80', c[2])}${sv('br' + (one ? ' mir' : ''), '0 0 80 80', c[3])}${sv('crest', '0 0 160 64', P.crest)}${sv('foot', '0 0 120 40', P.foot)}</div>`).replace(/__ID__/g, n));
@@ -624,12 +628,77 @@ const Art = (() => {
   // 4.6: наружу духи отдаются картинкой: объёмный рисунок (маски, фактуры) браузер растрирует один раз, а не каждый кадр анимации.
   // svgOf — сам SVG (для фото с поимки, где нужен размер)
   const svgOf = sp => spirit(sp.sid, sp.shiny, sp.dark);
-  // любой готовый SVG — картинкой (растрируется один раз); key — для кэша одинаковых рисунков (знаки карты, Велимир)
-  const svgImg = {};
-  function asImg(svg, key) {
-    const make = () => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(/xmlns=/.test(svg.slice(0, 200)) ? svg : svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
-    const src = key ? (svgImg[key] || (svgImg[key] = make())) : make();
-    return `<img class="art" src="${src}" alt="" draggable="false">`;
+  // 4.6.1: рисунок слоями — выглядит так же, но анимация не перерисовывает весь рисунок.
+  // Неподвижные части (в порядке наложения) — картинками: браузер растрирует их один раз вместе с масками объёма и фактурой;
+  // анимированные части (пламя, крылья, моргание, огоньки — по классам анимаций) — лёгкими встроенными SVG между ними.
+  const NS = 'http://www.w3.org/2000/svg';
+  const ANIM = /(^|\s)(art-(?:flicker|blink|float|sway|wing|spin|spin-soft|aura|eyes)|cf-glint|cf-pulse|beam|ty-lamp|ty-puddle)(\s|$)/;
+  const NOPAINT = new Set(['defs', 'clipPath', 'mask', 'pattern', 'linearGradient', 'radialGradient', 'symbol', 'filter', 'style', 'title', 'desc', 'metadata']);
+  const toUrl = s => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  const refsOf = s => [...s.matchAll(/url\(#([^)"']+)\)|href="#([^"]+)"/g)].map(m => m[1] || m[2]);
+  const stackCache = {};
+  let stkN = 0;
+  function layers(svg) {
+    if (!/xmlns=/.test(svg.slice(0, 200))) svg = svg.replace('<svg ', `<svg xmlns="${NS}" `);
+    const vb = (/viewBox="([^"]+)"/.exec(svg) || [])[1] || '0 0 100 100', v = vb.split(/[\s,]+/).map(Number), ar = `${v[2]} / ${v[3]}`;
+    if (typeof DOMParser === 'undefined') return { ar, parts: [{ svg }] };
+    const doc = new DOMParser().parseFromString(svg, 'image/svg+xml'), root = doc.documentElement;
+    if (root.localName !== 'svg' || doc.getElementsByTagName('parsererror').length) return { ar, parts: [{ svg }] };
+    // <use> на элемент рисунка (не из defs) — заменяем копией: оригинал и ссылка могут попасть в разные слои
+    for (const u of [...root.getElementsByTagName('use')]) {
+      const id = (u.getAttribute('href') || u.getAttribute('xlink:href') || '').replace(/^#/, ''), t = id && doc.getElementById(id);
+      if (!t || t.closest('defs, symbol')) continue;
+      const g = doc.createElementNS(NS, 'g'), x = +u.getAttribute('x') || 0, y = +u.getAttribute('y') || 0;
+      g.setAttribute('transform', `${u.getAttribute('transform') || ''}${x || y ? ` translate(${x} ${y})` : ''}`.trim());
+      for (const a of ['class', 'style', 'opacity', 'fill', 'stroke']) if (u.hasAttribute(a)) g.setAttribute(a, u.getAttribute(a));
+      const c = t.cloneNode(true); c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+      g.appendChild(c); u.replaceWith(g);
+    }
+    // единицы рисования в порядке наложения: анимированный элемент — целиком, остальное — до листьев
+    const units = [];
+    const walk = el => {
+      for (const c of [...el.children]) {
+        if (NOPAINT.has(c.localName)) continue;
+        if (ANIM.test(c.getAttribute('class') || '') || /animation/.test(c.getAttribute('style') || '')) { units.push({ el: c, anim: true }); continue; }
+        if (c.localName === 'g' || c.localName === 'a' || c.localName === 'switch') { walk(c); continue; }
+        units.push({ el: c, anim: false });
+      }
+    };
+    walk(root);
+    if (!units.some(u => u.anim)) return { ar, parts: [{ img: toUrl(svg) }] };
+    units.forEach((u, i) => u.el.setAttribute('data-u', i));
+    const groups = [];
+    units.forEach((u, i) => { const last = groups[groups.length - 1]; if (last && !u.anim && !last.anim) last.ids.add(i); else groups.push({ anim: u.anim, ids: new Set([i]) }); });
+    const ser = new XMLSerializer();
+    const parts = groups.map(gr => {
+      const c = root.cloneNode(true);
+      c.querySelectorAll('[data-u]').forEach(e => { if (gr.ids.has(+e.getAttribute('data-u'))) e.removeAttribute('data-u'); else e.remove(); });
+      // из defs — только то, на что ссылается этот слой
+      const defs = [...c.querySelectorAll('defs > [id]')], body = ser.serializeToString(c).replace(/<defs[\s\S]*?<\/defs>/g, '');
+      const need = new Set(refsOf(body));
+      for (let grow = true; grow;) {
+        grow = false;
+        for (const d of defs) if (need.has(d.id) && !d._seen) { d._seen = true; refsOf(ser.serializeToString(d)).forEach(r => { if (!need.has(r)) { need.add(r); grow = true; } }); }
+      }
+      defs.forEach(d => { if (!need.has(d.id)) d.remove(); });
+      c.setAttribute('class', 'stk');
+      let s = ser.serializeToString(c);
+      if (!gr.anim) return { img: toUrl(s) };
+      // встроенный слой: свои id на каждой вставке (__L__ подменяется при выдаче)
+      const ids = [...s.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]);
+      for (const id of ids) s = s.split(`id="${id}"`).join(`id="${id}__L__"`).split(`#${id})`).join(`#${id}__L__)`).split(`"#${id}"`).join(`"#${id}__L__"`);
+      return { svg: s };
+    });
+    return { ar, parts };
   }
-  return { spirit: img, of: imgOf, svgOf, asImg, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
+  // key — кэш слоёв одинаковых рисунков (дух, знак карты, Велимир); cls — доп. классы обёртки
+  function stack(svg, key, cls = '') {
+    const L = key ? (stackCache[key] || (stackCache[key] = layers(svg))) : layers(svg);
+    const n = 'k' + (++stkN);
+    return `<span class="art art-stack${cls ? ' ' + cls : ''}" style="aspect-ratio:${L.ar}">` +
+      L.parts.map(p => p.img ? `<img class="stk" src="${p.img}" alt="" draggable="false">` : p.svg.replace(/__L__/g, n)).join('') + '</span>';
+  }
+  const asImg = (svg, key) => stack(svg, key);
+  const spiritK = (sid, shiny, dark) => stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`);
+  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
 })();

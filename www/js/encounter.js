@@ -100,7 +100,7 @@ const Encounter = {
   // 4.6: пылающий круг под духом — два рунных кольца вращаются в плоскости земли, по краю пляшут языки пламени цвета стихии, вверх летят искры
   fireRing() {
     let h = '<i class="eg-glow"></i><i class="eg-ring"></i><i class="eg-ring r2"></i>';
-    const N = 16;
+    const N = 22;
     for (let i = 0; i < N; i++) {
       const a = i / N * Math.PI * 2, sin = Math.sin(a);
       h += `<i class="eg-f" style="left:${(50 + Math.cos(a) * 43).toFixed(1)}%;top:${(50 + sin * 40).toFixed(1)}%;--s:${(0.7 + (sin + 1) * 0.22).toFixed(2)};--t:${(0.7 + (i % 4) * 0.13).toFixed(2)}s;--d:${(-(i * 0.37) % 1.1).toFixed(2)}s"></i>`;
