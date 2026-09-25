@@ -2800,3 +2800,5 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
   .calm .enc-motes i { top: auto; }
   @keyframes mote2 { from { transform: translateX(0) translateY(0); } 50% { transform: translateX(20px) translateY(-55cqh); } to { transform: translateX(-10px) translateY(-110cqh); } }
 }
+/* плашки над картой без размытия фона: их фон почти непрозрачный, а размытие пересчитывалось при каждом движении на карте */
+#hud .profile, #hud .chip, #hud .nearby, #storyPill, #tracker { -webkit-backdrop-filter: none; backdrop-filter: none; }
