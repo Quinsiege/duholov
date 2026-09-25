@@ -457,17 +457,17 @@ const Trailer = {
         let tt = 0;
         // o.only — только эта сцена (для съёмки кадров)
         this.SCENES.slice(i0, o.only ? i0 + 1 : undefined).forEach(([dur, cls, text], k) => {
-          // склейка: эффекты прошлой сцены не попадают в новую. Кадр на миг уходит в темноту, частицы, вспышка и тряска
+          // склейка: эффекты прошлой сцены не попадают в новую. Кадр плавно уходит в темноту (камера чуть наезжает), частицы, вспышка и тряска
           // сбрасываются, старые слои гаснут мгновенно (без переходов), новая сцена проявляется. Вступление
           // (разлом → Кощей → рой) — одна история на общем небе: там только сброс частиц и вспышки.
           const joined = this.JOINED.includes(cls), dip = k > 0 && !joined;
-          if (dip) at(tt - 220, () => root.classList.add('dip'));
+          if (dip) at(tt - 600, () => root.classList.add('dip'));
           at(tt, () => {
             fx.clear();
             root.querySelector('.fm-flash').classList.remove('on');
             root.querySelector('.fm-cam').classList.remove('shake', 'shake2');
             if (dip) { root.className = 'fm on dip cut'; void root.offsetWidth; }
-            root.className = 'fm on' + (dip ? ' dip' : '') + ' s-' + cls;
+            root.className = 'fm on' + (dip ? ' dip enter' : '') + ' s-' + cls;
             if (dip) timers.push(setTimeout(() => root.classList.remove('dip'), 60));
             capDur = dur || 6000;
             t.cap(text);
