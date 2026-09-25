@@ -2096,9 +2096,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes fmEvoB { 0% { opacity: 0; transform: scale(1.3); filter: brightness(12); } 20% { opacity: 1; transform: scale(1); filter: brightness(1) drop-shadow(0 0 20px rgba(251, 146, 60, .7)); } 75% { opacity: 1; filter: brightness(1); } 95% { opacity: 1; filter: brightness(12) drop-shadow(0 0 30px #fff); transform: scale(1.12); } 100% { opacity: 0; transform: scale(1.3); } }
 @keyframes fmEvoC { 0% { opacity: 0; transform: scale(1.5); filter: brightness(12); } 30% { opacity: 1; transform: scale(1.05); filter: brightness(1) drop-shadow(0 0 30px rgba(251, 146, 60, .9)); } 100% { opacity: 1; transform: scale(1.1); } }
 .fm-ename b { position: absolute; left: 0; right: 0; top: calc(46% + 27vmin); text-align: center; font-family: 'Ruslan Display', serif; font-weight: 400; font-size: min(7vmin, 34px); color: #fde68a; letter-spacing: .05em; text-shadow: 0 0 16px rgba(251, 146, 60, .8), 0 3px 0 #3b1d06; opacity: 0; }
-.s-evolve .fm-ename .n0 { animation: fmShow 2s ease both .2s; } .s-evolve .fm-ename .n1 { animation: fmShow 1.8s ease both 2.2s; } .s-evolve .fm-ename .n2 { animation: fmShow 2s ease both 4.1s; animation-fill-mode: forwards; }
+.s-evolve .fm-ename .n0 { animation: fmShow 2s ease both .2s; } .s-evolve .fm-ename .n1 { animation: fmShow 1.8s ease both 2.2s; }
 @keyframes fmShow { 0% { opacity: 0; transform: translateY(10px); } 15%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
-.s-evolve .fm-ename .n2 { opacity: 1; animation-name: fmUp; animation-duration: .6s; }
+.s-evolve .fm-ename .n2 { opacity: 1; animation: fmUp .6s ease 4.1s both; }
 
 /* кокон: шаги, километры, трещины, вылупление */
 .fm-km { position: absolute; left: 0; right: 0; top: calc(9vh + 4vmin); text-align: center; font-family: 'Philosopher', serif; font-size: min(6vmin, 28px); color: #e9e3ff; }
@@ -2177,57 +2177,82 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .fm-won { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font-family: 'Ruslan Display', serif; font-size: min(10vmin, 50px); color: #fde68a; text-shadow: 0 0 22px rgba(253, 224, 71, .9), 0 4px 0 #3b1d06; opacity: 0; }
 .s-raid .fm-won { animation: fmStamp .6s cubic-bezier(.2, 1.6, .4, 1) 5.6s forwards; }
 
-/* аукцион: настоящий экран игры в телефоне, палец покупает лот и смотрит итоги продажи */
-.fm-phone { position: absolute; left: 50%; top: 9vh; width: 390px; height: 700px; margin-left: -195px; transform: scale(var(--ps, .8)); transform-origin: 50% 0; overflow: hidden;
-  -webkit-mask: linear-gradient(transparent, #000 3%, #000 86%, transparent); mask: linear-gradient(transparent, #000 3%, #000 86%, transparent); }
-.s-auction .fm-phone { animation: fmPhoneIn .7s cubic-bezier(.2, 1.1, .4, 1) both; }
-@keyframes fmPhoneIn { from { opacity: 0; transform: translateY(4%) scale(var(--ps, .8)); } to { opacity: 1; transform: scale(var(--ps, .8)); } }
-.fm-phone .screen { position: absolute; inset: 0; z-index: 0; animation: none; }
+/* аукцион: настоящий экран игры прямо в кадре — без рамки и без своего фона (края растворяются со всех сторон);
+   масштаб — zoom, а не transform: текст и иконки остаются резкими. Палец: лот → «Купить» → «Мои лоты» → «Отлично». */
+.fm-aucw { position: absolute; left: 0; right: 0; top: 9vh; display: flex; justify-content: center; pointer-events: none; }
+.fm-phone { position: relative; width: 390px; height: 700px; zoom: var(--ps, .8); overflow: hidden;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(transparent, #000 4%, #000 84%, transparent);
+  -webkit-mask-composite: source-in; mask: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(transparent, #000 4%, #000 84%, transparent); mask-composite: intersect; }
+.s-auction .fm-phone { animation: fmPhoneIn .8s cubic-bezier(.2, 1.1, .4, 1) both; }
+@keyframes fmPhoneIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.fm-phone .screen { position: absolute; inset: 0; z-index: 0; animation: none; background: transparent !important; box-shadow: none !important; border: 0 !important; }
+.fm-phone .screen::before, .fm-phone .screen::after { display: none !important; }
 .fm-phone .screen-body { overflow: hidden; }
-.fm-phone .modal-wrap { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(6, 3, 16, .6); opacity: 0; }
-.fm-phone .modal { animation: none; max-height: none; }
+.fm-phone .modal-wrap { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 18px; background: none !important; backdrop-filter: none !important; opacity: 0; }
+.fm-phone .modal { animation: none; max-height: none; box-shadow: 0 24px 60px rgba(0, 0, 0, .65), 0 0 40px rgba(124, 58, 237, .35); }
 .fm-tabs { position: relative; }
 .fm-tabs .tb { position: absolute; inset: 0; opacity: 0; }
 .fm-av { position: relative; } .fm-av.mine { position: absolute; left: 0; right: 0; top: 0; opacity: 0; }
 .au-body { position: relative; }
-.fm-toast { position: absolute; left: 16px; right: 16px; top: 48px; z-index: 4; display: flex; justify-content: center; opacity: 0; }
+.fm-toast { position: absolute; left: 16px; right: 16px; top: 18px; z-index: 4; display: flex; justify-content: center; opacity: 0; }
 .fm-toast .toast { animation: none; }
-/* 7,6 с: лот (1,4 с) → окно лота → «Купить» (3,0 с) → уведомление → «Мои лоты» (4,3 с) → итоги (5,0 с) */
+/* за открытым окном интерфейс мягко темнеет и размывается (а не прямоугольная шторка) */
+.s-auction .fm-scr { animation: fmAucDim 7.6s linear both; }
+@keyframes fmAucDim { 0%, 19% { filter: none; } 22%, 39% { filter: brightness(.5) blur(1.5px); } 42%, 64% { filter: none; } 67%, 87% { filter: brightness(.5) blur(1.5px); } 90%, 100% { filter: none; } }
+/* 7,6 с: лот (1,37) → окно лота → «Купить» (2,89) → уведомление → «Мои лоты» (4,26) → итоги (5,0) → «Отлично» (6,38) */
 .s-auction .fm-am { animation: fmAucModal 7.6s linear both; }
 @keyframes fmAucModal { 0%, 19% { opacity: 0; } 21%, 40% { opacity: 1; } 42%, 100% { opacity: 0; } }
-.s-auction .fm-am .modal { animation: fmAucPop 7.6s linear both; }
-@keyframes fmAucPop { 0%, 19% { transform: scale(.85); } 22%, 100% { transform: none; } }
-.s-auction .fm-toast { animation: fmAucToast 7.6s linear both; }
-@keyframes fmAucToast { 0%, 41% { opacity: 0; transform: translateY(-10px); } 43%, 58% { opacity: 1; transform: none; } 61%, 100% { opacity: 0; } }
+.s-auction .fm-am .modal { animation: fmAucPop 7.6s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes fmAucPop { 0%, 19% { transform: scale(.82) translateY(20px); } 23%, 39% { transform: none; } 42%, 100% { transform: scale(.92); } }
+.s-auction .fm-toast { animation: fmAucToast 7.6s cubic-bezier(.2, 1.3, .4, 1) both; }
+@keyframes fmAucToast { 0%, 41% { opacity: 0; transform: translateY(-16px) scale(.9); } 44%, 58% { opacity: 1; transform: none; } 61%, 100% { opacity: 0; transform: translateY(-10px); } }
 .s-auction .fm-tabs .tb, .s-auction .fm-av.mine { animation: fmAucMine 7.6s linear both; }
 .s-auction .fm-av.buy { animation: fmAucBuy 7.6s linear both; }
-@keyframes fmAucMine { 0%, 56% { opacity: 0; } 58%, 100% { opacity: 1; } }
-@keyframes fmAucBuy { 0%, 56% { opacity: 1; } 58%, 100% { opacity: 0; } }
+@keyframes fmAucMine { 0%, 56% { opacity: 0; transform: translateX(14px); } 59%, 100% { opacity: 1; transform: none; } }
+@keyframes fmAucBuy { 0%, 56% { opacity: 1; transform: none; } 59%, 100% { opacity: 0; transform: translateX(-14px); } }
 .s-auction .fm-gm { animation: fmAucGot 7.6s linear both; }
-@keyframes fmAucGot { 0%, 65% { opacity: 0; } 68%, 100% { opacity: 1; } }
-.s-auction .fm-buy { animation: fmAucPress 7.6s linear both; }
-@keyframes fmAucPress { 0%, 37% { transform: none; filter: none; } 38%, 40% { transform: scale(.94); filter: brightness(1.3); } 41%, 100% { transform: none; } }
-.fm-finger { position: absolute; left: 0; top: 0; z-index: 8; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; opacity: 0;
-  background: radial-gradient(circle, rgba(255, 255, 255, .95) 0 26%, rgba(253, 224, 138, .55) 30%, rgba(253, 224, 138, 0) 62%); }
-.fm-finger i { position: absolute; inset: 0; border-radius: 50%; border: 3px solid rgba(253, 230, 138, .9); opacity: 0; }
-.s-auction .fm-finger { animation: fmFinger 7.6s cubic-bezier(.4, 0, .2, 1) both; }
-.s-auction .fm-finger i { animation: fmTap 7.6s linear both; }
+@keyframes fmAucGot { 0%, 65% { opacity: 0; } 68%, 87% { opacity: 1; } 90%, 100% { opacity: 0; } }
+.s-auction .fm-gm .modal { animation: fmAucGotPop 7.6s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes fmAucGotPop { 0%, 65% { transform: scale(.82) translateY(20px); } 69%, 87% { transform: none; } 90%, 100% { transform: scale(.92); } }
+/* нажатия: элемент вдавливается и вспыхивает, от места касания расходится волна */
+.fm-phone .fm-av.buy .au-lot:first-child, .fm-buy, .fm-tmine, .fm-gm .btn { position: relative; overflow: hidden; }
+.fm-phone .fm-av.buy .au-lot:first-child::after, .fm-buy::after, .fm-tmine::after, .fm-gm .btn::after { content: ''; position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; margin: -130px 0 0 -130px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .55), rgba(253, 230, 138, .25) 45%, transparent 70%); opacity: 0; pointer-events: none; }
+.s-auction .fm-av.buy .au-lot:first-child { animation: fmPressLot 7.6s linear both; }
+.s-auction .fm-av.buy .au-lot:first-child::after { animation: fmRipLot 7.6s ease-out both; }
+@keyframes fmPressLot { 0%, 17% { transform: none; filter: none; } 18%, 19.5% { transform: scale(.96); filter: brightness(1.35); box-shadow: 0 0 0 2px #fde047, 0 0 26px rgba(253, 224, 71, .6); } 21%, 100% { transform: none; filter: none; } }
+@keyframes fmRipLot { 0%, 17.5% { opacity: 0; transform: scale(.1); } 18% { opacity: 1; transform: scale(.2); } 22%, 100% { opacity: 0; transform: scale(1.3); } }
+.s-auction .fm-buy { animation: fmPressBuy 7.6s linear both; }
+.s-auction .fm-buy::after { animation: fmRipBuy 7.6s ease-out both; }
+@keyframes fmPressBuy { 0%, 37.5% { transform: none; filter: none; } 38%, 39.5% { transform: scale(.92); filter: brightness(1.45); box-shadow: 0 0 30px rgba(253, 224, 71, .9); } 41%, 100% { transform: none; filter: none; } }
+@keyframes fmRipBuy { 0%, 37.5% { opacity: 0; transform: scale(.1); } 38% { opacity: 1; transform: scale(.2); } 42%, 100% { opacity: 0; transform: scale(1.2); } }
+.s-auction .fm-tmine { animation: fmPressTab 7.6s linear both; }
+.s-auction .fm-tmine::after { animation: fmRipTab 7.6s ease-out both; }
+@keyframes fmPressTab { 0%, 55.5% { transform: none; } 56%, 57.5% { transform: scale(.93); filter: brightness(1.4); } 59%, 100% { transform: none; filter: none; } }
+@keyframes fmRipTab { 0%, 55.5% { opacity: 0; transform: scale(.1); } 56% { opacity: 1; transform: scale(.2); } 60%, 100% { opacity: 0; transform: scale(1.1); } }
+.s-auction .fm-gm .btn { animation: fmPressOk 7.6s linear both; }
+.s-auction .fm-gm .btn::after { animation: fmRipOk 7.6s ease-out both; }
+@keyframes fmPressOk { 0%, 83.5% { transform: none; } 84%, 85.5% { transform: scale(.92); filter: brightness(1.45); box-shadow: 0 0 30px rgba(253, 224, 71, .9); } 87%, 100% { transform: none; filter: none; } }
+@keyframes fmRipOk { 0%, 83.5% { opacity: 0; transform: scale(.1); } 84% { opacity: 1; transform: scale(.2); } 88%, 100% { opacity: 0; transform: scale(1.2); } }
+/* палец: мягкий светящийся след касания, при нажатии сжимается */
+.fm-finger { position: absolute; left: 0; top: 0; z-index: 8; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, .92) 0 22%, rgba(255, 255, 255, .45) 34%, rgba(253, 224, 138, .18) 56%, transparent 70%);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
+.fm-finger i { position: absolute; inset: 0; border-radius: 50%; border: 2.5px solid rgba(253, 230, 138, .95); box-shadow: 0 0 14px rgba(253, 224, 71, .8); opacity: 0; }
+.s-auction .fm-finger { animation: fmFinger 7.6s cubic-bezier(.45, 0, .2, 1) both; }
+.s-auction .fm-finger i { animation: fmTap 7.6s ease-out both; }
 @keyframes fmFinger {
-  0% { opacity: 0; transform: translate(260px, 820px); }
-  9% { opacity: 1; transform: translate(260px, 640px); }
-  16% { transform: translate(var(--ax), var(--ay)); }
-  18% { transform: translate(var(--ax), var(--ay)) scale(.8); }
-  20% { transform: translate(var(--ax), var(--ay)); }
-  33% { transform: translate(var(--bx), var(--by)); }
-  38% { transform: translate(var(--bx), var(--by)) scale(.8); }
-  40% { transform: translate(var(--bx), var(--by)); }
-  52% { transform: translate(var(--cx), var(--cy)); }
-  56% { transform: translate(var(--cx), var(--cy)) scale(.8); opacity: 1; }
-  58% { transform: translate(var(--cx), var(--cy)); opacity: 1; }
-  66%, 100% { opacity: 0; transform: translate(var(--cx), calc(var(--cy) + 120px)); } }
-@keyframes fmTap { 0%, 17% { opacity: 0; transform: scale(.5); } 18% { opacity: 1; transform: scale(.6); } 22% { opacity: 0; transform: scale(1.8); }
-  23%, 37% { opacity: 0; transform: scale(.5); } 38% { opacity: 1; transform: scale(.6); } 42% { opacity: 0; transform: scale(1.8); }
-  43%, 55% { opacity: 0; transform: scale(.5); } 56% { opacity: 1; transform: scale(.6); } 60%, 100% { opacity: 0; transform: scale(1.8); } }
+  0% { opacity: 0; transform: translate(300px, 760px); }
+  8% { opacity: 1; transform: translate(290px, 600px); }
+  16% { transform: translate(var(--ax), var(--ay)); } 18% { transform: translate(var(--ax), var(--ay)) scale(.78); } 20% { transform: translate(var(--ax), var(--ay)); }
+  33% { transform: translate(var(--bx), var(--by)); } 38% { transform: translate(var(--bx), var(--by)) scale(.78); } 40% { transform: translate(var(--bx), var(--by)); }
+  51% { transform: translate(var(--cx), var(--cy)); } 56% { transform: translate(var(--cx), var(--cy)) scale(.78); } 58% { transform: translate(var(--cx), var(--cy)); }
+  78% { transform: translate(var(--dx), var(--dy)); } 84% { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(.78); } 86% { opacity: 1; transform: translate(var(--dx), var(--dy)); }
+  94%, 100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + 90px)); } }
+@keyframes fmTap { 0%, 17.5% { opacity: 0; transform: scale(.5); } 18% { opacity: 1; transform: scale(.55); } 22% { opacity: 0; transform: scale(2); }
+  23%, 37.5% { opacity: 0; transform: scale(.5); } 38% { opacity: 1; transform: scale(.55); } 42% { opacity: 0; transform: scale(2); }
+  43%, 55.5% { opacity: 0; transform: scale(.5); } 56% { opacity: 1; transform: scale(.55); } 60% { opacity: 0; transform: scale(2); }
+  61%, 83.5% { opacity: 0; transform: scale(.5); } 84% { opacity: 1; transform: scale(.55); } 88%, 100% { opacity: 0; transform: scale(2); } }
 .fm-coins i { position: absolute; left: var(--x); top: -8vmin; width: 7vmin; opacity: 0; }
 .fm-coins svg, .fm-coins .art { width: 100%; height: auto; }
 .s-auction .fm-coins i { animation: fmCoin 1.6s ease-in infinite; animation-delay: calc(5s + var(--i) * .15s); }

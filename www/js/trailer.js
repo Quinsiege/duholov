@@ -319,12 +319,12 @@ const Trailer = {
     const got = `<div class="modal-wrap fm-gm"><div class="modal"><div class="modal-title">Итоги аукциона</div><div class="modal-body"><div class="au-got">
       <div>${Art.img('rusalka')}<span>Русалка продан (Милава): +${Auction.priceHtml('zlat', 180 - fee)}</span></div></div></div>
       <div class="modal-btns"><button class="btn primary" tabindex="-1">Отлично</button></div></div></div>`;
-    return `<div class="fm-auc"><div class="fm-phone"><div class="screen au-screen fm-scr"><div class="screen-head"><button class="btn-round back" tabindex="-1">${UI.I.back}</button><h2>Аукцион</h2><div class="head-extra"></div></div>
+    return `<div class="fm-auc"><div class="fm-aucw"><div class="fm-phone"><div class="screen au-screen fm-scr"><div class="screen-head"><button class="btn-round back" tabindex="-1">${UI.I.back}</button><h2>Аукцион</h2><div class="head-extra"></div></div>
       <div class="screen-body"><div class="fm-tabs"><div class="seg au-tabs ta"><button class="on" tabindex="-1">Купить</button><button tabindex="-1">Мои лоты</button></div>
         <div class="seg au-tabs tb"><button tabindex="-1">Купить</button><button class="on fm-tmine" tabindex="-1">Мои лоты</button></div></div>
         <div class="au-body"><div class="fm-av buy">${buy}</div><div class="fm-av mine">${mine}</div></div></div></div>
       ${modal}<div class="fm-toast"><div class="toast good">${s.name} теперь твоя!</div></div>${got}
-      <div class="fm-finger"><i></i></div></div>
+      <div class="fm-finger"><i></i></div></div></div>
       <div class="fm-coins">${Array.from({ length: 12 }, (_, i) => `<i style="--i:${i};--x:${(i * 37) % 100}%">${Art.item('zlat')}</i>`).join('')}</div></div>`;
   },
   // палец в телефоне: координаты целей (лот, «Купить», вкладка «Мои лоты») — по настоящей раскладке
@@ -341,7 +341,7 @@ const Trailer = {
       ph.style.setProperty(`--${n}x`, ((r.left + r.width * .5 - pr.left) / k).toFixed(0) + 'px');
       ph.style.setProperty(`--${n}y`, ((r.top + r.height * .5 - pr.top) / k).toFixed(0) + 'px');
     };
-    at('.fm-av.buy .au-lot', 'a'); at('.fm-buy', 'b'); at('.fm-tmine', 'c');
+    at('.fm-av.buy .au-lot', 'a'); at('.fm-buy', 'b'); at('.fm-tmine', 'c'); at('.fm-gm .btn', 'd');
   },
 
   play(o = {}) {
@@ -512,7 +512,7 @@ const Trailer = {
       cocoon: { n: 1, make: () => ({ x: R(0, W), y: H * R(.3, 1), vx: R(-.2, .2), vy: R(-.5, -.1), r: R(.8, 2), l: R(140, 260), c: pick([WARM, '186,230,253']), wob: .03, tw: 1 }) },
       duel: { n: 3, make: () => ({ x: W * R(.4, .6), y: H * R(.4, .52), vx: R(-3.5, 3.5), vy: R(-2.5, 1.5), g: .05, r: R(.8, 2), l: R(25, 60), c: pick(['254,240,138', '167,139,250', WHITE]), tail: 3 }) },
       raid: { n: 3, make: () => ({ x: W * R(.15, .85), y: H * R(.15, .7), vx: R(-.6, .6), vy: R(-1.4, -.2), r: R(.9, 2.6), l: R(60, 140), c: pick([VIO, '249,115,22', LIL]), wob: .05, tw: 1 }) },
-      auction: { n: 1.4, make: () => ({ x: R(0, W), y: H * R(.1, .8), vx: 0, vy: R(-.3, .1), r: R(1.2, 3), l: R(40, 90), c: pick([GOLD, WHITE]), star: true }) },
+      auction: { n: .25, make: () => ({ x: Math.random() < .5 ? R(0, W * .12) : R(W * .88, W), y: H * R(.1, .8), vx: 0, vy: R(-.3, .1), r: R(1, 2.2), l: R(40, 90), c: pick([GOLD, WHITE]), star: true }) },
       weather: { n: .6, make: () => ({ x: R(0, W), y: H * R(.2, 1), vx: R(-.2, .2), vy: R(-.4, -.1), r: R(.7, 1.6), l: R(160, 300), c: WHITE, wob: .03, tw: 1 }) },
       snow: { n: 3.5, make: () => ({ x: R(-20, W), y: -10, vx: R(-.3, .5), vy: R(.9, 2.4), r: R(1, 2.8), l: R(300, 520), c: WHITE, wob: .05 }) },
       wardrobe: { n: 1.8, make: () => ({ x: R(0, W), y: R(0, H), vx: 0, vy: R(-.4, 0), r: R(1.2, 3), l: R(40, 90), c: pick([GOLD, VIO, WHITE]), star: true }) },
@@ -605,7 +605,7 @@ const Trailer = {
       case 'cocoon': for (let i = 0; i < 8; i++) N(.12, { vol: .05, f: 400, to: 200, when: i * .28 }); N(.4, { vol: .12, type: 'highpass', f: 2000, to: 800, when: 3 }); boom(3.5, .12); [0, .1, .2].forEach((w, i) => T([784, 987.8, 1318.5][i], 1, { type: 'triangle', vol: .06, when: 3.55 + w })); break;
       case 'duel': [1.2, 2.2, 3.2].forEach(w => { N(.35, { vol: .12, type: 'bandpass', f: 2500, to: 600, when: w, q: 2 }); T(220, .3, { type: 'square', vol: .03, to: 80, when: w }); }); T(880, .6, { type: 'sawtooth', vol: .04, to: 220, when: 2.9 }); boom(4.4, .2); break;
       case 'raid': T(55, 7, { type: 'sawtooth', vol: .03 }); N(1.5, { vol: .08, f: 200, to: 1200, when: .4 }); for (let i = 0; i < 9; i++) whoosh(2 + i * .36, .05); [2.3, 3, 3.7, 4.4].forEach(w => boom(w, .1)); boom(5.2, .26); [0, .15, .3, .45].forEach((w, i) => T([392, 523.3, 659.3, 784][i], 1.4, { type: 'triangle', vol: .07, when: 5.6 + w })); break;
-      case 'auction': [1.37, 3.04, 4.26].forEach(w => { T(1400, .05, { vol: .05, when: w }); N(.05, { vol: .04, type: 'highpass', f: 4000, when: w }); }); [0, .09, .18, .27].forEach((w, i) => T([659.3, 784, 987.8, 1318.5][i], .5, { type: 'triangle', vol: .05, when: 3.08 + w })); [0, .12, .24, .36, .48].forEach((w, i) => T(1800 + i * 150, .09, { vol: .05, when: 5.05 + w })); break;
+      case 'auction': [1.37, 2.89, 4.26, 6.38].forEach(w => { T(1400, .05, { vol: .05, when: w }); N(.05, { vol: .04, type: 'highpass', f: 4000, when: w }); }); [0, .09, .18, .27].forEach((w, i) => T([659.3, 784, 987.8, 1318.5][i], .5, { type: 'triangle', vol: .05, when: 3.08 + w })); [0, .12, .24, .36, .48].forEach((w, i) => T(1800 + i * 150, .09, { vol: .05, when: 5.05 + w })); break;
       case 'weather': [0, 1.6, 3.2, 4.8].forEach(w => whoosh(w, .07)); N(1.6, { vol: .06, f: 3000, to: 3000, when: 1.6 }); pad([220, 277.2, 329.6], 6, .02); break;
       case 'wardrobe': for (let i = 0; i < 10; i++) T(1046.5 + i * 60, .12, { type: 'triangle', vol: .04, when: .2 + i * .5 }); [0, .12, .24].forEach((w, i) => T([784, 987.8, 1174.7][i], 1.2, { type: 'triangle', vol: .06, when: 4.7 + w })); break;
       case 'league': for (let i = 0; i < 14; i++) N(.08, { vol: .07, f: 300, to: 200, when: 2.4 + i * .07 }); boom(3.4, .14); [0, .15, .3, .45].forEach((w, i) => T([523.3, 659.3, 784, 1046.5][i], 1.6, { type: 'triangle', vol: .07, when: 3.5 + w })); break;
