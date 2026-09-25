@@ -254,7 +254,7 @@ const Tut = {
       <small>Орден Оберега</small><h2>Посвящение пройдено!</h2><p>Отныне ты — <b>Ловчий Ордена</b>. Духи Нави ждут на улицах твоего города.</p>
       <div class="tf-got">${list}</div>${UI.rune('В путь!', 'tf-go')}</div>`);
     document.body.appendChild(root);
-    Music.play('theme'); // финал посвящения — главная тема «Путь начинается»
+    Music.play('mentor'); // финал посвящения — мелодия наставника
     root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); Music.play('map'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
   },
 

@@ -17,7 +17,12 @@ const MapView = {
     this.setTiles();
     setInterval(() => this.setTiles(), 60000);
 
-    this.range = L.circle([this.pos.lat, this.pos.lng], { radius: W.INTERACT, className: 'range-circle', interactive: false }).addTo(this.map);
+    // 4.8.1: зона досягаемости — круг Ловчего (свечение, кольцо рун, волна); размер — радиус взаимодействия на текущем масштабе
+    this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000,
+      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
+    this.map.on('zoomanim', e => this.fitRange(e.zoom, true));
+    this.map.on('zoomend viewreset resize', () => this.fitRange());
+    this.fitRange();
     this.player = L.marker([this.pos.lat, this.pos.lng], {
       interactive: false, zIndexOffset: 1000,
       icon: L.divIcon({ className: 'mk-player-wrap', iconSize: [64, 64], iconAnchor: [32, 32],
@@ -127,6 +132,17 @@ const MapView = {
     this.follow = true;
     U.$('#recenterBtn').classList.remove('show');
     this.map.setView([this.pos.lat, this.pos.lng], Math.max(this.map.getZoom(), 17), { animate: true });
+  },
+
+  // радиус круга Ловчего в пикселях для масштаба z (во время анимации масштаба — плавно, в такт Leaflet)
+  fitRange(z, anim) {
+    const el = this.range && this.range.getElement(), box = el && el.firstElementChild;
+    if (!box) return;
+    const zz = z == null ? this.map.getZoom() : z, ll = this.range.getLatLng();
+    const r = Math.abs(this.map.project(ll, zz).y - this.map.project(L.latLng(ll.lat + W.INTERACT / 111320, ll.lng), zz).y);
+    box.style.transition = anim ? 'width .25s cubic-bezier(0,0,.25,1), height .25s cubic-bezier(0,0,.25,1), margin .25s cubic-bezier(0,0,.25,1)' : 'none';
+    box.style.width = box.style.height = r * 2 + 'px';
+    box.style.margin = -r + 'px 0 0 ' + -r + 'px';
   },
 
   moveTo(lat, lng, jump) {
