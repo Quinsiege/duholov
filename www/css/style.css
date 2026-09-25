@@ -1867,3 +1867,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .calm #tutRing, .calm #tutRing i { animation: none; }
 #coach .coach-ok { display: flex; width: auto; min-height: 36px; margin-top: 8px; padding: 6px 18px; font-size: 13.5px; }
 #coach.info { border-color: rgba(253, 224, 71, .55); }
+
+/* 4.1.2: согласие с правилами и возрастная маркировка (436-ФЗ) на стартовом экране */
+.onb-cta .onb-agree { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.4; }
+.onb-agree a { color: inherit; text-decoration: underline; }
+.age-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 4px; border: 1.5px solid currentColor; border-radius: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; opacity: .9; }

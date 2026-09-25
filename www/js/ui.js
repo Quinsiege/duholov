@@ -169,6 +169,8 @@ const UI = {
   confirm(title, text, okLabel, onOk, cancelLabel = 'Отмена', danger = false) {
     return this.modal({ title, html: `<p>${text}</p>`, buttons: [{ label: cancelLabel }, { label: okLabel, cls: danger ? 'danger' : 'primary', fn: onOk }] });
   },
+  // 4.1.2: документ сайта (соглашение, политика, оферта) — внутри игры, в том же окне
+  doc(title, src) { return this.screen(title, `<iframe class="offer-frame" src="${src}" title="${U.esc(title)}"></iframe>`, 'offer-screen'); },
   screen(title, html, cls = '', onClose) {
     const el = U.el(`<div class="screen ${cls}"><div class="screen-head"><button class="btn-round back">${this.I.back}</button><h2>${title}</h2><div class="head-extra"></div></div><div class="screen-body">${html}</div></div>`);
     el._close = () => this.closeScreen(el);
@@ -1186,6 +1188,7 @@ const UI = {
       ${sec('Об игре')}
       <div class="list">
         ${link('about', 'info', 'Книга Ордена', 'Мир, духи и все правила игры; трейлер')}
+        ${link('terms', 'info', 'Правила игры', 'Соглашение, безопасность на улице, чат · 12+')}
         ${link('privacy', 'info', 'Персональные данные', 'Какие данные хранит игра и как их удалить')}
         <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div><span class="set-chev">›</span></button>
         ${Game.on() ? `<button class="row link set-row del-acc"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Удалить учётную запись</b><small>Прогресс, способы входа и все данные — навсегда</small></div></button>` : ''}
@@ -1244,7 +1247,8 @@ const UI = {
     renderAcc();
     Login.load().then(renderAcc);
     scr.querySelector('.about').onclick = () => Book.screen(); // 4.0: вместо списка «Об игре»
-    scr.querySelector('.privacy').onclick = () => UI.screen('Персональные данные', '<iframe class="offer-frame" src="privacy.html" title="Политика обработки персональных данных"></iframe>', 'offer-screen');
+    scr.querySelector('.terms').onclick = () => UI.doc('Правила игры', 'terms.html');
+    scr.querySelector('.privacy').onclick = () => UI.doc('Персональные данные', 'privacy.html');
     // 4.1: полное удаление учётной записи (152-ФЗ) — после двух подтверждений; платежи остаются без привязки
     const del = scr.querySelector('.del-acc');
     if (del) del.onclick = () => this.confirm('Удалить учётную запись?', 'Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные златники не вернутся.', 'Удалить', () => {
@@ -1381,9 +1385,9 @@ const UI = {
         <div class="onb-logo"><div class="onb-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
         <div class="onb-stage">${['vayfayka', 'domovoy', 'kapelka', 'fonarnik', 'leshachok'].map(x => `<div>${Art.spirit(x)}</div>`).join('')}</div>
         ${Invite.ref() ? '<div class="onb-invite">Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт стартовый подарок.</div>' : ''}
-        <div class="onb-cta"><button class="btn primary wide next">Начать игру</button><small>Без регистрации — вход можно привязать позже</small></div>
+        <div class="onb-cta"><button class="btn primary wide next">Начать игру</button><small>Без регистрации — вход можно привязать позже</small><small class="onb-agree"><span class="age-badge">12+</span>Нажимая «Начать игру», ты принимаешь <a href="terms.html">Соглашение</a> и <a href="privacy.html">Политику</a></small></div>
         ${Game.on() ? Login.panel(`<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>`, Login.buttons('start'), '') : ''}
-        <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a><a class="onb-offer" href="privacy.html">Политика обработки персональных данных</a>`;
+        <a class="onb-offer" href="offer.html">Казна Ордена: цены, оферта и контакты</a><a class="onb-offer" href="privacy.html">Политика обработки персональных данных</a><a class="onb-offer" href="terms.html">Пользовательское соглашение · 12+</a>`;
       if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div><button class="btn primary wide next">Вступить в Орден</button>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div><button class="btn primary wide next">Дальше</button>`;
       if (n === 3) html = `<div class="onb-q"><h2>Выбери первого духа</h2><p>Он будет с тобой с первого дня.</p></div>
