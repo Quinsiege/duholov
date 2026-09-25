@@ -238,7 +238,7 @@
 
 ## Прод
 - Игра: https://duholov.ru/ · APK: https://duholov.ru/duholov.apk · Модерация: https://duholov.ru/admin.html
-- Тестовый сайт (сборка последнего Pull Request, тестовый контур): https://test.duholov.ru/
+- Тестовый сайт (сборка последнего Pull Request, тестовый контур): https://test.duholov.ru/ — API https://api-test.duholov.ru
 - Старый адрес https://quinsiege.github.io/duholov/ сам переводит браузер на duholov.ru вместе со входом (`www/js/move.js`); его же открывает приложение Android до версии 4.
 - Репозиторий: https://github.com/Quinsiege/duholov
 
@@ -248,7 +248,8 @@
   Порты открыты только на `127.0.0.1`; снаружи — через **Caddy** (`/opt/caddy`, HTTPS Let's Encrypt):
   `duholov.ru` → `/srv/www/prod`, `test.duholov.ru` → `/srv/www/test`, `api.duholov.ru` → только публичные пути Supabase
   (`/auth`, `/rest`, `/realtime`, `/storage`, `/functions`). Панель Studio наружу не открыта: `ssh -L 8000:127.0.0.1:8000 root@147.45.100.117` → http://localhost:8000.
-- Секреты функции `game` (ЮKassa, сервисы входа, `ALLOWED_ORIGINS`) — `/opt/duholov/functions.env` на сервере, после правки: `cd /opt/duholov && docker compose up -d functions`.
+- **Тестовый контур** — второй Supabase на том же сервере: `/opt/duholov-test` (контейнеры `dt-*`, шлюз `127.0.0.1:8100`, снаружи `api-test.duholov.ru`). Закрыт ключом доступа: `duholov-test-key`. Сборку и функцию каждого Pull Request CI выкладывает туда (сайт — `test.duholov.ru`); SQL-миграции — `docker exec -i dt-db psql -U supabase_admin -d postgres < server/0NN_….sql`.
+- Секреты функции `game` (ЮKassa, сервисы входа, `ALLOWED_ORIGINS`) — `duholov-secrets` на сервере (пишет `/opt/duholov/functions.env` и перезапускает функцию).
 - **Выкладка** — только CI: после слияния PR workflow «Публикация» кладёт функцию `game` и сайт на сервер (пользователь `deploy`, секрет `DEPLOY_SSH_KEY`) и старый адрес на GitHub Pages. SQL-миграции: `docker exec -i supabase-db psql -U supabase_admin -d postgres < server/0NN_….sql` (и в тестовом проекте).
 - **Копии базы**: `duholov-backup` каждую ночь (03:17 UTC), 14 дней на сервере + S3 Timeweb (`duholov-backup`). Плюс ежедневные снимки всего сервера в панели Timeweb. Восстановление: `pg_restore` из `/var/backups/duholov/*.dump`.
 - Пароль модератора: `duholov-set-password` на сервере. Скрипты сервера — `tools/server/`, перенос из облака — `tools/migrate/`.

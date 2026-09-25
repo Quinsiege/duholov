@@ -64,7 +64,7 @@ jobs:
           gradle-version: '8.7'
       - run: gradle -p android assembleDebug --no-daemon
 
-  # Сборка Pull Request на test.duholov.ru (тестовый контур) — проверить с телефона до слияния
+  # Сборка Pull Request на test.duholov.ru и его функция game — в тестовый контур (api-test.duholov.ru): проверить с телефона до слияния
   test-site:
     name: Тестовый сайт
     needs: [tests]
@@ -84,5 +84,8 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
           echo "$SERVER_KEY" > ~/.ssh/known_hosts
+          # функция game тестового контура (api-test.duholov.ru) — из этого же PR, потом сайт
+          scp -q server/functions/game/index.ts deploy@$SERVER:/opt/duholov-test/volumes/functions/game/index.ts.new
+          ssh deploy@$SERVER 'mv /opt/duholov-test/volumes/functions/game/index.ts.new /opt/duholov-test/volumes/functions/game/index.ts && sudo -n docker restart dt-functions'
           rsync -rlptz --delete www/ deploy@$SERVER:/srv/www/test/
           echo "https://test.duholov.ru/ — сборка ${GITHUB_SHA::7}"
