@@ -1,7 +1,7 @@
 {
   "login": {
     "layers": [],
-    "particles": "fireflies",
+    "particles": "none",
     "shade": 0.25
   },
   "loading": {

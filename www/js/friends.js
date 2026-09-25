@@ -205,6 +205,7 @@ const Friends = {
     const stat = (n, t) => `<div><b>${n}</b><span>${t}</span></div>`;
     if (f) { f.name = p.name; f.lvl = p.lvl; if (p.look) f.look = p.look; }
     m.querySelector('.pc').style.setProperty('--cc', cl ? cl.color : '#a78bfa');
+    Art.cardSkin(m.querySelector('.pc-hero'), p.look); // 4.6: фон и рамка карточки из Гардероба
     m.querySelector('.pc-hero').innerHTML = `<div class="pc-ava">${Art.avatar(p.look || undefined)}<span class="pc-lvl">${p.lvl}</span></div>
       <div class="pc-id"><b class="pc-name">${U.esc(p.name)}</b><small>${UI.rank(p.lvl)} · ${p.lvl} уровень</small>
         <div class="pc-tags">${cl ? `<span class="pc-tag clan">${cl.short}</span>` : ''}<span class="pc-tag seen-${p.seen}">${p.me ? 'это ты' : seen}</span></div></div>`;

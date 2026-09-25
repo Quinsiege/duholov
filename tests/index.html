@@ -28,6 +28,19 @@
   <script src="../www/js/util.js"></script>
   <script src="../www/js/diff.js"></script>
   <script src="../www/js/art.js"></script>
+  <script src="../www/js/skins-art.js"></script>
+  <script src="../www/js/looks-art.js"></script>
+  <script src="../www/js/art-kit.js"></script>
+  <script src="../www/js/cutscene-art.js"></script>
+  <script src="../www/js/sp-fire.js"></script>
+  <script src="../www/js/sp-water.js"></script>
+  <script src="../www/js/sp-forest.js"></script>
+  <script src="../www/js/sp-forest2.js"></script>
+  <script src="../www/js/sp-wind.js"></script>
+  <script src="../www/js/sp-wind2.js"></script>
+  <script src="../www/js/sp-current.js"></script>
+  <script src="../www/js/sp-shadow.js"></script>
+  <script src="../www/js/sp-shadow2.js"></script>
   <script src="../www/js/state.js"></script>
   <script src="../www/js/events.js"></script>
   <script src="../www/js/sky.js"></script>
@@ -56,6 +69,7 @@
   <script src="../www/js/coop.js"></script>
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
+  <script src="../www/js/realms.js"></script>
   <script src="../www/js/login.js"></script>
   <script src="../www/js/exif.js"></script>
   <script src="../www/js/osm.js"></script>
@@ -1037,6 +1051,21 @@
     await must(A, 'shopBuy', { id: 'look:#7c2d12' });
     await must(A, 'look', { look: { cloak: '#7c2d12', eyes: '#5eead4', emblem: 'charm' } }); eq(A.data.look.cloak, '#7c2d12');
     await refuse(A, 'shopBuy', { id: 'look:#7c2d12' }, /уже твой/);
+    // 4.6: облики-скины из Гардероба — за златники, надеть можно только купленный
+    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'volhv' } }, /Гардеробе/);
+    await refuse(A, 'shopBuy', { id: 'skin:nichego' }, /нет/);
+    A.data.zlat = 450;
+    await must(A, 'shopBuy', { id: 'skin:volhv' }); eq(A.data.zlat, 0, 'облик за 450'); eq(A.data.owned['skin:volhv'], true);
+    await refuse(A, 'shopBuy', { id: 'skin:volhv' }, /уже твоё/);
+    await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'volhv' } }); eq(A.data.look.skin, 'volhv');
+    eq(GameCore.safeLook({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: '<b>' }).skin, undefined, 'чужой облик — только известные скины');
+    await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' } }); eq(A.data.look.skin, undefined, 'обычный облик — без скина');
+    // фон и рамка: платные — только после покупки, уровневые — с уровня
+    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', bg: 'gate' } }, /фон/);
+    A.data.zlat = 1000;
+    await must(A, 'shopBuy', { id: 'bg:gate' }); await must(A, 'shopBuy', { id: 'frame:oak' }); eq(A.data.zlat, 1000 - 650 - 250);
+    await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', bg: 'gate', frame: 'oak' } }); eq(A.data.look.bg, 'gate'); eq(A.data.look.frame, 'oak');
+    eq(GameCore.safeLook({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', bg: 'x', frame: 'toString' }).frame, undefined, 'чужая рамка — только из списка');
     // златники приходят за серию дней
     const g0 = A.data.zlat;
     const dl = await must(A, 'daily'); // опыт серии может поднять уровень — за него свои златники

@@ -74,7 +74,7 @@ const Tut = {
   KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.sheet-foot', '.menu-dots'],
   coach(st) {
     if (!this.el) {
-      this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${Art.guardian('#15803d')}</div>
+      this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${CutArt.velimir(true)}</div>
         <div class="coach-main"><div class="coach-top"><b>Велимир</b><span class="coach-ch"></span></div><div class="coach-text"></div>
         <div class="coach-bar"><i></i></div></div></div>`);
       this.ring = U.el('<div id="tutRing" class="hidden"><i></i></div>');
@@ -154,13 +154,13 @@ const Tut = {
   scene(st) {
     if (this.sc) this.sc.remove();
     const first = TUT.find(s => s.ch === st.ch) === st; // сцена открывает главу — сначала заставка главы
+    // 4.6: кинокадр — ночной двор, сияние Нави, Велимир и ты; реплики в лаковой шкатулке
     const root = this.sc = U.el(`<div class="tut-scene">
-      <div class="ts-sky"><i class="ts-moon"></i>${'<i class="ts-star"></i>'.repeat(14)}</div>
-      <svg class="ts-city" viewBox="0 0 400 120" preserveAspectRatio="none"><path d="M0 120V80h20V60h18v20h14V44h22v36h12V66h20v14h16V30l12-10 12 10v50h18V56h26v24h10V70h22v10h14V48h20v32h16V62h24v18h12V74h16v46Z" fill="#0a0616"/>
-        <g fill="#fde047" opacity=".7"><rect x="60" y="52" width="4" height="5"/><rect x="152" y="40" width="4" height="5"/><rect x="160" y="56" width="4" height="5"/><rect x="232" y="64" width="4" height="5"/><rect x="306" y="58" width="4" height="5"/></g></svg>
+      <div class="ts-bg"><i class="ts-aur a1"></i><i class="ts-aur a2"></i><i class="ts-moon"></i>${'<i class="ts-star"></i>'.repeat(14)}${CutArt.yard()}<i class="ts-mist"></i></div>
+      <div class="ts-film"><i></i><i></i></div>
       <div class="ts-chap"></div>
-      <div class="ts-stage"><div class="ts-mentor">${Art.guardian('#15803d')}</div><div class="ts-me">${Art.avatar(S.d.look)}</div></div>
-      <div class="ts-box"><div class="ts-who"></div><div class="ts-line"></div><div class="ts-foot"><span class="ts-prog"></span><button class="btn primary ts-next">Дальше</button></div></div>
+      <div class="ts-stage"><div class="ts-mentor"><i class="ts-halo"></i>${CutArt.velimir()}</div><div class="ts-me"><div class="ts-hero">${CutArt.hero(S.d.look)}</div><span class="ts-me-name">${U.esc(S.d.name || 'Ты')}</span></div></div>
+      <div class="ts-box"><div class="ts-who"></div><div class="ts-line"></div><div class="ts-foot"><span class="ts-prog"></span><button class="btn primary small ts-next">Дальше</button></div></div>
     </div>`);
     document.body.appendChild(root);
     UI.pushLayer(this._noBack = () => {}); // «Назад» сцену не закрывает — обучение не пропустить
@@ -170,8 +170,9 @@ const Tut = {
       const [w, text] = st.lines[i];
       root.dataset.who = w;
       who.textContent = w === 'v' ? 'Велимир' : w === 'you' ? (S.d.name || 'Ты') : '';
-      root.querySelector('.ts-prog').textContent = `${i + 1} / ${st.lines.length}`;
+      root.querySelector('.ts-prog').innerHTML = st.lines.map((_, k) => `<i class="${k < i ? 'done' : k === i ? 'on' : ''}"></i>`).join('');
       btn.textContent = i === st.lines.length - 1 ? 'Продолжить' : 'Дальше';
+      line.classList.remove('in'); void line.offsetWidth; line.classList.add('in');
       // печать по буквам (теги — целиком); касание — допечатать сразу
       const parts = text.split(/(<[^>]+>)/).filter(Boolean);
       let out = '', p = 0, c = 0;
@@ -211,10 +212,11 @@ const Tut = {
   /* ---------- заставка главы ---------- */
   titleCard(ch, done, into) {
     const c = TUT_CHAPTERS[ch];
-    const el = U.el(`<div class="tut-title"><small>Посвящение в Ловчие</small><b>Глава ${ch + 1}</b><h2>${c.title}</h2><i></i></div>`);
+    const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+    const el = U.el(`<div class="tut-title"><div class="tt-ring"></div><small>Посвящение в Ловчие</small><b>Глава ${ROMAN[ch] || ch + 1}</b><h2>${c.title}</h2><i></i></div>`);
     (into || document.body).appendChild(el);
     Sfx.play('spin');
-    setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 450); }, 1900);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 450); }, 2300);
   },
 
   /* ---------- награды за главы и финал ---------- */
@@ -228,11 +230,11 @@ const Tut = {
     // Финал: клятва дана — посвящение пройдено
     Sfx.play('levelup');
     const root = U.el(`<div class="tut-final"><div class="tf-rays"></div>
-      <div class="tf-charm">${Art.charm('charm3')}</div>
+      <div class="tf-me"><div class="tf-ring"></div><div class="ts-me-ring">${Art.avatar(S.d.look)}</div></div>
       <small>Орден Оберега</small><h2>Посвящение пройдено!</h2><p>Отныне ты — <b>Ловчий Ордена</b>. Духи Нави ждут на улицах твоего города.</p>
-      <div class="tf-got">${list}</div><button class="btn primary wide">В путь!</button></div>`);
+      <div class="tf-got">${list}</div>${UI.rune('В путь!', 'tf-go')}</div>`);
     document.body.appendChild(root);
-    root.querySelector('.btn').onclick = () => { Sfx.play('tap'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
+    root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
   },
 
   close() {

@@ -12,6 +12,8 @@
   <title>Духолов</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="preload" href="vendor/fonts/ruslan-display-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="vendor/fonts/display.css?v=dev">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="dns-prefetch" href="https://oauth.yandex.ru">
   <link rel="dns-prefetch" href="https://passport.yandex.ru">
@@ -28,14 +30,7 @@
       padding: calc(24px + var(--st)) 18px calc(22px + var(--sb)); background: #0b0620; text-align: center; transition: opacity .45s; user-select: none; -webkit-user-select: none; }
     .loader.out { opacity: 0; pointer-events: none; }
     .ld-scene, .ld-bg, .ld-shade { position: absolute; inset: 0; pointer-events: none; }
-    .ld-scene { background: linear-gradient(180deg, #06031a 0%, #150a36 34%, #33175f 56%, #5a2a7c 68%, #2a1350 100%); }
-    .ld-scene svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .ld-stars { animation: ldTw 6s ease-in-out infinite alternate; }
-    @keyframes ldTw { to { opacity: .55; } }
-    .ld-mist { position: absolute; left: -30%; width: 90%; height: 16%; border-radius: 50%; background: radial-gradient(closest-side, rgba(196, 181, 253, .28), rgba(196, 181, 253, 0));
-      animation: ldMist 36s ease-in-out infinite alternate; }
-    .ld-mist.m1 { top: 50%; } .ld-mist.m2 { top: 57%; left: 10%; width: 75%; animation-duration: 50s; animation-direction: alternate-reverse; }
-    @keyframes ldMist { to { transform: translateX(40%); } }
+    .ld-scene { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 3l7 7-7 7-7-7z M0 21l7 7-7 7 M36 21l-7 7 7 7' fill='none' stroke='%23fff' stroke-opacity='.035' stroke-width='1'/%3E%3C/svg%3E"), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .32), transparent 70%), linear-gradient(180deg, #261a4f, #0c0720); } /* 4.6: фон как во вкладках игры */
     .ld-bg { background: center / cover no-repeat; opacity: 0; transform: scale(1.06); transition: opacity 1s, transform 12s ease-out; }
     .ld-bg.on { opacity: 1; transform: scale(1); }
     .ld-shade { background: linear-gradient(180deg, rgba(6, 3, 18, .45) 0%, rgba(6, 3, 18, 0) 28%, rgba(6, 3, 18, 0) 46%, rgba(6, 3, 18, calc(.6 + var(--ld-shade, .25) * .4)) 100%); }
@@ -43,18 +38,18 @@
     .ld-charm { width: 104px; height: 104px; filter: drop-shadow(0 0 28px rgba(253, 224, 71, .6)); animation: ldFloat 3.2s ease-in-out infinite; }
     .ld-charm svg { width: 100%; height: 100%; display: block; overflow: visible; }
     @keyframes ldFloat { 50% { transform: translateY(-7px) rotate(4deg); } }
-    .ld-logo h1 { margin: 0; font-size: 50px; line-height: 1.05; font-weight: 900; letter-spacing: 4px; color: transparent;
+    .ld-logo h1 { margin: 0; padding: 4px 8px 0; font-family: 'Ruslan Display', 'Philosopher', Georgia, serif; font-size: 60px; line-height: 1; font-weight: 400; letter-spacing: 1px; color: transparent;
       background: linear-gradient(100deg, #fde047 0%, #fbbf24 38%, #fffbeb 48%, #fbbf24 58%, #f59e0b 100%); background-size: 250% 100%;
       -webkit-background-clip: text; background-clip: text; animation: ldGlint 4.5s ease-in-out infinite;
-      filter: drop-shadow(0 4px 18px rgba(251, 191, 36, .45)) drop-shadow(0 2px 0 rgba(0, 0, 0, .35)); }
+      filter: drop-shadow(0 3px 0 rgba(80, 28, 4, .9)) drop-shadow(0 6px 22px rgba(251, 191, 36, .45)); }
     @keyframes ldGlint { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
-    .ld-logo p { margin: 0; font-size: 14.5px; color: #ddd4f5; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+    .ld-logo p { margin: 0; font-family: 'Philosopher', Georgia, serif; font-size: 17px; color: #eee6ff; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
     .ld-foot { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 14px; padding: 16px; box-sizing: border-box; border-radius: 26px;
       background: linear-gradient(180deg, rgba(34, 20, 68, .55), rgba(14, 8, 32, .8)); border: 1px solid rgba(255, 255, 255, .13);
       -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: 0 24px 60px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .09); }
     .ld-hint { position: relative; }
     .ld-tip { min-height: 92px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 4px 38px; }
-    .ld-tip small { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold2); }
+    .ld-tip small { font-family: 'Philosopher', Georgia, serif; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gold2); }
     .ld-tip p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #efeaff; }
     .ld-tip p.in { animation: ldIn .35s ease-out; }
     @keyframes ldIn { from { opacity: 0; transform: translateY(6px); } }
@@ -77,29 +72,49 @@
     .ld-bar i::after { content: ""; position: absolute; right: -5px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%;
       background: radial-gradient(circle, #fffbeb 0%, #fde047 45%, rgba(253, 224, 71, 0) 70%); animation: ldSpark 1.2s ease-in-out infinite; }
     @keyframes ldSpark { 50% { transform: scale(1.5); opacity: .7; } }
-    @media (max-height: 640px) { .ld-charm { width: 76px; height: 76px; } .ld-logo h1 { font-size: 40px; } .ld-tip { min-height: 80px; } }
-    .calm .ld-charm, .calm .ld-logo h1, .calm .ld-mist, .calm .ld-stars, .calm .ld-bar i::after { animation: none; }
-    @media (prefers-reduced-motion: reduce) { .ld-charm, .ld-logo h1, .ld-mist, .ld-stars, .ld-bar i::after { animation: none; } }
+    /* 4.6: панель совета и прогресса — лаковая шкатулка с золотыми уголками, прогресс — золотая нить */
+    .ld-foot { border-radius: 22px; border: 1px solid rgba(243, 207, 107, .42); outline: 1px solid rgba(243, 207, 107, .16); outline-offset: -7px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform=''%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") left 0 top 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(-1 0 0 1 30 0)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") right 0 top 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(1 0 0 -1 0 30)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") left 0 bottom 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(-1 0 0 -1 30 30)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") right 0 bottom 0 / 26px 26px no-repeat, radial-gradient(90% 50% at 50% 0%, rgba(139, 92, 246, .28), transparent 70%), linear-gradient(180deg, rgba(38, 26, 79, .88), rgba(14, 8, 32, .93));
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 40px rgba(139, 92, 246, .15); }
+    .ld-tip small { font-size: 14px; letter-spacing: .1em; color: #fde68a; padding-bottom: 12px; text-shadow: 0 0 12px rgba(251, 191, 36, .35);
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 14'%3E%3Cpath d='M32 1l6 6-6 6-6-6z' fill='%23f3cf6b'/%3E%3Cpath d='M32 4.4l2.6 2.6-2.6 2.6-2.6-2.6z' fill='%231d1238'/%3E%3Ccircle cx='20.5' cy='7' r='1.6' fill='%23f3cf6b'/%3E%3Ccircle cx='43.5' cy='7' r='1.6' fill='%23f3cf6b'/%3E%3Ccircle cx='13' cy='7' r='1' fill='%23f3cf6b' opacity='.7'/%3E%3Ccircle cx='51' cy='7' r='1' fill='%23f3cf6b' opacity='.7'/%3E%3C/svg%3E") center bottom / 56px 12px no-repeat; }
+    .ld-tip p { font-family: "Philosopher", Georgia, serif; font-size: 16px; line-height: 1.4; }
+    .ld-arrow { color: #f3cf6b; font-family: "Philosopher", Georgia, serif; }
+    .ld-dots i { background: rgba(243, 207, 107, .22); } .ld-dots i.on { background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 0 8px rgba(251, 191, 36, .5); }
+    .ld-text { font-family: "Philosopher", Georgia, serif; font-size: 14px; color: #d9cff2; }
+    .ld-pct { font-family: "Philosopher", Georgia, serif; font-size: 15px; color: #fde68a; }
+    .ld-bar { height: 10px; border-radius: 5px; background: rgba(8, 4, 22, .75); border: 1px solid rgba(243, 207, 107, .45); box-shadow: 0 0 0 2px rgba(8, 4, 22, .5), inset 0 1px 3px rgba(0, 0, 0, .6); }
+    .ld-bar i { background: linear-gradient(90deg, #2dd4bf, #a3e635 45%, #fde047 80%, #fff7c7); }
+    @media (max-height: 640px) { .ld-charm { width: 76px; height: 76px; } .ld-logo h1 { font-size: 46px; } .ld-tip { min-height: 80px; } }
+    /* 4.6: руническая полоса — чтение заклинания: желобок пуст, огонь идёт по нему, и руны проступают по одной, когда огонь дошёл до них целиком */
+    .ld-bar { position: relative; height: 18px; margin: 0 14px; border-radius: 9px; border: 1px solid rgba(243, 207, 107, .5);
+      background: linear-gradient(180deg, #07031a, #1a0f3a 60%, #0c0722);
+      box-shadow: 0 0 0 2px rgba(8, 4, 22, .6), 0 0 0 3px rgba(243, 207, 107, .18), inset 0 2px 5px rgba(0, 0, 0, .75); }
+    .ld-bar::before, .ld-bar::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M7 .5L13.5 7 7 13.5.5 7z' fill='%23f3cf6b' stroke='%235b210a' stroke-width='1'/%3E%3Cpath d='M7 4L10 7 7 10 4 7z' fill='%231d1238'/%3E%3C/svg%3E") center / contain no-repeat;
+      filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
+    .ld-bar::before { left: -16px; } .ld-bar::after { right: -16px; }
+    .ld-bar > i { border-radius: 8px;
+      background: linear-gradient(90deg, transparent 0 40%, rgba(255, 255, 255, .45) 50%, transparent 60%) 0 0 / 200% 100% no-repeat,
+        linear-gradient(180deg, #fff3b0 0%, #fbbf24 45%, #d97706 80%, #92400e 100%);
+      box-shadow: 0 0 14px rgba(251, 191, 36, .75), inset 0 1px 0 rgba(255, 255, 255, .7); animation: ldShine 2.4s linear infinite; }
+    .ld-bar > i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards, ldShine 2.4s linear infinite; }
+    @keyframes ldShine { from { background-position: 150% 0, 0 0; } to { background-position: -50% 0, 0 0; } }
+    .ld-bar > i::after { right: -9px; width: 20px; height: 20px; margin-top: -10px; background: radial-gradient(circle, #fff 0%, #fde047 30%, rgba(251, 191, 36, .5) 50%, rgba(251, 191, 36, 0) 70%); }
+    .ld-runes { position: absolute; left: 0; top: 0; bottom: 0; width: 0; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='16'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3V13M8 5.5L14 3M8 8.5L14 6M30 13V3L36 6.5V13M52 3V13M52 5L57 8L52 11M74 3V13M74 4L79 7M74 7.5L79 10.5M96 13V3L101 5.5L96 8L101 13M117 3L125 13M125 3L117 13M143 13V3M143 8L139 3.5M143 8L147 3.5M165 13V3M161 7L165 3L169 7' stroke='%235b1a06' stroke-width='3.8'/%3E%3Cpath d='M8 3V13M8 5.5L14 3M8 8.5L14 6M30 13V3L36 6.5V13M52 3V13M52 5L57 8L52 11M74 3V13M74 4L79 7M74 7.5L79 10.5M96 13V3L101 5.5L96 8L101 13M117 3L125 13M125 3L117 13M143 13V3M143 8L139 3.5M143 8L147 3.5M165 13V3M161 7L165 3L169 7' stroke='%23ffffff' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 5px 50% / 176px 16px repeat-x;
+      filter: drop-shadow(0 0 4px rgba(255, 244, 200, 1)) drop-shadow(0 0 8px rgba(251, 191, 36, .8)); }
+    .ld-runes.pop::after { content: ""; position: absolute; right: -6px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, .95), rgba(253, 224, 71, .6) 35%, rgba(253, 224, 71, 0) 70%); animation: ldRunePop .7s ease-out forwards; }
+    @keyframes ldRunePop { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+    .ld-row { padding: 0 2px; }
+    .ld-pct { min-width: 44px; text-align: right; }
+    .calm .ld-charm, .calm .ld-logo h1, .calm .ld-bar i::after, .calm .ld-bar > i:not(.boot), .calm .ld-runes.pop::after { animation: none; }
+    @media (prefers-reduced-motion: reduce) { .ld-charm, .ld-logo h1, .ld-bar i::after, .ld-bar > i:not(.boot) { animation: none; } }
   </style>
 </head>
 <body>
   <!-- 4.4: экран загрузки — первое, что видит игрок (его подхватывает js/loader.js); нарисованная ночь, поверх — картинка из scenes.json -->
   <div class="loader" id="bootLoader" role="status" aria-live="polite">
     <div class="ld-scene" aria-hidden="true">
-      <svg viewBox="0 0 600 900" preserveAspectRatio="xMidYMid slice"><defs>
-        <pattern id="ldSt" width="97" height="83" patternUnits="userSpaceOnUse"><circle cx="11" cy="17" r="1.1" fill="#fff"/><circle cx="61" cy="9" r=".7" fill="#fff"/><circle cx="83" cy="52" r="1.3" fill="#fff" opacity=".8"/><circle cx="34" cy="66" r=".6" fill="#fff"/><circle cx="47" cy="38" r=".9" fill="#fff" opacity=".7"/></pattern>
-        <pattern id="ldSt2" width="151" height="127" patternUnits="userSpaceOnUse" x="40" y="23"><circle cx="23" cy="94" r=".8" fill="#fff" opacity=".8"/><circle cx="118" cy="31" r="1.4" fill="#fff" opacity=".9"/><circle cx="76" cy="112" r=".6" fill="#fff"/><circle cx="139" cy="81" r=".7" fill="#fff" opacity=".6"/></pattern>
-        <radialGradient id="ldHalo"><stop offset="0" stop-color="#fde68a" stop-opacity=".35"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>
-        <radialGradient id="ldMoon" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbeb"/><stop offset=".6" stop-color="#fde68a"/><stop offset="1" stop-color="#d6a84a"/></radialGradient></defs>
-        <rect class="ld-stars" width="600" height="500" fill="url(#ldSt)" opacity=".75"/><rect width="600" height="520" fill="url(#ldSt2)"/><circle cx="478" cy="92" r="96" fill="url(#ldHalo)"/><circle cx="478" cy="92" r="26" fill="url(#ldMoon)"/></svg>
-      <svg viewBox="0 0 600 900" preserveAspectRatio="xMidYMax slice"><defs>
-        <pattern id="ldPine" width="26" height="80" patternUnits="userSpaceOnUse" y="490"><path d="M13 4 5 34h4L3 58h6L1 80h24l-8-22h6l-6-24h4Z" fill="#170b31"/></pattern>
-        <pattern id="ldPine2" width="38" height="120" patternUnits="userSpaceOnUse" x="9" y="470"><path d="M19 2 8 46h5L4 82h8L0 120h38L26 82h8l-9-36h5Z" fill="#170b31"/></pattern></defs>
-        <path d="M-40 470 Q20 400 80 452 T200 430 T320 446 T440 418 T560 440 T680 430 V900 H-40Z" fill="#2b1656"/>
-        <path d="M-40 520 Q30 470 100 505 T240 490 T380 500 T520 480 T660 500 V900 H-40Z" fill="#211046"/>
-        <rect y="470" width="600" height="120" fill="url(#ldPine2)"/><rect y="490" width="600" height="80" fill="url(#ldPine)"/>
-        <rect y="568" width="600" height="332" fill="#170b31"/></svg>
-      <i class="ld-mist m1"></i><i class="ld-mist m2"></i>
     </div>
     <div class="ld-bg"></div><div class="ld-shade"></div>
     <div class="ld-logo"><div class="ld-charm"><svg viewBox="0 0 100 100"><defs><radialGradient id="ldc" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#a16207"/></radialGradient></defs><path d="M50 8 L40 0 M50 8 L60 0" stroke="#a16207" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="54" r="40" fill="url(#ldc)" stroke="#a16207" stroke-width="4"/><circle cx="50" cy="54" r="27" fill="none" stroke="#fffbeb" stroke-width="2.5" stroke-dasharray="6 5" opacity=".9"/><path d="M50 32 V76 M35 43 L65 65 M65 43 L35 65" stroke="#fffbeb" stroke-width="4" stroke-linecap="round" opacity=".95"/><circle cx="50" cy="54" r="7" fill="#fffbeb"/><circle cx="50" cy="10" r="6" fill="#fde047" stroke="#a16207" stroke-width="3"/></svg></div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
@@ -110,7 +125,7 @@
         <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
       </div>
       <div class="ld-dots"></div>
-      <div class="ld-prog"><div class="ld-row"><span class="ld-text">Загрузка…</span><b class="ld-pct"></b></div><div class="ld-bar"><i class="boot"></i></div></div>
+      <div class="ld-prog"><div class="ld-row"><span class="ld-text">Загрузка…</span><b class="ld-pct"></b></div><div class="ld-bar"><i class="boot"></i><b class="ld-runes"></b></div></div>
     </div>
   </div>
   <link rel="stylesheet" href="vendor/fonts/rubik.css?v=dev">
@@ -143,7 +158,7 @@
     <div id="joystick" class="joystick hidden"><div class="stick"></div></div>
 
     <button id="menuBtn" class="orb" aria-label="Меню">
-      <svg viewBox="0 0 100 100"><defs><radialGradient id="orbG" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#a16207"/></radialGradient></defs><circle cx="50" cy="50" r="44" fill="url(#orbG)" stroke="#78350f" stroke-width="4"/><circle cx="50" cy="50" r="30" fill="none" stroke="#fffbeb" stroke-width="3" stroke-dasharray="6 5"/><path d="M50 28V72M31 39L69 61M69 39L31 61" stroke="#fffbeb" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="50" r="8" fill="#fffbeb"/></svg>
+      <svg viewBox="0 0 100 100"><defs><radialGradient id="orbG" cx=".35" cy=".28" r=".85"><stop offset="0" stop-color="#fffbeb"/><stop offset=".4" stop-color="#fcd34d"/><stop offset=".8" stop-color="#d97706"/><stop offset="1" stop-color="#7c2d12"/></radialGradient><radialGradient id="orbE" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#4c3597"/><stop offset=".7" stop-color="#1c1142"/><stop offset="1" stop-color="#0d0724"/></radialGradient><linearGradient id="orbF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffbeb"/><stop offset=".5" stop-color="#fde047"/><stop offset="1" stop-color="#f59e0b"/></linearGradient><radialGradient id="orbH" r=".5"><stop offset="0" stop-color="#fde68a" stop-opacity=".75"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient></defs><circle cx="50" cy="50" r="47" fill="url(#orbG)" stroke="#5b210a" stroke-width="2"/><g class="orb-ring" fill="#7c2d12"><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(0 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(22.5 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(45 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(67.5 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(90 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(112.5 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(135 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(157.5 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(180 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(202.5 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(225 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(247.5 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(270 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(292.5 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(315 50 50)"/><path d="M50 6.2l1.6 1.8-1.6 1.8-1.6-1.8z" transform="rotate(337.5 50 50)"/></g><circle cx="50" cy="50" r="37.5" fill="url(#orbE)" stroke="#5b210a" stroke-width="2.5"/><circle cx="50" cy="50" r="35" fill="none" stroke="#fde68a" stroke-width="1" opacity=".55"/><circle cx="50" cy="50" r="30" fill="url(#orbH)"/><g class="orb-fern"><path d="M50 50C44.5 42 45.5 29 50 21C54.5 29 55.5 42 50 50Z" transform="rotate(0 50 50)" fill="url(#orbF)"/><path d="M50 50C46.5 44 47 36 50 31C53 36 53.5 44 50 50Z" transform="rotate(45 50 50)" fill="url(#orbF)" opacity=".85"/><path d="M50 50C44.5 42 45.5 29 50 21C54.5 29 55.5 42 50 50Z" transform="rotate(90 50 50)" fill="url(#orbF)"/><path d="M50 50C46.5 44 47 36 50 31C53 36 53.5 44 50 50Z" transform="rotate(135 50 50)" fill="url(#orbF)" opacity=".85"/><path d="M50 50C44.5 42 45.5 29 50 21C54.5 29 55.5 42 50 50Z" transform="rotate(180 50 50)" fill="url(#orbF)"/><path d="M50 50C46.5 44 47 36 50 31C53 36 53.5 44 50 50Z" transform="rotate(225 50 50)" fill="url(#orbF)" opacity=".85"/><path d="M50 50C44.5 42 45.5 29 50 21C54.5 29 55.5 42 50 50Z" transform="rotate(270 50 50)" fill="url(#orbF)"/><path d="M50 50C46.5 44 47 36 50 31C53 36 53.5 44 50 50Z" transform="rotate(315 50 50)" fill="url(#orbF)" opacity=".85"/><circle cx="50" cy="50" r="6.5" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/></g></svg>
       <i class="badge hidden"></i>
     </button>
 
@@ -163,6 +178,19 @@
   <script src="js/util.js?v=dev"></script>
   <script src="js/diff.js?v=dev"></script>
   <script src="js/art.js?v=dev"></script>
+  <script src="js/skins-art.js?v=dev"></script>
+  <script src="js/looks-art.js?v=dev"></script>
+  <script src="js/art-kit.js?v=dev"></script>
+  <script src="js/cutscene-art.js?v=dev"></script>
+  <script src="js/sp-fire.js?v=dev"></script>
+  <script src="js/sp-water.js?v=dev"></script>
+  <script src="js/sp-forest.js?v=dev"></script>
+  <script src="js/sp-forest2.js?v=dev"></script>
+  <script src="js/sp-wind.js?v=dev"></script>
+  <script src="js/sp-wind2.js?v=dev"></script>
+  <script src="js/sp-current.js?v=dev"></script>
+  <script src="js/sp-shadow.js?v=dev"></script>
+  <script src="js/sp-shadow2.js?v=dev"></script>
   <script src="js/state.js?v=dev"></script>
   <script src="js/events.js?v=dev"></script>
   <script src="js/sky.js?v=dev"></script>
@@ -198,6 +226,7 @@
   <script src="js/ui-spirits.js?v=dev"></script>
   <script src="js/ui-player.js?v=dev"></script>
   <script src="js/scene.js?v=dev"></script>
+  <script src="js/realms.js?v=dev"></script>
   <script src="js/loader.js?v=dev"></script>
   <script src="js/path.js?v=dev"></script>
   <script src="js/book.js?v=dev"></script>

@@ -200,7 +200,7 @@ const GameCore = {
     if (amulet) { const am = S.rollAmulet(1, 'gift' + U.uid()); got.push({ k: 'amulet', n: 1, id: am, label: AMULETS[am].name }); }
     if (look) {
       S.d.owned[look] = true;
-      const x = LOOK.cloak.find(c => c.c === look) || LOOK.emblem.find(m => m.id === look);
+      const x = LOOK.cloak.find(c => c.c === look) || LOOK.emblem.find(m => m.id === look) || LOOK.skin.find(k => `skin:${k.id}` === look) || LOOK.bg.find(k => `bg:${k.id}` === look) || LOOK.frame.find(k => `frame:${k.id}` === look);
       got.push({ k: 'look', n: 1, look, label: x ? `Облик: ${x.name}` : 'Облик' });
     }
     return got;
@@ -338,8 +338,12 @@ const GameCore = {
   cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>"'`&\\]/g, '').trim().replace(/\s+/g, ' ').slice(0, max); },
   safeLook(lk) {
     lk = lk || {};
-    return LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem)
-      ? { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem } : null;
+    if (!(LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem))) return null;
+    const out = { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem };
+    if (lk.skin !== 'hood' && LOOK.skin.some(x => x.id === lk.skin)) out.skin = lk.skin; // 4.6: облик-скин, фон, рамка
+    if (lk.bg !== 'night' && LOOK.bg.some(x => x.id === lk.bg)) out.bg = lk.bg;
+    if (lk.frame !== 'none' && LOOK.frame.some(x => x.id === lk.frame)) out.frame = lk.frame;
+    return out;
   },
   // 3.21: текущие данные Ловчего из его сохранения — только проверенные значения (попадают в разметку)
   brief(b) {
@@ -652,13 +656,21 @@ const GameCore = {
     look(a) {
       const L = a.look || {}, lvl = S.d.level;
       const c = LOOK.cloak.find(x => x.c === L.cloak), e = LOOK.eyes.find(x => x.c === L.eyes), m = LOOK.emblem.find(x => x.id === L.emblem);
-      this.need(c && e && m, 'Такого облика нет');
+      const k = LOOK.skin.find(x => x.id === (L.skin || 'hood')), g = LOOK.bg.find(x => x.id === (L.bg || 'night')), fr = LOOK.frame.find(x => x.id === (L.frame || 'none'));
+      this.need(c && e && m && k && g && fr, 'Такого облика нет');
+      this.need(!k.shop || S.d.owned[`skin:${k.id}`], 'Этот облик продаётся в Гардеробе');
+      this.need(!g.shop || S.d.owned[`bg:${g.id}`], 'Этот фон продаётся в Гардеробе');
+      this.need(!fr.shop || S.d.owned[`frame:${fr.id}`], 'Эта рамка продаётся в Гардеробе');
+      this.need((g.lvl || 1) <= lvl && (fr.lvl || 1) <= lvl, 'Этот облик ещё не открыт');
       this.need(c.lvl <= lvl && e.lvl <= lvl && m.lvl <= lvl, 'Этот облик ещё не открыт');
       this.need(!m.league || League.st().best >= m.league, 'Венец Лиги — награда за ранг «Хранитель Лиги»');
       this.need(!m.story || S.d.story.ch >= m.story, 'Эта эмблема — награда за Летопись');
       this.need((!c.shop && !c.pass) || S.d.owned[c.c], c.shop ? 'Этот плащ продаётся в Лавке Ордена' : 'Этот плащ — награда Золотой тропы');
       this.need(!m.pass || S.d.owned[m.id], 'Знак Тропы — награда Золотой тропы');
       S.d.look = { cloak: c.c, eyes: e.c, emblem: m.id };
+      if (k.id !== 'hood') S.d.look.skin = k.id;
+      if (g.id !== 'night') S.d.look.bg = g.id;
+      if (fr.id !== 'none') S.d.look.frame = fr.id;
       return { ok: true };
     },
 
@@ -893,6 +905,11 @@ const GameCore = {
       if (a.deal) {
         it = Rules.shopDeal(today);
         this.need(S.d.shop.deal !== today, 'Товар дня уже куплен — завтра будет новый');
+      } else if (/^(skin|bg|frame):/.test(id)) { // 4.6: облик-скин, фон или рамка из Гардероба
+        const [kind, key] = id.split(':'), x = LOOK[kind].find(k => k.id === key && k.shop);
+        this.need(x, 'Такого облика нет');
+        this.need(!S.d.owned[id], 'Это уже твоё');
+        it = { id, name: `${{ skin: 'Облик', bg: 'Фон', frame: 'Рамка' }[kind]} «${x.name}»`, cur: 'zlat', price: x.shop, look: id };
       } else if (id.startsWith('look:')) {
         const key = id.slice(5), x = LOOK.cloak.find(c => c.c === key && c.shop);
         this.need(x, 'Такого товара нет');

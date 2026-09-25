@@ -31,25 +31,30 @@ const Art = (() => {
   const DARK = '#1b1030';
 
   /* ---------------- ГЛАЗА И РОТ ---------------- */
-  function eye(x, y, r) {
-    return `<ellipse cx="${x}" cy="${y}" rx="${r * 0.82}" ry="${r}" fill="#fff"/>` +
-      `<ellipse cx="${x + r * 0.12}" cy="${y + r * 0.14}" rx="${r * 0.5}" ry="${r * 0.62}" fill="${DARK}"/>` +
-      `<circle cx="${x - r * 0.1}" cy="${y - r * 0.28}" r="${r * 0.24}" fill="#fff"/>`;
+  // 4.6: белок с тенью от века и обводкой, цветная радужка с ободком, зрачок, два блика
+  function eye(x, y, r, iris = '#5b3a1a') {
+    const f = n => n.toFixed(2);
+    return `<ellipse cx="${x}" cy="${y}" rx="${f(r * 0.84)}" ry="${f(r * 1.02)}" fill="#fff" stroke="${DARK}" stroke-width="${f(Math.max(1.2, r * 0.13))}"/>` +
+      `<path d="M${f(x - r * 0.78)} ${f(y - r * 0.2)} Q${x} ${f(y - r * 1.12)} ${f(x + r * 0.78)} ${f(y - r * 0.2)} Q${x} ${f(y - r * 0.6)} ${f(x - r * 0.78)} ${f(y - r * 0.2)}Z" fill="#b9addb" opacity=".5"/>` +
+      `<ellipse cx="${f(x + r * 0.1)}" cy="${f(y + r * 0.14)}" rx="${f(r * 0.58)}" ry="${f(r * 0.7)}" fill="${iris}" stroke="${DARK}" stroke-opacity=".6" stroke-width="${f(r * 0.12)}"/>` +
+      `<ellipse cx="${f(x + r * 0.1)}" cy="${f(y + r * 0.42)}" rx="${f(r * 0.4)}" ry="${f(r * 0.3)}" fill="#fff" opacity=".22"/>` +
+      `<ellipse cx="${f(x + r * 0.12)}" cy="${f(y + r * 0.18)}" rx="${f(r * 0.3)}" ry="${f(r * 0.4)}" fill="${DARK}"/>` +
+      `<circle cx="${f(x - r * 0.14)}" cy="${f(y - r * 0.2)}" r="${f(r * 0.27)}" fill="#fff"/><circle cx="${f(x + r * 0.36)}" cy="${f(y + r * 0.46)}" r="${f(r * 0.12)}" fill="#fff" opacity=".9"/>`;
   }
   function glowEye(x, y, r, col, fid) {
     return `<ellipse cx="${x}" cy="${y}" rx="${r * 1.05}" ry="${r * 0.7}" fill="${col}" filter="url(#${fid})"/>` +
       `<ellipse cx="${x}" cy="${y}" rx="${r * 0.62}" ry="${r * 0.4}" fill="#fff" opacity=".9"/>`;
   }
   function face(L, sh, fid) {
-    const y = sh.face, dx = sh.ex, r = sh.er, ec = L.eye || L.c3;
+    const y = sh.face, dx = sh.ex, r = sh.er, ec = L.eye || L.c3, ir = L.iris || shade(L.c2, -0.35);
     let s = '<g class="art-eyes">';
     switch (L.eyes) {
-      case 'big': s += eye(100 - dx, y, r * 1.3) + eye(100 + dx, y, r * 1.3); break;
+      case 'big': s += eye(100 - dx, y, r * 1.3, ir) + eye(100 + dx, y, r * 1.3, ir); break;
       case 'sleepy':
         [100 - dx, 100 + dx].forEach(x => { s += `<path d="M${x - r * 0.85} ${y} Q${x} ${y + r * 0.8} ${x + r * 0.85} ${y}" stroke="${DARK}" stroke-width="3.2" fill="none" stroke-linecap="round"/>`; });
         break;
       case 'angry':
-        s += eye(100 - dx, y, r) + eye(100 + dx, y, r);
+        s += eye(100 - dx, y, r, ir) + eye(100 + dx, y, r, ir);
         s += `<path d="M${100 - dx - r * 1.1} ${y - r * 1.35} L${100 - dx + r * 0.9} ${y - r * 0.6}" stroke="${DARK}" stroke-width="4" stroke-linecap="round"/>`;
         s += `<path d="M${100 + dx + r * 1.1} ${y - r * 1.35} L${100 + dx - r * 0.9} ${y - r * 0.6}" stroke="${DARK}" stroke-width="4" stroke-linecap="round"/>`;
         break;
@@ -63,7 +68,7 @@ const Art = (() => {
       case 'many':
         [[-0.55, -5, 0.6], [0.55, -5, 0.6], [-1.35, 4, 0.48], [1.35, 4, 0.48], [0, 6, 0.4]].forEach(([k, oy, rs]) => { s += glowEye(100 + dx * k, y + oy, r * rs, ec, fid); });
         break;
-      default: s += eye(100 - dx, y, r) + eye(100 + dx, y, r);
+      default: s += eye(100 - dx, y, r, ir) + eye(100 + dx, y, r, ir);
     }
     s += '</g>';
     const my = y + r + 9;
@@ -284,6 +289,15 @@ const Art = (() => {
     return '';
   }
 
+  // 4.6: фактура стихии — узор внутри силуэта духа
+  const TEX = {
+    fire: ['30', '<circle cx="6" cy="8" r="1.4" fill="#fff3b0"/><circle cx="21" cy="19" r="1" fill="#fde68a"/><path d="M14 28c-2-4 2-5 0-9 3 2 3 6 0 9z" fill="#fff3b0" opacity=".7"/>', '.4'],
+    water: ['34', '<path d="M0 10q8.5-5 17 0t17 0M0 27q8.5-5 17 0t17 0" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="26" cy="18" r="2" fill="none" stroke="#fff" stroke-width=".9"/>', '.22'],
+    forest: ['32', '<path d="M6 22q4-10 12-10-2 8-12 10zM6 22l7-6" fill="#14532d" stroke="#14532d" stroke-width=".8"/><circle cx="24" cy="8" r="1.8" fill="#14532d"/><circle cx="27" cy="26" r="1.2" fill="#14532d"/>', '.2'],
+    wind: ['38', '<path d="M2 12q10-6 18 0 5 4 1 7-4 2-5-2M18 30q8-5 16 0" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>', '.26'],
+    current: ['30', '<path d="M4 6l6 5-4 3 7 6M20 18l5 4-3 2 5 4" fill="none" stroke="#fffbe6" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>', '.32'],
+    shadow: ['36', '<circle cx="5" cy="7" r=".9" fill="#fff"/><circle cx="23" cy="13" r=".6" fill="#fff"/><circle cx="14" cy="28" r=".8" fill="#fff"/><circle cx="31" cy="30" r=".5" fill="#fff"/><path d="M29 4l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#e9d5ff"/>', '.75'],
+  };
   const cache = {};
   const SPARKLES = [[26, 40, 1], [172, 58, 0.8], [160, 150, 0.65], [36, 140, 0.55]].map(([x, y, k], i) =>
     `<path class="art-blink" style="animation-delay:${i * 0.4}s" d="M${x} ${y - 12 * k} L${x + 3 * k} ${y - 3 * k} L${x + 12 * k} ${y} L${x + 3 * k} ${y + 3 * k} L${x} ${y + 12 * k} L${x - 3 * k} ${y + 3 * k} L${x - 12 * k} ${y} L${x - 3 * k} ${y - 3 * k}Z" fill="#fde047" stroke="#fff" stroke-width="1"/>`).join('');
@@ -292,7 +306,7 @@ const Art = (() => {
     `<g class="art-flicker" fill="#a21caf" opacity=".75"><path d="M40 176 C34 150 52 140 48 118 C62 136 66 154 60 176Z"/><path d="M160 176 C166 150 148 140 152 118 C138 136 134 154 140 176Z"/><path d="M92 180 C88 162 100 156 98 140 C108 154 110 166 106 180Z" opacity=".7"/></g>`;
   // shiny — сияющий вариант (другой оттенок и искры), dark — омрачённый Навью
   function spirit(sid, shiny, dark) {
-    if (!cache[sid]) cache[sid] = build(SP[sid]);
+    if (!cache[sid]) cache[sid] = ArtKit.render(SP[sid]) || build(SP[sid]); // 4.6: новый рисунок, если он уже есть
     let s = cache[sid].replace(/__ID__/g, 'a' + (++seq));
     const filters = [];
     if (shiny) filters.push(`hue-rotate(${shinyHue(sid)}deg) saturate(1.3) brightness(1.05)`);
@@ -325,26 +339,51 @@ const Art = (() => {
 
   function build(sp) {
     const L = sp.look, sh = SH[L.shape];
-    const ids = { b: '__ID__b', a: '__ID__a', f: '__ID__f' };
+    const ids = { b: '__ID__b', a: '__ID__a', f: '__ID__f', s: '__ID__s', g: '__ID__g' };
     const all = [...(L.back || []), ...(L.feats || [])];
     const back = BACK.filter(k => all.includes(k));
     const front = all.filter(k => !BACK.includes(k));
     const scale = sp.stage === 3 ? 1 : sp.stage === 2 ? 0.9 : (sp.evo ? 0.78 : 0.92);
-    const stroke = shade(L.c2, -0.45);
+    const stroke = shade(L.c2, -0.5), rim = shade(L.c3, 0.35), tex = TEX[sp.el];
+    // часть тела: defs=true — маски/обрезка для defs, иначе — сами слои
+    function part(k, d, defs) {
+      const id = '__ID__' + k;
+      if (defs) return `<clipPath id="${id}c"><path d="${d}"/></clipPath>` +
+        `<mask id="${id}r" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><path d="${d}" fill="#fff"/><path d="${d}" fill="#000" transform="translate(-7 -5)"/></mask>` +
+        `<mask id="${id}l" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><path d="${d}" fill="#fff"/><path d="${d}" fill="#000" transform="translate(6 8)"/></mask>`;
+      return `<path d="${d}" fill="url(#${ids.b})"/>` +
+        (tex ? `<rect clip-path="url(#${id}c)" width="200" height="200" fill="url(#__ID__t)" opacity="${tex[2]}"/>` : '') +
+        `<rect clip-path="url(#${id}c)" x="20" y="${sh.top - 10}" width="160" height="${sh.bottom - sh.top + 24}" fill="url(#${ids.s})"/>` +
+        `<rect mask="url(#${id}r)" width="200" height="200" fill="${rim}" opacity=".55"/>` +
+        `<rect mask="url(#${id}l)" width="200" height="200" fill="#fff" opacity=".2"/>` +
+        `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="3.2" stroke-linejoin="round"/>`;
+    }
+    // заливки деталей → градиенты (один на цвет), у каждой фигуры — свой по её рамке
+    const grads = [], gid = {};
+    const vol = str => str.replace(/fill="(#[0-9a-fA-F]{6})"/g, (m, c) => {
+      if (!gid[c]) { gid[c] = '__ID__v' + grads.length; grads.push(`<linearGradient id="${gid[c]}" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="${shade(c, 0.32)}"/><stop offset=".5" stop-color="${c}"/><stop offset="1" stop-color="${shade(c, -0.28)}"/></linearGradient>`); }
+      return `fill="url(#${gid[c]})"`;
+    });
     let s = `<svg class="art" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">` +
       `<defs><radialGradient id="${ids.b}" cx=".36" cy=".28" r=".85"><stop offset="0" stop-color="${shade(L.c1, 0.15)}"/><stop offset=".55" stop-color="${L.c1}"/><stop offset="1" stop-color="${L.c2}"/></radialGradient>` +
       `<radialGradient id="${ids.a}"><stop offset=".3" stop-color="${L.c3}" stop-opacity=".55"/><stop offset="1" stop-color="${L.c3}" stop-opacity="0"/></radialGradient>` +
-      `<filter id="${ids.f}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3"/></filter></defs>` +
-      `<ellipse class="art-shadow" cx="100" cy="180" rx="${50 * scale}" ry="${9 * scale}" fill="#000" opacity=".28"/>` +
+      `<filter id="${ids.f}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3"/></filter>` +
+      `<radialGradient id="${ids.s}" cx=".5" cy="1" r=".62"><stop offset="0" stop-color="${shade(L.c2, -0.55)}" stop-opacity=".62"/><stop offset="1" stop-color="${shade(L.c2, -0.55)}" stop-opacity="0"/></radialGradient>` +
+      `<radialGradient id="${ids.g}"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".6" stop-color="#000" stop-opacity=".16"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>` +
+      (tex ? `<pattern id="__ID__t" width="${tex[0]}" height="${tex[0]}" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)">${tex[1]}</pattern>` : '') +
+      part('d', sh.d, true) + (sh.head ? part('h', sh.head, true) : '') + `</defs>` +
+      `<ellipse class="art-shadow" cx="100" cy="180" rx="${56 * scale}" ry="${11 * scale}" fill="url(#${ids.g})"/>` +
       `<g class="art-body" transform="translate(100 176) scale(${scale}) translate(-100 -176)">`;
-    back.forEach(k => { s += feat(k, L, sh, ids); });
-    s += `<path d="${sh.d}" fill="url(#${ids.b})" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>`;
+    back.forEach(k => { s += vol(feat(k, L, sh, ids)); });
+    s += part('d', sh.d);
     if (sh.detail) s += sh.detail;
-    if (sh.head) s += `<path d="${sh.head}" fill="url(#${ids.b})" stroke="${stroke}" stroke-width="3"/>`;
+    if (sh.head) s += part('h', sh.head);
     const hy = sh.head ? sh.face - 16 : sh.top + (sh.face - sh.top) * 0.45;
-    s += `<ellipse cx="${100 - (sh.head ? sh.hw : sh.bw) * 0.42}" cy="${hy}" rx="${sh.head ? 7 : 12}" ry="${sh.head ? 4.5 : 7}" transform="rotate(-35 ${100 - (sh.head ? sh.hw : sh.bw) * 0.42} ${hy})" fill="#fff" opacity=".35"/>`;
+    s += `<ellipse cx="${100 - (sh.head ? sh.hw : sh.bw) * 0.42}" cy="${hy}" rx="${sh.head ? 7 : 12}" ry="${sh.head ? 4.5 : 7}" transform="rotate(-35 ${100 - (sh.head ? sh.hw : sh.bw) * 0.42} ${hy})" fill="#fff" opacity=".42"/>` +
+      `<circle cx="${100 - (sh.head ? sh.hw : sh.bw) * 0.42 + (sh.head ? 9 : 15)}" cy="${hy - (sh.head ? 5 : 8)}" r="${sh.head ? 2 : 3}" fill="#fff" opacity=".6"/>`;
     s += face(L, sh, ids.f);
-    front.forEach(k => { s += feat(k, L, sh, ids); });
+    front.forEach(k => { s += vol(feat(k, L, sh, ids)); });
+    if (grads.length) s = s.replace('</defs>', grads.join('') + '</defs>');
     s += `</g></svg>`;
     return s;
   }
@@ -407,23 +446,51 @@ const Art = (() => {
   }
 
   /* ---------------- ОБЪЕКТЫ КАРТЫ ---------------- */
+  // 4.6: родник — резной колодец-сруб под двускатной крышей, вода светится, над срубом — столб силы
   function springIcon(used, invaded) {
-    const w = invaded ? '#c026d3' : used ? '#a78bfa' : '#5eead4', id = 'sp' + (++seq);
-    return `<svg viewBox="0 0 80 110" class="art"><defs><linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${w}" stop-opacity=".8"/><stop offset="1" stop-color="${w}" stop-opacity="0"/></linearGradient></defs>` +
-      `<rect class="beam" x="26" y="0" width="28" height="80" fill="url(#${id})"/>` +
-      `<ellipse cx="40" cy="92" rx="30" ry="12" fill="#57534e" stroke="#292524" stroke-width="3"/>` +
-      `<ellipse cx="40" cy="88" rx="30" ry="12" fill="#a8a29e" stroke="#292524" stroke-width="3"/>` +
-      `<ellipse cx="40" cy="87" rx="21" ry="7" fill="${w}"/><ellipse cx="34" cy="85" rx="6" ry="2" fill="#fff" opacity=".7"/>` +
-      `<circle class="art-float" cx="30" cy="60" r="3" fill="${w}"/><circle class="art-float" style="animation-delay:.7s" cx="50" cy="48" r="2.5" fill="${w}"/>` +
-      (invaded ? `<g class="art-flicker" fill="#3b0764" opacity=".85"><path d="M14 92 C8 70 24 62 20 40 C34 58 36 76 30 92Z"/><path d="M66 92 C72 70 56 62 60 40 C46 58 44 76 50 92Z"/></g>` +
-        `<ellipse cx="34" cy="30" rx="4" ry="2.6" fill="#f43f5e"/><ellipse cx="46" cy="30" rx="4" ry="2.6" fill="#f43f5e"/>` : '') + `</svg>`;
+    const w = invaded ? '#d946ef' : used ? '#8b7fc0' : '#5eead4', id = 'sp' + (++seq);
+    const log = (y, i) => `<rect x="15" y="${y}" width="50" height="9" rx="4.5" fill="url(#${id}w)" stroke="#3b1f0e" stroke-width="1.6"/>` +
+      `<circle cx="${i % 2 ? 16 : 64}" cy="${y + 4.5}" r="3.6" fill="#d9a066" stroke="#3b1f0e" stroke-width="1.3"/><circle cx="${i % 2 ? 16 : 64}" cy="${y + 4.5}" r="1.4" fill="none" stroke="#8a5a2b" stroke-width=".8"/>`;
+    return `<svg viewBox="0 0 80 110" class="art"><defs>` +
+      `<linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${w}" stop-opacity="${used ? 0.35 : 0.85}"/><stop offset="1" stop-color="${w}" stop-opacity="0"/></linearGradient>` +
+      `<linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c98a4b"/><stop offset=".55" stop-color="#9a5b2a"/><stop offset="1" stop-color="#5e3314"/></linearGradient>` +
+      `<linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c4a22"/><stop offset="1" stop-color="#3b1f0e"/></linearGradient>` +
+      `<radialGradient id="${id}g"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="${w}"/><stop offset="1" stop-color="${w}" stop-opacity=".6"/></radialGradient></defs>` +
+      `<ellipse cx="40" cy="103" rx="30" ry="6" fill="#000" opacity=".35"/>` +
+      `<rect class="beam" x="28" y="0" width="24" height="74" rx="12" fill="url(#${id})"/>` +
+      // столбы и ворот с ведёрком
+      `<path d="M20 74V34M60 74V34" stroke="#3b1f0e" stroke-width="5" stroke-linecap="round"/><path d="M20 74V34M60 74V34" stroke="#9a5b2a" stroke-width="2.6" stroke-linecap="round"/>` +
+      `<path d="M19 44H61" stroke="#3b1f0e" stroke-width="4.5" stroke-linecap="round"/><path d="M19 44H61" stroke="#c98a4b" stroke-width="2" stroke-linecap="round"/>` +
+      `<path d="M44 44V56" stroke="#d6c7a1" stroke-width="1.3"/><path d="M39.5 56h9l-1.3 7h-6.4z" fill="#9a5b2a" stroke="#3b1f0e" stroke-width="1.2" stroke-linejoin="round"/>` +
+      // крыша с резным коньком
+      `<path d="M8 38 L40 14 L72 38 L66 40 L40 21 L14 40Z" fill="url(#${id}r)" stroke="#2a1508" stroke-width="1.8" stroke-linejoin="round"/>` +
+      `<path d="M14 38 L40 19 L66 38" fill="none" stroke="#d9a066" stroke-width="1.2" stroke-dasharray="3 3" opacity=".8"/>` +
+      `<path d="M40 14 C36 8 40 4 43 7 C45 9 43 12 40 11" fill="none" stroke="#3b1f0e" stroke-width="2.4" stroke-linecap="round"/>` +
+      // сруб: вода сверху, три венца
+      `<ellipse cx="40" cy="74" rx="25" ry="7" fill="#2a1508"/><ellipse cx="40" cy="74.5" rx="21" ry="5" fill="url(#${id}g)"/>` +
+      `<ellipse cx="34" cy="73.5" rx="6" ry="1.4" fill="#fff" opacity=".75"/>` +
+      log(75, 0) + log(83, 1) + log(91, 2) +
+      `<circle class="art-float" cx="30" cy="58" r="2.6" fill="${w}"/><circle class="art-float" style="animation-delay:.7s" cx="50" cy="44" r="2.2" fill="${w}"/><circle class="art-float" style="animation-delay:1.3s" cx="38" cy="30" r="1.6" fill="#fff" opacity=".8"/>` +
+      (invaded ? `<g class="art-flicker" fill="#3b0764" opacity=".88"><path d="M10 98 C4 76 20 66 16 44 C30 62 32 80 26 98Z"/><path d="M70 98 C76 76 60 66 64 44 C50 62 48 80 54 98Z"/></g>` +
+        `<ellipse cx="34" cy="62" rx="3.6" ry="2.4" fill="#f43f5e"/><ellipse cx="46" cy="62" rx="3.6" ry="2.4" fill="#f43f5e"/>` : '') + `</svg>`;
   }
+  // 4.6: разлом — каменные врата-кольцо с рунами, внутри закручивается воронка Нави
   function riftIcon(tier) {
     const col = tier === 3 ? '#fbbf24' : tier === 2 ? '#f472b6' : '#a78bfa', id = 'rf' + (++seq);
-    return `<svg viewBox="0 0 100 100" class="art"><defs><radialGradient id="${id}"><stop offset="0" stop-color="#0b0418"/><stop offset=".55" stop-color="#3b0764"/><stop offset=".85" stop-color="${col}"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient></defs>` +
-      `<ellipse cx="50" cy="88" rx="36" ry="9" fill="#000" opacity=".3"/>` +
-      `<g class="art-spin"><ellipse cx="50" cy="50" rx="44" ry="44" fill="url(#${id})"/>` +
-      `<path d="M50 10 Q80 20 78 50 M90 50 Q80 80 50 78 M50 90 Q20 80 22 50 M10 50 Q20 20 50 22" stroke="${col}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/></g></svg>`;
+    let stones = '', arms = '';
+    for (let i = 0; i < 12; i++) {
+      const a = i * 30, g = i % 3 === 0;
+      stones += `<g transform="rotate(${a} 50 50)"><path d="M43 5.5 Q50 3.5 57 5.5 L55.5 15 Q50 14 44.5 15Z" fill="${g ? '#57534e' : '#44403c'}" stroke="#1c1917" stroke-width="1.4" stroke-linejoin="round"/>` +
+        (g ? `<path d="M48 8.5l2 3.5 2-3.5" stroke="${col}" stroke-width="1.4" fill="none" stroke-linecap="round" class="art-blink" style="animation-delay:${i * 0.2}s"/>` : '') + '</g>';
+    }
+    for (let i = 0; i < 4; i++) arms += `<path d="M50 50 C60 44 66 32 58 22" transform="rotate(${i * 90} 50 50)" stroke="${col}" stroke-width="${3 - i * 0.2}" fill="none" stroke-linecap="round" opacity=".85"/>`;
+    return `<svg viewBox="0 0 100 100" class="art"><defs><radialGradient id="${id}"><stop offset="0" stop-color="#05010d"/><stop offset=".45" stop-color="#2e0a5c"/><stop offset=".8" stop-color="${col}" stop-opacity=".9"/><stop offset="1" stop-color="${col}" stop-opacity=".2"/></radialGradient>` +
+      `<radialGradient id="${id}h"><stop offset=".55" stop-color="${col}" stop-opacity=".5"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient></defs>` +
+      `<ellipse cx="50" cy="92" rx="36" ry="7" fill="#000" opacity=".35"/>` +
+      `<circle class="art-aura" cx="50" cy="50" r="50" fill="url(#${id}h)"/>` +
+      `<circle cx="50" cy="50" r="37" fill="url(#${id})"/>` +
+      `<g class="art-spin">${arms}<circle cx="50" cy="50" r="6" fill="#fff" opacity=".85"/></g>` +
+      `<circle cx="50" cy="50" r="37" fill="none" stroke="#1c1917" stroke-width="2"/>` + stones + `</svg>`;
   }
 
   /* ---------------- ПОГОДА, ЛУНА, ЗНАКИ ---------------- */
@@ -456,19 +523,39 @@ const Art = (() => {
   }
 
   /* ---------------- КАПИЩЕ И ХРАНИТЕЛЬ ---------------- */
+  // 4.6: капище — святилище: резные врата из двух идолов под балкой с коньками, между ними на каменном круге — священный огонь цвета капища
   function shrineIcon(tier, won) {
-    const flag = won ? '#fbbf24' : tier === 3 ? '#ef4444' : tier === 2 ? '#a78bfa' : '#5eead4';
-    return `<svg viewBox="0 -6 80 116" class="art">` +
-      (won ? `<circle class="art-aura" cx="40" cy="50" r="38" fill="#fbbf24" opacity=".35"/>` : '') +
-      `<ellipse cx="40" cy="100" rx="30" ry="8" fill="#000" opacity=".3"/>` +
-      `<path d="M14 100 L20 88 H60 L66 100Z" fill="#78716c" stroke="#292524" stroke-width="2"/>` +
-      `<rect x="27" y="22" width="26" height="68" rx="8" fill="#a16207" stroke="#451a03" stroke-width="2.5"/>` +
-      `<path d="M27 40 H53 M27 62 H53" stroke="#451a03" stroke-width="2"/>` +
-      `<circle cx="34" cy="31" r="2.6" fill="#1c1917"/><circle cx="46" cy="31" r="2.6" fill="#1c1917"/><path d="M35 36 Q40 38 45 36" stroke="#1c1917" stroke-width="2" fill="none"/>` +
-      `<path d="M33 48 L40 56 L47 48 M40 56 V60" stroke="${flag}" stroke-width="2.5" fill="none" stroke-linecap="round"/>` +
-      `<path d="M33 70 L40 78 L47 70 M36 82 H44" stroke="#451a03" stroke-width="2" fill="none"/>` +
-      `<path d="M24 22 L40 8 L56 22Z" fill="#57534e" stroke="#292524" stroke-width="2"/>` +
-      `<path d="M40 8 V-2" stroke="#292524" stroke-width="2"/><path class="art-sway" d="M40 -2 L58 3 L40 8Z" fill="${flag}"/>` +
+    const fire = won ? '#fbbf24' : tier === 3 ? '#f43f5e' : tier === 2 ? '#c084fc' : '#2dd4bf', id = 'sh' + (++seq);
+    const post = x => `<path d="M${x - 6} 92 V44 Q${x - 6} 36 ${x} 33 Q${x + 6} 36 ${x + 6} 44 V92Z" fill="url(#${id}w)" stroke="#2a1508" stroke-width="2" stroke-linejoin="round"/>` +
+      `<path d="M${x - 6} 56 H${x + 6} M${x - 6} 72 H${x + 6}" stroke="#2a1508" stroke-width="1.5"/>` +
+      `<path d="M${x - 5} 61 l2.5 3 2.5-3 2.5 3 2.5-3" stroke="#e3b27a" stroke-width="1.1" fill="none"/>` +
+      `<circle cx="${x - 2.4}" cy="45" r="1.7" fill="${fire}"/><circle cx="${x + 2.4}" cy="45" r="1.7" fill="${fire}"/>` +
+      `<path d="M${x - 2.5} 50 Q${x} 52 ${x + 2.5} 50" stroke="#2a1508" stroke-width="1.3" fill="none" stroke-linecap="round"/>`;
+    return `<svg viewBox="0 -6 80 116" class="art"><defs>` +
+      `<linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e3314"/><stop offset=".4" stop-color="#c98a4b"/><stop offset="1" stop-color="#4a2610"/></linearGradient>` +
+      `<linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b07040"/><stop offset="1" stop-color="#4a2610"/></linearGradient>` +
+      `<linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8b2ad"/><stop offset="1" stop-color="#57534e"/></linearGradient>` +
+      `<radialGradient id="${id}g"><stop offset="0" stop-color="${fire}" stop-opacity="${won ? 0.65 : 0.5}"/><stop offset="1" stop-color="${fire}" stop-opacity="0"/></radialGradient>` +
+      `<linearGradient id="${id}f" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${fire}"/><stop offset=".7" stop-color="${shade(fire, 0.55)}"/><stop offset="1" stop-color="#fff"/></linearGradient></defs>` +
+      `<circle class="art-aura" cx="40" cy="70" r="${won ? 44 : 36}" fill="url(#${id}g)"/>` +
+      `<ellipse cx="40" cy="103" rx="34" ry="6" fill="#000" opacity=".35"/>` +
+      // каменный круг
+      `<ellipse cx="40" cy="95" rx="30" ry="9" fill="#44403c" stroke="#1c1917" stroke-width="1.8"/><ellipse cx="40" cy="92" rx="30" ry="9" fill="url(#${id}s)" stroke="#1c1917" stroke-width="1.8"/>` +
+      `<ellipse cx="40" cy="91.5" rx="17" ry="4.6" fill="#1c1917" opacity=".55"/>` +
+      `<path d="M16 91l4 1.5M28 97l3-2.4M50 97l-2-2.6M62 92l-4 1" stroke="#1c1917" stroke-width="1.2" opacity=".6"/>` +
+      // врата
+      post(16) + post(64) +
+      `<path d="M5 30 Q12 32 16 28 H64 Q68 32 75 30 L73 36 Q67 38 63 35 H17 Q13 38 7 36Z" fill="url(#${id}b)" stroke="#2a1508" stroke-width="1.8" stroke-linejoin="round"/>` +
+      `<path d="M5 30 C1 26 3 20 8 22 C11 23 10 27 7 27M75 30 C79 26 77 20 72 22 C69 23 70 27 73 27" fill="none" stroke="#2a1508" stroke-width="2.2" stroke-linecap="round"/>` +
+      `<path d="M22 31.5 h36" stroke="#e3b27a" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".8"/>` +
+      `<path d="M40 28 V17" stroke="#2a1508" stroke-width="1.8"/><path class="art-sway" d="M40 17 L55 21 L40 25Z" fill="${fire}" stroke="#2a1508" stroke-width="1"/>` +
+      // оберег на балке
+      `<circle cx="40" cy="41" r="5.5" fill="none" stroke="${fire}" stroke-width="1.6"/><path d="M40 37v8M36 41h8" stroke="${fire}" stroke-width="1.4"/>` +
+      // огонь на кругу
+      `<g class="art-flicker"><path d="M40 60 C47 70 51 76 48 84 C46 90 34 90 32 84 C29 76 34 72 36 66 C38 71 40 70 40 60Z" fill="url(#${id}f)"/>` +
+      `<path d="M40 72 C44 77 45 81 43 85 C41 88 38 88 37 85 C35 81 38 78 40 72Z" fill="#fffbeb" opacity=".9"/></g>` +
+      `<path d="M31 88 L49 84 M31 84 L49 88" stroke="#3b1f0e" stroke-width="3" stroke-linecap="round"/>` +
+      `<circle class="art-float" cx="32" cy="58" r="1.5" fill="${fire}"/><circle class="art-float" style="animation-delay:.8s" cx="47" cy="52" r="1.2" fill="#fff" opacity=".85"/>` +
       `</svg>`;
   }
   function guardian(color) {
@@ -497,6 +584,9 @@ const Art = (() => {
   const HEX = /^#[0-9a-f]{6}$/i;
   function avatar(look) {
     look = look || {};
+    // 4.6: облик-скин (js/skins-art.js) — поверх него те же глаза и эмблема
+    // только облики из списка LOOK.skin: облик приходит и от других игроков ('constructor', 'draw' и т. п. — мимо)
+    if (look.skin && look.skin !== 'hood' && typeof SkinArt !== 'undefined' && LOOK.skin.some(k => k.id === look.skin)) return SkinArt.draw(look.skin, look);
     const cloak = HEX.test(look.cloak) ? look.cloak : '#6d28d9', eyes = HEX.test(look.eyes) ? look.eyes : '#5eead4';
     return `<svg viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="48" fill="#241a45"/>` +
       `<path d="M50 14 C70 14 80 34 80 54 L84 96 H16 L20 54 C20 34 30 14 50 14Z" fill="${cloak}"/>` +
@@ -506,5 +596,30 @@ const Art = (() => {
       ((Object.prototype.hasOwnProperty.call(EMBLEM, look.emblem) && EMBLEM[look.emblem]) || EMBLEM.charm) + `</svg>`;
   }
 
-  return { spirit, of, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar };
+  // 4.6: фон и рамка карточки Ловчего (Гардероб): только значения из LOOK.bg / LOOK.frame; картинки — js/looks-art.js
+  const cardUrl = {};
+  function cardSkin(el, look) {
+    if (!el) return;
+    look = look || {};
+    const url = (k, make) => cardUrl[k] || (cardUrl[k] = `url("data:image/svg+xml,${encodeURIComponent(make())}")`);
+    const ok = typeof LookArt !== 'undefined' && typeof LookArt.cardBg === 'function' && typeof LookArt.cardFrame === 'function';
+    const bg = ok && look.bg && look.bg !== 'night' && LOOK.bg.some(x => x.id === look.bg) ? look.bg : null;
+    const fr = ok && look.frame && look.frame !== 'none' && LOOK.frame.some(x => x.id === look.frame) ? look.frame : null;
+    el.classList.toggle('card-bg', !!bg); el.classList.toggle('card-fr', !!fr);
+    if (bg) el.style.setProperty('--card-bg', url('b:' + bg, () => LookArt.cardBg(bg))); else el.style.removeProperty('--card-bg');
+    if (fr) el.style.setProperty('--card-fr', url('f:' + fr, () => LookArt.cardFrame(fr))); else el.style.removeProperty('--card-fr');
+    // живые части рамки — угловые украшения, навершие и подвеска: встроенный SVG, чтобы работали анимации (пламя, блеск самоцветов, руны)
+    const old = el.querySelector(':scope > .cf-ov'); if (old) old.remove();
+    const P = fr && typeof LookArt.frameParts === 'function' ? LookArt.frameParts(fr) : null;
+    if (P) {
+      const n = 'cf' + (++cfN);
+      const sv = (cls, vb, body) => body ? `<svg class="cf ${cls}" viewBox="${vb}" aria-hidden="true">${body}</svg>` : '';
+      const one = !Array.isArray(P.corners), c = one ? [P.corner, P.corner, P.corner, P.corner] : P.corners;
+      el.insertAdjacentHTML('beforeend', (`<div class="cf-ov" aria-hidden="true">${sv('tl', '0 0 80 80', c[0])}${sv('tr' + (one ? ' mir' : ''), '0 0 80 80', c[1])}` +
+        `${sv('bl' + (one ? ' mir' : ''), '0 0 80 80', c[2])}${sv('br' + (one ? ' mir' : ''), '0 0 80 80', c[3])}${sv('crest', '0 0 160 64', P.crest)}${sv('foot', '0 0 120 40', P.foot)}</div>`).replace(/__ID__/g, n));
+    }
+  }
+  let cfN = 0;
+  const emblem = id => (Object.prototype.hasOwnProperty.call(EMBLEM, id) && EMBLEM[id]) || EMBLEM.charm;
+  return { spirit, of, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
 })();
