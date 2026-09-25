@@ -221,7 +221,8 @@ const MapView = {
         const f = e.touches && e.touches.length === 1 ? e.touches[0] : e, s = this._startPoint;
         const a = -self.rot * Math.PI / 180, dx = f.clientX - s.x, dy = f.clientY - s.y;
         const p = { clientX: s.x + dx * Math.cos(a) - dy * Math.sin(a), clientY: s.y + dx * Math.sin(a) + dy * Math.cos(a) };
-        return move.call(this, { type: e.type, target: e.target, srcElement: e.srcElement, touches: e.touches ? [p] : undefined, clientX: p.clientX, clientY: p.clientY,
+        const tg = e.target && e.target.nodeType === 1 ? e.target : this._element;
+        return move.call(this, { type: e.type, target: tg, srcElement: tg, touches: e.touches ? [p] : undefined, clientX: p.clientX, clientY: p.clientY,
           preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation() });
       };
       d.enable();

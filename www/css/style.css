@@ -2968,3 +2968,28 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 #hud .compass text { font-family: var(--f-display); font-size: 9.5px; fill: #efe9ff; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: rgba(14, 7, 34, .8); stroke-width: 2.4px; stroke-linejoin: round; }
 #hud .compass text.n { font-size: 11.5px; fill: #fcd34d; }
 #joystick:not(.hidden) ~ .compass { bottom: calc(156px + var(--sb)); }
+
+/* ================= 4.7: дружины — гербы и знамёна ================= */
+.clan-pick { gap: 12px; margin-top: 14px; }
+/* карточка-знамя: герб слева, название золотом, девиз; цвет дружины — свечение от герба и кайма */
+.clan-opt { position: relative; overflow: hidden; grid-template-columns: 72px minmax(0, 1fr) 16px; column-gap: 12px; row-gap: 2px; min-height: 84px; padding: 10px 14px 10px 10px; border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--cc) 65%, #f3cf6b 20%); color: #f5efff;
+  background: radial-gradient(90px 90px at 42px 50%, color-mix(in srgb, var(--cc) 42%, transparent), transparent 75%),
+    linear-gradient(90deg, color-mix(in srgb, var(--cc) 22%, transparent), transparent 70%), var(--lacq),
+    linear-gradient(180deg, rgba(48, 32, 98, .92), rgba(16, 10, 38, .95));
+  box-shadow: 0 0 0 1px rgba(6, 3, 18, .6), inset 0 1px 0 rgba(255, 240, 200, .12), 0 8px 18px rgba(6, 3, 18, .45);
+  transition: transform .15s, box-shadow .2s, border-color .2s; }
+.clan-opt::after { content: ''; position: absolute; inset: 4px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--cc) 30%, transparent); pointer-events: none; }
+.clan-opt .clan-crest { grid-row: span 2; width: 72px; height: 79px; margin: -4px 0; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--cc) 70%, transparent)) drop-shadow(0 4px 6px rgba(0, 0, 0, .45)); }
+.clan-crest .crest { display: block; width: 100%; height: 100%; }
+.clan-opt b { align-self: end; font-family: var(--f-display); font-weight: 400; font-size: clamp(12.5px, 3.55vw, 17px); letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15;
+  background: linear-gradient(180deg, #fffbea, #f7dd8f 55%, #e0a93e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.clan-opt small { align-self: start; font-family: var(--f-head); font-size: 13px; color: color-mix(in srgb, var(--cc) 35%, #e9e1ff); }
+.clan-opt .clan-go { grid-row: 1 / span 2; grid-column: 3; width: 18px; height: 16px; margin: 0; border-radius: 0; transform: none; box-shadow: none; background: var(--tn-arrow) center / contain no-repeat; opacity: .75; }
+.clan-opt:active { transform: scale(.98); border-color: #f3cf6b; box-shadow: 0 0 0 1px rgba(6, 3, 18, .6), 0 0 22px color-mix(in srgb, var(--cc) 55%, transparent); }
+/* шапка экрана дружины — тот же герб */
+.clan-head { gap: 16px; padding: 14px 16px; border-color: color-mix(in srgb, var(--cc) 65%, #f3cf6b 20%);
+  background: radial-gradient(110px 110px at 50px 50%, color-mix(in srgb, var(--cc) 40%, transparent), transparent 75%), var(--lacq), linear-gradient(180deg, rgba(48, 32, 98, .92), rgba(16, 10, 38, .95)); }
+.clan-head .clan-crest { flex: none; width: 82px; height: 90px; margin: -6px 0; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--cc) 70%, transparent)) drop-shadow(0 4px 6px rgba(0, 0, 0, .45)); }
+.clan-head b { font-family: var(--f-display); font-weight: 400; font-size: 21px; letter-spacing: .4px; background: linear-gradient(180deg, #fffbea, #f7dd8f 55%, #e0a93e); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.clan-head small { font-family: var(--f-head); font-size: 13.5px; color: color-mix(in srgb, var(--cc) 35%, #e9e1ff); }
