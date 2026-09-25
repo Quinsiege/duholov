@@ -399,7 +399,7 @@ const Trailer = {
           <div class="fm-men"><div class="fm-vm"><i></i>${Art.stack(CutArt.velimir().replace('class="vm-breath"', ''), 'velimir')}</div>${hero ? `<div class="fm-hero"><i></i>${hero}</div>` : ''}</div>
         </div>
         <canvas class="fm-fx"></canvas>
-        <div class="fm-flash"></div><div class="fm-grain"></div><div class="fm-vig"></div><i class="fm-dip"></i>
+        <div class="fm-flash"></div><div class="fm-grain"></div><div class="fm-vig"></div><i class="fm-swipe"></i>
         <div class="fm-logo"><div class="fm-lcharm"><i></i>${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p>
           <span class="fm-ver">v${APP_VERSION}</span><button class="btn primary wide fm-go">${o.replay ? 'Закрыть' : 'Начать'}</button></div>
         <div class="fm-cap"></div>
@@ -457,18 +457,20 @@ const Trailer = {
         let tt = 0;
         // o.only — только эта сцена (для съёмки кадров)
         this.SCENES.slice(i0, o.only ? i0 + 1 : undefined).forEach(([dur, cls, text], k) => {
-          // склейка: эффекты прошлой сцены не попадают в новую. Кадр плавно уходит в темноту (камера чуть наезжает), частицы, вспышка и тряска
-          // сбрасываются, старые слои гаснут мгновенно (без переходов), новая сцена проявляется. Вступление
+          // склейка без затемнения: камера рывком наезжает на старую сцену со смазом и засветкой, через кадр
+          // проносится светящаяся полоса тумана Нави, на пике смаза сцена меняется (частицы, вспышка и тряска
+          // сбрасываются, старые слои гаснут мгновенно), новая выезжает из смаза. Вступление
           // (разлом → Кощей → рой) — одна история на общем небе: там только сброс частиц и вспышки.
-          const joined = this.JOINED.includes(cls), dip = k > 0 && !joined;
-          if (dip) at(tt - 600, () => root.classList.add('dip'));
+          const joined = this.JOINED.includes(cls), whip = k > 0 && !joined && !calm;
+          if (whip) at(tt - 420, () => { root.classList.add('fm-swp', 'fm-tout'); Sfx.noise(.8, { vol: .08, type: 'bandpass', f: 300, to: 3200, q: 2 }); });
           at(tt, () => {
             fx.clear();
             root.querySelector('.fm-flash').classList.remove('on');
             root.querySelector('.fm-cam').classList.remove('shake', 'shake2');
-            if (dip) { root.className = 'fm on dip cut'; void root.offsetWidth; }
-            root.className = 'fm on' + (dip ? ' dip enter' : '') + ' s-' + cls;
-            if (dip) timers.push(setTimeout(() => root.classList.remove('dip'), 60));
+            // на пике смаза: новая сцена встаёт сразу, без переходов (старые слои не тянутся), затем переходы снова включены
+            root.className = 'fm on' + (whip ? ' fm-swp fm-tin fm-cut' : '') + ' s-' + cls;
+            if (whip) { void root.offsetWidth; root.classList.remove('fm-cut'); }
+            if (whip) timers.push(setTimeout(() => root.classList.remove('fm-swp'), 600));
             capDur = dur || 6000;
             t.cap(text);
             fx.mode(cls);

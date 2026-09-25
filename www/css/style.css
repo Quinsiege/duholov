@@ -1985,15 +1985,19 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
 @keyframes fmGrain { 0% { transform: translate(0, 0); } 20% { transform: translate(-6%, 4%); } 40% { transform: translate(5%, -3%); } 60% { transform: translate(-3%, -6%); } 80% { transform: translate(4%, 5%); } }
 .fm-vig { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 50%, rgba(0, 0, 0, .75) 100%); }
-/* склейка сцен: плавное затемнение (0,6 с) с лёгким наездом камеры, новая сцена проявляется из темноты (0,9 с) и камера мягко отъезжает на место;
-   на время смены все переходы выключены — старые слои гаснут сразу, а не тянутся в новую сцену */
-.fm-dip { position: absolute; inset: 0; z-index: 6; background: #04020b; opacity: 0; pointer-events: none; transition: opacity .9s cubic-bezier(.3, 0, .2, 1); }
-.fm.dip .fm-dip { opacity: 1; transition: opacity .6s cubic-bezier(.5, 0, .7, 1); }
-.fm.dip .fm-cam:not(.shake):not(.shake2) { animation: fmCamOut .6s cubic-bezier(.5, 0, .7, 1) forwards; }
-.fm.enter .fm-cam:not(.shake):not(.shake2) { animation: fmCamIn 1.3s cubic-bezier(.2, .7, .2, 1) backwards; }
-@keyframes fmCamOut { to { transform: scale(1.04); } }
-@keyframes fmCamIn { from { transform: scale(1.05); } }
-.fm.cut *:not(.fm-dip) { transition: none !important; }
+/* склейка сцен без затемнения («хлыст» камеры): старая сцена рывком наезжает со смазом и засветкой (0,42 с), через кадр
+   проносится светящаяся полоса тумана Нави, на пике смаза сцена меняется, новая выезжает из смаза (0,7 с).
+   На миг смены все переходы выключены — старые слои исчезают сразу, а не тянутся в новую сцену */
+.fm-swipe { position: absolute; top: -20%; bottom: -20%; left: -60%; right: -60%; z-index: 6; pointer-events: none; opacity: 0; mix-blend-mode: screen; filter: blur(8px);
+  background: linear-gradient(100deg, transparent 32%, rgba(124, 58, 237, .28) 40%, rgba(216, 180, 254, .7) 46%, rgba(255, 247, 214, .95) 50%, rgba(216, 180, 254, .7) 54%, rgba(124, 58, 237, .28) 60%, transparent 68%),
+    repeating-linear-gradient(100deg, transparent 0 22px, rgba(255, 255, 255, .06) 22px 24px); }
+.fm.fm-swp .fm-swipe { animation: fmSwipe .95s cubic-bezier(.55, 0, .45, 1) both; }
+@keyframes fmSwipe { 0% { opacity: 1; transform: translateX(-72%) skewX(-8deg); } 100% { opacity: 1; transform: translateX(72%) skewX(-8deg); } }
+.fm.fm-tout .fm-cam:not(.shake):not(.shake2) { animation: fmCamOut .42s cubic-bezier(.6, 0, .9, .5) forwards; }
+.fm.fm-tin .fm-cam:not(.shake):not(.shake2) { animation: fmCamIn .75s cubic-bezier(.1, .7, .25, 1) backwards; }
+@keyframes fmCamOut { to { transform: scale(1.14) translateX(-2%); filter: blur(12px) brightness(1.5) saturate(1.3); } }
+@keyframes fmCamIn { from { transform: scale(.93) translateX(2%); filter: blur(12px) brightness(1.5) saturate(1.3); } }
+.fm.fm-cut *:not(.fm-swipe) { transition: none !important; }
 
 /* логотип */
 .fm-logo { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; opacity: 0; pointer-events: none; transition: opacity .6s;
