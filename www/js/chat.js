@@ -75,7 +75,7 @@ const Chat = {
       };
       // 3.25: у чужих сообщений — кружок с первой буквой имени (цвет дружины), подряд идущие — без повторного имени
       const ava = w => { const c = CLANS[w.clan] ? CLANS[w.clan].color : GUARD_COLORS[Math.floor(U.h('ava' + w.name) * GUARD_COLORS.length)]; return `style="--ac:${c}"`; };
-      list.innerHTML = `<div class="chat-hint"><span>${hint} Ссылки запрещены, грубость скрывается.</span>${nh ? `<button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map((m, i) => {
+      list.innerHTML = `<div class="chat-hint"><span>${hint} Ссылки запрещены, грубость скрывается. <button class="linkish chat-rules">Правила чата</button></span>${nh ? `<button class="linkish chat-unhide">Скрытых Ловчих: ${nh} · Вернуть</button>` : ''}</div>` + (ms.length ? ms.map((m, i) => {
         const day = dayLine(m.t), p = ms[i - 1], cont = !day && p && p.pid === m.pid && m.t - p.t < 300000, w = who(m);
         const whoAttr = `data-pid="${U.esc(m.pid)}" data-name="${U.esc(w.name)}"`;
         return `${day}<div class="mrow ${m.mine ? 'mine' : ''} ${cont ? 'cont' : ''}">
@@ -114,6 +114,7 @@ const Chat = {
     UI.swipeTabs(body, this.channels().map(c => c[0]), () => this.ch, show);
     list.addEventListener('click', e => {
       if (e.target.closest('.chat-unhide')) { this.hiddenModal(() => render(false)); return; }
+      if (e.target.closest('.chat-rules')) { UI.doc('Правила чата', 'terms.html#chat'); return; }
       const w = e.target.closest('.msg-who'); if (!w) return;
       const msg = w.closest('.mrow').querySelector('.msg'), pid = w.dataset.pid, name = w.dataset.name;
       Friends.card(pid, { name, chat: {
