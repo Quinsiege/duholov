@@ -18,7 +18,7 @@ const MapView = {
     setInterval(() => this.setTiles(), 60000);
 
     // 4.8.1: зона досягаемости — круг Ловчего (свечение, кольцо рун, волна); размер — радиус взаимодействия на текущем масштабе
-    this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000,
+    this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000, flat: true,
       icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
     this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
     this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); });
@@ -102,6 +102,9 @@ const MapView = {
       this.tiles.clearLayout(); this.tiles.rerenderTiles();
     }
     document.body.classList.toggle('night', night);
+    // 4.11: дымка горизонта у наклонённой карты — цвета земли этого часа
+    const hz = nav ? (lk.snow && NavMap.SEASON.snow[night ? 'dark' : 'light'].bg) || NavMap.P[lk.phase].bg : night ? '#1b1b1f' : '#d9d3c7';
+    document.body.style.setProperty('--haze', hz);
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
 
@@ -233,24 +236,27 @@ const MapView = {
       d.disable();
       d._onDown = function (e) { down.call(this, e); this._parentScale = { x: 1, y: 1 }; };
       d._onMove = function (e) {
-        if (!self.rot || (e.touches && e.touches.length > 1) || !this._startPoint) return move.call(this, e);
+        if ((!self.rot && !self.tilt) || (e.touches && e.touches.length > 1) || !this._startPoint) return move.call(this, e);
         const f = e.touches && e.touches.length === 1 ? e.touches[0] : e, s = this._startPoint;
-        const a = -self.rot * Math.PI / 180, dx = f.clientX - s.x, dy = f.clientY - s.y;
-        const p = { clientX: s.x + dx * Math.cos(a) - dy * Math.sin(a), clientY: s.y + dx * Math.sin(a) + dy * Math.cos(a) };
+        const a = self.plane(s.x, s.y), b = self.plane(f.clientX, f.clientY);
+        const p = { clientX: s.x + b.x - a.x, clientY: s.y + b.y - a.y };
         const tg = e.target && e.target.nodeType === 1 ? e.target : this._element;
         return move.call(this, { type: e.type, target: tg, srcElement: tg, touches: e.touches ? [p] : undefined, clientX: p.clientX, clientY: p.clientY,
           preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation() });
       };
       d.enable();
     }
-    // значки на карте стоят прямо: поворот в обратную сторону вокруг точки привязки
+    // значки на карте стоят прямо: поворот в обратную сторону вокруг точки привязки;
+    // 4.11: при наклоне ещё и встают с земли лицом к игроку (плоские круги — зоны, круг Ловчего — лежат на земле)
     const setPos = L.Marker.prototype._setPos;
     L.Marker.prototype._setPos = function (p) {
       setPos.call(this, p);
       const el = this._icon;
-      if (!el || this._map !== self.map || !self.rot) return;
+      if (!el || this._map !== self.map || (!self.rot && !self.tilt)) return;
       el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
-      el.style.transform += ` rotate(${-self.rot}deg)`;
+      if (self.rot) el.style.transform += ` rotate(${-self.rot}deg)`;
+      // и чуть приподняты над землёй: иначе нижняя половина значка ушла бы «под» плитки карты
+      if (self.tilt && !this.options.flat) el.style.transform += ` rotateX(${-self.tilt}deg) translateZ(36px)`;
     };
     // жест: два пальца поворачиваются — карта за ними (с порогом, чтобы щипок-масштаб не крутил карту)
     let g = null;
@@ -269,28 +275,64 @@ const MapView = {
     // компас
     const c = U.$('#compassBtn');
     if (c) { c.innerHTML = this.compassSvg(); c.onclick = () => { Sfx.play('tap'); this.northUp(); }; }
-    addEventListener('resize', () => { if (this._sq) this.square(true); });
+    addEventListener('resize', () => { if (this._sq) this.layout(); });
+    if (!U.$('#mapHaze')) { const h = document.createElement('div'); h.id = 'mapHaze'; box.after(h); }
+    this.setTilt(Cfg.s.tilt3d !== false);
   },
-  // слой карты — квадрат с диагональю экрана, пока карта повёрнута (иначе — обычный, меньше плиток)
-  square(on) {
-    const box = U.$('#map');
+  /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана,
+     вдали — дымка горизонта. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
+     трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат). */
+  TILT: 32, PD: 1100, tilt: 0, _py: 0,
+  layout() {
+    const box = U.$('#map'), on = !!(this.tilt || this.rot), W = innerWidth, H = innerHeight;
     this._sq = on;
-    if (on) box.style.setProperty('--md', Math.ceil(Math.hypot(innerWidth, innerHeight)) + 2 + 'px');
+    this._py = this.tilt ? Math.round(H * .6) : H / 2;
+    if (on) {
+      const t = this.tilt * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD, py = this._py;
+      const top = this.tilt ? py * d / (d * cs - py * sn) : py, bot = this.tilt ? (H - py) * d / (d * cs + (H - py) * sn) : H - py;
+      const half = Math.max(top, bot), xw = this.tilt ? (W / 2) * (d + top * sn) / d : W / 2;
+      const mw = this.rot ? 2 * Math.hypot(xw, half) : 2 * xw, mh = this.rot ? mw : 2 * half;
+      box.style.setProperty('--mw', Math.ceil(mw) + 4 + 'px');
+      box.style.setProperty('--mh', Math.ceil(mh) + 4 + 'px');
+      box.style.setProperty('--py', this._py + 'px');
+      box.style.setProperty('--tilt', this.tilt + 'deg');
+      box.style.setProperty('--pd', this.PD + 'px');
+    }
     box.classList.toggle('rot', on);
+    box.classList.toggle('tilt', !!this.tilt);
+    document.body.classList.toggle('tilt', !!this.tilt);
     this.map.invalidateSize({ animate: false });
+    this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
     // подпись OpenStreetMap остаётся видна: у повёрнутой карты — копия в углу экрана
     const at = U.$('#mapAttr');
     if (at) { at.classList.toggle('hidden', !on); if (on) at.innerHTML = this.map.attributionControl.getContainer().innerHTML; }
   },
+  setTilt(on) {
+    this.tilt = on ? this.TILT : 0;
+    this.layout();
+    this.zoomMode();
+  },
+  // при повороте и наклоне масштаб — вокруг игрока (точку между пальцами Leaflet у такого слоя считает неверно)
+  zoomMode() { const o = this.map.options, c = this.rot || this.tilt; o.touchZoom = o.scrollWheelZoom = o.doubleClickZoom = c ? 'center' : true; },
+  // точка экрана → точка на плоскости карты (относительно игрока, в осях ненаклонённой и неповёрнутой карты)
+  plane(x, y) {
+    let X = x - innerWidth / 2, Y = y - (this._py || innerHeight / 2);
+    if (this.tilt) {
+      const t = this.tilt * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD;
+      Y = Y * d / (cs * d + Y * sn); X = X * (d - Y * sn) / d;
+    }
+    if (this.rot) { const a = -this.rot * Math.PI / 180; [X, Y] = [X * Math.cos(a) - Y * Math.sin(a), X * Math.sin(a) + Y * Math.cos(a)]; }
+    return { x: X, y: Y };
+  },
   setRot(r) {
     r = ((r % 360) + 540) % 360 - 180;
     if (Math.abs(r) < 0.05) r = 0;
-    if (!!r !== !!this._sq) this.square(!!r);
+    const turned = !!r !== !!this.rot;
     this.rot = r;
+    if (turned) this.layout();
     U.$('#map').style.setProperty('--mrot', r + 'deg');
-    // при повороте масштаб — вокруг центра (точку между пальцами Leaflet у повёрнутого слоя считает неверно)
-    const o = this.map.options; o.touchZoom = o.scrollWheelZoom = o.doubleClickZoom = r ? 'center' : true;
-    this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
+    this.zoomMode();
+    if (!turned) this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
     const el = this.player && this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + r}deg)`;
     const c = U.$('#compassBtn');
@@ -486,7 +528,7 @@ const MapView = {
     for (const [id, z] of this.zones) if (!want.has(id) || want.get(id).css !== z.css) { z.m.remove(); this.zones.delete(id); }
     for (const [id, w] of want) {
       if (this.zones.has(id)) continue;
-      const m = L.marker([w.e.lat, w.e.lng], { interactive: false, keyboard: false, zIndexOffset: -4000,
+      const m = L.marker([w.e.lat, w.e.lng], { interactive: false, keyboard: false, zIndexOffset: -4000, flat: true,
         icon: L.divIcon({ className: 'mk-zone', iconSize: [0, 0], iconAnchor: [0, 0], html: `<div class="zn ${w.cls}" style="${w.css}">${w.inner}</div>` }) }).addTo(this.map);
       this.zones.set(id, { m, r: w.r, css: w.css });
       this.fitZone(m, w.r);

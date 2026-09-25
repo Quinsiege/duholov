@@ -2956,7 +2956,16 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 
 /* ================= 4.7: поворот карты и компас ================= */
 /* пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют), повёрнутый вокруг центра экрана */
-#map.rot { inset: auto; left: 50%; top: 50%; width: var(--md); height: var(--md); margin: calc(var(--md) / -2) 0 0 calc(var(--md) / -2); transform: rotate(var(--mrot, 0deg)); }
+/* 4.11: повёрнутая и/или наклонённая карта — слой больше экрана, игрок в точке опоры (см. MapView.layout) */
+#map.rot { inset: auto; left: calc(50% - var(--mw) / 2); top: calc(var(--py) - var(--mh) / 2); width: var(--mw); height: var(--mh); margin: 0;
+  transform: perspective(var(--pd, 1100px)) rotateX(var(--tilt, 0deg)) rotate(var(--mrot, 0deg)); }
+/* наклон: значки встают с земли — им нужно общее 3D-пространство с картой (overflow:hidden его бы сплющил) */
+#map.tilt { overflow: visible; transform-style: preserve-3d; }
+#map.tilt .leaflet-map-pane, #map.tilt .leaflet-marker-pane { transform-style: preserve-3d; }
+/* дымка горизонта: даль растворяется в цвете земли этого часа */
+#mapHaze { position: fixed; left: 0; right: 0; top: 0; height: 30%; z-index: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
+  background: linear-gradient(var(--haze, #120b25) 0%, color-mix(in srgb, var(--haze, #120b25) 70%, transparent) 30%, color-mix(in srgb, var(--haze, #120b25) 25%, transparent) 65%, transparent 100%); }
+body.tilt #mapHaze { opacity: 1; }
 #map.rot .leaflet-control-container { display: none; }
 #mapAttr { position: fixed; right: 0; bottom: var(--sb); z-index: 1; padding: 0 5px; font-size: 9px; line-height: 1.5; border-radius: 6px 0 0 0; background: rgba(18, 12, 36, .55); color: #cfc8e6; }
 #mapAttr a { color: #e9e3ff; }
