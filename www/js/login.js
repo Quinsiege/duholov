@@ -179,7 +179,7 @@ const Login = {
   // 4.4: экран входа — сцена во весь экран (Scene, «3D» от наклона телефона), наверху знак Ордена, внизу стеклянная панель.
   // Вход через сервисы — выезжающая снизу панель (sheet), а не всегда на экране
   logo(sub) {
-    return `<div class="lg-top"><div class="lg-charm">${Art.charm('charm3')}</div><h1 class="lg-title">ДУХОЛОВ</h1><p>${sub}</p></div>`;
+    return `<div class="lg-top"><h1 class="lg-title">ДУХОЛОВ</h1><p>${sub}</p></div>`;
   },
   // корень экрана входа: фон + содержимое
   screenRoot() {

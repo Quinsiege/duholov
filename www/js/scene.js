@@ -1,8 +1,8 @@
 'use strict';
 /* 4.4: фоны экрана входа и экрана загрузки.
    Настройки — www/scenes/scenes.json (формат — docs/scenes.md). Пока своих изображений нет — фон как во вкладках игры
-   (лак с тонким узором). 4.6: фон неподвижен (без параллакса и парящих духов), над ним — светлячки.
-   В спокойном режиме и при «уменьшить анимацию» светлячки замирают, в режиме экономии их нет. */
+   (лак с тонким узором). 4.6: фон неподвижен (без параллакса, парящих духов и светлячков); частицы — только если заданы
+   в scenes.json. В спокойном режиме и при «уменьшить анимацию» частицы замирают, в режиме экономии их нет. */
 
 const Scene = {
   CFG: null,
@@ -52,16 +52,16 @@ const Scene = {
     img.src = src;
   },
 
-  /* ---------- экран входа: фон (картинки-слои из scenes.json или встроенный) и светлячки ---------- */
+  /* ---------- экран входа: фон (картинки-слои из scenes.json или встроенный) и частицы, если заданы ---------- */
   async mount(el, id) {
     const s = await this.pick(id);
     if (!el.isConnected) return null;
     const imgs = Array.isArray(s.layers) ? s.layers.filter(l => l && l.src) : [];
     el.classList.add('scene');
     el.innerHTML = `<div class="sc-cam">${imgs.length ? imgs.map(l => this.imgLayer(l)).join('') : this.builtin()}</div>
-      ${(s.particles || 'fireflies') !== 'none' && !Cfg.s.eco ? '<canvas class="sc-fx"></canvas>' : ''}<div class="sc-shade"></div>`;
+      ${(s.particles || 'none') !== 'none' && !Cfg.s.eco ? '<canvas class="sc-fx"></canvas>' : ''}<div class="sc-shade"></div>`;
     if (s.shade != null) el.style.setProperty('--sc-shade', U.clamp(+s.shade, 0, 1));
-    return this.animate(el, s.particles || 'fireflies');
+    return this.animate(el, s.particles || 'none');
   },
   // слой-картинка: anim: sway | drift | float | pulse; fit: cover | contain | bottom (depth из старых настроек не используется)
   imgLayer(l) {
@@ -72,7 +72,7 @@ const Scene = {
   // 4.6: встроенный фон — тот же, что во вкладках игры: лак с тонким узором и мягким сиянием сверху
   builtin() { return '<div class="sc-l sc-lacq"></div>'; },
 
-  /* ---------- светлячки ---------- */
+  /* ---------- частицы (светлячки, снег, искры) ---------- */
   animate(el, particles) {
     const cv = el.querySelector('canvas.sc-fx'), fx = cv ? this.particles(cv, particles) : null;
     const st = { on: true, raf: 0 };
