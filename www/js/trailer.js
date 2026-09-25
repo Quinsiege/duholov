@@ -105,38 +105,77 @@ const Trailer = {
       <g fill="#fff3c4">${[[30, 40], [88, 60], [40, 86], [82, 30], [95, 96]].map(([cx, cy], i) => `<circle class="fm-moth" style="--i:${i}" cx="${cx}" cy="${cy}" r="1.3"/>`).join('')}</g>
     </svg>`;
   },
-  // мокрый асфальт, лужа с отражением луны, круги от капель
+  // молния: ломаная из середин отрезков со сдвигом (чем мельче, тем меньше сдвиг) и 2–3 ветвями вниз-вбок
+  bolt(x0, y0, x1, y1, seed, disp = 60, twig = false) {
+    let r = seed;
+    const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647, f = v => v.toFixed(1);
+    let pts = [[x0, y0], [x1, y1]], d = disp;
+    for (let it = 0; it < (twig ? 4 : 6); it++) {
+      const np = [pts[0]];
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+        np.push([(ax + bx) / 2 + (rnd() - .5) * d, (ay + by) / 2 + (rnd() - .5) * d * .35], [bx, by]);
+      }
+      pts = np; d *= .55;
+    }
+    const path = 'M' + pts.map(p => f(p[0]) + ' ' + f(p[1])).join('L');
+    if (twig) return path;
+    let br = '';
+    for (let k = 0; k < 3; k++) {
+      const i = 8 + Math.floor(rnd() * (pts.length - 20)), [sx, sy] = pts[i], len = 40 + rnd() * 90, a = (rnd() < .5 ? -1 : 1) * (.35 + rnd() * .6);
+      br += this.bolt(sx, sy, sx + Math.sin(a) * len, sy + Math.cos(a) * len, 1 + Math.floor(rnd() * 1e6), disp * .45, true);
+    }
+    return { path, br };
+  },
+  // слой дождя: плитка со случайными штрихами (бесшовно по вертикали) — near ближе: толще, ярче, длиннее
+  rainTile(seed, n, len, w, a) {
+    let r = seed;
+    const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+    let s = '';
+    for (let i = 0; i < n; i++) {
+      const x = (rnd() * 120).toFixed(1), y = rnd() * 240, l = len * (.6 + rnd() * .6);
+      for (const dy of [0, -240]) s += `<line x1="${x}" y1="${(y + dy).toFixed(1)}" x2="${x}" y2="${(y + dy + l).toFixed(1)}"/>`;
+    }
+    return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="240"><g stroke="#dbeafe" stroke-opacity="${a}" stroke-width="${w}" stroke-linecap="round">${s}</g></svg>`)}")`;
+  },
+  // мокрый асфальт, лужа: бегущий блик, дрожащее отражение луны, круги от капель и брызги
   puddle() {
+    const drops = [[150, 118, 0, 1.5], [96, 124, .5, 1.3], [214, 126, 1.1, 1.6], [122, 108, .8, 1.2], [188, 112, .25, 1.4], [70, 118, 1.3, 1.5], [238, 114, .65, 1.3], [160, 132, 1.5, 1.4]];
     return `<svg viewBox="0 0 300 170" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
-      <linearGradient id="fmp-ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c0818" stop-opacity="0"/><stop offset=".35" stop-color="#140e26"/><stop offset="1" stop-color="#090611"/></linearGradient>
-      <linearGradient id="fmp-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3f7a"/><stop offset=".5" stop-color="#15294f"/><stop offset="1" stop-color="#0b1a33"/></linearGradient>
-      <radialGradient id="fmp-moon"><stop offset="0" stop-color="#fff7d6" stop-opacity=".95"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>
-      <filter id="fmp-soft"><feGaussianBlur stdDeviation="1.6"/></filter></defs>
-      
-      <g fill="#2a2046" opacity=".5">${Array.from({ length: 40 }, (_, i) => `<circle cx="${(i * 73) % 300}" cy="${70 + (i * 37) % 100}" r="${.6 + (i % 3) * .4}"/>`).join('')}</g>
+      <linearGradient id="fmp-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34508f"/><stop offset=".45" stop-color="#18305c"/><stop offset="1" stop-color="#0b1a33"/></linearGradient>
+      <linearGradient id="fmp-shine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e0f2fe" stop-opacity="0"/><stop offset=".5" stop-color="#e0f2fe" stop-opacity=".22"/><stop offset="1" stop-color="#e0f2fe" stop-opacity="0"/></linearGradient>
+      <radialGradient id="fmp-moon"><stop offset="0" stop-color="#fff7d6" stop-opacity=".95"/><stop offset=".6" stop-color="#fde68a" stop-opacity=".35"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>
+      <clipPath id="fmp-clip"><ellipse cx="150" cy="118" rx="126" ry="36"/></clipPath>
+      <filter id="fmp-soft"><feGaussianBlur stdDeviation="1.4"/></filter></defs>
+      <g fill="#3a2f63" opacity=".45">${Array.from({ length: 50 }, (_, i) => `<circle cx="${(i * 73) % 300}" cy="${60 + (i * 37) % 110}" r="${.5 + (i % 3) * .35}"/>`).join('')}</g>
       <ellipse cx="150" cy="118" rx="126" ry="36" fill="url(#fmp-water)"/>
-      <ellipse cx="150" cy="118" rx="126" ry="36" fill="none" stroke="#7fe8dc" stroke-opacity=".35" stroke-width="1.4"/>
-      <ellipse cx="206" cy="110" rx="16" ry="5" fill="url(#fmp-moon)" filter="url(#fmp-soft)"/>
-      <path d="M60 112h60M70 124h90M180 128h50" stroke="#9fd8ff" stroke-opacity=".18" stroke-width="1.2" stroke-linecap="round"/>
-      <ellipse class="rip" cx="150" cy="118" rx="26" ry="7" fill="none" stroke="#bff6ee" stroke-width="1.2"/>
-      <ellipse class="rip b" cx="150" cy="118" rx="26" ry="7" fill="none" stroke="#bff6ee" stroke-width="1.2"/>
-      <ellipse class="rip c" cx="96" cy="124" rx="12" ry="3.4" fill="none" stroke="#bff6ee" stroke-width="1"/>
-      <ellipse class="rip d" cx="214" cy="126" rx="12" ry="3.4" fill="none" stroke="#bff6ee" stroke-width="1"/>
+      <g clip-path="url(#fmp-clip)">
+        <path d="M40 104h70M60 114h110M150 126h80M30 128h50" stroke="#9fd8ff" stroke-opacity=".16" stroke-width="1.2" stroke-linecap="round"/>
+        <ellipse class="fm-mref" cx="206" cy="110" rx="18" ry="5" fill="url(#fmp-moon)" filter="url(#fmp-soft)"/>
+        <rect class="fm-shim" x="-90" y="78" width="70" height="80" fill="url(#fmp-shine)"/>
+      </g>
+      <ellipse cx="150" cy="118" rx="126" ry="36" fill="none" stroke="#7fe8dc" stroke-opacity=".4" stroke-width="1.3"/>
+      <ellipse cx="150" cy="116" rx="122" ry="33" fill="none" stroke="#e0f2fe" stroke-opacity=".12" stroke-width=".8"/>
+      ${drops.map(([x, y, d, t]) => `<g class="fm-rp" style="--d:${d}s;--t:${t}s"><ellipse cx="${x}" cy="${y}" rx="15" ry="4.2"/><ellipse class="in" cx="${x}" cy="${y}" rx="8" ry="2.2"/></g>`
+        + `<g class="fm-spl" style="--d:${d}s;--t:${t}s">${[-1, 0, 1].map(k => `<circle cx="${x}" cy="${y}" r="${k ? .9 : 1.2}" style="--x:${k * 4}px"/>`).join('')}</g>`).join('')}
     </svg>`;
   },
-  // деревянный столб с изоляторами, провисшие провода со свечением, электрическая дуга
+  // деревянный столб с изоляторами, провисшие провода со свечением; живая дуга (три формы по очереди), вспышка и сноп искр
   wires() {
     const W = ['M40 37Q220 118 420 60', 'M64 37Q230 128 420 76', 'M88 37Q240 138 420 92'];
+    const arcs = [11, 23, 37].map(sd => this.bolt(168, 77, 197, 90, sd, 16, true));
     return `<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
       <linearGradient id="fmw-pole" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1a1024"/><stop offset=".4" stop-color="#4a3040"/><stop offset="1" stop-color="#140c1c"/></linearGradient>
       <radialGradient id="fmw-ins" cx=".35" cy=".3"><stop offset="0" stop-color="#e0fffb"/><stop offset=".5" stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></radialGradient>
-      <filter id="fmw-glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+      <radialGradient id="fmw-flash"><stop offset="0" stop-color="#fffbeb" stop-opacity=".95"/><stop offset=".3" stop-color="#fde047" stop-opacity=".5"/><stop offset="1" stop-color="#a78bfa" stop-opacity="0"/></radialGradient>
+      <filter id="fmw-glow" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="3"/></filter></defs>
       <path d="M56 240L60 34h8l4 206z" fill="url(#fmw-pole)"/>
       <rect x="26" y="44" width="76" height="7" rx="2" fill="#3a2433"/><rect x="26" y="44" width="76" height="1.6" fill="#8a5a6a" opacity=".6"/>
-      ${[40, 64, 88].map(cx => `<rect x="${cx - 1.4}" y="38" width="2.8" height="8" fill="#241827"/><ellipse cx="${cx}" cy="37" rx="5" ry="4" fill="url(#fmw-ins)"/>`).join('')}
+      ${[40, 64, 88].map(cx => `<rect x="${cx - 1.4}" y="38" width="2.8" height="8" fill="#241827"/><ellipse cx="${cx}" cy="37" rx="5" ry="4" fill="url(#fmw-ins)"/><ellipse cx="${cx - 1.6}" cy="35.6" rx="1.4" ry="1" fill="#fff" opacity=".8"/>`).join('')}
       <g fill="none" stroke-linecap="round">${W.map(d => `<path d="${d}" stroke="#a78bfa" stroke-opacity=".45" stroke-width="7" filter="url(#fmw-glow)"/><path d="${d}" stroke="#241a45" stroke-width="2.6"/><path d="${d}" stroke="#c4b5fd" stroke-opacity=".5" stroke-width=".8"/>`).join('')}</g>
-      <g class="zap" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M225 83l6 6-4 2 8 5-3 2 15 3" stroke="#fde047" stroke-width="6" opacity=".4" filter="url(#fmw-glow)"/><path d="M225 83l6 6-4 2 8 5-3 2 15 3" stroke="#fffbeb" stroke-width="1.8"/></g>
-      <g fill="#fde047">${[[222, 80], [238, 92], [250, 104], [232, 99]].map(([cx, cy], i) => `<circle class="fm-spark" style="--i:${i}" cx="${cx}" cy="${cy}" r="1.8"/>`).join('')}</g>
+      <circle class="fm-arcflash" cx="183" cy="83" r="34" fill="url(#fmw-flash)"/>
+      <g class="fm-arc" fill="none" stroke-linecap="round" stroke-linejoin="round">${arcs.map((d, i) => `<g class="v v${i}"><path d="${d}" stroke="#fde047" stroke-width="6" opacity=".45" filter="url(#fmw-glow)"/><path d="${d}" stroke="#fef9c3" stroke-width="2.2"/><path d="${d}" stroke="#fff" stroke-width=".8"/></g>`).join('')}</g>
+      <g fill="#fff3b0">${Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + (i - 4.5) * .32; return `<circle class="fm-spark" style="--i:${i};--x:${(Math.cos(a) * (18 + (i % 3) * 8)).toFixed(1)}px;--y:${(Math.sin(a) * 14 + 34 + (i % 4) * 6).toFixed(1)}px" cx="183" cy="83" r="${1 + (i % 3) * .4}"/>`; }).join('')}</g>
     </svg>`;
   },
   // кусок «Карты Нави» для сцены с картой: кварталы с объёмными домами и окнами, парк с ёлочками, канал с мостами,
@@ -181,7 +220,13 @@ const Trailer = {
       const root = U.el(`<div class="fm">
         <div class="fm-cam">
           <div class="fm-sky"><i class="fm-aur"></i><div class="fm-stars">${stars}</div><div class="fm-moon"></div></div>
-          <svg class="fm-rift" viewBox="0 0 100 300" preserveAspectRatio="none" aria-hidden="true"><path class="g" d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/><path d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/></svg>
+          <i class="fm-lit"></i>
+          <svg class="fm-bolts" viewBox="0 0 400 600" preserveAspectRatio="none" aria-hidden="true">${[[70, 0, 120, 420, 3], [330, 0, 290, 460, 7], [150, 0, 40, 360, 13], [260, 0, 360, 380, 19]].map(([x0, y0, x1, y1, sd], i) => {
+            const b = this.bolt(x0, y0, x1, y1, sd);
+            return `<g class="fm-bolt b${i}"><path class="o" d="${b.path}${b.br}"/><path class="m" d="${b.path}"/><path class="m t" d="${b.br}"/><path class="c" d="${b.path}"/></g>`;
+          }).join('')}</svg>
+          <i class="fm-rglow"></i>
+          <svg class="fm-rift" viewBox="0 0 100 300" preserveAspectRatio="none" aria-hidden="true"><path class="g" d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/><path d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/>${[1, 2, 3].map(k => `<path class="v v${k}" d="${this.bolt(52, 0, 52, 300, 5 + k * 11, 18, true)}"/>`).join('')}</svg>
           <div class="fm-kos"><i class="fm-kglow"></i>${Art.spirit('koschey')}</div>
           <div class="fm-city far">${this.skyline('far', 7, { hMin: 170, hMax: 360, top: '#34256e', bot: '#1a1142', rim: '#8b7fd6', win: .03, tower: true })}</div>
           <div class="fm-city mid">${this.skyline('mid', 19, { hMin: 120, hMax: 290, top: '#241752', bot: '#0f0826', rim: '#b7a6f2', win: .2, domes: true })}</div>
@@ -192,7 +237,7 @@ const Trailer = {
           }).join('')}</div>
           <div class="fm-hide">
             <div class="fm-hp lamp"><div class="fm-hb">${this.lamp()}<div class="fm-hs">${Art.spirit('fonarnik')}</div></div></div>
-            <div class="fm-hp puddle"><i class="fm-rain"></i><div class="fm-hb">${this.puddle()}<div class="fm-hs refl">${Art.spirit('kapelka')}</div><div class="fm-hs">${Art.spirit('kapelka')}</div></div></div>
+            <div class="fm-hp puddle"><i class="fm-rain far" style='background-image:${this.rainTile(3, 14, 26, 1, .35)}'></i><i class="fm-rain mid" style='background-image:${this.rainTile(9, 10, 38, 1.4, .5)}'></i><i class="fm-rain near" style='background-image:${this.rainTile(17, 6, 60, 2.2, .7)}'></i><div class="fm-hb">${this.puddle()}<div class="fm-hs refl">${Art.spirit('kapelka')}</div><div class="fm-hs">${Art.spirit('kapelka')}</div></div></div>
             <div class="fm-hp wires"><div class="fm-hb">${this.wires()}<div class="fm-hs">${Art.spirit('vayfayka')}</div></div></div>
           </div>
           <div class="fm-map">
@@ -274,58 +319,104 @@ const Trailer = {
     });
   },
 
-  // Частицы на холсте: пыль Нави, искры разлома, рой, золото Ордена, взрыв при поимке
+  /* Частицы на холсте. Каждая — мягкое свечение (заранее нарисованный спрайт: белое ядро, цветной ореол),
+     мерцает, может падать (искры), покачиваться (светлячки, души) и тянуть за собой хвост (искры, рой).
+     У каждой сцены — свой характер; при поимке — взрыв искр с ударной волной. */
   particles(cv, calm) {
     const x = cv.getContext('2d'), dpr = Math.min(2, window.devicePixelRatio || 1);
-    let W = 0, H = 0, parts = [], mode = 'dust', raf = 0, live = true;
+    let W = 0, H = 0, parts = [], rings = [], mode = 'city', raf = 0, live = true, frame = 0;
     const size = () => { W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; };
     size();
     addEventListener('resize', size);
-    const R = (a, b) => a + Math.random() * (b - a);
+    const R = (a, b) => a + Math.random() * (b - a), pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    // спрайты свечения и звёздочек по цветам (кэш)
+    const SPR = {};
+    const glow = c => SPR[c] || (SPR[c] = (() => {
+      const s = document.createElement('canvas'); s.width = s.height = 64;
+      const g = s.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.14, `rgba(${c},1)`); gr.addColorStop(.4, `rgba(${c},.32)`); gr.addColorStop(1, `rgba(${c},0)`);
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return s;
+    })());
+    const star = c => SPR['*' + c] || (SPR['*' + c] = (() => {
+      const s = document.createElement('canvas'); s.width = s.height = 64;
+      const g = s.getContext('2d');
+      g.drawImage(glow(c), 16, 16, 32, 32);
+      g.fillStyle = '#fff'; g.beginPath();
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? 3 : 30; g.lineTo(32 + Math.cos(a) * rr, 32 + Math.sin(a) * rr); }
+      g.closePath(); g.globalAlpha = .9; g.fill(); return s;
+    })());
+    const GOLD = '253,224,71', WHITE = '255,255,255', VIO = '192,132,252', LIL = '232,210,255', GREEN = '134,239,172', EMBER = '255,140,60', WARM = '255,210,122';
+    // make(): новая частица; n — сколько рождается за кадр
     const MODES = {
-      city: { n: .5, make: () => ({ x: R(0, W), y: H * R(.5, 1), vx: R(-.1, .1), vy: R(-.5, -.15), r: R(.6, 1.8), l: R(160, 320), c: Math.random() < .5 ? '255,210,122' : '196,170,255' }) },
-      crack: { n: 5, make: () => ({ x: W * R(.46, .54), y: H * R(.04, .6), vx: R(-3, 3), vy: R(-2.5, 1.5), r: R(.8, 2.4), l: R(30, 80), c: Math.random() < .6 ? '232,210,255' : '192,132,252' }) },
-      koschey: { n: 3, make: () => ({ x: W * R(.3, .7), y: H * R(.5, .9), vx: R(-.6, .6), vy: R(-2.4, -.8), r: R(1, 2.6), l: R(60, 140), c: Math.random() < .5 ? '134,239,172' : '74,222,128' }) },
-      swarm: { n: 6, streak: true, make: () => { const a = R(0, Math.PI * 2), s = R(4, 12); return { x: W * .5, y: H * .32, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: R(.8, 2), l: R(40, 90), c: Math.random() < .5 ? '216,180,254' : '255,255,255' }; } },
-      hide: { n: 1, make: () => ({ x: R(0, W), y: H * R(.2, 1), vx: R(-.2, .2), vy: R(-.4, -.1), r: R(.6, 1.6), l: R(160, 300), c: '196,170,255' }) },
-      map: { n: 1.4, make: () => ({ x: R(0, W), y: H * R(.4, 1), vx: 0, vy: R(-.6, -.2), r: R(.6, 1.8), l: R(120, 240), c: '255,210,122' }) },
-      catch: { n: 1.4, make: () => ({ x: W * R(.35, .65), y: H * R(.3, .6), vx: R(-.4, .4), vy: R(-1.2, -.3), r: R(.8, 2.2), l: R(60, 140), c: '255,170,80' }) },
-      clans: { n: 2, make: () => ({ x: R(0, W), y: H * R(.6, 1.05), vx: R(-.2, .2), vy: R(-1.4, -.5), r: R(.8, 2.4), l: R(120, 220), c: '253,224,71' }) },
-      dex: { n: 2, make: () => ({ x: R(0, W), y: R(0, H), vx: R(-.3, .3), vy: R(-.3, .3), r: R(.6, 1.6), l: R(80, 160), c: '255,255,255' }) },
-      mentor: { n: 1.6, make: () => ({ x: R(0, W), y: H * R(.5, 1.05), vx: R(-.2, .2), vy: R(-1, -.3), r: R(.8, 2.2), l: R(140, 260), c: Math.random() < .5 ? '253,224,71' : '134,239,172' }) },
-      logo: { n: 3, make: () => ({ x: W * R(.2, .8), y: H * R(.55, 1), vx: R(-.4, .4), vy: R(-2, -.6), r: R(.8, 2.6), l: R(100, 200), c: '253,224,71' }) },
+      city: { n: .5, make: () => ({ x: R(0, W), y: H * R(.45, 1), vx: R(-.15, .15), vy: R(-.4, -.1), r: R(.7, 1.8), l: R(200, 360), c: pick([WARM, WARM, '196,170,255']), wob: .03, tw: 1 }) },
+      crack: { n: 4, make: () => ({ x: W * R(.47, .53), y: H * R(.04, .6), vx: R(-3.4, 3.4), vy: R(-3.2, .6), g: .09, r: R(.8, 2.2), l: R(40, 90), c: pick([LIL, VIO, WHITE]), tail: 5 }) },
+      koschey: { n: 2.4, make: () => ({ x: W * R(.25, .75), y: H * R(.55, .95), vx: R(-.4, .4), vy: R(-1.8, -.6), r: R(1.4, 3.4), l: R(80, 160), c: pick([GREEN, '74,222,128']), wob: .07, tw: 1 }) },
+      swarm: { n: 6, make: () => { const a = R(0, Math.PI * 2), s = R(3, 9); return { x: W * .5, y: H * .32, vx: Math.cos(a) * s, vy: Math.sin(a) * s, acc: 1.045, r: R(.8, 2), l: R(40, 90), c: pick([LIL, WHITE, VIO]), tail: 9 }; } },
+      hide: { n: .6, make: () => ({ x: R(0, W), y: H * R(.2, 1), vx: R(-.2, .2), vy: R(-.35, -.05), r: R(.6, 1.5), l: R(180, 320), c: pick(['196,170,255', WARM]), wob: .03, tw: 1 }) },
+      map: { n: 1.2, make: () => ({ x: R(0, W), y: H * R(.4, 1), vx: 0, vy: R(-.7, -.2), r: R(.7, 1.8), l: R(120, 240), c: pick([GOLD, WARM]), wob: .02, tw: 1 }) },
+      catch: { n: 2.2, make: () => ({ x: W * R(.3, .7), y: H * R(.5, .75), vx: R(-.4, .4), vy: R(-2, -.6), r: R(.8, 2.2), l: R(50, 120), c: pick([EMBER, GOLD, '255,90,40']), wob: .05, tw: 2 }) },
+      clans: { n: 1.6, make: () => ({ x: R(0, W), y: H * R(.1, .9), vx: R(-.2, .2), vy: R(-.6, -.1), r: R(1, 2.6), l: R(80, 160), c: GOLD, tw: 2, star: Math.random() < .35 }) },
+      dex: { n: 1.2, make: () => ({ x: R(0, W), y: R(0, H), vx: 0, vy: 0, r: R(1.2, 3), l: R(30, 70), c: pick([WHITE, GOLD, LIL]), star: true }) },
+      mentor: { n: 1, make: () => ({ x: R(0, W), y: H * R(.35, 1), vx: R(-.3, .3), vy: R(-.5, .1), r: R(1.2, 2.8), l: R(160, 300), c: pick([GREEN, GOLD]), wob: .08, tw: 1 }) },
+      logo: { n: 2.4, make: () => ({ x: W * R(.15, .85), y: H * R(.55, 1), vx: R(-.4, .4), vy: R(-2.2, -.6), r: R(.8, 2.6), l: R(90, 200), c: pick([GOLD, GOLD, WARM]), wob: .04, tw: 1, star: Math.random() < .15 }) },
     };
-    const frame = () => {
+    const step = () => {
       if (!live) return;
+      frame++;
       const m = MODES[mode];
-      if (m && parts.length < (calm ? 120 : 360)) { let n = m.n * (calm ? .5 : 1); while (n > 0) { if (Math.random() < n) parts.push(Object.assign(m.make(), { t: 0, s: m.streak })); n -= 1; } }
+      if (m && parts.length < (calm ? 140 : 420)) {
+        let n = m.n * (calm ? .45 : 1);
+        while (n > 0) { if (Math.random() < n) parts.push(Object.assign({ t: 0, ph: R(0, 6.3) }, m.make())); n -= 1; }
+      }
       x.clearRect(0, 0, W, H);
       x.globalCompositeOperation = 'lighter';
       parts = parts.filter(p => {
-        p.t++; p.x += p.vx * dpr; p.y += p.vy * dpr;
-        if (p.s) { p.vx *= 1.04; p.vy *= 1.04; }
+        p.t++;
+        if (p.g) p.vy += p.g;
+        if (p.acc) { p.vx *= p.acc; p.vy *= p.acc; }
+        if (p.wob) p.vx += Math.sin(p.t * .05 + p.ph) * p.wob;
+        p.x += p.vx * dpr; p.y += p.vy * dpr;
         const k = p.t / p.l;
-        if (k >= 1 || p.x < -50 || p.x > W + 50 || p.y < -50 || p.y > H + 50) return false;
-        const a = Math.sin(Math.PI * k) * .9;
-        if (p.s) {
-          x.strokeStyle = `rgba(${p.c},${a * .8})`; x.lineWidth = p.r * dpr; x.beginPath(); x.moveTo(p.x, p.y); x.lineTo(p.x - p.vx * 4 * dpr, p.y - p.vy * 4 * dpr); x.stroke();
-        } else {
-          x.fillStyle = `rgba(${p.c},${a * .16})`; x.beginPath(); x.arc(p.x, p.y, p.r * 4 * dpr, 0, 7); x.fill();
-          x.fillStyle = `rgba(${p.c},${a})`; x.beginPath(); x.arc(p.x, p.y, p.r * dpr, 0, 7); x.fill();
+        if (k >= 1 || p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) return false;
+        let a = Math.sin(Math.PI * Math.min(1, k * 1.15));
+        if (p.tw) a *= .55 + .45 * Math.sin(p.t * (p.tw === 2 ? .45 : .12) + p.ph);
+        const s = p.r * 9 * dpr;
+        if (p.tail) { // хвост: яркая голова, тающий след по скорости
+          const tx = p.x - p.vx * p.tail * dpr, ty = p.y - p.vy * p.tail * dpr, gr = x.createLinearGradient(p.x, p.y, tx, ty);
+          gr.addColorStop(0, `rgba(${p.c},${a})`); gr.addColorStop(1, `rgba(${p.c},0)`);
+          x.strokeStyle = gr; x.lineWidth = p.r * 1.2 * dpr; x.lineCap = 'round';
+          x.beginPath(); x.moveTo(p.x, p.y); x.lineTo(tx, ty); x.stroke();
         }
+        x.globalAlpha = a;
+        x.drawImage(p.star ? star(p.c) : glow(p.c), p.x - s / 2, p.y - s / 2, s, s);
+        x.globalAlpha = 1;
         return true;
       });
-      raf = requestAnimationFrame(frame);
+      // ударные волны
+      rings = rings.filter(g => {
+        g.t++;
+        const k = g.t / g.l;
+        if (k >= 1) return false;
+        const e = 1 - Math.pow(1 - k, 3);
+        x.strokeStyle = `rgba(${g.c},${(1 - k) * .8})`; x.lineWidth = (1 - k) * g.w * dpr;
+        x.beginPath(); x.arc(g.x, g.y, e * g.r, 0, 7); x.stroke();
+        return true;
+      });
+      raf = requestAnimationFrame(step);
     };
-    raf = requestAnimationFrame(frame);
+    raf = requestAnimationFrame(step);
     return {
       mode: m => { mode = m; },
-      // вспышка золотых искр из центра (оберег попал)
+      // оберег попал: вспышка, взрыв золотых искр с хвостами и две ударные волны
       burst: () => {
-        for (let i = 0; i < (calm ? 50 : 110); i++) {
-          const a = R(0, Math.PI * 2), s = R(2, 11);
-          parts.push({ x: W * .5, y: H * .42, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1, r: R(1, 3), l: R(40, 90), c: Math.random() < .5 ? '253,224,71' : '255,255,255', t: 0 });
+        const cx = W * .5, cy = H * .42;
+        parts.push({ x: cx, y: cy, vx: 0, vy: 0, r: 22, l: 26, c: GOLD, t: 0, ph: 0 });
+        for (let i = 0; i < (calm ? 50 : 130); i++) {
+          const a = R(0, Math.PI * 2), s = R(3, 13);
+          parts.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1.5, g: .14, r: R(1, 2.8), l: R(40, 95), c: pick([GOLD, WHITE, EMBER]), tail: 3, t: 0, ph: R(0, 6) });
         }
+        const M = Math.min(W, H);
+        rings.push({ x: cx, y: cy, r: M * .55, w: 10, l: 34, c: '255,236,170', t: 0 }, { x: cx, y: cy, r: M * .35, w: 6, l: 26, c: '255,255,255', t: 0 });
       },
       stop: () => { live = false; cancelAnimationFrame(raf); removeEventListener('resize', size); },
     };
@@ -339,7 +430,8 @@ const Trailer = {
     const whoosh = (w = 0, v = .07) => N(.7, { vol: v, type: 'bandpass', f: 400, to: 3000, when: w, q: 2 });
     switch (cls) {
       case 'city': T(73.4, 5, { type: 'sawtooth', vol: 0.018 }); N(5, { vol: 0.025, f: 300, to: 500 }); break;
-      case 'crack': N(4.3, { vol: 0.1, f: 120, to: 1600 }); T(110, 4.3, { type: 'sawtooth', vol: 0.03, to: 330 }); boom(4.3, .26); break;
+      case 'crack': [.9, 2.1, 3, 3.7].forEach((w, i) => { N(.25, { vol: .16, type: 'highpass', f: 2500, to: 600, when: w }); N(1.6, { vol: .12 + i * .02, f: 300, to: 60, when: w + .06 }); });
+        N(4.3, { vol: 0.1, f: 120, to: 1600 }); T(110, 4.3, { type: 'sawtooth', vol: 0.03, to: 330 }); boom(4.3, .26); break;
       case 'koschey': T(49, 4.5, { type: 'sawtooth', vol: 0.035 }); pad([98, 146.8, 155.6], 4.4, 0.03); break;
       case 'swarm': for (let i = 0; i < 7; i++) whoosh(i * 0.55, 0.06 + (i % 2) * .02); T(98, 4.2, { type: 'triangle', vol: 0.035 }); break;
       case 'hide': [0, 1.8, 3.6].forEach((w, i) => { T([523.3, 587.3, 659.3][i], 0.6, { vol: 0.05, when: w }); T([1046.5, 1174.7, 1318.5][i], 0.4, { vol: 0.02, when: w + .08 }); }); break;
