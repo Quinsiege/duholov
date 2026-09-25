@@ -79,6 +79,8 @@ const Fog = {
     });
     this.lay = new Layer({ pane: 'fog', tileSize: 256, updateWhenZooming: false, keepBuffer: 1, minZoom: 12 });
     this.apply();
+    // туман плывёт: раз в минуту — чуть дальше по ветру (в экономии батареи и в свёрнутой игре — стоит)
+    setInterval(() => { if (!document.hidden && !Cfg.s.eco) this.redraw(); }, 60000);
   },
   // включить или выключить по настройке
   apply() {
@@ -91,9 +93,30 @@ const Fog = {
   setLook(night) {
     if (this.night === night && this.tex) return;
     this.night = night; this.tex = null;
-    if (this.lay && MapView.map && MapView.map.hasLayer(this.lay)) this.lay.redraw();
+    this.redraw();
   },
-  // бесшовная клубящаяся текстура 256×256 (шум из трёх октав на замкнутой решётке)
+  // перерисовать плитки на месте (без мигания, как у GridLayer.redraw)
+  redraw() {
+    if (!this.lay || !this.lay._map) return;
+    for (const t of Object.values(this.lay._tiles || {})) this.draw(t.el, t.coords);
+  },
+
+  /* Туман везде разный: густота, разрывы и оттенок — шум, привязанный к месту на Земле (а не к плитке), поэтому
+     узор нигде не повторяется и плитки сходятся без швов. Туман медленно плывёт по ветру — раз в минуту
+     чуть сдвигается, так что одно и то же место никогда не выглядит одинаково. */
+  // значение 0…1 в узле решётки (ix, iy) — целочисленный хеш
+  hash(ix, iy, k) {
+    let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263) + Math.imul(k, 1274126177) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  },
+  // плавный шум: значения в узлах, сглаженная интерполяция между ними
+  noise(x, y, k) {
+    const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const a = this.hash(ix, iy, k), b = this.hash(ix + 1, iy, k), c = this.hash(ix, iy + 1, k), d = this.hash(ix + 1, iy + 1, k);
+    return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+  },
+  // тонкие завитки (бесшовная текстура 256×256, белая с прозрачностью) — ложатся поверх крупного узора
   texture() {
     if (this.tex) return this.tex;
     const S = 256, c = document.createElement('canvas');
@@ -101,24 +124,43 @@ const Fog = {
     const x = c.getContext('2d'), img = x.createImageData(S, S);
     let seed = 1234;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const oct = [4, 8, 16].map(n => ({ n, g: Array.from({ length: n * n }, rnd) }));
+    const oct = [8, 16, 32].map(n => ({ n, g: Array.from({ length: n * n }, rnd) }));
     const sm = t => t * t * (3 - 2 * t);
-    const [r0, g0, b0, a0] = this.night ? [22, 12, 46, .6] : [150, 128, 200, .5];
-    const [r1, g1, b1, a1] = this.night ? [120, 86, 200, .72] : [255, 252, 255, .82];
     for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
       let v = 0, w = 0, amp = 1;
       for (const { n, g } of oct) {
         const fx = px / S * n, fy = py / S * n, ix = Math.floor(fx), iy = Math.floor(fy), tx = sm(fx - ix), ty = sm(fy - iy);
         const at = (a, b) => g[((b % n) * n) + (a % n)];
         v += amp * ((at(ix, iy) * (1 - tx) + at(ix + 1, iy) * tx) * (1 - ty) + (at(ix, iy + 1) * (1 - tx) + at(ix + 1, iy + 1) * tx) * ty);
-        w += amp; amp *= .5;
+        w += amp; amp *= .55;
       }
-      const t = Math.max(0, Math.min(1, (v / w - .35) * 2.2)), o = (py * S + px) * 4;
-      img.data[o] = r0 + (r1 - r0) * t; img.data[o + 1] = g0 + (g1 - g0) * t; img.data[o + 2] = b0 + (b1 - b0) * t;
-      img.data[o + 3] = 255 * (a0 + (a1 - a0) * t);
+      const t = Math.max(0, Math.min(1, (v / w - .45) * 2.6)), o = (py * S + px) * 4;
+      img.data[o] = img.data[o + 1] = img.data[o + 2] = 255;
+      img.data[o + 3] = 255 * t * t;
     }
     x.putImageData(img, 0, 0);
     return (this.tex = c);
+  },
+  // крупный узор плитки: 64×64 отсчёта шума по координатам мира (масштаб 17-го уровня), растянутые с сглаживанием
+  field(coords) {
+    const N = 64, c = this._lo || (this._lo = document.createElement('canvas'));
+    c.width = c.height = N;
+    const x = c.getContext('2d'), img = x.createImageData(N, N), f = Math.pow(2, 17 - coords.z);
+    const min = Math.floor(Date.now() / 60000), dx = min * 2.2, dy = min * .9; // ветер Нави: ~1,5 м в минуту
+    const night = this.night;
+    const base = night ? [20, 11, 44] : [150, 130, 200], tA = night ? [118, 84, 196] : [255, 252, 255], tB = night ? [56, 104, 180] : [226, 206, 250];
+    const aLo = night ? .22 : .12, aHi = night ? .86 : .72;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const X = (coords.x * 256 + (i + .5) * 4) * f + dx, Y = (coords.y * 256 + (j + .5) * 4) * f + dy;
+      // густота: облака (~160 м), клубы (~60 м) и клочья (~25 м) — у каждого места свои; оттенок — пятнами ~300 м
+      let d = .5 * this.noise(X / 240, Y / 240, 1) + .32 * this.noise(X / 92, Y / 92, 2) + .18 * this.noise(X / 36, Y / 36, 3);
+      d = Math.max(0, Math.min(1, (d - .3) * 2.5));
+      const h = this.noise(X / 450, Y / 450, 4), o = (j * N + i) * 4, m = Math.pow(d, .7);
+      for (let q = 0; q < 3; q++) { const tint = tA[q] + (tB[q] - tA[q]) * h; img.data[o + q] = base[q] + (tint - base[q]) * m; }
+      img.data[o + 3] = 255 * (aLo + (aHi - aLo) * d);
+    }
+    x.putImageData(img, 0, 0);
+    return c;
   },
   // пятно, которым Ловчий «стирает» туман: мягкий круг
   puff() {
@@ -139,7 +181,13 @@ const Fog = {
     const x = t.getContext('2d'), k = t.width / 256, z = coords.z, m = MapView.map;
     x.setTransform(k, 0, 0, k, 0, 0);
     x.globalCompositeOperation = 'copy';
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    // отсчёты — в центрах клеток по 4 точки: растягиваем так, чтобы центры легли на свои места (край — за плиткой)
+    x.drawImage(this.field(coords), -2, -2, 260, 260);
+    x.globalCompositeOperation = 'source-atop';
+    x.globalAlpha = this.night ? .18 : .22;
     x.drawImage(this.texture(), 0, 0, 256, 256);
+    x.globalAlpha = 1;
     x.globalCompositeOperation = 'destination-out';
     const bd = this.bounds(coords), pad = this.R / 111320 * 2.2, pl = pad / Math.cos(bd.n * Math.PI / 180);
     const n = bd.n + pad, s = bd.s - pad, w = bd.w - pl, e = bd.e + pl;
