@@ -75,3 +75,16 @@ test.duholov.ru {
 	encode zstd gzip
 	file_server
 }
+
+# API тестового контура (/opt/duholov-test): те же публичные пути, что у боевого
+api-test.duholov.ru {
+	import security
+	header X-Robots-Tag "noindex, nofollow"
+	@api path /auth/v1/* /rest/v1/* /realtime/v1/* /storage/v1/* /functions/v1/*
+	handle @api {
+		reverse_proxy 127.0.0.1:8100
+	}
+	handle {
+		respond "Duholov test API" 404
+	}
+}

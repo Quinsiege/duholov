@@ -1,0 +1,9 @@
+#!/bin/bash
+# Куда слать оповещения: напиши боту игры в Telegram любое сообщение, затем запусти эту команду на сервере.
+set -euo pipefail
+T=$(grep -E '^TELEGRAM_BOT_TOKEN=' /opt/duholov/functions.env | cut -d= -f2-)
+[ -n "$T" ] || { echo "Нет TELEGRAM_BOT_TOKEN — задай его командой duholov-secrets"; exit 1; }
+C=$(curl -s --max-time 20 "https://api.telegram.org/bot$T/getUpdates" | jq -r '[.result[] | (.message // .edited_message) | select(.chat.type == "private") | .chat.id] | last // empty')
+[ -n "$C" ] || { echo "Сообщений боту не найдено — напиши ему что-нибудь и запусти ещё раз"; exit 1; }
+umask 077; echo "TG_CHAT=$C" > /root/.duholov-alerts
+/usr/local/bin/duholov-monitor test && echo "Готово: оповещения — в этот чат"

@@ -1,0 +1,12 @@
+#!/bin/bash
+# Ключ доступа закрытого тестового контура (/opt/duholov-test): без него тестовый сервер не пускает новых игроков
+# (хук Before User Created, 014_access_key.sql) и не отвечает функцией game (ACCESS_KEY). Запуск на сервере: duholov-test-key
+set -euo pipefail
+read -rsp "Ключ доступа тестового контура (пусто — открыть контур): " K; echo
+q() { printf "%s" "$1" | sed "s/'/''/g"; }
+printf "insert into private.settings (k, v) values ('access_key', '%s') on conflict (k) do update set v = excluded.v;\n" "$(q "$K")" \
+  | docker exec -i dt-db psql -U supabase_admin -d postgres -q
+F=/opt/duholov-test/functions.env
+sed -i '/^ACCESS_KEY=/d' "$F"; printf 'ACCESS_KEY=%s\n' "$K" >> "$F"
+cd /opt/duholov-test && docker compose up -d functions >/dev/null 2>&1
+echo "Готово: контур $([ -n "$K" ] && echo 'закрыт ключом' || echo 'открыт')"

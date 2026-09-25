@@ -1,0 +1,60 @@
+#!/bin/bash
+# Наблюдение за сервером Духолова. cron: каждые 5 минут — проверки, при сбое или восстановлении — сообщение в Telegram
+# (бот игры, токен — TELEGRAM_BOT_TOKEN из /opt/duholov/functions.env, кому — TG_CHAT в /root/.duholov-alerts).
+# Пока сбой не устранён, напоминание раз в 2 часа. «duholov-monitor daily» — утренняя сводка; «duholov-monitor test» — проверить связь.
+set -u
+S=/var/lib/duholov-monitor; mkdir -p "$S"
+TG_TOKEN=$(grep -E '^TELEGRAM_BOT_TOKEN=' /opt/duholov/functions.env | cut -d= -f2-)
+TG_CHAT=$(grep -E '^TG_CHAT=' /root/.duholov-alerts 2>/dev/null | cut -d= -f2-)
+send() { [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || return 0
+  curl -s --max-time 20 "https://api.telegram.org/bot$TG_TOKEN/sendMessage" --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$1" >/dev/null; }
+Q() { docker exec supabase-db psql -U supabase_admin -d postgres -tAc "$1" 2>/dev/null; }
+
+if [ "${1:-}" = "test" ]; then send "🔔 Духолов: связь с сервером проверена — оповещения будут приходить сюда"; exit 0; fi
+
+if [ "${1:-}" = "daily" ]; then
+  disk=$(df -h --output=pcent,avail / | tail -1 | xargs); mem=$(free -h | awk '/Mem:/ {print $7}')
+  players=$(Q "select count(*) from saves where moved_to is null"); act=$(Q "select count(*) from saves where updated_at > now() - interval '1 day'")
+  new=$(Q "select count(*) from saves where (data->>'created')::bigint > (extract(epoch from now() - interval '1 day') * 1000)")
+  paid=$(Q "select count(*) || ' на ' || coalesce(sum(amount), 0) || ' ₽' from payments where status = 'succeeded' and updated_at > now() - interval '1 day'")
+  errs=$(Q "select count(*) from client_errors where at > now() - interval '1 day'")
+  top=$(Q "select left(msg, 80) || ' ×' || count(*) from client_errors where at > now() - interval '1 day' group by msg order by count(*) desc limit 1")
+  bk=$(ls -t /var/backups/duholov/*.dump 2>/dev/null | head -1 | xargs -r basename)
+  send "☀️ Духолов за сутки
+Игроков: ${players:-?} · заходили: ${act:-?} · новых: ${new:-?}
+Оплаты: ${paid:-0}
+Ошибок у игроков: ${errs:-?}${top:+ (чаще всего: $top)}
+Диск: $disk · свободно памяти: $mem
+Копия базы: ${bk:-нет!}"
+  exit 0
+fi
+
+fails=()
+check() { eval "$2" >/dev/null 2>&1 || fails+=("$1"); }
+check "сайт duholov.ru не отвечает" 'curl -fsS --max-time 15 https://duholov.ru/version.json'
+check "сервер игры (api.duholov.ru) не отвечает" 'curl -sS --max-time 15 -X POST -H "Origin: https://duholov.ru" -H "Content-Type: application/json" -d "{}" https://api.duholov.ru/functions/v1/game | grep -q "\"auth\":true"'
+check "тестовый сервер (api-test) не отвечает" 'curl -sS --max-time 15 -X POST -H "Origin: https://test.duholov.ru" -H "Content-Type: application/json" -d "{}" https://api-test.duholov.ru/functions/v1/game | grep -qE "\"auth\":true|ключ"'
+check "база не принимает подключения" 'docker exec supabase-db pg_isready -U postgres -q'
+down=$(for c in caddy supabase-db supabase-auth supabase-rest supabase-envoy supabase-edge-functions supabase-storage supabase-pooler realtime-dev.supabase-realtime; do
+  [ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" = "true" ] || printf '%s ' "$c"; done)
+[ -n "$down" ] && fails+=("не запущены: $down")
+bad=$(docker ps --filter health=unhealthy --format '{{.Names}}' | tr '\n' ' '); [ -n "$bad" ] && fails+=("нездоровы: $bad")
+disk=$(df --output=pcent / | tail -1 | tr -dc 0-9); [ "${disk:-0}" -ge 85 ] && fails+=("диск заполнен на ${disk}%")
+memf=$(free -m | awk '/Mem:/ {print $7}'); [ "${memf:-9999}" -lt 400 ] && fails+=("мало свободной памяти: ${memf} МБ")
+bk=$(ls -t /var/backups/duholov/*.dump 2>/dev/null | head -1); { [ -n "$bk" ] && [ $(( $(date +%s) - $(stat -c %Y "$bk") )) -lt 93600 ]; } || fails+=("копии базы нет больше суток")
+check "сертификат duholov.ru истекает меньше чем через 14 дней" 'echo | openssl s_client -connect duholov.ru:443 -servername duholov.ru 2>/dev/null | openssl x509 -noout -checkend 1209600'
+errs=$(Q "select count(*) from client_errors where at > now() - interval '1 hour'"); [ "${errs:-0}" -gt 30 ] && fails+=("много ошибок у игроков за час: $errs")
+
+now=$(printf '%s\n' "${fails[@]}" | sort)
+prev=$(cat "$S/state" 2>/dev/null || true)
+last=$(cat "$S/sent" 2>/dev/null || echo 0)
+if [ "$now" != "$prev" ]; then
+  if [ -z "$now" ]; then send "✅ Духолов: всё снова работает"
+  else send "⚠️ Духолов: проблема
+$(printf '• %s\n' "${fails[@]}")"; fi
+  date +%s > "$S/sent"
+elif [ -n "$now" ] && [ $(( $(date +%s) - last )) -gt 7200 ]; then
+  send "⚠️ Духолов: всё ещё проблема
+$(printf '• %s\n' "${fails[@]}")"; date +%s > "$S/sent"
+fi
+printf '%s' "$now" > "$S/state"

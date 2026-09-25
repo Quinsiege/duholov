@@ -12,8 +12,8 @@ const CLOUD_PROJECTS = {
     auth: 'duholov.auth', admin: 'duholov.admin', // где браузер хранит вход (у каждого контура — свой)
   },
   test: {
-    url: 'https://xktcxvotugcmlwbuasbg.supabase.co', // duholov-test
-    anonKey: 'sb_publishable_owai4hZ9PApJRB1bALj7eA_NE_qrgi4', // публичный (publishable) ключ
+    url: 'https://api-test.duholov.ru', // 4.1.1: тестовый контур — на своём сервере рядом с боевым (/opt/duholov-test)
+    anonKey: 'sb_publishable_6IerjV2yM9dPX0xA-1i6Zi_21ysa0-h', // публичный (publishable) ключ
     auth: 'duholov.test.auth', admin: 'duholov.test.admin',
     locked: true, // закрытый контур: нужен ключ доступа (спрашивается один раз, хранится только в этом браузере)
   },
