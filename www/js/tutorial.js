@@ -180,6 +180,7 @@ const Tut = {
       <div class="ts-box"><div class="ts-who"></div><div class="ts-line"></div><div class="ts-foot"><span class="ts-prog"></span><span class="ts-next"><span class="tn-t">Дальше</span><i class="tn-a"></i></span></div></div>
     </div>`);
     document.body.appendChild(root);
+    Music.play('mentor'); // 4.8: сцены с наставником — его мелодия
     UI.pushLayer(this._noBack = () => {}); // «Назад» сцену не закрывает — обучение не пропустить
     const box = root.querySelector('.ts-box'), who = root.querySelector('.ts-who'), line = root.querySelector('.ts-line'), btn = root.querySelector('.ts-next .tn-t');
     let i = -1, typing = null, busy = false;
@@ -224,6 +225,7 @@ const Tut = {
     if (!this.sc) return;
     const el = this.sc; this.sc = null;
     UI.popLayer(this._noBack);
+    Music.play('map');
     el.classList.add('out'); setTimeout(() => el.remove(), 350);
   },
 
@@ -252,7 +254,8 @@ const Tut = {
       <small>Орден Оберега</small><h2>Посвящение пройдено!</h2><p>Отныне ты — <b>Ловчий Ордена</b>. Духи Нави ждут на улицах твоего города.</p>
       <div class="tf-got">${list}</div>${UI.rune('В путь!', 'tf-go')}</div>`);
     document.body.appendChild(root);
-    root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
+    Music.play('theme'); // финал посвящения — главная тема «Путь начинается»
+    root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); Music.play('map'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
   },
 
   close() {

@@ -12,7 +12,7 @@ const Auction = {
   badge() { return this.mine && this.mine.lots.some(l => l.status !== 'open' && !l.settled) ? '!' : ''; },
   stars(pct) { return pct >= 100 ? 4 : pct >= 82 ? 3 : pct >= 67 ? 2 : pct >= 50 ? 1 : 0; },
   starsHtml(pct) { const n = this.stars(pct); return `<span class="au-stars">${'★'.repeat(n)}${'☆'.repeat(4 - n)}</span>`; },
-  priceHtml(cur, price) { return cur === 'zlat' ? `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(price)}` : `✦ ${U.fmtNum(price)}`; },
+  priceHtml(cur, price) { return cur === 'zlat' ? `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(price)}` : `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(price)}`; },
   curName(cur, n) { return cur === 'zlat' ? U.plural(n, 'златник', 'златника', 'златников') : U.plural(n, 'искра', 'искры', 'искр'); },
   // дух из упакованного лота: { s, l, i, y, d, n, p, m }
   sp(p) { return { sid: p.s, lvl: p.l, iv: p.i, shiny: !!p.y, dark: !!p.d, purified: !!p.p, nick: p.n || null }; },

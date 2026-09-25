@@ -1,30 +1,81 @@
 'use strict';
-/* Процедурная музыка на WebAudio: на карте — спокойные «гусли» в ре миноре с эхом,
-   в битвах — ритм с басом и ударными. Никаких аудиофайлов. */
+/* Музыка. 4.8: мелодии игры — файлы (www/audio): тема «Путь начинается» — вход и финал посвящения,
+   «Birch Forest Mist» — карта днём, «Между мирами» — карта ночью, «The Fireside Lesson» — сцены с Велимиром.
+   Переходы — плавные (громкость через WebAudio), трек в конце мягко затихает и начинается заново.
+   Бои — прежняя процедурная музыка на WebAudio (ритм с басом и ударными); она же играет на карте, если файл не загрузился. */
 
 const Music = {
-  want: 'map', mode: null, timer: null, next: 0, step: 0, out: null, noiseBuf: null,
+  want: 'map', mode: null, smode: null, timer: null, next: 0, step: 0, out: null, noiseBuf: null,
   CHORDS: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 48, 52]], // Dm – B♭ – C – Am
   MELODY: [62, 65, 67, 69, 72, 74, 77, 79, 81],                       // ре-минорная пентатоника
+  FILES: { theme: 'audio/theme.mp3', day: 'audio/mapday.mp3', night: 'audio/mapnight.mp3', mentor: 'audio/mentor.mp3' },
+  VOL: 0.5, FADE: 1.4,
+  tracks: {}, cur: null, broken: false,
 
   init() {
     document.addEventListener('visibilitychange', () => this.apply());
   },
   play(mode) { this.want = mode; this.apply(); },
+  // что должно звучать: «карта» — дневная или ночная мелодия по виду карты
+  target() { return this.want === 'map' ? (document.body.classList.contains('night') ? 'night' : 'day') : this.want; },
   apply() {
-    const ctx = Sfx.ctx;
-    const on = !!(S.d && Cfg.s.music && ctx && !document.hidden);
-    const mode = on ? this.want : null;
+    const ctx = Sfx.ctx, want = this.target();
+    const on = !!(Cfg.s.music && ctx && !document.hidden && (S.d || want === 'theme'));
+    const mode = on ? want : null;
     if (mode === this.mode) return;
-    clearInterval(this.timer); this.timer = null;
     this.mode = mode;
     if (!ctx) return;
+    if (mode && ctx.state === 'suspended') ctx.resume();
+    const file = mode && this.FILES[mode] && !this.broken ? mode : null;
+    for (const [k, t] of Object.entries(this.tracks)) if (k !== file) this.fadeOut(t);
+    if (file) this.fadeIn(this.track(file));
+    // синтезатор: бои, а на карте — только если мелодии не загрузились (нет сети)
+    this.synth(mode && !file ? (mode === 'battle' ? 'battle' : 'map') : null);
+  },
+  track(k) {
+    if (this.tracks[k]) return this.tracks[k];
+    const ctx = Sfx.ctx, a = new Audio(this.FILES[k]), g = ctx.createGain();
+    a.loop = true; a.preload = 'auto';
+    g.gain.value = 0;
+    ctx.createMediaElementSource(a).connect(g).connect(ctx.destination);
+    const t = this.tracks[k] = { k, a, g, tail: false };
+    a.addEventListener('error', () => { this.broken = true; this.mode = undefined; this.apply(); });
+    // повтор без обрыва: за 2,5 с до конца трек затихает, с начала — снова набирает громкость
+    a.addEventListener('timeupdate', () => {
+      if (this.cur !== t || !a.duration) return;
+      if (!t.tail && a.duration - a.currentTime < 2.5) { t.tail = true; this.ramp(t, 0, 2.2); }
+      else if (t.tail && a.currentTime < 2.5) { t.tail = false; this.ramp(t, this.VOL, 2); }
+    });
+    return t;
+  },
+  ramp(t, v, sec) {
+    const now = Sfx.ctx.currentTime, g = t.g.gain;
+    g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(v, now + sec);
+  },
+  fadeIn(t) {
+    this.cur = t; t.tail = false;
+    const p = t.a.play();
+    // автозапуск звука без касания запрещён — повторим после первого касания (main.js → Music.apply)
+    if (p && p.catch) p.catch(() => { if (this.cur === t) this.mode = undefined; });
+    this.ramp(t, this.VOL, this.FADE);
+  },
+  fadeOut(t) {
+    if (t.a.paused) return;
+    this.ramp(t, 0, this.FADE);
+    setTimeout(() => { if (this.cur !== t) t.a.pause(); }, this.FADE * 1000 + 100);
+    if (this.cur === t) this.cur = null;
+  },
+  // процедурная музыка: 'battle', 'map' (запасная) или null
+  synth(mode) {
+    if (mode === this.smode) return;
+    const ctx = Sfx.ctx;
+    clearInterval(this.timer); this.timer = null;
+    this.smode = mode;
     this.graph();
     const now = ctx.currentTime;
     this.out.gain.cancelScheduledValues(now);
     this.out.gain.setTargetAtTime(mode ? (mode === 'battle' ? 0.55 : 0.5) : 0, now, mode ? 0.8 : 0.2);
     if (!mode) return;
-    if (ctx.state === 'suspended') ctx.resume();
     this.next = now + 0.15; this.step = 0;
     this.timer = setInterval(() => this.schedule(), 60);
   },
@@ -45,8 +96,8 @@ const Music = {
   },
   schedule() {
     const ctx = Sfx.ctx;
-    if (!ctx || !this.mode) return;
-    const battle = this.mode === 'battle';
+    if (!ctx || !this.smode) return;
+    const battle = this.smode === 'battle';
     const dur = battle ? 60 / 132 / 2 : 60 / 68 / 2; // восьмые
     while (this.next < ctx.currentTime + 0.3) {
       this.tick(this.step, this.next, dur, battle);

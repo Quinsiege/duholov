@@ -325,121 +325,243 @@ const UI = {
   // 3.37: значки меню — в стиле вещей из Сумки (Art.item): отдельный предмет без плашки, яркая заливка,
   // толстая обводка тёмным оттенком своего цвета, тень снизу и белый блик
   menuIcon(k) {
-    const hl = (x, y, rx, ry, r = -25) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="#fff" opacity=".5"/>`;
-    const sh = (rx = 30) => `<ellipse cx="50" cy="93" rx="${rx}" ry="5" fill="#000" opacity=".28"/>`;
-    const gear = (() => { let d = ''; for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 16, r = i % 2 ? 26 : 35;
-      d += (i ? 'L' : 'M') + (50 + r * Math.cos(a)).toFixed(1) + ' ' + (50 + r * Math.sin(a)).toFixed(1) + ' ' + (50 + r * Math.cos(a + Math.PI / 8)).toFixed(1) + ' ' + (50 + r * Math.sin(a + Math.PI / 8)).toFixed(1); }
-      return d + 'Z'; })();
+    // 4.7.4: объём — градиенты, блик, тёмная обводка, тень; рисуется только нужный значок.
+    // id градиентов свои у каждого рисунка (ключ + номер): иначе значок ссылался бы на градиент из скрытой копии и терял заливку
+    const p = 'mi-' + k + (this._miN = (this._miN || 0) + 1);
+    const f1 = n => +n.toFixed(1), P = (cx, cy, r, a) => f1(cx + r * Math.cos(a)) + ' ' + f1(cy + r * Math.sin(a));
+    const st = s => s.map(([o, c, a]) => `<stop offset="${o}" stop-color="${c}"${a == null ? '' : ` stop-opacity="${a}"`}/>`).join('');
+    const lg = (id, s, x2 = 0, y2 = 1, x1 = 0, y1 = 0) => `<linearGradient id="${p}-${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">${st(s)}</linearGradient>`;
+    const rg = (id, s, cx = .38, cy = .3, r = .8) => `<radialGradient id="${p}-${id}" cx="${cx}" cy="${cy}" r="${r}">${st(s)}</radialGradient>`;
+    const u = id => `url(#${p}-${id})`, D = (...g) => `<defs>${g.join('')}</defs>`;
+    const AU = [[0, '#fff7d1'], [.35, '#f7d77e'], [.75, '#d59a36'], [1, '#8a5a14']];
+    const PAPER = [[0, '#fffaf0'], [.6, '#f6e2b3'], [1, '#dcb271']];
+    const hl = (x, y, rx, ry, r = -25, op = .55) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="#fff" opacity="${op}"/>`;
+    const sh = (rx = 30) => `<ellipse cx="50" cy="93" rx="${rx}" ry="5" fill="#000" opacity=".3"/>`;
+    const spk = (x, y, r, c = '#fff7d1') => `<path d="M${x} ${y - r}Q${x} ${y} ${x + r} ${y}Q${x} ${y} ${x} ${y + r}Q${x} ${y} ${x - r} ${y}Q${x} ${y} ${x} ${y - r}Z" fill="${c}"/>`;
+    const star = (cx, cy, R, r, n = 5, a0 = -Math.PI / 2) => { let d = ''; for (let i = 0; i < n * 2; i++) d += (i ? 'L' : 'M') + P(cx, cy, i % 2 ? r : R, a0 + i * Math.PI / n); return d + 'Z'; };
+    const cog = (cx, cy, R, r, n) => { let d = ''; const s = 2 * Math.PI / n; for (let i = 0; i < n; i++) { const a = i * s;
+      d += (i ? 'L' : 'M') + P(cx, cy, r, a - s * .3) + 'L' + P(cx, cy, R, a - s * .16) + 'L' + P(cx, cy, R, a + s * .16) + 'L' + P(cx, cy, r, a + s * .3); } return d + 'Z'; };
+    const blob = (cx, cy, r, n) => { let d = 'M' + P(cx, cy, r, 0); for (let i = 0; i < n; i++) d += 'Q' + P(cx, cy, r * 1.16, (i + .5) * 2 * Math.PI / n) + ' ' + P(cx, cy, r, (i + 1) * 2 * Math.PI / n); return d + 'Z'; };
+    // дух-привидение: тело, лицо (x — сдвиг), для «Духов» и «Друзей»
+    const face = (x, y, s = 1) => `<ellipse cx="${x - 11 * s}" cy="${y}" rx="${6.5 * s}" ry="${8.5 * s}" fill="#1b0f45"/><ellipse cx="${x + 11 * s}" cy="${y}" rx="${6.5 * s}" ry="${8.5 * s}" fill="#1b0f45"/>
+      <ellipse cx="${x - 11 * s}" cy="${y + 4 * s}" rx="${4 * s}" ry="${2.8 * s}" fill="#2dd4bf" opacity=".75"/><ellipse cx="${x + 11 * s}" cy="${y + 4 * s}" rx="${4 * s}" ry="${2.8 * s}" fill="#2dd4bf" opacity=".75"/>
+      <circle cx="${x - 8.5 * s}" cy="${y - 3.5 * s}" r="${2.8 * s}" fill="#fff"/><circle cx="${x + 13.5 * s}" cy="${y - 3.5 * s}" r="${2.8 * s}" fill="#fff"/>
+      <ellipse cx="${x - 21 * s}" cy="${y + 11 * s}" rx="${4.5 * s}" ry="${2.6 * s}" fill="#f472b6" opacity=".6"/><ellipse cx="${x + 21 * s}" cy="${y + 11 * s}" rx="${4.5 * s}" ry="${2.6 * s}" fill="#f472b6" opacity=".6"/>
+      <path d="M${x - 5 * s} ${y + 12 * s} Q${x} ${y + 17 * s} ${x + 5 * s} ${y + 12 * s}" stroke="#1b0f45" stroke-width="${2.8 * s}" fill="none" stroke-linecap="round"/>`;
     const A = {
-      // Духи: дух-привидение
-      spirits: sh(26) + `<path d="M50 10 C30 10 20 26 20 44 V84 L30 77 L40 85 L50 77 L60 85 L70 77 L80 84 V44 C80 26 70 10 50 10Z" fill="#c4b5fd" stroke="#5b21b6" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M22 60 C30 72 70 72 78 60 V84 L70 77 L60 85 L50 77 L40 85 L30 77 L22 84Z" fill="#8b5cf6" opacity=".45"/>
-        <ellipse cx="39" cy="45" rx="6" ry="8" fill="#2e1065"/><ellipse cx="61" cy="45" rx="6" ry="8" fill="#2e1065"/><circle cx="41" cy="42" r="2.4" fill="#fff"/><circle cx="63" cy="42" r="2.4" fill="#fff"/>
-        <ellipse cx="31" cy="56" rx="4.5" ry="2.6" fill="#f472b6" opacity=".6"/><ellipse cx="69" cy="56" rx="4.5" ry="2.6" fill="#f472b6" opacity=".6"/><path d="M45 58 Q50 62 55 58" stroke="#2e1065" stroke-width="3" fill="none" stroke-linecap="round"/>` + hl(34, 22, 8, 4.5),
-      // Бестиарий: книга с руной
-      book: sh(28) + `<path d="M24 16 H74 Q80 16 80 22 V82 Q80 88 74 88 H24Z" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
-        <path d="M20 12 H70 Q76 12 76 18 V78 Q76 84 70 84 H20 Q16 84 16 80 V16 Q16 12 20 12Z" fill="#14b8a6" stroke="#134e4a" stroke-width="3.5"/>
-        <path d="M16 20 H26 V84 H20 Q16 84 16 80Z" fill="#0f766e"/><path d="M50 30 L62 48 L50 66 L38 48Z" fill="#fde047" stroke="#92400e" stroke-width="3" stroke-linejoin="round"/>
-        <circle cx="50" cy="48" r="4.5" fill="#92400e"/><path d="M62 12 V30 L67 26 L72 30 V12" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.5" stroke-linejoin="round"/>` + hl(38, 22, 9, 3.5, -10),
-      // Сумка: котомка с завязкой
-      bag: sh(30) + `<path d="M34 36 C20 44 16 58 16 68 C16 84 30 90 50 90 C70 90 84 84 84 68 C84 58 80 44 66 36Z" fill="#d6a36b" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M18 72 C24 84 76 84 82 72 C82 84 70 90 50 90 C30 90 18 84 18 72Z" fill="#a16207" opacity=".45"/>
-        <path d="M38 36 C34 24 40 12 50 12 C60 12 66 24 62 36Z" fill="#e7c49a" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M32 36 H68" stroke="#dc2626" stroke-width="6" stroke-linecap="round"/><path d="M66 38 L74 48 M66 38 L62 50" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>
-        <rect x="54" y="58" width="16" height="14" rx="3" transform="rotate(-8 62 65)" fill="#b45309" stroke="#78350f" stroke-width="2.5"/>
-        <path d="M58 61 L66 69 M66 61 L58 69" stroke="#fde68a" stroke-width="2" stroke-linecap="round"/>` + hl(32, 52, 7, 4, -40),
-      // Коконы: как в разделе «Коконы»
-      egg: Art.cocoon(2).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''),
-      // Задания: свиток с печатью
-      scroll: sh(30) + `<rect x="24" y="22" width="52" height="58" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
-        <rect x="16" y="12" width="68" height="16" rx="8" fill="#fde68a" stroke="#92400e" stroke-width="3.5"/><rect x="16" y="74" width="68" height="16" rx="8" fill="#fde68a" stroke="#92400e" stroke-width="3.5"/>
-        <path d="M34 40 H66 M34 50 H66 M34 60 H54" stroke="#b45309" stroke-width="4" stroke-linecap="round" opacity=".55"/>
-        <circle cx="66" cy="66" r="10" fill="#dc2626" stroke="#7f1d1d" stroke-width="3"/><path d="M62 66 L66 62 L70 66 L66 70Z" fill="#fca5a5"/>` + hl(28, 17, 7, 2.5, 0),
+      // Духи: светящийся дух-привидение
+      spirits: () => D(rg('b', [[0, '#fff'], [.45, '#e6ddff'], [.8, '#a88cff'], [1, '#6a45dd']], .4, .28, .85), rg('g', [[0, '#5eead4', .5], [1, '#5eead4', 0]], .5, .5, .5)) +
+        `<circle cx="50" cy="50" r="48" fill="${u('g')}"/>` + sh(24) +
+        `<path d="M22 54 C13 54 8 46 10 40 C16 40 21 44 25 47Z M78 54 C87 54 92 46 90 40 C84 40 79 44 75 47Z" fill="#b9a5ff" stroke="#2e1a6b" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M50 9 C30 9 19 25 19 44 V70 C19 76 16 81 11 85 C18 88 25 87 30 83 C34 89 42 91 48 86 C53 91 61 91 66 86 C71 90 80 89 86 84 C82 79 81 73 81 66 V44 C81 25 70 9 50 9Z" fill="${u('b')}" stroke="#2e1a6b" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M20 64 C32 76 68 76 80 64 V67 C80 74 82 79 85 83 C79 88 71 89 66 85 C61 90 53 90 48 85 C42 90 34 88 30 82 C25 86 19 87 13 85 C17 81 20 76 20 70Z" fill="#5b3bd0" opacity=".3"/>
+        <path d="M68 17 C75 23 77.5 32 78 42" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".45"/>` +
+        face(50, 44) + hl(33, 22, 8, 4.5, -35, .7) + `<circle cx="25" cy="33" r="2.2" fill="#fff" opacity=".6"/>` + spk(88, 18, 6) + spk(12, 22, 4.5) + spk(90, 60, 3.5, '#5eead4'),
+      // Бестиарий: бирюзовый фолиант с золотыми уголками и самоцветом-руной
+      book: () => D(lg('c', [[0, '#5eead4'], [.45, '#14b8a6'], [1, '#0b4f4a']], .7, 1), lg('p', PAPER), lg('a', AU, .6, 1), rg('j', [[0, '#fdf4ff'], [.4, '#c084fc'], [1, '#4c1d95']], .35, .3, .8)) + sh(30) +
+        `<path d="M24 16 H78 Q84 16 84 22 V84 Q84 90 78 90 H24Z" fill="${u('p')}" stroke="#5c3310" stroke-width="3"/><path d="M79 24 V84 M75 22 V87" stroke="#c9a064" stroke-width="1.6"/>
+        <path d="M60 86 V96 L64 92.5 L68 96 V86Z" fill="#dc2626" stroke="#5c0f0f" stroke-width="2.2" stroke-linejoin="round"/>
+        <rect x="13" y="10" width="64" height="77" rx="6" fill="${u('c')}" stroke="#062e2b" stroke-width="3.2"/>
+        <path d="M14.6 16 Q14.6 11.6 19 11.6 H26 V85.4 H19 Q14.6 85.4 14.6 81Z" fill="#053b37" opacity=".45"/>
+        <rect x="15" y="20" width="11" height="4.5" rx="1" fill="${u('a')}"/><rect x="15" y="73" width="11" height="4.5" rx="1" fill="${u('a')}"/>
+        <rect x="31" y="17" width="40" height="63" rx="3" fill="none" stroke="#f7d77e" stroke-width="1.8" opacity=".75"/>
+        <path d="M77 23 V16 Q77 10 71 10 H63Z M77 74 V81 Q77 87 71 87 H63Z" fill="${u('a')}" stroke="#5c3a0c" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M51 27 L66 48.5 L51 70 L36 48.5Z" fill="${u('a')}" stroke="#5c3a0c" stroke-width="2.6" stroke-linejoin="round"/>
+        <path d="M51 36 L59.5 48.5 L51 61 L42.5 48.5Z" fill="${u('j')}" stroke="#3b0764" stroke-width="1.6" stroke-linejoin="round"/>
+        <circle cx="51" cy="21.5" r="2.3" fill="#f7d77e"/><circle cx="51" cy="75.5" r="2.3" fill="#f7d77e"/>` + hl(48.5, 44, 2.2, 4, 30, .8) + hl(44, 14.5, 14, 1.8, 0, .45) + hl(20, 40, 1.6, 12, 0, .3),
+      // Сумка: кожаная сума с клапаном, строчкой и золотой пряжкой
+      bag: () => D(lg('l', [[0, '#e2a86a'], [.5, '#b06a2c'], [1, '#6b3812']]), lg('f', [[0, '#d38e4c'], [1, '#7a3f14']]), lg('a', AU, .5, 1)) + sh(34) +
+        `<path d="M24 48 C22 12 78 12 76 48" fill="none" stroke="#2a1405" stroke-width="10.5" stroke-linecap="round"/><path d="M24 48 C22 12 78 12 76 48" fill="none" stroke="#a8652a" stroke-width="5.5" stroke-linecap="round"/>
+        <path d="M24 44 C23 16 77 16 76 44" fill="none" stroke="#f0c68c" stroke-width="1.1" stroke-dasharray="2.5 2.5" opacity=".8"/>
+        <path d="M14 46 Q14 38 22 38 H78 Q86 38 86 46 V78 Q86 90 74 90 H26 Q14 90 14 78Z" fill="${u('l')}" stroke="#2a1405" stroke-width="3.2"/>
+        <path d="M15.6 76 H84.4 V78 Q84.4 88.4 74 88.4 H26 Q15.6 88.4 15.6 78Z" fill="#3d1a05" opacity=".35"/>
+        <path d="M12 44 Q12 35 21 35 H79 Q88 35 88 44 V57 Q88 71 50 75 Q12 71 12 57Z" fill="${u('f')}" stroke="#2a1405" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M18 44 Q18 41 21 41 H79 Q82 41 82 44 V56 Q82 66 50 69.5 Q18 66 18 56Z" fill="none" stroke="#f3cf95" stroke-width="1.5" stroke-dasharray="3 2.6" opacity=".8"/>
+        <path d="M50 44 L56 51 L50 58 L44 51Z" fill="${u('a')}" stroke="#5c3a0c" stroke-width="1.8" stroke-linejoin="round"/><circle cx="50" cy="51" r="1.8" fill="#7f1d1d"/>
+        <rect x="45" y="68" width="10" height="19" rx="2" fill="#6b3812" stroke="#2a1405" stroke-width="2.4"/>
+        <rect x="39.5" y="64" width="21" height="15" rx="3.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.4"/><rect x="44.5" y="68.3" width="11" height="6.4" rx="1.6" fill="#3d1a05"/>
+        <circle cx="21" cy="44" r="2.4" fill="#f7d77e" stroke="#5c3a0c" stroke-width="1"/><circle cx="79" cy="44" r="2.4" fill="#f7d77e" stroke="#5c3a0c" stroke-width="1"/>` + hl(30, 39, 9, 2.2, -6, .5),
+      // Коконы: светящийся кокон в гнезде, трещинка
+      egg: () => D(rg('e', [[0, '#fff'], [.3, '#d8fff6'], [.72, '#5eead4'], [1, '#0f766e']], .38, .3, .8), rg('g', [[0, '#f0abfc', .9], [1, '#a855f7', 0]], .5, .5, .5), lg('n', [[0, '#b77a3e'], [1, '#5a2e0c']]),
+        `<clipPath id="${p}-c"><path d="M50 8 C69 8 80 34 80 56 C80 76 67 88 50 88 C33 88 20 76 20 56 C20 34 31 8 50 8Z"/></clipPath>`) + sh(32) +
+        `<path d="M50 8 C69 8 80 34 80 56 C80 76 67 88 50 88 C33 88 20 76 20 56 C20 34 31 8 50 8Z" fill="${u('e')}"/>
+        <g clip-path="${u('c')}"><circle cx="54" cy="58" r="22" fill="${u('g')}"/><path d="M16 42 Q50 60 84 36 M16 62 Q50 80 84 56" stroke="#0b4540" stroke-width="6" fill="none"/><path d="M16 42 Q50 60 84 36 M16 62 Q50 80 84 56" stroke="#b6fff0" stroke-width="2.6" fill="none"/></g>
+        <path d="M50 8 C69 8 80 34 80 56 C80 76 67 88 50 88 C33 88 20 76 20 56 C20 34 31 8 50 8Z" fill="none" stroke="#0b4540" stroke-width="3.2"/>
+        <path d="M45 15 L50 21 L45.5 26 L52 31 L49 35" stroke="#c084fc" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".6"/><path d="M45 15 L50 21 L45.5 26 L52 31 L49 35" stroke="#fdf4ff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M11 73 Q13 93 50 93 Q87 93 89 73 Q70 83 50 83 Q30 83 11 73Z" fill="${u('n')}" stroke="#2a1405" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M18 81 Q44 90 72 84" stroke="#3d1a05" stroke-width="1.6" fill="none" opacity=".5"/><path d="M17 80 Q38 89 64 86 M36 90 Q62 91 83 80 M22 85 Q30 84 40 87" stroke="#e8b67a" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M17 77 C11 79 5 75 3 69 C9 67 14 70 17 77Z M83 77 C89 79 95 75 97 69 C91 67 86 70 83 77Z" fill="#4ade80" stroke="#14532d" stroke-width="2" stroke-linejoin="round"/>` +
+        hl(37, 30, 5, 10, 25, .6) + `<circle cx="33" cy="46" r="2" fill="#fff" opacity=".6"/>` + spk(86, 20, 5.5) + spk(14, 28, 4, '#f0abfc'),
+      // Задания: пергамент на валиках, красная сургучная печать с лентами
+      scroll: () => D(lg('p', PAPER), lg('r', [[0, '#f5c27a'], [.35, '#fde9bf'], [.6, '#b9722d'], [1, '#5a2e0c']]), lg('a', AU, .5, 1), rg('s', [[0, '#ff9b8a'], [.45, '#dc2626'], [1, '#7a0c0c']], .38, .32, .75)) + sh(34) +
+        `<path d="M23 20 H77 Q73.5 50 77 80 H23 Q26.5 50 23 20Z" fill="${u('p')}" stroke="#5c3310" stroke-width="3"/>
+        <path d="M70 21 H76 Q72.5 50 76 79 H70 Q67 50 70 21Z" fill="#b9722d" opacity=".25"/>
+        <path d="M32 36 H66 M32 45 H68 M32 54 H56" stroke="#9a5a1c" stroke-width="3.6" stroke-linecap="round" opacity=".6"/>
+        <rect x="14" y="11" width="72" height="14" rx="7" fill="${u('r')}" stroke="#2a1405" stroke-width="3"/><rect x="14" y="75" width="72" height="14" rx="7" fill="${u('r')}" stroke="#2a1405" stroke-width="3"/>
+        <circle cx="12" cy="18" r="5.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.4"/><circle cx="88" cy="18" r="5.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.4"/>
+        <circle cx="12" cy="82" r="5.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.4"/><circle cx="88" cy="82" r="5.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.4"/>
+        <path d="M60 76 L54 95 L59.5 92 L62.5 96.5 L67 79Z M72 79 L75 96.5 L78.5 92 L84 94 L77 76Z" fill="#b91c1c" stroke="#4c0808" stroke-width="2.2" stroke-linejoin="round"/>
+        <path d="${blob(66, 68, 13, 9)}" fill="${u('s')}" stroke="#4c0808" stroke-width="2.6" stroke-linejoin="round"/>
+        <circle cx="66" cy="68" r="8.5" fill="none" stroke="#7a0c0c" stroke-width="2" opacity=".7"/><path d="${star(66, 68, 6.5, 2.8, 4, 0)}" fill="#ffc9bd"/>` +
+        hl(60.5, 61.5, 3.4, 1.8, -35, .7) + hl(38, 15, 16, 1.8, 0, .6) + hl(38, 79, 16, 1.8, 0, .5),
       // Друзья: два духа обнялись, над ними сердечко
-      swap: sh(36) + `<path d="M64 28 C50 28 44 40 44 52 V84 L51 79 L58 85 L65 79 L72 85 L79 79 L86 84 V52 C86 40 78 28 64 28Z" fill="#f9a8d4" stroke="#9d174d" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M56 51 Q60 46 64 51 M68 51 Q72 46 76 51" stroke="#500724" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="80" cy="60" rx="4" ry="2.4" fill="#f43f5e" opacity=".5"/>
-        <path d="M36 32 C22 32 14 44 14 56 V86 L21 81 L28 87 L35 81 L42 87 L49 81 L56 86 V56 C56 44 50 32 36 32Z" fill="#a5f3fc" stroke="#155e75" stroke-width="3.5" stroke-linejoin="round"/>
-        <ellipse cx="29" cy="55" rx="3.8" ry="5" fill="#083344"/><ellipse cx="43" cy="55" rx="3.8" ry="5" fill="#083344"/><circle cx="30.2" cy="53.3" r="1.5" fill="#fff"/><circle cx="44.2" cy="53.3" r="1.5" fill="#fff"/>
-        <path d="M32 65 Q36 69 40 65" stroke="#083344" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="22" cy="63" rx="4" ry="2.4" fill="#f472b6" opacity=".5"/>
-        <path d="M52 62 C60 58 66 60 68 66" stroke="#155e75" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M52 62 C60 58 66 60 68 66" stroke="#a5f3fc" stroke-width="4" fill="none" stroke-linecap="round"/>
-        <path d="M50 22 C45 12 32 15 37 25 L50 35 L63 25 C68 15 55 12 50 22Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3" stroke-linejoin="round"/>` + hl(26, 44, 6, 3.5) + hl(43, 20, 3, 1.8),
-      // Чат: реплики-берестяные грамотки
-      chat: sh(30) + `<path d="M18 14 H62 Q70 14 70 22 V44 Q70 52 62 52 H36 L24 62 V52 H18 Q10 52 10 44 V22 Q10 14 18 14Z" fill="#bfdbfe" stroke="#1e3a8a" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M40 38 H82 Q90 38 90 46 V70 Q90 78 82 78 H78 V88 L66 78 H40 Q32 78 32 70 V46 Q32 38 40 38Z" fill="#f0f9ff" stroke="#1e3a8a" stroke-width="3.5" stroke-linejoin="round"/>
-        <circle cx="48" cy="58" r="4.5" fill="#2563eb"/><circle cx="61" cy="58" r="4.5" fill="#2563eb"/><circle cx="74" cy="58" r="4.5" fill="#2563eb"/>` + hl(22, 22, 7, 3, -15),
-      // Лига: золотой кубок
-      trophy: sh(24) + `<path d="M28 20 C12 20 10 32 14 40 C18 48 28 50 34 50" stroke="#92400e" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M28 20 C12 20 10 32 14 40 C18 48 28 50 34 50" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round"/>
-        <path d="M72 20 C88 20 90 32 86 40 C82 48 72 50 66 50" stroke="#92400e" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M72 20 C88 20 90 32 86 40 C82 48 72 50 66 50" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round"/>
-        <path d="M24 12 H76 V34 C76 52 64 62 50 62 C36 62 24 52 24 34Z" fill="#fbbf24" stroke="#92400e" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M60 14 H74 V34 C74 46 68 54 60 58Z" fill="#d97706" opacity=".5"/><rect x="43" y="60" width="14" height="14" fill="#f59e0b" stroke="#92400e" stroke-width="3"/>
-        <rect x="28" y="72" width="44" height="16" rx="4" fill="#b45309" stroke="#78350f" stroke-width="3.5"/><path d="M50 22 L54 31 L64 32 L57 38 L59 48 L50 43 L41 48 L43 38 L36 32 L46 31Z" fill="#fef3c7" stroke="#92400e" stroke-width="2" stroke-linejoin="round"/>` + hl(33, 22, 4, 7, 10),
-      // Лавка: лоток с полосатым навесом
-      shop: sh(34) + `<rect x="18" y="44" width="64" height="44" rx="3" fill="#d6a36b" stroke="#78350f" stroke-width="3.5"/><rect x="40" y="58" width="20" height="30" rx="2" fill="#92400e" stroke="#78350f" stroke-width="3"/>
-        <path d="M18 60 H82" stroke="#a16207" stroke-width="3" opacity=".5"/><rect x="24" y="50" width="12" height="10" rx="2" fill="#fde047" stroke="#78350f" stroke-width="2.5"/><rect x="64" y="50" width="12" height="10" rx="2" fill="#86efac" stroke="#78350f" stroke-width="2.5"/>
-        <path d="M12 38 L22 12 H78 L88 38Z" fill="#fff" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/><path d="M34 12 L28 38 H40 L44 12Z M56 12 L60 38 H72 L66 12Z" fill="#ef4444"/>
-        <path d="M12 38 Q18 48 24 38 Q30 48 36 38 Q42 48 48 38 Q54 48 60 38 Q66 48 72 38 Q78 48 84 38 Q86 42 88 38" fill="#ef4444" stroke="#7f1d1d" stroke-width="3" stroke-linejoin="round"/>` + hl(24, 18, 5, 2.5, -60),
-      // Тропа: дорожный указатель
-      trail: sh(26) + `<rect x="45" y="18" width="10" height="72" rx="3" fill="#a16207" stroke="#78350f" stroke-width="3.5"/>
-        <path d="M22 22 H72 L82 32 L72 42 H22Z" fill="#d6a36b" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M78 50 H28 L18 60 L28 70 H78Z" fill="#e7c49a" stroke="#78350f" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M30 32 H62 M36 60 H70" stroke="#78350f" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="5 5" opacity=".6"/>
-        <path d="M50 10 C54 4 62 6 60 12 C58 16 52 16 50 10Z" fill="#4ade80" stroke="#166534" stroke-width="2.5"/>` + hl(30, 27, 5, 2, 0),
-      // Разломы: каменная арка с руной, внутри — вихрь Нави
-      rift: `<ellipse cx="50" cy="60" rx="30" ry="32" fill="#a855f7" opacity=".3"/>` + sh(36) + `<path d="M32 90 V50 A18 18 0 0 1 68 50 V90Z" fill="#6d28d9"/>
-        <path d="M50 52 C58 52 60 62 52 64 C44 66 40 56 48 50 C58 43 70 54 64 66 C58 78 38 76 36 62" stroke="#c4b5fd" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-        <circle cx="50" cy="58" r="4.5" fill="#f5d0fe"/><circle cx="50" cy="58" r="10" fill="#f0abfc" opacity=".35"/>
-        <path d="M14 90 V48 A36 36 0 0 1 86 48 V90 H68 V50 A18 18 0 0 0 32 50 V90Z" fill="#9ca3af" stroke="#374151" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M14 70 H32 M68 70 H86 M18 36 L34 42 M82 36 L66 42 M31 20 L40 34 M69 20 L60 34" stroke="#4b5563" stroke-width="3" stroke-linecap="round"/>
-        <path d="M68 50 A18 18 0 0 0 60 35 L69 20 A36 36 0 0 1 86 48 V90 H68Z" fill="#374151" opacity=".3"/>
-        <rect x="41" y="8" width="18" height="18" rx="3" fill="#6b7280" stroke="#374151" stroke-width="3.5"/><path d="M50 11 V23 M50 15 L45 11 M50 15 L55 11" stroke="#e879f9" stroke-width="2.8" stroke-linecap="round"/>
-        <path d="M8 26 L10.5 31 L15.5 33.5 L10.5 36 L8 41 L5.5 36 L0.5 33.5 L5.5 31Z" fill="#fde047"/><circle cx="92" cy="30" r="2.6" fill="#e9d5ff"/>` + hl(24, 44, 6, 2.5, -60),
-      // Аукцион: молоток бьёт по подставке (головкой вниз)
-      gavel: sh(32) + `<rect x="34" y="76" width="50" height="13" rx="3.5" fill="#a16207" stroke="#78350f" stroke-width="3.5"/><path d="M38 79 H80" stroke="#fde68a" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
-        <path d="M72 66 L78 60 M78 72 L86 70 M66 62 L68 54" stroke="#fde047" stroke-width="3.5" stroke-linecap="round"/>
-        <g transform="translate(42 54) rotate(40)"><rect x="-5" y="-58" width="10" height="48" rx="4" fill="#d6a36b" stroke="#78350f" stroke-width="3.5"/>
-        <rect x="-25" y="-12" width="50" height="24" rx="5" fill="#b45309" stroke="#78350f" stroke-width="3.5"/><rect x="-18" y="-14" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>
-        <rect x="11" y="-14" width="7" height="28" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/><ellipse cx="-4" cy="-6" rx="6" ry="2.2" fill="#fff" opacity=".45"/></g>`,
-      // Места: метка на карте
-      pin: sh(18) + `<path d="M50 90 C50 90 20 60 20 38 A30 30 0 0 1 80 38 C80 60 50 90 50 90Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M66 20 A30 30 0 0 1 80 38 C80 60 50 90 50 90 C60 70 70 52 66 20Z" fill="#b91c1c" opacity=".45"/><circle cx="50" cy="38" r="12" fill="#fff" stroke="#7f1d1d" stroke-width="3"/>` + hl(34, 24, 6, 3.5, -40),
-      // Ловчий: по пояс, в плаще с капюшоном (цвет плаща и глаз — из «Облика» игрока), застёжка-оберег
-      user: (() => { const lk = (S.d && S.d.look) || {}, hex = /^#[0-9a-f]{6}$/i;
-        const c = hex.test(lk.cloak) ? lk.cloak : '#6d28d9', eye = hex.test(lk.eyes) ? lk.eyes : '#5eead4', ol = Art.shade(c, -0.55);
-        return sh(32) + `<path d="M12 92 C12 74 24 62 38 58 H62 C76 62 88 74 88 92Z" fill="${c}" stroke="${ol}" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M62 58 C76 62 88 74 88 92 H72 C72 78 68 66 62 58Z" fill="#000" opacity=".2"/>
-        <path d="M50 6 C32 10 22 26 22 44 C22 56 28 64 38 66 H62 C72 64 78 56 78 44 C78 26 68 10 50 6Z" fill="${c}" stroke="${ol}" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M58 10 C70 18 78 30 78 44 C78 56 72 64 62 66 C68 56 70 34 58 10Z" fill="#000" opacity=".2"/>
-        <path d="M50 24 C62 24 66 36 66 46 C66 56 59 62 50 62 C41 62 34 56 34 46 C34 36 38 24 50 24Z" fill="#150d2b" stroke="${ol}" stroke-width="2"/>
-        <ellipse cx="43" cy="46" rx="4" ry="2.8" fill="${eye}"/><ellipse cx="57" cy="46" rx="4" ry="2.8" fill="${eye}"/><ellipse cx="50" cy="46" rx="14" ry="6" fill="${eye}" opacity=".15"/>
-        <circle cx="50" cy="74" r="8" fill="#fbbf24" stroke="#92400e" stroke-width="3"/><path d="M50 69 V79 M45.5 71.5 L54.5 76.5 M54.5 71.5 L45.5 76.5" stroke="#fff7d6" stroke-width="2" stroke-linecap="round"/>` + hl(34, 22, 7, 3.5, -45); })(),
-      // Дружина: славянский щит с умбоном
-      shield: sh(26) + `<path d="M50 8 L84 20 V46 C84 70 68 84 50 92 C32 84 16 70 16 46 V20Z" fill="#dc2626" stroke="#7f1d1d" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M50 8 V92 C68 84 84 70 84 46 V20Z" fill="#991b1b" opacity=".5"/><path d="M50 16 L76 25 V46 C76 64 64 76 50 83 C36 76 24 64 24 46 V25Z" fill="none" stroke="#fbbf24" stroke-width="3" opacity=".9"/>
-        <circle cx="50" cy="48" r="12" fill="#fbbf24" stroke="#92400e" stroke-width="3"/><circle cx="50" cy="48" r="5" fill="#fde68a"/>` + hl(30, 26, 6, 3, -30),
-      // Дневник: кожаная тетрадь с закладкой и пером
-      journal: sh(28) + `<rect x="22" y="12" width="54" height="76" rx="5" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
-        <rect x="18" y="10" width="54" height="76" rx="5" fill="#92400e" stroke="#451a03" stroke-width="3.5"/><rect x="18" y="10" width="12" height="76" rx="4" fill="#78350f"/>
-        <rect x="36" y="26" width="28" height="18" rx="3" fill="#fef3c7" stroke="#451a03" stroke-width="2.5"/><path d="M41 32 H59 M41 38 H53" stroke="#b45309" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M58 10 V32 L63 28 L68 32 V10" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.5" stroke-linejoin="round"/>
-        <path d="M86 44 L56 80 L52 90 L62 84 L90 48Z" fill="#fde68a" stroke="#92400e" stroke-width="3" stroke-linejoin="round"/>` + hl(38, 18, 7, 2.5, 0),
-      // 4.0 Путь Ловчего: карта-пергамент с пунктирной тропой к звезде
-      path: sh(32) + `<path d="M12 22 L36 14 L64 22 L88 14 V78 L64 86 L36 78 L12 86Z" fill="#fef3c7" stroke="#92400e" stroke-width="3.5" stroke-linejoin="round"/>
-        <path d="M36 14 V78 M64 22 V86" stroke="#d6a36b" stroke-width="2.5"/><path d="M64 22 L88 14 V78 L64 86Z" fill="#fde68a" opacity=".6"/>
-        <path d="M20 72 C30 70 30 58 40 56 S54 52 56 44 S66 32 74 30" stroke="#dc2626" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-dasharray="4 5"/>
-        <circle cx="20" cy="72" r="4.5" fill="#15803d" stroke="#14532d" stroke-width="2"/>
-        <path d="M76 18 L79 25 L86 26 L81 31 L82 38 L76 34 L70 38 L71 31 L66 26 L73 25Z" fill="#fbbf24" stroke="#92400e" stroke-width="2.5" stroke-linejoin="round"/>` + hl(22, 28, 6, 2.2, -18),
-      // 4.0 Книга Ордена: толстый фолиант с золотыми уголками и оберегом на обложке
-      orderbook: sh(30) + `<path d="M22 14 H80 Q86 14 86 20 V84 Q86 90 80 90 H22Z" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>
-        <path d="M78 22 V84 M74 22 V84" stroke="#e7c49a" stroke-width="2"/>
-        <rect x="14" y="10" width="62" height="78" rx="6" fill="#6d28d9" stroke="#2e1065" stroke-width="3.5"/><rect x="14" y="10" width="12" height="78" rx="5" fill="#4c1d95"/>
-        <path d="M14 22 V16 Q14 10 20 10 H28 Z M76 22 V16 Q76 10 70 10 H62 Z M14 76 V82 Q14 88 20 88 H28 Z M76 76 V82 Q76 88 70 88 H62 Z" fill="#fbbf24" stroke="#92400e" stroke-width="2" stroke-linejoin="round"/>
-        <circle cx="48" cy="49" r="15" fill="#fbbf24" stroke="#92400e" stroke-width="3"/><circle cx="48" cy="49" r="10" fill="none" stroke="#fef3c7" stroke-width="1.8" stroke-dasharray="3 3"/>
-        <path d="M48 41 V57 M41 45 L55 53 M55 45 L41 53" stroke="#fff7d6" stroke-width="2.6" stroke-linecap="round"/>` + hl(34, 20, 8, 3, -10),
-      // Настройки: железная шестерня
-      gear: sh(28) + `<path d="${gear}" fill="#94a3b8" stroke="#334155" stroke-width="3.5" stroke-linejoin="round"/>
-        <circle cx="50" cy="50" r="20" fill="#64748b" opacity=".45"/><circle cx="50" cy="50" r="11" fill="#1e293b" stroke="#334155" stroke-width="3"/>` + hl(36, 30, 7, 3.5, -40),
+      swap: () => D(rg('p', [[0, '#fff'], [.4, '#fcd3ea'], [.85, '#f472b6'], [1, '#be185d']], .38, .28, .85), rg('c', [[0, '#fff'], [.4, '#cffafe'], [.85, '#22d3ee'], [1, '#0e7490']], .38, .28, .85), rg('h', [[0, '#ffe4e6'], [.35, '#fb7185'], [1, '#9f1239']], .35, .3, .8)) + sh(38) +
+        `<path d="M64 28 C50 28 44 40 44 52 V82 Q47.5 89 51 82 Q54.5 89 58 82 Q61.5 89 65 82 Q68.5 89 72 82 Q75.5 89 79 82 Q82.5 89 86 82 V52 C86 40 78 28 64 28Z" fill="${u('p')}" stroke="#6b0f3a" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M56 52 Q60 46.5 64 52 M68 52 Q72 46.5 76 52" stroke="#4a0626" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="79" cy="60" rx="4" ry="2.4" fill="#e11d48" opacity=".45"/>
+        <path d="M36 32 C22 32 14 44 14 56 V84 Q17.5 91 21 84 Q24.5 91 28 84 Q31.5 91 35 84 Q38.5 91 42 84 Q45.5 91 49 84 Q52.5 91 56 84 V56 C56 44 50 32 36 32Z" fill="${u('c')}" stroke="#0c4a5e" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M52 64 C60 58 67 60 70 67" stroke="#0c4a5e" stroke-width="9.5" fill="none" stroke-linecap="round"/><path d="M52 64 C60 58 67 60 70 67" stroke="#a5f3fc" stroke-width="4.5" fill="none" stroke-linecap="round"/>` +
+        face(35, 56, .62) +
+        `<path d="M50 21 C44 10 27 13 31 26 C34 33 44 37 50 42 C56 37 66 33 69 26 C73 13 56 10 50 21Z" fill="${u('h')}" stroke="#5c0a1c" stroke-width="3" stroke-linejoin="round"/>` +
+        hl(40, 20, 4.5, 2.6, -35, .75) + hl(25, 42, 5, 3, -35, .6) + hl(56, 36, 4, 2.4, -35, .55) + spk(88, 20, 5) + spk(12, 22, 3.5),
+      // Чат: две реплики — лаковая и светлая, три точки
+      chat: () => D(lg('b', [[0, '#a78bfa'], [1, '#4c2fa6']]), lg('f', [[0, '#fff'], [1, '#dcd3f7']]), rg('d', [[0, '#c4b5fd'], [.5, '#7c3aed'], [1, '#3b0f8a']], .35, .3, .8)) + sh(30) +
+        `<path d="M20 11 H60 Q70 11 70 21 V41 Q70 51 60 51 H38 L24 62 L27 51 H20 Q10 51 10 41 V21 Q10 11 20 11Z" fill="${u('b')}" stroke="#1a0f40" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M20 22 H46 M20 31 H36" stroke="#ede9fe" stroke-width="3.6" stroke-linecap="round" opacity=".75"/>
+        <path d="M42 35 H80 Q90 35 90 45 V68 Q90 78 80 78 H76 L79 91 L63 78 H42 Q32 78 32 68 V45 Q32 35 42 35Z" fill="${u('f')}" stroke="#1a0f40" stroke-width="3.2" stroke-linejoin="round"/>
+        <circle cx="48" cy="57" r="5.2" fill="${u('d')}"/><circle cx="61" cy="57" r="5.2" fill="${u('d')}"/><circle cx="74" cy="57" r="5.2" fill="${u('d')}"/>
+        <circle cx="46.5" cy="55.3" r="1.5" fill="#fff"/><circle cx="59.5" cy="55.3" r="1.5" fill="#fff"/><circle cx="72.5" cy="55.3" r="1.5" fill="#fff"/>` +
+        hl(22, 16, 8, 2, -8, .6) + hl(46, 40, 9, 2.2, -6, .9),
+      // Лига: золотой кубок с звездой на лаковой подставке
+      trophy: () => D(lg('a', [[0, '#8a5a14'], [.22, '#f7d77e'], [.38, '#fff7d1'], [.62, '#e3a843'], [1, '#7a4a10']], 1, 0), lg('w', [[0, '#7c5ce6'], [1, '#2a1b5a']])) + sh(28) +
+        `<path d="M27 21 C10 19 8 34 13 42 C17 48 26 51 33 51 M73 21 C90 19 92 34 87 42 C83 48 74 51 67 51" stroke="#4a2c06" stroke-width="10.5" fill="none" stroke-linecap="round"/>
+        <path d="M27 21 C10 19 8 34 13 42 C17 48 26 51 33 51 M73 21 C90 19 92 34 87 42 C83 48 74 51 67 51" stroke="#f0c75e" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M22 23 C14 24 12 33 15 39" stroke="#fff7d1" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <path d="M44 58 H56 L54.5 70 H45.5Z" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.8" stroke-linejoin="round"/>
+        <path d="M22 13 H78 V32 C78 52 65 62 50 62 C35 62 22 52 22 32Z" fill="${u('a')}" stroke="#4a2c06" stroke-width="3.2" stroke-linejoin="round"/>
+        <rect x="18" y="8" width="64" height="9" rx="4.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="3"/>
+        <ellipse cx="50" cy="71" rx="10" ry="4" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.6"/>
+        <path d="M34 75 H66 L71 81 H29Z" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.8" stroke-linejoin="round"/>
+        <rect x="25" y="80" width="50" height="11" rx="3" fill="${u('w')}" stroke="#140c2e" stroke-width="3"/><rect x="33" y="84" width="34" height="3.4" rx="1.7" fill="#f7d77e" opacity=".9"/>
+        <path d="${star(50, 35, 12, 5)}" fill="#fff3c4" stroke="#9a6414" stroke-width="2.2" stroke-linejoin="round"/>
+        <path d="M30 20 V34 C30 42 33 48 37 52" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="round" opacity=".55"/>` + spk(88, 10, 5) + spk(10, 62, 3.5) + spk(90, 62, 3),
+      // Лавка: лоток с полосатым навесом и товаром
+      shop: () => D(lg('w', [[0, '#dfa468'], [1, '#7a4318']]), lg('r', [[0, '#ff7a7a'], [1, '#b91c1c']]), lg('c', [[0, '#fffaf0'], [1, '#f1d6a0']]), lg('a', AU, .5, 1), rg('t', [[0, '#ecfeff'], [.45, '#2dd4bf'], [1, '#0f5e56']], .35, .35, .8), rg('v', [[0, '#e9d5ff'], [.5, '#8b5cf6'], [1, '#3b0f8a']], .35, .3, .8)) + sh(40) +
+        `<rect x="17" y="26" width="7" height="38" fill="${u('w')}" stroke="#2a1405" stroke-width="2.5"/><rect x="76" y="26" width="7" height="38" fill="${u('w')}" stroke="#2a1405" stroke-width="2.5"/>
+        <path d="M27.5 46 H32.5 V50 C37.5 52 38.5 57 37 61 H23 C21.5 57 22.5 52 27.5 50Z" fill="${u('t')}" stroke="#0b3b36" stroke-width="2.2" stroke-linejoin="round"/><rect x="26.5" y="43" width="7" height="4" rx="1" fill="#b45309" stroke="#2a1405" stroke-width="1.6"/>
+        <ellipse cx="50" cy="59" rx="8" ry="3" fill="${u('a')}" stroke="#5c3a0c" stroke-width="1.8"/><ellipse cx="50" cy="55" rx="8" ry="3" fill="${u('a')}" stroke="#5c3a0c" stroke-width="1.8"/><ellipse cx="51" cy="51" rx="8" ry="3" fill="${u('a')}" stroke="#5c3a0c" stroke-width="1.8"/>
+        <rect x="63" y="48" width="13" height="13" rx="3" fill="${u('v')}" stroke="#1a0f40" stroke-width="2.2"/><rect x="62" y="45" width="15" height="4.5" rx="1.5" fill="#f7d77e" stroke="#5c3a0c" stroke-width="1.6"/>
+        <rect x="8" y="58" width="84" height="8" rx="3" fill="#e8b57a" stroke="#2a1405" stroke-width="3"/>
+        <path d="M12 65 H88 V86 Q88 90 84 90 H16 Q12 90 12 86Z" fill="${u('w')}" stroke="#2a1405" stroke-width="3.2"/><path d="M13.6 72 H86.4 M37 66.6 V88.4 M63 66.6 V88.4" stroke="#4a2408" stroke-width="1.8" opacity=".45"/>
+        <path d="M25 76 L29 80.5 L25 85 L21 80.5Z M50 76 L54 80.5 L50 85 L46 80.5Z M75 76 L79 80.5 L75 85 L71 80.5Z" fill="${u('a')}" stroke="#5c3a0c" stroke-width="1.4"/>
+        <path d="M10 34 L20 8 H80 L90 34Z" fill="${u('c')}"/><path d="M20 8 H30 L23.3 34 H10Z M40 8 H50 V34 H36.7Z M60 8 H70 L76.7 34 H63.3Z" fill="${u('r')}"/>
+        <path d="M10 34 Q16.7 44 23.3 34Z M36.7 34 Q43.3 44 50 34Z M63.3 34 Q70 44 76.7 34Z" fill="${u('r')}"/><path d="M23.3 34 Q30 44 36.7 34Z M50 34 Q56.7 44 63.3 34Z M76.7 34 Q83.3 44 90 34Z" fill="${u('c')}"/>
+        <path d="M10 34 L20 8 H80 L90 34 Q83.3 44 76.7 34 Q70 44 63.3 34 Q56.7 44 50 34 Q43.3 44 36.7 34 Q30 44 23.3 34 Q16.7 44 10 34Z" fill="none" stroke="#4c0808" stroke-width="3.2" stroke-linejoin="round"/>
+        <rect x="16" y="3.5" width="68" height="7" rx="3.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.6"/>` + hl(28, 6.5, 8, 1.4, 0, .7) + hl(21, 22, 1.6, 7, 20, .45) + hl(26, 54, 1.4, 2.6, 0, .8),
+      // Тропа: дорожный указатель на травяной кочке
+      trail: () => D(lg('w', [[0, '#f3cd97'], [.5, '#c98a4a'], [1, '#8a4f1d']]), lg('p', [[0, '#5a2e0c'], [.4, '#b97a3c'], [1, '#4a2408']], 1, 0), lg('g', [[0, '#86efac'], [1, '#15803d']]), lg('a', AU, .5, 1)) + sh(30) +
+        `<rect x="44" y="14" width="12" height="76" rx="3" fill="${u('p')}" stroke="#2a1405" stroke-width="3"/><path d="M40 16 L50 6 L60 16Z" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.6" stroke-linejoin="round"/>
+        <path d="M18 20 H74 L87 31 L74 42 H18 Q14 42 14 38 V24 Q14 20 18 20Z" fill="${u('w')}" stroke="#2a1405" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M82 50 H28 L13 61 L28 72 H82 Q86 72 86 68 V54 Q86 50 82 50Z" fill="${u('w')}" stroke="#2a1405" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M21 36 Q40 34 70 37 M34 66 Q56 64 80 67" stroke="#8a4f1d" stroke-width="1.5" fill="none" opacity=".6"/>
+        <path d="M22 28 H40 M31 58 H42" stroke="#5a2e0c" stroke-width="3.4" stroke-linecap="round" opacity=".7"/>
+        <path d="M66 25 L71 31 L66 37 L61 31Z M70 55 L75 61 L70 67 L65 61Z" fill="#b91c1c" stroke="#4c0808" stroke-width="1.6" stroke-linejoin="round"/>
+        <circle cx="50" cy="31" r="2.2" fill="#3d1a05"/><circle cx="50" cy="61" r="2.2" fill="#3d1a05"/>
+        <path d="M26 92 Q28 82 34 87 Q36 76 43 84 Q46 74 50 83 Q54 74 57 84 Q64 76 66 87 Q72 82 74 92Z" fill="${u('g')}" stroke="#14532d" stroke-width="2.6" stroke-linejoin="round"/>
+        <path d="M60 14 C64 6 74 6 74 12 C70 16 64 17 60 14Z" fill="#4ade80" stroke="#14532d" stroke-width="2" stroke-linejoin="round"/>` + hl(34, 23.5, 12, 1.6, 0, .6) + hl(48, 53.5, 14, 1.6, 0, .55) + spk(88, 48, 4) + spk(12, 50, 3),
+      // Разломы: арка из камней-клиньев, внутри вихрь Нави
+      rift: () => { const wedge = i => { const a1 = Math.PI + i * Math.PI / 5, a2 = a1 + Math.PI / 5; return `M${P(50, 52, 38, a1)} A38 38 0 0 1 ${P(50, 52, 38, a2)} L${P(50, 52, 20, a2)} A20 20 0 0 0 ${P(50, 52, 20, a1)}Z`; };
+        return D(rg('v', [[0, '#fdf4ff'], [.22, '#f0abfc'], [.6, '#7c3aed'], [1, '#1e0b4a']], .5, .6, .6), lg('s', [[0, '#d5dce8'], [.5, '#8f99ad'], [1, '#4b5263']]), rg('g', [[0, '#d8b4fe', .9], [.5, '#a855f7', .35], [1, '#a855f7', 0]], .5, .5, .5)) +
+        `<circle cx="50" cy="56" r="44" fill="${u('g')}"/>` + sh(40) +
+        `<path d="M30 90 V52 A20 20 0 0 1 70 52 V90Z" fill="${u('v')}"/>
+        <path d="M50 58 C56 58 57 65 51 66 C44 67 41 59 46 54 C53 47 64 53 62 64 C60 75 44 78 37 68" stroke="#f5d0fe" stroke-width="3.2" fill="none" stroke-linecap="round" opacity=".9"/>
+        <path d="M58 41 C66 45 69 54 67 62 M35 78 C40 84 52 86 60 80" stroke="#c084fc" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".8"/><circle cx="50" cy="60" r="4.5" fill="#fff"/>
+        <g fill="${u('s')}" stroke="#232838" stroke-width="2.8" stroke-linejoin="round"><path d="${[0, 1, 3, 4].map(wedge).join('')}"/>
+        <rect x="12" y="52" width="18" height="19" rx="2"/><rect x="12" y="71" width="18" height="19" rx="2"/><rect x="70" y="52" width="18" height="19" rx="2"/><rect x="70" y="71" width="18" height="19" rx="2"/>
+        <path d="M40 10 H60 L57.5 33 H42.5Z"/></g>
+        <path d="M50 15 V28 M50 19 L45 15 M50 19 L55 15" stroke="#e879f9" stroke-width="2.8" stroke-linecap="round"/>
+        <path d="M21 58 V65 M18 62 L24 58 M79 76 V84 M76 79 L82 76" stroke="#5eead4" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M70 52 H88 V90 H70Z M60 15 L57.5 33" fill="#1e2230" opacity=".22"/>
+        <path d="M12 50 Q16 44 22 49 Q26 44 30 50Z M70 50 Q75 44 80 49 Q85 45 88 50Z" fill="#4ade80" stroke="#14532d" stroke-width="1.8" stroke-linejoin="round"/>` +
+        hl(22, 34, 6, 2.2, -55, .5) + spk(8, 28, 5.5) + spk(92, 26, 4, '#f0abfc') + `<circle cx="42" cy="44" r="1.6" fill="#fff"/><circle cx="60" cy="72" r="1.3" fill="#fff" opacity=".8"/>`; },
+      // Аукцион: молоток бьёт по лаковой подставке
+      gavel: () => D(lg('w', [[0, '#e8ad6c'], [.5, '#a55f24'], [1, '#5e300c']]), lg('h', [[0, '#f3cd97'], [1, '#9a5a22']], 1, 0), lg('a', AU, .5, 1), lg('b', [[0, '#8b6cf0'], [1, '#2a1b5a']])) + sh(34) +
+        `<path d="M32 76 V83 C32 92 84 92 84 83 V76Z" fill="${u('b')}" stroke="#140c2e" stroke-width="3"/><path d="M32.5 81 C33 88 83 88 83.5 81" stroke="#f7d77e" stroke-width="2.4" fill="none"/>
+        <ellipse cx="58" cy="76" rx="26" ry="7" fill="#a78bfa" stroke="#140c2e" stroke-width="3"/><ellipse cx="58" cy="75.5" rx="18" ry="4" fill="#c4b5fd" opacity=".6"/>
+        <path d="M76 62 L82 55 M80 70 L89 68 M69 58 L70 49" stroke="#fde047" stroke-width="3.6" stroke-linecap="round"/>
+        <g transform="translate(42 54) rotate(40)"><rect x="-5.5" y="-60" width="11" height="50" rx="4" fill="${u('h')}" stroke="#2a1405" stroke-width="3"/><circle cy="-60" r="7" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.6"/>
+        <rect x="-26" y="-13" width="52" height="26" rx="6" fill="${u('w')}" stroke="#2a1405" stroke-width="3.2"/>
+        <rect x="-20" y="-15" width="7.5" height="30" rx="2.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.4"/><rect x="12.5" y="-15" width="7.5" height="30" rx="2.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.4"/>
+        <rect x="-8" y="-6.5" width="16" height="13" rx="2" fill="#7f1d1d" stroke="#2a1405" stroke-width="2"/><path d="M0 -4.5 L3.5 0 L0 4.5 L-3.5 0Z" fill="#fde68a"/>
+        <ellipse cx="-2" cy="-8.5" rx="17" ry="1.8" fill="#fff" opacity=".45"/><rect x="-3.5" y="-56" width="2" height="36" rx="1" fill="#fff" opacity=".35"/></g>` + spk(88, 42, 5) + spk(76, 86, 0),
+      // Места: глянцевая метка с золотым кольцом и бирюзовым камнем
+      pin: () => D(rg('r', [[0, '#ffb3a8'], [.35, '#f43f5e'], [.8, '#be123c'], [1, '#7f0d24']], .35, .25, .85), lg('a', AU, .5, 1), rg('c', [[0, '#fff'], [.45, '#ccfbf1'], [1, '#14b8a6']], .35, .3, .8)) +
+        `<ellipse cx="50" cy="90" rx="22" ry="5.5" fill="none" stroke="#5eead4" stroke-width="2.4" opacity=".75"/><ellipse cx="50" cy="90" rx="12" ry="3" fill="#000" opacity=".35"/>
+        <path d="M50 91 C46 80 17 62 17 38 A33 33 0 0 1 83 38 C83 62 54 80 50 91Z" fill="${u('r')}" stroke="#4c0717" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M70 13 C79 20 82 30 81 40 C80 58 60 76 51 88 C60 72 74 52 70 13Z" fill="#4c0717" opacity=".22"/>
+        <circle cx="50" cy="38" r="15" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.6"/><circle cx="50" cy="38" r="9.5" fill="${u('c')}" stroke="#0b4540" stroke-width="2"/>
+        <path d="${star(50, 38, 6, 2.4, 4)}" fill="#fff" opacity=".85"/>
+        <path d="M26 32 C28 21 36 13 46 11" stroke="#fff" stroke-width="4.2" fill="none" stroke-linecap="round" opacity=".6"/><circle cx="24" cy="41" r="2.2" fill="#fff" opacity=".6"/>` + spk(88, 14, 5) + spk(12, 66, 3.5),
+      // Ловчий: по пояс, в плаще с капюшоном (цвет плаща и глаз — из «Облика» игрока), стрелы за плечом, застёжка-оберег
+      user: () => { const lk = (S.d && S.d.look) || {}, hex = /^#[0-9a-f]{6}$/i;
+        const c = hex.test(lk.cloak) ? lk.cloak : '#6d28d9', eye = hex.test(lk.eyes) ? lk.eyes : '#5eead4', ol = Art.shade(c, -0.6);
+        return D(lg('c', [[0, Art.shade(c, .35)], [.55, c], [1, Art.shade(c, -.4)]], .4, 1), rg('f', [[0, '#2a1f4a'], [1, '#07040f']], .5, .45, .6), rg('e', [[0, eye, .7], [1, eye, 0]], .5, .5, .5), lg('a', AU, .5, 1)) + sh(36) +
+        `<path d="M70 62 L86 24 M76 64 L92 32" stroke="#2a1405" stroke-width="5" stroke-linecap="round"/><path d="M70 62 L86 24 M76 64 L92 32" stroke="#c98a4a" stroke-width="2.2" stroke-linecap="round"/>
+        <g fill="#ef4444" stroke="#4c0808" stroke-width="1.5" stroke-linejoin="round"><path transform="translate(86 24) rotate(22.8)" d="M0 1 L-4.5 -3 V8 L0 12Z M0 1 L4.5 -3 V8 L0 12Z"/><path transform="translate(92 32) rotate(26.6)" d="M0 1 L-4.5 -3 V8 L0 12Z M0 1 L4.5 -3 V8 L0 12Z"/></g>
+        <path d="M10 92 C10 74 24 62 38 58 H62 C76 62 90 74 90 92Z" fill="${u('c')}" stroke="${ol}" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M62 58 C76 62 90 74 90 92 H73 C73 78 69 66 62 58Z" fill="#000" opacity=".2"/><path d="M18 90 C20 78 28 70 36 66" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".3"/>
+        <path d="M47 78 L43 92 M53 78 L57 92" stroke="#f7d77e" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M50 5 C31 9 21 26 21 44 C21 57 28 65 38 67 H62 C72 65 79 57 79 44 C79 26 69 9 50 5Z" fill="${u('c')}" stroke="${ol}" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M58 10 C70 18 79 30 79 44 C79 56 72 64 62 66 C68 56 70 34 58 10Z" fill="#000" opacity=".2"/>
+        <path d="M50 23 C62 23 67 36 67 46 C67 56 59 63 50 63 C41 63 33 56 33 46 C33 36 38 23 50 23Z" fill="${u('f')}" stroke="${ol}" stroke-width="2.4"/>
+        <path d="M36 38 C38 29 43 25 50 25" stroke="${Art.shade(c, .3)}" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>
+        <ellipse cx="50" cy="46" rx="16" ry="9" fill="${u('e')}"/><ellipse cx="43" cy="46" rx="4.2" ry="2.8" fill="${eye}"/><ellipse cx="57" cy="46" rx="4.2" ry="2.8" fill="${eye}"/>
+        <circle cx="44" cy="45.3" r="1.1" fill="#fff"/><circle cx="58" cy="45.3" r="1.1" fill="#fff"/>
+        <circle cx="50" cy="74" r="8.5" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.6"/><path d="M50 68.5 L55.5 74 L50 79.5 L44.5 74Z" fill="#b91c1c" stroke="#4a2c06" stroke-width="1.4"/>` +
+        hl(33, 21, 7, 3.5, -50, .5) + hl(47.5, 71.5, 2, 1.2, -30, .8); },
+      // Дружина: каплевидный червлёный щит в золотой оковке, умбон и ромб-оберег
+      shield: () => D(lg('r', [[0, '#f87171'], [.5, '#dc2626'], [1, '#7f1d1d']], .7, 1), lg('a', AU, .6, 1), rg('b', [[0, '#fff7d1'], [.4, '#f7d77e'], [1, '#8a5a14']], .35, .3, .8)) + sh(26) +
+        `<path d="M50 6 C64 6 80 10 86 16 C88 44 78 74 50 94 C22 74 12 44 14 16 C20 10 36 6 50 6Z" fill="${u('a')}" stroke="#3d2404" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="M50 13 C62 13 73 16 79 20 C80 44 72 68 50 85 C28 68 20 44 21 20 C27 16 38 13 50 13Z" fill="${u('r')}" stroke="#4c0808" stroke-width="2.2" stroke-linejoin="round"/>
+        <path d="M50 13 C62 13 73 16 79 20 C80 44 72 68 50 85Z" fill="#000" opacity=".14"/>
+        <path d="M50 22 L69 46 L50 70 L31 46Z" fill="none" stroke="#f7d77e" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M50 16.5 L53 20 L50 23.5 L47 20Z M50 72 L53 75.5 L50 79 L47 75.5Z M27 43 L30 46.5 L27 50 L24 46.5Z M73 43 L76 46.5 L73 50 L70 46.5Z" fill="#f7d77e"/>
+        <circle cx="50" cy="46" r="11" fill="${u('b')}" stroke="#3d2404" stroke-width="2.6"/><circle cx="50" cy="46" r="4.5" fill="#fff7d1" opacity=".8"/>
+        <g fill="#fff7d1" stroke="#6b4210" stroke-width="1"><circle cx="50" cy="9.5" r="2.1"/><circle cx="29" cy="11.5" r="2.1"/><circle cx="71" cy="11.5" r="2.1"/><circle cx="17.5" cy="30" r="2.1"/><circle cx="82.5" cy="30" r="2.1"/><circle cx="25" cy="60" r="2.1"/><circle cx="75" cy="60" r="2.1"/><circle cx="50" cy="89" r="2.1"/></g>` +
+        hl(31, 26, 3, 8, 20, .45) + hl(46, 42, 3, 1.8, -35, .8),
+      // Дневник: кожаная тетрадь с ярлыком, закладкой и пером
+      journal: () => D(lg('l', [[0, '#c0703a'], [.5, '#8a3f14'], [1, '#4a1e06']], .6, 1), lg('p', PAPER), lg('a', AU, .6, 1), lg('q', [[0, '#fff'], [.6, '#ccfbf1'], [1, '#2dd4bf']], 1, 0)) + sh(30) +
+        `<path d="M22 13 H72 Q78 13 78 19 V83 Q78 89 72 89 H22Z" fill="${u('p')}" stroke="#5c3310" stroke-width="3"/><path d="M73.5 20 V83" stroke="#c9a064" stroke-width="1.5"/>
+        <rect x="12" y="9" width="60" height="78" rx="6" fill="${u('l')}" stroke="#2a1003" stroke-width="3.2"/>
+        <path d="M13.6 15 Q13.6 10.6 18 10.6 H24 V85.4 H18 Q13.6 85.4 13.6 81Z" fill="#2a1003" opacity=".35"/>
+        <rect x="28" y="15" width="38" height="66" rx="3" fill="none" stroke="#f3cf95" stroke-width="1.4" stroke-dasharray="3 2.4" opacity=".6"/>
+        <path d="M72 22 V15 Q72 9 66 9 H59Z M72 74 V81 Q72 87 66 87 H59Z" fill="${u('a')}" stroke="#4a2c06" stroke-width="2" stroke-linejoin="round"/>
+        <rect x="30" y="36" width="30" height="20" rx="3" fill="${u('p')}" stroke="#2a1003" stroke-width="2.4"/><path d="M35 43 H55 M35 49 H48" stroke="#9a5a1c" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M47 9 V30 L51.5 26 L56 30 V9" fill="#dc2626" stroke="#4c0808" stroke-width="2.2" stroke-linejoin="round"/>
+        <g transform="translate(74 56) rotate(32)"><path d="M0 -40 C12 -28 10 4 2.2 18 H-2.2 C-10 4 -12 -28 0 -40Z" fill="${u('q')}" stroke="#134e4a" stroke-width="2.6" stroke-linejoin="round"/>
+        <path d="M0 -34 V26 M0 -18 L6 -24 M0 -8 L-6 -14 M0 2 L5.5 -3" stroke="#134e4a" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        <path d="M-2.4 18 H2.4 L1.6 28 L0 33 L-1.6 28Z" fill="${u('a')}" stroke="#4a2c06" stroke-width="1.8" stroke-linejoin="round"/></g>` +
+        hl(34, 13.5, 12, 1.6, 0, .5) + hl(18, 42, 1.4, 12, 0, .3),
+      // Путь: сложенная карта с тропой, ёлками, озером и звездой-целью
+      path: () => D(lg('p', PAPER), lg('q', [[0, '#f0d49c'], [1, '#c99a55']]), lg('a', AU, .5, 1)) + sh(34) +
+        `<path d="M10 22 L36 13 L64 22 L90 13 V79 L64 88 L36 79 L10 88Z" fill="${u('p')}"/><path d="M36 13 L64 22 V88 L36 79Z" fill="${u('q')}"/>
+        <path d="M10 22 L36 13 L64 22 L90 13 V79 L64 88 L36 79 L10 88Z M36 13 V79 M64 22 V88" fill="none" stroke="#5c3310" stroke-width="3" stroke-linejoin="round"/>
+        <ellipse cx="75" cy="66" rx="9" ry="5.5" fill="#5eead4" stroke="#0f5e56" stroke-width="2"/><ellipse cx="72" cy="64.5" rx="3.5" ry="1.3" fill="#fff" opacity=".7"/>
+        <path d="M20 44 L26 54 H14Z M20 36 L25 45 H15Z M31 52 L36 61 H26Z M31 45 L35.5 53 H26.5Z" fill="#16a34a" stroke="#14532d" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M18 76 C28 74 30 64 40 62 S54 58 56 48 S66 34 74 31" stroke="#b91c1c" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-dasharray="4.5 4.5"/>
+        <circle cx="18" cy="76" r="4.8" fill="#2dd4bf" stroke="#0b4540" stroke-width="2"/>
+        <circle cx="76" cy="27" r="13" fill="#fde047" opacity=".3"/><path d="${star(76, 27, 10, 4.2)}" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.2" stroke-linejoin="round"/>` +
+        hl(20, 22, 7, 1.8, -19, .7) + hl(72, 20, 2.2, 1.4, -30, .9),
+      // Книга Ордена: лаковый фолиант, золотые уголки, застёжка, медальон с восьмиконечной звездой
+      orderbook: () => D(lg('c', [[0, '#a78bfa'], [.45, '#6d28d9'], [1, '#2a1b5a']], .6, 1), lg('p', PAPER), lg('a', AU, .6, 1), rg('m', [[0, '#fff7d1'], [.45, '#f7d77e'], [1, '#8a5a14']], .35, .3, .8), rg('j', [[0, '#ecfeff'], [.45, '#2dd4bf'], [1, '#0f5e56']], .35, .3, .8)) + sh(32) +
+        `<path d="M22 14 H82 Q88 14 88 20 V84 Q88 90 82 90 H22Z" fill="${u('p')}" stroke="#5c3310" stroke-width="3"/><path d="M83 22 V84 M79 20 V87" stroke="#c9a064" stroke-width="1.6"/>
+        <rect x="12" y="9" width="66" height="79" rx="6" fill="${u('c')}" stroke="#170d38" stroke-width="3.2"/>
+        <path d="M13.6 15 Q13.6 10.6 18 10.6 H25 V86.4 H18 Q13.6 86.4 13.6 82Z" fill="#170d38" opacity=".4"/>
+        <rect x="14" y="19" width="11" height="4.5" rx="1" fill="${u('a')}"/><rect x="14" y="74" width="11" height="4.5" rx="1" fill="${u('a')}"/>
+        <rect x="30" y="16" width="42" height="65" rx="3" fill="none" stroke="#f7d77e" stroke-width="1.8" opacity=".7"/>
+        <g fill="${u('a')}" stroke="#4a2c06" stroke-width="2" stroke-linejoin="round"><path d="M25 9 H37 L25 21Z M78 21 V15 Q78 9 72 9 H66Z M25 88 H37 L25 76Z M78 76 V82 Q78 88 72 88 H66Z"/>
+        <rect x="70" y="42" width="18" height="13" rx="3"/></g><circle cx="80" cy="48.5" r="2.4" fill="#4a2c06"/>
+        <circle cx="50" cy="48.5" r="16" fill="${u('m')}" stroke="#4a2c06" stroke-width="2.8"/><circle cx="50" cy="48.5" r="12" fill="none" stroke="#8a5a14" stroke-width="1.4" opacity=".7"/>
+        <path d="${star(50, 48.5, 11, 6.4, 8)}" fill="${u('j')}" stroke="#0b3b36" stroke-width="1.6" stroke-linejoin="round"/><circle cx="50" cy="48.5" r="2.6" fill="#fff7d1"/>` +
+        hl(36, 14.5, 12, 1.8, 0, .55) + hl(44, 41, 3, 1.8, -35, .8),
+      // Настройки: стальная шестерня и малая золотая
+      gear: () => D(lg('s', [[0, '#f1f5f9'], [.45, '#a3b1c6'], [1, '#475569']], .6, 1), lg('a', AU, .6, 1), rg('h', [[0, '#fff7d1'], [.45, '#f7d77e'], [1, '#8a5a14']], .35, .3, .8)) + sh(32) +
+        `<path d="${cog(74, 27, 18, 13, 10)}" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.8" stroke-linejoin="round"/><circle cx="74" cy="27" r="5" fill="#2a1405" stroke="#4a2c06" stroke-width="2"/>
+        <path d="${cog(43, 57, 34, 26, 12)}" fill="${u('s')}" stroke="#1e293b" stroke-width="3.2" stroke-linejoin="round"/>
+        <circle cx="43" cy="57" r="19" fill="none" stroke="#475569" stroke-width="2.4" opacity=".55"/><path d="M29 47 A17 17 0 0 1 48 40.7" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".6"/>
+        <circle cx="43" cy="57" r="11" fill="${u('h')}" stroke="#4a2c06" stroke-width="2.6"/><circle cx="43" cy="57" r="4.5" fill="#1e293b"/>` +
+        hl(21, 44, 2.2, 5, 25, .55) + hl(70, 20, 3.5, 1.6, -30, .7),
     };
-    return `<svg class="mi art" viewBox="0 0 100 100" aria-hidden="true">${A[k] || ''}</svg>`;
+    return `<svg class="mi art" viewBox="0 0 100 100" aria-hidden="true">${A[k] ? A[k]() : ''}</svg>`;
   },
   menu() {
     Sfx.init(); Sfx.play('tap');

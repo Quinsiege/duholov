@@ -47,6 +47,8 @@ self.addEventListener('fetch', e => {
   if (!sameOrigin) return;
   // карта (tiles/*.pmtiles) читается кусками (Range, ответ 206) — такие ответы кэширует сам браузер, не service worker
   if (url.pathname.includes('/tiles/')) return;
+  // 4.8: музыка (audio/*.mp3) тоже читается кусками — её кэширует браузер
+  if (url.pathname.includes('/audio/')) return;
   // файлы с меткой версии (?v=4.1.0) и vendor/ не меняются — сразу из кэша: быстрый запуск и меньше трафика
   if (/[?&]v=\d/.test(url.search) || url.pathname.includes('/vendor/')) {
     e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {

@@ -389,39 +389,152 @@ const Art = (() => {
   }
 
   /* ---------------- ПРЕДМЕТЫ ---------------- */
+  // оберег: [металл, тень, блик, камень]
   const CHARM_COL = {
-    charm:  ['#fb923c', '#9a3412', '#ffedd5'],
-    charm2: ['#e2e8f0', '#475569', '#ffffff'],
-    charm3: ['#fde047', '#a16207', '#fffbeb'],
-    rift:   ['#c084fc', '#581c87', '#f5f3ff'],
+    charm:  ['#e38a4c', '#6e2d0c', '#ffe2c2', '#4ade80'],
+    charm2: ['#d4dbe6', '#3b4656', '#ffffff', '#38bdf8'],
+    charm3: ['#f7c948', '#7a4a0c', '#fff7d1', '#ef4444'],
+    rift:   ['#b48cf5', '#3b0764', '#f5f3ff', '#2dd4bf'],
   };
+  // четырёхлучевой блик
+  const glint = (x, y, r, f = '#fff', o = 1) => { const w = r * .16; return `<path d="M${x} ${y - r}Q${x + w} ${y - w} ${x + r} ${y}Q${x + w} ${y + w} ${x} ${y + r}Q${x - w} ${y + w} ${x - r} ${y}Q${x - w} ${y - w} ${x} ${y - r}Z" fill="${f}" opacity="${o}"/>`; };
+  const floor = (rx, cy = 93) => `<ellipse cx="50" cy="${cy}" rx="${rx}" ry="4.5" fill="#000" opacity=".32"/>`;
+
+  // Оберег: медальон на красной нити, в центре — громовой знак и камень
   function charm(type = 'charm') {
-    const [a, b, c] = CHARM_COL[type] || CHARM_COL.charm, id = 'c' + (++seq);
-    return `<svg class="art" viewBox="0 0 100 100"><defs><radialGradient id="${id}" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="${c}"/><stop offset=".45" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></radialGradient></defs>` +
-      `<path d="M50 8 L40 0 M50 8 L60 0" stroke="${b}" stroke-width="4" stroke-linecap="round"/>` +
-      `<circle cx="50" cy="54" r="40" fill="url(#${id})" stroke="${b}" stroke-width="4"/>` +
-      `<circle cx="50" cy="54" r="27" fill="none" stroke="${c}" stroke-width="2.5" stroke-dasharray="6 5" opacity=".9"/>` +
-      `<path d="M50 32 V76 M35 43 L65 65 M65 43 L35 65" stroke="${c}" stroke-width="4" stroke-linecap="round" opacity=".95"/>` +
-      `<circle cx="50" cy="54" r="7" fill="${c}"/><circle cx="50" cy="10" r="6" fill="${a}" stroke="${b}" stroke-width="3"/></svg>`;
+    const [a, b, c, g] = CHARM_COL[type] || CHARM_COL.charm, k = 'c' + (++seq), o = shade(b, -0.4);
+    let pet = '';
+    for (let i = 0; i < 6; i++) pet += `<path d="M50 56Q42.5 46 50 35Q57.5 46 50 56Z" transform="rotate(${i * 60} 50 56)"/>`;
+    return `<svg class="art" viewBox="0 0 100 100"><defs>` +
+      `<linearGradient id="${k}r" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="${c}"/><stop offset=".45" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>` +
+      `<radialGradient id="${k}f" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="${c}"/><stop offset=".45" stop-color="${a}"/><stop offset="1" stop-color="${shade(a, -0.45)}"/></radialGradient>` +
+      `<radialGradient id="${k}g" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="${g}"/><stop offset="1" stop-color="${shade(g, -0.6)}"/></radialGradient></defs>` +
+      `<path d="M44 16C38 2 62 2 56 16" fill="none" stroke="#5a0b0b" stroke-width="6.5" stroke-linecap="round"/><path d="M44 16C38 2 62 2 56 16" fill="none" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>` +
+      `<g stroke="#14532d" stroke-width="1.8" stroke-linejoin="round"><path d="M45 19C36 17 30 11 29 5C37 6 43 11 45 19Z" fill="#4ade80"/><path d="M55 19C64 17 70 11 71 5C63 6 57 11 55 19Z" fill="#22c55e"/></g>` +
+      `<circle cx="50" cy="17" r="5" fill="none" stroke="${o}" stroke-width="6"/><circle cx="50" cy="17" r="5" fill="none" stroke="${a}" stroke-width="2.6"/>` +
+      `<circle cx="50" cy="57" r="38" fill="url(#${k}r)" stroke="${o}" stroke-width="3.2"/>` +
+      `<circle cx="50" cy="57" r="34.5" fill="none" stroke="${c}" stroke-width="3.8" stroke-dasharray="0 18.064" stroke-dashoffset="-9.03" stroke-linecap="round"/>` +
+      `<circle cx="50" cy="57" r="29" fill="url(#${k}f)" stroke="${o}" stroke-width="2.2"/>` +
+      `<path d="M23 54A27 27 0 0 1 77 54" fill="none" stroke="${b}" stroke-width="3" opacity=".35"/>` +
+      `<g fill="${b}" opacity=".55" transform="translate(1 1.6)">${pet}</g><g fill="${c}" stroke="${o}" stroke-width="1.3">${pet}</g>` +
+      `<circle cx="50" cy="56" r="22" fill="none" stroke="${c}" stroke-width="4" stroke-dasharray="0 23.038" stroke-linecap="round"/>` +
+      `<circle cx="50" cy="56" r="7" fill="url(#${k}g)" stroke="${o}" stroke-width="2"/><circle cx="47.8" cy="53.6" r="2" fill="#fff" opacity=".9"/>` +
+      `<path d="M17 50A34 34 0 0 1 36 26" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity=".7"/>` +
+      glint(28, 32, 8) + `</svg>`;
   }
   function item(key) {
     if (key.startsWith('charm')) return charm(key);
+    const k = 'i' + (++seq), svg = s => `<svg class="art" viewBox="0 0 100 100">${s}</svg>`;
     switch (key) {
-      case 'gift': return `<svg class="art" viewBox="0 0 100 100"><path d="M22 44 Q20 88 50 90 Q80 88 78 44Z" fill="#dc2626" stroke="#7f1d1d" stroke-width="3"/>` +
-        `<path d="M30 52 Q50 60 70 52 M28 70 Q50 78 72 70" stroke="#fde047" stroke-width="3" fill="none" stroke-dasharray="4 4"/>` +
-        `<path d="M24 44 Q50 34 76 44 Q50 52 24 44Z" fill="#b91c1c" stroke="#7f1d1d" stroke-width="3"/>` +
-        `<path d="M50 40 C36 20 22 30 34 38 C40 42 46 41 50 40 C54 41 60 42 66 38 C78 30 64 20 50 40Z" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>` +
-        `<circle cx="50" cy="40" r="4.5" fill="#f59e0b" stroke="#92400e" stroke-width="2"/></svg>`;
-      case 'honey': return `<svg class="art" viewBox="0 0 100 100"><rect x="28" y="14" width="44" height="12" rx="4" fill="#92400e"/><path d="M26 30 Q22 26 30 24 H70 Q78 26 74 30 Q86 50 80 78 Q76 92 50 92 Q24 92 20 78 Q14 50 26 30Z" fill="#f59e0b" stroke="#92400e" stroke-width="3"/><path d="M28 44 Q50 52 72 44 Q76 60 72 76 Q50 84 28 76 Q24 60 28 44Z" fill="#fcd34d" opacity=".7"/><ellipse cx="36" cy="56" rx="5" ry="10" fill="#fff" opacity=".5"/></svg>`;
-      case 'water': return `<svg class="art" viewBox="0 0 100 100"><rect x="40" y="6" width="20" height="12" rx="3" fill="#a16207"/><path d="M42 18 H58 V36 Q80 48 80 70 Q80 94 50 94 Q20 94 20 70 Q20 48 42 36Z" fill="#e0f2fe" stroke="#0e7490" stroke-width="3" opacity=".95"/><path d="M24 64 Q50 56 76 64 Q78 90 50 90 Q22 90 24 64Z" fill="#2dd4bf"/><circle cx="40" cy="74" r="4" fill="#fff" opacity=".8"/><circle cx="58" cy="80" r="2.5" fill="#fff" opacity=".8"/></svg>`;
-      // Златник: золотая монета с солнечным знаком
-      case 'zlat': return `<svg class="art" viewBox="0 0 100 100"><circle cx="50" cy="54" r="38" fill="#b45309"/><circle cx="50" cy="50" r="38" fill="#fbbf24" stroke="#92400e" stroke-width="3.5"/><circle cx="50" cy="50" r="29" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="3 4"/><circle cx="50" cy="50" r="9" fill="#f59e0b" stroke="#92400e" stroke-width="2.5"/><path d="M50 26v10M50 64v10M26 50h10M64 50h10M33 33l7 7M60 60l7 7M67 33l-7 7M40 60l-7 7" stroke="#92400e" stroke-width="3.5" stroke-linecap="round"/><path d="M28 36 Q34 24 46 20" stroke="#fef3c7" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".8"/></svg>`;
-      // Дальний пропуск: грамота Ордена с печатью Разлома
-      case 'farpass': return `<svg class="art" viewBox="0 0 100 100"><path d="M24 18 H78 Q86 18 86 26 V78 Q86 86 78 86 H30" fill="#fef3c7" stroke="#92400e" stroke-width="3"/>` +
-        `<path d="M24 18 Q14 18 14 28 Q14 36 24 36 H30 V86 Q20 86 20 78" fill="#fde68a" stroke="#92400e" stroke-width="3"/>` +
-        `<path d="M40 32 H74 M40 42 H70 M40 52 H62" stroke="#b45309" stroke-width="3" stroke-linecap="round" opacity=".6"/>` +
-        `<circle cx="62" cy="70" r="13" fill="#7c3aed" stroke="#3b0764" stroke-width="3"/><path d="M58 60 L64 68 L59 72 L66 80" stroke="#e9d5ff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-      case 'incense': return `<svg class="art" viewBox="0 0 100 100"><path class="art-float" d="M50 50 C40 40 60 32 50 22 C42 14 54 8 50 2" stroke="#c4b5fd" stroke-width="5" fill="none" stroke-linecap="round" opacity=".85"/><path d="M16 58 H84 Q80 86 50 88 Q20 86 16 58Z" fill="#7c3aed" stroke="#3b0764" stroke-width="3"/><ellipse cx="50" cy="58" rx="34" ry="8" fill="#a78bfa" stroke="#3b0764" stroke-width="3"/><circle cx="50" cy="56" r="4" fill="#fb923c"/></svg>`;
+      // Подарок: узелок из красного сукна с вышитым ромбом, перевязан золотой лентой
+      case 'gift': return svg(`<defs><radialGradient id="${k}a" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#ff7a66"/><stop offset=".5" stop-color="#dc2626"/><stop offset="1" stop-color="#6b1010"/></radialGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a78"/><stop offset="1" stop-color="#a51b1b"/></linearGradient>` +
+        `<linearGradient id="${k}c" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".45" stop-color="#f7d77e"/><stop offset="1" stop-color="#b8801f"/></linearGradient></defs>` +
+        floor(31) +
+        `<g fill="url(#${k}b)" stroke="#4a0a0a" stroke-width="3" stroke-linejoin="round"><path d="M48 42C38 38 24 32 18 20C15 13 22 9 28 12C38 17 46 26 52 38Z"/><path d="M52 42C62 38 76 32 82 20C85 13 78 9 72 12C62 17 54 26 48 38Z"/><path d="M39 46Q38 36 50 34Q62 36 61 46Z"/></g>` +
+        `<path d="M22 17Q33 21 42 33M78 17Q67 21 58 33" stroke="#fff" stroke-width="2.2" fill="none" opacity=".35" stroke-linecap="round"/>` +
+        `<path d="M40 42C20 44 11 60 14 75C17 90 34 95 50 95C66 95 83 90 86 75C89 60 80 44 60 42Z" fill="url(#${k}a)" stroke="#4a0a0a" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M16 67Q50 79 84 67M17 80Q50 92 83 80" stroke="#f7d77e" stroke-width="2.4" fill="none"/>` +
+        `<g fill="#fff1d6" stroke="#8a1414" stroke-width="1">` + [[23, 73.5], [36, 77.5], [50, 79], [64, 77.5], [77, 73.5]].map(([x, y]) => `<path d="M${x} ${y - 4.5}l4 4.5-4 4.5-4-4.5Z"/>`).join('') + `</g>` +
+        `<path d="M34 50Q30 60 34 68M66 50Q70 60 66 68" stroke="#4a0a0a" stroke-width="2" fill="none" opacity=".3"/>` +
+        `<ellipse cx="27" cy="58" rx="4.5" ry="8" transform="rotate(30 27 58)" fill="#fff" opacity=".35"/>` +
+        `<g fill="url(#${k}c)" stroke="#5a3505" stroke-width="2.4" stroke-linejoin="round"><path d="M37 40Q50 47 63 40Q64 45 62 48Q50 54 38 48Q36 45 37 40Z"/>` +
+        `<path d="M48 46L39 64L44.5 61.5L47 67L52 47ZM52 46L61 64L55.5 61.5L53 67L48 47Z"/>` +
+        `<path d="M50 44C40 31 25 35 29 46C32 54 44 51 50 44ZM50 44C60 31 75 35 71 46C68 54 56 51 50 44Z"/><circle cx="50" cy="45" r="5.5"/></g>` +
+        `<path d="M33 41Q37 37 43 40M67 41Q63 37 57 40" stroke="#fff" stroke-width="1.8" fill="none" opacity=".75" stroke-linecap="round"/>` + glint(74, 58, 6, '#fff', .9));
+      // Мёд: глиняный горшочек с расписным пояском, мёд переливается через край, торчит мешалка
+      case 'honey': return svg(`<defs><radialGradient id="${k}a" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#f09a5c"/><stop offset=".5" stop-color="#b4501f"/><stop offset="1" stop-color="#4a1805"/></radialGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe98f"/><stop offset=".5" stop-color="#ffbe2e"/><stop offset="1" stop-color="#e07f00"/></linearGradient>` +
+        `<linearGradient id="${k}c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f6d8a8"/><stop offset="1" stop-color="#b07a44"/></linearGradient></defs>` +
+        floor(32) +
+        `<path d="M28 36C11 46 11 77 25 87C33 93 67 93 75 87C89 77 89 46 72 36Z" fill="url(#${k}a)" stroke="#3a1204" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M16 66Q50 80 84 66M17 74Q50 88 83 74" stroke="#ffe2b0" stroke-width="2.2" fill="none"/>` +
+        `<g fill="#ffe2b0">` + [[24, 72], [37, 76.5], [50, 78], [63, 76.5], [76, 72]].map(([x, y]) => `<path d="M${x} ${y - 3.2}l3.2 3.2-3.2 3.2-3.2-3.2Z"/>`).join('') + `</g>` +
+        `<ellipse cx="27" cy="60" rx="4.5" ry="9" transform="rotate(20 27 60)" fill="#fff" opacity=".3"/>` +
+        `<ellipse cx="50" cy="33" rx="27" ry="8" fill="#c8662e" stroke="#3a1204" stroke-width="3"/>` +
+        `<path d="M58 32L80 7" stroke="#4a2a0e" stroke-width="9" stroke-linecap="round"/><path d="M58 32L80 7" stroke="url(#${k}c)" stroke-width="4.6" stroke-linecap="round"/><circle cx="80.5" cy="6.5" r="4" fill="#d9a066" stroke="#4a2a0e" stroke-width="2"/>` +
+        `<path d="M25 33C25 26 75 26 75 33V41Q75 47 72 47Q69 47 69 41V38Q66 38 64 40V53Q64 58 60 58Q56 58 56 53V40Q50 41 44 40V47Q44 51 41 51Q38 51 38 47V40Q33 40 31 42V44Q31 49 28 49Q25 49 25 44Z" fill="url(#${k}b)" stroke="#7a3d00" stroke-width="2.4" stroke-linejoin="round"/>` +
+        `<path d="M31 31Q50 27 67 30" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".75"/><ellipse cx="58.5" cy="51" rx="1.3" ry="3" fill="#fff" opacity=".8"/><ellipse cx="40" cy="45" rx="1.1" ry="2.2" fill="#fff" opacity=".8"/>` +
+        glint(22, 22, 7, '#fff7d1'));
+      // Живая вода: пузатая склянка с бирюзовым светом, пробка под сургучом, красная нить на горлышке
+      case 'water': return svg(`<defs><radialGradient id="${k}a"><stop offset="0" stop-color="#2dd4bf" stop-opacity=".55"/><stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/></radialGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b5fff3"/><stop offset=".4" stop-color="#2dd4bf"/><stop offset="1" stop-color="#0b5e58"/></linearGradient>` +
+        `<radialGradient id="${k}c" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#e6fffb" stop-opacity=".5"/><stop offset="1" stop-color="#5eead4" stop-opacity=".15"/></radialGradient>` +
+        `<linearGradient id="${k}d" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e2ad6e"/><stop offset="1" stop-color="#8a5a2b"/></linearGradient>` +
+        `<linearGradient id="${k}e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".5" stop-color="#f7d77e"/><stop offset="1" stop-color="#a86f1c"/></linearGradient></defs>` +
+        `<circle class="art-aura" cx="50" cy="64" r="44" fill="url(#${k}a)"/>` + floor(28, 95) +
+        `<path d="M42 24H58V41C71 45 79 55 79 67C79 83 66 94 50 94C34 94 21 83 21 67C21 55 29 45 42 41Z" fill="url(#${k}c)"/>` +
+        `<path d="M24.5 59Q37 53 50 57Q63 61 75.5 56C76 59 76 64 76 67C76 81 64 91 50 91C36 91 24 81 24 67C24 64 24 61 24.5 59Z" fill="url(#${k}b)"/>` +
+        `<path d="M24.5 59Q37 53 50 57Q63 61 75.5 56" stroke="#d9fffa" stroke-width="2" fill="none"/>` +
+        `<g fill="#fff"><circle cx="38" cy="77" r="3" opacity=".85"/><circle cx="59" cy="70" r="2.2" opacity=".85"/><circle cx="54" cy="83" r="1.6" opacity=".7"/></g>` + glint(62, 80, 6, '#fff', .9) +
+        `<path d="M42 24H58V41C71 45 79 55 79 67C79 83 66 94 50 94C34 94 21 83 21 67C21 55 29 45 42 41Z" fill="none" stroke="#073b3a" stroke-width="3.2" stroke-linejoin="round"/>` +
+        `<path d="M28 64Q28 52 38 47" stroke="#fff" stroke-width="3.6" fill="none" stroke-linecap="round" opacity=".85"/><circle cx="29" cy="71" r="1.8" fill="#fff" opacity=".8"/><path d="M45 27V38" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".7"/>` +
+        `<rect x="39" y="34" width="22" height="7" rx="3.5" fill="url(#${k}e)" stroke="#5a3505" stroke-width="2.2"/>` +
+        `<rect x="41" y="10" width="18" height="16" rx="3" fill="url(#${k}d)" stroke="#3a1f08" stroke-width="2.5"/>` +
+        `<path d="M39 13Q50 4 61 13V17Q55 14 50 17Q45 14 39 17Z" fill="#dc2626" stroke="#5a0b0b" stroke-width="2.2" stroke-linejoin="round"/>` +
+        `<path d="M42 30H58" stroke="#5a0b0b" stroke-width="4.5" stroke-linecap="round"/><path d="M42 30H58M58 30L62 36" stroke="#ef4444" stroke-width="2.2" fill="none" stroke-linecap="round"/><ellipse cx="62.5" cy="39" rx="2.4" ry="3.6" fill="#ef4444" stroke="#5a0b0b" stroke-width="1.4"/>` +
+        glint(80, 30, 8, '#d9fffa') + glint(18, 40, 5, '#d9fffa', .9));
+      // Златник: толстая золотая монета с бисерным ободком и чеканным солнцем
+      case 'zlat': {
+        let rays = '', rib = '';
+        for (let i = 0; i < 12; i++) rays += `<path d="M50 23.5L54 33H46Z" transform="rotate(${i * 30} 50 46)"/>`;
+        for (let x = 16; x <= 84; x += 6) { const y = (46 + Math.sqrt(1600 - (x - 50) ** 2)).toFixed(1); rib += `M${x} ${y}v7`; }
+        return svg(`<defs><radialGradient id="${k}a" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#fff7d1"/><stop offset=".35" stop-color="#f7d77e"/><stop offset=".75" stop-color="#e0a83c"/><stop offset="1" stop-color="#b07418"/></radialGradient>` +
+          `<linearGradient id="${k}b" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#fff2b8"/><stop offset=".5" stop-color="#d59a36"/><stop offset="1" stop-color="#8a5a14"/></linearGradient>` +
+          `<linearGradient id="${k}c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8a5a14"/><stop offset=".3" stop-color="#d59a36"/><stop offset="1" stop-color="#6b4210"/></linearGradient></defs>` +
+          floor(34, 94) +
+          `<path d="M10 46V54A40 40 0 0 0 90 54V46Z" fill="url(#${k}c)" stroke="#4a2a04" stroke-width="3" stroke-linejoin="round"/><path d="${rib}" stroke="#5a3505" stroke-width="1.6" opacity=".6"/>` +
+          `<circle cx="50" cy="46" r="40" fill="url(#${k}b)" stroke="#4a2a04" stroke-width="3"/>` +
+          `<circle cx="50" cy="46" r="35.5" fill="none" stroke="#fff4c4" stroke-width="2.8" stroke-dasharray="0 5.576" stroke-linecap="round"/>` +
+          `<circle cx="50" cy="46" r="31" fill="url(#${k}a)" stroke="#9a6414" stroke-width="2"/>` +
+          `<g fill="#8a5a14" opacity=".55" transform="translate(1 1.5)">${rays}<circle cx="50" cy="46" r="10"/></g>` +
+          `<g fill="#ffe9a0" stroke="#8a5a14" stroke-width="1.6" stroke-linejoin="round">${rays}<circle cx="50" cy="46" r="10"/></g><circle cx="50" cy="46" r="4.5" fill="#f5c451" stroke="#8a5a14" stroke-width="1.6"/>` +
+          `<path d="M16 40A34 34 0 0 1 36 15" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>` + glint(75, 19, 10));
+      }
+      // Дальний пропуск: грамота Ордена на свитке с печатью Разлома
+      case 'farpass': return svg(`<defs><linearGradient id="${k}a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f3d58f"/><stop offset=".45" stop-color="#fff6dc"/><stop offset="1" stop-color="#e8c47a"/></linearGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3cf"/><stop offset=".5" stop-color="#e9c27a"/><stop offset="1" stop-color="#9a6528"/></linearGradient>` +
+        `<linearGradient id="${k}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".5" stop-color="#f7d77e"/><stop offset="1" stop-color="#8a5a14"/></linearGradient>` +
+        `<radialGradient id="${k}d" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#d8b4fe"/><stop offset=".5" stop-color="#7c3aed"/><stop offset="1" stop-color="#2e0752"/></radialGradient></defs>` +
+        floor(30, 95) +
+        `<rect x="22" y="15" width="56" height="68" fill="url(#${k}a)" stroke="#5a3505" stroke-width="3"/>` +
+        `<path d="M31 28H41M59 28H69" stroke="#b91c1c" stroke-width="2.4" stroke-linecap="round"/><g fill="#b91c1c">` + [44, 50, 56].map(x => `<path d="M${x} 24.5l3 3.5-3 3.5-3-3.5Z"/>`).join('') + `</g>` +
+        `<path d="M31 39H69M31 47H66M31 55H54" stroke="#a0703a" stroke-width="3" stroke-linecap="round" opacity=".7"/>` +
+        `<g stroke="#5a3505" stroke-width="2.6"><rect x="15" y="8" width="70" height="13" rx="6.5" fill="url(#${k}b)"/><rect x="15" y="78" width="70" height="13" rx="6.5" fill="url(#${k}b)"/>` +
+        `<g fill="url(#${k}c)"><circle cx="12" cy="14.5" r="5.5"/><circle cx="88" cy="14.5" r="5.5"/><circle cx="12" cy="84.5" r="5.5"/><circle cx="88" cy="84.5" r="5.5"/></g></g>` +
+        `<path d="M20 11.5H80M20 81.5H80" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".65"/>` +
+        `<path d="M56 76L48 98L54 94.5L57 99.5L61.5 78ZM66 78L72 98L67 95L63 99L60 78Z" fill="#dc2626" stroke="#5a0b0b" stroke-width="2.2" stroke-linejoin="round"/>` +
+        `<circle cx="62" cy="69" r="14.5" fill="none" stroke="#240541" stroke-width="6.5" stroke-dasharray="0 5.69" stroke-linecap="round"/><circle cx="62" cy="69" r="14" fill="url(#${k}d)" stroke="#240541" stroke-width="2.4"/><circle cx="62" cy="69" r="9.5" fill="none" stroke="#e9d5ff" stroke-width="1.6" opacity=".45"/>` +
+        `<path d="M64 58L57.5 68.5L62.5 70L58.5 80.5L67.5 67L62.5 65.5L67 58Z" fill="#5eead4" stroke="#0b3b44" stroke-width="1.2" stroke-linejoin="round"/><circle cx="57" cy="63.5" r="2.2" fill="#fff" opacity=".7"/>`);
+      // Ладан: лаковая кадильница с золотой крышкой, из-под крышки тлеют угольки, вьётся дымок
+      case 'incense': return svg(`<defs><radialGradient id="${k}a" cx=".35" cy=".25" r=".85"><stop offset="0" stop-color="#c9a5ff"/><stop offset=".5" stop-color="#7c3aed"/><stop offset="1" stop-color="#2e0752"/></radialGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".45" stop-color="#f7d77e"/><stop offset="1" stop-color="#8a5a14"/></linearGradient>` +
+        `<radialGradient id="${k}c"><stop offset="0" stop-color="#fff4c2"/><stop offset=".5" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></radialGradient></defs>` +
+        `<g class="art-float" fill="none" stroke-linecap="round"><path d="M50 27C38 21 41 12 49 9C56 6 55 1 51 -1M58 30C68 24 70 16 64 11" stroke="#8b5cf6" stroke-width="11" opacity=".45"/>` +
+        `<path d="M50 27C38 21 41 12 49 9C56 6 55 1 51 -1M58 30C68 24 70 16 64 11" stroke="#ede9fe" stroke-width="5" opacity=".9"/></g>` +
+        floor(30, 94) +
+        `<g fill="url(#${k}b)" stroke="#4a2a04" stroke-width="2.6"><path d="M28 82L24 94H36L38 84ZM72 82L76 94H64L62 84Z"/></g>` +
+        `<path d="M17 60H83C83 77 70 89 50 89C30 89 17 77 17 60Z" fill="url(#${k}a)" stroke="#1e0536" stroke-width="3" stroke-linejoin="round"/>` +
+        `<g fill="#f7d77e" stroke="#8a5a14" stroke-width=".8">` + [[29, 71], [39.5, 75], [50, 76.5], [60.5, 75], [71, 71]].map(([x, y]) => `<path d="M${x} ${y - 4}l3.5 4-3.5 4-3.5-4Z"/>`).join('') + `</g>` +
+        `<ellipse cx="29" cy="68" rx="3" ry="6" transform="rotate(35 29 68)" fill="#fff" opacity=".35"/>` +
+        `<path d="M24 58C24 42 36 34 50 34C64 34 76 42 76 58Z" fill="url(#${k}b)" stroke="#4a2a04" stroke-width="3" stroke-linejoin="round"/>` +
+        `<g fill="url(#${k}c)" stroke="#5a2a04" stroke-width="1.4" class="art-blink"><path d="M34 52a4 4 0 0 1 8 0Z"/><path d="M46 52a4 4 0 0 1 8 0Z"/><path d="M58 52a4 4 0 0 1 8 0Z"/><circle cx="50" cy="42" r="2.6"/></g>` +
+        `<rect x="14" y="56" width="72" height="8" rx="4" fill="url(#${k}b)" stroke="#4a2a04" stroke-width="2.6"/>` +
+        `<circle cx="50" cy="30" r="5.5" fill="url(#${k}b)" stroke="#4a2a04" stroke-width="2.6"/>` +
+        `<path d="M31 50Q33 41 42 37" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".75"/>`);
+      // Искры: сияющая золотая звезда-искра — валюта
+      case 'sparks': {
+        const st = 'M50 3C53 38 62 47 97 50C62 53 53 62 50 97C47 62 38 53 3 50C38 47 47 38 50 3Z';
+        return svg(`<defs><radialGradient id="${k}a"><stop offset="0" stop-color="#fff3b0" stop-opacity=".9"/><stop offset=".45" stop-color="#fbbf24" stop-opacity=".35"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>` +
+          `<linearGradient id="${k}b" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#fffdf2"/><stop offset=".45" stop-color="#ffe27a"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>` +
+          `<clipPath id="${k}c"><path d="${st}"/></clipPath></defs>` +
+          `<circle cx="50" cy="50" r="48" fill="url(#${k}a)"/>` +
+          `<path d="M50 17C52 44 56 48 83 50C56 52 52 56 50 83C48 56 44 52 17 50C44 48 48 44 50 17Z" transform="rotate(45 50 50)" fill="#f7c948" stroke="#7a4a0c" stroke-width="2.6" stroke-linejoin="round"/>` +
+          `<path d="${st}" fill="url(#${k}b)"/>` +
+          `<path d="M50 50L50 0H100ZM50 50H100V100ZM50 50V100H0ZM50 50H0V0Z" fill="#b8740f" opacity=".3" clip-path="url(#${k}c)"/>` +
+          `<path d="${st}" fill="none" stroke="#7a4a0c" stroke-width="3" stroke-linejoin="round"/>` +
+          `<circle cx="50" cy="50" r="7" fill="#fff" opacity=".9"/>` + glint(50, 50, 16, '#fff', .85) + glint(80, 20, 8) + glint(22, 80, 5, '#fff', .9));
+      }
     }
     return '';
   }
