@@ -2721,3 +2721,28 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .ts-hero .art { width: 100%; height: 100%; display: block; }
 .ts-me .ts-me-name { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); }
 .ts-mentor { width: 54%; }
+
+/* 4.6: живая рамка карточки — кайма (border-image) + угловые украшения, навершие и подвеска поверх (js/looks-art.js frameParts) */
+.pc-hero.card-fr, .wd-mini.card-fr, .wd-cardprev.card-fr { position: relative; overflow: visible; }
+.pc-hero.card-fr { border-image: var(--card-fr) 40 / 22px / 10px round !important; }
+.cf-ov { --cf: 72px; position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.cf-ov .cf { position: absolute; overflow: visible; }
+.cf-ov .tl, .cf-ov .tr, .cf-ov .bl, .cf-ov .br { width: var(--cf); height: var(--cf); }
+.cf-ov .tl { left: calc(var(--cf) * -.225); top: calc(var(--cf) * -.225); }
+.cf-ov .tr { right: calc(var(--cf) * -.225); top: calc(var(--cf) * -.225); }
+.cf-ov .bl { left: calc(var(--cf) * -.225); bottom: calc(var(--cf) * -.225); }
+.cf-ov .br { right: calc(var(--cf) * -.225); bottom: calc(var(--cf) * -.225); }
+.cf-ov .tr.mir { transform: scaleX(-1); } .cf-ov .bl.mir { transform: scaleY(-1); } .cf-ov .br.mir { transform: scale(-1, -1); }
+.cf-ov .crest { left: 50%; top: calc(var(--cf) * -.56); width: calc(var(--cf) * 2.08); height: calc(var(--cf) * .83); transform: translateX(-50%); }
+.cf-ov .foot { left: 50%; bottom: calc(var(--cf) * -.25); width: calc(var(--cf) * 1.52); height: calc(var(--cf) * .5); transform: translateX(-50%); }
+.pc-hero.card-fr { margin-top: 18px; }
+.wd-mini .cf-ov { --cf: 40px; }
+.wd-mini.card-fr { border-image: var(--card-fr) 40 / 13px / 6px round; }
+.wd-grid.wide .wd-card { overflow: visible; padding: 16px 10px 8px; }
+/* анимации частей рамки */
+.cf-glint { animation: cfGlint 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes cfGlint { 0%, 70%, 100% { opacity: .15; transform: scale(.5) rotate(0); } 82% { opacity: 1; transform: scale(1.2) rotate(45deg); } }
+.cf-pulse { animation: cfPulse 2.2s ease-in-out infinite; }
+@keyframes cfPulse { 50% { opacity: .35; } }
+.calm .cf-ov * { animation: none !important; }
+.wd-grid.wide .wd-card b { margin-top: 12px; } .wd-grid.wide { row-gap: 22px; padding-top: 14px; }

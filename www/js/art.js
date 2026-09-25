@@ -608,7 +608,18 @@ const Art = (() => {
     el.classList.toggle('card-bg', !!bg); el.classList.toggle('card-fr', !!fr);
     if (bg) el.style.setProperty('--card-bg', url('b:' + bg, () => LookArt.cardBg(bg))); else el.style.removeProperty('--card-bg');
     if (fr) el.style.setProperty('--card-fr', url('f:' + fr, () => LookArt.cardFrame(fr))); else el.style.removeProperty('--card-fr');
+    // живые части рамки — угловые украшения, навершие и подвеска: встроенный SVG, чтобы работали анимации (пламя, блеск самоцветов, руны)
+    const old = el.querySelector(':scope > .cf-ov'); if (old) old.remove();
+    const P = fr && typeof LookArt.frameParts === 'function' ? LookArt.frameParts(fr) : null;
+    if (P) {
+      const n = 'cf' + (++cfN);
+      const sv = (cls, vb, body) => body ? `<svg class="cf ${cls}" viewBox="${vb}" aria-hidden="true">${body}</svg>` : '';
+      const one = !Array.isArray(P.corners), c = one ? [P.corner, P.corner, P.corner, P.corner] : P.corners;
+      el.insertAdjacentHTML('beforeend', (`<div class="cf-ov" aria-hidden="true">${sv('tl', '0 0 80 80', c[0])}${sv('tr' + (one ? ' mir' : ''), '0 0 80 80', c[1])}` +
+        `${sv('bl' + (one ? ' mir' : ''), '0 0 80 80', c[2])}${sv('br' + (one ? ' mir' : ''), '0 0 80 80', c[3])}${sv('crest', '0 0 160 64', P.crest)}${sv('foot', '0 0 120 40', P.foot)}</div>`).replace(/__ID__/g, n));
+    }
   }
+  let cfN = 0;
   const emblem = id => (Object.prototype.hasOwnProperty.call(EMBLEM, id) && EMBLEM[id]) || EMBLEM.charm;
   return { spirit, of, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
 })();
