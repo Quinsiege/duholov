@@ -2,6 +2,7 @@
 // Духолов: сервер игры (Supabase Edge Function «game»). ФАЙЛ СОБРАН АВТОМАТИЧЕСКИ tools/build-server.ps1
 // из общих модулей игры (www/js) и server/game — не правьте его вручную.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
