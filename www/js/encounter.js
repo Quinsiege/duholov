@@ -100,7 +100,7 @@ const Encounter = {
   // 4.6: пылающий круг под духом — два рунных кольца вращаются в плоскости земли, по краю пляшут языки пламени цвета стихии, вверх летят искры
   fireRing() {
     let h = '<i class="eg-glow"></i><i class="eg-ring"></i><i class="eg-ring r2"></i>';
-    const N = 22;
+    const N = 16;
     for (let i = 0; i < N; i++) {
       const a = i / N * Math.PI * 2, sin = Math.sin(a);
       h += `<i class="eg-f" style="left:${(50 + Math.cos(a) * 43).toFixed(1)}%;top:${(50 + sin * 40).toFixed(1)}%;--s:${(0.7 + (sin + 1) * 0.22).toFixed(2)};--t:${(0.7 + (i % 4) * 0.13).toFixed(2)}s;--d:${(-(i * 0.37) % 1.1).toFixed(2)}s"></i>`;
@@ -435,7 +435,7 @@ const Encounter = {
         g.fillStyle = gr; g.beginPath(); g.ellipse(W / 2, H * 0.565, W * 0.45, 35, 0, 0, Math.PI * 2); g.fill();
       }
       const size = st.size * st.k;
-      const svg = Art.of(st.sp).replace('<svg class="art"', `<svg width="${Math.round(size * 2)}" height="${Math.round(size * 2)}"`);
+      const svg = Art.svgOf(st.sp).replace('<svg class="art"', `<svg width="${Math.round(size * 2)}" height="${Math.round(size * 2)}"`);
       const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
       g.drawImage(img, st.cx - size / 2, st.cy - size / 2, size, size);
       // подпись
