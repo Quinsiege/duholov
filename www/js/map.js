@@ -155,8 +155,8 @@ const MapView = {
     }
   },
 
-  /* 4.13: круг Ловчего лежит на земле. Из игрока во все стороны идут лучи и останавливаются у первой стены —
-     за домом круг не продолжается, по пустому месту идёт до конца радиуса. Дома, стоящие перед кругом,
+  /* 4.13: круг Ловчего лежит на земле. Зона растекается от игрока по свободной от домов земле до края радиуса —
+     огибает углы, заходит в проходы и переулки, но сквозь дом не проходит (и в закрытые дворы не попадает). Дома, стоящие перед кругом,
      заслоняют его стенами и крышами (те же высоты, что рисует NavMap.extrude). К краю круг слегка бледнеет.
      Всё это — маска (SVG) на самом круге в его собственных координатах: −1…1 от центра до края, поэтому при
      масштабировании маска растягивается вместе с кругом. Контуры домов берутся из уже загруженных плиток карты.
@@ -168,9 +168,13 @@ const MapView = {
   _shapeRange() {
     const box = this.range && this.range.getElement() && this.range.getElement().firstElementChild;
     if (!box) return;
+    // игрок не сдвинулся (с точностью ~0,5 м), масштаб и загруженные плитки те же — пересчитывать нечего
+    const ll0 = this.range.getLatLng(), cache = this.tiles && this.tiles.views && this.tiles.views.get('') && this.tiles.views.get('').tileCache;
+    const rk = [Math.round(ll0.lat * 2e5), Math.round(ll0.lng * 1.2e5), this.tiles && this.tiles._tileZoom, cache ? cache.cache.size : 0].join(':');
+    if (rk === this._rzKey) return;
+    this._rzKey = rk;
     const f3 = v => Math.round(v * 1000) / 1000;
-    let vis = '', sil = '';
-    const pts = [];
+    let rings = null, sil = '';
     const t = this.tiles, view = t && t.views && t.views.get(''), tc = view && view.tileCache;
     if (tc && typeof NavMap !== 'undefined') {
       const S = tc.tileSize, tz = t._tileZoom != null ? t._tileZoom : Math.round(this.map.getZoom());
@@ -178,7 +182,7 @@ const MapView = {
       const ll = this.range.getLatLng(), p0 = this.map.project(ll, dz), px = p0.x * k, py = p0.y * k;
       const rU = Math.abs(p0.y - this.map.project(L.latLng(ll.lat + W.INTERACT / 111320, ll.lng), dz).y) * k; // радиус в точках данных
       const zd = tz + Math.log2(256 / S), perData = 256 * Math.pow(2, tz - dz) / S; // как считает extrude
-      const edges = [], blds = [];
+      const blds = [];
       let missing = false;
       for (let tx = Math.floor((px - rU * 1.3) / S); tx <= Math.floor((px + rU * 1.3) / S); tx++)
         for (let ty = Math.floor((py - rU * 1.3) / S); ty <= Math.floor((py + rU * 1.6) / S); ty++) {
@@ -190,41 +194,65 @@ const MapView = {
           for (const f of list) {
             const dy = NavMap.lift(NavMap.height(f), zd) / perData, b = f.bbox;
             if (b.maxX + ox < -rU || b.minX + ox > rU || b.maxY + oy < -rU || b.minY + oy - dy > rU) continue;
-            const rings = f.geom.map(r => r.map(q => ({ x: q.x + ox, y: q.y + oy, out: q.x <= .5 || q.x >= S - .5 || q.y <= .5 || q.y >= S - .5 })));
-            // игрок внутри дома (неточный GPS) — этот дом не заслоняет
+            const rs = f.geom.map(r => r.map(q => ({ x: q.x + ox, y: q.y + oy })));
+            // игрок внутри дома (неточный GPS) — этот дом не мешает (двор — не «внутри»: считаем по всем контурам)
             let inside = false;
-            const r0 = rings[0];
-            for (let i = 0, j = r0.length - 1; i < r0.length; j = i++)
-              if ((r0[i].y > 0) !== (r0[j].y > 0) && 0 < (r0[j].x - r0[i].x) * (0 - r0[i].y) / (r0[j].y - r0[i].y) + r0[i].x) inside = !inside;
-            if (inside) continue;
-            for (const r of rings) for (let i = 0; i < r.length; i++) {
-              const a = r[i], c = r[(i + 1) % r.length];
-              if (a.out && c.out) continue; // срез по краю плитки (дом лежит на двух плитках) — не настоящая стена
-              edges.push(a.x, a.y, c.x, c.y);
-            }
-            blds.push({ rings, dy });
+            for (const r of rs) for (let i = 0, j = r.length - 1; i < r.length; j = i++)
+              if ((r[i].y > 0) !== (r[j].y > 0) && 0 < (r[j].x - r[i].x) * (0 - r[i].y) / (r[j].y - r[i].y) + r[i].x) inside = !inside;
+            if (!inside) blds.push({ rings: rs, dy });
           }
         }
-      if (missing && !edges.length) return; // плитки ещё грузятся — дорисуем, когда придут
-      // лучи: до первой стены или до края
-      const RAYS = 360;
-      for (let i = 0; i < RAYS; i++) {
-        const a = i / RAYS * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
-        let tm = rU;
-        for (let j = 0; j < edges.length; j += 4) {
-          const ax = edges[j], ay = edges[j + 1], ex = edges[j + 2] - ax, ey = edges[j + 3] - ay, den = dx * ey - dy * ex;
-          if (Math.abs(den) < 1e-9) continue;
-          const tt = (ax * ey - ay * ex) / den, u = (ax * dy - ay * dx) / den;
-          if (tt > 0 && tt < tm && u >= 0 && u <= 1) tm = tt;
-        }
-        vis += (i ? 'L' : 'M') + f3(dx * tm / rU) + ' ' + f3(dy * tm / rU);
-        pts.push([dx * tm / rU, dy * tm / rU]);
+      if (missing && !blds.length) return; // плитки ещё грузятся — дорисуем, когда придут
+
+      /* Досягаемая земля: всё свободное от домов место в круге, куда можно дойти от игрока — за угол можно,
+         сквозь дом нельзя, закрытые дворы остаются снаружи. Сетка N×N (~0,7 м): дома закрашиваются на холсте,
+         от игрока — заливка по свободным клеткам, затем контур (marching squares) с точностью до долей клетки. */
+      const N = 200, h2 = N / 2, cv = this._rzCv || (this._rzCv = document.createElement('canvas'));
+      cv.width = cv.height = N;
+      const cx = cv.getContext('2d', { willReadFrequently: true });
+      cx.setTransform(h2 / rU, 0, 0, h2 / rU, h2, h2);
+      cx.fillStyle = '#000';
+      cx.beginPath();
+      for (const b of blds) for (const r of b.rings) { r.forEach((q, i) => (i ? cx.lineTo(q.x, q.y) : cx.moveTo(q.x, q.y))); cx.closePath(); }
+      cx.fill();
+      const A = cx.getImageData(0, 0, N, N).data;
+      const free = new Float32Array(N * N), circ = new Float32Array(N * N);
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+        const i = y * N + x, d = Math.hypot(x + .5 - h2, y + .5 - h2) / h2;
+        free[i] = 1 - A[i * 4 + 3] / 255;
+        circ[i] = Math.max(0, Math.min(1, (1 - d) * h2 + .5));
       }
-      vis += 'Z';
+      const ok = i => free[i] >= .5 && circ[i] >= .5;
+      // старт — клетка игрока (или ближайшая свободная рядом)
+      let start = -1;
+      for (let r = 0; r < 8 && start < 0; r++)
+        for (let y = h2 - r; y <= h2 + r && start < 0; y++) for (let x = h2 - r; x <= h2 + r; x++)
+          if (x >= 0 && y >= 0 && x < N && y < N && ok(y * N + x)) { start = y * N + x; break; }
+      const reach = new Uint8Array(N * N);
+      if (start >= 0) {
+        const q = new Int32Array(N * N);
+        let h = 0, tl = 0;
+        q[tl++] = start; reach[start] = 1;
+        while (h < tl) {
+          const i = q[h++], x = i % N, y = (i - x) / N;
+          if (x > 0 && !reach[i - 1] && ok(i - 1)) { reach[i - 1] = 1; q[tl++] = i - 1; }
+          if (x < N - 1 && !reach[i + 1] && ok(i + 1)) { reach[i + 1] = 1; q[tl++] = i + 1; }
+          if (y > 0 && !reach[i - N] && ok(i - N)) { reach[i - N] = 1; q[tl++] = i - N; }
+          if (y < N - 1 && !reach[i + N] && ok(i + N)) { reach[i + N] = 1; q[tl++] = i + N; }
+        }
+      }
+      // поле для контура: досягаемые клетки и их соседи-края (стены, край круга) — с дробным значением, прочее — 0
+      const M = N + 2, F = new Float32Array(M * M);
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+        const i = y * N + x;
+        const near = reach[i] || (x > 0 && reach[i - 1]) || (x < N - 1 && reach[i + 1]) || (y > 0 && reach[i - N]) || (y < N - 1 && reach[i + N]);
+        if (near) F[(y + 1) * M + x + 1] = reach[i] ? Math.min(free[i], circ[i]) : Math.min(free[i], circ[i], .49);
+      }
+      rings = this.contours(F, M, h2);
       // дома перед кругом заслоняют его: основание, крыша и стены между ними
-      for (const { rings, dy } of blds) {
+      for (const { rings: rs, dy } of blds) {
         const h = dy / rU;
-        for (const r of rings) {
+        for (const r of rs) {
           const P = r.map(q => [q.x / rU, q.y / rU]);
           sil += 'M' + P.map(q => f3(q[0]) + ' ' + f3(q[1])).join('L') + 'Z';
           if (h > .002) {
@@ -237,13 +265,15 @@ const MapView = {
         }
       }
     }
-    if (!vis) {
-      vis = 'M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z';
-      for (let i = 0; i < 180; i++) pts.push([Math.cos(i / 90 * Math.PI), Math.sin(i / 90 * Math.PI)]);
+    if (!rings || !rings.length) {
+      rings = [[]];
+      for (let i = 0; i < 180; i++) rings[0].push([Math.cos(i / 90 * Math.PI), Math.sin(i / 90 * Math.PI)]);
     }
+    let vis = '';
+    for (const r of rings) vis += 'M' + r.map(p => f3(p[0]) + ' ' + f3(p[1])).join('L') + 'Z';
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 2 2"><defs><radialGradient id="g" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse">'
       + '<stop offset=".6" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></radialGradient>'
-      + `<mask id="m"><path d="${vis}" fill="url(#g)"/>${sil ? `<path d="${sil}" fill="#000"/>` : ''}</mask></defs>`
+      + `<mask id="m"><path d="${vis}" fill="url(#g)" fill-rule="evenodd"/>${sil ? `<path d="${sil}" fill="#000"/>` : ''}</mask></defs>`
       + '<rect x="-1" y="-1" width="2" height="2" fill="#fff" mask="url(#m)"/></svg>';
     const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
     box.style.webkitMaskImage = url; box.style.maskImage = url;
@@ -253,24 +283,14 @@ const MapView = {
     // 4.13: невысокая стена света по краю досягаемой земли — золото у земли тает кверху (как дома, «вверх» по экрану)
     const beam = this.range.getElement().querySelector('.rz-beam');
     if (beam) {
-      // сплошные грани от основания вверх, каждая — с плавным градиентом (прямые участки стен — одной гранью)
-      const H = .2, P = [];
-      for (const q of pts) {
-        const n = P.length;
-        if (n >= 2) {
-          const a = P[n - 2], b = P[n - 1];
-          if (Math.abs((b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])) < 1e-5) { P[n - 1] = q; continue; }
-        }
-        P.push(q);
-      }
       // слои: каждый — одна сплошная фигура (стены от земли до своей высоты), полупрозрачные; у земли их много,
       // вверху мало — стена плавно тает кверху, и между гранями нет швов
-      const K = 16;
+      const H = .2, K = 12;
       let g = '';
       for (let k = 1; k <= K; k++) {
         const h = H * k / K;
         let d = '';
-        for (let i = 0; i < P.length; i++) {
+        for (const P of rings) for (let i = 0; i < P.length; i++) {
           const a = P[i], b = P[(i + 1) % P.length];
           d += 'M' + f3(a[0]) + ' ' + f3(a[1]) + 'L' + f3(b[0]) + ' ' + f3(b[1]) + 'L' + f3(b[0]) + ' ' + f3(b[1] - h) + 'L' + f3(a[0]) + ' ' + f3(a[1] - h) + 'Z';
         }
@@ -283,6 +303,72 @@ const MapView = {
       // маска по яркости: чёрные дома — вырез
       beam.style.webkitMaskImage = bu; beam.style.maskImage = bu;
     }
+  },
+  // контуры поля F (M×M, с нулевой рамкой) на уровне .5 — кольца в координатах круга (−1…1)
+  contours(F, M, h2) {
+    const T = .5, pos = new Map(), adj = new Map();
+    const key = (x, y, v) => ((y * M + x) << 1) | v; // ребро: горизонтальное (v=0) от (x,y) к (x+1,y), вертикальное (v=1) к (x,y+1)
+    const pt = (x, y, v) => {
+      const kk = key(x, y, v);
+      if (!pos.has(kk)) {
+        const a = F[y * M + x], b = v ? F[(y + 1) * M + x] : F[y * M + x + 1], s = (T - a) / (b - a);
+        const gx = x + (v ? 0 : s), gy = y + (v ? s : 0);
+        pos.set(kk, [(gx - 1 + .5 - h2) / h2, (gy - 1 + .5 - h2) / h2]);
+      }
+      return kk;
+    };
+    const link = (a, b) => { (adj.get(a) || adj.set(a, []).get(a)).push(b); (adj.get(b) || adj.set(b, []).get(b)).push(a); };
+    for (let y = 0; y < M - 1; y++) for (let x = 0; x < M - 1; x++) {
+      const tl = F[y * M + x] >= T, tr = F[y * M + x + 1] >= T, br = F[(y + 1) * M + x + 1] >= T, bl = F[(y + 1) * M + x] >= T;
+      const c = (tl << 3) | (tr << 2) | (br << 1) | bl;
+      if (c === 0 || c === 15) continue;
+      const top = () => pt(x, y, 0), bot = () => pt(x, y + 1, 0), lef = () => pt(x, y, 1), rig = () => pt(x + 1, y, 1);
+      const mid = (F[y * M + x] + F[y * M + x + 1] + F[(y + 1) * M + x + 1] + F[(y + 1) * M + x]) / 4 >= T;
+      switch (c) {
+        case 1: case 14: link(lef(), bot()); break;
+        case 2: case 13: link(bot(), rig()); break;
+        case 3: case 12: link(lef(), rig()); break;
+        case 4: case 11: link(top(), rig()); break;
+        case 6: case 9: link(top(), bot()); break;
+        case 7: case 8: link(lef(), top()); break;
+        case 5: if (mid) { link(lef(), top()); link(bot(), rig()); } else { link(lef(), bot()); link(top(), rig()); } break;
+        case 10: if (mid) { link(top(), rig()); link(lef(), bot()); } else { link(lef(), top()); link(bot(), rig()); } break;
+      }
+    }
+    // обойти кольца и убрать точки на прямой
+    const seen = new Set(), rings = [];
+    for (const s of adj.keys()) {
+      if (seen.has(s)) continue;
+      const ring = [];
+      let prev = -1, cur = s;
+      while (cur !== undefined && !seen.has(cur)) {
+        seen.add(cur); ring.push(pos.get(cur));
+        const nb = adj.get(cur);
+        const nx = nb[0] !== prev ? nb[0] : nb[1];
+        prev = cur; cur = nx;
+      }
+      if (ring.length < 3) continue;
+      const out = this.simplify(ring, .004); // ≈ 0,3 м: стены — прямые, дуги — гладкие, точек в десятки раз меньше
+      if (out.length >= 3) rings.push(out);
+    }
+    return rings;
+  },
+  // упрощение замкнутого контура (Дуглас — Пекер): делим по самой дальней от первой точке, упрощаем обе половины
+  simplify(ring, eps) {
+    const dp = (pts, a, b, keep) => {
+      const [ax, ay] = pts[a], [bx, by] = pts[b], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1e-12;
+      let md = 0, mi = -1;
+      for (let i = a + 1; i < b; i++) {
+        const [px, py] = pts[i], d = Math.abs(dx * (py - ay) - dy * (px - ax)) / Math.sqrt(L2);
+        if (d > md) { md = d; mi = i; }
+      }
+      if (md > eps) { dp(pts, a, mi, keep); keep.push(pts[mi]); dp(pts, mi, b, keep); }
+    };
+    let far = 0, fd = -1;
+    for (let i = 1; i < ring.length; i++) { const d = Math.hypot(ring[i][0] - ring[0][0], ring[i][1] - ring[0][1]); if (d > fd) { fd = d; far = i; } }
+    const pts = [...ring, ring[0]], out = [ring[0]];
+    dp(pts, 0, far, out); out.push(ring[far]); dp(pts, far, pts.length - 1, out);
+    return out;
   },
 
   moveTo(lat, lng, jump) {
