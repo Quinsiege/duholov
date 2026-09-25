@@ -2747,40 +2747,39 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .calm .cf-ov * { animation: none !important; }
 .wd-grid.wide .wd-card b { margin-top: 12px; } .wd-grid.wide { row-gap: 22px; padding-top: 14px; }
 
-/* ================= 4.6.1: производительность — только то, что видеокарта двигает без перерисовки ================= */
-/* блеск кнопок: сдвиг полосы (transform), а не бегущий фон — раньше кнопка перерисовывалась 60 раз в секунду */
+/* ================= 4.6.1: производительность — тот же вид, но движения, которые видеокарта делает без перерисовки ================= */
+/* рисунки слоями (Art.stack): неподвижное — картинками, анимированное — лёгким SVG поверх */
+.art-stack { position: relative; display: block; }
+.art-stack > .stk { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+/* блеск кнопок: сдвиг полосы (transform) — тот же проблеск, но без перерисовки кнопки 60 раз в секунду */
 .btn.primary::after, .btn.evolve::after, .btn.danger:not(.ghost)::after { inset: 0 auto 0 0 !important; width: 45% !important; border-radius: 0;
-  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .45) 50%, transparent 80%) !important; transform: translateX(-120%); animation: btnShine3 5.5s ease-in-out 1.5s infinite !important; will-change: transform; }
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .5) 50%, transparent 80%) !important; transform: translateX(-120%); animation: btnShine3 5.5s ease-in-out 1.5s infinite !important; will-change: transform; }
 @keyframes btnShine3 { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(330%); } }
 .btn.primary:disabled::after, .btn.primary.disabled::after, .btn.evolve:disabled::after, .calm .btn::after { animation: none !important; opacity: 0; }
 .rune { overflow: hidden; border-radius: 12px; }
 .rune .rn-shine { animation: none; display: none; }
-.rune::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .45) 50%, transparent 80%);
-  transform: translateX(-120%); animation: btnShine3 5.5s ease-in-out 1.2s infinite; will-change: transform; }
+.rune::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .55) 50%, transparent 80%);
+  transform: translateX(-120%); animation: btnShine3 4.2s ease-in-out 1.2s infinite; will-change: transform; }
 .rune.glass::after, .calm .rune::after { display: none; }
-/* без размытия подложки: карта под панелями движется, и размытие пересчитывалось каждый кадр */
-#hud .profile, #hud .chip, #hud .nearby, #storyPill, #tracker, .modal-wrap, .sheet-wrap, .rl-wrap, .rune.glass, .realm-chip, .onb-lore, .hero, .lg-invite, .enc-result, .raid-result {
-  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-.modal-wrap, .sheet-wrap, .rl-wrap { background: radial-gradient(120% 80% at 50% 40%, rgba(16, 8, 40, .72), rgba(4, 2, 12, .88)); }
-.rune.glass { background: rgba(20, 12, 44, .55); }
-/* кнопка меню: вращается целиком (одна композиция), без анимаций внутри рисунка */
-.orb svg { animation: spin 60s linear infinite; will-change: transform; }
-.orb .orb-ring, .orb .orb-fern { animation: none; }
-/* поимка: луна без анимированной тени, сияние без размытия, пламя без смешивания цветов */
-.nv-moon { animation: none; box-shadow: 0 0 70px 14px rgba(167, 139, 250, .25); }
+.wd-card.r3::after { background: linear-gradient(115deg, transparent 30%, rgba(255, 240, 180, .25) 50%, transparent 70%); width: 50%; inset: 0 auto 0 0;
+  transform: translateX(-120%); animation: btnShine3 4s ease-in-out infinite; will-change: transform; }
+/* луна Нави: пульс свечения — отдельным светящимся слоем (прозрачность), а не анимацией тени */
+.nv-moon { animation: none; box-shadow: 0 0 70px 14px rgba(167, 139, 250, .22); }
+.nv-moon::after { content: ""; position: absolute; inset: -34px; border-radius: 50%; pointer-events: none; background: radial-gradient(closest-side, rgba(192, 132, 252, .3) 40%, rgba(192, 132, 252, 0));
+  opacity: 0; animation: nvMoonGlow 7s ease-in-out infinite alternate; will-change: opacity; }
+@keyframes nvMoonGlow { to { opacity: 1; } }
+/* сияние: мягкий градиент того же вида вместо размытия (размытие огромного слоя считалось каждый кадр) */
 .nv-aur, .ts-aur { filter: none; will-change: transform, opacity; }
-.nv-aur { background: radial-gradient(50% 45% at 50% 50%, rgba(94, 234, 212, .26), rgba(94, 234, 212, 0) 78%); }
-.nv-aur.a2 { background: radial-gradient(50% 45% at 50% 50%, rgba(232, 121, 249, .22), rgba(232, 121, 249, 0) 78%); }
-.ts-aur { background: radial-gradient(50% 45% at 50% 50%, rgba(94, 234, 212, .26), rgba(94, 234, 212, 0) 78%); }
-.ts-aur.a2 { background: radial-gradient(50% 45% at 50% 50%, rgba(232, 121, 249, .22), rgba(232, 121, 249, 0) 78%); }
-@keyframes egPulse { 50% { opacity: 1; } }
-.eg-f { mix-blend-mode: normal; will-change: transform, opacity; }
+.nv-aur, .ts-aur { background: radial-gradient(50% 45% at 50% 50%, rgba(94, 234, 212, .34), rgba(94, 234, 212, .12) 55%, rgba(94, 234, 212, 0) 80%); }
+.nv-aur.a2 { background: radial-gradient(50% 45% at 50% 50%, rgba(232, 121, 249, .3), rgba(232, 121, 249, .1) 55%, rgba(232, 121, 249, 0) 80%); }
+.ts-aur.a2 { background: radial-gradient(50% 45% at 50% 50%, rgba(232, 121, 249, .28), rgba(232, 121, 249, .09) 55%, rgba(232, 121, 249, 0) 80%); }
+/* пылающий круг: слои для видеокарты */
+.eg-f, .eg-sp { will-change: transform, opacity; }
 .eg-ring { will-change: transform; }
-/* кат-сцены: Велимир и Ловчий — картинки; «дыхание» — у картинки целиком */
-.vm-breath { animation: none; }
+.eg-glow, .enc-scene .enc-ground::before { will-change: opacity, filter; }
+/* кат-сцены: «дыхание» — у рисунка целиком (сдвиг), а не внутри SVG */
 .ts-mentor > .art, .ts-hero > .art { animation: vmBreath2 4s ease-in-out infinite; transform-origin: 50% 100%; will-change: transform; }
-@keyframes vmBreath2 { 50% { transform: scale(1.012, 1.02); } }
+@keyframes vmBreath2 { 50% { transform: scale(1.012, 1.018); } }
 .calm .ts-mentor > .art, .calm .ts-hero > .art { animation: none; }
-/* Гардероб: в мини-карточках рамки не анимируются (их десять на экране), блеск легендарных — без перерисовки */
-.wd-mini .cf-ov * { animation: none !important; }
-.wd-card.r3::after { display: none; }
+/* пока открыто окно или меню, духи на карте под размытой подложкой не двигаются — размытие не пересчитывается каждый кадр */
+body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map * { animation-play-state: paused !important; }
