@@ -98,6 +98,12 @@ const Tut = {
   vis(e) { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; },
   findTarget(st) {
     const top = U.$$('.screen').filter(s => !s.classList.contains('out')).pop(), sheet = U.$$('.sheet-wrap').filter(s => !s.classList.contains('out')).pop();
+    // 4.7.1: шаг «родник» — игрок дошёл до родника или перешёл к нему по стрелке: подсвечиваем сам родник, а не стрелку
+    if (st.id === 'spring' && !top && !sheet && typeof MapView !== 'undefined') {
+      const tr = MapView.tracking, m = tr && MapView.markers.get(tr.id), icon = m && m.getElement();
+      const el = icon && (icon.querySelector('.mk-spring') || icon), near = !!U.$('#tracker.near');
+      if (el && this.vis(el) && (near || !MapView.follow)) return { el, spring: near ? 'near' : 'seen' };
+    }
     for (const sel of this.TARGET[st.id] || []) {
       const el = U.$$(sel).find(e => this.vis(e));
       if (!el) continue;
@@ -118,11 +124,13 @@ const Tut = {
     U.$('#menuBtn').classList.remove('tut-pulse');
     if (busy) { this.ring.classList.add('hidden'); return; }
     const t = st.kind === 'ui' && this.opened === st.id ? null : this.findTarget(st); // объясняет экран — подсвечивать нечего
-    // текст: если цель — «Назад», сначала вернуться
-    const back = !!(t && t.back);
-    if (back !== this._back) {
-      this._back = back;
-      this.el.querySelector('.coach-text').innerHTML = back ? `${this._hint}<small class="coach-back">Сначала вернись назад — кнопка подсвечена.</small>` : this._hint;
+    // текст: если цель — «Назад», сначала вернуться; у родника — коснуться его
+    const mode = t && t.back ? 'back' : (t && t.spring) || '';
+    if (mode !== this._back) {
+      this._back = mode;
+      this.el.querySelector('.coach-text').innerHTML = mode === 'back' ? `${this._hint}<small class="coach-back">Сначала вернись назад — кнопка подсвечена.</small>`
+        : mode === 'near' ? 'Ты у родника! <b>Коснись его</b> — он подсвечен.'
+          : mode === 'seen' ? 'Вот он, родник — <b>подсвечен</b>. Подойди ближе и коснись его.' : this._hint;
     }
     let tr = null;
     if (t && t.el) {
