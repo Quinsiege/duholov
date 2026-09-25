@@ -17,10 +17,8 @@ function serviceKey() {
 }
 const db = createClient(Deno.env.get('SUPABASE_URL'), serviceKey(), { auth: { persistSession: false } });
 const UUID = /^[0-9a-f-]{36}$/;
-// Игровой код работает с общими переменными (S.d, часовой пояс, погода), поэтому запросы
-// внутри одного экземпляра функции выполняются строго по очереди
-let queue = Promise.resolve();
-const exclusive = fn => { const p = queue.then(fn, fn); queue = p.catch(() => {}); return p; };
+// 4.3: запросы разных игроков выполняются одновременно — у каждого свои поля игрового кода (GameCore.isolate)
+GameCore.isolate(new AsyncLocalStorage());
 const must = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
 const verCmp = (a, b) => {
   const pa = String(a || '0').split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -568,7 +566,7 @@ Deno.serve(async req => {
     locked = true;
     const row = got.row, srv = got.srv || {};
     if (row && row.moved_to) return reply({ ok: false, moved: true, error: 'Прогресс перенесён на другое устройство' });
-    const res = await exclusive(() => GameCore.run(body, { data: row ? row.data : null, srv }, env));
+    const res = await GameCore.run(body, { data: row ? row.data : null, srv }, env);
     if (!res.ok) {
       if (res.rl) await release({ ...srv, rl: res.rl });
       return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });

@@ -21,7 +21,23 @@ const GameCore = {
      req:  { a: [{ type, args }], tz, wx, pos: { lat, lng, acc }, v }
      save: { data, srv } — прогресс и служебные данные сервера (сессии встреч и боёв, позиция, лимиты)
      env:  доступ к общим таблицам (места, друзья, подарки, обмен, Лига) — см. serve.js / тесты */
+  /* 4.3: сервер выполняет запросы разных игроков одновременно. Игровой код работает с общими полями (S.d — прогресс,
+     U.tz — часовой пояс, Sky.w — погода, MapView.pos — позиция, Bus.emit, S.save): на сервере у каждого запроса они
+     свои — AsyncLocalStorage (serve.js → isolate) хранит их значения на всё время запроса, включая ожидание базы.
+     В браузере (автотесты) — как раньше: запрос подменяет поля и возвращает их в finally. */
+  isolate(als) {
+    this.als = als;
+    [[S, 'd'], [S, 'save'], [U, 'tz'], [U, 'skew'], [Sky, 'w'], [MapView, 'pos'], [Bus, 'emit']].forEach(([obj, key], i) => {
+      let base = obj[key];
+      Object.defineProperty(obj, key, {
+        configurable: true, enumerable: true,
+        get() { const s = als.getStore(); return s && i in s ? s[i] : base; },
+        set(v) { const s = als.getStore(); if (s) s[i] = v; else base = v; },
+      });
+    });
+  },
   async run(req, save, env) {
+    if (this.als && !this.als.getStore()) return this.als.run({}, () => this.run(req, save, env));
     const ctx = { now: Date.now(), env, srv: JSON.parse(JSON.stringify(save.srv || {})), events: [], results: [], after: [], full: false, reset: false };
     const saved = { emit: Bus.emit, save: S.save, d: S.d, tz: U.tz, skew: U.skew, w: Sky.w, pos: MapView.pos };
     try {

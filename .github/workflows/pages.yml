@@ -38,6 +38,12 @@ jobs:
           deno-version: v2.x
       - name: Проверка сервера (Deno)
         run: deno check server/functions/game/index.ts
+      # 4.3: запросы разных игроков сервер выполняет одновременно — у каждого должен остаться свой прогресс
+      - name: Одновременные запросы (Deno)
+        run: |
+          n=$(grep -n "Edge Function: вход, загрузка и сохранение" server/functions/game/index.ts | cut -d: -f1)
+          { head -n $((n-1)) server/functions/game/index.ts; cat tests/concurrency.harness.js; } > "$RUNNER_TEMP/ct.ts"
+          deno run --allow-all "$RUNNER_TEMP/ct.ts"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
