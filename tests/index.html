@@ -1161,7 +1161,8 @@
     A.data.dayc = { day: today, springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 };
     A.data.items.farpass = 2;
     const hour = Math.floor(Date.now() / 3600000);
-    const rid = poiId(i => asPlayer(A, () => !!W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour)), 97000);
+    // обычный разлом (не легендарный: тот открывается только у мест, известных Ордену) — иначе тест зависит от часа
+    const rid = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return !!r && r.tier < 3; }), 97000);
     await refuse(A, 'raidStart', { rift: { id: rid, lat: A.lat + 0.01, lng: A.lng, name: 'Разлом' }, far: true }, /Разломов/);
     eq(A.data.items.farpass, 2, 'пропуск не списан');
     const sid = poiId(i => asPlayer(A, () => !W.riftAt(i, hour)), 98000);
