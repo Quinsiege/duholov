@@ -9,7 +9,8 @@ const Music = {
   CHORDS: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 48, 52]], // Dm – B♭ – C – Am
   MELODY: [62, 65, 67, 69, 72, 74, 77, 79, 81],                       // ре-минорная пентатоника
   FILES: { theme: 'audio/theme.mp3', day: 'audio/mapday.mp3', night: 'audio/mapnight.mp3', mentor: 'audio/mentor.mp3' },
-  VOL: 0.5, FADE: 1.4,
+  // 4.8.1: музыка — фоном, как в Clash Royale: тихо, мягко (без резких верхов), без всплесков громкости
+  VOL: 0.2, FADE: 1.4,
   tracks: {}, cur: null, broken: false,
 
   init() {
@@ -37,7 +38,7 @@ const Music = {
     const ctx = Sfx.ctx, a = new Audio(this.FILES[k]), g = ctx.createGain();
     a.loop = true; a.preload = 'auto';
     g.gain.value = 0;
-    ctx.createMediaElementSource(a).connect(g).connect(ctx.destination);
+    ctx.createMediaElementSource(a).connect(g).connect(this.bus());
     const t = this.tracks[k] = { k, a, g, tail: false };
     a.addEventListener('error', () => { this.broken = true; this.mode = undefined; this.apply(); });
     // повтор без обрыва: за 2,5 с до конца трек затихает, с начала — снова набирает громкость
@@ -47,6 +48,15 @@ const Music = {
       else if (t.tail && a.currentTime < 2.5) { t.tail = false; this.ramp(t, this.VOL, 2); }
     });
     return t;
+  },
+  // общая шина музыки: мягкий срез верхов и компрессор — ровный тихий фон, звуки игры поверх
+  bus() {
+    if (this._bus) return this._bus;
+    const ctx = Sfx.ctx, lp = ctx.createBiquadFilter(), c = ctx.createDynamicsCompressor();
+    lp.type = 'lowpass'; lp.frequency.value = 4200; lp.Q.value = 0.5;
+    c.threshold.value = -26; c.knee.value = 18; c.ratio.value = 3.5; c.attack.value = 0.02; c.release.value = 0.4;
+    lp.connect(c).connect(ctx.destination);
+    return (this._bus = lp);
   },
   ramp(t, v, sec) {
     const now = Sfx.ctx.currentTime, g = t.g.gain;
@@ -74,7 +84,7 @@ const Music = {
     this.graph();
     const now = ctx.currentTime;
     this.out.gain.cancelScheduledValues(now);
-    this.out.gain.setTargetAtTime(mode ? (mode === 'battle' ? 0.55 : 0.5) : 0, now, mode ? 0.8 : 0.2);
+    this.out.gain.setTargetAtTime(mode ? (mode === 'battle' ? 0.22 : 0.2) : 0, now, mode ? 0.8 : 0.2);
     if (!mode) return;
     this.next = now + 0.15; this.step = 0;
     this.timer = setInterval(() => this.schedule(), 60);
@@ -83,7 +93,7 @@ const Music = {
     if (this.out) return;
     const ctx = Sfx.ctx;
     this.out = ctx.createGain(); this.out.gain.value = 0;
-    this.out.connect(ctx.destination);
+    this.out.connect(this.bus());
     // эхо для «гуслей»
     this.echo = ctx.createDelay(1); this.echo.delayTime.value = 0.34;
     const fb = ctx.createGain(); fb.gain.value = 0.35;
