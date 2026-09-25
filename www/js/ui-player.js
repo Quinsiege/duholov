@@ -203,7 +203,7 @@ Object.assign(UI, {
         </div>
         <h3 class="prof-h">Достижения</h3>
         <div class="prof-rows">${[
-          ['pin', 'Родников', d.stats.springs], ['rift', 'Закрыто разломов', d.stats.raids], ['shield', 'Побед на Капищах', d.stats.duels],
+          ['map', 'Разведано кварталов Нави', typeof Fog !== 'undefined' ? Fog.explored() : 0], ['pin', 'Родников', d.stats.springs], ['rift', 'Закрыто разломов', d.stats.raids], ['shield', 'Побед на Капищах', d.stats.duels],
           ['target', 'Вторжений отбито', d.stats.invasions], ['star', 'Превращений', d.stats.evolved], ['egg', 'Из коконов', d.stats.hatched],
           ['star', 'Сияющих', d.stats.shiny], ['spirits', 'Очищено духов', d.stats.purified], ['target', 'Отличных бросков', d.stats.throwsGreat],
           ...(d.clan ? [['shield', 'Защитников поставлено', d.stats.defends || 0], ['trophy', 'Капищ освобождено', d.stats.freed || 0]] : []),
@@ -376,6 +376,7 @@ Object.assign(UI, {
         <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>Тема карты</b><small>Авто — по солнцу: рассвет, день, закат и ночь</small></div>
           <div class="seg map-theme">${[['auto', 'Авто'], ['light', 'День'], ['dark', 'Ночь']].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('tilt3d', 'map', 'Объёмная карта', 'Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.')}
+        ${row('fog', 'map', 'Туман Нави', 'Неизведанное скрыто дымкой — она рассеивается там, где ты прошёл. Пройденный путь хранится только на этом телефоне.')}
         ${row('bigText', 'text', 'Крупный текст', 'Увеличенный шрифт в меню, карточках и подсказках.')}
         ${row('calm', 'calm', 'Меньше движения', 'Без покачиваний, мерцания и погодных эффектов.')}
         ${row('eco', 'battery', 'Экономия батареи', 'Меньше анимаций на карте, реже обновление и запросы GPS.')}
@@ -409,6 +410,7 @@ Object.assign(UI, {
       if (k === 'eco') { document.body.classList.toggle('eco', s.eco); if (!s.demo) MapView.startGPS(); }
       if (k === 'bigText' || k === 'calm') this.applyA11y();
       if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
+      if (k === 'fog') Fog.apply();
     });
     scr.querySelector('.map-theme').addEventListener('click', e => {
       const b = e.target.closest('[data-theme]'); if (!b) return;

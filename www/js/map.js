@@ -23,6 +23,7 @@ const MapView = {
     this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
     this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); });
     this.fitRange();
+    if (typeof Fog !== 'undefined') { Fog.init(this.map); Fog.setLook(this.night); Fog.visit(this.pos.lat, this.pos.lng); }
     this.player = L.marker([this.pos.lat, this.pos.lng], {
       interactive: false, zIndexOffset: 1000,
       icon: L.divIcon({ className: 'mk-player-wrap', iconSize: [64, 64], iconAnchor: [32, 32],
@@ -105,6 +106,7 @@ const MapView = {
     // 4.11: дымка горизонта у наклонённой карты — цвета земли этого часа
     const hz = nav ? (lk.snow && NavMap.SEASON.snow[night ? 'dark' : 'light'].bg) || NavMap.P[lk.phase].bg : night ? '#1b1b1f' : '#d9d3c7';
     document.body.style.setProperty('--haze', hz);
+    if (typeof Fog !== 'undefined') Fog.setLook(night);
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
 
@@ -152,6 +154,7 @@ const MapView = {
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
     this.drawTrail(lat, lng);
+    if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.12: туман Нави рассеивается там, где прошёл Ловчий
     if (this.follow) {
       if (jump) this.map.setView(ll, 17.5, { animate: false });
       else this.map.panTo(ll, { animate: false });
