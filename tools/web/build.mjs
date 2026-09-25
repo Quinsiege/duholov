@@ -11,7 +11,8 @@ const read = p => readFile(new URL(p, www), 'utf8');
 const KEEP = new Set(['js/version.js']);
 
 let html = await read('index.html');
-const tags = [...html.matchAll(/^\s*<script src="(js\/[a-z0-9]+\.js)\?v=dev"><\/script>\r?\n/gm)];
+const TAG = /^\s*<script src="(js\/[a-z0-9-]+\.js)\?v=dev"><\/script>\r?\n/gm;
+const tags = [...html.matchAll(TAG)];
 const files = tags.map(m => m[1]).filter(f => !KEEP.has(f));
 if (files.length < 40) throw new Error(`нашлось только ${files.length} скриптов — разметка index.html изменилась?`);
 
@@ -24,12 +25,15 @@ await writeFile(new URL('js/app.min.js', www), js.code);
 
 // index.html: вместо отдельных тегов — один (на месте первого из склеенных)
 let first = true;
-html = html.replace(/^\s*<script src="(js\/[a-z0-9]+\.js)\?v=dev"><\/script>\r?\n/gm, (m, f) => {
+html = html.replace(TAG, (m, f) => {
   if (KEEP.has(f)) return m;
   if (!first) return '';
   first = false;
   return m.replace(f, 'js/app.min.js');
 });
+// ни один свой скрипт не должен остаться отдельным (иначе он не попал в сборку — например, из-за имени файла)
+const left = [...html.matchAll(/<script src="(js\/[^"?]+)/g)].map(m => m[1]).filter(f => f !== 'js/app.min.js' && !KEEP.has(f));
+if (left.length) throw new Error(`не попали в сборку: ${left.join(', ')}`);
 await writeFile(new URL('index.html', www), html);
 
 // service worker: в кэш — склеенный файл вместо отдельных

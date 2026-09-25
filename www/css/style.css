@@ -1455,7 +1455,6 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .acc-tag .lg-ic svg { width: 14px; height: 14px; }
 .acc-tag.guest { padding-left: 10px; color: var(--gold2); background: rgba(251, 191, 36, .12); }
 /* экран входа вернувшегося Ловчего */
-.onb .gate { gap: 14px; }
 .gate .onb-logo h1 { margin-bottom: 0; }
 .acc-card { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 360px; padding: 14px 16px; border-radius: 20px; text-align: left;
   background: radial-gradient(130% 120% at 0% 0%, color-mix(in srgb, var(--cc) 30%, transparent), transparent 70%), rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
