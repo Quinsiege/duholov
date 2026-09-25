@@ -86,23 +86,28 @@
     .ld-bar { height: 10px; border-radius: 5px; background: rgba(8, 4, 22, .75); border: 1px solid rgba(243, 207, 107, .45); box-shadow: 0 0 0 2px rgba(8, 4, 22, .5), inset 0 1px 3px rgba(0, 0, 0, .6); }
     .ld-bar i { background: linear-gradient(90deg, #2dd4bf, #a3e635 45%, #fde047 80%, #fff7c7); }
     @media (max-height: 640px) { .ld-charm { width: 76px; height: 76px; } .ld-logo h1 { font-size: 46px; } .ld-tip { min-height: 80px; } }
-    /* 4.6: руническая полоса — желобок с высеченными рунами; огонь заполнения зажигает руны, по концам — ромбы-обереги */
+    /* 4.6: руническая полоса — чтение заклинания: желобок пуст, огонь идёт по нему, и руны проступают по одной, когда огонь дошёл до них целиком */
     .ld-bar { position: relative; height: 18px; margin: 0 14px; border-radius: 9px; border: 1px solid rgba(243, 207, 107, .5);
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='16'%3E%3Cpath d='M8 3V13M8 5.5L14 3M8 8.5L14 6M30 13V3L36 6.5V13M52 3V13M52 5L57 8L52 11M74 3V13M74 4L79 7M74 7.5L79 10.5M96 13V3L101 5.5L96 8L101 13M117 3L125 13M125 3L117 13M143 13V3M143 8L139 3.5M143 8L147 3.5M165 13V3M161 7L165 3L169 7' fill='none' stroke='%23f3cf6b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 6px 50% / 176px 16px repeat-x, linear-gradient(180deg, #07031a, #1a0f3a 60%, #0c0722);
+      background: linear-gradient(180deg, #07031a, #1a0f3a 60%, #0c0722);
       box-shadow: 0 0 0 2px rgba(8, 4, 22, .6), 0 0 0 3px rgba(243, 207, 107, .18), inset 0 2px 5px rgba(0, 0, 0, .75); }
     .ld-bar::before, .ld-bar::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M7 .5L13.5 7 7 13.5.5 7z' fill='%23f3cf6b' stroke='%235b210a' stroke-width='1'/%3E%3Cpath d='M7 4L10 7 7 10 4 7z' fill='%231d1238'/%3E%3C/svg%3E") center / contain no-repeat;
       filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
     .ld-bar::before { left: -16px; } .ld-bar::after { right: -16px; }
-    .ld-bar > i { border-radius: 8px; overflow: visible;
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='16'%3E%3Cpath d='M8 3V13M8 5.5L14 3M8 8.5L14 6M30 13V3L36 6.5V13M52 3V13M52 5L57 8L52 11M74 3V13M74 4L79 7M74 7.5L79 10.5M96 13V3L101 5.5L96 8L101 13M117 3L125 13M125 3L117 13M143 13V3M143 8L139 3.5M143 8L147 3.5M165 13V3M161 7L165 3L169 7' fill='none' stroke='%23fffbe6' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 5px 50% / 176px 16px repeat-x, linear-gradient(90deg, transparent 0 40%, rgba(255, 255, 255, .45) 50%, transparent 60%) 0 0 / 200% 100% no-repeat,
+    .ld-bar > i { border-radius: 8px;
+      background: linear-gradient(90deg, transparent 0 40%, rgba(255, 255, 255, .45) 50%, transparent 60%) 0 0 / 200% 100% no-repeat,
         linear-gradient(180deg, #fff3b0 0%, #fbbf24 45%, #d97706 80%, #92400e 100%);
-      box-shadow: 0 0 14px rgba(251, 191, 36, .75), inset 0 1px 0 rgba(255, 255, 255, .7); animation-name: ldShine; animation-duration: 2.4s; animation-iteration-count: infinite; animation-timing-function: linear; }
+      box-shadow: 0 0 14px rgba(251, 191, 36, .75), inset 0 1px 0 rgba(255, 255, 255, .7); animation: ldShine 2.4s linear infinite; }
     .ld-bar > i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards, ldShine 2.4s linear infinite; }
-    @keyframes ldShine { from { background-position: 5px 50%, 150% 0, 0 0; } to { background-position: 5px 50%, -50% 0, 0 0; } }
+    @keyframes ldShine { from { background-position: 150% 0, 0 0; } to { background-position: -50% 0, 0 0; } }
     .ld-bar > i::after { right: -9px; width: 20px; height: 20px; margin-top: -10px; background: radial-gradient(circle, #fff 0%, #fde047 30%, rgba(251, 191, 36, .5) 50%, rgba(251, 191, 36, 0) 70%); }
+    .ld-runes { position: absolute; left: 0; top: 0; bottom: 0; width: 0; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='16'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3V13M8 5.5L14 3M8 8.5L14 6M30 13V3L36 6.5V13M52 3V13M52 5L57 8L52 11M74 3V13M74 4L79 7M74 7.5L79 10.5M96 13V3L101 5.5L96 8L101 13M117 3L125 13M125 3L117 13M143 13V3M143 8L139 3.5M143 8L147 3.5M165 13V3M161 7L165 3L169 7' stroke='%237c2d12' stroke-width='3'/%3E%3Cpath d='M8 3V13M8 5.5L14 3M8 8.5L14 6M30 13V3L36 6.5V13M52 3V13M52 5L57 8L52 11M74 3V13M74 4L79 7M74 7.5L79 10.5M96 13V3L101 5.5L96 8L101 13M117 3L125 13M125 3L117 13M143 13V3M143 8L139 3.5M143 8L147 3.5M165 13V3M161 7L165 3L169 7' stroke='%23fffbe6' stroke-width='1.4'/%3E%3C/g%3E%3C/svg%3E") 5px 50% / 176px 16px repeat-x;
+      filter: drop-shadow(0 0 3px rgba(255, 240, 180, .85)); }
+    .ld-runes.pop::after { content: ""; position: absolute; right: -6px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, .95), rgba(253, 224, 71, .6) 35%, rgba(253, 224, 71, 0) 70%); animation: ldRunePop .7s ease-out forwards; }
+    @keyframes ldRunePop { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
     .ld-row { padding: 0 2px; }
     .ld-pct { min-width: 44px; text-align: right; }
-    .calm .ld-charm, .calm .ld-logo h1, .calm .ld-bar i::after, .calm .ld-bar > i:not(.boot) { animation: none; }
+    .calm .ld-charm, .calm .ld-logo h1, .calm .ld-bar i::after, .calm .ld-bar > i:not(.boot), .calm .ld-runes.pop::after { animation: none; }
     @media (prefers-reduced-motion: reduce) { .ld-charm, .ld-logo h1, .ld-bar i::after, .ld-bar > i:not(.boot) { animation: none; } }
   </style>
 </head>
@@ -120,7 +125,7 @@
         <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
       </div>
       <div class="ld-dots"></div>
-      <div class="ld-prog"><div class="ld-row"><span class="ld-text">Загрузка…</span><b class="ld-pct"></b></div><div class="ld-bar"><i class="boot"></i></div></div>
+      <div class="ld-prog"><div class="ld-row"><span class="ld-text">Загрузка…</span><b class="ld-pct"></b></div><div class="ld-bar"><i class="boot"></i><b class="ld-runes"></b></div></div>
     </div>
   </div>
   <link rel="stylesheet" href="vendor/fonts/rubik.css?v=dev">
