@@ -125,11 +125,12 @@
   });
   test('Графика: все духи рисуются (обычные, сияющие, омрачённые) без NaN/undefined', () => {
     SPECIES.forEach(s => [[false, false], [true, false], [false, true]].forEach(([sh, dk]) => {
-      const svg = Art.spirit(s.id, sh, dk);
+      const svg = Art.svgOf({ sid: s.id, shiny: sh, dark: dk }); // сам рисунок; наружу духи отдаются картинкой (Art.spirit → <img>)
       ok(svg.startsWith('<svg'), s.id);
       ok(!/NaN|undefined/.test(svg), `${s.id}${sh ? ' сияющий' : ''}${dk ? ' омрачённый' : ''}`);
     }));
     ok(Art.img('ugolek').startsWith('<img'), 'Art.img');
+    ok(Art.spirit('ugolek').startsWith('<img'), 'Art.spirit — картинка (растрируется один раз)');
     AMULET_KEYS.forEach(k => ok(!/NaN|undefined/.test(Art.amulet(k)), 'амулет ' + k));
   });
   test('Опыт до следующего уровня растёт на всех 40 уровнях', () => {
@@ -376,7 +377,7 @@
     cities.forEach(([n, lat, lng, land]) => eq(W.land(lat, lng), land, n));
     const lands = SPECIES.filter(s => s.land);
     eq(lands.length, Object.keys(LANDS).length, 'по духу на каждую землю');
-    ok(lands.every(s => LANDS[s.land] && s.rar === 4 && Art.spirit(s.id).startsWith('<svg')), 'данные и рисунки');
+    ok(lands.every(s => LANDS[s.land] && s.rar === 4 && Art.svgOf({ sid: s.id }).startsWith('<svg')), 'данные и рисунки');
     // местный дух доступен у себя и недоступен в чужом краю
     cities.forEach(([n, lat, lng, land]) => lands.forEach(s => eq(W.local(s, lng, lat), s.land === land, `${s.name} в ${n}`)));
     // и никогда не попадает в поединки, Лигу и поручения

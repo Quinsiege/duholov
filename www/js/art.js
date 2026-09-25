@@ -621,5 +621,15 @@ const Art = (() => {
   }
   let cfN = 0;
   const emblem = id => (Object.prototype.hasOwnProperty.call(EMBLEM, id) && EMBLEM[id]) || EMBLEM.charm;
-  return { spirit, of, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
+  // 4.6: наружу духи отдаются картинкой: объёмный рисунок (маски, фактуры) браузер растрирует один раз, а не каждый кадр анимации.
+  // svgOf — сам SVG (для фото с поимки, где нужен размер)
+  const svgOf = sp => spirit(sp.sid, sp.shiny, sp.dark);
+  // любой готовый SVG — картинкой (растрируется один раз); key — для кэша одинаковых рисунков (знаки карты, Велимир)
+  const svgImg = {};
+  function asImg(svg, key) {
+    const make = () => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(/xmlns=/.test(svg.slice(0, 200)) ? svg : svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+    const src = key ? (svgImg[key] || (svgImg[key] = make())) : make();
+    return `<img class="art" src="${src}" alt="" draggable="false">`;
+  }
+  return { spirit: img, of: imgOf, svgOf, asImg, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
 })();

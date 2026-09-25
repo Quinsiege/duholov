@@ -233,14 +233,14 @@ const MapView = {
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
-        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${Art.springIcon(!e.ready, e.invaded)}</div>` });
+        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`)}</div>` });
     }
     if (e.type === 'shrine') {
       return L.divIcon({ className: 'mk', iconSize: [54, 76], iconAnchor: [27, 72],
-        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.shrineIcon(e.tier, e.won)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.asImg(Art.shrineIcon(e.tier, e.won), `shrine:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
     }
     return L.divIcon({ className: 'mk', iconSize: [84, 96], iconAnchor: [42, 86],
-      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''}">${Art.riftIcon(e.tier)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''}">${Art.asImg(Art.riftIcon(e.tier), `rift:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
   },
   refresh(rebuild) {
     if (!this.map) return;

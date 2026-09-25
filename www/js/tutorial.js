@@ -74,7 +74,7 @@ const Tut = {
   KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.sheet-foot', '.menu-dots'],
   coach(st) {
     if (!this.el) {
-      this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${CutArt.velimir(true)}</div>
+      this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${Art.asImg(CutArt.velimir(true), 'velimir-mini')}</div>
         <div class="coach-main"><div class="coach-top"><b>Велимир</b><span class="coach-ch"></span></div><div class="coach-text"></div>
         <div class="coach-bar"><i></i></div></div></div>`);
       this.ring = U.el('<div id="tutRing" class="hidden"><i></i></div>');
@@ -159,7 +159,7 @@ const Tut = {
       <div class="ts-bg"><i class="ts-aur a1"></i><i class="ts-aur a2"></i><i class="ts-moon"></i>${'<i class="ts-star"></i>'.repeat(14)}${CutArt.yard()}<i class="ts-mist"></i></div>
       <div class="ts-film"><i></i><i></i></div>
       <div class="ts-chap"></div>
-      <div class="ts-stage"><div class="ts-mentor"><i class="ts-halo"></i>${CutArt.velimir()}</div><div class="ts-me"><div class="ts-hero">${CutArt.hero(S.d.look)}</div><span class="ts-me-name">${U.esc(S.d.name || 'Ты')}</span></div></div>
+      <div class="ts-stage"><div class="ts-mentor"><i class="ts-halo"></i>${Art.asImg(CutArt.velimir(), 'velimir')}</div><div class="ts-me"><div class="ts-hero">${Art.asImg(CutArt.hero(S.d.look))}</div><span class="ts-me-name">${U.esc(S.d.name || 'Ты')}</span></div></div>
       <div class="ts-box"><div class="ts-who"></div><div class="ts-line"></div><div class="ts-foot"><span class="ts-prog"></span><button class="btn primary small ts-next">Дальше</button></div></div>
     </div>`);
     document.body.appendChild(root);

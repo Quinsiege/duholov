@@ -1751,12 +1751,12 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .trl-rift path { fill: none; stroke: #f5d0fe; stroke-width: 3.5; stroke-linejoin: round; stroke-dasharray: 260; stroke-dashoffset: 260; vector-effect: non-scaling-stroke; }
 .trl-kos, .trl-flood, .trl-hide, .trl-order, .trl-mentor, .trl-logo { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .8s; }
 .trl-kos { display: grid; place-items: center; padding-bottom: 8vh; }
-.trl-kos > svg { width: min(58vw, 280px); height: auto; transform: scale(.3); filter: drop-shadow(0 0 30px #4ade80); transition: transform 4.5s cubic-bezier(.2, .8, .2, 1); }
+.trl-kos > .art { width: min(58vw, 280px); height: auto; transform: scale(.3); filter: drop-shadow(0 0 30px #4ade80); transition: transform 4.5s cubic-bezier(.2, .8, .2, 1); }
 .trl-flood div { position: absolute; left: -30%; top: calc(8% + var(--y)); width: 110px; height: 110px; }
 .trl-hide { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 0 12px; }
 .trl-card { width: 30%; max-width: 140px; aspect-ratio: .78; border-radius: 18px; background: linear-gradient(180deg, rgba(76, 42, 145, .75), rgba(20, 10, 44, .9)); border: 1px solid rgba(253, 224, 71, .4);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px; transform: translateY(40px); opacity: 0; transition: transform .7s, opacity .7s; transition-delay: calc(var(--i) * 1.4s + .2s); }
-.trl-card svg { width: 100%; height: auto; } .trl-card span { font-size: 12px; font-weight: 700; color: var(--gold2); }
+.trl-card .art { width: 100%; height: auto; } .trl-card span { font-size: 12px; font-weight: 700; color: var(--gold2); }
 .trl-order { display: grid; place-items: center; }
 .trl-rays { position: absolute; width: 900px; height: 900px; border-radius: 50%; opacity: .5; background: repeating-conic-gradient(rgba(253, 224, 71, .45) 0 7deg, transparent 7deg 20deg);
   -webkit-mask: radial-gradient(closest-side, #000 15%, transparent); mask: radial-gradient(closest-side, #000 15%, transparent); animation: spin 26s linear infinite; }
@@ -1785,7 +1785,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .s-crack .trl-rift, .s-koschey .trl-rift, .s-flood .trl-rift { opacity: 1; } .s-crack .trl-rift path { animation: trlDraw 4s ease-in forwards; }
 .s-koschey .trl-rift path, .s-flood .trl-rift path { stroke-dashoffset: 0; stroke-width: 7; }
 @keyframes trlDraw { to { stroke-dashoffset: 0; } }
-.s-koschey .trl-kos { opacity: 1; } .s-koschey .trl-kos > svg { transform: scale(1); }
+.s-koschey .trl-kos { opacity: 1; } .s-koschey .trl-kos > .art { transform: scale(1); }
 .s-flood .trl-flood { opacity: 1; } .s-flood .trl-flood div { animation: trlFly 3.6s cubic-bezier(.3, .6, .4, 1) forwards; animation-delay: calc(var(--i) * .32s); }
 @keyframes trlFly { 0% { left: -30%; transform: rotate(-20deg) scale(.6); } 60% { transform: rotate(8deg) scale(1); } 100% { left: 115%; transform: rotate(0) scale(.9); } }
 .s-hide .trl-hide { opacity: 1; } .s-hide .trl-card { opacity: 1; transform: none; }
@@ -2746,3 +2746,41 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 @keyframes cfPulse { 50% { opacity: .35; } }
 .calm .cf-ov * { animation: none !important; }
 .wd-grid.wide .wd-card b { margin-top: 12px; } .wd-grid.wide { row-gap: 22px; padding-top: 14px; }
+
+/* ================= 4.6.1: производительность — только то, что видеокарта двигает без перерисовки ================= */
+/* блеск кнопок: сдвиг полосы (transform), а не бегущий фон — раньше кнопка перерисовывалась 60 раз в секунду */
+.btn.primary::after, .btn.evolve::after, .btn.danger:not(.ghost)::after { inset: 0 auto 0 0 !important; width: 45% !important; border-radius: 0;
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .45) 50%, transparent 80%) !important; transform: translateX(-120%); animation: btnShine3 5.5s ease-in-out 1.5s infinite !important; will-change: transform; }
+@keyframes btnShine3 { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(330%); } }
+.btn.primary:disabled::after, .btn.primary.disabled::after, .btn.evolve:disabled::after, .calm .btn::after { animation: none !important; opacity: 0; }
+.rune { overflow: hidden; border-radius: 12px; }
+.rune .rn-shine { animation: none; display: none; }
+.rune::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .45) 50%, transparent 80%);
+  transform: translateX(-120%); animation: btnShine3 5.5s ease-in-out 1.2s infinite; will-change: transform; }
+.rune.glass::after, .calm .rune::after { display: none; }
+/* без размытия подложки: карта под панелями движется, и размытие пересчитывалось каждый кадр */
+#hud .profile, #hud .chip, #hud .nearby, #storyPill, #tracker, .modal-wrap, .sheet-wrap, .rl-wrap, .rune.glass, .realm-chip, .onb-lore, .hero, .lg-invite, .enc-result, .raid-result {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.modal-wrap, .sheet-wrap, .rl-wrap { background: radial-gradient(120% 80% at 50% 40%, rgba(16, 8, 40, .72), rgba(4, 2, 12, .88)); }
+.rune.glass { background: rgba(20, 12, 44, .55); }
+/* кнопка меню: вращается целиком (одна композиция), без анимаций внутри рисунка */
+.orb svg { animation: spin 60s linear infinite; will-change: transform; }
+.orb .orb-ring, .orb .orb-fern { animation: none; }
+/* поимка: луна без анимированной тени, сияние без размытия, пламя без смешивания цветов */
+.nv-moon { animation: none; box-shadow: 0 0 70px 14px rgba(167, 139, 250, .25); }
+.nv-aur, .ts-aur { filter: none; will-change: transform, opacity; }
+.nv-aur { background: radial-gradient(50% 45% at 50% 50%, rgba(94, 234, 212, .26), rgba(94, 234, 212, 0) 78%); }
+.nv-aur.a2 { background: radial-gradient(50% 45% at 50% 50%, rgba(232, 121, 249, .22), rgba(232, 121, 249, 0) 78%); }
+.ts-aur { background: radial-gradient(50% 45% at 50% 50%, rgba(94, 234, 212, .26), rgba(94, 234, 212, 0) 78%); }
+.ts-aur.a2 { background: radial-gradient(50% 45% at 50% 50%, rgba(232, 121, 249, .22), rgba(232, 121, 249, 0) 78%); }
+@keyframes egPulse { 50% { opacity: 1; } }
+.eg-f { mix-blend-mode: normal; will-change: transform, opacity; }
+.eg-ring { will-change: transform; }
+/* кат-сцены: Велимир и Ловчий — картинки; «дыхание» — у картинки целиком */
+.vm-breath { animation: none; }
+.ts-mentor > .art, .ts-hero > .art { animation: vmBreath2 4s ease-in-out infinite; transform-origin: 50% 100%; will-change: transform; }
+@keyframes vmBreath2 { 50% { transform: scale(1.012, 1.02); } }
+.calm .ts-mentor > .art, .calm .ts-hero > .art { animation: none; }
+/* Гардероб: в мини-карточках рамки не анимируются (их десять на экране), блеск легендарных — без перерисовки */
+.wd-mini .cf-ov * { animation: none !important; }
+.wd-card.r3::after { display: none; }
