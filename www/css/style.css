@@ -2993,3 +2993,6 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 .clan-head .clan-crest { flex: none; width: 82px; height: 90px; margin: -6px 0; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--cc) 70%, transparent)) drop-shadow(0 4px 6px rgba(0, 0, 0, .45)); }
 .clan-head b { font-family: var(--f-display); font-weight: 400; font-size: 21px; letter-spacing: .4px; background: linear-gradient(180deg, #fffbea, #f7dd8f 55%, #e0a93e); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .clan-head small { font-family: var(--f-head); font-size: 13.5px; color: color-mix(in srgb, var(--cc) 35%, #e9e1ff); }
+
+/* 4.7.3: окно обновления — поверх всего: сцен и заставок обучения, трейлера и экрана загрузки */
+.modal-wrap:has(> .update-modal) { z-index: 9800; }

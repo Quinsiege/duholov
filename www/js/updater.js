@@ -36,6 +36,8 @@ const Updater = {
     this.check();
     setTimeout(() => this.oldAppHint(), 20000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.check(); });
+    // 4.7.3: обновление, вышедшее, пока игрок в игре, находится само — проверка раз в 5 минут, пока игра открыта
+    setInterval(() => { if (!document.hidden) this.check(); }, 5 * 60000);
   },
 
   // Первый запуск после обновления: показать, что нового
@@ -59,12 +61,23 @@ const Updater = {
   // 4.0.2: проверка на экране загрузки, ещё до входа в игру. Возвращает: null — всё свежее (или нет сети:
   // не держим загрузку дольше 4 с), 'apk' — нужно новое приложение, иначе — данные новой версии для apply()
   async boot() {
-    let v = null;
-    try {
-      const r = await Promise.race([fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }), U.wait(4000).then(() => null)]);
-      if (r && r.ok) v = await r.json();
-    } catch (e) {}
+    // 4.7.3: ждём ответа до 8 с (медленный мобильный интернет); не успел — запрос не бросаем:
+    // пришла новая версия позже — окно обновления поверх всего, как только игра открылась
+    const req = fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+    const v = await Promise.race([req, U.wait(8000).then(() => undefined)]);
     this.lastCheck = Date.now();
+    if (v === undefined) {
+      req.then(late => {
+        if (!late || this.shown) return;
+        if (this.IN_APP && late.minApk && this.APK < late.minApk) this.promptApk(late);
+        else if (this.cmp(late.version, APP_VERSION) > 0) {
+          // ещё на экране загрузки — ставим сразу, без окна
+          if (typeof Loader !== 'undefined' && Loader.el) { this.shown = true; Loader.set(30, `Загружаю обновление ${late.version}…`); this.apply(late.version); }
+          else this.prompt(late);
+        }
+      });
+      return null;
+    }
     if (!v) return null;
     if (this.IN_APP && v.minApk && this.APK < v.minApk) return 'apk';
     if (this.cmp(v.version, APP_VERSION) <= 0) return null;
