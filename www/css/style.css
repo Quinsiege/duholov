@@ -3039,9 +3039,9 @@ body.night .rz-vis path { fill: rgba(167, 139, 250, .13); stroke: rgba(243, 207,
 /* стена света по краю зоны: слои контура, всё прозрачнее кверху; дома впереди заслоняют (маска по яркости) */
 .rz-beam { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; animation: rzBeam 3.6s ease-in-out infinite;
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; mask-mode: luminance; }
-.rz-beam path { fill: none; stroke: #f5c451; stroke-linejoin: round; }
-body.night .rz-beam path { stroke: #ffd976; }
-body:not(.night) .rz-beam { mix-blend-mode: multiply; } body:not(.night) .rz-beam path { stroke: #d9a13a; }
+.rz-beam { color: #f5c451; } .rz-beam path { fill: currentColor; fill-opacity: .085; }
+body.night .rz-beam { color: #ffd976; }
+body:not(.night) .rz-beam { mix-blend-mode: multiply; color: #d9a13a; }
 body.night .rz-beam { mix-blend-mode: screen; }
 @keyframes rzBeam { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
 .calm .rz-beam { animation: none; }

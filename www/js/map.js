@@ -170,6 +170,7 @@ const MapView = {
     if (!box) return;
     const f3 = v => Math.round(v * 1000) / 1000;
     let vis = '', sil = '';
+    const pts = [];
     const t = this.tiles, view = t && t.views && t.views.get(''), tc = view && view.tileCache;
     if (tc && typeof NavMap !== 'undefined') {
       const S = tc.tileSize, tz = t._tileZoom != null ? t._tileZoom : Math.round(this.map.getZoom());
@@ -217,6 +218,7 @@ const MapView = {
           if (tt > 0 && tt < tm && u >= 0 && u <= 1) tm = tt;
         }
         vis += (i ? 'L' : 'M') + f3(dx * tm / rU) + ' ' + f3(dy * tm / rU);
+        pts.push([dx * tm / rU, dy * tm / rU]);
       }
       vis += 'Z';
       // дома перед кругом заслоняют его: основание, крыша и стены между ними
@@ -235,7 +237,10 @@ const MapView = {
         }
       }
     }
-    if (!vis) vis = 'M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z';
+    if (!vis) {
+      vis = 'M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z';
+      for (let i = 0; i < 180; i++) pts.push([Math.cos(i / 90 * Math.PI), Math.sin(i / 90 * Math.PI)]);
+    }
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 2 2"><defs><radialGradient id="g" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse">'
       + '<stop offset=".6" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></radialGradient>'
       + `<mask id="m"><path d="${vis}" fill="url(#g)"/>${sil ? `<path d="${sil}" fill="#000"/>` : ''}</mask></defs>`
@@ -248,13 +253,30 @@ const MapView = {
     // 4.13: невысокая стена света по краю досягаемой земли — золото у земли тает кверху (как дома, «вверх» по экрану)
     const beam = this.range.getElement().querySelector('.rz-beam');
     if (beam) {
-      const H = .2, K = 14;
-      let g = '';
-      for (let i = 0; i < K; i++) {
-        const a = Math.pow(1 - i / K, 1.8) * .5;
-        g += '<path d="' + vis + '" transform="translate(0 ' + f3(-(i + .5) * H / K) + ')" stroke-width="' + f3(H / K * 2) + '" stroke-opacity="' + f3(a) + '"/>';
+      // сплошные грани от основания вверх, каждая — с плавным градиентом (прямые участки стен — одной гранью)
+      const H = .2, P = [];
+      for (const q of pts) {
+        const n = P.length;
+        if (n >= 2) {
+          const a = P[n - 2], b = P[n - 1];
+          if (Math.abs((b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])) < 1e-5) { P[n - 1] = q; continue; }
+        }
+        P.push(q);
       }
-      beam.firstElementChild.innerHTML = g;
+      // слои: каждый — одна сплошная фигура (стены от земли до своей высоты), полупрозрачные; у земли их много,
+      // вверху мало — стена плавно тает кверху, и между гранями нет швов
+      const K = 16;
+      let g = '';
+      for (let k = 1; k <= K; k++) {
+        const h = H * k / K;
+        let d = '';
+        for (let i = 0; i < P.length; i++) {
+          const a = P[i], b = P[(i + 1) % P.length];
+          d += 'M' + f3(a[0]) + ' ' + f3(a[1]) + 'L' + f3(b[0]) + ' ' + f3(b[1]) + 'L' + f3(b[0]) + ' ' + f3(b[1] - h) + 'L' + f3(a[0]) + ' ' + f3(a[1] - h) + 'Z';
+        }
+        g += '<path d="' + d + '"/>';
+      }
+      beam.querySelector('g').innerHTML = g;
       const bsvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1.25 2 2.25"><rect x="-1" y="-1.25" width="2" height="2.25" fill="#fff"/>'
         + (sil ? '<path d="' + sil + '" fill="#000"/>' : '') + '</svg>';
       const bu = 'url("data:image/svg+xml,' + encodeURIComponent(bsvg) + '")';

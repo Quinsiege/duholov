@@ -11,7 +11,7 @@ const NavMap = {
   P: {
     night: {
       bg: '#120b25', earth: '#120b25', urban: '#160e2c', plaza: '#1c1438', park: '#0f2c24', parkEdge: '#1d5a44', wood: '#0b261e', grass: '#11302a',
-      sand: '#2f2519', water: '#0b3142', waterEdge: '#2dd4bf', river: '#1b8a8e', bld: '#221840', bldHi: '#2d2156', bldEdge: 'rgba(243,207,107,.26)',
+      sand: '#2f2519', water: '#0b3142', waterEdge: '#2dd4bf', river: '#1b8a8e', bld: '#2c2154', bldHi: '#392b6e', bldEdge: 'rgba(243,207,107,.45)',
       casing: '#06030d', major: '#e0b45a', majorHi: 'rgba(255, 246, 214, .55)', majorGlow: 'rgba(251,191,36,.14)', minor: '#3f3374', minorCase: '#0a0618', path: '#6d5ca6', rail: '#7a5d34',
       label: '#ece6ff', labelHalo: '#0b0620', labelMajor: '#fde6a8', place: '#f3cf6b', waterLabel: '#7fe8dc', poi: '#f3cf6b',
       tree: 'rgba(110, 231, 183, .2)', lattice: 'rgba(243, 207, 107, .045)', lamps: 1, windows: 'rgba(255, 196, 102, .55)',
