@@ -79,7 +79,7 @@ const Hints = {
     this.mark(h.id);
     UI.modal({
       title: '', cls: 'hint-modal',
-      html: `<div class="hint"><div class="hint-ava">${Art.guardian('#15803d')}</div><div><b>Совет Велимира</b><p>${h.text}</p></div></div>`,
+      html: `<div class="hint"><div class="hint-ava">${Art.stack(CutArt.velimir(true).replace('class="vm-breath"', ''), 'velimir-mini')}</div><div><b>Совет Велимира</b><p>${h.text}</p></div></div>`,
       buttons: [{ label: 'Позже' }, { label: h.btn, cls: 'primary', fn: h.go }],
     });
   },

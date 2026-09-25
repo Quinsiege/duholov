@@ -7,7 +7,7 @@ const Loot = {
   art(k, rw) {
     if (k === 'cocoon') return Art.cocoon(rw.cocoon || rw.km || 5);
     if (k === 'amulet') return Art.amulet(AMULETS[rw.id] ? rw.id : 'perun');
-    if (k === 'sparks') return '<b class="big-n">✦</b>';
+    if (k === 'sparks') return Art.item('sparks');
     if (k === 'look') return Art.avatar(LOOK.cloak.some(c => c.c === rw.look) ? { cloak: rw.look, eyes: '#5eead4', emblem: 'charm' } : { cloak: '#241a45', eyes: '#5eead4', emblem: rw.look });
     if (k === 'bag') return Art.item('gift');
     return Art.item(k) || '<b class="big-n">✦</b>';
@@ -106,8 +106,8 @@ const Treasury = {
 const Shop = {
   // Товар дня ещё не куплен — значок на плитке меню
   dealFresh() { return S.d && S.d.shop.deal !== U.today(); },
-  price(it) { return it.cur === 'sparks' ? `✦ ${U.fmtNum(it.price)}` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(it.price)}`; },
-  wallet() { return `<div class="shop-wallet"><span class="spark">✦ ${U.fmtNum(S.d.sparks)} искр</span><span class="zlat">${Art.item('zlat')} ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, 'златник', 'златника', 'златников')}</span></div>`; },
+  price(it) { return it.cur === 'sparks' ? `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(it.price)}` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(it.price)}`; },
+  wallet() { return `<div class="shop-wallet"><span class="spark"><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)} искр</span><span class="zlat">${Art.item('zlat')} ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, 'златник', 'златника', 'златников')}</span></div>`; },
 
   // На покупку не хватает валюты
   poor(it) { return (S.d[it.cur === 'sparks' ? 'sparks' : 'zlat'] || 0) < it.price; },
@@ -117,7 +117,7 @@ const Shop = {
     const E = Rules.EXCHANGE, left = this.exLeft(), can = Math.min(left, Math.floor(S.d.sparks / E.SPARKS));
     const btn = n => `<button class="btn small ${n === 1 ? 'primary' : ''}" data-ex="${n}" ${can >= n ? '' : 'disabled'}>×${n}</button>`;
     return `<div class="shop-ex">
-      <div class="ex-rate"><span class="spark">✦ ${U.fmtNum(E.SPARKS)}</span><b>→</b><span class="zlat">${Art.item('zlat')} ${E.ZLAT}</span></div>
+      <div class="ex-rate"><span class="spark"><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(E.SPARKS)}</span><b>→</b><span class="zlat">${Art.item('zlat')} ${E.ZLAT}</span></div>
       <div class="row-main"><b>Обменник</b><small>${left ? `Сегодня ещё ${left} ${U.plural(left, 'обмен', 'обмена', 'обменов')}` : 'На сегодня всё — приходи завтра'}</small></div>
       <div class="ex-btns">${btn(1)}${[5, left].filter((v, i, a) => v > 1 && a.indexOf(v) === i).map(btn).join('')}</div>
     </div>`;

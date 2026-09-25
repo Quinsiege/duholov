@@ -32,7 +32,7 @@ const Trailer = {
         <div class="trl-flood">${flood.map((id, i) => `<div style="--i:${i};--y:${(i * 29) % 70}%">${Art.spirit(id)}</div>`).join('')}</div>
         <div class="trl-hide">${[['fonarnik', 'в фонарях'], ['kapelka', 'в лужах'], ['vayfayka', 'в проводах']].map(([id, t], i) => `<div class="trl-card" style="--i:${i}">${Art.spirit(id)}<span>${t}</span></div>`).join('')}</div>
         <div class="trl-order"><div class="trl-rays"></div><div class="trl-charm">${Art.charm('charm3')}</div></div>
-        <div class="trl-mentor">${Art.guardian('#15803d')}</div>
+        <div class="trl-mentor">${CutArt.velimir()}</div>
         <div class="trl-logo"><div class="trl-lcharm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p><span class="trl-ver">4.0 · Новая глава</span>
           <button class="btn primary wide trl-go">${o.replay ? 'Закрыть' : 'Начать'}</button></div>
         <div class="trl-cap"></div>

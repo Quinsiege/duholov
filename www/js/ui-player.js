@@ -126,7 +126,7 @@ Object.assign(UI, {
   rwChips(rw, wrap = true, extra = '') {
     const chips = Object.entries(rw || {}).map(([k, n]) => {
       if (k === 'xp') return `<span class="qd-rw xp">+${U.fmtNum(n)} опыта</span>`;
-      if (k === 'sparks') return `<span class="qd-rw spark">✦ ${U.fmtNum(n)}</span>`;
+      if (k === 'sparks') return `<span class="qd-rw spark"><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(n)}</span>`;
       const a = Art.item(k);
       return a ? `<span class="qd-rw">${a}×${n}</span>` : '';
     }).join('') + extra;
@@ -359,7 +359,7 @@ Object.assign(UI, {
       ${DEV ? `${sec('Разработка')}<div class="list">${row('demo', 'target', 'Демо-режим', 'Джойстик вместо GPS. Доступен только на локальном сервере.')}</div>` : ''}
       ${sec('Звук и отклик')}
       <div class="list">
-        ${row('music', 'music', 'Музыка', 'Спокойные «гусли» на карте и боевая тема в сражениях.')}
+        ${row('music', 'music', 'Музыка', 'Мелодии Нави на карте (днём и ночью своя), у наставника и боевая тема в сражениях.')}
         ${row('sound', 'sound', 'Звук', 'Звуковые эффекты.')}
         ${row('vibro', 'vibro', 'Вибрация', 'Отклик при бросках и попаданиях.')}
       </div>

@@ -79,6 +79,7 @@ const MapView = {
       }
     }
     document.body.classList.toggle('night', night);
+    if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
     if (this._baked) {
       const f = getComputedStyle(this._baked).getPropertyValue('--tile-f').trim();
       if (f !== this.tileF) { const redraw = this.tileF != null; this.tileF = f; if (redraw) this.tiles.rerenderTiles(); }

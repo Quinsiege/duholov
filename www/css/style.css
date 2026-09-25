@@ -2996,3 +2996,10 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 
 /* 4.7.3: окно обновления — поверх всего: сцен и заставок обучения, трейлера и экрана загрузки */
 .modal-wrap:has(> .update-modal) { z-index: 9800; }
+
+/* ================= 4.8: Велимир в советах — тот же портрет, что у наставника в обучении ================= */
+.hint-ava { width: 58px; height: 58px; border: 2px solid #f3cf6b; background: radial-gradient(circle at 50% 40%, #1d5a36, #0b1f14);
+  box-shadow: 0 0 0 1px rgba(60, 25, 4, .7), 0 0 12px rgba(74, 222, 128, .25), 0 4px 10px rgba(0, 0, 0, .4); }
+.hint-ava .art { display: block; width: 100%; height: 100%; }
+.hint b { font-family: var(--f-display); font-weight: 400; font-size: 16px; letter-spacing: .3px; color: #86efac; }
+.hint p { font-family: var(--f-head); font-size: 15px; }
