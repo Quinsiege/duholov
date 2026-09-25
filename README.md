@@ -264,6 +264,7 @@
    - `www/js/version.js` → `APP_VERSION`,
    - `www/version.json` → `version` и `notes` (эти строки игроки увидят в окне обновления).
    CI проверяет, что версии совпадают.
+   При выкладке `tools/web/build.mjs` склеивает свои скрипты из `index.html` в один сжатый `js/app.min.js` и сжимает CSS; новый скрипт достаточно подключить в `index.html` (с `?v=dev`) — в сборку он попадёт сам. CI прогоняет автотесты и на собранной версии.
    Свои скрипты и стили подключаются с меткой `?v=dev` (в `index.html`, `admin.html` и списке `sw.js`); при публикации CI меняет её на номер версии (`tools/stamp-version.sh`). Забытую метку поймает CI.
 3. Если меняется Android-обёртка: `WRAPPER_VERSION` в `MainActivity.kt` = `versionCode` в `android/app/build.gradle.kts`; `minApk` в `www/version.json` поднимать, только если старое приложение работать не должно. APK подписывается постоянным ключом (секреты `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`; сам ключ хранит владелец — без него обновить приложение невозможно).
 4. `git push` ветки → Pull Request в `main`. Workflow **«Проверки»** запускает автотесты в Chromium (`tests/`), сборку APK и выкладывает сборку на https://test.duholov.ru/.
