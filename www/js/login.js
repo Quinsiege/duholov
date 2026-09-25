@@ -181,11 +181,11 @@ const Login = {
   logo(sub) {
     return `<div class="lg-top"><div class="lg-charm">${Art.charm('charm3')}</div><h1 class="lg-title">ДУХОЛОВ</h1><p>${sub}</p></div>`;
   },
-  // корень экрана входа: сцена + содержимое; spirits — кто парит в сцене
-  screenRoot(spirits) {
+  // корень экрана входа: фон + содержимое
+  screenRoot() {
     const root = U.el('<div class="onb lg"><div class="lg-scene"></div><div class="lg-body"></div></div>');
     document.body.appendChild(root);
-    Scene.mount(root.querySelector('.lg-scene'), 'login', { spirits }).then(sc => { root._scene = sc; });
+    Scene.mount(root.querySelector('.lg-scene'), 'login').then(sc => { root._scene = sc; });
     return root;
   },
   close(root, done) {
@@ -212,10 +212,9 @@ const Login = {
   gate(done) {
     const d = S.d, avail = this.available(), guest = this.isGuest();
     const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
-    const team = (d.team || []).map(u => (d.spirits.find(s => s.uid === u) || {}).sid).filter(Boolean);
-    const root = this.screenRoot(team.length ? team : undefined);
+    const root = this.screenRoot();
     // 4.5: без коробки — карточка-медальон Ловчего, «оберег» «Продолжить», стеклянная кнопка; 12+ — значок в углу
-    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap"><span class="age-chip" title="Возрастная категория">12+</span>${this.logo('С возвращением, Ловчий!')}
+    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap"><span class="age-chip" title="Возрастная категория">12+</span>${Realms.chip()}${this.logo('С возвращением, Ловчий!')}
       <div class="lg-cta">
         <div class="hero ${guest ? 'is-guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
           <div class="hero-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="hero-lvl">${d.level}</span></div>
@@ -229,6 +228,7 @@ const Login = {
         ${guest && Game.on() ? '<p class="lg-legal">Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс</p>' : ''}
       </div></div>`;
     root.querySelector('.lg-go').onclick = () => { Sfx.init(); Sfx.play('tap'); this.close(root, done); };
+    Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
     const save = root.querySelector('.lg-save');
     if (save) save.onclick = () => this.sheet(root, '<b>Сохрани прогресс</b><small>Привяжи вход — и прогресс откроется на любом устройстве</small>', this.buttons('link'));
     const more = root.querySelector('.lg-more');

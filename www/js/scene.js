@@ -1,9 +1,8 @@
 'use strict';
-/* 4.4: фоновые сцены экрана входа и экрана загрузки.
+/* 4.4: фоны экрана входа и экрана загрузки.
    Настройки — www/scenes/scenes.json (формат — docs/scenes.md). Пока своих изображений нет — фон как во вкладках игры
-   (лак с тонким узором), над ним парящие духи и светлячки.
-   Экран входа — «3D»: слои на разной глубине сдвигаются от наклона телефона (гироскоп) или мыши, без движения камера
-   медленно «дышит». В спокойном режиме и при «уменьшить анимацию» сцена неподвижна, в режиме экономии — без частиц. */
+   (лак с тонким узором). 4.6: фон неподвижен (без параллакса и парящих духов), над ним — светлячки.
+   В спокойном режиме и при «уменьшить анимацию» светлячки замирают, в режиме экономии их нет. */
 
 const Scene = {
   CFG: null,
@@ -53,78 +52,40 @@ const Scene = {
     img.src = src;
   },
 
-  /* ---------- экран входа: слои с глубиной ---------- */
-  // el — контейнер во весь экран; opts.spirits — какие духи парят (например, команда вернувшегося Ловчего)
-  async mount(el, id, opts = {}) {
+  /* ---------- экран входа: фон (картинки-слои из scenes.json или встроенный) и светлячки ---------- */
+  async mount(el, id) {
     const s = await this.pick(id);
     if (!el.isConnected) return null;
     const imgs = Array.isArray(s.layers) ? s.layers.filter(l => l && l.src) : [];
-    const spirits = s.spirits === false ? [] : (Array.isArray(s.spirits) ? s.spirits : opts.spirits || ['kapelka', 'domovoy', 'fonarnik', 'leshachok']).filter(x => SP[x]).slice(0, 5);
     el.classList.add('scene');
-    el.innerHTML = `<div class="sc-cam">${imgs.length ? imgs.map(l => this.imgLayer(l)).join('') : this.builtin()}
-      ${spirits.length ? this.spiritsLayer(spirits) : ''}</div>
+    el.innerHTML = `<div class="sc-cam">${imgs.length ? imgs.map(l => this.imgLayer(l)).join('') : this.builtin()}</div>
       ${(s.particles || 'fireflies') !== 'none' && !Cfg.s.eco ? '<canvas class="sc-fx"></canvas>' : ''}<div class="sc-shade"></div>`;
     if (s.shade != null) el.style.setProperty('--sc-shade', U.clamp(+s.shade, 0, 1));
     return this.animate(el, s.particles || 'fireflies');
   },
-  // слой-картинка: depth 0 (даль) … 1 (передний план); anim: sway | drift | float | pulse; fit: cover | contain | bottom
+  // слой-картинка: anim: sway | drift | float | pulse; fit: cover | contain | bottom (depth из старых настроек не используется)
   imgLayer(l) {
-    const d = U.clamp(+l.depth || 0, 0, 1), anim = ['sway', 'drift', 'float', 'pulse'].includes(l.anim) ? l.anim : '';
+    const anim = ['sway', 'drift', 'float', 'pulse'].includes(l.anim) ? l.anim : '';
     const pos = l.fit === 'bottom' ? 'center bottom / 100% auto no-repeat' : l.fit === 'contain' ? 'center / contain no-repeat' : 'center / cover no-repeat';
-    // сдвиг от наклона — у слоя, своя анимация — у картинки внутри (иначе анимация CSS перебила бы сдвиг)
-    return `<div class="sc-l" data-d="${d}"${l.blend ? ` style="mix-blend-mode:${U.esc(l.blend)}"` : ''}><div class="sc-img ${anim ? 'sc-a-' + anim : ''}" style="background:url(&quot;${U.esc(encodeURI(l.src))}&quot;) ${pos};${l.opacity != null ? `opacity:${U.clamp(+l.opacity, 0, 1)};` : ''}"></div></div>`;
+    return `<div class="sc-l"${l.blend ? ` style="mix-blend-mode:${U.esc(l.blend)}"` : ''}><div class="sc-img ${anim ? 'sc-a-' + anim : ''}" style="background:url(&quot;${U.esc(encodeURI(l.src))}&quot;) ${pos};${l.opacity != null ? `opacity:${U.clamp(+l.opacity, 0, 1)};` : ''}"></div></div>`;
   },
-  spiritsLayer(ids) {
-    const at = [[18, 33, 70], [80, 31, 84], [50, 41, 108], [27, 49, 60], [74, 50, 66]]; // x %, y %, размер px
-    return `<div class="sc-l sc-sp-l" data-d="0.3">${ids.map((id, i) => {
-      const [x, y, s] = at[i];
-      return `<div class="sc-sp" style="left:${x}%;top:${y}%;width:${s}px;height:${s}px;margin:-${s / 2}px;animation-delay:${-i * 0.9}s">${Art.spirit(id)}</div>`;
-    }).join('')}</div>`;
-  },
-
   // 4.6: встроенный фон — тот же, что во вкладках игры: лак с тонким узором и мягким сиянием сверху
-  builtin() { return '<div class="sc-l sc-lacq" data-d="0.02"></div>'; },
+  builtin() { return '<div class="sc-l sc-lacq"></div>'; },
 
-  /* ---------- движение: наклон телефона, мышь, «дыхание» камеры, частицы ---------- */
+  /* ---------- светлячки ---------- */
   animate(el, particles) {
-    const calm = this.calm(), layers = [...el.querySelectorAll('[data-d]')].map(n => ({ n, d: +n.dataset.d }));
-    const cam = el.querySelector('.sc-cam'), cv = el.querySelector('canvas.sc-fx');
-    const st = { x: 0, y: 0, tx: 0, ty: 0, last: 0, base: null, raf: 0, on: true };
-    const now = () => performance.now();
-    const onOri = e => {
-      if (e.beta == null || e.gamma == null) return;
-      if (!st.base) st.base = { b: e.beta, g: e.gamma };
-      st.tx = U.clamp((e.gamma - st.base.g) / 18, -1, 1); st.ty = U.clamp((e.beta - st.base.b) / 18, -1, 1); st.last = now();
-    };
-    const onMove = e => { st.tx = U.clamp(e.clientX / innerWidth * 2 - 1, -1, 1); st.ty = U.clamp(e.clientY / innerHeight * 2 - 1, -1, 1); st.last = now(); };
-    // iOS спрашивает разрешение на гироскоп только по касанию
-    const ask = () => { try { if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) DeviceOrientationEvent.requestPermission().catch(() => {}); } catch (e) {} };
-    if (!calm) {
-      addEventListener('deviceorientation', onOri);
-      addEventListener('pointermove', onMove);
-      el.parentNode && el.parentNode.addEventListener('pointerdown', ask, { once: true });
-    }
-    // частицы: светлячки (по умолчанию), снег, искры
-    const fx = cv ? this.particles(cv, particles) : null;
+    const cv = el.querySelector('canvas.sc-fx'), fx = cv ? this.particles(cv, particles) : null;
+    const st = { on: true, raf: 0 };
+    const stop = () => { st.on = false; cancelAnimationFrame(st.raf); };
+    if (!fx) return { stop };
+    if (this.calm()) { fx(0, 0, 0); return { stop }; }
     const frame = t => {
       if (!st.on) return;
       if (!el.isConnected) { stop(); return; }
-      if (!document.hidden) {
-        if (t - st.last > 2500) { st.tx = Math.sin(t / 5200) * 0.35; st.ty = Math.cos(t / 7300) * 0.22; } // никто не трогает — камера «дышит»
-        st.x += (st.tx - st.x) * 0.05; st.y += (st.ty - st.y) * 0.05;
-        for (const l of layers) l.n.style.transform = `translate3d(${f2(-st.x * l.d * 46)}px,${f2(-st.y * l.d * 30)}px,0) scale(${1.08 + l.d * 0.1})`;
-        cam.style.transform = `rotateX(${f2(st.y * 2.2)}deg) rotateY(${f2(-st.x * 3.2)}deg)`;
-        if (fx) fx(t, st.x, st.y);
-      }
+      if (!document.hidden) fx(t, 0, 0);
       st.raf = requestAnimationFrame(frame);
     };
-    const f2 = n => n.toFixed(2);
-    const stop = () => {
-      st.on = false; cancelAnimationFrame(st.raf);
-      removeEventListener('deviceorientation', onOri); removeEventListener('pointermove', onMove);
-    };
-    if (calm) { for (const l of layers) l.n.style.transform = `scale(${1.08 + l.d * 0.1})`; if (fx) fx(0, 0, 0); }
-    else st.raf = requestAnimationFrame(frame);
+    st.raf = requestAnimationFrame(frame);
     return { stop };
   },
   particles(cv, kind) {

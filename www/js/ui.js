@@ -626,7 +626,7 @@ const UI = {
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
       // 4.5: без коробки — сцена во весь экран, «оберег» и стеклянная кнопка прямо на ней; 12+ — значок в углу
-      if (n === 0) html = `<span class="age-chip" title="Возрастная категория">12+</span>${Login.logo('Лови духов Нави на улицах своего города')}
+      if (n === 0) html = `<span class="age-chip" title="Возрастная категория">12+</span>${Login.logo('Лови духов Нави на улицах своего города')}${Realms.banner()}
         <div class="lg-cta">
           ${Invite.ref() ? '<div class="lg-invite">✦ Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок</div>' : ''}
           ${this.rune('Начать игру', 'next')}
@@ -643,6 +643,7 @@ const UI = {
         ${this.rune('Разрешить геопозицию', 'gps', this.I.pin)}${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
       body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
       const nx = body.querySelector('.next');
+      Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
       const have = body.querySelector('.lg-have');
       if (have) have.onclick = () => Login.sheet(root, '<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>', Login.buttons('start'));
       if (n === 2) {

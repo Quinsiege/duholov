@@ -26,7 +26,7 @@ const Encounter = {
     const root = U.el(`
       <div class="enc">
         <video class="enc-cam" playsinline muted autoplay></video>
-        <div class="enc-scene el-${s.el}"><div class="enc-sky"></div><div class="enc-ground"></div><div class="enc-motes">${'<i></i>'.repeat(14)}</div></div>
+        <div class="enc-scene el-${s.el}"><div class="enc-sky"><i class="nv-aur a1"></i><i class="nv-aur a2"></i><i class="nv-moon"></i><i class="nv-fog f1"></i><i class="nv-fog f2"></i></div><div class="enc-ground">${this.fireRing()}</div><div class="enc-motes">${'<i></i>'.repeat(14)}</div></div>
         <div class="enc-top">
           <button class="btn-round enc-run" aria-label="Уйти">${UI.I.close}</button>
           <div class="enc-info">
@@ -95,6 +95,21 @@ const Encounter = {
     });
     U.vibrate(sp.shiny ? [40, 60, 40] : 40);
     Sfx.element(s.el, true); // «голос» духа при появлении
+  },
+
+  // 4.6: пылающий круг под духом — два рунных кольца вращаются в плоскости земли, по краю пляшут языки пламени цвета стихии, вверх летят искры
+  fireRing() {
+    let h = '<i class="eg-glow"></i><i class="eg-ring"></i><i class="eg-ring r2"></i>';
+    const N = 22;
+    for (let i = 0; i < N; i++) {
+      const a = i / N * Math.PI * 2, sin = Math.sin(a);
+      h += `<i class="eg-f" style="left:${(50 + Math.cos(a) * 43).toFixed(1)}%;top:${(50 + sin * 40).toFixed(1)}%;--s:${(0.7 + (sin + 1) * 0.22).toFixed(2)};--t:${(0.7 + (i % 4) * 0.13).toFixed(2)}s;--d:${(-(i * 0.37) % 1.1).toFixed(2)}s"></i>`;
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = (i * 0.63 + 0.3) * Math.PI;
+      h += `<i class="eg-sp" style="left:${(50 + Math.cos(a) * 43).toFixed(1)}%;top:${(50 + Math.sin(a) * 40).toFixed(1)}%;--d:${(-i * 0.29).toFixed(2)}s"></i>`;
+    }
+    return h;
   },
 
   layout() {
