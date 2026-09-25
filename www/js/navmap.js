@@ -124,6 +124,10 @@ const NavMap = {
     return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',')})`;
   },
 
+  // высота дома, м (без данных — трёхэтажный) и насколько поднимается его крыша в точках плитки на масштабе zd
+  height(f) { return f.props.height > 0 ? f.props.height : 8; },
+  lift(H, zd) { return Math.min(15, 2.1 * Math.sqrt(H) * Math.pow(2, (zd - 17) * .85)); },
+
   /* 4.11: объёмные дома. Стены, обращённые к зрителю (на юг экрана), поднимаются от основания, крыша сдвинута вверх
      на высоту дома (чем выше дом и крупнее масштаб — тем выше, но не больше запаса плитки в 16 точек — иначе шов).
      Сторона, куда светит солнце (утром восток, вечером запад), светлее; ночью в стенах горят окна.
@@ -143,8 +147,8 @@ const NavMap = {
         let gx0 = Infinity, gx1 = -Infinity, gy1 = -Infinity;
         for (const r of geom) for (const pt of r) { if (pt.x < gx0) gx0 = pt.x; if (pt.x > gx1) gx1 = pt.x; if (pt.y > gy1) gy1 = pt.y; }
         const zd = z + (bw > 0 ? Math.log2((gx1 - gx0) / bw) : 0);
-        const H = f.props.height > 0 ? f.props.height : 8;
-        const dy = Math.min(15, 2.1 * Math.sqrt(H) * Math.pow(2, (zd - 17) * .85));
+        const H = NavMap.height(f);
+        const dy = NavMap.lift(H, zd);
         b.items.push({ geom, f, H, dy, zd, key: gy1 + b.T.f / b.T.d });
       },
     };

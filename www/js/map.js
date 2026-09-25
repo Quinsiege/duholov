@@ -19,9 +19,9 @@ const MapView = {
 
     // 4.8.1: зона досягаемости — круг Ловчего (свечение, кольцо рун, волна); размер — радиус взаимодействия на текущем масштабе
     this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000, flat: true,
-      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
+      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><svg class="rz-vis" viewBox="-1 -1 2 2" preserveAspectRatio="none" aria-hidden="true"><path d="M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z"/></svg><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
     this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
-    this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); });
+    this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); this.shapeRange(); });
     this.fitRange();
     if (typeof Fog !== 'undefined') { Fog.init(this.map); Fog.setLook(this.night); Fog.visit(this.pos.lat, this.pos.lng); }
     this.player = L.marker([this.pos.lat, this.pos.lng], {
@@ -148,12 +148,105 @@ const MapView = {
     box.style.margin = -r + 'px 0 0 ' + -r + 'px';
   },
 
+  /* 4.13: круг Ловчего лежит на земле. Из игрока во все стороны идут лучи и останавливаются у первой стены —
+     за домом круг не продолжается, по пустому месту идёт до конца радиуса. Дома, стоящие перед кругом,
+     заслоняют его стенами и крышами (те же высоты, что рисует NavMap.extrude). К краю круг слегка бледнеет.
+     Всё это — маска (SVG) на самом круге в его собственных координатах: −1…1 от центра до края, поэтому при
+     масштабировании маска растягивается вместе с кругом. Контуры домов берутся из уже загруженных плиток карты.
+     Правило игры не меняется: поймать духа можно в пределах радиуса, как и раньше (это проверяет сервер). */
+  shapeRange() {
+    if (this._rzT) return; // не чаще раза в 120 мс, даже пока игрок идёт без остановки
+    this._rzT = setTimeout(() => { this._rzT = 0; this._shapeRange(); }, 120);
+  },
+  _shapeRange() {
+    const box = this.range && this.range.getElement() && this.range.getElement().firstElementChild;
+    if (!box) return;
+    const f3 = v => Math.round(v * 1000) / 1000;
+    let vis = '', sil = '';
+    const t = this.tiles, view = t && t.views && t.views.get(''), tc = view && view.tileCache;
+    if (tc && typeof NavMap !== 'undefined') {
+      const S = tc.tileSize, tz = t._tileZoom != null ? t._tileZoom : Math.round(this.map.getZoom());
+      const dz = Math.max(0, Math.min(view.maxDataLevel, tz - view.levelDiff)), k = S / 256;
+      const ll = this.range.getLatLng(), p0 = this.map.project(ll, dz), px = p0.x * k, py = p0.y * k;
+      const rU = Math.abs(p0.y - this.map.project(L.latLng(ll.lat + W.INTERACT / 111320, ll.lng), dz).y) * k; // радиус в точках данных
+      const zd = tz + Math.log2(256 / S), perData = 256 * Math.pow(2, tz - dz) / S; // как считает extrude
+      const edges = [], blds = [];
+      let missing = false;
+      for (let tx = Math.floor((px - rU * 1.3) / S); tx <= Math.floor((px + rU * 1.3) / S); tx++)
+        for (let ty = Math.floor((py - rU * 1.3) / S); ty <= Math.floor((py + rU * 1.6) / S); ty++) {
+          const e = tc.cache.get(`${tx}:${ty}:${dz}`);
+          if (!e) { missing = true; tc.get({ x: tx, y: ty, z: dz }).then(() => this.shapeRange(), () => {}); continue; }
+          const list = e.data && e.data.get('buildings');
+          if (!list) continue;
+          const ox = tx * S - px, oy = ty * S - py;
+          for (const f of list) {
+            const dy = NavMap.lift(NavMap.height(f), zd) / perData, b = f.bbox;
+            if (b.maxX + ox < -rU || b.minX + ox > rU || b.maxY + oy < -rU || b.minY + oy - dy > rU) continue;
+            const rings = f.geom.map(r => r.map(q => ({ x: q.x + ox, y: q.y + oy, out: q.x < 0 || q.x > S || q.y < 0 || q.y > S })));
+            // игрок внутри дома (неточный GPS) — этот дом не заслоняет
+            let inside = false;
+            const r0 = rings[0];
+            for (let i = 0, j = r0.length - 1; i < r0.length; j = i++)
+              if ((r0[i].y > 0) !== (r0[j].y > 0) && 0 < (r0[j].x - r0[i].x) * (0 - r0[i].y) / (r0[j].y - r0[i].y) + r0[i].x) inside = !inside;
+            if (inside) continue;
+            for (const r of rings) for (let i = 0; i < r.length; i++) {
+              const a = r[i], c = r[(i + 1) % r.length];
+              if (a.out && c.out) continue; // край обрезки плитки — не настоящая стена
+              edges.push(a.x, a.y, c.x, c.y);
+            }
+            blds.push({ rings, dy });
+          }
+        }
+      if (missing && !edges.length) return; // плитки ещё грузятся — дорисуем, когда придут
+      // лучи: до первой стены или до края
+      const RAYS = 360;
+      for (let i = 0; i < RAYS; i++) {
+        const a = i / RAYS * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a);
+        let tm = rU;
+        for (let j = 0; j < edges.length; j += 4) {
+          const ax = edges[j], ay = edges[j + 1], ex = edges[j + 2] - ax, ey = edges[j + 3] - ay, den = dx * ey - dy * ex;
+          if (Math.abs(den) < 1e-9) continue;
+          const tt = (ax * ey - ay * ex) / den, u = (ax * dy - ay * dx) / den;
+          if (tt > 0 && tt < tm && u >= 0 && u <= 1) tm = tt;
+        }
+        vis += (i ? 'L' : 'M') + f3(dx * tm / rU) + ' ' + f3(dy * tm / rU);
+      }
+      vis += 'Z';
+      // дома перед кругом заслоняют его: основание, крыша и стены между ними
+      for (const { rings, dy } of blds) {
+        const h = dy / rU;
+        for (const r of rings) {
+          const P = r.map(q => [q.x / rU, q.y / rU]);
+          sil += 'M' + P.map(q => f3(q[0]) + ' ' + f3(q[1])).join('L') + 'Z';
+          if (h > .002) {
+            sil += 'M' + P.map(q => f3(q[0]) + ' ' + f3(q[1] - h)).join('L') + 'Z';
+            for (let i = 0; i < P.length; i++) {
+              const a = P[i], c = P[(i + 1) % P.length];
+              sil += `M${f3(a[0])} ${f3(a[1])}L${f3(c[0])} ${f3(c[1])}L${f3(c[0])} ${f3(c[1] - h)}L${f3(a[0])} ${f3(a[1] - h)}Z`;
+            }
+          }
+        }
+      }
+    }
+    if (!vis) vis = 'M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 2 2"><defs><radialGradient id="g" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse">'
+      + '<stop offset=".6" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></radialGradient>'
+      + `<mask id="m"><path d="${vis}" fill="url(#g)"/>${sil ? `<path d="${sil}" fill="#000"/>` : ''}</mask></defs>`
+      + '<rect x="-1" y="-1" width="2" height="2" fill="#fff" mask="url(#m)"/></svg>';
+    const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    box.style.webkitMaskImage = url; box.style.maskImage = url;
+    // сама досягаемая земля: лёгкая заливка и золотая кромка вдоль стен (у края круга её продолжают руны)
+    const vp = box.querySelector('.rz-vis path');
+    if (vp) vp.setAttribute('d', vis);
+  },
+
   moveTo(lat, lng, jump) {
     this.pos = { lat, lng };
     const ll = [lat, lng];
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
     this.drawTrail(lat, lng);
+    this.shapeRange();
     if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.12: туман Нави рассеивается там, где прошёл Ловчий
     if (this.follow) {
       if (jump) this.map.setView(ll, 17.5, { animate: false });
