@@ -412,7 +412,7 @@ Object.assign(UI, {
       const b = e.target.closest('[data-theme]'); if (!b) return;
       s.mapTheme = b.dataset.theme; Cfg.save();
       U.$$('[data-theme]', scr).forEach(x => x.classList.toggle('on', x === b));
-      MapView.night = null; MapView.setTiles();
+      MapView._look = null; MapView.setTiles();
     });
     // установка: кнопка PWA (если браузер предложил) и APK (если он собран и лежит рядом с сайтом)
     const pwa = scr.querySelector('.inst-pwa'), apk = scr.querySelector('.inst-apk');
