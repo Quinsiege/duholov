@@ -262,7 +262,7 @@ const UI = {
     el._key = key;
     el.classList.remove('hidden');
     el.classList.toggle('ready', ready);
-    el.querySelector('.sp-ico').innerHTML = this.I.scroll;
+    el.querySelector('.sp-ico').innerHTML = this.menuIcon('scroll'); // 4.7: тот же значок, что у «Заданий» в меню
     el.querySelector('.sp-t').textContent = t;
     el.querySelector('.sp-s').textContent = s;
   },

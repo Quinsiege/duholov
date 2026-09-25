@@ -2,7 +2,10 @@
    Код игры всегда перепроверяется на сервере (cache: 'no-cache' → быстрый ответ 304, если не менялся),
    кэш используется только без сети. Название кэша меняется вместе с версией из js/version.js. */
 importScripts('js/version.js?v=dev');
-const VERSION = 'duholov-v' + APP_VERSION;
+// 4.7: к версии добавляется метка сборки (CI ставит короткий хэш коммита) — каждая выкладка сразу обновляет кэш,
+// даже если номер версии не менялся (раньше телефон мог держать прошлую сборку той же версии)
+const BUILD = 'dev';
+const VERSION = 'duholov-v' + APP_VERSION + '-' + BUILD;
 const CORE = [
   './', './index.html', './manifest.webmanifest', './css/style.css?v=dev',
   './vendor/leaflet/leaflet.min.js?v=dev', './vendor/protomaps/protomaps-leaflet.min.js?v=dev', './vendor/leaflet/leaflet.min.css?v=dev', './vendor/fonts/rubik.css?v=dev', './vendor/fonts/display.css?v=dev', './vendor/supabase.min.js',
