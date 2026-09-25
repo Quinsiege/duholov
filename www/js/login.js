@@ -168,7 +168,7 @@ const Login = {
   panel(head, buttons, extra = '') {
     return `<div class="auth-panel"><div class="auth-head">${head}</div>
       ${buttons ? `<div class="login-row">${buttons}</div>` : ''}
-      ${this.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="${Updater.apkUrl()}">скачать</a>.</p>' : ''}
+      ${this.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="' + Updater.apkUrl() + '">скачать</a>.</p>' : ''}
       <div class="auth-or"><span>или</span></div>
       <div class="auth-foot"><button class="btn mail-login"><span class="ml-ic">${UI.I.key}</span><span class="ml-t">Почта и пароль</span><span class="ml-chev">›</span></button>${extra}</div></div>`;
   },
