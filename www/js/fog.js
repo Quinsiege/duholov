@@ -10,6 +10,8 @@ const Fog = {
   BLOCK: 100,      // м — «квартал» для счёта разведанного
   MAX: 80000,      // клеток — предел памяти (≈ 1600 км пути); старые забываются первыми
   KEY: 'duholov.fog',
+  // 4.13: вокруг Ловчего тумана нет никогда: зона досягаемости и ещё CLEAR м чисто, дальше до LIVE м он мягко нарастает
+  CLEAR: 25, LIVE: 50, live: null,
   cells: null, buckets: new Map(), blocks: new Set(), lay: null, tex: null, night: true,
 
   // клетка: ряд по широте, в ряду — по долготе с поправкой на широту ряда
@@ -51,6 +53,7 @@ const Fog = {
   // Ловчий здесь: рассеять туман и запомнить место
   visit(lat, lng) {
     if (!this.cells) this.load();
+    this.moveLive(lat, lng);
     const c = this.cell(lat, lng, this.CELL);
     if (this.cells.has(c.key)) return;
     const before = this.blocks.size;
@@ -66,7 +69,7 @@ const Fog = {
   init(map) {
     if (this.lay || !map) return;
     if (!this.cells) this.load();
-    map.createPane('fog').style.zIndex = 350; // над плитками карты, под следом, зонами и значками
+    map.createPane('fog').style.zIndex = 395; // над картой и домами, под стеной света, следом и значками
     map.getPane('fog').style.pointerEvents = 'none';
     const self = this;
     const Layer = L.GridLayer.extend({
@@ -162,6 +165,31 @@ const Fog = {
     x.putImageData(img, 0, 0);
     return c;
   },
+  // живая прогалина вокруг игрока (не запоминается): при движении перерисовываются только плитки рядом
+  liveR() { return (typeof W !== 'undefined' ? W.INTERACT : 70) + this.LIVE; },
+  moveLive(lat, lng) {
+    const prev = this.live;
+    this.live = { lat, lng };
+    if (prev && U.dist(prev.lat, prev.lng, lat, lng) < 2) return;
+    if (!this._livePrev) this._livePrev = prev;
+    if (this._liveT) return;
+    this._liveT = setTimeout(() => {
+      this._liveT = 0;
+      const a = this._livePrev;
+      this._livePrev = null;
+      this.touch(this.live, this.liveR());
+      if (a) this.touch(a, this.liveR());
+    }, 200);
+  },
+  livePuff() {
+    if (this._lp) return this._lp;
+    const c = document.createElement('canvas'), x = c.getContext('2d'), k = 1 - (this.LIVE - this.CLEAR) / this.liveR();
+    c.width = c.height = 256;
+    const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(k, 'rgba(0,0,0,1)'); g.addColorStop(k + (1 - k) * .5, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    return (this._lp = c);
+  },
   // пятно, которым Ловчий «стирает» туман: мягкий круг
   puff() {
     if (this._puff) return this._puff;
@@ -200,12 +228,17 @@ const Fog = {
         x.drawImage(puff, p.x - ox - R, p.y - oy - R, R * 2, R * 2);
       }
     }
+    // живая прогалина вокруг игрока
+    if (this.live) {
+      const p = m.project([this.live.lat, this.live.lng], z), RL = MapView.pxR(this.live, this.liveR(), z);
+      if (p.x + RL > ox && p.x - RL < ox + 256 && p.y + RL > oy && p.y - RL < oy + 256) x.drawImage(this.livePuff(), p.x - ox - RL, p.y - oy - RL, RL * 2, RL * 2);
+    }
     x.globalCompositeOperation = 'source-over';
   },
   // новая клетка — перерисовать только плитки рядом с ней
-  touch(c) {
+  touch(c, rad = this.R * 2.2) {
     if (!this.lay || !this.lay._map) return;
-    const pad = this.R / 111320 * 2.2, pl = pad / Math.cos(c.lat * Math.PI / 180);
+    const pad = rad / 111320, pl = pad / Math.cos(c.lat * Math.PI / 180);
     for (const t of Object.values(this.lay._tiles || {})) {
       const b = this.bounds(t.coords);
       if (c.lat <= b.n + pad && c.lat >= b.s - pad && c.lng >= b.w - pl && c.lng <= b.e + pl) this.draw(t.el, t.coords);

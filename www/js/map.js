@@ -14,16 +14,22 @@ const MapView = {
     this.map = L.map('map', { zoomControl: false, minZoom: 15, maxZoom: 19, zoomSnap: 0.25, tap: true })
       .setView([this.pos.lat, this.pos.lng], 17.5);
     this.map.attributionControl.setPrefix(false);
+    // 4.13: свои слои между плитками земли и значками (порядок — по z-index, см. orderPanes)
+    [['zone', 380], ['bld', 390], ['beam', 398]].forEach(([n, z]) => { const p = this.map.createPane(n); p.style.zIndex = z; p.style.pointerEvents = 'none'; });
     this.setTiles();
     setInterval(() => this.setTiles(), 60000);
 
     // 4.8.1: зона досягаемости — круг Ловчего (свечение, кольцо рун, волна); размер — радиус взаимодействия на текущем масштабе
-    this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000, flat: true,
-      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><svg class="rz-vis" viewBox="-1 -1 2 2" preserveAspectRatio="none" aria-hidden="true"><path d="M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z"/></svg><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div><svg class="rz-beam" viewBox="-1 -1.25 2 2.25" preserveAspectRatio="none" aria-hidden="true"><g></g></svg>' }) }).addTo(this.map);
+    this.range = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, zIndexOffset: -5000, flat: true, pane: 'zone',
+      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><svg class="rz-vis" viewBox="-1 -1 2 2" preserveAspectRatio="none" aria-hidden="true"><path d="M-1 0A1 1 0 1 0 1 0A1 1 0 1 0 -1 0Z"/></svg><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
+    // светящийся контур зоны — отдельно, над домами (MapView._shapeRange)
+    this.beam = L.marker([this.pos.lat, this.pos.lng], { interactive: false, keyboard: false, flat: true, pane: 'beam',
+      icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<svg class="rz-beam" viewBox="-1 -1.05 2 2.1" preserveAspectRatio="none" aria-hidden="true"></svg>' }) }).addTo(this.map);
     this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
     this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); this.shapeRange(); });
     this.fitRange();
     if (typeof Fog !== 'undefined') { Fog.init(this.map); Fog.setLook(this.night); Fog.visit(this.pos.lat, this.pos.lng); }
+    this.orderPanes();
     this.player = L.marker([this.pos.lat, this.pos.lng], {
       interactive: false, zIndexOffset: 1000,
       icon: L.divIcon({ className: 'mk-player-wrap', iconSize: [64, 64], iconAnchor: [32, 32],
@@ -84,23 +90,31 @@ const MapView = {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
         // 4.9: «Карта Нави» — своя отрисовка (js/navmap.js); без неё — стандартная светлая с CSS-фильтром тонов Нави
+        const url = ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES;
+        const th = nav ? NavMap.theme(lk.phase, lk.season, lk.snow) : null;
         this.tiles = protomapsL.leafletLayer({
-          url: ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES,
-          lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`, ...(nav ? NavMap.theme(lk.phase, lk.season, lk.snow) : { flavor: 'light' }),
+          url, lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
+          ...(nav ? { paintRules: th.paintRules, labelRules: [], backgroundColor: th.backgroundColor } : { flavor: 'light' }),
         }).addTo(this.map);
         if (nav) {
           U.$('#map').classList.add('navmap');
+          // 4.13: дома и подписи — вторым слоем над зоной Ловчего; плитки читаются один раз (общий кэш)
+          this.bldTiles = protomapsL.leafletLayer({ url, lang: 'ru', attribution: '', pane: 'bld', paintRules: th.bldRules, labelRules: th.labelRules });
+          this.bldTiles.views = this.tiles.views;
+          this.bldTiles.addTo(this.map);
           // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
           if (document.fonts) Promise.all(["400 12px 'Philosopher'", "700 12px 'Philosopher'", "400 12px 'Ruslan Display'"].map(f => document.fonts.load(f).catch(() => {})))
-            .then(() => { this.tiles.clearLayout(); this.tiles.rerenderTiles(); });
+            .then(() => { this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); });
         }
       } else {
         this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
       }
     } else if (nav && this.tiles.rerenderTiles) {
       // сменилось время суток, сезон или пошёл снег — другая палитра: перерисовать плитки и подписи
-      Object.assign(this.tiles, NavMap.theme(lk.phase, lk.season, lk.snow));
-      this.tiles.clearLayout(); this.tiles.rerenderTiles();
+      const th = NavMap.theme(lk.phase, lk.season, lk.snow);
+      Object.assign(this.tiles, { paintRules: th.paintRules, backgroundColor: th.backgroundColor });
+      this.tiles.rerenderTiles();
+      if (this.bldTiles) { Object.assign(this.bldTiles, { paintRules: th.bldRules, labelRules: th.labelRules }); this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
     }
     document.body.classList.toggle('night', night);
     // 4.11: дымка горизонта у наклонённой карты — цвета земли этого часа
@@ -146,13 +160,18 @@ const MapView = {
     box.style.transition = anim ? 'width .25s cubic-bezier(0,0,.25,1), height .25s cubic-bezier(0,0,.25,1), margin .25s cubic-bezier(0,0,.25,1)' : 'none';
     box.style.width = box.style.height = r * 2 + 'px';
     box.style.margin = -r + 'px 0 0 ' + -r + 'px';
-    // стена света выше круга: её рамка поднята на четверть радиуса (см. viewBox в разметке)
-    const beam = el.querySelector('.rz-beam');
+    // контур зоны: рамка чуть больше круга, чтобы свечение у края не срезалось (см. viewBox в разметке)
+    const beam = this.beam && this.beam.getElement() && this.beam.getElement().firstElementChild;
     if (beam) {
       beam.style.transition = box.style.transition;
-      beam.style.width = r * 2 + 'px'; beam.style.height = r * 2.25 + 'px';
-      beam.style.margin = -r * 1.25 + 'px 0 0 ' + -r + 'px';
+      beam.style.width = r * 2 + 'px'; beam.style.height = r * 2.1 + 'px';
+      beam.style.margin = -r * 1.05 + 'px 0 0 ' + -r + 'px';
     }
+  },
+  // слои внутри карты — в порядке z-index и в разметке: у наклонённой (3D) карты плоские слои рисуются по порядку в DOM
+  orderPanes() {
+    const mp = this.map.getPane('mapPane');
+    [...mp.children].map(el => [el, +getComputedStyle(el).zIndex || 0]).sort((x, y) => x[1] - y[1]).forEach(([el]) => mp.appendChild(el));
   },
 
   /* 4.13: круг Ловчего лежит на земле. Зона растекается от игрока по свободной от домов земле до края радиуса —
@@ -174,7 +193,8 @@ const MapView = {
     if (rk === this._rzKey) return;
     this._rzKey = rk;
     const f3 = v => Math.round(v * 1000) / 1000;
-    let rings = null, sil = '';
+    let rings = null;
+    const sil = [];
     const t = this.tiles, view = t && t.views && t.views.get(''), tc = view && view.tileCache;
     if (tc && typeof NavMap !== 'undefined') {
       const S = tc.tileSize, tz = t._tileZoom != null ? t._tileZoom : Math.round(this.map.getZoom());
@@ -249,20 +269,24 @@ const MapView = {
         if (near) F[(y + 1) * M + x + 1] = reach[i] ? Math.min(free[i], circ[i]) : Math.min(free[i], circ[i], .49);
       }
       rings = this.contours(F, M, h2);
-      // дома перед кругом заслоняют его: основание, крыша и стены между ними
+      // силуэты домов (основание, крыша и стены между ними) и их глубина — самая южная точка основания:
+      // чем южнее, тем ближе к зрителю (нужно стене света, см. ниже)
       for (const { rings: rs, dy } of blds) {
         const h = dy / rU;
+        let d = '', depth = -9;
         for (const r of rs) {
           const P = r.map(q => [q.x / rU, q.y / rU]);
-          sil += 'M' + P.map(q => f3(q[0]) + ' ' + f3(q[1])).join('L') + 'Z';
+          for (const q of P) if (q[1] > depth) depth = q[1];
+          d += 'M' + P.map(q => f3(q[0]) + ' ' + f3(q[1])).join('L') + 'Z';
           if (h > .002) {
-            sil += 'M' + P.map(q => f3(q[0]) + ' ' + f3(q[1] - h)).join('L') + 'Z';
+            d += 'M' + P.map(q => f3(q[0]) + ' ' + f3(q[1] - h)).join('L') + 'Z';
             for (let i = 0; i < P.length; i++) {
               const a = P[i], c = P[(i + 1) % P.length];
-              sil += `M${f3(a[0])} ${f3(a[1])}L${f3(c[0])} ${f3(c[1])}L${f3(c[0])} ${f3(c[1] - h)}L${f3(a[0])} ${f3(a[1] - h)}Z`;
+              d += `M${f3(a[0])} ${f3(a[1])}L${f3(c[0])} ${f3(c[1])}L${f3(c[0])} ${f3(c[1] - h)}L${f3(a[0])} ${f3(a[1] - h)}Z`;
             }
           }
         }
+        sil.push({ d, depth });
       }
     }
     if (!rings || !rings.length) {
@@ -271,37 +295,31 @@ const MapView = {
     }
     let vis = '';
     for (const r of rings) vis += 'M' + r.map(p => f3(p[0]) + ' ' + f3(p[1])).join('L') + 'Z';
+    // земля зоны: только досягаемое место, к краю круга слегка бледнеет (дома — отдельным слоем поверх, см. setTiles)
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 2 2"><defs><radialGradient id="g" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse">'
-      + '<stop offset=".6" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></radialGradient>'
-      + `<mask id="m"><path d="${vis}" fill="url(#g)" fill-rule="evenodd"/>${sil ? `<path d="${sil}" fill="#000"/>` : ''}</mask></defs>`
-      + '<rect x="-1" y="-1" width="2" height="2" fill="#fff" mask="url(#m)"/></svg>';
+      + '<stop offset=".6" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></radialGradient></defs>'
+      + `<path d="${vis}" fill="url(#g)" fill-rule="evenodd"/></svg>`;
     const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
     box.style.webkitMaskImage = url; box.style.maskImage = url;
-    // сама досягаемая земля: лёгкая заливка и золотая кромка вдоль стен (у края круга её продолжают руны)
     const vp = box.querySelector('.rz-vis path');
     if (vp) vp.setAttribute('d', vis);
-    // 4.13: невысокая стена света по краю досягаемой земли — золото у земли тает кверху (как дома, «вверх» по экрану)
-    const beam = this.range.getElement().querySelector('.rz-beam');
-    if (beam) {
-      // слои: каждый — одна сплошная фигура (стены от земли до своей высоты), полупрозрачные; у земли их много,
-      // вверху мало — стена плавно тает кверху, и между гранями нет швов
-      const H = .2, K = 12;
-      let g = '';
-      for (let k = 1; k <= K; k++) {
-        const h = H * k / K;
-        let d = '';
-        for (const P of rings) for (let i = 0; i < P.length; i++) {
-          const a = P[i], b = P[(i + 1) % P.length];
-          d += 'M' + f3(a[0]) + ' ' + f3(a[1]) + 'L' + f3(b[0]) + ' ' + f3(b[1]) + 'L' + f3(b[0]) + ' ' + f3(b[1] - h) + 'L' + f3(a[0]) + ' ' + f3(a[1] - h) + 'Z';
-        }
-        g += '<path d="' + d + '"/>';
+
+    /* Светящийся контур досягаемой земли. Он в слое над домами: у фасада дома позади контур виден, а дом, стоящий
+       ближе к зрителю, его заслоняет — маска собирается «от дальнего к ближнему»: полоски вдоль контура белые,
+       силуэты домов чёрные, ближний перекрывает дальний. */
+    const bm = this.beam && this.beam.getElement(), edge = bm && bm.firstElementChild;
+    if (edge) {
+      const W2 = .03, items = [];
+      for (const P of rings) for (let i = 0; i < P.length; i++) {
+        const a = P[i], b = P[(i + 1) % P.length];
+        items.push([Math.max(a[1], b[1]), '<path d="M' + f3(a[0]) + ' ' + f3(a[1] + W2) + 'L' + f3(b[0]) + ' ' + f3(b[1] + W2) + 'L' + f3(b[0]) + ' ' + f3(b[1] - W2) + 'L' + f3(a[0]) + ' ' + f3(a[1] - W2) + 'Z" fill="#fff"/>']);
       }
-      beam.querySelector('g').innerHTML = g;
-      const bsvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1.25 2 2.25"><rect x="-1" y="-1.25" width="2" height="2.25" fill="#fff"/>'
-        + (sil ? '<path d="' + sil + '" fill="#000"/>' : '') + '</svg>';
-      const bu = 'url("data:image/svg+xml,' + encodeURIComponent(bsvg) + '")';
-      // маска по яркости: чёрные дома — вырез
-      beam.style.webkitMaskImage = bu; beam.style.maskImage = bu;
+      for (const q of sil) items.push([q.depth - .004, '<path d="' + q.d + '" fill="#000"/>']);
+      items.sort((x, y) => x[0] - y[0]);
+      edge.innerHTML = '<path class="rzb-core" d="' + vis + '"/>';
+      const msvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1.05 2 2.1">' + items.map(x => x[1]).join('') + '</svg>';
+      const mu = 'url("data:image/svg+xml,' + encodeURIComponent(msvg) + '")';
+      edge.style.webkitMaskImage = mu; edge.style.maskImage = mu;
     }
   },
   // контуры поля F (M×M, с нулевой рамкой) на уровне .5 — кольца в координатах круга (−1…1)
@@ -376,6 +394,7 @@ const MapView = {
     const ll = [lat, lng];
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
+    if (this.beam) this.beam.setLatLng(ll);
     this.drawTrail(lat, lng);
     this.shapeRange();
     if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.12: туман Нави рассеивается там, где прошёл Ловчий

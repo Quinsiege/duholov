@@ -35,7 +35,7 @@ const NavMap = {
     },
     day: {
       bg: '#ebe4f4', earth: '#ece5f5', urban: '#e4dcf0', plaza: '#e0d6ef', park: '#cfe7d6', parkEdge: '#8fc7a4', wood: '#bfdcc8', grass: '#d6ecdb',
-      sand: '#efe2c7', water: '#a9dcdc', waterEdge: '#3fb5b0', river: '#6cc3c0', bld: '#d4c8ea', bldHi: '#c5b5e3', bldEdge: '#a592d4',
+      sand: '#efe2c7', water: '#a9dcdc', waterEdge: '#3fb5b0', river: '#6cc3c0', bld: '#d4c8ea', bldHi: '#c5b5e3', bldEdge: '#8f7bc8',
       casing: '#c9a24c', major: '#fffaf0', majorHi: 'rgba(233, 196, 106, .55)', majorGlow: 'rgba(217,178,92,.25)', minor: '#fbf8ff', minorCase: '#c8bade', path: '#9a86cc', rail: '#b08d57',
       label: '#3b2a6b', labelHalo: '#f7f3ff', labelMajor: '#5a3a0a', place: '#7a4c0e', waterLabel: '#1f7c78', poi: '#a86a18',
       tree: 'rgba(22, 101, 52, .16)', lattice: 'rgba(59, 42, 107, .045)', lamps: 0, windows: '',
@@ -191,11 +191,17 @@ const NavMap = {
               ctx.fill(); ctx.strokeStyle = shades[k]; ctx.lineWidth = .4; ctx.stroke(); // без щелей между гранями
             });
             if (lit) { ctx.fillStyle = facade; ctx.fill(all2); }
+            // 4.13: контур дома — рёбра видимых стен (низ, углы) тонкой линией цвета кромки
+            if (zd >= 15.5) {
+              ctx.beginPath();
+              walls.forEach(w => { for (let i = 0; i < w.length; i += 2) { const a = w[i], b = w[i + 1]; ctx.moveTo(a.x, a.y - dy); ctx.lineTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x, b.y - dy); } });
+              ctx.globalAlpha = .7; ctx.strokeStyle = p.bldEdge; ctx.lineWidth = zd >= 16.5 ? .7 : .45; ctx.stroke(); ctx.globalAlpha = 1;
+            }
           }
           roofPath();
           ctx.globalAlpha = zd < 14 ? .6 : 1;
           ctx.fillStyle = H > 24 ? bldHi : p.bld; ctx.fill();
-          if (zd >= 15.5) { ctx.strokeStyle = p.bldEdge; ctx.lineWidth = zd >= 16.5 ? .8 : .5; ctx.stroke(); }
+          if (zd >= 15) { ctx.strokeStyle = p.bldEdge; ctx.lineWidth = zd >= 16.5 ? 1.2 : zd >= 15.5 ? .8 : .5; ctx.lineJoin = 'round'; ctx.stroke(); }
           ctx.globalAlpha = 1;
         }
         ctx.restore();
@@ -255,7 +261,7 @@ const NavMap = {
       lamp(17, 52, ['minor_road']);
     }
     // 4.11: дома объёмные — стены, окна, крыши (высокие светлее, тонкая кромка); поверх улиц и фонарей
-    paint.push(...this.extrude(p, p.bldHi));
+    const bldRules = this.extrude(p, p.bldHi); // отдельным слоем над зоной Ловчего (см. MapView.setTiles)
     const name = ['name:ru', 'name'], font = (w8, px, fam) => `${w8} ${px}px ${fam}`;
     const label = [
       { dataLayer: 'places', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.place, stroke: p.labelHalo, width: 3, font: font(400, 15, "'Ruslan Display', serif"), textTransform: 'uppercase', letterSpacing: 2 }), filter: (z, f) => ['neighbourhood', 'macrohood', 'locality', 'suburb'].includes(kind(f)) },
@@ -269,6 +275,6 @@ const NavMap = {
         new S.OffsetTextSymbolizer({ labelProps: name, fill: p.poi, stroke: p.labelHalo, width: 2.4, offsetX: 6, offsetY: 4, font: font('italic 400', 11, "'Philosopher', serif") }),
       ]), filter: (z, f) => ['place_of_worship', 'museum', 'theatre', 'attraction', 'castle', 'station'].includes(kind(f)) && (f.props.min_zoom || 99) <= z - 1 },
     ];
-    return { paintRules: paint, labelRules: label, backgroundColor: p.bg };
+    return { paintRules: paint, bldRules, labelRules: label, backgroundColor: p.bg };
   },
 };

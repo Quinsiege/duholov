@@ -3034,17 +3034,17 @@ body.tilt #mapHaze { opacity: 1; }
 .rz { position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none; }
 .rz { -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; } /* 4.13: маска у домов — MapView.shapeRange */
 .rz-vis { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.rz-vis path { fill-rule: evenodd; fill: rgba(42, 27, 90, .1); stroke: rgba(201, 150, 43, .85); stroke-width: 1.6px; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 3px rgba(251, 191, 36, .5)); }
-body.night .rz-vis path { fill: rgba(167, 139, 250, .13); stroke: rgba(243, 207, 107, .8); }
-/* стена света по краю зоны: слои контура, всё прозрачнее кверху; дома впереди заслоняют (маска по яркости) */
-.rz-beam { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; animation: rzBeam 3.6s ease-in-out infinite;
+.rz-vis path { fill-rule: evenodd; fill: rgba(242, 169, 59, .1); stroke: none; }
+body.night .rz-vis path { fill: rgba(167, 139, 250, .14); }
+/* 4.13: светящийся контур зоны — над домами; дома ближе к зрителю его заслоняют (маска по яркости) */
+.rz-beam { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; color: #f2a93b;
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; mask-mode: luminance; }
-.rz-beam { color: #f5c451; } .rz-beam path { fill: currentColor; fill-opacity: .11; }
-body.night .rz-beam { color: #ffd976; }
-body:not(.night) .rz-beam { mix-blend-mode: multiply; color: #d9a13a; }
-body.night .rz-beam { mix-blend-mode: screen; }
-@keyframes rzBeam { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
-.calm .rz-beam { animation: none; }
+body.night .rz-beam { color: #ffcf5c; } body.night .rz-beam .rzb-core { stroke: #fff1c2; filter: drop-shadow(0 0 3px #ffcf5c) drop-shadow(0 0 10px rgba(255, 190, 70, .8)); }
+.rz-beam .rzb-core { fill: none; stroke: #ffe9a8; stroke-width: 3px; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 8px currentColor); animation: rzEdge 3.6s ease-in-out infinite; }
+body:not(.night) .rz-beam .rzb-core { stroke: #e39414; filter: drop-shadow(0 0 1px rgba(90, 45, 0, .7)) drop-shadow(0 0 5px rgba(242, 169, 59, .75)); }
+@keyframes rzEdge { 0%, 100% { opacity: .8; } 50% { opacity: 1; } }
+.calm .rz-beam .rzb-core { animation: none; }
 .rz > i { position: absolute; inset: 0; display: block; border-radius: 50%; }
 .rz-fill { background: radial-gradient(circle, rgba(42, 27, 90, 0) 45%, rgba(42, 27, 90, .12) 70%, rgba(42, 27, 90, .3) 92%, rgba(243, 207, 107, .22) 99%, transparent 100%); }
 .rz-edge { background: var(--rz-edge) center / 100% 100% no-repeat; filter: drop-shadow(0 0 5px rgba(251, 191, 36, .45)); }
