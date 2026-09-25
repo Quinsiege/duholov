@@ -38,8 +38,8 @@ const Trailer = {
   CUES: [
     ['crack', 4300, t => t.hit(2)],
     // удар молнии в землю: Кощей встаёт из вспышки; ещё два разряда следом
-    ['koschey', 0, t => { t.hit(2); t.fx.burst({ x: .5, y: .8, n: 110, c: ['187,247,208', '255,255,255', '192,132,252'] }); }],
-    ['koschey', 1400, t => { t.hit(1); t.fx.burst({ x: .5, y: .8, n: 50, c: ['187,247,208', '255,255,255'], rings: 1 }); }],
+    ['koschey', 0, t => t.hit(2)],
+    ['koschey', 1400, t => t.hit(1)],
     ['koschey', 2600, t => t.hit(1)],
     ['hide', 2400, t => t.cap('…<b>в лужах</b>…', 2400)],
     ['hide', 4800, t => t.cap('…и <b>в проводах</b>.', 2400)],
@@ -51,8 +51,14 @@ const Trailer = {
     ['dex', 0, t => t.count('.fm-count b', 0, SPECIES.length, 3000, 0, 1400)],
     ['duel', 1200, t => t.hit(1)], ['duel', 2200, t => t.hit(1)], ['duel', 3200, t => t.hit(1)],
     ['duel', 4400, t => { t.hit(2); t.fx.burst({ x: .75, y: .5, n: 80, c: ['254,240,138', '167,139,250', '255,255,255'] }); }],
-    ['raid', 2300, t => t.hit(1)], ['raid', 3000, t => t.hit(1)], ['raid', 3700, t => t.hit(1)], ['raid', 4400, t => t.hit(1)],
-    ['raid', 5200, t => { t.hit(2); t.fx.burst({ y: .36, n: 140, c: ['249,115,22', '253,224,71', '255,255,255', '192,132,252'] }); }],
+    ['raid', 600, t => { t.hit(2); t.fx.burst({ y: .36, n: 60, c: ['232,121,249', '255,255,255', '192,132,252'], rings: 1, rr: .45 }); }],
+    ['raid', 1900, t => t.hit(1)],
+    ['raid', 2950, t => { t.hit(1); t.fx.burst({ y: .36, n: 26, c: ['253,224,71', '255,255,255'], rings: 1, rr: .18 }); }],
+    ['raid', 3450, t => { t.hit(1); t.fx.burst({ y: .36, n: 26, c: ['253,224,71', '255,255,255'], rings: 1, rr: .18 }); }],
+    ['raid', 3950, t => { t.hit(2); t.fx.burst({ y: .36, n: 50, c: ['253,224,71', '249,115,22', '255,255,255'], rings: 1, rr: .28 }); }],
+    ['raid', 4450, t => { t.hit(1); t.fx.burst({ y: .36, n: 26, c: ['253,224,71', '255,255,255'], rings: 1, rr: .18 }); }],
+    ['raid', 6300, t => t.fx.mode('wardrobe')],
+    ['raid', 5800, t => { t.hit(2); t.fx.burst({ y: .36, n: 170, c: ['249,115,22', '253,224,71', '255,255,255', '192,132,252'] }); }],
     ['weather', 4000, t => t.fx.mode('snow')], ['weather', 6000, t => t.fx.mode('weather')],
     ['league', 2900, t => { const e = t.q('.fm-row.me em'); if (e) e.textContent = '1'; }],
     ['league', 3500, t => t.fx.burst({ y: .5, n: 90, c: ['253,224,71', '244,114,182', '96,165,250', '134,239,172'] })],
@@ -143,12 +149,19 @@ const Trailer = {
     }
     const path = 'M' + pts.map(p => f(p[0]) + ' ' + f(p[1])).join('L');
     if (twig) return path;
-    let br = '';
-    for (let k = 0; k < 3; k++) {
-      const i = 8 + Math.floor(rnd() * (pts.length - 20)), [sx, sy] = pts[i], len = 40 + rnd() * 90, a = (rnd() < .5 ? -1 : 1) * (.35 + rnd() * .6);
-      br += this.bolt(sx, sy, sx + Math.sin(a) * len, sy + Math.cos(a) * len, 1 + Math.floor(rnd() * 1e6), disp * .45, true);
+    let br = '', br2 = '';
+    const L = Math.hypot(x1 - x0, y1 - y0);
+    for (let k = 0; k < 5; k++) {
+      const i = 6 + Math.floor(rnd() * (pts.length - 16)), [sx, sy] = pts[i], len = L * (.12 + rnd() * .22) * (1 - i / pts.length * .5), a = (rnd() < .5 ? -1 : 1) * (.3 + rnd() * .65);
+      const ex = sx + Math.sin(a) * len, ey = sy + Math.cos(a) * len;
+      br += this.bolt(sx, sy, ex, ey, 1 + Math.floor(rnd() * 1e6), disp * .45, true);
+      // отростки ветви
+      for (let q = 0; q < 2; q++) {
+        const t = .3 + rnd() * .5, qx = sx + (ex - sx) * t, qy = sy + (ey - sy) * t, b = a + (rnd() < .5 ? -1 : 1) * (.4 + rnd() * .5), ql = len * (.25 + rnd() * .3);
+        br2 += this.bolt(qx, qy, qx + Math.sin(b) * ql, qy + Math.cos(b) * ql, 1 + Math.floor(rnd() * 1e6), disp * .2, true);
+      }
     }
-    return { path, br };
+    return { path, br, br2 };
   },
   // слой дождя: плитка со случайными штрихами (бесшовно по вертикали) — near ближе: толще, ярче, длиннее
   rainTile(seed, n, len, w, a) {
@@ -203,10 +216,10 @@ const Trailer = {
   },
 
   /* ---------- 4.14: сцены с механиками, стена бестиария, удар молнии при появлении Кощея ---------- */
-  // удар молнии в землю там, где встаёт Кощей: толстый разряд с ветвями, вспышка у земли; дуги Нави вокруг него
+  // удар молнии в землю там, где встаёт Кощей: толстый разряд с ветвями и отростками; дуги Нави вокруг него
   kStrike() {
     const b = this.bolt(200, 0, 200, 560, 41, 90);
-    const main = `<svg class="fm-kbolt" viewBox="0 0 400 600" preserveAspectRatio="none" aria-hidden="true"><g><path class="o" d="${b.path}${b.br}"/><path class="m" d="${b.path}"/><path class="m t" d="${b.br}"/><path class="c" d="${b.path}"/></g></svg><i class="fm-kimpact"></i>`;
+    const main = `<svg class="fm-kbolt" viewBox="0 0 400 600" preserveAspectRatio="none" aria-hidden="true"><g><path class="o" d="${b.path}${b.br}"/><path class="g" d="${b.path}${b.br}${b.br2}"/><path class="m" d="${b.path}"/><path class="m t" d="${b.br}"/><path class="m t2" d="${b.br2}"/><path class="c" d="${b.path}"/><path class="c t" d="${b.br}"/></g></svg>`;
     const arcs = [[80, 100, 170, 220], [320, 90, 232, 210], [70, 250, 160, 340], [330, 240, 240, 340], [140, 30, 260, 90], [180, 290, 300, 390]]
       .map(([x0, y0, x1, y1], i) => `<g class="fm-ka a${i}">${[1, 2, 3].map(k => `<path class="v v${k}" d="${this.bolt(x0, y0, x1, y1, 7 + i * 31 + k * 5, 26, true)}"/>`).join('')}</g>`).join('');
     return { main, arcs: `<svg class="fm-karcs" viewBox="0 0 400 420" aria-hidden="true">${arcs}</svg>` };
@@ -236,13 +249,28 @@ const Trailer = {
       <div class="fm-df foe"><div class="fm-hpbar"><i></i></div>${Art.spirit('leshiy')}</div>
       <svg class="fm-dbeam" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">${[1, 2, 3].map(k => `<path class="v v${k}" d="${this.bolt(90, 60, 310, 60, 13 + k * 17, 40, true)}"/>`).join('')}</svg>
       <div class="fm-move">Шаровая молния!</div><div class="fm-flag">${Art.clanCrest('sokol')}</div></div>`;
-    const raid = `<div class="fm-raid"><div class="fm-portal"><i class="p1"></i><i class="p2"></i><i class="p3"></i></div>
-      <div class="fm-boss">${Art.spirit('gorynych')}</div>
-      <div class="fm-bbar"><b>Змей Горыныч</b><span>★★★</span><div><i></i></div></div>
-      <div class="fm-team">${[['bogatyr', '#b91c1c', '#fde047', 'sun'], [null, '#1d4ed8', '#5eead4', 'charm'], ['volhv', '#15803d', '#c084fc', 'moon']]
+    // разлом: вихрь-портал с молниями по краю, Горыныч выходит из него, огненное дыхание в щит отряда, четыре залпа оберегов
+    // с цифрами урона, три луча сходятся в один — босс взрывается светом, портал схлопывается, добыча
+    const rim = Array.from({ length: 6 }, (_, i) => {
+      const a0 = i / 6 * Math.PI * 2, a1 = a0 + .7, R = 44, p = a => [50 + Math.cos(a) * R, 50 + Math.sin(a) * R];
+      const [x0, y0] = p(a0), [x1, y1] = p(a1);
+      return `<g class="fm-rim r${i}">${[1, 2, 3].map(k => `<path class="v v${k}" d="${this.bolt(x0, y0, x1, y1, 3 + i * 17 + k * 7, 9, true)}"/>`).join('')}</g>`;
+    }).join('');
+    const TX = [26, 50, 74], TY = 80, BX = 50, BY = 36;
+    const beams = TX.map((x, i) => `<g class="fm-beam b${i}"><line x1="${x}" y1="${TY}" x2="${BX}" y2="${BY}" class="o"/><line x1="${x}" y1="${TY}" x2="${BX}" y2="${BY}" class="m"/><line x1="${x}" y1="${TY}" x2="${BX}" y2="${BY}" class="c"/></g>`).join('');
+    const dmg = [['-1 240', -14, -6, 2.9], ['-1 580', 12, -12, 3.4], ['КРИТ! -3 870', -4, -31, 3.9], ['-2 110', 16, 0, 4.4], ['-9 999', 0, -26, 5.6]]
+      .map(([t, x, y, d], i) => `<b class="${t.startsWith('КРИТ') || i === 4 ? 'crit' : ''}" style="--x:${x}vmin;--y:${y}vmin;--d:${d}s">${t}</b>`).join('');
+    const raid = `<div class="fm-raid"><i class="fm-rsky"></i>
+      <div class="fm-portal"><i class="p1"></i><i class="p2"></i><i class="p4"></i><i class="p3"></i><svg class="fm-rims" viewBox="0 0 100 100" aria-hidden="true">${rim}</svg></div>
+      <div class="fm-boss">${Art.spirit('gorynych')}<i class="fm-breath"></i></div>
+      <div class="fm-bbar"><b>Змей Горыныч</b><span>★★★</span><em>0:47</em><div><i class="lag"></i><i class="hp"></i></div></div>
+      <div class="fm-team"><i class="fm-shield"></i>${[['bogatyr', '#b91c1c', '#fde047', 'sun'], [null, '#1d4ed8', '#5eead4', 'charm'], ['volhv', '#15803d', '#c084fc', 'moon']]
         .map(([sk, c, e, em], i) => `<div class="fm-tm" style="--i:${i}">${look(sk, c, e, em)}</div>`).join('')}</div>
-      <div class="fm-shots">${Array.from({ length: 9 }, (_, i) => `<i style="--i:${i};--x:${[-26, 0, 26][i % 3]}vmin"></i>`).join('')}</div>
-      <div class="fm-won">Разлом закрыт!</div></div>`;
+      <div class="fm-shots">${Array.from({ length: 12 }, (_, i) => `<i style="--i:${i};--x:${[-24, 0, 24][i % 3]}vmin;--w:${Math.floor(i / 3)}"></i>`).join('')}</div>
+      <svg class="fm-beams" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${beams}</svg>
+      <div class="fm-dmg">${dmg}</div>
+      <div class="fm-won">Разлом закрыт!</div>
+      <div class="fm-rloot">${['charm3', 'incense', 'zlat', 'farpass', 'sparks'].map((k, i) => `<div style="--i:${i};--x:${(i - 2) * 17}vmin">${Art.item(k)}</div>`).join('')}</div></div>`;
     const auction = this.auctionUI();
     const weather = `<div class="fm-wx">${[['clear', 'sun', 'Ясно', 'Огонь и Лес сильнее', 'ugolek'], ['rain', 'rain', 'Дождь', 'Вода и Ток сильнее', 'kapelka'], ['snow', 'snow', 'Снег', 'Ветер и Вода сильнее', 'skvoznyak'], ['full', 'moon', 'Полнолуние', 'Русалки и Навки выходят чаще', 'rusalka']]
       .map(([k, cls, t, d, sp], i) => `<div class="fm-wp ${cls}" style="--i:${i}"><div class="fm-wi">${k === 'full' ? Art.moonIcon('full', 120) : Art.wxIcon(k, 120)}</div><div class="fm-wsp">${Art.spirit(sp)}</div><div class="fm-wt"><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>`;
@@ -334,7 +362,7 @@ const Trailer = {
           <i class="fm-lit"></i>
           <svg class="fm-bolts" viewBox="0 0 400 600" preserveAspectRatio="none" aria-hidden="true">${[[70, 0, 120, 420, 3], [330, 0, 290, 460, 7], [150, 0, 40, 360, 13], [260, 0, 360, 380, 19]].map(([x0, y0, x1, y1, sd], i) => {
             const b = this.bolt(x0, y0, x1, y1, sd);
-            return `<g class="fm-bolt b${i}"><path class="o" d="${b.path}${b.br}"/><path class="m" d="${b.path}"/><path class="m t" d="${b.br}"/><path class="c" d="${b.path}"/></g>`;
+            return `<g class="fm-bolt b${i}"><path class="o" d="${b.path}${b.br}"/><path class="g" d="${b.path}${b.br}${b.br2}"/><path class="m" d="${b.path}"/><path class="m t" d="${b.br}"/><path class="m t2" d="${b.br2}"/><path class="c" d="${b.path}"/><path class="c t" d="${b.br}"/></g>`;
           }).join('')}</svg>
           <i class="fm-rglow"></i>
           <svg class="fm-rift" viewBox="0 0 100 300" preserveAspectRatio="none" aria-hidden="true"><path class="g" d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/><path d="M52 0 L45 34 L56 62 L43 98 L57 130 L46 168 L55 204 L48 240 L52 300"/>${[1, 2, 3].map(k => `<path class="v v${k}" d="${this.bolt(52, 0, 52, 300, 5 + k * 11, 18, true)}"/>`).join('')}</svg>
@@ -353,8 +381,8 @@ const Trailer = {
             <div class="fm-hp wires"><div class="fm-hb">${this.wires()}<div class="fm-hs">${Art.spirit('vayfayka')}</div></div></div>
           </div>
           <div class="fm-map">
-            <div class="fm-plane"><i class="fm-roads" style="background-image:url('${this.MAP_IMG}')"></i><i class="fm-ring"><i class="r1"></i><i class="r2"></i></i></div>
-            <div class="fm-sps">${['kapelka', 'ugolek', 'mshonok'].map((id, i) => `<div style="--i:${i}">${Art.spirit(id)}</div>`).join('')}</div>
+            <div class="fm-plane"><i class="fm-roads" style="background-image:url('${this.MAP_IMG}')"></i><i class="fm-ring"><i class="r1"></i><i class="r2"></i></i>
+              <div class="fm-sps">${['kapelka', 'ugolek', 'mshonok'].map((id, i) => `<div style="--i:${i}"><i class="sh"></i><div class="st">${Art.spirit(id)}</div></div>`).join('')}</div></div>
             <div class="fm-me"><i></i></div>
           </div>
           <div class="fm-catch">
@@ -486,7 +514,7 @@ const Trailer = {
       evolve: { n: 2.4, make: () => ({ x: W * R(.25, .75), y: H * R(.45, .8), vx: R(-.3, .3), vy: R(-2.2, -.7), r: R(.9, 2.4), l: R(60, 130), c: pick([GOLD, EMBER, WARM]), wob: .04, tw: 1 }) },
       cocoon: { n: 1, make: () => ({ x: R(0, W), y: H * R(.3, 1), vx: R(-.2, .2), vy: R(-.5, -.1), r: R(.8, 2), l: R(140, 260), c: pick([WARM, '186,230,253']), wob: .03, tw: 1 }) },
       duel: { n: 3, make: () => ({ x: W * R(.4, .6), y: H * R(.4, .52), vx: R(-3.5, 3.5), vy: R(-2.5, 1.5), g: .05, r: R(.8, 2), l: R(25, 60), c: pick(['254,240,138', '167,139,250', WHITE]), tail: 3 }) },
-      raid: { n: 3, make: () => ({ x: W * R(.15, .85), y: H * R(.15, .7), vx: R(-.6, .6), vy: R(-1.4, -.2), r: R(.9, 2.6), l: R(60, 140), c: pick([VIO, '249,115,22', LIL]), wob: .05, tw: 1 }) },
+      raid: { n: 4, make: () => { const a = R(0, Math.PI * 2), d = Math.min(W, H) * R(.45, .75); return { x: W * .5 + Math.cos(a) * d, y: H * .36 + Math.sin(a) * d, cx: W * .5, cy: H * .36, kr: Math.min(W, H) * .2, vx: 0, vy: 0, sp: 1, tail: 5, r: R(.8, 1.9), l: R(90, 160), c: pick([VIO, LIL, '236,72,153', WHITE]) }; } },
       auction: { n: .25, make: () => ({ x: Math.random() < .5 ? R(0, W * .12) : R(W * .88, W), y: H * R(.1, .8), vx: 0, vy: R(-.3, .1), r: R(1, 2.2), l: R(40, 90), c: pick([GOLD, WHITE]), star: true }) },
       weather: { n: .6, make: () => ({ x: R(0, W), y: H * R(.2, 1), vx: R(-.2, .2), vy: R(-.4, -.1), r: R(.7, 1.6), l: R(160, 300), c: WHITE, wob: .03, tw: 1 }) },
       snow: { n: 3.5, make: () => ({ x: R(-20, W), y: -10, vx: R(-.3, .5), vy: R(.9, 2.4), r: R(1, 2.8), l: R(300, 520), c: WHITE, wob: .05 }) },
@@ -509,10 +537,12 @@ const Trailer = {
         if (p.g) p.vy += p.g;
         if (p.acc) { p.vx *= p.acc; p.vy *= p.acc; }
         if (p.wob) p.vx += Math.sin(p.t * .05 + p.ph) * p.wob;
+        if (p.sp) { const dx = p.cx - p.x, dy = p.cy - p.y, d = Math.hypot(dx, dy) || 1, sp = 1.6 + 120 / (d + 40); p.vx = (dx / d * .9 - dy / d * 1.6) * sp; p.vy = (dy / d * .9 + dx / d * 1.6) * sp; p.fd = Math.min(1, (d - p.kr) / p.kr); if (p.fd <= 0) p.t = p.l; }
         p.x += p.vx * dpr; p.y += p.vy * dpr;
         const k = p.t / p.l;
         if (k >= 1 || p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) return false;
         let a = Math.sin(Math.PI * Math.min(1, k * 1.15));
+        if (p.sp) a *= p.fd;
         if (p.tw) a *= .55 + .45 * Math.sin(p.t * (p.tw === 2 ? .45 : .12) + p.ph);
         const s = p.r * 9 * dpr;
         if (p.tail) { // хвост: яркая голова, тающий след по скорости
@@ -550,7 +580,7 @@ const Trailer = {
           parts.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1.5, g: .14, r: R(1, 2.8), l: R(40, 95), c: pick(cols), tail: 3, t: 0, ph: R(0, 6) });
         }
         const M = Math.min(W, H);
-        rings.push({ x: cx, y: cy, r: M * .55, w: 10, l: 34, c: cols[0], t: 0 });
+        rings.push({ x: cx, y: cy, r: M * (o.rr || .55), w: 10, l: 34, c: cols[0], t: 0 });
         if (o.rings !== 1) rings.push({ x: cx, y: cy, r: M * .35, w: 6, l: 26, c: '255,255,255', t: 0 });
       },
       stop: () => { live = false; cancelAnimationFrame(raf); removeEventListener('resize', size); },
@@ -579,7 +609,11 @@ const Trailer = {
       case 'evolve': T(180, 2, { type: 'sawtooth', vol: .03, to: 720 }); T(360, 1.9, { type: 'sawtooth', vol: .02, to: 1100, when: 2.05 }); boom(2.05, .12); boom(3.95, .2); [0, .12, .24, .36].forEach((w, i) => T([523.3, 659.3, 784, 1046.5][i], 1.4, { type: 'triangle', vol: .06, when: 4 + w })); break;
       case 'cocoon': for (let i = 0; i < 8; i++) N(.12, { vol: .05, f: 400, to: 200, when: i * .28 }); N(.4, { vol: .12, type: 'highpass', f: 2000, to: 800, when: 3 }); boom(3.5, .12); [0, .1, .2].forEach((w, i) => T([784, 987.8, 1318.5][i], 1, { type: 'triangle', vol: .06, when: 3.55 + w })); break;
       case 'duel': [1.2, 2.2, 3.2].forEach(w => { N(.35, { vol: .12, type: 'bandpass', f: 2500, to: 600, when: w, q: 2 }); T(220, .3, { type: 'square', vol: .03, to: 80, when: w }); }); T(880, .6, { type: 'sawtooth', vol: .04, to: 220, when: 2.9 }); boom(4.4, .2); break;
-      case 'raid': T(55, 7, { type: 'sawtooth', vol: .03 }); N(1.5, { vol: .08, f: 200, to: 1200, when: .4 }); for (let i = 0; i < 9; i++) whoosh(2 + i * .36, .05); [2.3, 3, 3.7, 4.4].forEach(w => boom(w, .1)); boom(5.2, .26); [0, .15, .3, .45].forEach((w, i) => T([392, 523.3, 659.3, 784][i], 1.4, { type: 'triangle', vol: .07, when: 5.6 + w })); break;
+      case 'raid': T(55, 8.4, { type: 'sawtooth', vol: .03 }); N(1.4, { vol: .09, f: 150, to: 1400 }); T(210, 1.2, { type: 'sawtooth', vol: .07, to: 55, when: .6 }); N(1, { vol: .12, f: 700, to: 120, when: .6 });
+        N(1, { vol: .1, f: 900, to: 300, when: 1.8 }); T(880, .4, { type: 'triangle', vol: .05, when: 1.95 });
+        [2.95, 3.45, 3.95, 4.45].forEach((w, i) => { whoosh(w - .45, .05); boom(w, .08 + (i === 2 ? .06 : 0)); T(1318.5, .15, { vol: .04, when: w }); });
+        T(220, 1, { type: 'sawtooth', vol: .05, to: 880, when: 4.9 }); boom(5.8, .3); N(1.2, { vol: .12, f: 3000, to: 200, when: 5.8 }); whoosh(6.1, .08);
+        [0, .15, .3, .45].forEach((w, i) => T([392, 523.3, 659.3, 784][i], 1.4, { type: 'triangle', vol: .07, when: 6.4 + w })); break;
       case 'auction': [1.71, 3.61, 5.32, 7.98].forEach(w => { T(1400, .05, { vol: .05, when: w }); N(.05, { vol: .04, type: 'highpass', f: 4000, when: w }); }); [0, .09, .18, .27].forEach((w, i) => T([659.3, 784, 987.8, 1318.5][i], .5, { type: 'triangle', vol: .05, when: 3.85 + w })); [0, .12, .24, .36, .48].forEach((w, i) => T(1800 + i * 150, .09, { vol: .05, when: 6.3 + w })); break;
       case 'weather': [0, 2, 4, 6].forEach(w => whoosh(w, .07)); N(2, { vol: .06, f: 3000, to: 3000, when: 2 }); pad([220, 277.2, 329.6], 6, .02); break;
       case 'wardrobe': for (let i = 0; i < 10; i++) T(1046.5 + i * 60, .12, { type: 'triangle', vol: .04, when: .2 + i * .5 }); [0, .12, .24].forEach((w, i) => T([784, 987.8, 1174.7][i], 1.2, { type: 'triangle', vol: .06, when: 4.7 + w })); break;
