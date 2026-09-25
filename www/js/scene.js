@@ -1,7 +1,7 @@
 'use strict';
 /* 4.4: фоновые сцены экрана входа и экрана загрузки.
-   Настройки — www/scenes/scenes.json (формат — docs/scenes.md). Пока своих изображений нет, рисуется встроенная сцена:
-   «Ночь над Навью» (4.6): сияние, луна, деревня у озера, лес, берёзы, парящие духи, светлячки.
+   Настройки — www/scenes/scenes.json (формат — docs/scenes.md). Пока своих изображений нет — фон как во вкладках игры
+   (лак с тонким узором), над ним парящие духи и светлячки.
    Экран входа — «3D»: слои на разной глубине сдвигаются от наклона телефона (гироскоп) или мыши, без движения камера
    медленно «дышит». В спокойном режиме и при «уменьшить анимацию» сцена неподвижна, в режиме экономии — без частиц. */
 
@@ -82,93 +82,8 @@ const Scene = {
     }).join('')}</div>`;
   },
 
-  // 4.6: встроенная сцена «Ночь над Навью»: сияние, луна, дальние горы, деревня с огнями и терем, озеро с лунной дорожкой, лес, берёзы.
-  // Та же картинка — на экране загрузки (index.html, собирается tools/web/loader-art.mjs из art())
-  art() {
-    const r = U.rng('duholov-scene'), W = 600, H = 900, f = n => n.toFixed(1);
-    const stars = Array.from({ length: 120 }, () => `<circle cx="${f(r() * W)}" cy="${f(r() * H * 0.5)}" r="${f(0.4 + r() * r() * 1.6)}" class="tw${1 + Math.floor(r() * 3)}"/>`).join('');
-    const ridge = (base, amp, seed, step = 80) => {
-      const q = U.rng(seed); let d = `M-40 ${base}`;
-      for (let x = -40; x <= W + 40; x += step) d += ` Q${x + step / 2} ${f(base - amp * (0.4 + q()))} ${x + step} ${f(base - amp * 0.25 * q())}`;
-      return d + ` V${H} H-40Z`;
-    };
-    const peaks = (base, seed) => { // зубчатые дальние горы
-      const q = U.rng(seed); let d = `M-40 ${base}`, x = -40;
-      while (x < W + 40) { const w = 50 + q() * 70, h = 40 + q() * 90; d += ` L${f(x + w * 0.5)} ${f(base - h)} L${f(x + w)} ${f(base - q() * 20)}`; x += w; }
-      return d + ` V${H} H-40Z`;
-    };
-    const pines = (base, hMin, hMax, step, seed, keep) => {
-      const q = U.rng(seed); let d = '';
-      for (let x = -30; x < W + 30; x += step * (0.6 + q() * 0.8)) {
-        const k = keep ? keep(x) : 1; if (k <= 0) { q(); q(); q(); continue; }
-        const h = (hMin + q() * (hMax - hMin)) * k, w = h * (0.22 + q() * 0.08), y = base + q() * 8;
-        for (let t = 0; t < 3; t++) { const ty = y - h * t * 0.28, tw = w * (1 - t * 0.22); d += `M${f(x - tw)} ${f(ty)}L${f(x)} ${f(ty - h * 0.46)}L${f(x + tw)} ${f(ty)}Z`; }
-        d += `M${f(x - 2)} ${f(y)}h4v14h-4Z`;
-      }
-      return d;
-    };
-    // изба: сруб, двускатная крыша, труба, светящиеся окна
-    const izba = (x, base, w, h, smoke) => {
-      const roof = h * 0.85, win = [];
-      for (let i = 0; i < (w > 36 ? 2 : 1); i++) win.push([x + w * (w > 36 ? 0.22 + i * 0.4 : 0.38), base - h * 0.68]);
-      return { body: `M${x} ${base}V${base - h}H${x + w}V${base}Z M${x - 4} ${base - h + 1}L${f(x + w / 2)} ${f(base - h - roof)}L${x + w + 4} ${base - h + 1}Z M${f(x + w * 0.68)} ${f(base - h - roof * 0.45)}v-${f(roof * 0.5)}h5v${f(roof * 0.62)}Z`,
-        win, smoke: smoke ? [x + w * 0.68 + 2.5, base - h - roof * 0.95] : null };
-    };
-    // терем: сруб, шатровая крыша со «бочкой» и шпилем
-    const terem = (x, base) => ({ body: `M${x} ${base}V${base - 46}H${x + 30}V${base}Z M${x - 5} ${base - 45}L${x + 15} ${base - 118}L${x + 35} ${base - 45}Z M${x + 10} ${base - 104}q5 -12 10 0Z M${x + 14.4} ${base - 112}v-20h1.2v20Z M${x + 15.6} ${base - 131}l9 3.5-9 3.5Z M${x - 10} ${base}V${base - 26}H${x}V${base}Z M${x - 14} ${base - 25}L${x - 5} ${base - 40}L${x + 4} ${base - 25}Z`,
-      win: [[x + 7, base - 36], [x + 19, base - 36], [x + 13, base - 18], [x + 13, base - 76]] });
-    const village = [izba(165, 452, 40, 22, true), izba(214, 462, 30, 18, false), izba(252, 449, 44, 24, true), terem(398, 436), izba(345, 456, 34, 20, true)];
-    const winGlow = village.flatMap(b => b.win).map(([x, y]) => `<circle cx="${f(x + 2.5)}" cy="${f(y + 3)}" r="11" fill="url(#scWinG)"/>`).join('');
-    const wins = village.flatMap(b => b.win).map(([x, y], i) => `<rect x="${f(x)}" y="${f(y)}" width="5" height="6" rx=".8" class="sc-win w${i % 3}"/>`).join('');
-    const smokes = village.filter(b => b.smoke).map(({ smoke: [x, y] }, i) => `<path class="sc-smoke s${i}" d="M${f(x)} ${f(y)}c-7 -12 7 -20 0 -34s7 -22 -2 -38" />`).join('');
-    // лунная дорожка на озере
-    const glints = Array.from({ length: 16 }, (_, i) => { const y = 505 + i * 2.7, w = (6 + i * 3.4) * (0.5 + r() * 0.7); return r() < 0.18 ? '' : `<rect x="${f(440 - w / 2 + (r() - 0.5) * 10)}" y="${f(y)}" width="${f(w)}" height="1.3" rx=".65" fill-opacity="${f(1 - i / 20)}" class="g${i % 3}"/>`; }).join('');
-    // берёза: белый ствол с чёрными чёрточками, лёгкий изгиб
-    const birch = (x, w, lean, top) => {
-      const q = U.rng('b' + x); let marks = '';
-      for (let y = H; y > top + 30; y -= 14 + q() * 20) { const t = (H - y) / (H - top), cx = x + lean * t * t; marks += `M${f(cx - w / 2 + (q() > 0.5 ? 0 : w * 0.4))} ${f(y)}h${f(w * (0.3 + q() * 0.3))}v${f(1.6 + q() * 2)}h-${f(w * 0.3)}Z`; }
-      return { trunk: `M${x - w / 2} ${H}C${x - w / 2} ${f(H - (H - top) * 0.5)} ${f(x + lean * 0.4 - w * 0.35)} ${f(top + 60)} ${f(x + lean - w * 0.2)} ${top}L${f(x + lean + w * 0.2)} ${top}C${f(x + lean * 0.4 + w * 0.35)} ${f(top + 60)} ${x + w / 2} ${f(H - (H - top) * 0.5)} ${x + w / 2} ${H}Z`, marks };
-    };
-    const b1 = birch(158, 16, -16, -60), b2 = birch(192, 11, 12, -40);
-    return {
-      W, H,
-      sky: `<defs><linearGradient id="scSkyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#04021a"/><stop offset=".28" stop-color="#110735"/><stop offset=".46" stop-color="#2a1262"/><stop offset=".56" stop-color="#5b2d86"/><stop offset=".62" stop-color="#8a4a8f"/><stop offset=".7" stop-color="#2a1350"/></linearGradient>
-          <radialGradient id="scMoon" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fffbeb"/><stop offset=".6" stop-color="#fde68a"/><stop offset="1" stop-color="#d6a84a"/></radialGradient>
-          <radialGradient id="scHalo"><stop offset="0" stop-color="#fde68a" stop-opacity=".38"/><stop offset=".4" stop-color="#fde68a" stop-opacity=".12"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>
-          <linearGradient id="scAur1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5eead4" stop-opacity="0"/><stop offset=".55" stop-color="#5eead4" stop-opacity=".42"/><stop offset="1" stop-color="#a78bfa" stop-opacity="0"/></linearGradient>
-          <linearGradient id="scAur2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0abfc" stop-opacity="0"/><stop offset=".6" stop-color="#c084fc" stop-opacity=".34"/><stop offset="1" stop-color="#818cf8" stop-opacity="0"/></linearGradient>
-          <filter id="scBlur" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="7"/></filter></defs>
-        <rect width="${W}" height="${H}" fill="url(#scSkyG)"/>
-        <g class="sc-stars">${stars}</g>
-        <g filter="url(#scBlur)"><path class="sc-aur a1" d="M-40 250C80 170 190 290 320 220S520 130 640 190V246C520 196 430 300 300 282S70 236 -40 312Z" fill="url(#scAur1)"/>
-          <path class="sc-aur a2" d="M-40 190C110 140 210 220 330 170S520 90 640 130V170C520 136 420 246 320 226S100 190 -40 240Z" fill="url(#scAur2)"/></g>
-        <g class="sc-moon"><circle cx="440" cy="150" r="130" fill="url(#scHalo)"/><circle cx="440" cy="150" r="27" fill="url(#scMoon)"/>
-          <circle cx="431" cy="142" r="5" fill="#e4c67a" opacity=".5"/><circle cx="450" cy="159" r="3.4" fill="#e4c67a" opacity=".45"/><circle cx="446" cy="138" r="2" fill="#e4c67a" opacity=".4"/></g>
-        <g class="sc-cloud" fill="#2a1a58" opacity=".75"><path d="M270 198c10-12 34-12 44 0 12-8 34-4 38 10 16 0 26 6 26 14H256c-4-12 2-22 14-24Z"/><path d="M470 214c8-9 26-9 33 0 10-6 26-3 29 8 10 1 16 5 16 10H458c-2-9 3-16 12-18Z"/></g>
-        <g class="sc-cloud-rim" fill="none" stroke="#fde68a" stroke-opacity=".35" stroke-width="1.2"><path d="M270 198c10-12 34-12 44 0 12-8 34-4 38 10"/><path d="M470 214c8-9 26-9 33 0 10-6 26-3 29 8"/></g>
-        <path class="sc-meteor" d="M330 60l-80 38" stroke="url(#scHalo)" stroke-width="2"/>`,
-      layers: [
-        { cls: 'sc-far', d: 0.05, body: `<path d="${peaks(430, 'p1')}" fill="#3a2275" opacity=".7"/><path d="${peaks(430, 'p1')}" fill="none" stroke="#9f7ae0" stroke-opacity=".35" stroke-width="1.5"/>` },
-        { cls: 'sc-hills', d: 0.09, body: `<defs><radialGradient id="scWinG"><stop offset="0" stop-color="#fbbf24" stop-opacity=".55"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/></radialGradient></defs>
-          <path d="${ridge(468, 70, 'h1')}" fill="#2b1656"/><path d="${ridge(468, 70, 'h1')}" fill="none" stroke="#b794f4" stroke-opacity=".25" stroke-width="1.2"/>
-          <g fill="#1d0e3e">${village.map(b => `<path d="${b.body}"/>`).join('')}</g><g class="sc-wins">${winGlow}${wins}</g><g class="sc-smokes">${smokes}</g>` },
-        { cls: 'sc-lake', d: 0.12, body: `<defs><linearGradient id="scLakeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a7ad8"/><stop offset=".35" stop-color="#5b3fa6"/><stop offset="1" stop-color="#2c1a66"/></linearGradient><radialGradient id="scLakeM" cx=".5" cy=".3" r=".5"><stop offset="0" stop-color="#fde68a" stop-opacity=".45"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient></defs>
-          <path d="M-40 520 Q30 490 110 502 T300 498 T470 500 T640 508 V600 H-40Z" fill="#211046"/>
-          <path d="M150 510 Q300 494 470 500 T600 512 Q560 540 470 548 T220 544 Q140 534 150 510Z" fill="url(#scLakeG)"/>
-          <ellipse cx="440" cy="520" rx="70" ry="26" fill="url(#scLakeM)"/><path d="M150 510 Q300 494 470 500 T600 512" fill="none" stroke="#e9d5ff" stroke-opacity=".35" stroke-width="1.2"/><g class="sc-glint" fill="#fde68a">${glints}</g>` },
-        { cls: 'sc-forest', d: 0.17, body: `<path d="${pines(580, 50, 120, 15, 'f1', x => x < 140 || x > 545 ? 1 : x < 200 || x > 505 ? 0.5 : 0.12)}" fill="#160a30"/><path d="${ridge(578, 16, 'h3')}" fill="#160a30"/>` },
-        { cls: 'sc-mist', d: 0.22, mist: true },
-        { cls: 'sc-near', d: 0.5, body: `<path d="${pines(900, 380, 640, 30, 'n1', x => x > 330 ? Math.max(0, 1 - (W - x) / (W * 0.34)) + 0.3 : 0)}" fill="#0a0518"/>
-                    <path d="${b1.trunk}" fill="#d9d2ea"/><path d="${b1.marks}" fill="#140a2a"/><path d="${b2.trunk}" fill="#b9b0d2"/><path d="${b2.marks}" fill="#140a2a"/>
-          <path d="${ridge(850, 34, 'h4')}" fill="#0a0518"/>` },
-      ],
-    };
-  },
-  builtin() {
-    const a = this.art(), svg = (cls, d, body) => `<div class="sc-l ${cls}" data-d="${d}"><svg viewBox="0 0 ${a.W} ${a.H}" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${body}</svg></div>`;
-    return `<div class="sc-l sc-sky" data-d="0.02"><svg viewBox="0 0 ${a.W} ${a.H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${a.sky}</svg></div>`
-      + a.layers.map(l => l.mist ? `<div class="sc-l sc-mist" data-d="${l.d}"><i></i><i></i><i></i></div>` : svg(l.cls, l.d, l.body)).join('');
-  },
+  // 4.6: встроенный фон — тот же, что во вкладках игры: лак с тонким узором и мягким сиянием сверху
+  builtin() { return '<div class="sc-l sc-lacq" data-d="0.02"></div>'; },
 
   /* ---------- движение: наклон телефона, мышь, «дыхание» камеры, частицы ---------- */
   animate(el, particles) {
