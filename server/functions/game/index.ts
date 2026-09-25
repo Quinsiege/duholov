@@ -5,7 +5,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.2.1';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -2538,6 +2538,8 @@ const Raid = {
 const Duel = {
   st: null,
   FAST: 6, CHARGE: 65, COST: 50, TIME: 180, HPX: 3, SWITCH_CD: 25,
+  // соперники без уровня Капища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
+  FOE: { invasion: { speed: 0.75, shield: 0.5 }, spar: { speed: 0.72, shield: 0.6 } },
 
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
@@ -2618,7 +2620,7 @@ const Duel = {
     scr.querySelector('.duel-go').onclick = async () => {
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
-      this.start({ ...e, kind: 'invasion', tier: 1, T: { speed: 0.75, shield: 0.5 } }, g, S.team());
+      this.start({ ...e, kind: 'invasion', tier: 1, T: this.FOE.invasion }, g, S.team());
     };
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
   },
@@ -2646,7 +2648,7 @@ const Duel = {
       if (!r) return;
       UI.closeScreen(scr);
       const color = (r.look && r.look.cloak) || GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)];
-      this.start({ kind: 'spar', name: f.name, T: { speed: 0.72, shield: 0.6 } }, { name: U.esc(r.name), color, team: r.foe }, S.team());
+      this.start({ kind: 'spar', name: f.name, T: this.FOE.spar }, { name: U.esc(r.name), color, team: r.foe }, S.team());
     };
     scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => {
       team = S.team();
@@ -3260,6 +3262,25 @@ const Rules = {
     return Math.max(0, ...dps) * Math.max(0, t) * 1.3;
   },
   duelFoeHp(foe) { return foe.reduce((a, f) => a + S.battle(f).hp * Duel.HPX, 0); },
+  // 4.3: может ли эта команда вообще победить этого соперника. Соперник бьёт сам раз в speed…speed+0,25 с игрового
+  // времени, увернуться нельзя. Победа — либо убить его команду раньше, чем он убьёт твою, либо дожить до таймера и
+  // остаться «здоровее» (у кого больше доля здоровья). Всё считается в пользу игрока: его урон — максимальный (как в
+  // duelMaxDamage), урон соперника — только быстрые удары, слабейшие из возможных; щиты и приёмы соперника не считаются.
+  // Честный бой не отклоняется, а слабая команда против сильного соперника «победить» не может.
+  duelWinnable(team, foe, speed) {
+    if (!team.length || !foe.length) return false;
+    const me = team.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el })), fo = foe.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el }));
+    const hit = Math.min(...fo.flatMap(f => me.map(m => Raid.dmg(f.x.atk, m.x.def, Duel.FAST, f.el, m.el))));
+    const foeDps = hit / ((+speed || 0.85) + 0.25), myDps = this.duelMaxDamage(team, foe, 1);
+    const survive = me.reduce((a, m) => a + m.x.hp * Duel.HPX, 0) / foeDps; // дольше команда не проживёт
+    const kill = this.duelFoeHp(foe) / myDps;                               // быстрее соперника не убить
+    if (kill <= survive) return true;
+    if (survive < Duel.TIME) return false;
+    const meMax = Math.max(...me.map(m => m.x.hp * Duel.HPX)), foeMin = Math.min(...fo.map(f => f.x.hp * Duel.HPX));
+    const meShare = Math.max(0, 1 - foeDps * Duel.TIME / (me.length * meMax));
+    const foeShare = Math.max(0, 1 - myDps * Duel.TIME / (fo.length * foeMin));
+    return meShare >= foeShare;
+  },
 };
 
 // ===== www/js/diff.js =====
@@ -3449,10 +3470,12 @@ const GameCore = {
     ctx.srv.enc = null;
     return { ...res, fled: !!text, text, over: true };
   },
-  // Победа засчитывается, если команда могла нанести столько урона за это время (или бой дошёл до таймера)
-  plausibleDuel(ctx, b, foe) {
+  // Победа засчитывается, если с такой командой против такого соперника (speed — скорость его ударов) она вообще
+  // возможна (4.3) и команда могла нанести столько урона за это время (или бой дошёл до таймера)
+  plausibleDuel(ctx, b, foe, speed) {
     const t = this.battleTime(ctx, b);
     this.need(t >= 5, 'Бой не засчитан: слишком быстрая победа');
+    this.need(Rules.duelWinnable(this.team(b.team), foe, speed), 'Бой не засчитан: эта команда не могла победить такого соперника');
     if (t >= Duel.TIME - 5) return;
     this.need(Rules.duelMaxDamage(this.team(b.team), foe, t) >= Rules.duelFoeHp(foe), 'Бой не засчитан: слишком быстрая победа');
   },
@@ -4163,7 +4186,7 @@ const GameCore = {
       const b = this.endBattle(ctx, 'duel');
       if (!a.win) return { win: false };
       const e = { id: b.id, tier: b.tier, name: b.name };
-      this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team);
+      this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team, SHRINE_TIERS[e.tier].speed);
       const T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier;
       S.d.shrines[e.id] = U.today();
       let freed = false;
@@ -4357,7 +4380,7 @@ const GameCore = {
       const b = this.endBattle(ctx, 'inv');
       if (!a.win) return { win: false };
       const g = W.grunt({ invId: b.invId });
-      this.plausibleDuel(ctx, b, g.team);
+      this.plausibleDuel(ctx, b, g.team, Duel.FOE.invasion.speed);
       S.d.freed[b.invId] = true;
       S.d.stats.invasions++;
       this.dayAdd(ctx, 'invasions');
@@ -4388,7 +4411,7 @@ const GameCore = {
       const b = this.endBattle(ctx, 'league');
       this.need(b.k === run.k, 'Турнир не найден');
       const win = !!a.win;
-      if (win) this.plausibleDuel(ctx, b, League.opponent(run.k).team);
+      if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
       let gained = 0;
       if (win) { run.won++; gained++; S.progress('league', 1); }
       const last = !win || run.k >= 2;
@@ -4648,7 +4671,7 @@ const GameCore = {
     sparEnd(a, ctx) {
       const b = this.endBattle(ctx, 'spar');
       if (!a.win) return { win: false };
-      this.plausibleDuel(ctx, b, b.foe);
+      this.plausibleDuel(ctx, b, b.foe, Duel.FOE.spar.speed);
       const f = S.d.friends.find(x => x.id === b.pid);
       this.need(f, 'Такого друга нет');
       J.add('spar', { name: f.name });

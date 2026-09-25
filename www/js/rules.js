@@ -170,4 +170,23 @@ const Rules = {
     return Math.max(0, ...dps) * Math.max(0, t) * 1.3;
   },
   duelFoeHp(foe) { return foe.reduce((a, f) => a + S.battle(f).hp * Duel.HPX, 0); },
+  // 4.3: может ли эта команда вообще победить этого соперника. Соперник бьёт сам раз в speed…speed+0,25 с игрового
+  // времени, увернуться нельзя. Победа — либо убить его команду раньше, чем он убьёт твою, либо дожить до таймера и
+  // остаться «здоровее» (у кого больше доля здоровья). Всё считается в пользу игрока: его урон — максимальный (как в
+  // duelMaxDamage), урон соперника — только быстрые удары, слабейшие из возможных; щиты и приёмы соперника не считаются.
+  // Честный бой не отклоняется, а слабая команда против сильного соперника «победить» не может.
+  duelWinnable(team, foe, speed) {
+    if (!team.length || !foe.length) return false;
+    const me = team.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el })), fo = foe.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el }));
+    const hit = Math.min(...fo.flatMap(f => me.map(m => Raid.dmg(f.x.atk, m.x.def, Duel.FAST, f.el, m.el))));
+    const foeDps = hit / ((+speed || 0.85) + 0.25), myDps = this.duelMaxDamage(team, foe, 1);
+    const survive = me.reduce((a, m) => a + m.x.hp * Duel.HPX, 0) / foeDps; // дольше команда не проживёт
+    const kill = this.duelFoeHp(foe) / myDps;                               // быстрее соперника не убить
+    if (kill <= survive) return true;
+    if (survive < Duel.TIME) return false;
+    const meMax = Math.max(...me.map(m => m.x.hp * Duel.HPX)), foeMin = Math.min(...fo.map(f => f.x.hp * Duel.HPX));
+    const meShare = Math.max(0, 1 - foeDps * Duel.TIME / (me.length * meMax));
+    const foeShare = Math.max(0, 1 - myDps * Duel.TIME / (fo.length * foeMin));
+    return meShare >= foeShare;
+  },
 };

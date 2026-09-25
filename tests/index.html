@@ -338,6 +338,17 @@
     ['catch', 'flee', 'hatch', 'evolve', 'raid', 'duel', 'invasion', 'league', 'level', 'medal', 'story', 'trade', 'friend', 'gift']
       .forEach(t => { const v = J.view({ type: t, sid: 'ugolek', from: 'ugolek', to: 'kostrovik', tier: 1, name: 'X', won: 2, rank: 'Отрок', l: 3, title: 'Т' }); ok(v.title && !/undefined/.test(v.title), t); });
   });
+  test('Бой: слабая команда не «побеждает» сильного соперника (4.3)', () => {
+    const saved = S.d; S.newGame('Проверка', 'ugolek'); S.d.level = 20;
+    try {
+      const team = lvl => ['ugolek', 'kapelka', 'mshonok'].map((sid, i) => S.makeSpirit(sid, lvl, 'bt' + sid + lvl + i));
+      const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Капище' });
+      ok(!Rules.duelWinnable(team(1), g.team, SHRINE_TIERS[3].speed), 'команда 1-го уровня против Старейшины — нет');
+      ok(Rules.duelWinnable(team(15), g.team, SHRINE_TIERS[3].speed), 'сильная команда — да');
+      const lg = League.opponent(0, { stars: 60, season: 's', run: null });
+      ok(!Rules.duelWinnable(team(1), lg.team, lg.T.speed), 'в Лиге — тоже');
+    } finally { S.d = saved; }
+  });
   test('Совместный разлом: здоровье босса и бонусы', () => {
     ok(GameCore.ROOM_ALPHA.length === 32 && !/[01IO]/.test(GameCore.ROOM_ALPHA), 'алфавит кода без похожих символов');
     near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
