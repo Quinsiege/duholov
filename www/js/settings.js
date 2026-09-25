@@ -4,7 +4,7 @@
 
 const Cfg = {
   KEY: 'duholov.settings',
-  DEFAULTS: { demo: false, ar: false, sound: true, vibro: true, weather: true, music: true, cloud: true, eco: false,
+  DEFAULTS: { demo: false, ar: false, sound: true, vibro: true, weather: true, music: true, musicVol: 0.6, cloud: true, eco: false,
     bigText: false, tapThrow: false, calm: null, mapTheme: 'auto' },
   s: null,
 

@@ -3003,3 +3003,14 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 .hint-ava .art { display: block; width: 100%; height: 100%; }
 .hint b { font-family: var(--f-display); font-weight: 400; font-size: 16px; letter-spacing: .3px; color: #86efac; }
 .hint p { font-family: var(--f-head); font-size: 15px; }
+
+/* ================= 4.8.1: ползунок громкости музыки ================= */
+.vol-row .row-main { flex: 1; }
+.vol-line { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.vol-v { min-width: 38px; text-align: right; font-family: var(--f-head); font-weight: 700; font-size: 13px; color: #fde68a; }
+.vol { flex: 1; height: 22px; margin: 0; background: none; -webkit-appearance: none; appearance: none; --p: 60%; }
+.vol::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, #2dd4bf, #fde047 var(--p), rgba(6, 3, 16, .8) var(--p)); box-shadow: 0 0 0 1px rgba(243, 207, 107, .45), inset 0 1px 3px rgba(0, 0, 0, .6); }
+.vol::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, #2dd4bf, #fde047 var(--p), rgba(6, 3, 16, .8) var(--p)); box-shadow: 0 0 0 1px rgba(243, 207, 107, .45); }
+.vol::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; transform: rotate(45deg); border-radius: 3px;
+  background: linear-gradient(135deg, #fffbeb, #f59e0b); border: 1.5px solid #7c3a0a; box-shadow: 0 0 8px rgba(251, 191, 36, .8); }
+.vol::-moz-range-thumb { width: 16px; height: 16px; transform: rotate(45deg); border-radius: 3px; background: linear-gradient(135deg, #fffbeb, #f59e0b); border: 1.5px solid #7c3a0a; }

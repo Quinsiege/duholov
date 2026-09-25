@@ -359,7 +359,8 @@ Object.assign(UI, {
       ${DEV ? `${sec('Разработка')}<div class="list">${row('demo', 'target', 'Демо-режим', 'Джойстик вместо GPS. Доступен только на локальном сервере.')}</div>` : ''}
       ${sec('Звук и отклик')}
       <div class="list">
-        ${row('music', 'music', 'Музыка', 'Мелодии Нави на карте (днём и ночью своя), у наставника и боевая тема в сражениях.')}
+        ${row('music', 'music', 'Музыка', 'Тихие мелодии Нави: на карте днём и ночью своя, у наставника — своя.')}
+        <div class="row set-row vol-row"><span class="set-ico">${this.I.sound}</span><div class="row-main"><b>Громкость музыки</b><div class="vol-line"><input type="range" class="vol" min="0" max="100" step="5" value="${Math.round((s.musicVol == null ? 0.6 : s.musicVol) * 100)}" aria-label="Громкость музыки"><span class="vol-v"></span></div></div></div>
         ${row('sound', 'sound', 'Звук', 'Звуковые эффекты.')}
         ${row('vibro', 'vibro', 'Вибрация', 'Отклик при бросках и попаданиях.')}
       </div>
@@ -391,6 +392,12 @@ Object.assign(UI, {
         ${Game.on() ? `<button class="row link set-row del-acc"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Удалить учётную запись</b><small>Прогресс, способы входа и все данные — навсегда</small></div></button>` : ''}
       </div>
       <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
+    // 4.8.1: ползунок громкости музыки — меняется сразу, сохраняется при отпускании
+    const vol = scr.querySelector('.vol'), volV = scr.querySelector('.vol-v');
+    const showVol = () => { volV.textContent = vol.value + '%'; vol.style.setProperty('--p', vol.value + '%'); };
+    showVol();
+    vol.addEventListener('input', () => { showVol(); Sfx.init(); Music.setVolume(vol.value / 100); });
+    vol.addEventListener('change', () => Cfg.save());
     scr.addEventListener('change', e => {
       const k = e.target.dataset.k; if (!k) return;
       s[k] = e.target.checked; Cfg.save();
