@@ -2291,7 +2291,7 @@ const Raid = {
         <div class="raid-count">3</div>
       </div>`);
     document.body.appendChild(root);
-    Music.play('battle');
+    Music.play('map'); // 4.8.1: в боях — та же мелодия карты
     const $ = sel => root.querySelector(sel);
     const st = this.st = {
       r, s, bs, root, $, bossHp: bs.hp, time: 90, energy: 0, cool: 0, idx: 0, coop: coop || null, ko: false,
@@ -2745,7 +2745,7 @@ const Duel = {
         <div class="raid-count">3</div>
       </div>`);
     document.body.appendChild(root);
-    Music.play('battle');
+    Music.play('map'); // 4.8.1: в боях — та же мелодия карты
     const $ = s => root.querySelector(s);
     const st = this.st = {
       e, g, T: e.T || SHRINE_TIERS[e.tier], root, $, time: this.TIME, paused: true, over: false,
