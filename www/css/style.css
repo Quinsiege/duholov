@@ -2414,3 +2414,7 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
     linear-gradient(180deg, #1a1140 0%, #110a2a 40%, #0b0620 100%); }
 .list, .panel, .lgx-card, .card { background-color: rgba(16, 10, 38, .82); }
 .list, .panel, .lgx-card { background-image: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .01)); }
+
+
+/* 4.6: фон всех экранов — как у главного меню: лак с тонким узором, мягкое сияние сверху */
+.screen, .screen.spring-screen, .screen.rift-screen { background: var(--lacq), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .32), transparent 70%), linear-gradient(180deg, var(--lk1), var(--lk3)); }
