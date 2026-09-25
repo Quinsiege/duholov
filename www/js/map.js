@@ -346,7 +346,7 @@ const MapView = {
     box.classList.toggle('near', near);
     const ico = t.type === 'spirit' ? Art.img(t.sid) : t.type === 'spring' ? Art.springIcon(false) : Art.shrineIcon(1, false);
     if (box._id !== t.id) { box._id = t.id; box.querySelector('.tr-ico').innerHTML = ico; }
-    box.querySelector('.tr-arrow').style.transform = `rotate(${brg}deg)`;
+    box.querySelector('.tr-arrow svg').style.transform = `rotate(${brg}deg)`; // 4.7: вращается только стрелка, не её место
     box.querySelector('.tr-name').textContent = t.name;
     box.querySelector('.tr-dist').textContent = near ? 'Ты на месте — коснись цели!' : U.fmtDist(d);
   },
