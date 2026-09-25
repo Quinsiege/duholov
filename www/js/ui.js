@@ -80,6 +80,13 @@ const UI = {
     U.$('#moonChip').onclick = () => this.skyInfo();
     U.$('#eventChip').onclick = () => this.eventInfo();
     this.applyA11y();
+    // 4.6.3: когда непрозрачный экран (меню, поимка, разлом, сцена обучения) уже полностью проявился, карта под ним
+    // не видна — помечаем его, и карта с HUD не рисуются и не анимируются (style.css); при закрытии снова видны сразу
+    new MutationObserver(ms => {
+      for (const m of ms) for (const n of m.addedNodes) {
+        if (n.nodeType === 1 && n.matches('.screen, .enc, .raid, .tut-scene, .tut-final')) setTimeout(() => n.isConnected && n.classList.add('covers'), 700);
+      }
+    }).observe(document.body, { childList: true });
     U.$('#tracker .tr-x').onclick = e => { e.stopPropagation(); MapView.untrack(); };
     U.$('#storyPill').onclick = () => { Sfx.init(); Sfx.play('tap'); this.quests('story'); };
     U.$('#tracker').onclick = () => { if (MapView.tracking) MapView.flyTo(MapView.tracking); };
@@ -212,22 +219,29 @@ const UI = {
   refreshHud() {
     if (!S.d) return;
     const d = S.d, cur = levelXP(d.level), next = levelXP(d.level + 1);
-    U.$('#hudLvl').textContent = d.level;
+    // 4.6.3: HUD обновляется раз в секунду — пишем только то, что изменилось, иначе браузер каждый раз перерисовывает панель
+    const put = (el, v) => { v = String(v); if (el.textContent !== v) el.textContent = v; };
+    put(U.$('#hudLvl'), d.level);
     const lk = JSON.stringify(d.look);
     if (this._lk !== lk) {
       this._lk = lk;
       U.$('#profileBtn .ava-art').innerHTML = Art.avatar(d.look);
       document.documentElement.style.setProperty('--pc', d.look.cloak);
     }
-    U.$('#hudName').textContent = d.name;
-    U.$('#hudXp').style.width = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%';
+    put(U.$('#hudName'), d.name);
+    const xw = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%', xb = U.$('#hudXp');
+    if (xb._w !== xw) { xb._w = xw; xb.style.width = xw; }
     if (Tut.step()) Tut.show();
     this.storyPill();
     Hints.check();
     const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
-    const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); b.textContent = badge;
+    const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); put(b, badge);
     const inc = U.$('#incenseChip');
-    if (S.incenseActive()) { inc.classList.remove('hidden'); inc.innerHTML = `${Art.item('incense')}<span>${U.fmtTime(d.incenseUntil - Date.now())}</span>`; }
+    if (S.incenseActive()) {
+      inc.classList.remove('hidden');
+      if (!inc.querySelector('span')) inc.innerHTML = `${Art.item('incense')}<span></span>`;
+      put(inc.querySelector('span'), U.fmtTime(d.incenseUntil - Date.now()));
+    }
     else inc.classList.add('hidden');
   },
   // Летопись на карте: текущий шаг главы или «глава завершена» — чтобы сюжет не терялся в меню
@@ -256,6 +270,8 @@ const UI = {
     const c = U.$('#gpsChip');
     const map = { search: ['Ищу GPS…', 'warn'], ok: [`GPS ±${Math.round(acc)} м`, 'ok'], weak: [`GPS ±${Math.round(acc)} м`, 'warn'], off: ['Нет GPS', 'bad'], demo: ['Демо-режим', 'demo'] };
     const [t, cls] = map[state];
+    if (c._k === t + cls) return; // GPS приходит каждую секунду — без изменений не перестраиваем значок
+    c._k = t + cls;
     c.className = 'chip ' + cls; c.innerHTML = `${this.I.pin}<span>${t}</span>`;
     c.onclick = state === 'demo' ? () => this.toast('Двигайся джойстиком или клавишами WASD. Выключить — в настройках.') : null;
   },

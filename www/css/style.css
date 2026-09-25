@@ -55,8 +55,10 @@ small, .small { color: var(--muted); font-size: 12px; }
 /* ---------- карта ---------- */
 #map { position: fixed; inset: 0; background: #d9d3c7; z-index: 0; }
 body.night #map { background: #1b1b1f; }
-#map .leaflet-tile-pane { filter: grayscale(1) sepia(.45) hue-rotate(218deg) saturate(1.5) brightness(.88) contrast(.9); } /* 3.24: подложка в тонах Нави — духи и объекты на первом плане */
-body.night #map .leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) saturate(.55) brightness(.8) contrast(.95); }
+#map { --tile-f: grayscale(1) sepia(.45) hue-rotate(218deg) saturate(1.5) brightness(.88) contrast(.9); } #map .leaflet-tile-pane { filter: var(--tile-f); } /* 3.24: подложка в тонах Нави — духи и объекты на первом плане */
+body.night #map { --tile-f: invert(1) hue-rotate(195deg) saturate(.55) brightness(.8) contrast(.95); }
+/* 4.6.3: у векторной карты тот же фильтр вшит в сами плитки при рисовании (map.js) — видеокарте не нужно пересчитывать его для всего экрана каждый кадр */
+#map.baked .leaflet-tile-pane { filter: none; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(18, 12, 36, .55) !important; color: #cfc8e6 !important; border-radius: 6px 0 0 0; }
 .leaflet-control-attribution a { color: #e9e3ff !important; }
 .leaflet-bottom.leaflet-right { bottom: calc(var(--sb)); }
@@ -2783,3 +2785,20 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .calm .ts-mentor > .art, .calm .ts-hero > .art { animation: none; }
 /* пока открыто окно или меню, духи на карте под размытой подложкой не двигаются — размытие не пересчитывается каждый кадр */
 body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map * { animation-play-state: paused !important; }
+
+/* ================= 4.6.3: плавнее и холоднее — вид тот же ================= */
+/* движущиеся части рисунков — картинки, их движение делает видеокарта (art.js) */
+.art-stack > .stk.sa { inset: auto; max-width: none; }
+.calm .art-stack > .stk.sa-c { animation: none !important; }
+/* карта и HUD под полностью проявившимся непрозрачным экраном не рисуются (ui.js помечает экран .covers) */
+body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) { visibility: hidden; }
+body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-state: paused !important; }
+/* частицы поимки поднимаются сдвигом (transform), а не через top — тот же путь, но без пересчёта раскладки каждый кадр */
+@supports (height: 1cqh) {
+  .enc-motes { position: absolute; inset: 0; container-type: size; pointer-events: none; }
+  .enc-motes i { top: 105%; animation-name: mote2; }
+  .calm .enc-motes i { top: auto; }
+  @keyframes mote2 { from { transform: translateX(0) translateY(0); } 50% { transform: translateX(20px) translateY(-55cqh); } to { transform: translateX(-10px) translateY(-110cqh); } }
+}
+/* плашки над картой без размытия фона: их фон почти непрозрачный, а размытие пересчитывалось при каждом движении на карте */
+#hud .profile, #hud .chip, #hud .nearby, #storyPill, #tracker { -webkit-backdrop-filter: none; backdrop-filter: none; }
