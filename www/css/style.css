@@ -57,8 +57,9 @@ small, .small { color: var(--muted); font-size: 12px; }
 body.night #map { background: #1b1b1f; }
 #map { --tile-f: grayscale(1) sepia(.45) hue-rotate(218deg) saturate(1.5) brightness(.88) contrast(.9); } #map .leaflet-tile-pane { filter: var(--tile-f); } /* 3.24: подложка в тонах Нави — духи и объекты на первом плане */
 body.night #map { --tile-f: invert(1) hue-rotate(195deg) saturate(.55) brightness(.8) contrast(.95); }
-/* 4.6.3: у векторной карты тот же фильтр вшит в сами плитки при рисовании (map.js) — видеокарте не нужно пересчитывать его для всего экрана каждый кадр */
-#map.baked .leaflet-tile-pane { filter: none; }
+/* 4.9: «Карта Нави» рисуется сразу в своих цветах (js/navmap.js) — фильтр только у запасной карты OSM */
+#map.navmap .leaflet-tile-pane { filter: none; }
+#map.navmap { background: #ece5f5; } body.night #map.navmap { background: #120b25; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(18, 12, 36, .55) !important; color: #cfc8e6 !important; border-radius: 6px 0 0 0; }
 .leaflet-control-attribution a { color: #e9e3ff !important; }
 .leaflet-bottom.leaflet-right { bottom: calc(var(--sb)); }

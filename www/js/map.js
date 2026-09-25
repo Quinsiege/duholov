@@ -70,41 +70,31 @@ const MapView = {
     const night = theme === 'auto' ? U.isNight() : theme === 'dark';
     if (night === this.night) return;
     this.night = night;
+    const nav = typeof NavMap !== 'undefined';
     if (!this.tiles) {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
+        // 4.9: «Карта Нави» — своя отрисовка (js/navmap.js); без неё — стандартная светлая с CSS-фильтром тонов Нави
         this.tiles = protomapsL.leafletLayer({
           url: ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES,
-          flavor: 'light', lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
-        });
-        this.bakeTiles(this.tiles);
-        this.tiles.addTo(this.map);
+          lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`, ...(nav ? NavMap.theme(night) : { flavor: 'light' }),
+        }).addTo(this.map);
+        if (nav) {
+          U.$('#map').classList.add('navmap');
+          // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
+          if (document.fonts) Promise.all(["400 12px 'Philosopher'", "700 12px 'Philosopher'", "400 12px 'Ruslan Display'"].map(f => document.fonts.load(f).catch(() => {})))
+            .then(() => { this.tiles.clearLayout(); this.tiles.rerenderTiles(); });
+        }
       } else {
         this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
       }
+    } else if (nav && this.tiles.rerenderTiles) {
+      // день ↔ ночь: другая палитра — перерисовать плитки и подписи
+      Object.assign(this.tiles, NavMap.theme(night));
+      this.tiles.clearLayout(); this.tiles.rerenderTiles();
     }
     document.body.classList.toggle('night', night);
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
-    if (this._baked) {
-      const f = getComputedStyle(this._baked).getPropertyValue('--tile-f').trim();
-      if (f !== this.tileF) { const redraw = this.tileF != null; this.tileF = f; if (redraw) this.tiles.rerenderTiles(); }
-    }
-  },
-  // 4.6.3: фильтр тонов Нави (--tile-f в style.css) вшивается в плитку один раз, когда она нарисована, —
-  // вместо CSS-фильтра всего слоя, который видеокарта пересчитывала в каждом кадре любой анимации на экране
-  bakeTiles(layer) {
-    const box = U.$('#map');
-    if (!box || typeof CanvasRenderingContext2D === 'undefined' || !('filter' in CanvasRenderingContext2D.prototype)) return;
-    const self = this, orig = layer.renderTile;
-    layer.renderTile = function (coords, el, key, done) {
-      return orig.call(this, coords, el, key, () => {
-        const f = self.tileF, x = el.getContext('2d');
-        if (f && f !== 'none') { x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'copy'; x.filter = f; x.drawImage(el, 0, 0); x.restore(); }
-        if (done) done();
-      });
-    };
-    this._baked = box;
-    box.classList.add('baked');
   },
 
   updateBuddy() {
