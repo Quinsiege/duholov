@@ -23,9 +23,11 @@ const Order = {
   },
 
   /* ---------- серия дней ---------- */
-  // Первый вход за день: награда по серии (во время обучения и боёв — позже)
+  // Первый вход за день: награда по серии. Во время обучения, боёв и других окон — не пропускаем, а ждём:
+  // окно появится сразу, как только игрок вернётся к карте (4.7: раньше — только при следующем входе)
   async daily() {
-    if (!S.d || S.d.tut || S.d.streak.day === U.today() || this._daily || Encounter.st || Raid.st || Duel.st) return;
+    if (!S.d || S.d.streak.day === U.today() || this._daily) return;
+    if (this.busy()) { clearTimeout(this._wait); this._wait = setTimeout(() => this.daily(), 1500); return; }
     this._daily = true;
     try {
       const r = await Game.act('daily');
@@ -33,6 +35,12 @@ const Order = {
       await Clans.tribute(); // дань с Капищ — тоже раз в день
     } catch (e) { /* без связи — при следующей проверке */ }
     this._daily = false;
+  },
+  // игрок занят: обучение, поимка, бой, заставка или уже открытое окно
+  busy() {
+    return !!(S.d.tut || Encounter.st || Raid.st || Duel.st || document.hidden
+      || document.querySelector('.tut-scene, .tut-title, .tut-final, .trl, .onb, .enc, .raid')
+      || U.$$('.modal-wrap').some(m => !m.classList.contains('out')));
   },
   rwCell(x) {
     const art = x.k === 'cocoon' ? Art.cocoon(10) : x.k === 'xp' || x.k === 'sparks' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : Art.item(x.k);
