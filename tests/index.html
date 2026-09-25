@@ -706,7 +706,8 @@
   atest('Сервер: капище — с 3 уровня, раз в день, без мгновенных побед', async () => {
     const A = await newPlayer('ug', 55.71, 37.59, 'Зоря');
     const hour = Math.floor(Date.now() / 3600000);
-    const id = poiId(i => !W.riftAt(i, hour), 50000);
+    // Капище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
+    const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 50000);
     const shrine = { id, lat: A.lat, lng: A.lng, name: 'Старый дуб' };
     await refuse(A, 'duelStart', { shrine }, /3 уровня/);
     A.data.level = 3;
