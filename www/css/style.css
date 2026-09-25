@@ -2803,87 +2803,106 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 /* плашки над картой без размытия фона: их фон почти непрозрачный, а размытие пересчитывалось при каждом движении на карте */
 #hud .profile, #hud .chip, #hud .nearby, #storyPill, #tracker { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
-/* ================= 4.7: главный экран — лаковые плашки Нави с золотом (круг меню не трогаем) ================= */
+/* ================= 4.7: главный экран — лаковые таблички Нави с золотом (круг меню не трогаем) =================
+   Все таблички — одна форма: скругление 12px, двойная золотая кайма, уголки-завитки, лак с мягким бликом сверху.
+   Значки — в одинаковых золотых «печатях» (скругление 8px). */
 :root {
-  --hud-lk: var(--lacq), linear-gradient(180deg, rgba(50, 33, 104, .97), rgba(17, 10, 40, .97));
-  --hud-edge: 0 0 0 1px rgba(8, 4, 22, .6), inset 0 0 0 3px rgba(17, 10, 40, .55), inset 0 0 0 4px rgba(243, 207, 107, .13), 0 8px 20px rgba(8, 5, 18, .5);
+  --hud-r: 12px;
+  --hud-seal-r: 8px;
+  --hud-bg: var(--tl) left 2px top 2px / 11px 11px no-repeat, var(--tr) right 2px top 2px / 11px 11px no-repeat,
+    var(--bl) left 2px bottom 2px / 11px 11px no-repeat, var(--br) right 2px bottom 2px / 11px 11px no-repeat,
+    linear-gradient(180deg, rgba(255, 236, 190, .07), rgba(255, 236, 190, 0) 45%), var(--lacq),
+    linear-gradient(180deg, rgba(58, 39, 116, .97), rgba(31, 20, 68, .97) 48%, rgba(15, 9, 36, .98));
+  --hud-sh: 0 0 0 1px rgba(6, 3, 18, .7), 0 10px 22px rgba(6, 3, 18, .5), inset 0 1px 0 rgba(255, 240, 200, .14), inset 0 -10px 18px rgba(0, 0, 0, .22);
+  --hud-seal: radial-gradient(circle at 50% 28%, rgba(255, 255, 255, .1), transparent 60%), linear-gradient(180deg, #3a2676, #170d36);
+  --hud-seal-sh: 0 0 0 1px rgba(243, 207, 107, .75), 0 0 0 2px rgba(10, 5, 26, .9), 0 0 0 3px rgba(243, 207, 107, .22), inset 0 1px 0 rgba(255, 255, 255, .14);
+  --hud-w: min(252px, calc(100vw - 148px));
   --tn-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 16'%3E%3Cpath d='M3 3l5 5-5 5' fill='none' stroke='%23f3cf6b' stroke-opacity='.45' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M9 3l5 5-5 5' fill='none' stroke='%23fde68a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
-/* лёгкая дымка у краёв — плашки читаются на любой карте, днём и ночью */
+/* лёгкая дымка у краёв — таблички читаются на любой карте, днём и ночью */
 #hud::before, #hud::after { content: ''; position: absolute; left: 0; right: 0; z-index: -1; pointer-events: none; }
-#hud::before { top: 0; height: calc(170px + var(--st)); background: linear-gradient(180deg, rgba(14, 7, 34, .42), rgba(14, 7, 34, .16) 55%, rgba(14, 7, 34, 0)); }
+#hud::before { top: 0; height: calc(180px + var(--st)); background: linear-gradient(180deg, rgba(14, 7, 34, .44), rgba(14, 7, 34, .16) 55%, rgba(14, 7, 34, 0)); }
 #hud::after { bottom: 0; height: calc(190px + var(--sb)); background: linear-gradient(0deg, rgba(14, 7, 34, .4), rgba(14, 7, 34, .12) 55%, rgba(14, 7, 34, 0)); }
 
-/* профиль: медальон с золотым ободом, печать уровня, имя золотом, шкала опыта с насечками */
-#hud .profile { position: relative; gap: 11px; padding: 5px 20px 5px 5px; border-radius: 36px 18px 18px 36px; border: 1px solid rgba(243, 207, 107, .55);
-  background: var(--tr) right 3px top 3px / 15px 15px no-repeat, var(--br) right 3px bottom 3px / 15px 15px no-repeat, var(--hud-lk); box-shadow: var(--hud-edge); }
-#hud .avatar { width: 54px; height: 54px; padding: 3px; background: conic-gradient(from 200deg, #fff6c8, #f3cf6b 16%, #b8691a 32%, #fde68a 50%, #a8560f 68%, #f7d77e 84%, #fff6c8);
-  box-shadow: 0 0 0 1px rgba(70, 30, 4, .85), 0 0 14px rgba(251, 191, 36, .45), 0 4px 10px rgba(0, 0, 0, .45); }
-#hud .avatar::before { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 1.5px dotted rgba(243, 207, 107, .6); pointer-events: none; }
-#hud .avatar .ava-art { background: radial-gradient(circle at 50% 35%, #33206a, #120a2a 75%); box-shadow: inset 0 0 0 1.5px rgba(50, 20, 3, .9), inset 0 0 10px rgba(0, 0, 0, .6); }
-#hud .avatar span { right: -7px; bottom: -6px; min-width: 25px; height: 25px; padding: 0 5px; border-radius: 13px; font-family: var(--f-display); font-weight: 400; font-size: 13px; color: #3b1a02;
-  background: radial-gradient(circle at 50% 30%, #fffbe0, #f3cf6b 55%, #c47a1c); border: 2px solid #1a0f36; box-shadow: 0 0 0 1px #f3cf6b, 0 3px 8px rgba(0, 0, 0, .5); }
-#hud .pinfo { min-width: 104px; }
-#hudName { font-family: var(--f-display); font-weight: 400; font-size: 18px; letter-spacing: .4px; line-height: 1.15; max-width: 140px; padding-right: 2px;
+/* общая табличка */
+#hud .profile, #hud .chip, #storyPill, #tracker, #hud .nearby, #hud .recenter {
+  border-radius: var(--hud-r); border: 1px solid rgba(243, 207, 107, .62); outline: 1px solid rgba(243, 207, 107, .16); outline-offset: -5px;
+  background: var(--hud-bg); box-shadow: var(--hud-sh); color: #f5efff; }
+/* общая печать для значков */
+#hud .chip > :first-child:not(span), #storyPill .sp-ico, #tracker .tr-arrow {
+  flex: none; box-sizing: border-box; display: grid; place-items: center; border-radius: var(--hud-seal-r); background: var(--hud-seal); box-shadow: var(--hud-seal-sh); }
+
+/* профиль: портрет в золотой раме, печать уровня, имя золотом, шкала опыта с насечками */
+#hud .profile { position: relative; width: var(--hud-w); gap: 12px; padding: 7px 14px 7px 7px; }
+#hud .avatar { flex: none; width: 54px; height: 54px; padding: 3px; border-radius: 10px;
+  background: linear-gradient(145deg, #fff6c8, #f3cf6b 28%, #b8691a 52%, #fde68a 76%, #a8560f);
+  box-shadow: 0 0 0 1px rgba(70, 30, 4, .9), 0 0 12px rgba(251, 191, 36, .35), 0 4px 10px rgba(0, 0, 0, .45); }
+#hud .avatar::before { content: none; }
+#hud .avatar .ava-art { border-radius: 7px; background: radial-gradient(circle at 50% 35%, #33206a, #120a2a 75%); box-shadow: inset 0 0 0 1px rgba(50, 20, 3, .9), inset 0 0 10px rgba(0, 0, 0, .6); }
+#hud .avatar span { right: -6px; bottom: -6px; min-width: 24px; height: 22px; padding: 0 5px; border-radius: 7px; font-family: var(--f-display); font-weight: 400; font-size: 13px; line-height: 1; color: #3b1a02;
+  background: linear-gradient(180deg, #fffbe0, #f3cf6b 50%, #c47a1c); border: 1.5px solid #1a0f36; box-shadow: 0 0 0 1px #f3cf6b, 0 3px 8px rgba(0, 0, 0, .5); }
+#hud .pinfo { flex: 1; min-width: 0; }
+#hudName { display: block; font-family: var(--f-display); font-weight: 400; font-size: 18px; letter-spacing: .4px; line-height: 1.2; max-width: none; padding-right: 2px;
   background: linear-gradient(180deg, #fffbea, #f7dd8f 55%, #e0a93e); -webkit-background-clip: text; background-clip: text; color: transparent; }
-#hud .xpbar { position: relative; height: 8px; margin-top: 7px; border-radius: 4px; overflow: visible;
-  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(243, 207, 107, .2) calc(10% - 1px) 10%), rgba(6, 3, 16, .8);
-  box-shadow: 0 0 0 1px rgba(243, 207, 107, .45), inset 0 1px 3px rgba(0, 0, 0, .7); }
-#hud .xpbar i { position: relative; min-width: 4px; border-radius: 4px; background: linear-gradient(90deg, #2dd4bf, #86efac 40%, #fde047 78%, #fff7d6); box-shadow: 0 0 8px rgba(253, 224, 71, .45); }
+#hud .xpbar { position: relative; height: 8px; margin: 8px 6px 0 0; border-radius: 3px; overflow: visible;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(243, 207, 107, .22) calc(10% - 1px) 10%), rgba(6, 3, 16, .85);
+  box-shadow: 0 0 0 1px rgba(243, 207, 107, .5), 0 0 0 2px rgba(6, 3, 16, .6), inset 0 1px 3px rgba(0, 0, 0, .7); }
+#hud .xpbar i { position: relative; min-width: 4px; border-radius: 3px; background: linear-gradient(90deg, #2dd4bf, #86efac 40%, #fde047 78%, #fff7d6); box-shadow: 0 0 8px rgba(253, 224, 71, .45); }
 #hud .xpbar i::after { content: ''; position: absolute; right: -5px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; transform: rotate(45deg);
   background: linear-gradient(135deg, #fffbeb, #f59e0b); border: 1px solid #7c3a0a; box-shadow: 0 0 7px rgba(251, 191, 36, .9); }
 
-/* чипы справа: лаковые таблички, значок — в золотом кольце */
-#hud .hud-right { gap: 7px; }
-#hud .chip { gap: 7px; padding: 4px 13px 4px 4px; border-radius: 999px; color: #f3edff; border: 1px solid rgba(243, 207, 107, .5); background: var(--hud-lk); box-shadow: var(--hud-edge); }
-#hud .chip > :first-child:not(span) { flex: none; box-sizing: border-box; width: 27px; height: 27px; padding: 4px; border-radius: 50%; display: grid; place-items: center;
-  background: radial-gradient(circle at 50% 32%, #3d2878, #140b30 75%); box-shadow: 0 0 0 1px rgba(243, 207, 107, .6), inset 0 1px 2px rgba(255, 255, 255, .12); }
-#hud .chip:not(:has(span)) { padding: 4px; }
-#hud .chip span { font-size: 13.5px; }
+/* чипы справа — одной высоты, значок в печати */
+#hud .hud-right { gap: 8px; }
+#hud .chip { gap: 8px; height: 38px; padding: 0 13px 0 5px; }
+#hud .chip > :first-child:not(span) { width: 28px; height: 28px; padding: 4px; }
+#hud .chip:not(:has(span)) { padding: 0 5px; }
+#hud .chip span { font-family: var(--f-head); font-weight: 700; font-size: 13.5px; }
+#hud .chip-row { gap: 8px; }
 #hud .chip.ok .ico { color: #4ade80; } #hud .chip.warn .ico { color: #fcd34d; } #hud .chip.bad .ico { color: #f87171; } #hud .chip.demo .ico { color: #c4b5fd; }
-#hud .chip.ok > :first-child { box-shadow: 0 0 0 1px rgba(74, 222, 128, .7), 0 0 8px rgba(74, 222, 128, .3), inset 0 1px 2px rgba(255, 255, 255, .12); }
-#hud .chip.bad > :first-child { box-shadow: 0 0 0 1px rgba(248, 113, 113, .75), 0 0 8px rgba(248, 113, 113, .35), inset 0 1px 2px rgba(255, 255, 255, .12); }
-/* событие недели — золотая кайма и сияние */
-#hud .chip.event { border: 1.5px solid transparent; color: #fff4c7;
-  background: var(--lacq) padding-box, linear-gradient(180deg, rgba(62, 40, 118, .97), rgba(22, 12, 48, .97)) padding-box, linear-gradient(100deg, #9a4a0c, #fde68a 30%, #f59e0b 55%, #fff3b0 75%, #9a4a0c) border-box;
-  box-shadow: 0 0 0 1px rgba(8, 4, 22, .6), 0 0 16px rgba(251, 191, 36, .35), 0 8px 20px rgba(8, 5, 18, .5); }
-#hud .chip.event > :first-child:not(span) { background: radial-gradient(circle at 50% 35%, #fff3b0, #f59e0b 60%, #92400e); box-shadow: 0 0 0 1px #5a2a06, 0 0 10px rgba(251, 191, 36, .6); color: #3b1a02; }
+#hud .chip.ok > :first-child { box-shadow: 0 0 0 1px rgba(74, 222, 128, .75), 0 0 0 2px rgba(10, 5, 26, .9), 0 0 8px rgba(74, 222, 128, .35), inset 0 1px 0 rgba(255, 255, 255, .14); }
+#hud .chip.bad > :first-child { box-shadow: 0 0 0 1px rgba(248, 113, 113, .8), 0 0 0 2px rgba(10, 5, 26, .9), 0 0 8px rgba(248, 113, 113, .4), inset 0 1px 0 rgba(255, 255, 255, .14); }
+/* событие недели и праздник — кайма из кованого золота (бирюзы) */
+#hud .chip.event { border: 1.5px solid transparent; color: #fff4c7; outline-color: rgba(253, 224, 71, .22);
+  background: var(--hud-bg), linear-gradient(100deg, #9a4a0c, #fde68a 30%, #f59e0b 55%, #fff3b0 75%, #9a4a0c) border-box;
+  background-clip: padding-box, padding-box, padding-box, padding-box, padding-box, padding-box, padding-box, border-box;
+  box-shadow: var(--hud-sh), 0 0 16px rgba(251, 191, 36, .3); }
+#hud .chip.event > :first-child:not(span) { background: linear-gradient(180deg, #fff3b0, #f59e0b 60%, #92400e); box-shadow: 0 0 0 1px #5a2a06, 0 0 0 2px rgba(10, 5, 26, .9), 0 0 10px rgba(251, 191, 36, .55); color: #3b1a02; }
 #hud .chip.event .ev-star { color: #3b1a02; font-size: 15px; }
-#hud .chip.hol { border: 1.5px solid transparent;
-  background: var(--lacq) padding-box, linear-gradient(180deg, rgba(30, 58, 84, .97), rgba(12, 22, 44, .97)) padding-box, linear-gradient(100deg, #0f766e, #99f6e4 40%, #2dd4bf 70%, #0f766e) border-box; }
+#hud .chip.hol { border: 1.5px solid transparent; outline-color: rgba(94, 234, 212, .2);
+  background: var(--hud-bg), linear-gradient(100deg, #0f766e, #99f6e4 40%, #2dd4bf 70%, #0f766e) border-box;
+  background-clip: padding-box, padding-box, padding-box, padding-box, padding-box, padding-box, padding-box, border-box; }
 
-/* Летопись и Следопыт: печать-ромб и табличка */
-#storyPill, #tracker { border-radius: 18px; border: 1px solid rgba(243, 207, 107, .5); background: var(--hud-lk); box-shadow: var(--hud-edge); }
-#storyPill { gap: 12px; padding: 7px 16px 7px 11px; }
-#storyPill .sp-ico { flex: none; width: 30px; height: 30px; margin: 2px 0; display: grid; place-items: center; transform: rotate(45deg); border-radius: 8px;
-  background: radial-gradient(circle at 50% 30%, #3d2878, #140b30 80%); box-shadow: 0 0 0 1px rgba(243, 207, 107, .7), 0 0 0 3px rgba(20, 11, 44, .9), 0 0 0 4px rgba(243, 207, 107, .25); }
-#storyPill .sp-ico .ico { transform: rotate(-45deg); width: 18px; height: 18px; color: #fde68a; }
-#storyPill .sp-t { font-size: 11.5px; letter-spacing: .6px; color: #d9c48a; }
-#storyPill .sp-s { font-size: 14px; color: #f7f1ff; }
-#storyPill.ready { border-color: rgba(253, 224, 71, .9); box-shadow: var(--hud-edge), 0 0 18px rgba(251, 191, 36, .5); }
-#storyPill.ready .sp-ico { background: radial-gradient(circle at 50% 30%, #fff3b0, #f59e0b 65%, #92400e); }
+/* Летопись и Следопыт — той же ширины, что и профиль */
+#storyPill, #tracker { width: var(--hud-w); max-width: none; top: calc(88px + var(--st)); }
+#storyPill:not(.hidden) ~ #tracker { top: calc(144px + var(--st)); } /* зазоры между табличками — 8px, как у чипов справа */
+#storyPill { gap: 12px; padding: 7px 14px 7px 8px; }
+#storyPill .sp-ico { width: 32px; height: 32px; margin: 0; transform: none; }
+#storyPill .sp-ico .ico { transform: none; width: 18px; height: 18px; color: #fde68a; }
+#storyPill .sp-t { font-family: var(--f-head); font-size: 11.5px; letter-spacing: .5px; color: #d9c48a; }
+#storyPill .sp-s { font-family: var(--f-head); font-size: 14px; color: #f7f1ff; }
+#storyPill.ready, #tracker.near { border-color: rgba(253, 224, 71, .95); box-shadow: var(--hud-sh), 0 0 18px rgba(251, 191, 36, .45); }
+#storyPill.ready .sp-ico { background: linear-gradient(180deg, #fff3b0, #f59e0b 60%, #92400e); }
 #storyPill.ready .sp-ico .ico { color: #3b1a02; }
-#tracker { padding: 6px 10px 6px 6px; }
-#tracker .tr-arrow { width: 38px; height: 38px; color: #5eead4; background: radial-gradient(circle at 50% 32%, #1f4a5c, #0b1a2c 75%);
-  box-shadow: 0 0 0 1px rgba(94, 234, 212, .6), 0 0 0 3px rgba(12, 22, 44, .9), 0 0 0 4px rgba(243, 207, 107, .35); }
-#tracker.near { border-color: rgba(253, 224, 71, .9); box-shadow: var(--hud-edge), 0 0 18px rgba(251, 191, 36, .5); }
-#tracker.near .tr-arrow { color: #fde68a; background: radial-gradient(circle at 50% 32%, #4a3310, #1a0f06 75%); box-shadow: 0 0 0 1px rgba(253, 224, 71, .8), 0 0 0 3px rgba(26, 15, 6, .9), 0 0 0 4px rgba(243, 207, 107, .5); }
+#tracker { gap: 10px; padding: 7px 8px 7px 8px; }
+#tracker .tr-arrow { width: 36px; height: 36px; color: #5eead4; }
+#tracker.near .tr-arrow { color: #3b1a02; background: linear-gradient(180deg, #fff3b0, #f59e0b 60%, #92400e); }
+#tracker .tr-main { flex: 1; }
 #tracker .tr-main b { font-family: var(--f-head); font-size: 14px; color: #f7f1ff; }
 #tracker .tr-main small { font-family: var(--f-head); font-size: 12px; color: #d9c48a; }
+#tracker .tr-x { color: #d9c48a; }
 
-/* «К себе» — золотой компас */
-#hud .recenter { width: 52px; height: 52px; border: 0; color: #fde68a; background: radial-gradient(circle at 50% 30%, #3f2a7c, #150d2e 72%);
-  box-shadow: 0 0 0 1px rgba(60, 25, 4, .85), 0 0 0 3px #d9a441, 0 0 0 4px rgba(60, 25, 4, .7), 0 0 14px rgba(251, 191, 36, .35), 0 8px 18px rgba(0, 0, 0, .45); }
-#hud .recenter::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 1px dashed rgba(243, 207, 107, .45); pointer-events: none; }
-#hud .recenter .ico { width: 24px; height: 24px; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .5)); }
+/* «К себе» — табличка-компас той же формы */
+#hud .recenter { width: 50px; height: 50px; color: #fde68a; }
+#hud .recenter::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; border: 1px dashed rgba(243, 207, 107, .4); pointer-events: none; }
+#hud .recenter .ico { position: relative; width: 24px; height: 24px; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .5)); }
 
-/* «Рядом» — табличка с уголками, духи на светящихся подставках */
-#hud .nearby { padding: 9px 13px 7px; border-radius: 20px; border: 1px solid rgba(243, 207, 107, .55); background: var(--orn-sm), var(--hud-lk); box-shadow: var(--hud-edge); }
+/* «Рядом» — духи на светящихся подставках, подпись между ромбами */
+#hud .nearby { padding: 9px 13px 7px; }
 #hud .nearby .nb-arts { gap: 6px; min-height: 36px; }
 #hud .nearby .nb-arts div { position: relative; width: 34px; height: 34px; }
 #hud .nearby .nb-arts div::before { content: ''; position: absolute; left: 0; right: 0; bottom: -3px; height: 10px; border-radius: 50%; background: radial-gradient(closest-side, rgba(253, 224, 71, .45), rgba(253, 224, 71, 0)); }
 #hud .nearby .nb-arts div > * { position: relative; }
-#hud .nearby span { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 3px; font-family: var(--f-display); font-weight: 400; font-size: 14.5px; letter-spacing: .5px; color: #fde68a; }
+#hud .nearby span { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 3px; font-family: var(--f-head); font-weight: 700; font-size: 14px; letter-spacing: .6px; color: #fde68a; }
 #hud .nearby span::before, #hud .nearby span::after { content: ''; width: 5px; height: 5px; transform: rotate(45deg); background: #f3cf6b; box-shadow: 0 0 5px rgba(251, 191, 36, .7); }
 
 /* ================= 4.7: подсветка обучения — затемнение вокруг цели, золотая рамка, волна и указатель ================= */
@@ -2926,7 +2945,3 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 #coach.info { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 #coach.info:active, .ts-box:active { filter: brightness(1.06); }
 #coach.wait .coach-ok, .ts-box.wait .ts-next { opacity: .45; }
-/* отступы между табличками слева: профиль стал выше — Летопись и Следопыт ниже, с зазором 12px */
-#storyPill, #tracker { top: calc(88px + var(--st)); }
-#storyPill:not(.hidden) ~ #tracker { top: calc(146px + var(--st)); }
-#storyPill .sp-ico { width: 28px; height: 28px; margin: 1px 0; }
