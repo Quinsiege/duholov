@@ -94,12 +94,19 @@ jobs:
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          gradle -p android assembleRelease --no-daemon
-          mv android/app/build/outputs/apk/release/app-release.apk duholov.apk
+          gradle -p android assembleSiteRelease assembleRustoreRelease --no-daemon
+          mv android/app/build/outputs/apk/site/release/app-site-release.apk duholov.apk
+          mv android/app/build/outputs/apk/rustore/release/app-rustore-release.apk duholov-rustore.apk
       - uses: actions/upload-artifact@v4
         with:
           name: duholov-apk
           path: duholov.apk
+      # 4.3.2: приложение для RuStore — загружать в консоль RuStore (Actions → этот запуск → Artifacts)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duholov-rustore-apk
+          path: duholov-rustore.apk
+          retention-days: 90
 
   server:
     name: Сервер игры (duholov.ru)

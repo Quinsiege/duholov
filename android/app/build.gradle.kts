@@ -16,6 +16,15 @@ android {
         versionName = "4.1.0"
     }
 
+    // 4.3.2: где распространяется приложение. site — APK с сайта duholov.ru (обновление — скачать APK),
+    // rustore — магазин RuStore (обновления — только через магазин). Игра узнаёт канал по User-Agent («store=…»).
+    flavorDimensions += "store"
+    productFlavors {
+        create("site") { dimension = "store"; buildConfigField("String", "STORE", "\"site\"") }
+        create("rustore") { dimension = "store"; buildConfigField("String", "STORE", "\"rustore\"") }
+    }
+    buildFeatures { buildConfig = true }
+
     // 4.1: релизная подпись постоянным ключом — иначе новое приложение не ставится поверх старого.
     // Ключ и пароль — в секретах GitHub (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD), CI кладёт файл
     // и передаёт путь в ANDROID_KEYSTORE_FILE. Без них (проверки Pull Request) собирается только debug.

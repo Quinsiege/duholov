@@ -85,7 +85,8 @@ class MainActivity : ComponentActivity() {
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
             setGeolocationEnabled(true)
-            userAgentString = "$userAgentString DuholovApp/$WRAPPER_VERSION"
+            // канал распространения: у приложения из магазина игра не предлагает скачивать APK (обновления — через магазин)
+            userAgentString = "$userAgentString DuholovApp/$WRAPPER_VERSION" + (if (BuildConfig.STORE != "site") " (store=${BuildConfig.STORE})" else "")
         }
 
         web.webViewClient = object : WebViewClient() {
