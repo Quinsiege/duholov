@@ -11,7 +11,7 @@ const NavMap = {
   P: {
     night: {
       bg: '#120b25', earth: '#120b25', urban: '#160e2c', plaza: '#1c1438', park: '#0f2c24', parkEdge: '#1d5a44', wood: '#0b261e', grass: '#11302a',
-      sand: '#2f2519', water: '#0b3142', waterEdge: '#2dd4bf', river: '#1b8a8e', bld: '#221840', bldHi: '#2d2156', bldEdge: 'rgba(243,207,107,.26)',
+      sand: '#2f2519', water: '#0b3142', waterEdge: '#2dd4bf', river: '#1b8a8e', bld: '#2c2154', bldHi: '#392b6e', bldEdge: 'rgba(243,207,107,.45)',
       casing: '#06030d', major: '#e0b45a', majorHi: 'rgba(255, 246, 214, .55)', majorGlow: 'rgba(251,191,36,.14)', minor: '#3f3374', minorCase: '#0a0618', path: '#6d5ca6', rail: '#7a5d34',
       label: '#ece6ff', labelHalo: '#0b0620', labelMajor: '#fde6a8', place: '#f3cf6b', waterLabel: '#7fe8dc', poi: '#f3cf6b',
       tree: 'rgba(110, 231, 183, .2)', lattice: 'rgba(243, 207, 107, .045)', lamps: 1, windows: 'rgba(255, 196, 102, .55)',
@@ -35,7 +35,7 @@ const NavMap = {
     },
     day: {
       bg: '#ebe4f4', earth: '#ece5f5', urban: '#e4dcf0', plaza: '#e0d6ef', park: '#cfe7d6', parkEdge: '#8fc7a4', wood: '#bfdcc8', grass: '#d6ecdb',
-      sand: '#efe2c7', water: '#a9dcdc', waterEdge: '#3fb5b0', river: '#6cc3c0', bld: '#d4c8ea', bldHi: '#c5b5e3', bldEdge: '#a592d4',
+      sand: '#efe2c7', water: '#a9dcdc', waterEdge: '#3fb5b0', river: '#6cc3c0', bld: '#d4c8ea', bldHi: '#c5b5e3', bldEdge: '#8f7bc8',
       casing: '#c9a24c', major: '#fffaf0', majorHi: 'rgba(233, 196, 106, .55)', majorGlow: 'rgba(217,178,92,.25)', minor: '#fbf8ff', minorCase: '#c8bade', path: '#9a86cc', rail: '#b08d57',
       label: '#3b2a6b', labelHalo: '#f7f3ff', labelMajor: '#5a3a0a', place: '#7a4c0e', waterLabel: '#1f7c78', poi: '#a86a18',
       tree: 'rgba(22, 101, 52, .16)', lattice: 'rgba(59, 42, 107, .045)', lamps: 0, windows: '',
@@ -124,6 +124,10 @@ const NavMap = {
     return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',')})`;
   },
 
+  // высота дома, м (без данных — трёхэтажный) и насколько поднимается его крыша в точках плитки на масштабе zd
+  height(f) { return f.props.height > 0 ? f.props.height : 8; },
+  lift(H, zd) { return Math.min(15, 2.1 * Math.sqrt(H) * Math.pow(2, (zd - 17) * .85)); },
+
   /* 4.11: объёмные дома. Стены, обращённые к зрителю (на юг экрана), поднимаются от основания, крыша сдвинута вверх
      на высоту дома (чем выше дом и крупнее масштаб — тем выше, но не больше запаса плитки в 16 точек — иначе шов).
      Сторона, куда светит солнце (утром восток, вечером запад), светлее; ночью в стенах горят окна.
@@ -143,8 +147,8 @@ const NavMap = {
         let gx0 = Infinity, gx1 = -Infinity, gy1 = -Infinity;
         for (const r of geom) for (const pt of r) { if (pt.x < gx0) gx0 = pt.x; if (pt.x > gx1) gx1 = pt.x; if (pt.y > gy1) gy1 = pt.y; }
         const zd = z + (bw > 0 ? Math.log2((gx1 - gx0) / bw) : 0);
-        const H = f.props.height > 0 ? f.props.height : 8;
-        const dy = Math.min(15, 2.1 * Math.sqrt(H) * Math.pow(2, (zd - 17) * .85));
+        const H = NavMap.height(f);
+        const dy = NavMap.lift(H, zd);
         b.items.push({ geom, f, H, dy, zd, key: gy1 + b.T.f / b.T.d });
       },
     };
@@ -187,11 +191,17 @@ const NavMap = {
               ctx.fill(); ctx.strokeStyle = shades[k]; ctx.lineWidth = .4; ctx.stroke(); // без щелей между гранями
             });
             if (lit) { ctx.fillStyle = facade; ctx.fill(all2); }
+            // 4.13: контур дома — рёбра видимых стен (низ, углы) тонкой линией цвета кромки
+            if (zd >= 15.5) {
+              ctx.beginPath();
+              walls.forEach(w => { for (let i = 0; i < w.length; i += 2) { const a = w[i], b = w[i + 1]; ctx.moveTo(a.x, a.y - dy); ctx.lineTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x, b.y - dy); } });
+              ctx.globalAlpha = .7; ctx.strokeStyle = p.bldEdge; ctx.lineWidth = zd >= 16.5 ? .7 : .45; ctx.stroke(); ctx.globalAlpha = 1;
+            }
           }
           roofPath();
           ctx.globalAlpha = zd < 14 ? .6 : 1;
           ctx.fillStyle = H > 24 ? bldHi : p.bld; ctx.fill();
-          if (zd >= 15.5) { ctx.strokeStyle = p.bldEdge; ctx.lineWidth = zd >= 16.5 ? .8 : .5; ctx.stroke(); }
+          if (zd >= 15) { ctx.strokeStyle = p.bldEdge; ctx.lineWidth = zd >= 16.5 ? 1.2 : zd >= 15.5 ? .8 : .5; ctx.lineJoin = 'round'; ctx.stroke(); }
           ctx.globalAlpha = 1;
         }
         ctx.restore();
@@ -251,7 +261,7 @@ const NavMap = {
       lamp(17, 52, ['minor_road']);
     }
     // 4.11: дома объёмные — стены, окна, крыши (высокие светлее, тонкая кромка); поверх улиц и фонарей
-    paint.push(...this.extrude(p, p.bldHi));
+    const bldRules = this.extrude(p, p.bldHi); // отдельным слоем над зоной Ловчего (см. MapView.setTiles)
     const name = ['name:ru', 'name'], font = (w8, px, fam) => `${w8} ${px}px ${fam}`;
     const label = [
       { dataLayer: 'places', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.place, stroke: p.labelHalo, width: 3, font: font(400, 15, "'Ruslan Display', serif"), textTransform: 'uppercase', letterSpacing: 2 }), filter: (z, f) => ['neighbourhood', 'macrohood', 'locality', 'suburb'].includes(kind(f)) },
@@ -265,6 +275,6 @@ const NavMap = {
         new S.OffsetTextSymbolizer({ labelProps: name, fill: p.poi, stroke: p.labelHalo, width: 2.4, offsetX: 6, offsetY: 4, font: font('italic 400', 11, "'Philosopher', serif") }),
       ]), filter: (z, f) => ['place_of_worship', 'museum', 'theatre', 'attraction', 'castle', 'station'].includes(kind(f)) && (f.props.min_zoom || 99) <= z - 1 },
     ];
-    return { paintRules: paint, labelRules: label, backgroundColor: p.bg };
+    return { paintRules: paint, bldRules, labelRules: label, backgroundColor: p.bg };
   },
 };
