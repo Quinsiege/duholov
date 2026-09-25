@@ -1731,74 +1731,236 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .tut-final .btn { position: relative; max-width: 320px; }
 .calm .tf-rays, .calm .ts-star { animation: none; }
 
-/* ---------- 4.0: трейлер «Тонкая ночь» ---------- */
-.trl { position: fixed; inset: 0; z-index: 9500; overflow: hidden; background: #05020d; color: #fff; transition: opacity .6s; }
-.trl.out { opacity: 0; }
-.trl-sky { position: absolute; inset: 0; background: linear-gradient(180deg, #0b0620 0%, #1a0f3d 55%, #2a1553 78%, #05020d 100%); transition: background 2s, filter 1s; }
-.trl-star { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; animation: blink 2.6s ease-in-out infinite; }
-.trl-star:nth-child(3n) { width: 3px; height: 3px; animation-delay: -1s; } .trl-star:nth-child(4n) { animation-delay: -1.8s; }
-.trl-star:nth-child(1) { left: 37%; top: 23%; } .trl-star:nth-child(2) { left: 74%; top: 46%; } .trl-star:nth-child(3) { left: 14%; top: 14%; } .trl-star:nth-child(4) { left: 51%; top: 37%; }
-.trl-star:nth-child(5) { left: 88%; top: 5%; } .trl-star:nth-child(6) { left: 28%; top: 28%; } .trl-star:nth-child(7) { left: 65%; top: 51%; } .trl-star:nth-child(8) { left: 5%; top: 19%; }
-.trl-star:nth-child(9) { left: 42%; top: 42%; } .trl-star:nth-child(10) { left: 79%; top: 10%; } .trl-star:nth-child(11) { left: 19%; top: 33%; } .trl-star:nth-child(12) { left: 56%; top: 1%; }
-.trl-star:nth-child(13) { left: 93%; top: 24%; } .trl-star:nth-child(14) { left: 33%; top: 47%; } .trl-star:nth-child(15) { left: 70%; top: 15%; } .trl-star:nth-child(16) { left: 10%; top: 38%; }
-.trl-star:nth-child(17) { left: 47%; top: 6%; } .trl-star:nth-child(18) { left: 84%; top: 29%; } .trl-star:nth-child(19) { left: 24%; top: 52%; } .trl-star:nth-child(20) { left: 61%; top: 20%; }
-.trl-star:nth-child(21) { left: 1%; top: 43%; } .trl-star:nth-child(22) { left: 38%; top: 11%; } .trl-star:nth-child(23) { left: 75%; top: 34%; } .trl-star:nth-child(24) { left: 15%; top: 2%; }
-.trl-moon { position: absolute; right: 16%; top: 12%; width: 84px; height: 84px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fffbeb, #fde68a 60%, #fbbf24);
-  box-shadow: 0 0 50px rgba(253, 230, 138, .5); transition: background 2.5s, box-shadow 2.5s, transform 2.5s; }
-.trl-city { position: absolute; left: -10%; right: -10%; bottom: 0; height: 36%; }
-.trl-city svg { width: 100%; height: 100%; display: block; }
-.trl.on .trl-city { animation: trlPan 44s linear forwards; }
-@keyframes trlPan { to { transform: translateX(-8%); } }
-.trl-win rect { animation: blink 3s ease-in-out infinite; } .trl-win rect:nth-child(2n) { animation-delay: -1.3s; }
-.trl-rift { position: absolute; left: 44%; top: 4%; width: 12%; height: 58%; opacity: 0; filter: drop-shadow(0 0 14px #c084fc) drop-shadow(0 0 30px #7c3aed); transition: opacity .6s; }
-.trl-rift path { fill: none; stroke: #f5d0fe; stroke-width: 3.5; stroke-linejoin: round; stroke-dasharray: 260; stroke-dashoffset: 260; vector-effect: non-scaling-stroke; }
-.trl-kos, .trl-flood, .trl-hide, .trl-order, .trl-mentor, .trl-logo { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .8s; }
-.trl-kos { display: grid; place-items: center; padding-bottom: 8vh; }
-.trl-kos > .art { width: min(58vw, 280px); height: auto; transform: scale(.3); filter: drop-shadow(0 0 30px #4ade80); transition: transform 4.5s cubic-bezier(.2, .8, .2, 1); }
-.trl-flood div { position: absolute; left: -30%; top: calc(8% + var(--y)); width: 110px; height: 110px; }
-.trl-hide { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 0 12px; }
-.trl-card { width: 30%; max-width: 140px; aspect-ratio: .78; border-radius: 18px; background: linear-gradient(180deg, rgba(76, 42, 145, .75), rgba(20, 10, 44, .9)); border: 1px solid rgba(253, 224, 71, .4);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px; transform: translateY(40px); opacity: 0; transition: transform .7s, opacity .7s; transition-delay: calc(var(--i) * 1.4s + .2s); }
-.trl-card .art { width: 100%; height: auto; } .trl-card span { font-size: 12px; font-weight: 700; color: var(--gold2); }
-.trl-order { display: grid; place-items: center; }
-.trl-rays { position: absolute; width: 900px; height: 900px; border-radius: 50%; opacity: .5; background: repeating-conic-gradient(rgba(253, 224, 71, .45) 0 7deg, transparent 7deg 20deg);
-  -webkit-mask: radial-gradient(closest-side, #000 15%, transparent); mask: radial-gradient(closest-side, #000 15%, transparent); animation: spin 26s linear infinite; }
-.trl-charm { width: 160px; height: 160px; filter: drop-shadow(0 0 40px rgba(253, 224, 71, .8)); transform: scale(.2) rotate(-90deg); transition: transform 1.6s cubic-bezier(.2, 1.4, .3, 1); }
-.trl-mentor { display: grid; place-items: center; padding-bottom: 14vh; }
-.trl-mentor svg { width: min(66vw, 300px); height: auto; filter: drop-shadow(0 0 30px rgba(74, 222, 128, .45)); transform: translateY(30px); transition: transform 3s; }
-.trl-logo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; background: radial-gradient(60% 45% at 50% 42%, rgba(76, 42, 145, .9), rgba(5, 2, 13, .96)); }
-.trl-lcharm { width: 120px; height: 120px; filter: drop-shadow(0 0 30px rgba(253, 224, 71, .6)); }
-.trl-logo h1 { margin: 0; font-size: 54px; font-weight: 900; letter-spacing: 3px; background: linear-gradient(180deg, #fffbeb, var(--gold2) 55%, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 4px 20px rgba(251, 191, 36, .5)); }
-.trl-logo p { margin: 0; color: #e9e3ff; }
-.trl-ver { margin: 4px 0 14px; padding: 5px 14px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #1c0b33; background: linear-gradient(180deg, #fde68a, #f59e0b); }
-.trl-logo .btn { max-width: 320px; pointer-events: auto; }
-.trl-cap { position: absolute; z-index: 3; left: 20px; right: 20px; bottom: calc(7vh + 28px); text-align: center; font-size: 22px; line-height: 1.35; font-weight: 700; text-shadow: 0 2px 16px #000, 0 0 30px #000; opacity: 0; }
-.trl-cap.in { animation: trlCap 5s ease forwards; } .trl-cap b { color: var(--gold2); }
-@keyframes trlCap { 0% { opacity: 0; transform: translateY(12px); letter-spacing: .06em; } 15% { opacity: 1; transform: none; letter-spacing: 0; } 85% { opacity: 1; } 100% { opacity: 0; } }
-.trl-bars::before, .trl-bars::after { content: ""; position: fixed; left: 0; right: 0; height: 7vh; background: #000; z-index: 2; }
-.trl-bars::before { top: 0; } .trl-bars::after { bottom: 0; }
-.trl-skip { position: absolute; z-index: 7; right: 14px; top: calc(7vh + 10px); padding: 7px 14px; border-radius: 14px; font-size: 13px; font-weight: 700; color: #e9e3ff; background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .2); }
-.trl-start { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(5, 2, 13, .78); cursor: pointer; }
-.trl-play { width: 86px; height: 86px; border-radius: 50%; display: grid; place-items: center; font-size: 34px; color: #1c0b33; background: linear-gradient(180deg, #fde68a, #f59e0b); box-shadow: 0 0 40px rgba(251, 191, 36, .6); animation: tutPulse 1.4s ease-in-out infinite; padding-left: 6px; }
-.trl-start b { font-size: 24px; font-weight: 900; } .trl-start small { color: var(--muted); }
-/* сцены */
-.s-crack .trl-moon, .s-koschey .trl-moon, .s-flood .trl-moon { background: radial-gradient(circle at 35% 35%, #fae8ff, #d8b4fe 55%, #7c3aed); box-shadow: 0 0 80px rgba(192, 132, 252, .8); transform: scale(1.15); }
-.s-crack .trl-sky, .s-koschey .trl-sky { background: linear-gradient(180deg, #14052e 0%, #3b0764 55%, #4c1d95 78%, #05020d 100%); }
-.s-crack .trl-rift, .s-koschey .trl-rift, .s-flood .trl-rift { opacity: 1; } .s-crack .trl-rift path { animation: trlDraw 4s ease-in forwards; }
-.s-koschey .trl-rift path, .s-flood .trl-rift path { stroke-dashoffset: 0; stroke-width: 7; }
-@keyframes trlDraw { to { stroke-dashoffset: 0; } }
-.s-koschey .trl-kos { opacity: 1; } .s-koschey .trl-kos > .art { transform: scale(1); }
-.s-flood .trl-flood { opacity: 1; } .s-flood .trl-flood div { animation: trlFly 3.6s cubic-bezier(.3, .6, .4, 1) forwards; animation-delay: calc(var(--i) * .32s); }
-@keyframes trlFly { 0% { left: -30%; transform: rotate(-20deg) scale(.6); } 60% { transform: rotate(8deg) scale(1); } 100% { left: 115%; transform: rotate(0) scale(.9); } }
-.s-hide .trl-hide { opacity: 1; } .s-hide .trl-card { opacity: 1; transform: none; }
-.s-hide .trl-sky, .s-order .trl-sky, .s-mentor .trl-sky { filter: brightness(.6); }
-.s-order .trl-order { opacity: 1; } .s-order .trl-charm { transform: scale(1) rotate(0); }
-.s-mentor .trl-mentor { opacity: 1; } .s-mentor .trl-mentor svg { transform: none; }
-.s-logo .trl-logo { opacity: 1; pointer-events: auto; } .s-logo .trl-lcharm { animation: popIn .7s ease-out; } .s-logo .trl-logo h1 { animation: trlSlam .7s cubic-bezier(.2, 1.6, .3, 1); }
-@keyframes trlSlam { from { transform: scale(2.4); opacity: 0; letter-spacing: .4em; } }
-.s-logo .trl-cap, .s-logo .trl-bars, .s-logo .trl-skip { display: none; }
-.calm .trl-rays, .calm .trl-star, .calm .trl-win rect { animation: none; }
+/* ---------- 4.14: трейлер «Тонкая ночь» (переснят) ----------
+   Кинокамера (.fm-cam: тряска на ударах), слои города с параллаксом, разлом, Кощей, рой духов «в камеру», прячущиеся
+   духи, карта с кругом Ловчего, поимка, дружины, бестиарий, наставник, логотип. Сверху — частицы (холст), вспышка,
+   зерно плёнки, виньетка, кинорамка и подписи. */
+.fm { position: fixed; inset: 0; z-index: 9500; overflow: hidden; background: #04020b; color: #fff; transition: opacity .6s; }
+.fm.out { opacity: 0; }
+.fm-cam { position: absolute; inset: 0; transform-origin: 50% 45%; }
+.fm-cam.shake { animation: fmShake .45s ease-out; } .fm-cam.shake2 { animation: fmShake2 .8s ease-out; }
+@keyframes fmShake { 0%, 100% { transform: none; } 20% { transform: translate(-1.2%, .8%) rotate(-.4deg); } 40% { transform: translate(1%, -.6%) rotate(.3deg); } 60% { transform: translate(-.6%, .4%); } 80% { transform: translate(.3%, -.2%); } }
+@keyframes fmShake2 { 0%, 100% { transform: none; } 10% { transform: translate(-2.4%, 1.4%) rotate(-.8deg) scale(1.03); } 25% { transform: translate(2%, -1.2%) rotate(.6deg) scale(1.02); } 40% { transform: translate(-1.4%, .9%) rotate(-.4deg); } 60% { transform: translate(.8%, -.5%); } 80% { transform: translate(-.3%, .2%); } }
+
+/* небо, звёзды, луна, сияние Нави */
+.fm-sky { position: absolute; inset: 0; background: linear-gradient(180deg, #070318 0%, #150b36 50%, #2b1656 76%, #0a0518 100%); transition: filter 1.2s; }
+.fm-aur { position: absolute; inset: -20% -20% 30%; opacity: 0; transition: opacity 2.5s;
+  background: radial-gradient(40% 50% at 50% 30%, rgba(192, 132, 252, .55), transparent 70%), radial-gradient(30% 40% at 30% 20%, rgba(124, 58, 237, .45), transparent 70%), radial-gradient(30% 40% at 72% 24%, rgba(236, 72, 153, .3), transparent 70%); }
+.fm-stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; animation: blink 2.8s ease-in-out infinite; animation-delay: calc(-1 * var(--d)); }
+.fm-stars i:nth-child(3n) { width: 3px; height: 3px; }
+.fm-moon { position: absolute; right: 13%; top: 11%; width: 17vmin; height: 17vmin; border-radius: 50%; transition: all 2s;
+  background: radial-gradient(circle at 36% 34%, #fffbeb, #fde68a 55%, #d8a43a); box-shadow: 0 0 40px rgba(253, 230, 138, .55), 0 0 120px rgba(253, 230, 138, .25); }
+.fm.on .fm-sky { animation: fmPushSky 22s ease-out forwards; }
+@keyframes fmPushSky { to { transform: scale(1.08) translateY(1.5%); } }
+
+/* город: три слоя, дальний движется медленнее ближнего */
+.fm-city { position: absolute; left: -12%; right: -12%; bottom: 0; transition: opacity .7s, filter 1s; }
+.fm-city svg { display: block; width: 100%; height: 100%; }
+.fm-city.far { height: 62%; opacity: .75; filter: blur(.6px); } .fm-city.mid { height: 50%; } .fm-city.near { height: 34%; }
+.fm-sky::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 55%; background: radial-gradient(90% 60% at 50% 100%, rgba(255, 170, 90, .28), rgba(236, 72, 153, .12) 45%, transparent 75%); }
+.fm.on .fm-city.far { animation: fmPan 22s linear forwards; --px: -2%; }
+.fm.on .fm-city.mid { animation: fmPan 22s linear forwards; --px: -5%; }
+.fm.on .fm-city.near { animation: fmPan 22s linear forwards; --px: -9%; }
+@keyframes fmPan { to { transform: translateX(var(--px)) scale(1.04); } }
+.fm-w0 { animation: blink 3.4s ease-in-out infinite; } .fm-w1 { animation: blink 4.6s ease-in-out -1.7s infinite; } .fm-w2 { opacity: .85; }
+
+/* разлом */
+.fm-rift { position: absolute; left: 42%; top: 0; width: 16%; height: 64%; opacity: 0; transition: opacity .4s, transform 1.4s cubic-bezier(.2, .8, .2, 1); transform-origin: 50% 40%;
+  filter: drop-shadow(0 0 10px #e9d5ff) drop-shadow(0 0 28px #a855f7) drop-shadow(0 0 60px #7c3aed); }
+.fm-rift path { fill: none; stroke: #fdf4ff; stroke-width: 3; stroke-linejoin: round; stroke-dasharray: 420; stroke-dashoffset: 420; vector-effect: non-scaling-stroke; }
+.fm-rift path.g { stroke: #c084fc; stroke-width: 14; opacity: .55; }
+.s-crack .fm-rift, .s-koschey .fm-rift, .s-swarm .fm-rift { opacity: 1; }
+.s-crack .fm-rift path { animation: fmDraw 4.2s cubic-bezier(.6, 0, .8, .6) forwards, fmFlick .18s steps(2) infinite; }
+.s-koschey .fm-rift path, .s-swarm .fm-rift path { stroke-dashoffset: 0; }
+.s-koschey .fm-rift, .s-swarm .fm-rift { transform: scaleX(3.4); } .s-koschey .fm-rift path.g, .s-swarm .fm-rift path.g { stroke-width: 40; opacity: .7; }
+@keyframes fmDraw { to { stroke-dashoffset: 0; } }
+@keyframes fmFlick { 50% { opacity: .75; } }
+.s-crack .fm-aur, .s-koschey .fm-aur, .s-swarm .fm-aur { opacity: 1; }
+.s-crack .fm-moon, .s-koschey .fm-moon, .s-swarm .fm-moon { background: radial-gradient(circle at 36% 34%, #fdf4ff, #d8b4fe 55%, #7c3aed); box-shadow: 0 0 50px rgba(192, 132, 252, .8), 0 0 140px rgba(168, 85, 247, .45); }
+.s-crack .fm-sky { filter: hue-rotate(12deg) saturate(1.3); }
+.s-crack .fm-w0, .s-crack .fm-w1, .s-koschey .fm-w0, .s-koschey .fm-w1 { animation: fmOut .3s steps(2) 3 forwards; }
+@keyframes fmOut { to { opacity: .08; } }
+
+/* Кощей поднимается из-за города */
+.fm-kos { position: absolute; inset: 0; display: grid; place-items: end center; padding-bottom: 12vh; opacity: 0; transition: opacity 1s; pointer-events: none; }
+.fm-kos > .art { position: relative; width: min(74vw, 52vh); transform: translateY(45%) scale(.55); filter: drop-shadow(0 0 24px #4ade80) drop-shadow(0 0 60px rgba(34, 197, 94, .6)) brightness(.9); transition: transform 4.2s cubic-bezier(.16, .8, .3, 1); }
+.fm-kglow { position: absolute; left: 50%; bottom: 20vh; width: 90vmin; height: 90vmin; margin-left: -45vmin; border-radius: 50%; background: radial-gradient(circle, rgba(74, 222, 128, .45), rgba(22, 101, 52, .15) 45%, transparent 70%); animation: fmPulse 2.4s ease-in-out infinite; }
+.s-koschey .fm-kos { opacity: 1; } .s-koschey .fm-kos > .art { transform: translateY(0) scale(1); }
+.s-swarm .fm-kos { opacity: .45; } .s-swarm .fm-kos > .art { transform: translateY(4%) scale(1.05); }
+.s-koschey .fm-sky { filter: hue-rotate(-40deg) saturate(1.4) brightness(.9); }
+@keyframes fmPulse { 50% { transform: scale(1.08); opacity: .8; } }
+
+/* рой духов летит из разлома прямо в камеру */
+.fm-swarm div { position: absolute; left: 50%; top: 30%; width: 15vmin; margin: -7.5vmin 0 0 -7.5vmin; opacity: 0; }
+.fm-swarm .art { width: 100%; }
+.s-swarm .fm-swarm div { animation: fmFly 2.6s cubic-bezier(.25, .1, .7, .7) forwards; animation-delay: calc(var(--i) * .17s); }
+@keyframes fmFly {
+  0% { transform: translate(0, 0) scale(.12) rotate(0); opacity: 0; filter: none; }
+  10% { opacity: 1; }
+  80% { opacity: 1; filter: blur(0); }
+  100% { transform: translate(var(--x), var(--y)) scale(2.8) rotate(var(--r)); opacity: 0; filter: blur(3px); } }
+
+/* вне города — свои кадры; небо остаётся фоном, приглушённым */
+.s-hide .fm-city, .s-map .fm-city, .s-catch .fm-city, .s-clans .fm-city, .s-dex .fm-city, .s-mentor .fm-city, .s-logo .fm-city { opacity: 0; }
+.s-hide .fm-sky, .s-map .fm-sky, .s-catch .fm-sky, .s-clans .fm-sky, .s-dex .fm-sky, .s-mentor .fm-sky, .s-logo .fm-sky { filter: brightness(.45); }
+.fm-hide, .fm-map, .fm-catch, .fm-clans, .fm-dex, .fm-men { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .45s; }
+
+/* где прячутся духи: три коротких кадра */
+.s-hide .fm-hide { opacity: 1; }
+.fm-hp { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; }
+.fm-hb { position: relative; }
+.fm-hb svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fm-hs { position: absolute; }
+.fm-hs .art { width: 100%; }
+.fm-hp.lamp { background: radial-gradient(60% 45% at 50% 34%, rgba(253, 224, 138, .28), transparent 70%); }
+.fm-hp.lamp .fm-hb { width: 50vmin; height: 100vmin; } .fm-hp.lamp .fm-hs { width: 62%; left: 44%; top: 17%; }
+.fm-hp.puddle { background: radial-gradient(60% 40% at 50% 62%, rgba(45, 212, 191, .25), transparent 70%); }
+.fm-hp.puddle .fm-hb { width: 86vmin; height: 70vmin; } .fm-hp.puddle svg { top: 40%; height: 60%; } .fm-hp.puddle .fm-hs { width: 44%; left: 28%; top: 6%; }
+.fm-hp.wires { background: radial-gradient(60% 40% at 50% 40%, rgba(250, 204, 21, .18), rgba(124, 58, 237, .18) 50%, transparent 75%); }
+.fm-hp.wires .fm-hb { width: 100vw; height: 70vmin; } .fm-hp.wires .fm-hs { width: 34vmin; left: calc(50% - 17vmin); top: 4%; }
+.s-hide .fm-hp { animation: fmPanel 1.8s ease both; } .s-hide .fm-hp.puddle { animation-delay: 1.8s; } .s-hide .fm-hp.wires { animation-delay: 3.6s; animation-duration: 1.9s; animation-fill-mode: both; }
+.s-hide .fm-hs { animation: fmPeek 1.8s cubic-bezier(.3, 1.4, .5, 1) both; } .s-hide .puddle .fm-hs { animation-delay: 1.8s; } .s-hide .wires .fm-hs { animation-delay: 3.6s; }
+@keyframes fmPanel { 0% { opacity: 0; transform: scale(1.18); } 14% { opacity: 1; } 86% { opacity: 1; } 100% { opacity: 0; transform: scale(1); } }
+@keyframes fmPeek { 0% { transform: translateY(30%) scale(.6); opacity: 0; } 25% { transform: none; opacity: 1; } 100% { transform: translateY(-4%); opacity: 1; } }
+.fm-hp .rip { animation: fmRip 1.4s ease-out infinite; transform-origin: 100px 60px; } .fm-hp .rip.b { animation-delay: .7s; }
+@keyframes fmRip { from { transform: scale(.4); opacity: .9; } to { transform: scale(2.6); opacity: 0; } }
+.fm-hp .zap { animation: fmFlick .15s steps(2) infinite; filter: drop-shadow(0 0 6px #fde047); }
+
+/* карта: золотые улицы уходят вдаль, круг Ловчего, духи выскакивают рядом */
+.s-map .fm-map { opacity: 1; }
+.fm-map { background: radial-gradient(80% 60% at 50% 60%, #1b1040, #07030f 80%); } .fm-map::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 52%; background: linear-gradient(#07030f 18%, rgba(7, 3, 15, .85) 45%, rgba(27, 16, 64, .35) 75%, transparent); pointer-events: none; }
+.fm-plane { position: absolute; left: 50%; top: 60%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax; transform: perspective(900px) rotateX(60deg); }
+.fm-roads { position: absolute; inset: 0; opacity: .95;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23120b25'/%3E%3Cg fill='%232c2154' stroke='%23e0b45a' stroke-opacity='.35' stroke-width='1'%3E%3Crect x='14' y='14' width='70' height='54'/%3E%3Crect x='104' y='14' width='40' height='70'/%3E%3Crect x='158' y='20' width='30' height='40'/%3E%3Crect x='14' y='90' width='50' height='40'/%3E%3Crect x='80' y='104' width='66' height='36'/%3E%3Crect x='160' y='80' width='30' height='60'/%3E%3Crect x='20' y='150' width='40' height='40'/%3E%3Crect x='80' y='158' width='54' height='30'/%3E%3Crect x='150' y='156' width='40' height='34'/%3E%3C/g%3E%3Cg stroke='%23f3cf6b' stroke-width='4' fill='none'%3E%3Cpath d='M0 3H200M0 97H200M0 146H200M3 0V200M96 0V200M152 0V200'/%3E%3C/g%3E%3Cg fill='%23ffe7a3'%3E%3Ccircle cx='50' cy='3' r='2.4'/%3E%3Ccircle cx='130' cy='97' r='2.4'/%3E%3Ccircle cx='96' cy='60' r='2.4'/%3E%3Ccircle cx='152' cy='170' r='2.4'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 34vmin 34vmin; }
+.s-map .fm-roads { animation: fmWalk 5.2s linear forwards; }
+@keyframes fmWalk { to { background-position: 0 30vmin; } }
+.fm-ring { position: absolute; left: 50%; top: 50%; width: 64vmin; height: 64vmin; margin: -32vmin 0 0 -32vmin; opacity: .85; }
+.fm-ring i { position: absolute; inset: 0; border-radius: 50%; }
+.fm-ring .r1 { background: var(--rz-runes) center / 100% 100% no-repeat; animation: spin 30s linear infinite; }
+.fm-ring .r2 { inset: 16%; background: var(--rz-ring) center / 100% 100% no-repeat; animation: spin 22s linear infinite reverse; }
+.fm-me { position: absolute; left: 50%; top: 60%; width: 8vmin; height: 8vmin; margin: -4vmin 0 0 -4vmin; border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #d9fff8, #2dd4bf 55%, #0f766e); border: .9vmin solid #7c3aed; box-shadow: 0 0 0 .4vmin #1b0f3a, 0 0 24px rgba(45, 212, 191, .7); }
+.fm-me i { position: absolute; inset: -60%; border-radius: 50%; border: 2px solid rgba(45, 212, 191, .7); animation: fmPing 1.6s ease-out infinite; }
+@keyframes fmPing { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.fm-sps div { position: absolute; width: 17vmin; opacity: 0; }
+.fm-sps div:nth-child(1) { left: 12%; top: 44%; } .fm-sps div:nth-child(2) { left: 64%; top: 40%; } .fm-sps div:nth-child(3) { left: 58%; top: 64%; }
+.fm-sps .art { width: 100%; filter: drop-shadow(0 10px 10px rgba(0, 0, 0, .5)); }
+.s-map .fm-sps div { animation: fmPop .7s cubic-bezier(.3, 1.6, .5, 1) forwards, fmBob 2s ease-in-out infinite; animation-delay: calc(.6s + var(--i) * .9s), calc(1.3s + var(--i) * .9s); }
+@keyframes fmPop { from { opacity: 0; transform: translateY(40%) scale(.2); } to { opacity: 1; transform: none; } }
+@keyframes fmBob { 50% { transform: translateY(-6%); } }
+
+/* поимка: цель сжимается, оберег летит по дуге, вспышка — «Поймано!» */
+.s-catch .fm-catch { opacity: 1; }
+.fm-catch { background: radial-gradient(60% 50% at 50% 42%, rgba(249, 115, 22, .3), rgba(88, 28, 135, .25) 55%, transparent 80%); }
+.fm-bird { position: absolute; left: 50%; top: 42%; width: 50vmin; margin: -25vmin 0 0 -25vmin; }
+.fm-bird .art { width: 100%; filter: drop-shadow(0 0 30px rgba(251, 146, 60, .8)); }
+.s-catch .fm-bird { animation: fmBob 2s ease-in-out infinite, fmCaught .5s ease-in 2.1s forwards; }
+@keyframes fmCaught { to { transform: scale(0); opacity: 0; filter: brightness(3); } }
+.fm-tgt { position: absolute; inset: -6%; border-radius: 50%; border: .9vmin solid #fde047; box-shadow: 0 0 20px rgba(253, 224, 71, .7), inset 0 0 20px rgba(253, 224, 71, .5); }
+.s-catch .fm-tgt { animation: fmTarget 1.05s ease-in infinite; }
+@keyframes fmTarget { from { transform: scale(1.05); opacity: .3; } to { transform: scale(.35); opacity: 1; } }
+.fm-throw { position: absolute; left: 50%; bottom: 8vh; width: 15vmin; margin-left: -7.5vmin; opacity: 0; }
+.fm-throw svg, .fm-throw .art { width: 100%; height: auto; filter: drop-shadow(0 0 16px rgba(253, 224, 71, .9)); }
+.s-catch .fm-throw { animation: fmThrow .72s cubic-bezier(.3, .1, .6, 1) 1.4s forwards, fmGone .3s ease-in 2.15s forwards; }
+@keyframes fmGone { to { opacity: 0; transform: translate(0, calc(-50vh + 7.5vmin)) scale(1.4); } }
+@keyframes fmThrow {
+  0% { opacity: 1; transform: translate(0, 0) scale(1.3) rotate(0); }
+  55% { transform: translate(6vmin, -40vh) scale(.8) rotate(400deg); }
+  100% { opacity: 1; transform: translate(0, calc(-50vh + 7.5vmin)) scale(.45) rotate(720deg); }
+}
+.fm-got { position: absolute; left: 0; right: 0; top: 36%; text-align: center; font-family: 'Ruslan Display', serif; font-size: min(13vmin, 64px); letter-spacing: .06em; color: #fde68a;
+  text-shadow: 0 0 20px rgba(253, 224, 71, .9), 0 4px 0 #7c2d12; opacity: 0; }
+.s-catch .fm-got { animation: fmStamp .6s cubic-bezier(.2, 1.6, .4, 1) 2.4s forwards; }
+@keyframes fmStamp { from { opacity: 0; transform: scale(2.6) rotate(-8deg); } to { opacity: 1; transform: rotate(-4deg); } }
+
+/* дружины: гербы с ударами барабана, над ними — Капище */
+.s-clans .fm-clans { opacity: 1; }
+.fm-clans { display: flex; justify-content: center; align-items: center; gap: 3vmin; padding-bottom: 30vh; }
+.fm-cl { position: relative; width: 27vmin; display: flex; flex-direction: column; align-items: center; gap: 1vmin; opacity: 0; }
+.fm-cl svg, .fm-cl .art { width: 100%; height: auto; position: relative; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .6)); }
+.fm-cl i { position: absolute; inset: -30% -40%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--cc) 55%, transparent), transparent 65%); }
+.fm-cl b { position: relative; font-family: 'Ruslan Display', serif; font-size: min(4.4vmin, 22px); color: #fde68a; letter-spacing: .08em; text-shadow: 0 2px 6px #000; }
+.s-clans .fm-cl { animation: fmSlam .55s cubic-bezier(.2, 1.5, .4, 1) forwards; animation-delay: calc(.2s + var(--i) * .7s); }
+@keyframes fmSlam { from { opacity: 0; transform: translateY(-30%) scale(1.5); } to { opacity: 1; transform: none; } }
+.fm-shrine { position: absolute; left: 50%; bottom: 23vh; width: 24vmin; margin-left: -12vmin; opacity: 0; filter: drop-shadow(0 0 30px rgba(253, 224, 71, .6)); }
+.fm-shrine .art { width: 100%; }
+.s-clans .fm-shrine { animation: fmRise .9s cubic-bezier(.2, 1.2, .4, 1) 2.5s forwards; }
+@keyframes fmRise { from { opacity: 0; transform: translateY(40%) scale(.6); } to { opacity: 1; transform: none; } }
+
+/* бестиарий: стена духов, камера отъезжает */
+.s-dex .fm-dex { opacity: 1; animation: fmPull 4.4s cubic-bezier(.2, .7, .3, 1) forwards; }
+.fm-dex { display: grid; grid-template-columns: repeat(5, min(15vmin, 11vh)); gap: 1.8vmin; place-content: center; padding-bottom: 10vh; }
+.fm-dex div { aspect-ratio: .82; border-radius: 2.4vmin; display: grid; place-items: center; padding: 1vmin; opacity: 0;
+  background: linear-gradient(180deg, rgba(76, 42, 145, .7), rgba(20, 10, 45, .85)); border: 1px solid rgba(243, 207, 107, .4); box-shadow: 0 6px 16px rgba(0, 0, 0, .5); }
+.fm-dex .art { width: 100%; }
+.s-dex .fm-dex div { animation: fmPop .5s cubic-bezier(.3, 1.6, .5, 1) forwards; animation-delay: calc(var(--i) * .07s); }
+@keyframes fmPull { from { transform: scale(1.45) rotate(-5deg); } to { transform: scale(1) rotate(0); } }
+
+/* наставник и сам игрок */
+.s-mentor .fm-men { opacity: 1; }
+.fm-men { display: flex; justify-content: center; align-items: flex-end; gap: 2vmin; padding-bottom: 20vh; }
+.fm-vm, .fm-hero { position: relative; width: 46vmin; }
+.fm-vm .art, .fm-hero .art { width: 100%; position: relative; }
+.fm-vm i, .fm-hero i { position: absolute; left: -20%; right: -20%; top: -10%; bottom: 0; border-radius: 50%; }
+.fm-vm i { background: radial-gradient(circle, rgba(74, 222, 128, .35), transparent 65%); }
+.fm-hero i { background: radial-gradient(circle, rgba(253, 224, 71, .45), transparent 65%); }
+.s-mentor .fm-vm { animation: fmRise 1s cubic-bezier(.2, 1, .4, 1) both; }
+.fm-hero { opacity: 0; }
+.s-mentor .fm-hero { animation: fmHero 1s cubic-bezier(.2, 1.2, .4, 1) 2.8s forwards; }
+@keyframes fmHero { from { opacity: 0; transform: translateX(20%) scale(.9); filter: brightness(3); } to { opacity: 1; transform: none; filter: none; } }
+
+/* частицы, вспышка, зерно, виньетка */
+.fm-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.fm-flash { position: absolute; inset: 0; z-index: 3; background: #fff; opacity: 0; pointer-events: none; }
+.fm-flash.on { animation: fmFlash .55s ease-out; }
+@keyframes fmFlash { from { opacity: .85; } to { opacity: 0; } }
+.fm-grain { position: absolute; inset: -60%; z-index: 3; pointer-events: none; opacity: .09; mix-blend-mode: overlay; animation: fmGrain .6s steps(5) infinite;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+@keyframes fmGrain { 0% { transform: translate(0, 0); } 20% { transform: translate(-6%, 4%); } 40% { transform: translate(5%, -3%); } 60% { transform: translate(-3%, -6%); } 80% { transform: translate(4%, 5%); } }
+.fm-vig { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 50%, rgba(0, 0, 0, .75) 100%); }
+
+/* логотип */
+.fm-logo { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; opacity: 0; pointer-events: none; transition: opacity .6s;
+  background: radial-gradient(60% 45% at 50% 42%, rgba(124, 58, 237, .35), transparent 75%); }
+.s-logo .fm-logo { opacity: 1; pointer-events: auto; }
+.fm-lcharm { position: relative; width: min(34vmin, 150px); }
+.fm-lcharm > svg, .fm-lcharm > .art { position: relative; width: 100%; height: auto; filter: drop-shadow(0 0 30px rgba(253, 224, 71, .7)); }
+.fm-lcharm i { position: absolute; inset: -60%; border-radius: 50%; opacity: .55; background: repeating-conic-gradient(rgba(253, 224, 71, .5) 0 6deg, transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%); mask: radial-gradient(circle, #000 20%, transparent 70%); animation: spin 24s linear infinite; }
+.s-logo .fm-lcharm { animation: fmSpinIn .9s cubic-bezier(.2, 1.3, .4, 1) both; }
+@keyframes fmSpinIn { from { opacity: 0; transform: scale(.2) rotate(-200deg); } to { opacity: 1; transform: none; } }
+.fm-logo h1 { margin: 6px 0 0; font-family: 'Ruslan Display', serif; font-weight: 400; font-size: min(15vmin, 76px); letter-spacing: .06em; line-height: 1;
+  background: linear-gradient(100deg, #b7791f 0%, #fde68a 30%, #fffbeb 45%, #fde68a 60%, #b7791f 100%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 0 #3b1d06) drop-shadow(0 0 22px rgba(253, 224, 71, .45)); }
+.s-logo .fm-logo h1 { animation: fmTitle .8s cubic-bezier(.2, 1.4, .4, 1) .25s both, fmShine 3s ease-in-out 1.2s infinite; }
+@keyframes fmTitle { from { opacity: 0; transform: scale(2.2); letter-spacing: .5em; } to { opacity: 1; transform: none; } }
+@keyframes fmShine { 0% { background-position: 100% 0; } 60%, 100% { background-position: -50% 0; } }
+.fm-logo p { margin: 0; color: #e9e3ff; font-family: 'Philosopher', serif; font-size: min(4.6vmin, 20px); }
+.s-logo .fm-logo p, .s-logo .fm-ver, .s-logo .fm-go { animation: fmUp .6s ease 1s both; }
+@keyframes fmUp { from { opacity: 0; transform: translateY(12px); } }
+.fm-ver { margin: 4px 0 14px; padding: 5px 14px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #1c0b33; background: linear-gradient(180deg, #fde68a, #f59e0b); }
+.fm-logo .btn { max-width: 320px; }
+
+/* подписи и кинорамка */
+.fm-cap { position: absolute; z-index: 5; left: 6%; right: 6%; bottom: calc(10vh + 16px); text-align: center; font-family: 'Philosopher', serif; font-style: italic;
+  font-size: min(5.4vmin, 28px); line-height: 1.35; text-shadow: 0 2px 10px #000, 0 0 30px rgba(0, 0, 0, .8); opacity: 0; }
+.fm-cap b { font-style: normal; font-weight: 700; color: #fde68a; text-shadow: 0 0 14px rgba(253, 224, 71, .5), 0 2px 8px #000; }
+.fm-cap.in { animation: fmCap 4.6s ease forwards; }
+@keyframes fmCap { 0% { opacity: 0; filter: blur(8px); letter-spacing: .12em; transform: translateY(8px); } 14% { opacity: 1; filter: none; letter-spacing: 0; transform: none; } 86% { opacity: 1; } 100% { opacity: 0; } }
+.fm-bars i { position: absolute; left: 0; right: 0; z-index: 5; height: 9vh; background: #000; transition: transform .8s ease; }
+.fm-bars i:first-child { top: 0; } .fm-bars i:last-child { bottom: 0; }
+.s-logo .fm-bars i:first-child { transform: translateY(-100%); } .s-logo .fm-bars i:last-child { transform: translateY(100%); }
+.s-logo .fm-cap, .s-logo .fm-skip { display: none; }
+.fm-skip { position: absolute; z-index: 7; right: 14px; top: calc(9vh + 10px); padding: 7px 14px; border-radius: 14px; font-size: 13px; font-weight: 700; color: #e9e3ff;
+  background: rgba(20, 10, 45, .55); border: 1px solid rgba(243, 207, 107, .35); backdrop-filter: blur(6px); }
+.fm-start { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;
+  background: radial-gradient(60% 50% at 50% 45%, rgba(124, 58, 237, .45), rgba(4, 2, 11, .96) 75%); }
+.fm-play { position: relative; width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 38% 32%, #fffbeb, #fde68a 45%, #d97706);
+  box-shadow: 0 0 0 4px rgba(253, 224, 71, .25), 0 0 50px rgba(253, 224, 71, .55); animation: fmPulse 2s ease-in-out infinite; }
+.fm-play i { position: absolute; left: 38%; top: 30%; border-left: 26px solid #2a1253; border-top: 17px solid transparent; border-bottom: 17px solid transparent; }
+.fm-start b { font-family: 'Ruslan Display', serif; font-weight: 400; font-size: 30px; color: #fde68a; letter-spacing: .06em; text-shadow: 0 0 20px rgba(253, 224, 71, .5); }
+.fm-start small { color: #cfc4ef; }
+.calm .fm-grain, .calm .fm-stars i, .calm .fm-w0, .calm .fm-w1, .calm .fm-kglow, .calm .fm-ring i, .calm .fm-lcharm i, .calm .fm-play { animation: none; }
 
 /* ---------- 4.0: «Путь Ловчего» ---------- */
 .pth-head { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; border: 1px solid var(--line);
