@@ -1985,19 +1985,40 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
 @keyframes fmGrain { 0% { transform: translate(0, 0); } 20% { transform: translate(-6%, 4%); } 40% { transform: translate(5%, -3%); } 60% { transform: translate(-3%, -6%); } 80% { transform: translate(4%, 5%); } }
 .fm-vig { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 50%, rgba(0, 0, 0, .75) 100%); }
-/* склейка сцен без затемнения («хлыст» камеры): старая сцена рывком наезжает со смазом и засветкой (0,42 с), через кадр
-   проносится светящаяся полоса тумана Нави, на пике смаза сцена меняется, новая выезжает из смаза (0,7 с).
+/* склейка «Разрыв Нави» (1,2 с, сцена меняется на 0,52 с): трещина прорастает от центра к краям (0,18 с) и трещит,
+   камера дрожит и засвечивается; трещина раскрывается щелью света, которая заливает экран; после смены свет расходится
+   и тает, новая сцена оседает из наезда и смаза. Угол и форма трещины каждый раз свои (--ta, путь — из JS).
    На миг смены все переходы выключены — старые слои исчезают сразу, а не тянутся в новую сцену */
-.fm-swipe { position: absolute; top: -20%; bottom: -20%; left: -60%; right: -60%; z-index: 6; pointer-events: none; opacity: 0; mix-blend-mode: screen; filter: blur(8px);
-  background: linear-gradient(100deg, transparent 32%, rgba(124, 58, 237, .28) 40%, rgba(216, 180, 254, .7) 46%, rgba(255, 247, 214, .95) 50%, rgba(216, 180, 254, .7) 54%, rgba(124, 58, 237, .28) 60%, transparent 68%),
-    repeating-linear-gradient(100deg, transparent 0 22px, rgba(255, 255, 255, .06) 22px 24px); }
-.fm.fm-swp .fm-swipe { animation: fmSwipe .95s cubic-bezier(.55, 0, .45, 1) both; }
-@keyframes fmSwipe { 0% { opacity: 1; transform: translateX(-72%) skewX(-8deg); } 100% { opacity: 1; transform: translateX(72%) skewX(-8deg); } }
-.fm.fm-tout .fm-cam:not(.shake):not(.shake2) { animation: fmCamOut .42s cubic-bezier(.6, 0, .9, .5) forwards; }
-.fm.fm-tin .fm-cam:not(.shake):not(.shake2) { animation: fmCamIn .75s cubic-bezier(.1, .7, .25, 1) backwards; }
-@keyframes fmCamOut { to { transform: scale(1.14) translateX(-2%); filter: blur(12px) brightness(1.5) saturate(1.3); } }
-@keyframes fmCamIn { from { transform: scale(.93) translateX(2%); filter: blur(12px) brightness(1.5) saturate(1.3); } }
-.fm.fm-cut *:not(.fm-swipe) { transition: none !important; }
+.fm-tear { position: absolute; inset: -35%; z-index: 6; pointer-events: none; transform: rotate(var(--ta, 12deg)); visibility: hidden; }
+.fm.fm-tear-on .fm-tear { visibility: visible; }
+.fm-tear svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; clip-path: inset(50% 0 50% 0); }
+.fm-tear path { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.fm-tear .g { stroke: #a855f7; stroke-width: 30px; opacity: .6; filter: blur(9px); }
+.fm-tear .m { stroke: #f5d0fe; stroke-width: 5px; filter: drop-shadow(0 0 6px #e879f9) drop-shadow(0 0 18px #a855f7); }
+.fm-tear .t { stroke: #f0abfc; stroke-width: 1.6px; opacity: .9; filter: drop-shadow(0 0 4px #c084fc); }
+.fm-tear .c { stroke: #fff; stroke-width: 2px; }
+.fm-rent { position: absolute; left: 50%; top: 0; bottom: 0; width: 40%; margin-left: -20%; transform: scaleX(0);
+  background: linear-gradient(90deg, transparent, rgba(91, 33, 182, .55) 14%, rgba(192, 38, 211, .75) 26%, rgba(240, 171, 252, .95) 36%, #f7efff 43%, #fffbeb 50%, #f7efff 57%, rgba(240, 171, 252, .95) 64%, rgba(192, 38, 211, .75) 74%, rgba(91, 33, 182, .55) 86%, transparent); }
+.fm.fm-tear-on .fm-tear svg { animation: fmTearDraw 1.2s linear both; }
+.fm.fm-tear-on .fm-tear .m, .fm.fm-tear-on .fm-tear .t { animation: fmFlick .09s steps(2) infinite; }
+.fm.fm-tear-on .fm-rent { animation: fmRent 1.2s linear both; }
+.fm-rent { filter: blur(10px); }
+/* узкая фаза: светится и раскрывается сама трещина (ломаная), прямая полоса света подключается уже широкой и размытой */
+.fm.fm-tear-on .fm-tear .g { animation: fmTearGlow 1.2s linear both; }
+@keyframes fmTearGlow { 0%, 14% { stroke-width: 30px; opacity: .6; } 22% { stroke-width: 70px; opacity: .85; } 26% { stroke-width: 60px; } 34% { stroke-width: 160px; opacity: 1; } 44%, 100% { stroke-width: 260px; opacity: 1; } }
+@keyframes fmTearDraw { 0% { clip-path: inset(50% 0 50% 0); opacity: 1; } 15% { clip-path: inset(-5% 0 -5% 0); } 42% { opacity: 1; } 48%, 100% { clip-path: inset(-5% 0 -5% 0); opacity: 0; } }
+@keyframes fmRent { 0%, 27% { transform: scaleX(0); opacity: 0; animation-timing-function: cubic-bezier(.6, 0, .9, .5); } 29% { transform: scaleX(.3); opacity: 1; animation-timing-function: cubic-bezier(.6, 0, .9, .5); }
+  43.3% { transform: scaleX(4.6); opacity: 1; animation-timing-function: cubic-bezier(.1, .6, .3, 1); } 58% { transform: scaleX(6); opacity: .85; } 100% { transform: scaleX(9); opacity: 0; } }
+.fm.fm-tout .fm-cam:not(.shake):not(.shake2) { animation: fmTearOut .52s cubic-bezier(.5, 0, .9, .6) forwards; }
+.fm.fm-tin .fm-cam:not(.shake):not(.shake2) { animation: fmTearIn .9s cubic-bezier(.1, .7, .25, 1) backwards; }
+@keyframes fmTearOut { 0% { transform: none; filter: none; } 12% { transform: translate(-.7%, .4%) rotate(-.3deg); } 22% { transform: translate(.6%, -.5%) rotate(.3deg); } 32% { transform: translate(-.4%, -.3%) scale(1.02); }
+  100% { transform: scale(1.08); filter: brightness(1.7) saturate(1.4) blur(3px); } }
+@keyframes fmTearIn { from { transform: scale(1.1) rotate(calc(var(--ta, 0deg) * -.08)); filter: brightness(1.8) saturate(1.3) blur(10px); } }
+.fm.fm-cut * { transition: none !important; }
+/* видео: без кнопок, в конце — адрес сайта */
+.fm-site { display: none; }
+.fm-video .fm-skip, .fm-video .fm-go, .fm-video .fm-start { display: none !important; }
+.fm-video .fm-site { display: block; margin-top: 10px; font-family: var(--f-head); font-weight: 700; font-size: 26px; letter-spacing: .08em; color: #fde68a; paint-order: stroke fill; -webkit-text-stroke: .16em rgba(18, 8, 40, .92); text-shadow: 0 0 18px rgba(253, 224, 71, .6); }
 
 /* логотип */
 .fm-logo { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; opacity: 0; pointer-events: none; transition: opacity .6s;

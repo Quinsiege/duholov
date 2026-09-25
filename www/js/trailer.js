@@ -399,9 +399,9 @@ const Trailer = {
           <div class="fm-men"><div class="fm-vm"><i></i>${Art.stack(CutArt.velimir().replace('class="vm-breath"', ''), 'velimir')}</div>${hero ? `<div class="fm-hero"><i></i>${hero}</div>` : ''}</div>
         </div>
         <canvas class="fm-fx"></canvas>
-        <div class="fm-flash"></div><div class="fm-grain"></div><div class="fm-vig"></div><i class="fm-swipe"></i>
+        <div class="fm-flash"></div><div class="fm-grain"></div><div class="fm-vig"></div><div class="fm-tear"><i class="fm-rent"></i><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="g"/><path class="m"/><path class="t"/><path class="c"/></svg></div>
         <div class="fm-logo"><div class="fm-lcharm"><i></i>${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p>
-          <span class="fm-ver">v${APP_VERSION}</span><button class="btn primary wide fm-go">${o.replay ? 'Закрыть' : 'Начать'}</button></div>
+          <span class="fm-ver">v${APP_VERSION}</span><b class="fm-site">duholov.ru</b><button class="btn primary wide fm-go">${o.replay ? 'Закрыть' : 'Начать'}</button></div>
         <div class="fm-cap"></div>
         <div class="fm-bars"><i></i><i></i></div>
         <button class="fm-skip">Пропустить ›</button>
@@ -409,8 +409,9 @@ const Trailer = {
       </div>`);
       document.body.appendChild(root);
       this.fitAuction(root);
-      const capEl = root.querySelector('.fm-cap');
-      let timers = [], ended = false, music = null, capDur = 5000;
+      const capEl = root.querySelector('.fm-cap'), tearEl = root.querySelector('.fm-tear');
+      if (o.video) root.classList.add('fm-video');
+      let timers = [], ended = false, music = null, capDur = 5000, tearA = 0;
       const at = (ms, fn) => timers.push(setTimeout(fn, ms));
       const fx = this.particles(root.querySelector('.fm-fx'), calm);
       const t = {
@@ -457,20 +458,31 @@ const Trailer = {
         let tt = 0;
         // o.only — только эта сцена (для съёмки кадров)
         this.SCENES.slice(i0, o.only ? i0 + 1 : undefined).forEach(([dur, cls, text], k) => {
-          // склейка без затемнения: камера рывком наезжает на старую сцену со смазом и засветкой, через кадр
-          // проносится светящаяся полоса тумана Нави, на пике смаза сцена меняется (частицы, вспышка и тряска
-          // сбрасываются, старые слои гаснут мгновенно), новая выезжает из смаза. Вступление
-          // (разлом → Кощей → рой) — одна история на общем небе: там только сброс частиц и вспышки.
-          const joined = this.JOINED.includes(cls), whip = k > 0 && !joined && !calm;
-          if (whip) at(tt - 420, () => { root.classList.add('fm-swp', 'fm-tout'); Sfx.noise(.8, { vol: .08, type: 'bandpass', f: 300, to: 3200, q: 2 }); });
+          // склейка «Разрыв Нави»: поперёк кадра (каждый раз под своим углом) прорастает ветвистая трещина, камера дрожит,
+          // трещина раскрывается щелью света и за полсекунды заливает экран; на пике сцена меняется (частицы, вспышка и тряска
+          // сбрасываются, старые слои гаснут мгновенно), свет расходится, вдоль разлома разлетаются искры, новая сцена оседает.
+          // Вступление (разлом → Кощей → рой) — одна история на общем небе: там только сброс частиц и вспышки.
+          const joined = this.JOINED.includes(cls), tear = k > 0 && !joined && !calm;
+          if (tear) at(tt - 520, () => {
+            tearA = (k % 2 ? 1 : -1) * (8 + Math.random() * 24);
+            const b = this.bolt(50 + (Math.random() - .5) * 10, -2, 50 + (Math.random() - .5) * 10, 102, 1 + Math.floor(Math.random() * 1e6), 34);
+            root.style.setProperty('--ta', tearA.toFixed(1) + 'deg');
+            tearEl.querySelector('.g').setAttribute('d', b.path + b.br);
+            tearEl.querySelector('.m').setAttribute('d', b.path);
+            tearEl.querySelector('.t').setAttribute('d', b.br + b.br2);
+            tearEl.querySelector('.c').setAttribute('d', b.path);
+            root.classList.remove('fm-tear-on', 'fm-tin'); void root.offsetWidth; root.classList.add('fm-tear-on', 'fm-tout');
+            Sfx.noise(.55, { vol: .14, type: 'highpass', f: 5000, to: 1400 }); Sfx.tone(140, .55, { type: 'sawtooth', vol: .05, to: 760 });
+            Sfx.noise(1.3, { vol: .18, f: 1400, to: 50, when: .52 }); Sfx.tone(62, 1.3, { vol: .16, to: 28, when: .52 });
+            Sfx.tone(1568, .9, { type: 'triangle', vol: .045, when: .56 }); Sfx.tone(2093, .7, { type: 'triangle', vol: .03, when: .62 });
+          });
           at(tt, () => {
             fx.clear();
             root.querySelector('.fm-flash').classList.remove('on');
             root.querySelector('.fm-cam').classList.remove('shake', 'shake2');
-            // на пике смаза: новая сцена встаёт сразу, без переходов (старые слои не тянутся), затем переходы снова включены
-            root.className = 'fm on' + (whip ? ' fm-swp fm-tin fm-cut' : '') + ' s-' + cls;
-            if (whip) { void root.offsetWidth; root.classList.remove('fm-cut'); }
-            if (whip) timers.push(setTimeout(() => root.classList.remove('fm-swp'), 600));
+            // на пике света: новая сцена встаёт сразу, без переходов (старые слои не тянутся), затем переходы снова включены
+            root.className = 'fm on' + (tear ? ' fm-tear-on fm-tin fm-cut' : '') + (o.video ? ' fm-video' : '') + ' s-' + cls;
+            if (tear) { void root.offsetWidth; root.classList.remove('fm-cut'); fx.tear(tearA); timers.push(setTimeout(() => root.classList.remove('fm-tear-on'), 800)); }
             capDur = dur || 6000;
             t.cap(text);
             fx.mode(cls);
@@ -598,6 +610,14 @@ const Trailer = {
         const M = Math.min(W, H);
         rings.push({ x: cx, y: cy, r: M * (o.rr || .55), w: 10, l: 34, c: cols[0], t: 0 });
         if (o.rings !== 1) rings.push({ x: cx, y: cy, r: M * .35, w: 6, l: 26, c: '255,255,255', t: 0 });
+      },
+      // склейка «Разрыв Нави»: искры вдоль линии разрыва (через центр, повёрнута на a°) разлетаются в обе стороны
+      tear: a => {
+        const r = a * Math.PI / 180, dx = -Math.sin(r), dy = Math.cos(r), L = Math.hypot(W, H) * .55;
+        for (let i = 0; i < (calm ? 60 : 220); i++) {
+          const sgn = Math.random() < .5 ? -1 : 1, sp = R(2, 14), u = R(-L, L), al = R(-1.5, 1.5);
+          parts.push({ x: W / 2 + dx * u, y: H / 2 + dy * u, vx: dy * sgn * sp + dx * al, vy: -dx * sgn * sp + dy * al, acc: .97, g: .03, r: R(.8, 2.6), l: R(30, 80), c: pick([WHITE, LIL, VIO, GOLD, '236,72,153']), tail: 4, t: 0, ph: R(0, 6) });
+        }
       },
       stop: () => { live = false; cancelAnimationFrame(raf); removeEventListener('resize', size); },
     };
