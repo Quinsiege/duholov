@@ -125,12 +125,12 @@
   });
   test('Графика: все духи рисуются (обычные, сияющие, омрачённые) без NaN/undefined', () => {
     SPECIES.forEach(s => [[false, false], [true, false], [false, true]].forEach(([sh, dk]) => {
-      const svg = Art.svgOf({ sid: s.id, shiny: sh, dark: dk }); // сам рисунок; наружу духи отдаются картинкой (Art.spirit → <img>)
+      const svg = Art.svgOf({ sid: s.id, shiny: sh, dark: dk }); // сам рисунок; наружу духи отдаются слоями (Art.spirit → Art.stack)
       ok(svg.startsWith('<svg'), s.id);
       ok(!/NaN|undefined/.test(svg), `${s.id}${sh ? ' сияющий' : ''}${dk ? ' омрачённый' : ''}`);
     }));
     ok(Art.img('ugolek').startsWith('<img'), 'Art.img');
-    ok(Art.spirit('ugolek').startsWith('<img'), 'Art.spirit — картинка (растрируется один раз)');
+    ok(Art.spirit('ugolek').startsWith('<span class="art art-stack'), 'Art.spirit — слоями: неподвижное картинками, анимированное — лёгким SVG');
     AMULET_KEYS.forEach(k => ok(!/NaN|undefined/.test(Art.amulet(k)), 'амулет ' + k));
   });
   test('Опыт до следующего уровня растёт на всех 40 уровнях', () => {
