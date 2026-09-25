@@ -17,10 +17,13 @@ HOST=aws-1-eu-west-1.pooler.supabase.com
 CLOUD=https://$REF.supabase.co
 BUCKET=poi-photos
 cd /opt/duholov
-W=/opt/duholov/migrate/run-$(date -u +%Y%m%d-%H%M%S)
+# --from <папка>: загрузить уже сделанную выгрузку (без пароля и без обращения к облаку за данными)
+FROM=""; [ "${1:-}" = "--from" ] && FROM="$2"
+W=${FROM:-/opt/duholov/migrate/run-$(date -u +%Y%m%d-%H%M%S)}
 mkdir -p "$W"
 log() { echo "==> $*"; }
 
+if [ -z "$FROM" ]; then
 read -rsp "Пароль базы облачного проекта duholov: " PGPASSWORD; echo
 export PGPASSWORD
 CONN="-h $HOST -p 5432 -U postgres.$REF -d postgres"
@@ -42,6 +45,7 @@ CPSQL -c "select string_agg(format('%s.%s=%s', schemaname, relname, n), ' ' orde
 CPSQL -c "select name from storage.objects where bucket_id = '$BUCKET'" > "$W/files.txt"
 ls -la "$W"; log "Строк в облаке: $(cat "$W/cloud-counts.txt")"; log "Файлов: $(grep -c . "$W/files.txt" || true)"
 unset PGPASSWORD
+fi
 
 log "Пересоздание базы сервера"
 docker compose down --remove-orphans
@@ -54,10 +58,24 @@ done
 sleep 10
 LPSQL() { docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q "$@"; }
 
+# данные: пустые таблицы пропускаем (служебные таблицы входа в облаке бывают новее — с другими колонками),
+# непустые — только те, что есть на сервере; пропущенные непустые — в журнале
+EXIST=$(LPSQL -tA -c "select schemaname||'.'||tablename from pg_tables where schemaname in ('auth','storage')")
+keep_known() { awk -v list="$EXIST" 'BEGIN { n = split(list, a, "\n"); for (i = 1; i <= n; i++) ok[a[i]] = 1 }
+  inb {
+    if ($0 == "\\.") { inb = 0; if (started) print; else if (drop && rows) print "  пропущена " t " (строк: " rows ")" > "/dev/stderr"; next }
+    rows++
+    if (drop) next
+    if (!started) { print hdr; started = 1 }
+    print; next
+  }
+  /^COPY / { t = $2; gsub(/"/, "", t); inb = 1; started = 0; rows = 0; hdr = $0; drop = (t !~ /^public\./ && !(t in ok)); next }
+  { print }'; }
 log "Загрузка схемы"
-LPSQL < "$W/schema.sql"
+# схема public на сервере уже есть — строки про саму схему из выгрузки пропускаем
+grep -vE "^(CREATE SCHEMA public;|ALTER SCHEMA public OWNER TO|COMMENT ON SCHEMA public )" "$W/schema.sql" | LPSQL
 log "Загрузка данных"
-{ echo "SET session_replication_role = replica;"; cat "$W/data.sql"; } | LPSQL
+{ echo "SET session_replication_role = replica;"; keep_known < "$W/data.sql"; } | LPSQL
 log "Правила хранилища"
 [ -s "$W/storage-policies.sql" ] && LPSQL < "$W/storage-policies.sql" || echo "(нет)"
 log "Миграции, которых ещё нет в облаке (018+)"
