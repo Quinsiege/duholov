@@ -558,6 +558,45 @@ const Art = (() => {
       `<circle class="art-float" cx="32" cy="58" r="1.5" fill="${fire}"/><circle class="art-float" style="animation-delay:.8s" cx="47" cy="52" r="1.2" fill="#fff" opacity=".85"/>` +
       `</svg>`;
   }
+  // 4.7: герб дружины — щит с золотой каймой, поле цвета дружины, золотой зверь (сокол, медведь, волк)
+  const CREST = {
+    // сокол с поднятыми крыльями, голова в профиль, клюв крючком
+    sokol: { f: ['#fca5a5', '#dc2626', '#5f0f0f'],
+      e: `<path d="M46 53 L15 25 L21 37 L10 37 L21 45 L10 49 L23 54 L16 59 L32 62 L45 62Z"/><path d="M54 53 L85 25 L79 37 L90 37 L79 45 L90 49 L77 54 L84 59 L68 62 L55 62Z"/>
+        <path d="M43 74 L39 90 L46 83 L50 92 L54 83 L61 90 L57 74Z"/><ellipse cx="50" cy="60" rx="9" ry="16"/><circle cx="51" cy="39" r="8"/><path d="M44 36 C38 36 35.5 40 37 45 L40 43 L44 42.5Z"/>`,
+      d: `<circle cx="49" cy="37.5" r="2.2" fill="#fffbe6" stroke="#3a1d06" stroke-width=".8"/><circle cx="49" cy="37.5" r="1"/><path d="M24 43 L41 55 M22 50 L40 59 M76 43 L59 55 M78 50 L60 59 M45 55 Q50 58 55 55 M45 62 Q50 65 55 62" fill="none" stroke="#6b3408" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>` },
+    // голова медведя анфас: тяжёлые брови, светлая морда
+    medved: { f: ['#93c5fd', '#2563eb', '#0f1f5c'],
+      e: `<circle cx="32" cy="38" r="9"/><circle cx="68" cy="38" r="9"/><path d="M27 56 C26 38 74 38 73 56 C74 73 63 86 50 88 C37 86 26 73 27 56Z"/>`,
+      d: `<circle cx="32" cy="38" r="4.3" fill="#8a4a0e" opacity=".6"/><circle cx="68" cy="38" r="4.3" fill="#8a4a0e" opacity=".6"/><ellipse cx="50" cy="72" rx="12.5" ry="10" fill="#fff4d0" stroke="#3a1d06" stroke-width=".8"/>
+        <path d="M44.5 65 Q50 62.5 55.5 65 Q53 70 50 70.5 Q47 70 44.5 65Z"/><path d="M50 70.5 V75.5 M44.5 78.5 Q50 75.5 55.5 78.5" fill="none" stroke="#3a1d06" stroke-width="1.4" stroke-linecap="round"/>
+        <ellipse cx="41" cy="57" rx="2.4" ry="2.8"/><ellipse cx="59" cy="57" rx="2.4" ry="2.8"/><path d="M34.5 51.5 L46 54.5 M65.5 51.5 L54 54.5" fill="none" stroke="#3a1d06" stroke-width="2.4" stroke-linecap="round"/>` },
+    // серебряный волк на янтарном поле: острые уши, меховые скулы, длинная морда, раскосые глаза
+    volk: { f: ['#fbbf24', '#9a5b06', '#2a1603'], m: ['#ffffff', '#dfe6f0', '#8b9bb4'],
+      e: `<path d="M50 91 L42 81 L33 73 L24 63 L28 53 L26 26 L40 41 L50 38 L60 41 L74 26 L72 53 L76 63 L67 73 L58 81Z"/>`,
+      d: `<path d="M29.5 33 L38 44 L31.5 47Z M70.5 33 L62 44 L68.5 47Z" fill="#7a5a3a" opacity=".55"/><path d="M43.5 60 L50 57 L56.5 60 L55 80 L50 86 L45 80Z" fill="none" stroke="#3a1d06" stroke-width=".9" opacity=".45"/>
+        <path d="M46 81 L54 81 L50 87Z"/><path d="M35.5 55 L45.5 57.5 L38 60.5Z M64.5 55 L54.5 57.5 L62 60.5Z"/><circle cx="41.5" cy="57.5" r=".8" fill="#fcd34d"/><circle cx="58.5" cy="57.5" r=".8" fill="#fcd34d"/>
+        <path d="M33.5 51 L45 54 M66.5 51 L55 54 M26 62 L33 64 M74 62 L67 64 M29 68 L35 69 M71 68 L65 69 M50 44 V52" fill="none" stroke="#3a1d06" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>` },
+  };
+  function clanCrest(k) {
+    const c = CREST[k] || CREST.sokol, id = 'cr' + k, m = c.m || ['#fffbe6', '#f7d77e', '#c98a2c'];
+    const shield = 'M50 5 L89 14 C91 52 79 84 50 104 C21 84 9 52 11 14Z';
+    return `<svg viewBox="-4 -3 108 112" class="art crest" aria-hidden="true"><defs>
+      <radialGradient id="${id}f" cx=".45" cy=".3" r=".85"><stop offset="0" stop-color="${c.f[0]}"/><stop offset=".45" stop-color="${c.f[1]}"/><stop offset="1" stop-color="${c.f[2]}"/></radialGradient>
+      <linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6c8"/><stop offset=".45" stop-color="#f3cf6b"/><stop offset="1" stop-color="#b3701c"/></linearGradient>
+      <linearGradient id="${id}e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m[0]}"/><stop offset=".5" stop-color="${m[1]}"/><stop offset="1" stop-color="${m[2]}"/></linearGradient>
+      <pattern id="${id}p" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M5 1L9 5 5 9 1 5Z" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width=".8"/></pattern></defs>
+      <path d="${shield}" fill="#1a0c06" transform="translate(0 3)" opacity=".45"/>
+      <path d="${shield}" fill="url(#${id}f)"/><path d="${shield}" fill="url(#${id}p)"/>
+      <path d="M50 12 L82 20 C83 52 73 79 50 96 C27 79 17 52 18 20Z" fill="none" stroke="#fde68a" stroke-opacity=".55" stroke-width="1"/>
+      <ellipse cx="42" cy="26" rx="22" ry="9" fill="#fff" opacity=".13" transform="rotate(-12 42 26)"/>
+      <g fill="url(#${id}e)" stroke="#3a1d06" stroke-width="1.3" stroke-linejoin="round">${c.e}</g>
+      <g fill="#3a1d06">${c.d}</g>
+      <path d="${shield}" fill="none" stroke="url(#${id}g)" stroke-width="4.5" stroke-linejoin="round"/>
+      <path d="${shield}" fill="none" stroke="#3a1d06" stroke-width=".9" stroke-linejoin="round" opacity=".7"/>
+      <path d="M50 -1 L55 5 L50 11 L45 5Z" fill="url(#${id}g)" stroke="#3a1d06" stroke-width=".9"/>
+      <path d="M11 14 L4 9 L8 17Z M89 14 L96 9 L92 17Z" fill="url(#${id}g)" stroke="#3a1d06" stroke-width=".8"/></svg>`;
+  }
   function guardian(color) {
     return `<svg viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="48" fill="#241a45"/>` +
       `<path d="M50 12 C72 12 82 34 82 56 L86 98 H14 L18 56 C18 34 28 12 50 12Z" fill="${color}"/>` +
@@ -846,5 +885,5 @@ const Art = (() => {
   }
   const asImg = (svg, key, ctx) => stack(svg, key, '', ctx);
   const spiritK = (sid, shiny, dark) => stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`);
-  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, guardian, avatar, emblem, cardSkin };
+  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
 })();

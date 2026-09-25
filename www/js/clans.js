@@ -42,7 +42,7 @@ const Clans = {
     const m = UI.modal({
       title: 'Выбери дружину', cls: 'clan-modal',
       html: `<p class="small">Дружины Ордена держат Капища: поставь своего духа защитником — и Капище окрасится цветом твоей дружины, а тебе каждый день будет приходить дань. Выбор — навсегда.</p>
-        <div class="clan-pick">${Object.entries(CLANS).map(([k, c]) => `<button class="clan-opt" data-k="${k}" style="--cc:${c.color}"><i></i><b>${c.name}</b><small>${c.motto}</small></button>`).join('')}</div>`,
+        <div class="clan-pick">${Object.entries(CLANS).map(([k, c]) => `<button class="clan-opt" data-k="${k}" style="--cc:${c.color}"><span class="clan-crest">${Art.clanCrest(k)}</span><b>${c.name}</b><small>${c.motto}</small><i class="clan-go"></i></button>`).join('')}</div>`,
       buttons: [{ label: 'Позже' }],
     });
     m.querySelector('.clan-pick').addEventListener('click', e => {
@@ -106,7 +106,7 @@ const Clans = {
     if (!S.d.clan) { this.choose(() => this.screen()); return; }
     const c = CLANS[S.d.clan];
     const scr = UI.screen('Дружина', `<div class="clan-view" style="--cc:${c.color}">
-        <div class="clan-head"><i></i><div><b>${c.name}</b><small>${c.motto}</small></div></div>
+        <div class="clan-head"><span class="clan-crest">${Art.clanCrest(S.d.clan)}</span><div><b>${c.name}</b><small>${c.motto}</small></div></div>
         <div class="clan-body"><div class="empty">Узнаём, как дела у дружин…</div></div>
       </div>`, 'clan-screen');
     let stats = null;
