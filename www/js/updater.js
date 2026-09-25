@@ -27,7 +27,7 @@ const Updater = {
       html: `<p>Игра переехала на свой сервер в России — <b>duholov.ru</b>. Для этого вышло новое приложение: его нужно установить заново.</p>
         <ol class="upd-notes"><li>Привяжи вход: Меню → Настройки → Учётная запись (Google, Яндекс, VK, Telegram или почта). Без этого прогресс гостя не перенесётся.</li>
         <li>Удали это приложение.</li><li>Скачай и установи новое — войди тем же способом.</li></ol>`,
-      buttons: [{ label: 'Позже' }, { label: 'Скачать', cls: 'primary', fn: () => { location.href = 'duholov.apk'; } }],
+      buttons: [{ label: 'Позже' }, { label: 'Скачать', cls: 'primary', fn: () => { location.href = this.apkUrl(); } }],
     });
   },
 
@@ -108,13 +108,21 @@ const Updater = {
     });
   },
 
-  // Устаревшее приложение-обёртка: новую версию нужно скачать и установить
+  // 4.3.2: откуда приложение — с сайта (APK) или из магазина (store=rustore в User-Agent, см. MainActivity):
+  // приложению из магазина новая версия приходит только через магазин
+  STORE: (navigator.userAgent.match(/store=([a-z]+)/) || [])[1] || '',
+  STORES: { rustore: { name: 'RuStore', url: 'https://www.rustore.ru/catalog/app/ru.duholov.game' } },
+  apkUrl() { return this.STORES[this.STORE] ? this.STORES[this.STORE].url : 'duholov.apk'; },
+
+  // Устаревшее приложение-обёртка: новую версию нужно скачать и установить (или обновить в магазине)
   promptApk(v) {
     this.shown = true;
+    const st = this.STORES[this.STORE];
     UI.modal({
       title: 'Обновите приложение', cls: 'update-modal', dismiss: false,
-      html: `<p>Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.</p>`,
-      buttons: [{ label: 'Скачать обновление', cls: 'primary', keep: true, fn: () => { location.href = 'duholov.apk'; } }],
+      html: st ? `<p>Вышла новая версия приложения Духолов. Обновите его в ${st.name} — прогресс сохранится.</p>`
+        : `<p>Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.</p>`,
+      buttons: [{ label: st ? `Открыть ${st.name}` : 'Скачать обновление', cls: 'primary', keep: true, fn: () => { location.href = this.apkUrl(); } }],
     });
   },
 
