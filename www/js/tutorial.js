@@ -64,14 +64,14 @@ const Tut = {
     card: ['.screen .grid.cards .card', '.tile[data-k="spirits"]', '#menuBtn'],
     power: ['.screen .act-power', '.screen .grid.cards .card', '.tile[data-k="spirits"]', '#menuBtn'],
     dex: ['.tile[data-k="book"]', '#menuBtn'],
-    spring: ['#tracker', '.mk-spring'],
+    spring: ['.screen .spring-go:not([disabled])', '#tracker', '.mk-spring'], // 4.7.3: на экране родника — кнопка «Зачерпнуть силу»
     bag: ['.tile[data-k="bag"]', '#menuBtn'],
     cocoons: ['.tile[data-k="egg"]', '#menuBtn'],
     quests: ['.tile[data-k="scroll"]', '#menuBtn'],
     path: ['.tile[data-k="path"]', '#menuBtn'],
   },
   // важное, что наставник не должен закрывать (кроме самой цели)
-  KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots'],
+  KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots', '.screen .spring-disc'],
   coach(st) {
     if (!this.el) {
       this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${Art.stack(CutArt.velimir(true).replace('class="vm-breath"', ''), 'velimir-mini')}</div>
@@ -109,6 +109,7 @@ const Tut = {
       if (!el) continue;
       if (sheet && !sheet.contains(el)) continue;            // под открытым меню не нажать
       if (!sheet && top && !top.contains(el)) continue;      // под открытым экраном не нажать
+      if (st.id === 'spring') return { el, spring: el.matches('.spring-go') ? 'go' : el.matches('.mk-spring') ? (U.$('#tracker.near') ? 'near' : 'seen') : '' };
       return { el };
     }
     if (sheet) return null;                                  // меню открыто, а цель не в нём — закрыть меню подскажет текст
@@ -130,7 +131,8 @@ const Tut = {
       this._back = mode;
       this.el.querySelector('.coach-text').innerHTML = mode === 'back' ? `${this._hint}<small class="coach-back">Сначала вернись назад — кнопка подсвечена.</small>`
         : mode === 'near' ? 'Ты у родника! <b>Коснись его</b> — он подсвечен.'
-          : mode === 'seen' ? 'Вот он, родник — <b>подсвечен</b>. Подойди ближе и коснись его.' : this._hint;
+          : mode === 'seen' ? 'Вот он, родник — <b>подсвечен</b>. Подойди ближе и коснись его.'
+            : mode === 'go' ? 'Это родник! Смахни по кругу или нажми <b>«Зачерпнуть силу»</b> — он поделится с тобой силой.' : this._hint;
     }
     let tr = null;
     if (t && t.el) {
