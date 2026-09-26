@@ -208,7 +208,7 @@ const Friends = {
     const stat = (n, t, k) => `<div><span class="pc-si">${ico[k] || ''}</span><b>${n}</b><span>${t}</span></div>`;
     if (f) { f.name = p.name; f.lvl = p.lvl; if (p.look) f.look = p.look; }
     m.querySelector('.pc').style.setProperty('--cc', cl ? cl.color : '#a78bfa');
-    // 4.14: герб — в центре Ловчий в руническом кольце и лучах цвета дружины, слева знамя дружины, справа знак Лиги
+    // 4.14: фон и рамка из Гардероба на карточке не показываются. Сверху — в центре Ловчий в руническом кольце и лучах цвета дружины, слева знамя дружины, справа знак Лиги
     m.querySelector('.pc-hero').innerHTML = `<div class="pc-sky"></div>
       <div class="pc-row">
         <div class="pc-side">${cl ? `<span class="pc-emb">${Art.clanCrest(p.clan)}</span><small>${cl.short}</small><em>дружина</em>` : ''}</div>
@@ -217,7 +217,6 @@ const Friends = {
       </div>
       <div class="pc-id"><b class="pc-name">${U.esc(p.name)}</b><small>${UI.rank(p.lvl)} · ${p.lvl} уровень</small>
         <div class="pc-tags"><span class="pc-tag seen-${p.seen}">${p.me ? 'это ты' : seen}</span></div></div>`;
-    Art.cardSkin(m.querySelector('.pc-hero'), p.look); // 4.6: фон и рамка карточки из Гардероба (после разметки — иначе украшения рамки стираются)
     // дружба: уровень, очки, с какого дня
     let friendBox = '';
     if (f) {
@@ -228,9 +227,9 @@ const Friends = {
     }
     const body = m.querySelector('.pc-body');
     body.innerHTML = `
-      ${friendBox}
+      <i class="pc-div"></i>${friendBox ? friendBox + '<i class="pc-div"></i>' : ''}
       <div class="pc-stats">${stat(U.fmtNum(p.caught), 'поймано', 'caught')}${stat(p.dex, 'видов', 'dex')}${stat(U.fmtDist(p.km * 1000), 'пройдено', 'km')}${stat(U.fmtNum(p.raids), 'разломов', 'raids')}${stat(U.fmtNum(p.duels), 'поединков', 'duels')}${stat(p.medals, 'золотых знаков', 'medals')}</div>
-      ${p.buddy || p.best ? `<div class="pc-sps">${sp(p.buddy, 'Спутник')}${sp(p.best, 'Сильнейший дух')}</div>` : ''}
+      ${p.buddy || p.best ? `<i class="pc-div"></i><div class="pc-sps">${sp(p.buddy, 'Спутник')}${sp(p.best, 'Сильнейший дух')}</div>` : ''}
       <div class="pc-top"></div>
       ${p.days || lg.best > lg.rank ? `<div class="pc-foot">${[p.days ? `В Ордене ${p.days} ${U.plural(p.days, 'день', 'дня', 'дней')}` : '', lg.best > lg.rank ? `лучший ранг в Лиге — ${LEAGUE_RANKS[lg.best].name}` : ''].filter(Boolean).join(' · ')}</div>` : ''}`;
     // кнопки по состоянию дружбы
