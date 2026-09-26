@@ -216,14 +216,13 @@ Object.assign(UI, {
         <div class="album-box">${Album.html()}</div>
         <div class="prof-since">В Ордене с ${new Date(d.created).toLocaleDateString('ru-RU')}</div>
       </div>`, 'prof-screen');
-    Art.cardSkin(scr.querySelector('.prof-hero'), d.look); // 4.6: фон и рамка карточки из Гардероба
     scr.addEventListener('click', e => {
       const lg = e.target.closest('[data-login]'); if (lg) { Login.start(lg.dataset.login, lg.dataset.mode); return; }
       if (e.target.closest('.journal-btn')) { J.screen(); return; }
       if (e.target.closest('.clan-btn')) { Clans.choose(() => { this.closeScreen(scr); this.profile(); }); return; }
       if (e.target.closest('.clan-open')) { Clans.screen(); return; }
       if (e.target.closest('.look-btn')) {
-        this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); Art.cardSkin(scr.querySelector('.prof-hero'), S.d.look); this.refreshHud(); });
+        this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); this.refreshHud(); });
         return;
       }
       const ai = e.target.closest('.album-item');
