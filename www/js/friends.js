@@ -181,7 +181,7 @@ const Friends = {
   async card(pid, o = {}) {
     Sfx.init(); Sfx.play('tap');
     const m = UI.modal({ cls: 'pc-modal', buttons: [], html: `<div class="pc"><button class="pc-x" aria-label="Закрыть">${UI.I.close}</button>
-      <div class="pc-hero"><div class="pc-ava">${Art.avatar(o.look || undefined)}</div><div class="pc-id"><b class="pc-name">${U.esc(o.name || 'Ловчий')}</b><small>Загружаю карточку…</small></div></div>
+      <div class="pc-hero"><div class="pc-sky"></div><div class="pc-row"><span></span><div class="pc-ava"><i class="pc-ring"></i>${Art.avatar(o.look || undefined)}</div><span></span></div><div class="pc-id"><b class="pc-name">${U.esc(o.name || 'Ловчий')}</b><small>Загружаю карточку…</small></div></div>
       <div class="pc-body"><div class="pc-skel"></div><div class="pc-skel"></div></div><div class="pc-acts"></div></div>` });
     m.querySelector('.pc-x').onclick = () => m.close();
     const acts = m.querySelector('.pc-acts'), changed = () => { if (o.render) o.render(); };
@@ -208,10 +208,16 @@ const Friends = {
     const stat = (n, t, k) => `<div><span class="pc-si">${ico[k] || ''}</span><b>${n}</b><span>${t}</span></div>`;
     if (f) { f.name = p.name; f.lvl = p.lvl; if (p.look) f.look = p.look; }
     m.querySelector('.pc').style.setProperty('--cc', cl ? cl.color : '#a78bfa');
-    Art.cardSkin(m.querySelector('.pc-hero'), p.look); // 4.6: фон и рамка карточки из Гардероба
-    m.querySelector('.pc-hero').innerHTML = `<div class="pc-ava"><i class="pc-ring"></i>${Art.avatar(p.look || undefined)}<span class="pc-lvl">${p.lvl}</span></div>
+    // 4.14: герб — в центре Ловчий в руническом кольце и лучах цвета дружины, слева знамя дружины, справа знак Лиги
+    m.querySelector('.pc-hero').innerHTML = `<div class="pc-sky"></div>
+      <div class="pc-row">
+        <div class="pc-side">${cl ? `<span class="pc-emb">${Art.clanCrest(p.clan)}</span><small>${cl.short}</small><em>дружина</em>` : ''}</div>
+        <div class="pc-ava"><i class="pc-ring"></i>${Art.avatar(p.look || undefined)}<span class="pc-lvl">${p.lvl}</span></div>
+        <div class="pc-side"><span class="pc-hexw"><span class="lgx-hex r${lg.rank}"><span>${lg.rank + 1}</span></span></span><small>${rk.name}</small><em>Лига · ★ ${lg.stars}</em></div>
+      </div>
       <div class="pc-id"><b class="pc-name">${U.esc(p.name)}</b><small>${UI.rank(p.lvl)} · ${p.lvl} уровень</small>
-        <div class="pc-tags">${cl ? `<span class="pc-tag clan">${cl.short}</span>` : ''}<span class="pc-tag seen-${p.seen}">${p.me ? 'это ты' : seen}</span></div></div>`;
+        <div class="pc-tags"><span class="pc-tag seen-${p.seen}">${p.me ? 'это ты' : seen}</span></div></div>`;
+    Art.cardSkin(m.querySelector('.pc-hero'), p.look); // 4.6: фон и рамка карточки из Гардероба (после разметки — иначе украшения рамки стираются)
     // дружба: уровень, очки, с какого дня
     let friendBox = '';
     if (f) {
@@ -222,12 +228,11 @@ const Friends = {
     }
     const body = m.querySelector('.pc-body');
     body.innerHTML = `
-      <div class="pc-league"><div class="lg-mini r${lg.rank}">${lg.rank + 1}</div><div class="row-main"><b>${rk.name}</b><small>Лига · ★ ${lg.stars} в этом сезоне${lg.best > lg.rank ? ` · лучший ранг — ${LEAGUE_RANKS[lg.best].name}` : ''}</small></div></div>
       ${friendBox}
       <div class="pc-stats">${stat(U.fmtNum(p.caught), 'поймано', 'caught')}${stat(p.dex, 'видов', 'dex')}${stat(U.fmtDist(p.km * 1000), 'пройдено', 'km')}${stat(U.fmtNum(p.raids), 'разломов', 'raids')}${stat(U.fmtNum(p.duels), 'поединков', 'duels')}${stat(p.medals, 'золотых знаков', 'medals')}</div>
       ${p.buddy || p.best ? `<div class="pc-sps">${sp(p.buddy, 'Спутник')}${sp(p.best, 'Сильнейший дух')}</div>` : ''}
       <div class="pc-top"></div>
-      ${p.days ? `<div class="pc-foot">В Ордене ${p.days} ${U.plural(p.days, 'день', 'дня', 'дней')}</div>` : ''}`;
+      ${p.days || lg.best > lg.rank ? `<div class="pc-foot">${[p.days ? `В Ордене ${p.days} ${U.plural(p.days, 'день', 'дня', 'дней')}` : '', lg.best > lg.rank ? `лучший ранг в Лиге — ${LEAGUE_RANKS[lg.best].name}` : ''].filter(Boolean).join(' · ')}</div>` : ''}`;
     // кнопки по состоянию дружбы
     const draw = () => {
       const fr = this.find(pid), st = p.friend;
