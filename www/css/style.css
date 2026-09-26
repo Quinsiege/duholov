@@ -3665,3 +3665,9 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .det2 .btn.disabled.primary::after, .det2 .btn.disabled.evolve::after, .det2 .btn.disabled.danger::after { inset: auto !important; width: auto !important; background: none !important; animation: none !important; transform: none !important; }
 .det2 .btn.disabled { padding-left: 32px; padding-right: 10px; }
 .det2 .btn.disabled::after, .det2 .btn.disabled.primary::after, .det2 .btn.disabled.evolve::after { padding-left: 0; }
+/* не встреченный дух — знак вопроса в пунктирном круге (Бестиарий, эволюция, превращение) */
+.dx-q { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; border: 1.5px dashed rgba(255, 255, 255, .22); background: radial-gradient(circle, rgba(255, 255, 255, .06), transparent 70%);
+  font-family: var(--f-display); font-size: 30px; line-height: 1; color: rgba(255, 255, 255, .4); }
+.dex-cell .dx-q { width: 60px; height: 60px; margin: 5px auto; font-size: 32px; }
+.dx-st-a .dx-q { position: relative; width: 60px; height: 60px; font-size: 30px; }
+.dt-evo-a .dx-q { font-size: 15px; border-width: 1px; }

@@ -151,7 +151,7 @@ Object.assign(UI, {
               <div class="dt-rows">
                 ${row('После усиления', `СИЛА ${st.power} → <i class="dt-up">${nx.power}</i> <em>+${nx.power - st.power}</em>`)}
                 ${row('Здоровье', `ОЗ ${st.hp} → ${nx.hp}`)}
-                ${s.evo ? `<div class="dt-row dt-evo-row"><span>Превращение</span><b><span class="dt-evo-a ${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? '' : 'sil'}">${Art.img(s.evo)}</span>${SP[s.evo].name}</b>
+                ${s.evo ? `<div class="dt-row dt-evo-row"><span>Превращение</span><b>${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? `<span class="dt-evo-a">${Art.img(s.evo)}</span>${SP[s.evo].name}` : '<span class="dt-evo-a"><span class="dx-q">?</span></span>???'}</b>
                   <div class="dt-evo-bar"><div class="pbar"><i style="width:${Math.min(100, ess / s.cost * 100)}%"></i></div><small>${Math.min(ess, s.cost)} / ${s.cost} эсс.</small></div></div>`
                   : row('Превращение', 'высшая форма')}
                 ${row('Искры', `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}`, 'gold')}
@@ -292,7 +292,7 @@ Object.assign(UI, {
       <div class="grid dex">${SPECIES.map(s => {
         const d = S.d.dex[s.id] || {};
         const cls = d.caught ? 'caught' : d.seen ? 'seen' : 'unknown';
-        return `<button class="dex-cell ${cls} el-${s.el}" data-sid="${s.id}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${Art.img(s.id)}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
+        return `<button class="dex-cell ${cls} el-${s.el}" data-sid="${s.id}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${d.seen ? Art.img(s.id) : '<span class="dx-q">?</span>'}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
       }).join('')}</div>`, 'dex-screen');
     scr.addEventListener('click', e => {
       const c = e.target.closest('.dex-cell'); if (!c) return;
@@ -346,7 +346,7 @@ Object.assign(UI, {
             </div>`)}
           ${pane('family', `
             <div class="dx-chain">${chain.map((x, i) => `${i ? `<div class="dx-arr"><i>→</i><small>${chain[i - 1].cost ? `${chain[i - 1].cost} эсс.` : ''}</small></div>` : ''}
-              <div class="dx-st ${x.id === sid ? 'cur' : ''} ${seen(x) ? '' : 'sil'}"><div class="dx-st-a">${Art.img(x.id)}</div><b>${seen(x) ? x.name : '???'}</b></div>`).join('')}</div>
+              <div class="dx-st ${x.id === sid ? 'cur' : ''} ${seen(x) ? '' : 'sil'}"><div class="dx-st-a">${seen(x) ? Art.img(x.id) : '<span class="dx-q">?</span>'}</div><b>${seen(x) ? x.name : '???'}</b></div>`).join('')}</div>
             <div class="dt-rows">
               ${row('Форм в семействе', chain.length)}
               ${row('Эссенция «' + fam.name + '»', S.d.essence[s.fam] || 0)}
