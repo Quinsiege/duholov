@@ -751,7 +751,7 @@
     await refuse(A, 'leagueStart', {}, /три духа/);
     ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, sid))));
     await must(A, 'leagueStart', {});
-    eq(A.data.league.tickets, 2); ok(A.data.league.run, 'турнир начат');
+    eq(A.data.league.tickets, League.TICKETS - 1); ok(A.data.league.run, 'турнир начат');
     await must(A, 'leagueEnd', { win: false });
     eq(A.data.league.run, null, 'поражение завершает турнир');
     eq(A.data.league.pts, 0, 'рейтинг не уходит ниже нуля');
