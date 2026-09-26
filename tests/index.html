@@ -164,6 +164,15 @@
       W.spawnsAround(55.75, 37.62, 600).forEach(x => eq(x.lvl, 1, 'на 1-м уровне — духи 1-го уровня'));
     } finally { S.d.level = lv; }
   });
+  test('Здоровье духов: раны, восстановление, без сил, лечение (4.15)', () => {
+    const sp = { uid: 'hp1', sid: SPECIES[0].id, lvl: 5, iv: [5, 5, 5] }, t0 = 1e12, H = Rules.HP;
+    eq(S.hpNow(sp, t0), 1, 'новый дух здоров');
+    S.setHp(sp, 0.4, t0); near(S.hpNow(sp, t0), 0.4, 1e-9); near(S.hpNow(sp, t0 + 3600000), 0.4 + H.REGEN, 1e-9, 'сам восстанавливается');
+    eq(S.hpNow(sp, t0 + 100 * 3600000), 1, 'не выше полного');
+    S.setHp(sp, 0, t0); eq(S.hpNow(sp, t0 + 1000), 0, 'без сил'); ok(!S.alive(sp) || S.hpNow(sp) > 0);
+    eq(S.hpNow(sp, t0 + H.KO_MS - 1), 0); eq(S.hpNow(sp, t0 + H.KO_MS), H.BACK, 'поднимается сам через KO_MS');
+    S.setHp(sp, 1, t0); ok(!('hpf' in sp) && !('ko' in sp), 'здоровый — без лишних полей');
+  });
   test('Регионы: вещие птицы только в своих частях света', () => {
     eq(W.region(37), 'west'); eq(W.region(60), 'center'); eq(W.region(130), 'east');
     ok(W.local(SP.sirin, 37) && !W.local(SP.sirin, 100), 'Сирин');
@@ -753,6 +762,29 @@
     const r = await must(A, 'duelEnd', { win: true });
     ok(r.win && r.rw.length > 0, 'награда'); eq(A.data.shrines[id], asPlayer(A, () => U.today()));
     await refuse(A, 'duelStart', { shrine }, /уже победил/);
+  });
+  atest('Сервер: раны после боя, без сил не пускают в бой, лечение (4.15)', async () => {
+    const A = await newPlayer('uhp', 55.73, 37.61, 'Лекарь'); A.data.spirits.forEach(x => { x.lvl = 5; }); A.data.level = 3;
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 51000);
+    const shrine = { id, lat: A.lat, lng: A.lng, name: 'Дуб' }, uid = A.data.spirits[0].uid;
+    await must(A, 'duelStart', { shrine });
+    await must(A, 'duelEnd', { win: false, hp: { [uid]: 0.5 } });
+    near(asPlayer(A, () => S.hpNow(A.data.spirits[0])), 0.5, 0.01, 'раны сохранились');
+    await must(A, 'duelStart', { shrine });
+    await must(A, 'duelEnd', { win: false, hp: { [uid]: 1 } });
+    ok(asPlayer(A, () => S.hpNow(A.data.spirits[0])) < 0.6, 'выше, чем было до боя, не станет');
+    await must(A, 'duelStart', { shrine });
+    await must(A, 'duelEnd', { win: false, hp: { [uid]: 0 } });
+    ok(A.data.spirits[0].ko, 'без сил');
+    await refuse(A, 'duelStart', { shrine }, /без сил/);
+    A.data.items.herb = 1; A.data.items.water = 0;
+    await refuse(A, 'heal', { uid, k: 'herb' }, /Живая вода/);
+    A.data.items.water = 1;
+    const h = await must(A, 'heal', { uid, k: 'water' }); near(h.hp, 0.5, 0.01, 'Живая вода подняла');
+    const h2 = await must(A, 'heal', { uid, k: 'herb' }); near(h2.hp, 0.75, 0.01, 'подорожник +25%');
+    await refuse(A, 'heal', { uid, k: 'charm' }, /не лечат/);
+    await must(A, 'duelStart', { shrine });
   });
   atest('Сервер: погода с телефона сверяется с настоящей (4.15)', async () => {
     const pos = { lat: 55.75, lng: 37.62 }, sim = Sky.simulate(pos).key;

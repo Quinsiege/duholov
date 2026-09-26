@@ -474,6 +474,30 @@ const Art = (() => {
         `<path d="M39 13Q50 4 61 13V17Q55 14 50 17Q45 14 39 17Z" fill="#dc2626" stroke="#5a0b0b" stroke-width="2.2" stroke-linejoin="round"/>` +
         `<path d="M42 30H58" stroke="#5a0b0b" stroke-width="4.5" stroke-linecap="round"/><path d="M42 30H58M58 30L62 36" stroke="#ef4444" stroke-width="2.2" fill="none" stroke-linecap="round"/><ellipse cx="62.5" cy="39" rx="2.4" ry="3.6" fill="#ef4444" stroke="#5a0b0b" stroke-width="1.4"/>` +
         glint(80, 30, 8, '#d9fffa') + glint(18, 40, 5, '#d9fffa', .9));
+      // 4.15: Мёртвая вода — тот же флакон, что у Живой воды, но вода тёмно-синяя и печать тёмная
+      case 'deadwater': {
+        const pal = [['#2dd4bf', '#6366f1'], ['#b5fff3', '#c7d2fe'], ['#0b5e58', '#1e1b4b'], ['#e6fffb', '#e0e7ff'], ['#5eead4', '#818cf8'], ['#073b3a', '#1e1b4b'],
+          ['#d9fffa', '#e0e7ff'], ['#dc2626', '#334155'], ['#ef4444', '#64748b'], ['#5a0b0b', '#0f172a']];
+        return pal.reduce((x, [c1, c2]) => x.split(c1).join(c2), item('water'));
+      }
+      // 4.15: Подорожник — широкий лист с продольными жилками
+      case 'herb': return svg(`<defs><radialGradient id="${k}a"><stop offset="0" stop-color="#84cc16" stop-opacity=".5"/><stop offset="1" stop-color="#84cc16" stop-opacity="0"/></radialGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9f99d"/><stop offset=".45" stop-color="#65a30d"/><stop offset="1" stop-color="#1a3d06"/></linearGradient></defs>` +
+        `<circle class="art-aura" cx="50" cy="56" r="44" fill="url(#${k}a)"/>` + floor(26, 94) +
+        `<path d="M50 90C50 80 48 72 45 66" stroke="#3f6212" stroke-width="5" stroke-linecap="round" fill="none"/>` +
+        `<path d="M46 68C22 62 16 34 34 16C46 6 66 10 74 24C84 42 72 66 46 68Z" fill="url(#${k}b)" stroke="#1a3d06" stroke-width="3" stroke-linejoin="round"/>` +
+        `<g fill="none" stroke="#ecfccb" stroke-width="2.2" stroke-linecap="round" opacity=".85"><path d="M47 66C44 48 48 28 58 14"/><path d="M47 66C36 52 32 36 36 22"/><path d="M47 66C58 54 68 40 70 26"/></g>` +
+        `<path d="M32 26C38 18 48 15 56 17" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>` + glint(76, 18, 6, '#ecfccb') + glint(20, 50, 4, '#ecfccb', .8));
+      // 4.15: Целебный отвар — глиняный горшочек с зелёным варевом и паром
+      case 'brew': return svg(`<defs><radialGradient id="${k}a"><stop offset="0" stop-color="#4ade80" stop-opacity=".45"/><stop offset="1" stop-color="#4ade80" stop-opacity="0"/></radialGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0b27a"/><stop offset=".5" stop-color="#b45f2a"/><stop offset="1" stop-color="#5c2a0e"/></linearGradient>` +
+        `<radialGradient id="${k}c" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#bbf7d0"/><stop offset=".6" stop-color="#22c55e"/><stop offset="1" stop-color="#14532d"/></radialGradient></defs>` +
+        `<circle class="art-aura" cx="50" cy="60" r="44" fill="url(#${k}a)"/>` + floor(28, 95) +
+        `<g fill="none" stroke="#e2f5e9" stroke-width="3" stroke-linecap="round" opacity=".8"><path d="M40 30C34 24 44 18 38 10"/><path d="M52 28C46 22 56 16 50 8"/><path d="M64 30C58 24 68 18 62 10"/></g>` +
+        `<path d="M24 46H76C78 52 80 58 80 64C80 82 66 93 50 93C34 93 20 82 20 64C20 58 22 52 24 46Z" fill="url(#${k}b)" stroke="#3b1706" stroke-width="3" stroke-linejoin="round"/>` +
+        `<ellipse cx="50" cy="46" rx="27" ry="7" fill="url(#${k}c)" stroke="#3b1706" stroke-width="3"/>` +
+        `<path d="M21 60Q50 70 79 60" stroke="#f7d77e" stroke-width="3" fill="none" opacity=".9"/><g fill="#f7d77e"><circle cx="34" cy="66" r="2"/><circle cx="50" cy="69" r="2"/><circle cx="66" cy="66" r="2"/></g>` +
+        `<path d="M28 72C29 80 34 85 40 88" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".45"/>` + glint(78, 40, 6, '#bbf7d0'));
       // Златник: толстая золотая монета с бисерным ободком и чеканным солнцем
       case 'zlat': {
         let rays = '', rib = '';
