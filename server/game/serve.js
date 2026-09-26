@@ -330,23 +330,24 @@ function makeEnv(uid) {
     // Таблица сезона: топ-50 с текущими данными Ловчих, сколько всего участников и место игрока, если он ниже
     // tier — тройка лучших в ранге rank (пьедестал)
     async leagueTop(season, rank) {
-      const q = () => db.from('league_scores').select('user_id, name, stars, rank, level, look, updated_at').eq('season', season);
-      const rows = must(await q().order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
-      const tier = must(await q().eq('rank', rank | 0).order('stars', { ascending: false }).order('updated_at', { ascending: true }).limit(3)) || [];
+      // 4.15: порядок и место — по рейтингу (колонка rating, миграция 021)
+      const q = () => db.from('league_scores').select('user_id, name, rating, rank, level, look, updated_at').eq('season', season);
+      const rows = must(await q().order('rating', { ascending: false }).order('updated_at', { ascending: true }).limit(50)) || [];
+      const tier = must(await q().eq('rank', rank | 0).order('rating', { ascending: false }).order('updated_at', { ascending: true }).limit(3)) || [];
       const uids = [...new Set(rows.concat(tier).map(r => r.user_id))];
       const ps = uids.length ? must(await db.from('players').select('pid, user_id').in('user_id', uids)) || [] : [];
       const pid = {}; ps.forEach(p => { pid[p.user_id] = p.pid; });
       const cur = await this.briefByUid(uids);
-      const view = r => ({ ...r, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null });
+      const view = r => ({ ...r, pts: r.rating, pid: pid[r.user_id] || null, me: r.user_id === uid, cur: cur[r.user_id] || null });
       const { count: total, error } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season);
       if (error) throw new Error(error.message);
       let me = null;
       if (!rows.some(r => r.user_id === uid)) {
-        const my = must(await db.from('league_scores').select('stars, updated_at').eq('season', season).eq('user_id', uid).maybeSingle());
+        const my = must(await db.from('league_scores').select('rating, updated_at').eq('season', season).eq('user_id', uid).maybeSingle());
         if (my) {
           const { count } = await db.from('league_scores').select('user_id', { count: 'exact', head: true }).eq('season', season)
-            .or(`stars.gt.${my.stars | 0},and(stars.eq.${my.stars | 0},updated_at.lt."${my.updated_at}")`);
-          me = { place: (count || 0) + 1, stars: my.stars };
+            .or(`rating.gt.${my.rating | 0},and(rating.eq.${my.rating | 0},updated_at.lt."${my.updated_at}")`);
+          me = { place: (count || 0) + 1, pts: my.rating };
         }
       }
       return { rows: rows.map(view), tier: tier.map(view), total: total || 0, me };
@@ -360,7 +361,9 @@ function makeEnv(uid) {
       return must(await db.from('poi_submissions').select('id, name, status, reason').eq('user_id', uid).order('created_at', { ascending: false }).limit(50)) || [];
     },
     async leagueScore(x) {
-      must(await db.from('league_scores').upsert({ user_id: uid, season: x.season, name: String(x.name).slice(0, 20), stars: Math.min(1000, x.stars), rank: x.rank,
+      // 4.15: рейтинг — в колонке rating; stars — для совместимости (рейтинг / 100)
+      const pts = Math.max(0, Math.min(20000, x.pts | 0));
+      must(await db.from('league_scores').upsert({ user_id: uid, season: x.season, name: String(x.name).slice(0, 20), rating: pts, stars: Math.min(1000, Math.floor(pts / 100)), rank: x.rank,
         level: x.level, look: x.look, updated_at: new Date().toISOString() }, { onConflict: 'user_id,season' }));
     },
     // Общее дело Ордена: вклад игрока за неделю (n только растёт) и итоги недели

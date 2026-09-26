@@ -228,7 +228,7 @@ const Friends = {
       ${hero(p.look, `
         <div class="det-hp">${UI.rank(p.lvl)} Ордена Оберега</div>
         <div class="det-power"><small>УРОВЕНЬ</small><b>${p.lvl}</b></div>
-        <div class="det-lvl pcard-lg"><span><i class="lgx-hex r${lg.rank}"><span>${lg.rank + 1}</span></i> Лига: <b>${rk.name}</b> · ★ ${lg.stars}</span></div>
+        <div class="det-lvl pcard-lg"><span><span class="lg-badge xs">${League.badge(lg.rank)}</span> Лига: <b>${rk.name}</b> · ${League.cup()}${U.fmtNum(lg.pts != null ? lg.pts : (lg.stars | 0) * 100)}</span></div>
         <div class="det-tags">${cl ? `<span style="color:${cl.color}">⛊ ${cl.short}</span>` : ''}<span class="pcard-seen s-${p.seen}">${p.me ? 'это ты' : seen}</span></div>`)}
       <div class="pf-acts pcard-acts">${actsHtml()}</div>
       <div class="seg dt-tabs">${[['ach', 'Достижения'], ['spirits', 'Духи'], ['friend', p.me ? 'Это ты' : 'Дружба']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
@@ -243,7 +243,7 @@ const Friends = {
             ${row('Закрыто разломов', U.fmtNum(p.raids))}
             ${row('Поединков', U.fmtNum(p.duels))}
             ${row('Золотых знаков', p.medals)}
-            ${row('Лучший ранг в Лиге', LEAGUE_RANKS[Math.max(lg.best, lg.rank)].name)}
+            ${row('Лучшая лига', LEAGUE_RANKS[Math.max(lg.best, lg.rank)].name)}
             ${p.days ? row('В Ордене', `${p.days} ${U.plural(p.days, 'день', 'дня', 'дней')}`) : ''}
           </div>`, true)}
         ${pane('spirits', p.buddy || p.best ? `

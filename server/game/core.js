@@ -1100,7 +1100,7 @@ const GameCore = {
       this.need(team.length === 3, 'Нужно три духа');
       this.need(L.tickets > 0, 'Жетоны кончились — приходи завтра');
       L.tickets--;
-      L.run = { k: 0, won: 0, stars0: L.stars, rank0: League.rank(L.stars), seed: U.uid(), team: team.map(x => x.uid) };
+      L.run = { k: 0, won: 0, pts0: L.pts, rank0: League.rank(L.pts), seed: U.uid(), team: team.map(x => x.uid) };
       ctx.srv.battle = { type: 'league', k: 0, start: ctx.now, team: L.run.team };
       return { run: L.run };
     },
@@ -1111,12 +1111,12 @@ const GameCore = {
       this.need(b.k === run.k, 'Турнир не найден');
       const win = !!a.win;
       if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
-      let gained = 0;
-      if (win) { run.won++; gained++; S.progress('league', 1); }
-      const last = !win || run.k >= 2;
-      if (win && run.k === 2) gained++; // чистая победа
-      L.stars += gained;
-      const rNew = League.rank(L.stars), rewards = [];
+      // 4.15: рейтинг — победа +30, поражение −30 (не ниже нуля; можно выпасть в прошлую лигу, награды за лигу — раз в сезон)
+      const was = L.pts;
+      if (win) { run.won++; S.progress('league', 1); }
+      L.pts = U.clamp(L.pts + (win ? League.WIN : -League.LOSS), 0, League.MAXPTS);
+      const gained = L.pts - was, last = !win || run.k >= 2;
+      const rNew = League.rank(L.pts), rewards = [];
       for (let i = 1; i <= rNew; i++) {
         if (L.got[i]) continue;
         L.got[i] = true;
@@ -1126,9 +1126,9 @@ const GameCore = {
       }
       if (rNew > L.best) L.best = rNew;
       S.addXP(win ? 400 + run.k * 200 : 100);
-      const res = { win, gained, last, k: run.k, won: run.won, stars: L.stars, starsGot: L.stars - run.stars0, rNew, rank0: run.rank0, rewards };
-      // строка таблицы сезона — после каждой победы (3.21.1: писалась только в конце турнира, и звёзды брошенного турнира в неё не попадали)
-      if (a.board !== false && (gained || last)) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, stars: L.stars, rank: rNew, level: S.d.level, look: S.d.look }));
+      const res = { win, gained, last, k: run.k, won: run.won, pts: L.pts, ptsGot: L.pts - (run.pts0 != null ? run.pts0 : was), rNew, rank0: run.rank0, rewards };
+      // строка таблицы сезона — после каждого боя: рейтинг меняют и победы, и поражения
+      if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }));
       if (last) {
         J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
         L.run = null;
@@ -1280,7 +1280,7 @@ const GameCore = {
       const spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
       const bud = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
       const buddy = bud ? this.cleanSpirit(bud, 0) : null, best = this.topSpirits(d, 1)[0] || null;
-      const stars = L.season === League.season() ? num(L.stars, 1000) : Math.floor(num(L.stars, 1000) / 2); // новый сезон — звёзды пополам
+      const pts = League.ratingOf(L); // 4.15: рейтинг (старые звёзды ×100; прошлый сезон — со срезом)
       const ago = s.seen ? ctx.now - Date.parse(s.seen) : Infinity;
       const mine = S.d.friends.some(x => x.id === pid), theirs = (Array.isArray(d.friends) ? d.friends : []).some(x => x && x.id === S.d.pid);
       const sp = x => x && { sid: x.sid, lvl: x.lvl, shiny: x.shiny, dark: x.dark, nick: x.nick, power: S.power(x) };
@@ -1290,7 +1290,7 @@ const GameCore = {
         days: +d.created > 0 ? Math.max(1, Math.ceil((ctx.now - Math.min(+d.created, ctx.now)) / 86400000)) : 0,
         dex: Object.values(d.dex || {}).filter(x => x && x.caught).length, caught: num(st.caught, 1e7), km: U.clamp(+st.km || 0, 0, 1e5),
         raids: num(st.raids, 1e6), duels: num(st.duels, 1e6), medals: Object.values(d.medals || {}).filter(t => t >= 3).length,
-        league: { stars, rank: League.rank(stars), best: num(L.best, LEAGUE_RANKS.length - 1) },
+        league: { pts, rank: League.rank(pts), best: num(L.best, LEAGUE_RANKS.length - 1) },
         buddy: sp(buddy), best: sp(best),
         friend: mine && theirs ? 'mutual' : mine ? 'sent' : theirs ? 'wants' : null,
       };
@@ -1299,19 +1299,19 @@ const GameCore = {
     // tier — тройка лучших в ранге игрока (пьедестал), rows — топ-50 сезона
     async leagueTop(a, ctx) {
       this.limit(ctx, 'leagueTop', 1500, 3600000);
-      const L = League.st(), season = L.season, rank = League.rank(L.stars);
+      const L = League.st(), season = L.season, rank = League.rank(L.pts);
       let r = await ctx.env.leagueTop(season, rank);
-      // своя строка отстала от звёзд (турниры, брошенные до 3.21.1) — поправить и перечитать
-      const mine = r.rows.find(x => x.me), had = mine ? mine.stars : r.me ? r.me.stars : null;
-      if (a.board !== false && L.stars > 0 && had !== L.stars) {
-        await ctx.env.leagueScore({ season, name: S.d.name, stars: L.stars, rank, level: S.d.level, look: S.d.look });
+      // своя строка отстала от рейтинга (перевод звёзд в рейтинг, брошенные турниры) — поправить и перечитать
+      const mine = r.rows.find(x => x.me), had = mine ? mine.pts : r.me ? r.me.pts : null;
+      if (a.board !== false && (L.pts > 0 || had != null) && had !== L.pts) {
+        await ctx.env.leagueScore({ season, name: S.d.name, pts: L.pts, rank, level: S.d.level, look: S.d.look });
         r = await ctx.env.leagueTop(season, rank);
       }
       const row = x => {
         const b = this.brief(x.cur) || this.brief({ name: x.name, level: x.level, look: x.look });
-        return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, stars: U.clamp(x.stars | 0, 0, 1000), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
+        return { pid: x.pid, name: b.name, lvl: b.lvl, clan: b.clan, look: b.look, pts: U.clamp(x.pts | 0, 0, League.MAXPTS), rank: U.clamp(x.rank | 0, 0, LEAGUE_RANKS.length - 1), me: !!x.me };
       };
-      return { season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, stars: r.me.stars | 0 } : null, rows: r.rows.map(row), tier: { rank, rows: (r.tier || []).map(row) } };
+      return { season, total: r.total | 0, me: r.me ? { place: r.me.place | 0, pts: r.me.pts | 0 } : null, rows: r.rows.map(row), tier: { rank, rows: (r.tier || []).map(row) } };
     },
 
     /* ----- друзья и подарки ----- */

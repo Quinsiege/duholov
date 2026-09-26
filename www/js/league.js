@@ -1,25 +1,30 @@
 'use strict';
 /* Лига Ордена: турнир — три поединка подряд с Ловчими Лиги, раны между боями не лечатся.
-   Победа — звезда, три победы подряд — ещё одна. Сезон длится месяц, в начале нового звёзды делятся пополам.
-   Жетоны, звёзды и награды ведёт сервер (leagueStart / leagueEnd), телефон показывает бои.
+   4.15: вместо звёзд — рейтинг (как кубки в Clash Royale): победа +30, поражение −30 (можно выпасть в прошлую лигу);
+   каждая лига — от своего порога рейтинга. Сезон длится месяц, в начале нового рейтинг сверх 1000 срезается наполовину.
+   Звёзды старых сохранений переводятся в рейтинг ×100. Жетоны, рейтинг и награды ведёт сервер (leagueStart / leagueEnd).
    Экран (3.21): герб ранга и место в таблице, вкладки «Турнир», «Таблица» (живая, с текущими уровнями — leagueTop)
    и «Ранги»; строка таблицы открывает карточку Ловчего. */
 
+// pts — с какого рейтинга начинается лига
 const LEAGUE_RANKS = [
-  { name: 'Новик', stars: 0 },
-  { name: 'Отрок', stars: 3, reward: { charm: 10, sparks: 500 } },
-  { name: 'Гридень', stars: 6, reward: { honey: 5, sparks: 800 } },
-  { name: 'Кметь', stars: 10, reward: { charm2: 5, water: 5 } },
-  { name: 'Витязь', stars: 15, reward: { charm2: 8, sparks: 1500 } },
-  { name: 'Богатырь', stars: 21, reward: { charm3: 3, incense: 1 } },
-  { name: 'Воевода', stars: 28, reward: { charm2: 10, sparks: 3000 } },
-  { name: 'Волхв', stars: 36, reward: { charm3: 5, water: 10 } },
-  { name: 'Сказитель', stars: 45, reward: { incense: 3, sparks: 5000 } },
-  { name: 'Хранитель Лиги', stars: 55, reward: { charm3: 10, sparks: 8000 } },
+  { name: 'Новик', pts: 0 },
+  { name: 'Отрок', pts: 300, reward: { charm: 10, sparks: 500 } },
+  { name: 'Гридень', pts: 600, reward: { honey: 5, sparks: 800 } },
+  { name: 'Кметь', pts: 1000, reward: { charm2: 5, water: 5 } },
+  { name: 'Витязь', pts: 1500, reward: { charm2: 8, sparks: 1500 } },
+  { name: 'Богатырь', pts: 2100, reward: { charm3: 3, incense: 1 } },
+  { name: 'Воевода', pts: 2800, reward: { charm2: 10, sparks: 3000 } },
+  { name: 'Волхв', pts: 3600, reward: { charm3: 5, water: 10 } },
+  { name: 'Сказитель', pts: 4500, reward: { incense: 3, sparks: 5000 } },
+  { name: 'Хранитель Лиги', pts: 5500, reward: { charm3: 10, sparks: 8000 } },
 ];
 
 const League = {
   TICKETS: 3,
+  WIN: 30, LOSS: 30, // рейтинг за победу и за поражение
+  SOFT: 1000,        // в новом сезоне рейтинг сверх этого срезается наполовину
+  MAXPTS: 20000,
   LEVEL: 5,    // с какого уровня Ловчего открыта Лига (проверяет сервер)
   carry: null, // раны духов между боями турнира (только на телефоне)
   tab: 'play',
@@ -28,23 +33,69 @@ const League = {
   season(d = U.local()) { return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; },
   seasonName() { return U.local().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' }).replace(/\s*г\.?$/, ''); },
   seasonEnds() { const d = U.local(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); },
-  // новый сезон — звёзды пополам, новый день — снова три жетона
+  // 4.15: звёзды старого сохранения — в рейтинг ×100; новый сезон — рейтинг сверх 1000 наполовину; новый день — снова три жетона
+  reset(p) { return p > this.SOFT ? this.SOFT + Math.floor((p - this.SOFT) / 2) : p; },
   norm(L) {
-    L = L || { season: this.season(), stars: 0, best: 0, tickets: this.TICKETS, day: U.today(), got: {}, run: null };
-    if (L.season !== this.season()) { L.season = this.season(); L.stars = Math.floor(L.stars / 2); L.got = {}; L.run = null; }
+    L = L || { season: this.season(), pts: 0, best: 0, tickets: this.TICKETS, day: U.today(), got: {}, run: null };
+    if (L.pts == null) {
+      L.pts = U.clamp(Math.floor((+L.stars || 0) * 100), 0, this.MAXPTS); delete L.stars;
+      if (L.run && L.run.pts0 == null) { L.run.pts0 = U.clamp(Math.floor((+L.run.stars0 || 0) * 100), 0, this.MAXPTS); delete L.run.stars0; }
+    }
+    if (L.season !== this.season()) { L.season = this.season(); L.pts = this.reset(L.pts); L.got = {}; L.run = null; }
     if (L.day !== U.today()) { L.day = U.today(); L.tickets = this.TICKETS; }
     return L;
   },
   st() { return (S.d.league = this.norm(S.d.league)); },                                      // сервер
   view() { return this.norm(S.d.league ? JSON.parse(JSON.stringify(S.d.league)) : null); },   // телефон
-  rank(stars) { let r = 0; LEAGUE_RANKS.forEach((x, i) => { if (stars >= x.stars) r = i; }); return r; },
+  rank(pts) { let r = 0; LEAGUE_RANKS.forEach((x, i) => { if (pts >= x.pts) r = i; }); return r; },
+  // рейтинг из чужого сохранения (карточка Ловчего): старые звёзды ×100, прошлый сезон — со срезом
+  ratingOf(L) {
+    if (!L || typeof L !== 'object') return 0;
+    let p = L.pts != null ? +L.pts || 0 : (+L.stars || 0) * 100;
+    if (L.season !== this.season()) p = this.reset(p);
+    return U.clamp(Math.floor(p), 0, this.MAXPTS);
+  },
+
+  // 4.15: значок лиги — щит из своего металла и свой знак: росток, лук, копьё, топор, меч, булава, стяг, посох, гусли, корона
+  badge(i) {
+    const M = [['#e7c29a', '#a8744a', '#5b3a1f'], ['#f6d2a8', '#c7803f', '#6e3b12'], ['#f6d2a8', '#c7803f', '#6e3b12'], ['#f8fafc', '#aab4c3', '#4b5568'], ['#f8fafc', '#aab4c3', '#4b5568'],
+      ['#fff4c2', '#f5b82e', '#8a4f05'], ['#fff4c2', '#f5b82e', '#8a4f05'], ['#d1fae5', '#34d399', '#065f46'], ['#d1fae5', '#34d399', '#065f46'], ['#f5e8ff', '#b77cf7', '#3b1580']][i] || ['#fff', '#aaa', '#333'];
+    const id = 'lgb' + (this._bn = (this._bn || 0) + 1);
+    const G = [
+      { f: 'M50 60c-11 0-17-8-17-17 11 0 17 7 17 17zM50 54c10 0 15-8 15-15-10 0-15 6-15 15z', l: 'M50 80V50' },
+      { f: 'M40 33c22 8 22 40 0 48l3-4c15-8 15-32-3-40z', l: 'M42 35v44M34 57h30M58 51l8 6-8 6' },
+      { f: 'M50 27l8 14-8 7-8-7z', l: 'M50 47v34M44 70h12' },
+      { f: 'M44 34c16-7 27 3 21 20-7-4-14-6-21-8z', l: 'M45 34l9 47' },
+      { f: 'M50 27l5 8v30h-10V35zM37 64h26v5H37zM47 69h6v9h-6zM50 84a4 4 0 1 0 0-.1z', l: '' },
+      { f: 'M50 33l4 5 6-1-1 6 5 4-5 4 1 6-6-1-4 5-4-5-6 1 1-6-5-4 5-4-1-6 6 1z', l: 'M50 56v25' },
+      { f: 'M42 32h25l-7 10 7 10H42z', l: 'M40 30v51' },
+      { f: 'M53 23c7 7 7 14 0 18-7-4-7-11 0-18z', l: 'M53 41v40M44 52l18 8M44 60l18-8' },
+      { f: 'M35 42l30-7 3 36-30 5z', t: 'M43 44l3 29M50 42l3 30M57 41l3 29M38 50l27-6' },
+      { f: 'M32 70l3-28 9 11 6-16 6 16 9-11 3 28zM32 73h36v5H32z', l: '' },
+    ][i] || { f: '', l: '' };
+    const laurel = i >= 6 ? `<g fill="none" stroke="${M[1]}" stroke-width="3" stroke-linecap="round" opacity=".95">
+      <path d="M14 34c-8 14-6 36 10 52M86 34c8 14 6 36-10 52"/>${[0, 1, 2, 3].map(k => `<path d="M${12 - k * 0} ${44 + k * 12}c-6-2-9-7-8-12M${88} ${44 + k * 12}c6-2 9-7 8-12"/>`).join('')}</g>` : '';
+    const crown = i === 9 ? `<path d="M36 12l4-9 6 6 4-8 4 8 6-6 4 9z" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="50" cy="3" r="2.2" fill="#fde68a"/>` : '';
+    return `<svg class="lg-badge-svg" viewBox="0 -6 100 116" aria-hidden="true"><defs>
+      <linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${M[0]}"/><stop offset=".55" stop-color="${M[1]}"/><stop offset="1" stop-color="${M[2]}"/></linearGradient>
+      <radialGradient id="${id}f" cx=".4" cy=".3" r=".9"><stop offset="0" stop-color="#3a2470"/><stop offset="1" stop-color="#120a2e"/></radialGradient></defs>
+      ${laurel}${crown}
+      <path d="M50 12L86 23v28c0 26-15 43-36 52C29 94 14 77 14 51V23z" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M50 20l28 9v22c0 21-12 35-28 42-16-7-28-21-28-42V29z" fill="url(#${id}f)" stroke="${M[2]}" stroke-width="1.2" opacity=".96"/>
+      ${G.l ? `<path d="${G.l}" fill="none" stroke="${M[2]}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="${G.l}" fill="none" stroke="url(#${id}m)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+      ${G.f ? `<path d="${G.f}" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="1.8" stroke-linejoin="round"/>` : ''}
+      ${G.t ? `<path d="${G.t}" fill="none" stroke="${M[2]}" stroke-width="1.8" stroke-linecap="round"/>` : ''}
+      <path d="M26 30c6-4 14-6 22-6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".35" fill="none"/></svg>`;
+  },
+  // значок рейтинга — кубок
+  cup() { return '<svg class="lg-cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3.5a5 5 0 0 1-10 0z" fill="#fcd34d" stroke="#92400e" stroke-width="1.2"/><path d="M7 5.5H4.5a3 3 0 0 0 3 4M17 5.5h2.5a3 3 0 0 1-3 4" fill="none" stroke="#fcd34d" stroke-width="1.6"/><path d="M12 12.5v3.5M8.5 20h7l-.8-3.5H9.3z" fill="#f59e0b" stroke="#92400e" stroke-width="1.1"/></svg>'; },
   rwLine(i) { const x = LEAGUE_RANKS[i]; return x.reward ? UI.rwText(x.reward) + (i % 3 === 0 ? ' + амулет' : '') + (i === 9 ? ' + эмблема «Венец»' : '') : ''; },
 
   // Соперник: сила растёт с рангом, ориентир — средний уровень твоих трёх сильнейших.
-  // Одинаков на телефоне и сервере: зависит от звёзд, номера боя и зерна турнира.
+  // Одинаков на телефоне и сервере: зависит от рейтинга, номера боя и зерна турнира.
   opponent(k, L = this.view()) {
-    const r = this.rank(L.stars), seed = L.run ? L.run.seed : 0;
-    const rng = U.rng(`league:${L.season}:${L.stars}:${k}:${seed}`);
+    const r = this.rank(L.pts), seed = L.run ? L.run.seed : 0;
+    const rng = U.rng(`league:${L.season}:${L.pts}:${k}:${seed}`);
     const maxStage = r <= 2 ? 1 : r <= 5 ? 2 : 3, maxRar = r <= 2 ? 2 : r <= 5 ? 3 : 4;
     const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && s.rar <= maxRar && s.stage <= maxStage);
     const top = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3);
@@ -54,10 +105,10 @@ const League = {
     while (team.length < 3) {
       const s = pool[Math.floor(rng() * pool.length)];
       if (team.some(x => x.sid === s.id)) continue;
-      team.push(S.makeSpirit(s.id, lvl, `lg${L.stars}${k}${team.length}${seed || ''}`, { ivMin: Math.min(12, 3 + r) }));
+      team.push(S.makeSpirit(s.id, lvl, `lg${L.pts}${k}${team.length}${seed || ''}`, { ivMin: Math.min(12, 3 + r) }));
     }
     // имена трёх соперников турнира не повторяются (сдвиг 5 по кругу из 12)
-    const name = GUARDIANS[(Math.floor(U.h('lgname', seed || L.stars) * GUARDIANS.length) + k * 5) % GUARDIANS.length];
+    const name = GUARDIANS[(Math.floor(U.h('lgname', seed || L.pts) * GUARDIANS.length) + k * 5) % GUARDIANS.length];
     return {
       name, color: GUARD_COLORS[Math.floor(rng() * GUARD_COLORS.length)], title: `Ловчий Лиги · ${LEAGUE_RANKS[r].name}`, team,
       T: { speed: Math.max(0.55, 0.86 - r * 0.033), shield: Math.min(0.9, 0.3 + r * 0.065) },
@@ -78,24 +129,24 @@ const League = {
 
   screen() {
     Sfx.init();
-    let L = this.view(), r = this.rank(L.stars);
-    const next = LEAGUE_RANKS[r + 1], base = LEAGUE_RANKS[r].stars;
-    const pips = next ? Array.from({ length: next.stars - base }, (_, i) => `<i class="${i < L.stars - base ? 'on' : ''}"></i>`).join('') : '';
+    let L = this.view(), r = this.rank(L.pts);
+    const next = LEAGUE_RANKS[r + 1], base = LEAGUE_RANKS[r].pts, cup = this.cup();
+    const prog = next ? Math.min(100, (L.pts - base) / (next.pts - base) * 100) : 100;
     // 4.14.1: Лига — в композиции карточки духа: сверху (≤30%) знак ранга в волшебном круге, справа сезон, ранг, «ЗВЁЗДЫ ··· N»,
     // путь до следующего ранга отдельным блоком и место в таблице; ниже вкладки, содержимое вкладки листается внутри панели
     const scr = UI.screen('Лига Ордена', `
       <div class="det det2 lg2 r${r}">
         <div class="dt-hero">
-          <div class="det-art lg2-crest"><div class="lgx-hex r${r}"><span>${r + 1}</span></div></div>
+          <div class="det-art lg2-crest">${this.badge(r)}</div>
           <div class="dt-info">
             <div class="det-hp">Сезон · ${this.seasonName()} · ⏳ <b class="lgx-ends"></b></div>
             <div class="lg2-rank">${LEAGUE_RANKS[r].name}</div>
-            <div class="det-power"><small>ЗВЁЗДЫ</small><b>★ ${L.stars}</b></div>
-            <div class="det-lvl"><span>${next ? `до «${next.name}» ещё <b>${next.stars - L.stars}</b> ★` : 'высший ранг Лиги!'}</span>${next ? `<div class="lgx-pips">${pips}</div>` : ''}</div>
+            <div class="det-power"><small>РЕЙТИНГ</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
+            <div class="det-lvl"><span>${next ? `до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : 'высшая лига!'}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
             <div class="lgx-place">${Cloud.enabled() ? 'Ищу тебя в таблице…' : ''}</div>
           </div>
         </div>
-        <div class="seg dt-tabs lgx-tabs"><button data-tab="play">Турнир</button><button data-tab="table">Таблица</button><button data-tab="ranks">Ранги</button></div>
+        <div class="seg dt-tabs lgx-tabs"><button data-tab="play">Турнир</button><button data-tab="table">Таблица</button><button data-tab="ranks">Лиги</button></div>
         <div class="dt-panel"><div class="lgx-pane"></div></div>
       </div>`, 'league-screen det-screen');
     const body = scr.querySelector('.screen-body'), pane = scr.querySelector('.lgx-pane');
@@ -115,14 +166,13 @@ const League = {
         ${tickets()}
         <div class="lgx-card lgx-path">
           <div class="lgx-steps">
-            ${[1, 2, 3].map(k => `<div class="lgx-step"><span>${k}</span><small>+1 ★</small></div><i></i>`).join('')}
-            <div class="lgx-step bonus"><span>★</span><small>+1 ★ за 3 из 3</small></div>
+            ${[1, 2, 3].map(k => `<div class="lgx-step"><span>${k}</span><small>+${this.WIN}</small></div>${k < 3 ? '<i></i>' : ''}`).join('')}
           </div>
-          <small class="lgx-rules">Три боя подряд с Ловчими Лиги. Раны духов между боями не лечатся, щиты восстанавливаются. Поражение звёзд не отнимает.</small>
+          <small class="lgx-rules">Три боя подряд с Ловчими Лиги. Победа — +${this.WIN} рейтинга, поражение — −${this.LOSS} и конец турнира. Раны духов между боями не лечатся, щиты восстанавливаются.</small>
         </div>
         <div class="lgx-team-head"><b>Команда на турнир</b>${power ? `<span>сила ${U.fmtNum(power)}</span>` : ''}<button class="btn small ghost team-edit">Изменить</button></div>
         <div class="rift-team my lgx-team">${slots}</div>
-        ${next ? `<div class="lgx-card lgx-goal"><div class="lg-mini r${r + 1}">${r + 2}</div><div class="row-main"><small>Следующая награда · ещё ${next.stars - L.stars} ★</small><b>${next.name}: ${this.rwLine(r + 1)}</b></div></div>` : ''}
+        ${next ? `<div class="lgx-card lgx-goal"><span class="lg-badge sm">${this.badge(r + 1)}</span><div class="row-main"><small>Следующая лига · ещё ${U.fmtNum(next.pts - L.pts)} рейтинга</small><b>${next.name}: ${this.rwLine(r + 1)}</b></div></div>` : ''}
         <button class="btn primary wide lg-go" ${!locked && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 
@@ -142,14 +192,14 @@ const League = {
         <button class="lgx-pod p${i + 1} ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
           <div class="lgx-pod-ava">${Art.avatar(x.look || undefined)}<span>${i + 1}</span></div>
           <b>${who(x)}</b><small>${p ? `${p}-е место · ` : ''}ур. ${x.lvl}</small>
-          <div class="lgx-pod-base">★ ${x.stars}${move(x)}</div></button>`; }).join('');
+          <div class="lgx-pod-base">${cup}${U.fmtNum(x.pts)}${move(x)}</div></button>`; }).join('');
       const list = rows.map((x, j) => ({ x, j })).filter(o => !onPod.has(key(o.x))).map(({ x, j }) => `
         <button class="lgx-row ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
           <b class="lgx-pos">${j + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
           <div class="row-main"><b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small></div>
-          ${move(x)}<span class="lgx-stars">★ ${x.stars}</span></button>`).join('');
-      const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>Ты</b><small>${LEAGUE_RANKS[r].name} · ур. ${S.d.level}</small></div><span class="lgx-stars">★ ${data.me.stars}</span></div>` : '';
-      pane.innerHTML = head + (pod ? `<div class="lgx-sub"><div class="lg-mini r${tier.rank}">${tier.rank + 1}</div>Лучшие в ранге «${LEAGUE_RANKS[tier.rank].name}»</div><div class="lgx-podium">${pod}</div>` : '')
+          ${move(x)}<span class="lgx-stars">${cup}${U.fmtNum(x.pts)}</span></button>`).join('');
+      const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>Ты</b><small>${LEAGUE_RANKS[r].name} · ур. ${S.d.level}</small></div><span class="lgx-stars">${cup}${U.fmtNum(data.me.pts)}</span></div>` : '';
+      pane.innerHTML = head + (pod ? `<div class="lgx-sub"><span class="lg-badge sm">${this.badge(tier.rank)}</span>Лучшие в лиге «${LEAGUE_RANKS[tier.rank].name}»</div><div class="lgx-podium">${pod}</div>` : '')
         + (list ? `<div class="lgx-sub">Топ-50 сезона</div><div class="list lgx-list">${list}</div>` : '') + mine
         + (Cfg.s.cloud === false ? '<div class="q-note">Тебя нет в таблице: так выбрано в Настройках.</div>' : '<div class="q-note">Нажми на Ловчего, чтобы открыть его карточку.</div>');
     };
@@ -157,11 +207,11 @@ const League = {
     const renderRanks = () => {
       pane.innerHTML = `<div class="lgx-ladder">${LEAGUE_RANKS.map((x, i) => `
         <div class="lgx-rung ${i < r ? 'past' : i === r ? 'cur' : ''}">
-          <div class="lg-mini r${i}">${i + 1}</div>
-          <div class="row-main"><b>${x.name}${i === r ? ' <span class="lgx-you">ты здесь</span>' : ''}</b><small>★ ${x.stars}${x.reward ? ' · ' + this.rwLine(i) : ' · начало пути'}</small></div>
-          ${L.got[i] ? '<span class="q-ok" title="Получено в этом сезоне">✓</span>' : i > r ? `<span class="lgx-need">ещё ${x.stars - L.stars} ★</span>` : ''}
+          <span class="lg-badge">${this.badge(i)}</span>
+          <div class="row-main"><b>${x.name}${i === r ? ' <span class="lgx-you">ты здесь</span>' : ''}</b><small>от ${U.fmtNum(x.pts)}${x.reward ? ' · ' + this.rwLine(i) : ' · начало пути'}</small></div>
+          ${L.got[i] ? '<span class="q-ok" title="Получено в этом сезоне">✓</span>' : i > r ? `<span class="lgx-need">ещё ${U.fmtNum(x.pts - L.pts)}</span>` : ''}
         </div>`).join('')}</div>
-        <div class="q-note">Награду за ранг дают один раз за сезон. В начале нового сезона звёзды делятся пополам — и награды можно получить снова. На рангах 4, 7 и 10 — ещё и амулет.</div>`;
+        <div class="q-note">Победа в турнире — +${this.WIN} рейтинга, поражение — −${this.LOSS}: можно выпасть в прошлую лигу. Награду за лигу дают один раз за сезон. В начале нового сезона рейтинг сверх ${U.fmtNum(this.SOFT)} срезается наполовину — и награды можно получить снова. В лигах «Кметь», «Воевода» и «Хранитель Лиги» — ещё и амулет.</div>`;
     };
 
     const place = () => {
@@ -224,7 +274,7 @@ const League = {
       if (!scr.isConnected) { clearInterval(t); return; }
       tick();
       // жетоны вернулись в полночь — перерисовать вкладку турнира
-      if (L.day !== U.today()) { L = this.view(); r = this.rank(L.stars); if (this.tab === 'play') renderPlay(); }
+      if (L.day !== U.today()) { L = this.view(); r = this.rank(L.pts); if (this.tab === 'play') renderPlay(); }
       if (++n % 5 === 0 && !document.hidden) load();
     }, 1000);
   },
@@ -256,14 +306,14 @@ const League = {
     if (!r.last) {
       const nx = this.opponent(r.k + 1);
       html = `<div class="res-title">Победа ${r.k + 1} из 3</div>
-        <div class="res-note">+★ ${r.gained}. Твои духи (в строю: ${alive}) не отдыхают — следующий соперник уже ждёт.</div>
+        <div class="res-note">Рейтинг +${r.gained}. Твои духи (в строю: ${alive}) не отдыхают — следующий соперник уже ждёт.</div>
         <div class="guard"><div class="guard-ava">${Art.guardian(nx.color)}</div><div><b>${nx.name}</b><small>${nx.title}</small></div></div>
         <div class="rift-team">${UI.teamHtml(nx.team)}</div>
         <button class="btn primary wide lg-next">Следующий бой</button>`;
     } else {
       html = `<div class="res-title ${r.won ? '' : 'lose'}">${r.won === 3 ? 'Чистая победа!' : r.won ? 'Турнир окончен' : 'Поражение'}</div>
-        <div class="res-note">Побед: ${r.won} из 3 · звёзд получено: ${r.starsGot}<br>Ранг: <b>${LEAGUE_RANKS[r.rNew].name}</b> (★ ${r.stars})</div>
-        ${r.rNew > r.rank0 ? `<div class="badge-new">Новый ранг — ${LEAGUE_RANKS[r.rNew].name}!</div>` : ''}
+        <div class="res-note">Побед: ${r.won} из 3 · рейтинг ${r.ptsGot >= 0 ? '+' : '−'}${Math.abs(r.ptsGot)}<br>Лига: <b>${LEAGUE_RANKS[r.rNew].name}</b> · рейтинг ${U.fmtNum(r.pts)}</div>
+        ${r.rNew > r.rank0 ? `<div class="badge-new">Новая лига — ${LEAGUE_RANKS[r.rNew].name}!</div>` : r.rNew < r.rank0 ? `<div class="badge-new down">Выпал в лигу «${LEAGUE_RANKS[r.rNew].name}»</div>` : ''}
         ${r.rewards.length ? `<div class="res-rw">${r.rewards.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>` : ''}
         <button class="btn primary wide lg-done">К Лиге</button>`;
     }
