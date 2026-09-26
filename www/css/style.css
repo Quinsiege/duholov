@@ -3405,11 +3405,12 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .eco #hud .profile, .eco #hud .chip, .eco #storyPill, .eco #tracker, .eco #hud .nearby, .eco #hud .recenter, .eco #menuBtn.orb {
   -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, rgba(72, 44, 150, .82), rgba(40, 24, 96, .88)); }
 
-/* фон экранов меню — без неба, звёзд и леса: ровный фиолетовый Нави и едва заметные тонкие диагональные полоски */
+/* фон экранов меню — без неба, звёзд и леса: ровный фиолетовый Нави и почти незаметный узор, как рубашка игральной карты —
+   тонкая диагональная сетка ромбов с маленьким ромбиком в каждой ячейке */
 .screen {
   background:
     radial-gradient(90% 45% at 50% -8%, rgba(167, 139, 250, .3), transparent 70%),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, .03) 0 1px, transparent 1px 9px),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%3E%3Cpath%20d%3D%22M0%200L18%2018M18%200L0%2018%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.035%22%20stroke-width%3D%22.8%22%2F%3E%3Cpath%20d%3D%22M9%20-1.6l1.6%201.6-1.6%201.6-1.6-1.6zM9%2016.4l1.6%201.6-1.6%201.6-1.6-1.6zM-0%207.4l1.6%201.6-1.6%201.6-1.6-1.6zM18%207.4l1.6%201.6-1.6%201.6-1.6-1.6z%22%20fill%3D%22%23fff%22%20fill-opacity%3D%22.045%22%2F%3E%3C%2Fsvg%3E") center top / 18px 18px,
     linear-gradient(180deg, #2a1a5c 0%, #1d1146 45%, #140b33 100%);
 }
 .chat-bar { border-top: 0; background: var(--g-sheen), var(--glass-deep); -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 -8px 22px rgba(10, 4, 30, .3); }
