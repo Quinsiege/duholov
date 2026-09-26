@@ -243,7 +243,8 @@ Object.assign(UI, {
     });
   },
   avatar() { return Art.avatar(S.d ? S.d.look : undefined); },
-  // 4.6: Гардероб Ловчего — облики-скины, фон и рамка портрета (за златники или с уровнем), плащ, глаза, эмблема; примерка до сохранения
+  // 4.6: Гардероб Ловчего — облики-скины (за златники или с уровнем), плащ, глаза, эмблема; примерка до сохранения
+  // 4.14.1: вкладки «Фон» и «Рамка» убраны — карточки Ловчего показываются без них (выбранное остаётся в сохранении)
   editLook(done) {
     const look = { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', ...S.d.look };
     const DEF = { skin: 'hood', bg: 'night', frame: 'none' };
@@ -255,7 +256,7 @@ Object.assign(UI, {
       <div class="wd-hero"><div class="wd-stage"><i class="wd-ring"></i><div class="wd-ava"></div></div>
         <div class="wd-cardprev pc-hero"><div class="pc-ava"><div class="wd-cp-ava"></div><span class="pc-lvl">${S.d.level}</span></div><div class="pc-id"><b class="pc-name">${U.esc(S.d.name)}</b><small>${this.rank(S.d.level)} Ордена Оберега</small></div></div>
         <div class="wd-title"><b class="wd-name"></b><span class="wd-rar"></span></div><p class="wd-desc"></p></div>
-      <div class="seg wd-tabs"><button data-t="skin" class="on">Облики</button><button data-t="bg">Фон</button><button data-t="frame">Рамка</button><button data-t="more">Детали</button></div>
+      <div class="seg wd-tabs"><button data-t="skin" class="on">Облики</button><button data-t="more">Детали</button></div>
       <div class="wd-body"></div>
       <div class="wd-foot"></div></div>`, 'wd-screen');
     const $ = s => scr.querySelector(s);
