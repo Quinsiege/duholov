@@ -1372,7 +1372,7 @@ const S = {
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
     this.migrate();
-    const sp = this.makeSpirit(starter, 5, 'starter' + Date.now(), { ivMin: 10 });
+    const sp = this.makeSpirit(starter, Math.min(5, this.catchLvl()), 'starter' + Date.now(), { ivMin: 10 });
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
@@ -1884,6 +1884,7 @@ const LEAGUE_RANKS = [
 
 const League = {
   TICKETS: 10, // 4.15: турниров в день
+  XP_RUNS: 3,  // опыт дают только первые три турнира дня; дальше — только рейтинг
   WIN: 30, LOSS: 30, // рейтинг за победу и за поражение
   SOFT: 1000,        // в новом сезоне рейтинг сверх этого срезается наполовину
   MAXPTS: 20000,
@@ -2024,11 +2025,10 @@ const League = {
       pane.innerHTML = `
         ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
         <div class="lg2-tix"><span>Жетоны</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
-        <div class="lg2-tix-s">${L.tickets < this.TICKETS ? 'новые жетоны через <span class="lgx-mid"></span>' : 'один жетон — один турнир'}</div>
+        <div class="lg2-tix-s">жетоны обновятся через <b class="lgx-mid"></b></div>
         <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}</div>
         <div class="lg2-team">${cards}</div>
-        <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · раны между боями не лечатся</div>
-        ${next ? `<div class="lgx-card lgx-goal"><span class="lg-badge sm">${this.badge(r + 1)}</span><div class="row-main"><small>Следующая лига · ещё ${U.fmtNum(next.pts - L.pts)} рейтинга</small><b>${next.name}: ${this.rwLine(r + 1)}</b></div></div>` : ''}
+        <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · опыт — за первые ${this.XP_RUNS} турнира дня</div>
         <button class="btn primary wide lg-go" ${!locked && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 
@@ -3258,7 +3258,7 @@ const Rules = {
   AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
   // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
-  EXCHANGE: { SPARKS: 500, ZLAT: 10, DAY: 10 },
+  EXCHANGE: { SPARKS: 500, ZLAT: 10, DAY: 3 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
   // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
@@ -3464,6 +3464,19 @@ const GameCore = {
       });
     });
   },
+  // 4.15: погоде от телефона сервер не верит на слово. Годится настоящая погода этой точки (текущая или прошлая —
+  // телефон мог запросить её чуть раньше) и смоделированная (у кого «настоящая погода» выключена или нет сети).
+  // Иначе — смоделированная: её нельзя подделать, духи на карте у честного игрока от этого не меняются.
+  // Нет ответа от сервиса погоды — верим телефону, как раньше.
+  async checkWx(key, pos, env) {
+    if (!key || !pos) return key ? { key } : null;
+    const sim = Sky.simulate(pos).key;
+    if (key === sim || !env || typeof env.weather !== 'function') return { key };
+    let real = null;
+    try { real = await env.weather(pos.lat, pos.lng); } catch (e) { real = null; }
+    if (!real || !real.length) return { key };
+    return { key: real.includes(key) ? key : sim };
+  },
   async run(req, save, env) {
     if (this.als && !this.als.getStore()) return this.als.run({}, () => this.run(req, save, env));
     const ctx = { now: Date.now(), env, srv: JSON.parse(JSON.stringify(save.srv || {})), events: [], results: [], after: [], full: false, reset: false };
@@ -3475,10 +3488,10 @@ const GameCore = {
       if (!z || (z.v !== tz && ctx.now - z.t >= this.TZ_LOCK)) ctx.srv.tz = { v: tz, t: ctx.now };
       U.tz = ctx.srv.tz.v;
       U.skew = 0;
-      Sky.w = req.wx && WEATHER[req.wx] ? { key: req.wx } : null;
       const p = req.pos;
       ctx.pos = p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180
         ? { lat: +p.lat, lng: +p.lng, acc: U.clamp(+p.acc || 30, 1, 5000) } : null;
+      Sky.w = await this.checkWx(req.wx && WEATHER[req.wx] ? req.wx : null, ctx.pos, env);
       MapView.pos = ctx.pos;
       Bus.emit = (ev, data) => ctx.events.push([ev, this.ser(ev, data)]);
       S.save = () => {};
@@ -3751,11 +3764,11 @@ const GameCore = {
   },
   // Упаковка духа для посылки и лота аукциона — и обратно (уровень — не выше доступного получателю)
   packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 }; },
-  unpackSpirit(p, ctx, from) {
+  unpackSpirit(p, ctx, from, cap = S.maxLvl()) {
     this.need(p && SP[p.s], 'Посылка повреждена');
     const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
-    const sp = { uid: U.uid(), sid: p.s, lvl: U.clamp(Math.min(+p.l || 1, S.maxLvl()), 1, 50), iv, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null };
+    const sp = { uid: U.uid(), sid: p.s, lvl: U.clamp(Math.min(+p.l || 1, cap), 1, 50), iv, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null };
     if (from) sp.from = this.cleanText(from, 20);
     if (p.y) sp.shiny = true;
     if (p.d) sp.dark = true;
@@ -4529,7 +4542,8 @@ const GameCore = {
       this.need(team.length === 3, 'Нужно три духа');
       this.need(L.tickets > 0, 'Жетоны кончились — приходи завтра');
       L.tickets--;
-      L.run = { k: 0, won: 0, pts0: L.pts, rank0: League.rank(L.pts), seed: U.uid(), team: team.map(x => x.uid) };
+      // 4.15: опыт — только за первые League.XP_RUNS турниров дня (по числу потраченных жетонов)
+      L.run = { k: 0, won: 0, pts0: L.pts, rank0: League.rank(L.pts), seed: U.uid(), team: team.map(x => x.uid), xp: League.TICKETS - L.tickets <= League.XP_RUNS };
       ctx.srv.battle = { type: 'league', k: 0, start: ctx.now, team: L.run.team };
       return { run: L.run };
     },
@@ -4554,7 +4568,7 @@ const GameCore = {
         if (i % 3 === 0) { const am = S.rollAmulet(1, 'lg' + i); rewards.push({ k: 'amulet', n: 1, label: AMULETS[am].name }); }
       }
       if (rNew > L.best) L.best = rNew;
-      S.addXP(win ? 400 + run.k * 200 : 100);
+      if (run.xp !== false) S.addXP(win ? 400 + run.k * 200 : 100);
       const res = { win, gained, last, k: run.k, won: run.won, pts: L.pts, ptsGot: L.pts - (run.pts0 != null ? run.pts0 : was), rNew, rank0: run.rank0, rewards };
       // строка таблицы сезона — после каждого боя: рейтинг меняют и победы, и поражения
       if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }));
@@ -4646,7 +4660,7 @@ const GameCore = {
       const lot = await ctx.env.lotBuy(id, S.d.pid, S.d.name);
       this.need(lot && lot.price === pre.price && lot.cur === pre.cur, 'Лот уже купили или сняли с продажи');
       S.d[cur] -= lot.price;
-      const sp = this.unpackSpirit(lot.spirit, ctx, lot.seller_name);
+      const sp = this.unpackSpirit(lot.spirit, ctx, lot.seller_name, S.catchLvl());
       const isNew = S.addSpirit(sp);
       S.d.auc.got[lot.id] = ctx.now;
       S.d.stats.traded++; // знак «Щедрая душа»
@@ -5112,8 +5126,28 @@ const Auth = {
 };
 
 // Доступ к общим таблицам для GameCore (от имени сервера, в пределах одного игрока uid)
+// 4.15: настоящая погода для проверки погоды телефона — Open-Meteo (как у телефона), кэш по точке на 20 минут
+const WX = new Map();
+async function realWeather(lat, lng) {
+  const k = lat.toFixed(2) + ',' + lng.toFixed(2), c = WX.get(k), now = Date.now();
+  if (c && now - c.at < 20 * 60000) return c.keys;
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&current=weather_code,wind_speed_10m`, { signal: ctrl.signal });
+    if (!r.ok) return c ? c.keys : null;
+    const cur = (await r.json()).current;
+    if (!cur) return c ? c.keys : null;
+    const key = Sky.fromCode(cur.weather_code, cur.wind_speed_10m);
+    const keys = c && c.keys[0] !== key ? [key, c.keys[0]] : [key];
+    if (WX.size > 5000) WX.clear();
+    WX.set(k, { keys, at: now });
+    return keys;
+  } catch (e) { return c ? c.keys : null; } finally { clearTimeout(t); }
+}
+
 function makeEnv(uid) {
   return {
+    weather: (lat, lng) => realWeather(lat, lng),
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {

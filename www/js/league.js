@@ -22,6 +22,7 @@ const LEAGUE_RANKS = [
 
 const League = {
   TICKETS: 10, // 4.15: турниров в день
+  XP_RUNS: 3,  // опыт дают только первые три турнира дня; дальше — только рейтинг
   WIN: 30, LOSS: 30, // рейтинг за победу и за поражение
   SOFT: 1000,        // в новом сезоне рейтинг сверх этого срезается наполовину
   MAXPTS: 20000,
@@ -162,11 +163,10 @@ const League = {
       pane.innerHTML = `
         ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
         <div class="lg2-tix"><span>Жетоны</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
-        <div class="lg2-tix-s">${L.tickets < this.TICKETS ? 'новые жетоны через <span class="lgx-mid"></span>' : 'один жетон — один турнир'}</div>
+        <div class="lg2-tix-s">жетоны обновятся через <b class="lgx-mid"></b></div>
         <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}</div>
         <div class="lg2-team">${cards}</div>
-        <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · раны между боями не лечатся</div>
-        ${next ? `<div class="lgx-card lgx-goal"><span class="lg-badge sm">${this.badge(r + 1)}</span><div class="row-main"><small>Следующая лига · ещё ${U.fmtNum(next.pts - L.pts)} рейтинга</small><b>${next.name}: ${this.rwLine(r + 1)}</b></div></div>` : ''}
+        <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · опыт — за первые ${this.XP_RUNS} турнира дня</div>
         <button class="btn primary wide lg-go" ${!locked && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 

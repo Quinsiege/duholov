@@ -71,7 +71,7 @@ const S = {
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
     this.migrate();
-    const sp = this.makeSpirit(starter, 5, 'starter' + Date.now(), { ivMin: 10 });
+    const sp = this.makeSpirit(starter, Math.min(5, this.catchLvl()), 'starter' + Date.now(), { ivMin: 10 });
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
