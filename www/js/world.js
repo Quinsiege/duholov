@@ -91,8 +91,9 @@ const W = {
       if (d > radius) return;
       const sid = this.pickSpecies(r, this.biome(pLat, pLng), night, pLng, pLat);
       const boost = Sky.boosted(SP[sid].el);
-      const maxL = Math.min(Math.min(30, S.d.level + 2) + (boost ? 5 : 0), S.maxLvl()); // погода: сильнее, но не выше доступного уровня
-      const lvl = Math.max(boost ? 6 : 1, Math.min(maxL, Math.round(1 + r() * maxL)));
+      // 4.15: дух на карте — не выше уровня Ловчего; погода делает его сильнее (ближе к потолку), но не выше
+      const maxL = Math.min(30 + (boost ? 5 : 0), S.catchLvl());
+      const lvl = Math.max(boost ? Math.min(6, maxL) : 1, Math.min(maxL, Math.round(1 + r() * maxL)));
       const shiny = U.h('shiny', id) < Sky.shinyRate();
       out.push({ type: 'spirit', id, sid, lvl, boost, shiny, lat: pLat, lng: pLng, d, expires: (slot + 1) * this.SLOT - phase });
     });

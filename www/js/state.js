@@ -141,6 +141,8 @@ const S = {
   },
   ivPct(sp) { return Math.round((sp.iv[0] + sp.iv[1] + sp.iv[2]) / 45 * 100); },
   maxLvl() { return Math.min(40, this.d.level + 5); },
+  // 4.15: пойманный дух — не выше уровня Ловчего (усиливать можно дальше, до уровня +5)
+  catchLvl() { return Math.max(1, Math.min(40, this.d.level)); },
   addSpirit(sp, silent) {
     this.d.spirits.push(sp);
     const dx = this.d.dex[sp.sid] = this.d.dex[sp.sid] || { seen: 1, caught: 0 };

@@ -154,6 +154,16 @@
     ok(a.length > 0, 'духов нет');
     a.forEach(x => { ok(x.d <= 300, 'радиус'); ok(SP[x.sid] && !SP[x.sid].legend, 'вид ' + x.sid); ok(x.lvl >= 1 && x.lvl <= 40, 'уровень'); });
   });
+  test('Пойманный дух не выше уровня Ловчего (4.15)', () => {
+    const lv = S.d.level;
+    try {
+      S.d.level = 3; eq(S.catchLvl(), 3);
+      const a = W.spawnsAround(55.75, 37.62, 600); ok(a.length > 0, 'духов нет');
+      a.forEach(x => ok(x.lvl >= 1 && x.lvl <= 3, 'уровень ' + x.lvl + ' выше уровня Ловчего'));
+      S.d.level = 1; eq(S.catchLvl(), 1);
+      W.spawnsAround(55.75, 37.62, 600).forEach(x => eq(x.lvl, 1, 'на 1-м уровне — духи 1-го уровня'));
+    } finally { S.d.level = lv; }
+  });
   test('Регионы: вещие птицы только в своих частях света', () => {
     eq(W.region(37), 'west'); eq(W.region(60), 'center'); eq(W.region(130), 'east');
     ok(W.local(SP.sirin, 37) && !W.local(SP.sirin, 100), 'Сирин');
