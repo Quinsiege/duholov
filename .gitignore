@@ -8,4 +8,4 @@ android/local.properties
 www/duholov.apk
 tests/node_modules/
 www/tiles/
-video/
+/video/
