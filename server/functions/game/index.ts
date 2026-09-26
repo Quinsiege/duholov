@@ -2068,7 +2068,7 @@ const League = {
         ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
         <div class="lg2-tix"><span>Жетоны</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
         <div class="lg2-tix-s">жетоны обновятся через <b class="lgx-mid"></b></div>
-        <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}</div>
+        <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}<button class="lg2-edit team-edit">Изменить</button></div>
         <div class="lg2-team">${cards}</div>
         <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · опыт — за первые ${this.XP_RUNS} турнира дня</div>
         <button class="btn primary wide lg-go" ${!locked && !ko && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
