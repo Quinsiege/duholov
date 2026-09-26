@@ -98,32 +98,47 @@ const Friends = {
   },
 
   /* ---------------- ЭКРАН ---------------- */
+  // 4.15: Друзья — в композиции карточки духа: сверху (≤30%) знак дружбы в волшебном круге, справа «ДРУЗЕЙ ··· N», подарки
+  // отдельным блоком, метка новых подарков; ниже вкладки «Друзья · Позвать · Вместе», содержимое листается внутри панели
   screen() {
+    const pane = (k, html, on) => `<div class="dt-pane ${on ? 'on' : ''}" data-pane="${k}">${html}</div>`;
     const scr = UI.screen('Друзья', `
-      <div class="fr-inbox"></div>
-      <div class="fr-head"><h3 class="prof-h">Друзья <small class="fr-count"></small></h3><span class="small">Подарков в сумке: <b class="gift-n"></b></span></div>
-      <div class="list fr-list"></div>
-      <div class="panel fr-me">
-        <b>Добавить друга</b>
-        <small>Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной. Дарите друг другу подарки каждый день.</small>
-        <button class="btn primary wide my-invite">Позвать друга по ссылке</button>
-        <small>Друг откроет ссылку — и вы сразу станете друзьями, а вам обоим придут подарки.</small>
-        <div class="fr-btns"><button class="btn small my-qr">Мой QR-код</button><button class="btn small my-share">Мой код дружбы</button></div>
-        <div class="fr-or"><span>или код друга</span></div>
-        ${Trade.canScan() ? '<button class="btn wide scan-btn">Сканировать QR-код</button>' : ''}
-        <textarea class="input code-in" rows="2" placeholder="Вставь код: DUHF1…"></textarea>
-        <button class="btn wide accept-btn">Добавить по коду</button>
-      </div>
-      <div class="panel trade-in coop-join">
-        <b>Совместный разлом</b>
-        <small>Друг у разлома нажал «Позвать друзей» и прислал код из 5 символов? Введи его — и в бой вместе, где бы ты ни был.</small>
-        <div class="fr-btns"><input class="input coop-code-in" maxlength="5" placeholder="КОД" autocapitalize="characters"><button class="btn primary coop-join-btn">Войти</button></div>
-      </div>
-      `, 'friends-screen');
+      <div class="det det2 fr2" style="--c:#f472b6">
+        <div class="dt-hero">
+          <div class="det-art fr2-art"><span class="fr2-ico">${UI.menuIcon('swap')}</span></div>
+          <div class="dt-info">
+            <div class="det-hp">Дарите подарки и сражайтесь вместе</div>
+            <div class="det-power"><small>ДРУЗЕЙ</small><b class="fr-count"></b></div>
+            <div class="det-lvl"><span>Подарков в сумке: <b class="gift-n"></b></span></div>
+            <div class="det-tags fr2-tags"></div>
+          </div>
+        </div>
+        <div class="seg dt-tabs">${[['list', 'Друзья'], ['add', 'Позвать'], ['coop', 'Вместе']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}${k === 'list' ? '<i class="dt-dot fr2-dot hidden"></i>' : ''}</button>`).join('')}</div>
+        <div class="dt-panel">
+          ${pane('list', '<div class="fr-inbox"></div><div class="list fr-list"></div>', true)}
+          ${pane('add', `
+            <button class="btn primary wide my-invite">Позвать друга по ссылке<small>откроет ссылку — и вы сразу друзья, обоим подарки</small></button>
+            <div class="fr-btns"><button class="btn ghost small my-qr">Мой QR-код</button><button class="btn ghost small my-share">Мой код дружбы</button></div>
+            <div class="fr-or"><span>или код друга</span></div>
+            ${Trade.canScan() ? '<button class="btn ghost wide scan-btn">Сканировать QR-код</button>' : ''}
+            <textarea class="input code-in" rows="2" placeholder="Вставь код: DUHF1…"></textarea>
+            <button class="btn ghost wide accept-btn">Добавить по коду</button>
+            <div class="lg2-rule">Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной.</div>`)}
+          ${pane('coop', `
+            <div class="dx-none fr2-coop"><b>Совместный разлом</b><small>Друг у разлома нажал «Позвать друзей» и прислал код из 5 символов? Введи его — и в бой вместе, где бы ты ни был.</small></div>
+            <div class="fr-btns fr2-coop-in"><input class="input coop-code-in" maxlength="5" placeholder="КОД" autocapitalize="characters"><button class="btn primary coop-join-btn">Войти</button></div>`)}
+        </div>
+      </div>`, 'friends-screen det-screen');
+    scr.addEventListener('click', e => {
+      const tb = e.target.closest('[data-tab]'); if (!tb) return;
+      Sfx.play('tap'); U.$$('[data-tab]', scr).forEach(x => x.classList.toggle('on', x === tb)); U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === tb.dataset.tab));
+    });
     const render = () => {
       if (!scr.isConnected) return;
       scr.querySelector('.fr-count').textContent = S.d.friends.length;
       scr.querySelector('.gift-n').textContent = S.d.items.gift || 0;
+      scr.querySelector('.fr2-tags').innerHTML = this.inbox.length ? `<span class="fr2-new">🎁 пришло подарков: ${this.inbox.length}</span>` : `<span>подарок каждому другу — раз в день</span>`;
+      scr.querySelector('.fr2-dot').classList.toggle('hidden', !this.inbox.length);
       scr.querySelector('.fr-inbox').innerHTML = this.inbox.length ? `<div class="panel gift-inbox"><b>Подарки от друзей</b>${this.inbox.map(g => `
         <div class="row gift-row" data-id="${g.id}"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${U.esc(g.name)}</b><small>${g.invite ? 'за приглашение · ' : ''}${new Date(g.t).toLocaleString('ru-RU')}</small></div>
         <button class="btn small primary open-gift">Открыть</button></div>`).join('')}</div>` : '';

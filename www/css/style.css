@@ -3881,3 +3881,28 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 ::-webkit-scrollbar-thumb:active, ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #fde68a, #a78bfa) padding-box; }
 ::-webkit-scrollbar-corner, ::-webkit-scrollbar-button { display: none; background: transparent; }
 @supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: rgba(253, 230, 138, .6) transparent; } }
+
+/* ================= 4.15: Друзья — в композиции карточки духа ================= */
+.fr2 .fr2-art { display: grid; place-items: center; }
+.fr2 .fr2-ico { width: 62%; height: 62%; display: grid; place-items: center; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45)) drop-shadow(0 0 14px rgba(244, 114, 182, .35)); animation: pcHex 3.6s ease-in-out infinite; }
+.fr2 .fr2-ico .mi, .fr2 .fr2-ico svg { width: 100%; height: 100%; }
+.fr2 .det-lvl b { color: #fff; }
+.fr2 .fr2-new { color: #fde68a; }
+.fr2-dot.hidden { display: none; }
+.fr2 .dt-panel { display: flex; flex-direction: column; text-align: left; }
+.fr2 .dt-pane { gap: 10px; }
+.fr2 .list, .fr2 .gift-inbox { background: none; border: 0; box-shadow: none; border-radius: 0; margin: 0; padding: 0; }
+.fr2 .fr-row { gap: 12px; padding: 9px 2px; border-bottom: 0; }
+.fr2 .fr-row .fr-ava { width: 48px; height: 48px; box-shadow: 0 0 0 2px rgba(255, 255, 255, .2), 0 4px 10px rgba(0, 0, 0, .35); }
+.fr2 .fr-row .row-main b { font-family: var(--f-head); font-size: 15.5px; }
+.fr2 .fr-row .pbar { height: 4px; margin-top: 5px; }
+.fr2 .gift-inbox { padding: 6px 10px; border-radius: 16px; background: radial-gradient(70% 120% at 8% 50%, rgba(253, 224, 71, .14), transparent 70%); }
+.fr2 .gift-inbox > b { font-family: var(--f-head); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: #fde68a; }
+.fr2 [data-pane=add] .my-invite { min-height: 58px; flex-direction: column; gap: 0; }
+.fr2 [data-pane=add] .my-invite small { font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 11px; opacity: .8; }
+.fr2 .fr-or { justify-content: center; }
+.fr2 .fr2-coop { margin: 10px 0 4px; }
+.fr2 .fr2-coop-in { gap: 10px; }
+.fr2 .fr2-coop-in .input { flex: 1; text-align: center; font-family: var(--f-head); font-size: 22px; letter-spacing: .3em; text-transform: uppercase; }
+.fr2 .fr2-coop-in .btn { flex: none; min-width: 110px; }
+.calm .fr2 .fr2-ico { animation: none; }
