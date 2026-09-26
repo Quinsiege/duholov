@@ -703,7 +703,7 @@
     await refuse(A, 'equip', { uid, k: 'perun' }, /амулета нет/);
   });
   atest('Сервер: разлом — нельзя победить мгновенно; награда и поимка босса', async () => {
-    const A = await newPlayer('uf', 55.74, 37.60, 'Жар');
+    const A = await newPlayer('uf', 55.74, 37.60, 'Жар'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух — на уровне Ловчего, здесь он уже усилен до 5-го
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }));
     ok(id, 'нашёлся малый разлом');
