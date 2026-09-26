@@ -3615,3 +3615,53 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 /* пустой слот амулета — ровный круг (класс empty совпадал с «пустым состоянием» экрана и получал его отступы) */
 .det2 .dt-am .am-ico.empty { padding: 0; display: block; }
 .dt-about-acts .btn { height: 52px; min-height: 52px; }
+
+/* ================= 4.14.1: карточка вида в Бестиарии — та же композиция, что у карточки духа ================= */
+.dx-meet span { font-size: 12.5px; }
+.dx-sh { font-style: normal; color: #fde68a; }
+.dt-row.wrap > b { white-space: normal; max-width: 64%; justify-content: flex-end; line-height: 1.25; font-size: 14px; }
+/* семья: формы в ряд, между ними стрелка и цена превращения; текущая форма подсвечена */
+.dx-chain { display: flex; align-items: flex-start; justify-content: center; gap: 4px; padding: 6px 0 12px; }
+.dx-st { flex: 0 1 96px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.dx-st-a { position: relative; width: 72px; height: 72px; display: grid; place-items: center; }
+.dx-st-a::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 45%, transparent), transparent); }
+.dx-st-a img, .dx-st-a .art { position: relative; width: 100%; height: 100%; }
+.dx-st.cur .dx-st-a::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 2px rgba(253, 224, 71, .75), 0 0 16px rgba(253, 224, 71, .35); }
+.dx-st.sil img, .dx-st.sil .art { filter: brightness(0) drop-shadow(0 0 1.5px rgba(196, 181, 253, .7)); opacity: .7; }
+.dx-st b { font-family: var(--f-head); font-size: 13px; line-height: 1.15; overflow-wrap: anywhere; }
+.dx-st.cur b { color: #fde68a; }
+.dx-arr { flex: none; display: flex; flex-direction: column; align-items: center; padding-top: 22px; color: rgba(255, 255, 255, .5); }
+.dx-arr i { font-style: normal; font-size: 18px; }
+.dx-arr small { font-size: 10.5px; white-space: nowrap; }
+/* мои духи этого вида — строки-кнопки */
+.dt-row.dx-mine { width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; color: inherit; font: inherit; cursor: pointer; }
+.dt-row.dx-mine > span { color: #fff; font-family: var(--f-head); font-weight: 700; font-size: 14.5px; }
+.dt-row.dx-mine > span small { font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 12px; color: rgba(255, 255, 255, .55); margin-left: 4px; }
+.dt-row.dx-mine > b { color: #fde68a; }
+.dt-row.dx-mine > b::after { content: '›'; margin-left: 8px; color: rgba(255, 255, 255, .45); font-size: 18px; }
+.dt-row.dx-mine:active { background: rgba(255, 255, 255, .06); }
+.dx-none { margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.dx-none b { font-family: var(--f-head); font-size: 17px; }
+.dx-none small { font-size: 13px; color: rgba(255, 255, 255, .62); max-width: 260px; line-height: 1.4; }
+.dexc-screen .det2 .det-desc { -webkit-line-clamp: 3; margin: 0 0 4px; }
+/* нижние кнопки вкладок — одинаковые: внизу вкладки, одной высоты, стеклянные; «Усилить» — главная, золотая */
+.det2 .dt-bottom { margin-top: auto; }
+.det2 .dt-bottom, .dt-about-acts .btn, .dt-pane[data-pane=grow] .det-actions .btn { height: 52px; min-height: 52px; flex-direction: column; gap: 0; font-size: 14.5px; }
+.det2 .dt-bottom small, .dt-about-acts .btn small { font-size: 11px; opacity: .8; }
+.dt-about-acts { align-items: stretch; }
+.dt-about-acts .btn, .det2 .dt-about-acts .act-release { margin: 0; }
+.dt-am-foot { display: none; }
+/* недоступные кнопки карточки — видно сразу: плоские, приглушённые, пунктирная кромка, замок слева, вместо цены — причина */
+.det2 .btn.disabled, .det2 .btn.disabled.primary, .det2 .btn.disabled.evolve { filter: none; opacity: 1; color: rgba(255, 255, 255, .5); text-shadow: none; cursor: default;
+  border: 1px dashed rgba(255, 255, 255, .22); box-shadow: none; background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.6%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%2211%22%20width%3D%2214%22%20height%3D%2210%22%20rx%3D%222.5%22%2F%3E%3Cpath%20d%3D%22M8%2011V8a4%204%200%200%201%208%200v3%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") left 14px center / 16px 16px no-repeat, rgba(255, 255, 255, .03); }
+.det2 .btn.disabled small { display: none; }
+.det2 .btn.disabled::after, .det2 .btn.disabled.primary::after, .det2 .btn.disabled.evolve::after { content: attr(data-err); position: static; inset: auto; width: auto; height: auto; z-index: auto; transform: none; animation: none; background: none;
+  display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 11px; color: #fda4af; opacity: .9; }
+.det2 .btn.disabled[data-short]::after { content: attr(data-short); }
+.det2 .btn.disabled:active { transform: none; }
+/* вкладки делят ширину по длине подписей: «Характеристики» длиннее остальных */
+.dt-tabs button { flex: 1 1 auto; padding-left: 8px; padding-right: 8px; white-space: nowrap; font-size: 13.5px; }
+.det2 .btn.disabled::after, .det2 .btn.disabled.primary::after, .det2 .btn.disabled.evolve::after { align-self: stretch; width: auto; text-align: center; padding-left: 18px; }
+.det2 .btn.disabled.primary::after, .det2 .btn.disabled.evolve::after, .det2 .btn.disabled.danger::after { inset: auto !important; width: auto !important; background: none !important; animation: none !important; transform: none !important; }
+.det2 .btn.disabled { padding-left: 32px; padding-right: 10px; }
+.det2 .btn.disabled::after, .det2 .btn.disabled.primary::after, .det2 .btn.disabled.evolve::after { padding-left: 0; }

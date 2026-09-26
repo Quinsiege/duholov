@@ -133,7 +133,7 @@ Object.assign(UI, {
       const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
       const moves = [['Быстрый приём', ELEMENTS[s.el].fast], ['Особый приём', ELEMENTS[s.el].charge]].concat(sp.move2 ? [[`Второй особый · ⚡${MOVES.charge2.cost}`, ELEMENTS[s.el].charge2]] : []);
       const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
-      const TABS = [['grow', 'Рост', !pErr || (s.evo && !eErr)], ['fight', 'Бой', false], ['amulet', 'Амулет', false], ['about', 'О духе', false]];
+      const TABS = [['grow', 'Рост', !pErr || (s.evo && !eErr)], ['fight', 'Характеристики', false], ['amulet', 'Амулет', false], ['about', 'О духе', false]];
       scr.querySelector('.screen-body').innerHTML = `
         <div class="det det2 el-${s.el}" style="--c:${ELEMENTS[s.el].color}">
           <div class="dt-hero">
@@ -161,7 +161,7 @@ Object.assign(UI, {
               </div>
               ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
               <div class="det-actions top ${s.evo ? '' : 'one'}">
-                <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' : ''}>Усилить<small><span class="cur">${Art.item('sparks')}</span> ${pc.sparks} · ${pc.essence} эсс.</small></button>
+                <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' + (pErr.startsWith('Предел') ? ' data-short="Предел уровня"' : '') : ''}>Усилить<small><span class="cur">${Art.item('sparks')}</span> ${pc.sparks} · ${pc.essence} эсс.</small></button>
                 ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${SP[s.evo].name}</small></button>` : ''}
               </div>
 `)}
@@ -171,14 +171,14 @@ Object.assign(UI, {
                 ${bar('Атака', sp.iv[0])}${bar('Защита', sp.iv[1])}${bar('Стойкость', sp.iv[2])}
                 ${moves.map(([t, n]) => row(t, n)).join('')}
               </div>
-              ${sp.move2 ? '' : `<button class="btn ghost small wide act-move2" ${S.canLearnMove2(sp) ? `data-err="${U.esc(S.canLearnMove2(sp))}"` : ''}>Выучить «${ELEMENTS[s.el].charge2}»<small><span class="cur">${Art.item('sparks')}</span> ${MOVE2_COST.sparks} · ${MOVE2_COST.essence} эсс.</small></button>`}`)}
+              ${sp.move2 ? '' : `<button class="btn ghost small wide dt-bottom act-move2" ${S.canLearnMove2(sp) ? `data-err="${U.esc(S.canLearnMove2(sp))}"` : ''}>Выучить «${ELEMENTS[s.el].charge2}»<small><span class="cur">${Art.item('sparks')}</span> ${MOVE2_COST.sparks} · ${MOVE2_COST.essence} эсс.</small></button>`}`)}
             ${pane('amulet', `
               <div class="amulet-slot dt-am">
                 ${sp.amulet ? `<div class="am-ico">${Art.amulet(sp.amulet)}</div><div class="row-main"><b>${AMULETS[sp.amulet].name}</b><small>${AMULETS[sp.amulet].desc}</small></div>`
                   : `<div class="am-ico empty"></div><div class="row-main"><b>Амулет не надет</b><small>Амулет усиливает духа: атаку, защиту, здоровье, энергию в битвах или находки спутника</small></div>`}
               </div>
-              <div class="dt-am-foot"><small>В сумке амулетов: <b>${Object.values(S.d.amulets).reduce((a, b) => a + b, 0)}</b></small>
-                ${sp.amulet ? '<button class="btn small ghost act-unequip">Снять</button>' : '<button class="btn small primary act-equip">Надеть</button>'}</div>`)}
+              ${sp.amulet ? `<button class="btn ghost small wide dt-bottom act-unequip">Снять амулет<small>вернётся в сумку</small></button>`
+                : `<button class="btn ghost small wide dt-bottom act-equip" ${Object.values(S.d.amulets).some(n => n > 0) ? '' : 'data-err="В сумке нет амулетов"'}>Надеть амулет<small>в сумке: ${Object.values(S.d.amulets).reduce((a, b) => a + b, 0)}</small></button>`}`)}
             ${pane('about', `
               <p class="det-desc">${s.desc}</p>
               <div class="dt-rows">
@@ -298,17 +298,70 @@ Object.assign(UI, {
       const c = e.target.closest('.dex-cell'); if (!c) return;
       const s = SP[c.dataset.sid], d = S.d.dex[s.id];
       if (!d || !d.seen) { this.toast('Этого духа ты ещё не встречал'); return; }
-      const chain = SPECIES.filter(x => x.fam === s.fam);
-      this.modal({
-        cls: 'dex-modal', title: `№${String(s.num).padStart(2, '0')} ${s.name}`,
-        html: `<div class="dex-art el-${s.el}">${Art.spirit(s.id)}</div>
-          <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${s.time === 'night' ? '<span>Чаще ночью</span>' : ''}${s.time === 'day' ? '<span>Только днём</span>' : ''}${s.region ? `<span>Регион: ${REGIONS[s.region].name} (${REGIONS[s.region].range})</span>` : ''}${s.land ? `<span>Земля: ${LANDS[s.land].name} (${LANDS[s.land].where})</span>` : ''}${s.legend ? `<span>${s.story ? 'Награда Летописи' : 'Только в разломах'}</span>` : ''}${s.season === 'winter' ? '<span>Зимний: дек–фев и Святки</span>' : ''}${s.season === 'kupala' ? '<span>Летний: июнь–июль и Купала</span>' : ''}${s.season === 'autumn' ? '<span>Осенний: сен–ноя и Покров</span>' : ''}</div>
-          <p>${s.desc}</p>
-          ${chain.length > 1 ? `<div class="chain">${chain.map((x, i) => `${i ? '<span class="arr">→</span>' : ''}<div class="${S.d.dex[x.id] && S.d.dex[x.id].seen ? '' : 'unknown'}">${Art.spirit(x.id)}</div>`).join('')}</div>` : ''}
-          ${d.shiny ? `<div class="chain"><div>${Art.spirit(s.id, true)}</div></div><div class="dex-stat shiny-t">✦ Сияющих поймано: ${d.shiny}</div>` : ''}
-          <div class="dex-stat">Поймано: ${d.caught || 0} · Встречено: ${d.seen}</div>`,
-        buttons: [{ label: 'Закрыть' }],
-      });
+      this.dexCard(s.id);
+    });
+  },
+
+  // 4.14.1: карточка вида в Бестиарии — как карточка духа: всё на одном экране без прокрутки.
+  // Сверху — дух в волшебном круге, справа семейство, «ПОЙМАНО ··· N», встречи и сияющие, метки; ниже вкладки
+  dexCard(sid) {
+    const s = SP[sid], d = S.d.dex[sid] || {}, fam = SP[s.fam], num = String(s.num).padStart(2, '0');
+    const scr = this.screen(`№${num} ${s.name}`, '', 'det-screen dexc-screen');
+    const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
+    const maxB = [0, 1, 2].map(i => Math.max(...SPECIES.map(x => x.base[i])));
+    const bar = (label, i) => `<div class="stat"><span>${label}</span><div class="sbar"><b style="width:${Math.max(4, s.base[i] / maxB[i] * 100)}%"></b></div><em>${s.base[i]}</em></div>`;
+    const chain = SPECIES.filter(x => x.fam === s.fam);
+    const seen = x => S.d.dex[x.id] && S.d.dex[x.id].seen;
+    const mine = S.d.spirits.filter(x => x.sid === sid).sort((a, b) => S.power(b) - S.power(a));
+    const SEASON = { winter: 'зима: дек–фев и Святки', kupala: 'лето: июнь–июль и Купала', autumn: 'осень: сен–ноя и Покров' };
+    const pane = (k, html, on) => `<div class="dt-pane ${on ? 'on' : ''}" data-pane="${k}">${html}</div>`;
+    scr.querySelector('.screen-body').innerHTML = `
+      <div class="det det2 el-${s.el}" style="--c:${ELEMENTS[s.el].color}">
+        <div class="dt-hero">
+          <div class="det-art">${Art.spirit(s.id)}</div>
+          <div class="dt-info">
+            <div class="det-hp">Семейство «${fam.name}»</div>
+            <div class="det-power"><small>ПОЙМАНО</small><b>${d.caught || 0}</b></div>
+            <div class="det-lvl dx-meet"><span>Встречено <b>${d.seen || 0}</b>${d.shiny ? ` · <i class="dx-sh">✦ сияющих <b>${d.shiny}</b></i>` : ''}</span></div>
+            <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span></div>
+          </div>
+        </div>
+        <div class="seg dt-tabs">${[['about', 'О духе'], ['where', 'Где искать'], ['family', 'Эволюция'], ['mine', 'Мои']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
+        <div class="dt-panel">
+          ${pane('about', `
+            <p class="det-desc">${s.desc}</p>
+            <div class="dt-rows">
+              ${bar('Атака', 0)}${bar('Защита', 1)}${bar('Стойкость', 2)}
+              ${row('Быстрый приём', ELEMENTS[s.el].fast)}
+              ${row('Особый приём', ELEMENTS[s.el].charge)}
+            </div>`, true)}
+          ${pane('where', `
+            <div class="dt-rows">
+              ${row('Время', s.time === 'night' ? 'чаще ночью' : s.time === 'day' ? 'только днём' : 'днём и ночью')}
+              ${row('Где', s.legend ? (s.story ? 'награда Летописи' : 'только в разломах') : 'на карте, рядом с Ловчим')}
+              ${s.region ? row('Регион', `${REGIONS[s.region].name} · ${REGIONS[s.region].range}`, 'wrap') : ''}
+              ${s.land ? row('Земля', `${LANDS[s.land].name}`, 'wrap') + row('Граница', LANDS[s.land].where, 'wrap') : ''}
+              ${s.season ? row('Сезон', SEASON[s.season] || s.season, 'wrap') : row('Сезон', 'круглый год')}
+              ${row('Стихия', `${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}`)}
+            </div>`)}
+          ${pane('family', `
+            <div class="dx-chain">${chain.map((x, i) => `${i ? `<div class="dx-arr"><i>→</i><small>${chain[i - 1].cost ? `${chain[i - 1].cost} эсс.` : ''}</small></div>` : ''}
+              <div class="dx-st ${x.id === sid ? 'cur' : ''} ${seen(x) ? '' : 'sil'}"><div class="dx-st-a">${Art.img(x.id)}</div><b>${seen(x) ? x.name : '???'}</b></div>`).join('')}</div>
+            <div class="dt-rows">
+              ${row('Форм в семействе', chain.length)}
+              ${row('Эссенция «' + fam.name + '»', S.d.essence[s.fam] || 0)}
+              ${chain.length > 1 ? row('Превращение', 'в карточке духа, «Рост»') : row('Превращение', 'у этого духа нет других форм')}
+            </div>`)}
+          ${pane('mine', mine.length ? `
+            <div class="dt-rows">${mine.slice(0, 6).map(x => `<button class="dt-row dx-mine" data-uid="${x.uid}"><span>${x.shiny ? '<i class="dx-sh">✦</i> ' : ''}${U.esc(x.nick || s.name)} <small>ур. ${x.lvl}</small></span><b>СИЛА ${S.power(x)}</b></button>`).join('')}</div>
+            ${mine.length > 6 ? `<div class="det-why">и ещё ${mine.length - 6} — в «Духах»</div>` : ''}`
+            : `<div class="dx-none"><b>Пока не пойман</b><small>${s.legend ? (s.story ? 'Этот дух — награда Летописи.' : 'Ищи его в разломах.') : 'Ищи его на карте — ' + (s.time === 'night' ? 'чаще ночью.' : s.time === 'day' ? 'только днём.' : 'днём и ночью.')}</small></div>`)}
+        </div>
+      </div>`;
+    scr.addEventListener('click', e => {
+      const t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.tab) { Sfx.play('tap'); U.$$('[data-tab]', scr).forEach(x => x.classList.toggle('on', x === t)); U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === t.dataset.tab)); return; }
+      if (t.dataset.uid) this.detail(t.dataset.uid);
     });
   },
 
