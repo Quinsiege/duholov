@@ -1165,8 +1165,9 @@ const W = {
       if (d > radius) return;
       const sid = this.pickSpecies(r, this.biome(pLat, pLng), night, pLng, pLat);
       const boost = Sky.boosted(SP[sid].el);
-      const maxL = Math.min(Math.min(30, S.d.level + 2) + (boost ? 5 : 0), S.maxLvl()); // погода: сильнее, но не выше доступного уровня
-      const lvl = Math.max(boost ? 6 : 1, Math.min(maxL, Math.round(1 + r() * maxL)));
+      // 4.15: дух на карте — не выше уровня Ловчего; погода делает его сильнее (ближе к потолку), но не выше
+      const maxL = Math.min(30 + (boost ? 5 : 0), S.catchLvl());
+      const lvl = Math.max(boost ? Math.min(6, maxL) : 1, Math.min(maxL, Math.round(1 + r() * maxL)));
       const shiny = U.h('shiny', id) < Sky.shinyRate();
       out.push({ type: 'spirit', id, sid, lvl, boost, shiny, lat: pLat, lng: pLng, d, expires: (slot + 1) * this.SLOT - phase });
     });
@@ -1441,6 +1442,8 @@ const S = {
   },
   ivPct(sp) { return Math.round((sp.iv[0] + sp.iv[1] + sp.iv[2]) / 45 * 100); },
   maxLvl() { return Math.min(40, this.d.level + 5); },
+  // 4.15: пойманный дух — не выше уровня Ловчего (усиливать можно дальше, до уровня +5)
+  catchLvl() { return Math.max(1, Math.min(40, this.d.level)); },
   addSpirit(sp, silent) {
     this.d.spirits.push(sp);
     const dx = this.d.dex[sp.sid] = this.d.dex[sp.sid] || { seen: 1, caught: 0 };
@@ -3563,6 +3566,7 @@ const GameCore = {
   },
   // Одна встреча с духом за раз: вид, уровень и особенности — только с сервера
   openEnc(ctx, o) {
+    o = { ...o, lvl: U.clamp(o.lvl | 0, 1, S.catchLvl()) }; // 4.15: пойманный дух — не выше уровня Ловчего, откуда бы ни пришёл
     const sp = S.makeSpirit(o.sid, o.lvl, o.seed + ':iv', { ivMin: o.mode === 'wild' ? 0 : 10 });
     if (o.shiny) sp.shiny = true;
     if (o.dark) sp.dark = true;
@@ -3903,7 +3907,7 @@ const GameCore = {
       if (kind === 'tut') {
         const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
         this.need(st && st.kind === 'catch', 'Учебный дух сейчас не нужен');
-        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: 2, seed: 'tut' + S.d.tut });
+        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -3924,7 +3928,7 @@ const GameCore = {
       }
       if (kind === 'story') {
         this.need(S.d.storyGift && SP[S.d.storyGift], 'Встреча Летописи недоступна');
-        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.maxLvl()), seed: 'gift' + S.d.created });
+        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.catchLvl()), seed: 'gift' + S.d.created });
       }
       this.fail('Неизвестная встреча');
     },
@@ -4142,7 +4146,7 @@ const GameCore = {
       S.d.tasks = S.d.tasks.filter(x => x !== q);
       const T = TASK_TIERS[q.tier];
       const got = S.giveRewards({ ...T.reward, xp: 250 * q.tier });
-      const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.maxLvl()) };
+      const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.catchLvl()) };
       S.progress('task', 1);
       S.d.taskMeet.push(m);
       return { got, meet: m };
@@ -4276,7 +4280,7 @@ const GameCore = {
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
       const shiny = U.h('rshiny', b.rid, S.d.created) < Sky.shinyRate(1 / 20);
-      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.maxLvl()), // не выше доступного игроку уровня
+      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.catchLvl()), // 4.15: пойманный дух — не выше уровня Ловчего
         charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
       return { win: true, rw, charms, bonus, allies };
     },
@@ -4514,7 +4518,7 @@ const GameCore = {
       const am = S.rollAmulet(0.15, b.invId);
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       const rescue = g.team[Math.floor(U.h('rescue', b.invId) * g.team.length)];
-      ctx.srv.rescue = { sid: rescue.sid, lvl: Math.min(rescue.lvl, S.maxLvl()), seed: b.invId + ':rescue' };
+      ctx.srv.rescue = { sid: rescue.sid, lvl: Math.min(rescue.lvl, S.catchLvl()), seed: b.invId + ':rescue' };
       return { win: true, rw, rescue: { sid: rescue.sid, lvl: ctx.srv.rescue.lvl } };
     },
 

@@ -316,6 +316,6 @@ const Tut = {
       p = this.pos = [lat + Math.sin(a) * 22 / 111320, lng + Math.cos(a) * 22 / (111320 * Math.cos(lat * Math.PI / 180))];
       p.n = this.step();
     }
-    return { type: 'spirit', id: 'tut' + this.step(), tut: true, sid: st.sid, lvl: 2, lat: p[0], lng: p[1], d: U.dist(lat, lng, p[0], p[1]), expires: U.now() + 3600000 };
+    return { type: 'spirit', id: 'tut' + this.step(), tut: true, sid: st.sid, lvl: Math.min(2, S.catchLvl()), lat: p[0], lng: p[1], d: U.dist(lat, lng, p[0], p[1]), expires: U.now() + 3600000 };
   },
 };
