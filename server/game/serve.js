@@ -235,8 +235,28 @@ const Auth = {
 };
 
 // Доступ к общим таблицам для GameCore (от имени сервера, в пределах одного игрока uid)
+// 4.15: настоящая погода для проверки погоды телефона — Open-Meteo (как у телефона), кэш по точке на 20 минут
+const WX = new Map();
+async function realWeather(lat, lng) {
+  const k = lat.toFixed(2) + ',' + lng.toFixed(2), c = WX.get(k), now = Date.now();
+  if (c && now - c.at < 20 * 60000) return c.keys;
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&current=weather_code,wind_speed_10m`, { signal: ctrl.signal });
+    if (!r.ok) return c ? c.keys : null;
+    const cur = (await r.json()).current;
+    if (!cur) return c ? c.keys : null;
+    const key = Sky.fromCode(cur.weather_code, cur.wind_speed_10m);
+    const keys = c && c.keys[0] !== key ? [key, c.keys[0]] : [key];
+    if (WX.size > 5000) WX.clear();
+    WX.set(k, { keys, at: now });
+    return keys;
+  } catch (e) { return c ? c.keys : null; } finally { clearTimeout(t); }
+}
+
 function makeEnv(uid) {
   return {
+    weather: (lat, lng) => realWeather(lat, lng),
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {

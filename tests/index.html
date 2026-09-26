@@ -715,7 +715,7 @@
     await refuse(A, 'encStart', { kind: 'raid' }, /закрылся/);
   });
   atest('Сервер: дальний Разлом — по Дальнему пропуску до 5 км, пропуск дня', async () => {
-    const A = await newPlayer('vj', 55.52, 37.40, 'Дальний');
+    const A = await newPlayer('vj', 55.52, 37.40, 'Дальний'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
     A.data.tut = 0;
     const hour = Math.floor(Date.now() / 3600000);
     const riftId = from => poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), from);
@@ -739,7 +739,7 @@
     A.data.sparks = 1000; await must(A, 'shopBuy', { id: 'farpass' }); eq(A.data.items.farpass, Rules.FAR.KEEP + 1);
   });
   atest('Сервер: капище — с 3 уровня, раз в день, без мгновенных побед', async () => {
-    const A = await newPlayer('ug', 55.71, 37.59, 'Зоря');
+    const A = await newPlayer('ug', 55.71, 37.59, 'Зоря'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
     const hour = Math.floor(Date.now() / 3600000);
     // Капище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
     const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 50000);
@@ -753,6 +753,15 @@
     const r = await must(A, 'duelEnd', { win: true });
     ok(r.win && r.rw.length > 0, 'награда'); eq(A.data.shrines[id], asPlayer(A, () => U.today()));
     await refuse(A, 'duelStart', { shrine }, /уже победил/);
+  });
+  atest('Сервер: погода с телефона сверяется с настоящей (4.15)', async () => {
+    const pos = { lat: 55.75, lng: 37.62 }, sim = Sky.simulate(pos).key;
+    const fake = Object.keys(WEATHER).find(k => k !== sim && k !== 'clear');
+    const env = { weather: async () => ['clear'] };
+    eq((await GameCore.checkWx('clear', pos, env)).key, 'clear', 'настоящая — принимается');
+    eq((await GameCore.checkWx(sim, pos, env)).key, sim, 'смоделированная — принимается');
+    eq((await GameCore.checkWx(fake, pos, env)).key, sim, 'подделка — заменена смоделированной');
+    eq((await GameCore.checkWx(fake, pos, { weather: async () => null })).key, fake, 'сервис погоды молчит — верим телефону');
   });
   atest('Сервер: Лига — жетоны, турнир, таблица сезона', async () => {
     const A = await newPlayer('uh', 55.70, 37.58, 'Искра');
@@ -987,11 +996,12 @@
     const cs = await must(B, 'clanStats'); eq(cs.all.medved, 1); eq(cs.all.sokol, 0);
   });
   atest('Сервер: совместный разлом — комната на сервере, союзников считает сервер', async () => {
-    const A = await newPlayer('uz', 55.57, 37.45, 'Хозяйка');
+    const A = await newPlayer('uz', 55.57, 37.45, 'Хозяйка'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), 62000);
     const rift = { id, lat: A.lat, lng: A.lng, name: 'Старая мельница' };
     const B = await newPlayer('va', 59.93, 30.31, 'Гость из Питера'), C = await newPlayer('vb', 59.93, 30.31, 'Опоздавший');
+    [B, C].forEach(P => P.data.spirits.forEach(x => { x.lvl = 5; }));
     await refuse(B, 'roomCreate', { rift }, /далеко/);
     const room = await must(A, 'roomCreate', { rift });
     ok(/^[A-Z2-9]{5}$/.test(room.code), 'код комнаты'); ok(room.isHost); eq(room.members.length, 1);
@@ -1101,11 +1111,11 @@
     const d = await must(A, 'discard', { k: 'charm', n: 3 }); eq(d.n, 3); eq(A.data.items.charm, c0 - 3);
     await must(A, 'discard', { k: 'charm', n: c0 - 3 }); eq(A.data.items.charm, 0, 'выброшены все');
     // обменник
-    A.data.sparks = Rules.EXCHANGE.SPARKS * 3; A.data.zlat = 0;
-    await refuse(A, 'exchange', { n: 4 }, /искр/);
-    const x = await must(A, 'exchange', { n: 3 }); eq(A.data.sparks, 0); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * 3); eq(x.left, Rules.EXCHANGE.DAY - 3);
+    A.data.sparks = Rules.EXCHANGE.SPARKS * 2; A.data.zlat = 0;
+    await refuse(A, 'exchange', { n: 3 }, /искр/);
+    const x = await must(A, 'exchange', { n: 2 }); eq(A.data.sparks, 0); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * 2); eq(x.left, Rules.EXCHANGE.DAY - 2);
     A.data.sparks = 1e6;
-    await must(A, 'exchange', { n: Rules.EXCHANGE.DAY - 3 });
+    await must(A, 'exchange', { n: Rules.EXCHANGE.DAY - 2 });
     await refuse(A, 'exchange', { n: 1 }, /закрыт/);
     // старые сохранения: гривны переходят в златники один к одному
     A.data.grivna = 77; A.data.zlat = 3;
