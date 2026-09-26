@@ -162,7 +162,7 @@ Object.assign(UI, {
               ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
               <div class="det-actions top ${s.evo ? '' : 'one'}">
                 <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' + (pErr.startsWith('Предел') ? ' data-short="Предел уровня"' : '') : ''}>Усилить<small><span class="cur">${Art.item('sparks')}</span> ${pc.sparks} · ${pc.essence} эсс.</small></button>
-                ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${SP[s.evo].name}</small></button>` : ''}
+                ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? SP[s.evo].name : '???'}</small></button>` : ''}
               </div>
 `)}
             ${pane('fight', `
@@ -230,7 +230,7 @@ Object.assign(UI, {
         act('powerUp', {}, () => { Sfx.play('spin'); U.vibrate(20); pulse(); }).finally(() => { t._busy = false; });
       } else if (t.classList.contains('act-evo')) {
         const s = SP[sp.sid];
-        this.confirm('Превращение', `Превратить «${U.esc(sp.nick || s.name)}» в ${SP[s.evo].name}? Потратится ${s.cost} эссенции.`, 'Превратить', async () => {
+        this.confirm('Превращение', `Превратить «${U.esc(sp.nick || s.name)}» ${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? 'в ' + SP[s.evo].name : 'в неизвестную форму'}? Потратится ${s.cost} эссенции.`, 'Превратить', async () => {
           const r = await Game.try('evolve', { uid });
           if (r) this.evolveAnim(r.from, r.to, r.isNew, render, sp.shiny);
         });
