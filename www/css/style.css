@@ -3205,3 +3205,9 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 #hud::before, #hud::after { opacity: .6; }
 .eco #hud .profile, .eco #hud .chip, .eco #storyPill, .eco #tracker, .eco #hud .nearby, .eco #hud .recenter {
   -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03)), rgba(22, 14, 48, .6); }
+/* жидкое стекло без каймы: ни обводки, ни светлых линий по краю — только стекло и мягкая тень */
+:root { --lg-sh: 0 8px 24px rgba(4, 2, 14, .3); }
+#hud .profile::after, #hud .chip::after, #storyPill::after, #tracker::after, #hud .nearby::after, #hud .recenter::after { content: none; }
+#hud .recenter::before { content: none; }
+#hud .xpbar { box-shadow: none; }
+#hud .avatar { padding: 0; background: none; box-shadow: none; }
