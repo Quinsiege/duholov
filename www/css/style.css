@@ -3671,3 +3671,51 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .dex-cell .dx-q { width: 60px; height: 60px; margin: 5px auto; font-size: 32px; }
 .dx-st-a .dx-q { position: relative; width: 60px; height: 60px; font-size: 30px; }
 .dt-evo-a .dx-q { font-size: 15px; border-width: 1px; }
+
+/* ================= 4.14.1: Ловчий — та же композиция, что у карточки духа ================= */
+.prof2 .pf-ava { display: grid; place-items: center; }
+.prof2 .pf-ava .prof-ava { position: relative; width: 82%; height: 82%; border-radius: 50%; overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .25), 0 0 24px color-mix(in srgb, var(--c) 45%, transparent), 0 8px 18px rgba(0, 0, 0, .45); }
+.prof2 .pf-ava .prof-ava > *, .prof2 .pf-ava .prof-ava .art, .prof2 .pf-ava .prof-ava svg { width: 100%; height: 100%; display: block; }
+.prof2 .det-hp { font-size: 13px; }
+.prof2 .acc-tags { margin-top: 2px; }
+/* быстрые действия — один ряд компактных стеклянных кнопок */
+.pf-acts { flex: none; display: flex; gap: 8px; margin: 0 0 10px; }
+.pf-acts .btn { flex: 1; height: 40px; min-height: 40px; padding: 0 6px; gap: 6px; font-size: 13.5px; white-space: nowrap; }
+.pf-acts .btn .ico { width: 16px; height: 16px; flex: none; }
+.pf-acts .btn.disabled { padding-left: 26px; padding-right: 6px; background-position: left 9px center; }
+.pf-acts .btn.disabled::after { display: none; }
+/* достижения: три главных числа, под ними — две колонки строк */
+.pf-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); text-align: center; padding: 2px 0 10px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.pf-key b { display: block; font-family: var(--f-head); font-weight: 700; font-size: 21px; line-height: 1.1; color: #fde68a; }
+.pf-key b em { font-style: normal; font-size: 13px; color: rgba(255, 255, 255, .5); }
+.pf-key small { font-size: 11px; color: rgba(255, 255, 255, .6); }
+.pf-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 16px; }
+.pf-grid .dt-row { min-height: 32px; padding: 5px 0; font-size: 12.5px; gap: 6px; }
+.pf-grid .dt-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-grid .dt-row > b { font-size: 14px; }
+.pf-grid .dt-row:nth-last-child(2) { border-bottom: 0; }
+/* спутник */
+.pf-buddy { display: flex; align-items: center; gap: 14px; padding: 2px 0 8px; }
+.pf-buddy-a { flex: none; width: 80px; height: 80px; }
+.pf-buddy-a img, .pf-buddy-a .art { width: 100%; height: 100%; }
+.pf-buddy-t { display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.pf-buddy-t b { font-family: var(--f-head); font-size: 19px; color: #fda4af; }
+.pf-buddy-t small { font-size: 12.5px; color: rgba(255, 255, 255, .65); }
+/* знаки и альбом */
+.pf-mh { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 8px; font-size: 13px; }
+.pf-mh span { color: rgba(255, 255, 255, .6); } .pf-mh b { font-family: var(--f-head); font-size: 15px; color: #fde68a; }
+.pf-medals { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 6px; }
+.prof2 .pf-medal { padding: 0; gap: 0; background: none; border: 0; box-shadow: none; }
+.prof2 .pf-medal .medal-art { width: 46px; height: 46px; margin: 0 auto; }
+.prof2 .pf-medal .medal-art .art, .prof2 .pf-medal .medal-art svg { width: 100%; height: 100%; }
+.pf-mbar { display: block; width: 70%; height: 3px; margin: 5px auto 0; border-radius: 2px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.pf-mbar i { display: block; height: 100%; background: linear-gradient(90deg, #f59e0b, #fde68a); }
+.prof2 .album-box { margin: 0; }
+.prof2 .album-empty { padding: 30px 10px; text-align: center; font-size: 13px; color: rgba(255, 255, 255, .6); }
+.prof2 .prof-acc { margin: 0 0 10px; }
+.prof2 .pf-ava .prof-ava { width: 82%; height: auto; aspect-ratio: 1; border: 0; padding: 0; }
+.pf-acts .btn { flex-direction: row; justify-content: center; align-items: center; }
+.prof2 .pf-ava .prof-ava { margin: 0; }
+.pf-acts .btn.btn.btn { height: 40px; min-height: 40px; flex-direction: row; align-items: center; justify-content: center; gap: 6px; padding: 0 6px; font-size: 13.5px; border-radius: 13px; }
+.pf-acts .btn.btn.btn { display: flex; width: auto; margin: 0; }
