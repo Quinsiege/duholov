@@ -46,7 +46,7 @@ const Hints = {
     // дух может превратиться
     const canEvo = byPower.find(sp => SP[sp.sid].evo && !S.canEvolve(sp));
     if (canEvo) out.push({ id: 'evolve:' + canEvo.sid, btn: 'Показать',
-      text: `Эссенции хватает: «${U.esc(canEvo.nick || SP[canEvo.sid].name)}» может превратиться в <b>${SP[SP[canEvo.sid].evo].name}</b>. Превращённый дух намного сильнее.`,
+      text: `Эссенции хватает: «${U.esc(canEvo.nick || SP[canEvo.sid].name)}» может превратиться ${S.d.dex[SP[canEvo.sid].evo] && S.d.dex[SP[canEvo.sid].evo].seen ? `в <b>${SP[SP[canEvo.sid].evo].name}</b>` : 'в <b>неизвестную форму</b>'}. Превращённый дух намного сильнее.`,
       go: () => this.openCard(canEvo.uid, '.act-evo') });
     // Летопись ждёт закрытого Разлома, а до Капищ далеко — есть Дальний пропуск
     const ch = STORY[d.story.ch], ri = ch ? ch.steps.findIndex(s => s.t === 'raid') : -1;

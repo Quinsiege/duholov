@@ -315,8 +315,14 @@
     eq(Ev.week(mon) + 1, Ev.week(mon + 7 * 86400000));
   });
   test('Лига: пороги рангов', () => {
-    eq(League.rank(0), 0); eq(League.rank(2), 0); eq(League.rank(3), 1); eq(League.rank(55), 9); eq(League.rank(999), 9);
-    for (let i = 1; i < LEAGUE_RANKS.length; i++) ok(LEAGUE_RANKS[i].stars > LEAGUE_RANKS[i - 1].stars);
+    eq(League.rank(0), 0); eq(League.rank(299), 0); eq(League.rank(300), 1); eq(League.rank(5500), 9); eq(League.rank(99999), 9);
+    for (let i = 1; i < LEAGUE_RANKS.length; i++) ok(LEAGUE_RANKS[i].pts > LEAGUE_RANKS[i - 1].pts);
+    // 4.15: звёзды старого сохранения — рейтинг ×100; новый сезон — срез половины сверх 1000
+    const old = League.norm({ season: League.season(), stars: 12, best: 3, tickets: 3, day: U.today(), got: {}, run: null });
+    eq(old.pts, 1200, 'звёзды → рейтинг ×100'); ok(!('stars' in old), 'звёзды убраны');
+    eq(League.reset(3000), 2000); eq(League.reset(800), 800);
+    eq(League.norm({ season: '2000-01', pts: 3000, best: 5, tickets: 3, day: U.today(), got: { 1: true }, run: null }).pts, 2000, 'новый сезон — срез');
+    eq(League.ratingOf({ season: League.season(), stars: 4 }), 400); eq(League.ratingOf({ season: '2000-01', pts: 1400 }), 1200);
   });
   test('Задания дня: три разных', () => {
     S.d.quests = null; S.ensureQuests();
@@ -364,7 +370,7 @@
       const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Капище' });
       ok(!Rules.duelWinnable(team(1), g.team, SHRINE_TIERS[3].speed), 'команда 1-го уровня против Старейшины — нет');
       ok(Rules.duelWinnable(team(15), g.team, SHRINE_TIERS[3].speed), 'сильная команда — да');
-      const lg = League.opponent(0, { stars: 60, season: 's', run: null });
+      const lg = League.opponent(0, { pts: 6000, season: 's', run: null });
       ok(!Rules.duelWinnable(team(1), lg.team, lg.T.speed), 'в Лиге — тоже');
     } finally { S.d = saved; }
   });
@@ -451,11 +457,11 @@
     briefByPid: async pids => { const o = {}; pids.forEach(p => { const d = DB.saves[DB.players[p]]; if (d) o[p] = { name: d.name, level: d.level, clan: d.clan, look: d.look }; }); return o; },
     leagueTop: async (season, rank) => {
       const last = {}; DB.league.filter(x => x.season === season).forEach(x => { last[x.user] = x; });
-      const all = Object.values(last).sort((a, b) => b.stars - a.stars), rows = all.slice(0, 50);
+      const all = Object.values(last).sort((a, b) => b.pts - a.pts), rows = all.slice(0, 50);
       const pidOf = u => Object.keys(DB.players).find(p => DB.players[p] === u) || null;
       const i = all.findIndex(x => x.user === who.uid);
-      const view = x => { const d = DB.saves[x.user]; return { user_id: x.user, name: x.name, stars: x.stars, rank: x.rank, level: x.level, look: x.look, pid: pidOf(x.user), me: x.user === who.uid, cur: d ? { name: d.name, level: d.level, clan: d.clan, look: d.look } : null }; };
-      return { total: all.length, me: i >= 50 ? { place: i + 1, stars: all[i].stars } : null, rows: rows.map(view), tier: all.filter(x => x.rank === rank).slice(0, 3).map(view) };
+      const view = x => { const d = DB.saves[x.user]; return { user_id: x.user, name: x.name, pts: x.pts, rank: x.rank, level: x.level, look: x.look, pid: pidOf(x.user), me: x.user === who.uid, cur: d ? { name: d.name, level: d.level, clan: d.clan, look: d.look } : null }; };
+      return { total: all.length, me: i >= 50 ? { place: i + 1, pts: all[i].pts } : null, rows: rows.map(view), tier: all.filter(x => x.rank === rank).slice(0, 3).map(view) };
     },
     link: async (from, to, name, level) => {
       DB.links = DB.links.filter(l => !(l.from_pid === from && l.to_pid === to));
@@ -748,6 +754,7 @@
     eq(A.data.league.tickets, 2); ok(A.data.league.run, 'турнир начат');
     await must(A, 'leagueEnd', { win: false });
     eq(A.data.league.run, null, 'поражение завершает турнир');
+    eq(A.data.league.pts, 0, 'рейтинг не уходит ниже нуля');
     eq(DB.league.filter(x => x.user === 'uh').length, 1, 'строка таблицы сезона записана сервером');
     await refuse(A, 'leagueEnd', { win: true }, /не найден/);
   });
@@ -1228,18 +1235,18 @@
     await refuse(B, 'playerCard', { pid: '../x' }, /не найден/);
     await refuse(B, 'playerCard', { pid: 'zzzzzzzzzzzz' }, /не найден/);
     // таблица Лиги: текущие данные, код для карточки, без user_id
-    DB.league.push({ user: 'pa', season: League.season(), name: 'Старое имя', stars: 12, rank: 3, level: 6, look: null });
-    DB.league.push({ user: 'pb', season: League.season(), name: 'Гость', stars: 4, rank: 1, level: 5, look: null });
+    DB.league.push({ user: 'pa', season: League.season(), name: 'Старое имя', pts: 1200, rank: 3, level: 6, look: null });
+    DB.league.push({ user: 'pb', season: League.season(), name: 'Гость', pts: 400, rank: 1, level: 5, look: null });
     const t = await must(B, 'leagueTop', {});
     const ra = t.rows.find(x => x.pid === A.data.pid), rb = t.rows.find(x => x.pid === B.data.pid);
-    ok(t.total >= 2 && ra && rb); eq(ra.name, 'Илья', 'текущее имя'); eq(ra.lvl, 10, 'текущий уровень'); eq(ra.stars, 12);
+    ok(t.total >= 2 && ra && rb); eq(ra.name, 'Илья', 'текущее имя'); eq(ra.lvl, 10, 'текущий уровень'); eq(ra.pts, 1200);
     ok(rb.me && !ra.me, 'своя строка отмечена'); ok(!JSON.stringify(t).includes('user_id'), 'user_id наружу не уходит');
-    // своя строка отстала от звёзд (брошенный турнир) — сервер поправляет; пьедестал — тройка своего ранга
+    // своя строка отстала (старые звёзды 9 → рейтинг 900) — сервер поправляет; пьедестал — тройка своей лиги
     B.data.league = { season: League.season(), stars: 9, best: 2, tickets: 3, day: U.today(), got: {}, run: null };
     const t2 = await must(B, 'leagueTop', {});
-    eq(t2.rows.find(x => x.me).stars, 9, 'строка догнала звёзды'); eq(t2.rows.find(x => x.me).rank, 2);
+    eq(t2.rows.find(x => x.me).pts, 900, 'строка догнала рейтинг'); eq(t2.rows.find(x => x.me).rank, 2);
     eq(t2.tier.rank, 2); ok(t2.tier.rows.length >= 1 && t2.tier.rows.every(x => x.rank === 2) && t2.tier.rows[0].me, 'пьедестал — свой ранг');
-    B.data.league.stars = 10; const n = DB.league.length; await must(B, 'leagueTop', { board: false }); eq(DB.league.length, n, 'скрытый из таблицы — не пишем');
+    B.data.league.pts = 1000; const n = DB.league.length; await must(B, 'leagueTop', { board: false }); eq(DB.league.length, n, 'скрытый из таблицы — не пишем');
   });
   atest('Безопасность: облик, имена, служебные действия, коды, перебор', async () => {
     // облик от другого игрока не вырывается из атрибута SVG

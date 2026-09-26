@@ -178,100 +178,113 @@ const Friends = {
   // 3.21: карточка любого Ловчего — из чата, таблицы Лиги и списка друзей. Данные с сервера (playerCard): облик, уровень,
   // дружина, Лига, успехи, спутник и сильнейший дух; у взаимных друзей — ещё три сильнейших духа (friendProfile) и поединок.
   // o: { name, look } — показать сразу; o.chat: { report, hide } — действия чата; o.render — обновить список друзей
+  // 4.14.1: карточка — на весь экран, в композиции карточки духа: имя у стрелки назад, сверху облик в руническом круге,
+  // звание, «УРОВЕНЬ ··· N», Лига отдельным блоком, метки; ниже главные действия и вкладки «Достижения · Духи · Дружба»
   async card(pid, o = {}) {
     Sfx.init(); Sfx.play('tap');
-    const m = UI.modal({ cls: 'pc-modal', buttons: [], html: `<div class="pc"><button class="pc-x" aria-label="Закрыть">${UI.I.close}</button>
-      <div class="pc-hero"><div class="pc-ava">${Art.avatar(o.look || undefined)}</div><div class="pc-id"><b class="pc-name">${U.esc(o.name || 'Ловчий')}</b><small>Загружаю карточку…</small></div></div>
-      <div class="pc-body"><div class="pc-skel"></div><div class="pc-skel"></div></div><div class="pc-acts"></div></div>` });
-    m.querySelector('.pc-x').onclick = () => m.close();
-    const acts = m.querySelector('.pc-acts'), changed = () => { if (o.render) o.render(); };
-    const chatActs = () => o.chat ? `<div class="pc-acts2"><button class="btn small ghost pc-report">Пожаловаться</button><button class="btn small ghost danger pc-hide">Скрыть сообщения</button></div>` : '';
-    const wireChat = () => {
-      const rp = acts.querySelector('.pc-report'), hd = acts.querySelector('.pc-hide');
-      if (rp) rp.onclick = () => { m.close(); o.chat.report(); };
-      if (hd) hd.onclick = () => { m.close(); o.chat.hide(); };
-    };
+    const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava"><div class="prof-ava">${Art.avatar(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
+    const scr = UI.screen(U.esc(o.name || 'Ловчий'), `<div class="det det2 prof2 pcard" style="--c:#a78bfa">
+      ${hero(o.look, '<div class="det-hp">Загружаю карточку…</div>')}<div class="pcard-load"><div class="pc-skel"></div><div class="pc-skel"></div></div></div>`, 'det-screen pcard-screen');
+    const close = () => UI.closeScreen(scr), changed = () => { if (o.render) o.render(); };
+    const chatBtns = () => o.chat ? `<div class="dt-about-acts"><button class="btn ghost small pc-report">Пожаловаться</button><button class="btn ghost danger small pc-hide">Скрыть сообщения</button></div>` : '';
     let p;
     try { p = await Game.act('playerCard', { pid }); } catch (e) { p = { error: e.message }; }
-    if (!m.isConnected) return;
-    if (p.error) {
-      m.querySelector('.pc-id small').textContent = p.error;
-      m.querySelector('.pc-body').remove(); acts.innerHTML = chatActs(); wireChat();
-      return;
-    }
+    if (!scr.isConnected) return;
+    const root = scr.querySelector('.pcard');
+    if (p.error) { root.innerHTML = hero(o.look, `<div class="det-hp">${U.esc(p.error)}</div>`) + `<div class="dt-panel"><div class="dt-pane on">${chatBtns()}</div></div>`; return; }
     const cl = CLANS[p.clan], lg = p.league, rk = LEAGUE_RANKS[lg.rank], f = this.find(pid), today = U.today();
     const seen = { now: 'в игре сейчас', today: 'заходил сегодня', week: 'заходил на неделе', long: 'давно не заходил' }[p.seen];
-    const sp = (x, label) => x ? `<div class="pc-sp">${label ? `<small class="pc-sp-l">${label}</small>` : ''}${Art.img(x.sid, x.shiny, x.dark)}<b>${U.esc(x.nick || SP[x.sid].name)}</b><small>ур. ${x.lvl} · сила ${U.fmtNum(x.power)}</small></div>` : '';
-    const stat = (n, t) => `<div><b>${n}</b><span>${t}</span></div>`;
     if (f) { f.name = p.name; f.lvl = p.lvl; if (p.look) f.look = p.look; }
-    m.querySelector('.pc').style.setProperty('--cc', cl ? cl.color : '#a78bfa');
-    Art.cardSkin(m.querySelector('.pc-hero'), p.look); // 4.6: фон и рамка карточки из Гардероба
-    m.querySelector('.pc-hero').innerHTML = `<div class="pc-ava">${Art.avatar(p.look || undefined)}<span class="pc-lvl">${p.lvl}</span></div>
-      <div class="pc-id"><b class="pc-name">${U.esc(p.name)}</b><small>${UI.rank(p.lvl)} · ${p.lvl} уровень</small>
-        <div class="pc-tags">${cl ? `<span class="pc-tag clan">${cl.short}</span>` : ''}<span class="pc-tag seen-${p.seen}">${p.me ? 'это ты' : seen}</span></div></div>`;
-    // дружба: уровень, очки, с какого дня
-    let friendBox = '';
-    if (f) {
-      const lv = this.level(f), cur = FRIEND_LEVELS[lv], nx = FRIEND_LEVELS[lv + 1];
-      friendBox = `<div class="pc-fr"><div class="pc-fr-top"><b>${p.friend === 'mutual' ? cur.name : 'Заявка в друзья'}</b><small>${p.friend === 'mutual' ? (nx ? `★ ${f.pts} / ${nx.pts} до «${nx.name}»` : `★ ${f.pts} · высший уровень`) : 'ждём, когда добавит в ответ'}</small></div>
-        ${p.friend === 'mutual' ? `<div class="pbar"><i style="width:${nx ? Math.min(100, (f.pts - cur.pts) / (nx.pts - cur.pts) * 100) : 100}%"></i></div>` : ''}
-        <small>${f.added ? `В друзьях с ${new Date(f.added).toLocaleDateString('ru-RU')}` : ''}${f.recv === today ? ' · подарок от него сегодня получен' : ''}</small></div>`;
-    }
-    const body = m.querySelector('.pc-body');
-    body.innerHTML = `
-      <div class="pc-league"><div class="lg-mini r${lg.rank}">${lg.rank + 1}</div><div class="row-main"><b>${rk.name}</b><small>Лига · ★ ${lg.stars} в этом сезоне${lg.best > lg.rank ? ` · лучший ранг — ${LEAGUE_RANKS[lg.best].name}` : ''}</small></div></div>
-      ${friendBox}
-      <div class="pc-stats">${stat(U.fmtNum(p.caught), 'поймано')}${stat(p.dex, 'видов')}${stat(U.fmtDist(p.km * 1000), 'пройдено')}${stat(U.fmtNum(p.raids), 'разломов')}${stat(U.fmtNum(p.duels), 'поединков')}${stat(p.medals, 'золотых знаков')}</div>
-      ${p.buddy || p.best ? `<div class="pc-sps">${sp(p.buddy, 'Спутник')}${sp(p.best, 'Сильнейший дух')}</div>` : ''}
-      <div class="pc-top"></div>
-      ${p.days ? `<div class="pc-foot">В Ордене ${p.days} ${U.plural(p.days, 'день', 'дня', 'дней')}</div>` : ''}`;
-    // кнопки по состоянию дружбы
-    const draw = () => {
-      const fr = this.find(pid), st = p.friend;
-      let main = '', second = '';
-      if (p.me) main = '';
-      else if (st === 'mutual' && fr) {
-        main = `<button class="btn primary wide pc-spar" ${p.top ? '' : 'disabled'}>${p.top ? `Поединок — ${fr.spar === today ? 'тренировка' : 'награда дня'}` : 'Загружаю духов друга…'}</button>`;
-        second = `<div class="pc-acts2"><button class="btn small ${fr.sent === today ? 'ghost' : ''} pc-gift" ${fr.sent === today ? 'disabled' : ''}>${fr.sent === today ? 'Подарок отправлен' : `Подарок (${S.d.items.gift || 0})`}</button><button class="btn small ghost danger pc-del">Удалить из друзей</button></div>`;
-      } else if (st === 'sent') {
-        main = '<button class="btn wide pc-wait" disabled>Заявка отправлена — ждём ответ</button>';
-        second = fr ? '<div class="pc-acts2 one"><button class="btn small ghost danger pc-del">Отменить заявку</button></div>' : '';
-      } else main = `<button class="btn primary wide pc-add">${st === 'wants' ? 'Принять дружбу' : 'Добавить в друзья'}</button>`;
-      acts.innerHTML = main + second + chatActs();
-      wireChat();
+    scr.querySelector('.screen-head h2').textContent = p.name;
+    const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
+    const spc = (x, label) => x ? `<div class="pcs-sp el-${SP[x.sid].el}">${label ? `<small>${label}</small>` : ''}<div class="pcs-a">${Art.img(x.sid, x.shiny, x.dark)}</div><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>ур. ${x.lvl} · сила ${U.fmtNum(x.power)}</em></div>` : '';
+    const pane = (k, html, on) => `<div class="dt-pane ${on ? 'on' : ''}" data-pane="${k}">${html}</div>`;
+    const friendPane = () => {
+      const fr = this.find(pid);
+      if (p.me) return `<div class="dx-none"><b>Это ты</b><small>Так твою карточку видят другие Ловчие.</small></div>`;
+      if (!fr) return `<div class="dx-none"><b>${p.friend === 'wants' ? 'Хочет с тобой дружить' : 'Не в друзьях'}</b><small>Друзья обмениваются подарками и сражаются в поединках. Дружба растёт от подарков, поединков и совместных разломов.</small></div>${chatBtns()}`;
+      const lv = this.level(fr), cur = FRIEND_LEVELS[lv], nx = FRIEND_LEVELS[lv + 1], mutual = p.friend === 'mutual';
+      return `<div class="dt-rows">
+          ${row('Дружба', mutual ? cur.name : 'заявка отправлена', 'gold')}
+          ${mutual ? `<div class="dt-row dt-evo-row"><span>Очки дружбы</span><b>★ ${fr.pts}${nx ? ` / ${nx.pts}` : ''}</b>
+            <div class="dt-evo-bar"><div class="pbar"><i style="width:${nx ? Math.min(100, (fr.pts - cur.pts) / (nx.pts - cur.pts) * 100) : 100}%"></i></div><small>${nx ? `до «${nx.name}»` : 'высший уровень'}</small></div></div>` : ''}
+          ${fr.added ? row('В друзьях с', new Date(fr.added).toLocaleDateString('ru-RU')) : ''}
+          ${mutual ? row('Подарок от него', fr.recv === today ? 'сегодня получен' : 'сегодня не было') : ''}
+          ${mutual ? row('Поединок сегодня', fr.spar === today ? 'был — дальше тренировки' : 'награда дня ждёт') : ''}
+        </div>
+        <div class="dt-about-acts"><button class="btn ghost danger small pc-del">${mutual ? 'Удалить из друзей' : 'Отменить заявку'}</button></div>
+        ${chatBtns()}`;
     };
-    draw();
+    const actsHtml = () => {
+      const fr = this.find(pid), st = p.friend;
+      if (p.me) return '';
+      if (st === 'mutual' && fr) return `<button class="btn small primary pc-spar ${p.top ? '' : 'disabled'}" ${p.top ? '' : 'data-err="Загружаю духов друга…"'}>⚔ ${fr.spar === today ? 'Тренировка' : 'Поединок'}</button>
+        <button class="btn ghost small pc-gift ${fr.sent === today ? 'disabled' : ''}" ${fr.sent === today ? 'data-err="Подарок сегодня уже отправлен"' : ''}>🎁 ${fr.sent === today ? 'Отправлен' : `Подарок · ${S.d.items.gift || 0}`}</button>`;
+      if (st === 'sent') return '<button class="btn ghost small disabled" data-err="Ждём, когда добавит в ответ">Заявка отправлена</button>';
+      return `<button class="btn small primary pc-add">${st === 'wants' ? 'Принять дружбу' : 'Добавить в друзья'}</button>`;
+    };
+    root.style.setProperty('--c', cl ? cl.color : '#a78bfa');
+    root.innerHTML = `
+      ${hero(p.look, `
+        <div class="det-hp">${UI.rank(p.lvl)} Ордена Оберега</div>
+        <div class="det-power"><small>УРОВЕНЬ</small><b>${p.lvl}</b></div>
+        <div class="det-lvl pcard-lg"><span><span class="lg-badge xs">${League.badge(lg.rank)}</span> Лига: <b>${rk.name}</b> · ${League.cup()}${U.fmtNum(lg.pts != null ? lg.pts : (lg.stars | 0) * 100)}</span></div>
+        <div class="det-tags">${cl ? `<span style="color:${cl.color}">⛊ ${cl.short}</span>` : ''}<span class="pcard-seen s-${p.seen}">${p.me ? 'это ты' : seen}</span></div>`)}
+      <div class="pf-acts pcard-acts">${actsHtml()}</div>
+      <div class="seg dt-tabs">${[['ach', 'Достижения'], ['spirits', 'Духи'], ['friend', p.me ? 'Это ты' : 'Дружба']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
+      <div class="dt-panel">
+        ${pane('ach', `
+          <div class="pf-key">
+            <div><b>${U.fmtNum(p.caught)}</b><small>поймано духов</small></div>
+            <div><b>${p.dex}<em>/${SPECIES.length}</em></b><small>бестиарий</small></div>
+            <div><b>${U.fmtDist(p.km * 1000)}</b><small>пройдено</small></div>
+          </div>
+          <div class="dt-rows">
+            ${row('Закрыто разломов', U.fmtNum(p.raids))}
+            ${row('Поединков', U.fmtNum(p.duels))}
+            ${row('Золотых знаков', p.medals)}
+            ${row('Лучшая лига', LEAGUE_RANKS[Math.max(lg.best, lg.rank)].name)}
+            ${p.days ? row('В Ордене', `${p.days} ${U.plural(p.days, 'день', 'дня', 'дней')}`) : ''}
+          </div>`, true)}
+        ${pane('spirits', p.buddy || p.best ? `
+          <div class="pcs-two">${spc(p.buddy, 'Спутник')}${spc(p.best, 'Сильнейший дух')}</div>
+          <div class="pcs-top"></div>` : '<div class="dx-none"><b>Духи скрыты</b><small>Ловчий ещё не выбрал спутника.</small></div>')}
+        ${pane('friend', friendPane())}
+      </div>`;
+    const redrawActs = () => { const a = root.querySelector('.pcard-acts'); if (a) a.innerHTML = actsHtml(); };
     // у взаимного друга — три сильнейших духа (для поединка)
     if (p.friend === 'mutual' && f) {
       Game.act('friendProfile', { pid }).then(fp => {
-        if (!m.isConnected || !fp || !fp.top) return;
+        if (!scr.isConnected || !fp || !fp.top) return;
         p.top = fp.top;
-        // сильнейший дух уже есть в тройке — остаётся спутник, одной строкой
-        const sps = m.querySelector('.pc-sps');
-        if (sps && fp.top.length) sps.outerHTML = p.buddy ? `<div class="pc-sps solo">${sp(p.buddy, 'Спутник')}</div>` : '';
-        m.querySelector('.pc-top').innerHTML = fp.top.length ? `<div class="pc-sub">Сильнейшие духи</div><div class="pc-sps three">${fp.top.map(x => sp(x)).join('')}</div>` : '';
-        draw();
-      }).catch(e => { if (m.isConnected) { m.querySelector('.pc-top').innerHTML = `<div class="pc-foot">${U.esc(e.message)}</div>`; } });
+        const t = root.querySelector('.pcs-top');
+        if (t && fp.top.length) t.innerHTML = `<div class="pf-mh"><span>Сильнейшие духи — для поединка</span></div><div class="pcs-three">${fp.top.map(x => spc(x)).join('')}</div>`;
+        redrawActs();
+      }).catch(e => { const t = root.querySelector('.pcs-top'); if (scr.isConnected && t) t.innerHTML = `<div class="det-why">${U.esc(e.message)}</div>`; });
     }
-    acts.addEventListener('click', async e => {
+    root.addEventListener('click', async e => {
       const b = e.target.closest('button'); if (!b || b.disabled) return;
-      if (b.classList.contains('pc-add')) {
+      if (b.dataset.tab) { Sfx.play('tap'); U.$$('[data-tab]', root).forEach(x => x.classList.toggle('on', x === b)); U.$$('.dt-pane', root).forEach(x => x.classList.toggle('on', x.dataset.pane === b.dataset.tab)); return; }
+      if (b.dataset.err) { UI.toast(b.dataset.err); return; }
+      if (b.classList.contains('pc-report')) { close(); o.chat.report(); }
+      else if (b.classList.contains('pc-hide')) { close(); o.chat.hide(); }
+      else if (b.classList.contains('pc-add')) {
         b.disabled = true;
         const r = await Game.try('friendAdd', { pid });
         if (!r) { b.disabled = false; return; }
         Sfx.play('spin');
         UI.toast(p.friend === 'wants' ? `${U.esc(r.name)} теперь твой друг!` : `Заявка отправлена: когда ${U.esc(r.name)} добавит тебя в ответ, вы станете друзьями`, 'good');
-        m.close(); changed();
+        close(); changed();
         setTimeout(() => this.card(pid, o), 230); // открыть заново — уже как друга
       } else if (b.classList.contains('pc-spar')) {
-        m.close(); Duel.openSpar(this.find(pid), p.top);
+        close(); Duel.openSpar(this.find(pid), p.top);
       } else if (b.classList.contains('pc-gift')) {
         b.disabled = true;
         if (await Game.try('giftSend', { pid })) { Sfx.play('spin'); UI.toast(`Подарок отправлен: ${U.esc(p.name)} получит его в «Друзьях»`, 'good'); changed(); }
-        draw();
+        redrawActs();
       } else if (b.classList.contains('pc-del')) {
         UI.confirm(U.esc(p.name), p.friend === 'mutual' ? 'Удалить из друзей? Уровень дружбы пропадёт.' : 'Отменить заявку в друзья?', p.friend === 'mutual' ? 'Удалить' : 'Отменить', async () => {
-          if (await Game.try('friendRemove', { pid })) { m.close(); changed(); }
+          if (await Game.try('friendRemove', { pid })) { close(); changed(); }
         }, 'Оставить', true);
       }
     });
