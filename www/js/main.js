@@ -13,14 +13,14 @@ window.addEventListener('load', () => {
   if (Move.moving) return; // 4.1: старый адрес — браузер уже уходит на duholov.ru
   if (typeof L === 'undefined') {
     const bl = document.getElementById('bootLoader'); if (bl) bl.remove(); // экран загрузки из index.html не должен закрыть ошибку
-    const f = U.el(`<div class="fatal"><h2>Нет связи с Навью</h2><p>Не удалось загрузить карту. Проверь подключение к интернету.</p><button class="btn primary">Повторить</button></div>`);
+    const f = U.el(`<div class="fatal"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class="btn primary">${ru`Повторить`}</button></div>`);
     f.querySelector("button").onclick = () => location.reload();
     document.body.appendChild(f);
     return;
   }
 
   const start = () => {
-    Loader.show('Загружаю карту…'); Loader.set(60); // карта грузится под экраном загрузки
+    Loader.show(ru`Загружаю карту…`); Loader.set(60); // карта грузится под экраном загрузки
     UI.init();
     Poi.init();
     MapView.init();
@@ -34,9 +34,9 @@ window.addEventListener('load', () => {
     Music.init();
     Music.play('map');
     Tut.init();
-    Bus.on('cocoonReady', c => UI.toast(`${COCOON_TIERS[c.km].name} готов вылупиться!`, 'good'));
+    Bus.on('cocoonReady', c => UI.toast(ru`${COCOON_TIERS[c.km].name} готов вылупиться!`, 'good'));
     const ready = S.readyCocoons().length;
-    if (ready) setTimeout(() => UI.toast(`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);
+    if (ready) setTimeout(() => UI.toast(ru`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);
     // пройденный путь уходит на сервер пачками; раз в 5 минут сервер обновляет задания дня и отметки
     setInterval(() => Game.flushMove(), 45000);
     setInterval(() => { if (!document.hidden) Game.act('tick').then(() => { UI.refreshHud(); Order.daily(); Order.refresh(); }).catch(() => {}); }, 5 * 60000);
@@ -50,25 +50,25 @@ window.addEventListener('load', () => {
 
   // Прогресс хранится на сервере: без связи игра ждёт её
   const offline = msg => new Promise(res => {
-    const el = U.el(`<div class="fatal"><h2>Нет связи с Навью</h2><p>${U.esc(msg)}</p><p class="small">Прогресс хранится на сервере игры, поэтому нужен интернет.</p><button class="btn primary">Повторить</button></div>`);
+    const el = U.el(`<div class="fatal"><h2>${ru`Нет связи с Навью`}</h2><p>${U.esc(msg)}</p><p class="small">${ru`Прогресс хранится на сервере игры, поэтому нужен интернет.`}</p><button class="btn primary">${ru`Повторить`}</button></div>`);
     el.querySelector('button').onclick = () => { el.remove(); res(); };
     document.body.appendChild(el);
   });
   const boot = async () => {
     // 3.31: экран загрузки с прогрессом и подсказками — вместо заставки «Связь с Навью…»
     // 4.0.2: сначала — есть ли обновление: новая версия ставится прямо с экрана загрузки, до входа в игру
-    Loader.show('Проверяю обновления…'); Loader.set(6);
+    Loader.show(ru`Проверяю обновления…`); Loader.set(6);
     const upd = await Updater.boot();
     if (upd === 'apk') { Loader.hide(); Updater.promptApk(); return; }
-    if (upd) { Loader.set(30, `Загружаю обновление ${upd.version}…`); await Updater.apply(upd.version); return; }
-    Loader.show('Связь с Навью…'); Loader.set(12);
+    if (upd) { Loader.set(30, ru`Загружаю обновление ${upd.version}…`); await Updater.apply(upd.version); return; }
+    Loader.show(ru`Связь с Навью…`); Loader.set(12);
     if (Game.on()) {
       for (;;) {
         try { await Game.load(); break; }
-        catch (e) { Loader.hide(); await offline(e.message); Loader.show('Связь с Навью…'); }
+        catch (e) { Loader.hide(); await offline(e.message); Loader.show(ru`Связь с Навью…`); }
       }
     }
-    Loader.set(45, 'Прогресс загружен');
+    Loader.set(45, ru`Прогресс загружен`);
     // вернулись со страницы сервиса входа — довести вход до конца (учётная запись могла смениться — тогда заново)
     if (Game.on() && !Game.moved) {
       if (await Login.resume()) { location.reload(); return; }
@@ -88,7 +88,7 @@ window.addEventListener('load', () => {
   boot().catch(e => {
     Errors.report('boot: ' + ((e && e.message) || e), 'main.js', 0, e && e.stack);
     Loader.hide();
-    const f = U.el('<div class="fatal"><h2>Не получилось запустить игру</h2><p>Проверь подключение к интернету и попробуй ещё раз.</p><button class="btn primary">Повторить</button></div>');
+    const f = U.el(`<div class="fatal"><h2>${ru`Не получилось запустить игру`}</h2><p>${ru`Проверь подключение к интернету и попробуй ещё раз.`}</p><button class="btn primary">${ru`Повторить`}</button></div>`);
     f.querySelector('button').onclick = () => location.reload();
     document.body.appendChild(f);
   });

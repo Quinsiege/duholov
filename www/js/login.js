@@ -10,7 +10,7 @@ const Login = {
   PEND: 'duholov.login',           // что начали: сервис, цель, state, nonce, code_verifier (sessionStorage)
   CB: 'duholov.logincb',           // что вернул сервис (пишет auth.html)
   ORDER: ['google', 'yandex', 'telegram'], // VK ID — позже (код входа готов, кнопку вернуть сюда)
-  NAMES: { google: 'Google', yandex: 'Яндекс', vk: 'VK', telegram: 'Telegram' },
+  NAMES: { google: 'Google', yandex: ru`Яндекс`, vk: 'VK', telegram: 'Telegram' },
 
   async load() {
     try { this.info = await Game.auth('info'); } catch (e) { this.info = this.info || { providers: {}, links: [] }; }
@@ -48,10 +48,10 @@ const Login = {
   rand(n = 32) { const a = new Uint8Array(n); crypto.getRandomValues(a); return btoa(String.fromCharCode(...a)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
   async start(provider, mode) {
     const p = this.info && this.info.providers && this.info.providers[provider];
-    if (!p) { UI.toast('Этот способ входа пока не подключён'); return; }
+    if (!p) { UI.toast(ru`Этот способ входа пока не подключён`); return; }
     const state = this.rand(16), nonce = this.rand(16), verifier = this.rand(48), redirect = this.cbUrl();
     const pend = { provider, mode, state, nonce, verifier, redirect, t: Date.now() };
-    try { sessionStorage.setItem(this.PEND, JSON.stringify(pend)); } catch (e) { UI.toast('Браузер не даёт сохранить вход — проверь настройки'); return; }
+    try { sessionStorage.setItem(this.PEND, JSON.stringify(pend)); } catch (e) { UI.toast(ru`Браузер не даёт сохранить вход — проверь настройки`); return; }
     const q = o => new URLSearchParams(o).toString();
     let url;
     if (provider === 'google') url = 'https://accounts.google.com/o/oauth2/v2/auth?' + q({ client_id: p.client_id, redirect_uri: redirect, response_type: 'id_token', scope: 'openid profile', nonce, state, prompt: 'select_account' });
@@ -73,16 +73,16 @@ const Login = {
     try { pend = JSON.parse(sessionStorage.getItem(this.PEND)); cb = JSON.parse(sessionStorage.getItem(this.CB)); } catch (e) {}
     try { sessionStorage.removeItem(this.PEND); sessionStorage.removeItem(this.CB); } catch (e) {}
     if (!pend || !cb) return false;
-    if (Date.now() - pend.t > 15 * 60000) { UI.toast('Вход устарел — попробуй ещё раз'); return false; }
-    if (cb.error) { UI.toast(cb.error_description ? `Вход не выполнен: ${U.esc(cb.error_description)}` : 'Вход отменён'); return false; }
+    if (Date.now() - pend.t > 15 * 60000) { UI.toast(ru`Вход устарел — попробуй ещё раз`); return false; }
+    if (cb.error) { UI.toast(cb.error_description ? ru`Вход не выполнен: ${U.esc(cb.error_description)}` : ru`Вход отменён`); return false; }
     let proof;
     if (pend.provider === 'telegram') {
       let data = null;
       try { data = JSON.parse(decodeURIComponent(escape(atob(String(cb.tgAuthResult || '').replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) {}
-      if (!data) { UI.toast('Вход через Telegram отменён'); return false; }
+      if (!data) { UI.toast(ru`Вход через Telegram отменён`); return false; }
       proof = { data };
     } else {
-      if (cb.state !== pend.state) { UI.toast('Вход не подтверждён — попробуй ещё раз'); return false; } // защита от подмены ответа
+      if (cb.state !== pend.state) { UI.toast(ru`Вход не подтверждён — попробуй ещё раз`); return false; } // защита от подмены ответа
       if (pend.provider === 'google') proof = { id_token: cb.id_token, nonce: pend.nonce };
       if (pend.provider === 'yandex') proof = { access_token: cb.access_token };
       if (pend.provider === 'vk') proof = { code: cb.code, device_id: cb.device_id, code_verifier: pend.verifier, redirect_uri: pend.redirect, state: cb.state };
@@ -93,7 +93,7 @@ const Login = {
     const name = this.NAMES[pend.provider];
     if (r.linked) {
       await this.load(); this.markLogged(); // сразу в игру, без экрана входа
-      UI.toast(r.already ? `Вход через ${name} уже привязан` : `Готово: вход через ${name} привязан — прогресс не потеряется`, 'good');
+      UI.toast(r.already ? ru`Вход через ${name} уже привязан` : ru`Готово: вход через ${name} привязан — прогресс не потеряется`, 'good');
       return false;
     }
     if (r.switch) {
@@ -101,15 +101,15 @@ const Login = {
       const go = async () => {
         const sb = await Cloud.client();
         const { error } = await sb.auth.verifyOtp({ token_hash: r.token_hash, type: 'email' });
-        if (error) { UI.toast('Не удалось войти — попробуй ещё раз'); return false; }
+        if (error) { UI.toast(ru`Не удалось войти — попробуй ещё раз`); return false; }
         this.markLogged(); return true;
       };
       if (!S.d || pend.mode === 'start') return go();
-      const who = r.player ? `«${U.esc(r.player.name)}» (${r.player.level} ур.)` : 'другому Ловчему';
+      const who = r.player ? ru`«${U.esc(r.player.name)}» (${r.player.level} ур.)` : ru`другому Ловчему`;
       return new Promise(res => UI.modal({
-        title: 'Вход уже привязан',
-        html: `<p>Вход через ${name} привязан к Ловчему ${who}.</p><p class="small">Перейти в ту учётную запись? Текущий прогресс на этом устройстве ${this.isGuest() ? 'гостевой — он останется в прежней учётной записи, вернуться в неё будет нельзя' : 'останется в своей учётной записи'}.</p>`,
-        buttons: [{ label: 'Остаться', fn: () => res(false) }, { label: 'Перейти', cls: 'primary', fn: async () => res(await go()) }],
+        title: ru`Вход уже привязан`,
+        html: `<p>${ru`Вход через ${name} привязан к Ловчему ${who}.`}</p><p class="small">${this.isGuest() ? ru`Перейти в ту учётную запись? Текущий прогресс на этом устройстве гостевой — он останется в прежней учётной записи, вернуться в неё будет нельзя.` : ru`Перейти в ту учётную запись? Текущий прогресс на этом устройстве останется в своей учётной записи.`}</p>`,
+        buttons: [{ label: ru`Остаться`, fn: () => res(false) }, { label: ru`Перейти`, cls: 'primary', fn: async () => res(await go()) }],
         dismiss: false,
       }));
     }
@@ -122,55 +122,55 @@ const Login = {
     const links = this.linked();
     const mail = this.email ? `<span class="acc-tag mail">${UI.I.key}${U.esc(this.email)}</span>` : '';
     return links.length || mail ? mail + links.map(l => `<span class="acc-tag">${this.icon(l.provider)}${this.NAMES[l.provider]}${l.name ? ` · ${U.esc(l.name)}` : ''}</span>`).join('')
-      : '<span class="acc-tag guest">Гость</span>';
+      : `<span class="acc-tag guest">${ru`Гость`}</span>`;
   },
   // Вход по почте и паролю (3.31 — своё оформление): учётную запись заранее создаёт владелец (Supabase → Authentication → Users)
   emailForm() {
     const m = UI.modal({
       cls: 'mail-modal', buttons: [],
-      html: `<div class="mail-head"><span class="mail-ic">${UI.I.key}</span><b>Вход по почте</b><small>Для учётных записей, выданных Орденом</small>${S.d && this.isGuest() ? '<small class="mail-note">Гостевой прогресс на этом устройстве сменится прогрессом этой учётной записи</small>' : ''}</div>
+      html: `<div class="mail-head"><span class="mail-ic">${UI.I.key}</span><b>${ru`Вход по почте`}</b><small>${ru`Для учётных записей, выданных Орденом`}</small>${S.d && this.isGuest() ? `<small class="mail-note">${ru`Гостевой прогресс на этом устройстве сменится прогрессом этой учётной записи`}</small>` : ''}</div>
         <form class="mail-form" novalidate>
-          <label class="fld"><span class="fld-ic">${UI.I.mail}</span><input name="email" type="email" inputmode="email" autocomplete="username" placeholder="Почта" required></label>
-          <label class="fld"><span class="fld-ic">${UI.I.lock}</span><input name="password" type="password" autocomplete="current-password" placeholder="Пароль" required>
-            <button type="button" class="fld-eye" aria-label="Показать пароль">${UI.I.eye}</button></label>
+          <label class="fld"><span class="fld-ic">${UI.I.mail}</span><input name="email" type="email" inputmode="email" autocomplete="username" placeholder="${ru`Почта`}" required></label>
+          <label class="fld"><span class="fld-ic">${UI.I.lock}</span><input name="password" type="password" autocomplete="current-password" placeholder="${ru`Пароль`}" required>
+            <button type="button" class="fld-eye" aria-label="${ru`Показать пароль`}">${UI.I.eye}</button></label>
           <div class="mail-err" role="alert"></div>
-          <button class="btn primary wide mail-go">Войти</button>
-          <button type="button" class="linkish mail-cancel">Отмена</button>
+          <button class="btn primary wide mail-go">${ru`Войти`}</button>
+          <button type="button" class="linkish mail-cancel">${ru`Отмена`}</button>
         </form>`,
     });
     const f = m.querySelector('.mail-form'), err = f.querySelector('.mail-err'), go = f.querySelector('.mail-go'), eye = f.querySelector('.fld-eye');
-    const fail = text => { err.textContent = text; f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); go.disabled = false; go.textContent = 'Войти'; };
+    const fail = text => { err.textContent = text; f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); go.disabled = false; go.textContent = ru`Войти`; };
     setTimeout(() => f.email.focus(), 250);
     f.querySelector('.mail-cancel').onclick = () => m.close();
     eye.onclick = () => {
       const show = f.password.type === 'password';
       f.password.type = show ? 'text' : 'password';
       eye.innerHTML = show ? UI.I.eyeOff : UI.I.eye;
-      eye.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+      eye.setAttribute('aria-label', show ? ru`Скрыть пароль` : ru`Показать пароль`);
     };
     f.oninput = () => { err.textContent = ''; };
     f.onsubmit = async e => {
       e.preventDefault();
       const email = f.email.value.trim(), password = f.password.value;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fail('Проверь почту'); f.email.focus(); return; }
-      if (!password) { fail('Введи пароль'); f.password.focus(); return; }
-      go.disabled = true; go.textContent = 'Вхожу…'; err.textContent = '';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fail(ru`Проверь почту`); f.email.focus(); return; }
+      if (!password) { fail(ru`Введи пароль`); f.password.focus(); return; }
+      go.disabled = true; go.textContent = ru`Вхожу…`; err.textContent = '';
       try {
         const sb = await Cloud.client();
         const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) { fail(/rate|many/i.test(error.message) ? 'Слишком много попыток — подожди минуту' : 'Неверная почта или пароль'); return; }
-        go.textContent = 'Готово!';
+        if (error) { fail(/rate|many/i.test(error.message) ? ru`Слишком много попыток — подожди минуту` : ru`Неверная почта или пароль`); return; }
+        go.textContent = ru`Готово!`;
         this.markLogged(); location.reload();
-      } catch (x) { fail('Нет связи с сервером — попробуй ещё раз'); }
+      } catch (x) { fail(ru`Нет связи с сервером — попробуй ещё раз`); }
     };
   },
   // Панель входа (3.30): заголовок, кнопки сервисов, внизу — почта и пароль (+ extra, например «Выйти»)
   panel(head, buttons, extra = '') {
     return `<div class="auth-panel"><div class="auth-head">${head}</div>
       ${buttons ? `<div class="login-row">${buttons}</div>` : ''}
-      ${this.appTooOld() ? '<p class="small onb-note">Вход через Яндекс и Telegram — в новой версии приложения: <a href="' + Updater.apkUrl() + '">скачать</a>.</p>' : ''}
-      <div class="auth-or"><span>или</span></div>
-      <div class="auth-foot"><button class="btn mail-login"><span class="ml-ic">${UI.I.key}</span><span class="ml-t">Почта и пароль</span><span class="ml-chev">›</span></button>${extra}</div></div>`;
+      ${this.appTooOld() ? `<p class="small onb-note">${ru`Вход через Яндекс и Telegram — в новой версии приложения: ${'<a href="' + Updater.apkUrl() + '">' + ru`скачать` + '</a>'}.`}</p>` : ''}
+      <div class="auth-or"><span>${ru`или`}</span></div>
+      <div class="auth-foot"><button class="btn mail-login"><span class="ml-ic">${UI.I.key}</span><span class="ml-t">${ru`Почта и пароль`}</span><span class="ml-chev">›</span></button>${extra}</div></div>`;
   },
   // Только что вошёл (через сервис или по почте) — экран входа при следующем запуске страницы не нужен
   SKIP: 'duholov.justLogged',
@@ -179,7 +179,7 @@ const Login = {
   // 4.4: экран входа — сцена во весь экран (Scene, «3D» от наклона телефона), наверху знак Ордена, внизу стеклянная панель.
   // Вход через сервисы — выезжающая снизу панель (sheet), а не всегда на экране
   logo(sub) {
-    return `<div class="lg-top"><h1 class="lg-title">ДУХОЛОВ</h1><p>${sub}</p></div>`;
+    return `<div class="lg-top"><h1 class="lg-title">${ru`ДУХОЛОВ`}</h1><p>${sub}</p></div>`;
   },
   // корень экрана входа: фон + содержимое
   screenRoot() {
@@ -198,7 +198,7 @@ const Login = {
     let sh = root.querySelector('.lg-sheet');
     if (sh) sh.remove();
     sh = U.el(`<div class="lg-sheet" role="dialog" aria-modal="true"><div class="lg-sheet-card">
-      <button class="lg-sheet-x" aria-label="Закрыть">${UI.I.close}</button>${this.panel(head, buttons)}</div></div>`);
+      <button class="lg-sheet-x" aria-label="${ru`Закрыть`}">${UI.I.close}</button>${this.panel(head, buttons)}</div></div>`);
     root.appendChild(sh);
     const hide = () => { sh.classList.add('out'); setTimeout(() => sh.remove(), 260); };
     sh.onclick = e => { if (e.target === sh || e.target.closest('.lg-sheet-x')) hide(); };
@@ -214,25 +214,25 @@ const Login = {
     const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
     const root = this.screenRoot();
     // 4.5: без коробки — карточка-медальон Ловчего, «оберег» «Продолжить», стеклянная кнопка; 12+ — значок в углу
-    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap"><span class="age-chip" title="Возрастная категория">12+</span>${Realms.chip()}${this.logo('С возвращением, Ловчий!')}
+    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap"><span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Realms.chip()}${this.logo(ru`С возвращением, Ловчий!`)}
       <div class="lg-cta">
         <div class="hero ${guest ? 'is-guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
           <div class="hero-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="hero-lvl">${d.level}</span></div>
-          <div class="hero-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${d.level} уровень</small><div class="acc-tags">${this.accountTags()}</div></div>
-          ${Game.on() ? `<button class="hero-exit" aria-label="Выйти из учётной записи">${UI.I.logout}</button>` : ''}
-          <div class="hero-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>духов</span></div><div><b>${dex}<small>/${SPECIES.length}</small></b><span>бестиарий</span></div>
-            <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>поймано</span></div></div>
+          <div class="hero-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${ru`${d.level} уровень`}</small><div class="acc-tags">${this.accountTags()}</div></div>
+          ${Game.on() ? `<button class="hero-exit" aria-label="${ru`Выйти из учётной записи`}">${UI.I.logout}</button>` : ''}
+          <div class="hero-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>${ru`духов`}</span></div><div><b>${dex}<small>/${SPECIES.length}</small></b><span>${ru`бестиарий`}</span></div>
+            <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>${ru`поймано`}</span></div></div>
         </div>
-        ${UI.rune('Продолжить', 'lg-go')}
-        ${!Game.on() ? '' : guest ? UI.glass('Сохрани прогресс', 'lg-save', UI.I.cloud) : UI.glass('Другой аккаунт', 'lg-more', UI.I.swap)}
-        ${guest && Game.on() ? '<p class="lg-legal">Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс</p>' : ''}
+        ${UI.rune(ru`Продолжить`, 'lg-go')}
+        ${!Game.on() ? '' : guest ? UI.glass(ru`Сохрани прогресс`, 'lg-save', UI.I.cloud) : UI.glass(ru`Другой аккаунт`, 'lg-more', UI.I.swap)}
+        ${guest && Game.on() ? `<p class="lg-legal">${ru`Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс`}</p>` : ''}
       </div></div>`;
     root.querySelector('.lg-go').onclick = () => { Sfx.init(); Sfx.play('tap'); this.close(root, done); };
     Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
     const save = root.querySelector('.lg-save');
-    if (save) save.onclick = () => this.sheet(root, '<b>Сохрани прогресс</b><small>Привяжи вход — и прогресс откроется на любом устройстве</small>', this.buttons('link'));
+    if (save) save.onclick = () => this.sheet(root, `<b>${ru`Сохрани прогресс`}</b><small>${ru`Привяжи вход — и прогресс откроется на любом устройстве`}</small>`, this.buttons('link'));
     const more = root.querySelector('.lg-more');
-    if (more) more.onclick = () => this.sheet(root, '<b>Другой аккаунт</b><small>Текущий прогресс останется в своей учётной записи</small>',
+    if (more) more.onclick = () => this.sheet(root, `<b>${ru`Другой аккаунт`}</b><small>${ru`Текущий прогресс останется в своей учётной записи`}</small>`,
       avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''));
     const out = root.querySelector('.hero-exit');
     if (out) out.onclick = () => this.askSignOut();
@@ -253,7 +253,7 @@ const Login = {
   },
   // Сразу показать, что нажатие принято: страница сервиса может открываться несколько секунд
   leaving(provider) {
-    Loader.show(`Открываю ${this.NAMES[provider] || 'вход'}…`); Loader.set(30);
+    Loader.show(ru`Открываю ${this.NAMES[provider] || ru`вход`}…`); Loader.set(30);
     // вернулся кнопкой «Назад» (страница из кэша браузера) — убрать экран
     window.addEventListener('pageshow', e => { if (e.persisted) Loader.hide(); }, { once: true });
   },
@@ -261,16 +261,16 @@ const Login = {
   // 3.32: выйти из текущей учётной записи. У гостя нет входа, чтобы вернуться, — предупреждаем прямо
   askSignOut() {
     if (!this.isGuest()) {
-      UI.confirm('Выйти?', 'Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.', 'Выйти', () => this.signOut());
+      UI.confirm(ru`Выйти?`, ru`Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.`, ru`Выйти`, () => this.signOut());
       return;
     }
     const names = this.available().map(k => this.NAMES[k]);
-    UI.confirm('Выйти из гостевой игры?', `<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.${names.length ? ` Чтобы сохранить его, сначала привяжи вход через ${names.join(' или ')}.` : ''}`,
-      'Выйти', () => this.signOut(true), 'Отмена', true);
+    UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`или` + ' ')}.` : ''),
+      ru`Выйти`, () => this.signOut(true), ru`Отмена`, true);
   },
   async signOut(guest) {
     if (this.isGuest() && !guest) return;
-    Loader.show('Выхожу…'); Loader.set(40);
+    Loader.show(ru`Выхожу…`); Loader.set(40);
     await this.dropSession();
     location.reload();
   },

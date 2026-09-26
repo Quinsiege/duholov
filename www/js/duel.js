@@ -17,33 +17,33 @@ const Duel = {
     let team = S.team();
     const holders = hold ? hold.holders.filter(h => h.sp && SP[h.sp.sid]) : [];
     const who = hold
-      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>держит Капище с ${new Date(hold.since).toLocaleDateString('ru-RU')} · защитников: ${holders.length} из ${HOLD_MAX}</small></div></div>
-         <div class="rift-team-title">Защитники</div>
-         <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || 'Ловчий')}</small></div>`).join('')}</div>`
-      : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>Хранитель · ${g.title}</small></div></div>
-         <div class="rift-team-title">Духи хранителя</div>
+      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
+         <div class="rift-team-title">${ru`Защитники`}</div>
+         <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
+      : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
+         <div class="rift-team-title">${ru`Духи хранителя`}</div>
          <div class="rift-team">${UI.teamHtml(g.team)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
     let action;
-    if (mine) action = `<div class="rift-tip">Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.</div>
-        <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>Поставить защитника</button>`;
-    else if (e.won) action = `<div class="rift-done">Сегодня ты уже победил здесь.${S.d.clan ? '' : ' Завтра будет новый бой.'}</div>
-        ${S.d.clan && !hold ? '<button class="btn primary wide defend-go">Поставить защитника</button>' : ''}`;
+    if (mine) action = `<div class="rift-tip">${ru`Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
+        <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
+    else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
+        ${S.d.clan && !hold ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
     else action = `
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">${hold ? 'Победа освободит Капище от защитников. ' : ''}Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы${mul > 1 ? ' (Неделя поединков ×2)' : ''}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Бросить вызов</button>${Rules.dayLine(S.d, 'duels', 'Побед на Капищах')}`;
+        <div class="rift-tip">${hold ? `${ru`Победа освободит Капище от защитников.`} ` : ''}${ru`Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
       <div class="shrine-view t${e.tier}">
         ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">Капище ${e.god}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}</div>
+        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}</div>
         ${who}
         ${action}
-        ${canClan ? '<button class="btn ghost wide clan-go">Выбрать дружину</button>' : ''}
+        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}
       </div>`;
-    const scr = UI.screen('Капище', html, 'shrine-screen');
+    const scr = UI.screen(ru`Капище`, html, 'shrine-screen');
     const go = scr.querySelector('.duel-go');
     if (go) go.onclick = async () => {
       if (this.st || this._starting) return;
@@ -53,7 +53,7 @@ const Duel = {
       if (!r) return;
       UI.closeScreen(scr);
       // защитники дружины — вместо хранителя
-      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: 'Защитники Капища', team: r.foe } : g;
+      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
       this.start({ ...e, kind: 'shrine', held: r.clan || null }, foe, S.team());
     };
     const def = scr.querySelector('.defend-go');
@@ -72,19 +72,19 @@ const Duel = {
     const html = `
       <div class="shrine-view invasion">
         <div class="shrine-idol">${Art.springIcon(false, true)}</div>
-        <div class="rift-title">Родник «${U.esc(e.name)}» захвачен Навью!</div>
+        <div class="rift-title">${ru`Родник «${U.esc(e.name)}» захвачен Навью!`}</div>
         <div class="guard"><div class="guard-ava dark">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${g.title}</small></div></div>
         <div class="grunt-quote">«${g.quote}»</div>
-        <div class="rift-team-title">Омрачённые духи</div>
+        <div class="rift-team-title">${ru`Омрачённые духи`}</div>
         <div class="rift-team">${UI.teamHtml(g.team)}</div>
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">Слабость отряда: ${ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el)).map(x => `${Art.elIcon(x, 16)} ${ELEMENTS[x].name}`).join(' ')}</div>
-        <div class="rift-tip">Победа освободит родник и позволит спасти одного из омрачённых духов.</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
-        ${Rules.dayLine(S.d, 'invasions', 'Вторжений отбито')}
+        <div class="rift-tip">${ru`Слабость отряда: ${ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el)).map(x => `${Art.elIcon(x, 16)} ${ELEMENTS[x].name}`).join(' ')}`}</div>
+        <div class="rift-tip">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
+        ${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}
       </div>`;
-    const scr = UI.screen('Вторжение Нави', html, 'shrine-screen invasion-screen');
+    const scr = UI.screen(ru`Вторжение Нави`, html, 'shrine-screen invasion-screen');
     scr.querySelector('.duel-go').onclick = async () => {
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
@@ -99,15 +99,15 @@ const Duel = {
     const today = f.spar === U.today();
     const html = `
       <div class="shrine-view spar">
-        <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>Дружеский поединок</small></div></div>
-        <div class="rift-team-title">Сильнейшие духи друга</div>
+        <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>${ru`Дружеский поединок`}</small></div></div>
+        <div class="rift-team-title">${ru`Сильнейшие духи друга`}</div>
         <div class="rift-team">${UI.teamHtml(top)}</div>
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">${today ? 'Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).' : 'Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.'}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
+        <div class="rift-tip">${today ? ru`Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).` : ru`Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.`}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
       </div>`;
-    const scr = UI.screen('Поединок с другом', html, 'shrine-screen');
+    const scr = UI.screen(ru`Поединок с другом`, html, 'shrine-screen');
     scr.querySelector('.duel-go').onclick = async () => {
       if (this.st || this._starting) return;
       this._starting = true;
@@ -163,12 +163,12 @@ const Duel = {
           <div class="duel-meta"><span class="shields my-sh"></span><span class="raid-team my-dots"></span></div>
         </div>
         <div class="raid-ctrl">
-          <button class="duel-switch"><span>Смена</span><em></em></button>
+          <button class="duel-switch"><span>${ru`Смена`}</span><em></em></button>
           <button class="duel-special2 hidden"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span></span></button>
-          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>Приём</span></button>
+          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>${ru`Приём`}</span></button>
           <div class="duel-energy"></div>
         </div>
-        <div class="raid-hint">Тапай — быстрая атака, она копит энергию.<br>Полная шкала — жми «Приём». Щиты берегут от приёмов хранителя.</div>
+        <div class="raid-hint">${ru`Тапай — быстрая атака, она копит энергию.<br>Полная шкала — жми «Приём». Щиты берегут от приёмов хранителя.`}</div>
         <div class="duel-ov hidden"></div>
         <div class="raid-count">3</div>
       </div>`);
@@ -201,7 +201,7 @@ const Duel = {
     this.render();
     (async () => {
       for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
-      $('.raid-count').textContent = 'Бой!';
+      $('.raid-count').textContent = ru`Бой!`;
       await U.wait(450);
       $('.raid-count').remove();
       st.paused = false;
@@ -217,7 +217,7 @@ const Duel = {
     const box = st.$(side === 'me' ? '.duel-me' : '.duel-foe');
     box.innerHTML = Art.of(f.sp);
     box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap');
-    const label = `${Art.elIcon(f.el, 16)} ${U.esc(f.sp.nick || SP[f.sp.sid].name)} <small>СИЛА ${f.power}</small>`;
+    const label = `${Art.elIcon(f.el, 16)} ${U.esc(f.sp.nick || SP[f.sp.sid].name)} <small>${ru`СИЛА ${f.power}`}</small>`;
     st.$(side === 'me' ? '.raid-mname' : '.foe-name').innerHTML = label;
   },
 
@@ -281,12 +281,12 @@ const Duel = {
     const m = this.cur('me'), f = this.cur('foe');
     const mv = MOVES[kind];
     if (kind === 'charge2' && !m.sp.move2) return;
-    if (m.energy < mv.cost) { UI.toast('Мало энергии — атакуй тапами'); return; }
+    if (m.energy < mv.cost) { UI.toast(ru`Мало энергии — атакуй тапами`); return; }
     m.energy -= mv.cost;
     st.paused = true;
     Sfx.play('special');
     const col = ELEMENTS[m.el].color;
-    const ov = this.overlay(`<div class="charge-mini"><div class="charge-title">${ELEMENTS[m.el][kind]}</div><button class="charge-orb" style="--c:${col}"><span>Тапай!</span></button><div class="pbar"><i></i></div></div>`);
+    const ov = this.overlay(`<div class="charge-mini"><div class="charge-title">${ELEMENTS[m.el][kind]}</div><button class="charge-orb" style="--c:${col}"><span>${ru`Тапай!`}</span></button><div class="pbar"><i></i></div></div>`);
     let taps = 0;
     const orb = ov.querySelector('.charge-orb'), bar = ov.querySelector('.pbar i');
     orb.addEventListener('pointerdown', () => {
@@ -303,7 +303,7 @@ const Duel = {
     let n;
     if (shield) {
       st.foe.shields--; n = 1;
-      this.hit('foe', 'Щит!', 'dodged');
+      this.hit('foe', ru`Щит!`, 'dodged');
     } else {
       n = Raid.dmg(m.atk, f.def, mv.power * mult, m.el, f.el);
       st.root.style.setProperty('--fx', col);
@@ -329,8 +329,8 @@ const Duel = {
       <div class="charge-title">${st.g.name}: «${ELEMENTS[f.el].charge}»!</div>
       <div class="shield-timer"><i></i></div>
       <div class="shield-btns">
-        <button class="btn primary sh-yes" ${has ? '' : 'disabled'}>${this.shieldSvg} Щит (${st.me.shields})</button>
-        <button class="btn sh-no">Принять удар</button>
+        <button class="btn primary sh-yes" ${has ? '' : 'disabled'}>${this.shieldSvg} ${ru`Щит (${st.me.shields})`}</button>
+        <button class="btn sh-no">${ru`Принять удар`}</button>
       </div></div>`);
     let done = false;
     const resolve = useShield => {
@@ -339,7 +339,7 @@ const Duel = {
       this.closeOverlay();
       const m = this.cur('me');
       let n;
-      if (useShield && st.me.shields > 0) { st.me.shields--; n = 1; this.hit('me', 'Щит!', 'dodged'); Sfx.play('hit'); }
+      if (useShield && st.me.shields > 0) { st.me.shields--; n = 1; this.hit('me', ru`Щит!`, 'dodged'); Sfx.play('hit'); }
       else {
         n = Raid.dmg(f.atk, m.def, this.CHARGE, f.el, m.el);
         this.hit('me', `−${n}`, 'hurt');
@@ -367,7 +367,7 @@ const Duel = {
         if (this.st !== st || st.over) return;
         s.idx = next; s.busy = 1.2;
         this.showSide('foe');
-        UI.toast(`${st.g.name} призывает: ${SP[this.cur('foe').sp.sid].name}`);
+        UI.toast(ru`${st.g.name} призывает: ${SP[this.cur('foe').sp.sid].name}`);
         st.paused = false;
         this.render();
       }, 900);
@@ -381,13 +381,13 @@ const Duel = {
   switchMenu(forced) {
     const st = this.st;
     if (!st || st.over || (st.paused && !forced)) return;
-    if (!forced && st.me.cd > 0) { UI.toast(`Смена будет доступна через ${Math.ceil(st.me.cd)} с`); return; }
+    if (!forced && st.me.cd > 0) { UI.toast(ru`Смена будет доступна через ${Math.ceil(st.me.cd)} с`); return; }
     const opts = st.me.team.map((f, i) => ({ f, i })).filter(x => x.f.cur > 0 && x.i !== st.me.idx);
-    if (!opts.length) { if (!forced) UI.toast('Некого выпустить'); return; }
+    if (!opts.length) { if (!forced) UI.toast(ru`Некого выпустить`); return; }
     st.paused = true;
-    const ov = this.overlay(`<div class="switch-q"><div class="charge-title">${forced ? 'Дух без сил! Кого выпустить?' : 'Сменить духа'}</div>
+    const ov = this.overlay(`<div class="switch-q"><div class="charge-title">${forced ? ru`Дух без сил! Кого выпустить?` : ru`Сменить духа`}</div>
       <div class="rift-team">${opts.map(x => `<button class="mini" data-i="${x.i}">${Art.of(x.f.sp)}<b>${Math.round(x.f.cur / x.f.max * 100)}%</b></button>`).join('')}</div>
-      ${forced ? '' : '<button class="btn ghost sw-cancel">Отмена</button>'}</div>`);
+      ${forced ? '' : `<button class="btn ghost sw-cancel">${ru`Отмена`}</button>`}</div>`);
     const pick = i => {
       if (this.st !== st) return;
       clearTimeout(timer);
@@ -453,9 +453,9 @@ const Duel = {
     try { r = await Game.act(this.endType(st.e.kind), { win: !!win, hp: S.hpReport(st.me.team) }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;
     if (win && !(r && r.win)) {
-      html = `<div class="res-title lose">Победа не засчитана</div>
-        <div class="res-note">Сервер не подтвердил этот бой. Проверь интернет и попробуй снова.</div>`;
-      const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide">На карту</button></div></div>`);
+      html = `<div class="res-title lose">${ru`Победа не засчитана`}</div>
+        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова.`}</div>`;
+      const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide">${ru`На карту`}</button></div></div>`);
       res.querySelector('button').onclick = () => this.close();
       st.root.appendChild(res);
       return;
@@ -466,22 +466,22 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       const note = r.clan
-        ? (r.freed ? `Защитники «${CLANS[r.clan].name}» отступили — Капище «${U.esc(st.e.name)}» свободно!` : `Победа засчитана, но пока шёл бой, на Капище сменились защитники.`)
-        : `«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
+        ? (r.freed ? ru`Защитники «${CLANS[r.clan].name}» отступили — Капище «${U.esc(st.e.name)}» свободно!` : ru`Победа засчитана, но пока шёл бой, на Капище сменились защитники.`)
+        : ru`«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
       const canDefend = S.d.clan && (!r.clan || r.freed);
-      html = `<div class="res-title">Победа!</div>
+      html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">${note}${canDefend ? ' Поставь своего защитника — и Капище перейдёт твоей дружине.' : ''}</div>
-        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>
-        ${canDefend ? '<button class="btn primary wide defend-now">Поставить защитника</button>' : ''}`;
+        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоей дружине.`}` : ''}</div>
+        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
+        ${canDefend ? `<button class="btn primary wide defend-now">${ru`Поставить защитника`}</button>` : ''}`;
       if (r.clan) Clans.refresh(true);
     } else {
       Sfx.play('lose');
-      html = `<div class="res-title lose">Поражение</div>
+      html = `<div class="res-title lose">${ru`Поражение`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.</div>`;
+        <div class="res-note">${ru`«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn ${html.includes('defend-now') ? 'ghost' : 'primary'} wide to-map">На карту</button></div></div>`);
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn ${html.includes('defend-now') ? 'ghost' : 'primary'} wide to-map">${ru`На карту`}</button></div></div>`);
     res.querySelector('.to-map').onclick = () => this.close();
     const dn = res.querySelector('.defend-now');
     if (dn) dn.onclick = () => { const e = st.e; this.close(); Clans.defend(e); };
@@ -493,17 +493,17 @@ const Duel = {
     let html;
     if (win) {
       Sfx.play('win'); U.vibrate([50, 50, 120]);
-      html = `<div class="res-title">Победа!</div>
+      html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
-        <div class="res-note">${r.practice ? `Хорошая тренировка! Награда за поединок с ${g.name} сегодня уже получена.` : `${g.name} жмёт тебе руку: «Честный бой!» Дружба крепнет.`}</div>
-        <div class="res-rw">${r.rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}${r.practice ? '' : '<div><b>+1 ★</b> дружбы</div>'}</div>`;
+        <div class="res-note">${r.practice ? ru`Хорошая тренировка! Награда за поединок с ${g.name} сегодня уже получена.` : ru`${g.name} жмёт тебе руку: «Честный бой!» Дружба крепнет.`}</div>
+        <div class="res-rw">${r.rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}${r.practice ? '' : `<div>${ru`<b>+1 ★</b> дружбы`}</div>`}</div>`;
     } else {
       Sfx.play('lose');
-      html = `<div class="res-title lose">Поражение</div>
+      html = `<div class="res-title lose">${ru`Поражение`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
-        <div class="res-note">Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.</div>`;
+        <div class="res-note">${ru`Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">Готово</button></div></div>`);
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">${ru`Готово`}</button></div></div>`);
     res.querySelector('button').onclick = () => this.close();
     st.root.appendChild(res);
     UI.refreshHud();
@@ -515,18 +515,18 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       rescue = g.team.find(x => x.sid === r.rescue.sid) || g.team[0];
-      html = `<div class="res-title">Родник освобождён!</div>
+      html = `<div class="res-title">${ru`Родник освобождён!`}</div>
         <div class="res-art">${Art.of(rescue)}</div>
-        <div class="res-note">Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!</div>
-        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>
-        <button class="btn primary wide rescue">Спасти духа</button>`;
+        <div class="res-note">${ru`Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!`}</div>
+        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
+        <button class="btn primary wide rescue">${ru`Спасти духа`}</button>`;
     } else {
       Sfx.play('lose');
-      html = `<div class="res-title lose">Навь сильнее… пока</div>
+      html = `<div class="res-title lose">${ru`Навь сильнее… пока`}</div>
         <div class="res-art"><div class="guard-ava big dark">${Art.guardian(g.color)}</div></div>
-        <div class="res-note">«${GRUNT_QUOTES[0]}» — смеётся прислужник. Возьми духов, сильных против стихии «${ELEMENTS[g.el].name}», и возвращайся.</div>`;
+        <div class="res-note">${ru`«${GRUNT_QUOTES[0]}» — смеётся прислужник. Возьми духов, сильных против стихии «${ELEMENTS[g.el].name}», и возвращайся.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide to-map">На карту</button></div></div>`);
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide to-map">${ru`На карту`}</button></div></div>`);
     res.querySelector('.to-map').onclick = () => this.close();
     const rb = res.querySelector('.rescue');
     if (rb) rb.onclick = () => {
@@ -540,7 +540,7 @@ const Duel = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) return this.close();
-    UI.confirm('Сдаться?', 'Поединок будет проигран.', 'Сдаться', () => this.close(), 'Продолжить');
+    UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);
   },
   close() {
     const st = this.st; if (!st) return;

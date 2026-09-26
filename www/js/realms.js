@@ -4,20 +4,20 @@
    пока не появится серверная часть: тогда REALMS заменит ответ сервера, а pick() начнёт переключать адрес API. */
 
 const REALMS = [
-  { id: 'kitezh', name: 'Китеж', region: 'Москва и Центр', tz: 'UTC+3', color: '#fbbf24', glyph: 'domes', load: 0.72, online: 18450, ping: 24, tags: ['rec'],
-    about: 'Старейший сервер: здесь самая сильная Лига и больше всего Орденов.' },
-  { id: 'lukomorye', name: 'Лукоморье', region: 'Северо-Запад', tz: 'UTC+3', color: '#34d399', glyph: 'oak', load: 0.48, online: 9120, ping: 31,
-    about: 'Белые ночи — Разломы открываются чаще, чем где-либо.' },
-  { id: 'buyan', name: 'Буян', region: 'Юг и Кавказ', tz: 'UTC+3', color: '#38bdf8', glyph: 'island', load: 0.31, online: 6230, ping: 46,
-    about: 'Тёплые моря и водные духи круглый год.' },
-  { id: 'belovodye', name: 'Беловодье', region: 'Урал и Сибирь', tz: 'UTC+5…+7', color: '#e2e8f0', glyph: 'peaks', load: 0.56, online: 7810, ping: 62,
-    about: 'Горные Капища и Хозяйка Медной горы.' },
-  { id: 'iriy', name: 'Ирий', region: 'Дальний Восток', tz: 'UTC+10', color: '#f472b6', glyph: 'bird', load: 0.22, online: 2940, ping: 118,
-    about: 'Первым встречает рассвет: ежедневные задания обновляются раньше всех.' },
-  { id: 'tridevyatoe', name: 'Тридевятое царство', region: 'Вся Россия', tz: 'UTC+3', color: '#a78bfa', glyph: 'crown', load: 0.08, online: 640, ping: 38, tags: ['new'],
-    about: 'Новый сервер: все начинают с нуля — самое время занять первые места в Лиге.' },
-  { id: 'kalinov', name: 'Калинов мост', region: 'Вся Россия', tz: 'UTC+3', color: '#f43f5e', glyph: 'bridge', load: 0.97, online: 24100, ping: 40,
-    about: 'Сервер для опытных Ловчих: сильные духи и суровые Разломы.' },
+  { id: 'kitezh', name: ru`Китеж`, region: ru`Москва и Центр`, tz: 'UTC+3', color: '#fbbf24', glyph: 'domes', load: 0.72, online: 18450, ping: 24, tags: ['rec'],
+    about: ru`Старейший сервер: здесь самая сильная Лига и больше всего Орденов.` },
+  { id: 'lukomorye', name: ru`Лукоморье`, region: ru`Северо-Запад`, tz: 'UTC+3', color: '#34d399', glyph: 'oak', load: 0.48, online: 9120, ping: 31,
+    about: ru`Белые ночи — Разломы открываются чаще, чем где-либо.` },
+  { id: 'buyan', name: ru`Буян`, region: ru`Юг и Кавказ`, tz: 'UTC+3', color: '#38bdf8', glyph: 'island', load: 0.31, online: 6230, ping: 46,
+    about: ru`Тёплые моря и водные духи круглый год.` },
+  { id: 'belovodye', name: ru`Беловодье`, region: ru`Урал и Сибирь`, tz: 'UTC+5…+7', color: '#e2e8f0', glyph: 'peaks', load: 0.56, online: 7810, ping: 62,
+    about: ru`Горные Капища и Хозяйка Медной горы.` },
+  { id: 'iriy', name: ru`Ирий`, region: ru`Дальний Восток`, tz: 'UTC+10', color: '#f472b6', glyph: 'bird', load: 0.22, online: 2940, ping: 118,
+    about: ru`Первым встречает рассвет: ежедневные задания обновляются раньше всех.` },
+  { id: 'tridevyatoe', name: ru`Тридевятое царство`, region: ru`Вся Россия`, tz: 'UTC+3', color: '#a78bfa', glyph: 'crown', load: 0.08, online: 640, ping: 38, tags: ['new'],
+    about: ru`Новый сервер: все начинают с нуля — самое время занять первые места в Лиге.` },
+  { id: 'kalinov', name: ru`Калинов мост`, region: ru`Вся Россия`, tz: 'UTC+3', color: '#f43f5e', glyph: 'bridge', load: 0.97, online: 24100, ping: 40,
+    about: ru`Сервер для опытных Ловчих: сильные духи и суровые Разломы.` },
 ];
 
 const Realms = {
@@ -32,8 +32,8 @@ const Realms = {
   save(id) { try { localStorage.setItem(this.KEY, id); } catch (e) {} },
   // заполненность → подпись и цвет; «Заполнен» — новые Ловчие не принимаются
   load(r) {
-    return r.load >= 0.95 ? { t: 'Заполнен', c: '#fb7185', k: 'full' } : r.load >= 0.75 ? { t: 'Людно', c: '#fb923c', k: 'busy' }
-      : r.load >= 0.4 ? { t: 'Оживлённо', c: '#fde047', k: 'mid' } : { t: 'Свободно', c: '#4ade80', k: 'free' };
+    return r.load >= 0.95 ? { t: ru`Заполнен`, c: '#fb7185', k: 'full' } : r.load >= 0.75 ? { t: ru`Людно`, c: '#fb923c', k: 'busy' }
+      : r.load >= 0.4 ? { t: ru`Оживлённо`, c: '#fde047', k: 'mid' } : { t: ru`Свободно`, c: '#4ade80', k: 'free' };
   },
   bars(ms) { return ms < 40 ? 4 : ms < 70 ? 3 : ms < 110 ? 2 : 1; },
   // есть ли у игрока Ловчий на сервере (образец: только на выбранном и на Китеже, если прогресс уже есть)
@@ -44,7 +44,8 @@ const Realms = {
     return null;
   },
   friends(r) { return Math.floor(U.h('realm-friends', r.id) * 5); },
-  fmtOnline(n) { return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace('.', ',')} тыс.` : String(n); },
+  // 4.15: «18,5 тыс.» по-русски; в других языках — краткая запись по их правилам (18K, 1.8万…)
+  fmtOnline(n) { return n < 1000 ? String(n) : I18N.lang === 'ru' ? ru`${(n / 1000).toLocaleString(I18N.locale, { maximumFractionDigits: n >= 10000 ? 0 : 1 })} тыс.` : new Intl.NumberFormat(I18N.locale, { notation: 'compact', maximumFractionDigits: n >= 10000 ? 0 : 1 }).format(n); },
 
   // герб сервера: медальон с эмалью цвета сервера и знаком
   GLYPH: {
@@ -71,18 +72,18 @@ const Realms = {
   chip() {
     if (!this.on) return '';
     const r = this.current(), L = this.load(r);
-    return `<button class="realm-chip" aria-label="Сервер: ${U.esc(r.name)}. Сменить">${this.crest(r, 30)}` +
-      `<span class="rc-main"><small>Сервер</small><b>${U.esc(r.name)}</b></span><i class="rc-dot" style="--c:${L.c}"></i><svg class="rc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+    return `<button class="realm-chip" aria-label="${ru`Сервер: ${U.esc(r.name)}. Сменить`}">${this.crest(r, 30)}` +
+      `<span class="rc-main"><small>${ru`Сервер`}</small><b>${U.esc(r.name)}</b></span><i class="rc-dot" style="--c:${L.c}"></i><svg class="rc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
   },
   // крупная витрина сервера — в середине стартового экрана
   banner() {
     if (!this.on) return '';
     const r = this.current(), L = this.load(r), bars = this.bars(r.ping);
-    return `<button class="realm-hero" style="--rc:${r.color};--lc:${L.c}" aria-label="Сервер: ${U.esc(r.name)}. Сменить">
+    return `<button class="realm-hero" style="--rc:${r.color};--lc:${L.c}" aria-label="${ru`Сервер: ${U.esc(r.name)}. Сменить`}">
       <span class="rh-crest"><i class="rh-ring"></i>${this.crest(r, 92)}</span>
-      <small>Твой сервер</small><b>${U.esc(r.name)}</b>
-      <span class="rh-meta">${U.esc(r.region)} · <i class="rc-dot" style="--c:${L.c}"></i> ${L.t} · <span class="rl-sig">${[1, 2, 3, 4].map(i => `<i class="${i <= bars ? 'on' : ''}" style="height:${2 + i * 2.5}px"></i>`).join('')}</span> ${r.ping} мс</span>
-      <span class="rh-change">Сменить сервер <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>`;
+      <small>${ru`Твой сервер`}</small><b>${U.esc(r.name)}</b>
+      <span class="rh-meta">${U.esc(r.region)} · <i class="rc-dot" style="--c:${L.c}"></i> ${L.t} · <span class="rl-sig">${[1, 2, 3, 4].map(i => `<i class="${i <= bars ? 'on' : ''}" style="height:${2 + i * 2.5}px"></i>`).join('')}</span> ${ru`${r.ping} мс`}</span>
+      <span class="rh-change">${ru`Сменить сервер`} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>`;
   },
   bind(root) {
     const b = root.querySelector('.realm-chip, .realm-hero');
@@ -91,30 +92,30 @@ const Realms = {
 
   card(r, sel, i = 0) {
     const L = this.load(r), bars = this.bars(r.ping), me = this.hero(r), fr = this.friends(r);
-    const tags = (r.tags || []).map(t => t === 'rec' ? '<span class="rl-tag rec">✦ Рекомендуем</span>' : t === 'new' ? '<span class="rl-tag new">Новый</span>' : '').join('') +
-      (L.k === 'full' ? '<span class="rl-tag full">Заполнен</span>' : '');
+    const tags = (r.tags || []).map(t => t === 'rec' ? `<span class="rl-tag rec">✦ ${ru`Рекомендуем`}</span>` : t === 'new' ? `<span class="rl-tag new">${ru`Новый`}</span>` : '').join('') +
+      (L.k === 'full' ? `<span class="rl-tag full">${ru`Заполнен`}</span>` : '');
     const seg = Array.from({ length: 5 }, (_, i) => `<i class="${i < Math.ceil(r.load * 5) ? 'on' : ''}"></i>`).join('');
     return `<button class="rl-card ${sel ? 'on' : ''} ${L.k === 'full' && !me ? 'closed' : ''}" data-id="${r.id}" style="--rc:${r.color};--lc:${L.c};animation-delay:${i * 0.045}s" role="radio" aria-checked="${sel}">
       <div class="rl-top">${this.crest(r)}
         <div class="rl-head"><b>${U.esc(r.name)}</b><small>${U.esc(r.region)} · ${r.tz}</small>${tags ? `<div class="rl-tags">${tags}</div>` : ''}</div>
         <span class="rl-radio" aria-hidden="true"></span></div>
       <p class="rl-about">${U.esc(r.about)}</p>
-      ${me ? `<div class="rl-me"><span class="rl-ava">${Art.avatar ? Art.avatar(S.d.look) : ''}</span><span>Твой Ловчий: <b>${U.esc(me.name)}</b> · ${me.lvl} ур.</span></div>` : ''}
+      ${me ? `<div class="rl-me"><span class="rl-ava">${Art.avatar ? Art.avatar(S.d.look) : ''}</span><span>${ru`Твой Ловчий: <b>${U.esc(me.name)}</b> · ${me.lvl} ур.`}</span></div>` : ''}
       <div class="rl-stats">
-        <span class="rl-load" title="Заполненность"><span class="rl-seg">${seg}</span><em>${L.t}</em></span>
-        <span class="rl-ping" title="Отклик"><span class="rl-sig">${[1, 2, 3, 4].map(i => `<i class="${i <= bars ? 'on' : ''}" style="height:${3 + i * 3}px"></i>`).join('')}</span>${r.ping} мс</span>
-        <span class="rl-online">${this.fmtOnline(r.online)} Ловчих${fr ? ` · <b>${fr} ${U.plural(fr, 'друг', 'друга', 'друзей')}</b>` : ''}</span>
+        <span class="rl-load" title="${ru`Заполненность`}"><span class="rl-seg">${seg}</span><em>${L.t}</em></span>
+        <span class="rl-ping" title="${ru`Отклик`}"><span class="rl-sig">${[1, 2, 3, 4].map(i => `<i class="${i <= bars ? 'on' : ''}" style="height:${3 + i * 3}px"></i>`).join('')}</span>${ru`${r.ping} мс`}</span>
+        <span class="rl-online">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>
       </div></button>`;
   },
 
   // шторка выбора сервера
   open(onPick) {
     let sel = this.current().id, filter = 'all';
-    const wrap = U.el(`<div class="rl-wrap" role="dialog" aria-label="Выбор сервера"><div class="rl-sheet">
+    const wrap = U.el(`<div class="rl-wrap" role="dialog" aria-label="${ru`Выбор сервера`}"><div class="rl-sheet">
       <div class="rl-grip"></div>
-      <div class="rl-title"><h3>Выбор сервера</h3><button class="rl-x" aria-label="Закрыть">${UI.I.close}</button></div>
-      <p class="rl-sub">Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.</p>
-      <div class="seg rl-filter"><button data-f="all" class="on">Все</button><button data-f="rec">Советуем</button><button data-f="mine">Мои</button><button data-f="near">Ближе</button></div>
+      <div class="rl-title"><h3>${ru`Выбор сервера`}</h3><button class="rl-x" aria-label="${ru`Закрыть`}">${UI.I.close}</button></div>
+      <p class="rl-sub">${ru`Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.`}</p>
+      <div class="seg rl-filter"><button data-f="all" class="on">${ru`Все`}</button><button data-f="rec">${ru`Советуем`}</button><button data-f="mine">${ru`Мои`}</button><button data-f="near">${ru`Ближе`}</button></div>
       <div class="rl-list" role="radiogroup"></div>
       <div class="rl-foot"></div>
     </div></div>`);
@@ -125,10 +126,10 @@ const Realms = {
       if (filter === 'mine') rs = rs.filter(r => this.hero(r));
       if (filter === 'near') rs.sort((a, b) => a.ping - b.ping);
       list.innerHTML = rs.length ? rs.map((r, i) => this.card(r, r.id === sel, i)).join('')
-        : '<div class="rl-empty">Здесь пока пусто — выбери сервер во вкладке «Все»</div>';
+        : `<div class="rl-empty">${ru`Здесь пока пусто — выбери сервер во вкладке «Все»`}</div>`;
       const r = REALMS.find(x => x.id === sel), same = sel === this.current().id;
-      foot.innerHTML = UI.rune(same ? 'Остаться здесь' : `Перейти в ${U.esc(r.name)}`, 'rl-go') +
-        `<p class="rl-note">${this.hero(r) ? 'Твой Ловчий ждёт тебя здесь.' : 'На этом сервере ты начнёшь новый путь Ловчего.'}</p>`;
+      foot.innerHTML = UI.rune(same ? ru`Остаться здесь` : ru`Перейти в ${U.esc(r.name)}`, 'rl-go') +
+        `<p class="rl-note">${this.hero(r) ? ru`Твой Ловчий ждёт тебя здесь.` : ru`На этом сервере ты начнёшь новый путь Ловчего.`}</p>`;
     };
     const close = () => { if (!wrap.isConnected) return; UI.popLayer(close); wrap.classList.add('out'); setTimeout(() => wrap.remove(), 220); };
     wrap.onclick = e => {
@@ -138,12 +139,12 @@ const Realms = {
       const c = e.target.closest('.rl-card');
       if (c) {
         const r = REALMS.find(x => x.id === c.dataset.id);
-        if (c.classList.contains('closed')) { UI.toast(`«${r.name}» заполнен: новых Ловчих пока не принимают`); return; }
+        if (c.classList.contains('closed')) { UI.toast(ru`«${r.name}» заполнен: новых Ловчих пока не принимают`); return; }
         sel = r.id; Sfx.play && Sfx.play('tap'); render(); return;
       }
       if (e.target.closest('.rl-go')) {
         const r = REALMS.find(x => x.id === sel);
-        if (sel !== this.current().id) { this.save(sel); UI.toast(`Сервер: ${r.name}`); if (onPick) onPick(r); }
+        if (sel !== this.current().id) { this.save(sel); UI.toast(ru`Сервер: ${r.name}`); if (onPick) onPick(r); }
         close();
       }
     };

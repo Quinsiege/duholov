@@ -53,18 +53,23 @@ const U = {
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * toR) * Math.cos(lat2 * toR) * Math.sin(dLng / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(a));
   },
-  fmtDist(m) { return m < 1000 ? `${Math.round(m)} м` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} км`; },
+  fmtDist(m) { return m < 1000 ? ru`${Math.round(m)} м` : ru`${(m / 1000).toFixed(m < 10000 ? 1 : 0)} км`; },
   fmtTime(ms) {
     const s = Math.max(0, Math.round(ms / 1000));
     const m = Math.floor(s / 60), ss = s % 60;
-    if (m >= 48 * 60) return `${Math.floor(m / 1440)} дн ${Math.floor(m / 60) % 24} ч`;
-    return m >= 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m}:${String(ss).padStart(2, '0')}`;
+    if (m >= 48 * 60) return ru`${Math.floor(m / 1440)} дн ${Math.floor(m / 60) % 24} ч`;
+    return m >= 60 ? ru`${Math.floor(m / 60)} ч ${m % 60} мин` : `${m}:${String(ss).padStart(2, '0')}`;
   },
+  // 4.15: формы слова по правилам языка игры: one — «1 оберег», few — «2 оберега», many — «5 оберегов»
+  // (в других языках few не бывает: в переводе few и many — обычно одна и та же форма множественного числа)
   plural(n, one, few, many) {
-    const a = Math.abs(n) % 100, b = a % 10;
-    return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many;
+    const L = I18N.lang, x = Math.abs(n);
+    if (L === 'ru') { const a = x % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; }
+    if (L === 'zh' || L === 'ja' || L === 'ko' || L === 'id' || L === 'tr') return many;
+    if (L === 'fr' || L === 'pt' || L === 'hi') return x < 2 ? one : many;
+    return x === 1 ? one : many;
   },
-  fmtNum(n) { return Math.round(n).toLocaleString('ru-RU'); },
+  fmtNum(n) { return Math.round(n).toLocaleString(I18N.locale); },
   today(t) { const d = this.local(t); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; },
   isNight(t) { const h = this.hour(t); return h >= 20 || h < 6; },
 

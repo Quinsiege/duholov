@@ -4,9 +4,9 @@
 const Raid = {
   TIER: {
     // slvl — уровень, по которому считаются атака/защита босса; lvl — уровень пойманного босса
-    1: { hp: 600,  slvl: 14, lvl: 15, pw: 10, charms: 6, name: 'Малый разлом' },
-    2: { hp: 1800, slvl: 22, lvl: 22, pw: 16, charms: 7, name: 'Разлом' },
-    3: { hp: 4500, slvl: 28, lvl: 30, pw: 24, charms: 9, name: 'Великий разлом' },
+    1: { hp: 600,  slvl: 14, lvl: 15, pw: 10, charms: 6, name: ru`Малый разлом` },
+    2: { hp: 1800, slvl: 22, lvl: 22, pw: 16, charms: 7, name: ru`Разлом` },
+    3: { hp: 4500, slvl: 28, lvl: 30, pw: 24, charms: 9, name: ru`Великий разлом` },
   },
   st: null,
 
@@ -28,28 +28,28 @@ const Raid = {
     // до Разлома дальше 100 м — бой по Дальнему пропуску (совместный бой — только рядом)
     const d = MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, r.lat, r.lng) : 0;
     const far = d > W.BATTLE_R, passes = S.d.items.farpass || 0;
-    const goBtn = !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>Сразиться</button>`
-      : passes ? `<button class="btn primary wide rift-go far" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} Дальний бой · пропусков: ${passes}</button>`
-      : `<button class="btn primary wide rift-shop">${Art.item('farpass')} Нужен Дальний пропуск — в Лавку</button>`;
+    const goBtn = !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>`
+      : passes ? `<button class="btn primary wide rift-go far" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} ${ru`Дальний бой · пропусков: ${passes}`}</button>`
+      : `<button class="btn primary wide rift-shop">${Art.item('farpass')} ${ru`Нужен Дальний пропуск — в Лавку`}</button>`;
     const html = `
       <div class="rift-view t${r.tier}">
         <div class="rift-portal">${Art.riftIcon(r.tier)}</div>
         <div class="rift-boss">${Art.spirit(r.boss)}</div>
         <div class="rift-title">${T.name} <span class="stars">${'★'.repeat(r.tier)}</span></div>
         <div class="rift-name">${Art.elIcon(s.el, 20)} ${s.name}</div>
-        ${r.place ? `<div class="rift-meta">Разлом открылся у «${U.esc(r.place)}»</div>` : ''}
-        <div class="rift-meta">Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через <b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b></div>
-        <div class="rift-tip">Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}</div>
-        ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(' и ')}</div>` : ''}
-        ${r.done ? '<div class="rift-done">Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.</div>' : `
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        ${r.place ? `<div class="rift-meta">${ru`Разлом открылся у «${U.esc(r.place)}»`}</div>` : ''}
+        <div class="rift-meta">${ru`Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
+        <div class="rift-tip">${ru`Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}`}</div>
+        ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${ru`${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`}</div>` : ''}
+        ${r.done ? `<div class="rift-done">${ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`}</div>` : `
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team">${UI.teamHtml(team)}</div>
         ${goBtn}
-        ${Rules.dayLine(S.d, 'raids', 'Разломов закрыто')}
-        ${far ? `<div class="rift-tip rift-far">До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.</div>`
-          : '<button class="btn ghost wide rift-coop">Позвать друзей — совместный бой</button>'}`}
+        ${Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
+        ${far ? `<div class="rift-tip rift-far">${ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>`
+          : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей — совместный бой`}</button>`}`}
       </div>`;
-    const scr = UI.screen('Разлом', html, 'rift-screen');
+    const scr = UI.screen(ru`Разлом`, html, 'rift-screen');
     scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
     const go = scr.querySelector('.rift-go');
     if (go) go.onclick = async () => { if (await this.battle(r, this.team(), null, far)) UI.closeScreen(scr); };
@@ -67,7 +67,7 @@ const Raid = {
       if ((done || gone) && !scr._ended) {
         scr._ended = true;
         scr.querySelectorAll('.rift-go, .rift-shop, .rift-coop, .rift-far, .rift-team-title, .rift-team, .day-left').forEach(x => x.remove());
-        scr.querySelector('.rift-view').insertAdjacentHTML('beforeend', `<div class="rift-done">${done ? 'Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.' : 'Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.'}</div>`);
+        scr.querySelector('.rift-view').insertAdjacentHTML('beforeend', `<div class="rift-done">${done ? ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.` : ru`Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.`}</div>`);
       }
     }, 1000);
   },
@@ -75,9 +75,9 @@ const Raid = {
   // Разломы вокруг: все открытые в этот час Разломы до Rules.FAR.R от игрока
   async list() {
     Sfx.init(); Sfx.play('tap');
-    const scr = UI.screen('Разломы вокруг', '<div class="rift-list"><div class="q-note">Ищу Разломы у Капищ вокруг…</div></div>', 'rifts-screen');
+    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
-    if (!pos) { box.innerHTML = '<div class="q-note">Жду, когда найдётся твоё место на карте…</div>'; return; }
+    if (!pos) { box.innerHTML = `<div class="q-note">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }
     const shrines = await Poi.shrinesFar(pos.lat, pos.lng, Rules.FAR.R);
     // Разломы часа: пересчитываются каждую секунду — закрытый только что помечается сразу, в начале часа приходят новые
     let hour = Math.floor(U.now() / 3600000), rifts = [], sig = '';
@@ -91,15 +91,15 @@ const Raid = {
     const render = () => {
       const passes = S.d.items.farpass || 0;
       const shown = rifts.map((r, i) => ({ r, i })).filter(x => !tier || x.r.tier === tier), more = Math.max(0, shown.length - 40);
-      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через <b class="rl-left">${left()}</b></span></div>
-        <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : 'Все'} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
+      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} ${ru`Пропусков: ${passes}`}</span><span>${ru`новые через ${`<b class="rl-left">${left()}</b>`}`}</span></div>
+        <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : ru`Все`} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>
-          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || 'Капище')}</small></div>
-          <div class="rr-d">${r.done ? '✓ закрыт' : r.d <= W.BATTLE_R ? 'рядом' : U.fmtDist(r.d)}</div></button>`).join('')
-          : '<div class="q-note">Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.</div>'}
-        ${more ? `<div class="q-note">…и ещё ${more} дальше</div>` : ''}
-        <div class="q-note">Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.</div>`;
+          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || ru`Капище`)}</small></div>
+          <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
+          : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
+        ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}
+        <div class="q-note">${ru`Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
     };
     box.addEventListener('click', e => {
       const c = e.target.closest('.chip'); if (c) { tier = +c.dataset.t; render(); return; }
@@ -153,10 +153,10 @@ const Raid = {
         </div>
         <div class="raid-ctrl">
           <button class="raid-water">${Art.item('water')}<span></span></button>
-          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>Приём</span></button>
-          <button class="raid-dodge">Уклон</button>
+          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>${ru`Приём`}</span></button>
+          <button class="raid-dodge">${ru`Уклон`}</button>
         </div>
-        <div class="raid-hint">Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.</div>
+        <div class="raid-hint">${ru`Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.`}</div>
         <div class="raid-count">3</div>
       </div>`);
     document.body.appendChild(root);
@@ -189,7 +189,7 @@ const Raid = {
     // обратный отсчёт
     (async () => {
       for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
-      $('.raid-count').textContent = 'В бой!';
+      $('.raid-count').textContent = ru`В бой!`;
       await U.wait(500);
       $('.raid-count').remove();
       st.running = true;
@@ -205,7 +205,7 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-me').innerHTML = Art.of(m.sp);
     st.$('.raid-me').classList.remove('swap'); void st.$('.raid-me').offsetWidth; st.$('.raid-me').classList.add('swap');
-    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>СИЛА ${m.power}</small>`;
+    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>${ru`СИЛА ${m.power}`}</small>`;
     st.$('.raid-team').innerHTML = st.team.map((x, i) => `<i class="${x.cur <= 0 ? 'dead' : i === st.idx ? 'on' : ''}"></i>`).join('');
   },
   dmg(att, def, power, attEl, defEl) {
@@ -302,9 +302,9 @@ const Raid = {
     const st = this.st;
     if (!st || !st.running || st.over || st.drinking) return;
     const m = this.cur();
-    if (st.waters >= 3) { UI.toast('За бой можно выпить не больше 3 флаконов'); return; }
-    if (m.cur >= m.max) { UI.toast('Дух и так полон сил'); return; }
-    if (!(S.d.items.water > 0)) { UI.toast('Живой воды нет'); return; }
+    if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }
+    if (m.cur >= m.max) { UI.toast(ru`Дух и так полон сил`); return; }
+    if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }
     st.drinking = true;
     const ok = await Game.try('water');
     st.drinking = false;
@@ -343,7 +343,7 @@ const Raid = {
     if (dodged) n = Math.max(1, Math.floor(n * 0.2));
     m.cur = Math.max(0, m.cur - n);
     const me = st.$('.raid-me').getBoundingClientRect();
-    this.float(dodged ? `Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');
+    this.float(dodged ? ru`Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');
     if (!dodged) {
       Sfx.play('hurt'); U.vibrate(80);
       st.root.classList.remove('shake'); void st.root.offsetWidth; st.root.classList.add('shake');
@@ -355,7 +355,7 @@ const Raid = {
         if (st.coop && !st.coop.solo) {
           st.ko = true;
           st.$('.raid-boss').classList.remove('charging');
-          st.root.appendChild(U.el('<div class="raid-ko">Твои духи без сил.<br>Союзники ещё сражаются!</div>'));
+          st.root.appendChild(U.el(`<div class="raid-ko">${ru`Твои духи без сил.<br>Союзники ещё сражаются!`}</div>`));
           return;
         }
         return this.finish(false);
@@ -392,11 +392,11 @@ const Raid = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw, charms = r.charms, bonus = r.bonus, allies = r.allies;
       const res = U.el(`<div class="raid-result"><div class="res-card">
-        <div class="res-title">Разлом закрыт!</div>
+        <div class="res-title">${ru`Разлом закрыт!`}</div>
         <div class="res-art">${Art.spirit(st.s.id)}</div>
-        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>
-        <div class="res-note">Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ` (+${bonus} за скорость)` : ''}${allies ? ` (+${allies * 2} за союзников)` : ''}.</div>
-        <button class="btn primary wide">Ловить!</button></div></div>`);
+        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
+        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>
+        <button class="btn primary wide">${ru`Ловить!`}</button></div></div>`);
       res.querySelector('button').onclick = () => {
         this.close();
         Encounter.start({ mode: 'raid', seed: st.r.id });
@@ -404,18 +404,18 @@ const Raid = {
       st.root.appendChild(res);
     } else if (win) {
       // сервер не засчитал победу (нет связи или неправдоподобный бой)
-      const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Победа не засчитана</div>
-        <div class="res-note">Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.</div>
-        <button class="btn wide">На карту</button></div></div>`);
+      const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">${ru`Победа не засчитана`}</div>
+        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div>
+        <button class="btn wide">${ru`На карту`}</button></div></div>`);
       res.querySelector('button').onclick = () => this.close();
       st.root.appendChild(res);
     } else {
       Sfx.play('lose');
       const res = U.el(`<div class="raid-result"><div class="res-card">
-        <div class="res-title lose">Разлом устоял</div>
+        <div class="res-title lose">${ru`Разлом устоял`}</div>
         <div class="res-art dim">${Art.spirit(st.s.id)}</div>
-        <div class="res-note">Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.</div>
-        <button class="btn wide">На карту</button></div></div>`);
+        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div>
+        <button class="btn wide">${ru`На карту`}</button></div></div>`);
       res.querySelector('button').onclick = () => this.close();
       st.root.appendChild(res);
     }
@@ -424,7 +424,7 @@ const Raid = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) return this.close();
-    UI.confirm('Покинуть битву?', 'Прогресс боя будет потерян.', 'Покинуть', () => this.close(), 'Остаться');
+    UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);
   },
   close() {
     const st = this.st; if (!st) return;

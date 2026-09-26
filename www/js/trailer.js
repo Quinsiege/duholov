@@ -16,8 +16,8 @@ const Trailer = {
     return new Promise(done => {
       const root = U.el(`<div class="tv">
         <video class="tv-v" playsinline webkit-playsinline preload="auto" src="${this.SRC}"></video>
-        <button class="tv-snd hidden">Включить звук</button>
-        <button class="tv-skip">Пропустить ›</button>
+        <button class="tv-snd hidden">${ru`Включить звук`}</button>
+        <button class="tv-skip">${ru`Пропустить`} ›</button>
       </div>`);
       const v = root.querySelector('video'), snd = root.querySelector('.tv-snd');
       let ended = false, played = false;

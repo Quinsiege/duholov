@@ -22,8 +22,8 @@ const Coop = {
     if (m.t === 'lobby') this.poll(); // кто-то вошёл или вышел — спросим сервер
     else if (m.t === 'start' && !this.host && !this.running) this.poll();
     else if (m.t === 'dmg' && this.host && this.running) {
-      const k = String(m.from), n = Raid.remoteHit(String(m.name || 'Союзник').slice(0, 20), m.n);
-      if (n) this.dmgBy[k] = { name: String(m.name || 'Союзник').slice(0, 20), n: ((this.dmgBy[k] || {}).n || 0) + n };
+      const k = String(m.from), n = Raid.remoteHit(String(m.name || ru`Союзник`).slice(0, 20), m.n);
+      if (n) this.dmgBy[k] = { name: String(m.name || ru`Союзник`).slice(0, 20), n: ((this.dmgBy[k] || {}).n || 0) + n };
     } else if (m.t === 'state' && !this.host) { Raid.remoteState(m.hp, m.time); Raid.renderAllies(m.dmg); }
     else if (m.t === 'end' && !this.host) { Raid.renderAllies(m.dmg); Raid.remoteEnd(m.win); }
   },
@@ -44,9 +44,9 @@ const Coop = {
   },
   async join(code) {
     code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (code.length !== 5) { UI.toast('Код разлома — 5 символов'); return; }
+    if (code.length !== 5) { UI.toast(ru`Код разлома — 5 символов`); return; }
     this.reset();
-    UI.toast('Подключаюсь к разлому…');
+    UI.toast(ru`Подключаюсь к разлому…`);
     const room = await Game.try('roomJoin', { code });
     if (!room) return;
     await this.connect(room.code);
@@ -106,22 +106,22 @@ const Coop = {
   /* ---------------- ЭКРАН КОМНАТЫ ---------------- */
   lobby() {
     if (this.scr && this.scr.isConnected) { this.renderLobby(); return; }
-    this.scr = UI.screen('Совместный разлом', `
+    this.scr = UI.screen(ru`Совместный разлом`, `
       <div class="coop">
         <div class="rift-boss sm">${Art.spirit(this.rift.boss)}</div>
         <div class="rift-name">${SP[this.rift.boss].name} <span class="stars">${'★'.repeat(this.rift.tier)}</span></div>
-        <div class="coop-code-t">Код разлома</div>
+        <div class="coop-code-t">${ru`Код разлома`}</div>
         <div class="coop-code">${this.code}</div>
-        ${this.host ? '<div class="fr-btns"><button class="btn small coop-qr">QR-код</button><button class="btn small primary coop-share">Позвать друзей</button></div>' : ''}
-        <h3 class="prof-h">Ловчие <small class="coop-n"></small></h3>
+        ${this.host ? `<div class="fr-btns"><button class="btn small coop-qr">${ru`QR-код`}</button><button class="btn small primary coop-share">${ru`Позвать друзей`}</button></div>` : ''}
+        <h3 class="prof-h">${ru`Ловчие`} <small class="coop-n"></small></h3>
         <div class="list coop-members"></div>
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(S.team())}</div>
-        ${this.host ? '<button class="btn primary wide coop-start">Начать бой</button><p class="small">Здоровье босса растёт с каждым Ловчим, награда — у каждого своя.</p>'
-          : '<p class="coop-wait">Ждём, когда хозяин начнёт бой…</p>'}
+        ${this.host ? `<button class="btn primary wide coop-start">${ru`Начать бой`}</button><p class="small">${ru`Здоровье босса растёт с каждым Ловчим, награда — у каждого своя.`}</p>`
+          : `<p class="coop-wait">${ru`Ждём, когда хозяин начнёт бой…`}</p>`}
       </div>`, 'rift-screen coop-screen', () => { if (!this.running) this.leave(); });
     const s = this.scr;
-    const q = s.querySelector('.coop-qr'); if (q) q.onclick = () => Friends.showQR('Код разлома', this.code, this.inviteText());
+    const q = s.querySelector('.coop-qr'); if (q) q.onclick = () => Friends.showQR(ru`Код разлома`,this.code, this.inviteText());
     const sh = s.querySelector('.coop-share'); if (sh) sh.onclick = () => Friends.shareText(this.inviteText());
     const go = s.querySelector('.coop-start'); if (go) go.onclick = () => this.start();
     s.querySelector('.team-edit').onclick = () => UI.pickTeam(async () => {
@@ -134,11 +134,11 @@ const Coop = {
   renderLobby() {
     const s = this.scr; if (!s || !s.isConnected) return;
     s.querySelector('.coop-n').textContent = `${this.members.length} / ${this.MAX}`;
-    s.querySelector('.coop-members').innerHTML = this.members.map(m => `<div class="row"><div class="fr-ava">${Art.avatar(m.look || undefined)}</div><div class="row-main"><b>${U.esc(m.name)}${m.host ? ' · хозяин' : ''}${m.me ? ' (ты)' : ''}</b><small>Ур. ${+m.lvl || 1} · сила команды ${U.fmtNum(+m.power || 0)}</small></div></div>`).join('');
+    s.querySelector('.coop-members').innerHTML = this.members.map(m => `<div class="row"><div class="fr-ava">${Art.avatar(m.look || undefined)}</div><div class="row-main"><b>${U.esc(m.name)}${m.host ? ` · ${ru`хозяин`}` : ''}${m.me ? ` ${ru`(ты)`}` : ''}</b><small>${ru`Ур. ${+m.lvl || 1} · сила команды ${U.fmtNum(+m.power || 0)}`}</small></div></div>`).join('');
     const go = s.querySelector('.coop-start');
-    if (go) { go.disabled = this.members.length < 2; go.textContent = this.members.length < 2 ? 'Ждём хотя бы одного друга…' : `Начать бой (${this.members.length} Ловчих)`; }
+    if (go) { go.disabled = this.members.length < 2; go.textContent = this.members.length < 2 ? ru`Ждём хотя бы одного друга…` : ru`Начать бой (${this.members.length} Ловчих)`; }
   },
-  inviteText() { return `Идём закрывать разлом в Духолове! «Меню → Друзья» → «Совместный разлом» → код: ${this.code}`; },
+  inviteText() { return ru`Идём закрывать разлом в Духолове! «Меню → Друзья» → «Совместный разлом» → код: ${this.code}`; },
 
   reset() {
     clearInterval(this._sync); clearInterval(this._poll);

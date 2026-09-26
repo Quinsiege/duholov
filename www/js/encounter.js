@@ -12,7 +12,7 @@ const Encounter = {
   // o: { mode: 'wild'|'raid'|'rescue'|'story', tut, spawnId, seed, onEnd } — вид и уровень духа сообщает сервер
   async start(o) {
     if (this.st || this._opening) return;
-    if (o.mode !== 'raid' && !this.throwables().length) { UI.toast('Обереги закончились! Загляни к роднику.'); return; }
+    if (o.mode !== 'raid' && !this.throwables().length) { UI.toast(ru`Обереги закончились! Загляни к роднику.`); return; }
     this._opening = true;
     const r = await Game.try('encStart', { kind: o.tut ? 'tut' : o.mode, id: o.spawnId });
     this._opening = false;
@@ -28,18 +28,18 @@ const Encounter = {
         <video class="enc-cam" playsinline muted autoplay></video>
         <div class="enc-scene el-${s.el}"><div class="enc-sky"><i class="nv-aur a1"></i><i class="nv-aur a2"></i><i class="nv-moon"></i><i class="nv-fog f1"></i><i class="nv-fog f2"></i></div><div class="enc-ground">${this.fireRing()}</div><div class="enc-motes">${'<i></i>'.repeat(14)}</div></div>
         <div class="enc-top">
-          <button class="btn-round enc-run" aria-label="Уйти">${UI.I.close}</button>
+          <button class="btn-round enc-run" aria-label="${ru`Уйти`}">${UI.I.close}</button>
           <div class="enc-info">
-            <div class="enc-power">СИЛА <b>${power}</b></div>
+            <div class="enc-power">${ru`СИЛА <b>${power}</b>`}</div>
             <div class="enc-name">${Art.elIcon(s.el, 20)} ${s.name}</div>
-            <div class="enc-rar" style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name} · ур. ${sp.lvl}</div>
-            ${o.boost && Sky.w ? `<div class="enc-tag">${Art.wxIcon(Sky.w.key, 16)} Усилен погодой</div>` : ''}
-            ${sp.shiny ? '<div class="enc-tag shiny">✦ Сияющий</div>' : ''}
-            ${sp.dark ? '<div class="enc-tag dark">Омрачённый Навью</div>' : ''}
+            <div class="enc-rar" style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name} · ${ru`ур. ${sp.lvl}`}</div>
+            ${o.boost && Sky.w ? `<div class="enc-tag">${Art.wxIcon(Sky.w.key, 16)} ${ru`Усилен погодой`}</div>` : ''}
+            ${sp.shiny ? `<div class="enc-tag shiny">✦ ${ru`Сияющий`}</div>` : ''}
+            ${sp.dark ? `<div class="enc-tag dark">${ru`Омрачённый Навью`}</div>` : ''}
           </div>
           <div class="enc-tr">
             <button class="btn-round enc-ar ${Cfg.s.ar ? 'on' : ''}" aria-label="AR">AR</button>
-            <button class="btn-round enc-photo" aria-label="Фото"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+            <button class="btn-round enc-photo" aria-label="${ru`Фото`}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
           </div>
         </div>
         <div class="enc-flash"></div>
@@ -50,7 +50,7 @@ const Encounter = {
         <div class="enc-ball"></div>
         <div class="enc-bottom">
           <button class="enc-honey"><div class="ico">${Art.item('honey')}</div><span></span></button>
-          <div class="enc-hint">${Cfg.s.tapThrow ? 'Коснись оберега — он полетит в духа.' : 'Смахни оберег вверх.'}<br>Попади в кольцо, когда оно маленькое!</div>
+          <div class="enc-hint">${Cfg.s.tapThrow ? ru`Коснись оберега — он полетит в духа.` : ru`Смахни оберег вверх.`}<br>${ru`Попади в кольцо, когда оно маленькое!`}</div>
           <button class="enc-type"><div class="ico"></div><span></span></button>
         </div>
       </div>`);
@@ -87,9 +87,9 @@ const Encounter = {
     this.anim(550, p => { st.k = 1 - Math.pow(1 - p, 3) * 1; }).then(() => {
       if (this.st !== st) return;
       st.phase = 'aim';
-      if (sp.shiny) { this.flash('✦ Сияющий дух! ✦', 'bonus'); Sfx.play('spin'); }
+      if (sp.shiny) { this.flash(`✦ ${ru`Сияющий дух!`} ✦`, 'bonus'); Sfx.play('spin'); }
       if (o.tut) {
-        st.$('.enc-hint').innerHTML = '<b>Зажми оберег и смахни вверх</b>, прямо к духу.<br>Чем быстрее свайп — тем дальше бросок.';
+        st.$('.enc-hint').innerHTML = ru`<b>Зажми оберег и смахни вверх</b>, прямо к духу.<br>Чем быстрее свайп — тем дальше бросок.`;
         st.root.appendChild(U.el(`<div class="tut-hand" style="left:${st.rest.x}px;top:${st.rest.y}px"><i></i></div>`));
       }
     });
@@ -188,7 +188,7 @@ const Encounter = {
     const st = this.st;
     if (st.o.mode === 'raid' || st.phase !== 'aim') return;
     const types = this.throwables();
-    if (types.length < 2) { UI.toast(types.length ? `Есть только «${ITEMS[types[0]].name}»` : 'Нет оберегов'); return; }
+    if (types.length < 2) { UI.toast(types.length ? ru`Есть только «${ITEMS[types[0]].name}»` : ru`Нет оберегов`); return; }
     st.charmType = types[(types.indexOf(st.charmType) + 1) % types.length];
     this.lastType = st.charmType;
     this.flash(ITEMS[st.charmType].name);
@@ -197,15 +197,15 @@ const Encounter = {
   async useHoney() {
     const st = this.st;
     if (st.phase !== 'aim' || st.honeyBusy) return;
-    if (st.honey) { this.flash('Дух уже лакомится мёдом'); return; }
-    if (!(S.d.items.honey > 0)) { UI.toast('Мёда нет. Его можно найти у родников.'); return; }
+    if (st.honey) { this.flash(ru`Дух уже лакомится мёдом`); return; }
+    if (!(S.d.items.honey > 0)) { UI.toast(ru`Мёда нет. Его можно найти у родников.`); return; }
     st.honeyBusy = true;
     const r = await Game.try('encHoney');
     st.honeyBusy = false;
     if (!r || this.st !== st) return;
     st.honey = true;
     Sfx.play('spin');
-    this.flash('Дух ест мёд и успокаивается');
+    this.flash(ru`Дух ест мёд и успокаивается`);
     st.$('.enc-fx').appendChild(U.el(`<div class="fx-honey" style="left:${st.cx}px;top:${st.cy}px">${Art.item('honey')}</div>`));
     setTimeout(() => { const f = st.$('.fx-honey'); if (f) f.remove(); }, 1200);
     this.updateBottom();
@@ -259,7 +259,7 @@ const Encounter = {
     const st = this.st;
     if (st.phase !== 'aim') return;
     if (st.o.mode === 'raid') { if (st.raidLeft <= 0) return; st.raidLeft--; }
-    else if (!((S.d.items[st.charmType] || 0) - (st.spent || 0) > 0)) { UI.toast('Обереги этого вида закончились'); return; }
+    else if (!((S.d.items[st.charmType] || 0) - (st.spent || 0) > 0)) { UI.toast(ru`Обереги этого вида закончились`); return; }
     else st.spent = (st.spent || 0) + 1; // пока летит, счётчик показываем без него — спишет сервер
     st.throws++;
     st.phase = 'fly';
@@ -304,7 +304,7 @@ const Encounter = {
   async miss(req) {
     const st = this.st, b = st.ball;
     Sfx.play('miss');
-    this.flash('Мимо!');
+    this.flash(ru`Мимо!`);
     const x0 = b.x, y0 = b.y;
     await this.anim(420, p => { b.y = y0 + p * p * st.H * 0.35; b.x = x0 + p * 20; b.op = 1 - p; b.sc = 0.5 - p * 0.1; });
     let r;
@@ -315,15 +315,15 @@ const Encounter = {
   },
   // встреча закончилась без поимки (решение сервера)
   over(r) {
-    if (r.fled) return this.fleeOut(r.text);
-    UI.toast('Обереги закончились!');
+    if (r.fled) return this.fleeOut(I18N.back(r.text));
+    UI.toast(ru`Обереги закончились!`);
     return this.end('noCharms');
   },
   afterThrow() {
     const st = this.st; if (!st) return;
     if (!this.charmsLeft()) {
-      if (st.o.mode === 'raid') return this.fleeOut('Обереги кончились — дух вернулся в Навь…');
-      UI.toast('Обереги закончились!');
+      if (st.o.mode === 'raid') return this.fleeOut(ru`Обереги кончились — дух вернулся в Навь…`);
+      UI.toast(ru`Обереги закончились!`);
       return this.end('noCharms');
     }
     if (st.o.mode !== 'raid' && !(S.d.items[st.charmType] > 0)) { st.charmType = this.throwables()[0]; this.updateBottom(); }
@@ -368,7 +368,7 @@ const Encounter = {
     st.$('.enc-fx').appendChild(U.el(`<div class="fx-burst out" style="left:${b.x}px;top:${b.y}px"></div>`));
     await this.anim(380, p => { st.k = p < 0.7 ? p / 0.7 * 1.12 : 1.12 - (p - 0.7) / 0.3 * 0.12; b.op = 1 - p; b.sc = 0.55 + p * 0.4; });
     if (!this.st) return;
-    this.flash(['Дух вырвался!', 'Почти получилось!', 'Ай! Вырвался!'][Math.floor(Math.random() * 3)]);
+    this.flash([ru`Дух вырвался!`, ru`Почти получилось!`, ru`Ай! Вырвался!`][Math.floor(Math.random() * 3)]);
     if (r && r.over) { await U.wait(700); return this.over(r); }
     this.afterThrow();
   },
@@ -393,16 +393,16 @@ const Encounter = {
     const mine = S.findSpirit(r.uid) || sp;
     const card = U.el(`
       <div class="enc-result"><div class="res-card">
-        <div class="res-title">Пойман!</div>
+        <div class="res-title">${ru`Пойман!`}</div>
         <div class="res-art">${Art.of(mine)}</div>
         <div class="res-name">${mine.shiny ? '✦ ' : ''}${s.name}</div>
-        <div class="res-power">СИЛА ${S.power(mine)}</div>
-        ${r.isNew ? '<div class="badge-new">Новая запись в Бестиарии!</div>' : ''}
-        ${mine.shiny ? '<div class="badge-new shiny">Сияющий дух — редкая удача!</div>' : ''}
+        <div class="res-power">${ru`СИЛА ${S.power(mine)}`}</div>
+        ${r.isNew ? `<div class="badge-new">${ru`Новая запись в Бестиарии!`}</div>` : ''}
+        ${mine.shiny ? `<div class="badge-new shiny">${ru`Сияющий дух — редкая удача!`}</div>` : ''}
         <div class="res-rw">
-          <div><b>+${U.fmtNum(r.xp)}</b> опыта${Ev.xpMul() > 1 ? ' (Звездопад ×2)' : ''}</div><div><b>+${r.sparks}</b> искр</div><div><b>+${r.ess}</b> эссенции «${SP[s.fam].name}»</div>
+          <div>${ru`<b>+${U.fmtNum(r.xp)}</b> опыта`}${Ev.xpMul() > 1 ? ` ${ru`(Звездопад ×2)`}` : ''}</div><div>${ru`<b>+${r.sparks}</b> искр`}</div><div>${ru`<b>+${r.ess}</b> эссенции «${SP[s.fam].name}»`}</div>
         </div>
-        <button class="btn primary wide">Отлично</button>
+        <button class="btn primary wide">${ru`Отлично`}</button>
       </div></div>`);
     card.querySelector('button').onclick = () => { Sfx.play('tap'); this.end('caught'); };
     st.root.appendChild(card);
@@ -441,9 +441,9 @@ const Encounter = {
       // подпись
       g.fillStyle = 'rgba(18,12,36,.72)'; g.fillRect(0, H - 60, W, 60);
       g.fillStyle = '#fde047'; g.font = '900 20px Rubik, sans-serif';
-      g.fillText(`${st.sp.shiny ? '✦ ' : ''}${st.s.name} · СИЛА ${S.power(st.sp)}`, 16, H - 34);
+      g.fillText(`${st.sp.shiny ? '✦ ' : ''}${st.s.name} · ${ru`СИЛА ${S.power(st.sp)}`}`, 16, H - 34);
       g.fillStyle = '#e2dcf7'; g.font = '500 13px Rubik, sans-serif';
-      g.fillText(`Духолов · Ловчий ${S.d.name} · ${new Date().toLocaleDateString('ru-RU')}`, 16, H - 14);
+      g.fillText(ru`Духолов · Ловчий ${S.d.name} · ${new Date().toLocaleDateString(I18N.locale)}`, 16, H - 14);
       // вспышка
       Sfx.play('hit'); U.vibrate(30);
       const fl = st.$('.enc-flash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
@@ -453,7 +453,7 @@ const Encounter = {
       Album.add({ img: t.toDataURL('image/jpeg', 0.72), sid: st.s.id, t: Date.now() });
       Game.act('photo').catch(() => {}); // задание «сфотографируй духа» засчитывает сервер
       Album.preview(blob, `${st.s.name}.jpg`);
-    } catch (e) { UI.toast('Не удалось сделать снимок'); }
+    } catch (e) { UI.toast(ru`Не удалось сделать снимок`); }
     this._shooting = false;
   },
 
@@ -467,7 +467,7 @@ const Encounter = {
       const v = st.$('.enc-cam'); v.srcObject = stream; v.play().catch(() => {});
       st.root.classList.add('ar');
     } catch (e) {
-      UI.toast('Камера недоступна — AR выключен');
+      UI.toast(ru`Камера недоступна — AR выключен`);
       Cfg.s.ar = false; Cfg.save();
       st.$('.enc-ar').classList.remove('on');
     }
@@ -483,7 +483,7 @@ const Encounter = {
     const st = this.st; if (!st) return;
     if (st.phase === 'capture') return;
     if (st.o.mode === 'raid' && st.phase !== 'done') {
-      UI.confirm('Уйти?', 'Если уйти, дух из разлома будет потерян.', 'Уйти', () => this.end('run'), 'Остаться');
+      UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`);
       return;
     }
     this.end('run');

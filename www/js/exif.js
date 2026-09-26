@@ -38,7 +38,7 @@ const Exif = {
   },
   // TIFF-блок с IFD0 → EXIF и GPS
   tiff({ lat, lng, acc, time }) {
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(time)) throw new Error('Нет координат или времени снимка');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(time)) throw new Error(ru`Нет координат или времени снимка`);
     const dt = this.stamp(time);
     const ifd0 = [[0x010F, 2, 'Duholov'], [0x0131, 2, 'Duholov ' + APP_VERSION], [0x0132, 2, dt], [0x8769, 4, 0], [0x8825, 4, 0]];
     const exif = [[0x9003, 2, dt]];
@@ -58,7 +58,7 @@ const Exif = {
   // Вставить геометку в JPEG (сегмент APP1 сразу после SOI, JFIF-заголовок убирается)
   embed(jpeg, meta) {
     const src = new Uint8Array(jpeg);
-    if (src[0] !== 0xFF || src[1] !== 0xD8) throw new Error('Не JPEG');
+    if (src[0] !== 0xFF || src[1] !== 0xD8) throw new Error(ru`Не JPEG`);
     let rest = 2;
     if (src[2] === 0xFF && src[3] === 0xE0) rest = 4 + ((src[4] << 8) | src[5]);
     const t = this.tiff(meta), len = 2 + 6 + t.length;

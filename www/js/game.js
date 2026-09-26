@@ -3,7 +3,7 @@
    (Game.act), сервер проверяет его и отвечает изменениями прогресса и событиями (уровень, знак, задание).
    Телефон ничего не записывает в прогресс сам — только показывает то, что прислал сервер. */
 
-class PlayError extends Error {}
+class PlayError extends Error { constructor(m) { super(I18N.back(m)); } } // 4.15: ошибка сервера — на язык игрока
 
 const Game = {
   rev: 0,
@@ -16,7 +16,7 @@ const Game = {
 
   // Один запрос к серверу
   async call(actions) {
-    if (!this.on()) throw new PlayError('Нет связи с сервером игры');
+    if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);
     const sb = await Cloud.client();
     const p = MapView.pos && (MapView.gpsOK || MapView.demo) ? { lat: +MapView.pos.lat.toFixed(6), lng: +MapView.pos.lng.toFixed(6), acc: Math.round(MapView.acc || 20) } : null;
     const body = { a: actions, rev: this.rev, tz: -new Date().getTimezoneOffset(), wx: Sky.w ? Sky.w.key : null, pos: p, v: APP_VERSION };
@@ -45,7 +45,7 @@ const Game = {
       } catch (e) {
         console.warn('Сервер игры:', e && e.message);
         this.online = false;
-        throw new PlayError('Нет связи с сервером игры — проверь интернет');
+        throw new PlayError(ru`Нет связи с сервером игры — проверь интернет`);
       } finally { clearTimeout(busy); document.body.classList.remove('net-busy'); }
     }
     this.online = true;
@@ -54,23 +54,23 @@ const Game = {
 
   // Казна: запрос к оплате (info / create / sync) — отдельно от игровых действий
   async pay(op, args = {}) {
-    if (!this.on()) throw new PlayError('Нет связи с сервером игры');
+    if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);
     const sb = await Cloud.client();
     const r = await sb.functions.invoke('game', { body: { pay: op, args, v: APP_VERSION }, headers: await Cloud.headers() }).catch(() => ({ error: true }));
     let res = r.data;
     if (r.error) { try { res = r.error.context && await r.error.context.json(); } catch (e) { res = null; } }
-    if (!res || !res.ok) throw new PlayError((res && res.error) || 'Нет связи с сервером игры — проверь интернет');
+    if (!res || !res.ok) throw new PlayError((res && res.error) || ru`Нет связи с сервером игры — проверь интернет`);
     return res;
   },
 
   // Вход через сервисы (3.27): info — какие подключены и что привязано; signin — привязать или войти (login.js)
   async auth(op, args = {}) {
-    if (!this.on()) throw new PlayError('Нет связи с сервером игры');
+    if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);
     const sb = await Cloud.client();
     const r = await sb.functions.invoke('game', { body: { auth: op, args, v: APP_VERSION }, headers: await Cloud.headers() }).catch(() => ({ error: true }));
     let res = r.data;
     if (r.error) { try { res = r.error.context && await r.error.context.json(); } catch (e) { res = null; } }
-    if (!res || !res.ok) throw new PlayError((res && res.error) || 'Нет связи с сервером игры — проверь интернет');
+    if (!res || !res.ok) throw new PlayError((res && res.error) || ru`Нет связи с сервером игры — проверь интернет`);
     return res;
   },
 
@@ -87,7 +87,7 @@ const Game = {
     if (!res || !res.ok) {
       if (res && res.moved) this.onMoved();
       if (res && res.upgrade) Updater.check(true);
-      throw new PlayError((res && res.error) || 'Ошибка сервера');
+      throw new PlayError((res && res.error) || ru`Ошибка сервера`);
     }
     this.apply(res);
     return res.results && res.results[0];
@@ -111,7 +111,7 @@ const Game = {
   },
   emit(ev, data) {
     if (ev === 'medal') { const m = MEDALS.find(x => x.id === data.m); if (m) Bus.emit('medal', { m, tier: data.tier }); return; }
-    if (ev === 'toast') { UI.toast(U.esc(data.text), data.cls || ''); return; }
+    if (ev === 'toast') { UI.toast(U.esc(I18N.back(data.text)), data.cls || ''); return; }
     Bus.emit(ev, data);
   },
 
@@ -121,7 +121,7 @@ const Game = {
     if (!res || !res.ok) {
       if (res && res.moved) { this.moved = true; return null; }
       if (res && res.upgrade) { Updater.check(true); throw new PlayError(res.error); }
-      throw new PlayError((res && res.error) || 'Ошибка сервера');
+      throw new PlayError((res && res.error) || ru`Ошибка сервера`);
     }
     this.apply(res);
     return S.d;
@@ -146,9 +146,9 @@ const Game = {
     if (this._movedShown) return;
     this._movedShown = true;
     UI.modal({
-      title: 'Прогресс перенесён', dismiss: false,
-      html: '<p>Твой прогресс перенесён на другое устройство и продолжается там. На этом устройстве можно начать заново.</p><p class="warn-box">Если ты <b>не</b> переносил прогресс — не начинай заново: напиши на почту из «Оферты» (Лавка → Казна) и укажи имя Ловчего и когда это случилось. Прогресс можно вернуть.</p>',
-      buttons: [{ label: 'Начать заново', cls: 'primary', fn: () => this.startOver() }],
+      title: ru`Прогресс перенесён`, dismiss: false,
+      html: `<p>${ru`Твой прогресс перенесён на другое устройство и продолжается там. На этом устройстве можно начать заново.`}</p><p class="warn-box">${ru`Если ты <b>не</b> переносил прогресс — не начинай заново: напиши на почту из «Оферты» (Лавка → Казна) и укажи имя Ловчего и когда это случилось. Прогресс можно вернуть.`}</p>`,
+      buttons: [{ label: ru`Начать заново`, cls: 'primary', fn: () => this.startOver() }],
     });
   },
   async startOver() {
@@ -165,21 +165,21 @@ const Game = {
     const sb = await Cloud.client();
     const { data, error } = await sb.rpc('claim_transfer', { p_code: code });
     if (error) throw new Error(error.message);
-    if (data && data.error) throw new Error(data.error); // неверный код (попытки считает сервер)
+    if (data && data.error) throw new Error(I18N.back(data.error)); // неверный код (попытки считает сервер)
     this.rev = 0;
     await this.load();
   },
   claimDialog(after) {
     const m = UI.modal({
-      title: 'Перенести прогресс сюда',
-      html: `<p>На старом устройстве открой «Настройки → Перенести на другое устройство» и введи полученный код.${S.d ? ' Текущий прогресс на этом устройстве будет заменён.' : ''}</p>
-        <p class="small">Вводи только код со своего же устройства. Если код прислал кто-то другой — это может быть обман.</p>
+      title: ru`Перенести прогресс сюда`,
+      html: `<p>${ru`На старом устройстве открой «Настройки → Перенести на другое устройство» и введи полученный код.`}${S.d ? ' ' + ru`Текущий прогресс на этом устройстве будет заменён.` : ''}</p>
+        <p class="small">${ru`Вводи только код со своего же устройства. Если код прислал кто-то другой — это может быть обман.`}</p>
         <input class="input code-in" maxlength="16" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off">`,
-      buttons: [{ label: 'Отмена' }, { label: 'Перенести', cls: 'primary', keep: true, fn: async w => {
+      buttons: [{ label: ru`Отмена` }, { label: ru`Перенести`, cls: 'primary', keep: true, fn: async w => {
         const code = w.querySelector('.code-in').value.trim();
-        if (code.replace(/[^a-z0-9]/gi, '').length !== 12) { UI.toast('Код — 12 букв и цифр'); return; }
+        if (code.replace(/[^a-z0-9]/gi, '').length !== 12) { UI.toast(ru`Код — 12 букв и цифр`); return; }
         const btn = w.querySelector('.btn.primary'); btn.disabled = true;
-        try { await this.claim(code); w.close(); UI.toast('Прогресс перенесён!', 'good'); (after || (() => location.reload()))(); }
+        try { await this.claim(code); w.close(); UI.toast(ru`Прогресс перенесён!`, 'good'); (after || (() => location.reload()))(); }
         catch (e) { UI.toast(U.esc(e.message)); btn.disabled = false; }
       } }],
     });
@@ -189,13 +189,13 @@ const Game = {
     let code;
     try { code = await this.makeCode(); } catch (e) { UI.toast(U.esc(e.message)); return; }
     UI.modal({
-      title: 'Код переноса',
-      html: `<p>Введи этот код на новом устройстве: при первом запуске — «У меня уже есть прогресс», или «Настройки → Перенести прогресс сюда». Код действует 30 минут и один раз.</p>
+      title: ru`Код переноса`,
+      html: `<p>${ru`Введи этот код на новом устройстве: при первом запуске — «У меня уже есть прогресс», или «Настройки → Перенести прогресс сюда». Код действует 30 минут и один раз.`}</p>
         <div class="transfer-code">${U.esc(code)}</div>
-        <p class="small">После переноса прогресс продолжится на новом устройстве, а здесь можно будет начать заново.</p>
-        <p class="warn-box"><b>Никому не сообщай этот код.</b> По нему забирают весь прогресс — духов, златники и покупки. Орден, модераторы и друзья никогда не просят код; «подарок за код» — это обман.</p>`,
-      buttons: [{ label: 'Скопировать', keep: true, fn: async () => { try { await navigator.clipboard.writeText(code); UI.toast('Код скопирован', 'good'); } catch (e) { UI.toast('Не удалось скопировать'); } } },
-        { label: 'Готово', cls: 'primary' }],
+        <p class="small">${ru`После переноса прогресс продолжится на новом устройстве, а здесь можно будет начать заново.`}</p>
+        <p class="warn-box">${ru`<b>Никому не сообщай этот код.</b> По нему забирают весь прогресс — духов, златники и покупки. Орден, модераторы и друзья никогда не просят код; «подарок за код» — это обман.`}</p>`,
+      buttons: [{ label: ru`Скопировать`, keep: true, fn: async () => { try { await navigator.clipboard.writeText(code); UI.toast(ru`Код скопирован`, 'good'); } catch (e) { UI.toast(ru`Не удалось скопировать`); } } },
+        { label: ru`Готово`, cls: 'primary' }],
     });
   },
 };

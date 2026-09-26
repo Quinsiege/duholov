@@ -121,9 +121,9 @@ const S = {
     this.save();
   },
   canLearnMove2(sp) {
-    if (sp.move2) return 'Приём уже выучен';
-    if (this.d.sparks < MOVE2_COST.sparks) return `Нужно ✦ ${MOVE2_COST.sparks}`;
-    if ((this.d.essence[SP[sp.sid].fam] || 0) < MOVE2_COST.essence) return `Нужно ${MOVE2_COST.essence} эссенции`;
+    if (sp.move2) return ru`Приём уже выучен`;
+    if (this.d.sparks < MOVE2_COST.sparks) return ru`Нужно ✦ ${MOVE2_COST.sparks}`;
+    if ((this.d.essence[SP[sp.sid].fam] || 0) < MOVE2_COST.essence) return ru`Нужно ${MOVE2_COST.essence} эссенции`;
     return null;
   },
   learnMove2(sp) {
@@ -161,11 +161,11 @@ const S = {
   healItems() { return Object.keys(ITEMS).filter(k => ITEMS[k].heal || ITEMS[k].revive); },
   canHeal(sp, k) {
     const it = ITEMS[k], h = this.hpNow(sp);
-    if (!sp) return 'Дух не найден';
-    if (!it || !(it.heal || it.revive)) return 'Этим не лечат';
-    if (!(this.d.items[k] > 0)) return `${it.name}: нет в сумке`;
-    if (h <= 0 && !it.revive) return 'Дух без сил — поднимет только Живая вода';
-    if (h >= 1) return 'Дух здоров';
+    if (!sp) return ru`Дух не найден`;
+    if (!it || !(it.heal || it.revive)) return ru`Этим не лечат`;
+    if (!(this.d.items[k] > 0)) return ru`${it.name}: нет в сумке`;
+    if (h <= 0 && !it.revive) return ru`Дух без сил — поднимет только Живая вода`;
+    if (h >= 1) return ru`Дух здоров`;
     return null;
   },
   heal(sp, k) {
@@ -234,22 +234,23 @@ const S = {
       b.km -= need; b.finds++;
       const s = SP[sp.sid];
       this.addEssence(s.fam, 3);
-      let extra = '';
+      let extra = null;
       if (b.finds % 3 === 0) {
         const it = U.weighted([['charm', 5], ['honey', 2], ['water', 1]], Math.random());
         const n = it === 'charm' ? 3 : 1;
-        if (this.addItem(it, n)) extra = ` и ${ITEMS[it].name.toLowerCase()} ×${n}`;
+        if (this.addItem(it, n)) extra = [I18N.low(ITEMS[it].name), n];
       }
-      Bus.emit('buddyFind', `Спутник «${U.esc(sp.nick || s.name)}» принёс 3 эссенции${extra}!`);
+      const nm = U.esc(sp.nick || s.name);
+      Bus.emit('buddyFind', extra ? ru`Спутник «${nm}» принёс 3 эссенции и ${extra[0]} ×${extra[1]}!` : ru`Спутник «${nm}» принёс 3 эссенции!`);
     }
   },
   addEssence(fam, n) { this.d.essence[fam] = (this.d.essence[fam] || 0) + n; },
   powerUpCost(sp) { return { sparks: 200 + 200 * Math.floor((sp.lvl - 1) / 4), essence: 1 + Math.floor(sp.lvl / 10) }; },
   canPowerUp(sp) {
     const c = this.powerUpCost(sp), fam = SP[sp.sid].fam;
-    if (sp.lvl >= this.maxLvl()) return 'Предел: уровень духа не может быть выше уровня Ловчего +5';
-    if (this.d.sparks < c.sparks) return 'Не хватает искр';
-    if ((this.d.essence[fam] || 0) < c.essence) return 'Не хватает эссенции';
+    if (sp.lvl >= this.maxLvl()) return ru`Предел: уровень духа не может быть выше уровня Ловчего +5`;
+    if (this.d.sparks < c.sparks) return ru`Не хватает искр`;
+    if ((this.d.essence[fam] || 0) < c.essence) return ru`Не хватает эссенции`;
     return null;
   },
   powerUp(sp) {
@@ -264,9 +265,9 @@ const S = {
   },
   PURIFY: { sparks: 3000, essence: 25 }, // 3.19: было 1000 и 10 — дешевле, чем усилить духа до 25 уровня (16 800 ✦)
   canPurify(sp) {
-    if (!sp.dark) return 'Дух не омрачён';
-    if (this.d.sparks < this.PURIFY.sparks) return `Нужно ✦ ${this.PURIFY.sparks}`;
-    if ((this.d.essence[SP[sp.sid].fam] || 0) < this.PURIFY.essence) return `Нужно ${this.PURIFY.essence} эссенции`;
+    if (!sp.dark) return ru`Дух не омрачён`;
+    if (this.d.sparks < this.PURIFY.sparks) return ru`Нужно ✦ ${this.PURIFY.sparks}`;
+    if ((this.d.essence[SP[sp.sid].fam] || 0) < this.PURIFY.essence) return ru`Нужно ${this.PURIFY.essence} эссенции`;
     return null;
   },
   purify(sp) {
@@ -285,8 +286,8 @@ const S = {
   },
   canEvolve(sp) {
     const s = SP[sp.sid];
-    if (!s.evo) return 'Этот дух не превращается';
-    if ((this.d.essence[s.fam] || 0) < s.cost) return `Нужно ${s.cost} эссенции`;
+    if (!s.evo) return ru`Этот дух не превращается`;
+    if ((this.d.essence[s.fam] || 0) < s.cost) return ru`Нужно ${s.cost} эссенции`;
     return null;
   },
   evolve(sp) {
@@ -323,9 +324,9 @@ const S = {
     const out = [];
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
-      if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
-      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: 'Златники' }); }
-      else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
+      if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
+      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Златники` }); }
+      else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: ru`Опыт` }); this.addXP(n); }
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
     this.save();
@@ -434,7 +435,7 @@ const S = {
       if (type === 'catchEl' && meta.el !== q.el) return;
       q.p = Math.min(q.n, q.p + amount);
       changed = true;
-      if (q.p >= q.n) Bus.emit('toast', { text: `Поручение выполнено: ${q.text}`, cls: 'good' });
+      if (q.p >= q.n) Bus.emit('toast', { text: ru`Поручение выполнено: ${I18N.back(q.text)}`, cls: 'good' });
     });
     // Летопись
     const ch = STORY[this.d.story.ch];

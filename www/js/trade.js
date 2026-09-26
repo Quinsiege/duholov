@@ -25,21 +25,21 @@ const Trade = {
   canScan() { return 'BarcodeDetector' in window && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); },
 
   async copy(ta) {
-    try { await navigator.clipboard.writeText(ta.value); UI.toast('Код скопирован', 'good'); }
-    catch (e) { ta.select(); document.execCommand && document.execCommand('copy'); UI.toast('Код выделен — скопируй его'); }
+    try { await navigator.clipboard.writeText(ta.value); UI.toast(ru`Код скопирован`, 'good'); }
+    catch (e) { ta.select(); document.execCommand && document.execCommand('copy'); UI.toast(ru`Код выделен — скопируй его`); }
   },
 
   // Сканер QR на камере (BarcodeDetector есть в Chrome для Android)
   async scan(onCode) {
     let stream;
     try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); }
-    catch (e) { UI.toast('Нет доступа к камере'); return; }
+    catch (e) { UI.toast(ru`Нет доступа к камере`); return; }
     const det = new BarcodeDetector({ formats: ['qr_code'] });
     let alive = true;
     const m = UI.modal({
-      title: 'Наведи камеру на QR-код', cls: 'scan-modal',
+      title: ru`Наведи камеру на QR-код`, cls: 'scan-modal',
       html: '<div class="scan-box"><video playsinline muted autoplay></video><i></i></div>',
-      buttons: [{ label: 'Отмена' }],
+      buttons: [{ label: ru`Отмена` }],
     });
     const stop = () => { alive = false; stream.getTracks().forEach(t => t.stop()); };
     const v = m.querySelector('video');

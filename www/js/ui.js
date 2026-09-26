@@ -63,17 +63,17 @@ const UI = {
     U.$('#profileBtn').onclick = () => this.profile();
     U.$('#menuBtn').onclick = () => this.menu();
     U.$('#nearbyBtn').onclick = () => this.nearbyList();
-    U.$('#incenseChip').onclick = () => this.toast(`Ладан курится ещё ${U.fmtTime(S.d.incenseUntil - Date.now())}`);
+    U.$('#incenseChip').onclick = () => this.toast(ru`Ладан курится ещё ${U.fmtTime(S.d.incenseUntil - Date.now())}`);
     Bus.on('xp', () => this.refreshHud());
     Bus.on('levelup', l => this.levelUp(l));
-    Bus.on('questDone', q => this.toast(`Задание выполнено: ${q.text}`, 'good'));
+    Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
     Bus.on('quests', () => this.refreshHud());
-    Bus.on('storyStep', s => this.toast(`Летопись: ${stepText(s)} — готово`, 'good'));
+    Bus.on('storyStep', s => this.toast(ru`Летопись: ${stepText(s)} — готово`, 'good'));
     Bus.on('buddyFind', text => this.toast(text, 'good'));
-    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });
+    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });
     Bus.on('weather', ({ w, changed }) => {
       this.refreshSky();
-      if (changed && this._skyShown) this.toast(`Погода: ${WEATHER[w.key].name}. Сильнее духи: ${WEATHER[w.key].boost.map(e => ELEMENTS[e].name).join(', ')}`);
+      if (changed && this._skyShown) this.toast(ru`Погода: ${WEATHER[w.key].name}. Сильнее духи: ${WEATHER[w.key].boost.map(e => ELEMENTS[e].name).join(', ')}`);
       this._skyShown = true;
     });
     U.$('#wxChip').onclick = () => this.skyInfo();
@@ -113,15 +113,15 @@ const UI = {
   skyInfo() {
     Sfx.play('tap');
     const w = Sky.w, ev = Sky.moonEvent(), ph = Sky.moonPhase();
-    const moonName = ph < 0.034 || ph > 0.966 ? 'новолуние' : ph < 0.25 ? 'растущий серп' : ph < 0.466 ? 'растущая Луна' : ph < 0.534 ? 'полнолуние' : ph < 0.75 ? 'убывающая Луна' : 'убывающий серп';
+    const moonName = ph < 0.034 || ph > 0.966 ? ru`новолуние` : ph < 0.25 ? ru`растущий серп` : ph < 0.466 ? ru`растущая Луна` : ph < 0.534 ? ru`полнолуние` : ph < 0.75 ? ru`убывающая Луна` : ru`убывающий серп`;
     this.modal({
-      title: 'Небо над городом', cls: 'sky-modal',
+      title: ru`Небо над городом`, cls: 'sky-modal',
       html: w ? `<div class="sky-row">${Art.wxIcon(w.key, 44)}<div><b>${WEATHER[w.key].name}${w.temp != null ? `, ${w.temp > 0 ? '+' : ''}${w.temp}°` : ''}</b>
-          <small>${w.src === 'real' ? 'Настоящая погода (Open-Meteo)' : 'Погода Нави (смоделирована)'}</small></div></div>
-        <p>Усилены: ${WEATHER[w.key].boost.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(', ')}. Таких духов больше, они сильнее, дают на 25% больше искр, а в разломах наносят на 20% больше урона.</p>` : '<p>Погода уточняется…</p>',
-      buttons: [{ label: 'Понятно', cls: 'primary' }],
+          <small>${w.src === 'real' ? ru`Настоящая погода (Open-Meteo)` : ru`Погода Нави (смоделирована)`}</small></div></div>
+        <p>${ru`Усилены: ${WEATHER[w.key].boost.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(', ')}. Таких духов больше, они сильнее, дают на 25% больше искр, а в разломах наносят на 20% больше урона.`}</p>` : `<p>${ru`Погода уточняется…`}</p>`,
+      buttons: [{ label: ru`Понятно`, cls: 'primary' }],
     }).querySelector('.modal-body').insertAdjacentHTML('beforeend',
-      `<div class="sky-row">${Art.moonIcon(ev || (ph > 0.25 && ph < 0.75 ? 'full' : 'new'), 44)}<div><b>Луна: ${moonName}</b><small>${ev ? MOON_EVENTS[ev].desc : 'Ни полнолуния, ни новолуния — обычная ночь.'}</small></div></div>`);
+      `<div class="sky-row">${Art.moonIcon(ev || (ph > 0.25 && ph < 0.75 ? 'full' : 'new'), 44)}<div><b>${ru`Луна: ${moonName}`}</b><small>${ev ? MOON_EVENTS[ev].desc : ru`Ни полнолуния, ни новолуния — обычная ночь.`}</small></div></div>`);
   },
 
   /* ---------------- СЛОИ И КНОПКА «НАЗАД» ---------------- */
@@ -140,7 +140,7 @@ const UI = {
     if (top) { top(); return false; }
     if (Date.now() - (this._lastBack || 0) < 2500) return true;
     this._lastBack = Date.now();
-    this.toast('Нажми «Назад» ещё раз, чтобы выйти');
+    this.toast(ru`Нажми «Назад» ещё раз, чтобы выйти`);
     return false;
   },
   onPop() {
@@ -173,7 +173,7 @@ const UI = {
     wrap.close = close;
     return wrap;
   },
-  confirm(title, text, okLabel, onOk, cancelLabel = 'Отмена', danger = false) {
+  confirm(title, text, okLabel, onOk, cancelLabel = ru`Отмена`, danger = false) {
     return this.modal({ title, html: `<p>${text}</p>`, buttons: [{ label: cancelLabel }, { label: okLabel, cls: danger ? 'danger' : 'primary', fn: onOk }] });
   },
   /* 4.5: кнопки дизайн-системы. rune — главная («оберег»: золото, гравировка, наконечники, блик), glass — второстепенная
@@ -250,12 +250,14 @@ const UI = {
     const d = S.d, ch = STORY[d.story.ch], gift = d.storyGift;
     if (Tut.step() || (!ch && !gift)) { el.classList.add('hidden'); return; }
     let t, s, ready = false;
-    if (!ch) { t = 'Летопись дочитана'; s = `Встреча ждёт: ${SP[gift].name}`; ready = true; }
-    else if (S.storyReady()) { t = `Глава ${d.story.ch + 1}: «${ch.title}»`; s = 'Глава завершена — забери награду!'; ready = true; }
+    if (!ch) { t = ru`Летопись дочитана`; s = ru`Встреча ждёт: ${SP[gift].name}`; ready = true; }
+    else if (S.storyReady()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`Глава завершена — забери награду!`; ready = true; }
     else {
       const i = ch.steps.findIndex((x, k) => d.story.p[k] < x.n), step = ch.steps[i], p = d.story.p[i];
-      t = `Глава ${d.story.ch + 1}: «${ch.title}»`;
-      s = `${stepText(step).replace(/:\s*[\d.]+$/, '').replace(/^Пройди [\d.]+ км$/, 'Пройди пешком')} · ${step.t === 'walk' ? p.toFixed(1) : Math.floor(p)}/${step.n}${step.t === 'walk' ? ' км' : ''}`;
+      t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`;
+      // 4.15: подпись шага без числа (число — справа, «2/5») — на любом языке: число подставляем меткой и убираем её
+      const bare = step.t === 'walk' ? ru`Пройди пешком` : stepText({ ...step, n: '\u0001' }).replace(/\s*[:：]?\s*\u0001\s*[:：]?\s*/, ' ').trim();
+      s = `${bare} · ${step.t === 'walk' ? ru`${p.toFixed(1)}/${step.n} км` : `${Math.floor(p)}/${step.n}`}`;
     }
     const key = t + s + ready;
     if (el._key === key && !el.classList.contains('hidden')) return;
@@ -268,12 +270,12 @@ const UI = {
   },
   setGps(state, acc) {
     const c = U.$('#gpsChip');
-    const map = { search: ['Ищу GPS…', 'warn'], ok: [`GPS ±${Math.round(acc)} м`, 'ok'], weak: [`GPS ±${Math.round(acc)} м`, 'warn'], off: ['Нет GPS', 'bad'], demo: ['Демо-режим', 'demo'] };
+    const map = { search: [ru`Ищу GPS…`, 'warn'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };
     const [t, cls] = map[state];
     if (c._k === t + cls) return; // GPS приходит каждую секунду — без изменений не перестраиваем значок
     c._k = t + cls;
     c.className = 'chip ' + cls; c.innerHTML = `${this.I.pin}<span>${t}</span>`;
-    c.onclick = state === 'demo' ? () => this.toast('Двигайся джойстиком или клавишами WASD. Выключить — в настройках.') : null;
+    c.onclick = state === 'demo' ? () => this.toast(ru`Двигайся джойстиком или клавишами WASD. Выключить — в настройках.`) : null;
   },
   updateNearby(list) {
     const box = U.$('#nearbyBtn .nb-arts');
@@ -568,26 +570,26 @@ const UI = {
     const ml = Tut.menuLock(); if (ml) { this.toast(ml); return; } // 4.0: меню открывается по ходу обучения
     const q = S.questsClaimable() + Order.claimable(), eggs = S.readyCocoons().length;
     const tiles = [
-      ['spirits', 'Духи', () => this.collection(), S.d.spirits.length],
-      ['book', 'Бестиарий', () => this.dex()],
-      ['bag', 'Сумка', () => this.bag()],
-      ['egg', 'Коконы', () => this.cocoons(), eggs ? '!' : ''],
-      ['scroll', 'Задания', () => this.quests(), q ? '!' : ''],
-      ['swap', 'Друзья', () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
-      ['chat', 'Чат', () => Chat.screen(), Chat.badge()],
-      ['trophy', 'Лига', () => { if (S.d.level < 5) { this.toast('Лига открывается с 5 уровня Ловчего'); return; } League.screen(); }, League.view().tickets || ''],
-      ['shop', 'Лавка', () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
-      ['trail', 'Тропа', () => Pass.screen(), Pass.claimable() || ''],
-      ['rift', 'Разломы', () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
-      ['path', 'Путь', () => Path.screen()],
+      ['spirits', ru`Духи`, () => this.collection(), S.d.spirits.length],
+      ['book', ru`Бестиарий`, () => this.dex()],
+      ['bag', ru`Сумка`, () => this.bag()],
+      ['egg', ru`Коконы`, () => this.cocoons(), eggs ? '!' : ''],
+      ['scroll', ru`Задания`, () => this.quests(), q ? '!' : ''],
+      ['swap', ru`Друзья`, () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
+      ['chat', ru`Чат`, () => Chat.screen(), Chat.badge()],
+      ['trophy', ru`Лига`, () => { if (S.d.level < 5) { this.toast(ru`Лига открывается с 5 уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],
+      ['shop', ru`Лавка`, () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
+      ['trail', ru`Тропа`, () => Pass.screen(), Pass.claimable() || ''],
+      ['rift', ru`Разломы`, () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
+      ['path', ru`Путь`, () => Path.screen()],
       // вторая страница
-      ['gavel', 'Аукцион', () => Auction.screen(), Auction.badge()],
-      ['orderbook', 'Книга Ордена', () => Book.screen()],
-      ['pin', 'Места', () => Propose.screen(), Propose.badge()],
-      ['user', 'Ловчий', () => this.profile()],
-      ['shield', 'Дружина', () => { if (S.d.level < CLAN_LEVEL) { this.toast(`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
-      ['journal', 'Дневник', () => J.screen()],
-      ['gear', 'Настройки', () => this.settings()],
+      ['gavel', ru`Аукцион`, () => Auction.screen(), Auction.badge()],
+      ['orderbook', ru`Книга Ордена`, () => Book.screen()],
+      ['pin', ru`Места`, () => Propose.screen(), Propose.badge()],
+      ['user', ru`Ловчий`, () => this.profile()],
+      ['shield', ru`Дружина`, () => { if (S.d.level < CLAN_LEVEL) { this.toast(ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
+      ['journal', ru`Дневник`, () => J.screen()],
+      ['gear', ru`Настройки`, () => this.settings()],
     ];
     Tut.ui('menu'); // 4.0: шаг обучения «открой меню»
     // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
@@ -598,7 +600,7 @@ const UI = {
       return `<button class="tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${lock ? '<i class="lock">🔒</i>' : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
     const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
       <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
-      ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="Страница ${i + 1}"></button>`).join('')}</div>` : ''}</div></div>`);
+      ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="${ru`Страница ${i + 1}`}"></button>`).join('')}</div>` : ''}</div></div>`);
     const close = () => { this.popLayer(close); sheet.classList.add('out'); setTimeout(() => sheet.remove(), 200); };
     const box = sheet.querySelector('.menu-pages'), dots = [...sheet.querySelectorAll('.menu-dots button')];
     const page = () => Math.round(box.scrollLeft / Math.max(1, box.clientWidth));
@@ -627,8 +629,8 @@ const UI = {
       hc.innerHTML = `<b class="ev-star">${icon}</b><span>${h.name}</span>`;
       hc.onclick = () => this.modal({
         title: h.name, cls: 'event-modal',
-        html: `<p>${h.desc}</p>${h.seasonal ? `<div class="chain">${h.seasonal.map(id => `<div>${Art.spirit(id)}</div>`).join('')}</div>` : ''}<p class="small">Праздник продлится до ${h.end.toLocaleDateString('ru-RU', { timeZone: 'UTC' })}.</p>`,
-        buttons: [{ label: 'Ура!', cls: 'primary' }],
+        html: `<p>${h.desc}</p>${h.seasonal ? `<div class="chain">${h.seasonal.map(id => `<div>${Art.spirit(id)}</div>`).join('')}</div>` : ''}<p class="small">${ru`Праздник продлится до ${h.end.toLocaleDateString(I18N.locale, { timeZone: 'UTC' })}.`}</p>`,
+        buttons: [{ label: ru`Ура!`, cls: 'primary' }],
       });
     }
   },
@@ -637,9 +639,9 @@ const UI = {
     const ev = Ev.cur, nx = Ev.next;
     this.modal({
       title: ev.name, cls: 'event-modal',
-      html: `<p>${ev.desc}</p><p class="small">До конца события: ${U.fmtTime(Ev.endsAt() - Date.now())}</p>
-        <div class="ev-next"><small>Следующая неделя</small><b>${nx.name}</b><small>${nx.desc}</small></div>`,
-      buttons: [{ label: 'Понятно', cls: 'primary' }],
+      html: `<p>${ev.desc}</p><p class="small">${ru`До конца события: ${U.fmtTime(Ev.endsAt() - Date.now())}`}</p>
+        <div class="ev-next"><small>${ru`Следующая неделя`}</small><b>${nx.name}</b><small>${nx.desc}</small></div>`,
+      buttons: [{ label: ru`Понятно`, cls: 'primary' }],
     });
   },
 
@@ -652,8 +654,8 @@ const UI = {
         <div class="spring-disc"><div class="runes"></div>${Poi.photoUrl(e.photo) ? `<div class="well photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="well">${Art.springIcon(!e.ready)}</div>`}</div>
         <div class="spring-hint"></div>
         <div class="spring-loot"></div>
-        <button class="btn primary wide spring-go">Зачерпнуть силу</button>
-        ${Rules.dayLine(S.d, 'springs', 'Родников')}
+        <button class="btn primary wide spring-go">${ru`Зачерпнуть силу`}</button>
+        ${Rules.dayLine(S.d, 'springs', ru`Родников`)}
       </div>`, 'spring-screen');
     const hint = scr.querySelector('.spring-hint'), go = scr.querySelector('.spring-go');
     const ready = () => U.now() - (S.d.springs[e.id] || 0) > W.SPRING_COOLDOWN;
@@ -661,10 +663,10 @@ const UI = {
       if (!scr.isConnected) return clearInterval(timer);
       if (scr._done) return;
       if (!ready()) {
-        hint.textContent = `Родник набирает силу: ${U.fmtTime((S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now())}`;
+        hint.textContent = ru`Родник набирает силу: ${U.fmtTime((S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now())}`;
         go.disabled = true; scr.querySelector('.spring-view').classList.add('used');
       } else {
-        hint.textContent = 'Смахни по кругу или нажми кнопку';
+        hint.textContent = ru`Смахни по кругу или нажми кнопку`;
         go.disabled = false; scr.querySelector('.spring-view').classList.remove('used');
       }
     };
@@ -681,12 +683,12 @@ const UI = {
       if (!scr.isConnected) return;
       if (!r) { scr._done = false; disc.classList.remove('spin'); update(); return; }
       const got = r.got;
-      const cocoonHtml = r.cocoon ? `<div class="loot-item" style="animation-delay:${got.length * 0.12}s">${Art.cocoon(r.cocoon.km)}<span>Кокон ${r.cocoon.km} км</span></div>` : '';
-      scr.querySelector('.spring-loot').innerHTML = got.filter(x => x.k !== 'xp').map((x, i) => `<div class="loot-item" style="animation-delay:${i * 0.12}s">${Art.item(x.k)}<span>${x.label} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `<div class="loot-xp">+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта${r.full ? ' · Сумка полна! Расширь её в Лавке Ордена' : ''}</div>` +
-        (r.task ? `<div class="loot-task">Новое поручение: <b>${r.task.text}</b><small>Награда — встреча с духом. Смотри «Меню → Задания».</small></div>` : '');
+      const cocoonHtml = r.cocoon ? `<div class="loot-item" style="animation-delay:${got.length * 0.12}s">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
+      scr.querySelector('.spring-loot').innerHTML = got.filter(x => x.k !== 'xp').map((x, i) => `<div class="loot-item" style="animation-delay:${i * 0.12}s">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
+        `<div class="loot-xp">${ru`+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта`}${r.full ? ` · ${ru`Сумка полна! Расширь её в Лавке Ордена`}` : ''}</div>` +
+        (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
       hint.textContent = '';
-      go.textContent = 'Готово';
+      go.textContent = ru`Готово`;
       go.disabled = false;
       go.onclick = () => this.closeScreen(scr);
       MapView.refresh();
@@ -704,15 +706,15 @@ const UI = {
     Sfx.init(); Sfx.play('tap');
     const list = MapView.nearby.slice(0, 9);
     const m = this.modal({
-      title: 'Духи рядом', cls: 'nearby-modal',
+      title: ru`Духи рядом`, cls: 'nearby-modal',
       html: list.length ? `<div class="nb-list">${list.map((e, i) => {
         const s = SP[e.sid], d = U.dist(MapView.pos.lat, MapView.pos.lng, e.lat, e.lng);
         const known = S.d.dex[s.id] && S.d.dex[s.id].caught;
         return `<button class="nb-item" data-i="${i}"><div class="nb-art ${S.d.dex[s.id] && S.d.dex[s.id].seen ? '' : 'unknown'}">${Art.img(e.sid)}</div><b>${S.d.dex[s.id] && S.d.dex[s.id].seen ? s.name : '???'}</b><small class="${d <= W.INTERACT ? 'near' : ''}">${U.fmtDist(d)}</small>${known ? '' : '<i class="new">new</i>'}</button>`;
-      }).join('')}</div><p class="small nb-hint">Коснись духа — Следопыт покажет к нему дорогу.</p>` : '<p>Поблизости тихо. Прогуляйся или зажги ладан.</p>',
+      }).join('')}</div><p class="small nb-hint">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,
       buttons: [
-        { label: 'К роднику', fn: () => this.trackNearest('spring') },
-        { label: 'К капищу', fn: () => this.trackNearest('shrine') },
+        { label: ru`К роднику`, fn: () => this.trackNearest('spring') },
+        { label: ru`К капищу`, fn: () => this.trackNearest('shrine') },
       ],
     });
     m.addEventListener('click', ev => {
@@ -723,9 +725,9 @@ const UI = {
   },
   trackNearest(type) {
     const e = MapView.nearest(type);
-    if (!e) { this.toast(type === 'spring' ? 'Рядом нет готовых родников' : 'Рядом нет свободных капищ'); return; }
+    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых родников` : ru`Рядом нет свободных капищ`); return; }
     MapView.track(e); MapView.flyTo(e);
-    this.toast(`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);
+    this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);
   },
 
   /* ---------------- УРОВЕНЬ ---------------- */
@@ -742,11 +744,11 @@ const UI = {
       if (Encounter.st || Raid.st || Duel.st) { this._lv.unshift(lv); this._lvOpen = false; return; }
       const got = lv.got || [];
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
-      const unlock = l === 8 ? '<p class="unlock">Открыт <b>Серебряный оберег</b>!</p>' : l === 16 ? '<p class="unlock">Открыт <b>Золотой оберег</b>!</p>' : l === 5 ? '<p class="unlock">Ты теперь <b>Ловчий</b>. Разломы ждут — и можно вступить в <b>дружину</b>: открой любое Капище!</p>' : '';
+      const unlock = l === 8 ? `<p class="unlock">${ru`Открыт <b>Серебряный оберег</b>!`}</p>` : l === 16 ? `<p class="unlock">${ru`Открыт <b>Золотой оберег</b>!`}</p>` : l === 5 ? `<p class="unlock">${ru`Ты теперь <b>Ловчий</b>. Разломы ждут — и можно вступить в <b>дружину</b>: открой любое Капище!`}</p>` : '';
       this.modal({
         cls: 'lvl-modal', title: '',
-        html: `<div class="lvl-num">${l}</div><div class="lvl-t">Новый уровень!</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${x.label} ×${x.n}</span></div>`).join('')}</div>`,
-        buttons: [{ label: 'Вперёд', cls: 'primary', fn: () => { this._lvOpen = false; this.flushLevelUps(); } }],
+        html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,
+        buttons: [{ label: ru`Вперёд`, cls: 'primary', fn: () => { this._lvOpen = false; this.flushLevelUps(); } }],
         dismiss: false,
       });
       this.refreshHud();
@@ -763,30 +765,30 @@ const UI = {
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
       // 4.5: без коробки — сцена во весь экран, «оберег» и стеклянная кнопка прямо на ней; 12+ — значок в углу
-      if (n === 0) html = `<span class="age-chip" title="Возрастная категория">12+</span>${Login.logo('Лови духов Нави на улицах своего города')}${Realms.banner()}
+      if (n === 0) html = `<span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Login.logo(ru`Лови духов Нави на улицах своего города`)}${Realms.banner()}
         <div class="lg-cta">
-          ${Invite.ref() ? '<div class="lg-invite">✦ Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок</div>' : ''}
-          ${this.rune('Начать игру', 'next')}
-          ${Game.on() ? this.glass('Уже играю — войти', 'lg-have', this.I.key) : ''}
-          <p class="lg-legal">Без регистрации. Продолжая, ты принимаешь <a href="terms.html">Соглашение</a>, <a href="privacy.html">Политику</a> и <a href="offer.html">Оферту</a></p>
+          ${Invite.ref() ? `<div class="lg-invite">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}
+          ${this.rune(ru`Начать игру`, 'next')}
+          ${Game.on() ? this.glass(ru`Уже играю — войти`, 'lg-have', this.I.key) : ''}
+          <p class="lg-legal">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href="terms.html">${ru`Соглашение`}</a>`}, ${`<a href="privacy.html">${ru`Политику`}</a>`} и ${`<a href="offer.html">${ru`Оферту`}</a>`}`}</p>
         </div>`;
-      if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div>${this.rune('Вступить в Орден', 'next')}`;
-      if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>Как тебя зовут, Ловчий?</h2><input class="input big" maxlength="16" placeholder="Имя" value="${U.esc(name)}"></div>${this.rune('Дальше', 'next')}`;
-      if (n === 3) html = `<div class="onb-q"><h2>Выбери первого духа</h2><p>Он будет с тобой с первого дня.</p></div>
+      if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div>${this.rune(ru`Вступить в Орден`, 'next')}`;
+      if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class="input big" maxlength="16" placeholder="${ru`Имя`}" value="${U.esc(name)}"></div>${this.rune(ru`Дальше`, 'next')}`;
+      if (n === 3) html = `<div class="onb-q"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>
         <div class="onb-starters">${['ugolek', 'kapelka', 'mshonok'].map(id => `<button class="starter el-${SP[id].el}" data-id="${id}">${Art.spirit(id)}<b>${SP[id].name}</b><span>${Art.elIcon(SP[id].el, 16)} ${ELEMENTS[SP[id].el].name}</span></button>`).join('')}</div>
-        <div class="onb-desc"></div>${this.rune('Выбрать', 'next').replace('<button ', '<button disabled ')}`;
-      if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>Духи живут рядом с тобой</h2>
-        <p>Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие (поэтому нужен интернет), в прогрессе есть дневник с местами поимок. Для проверки действий на карте сервер получает твоё местоположение. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.</p></div>
-        ${this.rune('Разрешить геопозицию', 'gps', this.I.pin)}${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
+        <div class="onb-desc"></div>${this.rune(ru`Выбрать`, 'next').replace('<button ', '<button disabled ')}`;
+      if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>${ru`Духи живут рядом с тобой`}</h2>
+        <p>${ru`Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие (поэтому нужен интернет), в прогрессе есть дневник с местами поимок. Для проверки действий на карте сервер получает твоё местоположение. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.`}</p></div>
+        ${this.rune(ru`Разрешить геопозицию`, 'gps', this.I.pin)}${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
       body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
       const nx = body.querySelector('.next');
       Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
       const have = body.querySelector('.lg-have');
-      if (have) have.onclick = () => Login.sheet(root, '<b>Уже играешь?</b><small>Войди — и твой прогресс откроется на этом устройстве</small>', Login.buttons('start'));
+      if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));
       if (n === 2) {
         const inp = root.querySelector('input');
         inp.focus();
-        nx.onclick = () => { name = inp.value.trim(); if (!name) { this.toast('Назови себя'); return; } Sfx.play('tap'); step(3); };
+        nx.onclick = () => { name = inp.value.trim(); if (!name) { this.toast(ru`Назови себя`); return; } Sfx.play('tap'); step(3); };
         inp.onkeydown = ev => { if (ev.key === 'Enter') nx.click(); };
       } else if (n === 3) {
         root.querySelectorAll('.starter').forEach(b => b.onclick = () => {

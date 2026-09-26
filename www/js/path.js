@@ -3,27 +3,27 @@
    Только показывает то, что уже есть в игре (уровни открытия берутся из тех же констант, что проверяет сервер). */
 
 const Path = {
-  RANKS: { 1: 'Послушник', 5: 'Ловчий', 10: 'Следопыт', 20: 'Ведун', 30: 'Хранитель' },
+  RANKS: { 1: ru`Послушник`, 5: ru`Ловчий`, 10: ru`Следопыт`, 20: ru`Ведун`, 30: ru`Хранитель` },
   // что открывается на уровне: [значок меню или предмет, название, пояснение]
   unlocks() {
     const U2 = {};
     const add = (l, ic, t, s) => (U2[l] = U2[l] || []).push({ ic, t, s });
-    add(1, 'spirits', 'Поимка духов', 'Обереги, мёд, родники и коконы');
-    add(1, 'scroll', 'Задания и Летопись', 'Задания дня и сюжет Ордена');
-    add(3, 'shield', 'Капища предков', 'Поединки 3 на 3 с хранителями');
-    add(Rules.CHAT.LEVEL, 'chat', 'Чат Ордена', 'Можно писать сообщения');
-    add(4, 'rift', 'Вторжения Нави', 'Освобождай захваченные родники');
-    add(League.LEVEL, 'trophy', 'Лига Ордена', 'Турниры, рейтинг и лиги');
-    add(CLAN_LEVEL, 'shield', 'Дружина', 'Сокол, Медведь или Волк — знамя над капищами');
-    add(Rules.AUCTION.LEVEL, 'gavel', 'Аукцион', 'Продажа и покупка духов');
-    add(Propose.MIN_LEVEL, 'pin', 'Места', 'Предлагай новые родники и капища');
-    add(ITEMS.charm2.unlock, 'item:charm2', 'Серебряный оберег', 'Шанс поимки ×1,5');
-    add(ITEMS.charm3.unlock, 'item:charm3', 'Золотой оберег', 'Шанс поимки ×2');
-    Object.entries(TASK_TIERS).forEach(([t, x]) => add(x.lvl, 'egg', `Поручения родников · ${'I'.repeat(+t)}`, 'Особые встречи и награды'));
-    LOOK.cloak.filter(c => c.lvl > 1 && !c.shop && !c.pass).forEach(c => add(c.lvl, 'look:' + c.c, `Плащ «${c.name}»`, 'Для облика Ловчего'));
-    LOOK.eyes.filter(c => c.lvl > 1).forEach(c => add(c.lvl, 'eyes:' + c.c, `Глаза «${c.name}»`, 'Для облика Ловчего'));
-    LOOK.emblem.filter(c => c.lvl > 1 && !c.league && !c.story && !c.pass).forEach(c => add(c.lvl, 'emb', `Знак «${c.name}»`, 'Для облика Ловчего'));
-    add(MAX_LEVEL, 'trophy', 'Вершина пути', 'Максимальный уровень Ловчего');
+    add(1, 'spirits', ru`Поимка духов`, ru`Обереги, мёд, родники и коконы`);
+    add(1, 'scroll', ru`Задания и Летопись`, ru`Задания дня и сюжет Ордена`);
+    add(3, 'shield', ru`Капища предков`, ru`Поединки 3 на 3 с хранителями`);
+    add(Rules.CHAT.LEVEL, 'chat', ru`Чат Ордена`, ru`Можно писать сообщения`);
+    add(4, 'rift', ru`Вторжения Нави`, ru`Освобождай захваченные родники`);
+    add(League.LEVEL, 'trophy', ru`Лига Ордена`, ru`Турниры, рейтинг и лиги`);
+    add(CLAN_LEVEL, 'shield', ru`Дружина`, ru`Сокол, Медведь или Волк — знамя над капищами`);
+    add(Rules.AUCTION.LEVEL, 'gavel', ru`Аукцион`, ru`Продажа и покупка духов`);
+    add(Propose.MIN_LEVEL, 'pin', ru`Места`, ru`Предлагай новые родники и капища`);
+    add(ITEMS.charm2.unlock, 'item:charm2', ru`Серебряный оберег`, ru`Шанс поимки ×1,5`);
+    add(ITEMS.charm3.unlock, 'item:charm3', ru`Золотой оберег`, ru`Шанс поимки ×2`);
+    Object.entries(TASK_TIERS).forEach(([t, x]) => add(x.lvl, 'egg', ru`Поручения родников · ${'I'.repeat(+t)}`, ru`Особые встречи и награды`));
+    LOOK.cloak.filter(c => c.lvl > 1 && !c.shop && !c.pass).forEach(c => add(c.lvl, 'look:' + c.c, ru`Плащ «${c.name}»`, ru`Для облика Ловчего`));
+    LOOK.eyes.filter(c => c.lvl > 1).forEach(c => add(c.lvl, 'eyes:' + c.c, ru`Глаза «${c.name}»`, ru`Для облика Ловчего`));
+    LOOK.emblem.filter(c => c.lvl > 1 && !c.league && !c.story && !c.pass).forEach(c => add(c.lvl, 'emb', ru`Знак «${c.name}»`, ru`Для облика Ловчего`));
+    add(MAX_LEVEL, 'trophy', ru`Вершина пути`, ru`Максимальный уровень Ловчего`);
     return U2;
   },
   ico(k) {
@@ -46,22 +46,22 @@ const Path = {
       const st = l < d.level ? 'done' : l === d.level ? 'cur' : 'next', rank = this.RANKS[l], list = un[l] || [];
       if (!rank && !list.length && l % 5 && l !== d.level) {
         // обычный уровень — короткая строка с наградой
-        rows.push(`<div class="pth-row mini ${st}"><span class="pth-node">${l}</span><div class="pth-card"><small>Награда</small><div class="pth-rws">${this.rw(l)}</div></div></div>`);
+        rows.push(`<div class="pth-row mini ${st}"><span class="pth-node">${l}</span><div class="pth-card"><small>${ru`Награда`}</small><div class="pth-rws">${this.rw(l)}</div></div></div>`);
         continue;
       }
       rows.push(`<div class="pth-row ${st}${rank ? ' rank' : ''}" ${st === 'cur' ? 'id="pthCur"' : ''}><span class="pth-node">${l}</span>
-        <div class="pth-card">${rank ? `<div class="pth-rank">Звание «${rank}»</div>` : ''}${st === 'cur' ? '<div class="pth-here">Ты здесь</div>' : ''}
+        <div class="pth-card">${rank ? `<div class="pth-rank">${ru`Звание «${rank}»`}</div>` : ''}${st === 'cur' ? `<div class="pth-here">${ru`Ты здесь`}</div>` : ''}
           ${list.map(x => `<div class="pth-un"><span class="pth-ic">${this.ico(x.ic)}</span><div><b>${x.t}</b><small>${x.s}</small></div></div>`).join('')}
           ${l > 1 ? `<div class="pth-rws">${this.rw(l)}</div>` : ''}</div></div>`);
     }
-    const scr = UI.screen('Путь Ловчего', `
+    const scr = UI.screen(ru`Путь Ловчего`, `
       <div class="pth-head" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
         <div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
-        <div class="pth-hmain"><b>${UI.rank(d.level)} · ${d.level} уровень</b>
+        <div class="pth-hmain"><b>${UI.rank(d.level)} · ${ru`${d.level} уровень`}</b>
           <div class="pbar"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
-          <small>${d.level >= MAX_LEVEL ? 'Ты прошёл весь путь!' : `До ${d.level + 1} уровня — ${U.fmtNum(next - d.xp)} опыта`}${nextUnlock ? ` · дальше: ${un[nextUnlock][0].t} на ${nextUnlock}` : ''}</small></div>
+          <small>${d.level >= MAX_LEVEL ? ru`Ты прошёл весь путь!` : ru`До ${d.level + 1} уровня — ${U.fmtNum(next - d.xp)} опыта`}${nextUnlock ? ` · ${ru`дальше: ${un[nextUnlock][0].t} на ${nextUnlock}`}` : ''}</small></div>
       </div>
-      <p class="pth-note">Опыт дают поимки, родники, разломы, капища, задания и Летопись. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.</p>
+      <p class="pth-note">${ru`Опыт дают поимки, родники, разломы, капища, задания и Летопись. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`}</p>
       <div class="pth-road">${rows.join('')}</div>`, 'pth-screen');
     setTimeout(() => { const c = scr.querySelector('#pthCur'); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
   },

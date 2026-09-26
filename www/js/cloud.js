@@ -16,7 +16,7 @@ const Cloud = {
     if (!window.supabase) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = this.LIB; s.integrity = this.LIB_SRI; s.crossOrigin = 'anonymous'; s.onload = res; s.onerror = () => rej(new Error('Не удалось загрузить облачную библиотеку'));
+        s.src = this.LIB; s.integrity = this.LIB_SRI; s.crossOrigin = 'anonymous'; s.onload = res; s.onerror = () => rej(new Error(ru`Не удалось загрузить облачную библиотеку`));
         document.head.appendChild(s);
       });
     }
@@ -37,7 +37,7 @@ const Cloud = {
     const key = await this.accessKey();
     const { error } = await sb.auth.signInAnonymously(key ? { options: { data: { access: key } } } : undefined);
     if (error && CLOUD_CONFIG.locked) this.forgetKey(); // неверный ключ — спросим снова
-    if (error) throw new Error('Облако: ' + error.message);
+    if (error) throw new Error(ru`Облако: ${error.message}`);
   },
   // Сохранённый вход больше не действует (например, пользователя удалили) — войти заново
   async relogin() {
@@ -59,9 +59,9 @@ const Cloud = {
     if (!this._asking) {
       this._asking = new Promise(res => {
         UI.modal({
-          title: 'Тестовый контур', dismiss: false, cls: 'key-modal',
-          html: '<p class="small">Это закрытый тестовый сервер. Введи ключ доступа — он сохранится только в этом браузере.</p><input class="input key-in" type="password" autocomplete="off" placeholder="Ключ доступа">',
-          buttons: [{ label: 'Войти', cls: 'primary', keep: true, fn: w => {
+          title: ru`Тестовый контур`, dismiss: false, cls: 'key-modal',
+          html: `<p class="small">${ru`Это закрытый тестовый сервер. Введи ключ доступа — он сохранится только в этом браузере.`}</p><input class="input key-in" type="password" autocomplete="off" placeholder="${ru`Ключ доступа`}">`,
+          buttons: [{ label: ru`Войти`, cls: 'primary', keep: true, fn: w => {
             const v = w.querySelector('.key-in').value.trim();
             if (!v) return;
             try { localStorage.setItem(this.KEY_STORE, v); } catch (e) {}
