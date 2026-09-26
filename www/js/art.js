@@ -538,10 +538,37 @@ const Art = (() => {
     }
     return '';
   }
+  // 4.14: кокон — шёлковый кокон из переплетённых нитей; сквозь шёлк светится дух (глаза), по поясу — руны,
+  // вокруг — искры. Цвет — по дальности (2 / 5 / 10 км), у 10 км — золотые нити
   function cocoon(km) {
-    const col = (COCOON_TIERS[km] || COCOON_TIERS[2]).color;
-    return `<svg class="art" viewBox="0 0 100 100"><ellipse cx="50" cy="92" rx="26" ry="5" fill="#000" opacity=".25"/><path d="M50 8 C74 8 84 40 82 60 C80 82 66 92 50 92 C34 92 20 82 18 60 C16 40 26 8 50 8Z" fill="${col}" stroke="${shade(col, -0.5)}" stroke-width="3"/>` +
-      `<path d="M24 40 Q50 50 78 38 M20 60 Q50 72 82 58 M26 80 Q50 88 74 80" stroke="${shade(col, -0.3)}" stroke-width="3" fill="none" opacity=".8"/><ellipse cx="38" cy="30" rx="6" ry="10" fill="#fff" opacity=".45" transform="rotate(20 38 30)"/></svg>`;
+    const col = (COCOON_TIERS[km] || COCOON_TIERS[2]).color, id = 'cc' + (++seq), gold = km >= 10;
+    const edge = shade(col, -0.55), mid = shade(col, -0.15), thr = gold ? '#fde68a' : shade(col, 0.55);
+    const body = 'M50 9 C70 9 83 30 83 55 C83 80 69 97 50 97 C31 97 17 80 17 55 C17 30 30 9 50 9Z';
+    const threads = [
+      'M20 36 C38 44 62 44 80 34', 'M17 52 C38 62 64 62 83 50', 'M19 70 C38 80 64 80 81 68', 'M27 86 C42 92 58 92 73 86',
+      'M30 17 C40 40 42 70 36 94', 'M70 17 C60 40 58 70 64 94', 'M50 9 C46 36 54 66 50 97',
+    ];
+    const star = (x, y, r) => `<path d="M${x} ${y - r} L${x + r * .28} ${y - r * .28} L${x + r} ${y} L${x + r * .28} ${y + r * .28} L${x} ${y + r} L${x - r * .28} ${y + r * .28} L${x - r} ${y} L${x - r * .28} ${y - r * .28}Z" fill="#fff"/>`;
+    return `<svg class="art" viewBox="0 0 100 106"><defs>
+      <radialGradient id="${id}b" cx=".36" cy=".3" r=".78"><stop offset="0" stop-color="${shade(col, 0.6)}"/><stop offset=".45" stop-color="${col}"/><stop offset="1" stop-color="${edge}"/></radialGradient>
+      <radialGradient id="${id}g" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".35" stop-color="${shade(col, 0.4)}" stop-opacity=".7"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${id}a" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${col}" stop-opacity=".55"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
+      <clipPath id="${id}c"><path d="${body}"/></clipPath></defs>
+      <ellipse cx="50" cy="56" rx="50" ry="50" fill="url(#${id}a)"/>
+      <ellipse cx="50" cy="100" rx="27" ry="5" fill="#000" opacity=".3"/>
+      <path d="${body}" fill="url(#${id}b)" stroke="${edge}" stroke-width="2.4"/>
+      <g clip-path="url(#${id}c)">
+        <ellipse cx="50" cy="58" rx="24" ry="28" fill="url(#${id}g)"/>
+        <g fill="#1b1030" opacity=".55"><ellipse cx="42" cy="56" rx="3.2" ry="4.2"/><ellipse cx="58" cy="56" rx="3.2" ry="4.2"/></g>
+        <g fill="#fff" opacity=".9"><circle cx="42.8" cy="54.6" r="1.2"/><circle cx="58.8" cy="54.6" r="1.2"/></g>
+        <g fill="none" stroke-linecap="round">${threads.map((d, i) => `<path d="${d}" stroke="${i < 4 ? thr : mid}" stroke-width="${i < 4 ? 2.4 : 1.6}" opacity="${i < 4 ? .75 : .55}"/>`).join('')}</g>
+        <path d="M19 74 C38 83 64 83 81 72" stroke="${gold ? '#f59e0b' : edge}" stroke-width="6" fill="none" opacity=".55"/>
+        <g stroke="${gold ? '#fffbeb' : '#fff'}" stroke-width="1.2" fill="none" opacity=".85" stroke-linecap="round">
+          <path d="M31 76 l2 3 2-3"/><path d="M44 79 v4 M42 81 h4"/><path d="M55 79 l3 3 M58 79 l-3 3"/><path d="M66 76 l2 3 2-3"/></g>
+      </g>
+      <path d="M36 18 C28 26 24 36 24 46" stroke="#fff" stroke-width="4.5" fill="none" stroke-linecap="round" opacity=".5"/>
+      <circle cx="31" cy="26" r="2.6" fill="#fff" opacity=".75"/>
+      <g opacity=".9">${star(86, 22, 5)}${star(12, 40, 3.4)}${star(88, 72, 3)}</g></svg>`;
   }
 
   /* ---------------- ИКОНКИ СТИХИЙ ---------------- */

@@ -32,30 +32,11 @@ const Updater = {
   },
 
   init() {
-    this.whatsNew();
     this.check();
     setTimeout(() => this.oldAppHint(), 20000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.check(); });
     // 4.7.3: обновление, вышедшее, пока игрок в игре, находится само — проверка раз в 5 минут, пока игра открыта
     setInterval(() => { if (!document.hidden) this.check(); }, 5 * 60000);
-  },
-
-  // Первый запуск после обновления: показать, что нового
-  SEEN: 'duholov.seenVersion',
-  whatsNew() {
-    let seen = null;
-    try { seen = localStorage.getItem(this.SEEN); localStorage.setItem(this.SEEN, APP_VERSION); } catch (e) { return; }
-    if (!seen && S.d && Date.now() - S.d.created > 60000) seen = '2.0.0'; // игроки 2.0.0 ещё не хранили версию
-    if (!seen || this.cmp(APP_VERSION, seen) <= 0) return;
-    fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null).then(v => {
-      const notes = v && v.version === APP_VERSION && Array.isArray(v.notes) ? v.notes : [];
-      UI.modal({
-        title: 'Игра обновлена', cls: 'update-modal',
-        html: `<div class="upd-ver">${U.esc(seen)} → <b>${U.esc(APP_VERSION)}</b></div>
-          ${notes.length ? `<ul class="upd-notes">${notes.map(n => `<li>${U.esc(n)}</li>`).join('')}</ul>` : ''}`,
-        buttons: [{ label: 'Отлично', cls: 'primary' }],
-      });
-    });
   },
 
   // 4.0.2: проверка на экране загрузки, ещё до входа в игру. Возвращает: null — всё свежее (или нет сети:
@@ -110,15 +91,12 @@ const Updater = {
   },
   TRIED: 'duholov.updTried',
 
+  // 4.14: о новой версии — только плашка «Доступно обновление» (что изменилось, игрокам не пишем)
   prompt(v) {
     this.shown = true;
-    UI.modal({
-      title: 'Доступно обновление', cls: 'update-modal', dismiss: false,
-      html: `<div class="upd-ver">${U.esc(APP_VERSION)} → <b>${U.esc(v.version)}</b></div>
-        ${Array.isArray(v.notes) && v.notes.length ? `<ul class="upd-notes">${v.notes.map(n => `<li>${U.esc(n)}</li>`).join('')}</ul>` : ''}
-        <p class="small">Прогресс сохранится. Обновление займёт несколько секунд.</p>`,
-      buttons: [{ label: 'Обновить', cls: 'primary', keep: true, fn: w => { w.querySelector('.btn.primary').textContent = 'Обновляю…'; this.apply(v.version); } }],
-    });
+    const bar = U.el(`<div class="upd-bar"><span>Доступно обновление</span><button class="btn primary small">Обновить</button></div>`);
+    bar.querySelector('button').onclick = e => { e.target.textContent = 'Обновляю…'; e.target.disabled = true; this.apply(v.version); };
+    document.body.appendChild(bar);
   },
 
   // 4.3.2: откуда приложение — с сайта (APK) или из магазина (store=rustore в User-Agent, см. MainActivity):
