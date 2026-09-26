@@ -3139,7 +3139,7 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
    Та же форма, но без золотых уголков и яркой каймы: тёмное стекло, тонкая приглушённая кайма, мягкая тень,
    золото — только в мелочах (уровень, шкала опыта, значки) */
 :root {
-  --hud-bg: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, 0) 50%), linear-gradient(180deg, rgba(30, 20, 62, .84), rgba(14, 9, 32, .86));
+  --hud-bg: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, 0) 50%), linear-gradient(180deg, rgba(24, 15, 52, .52), rgba(10, 6, 26, .58));
   --hud-sh: 0 4px 14px rgba(4, 2, 12, .38), inset 0 1px 0 rgba(255, 255, 255, .06);
 }
 #hud .profile, #hud .chip, #storyPill, #tracker, #hud .nearby, #hud .recenter { border-color: rgba(243, 207, 107, .24); }
@@ -3164,3 +3164,8 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 #hud .nearby span::before, #hud .nearby span::after { width: 4px; height: 4px; background: rgba(243, 207, 107, .6); box-shadow: none; }
 #hud .nearby .nb-arts div::before { background: radial-gradient(closest-side, rgba(253, 224, 71, .25), rgba(253, 224, 71, 0)); }
 .orb { filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .5)) drop-shadow(0 0 8px rgba(251, 191, 36, .16)); }
+/* полупрозрачные таблички: карта видна сквозь них, текст держит тень */
+#hud .profile, #hud .chip, #storyPill, #tracker, #hud .nearby, #hud .recenter { text-shadow: 0 1px 3px rgba(4, 2, 12, .9), 0 0 8px rgba(4, 2, 12, .6); }
+#hud .profile, #hud .chip, #storyPill, #tracker, #hud .nearby { border-color: rgba(243, 207, 107, .2); }
+#hud::before { background: linear-gradient(180deg, rgba(14, 7, 34, .24), rgba(14, 7, 34, .08) 55%, rgba(14, 7, 34, 0)); }
+#hud::after { background: linear-gradient(0deg, rgba(14, 7, 34, .22), rgba(14, 7, 34, .06) 55%, rgba(14, 7, 34, 0)); }
