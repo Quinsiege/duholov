@@ -13,6 +13,8 @@ const CORE = [
   './js/navmap.js?v=dev', './js/fog.js?v=dev', './js/map.js?v=dev', './js/encounter.js?v=dev', './js/raid.js?v=dev', './js/duel.js?v=dev', './js/rules.js?v=dev', './js/trade.js?v=dev', './js/tutorial.js?v=dev', './js/album.js?v=dev', './js/league.js?v=dev',
   './js/journal.js?v=dev', './js/friends.js?v=dev', './js/order.js?v=dev', './js/clans.js?v=dev', './js/hints.js?v=dev', './js/shop.js?v=dev', './js/auction.js?v=dev', './js/chat.js?v=dev', './js/coop.js?v=dev', './js/cloud.js?v=dev', './js/game.js?v=dev', './js/login.js?v=dev', './js/exif.js?v=dev', './js/osm.js?v=dev', './js/pois.js?v=dev', './js/propose.js?v=dev', './js/updater.js?v=dev', './js/ui.js?v=dev', './js/ui-spirits.js?v=dev', './js/ui-player.js?v=dev', './js/scene.js?v=dev', './js/realms.js?v=dev', './js/loader.js?v=dev', './js/path.js?v=dev', './js/book.js?v=dev', './js/trailer.js?v=dev', './js/main.js?v=dev',
   './icons/icon-192.png', './icons/icon-512.png',
+  // 4.15: значки лиг
+  './img/league/rank-01.webp', './img/league/rank-02.webp', './img/league/rank-03.webp', './img/league/rank-04.webp', './img/league/rank-05.webp', './img/league/rank-06.webp', './img/league/rank-07.webp', './img/league/rank-08.webp', './img/league/rank-09.webp', './img/league/rank-10.webp',
 ];
 const TILE_CACHE = 'duholov-tiles';
 const TILE_LIMIT = 1500;

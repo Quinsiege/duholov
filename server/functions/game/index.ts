@@ -1961,36 +1961,11 @@ const League = {
     return U.clamp(Math.floor(p), 0, this.MAXPTS);
   },
 
-  // 4.15: значок лиги — щит из своего металла и свой знак: росток, лук, копьё, топор, меч, булава, стяг, посох, гусли, корона
+  // 4.15: значок лиги — рисованный щит своего металла со своим знаком (img/league/rank-NN.webp, 340×400)
+  IMG: 'img/league/',
   badge(i) {
-    const M = [['#e7c29a', '#a8744a', '#5b3a1f'], ['#f6d2a8', '#c7803f', '#6e3b12'], ['#f6d2a8', '#c7803f', '#6e3b12'], ['#f8fafc', '#aab4c3', '#4b5568'], ['#f8fafc', '#aab4c3', '#4b5568'],
-      ['#fff4c2', '#f5b82e', '#8a4f05'], ['#fff4c2', '#f5b82e', '#8a4f05'], ['#d1fae5', '#34d399', '#065f46'], ['#d1fae5', '#34d399', '#065f46'], ['#f5e8ff', '#b77cf7', '#3b1580']][i] || ['#fff', '#aaa', '#333'];
-    const id = 'lgb' + (this._bn = (this._bn || 0) + 1);
-    const G = [
-      { f: 'M50 60c-11 0-17-8-17-17 11 0 17 7 17 17zM50 54c10 0 15-8 15-15-10 0-15 6-15 15z', l: 'M50 80V50' },
-      { f: 'M40 33c22 8 22 40 0 48l3-4c15-8 15-32-3-40z', l: 'M42 35v44M34 57h30M58 51l8 6-8 6' },
-      { f: 'M50 27l8 14-8 7-8-7z', l: 'M50 47v34M44 70h12' },
-      { f: 'M44 34c16-7 27 3 21 20-7-4-14-6-21-8z', l: 'M45 34l9 47' },
-      { f: 'M50 27l5 8v30h-10V35zM37 64h26v5H37zM47 69h6v9h-6zM50 84a4 4 0 1 0 0-.1z', l: '' },
-      { f: 'M50 33l4 5 6-1-1 6 5 4-5 4 1 6-6-1-4 5-4-5-6 1 1-6-5-4 5-4-1-6 6 1z', l: 'M50 56v25' },
-      { f: 'M42 32h25l-7 10 7 10H42z', l: 'M40 30v51' },
-      { f: 'M53 23c7 7 7 14 0 18-7-4-7-11 0-18z', l: 'M53 41v40M44 52l18 8M44 60l18-8' },
-      { f: 'M35 42l30-7 3 36-30 5z', t: 'M43 44l3 29M50 42l3 30M57 41l3 29M38 50l27-6' },
-      { f: 'M32 70l3-28 9 11 6-16 6 16 9-11 3 28zM32 73h36v5H32z', l: '' },
-    ][i] || { f: '', l: '' };
-    const laurel = i >= 6 ? `<g fill="none" stroke="${M[1]}" stroke-width="3" stroke-linecap="round" opacity=".95">
-      <path d="M14 34c-8 14-6 36 10 52M86 34c8 14 6 36-10 52"/>${[0, 1, 2, 3].map(k => `<path d="M${12 - k * 0} ${44 + k * 12}c-6-2-9-7-8-12M${88} ${44 + k * 12}c6-2 9-7 8-12"/>`).join('')}</g>` : '';
-    const crown = i === 9 ? `<path d="M36 12l4-9 6 6 4-8 4 8 6-6 4 9z" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="50" cy="3" r="2.2" fill="#fde68a"/>` : '';
-    return `<svg class="lg-badge-svg" viewBox="0 -6 100 116" aria-hidden="true"><defs>
-      <linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${M[0]}"/><stop offset=".55" stop-color="${M[1]}"/><stop offset="1" stop-color="${M[2]}"/></linearGradient>
-      <radialGradient id="${id}f" cx=".4" cy=".3" r=".9"><stop offset="0" stop-color="#3a2470"/><stop offset="1" stop-color="#120a2e"/></radialGradient></defs>
-      ${laurel}${crown}
-      <path d="M50 12L86 23v28c0 26-15 43-36 52C29 94 14 77 14 51V23z" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="2.2" stroke-linejoin="round"/>
-      <path d="M50 20l28 9v22c0 21-12 35-28 42-16-7-28-21-28-42V29z" fill="url(#${id}f)" stroke="${M[2]}" stroke-width="1.2" opacity=".96"/>
-      ${G.l ? `<path d="${G.l}" fill="none" stroke="${M[2]}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="${G.l}" fill="none" stroke="url(#${id}m)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
-      ${G.f ? `<path d="${G.f}" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="1.8" stroke-linejoin="round"/>` : ''}
-      ${G.t ? `<path d="${G.t}" fill="none" stroke="${M[2]}" stroke-width="1.8" stroke-linecap="round"/>` : ''}
-      <path d="M26 30c6-4 14-6 22-6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".35" fill="none"/></svg>`;
+    i = U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1);
+    return `<img class="lg-badge-pic" src="${this.IMG}rank-${String(i + 1).padStart(2, '0')}.webp" alt="" draggable="false" decoding="async">`;
   },
   // значок рейтинга — кубок
   cup() { return '<svg class="lg-cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3.5a5 5 0 0 1-10 0z" fill="#fcd34d" stroke="#92400e" stroke-width="1.2"/><path d="M7 5.5H4.5a3 3 0 0 0 3 4M17 5.5h2.5a3 3 0 0 1-3 4" fill="none" stroke="#fcd34d" stroke-width="1.6"/><path d="M12 12.5v3.5M8.5 20h7l-.8-3.5H9.3z" fill="#f59e0b" stroke="#92400e" stroke-width="1.1"/></svg>'; },
@@ -2045,7 +2020,7 @@ const League = {
           <div class="det-art lg2-crest">${this.badge(r)}</div>
           <div class="dt-info">
             <div class="det-hp">Сезон · ${this.seasonName()} · ⏳ <b class="lgx-ends"></b></div>
-            <div class="lg2-rank">${LEAGUE_RANKS[r].name}</div>
+            <div class="lg2-rank${LEAGUE_RANKS[r].name.length > 10 ? ' long' : ''}">${LEAGUE_RANKS[r].name}</div>
             <div class="det-power"><small>РЕЙТИНГ</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
             <div class="det-lvl"><span>${next ? `до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : 'высшая лига!'}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
             <div class="lgx-place">${Cloud.enabled() ? 'Ищу тебя в таблице…' : ''}</div>
