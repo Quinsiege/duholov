@@ -3808,3 +3808,28 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .calm .lg2-crest .lg-badge-svg { animation: none; }
 .lg2 .lg-go { background-color: #b9761a; }
 .lg2 .lg-go:disabled, .lg2 .lg-go.disabled { background-color: #241645; }
+
+/* ================= 4.15: Лавка — в композиции карточки духа ================= */
+.shop2 .shop2-art { display: grid; place-items: center; }
+.shop2 .shop2-ico { width: 62%; height: 62%; display: grid; place-items: center; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .45)) drop-shadow(0 0 14px rgba(251, 191, 36, .35)); animation: pcHex 3.6s ease-in-out infinite; }
+.shop2 .shop2-ico .mi, .shop2 .shop2-ico svg, .shop2 .shop2-ico img { width: 100%; height: 100%; }
+.shop2 .det-power b { display: inline-flex; align-items: center; gap: 6px; }
+.shop2 .det-power b .cur .art { width: 28px; height: 28px; display: block; }
+.shop2 .det-lvl b { color: #fff; }
+.shop2 .shop2-hot { color: #fde68a; }
+.shop2 .dt-panel { display: flex; flex-direction: column; }
+.shop2 .shop-row, .shop2 .shop-deal, .shop2 .shop-ex, .shop2 .shop-wd { background: none; border: 0; box-shadow: none; border-radius: 0; margin: 0; }
+.shop2 .shop-row { padding: 8px 2px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+.shop2 .shop-deal { padding: 14px 0 0; border-bottom: 1px solid rgba(253, 224, 71, .25); }
+.shop2 .shop-deal .shop-row { border-bottom: 0; }
+.shop2 .shop-deal .shop-tag { left: 2px; top: 0; }
+.shop2 .shop-ex { padding: 4px 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.shop2 .shop-wd { padding: 6px 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.shop2 .pf-mh { margin: 12px 2px 2px; }
+.shop2 [data-pane=pay] .prof-h { display: none; }
+.shop2 [data-pane=pay] .pay-packs { margin-top: 10px; }
+.shop2 .shop-cloaks { margin-top: 6px; }
+.shop2 .q-note { margin-top: 10px; }
+.calm .shop2 .shop2-ico { animation: none; }
+.shop2 .dt-panel { text-align: left; }
+.shop2 .pay-pack, .shop2 .shop-cloak { text-align: center; }
