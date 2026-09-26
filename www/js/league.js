@@ -21,7 +21,7 @@ const LEAGUE_RANKS = [
 ];
 
 const League = {
-  TICKETS: 3,
+  TICKETS: 10, // 4.15: турниров в день
   WIN: 30, LOSS: 30, // рейтинг за победу и за поражение
   SOFT: 1000,        // в новом сезоне рейтинг сверх этого срезается наполовину
   MAXPTS: 20000,
@@ -39,6 +39,7 @@ const League = {
     L = L || { season: this.season(), pts: 0, best: 0, tickets: this.TICKETS, day: U.today(), got: {}, run: null };
     if (L.pts == null) {
       L.pts = U.clamp(Math.floor((+L.stars || 0) * 100), 0, this.MAXPTS); delete L.stars;
+      L.tickets = Math.max(+L.tickets || 0, this.TICKETS); // 4.15: жетонов стало 10 в день — сразу, а не с завтрашнего дня
       if (L.run && L.run.pts0 == null) { L.run.pts0 = U.clamp(Math.floor((+L.run.stars0 || 0) * 100), 0, this.MAXPTS); delete L.run.stars0; }
     }
     if (L.season !== this.season()) { L.season = this.season(); L.pts = this.reset(L.pts); L.got = {}; L.run = null; }
@@ -152,26 +153,19 @@ const League = {
     const body = scr.querySelector('.screen-body'), pane = scr.querySelector('.lgx-pane');
     let data = null, moves = {}, prevPos = null, loading = false;
 
-    const tickets = () => `
-      <div class="lgx-card lgx-tix">
-        <div class="lgx-tokens">${Array.from({ length: this.TICKETS }, (_, i) => `<span class="${i < L.tickets ? 'on' : ''}"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.8z"/></svg></span>`).join('')}</div>
-        <div class="row-main"><b>Жетоны турнира: ${L.tickets} из ${this.TICKETS}</b><small>${L.tickets < this.TICKETS ? `Новые через <span class="lgx-mid"></span>` : 'Один жетон — один турнир'}</small></div>
-      </div>`;
+    // 4.15: вкладка «Турнир» — главное состав команды и жетоны: жетоны — одной строкой с делениями, команда — крупно, правила — одной строкой
     const renderPlay = () => {
       const team = S.team(), locked = S.d.level < this.LEVEL, power = team.reduce((a, x) => a + S.power(x), 0);
-      const slots = UI.teamHtml(team).replace('<i>Нет духов</i>', '') + '<button class="mini lgx-slot team-slot" aria-label="Выбрать духа">+</button>'.repeat(Math.max(0, 3 - team.length));
+      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}</em></button>`;
+      const cards = team.map(mem).join('') + '<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>выбрать духа</em></button>'.repeat(Math.max(0, 3 - team.length));
       const btn = locked ? `Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? 'Нужно три духа' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра';
       pane.innerHTML = `
         ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
-        ${tickets()}
-        <div class="lgx-card lgx-path">
-          <div class="lgx-steps">
-            ${[1, 2, 3].map(k => `<div class="lgx-step"><span>${k}</span><small>+${this.WIN}</small></div>${k < 3 ? '<i></i>' : ''}`).join('')}
-          </div>
-          <small class="lgx-rules">Три боя подряд с Ловчими Лиги. Победа — +${this.WIN} рейтинга, поражение — −${this.LOSS} и конец турнира. Раны духов между боями не лечатся, щиты восстанавливаются.</small>
-        </div>
-        <div class="lgx-team-head"><b>Команда на турнир</b>${power ? `<span>сила ${U.fmtNum(power)}</span>` : ''}<button class="btn small ghost team-edit">Изменить</button></div>
-        <div class="rift-team my lgx-team">${slots}</div>
+        <div class="lg2-tix"><span>Жетоны</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
+        <div class="lg2-tix-s">${L.tickets < this.TICKETS ? 'новые жетоны через <span class="lgx-mid"></span>' : 'один жетон — один турнир'}</div>
+        <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}</div>
+        <div class="lg2-team">${cards}</div>
+        <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · раны между боями не лечатся</div>
         ${next ? `<div class="lgx-card lgx-goal"><span class="lg-badge sm">${this.badge(r + 1)}</span><div class="row-main"><small>Следующая лига · ещё ${U.fmtNum(next.pts - L.pts)} рейтинга</small><b>${next.name}: ${this.rwLine(r + 1)}</b></div></div>` : ''}
         <button class="btn primary wide lg-go" ${!locked && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };

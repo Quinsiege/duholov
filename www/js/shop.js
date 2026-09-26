@@ -155,7 +155,7 @@ const Shop = {
         <div class="seg dt-tabs">${[['goods', 'Товары'], ['pay', 'Казна'], ['ex', 'Обмен'], ['look', 'Облик']].map(([k, t]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${t}${k === 'goods' && !dealBought ? '<i class="dt-dot"></i>' : ''}</button>`).join('')}</div>
         <div class="dt-panel">
           ${pane('goods', `
-            <div class="shop-deal ${dealBought ? 'off' : ''}"><div class="shop-tag">Товар дня · −40%</div>${row(deal, 'deal', dealBought ? ' · куплен, завтра будет новый' : '')}</div>
+            <div class="shop-deal ${dealBought ? 'off' : ''}">${row({ ...deal, name: `${deal.name} <i class="shop2-chip">−40% · товар дня</i>` }, 'deal', dealBought ? ' · куплен, завтра будет новый' : '')}</div>
             <div class="pf-mh"><span>Сумка</span><b>${S.bagCount()} / ${S.bagLimit()}</b></div>
             ${row(bag, 'bag', ` · расширено ${S.d.bagExtra} из ${Rules.BAG_MAX_UP}`)}
             <div class="pf-mh"><span>Припасы</span></div>

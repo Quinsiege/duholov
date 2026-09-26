@@ -229,7 +229,7 @@ const Friends = {
         <div class="det-hp">${UI.rank(p.lvl)} Ордена Оберега</div>
         <div class="det-power"><small>УРОВЕНЬ</small><b>${p.lvl}</b></div>
         <div class="det-lvl pcard-lg"><span><span class="lg-badge xs">${League.badge(lg.rank)}</span> Лига: <b>${rk.name}</b> · ${League.cup()}${U.fmtNum(lg.pts != null ? lg.pts : (lg.stars | 0) * 100)}</span></div>
-        <div class="det-tags">${cl ? `<span style="color:${cl.color}">⛊ ${cl.short}</span>` : ''}<span class="pcard-seen s-${p.seen}">${p.me ? 'это ты' : seen}</span></div>`)}
+        <div class="det-tags">${cl ? `<span class="tag-crest" style="color:${cl.color}"><i>${Art.clanCrest(p.clan)}</i>${cl.short}</span>` : ''}<span class="pcard-seen s-${p.seen}">${p.me ? 'это ты' : seen}</span></div>`)}
       <div class="pf-acts pcard-acts">${actsHtml()}</div>
       <div class="seg dt-tabs">${[['ach', 'Достижения'], ['spirits', 'Духи'], ['friend', p.me ? 'Это ты' : 'Дружба']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
       <div class="dt-panel">

@@ -3833,3 +3833,40 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .calm .shop2 .shop2-ico { animation: none; }
 .shop2 .dt-panel { text-align: left; }
 .shop2 .pay-pack, .shop2 .shop-cloak { text-align: center; }
+
+/* 4.15: Лавка — товары без линий: строки с воздухом, разделы — мелкими подписями; товар дня — золотая метка у названия и лёгкое свечение */
+.shop2 .shop-row { border-bottom: 0; padding: 7px 2px; gap: 12px; }
+.shop2 .shop-deal { padding: 4px 0; border-bottom: 0; border-radius: 16px; background: radial-gradient(70% 120% at 8% 50%, rgba(253, 224, 71, .14), transparent 70%); }
+.shop2 .shop-deal.off { background: none; }
+.shop2-chip { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-family: 'Rubik', system-ui, sans-serif; font-style: normal; font-weight: 700; font-size: 10.5px; vertical-align: 2px; color: #2a1203; background: linear-gradient(180deg, #fef3c7, #fbbf24); }
+.shop2 .pf-mh { margin: 16px 2px 4px; font-family: var(--f-head); font-weight: 700; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; }
+.shop2 .pf-mh span { color: rgba(255, 255, 255, .5); }
+.shop2 .pf-mh b { font-family: 'Rubik', system-ui, sans-serif; font-size: 12px; letter-spacing: 0; color: rgba(255, 255, 255, .7); }
+.shop2 .shop-ex, .shop2 .shop-wd { border-bottom: 0; }
+.shop2 .row-main b { font-family: var(--f-head); font-size: 15px; }
+.shop2 .row-main small { line-height: 1.3; }
+
+/* 4.15: Лига, «Турнир» — жетоны одной строкой, команда крупно, правила одной строкой */
+.lg2-tix { display: flex; align-items: center; gap: 10px; padding: 2px 2px 0; }
+.lg2-tix > span { font-family: var(--f-head); font-weight: 700; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .5); }
+.lg2-pips { flex: 1; display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.lg2-pips i { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .12); }
+.lg2-pips i.on { background: linear-gradient(180deg, #fde68a, #f59e0b); box-shadow: 0 0 6px rgba(251, 191, 36, .45); }
+.lg2-tix b { font-family: var(--f-head); font-size: 15px; color: #fde68a; }
+.lg2-tix-s { margin: -4px 2px 0; font-size: 11.5px; color: rgba(255, 255, 255, .55); text-align: left; }
+.lg2-th { margin: 6px 2px 0; }
+.lg2-th span { font-family: var(--f-head); font-weight: 700; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .5); }
+.lg2-team { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.lg2-mem { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 4px 2px 8px; border-radius: 16px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.lg2-mem .pcs-a { width: 86px; height: 86px; }
+.lg2-mem b { max-width: 100%; font-family: var(--f-head); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg2-mem em { font-style: normal; font-size: 11px; color: rgba(255, 255, 255, .6); }
+.lg2-mem:active { background: rgba(255, 255, 255, .06); }
+.lg2-mem.empty { justify-content: center; min-height: 128px; border: 1.5px dashed rgba(255, 255, 255, .18); }
+.lg2-plus { font-size: 30px; line-height: 1; color: rgba(255, 255, 255, .45); }
+.lg2-rule { font-size: 11.5px; line-height: 1.4; color: rgba(255, 255, 255, .55); text-align: center; }
+.lg2 .lgx-goal { border-bottom: 0; }
+/* герб дружины в метках карточек — настоящий, размером с метку */
+.tag-crest { display: inline-flex; align-items: center; gap: 5px; }
+.tag-crest > i { display: inline-block; width: 18px; height: 20px; flex: none; }
+.tag-crest > i svg, .tag-crest > i .art { width: 100%; height: 100%; display: block; }
