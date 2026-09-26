@@ -3557,3 +3557,61 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .det2 .buddy-panel { padding: 2px; }
 .det2 .det-tags { gap: 12px; }
 .det2 .det-tags span { padding: 0; font-size: 12.5px; }
+
+/* вкладки карточки — ровный список «подпись слева — значение справа» с тонкими разделителями */
+.dt-rows { display: flex; flex-direction: column; }
+.dt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; padding: 6px 2px; text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, .07); font-size: 13.5px; }
+.dt-row:last-child { border-bottom: 0; }
+.dt-row > span { color: rgba(255, 255, 255, .6); }
+.dt-row > b { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-head); font-weight: 700; font-size: 15px; color: #fff; text-align: right; white-space: nowrap; }
+.dt-row > b .art { width: 16px; height: 16px; }
+.dt-row.gold > b { color: #fde68a; }
+.dt-row .dt-up { font-style: normal; color: #fde68a; }
+.dt-row em { font-style: normal; font-size: 13px; color: #86efac; }
+.dt-evo-row { flex-wrap: wrap; row-gap: 4px; }
+.dt-evo-row .dt-evo-a { width: 26px; height: 26px; display: inline-block; }
+.dt-evo-row .dt-evo-a img, .dt-evo-row .dt-evo-a .art { width: 100%; height: 100%; }
+.dt-evo-bar { flex-basis: 100%; display: flex; align-items: center; gap: 10px; }
+.dt-evo-bar .pbar { flex: 1; height: 5px; margin: 0; }
+.dt-evo-bar .pbar i { background: linear-gradient(90deg, #2dd4bf, #5eead4); }
+.dt-evo-bar small { font-size: 11.5px; color: rgba(255, 255, 255, .6); white-space: nowrap; }
+.det2 .dt-row.dt-dark { padding: 6px 2px; }
+.dt-row.dt-dark > span { display: flex; flex-direction: column; }
+.dt-row.dt-dark > span b { color: #f0abfc; font-family: var(--f-head); font-size: 14.5px; }
+.dt-row.dt-dark > span small { font-size: 11.5px; color: #e9d5ff; }
+.det2 .det-why { margin: 0; text-align: center; font-size: 12px; color: rgba(255, 255, 255, .6); }
+/* Бой: оценка и показатели — одной сеткой; приёмы — строками; кнопка обучения — внизу */
+.dt-appr .dt-stars { font-style: normal; color: #fde68a; letter-spacing: 2px; margin-right: 4px; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.dt-rows .stat { display: grid; grid-template-columns: 92px 1fr 44px; align-items: center; gap: 12px; min-height: 32px; margin: 0; padding: 4px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07); font-size: 13.5px; }
+.dt-rows .stat span { width: auto; text-align: left; color: rgba(255, 255, 255, .6); }
+.dt-rows .stat em { width: auto; text-align: right; font-family: var(--f-head); font-weight: 700; font-size: 14px; color: #fff; }
+.dt-rows .stat .sbar { height: 6px; }
+.det2 .act-move2 { margin-top: auto; }
+/* Амулет: круг — ровный круг */
+.det2 .dt-am { align-items: center; }
+.det2 .dt-am .am-ico { width: 64px; height: 64px; min-width: 64px; min-height: 64px; max-height: 64px; flex: 0 0 64px; aspect-ratio: 1; align-self: center; border-radius: 50%; }
+/* О духе: описание, сведения строками, кнопки — в ряд внизу */
+.det2 [data-pane=about] .det-desc { -webkit-line-clamp: 4; margin: 0 0 2px; }
+.dt-about-acts { margin-top: auto; display: flex; gap: 10px; }
+.dt-about-acts .btn { flex: 1; min-height: 48px; flex-direction: column; gap: 0; font-size: 14px; }
+.dt-about-acts .btn small { font-size: 11px; opacity: .8; }
+/* уровень — отдельным блоком под силой: своя подпись над полосой, отступ от силы */
+.det2 .det-lvl { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 2px; padding-top: 9px; border-top: 1px solid rgba(255, 255, 255, .08); font-size: 12px; color: rgba(255, 255, 255, .6); }
+.det2 .det-lvl b { color: #fff; font-family: var(--f-head); font-size: 13px; }
+.det2 .det-lvl .arc { margin: 0; height: 5px; }
+.det2 .det-power { margin: 2px 0 0; }
+/* круг за духом — целиком внутри своей клетки, сверху не обрезается */
+.dt-hero { padding-top: 10px; }
+.det2 .det-art::after { height: 98%; }
+.det2 .act-move2 { margin-top: 10px; }
+/* «Рост»: сведения сверху, кнопки — компактные, внизу вкладки; пояснение «предел» — прямо над ними */
+.dt-pane[data-pane=grow] .det-why { margin-top: auto; }
+.dt-pane[data-pane=grow] .det-actions.top { margin-top: 8px; }
+.dt-pane[data-pane=grow] .dt-rows + .det-actions.top { margin-top: auto; }
+.dt-pane[data-pane=grow] .det-actions .btn { min-height: 50px; font-size: 15px; padding-top: 6px; padding-bottom: 6px; }
+.dt-pane[data-pane=grow] .det-actions .btn small { font-size: 11px; }
+/* пустой слот амулета — ровный круг (класс empty совпадал с «пустым состоянием» экрана и получал его отступы) */
+.det2 .dt-am .am-ico.empty { padding: 0; display: block; }
+.dt-about-acts .btn { height: 52px; min-height: 52px; }
