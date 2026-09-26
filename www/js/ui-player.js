@@ -325,8 +325,10 @@ Object.assign(UI, {
       const p = pending();
       if (p) {
         const [k, x] = p;
-        $('.wd-foot').innerHTML = this.rune(`Купить: ${KIND[k].toLowerCase()} за <span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`, 'wd-buy') + `<p class="wd-wallet">У тебя <span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(S.d.zlat || 0)}</p>`;
-      } else $('.wd-foot').innerHTML = this.rune(saved() ? 'Облик надет' : 'Надеть облик', 'wd-save' + (saved() ? ' wd-done' : ''));
+        // 4.14.1: кнопки Гардероба — как в карточке духа: компактные, внизу; не хватает златников — выглядит недоступной
+        const zl = S.d.zlat || 0, poor = zl < x.shop;
+        $('.wd-foot').innerHTML = `<button class="btn primary wd-bb wd-buy ${poor ? 'disabled' : ''}">Купить ${KIND[k].toLowerCase()}<small><span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)} · у тебя ${U.fmtNum(zl)}${poor ? ' — не хватает' : ''}</small></button>`;
+      } else $('.wd-foot').innerHTML = saved() ? '<button class="btn ghost wd-bb wd-save wd-done">✓ Облик надет</button>' : '<button class="btn primary wd-bb wd-save">Надеть облик</button>';
     };
     const render = () => { hero(); body(); foot(); };
     scr.addEventListener('click', async e => {

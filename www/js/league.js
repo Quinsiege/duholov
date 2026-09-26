@@ -81,17 +81,23 @@ const League = {
     let L = this.view(), r = this.rank(L.stars);
     const next = LEAGUE_RANKS[r + 1], base = LEAGUE_RANKS[r].stars;
     const pips = next ? Array.from({ length: next.stars - base }, (_, i) => `<i class="${i < L.stars - base ? 'on' : ''}"></i>`).join('') : '';
+    // 4.14.1: Лига — в композиции карточки духа: сверху (≤30%) знак ранга в волшебном круге, справа сезон, ранг, «ЗВЁЗДЫ ··· N»,
+    // путь до следующего ранга отдельным блоком и место в таблице; ниже вкладки, содержимое вкладки листается внутри панели
     const scr = UI.screen('Лига Ордена', `
-      <section class="lgx-hero r${r}">
-        <div class="lgx-top"><span class="lgx-chip">Сезон · ${this.seasonName()}</span><span class="lgx-chip" title="До конца сезона">⏳ <b class="lgx-ends"></b></span></div>
-        <div class="lgx-crest"><div class="lgx-hex r${r}"><span>${r + 1}</span></div></div>
-        <div class="lgx-rank">${LEAGUE_RANKS[r].name}</div>
-        <div class="lgx-place">${Cloud.enabled() ? 'Ищу тебя в таблице…' : ''}</div>
-        ${next ? `<div class="lgx-pips">${pips}</div><small class="lgx-next">★ ${L.stars} · до ранга «${next.name}» ещё ${next.stars - L.stars} ★</small>`
-          : `<small class="lgx-next">★ ${L.stars} · высший ранг Лиги!</small>`}
-      </section>
-      <div class="seg lgx-tabs"><button data-tab="play">Турнир</button><button data-tab="table">Таблица</button><button data-tab="ranks">Ранги</button></div>
-      <div class="lgx-pane"></div>`, 'league-screen');
+      <div class="det det2 lg2 r${r}">
+        <div class="dt-hero">
+          <div class="det-art lg2-crest"><div class="lgx-hex r${r}"><span>${r + 1}</span></div></div>
+          <div class="dt-info">
+            <div class="det-hp">Сезон · ${this.seasonName()} · ⏳ <b class="lgx-ends"></b></div>
+            <div class="lg2-rank">${LEAGUE_RANKS[r].name}</div>
+            <div class="det-power"><small>ЗВЁЗДЫ</small><b>★ ${L.stars}</b></div>
+            <div class="det-lvl"><span>${next ? `до «${next.name}» ещё <b>${next.stars - L.stars}</b> ★` : 'высший ранг Лиги!'}</span>${next ? `<div class="lgx-pips">${pips}</div>` : ''}</div>
+            <div class="lgx-place">${Cloud.enabled() ? 'Ищу тебя в таблице…' : ''}</div>
+          </div>
+        </div>
+        <div class="seg dt-tabs lgx-tabs"><button data-tab="play">Турнир</button><button data-tab="table">Таблица</button><button data-tab="ranks">Ранги</button></div>
+        <div class="dt-panel"><div class="lgx-pane"></div></div>
+      </div>`, 'league-screen det-screen');
     const body = scr.querySelector('.screen-body'), pane = scr.querySelector('.lgx-pane');
     let data = null, moves = {}, prevPos = null, loading = false;
 
