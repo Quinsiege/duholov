@@ -3169,3 +3169,39 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 #hud .profile, #hud .chip, #storyPill, #tracker, #hud .nearby { border-color: rgba(243, 207, 107, .2); }
 #hud::before { background: linear-gradient(180deg, rgba(14, 7, 34, .24), rgba(14, 7, 34, .08) 55%, rgba(14, 7, 34, 0)); }
 #hud::after { background: linear-gradient(0deg, rgba(14, 7, 34, .22), rgba(14, 7, 34, .06) 55%, rgba(14, 7, 34, 0)); }
+
+/* ================= 4.14.1: «жидкое стекло» — таблички на карте как капли стекла =================
+   Прозрачное стекло: карта под ним размыта и насыщеннее, по краю — светлый блик (ярче сверху-слева и снизу-справа),
+   сверху — мягкий отсвет. Формы — капсулы. В «Экономии батареи» размытие выключено (оно пересчитывается при движении карты) */
+:root {
+  --lg-bg: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05) 55%, rgba(255, 255, 255, .08)), rgba(22, 14, 48, .22);
+  --lg-sh: 0 8px 22px rgba(4, 2, 14, .32), 0 1px 2px rgba(4, 2, 14, .3), inset 0 1px 1px rgba(255, 255, 255, .35), inset 0 -1px 1px rgba(255, 255, 255, .1);
+  --lg-rim: linear-gradient(135deg, rgba(255, 255, 255, .75), rgba(255, 255, 255, .12) 32%, rgba(255, 255, 255, .04) 55%, rgba(255, 255, 255, .14) 78%, rgba(255, 255, 255, .55));
+}
+#hud .profile, #hud .chip, #storyPill, #tracker, #hud .nearby, #hud .recenter {
+  border: 0; background: var(--lg-bg); box-shadow: var(--lg-sh); color: #fff;
+  -webkit-backdrop-filter: blur(12px) saturate(1.7) brightness(1.08); backdrop-filter: blur(12px) saturate(1.7) brightness(1.08);
+  text-shadow: 0 1px 2px rgba(4, 2, 14, .55); }
+/* блик по краю стекла */
+#hud .profile::after, #hud .chip::after, #storyPill::after, #tracker::after, #hud .nearby::after, #hud .recenter::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; background: var(--lg-rim);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+#hud .chip, #hud .recenter { border-radius: 999px; }
+#hud .profile, #storyPill, #tracker { border-radius: 22px; }
+#hud .nearby { border-radius: 20px; }
+#hud .chip.event, #hud .chip.hol { border: 0; background: var(--lg-bg); background-clip: border-box; box-shadow: var(--lg-sh); }
+#hud .chip.event::after { background: linear-gradient(135deg, rgba(253, 230, 138, .95), rgba(253, 230, 138, .15) 35%, rgba(253, 230, 138, .05) 60%, rgba(253, 230, 138, .7)); }
+#hud .chip.hol::after { background: linear-gradient(135deg, rgba(153, 246, 228, .95), rgba(153, 246, 228, .15) 35%, rgba(153, 246, 228, .05) 60%, rgba(153, 246, 228, .7)); }
+#storyPill.ready, #tracker.near { box-shadow: var(--lg-sh), 0 0 14px rgba(251, 191, 36, .35); }
+#hud .avatar { border-radius: 50%; padding: 1.5px; background: linear-gradient(135deg, rgba(255, 255, 255, .85), rgba(255, 255, 255, .2)); }
+#hud .avatar .ava-art { border-radius: 50%; }
+#hudName { color: #fff; }
+#hud .chip > :first-child:not(span) { color: #fff; }
+#hud .chip span, #hud .nearby span, #storyPill .sp-s, #tracker .tr-main b { color: #fff; }
+#storyPill .sp-t, #tracker .tr-main small, #tracker .tr-x { color: rgba(255, 255, 255, .72); }
+#hud .xpbar { background: rgba(255, 255, 255, .18); box-shadow: inset 0 1px 1px rgba(0, 0, 0, .25); }
+#hud .nearby span::before, #hud .nearby span::after { background: rgba(255, 255, 255, .6); }
+#hud .recenter::before { border-color: rgba(255, 255, 255, .3); }
+#hud::before, #hud::after { opacity: .6; }
+.eco #hud .profile, .eco #hud .chip, .eco #storyPill, .eco #tracker, .eco #hud .nearby, .eco #hud .recenter {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03)), rgba(22, 14, 48, .6); }
