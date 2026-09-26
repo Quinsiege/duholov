@@ -61,13 +61,13 @@ const Rules = {
   // победа в Разломе, на Капище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
   // 10–20 родников в день), а бесконечный фарм и боты упираются в потолок
   DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
-  DAILY_NAMES: { springs: 'Родники', raids: 'Разломы', duels: 'Капища', invasions: 'Вторжения', catches: 'Поимки' },
+  DAILY_NAMES: { springs: ru`Родники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
   // строка «Родников сегодня: 12 из 30» для окон объектов
-  dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${what} сегодня: <b>${u}</b> из ${m}${u >= m ? ' — завтра снова' : ''}</div>`; },
+  dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <b>${u}</b> из ${m}`}</div>`; },
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
-  CHAT_CHANNELS: [['all', 'Общий'], ['trade', 'Торговля'], ['raid', 'Разломы'], ['help', 'Помощь'], ['clan', 'Дружина']],
+  CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Дружина`]],
   // 3.17: Аукцион духов — с LEVEL уровня; лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
   AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
@@ -77,21 +77,21 @@ const Rules = {
   FAR: { R: 5000, KEEP: 3 },
   // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
-    { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'zlat', bag: true },
-    { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
-    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
-    { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
-    { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
-    { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов: поднимает духа без сил',       cur: 'sparks', price: 1500, give: { water: 5 } },
-    { id: 'herb10',   name: 'Пучок подорожника',   desc: '10 листьев: четверть здоровья каждый',     cur: 'sparks', price: 600,  give: { herb: 10 } },
-    { id: 'brew5',    name: 'Целебный отвар',      desc: '5 горшочков: 60% здоровья каждый',         cur: 'sparks', price: 1200, give: { brew: 5 } },
-    { id: 'dead3',    name: 'Мёртвая вода',        desc: '3 флакона: залечивает духа полностью',     cur: 'zlat',   price: 40,   give: { deadwater: 3 } },
-    { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
-    { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
-    { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'zlat', price: 50,  give: { incense: 1 } },
-    { id: 'cocoon5',  name: 'Кокон 5 км',          desc: 'Необычные и редкие духи',                  cur: 'zlat', price: 80,  cocoon: 5 },
-    { id: 'cocoon10', name: 'Кокон 10 км',         desc: 'Редкие и эпические духи',                  cur: 'zlat', price: 150, cocoon: 10 },
-    { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'zlat', price: 200, amulet: true },
+    { id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },
+    { id: 'farpass',  name: ru`Дальний пропуск`,     desc: ru`Закрыть Разлом до 5 км, не подходя к нему`, cur: 'sparks', price: 1000, give: { farpass: 1 } },
+    { id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
+    { id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },
+    { id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
+    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: поднимает духа без сил`,       cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },
+    { id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },
+    { id: 'dead3',    name: ru`Мёртвая вода`,        desc: ru`3 флакона: залечивает духа полностью`,     cur: 'zlat',   price: 40,   give: { deadwater: 3 } },
+    { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
+    { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
+    { id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
+    { id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },
+    { id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },
+    { id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },
   ],
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
@@ -124,7 +124,7 @@ const Rules = {
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
   ORDER_RULES: [
-    ['Поимка духа', 1], ['Родник', 1], ['500 м пути', 1], ['Кокон', 3], ['Победа в капище', 3], ['Вторжение', 3], ['Разлом', 5],
+    [ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],
 
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
@@ -141,7 +141,7 @@ const Rules = {
   ringBonus(ring) {
     if (ring == null) return { mul: 1, xp: 0, label: '', great: false };
     const r = U.clamp(+ring || 1, 0.2, 1);
-    return r > 0.7 ? { mul: 1.2, xp: 10, label: 'Хорошо!', great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: 'Отлично!', great: true } : { mul: 1.8, xp: 100, label: 'Превосходно!', great: true };
+    return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };
   },
   // Награда за пойманного духа
   catchReward(o) {

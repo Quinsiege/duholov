@@ -22,6 +22,7 @@
   <div id="out"></div>
 
   <script src="../www/js/version.js"></script>
+  <script src="../www/js/i18n.js" data-lang="ru"></script>
   <script src="../www/js/config.js"></script>
   <script src="../www/js/settings.js"></script>
   <script src="../www/js/data.js"></script>
@@ -107,6 +108,27 @@
   const fresh = (sid, lvl = 10) => { const sp = S.makeSpirit(sid, lvl, 'seed' + sid + lvl); S.d.spirits.push(sp); return sp; };
 
   /* ---------- данные ---------- */
+  // 4.15: языки — перевод по русскому ключу, подстановки, ошибки сервера по шаблону, формы числа, без словаря — русский
+  test('Языки: ru`…`, I18N.back и формы числа', () => {
+    eq(I18N.lang, 'ru', 'тесты идут на русском');
+    eq(ru`Сила ${5}`, 'Сила 5');
+    const was = { dict: I18N.dict, lang: I18N.lang, pats: I18N._pats };
+    try {
+      I18N.dict = { 'Сила {0}': 'Power {0}', 'Нужна команда': 'Team needed', '{0} ускользнул': '{0} got away', 'Уголёк': 'Ugolyok', 'Дань с {0} Капищ': '{0} tribute' };
+      I18N._pats = null; I18N.lang = 'en';
+      eq(ru`Сила ${7}`, 'Power 7');
+      eq(ru('Нужна команда'), 'Team needed');
+      eq(ru`Нет такого`, 'Нет такого', 'нет перевода — русский');
+      eq(I18N.back('Нужна команда'), 'Team needed', 'ошибка сервера — точное совпадение');
+      eq(I18N.back('Уголёк ускользнул'), 'Ugolyok got away', 'по шаблону, подстановка тоже переводится');
+      eq(I18N.back('Совсем другое'), 'Совсем другое');
+      eq(U.plural(1, 'a', 'b', 'c'), 'a'); eq(U.plural(3, 'a', 'b', 'c'), 'c'); eq(U.plural(21, 'a', 'b', 'c'), 'c');
+      I18N.lang = 'ja'; eq(U.plural(1, 'a', 'b', 'c'), 'c');
+      I18N.lang = 'fr'; eq(U.plural(0, 'a', 'b', 'c'), 'a');
+    } finally { I18N.dict = was.dict; I18N.lang = was.lang; I18N._pats = was.pats; }
+    eq(U.plural(3, 'a', 'b', 'c'), 'b', 'русские формы');
+    eq(U.plural(21, 'a', 'b', 'c'), 'a');
+  });
   test('У каждого духа уникальный id и корректные ссылки', () => {
     const ids = new Set();
     SPECIES.forEach(s => {

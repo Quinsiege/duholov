@@ -44,7 +44,7 @@ const Order = {
   },
   rwCell(x) {
     const art = x.k === 'cocoon' ? Art.cocoon(10) : x.k === 'xp' || x.k === 'sparks' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : Art.item(x.k);
-    return `<div>${art}<span>${x.label}${x.k === 'xp' || x.k === 'sparks' || x.k === 'cocoon' ? '' : ` ×${x.n}`}</span></div>`;
+    return `<div>${art}<span>${I18N.back(x.label)}${x.k === 'xp' || x.k === 'sparks' || x.k === 'cocoon' ? '' : ` ×${x.n}`}</span></div>`;
   },
   streakModal(r) {
     const L = Rules.STREAK.length, day = (r.n - 1) % L;
@@ -55,11 +55,11 @@ const Order = {
     }).join('');
     Sfx.play('levelup'); U.vibrate([40, 40, 90]);
     UI.modal({
-      cls: 'streak-modal', title: r.n === 1 ? 'Добро пожаловать!' : `${r.n} ${U.plural(r.n, 'день', 'дня', 'дней')} подряд!`,
+      cls: 'streak-modal', title: r.n === 1 ? ru`Добро пожаловать!` : ru`${r.n} ${U.plural(r.n, ru`день`, ru`дня`, ru`дней`)} подряд!`,
       html: `<div class="st-row">${cells}</div>
-        <p class="st-hint">${r.n === 1 ? 'Заходи каждый день — награды растут, а на 7-й день ждёт кокон 10 км.' : day === L - 1 ? 'Седьмой день! Завтра круг начнётся снова — серия продолжается.' : 'Не пропускай день — иначе серия начнётся сначала.'}</p>
+        <p class="st-hint">${r.n === 1 ? ru`Заходи каждый день — награды растут, а на 7-й день ждёт кокон 10 км.` : day === L - 1 ? ru`Седьмой день! Завтра круг начнётся снова — серия продолжается.` : ru`Не пропускай день — иначе серия начнётся сначала.`}</p>
         <div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`,
-      buttons: [{ label: 'Забрать', cls: 'primary', fn: () => UI.refreshHud() }],
+      buttons: [{ label: ru`Забрать`, cls: 'primary', fn: () => UI.refreshHud() }],
       dismiss: false,
     });
   },
@@ -70,34 +70,34 @@ const Order = {
     const steps = Rules.ORDER.STEPS.map((s, i) => {
       const at = Math.ceil(s.at * w.goal), reached = w.total >= at, got = w.got.includes(i), can = this.canClaim(w, i);
       // 3.26: награда ступени — картинками (как в заданиях дня), условие — отдельной строкой
-      const rw = UI.rwChips(s.reward, true, i === Rules.ORDER.STEPS.length - 1 ? `<span class="qd-rw">${Art.cocoon(10)}кокон 10 км</span>` : '');
-      const why = got ? '' : !reached ? `Ордену осталось ${U.fmtNum(at - w.total)}` : w.n < s.need ? `Твой вклад: ${w.n} из ${s.need}` : '';
+      const rw = UI.rwChips(s.reward, true, i === Rules.ORDER.STEPS.length - 1 ? `<span class="qd-rw">${Art.cocoon(10)}${ru`кокон 10 км`}</span>` : '');
+      const why = got ? '' : !reached ? ru`Ордену осталось ${U.fmtNum(at - w.total)}` : w.n < s.need ? ru`Твой вклад: ${w.n} из ${s.need}` : '';
       return `<div class="quest qd ${got ? 'claimed' : can ? 'done' : ''}"><div class="qd-ico o-step">${i + 1}</div>
-        <div class="q-main"><b>Ступень ${i + 1} · ${U.fmtNum(at)} очков</b>${why ? `<small class="o-why">${why}</small>` : ''}${rw}</div>
-        ${got ? '<span class="q-ok" aria-label="Получено">✓</span>' : can ? `<button class="btn small primary o-claim" data-w="${w.week}" data-i="${i}">Забрать</button>` : ''}</div>`;
+        <div class="q-main"><b>${ru`Ступень ${i + 1} · ${U.fmtNum(at)} очков`}</b>${why ? `<small class="o-why">${why}</small>` : ''}${rw}</div>
+        ${got ? `<span class="q-ok" aria-label="${ru`Получено`}">✓</span>` : can ? `<button class="btn small primary o-claim" data-w="${w.week}" data-i="${i}">${ru`Забрать`}</button>` : ''}</div>`;
     }).join('');
     const marks = Rules.ORDER.STEPS.map(s => `<em style="left:${s.at * 100}%"></em>`).join('');
-    const top = w.top.length ? `<div class="o-top"><div class="o-sub">Лучшие Ловчие недели</div>${w.top.map((r, i) => `<div class="o-row ${r.me ? 'me' : ''}"><span>${i + 1}</span><b>${U.esc(r.name)}</b><i>${U.fmtNum(r.n)}</i></div>`).join('')}</div>` : '';
+    const top = w.top.length ? `<div class="o-top"><div class="o-sub">${ru`Лучшие Ловчие недели`}</div>${w.top.map((r, i) => `<div class="o-row ${r.me ? 'me' : ''}"><span>${i + 1}</span><b>${U.esc(r.name)}</b><i>${U.fmtNum(r.n)}</i></div>`).join('')}</div>` : '';
     return `<div class="story-card o-card">
-        <div class="story-num">${title || `${ev.name} · до конца ${U.fmtTime(Math.max(0, w.endsAt - U.now()))}`}</div>
-        <h3>${U.fmtNum(w.total)} из ${U.fmtNum(w.goal)}</h3>
+        <div class="story-num">${title || ru`${ev.name} · до конца ${U.fmtTime(Math.max(0, w.endsAt - U.now()))}`}</div>
+        <h3>${ru`${U.fmtNum(w.total)} из ${U.fmtNum(w.goal)}`}</h3>
         <div class="pbar big o-bar"><i style="width:${pct}%"></i>${marks}</div>
-        <p class="o-me">Участников: <b>${w.players}</b> · Твой вклад: <b>${U.fmtNum(w.n)}</b></p>
+        <p class="o-me">${ru`Участников: <b>${w.players}</b> · Твой вклад: <b>${U.fmtNum(w.n)}</b>`}</p>
       </div>${steps}${top}`;
   },
   render(box) {
     const I = this.info;
-    if (!I) { box.innerHTML = '<div class="empty">Узнаём, как идут дела у Ордена…</div>'; return; }
-    const ev = Ev.cur, x2 = ev.el ? `поимка духа стихии «${ELEMENTS[ev.el].name}» — 3 очка` : ev.loot ? 'родник — 2 очка' : ev.rifts ? 'разлом — 10 очков' : ev.duel ? 'победа в капище — 6 очков' : ev.km ? 'путь и коконы — вдвое' : '';
-    box.innerHTML = (I.prev ? this.weekCard(I.prev, 'Прошлая неделя — награды ещё ждут') : '') + this.weekCard(I.cur) +
-      `<div class="q-note">Все Ловчие вместе копят очки: ${Rules.ORDER_RULES.map(([t, n]) => `${t.toLowerCase()} — ${n}`).join(', ')}.${x2 ? ` На этой неделе ${x2}.` : ''}
-       Цель растёт с числом участников. Награду ступени получает каждый, кто внёс нужное число очков.</div>`;
+    if (!I) { box.innerHTML = `<div class="empty">${ru`Узнаём, как идут дела у Ордена…`}</div>`; return; }
+    const ev = Ev.cur, x2 = ev.el ? ru`поимка духа стихии «${ELEMENTS[ev.el].name}» — 3 очка` : ev.loot ? ru`родник — 2 очка` : ev.rifts ? ru`разлом — 10 очков` : ev.duel ? ru`победа в капище — 6 очков` : ev.km ? ru`путь и коконы — вдвое` : '';
+    box.innerHTML = (I.prev ? this.weekCard(I.prev, ru`Прошлая неделя — награды ещё ждут`) : '') + this.weekCard(I.cur) +
+      `<div class="q-note">${ru`Все Ловчие вместе копят очки: ${Rules.ORDER_RULES.map(([t, n]) => `${I18N.low(t)} — ${n}`).join(', ')}.`}${x2 ? ru` На этой неделе ${x2}.` : ''}
+       ${ru`Цель растёт с числом участников. Награду ступени получает каждый, кто внёс нужное число очков.`}</div>`;
   },
   async claim(week, i) {
     const r = await Game.try('orderClaim', { week, i });
     if (!r) return false;
     Sfx.play('levelup');
-    UI.modal({ title: `Общее дело: ступень ${i + 1}`, html: `<p>Орден благодарит тебя за помощь!</p><div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`, buttons: [{ label: 'Отлично', cls: 'primary' }] });
+    UI.modal({ title: ru`Общее дело: ступень ${i + 1}`, html: `<p>${ru`Орден благодарит тебя за помощь!`}</p><div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     await this.refresh(true);
     return true;
   },

@@ -6,18 +6,18 @@
 const Loader = {
   el: null, pct: 0, hint: 0, rot: null, tpl: null,
   HINTS: [
-    'Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.',
-    'Родники наполняются снова через несколько минут — прогулка по кругу приносит припасы.',
-    'Спутник ходит с тобой и находит эссенцию своего семейства.',
-    'Победа в турнире Лиги — +30 рейтинга, поражение — −30: можно выпасть в прошлую лигу.',
-    'Разломы открываются у Капищ каждый час: собери команду из трёх духов.',
-    'Сияющие духи редки — их выдают искры вокруг.',
-    'Коконы греются шагами: одновременно можно греть три.',
-    'Задания дня обновляются в полночь, а за все три ждёт Сундук дня.',
-    'Поставь защитника на Капище своей дружины — он принесёт искры.',
-    'Погода усиливает духов своей стихии: в дождь чаще встречаются водные.',
-    'Привяжи вход через Google, Яндекс или Telegram — прогресс не потеряется при смене телефона.',
-    'Дари друзьям подарки каждый день — дружба растёт и приносит опыт.',
+    ru`Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.`,
+    ru`Родники наполняются снова через несколько минут — прогулка по кругу приносит припасы.`,
+    ru`Спутник ходит с тобой и находит эссенцию своего семейства.`,
+    ru`Победа в турнире Лиги — +30 рейтинга, поражение — −30: можно выпасть в прошлую лигу.`,
+    ru`Разломы открываются у Капищ каждый час: собери команду из трёх духов.`,
+    ru`Сияющие духи редки — их выдают искры вокруг.`,
+    ru`Коконы греются шагами: одновременно можно греть три.`,
+    ru`Задания дня обновляются в полночь, а за все три ждёт Сундук дня.`,
+    ru`Поставь защитника на Капище своей дружины — он принесёт искры.`,
+    ru`Погода усиливает духов своей стихии: в дождь чаще встречаются водные.`,
+    ru`Привяжи вход через Google, Яндекс или Telegram — прогресс не потеряется при смене телефона.`,
+    ru`Дари друзьям подарки каждый день — дружба растёт и приносит опыт.`,
   ],
 
   show(text) {
@@ -48,12 +48,12 @@ const Loader = {
       } else {
         this.hint = Math.floor(Math.random() * this.HINTS.length);
         this.el = U.el(`<div class="loader" role="status" aria-live="polite"><div class="ld-scene"></div><div class="ld-bg"></div><div class="ld-shade"></div>
-          <div class="ld-logo"><div class="ld-charm">${Art.charm('charm3')}</div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
+          <div class="ld-logo"><div class="ld-charm">${Art.charm('charm3')}</div><h1>${ru`ДУХОЛОВ`}</h1><p>${ru`Лови духов Нави на улицах своего города`}</p></div>
           <div class="ld-foot">
             <div class="ld-hint">
-              <div class="ld-tip"><small>✦ Совет Ордена</small><p></p></div>
-              <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
-              <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
+              <div class="ld-tip"><small>✦ ${ru`Совет Ордена`}</small><p></p></div>
+              <button class="ld-arrow prev" aria-label="${ru`Предыдущая подсказка`}">‹</button>
+              <button class="ld-arrow next" aria-label="${ru`Следующая подсказка`}">›</button>
             </div>
             <div class="ld-dots"></div>
             <div class="ld-prog"><div class="ld-row"><span class="ld-text"></span><b class="ld-pct"></b></div><div class="ld-bar"><i></i><b class="ld-runes"></b></div></div>
@@ -122,7 +122,7 @@ const Loader = {
         const tl = MapView.tiles, tiles = tl && tl._tiles ? Object.values(tl._tiles) : [];
         const frac = tiles.length ? tiles.filter(t => t.loaded).length / tiles.length : 0;
         const here = MapView.gpsOK || MapView.demo, waited = Date.now() - t0;
-        this.set(62 + (here ? 10 : 0) + frac * 26, here || waited > 6000 ? 'Загружаю карту…' : 'Ищу тебя на карте…');
+        this.set(62 + (here ? 10 : 0) + frac * 26, here || waited > 6000 ? ru`Загружаю карту…` : ru`Ищу тебя на карте…`);
         if ((tiles.length && frac >= 1 && (here || waited > 6000)) || waited > 15000) { res(); return; }
         setTimeout(tick, 200);
       };

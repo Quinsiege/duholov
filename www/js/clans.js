@@ -38,22 +38,22 @@ const Clans = {
   // Выбор дружины — один раз
   choose(done) {
     if (S.d.clan) { done && done(); return; }
-    if (S.d.level < CLAN_LEVEL) { UI.toast(`Дружину можно выбрать с ${CLAN_LEVEL} уровня`); return; }
+    if (S.d.level < CLAN_LEVEL) { UI.toast(ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня`); return; }
     const m = UI.modal({
-      title: 'Выбери дружину', cls: 'clan-modal',
-      html: `<p class="small">Дружины Ордена держат Капища: поставь своего духа защитником — и Капище окрасится цветом твоей дружины, а тебе каждый день будет приходить дань. Выбор — навсегда.</p>
+      title: ru`Выбери дружину`, cls: 'clan-modal',
+      html: `<p class="small">${ru`Дружины Ордена держат Капища: поставь своего духа защитником — и Капище окрасится цветом твоей дружины, а тебе каждый день будет приходить дань. Выбор — навсегда.`}</p>
         <div class="clan-pick">${Object.entries(CLANS).map(([k, c]) => `<button class="clan-opt" data-k="${k}" style="--cc:${c.color}"><span class="clan-crest">${Art.clanCrest(k)}</span><b>${c.name}</b><small>${c.motto}</small><i class="clan-go"></i></button>`).join('')}</div>`,
-      buttons: [{ label: 'Позже' }],
+      buttons: [{ label: ru`Позже` }],
     });
     m.querySelector('.clan-pick').addEventListener('click', e => {
       const b = e.target.closest('.clan-opt'); if (!b) return;
       const c = CLANS[b.dataset.k];
-      UI.confirm(c.name, `Вступить в «${c.name}»? Сменить дружину потом нельзя.`, 'Вступить', async () => {
+      UI.confirm(c.name, ru`Вступить в «${c.name}»? Сменить дружину потом нельзя.`, ru`Вступить`, async () => {
         const r = await Game.try('clanJoin', { clan: b.dataset.k });
         if (!r) return;
         m.close && m.close();
         Sfx.play('levelup');
-        UI.toast(`Ты в «${c.name}»! Побеждай на Капищах и ставь защитников.`, 'good');
+        UI.toast(ru`Ты в «${c.name}»! Побеждай на Капищах и ставь защитников.`, 'good');
         UI.refreshHud();
         done && done();
       });
@@ -64,10 +64,10 @@ const Clans = {
   defend(e, done) {
     const list = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 40);
     const m = UI.modal({
-      title: 'Кого поставить защитником?', cls: 'defend-modal',
-      html: `<p class="small">Дух останется у тебя: на Капище встанет его отражение. Пока он стоит, раз в день приходит дань — ✦ ${TRIBUTE.sparks} и оберег.</p>
+      title: ru`Кого поставить защитником?`, cls: 'defend-modal',
+      html: `<p class="small">${ru`Дух останется у тебя: на Капище встанет его отражение. Пока он стоит, раз в день приходит дань — ✦ ${TRIBUTE.sparks} и оберег.`}</p>
         <div class="defend-list">${list.map(sp => `<button class="mini defend-sp" data-uid="${sp.uid}">${Art.imgOf(sp)}<b>${S.power(sp)}</b><small>${U.esc(sp.nick || SP[sp.sid].name)}</small></button>`).join('')}</div>`,
-      buttons: [{ label: 'Отмена' }],
+      buttons: [{ label: ru`Отмена` }],
     });
     m.querySelector('.defend-list').addEventListener('click', async ev => {
       const b = ev.target.closest('.defend-sp'); if (!b || this._defending) return;
@@ -77,7 +77,7 @@ const Clans = {
       if (!r) return;
       m.close && m.close();
       Sfx.play('levelup');
-      UI.toast(`Защитник встал на Капище «${U.esc(e.name)}» — оно под знаменем «${CLANS[r.clan].name}»`, 'good');
+      UI.toast(ru`Защитник встал на Капище «${U.esc(e.name)}» — оно под знаменем «${CLANS[r.clan].name}»`, 'good');
       await this.refresh(true);
       done && done();
     });
@@ -93,7 +93,8 @@ const Clans = {
       if (r.back.length) {
         Sfx.play('miss');
         const names = r.back.map(g => `«${U.esc(g.name)}»`).join(', ');
-        UI.toast(`${r.back.length > 1 ? 'Защитники вернулись' : 'Защитник вернулся'} с ${names}: соперники победили. За службу: ${r.got.map(x => `${x.label} +${x.n}`).join(', ')}`);
+        const got = r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ');
+        UI.toast(r.back.length > 1 ? ru`Защитники вернулись с ${names}: соперники победили. За службу: ${got}` : ru`Защитник вернулся с ${names}: соперники победили. За службу: ${got}`);
         this.refresh(true);
       }
     } catch (e) { /* позже */ }
@@ -105,9 +106,9 @@ const Clans = {
   async screen() {
     if (!S.d.clan) { this.choose(() => this.screen()); return; }
     const c = CLANS[S.d.clan];
-    const scr = UI.screen('Дружина', `<div class="clan-view" style="--cc:${c.color}">
+    const scr = UI.screen(ru`Дружина`, `<div class="clan-view" style="--cc:${c.color}">
         <div class="clan-head"><span class="clan-crest">${Art.clanCrest(S.d.clan)}</span><div><b>${c.name}</b><small>${c.motto}</small></div></div>
-        <div class="clan-body"><div class="empty">Узнаём, как дела у дружин…</div></div>
+        <div class="clan-body"><div class="empty">${ru`Узнаём, как дела у дружин…`}</div></div>
       </div>`, 'clan-screen');
     let stats = null;
     const [guards] = await Promise.all([this.checkGuards(true), Game.act('clanStats').then(r => { stats = r; }).catch(() => {})]);
@@ -123,15 +124,15 @@ const Clans = {
       const d = pos ? U.dist(pos.lat, pos.lng, g.lat, g.lng) : null;
       const h = g.t ? Math.max(0, (U.now() - g.t) / 3600000) : 0;
       return `<div class="row guard-row" data-id="${U.esc(g.id)}"><div class="row-ico">${g.sp && SP[g.sp.sid] ? Art.imgOf(g.sp) : ''}</div>
-        <div class="row-main"><b>${U.esc(g.name)}</b><small>на посту ${h < 1 ? 'меньше часа' : `${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small></div>
-        <button class="btn small ghost show-guard">Показать</button></div>`;
+        <div class="row-main"><b>${U.esc(g.name)}</b><small>${ru`на посту ${h < 1 ? ru`меньше часа` : ru`${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}`}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small></div>
+        <button class="btn small ghost show-guard">${ru`Показать`}</button></div>`;
     };
     scr.querySelector('.clan-body').innerHTML = `
-      ${bars(stats && stats.near, 'Капища рядом (≈5 км)')}
-      ${bars(stats && stats.all, 'Капища по всей России')}
-      <h3 class="prof-h">Мои защитники <small>${list.length} из ${HOLD_MY_MAX}</small></h3>
-      <div class="list">${list.map(guardRow).join('') || '<div class="row"><div class="row-main"><small>Пока нигде. Победи на Капище и поставь защитника — каждый день будет приходить дань.</small></div></div>'}</div>
-      <div class="q-note">Дань — ✦ ${TRIBUTE.sparks} и оберег в день за каждое Капище с твоим защитником. Если соперники его победят, защитник вернётся с искрами за время на посту.</div>`;
+      ${bars(stats && stats.near, ru`Капища рядом (≈5 км)`)}
+      ${bars(stats && stats.all, ru`Капища по всей России`)}
+      <h3 class="prof-h">${ru`Мои защитники`} <small>${ru`${list.length} из ${HOLD_MY_MAX}`}</small></h3>
+      <div class="list">${list.map(guardRow).join('') || `<div class="row"><div class="row-main"><small>${ru`Пока нигде. Победи на Капище и поставь защитника — каждый день будет приходить дань.`}</small></div></div>`}</div>
+      <div class="q-note">${ru`Дань — ✦ ${TRIBUTE.sparks} и оберег в день за каждое Капище с твоим защитником. Если соперники его победят, защитник вернётся с искрами за время на посту.`}</div>`;
     scr.querySelector('.clan-body').addEventListener('click', e => {
       const row = e.target.closest('.guard-row');
       if (!row || !e.target.closest('.show-guard')) return;
@@ -140,7 +141,7 @@ const Clans = {
       UI.closeScreen(scr);
       for (let i = 0; i < 5 && UI.blocking(); i++) UI.back(); // закрыть профиль и меню — к карте
       MapView.track({ id: g.id, type: 'shrine', lat: g.lat, lng: g.lng, name: g.name });
-      UI.toast(`Следопыт ведёт к Капищу «${U.esc(g.name)}»`);
+      UI.toast(ru`Следопыт ведёт к Капищу «${U.esc(g.name)}»`);
     });
   },
 
@@ -150,7 +151,7 @@ const Clans = {
     this._tribute = true;
     try {
       const r = await Game.act('tribute');
-      if (r && r.n) UI.toast(`Дань с ${r.n} ${U.plural(r.n, 'Капища', 'Капищ', 'Капищ')}: ${r.got.map(x => `${x.label} +${x.n}`).join(', ')}`, 'good');
+      if (r && r.n) UI.toast(ru`Дань с ${r.n} ${U.plural(r.n, ru`Капища`, ru`Капищ`, ru`Капищ`)}: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');
     } catch (e) { /* позже */ }
     this._tribute = false;
   },

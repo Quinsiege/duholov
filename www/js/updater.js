@@ -23,11 +23,11 @@ const Updater = {
     if (!this.oldApp() || this.shown) return;
     try { if (Date.now() - (+localStorage.getItem(this.OLD_APP) || 0) < 3 * 86400000) return; localStorage.setItem(this.OLD_APP, Date.now()); } catch (e) { return; }
     UI.modal({
-      title: 'Новое приложение', cls: 'update-modal',
-      html: `<p>Игра переехала на свой сервер в России — <b>duholov.ru</b>. Для этого вышло новое приложение: его нужно установить заново.</p>
-        <ol class="upd-notes"><li>Привяжи вход: Меню → Настройки → Учётная запись (Google, Яндекс, VK, Telegram или почта). Без этого прогресс гостя не перенесётся.</li>
-        <li>Удали это приложение.</li><li>Скачай и установи новое — войди тем же способом.</li></ol>`,
-      buttons: [{ label: 'Позже' }, { label: 'Скачать', cls: 'primary', fn: () => { location.href = this.apkUrl(); } }],
+      title: ru`Новое приложение`, cls: 'update-modal',
+      html: `<p>${ru`Игра переехала на свой сервер в России — <b>duholov.ru</b>. Для этого вышло новое приложение: его нужно установить заново.`}</p>
+        <ol class="upd-notes"><li>${ru`Привяжи вход: Меню → Настройки → Учётная запись (Google, Яндекс, VK, Telegram или почта). Без этого прогресс гостя не перенесётся.`}</li>
+        <li>${ru`Удали это приложение.`}</li><li>${ru`Скачай и установи новое — войди тем же способом.`}</li></ol>`,
+      buttons: [{ label: ru`Позже` }, { label: ru`Скачать`, cls: 'primary', fn: () => { location.href = this.apkUrl(); } }],
     });
   },
 
@@ -53,7 +53,7 @@ const Updater = {
         if (this.IN_APP && late.minApk && this.APK < late.minApk) this.promptApk(late);
         else if (this.cmp(late.version, APP_VERSION) > 0) {
           // ещё на экране загрузки — ставим сразу, без окна
-          if (typeof Loader !== 'undefined' && Loader.el) { this.shown = true; Loader.set(30, `Загружаю обновление ${late.version}…`); this.apply(late.version); }
+          if (typeof Loader !== 'undefined' && Loader.el) { this.shown = true; Loader.set(30, ru`Загружаю обновление ${late.version}…`); this.apply(late.version); }
           else this.prompt(late);
         }
       });
@@ -94,8 +94,8 @@ const Updater = {
   // 4.14: о новой версии — только плашка «Доступно обновление» (что изменилось, игрокам не пишем)
   prompt(v) {
     this.shown = true;
-    const bar = U.el(`<div class="upd-bar"><span>Доступно обновление</span><button class="btn primary small">Обновить</button></div>`);
-    bar.querySelector('button').onclick = e => { e.target.textContent = 'Обновляю…'; e.target.disabled = true; this.apply(v.version); };
+    const bar = U.el(`<div class="upd-bar"><span>${ru`Доступно обновление`}</span><button class="btn primary small">${ru`Обновить`}</button></div>`);
+    bar.querySelector('button').onclick = e => { e.target.textContent = ru`Обновляю…`; e.target.disabled = true; this.apply(v.version); };
     document.body.appendChild(bar);
   },
 
@@ -110,10 +110,10 @@ const Updater = {
     this.shown = true;
     const st = this.STORES[this.STORE];
     UI.modal({
-      title: 'Обновите приложение', cls: 'update-modal', dismiss: false,
-      html: st ? `<p>Вышла новая версия приложения Духолов. Обновите его в ${st.name} — прогресс сохранится.</p>`
-        : `<p>Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.</p>`,
-      buttons: [{ label: st ? `Открыть ${st.name}` : 'Скачать обновление', cls: 'primary', keep: true, fn: () => { location.href = this.apkUrl(); } }],
+      title: ru`Обновите приложение`, cls: 'update-modal', dismiss: false,
+      html: st ? `<p>${ru`Вышла новая версия приложения Духолов. Обновите его в ${st.name} — прогресс сохранится.`}</p>`
+        : `<p>${ru`Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.`}</p>`,
+      buttons: [{ label: st ? ru`Открыть ${st.name}` : ru`Скачать обновление`, cls: 'primary', keep: true, fn: () => { location.href = this.apkUrl(); } }],
     });
   },
 

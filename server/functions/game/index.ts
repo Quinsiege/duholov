@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.14.2';
+const APP_VERSION = '4.15.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -17,312 +17,438 @@ const Sync = { touch() {} };
 const Cloud = { configured: () => false };
 const Cfg = { s: { sound: false, vibro: false } };
 
+// ===== www/js/i18n.js =====
+/* 4.15: языки игры. Русский — исходный: текст в коде пишется по-русски внутри ru`…` и сам служит ключом перевода:
+     ru`Нужна команда`, ru`Сила ${n}` (ключ «Сила {0}»), ru('текст') — то же без шаблона.
+   Переводы лежат в i18n/<язык>.js (I18N_DICT = { 'Сила {0}': 'Power {0}' }) и подключаются сразу после этого файла,
+   до скриптов игры: названия духов и предметов в data.js переводятся при загрузке. Нет перевода — остаётся русский.
+   Язык: выбранный в Настройках, иначе язык телефона (нет такого — английский); смена языка перезапускает игру.
+   На сервере (общие data.js, state.js…) словаря нет — ru`…` просто собирает русский текст, а ошибки сервера
+   телефон переводит сам (I18N.back) по тем же ключам. Этот файл не склеивается в app.min.js (tools/web/build.mjs). */
+const I18N = {
+  KEY: 'duholov.lang',
+  // порядок — как в списке выбора
+  LANGS: { ru: 'Русский', en: 'English', es: 'Español', pt: 'Português', fr: 'Français', de: 'Deutsch', it: 'Italiano',
+    tr: 'Türkçe', id: 'Bahasa Indonesia', zh: '简体中文', ja: '日本語', ko: '한국어', hi: 'हिन्दी' },
+  LOCALE: { ru: 'ru-RU', en: 'en-US', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE', it: 'it-IT',
+    tr: 'tr-TR', id: 'id-ID', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', hi: 'hi-IN' },
+  // языки, где русский понятнее английского
+  NEAR_RU: ['ru', 'uk', 'be', 'kk', 'ky', 'uz', 'tg', 'tk', 'hy', 'az', 'ka', 'mn'],
+  lang: 'ru',
+  locale: 'ru-RU',
+  dict: null,
+
+  // выбранный язык: сохранённый, иначе — язык телефона
+  pick() {
+    // для проверки: ?lang=en в адресе; тесты задают русский (data-lang="ru" у тега скрипта)
+    const cur = typeof document !== 'undefined' && document.currentScript, force = cur && cur.dataset && cur.dataset.lang;
+    if (force && this.LANGS[force]) return force;
+    const q = typeof location !== 'undefined' && /[?&]lang=([a-z]{2})\b/.exec(location.search);
+    if (q && this.LANGS[q[1]]) return q[1];
+    let saved = null;
+    try { saved = localStorage.getItem(this.KEY); } catch (e) {}
+    if (saved && this.LANGS[saved]) return saved;
+    const list = (typeof navigator !== 'undefined' && (navigator.languages || [navigator.language])) || [];
+    for (const l of list) {
+      const b = String(l || '').toLowerCase().split(/[-_]/)[0];
+      if (this.LANGS[b]) return b;
+      if (this.NEAR_RU.includes(b)) return 'ru';
+    }
+    return list.length ? 'en' : 'ru';
+  },
+  // сменить язык: сохранить и перезапустить игру (переводы берутся при загрузке)
+  set(l) {
+    if (!this.LANGS[l]) return;
+    try { localStorage.setItem(this.KEY, l); } catch (e) {}
+    location.reload();
+  },
+
+  // перевод ключа с подстановкой {0}, {1}…
+  t(k, v) {
+    const d = this.dict;
+    let s = d && Object.prototype.hasOwnProperty.call(d, k) ? d[k] : k;
+    if (v && v.length) {
+      s = s.replace(/\{(\d+)\}/g, (m, i) => v[i] === undefined ? m : v[i]);
+      // в китайском и японском число пишется слитно со словом («3位好友», а не «3 位好友», как собирает код)
+      if (this.cjk) s = s.replace(/(\d)[  ]+(?=[぀-ヿ㐀-鿿])/g, '$1');
+    }
+    return s;
+  },
+
+  // слово внутри фразы со строчной буквы — кроме немецкого, где существительные пишутся с заглавной
+  low(s) { return this.lang === 'de' ? String(s) : String(s).toLowerCase(); },
+
+  // ошибка или ответ сервера (по-русски) → на язык игрока: сперва точное совпадение, потом ключи с {0}
+  back(msg) {
+    if (!this.dict || typeof msg !== 'string' || !msg) return msg;
+    if (Object.prototype.hasOwnProperty.call(this.dict, msg)) return this.dict[msg];
+    if (!this._pats) {
+      const esc = s => s.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');
+      this._pats = Object.keys(this.dict).filter(k => /\{\d+\}/.test(k)).map(k => ({
+        k, re: new RegExp('^' + esc(k).replace(/\\\{(\d+)\\\}/g, '([\\s\\S]*?)') + '$'),
+        ids: (k.match(/\{\d+\}/g) || []).map(x => +x.slice(1, -1)),
+      }));
+    }
+    for (const p of this._pats) {
+      const m = msg.match(p.re);
+      if (!m) continue;
+      const v = [];
+      p.ids.forEach((id, i) => { v[id] = this.back(m[i + 1]); }); // подставленные слова (имя духа, предмета) — тоже переводим
+      return this.t(p.k, v);
+    }
+    return msg;
+  },
+
+  // статичный текст страницы (index.html): тексты и подписи элементов, у которых есть перевод
+  page(root) {
+    if (!this.dict || !root) return;
+    const tr = s => { const k = s.trim(); return k && this.dict[k] ? s.replace(k, this.dict[k]) : s; };
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (/[А-Яа-яЁё]/.test(n.nodeValue)) n.nodeValue = tr(n.nodeValue);
+    root.querySelectorAll('[title],[aria-label],[placeholder],[alt]').forEach(el => {
+      ['title', 'aria-label', 'placeholder', 'alt'].forEach(a => { const v = el.getAttribute(a); if (v && /[А-Яа-яЁё]/.test(v)) el.setAttribute(a, tr(v)); });
+    });
+  },
+
+  init() {
+    if (typeof document === 'undefined') return; // сервер: только русский
+    this.lang = this.pick();
+    this.locale = this.LOCALE[this.lang] || 'ru-RU';
+    this.cjk = this.lang === 'zh' || this.lang === 'ja';
+    document.documentElement.lang = this.lang;
+    if (this.lang === 'ru') return;
+    // словарь — отдельным файлом с той же меткой версии, что у этого скрипта; document.write — чтобы он выполнился до игры
+    const cur = document.currentScript, q = cur && cur.src.includes('?') ? cur.src.slice(cur.src.indexOf('?')) : '';
+    const base = cur && cur.src ? cur.src.replace(/js\/i18n\.js.*$/, '') : '';
+    document.write(`<script src="${base}i18n/${this.lang}.js${q}"><\/script>`);
+    document.addEventListener('DOMContentLoaded', () => {
+      this.page(document.body);
+      if (this.dict && this.dict[document.title]) document.title = this.dict[document.title];
+    });
+  },
+};
+
+// ru`текст ${x}` — перевод по ключу «текст {0}»; ru('текст') — то же для обычной строки
+const _ruKeys = new WeakMap();
+function ru(s, ...v) {
+  if (typeof s === 'string') return I18N.t(s, v);
+  let k = _ruKeys.get(s);
+  if (k === undefined) { k = s.reduce((a, p, i) => a + '{' + (i - 1) + '}' + p); _ruKeys.set(s, k); }
+  return I18N.t(k, v);
+}
+
+// ru.k`…` — русский текст без перевода, но с ключом для словаря: для текста, который сохраняется (прогресс, сервер)
+// и переводится уже при показе — I18N.back(текст)
+ru.k = (s, ...v) => typeof s === 'string' ? s : s.reduce((a, p, i) => a + v[i - 1] + p);
+
+I18N.init();
+
 // ===== www/js/data.js =====
 /* ==========================================================================
    ДУХОЛОВ — данные игры: стихии, духи, предметы, уровни, задания
    ========================================================================== */
 
 const ELEMENTS = {
-  fire:    { name: 'Огонь', color: '#ff7a3d', beats: ['forest', 'shadow'], fast: 'Искра',       charge: 'Огненный вал' },
-  water:   { name: 'Вода',  color: '#38bdf8', beats: ['fire', 'wind'],      fast: 'Брызги',      charge: 'Омут' },
-  forest:  { name: 'Лес',   color: '#84cc16', beats: ['water', 'current'],  fast: 'Хлёст лозы',  charge: 'Корни земли' },
-  wind:    { name: 'Ветер', color: '#a5b4fc', beats: ['shadow', 'fire'],    fast: 'Порыв',       charge: 'Смерч' },
-  current: { name: 'Ток',   color: '#facc15', beats: ['water', 'wind'],     fast: 'Разряд',      charge: 'Короткое замыкание' },
-  shadow:  { name: 'Тень',  color: '#c084fc', beats: ['current', 'forest'], fast: 'Морок',       charge: 'Полночный ужас' },
+  fire:    { name: ru`Огонь`, color: '#ff7a3d', beats: ['forest', 'shadow'], fast: ru`Искра`,       charge: ru`Огненный вал` },
+  water:   { name: ru`Вода`,  color: '#38bdf8', beats: ['fire', 'wind'],      fast: ru`Брызги`,      charge: ru`Омут` },
+  forest:  { name: ru`Лес`,   color: '#84cc16', beats: ['water', 'current'],  fast: ru`Хлёст лозы`,  charge: ru`Корни земли` },
+  wind:    { name: ru`Ветер`, color: '#a5b4fc', beats: ['shadow', 'fire'],    fast: ru`Порыв`,       charge: ru`Смерч` },
+  current: { name: ru`Ток`,   color: '#facc15', beats: ['water', 'wind'],     fast: ru`Разряд`,      charge: ru`Короткое замыкание` },
+  shadow:  { name: ru`Тень`,  color: '#c084fc', beats: ['current', 'forest'], fast: ru`Морок`,       charge: ru`Полночный ужас` },
 };
 const ELEMENT_KEYS = Object.keys(ELEMENTS);
 // Второй особый приём (v1.6): дешевле и слабее основного
-Object.assign(ELEMENTS.fire, { charge2: 'Жар-вихрь' });
-Object.assign(ELEMENTS.water, { charge2: 'Ледяная стрела' });
-Object.assign(ELEMENTS.forest, { charge2: 'Колючий плющ' });
-Object.assign(ELEMENTS.wind, { charge2: 'Воздушный серп' });
-Object.assign(ELEMENTS.current, { charge2: 'Шаровая молния' });
-Object.assign(ELEMENTS.shadow, { charge2: 'Теневая петля' });
+Object.assign(ELEMENTS.fire, { charge2: ru`Жар-вихрь` });
+Object.assign(ELEMENTS.water, { charge2: ru`Ледяная стрела` });
+Object.assign(ELEMENTS.forest, { charge2: ru`Колючий плющ` });
+Object.assign(ELEMENTS.wind, { charge2: ru`Воздушный серп` });
+Object.assign(ELEMENTS.current, { charge2: ru`Шаровая молния` });
+Object.assign(ELEMENTS.shadow, { charge2: ru`Теневая петля` });
 const MOVES = { charge: { cost: 50, power: 65 }, charge2: { cost: 35, power: 42 } };
 const MOVE2_COST = { sparks: 4000, essence: 30 };
 
 /* ---------- Амулеты (v1.6): один на духа ---------- */
 const AMULETS = {
-  perun:  { name: 'Амулет Перуна',  desc: 'Атака духа в битвах +12%',               atk: 1.12,   color: '#facc15', glyph: 'M12 3l-5 9h4l-2 9 8-11h-5z' },
-  mokosh: { name: 'Амулет Мокоши',  desc: 'Защита духа в битвах +12%',              def: 1.12,   color: '#c084fc', glyph: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z' },
-  veles:  { name: 'Амулет Велеса',  desc: 'Здоровье духа в битвах +15%',            hp: 1.15,    color: '#84cc16', glyph: 'M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z' },
-  svarog: { name: 'Амулет Сварога', desc: 'Энергия в битвах копится на 25% быстрее', energy: 1.25, color: '#fb923c', glyph: 'M12 2c3 4 6 6 5 11a5 5 0 0 1-10 0c0-3 2-4 3-7 1 2 2 2 2-4z' },
-  lada:   { name: 'Амулет Лады',    desc: 'Если дух — спутник, находки вдвое чаще',   buddy: 2,    color: '#f472b6', glyph: 'M12 4a8 8 0 1 0 0 16a6 6 0 1 1 0-16z' },
+  perun:  { name: ru`Амулет Перуна`,  desc: ru`Атака духа в битвах +12%`,               atk: 1.12,   color: '#facc15', glyph: 'M12 3l-5 9h4l-2 9 8-11h-5z' },
+  mokosh: { name: ru`Амулет Мокоши`,  desc: ru`Защита духа в битвах +12%`,              def: 1.12,   color: '#c084fc', glyph: 'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z' },
+  veles:  { name: ru`Амулет Велеса`,  desc: ru`Здоровье духа в битвах +15%`,            hp: 1.15,    color: '#84cc16', glyph: 'M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z' },
+  svarog: { name: ru`Амулет Сварога`, desc: ru`Энергия в битвах копится на 25% быстрее`, energy: 1.25, color: '#fb923c', glyph: 'M12 2c3 4 6 6 5 11a5 5 0 0 1-10 0c0-3 2-4 3-7 1 2 2 2 2-4z' },
+  lada:   { name: ru`Амулет Лады`,    desc: ru`Если дух — спутник, находки вдвое чаще`,   buddy: 2,    color: '#f472b6', glyph: 'M12 4a8 8 0 1 0 0 16a6 6 0 1 1 0-16z' },
 };
 const AMULET_KEYS = Object.keys(AMULETS);
 
 const RARITY = {
-  1: { name: 'Обычный',     color: '#a8b3c7', base: 0.45, flee: 0.08 },
-  2: { name: 'Необычный',   color: '#5eead4', base: 0.30, flee: 0.12 },
-  3: { name: 'Редкий',      color: '#60a5fa', base: 0.18, flee: 0.15 },
-  4: { name: 'Эпический',   color: '#c084fc', base: 0.10, flee: 0.20 },
-  5: { name: 'Легендарный', color: '#fbbf24', base: 0.06, flee: 0.00 },
+  1: { name: ru`Обычный`,     color: '#a8b3c7', base: 0.45, flee: 0.08 },
+  2: { name: ru`Необычный`,   color: '#5eead4', base: 0.30, flee: 0.12 },
+  3: { name: ru`Редкий`,      color: '#60a5fa', base: 0.18, flee: 0.15 },
+  4: { name: ru`Эпический`,   color: '#c084fc', base: 0.10, flee: 0.20 },
+  5: { name: ru`Легендарный`, color: '#fbbf24', base: 0.06, flee: 0.00 },
 };
 
 /* look: shape — форма тела; c1/c2 — цвета тела; c3 — акцент; eye — цвет свечения глаз;
    eyes/mouth — тип лица; back — детали позади тела; feats — детали поверх */
 const SPECIES = [
   // ---------- ОГОНЬ ----------
-  { id: 'ugolek', name: 'Уголёк', el: 'fire', rar: 1, stage: 1, fam: 'ugolek', evo: 'kostrovik', cost: 25, base: [118, 96, 110],
-    desc: 'Рождается в остывших кострах и печных трубах. Любит сидеть на тёплых люках и греть лапки.',
+  { id: 'ugolek', name: ru`Уголёк`, el: 'fire', rar: 1, stage: 1, fam: 'ugolek', evo: 'kostrovik', cost: 25, base: [118, 96, 110],
+    desc: ru`Рождается в остывших кострах и печных трубах. Любит сидеть на тёплых люках и греть лапки.`,
     look: { shape: 'round', c1: '#ffb070', c2: '#e0531f', c3: '#ffd76a', eyes: 'round', mouth: 'smile', back: [], feats: ['flame', 'cheeks'] } },
-  { id: 'kostrovik', name: 'Костровик', el: 'fire', rar: 2, stage: 2, fam: 'ugolek', evo: 'zharogriv', cost: 100, base: [168, 128, 150],
-    desc: 'Сторож ночных костров. Если костёр бросили без присмотра — Костровик обидится и разгорится.',
+  { id: 'kostrovik', name: ru`Костровик`, el: 'fire', rar: 2, stage: 2, fam: 'ugolek', evo: 'zharogriv', cost: 100, base: [168, 128, 150],
+    desc: ru`Сторож ночных костров. Если костёр бросили без присмотра — Костровик обидится и разгорится.`,
     look: { shape: 'blob', c1: '#ff9a52', c2: '#c2330f', c3: '#ffd23f', eyes: 'angry', mouth: 'teeth', back: [], feats: ['flame', 'horns'] } },
-  { id: 'zharogriv', name: 'Жарогрив', el: 'fire', rar: 3, stage: 3, fam: 'ugolek', base: [232, 176, 196],
-    desc: 'Грива из живого пламени. Говорят, в Тонкую ночь именно Жарогривы не дали городу замёрзнуть.',
+  { id: 'zharogriv', name: ru`Жарогрив`, el: 'fire', rar: 3, stage: 3, fam: 'ugolek', base: [232, 176, 196],
+    desc: ru`Грива из живого пламени. Говорят, в Тонкую ночь именно Жарогривы не дали городу замёрзнуть.`,
     look: { shape: 'tall', c1: '#ff8f4a', c2: '#a3260b', c3: '#ffcf40', eyes: 'angry', mouth: 'teeth', back: ['mane'], feats: ['horns', 'flame'] } },
-  { id: 'domovoy', name: 'Домовой', el: 'fire', rar: 4, stage: 1, fam: 'domovoy', base: [190, 210, 220],
-    desc: 'Хранитель очага. В новостройках ему неуютно, поэтому он бродит по дворам в поисках старой печки.',
+  { id: 'domovoy', name: ru`Домовой`, el: 'fire', rar: 4, stage: 1, fam: 'domovoy', base: [190, 210, 220],
+    desc: ru`Хранитель очага. В новостройках ему неуютно, поэтому он бродит по дворам в поисках старой печки.`,
     look: { shape: 'round', c1: '#c79a6b', c2: '#7a4b24', c3: '#f1f5f9', eyes: 'sleepy', mouth: 'none', back: [], feats: ['beard', 'hat'] } },
-  { id: 'zharptica', name: 'Жар-птица', el: 'fire', rar: 5, stage: 1, fam: 'zharptica', legend: true, base: [286, 228, 250],
-    desc: 'Легенда. Одно перо Жар-птицы освещает целый квартал. Появляется только в огненных разломах.',
+  { id: 'zharptica', name: ru`Жар-птица`, el: 'fire', rar: 5, stage: 1, fam: 'zharptica', legend: true, base: [286, 228, 250],
+    desc: ru`Легенда. Одно перо Жар-птицы освещает целый квартал. Появляется только в огненных разломах.`,
     look: { shape: 'bird', c1: '#ffd166', c2: '#ef4444', c3: '#ff9f1c', eyes: 'round', mouth: 'beak', back: ['aura', 'tail', 'wings'], feats: ['crest'] } },
 
   // ---------- ВОДА ----------
-  { id: 'kapelka', name: 'Капелька', el: 'water', rar: 1, stage: 1, fam: 'kapelka', evo: 'luzhnica', cost: 25, base: [102, 112, 124],
-    desc: 'Появляется после дождя в каждой второй луже. Очень любопытна и совсем не боится зонтиков.',
+  { id: 'kapelka', name: ru`Капелька`, el: 'water', rar: 1, stage: 1, fam: 'kapelka', evo: 'luzhnica', cost: 25, base: [102, 112, 124],
+    desc: ru`Появляется после дождя в каждой второй луже. Очень любопытна и совсем не боится зонтиков.`,
     look: { shape: 'drop', c1: '#9be7ff', c2: '#2b8fd6', c3: '#e0f7ff', eyes: 'big', mouth: 'smile', back: [], feats: ['cheeks'] } },
-  { id: 'luzhnica', name: 'Лужница', el: 'water', rar: 2, stage: 2, fam: 'kapelka', evo: 'vodyanoy', cost: 100, base: [150, 158, 170],
-    desc: 'Растекается по тротуарам и отражает небо. Прохожие, наступившие в неё, весь день ходят с мокрыми ногами.',
+  { id: 'luzhnica', name: ru`Лужница`, el: 'water', rar: 2, stage: 2, fam: 'kapelka', evo: 'vodyanoy', cost: 100, base: [150, 158, 170],
+    desc: ru`Растекается по тротуарам и отражает небо. Прохожие, наступившие в неё, весь день ходят с мокрыми ногами.`,
     look: { shape: 'blob', c1: '#7dd3fc', c2: '#1d6fb8', c3: '#bae6fd', eyes: 'round', mouth: 'o', back: ['ripples'], feats: ['bubbles'] } },
-  { id: 'vodyanoy', name: 'Водяной', el: 'water', rar: 3, stage: 3, fam: 'kapelka', base: [206, 214, 236],
-    desc: 'Хозяин прудов, фонтанов и городских каналов. Ворчлив, но справедлив: утопленные телефоны иногда возвращает.',
+  { id: 'vodyanoy', name: ru`Водяной`, el: 'water', rar: 3, stage: 3, fam: 'kapelka', base: [206, 214, 236],
+    desc: ru`Хозяин прудов, фонтанов и городских каналов. Ворчлив, но справедлив: утопленные телефоны иногда возвращает.`,
     look: { shape: 'round', c1: '#6ee7b7', c2: '#0f766e', c3: '#a7f3d0', eyes: 'big', mouth: 'none', back: [], feats: ['beard', 'crown', 'whiskers'] } },
-  { id: 'rusalka', name: 'Русалка', el: 'water', rar: 4, stage: 1, fam: 'rusalka', base: [214, 182, 196], time: 'night',
-    desc: 'Поёт у набережных в лунные ночи. Её песня заставляет забыть, куда ты шёл.',
+  { id: 'rusalka', name: ru`Русалка`, el: 'water', rar: 4, stage: 1, fam: 'rusalka', base: [214, 182, 196], time: 'night',
+    desc: ru`Поёт у набережных в лунные ночи. Её песня заставляет забыть, куда ты шёл.`,
     look: { shape: 'ghost', c1: '#99f6e4', c2: '#0d9488', c3: '#34d399', eye: '#a5f3fc', eyes: 'glow', mouth: 'smile', back: ['hair'], feats: ['bubbles'] } },
 
   // ---------- ЛЕС ----------
-  { id: 'mshonok', name: 'Мшонок', el: 'forest', rar: 1, stage: 1, fam: 'mshonok', evo: 'leshachok', cost: 25, base: [108, 118, 116],
-    desc: 'Прорастает в трещинах асфальта. Если его полить — будет ходить за тобой хвостиком.',
+  { id: 'mshonok', name: ru`Мшонок`, el: 'forest', rar: 1, stage: 1, fam: 'mshonok', evo: 'leshachok', cost: 25, base: [108, 118, 116],
+    desc: ru`Прорастает в трещинах асфальта. Если его полить — будет ходить за тобой хвостиком.`,
     look: { shape: 'round', c1: '#a3e635', c2: '#4d7c0f', c3: '#86efac', eyes: 'round', mouth: 'smile', back: [], feats: ['sprout', 'cheeks'] } },
-  { id: 'leshachok', name: 'Лешачок', el: 'forest', rar: 2, stage: 2, fam: 'mshonok', evo: 'leshiy', cost: 100, base: [156, 162, 150],
-    desc: 'Путает дорожки в парках. Если ты трижды прошёл мимо одной скамейки — это он.',
+  { id: 'leshachok', name: ru`Лешачок`, el: 'forest', rar: 2, stage: 2, fam: 'mshonok', evo: 'leshiy', cost: 100, base: [156, 162, 150],
+    desc: ru`Путает дорожки в парках. Если ты трижды прошёл мимо одной скамейки — это он.`,
     look: { shape: 'tall', c1: '#84cc16', c2: '#3f6212', c3: '#a16207', eyes: 'round', mouth: 'cat', back: [], feats: ['antlers', 'leaves'] } },
-  { id: 'leshiy', name: 'Леший', el: 'forest', rar: 3, stage: 3, fam: 'mshonok', base: [214, 226, 210],
-    desc: 'Древний хозяин леса. Скверы и бульвары считает своими владениями и строго следит за каждым деревом.',
+  { id: 'leshiy', name: ru`Леший`, el: 'forest', rar: 3, stage: 3, fam: 'mshonok', base: [214, 226, 210],
+    desc: ru`Древний хозяин леса. Скверы и бульвары считает своими владениями и строго следит за каждым деревом.`,
     look: { shape: 'robe', c1: '#65a30d', c2: '#1a2e05', c3: '#78350f', eye: '#fde047', eyes: 'glow', mouth: 'none', back: [], feats: ['antlers', 'beard', 'leaves'] } },
-  { id: 'kikimora', name: 'Кикимора', el: 'forest', rar: 3, stage: 1, fam: 'kikimora', base: [196, 150, 176], time: 'night',
-    desc: 'Болотная проказница. Прячет ключи, путает провода наушников и хихикает из подвалов.',
+  { id: 'kikimora', name: ru`Кикимора`, el: 'forest', rar: 3, stage: 1, fam: 'kikimora', base: [196, 150, 176], time: 'night',
+    desc: ru`Болотная проказница. Прячет ключи, путает провода наушников и хихикает из подвалов.`,
     look: { shape: 'ghost', c1: '#bef264', c2: '#365314', c3: '#3f3a36', eye: '#f87171', eyes: 'many', mouth: 'teeth', back: ['hair'], feats: ['drops'] } },
 
   // ---------- ВЕТЕР ----------
-  { id: 'skvoznyak', name: 'Сквозняк', el: 'wind', rar: 1, stage: 1, fam: 'skvoznyak', evo: 'vihrun', cost: 25, base: [122, 90, 104],
-    desc: 'Хлопает форточками и дверями подъездов. Совершенно не умеет сидеть на месте.',
+  { id: 'skvoznyak', name: ru`Сквозняк`, el: 'wind', rar: 1, stage: 1, fam: 'skvoznyak', evo: 'vihrun', cost: 25, base: [122, 90, 104],
+    desc: ru`Хлопает форточками и дверями подъездов. Совершенно не умеет сидеть на месте.`,
     look: { shape: 'wisp', c1: '#e0f2fe', c2: '#7dd3fc', c3: '#ffffff', eyes: 'sleepy', mouth: 'o', back: [], feats: ['swirl'] } },
-  { id: 'vihrun', name: 'Вихрун', el: 'wind', rar: 2, stage: 2, fam: 'skvoznyak', evo: 'burevey', cost: 100, base: [176, 124, 140],
-    desc: 'Закручивает листья и пакеты в маленькие смерчи. Обожает выворачивать зонты.',
+  { id: 'vihrun', name: ru`Вихрун`, el: 'wind', rar: 2, stage: 2, fam: 'skvoznyak', evo: 'burevey', cost: 100, base: [176, 124, 140],
+    desc: ru`Закручивает листья и пакеты в маленькие смерчи. Обожает выворачивать зонты.`,
     look: { shape: 'wisp', c1: '#bae6fd', c2: '#3b82f6', c3: '#f0f9ff', eyes: 'angry', mouth: 'smile', back: [], feats: ['swirl', 'ears'] } },
-  { id: 'burevey', name: 'Буревей', el: 'wind', rar: 3, stage: 3, fam: 'skvoznyak', base: [240, 168, 188],
-    desc: 'Повелитель бурь. Когда Буревей расправляет крылья, в городе отключают аттракционы.',
+  { id: 'burevey', name: ru`Буревей`, el: 'wind', rar: 3, stage: 3, fam: 'skvoznyak', base: [240, 168, 188],
+    desc: ru`Повелитель бурь. Когда Буревей расправляет крылья, в городе отключают аттракционы.`,
     look: { shape: 'bird', c1: '#93c5fd', c2: '#1e3a8a', c3: '#e0e7ff', eyes: 'angry', mouth: 'beak', back: ['tail', 'wings'], feats: ['crest', 'swirl'] } },
-  { id: 'cherdachnik', name: 'Чердачник', el: 'wind', rar: 2, stage: 1, fam: 'cherdachnik', base: [150, 150, 160],
-    desc: 'Живёт на чердаках, среди старых чемоданов. Шуршит, вздыхает и собирает потерянные вещи.',
+  { id: 'cherdachnik', name: ru`Чердачник`, el: 'wind', rar: 2, stage: 1, fam: 'cherdachnik', base: [150, 150, 160],
+    desc: ru`Живёт на чердаках, среди старых чемоданов. Шуршит, вздыхает и собирает потерянные вещи.`,
     look: { shape: 'ghost', c1: '#d6d3d1', c2: '#57534e', c3: '#f5f5f4', eyes: 'sleepy', mouth: 'o', back: [], feats: ['cobweb', 'ears'] } },
 
   // ---------- ТОК ----------
-  { id: 'vayfayka', name: 'Вайфайка', el: 'current', rar: 1, stage: 1, fam: 'vayfayka', evo: 'setevik', cost: 25, base: [116, 100, 108],
-    desc: 'Новый дух, рождённый из бесплатного Wi‑Fi. Там, где он сидит, связь ловит на одну палочку лучше.',
+  { id: 'vayfayka', name: ru`Вайфайка`, el: 'current', rar: 1, stage: 1, fam: 'vayfayka', evo: 'setevik', cost: 25, base: [116, 100, 108],
+    desc: ru`Новый дух, рождённый из бесплатного Wi‑Fi. Там, где он сидит, связь ловит на одну палочку лучше.`,
     look: { shape: 'round', c1: '#c4b5fd', c2: '#6d28d9', c3: '#67e8f9', eyes: 'big', mouth: 'smile', back: [], feats: ['antenna', 'wifi', 'cheeks'] } },
-  { id: 'setevik', name: 'Сетевик', el: 'current', rar: 2, stage: 2, fam: 'vayfayka', evo: 'gromovik', cost: 100, base: [166, 138, 144],
-    desc: 'Плетёт невидимые сети между домами. Иногда путает пароли — просто из вредности.',
+  { id: 'setevik', name: ru`Сетевик`, el: 'current', rar: 2, stage: 2, fam: 'vayfayka', evo: 'gromovik', cost: 100, base: [166, 138, 144],
+    desc: ru`Плетёт невидимые сети между домами. Иногда путает пароли — просто из вредности.`,
     look: { shape: 'box', c1: '#a78bfa', c2: '#4c1d95', c3: '#22d3ee', eyes: 'round', mouth: 'cat', back: [], feats: ['antenna', 'wifi', 'cables'] } },
-  { id: 'gromovik', name: 'Громовик', el: 'current', rar: 3, stage: 3, fam: 'vayfayka', base: [236, 170, 186],
-    desc: 'Дух грозы и высоковольтных линий. Одним чихом способен обесточить целый район.',
+  { id: 'gromovik', name: ru`Громовик`, el: 'current', rar: 3, stage: 3, fam: 'vayfayka', base: [236, 170, 186],
+    desc: ru`Дух грозы и высоковольтных линий. Одним чихом способен обесточить целый район.`,
     look: { shape: 'tall', c1: '#fef08a', c2: '#ca8a04', c3: '#a78bfa', eyes: 'angry', mouth: 'teeth', back: [], feats: ['bolt', 'horns', 'antenna'] } },
-  { id: 'tramvaynik', name: 'Трамвайник', el: 'current', rar: 3, stage: 1, fam: 'tramvaynik', base: [184, 206, 204],
-    desc: 'Дух последнего трамвая. Звенит на пустых остановках и подвозит тех, кто опоздал.',
+  { id: 'tramvaynik', name: ru`Трамвайник`, el: 'current', rar: 3, stage: 1, fam: 'tramvaynik', base: [184, 206, 204],
+    desc: ru`Дух последнего трамвая. Звенит на пустых остановках и подвозит тех, кто опоздал.`,
     look: { shape: 'box', c1: '#fca5a5', c2: '#b91c1c', c3: '#fde047', eyes: 'big', mouth: 'smile', back: [], feats: ['pantograph', 'stripe'] } },
-  { id: 'fonarnik', name: 'Фонарник', el: 'current', rar: 2, stage: 1, fam: 'fonarnik', base: [148, 162, 150], time: 'night',
-    desc: 'Зажигает уличные фонари в сумерках. Мигающий фонарь — значит, Фонарник рядом и ему скучно.',
+  { id: 'fonarnik', name: ru`Фонарник`, el: 'current', rar: 2, stage: 1, fam: 'fonarnik', base: [148, 162, 150], time: 'night',
+    desc: ru`Зажигает уличные фонари в сумерках. Мигающий фонарь — значит, Фонарник рядом и ему скучно.`,
     look: { shape: 'tall', c1: '#64748b', c2: '#1e293b', c3: '#fde047', eyes: 'glow', mouth: 'none', back: [], feats: ['lamp'] } },
 
   // ---------- ТЕНЬ ----------
-  { id: 'shoroh', name: 'Шорох', el: 'shadow', rar: 1, stage: 1, fam: 'shoroh', evo: 'babayka', cost: 25, base: [120, 94, 102], time: 'night',
-    desc: 'Тот самый звук за спиной в пустом подъезде. На самом деле очень застенчив.',
+  { id: 'shoroh', name: ru`Шорох`, el: 'shadow', rar: 1, stage: 1, fam: 'shoroh', evo: 'babayka', cost: 25, base: [120, 94, 102], time: 'night',
+    desc: ru`Тот самый звук за спиной в пустом подъезде. На самом деле очень застенчив.`,
     look: { shape: 'ghost', c1: '#7e3bb8', c2: '#1e0b36', c3: '#e879f9', eyes: 'glow', mouth: 'none', back: [], feats: [] } },
-  { id: 'babayka', name: 'Бабайка', el: 'shadow', rar: 2, stage: 2, fam: 'shoroh', evo: 'babay', cost: 100, base: [172, 126, 142],
-    desc: 'Прячется под кроватями и в тёмных арках. Питается страхами, но больше всего любит печенье.',
+  { id: 'babayka', name: ru`Бабайка`, el: 'shadow', rar: 2, stage: 2, fam: 'shoroh', evo: 'babay', cost: 100, base: [172, 126, 142],
+    desc: ru`Прячется под кроватями и в тёмных арках. Питается страхами, но больше всего любит печенье.`,
     look: { shape: 'blob', c1: '#5b2aa8', c2: '#1a0b2e', c3: '#f472b6', eye: '#f472b6', eyes: 'many', mouth: 'teeth', back: [], feats: ['ears'] } },
-  { id: 'babay', name: 'Бабай', el: 'shadow', rar: 3, stage: 3, fam: 'shoroh', base: [238, 160, 190],
-    desc: 'Ходит по ночным дворам с огромным мешком. Что в мешке — не знает даже Орден.',
+  { id: 'babay', name: ru`Бабай`, el: 'shadow', rar: 3, stage: 3, fam: 'shoroh', base: [238, 160, 190],
+    desc: ru`Ходит по ночным дворам с огромным мешком. Что в мешке — не знает даже Орден.`,
     look: { shape: 'robe', c1: '#4a1480', c2: '#0f0518', c3: '#f43f5e', eye: '#f43f5e', eyes: 'glow', mouth: 'teeth', back: [], feats: ['horns', 'bag'] } },
-  { id: 'navka', name: 'Навка', el: 'shadow', rar: 4, stage: 1, fam: 'navka', base: [222, 176, 180], time: 'night',
-    desc: 'Вестница из Нави, мира по ту сторону. Приходит туда, где граница тоньше всего.',
+  { id: 'navka', name: ru`Навка`, el: 'shadow', rar: 4, stage: 1, fam: 'navka', base: [222, 176, 180], time: 'night',
+    desc: ru`Вестница из Нави, мира по ту сторону. Приходит туда, где граница тоньше всего.`,
     look: { shape: 'ghost', c1: '#e2e8f0', c2: '#64748b', c3: '#cbd5e1', eye: '#67e8f9', eyes: 'glow', mouth: 'none', back: ['hair'], feats: [] } },
-  { id: 'koschey', name: 'Кощей', el: 'shadow', rar: 5, stage: 1, fam: 'koschey', legend: true, base: [294, 232, 236],
-    desc: 'Легенда. Бессмертный царь Нави. Именно он истончил границу миров в Тонкую ночь. Ищи его в тёмных разломах.',
+  { id: 'koschey', name: ru`Кощей`, el: 'shadow', rar: 5, stage: 1, fam: 'koschey', legend: true, base: [294, 232, 236],
+    desc: ru`Легенда. Бессмертный царь Нави. Именно он истончил границу миров в Тонкую ночь. Ищи его в тёмных разломах.`,
     look: { shape: 'robe', c1: '#475569', c2: '#0f172a', c3: '#4ade80', eye: '#4ade80', eyes: 'glow', mouth: 'teeth', back: ['aura'], feats: ['crown', 'bones', 'runes'] } },
 
   // ---------- v1.3: новые духи ----------
-  { id: 'bannik', name: 'Банник', el: 'water', rar: 3, stage: 1, fam: 'bannik', base: [178, 212, 214],
-    desc: 'Хозяин бань и саун. Любит пар погорячее и не терпит, когда парятся после полуночи.',
+  { id: 'bannik', name: ru`Банник`, el: 'water', rar: 3, stage: 1, fam: 'bannik', base: [178, 212, 214],
+    desc: ru`Хозяин бань и саун. Любит пар погорячее и не терпит, когда парятся после полуночи.`,
     look: { shape: 'round', c1: '#f5b38b', c2: '#9a4a2a', c3: '#e5e7eb', eyes: 'sleepy', mouth: 'none', back: ['steam'], feats: ['beard', 'broom'] } },
-  { id: 'poludnica', name: 'Полудница', el: 'fire', rar: 3, stage: 1, fam: 'poludnica', base: [220, 160, 170], time: 'day',
-    desc: 'Появляется в самый зной, около полудня. Спрашивает загадки и не любит, когда работают в жару.',
+  { id: 'poludnica', name: ru`Полудница`, el: 'fire', rar: 3, stage: 1, fam: 'poludnica', base: [220, 160, 170], time: 'day',
+    desc: ru`Появляется в самый зной, около полудня. Спрашивает загадки и не любит, когда работают в жару.`,
     look: { shape: 'robe', c1: '#fde68a', c2: '#b45309', c3: '#fbbf24', eye: '#fff7ed', eyes: 'glow', mouth: 'none', back: ['halo', 'hair'], feats: [] } },
-  { id: 'polevik', name: 'Полевик', el: 'forest', rar: 2, stage: 1, fam: 'polevik', base: [150, 158, 164],
-    desc: 'Дух полей и пустырей. В городе живёт на газонах и клумбах, считает каждый колосок.',
+  { id: 'polevik', name: ru`Полевик`, el: 'forest', rar: 2, stage: 1, fam: 'polevik', base: [150, 158, 164],
+    desc: ru`Дух полей и пустырей. В городе живёт на газонах и клумбах, считает каждый колосок.`,
     look: { shape: 'tall', c1: '#d9f99d', c2: '#65a30d', c3: '#eab308', eyes: 'round', mouth: 'smile', back: ['wheat'], feats: ['whiskers'] } },
-  { id: 'yrka', name: 'Ырка', el: 'shadow', rar: 3, stage: 1, fam: 'yrka', base: [214, 140, 160], time: 'night',
-    desc: 'Ночной дух пустырей с горящими глазами. Боится огня и громких песен.',
+  { id: 'yrka', name: ru`Ырка`, el: 'shadow', rar: 3, stage: 1, fam: 'yrka', base: [214, 140, 160], time: 'night',
+    desc: ru`Ночной дух пустырей с горящими глазами. Боится огня и громких песен.`,
     look: { shape: 'ghost', c1: '#94a3b8', c2: '#1e293b', c3: '#f87171', eye: '#fb923c', eyes: 'glow', mouth: 'teeth', back: [], feats: ['runes'] } },
-  { id: 'paketik', name: 'Пакетик', el: 'wind', rar: 1, stage: 1, fam: 'paketik', evo: 'shurshun', cost: 50, base: [112, 96, 118],
-    desc: 'Городской дух, рождённый из пакета, который ветер носит по дворам. Мечтает долететь до облаков.',
+  { id: 'paketik', name: ru`Пакетик`, el: 'wind', rar: 1, stage: 1, fam: 'paketik', evo: 'shurshun', cost: 50, base: [112, 96, 118],
+    desc: ru`Городской дух, рождённый из пакета, который ветер носит по дворам. Мечтает долететь до облаков.`,
     look: { shape: 'bag', c1: '#f8fafc', c2: '#94a3b8', c3: '#cbd5e1', eyes: 'big', mouth: 'o', back: ['handles'], feats: ['swirl'] } },
-  { id: 'shurshun', name: 'Шуршун', el: 'wind', rar: 2, stage: 2, fam: 'paketik', base: [180, 138, 150],
-    desc: 'Выросший Пакетик. Шуршит так громко, что соседи думают, будто на чердаке кто-то живёт.',
+  { id: 'shurshun', name: ru`Шуршун`, el: 'wind', rar: 2, stage: 2, fam: 'paketik', base: [180, 138, 150],
+    desc: ru`Выросший Пакетик. Шуршит так громко, что соседи думают, будто на чердаке кто-то живёт.`,
     look: { shape: 'bag', c1: '#e0f2fe', c2: '#475569', c3: '#7dd3fc', eyes: 'angry', mouth: 'cat', back: ['handles'], feats: ['swirl', 'bubbles'] } },
-  { id: 'metrovik', name: 'Метровик', el: 'current', rar: 2, stage: 1, fam: 'metrovik', base: [160, 170, 158],
-    desc: 'Дух подземки. Знает все тоннели и первым слышит, что поезд подходит к станции.',
+  { id: 'metrovik', name: ru`Метровик`, el: 'current', rar: 2, stage: 1, fam: 'metrovik', base: [160, 170, 158],
+    desc: ru`Дух подземки. Знает все тоннели и первым слышит, что поезд подходит к станции.`,
     look: { shape: 'box', c1: '#93c5fd', c2: '#1e3a8a', c3: '#ef4444', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['sign'], feats: ['stripe'] } },
-  { id: 'sirin', name: 'Сирин', el: 'shadow', rar: 4, stage: 1, fam: 'sirin', base: [226, 190, 196], region: 'west',
-    desc: 'Вещая птица с девичьим лицом. Её печальная песня слышна только на западе, до 40° в. д.',
+  { id: 'sirin', name: ru`Сирин`, el: 'shadow', rar: 4, stage: 1, fam: 'sirin', base: [226, 190, 196], region: 'west',
+    desc: ru`Вещая птица с девичьим лицом. Её печальная песня слышна только на западе, до 40° в. д.`,
     look: { shape: 'bird', c1: '#e9d5ff', c2: '#6b21a8', c3: '#1e1b4b', eyes: 'sleepy', mouth: 'smile', back: ['tail', 'wings', 'hair'], feats: ['crown'] } },
-  { id: 'alkonost', name: 'Алконост', el: 'water', rar: 4, stage: 1, fam: 'alkonost', base: [210, 206, 204], region: 'center',
-    desc: 'Райская птица радости. Вьёт гнёзда у тёплых морей, встречается между 40° и 90° в. д.',
+  { id: 'alkonost', name: ru`Алконост`, el: 'water', rar: 4, stage: 1, fam: 'alkonost', base: [210, 206, 204], region: 'center',
+    desc: ru`Райская птица радости. Вьёт гнёзда у тёплых морей, встречается между 40° и 90° в. д.`,
     look: { shape: 'bird', c1: '#a5f3fc', c2: '#0e7490', c3: '#fde047', eyes: 'round', mouth: 'smile', back: ['tail', 'wings', 'hair'], feats: ['crown'] } },
-  { id: 'gamayun', name: 'Гамаюн', el: 'wind', rar: 4, stage: 1, fam: 'gamayun', base: [218, 196, 200], region: 'east',
-    desc: 'Птица-вестница, знающая всё на свете. Прилетает только на восток, дальше 90° в. д.',
+  { id: 'gamayun', name: ru`Гамаюн`, el: 'wind', rar: 4, stage: 1, fam: 'gamayun', base: [218, 196, 200], region: 'east',
+    desc: ru`Птица-вестница, знающая всё на свете. Прилетает только на восток, дальше 90° в. д.`,
     look: { shape: 'bird', c1: '#c7d2fe', c2: '#3730a3', c3: '#f472b6', eye: '#f9a8d4', eyes: 'glow', mouth: 'none', back: ['tail', 'wings', 'hair'], feats: ['crest'] } },
-  { id: 'gorynych', name: 'Змей Горыныч', el: 'fire', rar: 5, stage: 1, fam: 'gorynych', legend: true, base: [300, 220, 244],
-    desc: 'Легенда. Трёхголовый змей, хранитель Калинова моста. Головы вечно спорят, какая из них главная.',
+  { id: 'gorynych', name: ru`Змей Горыныч`, el: 'fire', rar: 5, stage: 1, fam: 'gorynych', legend: true, base: [300, 220, 244],
+    desc: ru`Легенда. Трёхголовый змей, хранитель Калинова моста. Головы вечно спорят, какая из них главная.`,
     look: { shape: 'blob', c1: '#4ade80', c2: '#14532d', c3: '#f97316', eyes: 'angry', mouth: 'teeth', back: ['aura', 'wings', 'heads3'], feats: ['horns'] } },
 
   // ---------- v1.4: сезонные духи ----------
-  { id: 'morozko', name: 'Морозко', el: 'wind', rar: 4, stage: 1, fam: 'morozko', base: [224, 214, 206], season: 'winter',
-    desc: 'Зимний дух в инеевой шубе. Рисует узоры на окнах и проверяет, тепло ли тебе, девица. Появляется только зимой.',
+  { id: 'morozko', name: ru`Морозко`, el: 'wind', rar: 4, stage: 1, fam: 'morozko', base: [224, 214, 206], season: 'winter',
+    desc: ru`Зимний дух в инеевой шубе. Рисует узоры на окнах и проверяет, тепло ли тебе, девица. Появляется только зимой.`,
     look: { shape: 'robe', c1: '#e0f2fe', c2: '#1d4ed8', c3: '#f8fafc', eye: '#2563eb', eyes: 'glow', mouth: 'none', back: ['aura'], feats: ['beard', 'crown'] } },
-  { id: 'snegurka', name: 'Снегурка', el: 'water', rar: 3, stage: 1, fam: 'snegurka', base: [190, 196, 202], season: 'winter',
-    desc: 'Девочка из снега. Боится костров и тёплых батарей, зато на катке ей нет равных. Появляется только зимой.',
+  { id: 'snegurka', name: ru`Снегурка`, el: 'water', rar: 3, stage: 1, fam: 'snegurka', base: [190, 196, 202], season: 'winter',
+    desc: ru`Девочка из снега. Боится костров и тёплых батарей, зато на катке ей нет равных. Появляется только зимой.`,
     look: { shape: 'ghost', c1: '#f0f9ff', c2: '#38bdf8', c3: '#bfdbfe', eyes: 'big', mouth: 'smile', back: ['hair'], feats: ['crown', 'cheeks'] } },
-  { id: 'kupalinka', name: 'Купалинка', el: 'forest', rar: 3, stage: 1, fam: 'kupalinka', base: [196, 188, 194], season: 'kupala',
-    desc: 'Дух цветущего папоротника. Показывается летом, а в Купальскую ночь — повсюду.',
+  { id: 'kupalinka', name: ru`Купалинка`, el: 'forest', rar: 3, stage: 1, fam: 'kupalinka', base: [196, 188, 194], season: 'kupala',
+    desc: ru`Дух цветущего папоротника. Показывается летом, а в Купальскую ночь — повсюду.`,
     look: { shape: 'drop', c1: '#bbf7d0', c2: '#15803d', c3: '#f472b6', eyes: 'round', mouth: 'smile', back: ['aura'], feats: ['sprout', 'cheeks', 'leaves'] } },
 
   // ---------- v1.7 ----------
-  { id: 'tenka', name: 'Тенька', el: 'shadow', rar: 1, stage: 1, fam: 'tenka', evo: 'sumrak', cost: 25, base: [114, 98, 108],
-    desc: 'Маленькая тень, которая отстала от хозяина. Прячется под скамейками и повторяет чужие движения.',
+  { id: 'tenka', name: ru`Тенька`, el: 'shadow', rar: 1, stage: 1, fam: 'tenka', evo: 'sumrak', cost: 25, base: [114, 98, 108],
+    desc: ru`Маленькая тень, которая отстала от хозяина. Прячется под скамейками и повторяет чужие движения.`,
     look: { shape: 'ghost', c1: '#475569', c2: '#0f172a', c3: '#a5b4fc', eye: '#e0e7ff', eyes: 'glow', mouth: 'o', back: [], feats: ['cheeks'] } },
-  { id: 'sumrak', name: 'Сумрак', el: 'shadow', rar: 2, stage: 2, fam: 'tenka', evo: 'morok', cost: 100, base: [166, 132, 146],
-    desc: 'Приходит вместе с вечером и гасит краски улиц. Фонарники его недолюбливают.',
+  { id: 'sumrak', name: ru`Сумрак`, el: 'shadow', rar: 2, stage: 2, fam: 'tenka', evo: 'morok', cost: 100, base: [166, 132, 146],
+    desc: ru`Приходит вместе с вечером и гасит краски улиц. Фонарники его недолюбливают.`,
     look: { shape: 'wisp', c1: '#6366f1', c2: '#1e1b4b', c3: '#c7d2fe', eye: '#a5b4fc', eyes: 'glow', mouth: 'none', back: [], feats: ['swirl'] } },
-  { id: 'morok', name: 'Морок', el: 'shadow', rar: 3, stage: 3, fam: 'tenka', base: [234, 168, 184],
-    desc: 'Мастер наваждений. Может заставить весь двор увидеть один и тот же сон.',
+  { id: 'morok', name: ru`Морок`, el: 'shadow', rar: 3, stage: 3, fam: 'tenka', base: [234, 168, 184],
+    desc: ru`Мастер наваждений. Может заставить весь двор увидеть один и тот же сон.`,
     look: { shape: 'robe', c1: '#4338ca', c2: '#0b0a1f', c3: '#818cf8', eye: '#c7d2fe', eyes: 'many', mouth: 'none', back: ['aura', 'hair'], feats: ['runes'] } },
-  { id: 'bayun', name: 'Кот Баюн', el: 'shadow', rar: 4, stage: 1, fam: 'bayun', base: [216, 196, 210],
-    desc: 'Сказочный кот-сказитель. Мурлычет так, что засыпают даже Громовики. Живёт на высоких фонарях.',
+  { id: 'bayun', name: ru`Кот Баюн`, el: 'shadow', rar: 4, stage: 1, fam: 'bayun', base: [216, 196, 210],
+    desc: ru`Сказочный кот-сказитель. Мурлычет так, что засыпают даже Громовики. Живёт на высоких фонарях.`,
     look: { shape: 'round', c1: '#9ca3af', c2: '#374151', c3: '#f9a8d4', eye: '#86efac', eyes: 'glow', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers'] } },
-  { id: 'volk', name: 'Серый Волк', el: 'forest', rar: 3, stage: 1, fam: 'volk', base: [220, 172, 190],
-    desc: 'Верный помощник царевичей. Бегает быстрее электрички и знает все короткие пути через парки.',
+  { id: 'volk', name: ru`Серый Волк`, el: 'forest', rar: 3, stage: 1, fam: 'volk', base: [220, 172, 190],
+    desc: ru`Верный помощник царевичей. Бегает быстрее электрички и знает все короткие пути через парки.`,
     look: { shape: 'blob', c1: '#9ca3af', c2: '#4b5563', c3: '#e5e7eb', eyes: 'angry', mouth: 'none', back: ['ears', 'cattail'], feats: ['snout'] } },
-  { id: 'liho', name: 'Лихо Одноглазое', el: 'shadow', rar: 3, stage: 1, fam: 'liho', base: [226, 150, 176], time: 'night',
-    desc: 'Не буди Лихо, пока оно тихо. Одним глазом видит все твои неудачи — и немного их подбрасывает.',
+  { id: 'liho', name: ru`Лихо Одноглазое`, el: 'shadow', rar: 3, stage: 1, fam: 'liho', base: [226, 150, 176], time: 'night',
+    desc: ru`Не буди Лихо, пока оно тихо. Одним глазом видит все твои неудачи — и немного их подбрасывает.`,
     look: { shape: 'tall', c1: '#78716c', c2: '#292524', c3: '#fbbf24', eyes: 'one', mouth: 'teeth', back: ['horns'], feats: [] } },
-  { id: 'samokatnik', name: 'Самокатник', el: 'current', rar: 2, stage: 1, fam: 'samokatnik', base: [170, 136, 146],
-    desc: 'Дух брошенных самокатов. Носится по тротуарам и звенит, когда его забывают зарядить.',
+  { id: 'samokatnik', name: ru`Самокатник`, el: 'current', rar: 2, stage: 1, fam: 'samokatnik', base: [170, 136, 146],
+    desc: ru`Дух брошенных самокатов. Носится по тротуарам и звенит, когда его забывают зарядить.`,
     look: { shape: 'box', c1: '#6ee7b7', c2: '#047857', c3: '#fde047', eyes: 'big', mouth: 'smile', back: ['handlebar'], feats: ['wheels'] } },
-  { id: 'kurernik', name: 'Курьерник', el: 'wind', rar: 2, stage: 1, fam: 'kurernik', base: [158, 150, 156],
-    desc: 'Дух доставки. Всегда «будет через 5 минут». Путает подъезды, зато никогда не опаздывает на встречу с Ловчим.',
+  { id: 'kurernik', name: ru`Курьерник`, el: 'wind', rar: 2, stage: 1, fam: 'kurernik', base: [158, 150, 156],
+    desc: ru`Дух доставки. Всегда «будет через 5 минут». Путает подъезды, зато никогда не опаздывает на встречу с Ловчим.`,
     look: { shape: 'round', c1: '#fdba74', c2: '#c2410c', c3: '#fef3c7', eyes: 'round', mouth: 'smile', back: ['backpack'], feats: ['hat', 'cheeks'] } },
 
   // ---------- v3.8: духи родных земель — у каждого края России свой ----------
-  { id: 'bereginya', name: 'Берегиня', el: 'water', rar: 4, stage: 1, fam: 'bereginya', base: [206, 214, 208], land: 'center',
-    desc: 'Хранительница речных берегов и бродов. Живёт в Центре и на Северо-Западе — от Калининграда до Нижнего Новгорода.',
+  { id: 'bereginya', name: ru`Берегиня`, el: 'water', rar: 4, stage: 1, fam: 'bereginya', base: [206, 214, 208], land: 'center',
+    desc: ru`Хранительница речных берегов и бродов. Живёт в Центре и на Северо-Западе — от Калининграда до Нижнего Новгорода.`,
     look: { shape: 'robe', c1: '#bae6fd', c2: '#0369a1', c3: '#fef08a', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'halo'], feats: ['crown'] } },
-  { id: 'spoloh', name: 'Сполох', el: 'wind', rar: 4, stage: 1, fam: 'spoloh', base: [222, 188, 196], land: 'north',
-    desc: 'Дух северного сияния. Пляшет над тундрой и Белым морем, а в полярную ночь спускается к самым крышам. Только на Севере.',
+  { id: 'spoloh', name: ru`Сполох`, el: 'wind', rar: 4, stage: 1, fam: 'spoloh', base: [222, 188, 196], land: 'north',
+    desc: ru`Дух северного сияния. Пляшет над тундрой и Белым морем, а в полярную ночь спускается к самым крышам. Только на Севере.`,
     look: { shape: 'wisp', c1: '#86efac', c2: '#0f766e', c3: '#c084fc', eyes: 'glow', mouth: 'none', back: ['aura', 'ripples'], feats: ['swirl'] } },
-  { id: 'zhigul', name: 'Жигуль', el: 'forest', rar: 4, stage: 1, fam: 'zhigul', base: [214, 216, 200], land: 'volga',
-    desc: 'Лесной великан Жигулёвских гор. Сторожит излучину Волги и гудит, как пароход. Водится в Поволжье.',
+  { id: 'zhigul', name: ru`Жигуль`, el: 'forest', rar: 4, stage: 1, fam: 'zhigul', base: [214, 216, 200], land: 'volga',
+    desc: ru`Лесной великан Жигулёвских гор. Сторожит излучину Волги и гудит, как пароход. Водится в Поволжье.`,
     look: { shape: 'tall', c1: '#a3e635', c2: '#365314', c3: '#b45309', eyes: 'round', mouth: 'teeth', back: ['antlers', 'sprout'], feats: ['leaves'] } },
-  { id: 'tur', name: 'Горный Тур', el: 'wind', rar: 4, stage: 1, fam: 'tur', base: [226, 200, 186], land: 'caucasus',
-    desc: 'Дух горных круч, скачет по скалам выше облаков. Встречается на Юге России и на Кавказе.',
+  { id: 'tur', name: ru`Горный Тур`, el: 'wind', rar: 4, stage: 1, fam: 'tur', base: [226, 200, 186], land: 'caucasus',
+    desc: ru`Дух горных круч, скачет по скалам выше облаков. Встречается на Юге России и на Кавказе.`,
     look: { shape: 'round', c1: '#e7e5e4', c2: '#57534e', c3: '#a8a29e', eyes: 'angry', mouth: 'none', back: ['horns', 'mane'], feats: ['snout', 'beard'] } },
-  { id: 'mednaya', name: 'Хозяйка Медной горы', el: 'current', rar: 4, stage: 1, fam: 'mednaya', base: [218, 204, 198], land: 'ural',
-    desc: 'Владычица уральских недр: хранит малахит, медь и самоцветы. Показывается только на Урале.',
+  { id: 'mednaya', name: ru`Хозяйка Медной горы`, el: 'current', rar: 4, stage: 1, fam: 'mednaya', base: [218, 204, 198], land: 'ural',
+    desc: ru`Владычица уральских недр: хранит малахит, медь и самоцветы. Показывается только на Урале.`,
     look: { shape: 'robe', c1: '#34d399', c2: '#065f46', c3: '#f59e0b', eye: '#fde047', eyes: 'glow', mouth: 'smile', back: ['hair', 'aura'], feats: ['crown', 'runes'] } },
-  { id: 'babr', name: 'Бабр', el: 'fire', rar: 4, stage: 1, fam: 'babr', base: [232, 180, 196], land: 'siberia',
-    desc: 'Огненный зверь сибирской тайги — тот самый, что держит соболя на гербе Иркутска. Водится в Сибири.',
+  { id: 'babr', name: ru`Бабр`, el: 'fire', rar: 4, stage: 1, fam: 'babr', base: [232, 180, 196], land: 'siberia',
+    desc: ru`Огненный зверь сибирской тайги — тот самый, что держит соболя на гербе Иркутска. Водится в Сибири.`,
     look: { shape: 'round', c1: '#fb923c', c2: '#7c2d12', c3: '#1c1917', eyes: 'angry', mouth: 'teeth', back: ['cattail', 'ears'], feats: ['whiskers'] } },
-  { id: 'kutkh', name: 'Кутх', el: 'shadow', rar: 4, stage: 1, fam: 'kutkh', base: [220, 190, 200], land: 'fareast',
-    desc: 'Ворон-творец из сказаний Камчатки: говорят, это он вытащил землю из моря. Прилетает только на Дальний Восток.',
+  { id: 'kutkh', name: ru`Кутх`, el: 'shadow', rar: 4, stage: 1, fam: 'kutkh', base: [220, 190, 200], land: 'fareast',
+    desc: ru`Ворон-творец из сказаний Камчатки: говорят, это он вытащил землю из моря. Прилетает только на Дальний Восток.`,
     look: { shape: 'bird', c1: '#64748b', c2: '#0f172a', c3: '#f59e0b', eye: '#fbbf24', eyes: 'glow', mouth: 'beak', back: ['wings', 'tail'], feats: ['crest'] } },
 
   // ---------- v3.9: легенда третьей книги Летописи (только награда, в разломах не встречается) ----------
-  { id: 'indrik', name: 'Индрик-зверь', el: 'water', rar: 5, stage: 1, fam: 'indrik', legend: true, story: true, base: [292, 244, 256],
-    desc: 'Легенда. Всем зверям отец: ходит под землёй, как солнце по небу, и прочищает подземные реки, чтобы родники не иссякли.',
+  { id: 'indrik', name: ru`Индрик-зверь`, el: 'water', rar: 5, stage: 1, fam: 'indrik', legend: true, story: true, base: [292, 244, 256],
+    desc: ru`Легенда. Всем зверям отец: ходит под землёй, как солнце по небу, и прочищает подземные реки, чтобы родники не иссякли.`,
     look: { shape: 'blob', c1: '#e0e7ff', c2: '#4338ca', c3: '#67e8f9', eye: '#a5f3fc', eyes: 'glow', mouth: 'none', back: ['aura', 'mane', 'tail', 'unihorn'], feats: [] } },
 
   // ---------- 4.0 «Осень Нави»: дубовое семейство, Самоварник, осенняя Листопадница и легенда четвёртой книги ----------
-  { id: 'zheludok', name: 'Желудок', el: 'forest', rar: 1, stage: 1, fam: 'zheludok', evo: 'dubovik', cost: 25, base: [110, 116, 118],
-    desc: 'Скатился с дуба прямо в городской сквер. Мечтает вырасти большим и сильным, а пока катается по дорожкам и прячется в листве.',
+  { id: 'zheludok', name: ru`Желудок`, el: 'forest', rar: 1, stage: 1, fam: 'zheludok', evo: 'dubovik', cost: 25, base: [110, 116, 118],
+    desc: ru`Скатился с дуба прямо в городской сквер. Мечтает вырасти большим и сильным, а пока катается по дорожкам и прячется в листве.`,
     look: { shape: 'round', c1: '#d9a066', c2: '#7c4a1d', c3: '#a3e635', eyes: 'round', mouth: 'smile', back: [], feats: ['acorn', 'cheeks'] } },
-  { id: 'dubovik', name: 'Дубовик', el: 'forest', rar: 2, stage: 2, fam: 'zheludok', evo: 'dubynya', cost: 100, base: [158, 170, 160],
-    desc: 'Подросший Желудок. Кора у него крепкая, как кольчуга, а в дупле хранится запас желудей на чёрный день.',
+  { id: 'dubovik', name: ru`Дубовик`, el: 'forest', rar: 2, stage: 2, fam: 'zheludok', evo: 'dubynya', cost: 100, base: [158, 170, 160],
+    desc: ru`Подросший Желудок. Кора у него крепкая, как кольчуга, а в дупле хранится запас желудей на чёрный день.`,
     look: { shape: 'tall', c1: '#a16207', c2: '#422006', c3: '#84cc16', eyes: 'angry', mouth: 'smile', back: ['antlers'], feats: ['leaves', 'beard'] } },
-  { id: 'dubynya', name: 'Дубыня', el: 'forest', rar: 3, stage: 3, fam: 'zheludok', base: [226, 232, 204],
-    desc: 'Богатырь-дубодёр из былин. Выворачивает с корнем деревья, сломанные бурей, и сажает на их место новые.',
+  { id: 'dubynya', name: ru`Дубыня`, el: 'forest', rar: 3, stage: 3, fam: 'zheludok', base: [226, 232, 204],
+    desc: ru`Богатырь-дубодёр из былин. Выворачивает с корнем деревья, сломанные бурей, и сажает на их место новые.`,
     look: { shape: 'robe', c1: '#854d0e', c2: '#3f2a14', c3: '#65a30d', eyes: 'angry', mouth: 'none', back: ['aura', 'antlers'], feats: ['beard', 'leaves', 'runes'] } },
-  { id: 'samovarnik', name: 'Самоварник', el: 'fire', rar: 3, stage: 1, fam: 'samovarnik', base: [196, 192, 196],
-    desc: 'Дух бабушкиного самовара. Где он пыхтит — там чай с пряниками и разговоры до полуночи. Не любит, когда пьют из пакетиков.',
+  { id: 'samovarnik', name: ru`Самоварник`, el: 'fire', rar: 3, stage: 1, fam: 'samovarnik', base: [196, 192, 196],
+    desc: ru`Дух бабушкиного самовара. Где он пыхтит — там чай с пряниками и разговоры до полуночи. Не любит, когда пьют из пакетиков.`,
     look: { shape: 'box', c1: '#fbbf24', c2: '#92400e', c3: '#ef4444', eyes: 'round', mouth: 'smile', back: ['steam', 'handles'], feats: ['cheeks'] } },
-  { id: 'listopadnica', name: 'Листопадница', el: 'wind', rar: 3, stage: 1, fam: 'listopadnica', base: [198, 176, 188], season: 'autumn',
-    desc: 'Осенний дух листопада. Кружит жёлтые листья над дворами, а на Покров укрывает землю первым инеем. Появляется только осенью.',
+  { id: 'listopadnica', name: ru`Листопадница`, el: 'wind', rar: 3, stage: 1, fam: 'listopadnica', base: [198, 176, 188], season: 'autumn',
+    desc: ru`Осенний дух листопада. Кружит жёлтые листья над дворами, а на Покров укрывает землю первым инеем. Появляется только осенью.`,
     look: { shape: 'ghost', c1: '#fdba74', c2: '#c2410c', c3: '#facc15', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'aura'], feats: ['leaves', 'cheeks'] } },
-  { id: 'svyatogor', name: 'Святогор', el: 'forest', rar: 5, stage: 1, fam: 'svyatogor', legend: true, story: true, base: [302, 252, 262],
-    desc: 'Легенда. Богатырь, которого не держит мать сыра земля. Спит в Святых горах и встаёт, только когда Руси грозит беда.',
+  { id: 'svyatogor', name: ru`Святогор`, el: 'forest', rar: 5, stage: 1, fam: 'svyatogor', legend: true, story: true, base: [302, 252, 262],
+    desc: ru`Легенда. Богатырь, которого не держит мать сыра земля. Спит в Святых горах и встаёт, только когда Руси грозит беда.`,
     look: { shape: 'robe', c1: '#94a3b8', c2: '#1e293b', c3: '#fbbf24', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['aura', 'halo'], feats: ['beard', 'crown', 'runes'] } },
 ];
 // Земли России для духов родных земель (грубо, по широте и долготе)
 const LANDS = {
-  center:   { name: 'Центр и Северо-Запад', where: 'западнее 44° в. д., от Кавказа до 64° с. ш.' },
-  north:    { name: 'Север',                where: 'севернее 64° с. ш.' },
-  volga:    { name: 'Поволжье',             where: '44–55° в. д.' },
-  caucasus: { name: 'Юг и Кавказ',          where: 'южнее 46,5° с. ш., 36–55° в. д.' },
-  ural:     { name: 'Урал',                 where: '55–66° в. д.' },
-  siberia:  { name: 'Сибирь',               where: '66–105° в. д.' },
-  fareast:  { name: 'Дальний Восток',       where: 'восточнее 105° в. д.' },
+  center:   { name: ru`Центр и Северо-Запад`, where: ru`западнее 44° в. д., от Кавказа до 64° с. ш.` },
+  north:    { name: ru`Север`,                where: ru`севернее 64° с. ш.` },
+  volga:    { name: ru`Поволжье`,             where: ru`44–55° в. д.` },
+  caucasus: { name: ru`Юг и Кавказ`,          where: ru`южнее 46,5° с. ш., 36–55° в. д.` },
+  ural:     { name: ru`Урал`,                 where: ru`55–66° в. д.` },
+  siberia:  { name: ru`Сибирь`,               where: ru`66–105° в. д.` },
+  fareast:  { name: ru`Дальний Восток`,       where: ru`восточнее 105° в. д.` },
 };
 const REGIONS = {
-  west:   { name: 'Запад',  range: 'до 40° в. д.' },
-  center: { name: 'Центр',  range: '40–90° в. д.' },
-  east:   { name: 'Восток', range: 'от 90° в. д.' },
+  west:   { name: ru`Запад`,  range: ru`до 40° в. д.` },
+  center: { name: ru`Центр`,  range: ru`40–90° в. д.` },
+  east:   { name: ru`Восток`, range: ru`от 90° в. д.` },
 };
 SPECIES.forEach((s, i) => { s.num = i + 1; });
 const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
 
 const ITEMS = {
-  charm:   { name: 'Оберег',             desc: 'Узелок с заговорённой травой. Бросай в духа, чтобы поймать.', mult: 1,   throwable: true },
-  charm2:  { name: 'Серебряный оберег',  desc: 'Серебро держит духов крепче. Шанс поимки ×1,5.',              mult: 1.5, throwable: true, unlock: 8 },
-  charm3:  { name: 'Золотой оберег',     desc: 'Лучший оберег Ордена. Шанс поимки ×2.',                        mult: 2,   throwable: true, unlock: 16 },
-  honey:   { name: 'Мёд',                desc: 'Духи обожают мёд. Успокаивает духа: шанс поимки ×1,5 на один бросок.' },
+  charm:   { name: ru`Оберег`,             desc: ru`Узелок с заговорённой травой. Бросай в духа, чтобы поймать.`, mult: 1,   throwable: true },
+  charm2:  { name: ru`Серебряный оберег`,  desc: ru`Серебро держит духов крепче. Шанс поимки ×1,5.`,              mult: 1.5, throwable: true, unlock: 8 },
+  charm3:  { name: ru`Золотой оберег`,     desc: ru`Лучший оберег Ордена. Шанс поимки ×2.`,                        mult: 2,   throwable: true, unlock: 16 },
+  honey:   { name: ru`Мёд`,                desc: ru`Духи обожают мёд. Успокаивает духа: шанс поимки ×1,5 на один бросок.` },
   // 4.15: лечение духов (здоровье — общее на всю игру, см. Rules.HP): heal — сколько здоровья вернёт, revive — поднимает духа без сил
-  herb:    { name: 'Подорожник',         desc: 'Лист к ране — и полегчало. Возвращает духу четверть здоровья.', heal: 0.25 },
-  brew:    { name: 'Целебный отвар',     desc: 'Травы Велеса, сваренные в родниковой воде. Возвращает духу 60% здоровья.', heal: 0.6 },
-  deadwater: { name: 'Мёртвая вода',     desc: 'Сказочная вода, что сращивает раны. Залечивает духа полностью. Духа без сил не поднимет.', heal: 1 },
-  water:   { name: 'Живая вода',         desc: 'Поднимает духа без сил (половина здоровья), а в разломе — лечит прямо в бою.', heal: 0.5, revive: 0.5 },
-  incense: { name: 'Ладан',              desc: 'Дымок приманивает духов: 30 минут их вокруг вдвое больше.' },
-  farpass: { name: 'Дальний пропуск',    desc: 'Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.' },
-  gift:    { name: 'Подарок',           desc: 'Узелок для друга: обереги, мёд, иногда кокон. Отправляется в «Меню → Друзья», раз в день каждому.' },
+  herb:    { name: ru`Подорожник`,         desc: ru`Лист к ране — и полегчало. Возвращает духу четверть здоровья.`, heal: 0.25 },
+  brew:    { name: ru`Целебный отвар`,     desc: ru`Травы Велеса, сваренные в родниковой воде. Возвращает духу 60% здоровья.`, heal: 0.6 },
+  deadwater: { name: ru`Мёртвая вода`,     desc: ru`Сказочная вода, что сращивает раны. Залечивает духа полностью. Духа без сил не поднимет.`, heal: 1 },
+  water:   { name: ru`Живая вода`,         desc: ru`Поднимает духа без сил (половина здоровья), а в разломе — лечит прямо в бою.`, heal: 0.5, revive: 0.5 },
+  incense: { name: ru`Ладан`,              desc: ru`Дымок приманивает духов: 30 минут их вокруг вдвое больше.` },
+  farpass: { name: ru`Дальний пропуск`,    desc: ru`Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.` },
+  gift:    { name: ru`Подарок`,           desc: ru`Узелок для друга: обереги, мёд, иногда кокон. Отправляется в «Меню → Друзья», раз в день каждому.` },
 };
 const GIFT_LIMIT = 10;
 
 /* ---------- Дружба (v1.8) ---------- */
 const FRIEND_LEVELS = [
-  { name: 'Знакомый', pts: 0 },
-  { name: 'Приятель', pts: 3, xp: 500 },
-  { name: 'Друг', pts: 10, xp: 1500 },
-  { name: 'Лучший друг', pts: 30, xp: 4000 },
-  { name: 'Побратим', pts: 60, xp: 10000 },
+  { name: ru`Знакомый`, pts: 0 },
+  { name: ru`Приятель`, pts: 3, xp: 500 },
+  { name: ru`Друг`, pts: 10, xp: 1500 },
+  { name: ru`Лучший друг`, pts: 30, xp: 4000 },
+  { name: ru`Побратим`, pts: 60, xp: 10000 },
 ];
 const BAG_LIMIT = 350;
 
 const COCOON_TIERS = {
-  2:  { name: 'Зелёный кокон',  color: '#86efac', pool: { 1: 1 } },
-  5:  { name: 'Синий кокон',    color: '#7dd3fc', pool: { 1: 3, 2: 4, 3: 1 } },
-  10: { name: 'Лиловый кокон',  color: '#d8b4fe', pool: { 2: 2, 3: 3, 4: 2 } },
+  2:  { name: ru`Зелёный кокон`,  color: '#86efac', pool: { 1: 1 } },
+  5:  { name: ru`Синий кокон`,    color: '#7dd3fc', pool: { 1: 3, 2: 4, 3: 1 } },
+  10: { name: ru`Лиловый кокон`,  color: '#d8b4fe', pool: { 2: 2, 3: 3, 4: 2 } },
 };
 // Опыт на уровень n. До 10 уровня — прежняя пологая кривая (новичок растёт быстро), дальше каждый уровень
 // на 17% дороже предыдущего: 20 ≈ 90 тыс., 30 ≈ 430 тыс., 40 ≈ 2,1 млн (3.19: раньше 40 уровень был за 243 тыс. —
@@ -332,31 +458,31 @@ function levelXP(n) { return n <= 10 ? levelXPOld(n) : Math.round(levelXPOld(10)
 const MAX_LEVEL = 40;
 
 const QUEST_TEMPLATES = [
-  { t: 'catch',   min: 5, max: 10, text: n => `Поймай ${n} духов`,                 reward: { charm: 8, sparks: 300 } },
-  { t: 'catchEl', min: 2, max: 3,  text: (n, el) => `Поймай ${n} духов стихии «${ELEMENTS[el].name}»`, reward: { honey: 3, sparks: 400 } },
-  { t: 'spring',  min: 3, max: 5,  text: n => `Зачерпни силы из ${n} родников`,     reward: { charm: 5, water: 2 } },
-  { t: 'throw',   min: 2, max: 4,  text: n => `Сделай ${n} отличных бросков`,       reward: { honey: 2, sparks: 300 } },
-  { t: 'walk',    min: 1, max: 2,  text: n => `Пройди ${n} км`,                     reward: { charm: 10, sparks: 500 } },
-  { t: 'power',   min: 2, max: 4,  text: n => `Усиль духов ${n} ${U.plural(n, "раз", "раза", "раз")}`,            reward: { water: 3, sparks: 200 } },
-  { t: 'evolve',  min: 1, max: 1,  text: () => `Преврати одного духа`,              reward: { incense: 1 } },
-  { t: 'raid',    min: 1, max: 1,  text: () => `Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
+  { t: 'catch',   min: 5, max: 10, text: n => ru.k`Поймай ${n} духов`,                 reward: { charm: 8, sparks: 300 } },
+  { t: 'catchEl', min: 2, max: 3,  text: (n, el) => ru.k`Поймай ${n} духов стихии «${ELEMENTS[el].name}»`, reward: { honey: 3, sparks: 400 } },
+  { t: 'spring',  min: 3, max: 5,  text: n => ru.k`Зачерпни силы из ${n} родников`,     reward: { charm: 5, water: 2 } },
+  { t: 'throw',   min: 2, max: 4,  text: n => ru.k`Сделай ${n} отличных бросков`,       reward: { honey: 2, sparks: 300 } },
+  { t: 'walk',    min: 1, max: 2,  text: n => ru.k`Пройди ${n} км`,                     reward: { charm: 10, sparks: 500 } },
+  { t: 'power',   min: 2, max: 4,  text: n => ru.k`Усиль духов ${n} ${U.plural(n, ru.k`раз`, ru.k`раза`, ru.k`раз`)}`,            reward: { water: 3, sparks: 200 } },
+  { t: 'evolve',  min: 1, max: 1,  text: () => ru.k`Преврати одного духа`,              reward: { incense: 1 } },
+  { t: 'raid',    min: 1, max: 1,  text: () => ru.k`Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
 ];
 
 /* ---------- Поручения из родников (3.2): задание → встреча с духом ---------- */
 // tier: 1 — лёгкое (обычные и необычные духи), 2 — среднее (необычные и редкие), 3 — трудное (редкие и эпические)
 const TASK_TEMPLATES = [
-  { t: 'catch',    tier: 1, min: 5, max: 8, text: n => `Поймай ${n} духов` },
-  { t: 'spring',   tier: 1, min: 3, max: 5, text: n => `Зачерпни силы из ${n} родников` },
-  { t: 'power',    tier: 1, min: 3, max: 5, text: n => `Усиль духов ${n} ${U.plural(n, "раз", "раза", "раз")}` },
-  { t: 'photo',    tier: 1, min: 1, max: 1, text: () => 'Сфотографируй духа во время встречи' },
-  { t: 'catchEl',  tier: 2, min: 3, max: 5, text: (n, el) => `Поймай ${n} духов стихии «${ELEMENTS[el].name}»` },
-  { t: 'throw',    tier: 2, min: 3, max: 5, text: n => `Сделай ${n} отличных бросков` },
-  { t: 'walk',     tier: 2, min: 1, max: 2, text: n => `Пройди ${n} км` },
-  { t: 'evolve',   tier: 2, min: 1, max: 1, text: () => 'Преврати духа' },
-  { t: 'duel',     tier: 2, min: 1, max: 1, lvl: 3, text: () => 'Победи хранителя капища' },
-  { t: 'hatch',    tier: 3, min: 1, max: 1, text: () => 'Выведи духа из кокона' },
-  { t: 'invasion', tier: 3, min: 1, max: 1, lvl: 4, text: () => 'Освободи родник от прислужников Нави' },
-  { t: 'raid',     tier: 3, min: 1, max: 1, lvl: 5, text: () => 'Закрой разлом' },
+  { t: 'catch',    tier: 1, min: 5, max: 8, text: n => ru.k`Поймай ${n} духов` },
+  { t: 'spring',   tier: 1, min: 3, max: 5, text: n => ru.k`Зачерпни силы из ${n} родников` },
+  { t: 'power',    tier: 1, min: 3, max: 5, text: n => ru.k`Усиль духов ${n} ${U.plural(n, ru.k`раз`, ru.k`раза`, ru.k`раз`)}` },
+  { t: 'photo',    tier: 1, min: 1, max: 1, text: () => ru.k`Сфотографируй духа во время встречи` },
+  { t: 'catchEl',  tier: 2, min: 3, max: 5, text: (n, el) => ru.k`Поймай ${n} духов стихии «${ELEMENTS[el].name}»` },
+  { t: 'throw',    tier: 2, min: 3, max: 5, text: n => ru.k`Сделай ${n} отличных бросков` },
+  { t: 'walk',     tier: 2, min: 1, max: 2, text: n => ru.k`Пройди ${n} км` },
+  { t: 'evolve',   tier: 2, min: 1, max: 1, text: () => ru.k`Преврати духа` },
+  { t: 'duel',     tier: 2, min: 1, max: 1, lvl: 3, text: () => ru.k`Победи хранителя капища` },
+  { t: 'hatch',    tier: 3, min: 1, max: 1, text: () => ru.k`Выведи духа из кокона` },
+  { t: 'invasion', tier: 3, min: 1, max: 1, lvl: 4, text: () => ru.k`Освободи родник от прислужников Нави` },
+  { t: 'raid',     tier: 3, min: 1, max: 1, lvl: 5, text: () => ru.k`Закрой разлом` },
 ];
 const TASK_TIERS = {
   1: { rar: [1, 2], lvl: 12, reward: { charm: 3 } },
@@ -367,223 +493,223 @@ const TASK_LIMIT = 5;
 
 
 const LORE = [
-  '2031 год. Геомагнитная буря, которую потом назовут <b>Тонкой ночью</b>, истончила границу между Явью — нашим миром — и Навью, миром духов.',
-  'Теперь по улицам бродят духи. Древние — Леший, Водяной, Домовой. И новые, рождённые городом: Вайфайка, Трамвайник, Фонарник.',
-  'Древний <b>Орден Оберега</b> снова набирает Ловчих. Твоя задача — находить духов, ловить их оберегами, черпать силу из родников и закрывать разломы, откуда лезет всё самое опасное.',
+  ru`2031 год. Геомагнитная буря, которую потом назовут <b>Тонкой ночью</b>, истончила границу между Явью — нашим миром — и Навью, миром духов.`,
+  ru`Теперь по улицам бродят духи. Древние — Леший, Водяной, Домовой. И новые, рождённые городом: Вайфайка, Трамвайник, Фонарник.`,
+  ru`Древний <b>Орден Оберега</b> снова набирает Ловчих. Твоя задача — находить духов, ловить их оберегами, черпать силу из родников и закрывать разломы, откуда лезет всё самое опасное.`,
 ];
 
 /* ---------- Погода: усиливает стихии ---------- */
 const WEATHER = {
-  clear:    { name: 'Ясно',                   boost: ['fire', 'forest'] },
-  partly:   { name: 'Переменная облачность',  boost: ['wind', 'forest'] },
-  overcast: { name: 'Пасмурно',               boost: ['shadow', 'current'] },
-  fog:      { name: 'Туман',                  boost: ['shadow', 'water'], fx: 'fog' },
-  rain:     { name: 'Дождь',                  boost: ['water', 'current'], fx: 'rain' },
-  snow:     { name: 'Снег',                   boost: ['wind', 'water'], fx: 'snow' },
-  storm:    { name: 'Гроза',                  boost: ['current', 'shadow'], fx: 'rain' },
-  windy:    { name: 'Ветрено',                boost: ['wind', 'fire'], fx: 'wind' },
+  clear:    { name: ru`Ясно`,                   boost: ['fire', 'forest'] },
+  partly:   { name: ru`Переменная облачность`,  boost: ['wind', 'forest'] },
+  overcast: { name: ru`Пасмурно`,               boost: ['shadow', 'current'] },
+  fog:      { name: ru`Туман`,                  boost: ['shadow', 'water'], fx: 'fog' },
+  rain:     { name: ru`Дождь`,                  boost: ['water', 'current'], fx: 'rain' },
+  snow:     { name: ru`Снег`,                   boost: ['wind', 'water'], fx: 'snow' },
+  storm:    { name: ru`Гроза`,                  boost: ['current', 'shadow'], fx: 'rain' },
+  windy:    { name: ru`Ветрено`,                boost: ['wind', 'fire'], fx: 'wind' },
 };
 const MOON_EVENTS = {
-  full: { name: 'Полнолуние', desc: 'Ночью духи Тени и Воды встречаются чаще, а Русалки и Навки выходят к людям.' },
-  new:  { name: 'Новолуние',  desc: 'В безлунную ночь сияющие духи встречаются вдвое чаще.' },
+  full: { name: ru`Полнолуние`, desc: ru`Ночью духи Тени и Воды встречаются чаще, а Русалки и Навки выходят к людям.` },
+  new:  { name: ru`Новолуние`,  desc: ru`В безлунную ночь сияющие духи встречаются вдвое чаще.` },
 };
 
 /* ---------- Знаки Ордена (медали) ---------- */
 const MEDAL_TIERS = [
-  { name: 'Бронза', color: '#d97706', xp: 500 },
-  { name: 'Серебро', color: '#cbd5e1', xp: 1500 },
-  { name: 'Золото', color: '#fbbf24', xp: 5000 },
+  { name: ru`Бронза`, color: '#d97706', xp: 500 },
+  { name: ru`Серебро`, color: '#cbd5e1', xp: 1500 },
+  { name: ru`Золото`, color: '#fbbf24', xp: 5000 },
 ];
 const MEDALS = [
-  { id: 'catcher', name: 'Ловчий',        desc: 'Поймай духов',                 stat: 'caught',      tiers: [10, 100, 1000] },
-  { id: 'walker',  name: 'Странник',      desc: 'Пройди километров',            stat: 'km',          tiers: [10, 100, 1000] },
-  { id: 'springs', name: 'Водонос',       desc: 'Зачерпни силы из родников',    stat: 'springs',     tiers: [30, 300, 2000] },
-  { id: 'raids',   name: 'Затворник',     desc: 'Закрой разломов',              stat: 'raids',       tiers: [3, 30, 200] },
-  { id: 'dex',     name: 'Летописец',     desc: 'Видов духов в бестиарии',      stat: 'dex',         tiers: [5, 20, SPECIES.length] },
-  { id: 'purify',  name: 'Очиститель',    desc: 'Победи прислужников Нави',     stat: 'invasions',   tiers: [3, 30, 200] },
-  { id: 'trade',   name: 'Щедрая душа',   desc: 'Купи или продай духов на Аукционе',     stat: 'traded',      tiers: [1, 10, 50] },
-  { id: 'throws',  name: 'Меткий глаз',   desc: 'Отличных бросков',             stat: 'throwsGreat', tiers: [20, 200, 1000] },
-  { id: 'hatch',   name: 'Наседка',       desc: 'Вылупи духов из коконов',      stat: 'hatched',     tiers: [3, 30, 200] },
-  { id: 'evolve',  name: 'Алхимик',       desc: 'Преврати духов',               stat: 'evolved',     tiers: [3, 30, 200] },
-  { id: 'shiny',   name: 'Искатель сияния', desc: 'Поймай сияющих духов',       stat: 'shiny',       tiers: [1, 10, 50] },
-  { id: 'streak',  name: 'Верность',      desc: 'Дней подряд в игре',           stat: 'streakBest',  tiers: [7, 30, 100] },
-  { id: 'order',   name: 'Соратник',      desc: 'Очков в общем деле Ордена',    stat: 'orderPts',    tiers: [100, 1000, 10000] },
-  { id: 'lands',   name: 'Землепроходец', desc: 'Поймай духов родных земель',   stat: 'lands',       tiers: [1, 3, 7] },
-  { id: 'el_fire',    name: 'Истопник',   desc: 'Поймай духов Огня',            stat: 'el:fire',     tiers: [10, 50, 200] },
-  { id: 'el_water',   name: 'Лодочник',   desc: 'Поймай духов Воды',            stat: 'el:water',    tiers: [10, 50, 200] },
-  { id: 'el_forest',  name: 'Лесничий',   desc: 'Поймай духов Леса',            stat: 'el:forest',   tiers: [10, 50, 200] },
-  { id: 'el_wind',    name: 'Мельник',    desc: 'Поймай духов Ветра',           stat: 'el:wind',     tiers: [10, 50, 200] },
-  { id: 'el_current', name: 'Монтёр',     desc: 'Поймай духов Тока',            stat: 'el:current',  tiers: [10, 50, 200] },
-  { id: 'el_shadow',  name: 'Полуночник', desc: 'Поймай духов Тени',            stat: 'el:shadow',   tiers: [10, 50, 200] },
+  { id: 'catcher', name: ru`Ловчий`,        desc: ru`Поймай духов`,                 stat: 'caught',      tiers: [10, 100, 1000] },
+  { id: 'walker',  name: ru`Странник`,      desc: ru`Пройди километров`,            stat: 'km',          tiers: [10, 100, 1000] },
+  { id: 'springs', name: ru`Водонос`,       desc: ru`Зачерпни силы из родников`,    stat: 'springs',     tiers: [30, 300, 2000] },
+  { id: 'raids',   name: ru`Затворник`,     desc: ru`Закрой разломов`,              stat: 'raids',       tiers: [3, 30, 200] },
+  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.length] },
+  { id: 'purify',  name: ru`Очиститель`,    desc: ru`Победи прислужников Нави`,     stat: 'invasions',   tiers: [3, 30, 200] },
+  { id: 'trade',   name: ru`Щедрая душа`,   desc: ru`Купи или продай духов на Аукционе`,     stat: 'traded',      tiers: [1, 10, 50] },
+  { id: 'throws',  name: ru`Меткий глаз`,   desc: ru`Отличных бросков`,             stat: 'throwsGreat', tiers: [20, 200, 1000] },
+  { id: 'hatch',   name: ru`Наседка`,       desc: ru`Вылупи духов из коконов`,      stat: 'hatched',     tiers: [3, 30, 200] },
+  { id: 'evolve',  name: ru`Алхимик`,       desc: ru`Преврати духов`,               stat: 'evolved',     tiers: [3, 30, 200] },
+  { id: 'shiny',   name: ru`Искатель сияния`, desc: ru`Поймай сияющих духов`,       stat: 'shiny',       tiers: [1, 10, 50] },
+  { id: 'streak',  name: ru`Верность`,      desc: ru`Дней подряд в игре`,           stat: 'streakBest',  tiers: [7, 30, 100] },
+  { id: 'order',   name: ru`Соратник`,      desc: ru`Очков в общем деле Ордена`,    stat: 'orderPts',    tiers: [100, 1000, 10000] },
+  { id: 'lands',   name: ru`Землепроходец`, desc: ru`Поймай духов родных земель`,   stat: 'lands',       tiers: [1, 3, 7] },
+  { id: 'el_fire',    name: ru`Истопник`,   desc: ru`Поймай духов Огня`,            stat: 'el:fire',     tiers: [10, 50, 200] },
+  { id: 'el_water',   name: ru`Лодочник`,   desc: ru`Поймай духов Воды`,            stat: 'el:water',    tiers: [10, 50, 200] },
+  { id: 'el_forest',  name: ru`Лесничий`,   desc: ru`Поймай духов Леса`,            stat: 'el:forest',   tiers: [10, 50, 200] },
+  { id: 'el_wind',    name: ru`Мельник`,    desc: ru`Поймай духов Ветра`,           stat: 'el:wind',     tiers: [10, 50, 200] },
+  { id: 'el_current', name: ru`Монтёр`,     desc: ru`Поймай духов Тока`,            stat: 'el:current',  tiers: [10, 50, 200] },
+  { id: 'el_shadow',  name: ru`Полуночник`, desc: ru`Поймай духов Тени`,            stat: 'el:shadow',   tiers: [10, 50, 200] },
 ];
 
 /* ---------- Летопись Ордена: сюжет ---------- */
 function stepText(s) {
   switch (s.t) {
-    case 'catch': return `Поймай духов: ${s.n}`;
-    case 'catchEl': return `Поймай духов стихии «${ELEMENTS[s.el].name}»: ${s.n}`;
-    case 'spring': return `Зачерпни силы из родников: ${s.n}`;
-    case 'power': return `Усиль духа: ${s.n}`;
-    case 'throw': return `Сделай отличных бросков: ${s.n}`;
-    case 'walk': return `Пройди ${s.n} км`;
-    case 'raid': return `Закрой разломов: ${s.n}`;
-    case 'evolve': return `Преврати духа: ${s.n}`;
-    case 'hatch': return `Вылупи духа из кокона: ${s.n}`;
-    case 'duel': return `Победи хранителей капищ: ${s.n}`;
-    case 'invasion': return `Отбей вторжения Нави: ${s.n}`;
-    case 'purify': return `Очисти омрачённого духа: ${s.n}`;
-    case 'photo': return `Сфотографируй духа: ${s.n}`;
-    case 'league': return `Выиграй поединков в Лиге: ${s.n}`;
-    case 'task': return `Выполни поручений родников: ${s.n}`;
-    case 'defend': return `Поставь защитника на Капище: ${s.n}`;
-    case 'land': return `Поймай духа родной земли: ${s.n}`;
-    case 'spar': return `Победи друга в поединке: ${s.n}`;
-    case 'coop': return `Закрой совместный разлом: ${s.n}`;
-    case 'gift': return `Отправь подарков друзьям: ${s.n}`;
+    case 'catch': return ru`Поймай духов: ${s.n}`;
+    case 'catchEl': return ru`Поймай духов стихии «${ELEMENTS[s.el].name}»: ${s.n}`;
+    case 'spring': return ru`Зачерпни силы из родников: ${s.n}`;
+    case 'power': return ru`Усиль духа: ${s.n}`;
+    case 'throw': return ru`Сделай отличных бросков: ${s.n}`;
+    case 'walk': return ru`Пройди ${s.n} км`;
+    case 'raid': return ru`Закрой разломов: ${s.n}`;
+    case 'evolve': return ru`Преврати духа: ${s.n}`;
+    case 'hatch': return ru`Вылупи духа из кокона: ${s.n}`;
+    case 'duel': return ru`Победи хранителей капищ: ${s.n}`;
+    case 'invasion': return ru`Отбей вторжения Нави: ${s.n}`;
+    case 'purify': return ru`Очисти омрачённого духа: ${s.n}`;
+    case 'photo': return ru`Сфотографируй духа: ${s.n}`;
+    case 'league': return ru`Выиграй поединков в Лиге: ${s.n}`;
+    case 'task': return ru`Выполни поручений родников: ${s.n}`;
+    case 'defend': return ru`Поставь защитника на Капище: ${s.n}`;
+    case 'land': return ru`Поймай духа родной земли: ${s.n}`;
+    case 'spar': return ru`Победи друга в поединке: ${s.n}`;
+    case 'coop': return ru`Закрой совместный разлом: ${s.n}`;
+    case 'gift': return ru`Отправь подарков друзьям: ${s.n}`;
   }
   return '';
 }
 const STORY = [
-  { title: 'Посвящение',
-    intro: 'Старший Ловчий <b>Велимир</b> ждал тебя у старого родника. «Навь просочилась в город, — сказал он, не оборачиваясь. — Духи сами по себе не злые. Растерянные. Покажи, что умеешь с ними обращаться».',
+  { title: ru`Посвящение`,
+    intro: ru`Старший Ловчий <b>Велимир</b> ждал тебя у старого родника. «Навь просочилась в город, — сказал он, не оборачиваясь. — Духи сами по себе не злые. Растерянные. Покажи, что умеешь с ними обращаться».`,
     steps: [{ t: 'catch', n: 3 }, { t: 'spring', n: 2 }, { t: 'power', n: 1 }],
     reward: { charm: 15, honey: 5, sparks: 500, xp: 1000 },
-    outro: '«Неплохо для новичка», — Велимир впервые улыбнулся и протянул тебе потёртый медный оберег. «Держи. Он видел больше духов, чем ты — трамваев».' },
-  { title: 'Голоса во дворах',
-    intro: 'По ночам жильцы слышат шорохи в подъездах, а Wi‑Fi пропадает без причины. Велимир уверен: город рождает новых духов — из проводов, фонарей и старых домов.',
+    outro: ru`«Неплохо для новичка», — Велимир впервые улыбнулся и протянул тебе потёртый медный оберег. «Держи. Он видел больше духов, чем ты — трамваев».` },
+  { title: ru`Голоса во дворах`,
+    intro: ru`По ночам жильцы слышат шорохи в подъездах, а Wi‑Fi пропадает без причины. Велимир уверен: город рождает новых духов — из проводов, фонарей и старых домов.`,
     steps: [{ t: 'catchEl', el: 'current', n: 2 }, { t: 'throw', n: 3 }, { t: 'walk', n: 1 }],
     reward: { incense: 2, water: 5, sparks: 1000, xp: 2000 },
-    outro: '«Вайфайки, Сетевики… — бормочет Велимир, листая Летопись. — В старых книгах о таких не писали. Значит, писать будем мы».' },
-  { title: 'Первый разлом',
-    intro: 'На окраине района небо пошло трещиной. Из разлома тянет холодом Нави, и оттуда выходят духи куда сильнее обычных. «Разломы нужно закрывать, — говорит Велимир. — Собери команду».',
+    outro: ru`«Вайфайки, Сетевики… — бормочет Велимир, листая Летопись. — В старых книгах о таких не писали. Значит, писать будем мы».` },
+  { title: ru`Первый разлом`,
+    intro: ru`На окраине района небо пошло трещиной. Из разлома тянет холодом Нави, и оттуда выходят духи куда сильнее обычных. «Разломы нужно закрывать, — говорит Велимир. — Собери команду».`,
     steps: [{ t: 'raid', n: 1 }, { t: 'catch', n: 5 }, { t: 'evolve', n: 1 }],
     reward: { charm2: 10, water: 5, sparks: 1500, xp: 3000 },
-    outro: 'Разлом схлопнулся с тихим звоном, на асфальте осталась горсть инея. «Кто-то открывает их нарочно», — мрачно замечает Велимир.' },
-  { title: 'Тропы Лешего',
-    intro: 'В парке пропадают люди — ненадолго, на час-другой. Выходят растерянные, с листьями в волосах. Похоже, Леший снова путает тропы. Нужно поговорить с ним — на его языке.',
+    outro: ru`Разлом схлопнулся с тихим звоном, на асфальте осталась горсть инея. «Кто-то открывает их нарочно», — мрачно замечает Велимир.` },
+  { title: ru`Тропы Лешего`,
+    intro: ru`В парке пропадают люди — ненадолго, на час-другой. Выходят растерянные, с листьями в волосах. Похоже, Леший снова путает тропы. Нужно поговорить с ним — на его языке.`,
     steps: [{ t: 'catchEl', el: 'forest', n: 4 }, { t: 'hatch', n: 1 }, { t: 'walk', n: 3 }],
     reward: { honey: 10, incense: 1, sparks: 2000, xp: 4000 },
-    outro: 'Леший вышел к тебе сам: огромный, мшистый, с глазами-светлячками. «Не я путаю, — проскрипел он. — Это граница дрожит. Костлявый царь шагает по ту сторону».' },
-  { title: 'Буря над крышами',
-    intro: 'Третий день над городом кружит гроза без дождя. Буревеи и Громовики сбились в стаи. Велимир хмурится: «Навь готовится. Нам нужно больше сил».',
+    outro: ru`Леший вышел к тебе сам: огромный, мшистый, с глазами-светлячками. «Не я путаю, — проскрипел он. — Это граница дрожит. Костлявый царь шагает по ту сторону».` },
+  { title: ru`Буря над крышами`,
+    intro: ru`Третий день над городом кружит гроза без дождя. Буревеи и Громовики сбились в стаи. Велимир хмурится: «Навь готовится. Нам нужно больше сил».`,
     steps: [{ t: 'catchEl', el: 'wind', n: 3 }, { t: 'catchEl', el: 'current', n: 3 }, { t: 'raid', n: 2 }],
     reward: { charm3: 5, water: 8, sparks: 2500, xp: 5000 },
-    outro: 'Буря стихла так же внезапно, как началась. В Летописи сама собой проступила строка: «Игла в яйце, яйцо в утке, утка в зайце…»' },
-  { title: 'Тень Кощея',
-    intro: 'Это Кощей Бессмертный истончил границу в Тонкую ночь. Его смерть надёжно спрятана, а сила растёт с каждым открытым разломом. Орден объявляет общий сбор.',
+    outro: ru`Буря стихла так же внезапно, как началась. В Летописи сама собой проступила строка: «Игла в яйце, яйцо в утке, утка в зайце…»` },
+  { title: ru`Тень Кощея`,
+    intro: ru`Это Кощей Бессмертный истончил границу в Тонкую ночь. Его смерть надёжно спрятана, а сила растёт с каждым открытым разломом. Орден объявляет общий сбор.`,
     steps: [{ t: 'catch', n: 25 }, { t: 'spring', n: 10 }, { t: 'raid', n: 3 }],
     reward: { charm3: 10, incense: 3, sparks: 5000, xp: 10000 }, gift: 'zharptica',
-    outro: 'Когда третий разлом закрылся, небо вспыхнуло золотом. Из огненного пера родилась <b>Жар-птица</b> и опустилась прямо перед тобой. «Она пришла помочь, — шепчет Велимир. — Значит, мы ещё поборемся». <br><br><i>Конец первой книги. Далее — книга вторая: «Игла Кощея».</i>' },
+    outro: ru`Когда третий разлом закрылся, небо вспыхнуло золотом. Из огненного пера родилась <b>Жар-птица</b> и опустилась прямо перед тобой. «Она пришла помочь, — шепчет Велимир. — Значит, мы ещё поборемся». <br><br><i>Конец первой книги. Далее — книга вторая: «Игла Кощея».</i>` },
 
   // ---------- Книга вторая: «Игла Кощея» ----------
-  { title: 'Утка в зайце',
-    intro: 'Велимир не спал три ночи над строкой из Летописи. «Смерть Кощея спрятана не в сундуке, — говорит он. — Сундук — это город. Заяц, утка, яйцо — это духи, которые её стерегут. Их надо найти».',
+  { title: ru`Утка в зайце`,
+    intro: ru`Велимир не спал три ночи над строкой из Летописи. «Смерть Кощея спрятана не в сундуке, — говорит он. — Сундук — это город. Заяц, утка, яйцо — это духи, которые её стерегут. Их надо найти».`,
     steps: [{ t: 'catch', n: 10 }, { t: 'walk', n: 3 }, { t: 'spring', n: 8 }],
     reward: { charm2: 10, honey: 5, sparks: 3000, xp: 6000 },
-    outro: 'Из родника на окраине вынырнул Сквозняк с пёрышком утки в зубах. Перо было ледяным. «Кощей знает, что мы ищем, — хмурится Велимир. — Жди гостей».' },
-  { title: 'Прислужники Нави',
-    intro: 'Гости пришли: родники по всему району захвачены. Прислужники Кощея омрачают духов, чтобы те не выдали тайну иглы.',
+    outro: ru`Из родника на окраине вынырнул Сквозняк с пёрышком утки в зубах. Перо было ледяным. «Кощей знает, что мы ищем, — хмурится Велимир. — Жди гостей».` },
+  { title: ru`Прислужники Нави`,
+    intro: ru`Гости пришли: родники по всему району захвачены. Прислужники Кощея омрачают духов, чтобы те не выдали тайну иглы.`,
     steps: [{ t: 'invasion', n: 3 }, { t: 'purify', n: 1 }, { t: 'duel', n: 2 }],
     reward: { water: 10, charm3: 3, sparks: 3500, xp: 7000 },
-    outro: 'Очищенный дух долго молчал, а потом прошептал: «Утка улетела к капищам предков. Туда прислужникам хода нет».' },
-  { title: 'Капища предков',
-    intro: 'Хранители капищ помнят времена, когда граница была прочной. Но просто так они с Ловчим говорить не станут — только с тем, кто докажет силу.',
+    outro: ru`Очищенный дух долго молчал, а потом прошептал: «Утка улетела к капищам предков. Туда прислужникам хода нет».` },
+  { title: ru`Капища предков`,
+    intro: ru`Хранители капищ помнят времена, когда граница была прочной. Но просто так они с Ловчим говорить не станут — только с тем, кто докажет силу.`,
     steps: [{ t: 'duel', n: 5 }, { t: 'catchEl', el: 'shadow', n: 5 }, { t: 'photo', n: 1 }],
     reward: { incense: 2, charm3: 5, sparks: 4000, xp: 8000 },
-    outro: 'Старейшина капища Велеса долго смотрел на твой снимок духа. «Утка — это Алконост, яйцо — в кладке Жар-птицы, — сказал он. — А игла… иглу охраняет сама Навь».' },
-  { title: 'Кладка Жар-птицы',
-    intro: 'Жар-птица согласилась показать своё гнездо — но только тому, кто умеет беречь новую жизнь. Велимир вручает тебе коконы: «Согрей их — и узнаешь, какое из яиц не простое».',
+    outro: ru`Старейшина капища Велеса долго смотрел на твой снимок духа. «Утка — это Алконост, яйцо — в кладке Жар-птицы, — сказал он. — А игла… иглу охраняет сама Навь».` },
+  { title: ru`Кладка Жар-птицы`,
+    intro: ru`Жар-птица согласилась показать своё гнездо — но только тому, кто умеет беречь новую жизнь. Велимир вручает тебе коконы: «Согрей их — и узнаешь, какое из яиц не простое».`,
     steps: [{ t: 'hatch', n: 2 }, { t: 'raid', n: 3 }, { t: 'power', n: 5 }],
     reward: { charm3: 6, water: 8, sparks: 5000, xp: 9000 },
-    outro: 'Одно из яиц оказалось тяжёлым и холодным, как камень. Внутри что-то тикало — тонко, будто игла царапала скорлупу.' },
-  { title: 'Турнир Ордена',
-    intro: 'Чтобы расколоть яйцо Кощея, нужна сила всего Ордена. Лига созывает лучших Ловчих — и Велимир хочет видеть тебя среди них.',
+    outro: ru`Одно из яиц оказалось тяжёлым и холодным, как камень. Внутри что-то тикало — тонко, будто игла царапала скорлупу.` },
+  { title: ru`Турнир Ордена`,
+    intro: ru`Чтобы расколоть яйцо Кощея, нужна сила всего Ордена. Лига созывает лучших Ловчих — и Велимир хочет видеть тебя среди них.`,
     steps: [{ t: 'league', n: 3 }, { t: 'evolve', n: 3 }, { t: 'catch', n: 30 }],
     reward: { incense: 3, charm3: 8, sparks: 6000, xp: 10000 },
-    outro: 'На турнире Ловчие со всех районов положили руки на яйцо. Скорлупа треснула — и из неё выкатилась тонкая чёрная игла. Небо над городом потемнело.' },
-  { title: 'Игла Кощея',
-    intro: 'Кощей почувствовал, что игла найдена. Разломы открываются один за другим, прислужники штурмуют родники. Это последняя битва книги.',
+    outro: ru`На турнире Ловчие со всех районов положили руки на яйцо. Скорлупа треснула — и из неё выкатилась тонкая чёрная игла. Небо над городом потемнело.` },
+  { title: ru`Игла Кощея`,
+    intro: ru`Кощей почувствовал, что игла найдена. Разломы открываются один за другим, прислужники штурмуют родники. Это последняя битва книги.`,
     steps: [{ t: 'raid', n: 5 }, { t: 'invasion', n: 5 }, { t: 'catchEl', el: 'shadow', n: 10 }],
     reward: { charm3: 15, incense: 3, sparks: 10000, xp: 20000 }, gift: 'koschey', emblem: 'needle',
-    outro: 'Игла сломалась с тихим звоном. В последнем разломе стоял Кощей — не бессмертный царь, а уставший старик. «Ты сломал мою смерть, — сказал он. — Значит, теперь я могу просто жить». И шагнул к тебе в оберег. <br><br><i>Конец второй книги. Эмблема «Игла Кощея» открыта в облике Ловчего.</i>' },
+    outro: ru`Игла сломалась с тихим звоном. В последнем разломе стоял Кощей — не бессмертный царь, а уставший старик. «Ты сломал мою смерть, — сказал он. — Значит, теперь я могу просто жить». И шагнул к тебе в оберег. <br><br><i>Конец второй книги. Эмблема «Игла Кощея» открыта в облике Ловчего.</i>` },
 
   // ---------- Книга третья «Земли Руси» (v3.9) ----------
-  { title: 'Весть с окраин',
-    intro: 'Велимир разбирает груду писем: из Мурманска, Казани, Иркутска, из деревень, которых нет ни на одной туристической карте. «Тонкая ночь дошла до самых окраин, — говорит он. — Родники проснулись везде. Орден теперь — это вся страна».',
+  { title: ru`Весть с окраин`,
+    intro: ru`Велимир разбирает груду писем: из Мурманска, Казани, Иркутска, из деревень, которых нет ни на одной туристической карте. «Тонкая ночь дошла до самых окраин, — говорит он. — Родники проснулись везде. Орден теперь — это вся страна».`,
     steps: [{ t: 'task', n: 3 }, { t: 'spring', n: 20 }, { t: 'walk', n: 5 }],
     reward: { charm2: 10, honey: 10, sparks: 5000, xp: 15000 },
-    outro: '«Родники раздают поручения — значит, они нас зовут, — Велимир складывает письма в Летопись. — Кто-то под землёй очень хочет, чтобы мы шли дальше».' },
-  { title: 'Знамя над капищем',
-    intro: 'Дружины Сокола, Медведя и Волка спорят за капища, как когда-то князья за города. Велимир хмурится: «Спорьте, но помните — капище стоит, пока его кто-то бережёт».',
+    outro: ru`«Родники раздают поручения — значит, они нас зовут, — Велимир складывает письма в Летопись. — Кто-то под землёй очень хочет, чтобы мы шли дальше».` },
+  { title: ru`Знамя над капищем`,
+    intro: ru`Дружины Сокола, Медведя и Волка спорят за капища, как когда-то князья за города. Велимир хмурится: «Спорьте, но помните — капище стоит, пока его кто-то бережёт».`,
     steps: [{ t: 'duel', n: 5 }, { t: 'defend', n: 2 }, { t: 'throw', n: 15 }],
     reward: { charm3: 5, water: 10, sparks: 6000, xp: 15000 },
-    outro: 'Над капищем, где стоит твой защитник, ветер треплет знамя дружины. «Хорошо, — говорит Велимир. — Теперь капище знает твоё имя».' },
-  { title: 'Дух родной земли',
-    intro: 'В старых записях Ордена сказано: у каждого края есть свой дух-хранитель — Берегиня, Сполох, Жигуль, Тур, Хозяйка Медной горы, Бабр и Кутх. «Найди своего, — говорит Велимир. — Земля должна тебя признать».',
+    outro: ru`Над капищем, где стоит твой защитник, ветер треплет знамя дружины. «Хорошо, — говорит Велимир. — Теперь капище знает твоё имя».` },
+  { title: ru`Дух родной земли`,
+    intro: ru`В старых записях Ордена сказано: у каждого края есть свой дух-хранитель — Берегиня, Сполох, Жигуль, Тур, Хозяйка Медной горы, Бабр и Кутх. «Найди своего, — говорит Велимир. — Земля должна тебя признать».`,
     steps: [{ t: 'land', n: 1 }, { t: 'catch', n: 50 }, { t: 'photo', n: 3 }],
     reward: { incense: 3, charm2: 15, sparks: 7000, xp: 20000 },
-    outro: 'Дух родной земли посмотрел на тебя долго и серьёзно, будто сверял с кем-то давно знакомым. А потом позволил сфотографировать себя — в Летописи это считается знаком доверия.' },
-  { title: 'Долгая дорога',
-    intro: 'Родники шепчут одно и то же слово: «ниже». Велимир достаёт карту подземных рек — старую, ещё дореволюционную. «Они текут под всей страной. Чтобы услышать их, придётся много ходить».',
+    outro: ru`Дух родной земли посмотрел на тебя долго и серьёзно, будто сверял с кем-то давно знакомым. А потом позволил сфотографировать себя — в Летописи это считается знаком доверия.` },
+  { title: ru`Долгая дорога`,
+    intro: ru`Родники шепчут одно и то же слово: «ниже». Велимир достаёт карту подземных рек — старую, ещё дореволюционную. «Они текут под всей страной. Чтобы услышать их, придётся много ходить».`,
     steps: [{ t: 'walk', n: 20 }, { t: 'hatch', n: 5 }, { t: 'task', n: 5 }],
     reward: { charm3: 8, sparks: 8000, xp: 20000 },
-    outro: 'Коконы, что ты носил в пути, вылупились с каплями воды на крыльях. «Подземная вода, — шепчет Велимир. — Мы близко».' },
-  { title: 'Подземные реки',
-    intro: 'Прислужники Нави перекрывают родники: хотят, чтобы подземные реки остановились и Навь затопила Явь. Духи воды тревожатся и собираются у фонтанов.',
+    outro: ru`Коконы, что ты носил в пути, вылупились с каплями воды на крыльях. «Подземная вода, — шепчет Велимир. — Мы близко».` },
+  { title: ru`Подземные реки`,
+    intro: ru`Прислужники Нави перекрывают родники: хотят, чтобы подземные реки остановились и Навь затопила Явь. Духи воды тревожатся и собираются у фонтанов.`,
     steps: [{ t: 'catchEl', el: 'water', n: 20 }, { t: 'invasion', n: 8 }, { t: 'purify', n: 3 }],
     reward: { water: 15, incense: 3, sparks: 10000, xp: 25000 },
-    outro: 'Из-под земли донёсся гул, похожий на дыхание огромного зверя. Родники вздрогнули и снова забили ключом. «Он проснулся», — только и сказал Велимир.' },
-  { title: 'Индрик-зверь',
-    intro: '«Индрик-зверь всем зверям отец, — читает Велимир из Голубиной книги. — Ходит под землёю, как солнце по небу, прочищает реки и ручьи». Чтобы он поднялся в Явь, нужны сила разломов, мастерство Лиги и знамёна дружин.',
+    outro: ru`Из-под земли донёсся гул, похожий на дыхание огромного зверя. Родники вздрогнули и снова забили ключом. «Он проснулся», — только и сказал Велимир.` },
+  { title: ru`Индрик-зверь`,
+    intro: ru`«Индрик-зверь всем зверям отец, — читает Велимир из Голубиной книги. — Ходит под землёю, как солнце по небу, прочищает реки и ручьи». Чтобы он поднялся в Явь, нужны сила разломов, мастерство Лиги и знамёна дружин.`,
     steps: [{ t: 'raid', n: 8 }, { t: 'league', n: 6 }, { t: 'defend', n: 5 }],
     reward: { charm3: 15, incense: 3, sparks: 15000, xp: 30000 }, gift: 'indrik', emblem: 'horn',
-    outro: 'Земля мягко качнулась, и у ближайшего родника поднялся зверь с единственным рогом, сияющим, как лёд на солнце. Он опустил голову, и родник под ним засмеялся звонко, по-весеннему. <br><br><i>Конец третьей книги. Эмблема «Рог Индрика» открыта в облике Ловчего.</i>' },
+    outro: ru`Земля мягко качнулась, и у ближайшего родника поднялся зверь с единственным рогом, сияющим, как лёд на солнце. Он опустил голову, и родник под ним засмеялся звонко, по-весеннему. <br><br><i>Конец третьей книги. Эмблема «Рог Индрика» открыта в облике Ловчего.</i>` },
 
   // ---------- Книга четвёртая «Осень Нави» (4.0) ----------
-  { title: 'Дубовая роща',
-    intro: 'Индрик ушёл под землю, а в скверах вдруг зашуршали Желудки — сотни круглых духов в шапочках. «Они не просто так проросли, — говорит Велимир, пересчитывая жёлуди в ладони. — Старые дубы помнят богатырей. Кто-то их будит».',
+  { title: ru`Дубовая роща`,
+    intro: ru`Индрик ушёл под землю, а в скверах вдруг зашуршали Желудки — сотни круглых духов в шапочках. «Они не просто так проросли, — говорит Велимир, пересчитывая жёлуди в ладони. — Старые дубы помнят богатырей. Кто-то их будит».`,
     steps: [{ t: 'catchEl', el: 'forest', n: 15 }, { t: 'evolve', n: 3 }, { t: 'walk', n: 10 }],
     reward: { charm2: 15, honey: 10, sparks: 8000, xp: 20000 },
-    outro: 'Самый старый Дубыня в роще склонил перед тобой ветви. «Святогор ворочается во сне, — прогудел он. — Горы трещат. Скоро и в городе почувствуют».' },
-  { title: 'Покровские туманы',
-    intro: 'Над городом легли туманы — густые, как молоко. Листопадницы кружат над дворами, а прислужники Нави прячутся в тумане у самых родников. «Покров должен укрыть землю, а не Навь», — хмурится Велимир.',
+    outro: ru`Самый старый Дубыня в роще склонил перед тобой ветви. «Святогор ворочается во сне, — прогудел он. — Горы трещат. Скоро и в городе почувствуют».` },
+  { title: ru`Покровские туманы`,
+    intro: ru`Над городом легли туманы — густые, как молоко. Листопадницы кружат над дворами, а прислужники Нави прячутся в тумане у самых родников. «Покров должен укрыть землю, а не Навь», — хмурится Велимир.`,
     steps: [{ t: 'spring', n: 30 }, { t: 'invasion', n: 6 }, { t: 'catch', n: 60 }],
     reward: { charm3: 8, water: 10, sparks: 10000, xp: 25000 },
-    outro: 'Туман рассеялся к утру, и на каждой крыше лежал тонкий иней — ровный, как вышивка. «Первый снег, — улыбнулся Велимир. — Значит, Покров за нас».' },
-  { title: 'Святогор',
-    intro: '«Святогора не держит земля, — читает Велимир из старой былины. — Но если весь Орден встанет рядом, он сможет подняться». Нужна сила разломов, капищ и Лиги — всего, чему ты научился.',
+    outro: ru`Туман рассеялся к утру, и на каждой крыше лежал тонкий иней — ровный, как вышивка. «Первый снег, — улыбнулся Велимир. — Значит, Покров за нас».` },
+  { title: ru`Святогор`,
+    intro: ru`«Святогора не держит земля, — читает Велимир из старой былины. — Но если весь Орден встанет рядом, он сможет подняться». Нужна сила разломов, капищ и Лиги — всего, чему ты научился.`,
     steps: [{ t: 'raid', n: 10 }, { t: 'duel', n: 10 }, { t: 'league', n: 8 }],
     reward: { charm3: 20, incense: 5, sparks: 20000, xp: 40000 }, gift: 'svyatogor', emblem: 'oak',
-    outro: 'Земля загудела, как колокол, и над окраиной поднялся богатырь ростом с телебашню — а потом стал маленьким, как все духи, и шагнул к тебе. «Спасибо, что разбудил, Ловчий, — сказал Святогор. — Теперь я постою за Русь рядом с тобой».' },
+    outro: ru`Земля загудела, как колокол, и над окраиной поднялся богатырь ростом с телебашню — а потом стал маленьким, как все духи, и шагнул к тебе. «Спасибо, что разбудил, Ловчий, — сказал Святогор. — Теперь я постою за Русь рядом с тобой».` },
 ];
 
 const SHINY_RATE = 1 / 128;
 
 /* ---------- События недели (меняются каждый понедельник) ---------- */
 const WEEK_EVENTS = [
-  { id: 'fire',    name: 'Неделя Огня',       el: 'fire' },
-  { id: 'stars',   name: 'Звездопад',         xp: 2,  desc: 'Двойной опыт за всё: поимку, родники, разломы и поединки.' },
-  { id: 'water',   name: 'Неделя Воды',       el: 'water' },
-  { id: 'springs', name: 'Родниковая неделя', loot: 2, cooldown: 3, desc: 'Родники дают вдвое больше предметов и восстанавливаются за 3 минуты.' },
-  { id: 'forest',  name: 'Неделя Леса',       el: 'forest' },
-  { id: 'nav',     name: 'Навья неделя',      el: 'shadow', shiny: 2, desc: 'Духи Тени повсюду, а сияющие встречаются вдвое чаще.' },
-  { id: 'duels',   name: 'Неделя поединков',  duel: 2, desc: 'Хранители капищ дают двойную награду.' },
-  { id: 'wind',    name: 'Неделя Ветра',      el: 'wind' },
-  { id: 'cocoons', name: 'Неделя коконов',    km: 2, desc: 'Шаги для коконов и спутника считаются вдвое, коконы в родниках попадаются вдвое чаще.' },
-  { id: 'current', name: 'Неделя Тока',       el: 'current' },
-  { id: 'rifts',   name: 'Неделя разломов',   rifts: true, desc: 'Великие разломы открываются втрое чаще, за победу — +3 оберега разлома.' },
+  { id: 'fire',    name: ru`Неделя Огня`,       el: 'fire' },
+  { id: 'stars',   name: ru`Звездопад`,         xp: 2,  desc: ru`Двойной опыт за всё: поимку, родники, разломы и поединки.` },
+  { id: 'water',   name: ru`Неделя Воды`,       el: 'water' },
+  { id: 'springs', name: ru`Родниковая неделя`, loot: 2, cooldown: 3, desc: ru`Родники дают вдвое больше предметов и восстанавливаются за 3 минуты.` },
+  { id: 'forest',  name: ru`Неделя Леса`,       el: 'forest' },
+  { id: 'nav',     name: ru`Навья неделя`,      el: 'shadow', shiny: 2, desc: ru`Духи Тени повсюду, а сияющие встречаются вдвое чаще.` },
+  { id: 'duels',   name: ru`Неделя поединков`,  duel: 2, desc: ru`Хранители капищ дают двойную награду.` },
+  { id: 'wind',    name: ru`Неделя Ветра`,      el: 'wind' },
+  { id: 'cocoons', name: ru`Неделя коконов`,    km: 2, desc: ru`Шаги для коконов и спутника считаются вдвое, коконы в родниках попадаются вдвое чаще.` },
+  { id: 'current', name: ru`Неделя Тока`,       el: 'current' },
+  { id: 'rifts',   name: ru`Неделя разломов`,   rifts: true, desc: ru`Великие разломы открываются втрое чаще, за победу — +3 оберега разлома.` },
 ];
-WEEK_EVENTS.forEach(e => { if (e.el && !e.desc) e.desc = `Духи стихии «${ELEMENTS[e.el].name}» встречаются в 2,5 раза чаще и чаще охраняют разломы.`; });
+WEEK_EVENTS.forEach(e => { if (e.el && !e.desc) e.desc = ru`Духи стихии «${ELEMENTS[e.el].name}» встречаются в 2,5 раза чаще и чаще охраняют разломы.`; });
 
 /* ---------- Капища и хранители ---------- */
-const SHRINE_GODS = ['Перуна', 'Велеса', 'Мокоши', 'Сварога', 'Даждьбога', 'Стрибога', 'Ярилы', 'Лады', 'Хорса', 'Рода'];
-const GUARDIANS = ['Ярослава', 'Мирон', 'Всеслав', 'Любава', 'Добрыня', 'Злата', 'Ратибор', 'Василиса', 'Святогор', 'Забава', 'Остромир', 'Милена'];
+const SHRINE_GODS = [ru`Перуна`, ru`Велеса`, ru`Мокоши`, ru`Сварога`, ru`Даждьбога`, ru`Стрибога`, ru`Ярилы`, ru`Лады`, ru`Хорса`, ru`Рода`];
+const GUARDIANS = [ru`Ярослава`, ru`Мирон`, ru`Всеслав`, ru`Любава`, ru`Добрыня`, ru`Злата`, ru`Ратибор`, ru`Василиса`, ru`Святогор`, ru`Забава`, ru`Остромир`, ru`Милена`];
 const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'];
 /* ---------- Дружины (3.5): Капища под знаменем ---------- */
 const CLANS = {
-  sokol:  { name: 'Дружина Сокола',  short: 'Сокол',   color: '#ef4444', motto: 'Быстрота и отвага' },
-  medved: { name: 'Дружина Медведя', short: 'Медведь', color: '#3b82f6', motto: 'Сила и стойкость' },
-  volk:   { name: 'Дружина Волка',   short: 'Волк',    color: '#eab308', motto: 'Верность и чутьё' },
+  sokol:  { name: ru`Дружина Сокола`,  short: ru`Сокол`,   color: '#ef4444', motto: ru`Быстрота и отвага` },
+  medved: { name: ru`Дружина Медведя`, short: ru`Медведь`, color: '#3b82f6', motto: ru`Сила и стойкость` },
+  volk:   { name: ru`Дружина Волка`,   short: ru`Волк`,    color: '#eab308', motto: ru`Верность и чутьё` },
 };
 const CLAN_LEVEL = 5;     // с какого уровня выбирается дружина
 const HOLD_MAX = 6;       // защитников на одном Капище
@@ -591,157 +717,157 @@ const HOLD_MY_MAX = 10;   // Капищ с моими защитниками о�
 const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Капище с моим защитником
 
 const SHRINE_TIERS = {
-  1: { title: 'Ученик',     lvl: -3, speed: 0.85, shield: 0.35, xp: 800,  sparks: 300 },
-  2: { title: 'Мастер',     lvl: 0,  speed: 0.7,  shield: 0.6,  xp: 1500, sparks: 600 },
-  3: { title: 'Старейшина', lvl: 2,  speed: 0.58, shield: 0.85, xp: 3000, sparks: 1200 },
+  1: { title: ru`Ученик`,     lvl: -3, speed: 0.85, shield: 0.35, xp: 800,  sparks: 300 },
+  2: { title: ru`Мастер`,     lvl: 0,  speed: 0.7,  shield: 0.6,  xp: 1500, sparks: 600 },
+  3: { title: ru`Старейшина`, lvl: 2,  speed: 0.58, shield: 0.85, xp: 3000, sparks: 1200 },
 };
 /* ---------- Праздники (v1.4) ---------- */
 const HOLIDAYS = {
-  svyatki:     { name: 'Святки',          desc: 'Зимние праздники: Морозко и Снегурка выходят к людям, духи Ветра и Воды встречаются чаще, в родниках — подарки.', el: ['wind', 'water'], loot: 1.5, seasonal: ['morozko', 'snegurka'] },
-  maslenitsa:  { name: 'Масленица',       desc: 'Провожаем зиму! Духи Огня встречаются вдвое чаще, в родниках много мёда («блинов»), опыт ×1,5.', el: ['fire'], honey: true, xp: 1.5 },
-  kupala:      { name: 'Купальская ночь', desc: 'Цветёт папоротник: Купалинка повсюду, духи Огня, Воды и Леса чаще, ночью сияющие — вдвое чаще.', el: ['fire', 'water', 'forest'], shinyNight: 2, seasonal: ['kupalinka'] },
-  pokrov:      { name: 'Покров', desc: 'Первые туманы и иней: духи Ветра и Воды встречаются чаще, Листопадница — повсюду, в родниках больше добычи.', el: ['wind', 'water'], loot: 1.5, seasonal: ['listopadnica'] },
-  veles:       { name: 'Велесова ночь',   desc: 'Граница миров тоньше всего: духи Тени втрое чаще, в великих разломах ждёт Кощей, сияющие Тени вдвое чаще.', el: ['shadow'], elMul: 3, koschey: true, shiny: 2 },
+  svyatki:     { name: ru`Святки`,          desc: ru`Зимние праздники: Морозко и Снегурка выходят к людям, духи Ветра и Воды встречаются чаще, в родниках — подарки.`, el: ['wind', 'water'], loot: 1.5, seasonal: ['morozko', 'snegurka'] },
+  maslenitsa:  { name: ru`Масленица`,       desc: ru`Провожаем зиму! Духи Огня встречаются вдвое чаще, в родниках много мёда («блинов»), опыт ×1,5.`, el: ['fire'], honey: true, xp: 1.5 },
+  kupala:      { name: ru`Купальская ночь`, desc: ru`Цветёт папоротник: Купалинка повсюду, духи Огня, Воды и Леса чаще, ночью сияющие — вдвое чаще.`, el: ['fire', 'water', 'forest'], shinyNight: 2, seasonal: ['kupalinka'] },
+  pokrov:      { name: ru`Покров`, desc: ru`Первые туманы и иней: духи Ветра и Воды встречаются чаще, Листопадница — повсюду, в родниках больше добычи.`, el: ['wind', 'water'], loot: 1.5, seasonal: ['listopadnica'] },
+  veles:       { name: ru`Велесова ночь`,   desc: ru`Граница миров тоньше всего: духи Тени втрое чаще, в великих разломах ждёт Кощей, сияющие Тени вдвое чаще.`, el: ['shadow'], elMul: 3, koschey: true, shiny: 2 },
 };
 
 /* ---------- Вторжения Нави (v1.4) ---------- */
 const GRUNT_QUOTES = [
-  'Этот родник теперь принадлежит Нави!',
-  'Твои духи будут служить Кощею!',
-  'Орден Оберега? Никогда о таком не слышал.',
-  'Граница рухнет, и мы заберём весь город!',
-  'Думаешь, оберегом меня остановишь?',
-  'Тьма уже здесь, Ловчий. Смирись.',
+  ru`Этот родник теперь принадлежит Нави!`,
+  ru`Твои духи будут служить Кощею!`,
+  ru`Орден Оберега? Никогда о таком не слышал.`,
+  ru`Граница рухнет, и мы заберём весь город!`,
+  ru`Думаешь, оберегом меня остановишь?`,
+  ru`Тьма уже здесь, Ловчий. Смирись.`,
 ];
 
 /* ---------- Облик Ловчего (v1.4) ---------- */
 const LOOK = {
   cloak: [
-    { c: '#6d28d9', name: 'Фиалковый', lvl: 1 }, { c: '#1d4ed8', name: 'Синий', lvl: 1 }, { c: '#15803d', name: 'Лесной', lvl: 1 },
-    { c: '#b91c1c', name: 'Алый', lvl: 5 }, { c: '#0f766e', name: 'Бирюзовый', lvl: 8 }, { c: '#a16207', name: 'Охряный', lvl: 10 },
-    { c: '#1f2937', name: 'Полночный', lvl: 15 }, { c: '#e2e8f0', name: 'Снежный', lvl: 20 }, { c: '#be185d', name: 'Малиновый', lvl: 25 }, { c: '#ca8a04', name: 'Золотой', lvl: 30 },
+    { c: '#6d28d9', name: ru`Фиалковый`, lvl: 1 }, { c: '#1d4ed8', name: ru`Синий`, lvl: 1 }, { c: '#15803d', name: ru`Лесной`, lvl: 1 },
+    { c: '#b91c1c', name: ru`Алый`, lvl: 5 }, { c: '#0f766e', name: ru`Бирюзовый`, lvl: 8 }, { c: '#a16207', name: ru`Охряный`, lvl: 10 },
+    { c: '#1f2937', name: ru`Полночный`, lvl: 15 }, { c: '#e2e8f0', name: ru`Снежный`, lvl: 20 }, { c: '#be185d', name: ru`Малиновый`, lvl: 25 }, { c: '#ca8a04', name: ru`Золотой`, lvl: 30 },
     // 3.12: из Лавки Ордена (за златники) и с Золотой тропы — открываются покупкой, а не уровнем
-    { c: '#7c2d12', name: 'Бронзовый', lvl: 1, shop: 250 }, { c: '#0c4a6e', name: 'Глубинный', lvl: 1, shop: 250 }, { c: '#4a044e', name: 'Навья ночь', lvl: 1, shop: 400 },
-    { c: '#065f46', name: 'Сезонная тропа', lvl: 1, pass: true },
+    { c: '#7c2d12', name: ru`Бронзовый`, lvl: 1, shop: 250 }, { c: '#0c4a6e', name: ru`Глубинный`, lvl: 1, shop: 250 }, { c: '#4a044e', name: ru`Навья ночь`, lvl: 1, shop: 400 },
+    { c: '#065f46', name: ru`Сезонная тропа`, lvl: 1, pass: true },
   ],
   eyes: [
-    { c: '#5eead4', name: 'Бирюза', lvl: 1 }, { c: '#fde047', name: 'Янтарь', lvl: 1 }, { c: '#f87171', name: 'Жар', lvl: 6 },
-    { c: '#c084fc', name: 'Аметист', lvl: 12 }, { c: '#f8fafc', name: 'Лунный свет', lvl: 18 }, { c: '#4ade80', name: 'Навий огонь', lvl: 28 },
+    { c: '#5eead4', name: ru`Бирюза`, lvl: 1 }, { c: '#fde047', name: ru`Янтарь`, lvl: 1 }, { c: '#f87171', name: ru`Жар`, lvl: 6 },
+    { c: '#c084fc', name: ru`Аметист`, lvl: 12 }, { c: '#f8fafc', name: ru`Лунный свет`, lvl: 18 }, { c: '#4ade80', name: ru`Навий огонь`, lvl: 28 },
   ],
   emblem: [
-    { id: 'charm', name: 'Оберег', lvl: 1 }, { id: 'sun', name: 'Солнце', lvl: 3 }, { id: 'moon', name: 'Месяц', lvl: 7 },
-    { id: 'leaf', name: 'Лист', lvl: 11 }, { id: 'bolt', name: 'Молния', lvl: 16 }, { id: 'star', name: 'Звезда', lvl: 22 },
-    { id: 'crown', name: 'Венец Лиги', lvl: 1, league: 9 },
-    { id: 'needle', name: 'Игла Кощея', lvl: 1, story: 12 },
-    { id: 'horn', name: 'Рог Индрика', lvl: 1, story: 18 },
-    { id: 'oak', name: 'Дубовый венок', lvl: 1, story: 21 }, // 4.0: за четвёртую книгу Летописи
-    { id: 'trail', name: 'Знак Тропы', lvl: 1, pass: true },
+    { id: 'charm', name: ru`Оберег`, lvl: 1 }, { id: 'sun', name: ru`Солнце`, lvl: 3 }, { id: 'moon', name: ru`Месяц`, lvl: 7 },
+    { id: 'leaf', name: ru`Лист`, lvl: 11 }, { id: 'bolt', name: ru`Молния`, lvl: 16 }, { id: 'star', name: ru`Звезда`, lvl: 22 },
+    { id: 'crown', name: ru`Венец Лиги`, lvl: 1, league: 9 },
+    { id: 'needle', name: ru`Игла Кощея`, lvl: 1, story: 12 },
+    { id: 'horn', name: ru`Рог Индрика`, lvl: 1, story: 18 },
+    { id: 'oak', name: ru`Дубовый венок`, lvl: 1, story: 21 }, // 4.0: за четвёртую книгу Летописи
+    { id: 'trail', name: ru`Знак Тропы`, lvl: 1, pass: true },
   ],
   // 4.6: облики-скины — полный наряд Ловчего (рисунки — js/skins-art.js); покупаются в Гардеробе за златники.
   // rar: 0 — обычный, 1 — редкий, 2 — эпический, 3 — легендарный. Глаза и эмблема видны у всех обликов, цвет плаща — только у обычного
   skin: [
-    { id: 'hood', name: 'Ловчий', rar: 0, desc: 'Плащ Ордена Оберега — с него начинает каждый Ловчий.' },
-    { id: 'kupala', name: 'Купальский', rar: 1, shop: 300, desc: 'Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.' },
-    { id: 'leshiy', name: 'Лесной', rar: 1, shop: 300, desc: 'Капюшон из мха и оленьи рога — леса признают тебя своим.' },
-    { id: 'moroz', name: 'Морозный', rar: 1, shop: 400, desc: 'Ледяной венец и иней на плаще. Подарок самого Морозко.' },
-    { id: 'volhv', name: 'Волхв', rar: 2, shop: 450, desc: 'Шапка с рунами и посох с огоньком: мудрость старых волхвов.' },
-    { id: 'bogatyr', name: 'Богатырь', rar: 2, shop: 500, desc: 'Шелом, кольчуга и алое корзно — хоть сейчас на заставу.' },
-    { id: 'voron', name: 'Вороний', rar: 2, shop: 550, desc: 'Маска-клюв и плащ из чёрных перьев. Вороны Нави шепчут тебе вести.' },
-    { id: 'navstrazh', name: 'Навий страж', rar: 2, shop: 650, desc: 'Рогатая личина и пламя Нави. Духи расступаются перед тобой.' },
-    { id: 'zharpero', name: 'Жар-перо', rar: 3, shop: 900, desc: 'Убор из огненных перьев Жар-птицы. Светится даже в самую тёмную ночь.' },
-    { id: 'knyaz', name: 'Княжий', rar: 3, shop: 1000, desc: 'Княжья шапка с соболем и самоцветами — наряд первых Ловчих Ордена.' },
+    { id: 'hood', name: ru`Ловчий`, rar: 0, desc: ru`Плащ Ордена Оберега — с него начинает каждый Ловчий.` },
+    { id: 'kupala', name: ru`Купальский`, rar: 1, shop: 300, desc: ru`Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.` },
+    { id: 'leshiy', name: ru`Лесной`, rar: 1, shop: 300, desc: ru`Капюшон из мха и оленьи рога — леса признают тебя своим.` },
+    { id: 'moroz', name: ru`Морозный`, rar: 1, shop: 400, desc: ru`Ледяной венец и иней на плаще. Подарок самого Морозко.` },
+    { id: 'volhv', name: ru`Волхв`, rar: 2, shop: 450, desc: ru`Шапка с рунами и посох с огоньком: мудрость старых волхвов.` },
+    { id: 'bogatyr', name: ru`Богатырь`, rar: 2, shop: 500, desc: ru`Шелом, кольчуга и алое корзно — хоть сейчас на заставу.` },
+    { id: 'voron', name: ru`Вороний`, rar: 2, shop: 550, desc: ru`Маска-клюв и плащ из чёрных перьев. Вороны Нави шепчут тебе вести.` },
+    { id: 'navstrazh', name: ru`Навий страж`, rar: 2, shop: 650, desc: ru`Рогатая личина и пламя Нави. Духи расступаются перед тобой.` },
+    { id: 'zharpero', name: ru`Жар-перо`, rar: 3, shop: 900, desc: ru`Убор из огненных перьев Жар-птицы. Светится даже в самую тёмную ночь.` },
+    { id: 'knyaz', name: ru`Княжий`, rar: 3, shop: 1000, desc: ru`Княжья шапка с соболем и самоцветами — наряд первых Ловчих Ордена.` },
   ],
   // 4.6: фон и рамка карточки Ловчего (её видят все) — тоже в Гардеробе (рисунки — js/looks-art.js). lvl — открывается уровнем, shop — цена в златниках
   bg: [
-    { id: 'night', name: 'Ночь', rar: 0, lvl: 1 },
-    { id: 'dusk', name: 'Сумерки', rar: 0, lvl: 5 },
-    { id: 'stars', name: 'Звездопад', rar: 0, lvl: 12 },
-    { id: 'aurora', name: 'Северное сияние', rar: 1, shop: 250 },
-    { id: 'fern', name: 'Купальская ночь', rar: 1, shop: 300 },
-    { id: 'embers', name: 'Жар', rar: 1, shop: 300 },
-    { id: 'frost', name: 'Иней', rar: 1, shop: 300 },
-    { id: 'moon', name: 'Навья луна', rar: 2, shop: 400 },
-    { id: 'khokhloma', name: 'Золотая роспись', rar: 2, shop: 500 },
-    { id: 'gate', name: 'Врата Нави', rar: 3, shop: 650 },
+    { id: 'night', name: ru`Ночь`, rar: 0, lvl: 1 },
+    { id: 'dusk', name: ru`Сумерки`, rar: 0, lvl: 5 },
+    { id: 'stars', name: ru`Звездопад`, rar: 0, lvl: 12 },
+    { id: 'aurora', name: ru`Северное сияние`, rar: 1, shop: 250 },
+    { id: 'fern', name: ru`Купальская ночь`, rar: 1, shop: 300 },
+    { id: 'embers', name: ru`Жар`, rar: 1, shop: 300 },
+    { id: 'frost', name: ru`Иней`, rar: 1, shop: 300 },
+    { id: 'moon', name: ru`Навья луна`, rar: 2, shop: 400 },
+    { id: 'khokhloma', name: ru`Золотая роспись`, rar: 2, shop: 500 },
+    { id: 'gate', name: ru`Врата Нави`, rar: 3, shop: 650 },
   ],
   frame: [
-    { id: 'none', name: 'Без рамки', rar: 0, lvl: 1 },
-    { id: 'ring', name: 'Золотая кайма', rar: 0, lvl: 3 },
-    { id: 'rune', name: 'Рунная кайма', rar: 0, lvl: 15 },
-    { id: 'oak', name: 'Дубовый венок', rar: 1, shop: 250 },
-    { id: 'ice', name: 'Ледяной узор', rar: 1, shop: 300 },
-    { id: 'flame', name: 'Огненная кайма', rar: 1, shop: 350 },
-    { id: 'pearl', name: 'Жемчужная', rar: 2, shop: 350 },
-    { id: 'serpent', name: 'Змей-уроборос', rar: 2, shop: 450 },
-    { id: 'thorn', name: 'Навий шип', rar: 2, shop: 500 },
-    { id: 'knyaz', name: 'Княжий оклад', rar: 3, shop: 800 },
+    { id: 'none', name: ru`Без рамки`, rar: 0, lvl: 1 },
+    { id: 'ring', name: ru`Золотая кайма`, rar: 0, lvl: 3 },
+    { id: 'rune', name: ru`Рунная кайма`, rar: 0, lvl: 15 },
+    { id: 'oak', name: ru`Дубовый венок`, rar: 1, shop: 250 },
+    { id: 'ice', name: ru`Ледяной узор`, rar: 1, shop: 300 },
+    { id: 'flame', name: ru`Огненная кайма`, rar: 1, shop: 350 },
+    { id: 'pearl', name: ru`Жемчужная`, rar: 2, shop: 350 },
+    { id: 'serpent', name: ru`Змей-уроборос`, rar: 2, shop: 450 },
+    { id: 'thorn', name: ru`Навий шип`, rar: 2, shop: 500 },
+    { id: 'knyaz', name: ru`Княжий оклад`, rar: 3, shop: 800 },
   ],
 };
-const SKIN_RAR = [{ name: 'Обычный', c: '#c4b5fd' }, { name: 'Редкий', c: '#38bdf8' }, { name: 'Эпический', c: '#c084fc' }, { name: 'Легендарный', c: '#fbbf24' }];
+const SKIN_RAR = [{ name: ru`Обычный`, c: '#c4b5fd' }, { name: ru`Редкий`, c: '#38bdf8' }, { name: ru`Эпический`, c: '#c084fc' }, { name: ru`Легендарный`, c: '#fbbf24' }];
 
-MEDALS.splice(4, 0, { id: 'duels', name: 'Поединщик', desc: 'Победи хранителей капищ', stat: 'duels', tiers: [5, 50, 300] });
-QUEST_TEMPLATES.push({ t: 'duel', min: 1, max: 2, text: n => `Победи хранителей капищ: ${n}`, reward: { charm2: 4, sparks: 600 } });
+MEDALS.splice(4, 0, { id: 'duels', name: ru`Поединщик`, desc: ru`Победи хранителей капищ`, stat: 'duels', tiers: [5, 50, 300] });
+QUEST_TEMPLATES.push({ t: 'duel', min: 1, max: 2, text: n => ru.k`Победи хранителей капищ: ${n}`, reward: { charm2: 4, sparks: 600 } });
 
 /* ---------- 4.0: «Посвящение в Ловчие» — обучение ----------
    Пропустить нельзя: шаги ведёт сервер (S.d.tut — номер текущего шага, 0 — пройдено), после перезахода игра
    продолжает с того же места. kind: talk — сцена с Велимиром; ui — открыть раздел; catch — поймать учебного
    духа (sid); spring — зачерпнуть из родника; power — усилить духа. За каждую главу — награда. */
 const TUT_CHAPTERS = [
-  { title: 'Тонкая ночь',     reward: { charm: 5, sparks: 200, xp: 100 } },
-  { title: 'Первый дух',      reward: { charm: 10, honey: 3, sparks: 300, xp: 300 } },
-  { title: 'Твои духи',       reward: { sparks: 500, xp: 300 } },
-  { title: 'Родники',         reward: { charm: 15, water: 3, xp: 400 } },
-  { title: 'Дорога Ловчего',  reward: { incense: 1, sparks: 500, xp: 400 } },
-  { title: 'Клятва Ордена',   reward: { charm: 20, honey: 5, water: 3, sparks: 1000, zlat: 20, xp: 1000 } },
+  { title: ru`Тонкая ночь`,     reward: { charm: 5, sparks: 200, xp: 100 } },
+  { title: ru`Первый дух`,      reward: { charm: 10, honey: 3, sparks: 300, xp: 300 } },
+  { title: ru`Твои духи`,       reward: { sparks: 500, xp: 300 } },
+  { title: ru`Родники`,         reward: { charm: 15, water: 3, xp: 400 } },
+  { title: ru`Дорога Ловчего`,  reward: { incense: 1, sparks: 500, xp: 400 } },
+  { title: ru`Клятва Ордена`,   reward: { charm: 20, honey: 5, water: 3, sparks: 1000, zlat: 20, xp: 1000 } },
 ];
 const TUT = [
   { ch: 0, kind: 'talk', id: 'meet', lines: [
-    ['n', 'Ночь. Пустой двор. Фонарь над подъездом мигает, хотя ветра нет.'],
-    ['n', 'В луже у бордюра что-то светится — и смотрит на тебя.'],
-    ['v', 'Не бойся. Раз ты их видишь — значит, ты из наших.'],
-    ['v', 'Меня зовут <b>Велимир</b>. Я старший Ловчий <b>Ордена Оберега</b>. Мы бережём границу между Явью — нашим миром — и Навью, миром духов.'],
-    ['you', 'Духов? Каких ещё духов?'],
-    ['v', 'Тех, что прячутся в проводах, лужах и старых фонарях. В <b>Тонкую ночь</b> граница истончилась — и они хлынули в город.'] ] },
+    ['n', ru`Ночь. Пустой двор. Фонарь над подъездом мигает, хотя ветра нет.`],
+    ['n', ru`В луже у бордюра что-то светится — и смотрит на тебя.`],
+    ['v', ru`Не бойся. Раз ты их видишь — значит, ты из наших.`],
+    ['v', ru`Меня зовут <b>Велимир</b>. Я старший Ловчий <b>Ордена Оберега</b>. Мы бережём границу между Явью — нашим миром — и Навью, миром духов.`],
+    ['you', ru`Духов? Каких ещё духов?`],
+    ['v', ru`Тех, что прячутся в проводах, лужах и старых фонарях. В <b>Тонкую ночь</b> граница истончилась — и они хлынули в город.`] ] },
   { ch: 0, kind: 'talk', id: 'lore', lines: [
-    ['v', 'Духи не злые. Они растерялись: Навь тянет их обратно, а здесь им холодно и страшно.'],
-    ['v', 'Ловчий ловит духа <b>оберегом</b> — узелком с заговорённой травой. С тобой дух окрепнет и станет другом.'],
-    ['v', 'Но есть и те, кого Навь уже омрачила. Они бродят в <b>разломах</b>. А за всем этим стоит <b>Кощей</b>…'],
-    ['you', 'И что мне делать?'],
-    ['v', 'Учиться. Посвящение займёт немного времени, но пропустить его нельзя — Орден не пускает на улицы неподготовленных.'],
-    ['v', 'Смотри: рядом с тобой уже появился дух. Начнём!'] ] },
-  { ch: 1, kind: 'catch', id: 'catch1', sid: 'vayfayka', hint: 'Рядом появился дух — видишь светящийся круг на карте? <b>Коснись духа</b>, а потом <b>смахни оберег вверх</b>, прямо в него.' },
+    ['v', ru`Духи не злые. Они растерялись: Навь тянет их обратно, а здесь им холодно и страшно.`],
+    ['v', ru`Ловчий ловит духа <b>оберегом</b> — узелком с заговорённой травой. С тобой дух окрепнет и станет другом.`],
+    ['v', ru`Но есть и те, кого Навь уже омрачила. Они бродят в <b>разломах</b>. А за всем этим стоит <b>Кощей</b>…`],
+    ['you', ru`И что мне делать?`],
+    ['v', ru`Учиться. Посвящение займёт немного времени, но пропустить его нельзя — Орден не пускает на улицы неподготовленных.`],
+    ['v', ru`Смотри: рядом с тобой уже появился дух. Начнём!`] ] },
+  { ch: 1, kind: 'catch', id: 'catch1', sid: 'vayfayka', hint: ru`Рядом появился дух — видишь светящийся круг на карте? <b>Коснись духа</b>, а потом <b>смахни оберег вверх</b>, прямо в него.` },
   { ch: 1, kind: 'talk', id: 'ring', lines: [
-    ['v', 'Поймал! Для первого раза — отлично.'],
-    ['v', 'Видел кольцо вокруг духа? Оно сжимается. Бросай, когда кольцо <b>маленькое</b> — выйдет «Отлично!»: больше опыта и выше шанс поймать.'],
-    ['v', 'Цвет кольца — это нрав духа: <b>зелёный</b> — покладистый, <b>красный</b> — упрямый. Упрямым помогают мёд и серебряные обереги.'],
-    ['v', 'Ещё один дух ждёт неподалёку. Попробуй попасть в маленькое кольцо!'] ] },
-  { ch: 1, kind: 'catch', id: 'catch2', sid: 'mshonok', hint: 'Второй учебный дух рядом. Коснись его и <b>дождись, пока кольцо станет маленьким</b> — тогда бросай!' },
-  { ch: 2, kind: 'ui', id: 'menu', info: 'Это меню Ордена — здесь все разделы. Пока открыто не всё: разделы откроются по ходу посвящения, подсвеченный — следующий.', hint: 'Каждый пойманный дух — твой. Открой <b>меню</b> — золотой оберег внизу экрана.' },
-  { ch: 2, kind: 'ui', id: 'spirits', info: 'Это твоя коллекция — все пойманные духи. Сверху — сортировка по силе, новизне и имени и фильтр по стихиям.', hint: 'Это разделы Ордена. Открой <b>«Духи»</b> — там твоя коллекция.' },
-  { ch: 2, kind: 'ui', id: 'card', info: 'Это карточка духа: сила, стихия, приёмы и семейство. Ниже — кнопки «Усилить» и «Превратить», а ещё можно сделать духа спутником.', hint: 'Коснись любого духа, чтобы открыть его <b>карточку</b>.' },
-  { ch: 2, kind: 'power', id: 'power', hint: 'На карточке — сила духа. Нажми <b>«Усилить»</b>: за искры и эссенцию дух станет сильнее. Эссенцию приносят поимки духов того же семейства.' },
-  { ch: 2, kind: 'ui', id: 'dex', info: 'Бестиарий — все виды духов. Пойманные видны целиком, встреченные — тенью. Коснись вида, чтобы прочитать о нём.', hint: 'Теперь загляни в <b>«Бестиарий»</b> (меню) — там все виды духов. Сколько найдёшь ты?' },
+    ['v', ru`Поймал! Для первого раза — отлично.`],
+    ['v', ru`Видел кольцо вокруг духа? Оно сжимается. Бросай, когда кольцо <b>маленькое</b> — выйдет «Отлично!»: больше опыта и выше шанс поймать.`],
+    ['v', ru`Цвет кольца — это нрав духа: <b>зелёный</b> — покладистый, <b>красный</b> — упрямый. Упрямым помогают мёд и серебряные обереги.`],
+    ['v', ru`Ещё один дух ждёт неподалёку. Попробуй попасть в маленькое кольцо!`] ] },
+  { ch: 1, kind: 'catch', id: 'catch2', sid: 'mshonok', hint: ru`Второй учебный дух рядом. Коснись его и <b>дождись, пока кольцо станет маленьким</b> — тогда бросай!` },
+  { ch: 2, kind: 'ui', id: 'menu', info: ru`Это меню Ордена — здесь все разделы. Пока открыто не всё: разделы откроются по ходу посвящения, подсвеченный — следующий.`, hint: ru`Каждый пойманный дух — твой. Открой <b>меню</b> — золотой оберег внизу экрана.` },
+  { ch: 2, kind: 'ui', id: 'spirits', info: ru`Это твоя коллекция — все пойманные духи. Сверху — сортировка по силе, новизне и имени и фильтр по стихиям.`, hint: ru`Это разделы Ордена. Открой <b>«Духи»</b> — там твоя коллекция.` },
+  { ch: 2, kind: 'ui', id: 'card', info: ru`Это карточка духа: сила, стихия, приёмы и семейство. Ниже — кнопки «Усилить» и «Превратить», а ещё можно сделать духа спутником.`, hint: ru`Коснись любого духа, чтобы открыть его <b>карточку</b>.` },
+  { ch: 2, kind: 'power', id: 'power', hint: ru`На карточке — сила духа. Нажми <b>«Усилить»</b>: за искры и эссенцию дух станет сильнее. Эссенцию приносят поимки духов того же семейства.` },
+  { ch: 2, kind: 'ui', id: 'dex', info: ru`Бестиарий — все виды духов. Пойманные видны целиком, встреченные — тенью. Коснись вида, чтобы прочитать о нём.`, hint: ru`Теперь загляни в <b>«Бестиарий»</b> (меню) — там все виды духов. Сколько найдёшь ты?` },
   { ch: 3, kind: 'talk', id: 'springs', lines: [
-    ['v', 'Обереги тратятся быстро. Пополняют их <b>родники</b> — старые колодцы, где бьёт живая сила.'],
-    ['v', 'Родники стоят у настоящих мест: памятников, фонтанов, храмов, арт-объектов. На карте это синие колодцы со столбом света.'],
-    ['v', 'Из родника выпадают обереги, мёд, живая вода, а иногда — <b>коконы</b> с духами внутри.'],
-    ['v', 'Стрелка вверху экрана покажет дорогу к ближайшему. Пойдём, прогуляемся!'] ] },
-  { ch: 3, kind: 'spring', id: 'spring', hint: 'Иди к роднику по <b>стрелке вверху</b> и коснись его, когда подойдёшь. Родники есть почти в каждом районе — если рядом нет, прогуляйся.' },
-  { ch: 3, kind: 'ui', id: 'bag', info: 'Сумка: обереги, мёд, живая вода и ладан. Сверху видно, сколько ещё поместится; лишнее можно выбросить.', hint: 'Добыча уже в <b>Сумке</b>. Открой меню → «Сумка» и посмотри, что у тебя есть.' },
+    ['v', ru`Обереги тратятся быстро. Пополняют их <b>родники</b> — старые колодцы, где бьёт живая сила.`],
+    ['v', ru`Родники стоят у настоящих мест: памятников, фонтанов, храмов, арт-объектов. На карте это синие колодцы со столбом света.`],
+    ['v', ru`Из родника выпадают обереги, мёд, живая вода, а иногда — <b>коконы</b> с духами внутри.`],
+    ['v', ru`Стрелка вверху экрана покажет дорогу к ближайшему. Пойдём, прогуляемся!`] ] },
+  { ch: 3, kind: 'spring', id: 'spring', hint: ru`Иди к роднику по <b>стрелке вверху</b> и коснись его, когда подойдёшь. Родники есть почти в каждом районе — если рядом нет, прогуляйся.` },
+  { ch: 3, kind: 'ui', id: 'bag', info: ru`Сумка: обереги, мёд, живая вода и ладан. Сверху видно, сколько ещё поместится; лишнее можно выбросить.`, hint: ru`Добыча уже в <b>Сумке</b>. Открой меню → «Сумка» и посмотри, что у тебя есть.` },
   { ch: 4, kind: 'talk', id: 'road', lines: [
-    ['v', 'Ловчий — это ходок. Каждый пройденный шаг идёт в дело.'],
-    ['v', 'Твой первый дух идёт рядом с тобой — это <b>спутник</b>. В пути он находит эссенцию.'],
-    ['v', '<b>Коконы</b> греются шагами: пройдёшь нужное расстояние — и из кокона вылупится дух.'],
-    ['v', 'Каждый день Орден даёт <b>задания</b>, а в <b>Летописи</b> записана наша история — глава за главой.'] ] },
-  { ch: 4, kind: 'ui', id: 'cocoons', info: 'Коконы греются шагами — одновременно можно греть три. Готовый кокон вылупится одним касанием.', hint: 'Открой меню → <b>«Коконы»</b>. Первый кокон уже греется — пройди 2 км, и он вылупится.' },
-  { ch: 4, kind: 'ui', id: 'quests', info: 'Здесь задания дня — они обновляются в полночь. Вкладка «Летопись» — сюжет Ордена: главы с наградами и легендарными духами.', hint: 'Открой <b>«Задания»</b> — там задания дня и Летопись Ордена.' },
-  { ch: 4, kind: 'ui', id: 'path', info: 'Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.', hint: 'И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.' },
+    ['v', ru`Ловчий — это ходок. Каждый пройденный шаг идёт в дело.`],
+    ['v', ru`Твой первый дух идёт рядом с тобой — это <b>спутник</b>. В пути он находит эссенцию.`],
+    ['v', ru`<b>Коконы</b> греются шагами: пройдёшь нужное расстояние — и из кокона вылупится дух.`],
+    ['v', ru`Каждый день Орден даёт <b>задания</b>, а в <b>Летописи</b> записана наша история — глава за главой.`] ] },
+  { ch: 4, kind: 'ui', id: 'cocoons', info: ru`Коконы греются шагами — одновременно можно греть три. Готовый кокон вылупится одним касанием.`, hint: ru`Открой меню → <b>«Коконы»</b>. Первый кокон уже греется — пройди 2 км, и он вылупится.` },
+  { ch: 4, kind: 'ui', id: 'quests', info: ru`Здесь задания дня — они обновляются в полночь. Вкладка «Летопись» — сюжет Ордена: главы с наградами и легендарными духами.`, hint: ru`Открой <b>«Задания»</b> — там задания дня и Летопись Ордена.` },
+  { ch: 4, kind: 'ui', id: 'path', info: ru`Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.`, hint: ru`И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.` },
   { ch: 5, kind: 'talk', id: 'oath', lines: [
-    ['v', 'Ты поймал первых духов, нашёл родник и знаешь, куда идти дальше.'],
-    ['v', 'Впереди — капища предков, разломы с боссами, Лига и дружины. Всё откроется, когда будешь готов.'],
-    ['v', 'Повторяй за мной — это клятва Ордена.'],
-    ['you', '<b>Беречь духов. Беречь границу. Беречь друг друга.</b>'],
-    ['v', 'Добро пожаловать в Орден Оберега, Ловчий. Держи — это твоё первое снаряжение.'] ] },
+    ['v', ru`Ты поймал первых духов, нашёл родник и знаешь, куда идти дальше.`],
+    ['v', ru`Впереди — капища предков, разломы с боссами, Лига и дружины. Всё откроется, когда будешь готов.`],
+    ['v', ru`Повторяй за мной — это клятва Ордена.`],
+    ['you', ru`<b>Беречь духов. Беречь границу. Беречь друг друга.</b>`],
+    ['v', ru`Добро пожаловать в Орден Оберега, Ловчий. Держи — это твоё первое снаряжение.`] ] },
 ];
 
 // ===== www/js/util.js =====
@@ -799,18 +925,23 @@ const U = {
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * toR) * Math.cos(lat2 * toR) * Math.sin(dLng / 2) ** 2;
     return 2 * R * Math.asin(Math.sqrt(a));
   },
-  fmtDist(m) { return m < 1000 ? `${Math.round(m)} м` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} км`; },
+  fmtDist(m) { return m < 1000 ? ru`${Math.round(m)} м` : ru`${(m / 1000).toFixed(m < 10000 ? 1 : 0)} км`; },
   fmtTime(ms) {
     const s = Math.max(0, Math.round(ms / 1000));
     const m = Math.floor(s / 60), ss = s % 60;
-    if (m >= 48 * 60) return `${Math.floor(m / 1440)} дн ${Math.floor(m / 60) % 24} ч`;
-    return m >= 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m}:${String(ss).padStart(2, '0')}`;
+    if (m >= 48 * 60) return ru`${Math.floor(m / 1440)} дн ${Math.floor(m / 60) % 24} ч`;
+    return m >= 60 ? ru`${Math.floor(m / 60)} ч ${m % 60} мин` : `${m}:${String(ss).padStart(2, '0')}`;
   },
+  // 4.15: формы слова по правилам языка игры: one — «1 оберег», few — «2 оберега», many — «5 оберегов»
+  // (в других языках few не бывает: в переводе few и many — обычно одна и та же форма множественного числа)
   plural(n, one, few, many) {
-    const a = Math.abs(n) % 100, b = a % 10;
-    return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many;
+    const L = I18N.lang, x = Math.abs(n);
+    if (L === 'ru') { const a = x % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; }
+    if (L === 'zh' || L === 'ja' || L === 'ko' || L === 'id' || L === 'tr') return many;
+    if (L === 'fr' || L === 'pt' || L === 'hi') return x < 2 ? one : many;
+    return x === 1 ? one : many;
   },
-  fmtNum(n) { return Math.round(n).toLocaleString('ru-RU'); },
+  fmtNum(n) { return Math.round(n).toLocaleString(I18N.locale); },
   today(t) { const d = this.local(t); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; },
   isNight(t) { const h = this.hour(t); return h >= 20 || h < 6; },
 
@@ -1263,7 +1394,7 @@ const W = {
       sp.dark = true;
       team.push(sp);
     }
-    return { name: 'Прислужник Нави', color: '#3b0764', title: `Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)] };
+    return { name: ru`Прислужник Нави`, color: '#3b0764', title: ru`Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)] };
   },
 
   // Хранитель меняется каждый день; уровень его духов подстраивается под уровень игрока
@@ -1426,9 +1557,9 @@ const S = {
     this.save();
   },
   canLearnMove2(sp) {
-    if (sp.move2) return 'Приём уже выучен';
-    if (this.d.sparks < MOVE2_COST.sparks) return `Нужно ✦ ${MOVE2_COST.sparks}`;
-    if ((this.d.essence[SP[sp.sid].fam] || 0) < MOVE2_COST.essence) return `Нужно ${MOVE2_COST.essence} эссенции`;
+    if (sp.move2) return ru`Приём уже выучен`;
+    if (this.d.sparks < MOVE2_COST.sparks) return ru`Нужно ✦ ${MOVE2_COST.sparks}`;
+    if ((this.d.essence[SP[sp.sid].fam] || 0) < MOVE2_COST.essence) return ru`Нужно ${MOVE2_COST.essence} эссенции`;
     return null;
   },
   learnMove2(sp) {
@@ -1466,11 +1597,11 @@ const S = {
   healItems() { return Object.keys(ITEMS).filter(k => ITEMS[k].heal || ITEMS[k].revive); },
   canHeal(sp, k) {
     const it = ITEMS[k], h = this.hpNow(sp);
-    if (!sp) return 'Дух не найден';
-    if (!it || !(it.heal || it.revive)) return 'Этим не лечат';
-    if (!(this.d.items[k] > 0)) return `${it.name}: нет в сумке`;
-    if (h <= 0 && !it.revive) return 'Дух без сил — поднимет только Живая вода';
-    if (h >= 1) return 'Дух здоров';
+    if (!sp) return ru`Дух не найден`;
+    if (!it || !(it.heal || it.revive)) return ru`Этим не лечат`;
+    if (!(this.d.items[k] > 0)) return ru`${it.name}: нет в сумке`;
+    if (h <= 0 && !it.revive) return ru`Дух без сил — поднимет только Живая вода`;
+    if (h >= 1) return ru`Дух здоров`;
     return null;
   },
   heal(sp, k) {
@@ -1539,22 +1670,23 @@ const S = {
       b.km -= need; b.finds++;
       const s = SP[sp.sid];
       this.addEssence(s.fam, 3);
-      let extra = '';
+      let extra = null;
       if (b.finds % 3 === 0) {
         const it = U.weighted([['charm', 5], ['honey', 2], ['water', 1]], Math.random());
         const n = it === 'charm' ? 3 : 1;
-        if (this.addItem(it, n)) extra = ` и ${ITEMS[it].name.toLowerCase()} ×${n}`;
+        if (this.addItem(it, n)) extra = [I18N.low(ITEMS[it].name), n];
       }
-      Bus.emit('buddyFind', `Спутник «${U.esc(sp.nick || s.name)}» принёс 3 эссенции${extra}!`);
+      const nm = U.esc(sp.nick || s.name);
+      Bus.emit('buddyFind', extra ? ru`Спутник «${nm}» принёс 3 эссенции и ${extra[0]} ×${extra[1]}!` : ru`Спутник «${nm}» принёс 3 эссенции!`);
     }
   },
   addEssence(fam, n) { this.d.essence[fam] = (this.d.essence[fam] || 0) + n; },
   powerUpCost(sp) { return { sparks: 200 + 200 * Math.floor((sp.lvl - 1) / 4), essence: 1 + Math.floor(sp.lvl / 10) }; },
   canPowerUp(sp) {
     const c = this.powerUpCost(sp), fam = SP[sp.sid].fam;
-    if (sp.lvl >= this.maxLvl()) return 'Предел: уровень духа не может быть выше уровня Ловчего +5';
-    if (this.d.sparks < c.sparks) return 'Не хватает искр';
-    if ((this.d.essence[fam] || 0) < c.essence) return 'Не хватает эссенции';
+    if (sp.lvl >= this.maxLvl()) return ru`Предел: уровень духа не может быть выше уровня Ловчего +5`;
+    if (this.d.sparks < c.sparks) return ru`Не хватает искр`;
+    if ((this.d.essence[fam] || 0) < c.essence) return ru`Не хватает эссенции`;
     return null;
   },
   powerUp(sp) {
@@ -1569,9 +1701,9 @@ const S = {
   },
   PURIFY: { sparks: 3000, essence: 25 }, // 3.19: было 1000 и 10 — дешевле, чем усилить духа до 25 уровня (16 800 ✦)
   canPurify(sp) {
-    if (!sp.dark) return 'Дух не омрачён';
-    if (this.d.sparks < this.PURIFY.sparks) return `Нужно ✦ ${this.PURIFY.sparks}`;
-    if ((this.d.essence[SP[sp.sid].fam] || 0) < this.PURIFY.essence) return `Нужно ${this.PURIFY.essence} эссенции`;
+    if (!sp.dark) return ru`Дух не омрачён`;
+    if (this.d.sparks < this.PURIFY.sparks) return ru`Нужно ✦ ${this.PURIFY.sparks}`;
+    if ((this.d.essence[SP[sp.sid].fam] || 0) < this.PURIFY.essence) return ru`Нужно ${this.PURIFY.essence} эссенции`;
     return null;
   },
   purify(sp) {
@@ -1590,8 +1722,8 @@ const S = {
   },
   canEvolve(sp) {
     const s = SP[sp.sid];
-    if (!s.evo) return 'Этот дух не превращается';
-    if ((this.d.essence[s.fam] || 0) < s.cost) return `Нужно ${s.cost} эссенции`;
+    if (!s.evo) return ru`Этот дух не превращается`;
+    if ((this.d.essence[s.fam] || 0) < s.cost) return ru`Нужно ${s.cost} эссенции`;
     return null;
   },
   evolve(sp) {
@@ -1628,9 +1760,9 @@ const S = {
     const out = [];
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
-      if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: 'Искры' }); }
-      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: 'Златники' }); }
-      else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: 'Опыт' }); this.addXP(n); }
+      if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
+      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Златники` }); }
+      else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: ru`Опыт` }); this.addXP(n); }
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
     this.save();
@@ -1739,7 +1871,7 @@ const S = {
       if (type === 'catchEl' && meta.el !== q.el) return;
       q.p = Math.min(q.n, q.p + amount);
       changed = true;
-      if (q.p >= q.n) Bus.emit('toast', { text: `Поручение выполнено: ${q.text}`, cls: 'good' });
+      if (q.p >= q.n) Bus.emit('toast', { text: ru`Поручение выполнено: ${I18N.back(q.text)}`, cls: 'good' });
     });
     // Летопись
     const ch = STORY[this.d.story.ch];
@@ -1822,7 +1954,7 @@ const S = {
 
 const J = {
   MAX: 250,
-  FILTERS: [['all', 'Всё'], ['catch', 'Поимки'], ['battle', 'Битвы'], ['other', 'Прочее']],
+  FILTERS: [['all', ru`Всё`], ['catch', ru`Поимки`], ['battle', ru`Битвы`], ['other', ru`Прочее`]],
   GROUP: { catch: 'catch', flee: 'catch', hatch: 'catch', raid: 'battle', duel: 'battle', invasion: 'battle', league: 'battle', spar: 'battle' },
   filter: 'all',
 
@@ -1841,36 +1973,40 @@ const J = {
     const icon = sid => `<div class="j-ico">${Art.img(sid, e.shiny, e.dark)}</div>`;
     const glyph = (g, cls = '') => `<div class="j-ico glyph ${cls}">${g}</div>`;
     switch (e.type) {
-      case 'catch': return { ico: icon(e.sid), title: `Пойман ${e.shiny ? 'сияющий ' : ''}${e.dark ? 'омрачённый ' : ''}${sp(e.sid)}`, sub: e.power ? `СИЛА ${e.power}` : '' };
-      case 'flee': return { ico: icon(e.sid), title: `${sp(e.sid)} ускользнул`, sub: 'Дух вернулся в Навь', cls: 'dim' };
-      case 'hatch': return { ico: icon(e.sid), title: `Из кокона появился ${sp(e.sid)}`, sub: e.km ? `Кокон ${e.km} км` : '' };
-      case 'evolve': return { ico: icon(e.to), title: `${sp(e.from)} превратился в ${sp(e.to)}`, sub: '' };
-      case 'raid': return { ico: icon(e.sid), title: `Разлом закрыт: ${sp(e.sid)}`, sub: '★'.repeat(e.tier || 1) };
-      case 'duel': return { ico: glyph('⛩'), title: `Победа: ${e.name}`, sub: `Хранитель ${e.guard || ''}` };
-      case 'invasion': return { ico: glyph('☾', 'dark'), title: `Родник освобождён`, sub: e.name || '' };
-      case 'league': return { ico: glyph('★', 'gold'), title: `Турнир Лиги: побед ${e.won} из 3`, sub: `Ранг: ${e.rank}` };
-      case 'level': return { ico: glyph(e.l, 'gold'), title: `Новый уровень: ${e.l}`, sub: '' };
-      case 'medal': return { ico: glyph('✦', 'gold'), title: `Знак «${e.name}»`, sub: MEDAL_TIERS[e.tier - 1] ? MEDAL_TIERS[e.tier - 1].name : '' };
-      case 'story': return { ico: glyph('✎'), title: `Глава Летописи: «${e.title}»`, sub: 'Завершена' };
-      case 'trade': return { ico: icon(e.sid), title: e.dir === 'out' ? `${sp(e.sid)} упакован для друга` : `${sp(e.sid)} получен от ${e.who || 'друга'}`, sub: 'Обмен' };
-      case 'friend': return { ico: glyph('♥', 'pink'), title: `Новый друг: ${e.name}`, sub: '' };
-      case 'spar': return { ico: glyph('⚔'), title: `Победа в поединке с другом`, sub: e.name || '' };
-      case 'clan': return { ico: glyph('⚑', 'gold'), title: `Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : 'дружина'}`, sub: '' };
-      case 'guardBack': return { ico: icon(e.sid), title: 'Защитник вернулся с Капища', sub: `${e.name || ''} · стоял ${e.hours} ч` };
-      case 'defend': return { ico: icon(e.sid), title: `Защитник на Капище`, sub: e.name || '' };
-      case 'shop': return { ico: glyph('☉', 'gold'), title: `Покупка в Лавке: ${e.name || ''}`, sub: '' };
-      case 'passGold': return { ico: glyph('★', 'gold'), title: 'Открыта Золотая тропа', sub: e.season || '' };
-      case 'exchange': return { ico: glyph('⇄', 'gold'), title: 'Обмен в Лавке', sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${e.zlat || 0} златников` };
-      case 'pay': return { ico: glyph('☉', 'gold'), title: 'Казна Ордена', sub: `+${e.zlat || 0} златников` };
-      case 'auction': return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? `Куплен на аукционе: ${SP[e.sid] ? SP[e.sid].name : ''}` : e.dir === 'sold' ? `Продан на аукционе: ${SP[e.sid] ? SP[e.sid].name : ''}` : `Выставлен на аукцион: ${SP[e.sid] ? SP[e.sid].name : ''}`, sub: `${e.cur === 'zlat' ? '' : '✦ '}${U.fmtNum(e.price || 0)}${e.cur === 'zlat' ? ' златников' : ''}${e.who ? ' · ' + e.who : ''}` };
-      case 'order': return { ico: glyph('⚑', 'gold'), title: 'Общее дело Ордена', sub: `Награда ${(e.i | 0) + 1}-й ступени` };
-      case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? `Подарок отправлен: ${e.name}` : `Подарок от ${e.name}`, sub: '' };
+      // целые фразы на каждый вариант (сияющий/омрачённый) — чтобы перевод не собирался из кусков
+      case 'catch': { const n = sp(e.sid);
+        return { ico: icon(e.sid), title: e.shiny && e.dark ? ru`Пойман сияющий омрачённый ${n}` : e.shiny ? ru`Пойман сияющий ${n}` : e.dark ? ru`Пойман омрачённый ${n}` : ru`Пойман ${n}`, sub: e.power ? ru`СИЛА ${e.power}` : '' }; }
+      case 'flee': return { ico: icon(e.sid), title: ru`${sp(e.sid)} ускользнул`, sub: ru`Дух вернулся в Навь`, cls: 'dim' };
+      case 'hatch': return { ico: icon(e.sid), title: ru`Из кокона появился ${sp(e.sid)}`, sub: e.km ? ru`Кокон ${e.km} км` : '' };
+      case 'evolve': return { ico: icon(e.to), title: ru`${sp(e.from)} превратился в ${sp(e.to)}`, sub: '' };
+      case 'raid': return { ico: icon(e.sid), title: ru`Разлом закрыт: ${sp(e.sid)}`, sub: '★'.repeat(e.tier || 1) };
+      // e.name — название Капища с карты; e.guard / e.rank / e.name знака, лавки, e.title главы — русские названия из данных (сохранены сервером), переводим при показе
+      case 'duel': return { ico: glyph('⛩'), title: ru`Победа: ${e.name}`, sub: ru`Хранитель ${I18N.back(e.guard || '')}` };
+      case 'invasion': return { ico: glyph('☾', 'dark'), title: ru`Родник освобождён`, sub: e.name || '' };
+      case 'league': return { ico: glyph('★', 'gold'), title: ru`Турнир Лиги: побед ${e.won} из 3`, sub: ru`Ранг: ${I18N.back(e.rank)}` };
+      case 'level': return { ico: glyph(e.l, 'gold'), title: ru`Новый уровень: ${e.l}`, sub: '' };
+      case 'medal': return { ico: glyph('✦', 'gold'), title: ru`Знак «${I18N.back(e.name)}»`, sub: MEDAL_TIERS[e.tier - 1] ? MEDAL_TIERS[e.tier - 1].name : '' };
+      case 'story': return { ico: glyph('✎'), title: ru`Глава Летописи: «${I18N.back(e.title)}»`, sub: ru`Завершена` };
+      case 'trade': return { ico: icon(e.sid), title: e.dir === 'out' ? ru`${sp(e.sid)} упакован для друга` : e.who ? ru`${sp(e.sid)} получен от ${e.who}` : ru`${sp(e.sid)} получен от друга`, sub: ru`Обмен` };
+      case 'friend': return { ico: glyph('♥', 'pink'), title: ru`Новый друг: ${e.name}`, sub: '' };
+      case 'spar': return { ico: glyph('⚔'), title: ru`Победа в поединке с другом`, sub: e.name || '' };
+      case 'clan': return { ico: glyph('⚑', 'gold'), title: ru`Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`дружина`}`, sub: '' };
+      case 'guardBack': return { ico: icon(e.sid), title: ru`Защитник вернулся с Капища`, sub: `${e.name || ''} · ${ru`стоял ${e.hours} ч`}` };
+      case 'defend': return { ico: icon(e.sid), title: ru`Защитник на Капище`, sub: e.name || '' };
+      case 'shop': return { ico: glyph('☉', 'gold'), title: ru`Покупка в Лавке: ${I18N.back(e.name || '')}`, sub: '' };
+      case 'passGold': return { ico: glyph('★', 'gold'), title: ru`Открыта Золотая тропа`, sub: e.season || '' };
+      case 'exchange': return { ico: glyph('⇄', 'gold'), title: ru`Обмен в Лавке`, sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${ru`${e.zlat || 0} златников`}` };
+      case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} златников` };
+      case 'auction': { const n = SP[e.sid] ? SP[e.sid].name : '', p = U.fmtNum(e.price || 0);
+        return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? ru`Куплен на аукционе: ${n}` : e.dir === 'sold' ? ru`Продан на аукционе: ${n}` : ru`Выставлен на аукцион: ${n}`, sub: `${e.cur === 'zlat' ? ru`${p} златников` : '✦ ' + p}${e.who ? ' · ' + e.who : ''}` }; }
+      case 'order': return { ico: glyph('⚑', 'gold'), title: ru`Общее дело Ордена`, sub: ru`Награда ${(e.i | 0) + 1}-й ступени` };
+      case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? ru`Подарок отправлен: ${e.name}` : ru`Подарок от ${e.name}`, sub: '' };
     }
     return { ico: glyph('•'), title: e.type, sub: '' };
   },
 
   screen() {
-    const scr = UI.screen('Дневник Ловчего', `
+    const scr = UI.screen(ru`Дневник Ловчего`, `
       <div class="chips j-filters">${this.FILTERS.map(([k, t]) => `<button data-f="${k}">${t}</button>`).join('')}</div>
       <div class="j-list"></div>`, 'journal-screen');
     const render = () => {
@@ -1878,13 +2014,13 @@ const J = {
       const list = S.d.journal.filter(e => this.filter === 'all' || (this.GROUP[e.type] || 'other') === this.filter);
       let day = '', html = '';
       list.forEach((e, i) => {
-        const d = new Date(e.t), ds = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'short' });
+        const d = new Date(e.t), ds = d.toLocaleDateString(I18N.locale, { day: 'numeric', month: 'long', weekday: 'short' });
         if (ds !== day) { day = ds; html += `<div class="j-day">${ds}</div>`; }
         const v = this.view(e);
-        html += `<div class="j-row ${v.cls || ''}">${v.ico}<div class="row-main"><b>${U.esc(v.title)}</b><small>${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${v.sub ? ' · ' + U.esc(v.sub) : ''}</small></div>
-          ${e.lat != null ? `<button class="btn small ghost j-map" data-i="${S.d.journal.indexOf(e)}" title="На карте">${UI.I.pin}</button>` : ''}</div>`;
+        html += `<div class="j-row ${v.cls || ''}">${v.ico}<div class="row-main"><b>${U.esc(v.title)}</b><small>${d.toLocaleTimeString(I18N.locale, { hour: '2-digit', minute: '2-digit' })}${v.sub ? ' · ' + U.esc(v.sub) : ''}</small></div>
+          ${e.lat != null ? `<button class="btn small ghost j-map" data-i="${S.d.journal.indexOf(e)}" title="${ru`На карте`}">${UI.I.pin}</button>` : ''}</div>`;
       });
-      scr.querySelector('.j-list').innerHTML = html || '<div class="empty">Записей пока нет. Лови духов — дневник заполнится сам.</div>';
+      scr.querySelector('.j-list').innerHTML = html || `<div class="empty">${ru`Записей пока нет. Лови духов — дневник заполнится сам.`}</div>`;
     };
     scr.addEventListener('click', ev => {
       const f = ev.target.closest('[data-f]');
@@ -1911,16 +2047,16 @@ const J = {
 
 // pts — с какого рейтинга начинается лига
 const LEAGUE_RANKS = [
-  { name: 'Новик', pts: 0 },
-  { name: 'Отрок', pts: 300, reward: { charm: 10, sparks: 500 } },
-  { name: 'Гридень', pts: 600, reward: { honey: 5, sparks: 800 } },
-  { name: 'Кметь', pts: 1000, reward: { charm2: 5, water: 5 } },
-  { name: 'Витязь', pts: 1500, reward: { charm2: 8, sparks: 1500 } },
-  { name: 'Богатырь', pts: 2100, reward: { charm3: 3, incense: 1 } },
-  { name: 'Воевода', pts: 2800, reward: { charm2: 10, sparks: 3000 } },
-  { name: 'Волхв', pts: 3600, reward: { charm3: 5, water: 10 } },
-  { name: 'Сказитель', pts: 4500, reward: { incense: 3, sparks: 5000 } },
-  { name: 'Хранитель Лиги', pts: 5500, reward: { charm3: 10, sparks: 8000 } },
+  { name: ru`Новик`, pts: 0 },
+  { name: ru`Отрок`, pts: 300, reward: { charm: 10, sparks: 500 } },
+  { name: ru`Гридень`, pts: 600, reward: { honey: 5, sparks: 800 } },
+  { name: ru`Кметь`, pts: 1000, reward: { charm2: 5, water: 5 } },
+  { name: ru`Витязь`, pts: 1500, reward: { charm2: 8, sparks: 1500 } },
+  { name: ru`Богатырь`, pts: 2100, reward: { charm3: 3, incense: 1 } },
+  { name: ru`Воевода`, pts: 2800, reward: { charm2: 10, sparks: 3000 } },
+  { name: ru`Волхв`, pts: 3600, reward: { charm3: 5, water: 10 } },
+  { name: ru`Сказитель`, pts: 4500, reward: { incense: 3, sparks: 5000 } },
+  { name: ru`Хранитель Лиги`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
 ];
 
 const League = {
@@ -1935,7 +2071,7 @@ const League = {
   TABS: ['play', 'table', 'ranks'],
 
   season(d = U.local()) { return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; },
-  seasonName() { return U.local().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' }).replace(/\s*г\.?$/, ''); },
+  seasonName() { return U.local().toLocaleDateString(I18N.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).replace(/\s*г\.?$/, ''); },
   seasonEnds() { const d = U.local(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); },
   // 4.15: звёзды старого сохранения — в рейтинг ×100; новый сезон — рейтинг сверх 1000 наполовину; новый день — снова три жетона
   reset(p) { return p > this.SOFT ? this.SOFT + Math.floor((p - this.SOFT) / 2) : p; },
@@ -1969,7 +2105,7 @@ const League = {
   },
   // значок рейтинга — кубок
   cup() { return '<svg class="lg-cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3.5a5 5 0 0 1-10 0z" fill="#fcd34d" stroke="#92400e" stroke-width="1.2"/><path d="M7 5.5H4.5a3 3 0 0 0 3 4M17 5.5h2.5a3 3 0 0 1-3 4" fill="none" stroke="#fcd34d" stroke-width="1.6"/><path d="M12 12.5v3.5M8.5 20h7l-.8-3.5H9.3z" fill="#f59e0b" stroke="#92400e" stroke-width="1.1"/></svg>'; },
-  rwLine(i) { const x = LEAGUE_RANKS[i]; return x.reward ? UI.rwText(x.reward) + (i % 3 === 0 ? ' + амулет' : '') + (i === 9 ? ' + эмблема «Венец»' : '') : ''; },
+  rwLine(i) { const x = LEAGUE_RANKS[i]; return x.reward ? UI.rwText(x.reward) + (i % 3 === 0 ? ' + ' + ru`амулет` : '') + (i === 9 ? ' + ' + ru`эмблема «Венец»` : '') : ''; },
 
   // Соперник: сила растёт с рангом, ориентир — средний уровень твоих трёх сильнейших.
   // Одинаков на телефоне и сервере: зависит от рейтинга, номера боя и зерна турнира.
@@ -1990,7 +2126,7 @@ const League = {
     // имена трёх соперников турнира не повторяются (сдвиг 5 по кругу из 12)
     const name = GUARDIANS[(Math.floor(U.h('lgname', seed || L.pts) * GUARDIANS.length) + k * 5) % GUARDIANS.length];
     return {
-      name, color: GUARD_COLORS[Math.floor(rng() * GUARD_COLORS.length)], title: `Ловчий Лиги · ${LEAGUE_RANKS[r].name}`, team,
+      name, color: GUARD_COLORS[Math.floor(rng() * GUARD_COLORS.length)], title: ru`Ловчий Лиги · ${LEAGUE_RANKS[r].name}`, team,
       T: { speed: Math.max(0.55, 0.86 - r * 0.033), shield: Math.min(0.9, 0.3 + r * 0.065) },
     };
   },
@@ -1998,7 +2134,7 @@ const League = {
   // «6 дн 11 ч», «5 ч 12 мин», «12 мин 05 с»
   left(ms) {
     const s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24, m = Math.floor(s / 60) % 60;
-    return d ? `${d} дн ${h} ч` : h ? `${h} ч ${m} мин` : `${m} мин ${String(s % 60).padStart(2, '0')} с`;
+    return d ? ru`${d} дн ${h} ч` : h ? ru`${h} ч ${m} мин` : ru`${m} мин ${String(s % 60).padStart(2, '0')} с`;
   },
   toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
 
@@ -2014,19 +2150,19 @@ const League = {
     const prog = next ? Math.min(100, (L.pts - base) / (next.pts - base) * 100) : 100;
     // 4.14.1: Лига — в композиции карточки духа: сверху (≤30%) знак ранга в волшебном круге, справа сезон, ранг, «ЗВЁЗДЫ ··· N»,
     // путь до следующего ранга отдельным блоком и место в таблице; ниже вкладки, содержимое вкладки листается внутри панели
-    const scr = UI.screen('Лига Ордена', `
+    const scr = UI.screen(ru`Лига Ордена`, `
       <div class="det det2 lg2 r${r}">
         <div class="dt-hero">
           <div class="det-art lg2-crest">${this.badge(r)}</div>
           <div class="dt-info">
-            <div class="det-hp">Сезон · ${this.seasonName()} · ⏳ <b class="lgx-ends"></b></div>
+            <div class="det-hp">${ru`Сезон · ${this.seasonName()}`} · ⏳ <b class="lgx-ends"></b></div>
             <div class="lg2-rank${LEAGUE_RANKS[r].name.length > 10 ? ' long' : ''}">${LEAGUE_RANKS[r].name}</div>
-            <div class="det-power"><small>РЕЙТИНГ</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
-            <div class="det-lvl"><span>${next ? `до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : 'высшая лига!'}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
-            <div class="lgx-place">${Cloud.enabled() ? 'Ищу тебя в таблице…' : ''}</div>
+            <div class="det-power"><small>${ru`РЕЙТИНГ`}</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
+            <div class="det-lvl"><span>${next ? ru`до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : ru`высшая лига!`}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
+            <div class="lgx-place">${Cloud.enabled() ? ru`Ищу тебя в таблице…` : ''}</div>
           </div>
         </div>
-        <div class="seg dt-tabs lgx-tabs"><button data-tab="play">Турнир</button><button data-tab="table">Таблица</button><button data-tab="ranks">Лиги</button></div>
+        <div class="seg dt-tabs lgx-tabs"><button data-tab="play">${ru`Турнир`}</button><button data-tab="table">${ru`Таблица`}</button><button data-tab="ranks">${ru`Лиги`}</button></div>
         <div class="dt-panel"><div class="lgx-pane"></div></div>
       </div>`, 'league-screen det-screen');
     const body = scr.querySelector('.screen-body'), pane = scr.querySelector('.lgx-pane');
@@ -2035,63 +2171,63 @@ const League = {
     // 4.15: вкладка «Турнир» — главное состав команды и жетоны: жетоны — одной строкой с делениями, команда — крупно, правила — одной строкой
     const renderPlay = () => {
       const team = S.team(), locked = S.d.level < this.LEVEL, power = team.reduce((a, x) => a + S.power(x), 0);
-      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}</em>${UI.hpBar(x)}</button>`;
-      const cards = team.map(mem).join('') + '<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>выбрать духа</em></button>'.repeat(Math.max(0, 3 - team.length));
+      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${UI.hpBar(x)}</button>`;
+      const cards = team.map(mem).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
       const ko = team.some(x => !S.alive(x));
-      const btn = locked ? `Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? 'Нужно три духа' : ko ? 'В команде дух без сил' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра';
+      const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Начать турнир` : ru`Жетоны кончились — приходи завтра`;
       pane.innerHTML = `
-        ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
-        <div class="lg2-tix"><span>Жетоны</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
-        <div class="lg2-tix-s">жетоны обновятся через <b class="lgx-mid"></b></div>
-        <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}<button class="lg2-edit team-edit">Изменить</button></div>
+        ${locked ? `<div class="lgx-card lgx-lock"><b>${ru`Лига откроется на ${this.LEVEL} уровне Ловчего`}</b><small>${ru`Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.`}</small></div>` : ''}
+        <div class="lg2-tix"><span>${ru`Жетоны`}</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
+        <div class="lg2-tix-s">${ru`жетоны обновятся через ${'<b class="lgx-mid"></b>'}`}</div>
+        <div class="pf-mh lg2-th"><span>${ru`Команда на турнир`}</span>${power ? `<b>${ru`сила ${U.fmtNum(power)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${cards}</div>
-        <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · опыт — за первые ${this.XP_RUNS} турнира дня</div>
+        <div class="lg2-rule">${ru`3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · опыт — за первые ${this.XP_RUNS} турнира дня`}</div>
         <button class="btn primary wide lg-go" ${!locked && !ko && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 
     const who = x => `${U.esc(x.name)}${CLANS[x.clan] ? `<i class="lgx-clan" style="background:${CLANS[x.clan].color}" title="${CLANS[x.clan].name}"></i>` : ''}`;
     const move = x => { const d = x.pid && moves[x.pid]; return d && Date.now() - d.t < 20000 ? `<span class="lgx-move ${d.d > 0 ? 'up' : 'down'}">${d.d > 0 ? '▲' : '▼'}${Math.abs(d.d)}</span>` : ''; };
     const renderTable = () => {
-      if (!Cloud.enabled()) { pane.innerHTML = '<div class="lgx-card"><small>Общая таблица всех Ловчих появится, когда к игре подключат облачный сервер.</small></div>'; return; }
-      const head = `<div class="lgx-live"><i></i>Обновляется в реальном времени${data ? `<span>${data.total} ${U.plural(data.total, 'Ловчий', 'Ловчих', 'Ловчих')} в сезоне</span>` : ''}</div>`;
-      if (!data) { pane.innerHTML = head + '<div class="lgx-card"><small>Загружаю таблицу…</small></div>'; return; }
-      if (data.error) { pane.innerHTML = head + `<div class="lgx-card"><small>Таблица недоступна: ${U.esc(data.error)}</small></div>`; return; }
+      if (!Cloud.enabled()) { pane.innerHTML = `<div class="lgx-card"><small>${ru`Общая таблица всех Ловчих появится, когда к игре подключат облачный сервер.`}</small></div>`; return; }
+      const head = `<div class="lgx-live"><i></i>${ru`Обновляется в реальном времени`}${data ? `<span>${ru`${data.total} ${U.plural(data.total, ru`Ловчий`, ru`Ловчих`, ru`Ловчих`)} в сезоне`}</span>` : ''}</div>`;
+      if (!data) { pane.innerHTML = head + `<div class="lgx-card"><small>${ru`Загружаю таблицу…`}</small></div>`; return; }
+      if (data.error) { pane.innerHTML = head + `<div class="lgx-card"><small>${ru`Таблица недоступна: ${U.esc(data.error)}`}</small></div>`; return; }
       const rows = data.rows, tier = data.tier || { rank: r, rows: [] };
-      if (!rows.length) { pane.innerHTML = head + '<div class="lgx-card"><small>В этом сезоне ещё никто не сыграл турнир — будь первым!</small></div>'; return; }
+      if (!rows.length) { pane.innerHTML = head + `<div class="lgx-card"><small>${ru`В этом сезоне ещё никто не сыграл турнир — будь первым!`}</small></div>`; return; }
       // пьедестал — тройка лучших в твоём ранге; ниже — остальные из топ-50 сезона (с их местом в сезоне)
       const key = x => x.pid || x.name, onPod = new Set(tier.rows.map(key));
       const seat = x => rows.findIndex(y => key(y) === key(x)) + 1;
       const pod = [1, 0, 2].filter(i => tier.rows[i]).map(i => { const x = tier.rows[i], p = seat(x); return `
         <button class="lgx-pod p${i + 1} ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
           <div class="lgx-pod-ava">${Art.avatar(x.look || undefined)}<span>${i + 1}</span></div>
-          <b>${who(x)}</b><small>${p ? `${p}-е место · ` : ''}ур. ${x.lvl}</small>
+          <b>${who(x)}</b><small>${p ? ru`${p}-е место` + ' · ' : ''}${ru`ур. ${x.lvl}`}</small>
           <div class="lgx-pod-base">${cup}${U.fmtNum(x.pts)}${move(x)}</div></button>`; }).join('');
       const list = rows.map((x, j) => ({ x, j })).filter(o => !onPod.has(key(o.x))).map(({ x, j }) => `
         <button class="lgx-row ${x.me ? 'me' : ''}" data-pid="${U.esc(x.pid || '')}" data-name="${U.esc(x.name)}">
           <b class="lgx-pos">${j + 1}</b><div class="fr-ava">${Art.avatar(x.look || undefined)}</div>
-          <div class="row-main"><b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ур. ${x.lvl}</small></div>
+          <div class="row-main"><b>${who(x)}</b><small>${LEAGUE_RANKS[x.rank].name} · ${ru`ур. ${x.lvl}`}</small></div>
           ${move(x)}<span class="lgx-stars">${cup}${U.fmtNum(x.pts)}</span></button>`).join('');
-      const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>Ты</b><small>${LEAGUE_RANKS[r].name} · ур. ${S.d.level}</small></div><span class="lgx-stars">${cup}${U.fmtNum(data.me.pts)}</span></div>` : '';
-      pane.innerHTML = head + (pod ? `<div class="lgx-sub"><span class="lg-badge sm">${this.badge(tier.rank)}</span>Лучшие в лиге «${LEAGUE_RANKS[tier.rank].name}»</div><div class="lgx-podium">${pod}</div>` : '')
-        + (list ? `<div class="lgx-sub">Топ-50 сезона</div><div class="list lgx-list">${list}</div>` : '') + mine
-        + (Cfg.s.cloud === false ? '<div class="q-note">Тебя нет в таблице: так выбрано в Настройках.</div>' : '<div class="q-note">Нажми на Ловчего, чтобы открыть его карточку.</div>');
+      const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>${ru`Ты`}</b><small>${LEAGUE_RANKS[r].name} · ${ru`ур. ${S.d.level}`}</small></div><span class="lgx-stars">${cup}${U.fmtNum(data.me.pts)}</span></div>` : '';
+      pane.innerHTML = head + (pod ? `<div class="lgx-sub"><span class="lg-badge sm">${this.badge(tier.rank)}</span>${ru`Лучшие в лиге «${LEAGUE_RANKS[tier.rank].name}»`}</div><div class="lgx-podium">${pod}</div>` : '')
+        + (list ? `<div class="lgx-sub">${ru`Топ-50 сезона`}</div><div class="list lgx-list">${list}</div>` : '') + mine
+        + (Cfg.s.cloud === false ? `<div class="q-note">${ru`Тебя нет в таблице: так выбрано в Настройках.`}</div>` : `<div class="q-note">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`);
     };
 
     const renderRanks = () => {
       pane.innerHTML = `<div class="lgx-ladder">${LEAGUE_RANKS.map((x, i) => `
         <div class="lgx-rung ${i < r ? 'past' : i === r ? 'cur' : ''}">
           <span class="lg-badge">${this.badge(i)}</span>
-          <div class="row-main"><b>${x.name}${i === r ? ' <span class="lgx-you">ты здесь</span>' : ''}</b><small>от ${U.fmtNum(x.pts)}${x.reward ? ' · ' + this.rwLine(i) : ' · начало пути'}</small></div>
-          ${L.got[i] ? '<span class="q-ok" title="Получено в этом сезоне">✓</span>' : i > r ? `<span class="lgx-need">ещё ${U.fmtNum(x.pts - L.pts)}</span>` : ''}
+          <div class="row-main"><b>${x.name}${i === r ? ` <span class="lgx-you">${ru`ты здесь`}</span>` : ''}</b><small>${ru`от ${U.fmtNum(x.pts)}`}${x.reward ? ' · ' + this.rwLine(i) : ' · ' + ru`начало пути`}</small></div>
+          ${L.got[i] ? `<span class="q-ok" title="${ru`Получено в этом сезоне`}">✓</span>` : i > r ? `<span class="lgx-need">${ru`ещё ${U.fmtNum(x.pts - L.pts)}`}</span>` : ''}
         </div>`).join('')}</div>
-        <div class="q-note">Победа в турнире — +${this.WIN} рейтинга, поражение — −${this.LOSS}: можно выпасть в прошлую лигу. Награду за лигу дают один раз за сезон. В начале нового сезона рейтинг сверх ${U.fmtNum(this.SOFT)} срезается наполовину — и награды можно получить снова. В лигах «Кметь», «Воевода» и «Хранитель Лиги» — ещё и амулет.</div>`;
+        <div class="q-note">${ru`Победа в турнире — +${this.WIN} рейтинга, поражение — −${this.LOSS}: можно выпасть в прошлую лигу. Награду за лигу дают один раз за сезон. В начале нового сезона рейтинг сверх ${U.fmtNum(this.SOFT)} срезается наполовину — и награды можно получить снова. В лигах «${LEAGUE_RANKS[3].name}», «${LEAGUE_RANKS[6].name}» и «${LEAGUE_RANKS[9].name}» — ещё и амулет.`}</div>`;
     };
 
     const place = () => {
       const el = scr.querySelector('.lgx-place'); if (!el || !data || data.error) return;
       const i = data.rows.findIndex(x => x.me);
-      el.innerHTML = i >= 0 ? `<b>${i + 1}-е место</b> из ${data.total} в сезоне` : data.me ? `<b>${data.me.place}-е место</b> из ${data.total} в сезоне`
-        : Cfg.s.cloud === false ? 'Тебя нет в таблице (Настройки)' : 'Сыграй турнир, чтобы попасть в таблицу';
+      el.innerHTML = i >= 0 ? ru`<b>${i + 1}-е место</b> из ${data.total} в сезоне` : data.me ? ru`<b>${data.me.place}-е место</b> из ${data.total} в сезоне`
+        : Cfg.s.cloud === false ? ru`Тебя нет в таблице (Настройки)` : ru`Сыграй турнир, чтобы попасть в таблицу`;
     };
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.tab));
@@ -2128,7 +2264,7 @@ const League = {
       const row = e.target.closest('[data-pid]');
       if (row) {
         const x = data && data.rows && data.rows.concat(data.tier ? data.tier.rows : []).find(y => y.pid && y.pid === row.dataset.pid);
-        if (x) Friends.card(x.pid, { name: x.name, look: x.look }); else UI.toast('Карточка откроется после обновления сервера'); return; }
+        if (x) Friends.card(x.pid, { name: x.name, look: x.look }); else UI.toast(ru`Карточка откроется после обновления сервера`); return; }
       const go = e.target.closest('.lg-go');
       if (go) {
         if (S.team().length < 3) return;
@@ -2156,7 +2292,7 @@ const League = {
     const run = this.view().run;
     if (!run) return;
     const g = this.opponent(run.k), team = run.team.map(u => S.findSpirit(u)).filter(Boolean);
-    Duel.start({ kind: 'league', id: 'league', tier: 1, T: g.T, name: 'Лига', carry: this.carry }, g, team);
+    Duel.start({ kind: 'league', id: 'league', tier: 1, T: g.T, name: ru`Лига`, carry: this.carry }, g, team);
   },
 
   // Вызывается из Duel.finish: итог боя засчитывает сервер
@@ -2165,8 +2301,8 @@ const League = {
     try { r = await Game.act('leagueEnd', { win: !!win, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (Duel.st !== st) return;
     if (!r) {
-      const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Бой не засчитан</div>
-        <div class="res-note">Сервер не подтвердил итог боя. Проверь интернет.</div><button class="btn primary wide lg-done">К Лиге</button></div></div>`);
+      const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">${ru`Бой не засчитан`}</div>
+        <div class="res-note">${ru`Сервер не подтвердил итог боя. Проверь интернет.`}</div><button class="btn primary wide lg-done">${ru`К Лиге`}</button></div></div>`);
       st.root.appendChild(res);
       res.querySelector('.lg-done').onclick = () => { Duel.close(); this.carry = null; setTimeout(() => this.screen(), 150); };
       return;
@@ -2178,17 +2314,17 @@ const League = {
     let html;
     if (!r.last) {
       const nx = this.opponent(r.k + 1);
-      html = `<div class="res-title">Победа ${r.k + 1} из 3</div>
-        <div class="res-note">Рейтинг +${r.gained}. Твои духи (в строю: ${alive}) не отдыхают — следующий соперник уже ждёт.</div>
+      html = `<div class="res-title">${ru`Победа ${r.k + 1} из 3`}</div>
+        <div class="res-note">${ru`Рейтинг +${r.gained}. Твои духи (в строю: ${alive}) не отдыхают — следующий соперник уже ждёт.`}</div>
         <div class="guard"><div class="guard-ava">${Art.guardian(nx.color)}</div><div><b>${nx.name}</b><small>${nx.title}</small></div></div>
         <div class="rift-team">${UI.teamHtml(nx.team)}</div>
-        <button class="btn primary wide lg-next">Следующий бой</button>`;
+        <button class="btn primary wide lg-next">${ru`Следующий бой`}</button>`;
     } else {
-      html = `<div class="res-title ${r.won ? '' : 'lose'}">${r.won === 3 ? 'Чистая победа!' : r.won ? 'Турнир окончен' : 'Поражение'}</div>
-        <div class="res-note">Побед: ${r.won} из 3 · рейтинг ${r.ptsGot >= 0 ? '+' : '−'}${Math.abs(r.ptsGot)}<br>Лига: <b>${LEAGUE_RANKS[r.rNew].name}</b> · рейтинг ${U.fmtNum(r.pts)}</div>
-        ${r.rNew > r.rank0 ? `<div class="badge-new">Новая лига — ${LEAGUE_RANKS[r.rNew].name}!</div>` : r.rNew < r.rank0 ? `<div class="badge-new down">Выпал в лигу «${LEAGUE_RANKS[r.rNew].name}»</div>` : ''}
-        ${r.rewards.length ? `<div class="res-rw">${r.rewards.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>` : ''}
-        <button class="btn primary wide lg-done">К Лиге</button>`;
+      html = `<div class="res-title ${r.won ? '' : 'lose'}">${r.won === 3 ? ru`Чистая победа!` : r.won ? ru`Турнир окончен` : ru`Поражение`}</div>
+        <div class="res-note">${ru`Побед: ${r.won} из 3 · рейтинг ${r.ptsGot >= 0 ? '+' : '−'}${Math.abs(r.ptsGot)}`}<br>${ru`Лига: <b>${LEAGUE_RANKS[r.rNew].name}</b> · рейтинг ${U.fmtNum(r.pts)}`}</div>
+        ${r.rNew > r.rank0 ? `<div class="badge-new">${ru`Новая лига — ${LEAGUE_RANKS[r.rNew].name}!`}</div>` : r.rNew < r.rank0 ? `<div class="badge-new down">${ru`Выпал в лигу «${LEAGUE_RANKS[r.rNew].name}»`}</div>` : ''}
+        ${r.rewards.length ? `<div class="res-rw">${r.rewards.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>` : ''}
+        <button class="btn primary wide lg-done">${ru`К Лиге`}</button>`;
     }
     const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
     st.root.appendChild(res);
@@ -2205,9 +2341,9 @@ const League = {
 const Raid = {
   TIER: {
     // slvl — уровень, по которому считаются атака/защита босса; lvl — уровень пойманного босса
-    1: { hp: 600,  slvl: 14, lvl: 15, pw: 10, charms: 6, name: 'Малый разлом' },
-    2: { hp: 1800, slvl: 22, lvl: 22, pw: 16, charms: 7, name: 'Разлом' },
-    3: { hp: 4500, slvl: 28, lvl: 30, pw: 24, charms: 9, name: 'Великий разлом' },
+    1: { hp: 600,  slvl: 14, lvl: 15, pw: 10, charms: 6, name: ru`Малый разлом` },
+    2: { hp: 1800, slvl: 22, lvl: 22, pw: 16, charms: 7, name: ru`Разлом` },
+    3: { hp: 4500, slvl: 28, lvl: 30, pw: 24, charms: 9, name: ru`Великий разлом` },
   },
   st: null,
 
@@ -2229,28 +2365,28 @@ const Raid = {
     // до Разлома дальше 100 м — бой по Дальнему пропуску (совместный бой — только рядом)
     const d = MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, r.lat, r.lng) : 0;
     const far = d > W.BATTLE_R, passes = S.d.items.farpass || 0;
-    const goBtn = !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>Сразиться</button>`
-      : passes ? `<button class="btn primary wide rift-go far" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} Дальний бой · пропусков: ${passes}</button>`
-      : `<button class="btn primary wide rift-shop">${Art.item('farpass')} Нужен Дальний пропуск — в Лавку</button>`;
+    const goBtn = !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>`
+      : passes ? `<button class="btn primary wide rift-go far" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} ${ru`Дальний бой · пропусков: ${passes}`}</button>`
+      : `<button class="btn primary wide rift-shop">${Art.item('farpass')} ${ru`Нужен Дальний пропуск — в Лавку`}</button>`;
     const html = `
       <div class="rift-view t${r.tier}">
         <div class="rift-portal">${Art.riftIcon(r.tier)}</div>
         <div class="rift-boss">${Art.spirit(r.boss)}</div>
         <div class="rift-title">${T.name} <span class="stars">${'★'.repeat(r.tier)}</span></div>
         <div class="rift-name">${Art.elIcon(s.el, 20)} ${s.name}</div>
-        ${r.place ? `<div class="rift-meta">Разлом открылся у «${U.esc(r.place)}»</div>` : ''}
-        <div class="rift-meta">Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через <b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b></div>
-        <div class="rift-tip">Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}</div>
-        ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(' и ')}</div>` : ''}
-        ${r.done ? '<div class="rift-done">Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.</div>' : `
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        ${r.place ? `<div class="rift-meta">${ru`Разлом открылся у «${U.esc(r.place)}»`}</div>` : ''}
+        <div class="rift-meta">${ru`Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
+        <div class="rift-tip">${ru`Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}`}</div>
+        ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${ru`${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`}</div>` : ''}
+        ${r.done ? `<div class="rift-done">${ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`}</div>` : `
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team">${UI.teamHtml(team)}</div>
         ${goBtn}
-        ${Rules.dayLine(S.d, 'raids', 'Разломов закрыто')}
-        ${far ? `<div class="rift-tip rift-far">До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.</div>`
-          : '<button class="btn ghost wide rift-coop">Позвать друзей — совместный бой</button>'}`}
+        ${Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
+        ${far ? `<div class="rift-tip rift-far">${ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>`
+          : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей — совместный бой`}</button>`}`}
       </div>`;
-    const scr = UI.screen('Разлом', html, 'rift-screen');
+    const scr = UI.screen(ru`Разлом`, html, 'rift-screen');
     scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
     const go = scr.querySelector('.rift-go');
     if (go) go.onclick = async () => { if (await this.battle(r, this.team(), null, far)) UI.closeScreen(scr); };
@@ -2268,7 +2404,7 @@ const Raid = {
       if ((done || gone) && !scr._ended) {
         scr._ended = true;
         scr.querySelectorAll('.rift-go, .rift-shop, .rift-coop, .rift-far, .rift-team-title, .rift-team, .day-left').forEach(x => x.remove());
-        scr.querySelector('.rift-view').insertAdjacentHTML('beforeend', `<div class="rift-done">${done ? 'Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.' : 'Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.'}</div>`);
+        scr.querySelector('.rift-view').insertAdjacentHTML('beforeend', `<div class="rift-done">${done ? ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.` : ru`Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.`}</div>`);
       }
     }, 1000);
   },
@@ -2276,9 +2412,9 @@ const Raid = {
   // Разломы вокруг: все открытые в этот час Разломы до Rules.FAR.R от игрока
   async list() {
     Sfx.init(); Sfx.play('tap');
-    const scr = UI.screen('Разломы вокруг', '<div class="rift-list"><div class="q-note">Ищу Разломы у Капищ вокруг…</div></div>', 'rifts-screen');
+    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
-    if (!pos) { box.innerHTML = '<div class="q-note">Жду, когда найдётся твоё место на карте…</div>'; return; }
+    if (!pos) { box.innerHTML = `<div class="q-note">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }
     const shrines = await Poi.shrinesFar(pos.lat, pos.lng, Rules.FAR.R);
     // Разломы часа: пересчитываются каждую секунду — закрытый только что помечается сразу, в начале часа приходят новые
     let hour = Math.floor(U.now() / 3600000), rifts = [], sig = '';
@@ -2292,15 +2428,15 @@ const Raid = {
     const render = () => {
       const passes = S.d.items.farpass || 0;
       const shown = rifts.map((r, i) => ({ r, i })).filter(x => !tier || x.r.tier === tier), more = Math.max(0, shown.length - 40);
-      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} Пропусков: ${passes}</span><span>новые через <b class="rl-left">${left()}</b></span></div>
-        <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : 'Все'} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
+      box.innerHTML = `<div class="shop-wallet"><span class="zlat">${Art.item('farpass')} ${ru`Пропусков: ${passes}`}</span><span>${ru`новые через ${`<b class="rl-left">${left()}</b>`}`}</span></div>
+        <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : ru`Все`} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>
-          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || 'Капище')}</small></div>
-          <div class="rr-d">${r.done ? '✓ закрыт' : r.d <= W.BATTLE_R ? 'рядом' : U.fmtDist(r.d)}</div></button>`).join('')
-          : '<div class="q-note">Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.</div>'}
-        ${more ? `<div class="q-note">…и ещё ${more} дальше</div>` : ''}
-        <div class="q-note">Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.</div>`;
+          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || ru`Капище`)}</small></div>
+          <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
+          : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
+        ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}
+        <div class="q-note">${ru`Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
     };
     box.addEventListener('click', e => {
       const c = e.target.closest('.chip'); if (c) { tier = +c.dataset.t; render(); return; }
@@ -2354,10 +2490,10 @@ const Raid = {
         </div>
         <div class="raid-ctrl">
           <button class="raid-water">${Art.item('water')}<span></span></button>
-          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>Приём</span></button>
-          <button class="raid-dodge">Уклон</button>
+          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>${ru`Приём`}</span></button>
+          <button class="raid-dodge">${ru`Уклон`}</button>
         </div>
-        <div class="raid-hint">Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.</div>
+        <div class="raid-hint">${ru`Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.`}</div>
         <div class="raid-count">3</div>
       </div>`);
     document.body.appendChild(root);
@@ -2390,7 +2526,7 @@ const Raid = {
     // обратный отсчёт
     (async () => {
       for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
-      $('.raid-count').textContent = 'В бой!';
+      $('.raid-count').textContent = ru`В бой!`;
       await U.wait(500);
       $('.raid-count').remove();
       st.running = true;
@@ -2406,7 +2542,7 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-me').innerHTML = Art.of(m.sp);
     st.$('.raid-me').classList.remove('swap'); void st.$('.raid-me').offsetWidth; st.$('.raid-me').classList.add('swap');
-    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>СИЛА ${m.power}</small>`;
+    st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>${ru`СИЛА ${m.power}`}</small>`;
     st.$('.raid-team').innerHTML = st.team.map((x, i) => `<i class="${x.cur <= 0 ? 'dead' : i === st.idx ? 'on' : ''}"></i>`).join('');
   },
   dmg(att, def, power, attEl, defEl) {
@@ -2503,9 +2639,9 @@ const Raid = {
     const st = this.st;
     if (!st || !st.running || st.over || st.drinking) return;
     const m = this.cur();
-    if (st.waters >= 3) { UI.toast('За бой можно выпить не больше 3 флаконов'); return; }
-    if (m.cur >= m.max) { UI.toast('Дух и так полон сил'); return; }
-    if (!(S.d.items.water > 0)) { UI.toast('Живой воды нет'); return; }
+    if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }
+    if (m.cur >= m.max) { UI.toast(ru`Дух и так полон сил`); return; }
+    if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }
     st.drinking = true;
     const ok = await Game.try('water');
     st.drinking = false;
@@ -2544,7 +2680,7 @@ const Raid = {
     if (dodged) n = Math.max(1, Math.floor(n * 0.2));
     m.cur = Math.max(0, m.cur - n);
     const me = st.$('.raid-me').getBoundingClientRect();
-    this.float(dodged ? `Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');
+    this.float(dodged ? ru`Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');
     if (!dodged) {
       Sfx.play('hurt'); U.vibrate(80);
       st.root.classList.remove('shake'); void st.root.offsetWidth; st.root.classList.add('shake');
@@ -2556,7 +2692,7 @@ const Raid = {
         if (st.coop && !st.coop.solo) {
           st.ko = true;
           st.$('.raid-boss').classList.remove('charging');
-          st.root.appendChild(U.el('<div class="raid-ko">Твои духи без сил.<br>Союзники ещё сражаются!</div>'));
+          st.root.appendChild(U.el(`<div class="raid-ko">${ru`Твои духи без сил.<br>Союзники ещё сражаются!`}</div>`));
           return;
         }
         return this.finish(false);
@@ -2593,11 +2729,11 @@ const Raid = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw, charms = r.charms, bonus = r.bonus, allies = r.allies;
       const res = U.el(`<div class="raid-result"><div class="res-card">
-        <div class="res-title">Разлом закрыт!</div>
+        <div class="res-title">${ru`Разлом закрыт!`}</div>
         <div class="res-art">${Art.spirit(st.s.id)}</div>
-        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>
-        <div class="res-note">Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ` (+${bonus} за скорость)` : ''}${allies ? ` (+${allies * 2} за союзников)` : ''}.</div>
-        <button class="btn primary wide">Ловить!</button></div></div>`);
+        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
+        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>
+        <button class="btn primary wide">${ru`Ловить!`}</button></div></div>`);
       res.querySelector('button').onclick = () => {
         this.close();
         Encounter.start({ mode: 'raid', seed: st.r.id });
@@ -2605,18 +2741,18 @@ const Raid = {
       st.root.appendChild(res);
     } else if (win) {
       // сервер не засчитал победу (нет связи или неправдоподобный бой)
-      const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Победа не засчитана</div>
-        <div class="res-note">Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.</div>
-        <button class="btn wide">На карту</button></div></div>`);
+      const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">${ru`Победа не засчитана`}</div>
+        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div>
+        <button class="btn wide">${ru`На карту`}</button></div></div>`);
       res.querySelector('button').onclick = () => this.close();
       st.root.appendChild(res);
     } else {
       Sfx.play('lose');
       const res = U.el(`<div class="raid-result"><div class="res-card">
-        <div class="res-title lose">Разлом устоял</div>
+        <div class="res-title lose">${ru`Разлом устоял`}</div>
         <div class="res-art dim">${Art.spirit(st.s.id)}</div>
-        <div class="res-note">Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.</div>
-        <button class="btn wide">На карту</button></div></div>`);
+        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div>
+        <button class="btn wide">${ru`На карту`}</button></div></div>`);
       res.querySelector('button').onclick = () => this.close();
       st.root.appendChild(res);
     }
@@ -2625,7 +2761,7 @@ const Raid = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) return this.close();
-    UI.confirm('Покинуть битву?', 'Прогресс боя будет потерян.', 'Покинуть', () => this.close(), 'Остаться');
+    UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);
   },
   close() {
     const st = this.st; if (!st) return;
@@ -2660,33 +2796,33 @@ const Duel = {
     let team = S.team();
     const holders = hold ? hold.holders.filter(h => h.sp && SP[h.sp.sid]) : [];
     const who = hold
-      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>держит Капище с ${new Date(hold.since).toLocaleDateString('ru-RU')} · защитников: ${holders.length} из ${HOLD_MAX}</small></div></div>
-         <div class="rift-team-title">Защитники</div>
-         <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || 'Ловчий')}</small></div>`).join('')}</div>`
-      : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>Хранитель · ${g.title}</small></div></div>
-         <div class="rift-team-title">Духи хранителя</div>
+      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
+         <div class="rift-team-title">${ru`Защитники`}</div>
+         <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
+      : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
+         <div class="rift-team-title">${ru`Духи хранителя`}</div>
          <div class="rift-team">${UI.teamHtml(g.team)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
     let action;
-    if (mine) action = `<div class="rift-tip">Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.</div>
-        <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>Поставить защитника</button>`;
-    else if (e.won) action = `<div class="rift-done">Сегодня ты уже победил здесь.${S.d.clan ? '' : ' Завтра будет новый бой.'}</div>
-        ${S.d.clan && !hold ? '<button class="btn primary wide defend-go">Поставить защитника</button>' : ''}`;
+    if (mine) action = `<div class="rift-tip">${ru`Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
+        <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
+    else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
+        ${S.d.clan && !hold ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
     else action = `
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">${hold ? 'Победа освободит Капище от защитников. ' : ''}Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы${mul > 1 ? ' (Неделя поединков ×2)' : ''}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Бросить вызов</button>${Rules.dayLine(S.d, 'duels', 'Побед на Капищах')}`;
+        <div class="rift-tip">${hold ? `${ru`Победа освободит Капище от защитников.`} ` : ''}${ru`Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
       <div class="shrine-view t${e.tier}">
         ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">Капище ${e.god}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}</div>
+        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}</div>
         ${who}
         ${action}
-        ${canClan ? '<button class="btn ghost wide clan-go">Выбрать дружину</button>' : ''}
+        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}
       </div>`;
-    const scr = UI.screen('Капище', html, 'shrine-screen');
+    const scr = UI.screen(ru`Капище`, html, 'shrine-screen');
     const go = scr.querySelector('.duel-go');
     if (go) go.onclick = async () => {
       if (this.st || this._starting) return;
@@ -2696,7 +2832,7 @@ const Duel = {
       if (!r) return;
       UI.closeScreen(scr);
       // защитники дружины — вместо хранителя
-      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: 'Защитники Капища', team: r.foe } : g;
+      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
       this.start({ ...e, kind: 'shrine', held: r.clan || null }, foe, S.team());
     };
     const def = scr.querySelector('.defend-go');
@@ -2715,19 +2851,19 @@ const Duel = {
     const html = `
       <div class="shrine-view invasion">
         <div class="shrine-idol">${Art.springIcon(false, true)}</div>
-        <div class="rift-title">Родник «${U.esc(e.name)}» захвачен Навью!</div>
+        <div class="rift-title">${ru`Родник «${U.esc(e.name)}» захвачен Навью!`}</div>
         <div class="guard"><div class="guard-ava dark">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${g.title}</small></div></div>
         <div class="grunt-quote">«${g.quote}»</div>
-        <div class="rift-team-title">Омрачённые духи</div>
+        <div class="rift-team-title">${ru`Омрачённые духи`}</div>
         <div class="rift-team">${UI.teamHtml(g.team)}</div>
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">Слабость отряда: ${ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el)).map(x => `${Art.elIcon(x, 16)} ${ELEMENTS[x].name}`).join(' ')}</div>
-        <div class="rift-tip">Победа освободит родник и позволит спасти одного из омрачённых духов.</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
-        ${Rules.dayLine(S.d, 'invasions', 'Вторжений отбито')}
+        <div class="rift-tip">${ru`Слабость отряда: ${ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el)).map(x => `${Art.elIcon(x, 16)} ${ELEMENTS[x].name}`).join(' ')}`}</div>
+        <div class="rift-tip">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
+        ${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}
       </div>`;
-    const scr = UI.screen('Вторжение Нави', html, 'shrine-screen invasion-screen');
+    const scr = UI.screen(ru`Вторжение Нави`, html, 'shrine-screen invasion-screen');
     scr.querySelector('.duel-go').onclick = async () => {
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
@@ -2742,15 +2878,15 @@ const Duel = {
     const today = f.spar === U.today();
     const html = `
       <div class="shrine-view spar">
-        <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>Дружеский поединок</small></div></div>
-        <div class="rift-team-title">Сильнейшие духи друга</div>
+        <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>${ru`Дружеский поединок`}</small></div></div>
+        <div class="rift-team-title">${ru`Сильнейшие духи друга`}</div>
         <div class="rift-team">${UI.teamHtml(top)}</div>
-        <div class="rift-team-title">Твоя команда <button class="btn small ghost team-edit">Изменить</button></div>
+        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">${today ? 'Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).' : 'Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.'}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>Сразиться</button>
+        <div class="rift-tip">${today ? ru`Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).` : ru`Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.`}</div>
+        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
       </div>`;
-    const scr = UI.screen('Поединок с другом', html, 'shrine-screen');
+    const scr = UI.screen(ru`Поединок с другом`, html, 'shrine-screen');
     scr.querySelector('.duel-go').onclick = async () => {
       if (this.st || this._starting) return;
       this._starting = true;
@@ -2806,12 +2942,12 @@ const Duel = {
           <div class="duel-meta"><span class="shields my-sh"></span><span class="raid-team my-dots"></span></div>
         </div>
         <div class="raid-ctrl">
-          <button class="duel-switch"><span>Смена</span><em></em></button>
+          <button class="duel-switch"><span>${ru`Смена`}</span><em></em></button>
           <button class="duel-special2 hidden"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span></span></button>
-          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>Приём</span></button>
+          <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>${ru`Приём`}</span></button>
           <div class="duel-energy"></div>
         </div>
-        <div class="raid-hint">Тапай — быстрая атака, она копит энергию.<br>Полная шкала — жми «Приём». Щиты берегут от приёмов хранителя.</div>
+        <div class="raid-hint">${ru`Тапай — быстрая атака, она копит энергию.<br>Полная шкала — жми «Приём». Щиты берегут от приёмов хранителя.`}</div>
         <div class="duel-ov hidden"></div>
         <div class="raid-count">3</div>
       </div>`);
@@ -2844,7 +2980,7 @@ const Duel = {
     this.render();
     (async () => {
       for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
-      $('.raid-count').textContent = 'Бой!';
+      $('.raid-count').textContent = ru`Бой!`;
       await U.wait(450);
       $('.raid-count').remove();
       st.paused = false;
@@ -2860,7 +2996,7 @@ const Duel = {
     const box = st.$(side === 'me' ? '.duel-me' : '.duel-foe');
     box.innerHTML = Art.of(f.sp);
     box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap');
-    const label = `${Art.elIcon(f.el, 16)} ${U.esc(f.sp.nick || SP[f.sp.sid].name)} <small>СИЛА ${f.power}</small>`;
+    const label = `${Art.elIcon(f.el, 16)} ${U.esc(f.sp.nick || SP[f.sp.sid].name)} <small>${ru`СИЛА ${f.power}`}</small>`;
     st.$(side === 'me' ? '.raid-mname' : '.foe-name').innerHTML = label;
   },
 
@@ -2924,12 +3060,12 @@ const Duel = {
     const m = this.cur('me'), f = this.cur('foe');
     const mv = MOVES[kind];
     if (kind === 'charge2' && !m.sp.move2) return;
-    if (m.energy < mv.cost) { UI.toast('Мало энергии — атакуй тапами'); return; }
+    if (m.energy < mv.cost) { UI.toast(ru`Мало энергии — атакуй тапами`); return; }
     m.energy -= mv.cost;
     st.paused = true;
     Sfx.play('special');
     const col = ELEMENTS[m.el].color;
-    const ov = this.overlay(`<div class="charge-mini"><div class="charge-title">${ELEMENTS[m.el][kind]}</div><button class="charge-orb" style="--c:${col}"><span>Тапай!</span></button><div class="pbar"><i></i></div></div>`);
+    const ov = this.overlay(`<div class="charge-mini"><div class="charge-title">${ELEMENTS[m.el][kind]}</div><button class="charge-orb" style="--c:${col}"><span>${ru`Тапай!`}</span></button><div class="pbar"><i></i></div></div>`);
     let taps = 0;
     const orb = ov.querySelector('.charge-orb'), bar = ov.querySelector('.pbar i');
     orb.addEventListener('pointerdown', () => {
@@ -2946,7 +3082,7 @@ const Duel = {
     let n;
     if (shield) {
       st.foe.shields--; n = 1;
-      this.hit('foe', 'Щит!', 'dodged');
+      this.hit('foe', ru`Щит!`, 'dodged');
     } else {
       n = Raid.dmg(m.atk, f.def, mv.power * mult, m.el, f.el);
       st.root.style.setProperty('--fx', col);
@@ -2972,8 +3108,8 @@ const Duel = {
       <div class="charge-title">${st.g.name}: «${ELEMENTS[f.el].charge}»!</div>
       <div class="shield-timer"><i></i></div>
       <div class="shield-btns">
-        <button class="btn primary sh-yes" ${has ? '' : 'disabled'}>${this.shieldSvg} Щит (${st.me.shields})</button>
-        <button class="btn sh-no">Принять удар</button>
+        <button class="btn primary sh-yes" ${has ? '' : 'disabled'}>${this.shieldSvg} ${ru`Щит (${st.me.shields})`}</button>
+        <button class="btn sh-no">${ru`Принять удар`}</button>
       </div></div>`);
     let done = false;
     const resolve = useShield => {
@@ -2982,7 +3118,7 @@ const Duel = {
       this.closeOverlay();
       const m = this.cur('me');
       let n;
-      if (useShield && st.me.shields > 0) { st.me.shields--; n = 1; this.hit('me', 'Щит!', 'dodged'); Sfx.play('hit'); }
+      if (useShield && st.me.shields > 0) { st.me.shields--; n = 1; this.hit('me', ru`Щит!`, 'dodged'); Sfx.play('hit'); }
       else {
         n = Raid.dmg(f.atk, m.def, this.CHARGE, f.el, m.el);
         this.hit('me', `−${n}`, 'hurt');
@@ -3010,7 +3146,7 @@ const Duel = {
         if (this.st !== st || st.over) return;
         s.idx = next; s.busy = 1.2;
         this.showSide('foe');
-        UI.toast(`${st.g.name} призывает: ${SP[this.cur('foe').sp.sid].name}`);
+        UI.toast(ru`${st.g.name} призывает: ${SP[this.cur('foe').sp.sid].name}`);
         st.paused = false;
         this.render();
       }, 900);
@@ -3024,13 +3160,13 @@ const Duel = {
   switchMenu(forced) {
     const st = this.st;
     if (!st || st.over || (st.paused && !forced)) return;
-    if (!forced && st.me.cd > 0) { UI.toast(`Смена будет доступна через ${Math.ceil(st.me.cd)} с`); return; }
+    if (!forced && st.me.cd > 0) { UI.toast(ru`Смена будет доступна через ${Math.ceil(st.me.cd)} с`); return; }
     const opts = st.me.team.map((f, i) => ({ f, i })).filter(x => x.f.cur > 0 && x.i !== st.me.idx);
-    if (!opts.length) { if (!forced) UI.toast('Некого выпустить'); return; }
+    if (!opts.length) { if (!forced) UI.toast(ru`Некого выпустить`); return; }
     st.paused = true;
-    const ov = this.overlay(`<div class="switch-q"><div class="charge-title">${forced ? 'Дух без сил! Кого выпустить?' : 'Сменить духа'}</div>
+    const ov = this.overlay(`<div class="switch-q"><div class="charge-title">${forced ? ru`Дух без сил! Кого выпустить?` : ru`Сменить духа`}</div>
       <div class="rift-team">${opts.map(x => `<button class="mini" data-i="${x.i}">${Art.of(x.f.sp)}<b>${Math.round(x.f.cur / x.f.max * 100)}%</b></button>`).join('')}</div>
-      ${forced ? '' : '<button class="btn ghost sw-cancel">Отмена</button>'}</div>`);
+      ${forced ? '' : `<button class="btn ghost sw-cancel">${ru`Отмена`}</button>`}</div>`);
     const pick = i => {
       if (this.st !== st) return;
       clearTimeout(timer);
@@ -3096,9 +3232,9 @@ const Duel = {
     try { r = await Game.act(this.endType(st.e.kind), { win: !!win, hp: S.hpReport(st.me.team) }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;
     if (win && !(r && r.win)) {
-      html = `<div class="res-title lose">Победа не засчитана</div>
-        <div class="res-note">Сервер не подтвердил этот бой. Проверь интернет и попробуй снова.</div>`;
-      const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide">На карту</button></div></div>`);
+      html = `<div class="res-title lose">${ru`Победа не засчитана`}</div>
+        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова.`}</div>`;
+      const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide">${ru`На карту`}</button></div></div>`);
       res.querySelector('button').onclick = () => this.close();
       st.root.appendChild(res);
       return;
@@ -3109,22 +3245,22 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       const note = r.clan
-        ? (r.freed ? `Защитники «${CLANS[r.clan].name}» отступили — Капище «${U.esc(st.e.name)}» свободно!` : `Победа засчитана, но пока шёл бой, на Капище сменились защитники.`)
-        : `«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
+        ? (r.freed ? ru`Защитники «${CLANS[r.clan].name}» отступили — Капище «${U.esc(st.e.name)}» свободно!` : ru`Победа засчитана, но пока шёл бой, на Капище сменились защитники.`)
+        : ru`«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
       const canDefend = S.d.clan && (!r.clan || r.freed);
-      html = `<div class="res-title">Победа!</div>
+      html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">${note}${canDefend ? ' Поставь своего защитника — и Капище перейдёт твоей дружине.' : ''}</div>
-        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>
-        ${canDefend ? '<button class="btn primary wide defend-now">Поставить защитника</button>' : ''}`;
+        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоей дружине.`}` : ''}</div>
+        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
+        ${canDefend ? `<button class="btn primary wide defend-now">${ru`Поставить защитника`}</button>` : ''}`;
       if (r.clan) Clans.refresh(true);
     } else {
       Sfx.play('lose');
-      html = `<div class="res-title lose">Поражение</div>
+      html = `<div class="res-title lose">${ru`Поражение`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.</div>`;
+        <div class="res-note">${ru`«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn ${html.includes('defend-now') ? 'ghost' : 'primary'} wide to-map">На карту</button></div></div>`);
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn ${html.includes('defend-now') ? 'ghost' : 'primary'} wide to-map">${ru`На карту`}</button></div></div>`);
     res.querySelector('.to-map').onclick = () => this.close();
     const dn = res.querySelector('.defend-now');
     if (dn) dn.onclick = () => { const e = st.e; this.close(); Clans.defend(e); };
@@ -3136,17 +3272,17 @@ const Duel = {
     let html;
     if (win) {
       Sfx.play('win'); U.vibrate([50, 50, 120]);
-      html = `<div class="res-title">Победа!</div>
+      html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
-        <div class="res-note">${r.practice ? `Хорошая тренировка! Награда за поединок с ${g.name} сегодня уже получена.` : `${g.name} жмёт тебе руку: «Честный бой!» Дружба крепнет.`}</div>
-        <div class="res-rw">${r.rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}${r.practice ? '' : '<div><b>+1 ★</b> дружбы</div>'}</div>`;
+        <div class="res-note">${r.practice ? ru`Хорошая тренировка! Награда за поединок с ${g.name} сегодня уже получена.` : ru`${g.name} жмёт тебе руку: «Честный бой!» Дружба крепнет.`}</div>
+        <div class="res-rw">${r.rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}${r.practice ? '' : `<div>${ru`<b>+1 ★</b> дружбы`}</div>`}</div>`;
     } else {
       Sfx.play('lose');
-      html = `<div class="res-title lose">Поражение</div>
+      html = `<div class="res-title lose">${ru`Поражение`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
-        <div class="res-note">Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.</div>`;
+        <div class="res-note">${ru`Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">Готово</button></div></div>`);
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">${ru`Готово`}</button></div></div>`);
     res.querySelector('button').onclick = () => this.close();
     st.root.appendChild(res);
     UI.refreshHud();
@@ -3158,18 +3294,18 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       rescue = g.team.find(x => x.sid === r.rescue.sid) || g.team[0];
-      html = `<div class="res-title">Родник освобождён!</div>
+      html = `<div class="res-title">${ru`Родник освобождён!`}</div>
         <div class="res-art">${Art.of(rescue)}</div>
-        <div class="res-note">Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!</div>
-        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${x.label}</div>`).join('')}</div>
-        <button class="btn primary wide rescue">Спасти духа</button>`;
+        <div class="res-note">${ru`Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!`}</div>
+        <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
+        <button class="btn primary wide rescue">${ru`Спасти духа`}</button>`;
     } else {
       Sfx.play('lose');
-      html = `<div class="res-title lose">Навь сильнее… пока</div>
+      html = `<div class="res-title lose">${ru`Навь сильнее… пока`}</div>
         <div class="res-art"><div class="guard-ava big dark">${Art.guardian(g.color)}</div></div>
-        <div class="res-note">«${GRUNT_QUOTES[0]}» — смеётся прислужник. Возьми духов, сильных против стихии «${ELEMENTS[g.el].name}», и возвращайся.</div>`;
+        <div class="res-note">${ru`«${GRUNT_QUOTES[0]}» — смеётся прислужник. Возьми духов, сильных против стихии «${ELEMENTS[g.el].name}», и возвращайся.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide to-map">На карту</button></div></div>`);
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide to-map">${ru`На карту`}</button></div></div>`);
     res.querySelector('.to-map').onclick = () => this.close();
     const rb = res.querySelector('.rescue');
     if (rb) rb.onclick = () => {
@@ -3183,7 +3319,7 @@ const Duel = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) return this.close();
-    UI.confirm('Сдаться?', 'Поединок будет проигран.', 'Сдаться', () => this.close(), 'Продолжить');
+    UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);
   },
   close() {
     const st = this.st; if (!st) return;
@@ -3265,13 +3401,13 @@ const Rules = {
   // победа в Разломе, на Капище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
   // 10–20 родников в день), а бесконечный фарм и боты упираются в потолок
   DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
-  DAILY_NAMES: { springs: 'Родники', raids: 'Разломы', duels: 'Капища', invasions: 'Вторжения', catches: 'Поимки' },
+  DAILY_NAMES: { springs: ru`Родники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
   // строка «Родников сегодня: 12 из 30» для окон объектов
-  dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${what} сегодня: <b>${u}</b> из ${m}${u >= m ? ' — завтра снова' : ''}</div>`; },
+  dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <b>${u}</b> из ${m}`}</div>`; },
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
-  CHAT_CHANNELS: [['all', 'Общий'], ['trade', 'Торговля'], ['raid', 'Разломы'], ['help', 'Помощь'], ['clan', 'Дружина']],
+  CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Дружина`]],
   // 3.17: Аукцион духов — с LEVEL уровня; лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
   AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
@@ -3281,21 +3417,21 @@ const Rules = {
   FAR: { R: 5000, KEEP: 3 },
   // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
-    { id: 'bag',      name: 'Расширение сумки',    desc: '+50 мест в сумке навсегда',                cur: 'zlat', bag: true },
-    { id: 'farpass',  name: 'Дальний пропуск',     desc: 'Закрыть Разлом до 5 км, не подходя к нему', cur: 'sparks', price: 1000, give: { farpass: 1 } },
-    { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
-    { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
-    { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
-    { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов: поднимает духа без сил',       cur: 'sparks', price: 1500, give: { water: 5 } },
-    { id: 'herb10',   name: 'Пучок подорожника',   desc: '10 листьев: четверть здоровья каждый',     cur: 'sparks', price: 600,  give: { herb: 10 } },
-    { id: 'brew5',    name: 'Целебный отвар',      desc: '5 горшочков: 60% здоровья каждый',         cur: 'sparks', price: 1200, give: { brew: 5 } },
-    { id: 'dead3',    name: 'Мёртвая вода',        desc: '3 флакона: залечивает духа полностью',     cur: 'zlat',   price: 40,   give: { deadwater: 3 } },
-    { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
-    { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
-    { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'zlat', price: 50,  give: { incense: 1 } },
-    { id: 'cocoon5',  name: 'Кокон 5 км',          desc: 'Необычные и редкие духи',                  cur: 'zlat', price: 80,  cocoon: 5 },
-    { id: 'cocoon10', name: 'Кокон 10 км',         desc: 'Редкие и эпические духи',                  cur: 'zlat', price: 150, cocoon: 10 },
-    { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'zlat', price: 200, amulet: true },
+    { id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },
+    { id: 'farpass',  name: ru`Дальний пропуск`,     desc: ru`Закрыть Разлом до 5 км, не подходя к нему`, cur: 'sparks', price: 1000, give: { farpass: 1 } },
+    { id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
+    { id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },
+    { id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
+    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: поднимает духа без сил`,       cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },
+    { id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },
+    { id: 'dead3',    name: ru`Мёртвая вода`,        desc: ru`3 флакона: залечивает духа полностью`,     cur: 'zlat',   price: 40,   give: { deadwater: 3 } },
+    { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
+    { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
+    { id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
+    { id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },
+    { id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },
+    { id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },
   ],
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
@@ -3328,7 +3464,7 @@ const Rules = {
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
   ORDER_RULES: [
-    ['Поимка духа', 1], ['Родник', 1], ['500 м пути', 1], ['Кокон', 3], ['Победа в капище', 3], ['Вторжение', 3], ['Разлом', 5],
+    [ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],
 
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
@@ -3345,7 +3481,7 @@ const Rules = {
   ringBonus(ring) {
     if (ring == null) return { mul: 1, xp: 0, label: '', great: false };
     const r = U.clamp(+ring || 1, 0.2, 1);
-    return r > 0.7 ? { mul: 1.2, xp: 10, label: 'Хорошо!', great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: 'Отлично!', great: true } : { mul: 1.8, xp: 100, label: 'Превосходно!', great: true };
+    return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };
   },
   // Награда за пойманного духа
   catchReward(o) {
@@ -3524,12 +3660,12 @@ const GameCore = {
       this.track(ctx);
 
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
-      this.need(actions.length, 'Пустой запрос');
+      this.need(actions.length, ru`Пустой запрос`);
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
       for (const a of actions) {
         const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
-        this.need(h, 'Неизвестное действие');
-        if (!['newGame', 'load'].includes(a.type)) this.need(S.d, 'Прогресс не найден');
+        this.need(h, ru`Неизвестное действие`);
+        if (!['newGame', 'load'].includes(a.type)) this.need(S.d, ru`Прогресс не найден`);
         ctx.results.push(await h.call(this, a.args || {}, ctx));
       }
       if (S.d && stats0) { const pts = Rules.orderPoints(stats0, S.d.stats, Ev.cur); this.orderAdd(ctx, pts); this.passAdd(ctx, pts); }
@@ -3561,35 +3697,35 @@ const GameCore = {
     ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now };
   },
   here(ctx) {
-    this.need(ctx.pos, 'Нет данных о местоположении — включи GPS');
-    this.need(!(ctx.srv.fastUntil > ctx.now), 'Похоже, GPS скачет — подожди минуту');
+    this.need(ctx.pos, ru`Нет данных о местоположении — включи GPS`);
+    this.need(!(ctx.srv.fastUntil > ctx.now), ru`Похоже, GPS скачет — подожди минуту`);
     return ctx.pos;
   },
   near(ctx, lat, lng, max) {
     const p = this.here(ctx), d = U.dist(p.lat, p.lng, lat, lng);
-    this.need(d <= max + Math.min(p.acc, 30) + 10, 'Слишком далеко — подойди ближе');
+    this.need(d <= max + Math.min(p.acc, 30) + 10, ru`Слишком далеко — подойди ближе`);
     return d;
   },
   limit(ctx, key, max, windowMs) {
     const rl = ctx.srv.rl = ctx.srv.rl || {}, r = rl[key];
     if (!r || ctx.now - r[1] > windowMs) { rl[key] = [1, ctx.now]; return; }
-    this.need(r[0] < max, 'Слишком часто — передохни немного');
+    this.need(r[0] < max, ru`Слишком часто — передохни немного`);
     r[0]++;
   },
-  spirit(uid) { const sp = S.findSpirit(String(uid)); this.need(sp, 'Дух не найден'); return sp; },
+  spirit(uid) { const sp = S.findSpirit(String(uid)); this.need(sp, ru`Дух не найден`); return sp; },
   // Объект карты из запроса. Места игроков и правки модераторов сверяются с сервером.
   async place(a, ctx, kind) {
     const p = a && typeof a === 'object' ? a : {};
-    this.need(this.POI_ID.test(String(p.id)) && Number.isFinite(+p.lat) && Number.isFinite(+p.lng), 'Неизвестное место');
+    this.need(this.POI_ID.test(String(p.id)) && Number.isFinite(+p.lat) && Number.isFinite(+p.lng), ru`Неизвестное место`);
     const row = await ctx.env.poi(p.id);
     if (row) {
-      this.need(row.active !== false, 'Этого места больше нет на карте');
-      this.need(!kind || row.kind === kind, 'Здесь нет такого объекта');
+      this.need(row.active !== false, ru`Этого места больше нет на карте`);
+      this.need(!kind || row.kind === kind, ru`Здесь нет такого объекта`);
       return { id: row.id, lat: row.lat, lng: row.lng, name: row.name, photo: row.photo || null, verified: true };
     }
-    this.need(p.id.startsWith('osm:'), 'Место не найдено');
+    this.need(p.id.startsWith('osm:'), ru`Место не найдено`);
     // там, где места загружены из OpenStreetMap в базу (вся Россия), других объектов нет
-    this.need(!(await ctx.env.poiCovered(+p.lat, +p.lng)), 'Этого места нет на карте — обнови игру');
+    this.need(!(await ctx.env.poiCovered(+p.lat, +p.lng)), ru`Этого места нет на карте — обнови игру`);
     // 4.1: такое место сервер проверить не может (id и координаты — от телефона): на нём нет легендарных разломов и удержания Капищ
     return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null, verified: false };
   },
@@ -3597,7 +3733,7 @@ const GameCore = {
   battleTime(ctx, b) { return (ctx.now - b.start) / 1000 - Rules.COUNTDOWN; },
   endBattle(ctx, type) {
     const b = ctx.srv.battle;
-    this.need(b && b.type === type, 'Бой не найден — начни его заново');
+    this.need(b && b.type === type, ru`Бой не найден — начни его заново`);
     ctx.srv.battle = null;
     return b;
   },
@@ -3611,7 +3747,7 @@ const GameCore = {
       S.setHp(sp, Math.min(rep, Math.min(1, S.hpNow(sp) + (b.waters || 0) * ITEMS.water.heal)));
     });
   },
-  readyTeam(team) { this.need(team.every(sp => S.alive(sp)), 'В команде дух без сил — вылечи его или замени'); },
+  readyTeam(team) { this.need(team.every(sp => S.alive(sp)), ru`В команде дух без сил — вылечи его или замени`); },
   // Одна встреча с духом за раз: вид, уровень и особенности — только с сервера
   openEnc(ctx, o) {
     o = { ...o, lvl: U.clamp(o.lvl | 0, 1, S.catchLvl()) }; // 4.15: пойманный дух — не выше уровня Ловчего, откуда бы ни пришёл
@@ -3633,10 +3769,10 @@ const GameCore = {
   // возможна (4.3) и команда могла нанести столько урона за это время (или бой дошёл до таймера)
   plausibleDuel(ctx, b, foe, speed) {
     const t = this.battleTime(ctx, b);
-    this.need(t >= 5, 'Бой не засчитан: слишком быстрая победа');
-    this.need(Rules.duelWinnable(this.team(b.team), foe, speed), 'Бой не засчитан: эта команда не могла победить такого соперника');
+    this.need(t >= 5, ru`Бой не засчитан: слишком быстрая победа`);
+    this.need(Rules.duelWinnable(this.team(b.team), foe, speed), ru`Бой не засчитан: эта команда не могла победить такого соперника`);
     if (t >= Duel.TIME - 5) return;
-    this.need(Rules.duelMaxDamage(this.team(b.team), foe, t) >= Rules.duelFoeHp(foe), 'Бой не засчитан: слишком быстрая победа');
+    this.need(Rules.duelMaxDamage(this.team(b.team), foe, t) >= Rules.duelFoeHp(foe), ru`Бой не засчитан: слишком быстрая победа`);
   },
   friendPoint(f) {
     const lv = L => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (L >= x.pts) r = i; }); return r; };
@@ -3646,7 +3782,7 @@ const GameCore = {
     if (after > before) {
       const L = FRIEND_LEVELS[after];
       S.addXP(L.xp);
-      Bus.emit('toast', { text: `Дружба с ${f.name}: теперь «${L.name}»! +${U.fmtNum(L.xp * Ev.xpMul())} опыта`, cls: 'good' });
+      Bus.emit('toast', { text: ru`Дружба с ${f.name}: теперь «${L.name}»! +${U.fmtNum(L.xp * Ev.xpMul())} опыта`, cls: 'good' });
     }
   },
 
@@ -3673,12 +3809,12 @@ const GameCore = {
   grant(rw) {
     const { cocoon, amulet, look, ...rest } = rw;
     const got = S.giveRewards(rest);
-    if (cocoon) { S.d.cocoons.push({ id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, km: cocoon, label: `Кокон ${cocoon} км` }); }
+    if (cocoon) { S.d.cocoons.push({ id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, km: cocoon, label: ru`Кокон ${cocoon} км` }); }
     if (amulet) { const am = S.rollAmulet(1, 'gift' + U.uid()); got.push({ k: 'amulet', n: 1, id: am, label: AMULETS[am].name }); }
     if (look) {
       S.d.owned[look] = true;
       const x = LOOK.cloak.find(c => c.c === look) || LOOK.emblem.find(m => m.id === look) || LOOK.skin.find(k => `skin:${k.id}` === look) || LOOK.bg.find(k => `bg:${k.id}` === look) || LOOK.frame.find(k => `frame:${k.id}` === look);
-      got.push({ k: 'look', n: 1, look, label: x ? `Облик: ${x.name}` : 'Облик' });
+      got.push({ k: 'look', n: 1, look, label: x ? ru`Облик: ${x.name}` : ru`Облик` });
     }
     return got;
   },
@@ -3695,11 +3831,11 @@ const GameCore = {
   // Друг, который тоже добавил тебя: его запись у меня и его сохранение
   async mutual(ctx, pid, what) {
     const f = S.d.friends.find(x => x.id === pid);
-    this.need(f, 'Такого друга нет');
+    this.need(f, ru`Такого друга нет`);
     const s = await ctx.env.friendSave(f.id);
-    this.need(s && s.data, 'Ловчий не найден');
+    this.need(s && s.data, ru`Ловчий не найден`);
     const d = s.data;
-    this.need((d.friends || []).some(x => x.id === S.d.pid), `${what}, когда ${f.name} тоже добавит тебя в друзья`);
+    this.need((d.friends || []).some(x => x.id === S.d.pid), what === 'duel' ? ru`Поединок откроется, когда ${f.name} тоже добавит тебя в друзья` : ru`Профиль откроется, когда ${f.name} тоже добавит тебя в друзья`);
     return { f, d, s };
   },
   // Дух из чужого сохранения: только известные поля и допустимые значения
@@ -3762,18 +3898,18 @@ const GameCore = {
     return S.d.dayc;
   },
   DAY_MSG: {
-    springs: 'Сегодня ты уже зачерпнул силу из 30 родников — они снова откроются завтра',
-    raids: 'Сегодня закрыто уже 6 Разломов — Навь затихла до завтра',
-    duels: 'Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра',
-    invasions: 'Сегодня отбито уже 6 вторжений — Навь вернётся завтра',
-    catches: 'Сегодня поймано уже 120 духов — обереги отдохнут до завтра',
+    springs: ru`Сегодня ты уже зачерпнул силу из 30 родников — они снова откроются завтра`,
+    raids: ru`Сегодня закрыто уже 6 Разломов — Навь затихла до завтра`,
+    duels: ru`Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра`,
+    invasions: ru`Сегодня отбито уже 6 вторжений — Навь вернётся завтра`,
+    catches: ru`Сегодня поймано уже 120 духов — обереги отдохнут до завтра`,
   },
   dayNeed(ctx, key) { this.need((this.dayc(ctx)[key] || 0) < Rules.DAILY[key], this.DAY_MSG[key]); },
   dayAdd(ctx, key) { const c = this.dayc(ctx); c[key] = (c[key] || 0) + 1; },
   // Канал чата: общий, торговля, разломы, помощь или своя дружина
   chatChannel(ch) {
-    if (ch === 'clan') { this.need(S.d.clan, 'Канал дружины — для тех, кто в дружине'); return 'clan:' + S.d.clan; }
-    this.need(['all', 'trade', 'raid', 'help'].includes(ch), 'Такого канала нет');
+    if (ch === 'clan') { this.need(S.d.clan, ru`Канал дружины — для тех, кто в дружине`); return 'clan:' + S.d.clan; }
+    this.need(['all', 'trade', 'raid', 'help'].includes(ch), ru`Такого канала нет`);
     return ch;
   },
   // Текст сообщения: без разметки и управляющих символов; грубые слова — звёздочками
@@ -3800,7 +3936,7 @@ const GameCore = {
   // Упаковка духа для посылки и лота аукциона — и обратно (уровень — не выше доступного получателю)
   packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 }; },
   unpackSpirit(p, ctx, from, cap = S.maxLvl()) {
-    this.need(p && SP[p.s], 'Посылка повреждена');
+    this.need(p && SP[p.s], ru`Посылка повреждена`);
     const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
     const sp = { uid: U.uid(), sid: p.s, lvl: U.clamp(Math.min(+p.l || 1, cap), 1, 50), iv, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null };
@@ -3857,10 +3993,10 @@ const GameCore = {
       return { ok: true };
     },
     async newGame(a, ctx) {
-      this.need(!S.d, 'Прогресс уже есть');
+      this.need(!S.d, ru`Прогресс уже есть`);
       const name = this.cleanText(a.name, 16);
-      this.need(name.length >= 1, 'Назови себя');
-      this.need(this.STARTERS.includes(a.starter), 'Выбери первого духа');
+      this.need(name.length >= 1, ru`Назови себя`);
+      this.need(this.STARTERS.includes(a.starter), ru`Выбери первого духа`);
       S.newGame(name, a.starter);
       await ctx.env.registerPid(S.d.pid);
       ctx.full = true;
@@ -3885,7 +4021,7 @@ const GameCore = {
       const got = S.giveRewards({ ...Rules.STREAK[i], zlat: i === Rules.STREAK.length - 1 ? Rules.ZLAT.streak7 : Rules.ZLAT.streak });
       if (i === Rules.STREAK.length - 1 && S.d.cocoons.length < 9) {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
-        got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
+        got.push({ k: 'cocoon', n: 1, label: ru`Кокон ${10} км` });
       }
       // Дальний пропуск дня — чтобы Разломы были доступны и тем, кому до Капища далеко
       if ((S.d.items.farpass || 0) < Rules.FAR.KEEP) got.push(...S.giveRewards({ farpass: 1 }));
@@ -3901,17 +4037,17 @@ const GameCore = {
     },
     async orderClaim(a, ctx) {
       const w = a.week | 0, now = Ev.week(ctx.now), i = a.i | 0, step = Rules.ORDER.STEPS[i];
-      this.need(step && (w === now || w === now - 1), 'Эта неделя уже закончилась');
+      this.need(step && (w === now || w === now - 1), ru`Эта неделя уже закончилась`);
       const mine = S.d.order[w];
-      this.need(mine && mine.n >= step.need, `Для этой награды внеси в общее дело не меньше ${step.need} очков`);
-      this.need(!mine.got.includes(i), 'Награда уже получена');
+      this.need(mine && mine.n >= step.need, ru`Для этой награды внеси в общее дело не меньше ${step.need} очков`);
+      this.need(!mine.got.includes(i), ru`Награда уже получена`);
       const s = await this.orderState(ctx, w);
-      this.need(s.total >= Math.ceil(step.at * s.goal), 'Орден ещё не дошёл до этой ступени');
+      this.need(s.total >= Math.ceil(step.at * s.goal), ru`Орден ещё не дошёл до этой ступени`);
       mine.got.push(i);
       const got = S.giveRewards(step.reward);
       if (i === Rules.ORDER.STEPS.length - 1 && S.d.cocoons.length < 9) {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
-        got.push({ k: 'cocoon', n: 1, label: 'Кокон 10 км' });
+        got.push({ k: 'cocoon', n: 1, label: ru`Кокон ${10} км` });
       }
       J.add('order', { i });
       return { got };
@@ -3945,67 +4081,67 @@ const GameCore = {
       const kind = a.kind;
       if (kind === 'wild') {
         this.dayNeed(ctx, 'catches');
-        this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), 'Обереги закончились! Загляни к роднику.');
+        this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), ru`Обереги закончились! Загляни к роднику.`);
         const p = this.here(ctx);
         const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit' && !x.tut);
-        this.need(e, 'Дух уже растворился в воздухе…');
+        this.need(e, ru`Дух уже растворился в воздухе…`);
         this.near(ctx, e.lat, e.lng, W.INTERACT);
         return this.openEnc(ctx, { mode: 'wild', sid: e.sid, lvl: e.lvl, shiny: e.shiny, boost: e.boost, seed: e.id, spawnId: e.id });
       }
       if (kind === 'tut') {
         const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
-        this.need(st && st.kind === 'catch', 'Учебный дух сейчас не нужен');
+        this.need(st && st.kind === 'catch', ru`Учебный дух сейчас не нужен`);
         return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
-        this.need(r, 'Разлом уже закрылся');
+        this.need(r, ru`Разлом уже закрылся`);
         ctx.srv.raidWin = null;
         return this.openEnc(ctx, { mode: 'raid', sid: r.sid, lvl: r.lvl, shiny: r.shiny, boost: r.boost, seed: r.rid, charms: r.charms });
       }
       if (kind === 'rescue') {
         const r = ctx.srv.rescue;
-        this.need(r, 'Омрачённый дух уже ушёл');
+        this.need(r, ru`Омрачённый дух уже ушёл`);
         ctx.srv.rescue = null;
         return this.openEnc(ctx, { mode: 'rescue', sid: r.sid, lvl: r.lvl, dark: true, seed: r.seed });
       }
       if (kind === 'task') {
         const m = S.d.taskMeet.find(x => x.id === a.id);
-        this.need(m, 'Встреча за поручение не найдена');
+        this.need(m, ru`Встреча за поручение не найдена`);
         return this.openEnc(ctx, { mode: 'task', sid: m.sid, lvl: m.lvl, seed: 'task:' + m.id, taskId: m.id });
       }
       if (kind === 'story') {
-        this.need(S.d.storyGift && SP[S.d.storyGift], 'Встреча Летописи недоступна');
+        this.need(S.d.storyGift && SP[S.d.storyGift], ru`Встреча Летописи недоступна`);
         return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.catchLvl()), seed: 'gift' + S.d.created });
       }
-      this.fail('Неизвестная встреча');
+      this.fail(ru`Неизвестная встреча`);
     },
     encHoney(a, ctx) {
       const e = ctx.srv.enc;
-      this.need(e, 'Встреча закончилась');
-      this.need(!e.honey, 'Дух уже лакомится мёдом');
-      this.need(S.useItem('honey'), 'Мёда нет. Его можно найти у родников.');
+      this.need(e, ru`Встреча закончилась`);
+      this.need(!e.honey, ru`Дух уже лакомится мёдом`);
+      this.need(S.useItem('honey'), ru`Мёда нет. Его можно найти у родников.`);
       e.honey = true;
       return { ok: true };
     },
     // Бросок: попадание и кольцо — с телефона (это ловкость игрока), покачивания и побег — решает сервер
     encThrow(a, ctx) {
       const e = ctx.srv.enc;
-      this.need(e, 'Встреча закончилась');
+      this.need(e, ru`Встреча закончилась`);
       // 4.1: бросок с полётом занимает больше секунды — сильно чаще бросает только программа (запас — на скачки сети)
-      this.need(!e.lastThrow || ctx.now - e.lastThrow >= 400, 'Слишком быстро — дух ещё не опомнился');
+      this.need(!e.lastThrow || ctx.now - e.lastThrow >= 400, ru`Слишком быстро — дух ещё не опомнился`);
       e.lastThrow = ctx.now;
       const raid = e.mode === 'raid';
       let item = 'rift';
-      if (raid) { this.need(e.charms > 0, 'Обереги разлома кончились'); e.charms--; }
+      if (raid) { this.need(e.charms > 0, ru`Обереги разлома кончились`); e.charms--; }
       else {
         item = Rules.THROWABLE.includes(a.item) ? a.item : 'charm';
-        this.need(S.useItem(item), 'Обереги этого вида закончились');
+        this.need(S.useItem(item), ru`Обереги этого вида закончились`);
       }
       e.throws++;
       const left = () => raid ? e.charms : Rules.THROWABLE.reduce((n, k) => n + (S.d.items[k] || 0), 0);
       if (!a.hit) {
-        if (!left()) return this.encLost(ctx, e, raid ? 'Обереги кончились — дух вернулся в Навь…' : null, { miss: true });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { miss: true });
         return { miss: true, left: left() };
       }
       // точность броска присылает телефон: если «отличные» броски подозрительно часты (больше 70% из 20+ последних) — без бонуса
@@ -4022,8 +4158,8 @@ const GameCore = {
       while (wobbles < 3 && Math.random() < q) wobbles++;
       if (wobbles < 3) {
         const flee = e.mode !== 'wild' ? 0 : RARITY[SP[e.sid].rar].flee * (e.throws > 3 ? 1.5 : 1);
-        if (Math.random() < flee) return this.encLost(ctx, e, 'Дух ускользнул в Навь…', { wobbles, label: bonus.label });
-        if (!left()) return this.encLost(ctx, e, raid ? 'Обереги кончились — дух вернулся в Навь…' : null, { wobbles, label: bonus.label });
+        if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух ускользнул в Навь…`, { wobbles, label: bonus.label });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { wobbles, label: bonus.label });
         return { wobbles, label: bonus.label, left: left() };
       }
       // пойман
@@ -4054,8 +4190,8 @@ const GameCore = {
       this.limit(ctx, 'spring', 60, 3600000);
       this.dayNeed(ctx, 'springs');
       const e = W.springFor(p, 0);
-      this.need(!e.invaded, 'Родник захвачен Навью');
-      this.need(e.ready, 'Родник ещё набирает силу');
+      this.need(!e.invaded, ru`Родник захвачен Навью`);
+      this.need(e.ready, ru`Родник ещё набирает силу`);
       S.d.springs[p.id] = ctx.now;
       this.dayAdd(ctx, 'springs');
       const { loot, cocoon } = W.springLoot(p.id);
@@ -4077,27 +4213,27 @@ const GameCore = {
     // 4.15: вылечить духа предметом из сумки (Подорожник, Целебный отвар, Мёртвая вода, Живая вода)
     heal(a, ctx) {
       const sp = S.findSpirit(a.uid);
-      this.need(sp, 'Дух не найден');
+      this.need(sp, ru`Дух не найден`);
       const k = String(a.k || ''), err = S.heal(sp, k);
       this.need(!err, err);
       return { uid: sp.uid, hp: S.hpNow(sp), left: S.d.items[k] || 0 };
     },
     incense(a, ctx) {
-      this.need(!S.incenseActive(), 'Ладан ещё горит');
-      this.need(S.useItem('incense'), 'Ладана нет');
+      this.need(!S.incenseActive(), ru`Ладан ещё горит`);
+      this.need(S.useItem('incense'), ru`Ладана нет`);
       S.d.incenseUntil = ctx.now + 30 * 60000;
       return { until: S.d.incenseUntil };
     },
     // Выбросить предметы из сумки (освободить место)
     discard(a) {
       const k = String(a.k || ''), have = (ITEMS[k] && S.d.items[k]) || 0, n = Math.floor(+a.n);
-      this.need(have > 0, 'Такого предмета в сумке нет');
-      this.need(n >= 1 && n <= have, `Можно выбросить от 1 до ${have}`);
+      this.need(have > 0, ru`Такого предмета в сумке нет`);
+      this.need(n >= 1 && n <= have, ru`Можно выбросить от 1 до ${have}`);
       S.d.items[k] -= n;
       return { k, n, left: S.d.items[k] };
     },
     supply(a, ctx) {
-      this.need(S.d.supplyDay !== U.today(), 'Посылка сегодня уже была');
+      this.need(S.d.supplyDay !== U.today(), ru`Посылка сегодня уже была`);
       S.d.supplyDay = U.today();
       return { got: S.giveRewards(Rules.SUPPLY) };
     },
@@ -4113,7 +4249,7 @@ const GameCore = {
     release(a) {
       const uids = [...new Set((Array.isArray(a.uids) ? a.uids : [a.uid]).map(String))];
       uids.forEach(u => this.spirit(u));
-      this.need(uids.length < S.d.spirits.length, 'Нельзя отпустить всех духов');
+      this.need(uids.length < S.d.spirits.length, ru`Нельзя отпустить всех духов`);
       uids.forEach(u => S.release(u));
       return { n: uids.length };
     },
@@ -4127,7 +4263,7 @@ const GameCore = {
     move2(a) { const sp = this.spirit(a.uid), err = S.canLearnMove2(sp); this.need(!err, err); S.learnMove2(sp); return { ok: true }; },
     equip(a) {
       const sp = this.spirit(a.uid);
-      this.need(AMULETS[a.k] && S.d.amulets[a.k] > 0, 'Такого амулета нет');
+      this.need(AMULETS[a.k] && S.d.amulets[a.k] > 0, ru`Такого амулета нет`);
       S.equip(sp, a.k);
       return { ok: true };
     },
@@ -4142,16 +4278,16 @@ const GameCore = {
       const L = a.look || {}, lvl = S.d.level;
       const c = LOOK.cloak.find(x => x.c === L.cloak), e = LOOK.eyes.find(x => x.c === L.eyes), m = LOOK.emblem.find(x => x.id === L.emblem);
       const k = LOOK.skin.find(x => x.id === (L.skin || 'hood')), g = LOOK.bg.find(x => x.id === (L.bg || 'night')), fr = LOOK.frame.find(x => x.id === (L.frame || 'none'));
-      this.need(c && e && m && k && g && fr, 'Такого облика нет');
-      this.need(!k.shop || S.d.owned[`skin:${k.id}`], 'Этот облик продаётся в Гардеробе');
-      this.need(!g.shop || S.d.owned[`bg:${g.id}`], 'Этот фон продаётся в Гардеробе');
-      this.need(!fr.shop || S.d.owned[`frame:${fr.id}`], 'Эта рамка продаётся в Гардеробе');
-      this.need((g.lvl || 1) <= lvl && (fr.lvl || 1) <= lvl, 'Этот облик ещё не открыт');
-      this.need(c.lvl <= lvl && e.lvl <= lvl && m.lvl <= lvl, 'Этот облик ещё не открыт');
-      this.need(!m.league || League.st().best >= m.league, 'Венец Лиги — награда за ранг «Хранитель Лиги»');
-      this.need(!m.story || S.d.story.ch >= m.story, 'Эта эмблема — награда за Летопись');
-      this.need((!c.shop && !c.pass) || S.d.owned[c.c], c.shop ? 'Этот плащ продаётся в Лавке Ордена' : 'Этот плащ — награда Золотой тропы');
-      this.need(!m.pass || S.d.owned[m.id], 'Знак Тропы — награда Золотой тропы');
+      this.need(c && e && m && k && g && fr, ru`Такого облика нет`);
+      this.need(!k.shop || S.d.owned[`skin:${k.id}`], ru`Этот облик продаётся в Гардеробе`);
+      this.need(!g.shop || S.d.owned[`bg:${g.id}`], ru`Этот фон продаётся в Гардеробе`);
+      this.need(!fr.shop || S.d.owned[`frame:${fr.id}`], ru`Эта рамка продаётся в Гардеробе`);
+      this.need((g.lvl || 1) <= lvl && (fr.lvl || 1) <= lvl, ru`Этот облик ещё не открыт`);
+      this.need(c.lvl <= lvl && e.lvl <= lvl && m.lvl <= lvl, ru`Этот облик ещё не открыт`);
+      this.need(!m.league || League.st().best >= m.league, ru`Венец Лиги — награда за ранг «Хранитель Лиги»`);
+      this.need(!m.story || S.d.story.ch >= m.story, ru`Эта эмблема — награда за Летопись`);
+      this.need((!c.shop && !c.pass) || S.d.owned[c.c], c.shop ? ru`Этот плащ продаётся в Лавке Ордена` : ru`Этот плащ — награда Золотой тропы`);
+      this.need(!m.pass || S.d.owned[m.id], ru`Знак Тропы — награда Золотой тропы`);
       S.d.look = { cloak: c.c, eyes: e.c, emblem: m.id };
       if (k.id !== 'hood') S.d.look.skin = k.id;
       if (g.id !== 'night') S.d.look.bg = g.id;
@@ -4162,14 +4298,14 @@ const GameCore = {
     /* ----- коконы ----- */
     warm(a) {
       const c = S.d.cocoons.find(x => x.id === a.id);
-      this.need(c && !c.inc, 'Кокон не найден');
-      this.need(S.incubating() < 3, 'Греть можно три кокона одновременно');
+      this.need(c && !c.inc, ru`Кокон не найден`);
+      this.need(S.incubating() < 3, ru`Греть можно три кокона одновременно`);
       c.inc = true;
       return { ok: true };
     },
     hatch(a) {
       const c = S.d.cocoons.find(x => x.id === a.id);
-      this.need(c && c.inc && c.walked >= c.km, 'Кокон ещё не готов');
+      this.need(c && c.inc && c.walked >= c.km, ru`Кокон ещё не готов`);
       const r = S.hatch(c);
       return { uid: r.sp.uid, sid: r.sp.sid, isNew: r.isNew, essence: r.essence, sparks: r.sparks, km: c.km };
     },
@@ -4177,19 +4313,19 @@ const GameCore = {
     /* ----- задания и Летопись ----- */
     questClaim(a) {
       const q = S.d.quests.list[a.i | 0];
-      this.need(q && q.p >= q.n && !q.claimed, 'Задание ещё не выполнено');
+      this.need(q && q.p >= q.n && !q.claimed, ru`Задание ещё не выполнено`);
       q.claimed = true;
       return { got: S.giveRewards({ ...q.reward, xp: 300 }) };
     },
     questBonus() {
       const Q = S.d.quests;
-      this.need(Q.list.every(q => q.claimed) && !Q.bonus, 'Сундук ещё закрыт');
+      this.need(Q.list.every(q => q.claimed) && !Q.bonus, ru`Сундук ещё закрыт`);
       Q.bonus = true;
       return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000, zlat: Rules.ZLAT.questBonus }) };
     },
     storyClaim() {
       const ch = S.d.story.ch, res = S.claimStory();
-      this.need(res, 'Глава ещё не завершена');
+      this.need(res, ru`Глава ещё не завершена`);
       if (res.ch.gift) S.d.storyGift = res.ch.gift;
       J.add('story', { title: res.ch.title });
       return { ch, got: res.got };
@@ -4197,8 +4333,8 @@ const GameCore = {
     // Поручение выполнено: предметы сразу, дух — во встрече (ждёт в «Заданиях», пока не пойман)
     taskClaim(a) {
       const q = S.d.tasks.find(x => x.id === a.id);
-      this.need(q && q.p >= q.n, 'Поручение ещё не выполнено');
-      this.need(S.d.taskMeet.length < TASK_LIMIT, 'Сначала встреть духов за прошлые поручения');
+      this.need(q && q.p >= q.n, ru`Поручение ещё не выполнено`);
+      this.need(S.d.taskMeet.length < TASK_LIMIT, ru`Сначала встреть духов за прошлые поручения`);
       S.d.tasks = S.d.tasks.filter(x => x !== q);
       const T = TASK_TIERS[q.tier];
       const got = S.giveRewards({ ...T.reward, xp: 250 * q.tier });
@@ -4210,17 +4346,17 @@ const GameCore = {
     taskDrop(a) {
       const n = S.d.tasks.length;
       S.d.tasks = S.d.tasks.filter(x => x.id !== a.id);
-      this.need(S.d.tasks.length < n, 'Поручение не найдено');
+      this.need(S.d.tasks.length < n, ru`Поручение не найдено`);
       return { ok: true };
     },
     // 4.0: сцены и разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
     tutNext(a) {
       const st = S.tutAt();
-      this.need(st, 'Обучение уже пройдено');
-      this.need((st.kind === 'talk' || st.kind === 'ui') && st.id === a.id, 'Сначала выполни текущий шаг обучения');
+      this.need(st, ru`Обучение уже пройдено`);
+      this.need((st.kind === 'talk' || st.kind === 'ui') && st.id === a.id, ru`Сначала выполни текущий шаг обучения`);
       return S.tutAdvance(st.kind, st.id);
     },
-    tutFinish() { this.need(false, 'Обучение нельзя пропустить'); },
+    tutFinish() { this.need(false, ru`Обучение нельзя пропустить`); },
     async placeRewards(a, ctx) {
       const rows = await ctx.env.mySubmissions();
       const out = [];
@@ -4237,8 +4373,8 @@ const GameCore = {
       let coop = null, rift = a.rift;
       if (a.coop && a.coop.code) {
         const room = await ctx.env.roomGet(String(a.coop.code).toUpperCase());
-        this.need(room && room.status === 'started' && ctx.now - Date.parse(room.started_at) < 10 * 60000, 'Совместный бой не найден — начните заново');
-        this.need(room.members.some(m => m.pid === S.d.pid), 'Ты не в этом разломе');
+        this.need(room && room.status === 'started' && ctx.now - Date.parse(room.started_at) < 10 * 60000, ru`Совместный бой не найден — начните заново`);
+        this.need(room.members.some(m => m.pid === S.d.pid), ru`Ты не в этом разломе`);
         coop = { host: room.host_pid === S.d.pid, allies: U.clamp(room.members.length - 1, 0, 3), code: room.code };
         rift = { id: room.rift.poi, lat: room.rift.lat, lng: room.rift.lng, name: room.rift.place };
       }
@@ -4246,17 +4382,17 @@ const GameCore = {
       const hour = Math.floor(ctx.now / 3600000);
       // бой мог начаться за минуту до смены часа
       const r = W.riftFor(p, 0, hour) || (ctx.now % 3600000 < 90000 ? W.riftFor(p, 0, hour - 1) : null);
-      this.need(r, 'Разлом уже закрылся');
-      this.need(p.verified || r.tier < 3, 'Легендарные разломы открываются только у мест, известных Ордену');
-      this.need(!S.d.rifts[r.id], 'Этот разлом ты уже закрыл');
+      this.need(r, ru`Разлом уже закрылся`);
+      this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);
+      this.need(!S.d.rifts[r.id], ru`Этот разлом ты уже закрыл`);
       // дальний бой: вместо того чтобы подойти — грамота Ордена (до Rules.FAR.R от игрока)
       const far = !coop && !!a.far;
       if (far) {
         this.near(ctx, p.lat, p.lng, Rules.FAR.R);
-        this.need((S.d.items.farpass || 0) > 0, 'Нужен Дальний пропуск — его можно купить в Лавке');
+        this.need((S.d.items.farpass || 0) > 0, ru`Нужен Дальний пропуск — его можно купить в Лавке`);
       } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
-      this.need(team.length, 'Нужна команда');
+      this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
       this.dayNeed(ctx, 'raids'); // до списания Дальнего пропуска
       this.limit(ctx, 'raid', 30, 3600000);
@@ -4268,9 +4404,9 @@ const GameCore = {
     async roomCreate(a, ctx) {
       const p = await this.place(a.rift, ctx, 'shrine');
       const r = W.riftFor(p, 0, Math.floor(ctx.now / 3600000));
-      this.need(r, 'Разлом уже закрылся');
-      this.need(p.verified || r.tier < 3, 'Легендарные разломы открываются только у мест, известных Ордену');
-      this.need(!S.d.rifts[r.id], 'Этот разлом ты уже закрыл');
+      this.need(r, ru`Разлом уже закрылся`);
+      this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);
+      this.need(!S.d.rifts[r.id], ru`Этот разлом ты уже закрыл`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       this.limit(ctx, 'room', 20, 3600000);
       const rift = { id: r.id, tier: r.tier, boss: r.boss, endsAt: r.endsAt, poi: p.id, lat: p.lat, lng: p.lng, place: p.name }; // как у разлома на карте
@@ -4279,28 +4415,28 @@ const GameCore = {
         const room = await ctx.env.roomCreate({ code, host_pid: S.d.pid, rift, members: [this.roomMember()] });
         if (room) return this.roomView(room);
       }
-      this.fail('Не получилось создать разлом — попробуй ещё раз');
+      this.fail(ru`Не получилось создать разлом — попробуй ещё раз`);
     },
     async roomJoin(a, ctx) {
       const code = String(a.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      this.need(code.length === 5, 'Код разлома — 5 символов');
+      this.need(code.length === 5, ru`Код разлома — 5 символов`);
       this.limit(ctx, 'roomJoin', 60, 3600000);
       const r = await ctx.env.roomJoin(code, this.roomMember());
-      this.need(r && !r.error, (r && r.error) || 'Разлом с таким кодом не найден');
+      this.need(r && !r.error, (r && r.error) || ru`Разлом с таким кодом не найден`);
       return this.roomView(r);
     },
     async roomState(a, ctx) {
       const r = await ctx.env.roomGet(String(a.code || '').toUpperCase());
-      this.need(r && r.status !== 'closed', 'Хозяин закрыл разлом');
-      this.need(r.members.some(m => m.pid === S.d.pid), 'Ты больше не в этом разломе');
+      this.need(r && r.status !== 'closed', ru`Хозяин закрыл разлом`);
+      this.need(r.members.some(m => m.pid === S.d.pid), ru`Ты больше не в этом разломе`);
       return this.roomView(r);
     },
     async roomStart(a, ctx) {
       const code = String(a.code || '').toUpperCase(), r = await ctx.env.roomGet(code);
-      this.need(r && r.host_pid === S.d.pid, 'Начать бой может только хозяин разлома');
-      this.need(r.members.length >= 2, 'Ждём хотя бы одного друга');
+      this.need(r && r.host_pid === S.d.pid, ru`Начать бой может только хозяин разлома`);
+      this.need(r.members.length >= 2, ru`Ждём хотя бы одного друга`);
       const s = await ctx.env.roomStart(code, S.d.pid);
-      this.need(s, 'Бой уже начался');
+      this.need(s, ru`Бой уже начался`);
       return this.roomView(s);
     },
     async roomLeave(a, ctx) {
@@ -4311,9 +4447,9 @@ const GameCore = {
 
     water(a, ctx) {
       const b = ctx.srv.battle;
-      this.need(b && b.type === 'raid', 'Живая вода — только в бою');
-      this.need(b.waters < 3, 'За бой можно выпить не больше 3 флаконов');
-      this.need(S.useItem('water'), 'Живой воды нет');
+      this.need(b && b.type === 'raid', ru`Живая вода — только в бою`);
+      this.need(b.waters < 3, ru`За бой можно выпить не больше 3 флаконов`);
+      this.need(S.useItem('water'), ru`Живой воды нет`);
       b.waters++;
       return { left: S.d.items.water || 0 };
     },
@@ -4324,7 +4460,7 @@ const GameCore = {
       const t = Math.min(90, this.battleTime(ctx, b));
       const n = b.coop ? b.coop.allies + 1 : 1, hpMul = 1 + 0.8 * (n - 1);
       const need = Raid.TIER[b.tier].hp * hpMul / n;
-      this.need(t >= 2 && Rules.raidMaxDamage(this.team(b.team), b, t) >= need, 'Бой не засчитан: слишком быстрая победа');
+      this.need(t >= 2 && Rules.raidMaxDamage(this.team(b.team), b, t) >= need, ru`Бой не засчитан: слишком быстрая победа`);
       S.d.rifts[b.rid] = true;
       const allies = b.coop ? b.coop.allies : 0, tier = b.tier;
       J.add('raid', { sid: b.boss, tier, coop: allies });
@@ -4345,18 +4481,18 @@ const GameCore = {
 
     /* ----- бои: капище и вторжение ----- */
     async duelStart(a, ctx) {
-      this.need(S.d.level >= 3, 'Капища открываются с 3 уровня Ловчего');
+      this.need(S.d.level >= 3, ru`Капища открываются с 3 уровня Ловчего`);
       const p = await this.place(a.shrine, ctx, 'shrine');
-      this.need(!W.riftAt(p.id, Math.floor(ctx.now / 3600000)), 'Сейчас здесь открыт Разлом');
+      this.need(!W.riftAt(p.id, Math.floor(ctx.now / 3600000)), ru`Сейчас здесь открыт Разлом`);
       const e = W.shrineFor(p, 0);
-      this.need(!e.won, 'Сегодня ты уже победил здесь');
+      this.need(!e.won, ru`Сегодня ты уже победил здесь`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
-      this.need(team.length, 'Нужна команда');
+      this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
       // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
       const hold = await ctx.env.holdGet(p.id);
-      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, 'Капище держит твоя дружина — здесь можно поставить защитника');
+      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твоя дружина — здесь можно поставить защитника`);
       const ht = hold ? this.holdTeam(hold) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
       this.limit(ctx, 'duel', 40, 3600000);
@@ -4393,37 +4529,37 @@ const GameCore = {
       let it;
       if (a.deal) {
         it = Rules.shopDeal(today);
-        this.need(S.d.shop.deal !== today, 'Товар дня уже куплен — завтра будет новый');
+        this.need(S.d.shop.deal !== today, ru`Товар дня уже куплен — завтра будет новый`);
       } else if (/^(skin|bg|frame):/.test(id)) { // 4.6: облик-скин, фон или рамка из Гардероба
         const [kind, key] = id.split(':'), x = LOOK[kind].find(k => k.id === key && k.shop);
-        this.need(x, 'Такого облика нет');
-        this.need(!S.d.owned[id], 'Это уже твоё');
-        it = { id, name: `${{ skin: 'Облик', bg: 'Фон', frame: 'Рамка' }[kind]} «${x.name}»`, cur: 'zlat', price: x.shop, look: id };
+        this.need(x, ru`Такого облика нет`);
+        this.need(!S.d.owned[id], ru`Это уже твоё`);
+        it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };
       } else if (id.startsWith('look:')) {
         const key = id.slice(5), x = LOOK.cloak.find(c => c.c === key && c.shop);
-        this.need(x, 'Такого товара нет');
-        this.need(!S.d.owned[key], 'Этот плащ уже твой');
-        it = { id, name: `Плащ «${x.name}»`, cur: 'zlat', price: x.shop, look: key };
+        this.need(x, ru`Такого товара нет`);
+        this.need(!S.d.owned[key], ru`Этот плащ уже твой`);
+        it = { id, name: ru.k`Плащ «${x.name}»`, cur: 'zlat', price: x.shop, look: key };
       } else {
         it = Rules.SHOP.find(x => x.id === id);
-        this.need(it, 'Такого товара нет');
+        this.need(it, ru`Такого товара нет`);
       }
       if (it.bag) {
-        this.need(S.d.bagExtra < Rules.BAG_MAX_UP, 'Сумка уже расширена до предела');
+        this.need(S.d.bagExtra < Rules.BAG_MAX_UP, ru`Сумка уже расширена до предела`);
         it = { ...it, price: Rules.bagPrice(S.d.bagExtra) };
       }
-      this.need(!it.lvl || S.d.level >= it.lvl, `Откроется на ${it.lvl} уровне`);
-      if (it.cocoon) this.need(S.d.cocoons.length < 9, 'Коконов уже девять — выведи кого-нибудь');
+      this.need(!it.lvl || S.d.level >= it.lvl, ru`Откроется на ${it.lvl} уровне`);
+      if (it.cocoon) this.need(S.d.cocoons.length < 9, ru`Коконов уже девять — выведи кого-нибудь`);
       if (it.give) {
         const n = Object.values(it.give).reduce((s, x) => s + x, 0);
-        this.need(S.bagCount() + n <= S.bagLimit(), 'Сумка полна — освободи место или расширь её');
+        this.need(S.bagCount() + n <= S.bagLimit(), ru`Сумка полна — освободи место или расширь её`);
       }
       const key = it.cur === 'sparks' ? 'sparks' : 'zlat';
-      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? 'Не хватает искр' : 'Не хватает златников');
+      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? ru`Не хватает искр` : ru`Не хватает златников`);
       this.limit(ctx, 'shop', 120, 3600000);
       S.d[key] -= it.price;
       let got;
-      if (it.bag) { S.d.bagExtra++; got = [{ k: 'bag', n: Rules.BAG_STEP, label: 'Мест в сумке' }]; }
+      if (it.bag) { S.d.bagExtra++; got = [{ k: 'bag', n: Rules.BAG_STEP, label: ru`Мест в сумке` }]; }
       else got = this.grant({ ...(it.give || {}), cocoon: it.cocoon || 0, amulet: it.amulet ? 1 : 0, look: it.look || null });
       if (a.deal) S.d.shop.deal = today;
       J.add('shop', { name: it.name });
@@ -4453,8 +4589,8 @@ const GameCore = {
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
       const ex = S.d.shop.ex && S.d.shop.ex.day === today ? S.d.shop.ex : (S.d.shop.ex = { day: today, n: 0 });
-      this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? 'Обменник на сегодня закрыт — приходи завтра' : `Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);
-      this.need(S.d.sparks >= E.SPARKS * n, 'Не хватает искр');
+      this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? ru`Обменник на сегодня закрыт — приходи завтра` : ru`Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);
+      this.need(S.d.sparks >= E.SPARKS * n, ru`Не хватает искр`);
       S.d.sparks -= E.SPARKS * n;
       S.d.zlat = (S.d.zlat || 0) + E.ZLAT * n;
       ex.n += n;
@@ -4465,10 +4601,10 @@ const GameCore = {
     /* ----- Сезонная тропа ----- */
     passClaim(a, ctx) {
       const P = this.passState(ctx), lvl = a.lvl | 0, track = a.track === 'gold' ? 'gold' : 'free';
-      this.need(lvl >= 1 && lvl <= Rules.PASS.LEVELS, 'Такой ступени нет');
-      this.need(Rules.passLevel(P.pts) >= lvl, 'Ступень ещё не пройдена');
-      this.need(track === 'free' || P.gold, 'Сначала открой Золотую тропу');
-      this.need(!P.got[track].includes(lvl), 'Награда уже получена');
+      this.need(lvl >= 1 && lvl <= Rules.PASS.LEVELS, ru`Такой ступени нет`);
+      this.need(Rules.passLevel(P.pts) >= lvl, ru`Ступень ещё не пройдена`);
+      this.need(track === 'free' || P.gold, ru`Сначала открой Золотую тропу`);
+      this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
       P.got[track].push(lvl);
       let rw = Rules.passReward(track, lvl);
       if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 40 }; // коконов некуда класть — златниками
@@ -4476,8 +4612,8 @@ const GameCore = {
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
-      this.need(!P.gold, 'Золотая тропа уже открыта');
-      this.need(S.d.zlat >= Rules.PASS.GOLD, `Нужно ${Rules.PASS.GOLD} златников`);
+      this.need(!P.gold, ru`Золотая тропа уже открыта`);
+      this.need(S.d.zlat >= Rules.PASS.GOLD, ru`Нужно ${Rules.PASS.GOLD} златников`);
       S.d.zlat -= Rules.PASS.GOLD;
       P.gold = true;
       J.add('passGold', { season: P.season });
@@ -4486,31 +4622,31 @@ const GameCore = {
 
     /* ----- дружины ----- */
     clanJoin(a) {
-      this.need(S.d.level >= CLAN_LEVEL, `Дружину можно выбрать с ${CLAN_LEVEL} уровня`);
-      this.need(!S.d.clan, 'Дружина уже выбрана');
-      this.need(CLANS[a.clan], 'Такой дружины нет');
+      this.need(S.d.level >= CLAN_LEVEL, ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня`);
+      this.need(!S.d.clan, ru`Дружина уже выбрана`);
+      this.need(CLANS[a.clan], ru`Такой дружины нет`);
       S.d.clan = a.clan;
       J.add('clan', { clan: a.clan });
       return { clan: a.clan };
     },
     // Поставить духа защищать Капище: свободное — после своей победы здесь сегодня, своей дружины — если есть место
     async shrineDefend(a, ctx) {
-      this.need(S.d.clan, 'Сначала выбери дружину');
+      this.need(S.d.clan, ru`Сначала выбери дружину`);
       const p = await this.place(a.shrine, ctx, 'shrine');
-      this.need(p.verified, 'Защищать можно только Капища, известные Ордену');
+      this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const sp = this.spirit(a.uid);
       const hold = await ctx.env.holdGet(p.id);
-      if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), 'Сначала победи на этом Капище');
+      if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Капище`);
       else {
-        this.need(hold.clan === S.d.clan, 'Капище держит другая дружина — сначала победи её защитников');
-        this.need(hold.holders.length < HOLD_MAX, `На Капище уже ${HOLD_MAX} защитников`);
-        this.need(!hold.holders.some(h => h.pid === S.d.pid), 'Твой защитник уже стоит здесь');
+        this.need(hold.clan === S.d.clan, ru`Капище держит другая дружина — сначала победи её защитников`);
+        this.need(hold.holders.length < HOLD_MAX, ru`На Капище уже ${HOLD_MAX} защитников`);
+        this.need(!hold.holders.some(h => h.pid === S.d.pid), ru`Твой защитник уже стоит здесь`);
       }
-      this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, `Твои защитники уже стоят на ${HOLD_MY_MAX} Капищах`);
+      this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, ru`Твои защитники уже стоят на ${HOLD_MY_MAX} Капищах`);
       this.limit(ctx, 'defend', 30, 3600000);
       const ok = await ctx.env.holdDefend(p.id, p.lat, p.lng, S.d.clan, { pid: S.d.pid, name: S.d.name, sp: this.cleanSpirit(sp, 0), t: ctx.now });
-      this.need(ok, 'Капище только что изменилось — открой его заново');
+      this.need(ok, ru`Капище только что изменилось — открой его заново`);
       S.d.stats.defends = (S.d.stats.defends || 0) + 1;
       S.d.guards.push({ id: p.id, name: String(p.name || 'Капище').slice(0, 80), sid: sp.sid, t: ctx.now });
       S.progress('defend', 1);
@@ -4544,7 +4680,7 @@ const GameCore = {
     },
     // Дань: раз в день — за каждое Капище, где стоит мой защитник
     async tribute(a, ctx) {
-      this.need(S.d.clan, 'Сначала выбери дружину');
+      this.need(S.d.clan, ru`Сначала выбери дружину`);
       if (S.d.tributeDay === U.today(ctx.now)) return { n: 0, already: true };
       const n = Math.min(HOLD_MY_MAX, await ctx.env.myHolds(S.d.pid));
       S.d.tributeDay = U.today(ctx.now);
@@ -4555,10 +4691,10 @@ const GameCore = {
     async invStart(a, ctx) {
       const p = await this.place(a.spring, ctx, 'spring');
       const e = W.springFor(p, 0);
-      this.need(e.invaded, 'Родник свободен');
+      this.need(e.invaded, ru`Родник свободен`);
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       const team = S.team();
-      this.need(team.length, 'Нужна команда');
+      this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
       this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
@@ -4587,10 +4723,10 @@ const GameCore = {
     /* ----- Лига ----- */
     leagueStart(a, ctx) {
       const L = League.st(), team = S.team();
-      this.need(S.d.level >= 5, 'Лига открывается с 5 уровня Ловчего');
-      this.need(team.length === 3, 'Нужно три духа');
+      this.need(S.d.level >= 5, ru`Лига открывается с 5 уровня Ловчего`);
+      this.need(team.length === 3, ru`Нужно три духа`);
       this.readyTeam(team);
-      this.need(L.tickets > 0, 'Жетоны кончились — приходи завтра');
+      this.need(L.tickets > 0, ru`Жетоны кончились — приходи завтра`);
       L.tickets--;
       // 4.15: опыт — только за первые League.XP_RUNS турниров дня (по числу потраченных жетонов)
       L.run = { k: 0, won: 0, pts0: L.pts, rank0: League.rank(L.pts), seed: U.uid(), team: team.map(x => x.uid), xp: League.TICKETS - L.tickets <= League.XP_RUNS };
@@ -4599,9 +4735,9 @@ const GameCore = {
     },
     leagueEnd(a, ctx) {
       const L = League.st(), run = L.run;
-      this.need(run, 'Турнир не найден');
+      this.need(run, ru`Турнир не найден`);
       const b = this.endBattle(ctx, 'league');
-      this.need(b.k === run.k, 'Турнир не найден');
+      this.need(b.k === run.k, ru`Турнир не найден`);
       this.woundTeam(b, a.hp);
       const win = !!a.win;
       if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
@@ -4635,8 +4771,8 @@ const GameCore = {
 
     /* ----- обмен духами ----- */
     // 3.18: передача духов по коду закрыта — ею обходили аукцион (и его комиссию). Духов продают на аукционе
-    async tradeGive() { this.need(false, 'Передача духов по коду закрыта — выставь духа на Аукцион'); },
-    async tradeReceive() { this.need(false, 'Передача духов по коду закрыта — продавай и покупай духов на Аукционе'); },
+    async tradeGive() { this.need(false, ru`Передача духов по коду закрыта — выставь духа на Аукцион`); },
+    async tradeReceive() { this.need(false, ru`Передача духов по коду закрыта — продавай и покупай духов на Аукционе`); },
     // Неоткрытые посылки, отправленные до 3.18, возвращаются отправителю (при загрузке игры, один раз)
     async tradeReclaimAll(a, ctx) {
       if (S.d.tradeClosed || !(S.d.sent || []).length) { S.d.tradeClosed = 1; return 0; }
@@ -4649,14 +4785,14 @@ const GameCore = {
       }
       S.d.sent = [];
       S.d.tradeClosed = 1;
-      if (n) Bus.emit('toast', { text: `Неоткрытые посылки вернулись: духов — ${n}. Передача духов закрыта, теперь есть Аукцион.`, cls: 'good' });
+      if (n) Bus.emit('toast', { text: ru`Неоткрытые посылки вернулись: духов — ${n}. Передача духов закрыта, теперь есть Аукцион.`, cls: 'good' });
       return n;
     },
 
     /* ----- аукцион духов ----- */
     // Поиск лотов: фильтры по виду, стихии, редкости, оценке Ордена и каждому показателю, силе, цене и валюте
     async auctionFind(a, ctx) {
-      this.need(S.d.level >= Rules.AUCTION.LEVEL, `Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
+      this.need(S.d.level >= Rules.AUCTION.LEVEL, ru`Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
       this.limit(ctx, 'aucFind', 240, 3600000);
       const f = a.f || {}, n = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       const q = { from: n(a.from, 3000), sort: ['new', 'cheap', 'dear', 'power', 'iv'].includes(f.sort) ? f.sort : 'new', notPid: S.d.pid };
@@ -4673,19 +4809,19 @@ const GameCore = {
     },
     // Мои лоты; заодно — выручка за проданные и возврат снятых и истёкших духов
     async auctionMine(a, ctx) {
-      this.need(S.d.level >= Rules.AUCTION.LEVEL, `Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
+      this.need(S.d.level >= Rules.AUCTION.LEVEL, ru`Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
       const got = await this.auctionSettle(ctx);
       return { got, lots: await ctx.env.lotsMine(S.d.pid), open: await ctx.env.lotsOpenCount(S.d.pid) };
     },
     async auctionSell(a, ctx) {
       const A = Rules.AUCTION;
-      this.need(S.d.level >= A.LEVEL, `Аукцион открывается с ${A.LEVEL} уровня Ловчего`);
+      this.need(S.d.level >= A.LEVEL, ru`Аукцион открывается с ${A.LEVEL} уровня Ловчего`);
       const sp = this.spirit(a.uid);
-      this.need(S.d.spirits.length > 1, 'Нельзя продать последнего духа');
-      this.need(!sp.fav, 'Сними с духа отметку «избранный», чтобы продать его');
+      this.need(S.d.spirits.length > 1, ru`Нельзя продать последнего духа`);
+      this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);
       const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
-      this.need(price >= A.MIN[cur] && price <= A.MAX[cur], `Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} ${cur === 'zlat' ? 'златников' : 'искр'}`);
-      this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, `Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);
+      this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} златников` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
+      this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);
       this.limit(ctx, 'aucSell', A.PER_DAY, 86400000);
       const iv = sp.iv, s = SP[sp.sid];
       const lot = await ctx.env.lotCreate({ seller_pid: S.d.pid, seller_name: S.d.name, spirit: this.packSpirit(sp), sid: sp.sid, el: s.el, rar: s.rar,
@@ -4696,20 +4832,20 @@ const GameCore = {
       return { id: lot.id, fee: Rules.auctionFee(price) };
     },
     async auctionBuy(a, ctx) {
-      this.need(S.d.level >= Rules.AUCTION.LEVEL, `Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
+      this.need(S.d.level >= Rules.AUCTION.LEVEL, ru`Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
       const id = String(a.id || '');
       const pre = await ctx.env.lotGet(id);
-      this.need(pre, 'Лот не найден');
-      this.need(pre.seller_pid !== S.d.pid, 'Это твой собственный лот');
+      this.need(pre, ru`Лот не найден`);
+      this.need(pre.seller_pid !== S.d.pid, ru`Это твой собственный лот`);
       S.d.auc = S.d.auc || { got: {}, back: {}, paid: {} };
-      this.need(!S.d.auc.got[id], 'Этот лот уже у тебя');
+      this.need(!S.d.auc.got[id], ru`Этот лот уже у тебя`);
       // деньги проверяем ДО покупки, по цене из базы (цену с телефона не принимаем): иначе лот
       // пометился бы проданным, а покупатель ушёл бы ни с чем
       const cur = pre.cur === 'zlat' ? 'zlat' : 'sparks';
-      this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? 'Не хватает златников' : 'Не хватает искр');
+      this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? ru`Не хватает златников` : ru`Не хватает искр`);
       this.limit(ctx, 'aucBuy', 60, 3600000);
       const lot = await ctx.env.lotBuy(id, S.d.pid, S.d.name);
-      this.need(lot && lot.price === pre.price && lot.cur === pre.cur, 'Лот уже купили или сняли с продажи');
+      this.need(lot && lot.price === pre.price && lot.cur === pre.cur, ru`Лот уже купили или сняли с продажи`);
       S.d[cur] -= lot.price;
       const sp = this.unpackSpirit(lot.spirit, ctx, lot.seller_name, S.catchLvl());
       const isNew = S.addSpirit(sp);
@@ -4721,7 +4857,7 @@ const GameCore = {
     },
     async auctionCancel(a, ctx) {
       const lot = await ctx.env.lotCancel(String(a.id || ''), S.d.pid);
-      this.need(lot, 'Лот уже продан или снят');
+      this.need(lot, ru`Лот уже продан или снят`);
       S.d.auc = S.d.auc || { got: {}, back: {}, paid: {} };
       if (!S.d.auc.back[lot.id]) { S.addSpirit(this.unpackSpirit(lot.spirit, ctx)); S.d.auc.back[lot.id] = ctx.now; }
       ctx.after.push(() => ctx.env.lotsDone([lot.id], 'settled'));
@@ -4741,13 +4877,13 @@ const GameCore = {
     },
     async chatSend(a, ctx) {
       const C = Rules.CHAT, ch = this.chatChannel(a.ch);
-      this.need(S.d.level >= C.LEVEL, `Писать в чат можно с ${C.LEVEL} уровня Ловчего — читать можно уже сейчас`);
+      this.need(S.d.level >= C.LEVEL, ru`Писать в чат можно с ${C.LEVEL} уровня Ловчего — читать можно уже сейчас`);
       const text = this.chatClean(a.text);
-      this.need(text.length >= 1, 'Напиши сообщение');
-      this.need(!/(https?:\/\/|www\.|t\.me\/|\b[a-z0-9-]{2,}\.(ru|com|net|org|me|io|su|xyz|рф)\b)/i.test(text), 'Ссылки в чате запрещены — так безопаснее для всех');
+      this.need(text.length >= 1, ru`Напиши сообщение`);
+      this.need(!/(https?:\/\/|www\.|t\.me\/|\b[a-z0-9-]{2,}\.(ru|com|net|org|me|io|su|xyz|рф)\b)/i.test(text), ru`Ссылки в чате запрещены — так безопаснее для всех`);
       const c = ctx.srv.chat = ctx.srv.chat || { t: 0, last: '' };
-      this.need(ctx.now - c.t >= C.GAP, 'Не так быстро — подожди пару секунд');
-      this.need(!(text === c.last && ctx.now - c.t < 60000), 'Это сообщение уже отправлено');
+      this.need(ctx.now - c.t >= C.GAP, ru`Не так быстро — подожди пару секунд`);
+      this.need(!(text === c.last && ctx.now - c.t < 60000), ru`Это сообщение уже отправлено`);
       this.limit(ctx, 'chat', C.PER_DAY, 86400000);
       c.t = ctx.now; c.last = text;
       const m = await ctx.env.chatInsert({ channel: ch, pid: S.d.pid, name: S.d.name, lvl: S.d.level, clan: S.d.clan || null, text });
@@ -4755,7 +4891,7 @@ const GameCore = {
     },
     async chatReport(a, ctx) {
       const id = Math.floor(+a.id);
-      this.need(id > 0, 'Сообщение не найдено');
+      this.need(id > 0, ru`Сообщение не найдено`);
       this.limit(ctx, 'chatReport', 30, 86400000);
       await ctx.env.chatReport(id, S.d.pid);
       return { ok: true };
@@ -4765,10 +4901,10 @@ const GameCore = {
     // Открытая карточка любого Ловчего (из чата или таблицы Лиги): облик, уровень, дружина, Лига, успехи, спутник
     async playerCard(a, ctx) {
       const pid = String(a.pid || '');
-      this.need(this.PID.test(pid), 'Ловчий не найден');
+      this.need(this.PID.test(pid), ru`Ловчий не найден`);
       this.limit(ctx, 'card', 150, 3600000);
       const s = await ctx.env.friendSave(pid);
-      this.need(s && s.data, 'Ловчий не найден — возможно, он давно не заходил в игру');
+      this.need(s && s.data, ru`Ловчий не найден — возможно, он давно не заходил в игру`);
       const d = s.data, num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       const b = this.brief(d), st = d.stats || {}, L = d.league || {};
       const spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
@@ -4811,14 +4947,14 @@ const GameCore = {
     /* ----- друзья и подарки ----- */
     async friendAdd(a, ctx) {
       const pid = String(a.pid || '');
-      this.need(this.PID.test(pid), 'В коде ошибка');
-      this.need(pid !== S.d.pid, 'Это твой собственный код дружбы');
+      this.need(this.PID.test(pid), ru`В коде ошибка`);
+      this.need(pid !== S.d.pid, ru`Это твой собственный код дружбы`);
       this.limit(ctx, 'friendAdd', 30, 3600000); // перебор кодов дружбы
       const who = await ctx.env.player(pid);
-      this.need(who, 'Ловчий с таким кодом не найден — пусть он обновит игру');
+      this.need(who, ru`Ловчий с таким кодом не найден — пусть он обновит игру`);
       let f = S.d.friends.find(x => x.id === pid), isNew = false;
       if (!f) {
-        this.need(S.d.friends.length < 50, 'Друзей уже 50 — это максимум');
+        this.need(S.d.friends.length < 50, ru`Друзей уже 50 — это максимум`);
         f = { id: pid, name: who.name, lvl: who.level, pts: 0, added: ctx.now, sent: '', recv: '' };
         S.d.friends.push(f);
         J.add('friend', { name: f.name });
@@ -4831,7 +4967,7 @@ const GameCore = {
     // Профиль друга — только если дружба взаимная (он тоже добавил тебя)
     async friendProfile(a, ctx) {
       this.limit(ctx, 'profile', 60, 3600000);
-      const { f, d, s } = await this.mutual(ctx, a.pid, 'Профиль откроется');
+      const { f, d, s } = await this.mutual(ctx, a.pid, 'profile');
       // чужое сохранение могло быть записано ещё телефоном (до 3.0) — только числа и известные значения
       const num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       f.name = String(d.name || f.name).slice(0, 20); f.lvl = num(d.level, MAX_LEVEL) || f.lvl;
@@ -4853,11 +4989,11 @@ const GameCore = {
     // Поединок с другом: его три сильнейших духа под управлением игры. Награда — раз в день за каждого друга.
     async sparStart(a, ctx) {
       this.limit(ctx, 'spar', 30, 3600000);
-      const { f, d } = await this.mutual(ctx, a.pid, 'Поединок откроется');
+      const { f, d } = await this.mutual(ctx, a.pid, 'duel');
       const foe = this.topSpirits(d);
-      this.need(foe.length, `У ${f.name} пока нет духов`);
+      this.need(foe.length, ru`У ${f.name} пока нет духов`);
       const team = S.team();
-      this.need(team.length, 'Нужна команда');
+      this.need(team.length, ru`Нужна команда`);
       ctx.srv.battle = { type: 'spar', pid: f.id, foe, start: ctx.now, team: team.map(x => x.uid) };
       return { foe, name: f.name, look: f.look || null, rewarded: f.spar === U.today(ctx.now) };
     },
@@ -4866,7 +5002,7 @@ const GameCore = {
       if (!a.win) return { win: false };
       this.plausibleDuel(ctx, b, b.foe, Duel.FOE.spar.speed);
       const f = S.d.friends.find(x => x.id === b.pid);
-      this.need(f, 'Такого друга нет');
+      this.need(f, ru`Такого друга нет`);
       J.add('spar', { name: f.name });
       // полная награда — раз в день за каждого друга и не больше 3 раз в день всего (3.19: было без общего предела —
       // с 50 друзьями до 25 000 ✦ и 40 000 опыта в день)
@@ -4901,9 +5037,9 @@ const GameCore = {
     },
     async giftSend(a, ctx) {
       const f = S.d.friends.find(x => x.id === a.pid);
-      this.need(f, 'Такого друга нет');
-      this.need(f.sent !== U.today(), 'Сегодня этому другу подарок уже отправлен');
-      this.need(S.useItem('gift'), 'Подарков нет — они попадаются в родниках');
+      this.need(f, ru`Такого друга нет`);
+      this.need(f.sent !== U.today(), ru`Сегодня этому другу подарок уже отправлен`);
+      this.need(S.useItem('gift'), ru`Подарков нет — они попадаются в родниках`);
       const lv = (() => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; })();
       const r = Math.random, c = { charm: 3 + Math.floor(r() * 4) };
       if (r() < 0.6) c.honey = 1 + Math.floor(r() * 2);
@@ -4920,18 +5056,18 @@ const GameCore = {
     },
     async giftOpen(a, ctx) {
       const g = await ctx.env.gift(String(a.id || ''));
-      this.need(g && g.to_pid === S.d.pid, 'Подарок не найден');
-      this.need(!g.opened_at, 'Подарок уже открыт');
+      this.need(g && g.to_pid === S.d.pid, ru`Подарок не найден`);
+      this.need(!g.opened_at, ru`Подарок уже открыт`);
       const f = S.d.friends.find(x => x.id === g.from_pid);
-      this.need(f, `Сначала добавь ${g.from_name || 'отправителя'} в друзья`);
-      this.need(f.recv !== U.today(), 'Сегодня ты уже открывал подарок от этого друга — попробуй завтра');
-      this.need(await ctx.env.giftTake(g.id, S.d.pid), 'Подарок уже открыт');
+      this.need(f, g.from_name ? ru`Сначала добавь ${g.from_name} в друзья` : ru`Сначала добавь отправителя в друзья`);
+      this.need(f.recv !== U.today(), ru`Сегодня ты уже открывал подарок от этого друга — попробуй завтра`);
+      this.need(await ctx.env.giftTake(g.id, S.d.pid), ru`Подарок уже открыт`);
       f.recv = U.today();
       const { cocoon, ...items } = g.contents || {};
       const clean = {};
       for (const [k, n] of Object.entries(items)) if (ITEMS[k] && n > 0 && n <= 10) clean[k] = n | 0;
       const got = S.giveRewards({ ...clean, xp: 200 + (() => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; })() * 100 });
-      if (cocoon && S.d.cocoons.length < 9) { S.d.cocoons.push({ id: U.uid(), km: 5, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, label: 'Кокон 5 км' }); }
+      if (cocoon && S.d.cocoons.length < 9) { S.d.cocoons.push({ id: U.uid(), km: 5, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, label: ru`Кокон ${5} км` }); }
       this.friendPoint(f);
       J.add('gift', { dir: 'in', name: f.name });
       return { name: f.name, got, pts: f.pts };
@@ -4997,24 +5133,24 @@ const Pay = {
   on() { return !!(PAY.shop && PAY.key); },
   async handle(uid, op, a) {
     if (op === 'info') return { ok: true, on: this.on(), receipt: PAY.receipt };
-    if (!this.on()) return { ok: false, error: 'Покупки пока не подключены' };
+    if (!this.on()) return { ok: false, error: ru`Покупки пока не подключены` };
     try {
       if (op === 'create') return await this.create(uid, a || {});
       if (op === 'sync') return await this.sync(uid);
     } catch (e) {
       console.error('Казна:', String(e));
-      return { ok: false, error: 'Платёжный сервис не ответил — попробуй чуть позже' };
+      return { ok: false, error: ru`Платёжный сервис не ответил — попробуй чуть позже` };
     }
-    return { ok: false, error: 'Неизвестная операция' };
+    return { ok: false, error: ru`Неизвестная операция` };
   },
   async create(uid, a) {
     const pack = Rules.PAY.find(p => p.id === a.pack);
-    if (!pack) return { ok: false, error: 'Такого набора нет' };
+    if (!pack) return { ok: false, error: ru`Такого набора нет` };
     const email = String(a.email || '').trim();
-    if (PAY.receipt && !EMAIL.test(email)) return { ok: false, error: 'Укажи почту — на неё придёт чек' };
+    if (PAY.receipt && !EMAIL.test(email)) return { ok: false, error: ru`Укажи почту — на неё придёт чек` };
     const since = new Date(Date.now() - 3600000).toISOString();
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
-    if ((count || 0) >= 10) return { ok: false, error: 'Слишком много попыток оплаты — подожди немного' };
+    if ((count || 0) >= 10) return { ok: false, error: ru`Слишком много попыток оплаты — подожди немного` };
     const amount = pack.rub.toFixed(2), title = `${pack.zlat} златников — «Духолов»`;
     const row = must(await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount }).select('id').single());
     const p = await yk('POST', '/payments', {
@@ -5027,7 +5163,7 @@ const Pay = {
         vat_code: 1, payment_mode: 'full_payment', payment_subject: 'service' }] } } : {}),
     }, row.id);
     must(await db.from('payments').update({ ext_id: p.id, status: p.status, updated_at: new Date().toISOString() }).eq('id', row.id));
-    if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: 'Платёжный сервис не выдал страницу оплаты' };
+    if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: ru`Платёжный сервис не выдал страницу оплаты` };
     return { ok: true, order: row.id, url: p.confirmation.confirmation_url };
   },
   // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня); остальные доводит уведомление ЮKassa (notify)
@@ -5081,7 +5217,7 @@ const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, 
 const getJson = async (url, init) => {
   const r = await fetch(url, { ...init, signal: AbortSignal.timeout(12000) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error_description || j.error || `ответ ${r.status}`);
+  if (!r.ok) throw new Error(j.error_description || j.error || ru`ответ ${r.status}`);
   return j;
 };
 const Auth = {
@@ -5098,20 +5234,20 @@ const Auth = {
   async verify(provider, a) {
     if (provider === 'google') {
       const t = await getJson('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(String(a.id_token || '')));
-      if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error('вход Google не подтверждён');
-      if (!a.nonce || t.nonce !== a.nonce) throw new Error('вход Google не подтверждён');
+      if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error(ru`вход Google не подтверждён`);
+      if (!a.nonce || t.nonce !== a.nonce) throw new Error(ru`вход Google не подтверждён`);
       return { sub: String(t.sub), name: t.name || t.email || 'Google' };
     }
     if (provider === 'yandex') {
       const t = await getJson('https://login.yandex.ru/info?format=json', { headers: { Authorization: 'OAuth ' + String(a.access_token || '') } });
-      if (String(t.client_id) !== AUTHP.yandex || !t.id) throw new Error('вход Яндекса не подтверждён'); // токен выдан именно нашему приложению
+      if (String(t.client_id) !== AUTHP.yandex || !t.id) throw new Error(ru`вход Яндекса не подтверждён`); // токен выдан именно нашему приложению
       return { sub: String(t.id), name: t.display_name || t.real_name || t.login || 'Яндекс' };
     }
     if (provider === 'vk') {
       const form = new URLSearchParams({ grant_type: 'authorization_code', code: String(a.code || ''), code_verifier: String(a.code_verifier || ''),
         client_id: AUTHP.vk, device_id: String(a.device_id || ''), redirect_uri: String(a.redirect_uri || ''), state: String(a.state || '') });
       const t = await getJson('https://id.vk.com/oauth2/auth', { method: 'POST', body: form });
-      if (!t.user_id || !t.access_token) throw new Error('вход VK не подтверждён');
+      if (!t.user_id || !t.access_token) throw new Error(ru`вход VK не подтверждён`);
       let name = 'VK';
       try {
         const u = await getJson('https://id.vk.com/oauth2/user_info', { method: 'POST', body: new URLSearchParams({ client_id: AUTHP.vk, access_token: t.access_token }) });
@@ -5122,16 +5258,16 @@ const Auth = {
     if (provider === 'telegram') {
       // подпись Telegram Login: HMAC-SHA256 от строк «ключ=значение» (по алфавиту, без hash) на ключе SHA256(токена бота)
       const d = a.data && typeof a.data === 'object' ? a.data : {};
-      if (!d.id || !d.hash || !d.auth_date) throw new Error('вход Telegram не подтверждён');
-      if (Date.now() / 1000 - +d.auth_date > 86400) throw new Error('вход Telegram устарел — попробуй ещё раз');
+      if (!d.id || !d.hash || !d.auth_date) throw new Error(ru`вход Telegram не подтверждён`);
+      if (Date.now() / 1000 - +d.auth_date > 86400) throw new Error(ru`вход Telegram устарел — попробуй ещё раз`);
       const check = Object.keys(d).filter(k => k !== 'hash').sort().map(k => `${k}=${d[k]}`).join('\n');
       const secret = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(AUTHP.telegram));
       const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
       const sig = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(check)));
-      if (sig !== String(d.hash)) throw new Error('вход Telegram не подтверждён');
+      if (sig !== String(d.hash)) throw new Error(ru`вход Telegram не подтверждён`);
       return { sub: String(d.id), name: [d.first_name, d.last_name].filter(Boolean).join(' ') || (d.username ? '@' + d.username : 'Telegram') };
     }
-    throw new Error('Такого способа входа нет');
+    throw new Error(ru`Такого способа входа нет`);
   },
   async handle(uid, op, a) {
     if (op === 'info') {
@@ -5141,26 +5277,26 @@ const Auth = {
     // 4.1: удалить учётную запись целиком (152-ФЗ): прогресс, способы входа, лоты, место в Лиге — всё, что связано
     // с ней в базе, удаляется вместе с ней; записи о платежах остаются без привязки (налоговый учёт, 018)
     if (op === 'delete') {
-      if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: 'Нужно подтверждение' };
+      if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: ru`Нужно подтверждение` };
       const { error } = await db.auth.admin.deleteUser(uid);
-      if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: 'Не получилось удалить — попробуй ещё раз' }; }
+      if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: ru`Не получилось удалить — попробуй ещё раз` }; }
       return { ok: true };
     }
-    if (op !== 'signin') return { ok: false, error: 'Неизвестная операция' };
+    if (op !== 'signin') return { ok: false, error: ru`Неизвестная операция` };
     const provider = String(a.provider || '');
-    if (!this.providers()[provider]) return { ok: false, error: 'Этот способ входа пока не подключён' };
+    if (!this.providers()[provider]) return { ok: false, error: ru`Этот способ входа пока не подключён` };
     let who;
     try { who = await this.verify(provider, a.proof || {}); }
-    catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: `Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }
+    catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: ru`Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }
     const name = String(who.name).slice(0, 60);
     const row = must(await db.from('auth_links').select('user_id').eq('provider', provider).eq('subject', who.sub).maybeSingle());
     if (row && row.user_id === uid) return { ok: true, linked: true, already: true };
     if (row) {
       // вход уже привязан к другому Ловчему — одноразовый вход в его учётную запись
       const { data: u, error } = await db.auth.admin.getUserById(row.user_id);
-      if (error || !u || !u.user || !u.user.email) return { ok: false, error: 'Учётная запись не найдена' };
+      if (error || !u || !u.user || !u.user.email) return { ok: false, error: ru`Учётная запись не найдена` };
       const { data: link, error: le } = await db.auth.admin.generateLink({ type: 'magiclink', email: u.user.email });
-      if (le || !link || !link.properties) return { ok: false, error: 'Не удалось войти — попробуй ещё раз' };
+      if (le || !link || !link.properties) return { ok: false, error: ru`Не удалось войти — попробуй ещё раз` };
       const s = must(await db.from('saves').select('name:data->name, level:data->level').eq('user_id', row.user_id).maybeSingle());
       return { ok: true, switch: true, token_hash: link.properties.hashed_token, player: s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null };
     }
@@ -5168,10 +5304,10 @@ const Auth = {
     const { data: me } = await db.auth.admin.getUserById(uid);
     if (me && me.user && !me.user.email) {
       const { error } = await db.auth.admin.updateUserById(uid, { email: `u${uid.replace(/-/g, '')}@users.duholov.invalid`, email_confirm: true });
-      if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: 'Не удалось сохранить вход — попробуй ещё раз' }; }
+      if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: ru`Не удалось сохранить вход — попробуй ещё раз` }; }
     }
     const { error: ie } = await db.from('auth_links').insert({ provider, subject: who.sub, user_id: uid, name });
-    if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? 'Этот вход уже привязан — попробуй ещё раз' : 'Не удалось сохранить вход' };
+    if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? ru`Этот вход уже привязан — попробуй ещё раз` : ru`Не удалось сохранить вход` };
     return { ok: true, linked: true, name };
   },
 };
@@ -5477,7 +5613,7 @@ Deno.serve(async req => {
     try { await Pay.notify(await req.json().catch(() => null)); return new Response('ok'); }
     catch (e) { console.error('Казна, уведомление:', String(e)); return new Response('retry', { status: 500 }); }
   }
-  if (!allowed) return reply({ ok: false, error: 'Этот сервер игры не принимает запросы с этой страницы' }, 403);
+  if (!allowed) return reply({ ok: false, error: ru`Этот сервер игры не принимает запросы с этой страницы` }, 403);
   // 4.1: ошибка из браузера игрока (www/js/errors.js) — в client_errors; не больше 20 в минуту с адреса, хранится 14 дней
   if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/log')) {
     const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
@@ -5491,23 +5627,23 @@ Deno.serve(async req => {
     }
     return reply({ ok: true });
   }
-  if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: 'Закрытый контур: нужен ключ доступа' }, 403);
+  if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: ru`Закрытый контур: нужен ключ доступа` }, 403);
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);
   const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
   const bad = badTokens.get(ip);
-  if (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS) return reply({ ok: false, error: 'Слишком много попыток — подожди минуту' }, 429);
+  if (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS) return reply({ ok: false, error: ru`Слишком много попыток — подожди минуту` }, 429);
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   const who = token ? (await db.auth.getUser(token)).data : null;
-  if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: 'Нужен вход в игру', auth: true }, 401); }
+  if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: ru`Нужен вход в игру`, auth: true }, 401); }
   const uid = who.user.id;
-  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: 'Слишком много запросов — подожди минуту' }, 429);
+  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);
   let body;
-  try { body = await req.json(); } catch { return reply({ ok: false, error: 'Некорректный запрос' }, 400); }
-  if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: 'Вышла новая версия игры — обнови её' });
+  try { body = await req.json(); } catch { return reply({ ok: false, error: ru`Некорректный запрос` }, 400); }
+  if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: ru`Вышла новая версия игры — обнови её` });
   // Казна: создать оплату / узнать итог — вне очереди игровых действий (ждём ответа ЮKassa)
   if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));
   // Вход через сервисы: список, привязка и переключение учётной записи — тоже вне очереди игровых действий
-  if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: 'Ошибка входа — попробуй ещё раз' }, 500); } }
+  if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 500); } }
   const env = makeEnv(uid);
 
   // 4.1: действия одного игрока выполняются строго по очереди — на всех экземплярах функции (замок в базе, 017_request_lock.sql).
@@ -5527,10 +5663,10 @@ Deno.serve(async req => {
       if (got && !got.locked) break;
       await new Promise(r => setTimeout(r, 200));
     }
-    if (!got || got.locked) return reply({ ok: false, error: 'Предыдущее действие ещё выполняется — повтори' });
+    if (!got || got.locked) return reply({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });
     locked = true;
     const row = got.row, srv = got.srv || {};
-    if (row && row.moved_to) return reply({ ok: false, moved: true, error: 'Прогресс перенесён на другое устройство' });
+    if (row && row.moved_to) return reply({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });
     const res = await GameCore.run(body, { data: row ? row.data : null, srv }, env);
     if (!res.ok) {
       if (res.rl) await release({ ...srv, rl: res.rl });
@@ -5541,7 +5677,7 @@ Deno.serve(async req => {
     const ops = row && res.data ? Diff.make(row.data, res.data) : null;
     const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
       p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
-    if (rev == null) return reply({ ok: false, error: 'Прогресс изменился на другом устройстве — повтори действие' });
+    if (rev == null) return reply({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });
     locked = false; // замок снят вместе с сохранением
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
@@ -5549,7 +5685,7 @@ Deno.serve(async req => {
     return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
   } catch (e) {
     console.error(String(e && e.stack || e));
-    return reply({ ok: false, error: 'Ошибка сервера — попробуй ещё раз' }, 500);
+    return reply({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500);
   } finally {
     await release();
   }

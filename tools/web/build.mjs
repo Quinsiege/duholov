@@ -8,7 +8,7 @@ import { transform } from 'esbuild';
 
 const www = new URL('../../www/', import.meta.url);
 const read = p => readFile(new URL(p, www), 'utf8');
-const KEEP = new Set(['js/version.js']);
+const KEEP = new Set(['js/version.js', 'js/i18n.js']); // 4.15: i18n.js подключает словарь языка до склеенной игры
 
 let html = await read('index.html');
 const TAG = /^\s*<script src="(js\/[a-z0-9-]+\.js)\?v=dev"><\/script>\r?\n/gm;

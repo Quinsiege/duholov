@@ -185,7 +185,7 @@ const W = {
       sp.dark = true;
       team.push(sp);
     }
-    return { name: 'Прислужник Нави', color: '#3b0764', title: `Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)] };
+    return { name: ru`Прислужник Нави`, color: '#3b0764', title: ru`Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)] };
   },
 
   // Хранитель меняется каждый день; уровень его духов подстраивается под уровень игрока

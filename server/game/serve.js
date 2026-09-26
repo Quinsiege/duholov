@@ -55,24 +55,24 @@ const Pay = {
   on() { return !!(PAY.shop && PAY.key); },
   async handle(uid, op, a) {
     if (op === 'info') return { ok: true, on: this.on(), receipt: PAY.receipt };
-    if (!this.on()) return { ok: false, error: 'Покупки пока не подключены' };
+    if (!this.on()) return { ok: false, error: ru`Покупки пока не подключены` };
     try {
       if (op === 'create') return await this.create(uid, a || {});
       if (op === 'sync') return await this.sync(uid);
     } catch (e) {
       console.error('Казна:', String(e));
-      return { ok: false, error: 'Платёжный сервис не ответил — попробуй чуть позже' };
+      return { ok: false, error: ru`Платёжный сервис не ответил — попробуй чуть позже` };
     }
-    return { ok: false, error: 'Неизвестная операция' };
+    return { ok: false, error: ru`Неизвестная операция` };
   },
   async create(uid, a) {
     const pack = Rules.PAY.find(p => p.id === a.pack);
-    if (!pack) return { ok: false, error: 'Такого набора нет' };
+    if (!pack) return { ok: false, error: ru`Такого набора нет` };
     const email = String(a.email || '').trim();
-    if (PAY.receipt && !EMAIL.test(email)) return { ok: false, error: 'Укажи почту — на неё придёт чек' };
+    if (PAY.receipt && !EMAIL.test(email)) return { ok: false, error: ru`Укажи почту — на неё придёт чек` };
     const since = new Date(Date.now() - 3600000).toISOString();
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
-    if ((count || 0) >= 10) return { ok: false, error: 'Слишком много попыток оплаты — подожди немного' };
+    if ((count || 0) >= 10) return { ok: false, error: ru`Слишком много попыток оплаты — подожди немного` };
     const amount = pack.rub.toFixed(2), title = `${pack.zlat} златников — «Духолов»`;
     const row = must(await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount }).select('id').single());
     const p = await yk('POST', '/payments', {
@@ -85,7 +85,7 @@ const Pay = {
         vat_code: 1, payment_mode: 'full_payment', payment_subject: 'service' }] } } : {}),
     }, row.id);
     must(await db.from('payments').update({ ext_id: p.id, status: p.status, updated_at: new Date().toISOString() }).eq('id', row.id));
-    if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: 'Платёжный сервис не выдал страницу оплаты' };
+    if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: ru`Платёжный сервис не выдал страницу оплаты` };
     return { ok: true, order: row.id, url: p.confirmation.confirmation_url };
   },
   // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня); остальные доводит уведомление ЮKassa (notify)
@@ -139,7 +139,7 @@ const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, 
 const getJson = async (url, init) => {
   const r = await fetch(url, { ...init, signal: AbortSignal.timeout(12000) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error_description || j.error || `ответ ${r.status}`);
+  if (!r.ok) throw new Error(j.error_description || j.error || ru`ответ ${r.status}`);
   return j;
 };
 const Auth = {
@@ -156,20 +156,20 @@ const Auth = {
   async verify(provider, a) {
     if (provider === 'google') {
       const t = await getJson('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(String(a.id_token || '')));
-      if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error('вход Google не подтверждён');
-      if (!a.nonce || t.nonce !== a.nonce) throw new Error('вход Google не подтверждён');
+      if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error(ru`вход Google не подтверждён`);
+      if (!a.nonce || t.nonce !== a.nonce) throw new Error(ru`вход Google не подтверждён`);
       return { sub: String(t.sub), name: t.name || t.email || 'Google' };
     }
     if (provider === 'yandex') {
       const t = await getJson('https://login.yandex.ru/info?format=json', { headers: { Authorization: 'OAuth ' + String(a.access_token || '') } });
-      if (String(t.client_id) !== AUTHP.yandex || !t.id) throw new Error('вход Яндекса не подтверждён'); // токен выдан именно нашему приложению
+      if (String(t.client_id) !== AUTHP.yandex || !t.id) throw new Error(ru`вход Яндекса не подтверждён`); // токен выдан именно нашему приложению
       return { sub: String(t.id), name: t.display_name || t.real_name || t.login || 'Яндекс' };
     }
     if (provider === 'vk') {
       const form = new URLSearchParams({ grant_type: 'authorization_code', code: String(a.code || ''), code_verifier: String(a.code_verifier || ''),
         client_id: AUTHP.vk, device_id: String(a.device_id || ''), redirect_uri: String(a.redirect_uri || ''), state: String(a.state || '') });
       const t = await getJson('https://id.vk.com/oauth2/auth', { method: 'POST', body: form });
-      if (!t.user_id || !t.access_token) throw new Error('вход VK не подтверждён');
+      if (!t.user_id || !t.access_token) throw new Error(ru`вход VK не подтверждён`);
       let name = 'VK';
       try {
         const u = await getJson('https://id.vk.com/oauth2/user_info', { method: 'POST', body: new URLSearchParams({ client_id: AUTHP.vk, access_token: t.access_token }) });
@@ -180,16 +180,16 @@ const Auth = {
     if (provider === 'telegram') {
       // подпись Telegram Login: HMAC-SHA256 от строк «ключ=значение» (по алфавиту, без hash) на ключе SHA256(токена бота)
       const d = a.data && typeof a.data === 'object' ? a.data : {};
-      if (!d.id || !d.hash || !d.auth_date) throw new Error('вход Telegram не подтверждён');
-      if (Date.now() / 1000 - +d.auth_date > 86400) throw new Error('вход Telegram устарел — попробуй ещё раз');
+      if (!d.id || !d.hash || !d.auth_date) throw new Error(ru`вход Telegram не подтверждён`);
+      if (Date.now() / 1000 - +d.auth_date > 86400) throw new Error(ru`вход Telegram устарел — попробуй ещё раз`);
       const check = Object.keys(d).filter(k => k !== 'hash').sort().map(k => `${k}=${d[k]}`).join('\n');
       const secret = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(AUTHP.telegram));
       const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
       const sig = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(check)));
-      if (sig !== String(d.hash)) throw new Error('вход Telegram не подтверждён');
+      if (sig !== String(d.hash)) throw new Error(ru`вход Telegram не подтверждён`);
       return { sub: String(d.id), name: [d.first_name, d.last_name].filter(Boolean).join(' ') || (d.username ? '@' + d.username : 'Telegram') };
     }
-    throw new Error('Такого способа входа нет');
+    throw new Error(ru`Такого способа входа нет`);
   },
   async handle(uid, op, a) {
     if (op === 'info') {
@@ -199,26 +199,26 @@ const Auth = {
     // 4.1: удалить учётную запись целиком (152-ФЗ): прогресс, способы входа, лоты, место в Лиге — всё, что связано
     // с ней в базе, удаляется вместе с ней; записи о платежах остаются без привязки (налоговый учёт, 018)
     if (op === 'delete') {
-      if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: 'Нужно подтверждение' };
+      if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: ru`Нужно подтверждение` };
       const { error } = await db.auth.admin.deleteUser(uid);
-      if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: 'Не получилось удалить — попробуй ещё раз' }; }
+      if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: ru`Не получилось удалить — попробуй ещё раз` }; }
       return { ok: true };
     }
-    if (op !== 'signin') return { ok: false, error: 'Неизвестная операция' };
+    if (op !== 'signin') return { ok: false, error: ru`Неизвестная операция` };
     const provider = String(a.provider || '');
-    if (!this.providers()[provider]) return { ok: false, error: 'Этот способ входа пока не подключён' };
+    if (!this.providers()[provider]) return { ok: false, error: ru`Этот способ входа пока не подключён` };
     let who;
     try { who = await this.verify(provider, a.proof || {}); }
-    catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: `Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }
+    catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: ru`Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }
     const name = String(who.name).slice(0, 60);
     const row = must(await db.from('auth_links').select('user_id').eq('provider', provider).eq('subject', who.sub).maybeSingle());
     if (row && row.user_id === uid) return { ok: true, linked: true, already: true };
     if (row) {
       // вход уже привязан к другому Ловчему — одноразовый вход в его учётную запись
       const { data: u, error } = await db.auth.admin.getUserById(row.user_id);
-      if (error || !u || !u.user || !u.user.email) return { ok: false, error: 'Учётная запись не найдена' };
+      if (error || !u || !u.user || !u.user.email) return { ok: false, error: ru`Учётная запись не найдена` };
       const { data: link, error: le } = await db.auth.admin.generateLink({ type: 'magiclink', email: u.user.email });
-      if (le || !link || !link.properties) return { ok: false, error: 'Не удалось войти — попробуй ещё раз' };
+      if (le || !link || !link.properties) return { ok: false, error: ru`Не удалось войти — попробуй ещё раз` };
       const s = must(await db.from('saves').select('name:data->name, level:data->level').eq('user_id', row.user_id).maybeSingle());
       return { ok: true, switch: true, token_hash: link.properties.hashed_token, player: s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null };
     }
@@ -226,10 +226,10 @@ const Auth = {
     const { data: me } = await db.auth.admin.getUserById(uid);
     if (me && me.user && !me.user.email) {
       const { error } = await db.auth.admin.updateUserById(uid, { email: `u${uid.replace(/-/g, '')}@users.duholov.invalid`, email_confirm: true });
-      if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: 'Не удалось сохранить вход — попробуй ещё раз' }; }
+      if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: ru`Не удалось сохранить вход — попробуй ещё раз` }; }
     }
     const { error: ie } = await db.from('auth_links').insert({ provider, subject: who.sub, user_id: uid, name });
-    if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? 'Этот вход уже привязан — попробуй ещё раз' : 'Не удалось сохранить вход' };
+    if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? ru`Этот вход уже привязан — попробуй ещё раз` : ru`Не удалось сохранить вход` };
     return { ok: true, linked: true, name };
   },
 };
@@ -535,7 +535,7 @@ Deno.serve(async req => {
     try { await Pay.notify(await req.json().catch(() => null)); return new Response('ok'); }
     catch (e) { console.error('Казна, уведомление:', String(e)); return new Response('retry', { status: 500 }); }
   }
-  if (!allowed) return reply({ ok: false, error: 'Этот сервер игры не принимает запросы с этой страницы' }, 403);
+  if (!allowed) return reply({ ok: false, error: ru`Этот сервер игры не принимает запросы с этой страницы` }, 403);
   // 4.1: ошибка из браузера игрока (www/js/errors.js) — в client_errors; не больше 20 в минуту с адреса, хранится 14 дней
   if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/log')) {
     const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
@@ -549,23 +549,23 @@ Deno.serve(async req => {
     }
     return reply({ ok: true });
   }
-  if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: 'Закрытый контур: нужен ключ доступа' }, 403);
+  if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: ru`Закрытый контур: нужен ключ доступа` }, 403);
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);
   const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
   const bad = badTokens.get(ip);
-  if (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS) return reply({ ok: false, error: 'Слишком много попыток — подожди минуту' }, 429);
+  if (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS) return reply({ ok: false, error: ru`Слишком много попыток — подожди минуту` }, 429);
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   const who = token ? (await db.auth.getUser(token)).data : null;
-  if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: 'Нужен вход в игру', auth: true }, 401); }
+  if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: ru`Нужен вход в игру`, auth: true }, 401); }
   const uid = who.user.id;
-  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: 'Слишком много запросов — подожди минуту' }, 429);
+  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);
   let body;
-  try { body = await req.json(); } catch { return reply({ ok: false, error: 'Некорректный запрос' }, 400); }
-  if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: 'Вышла новая версия игры — обнови её' });
+  try { body = await req.json(); } catch { return reply({ ok: false, error: ru`Некорректный запрос` }, 400); }
+  if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: ru`Вышла новая версия игры — обнови её` });
   // Казна: создать оплату / узнать итог — вне очереди игровых действий (ждём ответа ЮKassa)
   if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));
   // Вход через сервисы: список, привязка и переключение учётной записи — тоже вне очереди игровых действий
-  if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: 'Ошибка входа — попробуй ещё раз' }, 500); } }
+  if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 500); } }
   const env = makeEnv(uid);
 
   // 4.1: действия одного игрока выполняются строго по очереди — на всех экземплярах функции (замок в базе, 017_request_lock.sql).
@@ -585,10 +585,10 @@ Deno.serve(async req => {
       if (got && !got.locked) break;
       await new Promise(r => setTimeout(r, 200));
     }
-    if (!got || got.locked) return reply({ ok: false, error: 'Предыдущее действие ещё выполняется — повтори' });
+    if (!got || got.locked) return reply({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });
     locked = true;
     const row = got.row, srv = got.srv || {};
-    if (row && row.moved_to) return reply({ ok: false, moved: true, error: 'Прогресс перенесён на другое устройство' });
+    if (row && row.moved_to) return reply({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });
     const res = await GameCore.run(body, { data: row ? row.data : null, srv }, env);
     if (!res.ok) {
       if (res.rl) await release({ ...srv, rl: res.rl });
@@ -599,7 +599,7 @@ Deno.serve(async req => {
     const ops = row && res.data ? Diff.make(row.data, res.data) : null;
     const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
       p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
-    if (rev == null) return reply({ ok: false, error: 'Прогресс изменился на другом устройстве — повтори действие' });
+    if (rev == null) return reply({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });
     locked = false; // замок снят вместе с сохранением
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
@@ -607,7 +607,7 @@ Deno.serve(async req => {
     return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
   } catch (e) {
     console.error(String(e && e.stack || e));
-    return reply({ ok: false, error: 'Ошибка сервера — попробуй ещё раз' }, 500);
+    return reply({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500);
   } finally {
     await release();
   }

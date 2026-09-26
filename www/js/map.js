@@ -91,13 +91,13 @@ const MapView = {
         const url = ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES;
         const th = nav ? NavMap.theme(lk.phase, lk.season, lk.snow) : null;
         this.tiles = protomapsL.leafletLayer({
-          url, lang: 'ru', attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
+          url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
           ...(nav ? { paintRules: th.paintRules, labelRules: [], backgroundColor: th.backgroundColor } : { flavor: 'light' }),
         }).addTo(this.map);
         if (nav) {
           U.$('#map').classList.add('navmap');
           // 4.13: дома и подписи — вторым слоем над зоной Ловчего; плитки читаются один раз (общий кэш)
-          this.bldTiles = protomapsL.leafletLayer({ url, lang: 'ru', attribution: '', pane: 'bld', paintRules: th.bldRules, labelRules: th.labelRules });
+          this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: th.bldRules, labelRules: th.labelRules });
           this.bldTiles.views = this.tiles.views;
           this.bldTiles.addTo(this.map);
           // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
@@ -220,24 +220,24 @@ const MapView = {
   gpsFail(err) {
     if (this.demo) return;
     UI.setGps('off');
-    if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? 'Доступ к геолокации запрещён.' : 'Не удалось получить координаты.');
+    if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? ru`Доступ к геолокации запрещён.` : ru`Не удалось получить координаты.`);
   },
-  offerDemo(reason = 'GPS не отвечает.') {
+  offerDemo(reason = ru`GPS не отвечает.`) {
     if (this._offered) return;
     this._offered = true;
     if (DEV) {
-      UI.confirm('Нет сигнала GPS', `${reason} Включить демо-режим (джойстик)? Доступен только при разработке.`,
+      UI.confirm(ru`Нет сигнала GPS`, `${reason} Включить демо-режим (джойстик)? Доступен только при разработке.`,
         'Демо-режим', () => { Cfg.s.demo = true; Cfg.save(); this.startDemo(); }, 'Ждать GPS');
       return;
     }
     // в проде — подсказка, как включить геолокацию
     UI.modal({
-      title: 'Нет сигнала GPS',
+      title: ru`Нет сигнала GPS`,
       html: `<p>${reason}</p><ul class="gps-help">
-        <li>Включи геолокацию (местоположение) в шторке уведомлений телефона.</li>
-        <li>Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.</li>
-        <li>Выйди на открытое место: в помещении спутники ловятся хуже.</li></ul>`,
-      buttons: [{ label: 'Позже' }, { label: 'Повторить', cls: 'primary', fn: () => { this._offered = false; this.startGPS(); } }],
+        <li>${ru`Включи геолокацию (местоположение) в шторке уведомлений телефона.`}</li>
+        <li>${ru`Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.`}</li>
+        <li>${ru`Выйди на открытое место: в помещении спутники ловятся хуже.`}</li></ul>`,
+      buttons: [{ label: ru`Позже` }, { label: ru`Повторить`, cls: 'primary', fn: () => { this._offered = false; this.startGPS(); } }],
     });
   },
 
@@ -376,7 +376,7 @@ const MapView = {
       ticks += `<path d="M0 -46.5V${big ? -41 : mid ? -43 : -44.5}" transform="rotate(${a})" stroke="#f3cf6b" stroke-opacity="${big ? .95 : mid ? .6 : .35}" stroke-width="${big ? 1.4 : .8}"/>`;
     }
     const pt = (a, len, w, l, r) => `<g transform="rotate(${a})"><path d="M0 ${-len}L${-w} ${-w}L0 0Z" fill="${l}"/><path d="M0 ${-len}L${w} ${-w}L0 0Z" fill="${r}"/></g>`;
-    const lt = [['С', 0, 'n'], ['В', 90, ''], ['Ю', 180, ''], ['З', 270, '']].map(([t, a, c]) => {
+    const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {
       const x = (34 * Math.sin(a * Math.PI / 180)).toFixed(2), y = (-34 * Math.cos(a * Math.PI / 180)).toFixed(2);
       return `<text x="${x}" y="${y}" transform="rotate(${a} ${x} ${y})" class="${c}">${t}</text>`;
     }).join('');
@@ -492,17 +492,17 @@ const MapView = {
     const range = e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT;
     if (d > range && e.type === 'rift' && d <= Rules.FAR.R) { Raid.open(e); return; } // дальний бой по пропуску
     if (d > range) {
-      const what = e.type === 'spirit' ? SP[e.sid].name : e.type === 'spring' || e.type === 'shrine' ? e.name : 'Разлом';
-      UI.toast(`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);
+      const what = e.type === 'spirit' ? SP[e.sid].name : e.type === 'spring' || e.type === 'shrine' ? e.name : ru`Разлом`;
+      UI.toast(ru`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);
       return;
     }
     if (this.tracking && this.tracking.id === e.id) this.untrack();
     if (e.type === 'spirit') {
-      if (Date.now() > e.expires) { UI.toast('Дух уже растворился в воздухе…'); this.refresh(); return; }
+      if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }
       Encounter.start({ mode: 'wild', sid: e.sid, lvl: e.lvl, seed: e.id, spawnId: e.id, shiny: e.shiny, boost: e.boost, tut: e.tut });
     } else if (e.type === 'spring') e.invaded ? Duel.openInvasion(e) : UI.spring(e);
     else if (e.type === 'shrine') {
-      if (S.d.level < 3) { UI.toast('Капища открываются с 3 уровня Ловчего'); return; }
+      if (S.d.level < 3) { UI.toast(ru`Капища открываются с 3 уровня Ловчего`); return; }
       Duel.open(e);
     } else Raid.open(e);
   },
@@ -541,7 +541,7 @@ const MapView = {
   /* ---------------- СЛЕДОПЫТ ---------------- */
   // Стрелка в HUD указывает направление на цель (карта всегда ориентирована на север)
   track(e) {
-    this.tracking = { id: e.id, type: e.type, lat: e.lat, lng: e.lng, sid: e.sid, name: e.type === 'spirit' ? SP[e.sid].name : e.name || 'Цель' };
+    this.tracking = { id: e.id, type: e.type, lat: e.lat, lng: e.lng, sid: e.sid, name: e.type === 'spirit' ? SP[e.sid].name : e.name || ru`Цель` };
     this._trackedOnce = false;
     this.updateTracker();
   },
@@ -556,7 +556,7 @@ const MapView = {
     const box = U.$('#tracker'), t = this.tracking;
     if (!t) { box.classList.add('hidden'); return; }
     if (t.type === 'spirit' && !this.nearby.some(e => e.id === t.id) && this._trackedOnce) {
-      UI.toast(`${t.name} растворился — след потерян`);
+      UI.toast(ru`${t.name} растворился — след потерян`);
       this.tracking = null; box.classList.add('hidden'); return;
     }
     this._trackedOnce = true;
@@ -570,7 +570,7 @@ const MapView = {
     if (box._id !== t.id) { box._id = t.id; box.querySelector('.tr-ico').innerHTML = ico; }
     box.querySelector('.tr-arrow svg').style.transform = `rotate(${brg + this.rot}deg)`; // 4.7: вращается только стрелка; с учётом поворота карты
     box.querySelector('.tr-name').textContent = t.name;
-    box.querySelector('.tr-dist').textContent = near ? 'Ты на месте — коснись цели!' : U.fmtDist(d);
+    box.querySelector('.tr-dist').textContent = near ? ru`Ты на месте — коснись цели!` : U.fmtDist(d);
   },
 
   // Временная булавка на карте (для записей дневника)

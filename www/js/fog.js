@@ -62,7 +62,7 @@ const Fog = {
     this.save();
     this.touch(p);
     const n = this.blocks.size;
-    if (n > before && n % 25 === 0 && typeof UI !== 'undefined' && UI.toast) UI.toast(`Туман Нави отступает: разведано кварталов — ${n}`);
+    if (n > before && n % 25 === 0 && typeof UI !== 'undefined' && UI.toast) UI.toast(ru`Туман Нави отступает: разведано кварталов — ${n}`);
   },
 
   /* ---------- слой на карте ---------- */

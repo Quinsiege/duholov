@@ -14,11 +14,11 @@ const Invite = {
   ref() { try { return localStorage.getItem(this.KEY) || ''; } catch (e) { return ''; } },
   done(name) {
     try { localStorage.removeItem(this.KEY); } catch (e) {}
-    if (name) UI.toast(`Ты и ${U.esc(name)} теперь друзья! Стартовый подарок уже в сумке.`, 'good');
+    if (name) UI.toast(ru`Ты и ${U.esc(name)} теперь друзья! Стартовый подарок уже в сумке.`, 'good');
   },
   link() { return `${location.origin}${location.pathname}?ref=${S.d.pid}`; },
   share() {
-    Friends.shareText(`Лови духов вместе со мной в «Духолове»! Открой ссылку — мы сразу станем друзьями, а тебе достанется стартовый подарок:\n${this.link()}`);
+    Friends.shareText(ru`Лови духов вместе со мной в «Духолове»! Открой ссылку — мы сразу станем друзьями, а тебе достанется стартовый подарок:\n${this.link()}`);
   },
 };
 
@@ -33,11 +33,11 @@ const Friends = {
   unpack(prefix, code) {
     const m = String(code).replace(/\s+/g, '').match(new RegExp(prefix + '\\.([A-Za-z0-9_-]+)\\.([0-9a-z]{6})'));
     if (!m) return null;
-    if (Math.floor(U.h('duholov-' + prefix, m[1]) * 2176782336).toString(36).padStart(6, '0') !== m[2]) throw new Error('Код повреждён — скопируй его целиком');
+    if (Math.floor(U.h('duholov-' + prefix, m[1]) * 2176782336).toString(36).padStart(6, '0') !== m[2]) throw new Error(ru`Код повреждён — скопируй его целиком`);
     try {
       const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
       return JSON.parse(decodeURIComponent(escape(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)))));
-    } catch (e) { throw new Error('Не удалось прочитать код'); }
+    } catch (e) { throw new Error(ru`Не удалось прочитать код`); }
   },
 
   myCode() { return this.pack('DUHF1', { i: S.d.pid, n: S.d.name, l: S.d.level }); },
@@ -50,11 +50,11 @@ const Friends = {
     this.busy = true;
     try {
       const r = await Game.act('friendsSync');
-      r.added.forEach(n => UI.toast(`Новый друг: ${U.esc(n)} — вы теперь в друзьях друг у друга`, 'good'));
+      r.added.forEach(n => UI.toast(ru`Новый друг: ${U.esc(n)} — вы теперь в друзьях друг у друга`, 'good'));
       if (r.added.length) Sfx.play('catch');
       const before = this.inbox.length;
       this.inbox = r.inbox;
-      if (r.inbox.length > before) UI.toast(`Тебе пришли подарки: ${r.inbox.length}. Открой «Меню → Друзья»`, 'good');
+      if (r.inbox.length > before) UI.toast(ru`Тебе пришли подарки: ${r.inbox.length}. Открой «Меню → Друзья»`, 'good');
       Bus.emit('friends');
       UI.refreshHud();
     } catch (e) { console.warn('Друзья:', e.message); }
@@ -67,18 +67,18 @@ const Friends = {
     try {
       if (/DUHF1\./.test(txt)) {
         const p = this.unpack('DUHF1', txt);
-        if (!p || !p.i) throw new Error('В коде ошибка');
+        if (!p || !p.i) throw new Error(ru`В коде ошибка`);
         const r = await Game.act('friendAdd', { pid: p.i });
         Sfx.play('catch');
-        UI.toast(r.isNew ? `${U.esc(r.name)} теперь в друзьях!` : `Данные друга ${U.esc(r.name)} обновлены`, 'good');
+        UI.toast(r.isNew ? ru`${U.esc(r.name)} теперь в друзьях!` : ru`Данные друга ${U.esc(r.name)} обновлены`, 'good');
       } else if (/DUHG1\./.test(txt)) {
-        throw new Error('Подарки теперь приходят сами — загляни в «Друзья»');
+        throw new Error(ru`Подарки теперь приходят сами — загляни в «Друзья»`);
       } else if (/DUH[12]\./i.test(txt)) {
-        throw new Error('Передача духов по коду закрыта — продавай и покупай духов на Аукционе');
-      } else throw new Error('Не похоже на код Духолова');
+        throw new Error(ru`Передача духов по коду закрыта — продавай и покупай духов на Аукционе`);
+      } else throw new Error(ru`Не похоже на код Духолова`);
       after && after();
       UI.refreshHud();
-    } catch (e) { UI.toast(U.esc(e.message || 'Не получилось')); Sfx.play('miss'); }
+    } catch (e) { UI.toast(U.esc(e.message || ru`Не получилось`)); Sfx.play('miss'); }
   },
 
   async openGift(g, done) {
@@ -88,10 +88,10 @@ const Friends = {
     Sfx.play('hatch'); U.vibrate([30, 50, 80]);
     const f = this.find(g.from);
     UI.modal({
-      title: g.invite ? `Подарок за приглашение: ${U.esc(r.name)}` : `Подарок от ${U.esc(r.name)}`, cls: 'gift-modal',
-      html: `<div class="trade-sp">${Art.item('gift')}</div><div class="lvl-rw">${r.got.map(x => `<div>${x.k === 'xp' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : x.k === 'cocoon' ? Art.cocoon(5) : Art.item(x.k)}<span>${x.label}${x.k === 'xp' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>
-        ${f ? `<p class="small">Дружба: ${FRIEND_LEVELS[this.level(f)].name} (${f.pts} ★)</p>` : ''}`,
-      buttons: [{ label: 'Спасибо!', cls: 'primary' }],
+      title: g.invite ? ru`Подарок за приглашение: ${U.esc(r.name)}` : ru`Подарок от ${U.esc(r.name)}`, cls: 'gift-modal',
+      html: `<div class="trade-sp">${Art.item('gift')}</div><div class="lvl-rw">${r.got.map(x => `<div>${x.k === 'xp' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : x.k === 'cocoon' ? Art.cocoon(5) : Art.item(x.k)}<span>${I18N.back(x.label)}${x.k === 'xp' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>
+        ${f ? `<p class="small">${ru`Дружба: ${FRIEND_LEVELS[this.level(f)].name} (${f.pts} ★)`}</p>` : ''}`,
+      buttons: [{ label: ru`Спасибо!`, cls: 'primary' }],
     });
     done && done();
     UI.refreshHud();
@@ -102,31 +102,31 @@ const Friends = {
   // отдельным блоком, метка новых подарков; ниже вкладки «Друзья · Позвать · Вместе», содержимое листается внутри панели
   screen() {
     const pane = (k, html, on) => `<div class="dt-pane ${on ? 'on' : ''}" data-pane="${k}">${html}</div>`;
-    const scr = UI.screen('Друзья', `
+    const scr = UI.screen(ru`Друзья`, `
       <div class="det det2 fr2" style="--c:#f472b6">
         <div class="dt-hero">
           <div class="det-art fr2-art"><span class="fr2-ico">${UI.menuIcon('swap')}</span></div>
           <div class="dt-info">
-            <div class="det-hp">Дарите подарки и сражайтесь вместе</div>
-            <div class="det-power"><small>ДРУЗЕЙ</small><b class="fr-count"></b></div>
-            <div class="det-lvl"><span>Подарков в сумке: <b class="gift-n"></b></span></div>
+            <div class="det-hp">${ru`Дарите подарки и сражайтесь вместе`}</div>
+            <div class="det-power"><small>${ru`ДРУЗЕЙ`}</small><b class="fr-count"></b></div>
+            <div class="det-lvl"><span>${ru`Подарков в сумке: ${'<b class="gift-n"></b>'}`}</span></div>
             <div class="det-tags fr2-tags"></div>
           </div>
         </div>
-        <div class="seg dt-tabs">${[['list', 'Друзья'], ['add', 'Позвать'], ['coop', 'Вместе']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}${k === 'list' ? '<i class="dt-dot fr2-dot hidden"></i>' : ''}</button>`).join('')}</div>
+        <div class="seg dt-tabs">${[['list', ru`Друзья`], ['add', ru`Позвать`], ['coop', ru`Вместе`]].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}${k === 'list' ? '<i class="dt-dot fr2-dot hidden"></i>' : ''}</button>`).join('')}</div>
         <div class="dt-panel">
           ${pane('list', '<div class="fr-inbox"></div><div class="list fr-list"></div>', true)}
           ${pane('add', `
-            <button class="btn primary wide my-invite">Позвать друга по ссылке<small>откроет ссылку — и вы сразу друзья, обоим подарки</small></button>
-            <div class="fr-btns"><button class="btn ghost small my-qr">Мой QR-код</button><button class="btn ghost small my-share">Мой код дружбы</button></div>
-            <div class="fr-or"><span>или код друга</span></div>
-            ${Trade.canScan() ? '<button class="btn ghost wide scan-btn">Сканировать QR-код</button>' : ''}
-            <textarea class="input code-in" rows="2" placeholder="Вставь код: DUHF1…"></textarea>
-            <button class="btn ghost wide accept-btn">Добавить по коду</button>
-            <div class="lg2-rule">Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной.</div>`)}
+            <button class="btn primary wide my-invite">${ru`Позвать друга по ссылке`}<small>${ru`откроет ссылку — и вы сразу друзья, обоим подарки`}</small></button>
+            <div class="fr-btns"><button class="btn ghost small my-qr">${ru`Мой QR-код`}</button><button class="btn ghost small my-share">${ru`Мой код дружбы`}</button></div>
+            <div class="fr-or"><span>${ru`или код друга`}</span></div>
+            ${Trade.canScan() ? `<button class="btn ghost wide scan-btn">${ru`Сканировать QR-код`}</button>` : ''}
+            <textarea class="input code-in" rows="2" placeholder="${ru`Вставь код: DUHF1…`}"></textarea>
+            <button class="btn ghost wide accept-btn">${ru`Добавить по коду`}</button>
+            <div class="lg2-rule">${ru`Достаточно, чтобы один из вас добавил код другого, — дружба станет взаимной.`}</div>`)}
           ${pane('coop', `
-            <div class="dx-none fr2-coop"><b>Совместный разлом</b><small>Друг у разлома нажал «Позвать друзей» и прислал код из 5 символов? Введи его — и в бой вместе, где бы ты ни был.</small></div>
-            <div class="fr-btns fr2-coop-in"><input class="input coop-code-in" maxlength="5" placeholder="КОД" autocapitalize="characters"><button class="btn primary coop-join-btn">Войти</button></div>`)}
+            <div class="dx-none fr2-coop"><b>${ru`Совместный разлом`}</b><small>${ru`Друг у разлома нажал «Позвать друзей» и прислал код из 5 символов? Введи его — и в бой вместе, где бы ты ни был.`}</small></div>
+            <div class="fr-btns fr2-coop-in"><input class="input coop-code-in" maxlength="5" placeholder="${ru`КОД`}" autocapitalize="characters"><button class="btn primary coop-join-btn">${ru`Войти`}</button></div>`)}
         </div>
       </div>`, 'friends-screen det-screen');
     scr.addEventListener('click', e => {
@@ -137,21 +137,21 @@ const Friends = {
       if (!scr.isConnected) return;
       scr.querySelector('.fr-count').textContent = S.d.friends.length;
       scr.querySelector('.gift-n').textContent = S.d.items.gift || 0;
-      scr.querySelector('.fr2-tags').innerHTML = this.inbox.length ? `<span class="fr2-new">🎁 пришло подарков: ${this.inbox.length}</span>` : `<span>подарок каждому другу — раз в день</span>`;
+      scr.querySelector('.fr2-tags').innerHTML = this.inbox.length ? `<span class="fr2-new">🎁 ${ru`пришло подарков: ${this.inbox.length}`}</span>` : `<span>${ru`подарок каждому другу — раз в день`}</span>`;
       scr.querySelector('.fr2-dot').classList.toggle('hidden', !this.inbox.length);
-      scr.querySelector('.fr-inbox').innerHTML = this.inbox.length ? `<div class="panel gift-inbox"><b>Подарки от друзей</b>${this.inbox.map(g => `
-        <div class="row gift-row" data-id="${g.id}"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${U.esc(g.name)}</b><small>${g.invite ? 'за приглашение · ' : ''}${new Date(g.t).toLocaleString('ru-RU')}</small></div>
-        <button class="btn small primary open-gift">Открыть</button></div>`).join('')}</div>` : '';
+      scr.querySelector('.fr-inbox').innerHTML = this.inbox.length ? `<div class="panel gift-inbox"><b>${ru`Подарки от друзей`}</b>${this.inbox.map(g => `
+        <div class="row gift-row" data-id="${g.id}"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${U.esc(g.name)}</b><small>${g.invite ? ru`за приглашение` + ' · ' : ''}${new Date(g.t).toLocaleString(I18N.locale)}</small></div>
+        <button class="btn small primary open-gift">${ru`Открыть`}</button></div>`).join('')}</div>` : '';
       const today = U.today();
       scr.querySelector('.fr-list').innerHTML = S.d.friends.length ? [...S.d.friends].sort((a, b) => b.pts - a.pts).map(f => {
         const lv = this.level(f), next = FRIEND_LEVELS[lv + 1];
         return `<div class="row fr-row" data-id="${f.id}">
           <div class="fr-ava">${Art.avatar(f.look || { cloak: GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)], eyes: '#5eead4', emblem: 'charm' })}</div>
-          <div class="row-main"><b>${U.esc(f.name)}${f.lvl ? ` <span class="fr-lvl">ур. ${f.lvl}</span>` : ''}${f.recv === today ? ' <span class="fr-got" title="Подарок от друга сегодня получен">🎁</span>' : ''}</b><small>${FRIEND_LEVELS[lv].name}${next ? ` · ★ ${f.pts}/${next.pts}` : ' · высший уровень'}</small>
+          <div class="row-main"><b>${U.esc(f.name)}${f.lvl ? ` <span class="fr-lvl">${ru`ур. ${f.lvl}`}</span>` : ''}${f.recv === today ? ` <span class="fr-got" title="${ru`Подарок от друга сегодня получен`}">🎁</span>` : ''}</b><small>${FRIEND_LEVELS[lv].name}${next ? ` · ★ ${f.pts}/${next.pts}` : ' · ' + ru`высший уровень`}</small>
             <div class="pbar"><i style="width:${next ? Math.min(100, (f.pts - FRIEND_LEVELS[lv].pts) / (next.pts - FRIEND_LEVELS[lv].pts) * 100) : 100}%"></i></div></div>
-          <button class="btn small ${f.sent === today ? 'ghost' : 'primary'} send-gift" ${f.sent === today ? 'disabled' : ''}>${f.sent === today ? 'Отправлен' : 'Подарок'}</button>
+          <button class="btn small ${f.sent === today ? 'ghost' : 'primary'} send-gift" ${f.sent === today ? 'disabled' : ''}>${f.sent === today ? ru`Отправлен` : ru`Подарок`}</button>
         </div>`;
-      }).join('') : '<div class="row"><div class="row-main"><small>Пока никого — позови друга по ссылке или добавь его код ниже.</small></div></div>';
+      }).join('') : `<div class="row"><div class="row-main"><small>${ru`Пока никого — позови друга по ссылке или добавь его код ниже.`}</small></div></div>`;
     };
     render();
     // проверить, не добавил ли кто-нибудь меня и не пришли ли подарки, пока экран открыт
@@ -161,8 +161,8 @@ const Friends = {
     scr.querySelector('.accept-btn').onclick = () => this.accept(input.value, () => { input.value = ''; render(); });
     const sb = scr.querySelector('.scan-btn');
     if (sb) sb.onclick = () => Trade.scan(code => this.accept(code, render));
-    scr.querySelector('.my-share').onclick = () => this.shareText(`Добавь меня в друзья в Духолове! «Меню → Друзья» → вставь код:\n${this.myCode()}`);
-    scr.querySelector('.my-qr').onclick = () => this.showQR('Мой код дружбы', this.myCode());
+    scr.querySelector('.my-share').onclick = () => this.shareText(ru`Добавь меня в друзья в Духолове! «Меню → Друзья» → вставь код:\n${this.myCode()}`);
+    scr.querySelector('.my-qr').onclick = () => this.showQR(ru`Мой код дружбы`, this.myCode());
     scr.querySelector('.my-invite').onclick = () => Invite.share();
     scr.querySelector('.coop-join-btn').onclick = () => {
       const code = scr.querySelector('.coop-code-in').value;
@@ -180,7 +180,7 @@ const Friends = {
       if (e.target.closest('.send-gift')) {
         if (await Game.try('giftSend', { pid: f.id })) {
           Sfx.play('spin');
-          UI.toast(`Подарок отправлен: ${U.esc(f.name)} получит его в «Друзьях»`, 'good');
+          UI.toast(ru`Подарок отправлен: ${U.esc(f.name)} получит его в «Друзьях»`, 'good');
           render();
         }
         return;
@@ -198,72 +198,72 @@ const Friends = {
   async card(pid, o = {}) {
     Sfx.init(); Sfx.play('tap');
     const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava"><div class="prof-ava">${Art.avatar(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
-    const scr = UI.screen(U.esc(o.name || 'Ловчий'), `<div class="det det2 prof2 pcard" style="--c:#a78bfa">
-      ${hero(o.look, '<div class="det-hp">Загружаю карточку…</div>')}<div class="pcard-load"><div class="pc-skel"></div><div class="pc-skel"></div></div></div>`, 'det-screen pcard-screen');
+    const scr = UI.screen(U.esc(o.name || ru`Ловчий`), `<div class="det det2 prof2 pcard" style="--c:#a78bfa">
+      ${hero(o.look, `<div class="det-hp">${ru`Загружаю карточку…`}</div>`)}<div class="pcard-load"><div class="pc-skel"></div><div class="pc-skel"></div></div></div>`, 'det-screen pcard-screen');
     const close = () => UI.closeScreen(scr), changed = () => { if (o.render) o.render(); };
-    const chatBtns = () => o.chat ? `<div class="dt-about-acts"><button class="btn ghost small pc-report">Пожаловаться</button><button class="btn ghost danger small pc-hide">Скрыть сообщения</button></div>` : '';
+    const chatBtns = () => o.chat ? `<div class="dt-about-acts"><button class="btn ghost small pc-report">${ru`Пожаловаться`}</button><button class="btn ghost danger small pc-hide">${ru`Скрыть сообщения`}</button></div>` : '';
     let p;
     try { p = await Game.act('playerCard', { pid }); } catch (e) { p = { error: e.message }; }
     if (!scr.isConnected) return;
     const root = scr.querySelector('.pcard');
     if (p.error) { root.innerHTML = hero(o.look, `<div class="det-hp">${U.esc(p.error)}</div>`) + `<div class="dt-panel"><div class="dt-pane on">${chatBtns()}</div></div>`; return; }
     const cl = CLANS[p.clan], lg = p.league, rk = LEAGUE_RANKS[lg.rank], f = this.find(pid), today = U.today();
-    const seen = { now: 'в игре сейчас', today: 'заходил сегодня', week: 'заходил на неделе', long: 'давно не заходил' }[p.seen];
+    const seen = { now: ru`в игре сейчас`, today: ru`заходил сегодня`, week: ru`заходил на неделе`, long: ru`давно не заходил` }[p.seen];
     if (f) { f.name = p.name; f.lvl = p.lvl; if (p.look) f.look = p.look; }
     scr.querySelector('.screen-head h2').textContent = p.name;
     const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
-    const spc = (x, label) => x ? `<div class="pcs-sp el-${SP[x.sid].el}">${label ? `<small>${label}</small>` : ''}<div class="pcs-a">${Art.img(x.sid, x.shiny, x.dark)}</div><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>ур. ${x.lvl} · сила ${U.fmtNum(x.power)}</em></div>` : '';
+    const spc = (x, label) => x ? `<div class="pcs-sp el-${SP[x.sid].el}">${label ? `<small>${label}</small>` : ''}<div class="pcs-a">${Art.img(x.sid, x.shiny, x.dark)}</div><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`ур. ${x.lvl} · сила ${U.fmtNum(x.power)}`}</em></div>` : '';
     const pane = (k, html, on) => `<div class="dt-pane ${on ? 'on' : ''}" data-pane="${k}">${html}</div>`;
     const friendPane = () => {
       const fr = this.find(pid);
-      if (p.me) return `<div class="dx-none"><b>Это ты</b><small>Так твою карточку видят другие Ловчие.</small></div>`;
-      if (!fr) return `<div class="dx-none"><b>${p.friend === 'wants' ? 'Хочет с тобой дружить' : 'Не в друзьях'}</b><small>Друзья обмениваются подарками и сражаются в поединках. Дружба растёт от подарков, поединков и совместных разломов.</small></div>${chatBtns()}`;
+      if (p.me) return `<div class="dx-none"><b>${ru`Это ты`}</b><small>${ru`Так твою карточку видят другие Ловчие.`}</small></div>`;
+      if (!fr) return `<div class="dx-none"><b>${p.friend === 'wants' ? ru`Хочет с тобой дружить` : ru`Не в друзьях`}</b><small>${ru`Друзья обмениваются подарками и сражаются в поединках. Дружба растёт от подарков, поединков и совместных разломов.`}</small></div>${chatBtns()}`;
       const lv = this.level(fr), cur = FRIEND_LEVELS[lv], nx = FRIEND_LEVELS[lv + 1], mutual = p.friend === 'mutual';
       return `<div class="dt-rows">
-          ${row('Дружба', mutual ? cur.name : 'заявка отправлена', 'gold')}
-          ${mutual ? `<div class="dt-row dt-evo-row"><span>Очки дружбы</span><b>★ ${fr.pts}${nx ? ` / ${nx.pts}` : ''}</b>
-            <div class="dt-evo-bar"><div class="pbar"><i style="width:${nx ? Math.min(100, (fr.pts - cur.pts) / (nx.pts - cur.pts) * 100) : 100}%"></i></div><small>${nx ? `до «${nx.name}»` : 'высший уровень'}</small></div></div>` : ''}
-          ${fr.added ? row('В друзьях с', new Date(fr.added).toLocaleDateString('ru-RU')) : ''}
-          ${mutual ? row('Подарок от него', fr.recv === today ? 'сегодня получен' : 'сегодня не было') : ''}
-          ${mutual ? row('Поединок сегодня', fr.spar === today ? 'был — дальше тренировки' : 'награда дня ждёт') : ''}
+          ${row(ru`Дружба`, mutual ? cur.name : ru`заявка отправлена`, 'gold')}
+          ${mutual ? `<div class="dt-row dt-evo-row"><span>${ru`Очки дружбы`}</span><b>★ ${fr.pts}${nx ? ` / ${nx.pts}` : ''}</b>
+            <div class="dt-evo-bar"><div class="pbar"><i style="width:${nx ? Math.min(100, (fr.pts - cur.pts) / (nx.pts - cur.pts) * 100) : 100}%"></i></div><small>${nx ? ru`до «${nx.name}»` : ru`высший уровень`}</small></div></div>` : ''}
+          ${fr.added ? row(ru`В друзьях с`, new Date(fr.added).toLocaleDateString(I18N.locale)) : ''}
+          ${mutual ? row(ru`Подарок от него`, fr.recv === today ? ru`сегодня получен` : ru`сегодня не было`) : ''}
+          ${mutual ? row(ru`Поединок сегодня`, fr.spar === today ? ru`был — дальше тренировки` : ru`награда дня ждёт`) : ''}
         </div>
-        <div class="dt-about-acts"><button class="btn ghost danger small pc-del">${mutual ? 'Удалить из друзей' : 'Отменить заявку'}</button></div>
+        <div class="dt-about-acts"><button class="btn ghost danger small pc-del">${mutual ? ru`Удалить из друзей` : ru`Отменить заявку`}</button></div>
         ${chatBtns()}`;
     };
     const actsHtml = () => {
       const fr = this.find(pid), st = p.friend;
       if (p.me) return '';
-      if (st === 'mutual' && fr) return `<button class="btn small primary pc-spar ${p.top ? '' : 'disabled'}" ${p.top ? '' : 'data-err="Загружаю духов друга…"'}>⚔ ${fr.spar === today ? 'Тренировка' : 'Поединок'}</button>
-        <button class="btn ghost small pc-gift ${fr.sent === today ? 'disabled' : ''}" ${fr.sent === today ? 'data-err="Подарок сегодня уже отправлен"' : ''}>🎁 ${fr.sent === today ? 'Отправлен' : `Подарок · ${S.d.items.gift || 0}`}</button>`;
-      if (st === 'sent') return '<button class="btn ghost small disabled" data-err="Ждём, когда добавит в ответ">Заявка отправлена</button>';
-      return `<button class="btn small primary pc-add">${st === 'wants' ? 'Принять дружбу' : 'Добавить в друзья'}</button>`;
+      if (st === 'mutual' && fr) return `<button class="btn small primary pc-spar ${p.top ? '' : 'disabled'}" ${p.top ? '' : `data-err="${ru`Загружаю духов друга…`}"`}>⚔ ${fr.spar === today ? ru`Тренировка` : ru`Поединок`}</button>
+        <button class="btn ghost small pc-gift ${fr.sent === today ? 'disabled' : ''}" ${fr.sent === today ? `data-err="${ru`Подарок сегодня уже отправлен`}"` : ''}>🎁 ${fr.sent === today ? ru`Отправлен` : ru`Подарок · ${S.d.items.gift || 0}`}</button>`;
+      if (st === 'sent') return `<button class="btn ghost small disabled" data-err="${ru`Ждём, когда добавит в ответ`}">${ru`Заявка отправлена`}</button>`;
+      return `<button class="btn small primary pc-add">${st === 'wants' ? ru`Принять дружбу` : ru`Добавить в друзья`}</button>`;
     };
     root.style.setProperty('--c', cl ? cl.color : '#a78bfa');
     root.innerHTML = `
       ${hero(p.look, `
-        <div class="det-hp">${UI.rank(p.lvl)} Ордена Оберега</div>
-        <div class="det-power"><small>УРОВЕНЬ</small><b>${p.lvl}</b></div>
-        <div class="det-lvl pcard-lg"><span><span class="lg-badge xs">${League.badge(lg.rank)}</span> Лига: <b>${rk.name}</b> · ${League.cup()}${U.fmtNum(lg.pts != null ? lg.pts : (lg.stars | 0) * 100)}</span></div>
-        <div class="det-tags">${cl ? `<span class="tag-crest" style="color:${cl.color}"><i>${Art.clanCrest(p.clan)}</i>${cl.short}</span>` : ''}<span class="pcard-seen s-${p.seen}">${p.me ? 'это ты' : seen}</span></div>`)}
+        <div class="det-hp">${ru`${UI.rank(p.lvl)} Ордена Оберега`}</div>
+        <div class="det-power"><small>${ru`УРОВЕНЬ`}</small><b>${p.lvl}</b></div>
+        <div class="det-lvl pcard-lg"><span><span class="lg-badge xs">${League.badge(lg.rank)}</span> ${ru`Лига: <b>${rk.name}</b>`} · ${League.cup()}${U.fmtNum(lg.pts != null ? lg.pts : (lg.stars | 0) * 100)}</span></div>
+        <div class="det-tags">${cl ? `<span class="tag-crest" style="color:${cl.color}"><i>${Art.clanCrest(p.clan)}</i>${cl.short}</span>` : ''}<span class="pcard-seen s-${p.seen}">${p.me ? ru`это ты` : seen}</span></div>`)}
       <div class="pf-acts pcard-acts">${actsHtml()}</div>
-      <div class="seg dt-tabs">${[['ach', 'Достижения'], ['spirits', 'Духи'], ['friend', p.me ? 'Это ты' : 'Дружба']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
+      <div class="seg dt-tabs">${[['ach', ru`Достижения`], ['spirits', ru`Духи`], ['friend', p.me ? ru`Это ты` : ru`Дружба`]].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
       <div class="dt-panel">
         ${pane('ach', `
           <div class="pf-key">
-            <div><b>${U.fmtNum(p.caught)}</b><small>поймано духов</small></div>
-            <div><b>${p.dex}<em>/${SPECIES.length}</em></b><small>бестиарий</small></div>
-            <div><b>${U.fmtDist(p.km * 1000)}</b><small>пройдено</small></div>
+            <div><b>${U.fmtNum(p.caught)}</b><small>${ru`поймано духов`}</small></div>
+            <div><b>${p.dex}<em>/${SPECIES.length}</em></b><small>${ru`бестиарий`}</small></div>
+            <div><b>${U.fmtDist(p.km * 1000)}</b><small>${ru`пройдено`}</small></div>
           </div>
           <div class="dt-rows">
-            ${row('Закрыто разломов', U.fmtNum(p.raids))}
-            ${row('Поединков', U.fmtNum(p.duels))}
-            ${row('Золотых знаков', p.medals)}
-            ${row('Лучшая лига', LEAGUE_RANKS[Math.max(lg.best, lg.rank)].name)}
-            ${p.days ? row('В Ордене', `${p.days} ${U.plural(p.days, 'день', 'дня', 'дней')}`) : ''}
+            ${row(ru`Закрыто разломов`, U.fmtNum(p.raids))}
+            ${row(ru`Поединков`, U.fmtNum(p.duels))}
+            ${row(ru`Золотых знаков`, p.medals)}
+            ${row(ru`Лучшая лига`, LEAGUE_RANKS[Math.max(lg.best, lg.rank)].name)}
+            ${p.days ? row(ru`В Ордене`, ru`${p.days} ${U.plural(p.days, ru`день`, ru`дня`, ru`дней`)}`) : ''}
           </div>`, true)}
         ${pane('spirits', p.buddy || p.best ? `
-          <div class="pcs-two">${spc(p.buddy, 'Спутник')}${spc(p.best, 'Сильнейший дух')}</div>
-          <div class="pcs-top"></div>` : '<div class="dx-none"><b>Духи скрыты</b><small>Ловчий ещё не выбрал спутника.</small></div>')}
+          <div class="pcs-two">${spc(p.buddy, ru`Спутник`)}${spc(p.best, ru`Сильнейший дух`)}</div>
+          <div class="pcs-top"></div>` : `<div class="dx-none"><b>${ru`Духи скрыты`}</b><small>${ru`Ловчий ещё не выбрал спутника.`}</small></div>`)}
         ${pane('friend', friendPane())}
       </div>`;
     const redrawActs = () => { const a = root.querySelector('.pcard-acts'); if (a) a.innerHTML = actsHtml(); };
@@ -273,7 +273,7 @@ const Friends = {
         if (!scr.isConnected || !fp || !fp.top) return;
         p.top = fp.top;
         const t = root.querySelector('.pcs-top');
-        if (t && fp.top.length) t.innerHTML = `<div class="pf-mh"><span>Сильнейшие духи — для поединка</span></div><div class="pcs-three">${fp.top.map(x => spc(x)).join('')}</div>`;
+        if (t && fp.top.length) t.innerHTML = `<div class="pf-mh"><span>${ru`Сильнейшие духи — для поединка`}</span></div><div class="pcs-three">${fp.top.map(x => spc(x)).join('')}</div>`;
         redrawActs();
       }).catch(e => { const t = root.querySelector('.pcs-top'); if (scr.isConnected && t) t.innerHTML = `<div class="det-why">${U.esc(e.message)}</div>`; });
     }
@@ -288,36 +288,36 @@ const Friends = {
         const r = await Game.try('friendAdd', { pid });
         if (!r) { b.disabled = false; return; }
         Sfx.play('spin');
-        UI.toast(p.friend === 'wants' ? `${U.esc(r.name)} теперь твой друг!` : `Заявка отправлена: когда ${U.esc(r.name)} добавит тебя в ответ, вы станете друзьями`, 'good');
+        UI.toast(p.friend === 'wants' ? ru`${U.esc(r.name)} теперь твой друг!` : ru`Заявка отправлена: когда ${U.esc(r.name)} добавит тебя в ответ, вы станете друзьями`, 'good');
         close(); changed();
         setTimeout(() => this.card(pid, o), 230); // открыть заново — уже как друга
       } else if (b.classList.contains('pc-spar')) {
         close(); Duel.openSpar(this.find(pid), p.top);
       } else if (b.classList.contains('pc-gift')) {
         b.disabled = true;
-        if (await Game.try('giftSend', { pid })) { Sfx.play('spin'); UI.toast(`Подарок отправлен: ${U.esc(p.name)} получит его в «Друзьях»`, 'good'); changed(); }
+        if (await Game.try('giftSend', { pid })) { Sfx.play('spin'); UI.toast(ru`Подарок отправлен: ${U.esc(p.name)} получит его в «Друзьях»`, 'good'); changed(); }
         redrawActs();
       } else if (b.classList.contains('pc-del')) {
-        UI.confirm(U.esc(p.name), p.friend === 'mutual' ? 'Удалить из друзей? Уровень дружбы пропадёт.' : 'Отменить заявку в друзья?', p.friend === 'mutual' ? 'Удалить' : 'Отменить', async () => {
+        UI.confirm(U.esc(p.name), p.friend === 'mutual' ? ru`Удалить из друзей? Уровень дружбы пропадёт.` : ru`Отменить заявку в друзья?`, p.friend === 'mutual' ? ru`Удалить` : ru`Отменить`, async () => {
           if (await Game.try('friendRemove', { pid })) { close(); changed(); }
-        }, 'Оставить', true);
+        }, ru`Оставить`, true);
       }
     });
   },
   async shareText(text) {
-    if (navigator.share) { try { await navigator.share({ title: 'Духолов', text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-    try { await navigator.clipboard.writeText(text); UI.toast('Скопировано — вставь в мессенджер', 'good'); } catch (e) { UI.toast('Скопируй код вручную'); }
+    if (navigator.share) { try { await navigator.share({ title: ru`Духолов`, text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); UI.toast(ru`Скопировано — вставь в мессенджер`, 'good'); } catch (e) { UI.toast(ru`Скопируй код вручную`); }
   },
   showQR(title, code, shareText) {
     const m = UI.modal({
       title, cls: 'trade-modal',
-      html: `<div class="qr-box"><span class="small">Рисую QR-код…</span></div><textarea class="input code-text" readonly rows="3">${U.esc(code)}</textarea>`,
+      html: `<div class="qr-box"><span class="small">${ru`Рисую QR-код…`}</span></div><textarea class="input code-text" readonly rows="3">${U.esc(code)}</textarea>`,
       buttons: [
-        { label: 'Копировать', keep: true, fn: w => Trade.copy(w.querySelector('.code-text')) },
-        { label: 'Поделиться', cls: 'primary', keep: true, fn: () => this.shareText(shareText || code) },
+        { label: ru`Копировать`, keep: true, fn: w => Trade.copy(w.querySelector('.code-text')) },
+        { label: ru`Поделиться`, cls: 'primary', keep: true, fn: () => this.shareText(shareText || code) },
       ],
     });
     Trade.qrSvg(code).then(svg => { m.querySelector('.qr-box').innerHTML = svg; })
-      .catch(() => { m.querySelector('.qr-box').innerHTML = '<span class="small">QR-код недоступен без интернета — отправь текстовый код.</span>'; });
+      .catch(() => { m.querySelector('.qr-box').innerHTML = `<span class="small">${ru`QR-код недоступен без интернета — отправь текстовый код.`}</span>`; });
   },
 };

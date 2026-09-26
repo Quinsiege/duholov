@@ -7,33 +7,33 @@ Object.assign(UI, {
   quests(tab) {
     Tut.ui('quests'); // 4.0: шаг обучения
     this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
-    const scr = this.screen('Задания', `<div class="seg q-tabs"><button data-tab="day">Задания дня${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? ' •' : ''}</button><button data-tab="story">Летопись${S.storyReady() ? ' •' : ''}</button><button data-tab="order">Орден${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
+    const scr = this.screen(ru`Задания`, `<div class="seg q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? ' •' : ''}</button><button data-tab="story">${ru`Летопись`}${S.storyReady() ? ' •' : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const BONUS = Rules.QUEST_BONUS;
     const renderStory = () => {
       const st = S.d.story, ch = STORY[st.ch];
       const gift = S.d.storyGift;
       if (!ch) {
-        scr.querySelector('.quests').innerHTML = `<div class="story-card"><div class="story-num">Летопись дочитана</div><p>Ты прошёл все ${STORY.length} глав. Новые главы появятся в следующих обновлениях Ордена.</p>
-          ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} Встретить: ${SP[gift].name}</button>` : ''}</div>`;
+        scr.querySelector('.quests').innerHTML = `<div class="story-card"><div class="story-num">${ru`Летопись дочитана`}</div><p>${ru`Ты прошёл все ${STORY.length} глав. Новые главы появятся в следующих обновлениях Ордена.`}</p>
+          ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} ${ru`Встретить: ${SP[gift].name}`}</button>` : ''}</div>`;
         return;
       }
       const ready = S.storyReady();
       scr.querySelector('.quests').innerHTML = `
         <div class="story-card">
-          <div class="story-num">Глава ${st.ch + 1} из ${STORY.length}</div>
+          <div class="story-num">${ru`Глава ${st.ch + 1} из ${STORY.length}`}</div>
           <h3>${ch.title}</h3>
           <p class="story-text">${ch.intro}</p>
         </div>
         ${ch.steps.map((s, i) => {
-          const p = st.p[i], done = p >= s.n, pv = s.t === 'walk' ? `${Math.min(p, s.n).toFixed(2)} / ${s.n} км` : `${Math.min(Math.floor(p), s.n)} / ${s.n}`;
+          const p = st.p[i], done = p >= s.n, pv = s.t === 'walk' ? ru`${Math.min(p, s.n).toFixed(2)} / ${s.n} км` : `${Math.min(Math.floor(p), s.n)} / ${s.n}`;
           return `<div class="quest qd ${done ? 'done' : ''}"><div class="qd-ico">${this.qIcon(s.t, s.el)}</div>
-            <div class="q-main"><b>${stepText(s)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, p / s.n * 100)}%"></i></div><span>${pv}</span></div></div>${done ? '<span class="q-ok" aria-label="Готово">✓</span>' : ''}</div>`;
+            <div class="q-main"><b>${stepText(s)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, p / s.n * 100)}%"></i></div><span>${pv}</span></div></div>${done ? `<span class="q-ok" aria-label="${ru`Готово`}">✓</span>` : ''}</div>`;
         }).join('')}
         <div class="quest bonus qd-chest ${ready ? 'done' : ''}"><div class="qd-ico chest">${ch.gift ? Art.spirit(ch.gift) : Art.item('gift')}</div>
-          <div class="q-main"><b>Награда главы</b><div class="qd-pips">${ch.steps.map((s, i) => `<i class="${st.p[i] >= s.n ? 'on' : ''}"></i>`).join('')}<small>${ready ? 'можно завершить' : 'выполни все шаги главы'}</small></div>
-          ${this.rwChips(ch.reward, true, ch.gift ? `<span class="qd-rw legend">${Art.spirit(ch.gift)}встреча: ${SP[ch.gift].name}</span>` : '')}</div>
-          ${ready ? '<button class="btn small primary claim-story">Завершить</button>' : ''}</div>
-        ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} Встретить: ${SP[gift].name}</button>` : ''}`;
+          <div class="q-main"><b>${ru`Награда главы`}</b><div class="qd-pips">${ch.steps.map((s, i) => `<i class="${st.p[i] >= s.n ? 'on' : ''}"></i>`).join('')}<small>${ready ? ru`можно завершить` : ru`выполни все шаги главы`}</small></div>
+          ${this.rwChips(ch.reward, true, ch.gift ? `<span class="qd-rw legend">${Art.spirit(ch.gift)}${ru`встреча: ${SP[ch.gift].name}`}</span>` : '')}</div>
+          ${ready ? `<button class="btn small primary claim-story">${ru`Завершить`}</button>` : ''}</div>
+        ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} ${ru`Встретить: ${SP[gift].name}`}</button>` : ''}`;
     };
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.qTab));
@@ -49,17 +49,17 @@ Object.assign(UI, {
       const ring = (n, of) => { const L = 2 * Math.PI * 22; return `<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" class="qd-bg"/><circle cx="26" cy="26" r="22" class="qd-fg" style="stroke-dasharray:${L};stroke-dashoffset:${L * (1 - n / of)}"/></svg><b>${n}<small>/${of}</small></b>`; };
       scr.querySelector('.quests').innerHTML = `
         <div class="qd-head ${doneN >= Q.list.length ? 'full' : ''}"><div class="qd-ring">${ring(doneN, Q.list.length)}</div>
-          <div class="row-main"><b>${doneN >= Q.list.length ? (Q.bonus ? 'Все задания дня выполнены' : 'Все задания выполнены — забери награды') : `Выполнено ${doneN} из ${Q.list.length}`}</b>
-          <small>Новые задания через <span class="qd-left">${U.fmtTime(this.toMidnight())}</span></small></div></div>`
+          <div class="row-main"><b>${doneN >= Q.list.length ? (Q.bonus ? ru`Все задания дня выполнены` : ru`Все задания выполнены — забери награды`) : ru`Выполнено ${doneN} из ${Q.list.length}`}</b>
+          <small>${ru`Новые задания через ${`<span class="qd-left">${U.fmtTime(this.toMidnight())}</span>`}`}</small></div></div>`
         + Q.list.map((q, i) => {
-          const done = q.p >= q.n, pv = q.t === 'walk' ? `${Math.min(q.p, q.n).toFixed(2)} / ${q.n} км` : `${Math.min(Math.floor(q.p), q.n)} / ${q.n}`;
+          const done = q.p >= q.n, pv = q.t === 'walk' ? ru`${Math.min(q.p, q.n).toFixed(2)} / ${q.n} км` : `${Math.min(Math.floor(q.p), q.n)} / ${q.n}`;
           return `<div class="quest qd ${q.claimed ? 'claimed' : done ? 'done' : ''}"><div class="qd-ico">${ico(q)}</div>
-            <div class="q-main"><b>${q.text}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><span>${pv}</span></div><div class="qd-rws">${rwChips(q.reward)}</div></div>
-            ${q.claimed ? '<span class="q-ok" aria-label="Получено">✓</span>' : done ? `<button class="btn small primary claim" data-i="${i}">Забрать</button>` : ''}</div>`;
+            <div class="q-main"><b>${I18N.back(q.text)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><span>${pv}</span></div><div class="qd-rws">${rwChips(q.reward)}</div></div>
+            ${q.claimed ? `<span class="q-ok" aria-label="${ru`Получено`}">✓</span>` : done ? `<button class="btn small primary claim" data-i="${i}">${ru`Забрать`}</button>` : ''}</div>`;
         }).join('')
         + `<div class="quest bonus qd-chest ${Q.bonus ? 'claimed' : all ? 'done' : ''}"><div class="qd-ico chest">${Art.item('gift')}</div>
-          <div class="q-main"><b>Сундук дня</b><div class="qd-pips">${Q.list.map(q => `<i class="${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}"></i>`).join('')}<small>${Q.bonus ? 'открыт' : all ? 'можно открыть' : 'забери награды всех трёх заданий'}</small></div><div class="qd-rws">${rwChips(BONUS)}</div></div>
-          ${Q.bonus ? '<span class="q-ok" aria-label="Открыт">✓</span>' : all ? '<button class="btn small primary claim-bonus">Открыть</button>' : ''}</div>`
+          <div class="q-main"><b>${ru`Сундук дня`}</b><div class="qd-pips">${Q.list.map(q => `<i class="${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}"></i>`).join('')}<small>${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small></div><div class="qd-rws">${rwChips(BONUS)}</div></div>
+          ${Q.bonus ? `<span class="q-ok" aria-label="${ru`Открыт`}">✓</span>` : all ? `<button class="btn small primary claim-bonus">${ru`Открыть`}</button>` : ''}</div>`
         + this.dayLimitsHtml() + this.tasksHtml();
     };
     scr.addEventListener('click', e => {
@@ -77,9 +77,9 @@ Object.assign(UI, {
           const ch = STORY[res.ch];
           Sfx.play('levelup'); U.vibrate([40, 60, 120]);
           this.modal({
-            cls: 'story-modal', title: `«${ch.title}» — глава завершена`,
-            html: `<p class="story-text">${ch.outro}</p><div class="lvl-rw">${res.got.map(x => `<div>${x.k === 'xp' || x.k === 'sparks' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : Art.item(x.k)}<span>${x.label}${x.k === 'xp' || x.k === 'sparks' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>`,
-            buttons: [{ label: 'Дальше', cls: 'primary', fn: () => render() }],
+            cls: 'story-modal', title: ru`«${ch.title}» — глава завершена`,
+            html: `<p class="story-text">${ch.outro}</p><div class="lvl-rw">${res.got.map(x => `<div>${x.k === 'xp' || x.k === 'sparks' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : Art.item(x.k)}<span>${I18N.back(x.label)}${x.k === 'xp' || x.k === 'sparks' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>`,
+            buttons: [{ label: ru`Дальше`, cls: 'primary', fn: () => render() }],
           });
           render(); this.refreshHud();
         });
@@ -94,13 +94,13 @@ Object.assign(UI, {
       if (tc) {
         tc.disabled = true;
         Game.try('taskClaim', { id: tc.dataset.id }).then(r => {
-          if (r) { Sfx.play('spin'); this.toast(`Поручение сдано: ${r.got.map(x => `${x.label} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }
+          if (r) { Sfx.play('spin'); this.toast(ru`Поручение сдано: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }
           render(); this.refreshHud();
         });
         return;
       }
       if (td) {
-        this.confirm('Отказаться от поручения?', 'Поручение исчезнет, новое можно получить у родника.', 'Отказаться', () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), 'Оставить', true);
+        this.confirm(ru`Отказаться от поручения?`, ru`Поручение исчезнет, новое можно получить у родника.`, ru`Отказаться`, () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), ru`Оставить`, true);
         return;
       }
       if (tm) {
@@ -110,11 +110,11 @@ Object.assign(UI, {
       }
       const claim = (type, args, title, sound) => Game.try(type, args).then(r => {
         if (!r) return;
-        Sfx.play(sound); this.toast(title + r.got.map(x => `${x.label} +${x.n}`).join(', '), 'good');
+        Sfx.play(sound); this.toast(title(r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')), 'good');
         render(); this.refreshHud();
       });
-      if (c) claim('questClaim', { i: +c.dataset.i }, 'Получено: ', 'spin');
-      else if (b) claim('questBonus', {}, 'Сундук: ', 'levelup');
+      if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'spin');
+      else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'levelup');
     });
     this.swipeTabs(scr, ['day', 'story', 'order'], () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
@@ -125,7 +125,7 @@ Object.assign(UI, {
   // Награды «картинками»: предметы с иконкой, искры, опыт; extra — дополнительные плашки (кокон, встреча с легендой)
   rwChips(rw, wrap = true, extra = '') {
     const chips = Object.entries(rw || {}).map(([k, n]) => {
-      if (k === 'xp') return `<span class="qd-rw xp">+${U.fmtNum(n)} опыта</span>`;
+      if (k === 'xp') return `<span class="qd-rw xp">${ru`+${U.fmtNum(n)} опыта`}</span>`;
       if (k === 'sparks') return `<span class="qd-rw spark"><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(n)}</span>`;
       const a = Art.item(k);
       return a ? `<span class="qd-rw">${a}×${n}</span>` : '';
@@ -139,7 +139,7 @@ Object.assign(UI, {
   },
   // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня
   dayLimitsHtml() {
-    return `<h3 class="prof-h">Лимиты дня <small>обновятся в полночь</small></h3><div class="day-limits">${Object.keys(Rules.DAILY).map(k => {
+    return `<h3 class="prof-h">${ru`Лимиты дня`} <small>${ru`обновятся в полночь`}</small></h3><div class="day-limits">${Object.keys(Rules.DAILY).map(k => {
       const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
       return `<div class="${u >= m ? 'out' : ''}"><b>${u}/${m}</b><small>${Rules.DAILY_NAMES[k]}</small></div>`;
     }).join('')}</div>`;
@@ -147,19 +147,19 @@ Object.assign(UI, {
   // Поручения из родников: задание → предметы и встреча с духом
   tasksHtml() {
     const d = S.d;
-    const meets = d.taskMeet.map(m => `<div class="quest done t-row"><div class="t-sp">${Art.img(m.sid)}</div><div class="q-main"><b>Встреча: ${SP[m.sid].name}</b><small>${RARITY[SP[m.sid].rar].name} · ур. ${m.lvl}. Не сбежит, пока не поймаешь.</small></div>
-      <button class="btn small primary t-meet" data-id="${m.id}">Встретить</button></div>`).join('');
+    const meets = d.taskMeet.map(m => `<div class="quest done t-row"><div class="t-sp">${Art.img(m.sid)}</div><div class="q-main"><b>${ru`Встреча: ${SP[m.sid].name}`}</b><small>${ru`${RARITY[SP[m.sid].rar].name} · ур. ${m.lvl}. Не сбежит, пока не поймаешь.`}</small></div>
+      <button class="btn small primary t-meet" data-id="${m.id}">${ru`Встретить`}</button></div>`).join('');
     const tasks = d.tasks.map(q => {
       const done = q.p >= q.n, pv = q.t === 'walk' ? `${q.p.toFixed(2)} / ${q.n}` : `${Math.floor(q.p)} / ${q.n}`;
-      return `<div class="quest t-row ${done ? 'done' : ''}"><div class="t-sp mystery">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class="q-main"><b>${q.text}</b><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><small>${pv} · Награда: встреча с духом</small></div>
-        ${done ? `<button class="btn small primary t-claim" data-id="${q.id}">Сдать</button>` : `<button class="btn-round small t-drop" data-id="${q.id}" aria-label="Отказаться">${this.I.close}</button>`}</div>`;
+      return `<div class="quest t-row ${done ? 'done' : ''}"><div class="t-sp mystery">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class="q-main"><b>${I18N.back(q.text)}</b><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><small>${ru`${pv} · Награда: встреча с духом`}</small></div>
+        ${done ? `<button class="btn small primary t-claim" data-id="${q.id}">${ru`Сдать`}</button>` : `<button class="btn-round small t-drop" data-id="${q.id}" aria-label="${ru`Отказаться`}">${this.I.close}</button>`}</div>`;
     }).join('');
-    return `<h3 class="q-h">Поручения родников <small>${d.tasks.length} / ${TASK_LIMIT}</small></h3>${meets}${tasks ||
-      (meets ? '' : '<div class="q-note">Родники иногда дают поручения: первое за день — всегда. За выполненное — предметы и встреча с духом, которого на улице не найти так просто.</div>')}`;
+    return `<h3 class="q-h">${ru`Поручения родников`} <small>${d.tasks.length} / ${TASK_LIMIT}</small></h3>${meets}${tasks ||
+      (meets ? '' : `<div class="q-note">${ru`Родники иногда дают поручения: первое за день — всегда. За выполненное — предметы и встреча с духом, которого на улице не найти так просто.`}</div>`)}`;
   },
 
   /* ---------------- ПРОФИЛЬ ---------------- */
-  rank(l) { return l >= 30 ? 'Хранитель' : l >= 20 ? 'Ведун' : l >= 10 ? 'Следопыт' : l >= 5 ? 'Ловчий' : 'Послушник'; },
+  rank(l) { return l >= 30 ? ru`Хранитель` : l >= 20 ? ru`Ведун` : l >= 10 ? ru`Следопыт` : l >= 5 ? ru`Ловчий` : ru`Послушник`; },
   profile() {
     Sfx.init(); Sfx.play('tap');
     const d = S.d, cur = levelXP(d.level), next = levelXP(d.level + 1);
@@ -171,10 +171,10 @@ Object.assign(UI, {
     const cc = d.clan ? CLANS[d.clan].color : '#fbbf24', maxed = d.level >= MAX_LEVEL;
     const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
     const ach = [
-      ['Разведано кварталов', typeof Fog !== 'undefined' ? Fog.explored() : 0], ['Родников', d.stats.springs], ['Закрыто разломов', d.stats.raids], ['Побед на Капищах', d.stats.duels],
-      ['Вторжений отбито', d.stats.invasions], ['Превращений', d.stats.evolved], ['Из коконов', d.stats.hatched], ['Сияющих', d.stats.shiny],
-      ['Очищено духов', d.stats.purified], ['Отличных бросков', d.stats.throwsGreat],
-      ...(d.clan ? [['Защитников поставлено', d.stats.defends || 0], ['Капищ освобождено', d.stats.freed || 0]] : []),
+      [ru`Разведано кварталов`, typeof Fog !== 'undefined' ? Fog.explored() : 0], [ru`Родников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
+      [ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],
+      [ru`Очищено духов`, d.stats.purified], [ru`Отличных бросков`, d.stats.throwsGreat],
+      ...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Капищ освобождено`, d.stats.freed || 0]] : []),
     ];
     const medalsHtml = MEDALS.map(m => {
       const tier = d.medals[m.id] || 0, v = S.medalValue(m), nx = m.tiers[tier];
@@ -187,47 +187,47 @@ Object.assign(UI, {
         <div class="dt-hero">
           <div class="det-art pf-ava"><div class="prof-ava">${this.avatar()}</div></div>
           <div class="dt-info">
-            <div class="det-hp">${this.rank(d.level)} Ордена Оберега</div>
-            <div class="det-power"><small>УРОВЕНЬ</small><b>${d.level}</b></div>
-            <div class="det-lvl"><span>${maxed ? 'Максимальный уровень' : `Опыт <b>${U.fmtNum(d.xp - cur)}</b> из ${U.fmtNum(next - cur)} до ${d.level + 1}`}</span><div class="arc"><i style="width:${maxed ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div></div>
-            <div class="det-tags">${d.clan ? `<span class="tag-crest" style="color:${cc}"><i>${Art.clanCrest(d.clan)}</i>${CLANS[d.clan].short}</span>` : ''}<span>в Ордене ${days} ${U.plural(days, 'день', 'дня', 'дней')}</span></div>
+            <div class="det-hp">${ru`${this.rank(d.level)} Ордена Оберега`}</div>
+            <div class="det-power"><small>${ru`УРОВЕНЬ`}</small><b>${d.level}</b></div>
+            <div class="det-lvl"><span>${maxed ? ru`Максимальный уровень` : ru`Опыт <b>${U.fmtNum(d.xp - cur)}</b> из ${U.fmtNum(next - cur)} до ${d.level + 1}`}</span><div class="arc"><i style="width:${maxed ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div></div>
+            <div class="det-tags">${d.clan ? `<span class="tag-crest" style="color:${cc}"><i>${Art.clanCrest(d.clan)}</i>${CLANS[d.clan].short}</span>` : ''}<span>${ru`в Ордене ${days} ${U.plural(days, ru`день`, ru`дня`, ru`дней`)}`}</span></div>
             ${Game.on() ? `<div class="acc-tags">${Login.accountTags()}</div>` : ''}
           </div>
         </div>
         <div class="pf-acts">
-          <button class="btn ghost small look-btn">${this.I.edit} Гардероб</button>
-          <button class="btn ghost small journal-btn">${this.I.journal} Дневник</button>
-          ${d.clan ? `<button class="btn ghost small clan-open">${this.I.shield} Дружина</button>`
-            : d.level >= CLAN_LEVEL ? `<button class="btn small primary clan-btn">${this.I.shield} Дружина</button>`
-            : `<button class="btn ghost small disabled" data-err="Дружина откроется на ${CLAN_LEVEL} уровне">${this.I.shield} Дружина</button>`}
+          <button class="btn ghost small look-btn">${this.I.edit} ${ru`Гардероб`}</button>
+          <button class="btn ghost small journal-btn">${this.I.journal} ${ru`Дневник`}</button>
+          ${d.clan ? `<button class="btn ghost small clan-open">${this.I.shield} ${ru`Дружина`}</button>`
+            : d.level >= CLAN_LEVEL ? `<button class="btn small primary clan-btn">${this.I.shield} ${ru`Дружина`}</button>`
+            : `<button class="btn ghost small disabled" data-err="${ru`Дружина откроется на ${CLAN_LEVEL} уровне`}">${this.I.shield} ${ru`Дружина`}</button>`}
         </div>
-        <div class="seg dt-tabs">${[['ach', 'Достижения'], ['buddy', 'Спутник'], ['medals', 'Знаки'], ['album', 'Альбом']].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
+        <div class="seg dt-tabs">${[['ach', ru`Достижения`], ['buddy', ru`Спутник`], ['medals', ru`Знаки`], ['album', ru`Альбом`]].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
         <div class="dt-panel">
           ${pane('ach', `
-            ${Game.on() && Login.isGuest() && Login.available().length ? `<div class="prof-acc guest"><small>Привяжи вход — прогресс откроется на любом устройстве:</small><div class="login-row">${Login.buttons('link')}</div></div>` : ''}
+            ${Game.on() && Login.isGuest() && Login.available().length ? `<div class="prof-acc guest"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class="login-row">${Login.buttons('link')}</div></div>` : ''}
             <div class="pf-key">
-              <div><b>${U.fmtNum(d.stats.caught)}</b><small>поймано духов</small></div>
-              <div><b>${caught}<em>/${SPECIES.length}</em></b><small>бестиарий</small></div>
-              <div><b>${U.fmtDist(d.stats.km * 1000)}</b><small>пройдено</small></div>
+              <div><b>${U.fmtNum(d.stats.caught)}</b><small>${ru`поймано духов`}</small></div>
+              <div><b>${caught}<em>/${SPECIES.length}</em></b><small>${ru`бестиарий`}</small></div>
+              <div><b>${U.fmtDist(d.stats.km * 1000)}</b><small>${ru`пройдено`}</small></div>
             </div>
             <div class="dt-rows pf-grid">${ach.map(([t, v]) => row(t, U.fmtNum(v || 0))).join('')}</div>`, true)}
           ${pane('buddy', bsp ? `
             <div class="pf-buddy">
               <div class="pf-buddy-a">${Art.of(bsp)}</div>
-              <div class="pf-buddy-t"><b>♥ ${U.esc(bsp.nick || SP[bsp.sid].name)}</b><small>СИЛА ${S.power(bsp)} · ур. ${bsp.lvl}</small></div>
+              <div class="pf-buddy-t"><b>♥ ${U.esc(bsp.nick || SP[bsp.sid].name)}</b><small>${ru`СИЛА ${S.power(bsp)} · ур. ${bsp.lvl}`}</small></div>
             </div>
             <div class="dt-rows">
-              ${row('Находок', d.buddy.finds)}
-              <div class="dt-row dt-evo-row"><span>До находки</span><b>${d.buddy.km.toFixed(2)} / ${S.buddyDist(bsp)} км</b>
+              ${row(ru`Находок`, d.buddy.finds)}
+              <div class="dt-row dt-evo-row"><span>${ru`До находки`}</span><b>${ru`${d.buddy.km.toFixed(2)} / ${S.buddyDist(bsp)} км`}</b>
                 <div class="dt-evo-bar"><div class="pbar"><i style="width:${Math.min(100, d.buddy.km / S.buddyDist(bsp) * 100)}%"></i></div></div></div>
-              ${row('Находит', `эссенцию «${SP[SP[bsp.sid].fam].name}»`)}
+              ${row(ru`Находит`, ru`эссенцию «${SP[SP[bsp.sid].fam].name}»`)}
             </div>`
-            : `<div class="dx-none"><b>Спутника нет</b><small>Выбери его в карточке духа: вкладка «О духе» → «Сделать спутником». Спутник ходит с тобой и находит эссенцию.</small></div>`)}
+            : `<div class="dx-none"><b>${ru`Спутника нет`}</b><small>${ru`Выбери его в карточке духа: вкладка «О духе» → «Сделать спутником». Спутник ходит с тобой и находит эссенцию.`}</small></div>`)}
           ${pane('medals', `
-            <div class="pf-mh"><span>Знаки Ордена</span><b>${Object.values(d.medals).reduce((a, b) => a + b, 0)} / ${MEDALS.length * 3}</b></div>
+            <div class="pf-mh"><span>${ru`Знаки Ордена`}</span><b>${Object.values(d.medals).reduce((a, b) => a + b, 0)} / ${MEDALS.length * 3}</b></div>
             <div class="pf-medals">${medalsHtml}</div>`)}
           ${pane('album', `
-            <div class="pf-mh"><span>Снимки встреч</span><b>${Album.list().length} / ${Album.MAX}</b></div>
+            <div class="pf-mh"><span>${ru`Снимки встреч`}</span><b>${Album.list().length} / ${Album.MAX}</b></div>
             <div class="album-box">${Album.html()}</div>`)}
         </div>
       </div>`, 'prof-screen det-screen');
@@ -255,8 +255,8 @@ Object.assign(UI, {
       this.modal({
         cls: 'medal-modal', title: m.name,
         html: `<div class="medal-big">${Art.medal(m, tier)}</div><p>${m.desc}: <b>${m.stat === 'km' ? v.toFixed(1) : v}</b></p>
-          <div class="medal-tiers">${m.tiers.map((t, i) => `<div class="${tier > i ? 'got' : ''}"><i style="background:${MEDAL_TIERS[i].color}"></i>${MEDAL_TIERS[i].name}: ${t}<small>+${MEDAL_TIERS[i].xp} опыта</small></div>`).join('')}</div>`,
-        buttons: [{ label: 'Закрыть' }],
+          <div class="medal-tiers">${m.tiers.map((t, i) => `<div class="${tier > i ? 'got' : ''}"><i style="background:${MEDAL_TIERS[i].color}"></i>${MEDAL_TIERS[i].name}: ${t}<small>${ru`+${MEDAL_TIERS[i].xp} опыта`}</small></div>`).join('')}</div>`,
+        buttons: [{ label: ru`Закрыть` }],
       });
     });
   },
@@ -268,13 +268,13 @@ Object.assign(UI, {
     const DEF = { skin: 'hood', bg: 'night', frame: 'none' };
     for (const k in DEF) look[k] = look[k] || DEF[k];
     const lvl = S.d.level;
-    const KIND = { skin: 'Облик', bg: 'Фон', frame: 'Рамка' };
+    const KIND = { skin: ru`Облик`, bg: ru`Фон`, frame: ru`Рамка` };
     let tab = 'skin';
-    const scr = this.screen('Гардероб', `<div class="wd">
+    const scr = this.screen(ru`Гардероб`, `<div class="wd">
       <div class="wd-hero"><div class="wd-stage"><i class="wd-ring"></i><div class="wd-ava"></div></div>
-        <div class="wd-cardprev pc-hero"><div class="pc-ava"><div class="wd-cp-ava"></div><span class="pc-lvl">${S.d.level}</span></div><div class="pc-id"><b class="pc-name">${U.esc(S.d.name)}</b><small>${this.rank(S.d.level)} Ордена Оберега</small></div></div>
+        <div class="wd-cardprev pc-hero"><div class="pc-ava"><div class="wd-cp-ava"></div><span class="pc-lvl">${S.d.level}</span></div><div class="pc-id"><b class="pc-name">${U.esc(S.d.name)}</b><small>${ru`${this.rank(S.d.level)} Ордена Оберега`}</small></div></div>
         <div class="wd-title"><b class="wd-name"></b><span class="wd-rar"></span></div><p class="wd-desc"></p></div>
-      <div class="seg wd-tabs"><button data-t="skin" class="on">Облики</button><button data-t="more">Детали</button></div>
+      <div class="seg wd-tabs"><button data-t="skin" class="on">${ru`Облики`}</button><button data-t="more">${ru`Детали`}</button></div>
       <div class="wd-body"></div>
       <div class="wd-foot"></div></div>`, 'wd-screen');
     const $ = s => scr.querySelector(s);
@@ -295,12 +295,12 @@ Object.assign(UI, {
       $('.wd-stage').style.setProperty('--rc', R.c);
       $('.wd-name').textContent = x.name;
       $('.wd-rar').textContent = `${KIND[k]} · ${R.name}`; $('.wd-rar').style.color = R.c;
-      $('.wd-desc').textContent = x.desc || (k === 'bg' ? 'Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.' : k === 'frame' ? 'Рамка твоей карточки Ловчего — её видят все, кто откроет карточку.' : '');
+      $('.wd-desc').textContent = x.desc || (k === 'bg' ? ru`Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.` : k === 'frame' ? ru`Рамка твоей карточки Ловчего — её видят все, кто откроет карточку.` : '');
     };
     const wide = kind => kind === 'bg' || kind === 'frame';
     const cards = kind => `<div class="wd-grid ${wide(kind) ? 'wide' : ''}">${LOOK[kind].map(x => {
       const R = SKIN_RAR[x.rar || 0], own = has(kind, x), on = look[kind] === x.id, lvLock = !x.shop && !own;
-      const tag = own ? (worn(kind, x.id) ? '✓ Надет' : on ? 'Примеряешь' : 'Твой') : lvLock ? `с ${x.lvl} ур.` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;
+      const tag = own ? (worn(kind, x.id) ? ru`✓ Надет` : on ? ru`Примеряешь` : ru`Твой`) : lvLock ? ru`с ${x.lvl} ур.` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;
       return `<button class="wd-card ${on ? 'on' : ''} ${own ? 'own' : ''} ${lvLock ? 'lv' : ''} r${x.rar || 0}" data-kind="${kind}" data-id="${x.id}" data-lv="${lvLock ? x.lvl : ''}" style="--rc:${R.c}">
         ${wide(kind) ? `<span class="wd-mini" data-mini="${x.id}"><i>${Art.avatar(look)}</i></span>` : `<span class="wd-c-ava">${Art.avatar({ ...look, [kind]: x.id })}</span>`}<b>${x.name}</b><span class="wd-c-tag">${tag}</span></button>`;
     }).join('')}</div>`;
@@ -316,8 +316,8 @@ Object.assign(UI, {
     }).join('')}</div>`;
     const body = () => {
       $('.wd-body').innerHTML = tab === 'more'
-        ? (look.skin !== 'hood' ? '<p class="wd-note">Цвет плаща виден у облика «Ловчий». У особых обликов — свой наряд, а глаза и эмблема — твои.</p>' : '') +
-          swatches('cloak', 'Плащ') + swatches('eyes', 'Глаза') + swatches('emblem', 'Эмблема')
+        ? (look.skin !== 'hood' ? `<p class="wd-note">${ru`Цвет плаща виден у облика «Ловчий». У особых обликов — свой наряд, а глаза и эмблема — твои.`}</p>` : '') +
+          swatches('cloak', ru`Плащ`) + swatches('eyes', ru`Глаза`) + swatches('emblem', ru`Эмблема`)
         : cards(tab);
       if (tab === 'bg' || tab === 'frame') scr.querySelectorAll('.wd-mini').forEach(el => Art.cardSkin(el, { ...look, [tab]: el.dataset.mini }));
     };
@@ -327,8 +327,8 @@ Object.assign(UI, {
         const [k, x] = p;
         // 4.14.1: кнопки Гардероба — как в карточке духа: компактные, внизу; не хватает златников — выглядит недоступной
         const zl = S.d.zlat || 0, poor = zl < x.shop;
-        $('.wd-foot').innerHTML = `<button class="btn primary wd-bb wd-buy ${poor ? 'disabled' : ''}">Купить ${KIND[k].toLowerCase()}<small><span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)} · у тебя ${U.fmtNum(zl)}${poor ? ' — не хватает' : ''}</small></button>`;
-      } else $('.wd-foot').innerHTML = saved() ? '<button class="btn ghost wd-bb wd-save wd-done">✓ Облик надет</button>' : '<button class="btn primary wd-bb wd-save">Надеть облик</button>';
+        $('.wd-foot').innerHTML = `<button class="btn primary wd-bb wd-buy ${poor ? 'disabled' : ''}">${ru`Купить ${I18N.low(KIND[k])}`}<small><span class="cur">${Art.item('zlat')}</span> ${ru`${U.fmtNum(x.shop)} · у тебя ${U.fmtNum(zl)}`}${poor ? ` — ${ru`не хватает`}` : ''}</small></button>`;
+      } else $('.wd-foot').innerHTML = saved() ? `<button class="btn ghost wd-bb wd-save wd-done">${ru`✓ Облик надет`}</button>` : `<button class="btn primary wd-bb wd-save">${ru`Надеть облик`}</button>`;
     };
     const render = () => { hero(); body(); foot(); };
     scr.addEventListener('click', async e => {
@@ -336,84 +336,100 @@ Object.assign(UI, {
       if (t) { tab = t.dataset.t; scr.querySelectorAll('.wd-tabs button').forEach(b => b.classList.toggle('on', b === t)); hero(); body(); return; }
       const c = e.target.closest('.wd-card');
       if (c) {
-        if (c.dataset.lv) return this.toast(`Откроется на ${c.dataset.lv} уровне`);
+        if (c.dataset.lv) return this.toast(ru`Откроется на ${c.dataset.lv} уровне`);
         look[c.dataset.kind] = c.dataset.id; Sfx.play('tap'); render(); return;
       }
       const sw = e.target.closest('.wd-s');
       if (sw) {
         const l = sw.dataset.l;
-        if (l === 'league') return this.toast('Венец Лиги — награда за ранг «Хранитель Лиги»');
-        if (l === 'story') return this.toast('Эта эмблема — награда за Летопись');
-        if (l === 'shop') return this.toast('Этот плащ продаётся в Лавке Ордена за златники');
-        if (l === 'pass') return this.toast('Награда Золотой сезонной тропы');
-        if (l) return this.toast(`Откроется на ${l} уровне`);
+        if (l === 'league') return this.toast(ru`Венец Лиги — награда за ранг «Хранитель Лиги»`);
+        if (l === 'story') return this.toast(ru`Эта эмблема — награда за Летопись`);
+        if (l === 'shop') return this.toast(ru`Этот плащ продаётся в Лавке Ордена за златники`);
+        if (l === 'pass') return this.toast(ru`Награда Золотой сезонной тропы`);
+        if (l) return this.toast(ru`Откроется на ${l} уровне`);
         look[sw.dataset.k] = sw.dataset.v; Sfx.play('tap'); render(); return;
       }
       if (e.target.closest('.wd-buy')) {
         const [k, x] = pending();
-        if ((S.d.zlat || 0) < x.shop) { this.toast('Не хватает златников — их можно добыть в Казне Ордена'); return; }
-        this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}Цена: <b>${U.fmtNum(x.shop)}</b> златников.`, 'Купить', async () => {
+        if ((S.d.zlat || 0) < x.shop) { this.toast(ru`Не хватает златников — их можно добыть в Казне Ордена`); return; }
+        this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}${ru`Цена: <b>${U.fmtNum(x.shop)}</b> златников.`}`, ru`Купить`, async () => {
           const r = await Game.try('shopBuy', { id: `${k}:${x.id}` });
           if (!r) return;
-          Sfx.play('catch'); this.toast(`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
+          Sfx.play('catch'); this.toast(ru`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
         });
         return;
       }
       if (e.target.closest('.wd-save') && !saved()) {
         const send = { cloak: look.cloak, eyes: look.eyes, emblem: look.emblem, skin: look.skin, bg: look.bg, frame: look.frame };
-        if (await Game.try('look', { look: send })) { Sfx.play('levelup'); this.toast('Облик надет', 'good'); render(); done && done(); }
+        if (await Game.try('look', { look: send })) { Sfx.play('levelup'); this.toast(ru`Облик надет`, 'good'); render(); done && done(); }
       }
     });
     render();
   },
 
   /* ---------------- НАСТРОЙКИ ---------------- */
+  // 4.15: выбор языка — список на родных названиях; смена перезапускает игру
+  pickLang() {
+    const m = this.modal({
+      title: ru`Язык игры`, cls: 'lang-modal',
+      html: `<div class="list lang-list">${Object.entries(I18N.LANGS).map(([k, n]) => `<button class="row link lang-row ${k === I18N.lang ? 'on' : ''}" data-l="${k}"><div class="row-main"><b>${n}</b></div>${k === I18N.lang ? '<span class="q-ok">✓</span>' : ''}</button>`).join('')}</div>`,
+      buttons: [{ label: ru`Закрыть` }],
+    });
+    m.querySelector('.lang-list').addEventListener('click', e => {
+      const b = e.target.closest('[data-l]'); if (!b) return;
+      if (b.dataset.l === I18N.lang) { m.close(); return; }
+      Sfx.play('tap'); I18N.set(b.dataset.l);
+    });
+  },
   settings() {
     const s = Cfg.s;
     // 3.28: разделы с заголовками, у каждого пункта — значок
     const row = (k, ico, title, sub) => `<label class="row toggle set-row"><span class="set-ico">${this.I[ico]}</span><div class="row-main"><b>${title}</b><small>${sub}</small></div><input type="checkbox" data-k="${k}" ${s[k] ? 'checked' : ''}><i></i></label>`;
     const link = (cls, ico, title, sub) => `<button class="row link set-row ${cls}"><span class="set-ico">${this.I[ico]}</span><div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="set-chev">›</span></button>`;
     const sec = t => `<div class="set-h">${t}</div>`;
-    const scr = this.screen('Настройки', `
-      ${Game.on() ? `${sec('Учётная запись')}<div class="list acc-box"></div>` : ''}
+    const scr = this.screen(ru`Настройки`, `
+      ${Game.on() ? `${sec(ru`Учётная запись`)}<div class="list acc-box"></div>` : ''}
       ${DEV ? `${sec('Разработка')}<div class="list">${row('demo', 'target', 'Демо-режим', 'Джойстик вместо GPS. Доступен только на локальном сервере.')}</div>` : ''}
-      ${sec('Звук и отклик')}
+      ${sec(ru`Язык`)}
+      <div class="list"><button class="row link set-row lang-pick"><span class="set-ico">${this.I.text}</span><div class="row-main"><b>${ru`Язык игры`}${I18N.lang === 'en' ? '' : ' · Language'}</b><small>${I18N.LANGS[I18N.lang]}</small></div><span class="set-chev">›</span></button></div>
+      ${sec(ru`Звук и отклик`)}
       <div class="list">
-        ${row('music', 'music', 'Музыка', 'Тихие мелодии Нави: на карте днём и ночью своя, у наставника — своя.')}
-        <div class="row set-row vol-row"><span class="set-ico">${this.I.sound}</span><div class="row-main"><b>Громкость музыки</b><div class="vol-line"><input type="range" class="vol" min="0" max="100" step="5" value="${Math.round((s.musicVol == null ? 0.6 : s.musicVol) * 100)}" aria-label="Громкость музыки"><span class="vol-v"></span></div></div></div>
-        ${row('sound', 'sound', 'Звук', 'Звуковые эффекты.')}
-        ${row('vibro', 'vibro', 'Вибрация', 'Отклик при бросках и попаданиях.')}
+        ${row('music', 'music', ru`Музыка`, ru`Тихие мелодии Нави: на карте днём и ночью своя, у наставника — своя.`)}
+        <div class="row set-row vol-row"><span class="set-ico">${this.I.sound}</span><div class="row-main"><b>${ru`Громкость музыки`}</b><div class="vol-line"><input type="range" class="vol" min="0" max="100" step="5" value="${Math.round((s.musicVol == null ? 0.6 : s.musicVol) * 100)}" aria-label="${ru`Громкость музыки`}"><span class="vol-v"></span></div></div></div>
+        ${row('sound', 'sound', ru`Звук`, ru`Звуковые эффекты.`)}
+        ${row('vibro', 'vibro', ru`Вибрация`, ru`Отклик при бросках и попаданиях.`)}
       </div>
-      ${sec('Игра')}
+      ${sec(ru`Игра`)}
       <div class="list">
-        ${row('ar', 'camera', 'AR-камера', 'Духи появляются поверх изображения с камеры.')}
-        ${row('tapThrow', 'hand', 'Бросок одним касанием', 'Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.')}
-        ${row('weather', 'sun', 'Настоящая погода', 'Погода через Open-Meteo (координаты с точностью ~1 км). Выключено — погода Нави моделируется.')}
-        ${Cloud.configured() ? row('cloud', 'trophy', 'Общая таблица Лиги', 'Показывать твоё имя, облик, уровень и звёзды в таблице сезона.') : ''}
+        ${row('ar', 'camera', ru`AR-камера`, ru`Духи появляются поверх изображения с камеры.`)}
+        ${row('tapThrow', 'hand', ru`Бросок одним касанием`, ru`Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.`)}
+        ${row('weather', 'sun', ru`Настоящая погода`, ru`Погода через Open-Meteo (координаты с точностью ~1 км). Выключено — погода Нави моделируется.`)}
+        ${Cloud.configured() ? row('cloud', 'trophy', ru`Общая таблица Лиги`, ru`Показывать твоё имя, облик, уровень и звёзды в таблице сезона.`) : ''}
       </div>
-      ${sec('Вид')}
+      ${sec(ru`Вид`)}
       <div class="list">
-        <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>Тема карты</b><small>Авто — по солнцу: рассвет, день, закат и ночь</small></div>
-          <div class="seg map-theme">${[['auto', 'Авто'], ['light', 'День'], ['dark', 'Ночь']].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
-        ${row('tilt3d', 'map', 'Объёмная карта', 'Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.')}
-        ${row('fog', 'map', 'Туман Нави', 'Неизведанное скрыто дымкой — она рассеивается там, где ты прошёл. Пройденный путь хранится только на этом телефоне.')}
-        ${row('bigText', 'text', 'Крупный текст', 'Увеличенный шрифт в меню, карточках и подсказках.')}
-        ${row('calm', 'calm', 'Меньше движения', 'Без покачиваний, мерцания и погодных эффектов.')}
-        ${row('eco', 'battery', 'Экономия батареи', 'Меньше анимаций на карте, реже обновление и запросы GPS.')}
+        <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>
+          <div class="seg map-theme">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+        ${row('tilt3d', 'map', ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`)}
+        ${row('fog', 'map', ru`Туман Нави`, ru`Неизведанное скрыто дымкой — она рассеивается там, где ты прошёл. Пройденный путь хранится только на этом телефоне.`)}
+        ${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}
+        ${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}
+        ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте, реже обновление и запросы GPS.`)}
       </div>
       <div class="list install-list">
-        <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>Установить на главный экран</b><small>Духолов откроется на весь экран, как обычное приложение</small></div><span class="set-chev">›</span></button>
-        <a class="row link set-row inst-apk hidden" href="duholov.apk" download><span class="set-ico">${this.I.download}</span><div class="row-main"><b>Скачать APK для Android</b><small>Приложение-обёртка: разреши установку из этого источника</small></div><span class="set-chev">›</span></a>
+        <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное приложение`}</small></div><span class="set-chev">›</span></button>
+        <a class="row link set-row inst-apk hidden" href="duholov.apk" download><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши установку из этого источника`}</small></div><span class="set-chev">›</span></a>
       </div>
-      ${sec('Об игре')}
+      ${sec(ru`Об игре`)}
       <div class="list">
-        ${link('about', 'info', 'Книга Ордена', 'Мир, духи и все правила игры; трейлер')}
-        ${link('terms', 'info', 'Правила игры', 'Соглашение, безопасность на улице, чат · 12+')}
-        ${link('privacy', 'info', 'Персональные данные', 'Какие данные хранит игра и как их удалить')}
-        <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Сбросить прогресс</b><small>Удалить всех духов и начать заново</small></div><span class="set-chev">›</span></button>
-        ${Game.on() ? `<button class="row link set-row del-acc"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">Удалить учётную запись</b><small>Прогресс, способы входа и все данные — навсегда</small></div></button>` : ''}
+        ${link('about', 'info', ru`Книга Ордена`, ru`Мир, духи и все правила игры; трейлер`)}
+        ${link('terms', 'info', ru`Правила игры`, ru`Соглашение, безопасность на улице, чат · 12+`)}
+        ${link('privacy', 'info', ru`Персональные данные`, ru`Какие данные хранит игра и как их удалить`)}
+        <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">${ru`Сбросить прогресс`}</b><small>${ru`Удалить всех духов и начать заново`}</small></div><span class="set-chev">›</span></button>
+        ${Game.on() ? `<button class="row link set-row del-acc"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">${ru`Удалить учётную запись`}</b><small>${ru`Прогресс, способы входа и все данные — навсегда`}</small></div></button>` : ''}
       </div>
-      <div class="ver">Духолов · v${APP_VERSION}${Updater.IN_APP ? ` · приложение ${Updater.APK}` : ''} · <button class="link-btn check-upd">Проверить обновления</button><br>Карта © участники OpenStreetMap</div>`, 'set-screen');
+      <div class="ver">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class="link-btn check-upd">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStreetMap`}</div>`, 'set-screen');
+    scr.querySelector('.lang-pick').onclick = () => this.pickLang();
     // 4.8.1: ползунок громкости музыки — меняется сразу, сохраняется при отпускании
     const vol = scr.querySelector('.vol'), volV = scr.querySelector('.vol-v');
     const showVol = () => { volV.textContent = vol.value + '%'; vol.style.setProperty('--p', vol.value + '%'); };
@@ -443,7 +459,7 @@ Object.assign(UI, {
     if (window.__installPrompt) pwa.classList.remove('hidden');
     scr.querySelector('.check-upd').onclick = async () => {
       await Updater.check(true);
-      if (!Updater.shown) this.toast(`У тебя последняя версия — ${APP_VERSION}`, 'good');
+      if (!Updater.shown) this.toast(ru`У тебя последняя версия — ${APP_VERSION}`, 'good');
     };
     pwa.onclick = async () => { const p = window.__installPrompt; if (!p) return; p.prompt(); await p.userChoice; window.__installPrompt = null; pwa.classList.add('hidden'); };
     if (!Updater.IN_APP && /Android/i.test(navigator.userAgent)) {
@@ -458,38 +474,38 @@ Object.assign(UI, {
       const d = S.d, guest = Login.isGuest(), links = Login.linked(), avail = Login.available().filter(k => !links.some(l => l.provider === k));
       const way = (ic, title, sub, end = '<span class="acc-ok">✓</span>') => `<div class="acc-way">${ic}<div class="row-main"><b>${title}</b><small>${sub}</small></div>${end}</div>`;
       // 3.33: у кого вход уже есть — непривязанные сервисы строками того же списка с небольшой кнопкой; гостю — крупные кнопки
-      const addRows = guest ? '' : avail.map(k => way(Login.icon(k), Login.NAMES[k], 'ещё один способ входа',
-        `<button class="btn acc-link" data-login="${k}" data-mode="link">Привязать</button>`)).join('');
+      const addRows = guest ? '' : avail.map(k => way(Login.icon(k), Login.NAMES[k], ru`ещё один способ входа`,
+        `<button class="btn acc-link" data-login="${k}" data-mode="link">${ru`Привязать`}</button>`)).join('');
       acc.innerHTML = `<div class="acc-hero ${guest ? 'guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
           <div class="pc-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="pc-lvl">${d.level}</span></div>
-          <div class="acc-main"><b>${U.esc(d.name)}</b><small>${this.rank(d.level)} · ${d.level} уровень</small>
-            <span class="acc-status ${guest ? 'warn' : 'ok'}">${guest ? `${this.I.user}Гость · только на этом устройстве` : `${this.I.cloud}Прогресс в облаке`}</span></div>
+          <div class="acc-main"><b>${U.esc(d.name)}</b><small>${ru`${this.rank(d.level)} · ${d.level} уровень`}</small>
+            <span class="acc-status ${guest ? 'warn' : 'ok'}">${guest ? `${this.I.user}${ru`Гость · только на этом устройстве`}` : `${this.I.cloud}${ru`Прогресс в облаке`}`}</span></div>
         </div>`
-        + (links.length || Login.email ? `<div class="acc-ways"><div class="acc-cap">Способы входа</div>${Login.email ? way(`<span class="lg-ic mail">${this.I.mail}</span>`, 'Почта', U.esc(Login.email)) : ''}${links.map(l => way(Login.icon(l.provider), Login.NAMES[l.provider], l.name ? U.esc(l.name) : 'вход привязан')).join('')}${addRows}</div>` : '')
-        + (guest && avail.length ? `<div class="acc-add"><small>Привяжи вход — прогресс откроется на любом устройстве</small><div class="login-row">${Login.buttons('link', avail)}</div></div>` : '')
-        + (Updater.oldApp() ? `<div class="acc-add"><small><b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: ${guest ? '<b>сначала привяжи вход выше</b> (иначе прогресс гостя пропадёт), потом ' : ''}удали это приложение и установи новое.</small><a class="btn primary" href="duholov.apk">Скачать новое приложение</a></div>` : '')
-        + `<button class="row link set-row acc-out"><span class="set-ico out">${this.I.logout}</span><div class="row-main"><b>Выйти из учётной записи</b><small>${guest ? 'Прогресс гостя будет потерян' : 'Вернуться можно тем же входом'}</small></div><span class="set-chev">›</span></button>`;
+        + (links.length || Login.email ? `<div class="acc-ways"><div class="acc-cap">${ru`Способы входа`}</div>${Login.email ? way(`<span class="lg-ic mail">${this.I.mail}</span>`, ru`Почта`, U.esc(Login.email)) : ''}${links.map(l => way(Login.icon(l.provider), Login.NAMES[l.provider], l.name ? U.esc(l.name) : ru`вход привязан`)).join('')}${addRows}</div>` : '')
+        + (guest && avail.length ? `<div class="acc-add"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве`}</small><div class="login-row">${Login.buttons('link', avail)}</div></div>` : '')
+        + (Updater.oldApp() ? `<div class="acc-add"><small>${guest ? ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пропадёт), потом удали это приложение и установи новое.` : ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: удали это приложение и установи новое.`}</small><a class="btn primary" href="duholov.apk">${ru`Скачать новое приложение`}</a></div>` : '')
+        + `<button class="row link set-row acc-out"><span class="set-ico out">${this.I.logout}</span><div class="row-main"><b>${ru`Выйти из учётной записи`}</b><small>${guest ? ru`Прогресс гостя будет потерян` : ru`Вернуться можно тем же входом`}</small></div><span class="set-chev">›</span></button>`;
       acc.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => Login.start(b.dataset.login, b.dataset.mode); });
       acc.querySelector('.acc-out').onclick = () => Login.askSignOut();
     };
     renderAcc();
     Login.load().then(renderAcc);
     scr.querySelector('.about').onclick = () => Book.screen(); // 4.0: вместо списка «Об игре»
-    scr.querySelector('.terms').onclick = () => UI.doc('Правила игры', 'terms.html');
-    scr.querySelector('.privacy').onclick = () => UI.doc('Персональные данные', 'privacy.html');
+    scr.querySelector('.terms').onclick = () => UI.doc(ru`Правила игры`, 'terms.html');
+    scr.querySelector('.privacy').onclick = () => UI.doc(ru`Персональные данные`, 'privacy.html');
     // 4.1: полное удаление учётной записи (152-ФЗ) — после двух подтверждений; платежи остаются без привязки
     const del = scr.querySelector('.del-acc');
-    if (del) del.onclick = () => this.confirm('Удалить учётную запись?', 'Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные златники не вернутся.', 'Удалить', () => {
-      this.confirm('Точно удалить?', 'Восстановить учётную запись будет нельзя.', 'Да, удалить навсегда', async () => {
-        try { await Game.auth('delete', { confirm: 'УДАЛИТЬ' }); } catch (e) { UI.toast(U.esc(e.message)); return; }
+    if (del) del.onclick = () => this.confirm(ru`Удалить учётную запись?`, ru`Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные златники не вернутся.`, ru`Удалить`, () => {
+      this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {
+        try { await Game.auth('delete', { confirm: 'УДАЛИТЬ' }); } catch (e) { UI.toast(U.esc(I18N.back(e.message))); return; }
         try { localStorage.removeItem(CLOUD_CONFIG.auth); } catch (e) {}
         location.reload();
-      }, 'Нет', true);
+      }, ru`Нет`, true);
     });
-    scr.querySelector('.reset').onclick = () => this.confirm('Сбросить прогресс?', 'Все духи, предметы и уровень будут удалены с сервера навсегда.', 'Сбросить', () => {
-      this.confirm('Точно?', 'Это действие нельзя отменить.', 'Да, сбросить', async () => {
+    scr.querySelector('.reset').onclick = () => this.confirm(ru`Сбросить прогресс?`, ru`Все духи, предметы и уровень будут удалены с сервера навсегда.`, ru`Сбросить`, () => {
+      this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {
         if (await Game.try('reset')) location.reload();
-      }, 'Нет', true);
-    }, 'Отмена', true);
+      }, ru`Нет`, true);
+    }, ru`Отмена`, true);
   },
 });
