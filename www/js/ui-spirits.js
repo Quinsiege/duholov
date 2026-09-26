@@ -118,6 +118,7 @@ Object.assign(UI, {
     Tut.ui('card'); // 4.0: шаг обучения
     if (!S.findSpirit(uid)) return;
     const scr = this.screen('', '', 'det-screen', onChange);
+    let tab = 'grow'; // 4.14.1: карточка без прокрутки — сверху дух, ниже вкладки
     const render = () => {
       const sp = S.findSpirit(uid);
       if (!sp) { this.closeScreen(scr); return; }
@@ -126,42 +127,56 @@ Object.assign(UI, {
       const iv = S.ivPct(sp), stars = iv >= 100 ? 4 : iv >= 82 ? 3 : iv >= 67 ? 2 : iv >= 50 ? 1 : 0;
       const isBuddy = S.d.buddy && S.d.buddy.uid === sp.uid;
       const bar = (label, v) => `<div class="stat"><span>${label}</span><div class="sbar"><b class="${v === 15 ? 'max' : ''}" style="width:${Math.max(4, v / 15 * 100)}%"></b></div><em>${v}/15</em></div>`;
-      scr.querySelector('.screen-head h2').innerHTML = '';
+      scr.querySelector('.screen-head h2').innerHTML = `<button class="det-name dt-hname">${U.esc(sp.nick || s.name)} ${this.I.edit}</button>`; // 4.14.1: имя — рядом со стрелкой назад
       scr.querySelector('.head-extra').innerHTML = `<button class="btn-round favbtn ${sp.fav ? 'on' : ''}">${this.I.star}</button>`;
+      const nx = S.stats({ ...sp, lvl: sp.lvl + 1 }); // что даст следующее усиление
+      const moves = [['Быстрый приём', ELEMENTS[s.el].fast], ['Особый приём', ELEMENTS[s.el].charge]].concat(sp.move2 ? [[`Второй особый · ⚡${MOVES.charge2.cost}`, ELEMENTS[s.el].charge2]] : []);
+      const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
+      const TABS = [['grow', 'Рост', !pErr || (s.evo && !eErr)], ['fight', 'Бой', false], ['amulet', 'Амулет', false], ['about', 'О духе', false]];
       scr.querySelector('.screen-body').innerHTML = `
-        <div class="det el-${s.el}" style="--c:${ELEMENTS[s.el].color}">
-          <div class="det-power">СИЛА <b>${st.power}</b></div>
-          <div class="det-lvl"><div class="arc"><i style="width:${(sp.lvl / 40) * 100}%"></i></div><span>Уровень ${sp.lvl} из ${S.maxLvl()}</span></div>
-          <div class="det-art">${Art.of(sp)}</div>
-          <button class="det-name">${U.esc(sp.nick || s.name)} ${this.I.edit}</button>
-          <div class="det-hp">ОЗ ${st.hp} · №${String(s.num).padStart(2, '0')} ${s.name}</div>
-          <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${sp.shiny ? '<span class="shiny-t">✦ Сияющий</span>' : ''}${sp.dark ? '<span class="dark-t">Омрачённый</span>' : ''}${sp.purified ? '<span class="pure-t">Очищенный</span>' : ''}</div>
-          <div class="det-actions top">
-            <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' : ''}>Усилить<small><span class="cur">${Art.item('sparks')}</span> ${pc.sparks} · ${pc.essence} эсс.</small></button>
-            ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${SP[s.evo].name}</small></button>` : ''}
+        <div class="det det2 el-${s.el}" style="--c:${ELEMENTS[s.el].color}">
+          <div class="dt-hero">
+            <div class="det-art">${Art.of(sp)}</div>
+            <div class="dt-info">
+              <div class="det-hp">№${String(s.num).padStart(2, '0')} ${s.name} · ОЗ ${st.hp}</div>
+              <div class="det-power"><small>СИЛА</small><b>${st.power}</b></div>
+              <div class="det-lvl"><div class="arc"><i style="width:${(sp.lvl / 40) * 100}%"></i></div><span>Уровень ${sp.lvl} из ${S.maxLvl()}</span></div>
+              <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${sp.shiny ? '<span class="shiny-t">✦ Сияющий</span>' : ''}${sp.dark ? '<span class="dark-t">Омрачённый</span>' : ''}${sp.purified ? '<span class="pure-t">Очищенный</span>' : ''}${isBuddy ? '<span class="buddy-t">♥ Спутник</span>' : ''}</div>
+            </div>
           </div>
-          ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
-          <div class="panel res"><span><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)} искр</span><span>Эссенция «${fam.name}»: <b>${ess}</b></span></div>
-          ${sp.dark ? `<div class="panel dark-panel"><b>Дух омрачён Навью</b><small>Атака +20%, защита −17%. Очищение снимет тьму: оценка +2 к каждому показателю, уровень до 25.</small>
-            <button class="btn act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>Очистить<small><span class="cur">${Art.item('sparks')}</span> ${S.PURIFY.sparks} · ${S.PURIFY.essence} эсс.</small></button></div>` : ''}
-          ${isBuddy
-            ? `<div class="buddy-panel">♥ Твой спутник · находка через ${Math.max(0, S.buddyDist(sp) - S.d.buddy.km).toFixed(2)} км</div>`
-            : `<button class="btn ghost wide act-buddy">♥ Сделать спутником <small>ходит с тобой и находит эссенцию каждые ${S.buddyDist(sp)} км</small></button>`}
-          <div class="panel">
-            <div class="det-appraise"><span>Оценка Ордена</span><b>${'★'.repeat(stars)}${'☆'.repeat(4 - stars)}</b><em>${iv}%</em></div>
-            ${bar('Атака', sp.iv[0])}${bar('Защита', sp.iv[1])}${bar('Стойкость', sp.iv[2])}
-            <div class="det-moves"><div><small>Быстрый приём</small>${ELEMENTS[s.el].fast}</div><div><small>Особый приём</small>${ELEMENTS[s.el].charge}</div></div>
-            ${sp.move2 ? `<div class="det-moves"><div><small>Второй особый приём (⚡${MOVES.charge2.cost})</small>${ELEMENTS[s.el].charge2}</div></div>`
-              : `<button class="btn ghost wide act-move2" ${S.canLearnMove2(sp) ? `data-err="${U.esc(S.canLearnMove2(sp))}"` : ''}>Выучить второй приём «${ELEMENTS[s.el].charge2}»<small><span class="cur">${Art.item('sparks')}</span> ${MOVE2_COST.sparks} · ${MOVE2_COST.essence} эсс. · дешевле основного, для поединков</small></button>`}
-          </div>
-          <div class="panel amulet-slot">
-            ${sp.amulet ? `<div class="am-ico">${Art.amulet(sp.amulet)}</div><div class="row-main"><b>${AMULETS[sp.amulet].name}</b><small>${AMULETS[sp.amulet].desc}</small></div><button class="btn small ghost act-unequip">Снять</button>`
-              : `<div class="am-ico empty"></div><div class="row-main"><b>Амулет не надет</b><small>В сумке: ${Object.values(S.d.amulets).reduce((a, b) => a + b, 0)}</small></div><button class="btn small ghost act-equip">Надеть</button>`}
-          </div>
-          <p class="det-desc">${s.desc}</p>
-          ${sp.from ? `<p class="small">Получен в подарок от Ловчего ${U.esc(sp.from)}</p>` : ''}
-          <div class="det-actions">
-            <button class="btn ghost danger act-release">Отпустить <small>+1 эссенция</small></button>
+          <div class="seg dt-tabs">${TABS.map(([k, t, dot]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${t}${dot ? '<i class="dt-dot"></i>' : ''}</button>`).join('')}</div>
+          <div class="dt-panel">
+            ${pane('grow', `
+              <div class="det-actions top ${s.evo ? '' : 'one'}">
+                <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' : ''}>Усилить<small><span class="cur">${Art.item('sparks')}</span> ${pc.sparks} · ${pc.essence} эсс.</small></button>
+                ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>Превратить<small>${s.cost} эсс. → ${SP[s.evo].name}</small></button>` : ''}
+              </div>
+              <div class="dt-next"><span>После усиления</span><b>СИЛА ${st.power} → ${nx.power} <em>+${nx.power - st.power}</em></b><small>ОЗ ${st.hp} → ${nx.hp}</small></div>
+              ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
+              ${s.evo ? `<div class="dt-evo"><div class="dt-evo-a ${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? '' : 'sil'}">${Art.img(s.evo)}</div><div class="dt-evo-t"><b>Превращение: ${SP[s.evo].name}</b><small>эссенция ${Math.min(ess, s.cost)} из ${s.cost}</small><div class="pbar"><i style="width:${Math.min(100, ess / s.cost * 100)}%"></i></div></div></div>`
+                : `<div class="dt-evo top"><small>Высшая форма семейства «${fam.name}» — дальше дух растёт только усилением</small></div>`}
+              <div class="dt-res"><span class="dt-sp"><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)} искр</span><span>Эссенция «${fam.name}»: <b>${ess}</b></span></div>
+              ${sp.dark ? `<div class="dt-dark"><div><b>Омрачён Навью</b><small>Атака +20%, защита −17%. Очищение: оценка +2, уровень до 25</small></div>
+                <button class="btn small act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>Очистить<small><span class="cur">${Art.item('sparks')}</span> ${S.PURIFY.sparks} · ${S.PURIFY.essence} эсс.</small></button></div>` : ''}`)}
+            ${pane('fight', `
+              <div class="det-appraise"><span>Оценка Ордена</span><b>${'★'.repeat(stars)}${'☆'.repeat(4 - stars)}</b><em>${iv}%</em></div>
+              ${bar('Атака', sp.iv[0])}${bar('Защита', sp.iv[1])}${bar('Стойкость', sp.iv[2])}
+              <div class="det-moves">${moves.map(([t, n]) => `<div><small>${t}</small>${n}</div>`).join('')}</div>
+              ${sp.move2 ? '' : `<button class="btn ghost small wide act-move2" ${S.canLearnMove2(sp) ? `data-err="${U.esc(S.canLearnMove2(sp))}"` : ''}>Выучить «${ELEMENTS[s.el].charge2}»<small><span class="cur">${Art.item('sparks')}</span> ${MOVE2_COST.sparks} · ${MOVE2_COST.essence} эсс.</small></button>`}`)}
+            ${pane('amulet', `
+              <div class="amulet-slot dt-am">
+                ${sp.amulet ? `<div class="am-ico">${Art.amulet(sp.amulet)}</div><div class="row-main"><b>${AMULETS[sp.amulet].name}</b><small>${AMULETS[sp.amulet].desc}</small></div>`
+                  : `<div class="am-ico empty"></div><div class="row-main"><b>Амулет не надет</b><small>Амулет усиливает духа: атаку, защиту, здоровье, энергию в битвах или находки спутника</small></div>`}
+              </div>
+              <div class="dt-am-foot"><small>В сумке амулетов: <b>${Object.values(S.d.amulets).reduce((a, b) => a + b, 0)}</b></small>
+                ${sp.amulet ? '<button class="btn small ghost act-unequip">Снять</button>' : '<button class="btn small primary act-equip">Надеть</button>'}</div>`)}
+            ${pane('about', `
+              <p class="det-desc">${s.desc}</p>
+              ${sp.from ? `<p class="dt-from">Подарок от Ловчего ${U.esc(sp.from)}</p>` : ''}
+              ${isBuddy
+                ? `<div class="buddy-panel">♥ Твой спутник · находка через ${Math.max(0, S.buddyDist(sp) - S.d.buddy.km).toFixed(2)} км</div>`
+                : `<button class="btn ghost small wide act-buddy">♥ Сделать спутником <small>находит эссенцию каждые ${S.buddyDist(sp)} км</small></button>`}
+              <button class="btn ghost danger small wide act-release">Отпустить в Навь <small>+1 эссенция</small></button>`)}
           </div>
         </div>`;
       U.$$('[data-err]', scr).forEach(b => b.classList.add('disabled'));
@@ -176,6 +191,7 @@ Object.assign(UI, {
     const pulse = () => { const a = scr.querySelector('.det-art'); if (a) a.classList.add('pulse'); };
     scr.addEventListener('click', e => {
       const t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.tab) { tab = t.dataset.tab; Sfx.play('tap'); U.$$('[data-tab]', scr).forEach(x => x.classList.toggle('on', x === t)); U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === tab)); return; }
       const sp = S.findSpirit(uid); if (!sp) return;
       if (t.dataset.err) { this.toast(t.dataset.err); return; }
       if (t.classList.contains('favbtn')) act('fav', { on: !sp.fav });

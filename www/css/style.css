@@ -3414,3 +3414,146 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
     linear-gradient(180deg, #2a1a5c 0%, #1d1146 45%, #140b33 100%);
 }
 .chat-bar { border-top: 0; background: var(--g-sheen), var(--glass-deep); -webkit-backdrop-filter: blur(16px) saturate(1.5); backdrop-filter: blur(16px) saturate(1.5); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 -8px 22px rgba(10, 4, 30, .3); }
+
+/* ================= 4.14.1: карточка духа — всё на одном экране, без прокрутки =================
+   Сверху — дух: сила и уровень, арт (сжимается под высоту телефона), имя, номер, метки.
+   Ниже — вкладки «Рост · Бой · Амулет · О духе» и стеклянная панель одной высоты; точка на «Рост» — можно усилить или превратить */
+.det-screen .screen-body { overflow: hidden; display: flex; flex-direction: column; padding: 0 14px calc(12px + var(--sb)); }
+.det2 { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dt-hero { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; }
+.det2 .det-power { flex: none; margin: 0; line-height: 1; font-size: 13px; }
+.det2 .det-power b { font-size: 36px; }
+.det2 .det-lvl { flex: none; width: 230px; margin: 5px auto 0; font-size: 12px; }
+.det2 .det-art { flex: 1 1 0; min-height: 92px; max-height: 250px; width: 100%; height: auto; margin: 8px 0 4px; display: flex; justify-content: center; }
+.det2 .det-art > img, .det2 .det-art > svg, .det2 .det-art > .art { width: auto; height: 100%; max-width: 100%; aspect-ratio: 1; object-fit: contain; }
+.det2 .det-art::before { inset: auto; left: 50%; top: 50%; height: 72%; aspect-ratio: 1; translate: -50% -50%; }
+.det2 .det-art::after { inset: auto; left: 50%; top: 50%; height: 104%; aspect-ratio: 1; translate: -50% -50%; }
+.det2 .det-name { flex: none; font-size: 27px; margin: 0; line-height: 1.15; }
+.det2 .det-hp { flex: none; margin: 1px 0 7px; font-size: 13px; }
+.det2 .det-tags { flex: none; flex-wrap: nowrap; gap: 6px; margin: 0 0 12px; max-width: 100%; overflow: hidden; }
+.det2 .det-tags span { padding: 4px 10px; font-size: 12.5px; white-space: nowrap; border-radius: 999px; }
+.det2 .det-tags .art { width: 16px; height: 16px; }
+.det2 .det-tags .buddy-t { color: #fda4af; }
+/* вкладки */
+.dt-tabs { flex: none; margin: 0 0 10px; border-radius: 16px; }
+.dt-tabs button { position: relative; padding: 9px 2px; font-size: 14px; border-radius: 13px; }
+.dt-dot { position: absolute; top: 6px; right: 10%; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px rgba(74, 222, 128, .8); }
+/* панель — одно стекло одной высоты, вкладки меняют только содержимое */
+.dt-panel { flex: none; height: 232px; padding: 12px; border-radius: 22px; border: 1px solid rgba(255, 255, 255, .1);
+  background: var(--g-sheen), var(--g-fill); box-shadow: var(--g-edge), var(--g-drop); }
+.dt-pane { display: none; height: 100%; flex-direction: column; gap: 9px; overflow-y: auto; overflow-x: hidden; }
+.dt-pane.on { display: flex; animation: fadeIn .2s ease-out; }
+/* Рост */
+.det2 .det-actions.top { margin: 0; gap: 10px; }
+.det2 .det-actions .btn { min-height: 64px; flex-direction: column; gap: 2px; font-size: 17px; }
+.det2 .det-actions .btn small { font-size: 12px; font-weight: 500; opacity: .85; }
+.det2 .det-why { margin: -2px 0 0; font-size: 12px; line-height: 1.3; }
+.dt-res { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; font-size: 13px;
+  background: rgba(255, 255, 255, .06); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08); }
+.dt-res .dt-sp { color: #fde68a; font-weight: 700; } .dt-res b { color: #fff; }
+.dt-res .art, .det2 .btn .cur .art { width: 16px; height: 16px; vertical-align: -3px; }
+.dt-dark { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 14px; text-align: left;
+  background: linear-gradient(90deg, rgba(192, 38, 211, .2), rgba(126, 34, 206, .1)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 0 0 1px rgba(240, 171, 252, .25); }
+.dt-dark > div { flex: 1; min-width: 0; } .dt-dark b { display: block; color: #f0abfc; font-size: 14px; } .dt-dark small { font-size: 11px; color: #e9d5ff; line-height: 1.25; }
+.dt-dark .btn { flex: none; flex-direction: column; gap: 0; color: #fff; border-color: rgba(250, 232, 255, .5);
+  background: radial-gradient(120% 70% at 25% -15%, rgba(255, 255, 255, .45), transparent 55%), linear-gradient(180deg, rgba(232, 121, 249, .85), rgba(162, 28, 175, .8)); }
+.dt-dark .btn small { font-size: 10.5px; }
+/* Бой */
+.det2 .det-appraise { margin: 0; font-size: 13px; }
+.det2 .det-appraise b { font-size: 16px; }
+.det2 .stat { margin: 0; font-size: 13px; }
+.det2 .stat span { width: 78px; }
+.det2 .det-moves { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin: 2px 0 0; }
+.det2 .det-moves div { padding: 7px 8px; font-size: 13px; line-height: 1.2; border-radius: 12px; }
+.det2 .det-moves small { font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 10px; color: rgba(255, 255, 255, .6); margin-bottom: 2px; }
+.det2 .act-move2 { flex-direction: column; gap: 0; min-height: 44px; padding: 5px 10px; font-size: 13.5px; }
+.det2 .act-move2 small { font-size: 11px; opacity: .8; }
+/* Амулет */
+.dt-am { gap: 14px; padding: 4px 2px; text-align: left; }
+.dt-am .am-ico { width: 72px; height: 72px; flex: none; }
+.dt-am .row-main b { font-family: var(--f-head); font-size: 17px; }
+.dt-am .row-main small { font-size: 13px; line-height: 1.35; color: rgba(255, 255, 255, .72); }
+.dt-am-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dt-am-foot small { font-size: 13px; color: rgba(255, 255, 255, .7); } .dt-am-foot b { color: #fff; }
+.dt-am-foot .btn { min-width: 120px; }
+/* О духе */
+.det2 .det-desc { margin: 0; font-size: 14px; line-height: 1.45; text-align: left; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.dt-from { margin: -4px 0 0; font-size: 12px; color: rgba(255, 255, 255, .6); text-align: left; }
+.det2 .buddy-panel { margin: 0; padding: 10px 12px; border-radius: 14px; background: rgba(251, 113, 133, .12); box-shadow: inset 0 0 0 1px rgba(253, 164, 175, .25); }
+.det2 .act-buddy, .det2 .act-release { flex-direction: column; gap: 0; min-height: 46px; padding: 5px 10px; font-size: 14px; }
+.det2 .act-buddy small, .det2 .act-release small { font-size: 11px; opacity: .8; }
+.det2 .act-release { margin-top: auto; }
+.det-actions.one .btn { flex: 1; }
+/* верх карточки — в ряд: слева крупный дух в волшебном круге, справа имя, номер, сила и уровень; метки — строкой под ними.
+   Панель вкладок забирает всю оставшуюся высоту */
+.dt-hero { flex: none; display: grid; grid-template-columns: minmax(0, 47%) minmax(0, 1fr); column-gap: 14px; align-items: center; margin: 4px 0 12px; }
+.det2 .det-art { grid-column: 1; grid-row: 1; flex: none; width: 100%; height: auto; min-height: 0; max-height: none; aspect-ratio: 1; margin: 0; }
+.det2 .det-art > img, .det2 .det-art > svg, .det2 .det-art > .art { width: 100%; height: 100%; }
+.dt-info { grid-column: 2; grid-row: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+.det2 .det-name { display: block; max-width: 100%; font-size: 25px; line-height: 1.1; text-align: left; white-space: normal; overflow-wrap: anywhere; padding-bottom: 2px; }
+.det2 .det-name .ico { width: 15px; height: 15px; vertical-align: 2px; }
+.det2 .det-hp { margin: 0; font-size: 12.5px; color: rgba(255, 255, 255, .62); }
+.det2 .det-power { display: flex; flex-direction: column; align-items: flex-start; margin: 10px 0 0; line-height: 1; letter-spacing: 0; }
+.det2 .det-power small { font-family: var(--f-head); font-size: 11px; font-weight: 700; letter-spacing: .22em; color: rgba(255, 255, 255, .6); }
+.det2 .det-power b { font-size: 42px; line-height: 1.02; }
+.det2 .det-lvl { width: 100%; margin: 4px 0 0; text-align: left; }
+.det2 .det-tags { grid-column: 1 / -1; grid-row: 2; justify-content: center; flex-wrap: wrap; margin: 10px 0 0; }
+.dt-panel { flex: 1 1 auto; height: auto; min-height: 230px; }
+.det2 .det-desc { -webkit-line-clamp: 7; }
+/* прогресс до превращения */
+.dt-evo { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 14px; text-align: left; background: rgba(255, 255, 255, .06); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08); }
+.dt-evo-a { flex: none; width: 48px; height: 48px; }
+.dt-evo-a img, .dt-evo-a .art { width: 100%; height: 100%; }
+.dt-evo-a.sil img, .dt-evo-a.sil .art { filter: brightness(0) drop-shadow(0 0 1.5px rgba(196, 181, 253, .7)); opacity: .75; }
+.dt-evo-t { flex: 1; min-width: 0; }
+.dt-evo-t b { display: block; font-family: var(--f-head); font-size: 14.5px; }
+.dt-evo-t small { font-size: 11.5px; color: rgba(255, 255, 255, .62); }
+.dt-evo-t .pbar { height: 6px; margin: 5px 0 0; }
+.dt-evo-t .pbar i { background: linear-gradient(90deg, #2dd4bf, #5eead4); }
+.dt-evo.top small { font-size: 12px; line-height: 1.35; color: rgba(255, 255, 255, .66); }
+/* композиция: верх с духом — по центру свободного места, панель — своей высоты по экрану (без пустоты внизу) */
+.dt-hero { flex: 1 1 auto; min-height: 0; align-content: center; margin: 0; padding: 4px 0 12px; }
+.dt-panel { flex: none; height: clamp(214px, 34dvh, 264px); min-height: 0; }
+.det2 .det-name { display: inline-flex; align-items: center; gap: 7px; }
+.det2 .det-name .ico { flex: none; vertical-align: 0; }
+/* имя духа — в заголовке, рядом со стрелкой назад; справа от имени — карандаш (переименовать) */
+.det-screen .screen-head h2 { min-width: 0; flex: 1; }
+.det-screen .dt-hname { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; margin: 0; padding: 0; font-size: 25px; line-height: 1.12; text-align: left; }
+.det-screen .dt-hname .ico { flex: none; width: 16px; height: 16px; }
+.det2 .det-hp { font-family: var(--f-head); font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, .78); }
+/* арт — сколько позволяет высота телефона: на высоких экранах крупнее, на низких — меньше, без прокрутки */
+.dt-hero { grid-template-columns: minmax(0, min(56%, calc(100dvh - 470px))) minmax(0, 1fr); justify-content: center; }
+.det2 .det-appraise span { text-align: left; }
+.dt-hero { grid-template-columns: minmax(0, min(56%, calc(100dvh - 500px))) minmax(0, 1fr); }
+.dt-panel { height: clamp(228px, 35dvh, 266px); }
+/* верх карточки — не больше 30% высоты: арт по высоте экрана, справа — номер и ОЗ, «СИЛА ··· 2478» в одну строку (число у правого края),
+   уровень и метки. Остальные 70% — вкладки и панель */
+.dt-hero { flex: none; grid-template-columns: calc(30dvh - 40px) minmax(0, 1fr); max-height: 30%; align-items: center; column-gap: 14px; padding: 4px 0 12px; }
+.det2 .det-art { width: calc(30dvh - 40px); max-width: 44vw; }
+.dt-hero { grid-template-columns: min(calc(30dvh - 40px), 44vw) minmax(0, 1fr); }
+.dt-info { gap: 5px; }
+.det2 .det-power { flex-direction: row; justify-content: space-between; align-items: baseline; width: 100%; margin: 4px 0 0; }
+.det2 .det-power b { font-size: 36px; }
+.det2 .det-lvl { margin: 0; }
+.det2 .det-tags { grid-column: auto; grid-row: auto; justify-content: flex-start; flex-wrap: wrap; gap: 5px; margin: 4px 0 0; }
+.det2 .det-tags span { padding: 3px 9px; font-size: 12px; }
+.det2 .det-tags .art { width: 14px; height: 14px; }
+.dt-panel { flex: 1 1 auto; height: auto; min-height: 0; }
+/* «После усиления»: сила и ОЗ сейчас → после следующего усиления */
+.dt-next { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; column-gap: 10px; align-items: baseline; padding: 9px 14px; border-radius: 14px; text-align: left;
+  background: linear-gradient(90deg, rgba(253, 224, 71, .1), rgba(255, 255, 255, .04)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08); }
+.dt-next span { font-size: 12px; color: rgba(255, 255, 255, .62); }
+.dt-next b { grid-row: 1 / 3; grid-column: 2; align-self: center; font-family: var(--f-head); font-size: 16px; color: #fde68a; white-space: nowrap; }
+.dt-next b em { font-style: normal; font-size: 13px; color: #86efac; }
+.dt-next small { font-size: 12px; color: rgba(255, 255, 255, .78); }
+.dt-pane[data-pane=grow] .det-actions .btn { min-height: 70px; }
+/* подложка — только у полосы вкладок; всё остальное в карточке лежит прямо на фоне, без плашек */
+.det2 .dt-panel, .det2 .dt-next, .det2 .dt-evo, .det2 .dt-res, .det2 .dt-dark, .det2 .det-moves div, .det2 .buddy-panel, .det2 .det-tags span, .det2 .dt-am {
+  background: none; border: 0; box-shadow: none; outline: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.det2 .dt-panel { padding: 4px 2px 0; border-radius: 0; }
+.det2 .dt-next, .det2 .dt-evo, .det2 .dt-res { padding: 4px 2px; border-radius: 0; }
+.det2 .dt-dark { padding: 4px 2px; }
+.det2 .det-moves div { padding: 2px 0; text-align: left; }
+.det2 .buddy-panel { padding: 2px; }
+.det2 .det-tags { gap: 12px; }
+.det2 .det-tags span { padding: 0; font-size: 12.5px; }
