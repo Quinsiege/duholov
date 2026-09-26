@@ -586,7 +586,8 @@
     if (res.ok) {
       who.data = res.data; who.srv = res.srv;
       if (res.data) DB.saves[who.uid] = res.data; else delete DB.saves[who.uid];
-      for (const fn of res.after) await fn();
+      // как на сервере (serve.js): after — после сохранения, вне запроса, прогресса игрока там уже нет
+      const d0 = S.d; S.d = null; try { for (const fn of res.after) await fn(); } finally { S.d = d0; }
     }
     return res;
   }
@@ -838,6 +839,7 @@
     eq(A.data.league.run, null, 'поражение завершает турнир');
     eq(A.data.league.pts, 0, 'рейтинг не уходит ниже нуля');
     eq(DB.league.filter(x => x.user === 'uh').length, 1, 'строка таблицы сезона записана сервером');
+    eq(DB.league.find(x => x.user === 'uh').name, 'Искра', 'в строке — имя этого Ловчего');
     await refuse(A, 'leagueEnd', { win: true }, /не найден/);
   });
   atest('Сервер: взаимная дружба, подарки и посылки между двумя Ловчими', async () => {

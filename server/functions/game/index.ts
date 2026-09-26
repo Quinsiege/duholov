@@ -4787,7 +4787,8 @@ const GameCore = {
       if (run.xp !== false) S.addXP(win ? 400 + run.k * 200 : 100);
       const res = { win, gained, last, k: run.k, won: run.won, pts: L.pts, ptsGot: L.pts - (run.pts0 != null ? run.pts0 : was), rNew, rank0: run.rank0, rewards };
       // строка таблицы сезона — после каждого боя: рейтинг меняют и победы, и поражения
-      if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }));
+      // 4.15.1: строку собираем сразу — after выполняется после сохранения, вне запроса, где S.d уже пуст (раньше запись падала)
+      if (a.board !== false) { const row = { season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }; ctx.after.push(() => ctx.env.leagueScore(row)); }
       if (last) {
         J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
         L.run = null;
