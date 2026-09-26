@@ -49,6 +49,8 @@ self.addEventListener('fetch', e => {
   if (url.pathname.includes('/tiles/')) return;
   // 4.8: музыка (audio/*.mp3) тоже читается кусками — её кэширует браузер
   if (url.pathname.includes('/audio/')) return;
+  // 4.14: трейлер (video/trailer.mp4) — тоже кусками, его кэширует браузер
+  if (url.pathname.includes('/video/')) return;
   // файлы с меткой версии (?v=4.1.0) и vendor/ не меняются — сразу из кэша: быстрый запуск и меньше трафика
   if (/[?&]v=\d/.test(url.search) || url.pathname.includes('/vendor/')) {
     e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {

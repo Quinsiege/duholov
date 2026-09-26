@@ -51,10 +51,11 @@ console.log(`✓ автотесты: ${r.total - r.failed.length} из ${r.total
 const game = await browser.newPage();
 game.on('pageerror', e => fail('ошибка в игре: ' + e.message));
 await game.goto('http://localhost:8123/www/index.html');
-await game.waitForTimeout(3000);
-// 4.0: сначала трейлер «Тонкая ночь» (один раз на устройстве) — его можно пропустить, дальше стартовый экран
-if (!(await game.$('.trl'))) fail('игра: не показан трейлер');
-else { await game.click('.trl-skip'); await game.waitForTimeout(1500); }
+// 4.0: сначала трейлер «Тонкая ночь» (один раз на устройстве) — его можно пропустить, дальше стартовый экран.
+// 4.14: трейлер — видео; в Chromium тестов нет H.264, видео не играет — трейлер сам закрывается, это тоже правильно
+if (!(await game.waitForSelector('.tv', { state: 'attached', timeout: 15000 }).then(() => true, () => false))) fail('игра: не показан трейлер');
+else if (await game.$('.tv-skip')) await game.click('.tv-skip').catch(() => {});
+await game.waitForTimeout(2500);
 if (!(await game.$('.onb'))) fail('игра: не показан стартовый экран');
 console.log('✓ игра открылась');
 

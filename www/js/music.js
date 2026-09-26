@@ -20,7 +20,7 @@ const Music = {
   // что должно звучать: у наставника — его мелодия, иначе — мелодия карты (днём или ночью)
   target() { return this.want === 'mentor' ? 'mentor' : document.body.classList.contains('night') ? 'night' : 'day'; },
   apply() {
-    const ctx = Sfx.ctx, on = !!(Cfg.s.music && ctx && !document.hidden && this.level() > 0);
+    const ctx = Sfx.ctx, on = !!(Cfg.s.music && ctx && !document.hidden && !this.hold && this.level() > 0); // hold — трейлер играет свою музыку
     const mode = on ? this.target() : null;
     if (mode === this.mode) return;
     this.mode = mode;
