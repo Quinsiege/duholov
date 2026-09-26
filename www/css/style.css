@@ -3007,3 +3007,63 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 @keyframes znPulse { 0%, 100% { transform: scale(.94); opacity: .8; } 50% { transform: scale(1.04); opacity: 1; } }
 @keyframes znFlicker { 0%, 100% { opacity: .55; } 50% { opacity: .9; } }
 .calm .zn > i { animation: none !important; }
+
+/* ---------- 4.14: книга, коконы, карточка игрока ---------- */
+/* длинный заголовок экрана — на две строки, а не многоточием */
+.screen-head h2 { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.12; padding-bottom: 2px; }
+/* картинки в карточках книги — целиком в своей клетке (капища больше не съезжают вниз) */
+.bk-art > img, .bk-art img.art { width: 100%; height: 100%; object-fit: contain; }
+.bk-art > .art-stack { width: auto !important; height: 100% !important; max-width: 100%; margin: 0 auto; }
+
+/* плашка трейлера — постер из самого видео: Кощей в ударе молнии, золотая рамка, пульсирующая кнопка */
+.bk-trailer { position: relative; overflow: hidden; min-height: 128px; padding: 16px; gap: 16px; border-radius: 22px; isolation: isolate;
+  background: #0b0620; border: 1px solid rgba(251, 191, 36, .6); box-shadow: 0 12px 30px rgba(0, 0, 0, .5), 0 0 28px rgba(124, 58, 237, .35), inset 0 1px 0 rgba(255, 255, 255, .08); }
+.bk-tbg { position: absolute; inset: 0; z-index: -1; background: url(../img/trailer-poster.webp) right -90px center / auto 130% no-repeat; transform-origin: 80% 50%; animation: bkKen 16s ease-in-out infinite alternate; }
+.bk-tbg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8, 4, 24, .97) 18%, rgba(8, 4, 24, .78) 44%, rgba(8, 4, 24, .15) 78%, rgba(8, 4, 24, .35)); }
+@keyframes bkKen { from { transform: scale(1); } to { transform: scale(1.08) translateX(-2%); } }
+.bk-trailer .bk-play { position: relative; width: 60px; height: 60px; padding: 0; font-size: 0; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 30%, #fffbeb, #fcd34d 42%, #d97706 88%); box-shadow: 0 0 0 4px rgba(253, 224, 71, .22), 0 0 26px rgba(251, 191, 36, .75), inset 0 -3px 6px rgba(124, 45, 18, .5); }
+.bk-trailer .bk-play i { position: absolute; left: 50%; top: 50%; margin: -11px 0 0 -6px; border-left: 20px solid #3b1206; border-top: 11px solid transparent; border-bottom: 11px solid transparent; }
+.bk-trailer .bk-play::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(253, 224, 71, .8); animation: bkPulse 2.2s ease-out infinite; }
+@keyframes bkPulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.55); opacity: 0; } }
+.bk-tt { position: relative; min-width: 0; }
+.bk-tt small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #fcd34d; }
+.bk-tt b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 23px; line-height: 1.15; margin: 2px 0 3px;
+  background: linear-gradient(180deg, #fffbeb 5%, #fde68a 50%, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 rgba(60, 20, 4, .8)); }
+.bk-tt span { font-size: 12.5px; color: #e2d9fa; }
+.bk-trailer:active { transform: scale(.98); }
+
+/* коконы: у каждого — свой цвет, подсветка-подиум, чип дальности; греющийся дышит светом */
+.coc-card { position: relative; overflow: hidden; gap: 3px; padding: 12px 6px; border-color: color-mix(in srgb, var(--tc, #fff) 35%, var(--line));
+  background: radial-gradient(90% 60% at 50% 30%, color-mix(in srgb, var(--tc, #fff) 18%, transparent), transparent 70%), linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)); }
+.coc-stage { position: relative; width: 84px; height: 88px; display: grid; place-items: center; }
+.coc-ped { position: absolute; left: 6%; right: 6%; bottom: 4px; height: 18px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--tc, #fff) 75%, transparent), transparent); }
+.coc-card .coc-art { position: relative; width: 78px; height: 82px; }
+.coc-card .coc-art.warm { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tc, #fbbf24) 80%, transparent)); }
+.coc-card.inc .coc-ped { animation: cocPed 2.4s ease-in-out infinite; }
+@keyframes cocPed { 50% { transform: scale(1.15); opacity: .75; } }
+.coc-card b { font-size: 12.5px; line-height: 1.2; }
+.coc-card .coc-km { padding: 1px 9px; border-radius: 10px; font-size: 11px; font-weight: 700; color: #1b1030; background: var(--tc, #ddd); }
+.coc-card .pbar i { background: linear-gradient(90deg, color-mix(in srgb, var(--tc, #fde047) 55%, #fff), var(--tc, #fde047)); }
+.coc-slot .coc-stage { display: none; }
+
+/* карточка игрока: руническое кольцо у аватара, имя золотом, значки у чисел, духи на подиумах своей стихии */
+.pc-ava { width: 84px; height: 84px; flex: none; }
+.pc-tag { white-space: nowrap; }
+.pc-ring { position: absolute; inset: -11px; border-radius: 50%; background: var(--rz-runes) center / 100% 100% no-repeat; pointer-events: none;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--cc) 80%, transparent)); animation: spin 30s linear infinite; }
+.pc-name { font-family: var(--f-display); font-weight: 400; font-size: 20px; line-height: 1.15; padding-bottom: 2px; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: clip;
+  background: linear-gradient(180deg, #fffbeb 5%, #fde68a 50%, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 rgba(60, 20, 4, .8)); }
+.pc-league { background: linear-gradient(100deg, rgba(124, 58, 237, .32), rgba(255, 255, 255, .04) 70%); border-color: rgba(167, 139, 250, .4); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+.pc-league b { font-family: var(--f-head); font-weight: 700; font-size: 16px; }
+.pc-stats div { position: relative; padding: 11px 4px 9px; background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .025)); border-color: rgba(251, 191, 36, .2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+.pc-si { display: block; width: 28px; height: 28px; margin: 0 auto 3px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .45)); }
+.pc-si .art, .pc-si svg, .pc-si img, .pc-si .mi { width: 100%; height: 100%; }
+.pc-stats b { font-family: var(--f-head); font-weight: 700; font-size: 19px; color: #fde68a; text-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
+.pc-sp { background: radial-gradient(90% 60% at 50% 35%, color-mix(in srgb, var(--elc) 22%, transparent), transparent 75%), rgba(255, 255, 255, .04); border-color: color-mix(in srgb, var(--elc) 40%, var(--line)); }
+.pc-sp-st { position: relative; width: 76px; height: 70px; display: grid; place-items: end center; margin: 2px 0; }
+.pc-sp-st > i { position: absolute; left: 8%; right: 8%; bottom: 2px; height: 16px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--elc) 80%, transparent), transparent); }
+.pc-sp .pc-sp-st img, .pc-sp .pc-sp-st .art { position: relative; width: 64px; height: 64px; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .5)); animation: bob 2.6s ease-in-out infinite; }
+.pc-sp b { font-family: var(--f-head); font-weight: 700; font-size: 14px; }
+.pc-foot { color: #cbbde9; letter-spacing: .04em; } .pc-foot::before, .pc-foot::after { content: " ✦ "; color: var(--gold2); }
+.calm .bk-tbg, .calm .bk-trailer .bk-play::after, .calm .pc-ring, .calm .coc-card.inc .coc-ped, .calm .pc-sp .pc-sp-st img, .calm .pc-sp .pc-sp-st .art { animation: none !important; }

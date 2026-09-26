@@ -345,9 +345,9 @@ Object.assign(UI, {
       scr.querySelector('.coc-info').innerHTML = `Коконы согреваются, пока ты ходишь. Пройдено всего: <b>${U.fmtDist(S.d.stats.km * 1000)}</b>`;
       const card = c => {
         const ready = c.inc && c.walked >= c.km;
-        return `<div class="coc-card ${ready ? 'ready' : ''}" data-id="${c.id}">
-          <div class="coc-art ${c.inc ? 'warm' : ''}">${Art.cocoon(c.km)}</div>
-          <b>${COCOON_TIERS[c.km].name}</b><small>${c.km} км</small>
+        return `<div class="coc-card ${ready ? 'ready' : ''} ${c.inc ? 'inc' : ''}" data-id="${c.id}" style="--tc:${COCOON_TIERS[c.km].color}">
+          <div class="coc-stage"><i class="coc-ped"></i><div class="coc-art ${c.inc ? 'warm' : ''}">${Art.cocoon(c.km)}</div></div>
+          <b>${COCOON_TIERS[c.km].name}</b><small class="coc-km">${c.km} км</small>
           ${c.inc ? `<div class="pbar"><i style="width:${Math.min(100, c.walked / c.km * 100)}%"></i></div><small>${c.walked.toFixed(2)} / ${c.km} км</small>` : ''}
           ${ready ? '<button class="btn small primary hatch">Вылупить!</button>' : c.inc ? '' : `<button class="btn small warm-btn" ${inc >= 3 ? 'disabled' : ''}>Греть</button>`}
         </div>`;

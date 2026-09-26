@@ -23,7 +23,7 @@ const Book = {
   screen() {
     Sfx.init(); Sfx.play('tap');
     const scr = UI.screen('Книга Ордена', `
-      <button class="bk-trailer"><span class="bk-play">▶</span><div><b>Трейлер «Тонкая ночь»</b><small>С чего всё началось</small></div></button>
+      <button class="bk-trailer"><i class="bk-tbg"></i><span class="bk-play"><i></i></span><div class="bk-tt"><small>Трейлер</small><b>«Тонкая ночь»</b><span>С чего всё началось · 2:21</span></div></button>
       <div class="bk-grid">${this.CH.map(c => `<button class="bk-ch" data-id="${c.id}"><span class="bk-ico">${this.ico(c.ico)}</span><b>${c.t}</b><small>${c.s}</small></button>`).join('')}</div>
       <p class="small center bk-foot">Орден Оберега · записано Велимиром и Ловчими всех земель</p>`, 'bk-screen');
     scr.querySelector('.bk-trailer').onclick = () => Trailer.play({ replay: true });
@@ -84,9 +84,9 @@ const Book = {
         this.p('Великие разломы — самые сильные: там встречаются легенды. Дальний пропуск позволяет закрыть разлом до 5 км от тебя, не подходя к нему. С друзьями можно закрыть совместный разлом.');
     },
     shrines() {
-      const cl = Object.values(CLANS).map(c => [`<svg viewBox="0 0 100 100" class="art"><path d="M50 8 L84 20 V46 C84 70 68 84 50 92 C32 84 16 70 16 46 V20Z" fill="${c.color}" stroke="#1c0b33" stroke-width="4"/></svg>`, c.name, c.motto]);
+      const cl = Object.entries(CLANS).map(([k, c]) => [Art.clanCrest(k), c.name, c.motto]);
       return this.p('Капища — резные идолы у памятных мест. С 3 уровня можно сразиться с хранителем: бой 3 на 3, тап — атака, «Приём» — особый удар, два щита спасают от приёмов хранителя. Каждое капище можно освятить раз в день.') +
-        this.cards(Object.values(SHRINE_TIERS).map((t, i) => [Art.shrineIcon(i + 1), `Хранитель-${t.title.toLowerCase()}`, `Награда: ${U.fmtNum(t.xp)} опыта и ${U.fmtNum(t.sparks)} искр.`])) +
+        this.cards(Object.values(SHRINE_TIERS).map((t, i) => [Art.asImg(Art.shrineIcon(i + 1, false), `shrine:${i + 1}:false`), `Хранитель-${t.title.toLowerCase()}`, `Награда: ${U.fmtNum(t.xp)} опыта и ${U.fmtNum(t.sparks)} искр.`])) +
         this.h(`Дружины (с ${CLAN_LEVEL} уровня)`) + this.cards(cl) +
         this.p(`Поставь защитника на Капище своей дружины — он приносит дань: ${TRIBUTE.sparks} искр и оберег в день за каждое Капище (до ${HOLD_MY_MAX} Капищ).`);
     },
