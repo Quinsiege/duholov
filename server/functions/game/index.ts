@@ -298,7 +298,11 @@ const ITEMS = {
   charm2:  { name: 'Серебряный оберег',  desc: 'Серебро держит духов крепче. Шанс поимки ×1,5.',              mult: 1.5, throwable: true, unlock: 8 },
   charm3:  { name: 'Золотой оберег',     desc: 'Лучший оберег Ордена. Шанс поимки ×2.',                        mult: 2,   throwable: true, unlock: 16 },
   honey:   { name: 'Мёд',                desc: 'Духи обожают мёд. Успокаивает духа: шанс поимки ×1,5 на один бросок.' },
-  water:   { name: 'Живая вода',         desc: 'Восстанавливает половину сил духа прямо во время битвы в разломе.' },
+  // 4.15: лечение духов (здоровье — общее на всю игру, см. Rules.HP): heal — сколько здоровья вернёт, revive — поднимает духа без сил
+  herb:    { name: 'Подорожник',         desc: 'Лист к ране — и полегчало. Возвращает духу четверть здоровья.', heal: 0.25 },
+  brew:    { name: 'Целебный отвар',     desc: 'Травы Велеса, сваренные в родниковой воде. Возвращает духу 60% здоровья.', heal: 0.6 },
+  deadwater: { name: 'Мёртвая вода',     desc: 'Сказочная вода, что сращивает раны. Залечивает духа полностью. Духа без сил не поднимет.', heal: 1 },
+  water:   { name: 'Живая вода',         desc: 'Поднимает духа без сил (половина здоровья), а в разломе — лечит прямо в бою.', heal: 0.5, revive: 0.5 },
   incense: { name: 'Ладан',              desc: 'Дымок приманивает духов: 30 минут их вокруг вдвое больше.' },
   farpass: { name: 'Дальний пропуск',    desc: 'Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.' },
   gift:    { name: 'Подарок',           desc: 'Узелок для друга: обереги, мёд, иногда кокон. Отправляется в «Меню → Друзья», раз в день каждому.' },
@@ -1217,7 +1221,7 @@ const W = {
     const lvl = S.d.level, loot = {};
     const n = (4 + Math.floor(r() * 3)) * Ev.lootMul();
     for (let k = 0; k < n; k++) {
-      const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 2.5], ['water', 1.5]];
+      const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 2.5], ['water', 1.2], ['herb', 4], ['brew', 1.2], ['deadwater', 0.3]]; // 4.15: лечебное
       if (lvl >= 8) opts.push(['charm2', 3]);
       if (lvl >= 16) opts.push(['charm3', 1.5]);
       if (lvl >= 3) opts.push(['incense', 0.25]);
@@ -1442,6 +1446,43 @@ const S = {
   },
   ivPct(sp) { return Math.round((sp.iv[0] + sp.iv[1] + sp.iv[2]) / 45 * 100); },
   maxLvl() { return Math.min(40, this.d.level + 5); },
+  /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
+     hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
+     до Rules.HP.KO_MS в бой не идёт, потом поднимается сам на Rules.HP.BACK */
+  hpNow(sp, now = U.now()) {
+    const H = Rules.HP;
+    if (!sp) return 0;
+    if (sp.ko) { const t = now - sp.ko; return t < H.KO_MS ? 0 : Math.min(1, H.BACK + H.REGEN * (t - H.KO_MS) / 3600000); }
+    if (sp.hpf == null) return 1;
+    return Math.min(1, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
+  },
+  alive(sp) { return this.hpNow(sp) > 0; },
+  koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.HP.KO_MS - (now - sp.ko)) : 0; },
+  setHp(sp, f, now = U.now()) {
+    f = Math.max(0, Math.min(1, +f || 0));
+    delete sp.ko; delete sp.hpf; delete sp.hpt;
+    if (f <= 0) { sp.ko = now; } else if (f < 0.999) { sp.hpf = Math.round(f * 1000) / 1000; sp.hpt = now; }
+  },
+  healItems() { return Object.keys(ITEMS).filter(k => ITEMS[k].heal || ITEMS[k].revive); },
+  canHeal(sp, k) {
+    const it = ITEMS[k], h = this.hpNow(sp);
+    if (!sp) return 'Дух не найден';
+    if (!it || !(it.heal || it.revive)) return 'Этим не лечат';
+    if (!(this.d.items[k] > 0)) return `${it.name}: нет в сумке`;
+    if (h <= 0 && !it.revive) return 'Дух без сил — поднимет только Живая вода';
+    if (h >= 1) return 'Дух здоров';
+    return null;
+  },
+  heal(sp, k) {
+    const err = this.canHeal(sp, k); if (err) return err;
+    const it = ITEMS[k], h = this.hpNow(sp);
+    this.useItem(k);
+    this.setHp(sp, h <= 0 ? it.revive : h + it.heal);
+    this.save();
+    return null;
+  },
+  // здоровье бойцов после боя: { uid: доля }
+  hpReport(fighters) { const o = {}; (fighters || []).forEach(f => { if (f && f.sp && f.sp.uid) o[f.sp.uid] = Math.round(Math.max(0, f.cur) / f.max * 1000) / 1000; }); return o; },
   // 4.15: пойманный дух — не выше уровня Ловчего (усиливать можно дальше, до уровня +5)
   catchLvl() { return Math.max(1, Math.min(40, this.d.level)); },
   addSpirit(sp, silent) {
@@ -1616,7 +1657,7 @@ const S = {
     this.save();
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3, zlat: Rules.ZLAT.level };
+    const r = { charm: 10 + l, honey: 3, water: 3, herb: 5, brew: 2, zlat: Rules.ZLAT.level };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;
@@ -2019,9 +2060,10 @@ const League = {
     // 4.15: вкладка «Турнир» — главное состав команды и жетоны: жетоны — одной строкой с делениями, команда — крупно, правила — одной строкой
     const renderPlay = () => {
       const team = S.team(), locked = S.d.level < this.LEVEL, power = team.reduce((a, x) => a + S.power(x), 0);
-      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}</em></button>`;
+      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}</em>${UI.hpBar(x)}</button>`;
       const cards = team.map(mem).join('') + '<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>выбрать духа</em></button>'.repeat(Math.max(0, 3 - team.length));
-      const btn = locked ? `Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? 'Нужно три духа' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра';
+      const ko = team.some(x => !S.alive(x));
+      const btn = locked ? `Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? 'Нужно три духа' : ko ? 'В команде дух без сил' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра';
       pane.innerHTML = `
         ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
         <div class="lg2-tix"><span>Жетоны</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
@@ -2029,7 +2071,7 @@ const League = {
         <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}</div>
         <div class="lg2-team">${cards}</div>
         <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · опыт — за первые ${this.XP_RUNS} турнира дня</div>
-        <button class="btn primary wide lg-go" ${!locked && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
+        <button class="btn primary wide lg-go" ${!locked && !ko && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 
     const who = x => `${U.esc(x.name)}${CLANS[x.clan] ? `<i class="lgx-clan" style="background:${CLANS[x.clan].color}" title="${CLANS[x.clan].name}"></i>` : ''}`;
@@ -2145,7 +2187,7 @@ const League = {
   // Вызывается из Duel.finish: итог боя засчитывает сервер
   async afterDuel(win, st) {
     let r = null;
-    try { r = await Game.act('leagueEnd', { win: !!win, board: Cfg.s.cloud !== false }); } catch (e) { UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('leagueEnd', { win: !!win, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (Duel.st !== st) return;
     if (!r) {
       const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Бой не засчитан</div>
@@ -2348,7 +2390,7 @@ const Raid = {
     const $ = sel => root.querySelector(sel);
     const st = this.st = {
       r, s, bs, root, $, bossHp: bs.hp, time: 90, energy: 0, cool: 0, idx: 0, coop: coop || null, ko: false,
-      team: team.map(sp => { const x = S.battle(sp); return { sp, ...x, max: x.hp * 5, cur: x.hp * 5 }; }),
+      team: team.map(sp => { const x = S.battle(sp); return { sp, ...x, max: x.hp * 5, cur: Math.max(1, Math.round(x.hp * 5 * S.hpNow(sp))) }; }), // 4.15: с тем здоровьем, что есть
       nextAtk: 3.2, tele: 0, dodgeT: -9, waters: 0, running: false, over: false,
     };
     UI.pushLayer(() => this.quit());
@@ -2570,7 +2612,7 @@ const Raid = {
     await U.wait(400);
     // итог боя проверяет сервер: победа засчитывается, если команда могла нанести столько урона за это время
     let r = null;
-    try { r = await Game.act('raidEnd', { win: !!win }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('raidEnd', { win: !!win, hp: S.hpReport(st.team) }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;
     if (win && r && r.win) {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
@@ -2612,7 +2654,7 @@ const Raid = {
   },
   close() {
     const st = this.st; if (!st) return;
-    if (!st.over) Game.act('raidEnd', { win: false }).catch(() => {}); // вышел из боя
+    if (!st.over) Game.act('raidEnd', { win: false, hp: S.hpReport(st.team) }).catch(() => {}); // вышел из боя
     st.over = true;
     st.root.remove();
     this.st = null;
@@ -2761,9 +2803,10 @@ const Duel = {
   },
   endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : kind === 'spar' ? 'sparEnd' : 'duelEnd'; },
 
-  fighter(sp) {
-    const x = S.battle(sp);
-    return { sp, atk: x.atk, def: x.def, max: x.hp * this.HPX, cur: x.hp * this.HPX, energy: 0, emul: x.energy, el: SP[sp.sid].el, power: x.power };
+  // 4.15: боец выходит с тем здоровьем, что есть у духа (раны общие на всю игру); в поединке с другом — с полным
+  fighter(sp, full) {
+    const x = S.battle(sp), max = x.hp * this.HPX;
+    return { sp, atk: x.atk, def: x.def, max, cur: Math.max(1, Math.round(max * (full ? 1 : S.hpNow(sp)))), energy: 0, emul: x.energy, el: SP[sp.sid].el, power: x.power };
   },
 
   start(e, g, team) {
@@ -2803,7 +2846,7 @@ const Duel = {
     const st = this.st = {
       e, g, T: e.T || SHRINE_TIERS[e.tier], root, $, time: this.TIME, paused: true, over: false,
       // e.carry — бойцы из прошлого боя турнира (раны не лечатся)
-      me: { team: e.carry || team.map(sp => this.fighter(sp)), idx: Math.max(0, (e.carry || []).findIndex(f => f.cur > 0)), shields: 2, busy: 0, cd: 0 },
+      me: { team: e.carry || team.map(sp => this.fighter(sp, e.kind === 'spar')), idx: Math.max(0, (e.carry || []).findIndex(f => f.cur > 0)), shields: 2, busy: 0, cd: 0 },
       foe: { team: g.team.map(sp => this.fighter(sp)), idx: 0, shields: 2, busy: 1.5 },
     };
     UI.pushLayer(() => this.quit());
@@ -3075,7 +3118,7 @@ const Duel = {
     if (st.e.kind === 'league') return League.afterDuel(win, st);
     // итог боя проверяет сервер: победа засчитывается, если команда могла нанести столько урона за это время
     let r = null;
-    try { r = await Game.act(this.endType(st.e.kind), { win: !!win }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
+    try { r = await Game.act(this.endType(st.e.kind), { win: !!win, hp: S.hpReport(st.me.team) }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;
     if (win && !(r && r.win)) {
       html = `<div class="res-title lose">Победа не засчитана</div>
@@ -3171,7 +3214,7 @@ const Duel = {
     const st = this.st; if (!st) return;
     // сдался или вышел до конца боя — это поражение
     if (!st.over) {
-      Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false }).catch(() => {});
+      Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }).catch(() => {});
       if (st.e.kind === 'league') League.carry = null;
     }
     st.over = true;
@@ -3268,7 +3311,10 @@ const Rules = {
     { id: 'farpass3', name: 'Три дальних пропуска', desc: 'Три грамоты на дальние Разломы',          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
     { id: 'charm20', name: 'Связка оберегов',     desc: '20 оберегов',                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: 'Горшок мёда',         desc: '5 мёда',                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
-    { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов',                               cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'water5',   name: 'Живая вода',          desc: '5 флаконов: поднимает духа без сил',       cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'herb10',   name: 'Пучок подорожника',   desc: '10 листьев: четверть здоровья каждый',     cur: 'sparks', price: 600,  give: { herb: 10 } },
+    { id: 'brew5',    name: 'Целебный отвар',      desc: '5 горшочков: 60% здоровья каждый',         cur: 'sparks', price: 1200, give: { brew: 5 } },
+    { id: 'dead3',    name: 'Мёртвая вода',        desc: '3 флакона: залечивает духа полностью',     cur: 'zlat',   price: 40,   give: { deadwater: 3 } },
     { id: 'charm2x',  name: 'Серебряные обереги',  desc: '10 серебряных оберегов',                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: 'Золотые обереги',     desc: '10 золотых оберегов',                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
     { id: 'incense',  name: 'Ладан',               desc: '30 минут духов вокруг вдвое больше',       cur: 'zlat', price: 50,  give: { incense: 1 } },
@@ -3277,6 +3323,9 @@ const Rules = {
     { id: 'amulet',   name: 'Случайный амулет',    desc: 'Перуна, Мокоши, Велеса, Сварога или Лады', cur: 'zlat', price: 200, amulet: true },
   ],
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
+  // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
+  // без сил (здоровье 0) — в бой не идёт и через KO_MS поднимается сам на BACK (или сразу — Живой водой)
+  HP: { REGEN: 0.1, KO_MS: 4 * 3600000, BACK: 0.5 },
   // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
   shopDeal(day) {
     const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl); // товар дня доступен любому уровню
@@ -3577,6 +3626,17 @@ const GameCore = {
     ctx.srv.battle = null;
     return b;
   },
+  // 4.15: раны после боя — общие на всю игру. Телефон присылает долю здоровья каждого бойца (hp: { uid: 0..1 });
+  // выше той, с какой дух вошёл в бой, она не станет (в разломе — плюс выпитая Живая вода). Нет данных — здоровье не меняется
+  woundTeam(b, hp) {
+    if (!hp || typeof hp !== 'object') return;
+    (b.team || []).forEach(uid => {
+      const sp = S.findSpirit(uid), rep = +hp[uid];
+      if (!sp || !Number.isFinite(rep)) return;
+      S.setHp(sp, Math.min(rep, Math.min(1, S.hpNow(sp) + (b.waters || 0) * ITEMS.water.heal)));
+    });
+  },
+  readyTeam(team) { this.need(team.every(sp => S.alive(sp)), 'В команде дух без сил — вылечи его или замени'); },
   // Одна встреча с духом за раз: вид, уровень и особенности — только с сервера
   openEnc(ctx, o) {
     o = { ...o, lvl: U.clamp(o.lvl | 0, 1, S.catchLvl()) }; // 4.15: пойманный дух — не выше уровня Ловчего, откуда бы ни пришёл
@@ -4039,6 +4099,14 @@ const GameCore = {
       }
       return { got, cocoon: coc, task, full: S.bagCount() >= S.bagLimit() };
     },
+    // 4.15: вылечить духа предметом из сумки (Подорожник, Целебный отвар, Мёртвая вода, Живая вода)
+    heal(a, ctx) {
+      const sp = S.findSpirit(a.uid);
+      this.need(sp, 'Дух не найден');
+      const k = String(a.k || ''), err = S.heal(sp, k);
+      this.need(!err, err);
+      return { uid: sp.uid, hp: S.hpNow(sp), left: S.d.items[k] || 0 };
+    },
     incense(a, ctx) {
       this.need(!S.incenseActive(), 'Ладан ещё горит');
       this.need(S.useItem('incense'), 'Ладана нет');
@@ -4214,6 +4282,7 @@ const GameCore = {
       } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       this.dayNeed(ctx, 'raids'); // до списания Дальнего пропуска
       this.limit(ctx, 'raid', 30, 3600000);
       if (far) S.d.items.farpass--;
@@ -4275,6 +4344,7 @@ const GameCore = {
     },
     raidEnd(a, ctx) {
       const b = this.endBattle(ctx, 'raid');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const t = Math.min(90, this.battleTime(ctx, b));
       const n = b.coop ? b.coop.allies + 1 : 1, hpMul = 1 + 0.8 * (n - 1);
@@ -4308,6 +4378,7 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
       const hold = await ctx.env.holdGet(p.id);
       this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, 'Капище держит твоя дружина — здесь можно поставить защитника');
@@ -4320,6 +4391,7 @@ const GameCore = {
     },
     async duelEnd(a, ctx) {
       const b = this.endBattle(ctx, 'duel');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const e = { id: b.id, tier: b.tier, name: b.name };
       this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team, SHRINE_TIERS[e.tier].speed);
@@ -4512,6 +4584,7 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
       ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid) };
@@ -4519,6 +4592,7 @@ const GameCore = {
     },
     invEnd(a, ctx) {
       const b = this.endBattle(ctx, 'inv');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const g = W.grunt({ invId: b.invId });
       this.plausibleDuel(ctx, b, g.team, Duel.FOE.invasion.speed);
@@ -4540,6 +4614,7 @@ const GameCore = {
       const L = League.st(), team = S.team();
       this.need(S.d.level >= 5, 'Лига открывается с 5 уровня Ловчего');
       this.need(team.length === 3, 'Нужно три духа');
+      this.readyTeam(team);
       this.need(L.tickets > 0, 'Жетоны кончились — приходи завтра');
       L.tickets--;
       // 4.15: опыт — только за первые League.XP_RUNS турниров дня (по числу потраченных жетонов)
@@ -4552,6 +4627,7 @@ const GameCore = {
       this.need(run, 'Турнир не найден');
       const b = this.endBattle(ctx, 'league');
       this.need(b.k === run.k, 'Турнир не найден');
+      this.woundTeam(b, a.hp);
       const win = !!a.win;
       if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
       // 4.15: рейтинг — победа +30, поражение −30 (не ниже нуля; можно выпасть в прошлую лигу, награды за лигу — раз в сезон)

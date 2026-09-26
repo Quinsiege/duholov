@@ -149,6 +149,17 @@ const GameCore = {
     ctx.srv.battle = null;
     return b;
   },
+  // 4.15: раны после боя — общие на всю игру. Телефон присылает долю здоровья каждого бойца (hp: { uid: 0..1 });
+  // выше той, с какой дух вошёл в бой, она не станет (в разломе — плюс выпитая Живая вода). Нет данных — здоровье не меняется
+  woundTeam(b, hp) {
+    if (!hp || typeof hp !== 'object') return;
+    (b.team || []).forEach(uid => {
+      const sp = S.findSpirit(uid), rep = +hp[uid];
+      if (!sp || !Number.isFinite(rep)) return;
+      S.setHp(sp, Math.min(rep, Math.min(1, S.hpNow(sp) + (b.waters || 0) * ITEMS.water.heal)));
+    });
+  },
+  readyTeam(team) { this.need(team.every(sp => S.alive(sp)), 'В команде дух без сил — вылечи его или замени'); },
   // Одна встреча с духом за раз: вид, уровень и особенности — только с сервера
   openEnc(ctx, o) {
     o = { ...o, lvl: U.clamp(o.lvl | 0, 1, S.catchLvl()) }; // 4.15: пойманный дух — не выше уровня Ловчего, откуда бы ни пришёл
@@ -611,6 +622,14 @@ const GameCore = {
       }
       return { got, cocoon: coc, task, full: S.bagCount() >= S.bagLimit() };
     },
+    // 4.15: вылечить духа предметом из сумки (Подорожник, Целебный отвар, Мёртвая вода, Живая вода)
+    heal(a, ctx) {
+      const sp = S.findSpirit(a.uid);
+      this.need(sp, 'Дух не найден');
+      const k = String(a.k || ''), err = S.heal(sp, k);
+      this.need(!err, err);
+      return { uid: sp.uid, hp: S.hpNow(sp), left: S.d.items[k] || 0 };
+    },
     incense(a, ctx) {
       this.need(!S.incenseActive(), 'Ладан ещё горит');
       this.need(S.useItem('incense'), 'Ладана нет');
@@ -786,6 +805,7 @@ const GameCore = {
       } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       this.dayNeed(ctx, 'raids'); // до списания Дальнего пропуска
       this.limit(ctx, 'raid', 30, 3600000);
       if (far) S.d.items.farpass--;
@@ -847,6 +867,7 @@ const GameCore = {
     },
     raidEnd(a, ctx) {
       const b = this.endBattle(ctx, 'raid');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const t = Math.min(90, this.battleTime(ctx, b));
       const n = b.coop ? b.coop.allies + 1 : 1, hpMul = 1 + 0.8 * (n - 1);
@@ -880,6 +901,7 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
       const hold = await ctx.env.holdGet(p.id);
       this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, 'Капище держит твоя дружина — здесь можно поставить защитника');
@@ -892,6 +914,7 @@ const GameCore = {
     },
     async duelEnd(a, ctx) {
       const b = this.endBattle(ctx, 'duel');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const e = { id: b.id, tier: b.tier, name: b.name };
       this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team, SHRINE_TIERS[e.tier].speed);
@@ -1084,6 +1107,7 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
       ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid) };
@@ -1091,6 +1115,7 @@ const GameCore = {
     },
     invEnd(a, ctx) {
       const b = this.endBattle(ctx, 'inv');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const g = W.grunt({ invId: b.invId });
       this.plausibleDuel(ctx, b, g.team, Duel.FOE.invasion.speed);
@@ -1112,6 +1137,7 @@ const GameCore = {
       const L = League.st(), team = S.team();
       this.need(S.d.level >= 5, 'Лига открывается с 5 уровня Ловчего');
       this.need(team.length === 3, 'Нужно три духа');
+      this.readyTeam(team);
       this.need(L.tickets > 0, 'Жетоны кончились — приходи завтра');
       L.tickets--;
       // 4.15: опыт — только за первые League.XP_RUNS турниров дня (по числу потраченных жетонов)
@@ -1124,6 +1150,7 @@ const GameCore = {
       this.need(run, 'Турнир не найден');
       const b = this.endBattle(ctx, 'league');
       this.need(b.k === run.k, 'Турнир не найден');
+      this.woundTeam(b, a.hp);
       const win = !!a.win;
       if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
       // 4.15: рейтинг — победа +30, поражение −30 (не ниже нуля; можно выпасть в прошлую лигу, награды за лигу — раз в сезон)

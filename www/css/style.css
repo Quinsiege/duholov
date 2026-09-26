@@ -3907,3 +3907,25 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .fr2 .fr2-coop-in .btn { flex: none; min-width: 110px; }
 .calm .fr2 .fr2-ico { animation: none; }
 .lg2-tix-s b { color: #fde68a; font-weight: 700; }
+
+/* ================= 4.15: здоровье духов ================= */
+.hp-bar { display: block; width: 78%; height: 4px; margin: 5px auto 0; border-radius: 3px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.hp-bar > i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #4ade80, #86efac); }
+.hp-bar.mid > i { background: linear-gradient(90deg, #facc15, #fde68a); }
+.hp-bar.low > i { background: linear-gradient(90deg, #ef4444, #fb7185); }
+.hp-ko { display: block; margin-top: 4px; font-size: 10.5px; font-weight: 700; color: #fda4af; white-space: nowrap; }
+.card.ko .card-art, .mini.ko img, .mini.ko .art, .lg2-mem.ko .pcs-a { filter: grayscale(1) brightness(.6); }
+.card.ko .card-pw, .card.ko .card-name { opacity: .6; }
+.mini .hp-bar { width: 86%; margin-top: 3px; }
+.lg2-mem .hp-bar { width: 70%; }
+.det2 .hp-t { color: #fde68a; } .det2 .hp-t.ko { color: #fda4af; }
+.dt-hp-row { flex-wrap: wrap; row-gap: 4px; }
+.dt-hp-row > b .btn { margin-left: 10px; min-height: 30px; padding: 3px 12px; font-size: 13px; }
+.dt-hp-row .hp-bar { flex-basis: 100%; width: 100%; margin: 0; }
+.heal-now { text-align: center; font-size: 14px; margin-bottom: 10px; color: #e2dcf7; } .heal-now b { color: #fde68a; }
+.heal-opts { display: flex; flex-direction: column; gap: 8px; }
+.heal-opt { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 16px; text-align: left; color: inherit; font: inherit; border: 1px solid rgba(255, 255, 255, .12); background: var(--g-sheen), var(--g-fill); box-shadow: var(--g-edge); }
+.heal-opt.off { opacity: .45; box-shadow: none; }
+.heal-ico { flex: none; width: 42px; height: 42px; } .heal-ico .art { width: 100%; height: 100%; }
+.heal-t { flex: 1; display: flex; flex-direction: column; } .heal-t b { font-family: var(--f-head); font-size: 15px; } .heal-t small { font-size: 12px; color: rgba(255, 255, 255, .65); }
+.heal-opt em { font-style: normal; font-family: var(--f-head); font-weight: 700; color: #fde68a; }
