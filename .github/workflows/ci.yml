@@ -107,5 +107,5 @@ jobs:
           # функция game тестового контура (api-test.duholov.ru) — из этого же PR, потом сайт
           scp -q server/functions/game/index.ts deploy@$SERVER:/opt/duholov-test/volumes/functions/game/index.ts.new
           ssh deploy@$SERVER 'mv /opt/duholov-test/volumes/functions/game/index.ts.new /opt/duholov-test/volumes/functions/game/index.ts && sudo -n docker restart dt-functions'
-          rsync -rlptz --delete www/ deploy@$SERVER:/srv/www/test/
+          rsync -rlptz --delete --exclude='video/' www/ deploy@$SERVER:/srv/www/test/
           echo "https://test.duholov.ru/ — сборка ${GITHUB_SHA::7}"
