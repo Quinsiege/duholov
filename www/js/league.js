@@ -21,7 +21,8 @@ const LEAGUE_RANKS = [
 ];
 
 const League = {
-  TICKETS: 3,
+  TICKETS: 10, // 4.15: турниров в день
+  XP_RUNS: 3,  // опыт дают только первые три турнира дня; дальше — только рейтинг
   WIN: 30, LOSS: 30, // рейтинг за победу и за поражение
   SOFT: 1000,        // в новом сезоне рейтинг сверх этого срезается наполовину
   MAXPTS: 20000,
@@ -39,6 +40,7 @@ const League = {
     L = L || { season: this.season(), pts: 0, best: 0, tickets: this.TICKETS, day: U.today(), got: {}, run: null };
     if (L.pts == null) {
       L.pts = U.clamp(Math.floor((+L.stars || 0) * 100), 0, this.MAXPTS); delete L.stars;
+      L.tickets = Math.max(+L.tickets || 0, this.TICKETS); // 4.15: жетонов стало 10 в день — сразу, а не с завтрашнего дня
       if (L.run && L.run.pts0 == null) { L.run.pts0 = U.clamp(Math.floor((+L.run.stars0 || 0) * 100), 0, this.MAXPTS); delete L.run.stars0; }
     }
     if (L.season !== this.season()) { L.season = this.season(); L.pts = this.reset(L.pts); L.got = {}; L.run = null; }
@@ -56,36 +58,11 @@ const League = {
     return U.clamp(Math.floor(p), 0, this.MAXPTS);
   },
 
-  // 4.15: значок лиги — щит из своего металла и свой знак: росток, лук, копьё, топор, меч, булава, стяг, посох, гусли, корона
+  // 4.15: значок лиги — рисованный щит своего металла со своим знаком (img/league/rank-NN.webp, 340×400)
+  IMG: 'img/league/',
   badge(i) {
-    const M = [['#e7c29a', '#a8744a', '#5b3a1f'], ['#f6d2a8', '#c7803f', '#6e3b12'], ['#f6d2a8', '#c7803f', '#6e3b12'], ['#f8fafc', '#aab4c3', '#4b5568'], ['#f8fafc', '#aab4c3', '#4b5568'],
-      ['#fff4c2', '#f5b82e', '#8a4f05'], ['#fff4c2', '#f5b82e', '#8a4f05'], ['#d1fae5', '#34d399', '#065f46'], ['#d1fae5', '#34d399', '#065f46'], ['#f5e8ff', '#b77cf7', '#3b1580']][i] || ['#fff', '#aaa', '#333'];
-    const id = 'lgb' + (this._bn = (this._bn || 0) + 1);
-    const G = [
-      { f: 'M50 60c-11 0-17-8-17-17 11 0 17 7 17 17zM50 54c10 0 15-8 15-15-10 0-15 6-15 15z', l: 'M50 80V50' },
-      { f: 'M40 33c22 8 22 40 0 48l3-4c15-8 15-32-3-40z', l: 'M42 35v44M34 57h30M58 51l8 6-8 6' },
-      { f: 'M50 27l8 14-8 7-8-7z', l: 'M50 47v34M44 70h12' },
-      { f: 'M44 34c16-7 27 3 21 20-7-4-14-6-21-8z', l: 'M45 34l9 47' },
-      { f: 'M50 27l5 8v30h-10V35zM37 64h26v5H37zM47 69h6v9h-6zM50 84a4 4 0 1 0 0-.1z', l: '' },
-      { f: 'M50 33l4 5 6-1-1 6 5 4-5 4 1 6-6-1-4 5-4-5-6 1 1-6-5-4 5-4-1-6 6 1z', l: 'M50 56v25' },
-      { f: 'M42 32h25l-7 10 7 10H42z', l: 'M40 30v51' },
-      { f: 'M53 23c7 7 7 14 0 18-7-4-7-11 0-18z', l: 'M53 41v40M44 52l18 8M44 60l18-8' },
-      { f: 'M35 42l30-7 3 36-30 5z', t: 'M43 44l3 29M50 42l3 30M57 41l3 29M38 50l27-6' },
-      { f: 'M32 70l3-28 9 11 6-16 6 16 9-11 3 28zM32 73h36v5H32z', l: '' },
-    ][i] || { f: '', l: '' };
-    const laurel = i >= 6 ? `<g fill="none" stroke="${M[1]}" stroke-width="3" stroke-linecap="round" opacity=".95">
-      <path d="M14 34c-8 14-6 36 10 52M86 34c8 14 6 36-10 52"/>${[0, 1, 2, 3].map(k => `<path d="M${12 - k * 0} ${44 + k * 12}c-6-2-9-7-8-12M${88} ${44 + k * 12}c6-2 9-7 8-12"/>`).join('')}</g>` : '';
-    const crown = i === 9 ? `<path d="M36 12l4-9 6 6 4-8 4 8 6-6 4 9z" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="50" cy="3" r="2.2" fill="#fde68a"/>` : '';
-    return `<svg class="lg-badge-svg" viewBox="0 -6 100 116" aria-hidden="true"><defs>
-      <linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${M[0]}"/><stop offset=".55" stop-color="${M[1]}"/><stop offset="1" stop-color="${M[2]}"/></linearGradient>
-      <radialGradient id="${id}f" cx=".4" cy=".3" r=".9"><stop offset="0" stop-color="#3a2470"/><stop offset="1" stop-color="#120a2e"/></radialGradient></defs>
-      ${laurel}${crown}
-      <path d="M50 12L86 23v28c0 26-15 43-36 52C29 94 14 77 14 51V23z" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="2.2" stroke-linejoin="round"/>
-      <path d="M50 20l28 9v22c0 21-12 35-28 42-16-7-28-21-28-42V29z" fill="url(#${id}f)" stroke="${M[2]}" stroke-width="1.2" opacity=".96"/>
-      ${G.l ? `<path d="${G.l}" fill="none" stroke="${M[2]}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="${G.l}" fill="none" stroke="url(#${id}m)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
-      ${G.f ? `<path d="${G.f}" fill="url(#${id}m)" stroke="${M[2]}" stroke-width="1.8" stroke-linejoin="round"/>` : ''}
-      ${G.t ? `<path d="${G.t}" fill="none" stroke="${M[2]}" stroke-width="1.8" stroke-linecap="round"/>` : ''}
-      <path d="M26 30c6-4 14-6 22-6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".35" fill="none"/></svg>`;
+    i = U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1);
+    return `<img class="lg-badge-pic" src="${this.IMG}rank-${String(i + 1).padStart(2, '0')}.webp" alt="" draggable="false" decoding="async">`;
   },
   // значок рейтинга — кубок
   cup() { return '<svg class="lg-cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3.5a5 5 0 0 1-10 0z" fill="#fcd34d" stroke="#92400e" stroke-width="1.2"/><path d="M7 5.5H4.5a3 3 0 0 0 3 4M17 5.5h2.5a3 3 0 0 1-3 4" fill="none" stroke="#fcd34d" stroke-width="1.6"/><path d="M12 12.5v3.5M8.5 20h7l-.8-3.5H9.3z" fill="#f59e0b" stroke="#92400e" stroke-width="1.1"/></svg>'; },
@@ -140,7 +117,7 @@ const League = {
           <div class="det-art lg2-crest">${this.badge(r)}</div>
           <div class="dt-info">
             <div class="det-hp">Сезон · ${this.seasonName()} · ⏳ <b class="lgx-ends"></b></div>
-            <div class="lg2-rank">${LEAGUE_RANKS[r].name}</div>
+            <div class="lg2-rank${LEAGUE_RANKS[r].name.length > 10 ? ' long' : ''}">${LEAGUE_RANKS[r].name}</div>
             <div class="det-power"><small>РЕЙТИНГ</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
             <div class="det-lvl"><span>${next ? `до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : 'высшая лига!'}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
             <div class="lgx-place">${Cloud.enabled() ? 'Ищу тебя в таблице…' : ''}</div>
@@ -152,28 +129,21 @@ const League = {
     const body = scr.querySelector('.screen-body'), pane = scr.querySelector('.lgx-pane');
     let data = null, moves = {}, prevPos = null, loading = false;
 
-    const tickets = () => `
-      <div class="lgx-card lgx-tix">
-        <div class="lgx-tokens">${Array.from({ length: this.TICKETS }, (_, i) => `<span class="${i < L.tickets ? 'on' : ''}"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.8z"/></svg></span>`).join('')}</div>
-        <div class="row-main"><b>Жетоны турнира: ${L.tickets} из ${this.TICKETS}</b><small>${L.tickets < this.TICKETS ? `Новые через <span class="lgx-mid"></span>` : 'Один жетон — один турнир'}</small></div>
-      </div>`;
+    // 4.15: вкладка «Турнир» — главное состав команды и жетоны: жетоны — одной строкой с делениями, команда — крупно, правила — одной строкой
     const renderPlay = () => {
       const team = S.team(), locked = S.d.level < this.LEVEL, power = team.reduce((a, x) => a + S.power(x), 0);
-      const slots = UI.teamHtml(team).replace('<i>Нет духов</i>', '') + '<button class="mini lgx-slot team-slot" aria-label="Выбрать духа">+</button>'.repeat(Math.max(0, 3 - team.length));
-      const btn = locked ? `Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? 'Нужно три духа' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра';
+      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}</em>${UI.hpBar(x)}</button>`;
+      const cards = team.map(mem).join('') + '<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>выбрать духа</em></button>'.repeat(Math.max(0, 3 - team.length));
+      const ko = team.some(x => !S.alive(x));
+      const btn = locked ? `Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? 'Нужно три духа' : ko ? 'В команде дух без сил' : L.tickets > 0 ? 'Начать турнир' : 'Жетоны кончились — приходи завтра';
       pane.innerHTML = `
         ${locked ? `<div class="lgx-card lgx-lock"><b>Лига откроется на ${this.LEVEL} уровне Ловчего</b><small>Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.</small></div>` : ''}
-        ${tickets()}
-        <div class="lgx-card lgx-path">
-          <div class="lgx-steps">
-            ${[1, 2, 3].map(k => `<div class="lgx-step"><span>${k}</span><small>+${this.WIN}</small></div>${k < 3 ? '<i></i>' : ''}`).join('')}
-          </div>
-          <small class="lgx-rules">Три боя подряд с Ловчими Лиги. Победа — +${this.WIN} рейтинга, поражение — −${this.LOSS} и конец турнира. Раны духов между боями не лечатся, щиты восстанавливаются.</small>
-        </div>
-        <div class="lgx-team-head"><b>Команда на турнир</b>${power ? `<span>сила ${U.fmtNum(power)}</span>` : ''}<button class="btn small ghost team-edit">Изменить</button></div>
-        <div class="rift-team my lgx-team">${slots}</div>
-        ${next ? `<div class="lgx-card lgx-goal"><span class="lg-badge sm">${this.badge(r + 1)}</span><div class="row-main"><small>Следующая лига · ещё ${U.fmtNum(next.pts - L.pts)} рейтинга</small><b>${next.name}: ${this.rwLine(r + 1)}</b></div></div>` : ''}
-        <button class="btn primary wide lg-go" ${!locked && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
+        <div class="lg2-tix"><span>Жетоны</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
+        <div class="lg2-tix-s">жетоны обновятся через <b class="lgx-mid"></b></div>
+        <div class="pf-mh lg2-th"><span>Команда на турнир</span>${power ? `<b>сила ${U.fmtNum(power)}</b>` : ''}<button class="lg2-edit team-edit">Изменить</button></div>
+        <div class="lg2-team">${cards}</div>
+        <div class="lg2-rule">3 боя подряд · победа +${this.WIN} · поражение −${this.LOSS} и конец турнира · опыт — за первые ${this.XP_RUNS} турнира дня</div>
+        <button class="btn primary wide lg-go" ${!locked && !ko && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 
     const who = x => `${U.esc(x.name)}${CLANS[x.clan] ? `<i class="lgx-clan" style="background:${CLANS[x.clan].color}" title="${CLANS[x.clan].name}"></i>` : ''}`;
@@ -289,7 +259,7 @@ const League = {
   // Вызывается из Duel.finish: итог боя засчитывает сервер
   async afterDuel(win, st) {
     let r = null;
-    try { r = await Game.act('leagueEnd', { win: !!win, board: Cfg.s.cloud !== false }); } catch (e) { UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('leagueEnd', { win: !!win, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (Duel.st !== st) return;
     if (!r) {
       const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">Бой не засчитан</div>

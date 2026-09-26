@@ -190,7 +190,7 @@ Object.assign(UI, {
             <div class="det-hp">${this.rank(d.level)} Ордена Оберега</div>
             <div class="det-power"><small>УРОВЕНЬ</small><b>${d.level}</b></div>
             <div class="det-lvl"><span>${maxed ? 'Максимальный уровень' : `Опыт <b>${U.fmtNum(d.xp - cur)}</b> из ${U.fmtNum(next - cur)} до ${d.level + 1}`}</span><div class="arc"><i style="width:${maxed ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div></div>
-            <div class="det-tags">${d.clan ? `<span style="color:${cc}">⛊ ${CLANS[d.clan].short}</span>` : ''}<span>в Ордене ${days} ${U.plural(days, 'день', 'дня', 'дней')}</span></div>
+            <div class="det-tags">${d.clan ? `<span class="tag-crest" style="color:${cc}"><i>${Art.clanCrest(d.clan)}</i>${CLANS[d.clan].short}</span>` : ''}<span>в Ордене ${days} ${U.plural(days, 'день', 'дня', 'дней')}</span></div>
             ${Game.on() ? `<div class="acc-tags">${Login.accountTags()}</div>` : ''}
           </div>
         </div>

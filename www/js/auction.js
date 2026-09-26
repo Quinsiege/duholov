@@ -78,7 +78,7 @@ const Auction = {
       <span class="btn small ${l.cur === 'zlat' ? 'primary' : 'spark-btn'} ${poor ? 'poor' : ''} au-price">${this.priceHtml(l.cur, l.price)}</span></button>`;
   },
   lotModal(l, done) {
-    const p = l.spirit, s = SP[l.sid], mine = Math.min(l.lvl, S.maxLvl());
+    const p = l.spirit, s = SP[l.sid], mine = Math.min(l.lvl, S.catchLvl());
     const bar = (t, v) => `<div class="au-stat"><span>${t}</span><div class="pbar"><i style="width:${v / 15 * 100}%"></i></div><b>${v}/15</b></div>`;
     UI.modal({
       title: U.esc(p.n || s.name), cls: 'au-modal',

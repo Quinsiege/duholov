@@ -164,7 +164,7 @@ const Raid = {
     const $ = sel => root.querySelector(sel);
     const st = this.st = {
       r, s, bs, root, $, bossHp: bs.hp, time: 90, energy: 0, cool: 0, idx: 0, coop: coop || null, ko: false,
-      team: team.map(sp => { const x = S.battle(sp); return { sp, ...x, max: x.hp * 5, cur: x.hp * 5 }; }),
+      team: team.map(sp => { const x = S.battle(sp); return { sp, ...x, max: x.hp * 5, cur: Math.max(1, Math.round(x.hp * 5 * S.hpNow(sp))) }; }), // 4.15: с тем здоровьем, что есть
       nextAtk: 3.2, tele: 0, dodgeT: -9, waters: 0, running: false, over: false,
     };
     UI.pushLayer(() => this.quit());
@@ -386,7 +386,7 @@ const Raid = {
     await U.wait(400);
     // итог боя проверяет сервер: победа засчитывается, если команда могла нанести столько урона за это время
     let r = null;
-    try { r = await Game.act('raidEnd', { win: !!win }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('raidEnd', { win: !!win, hp: S.hpReport(st.team) }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;
     if (win && r && r.win) {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
@@ -428,7 +428,7 @@ const Raid = {
   },
   close() {
     const st = this.st; if (!st) return;
-    if (!st.over) Game.act('raidEnd', { win: false }).catch(() => {}); // вышел из боя
+    if (!st.over) Game.act('raidEnd', { win: false, hp: S.hpReport(st.team) }).catch(() => {}); // вышел из боя
     st.over = true;
     st.root.remove();
     this.st = null;

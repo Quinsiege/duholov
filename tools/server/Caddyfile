@@ -26,7 +26,8 @@ api.duholov.ru {
 # Сайт игры
 duholov.ru {
 	import security
-	header X-Frame-Options DENY
+	# 4.14.1: SAMEORIGIN, не DENY — правила, политика и оферта открываются в игре во фрейме (UI.doc); чужим сайтам встроить нельзя
+	header X-Frame-Options SAMEORIGIN
 	encode zstd gzip
 
 	# карта: векторные тайлы России (/srv/tiles/*.pmtiles, читаются кусками Range); имя файла с датой — кэш надолго.

@@ -36,6 +36,19 @@ const GameCore = {
       });
     });
   },
+  // 4.15: погоде от телефона сервер не верит на слово. Годится настоящая погода этой точки (текущая или прошлая —
+  // телефон мог запросить её чуть раньше) и смоделированная (у кого «настоящая погода» выключена или нет сети).
+  // Иначе — смоделированная: её нельзя подделать, духи на карте у честного игрока от этого не меняются.
+  // Нет ответа от сервиса погоды — верим телефону, как раньше.
+  async checkWx(key, pos, env) {
+    if (!key || !pos) return key ? { key } : null;
+    const sim = Sky.simulate(pos).key;
+    if (key === sim || !env || typeof env.weather !== 'function') return { key };
+    let real = null;
+    try { real = await env.weather(pos.lat, pos.lng); } catch (e) { real = null; }
+    if (!real || !real.length) return { key };
+    return { key: real.includes(key) ? key : sim };
+  },
   async run(req, save, env) {
     if (this.als && !this.als.getStore()) return this.als.run({}, () => this.run(req, save, env));
     const ctx = { now: Date.now(), env, srv: JSON.parse(JSON.stringify(save.srv || {})), events: [], results: [], after: [], full: false, reset: false };
@@ -47,10 +60,10 @@ const GameCore = {
       if (!z || (z.v !== tz && ctx.now - z.t >= this.TZ_LOCK)) ctx.srv.tz = { v: tz, t: ctx.now };
       U.tz = ctx.srv.tz.v;
       U.skew = 0;
-      Sky.w = req.wx && WEATHER[req.wx] ? { key: req.wx } : null;
       const p = req.pos;
       ctx.pos = p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180
         ? { lat: +p.lat, lng: +p.lng, acc: U.clamp(+p.acc || 30, 1, 5000) } : null;
+      Sky.w = await this.checkWx(req.wx && WEATHER[req.wx] ? req.wx : null, ctx.pos, env);
       MapView.pos = ctx.pos;
       Bus.emit = (ev, data) => ctx.events.push([ev, this.ser(ev, data)]);
       S.save = () => {};
@@ -136,8 +149,20 @@ const GameCore = {
     ctx.srv.battle = null;
     return b;
   },
+  // 4.15: раны после боя — общие на всю игру. Телефон присылает долю здоровья каждого бойца (hp: { uid: 0..1 });
+  // выше той, с какой дух вошёл в бой, она не станет (в разломе — плюс выпитая Живая вода). Нет данных — здоровье не меняется
+  woundTeam(b, hp) {
+    if (!hp || typeof hp !== 'object') return;
+    (b.team || []).forEach(uid => {
+      const sp = S.findSpirit(uid), rep = +hp[uid];
+      if (!sp || !Number.isFinite(rep)) return;
+      S.setHp(sp, Math.min(rep, Math.min(1, S.hpNow(sp) + (b.waters || 0) * ITEMS.water.heal)));
+    });
+  },
+  readyTeam(team) { this.need(team.every(sp => S.alive(sp)), 'В команде дух без сил — вылечи его или замени'); },
   // Одна встреча с духом за раз: вид, уровень и особенности — только с сервера
   openEnc(ctx, o) {
+    o = { ...o, lvl: U.clamp(o.lvl | 0, 1, S.catchLvl()) }; // 4.15: пойманный дух — не выше уровня Ловчего, откуда бы ни пришёл
     const sp = S.makeSpirit(o.sid, o.lvl, o.seed + ':iv', { ivMin: o.mode === 'wild' ? 0 : 10 });
     if (o.shiny) sp.shiny = true;
     if (o.dark) sp.dark = true;
@@ -322,11 +347,11 @@ const GameCore = {
   },
   // Упаковка духа для посылки и лота аукциона — и обратно (уровень — не выше доступного получателю)
   packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 }; },
-  unpackSpirit(p, ctx, from) {
+  unpackSpirit(p, ctx, from, cap = S.maxLvl()) {
     this.need(p && SP[p.s], 'Посылка повреждена');
     const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
-    const sp = { uid: U.uid(), sid: p.s, lvl: U.clamp(Math.min(+p.l || 1, S.maxLvl()), 1, 50), iv, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null };
+    const sp = { uid: U.uid(), sid: p.s, lvl: U.clamp(Math.min(+p.l || 1, cap), 1, 50), iv, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null };
     if (from) sp.from = this.cleanText(from, 20);
     if (p.y) sp.shiny = true;
     if (p.d) sp.dark = true;
@@ -478,7 +503,7 @@ const GameCore = {
       if (kind === 'tut') {
         const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
         this.need(st && st.kind === 'catch', 'Учебный дух сейчас не нужен');
-        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: 2, seed: 'tut' + S.d.tut });
+        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -499,7 +524,7 @@ const GameCore = {
       }
       if (kind === 'story') {
         this.need(S.d.storyGift && SP[S.d.storyGift], 'Встреча Летописи недоступна');
-        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.maxLvl()), seed: 'gift' + S.d.created });
+        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.catchLvl()), seed: 'gift' + S.d.created });
       }
       this.fail('Неизвестная встреча');
     },
@@ -596,6 +621,14 @@ const GameCore = {
         S.d.tasks.push(task);
       }
       return { got, cocoon: coc, task, full: S.bagCount() >= S.bagLimit() };
+    },
+    // 4.15: вылечить духа предметом из сумки (Подорожник, Целебный отвар, Мёртвая вода, Живая вода)
+    heal(a, ctx) {
+      const sp = S.findSpirit(a.uid);
+      this.need(sp, 'Дух не найден');
+      const k = String(a.k || ''), err = S.heal(sp, k);
+      this.need(!err, err);
+      return { uid: sp.uid, hp: S.hpNow(sp), left: S.d.items[k] || 0 };
     },
     incense(a, ctx) {
       this.need(!S.incenseActive(), 'Ладан ещё горит');
@@ -717,7 +750,7 @@ const GameCore = {
       S.d.tasks = S.d.tasks.filter(x => x !== q);
       const T = TASK_TIERS[q.tier];
       const got = S.giveRewards({ ...T.reward, xp: 250 * q.tier });
-      const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.maxLvl()) };
+      const m = { id: q.id, sid: q.sid, lvl: Math.min(T.lvl, S.catchLvl()) };
       S.progress('task', 1);
       S.d.taskMeet.push(m);
       return { got, meet: m };
@@ -772,6 +805,7 @@ const GameCore = {
       } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       this.dayNeed(ctx, 'raids'); // до списания Дальнего пропуска
       this.limit(ctx, 'raid', 30, 3600000);
       if (far) S.d.items.farpass--;
@@ -833,6 +867,7 @@ const GameCore = {
     },
     raidEnd(a, ctx) {
       const b = this.endBattle(ctx, 'raid');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const t = Math.min(90, this.battleTime(ctx, b));
       const n = b.coop ? b.coop.allies + 1 : 1, hpMul = 1 + 0.8 * (n - 1);
@@ -851,7 +886,7 @@ const GameCore = {
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
       const shiny = U.h('rshiny', b.rid, S.d.created) < Sky.shinyRate(1 / 20);
-      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.maxLvl()), // не выше доступного игроку уровня
+      ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.catchLvl()), // 4.15: пойманный дух — не выше уровня Ловчего
         charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
       return { win: true, rw, charms, bonus, allies };
     },
@@ -866,6 +901,7 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
       const hold = await ctx.env.holdGet(p.id);
       this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, 'Капище держит твоя дружина — здесь можно поставить защитника');
@@ -878,6 +914,7 @@ const GameCore = {
     },
     async duelEnd(a, ctx) {
       const b = this.endBattle(ctx, 'duel');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const e = { id: b.id, tier: b.tier, name: b.name };
       this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team, SHRINE_TIERS[e.tier].speed);
@@ -1070,6 +1107,7 @@ const GameCore = {
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       const team = S.team();
       this.need(team.length, 'Нужна команда');
+      this.readyTeam(team);
       this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
       ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid) };
@@ -1077,6 +1115,7 @@ const GameCore = {
     },
     invEnd(a, ctx) {
       const b = this.endBattle(ctx, 'inv');
+      this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const g = W.grunt({ invId: b.invId });
       this.plausibleDuel(ctx, b, g.team, Duel.FOE.invasion.speed);
@@ -1089,7 +1128,7 @@ const GameCore = {
       const am = S.rollAmulet(0.15, b.invId);
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       const rescue = g.team[Math.floor(U.h('rescue', b.invId) * g.team.length)];
-      ctx.srv.rescue = { sid: rescue.sid, lvl: Math.min(rescue.lvl, S.maxLvl()), seed: b.invId + ':rescue' };
+      ctx.srv.rescue = { sid: rescue.sid, lvl: Math.min(rescue.lvl, S.catchLvl()), seed: b.invId + ':rescue' };
       return { win: true, rw, rescue: { sid: rescue.sid, lvl: ctx.srv.rescue.lvl } };
     },
 
@@ -1098,9 +1137,11 @@ const GameCore = {
       const L = League.st(), team = S.team();
       this.need(S.d.level >= 5, 'Лига открывается с 5 уровня Ловчего');
       this.need(team.length === 3, 'Нужно три духа');
+      this.readyTeam(team);
       this.need(L.tickets > 0, 'Жетоны кончились — приходи завтра');
       L.tickets--;
-      L.run = { k: 0, won: 0, pts0: L.pts, rank0: League.rank(L.pts), seed: U.uid(), team: team.map(x => x.uid) };
+      // 4.15: опыт — только за первые League.XP_RUNS турниров дня (по числу потраченных жетонов)
+      L.run = { k: 0, won: 0, pts0: L.pts, rank0: League.rank(L.pts), seed: U.uid(), team: team.map(x => x.uid), xp: League.TICKETS - L.tickets <= League.XP_RUNS };
       ctx.srv.battle = { type: 'league', k: 0, start: ctx.now, team: L.run.team };
       return { run: L.run };
     },
@@ -1109,6 +1150,7 @@ const GameCore = {
       this.need(run, 'Турнир не найден');
       const b = this.endBattle(ctx, 'league');
       this.need(b.k === run.k, 'Турнир не найден');
+      this.woundTeam(b, a.hp);
       const win = !!a.win;
       if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
       // 4.15: рейтинг — победа +30, поражение −30 (не ниже нуля; можно выпасть в прошлую лигу, награды за лигу — раз в сезон)
@@ -1125,7 +1167,7 @@ const GameCore = {
         if (i % 3 === 0) { const am = S.rollAmulet(1, 'lg' + i); rewards.push({ k: 'amulet', n: 1, label: AMULETS[am].name }); }
       }
       if (rNew > L.best) L.best = rNew;
-      S.addXP(win ? 400 + run.k * 200 : 100);
+      if (run.xp !== false) S.addXP(win ? 400 + run.k * 200 : 100);
       const res = { win, gained, last, k: run.k, won: run.won, pts: L.pts, ptsGot: L.pts - (run.pts0 != null ? run.pts0 : was), rNew, rank0: run.rank0, rewards };
       // строка таблицы сезона — после каждого боя: рейтинг меняют и победы, и поражения
       if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }));
@@ -1217,7 +1259,7 @@ const GameCore = {
       const lot = await ctx.env.lotBuy(id, S.d.pid, S.d.name);
       this.need(lot && lot.price === pre.price && lot.cur === pre.cur, 'Лот уже купили или сняли с продажи');
       S.d[cur] -= lot.price;
-      const sp = this.unpackSpirit(lot.spirit, ctx, lot.seller_name);
+      const sp = this.unpackSpirit(lot.spirit, ctx, lot.seller_name, S.catchLvl());
       const isNew = S.addSpirit(sp);
       S.d.auc.got[lot.id] = ctx.now;
       S.d.stats.traded++; // знак «Щедрая душа»

@@ -123,10 +123,13 @@ const Shop = {
     </div>`;
   },
 
+  // 4.15: Лавка — в композиции карточки духа: сверху (≤30%) лоток в волшебном круге, справа «ЗЛАТНИКИ ··· N», искры и обмены
+  // отдельным блоком, метка товара дня; ниже вкладки «Товары · Казна · Обмен · Облик», содержимое листается внутри панели
   screen() {
     Sfx.init(); Sfx.play('tap');
-    const scr = UI.screen('Лавка Ордена', '<div class="shop"></div>', 'shop-screen');
+    const scr = UI.screen('Лавка Ордена', '<div class="shop det det2 shop2" style="--c:#fbbf24"></div>', 'shop-screen det-screen');
     const box = scr.querySelector('.shop');
+    let tab = 'goods';
     const render = () => {
       const today = U.today(), deal = Rules.shopDeal(today), dealBought = S.d.shop.deal === today;
       const lvlLock = it => it.lvl && S.d.level < it.lvl ? `с ${it.lvl} ур.` : '';
@@ -137,21 +140,43 @@ const Shop = {
           <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : 'Максимум')}</button></div>`;
       };
       const bag = { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) };
-      const cloaks = LOOK.cloak.filter(c => c.shop);
-      box.innerHTML = `${this.wallet()}${Treasury.html(pay)}
-        <div class="shop-deal ${dealBought ? 'off' : ''}"><div class="shop-tag">Товар дня · −40%</div>${row(deal, 'deal', dealBought ? ' · куплен, завтра будет новый' : '')}</div>
-        ${this.exchangeHtml()}
-        <h3 class="prof-h">Сумка <small>${S.bagCount()} / ${S.bagLimit()}</small></h3>
-        ${row(bag, 'bag', ` · расширено ${S.d.bagExtra} из ${Rules.BAG_MAX_UP}`)}
-        <h3 class="prof-h">Припасы</h3>
-        ${Rules.SHOP.filter(x => !x.bag).map(x => row(x, x.id)).join('')}
-        <h3 class="prof-h">Облик</h3>
-        <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>Гардероб Ловчего</b><small>${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} златников</small></span><span class="sw-go">›</span></button>
-        <div class="shop-cloaks">${cloaks.map(c => `<button class="shop-cloak ${S.d.owned[c.c] ? 'owned' : this.poor({ cur: 'zlat', price: c.shop }) ? 'poor' : ''}" data-id="look:${c.c}" ${S.d.owned[c.c] ? 'disabled' : ''}>
-          <div class="shop-ava">${Art.avatar({ cloak: c.c, eyes: S.d.look.eyes, emblem: S.d.look.emblem })}</div><b>${c.name}</b><small>${S.d.owned[c.c] ? 'Уже твой' : this.price({ cur: 'zlat', price: c.shop })}</small></button>`).join('')}</div>
-        <div class="q-note">Златники дают за серию дней (на 7-й день — 30), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.</div>`;
+      const cloaks = LOOK.cloak.filter(c => c.shop), zl = S.d.zlat || 0, exLeft = this.exLeft();
+      const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
+      box.innerHTML = `
+        <div class="dt-hero">
+          <div class="det-art shop2-art"><span class="shop2-ico">${UI.menuIcon('shop')}</span></div>
+          <div class="dt-info">
+            <div class="det-hp">Всё для Ловчего — за искры и златники</div>
+            <div class="det-power"><small>ЗЛАТНИКИ</small><b><span class="cur">${Art.item('zlat')}</span>${U.fmtNum(zl)}</b></div>
+            <div class="det-lvl"><span>Искры <b>${U.fmtNum(S.d.sparks)}</b> · обменов сегодня <b>${exLeft}</b></span></div>
+            <div class="det-tags">${dealBought ? '<span>товар дня куплен</span>' : '<span class="shop2-hot">Товар дня · −40%</span>'}</div>
+          </div>
+        </div>
+        <div class="seg dt-tabs">${[['goods', 'Товары'], ['pay', 'Казна'], ['ex', 'Обмен'], ['look', 'Облик']].map(([k, t]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${t}${k === 'goods' && !dealBought ? '<i class="dt-dot"></i>' : ''}</button>`).join('')}</div>
+        <div class="dt-panel">
+          ${pane('goods', `
+            <div class="shop-deal ${dealBought ? 'off' : ''}">${row({ ...deal, name: `${deal.name} <i class="shop2-chip">−40% · товар дня</i>` }, 'deal', dealBought ? ' · куплен, завтра будет новый' : '')}</div>
+            <div class="pf-mh"><span>Сумка</span><b>${S.bagCount()} / ${S.bagLimit()}</b></div>
+            ${row(bag, 'bag', ` · расширено ${S.d.bagExtra} из ${Rules.BAG_MAX_UP}`)}
+            <div class="pf-mh"><span>Припасы</span></div>
+            ${Rules.SHOP.filter(x => !x.bag).map(x => row(x, x.id)).join('')}`)}
+          ${pane('pay', Treasury.html(pay))}
+          ${pane('ex', `${this.exchangeHtml()}
+            <div class="dt-rows">
+              <div class="dt-row"><span>Курс</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>
+              <div class="dt-row"><span>Обменов в день</span><b>${Rules.EXCHANGE.DAY}</b></div>
+            </div>
+            <div class="q-note">Златники дают за серию дней (на 7-й день — 30), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.</div>`)}
+          ${pane('look', `
+            <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>Гардероб Ловчего</b><small>${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} златников</small></span><span class="sw-go">›</span></button>
+            <div class="pf-mh"><span>Плащи</span></div>
+            <div class="shop-cloaks">${cloaks.map(c => `<button class="shop-cloak ${S.d.owned[c.c] ? 'owned' : this.poor({ cur: 'zlat', price: c.shop }) ? 'poor' : ''}" data-id="look:${c.c}" ${S.d.owned[c.c] ? 'disabled' : ''}>
+              <div class="shop-ava">${Art.avatar({ cloak: c.c, eyes: S.d.look.eyes, emblem: S.d.look.emblem })}</div><b>${c.name}</b><small>${S.d.owned[c.c] ? 'Уже твой' : this.price({ cur: 'zlat', price: c.shop })}</small></button>`).join('')}</div>`)}
+        </div>`;
     };
     box.addEventListener('click', async e => {
+      const tb = e.target.closest('[data-tab]');
+      if (tb) { tab = tb.dataset.tab; Sfx.play('tap'); U.$$('[data-tab]', box).forEach(x => x.classList.toggle('on', x === tb)); U.$$('.dt-pane', box).forEach(p => p.classList.toggle('on', p.dataset.pane === tab)); return; }
       const pk = e.target.closest('[data-pay]'); if (pk) { if (pay.on) Treasury.buy(pk.dataset.pay, pay, render); else UI.toast('Оплата скоро откроется — следи за обновлениями'); return; }
       if (e.target.closest('.pay-recheck')) { await Treasury.check(true); render(); return; }
       if (e.target.closest('.pay-offer')) { Treasury.offer(); return; }

@@ -71,7 +71,7 @@ const S = {
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
     this.migrate();
-    const sp = this.makeSpirit(starter, 5, 'starter' + Date.now(), { ivMin: 10 });
+    const sp = this.makeSpirit(starter, Math.min(5, this.catchLvl()), 'starter' + Date.now(), { ivMin: 10 });
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
@@ -141,6 +141,45 @@ const S = {
   },
   ivPct(sp) { return Math.round((sp.iv[0] + sp.iv[1] + sp.iv[2]) / 45 * 100); },
   maxLvl() { return Math.min(40, this.d.level + 5); },
+  /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
+     hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
+     до Rules.HP.KO_MS в бой не идёт, потом поднимается сам на Rules.HP.BACK */
+  hpNow(sp, now = U.now()) {
+    const H = Rules.HP;
+    if (!sp) return 0;
+    if (sp.ko) { const t = now - sp.ko; return t < H.KO_MS ? 0 : Math.min(1, H.BACK + H.REGEN * (t - H.KO_MS) / 3600000); }
+    if (sp.hpf == null) return 1;
+    return Math.min(1, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
+  },
+  alive(sp) { return this.hpNow(sp) > 0; },
+  koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.HP.KO_MS - (now - sp.ko)) : 0; },
+  setHp(sp, f, now = U.now()) {
+    f = Math.max(0, Math.min(1, +f || 0));
+    delete sp.ko; delete sp.hpf; delete sp.hpt;
+    if (f <= 0) { sp.ko = now; } else if (f < 0.999) { sp.hpf = Math.round(f * 1000) / 1000; sp.hpt = now; }
+  },
+  healItems() { return Object.keys(ITEMS).filter(k => ITEMS[k].heal || ITEMS[k].revive); },
+  canHeal(sp, k) {
+    const it = ITEMS[k], h = this.hpNow(sp);
+    if (!sp) return 'Дух не найден';
+    if (!it || !(it.heal || it.revive)) return 'Этим не лечат';
+    if (!(this.d.items[k] > 0)) return `${it.name}: нет в сумке`;
+    if (h <= 0 && !it.revive) return 'Дух без сил — поднимет только Живая вода';
+    if (h >= 1) return 'Дух здоров';
+    return null;
+  },
+  heal(sp, k) {
+    const err = this.canHeal(sp, k); if (err) return err;
+    const it = ITEMS[k], h = this.hpNow(sp);
+    this.useItem(k);
+    this.setHp(sp, h <= 0 ? it.revive : h + it.heal);
+    this.save();
+    return null;
+  },
+  // здоровье бойцов после боя: { uid: доля }
+  hpReport(fighters) { const o = {}; (fighters || []).forEach(f => { if (f && f.sp && f.sp.uid) o[f.sp.uid] = Math.round(Math.max(0, f.cur) / f.max * 1000) / 1000; }); return o; },
+  // 4.15: пойманный дух — не выше уровня Ловчего (усиливать можно дальше, до уровня +5)
+  catchLvl() { return Math.max(1, Math.min(40, this.d.level)); },
   addSpirit(sp, silent) {
     this.d.spirits.push(sp);
     const dx = this.d.dex[sp.sid] = this.d.dex[sp.sid] || { seen: 1, caught: 0 };
@@ -313,7 +352,7 @@ const S = {
     this.save();
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3, zlat: Rules.ZLAT.level };
+    const r = { charm: 10 + l, honey: 3, water: 3, herb: 5, brew: 2, zlat: Rules.ZLAT.level };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;
