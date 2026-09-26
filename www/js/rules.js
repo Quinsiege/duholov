@@ -82,10 +82,11 @@ const Rules = {
     { id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
     { id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
-    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: поднимает духа без сил`,       cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: половина здоровья, в разломе — прямо в бою`, cur: 'sparks', price: 1500, give: { water: 5 } },
     { id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },
     { id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },
-    { id: 'dead3',    name: ru`Мёртвая вода`,        desc: ru`3 флакона: залечивает духа полностью`,     cur: 'zlat',   price: 40,   give: { deadwater: 3 } },
+    // 4.15.1: Мёртвая вода — редкость: в Лавке один флакон в день (day — сколько раз в день можно купить), в товар дня не попадает
+    { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в день: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 60, give: { deadwater: 1 }, day: 1 },
     { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
     { id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
@@ -95,11 +96,13 @@ const Rules = {
   ],
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
-  // без сил (здоровье 0) — в бой не идёт и через KO_MS поднимается сам на BACK (или сразу — Живой водой)
-  HP: { REGEN: 0.1, KO_MS: 4 * 3600000, BACK: 0.5 },
+  // без сил (здоровье 0) — в бой не идёт и поднимается сам на BACK через KO_H часов (по редкости духа: от 2 до 24);
+  // 4.15.1: Мёртвая вода сокращает ожидание на ITEMS.deadwater.revive часов, Живая вода духа без сил не поднимает
+  HP: { REGEN: 0.1, KO_H: { 1: 2, 2: 5, 3: 9, 4: 15, 5: 24 }, BACK: 0.1 },
+  koMs(sp) { return (this.HP.KO_H[(SP[sp.sid] || {}).rar] || 2) * 3600000; },
   // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
   shopDeal(day) {
-    const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl); // товар дня доступен любому уровню
+    const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl && !x.day); // товар дня доступен любому уровню; редкое (day) — без скидки
     const it = pool[Math.floor(U.h('deal', day) * pool.length)];
     return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
   },

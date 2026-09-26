@@ -192,7 +192,9 @@
     S.setHp(sp, 0.4, t0); near(S.hpNow(sp, t0), 0.4, 1e-9); near(S.hpNow(sp, t0 + 3600000), 0.4 + H.REGEN, 1e-9, 'сам восстанавливается');
     eq(S.hpNow(sp, t0 + 100 * 3600000), 1, 'не выше полного');
     S.setHp(sp, 0, t0); eq(S.hpNow(sp, t0 + 1000), 0, 'без сил'); ok(!S.alive(sp) || S.hpNow(sp) > 0);
-    eq(S.hpNow(sp, t0 + H.KO_MS - 1), 0); eq(S.hpNow(sp, t0 + H.KO_MS), H.BACK, 'поднимается сам через KO_MS');
+    const ko = Rules.koMs(sp); eq(ko, H.KO_H[SPECIES[0].rar] * 3600000, 'срок — по редкости');
+    eq(S.hpNow(sp, t0 + ko - 1), 0); eq(S.hpNow(sp, t0 + ko), H.BACK, 'поднимается сам на 10%');
+    ok(Rules.koMs({ sid: 'koschey' }) === 24 * 3600000 && Rules.koMs({ sid: 'ugolek' }) === 2 * 3600000, 'от 2 до 24 часов');
     S.setHp(sp, 1, t0); ok(!('hpf' in sp) && !('ko' in sp), 'здоровый — без лишних полей');
   });
   test('Регионы: вещие птицы только в своих частях света', () => {
@@ -800,11 +802,18 @@
     await must(A, 'duelEnd', { win: false, hp: { [uid]: 0 } });
     ok(A.data.spirits[0].ko, 'без сил');
     await refuse(A, 'duelStart', { shrine }, /без сил/);
-    A.data.items.herb = 1; A.data.items.water = 0;
-    await refuse(A, 'heal', { uid, k: 'herb' }, /Живая вода/);
-    A.data.items.water = 1;
-    const h = await must(A, 'heal', { uid, k: 'water' }); near(h.hp, 0.5, 0.01, 'Живая вода подняла');
-    const h2 = await must(A, 'heal', { uid, k: 'herb' }); near(h2.hp, 0.75, 0.01, 'подорожник +25%');
+    A.data.items.herb = 1; A.data.items.water = 1; A.data.items.deadwater = 2;
+    await refuse(A, 'heal', { uid, k: 'herb' }, /Мёртвая вода/);
+    await refuse(A, 'heal', { uid, k: 'water' }, /Мёртвая вода/, 'Живая вода не поднимает');
+    const sp0 = A.data.spirits[0], koH = Rules.HP.KO_H[SP[sp0.sid].rar];
+    sp0.ko = Date.now() - 1000; // только что упал
+    const d1 = await must(A, 'heal', { uid, k: 'deadwater' });
+    if (koH > 4) { eq(d1.hp, 0, 'ещё без сил'); near(d1.ko / 3600000, koH - 4, 0.01, 'на 4 часа раньше'); await must(A, 'heal', { uid, k: 'deadwater' }); }
+    near(asPlayer(A, () => S.hpNow(A.data.spirits[0])), Rules.HP.BACK, 0.01, 'поднят Мёртвой водой на 10%');
+    A.data.items.deadwater = 1;
+    await refuse(A, 'heal', { uid, k: 'deadwater' }, /не лечит живых/);
+    const h2 = await must(A, 'heal', { uid, k: 'herb' }); near(h2.hp, 0.35, 0.01, 'подорожник +25%');
+    const h3 = await must(A, 'heal', { uid, k: 'water' }); near(h3.hp, 0.85, 0.01, 'Живая вода +50%');
     await refuse(A, 'heal', { uid, k: 'charm' }, /не лечат/);
     await must(A, 'duelStart', { shrine });
   });
