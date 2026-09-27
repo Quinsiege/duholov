@@ -1220,6 +1220,29 @@ const Art = (() => {
     };
     im.src = rawMask(sid);
   }
+  // Трещины Нави на плёнке омрачённого духа: одна сеть на всю плёнку, своя у каждого духа и всегда одна и та же (из кода духа)
+  const crackCache = {};
+  const cracksSvg = seed => crackCache[seed] || (crackCache[seed] = (() => {
+    const r = U.rng('cracks:' + seed), P = [];
+    const walk = (x, y, a, n, w) => {
+      let d = `M${x.toFixed(1)} ${y.toFixed(1)}`;
+      for (let i = 0; i < n; i++) {
+        a += (r() - .5) * 1.2; const l = 5 + r() * 8;
+        x += Math.cos(a) * l; y += Math.sin(a) * l;
+        d += `L${x.toFixed(1)} ${y.toFixed(1)}`;
+        if (w > .5 && r() < .3) walk(x, y, a + (r() < .5 ? 1 : -1) * (.6 + r() * .6), 2 + Math.floor(r() * 3), w * .6);
+      }
+      P.push([d, w]);
+    };
+    // трещины расходятся из 3–4 точек удара
+    const k = 3 + Math.floor(r() * 2);
+    for (let i = 0; i < k; i++) {
+      const x = 15 + r() * 70, y = 12 + r() * 70, rays = 2 + Math.floor(r() * 2);
+      for (let j = 0; j < rays; j++) walk(x, y, r() * Math.PI * 2, 4 + Math.floor(r() * 4), 1);
+    }
+    const g = P.map(([d, w]) => `<path d="${d}" stroke-width="${(w * .9).toFixed(2)}"/>`).join('');
+    return `<svg class="stc-cracks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><g class="glow">${g}</g><g>${g}</g></svg>`;
+  })());
   // код — крупной строкой поперёк середины; где фигура уже, цифры срезаются по контуру (плёнка — по силуэту)
   const codeFor = (sid, code) => codeSvg(code, false, 'left:17%;top:46%;width:66%;height:9.24%');
   // info — сам дух (Art.of): код на плёнке, привязан ли (плёнка содрана), uid — чтобы содрать её в карточке
@@ -1231,7 +1254,7 @@ const Art = (() => {
     const kind = info && info.dark && !info.purified ? ' stc-dark' : info && info.shiny ? ' stc-shiny' : ''; // плёнка — по виду духа
     return `<span class="art sp-sticker${kind}${bound ? ' stc-bound' : ''}" style="aspect-ratio:1;--el:${elColor(sid)}" data-sid="${sid}"${code ? ` data-code="${code}"` : ''}${info && info.uid ? ` data-uid="${U.esc(info.uid)}"` : ''}><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
       `<span class="stc-back"><span class="stc-sil"><i class="stc-glue" style="${ms}"></i>` +
-      (bound ? '' : `<i class="stc-liner" style="${ms}">${code ? codeFor(sid, code) : ''}</i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span>`) + '</span></span></span></span>';
+      (bound ? '' : `<i class="stc-liner" style="${ms}">${kind === ' stc-dark' ? cracksSvg(code || sid) : ''}${code ? codeFor(sid, code) : ''}</i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span>`) + '</span></span></span></span>';
   };
   const spiritK = (sid, shiny, dark, info) => sticker(PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`), sid, info);
   // Вращение стикера: тянуть — крутится (с разгона докручивается до ближайшей стороны), коснуться — перевернуть.
