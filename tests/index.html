@@ -1354,8 +1354,13 @@
     const A = await newPlayer('wh', 55.52, 37.40, 'Зельевар');
     A.data.tut = 0; A.data.level = 10; A.data.zlat = 1000;
     await refuse(A, 'xpBrew', {}, /нет/);
-    await must(A, 'shopBuy', { id: 'xpbrew' }); eq(A.data.items.xpbrew, 1); eq(A.data.zlat, 900);
+    await must(A, 'shopBuy', { id: 'xpbrew' }); eq(A.data.items.xpbrew, 1); eq(A.data.zlat, 1000 - Rules.SHOP.find(x => x.id === 'xpbrew').price);
     await refuse(A, 'shopBuy', { id: 'xpbrew' }, /Сегодня уже/);
+    eq(A.data.shop.wk.xpbrew, 1, 'счётчик недели');
+    A.data.dayc = {}; A.data.shop.wk.xpbrew = 3; // будто уже три за неделю
+    await refuse(A, 'shopBuy', { id: 'xpbrew' }, /На этой неделе/);
+    A.data.shop.wk.week = Ev.week() - 1; // прошлая неделя — снова можно
+    await must(A, 'shopBuy', { id: 'xpbrew' }); eq(A.data.items.xpbrew, 2); eq(A.data.shop.wk.xpbrew, 1); A.data.items.xpbrew = 1;
     const i0 = A.data.items.incense || 0;
     await must(A, 'shopBuy', { id: 'incense5' }); eq(A.data.items.incense, i0 + 5);
     await refuse(A, 'shopBuy', { id: 'incense5' }, /Сегодня уже/);

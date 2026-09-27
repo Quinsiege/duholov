@@ -311,10 +311,13 @@ async function spendZlat() {
   // 4.16: Настой опыта (раз в день): киты и средние — когда хватает (средние оставляют запас на Золотую тропу), остальные —
   // если златников скопилось много. Пьют утром (playerDay), настой в сумке — на завтра
   const brewAt = don >= 3 ? 150 : don === 2 ? 100 + (d.pass && !d.pass.gold ? Rules.PASS.GOLD : 60) : 500;
-  if (!(P.data.items.xpbrew > 0) && P.data.zlat >= brewAt && await act('shopBuy', { id: 'xpbrew' })) spend('Настой опыта', 100);
+  const room = n => me(() => S.bagCount()) + n <= me(() => S.bagLimit());
+  const brew = Rules.SHOP.find(x => x.id === 'xpbrew');
+  if (!(P.data.items.xpbrew > 0) && P.data.zlat >= brewAt && room(1) && Rules.weekUsed(P.data, 'xpbrew') < brew.week && await act('shopBuy', { id: 'xpbrew' })) spend('Настой опыта', brew.price);
   // ладан: киты — связка раз в день, средние — по одному, остальные — если златников скопилось много
-  if (don >= 3 && (P.data.items.incense || 0) < 3 && P.data.zlat >= 200 + 100 && await act('shopBuy', { id: 'incense5' })) spend('Ладан', 200);
-  const inc = don === 2 ? 1 : don < 2 && P.data.zlat >= 600 ? 1 : 0;
+  // (связка — через день, когда ладан кончился: столько же ладана, сколько киты брали раньше, по 2 в день)
+  if (don >= 3 && !(P.data.items.incense > 0) && P.dayN % 2 === 0 && P.data.zlat >= 200 + 100 && room(5) && await act('shopBuy', { id: 'incense5' })) spend('Ладан', 200);
+  const inc = (don === 2 && P.data.zlat >= 300) || (don < 2 && P.data.zlat >= 600) ? 1 : 0; // средние: сперва настой, ладан — с остатка
   for (let i = 0; i < inc; i++) if ((P.data.items.incense || 0) < 2 && P.data.zlat >= 50 + 20 && await act('shopBuy', { id: 'incense' })) spend('Ладан', 50);
   // коконы и амулеты — киты
   if (don >= 3 && P.data.cocoons.length < 9 && P.data.zlat >= 150 + 100 && await act('shopBuy', { id: 'cocoon10' })) spend('Коконы', 150);

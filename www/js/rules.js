@@ -62,6 +62,8 @@ const Rules = {
   // 10–20 родников в день), а бесконечный фарм и боты упираются в потолок
   DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
   DAILY_NAMES: { springs: ru`Родники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
+  // 4.16: сколько раз товар Лавки с недельным пределом (week) куплен на этой неделе (неделя — как у событий, Ev.week)
+  weekUsed(d, id) { const w = d && d.shop && d.shop.wk; return w && w.week === Ev.week() ? (w[id] || 0) : 0; },
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
   // строка «Родников сегодня: 12 из 30» для окон объектов
   dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <b>${u}</b> из ${m}`}</div>`; },
@@ -112,8 +114,9 @@ const Rules = {
     { id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },
     { id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },
     { id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },
-    // 4.16: средние покупки — ощутимо, но не «плати и побеждай»: настой опыта на сутки (+25%) и связка ладана — раз в день
-    { id: 'xpbrew',   name: ru`Настой опыта`,        desc: ru`Сутки опыта на четверть больше. Один в день`, cur: 'zlat', price: 100, give: { xpbrew: 1 }, day: 1 },
+    // 4.16: средние покупки — ощутимо, но не «плати и побеждай»: настой опыта на сутки (+25%) — раз в день и не больше
+    // трёх в неделю (week: иначе кит пил бы его каждый день), связка ладана — раз в день
+    { id: 'xpbrew',   name: ru`Настой опыта`,        desc: ru`Сутки опыта на четверть больше. Один в день, до трёх в неделю`, cur: 'zlat', price: 60, give: { xpbrew: 1 }, day: 1, week: 3 },
     { id: 'incense5', name: ru`Связка ладана`,       desc: ru`5 ладана дешевле, чем по одному. Одна в день`, cur: 'zlat', price: 200, give: { incense: 5 }, day: 1 },
   ],
   // 4.16: Настой опыта — MUL опыта на H часов (пьётся из сумки, пока действует — второй не выпить)

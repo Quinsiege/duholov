@@ -134,10 +134,10 @@ const Shop = {
       const today = U.today(), deal = Rules.shopDeal(today), dealBought = S.d.shop.deal === today;
       const lvlLock = it => it.lvl && S.d.level < it.lvl ? ru`с ${it.lvl} ур.` : '';
       const row = (it, id, extra = '') => {
-        const lock = lvlLock(it), left = it.bag ? Rules.BAG_MAX_UP - S.d.bagExtra : it.day ? Math.max(0, it.day - Rules.dayUsed(S.d, 'shop:' + it.id)) : 1;
+        const lock = lvlLock(it), left = it.bag ? Rules.BAG_MAX_UP - S.d.bagExtra : it.day ? Math.max(0, Math.min(it.day - Rules.dayUsed(S.d, 'shop:' + it.id), it.week ? it.week - Rules.weekUsed(S.d, it.id) : it.day)) : 1;
         const icon = it.bag ? `<div class="shop-ico bag">${UI.I.bag}</div>` : `<div class="shop-ico">${Loot.art(it.give ? Object.keys(it.give)[0] : it.cocoon ? 'cocoon' : 'amulet', it)}</div>`;
         return `<div class="shop-row ${lock || !left ? 'off' : ''}">${icon}<div class="row-main"><b>${it.name}</b><small>${it.desc || ''}${extra}</small></div>
-          <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : it.day ? ru`Завтра` : ru`Максимум`)}</button></div>`;
+          <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : it.week && Rules.weekUsed(S.d, it.id) >= it.week ? ru`С понедельника` : it.day ? ru`Завтра` : ru`Максимум`)}</button></div>`;
       };
       const bag = { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) };
       const cloaks = LOOK.cloak.filter(c => c.shop), zl = S.d.zlat || 0, exLeft = this.exLeft();

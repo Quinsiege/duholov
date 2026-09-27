@@ -977,6 +977,7 @@ const GameCore = {
       }
       this.need(!it.lvl || S.d.level >= it.lvl, ru`Откроется на ${it.lvl} уровне`);
       if (it.day) this.need((this.dayc(ctx)['shop:' + it.id] || 0) < it.day, ru`Сегодня уже куплено — приходи завтра`); // 4.15.1: редкий товар — сколько-то раз в день
+      if (it.week) this.need(Rules.weekUsed(S.d, it.id) < it.week, ru`На этой неделе уже куплено ${it.week} — приходи на следующей`); // 4.16
       if (it.cocoon) this.need(S.d.cocoons.length < 9, ru`Коконов уже девять — выведи кого-нибудь`);
       if (it.give) {
         const n = Object.values(it.give).reduce((s, x) => s + x, 0);
@@ -991,6 +992,7 @@ const GameCore = {
       else got = this.grant({ ...(it.give || {}), cocoon: it.cocoon || 0, amulet: it.amulet ? 1 : 0, look: it.look || null });
       if (a.deal) S.d.shop.deal = today;
       if (it.day) this.dayAdd(ctx, 'shop:' + it.id);
+      if (it.week) { const w = Ev.week(ctx.now); if (!S.d.shop.wk || S.d.shop.wk.week !== w) S.d.shop.wk = { week: w }; S.d.shop.wk[it.id] = (S.d.shop.wk[it.id] || 0) + 1; }
       J.add('shop', { name: it.name });
       return { got, price: it.price, cur: key };
     },
