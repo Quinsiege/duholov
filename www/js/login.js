@@ -214,7 +214,7 @@ const Login = {
     const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
     const root = this.screenRoot();
     // 4.5: без коробки — карточка-медальон Ловчего, «оберег» «Продолжить», стеклянная кнопка; 12+ — значок в углу
-    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap"><span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Realms.chip()}${this.logo(ru`С возвращением, Ловчий!`)}
+    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap"><span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}
       <div class="lg-cta">
         <div class="hero ${guest ? 'is-guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
           <div class="hero-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="hero-lvl">${d.level}</span></div>

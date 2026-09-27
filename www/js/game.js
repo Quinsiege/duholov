@@ -15,17 +15,21 @@ const Game = {
   on() { return Cloud.configured(); },
 
   // Один запрос к серверу
+  // 4.20.1: запрос не ждёт вечно — после сбоя сервера вкладка могла «зависнуть» на загрузке (12%); по таймауту — «Нет связи» и повтор
+  NET_MS: 25000,
+  timed(p, ms = this.NET_MS) { let t; return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(new Error('timeout')), ms); })]).finally(() => clearTimeout(t)); },
   async call(actions) {
     if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);
-    const sb = await Cloud.client();
+    const sb = await this.timed(Cloud.client()).catch(() => { throw new PlayError(ru`Нет связи с сервером игры — проверь интернет`); });
     const p = MapView.pos && (MapView.gpsOK || MapView.demo) ? { lat: +MapView.pos.lat.toFixed(6), lng: +MapView.pos.lng.toFixed(6), acc: Math.round(MapView.acc || 20) } : null;
     const body = { a: actions, rev: this.rev, tz: -new Date().getTimezoneOffset(), wx: Sky.w ? Sky.w.key : null, pos: p, v: APP_VERSION };
     let res;
     for (let attempt = 0; attempt < 2; attempt++) {
       const headers = await Cloud.headers(); // в закрытом контуре — ключ доступа (спросит окном, если его нет)
+      const invoke = () => this.timed(sb.functions.invoke('game', { body, headers }));
       const busy = setTimeout(() => document.body.classList.add('net-busy'), 350);
       try {
-        const r = await sb.functions.invoke('game', { body, headers });
+        const r = await invoke();
         if (r.error) {
           let payload = null;
           try { payload = r.error.context && await r.error.context.json(); } catch (e) {}
@@ -67,7 +71,7 @@ const Game = {
   async auth(op, args = {}) {
     if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);
     const sb = await Cloud.client();
-    const r = await sb.functions.invoke('game', { body: { auth: op, args, v: APP_VERSION }, headers: await Cloud.headers() }).catch(() => ({ error: true }));
+    const r = await this.timed(sb.functions.invoke('game', { body: { auth: op, args, v: APP_VERSION }, headers: await Cloud.headers() })).catch(() => ({ error: true }));
     let res = r.data;
     if (r.error) { try { res = r.error.context && await r.error.context.json(); } catch (e) { res = null; } }
     if (!res || !res.ok) throw new PlayError((res && res.error) || ru`Нет связи с сервером игры — проверь интернет`);

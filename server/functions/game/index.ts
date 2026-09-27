@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.20.0';
+const APP_VERSION = '4.21.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -6513,7 +6513,15 @@ const PVP_FLOOD = 360;
 const pvpHits = new Map();
 // Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
 const LOCK_MS = 30000, LOCK_TRIES = 25;
-const hits = new Map(), badTokens = new Map(), errHits = new Map();
+const hits = new Map(), badTokens = new Map(), errHits = new Map(), pingHits = new Map();
+let dbCheck = { at: 0, p: null };
+const dbHealth = () => {
+  if (dbCheck.p && Date.now() - dbCheck.at < 5000) return dbCheck.p;
+  const t0 = Date.now();
+  const q = db.from('saves').select('user_id').limit(1).then(r => r.error ? -1 : Date.now() - t0, () => -1);
+  dbCheck = { at: t0, p: Promise.race([q, new Promise(res => setTimeout(() => res(-1), 3000))]) };
+  return dbCheck.p;
+};
 const tooMany = (map, key, max) => {
   const now = Date.now(), m = Math.floor(now / 60000);
   const h = map.get(key);
@@ -6555,6 +6563,12 @@ Deno.serve(async req => {
       if (Math.random() < 0.01) await db.from('client_errors').delete().lt('at', new Date(Date.now() - 14 * 86400000).toISOString());
     }
     return reply({ ok: true });
+  }
+  // 4.21: состояние сервера для экрана входа — отвечает сразу; база проверяется не чаще раза в 5 с (db: мс ответа, -1 — не ответила за 3 с)
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/ping')) {
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+    if (tooMany(pingHits, ip, 60)) return reply({ ok: false }, 429);
+    return reply({ ok: true, db: await dbHealth() });
   }
   if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: ru`Закрытый контур: нужен ключ доступа` }, 403);
   if (req.method !== 'POST') return reply({ ok: false, error: 'POST only' }, 405);

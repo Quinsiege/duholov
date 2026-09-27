@@ -1,7 +1,7 @@
 'use strict';
-/* 4.6: выбор сервера — пока только интерфейс. Серверы — княжества Нави; список, загрузка, пинг и друзья — ОБРАЗЕЦ
-   (REALMS ниже), сервер игры о них ещё ничего не знает. Выбор запоминается на телефоне и ни на что не влияет,
-   пока не появится серверная часть: тогда REALMS заменит ответ сервера, а pick() начнёт переключать адрес API. */
+/* 4.6: выбор сервера. Список серверов-княжеств (REALMS ниже) — пока ОБРАЗЕЦ и виден только на тестовом контуре.
+   4.21: состояние и пинг — настоящие: экран входа замеряет отклик сервера игры (GET …/functions/v1/game/ping, база
+   проверяется там же) и показывает, на связи ли он. На боевом сайте вместо образца — наш единственный сервер. */
 
 const REALMS = [
   { id: 'kitezh', name: ru`Китеж`, region: ru`Москва и Центр`, tz: 'UTC+3', color: '#fbbf24', glyph: 'domes', load: 0.72, online: 18450, ping: 24, tags: ['rec'],
@@ -68,26 +68,104 @@ const Realms = {
   },
   _n: 0,
 
-  // кнопка на экране входа
+  /* ---------- 4.21: настоящее состояние сервера игры ---------- */
+  // st: wait — замеряем, ok — на связи, slow — отвечает медленно, down — не отвечает, net — нет интернета, none — облака нет
+  live: { st: 'wait', ms: 0 },
+  WHERE: { msk: ru`Москва`, spb: ru`Санкт-Петербург` },
+  where() { return this.WHERE[CLOUD_CONFIG.where] || ''; },
+  COLOR: { wait: '#a8a0c8', ok: '#4ade80', slow: '#fbbf24', down: '#fb7185', net: '#fb7185', none: '#a8a0c8' },
+  stateText(st) {
+    return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,
+      net: ru`Нет интернета`, none: ru`Игра без сервера` }[st];
+  },
+  // один замер: мс до ответа; состояние базы — в ответе сервера (db: -1 — база не отвечает)
+  async hit(ms = 6000) {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, t = setTimeout(() => ctl && ctl.abort(), ms);
+    const t0 = performance.now();
+    try {
+      const r = await fetch(CLOUD_CONFIG.url + '/functions/v1/game/ping?t=' + Date.now(), { cache: 'no-store', signal: ctl && ctl.signal });
+      const dt = Math.round(performance.now() - t0);
+      if (r.status >= 500) return { down: true };
+      const j = await r.json().catch(() => ({}));
+      return { ms: dt, db: typeof j.db === 'number' ? j.db : 0 };
+    } catch (e) { return { down: true }; } finally { clearTimeout(t); }
+  },
+  // замер: первый запрос тратит время на соединение (TLS) — пинг берём лучший из двух следующих
+  async probe() {
+    if (this._busy) return this._busy;
+    this._busy = (async () => {
+      if (!Cloud.configured()) return (this.live = { st: 'none', ms: 0 });
+      if (navigator.onLine === false) return (this.live = { st: 'net', ms: 0 });
+      const a = await this.hit();
+      if (a.down) return (this.live = { st: navigator.onLine === false ? 'net' : 'down', ms: 0 });
+      const ok = [a, await this.hit(), await this.hit()].filter(x => !x.down);
+      const ms = Math.min(...ok.map(x => x.ms).slice(-2)), db = ok[ok.length - 1].db;
+      return (this.live = { st: db < 0 || db > 1500 || ms > 400 ? 'slow' : 'ok', ms, db });
+    })();
+    try { return await this._busy; } finally { this._busy = null; this.paint(); }
+  },
+  // обновить все показатели сервера на экране (кнопка и витрина)
+  paint() {
+    const l = this.live, c = this.COLOR[l.st], up = l.st === 'ok' || l.st === 'slow', bars = up ? (l.ms < 60 ? 4 : l.ms < 120 ? 3 : l.ms < 250 ? 2 : 1) : 0; // мобильная сеть: 40–100 мс — это хорошо
+    document.querySelectorAll('[data-srv]').forEach(el => {
+      el.style.setProperty('--c', c);
+      el.dataset.st = l.st;
+      const t = el.querySelector('.srv-t'); if (t) t.textContent = this.stateText(l.st);
+      const ms = el.querySelector('.srv-ms'); if (ms) ms.textContent = up ? ru`${l.ms} мс` : '';
+      el.querySelectorAll('.rl-sig i').forEach((b, i) => b.classList.toggle('on', i < bars));
+      const btn = el.closest('button');
+      if (btn && btn.dataset.lbl) btn.setAttribute('aria-label', `${btn.dataset.lbl}. ${this.stateText(l.st)}${up ? ' · ' + ru`${l.ms} мс` : ''}`);
+    });
+  },
+  sig() { return `<span class="rl-sig">${[1, 2, 3, 4].map(i => `<i style="height:${2 + i * 2.5}px"></i>`).join('')}</span>`; },
+  // пока экран входа открыт — перемеряем раз в 20 с (и сразу, когда пропал или вернулся интернет)
+  watch(root) {
+    clearInterval(this._iv);
+    window.removeEventListener('online', this._on); window.removeEventListener('offline', this._on);
+    const tick = () => {
+      if (!root.isConnected) { clearInterval(this._iv); window.removeEventListener('online', this._on); window.removeEventListener('offline', this._on); return; }
+      this._at = Date.now(); this.probe();
+    };
+    this._iv = setInterval(tick, 20000);
+    this._on = () => { this.live = { st: 'wait', ms: 0 }; this.paint(); tick(); };
+    window.addEventListener('online', this._on); window.addEventListener('offline', this._on);
+    this.paint();
+    if (Date.now() - (this._at || 0) > 5000) tick(); // шаги знакомства перерисовывают экран — не перемеряем каждый раз
+  },
+
+  // кнопка в углу (образец, тестовый контур); с 4.21 экраны входа показывают витрину banner()
   chip() {
     if (!this.on) return '';
-    const r = this.current(), L = this.load(r);
-    return `<button class="realm-chip" aria-label="${ru`Сервер: ${U.esc(r.name)}. Сменить`}">${this.crest(r, 30)}` +
-      `<span class="rc-main"><small>${ru`Сервер`}</small><b>${U.esc(r.name)}</b></span><i class="rc-dot" style="--c:${L.c}"></i><svg class="rc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+    const c = this.COLOR[this.live.st], r = this.current();
+    return `<button class="realm-chip" data-lbl="${ru`Сервер: ${U.esc(r.name)}. Сменить`}" aria-label="${ru`Сервер: ${U.esc(r.name)}. Сменить`}">${this.crest(r, 30)}` +
+      `<span class="rc-main"><small>${ru`Сервер`}</small><b>${U.esc(r.name)}</b></span><span class="srv-live" data-srv style="--c:${c}"><i class="rc-dot srv-dot"></i><em class="srv-ms"></em></span><svg class="rc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
   },
-  // крупная витрина сервера — в середине стартового экрана
-  banner() {
-    if (!this.on) return '';
-    const r = this.current(), L = this.load(r), bars = this.bars(r.ping);
-    return `<button class="realm-hero" style="--rc:${r.color};--lc:${L.c}" aria-label="${ru`Сервер: ${U.esc(r.name)}. Сменить`}">
-      <span class="rh-crest"><i class="rh-ring"></i>${this.crest(r, 92)}</span>
-      <small>${ru`Твой сервер`}</small><b>${U.esc(r.name)}</b>
-      <span class="rh-meta">${U.esc(r.region)} · <i class="rc-dot" style="--c:${L.c}"></i> ${L.t} · <span class="rl-sig">${[1, 2, 3, 4].map(i => `<i class="${i <= bars ? 'on' : ''}" style="height:${2 + i * 2.5}px"></i>`).join('')}</span> ${ru`${r.ping} мс`}</span>
-      <span class="rh-change">${ru`Сменить сервер`} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>`;
+  // крупная витрина сервера — в середине экрана входа (4.21: и у вернувшегося Ловчего — компактнее, small)
+  // на боевом сайте — наш сервер: где стоит, настоящее состояние и пинг; нажатие перемеряет связь
+  banner(small = false) {
+    const c = this.COLOR[this.live.st], home = !this.on;
+    const r = home ? this.HOME[CLOUD_CONFIG.where] || this.HOME.msk : this.current(), L = home ? { c } : this.load(r);
+    const name = home ? this.where() || ru`Духолов` : r.name, lbl = home ? ru`Сервер игры` + ' · ' + name : ru`Сервер: ${r.name}. Сменить`;
+    return `<button class="realm-hero${small ? ' small' : ''}" style="--rc:${r.color};--lc:${L.c}" data-lbl="${U.esc(lbl)}" aria-label="${U.esc(lbl)}">
+      <span class="rh-crest"><i class="rh-ring"></i>${this.crest(r, small ? 64 : 92)}</span>
+      <small>${home ? ru`Сервер игры` : ru`Твой сервер`}</small><b>${U.esc(name)}</b>
+      <span class="rh-meta">${home ? '' : U.esc(r.region) + ' · '}<span class="srv-live" data-srv style="--c:${c}"><i class="rc-dot srv-dot"></i><span class="srv-t">${this.stateText(this.live.st)}</span>${this.sig()}<em class="srv-ms"></em></span></span>
+      ${home ? '' : `<span class="rh-change">${ru`Сменить сервер`} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`}</button>`;
   },
+  // герб нашего сервера (по городу, где он стоит)
+  HOME: { msk: { color: '#fbbf24', glyph: 'domes' }, spb: { color: '#38bdf8', glyph: 'bridge' } },
   bind(root) {
     const b = root.querySelector('.realm-chip, .realm-hero');
-    if (b) b.onclick = () => this.open(() => { b.outerHTML = b.classList.contains('realm-hero') ? this.banner() : this.chip(); this.bind(root); });
+    if (!b) return;
+    this.watch(root);
+    // боевой сайт: выбирать не из чего — нажатие перемеряет связь и говорит, что с сервером
+    if (!this.on) b.onclick = async () => {
+      Sfx.init(); Sfx.play('tap');
+      this.live = { st: 'wait', ms: 0 }; this.paint();
+      const l = await this.probe();
+      UI.toast(this.stateText(l.st) + (l.st === 'ok' || l.st === 'slow' ? ' · ' + ru`${l.ms} мс` : ''));
+    };
+    else b.onclick = () => this.open(() => { b.outerHTML = b.classList.contains('realm-hero') ? this.banner(b.classList.contains('small')) : this.chip(); this.bind(root); });
   },
 
   card(r, sel, i = 0) {
