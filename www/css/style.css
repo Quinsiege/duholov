@@ -2710,14 +2710,17 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .sp-shiny > .sp-tint::after { content: ''; position: absolute; inset: 0; background: linear-gradient(200deg, rgba(255, 255, 255, .5), transparent 45%, rgba(255, 255, 255, .35)); mix-blend-mode: soft-light; }
 .sp-shiny > .sp-sheen { background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, .8) 50%, transparent 60%); background-size: 260% 100%; mix-blend-mode: screen; animation: spSheen 3.4s ease-in-out infinite; }
 .sp-dark > .sp-tint { background: linear-gradient(to top, #6b21a8, #312e81 55%, #0f172a); mix-blend-mode: color; opacity: .7; }
-.sp-smoke { animation: spSmoke 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+/* омрачённый: редкие мелкие звёздочки Нави мерцают по фигуре (Art: navStars; маска — силуэт) */
+.sp-stars { position: absolute; inset: 0; pointer-events: none; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.sp-stars svg { width: 100%; height: 100%; display: block; }
+.sp-stars path { fill: #f5e8ff; opacity: 0; animation: navTwinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes navTwinkle { 0%, 55%, 100% { opacity: 0; transform: scale(.4); } 70% { opacity: 1; transform: scale(1); } 85% { opacity: .5; transform: scale(.8); } }
 @keyframes spPearl { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
 /* сияющий в списках и на карте — перелив оттенка самим фильтром */
 .sp-pearl { animation: spPearlS 3s ease-in-out infinite alternate; } /* свой цвет чуть качается по радуге */
 @keyframes spPearlS { from { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(-35deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); } to { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(35deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); } }
 .calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); }
 @keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
-@keyframes spSmoke { 0%, 100% { opacity: .5; transform: translateY(0) scaleY(1); } 50% { opacity: 1; transform: translateY(-5px) scaleY(1.12); } }
 /* 4.17: дух-стикер — обратная сторона: приглушённо-белая клейкая основа по силуэту с лёгким голографическим отливом */
 .sp-sticker { position: relative; display: block; perspective: 900px; }
 .stc-card { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(var(--ry, 0deg)); transition: transform .7s cubic-bezier(.2, .9, .25, 1); }
@@ -2753,10 +2756,14 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
     radial-gradient(circle at 60% 20%, rgba(170, 255, 190, .4), transparent 18%) 0 0 / 38px 38px,
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M11.4 7A4.4 4.4 0 1 1 2.5999999999999996 7A4.4 4.4 0 1 1 11.4 7ZM8.20 7.00Q10.20 7.00 9.98 8.63M7.60 8.04Q8.60 9.77 7.08 10.40M6.40 8.04Q5.40 9.77 4.10 8.77M5.80 7.00Q3.80 7.00 4.02 5.37M6.40 5.96Q5.40 4.23 6.92 3.60M7.60 5.96Q8.60 4.23 9.90 5.23M25.4 21A4.4 4.4 0 1 1 16.6 21A4.4 4.4 0 1 1 25.4 21ZM22.20 21.00Q24.20 21.00 23.98 22.63M21.60 22.04Q22.60 23.77 21.08 24.40M20.40 22.04Q19.40 23.77 18.10 22.77M19.80 21.00Q17.80 21.00 18.02 19.37M20.40 19.96Q19.40 18.23 20.92 17.60M21.60 19.96Q22.60 18.23 23.90 19.23' fill='none' stroke='rgba(255,255,255,.55)' stroke-width='.8' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 28px 28px,
     linear-gradient(160deg, #d9dde4, #a3a9b3 45%, #e3e6ea 60%, #a4aab3); }
-/* плёнка омрачённого духа — трещины Нави: тёмно-фиолетовая, светящиеся трещины (своя сеть у каждого духа, Art: cracksSvg) */
-.stc-dark .stc-liner { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 6'%3E%3Cpath d='M0 3Q5 0 10 3T20 3' fill='none' stroke='rgba(0,0,0,.7)' stroke-width='.9'/%3E%3Cpath d='M0 4.1Q5 1.1 10 4.1T20 4.1' fill='none' stroke='rgba(232,121,249,.45)' stroke-width='.6'/%3E%3C/svg%3E") 0 74% / 20px 6px repeat-x, radial-gradient(120% 100% at 50% 40%, #3b0764, #1e0536 60%, #12021f); }
-.stc-cracks { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #f0abfc; stroke-linecap: round; stroke-linejoin: round; }
-.stc-cracks .glow path { stroke: #c026d3; stroke-width: 2.6; opacity: .45; filter: blur(1.2px); }
+/* плёнка омрачённого духа — трещины Нави: тёмно-фиолетовая, светящиеся трещины узором */
+.stc-dark .stc-liner { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 6'%3E%3Cpath d='M0 3Q5 0 10 3T20 3' fill='none' stroke='rgba(0,0,0,.7)' stroke-width='.9'/%3E%3Cpath d='M0 4.1Q5 1.1 10 4.1T20 4.1' fill='none' stroke='rgba(232,121,249,.45)' stroke-width='.6'/%3E%3C/svg%3E") 0 74% / 20px 6px repeat-x, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg fill='none' stroke='rgb(232,121,249)' stroke-width='.9' stroke-linecap='round' opacity='.85'%3E%3Cpath d='M4 10l9 6 4-3 10 9 3 8'/%3E%3Cpath d='M13 16l-2 9 5 6'/%3E%3Cpath d='M40 4l3 10-6 7 8 9 9 2'/%3E%3Cpath d='M37 21l-7 3'/%3E%3Cpath d='M10 44l12 3 5 9'/%3E%3Cpath d='M22 47l8-6 9 4 12-3'/%3E%3Cpath d='M39 45l2 10'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 60px 60px, radial-gradient(120% 100% at 50% 40%, #3b0764, #1e0536 60%, #12021f); }
+/* плёнка сияющего духа — жемчужная чешуя с лёгким радужным отливом */
+.stc-shiny .stc-liner { background: linear-gradient(115deg, transparent 20%, rgba(255, 130, 210, .22) 32%, rgba(130, 205, 255, .22) 44%, rgba(160, 255, 200, .22) 56%, rgba(255, 230, 140, .22) 66%, transparent 80%) var(--hp, 50%) 50% / 200% 100%,
+    radial-gradient(circle at 50% 0, transparent 6.5px, rgba(255, 255, 255, .75) 7px 8px, rgba(180, 170, 200, .35) 8.5px 9px, transparent 9.5px) 0 0 / 16px 10px,
+    radial-gradient(circle at 50% 0, transparent 6.5px, rgba(255, 255, 255, .75) 7px 8px, rgba(180, 170, 200, .35) 8.5px 9px, transparent 9.5px) 8px 5px / 16px 10px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 6'%3E%3Cpath d='M0 3Q5 0 10 3T20 3' fill='none' stroke='rgba(90,80,120,.45)' stroke-width='.9'/%3E%3Cpath d='M0 4.1Q5 1.1 10 4.1T20 4.1' fill='none' stroke='white' stroke-width='.6'/%3E%3C/svg%3E") 0 74% / 20px 6px repeat-x, linear-gradient(160deg, #f6f2f8, #ddd4e6 55%, #efe9f3); }
+.stc-shiny .stc-code { stroke: rgba(70, 60, 90, .8); }
 .stc-dark .stc-code { stroke: rgba(240, 171, 252, .9); }
 /* отогнутый лоскут: угол плёнки за линией сгиба, отражённый через неё; тень от лоскута — на обёртке (фильтр до маски не доживает) */
 .stc-flapw { position: absolute; inset: 0; filter: drop-shadow(-2px -2px 3px rgba(15, 23, 42, .35)); }
@@ -2774,7 +2781,8 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .stc-back.peeled .stc-flapw, .stc-back.peeled .stc-liner { opacity: 0; transition: opacity .35s .2s; }
 /* привязанный дух: плёнки нет — на обороте один клей */
 .stc-bound .stc-back { animation: none; --pc: -2; }
-.calm .sp-pic > *, .calm .sp-pic .sp-smoke, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }
+.calm .sp-pic > *, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }
+.calm .sp-stars path { animation: none; opacity: .8; transform: none; }
 /* блеск кнопок: сдвиг полосы (transform) — тот же проблеск, но без перерисовки кнопки 60 раз в секунду */
 .btn.primary::after, .btn.evolve::after, .btn.danger:not(.ghost)::after { inset: 0 auto 0 0 !important; width: 45% !important; border-radius: 0;
   background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .5) 50%, transparent 80%) !important; transform: translateX(-120%); animation: btnShine3 5.5s ease-in-out 1.5s infinite !important; will-change: transform; }
