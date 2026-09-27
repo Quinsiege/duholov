@@ -1181,7 +1181,7 @@ const Art = (() => {
   const rawMask = sid => PICS[sid] ? picUrl(sid) : (maskCache[sid] || (maskCache[sid] = toUrl(spirit(sid)).replace(/'/g, '%27')));
   const silMask = {}; // чёткий силуэт (порог по прозрачности, без сияния и теней рисунка) — считает prepSil
   const maskOf = sid => silMask[sid] || rawMask(sid);
-  // Код духа на плёнке — цифры из точек (матрица 5×7) столбиком: две группы по 4 — узкая полоска влезает и в маленького духа
+  // Код духа на плёнке — цифры из точек (матрица 5×7), две группы по 4
   const DOTS = ['01110100011001110101110011000101110', '00100011000010000100001000010001110', '01110100010000100010001000100011111', '11111000100010000010000011000101110',
     '00010001100101010010111110001000010', '11111100001111000001000011000101110', '00110010001000011110100011000101110', '11111000010001000100010000100001000',
     '01110100011000101110100011000101110', '01110100011000101111000010001001100'];
@@ -1197,43 +1197,10 @@ const Art = (() => {
     const L = p - (vert ? 2 : 1);
     return `<svg class="stc-code" viewBox="0 0 ${vert ? 5 : L} ${vert ? L : 7}" preserveAspectRatio="none" aria-hidden="true"__S__><path d="${d}"/></svg>`;
   })())).replace('__S__', ` style="${style}"`);
-  // Где на плёнке выбить код: игра сама разбирает силуэт духа (маска 128×128) и ищет самое крупное место, где код целиком
-  // внутри фигуры и не задевает отогнутый угол (x + y ≥ 1.36 — там плёнка дышит); строкой — насколько крупно влезет.
-  // Считается один раз на духа (и запоминается в браузере), готовое место подставляется во все его стикеры
-  const FIT_N = 128, FIT_V = 2, fits = {}, fitWait = {};
-  const fitKey = sid => sid + ':' + (PICS[sid] || 'svg') + ':' + FIT_V;
-  try { Object.assign(fits, JSON.parse(localStorage.getItem('duholov.codefit') || '{}')); } catch (e) { /* без хранилища — посчитаем заново */ }
-  const fitStyle = f => `left:${f[0]}%;top:${f[1]}%;width:${f[2]}%;height:${f[3]}%`;
-  function fitCompute(alpha) {
-    const N = FIT_N, I = new Int32Array((N + 1) * (N + 1));
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-      const ok = alpha[(y * N + x) * 4 + 3] > 200 && (x + y + 2) / N < 1.36 ? 1 : 0;
-      I[(y + 1) * (N + 1) + x + 1] = ok + I[y * (N + 1) + x + 1] + I[(y + 1) * (N + 1) + x] - I[y * (N + 1) + x];
-    }
-    const full = (x, y, w, h) => I[(y + h) * (N + 1) + x + w] - I[y * (N + 1) + x + w] - I[(y + h) * (N + 1) + x] + I[y * (N + 1) + x] === w * h;
-    // центр фигуры — из позиций подходят ближайшие к нему
-    let cx = 0, cy = 0, n = 0;
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (alpha[(y * N + x) * 4 + 3] > 200) { cx += x; cy += y; n++; }
-    cx = n ? cx / n : N / 2; cy = n ? cy / n : N / 2;
-    const pad = 2;
-    for (let k = 1; k >= .3; k -= .05) for (const vert of [false]) { // 4.17: код — строкой
-      // крупнейший размер: столбик — 47% высоты стикера, строка — 62% ширины
-      const h = Math.round(vert ? .47 * N * k : .62 * N * k * 7 / 50), w = Math.max(2, Math.round(vert ? h * 5 / 74 : .62 * N * k));
-      let best = null, bd = Infinity;
-      for (let y = 0; y + h + 2 * pad <= N; y++) for (let x = 0; x + w + 2 * pad <= N; x++) {
-        if (!full(x, y, w + 2 * pad, h + 2 * pad)) continue;
-        const dd = (x + pad + w / 2 - cx) ** 2 + (y + pad + h / 2 - cy) ** 2;
-        if (dd < bd) { bd = dd; best = [x + pad, y + pad]; }
-      }
-      if (best) return [+(best[0] / N * 100).toFixed(2), +(best[1] / N * 100).toFixed(2), +(w / N * 100).toFixed(2), +(h / N * 100).toFixed(2), vert ? 1 : 0];
-    }
-    return null; // места нет — дух слишком тонкий, код не выбиваем
-  }
-  // Силуэт духа разбирается один раз: чёткая маска оборота (256 px, порог прозрачности) и место для кода (128 px)
+  // Силуэт духа разбирается один раз: чёткая маска оборота (256 px, порог прозрачности — без сияния и теней рисунка)
   const silWait = {};
   function prepSil(sid) {
-    const key = fitKey(sid);
-    if (silWait[sid] || typeof document === 'undefined' || (silMask[sid] && key in fits)) return;
+    if (silWait[sid] || silMask[sid] || typeof document === 'undefined') return;
     silWait[sid] = true;
     const im = new Image();
     im.onload = () => {
@@ -1244,24 +1211,17 @@ const Art = (() => {
         for (let i = 3; i < px.data.length; i += 4) { const on = px.data[i] > 150; px.data[i - 3] = px.data[i - 2] = px.data[i - 1] = 255; px.data[i] = on ? 255 : 0; }
         g.putImageData(px, 0, 0);
         silMask[sid] = c.toDataURL('image/png');
-        if (!(key in fits)) {
-          const f = document.createElement('canvas'); f.width = f.height = FIT_N;
-          const fg = f.getContext('2d', { willReadFrequently: true }); fg.drawImage(c, 0, 0, FIT_N, FIT_N);
-          fits[key] = fitCompute(fg.getImageData(0, 0, FIT_N, FIT_N).data);
-          try { localStorage.setItem('duholov.codefit', JSON.stringify(fits)); } catch (e) { /* не запомнили — посчитаем в другой раз */ }
-        }
-      } catch (e) { if (!(key in fits)) fits[key] = null; }
-      // готовые стикеры этого духа: чёткий силуэт и код
+      } catch (e) { /* без чёткой маски — оборот по исходному рисунку */ }
+      // готовые стикеры этого духа — на чёткий силуэт
       const ms = silMask[sid] ? `-webkit-mask-image:url('${silMask[sid]}');mask-image:url('${silMask[sid]}')` : '';
       document.querySelectorAll(`.sp-sticker[data-sid="${sid}"]`).forEach(st => {
         if (ms) st.querySelectorAll('.stc-glue, .stc-liner, .stc-flap').forEach(el => el.setAttribute('style', ms));
-        const l = st.querySelector('.stc-liner'); if (l && st.dataset.code && !l.firstChild) l.innerHTML = codeFor(sid, st.dataset.code);
       });
     };
-    im.onerror = () => { const key2 = fitKey(sid); if (!(key2 in fits)) fits[key2] = null; };
     im.src = rawMask(sid);
   }
-  const codeFor = (sid, code) => { const f = fits[fitKey(sid)]; return f ? codeSvg(code, !!f[4], fitStyle(f)) : ''; };
+  // код — крупной строкой поперёк середины; где фигура уже, цифры срезаются по контуру (плёнка — по силуэту)
+  const codeFor = (sid, code) => codeSvg(code, false, 'left:17%;top:46%;width:66%;height:9.24%');
   // info — сам дух (Art.of): код на плёнке, привязан ли (плёнка содрана), uid — чтобы содрать её в карточке
   const sticker = (front, sid, info) => {
     const m = maskOf(sid), ms = `-webkit-mask-image:url('${m}');mask-image:url('${m}')`, bound = !!(info && info.bound);
