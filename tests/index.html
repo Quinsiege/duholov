@@ -155,7 +155,11 @@
       ok(!/NaN|undefined/.test(svg), `${s.id}${sh ? ' сияющий' : ''}${dk ? ' омрачённый' : ''}`);
     }));
     ok(Art.img('ugolek').startsWith('<img'), 'Art.img');
-    ok(Art.spirit('ugolek').startsWith('<span class="art art-stack'), 'Art.spirit — слоями: неподвижное картинками, анимированное — лёгким SVG');
+    // 4.17: дух — стикер: лицевая сторона (картинка или слои SVG) и обратная — основа по силуэту
+    const stk = Art.spirit('kapelka');
+    ok(stk.startsWith('<span class="art sp-sticker'), 'Art.spirit — стикер');
+    ok(stk.includes('<span class="stc-front"><span class="art-stack') && !stk.includes('stc-front"><span class="art '), 'лицевая сторона — слоями и без класса .art');
+    ok(stk.includes('class="stc-back"><i style="-webkit-mask-image:url(' + "'data:image/svg+xml"), 'обратная сторона — по силуэту рисунка');
     AMULET_KEYS.forEach(k => ok(!/NaN|undefined/.test(Art.amulet(k)), 'амулет ' + k));
   });
   test('Опыт до следующего уровня растёт на всех 40 уровнях', () => {
