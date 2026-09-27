@@ -2713,8 +2713,9 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 /* омрачённый: редкие мелкие звёздочки Нави мерцают по фигуре (Art: navStars; маска — силуэт) */
 .sp-stars { position: absolute; inset: 0; pointer-events: none; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
 .sp-stars svg { width: 100%; height: 100%; display: block; }
-.sp-stars path { fill: #f5e8ff; opacity: 0; animation: navTwinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-@keyframes navTwinkle { 0%, 55%, 100% { opacity: 0; transform: scale(.4); } 70% { opacity: 1; transform: scale(1); } 85% { opacity: .5; transform: scale(.8); } }
+.sp-stars path { fill: #f5e8ff; opacity: 0; animation: navTwinkle 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 1.5px #e9d5ff); }
+/* звёздочка разгорается, вспыхивает с поворотом лучей и угасает; ритм у каждой свой (Art: navStars) */
+@keyframes navTwinkle { 0% { opacity: 0; transform: scale(.2) rotate(0deg); } 45% { opacity: 1; transform: scale(1.15) rotate(50deg); } 60% { opacity: .9; transform: scale(.9) rotate(70deg); } 100% { opacity: 0; transform: scale(.2) rotate(135deg); } }
 @keyframes spPearl { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
 /* сияющий в списках и на карте — перелив оттенка самим фильтром */
 .sp-pearl { animation: spPearlS 3s ease-in-out infinite alternate; } /* свой цвет чуть качается по радуге */

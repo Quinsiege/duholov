@@ -330,7 +330,7 @@ const Art = (() => {
     let g = '';
     for (let i = 0; i < 7; i++) {
       const x = 40 + r() * 120, y = 36 + r() * 128, k = .2 + r() * .16, q = 2.4 * k, e = 12 * k;
-      g += `<path style="animation-delay:${(r() * 3.2).toFixed(2)}s" d="M${x} ${y - e}L${x + q} ${y - q}L${x + e} ${y}L${x + q} ${y + q}L${x} ${y + e}L${x - q} ${y + q}L${x - e} ${y}L${x - q} ${y - q}Z"/>`;
+      g += `<path style="animation-delay:${(r() * 3.2).toFixed(2)}s;animation-duration:${(2.2 + r() * 1.6).toFixed(2)}s" d="M${x} ${y - e}L${x + q} ${y - q}L${x + e} ${y}L${x + q} ${y + q}L${x} ${y + e}L${x - q} ${y + q}L${x - e} ${y}L${x - q} ${y - q}Z"/>`;
     }
     return `<svg viewBox="0 0 200 200" aria-hidden="true">${g}</svg>`;
   })())}</i>`;
