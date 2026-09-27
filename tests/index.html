@@ -159,7 +159,8 @@
     const stk = Art.spirit('kapelka');
     ok(stk.startsWith('<span class="art sp-sticker'), 'Art.spirit — стикер');
     ok(stk.includes('<span class="stc-front"><span class="art-stack') && !stk.includes('stc-front"><span class="art '), 'лицевая сторона — слоями и без класса .art');
-    ok(stk.includes('class="stc-back"><i style="-webkit-mask-image:url(' + "'data:image/svg+xml"), 'обратная сторона — по силуэту рисунка');
+    ok(stk.includes('class="stc-glue" style="-webkit-mask-image:url(' + "'data:image/svg+xml"), 'обратная сторона — по силуэту рисунка');
+    ok(stk.includes('class="stc-liner"') && stk.includes('class="stc-flap"'), 'обратная сторона — плёнка с отогнутым углом');
     AMULET_KEYS.forEach(k => ok(!/NaN|undefined/.test(Art.amulet(k)), 'амулет ' + k));
   });
   test('Опыт до следующего уровня растёт на всех 40 уровнях', () => {
