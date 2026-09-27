@@ -32,7 +32,28 @@ const PL = workerData.players.map(pr => ({ ...pr, data: null, srv: {}, lat: pr.h
 function newStats() {
   return { xpBy: {}, lvlT: {}, catches: 0, tries: 0, fled: 0, shiny: 0, springs: 0, km: 0, raids: [0, 0], far: 0, duels: [0, 0], freed: 0, inv: [0, 0], league: [0, 0], tourn: 0,
     hatch: 0, evolve: 0, power: 0, released: 0, ko: 0, deadUsed: 0, heals: 0, tasks: 0, quests: 0, purified: 0, defend: 0, discarded: 0, play: 0, days: 0,
-    rub: 0, zlatIn: 0, zlatSpent: {}, aucSold: 0, aucBought: 0, aucSparksIn: 0, aucZlatIn: 0, aucSparksOut: 0, aucZlatOut: 0, giftsSent: 0, giftsOpened: 0, friends: 0, exch: 0, fails: {} };
+    rub: 0, zlatIn: 0, zlatSpent: {}, aucSold: 0, aucBought: 0, aucSparksIn: 0, aucZlatIn: 0, aucSparksOut: 0, aucZlatOut: 0, giftsSent: 0, giftsOpened: 0, friends: 0, exch: 0, fails: {},
+    // 4.16 экономика: откуда пришли и куда ушли искры и златники (по действиям), сколько предметов пришло, переполнение сумки, снимки по дням
+    eco: { sparksIn: {}, sparksOut: {}, zlatFree: {}, itemsIn: {}, amuletsIn: 0, bagOverMax: 0, parcelMax: 0, lost: 0, days: [] } };
+}
+// 4.16: учёт экономики по каждому действию (до → после)
+const ITEM_KEYS = Object.keys(ITEMS);
+function ecoTrack(type, a, b) {
+  if (!a || !b) return;
+  const E = D.eco, add = (o, k, v) => { o[k] = (o[k] || 0) + v; };
+  const ds = (b.sparks || 0) - (a.sparks || 0), dz = (b.zlat || 0) - (a.zlat || 0);
+  if (ds > 0) add(E.sparksIn, type, ds); else if (ds < 0) add(E.sparksOut, type, -ds);
+  if (dz > 0 && type !== 'payClaim') add(E.zlatFree, type, dz);
+  const pa = (a.parcel && a.parcel.items) || {}, pb = (b.parcel && b.parcel.items) || {};
+  if (type !== 'discard' && type !== 'parcelTake') for (const k of ITEM_KEYS) {
+    const d = ((b.items || {})[k] || 0) + (pb[k] || 0) - ((a.items || {})[k] || 0) - (pa[k] || 0);
+    if (d > 0) add(E.itemsIn, k, d);
+  }
+  const am = o => Object.values(o.amulets || {}).reduce((x, y) => x + y, 0) + (o.spirits || []).filter(s => s.amulet).length;
+  const dam = am(b) - am(a); if (dam > 0 && type !== 'unequip') E.amuletsIn += dam;
+  const lim = 350 + (b.bagExtra || 0) * Rules.BAG_STEP, cnt = Object.values(b.items || {}).reduce((x, y) => x + y, 0);
+  if (cnt - lim > E.bagOverMax) E.bagOverMax = cnt - lim;
+  const pc = Object.values(pb).reduce((x, y) => x + y, 0); if (pc > E.parcelMax) E.parcelMax = pc;
 }
 let P = null, D = null; // текущий игрок и его статистика
 const adv = sec => { globalThis.SIM_T += Math.round(sec * 1000); D.play += sec; };
@@ -45,6 +66,7 @@ async function act(type, args = {}) {
     const k = `${type}: ${res.error}`; D.fails[k] = (D.fails[k] || 0) + 1; return null;
   }
   const lvl0 = P.data ? P.data.level : 0;
+  ecoTrack(type, P.data, res.data);
   P.data = res.data; P.srv = res.srv;
   for (const fn of res.after) await fn();
   if (P.data.level > lvl0) for (let l = lvl0 + 1; l <= P.data.level; l++) D.lvlT[l] = SIM_T;
@@ -79,7 +101,8 @@ async function heal() {
     const h = me(() => S.hpNow(sp)), it = P.data.items;
     if (h <= 0) {
       if (me(() => S.koLeft(sp)) > 4 * 3600000) {
-        if (!(it.deadwater > 0) && P.pr.don >= 3 && P.data.zlat >= 60 && await act('shopBuy', { id: 'dead1' })) spend('Мёртвая вода', 60);
+        const dp = Rules.SHOP.find(x => x.id === 'dead1').price;
+        if (!(it.deadwater > 0) && P.pr.don >= 3 && P.data.zlat >= dp && await act('shopBuy', { id: 'dead1' })) spend('Мёртвая вода', dp);
         if (P.data.items.deadwater > 0 && await act('heal', { uid, k: 'deadwater' })) D.deadUsed++;
       }
       continue;
@@ -118,7 +141,7 @@ async function encounter(start, sid) {
   await act('encEnd');
   return false;
 }
-const KEEP_ITEMS = { honey: 30, water: 30, herb: 40, brew: 20, incense: 8, charm2: 120, charm3: 120, charm: 200, gift: 10 };
+const KEEP_ITEMS = { honey: 30, water: 30, herb: 40, brew: 20, incense: 8, charm2: 120, charm3: 120, charm: 200, gift: 25 };
 async function tidyBag() {
   if (me(() => S.bagCount()) < me(() => S.bagLimit()) - 40) return;
   if (P.pr.don >= 3 && P.data.bagExtra < 10 && P.data.zlat >= Rules.bagPrice(P.data.bagExtra) + 200) { const pr = Rules.bagPrice(P.data.bagExtra); if (await act('shopBuy', { id: 'bag' })) spend('Сумка', pr); }
@@ -379,7 +402,9 @@ async function chores() {
   }
   if (!P.data.buddy) { const t = me(() => [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a))[0]); if (t) await act('buddy', { uid: t.uid }); }
   // обменник: лишние искры → златники
-  if (P.data.sparks > 30000) { const ex = await act('exchange', { n: 3 }); if (ex) D.exch += 3; }
+  if (P.data.sparks > 30000) { const n = Rules.EXCHANGE.DAY, ex = await act('exchange', { n }); if (ex) D.exch += n; }
+  // 4.16: посылка Ордена — забрать, когда в сумке есть место
+  if (P.data.parcel && me(() => S.bagCount() < S.bagLimit() - 20)) await act('parcelTake');
   await auction();
   await social();
   await spendZlat();
@@ -437,6 +462,8 @@ async function playerDay(pl, dayN, dayStart) {
     if (i === last) { if (P.pr.far) await farRaids(); leaguePlan(); }
   }
   await chores();
+  const it = P.data.items || {}, am = Object.values(P.data.amulets || {}).reduce((x, y) => x + y, 0);
+  D.eco.days.push([dayN, P.data.level, P.data.sparks, P.data.zlat || 0, Object.values(it).reduce((x, y) => x + y, 0), it.deadwater || 0, it.honey || 0, it.water || 0, it.incense || 0, am]);
 }
 
 parentPort.on('message', async m => {

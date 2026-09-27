@@ -3,7 +3,7 @@
    телефон — показывает (цвет кольца, награды, подсказки). */
 
 const Rules = {
-  QUEST_BONUS: { charm: 10, honey: 3, incense: 1, sparks: 1000 },
+  QUEST_BONUS: { charm: 10, honey: 2, sparks: 500 }, // 4.16: без ладана (был каждый день — копился десятками) и меньше искр
   PLACE_REWARD: { xp: 1000, sparks: 500, charm: 10 },
   SUPPLY: { charm: 15, honey: 2, water: 1 },
   THROWABLE: ['charm', 'charm2', 'charm3'],
@@ -12,12 +12,12 @@ const Rules = {
   // Серия дней: награда за первый вход в игру за день, по кругу из 7 дней
   STREAK: [
     { charm: 5, xp: 200 },
-    { honey: 3, xp: 300 },
-    { charm: 8, water: 1, xp: 400 },
+    { honey: 2, xp: 300 },
+    { charm: 8, herb: 2, xp: 400 },
     { charm2: 3, gift: 1, xp: 500 },
-    { incense: 1, honey: 2, xp: 600 },
-    { charm2: 5, water: 2, xp: 800 },
-    { charm3: 3, sparks: 1500, xp: 1500 }, // 7-й день — ещё и кокон 10 км
+    { incense: 1, honey: 1, xp: 600 },
+    { charm2: 5, brew: 1, xp: 800 },
+    { charm3: 3, sparks: 1000, xp: 1500 }, // 7-й день — ещё и кокон 10 км
   ],
 
   /* Общее дело Ордена: все Ловчие неделю вместе копят очки. Цель растёт с числом участников.
@@ -46,8 +46,11 @@ const Rules = {
       + km * (ev.km ? 2 : 1);
   },
   /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
-  // Златники — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу
-  ZLAT: { streak: 5, streak7: 30, questBonus: 10, level: 20, story: 50, tribute: 3 },
+  // Златники — вторая валюта: за серию дней, сундук дня, уровни, главы Летописи, дань и Тропу.
+  // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
+  // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
+  // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
+  ZLAT: { streak: 1, streak7: 10, questBonus: 2, level: 3, level5: 15, story: 15, tribute: 1, tributeMax: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
   // 3.15: Казна — златники за рубли (оплата через ЮKassa; цену и число златников сервер берёт отсюда, а не с телефона)
   PAY: [
@@ -63,6 +66,7 @@ const Rules = {
   DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
   DAILY_NAMES: { springs: ru`Родники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
+  weekUsed(d, key) { return d && d.weekc && d.weekc.w === Ev.week() ? (d.weekc[key] || 0) : 0; }, // 4.16: за неделю (с понедельника)
   // строка «Родников сегодня: 12 из 30» для окон объектов
   dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <b>${u}</b> из ${m}`}</div>`; },
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
@@ -72,7 +76,13 @@ const Rules = {
   AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
   // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
-  EXCHANGE: { SPARKS: 500, ZLAT: 10, DAY: 3 },
+  // 4.16: был ✦ 500 → 10 златников трижды в день (30 златников в день почти даром) — теперь трата лишних искр:
+  // ✦ 1 000 → 1 златник, до 5 обменов в день
+  EXCHANGE: { SPARKS: 1000, ZLAT: 1, DAY: 5 },
+  // 4.16: посылка Ордена — награда, которая не поместилась в сумку, ждёт здесь (не больше MAX вещей), пока не освободится место
+  PARCEL: { MAX: 200 },
+  // 4.16: переплавка — N одинаковых лишних амулетов и SPARKS искр → один амулет на выбор
+  MELT: { N: 3, SPARKS: 3000 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
   // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
@@ -82,11 +92,12 @@ const Rules = {
     { id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
     { id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
-    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: половина здоровья, в разломе — прямо в бою`, cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: половина здоровья, в разломе — прямо в бою`, cur: 'sparks', price: 2000, give: { water: 5 } },
     { id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },
     { id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },
-    // 4.15.1: Мёртвая вода — редкость: в Лавке один флакон в день (day — сколько раз в день можно купить), в товар дня не попадает
-    { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в день: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 60, give: { deadwater: 1 }, day: 1 },
+    // 4.15.1: Мёртвая вода — редкость, в товар дня не попадает. 4.16: один флакон в неделю (week — сколько раз за неделю
+    // можно купить, day — за день), а не каждый день на бесплатные златники
+    { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в неделю: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 80, give: { deadwater: 1 }, week: 1 },
     { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
     { id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
@@ -102,7 +113,7 @@ const Rules = {
   koMs(sp) { return (this.HP.KO_H[(SP[sp.sid] || {}).rar] || 2) * 3600000; },
   // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
   shopDeal(day) {
-    const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl && !x.day); // товар дня доступен любому уровню; редкое (day) — без скидки
+    const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl && !x.day && !x.week); // товар дня доступен любому уровню; редкое (day, week) — без скидки
     const it = pool[Math.floor(U.h('deal', day) * pool.length)];
     return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
   },
@@ -110,11 +121,12 @@ const Rules = {
   PASS: { LEVELS: 30, PER: 40, GOLD: 600 },
   passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
   // Награда ступени: free — всем, gold — на Золотой тропе
+  // 4.16: на бесплатной тропе 55 златников за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
   passReward(track, lvl) {
     if (track === 'free') {
-      if (lvl === 30) return { charm3: 5, zlat: 50 };
-      if (lvl % 10 === 0) return { cocoon: 5, zlat: 20 };
-      if (lvl % 5 === 0) return { incense: 1, zlat: 15 };
+      if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 20 };
+      if (lvl % 10 === 0) return { cocoon: 5, zlat: 10 };
+      if (lvl % 5 === 0) return { incense: 1, zlat: 5 };
       return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 300 };
     }
     if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };

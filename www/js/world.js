@@ -143,15 +143,17 @@ const W = {
     const lvl = S.d.level, loot = {};
     const n = (4 + Math.floor(r() * 3)) * Ev.lootMul();
     for (let k = 0; k < n; k++) {
-      const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 2.5], ['water', 1.2], ['herb', 4], ['brew', 1.2], ['deadwater', 0.02]]; // 4.15: лечебное; 4.15.1: Мёртвая вода — ~1 родник из 300
+      // 4.15: лечебное; 4.16: мёда, Живой воды и ладана меньше (к 40 уровню копились сотнями и десятками),
+      // Мёртвая вода — ~1 родник из 500 (раньше из 300, но при полной сумке родник не давал ничего)
+      const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 1], ['water', 0.6], ['herb', 2], ['brew', 0.8], ['deadwater', 0.009]];
       if (lvl >= 8) opts.push(['charm2', 3]);
       if (lvl >= 16) opts.push(['charm3', 1.5]);
-      if (lvl >= 3) opts.push(['incense', 0.25]);
+      if (lvl >= 3) opts.push(['incense', 0.08]);
       const it = U.weighted(opts, r());
       loot[it] = (loot[it] || 0) + 1;
     }
-    // подарок для друга — примерно в каждом втором роднике, пока их меньше GIFT_LIMIT
-    if ((S.d.items.gift || 0) < GIFT_LIMIT && r() < 0.5) loot.gift = 1;
+    // подарок для друга — в трёх родниках из пяти (4.16: было в каждом втором), пока их меньше GIFT_LIMIT
+    if ((S.d.items.gift || 0) < GIFT_LIMIT && r() < 0.6) loot.gift = 1;
     let cocoon = null;
     if (S.d.cocoons.length < 9 && r() < 0.12 * Ev.kmMul()) cocoon = U.weighted([[2, 5], [5, 4], [10, 1]], r());
     return { loot, cocoon };
