@@ -306,21 +306,21 @@ const Art = (() => {
     `<g class="art-flicker" fill="#a21caf" opacity=".75"><path d="M40 176 C34 150 52 140 48 118 C62 136 66 154 60 176Z"/><path d="M160 176 C166 150 148 140 152 118 C138 136 134 154 140 176Z"/><path d="M92 180 C88 162 100 156 98 140 C108 154 110 166 106 180Z" opacity=".7"/></g>`;
   // 4.17: рисунки духов картинками (img/spirits/<id>.webp, 400×400, прозрачный фон) — у кого уже есть; остальные рисуются SVG, как прежде.
   // Список (id → метка содержимого) пишет tools/art/spirit-pics.mjs.
-  // Сияющий — золотой: фигура светлеет и отливает золотом, по ней бежит блик, вокруг ореол и искры; омрачённый — тёмный
+  // Сияющий — бело-радужный перламутр: фигура почти белая, по ней мягко переливается радуга, бежит блик, вокруг ореол и искры; омрачённый — тёмный
   // холодный лиловый тон, тёмное свечение и дым Нави у ног. Перелив и тон ложатся только на фигуру (маска — сама картинка), стили — .sp-pic в style.css
   const PICS = {"kostrovik":"3235430501","ugolek":"3106337497","zharogriv":"2415565401"}; // tools/art/spirit-pics.mjs
   const picUrl = sid => PICS[sid] ? `img/spirits/${sid}.webp?v=${PICS[sid]}` : null;
-  // solo — картинка без слоёв (списки, карта, фото с поимки): золото и лиловый — самим фильтром
+  // solo — картинка без слоёв (списки, карта, фото с поимки): лиловый — самим фильтром, перламутр — анимацией оттенка (.sp-pearl в style.css)
   const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
-    : shiny ? (solo ? 'sepia(1) saturate(2.6) hue-rotate(-8deg) ' : '') + 'brightness(1.45) contrast(1.08) drop-shadow(0 0 5px rgba(253, 224, 71, 1))' : '';
-  const picImg = (sid, shiny, dark, cls) => { const fl = picFilter(sid, shiny, dark, cls === 'art'); return `<img class="${cls}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : ''}>`; };
+    : shiny ? 'grayscale(.9) contrast(.5) brightness(1.75) ' + (solo ? 'sepia(.3) saturate(1.6) hue-rotate(250deg) ' : '') + 'drop-shadow(0 0 5px rgba(255, 255, 255, .95))' : ''; // контраст вниз — тёмное становится светлым серебром
+  const picImg = (sid, shiny, dark, cls) => { const solo = cls === 'art', fl = solo && shiny && !dark ? '' : picFilter(sid, shiny, dark, solo); return `<img class="${cls}${solo && shiny && !dark ? ' sp-pearl' : ''}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : ''}>`; };
   const over = svg => `<svg class="stk" viewBox="0 0 200 200">${svg}</svg>`;
   const NAV_SMOKE = [[52, 190, 1], [100, 196, 1.3], [148, 190, 1], [76, 194, .8], [126, 194, .8]].map(([x, y, k], i) =>
     `<path class="sp-smoke" style="animation-delay:${i * .55}s" d="M${x - 14 * k} ${y} C${x - 20 * k} ${y - 26 * k} ${x + 6 * k} ${y - 30 * k} ${x - 2 * k} ${y - 58 * k} C${x + 16 * k} ${y - 34 * k} ${x + 18 * k} ${y - 18 * k} ${x + 14 * k} ${y}Z"/>`).join('');
   const navBack = n => `<defs><radialGradient id="nv${n}"><stop offset="0" stop-color="#6b21a8" stop-opacity=".75"/><stop offset=".55" stop-color="#3b0764" stop-opacity=".45"/><stop offset="1" stop-color="#1e0b36" stop-opacity="0"/></radialGradient></defs>` +
     `<ellipse class="art-aura" cx="100" cy="112" rx="96" ry="92" fill="url(#nv${n})"/><g fill="#2e1065" opacity=".7">${NAV_SMOKE}</g>`;
-  const SHINE = SPARKLES + [[100, 18, .9], [186, 110, .6], [16, 96, .7]].map(([x, y, k], i) =>
-    `<path class="art-blink" style="animation-delay:${.2 + i * .5}s" d="M${x} ${y - 12 * k} L${x + 3 * k} ${y - 3 * k} L${x + 12 * k} ${y} L${x + 3 * k} ${y + 3 * k} L${x} ${y + 12 * k} L${x - 3 * k} ${y + 3 * k} L${x - 12 * k} ${y} L${x - 3 * k} ${y - 3 * k}Z" fill="#fff" stroke="#fde047" stroke-width="1"/>`).join('');
+  const SHINE = [[26, 40, 1], [172, 58, .8], [160, 150, .65], [36, 140, .55], [100, 18, .9], [186, 110, .6], [16, 96, .7]].map(([x, y, k], i) =>
+    `<path class="art-blink" style="animation-delay:${i * .4}s" d="M${x} ${y - 12 * k} L${x + 3 * k} ${y - 3 * k} L${x + 12 * k} ${y} L${x + 3 * k} ${y + 3 * k} L${x} ${y + 12 * k} L${x - 3 * k} ${y + 3 * k} L${x - 12 * k} ${y} L${x - 3 * k} ${y - 3 * k}Z" fill="${['#fbcfe8', '#bae6fd', '#e9d5ff', '#a7f3d0', '#fff'][i % 5]}" stroke="#fff" stroke-width="1"/>`).join(''); // перламутровые искры
   function pic(sid, shiny, dark) {
     const u = picUrl(sid), mask = `-webkit-mask-image:url('${u}');mask-image:url('${u}')`; // маска — в разметке: адрес от страницы, а не от style.css
     return `<span class="art art-stack sp-pic${shiny ? ' sp-shiny' : ''}${dark ? ' sp-dark' : ''}" style="aspect-ratio:1">` +

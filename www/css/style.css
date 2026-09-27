@@ -2703,14 +2703,19 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 /* рисунки слоями (Art.stack): неподвижное — картинками, анимированное — лёгким SVG поверх */
 .art-stack { position: relative; display: block; }
 .art-stack > .stk { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
-/* 4.17: дух картинкой (Art: pic) — сияющий: золото по фигуре + бегущий блик; омрачённый: холодный лиловый тон. Маска — сама картинка */
+/* 4.17: дух картинкой (Art: pic) — сияющий: перламутр по фигуре + бегущий блик; омрачённый: холодный лиловый тон. Маска — сама картинка */
 .sp-pic { isolation: isolate; }
 .sp-pic > .sp-tint, .sp-pic > .sp-sheen { -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
-.sp-shiny > .sp-tint { background: linear-gradient(135deg, #fffbeb, #fde047 30%, #f59e0b 50%, #fef08a 70%, #fffbeb); background-size: 300% 300%; mix-blend-mode: color; opacity: .8; animation: spPearl 6s ease-in-out infinite alternate; }
-.sp-shiny > .sp-sheen { background: linear-gradient(110deg, transparent 40%, rgba(255, 251, 235, .85) 50%, transparent 60%); background-size: 260% 100%; mix-blend-mode: screen; animation: spSheen 3.4s ease-in-out infinite; }
+.sp-shiny > .sp-tint { background: linear-gradient(120deg, #f472b6, #c084fc 14%, #60a5fa 28%, #22d3ee 42%, #4ade80 56%, #facc15 70%, #fb7185 84%, #c084fc); background-size: 180% 180%; mix-blend-mode: color; opacity: .45; animation: spPearl 4s ease-in-out infinite alternate; }
+.sp-shiny > .sp-tint::after { content: ''; position: absolute; inset: 0; background: linear-gradient(200deg, rgba(255, 255, 255, .5), transparent 45%, rgba(255, 255, 255, .35)); mix-blend-mode: soft-light; }
+.sp-shiny > .sp-sheen { background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, .8) 50%, transparent 60%); background-size: 260% 100%; mix-blend-mode: screen; animation: spSheen 3.4s ease-in-out infinite; }
 .sp-dark > .sp-tint { background: linear-gradient(to top, #6b21a8, #312e81 55%, #0f172a); mix-blend-mode: color; opacity: .7; }
 .sp-smoke { animation: spSmoke 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes spPearl { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
+/* сияющий в списках и на карте — перелив оттенка самим фильтром */
+.sp-pearl { animation: spPearlS 5s linear infinite; }
+@keyframes spPearlS { from { filter: grayscale(.9) contrast(.5) brightness(1.75) sepia(.3) saturate(1.6) hue-rotate(0deg) drop-shadow(0 0 4px rgba(255, 255, 255, .95)); } to { filter: grayscale(.9) contrast(.5) brightness(1.75) sepia(.3) saturate(1.6) hue-rotate(360deg) drop-shadow(0 0 4px rgba(255, 255, 255, .95)); } }
+.calm .sp-pearl { animation: none; filter: grayscale(.9) contrast(.5) brightness(1.75) sepia(.3) saturate(1.6) hue-rotate(250deg) drop-shadow(0 0 4px rgba(255, 255, 255, .95)); }
 @keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
 @keyframes spSmoke { 0%, 100% { opacity: .5; transform: translateY(0) scaleY(1); } 50% { opacity: 1; transform: translateY(-5px) scaleY(1.12); } }
 .calm .sp-pic > *, .calm .sp-pic .sp-smoke, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }
