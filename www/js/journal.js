@@ -28,6 +28,7 @@ const J = {
       case 'flee': return { ico: icon(e.sid), title: ru`${sp(e.sid)} ускользнул`, sub: ru`Дух вернулся в Навь`, cls: 'dim' };
       case 'hatch': return { ico: icon(e.sid), title: ru`Из кокона появился ${sp(e.sid)}`, sub: e.km ? ru`Кокон ${e.km} км` : '' };
       case 'evolve': return { ico: icon(e.to), title: ru`${sp(e.from)} превратился в ${sp(e.to)}`, sub: '' };
+      case 'awaken': return { ico: icon(e.sid), title: ru`${sp(e.sid)} пробуждён`, sub: '★'.repeat(e.stars || 1) };
       case 'raid': return { ico: icon(e.sid), title: ru`Разлом закрыт: ${sp(e.sid)}`, sub: '★'.repeat(e.tier || 1) };
       // e.name — название Капища с карты; e.guard / e.rank / e.name знака, лавки, e.title главы — русские названия из данных (сохранены сервером), переводим при показе
       case 'duel': return { ico: glyph('⛩'), title: ru`Победа: ${e.name}`, sub: ru`Хранитель ${I18N.back(e.guard || '')}` };

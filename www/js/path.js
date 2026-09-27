@@ -23,6 +23,9 @@ const Path = {
     LOOK.cloak.filter(c => c.lvl > 1 && !c.shop && !c.pass).forEach(c => add(c.lvl, 'look:' + c.c, ru`Плащ «${c.name}»`, ru`Для облика Ловчего`));
     LOOK.eyes.filter(c => c.lvl > 1).forEach(c => add(c.lvl, 'eyes:' + c.c, ru`Глаза «${c.name}»`, ru`Для облика Ловчего`));
     LOOK.emblem.filter(c => c.lvl > 1 && !c.league && !c.story && !c.pass).forEach(c => add(c.lvl, 'emb', ru`Знак «${c.name}»`, ru`Для облика Ловчего`));
+    // 4.16: пробуждение духов и книги Летописи — тоже по уровням, до самого 40-го
+    S.AWAKE.LVL.forEach((l, i) => add(l, 'item:alatyr', ru`Пробуждение: звезда ${i + 1}`, ru`Предел уровня духа +${S.AWAKE.STEP} за осколки Алатыря`));
+    STORY_BOOKS.filter(b => b.from > 0).forEach(b => add(S.storyLvl(STORY[b.from]), 'scroll', ru`Летопись: ${b.title}`, ru`Новые главы сюжета Ордена`));
     add(MAX_LEVEL, 'trophy', ru`Вершина пути`, ru`Максимальный уровень Ловчего`);
     return U2;
   },
@@ -61,7 +64,7 @@ const Path = {
           <div class="pbar"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
           <small>${d.level >= MAX_LEVEL ? ru`Ты прошёл весь путь!` : ru`До ${d.level + 1} уровня — ${U.fmtNum(next - d.xp)} опыта`}${nextUnlock ? ` · ${ru`дальше: ${un[nextUnlock][0].t} на ${nextUnlock}`}` : ''}</small></div>
       </div>
-      <p class="pth-note">${ru`Опыт дают поимки, родники, разломы, капища, задания и Летопись. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`}</p>
+      <p class="pth-note">${ru`Опыт дают поимки, родники, разломы, капища, задания и Летопись. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`} ${ru`С ${S.AWAKE.LVL[0]} уровня духов можно пробуждать: каждая звезда поднимает предел уровня духа ещё на ${S.AWAKE.STEP}, до ${SPIRIT_MAX}.`}</p>
       <div class="pth-road">${rows.join('')}</div>`, 'pth-screen');
     setTimeout(() => { const c = scr.querySelector('#pthCur'); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
   },

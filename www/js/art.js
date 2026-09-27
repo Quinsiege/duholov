@@ -546,6 +546,25 @@ const Art = (() => {
         `<rect x="14" y="56" width="72" height="8" rx="4" fill="url(#${k}b)" stroke="#4a2a04" stroke-width="2.6"/>` +
         `<circle cx="50" cy="30" r="5.5" fill="url(#${k}b)" stroke="#4a2a04" stroke-width="2.6"/>` +
         `<path d="M31 50Q33 41 42 37" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".75"/>`);
+      // 4.16: Осколок Алатыря — бел-горюч камень: гранёный белый осколок с золотой руной и тёплым свечением
+      case 'alatyr': return svg(`<defs><radialGradient id="${k}a"><stop offset="0" stop-color="#fde68a" stop-opacity=".6"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>` +
+        `<linearGradient id="${k}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#f1ece0"/><stop offset="1" stop-color="#b9ab8c"/></linearGradient>` +
+        `<linearGradient id="${k}c" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf5"/><stop offset="1" stop-color="#d9cfb8"/></linearGradient></defs>` +
+        `<circle class="art-aura" cx="50" cy="54" r="44" fill="url(#${k}a)"/>` + floor(24, 94) +
+        `<path d="M50 8L74 30L68 76L46 92L26 70L30 28Z" fill="url(#${k}b)" stroke="#5b4a2a" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M50 8L54 44L46 92M54 44L74 30M54 44L26 70M30 28L54 44" stroke="#8a7a58" stroke-width="1.6" fill="none" opacity=".55"/>` +
+        `<path d="M50 8L74 30L54 44Z" fill="url(#${k}c)" opacity=".9"/>` +
+        `<path class="art-blink" d="M46 50V70M46 50L38 58M46 50L54 58M40 66H52" stroke="#f59e0b" stroke-width="3.4" stroke-linecap="round" fill="none"/>` +
+        `<path d="M34 32L46 20" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".9"/>` + glint(72, 18, 8, '#fff7d1') + glint(24, 50, 5, '#fff7d1', .9));
+      // 4.16: Эссенция Рода — светящаяся сфера, в которой кружат цвета всех шести стихий
+      case 'rod': return svg(`<defs><radialGradient id="${k}a"><stop offset="0" stop-color="#c4b5fd" stop-opacity=".55"/><stop offset="1" stop-color="#c4b5fd" stop-opacity="0"/></radialGradient>` +
+        `<radialGradient id="${k}b" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#e9d5ff"/><stop offset=".75" stop-color="#8b5cf6"/><stop offset="1" stop-color="#3b0764"/></radialGradient></defs>` +
+        `<circle class="art-aura" cx="50" cy="52" r="46" fill="url(#${k}a)"/>` + floor(22, 95) +
+        `<circle cx="50" cy="52" r="32" fill="url(#${k}b)" stroke="#2e1065" stroke-width="3"/>` +
+        `<g fill="none" stroke-width="4" stroke-linecap="round" opacity=".9">` +
+        ['#ff7a3d', '#38bdf8', '#84cc16', '#a5b4fc', '#facc15', '#c084fc'].map((c, i) => `<path d="M50 52m0 -22a22 22 0 0 1 19 11" stroke="${c}" transform="rotate(${i * 60} 50 52)"/>`).join('') + `</g>` +
+        `<circle cx="50" cy="52" r="8" fill="#fff" opacity=".9"/><path d="M34 40Q38 30 48 28" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>` +
+        glint(78, 22, 8, '#f5f3ff') + glint(20, 76, 5, '#f5f3ff', .9));
       // Искры: сияющая золотая звезда-искра — валюта
       case 'sparks': {
         const st = 'M50 3C53 38 62 47 97 50C62 53 53 62 50 97C47 62 38 53 3 50C38 47 47 38 50 3Z';

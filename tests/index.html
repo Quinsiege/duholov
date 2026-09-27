@@ -478,24 +478,134 @@
     S.progress('power', 1); ok(S.storyReady());
     const r = S.claimStory(); ok(r && r.ch.title === 'Посвящение'); eq(S.d.story.ch, 1);
   });
-  test('Летопись: 21 глава, у всех шагов есть текст, подарки существуют', () => {
-    eq(STORY.length, 21);
+  test('Летопись: 28 глав, у всех шагов есть текст, подарки существуют', () => {
+    eq(STORY.length, 28); // 4.16: пятая книга «Калинов мост» — главы до 40 уровня
     STORY.forEach((ch, i) => {
       eq(ch.steps.length, 3, 'шагов в главе ' + (i + 1));
       ch.steps.forEach(s => { ok(stepText(s).length > 5, `шаг «${s.t}» в главе ${i + 1}`); if (s.el) ok(ELEMENTS[s.el], 'стихия'); });
       if (ch.gift) ok(SP[ch.gift], 'подарок ' + ch.gift);
-      Object.keys(ch.reward).forEach(k => ok(k === 'xp' || k === 'sparks' || ITEMS[k], 'награда ' + k));
+      Object.keys(ch.reward).forEach(k => ok(k === 'sparks' || k === 'alatyr' || k === 'rod' || ITEMS[k], 'награда ' + k));
     });
-    ok([12, 18, STORY.length].every(n => LOOK.emblem.some(e => e.story === n)), 'эмблемы за вторую, третью и четвёртую книги');
+    ok([12, 18, 21].every(n => LOOK.emblem.some(e => e.story === n)), 'эмблемы за вторую, третью и четвёртую книги');
     ok(SP.indrik.legend && SP.indrik.story, 'Индрик — легенда Летописи');
-    ok(SP.svyatogor.legend && SP.svyatogor.story && STORY[STORY.length - 1].gift === 'svyatogor', 'Святогор — легенда четвёртой книги');
+    ok(SP.svyatogor.legend && SP.svyatogor.story && STORY[20].gift === 'svyatogor', 'Святогор — легенда четвёртой книги');
+    eq(STORY[STORY.length - 1].gift, 'gorynych', 'Змей Горыныч — финал пятой книги');
+    eq(STORY_BOOKS.length, 5); ok(STORY_BOOKS.every((b, i) => STORY[b.from] && (!i || b.from > STORY_BOOKS[i - 1].from)), 'книги по порядку');
   });
   test('Новые шаги Летописи засчитываются (вторжение, очищение, фото, Лига)', () => {
+    const lv = S.d.level; S.d.level = 20; // 4.16: главы открываются по уровню Ловчего
     S.d.story = { ch: 7, p: [0, 0, 0] }; // «Прислужники Нави»
     S.progress('invasion', 3); S.progress('purify', 1); S.progress('duel', 2);
     ok(S.storyReady(), 'глава 8 готова');
     S.d.story = { ch: 8, p: [0, 0, 0] };
     S.progress('photo', 1); eq(S.d.story.p[2], 1, 'фото');
+    S.d.level = lv;
+  });
+  /* ---------- 4.16: прокачка духов, коллекция, Летопись ---------- */
+  test('Пробуждение (4.16): звёзды по уровню Ловчего, предел до 50, цена', () => {
+    const lv = S.d.level;
+    try {
+      const sp = fresh('ugolek', 10);
+      S.d.level = 19; eq(S.maxLvl(sp), 24); sp.lvl = 24;
+      ok(/20 уровне/.test(S.canAwaken(sp)), 'первая звезда — с 20 уровня');
+      S.d.level = 20; ok(/до предела/.test(S.canAwaken(sp)), 'сначала — до предела');
+      sp.lvl = 25; S.d.alatyr = 0; S.d.sparks = 1e6; S.d.essence.ugolek = 1000;
+      ok(/Алатыря/.test(S.canAwaken(sp)), 'нужны осколки');
+      ok(/пробуди/.test(S.canPowerUp(sp)), 'на пределе «Усилить» зовёт к пробуждению');
+      S.d.alatyr = 100;
+      const a0 = S.d.alatyr, s0 = S.d.sparks, e0 = S.d.essence.ugolek, c = S.awakenCost(sp);
+      ok(S.awaken(sp)); eq(sp.stars, 1); eq(S.maxLvl(sp), 27, 'звезда: предел +2');
+      eq(S.d.alatyr, a0 - c.alatyr); eq(S.d.sparks, s0 - c.sparks); eq(S.d.essence.ugolek, e0 - c.essence);
+      eq(S.canPowerUp(sp), null, 'после звезды дух растёт дальше');
+      sp.lvl = 27; ok(/25 уровне/.test(S.canAwaken(sp)), 'вторая звезда — с 25 уровня');
+      const b = { ...sp, stars: 5 };
+      eq(S.maxLvl(b), 27, 'звёзды сверх уровня Ловчего не действуют');
+      S.d.level = 40; eq(S.maxLvl(b), SPIRIT_MAX, 'пять звёзд — до 50');
+      ok(/полностью/.test(S.canAwaken(b)), 'больше пяти нельзя');
+      sp.stars = 4; sp.lvl = S.maxLvl(sp); eq(sp.lvl, 48); ok(S.awaken(sp)); sp.lvl = SPIRIT_MAX;
+      ok(/наивысшего/.test(S.canPowerUp(sp)), '50 — наивысший уровень');
+      ok(S.power({ ...sp, lvl: 50 }) > S.power({ ...sp, lvl: 40 }) * 1.15, 'сила 50 уровня заметно выше 40-го');
+      // звёзды переходят с духом при обмене и на Аукционе (действуют по уровню получателя)
+      const pk = GameCore.packSpirit(sp); eq(pk.a, 5);
+      eq(GameCore.unpackSpirit({ ...pk, a: 99 }, { now: 1 }, null, 40).stars, S.AWAKE.MAX, 'не больше пяти');
+      eq(GameCore.cleanSpirit({ sid: 'ugolek', lvl: 99, iv: [1, 1, 1] }, 0).lvl, SPIRIT_MAX, 'соперник — до 50 уровня');
+      S.release(sp.uid);
+    } finally { S.d.level = lv; }
+  });
+  test('Эссенция Рода (4.16): переплавка 5 → 1, вливание 1 → 1, в легенды 3 → 1', () => {
+    S.d.essence.kapelka = 23; S.d.rod = 0;
+    ok(/Нужно 25/.test(S.canMelt('kapelka', 5)));
+    ok(S.melt('kapelka', 4)); eq(S.d.essence.kapelka, 3); eq(S.d.rod, 4);
+    ok(/легенд/.test(S.canMelt('zharptica', 1)), 'эссенция легенд не плавится');
+    ok(!!S.canMelt('luzhnica', 1), 'семейство — по первой форме');
+    ok(!!S.canMelt('kapelka', 0.5) && !!S.canMelt('kapelka', -1) && !!S.canMelt('__proto__', 1), 'мусор отклоняется');
+    S.d.rod = 10; S.d.essence.svyatogor = 0;
+    ok(S.pour('svyatogor', 3)); eq(S.d.essence.svyatogor, 3); eq(S.d.rod, 1, 'легенда: 3 Рода за единицу');
+    ok(/Рода: 3/.test(S.canPour('svyatogor', 1)));
+    const k0 = S.d.essence.kikimora || 0; ok(S.pour('kikimora', 1)); eq(S.d.rod, 0); eq(S.d.essence.kikimora, k0 + 1);
+  });
+  test('Трофеи разлома (4.16): эссенция семейства босса и осколки Алатыря', () => {
+    const m = Math.random;
+    try {
+      Math.random = () => 0.5;
+      S.d.alatyr = 0; S.d.essence.koschey = 0; const u0 = S.d.essence.ugolek || 0;
+      const r3 = S.riftSpoils('koschey', 3); eq(S.d.essence.koschey, S.RIFT_ESS[3], 'эссенция легенды'); eq(S.d.alatyr, 1, 'великий разлом — всегда осколок'); ok(r3.some(x => x.k === 'alatyr'));
+      const r2 = S.riftSpoils('kostrovik', 2); eq(S.d.essence.ugolek, u0 + S.RIFT_ESS[2], 'эссенция семейства босса'); eq(S.d.alatyr, 1); eq(r2.length, 1);
+      Math.random = () => 0.1; S.riftSpoils('kostrovik', 2); eq(S.d.alatyr, 2, 'разлом — иногда');
+      S.riftSpoils('koschey', 3); eq(S.d.alatyr, 2, `в бою — не больше ${S.ALATYR_DAY} осколков в день`);
+      S.d.alaDay = { day: 'вчера', n: 9 };
+      eq(S.alatyrDrop('duel', 2).length, 0, 'Капище мастера — без осколков'); Math.random = () => 0.05; eq(S.alatyrDrop('duel', 3).length, 1, 'старейшина — изредка; новый день — новый счёт');
+      S.d.alatyr = 3;
+      const b0 = S.bagCount(), got = S.giveRewards({ alatyr: 2, rod: 5 }); eq(S.d.alatyr, 5); eq(got.length, 2); eq(S.bagCount(), b0, 'в сумку не идут');
+    } finally { Math.random = m; }
+  });
+  test('Летопись (4.16): главы до 40 уровня, пороги, опыт по кривой, подсказки к шагам', () => {
+    let prev = 0;
+    STORY.forEach((ch, i) => {
+      const L = S.storyLvl(ch); ok(L >= prev, 'пороги не убывают, глава ' + (i + 1)); prev = L;
+      ch.steps.forEach(s => ok(stepHint(s).length > 20, 'подсказка ' + s.t));
+    });
+    eq(S.storyLvl(STORY[STORY.length - 1]), MAX_LEVEL, 'последняя глава — на 40 уровне');
+    ok(S.storyLvl(STORY[5]) <= 10 && S.storyLvl(STORY[20]) <= 30, 'первые книги — раньше');
+    ['catch', 'catchEl', 'spring', 'power', 'throw', 'walk', 'raid', 'evolve', 'hatch', 'duel', 'invasion', 'purify', 'photo', 'league', 'task', 'defend', 'land', 'spar', 'coop', 'gift', 'awaken']
+      .forEach(t => ok(stepHint({ t, n: 1, el: 'fire' }).length > 20 && stepText({ t, n: 1, el: 'fire' }).length > 5, 'шаг ' + t));
+    const tot = STORY.reduce((a, ch) => a + S.storyXP(S.storyLvl(ch)), 0);
+    ok(tot > levelXP(MAX_LEVEL) * 0.08 && tot < levelXP(MAX_LEVEL) * 0.16, 'опыт Летописи — 8–16% пути: ' + tot);
+    ok(S.storyXP(38) > S.storyXP(10) * 5, 'поздние главы дают больше опыта');
+    const keep = { lv: S.d.level, st: S.d.story };
+    try {
+      S.d.level = 12; S.d.story = { ch: 21, p: [0, 0, 0] }; ok(!S.storyOpen(), 'глава 22 закрыта до 31 уровня');
+      S.progress('raid', 6); eq(S.d.story.p[0], 0, 'закрытая глава шаги не считает');
+      S.d.story.p = [6, 40, 1]; ok(!S.storyReady(), 'и не завершается'); eq(S.claimStory(), null);
+      S.d.level = 31; ok(S.storyReady());
+      const r = S.claimStory(); ok(r && r.got.some(x => x.k === 'alatyr' && x.n === 3) && r.got.some(x => x.k === 'xp'), 'награда главы');
+      eq(S.d.story.ch, 22);
+    } finally { S.d.level = keep.lv; S.d.story = keep.st; }
+  });
+  test('Коллекция (4.16): каждый вид достижим — карта, превращение, разломы, Летопись, гости издалека', () => {
+    const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35]];
+    SPECIES.forEach(s => {
+      const wild = !s.legend && PTS.some(([la, ln]) => W.local(s, ln, la)), evo = SPECIES.some(x => x.evo === s.id);
+      const rift = s.legend && !s.story, story = STORY.some(ch => ch.gift === s.id);
+      ok(wild || evo || rift || story, 'недостижим: ' + s.id);
+    });
+    // где бы ни был Ловчий, духа чужих краёв (и не своего сезона) приведёт поручение: он либо здешний, либо гость
+    PTS.forEach(([la, ln]) => {
+      const g = new Set(S.guests(la, ln).map(s => s.id));
+      SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season)).forEach(s =>
+        ok(g.has(s.id) !== (W.local(s, ln, la) && Ev.seasonal(s) > 0), `${s.id} в ${la},${ln}`));
+    });
+  });
+  test('Поручения (4.16): трудное поручение может привести гостя издалека', () => {
+    const lv = S.d.level, m = Math.random;
+    try {
+      S.d.level = 30;
+      const seq = [0.99, 0.5, 0.5, 0.1, 0.5]; let i = 0; Math.random = () => seq[i++ % seq.length];
+      const t = S.makeTask({ lat: 55.75, lng: 37.62 }); eq(t.tier, 3); ok(t.guest, 'гость');
+      ok(S.guests(55.75, 37.62).some(s => s.id === t.sid), 'гость — не здешний дух');
+      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].region && !SP[t2.sid].land && !SP[t2.sid].season, 'обычно — обычный дух');
+      i = 0; seq[3] = 0.1; ok(!S.makeTask().guest, 'без места — без гостей');
+    } finally { Math.random = m; S.d.level = lv; }
   });
   test('Дневник: записи с местом, ограничение по размеру', () => {
     S.d.journal = [];
@@ -1217,7 +1327,7 @@
   });
   atest('Сервер: третья книга Летописи — новые шаги, Индрик и эмблема', async () => {
     const A = await newPlayer('vc', 55.56, 37.44, 'Летописец');
-    A.data.tut = 0;
+    A.data.tut = 0; A.data.level = 27; A.data.xp = levelXP(27); // 4.16: главы третьей книги открываются с 20 по 27 уровень
     // «Весть с окраин»: поручение засчитывается шагом Летописи
     A.data.story = { ch: 12, p: [0, 0, 0] };
     A.data.tasks = [{ id: 't9', t: 'photo', n: 1, el: 'fire', p: 1, tier: 1, sid: 'ugolek', text: 'Фото' }];
@@ -1234,6 +1344,47 @@
     const enc = await must(A, 'encStart', { kind: 'story' }); eq(enc.sid, 'indrik');
     await must(A, 'encEnd');
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }); eq(A.data.look.emblem, 'horn');
+  });
+  atest('Сервер: пробуждение, эссенция Рода, трофеи разлома, Летопись по уровням (4.16)', async () => {
+    const A = await newPlayer('aw1', 55.43, 37.31, 'Пробуждённый');
+    A.data.tut = 0;
+    const uid = A.data.spirits[0].uid;
+    A.data.level = 20; A.data.xp = levelXP(20); A.data.spirits[0].lvl = 25; A.data.sparks = 100000; A.data.essence.ugolek = 100; A.data.alatyr = 1;
+    await refuse(A, 'awaken', { uid }, /Алатыря/);
+    A.data.alatyr = 5;
+    const r = await must(A, 'awaken', { uid }); eq(r.stars, 1); eq(r.max, 27); eq(A.data.alatyr, 3); eq(A.data.spirits[0].stars, 1);
+    await must(A, 'powerUp', { uid }); eq(A.data.spirits[0].lvl, 26, 'выше прежнего предела');
+    await must(A, 'powerUp', { uid }); await refuse(A, 'powerUp', { uid }, /Предел/);
+    await refuse(A, 'awaken', { uid }, /25 уровне/);
+    await refuse(A, 'awaken', { uid: 'чужой' }, /не найден/);
+    // эссенция Рода
+    A.data.essence.kapelka = 12;
+    await refuse(A, 'essMelt', { fam: 'kapelka', n: 3 }, /Нужно 15/);
+    await must(A, 'essMelt', { fam: 'kapelka', n: 2 }); eq(A.data.rod, 2); eq(A.data.essence.kapelka, 2);
+    await refuse(A, 'essMelt', { fam: 'zharptica', n: 1 }, /легенд/);
+    await refuse(A, 'essPour', { fam: 'svyatogor', n: 1 }, /Рода: 3/);
+    await refuse(A, 'essPour', { fam: '__proto__', n: 1 }, /семейства/);
+    await refuse(A, 'essPour', { fam: 'kikimora', n: 'много' }, /Сколько/);
+    await must(A, 'essPour', { fam: 'kikimora', n: 2 }); eq(A.data.rod, 0); eq(A.data.essence.kikimora, 2);
+    // трофеи разлома: эссенция семейства босса
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => asPlayer(A, () => { const x = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return x && x.tier === 1; }), 30000);
+    const rift = { id, lat: A.lat, lng: A.lng, name: 'Памятник' };
+    const st = await must(A, 'raidStart', { rift }), fam = SP[st.boss].fam, e0 = A.data.essence[fam] || 0;
+    A.srv.battle.start -= 85000;
+    const w = await must(A, 'raidEnd', { win: true });
+    ok(w.win && w.rw.some(x => x.k === 'ess' && x.n === S.RIFT_ESS[1]), 'эссенция босса в награде'); eq(A.data.essence[fam], e0 + S.RIFT_ESS[1]);
+    // Летопись: глава, закрытая уровнем, не завершается
+    A.data.story = { ch: 21, p: [6, 40, 1] };
+    await refuse(A, 'storyClaim', {}, /31 уровне/);
+    A.data.level = 31; A.data.xp = levelXP(31);
+    const c = await must(A, 'storyClaim'); eq(c.ch, 21); ok(c.got.some(x => x.k === 'alatyr' && x.n === 3)); eq(A.data.alatyr, 6);
+    eq(A.data.story.ch, 22);
+    // шаг «Лига» — за сыгранный бой, и поражение тоже (с живыми соперниками победа не гарантирована)
+    A.data.story = { ch: 10, p: [0, 0, 0] };
+    ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, sid))));
+    await must(A, 'leagueStart', {}); await must(A, 'leagueEnd', { win: false });
+    eq(A.data.story.p[0], 1, 'бой Лиги засчитан и при поражении');
   });
   atest('Сервер: приглашение по ссылке — сразу друзья и подарки обоим, без накрутки', async () => {
     const A = await newPlayer('vd', 55.55, 37.43, 'Зазывала');

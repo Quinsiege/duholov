@@ -254,7 +254,7 @@ const GameCore = {
   cleanSpirit(x, i) {
     const iv = (Array.isArray(x.iv) ? x.iv : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
-    return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, 40), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
+    return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, SPIRIT_MAX), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
       purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? this.cleanText(x.nick, 16) || null : null };
   },
   // Приглашение: новичок по ссылке друга сразу в друзьях у него, оба получают подарки.
@@ -354,7 +354,8 @@ const GameCore = {
     S.d.team = S.d.team.filter(u => u !== sp.uid);
   },
   // Упаковка духа для посылки и лота аукциона — и обратно (уровень — не выше доступного получателю)
-  packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0 }; },
+  // 4.16: a — звёзды пробуждения (действуют у получателя по его уровню Ловчего, S.starsOn)
+  packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0, a: sp.stars || 0 }; },
   unpackSpirit(p, ctx, from, cap = S.maxLvl()) {
     this.need(p && SP[p.s], ru`Посылка повреждена`);
     const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
@@ -365,6 +366,7 @@ const GameCore = {
     if (p.d) sp.dark = true;
     if (p.p) sp.purified = true;
     if (p.m) sp.move2 = true;
+    if (p.a) sp.stars = U.clamp(Math.floor(+p.a) || 0, 0, S.AWAKE.MAX);
     return sp;
   },
   // Текст от игрока (имя, кличка духа): без управляющих символов и символов разметки, пробелы схлопнуты
@@ -472,9 +474,10 @@ const GameCore = {
       }
       if (rNew > L.best) L.best = rNew;
       if (rNew > (L.peak || 0)) L.peak = rNew;
-      if (score === 1) S.progress('league', 1);
       // опыт — за первые League.XP_RUNS боёв дня; сдавшемуся и пропавшему из боя — нет
       const fled = score === 0 && (o.why === 'quit' || o.why === 'idle');
+      // шаг Летописи «Сразись в поединках Лиги» — за каждый честно сыгранный бой (не только за победу: соперники живые)
+      if (!fled) S.progress('league', 1);
       const xp = L.n <= League.XP_RUNS && !fled ? (score === 1 ? League.XP.win : score ? League.XP.draw : League.XP.loss) : 0;
       if (xp) S.addXP(xp);
       // раны: здоровье бойцов после боя посчитал сервер — выше того, что у духа сейчас, оно не станет
@@ -721,7 +724,7 @@ const GameCore = {
       let task = null;
       if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
         S.d.taskDay = U.today(ctx.now);
-        task = S.makeTask();
+        task = S.makeTask(p); // 4.16: трудное поручение может позвать «гостя издалека» — духа, которого здесь не встретить
         S.d.tasks.push(task);
       }
       return { got, cocoon: coc, task, full: S.bagCount() >= S.bagLimit() };
@@ -793,6 +796,10 @@ const GameCore = {
     },
     purify(a) { const sp = this.spirit(a.uid), err = S.canPurify(sp); this.need(!err, err); S.purify(sp); return { ok: true }; },
     move2(a) { const sp = this.spirit(a.uid), err = S.canLearnMove2(sp); this.need(!err, err); S.learnMove2(sp); return { ok: true }; },
+    // 4.16: пробуждение (звезда поднимает предел уровня духа) и эссенция Рода (переплавка лишней эссенции и вливание в любое семейство)
+    awaken(a) { const sp = this.spirit(a.uid), err = S.canAwaken(sp); this.need(!err, err); S.awaken(sp); return { stars: sp.stars, max: S.maxLvl(sp) }; },
+    essMelt(a) { const fam = String(a.fam || ''), n = Math.floor(+a.n), err = S.canMelt(fam, n); this.need(!err, err); S.melt(fam, n); return { rod: S.d.rod, left: S.d.essence[fam] }; },
+    essPour(a) { const fam = String(a.fam || ''), n = Math.floor(+a.n), err = S.canPour(fam, n); this.need(!err, err); S.pour(fam, n); return { rod: S.d.rod, ess: S.d.essence[fam] }; },
     equip(a) {
       const sp = this.spirit(a.uid);
       this.need(AMULETS[a.k] && S.d.amulets[a.k] > 0, ru`Такого амулета нет`);
@@ -857,6 +864,7 @@ const GameCore = {
     },
     storyClaim() {
       const ch = S.d.story.ch, res = S.claimStory();
+      this.need(res || S.storyOpen() || !STORY[ch], ru`Глава откроется на ${STORY[ch] ? S.storyLvl(STORY[ch]) : 0} уровне Ловчего`);
       this.need(res, ru`Глава ещё не завершена`);
       if (res.ch.gift) S.d.storyGift = res.ch.gift;
       J.add('story', { title: res.ch.title });
@@ -1004,6 +1012,7 @@ const GameCore = {
       // амулет с шансом 25/40/70%) — к 40 уровню копились сотни флаконов и амулетов
       const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 350 * tier, charm: 5, honey: tier, herb: tier === 1 ? 1 : 0, water: tier >= 2 ? 1 : 0, charm2: tier >= 2 ? 3 : 0 });
       const am = S.rollAmulet([0.05, 0.12, 0.3][tier - 1], b.rid);
+      rw.push(...S.riftSpoils(b.boss, tier)); // 4.16: эссенция семейства босса (и легенд) и осколки Алатыря
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
@@ -1054,6 +1063,7 @@ const GameCore = {
       // 4.16: вместо 2 Живой воды за каждую победу — подорожник (на 3 ступени — Живая вода), мёда меньше, амулет реже (было 15% × ступень)
       const rw = S.giveRewards({ xp: T.xp * mul, sparks: T.sparks * mul, charm: 5 * mul, honey: (t - 1) * mul, herb: t < 3 ? 1 : 0, water: t === 3 ? 1 : 0, charm2: t >= 2 ? 3 * mul : 0, charm3: t === 3 ? 2 * mul : 0 });
       const am = S.rollAmulet(0.04 * t, e.id);
+      rw.push(...S.alatyrDrop('duel', t)); // 4.16: хранитель-старейшина иногда отдаёт осколок Алатыря
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       return { win: true, rw, freed, clan: b.hold ? b.hold.clan : null };
     },

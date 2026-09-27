@@ -252,6 +252,7 @@ const UI = {
     let t, s, ready = false;
     if (!ch) { t = ru`Летопись дочитана`; s = ru`Встреча ждёт: ${SP[gift].name}`; ready = true; }
     else if (S.storyReady()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`Глава завершена — забери награду!`; ready = true; }
+    else if (!S.storyOpen()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`откроется на ${S.storyLvl(ch)} уровне`; } // 4.16: главы идут по уровням до 40-го
     else {
       const i = ch.steps.findIndex((x, k) => d.story.p[k] < x.n), step = ch.steps[i], p = d.story.p[i];
       t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`;

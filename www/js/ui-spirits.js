@@ -41,6 +41,7 @@ Object.assign(UI, {
           ${x.fav ? `<span class="fav">${this.I.star}</span>` : ''}
           ${S.d.buddy && S.d.buddy.uid === x.uid ? '<span class="buddy-mark">♥</span>' : ''}
           ${x.amulet ? `<span class="am-mark" style="background:${AMULETS[x.amulet].color}"></span>` : ''}
+          ${x.stars ? `<span class="aw-mark">★${x.stars}</span>` : ''}
           <div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
           <div class="card-art">${Art.imgOf(x)}</div>
           <div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}
@@ -85,7 +86,7 @@ Object.assign(UI, {
     render();
   },
 
-  rwText(rw) { return Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${U.fmtNum(n)}` : `${ITEMS[k].name} ×${n}`).join(', '); },
+  rwText(rw) { return Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${U.fmtNum(n)}` : `${S.resName(k)} ×${n}`).join(', '); },
 
   /* ---------------- КОМАНДА ---------------- */
   teamHtml(team) {
@@ -186,7 +187,8 @@ Object.assign(UI, {
       const hpN = S.hpNow(sp); // 4.15: здоровье
       const moves = [[ru`Быстрый приём`, ELEMENTS[s.el].fast], [ru`Особый приём`, ELEMENTS[s.el].charge]].concat(sp.move2 ? [[ru`Второй особый · ⚡${MOVES.charge2.cost}`, ELEMENTS[s.el].charge2]] : []);
       const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
-      const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr)], ['fight', ru`Характеристики`, false], ['amulet', ru`Амулет`, false], ['about', ru`О духе`, false]];
+      const aErr = S.canAwaken(sp), aCost = S.awakenCost(sp), nStars = sp.stars || 0; // 4.16: пробуждение
+      const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || !aErr], ['fight', ru`Характеристики`, false], ['amulet', ru`Амулет`, false], ['about', ru`О духе`, false]];
       scr.querySelector('.screen-body').innerHTML = `
         <div class="det det2 el-${s.el}" style="--c:${ELEMENTS[s.el].color}">
           <div class="dt-hero">
@@ -194,8 +196,8 @@ Object.assign(UI, {
             <div class="dt-info">
               <div class="det-hp">№${String(s.num).padStart(2, '0')} ${s.name} · ${ru`ОЗ ${st.hp}`}</div>
               <div class="det-power"><small>${ru`СИЛА`}</small><b>${st.power}</b></div>
-              <div class="det-lvl"><span>${ru`Уровень <b>${sp.lvl}</b> из ${S.maxLvl()}`}</span><div class="arc"><i style="width:${(sp.lvl / 40) * 100}%"></i></div></div>
-              <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${sp.shiny ? `<span class="shiny-t">✦ ${ru`Сияющий`}</span>` : ''}${sp.dark ? `<span class="dark-t">${ru`Омрачённый`}</span>` : ''}${sp.purified ? `<span class="pure-t">${ru`Очищенный`}</span>` : ''}${isBuddy ? `<span class="buddy-t">♥ ${ru`Спутник`}</span>` : ''}${hpN < 1 ? `<span class="hp-t ${hpN <= 0 ? 'ko' : ''}">${hpN <= 0 ? ru`без сил` : ru`ранен · ${Math.round(hpN * 100)}%`}</span>` : ''}</div>
+              <div class="det-lvl"><span>${ru`Уровень <b>${sp.lvl}</b> из ${S.maxLvl(sp)}`}</span><div class="arc"><i style="width:${(sp.lvl / SPIRIT_MAX) * 100}%"></i></div></div>
+              <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${nStars ? `<span class="aw-t">${'★'.repeat(nStars)}</span>` : ''}${sp.shiny ? `<span class="shiny-t">✦ ${ru`Сияющий`}</span>` : ''}${sp.dark ? `<span class="dark-t">${ru`Омрачённый`}</span>` : ''}${sp.purified ? `<span class="pure-t">${ru`Очищенный`}</span>` : ''}${isBuddy ? `<span class="buddy-t">♥ ${ru`Спутник`}</span>` : ''}${hpN < 1 ? `<span class="hp-t ${hpN <= 0 ? 'ko' : ''}">${hpN <= 0 ? ru`без сил` : ru`ранен · ${Math.round(hpN * 100)}%`}</span>` : ''}</div>
             </div>
           </div>
           <div class="seg dt-tabs">${TABS.map(([k, t, dot]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${t}${dot ? '<i class="dt-dot"></i>' : ''}</button>`).join('')}</div>
@@ -209,13 +211,16 @@ Object.assign(UI, {
                   <div class="dt-evo-bar"><div class="pbar"><i style="width:${Math.min(100, ess / s.cost * 100)}%"></i></div><small>${ru`${Math.min(ess, s.cost)} / ${s.cost} эсс.`}</small></div></div>`
                   : row(ru`Превращение`, ru`высшая форма`)}
                 ${row(ru`Искры`, `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}`, 'gold')}
-                ${row(ru`Эссенция «${fam.name}»`, ess)}
+                ${row(ru`Эссенция «${fam.name}»`, `${ess}<button class="dt-plus act-pour" aria-label="${ru`Влить эссенцию Рода`}">+</button>`)}
+                <button class="dt-row dt-aw act-awaken-open"><span>${ru`Пробуждение`}</span><b><i class="aw-stars">${'★'.repeat(nStars)}<s>${'☆'.repeat(S.AWAKE.MAX - nStars)}</s></i>${!aErr ? `<em>${ru`можно`}</em>` : aCost && S.d.level < aCost.lvl && !nStars ? `<small>${ru`с ${aCost.lvl} ур.`}</small>` : ''}<i class="dt-go">›</i></b></button>
                 ${sp.dark ? `<div class="dt-row dt-dark"><span><b>${ru`Омрачён Навью`}</b><small>${ru`атака +20%, защита −17%`}</small></span>
                   <button class="btn small act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>${ru`Очистить`}<small><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.purifyCost(sp).sparks)} · ${ru`${S.purifyCost(sp).essence} эсс.`}</small></button></div>` : ''}
               </div>
               ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
               <div class="det-actions top ${s.evo ? '' : 'one'}">
-                <button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' + (sp.lvl >= S.maxLvl() ? ` data-short="${ru`Предел уровня`}"` : '') : ''}>${ru`Усилить`}<small><span class="cur">${Art.item('sparks')}</span> ${pc.sparks} · ${ru`${pc.essence} эсс.`}</small></button>
+                ${pErr && sp.lvl >= S.maxLvl(sp) && aCost && S.d.level >= aCost.lvl
+                  ? `<button class="btn primary act-awaken-open">${ru`Пробудить`}<small>${ru`звезда ${nStars + 1} · предел +${S.AWAKE.STEP}`}</small></button>`
+                  : `<button class="btn primary act-power" ${pErr ? 'data-err="' + U.esc(pErr) + '"' + (sp.lvl >= S.maxLvl(sp) ? ` data-short="${ru`Предел уровня`}"` : '') : ''}>${ru`Усилить`}<small><span class="cur">${Art.item('sparks')}</span> ${pc.sparks} · ${ru`${pc.essence} эсс.`}</small></button>`}
                 ${s.evo ? `<button class="btn evolve act-evo" ${eErr ? 'data-err="' + U.esc(eErr) + '"' : ''}>${ru`Превратить`}<small>${ru`${s.cost} эсс.`} → ${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? SP[s.evo].name : '???'}</small></button>` : ''}
               </div>
 `)}
@@ -263,6 +268,9 @@ Object.assign(UI, {
       const t = e.target.closest('button'); if (!t) return;
       if (t.dataset.tab) { tab = t.dataset.tab; Sfx.play('tap'); U.$$('[data-tab]', scr).forEach(x => x.classList.toggle('on', x === t)); U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === tab)); return; }
       const sp = S.findSpirit(uid); if (!sp) return;
+      // 4.16: пробуждение — своим экраном; «Усилить» на пределе ведёт туда же, если звезда уже открыта уровнем
+      if (t.classList.contains('act-awaken-open')) { Sfx.play('tap'); this.awaken(uid, render); return; }
+      if (t.classList.contains('act-pour')) { this.pourPick(sp, render); return; }
       if (t.dataset.err) { this.toast(t.dataset.err); return; }
       if (t.classList.contains('favbtn')) act('fav', { on: !sp.fav });
       else if (t.classList.contains('det-name')) this.rename(sp, render);
@@ -310,6 +318,128 @@ Object.assign(UI, {
       const b = e.target.closest('.am-pick'); if (!b) return;
       m.close();
       if (await Game.try('equip', { uid: sp.uid, k: b.dataset.k })) { Sfx.play('spin'); done(); }
+    });
+  },
+  /* ---------------- 4.16: ПРОБУЖДЕНИЕ ---------------- */
+  // Та же композиция, что у карточки духа: сверху дух и его звёзды, ниже вкладки «Звезда · Эссенция · Где добыть», кнопки — внизу вкладки
+  awaken(uid, onChange) {
+    if (!S.findSpirit(uid)) return;
+    const scr = this.screen(ru`Пробуждение`, '', 'det-screen aw-screen', onChange);
+    let tab = 'star';
+    const render = () => {
+      const sp = S.findSpirit(uid);
+      if (!sp) { this.closeScreen(scr); return; }
+      const s = SP[sp.sid], fam = SP[s.fam], A = S.AWAKE, n = sp.stars || 0, c = S.awakenCost(sp), err = S.canAwaken(sp);
+      const max = S.maxLvl(sp), next = Math.min(SPIRIT_MAX, max + A.STEP), ess = S.d.essence[s.fam] || 0, rate = S.pourRate(s.fam);
+      const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
+      const need = (t, have, want, f = x => x) => row(t, `${f(have)} <small>/ ${f(want)}</small>${have >= want ? '<i class="aw-ok">✓</i>' : ''}`, have >= want ? 'aw-have' : 'aw-need');
+      const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
+      const TABS = [['star', ru`Звезда`, !err], ['ess', ru`Эссенция`, false], ['how', ru`Где добыть`, false]];
+      scr.querySelector('.screen-body').innerHTML = `
+        <div class="det det2 aw el-${s.el}" style="--c:${ELEMENTS[s.el].color}">
+          <div class="dt-hero">
+            <div class="det-art">${Art.of(sp)}</div>
+            <div class="dt-info">
+              <div class="det-name">${U.esc(sp.nick || s.name)}</div>
+              <div class="det-hp">${ru`СИЛА ${S.power(sp)}`}${c ? ` → <i class="dt-up">${S.stats({ ...sp, lvl: next }).power}</i>` : ''}</div>
+              <div class="det-power"><small>${ru`ЗВЁЗДЫ`}</small><b class="aw-big">${'★'.repeat(n)}<s>${'☆'.repeat(A.MAX - n)}</s></b></div>
+              <div class="det-lvl"><span>${c ? ru`Предел уровня: <b>${max}</b> → ${next}` : ru`Предел уровня: <b>${max}</b>`}</span><div class="arc"><i style="width:${max / SPIRIT_MAX * 100}%"></i></div></div>
+            </div>
+          </div>
+          <div class="seg dt-tabs">${TABS.map(([k, t, dot]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${t}${dot ? '<i class="dt-dot"></i>' : ''}</button>`).join('')}</div>
+          <div class="dt-panel">
+            ${pane('star', c ? `
+              <div class="dt-rows">
+                ${need(ru`Уровень Ловчего`, S.d.level, c.lvl)}
+                ${need(ru`Уровень духа (предел)`, sp.lvl, max)}
+                ${need(ru`Осколки Алатыря`, S.d.alatyr || 0, c.alatyr)}
+                ${need(ru`Эссенция «${fam.name}»`, ess, c.essence)}
+                ${need(ru`Искры`, S.d.sparks, c.sparks, U.fmtNum)}
+              </div>
+              <div class="det-actions top one"><button class="btn primary act-awaken" ${err ? `data-err="${U.esc(err)}"` : ''}>${ru`Пробудить`}<small>${ru`звезда ${n + 1} · предел +${A.STEP}`}</small></button></div>`
+              : `<div class="dx-none"><b>${ru`Дух пробуждён полностью`}</b><small>${ru`Пять звёзд: предел уровня — ${SPIRIT_MAX}.`}</small></div>`)}
+            ${pane('ess', `
+              <div class="dt-rows">
+                ${row(ru`Эссенция Рода`, `<span class="cur">${Art.item('rod')}</span> ${U.fmtNum(S.d.rod || 0)}`, 'gold')}
+                ${row(ru`Эссенция «${fam.name}»`, ess)}
+                ${row(ru`Вливание`, rate > 1 ? ru`${rate} Рода → 1 эссенция легенды` : ru`1 Рода → 1 эссенция семейства`, 'wrap')}
+                ${row(ru`Переплавка`, ru`${S.ESS.MELT} эссенции семейства → 1 Рода`, 'wrap')}
+              </div>
+              <div class="det-actions top"><button class="btn primary act-pour" ${S.canPour(s.fam, 1) ? `data-err="${U.esc(S.canPour(s.fam, 1))}"` : ''}>${ru`Влить Рода`}<small>${ru`в «${fam.name}»`}</small></button><button class="btn act-melt">${ru`Переплавить`}<small>${ru`лишнюю эссенцию`}</small></button></div>`)}
+            ${pane('how', `
+              <div class="dt-rows">
+                ${row(ru`Осколки Алатыря`, ru`великие разломы — всегда, разломы — иногда, Капища Старейшин — редко (в боях — до ${S.ALATYR_DAY} в день), главы Летописи с третьей книги`, 'wrap')}
+                ${row(ru`Эссенция Рода`, ru`переплавка лишней эссенции и главы Летописи`, 'wrap')}
+                ${row(ru`Эссенция легенд`, ru`победы в разломах, где легенда — босс, спутник-легенда и эссенция Рода`, 'wrap')}
+                ${row(ru`Звёзды`, A.LVL.map((l, i) => ru`★${i + 1} — с ${l} ур.`).join(', '), 'wrap')}
+              </div>`)}
+          </div>
+        </div>`;
+      U.$$('[data-err]', scr).forEach(b => b.classList.add('disabled'));
+    };
+    scr.addEventListener('click', async e => {
+      const t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.tab) { tab = t.dataset.tab; Sfx.play('tap'); render(); return; }
+      const sp = S.findSpirit(uid); if (!sp) return;
+      if (t.dataset.err) { this.toast(t.dataset.err); return; }
+      if (t.classList.contains('act-awaken')) {
+        const c = S.awakenCost(sp);
+        this.confirm(ru`Пробудить духа?`, ru`«${U.esc(sp.nick || SP[sp.sid].name)}» получит звезду ${(sp.stars || 0) + 1}: предел уровня +${S.AWAKE.STEP}. Потратится осколков Алатыря: ${c.alatyr}, эссенции: ${c.essence}, искр: ${U.fmtNum(c.sparks)}.`, ru`Пробудить`, async () => {
+          const r = await Game.try('awaken', { uid });
+          if (!r || !scr.isConnected) return;
+          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+          this.toast(ru`Дух пробуждён! Предел уровня — ${r.max}`, 'good');
+          render(); const a = scr.querySelector('.det-art'); if (a) a.classList.add('pulse');
+        });
+      } else if (t.classList.contains('act-pour')) this.pourPick(sp, render);
+      else if (t.classList.contains('act-melt')) this.meltPick(render);
+    });
+    render();
+  },
+  // Выбор количества (кнопки, ползунок или число) — для переплавки и вливания эссенции
+  amount(o) {
+    const max = Math.max(1, o.max);
+    let n = Math.min(max, o.start || 1);
+    const m = this.modal({
+      title: o.title, cls: 'drop-modal',
+      html: `<div class="drop-item">${o.art}<div><b>${o.name}</b><small class="am-sum"></small></div></div>
+        <div class="drop-step"><button class="btn-round step" data-d="-1">−</button><input type="number" class="drop-n" min="1" max="${max}" value="${n}" inputmode="numeric"><button class="btn-round step" data-d="1">+</button></div>
+        <input type="range" class="drop-range" min="1" max="${max}" value="${n}">
+        <div class="drop-quick">${[...new Set([1, 5, 10, Math.ceil(max / 2), max])].filter(v => v >= 1 && v <= max).sort((a, b) => a - b).map(v => `<button class="btn small ghost" data-v="${v}">${v === max ? ru`Все (${v})` : v}</button>`).join('')}</div>`,
+      buttons: [{ label: ru`Отмена` }, { label: o.ok, cls: 'primary', keep: true, fn: async () => { const r = await o.fn(n); if (!r) return; m.close(); o.after && o.after(r); } }],
+    });
+    const inp = m.querySelector('.drop-n'), range = m.querySelector('.drop-range'), sum = m.querySelector('.am-sum');
+    const set = v => { n = U.clamp(Math.round(+v || 1), 1, max); inp.value = n; range.value = n; sum.innerHTML = o.sum(n); };
+    m.querySelector('.drop-step').addEventListener('click', e => { const b = e.target.closest('.step'); if (b) set(n + +b.dataset.d); });
+    m.querySelector('.drop-quick').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) set(b.dataset.v); });
+    range.addEventListener('input', () => set(range.value));
+    inp.addEventListener('change', () => set(inp.value));
+    set(n);
+  },
+  // Влить эссенцию Рода в семейство духа (легенды — по S.ESS.LEGEND за единицу)
+  pourPick(sp, done) {
+    const fam = SP[sp.sid].fam, rate = S.pourRate(fam), max = Math.floor((S.d.rod || 0) / rate);
+    if (!max) { this.toast(rate > 1 ? ru`Нужно эссенции Рода: ${rate}. Её дают переплавка лишней эссенции и главы Летописи.` : ru`Эссенции Рода нет. Её дают переплавка лишней эссенции и главы Летописи.`); return; }
+    this.amount({ title: ru`Влить эссенцию Рода`, art: Art.item('rod'), name: ru`Эссенция «${SP[fam].name}»`, max, ok: ru`Влить`,
+      sum: k => ru`+${k} эссенции · потратится Рода: ${k * rate} из ${S.d.rod}`,
+      fn: k => Game.try('essPour', { fam, n: k }), after: r => { done && done(); Sfx.play('spin'); this.toast(ru`Эссенция «${SP[fam].name}»: ${r.ess}`, 'good'); } });
+  },
+  // Переплавка: лишняя эссенция любого семейства (кроме легенд) → эссенция Рода
+  meltPick(done) {
+    const M = S.ESS.MELT, fams = Object.keys(S.d.essence).filter(f => S.famOk(f) && !SP[f].legend && S.d.essence[f] >= M).sort((a, b) => S.d.essence[b] - S.d.essence[a]);
+    if (!fams.length) { this.toast(ru`Переплавлять нечего: нужно хотя бы ${M} эссенции одного семейства`); return; }
+    const m = this.modal({
+      title: ru`Переплавка эссенции`, cls: 'amulet-modal',
+      html: `<p class="small">${ru`${M} эссенции семейства → 1 эссенция Рода. Её можно влить в любое семейство — и в легенды.`}</p><div class="list">${fams.map(f => `<button class="row melt-f" data-f="${f}"><div class="row-ico">${Art.img(f)}</div><div class="row-main"><b>${SP[f].name}</b><small>${ru`эссенции: ${S.d.essence[f]} · Рода можно получить: ${Math.floor(S.d.essence[f] / M)}`}</small></div><span class="cnt">›</span></button>`).join('')}</div>`,
+      buttons: [{ label: ru`Закрыть` }],
+    });
+    m.querySelector('.list').addEventListener('click', e => {
+      const b = e.target.closest('.melt-f'); if (!b) return;
+      const f = b.dataset.f, have = S.d.essence[f] || 0;
+      m.close();
+      this.amount({ title: ru`Переплавить`, art: Art.img(f), name: ru`Эссенция «${SP[f].name}»`, max: Math.floor(have / M), ok: ru`Переплавить`,
+        sum: k => ru`−${k * M} эссенции (останется ${have - k * M}) → +${k} Рода`,
+        fn: k => Game.try('essMelt', { fam: f, n: k }), after: r => { done && done(); Sfx.play('spin'); this.toast(ru`Эссенция Рода: ${r.rod}`, 'good'); } });
     });
   },
   rename(sp, done) {
@@ -397,6 +527,8 @@ Object.assign(UI, {
               ${s.region ? row(ru`Регион`, `${REGIONS[s.region].name} · ${REGIONS[s.region].range}`, 'wrap') : ''}
               ${s.land ? row(ru`Земля`, `${LANDS[s.land].name}`, 'wrap') + row(ru`Граница`, LANDS[s.land].where, 'wrap') : ''}
               ${s.season ? row(ru`Сезон`, SEASON[s.season] || s.season, 'wrap') : row(ru`Сезон`, ru`круглый год`)}
+              ${s.region || s.land || s.season ? row(ru`Издалека`, ru`трудные поручения родников, Аукцион, обмен с друзьями`, 'wrap') : ''}
+              ${!s.story && STORY.some(ch => ch.gift === s.id) ? row(ru`Летопись`, ru`встреча в финале книги`, 'wrap') : ''}
               ${row(ru`Стихия`, `${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}`)}
             </div>`)}
           ${pane('family', `
@@ -433,7 +565,12 @@ Object.assign(UI, {
       const parcel = pc ? `
         <div class="row parcel"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${ru`Посылка Ордена`}</b><small>${ru`Не поместилось в сумку: ${pItems.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ')}. Посылка ждёт, пока в сумке не освободится место (вмещает до ${Rules.PARCEL.MAX} вещей).`}</small></div>
         <div class="row-side"><span class="cnt">×${pc}</span><div class="row-acts"><button class="btn small primary parcel-take">${ru`Забрать`}</button><button class="btn-round small parcel-drop" aria-label="${ru`Выбросить`}">${this.I.trash}</button></div></div></div>` : '';
-      scr.querySelector('.list').innerHTML = parcel + ams.map(k => `
+      // 4.16: осколки Алатыря и эссенция Рода — не вещи, места в сумке не занимают
+      const res = (S.d.alatyr ? `<div class="row"><div class="row-ico">${Art.item('alatyr')}</div><div class="row-main"><b>${ru`Осколки Алатыря`}</b><small>${ru`Пробуждают духов: каждая звезда поднимает предел уровня духа. Места в сумке не занимают.`}</small></div>
+        <div class="row-side"><span class="cnt">×${S.d.alatyr}</span></div></div>` : '')
+        + (S.d.rod || S.d.level >= S.AWAKE.LVL[0] ? `<div class="row"><div class="row-ico">${Art.item('rod')}</div><div class="row-main"><b>${ru`Эссенция Рода`}</b><small>${ru`Вливается в любое семейство, даже в легенды. Лишнюю эссенцию можно переплавить: ${S.ESS.MELT} → 1.`}</small></div>
+        <div class="row-side"><span class="cnt">×${S.d.rod || 0}</span><div class="row-acts"><button class="btn small primary use-melt">${ru`Переплавка`}</button></div></div></div>` : '');
+      scr.querySelector('.list').innerHTML = parcel + res + ams.map(k => `
         <div class="row"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}. ${ru`Надевается на карточке духа.`}</small></div>
         <div class="row-side"><span class="cnt">×${S.d.amulets[k]}</span>${S.d.amulets[k] >= Rules.MELT.N ? `<div class="row-acts"><button class="btn small melt" data-k="${k}">${ru`Переплавить`}</button></div>` : ''}</div></div>`).join('') + keys.map(k => `
         <div class="row"><div class="row-ico">${Art.item(k)}</div><div class="row-main"><b>${ITEMS[k].name}</b><small>${ITEMS[k].desc}</small></div>
@@ -456,6 +593,7 @@ Object.assign(UI, {
         return;
       }
       const ml = e.target.closest('.melt'); if (ml) { this.melt(ml.dataset.k, render); return; }
+      if (e.target.closest('.use-melt')) { this.meltPick(render); return; }
       if (!e.target.closest('.use-inc')) return;
       if (S.incenseActive()) { this.toast(ru`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - U.now())}`); return; }
       if (await Game.try('incense')) {
