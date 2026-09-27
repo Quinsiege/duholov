@@ -313,6 +313,11 @@ async function spendZlat() {
   const brewAt = don >= 3 ? 150 : don === 2 ? 100 + (d.pass && !d.pass.gold ? Rules.PASS.GOLD : 60) : 500;
   const room = n => me(() => S.bagCount()) + n <= me(() => S.bagLimit());
   const brew = Rules.SHOP.find(x => x.id === 'xpbrew');
+  if (don >= 2 && !room(1) && !(P.data.items.xpbrew > 0)) { // сумка полна — живой игрок выбросит лишние обереги, чтобы купить настой
+    const k = ['charm', 'charm2', 'herb', 'honey'].sort((a, b) => (P.data.items[b] || 0) - (P.data.items[a] || 0))[0];
+    const n = Math.min((P.data.items[k] || 0) - 10, me(() => S.bagCount() - S.bagLimit()) + 1); // сумка бывает переполнена наградами
+    if (n > 0 && await act('discard', { k, n })) D.discarded += n;
+  }
   if (!(P.data.items.xpbrew > 0) && P.data.zlat >= brewAt && room(1) && Rules.weekUsed(P.data, 'xpbrew') < brew.week && await act('shopBuy', { id: 'xpbrew' })) spend('Настой опыта', brew.price);
   // ладан: киты — связка раз в день, средние — по одному, остальные — если златников скопилось много
   // (связка — через день, когда ладан кончился: столько же ладана, сколько киты брали раньше, по 2 в день)
@@ -353,7 +358,7 @@ async function auction() {
   // купить: сильнее самого слабого в команде (с учётом, что уровень урежется до уровня Ловчего)
   const tm = team(); if (tm.length < 3) return;
   const weak = Math.min(...tm.map(x => me(() => S.power(x)))), cap = me(() => S.catchLvl());
-  const budgetS = P.data.sparks - 20000, budgetZ = P.data.zlat - (P.pr.don >= 2 ? 100 : 400);
+  const budgetS = P.data.sparks - 20000, budgetZ = P.data.zlat - (P.pr.don >= 2 ? 200 : 400); // 4.16: средние держат запас на настой опыта
   if (budgetS < 500 && budgetZ < 5) return;
   // 4.16: фильтр «не выше моего уровня» и сила после урезания — с сервера
   const found = await act('auctionFind', { f: { sort: 'power', mine: true } });

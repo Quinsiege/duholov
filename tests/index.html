@@ -1357,7 +1357,7 @@
     await must(A, 'shopBuy', { id: 'xpbrew' }); eq(A.data.items.xpbrew, 1); eq(A.data.zlat, 1000 - Rules.SHOP.find(x => x.id === 'xpbrew').price);
     await refuse(A, 'shopBuy', { id: 'xpbrew' }, /Сегодня уже/);
     eq(A.data.shop.wk.xpbrew, 1, 'счётчик недели');
-    A.data.dayc = {}; A.data.shop.wk.xpbrew = 3; // будто уже три за неделю
+    A.data.dayc = {}; A.data.shop.wk.xpbrew = Rules.SHOP.find(x => x.id === 'xpbrew').week; // будто недельный предел выбран
     await refuse(A, 'shopBuy', { id: 'xpbrew' }, /На этой неделе/);
     A.data.shop.wk.week = Ev.week() - 1; // прошлая неделя — снова можно
     await must(A, 'shopBuy', { id: 'xpbrew' }); eq(A.data.items.xpbrew, 2); eq(A.data.shop.wk.xpbrew, 1); A.data.items.xpbrew = 1;
@@ -1367,7 +1367,7 @@
     const gain = () => asPlayer(A, () => { const x0 = S.d.xp; S.addXP(1000); return S.d.xp - x0; });
     const base = gain();
     await must(A, 'xpBrew'); ok(A.data.xpUntil > Date.now() + (Rules.XP_BREW.H - 1) * 3600000, 'на сутки'); eq(A.data.items.xpbrew, 0);
-    eq(gain(), Math.round(base * Rules.XP_BREW.MUL), 'опыта на четверть больше');
+    eq(gain(), Math.round(base * Rules.XP_BREW.MUL), 'опыта больше на Rules.XP_BREW.MUL');
     A.data.items.xpbrew = 1;
     await refuse(A, 'xpBrew', {}, /действует/);
     A.data.xpUntil = Date.now() - 1;
