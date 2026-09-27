@@ -790,13 +790,19 @@
     S.d.level = CLAN_LEVEL; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
     S.d.spirits = [S.makeSpirit('ugolek', 5, 'h1')]; S.d.essence = { ugolek: 30 };
     S.d.story = { ch: 0, p: [3, 2, 0] };
+    const op = UI._opened; UI._opened = { shop: 1, swap: 1, trail: 1, rift: 1, shrine: 1, invasion: 1, trophy: 1, gavel: 1 };
     let ids = Hints.list().map(h => h.id);
     eq(ids.join(), 'power,evolve:ugolek,clan', 'усиление, превращение, дружина');
+    // 4.18: только что открылся раздел — Велимир рассказывает о нём (и только о том, что уже открыто по уровню)
+    delete UI._opened.rift; S.d.level = RAID_LEVEL;
+    ok(Hints.list().some(h => h.id === 'open:rift'), 'совет о Разломах'); ok(!Hints.list().some(h => h.id === 'open:trophy' && !UI._opened.trophy), 'о Лиге — рано');
+    S.d.level = CLAN_LEVEL; UI._opened.rift = 1;
     S.d.story = { ch: 0, p: [3, 2, 1] }; // глава готова
     ids = Hints.list().map(h => h.id);
     eq(ids[0], 'story:0', 'сначала — готовая глава'); ok(!ids.includes('power'), 'усиливать уже умеет');
     S.d.clan = 'volk'; S.d.essence = {}; S.d.story = { ch: 1, p: [0, 0, 0] };
     eq(Hints.list().length, 0, 'без повода — без советов');
+    UI._opened = op;
     S.d = keep;
   });
   test('Обновления: сравнение версий', () => {
@@ -1149,6 +1155,7 @@
   });
   atest('Сервер: разлом — нельзя победить мгновенно; награда и поимка босса', async () => {
     const A = await newPlayer('uf', 55.74, 37.60, 'Жар'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух — на уровне Ловчего, здесь он уже усилен до 5-го
+    A.data.level = RAID_LEVEL; // 4.18: Разломы — с RAID_LEVEL
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }));
     ok(id, 'нашёлся малый разлом');
@@ -1170,6 +1177,7 @@
   });
   atest('Сервер: дальний Разлом — по Дальнему пропуску до 5 км, пропуск дня', async () => {
     const A = await newPlayer('vj', 55.52, 37.40, 'Дальний'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
+    A.data.level = RAID_LEVEL; // 4.18: Разломы — с RAID_LEVEL
     A.data.tut = 0;
     const hour = Math.floor(Date.now() / 3600000);
     const riftId = from => poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), from);
@@ -1510,10 +1518,12 @@
   });
   atest('Сервер: совместный разлом — комната на сервере, союзников считает сервер', async () => {
     const A = await newPlayer('uz', 55.57, 37.45, 'Хозяйка'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
+    await refuse(A, 'roomCreate', { rift: { id: 'osm:n1', lat: A.lat, lng: A.lng } }, /уровня/); A.data.level = RAID_LEVEL; // 4.18: Разломы — с RAID_LEVEL
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), 62000);
     const rift = { id, lat: A.lat, lng: A.lng, name: 'Старая мельница' };
     const B = await newPlayer('va', 59.93, 30.31, 'Гость из Питера'), C = await newPlayer('vb', 59.93, 30.31, 'Опоздавший');
+    B.data.level = C.data.level = RAID_LEVEL;
     [B, C].forEach(P => P.data.spirits.forEach(x => { x.lvl = 5; }));
     await refuse(B, 'roomCreate', { rift }, /далеко/);
     const room = await must(A, 'roomCreate', { rift });

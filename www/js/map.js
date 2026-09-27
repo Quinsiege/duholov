@@ -101,7 +101,7 @@ const MapView = {
           this.bldTiles.views = this.tiles.views;
           this.bldTiles.addTo(this.map);
           // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
-          if (document.fonts) Promise.all(["400 12px 'Philosopher'", "700 12px 'Philosopher'", "400 12px 'Ruslan Display'"].map(f => document.fonts.load(f).catch(() => {})))
+          if (document.fonts) Promise.all(["400 12px 'Rubik'", "700 12px 'Rubik'"].map(f => document.fonts.load(f).catch(() => {})))
             .then(() => { this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); });
         }
       } else {
@@ -453,7 +453,7 @@ const MapView = {
     }
     if (e.type === 'shrine') {
       return L.divIcon({ className: 'mk', iconSize: [54, 76], iconAnchor: [27, 72],
-        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.asImg(Art.shrineIcon(e.tier, e.won), `shrine:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.asImg(Art.shrineIcon(e.tier, e.won), `shrine:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
     }
     return L.divIcon({ className: 'mk', iconSize: [84, 96], iconAnchor: [42, 86],
       html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''}">${Art.asImg(Art.riftIcon(e.tier), `rift:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
@@ -462,11 +462,12 @@ const MapView = {
     if (!this.map) return;
     if (rebuild) { for (const m of this.markers.values()) m.remove(); this.markers.clear(); }
     const { lat, lng } = this.pos;
-    const ents = [...W.riftsAround(lat, lng), ...W.shrinesAround(lat, lng), ...W.springsAround(lat, lng), ...W.spawnsAround(lat, lng)];
+    // 4.18: Разломы появляются на карте с RAID_LEVEL уровня — до этого не отвлекают новичка
+    const ents = [...(S.d.level >= RAID_LEVEL ? W.riftsAround(lat, lng) : []), ...W.shrinesAround(lat, lng), ...W.springsAround(lat, lng), ...W.spawnsAround(lat, lng)];
     const seen = new Set();
     ents.forEach(e => {
       seen.add(e.id);
-      const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? e.done : e.type === 'shrine' ? `${e.won}${e.clan}` : 0;
+      const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? e.done : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : 0;
       let m = this.markers.get(e.id);
       if (m && m._key !== key) { m.remove(); m = null; }
       if (!m) {

@@ -33,6 +33,7 @@ const Raid = {
   },
 
   open(r) {
+    if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
     const s = SP[r.boss], T = this.TIER[r.tier];
     let team = this.team();
     const counters = SPECIES.filter(x => ELEMENTS[x.el].beats.includes(s.el)).map(x => x.el).filter((v, i, a) => a.indexOf(v) === i);
@@ -87,6 +88,7 @@ const Raid = {
   // Разломы вокруг: все открытые в этот час Разломы до Rules.FAR.R от игрока
   async list() {
     Sfx.init(); Sfx.play('tap');
+    if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
     const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
     if (!pos) { box.innerHTML = `<div class="q-note">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }

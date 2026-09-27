@@ -1874,7 +1874,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @media (max-width: 360px) { .lg-wrap { padding-left: 10px; padding-right: 10px; } .lg-panel { padding: 12px; } .lg-panel .acc-card { padding: 12px; } .lg-title { font-size: 42px; letter-spacing: 3px; } }
 
 /* ================= 4.5: дизайн-система «сказочная Навь» — шрифты, кнопки-обереги, экран входа ================= */
-:root { --f-display: 'Ruslan Display', 'Philosopher', Georgia, serif; --f-head: 'Philosopher', 'Rubik', Georgia, serif; }
+:root { --f-display: 'Duholov Display', 'Rubik', system-ui, sans-serif; --f-head: 'Rubik', system-ui, sans-serif; } /* 4.18: весь текст — Rubik (как в «Заданиях»); заголовки — Rubik Bold */
 /* кнопки: rune — главная (золотой оберег), rune.glass — второстепенная (стекло той же формы) */
 .rune { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 62px; padding: 0 30px; border: 0; background: none;
   cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: var(--f-head); font-weight: 700; font-size: 21px; letter-spacing: .3px; color: #3b1a02;
@@ -1894,7 +1894,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .calm .rune .rn-shine { animation: none; }
 
 /* экран входа 4.5: без коробки — сцена во весь экран, кнопки прямо на ней */
-.lg-title { font-family: var(--f-display); font-weight: 400; font-size: 60px; letter-spacing: 1px; line-height: 1; padding: 4px 8px 0;
+.lg-title { font-family: 'Ruslan Display', var(--f-display); font-weight: 400; /* знак игры — фирменный шрифт */ font-size: 60px; letter-spacing: 1px; line-height: 1; padding: 4px 8px 0;
   filter: drop-shadow(0 3px 0 rgba(80, 28, 4, .9)) drop-shadow(0 6px 22px rgba(251, 191, 36, .45)); }
 .lg-top p { font-family: var(--f-head); font-size: 17px; color: #eee6ff; margin-top: 8px; }
 .lg-cta { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 380px; margin: 0 auto; animation: lgUp .8s .15s cubic-bezier(.2, .8, .2, 1) both; }
@@ -2723,7 +2723,9 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); }
 @keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
 /* 4.17: дух-стикер — обратная сторона: приглушённо-белая клейкая основа по силуэту с лёгким голографическим отливом */
-.sp-sticker { position: relative; display: block; perspective: 900px; }
+.sp-sticker { position: relative; display: block; perspective: 900px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* там, где стикер крутят и отрывают плёнку, палец не прокручивает экран — иначе телефон перехватывает жест (pointercancel) и плёнка не отходит */
+:is(.det-art, .res-art, .evo-stage, .hatch-sp, .bk-art, .onb-starters, .pf-buddy-a) .sp-sticker { touch-action: none; }
 .stc-card { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(var(--ry, 0deg)); transition: transform .7s cubic-bezier(.2, .9, .25, 1); }
 .stc-card.drag { transition: none; }
 .stc-front, .stc-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
@@ -4116,3 +4118,11 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .qd-go { padding: 0; border: 0; background: none; color: var(--gold2); font-size: 12px; font-weight: 700; line-height: 1.35; cursor: pointer; white-space: nowrap; }
 .story-card.locked { border-color: rgba(255, 255, 255, .18); background: linear-gradient(160deg, rgba(148, 163, 184, .14), rgba(94, 234, 212, .04)); }
 .story-lock { margin: 0 0 8px; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.4; color: #fde68a; background: rgba(251, 191, 36, .1); box-shadow: inset 0 0 0 1px rgba(251, 191, 36, .25); }
+
+/* 4.18: лестница открытий — раздел меню «с N ур.», метка «Новое», Капище до ${DUEL_LEVEL} уровня приглушено */
+.tile .tile-lvl { position: absolute; left: 0; right: 0; bottom: 3px; font-size: 9.5px; font-weight: 700; color: var(--muted); text-align: center; }
+.tile.locked > svg, .tile.locked > span { opacity: .45; filter: grayscale(.8); }
+.tile > i.new { background: linear-gradient(135deg, #fde047, #f59e0b); color: #3b1d00; font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 8px; min-width: 0; width: auto; animation: newPulse 1.8s ease-in-out infinite; }
+@keyframes newPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.calm .tile > i.new { animation: none; }
+.mk-shrine.locked { filter: grayscale(.85) brightness(.8); opacity: .75; }

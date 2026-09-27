@@ -329,6 +329,8 @@ const XP_DAY = { FULL: 35000, HALF: 70000, REST: 15000, REST_DAYS: 7 };
 // всё открывалось в первые часы). Дружины — CLAN_LEVEL, Лига — League.LEVEL, Аукцион — Rules.AUCTION.LEVEL
 const DUEL_LEVEL = 5;      // с какого уровня бои на Капищах
 const INVASION_LEVEL = 7;  // с какого уровня Навь захватывает родники (вторжения)
+const RAID_LEVEL = 4;      // 4.18: с какого уровня Разломы (раньше — с начала; первая глава Летописи с Разломом — на 5-м)
+const MOVE2_LEVEL = 6;     // 4.18: с какого уровня в карточке духа показывается второй приём
 
 const QUEST_TEMPLATES = [
   { t: 'catch',   min: 5, max: 10, text: n => ru.k`Поймай ${n} духов`,                 reward: { charm: 8, sparks: 300 } },

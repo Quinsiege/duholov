@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.17.0';
+const APP_VERSION = '4.18.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -474,6 +474,8 @@ const XP_DAY = { FULL: 35000, HALF: 70000, REST: 15000, REST_DAYS: 7 };
 // всё открывалось в первые часы). Дружины — CLAN_LEVEL, Лига — League.LEVEL, Аукцион — Rules.AUCTION.LEVEL
 const DUEL_LEVEL = 5;      // с какого уровня бои на Капищах
 const INVASION_LEVEL = 7;  // с какого уровня Навь захватывает родники (вторжения)
+const RAID_LEVEL = 4;      // 4.18: с какого уровня Разломы (раньше — с начала; первая глава Летописи с Разломом — на 5-м)
+const MOVE2_LEVEL = 6;     // 4.18: с какого уровня в карточке духа показывается второй приём
 
 const QUEST_TEMPLATES = [
   { t: 'catch',   min: 5, max: 10, text: n => ru.k`Поймай ${n} духов`,                 reward: { charm: 8, sparks: 300 } },
@@ -2181,7 +2183,7 @@ const S = {
     const day = U.today();
     if (this.d.quests && this.d.quests.day === day) return;
     const r = U.rng('quests' + day + this.d.name);
-    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= 5) && (q.t !== 'duel' || this.d.level >= 3));
+    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Капища были с 3-го, а открываются с 5-го)
     const picked = [];
     while (picked.length < 3) {
       const q = pool[Math.floor(r() * pool.length)];
@@ -2911,6 +2913,7 @@ const Raid = {
   },
 
   open(r) {
+    if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
     const s = SP[r.boss], T = this.TIER[r.tier];
     let team = this.team();
     const counters = SPECIES.filter(x => ELEMENTS[x.el].beats.includes(s.el)).map(x => x.el).filter((v, i, a) => a.indexOf(v) === i);
@@ -2965,6 +2968,7 @@ const Raid = {
   // Разломы вокруг: все открытые в этот час Разломы до Rules.FAR.R от игрока
   async list() {
     Sfx.init(); Sfx.play('tap');
+    if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
     const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
     if (!pos) { box.innerHTML = `<div class="q-note">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }
@@ -5177,6 +5181,7 @@ const GameCore = {
 
     /* ----- бои: разлом ----- */
     async raidStart(a, ctx) {
+      this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); // 4.18
       // совместный бой: число союзников и место разлома — из комнаты на сервере, а не со слов телефона
       let coop = null, rift = a.rift;
       if (a.coop && a.coop.code) {
@@ -5212,6 +5217,7 @@ const GameCore = {
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {
+      this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`);
       const p = await this.place(a.rift, ctx, 'shrine');
       const r = W.riftFor(p, 0, Math.floor(ctx.now / 3600000));
       this.need(r, ru`Разлом уже закрылся`);
@@ -5228,6 +5234,7 @@ const GameCore = {
       this.fail(ru`Не получилось создать разлом — попробуй ещё раз`);
     },
     async roomJoin(a, ctx) {
+      this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`);
       const code = String(a.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       this.need(code.length === 5, ru`Код разлома — 5 символов`);
       this.limit(ctx, 'roomJoin', 60, 3600000);
