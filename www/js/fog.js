@@ -47,6 +47,17 @@ const Fog = {
       try { localStorage.setItem(this.KEY, list.join(',')); } catch (e) {}
     }, 4000);
   },
+  // 4.19: место вне тумана — рядом с Ловчим (живая прогалина) или там, где он уже прошёл (духи видны только здесь)
+  clearAt(lat, lng) {
+    if (!this.cells) this.load();
+    if (this.live && U.dist(this.live.lat, this.live.lng, lat, lng) <= this.liveR()) return true;
+    const bi = Math.floor(lat * 100), bj = Math.floor(lng * 100);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      const list = this.buckets.get((bi + a) + ':' + (bj + b));
+      if (list) for (const c of list) if (Math.abs(c.lat - lat) < .001 && U.dist(c.lat, c.lng, lat, lng) <= this.R) return true;
+    }
+    return false;
+  },
   // сколько кварталов Нави разведано
   explored() { if (!this.cells) this.load(); return this.blocks.size; },
 
