@@ -2002,6 +2002,8 @@ I18N.dict = {
 "Без покачиваний, мерцания и погодных эффектов.":"Ohne Wackeln, Flackern und Wettereffekte.",
 "Экономия батареи":"Akku sparen",
 "Меньше анимаций на карте, реже обновление и запросы GPS.":"Weniger Animationen auf der Karte, seltenere Updates und GPS-Abfragen.",
+"Не гасить экран":"Bildschirm anlassen",
+"Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.":"Der Bildschirm bleibt an, solange das Spiel offen ist: praktisch beim Spaziergang, aber das Handy wird wärmer und der Akku leert sich schneller.",
 "Установить на главный экран":"Zum Startbildschirm hinzufügen",
 "Духолов откроется на весь экран, как обычное приложение":"Dukholov öffnet sich im Vollbild wie eine normale App",
 "Скачать APK для Android":"APK für Android herunterladen",

@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
 import android.webkit.GeolocationPermissions
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 4 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 5 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
         // геолокацию и камеру получает только сама игра, не страницы сервисов входа
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
@@ -71,8 +72,6 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
@@ -105,6 +104,18 @@ class MainActivity : ComponentActivity() {
                 if (request.isForMainFrame && request.url.host == Uri.parse(HOME).host) view.loadUrl(OFFLINE)
             }
         }
+
+        // 5: экран больше не держится включённым всегда (телефон грелся сильнее, чем с сайта: экран, GPS и карта работали без остановки).
+        // Не гасить экран — по настройке игры «Не гасить экран»: игра зовёт DuholovNative.keepScreenOn(true/false)
+        web.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun keepScreenOn(on: Boolean) {
+                runOnUiThread {
+                    if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
+        }, "DuholovNative")
 
         web.setDownloadListener { url, _, _, _, _ -> openExternal(Uri.parse(url)) }
 

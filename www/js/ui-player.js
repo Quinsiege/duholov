@@ -447,6 +447,7 @@ Object.assign(UI, {
         ${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}
         ${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}
         ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте, реже обновление и запросы GPS.`)}
+        ${row('awake', 'battery', ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`)}
       </div>
       <div class="list install-list">
         <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное приложение`}</small></div><span class="set-chev">›</span></button>
@@ -479,6 +480,7 @@ Object.assign(UI, {
       if (k === 'bigText' || k === 'calm') this.applyA11y();
       if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
       if (k === 'fog') Fog.apply();
+      if (k === 'awake') Awake.apply();
     });
     scr.querySelector('.map-theme').addEventListener('click', e => {
       const b = e.target.closest('[data-theme]'); if (!b) return;

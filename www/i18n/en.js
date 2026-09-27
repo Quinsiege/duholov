@@ -2002,6 +2002,8 @@ I18N.dict = {
 "Без покачиваний, мерцания и погодных эффектов.":"No swaying, flickering or weather effects.",
 "Экономия батареи":"Battery saver",
 "Меньше анимаций на карте, реже обновление и запросы GPS.":"Fewer map animations, less frequent updates and GPS requests.",
+"Не гасить экран":"Keep screen on",
+"Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.":"The screen stays on while the game is open: handy on a walk, but the phone gets warmer and the battery drains faster.",
 "Установить на главный экран":"Add to home screen",
 "Духолов откроется на весь экран, как обычное приложение":"Dukholov will open full screen, like a regular app",
 "Скачать APK для Android":"Download APK for Android",
