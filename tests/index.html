@@ -1253,6 +1253,11 @@
     A.data.level = 31; A.data.xp = levelXP(31);
     const c = await must(A, 'storyClaim'); eq(c.ch, 21); ok(c.got.some(x => x.k === 'alatyr' && x.n === 3)); eq(A.data.alatyr, 6);
     eq(A.data.story.ch, 22);
+    // шаг «Лига» — за сыгранный бой, и поражение тоже (с живыми соперниками победа не гарантирована)
+    A.data.story = { ch: 10, p: [0, 0, 0] };
+    ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, sid))));
+    await must(A, 'leagueStart', {}); await must(A, 'leagueEnd', { win: false });
+    eq(A.data.story.p[0], 1, 'бой Лиги засчитан и при поражении');
   });
   atest('Сервер: приглашение по ссылке — сразу друзья и подарки обоим, без накрутки', async () => {
     const A = await newPlayer('vd', 55.55, 37.43, 'Зазывала');

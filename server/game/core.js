@@ -1166,7 +1166,8 @@ const GameCore = {
       if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
       // 4.15: рейтинг — победа +30, поражение −30 (не ниже нуля; можно выпасть в прошлую лигу, награды за лигу — раз в сезон)
       const was = L.pts;
-      if (win) { run.won++; S.progress('league', 1); }
+      S.progress('league', 1); // 4.16: шаг Летописи — за сыгранный бой Лиги, а не за победу (с живыми соперниками победы не гарантированы)
+      if (win) run.won++;
       L.pts = U.clamp(L.pts + (win ? League.WIN : -League.LOSS), 0, League.MAXPTS);
       const gained = L.pts - was, last = !win || run.k >= 2;
       const rNew = League.rank(L.pts), rewards = [];
