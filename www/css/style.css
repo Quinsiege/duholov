@@ -2703,6 +2703,78 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 /* рисунки слоями (Art.stack): неподвижное — картинками, анимированное — лёгким SVG поверх */
 .art-stack { position: relative; display: block; }
 .art-stack > .stk { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+/* 4.17: дух картинкой (Art: pic) — сияющий: перламутр по фигуре + бегущий блик; омрачённый: холодный лиловый тон. Маска — сама картинка */
+.sp-pic { isolation: isolate; }
+.sp-pic > .sp-tint, .sp-pic > .sp-sheen { -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.sp-shiny > .sp-tint { background: linear-gradient(120deg, #f472b6, #c084fc 14%, #60a5fa 28%, #22d3ee 42%, #4ade80 56%, #facc15 70%, #fb7185 84%, #c084fc); background-size: 180% 180%; mix-blend-mode: color; opacity: .32; animation: spPearl 4s ease-in-out infinite alternate; }
+.sp-shiny > .sp-tint::after { content: ''; position: absolute; inset: 0; background: linear-gradient(200deg, rgba(255, 255, 255, .5), transparent 45%, rgba(255, 255, 255, .35)); mix-blend-mode: soft-light; }
+.sp-shiny > .sp-sheen { background: linear-gradient(110deg, transparent 40%, rgba(255, 255, 255, .8) 50%, transparent 60%); background-size: 260% 100%; mix-blend-mode: screen; animation: spSheen 3.4s ease-in-out infinite; }
+.sp-dark > .sp-tint { background: linear-gradient(to top, #6b21a8, #312e81 55%, #0f172a); mix-blend-mode: color; opacity: .7; }
+/* омрачённый: редкие мелкие звёздочки Нави мерцают по фигуре (Art: navStars; маска — силуэт) */
+.sp-stars { position: absolute; inset: 0; pointer-events: none; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.sp-stars svg { width: 100%; height: 100%; display: block; }
+.sp-stars path { fill: #f5e8ff; opacity: 0; animation: navTwinkle 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; filter: drop-shadow(0 0 1.5px #e9d5ff); }
+/* звёздочка разгорается, вспыхивает с поворотом лучей и угасает; ритм у каждой свой (Art: navStars) */
+@keyframes navTwinkle { 0% { opacity: 0; transform: scale(.2) rotate(0deg); } 45% { opacity: 1; transform: scale(1.15) rotate(50deg); } 60% { opacity: .9; transform: scale(.9) rotate(70deg); } 100% { opacity: 0; transform: scale(.2) rotate(135deg); } }
+@keyframes spPearl { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
+/* сияющий в списках и на карте — перелив оттенка самим фильтром */
+.sp-pearl { animation: spPearlS 3s ease-in-out infinite alternate; } /* свой цвет чуть качается по радуге */
+@keyframes spPearlS { from { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(-35deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); } to { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(35deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); } }
+.calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); }
+@keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
+/* 4.17: дух-стикер — обратная сторона: приглушённо-белая клейкая основа по силуэту с лёгким голографическим отливом */
+.sp-sticker { position: relative; display: block; perspective: 900px; }
+.stc-card { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(var(--ry, 0deg)); transition: transform .7s cubic-bezier(.2, .9, .25, 1); }
+.stc-card.drag { transition: none; }
+.stc-front, .stc-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.stc-front > .art-stack { width: 100%; height: 100%; } /* лицевая сторона — без класса .art: чужие правила .art (анимации экранов) берёт сам стикер */
+.stc-back { transform: rotateY(180deg); filter: drop-shadow(.9px 0 0 #15121c) drop-shadow(-.9px 0 0 #15121c) drop-shadow(0 .9px 0 #15121c) drop-shadow(0 -.9px 0 #15121c); } /* почти чёрный контур, без свечения стихии */
+/* --pc — линия сгиба x + y = pc (в долях стикера): плёнка отогнута от правого нижнего угла и чуть «дышит» */
+@property --pc { syntax: '<number>'; inherits: true; initial-value: 1.5; }
+.stc-back { --pc: 1.5; animation: stcPeel 3.6s ease-in-out infinite alternate; }
+.stc-back i { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+/* клей под плёнкой: чуть темнее и теплее, влажный блеск */
+/* тень от отогнутого угла: у линии сгиба (x + y = pc — на диагонали это pc / 2) темнее всего и тает к углу */
+/* клей — как у дорогого винила: рельефные соты (каналы для воздуха), по ним пробегает полоса белого света — грани сот вспыхивают */
+.stc-glue { background: linear-gradient(to bottom right, transparent calc(var(--pc) * 50% - 1%), rgba(30, 27, 22, .55) calc(var(--pc) * 50%), rgba(30, 27, 22, .22) calc(var(--pc) * 50% + 7%), transparent calc(var(--pc) * 50% + 16%)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(38,34,28,.38)' stroke-width='.9' transform='translate(0 .6)'/%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(255,255,255,.3)' stroke-width='.7'/%3E%3C/svg%3E") 0 0 / 15px 8.66px,
+    radial-gradient(120% 90% at 30% 25%, rgba(255, 255, 255, .22), transparent 55%),
+    radial-gradient(90% 80% at 50% 45%, #bdb9b1, #a39f97 70%, #8e8a83); }
+.stc-glue::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 0 0 / 15px 8.66px, linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .35) 50%, transparent 70%);
+  -webkit-mask: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%) 100% 0 / 300% 100% no-repeat; mask: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%) 100% 0 / 300% 100% no-repeat;
+  animation: stcGlue 3.4s ease-in-out infinite; }
+@keyframes stcGlue { 0% { -webkit-mask-position: 100% 0; mask-position: 100% 0; } 70%, 100% { -webkit-mask-position: 0% 0; mask-position: 0% 0; } } /* полоса света пробегает по сотам */
+.calm .stc-glue::after { animation: none; -webkit-mask-position: 50% 0; mask-position: 50% 0; }
+/* защитная плёнка: отогнута от угла; одна для всех духов (ниже) */
+.stc-liner {
+  clip-path: polygon(0 0, 100% 0, 100% calc((var(--pc) - 1) * 100%), calc((var(--pc) - 1) * 100%) 100%, 0 100%); }
+/* 4.17: плёнка — серебро с голографическими пятнами, знак Ордена рядами, волнистый надрез; одна для всех духов */
+.stc-liner { background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .25) 50%, transparent 62%) var(--hp, 50%) 50% / 260% 100%,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 6'%3E%3Cpath d='M0 3Q5 0 10 3T20 3' fill='none' stroke='rgba(40,44,56,.6)' stroke-width='.9'/%3E%3Cpath d='M0 4.1Q5 1.1 10 4.1T20 4.1' fill='none' stroke='white' stroke-width='.6'/%3E%3C/svg%3E") 0 74% / 20px 6px repeat-x,
+    radial-gradient(circle at 25% 30%, rgba(255, 130, 210, .45), transparent 22%) 0 0 / 38px 38px,
+    radial-gradient(circle at 70% 65%, rgba(120, 210, 255, .45), transparent 22%) 0 0 / 38px 38px,
+    radial-gradient(circle at 60% 20%, rgba(170, 255, 190, .4), transparent 18%) 0 0 / 38px 38px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M11.4 7A4.4 4.4 0 1 1 2.5999999999999996 7A4.4 4.4 0 1 1 11.4 7ZM8.20 7.00Q10.20 7.00 9.98 8.63M7.60 8.04Q8.60 9.77 7.08 10.40M6.40 8.04Q5.40 9.77 4.10 8.77M5.80 7.00Q3.80 7.00 4.02 5.37M6.40 5.96Q5.40 4.23 6.92 3.60M7.60 5.96Q8.60 4.23 9.90 5.23M25.4 21A4.4 4.4 0 1 1 16.6 21A4.4 4.4 0 1 1 25.4 21ZM22.20 21.00Q24.20 21.00 23.98 22.63M21.60 22.04Q22.60 23.77 21.08 24.40M20.40 22.04Q19.40 23.77 18.10 22.77M19.80 21.00Q17.80 21.00 18.02 19.37M20.40 19.96Q19.40 18.23 20.92 17.60M21.60 19.96Q22.60 18.23 23.90 19.23' fill='none' stroke='rgba(255,255,255,.55)' stroke-width='.8' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 28px 28px,
+    linear-gradient(160deg, #d9dde4, #a3a9b3 45%, #e3e6ea 60%, #a4aab3); }
+/* отогнутый лоскут: угол плёнки за линией сгиба, отражённый через неё; тень от лоскута — на обёртке (фильтр до маски не доживает) */
+.stc-flapw { position: absolute; inset: 0; filter: drop-shadow(-2px -2px 3px rgba(15, 23, 42, .35)); }
+.stc-flap { transform-origin: 0 0; transform: translate(calc(var(--pc) * 100%), calc(var(--pc) * 100%)) matrix(0, -1, -1, 0, 0, 0);
+  clip-path: polygon(100% calc((var(--pc) - 1) * 100%), 100% 100%, calc((var(--pc) - 1) * 100%) 100%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(120,116,108,.55)' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(255,255,255,.5)' stroke-width='.4' transform='translate(0 -.45)'/%3E%3C/svg%3E") 0 0 / 15px 8.66px, linear-gradient(to bottom right, #8e939e calc((var(--pc) - 1) * 50% + 25%), #c6cad2 calc((var(--pc) - 1) * 50% + 45%), #d6d9df 80%, #bfc3cb); } /* изнанка плёнки — отпечаток клея: полоски сот */
+@keyframes stcPeel { from { --pc: 1.56; } to { --pc: 1.46; } }
+.calm .stc-back { animation: none; }
+/* 4.17: оборот зеркален (силуэт совпадает с лицом), код духа на плёнке — точками, прямо */
+.stc-sil { position: absolute; inset: 0; transform: scaleX(-1); }
+.stc-code { position: absolute; transform: scaleX(-1); /* место и размер — Art (codeFor): строкой поперёк середины */ overflow: visible; fill: none; stroke: rgba(24, 28, 38, .72); stroke-width: .86; stroke-linecap: round; }
+/* отрыв плёнки пальцем (Art: stickerpeel): пока тянут — без «дыхания», отпустили — плавно */
+.stc-back.peeling { animation: none; }
+.stc-back.peel-anim { transition: --pc .45s cubic-bezier(.3, .7, .3, 1); }
+.stc-back.peeled .stc-flapw, .stc-back.peeled .stc-liner { opacity: 0; transition: opacity .35s .2s; }
+/* привязанный дух: плёнки нет — на обороте один клей */
+.stc-bound .stc-back { animation: none; --pc: -2; }
+.calm .sp-pic > *, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }
+.calm .sp-stars path { animation: none; opacity: .8; transform: none; }
 /* блеск кнопок: сдвиг полосы (transform) — тот же проблеск, но без перерисовки кнопки 60 раз в секунду */
 .btn.primary::after, .btn.evolve::after, .btn.danger:not(.ghost)::after { inset: 0 auto 0 0 !important; width: 45% !important; border-radius: 0;
   background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .5) 50%, transparent 80%) !important; transform: translateX(-120%); animation: btnShine3 5.5s ease-in-out 1.5s infinite !important; will-change: transform; }
@@ -3435,6 +3507,11 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .det2 .det-tags span { padding: 4px 10px; font-size: 12.5px; white-space: nowrap; border-radius: 999px; }
 .det2 .det-tags .art { width: 16px; height: 16px; }
 .det2 .det-tags .buddy-t { color: #fda4af; }
+/* 4.17: привязка духа (плёнка на обороте стикера) */
+.det2 .det-tags .bind-t { color: #cbd5e1; }
+.dt-bind { margin: -2px 0 8px; padding: 6px 10px 6px 30px; border-radius: 10px; font-size: 12px; line-height: 1.3; color: var(--muted); background: rgba(255, 255, 255, .04) no-repeat 9px 50% / 14px 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 12a8 8 0 1 1-2.3-5.7'/%3E%3Cpath d='M20 4v5h-5'/%3E%3C/svg%3E"); }
+.dt-bind.on { color: #cbd5e1; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E"); }
 /* вкладки */
 .dt-tabs { flex: none; margin: 0 0 10px; border-radius: 16px; }
 .dt-tabs button { position: relative; padding: 9px 2px; font-size: 14px; border-radius: 13px; }

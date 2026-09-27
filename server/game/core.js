@@ -360,7 +360,8 @@ const GameCore = {
   },
   // Упаковка духа для посылки и лота аукциона — и обратно (уровень — не выше доступного получателю)
   // 4.16: a — звёзды пробуждения (действуют у получателя по его уровню Ловчего, S.starsOn)
-  packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0, a: sp.stars || 0 }; },
+  // 4.17: c — код духа (плёнка стикера): переходит к новому хозяину вместе с духом
+  packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0, a: sp.stars || 0, c: S.spiritCode(sp) }; },
   unpackSpirit(p, ctx, from, cap = S.maxLvl()) {
     this.need(p && SP[p.s], ru`Посылка повреждена`);
     const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
@@ -372,6 +373,7 @@ const GameCore = {
     if (p.p) sp.purified = true;
     if (p.m) sp.move2 = true;
     if (p.a) sp.stars = U.clamp(Math.floor(+p.a) || 0, 0, S.AWAKE.MAX);
+    if (/^[1-9]\d{7}$/.test(String(p.c || ''))) sp.code = String(p.c);
     return sp;
   },
   // Текст от игрока (имя, кличка духа): без управляющих символов и символов разметки, пробелы схлопнуты
@@ -796,6 +798,14 @@ const GameCore = {
 
     /* ----- коллекция ----- */
     fav(a) { const sp = this.spirit(a.uid); sp.fav = !!a.on; return { ok: true }; },
+    // 4.17: содрать плёнку с оборота стикера — дух привязан к Ловчему навсегда (на аукцион его уже не выставить)
+    spiritBind(a, ctx) {
+      const sp = this.spirit(a.uid);
+      this.need(!sp.bound, ru`Плёнка уже содрана — дух и так привязан к тебе`);
+      sp.bound = ctx.now;
+      S.d.stats.bound = (S.d.stats.bound || 0) + 1;
+      return { ok: true };
+    },
     nick(a) {
       const sp = this.spirit(a.uid), v = this.cleanText(a.nick, 16);
       sp.nick = v && v !== SP[sp.sid].name ? v : null;
@@ -1414,6 +1424,7 @@ const GameCore = {
       const sp = this.spirit(a.uid);
       this.need(S.d.spirits.length > 1, ru`Нельзя продать последнего духа`);
       this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);
+      this.need(!sp.bound, ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`);
       const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
       this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} златников` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
       this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);

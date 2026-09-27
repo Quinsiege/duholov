@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.16.0';
+const APP_VERSION = '4.17.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1725,8 +1725,13 @@ const S = {
   makeSpirit(sid, lvl, seed, { ivMin = 0 } = {}) {
     const r = U.rng(seed);
     const iv = [0, 0, 0].map(() => ivMin + Math.floor(r() * (16 - ivMin)));
-    return { uid: U.uid(), sid, lvl, iv, t: Date.now(), fav: false, nick: null };
+    return { uid: U.uid(), sid, lvl, iv, t: Date.now(), fav: false, nick: null, code: this.newSpiritCode() };
   },
+  // 4.17: код духа — 8 цифр, выбит точками на защитной плёнке стикера. Идёт с духом через аукцион; у духов до 4.17 — из uid
+  newSpiritCode() { return String(1e7 + Math.floor(Math.random() * 9e7)); },
+  spiritCode(sp) { return sp.code || String(1e7 + Math.floor(U.h('code', sp.uid) * 9e7)); },
+  // 4.17: привязка — плёнка на обороте содрана (sp.bound — когда): дух остаётся у Ловчего навсегда, продать его нельзя
+  isBound(sp) { return !!sp.bound; },
   ivPct(sp) { return Math.round((sp.iv[0] + sp.iv[1] + sp.iv[2]) / 45 * 100); },
   // Предел уровня духа: уровень Ловчего +5 (не выше 40) и ещё AWAKE.STEP за каждую звезду пробуждения,
   // открытую уровнем Ловчего (купленный или подаренный дух без звёзд — как раньше)
@@ -4593,7 +4598,8 @@ const GameCore = {
   },
   // Упаковка духа для посылки и лота аукциона — и обратно (уровень — не выше доступного получателю)
   // 4.16: a — звёзды пробуждения (действуют у получателя по его уровню Ловчего, S.starsOn)
-  packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0, a: sp.stars || 0 }; },
+  // 4.17: c — код духа (плёнка стикера): переходит к новому хозяину вместе с духом
+  packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0, a: sp.stars || 0, c: S.spiritCode(sp) }; },
   unpackSpirit(p, ctx, from, cap = S.maxLvl()) {
     this.need(p && SP[p.s], ru`Посылка повреждена`);
     const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
@@ -4605,6 +4611,7 @@ const GameCore = {
     if (p.p) sp.purified = true;
     if (p.m) sp.move2 = true;
     if (p.a) sp.stars = U.clamp(Math.floor(+p.a) || 0, 0, S.AWAKE.MAX);
+    if (/^[1-9]\d{7}$/.test(String(p.c || ''))) sp.code = String(p.c);
     return sp;
   },
   // Текст от игрока (имя, кличка духа): без управляющих символов и символов разметки, пробелы схлопнуты
@@ -5029,6 +5036,14 @@ const GameCore = {
 
     /* ----- коллекция ----- */
     fav(a) { const sp = this.spirit(a.uid); sp.fav = !!a.on; return { ok: true }; },
+    // 4.17: содрать плёнку с оборота стикера — дух привязан к Ловчему навсегда (на аукцион его уже не выставить)
+    spiritBind(a, ctx) {
+      const sp = this.spirit(a.uid);
+      this.need(!sp.bound, ru`Плёнка уже содрана — дух и так привязан к тебе`);
+      sp.bound = ctx.now;
+      S.d.stats.bound = (S.d.stats.bound || 0) + 1;
+      return { ok: true };
+    },
     nick(a) {
       const sp = this.spirit(a.uid), v = this.cleanText(a.nick, 16);
       sp.nick = v && v !== SP[sp.sid].name ? v : null;
@@ -5647,6 +5662,7 @@ const GameCore = {
       const sp = this.spirit(a.uid);
       this.need(S.d.spirits.length > 1, ru`Нельзя продать последнего духа`);
       this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);
+      this.need(!sp.bound, ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`);
       const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
       this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} златников` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
       this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);

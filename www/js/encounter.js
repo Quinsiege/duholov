@@ -435,9 +435,12 @@ const Encounter = {
         g.fillStyle = gr; g.beginPath(); g.ellipse(W / 2, H * 0.565, W * 0.45, 35, 0, 0, Math.PI * 2); g.fill();
       }
       const size = st.size * st.k;
-      const svg = Art.svgOf(st.sp).replace('<svg class="art"', `<svg width="${Math.round(size * 2)}" height="${Math.round(size * 2)}"`);
-      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+      // 4.17: дух картинкой (если нарисован) — с тем же оттенком сияния и омрачением, что в игре
+      const pic = Art.picUrl(st.sp.sid), svg = pic ? null : Art.svgOf(st.sp).replace('<svg class="art"', `<svg width="${Math.round(size * 2)}" height="${Math.round(size * 2)}"`);
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = pic || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+      if (pic) g.filter = Art.picFilter(st.sp.sid, st.sp.shiny, st.sp.dark, true) || 'none';
       g.drawImage(img, st.cx - size / 2, st.cy - size / 2, size, size);
+      g.filter = 'none';
       // подпись
       g.fillStyle = 'rgba(18,12,36,.72)'; g.fillRect(0, H - 60, W, 60);
       g.fillStyle = '#fde047'; g.font = '900 20px Rubik, sans-serif';

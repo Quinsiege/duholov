@@ -302,8 +302,45 @@ const Art = (() => {
   const SPARKLES = [[26, 40, 1], [172, 58, 0.8], [160, 150, 0.65], [36, 140, 0.55]].map(([x, y, k], i) =>
     `<path class="art-blink" style="animation-delay:${i * 0.4}s" d="M${x} ${y - 12 * k} L${x + 3 * k} ${y - 3 * k} L${x + 12 * k} ${y} L${x + 3 * k} ${y + 3 * k} L${x} ${y + 12 * k} L${x - 3 * k} ${y + 3 * k} L${x - 12 * k} ${y} L${x - 3 * k} ${y - 3 * k}Z" fill="#fde047" stroke="#fff" stroke-width="1"/>`).join('');
   function shinyHue(sid) { return 90 + Math.round(U.h('shinyhue', sid) * 180); }
-  const DARK_AURA = `<g class="art-aura" opacity=".85"><circle cx="100" cy="118" r="78" fill="#3b0764" opacity=".35"/><circle cx="86" cy="104" r="56" fill="#581c87" opacity=".3"/><circle cx="118" cy="128" r="50" fill="#1e0b36" opacity=".35"/></g>` +
-    `<g class="art-flicker" fill="#a21caf" opacity=".75"><path d="M40 176 C34 150 52 140 48 118 C62 136 66 154 60 176Z"/><path d="M160 176 C166 150 148 140 152 118 C138 136 134 154 140 176Z"/><path d="M92 180 C88 162 100 156 98 140 C108 154 110 166 106 180Z" opacity=".7"/></g>`;
+  // 4.17: рисунки духов картинками (img/spirits/<id>.webp, 400×400, прозрачный фон) — у кого уже есть; остальные рисуются SVG, как прежде.
+  // Список (id → метка содержимого) пишет tools/art/spirit-pics.mjs.
+  // Сияющий — бело-радужный перламутр: фигура почти белая, по ней мягко переливается радуга, бежит блик, вокруг ореол и искры; омрачённый — тёмный
+  // холодный лиловый тон, тёмное свечение и дым Нави у ног. Перелив и тон ложатся только на фигуру (маска — сама картинка), стили — .sp-pic в style.css
+  const PICS = {"kostrovik":"3235430501","ugolek":"3106337497","zharogriv":"2415565401"}; // tools/art/spirit-pics.mjs
+  const picUrl = sid => PICS[sid] ? `img/spirits/${sid}.webp?v=${PICS[sid]}` : null;
+  // solo — картинка без слоёв (списки, карта, фото с поимки): лиловый — самим фильтром, перламутр — анимацией оттенка (.sp-pearl в style.css)
+  const elColor = sid => ELEMENTS[SP[sid].el].color;
+  const glow = () => ''; // 4.17: без свечения по стихии — только контур стикера
+  // почти чёрная кайма по контуру — дух вырезан, как стикер
+  const EDGE = '#15121c';
+  const edge = solo => { const w = solo ? .6 : .9; return `drop-shadow(${w}px 0 0 ${EDGE}) drop-shadow(-${w}px 0 0 ${EDGE}) drop-shadow(0 ${w}px 0 ${EDGE}) drop-shadow(0 -${w}px 0 ${EDGE}) `; };
+  const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) ' + edge(solo) + 'drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
+    : (shiny ? 'grayscale(.4) contrast(.85) brightness(1.2) ' + (solo ? 'saturate(1.2) hue-rotate(30deg) ' : '') : '') + edge(solo) + glow(sid, solo); // сияющий: лёгкое серебро поверх своего цвета
+  const picImg = (sid, shiny, dark, cls) => {
+    const solo = cls === 'art', pearl = solo && shiny && !dark, fl = pearl ? '' : picFilter(sid, shiny, dark, solo);
+    return `<img class="${cls}${pearl ? ' sp-pearl' : ''}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : pearl ? ` style="--gl:${elColor(sid)}"` : ''}>`;
+  };
+  const over = svg => `<svg class="stk" viewBox="0 0 200 200">${svg}</svg>`;
+  const SHINE = [[26, 40, 1], [172, 58, .8], [160, 150, .65], [36, 140, .55], [100, 18, .9], [186, 110, .6], [16, 96, .7]].map(([x, y, k], i) =>
+    `<path class="art-blink" style="animation-delay:${i * .4}s" d="M${x} ${y - 12 * k} L${x + 3 * k} ${y - 3 * k} L${x + 12 * k} ${y} L${x + 3 * k} ${y + 3 * k} L${x} ${y + 12 * k} L${x - 3 * k} ${y + 3 * k} L${x - 12 * k} ${y} L${x - 3 * k} ${y - 3 * k}Z" fill="${['#fbcfe8', '#bae6fd', '#e9d5ff', '#a7f3d0', '#fff'][i % 5]}" stroke="#fff" stroke-width="1"/>`).join(''); // перламутровые искры
+  // Омрачённый: по фигуре редко мерцают очень мелкие звёздочки Нави (места — свои у каждого вида духа; маска — силуэт)
+  const navStarsSvg = {};
+  const navStars = (sid, mask) => `<i class="sp-stars" style="${mask}">${navStarsSvg[sid] || (navStarsSvg[sid] = (() => {
+    const r = U.rng('navstars:' + sid);
+    let g = '';
+    for (let i = 0; i < 7; i++) {
+      const x = 40 + r() * 120, y = 36 + r() * 128, k = .2 + r() * .16, q = 2.4 * k, e = 12 * k;
+      g += `<path style="animation-delay:${(r() * 3.2).toFixed(2)}s;animation-duration:${(2.2 + r() * 1.6).toFixed(2)}s" d="M${x} ${y - e}L${x + q} ${y - q}L${x + e} ${y}L${x + q} ${y + q}L${x} ${y + e}L${x - q} ${y + q}L${x - e} ${y}L${x - q} ${y - q}Z"/>`;
+    }
+    return `<svg viewBox="0 0 200 200" aria-hidden="true">${g}</svg>`;
+  })())}</i>`;
+  function pic(sid, shiny, dark) {
+    const u = picUrl(sid), mask = `-webkit-mask-image:url('${u}');mask-image:url('${u}')`; // маска — в разметке: адрес от страницы, а не от style.css
+    return `<span class="art art-stack sp-pic${shiny ? ' sp-shiny' : ''}${dark ? ' sp-dark' : ''}" style="aspect-ratio:1">` +
+      picImg(sid, shiny, dark, 'stk') +
+      (shiny || dark ? `<i class="stk sp-tint" style="${mask}"></i>` : '') + (shiny ? `<i class="stk sp-sheen" style="${mask}"></i>` + over(SHINE) : '') +
+      (dark ? navStars(sid, mask) : '') + '</span>';
+  }
   // shiny — сияющий вариант (другой оттенок и искры), dark — омрачённый Навью
   function spirit(sid, shiny, dark) {
     if (!cache[sid]) cache[sid] = ArtKit.render(SP[sid]) || build(SP[sid]); // 4.6: новый рисунок, если он уже есть
@@ -312,7 +349,6 @@ const Art = (() => {
     if (shiny) filters.push(`hue-rotate(${shinyHue(sid)}deg) saturate(1.3) brightness(1.05)`);
     if (dark) filters.push('saturate(.7) brightness(.85) contrast(1.1)');
     if (filters.length) s = s.replace('<g class="art-body"', `<g class="art-body" style="filter:${filters.join(' ')}"`);
-    if (dark) s = s.replace('<ellipse class="art-shadow"', DARK_AURA + '<ellipse class="art-shadow"');
     if (shiny) s = s.replace(/<\/svg>$/, SPARKLES + '</svg>');
     return s;
   }
@@ -322,6 +358,7 @@ const Art = (() => {
   // рисуется как обычная картинка — вместо сотен DOM-узлов на каждого духа
   const imgCache = {};
   function img(sid, shiny, dark) {
+    if (PICS[sid]) return picImg(sid, shiny, dark, 'art');
     const k = sid + (shiny ? ':s' : '') + (dark ? ':d' : '');
     if (!imgCache[k]) imgCache[k] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(spirit(sid, shiny, dark));
     return `<img class="art" src="${imgCache[k]}" alt="" draggable="false">`;
@@ -1142,6 +1179,135 @@ const Art = (() => {
       L.parts.map(p => p.img ? `<img class="stk${p.cls ? ' ' + p.cls : ''}" src="${p.img}" alt="" draggable="false"${p.css ? ` style="${p.css}"` : ''}>` : p.svg.replace(/__L__/g, n)).join('') + '</span>';
   }
   const asImg = (svg, key, ctx) => stack(svg, key, '', ctx);
-  const spiritK = (sid, shiny, dark) => stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`);
-  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
+  // 4.17: дух — вырезанный стикер: лицевая сторона — рисунок с белой каймой, обратная — клейкая основа по его силуэту,
+  // закрытая защитной плёнкой с отогнутым углом (под ним виден клей; лоскут — тот же силуэт, отражённый через линию сгиба). Крутится пальцем там, где дух крупно (см. ниже)
+  const maskCache = {};
+  const rawMask = sid => PICS[sid] ? picUrl(sid) : (maskCache[sid] || (maskCache[sid] = toUrl(spirit(sid)).replace(/'/g, '%27')));
+  const silMask = {}; // чёткий силуэт (порог по прозрачности, без сияния и теней рисунка) — считает prepSil
+  const maskOf = sid => silMask[sid] || rawMask(sid);
+  // Код духа на плёнке — цифры из точек (матрица 5×7), две группы по 4
+  const DOTS = ['01110100011001110101110011000101110', '00100011000010000100001000010001110', '01110100010000100010001000100011111', '11111000100010000010000011000101110',
+    '00010001100101010010111110001000010', '11111100001111000001000011000101110', '00110010001000011110100011000101110', '11111000010001000100010000100001000',
+    '01110100011000101110100011000101110', '01110100011000101111000010001001100'];
+  // vert — столбиком (две группы по 4 одна под другой), иначе строкой
+  const codeCache = {};
+  const codeSvg = (code, vert, style) => (codeCache[code + vert] || (codeCache[code + vert] = (() => {
+    let d = '', p = 0;
+    [...code].forEach((ch, i) => {
+      const g = DOTS[+ch] || '';
+      for (let k = 0; k < 35; k++) if (g[k] === '1') { const cx = k % 5 + .5, cy = Math.floor(k / 5) + .5; d += vert ? `M${cx} ${p + cy}h0` : `M${p + cx} ${cy}h0`; }
+      p += (vert ? 9 : 6) + (i === 3 ? (vert ? 4 : 3) : 0);
+    });
+    const L = p - (vert ? 2 : 1);
+    return `<svg class="stc-code" viewBox="0 0 ${vert ? 5 : L} ${vert ? L : 7}" preserveAspectRatio="none" aria-hidden="true"__S__><path d="${d}"/></svg>`;
+  })())).replace('__S__', ` style="${style}"`);
+  // Силуэт духа разбирается один раз: чёткая маска оборота (256 px, порог прозрачности — без сияния и теней рисунка)
+  const silWait = {};
+  function prepSil(sid) {
+    if (silWait[sid] || silMask[sid] || typeof document === 'undefined') return;
+    silWait[sid] = true;
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const M = 256, c = document.createElement('canvas'); c.width = c.height = M;
+        const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, M, M);
+        const px = g.getImageData(0, 0, M, M);
+        for (let i = 3; i < px.data.length; i += 4) { const on = px.data[i] > 150; px.data[i - 3] = px.data[i - 2] = px.data[i - 1] = 255; px.data[i] = on ? 255 : 0; }
+        g.putImageData(px, 0, 0);
+        silMask[sid] = c.toDataURL('image/png');
+      } catch (e) { /* без чёткой маски — оборот по исходному рисунку */ }
+      // готовые стикеры этого духа — на чёткий силуэт
+      const ms = silMask[sid] ? `-webkit-mask-image:url('${silMask[sid]}');mask-image:url('${silMask[sid]}')` : '';
+      document.querySelectorAll(`.sp-sticker[data-sid="${sid}"]`).forEach(st => {
+        if (ms) st.querySelectorAll('.stc-glue, .stc-liner, .stc-flap, .stc-front > .sp-stars').forEach(el => el.setAttribute('style', ms));
+      });
+    };
+    im.src = rawMask(sid);
+  }
+  // код — крупной строкой поперёк середины; где фигура уже, цифры срезаются по контуру (плёнка — по силуэту)
+  const codeFor = (sid, code) => codeSvg(code, false, 'left:17%;top:46%;width:66%;height:9.24%');
+  // info — сам дух (Art.of): код на плёнке, привязан ли (плёнка содрана), uid — чтобы содрать её в карточке
+  const sticker = (front, sid, info) => {
+    const m = maskOf(sid), ms = `-webkit-mask-image:url('${m}');mask-image:url('${m}')`, bound = !!(info && info.bound);
+    const code = !bound && info && typeof S !== 'undefined' && S.spiritCode ? S.spiritCode(info) : '';
+    prepSil(sid);
+    // оборот зеркален (.stc-sil): так силуэт совпадает с лицом, как у настоящего стикера; надпись на плёнке — обратно прямая
+    const stars = info && info.dark && !info.purified && !PICS[sid] ? navStars(sid, ms) : ''; // омрачённый рисованный дух — звёздочки поверх лица
+    return `<span class="art sp-sticker${bound ? ' stc-bound' : ''}" style="aspect-ratio:1;--el:${elColor(sid)}" data-sid="${sid}"${code ? ` data-code="${code}"` : ''}${info && info.uid ? ` data-uid="${U.esc(info.uid)}"` : ''}><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}${stars}</span>` +
+      `<span class="stc-back"><span class="stc-sil"><i class="stc-glue" style="${ms}"></i>` +
+      (bound ? '' : `<i class="stc-liner" style="${ms}">${code ? codeFor(sid, code) : ''}</i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span>`) + '</span></span></span></span>';
+  };
+  const spiritK = (sid, shiny, dark, info) => sticker(PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`), sid, info);
+  // Вращение стикера: тянуть — крутится (с разгона докручивается до ближайшей стороны), коснуться — перевернуть.
+  // Только крупные духи и не на поимке (там жест — бросок оберега).
+  // 4.17: в карточке своего непривязанного духа, повёрнутого оборотом, можно потянуть отогнутый угол плёнки — она отрывается;
+  // оторвал достаточно — стикер шлёт событие stickerpeel { uid, done(ok) }: подтверждение и сервер — у карточки (ui-spirits)
+  if (typeof document !== 'undefined') {
+    const ROT = '.det-art, .res-art, .evo-stage, .hatch-sp, .bk-art, .onb-starters, .pf-buddy-a';
+    const PC = 1.5, PEEL_AT = .4; // плёнка в покое отогнута до линии x + y = 1.5; оторвана, если сгиб дошёл до 0.4
+    let g = null;
+    const set = (card, ry) => { card._ry = ry; card.style.setProperty('--ry', ry + 'deg'); card.style.setProperty('--hp', (((ry % 360) + 360) % 360 / 3.6).toFixed(1) + '%'); };
+    const backShown = card => { const r = (((card._ry || 0) % 360) + 360) % 360; return r > 90 && r < 270; };
+    const peelTo = (back, pc, anim) => { back.classList.toggle('peel-anim', !!anim); back.style.setProperty('--pc', pc); };
+    document.addEventListener('pointerdown', e => {
+      const st = e.target.closest && e.target.closest('.sp-sticker');
+      if (!st || !st.closest(ROT) || st.closest('.enc-art')) return;
+      const r = st.getBoundingClientRect();
+      if (r.width < 90) return;
+      const card = st.querySelector('.stc-card'), back = st.querySelector('.stc-back');
+      // угол плёнки: оборот зеркален — отогнутый угол виден слева внизу
+      const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
+      const peel = st.dataset.uid && !st.classList.contains('stc-bound') && st.closest('.det-art') && backShown(card) && (1 - u) + v > PC - .3
+        && typeof S !== 'undefined' && S.d && S.findSpirit(st.dataset.uid);
+      if (peel) { g = { peel: true, st, back, x: e.clientX, y: e.clientY, w: r.width, pc: PC, moved: false }; return; }
+      g = { card, st, x: e.clientX, t: performance.now(), ry0: card._ry || 0, v: 0, lx: e.clientX, lt: performance.now(), moved: false };
+    }, { passive: true });
+    document.addEventListener('pointermove', e => {
+      if (!g) return;
+      const dx = e.clientX - g.x;
+      if (g.peel) {
+        const dist = Math.hypot(dx, e.clientY - g.y);
+        if (!g.moved && dist < 6) return;
+        if (!g.moved) { g.moved = true; g.back.classList.add('peeling'); g.st.classList.add('spin'); }
+        // плёнка клеится крепко: первые 28 px не поддаётся, дальше идёт всё туже — оторвать можно, лишь протянув
+        // палец почти на две ширины стикера; по пути телефон «щёлкает» — плёнка отходит рывками
+        g.pc = U.clamp(PC - .55 * Math.pow(Math.max(0, dist - 28) / g.w, 1.45), -.4, PC);
+        const step = Math.floor((PC - g.pc) / .12);
+        if (step > (g.step || 0)) { g.step = step; U.vibrate(8); }
+        peelTo(g.back, g.pc.toFixed(3), false);
+        return;
+      }
+      if (!g.moved && Math.abs(dx) < 6) return;
+      if (!g.moved) { g.moved = true; g.card.classList.add('drag'); g.st.classList.add('spin'); }
+      const now = performance.now(); g.v = (e.clientX - g.lx) / Math.max(1, now - g.lt); g.lx = e.clientX; g.lt = now;
+      set(g.card, g.ry0 + dx * 0.9);
+    }, { passive: true });
+    const up = () => {
+      if (!g) return;
+      const cur = g; g = null;
+      if (cur.peel && cur.moved) {
+        const { st, back } = cur, back0 = () => { peelTo(back, PC, true); setTimeout(() => { back.classList.remove('peeling', 'peel-anim'); back.style.removeProperty('--pc'); }, 480); };
+        setTimeout(() => st.classList.remove('spin'), 600);
+        if (cur.pc > PEEL_AT) { back0(); return; }
+        peelTo(back, .45, true); // держим наполовину оторванной, пока Ловчий решает
+        st.dispatchEvent(new CustomEvent('stickerpeel', { bubbles: true, detail: { uid: st.dataset.uid, done: ok => {
+          if (!ok) { back0(); return; }
+          peelTo(back, -1.2, true); back.classList.add('peeled'); // плёнка слетает
+        } } }));
+        return;
+      }
+      if (cur.peel) { // просто коснулся угла — перевернуть, как везде
+        const card = cur.st.querySelector('.stc-card'); set(card, (card._ry || 0) + 180); return;
+      }
+      const { card, st } = cur; card.classList.remove('drag');
+      // коснулся — перевернуть; потянул — докрутить по инерции до ближайшей стороны
+      const target = cur.moved ? Math.round(((card._ry || 0) + cur.v * 260) / 180) * 180 : (card._ry || 0) + 180;
+      set(card, target);
+      setTimeout(() => st.classList.remove('spin'), 600);
+    };
+    document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+    // клик после вращения не должен открывать/выбирать (кнопки со стикером внутри)
+    document.addEventListener('click', e => { const st = e.target.closest && e.target.closest('.sp-sticker.spin'); if (st) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
+  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark, sp), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
 })();
