@@ -2733,15 +2733,13 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 @property --pc { syntax: '<number>'; inherits: true; initial-value: 1.5; }
 .stc-back { --pc: 1.5; animation: stcPeel 3.6s ease-in-out infinite alternate; }
 .stc-back i { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
-/* клей под плёнкой — как у винила: только полоски сот (каналы для воздуха), ячейки пустые; по полоскам пробегает полоса света.
-   Заливка полосок (цвет, объём, тень от отогнутого угла) — на ::before под маской-сотами: у линии сгиба (x + y = pc — на диагонали pc / 2) темнее всего */
-.stc-glue { background: none; }
-.stc-glue::before { content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(to bottom right, transparent calc(var(--pc) * 50% - 1%), rgba(30, 27, 22, .55) calc(var(--pc) * 50%), rgba(30, 27, 22, .22) calc(var(--pc) * 50% + 7%), transparent calc(var(--pc) * 50% + 16%)),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(38,34,28,.45)' stroke-width='.5' transform='translate(0 .55)'/%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(255,255,255,.4)' stroke-width='.45' transform='translate(0 -.4)'/%3E%3C/svg%3E") 0 0 / 15px 8.66px,
+/* клей под плёнкой: чуть темнее и теплее, влажный блеск */
+/* тень от отогнутого угла: у линии сгиба (x + y = pc — на диагонали это pc / 2) темнее всего и тает к углу */
+/* клей — как у дорогого винила: рельефные соты (каналы для воздуха), по ним пробегает полоса белого света — грани сот вспыхивают */
+.stc-glue { background: linear-gradient(to bottom right, transparent calc(var(--pc) * 50% - 1%), rgba(30, 27, 22, .55) calc(var(--pc) * 50%), rgba(30, 27, 22, .22) calc(var(--pc) * 50% + 7%), transparent calc(var(--pc) * 50% + 16%)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(38,34,28,.38)' stroke-width='.9' transform='translate(0 .6)'/%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(255,255,255,.3)' stroke-width='.7'/%3E%3C/svg%3E") 0 0 / 15px 8.66px,
     radial-gradient(120% 90% at 30% 25%, rgba(255, 255, 255, .22), transparent 55%),
-    radial-gradient(90% 80% at 50% 45%, #c6c2ba, #a9a59d 70%, #948f88);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='black' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E") 0 0 / 15px 8.66px; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='black' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E") 0 0 / 15px 8.66px; }
+    radial-gradient(90% 80% at 50% 45%, #bdb9b1, #a39f97 70%, #8e8a83); }
 .stc-glue::after { content: ''; position: absolute; inset: 0; pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 0 0 / 15px 8.66px, linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .35) 50%, transparent 70%);
   -webkit-mask: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%) 100% 0 / 300% 100% no-repeat; mask: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%) 100% 0 / 300% 100% no-repeat;
@@ -2763,7 +2761,7 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .stc-flapw { position: absolute; inset: 0; filter: drop-shadow(-2px -2px 3px rgba(15, 23, 42, .35)); }
 .stc-flap { transform-origin: 0 0; transform: translate(calc(var(--pc) * 100%), calc(var(--pc) * 100%)) matrix(0, -1, -1, 0, 0, 0);
   clip-path: polygon(100% calc((var(--pc) - 1) * 100%), 100% 100%, calc((var(--pc) - 1) * 100%) 100%);
-  background: linear-gradient(to bottom right, #8e939e calc((var(--pc) - 1) * 50% + 25%), #c6cad2 calc((var(--pc) - 1) * 50% + 45%), #d6d9df 80%, #bfc3cb); } /* изнанка плёнки — гладкая, без узора */
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 10.392'%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(120,116,108,.55)' stroke-width='.9' stroke-linejoin='round'/%3E%3Cpath d='M0 5.196L3 0H9L12 5.196L9 10.392H3ZM12 5.196H18' fill='none' stroke='rgba(255,255,255,.5)' stroke-width='.4' transform='translate(0 -.45)'/%3E%3C/svg%3E") 0 0 / 15px 8.66px, linear-gradient(to bottom right, #8e939e calc((var(--pc) - 1) * 50% + 25%), #c6cad2 calc((var(--pc) - 1) * 50% + 45%), #d6d9df 80%, #bfc3cb); } /* изнанка плёнки — отпечаток клея: полоски сот */
 @keyframes stcPeel { from { --pc: 1.56; } to { --pc: 1.46; } }
 .calm .stc-back { animation: none; }
 /* 4.17: оборот зеркален (силуэт совпадает с лицом), код духа на плёнке — точками, прямо */
