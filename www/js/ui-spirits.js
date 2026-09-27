@@ -432,13 +432,18 @@ Object.assign(UI, {
         <div class="row"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}. ${ru`Надевается на карточке духа.`}</small></div>
         <div class="row-side"><span class="cnt">×${S.d.amulets[k]}</span></div></div>`).join('') + keys.map(k => `
         <div class="row"><div class="row-ico">${Art.item(k)}</div><div class="row-main"><b>${ITEMS[k].name}</b><small>${ITEMS[k].desc}</small></div>
-        <div class="row-side"><span class="cnt">×${S.d.items[k]}</span><div class="row-acts">${k === 'incense' ? `<button class="btn small primary use-inc">${S.incenseActive() ? ru`Горит` : ru`Зажечь`}</button>` : ''}${ITEMS[k].heal || ITEMS[k].revive ? `<button class="btn small primary use-heal" data-k="${k}">${ru`Лечить`}</button>` : ''}<button class="btn-round small drop" data-k="${k}" aria-label="${ru`Выбросить`}">${this.I.trash}</button></div></div></div>`).join('')
+        <div class="row-side"><span class="cnt">×${S.d.items[k]}</span><div class="row-acts">${k === 'incense' ? `<button class="btn small primary use-inc">${S.incenseActive() ? ru`Горит` : ru`Зажечь`}</button>` : ''}${k === 'xpbrew' ? `<button class="btn small primary use-xp">${S.d.xpUntil > U.now() ? ru`Действует` : ru`Выпить`}</button>` : ''}${ITEMS[k].heal || ITEMS[k].revive ? `<button class="btn small primary use-heal" data-k="${k}">${ru`Лечить`}</button>` : ''}<button class="btn-round small drop" data-k="${k}" aria-label="${ru`Выбросить`}">${this.I.trash}</button></div></div></div>`).join('')
         || `<div class="empty">${ru`Сумка пуста. Загляни к ближайшему роднику!`}</div>`;
     };
     scr.addEventListener('click', async e => {
       const drop = e.target.closest('.drop');
       if (drop) { this.discard(drop.dataset.k, () => { render(); this.refreshHud(); }); return; }
       const uh = e.target.closest('.use-heal'); if (uh) { this.healWho(uh.dataset.k, render); return; }
+      if (e.target.closest('.use-xp')) { // 4.16: Настой опыта
+        if (S.d.xpUntil > U.now()) { this.toast(ru`Настой опыта действует ещё ${U.fmtTime(S.d.xpUntil - U.now())}`); return; }
+        if (await Game.try('xpBrew')) { Sfx.play('levelup'); this.toast(ru`Настой выпит: сутки опыта на ${Math.round((Rules.XP_BREW.MUL - 1) * 100)}% больше`, 'good'); this.refreshHud(); render(); }
+        return;
+      }
       if (!e.target.closest('.use-inc')) return;
       if (S.incenseActive()) { this.toast(ru`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - U.now())}`); return; }
       if (await Game.try('incense')) {

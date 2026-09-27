@@ -12,10 +12,13 @@ const Duel = {
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
   open(e) {
-    const hold = Clans.info(e.id), mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
+    // 4.16: вольное Капище дружины не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
+    const free = Rules.shrineFree(e.id), now = U.now();
+    const holders0 = !free && Clans.info(e.id) ? Clans.info(e.id).holders.filter(h => h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)) : [];
+    const hold = holders0.length ? Clans.info(e.id) : null, mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
     const g = W.guardian(e), T = SHRINE_TIERS[e.tier], mul = Ev.duelMul();
     let team = S.team();
-    const holders = hold ? hold.holders.filter(h => h.sp && SP[h.sp.sid]) : [];
+    const holders = holders0.map(h => ({ ...h, sp: Rules.holdSpirit(h.sp, h.t, now) }));
     const who = hold
       ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
          <div class="rift-team-title">${ru`Защитники`}</div>
@@ -28,7 +31,7 @@ const Duel = {
     if (mine) action = `<div class="rift-tip">${ru`Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
         <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
     else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
-        ${S.d.clan && !hold ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
+        ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
     else action = `
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
@@ -38,7 +41,7 @@ const Duel = {
       <div class="shrine-view t${e.tier}">
         ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}</div>
+        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
         ${who}
         ${action}
         ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}

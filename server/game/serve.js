@@ -20,6 +20,8 @@ const UUID = /^[0-9a-f-]{36}$/;
 // 4.3: запросы разных игроков выполняются одновременно — у каждого свои поля игрового кода (GameCore.isolate)
 GameCore.isolate(new AsyncLocalStorage());
 const must = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
+// 4.16: защитник Капища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
+const holdCutoff = () => Date.now() - Rules.HOLD.MAX_H * 3600000;
 const verCmp = (a, b) => {
   const pa = String(a || '0').split('.').map(Number), pb = String(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return Math.sign(d); }
@@ -396,16 +398,22 @@ function makeEnv(uid) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
     },
-    async holdDefend(poi, lat, lng, clan, holder) { return !!must(await db.rpc('shrine_defend', { p_poi: poi, p_lat: lat, p_lng: lng, p_clan: clan, p_holder: holder })); },
+    // 4.16: защитники старше Rules.HOLD.MAX_H часов уже ушли — shrine_defend (023) убирает их перед проверками
+    async holdDefend(poi, lat, lng, clan, holder) {
+      return !!must(await db.rpc('shrine_defend', { p_poi: poi, p_lat: lat, p_lng: lng, p_clan: clan, p_holder: holder, p_cutoff: holdCutoff(), p_max: HOLD_MAX }));
+    },
     async holdDefeat(poi, ver) { return !!must(await db.rpc('shrine_defeat', { p_poi: poi, p_ver: ver })); },
+    // 4.16: считаются только защитники, которые ещё на посту (ушедшие по сроку остаются в строке до уборки)
     async myHolds(pid) {
-      const { count, error } = await db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).contains('holders', JSON.stringify([{ pid }]));
-      if (error) throw new Error(error.message);
-      return count || 0;
+      const rows = must(await db.from('shrine_holds').select('holders').contains('holders', JSON.stringify([{ pid }])).limit(200)) || [];
+      const cut = holdCutoff();
+      return rows.filter(r => (r.holders || []).some(h => h.pid === pid && +h.t >= cut)).length;
     },
     // Капища, где стоят защитники игрока: название — из таблицы мест
     async myHoldsList(pid) {
-      const rows = must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(HOLD_MY_MAX + 5)) || [];
+      const cut = holdCutoff();
+      const rows = (must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(200)) || [])
+        .filter(r => (r.holders || []).some(h => h.pid === pid && +h.t >= cut)).slice(0, HOLD_MY_MAX + 5);
       const ids = rows.map(r => r.poi_id);
       const names = ids.length ? must(await db.from('pois').select('id, name').in('id', ids)) || [] : [];
       return rows.map(r => {
@@ -454,13 +462,19 @@ function makeEnv(uid) {
       if (f.shiny) q = q.eq('shiny', true);
       for (const [k, col] of [['minIv', 'iv_pct'], ['minA', 'iv_a'], ['minD', 'iv_d'], ['minS', 'iv_s'], ['minPower', 'power'], ['minLvl', 'lvl']]) if (f[k]) q = q.gte(col, f[k]);
       if (f.maxPrice) q = q.lte('price', f.maxPrice);
+      if (f.maxLvl) q = q.lte('lvl', f.maxLvl); // 4.16: «не выше моего уровня»
       if (f.notPid) q = q.neq('seller_pid', f.notPid);
       const [col, asc] = { new: ['created_at', false], cheap: ['price', true], dear: ['price', false], power: ['power', false], iv: ['iv_pct', false] }[f.sort] || ['created_at', false];
       return must(await q.order(col, { ascending: asc }).order('id').range(f.from, f.from + 29)) || [];
     },
+    // 4.16: недавние сделки с духом вида sid (для подсказки цены) — индекс auction_sold_idx (023)
+    async lotsRecent(sid, since) {
+      return must(await db.from('auction_lots').select('cur, price, lvl').eq('sid', sid).eq('status', 'sold').gte('closed_at', new Date(since).toISOString())
+        .order('closed_at', { ascending: false }).limit(60)) || [];
+    },
     async lotsMine(pid) {
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
-      return must(await db.from('auction_lots').select('id, spirit, sid, lvl, power, iv_pct, cur, price, status, buyer_name, created_at, expires_at, closed_at, settled')
+      return must(await db.from('auction_lots').select('id, spirit, sid, lvl, power, iv_pct, cur, price, deposit, status, buyer_name, created_at, expires_at, closed_at, settled')
         .eq('seller_pid', pid).or(`status.eq.open,created_at.gte."${since}"`).order('created_at', { ascending: false }).limit(40)) || [];
     },
     async lotsOpenCount(pid) {

@@ -64,6 +64,7 @@ const UI = {
     U.$('#menuBtn').onclick = () => this.menu();
     U.$('#nearbyBtn').onclick = () => this.nearbyList();
     U.$('#incenseChip').onclick = () => this.toast(ru`Ладан курится ещё ${U.fmtTime(S.d.incenseUntil - Date.now())}`);
+    const xc = U.$('#xpChip'); if (xc) xc.onclick = () => this.toast(ru`Настой опыта действует ещё ${U.fmtTime(S.d.xpUntil - U.now())}`);
     Bus.on('xp', () => this.refreshHud());
     Bus.on('levelup', l => this.levelUp(l));
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
@@ -243,6 +244,13 @@ const UI = {
       put(inc.querySelector('span'), U.fmtTime(d.incenseUntil - Date.now()));
     }
     else inc.classList.add('hidden');
+    const xc = U.$('#xpChip'); // 4.16: Настой опыта
+    if (xc && d.xpUntil > U.now()) {
+      xc.classList.remove('hidden');
+      if (!xc.querySelector('span')) xc.innerHTML = `${Art.item('xpbrew')}<span></span>`;
+      put(xc.querySelector('span'), U.fmtTime(d.xpUntil - U.now()));
+    }
+    else if (xc) xc.classList.add('hidden');
   },
   // Летопись на карте: текущий шаг главы или «глава завершена» — чтобы сюжет не терялся в меню
   storyPill() {
