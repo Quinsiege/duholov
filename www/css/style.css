@@ -2714,8 +2714,8 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 @keyframes spPearl { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
 /* сияющий в списках и на карте — перелив оттенка самим фильтром */
 .sp-pearl { animation: spPearlS 3s ease-in-out infinite alternate; } /* свой цвет чуть качается по радуге */
-@keyframes spPearlS { from { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(-35deg) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } to { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(35deg) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } }
-.calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); }
+@keyframes spPearlS { from { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(-35deg) drop-shadow(.6px 0 0 #fff) drop-shadow(-.6px 0 0 #fff) drop-shadow(0 .6px 0 #fff) drop-shadow(0 -.6px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } to { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(35deg) drop-shadow(.6px 0 0 #fff) drop-shadow(-.6px 0 0 #fff) drop-shadow(0 .6px 0 #fff) drop-shadow(0 -.6px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } }
+.calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(.6px 0 0 #fff) drop-shadow(-.6px 0 0 #fff) drop-shadow(0 .6px 0 #fff) drop-shadow(0 -.6px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); }
 @keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
 @keyframes spSmoke { 0%, 100% { opacity: .5; transform: translateY(0) scaleY(1); } 50% { opacity: 1; transform: translateY(-5px) scaleY(1.12); } }
 /* 4.17: дух-стикер — обратная сторона: приглушённо-белая клейкая основа по силуэту с лёгким голографическим отливом */
@@ -2724,13 +2724,15 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .stc-card.drag { transition: none; }
 .stc-front, .stc-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .stc-front > .art-stack { width: 100%; height: 100%; } /* лицевая сторона — без класса .art: чужие правила .art (анимации экранов) берёт сам стикер */
-.stc-back { transform: rotateY(180deg); filter: drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff) drop-shadow(0 -1.6px 0 #fff) drop-shadow(0 0 4px var(--el)) drop-shadow(0 0 14px var(--el)); }
+.stc-back { transform: rotateY(180deg); filter: drop-shadow(.9px 0 0 #fff) drop-shadow(-.9px 0 0 #fff) drop-shadow(0 .9px 0 #fff) drop-shadow(0 -.9px 0 #fff) drop-shadow(0 0 4px var(--el)) drop-shadow(0 0 14px var(--el)); }
 /* --pc — линия сгиба x + y = pc (в долях стикера): плёнка отогнута от правого нижнего угла и чуть «дышит» */
 @property --pc { syntax: '<number>'; inherits: true; initial-value: 1.5; }
 .stc-back { --pc: 1.5; animation: stcPeel 3.6s ease-in-out infinite alternate; }
 .stc-back i { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
 /* клей под плёнкой: чуть темнее и теплее, влажный блеск */
-.stc-glue { background: radial-gradient(120% 90% at 80% 85%, rgba(255, 255, 255, .5), transparent 55%), linear-gradient(150deg, #d9d6cf, #c6c2ba); }
+/* тень от отогнутого угла: у линии сгиба (x + y = pc — на диагонали это pc / 2) темнее всего и тает к углу */
+.stc-glue { background: linear-gradient(to bottom right, transparent calc(var(--pc) * 50% - 1%), rgba(30, 27, 22, .55) calc(var(--pc) * 50%), rgba(30, 27, 22, .22) calc(var(--pc) * 50% + 7%), transparent calc(var(--pc) * 50% + 16%)),
+    radial-gradient(120% 90% at 80% 85%, rgba(255, 255, 255, .45), transparent 55%), linear-gradient(150deg, #d9d6cf, #c6c2ba); }
 /* защитная плёнка: тусклая серовато-молочная, узор косых полосок (как на подложке стикеров), мягкий блик по повороту */
 .stc-liner { background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .22) 50%, transparent 62%) var(--hp, 50%) 50% / 260% 100%,
     repeating-linear-gradient(-45deg, rgba(90, 98, 115, .22) 0 2px, transparent 2px 9px),

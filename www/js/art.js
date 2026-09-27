@@ -315,7 +315,7 @@ const Art = (() => {
   const elColor = sid => ELEMENTS[SP[sid].el].color;
   const glow = (sid, solo) => `drop-shadow(0 0 ${solo ? 2 : 3}px ${elColor(sid)}) drop-shadow(0 0 ${solo ? 5 : 9}px ${elColor(sid)}99)`;
   // белая кайма по контуру — дух вырезан, как стикер
-  const edge = solo => { const w = solo ? 1 : 1.6; return `drop-shadow(${w}px 0 0 #fff) drop-shadow(-${w}px 0 0 #fff) drop-shadow(0 ${w}px 0 #fff) drop-shadow(0 -${w}px 0 #fff) `; };
+  const edge = solo => { const w = solo ? .6 : .9; return `drop-shadow(${w}px 0 0 #fff) drop-shadow(-${w}px 0 0 #fff) drop-shadow(0 ${w}px 0 #fff) drop-shadow(0 -${w}px 0 #fff) `; };
   const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) ' + edge(solo) + 'drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
     : (shiny ? 'grayscale(.4) contrast(.85) brightness(1.2) ' + (solo ? 'saturate(1.2) hue-rotate(30deg) ' : '') : '') + edge(solo) + glow(sid, solo); // сияющий: лёгкое серебро поверх своего цвета
   const picImg = (sid, shiny, dark, cls) => {
