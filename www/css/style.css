@@ -2714,8 +2714,8 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 @keyframes spPearl { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
 /* сияющий в списках и на карте — перелив оттенка самим фильтром */
 .sp-pearl { animation: spPearlS 5s linear infinite; }
-@keyframes spPearlS { from { filter: grayscale(.85) contrast(.62) brightness(1.5) sepia(.3) saturate(1.6) hue-rotate(0deg) drop-shadow(0 0 4px rgba(255, 255, 255, .95)); } to { filter: grayscale(.85) contrast(.62) brightness(1.5) sepia(.3) saturate(1.6) hue-rotate(360deg) drop-shadow(0 0 4px rgba(255, 255, 255, .95)); } }
-.calm .sp-pearl { animation: none; filter: grayscale(.85) contrast(.62) brightness(1.5) sepia(.3) saturate(1.6) hue-rotate(250deg) drop-shadow(0 0 4px rgba(255, 255, 255, .95)); }
+@keyframes spPearlS { from { filter: grayscale(.8) contrast(.72) brightness(1.35) sepia(.3) saturate(1.6) hue-rotate(0deg) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } to { filter: grayscale(.8) contrast(.72) brightness(1.35) sepia(.3) saturate(1.6) hue-rotate(360deg) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } }
+.calm .sp-pearl { animation: none; filter: grayscale(.8) contrast(.72) brightness(1.35) sepia(.3) saturate(1.6) hue-rotate(250deg) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); }
 @keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
 @keyframes spSmoke { 0%, 100% { opacity: .5; transform: translateY(0) scaleY(1); } 50% { opacity: 1; transform: translateY(-5px) scaleY(1.12); } }
 .calm .sp-pic > *, .calm .sp-pic .sp-smoke, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }

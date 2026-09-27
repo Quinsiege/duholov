@@ -311,9 +311,15 @@ const Art = (() => {
   const PICS = {"kostrovik":"3235430501","ugolek":"3106337497","zharogriv":"2415565401"}; // tools/art/spirit-pics.mjs
   const picUrl = sid => PICS[sid] ? `img/spirits/${sid}.webp?v=${PICS[sid]}` : null;
   // solo — картинка без слоёв (списки, карта, фото с поимки): лиловый — самим фильтром, перламутр — анимацией оттенка (.sp-pearl в style.css)
+  // подсветка по стихии: ободок цвета стихии — дух читается и на тёмном фоне (омрачённый — свечение Нави)
+  const elColor = sid => ELEMENTS[SP[sid].el].color;
+  const glow = (sid, solo) => `drop-shadow(0 0 ${solo ? 2 : 3}px ${elColor(sid)}) drop-shadow(0 0 ${solo ? 5 : 9}px ${elColor(sid)}99)`;
   const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
-    : shiny ? 'grayscale(.85) contrast(.62) brightness(1.5) ' + (solo ? 'sepia(.3) saturate(1.6) hue-rotate(250deg) ' : '') + 'drop-shadow(0 0 5px rgba(255, 255, 255, .95))' : ''; // контраст вниз — тёмное становится светлым серебром
-  const picImg = (sid, shiny, dark, cls) => { const solo = cls === 'art', fl = solo && shiny && !dark ? '' : picFilter(sid, shiny, dark, solo); return `<img class="${cls}${solo && shiny && !dark ? ' sp-pearl' : ''}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : ''}>`; };
+    : (shiny ? 'grayscale(.8) contrast(.72) brightness(1.35) ' + (solo ? 'sepia(.3) saturate(1.6) hue-rotate(250deg) ' : '') : '') + glow(sid, solo); // сияющий: контраст вниз — тёмное становится серебром
+  const picImg = (sid, shiny, dark, cls) => {
+    const solo = cls === 'art', pearl = solo && shiny && !dark, fl = pearl ? '' : picFilter(sid, shiny, dark, solo);
+    return `<img class="${cls}${pearl ? ' sp-pearl' : ''}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : pearl ? ` style="--gl:${elColor(sid)}"` : ''}>`;
+  };
   const over = svg => `<svg class="stk" viewBox="0 0 200 200">${svg}</svg>`;
   const NAV_SMOKE = [[52, 190, 1], [100, 196, 1.3], [148, 190, 1], [76, 194, .8], [126, 194, .8]].map(([x, y, k], i) =>
     `<path class="sp-smoke" style="animation-delay:${i * .55}s" d="M${x - 14 * k} ${y} C${x - 20 * k} ${y - 26 * k} ${x + 6 * k} ${y - 30 * k} ${x - 2 * k} ${y - 58 * k} C${x + 16 * k} ${y - 34 * k} ${x + 18 * k} ${y - 18 * k} ${x + 14 * k} ${y}Z"/>`).join('');
