@@ -151,14 +151,18 @@ const GameCore = {
   },
   // 4.15: раны после боя — общие на всю игру. Телефон присылает долю здоровья каждого бойца (hp: { uid: 0..1 });
   // выше той, с какой дух вошёл в бой, она не станет (в разломе — плюс выпитая Живая вода). Нет данных — здоровье не меняется
+  // 4.16: и усталость — каждый бой (разлом, Капище, вторжение) прибавляет духам команды по очку (см. Rules.HP.TIRED)
   woundTeam(b, hp) {
-    if (!hp || typeof hp !== 'object') return;
-    (b.team || []).forEach(uid => {
+    const now = U.now();
+    if (hp && typeof hp === 'object') (b.team || []).forEach(uid => {
       const sp = S.findSpirit(uid), rep = +hp[uid];
       if (!sp || !Number.isFinite(rep)) return;
-      S.setHp(sp, Math.min(rep, Math.min(1, S.hpNow(sp) + (b.waters || 0) * ITEMS.water.heal)));
+      S.setHp(sp, Math.min(rep, Math.min(S.hpCap(sp, now), S.hpNow(sp, now) + (b.waters || 0) * ITEMS.water.heal)), now);
     });
+    if (b.tire) this.team(b.team).forEach(sp => S.tire(sp, 1, now));
   },
+  // здоровье бойцов на входе в бой: { uid: доля } — по нему сервер судит, могла ли команда победить (Rules.duelWinnable)
+  hpMap(team) { const o = {}; team.forEach(sp => { o[sp.uid] = S.hpNow(sp); }); return o; },
   readyTeam(team) { this.need(team.every(sp => S.alive(sp)), ru`В команде дух без сил — вылечи его или замени`); },
   // Одна встреча с духом за раз: вид, уровень и особенности — только с сервера
   openEnc(ctx, o) {
@@ -182,7 +186,7 @@ const GameCore = {
   plausibleDuel(ctx, b, foe, speed) {
     const t = this.battleTime(ctx, b);
     this.need(t >= 5, ru`Бой не засчитан: слишком быстрая победа`);
-    this.need(Rules.duelWinnable(this.team(b.team), foe, speed), ru`Бой не засчитан: эта команда не могла победить такого соперника`);
+    this.need(Rules.duelWinnable(this.team(b.team), foe, speed, b.hp0), ru`Бой не засчитан: эта команда не могла победить такого соперника`);
     if (t >= Duel.TIME - 5) return;
     this.need(Rules.duelMaxDamage(this.team(b.team), foe, t) >= Rules.duelFoeHp(foe), ru`Бой не засчитан: слишком быстрая победа`);
   },
@@ -379,8 +383,10 @@ const GameCore = {
     const team = S.team();
     return { pid: S.d.pid, name: String(S.d.name).slice(0, 20), look: this.safeLook(S.d.look), lvl: S.d.level, power: team.reduce((a, x) => a + S.power(x), 0), sid: team[0] ? team[0].sid : null };
   },
+  // 4.16: уровень босса совместного разлома — средний уровень Ловчих комнаты (уровни в комнату пишет сервер)
+  roomRl(r) { const l = (r.members || []).map(m => U.clamp(Math.floor(+m.lvl) || 1, 1, MAX_LEVEL)); return l.length ? Math.round(l.reduce((a, x) => a + x, 0) / l.length) : 1; },
   roomView(r) {
-    return { code: r.code, status: r.status, rift: r.rift, isHost: r.host_pid === S.d.pid, hpMul: 1 + 0.8 * (r.members.length - 1),
+    return { code: r.code, status: r.status, rift: { ...r.rift, rl: this.roomRl(r) }, isHost: r.host_pid === S.d.pid, hpMul: Raid.coopHp(r.members.length),
       members: r.members.map((m, i) => ({ name: String(m.name || 'Ловчий').slice(0, 20), look: m.look, lvl: m.lvl, power: m.power, sid: m.sid, host: i === 0, me: m.pid === S.d.pid })) };
   },
   // Защитники Капища в бою — три сильнейших
@@ -787,7 +793,7 @@ const GameCore = {
         const room = await ctx.env.roomGet(String(a.coop.code).toUpperCase());
         this.need(room && room.status === 'started' && ctx.now - Date.parse(room.started_at) < 10 * 60000, ru`Совместный бой не найден — начните заново`);
         this.need(room.members.some(m => m.pid === S.d.pid), ru`Ты не в этом разломе`);
-        coop = { host: room.host_pid === S.d.pid, allies: U.clamp(room.members.length - 1, 0, 3), code: room.code };
+        coop = { host: room.host_pid === S.d.pid, allies: U.clamp(room.members.length - 1, 0, 3), code: room.code, rl: this.roomRl(room) };
         rift = { id: room.rift.poi, lat: room.rift.lat, lng: room.rift.lng, name: room.rift.place };
       }
       const p = await this.place(rift, ctx, 'shrine');
@@ -809,8 +815,10 @@ const GameCore = {
       this.dayNeed(ctx, 'raids'); // до списания Дальнего пропуска
       this.limit(ctx, 'raid', 30, 3600000);
       if (far) S.d.items.farpass--;
-      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0, far };
-      return { rid: r.id, tier: r.tier, boss: r.boss, far };
+      // 4.16: босс — по уровню Ловчего (в совместном — по среднему уровню комнаты); rl телефон считает так же (Raid.bossStats)
+      const rl = coop ? coop.rl : S.catchLvl();
+      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0, far, tire: true };
+      return { rid: r.id, tier: r.tier, boss: r.boss, rl, far };
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {
@@ -870,8 +878,9 @@ const GameCore = {
       this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const t = Math.min(90, this.battleTime(ctx, b));
-      const n = b.coop ? b.coop.allies + 1 : 1, hpMul = 1 + 0.8 * (n - 1);
-      const need = Raid.TIER[b.tier].hp * hpMul / n;
+      // 4.16: в совместном бою урон союзников сервер не видит — от каждого нужна хотя бы половина своей доли
+      const n = b.coop ? b.coop.allies + 1 : 1, hpMul = Raid.coopHp(n);
+      const need = Raid.bossStats(b).hp * hpMul / n * (n > 1 ? 0.5 : 1);
       this.need(t >= 2 && Rules.raidMaxDamage(this.team(b.team), b, t) >= need, ru`Бой не засчитан: слишком быстрая победа`);
       S.d.rifts[b.rid] = true;
       const allies = b.coop ? b.coop.allies : 0, tier = b.tier;
@@ -908,7 +917,7 @@ const GameCore = {
       const ht = hold ? this.holdTeam(hold) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
       this.limit(ctx, 'duel', 40, 3600000);
-      ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid),
+      ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true,
         foe, hold: hold ? { clan: hold.clan, ver: hold.ver } : null };
       return { id: e.id, tier: e.tier, foe, clan: hold ? hold.clan : null, holders: hold ? hold.holders.map(h => String(h.name || 'Ловчий').slice(0, 20)) : null };
     },
@@ -917,7 +926,8 @@ const GameCore = {
       this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const e = { id: b.id, tier: b.tier, name: b.name };
-      this.plausibleDuel(ctx, b, b.foe || W.guardian(e).team, SHRINE_TIERS[e.tier].speed);
+      const g = b.foe ? null : W.guardian(e); // 4.16: у хранителя свой темп (W.foeSpeed)
+      this.plausibleDuel(ctx, b, b.foe || g.team, g ? g.speed : SHRINE_TIERS[e.tier].speed);
       const T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier;
       S.d.shrines[e.id] = U.today();
       let freed = false;
@@ -1112,7 +1122,7 @@ const GameCore = {
       this.readyTeam(team);
       this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
-      ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid) };
+      ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true };
       return { invId: e.invId };
     },
     invEnd(a, ctx) {
@@ -1120,7 +1130,7 @@ const GameCore = {
       this.woundTeam(b, a.hp);
       if (!a.win) return { win: false };
       const g = W.grunt({ invId: b.invId });
-      this.plausibleDuel(ctx, b, g.team, Duel.FOE.invasion.speed);
+      this.plausibleDuel(ctx, b, g.team, g.speed);
       S.d.freed[b.invId] = true;
       S.d.stats.invasions++;
       this.dayAdd(ctx, 'invasions');

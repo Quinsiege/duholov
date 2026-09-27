@@ -147,10 +147,21 @@ const S = {
   hpNow(sp, now = U.now()) {
     const H = Rules.HP;
     if (!sp) return 0;
-    if (sp.ko) { const t = now - sp.ko, ko = Rules.koMs(sp); return t < ko ? 0 : Math.min(1, H.BACK + H.REGEN * (t - ko) / 3600000); }
-    if (sp.hpf == null) return 1;
-    return Math.min(1, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
+    const cap = this.hpCap(sp, now); // 4.16: усталый дух выше предела не поднимется
+    if (sp.ko) { const t = now - sp.ko, ko = Rules.koMs(sp); return t < ko ? 0 : Math.min(cap, H.BACK + H.REGEN * (t - ko) / 3600000); }
+    if (sp.hpf == null) return cap;
+    return Math.min(cap, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
   },
+  /* 4.16: усталость — очки боёв (sp.tired на момент sp.tiredT), тают по очку за Rules.HP.TIRED.REST часов.
+     Сверх FREE очков каждое срезает STEP от предела здоровья (hpCap), не ниже MIN */
+  tired(sp, now = U.now()) { return sp && sp.tired ? Math.max(0, sp.tired - Math.max(0, now - (sp.tiredT || now)) / (Rules.HP.TIRED.REST * 3600000)) : 0; },
+  hpCap(sp, now = U.now()) { const T = Rules.HP.TIRED; return Math.max(T.MIN, 1 - T.STEP * Math.max(0, this.tired(sp, now) - T.FREE)); },
+  tire(sp, n = 1, now = U.now()) {
+    const t = Math.round((this.tired(sp, now) + n) * 100) / 100;
+    if (t > 0) { sp.tired = t; sp.tiredT = now; } else { delete sp.tired; delete sp.tiredT; }
+  },
+  // сколько отдыхать до полного предела здоровья, мс
+  restLeft(sp, now = U.now()) { const T = Rules.HP.TIRED; return Math.max(0, this.tired(sp, now) - T.FREE) * T.REST * 3600000; },
   alive(sp) { return this.hpNow(sp) > 0; },
   koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.koMs(sp) - (now - sp.ko)) : 0; },
   setHp(sp, f, now = U.now()) {
@@ -167,6 +178,7 @@ const S = {
     if (h <= 0 && !it.revive) return ru`Дух без сил — поможет только Мёртвая вода или время`;
     if (h > 0 && !it.heal) return ru`Мёртвая вода не лечит живых — только поднимает духов без сил`;
     if (h >= 1) return ru`Дух здоров`;
+    if (h >= this.hpCap(sp) - 0.02) return ru`Дух устал — лечение не поможет, нужен отдых`; // 4.16
     return null;
   },
   heal(sp, k) {
@@ -175,7 +187,7 @@ const S = {
     this.useItem(k);
     // 4.15.1: Мёртвая вода сдвигает время падения на revive часов назад; срок вышел — дух поднимается ровно на BACK (10%)
     if (h <= 0) { sp.ko -= it.revive * 3600000; if (!this.koLeft(sp)) this.setHp(sp, Rules.HP.BACK); }
-    else this.setHp(sp, h + it.heal);
+    else this.setHp(sp, Math.min(this.hpCap(sp), h + it.heal)); // 4.16: не выше предела усталого духа
     this.save();
     return null;
   },

@@ -170,46 +170,80 @@ const W = {
     const hour = Math.floor(U.now() / 3600000);
     return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
-  // Прислужник Нави на захваченном роднике: трое омрачённых духов одной стихии
+  /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
+     раньше уровень хранителя равнялся уровню духов игрока, но виды у хранителя слабее — и сильный Ловчий не проигрывал.
+     Ориентир — треть суммы сил трёх сильнейших духов игрока (всех, а не выбранной команды: слабой командой соперника не
+     ослабить; у новичка с одним-двумя духами пустые места считаются нулём — и хранитель ему по силам) */
+  topPower() {
+    const top = S.d.spirits.map(x => S.power(x)).sort((a, b) => b - a).slice(0, 3);
+    return Math.max(10, top.reduce((a, x) => a + x, 0) / 3);
+  },
+  // Уровень, на котором дух (его вид и качество) наберёт силу pw (обратная к S.stats формула)
+  lvlFor(sp, pw) {
+    const b = SP[sp.sid].base, A = b[0] + sp.iv[0], D = b[1] + sp.iv[1], St = b[2] + sp.iv[2];
+    const c = Math.sqrt(Math.max(10, pw) * 10 / (A * Math.sqrt(D * St))), x = Math.max(0, (c - 0.094) / (0.7903 - 0.094));
+    return Math.round(1 + 39 * x * x);
+  },
+  // Дух соперника силой около pw: вид и качество — из зерна, уровень — под силу; слабому виду не хватает 40 уровней — он
+  // превращается, а если и так не дотянуть — выходит дух посильнее из strong (самый слабый из тех, кому хватает)
+  foeSpirit(sid, pw, seed, ivMin, strong) {
+    const sp = S.makeSpirit(sid, 1, seed, { ivMin });
+    for (;;) {
+      const lvl = this.lvlFor(sp, pw);
+      if (lvl <= 40 || !SP[sp.sid].evo) { sp.lvl = U.clamp(lvl, 1, 40); break; }
+      sp.sid = SP[sp.sid].evo;
+    }
+    if (strong && strong.length && S.power(sp) < pw * 0.9) {
+      const alt = strong.map(s => ({ sid: s.id, p: S.power({ sid: s.id, lvl: 40, iv: sp.iv }) })).sort((a, b) => a.p - b.p);
+      sp.sid = (alt.find(x => x.p >= pw) || alt[alt.length - 1]).sid;
+      sp.lvl = U.clamp(this.lvlFor(sp, pw), 1, 40);
+    }
+    return sp;
+  },
+  // Не хватило силы (самые сильные виды и на 40 уровне слабее цели) — соперник бьёт чаще: темп × (сила / цель)³, но не больше чем вдвое
+  foeSpeed(speed, team, pw) {
+    const got = team.reduce((a, x) => a + S.power(x), 0) / (pw * team.length);
+    return Math.round(speed * U.clamp(Math.pow(got / 0.95, 3), 0.5, 1) * 1000) / 1000; // разброс силы ±10% темп не меняет
+  },
+
+  // Прислужник Нави на захваченном роднике: трое омрачённых духов одной стихии (4.16: сила отряда — от силы духов игрока)
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
     const pool = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3);
-    const top = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3);
-    const avg = top.length ? top.reduce((a, x) => a + x.lvl, 0) / top.length : S.d.level;
-    const lvl = U.clamp(Math.round(Math.min(avg, S.d.level + 2)) - 1, 3, 40);
+    const strong = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo);
+    const pw = this.topPower() * Duel.FOE.invasion.pow;
     const team = [];
     for (let k = 0; k < 3; k++) {
       const s = pool[Math.floor(r() * pool.length)];
-      const sp = S.makeSpirit(s.id, lvl, e.invId + k, { ivMin: 3 });
+      const sp = this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.invId + k, 3, strong);
       sp.dark = true;
       team.push(sp);
     }
-    return { name: ru`Прислужник Нави`, color: '#3b0764', title: ru`Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)] };
+    return { name: ru`Прислужник Нави`, color: '#3b0764', title: ru`Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)],
+      speed: this.foeSpeed(Duel.FOE.invasion.speed, team, pw) };
   },
 
-  // Хранитель меняется каждый день; уровень его духов подстраивается под уровень игрока
+  // Хранитель меняется каждый день; 4.16: сила его духов — доля SHRINE_TIERS.pow от силы духов игрока
   guardian(e) {
     const r = U.rng(e.id + U.today());
     const T = SHRINE_TIERS[e.tier];
     const name = GUARDIANS[Math.floor(r() * GUARDIANS.length)];
     const color = GUARD_COLORS[Math.floor(r() * GUARD_COLORS.length)];
-    // Ученик — только первые стадии, Мастер — до второй, Старейшина — любые, включая редких
+    // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
     const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage);
-    // ориентир — средний уровень трёх сильнейших духов игрока (но не выше уровня Ловчего +2)
-    const top = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3);
-    const avg = top.length ? top.reduce((a, x) => a + x.lvl, 0) / top.length : S.d.level;
-    const lvl = U.clamp(Math.round(Math.min(avg, S.d.level + 2)) + T.lvl, 3, 40);
+    const pw = this.topPower() * T.pow;
     const team = [];
     while (team.length < 3) {
       const s = pool[Math.floor(r() * pool.length)];
-      if (team.some(x => x.sid === s.id)) continue;
-      const sp = S.makeSpirit(s.id, U.clamp(lvl + Math.floor(r() * 3) - 1, 3, 40), e.id + U.today() + team.length, { ivMin: e.tier * 4 });
-      team.push(sp);
+      if (team.some(x => SP[x.sid].fam === s.fam)) continue;
+      // сильному Ловчему — сильнейшие виды (у Старейшины — и эпические), без повторов семейств
+      const strong = SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam));
+      team.push(this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.id + U.today() + team.length, e.tier * 4, strong));
     }
-    return { name, color, title: T.title, team };
+    return { name, color, title: T.title, team, speed: this.foeSpeed(T.speed, team, pw) };
   },
 
   // Уборка устаревших отметок (выполняется на сервере)

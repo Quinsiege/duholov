@@ -92,13 +92,19 @@ Object.assign(UI, {
     return team.map(sp => `<div class="mini ${S.alive(sp) ? '' : 'ko'}">${Art.imgOf(sp)}<b>${S.power(sp)}</b>${this.hpBar(sp)}</div>`).join('') || `<i>${ru`Нет духов`}</i>`;
   },
   /* 4.15: здоровье духа — полоска (если ранен) или «без сил · 3 ч 20 мин» */
+  // 4.16: у усталого духа недоступная часть полоски заштрихована
   hpBar(sp, always) {
-    const h = S.hpNow(sp);
+    const h = S.hpNow(sp), cap = S.hpCap(sp);
     if (h <= 0) return `<span class="hp-ko">${ru`без сил · ${U.fmtTime(S.koLeft(sp))}`}</span>`;
     if (h >= 1 && !always) return '';
-    return `<i class="hp-bar ${h < 0.35 ? 'low' : h < 0.7 ? 'mid' : ''}"><i style="width:${Math.round(h * 100)}%"></i></i>`;
+    return `<i class="hp-bar ${h < 0.35 ? 'low' : h < 0.7 ? 'mid' : ''} ${cap < 1 ? 'tired' : ''}"><i style="width:${Math.round(h * 100)}%"></i>${cap < 1 ? `<b class="hp-cap" style="width:${Math.round((1 - cap) * 100)}%"></b>` : ''}</i>`;
   },
-  hpText(sp) { const h = S.hpNow(sp); return h <= 0 ? ru`без сил · ${U.fmtTime(S.koLeft(sp))}` : h >= 1 ? ru`здоров` : `${Math.round(h * 100)}%`; },
+  hpText(sp) {
+    const h = S.hpNow(sp), cap = S.hpCap(sp);
+    if (h <= 0) return ru`без сил · ${U.fmtTime(S.koLeft(sp))}`;
+    const t = h >= 1 ? ru`здоров` : `${Math.round(h * 100)}%`;
+    return cap < 1 ? `${t} · ${ru`устал: не выше ${Math.round(cap * 100)}%, отдых ${U.fmtTime(S.restLeft(sp))}`}` : t;
+  },
   // лечение одного духа: выбрать предмет
   healPick(sp, done) {
     const opts = S.healItems().map(k => {
@@ -107,7 +113,7 @@ Object.assign(UI, {
       return `<button class="heal-opt ${err ? 'off' : ''}" data-k="${k}" ${err ? `data-err="${U.esc(err)}"` : ''}><span class="heal-ico">${Art.item(k)}</span><span class="heal-t"><b>${it.name}</b><small>${eff}</small></span><em>×${n}</em></button>`;
     }).join('');
     const m = this.modal({ title: ru`Лечить: ${U.esc(sp.nick || SP[sp.sid].name)}`, cls: 'heal-modal',
-      html: `<div class="heal-now">${ru`Здоровье: <b>${this.hpText(sp)}</b>`}</div><div class="heal-opts">${opts}</div><p class="small">${ru`Лечебное — в родниках, в Лавке и в наградах за уровень. Раненый дух и сам восстанавливает ${Rules.HP.REGEN * 100}% в час.`} ${ru`Дух без сил поднимается сам на ${Rules.HP.BACK * 100}% — чем реже дух, тем дольше ждать (от ${Rules.HP.KO_H[1]} до ${Rules.HP.KO_H[5]} ч).`}</p>`,
+      html: `<div class="heal-now">${ru`Здоровье: <b>${this.hpText(sp)}</b>`}</div><div class="heal-opts">${opts}</div><p class="small">${ru`Лечебное — в родниках, в Лавке и в наградах за уровень. Раненый дух и сам восстанавливает ${Rules.HP.REGEN * 100}% в час.`} ${ru`Дух без сил поднимается сам на ${Rules.HP.BACK * 100}% — чем реже дух, тем дольше ждать (от ${Rules.HP.KO_H[1]} до ${Rules.HP.KO_H[5]} ч).`} ${ru`После ${Rules.HP.TIRED.FREE} боёв подряд дух устаёт: каждый следующий бой срезает ${Rules.HP.TIRED.STEP * 100}% от его предела здоровья, час отдыха возвращает столько же — лечение усталость не снимает.`}</p>`,
       buttons: [{ label: ru`Закрыть` }] });
     m.querySelector('.heal-opts').addEventListener('click', async e => {
       const b = e.target.closest('.heal-opt'); if (!b) return;

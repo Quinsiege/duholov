@@ -3914,6 +3914,9 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .hp-bar > i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #4ade80, #86efac); }
 .hp-bar.mid > i { background: linear-gradient(90deg, #facc15, #fde68a); }
 .hp-bar.low > i { background: linear-gradient(90deg, #ef4444, #fb7185); }
+/* 4.16: усталость — недоступная часть полоски здоровья заштрихована */
+.hp-bar.tired { position: relative; }
+.hp-bar .hp-cap { position: absolute; top: 0; right: 0; height: 100%; background: repeating-linear-gradient(135deg, rgba(148, 163, 184, .6) 0 2px, transparent 2px 4px); }
 .hp-ko { display: block; margin-top: 4px; font-size: 10.5px; font-weight: 700; color: #fda4af; white-space: nowrap; }
 .card.ko .card-art, .mini.ko img, .mini.ko .art, .lg2-mem.ko .pcs-a { filter: grayscale(1) brightness(.6); }
 .card.ko .card-pw, .card.ko .card-name { opacity: .6; }
