@@ -4005,6 +4005,18 @@ const Rules = {
   // 4.16: лот живёт 48 ч (было 72), открытых лотов — до 3 (было 5), выставлять — до 10 в день (было 20);
   // залог DEPOSIT от цены (не меньше DEP_MIN) — вернётся при продаже, пропадёт, если лот истечёт или его снимут:
   // так на аукционе меньше залежалых лотов по несбыточной цене. RECENT — за сколько дней смотреть сделки для подсказки цены
+  // 4.20: скорость Ловчего — только шагом или бегом. Шаг ≈ 5 км/ч, бег 8–12, быстрый бег до 16; быстрее (самокат, велосипед,
+  // машина, метро) — действия на карте на COOL мс замирают, путь не засчитывается. Скорость — средняя за MIN_T…WIN с на MIN_D м и
+  // больше (GPS «дрожит» на десятки метров — короткие скачки не в счёт); точки с точностью хуже ACC м не берутся
+  SPEED: { MAX: 4.5, MIN_T: 15, WIN: 60, MIN_D: 60, ACC: 40, COOL: 60000 },
+  // средняя скорость от a к b (м/с), если её можно честно измерить, иначе null; t — мс
+  speedOf(a, b) {
+    if (!a || !b) return null;
+    const S2 = this.SPEED, dt = (b.t - a.t) / 1000;
+    if (dt < S2.MIN_T || dt > S2.WIN * 3) return null;
+    const d = U.dist(a.lat, a.lng, b.lat, b.lng);
+    return d < S2.MIN_D ? null : d / dt;
+  },
   AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
@@ -4355,10 +4367,19 @@ const GameCore = {
       if (v > 60 && U.dist(last.lat, last.lng, p.lat, p.lng) > 300) ctx.srv.fastUntil = ctx.now + 60000;
     }
     ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now };
+    if (!(p.acc > Rules.SPEED.ACC)) this.pace(ctx, { lat: p.lat, lng: p.lng, t: ctx.now });
+  },
+  // 4.20: скорость Ловчего — средняя от «якоря» (точка не старше WIN с) до новой точки; быстрее бега — пауза на COOL
+  pace(ctx, q) {
+    const S2 = Rules.SPEED, a = ctx.srv.pace;
+    const v = a ? Rules.speedOf(a, q) : null;
+    if (v != null && v > S2.MAX) { ctx.srv.speedUntil = ctx.now + S2.COOL; ctx.srv.kmh = Math.round(v * 3.6); }
+    if (!a || q.t - a.t > S2.WIN * 1000 || q.t < a.t) ctx.srv.pace = q; // якорь двигается раз в минуту
   },
   here(ctx) {
     this.need(ctx.pos, ru`Нет данных о местоположении — включи GPS`);
     this.need(!(ctx.srv.fastUntil > ctx.now), ru`Похоже, GPS скачет — подожди минуту`);
+    this.need(!(ctx.srv.speedUntil > ctx.now), ru`Слишком быстро — около ${ctx.srv.kmh || 20} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`);
     return ctx.pos;
   },
   near(ctx, lat, lng, max) {
@@ -4846,15 +4867,16 @@ const GameCore = {
         if (!prev) { prev = q; continue; }
         const d = U.dist(prev.lat, prev.lng, q.lat, q.lng), dt = (q.t - prev.t) / 1000;
         if (d < 4) continue;
-        if (dt > 0 && d / dt < 9) m += d;
+        if (dt > 0 && d / dt <= Rules.SPEED.MAX) m += d; // 4.20: только шагом или бегом (было < 32 км/ч)
+        this.pace(ctx, q);
         prev = q;
       }
-      // не больше, чем можно пройти быстрым шагом с прошлой отметки
+      // не больше, чем можно пробежать с прошлой отметки
       const since = last ? (ctx.now - last.t) / 1000 : 60;
-      m = Math.min(m, since * 9);
+      m = Math.min(m, since * Rules.SPEED.MAX);
       if (prev) ctx.srv.mv = { lat: prev.lat, lng: prev.lng, t: Math.min(prev.t, ctx.now) };
       if (m > 0) S.addDistance(m);
-      return { m };
+      return { m, fast: ctx.srv.speedUntil > ctx.now ? ctx.srv.kmh : 0 };
     },
 
     /* ----- встреча с духом ----- */
