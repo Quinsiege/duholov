@@ -4252,3 +4252,22 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .q-screen .quest, .q-screen .quest.bonus { background: none; border: 0; border-radius: 0; padding: 7px 2px; margin-bottom: 2px; }
 .q-screen .quest.done > .q-main > b { color: var(--gold2); }
 .q-screen .qd-chest { margin-top: 4px; }
+/* 4.21: закрытое по уровню видно с начала — с замком */
+.mk-rift.locked { filter: grayscale(.85) brightness(.8); opacity: .75; }
+.mk-rift.locked .mk-boss { animation: none; }
+/* 4.21: карточка духа — прокручиваются только строки (здоровье, усиление, характеристики…), кнопки и «В наличии» закреплены внизу */
+.det2 .dt-pane { overflow: hidden; }
+.det2 .dt-pane > * { flex: none; }
+.det2 .dt-pane > .dt-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.det2 .dt-scroll > * { flex-shrink: 0; } /* строки не сжимаются — прокручиваются */
+.det2 .dt-scroll .det-desc { display: block; -webkit-line-clamp: unset; margin: 0 0 4px; }
+.dt-pane[data-pane=grow] .dt-rows + .dt-have { margin-top: auto; }
+/* запас искр и эссенции Рода — строкой над кнопками */
+.dt-have { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; margin: 0; font-size: 13px; color: rgba(255, 255, 255, .6); }
+.dt-have > span { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+.dt-have b { display: inline-flex; align-items: center; gap: 4px; font-family: var(--f-head); font-weight: 700; font-size: 14px; color: #fff; }
+.dt-have b .art { width: 16px; height: 16px; }
+.dt-have > i { font-style: normal; opacity: .5; }
+.dt-have .dt-plus { margin-left: 0; width: 22px; height: 22px; }
+.dt-pane[data-pane=fight] .dt-have + .dt-bottom { margin-top: 0; }
+.dt-pane[data-pane=fight] .dt-scroll + .dt-have { margin-top: auto; }

@@ -406,7 +406,7 @@
   "k": "Оценка Ордена",
   "at": [
    "www/js/auction.js:102",
-   "www/js/ui-spirits.js:239"
+   "www/js/ui-spirits.js:238"
   ],
   "ctx": "<div class=\"au-appr\">${ru`Оценка Ордена`} ${this.starsHtml(l.iv_pct)} <b>${l.iv_pct}%</b></div>"
  },
@@ -415,7 +415,7 @@
   "at": [
    "www/js/auction.js:103",
    "www/js/auction.js:129",
-   "www/js/ui-spirits.js:240",
+   "www/js/ui-spirits.js:239",
    "www/js/ui-spirits.js:544"
   ],
   "ctx": "${bar(ru`Атака`, l.iv_a)}${bar(ru`Защита`, l.iv_d)}${bar(ru`Стойкость`, l.iv_s)}"
@@ -425,7 +425,7 @@
   "at": [
    "www/js/auction.js:103",
    "www/js/auction.js:129",
-   "www/js/ui-spirits.js:240",
+   "www/js/ui-spirits.js:239",
    "www/js/ui-spirits.js:544"
   ],
   "ctx": "${bar(ru`Атака`, l.iv_a)}${bar(ru`Защита`, l.iv_d)}${bar(ru`Стойкость`, l.iv_s)}"
@@ -435,7 +435,7 @@
   "at": [
    "www/js/auction.js:103",
    "www/js/auction.js:129",
-   "www/js/ui-spirits.js:240",
+   "www/js/ui-spirits.js:239",
    "www/js/ui-spirits.js:544"
   ],
   "ctx": "${bar(ru`Атака`, l.iv_a)}${bar(ru`Защита`, l.iv_d)}${bar(ru`Стойкость`, l.iv_s)}"
@@ -1411,7 +1411,7 @@
   "k": "Пробуждение",
   "at": [
    "www/js/book.js:83",
-   "www/js/ui-spirits.js:225",
+   "www/js/ui-spirits.js:223",
    "www/js/ui-spirits.js:352"
   ],
   "ctx": "this.h(ru`Пробуждение`) +"
@@ -12831,7 +12831,7 @@
   "at": [
    "www/js/shop.js:135",
    "www/js/ui-player.js:335",
-   "www/js/ui-spirits.js:225",
+   "www/js/ui-spirits.js:223",
    "www/js/ui.js:643"
   ],
   "ctx": "const lvlLock = it => it.lvl && S.d.level < it.lvl ? ru`с ${it.lvl} ур.` : '';"
@@ -13369,9 +13369,9 @@
   "k": "Эссенция «{0}»",
   "at": [
    "www/js/state.js:235",
-   "www/js/ui-spirits.js:224",
    "www/js/ui-spirits.js:381",
-   "www/js/ui-spirits.js:389"
+   "www/js/ui-spirits.js:389",
+   "www/js/ui-spirits.js:448"
   ],
   "ctx": "if (n) { this.addEssence(fam, n); out.push({ k: 'ess', n, label: ru`Эссенция «${SP[fam].name}»` }); }"
  },
@@ -15220,18 +15220,47 @@
   "ctx": "const moves = [[ru`Быстрый приём`, ELEMENTS[s.el].fast], [ru`Особый приём`, ELEMENTS[s.el].charge]].concat(sp.move2 ? [[ru`Второй особый · ⚡${MOVES.charge2.cost}`, ELEMENTS[s.el].charge2]] : []);"
  },
  {
+  "k": "В наличии",
+  "at": [
+   "www/js/ui-spirits.js:198"
+  ],
+  "ctx": "const have = `<div class=\"dt-have\"><span>${ru`В наличии`}</span><b><span class=\"cur\">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}</b><i>·</i><b>${ru`${ess} эсс. «${fam.name}»`}</b><button class=\"dt-plus act-pour\""
+ },
+ {
+  "k": "{0} эсс. «{1}»",
+  "at": [
+   "www/js/ui-spirits.js:198"
+  ],
+  "ctx": "const have = `<div class=\"dt-have\"><span>${ru`В наличии`}</span><b><span class=\"cur\">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}</b><i>·</i><b>${ru`${ess} эсс. «${fam.name}»`}</b><button class=\"dt-plus act-pour\""
+ },
+ {
+  "k": "Влить эссенцию Рода",
+  "at": [
+   "www/js/ui-spirits.js:198",
+   "www/js/ui-spirits.js:448"
+  ],
+  "ctx": "const have = `<div class=\"dt-have\"><span>${ru`В наличии`}</span><b><span class=\"cur\">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}</b><i>·</i><b>${ru`${ess} эсс. «${fam.name}»`}</b><button class=\"dt-plus act-pour\""
+ },
+ {
+  "k": "Второй приём открывается с {0} уровня Ловчего",
+  "at": [
+   "www/js/ui-spirits.js:199"
+  ],
+  "ctx": "const m2Err = S.d.level < MOVE2_LEVEL ? ru`Второй приём открывается с ${MOVE2_LEVEL} уровня Ловчего` : S.canLearnMove2(sp); // 4.21: видно с начала, закрыто замком"
+ },
+ {
   "k": "Рост",
   "at": [
    "www/js/ui-spirits.js:200"
   ],
-  "ctx": "const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || (showAw && !aErr)], ['fight', ru`Характеристики`, false], ...(hasAm ? [['amulet', ru`Амулет`, false]] : []), ['about', ru`О духе`, false]];"
+  "ctx": "const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || !aErr], ['fight', ru`Характеристики`, false], ['amulet', ru`Амулет`, false], ['about', ru`О духе`, false]];"
  },
  {
   "k": "Характеристики",
   "at": [
    "www/js/ui-spirits.js:200"
   ],
-  "ctx": "const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || (showAw && !aErr)], ['fight', ru`Характеристики`, false], ...(hasAm ? [['amulet', ru`Амулет`, false]] : []), ['about', ru`О духе`, false]];"
+  "ctx": "const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || !aErr], ['fight', ru`Характеристики`, false], ['amulet', ru`Амулет`, false], ['about', ru`О духе`, false]];"
  },
  {
   "k": "О духе",
@@ -15239,7 +15268,7 @@
    "www/js/ui-spirits.js:200",
    "www/js/ui-spirits.js:539"
   ],
-  "ctx": "const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || (showAw && !aErr)], ['fight', ru`Характеристики`, false], ...(hasAm ? [['amulet', ru`Амулет`, false]] : []), ['about', ru`О духе`, false]];"
+  "ctx": "const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || !aErr], ['fight', ru`Характеристики`, false], ['amulet', ru`Амулет`, false], ['about', ru`О духе`, false]];"
  },
  {
   "k": "ОЗ {0}",
@@ -15288,14 +15317,14 @@
   "at": [
    "www/js/ui-spirits.js:212"
   ],
-  "ctx": "<div class=\"dt-bind ${sp.bound ? 'on' : ''}\"${Tut.step() ? ' hidden' : ''}>${sp.bound ? ru`Плёнка на обороте содрана — дух привязан к тебе, продать его нельзя` : ru`Переверни стикер: плёнку на обороте можно содрать — дух"
+  "ctx": "<div class=\"dt-bind ${sp.bound ? 'on' : ''}\">${sp.bound ? ru`Плёнка на обороте содрана — дух привязан к тебе, продать его нельзя` : ru`Переверни стикер: плёнку на обороте можно содрать — дух привяжется к тебе`}</div>"
  },
  {
   "k": "Переверни стикер: плёнку на обороте можно содрать — дух привяжется к тебе",
   "at": [
    "www/js/ui-spirits.js:212"
   ],
-  "ctx": "<div class=\"dt-bind ${sp.bound ? 'on' : ''}\"${Tut.step() ? ' hidden' : ''}>${sp.bound ? ru`Плёнка на обороте содрана — дух привязан к тебе, продать его нельзя` : ru`Переверни стикер: плёнку на обороте можно содрать — дух"
+  "ctx": "<div class=\"dt-bind ${sp.bound ? 'on' : ''}\">${sp.bound ? ru`Плёнка на обороте содрана — дух привязан к тебе, продать его нельзя` : ru`Переверни стикер: плёнку на обороте можно содрать — дух привяжется к тебе`}</div>"
  },
  {
   "k": "Здоровье",
@@ -15351,38 +15380,30 @@
   "ctx": ": row(ru`Превращение`, ru`высшая форма`)}"
  },
  {
-  "k": "Влить эссенцию Рода",
-  "at": [
-   "www/js/ui-spirits.js:224",
-   "www/js/ui-spirits.js:448"
-  ],
-  "ctx": "${row(ru`Эссенция «${fam.name}»`, `${ess}${(S.d.rod || 0) > 0 ? `<button class=\"dt-plus act-pour\" aria-label=\"${ru`Влить эссенцию Рода`}\">+</button>` : ''}`)}"
- },
- {
   "k": "можно",
   "at": [
-   "www/js/ui-spirits.js:225"
+   "www/js/ui-spirits.js:223"
   ],
-  "ctx": "${showAw ? `<button class=\"dt-row dt-aw act-awaken-open\"><span>${ru`Пробуждение`}</span><b><i class=\"aw-stars\">${'★'.repeat(nStars)}<s>${'☆'.repeat(S.AWAKE.MAX - nStars)}</s></i>${!aErr ? `<em>${ru`можно`}</em>` : aCost "
+  "ctx": "<button class=\"dt-row dt-aw act-awaken-open\"><span>${ru`Пробуждение`}</span><b><i class=\"aw-stars\">${'★'.repeat(nStars)}<s>${'☆'.repeat(S.AWAKE.MAX - nStars)}</s></i>${!aErr ? `<em>${ru`можно`}</em>` : aCost && S.d.level"
  },
  {
   "k": "Омрачён Навью",
   "at": [
-   "www/js/ui-spirits.js:226"
+   "www/js/ui-spirits.js:224"
   ],
   "ctx": "${sp.dark ? `<div class=\"dt-row dt-dark\"><span><b>${ru`Омрачён Навью`}</b><small>${ru`атака +20%, защита −17%`}</small></span>"
  },
  {
   "k": "атака +20%, защита −17%",
   "at": [
-   "www/js/ui-spirits.js:226"
+   "www/js/ui-spirits.js:224"
   ],
   "ctx": "${sp.dark ? `<div class=\"dt-row dt-dark\"><span><b>${ru`Омрачён Навью`}</b><small>${ru`атака +20%, защита −17%`}</small></span>"
  },
  {
   "k": "Очистить",
   "at": [
-   "www/js/ui-spirits.js:227",
+   "www/js/ui-spirits.js:225",
    "www/js/ui-spirits.js:308"
   ],
   "ctx": "<button class=\"btn small act-purify\" ${S.canPurify(sp) ? `data-err=\"${U.esc(S.canPurify(sp))}\"` : ''}>${ru`Очистить`}<small><span class=\"cur\">${Art.item('sparks')}</span> ${U.fmtNum(S.purifyCost(sp).sparks)} · ${ru`${S.p"
@@ -15390,9 +15411,9 @@
  {
   "k": "{0} эсс.",
   "at": [
-   "www/js/ui-spirits.js:227",
+   "www/js/ui-spirits.js:225",
+   "www/js/ui-spirits.js:232",
    "www/js/ui-spirits.js:233",
-   "www/js/ui-spirits.js:234",
    "www/js/ui-spirits.js:243"
   ],
   "ctx": "<button class=\"btn small act-purify\" ${S.canPurify(sp) ? `data-err=\"${U.esc(S.canPurify(sp))}\"` : ''}>${ru`Очистить`}<small><span class=\"cur\">${Art.item('sparks')}</span> ${U.fmtNum(S.purifyCost(sp).sparks)} · ${ru`${S.p"
@@ -15400,7 +15421,7 @@
  {
   "k": "Пробудить",
   "at": [
-   "www/js/ui-spirits.js:232",
+   "www/js/ui-spirits.js:231",
    "www/js/ui-spirits.js:384",
    "www/js/ui-spirits.js:412"
   ],
@@ -15409,7 +15430,7 @@
  {
   "k": "звезда {0} · предел +{1}",
   "at": [
-   "www/js/ui-spirits.js:232",
+   "www/js/ui-spirits.js:231",
    "www/js/ui-spirits.js:384"
   ],
   "ctx": "? `<button class=\"btn primary act-awaken-open\">${ru`Пробудить`}<small>${ru`звезда ${nStars + 1} · предел +${S.AWAKE.STEP}`}</small></button>`"
@@ -15417,21 +15438,21 @@
  {
   "k": "Предел уровня",
   "at": [
-   "www/js/ui-spirits.js:233"
+   "www/js/ui-spirits.js:232"
   ],
   "ctx": ": `<button class=\"btn primary act-power\" ${pErr ? 'data-err=\"' + U.esc(pErr) + '\"' + (sp.lvl >= S.maxLvl(sp) ? ` data-short=\"${ru`Предел уровня`}\"` : '') : ''}>${ru`Усилить`}<small><span class=\"cur\">${Art.item('sparks')}"
  },
  {
   "k": "Усилить",
   "at": [
-   "www/js/ui-spirits.js:233"
+   "www/js/ui-spirits.js:232"
   ],
   "ctx": ": `<button class=\"btn primary act-power\" ${pErr ? 'data-err=\"' + U.esc(pErr) + '\"' + (sp.lvl >= S.maxLvl(sp) ? ` data-short=\"${ru`Предел уровня`}\"` : '') : ''}>${ru`Усилить`}<small><span class=\"cur\">${Art.item('sparks')}"
  },
  {
   "k": "Превратить",
   "at": [
-   "www/js/ui-spirits.js:234",
+   "www/js/ui-spirits.js:233",
    "www/js/ui-spirits.js:321"
   ],
   "ctx": "${s.evo ? `<button class=\"btn evolve act-evo\" ${eErr ? 'data-err=\"' + U.esc(eErr) + '\"' : ''}>${ru`Превратить`}<small>${ru`${s.cost} эсс.`} → ${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? SP[s.evo].name : '???'}</small></but"
@@ -15441,7 +15462,7 @@
   "at": [
    "www/js/ui-spirits.js:243"
   ],
-  "ctx": "${sp.move2 || S.d.level < MOVE2_LEVEL ? '' : `<button class=\"btn ghost small wide dt-bottom act-move2\" ${S.canLearnMove2(sp) ? `data-err=\"${U.esc(S.canLearnMove2(sp))}\"` : ''}>${ru`Выучить «${ELEMENTS[s.el].charge2}»`}<s"
+  "ctx": "${sp.move2 ? '' : `<button class=\"btn ghost small wide dt-bottom act-move2\" ${m2Err ? `data-err=\"${U.esc(m2Err)}\"` : ''}>${ru`Выучить «${ELEMENTS[s.el].charge2}»`}<small><span class=\"cur\">${Art.item('sparks')}</span> ${M"
  },
  {
   "k": "Амулет не надет",
