@@ -56,6 +56,8 @@
     .ld-tip small { font-family: 'Rubik', system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gold2); }
     .ld-tip p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #efeaff; }
     .ld-tip p.in { animation: ldIn .35s ease-out; }
+    /* высота подсказки — по самой длинной (loader.js кладёт их все невидимыми в одну клетку) */
+    .ld-tw { display: grid; } .ld-tw > p { grid-area: 1 / 1; align-self: center; } .ld-tw > .ld-ghost { visibility: hidden; }
     @keyframes ldIn { from { opacity: 0; transform: translateY(6px); } }
     .ld-arrow { position: absolute; top: 50%; margin-top: -18px; width: 34px; height: 36px; padding: 0; border: 0; background: none; font: inherit; font-size: 28px; line-height: 1;
       color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }

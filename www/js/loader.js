@@ -77,7 +77,16 @@ const Loader = {
     if (!this.el) return;
     const n = this.HINTS.length;
     this.hint = (this.hint + step + n) % n;
-    const p = this.el.querySelector('.ld-tip p');
+    // место под подсказку — по самой длинной: все подсказки лежат невидимыми в той же клетке, видна одна —
+    // высота панели не меняется при листании, и знак игры над ней не прыгает
+    let tw = this.el.querySelector('.ld-tw');
+    if (!tw) {
+      const p0 = this.el.querySelector('.ld-tip p');
+      tw = document.createElement('div'); tw.className = 'ld-tw';
+      p0.replaceWith(tw); tw.appendChild(p0);
+      this.HINTS.forEach(h => { const g = document.createElement('p'); g.className = 'ld-ghost'; g.setAttribute('aria-hidden', 'true'); g.textContent = h; tw.appendChild(g); });
+    }
+    const p = tw.querySelector('p:not(.ld-ghost)');
     if (!quiet) { p.classList.remove('in'); void p.offsetWidth; p.classList.add('in'); }
     p.textContent = this.HINTS[this.hint];
     this.el.querySelectorAll('.ld-dots i').forEach((d, i) => d.classList.toggle('on', i === this.hint));
