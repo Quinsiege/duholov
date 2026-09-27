@@ -67,30 +67,50 @@ const Duel = {
 
   // Захваченный родник: поединок с прислужником Нави
   openInvasion(e) {
+    // 4.15.1: в композиции карточки духа — сверху захваченный родник в тёмном круге Нави, справа «Захвачен Навью»,
+    // сила отряда, прислужник и слабость отряда; ниже — омрачённые духи против твоей команды, внизу — «Сразиться»
     const g = W.grunt(e);
-    let team = S.team();
-    const html = `
-      <div class="shrine-view invasion">
-        <div class="shrine-idol">${Art.springIcon(false, true)}</div>
-        <div class="rift-title">${ru`Родник «${U.esc(e.name)}» захвачен Навью!`}</div>
-        <div class="guard"><div class="guard-ava dark">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${g.title}</small></div></div>
-        <div class="grunt-quote">«${g.quote}»</div>
-        <div class="rift-team-title">${ru`Омрачённые духи`}</div>
-        <div class="rift-team">${UI.teamHtml(g.team)}</div>
-        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">${ru`Слабость отряда: ${ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el)).map(x => `${Art.elIcon(x, 16)} ${ELEMENTS[x].name}`).join(' ')}`}</div>
-        <div class="rift-tip">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
+    const pw = t => t.reduce((a, x) => a + S.power(x), 0);
+    const weak = ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el));
+    const card = (x, foe) => `<${foe ? 'div' : 'button'} class="lg2-mem el-${SP[x.sid].el} ${foe ? 'inv2-dark' : S.alive(x) ? 'team-edit' : 'ko team-edit'}"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${foe ? '' : UI.hpBar(x)}</${foe ? 'div' : 'button'}>`;
+    const scr = UI.screen(ru`Вторжение Нави`, `
+      <div class="det det2 inv2 el-${g.el}">
+        <div class="dt-hero">
+          <div class="det-art inv2-art"><i class="inv2-mist"></i>${Art.springIcon(false, true)}</div>
+          <div class="dt-info">
+            <div class="det-hp inv2-place">${ru`Родник «${U.esc(e.name)}»`}</div>
+            <div class="inv2-title">${ru`Захвачен Навью`}</div>
+            <div class="det-power"><small>${ru`СИЛА ОТРЯДА`}</small><b>${U.fmtNum(pw(g.team))}</b></div>
+            <div class="inv2-grunt"><span class="inv2-ava">${Art.guardian(g.color)}</span><span><b>${g.name}</b><small>${g.title}</small></span></div>
+          </div>
+        </div>
+        <div class="inv2-quote">«${g.quote}»</div>
+        <div class="dt-panel inv2-body"></div>
+        <div class="inv2-foot"></div>
+      </div>`, 'invasion-screen det-screen');
+    const body = scr.querySelector('.inv2-body'), foot = scr.querySelector('.inv2-foot');
+    const render = () => {
+      const team = S.team(), ko = team.some(x => !S.alive(x)), mine = pw(team);
+      const slots = team.map(x => card(x)).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
+      body.innerHTML = `
+        <div class="pf-mh lg2-th"><span>${ru`Омрачённые духи`}</span><em class="inv2-weak">${ru`слабость`}${weak.map(x => `<i>${Art.elIcon(x, 15)} ${ELEMENTS[x].name}</i>`).join('')}</em></div>
+        <div class="lg2-team">${g.team.map(x => card(x, true)).join('')}</div>
+        <div class="inv2-vs"><i></i><b>${mine >= pw(g.team) ? ru`силы на твоей стороне` : ru`отряд сильнее — бей в слабость`}</b><i></i></div>
+        <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span>${mine ? `<b>${ru`сила ${U.fmtNum(mine)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
+        <div class="lg2-team">${slots}</div>`;
+      foot.innerHTML = `
+        <div class="lg2-rule">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
         ${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}
-      </div>`;
-    const scr = UI.screen(ru`Вторжение Нави`, html, 'shrine-screen invasion-screen');
-    scr.querySelector('.duel-go').onclick = async () => {
+        <button class="btn primary wide duel-go" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;
+    };
+    render();
+    scr.addEventListener('click', async e2 => {
+      if (e2.target.closest('.team-edit, .team-slot')) { UI.pickTeam(() => { if (scr.isConnected) render(); }); return; }
+      if (!e2.target.closest('.duel-go')) return;
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
       this.start({ ...e, kind: 'invasion', tier: 1, T: this.FOE.invasion }, g, S.team());
-    };
-    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
+    });
   },
 
   // Поединок с другом: его сильнейшие духи под управлением игры (команду присылает сервер)

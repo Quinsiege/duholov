@@ -143,16 +143,16 @@ const S = {
   maxLvl() { return Math.min(40, this.d.level + 5); },
   /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
      hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
-     до Rules.HP.KO_MS в бой не идёт, потом поднимается сам на Rules.HP.BACK */
+     до Rules.koMs (2–24 ч по редкости) в бой не идёт, потом поднимается сам на Rules.HP.BACK (10%) */
   hpNow(sp, now = U.now()) {
     const H = Rules.HP;
     if (!sp) return 0;
-    if (sp.ko) { const t = now - sp.ko; return t < H.KO_MS ? 0 : Math.min(1, H.BACK + H.REGEN * (t - H.KO_MS) / 3600000); }
+    if (sp.ko) { const t = now - sp.ko, ko = Rules.koMs(sp); return t < ko ? 0 : Math.min(1, H.BACK + H.REGEN * (t - ko) / 3600000); }
     if (sp.hpf == null) return 1;
     return Math.min(1, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
   },
   alive(sp) { return this.hpNow(sp) > 0; },
-  koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.HP.KO_MS - (now - sp.ko)) : 0; },
+  koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.koMs(sp) - (now - sp.ko)) : 0; },
   setHp(sp, f, now = U.now()) {
     f = Math.max(0, Math.min(1, +f || 0));
     delete sp.ko; delete sp.hpf; delete sp.hpt;
@@ -164,7 +164,8 @@ const S = {
     if (!sp) return ru`Дух не найден`;
     if (!it || !(it.heal || it.revive)) return ru`Этим не лечат`;
     if (!(this.d.items[k] > 0)) return ru`${it.name}: нет в сумке`;
-    if (h <= 0 && !it.revive) return ru`Дух без сил — поднимет только Живая вода`;
+    if (h <= 0 && !it.revive) return ru`Дух без сил — поможет только Мёртвая вода или время`;
+    if (h > 0 && !it.heal) return ru`Мёртвая вода не лечит живых — только поднимает духов без сил`;
     if (h >= 1) return ru`Дух здоров`;
     return null;
   },
@@ -172,7 +173,9 @@ const S = {
     const err = this.canHeal(sp, k); if (err) return err;
     const it = ITEMS[k], h = this.hpNow(sp);
     this.useItem(k);
-    this.setHp(sp, h <= 0 ? it.revive : h + it.heal);
+    // 4.15.1: Мёртвая вода сдвигает время падения на revive часов назад; срок вышел — дух поднимается ровно на BACK (10%)
+    if (h <= 0) { sp.ko -= it.revive * 3600000; if (!this.koLeft(sp)) this.setHp(sp, Rules.HP.BACK); }
+    else this.setHp(sp, h + it.heal);
     this.save();
     return null;
   },

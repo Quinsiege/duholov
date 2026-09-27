@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.15.0';
+const APP_VERSION = '4.15.1';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -427,8 +427,9 @@ const ITEMS = {
   // 4.15: лечение духов (здоровье — общее на всю игру, см. Rules.HP): heal — сколько здоровья вернёт, revive — поднимает духа без сил
   herb:    { name: ru`Подорожник`,         desc: ru`Лист к ране — и полегчало. Возвращает духу четверть здоровья.`, heal: 0.25 },
   brew:    { name: ru`Целебный отвар`,     desc: ru`Травы Велеса, сваренные в родниковой воде. Возвращает духу 60% здоровья.`, heal: 0.6 },
-  deadwater: { name: ru`Мёртвая вода`,     desc: ru`Сказочная вода, что сращивает раны. Залечивает духа полностью. Духа без сил не поднимет.`, heal: 1 },
-  water:   { name: ru`Живая вода`,         desc: ru`Поднимает духа без сил (половина здоровья), а в разломе — лечит прямо в бою.`, heal: 0.5, revive: 0.5 },
+  // 4.15.1: revive — на сколько часов раньше поднимется дух без сил (живых Мёртвая вода не лечит)
+  deadwater: { name: ru`Мёртвая вода`,     desc: ru`Редкая сказочная вода, что сращивает самые тяжкие раны. Дух без сил поднимется на 4 часа раньше. Живых не лечит.`, revive: 4 },
+  water:   { name: ru`Живая вода`,         desc: ru`Возвращает духу половину здоровья, а в разломе — лечит прямо в бою. Духа без сил не поднимет.`, heal: 0.5 },
   incense: { name: ru`Ладан`,              desc: ru`Дымок приманивает духов: 30 минут их вокруг вдвое больше.` },
   farpass: { name: ru`Дальний пропуск`,    desc: ru`Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.` },
   gift:    { name: ru`Подарок`,           desc: ru`Узелок для друга: обереги, мёд, иногда кокон. Отправляется в «Меню → Друзья», раз в день каждому.` },
@@ -1352,7 +1353,7 @@ const W = {
     const lvl = S.d.level, loot = {};
     const n = (4 + Math.floor(r() * 3)) * Ev.lootMul();
     for (let k = 0; k < n; k++) {
-      const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 2.5], ['water', 1.2], ['herb', 4], ['brew', 1.2], ['deadwater', 0.3]]; // 4.15: лечебное
+      const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 2.5], ['water', 1.2], ['herb', 4], ['brew', 1.2], ['deadwater', 0.02]]; // 4.15: лечебное; 4.15.1: Мёртвая вода — ~1 родник из 300
       if (lvl >= 8) opts.push(['charm2', 3]);
       if (lvl >= 16) opts.push(['charm3', 1.5]);
       if (lvl >= 3) opts.push(['incense', 0.25]);
@@ -1579,16 +1580,16 @@ const S = {
   maxLvl() { return Math.min(40, this.d.level + 5); },
   /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
      hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
-     до Rules.HP.KO_MS в бой не идёт, потом поднимается сам на Rules.HP.BACK */
+     до Rules.koMs (2–24 ч по редкости) в бой не идёт, потом поднимается сам на Rules.HP.BACK (10%) */
   hpNow(sp, now = U.now()) {
     const H = Rules.HP;
     if (!sp) return 0;
-    if (sp.ko) { const t = now - sp.ko; return t < H.KO_MS ? 0 : Math.min(1, H.BACK + H.REGEN * (t - H.KO_MS) / 3600000); }
+    if (sp.ko) { const t = now - sp.ko, ko = Rules.koMs(sp); return t < ko ? 0 : Math.min(1, H.BACK + H.REGEN * (t - ko) / 3600000); }
     if (sp.hpf == null) return 1;
     return Math.min(1, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
   },
   alive(sp) { return this.hpNow(sp) > 0; },
-  koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.HP.KO_MS - (now - sp.ko)) : 0; },
+  koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.koMs(sp) - (now - sp.ko)) : 0; },
   setHp(sp, f, now = U.now()) {
     f = Math.max(0, Math.min(1, +f || 0));
     delete sp.ko; delete sp.hpf; delete sp.hpt;
@@ -1600,7 +1601,8 @@ const S = {
     if (!sp) return ru`Дух не найден`;
     if (!it || !(it.heal || it.revive)) return ru`Этим не лечат`;
     if (!(this.d.items[k] > 0)) return ru`${it.name}: нет в сумке`;
-    if (h <= 0 && !it.revive) return ru`Дух без сил — поднимет только Живая вода`;
+    if (h <= 0 && !it.revive) return ru`Дух без сил — поможет только Мёртвая вода или время`;
+    if (h > 0 && !it.heal) return ru`Мёртвая вода не лечит живых — только поднимает духов без сил`;
     if (h >= 1) return ru`Дух здоров`;
     return null;
   },
@@ -1608,7 +1610,9 @@ const S = {
     const err = this.canHeal(sp, k); if (err) return err;
     const it = ITEMS[k], h = this.hpNow(sp);
     this.useItem(k);
-    this.setHp(sp, h <= 0 ? it.revive : h + it.heal);
+    // 4.15.1: Мёртвая вода сдвигает время падения на revive часов назад; срок вышел — дух поднимается ровно на BACK (10%)
+    if (h <= 0) { sp.ko -= it.revive * 3600000; if (!this.koLeft(sp)) this.setHp(sp, Rules.HP.BACK); }
+    else this.setHp(sp, h + it.heal);
     this.save();
     return null;
   },
@@ -2846,30 +2850,50 @@ const Duel = {
 
   // Захваченный родник: поединок с прислужником Нави
   openInvasion(e) {
+    // 4.15.1: в композиции карточки духа — сверху захваченный родник в тёмном круге Нави, справа «Захвачен Навью»,
+    // сила отряда, прислужник и слабость отряда; ниже — омрачённые духи против твоей команды, внизу — «Сразиться»
     const g = W.grunt(e);
-    let team = S.team();
-    const html = `
-      <div class="shrine-view invasion">
-        <div class="shrine-idol">${Art.springIcon(false, true)}</div>
-        <div class="rift-title">${ru`Родник «${U.esc(e.name)}» захвачен Навью!`}</div>
-        <div class="guard"><div class="guard-ava dark">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${g.title}</small></div></div>
-        <div class="grunt-quote">«${g.quote}»</div>
-        <div class="rift-team-title">${ru`Омрачённые духи`}</div>
-        <div class="rift-team">${UI.teamHtml(g.team)}</div>
-        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
-        <div class="rift-tip">${ru`Слабость отряда: ${ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el)).map(x => `${Art.elIcon(x, 16)} ${ELEMENTS[x].name}`).join(' ')}`}</div>
-        <div class="rift-tip">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
+    const pw = t => t.reduce((a, x) => a + S.power(x), 0);
+    const weak = ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el));
+    const card = (x, foe) => `<${foe ? 'div' : 'button'} class="lg2-mem el-${SP[x.sid].el} ${foe ? 'inv2-dark' : S.alive(x) ? 'team-edit' : 'ko team-edit'}"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${foe ? '' : UI.hpBar(x)}</${foe ? 'div' : 'button'}>`;
+    const scr = UI.screen(ru`Вторжение Нави`, `
+      <div class="det det2 inv2 el-${g.el}">
+        <div class="dt-hero">
+          <div class="det-art inv2-art"><i class="inv2-mist"></i>${Art.springIcon(false, true)}</div>
+          <div class="dt-info">
+            <div class="det-hp inv2-place">${ru`Родник «${U.esc(e.name)}»`}</div>
+            <div class="inv2-title">${ru`Захвачен Навью`}</div>
+            <div class="det-power"><small>${ru`СИЛА ОТРЯДА`}</small><b>${U.fmtNum(pw(g.team))}</b></div>
+            <div class="inv2-grunt"><span class="inv2-ava">${Art.guardian(g.color)}</span><span><b>${g.name}</b><small>${g.title}</small></span></div>
+          </div>
+        </div>
+        <div class="inv2-quote">«${g.quote}»</div>
+        <div class="dt-panel inv2-body"></div>
+        <div class="inv2-foot"></div>
+      </div>`, 'invasion-screen det-screen');
+    const body = scr.querySelector('.inv2-body'), foot = scr.querySelector('.inv2-foot');
+    const render = () => {
+      const team = S.team(), ko = team.some(x => !S.alive(x)), mine = pw(team);
+      const slots = team.map(x => card(x)).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
+      body.innerHTML = `
+        <div class="pf-mh lg2-th"><span>${ru`Омрачённые духи`}</span><em class="inv2-weak">${ru`слабость`}${weak.map(x => `<i>${Art.elIcon(x, 15)} ${ELEMENTS[x].name}</i>`).join('')}</em></div>
+        <div class="lg2-team">${g.team.map(x => card(x, true)).join('')}</div>
+        <div class="inv2-vs"><i></i><b>${mine >= pw(g.team) ? ru`силы на твоей стороне` : ru`отряд сильнее — бей в слабость`}</b><i></i></div>
+        <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span>${mine ? `<b>${ru`сила ${U.fmtNum(mine)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
+        <div class="lg2-team">${slots}</div>`;
+      foot.innerHTML = `
+        <div class="lg2-rule">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
         ${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}
-      </div>`;
-    const scr = UI.screen(ru`Вторжение Нави`, html, 'shrine-screen invasion-screen');
-    scr.querySelector('.duel-go').onclick = async () => {
+        <button class="btn primary wide duel-go" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;
+    };
+    render();
+    scr.addEventListener('click', async e2 => {
+      if (e2.target.closest('.team-edit, .team-slot')) { UI.pickTeam(() => { if (scr.isConnected) render(); }); return; }
+      if (!e2.target.closest('.duel-go')) return;
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
       this.start({ ...e, kind: 'invasion', tier: 1, T: this.FOE.invasion }, g, S.team());
-    };
-    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
+    });
   },
 
   // Поединок с другом: его сильнейшие духи под управлением игры (команду присылает сервер)
@@ -3422,10 +3446,11 @@ const Rules = {
     { id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)
     { id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },
     { id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },
-    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: поднимает духа без сил`,       cur: 'sparks', price: 1500, give: { water: 5 } },
+    { id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: половина здоровья, в разломе — прямо в бою`, cur: 'sparks', price: 1500, give: { water: 5 } },
     { id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },
     { id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },
-    { id: 'dead3',    name: ru`Мёртвая вода`,        desc: ru`3 флакона: залечивает духа полностью`,     cur: 'zlat',   price: 40,   give: { deadwater: 3 } },
+    // 4.15.1: Мёртвая вода — редкость: в Лавке один флакон в день (day — сколько раз в день можно купить), в товар дня не попадает
+    { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в день: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 60, give: { deadwater: 1 }, day: 1 },
     { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
     { id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
@@ -3435,11 +3460,13 @@ const Rules = {
   ],
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
-  // без сил (здоровье 0) — в бой не идёт и через KO_MS поднимается сам на BACK (или сразу — Живой водой)
-  HP: { REGEN: 0.1, KO_MS: 4 * 3600000, BACK: 0.5 },
+  // без сил (здоровье 0) — в бой не идёт и поднимается сам на BACK через KO_H часов (по редкости духа: от 2 до 24);
+  // 4.15.1: Мёртвая вода сокращает ожидание на ITEMS.deadwater.revive часов, Живая вода духа без сил не поднимает
+  HP: { REGEN: 0.1, KO_H: { 1: 2, 2: 5, 3: 9, 4: 15, 5: 24 }, BACK: 0.1 },
+  koMs(sp) { return (this.HP.KO_H[(SP[sp.sid] || {}).rar] || 2) * 3600000; },
   // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
   shopDeal(day) {
-    const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl); // товар дня доступен любому уровню
+    const pool = this.SHOP.filter(x => (x.give || x.cocoon) && !x.lvl && !x.day); // товар дня доступен любому уровню; редкое (day) — без скидки
     const it = pool[Math.floor(U.h('deal', day) * pool.length)];
     return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
   },
@@ -4216,7 +4243,7 @@ const GameCore = {
       this.need(sp, ru`Дух не найден`);
       const k = String(a.k || ''), err = S.heal(sp, k);
       this.need(!err, err);
-      return { uid: sp.uid, hp: S.hpNow(sp), left: S.d.items[k] || 0 };
+      return { uid: sp.uid, hp: S.hpNow(sp), ko: S.koLeft(sp), left: S.d.items[k] || 0 };
     },
     incense(a, ctx) {
       this.need(!S.incenseActive(), ru`Ладан ещё горит`);
@@ -4549,6 +4576,7 @@ const GameCore = {
         it = { ...it, price: Rules.bagPrice(S.d.bagExtra) };
       }
       this.need(!it.lvl || S.d.level >= it.lvl, ru`Откроется на ${it.lvl} уровне`);
+      if (it.day) this.need((this.dayc(ctx)['shop:' + it.id] || 0) < it.day, ru`Сегодня уже куплено — приходи завтра`); // 4.15.1: редкий товар — сколько-то раз в день
       if (it.cocoon) this.need(S.d.cocoons.length < 9, ru`Коконов уже девять — выведи кого-нибудь`);
       if (it.give) {
         const n = Object.values(it.give).reduce((s, x) => s + x, 0);
@@ -4562,6 +4590,7 @@ const GameCore = {
       if (it.bag) { S.d.bagExtra++; got = [{ k: 'bag', n: Rules.BAG_STEP, label: ru`Мест в сумке` }]; }
       else got = this.grant({ ...(it.give || {}), cocoon: it.cocoon || 0, amulet: it.amulet ? 1 : 0, look: it.look || null });
       if (a.deal) S.d.shop.deal = today;
+      if (it.day) this.dayAdd(ctx, 'shop:' + it.id);
       J.add('shop', { name: it.name });
       return { got, price: it.price, cur: key };
     },
@@ -4758,7 +4787,8 @@ const GameCore = {
       if (run.xp !== false) S.addXP(win ? 400 + run.k * 200 : 100);
       const res = { win, gained, last, k: run.k, won: run.won, pts: L.pts, ptsGot: L.pts - (run.pts0 != null ? run.pts0 : was), rNew, rank0: run.rank0, rewards };
       // строка таблицы сезона — после каждого боя: рейтинг меняют и победы, и поражения
-      if (a.board !== false) ctx.after.push(() => ctx.env.leagueScore({ season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }));
+      // 4.15.1: строку собираем сразу — after выполняется после сохранения, вне запроса, где S.d уже пуст (раньше запись падала)
+      if (a.board !== false) { const row = { season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }; ctx.after.push(() => ctx.env.leagueScore(row)); }
       if (last) {
         J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
         L.run = null;

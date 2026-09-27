@@ -103,25 +103,31 @@ Object.assign(UI, {
   healPick(sp, done) {
     const opts = S.healItems().map(k => {
       const it = ITEMS[k], n = S.d.items[k] || 0, err = S.canHeal(sp, k);
-      const eff = S.hpNow(sp) <= 0 ? (it.revive ? ru`поднимет на ${it.revive * 100}%` : ru`не поднимет без сил`) : it.heal >= 1 ? ru`полностью` : `+${Math.round(it.heal * 100)}%`;
+      const eff = S.hpNow(sp) <= 0 ? (it.revive ? ru`поднимет на ${it.revive} ч раньше` : ru`не поднимет без сил`) : !it.heal ? ru`только для духа без сил` : it.heal >= 1 ? ru`полностью` : `+${Math.round(it.heal * 100)}%`;
       return `<button class="heal-opt ${err ? 'off' : ''}" data-k="${k}" ${err ? `data-err="${U.esc(err)}"` : ''}><span class="heal-ico">${Art.item(k)}</span><span class="heal-t"><b>${it.name}</b><small>${eff}</small></span><em>×${n}</em></button>`;
     }).join('');
     const m = this.modal({ title: ru`Лечить: ${U.esc(sp.nick || SP[sp.sid].name)}`, cls: 'heal-modal',
-      html: `<div class="heal-now">${ru`Здоровье: <b>${this.hpText(sp)}</b>`}</div><div class="heal-opts">${opts}</div><p class="small">${ru`Лечебное — в родниках, в Лавке и в наградах за уровень. Раненый дух и сам восстанавливает ${Rules.HP.REGEN * 100}% в час.`}</p>`,
+      html: `<div class="heal-now">${ru`Здоровье: <b>${this.hpText(sp)}</b>`}</div><div class="heal-opts">${opts}</div><p class="small">${ru`Лечебное — в родниках, в Лавке и в наградах за уровень. Раненый дух и сам восстанавливает ${Rules.HP.REGEN * 100}% в час.`} ${ru`Дух без сил поднимается сам на ${Rules.HP.BACK * 100}% — чем реже дух, тем дольше ждать (от ${Rules.HP.KO_H[1]} до ${Rules.HP.KO_H[5]} ч).`}</p>`,
       buttons: [{ label: ru`Закрыть` }] });
     m.querySelector('.heal-opts').addEventListener('click', async e => {
       const b = e.target.closest('.heal-opt'); if (!b) return;
       if (b.dataset.err) { this.toast(b.dataset.err); return; }
       const r = await Game.try('heal', { uid: sp.uid, k: b.dataset.k });
       if (!r) return;
-      Sfx.play('hatch'); this.toast(ru`${U.esc(sp.nick || SP[sp.sid].name)}: здоровье ${Math.round(r.hp * 100)}%`, 'good');
+      Sfx.play('hatch'); this.healDone(sp, r);
       m.close(); done && done();
     });
   },
-  // лечение из Сумки: выбрать раненого духа
+  // итог лечения: здоровье или сколько ещё ждать духу без сил
+  healDone(sp, r) {
+    const name = U.esc(sp.nick || SP[sp.sid].name);
+    this.toast(r.hp > 0 ? ru`${name}: здоровье ${Math.round(r.hp * 100)}%` : ru`${name} поднимется через ${U.fmtTime(r.ko || 0)}`, 'good');
+  },
+  // лечение из Сумки: выбрать духа (Мёртвая вода — только духи без сил, остальное — раненые живые)
   healWho(k, done) {
-    const list = S.d.spirits.filter(x => S.hpNow(x) < 1).sort((a, b) => S.hpNow(a) - S.hpNow(b));
-    if (!list.length) { this.toast(ru`Все духи здоровы`); return; }
+    const rev = !ITEMS[k].heal;
+    const list = S.d.spirits.filter(x => rev ? !S.alive(x) : S.alive(x) && S.hpNow(x) < 1).sort((a, b) => S.hpNow(a) - S.hpNow(b) || S.koLeft(a) - S.koLeft(b));
+    if (!list.length) { this.toast(rev ? ru`Духов без сил нет` : ru`Все духи здоровы`); return; }
     const m = this.modal({ title: ru`${ITEMS[k].name}: кого лечить?`, cls: 'team-modal',
       html: `<div class="grid cards team-grid">${list.map(x => `<button class="card el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'}" data-uid="${x.uid}"><div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
         <div class="card-art">${Art.imgOf(x)}</div><div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
@@ -132,7 +138,7 @@ Object.assign(UI, {
       if (err) { this.toast(err); return; }
       const r = await Game.try('heal', { uid: sp.uid, k });
       if (!r) return;
-      Sfx.play('hatch'); this.toast(ru`${U.esc(sp.nick || SP[sp.sid].name)}: здоровье ${Math.round(r.hp * 100)}%`, 'good');
+      Sfx.play('hatch'); this.healDone(sp, r);
       m.close(); done && done();
     });
   },
@@ -151,7 +157,7 @@ Object.assign(UI, {
     m.querySelector('.team-grid').addEventListener('click', e => {
       const c = e.target.closest('.card'); if (!c) return;
       const i = chosen.indexOf(c.dataset.uid);
-      if (i < 0 && !S.alive(S.findSpirit(c.dataset.uid))) { this.toast(ru`Дух без сил — вылечи его Живой водой или подожди`); return; }
+      if (i < 0 && !S.alive(S.findSpirit(c.dataset.uid))) { this.toast(ru`Дух без сил — подожди или подними его Мёртвой водой`); return; }
       if (i >= 0) chosen.splice(i, 1);
       else if (chosen.length < 3) chosen.push(c.dataset.uid);
       else { this.toast(ru`В команде уже три духа`); return; }
