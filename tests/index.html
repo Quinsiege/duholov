@@ -440,13 +440,23 @@
         near(pw(g30[t - 1].team) / (top30 * 3), SHRINE_TIERS[t].pow, SHRINE_TIERS[t].pow * 0.2, `сила хранителя ${t}-й ступени — ${SHRINE_TIERS[t].pow} от силы игрока`);
         ok(g30[t - 1].team.every(x => x.lvl >= 1 && x.lvl <= 40), 'уровни духов хранителя — от 1 до 40');
       });
-      ok(pw(g30[2].team) > pw(g30[0].team), 'Старейшина сильнее Ученика');
+      ok(SHRINE_TIERS[3].speed < SHRINE_TIERS[1].speed && SHRINE_TIERS[3].shield > SHRINE_TIERS[1].shield, 'Старейшина бьёт чаще Ученика и чаще ставит щиты');
+      ok(g30.every((g, i) => g.speed > 0 && g.speed <= SHRINE_TIERS[i + 1].speed), 'темп хранителя — не реже обычного для ступени');
       // выбранная команда соперника не ослабляет: ориентир — сильнейшие духи, а не команда
       S.d.team = [S.d.spirits[3].uid];
       eq(pw(W.guardian({ id: 'osm:n4242', tier: 2 }).team), pw(g30[1].team), 'слабая команда — тот же хранитель');
       const inv = W.grunt({ invId: 'osm:n9:77' });
       ok(inv.team.every(x => x.dark && SP[x.sid].el === inv.el), 'отряд — омрачённые одной стихии');
       near(pw(inv.team) / (top30 * 3), Duel.FOE.invasion.pow, Duel.FOE.invasion.pow * 0.2, 'сила отряда — от силы игрока');
+      // сильнейший без сил — соперник слабее, но не ниже 3/4 от силы по всем духам
+      S.d.team = []; S.d.spirits[0].ko = Date.now();
+      const koTop = W.topPower(); delete S.d.spirits[0].ko;
+      ok(koTop < top30 && koTop >= top30 * 0.75 - 1e-9, 'без сил — соперник слабее, но не ниже 3/4');
+      // у игрока легенды 40-го уровня: обычным видам силы не хватает — хранитель бьёт чаще
+      S.d.spirits = ['zharptica', 'koschey', 'gorynych'].map((sid, i) => S.makeSpirit(sid, 40, 'lg' + i, { ivMin: 15 }));
+      const gL = W.guardian({ id: 'osm:n4242', tier: 1 });
+      ok(gL.speed < SHRINE_TIERS[1].speed && gL.speed >= SHRINE_TIERS[1].speed * 0.5, 'не хватает силы — чаще бьёт, но не больше чем вдвое');
+      ok(gL.team.every(x => !SP[x.sid].legend && x.lvl <= 40), 'без легенд и не выше 40 уровня');
       // новичок с одним духом: пустые места — ноль, хранитель ему по силам
       S.d.spirits = [S.makeSpirit('ugolek', 5, 'solo')]; S.d.team = [];
       const g1 = W.guardian({ id: 'osm:n4243', tier: 1 });

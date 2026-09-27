@@ -25,7 +25,7 @@ function duel(G, me, foe, T, sk, rnd = Math.random) {
     return best;
   };
   A.idx = Math.max(0, pickBest());
-  let t = Duel.TIME, dealt = 0;
+  let t = Duel.TIME, dealt = 0, pause = 0; // pause — паузы на приёмы и смену духа: игровое время стоит, настоящее идёт
   const tapGap = 0.5 / sk.tap;
   let nextTap = tapGap * rnd();
   const dt = 0.05;
@@ -33,8 +33,8 @@ function duel(G, me, foe, T, sk, rnd = Math.random) {
     const s = side === 'A' ? A : B;
     const alive = s.team.some(x => x.cur > 0);
     if (!alive) return true;
-    if (side === 'B') { s.idx = s.team.findIndex(x => x.cur > 0); s.busy = 1.2; } // добровольную смену (перезарядка 25 с) не моделируем
-    else { A.idx = pickBest(); A.busy = 0.3; }
+    if (side === 'B') { s.idx = s.team.findIndex(x => x.cur > 0); s.busy = 1.2; pause += 0.9; } // добровольную смену (перезарядка 25 с) не моделируем
+    else { A.idx = pickBest(); A.busy = 0.3; pause += 1.5; }
     return false;
   };
   let over = null;
@@ -44,7 +44,7 @@ function duel(G, me, foe, T, sk, rnd = Math.random) {
     // соперник
     if (B.busy <= 0) {
       if (f.energy >= Duel.COST && (rnd() < 0.45 || m.cur < m.max * 0.35)) {
-        f.energy -= Duel.COST;
+        f.energy -= Duel.COST; pause += 1;
         const useShield = A.shields > 0 && rnd() < sk.shield;
         let n;
         if (useShield) { A.shields--; n = 1; } else n = Raid.dmg(f.atk, m.def, Duel.CHARGE, f.el, m.el);
@@ -62,7 +62,7 @@ function duel(G, me, foe, T, sk, rnd = Math.random) {
     const mm = A.team[A.idx];
     const kind = mm.energy >= MOVES.charge.cost ? 'charge' : mm.move2 && mm.energy >= MOVES.charge2.cost ? 'charge2' : null;
     if (kind) {
-      mm.energy -= MOVES[kind].cost;
+      mm.energy -= MOVES[kind].cost; pause += 2.2;
       const taps = Math.max(0, sk.orb + (rnd() - 0.5) * 4), mult = 0.55 + 0.45 * Math.min(1, taps / 12);
       const ff = B.team[B.idx];
       const shield = B.shields > 0 && rnd() < T.shield * (ff.cur < ff.max * 0.5 ? 1.2 : 0.9);
@@ -85,7 +85,7 @@ function duel(G, me, foe, T, sk, rnd = Math.random) {
   const win = over ? over === 'A' : share(A) >= share(B);
   const hp = {};
   A.team.forEach(x => { hp[x.sp.uid] = Math.round(Math.max(0, x.cur) / x.max * 1000) / 1000; });
-  return { win, t: Duel.TIME - Math.max(0, t), hp, dealt };
+  return { win, t: Duel.TIME - Math.max(0, t) + pause, hp, dealt };
 }
 
 // Разлом (raid.js): players — [{ team: [{ sp, hpf }], sk, waterLeft }] (первый — сам игрок, остальные — союзники), r — разлом { tier, boss, rl }

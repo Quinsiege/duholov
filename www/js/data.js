@@ -577,8 +577,8 @@ const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за кажд
 // реже игрока — и сильный Ловчий не проигрывал (169:0). Ориентир побед живого игрока своей командой: Ученик и Мастер — ~70%, Старейшина — ~45%
 const SHRINE_TIERS = {
   1: { title: ru`Ученик`,     pow: 1.4,  speed: 0.6,  shield: 0.35, xp: 800,  sparks: 300 },
-  2: { title: ru`Мастер`,     pow: 1.3,  speed: 0.52, shield: 0.6,  xp: 1500, sparks: 600 },
-  3: { title: ru`Старейшина`, pow: 1.4,  speed: 0.45, shield: 0.85, xp: 3000, sparks: 1200 },
+  2: { title: ru`Мастер`,     pow: 1.2,  speed: 0.52, shield: 0.6,  xp: 1500, sparks: 600 },
+  3: { title: ru`Старейшина`, pow: 1.3,  speed: 0.45, shield: 0.85, xp: 3000, sparks: 1200 },
 };
 /* ---------- Праздники (v1.4) ---------- */
 const HOLIDAYS = {

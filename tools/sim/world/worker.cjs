@@ -87,9 +87,13 @@ async function heal() {
       }
       continue;
     }
-    if (h < 0.7 && h < me(() => S.hpCap ? S.hpCap(sp) : 1) - 0.05) { // 4.16: усталого выше предела не вылечить — не тратит лечебное
-      const k = h < 0.35 && it.brew > 0 ? 'brew' : it.water > 0 && h < 0.45 ? 'water' : it.herb > 0 ? 'herb' : it.brew > 0 ? 'brew' : it.water > 0 ? 'water' : null;
-      if (k && await act('heal', { uid, k })) D.heals++;
+    // перед боем лечит до ~85% (до 3 предметов на духа); 4.16: усталого выше предела не вылечить — лечебное не тратит
+    for (let n = 0; n < 3; n++) {
+      const hh = me(() => S.hpNow(sp)), cap = me(() => S.hpCap(sp)), it2 = P.data.items;
+      if (!(hh < 0.85 && hh < cap - 0.05)) break;
+      const k = hh < 0.35 && it2.brew > 0 ? 'brew' : it2.water > 0 && hh < 0.45 ? 'water' : it2.herb > 0 ? 'herb' : it2.brew > 0 ? 'brew' : it2.water > 0 ? 'water' : null;
+      if (!k || !await act('heal', { uid, k })) break;
+      D.heals++;
     }
   }
 }
@@ -200,6 +204,7 @@ async function invasionAt(p) {
   if (!ready()) return;
   const e = me(() => W.springFor(p, 0)); if (!e.invaded) return;
   const g = me(() => W.grunt(e));
+  if (teamPow(g.team) > teamPow(team()) * 1.5) return; // отряд явно сильнее — не идёт
   if (!await act('invStart', { spring: { id: p.id, lat: p.lat, lng: p.lng, name: p.name } })) return;
   const o = duelOutcome(team(), g.team, g.speed, Duel.FOE.invasion.shield);
   adv(o.t + Rules.COUNTDOWN);
