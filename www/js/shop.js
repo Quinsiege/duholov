@@ -34,7 +34,7 @@ const Loot = {
   },
 };
 
-// Казна Ордена: златники за рубли. Страница оплаты — ЮKassa (карта, СБП, SberPay, T-Pay, ЮMoney, баланс телефона);
+// Казна Ордена: златники за рубли. Страница оплаты — ЮKassa (карта, СБП, SberPay, T-Pay, ЮMoney);
 // итог сервер узнаёт у ЮKassa сам (Game.pay('sync')), а начисляет действие payClaim.
 const Treasury = {
   KEY: 'duholov.pay.open', // ждём итог оплаты (удобство: проверить при возвращении в игру)
@@ -52,7 +52,7 @@ const Treasury = {
         ${p.hot ? `<span class="pay-hot">${ru`Выгодно`}</span>` : p.bonus ? `<span class="pay-bonus">+${p.bonus}%</span>` : ''}
         <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}</small>
         <span class="pay-price">${U.fmtNum(p.rub)} ₽</span></button>`).join('')}</div>
-      <div class="q-note">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.`} <button class="linkish pay-offer">${ru`Оферта`}</button>${this.waiting() ? ` <button class="linkish pay-recheck">${ru`Я оплатил — проверить`}</button>` : ''}</div>`;
+      <div class="q-note">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class="linkish pay-offer">${ru`Оферта`}</button>${this.waiting() ? ` <button class="linkish pay-recheck">${ru`Я оплатил — проверить`}</button>` : ''}</div>`;
   },
   buy(id, info, onDone) {
     const p = Rules.PAY.find(x => x.id === id);
@@ -60,7 +60,7 @@ const Treasury = {
       title: ru`Казна Ордена`, cls: 'pay-modal pay-buy',
       html: `<div class="pay-sum">${Art.item('zlat')}<div><b>${ru`${U.fmtNum(p.zlat)} ${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}`}</b><small>${p.bonus ? ru`с бонусом +${p.bonus}%` : ru`набор`}</small></div><span>${U.fmtNum(p.rub)} ₽</span></div>
         ${info.receipt ? `<input type="email" class="pay-email" placeholder="${ru`Почта для чека`}" autocomplete="email" inputmode="email">` : ''}
-        <p class="pay-note">${ru`Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney или баланс телефона. После оплаты вернись в игру — златники придут сами.`}</p>
+        <p class="pay-note">${ru`Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay или ЮMoney. После оплаты вернись в игру — златники придут сами.`}</p>
         <p class="pay-note">${ru`Оплачивая, ты принимаешь условия ${`<button class="linkish pay-offer">${ru`публичной оферты`}</button>`}.`}</p>`,
       buttons: [{ label: ru`Отмена` }, { label: ru`Оплатить ${U.fmtNum(p.rub)} ₽`, cls: 'primary', keep: true, fn: async () => {
         const email = info.receipt ? m.querySelector('.pay-email').value.trim() : '';
