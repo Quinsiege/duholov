@@ -438,7 +438,7 @@ const Encounter = {
       // 4.17: дух картинкой (если нарисован) — с тем же оттенком сияния и омрачением, что в игре
       const pic = Art.picUrl(st.sp.sid), svg = pic ? null : Art.svgOf(st.sp).replace('<svg class="art"', `<svg width="${Math.round(size * 2)}" height="${Math.round(size * 2)}"`);
       const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = pic || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
-      if (pic) g.filter = Art.picFilter(st.sp.sid, st.sp.shiny, st.sp.dark) || 'none';
+      if (pic) g.filter = Art.picFilter(st.sp.sid, st.sp.shiny, st.sp.dark, true) || 'none';
       g.drawImage(img, st.cx - size / 2, st.cy - size / 2, size, size);
       g.filter = 'none';
       // подпись
