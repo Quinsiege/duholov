@@ -2731,14 +2731,17 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .stc-back i { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
 /* клей под плёнкой: чуть темнее и теплее, влажный блеск */
 .stc-glue { background: radial-gradient(120% 90% at 80% 85%, rgba(255, 255, 255, .5), transparent 55%), linear-gradient(150deg, #d9d6cf, #c6c2ba); }
-/* защитная плёнка: ровная матовая белая, мягкий блик по повороту */
-.stc-liner { background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .45) 50%, transparent 65%) var(--hp, 50%) 50% / 260% 100%, linear-gradient(160deg, #eceef2, #dfe2e8 60%, #e8eaee);
+/* защитная плёнка: тусклая серовато-молочная, узор косых полосок (как на подложке стикеров), мягкий блик по повороту */
+.stc-liner { background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .22) 50%, transparent 62%) var(--hp, 50%) 50% / 260% 100%,
+    repeating-linear-gradient(-45deg, rgba(90, 98, 115, .22) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(-45deg, transparent 0 4px, rgba(255, 255, 255, .18) 4px 5px, transparent 5px 9px),
+    linear-gradient(160deg, #b9bdc6, #a9aeb8 60%, #b3b7c0);
   clip-path: polygon(0 0, 100% 0, 100% calc((var(--pc) - 1) * 100%), calc((var(--pc) - 1) * 100%) 100%, 0 100%); }
 /* отогнутый лоскут: угол плёнки за линией сгиба, отражённый через неё; тень от лоскута — на обёртке (фильтр до маски не доживает) */
 .stc-flapw { position: absolute; inset: 0; filter: drop-shadow(-2px -2px 3px rgba(15, 23, 42, .35)); }
 .stc-flap { transform-origin: 0 0; transform: translate(calc(var(--pc) * 100%), calc(var(--pc) * 100%)) matrix(0, -1, -1, 0, 0, 0);
   clip-path: polygon(100% calc((var(--pc) - 1) * 100%), 100% 100%, calc((var(--pc) - 1) * 100%) 100%);
-  background: linear-gradient(to bottom right, #aeb3bd calc((var(--pc) - 1) * 50% + 25%), #eef0f3 calc((var(--pc) - 1) * 50% + 45%), #ffffff 80%, #dfe2e7); }
+  background: linear-gradient(to bottom right, #8e939e calc((var(--pc) - 1) * 50% + 25%), #c6cad2 calc((var(--pc) - 1) * 50% + 45%), #d6d9df 80%, #bfc3cb); } /* изнанка плёнки — гладкая, без узора */
 @keyframes stcPeel { from { --pc: 1.56; } to { --pc: 1.46; } }
 .calm .stc-back { animation: none; }
 .calm .sp-pic > *, .calm .sp-pic .sp-smoke, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }
