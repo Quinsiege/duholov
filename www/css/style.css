@@ -3990,3 +3990,27 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .inv2-foot { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
 .inv2-foot .day-left { text-align: center; margin: 0; }
 .calm .inv2-mist, .calm .inv2-art > svg, .calm .inv2-art > img { animation: none; }
+
+/* ================= 4.16: пробуждение духов, эссенция Рода, подсказки Летописи ================= */
+.aw-mark { position: absolute; right: 7px; bottom: 34px; z-index: 1; font-family: var(--f-head); font-size: 11px; font-weight: 700; color: #fde68a; text-shadow: 0 0 6px rgba(251, 191, 36, .6); }
+.det2 .det-tags .aw-t { color: #fde68a; letter-spacing: 1px; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.dt-row.dt-aw { width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; color: inherit; font: inherit; cursor: pointer; }
+.dt-row.dt-aw small { font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 11.5px; color: rgba(255, 255, 255, .55); }
+.aw-stars { font-style: normal; color: #fde68a; letter-spacing: 1px; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.aw-stars s, .aw-big s { text-decoration: none; color: rgba(255, 255, 255, .28); text-shadow: none; }
+.dt-go { font-style: normal; font-size: 18px; color: rgba(255, 255, 255, .45); }
+.dt-plus { width: 24px; height: 24px; margin-left: 4px; padding: 0; border-radius: 50%; border: 1px solid rgba(253, 230, 138, .45); background: rgba(253, 230, 138, .12);
+  color: #fde68a; font: 700 16px/1 var(--f-head); cursor: pointer; }
+.det2 .det-power .aw-big { font-size: 23px; letter-spacing: 0; line-height: 1.2; white-space: nowrap; color: #fde68a; text-shadow: 0 0 12px rgba(251, 191, 36, .5); }
+.aw-screen .det-hp .dt-up { font-style: normal; color: #fde68a; }
+.dt-row.aw-have > b { color: #86efac; }
+.dt-row.aw-need > b { color: #fca5a5; }
+.dt-row > b small { font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 12px; color: rgba(255, 255, 255, .5); }
+.aw-ok { font-style: normal; color: #86efac; }
+.dt-pane[data-pane=star] .det-actions.top, .dt-pane[data-pane=ess] .det-actions.top { margin-top: auto; }
+.dt-pane[data-pane=star] .det-actions .btn, .dt-pane[data-pane=ess] .det-actions .btn { min-height: 50px; font-size: 15px; padding-top: 6px; padding-bottom: 6px; }
+.dt-pane[data-pane=star] .det-actions .btn small, .dt-pane[data-pane=ess] .det-actions .btn small { font-size: 11px; }
+.qd-hint { display: block; margin-top: 2px; font-size: 12px; line-height: 1.35; color: rgba(255, 255, 255, .6); }
+.qd-go { padding: 0; border: 0; background: none; color: var(--gold2); font-size: 12px; font-weight: 700; line-height: 1.35; cursor: pointer; white-space: nowrap; }
+.story-card.locked { border-color: rgba(255, 255, 255, .18); background: linear-gradient(160deg, rgba(148, 163, 184, .14), rgba(94, 234, 212, .04)); }
+.story-lock { margin: 0 0 8px; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.4; color: #fde68a; background: rgba(251, 191, 36, .1); box-shadow: inset 0 0 0 1px rgba(251, 191, 36, .25); }

@@ -46,7 +46,10 @@ async function act(type, args = {}) {
   const lvl0 = P.data ? P.data.level : 0;
   P.data = res.data; P.srv = res.srv;
   for (const fn of res.after) await fn();
-  if (P.data.level > lvl0) for (let l = lvl0 + 1; l <= P.data.level; l++) D.lvlT[l] = SIM_T;
+  if (P.data.level > lvl0) {
+    const pw = me(() => Math.max(0, ...S.d.spirits.map(x => S.power(x)))); // 4.16: сила сильнейшего духа на каждом уровне
+    for (let l = lvl0 + 1; l <= P.data.level; l++) { D.lvlT[l] = SIM_T; (D.powAt = D.powAt || {})[l] = pw; }
+  }
   return res.results[0];
 }
 const pick = dist => { let x = Math.random(); for (const [v, w] of dist) { if ((x -= w) < 0) return v; } return dist[dist.length - 1][0]; };
@@ -357,6 +360,24 @@ async function social() {
   for (const f of fr) { if (!(P.data.items.gift > 0)) break; const xp0 = P.data.xp; if (f.sent !== me(() => U.today()) && await act('giftSend', { pid: f.id })) { D.giftsSent++; xpAdd('друзья', xp0); } }
 }
 
+// ---------- 4.16: эссенция Рода ----------
+// лишнюю эссенцию чужих семейств (сверх 150) — в Рода; Рода — сильнейшим, кому эссенции не хватает (и легендам)
+async function essence() {
+  if (!S.AWAKE) return; // сервер до 4.16 — без эссенции Рода (для сравнения прогонов)
+  const top = me(() => [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 6));
+  const keep = new Set(top.map(x => SP[x.sid].fam));
+  for (const [f, n] of Object.entries(P.data.essence)) {
+    if (!SP[f] || SP[f].legend || keep.has(f)) continue;
+    const k = Math.floor((n - 150) / 5);
+    if (k >= 1 && await act('essMelt', { fam: f, n: k })) D.melt = (D.melt || 0) + k;
+  }
+  for (const sp of top.slice(0, 3)) {
+    const fam = SP[sp.sid].fam, rate = me(() => S.pourRate(fam)), c = me(() => S.awakenCost(sp));
+    const want = Math.max(0, 25 + (c ? c.essence : 0) - (P.data.essence[fam] || 0)), k = Math.min(want, Math.floor((P.data.rod || 0) / rate));
+    if (k >= 1 && await act('essPour', { fam, n: k })) D.pour = (D.pour || 0) + k;
+  }
+}
+
 // ---------- вечерние дела ----------
 async function chores() {
   let xp0 = P.data.xp;
@@ -384,10 +405,18 @@ async function chores() {
     if (await act('evolve', { uid: c.uid })) D.evolve++;
   }
   xpAdd('превращения', xp0);
+  await essence();
   for (let n = 0; n < 300; n++) {
     const sp = me(() => [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 6).find(x => !S.canPowerUp(x) && S.d.sparks - S.powerUpCost(x).sparks >= 3000));
     if (!sp || !await act('powerUp', { uid: sp.uid })) break;
     D.power++;
+  }
+  // 4.16: пробуждение — сильнейшим на пределе уровня, когда хватает осколков Алатыря
+  for (let n = 0; n < 5 && S.AWAKE; n++) {
+    const sp = me(() => [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3).find(x => !S.canAwaken(x)));
+    if (!sp || !await act('awaken', { uid: sp.uid })) break;
+    D.awaken = (D.awaken || 0) + 1;
+    for (let k = 0; k < 20; k++) { if (me(() => S.canPowerUp(sp)) || !await act('powerUp', { uid: sp.uid })) break; D.power++; }
   }
   if (!P.data.buddy) { const t = me(() => [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a))[0]); if (t) await act('buddy', { uid: t.uid }); }
   // обменник: лишние искры → златники
@@ -457,7 +486,8 @@ parentPort.on('message', async m => {
     for (const pl of PL) {
       try { await playerDay(pl, m.day, m.dayStart); }
       catch (e) { const k = 'EXC: ' + e.message; pl.st.fails[k] = (pl.st.fails[k] || 0) + 1; if (!pl.st.stack) pl.st.stack = e.stack; }
-      if (pl.data) out.push({ uid: pl.uid, pid: pl.data.pid, name: pl.data.name, level: pl.data.level, xp: pl.data.xp, clan: pl.data.clan, look: pl.data.look, lvl40: pl.st.lvlT[40] || null });
+      if (pl.data) { P = pl; out.push({ uid: pl.uid, pid: pl.data.pid, name: pl.data.name, level: pl.data.level, xp: pl.data.xp, clan: pl.data.clan, look: pl.data.look, lvl40: pl.st.lvlT[40] || null,
+        arch: pl.arch, topPow: me(() => Math.max(0, ...S.d.spirits.map(x => S.power(x)))), story: pl.data.story ? pl.data.story.ch : 0 }); } // 4.16: сила сильнейшего духа и глава Летописи по дням
     }
     parentPort.postMessage({ t: 'dayDone', day: m.day, out });
     return;
@@ -471,7 +501,8 @@ parentPort.on('message', async m => {
         return { lvl: S.d.level, xp: S.d.xp, sparks: S.d.sparks, zlat: S.d.zlat, spirits: S.d.spirits.length, dex: Object.values(S.d.dex).filter(x => x.caught > 0).length,
           top: byP.slice(0, 3).map(x => `${SP[x.sid].name} ${x.lvl} ур. · ${S.power(x)}`), topPow: byP[0] ? S.power(byP[0]) : 0, team3: byP.slice(0, 3).reduce((a, x) => a + S.power(x), 0),
           lgPts: League.view().pts, lgBest: (S.d.league && S.d.league.best) || 0, story: S.d.story ? S.d.story.ch : 0, medals: S.d.medals ? Object.keys(S.d.medals).length : 0,
-          friends: S.d.friends.length, bestFriend: Math.max(0, ...S.d.friends.map(f => f.pts)), clan: S.d.clan, amulets: Object.values(S.d.amulets || {}).reduce((a, b) => a + b, 0), km: Math.round(S.d.stats.km || 0), shinyAll: S.d.stats.shiny };
+          friends: S.d.friends.length, bestFriend: Math.max(0, ...S.d.friends.map(f => f.pts)), clan: S.d.clan, amulets: Object.values(S.d.amulets || {}).reduce((a, b) => a + b, 0), km: Math.round(S.d.stats.km || 0), shinyAll: S.d.stats.shiny,
+          stars: byP.slice(0, 3).map(x => x.stars || 0), alatyr: S.d.alatyr || 0, rod: S.d.rod || 0, legendTop: Math.max(0, ...S.d.spirits.filter(x => SP[x.sid].legend).map(x => x.lvl)) };
       });
       return { uid: pl.uid, name: pl.name, pr: pl.pr, arch: pl.arch, isMe: !!pl.isMe, st: pl.st, s };
     });

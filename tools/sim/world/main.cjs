@@ -162,6 +162,10 @@ workers.forEach(w => { w.on('message', m => { if (m.t === 'rpc') onRpc(w, m); })
     const holds = Object.values(DB.holds).filter(h => h.holders.length), byClan = { sokol: 0, medved: 0, volk: 0 }; holds.forEach(h => byClan[h.clan]++);
     const row = { day, median: lv[Math.floor(lv.length / 2)], p90: lv[Math.floor(lv.length * 0.9)], max: lv[lv.length - 1], n40, n30: lv.filter(l => l >= 30).length, n20: lv.filter(l => l >= 20).length,
       lotsOpen: DB.lots.filter(l => l.status === 'open').length, lotsSold: DB.stats.lotsSold, rub: DB.stats.payRub, holds: holds.length, byClan, meLvl: (all.find(x => x.uid === 'u0') || {}).level };
+    // 4.16: медианы по типам игроков — сила сильнейшего духа и глава Летописи (растут ли после 35 уровня)
+    const medOf = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
+    row.topPow = {}; row.story = {};
+    for (const a of Object.keys(ARCH)) { const g = all.filter(x => x.arch === a); if (g.length) { row.topPow[a] = medOf(g.map(x => x.topPow)); row.story[a] = medOf(g.map(x => x.story)); } }
     daily.push(row);
     console.log(`день ${day}: медиана ${row.median}, 90% ${row.p90}, макс ${row.max}, на 40-м ${n40}, я ${row.meLvl} · лотов ${row.lotsOpen}/${row.lotsSold} продано · донат ${row.rub} ₽ · Капищ у дружин ${row.holds} · ${Math.round((Date.now() - t0) / 1000)} с`);
     fs.writeFileSync(path.join(OUT, 'progress.json'), JSON.stringify({ daily, reach }, null, 0));
