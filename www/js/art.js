@@ -312,7 +312,7 @@ const Art = (() => {
   const picUrl = sid => PICS[sid] ? `img/spirits/${sid}.webp?v=${PICS[sid]}` : null;
   // solo — картинка без слоёв (списки, карта, фото с поимки): лиловый — самим фильтром, перламутр — анимацией оттенка (.sp-pearl в style.css)
   const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
-    : shiny ? 'grayscale(.9) contrast(.5) brightness(1.75) ' + (solo ? 'sepia(.3) saturate(1.6) hue-rotate(250deg) ' : '') + 'drop-shadow(0 0 5px rgba(255, 255, 255, .95))' : ''; // контраст вниз — тёмное становится светлым серебром
+    : shiny ? 'grayscale(.85) contrast(.62) brightness(1.5) ' + (solo ? 'sepia(.3) saturate(1.6) hue-rotate(250deg) ' : '') + 'drop-shadow(0 0 5px rgba(255, 255, 255, .95))' : ''; // контраст вниз — тёмное становится светлым серебром
   const picImg = (sid, shiny, dark, cls) => { const solo = cls === 'art', fl = solo && shiny && !dark ? '' : picFilter(sid, shiny, dark, solo); return `<img class="${cls}${solo && shiny && !dark ? ' sp-pearl' : ''}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : ''}>`; };
   const over = svg => `<svg class="stk" viewBox="0 0 200 200">${svg}</svg>`;
   const NAV_SMOKE = [[52, 190, 1], [100, 196, 1.3], [148, 190, 1], [76, 194, .8], [126, 194, .8]].map(([x, y, k], i) =>
