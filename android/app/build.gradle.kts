@@ -12,8 +12,8 @@ android {
         minSdk = 24
         targetSdk = 34
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
-        versionCode = 4
-        versionName = "4.1.0"
+        versionCode = 5
+        versionName = "4.21.1"
     }
 
     // 4.3.2: где распространяется приложение. site — APK с сайта duholov.ru (обновление — скачать APK),
