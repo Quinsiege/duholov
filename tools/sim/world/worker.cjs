@@ -19,7 +19,8 @@ function poisNear(lat, lng, r) {
 }
 const ENVFN = ['registerPid', 'player', 'friendSave', 'briefByPid', 'link', 'linksTo', 'giftsTo', 'invitesTo', 'giftCreate', 'gift', 'giftTake', 'leagueScore', 'orderPut', 'orderStats',
   'holdGet', 'holdDefend', 'holdDefeat', 'myHolds', 'myHoldsList', 'clanCounts', 'lotCreate', 'lotsFind', 'lotsMine', 'lotsOpenCount', 'lotGet', 'lotBuy', 'lotCancel', 'lotsToSettle', 'lotsDone',
-  'paidList', 'payCredited', 'leagueTop', 'tradeCreate', 'tradeTake', 'tradeReclaim', 'roomCreate', 'roomGet', 'roomJoin', 'roomStart', 'roomLeave', 'chatList', 'chatInsert', 'chatReport', 'deleteSave'];
+  'paidList', 'payCredited', 'leagueTop', 'tradeCreate', 'tradeTake', 'tradeReclaim', 'roomCreate', 'roomGet', 'roomJoin', 'roomStart', 'roomLeave', 'chatList', 'chatInsert', 'chatReport', 'deleteSave',
+  'pvpFind', 'pvpCancel', 'pvpLive', 'pvpLoad', 'pvpPut', 'pvpPending', 'pvpSettled']; // 4.16: Лига — очередь и бои в главном потоке (как в базе)
 function envFor(P) {
   const e = { poi: async id => POIS.get(id) || null, poiCovered: async () => true, mySubmissions: async () => [], weather: null };
   for (const fn of ENVFN) e[fn] = (...args) => rpc(fn, P.uid, args);
@@ -228,23 +229,10 @@ async function invasionAt(p) {
     if (dark && me(() => !S.canPurify(dark)) && await act('purify', { uid: dark.uid })) D.purified++;
   } else D.inv[1]++;
 }
-async function league() {
-  if (P.data.level < 5) return;
-  for (let n = 0; n < P.pr.league; n++) {
-    await heal(); await pickTeam();
-    if (!ready() || !await act('leagueStart')) return;
-    D.tourn++;
-    for (let k = 0; k < 3; k++) {
-      const o0 = me(() => League.opponent(k)), o = duelOutcome(team(), o0.team, o0.T.speed);
-      adv(o.t + Rules.COUNTDOWN);
-      const xp0 = P.data.xp, r = await act('leagueEnd', { win: o.win, hp: o.hp });
-      xpAdd('Лига', xp0); D.ko += koCount(o.hp);
-      if (!r) break;
-      o.win ? D.league[0]++ : D.league[1]++;
-      if (r.last) break;
-    }
-  }
-}
+// 4.16: Лига — живые бои. Днём игрок только решает, сколько боёв сыграет вечером; вечером главный поток собирает
+// всех желающих (lgFind — поиск через сервер игры, пара — в «базе» главного потока), сам проводит бои (GameCore.pvp —
+// ходы обеих сторон) и просит засчитать итоги (lgSettle — pvpResult через сервер игры)
+function leaguePlan() { P.lgWant = P.data.level >= League.LEVEL ? P.pr.league : 0; }
 
 // ---------- прогулка ----------
 async function walk(km) {
@@ -418,6 +406,7 @@ async function tutorial() {
 const MSK = 3 * 3600000, DAY = 86400000;
 async function playerDay(pl, dayN, dayStart) {
   P = pl; D = pl.st; P.dayN = dayN;
+  pl.lgWant = 0; pl.lgMatch = null;
   if (!P.data) {
     globalThis.SIM_T = dayStart + (7 + Math.random() * 2) * 3600000;
     const r = await act('newGame', { name: P.name, starter: P.starter });
@@ -445,7 +434,7 @@ async function playerDay(pl, dayN, dayStart) {
     if (i === last && P.data.items.incense > 0 && me(() => !S.incenseActive())) await act('incense');
     else if (P.pr.don >= 3 && P.data.items.incense > 0 && me(() => !S.incenseActive())) await act('incense');
     await walk(km * (0.8 + Math.random() * 0.4));
-    if (i === last) { if (P.pr.far) await farRaids(); await league(); }
+    if (i === last) { if (P.pr.far) await farRaids(); leaguePlan(); }
   }
   await chores();
 }
@@ -460,6 +449,37 @@ parentPort.on('message', async m => {
       if (pl.data) out.push({ uid: pl.uid, pid: pl.data.pid, name: pl.data.name, level: pl.data.level, xp: pl.data.xp, clan: pl.data.clan, look: pl.data.look, lvl40: pl.st.lvlT[40] || null });
     }
     parentPort.postMessage({ t: 'dayDone', day: m.day, out });
+    return;
+  }
+  if (m.t === 'lgFind') {
+    let n = 0;
+    for (const pl of PL) {
+      if (!pl.data || !(pl.lgWant > 0) || pl.lgMatch) continue;
+      P = pl; D = pl.st; globalThis.SIM_T = m.now;
+      try {
+        if (m.j === 0) { await heal(); await pickTeam(); }
+        if (!ready() || !(me(() => League.view().tickets) > 0)) { pl.lgWant = 0; continue; }
+        const r = await act('pvpFind', {});
+        if (!r) { pl.lgWant = 0; continue; }
+        n++;
+        if (r.match) pl.lgMatch = r.match;
+      } catch (e) { const k = 'EXC: ' + e.message; pl.st.fails[k] = (pl.st.fails[k] || 0) + 1; pl.lgWant = 0; }
+    }
+    parentPort.postMessage({ t: 'lgFound', n });
+    return;
+  }
+  if (m.t === 'lgSettle') {
+    for (const pl of PL) {
+      if (!pl.data || !pl.lgMatch) { if (pl.lgWant > 0 && m.last) pl.lgWant = 0; continue; }
+      P = pl; D = pl.st; globalThis.SIM_T = m.now;
+      try {
+        const xp0 = P.data.xp, r = await act('pvpResult', {});
+        xpAdd('Лига', xp0);
+        for (const x of (r && r.done) || []) { D.tourn++; x.win ? D.league[0]++ : D.league[1]++; }
+      } catch (e) { const k = 'EXC: ' + e.message; pl.st.fails[k] = (pl.st.fails[k] || 0) + 1; }
+      pl.lgMatch = null; pl.lgWant--;
+    }
+    parentPort.postMessage({ t: 'lgSettled' });
     return;
   }
   if (m.t === 'friends') { for (const pl of PL) pl.pendingFriends = (m.map[pl.uid] || []); parentPort.postMessage({ t: 'ok' }); return; }

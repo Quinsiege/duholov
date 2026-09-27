@@ -77,7 +77,7 @@
   Date.now = () => SIM_T;
   S.save = () => {}; Bus.emit = () => {}; UI.toast = () => {}; Friends.sync = () => {}; Game.on = () => false;
   S.newGame('Тест', 'ugolek');
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [] };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [], pvpQ: {}, pvpM: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -170,6 +170,34 @@
     chatReport: async (id, pid) => { if (!DB.reports.some(r => r.id === id && r.pid === pid)) DB.reports.push({ id, pid }); const n = DB.reports.filter(r => r.id === id).length; if (n >= 3) DB.chat.find(m => m.id === id).hidden = true; return n; },
     paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
     payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
+    // 4.16: Лига — как 022_league_pvp.sql: очередь, пара (взаимные окна, только свежие заявки), бой с версией, итоги
+    pvpFind: async t => {
+      const live = Object.values(DB.pvpM).find(m => m.status === 'live' && (m.a === who.uid || m.b === who.uid));
+      if (live) return { match: live.id };
+      const now = Date.now(), q0 = DB.pvpQ[who.uid];
+      const me = DB.pvpQ[who.uid] = { uid: who.uid, pid: t.info.pid, season: t.season, rating: t.pts, lo: t.lo, hi: t.hi, info: JSON.parse(JSON.stringify(t.info)), avoid: t.avoid,
+        since: q0 && !q0.match && now - q0.seen <= 15000 ? q0.since : now, seen: now, match: null };
+      const o = Object.values(DB.pvpQ).filter(q => q.uid !== who.uid && !q.match && q.season === t.season && now - q.seen <= 8000 && q.rating >= t.lo && q.rating <= t.hi && t.pts >= q.lo && t.pts <= q.hi
+        && (t.wide || ((!t.avoid || q.pid !== t.avoid) && (!q.avoid || q.avoid !== t.info.pid)))).sort((x, y) => Math.abs(x.rating - t.pts) - Math.abs(y.rating - t.pts) || x.since - y.since)[0];
+      if (!o) return { wait: true, n: Object.values(DB.pvpQ).filter(q => !q.match && q.season === t.season && now - q.seen <= 8000).length };
+      const id = crypto.randomUUID();
+      DB.pvpM[id] = { id, season: t.season, a: o.uid, b: who.uid, ver: 0, status: 'live', aS: false, bS: false, state: { init: true, season: t.season, at: now, a: o.info, b: me.info } };
+      o.match = id; me.match = id;
+      return { match: id };
+    },
+    pvpCancel: async () => { const q = DB.pvpQ[who.uid]; if (q && q.match && DB.pvpM[q.match] && DB.pvpM[q.match].status === 'live') return { match: q.match }; delete DB.pvpQ[who.uid]; return {}; },
+    pvpLive: async () => { const m = Object.values(DB.pvpM).find(x => x.status === 'live' && (x.a === who.uid || x.b === who.uid)); return m ? { id: m.id } : null; },
+    pvpLoad: async id => { const m = DB.pvpM[id]; return m ? { id, ver: m.ver, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : m.b === who.uid ? 'b' : null } : null; },
+    pvpPut: async (id, ver, state, done) => {
+      const m = DB.pvpM[id];
+      if (!m || m.ver !== ver || m.status !== 'live') return null;
+      m.state = JSON.parse(JSON.stringify(state)); m.ver++;
+      if (done) { m.status = 'done'; Object.values(DB.pvpQ).forEach(q => { if (q.match === id) delete DB.pvpQ[q.uid]; }); }
+      return m.ver;
+    },
+    pvpPending: async () => Object.values(DB.pvpM).filter(m => m.status === 'done' && ((m.a === who.uid && !m.aS) || (m.b === who.uid && !m.bS)))
+      .map(m => ({ id: m.id, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : 'b' })),
+    pvpSettled: async id => { const m = DB.pvpM[id]; if (m && m.status === 'done') { if (m.a === who.uid) m.aS = true; if (m.b === who.uid) m.bS = true; } },
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {

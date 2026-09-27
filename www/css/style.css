@@ -3990,3 +3990,24 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .inv2-foot { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
 .inv2-foot .day-left { text-align: center; margin: 0; }
 .calm .inv2-mist, .calm .inv2-art > svg, .calm .inv2-art > img { animation: none; }
+/* 4.16: Лига — поиск живого соперника и бой с ним */
+.lgs { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 18px 8px 8px; }
+.lgs-radar { position: relative; width: 150px; height: 150px; display: grid; place-items: center; margin: 8px 0 4px; }
+.lgs-radar > i { position: absolute; inset: 20px; border-radius: 50%; border: 2px solid var(--gold); animation: pulse 2.2s ease-out infinite; }
+.lgs-radar > i + i { animation-delay: 1.1s; }
+.lgs-ava { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; border: 2px solid var(--gold); background: rgba(0, 0, 0, .3); position: relative; }
+.lgs-ava.big { width: 110px; height: 110px; margin: 0 auto 6px; }
+.lgs-time { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--gold2); }
+.lgs-where { color: #e2dcf7; }
+.lgs-n { font-size: 13px; color: var(--muted); min-height: 18px; margin-bottom: 8px; }
+.lgs-title { font-family: var(--f-display); font-size: 26px; color: var(--gold2); }
+.lgs-foe b { display: block; font-size: 20px; }
+.lgs-foe small { color: var(--muted); }
+.lgs-rank { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px 0; }
+.lgs-go { margin-top: 6px; font-size: 16px; }
+.lgs-go b { color: var(--gold2); font-size: 22px; }
+.pvp-wait, .pvp-net { position: absolute; left: 50%; top: 44%; transform: translateX(-50%); z-index: 8; padding: 6px 14px; border-radius: 14px; background: rgba(8, 5, 18, .72); color: #e2dcf7; font-size: 13px; white-space: nowrap; pointer-events: none; }
+.pvp-net { top: auto; bottom: 30%; color: #fecdd3; }
+.lgx-livebout { border-color: rgba(251, 191, 36, .55); }
+.lg-prize { text-align: center; }
+.calm .lgs-radar > i { animation: none; }

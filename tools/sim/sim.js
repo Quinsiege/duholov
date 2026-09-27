@@ -1,7 +1,7 @@
 'use strict';
 /* Прогон Ловчего с 1 по 40 уровень через настоящий сервер игры (server/game/core.js) с базой в памяти.
    Игрок — «активный»: каждый день ~5 км пешком в три выхода (утро, обед, вечер), ловит всех духов в радиусе,
-   заходит во все родники по пути, 2 разлома, 2 Капища, до 2 вторжений, 3 турнира Лиги в день; вечером — усиление,
+   заходит во все родники по пути, 2 разлома, 2 Капища, до 2 вторжений, 3 боя Лиги в день (с живым соперником своего уровня); вечером — усиление,
    превращения, коконы, поручения, задания, Летопись. Исход боёв — своя модель: игрок выжимает EFF от максимального
    урона (сервер проверяет только верхнюю границу), раны — по ударам соперника. */
 
@@ -20,7 +20,7 @@ const CFG = {
   MAX_DAYS: 400,
 };
 
-// ?p=casual — «обычный» игрок: один выход в день на 2 км, по одному бою каждого вида и один турнир
+// ?p=casual — «обычный» игрок: один выход в день на 2 км, по одному бою каждого вида и один бой Лиги
 if (/[?&]p=casual/.test(location.search)) Object.assign(CFG, { SESSIONS: [[18, 2.0]], RAIDS: 1, DUELS: 1, INVASIONS: 1, LEAGUE: 1 });
 
 const P = { uid: 'sim', lat: 55.7558, lng: 37.6173, data: null, srv: {} };
@@ -228,24 +228,66 @@ async function invasionAt(p) {
   else ST.inv[1]++;
   return true;
 }
+// 4.16: Лига — бои с живыми Ловчими. В одиночном прогоне соперник — «зеркальный» Ловчий: его уровень и команда —
+// как у игрока, рейтинг — рядом; оба — живые игроки через настоящий сервер (pvpFind → бой GameCore.pvp → pvpResult)
+// и выжимают EFF от предела: тапают в среднем EFF × 2 раза в секунду, приём — с EFF × 12 тапов, щит — с вероятностью DODGE
+const R = { uid: 'rival', lat: 55.7558, lng: 37.6173, data: null, srv: {} };
+async function rivalSync() {
+  if (!R.data) { await call(R, 'newGame', { name: 'Соперник', starter: 'kapelka' }); R.data.tut = 0; }
+  const L = me(() => League.view());
+  R.data.level = P.data.level;
+  R.data.spirits = JSON.parse(JSON.stringify(team())).map(x => ({ ...x, uid: 'r' + x.uid })); // и раны — те же
+  R.data.team = R.data.spirits.map(x => x.uid);
+  R.data.league = { season: L.season, pts: Math.max(0, L.pts + Math.round((Math.random() - 0.5) * 120)), best: L.best, peak: L.peak, tickets: League.TICKETS, n: 0, day: L.day, got: {} };
+  R.lat = P.lat; R.lng = P.lng;
+}
+async function pvpBattle(id) {
+  const sides = [P, R];
+  let now = SIM_T;
+  const s0 = await GameCore.pvp('state', { id }, envFor(P), now);
+  if (!s0.ok) return;
+  now = s0.st.t0 + 300;
+  for (let step = 0; step < 600; step++) {
+    for (const X of step % 2 ? [R, P] : sides) {
+      const s = await GameCore.pvp('state', { id }, envFor(X), now);
+      if (!s.ok || s.st.over) break;
+      const v = PvP.view(s.st, s.seat, now), p = v.pause, my = v.me, f = my.team[my.idx], ins = [];
+      if (p && p.k === 'charge' && !p.done) {
+        if (p.by === 'me') { if (now - p.t >= PvP.MINI) ins.push({ t: 'taps', n: Math.round(12 * CFG.EFF) }); }
+        else ins.push({ t: 'shield', on: my.sh > 0 && Math.random() < CFG.DODGE });
+      } else if (p && p.k === 'switch' && p.who.includes('me')) {
+        let best = -1; my.team.forEach((x, i) => { if (x.cur > 0 && (best < 0 || x.cur > my.team[best].cur)) best = i; });
+        if (best >= 0) ins.push({ t: 'switch', i: best });
+      } else if (!p && f) {
+        const n = (Math.random() < CFG.EFF ? 1 : 0) + (Math.random() < CFG.EFF ? 1 : 0);
+        if (n) ins.push({ t: 'hit', n });
+        if (f.en + 7 * n * (s.st.s[s.seat].team[my.idx].emul || 1) >= MOVES.charge.cost && Math.random() < 0.85) ins.push({ t: 'charge', kind: 'charge' });
+      }
+      await GameCore.pvp(ins.length ? 'move' : 'state', { id, in: ins }, envFor(X), now);
+    }
+    const st = DB.pvpM[id].state;
+    if (st.over) break;
+    now = st.pause ? Math.max(now + 100, st.pause.t + (st.pause.k === 'charge' ? PvP.MINI + 100 : 1500)) : now + 1000;
+  }
+  adv(Math.max(0, now - SIM_T) / 1000);
+}
 async function league() {
-  if (P.data.level < 5) return;
+  if (P.data.level < League.LEVEL) return;
   for (let n = 0; n < CFG.LEAGUE; n++) {
     await heal(); await pickTeam();
     if (!ready()) return;
-    if (!await act('leagueStart')) return;
+    await rivalSync();
+    // соперник один и тот же — сразу снова в пару не ставят; «ждём» 30 с, как в жизни при малом числе Ловчих
+    R.srv.lq = { since: SIM_T - 31000, t: SIM_T }; P.srv.lq = { since: SIM_T - 31000, t: SIM_T };
+    await call(R, 'pvpFind', {});
+    const f = await act('pvpFind', {});
+    if (!f || !f.match) return;
     ST.tourn++;
-    for (let k = 0; k < 3; k++) {
-      const o0 = me(() => League.opponent(k)), o = duelOutcome(team(), o0.team, o0.T.speed);
-      adv(o.t + Rules.COUNTDOWN);
-      const xp0 = P.data.xp;
-      const r = await act('leagueEnd', { win: o.win, hp: o.hp });
-      xpAdd('Лига', xp0);
-      ST.ko += koCount(o.hp);
-      if (!r) break;
-      o.win ? ST.league[0]++ : ST.league[1]++;
-      if (r.last) break;
-    }
+    await pvpBattle(f.match);
+    const xp0 = P.data.xp, r = await act('pvpResult', {});
+    xpAdd('Лига', xp0);
+    for (const x of (r && r.done) || []) x.win ? ST.league[0]++ : ST.league[1]++;
+    await call(R, 'pvpResult', {});
   }
 }
 

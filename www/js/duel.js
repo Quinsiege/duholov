@@ -153,7 +153,7 @@ const Duel = {
     this._starting = false;
     return !!ok;
   },
-  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : kind === 'spar' ? 'sparEnd' : 'duelEnd'; },
+  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'spar' ? 'sparEnd' : 'duelEnd'; },
 
   // 4.15: боец выходит с тем здоровьем, что есть у духа (раны общие на всю игру); в поединке с другом — с полным
   fighter(sp, full) {
@@ -197,8 +197,7 @@ const Duel = {
     const $ = s => root.querySelector(s);
     const st = this.st = {
       e, g, T: e.T || SHRINE_TIERS[e.tier], root, $, time: this.TIME, paused: true, over: false,
-      // e.carry — бойцы из прошлого боя турнира (раны не лечатся)
-      me: { team: e.carry || team.map(sp => this.fighter(sp, e.kind === 'spar')), idx: Math.max(0, (e.carry || []).findIndex(f => f.cur > 0)), shields: 2, busy: 0, cd: 0 },
+      me: { team: team.map(sp => this.fighter(sp, e.kind === 'spar')), idx: 0, shields: 2, busy: 0, cd: 0 },
       foe: { team: g.team.map(sp => this.fighter(sp)), idx: 0, shields: 2, busy: 1.5 },
     };
     UI.pushLayer(() => this.quit());
@@ -467,7 +466,6 @@ const Duel = {
     await U.wait(500);
     if (this.st !== st) return;
     let html;
-    if (st.e.kind === 'league') return League.afterDuel(win, st);
     // итог боя проверяет сервер: победа засчитывается, если команда могла нанести столько урона за это время
     let r = null;
     try { r = await Game.act(this.endType(st.e.kind), { win: !!win, hp: S.hpReport(st.me.team) }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
@@ -567,7 +565,6 @@ const Duel = {
     // сдался или вышел до конца боя — это поражение
     if (!st.over) {
       Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }).catch(() => {});
-      if (st.e.kind === 'league') League.carry = null;
     }
     st.over = true;
     st.root.remove();
