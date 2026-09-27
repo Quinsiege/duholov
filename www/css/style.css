@@ -4131,3 +4131,69 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 @keyframes newPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 .calm .tile > i.new { animation: none; }
 .mk-shrine.locked { filter: grayscale(.85) brightness(.8); opacity: .75; }
+
+/* ================= 4.19: родник — живая вода (UI.spring) ================= */
+.screen.spr2-screen { background:
+    radial-gradient(70% 45% at 50% 42%, rgba(45, 212, 191, .28), transparent 70%),
+    radial-gradient(90% 40% at 50% -6%, rgba(139, 92, 246, .35), transparent 70%),
+    linear-gradient(180deg, #1c1250 0%, #0f2a45 55%, #081a2b 100%); }
+.spr2 { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 16px 16px; overflow: hidden; min-height: 100%; }
+.spr2-motes { position: absolute; inset: 0; pointer-events: none; }
+.spr2-motes i { position: absolute; left: var(--x); bottom: -10px; width: calc(6px * var(--s)); height: calc(6px * var(--s)); border-radius: 50%;
+  background: radial-gradient(circle, #fff, #99f6e4 45%, rgba(94, 234, 212, 0) 70%); animation: sprMote var(--d) linear var(--t) infinite; }
+@keyframes sprMote { 0% { transform: translateY(0) translateX(0); opacity: 0; } 12% { opacity: .9; } 50% { transform: translateY(-50vh) translateX(12px); } 90% { opacity: .6; } 100% { transform: translateY(-95vh) translateX(-8px); opacity: 0; } }
+.spr2-head { position: relative; margin: 2px 0 10px; }
+.spr2-head small { display: block; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #5eead4; }
+.spr2 .spring-title { font-size: 26px; margin: 2px 0 0; background: linear-gradient(180deg, #fff, #c7f9ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.spr2-well { position: relative; width: min(78vw, 300px); aspect-ratio: 1; margin: 6px auto 4px; touch-action: none; -webkit-user-select: none; user-select: none; cursor: grab; }
+.spr2-well::before, .spr2-well::after { content: none; } /* узор прежнего диска (.spring-disc) — не нужен */
+.spr2-glow { position: absolute; inset: -14%; border-radius: 50%; background: radial-gradient(circle, rgba(94, 234, 212, .38), rgba(94, 234, 212, 0) 62%); animation: sprGlow 3.6s ease-in-out infinite; }
+@keyframes sprGlow { 50% { transform: scale(1.06); opacity: .75; } }
+.spr2-ripples { position: absolute; inset: 14%; pointer-events: none; }
+.spr2-ripples i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(153, 246, 228, .5); animation: sprRipple 3.6s ease-out infinite; }
+.spr2-ripples i:nth-child(2) { animation-delay: 1.2s; } .spr2-ripples i:nth-child(3) { animation-delay: 2.4s; }
+@keyframes sprRipple { 0% { transform: scale(.72); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+.spr2-ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.spr2-track { fill: none; stroke: rgba(255, 255, 255, .1); stroke-width: 5; }
+.spr2-arc { fill: none; stroke: url(#sprArc); stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 150px 150px; transition: stroke-dashoffset .25s ease-out; filter: drop-shadow(0 0 6px rgba(94, 234, 212, .8)); }
+.spr2-runes { transform-origin: 150px 150px; transition: transform .6s cubic-bezier(.2, .9, .3, 1); animation: sprTurn 40s linear infinite; }
+.spr2-runes text { font-family: var(--f-head); font-size: 17px; font-weight: 700; letter-spacing: 3px; fill: #fde68a; filter: drop-shadow(0 0 5px rgba(251, 191, 36, .8)); }
+@keyframes sprTurn { to { rotate: 360deg; } }
+.spr2-water { position: absolute; inset: 20%; border-radius: 50%; overflow: hidden; isolation: isolate;
+  background: radial-gradient(circle at 40% 35%, #5eead4, #0e7490 55%, #083344); box-shadow: inset 0 0 0 3px rgba(243, 207, 107, .55), inset 0 10px 30px rgba(0, 0, 0, .45), 0 0 40px rgba(45, 212, 191, .45); }
+.spr2-photo { position: absolute; inset: 0; background: center / cover no-repeat; filter: saturate(1.1) contrast(1.05); }
+.spr2-photo::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(94, 234, 212, .15), rgba(8, 51, 68, .55)); }
+.spr2-icon { position: absolute; inset: 10%; display: grid; place-items: center; } .spr2-icon .art { width: 100%; height: 100%; }
+.spr2-caustic { position: absolute; inset: -20%; background: repeating-radial-gradient(circle at 35% 40%, rgba(255, 255, 255, .0) 0 10px, rgba(255, 255, 255, .14) 11px 12px, rgba(255, 255, 255, 0) 13px 22px);
+  mix-blend-mode: soft-light; animation: sprCaustic 7s ease-in-out infinite alternate; }
+@keyframes sprCaustic { to { transform: translate(6%, -4%) rotate(20deg) scale(1.1); } }
+.spr2-shine { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .35) 48%, transparent 60%) 150% 0 / 260% 100% no-repeat; animation: sprShine 4.5s ease-in-out infinite; }
+@keyframes sprShine { 0%, 40% { background-position: 150% 0; } 80%, 100% { background-position: -60% 0; } }
+.spr2-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.spr2-burst i { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, #fff, #99f6e4 50%, rgba(94, 234, 212, 0) 72%); }
+.spr2-hint { position: relative; min-height: 22px; margin: 8px 0 6px; font-size: 15px; color: #cfe9e4; }
+.spr2 .btn.wide { position: relative; max-width: 340px; }
+.spr2 .day-left { position: relative; }
+/* набирает силу — вода замерла, огни тусклые */
+.spr2.used .spr2-ripples, .spr2.used .spr2-motes { opacity: .25; }
+.spr2.used .spr2-water { filter: saturate(.45) brightness(.75); }
+.spr2.used .spr2-arc { stroke: rgba(148, 163, 184, .7); filter: none; }
+.spr2.used .spr2-runes text { fill: rgba(203, 213, 225, .55); filter: none; }
+/* зачерпнули — кольцо разгоняется, вода вспыхивает, брызги разлетаются */
+.spr2.spin .spr2-runes { animation: sprTurn .9s cubic-bezier(.3, 0, .2, 1) infinite; }
+.spr2.spin .spr2-ripples i { animation-duration: 1s; }
+.spr2.burst .spr2-water { animation: sprFlash .9s ease-out; }
+@keyframes sprFlash { 0% { filter: brightness(2.2) saturate(1.4); transform: scale(1.08); } 100% { filter: none; transform: none; } }
+.spr2.burst .spr2-glow { animation: sprBurstGlow 1.2s ease-out; }
+@keyframes sprBurstGlow { 0% { transform: scale(.8); opacity: 1; } 40% { transform: scale(1.5); opacity: 1; } 100% { transform: scale(1); opacity: .8; } }
+.spr2.burst .spr2-burst i { animation: sprDrop 1s cubic-bezier(.15, .7, .3, 1) forwards; }
+@keyframes sprDrop { 0% { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.4); } 100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--r)) scale(.4); } }
+/* добыча вылетает из воды одна за другой */
+.spr2-loot { position: relative; }
+.spr2-loot .loot-item { animation: sprLoot .7s cubic-bezier(.2, 1.5, .4, 1) calc(.35s + var(--k, 0) * .14s) both; }
+.spr2-loot .loot-item .art { filter: drop-shadow(0 0 10px rgba(94, 234, 212, .6)); }
+.spr2-loot .spr2-cocoon .art { filter: drop-shadow(0 0 14px rgba(251, 191, 36, .8)); }
+@keyframes sprLoot { 0% { opacity: 0; transform: translateY(-120px) scale(.2); } 70% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+.spr2-loot .loot-xp { animation: lootIn .4s .5s backwards; font-size: 18px; }
+.calm .spr2 *, .calm .spr2 *::before, .calm .spr2 *::after { animation: none !important; }

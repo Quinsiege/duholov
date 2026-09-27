@@ -687,46 +687,76 @@ const UI = {
 
 
   /* ---------------- РОДНИК ---------------- */
+  // 4.19: живая вода — колодец с кольцом рун, круги по воде и огоньки; силу зачерпывают, проводя пальцем по кругу
+  // (кольцо крутится за пальцем, по краю наливается золотая дуга) или кнопкой; всплеск — и добыча вылетает из воды
+  SPRING_RUNES: 'ᚱ · ᛟ · ᚦ · ᛗ · ᚨ · ᛉ · ᛒ · ᛞ · ᛜ · ᛇ · ',
   spring(e) {
+    const photo = Poi.photoUrl(e.photo), C = 2 * Math.PI * 138; // длина дуги по краю колодца
+    const motes = Array.from({ length: 14 }, (_, k) => `<i style="--x:${(U.h('sm', e.id, k) * 100).toFixed(1)}%;--d:${(5 + U.h('sd', e.id, k) * 6).toFixed(1)}s;--t:${(-U.h('st', e.id, k) * 10).toFixed(1)}s;--s:${(.5 + U.h('ss', e.id, k)).toFixed(2)}"></i>`).join('');
     const scr = this.screen('', `
-      <div class="spring-view">
-        <div class="spring-title">${U.esc(e.name)}</div>
-        <div class="spring-disc"><div class="runes"></div>${Poi.photoUrl(e.photo) ? `<div class="well photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="well">${Art.springIcon(!e.ready)}</div>`}</div>
-        <div class="spring-hint"></div>
-        <div class="spring-loot"></div>
+      <div class="spr2 spring-view">
+        <div class="spr2-motes" aria-hidden="true">${motes}</div>
+        <div class="spr2-head"><small>${ru`Родник`}</small><div class="spring-title">${U.esc(e.name)}</div></div>
+        <div class="spr2-well spring-disc">
+          <div class="spr2-glow"></div>
+          <div class="spr2-ripples" aria-hidden="true"><i></i><i></i><i></i></div>
+          <svg class="spr2-ring" viewBox="0 0 300 300" aria-hidden="true">
+            <defs><path id="sprRunePath" d="M150 150 m-122 0 a122 122 0 1 1 244 0 a122 122 0 1 1 -244 0"/>
+              <linearGradient id="sprArc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset=".5" stop-color="#5eead4"/><stop offset="1" stop-color="#fbbf24"/></linearGradient></defs>
+            <circle class="spr2-track" cx="150" cy="150" r="138"/>
+            <circle class="spr2-arc" cx="150" cy="150" r="138" style="stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${C.toFixed(1)}"/>
+            <g class="spr2-runes"><text><textPath href="#sprRunePath" startOffset="0">${this.SPRING_RUNES.repeat(3)}</textPath></text></g>
+          </svg>
+          <div class="spr2-water">${photo ? `<div class="spr2-photo" style="background-image:url('${photo}')"></div>` : `<div class="spr2-icon">${Art.springIcon(!e.ready)}</div>`}<i class="spr2-caustic"></i><i class="spr2-shine"></i></div>
+          <div class="spr2-burst" aria-hidden="true">${Array.from({ length: 14 }, (_, k) => `<i style="--a:${k * 360 / 14}deg;--r:${110 + (k % 3) * 22}px"></i>`).join('')}</div>
+        </div>
+        <div class="spring-hint spr2-hint"></div>
+        <div class="spring-loot spr2-loot"></div>
         <button class="btn primary wide spring-go">${ru`Зачерпнуть силу`}</button>
         ${Rules.dayLine(S.d, 'springs', ru`Родников`)}
-      </div>`, 'spring-screen');
-    const hint = scr.querySelector('.spring-hint'), go = scr.querySelector('.spring-go');
+      </div>`, 'spring-screen spr2-screen');
+    const view = scr.querySelector('.spr2'), hint = scr.querySelector('.spring-hint'), go = scr.querySelector('.spring-go');
+    const disc = scr.querySelector('.spr2-well'), ring = scr.querySelector('.spr2-runes'), arc = scr.querySelector('.spr2-arc');
     const ready = () => U.now() - (S.d.springs[e.id] || 0) > W.SPRING_COOLDOWN;
+    const setArc = f => { arc.style.strokeDashoffset = (C * (1 - U.clamp(f, 0, 1))).toFixed(1); };
     const update = () => {
       if (!scr.isConnected) return clearInterval(timer);
       if (scr._done) return;
       if (!ready()) {
-        hint.textContent = ru`Родник набирает силу: ${U.fmtTime((S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now())}`;
-        go.disabled = true; scr.querySelector('.spring-view').classList.add('used');
+        const left = (S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now();
+        hint.textContent = ru`Родник набирает силу: ${U.fmtTime(left)}`;
+        go.disabled = true; view.classList.add('used');
+        setArc(1 - left / W.SPRING_COOLDOWN); // дуга наполняется, пока родник набирает силу
       } else {
         hint.textContent = ru`Смахни по кругу или нажми кнопку`;
-        go.disabled = false; scr.querySelector('.spring-view').classList.remove('used');
+        go.disabled = false; view.classList.remove('used');
+        if (!drag) setArc(0);
       }
     };
+    let drag = null;
     const timer = setInterval(update, 1000);
     update();
     // Добычу выдаёт сервер: он проверяет, что ты рядом и родник готов
     const take = async () => {
       if (!ready() || scr._done) return;
       scr._done = true;
-      const disc = scr.querySelector('.spring-disc');
-      disc.classList.add('spin');
+      setArc(1); view.classList.add('spin');
       Sfx.play('spin'); U.vibrate([20, 40, 20]);
       const r = await Game.try('spring', { poi: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } });
       if (!scr.isConnected) return;
-      if (!r) { scr._done = false; disc.classList.remove('spin'); update(); return; }
-      const got = r.got;
-      const cocoonHtml = r.cocoon ? `<div class="loot-item" style="animation-delay:${got.length * 0.12}s">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
-      scr.querySelector('.spring-loot').innerHTML = got.filter(x => x.k !== 'xp').map((x, i) => `<div class="loot-item" style="animation-delay:${i * 0.12}s">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `<div class="loot-xp">${ru`+${got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50} опыта`}${r.full ? ` · ${ru`Сумка полна! Расширь её в Лавке Ордена`}` : ''}</div>` +
+      if (!r) { scr._done = false; view.classList.remove('spin'); setArc(0); update(); return; }
+      view.classList.remove('spin'); void view.offsetWidth; view.classList.add('burst'); // всплеск
+      U.vibrate([30, 50, 80]);
+      const got = r.got, xp = got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50;
+      const items = got.filter(x => x.k !== 'xp');
+      const cocoonHtml = r.cocoon ? `<div class="loot-item spr2-cocoon" style="--k:${items.length}">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
+      scr.querySelector('.spring-loot').innerHTML = items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
+        `<div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}${r.full ? ` · ${ru`Сумка полна! Расширь её в Лавке Ордена`}` : ''}</div>` +
         (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
+      // опыт набегает счётчиком
+      const xb = scr.querySelector('.spr2-xp'), t0 = performance.now(), T = 900;
+      const tick = t => { const p = Math.min(1, (t - t0) / T); if (xb) xb.textContent = Math.round(xp * (1 - Math.pow(1 - p, 3))); if (p < 1 && scr.isConnected) requestAnimationFrame(tick); };
+      setTimeout(() => requestAnimationFrame(tick), 500);
       hint.textContent = '';
       go.textContent = ru`Готово`;
       go.disabled = false;
@@ -734,11 +764,33 @@ const UI = {
       MapView.refresh();
     };
     go.onclick = take;
-    // жест: свайп по диску
-    let sx = null;
-    const disc = scr.querySelector('.spring-disc');
-    disc.addEventListener('pointerdown', ev => { sx = ev.clientX; });
-    disc.addEventListener('pointerup', ev => { if (sx != null && Math.abs(ev.clientX - sx) > 40) take(); sx = null; });
+    // жест: провести пальцем по кругу — кольцо рун едет за пальцем, дуга наливается; почти полный круг — зачерпнуть
+    const center = () => { const b = disc.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; };
+    const ang = ev => { const [cx, cy] = center(); return Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI; };
+    disc.addEventListener('pointerdown', ev => {
+      if (!ready() || scr._done) return;
+      drag = { a: ang(ev), sum: 0, x: ev.clientX, y: ev.clientY };
+      try { disc.setPointerCapture(ev.pointerId); } catch (err) { /* без захвата — жест тоже работает */ }
+      ring.style.transition = 'none';
+    });
+    disc.addEventListener('pointermove', ev => {
+      if (!drag) return;
+      let a = ang(ev), d = a - drag.a;
+      if (d > 180) d -= 360; else if (d < -180) d += 360;
+      drag.a = a; drag.sum += d;
+      ring.style.transform = `rotate(${drag.sum}deg)`;
+      setArc(Math.abs(drag.sum) / 300);
+      if (Math.abs(drag.sum) >= 300) { drag = null; take(); }
+    });
+    const end = ev => {
+      if (!drag) return;
+      const moved = Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y);
+      drag = null;
+      ring.style.transition = ''; ring.style.transform = '';
+      if (moved > 40 && ev.type === 'pointerup') { take(); return; } // быстрый взмах — тоже зачерпнуть
+      if (!scr._done) setArc(0);
+    };
+    disc.addEventListener('pointerup', end); disc.addEventListener('pointercancel', end);
   },
 
   /* ---------------- РЯДОМ ---------------- */
