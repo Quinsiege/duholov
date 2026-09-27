@@ -4,7 +4,7 @@
   "at": [
    "www/js/album.js:22",
    "www/js/friends.js:308",
-   "www/js/realms.js:148",
+   "www/js/realms.js:30",
    "www/js/ui-player.js:463"
   ],
   "ctx": "try { await navigator.share({ files: [file], title: ru`Духолов`, text: ru`Смотри, кого я поймал в Духолове!` }); return; }"
@@ -521,7 +521,7 @@
    "www/js/auction.js:125",
    "www/js/auction.js:126",
    "www/js/raid.js:109",
-   "www/js/realms.js:196"
+   "www/js/realms.js:198"
   ],
   "ctx": "html: `<div class=\"au-fl\">${ru`Стихия`}</div><div class=\"chips au-wrap\">${chip('el', '', ru`Все`, f.el || '')}${ELEMENT_KEYS.map(e => chip('el', e, `${Art.elIcon(e, 14)} ${ELEMENTS[e].name}`, f.el)).join('')}</div>"
  },
@@ -10342,7 +10342,7 @@
   "k": "Закрыть",
   "at": [
    "www/js/login.js:201",
-   "www/js/realms.js:194",
+   "www/js/realms.js:196",
    "www/js/ui-player.js:291",
    "www/js/ui-player.js:408"
   ],
@@ -12010,31 +12010,46 @@
   "ctx": "about: ru`Сервер для опытных Ловчих: сильные духи и суровые Разломы.` },"
  },
  {
+  "k": "Сервер игры",
+  "at": [
+   "www/js/realms.js:30",
+   "www/js/realms.js:157"
+  ],
+  "ctx": "return { id: 'home', real: true, name: this.where() || ru`Духолов`, region: ru`Сервер игры`, tz: h.tz, color: h.color, glyph: h.glyph,"
+ },
+ {
+  "k": "Пока это единственный сервер: здесь вся Лига, Ордена и Капища. Новые серверы появятся позже.",
+  "at": [
+   "www/js/realms.js:31"
+  ],
+  "ctx": "about: ru`Пока это единственный сервер: здесь вся Лига, Ордена и Капища. Новые серверы появятся позже.` };"
+ },
+ {
   "k": "Заполнен",
   "at": [
-   "www/js/realms.js:35",
-   "www/js/realms.js:174"
+   "www/js/realms.js:43",
+   "www/js/realms.js:176"
   ],
   "ctx": "return r.load >= 0.95 ? { t: ru`Заполнен`, c: '#fb7185', k: 'full' } : r.load >= 0.75 ? { t: ru`Людно`, c: '#fb923c', k: 'busy' }"
  },
  {
   "k": "Людно",
   "at": [
-   "www/js/realms.js:35"
+   "www/js/realms.js:43"
   ],
   "ctx": "return r.load >= 0.95 ? { t: ru`Заполнен`, c: '#fb7185', k: 'full' } : r.load >= 0.75 ? { t: ru`Людно`, c: '#fb923c', k: 'busy' }"
  },
  {
   "k": "Оживлённо",
   "at": [
-   "www/js/realms.js:36"
+   "www/js/realms.js:44"
   ],
   "ctx": ": r.load >= 0.4 ? { t: ru`Оживлённо`, c: '#fde047', k: 'mid' } : { t: ru`Свободно`, c: '#4ade80', k: 'free' };"
  },
  {
   "k": "Свободно",
   "at": [
-   "www/js/realms.js:36",
+   "www/js/realms.js:44",
    "www/js/ui-spirits.js:706"
   ],
   "ctx": ": r.load >= 0.4 ? { t: ru`Оживлённо`, c: '#fde047', k: 'mid' } : { t: ru`Свободно`, c: '#4ade80', k: 'free' };"
@@ -12042,160 +12057,152 @@
  {
   "k": "{0} тыс.",
   "at": [
-   "www/js/realms.js:48"
+   "www/js/realms.js:56"
   ],
   "ctx": "fmtOnline(n) { return n < 1000 ? String(n) : I18N.lang === 'ru' ? ru`${(n / 1000).toLocaleString(I18N.locale, { maximumFractionDigits: n >= 10000 ? 0 : 1 })} тыс.` : new Intl.NumberFormat(I18N.locale, { notation: 'compac"
  },
  {
   "k": "Москва",
   "at": [
-   "www/js/realms.js:74"
+   "www/js/realms.js:82"
   ],
   "ctx": "WHERE: { msk: ru`Москва`, spb: ru`Санкт-Петербург` },"
  },
  {
   "k": "Санкт-Петербург",
   "at": [
-   "www/js/realms.js:74"
+   "www/js/realms.js:82"
   ],
   "ctx": "WHERE: { msk: ru`Москва`, spb: ru`Санкт-Петербург` },"
  },
  {
   "k": "Проверяем связь…",
   "at": [
-   "www/js/realms.js:78"
+   "www/js/realms.js:86"
   ],
   "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
  },
  {
   "k": "Сервер на связи",
   "at": [
-   "www/js/realms.js:78"
+   "www/js/realms.js:86"
   ],
   "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
  },
  {
   "k": "Сервер отвечает медленно",
   "at": [
-   "www/js/realms.js:78"
+   "www/js/realms.js:86"
   ],
   "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
  },
  {
   "k": "Сервер не отвечает",
   "at": [
-   "www/js/realms.js:78"
+   "www/js/realms.js:86"
   ],
   "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
  },
  {
   "k": "Нет интернета",
   "at": [
-   "www/js/realms.js:79"
+   "www/js/realms.js:87"
   ],
   "ctx": "net: ru`Нет интернета`, none: ru`Игра без сервера` }[st];"
  },
  {
   "k": "Игра без сервера",
   "at": [
-   "www/js/realms.js:79"
+   "www/js/realms.js:87"
   ],
   "ctx": "net: ru`Нет интернета`, none: ru`Игра без сервера` }[st];"
  },
  {
   "k": "{0} мс",
   "at": [
-   "www/js/realms.js:114",
-   "www/js/realms.js:117",
-   "www/js/realms.js:166",
-   "www/js/realms.js:184"
+   "www/js/realms.js:122",
+   "www/js/realms.js:125",
+   "www/js/realms.js:186"
   ],
   "ctx": "const ms = el.querySelector('.srv-ms'); if (ms) ms.textContent = up ? ru`${l.ms} мс` : '';"
  },
  {
   "k": "Сервер: {0}. Сменить",
   "at": [
-   "www/js/realms.js:140",
-   "www/js/realms.js:140",
-   "www/js/realms.js:148"
+   "www/js/realms.js:148",
+   "www/js/realms.js:148",
+   "www/js/realms.js:159",
+   "www/js/realms.js:159"
   ],
   "ctx": "return `<button class=\"realm-chip\" data-lbl=\"${ru`Сервер: ${U.esc(r.name)}. Сменить`}\" aria-label=\"${ru`Сервер: ${U.esc(r.name)}. Сменить`}\">${this.crest(r, 30)}` +"
  },
  {
   "k": "Сервер",
   "at": [
-   "www/js/realms.js:141"
+   "www/js/realms.js:149"
   ],
   "ctx": "`<span class=\"rc-main\"><small>${ru`Сервер`}</small><b>${U.esc(r.name)}</b></span><span class=\"srv-live\" data-srv style=\"--c:${c}\"><i class=\"rc-dot srv-dot\"></i><em class=\"srv-ms\"></em></span><svg class=\"rc-chev\" viewBox="
  },
  {
-  "k": "Сервер игры",
-  "at": [
-   "www/js/realms.js:148",
-   "www/js/realms.js:151"
-  ],
-  "ctx": "const name = home ? this.where() || ru`Духолов` : r.name, lbl = home ? ru`Сервер игры` + ' · ' + name : ru`Сервер: ${r.name}. Сменить`;"
- },
- {
   "k": "Твой сервер",
   "at": [
-   "www/js/realms.js:151"
+   "www/js/realms.js:157"
   ],
-  "ctx": "<small>${home ? ru`Сервер игры` : ru`Твой сервер`}</small><b>${U.esc(name)}</b>"
+  "ctx": "<span class=\"rh-info\"><small>${r.real ? ru`Сервер игры` : ru`Твой сервер`}</small><b>${U.esc(r.name)}</b>"
  },
  {
   "k": "Сменить сервер",
   "at": [
-   "www/js/realms.js:153"
+   "www/js/realms.js:159"
   ],
-  "ctx": "${home ? '' : `<span class=\"rh-change\">${ru`Сменить сервер`} <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 6l6 6-6 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin="
+  "ctx": "<button class=\"rh-change\" data-lbl=\"${ru`Сервер: ${U.esc(r.name)}. Сменить`}\" aria-label=\"${ru`Сервер: ${U.esc(r.name)}. Сменить`}\">${ru`Сменить сервер`} <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 6l6 6-6 6\""
  },
  {
   "k": "Рекомендуем",
   "at": [
-   "www/js/realms.js:173"
+   "www/js/realms.js:175"
   ],
   "ctx": "const tags = (r.tags || []).map(t => t === 'rec' ? `<span class=\"rl-tag rec\">✦ ${ru`Рекомендуем`}</span>` : t === 'new' ? `<span class=\"rl-tag new\">${ru`Новый`}</span>` : '').join('') +"
  },
  {
   "k": "Новый",
   "at": [
-   "www/js/realms.js:173"
+   "www/js/realms.js:175"
   ],
   "ctx": "const tags = (r.tags || []).map(t => t === 'rec' ? `<span class=\"rl-tag rec\">✦ ${ru`Рекомендуем`}</span>` : t === 'new' ? `<span class=\"rl-tag new\">${ru`Новый`}</span>` : '').join('') +"
  },
  {
   "k": "Твой Ловчий: <b>{0}</b> · {1} ур.",
   "at": [
-   "www/js/realms.js:181"
+   "www/js/realms.js:183"
   ],
   "ctx": "${me ? `<div class=\"rl-me\"><span class=\"rl-ava\">${Art.avatar ? Art.avatar(S.d.look) : ''}</span><span>${ru`Твой Ловчий: <b>${U.esc(me.name)}</b> · ${me.lvl} ур.`}</span></div>` : ''}"
  },
  {
   "k": "Заполненность",
   "at": [
-   "www/js/realms.js:183"
+   "www/js/realms.js:185"
   ],
   "ctx": "<span class=\"rl-load\" title=\"${ru`Заполненность`}\"><span class=\"rl-seg\">${seg}</span><em>${L.t}</em></span>"
  },
  {
   "k": "Отклик",
   "at": [
-   "www/js/realms.js:184"
+   "www/js/realms.js:186"
   ],
   "ctx": "<span class=\"rl-ping\" title=\"${ru`Отклик`}\"><span class=\"rl-sig\">${[1, 2, 3, 4].map(i => `<i class=\"${i <= bars ? 'on' : ''}\" style=\"height:${3 + i * 3}px\"></i>`).join('')}</span>${ru`${r.ping} мс`}</span>"
  },
  {
   "k": "{0} Ловчих",
   "at": [
-   "www/js/realms.js:185"
+   "www/js/realms.js:187"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>"
  },
  {
   "k": "друг",
   "at": [
-   "www/js/realms.js:185"
+   "www/js/realms.js:187"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>",
   "forms": [
@@ -12207,7 +12214,7 @@
  {
   "k": "друга",
   "at": [
-   "www/js/realms.js:185"
+   "www/js/realms.js:187"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>",
   "forms": [
@@ -12219,7 +12226,7 @@
  {
   "k": "друзей",
   "at": [
-   "www/js/realms.js:185"
+   "www/js/realms.js:187"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>",
   "forms": [
@@ -12231,29 +12238,29 @@
  {
   "k": "Выбор сервера",
   "at": [
-   "www/js/realms.js:192",
-   "www/js/realms.js:194"
+   "www/js/realms.js:194",
+   "www/js/realms.js:196"
   ],
   "ctx": "const wrap = U.el(`<div class=\"rl-wrap\" role=\"dialog\" aria-label=\"${ru`Выбор сервера`}\"><div class=\"rl-sheet\">"
  },
  {
   "k": "Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.",
   "at": [
-   "www/js/realms.js:195"
+   "www/js/realms.js:197"
   ],
   "ctx": "<p class=\"rl-sub\">${ru`Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.`}</p>"
  },
  {
   "k": "Советуем",
   "at": [
-   "www/js/realms.js:196"
+   "www/js/realms.js:198"
   ],
   "ctx": "<div class=\"seg rl-filter\"><button data-f=\"all\" class=\"on\">${ru`Все`}</button><button data-f=\"rec\">${ru`Советуем`}</button><button data-f=\"mine\">${ru`Мои`}</button><button data-f=\"near\">${ru`Ближе`}</button></div>"
  },
  {
   "k": "Мои",
   "at": [
-   "www/js/realms.js:196",
+   "www/js/realms.js:198",
    "www/js/ui-spirits.js:539"
   ],
   "ctx": "<div class=\"seg rl-filter\"><button data-f=\"all\" class=\"on\">${ru`Все`}</button><button data-f=\"rec\">${ru`Советуем`}</button><button data-f=\"mine\">${ru`Мои`}</button><button data-f=\"near\">${ru`Ближе`}</button></div>"
@@ -12261,56 +12268,56 @@
  {
   "k": "Ближе",
   "at": [
-   "www/js/realms.js:196"
+   "www/js/realms.js:198"
   ],
   "ctx": "<div class=\"seg rl-filter\"><button data-f=\"all\" class=\"on\">${ru`Все`}</button><button data-f=\"rec\">${ru`Советуем`}</button><button data-f=\"mine\">${ru`Мои`}</button><button data-f=\"near\">${ru`Ближе`}</button></div>"
  },
  {
   "k": "Здесь пока пусто — выбери сервер во вкладке «Все»",
   "at": [
-   "www/js/realms.js:207"
+   "www/js/realms.js:209"
   ],
   "ctx": ": `<div class=\"rl-empty\">${ru`Здесь пока пусто — выбери сервер во вкладке «Все»`}</div>`;"
  },
  {
   "k": "Остаться здесь",
   "at": [
-   "www/js/realms.js:209"
+   "www/js/realms.js:211"
   ],
   "ctx": "foot.innerHTML = UI.rune(same ? ru`Остаться здесь` : ru`Перейти в ${U.esc(r.name)}`, 'rl-go') +"
  },
  {
   "k": "Перейти в {0}",
   "at": [
-   "www/js/realms.js:209"
+   "www/js/realms.js:211"
   ],
   "ctx": "foot.innerHTML = UI.rune(same ? ru`Остаться здесь` : ru`Перейти в ${U.esc(r.name)}`, 'rl-go') +"
  },
  {
   "k": "Твой Ловчий ждёт тебя здесь.",
   "at": [
-   "www/js/realms.js:210"
+   "www/js/realms.js:212"
   ],
   "ctx": "`<p class=\"rl-note\">${this.hero(r) ? ru`Твой Ловчий ждёт тебя здесь.` : ru`На этом сервере ты начнёшь новый путь Ловчего.`}</p>`;"
  },
  {
   "k": "На этом сервере ты начнёшь новый путь Ловчего.",
   "at": [
-   "www/js/realms.js:210"
+   "www/js/realms.js:212"
   ],
   "ctx": "`<p class=\"rl-note\">${this.hero(r) ? ru`Твой Ловчий ждёт тебя здесь.` : ru`На этом сервере ты начнёшь новый путь Ловчего.`}</p>`;"
  },
  {
   "k": "«{0}» заполнен: новых Ловчих пока не принимают",
   "at": [
-   "www/js/realms.js:220"
+   "www/js/realms.js:222"
   ],
   "ctx": "if (c.classList.contains('closed')) { UI.toast(ru`«${r.name}» заполнен: новых Ловчих пока не принимают`); return; }"
  },
  {
   "k": "Сервер: {0}",
   "at": [
-   "www/js/realms.js:225"
+   "www/js/realms.js:227"
   ],
   "ctx": "if (sel !== this.current().id) { this.save(sel); UI.toast(ru`Сервер: ${r.name}`); if (onPick) onPick(r); }"
  },
