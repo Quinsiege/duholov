@@ -612,7 +612,7 @@ const S = {
     const day = U.today();
     if (this.d.quests && this.d.quests.day === day) return;
     const r = U.rng('quests' + day + this.d.name);
-    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= 5) && (q.t !== 'duel' || this.d.level >= 3));
+    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Капища были с 3-го, а открываются с 5-го)
     const picked = [];
     while (picked.length < 3) {
       const q = pool[Math.floor(r() * pool.length)];

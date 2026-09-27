@@ -194,7 +194,10 @@ Object.assign(UI, {
       const moves = [[ru`Быстрый приём`, ELEMENTS[s.el].fast], [ru`Особый приём`, ELEMENTS[s.el].charge]].concat(sp.move2 ? [[ru`Второй особый · ⚡${MOVES.charge2.cost}`, ELEMENTS[s.el].charge2]] : []);
       const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
       const aErr = S.canAwaken(sp), aCost = S.awakenCost(sp), nStars = sp.stars || 0; // 4.16: пробуждение
-      const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || !aErr], ['fight', ru`Характеристики`, false], ['amulet', ru`Амулет`, false], ['about', ru`О духе`, false]];
+      // 4.18: вкладка «Амулет» — когда амулеты уже есть (или дух в амулете); пробуждение — ближе к 20-му уровню
+      const hasAm = !!sp.amulet || Object.values(S.d.amulets || {}).some(n => n > 0), showAw = nStars > 0 || S.d.level >= S.AWAKE.LVL[0] - 2;
+      if (tab === 'amulet' && !hasAm) tab = 'grow';
+      const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || (showAw && !aErr)], ['fight', ru`Характеристики`, false], ...(hasAm ? [['amulet', ru`Амулет`, false]] : []), ['about', ru`О духе`, false]];
       scr.querySelector('.screen-body').innerHTML = `
         <div class="det det2 el-${s.el}" style="--c:${ELEMENTS[s.el].color}">
           <div class="dt-hero">
@@ -206,7 +209,7 @@ Object.assign(UI, {
               <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${nStars ? `<span class="aw-t">${'★'.repeat(nStars)}</span>` : ''}${sp.shiny ? `<span class="shiny-t">✦ ${ru`Сияющий`}</span>` : ''}${sp.dark ? `<span class="dark-t">${ru`Омрачённый`}</span>` : ''}${sp.purified ? `<span class="pure-t">${ru`Очищенный`}</span>` : ''}${isBuddy ? `<span class="buddy-t">♥ ${ru`Спутник`}</span>` : ''}${sp.bound ? `<span class="bind-t">${ru`Привязан`}</span>` : ''}${hpN < 1 ? `<span class="hp-t ${hpN <= 0 ? 'ko' : ''}">${hpN <= 0 ? ru`без сил` : ru`ранен · ${Math.round(hpN * 100)}%`}</span>` : ''}</div>
             </div>
           </div>
-          <div class="dt-bind ${sp.bound ? 'on' : ''}">${sp.bound ? ru`Плёнка на обороте содрана — дух привязан к тебе, продать его нельзя` : ru`Переверни стикер: плёнку на обороте можно содрать — дух привяжется к тебе`}</div>
+          <div class="dt-bind ${sp.bound ? 'on' : ''}"${Tut.step() ? ' hidden' : ''}>${sp.bound ? ru`Плёнка на обороте содрана — дух привязан к тебе, продать его нельзя` : ru`Переверни стикер: плёнку на обороте можно содрать — дух привяжется к тебе`}</div>
           <div class="seg dt-tabs">${TABS.map(([k, t, dot]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${t}${dot ? '<i class="dt-dot"></i>' : ''}</button>`).join('')}</div>
           <div class="dt-panel">
             ${pane('grow', `
@@ -218,8 +221,8 @@ Object.assign(UI, {
                   <div class="dt-evo-bar"><div class="pbar"><i style="width:${Math.min(100, ess / s.cost * 100)}%"></i></div><small>${ru`${Math.min(ess, s.cost)} / ${s.cost} эсс.`}</small></div></div>`
                   : row(ru`Превращение`, ru`высшая форма`)}
                 ${row(ru`Искры`, `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}`, 'gold')}
-                ${row(ru`Эссенция «${fam.name}»`, `${ess}<button class="dt-plus act-pour" aria-label="${ru`Влить эссенцию Рода`}">+</button>`)}
-                <button class="dt-row dt-aw act-awaken-open"><span>${ru`Пробуждение`}</span><b><i class="aw-stars">${'★'.repeat(nStars)}<s>${'☆'.repeat(S.AWAKE.MAX - nStars)}</s></i>${!aErr ? `<em>${ru`можно`}</em>` : aCost && S.d.level < aCost.lvl && !nStars ? `<small>${ru`с ${aCost.lvl} ур.`}</small>` : ''}<i class="dt-go">›</i></b></button>
+                ${row(ru`Эссенция «${fam.name}»`, `${ess}${(S.d.rod || 0) > 0 ? `<button class="dt-plus act-pour" aria-label="${ru`Влить эссенцию Рода`}">+</button>` : ''}`)}
+                ${showAw ? `<button class="dt-row dt-aw act-awaken-open"><span>${ru`Пробуждение`}</span><b><i class="aw-stars">${'★'.repeat(nStars)}<s>${'☆'.repeat(S.AWAKE.MAX - nStars)}</s></i>${!aErr ? `<em>${ru`можно`}</em>` : aCost && S.d.level < aCost.lvl && !nStars ? `<small>${ru`с ${aCost.lvl} ур.`}</small>` : ''}<i class="dt-go">›</i></b></button>` : ''}
                 ${sp.dark ? `<div class="dt-row dt-dark"><span><b>${ru`Омрачён Навью`}</b><small>${ru`атака +20%, защита −17%`}</small></span>
                   <button class="btn small act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>${ru`Очистить`}<small><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.purifyCost(sp).sparks)} · ${ru`${S.purifyCost(sp).essence} эсс.`}</small></button></div>` : ''}
               </div>
@@ -237,7 +240,7 @@ Object.assign(UI, {
                 ${bar(ru`Атака`, sp.iv[0])}${bar(ru`Защита`, sp.iv[1])}${bar(ru`Стойкость`, sp.iv[2])}
                 ${moves.map(([t, n]) => row(t, n)).join('')}
               </div>
-              ${sp.move2 ? '' : `<button class="btn ghost small wide dt-bottom act-move2" ${S.canLearnMove2(sp) ? `data-err="${U.esc(S.canLearnMove2(sp))}"` : ''}>${ru`Выучить «${ELEMENTS[s.el].charge2}»`}<small><span class="cur">${Art.item('sparks')}</span> ${MOVE2_COST.sparks} · ${ru`${MOVE2_COST.essence} эсс.`}</small></button>`}`)}
+              ${sp.move2 || S.d.level < MOVE2_LEVEL ? '' : `<button class="btn ghost small wide dt-bottom act-move2" ${S.canLearnMove2(sp) ? `data-err="${U.esc(S.canLearnMove2(sp))}"` : ''}>${ru`Выучить «${ELEMENTS[s.el].charge2}»`}<small><span class="cur">${Art.item('sparks')}</span> ${MOVE2_COST.sparks} · ${ru`${MOVE2_COST.essence} эсс.`}</small></button>`}`)}
             ${pane('amulet', `
               <div class="amulet-slot dt-am">
                 ${sp.amulet ? `<div class="am-ico">${Art.amulet(sp.amulet)}</div><div class="row-main"><b>${AMULETS[sp.amulet].name}</b><small>${AMULETS[sp.amulet].desc}</small></div>`

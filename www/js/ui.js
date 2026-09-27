@@ -574,6 +574,30 @@ const UI = {
     };
     return `<svg class="mi art" viewBox="0 0 100 100" aria-hidden="true">${A[k] ? A[k]() : ''}</svg>`;
   },
+  // 4.18: лестница открытий — с какого уровня Ловчего раздел меню (остальные — с начала).
+  // Далёкие (больше чем через 5 уровней) не показываются вовсе, ближние — с замком «с N ур.»,
+  // только что открытые — с меткой «Новое», пока в раздел не заглянули (помнит телефон)
+  OPEN_KEY: 'duholov.opened',
+  openLvl(k) {
+    const L = { shop: 2, swap: 2, journal: 2, trail: 3, chat: Rules.CHAT.LEVEL, rift: RAID_LEVEL, pin: Propose.MIN_LEVEL, trophy: League.LEVEL, shield: CLAN_LEVEL, gavel: Rules.AUCTION.LEVEL };
+    return L[k] || 1;
+  },
+  opened() {
+    if (this._opened) return this._opened;
+    let o = null;
+    try { o = JSON.parse(localStorage.getItem(this.OPEN_KEY)); } catch (e) { /* нет хранилища — как впервые */ }
+    // первый запуск 4.18 у того, кто уже играл: всё, что у него уже открыто, — знакомо (без меток «Новое» и советов про старое)
+    if (!o && S.d && !Tut.step() && S.d.level > 2) {
+      o = {};
+      ['shop', 'swap', 'journal', 'trail', 'chat', 'rift', 'pin', 'trophy', 'shield', 'gavel'].forEach(k => { if (this.openLvl(k) <= S.d.level) o[k] = 1; });
+      if (S.d.level >= DUEL_LEVEL) o.shrine = 1;
+      if (S.d.level >= INVASION_LEVEL) o.invasion = 1;
+      try { localStorage.setItem(this.OPEN_KEY, JSON.stringify(o)); } catch (e) { /* не запомнили — посчитаем снова */ }
+    }
+    return (this._opened = o || {});
+  },
+  markOpened(k) { const o = this.opened(); if (o[k]) return; o[k] = 1; try { localStorage.setItem(this.OPEN_KEY, JSON.stringify(o)); } catch (e) { /* не запомнили — метка «Новое» останется */ } },
+  isNew(k) { const l = this.openLvl(k); return l > 1 && S.d.level >= l && !this.opened()[k]; },
   menu() {
     Sfx.init(); Sfx.play('tap');
     const ml = Tut.menuLock(); if (ml) { this.toast(ml); return; } // 4.0: меню открывается по ходу обучения
@@ -601,12 +625,15 @@ const UI = {
       ['gear', ru`Настройки`, () => this.settings()],
     ];
     Tut.ui('menu'); // 4.0: шаг обучения «открой меню»
+    // 4.18: далёкие разделы прячем (после обучения — чтобы не вываливать всё сразу)
+    const lvl = S.d.level, shown = Tut.step() ? tiles : tiles.filter(t => this.openLvl(t[0]) <= lvl + 5);
+    const far = k => !Tut.tileLock(k) && this.openLvl(k) > lvl; // закрыт по уровню
     // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
     const PER = 12, pages = [];
-    for (let i = 0; i < tiles.length; i += PER) pages.push(tiles.slice(i, i + PER).map((t, j) => [t, i + j]));
+    for (let i = 0; i < shown.length; i += PER) pages.push(shown.slice(i, i + PER).map(t => [t, tiles.indexOf(t)]));
     // 4.0: во время обучения — замки на ещё не пройденных разделах и подсветка нужного
-    const tile = ([t, i]) => { const lock = Tut.tileLock(t[0]);
-      return `<button class="tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${lock ? '<i class="lock">🔒</i>' : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
+    const tile = ([t, i]) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
+      return `<button class="tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}${lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
     const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
       <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
       ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="${ru`Страница ${i + 1}`}"></button>`).join('')}</div>` : ''}</div></div>`);
@@ -618,7 +645,11 @@ const UI = {
       const d = e.target.closest('[data-p]');
       if (d) { box.scrollTo({ left: +d.dataset.p * box.clientWidth, behavior: 'smooth' }); return; }
       const t = e.target.closest('.tile');
-      if (t) { const lk = Tut.tileLock(tiles[+t.dataset.i][0]); if (lk) { this.toast(lk); Sfx.play('miss'); return; } close(); Sfx.play('tap'); tiles[+t.dataset.i][2](); }
+      if (t) {
+        const k = tiles[+t.dataset.i][0], lk = Tut.tileLock(k) || (far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '');
+        if (lk) { this.toast(lk); Sfx.play('miss'); return; }
+        this.markOpened(k); close(); Sfx.play('tap'); tiles[+t.dataset.i][2]();
+      }
       else if (e.target === sheet) close();
     });
     document.body.appendChild(sheet);

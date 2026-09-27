@@ -939,6 +939,7 @@ const GameCore = {
 
     /* ----- бои: разлом ----- */
     async raidStart(a, ctx) {
+      this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); // 4.18
       // совместный бой: число союзников и место разлома — из комнаты на сервере, а не со слов телефона
       let coop = null, rift = a.rift;
       if (a.coop && a.coop.code) {
@@ -974,6 +975,7 @@ const GameCore = {
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {
+      this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`);
       const p = await this.place(a.rift, ctx, 'shrine');
       const r = W.riftFor(p, 0, Math.floor(ctx.now / 3600000));
       this.need(r, ru`Разлом уже закрылся`);
@@ -990,6 +992,7 @@ const GameCore = {
       this.fail(ru`Не получилось создать разлом — попробуй ещё раз`);
     },
     async roomJoin(a, ctx) {
+      this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`);
       const code = String(a.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       this.need(code.length === 5, ru`Код разлома — 5 символов`);
       this.limit(ctx, 'roomJoin', 60, 3600000);

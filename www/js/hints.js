@@ -37,6 +37,19 @@ const Hints = {
     const task = d.tasks.find(q => q.p >= q.n);
     if (task) out.push({ id: 'task:' + task.id, btn: ru`К поручениям`,
       text: ru`Поручение «${I18N.back(task.text)}» выполнено. Сдай его — и тебя ждёт встреча с духом: ${SP[task.sid].name}.`, go: () => UI.quests('day') });
+    // 4.18: открылся новый раздел — Велимир коротко рассказывает, что это (по одному, пока раздел не открыт)
+    const opened = UI.opened();
+    const NEWS = [
+      ['shop', 2, ru`Открылась <b>Лавка Ордена</b>: обереги, мёд и живая вода за искры и златники. Каждый день там новое выгодное предложение.`, () => Shop.screen()],
+      ['swap', 2, ru`Теперь можно заводить <b>друзей</b>: обменяйтесь кодами дружбы с другим Ловчим — и дарите друг другу подарки каждый день.`, () => Friends.screen()],
+      ['trail', 3, ru`Открылась <b>Сезонная тропа</b>: очки Тропы дают за обычную игру, а за каждую ступень — награда. Новая Тропа — каждый месяц.`, () => Pass.screen()],
+      ['rift', RAID_LEVEL, ru`У Капищ появились <b>Разломы</b> — трещины в Навь с сильным духом-хранителем. Собери команду из трёх духов и закрой Разлом: за победу — обереги и шанс поймать босса.`, () => Raid.list()],
+      ['shrine', DUEL_LEVEL, ru`Тебя уже пускают на <b>Капища предков</b>: подойди к Капищу на карте и сразись с хранителем — три твоих духа против трёх его.`, null],
+      ['invasion', INVASION_LEVEL, ru`Навь начала <b>захватывать родники</b> — они на карте в тёмной дымке. Подойди, победи прислужников Нави — и родник снова твой, с наградой.`, null],
+      ['trophy', League.LEVEL, ru`Открылась <b>Лига Ордена</b>: бои с живыми Ловчими в реальном времени, рейтинг и лиги — от Новика до Хранителя Лиги.`, () => League.screen()],
+      ['gavel', Rules.AUCTION.LEVEL, ru`Открылся <b>Аукцион</b>: здесь Ловчие продают и покупают духов за искры и златники.`, () => Auction.screen()],
+    ];
+    for (const [k, l, text, go] of NEWS) if (d.level >= l && !opened[k]) out.push({ id: 'open:' + k, btn: go ? ru`Показать` : ru`Понятно`, text, go: go ? () => { UI.markOpened(k); go(); } : null });
     // можно усилить духа, а игрок ещё ни разу этого не делал
     const canPower = byPower.find(sp => !S.canPowerUp(sp));
     const neverPowered = d.story.ch === 0 && d.story.p[2] < 1;
@@ -85,7 +98,7 @@ const Hints = {
     UI.modal({
       title: '', cls: 'hint-modal',
       html: `<div class="hint"><div class="hint-ava">${Art.stack(CutArt.velimir(true).replace('class="vm-breath"', ''), 'velimir-mini')}</div><div><b>${ru`Совет Велимира`}</b><p>${h.text}</p></div></div>`,
-      buttons: [{ label: ru`Позже` }, { label: h.btn, cls: 'primary', fn: h.go }],
+      buttons: h.go ? [{ label: ru`Позже` }, { label: h.btn, cls: 'primary', fn: h.go }] : [{ label: h.btn, cls: 'primary' }],
     });
   },
 };
