@@ -1255,6 +1255,7 @@ const Art = (() => {
       const r = st.getBoundingClientRect();
       if (r.width < 90) return;
       const card = st.querySelector('.stc-card'), back = st.querySelector('.stc-back');
+      try { st.setPointerCapture(e.pointerId); } catch (err) { /* без захвата — события всё равно ловит документ */ }
       // угол плёнки: оборот зеркален — отогнутый угол виден слева внизу
       const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
       const peel = st.dataset.uid && !st.classList.contains('stc-bound') && st.closest('.det-art') && backShown(card) && (1 - u) + v > PC - .3

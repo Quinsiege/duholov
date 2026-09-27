@@ -2723,7 +2723,9 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(.6px 0 0 #15121c) drop-shadow(-.6px 0 0 #15121c) drop-shadow(0 .6px 0 #15121c) drop-shadow(0 -.6px 0 #15121c); }
 @keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
 /* 4.17: дух-стикер — обратная сторона: приглушённо-белая клейкая основа по силуэту с лёгким голографическим отливом */
-.sp-sticker { position: relative; display: block; perspective: 900px; }
+.sp-sticker { position: relative; display: block; perspective: 900px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* там, где стикер крутят и отрывают плёнку, палец не прокручивает экран — иначе телефон перехватывает жест (pointercancel) и плёнка не отходит */
+:is(.det-art, .res-art, .evo-stage, .hatch-sp, .bk-art, .onb-starters, .pf-buddy-a) .sp-sticker { touch-action: none; }
 .stc-card { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(var(--ry, 0deg)); transition: transform .7s cubic-bezier(.2, .9, .25, 1); }
 .stc-card.drag { transition: none; }
 .stc-front, .stc-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
