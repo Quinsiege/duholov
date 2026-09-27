@@ -185,7 +185,7 @@ const Login = {
   screenRoot() {
     const root = U.el('<div class="onb lg"><div class="lg-scene"></div><div class="lg-body"></div></div>');
     document.body.appendChild(root);
-    Scene.mount(root.querySelector('.lg-scene'), 'login').then(sc => { root._scene = sc; });
+    // 4.19: сцены нет — фон входа такой же, как у экранов игры (style.css: .onb.lg)
     return root;
   },
   close(root, done) {

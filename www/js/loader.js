@@ -34,14 +34,12 @@ const Loader = {
         bar.style.width = this.pct + '%';
         bar.classList.remove('boot');
         boot.querySelector('.ld-pct').textContent = this.pct + '%';
-        this.runes();
       } else if (this.tpl) {
         // 4.4: тот же экран, что в index.html (со сценой), — копия, снятая при первом показе
         this.hint = Math.floor(Math.random() * this.HINTS.length);
         this.el = this.tpl.cloneNode(true);
         const bar = this.el.querySelector('.ld-bar i');
         bar.classList.remove('boot'); bar.style.width = '0%';
-        this.lit = 0;
         this.el.querySelector('.ld-pct').textContent = '';
         this.el.querySelector('.ld-text').textContent = '';
         document.body.appendChild(this.el);
@@ -56,7 +54,7 @@ const Loader = {
               <button class="ld-arrow next" aria-label="${ru`Следующая подсказка`}">›</button>
             </div>
             <div class="ld-dots"></div>
-            <div class="ld-prog"><div class="ld-row"><span class="ld-text"></span><b class="ld-pct"></b></div><div class="ld-bar"><i></i><b class="ld-runes"></b></div></div>
+            <div class="ld-prog"><div class="ld-row"><span class="ld-text"></span><b class="ld-pct"></b></div><div class="ld-bar"><i></i></div></div>
           </div>
         </div>`);
         document.body.appendChild(this.el);
@@ -71,7 +69,6 @@ const Loader = {
       tip.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
       tip.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) this.go(dx < 0 ? 1 : -1, true); }, { passive: true });
       this.go(0, false, !!boot);
-      if (typeof Scene !== 'undefined') Scene.loading(this.el); // 4.4: фон из scenes.json
       this.rot = setInterval(() => this.go(1), 7000);
     }
     if (text) this.set(this.pct, text);
@@ -93,17 +90,6 @@ const Loader = {
     this.el.querySelector('.ld-bar i').style.width = this.pct + '%';
     this.el.querySelector('.ld-pct').textContent = Math.round(this.pct) + '%';
     if (text) this.el.querySelector('.ld-text').textContent = text;
-    clearTimeout(this._rt); this._rt = setTimeout(() => this.runes(), 320); // руна — когда огонь дойдёт до неё (полоса едет .35 с)
-  },
-  // 4.6: чтение заклинания — руны проступают по одной, когда огонь дошёл до середины руны; новая вспыхивает
-  runes() {
-    const el = this.el && this.el.querySelector('.ld-runes'), bar = el && el.parentNode;
-    if (!el || !bar.clientWidth) return;
-    const CELL = 22, OFF = 5, fill = bar.clientWidth * this.pct / 100;
-    const n = Math.max(0, Math.min(Math.floor((bar.clientWidth - OFF) / CELL), Math.floor((fill - OFF + CELL / 2) / CELL)));
-    el.style.width = n ? (OFF + n * CELL) + 'px' : '0';
-    if (n > (this.lit || 0)) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
-    this.lit = n;
   },
   hide() {
     if (!this.el) return;
