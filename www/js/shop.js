@@ -134,10 +134,11 @@ const Shop = {
       const today = U.today(), deal = Rules.shopDeal(today), dealBought = S.d.shop.deal === today;
       const lvlLock = it => it.lvl && S.d.level < it.lvl ? ru`с ${it.lvl} ур.` : '';
       const row = (it, id, extra = '') => {
-        const lock = lvlLock(it), left = it.bag ? Rules.BAG_MAX_UP - S.d.bagExtra : it.day ? Math.max(0, it.day - Rules.dayUsed(S.d, 'shop:' + it.id)) : 1;
+        const lock = lvlLock(it), left = it.bag ? Rules.BAG_MAX_UP - S.d.bagExtra : it.day ? Math.max(0, it.day - Rules.dayUsed(S.d, 'shop:' + it.id))
+          : it.week ? Math.max(0, it.week - Rules.weekUsed(S.d, 'shop:' + it.id)) : 1;
         const icon = it.bag ? `<div class="shop-ico bag">${UI.I.bag}</div>` : `<div class="shop-ico">${Loot.art(it.give ? Object.keys(it.give)[0] : it.cocoon ? 'cocoon' : 'amulet', it)}</div>`;
         return `<div class="shop-row ${lock || !left ? 'off' : ''}">${icon}<div class="row-main"><b>${it.name}</b><small>${it.desc || ''}${extra}</small></div>
-          <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : it.day ? ru`Завтра` : ru`Максимум`)}</button></div>`;
+          <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : it.day ? ru`Завтра` : it.week ? ru`В понедельник` : ru`Максимум`)}</button></div>`;
       };
       const bag = { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) };
       const cloaks = LOOK.cloak.filter(c => c.shop), zl = S.d.zlat || 0, exLeft = this.exLeft();
@@ -166,7 +167,7 @@ const Shop = {
               <div class="dt-row"><span>${ru`Курс`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>
               <div class="dt-row"><span>${ru`Обменов в день`}</span><b>${Rules.EXCHANGE.DAY}</b></div>
             </div>
-            <div class="q-note">${ru`Златники дают за серию дней (на 7-й день — 30), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}
+            <div class="q-note">${ru`Златники дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}
           ${pane('look', `
             <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>${ru`Гардероб Ловчего`}</b><small>${ru`${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} златников`}</small></span><span class="sw-go">›</span></button>
             <div class="pf-mh"><span>${ru`Плащи`}</span></div>

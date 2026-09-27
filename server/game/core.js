@@ -318,6 +318,14 @@ const GameCore = {
   },
   dayNeed(ctx, key) { this.need((this.dayc(ctx)[key] || 0) < Rules.DAILY[key], this.DAY_MSG[key]); },
   dayAdd(ctx, key) { const c = this.dayc(ctx); c[key] = (c[key] || 0) + 1; },
+  // 4.16: недельные счётчики (неделя — как у общего дела Ордена, с понедельника) — в прогрессе (weekc)
+  weekc(ctx) {
+    const w = Ev.week(ctx.now);
+    if (!S.d.weekc || S.d.weekc.w !== w) S.d.weekc = { w };
+    return S.d.weekc;
+  },
+  weekUsed(ctx, key) { return this.weekc(ctx)[key] || 0; },
+  weekAdd(ctx, key) { const c = this.weekc(ctx); c[key] = (c[key] || 0) + 1; },
   // Канал чата: общий, торговля, разломы, помощь или своя дружина
   chatChannel(ch) {
     if (ch === 'clan') { this.need(S.d.clan, ru`Канал дружины — для тех, кто в дружине`); return 'clan:' + S.d.clan; }
@@ -604,10 +612,12 @@ const GameCore = {
       const e = W.springFor(p, 0);
       this.need(!e.invaded, ru`Родник захвачен Навью`);
       this.need(e.ready, ru`Родник ещё набирает силу`);
+      // 4.16: при полной сумке родник не тратится впустую (раньше молча не давал ничего) — сначала освободить место
+      this.need(S.bagCount() < S.bagLimit(), ru`Сумка полна — родник подождёт. Выброси лишнее или расширь сумку в Лавке Ордена`);
       S.d.springs[p.id] = ctx.now;
       this.dayAdd(ctx, 'springs');
       const { loot, cocoon } = W.springLoot(p.id);
-      const got = S.giveRewards({ ...loot, xp: 50 }, false); // добыча родника соблюдает лимит сумки
+      const got = S.giveRewards({ ...loot, xp: 50 }); // не поместилось — в посылку Ордена
       S.d.stats.springs++;
       S.progress('spring', 1);
       let coc = null;
@@ -643,6 +653,22 @@ const GameCore = {
       this.need(n >= 1 && n <= have, ru`Можно выбросить от 1 до ${have}`);
       S.d.items[k] -= n;
       return { k, n, left: S.d.items[k] };
+    },
+    // 4.16: забрать из посылки Ордена то, что влезет в сумку; drop — выбросить посылку целиком
+    parcelTake(a) {
+      this.need(S.parcelCount() > 0, ru`Посылка Ордена пуста`);
+      if (a.drop) { const n = S.parcelCount(); S.d.parcel = null; return { got: [], dropped: n, left: 0 }; }
+      this.need(S.bagCount() < S.bagLimit(), ru`Сумка полна — освободи место, чтобы забрать посылку`);
+      const got = S.parcelTake();
+      return { got, left: S.parcelCount() };
+    },
+    // 4.16: переплавка амулетов: три одинаковых → один на выбор (за искры)
+    amuletMelt(a) {
+      const from = String(a.from || ''), to = String(a.to || ''), err = S.canMelt(from, to);
+      this.need(!err, err);
+      S.melt(from, to);
+      J.add('melt', { from, to });
+      return { from, to, left: S.d.amulets[from] || 0, have: S.d.amulets[to] || 0 };
     },
     supply(a, ctx) {
       this.need(S.d.supplyDay !== U.today(), ru`Посылка сегодня уже была`);
@@ -880,8 +906,10 @@ const GameCore = {
       this.dayAdd(ctx, 'raids');
       S.progress('raid', 1);
       if (b.coop && b.coop.allies > 0) S.progress('coop', 1);
-      const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 400 * tier, charm: 5, honey: 2 + tier, water: 2, charm2: tier >= 2 ? 3 : 0 });
-      const am = S.rollAmulet([0.25, 0.4, 0.7][tier - 1], b.rid);
+      // 4.16: меньше лечебного, мёда и амулетов (было ✦ 400 × ступень, мёда 2 + ступень, Живой воды 2 за каждую победу,
+      // амулет с шансом 25/40/70%) — к 40 уровню копились сотни флаконов и амулетов
+      const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 350 * tier, charm: 5, honey: tier, herb: tier === 1 ? 1 : 0, water: tier >= 2 ? 1 : 0, charm2: tier >= 2 ? 3 : 0 });
+      const am = S.rollAmulet([0.05, 0.12, 0.3][tier - 1], b.rid);
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
@@ -929,8 +957,9 @@ const GameCore = {
       S.d.stats.duels++;
       this.dayAdd(ctx, 'duels');
       S.progress('duel', 1);
-      const rw = S.giveRewards({ xp: T.xp * mul, sparks: T.sparks * mul, charm: 5 * mul, honey: t * mul, water: 2, charm2: t >= 2 ? 3 * mul : 0, charm3: t === 3 ? 2 * mul : 0 });
-      const am = S.rollAmulet(0.15 * t, e.id);
+      // 4.16: вместо 2 Живой воды за каждую победу — подорожник (на 3 ступени — Живая вода), мёда меньше, амулет реже (было 15% × ступень)
+      const rw = S.giveRewards({ xp: T.xp * mul, sparks: T.sparks * mul, charm: 5 * mul, honey: (t - 1) * mul, herb: t < 3 ? 1 : 0, water: t === 3 ? 1 : 0, charm2: t >= 2 ? 3 * mul : 0, charm3: t === 3 ? 2 * mul : 0 });
+      const am = S.rollAmulet(0.04 * t, e.id);
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       return { win: true, rw, freed, clan: b.hold ? b.hold.clan : null };
     },
@@ -962,6 +991,7 @@ const GameCore = {
       }
       this.need(!it.lvl || S.d.level >= it.lvl, ru`Откроется на ${it.lvl} уровне`);
       if (it.day) this.need((this.dayc(ctx)['shop:' + it.id] || 0) < it.day, ru`Сегодня уже куплено — приходи завтра`); // 4.15.1: редкий товар — сколько-то раз в день
+      if (it.week) this.need(this.weekUsed(ctx, 'shop:' + it.id) < it.week, ru`На этой неделе уже куплено — приходи в понедельник`); // 4.16: и сколько-то раз в неделю
       if (it.cocoon) this.need(S.d.cocoons.length < 9, ru`Коконов уже девять — выведи кого-нибудь`);
       if (it.give) {
         const n = Object.values(it.give).reduce((s, x) => s + x, 0);
@@ -976,6 +1006,7 @@ const GameCore = {
       else got = this.grant({ ...(it.give || {}), cocoon: it.cocoon || 0, amulet: it.amulet ? 1 : 0, look: it.look || null });
       if (a.deal) S.d.shop.deal = today;
       if (it.day) this.dayAdd(ctx, 'shop:' + it.id);
+      if (it.week) this.weekAdd(ctx, 'shop:' + it.id);
       J.add('shop', { name: it.name });
       return { got, price: it.price, cur: key };
     },
@@ -1021,7 +1052,7 @@ const GameCore = {
       this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
       P.got[track].push(lvl);
       let rw = Rules.passReward(track, lvl);
-      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 40 }; // коконов некуда класть — златниками
+      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — златниками (4.16: было 40)
       return { got: this.grant(rw) };
     },
     passGold(a, ctx) {
@@ -1099,7 +1130,8 @@ const GameCore = {
       const n = Math.min(HOLD_MY_MAX, await ctx.env.myHolds(S.d.pid));
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
-      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, zlat: Rules.ZLAT.tribute * n }) };
+      // 4.16: златники — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 златника с каждого, до 30 в день)
+      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, zlat: Rules.ZLAT.tribute * Math.min(n, Rules.ZLAT.tributeMax) }) };
     },
 
     async invStart(a, ctx) {
@@ -1126,8 +1158,8 @@ const GameCore = {
       this.dayAdd(ctx, 'invasions');
       S.progress('invasion', 1);
       J.add('invasion', { name: b.name });
-      const rw = S.giveRewards({ xp: 1000, sparks: 500, charm: 6, honey: 2, water: 2 });
-      const am = S.rollAmulet(0.15, b.invId);
+      const rw = S.giveRewards({ xp: 1000, sparks: 400, charm: 6, honey: 1, herb: 1 }); // 4.16: было ✦ 500, мёда 2, Живой воды 2
+      const am = S.rollAmulet(0.04, b.invId); // 4.16: было 15%
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
       const rescue = g.team[Math.floor(U.h('rescue', b.invId) * g.team.length)];
       ctx.srv.rescue = { sid: rescue.sid, lvl: Math.min(rescue.lvl, S.catchLvl()), seed: b.invId + ':rescue' };
@@ -1426,7 +1458,7 @@ const GameCore = {
       sd.n++;
       f.spar = U.today(ctx.now);
       S.progress('spar', 1);
-      const rw = S.giveRewards({ xp: 800, sparks: 500, charm: 3, honey: 1 });
+      const rw = S.giveRewards({ xp: 800, sparks: 300, charm: 3, honey: 1 }); // 4.16: было ✦ 500
       this.friendPoint(f);
       return { win: true, rw, pts: f.pts };
     },

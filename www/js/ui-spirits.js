@@ -211,7 +211,7 @@ Object.assign(UI, {
                 ${row(ru`Искры`, `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}`, 'gold')}
                 ${row(ru`Эссенция «${fam.name}»`, ess)}
                 ${sp.dark ? `<div class="dt-row dt-dark"><span><b>${ru`Омрачён Навью`}</b><small>${ru`атака +20%, защита −17%`}</small></span>
-                  <button class="btn small act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>${ru`Очистить`}<small><span class="cur">${Art.item('sparks')}</span> ${S.PURIFY.sparks} · ${ru`${S.PURIFY.essence} эсс.`}</small></button></div>` : ''}
+                  <button class="btn small act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>${ru`Очистить`}<small><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.purifyCost(sp).sparks)} · ${ru`${S.purifyCost(sp).essence} эсс.`}</small></button></div>` : ''}
               </div>
               ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
               <div class="det-actions top ${s.evo ? '' : 'one'}">
@@ -272,7 +272,7 @@ Object.assign(UI, {
       } else if (t.classList.contains('act-unequip')) act('unequip', {}, () => Sfx.play('tap'));
       else if (t.classList.contains('act-equip')) this.pickAmulet(sp, render);
       else if (t.classList.contains('act-purify')) {
-        this.confirm(ru`Очистить духа?`, ru`Тьма Нави покинет «${U.esc(sp.nick || SP[sp.sid].name)}». Стоимость: ✦ ${S.PURIFY.sparks} и ${S.PURIFY.essence} эссенции.`, ru`Очистить`,
+        this.confirm(ru`Очистить духа?`, ru`Тьма Нави покинет «${U.esc(sp.nick || SP[sp.sid].name)}». Стоимость: ✦ ${U.fmtNum(S.purifyCost(sp).sparks)} и ${S.purifyCost(sp).essence} эссенции.`, ru`Очистить`,
           () => act('purify', {}, () => { Sfx.play('levelup'); U.vibrate([40, 60, 120]); this.toast(ru`Дух очищен! Оценка выросла`, 'good'); pulse(); }));
       }
       else if (t.classList.contains('act-buddy')) {
@@ -428,9 +428,14 @@ Object.assign(UI, {
       scr.querySelector('.head-extra').textContent = `${S.bagCount()}/${S.bagLimit()}`;
       const keys = Object.keys(ITEMS).filter(k => (S.d.items[k] || 0) > 0);
       const ams = AMULET_KEYS.filter(k => S.d.amulets[k] > 0);
-      scr.querySelector('.list').innerHTML = ams.map(k => `
+      // 4.16: посылка Ордена — награда, которая не поместилась в сумку
+      const pc = S.parcelCount(), pItems = pc ? Object.entries(S.d.parcel.items).filter(([k, n]) => ITEMS[k] && n > 0) : [];
+      const parcel = pc ? `
+        <div class="row parcel"><div class="row-ico">${Art.item('gift')}</div><div class="row-main"><b>${ru`Посылка Ордена`}</b><small>${ru`Не поместилось в сумку: ${pItems.map(([k, n]) => `${ITEMS[k].name} ×${n}`).join(', ')}. Посылка ждёт, пока в сумке не освободится место (вмещает до ${Rules.PARCEL.MAX} вещей).`}</small></div>
+        <div class="row-side"><span class="cnt">×${pc}</span><div class="row-acts"><button class="btn small primary parcel-take">${ru`Забрать`}</button><button class="btn-round small parcel-drop" aria-label="${ru`Выбросить`}">${this.I.trash}</button></div></div></div>` : '';
+      scr.querySelector('.list').innerHTML = parcel + ams.map(k => `
         <div class="row"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}. ${ru`Надевается на карточке духа.`}</small></div>
-        <div class="row-side"><span class="cnt">×${S.d.amulets[k]}</span></div></div>`).join('') + keys.map(k => `
+        <div class="row-side"><span class="cnt">×${S.d.amulets[k]}</span>${S.d.amulets[k] >= Rules.MELT.N ? `<div class="row-acts"><button class="btn small melt" data-k="${k}">${ru`Переплавить`}</button></div>` : ''}</div></div>`).join('') + keys.map(k => `
         <div class="row"><div class="row-ico">${Art.item(k)}</div><div class="row-main"><b>${ITEMS[k].name}</b><small>${ITEMS[k].desc}</small></div>
         <div class="row-side"><span class="cnt">×${S.d.items[k]}</span><div class="row-acts">${k === 'incense' ? `<button class="btn small primary use-inc">${S.incenseActive() ? ru`Горит` : ru`Зажечь`}</button>` : ''}${ITEMS[k].heal || ITEMS[k].revive ? `<button class="btn small primary use-heal" data-k="${k}">${ru`Лечить`}</button>` : ''}<button class="btn-round small drop" data-k="${k}" aria-label="${ru`Выбросить`}">${this.I.trash}</button></div></div></div>`).join('')
         || `<div class="empty">${ru`Сумка пуста. Загляни к ближайшему роднику!`}</div>`;
@@ -439,6 +444,18 @@ Object.assign(UI, {
       const drop = e.target.closest('.drop');
       if (drop) { this.discard(drop.dataset.k, () => { render(); this.refreshHud(); }); return; }
       const uh = e.target.closest('.use-heal'); if (uh) { this.healWho(uh.dataset.k, render); return; }
+      if (e.target.closest('.parcel-take')) {
+        const r = await Game.try('parcelTake');
+        if (!r) return;
+        Sfx.play('spin');
+        this.toast(r.left ? ru`Из посылки взято: ${r.got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}. В посылке осталось: ${r.left}` : ru`Посылка разобрана: ${r.got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}`, 'good');
+        render(); this.refreshHud(); return;
+      }
+      if (e.target.closest('.parcel-drop')) {
+        this.confirm(ru`Посылка Ордена`, ru`Выбросить всё, что лежит в посылке (${S.parcelCount()})?`, ru`Выбросить`, async () => { if (await Game.try('parcelTake', { drop: true })) { render(); this.refreshHud(); } });
+        return;
+      }
+      const ml = e.target.closest('.melt'); if (ml) { this.melt(ml.dataset.k, render); return; }
       if (!e.target.closest('.use-inc')) return;
       if (S.incenseActive()) { this.toast(ru`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - U.now())}`); return; }
       if (await Game.try('incense')) {
@@ -447,6 +464,28 @@ Object.assign(UI, {
       }
     });
     render();
+  },
+
+  // 4.16: переплавка — три одинаковых амулета и искры → один амулет на выбор
+  melt(from, done) {
+    const M = Rules.MELT;
+    const m = this.modal({
+      title: ru`Переплавка амулетов`, cls: 'melt-modal',
+      html: `<p>${ru`${AMULETS[from].name} ×${M.N} и ✦ ${U.fmtNum(M.SPARKS)} → один амулет на выбор. У тебя ✦ ${U.fmtNum(S.d.sparks)}.`}</p>
+        <div class="list">${AMULET_KEYS.filter(k => k !== from).map(k => `<button class="row melt-to" data-k="${k}"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}</small></div><div class="row-side"><span class="cnt">×${S.d.amulets[k] || 0}</span></div></button>`).join('')}</div>`,
+      buttons: [{ label: ru`Отмена` }],
+    });
+    m.addEventListener('click', async e => {
+      const b = e.target.closest('.melt-to'); if (!b || m._busy) return;
+      const err = S.canMelt(from, b.dataset.k); if (err) { this.toast(U.esc(err)); return; }
+      m._busy = true;
+      const r = await Game.try('amuletMelt', { from, to: b.dataset.k });
+      m._busy = false;
+      if (!r) return;
+      m.close(); Sfx.play('spin'); U.vibrate(20);
+      this.toast(ru`Переплавлено: ${AMULETS[r.to].name}`, 'good');
+      done && done(); this.refreshHud();
+    });
   },
 
   // Выбросить предметы из сумки: сколько — выбирает игрок (кнопки, ползунок или число)

@@ -120,6 +120,22 @@ const S = {
     sp.amulet = null;
     this.save();
   },
+  // 4.16: переплавка — Rules.MELT.N одинаковых амулетов из сумки и искры → один амулет на выбор (лишние амулеты копились сотнями)
+  canMelt(from, to) {
+    const M = Rules.MELT;
+    if (!AMULET_KEYS.includes(from) || !AMULET_KEYS.includes(to)) return ru`Такого амулета нет`;
+    if (from === to) return ru`Выбери другой амулет`;
+    if ((this.d.amulets[from] || 0) < M.N) return ru`Для переплавки нужно ${M.N} одинаковых амулета`;
+    if (this.d.sparks < M.SPARKS) return ru`Нужно ✦ ${M.SPARKS}`;
+    return null;
+  },
+  melt(from, to) {
+    if (this.canMelt(from, to)) return false;
+    this.d.amulets[from] -= Rules.MELT.N;
+    this.d.sparks -= Rules.MELT.SPARKS;
+    this.addAmulet(to);
+    return true;
+  },
   canLearnMove2(sp) {
     if (sp.move2) return ru`Приём уже выучен`;
     if (this.d.sparks < MOVE2_COST.sparks) return ru`Нужно ✦ ${MOVE2_COST.sparks}`;
@@ -248,7 +264,13 @@ const S = {
     }
   },
   addEssence(fam, n) { this.d.essence[fam] = (this.d.essence[fam] || 0) + n; },
-  powerUpCost(sp) { return { sparks: 200 + 200 * Math.floor((sp.lvl - 1) / 4), essence: 1 + Math.floor(sp.lvl / 10) }; },
+  // 4.16: искр до 20 уровня — как раньше (200…1 200), выше — дороже на 15% за каждый уровень после 20-го (30 → ✦ 4 000,
+  // 39 → ✦ 7 700): прежде усиление стоило 200–2 000, и к 40 уровню Ловчего копились сотни тысяч лишних искр
+  powerUpSparks(lvl) {
+    const base = 200 + 200 * Math.floor((lvl - 1) / 4);
+    return lvl <= 20 ? base : Math.round(base * (1 + 0.15 * (lvl - 20)) / 50) * 50;
+  },
+  powerUpCost(sp) { return { sparks: this.powerUpSparks(sp.lvl), essence: 1 + Math.floor(sp.lvl / 10) }; },
   canPowerUp(sp) {
     const c = this.powerUpCost(sp), fam = SP[sp.sid].fam;
     if (sp.lvl >= this.maxLvl()) return ru`Предел: уровень духа не может быть выше уровня Ловчего +5`;
@@ -267,16 +289,21 @@ const S = {
     return true;
   },
   PURIFY: { sparks: 3000, essence: 25 }, // 3.19: было 1000 и 10 — дешевле, чем усилить духа до 25 уровня (16 800 ✦)
+  // 4.16: цена очищения растёт с редкостью духа (обычный ✦ 3 000 … легендарный ✦ 20 000) — при избытке искр оно было даровым
+  PURIFY_SPARKS: { 1: 3000, 2: 5000, 3: 8000, 4: 12000, 5: 20000 },
+  purifyCost(sp) { return { sparks: this.PURIFY_SPARKS[(SP[sp.sid] || {}).rar] || this.PURIFY.sparks, essence: this.PURIFY.essence }; },
   canPurify(sp) {
+    const c = this.purifyCost(sp);
     if (!sp.dark) return ru`Дух не омрачён`;
-    if (this.d.sparks < this.PURIFY.sparks) return ru`Нужно ✦ ${this.PURIFY.sparks}`;
-    if ((this.d.essence[SP[sp.sid].fam] || 0) < this.PURIFY.essence) return ru`Нужно ${this.PURIFY.essence} эссенции`;
+    if (this.d.sparks < c.sparks) return ru`Нужно ✦ ${c.sparks}`;
+    if ((this.d.essence[SP[sp.sid].fam] || 0) < c.essence) return ru`Нужно ${c.essence} эссенции`;
     return null;
   },
   purify(sp) {
     if (this.canPurify(sp)) return false;
-    this.d.sparks -= this.PURIFY.sparks;
-    this.d.essence[SP[sp.sid].fam] -= this.PURIFY.essence;
+    const c = this.purifyCost(sp);
+    this.d.sparks -= c.sparks;
+    this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.dark = false;
     sp.purified = true;
     sp.iv = sp.iv.map(v => Math.min(15, v + 2));
@@ -313,18 +340,49 @@ const S = {
   /* ---------- предметы ---------- */
   bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
-  // over — награда за достижение (уровень, серия дней, задание, Летопись, Тропа, бой): кладётся и сверх лимита сумки,
-  // иначе она молча пропадала бы. Добыча родника и находки спутника лимит соблюдают
+  // 4.16: сумка больше не переполняется. over — награда (уровень, серия дней, задание, Летопись, Тропа, бой, родник):
+  // что не поместилось — в посылку Ордена (Rules.PARCEL, забрать — parcelTake), а не сверх лимита (раньше сумка
+  // раздувалась в разы, а родники при полной сумке молча ничего не давали). Без over (находки спутника) — только в сумку
   addItem(k, n = 1, over = false) {
-    const room = over ? n : this.bagLimit() - this.bagCount();
-    const add = Math.max(0, Math.min(n, room));
-    this.d.items[k] = (this.d.items[k] || 0) + add;
+    const add = Math.max(0, Math.min(n, this.bagLimit() - this.bagCount()));
+    if (add) this.d.items[k] = (this.d.items[k] || 0) + add;
+    const put = over ? this.parcelPut(k, n - add) : 0;
     this.save();
-    return add;
+    return add + put;
+  },
+  parcelCount() { return Object.values((this.d.parcel && this.d.parcel.items) || {}).reduce((a, b) => a + b, 0); },
+  // в посылку — сколько войдёт (не больше Rules.PARCEL.MAX вещей); остальное пропадает. Счёт — для сообщения игроку
+  parcelPut(k, n) {
+    if (!(n > 0)) return 0;
+    const P = this.d.parcel = this.d.parcel || { items: {} };
+    const m = Math.max(0, Math.min(n, Rules.PARCEL.MAX - this.parcelCount()));
+    if (m) P.items[k] = (P.items[k] || 0) + m;
+    const c = this._parcelNote = this._parcelNote || { put: 0, lost: 0 };
+    c.put += m; c.lost += n - m;
+    return m;
+  },
+  // забрать посылку: сколько влезет в сумку — сначала редкое и нужное
+  PARCEL_ORDER: ['deadwater', 'gift', 'charm3', 'charm2', 'farpass', 'incense', 'brew', 'water', 'herb', 'honey', 'charm'],
+  parcelTake() {
+    const P = this.d.parcel, got = [];
+    if (!P) return got;
+    const keys = [...this.PARCEL_ORDER, ...Object.keys(P.items).filter(k => !this.PARCEL_ORDER.includes(k))];
+    for (const k of keys) {
+      const n = P.items[k] || 0, add = Math.min(n, Math.max(0, this.bagLimit() - this.bagCount()));
+      if (!(add > 0) || !ITEMS[k]) continue;
+      this.d.items[k] = (this.d.items[k] || 0) + add;
+      P.items[k] = n - add;
+      if (!P.items[k]) delete P.items[k];
+      got.push({ k, n: add, label: ITEMS[k].name });
+    }
+    if (!Object.keys(P.items).length) this.d.parcel = null;
+    this.save();
+    return got;
   },
   useItem(k) { if ((this.d.items[k] || 0) <= 0) return false; this.d.items[k]--; this.save(); return true; },
   giveRewards(rw, over = true) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа; over — см. addItem
-    const out = [];
+    const out = [], prev = this._parcelNote;
+    this._parcelNote = { put: 0, lost: 0 }; // своя сводка: награда за уровень внутри (addXP) считает свою
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
@@ -332,6 +390,10 @@ const S = {
       else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: ru`Опыт` }); this.addXP(n); }
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
+    const c = this._parcelNote;
+    this._parcelNote = prev;
+    if (c && c.put) Bus.emit('toast', { text: ru`Сумка полна — в посылку Ордена ушло вещей: ${c.put}. Забери её в Сумке, когда освободится место` });
+    if (c && c.lost) Bus.emit('toast', { text: ru`Сумка и посылка Ордена полны — не поместилось вещей: ${c.lost}. Освободи место в Сумке`, cls: 'bad' });
     this.save();
     return out;
   },
@@ -356,7 +418,8 @@ const S = {
     this.save();
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3, herb: 5, brew: 2, zlat: Rules.ZLAT.level };
+    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); златники — 3, на каждом пятом — 15
+    const r = { charm: 10 + l, honey: 2, water: 1, herb: 3, brew: 1, zlat: l % 5 ? Rules.ZLAT.level : Rules.ZLAT.level5 };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;

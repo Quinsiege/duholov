@@ -314,11 +314,11 @@
     S.d = keep;
     // коконы — только первая стадия
     for (let i = 0; i < 60; i++) { const km = [2, 5, 10][i % 3]; const r = S.hatch({ id: 'balance' + i, km }); eq(SP[r.sp.sid].stage, 1, 'из кокона первая стадия'); }
-    // сумка полна: награда за достижение приходит, добыча родника — нет
-    S.d.items = { charm: S.bagLimit() };
-    const got = S.giveRewards({ honey: 3 }); eq(S.d.items.honey, 3, 'награда сверх лимита'); eq(got[0].n, 3);
-    const loot = S.giveRewards({ water: 2 }, false); ok(!S.d.items.water && !loot.length, 'родник лимит соблюдает');
-    S.d.items = { charm: 50 };
+    // сумка полна: награда приходит в посылку Ордена (4.16: раньше — сверх лимита сумки), находки без over — нет
+    S.d.items = { charm: S.bagLimit() }; S.d.parcel = null;
+    const got = S.giveRewards({ honey: 3 }); ok(!S.d.items.honey, 'сумка не переполняется'); eq(S.d.parcel.items.honey, 3, 'награда — в посылке'); eq(got[0].n, 3);
+    const loot = S.giveRewards({ water: 2 }, false); ok(!S.d.items.water && !loot.length && !S.d.parcel.items.water, 'без over — только в сумку');
+    S.d.items = { charm: 50 }; S.d.parcel = null;
     // эссенция растёт с редкостью
     const common = SPECIES.find(s => s.rar === 1 && s.stage === 1), epic = SPECIES.find(s => s.rar === 4 && s.stage === 1);
     eq(Rules.catchReward({ sid: common.id, mode: 'wild' }).ess, 3); eq(Rules.catchReward({ sid: epic.id, mode: 'wild' }).ess, 9, 'эпический — 9 эссенции');
@@ -334,6 +334,38 @@
   test('Второй приём: цена и повторное изучение запрещено', () => {
     const sp = fresh('vayfayka', 10); S.d.sparks = MOVE2_COST.sparks; S.d.essence.vayfayka = MOVE2_COST.essence;
     ok(S.learnMove2(sp)); ok(sp.move2); eq(S.d.sparks, 0); ok(!!S.canLearnMove2(sp));
+  });
+  test('Экономика 4.16: посылка Ордена, цены усиления и очищения, переплавка, награды', () => {
+    const items0 = S.d.items, parcel0 = S.d.parcel, am0 = S.d.amulets, sp0 = S.d.sparks;
+    try {
+      // сумка не переполняется: лишнее — в посылку (до Rules.PARCEL.MAX), дальше — пропадает; забрать — редкое первым
+      S.d.items = { charm: S.bagLimit() - 2 }; S.d.parcel = null;
+      const got = S.giveRewards({ honey: 5, deadwater: 1 });
+      eq(S.bagCount(), S.bagLimit(), 'сумка заполнена до лимита, не больше'); eq(S.d.items.honey, 2); eq(S.parcelCount(), 4);
+      eq(got.find(x => x.k === 'honey').n, 5, 'в награде — всё, что получено (сумка + посылка)');
+      S.giveRewards({ charm: Rules.PARCEL.MAX }); eq(S.parcelCount(), Rules.PARCEL.MAX, 'посылка не больше предела'); eq(S.bagCount(), S.bagLimit());
+      S.d.items.charm -= 3;
+      const t = S.parcelTake(); eq(t[0].k, 'deadwater', 'сначала — Мёртвая вода'); eq(S.bagCount(), S.bagLimit(), 'забрано, сколько влезло');
+      ok(S.parcelCount() > 0, 'остальное ждёт');
+      S.d.items = { charm: 10 }; S.parcelTake(); eq(S.d.parcel, null, 'посылка разобрана'); ok(S.bagCount() <= S.bagLimit());
+      // усиление: до 20 уровня — как раньше, выше — дороже; цена не убывает
+      for (let l = 1; l <= 20; l++) eq(S.powerUpSparks(l), 200 + 200 * Math.floor((l - 1) / 4), 'до 20 — прежняя цена');
+      for (let l = 2; l < 40; l++) ok(S.powerUpSparks(l) >= S.powerUpSparks(l - 1), 'не дешевеет');
+      eq(S.powerUpSparks(30), 4000); eq(S.powerUpSparks(39), 7700);
+      // очищение дороже для редких
+      const common = SPECIES.find(s => s.rar === 1), epic = SPECIES.find(s => s.rar === 4);
+      eq(S.purifyCost({ sid: common.id }).sparks, 3000); eq(S.purifyCost({ sid: epic.id }).sparks, 12000);
+      // переплавка: три одинаковых и искры → один на выбор
+      S.d.amulets = { perun: 2 }; S.d.sparks = Rules.MELT.SPARKS;
+      ok(!!S.canMelt('perun', 'veles'), 'нужно три'); S.d.amulets.perun = 3;
+      ok(!!S.canMelt('perun', 'perun'), 'в себя же нельзя'); ok(!!S.canMelt('perun', 'constructor'), 'только известные амулеты'); ok(!!S.canMelt('toString', 'veles'));
+      ok(S.melt('perun', 'veles')); eq(S.d.amulets.perun, 0); eq(S.d.amulets.veles, 1); eq(S.d.sparks, 0);
+      // награды: златники за уровень — 5, на каждом пятом — 20; Мёртвая вода — не в товаре дня, на 30-й ступени Тропы
+      eq(S.levelRewards(12).zlat, Rules.ZLAT.level); eq(S.levelRewards(15).zlat, Rules.ZLAT.level5);
+      for (let d = 0; d < 60; d++) ok(Rules.shopDeal('2026-10-' + d).id !== 'dead1', 'Мёртвая вода без скидки');
+      eq(Rules.passReward('free', 30).deadwater, 1, 'Мёртвая вода — на вершине бесплатной Тропы');
+      ok(Rules.SHOP.find(x => x.id === 'dead1').week === 1, 'Мёртвая вода в Лавке — раз в неделю');
+    } finally { S.d.items = items0; S.d.parcel = parcel0; S.d.amulets = am0; S.d.sparks = sp0; }
   });
   test('Эффективность стихий в бою', () => {
     eq(Raid.eff('fire', 'forest'), 1.6); eq(Raid.eff('forest', 'fire'), 0.625); eq(Raid.eff('fire', 'fire'), 1);
@@ -1404,6 +1436,56 @@
     A.data.pass.season = '1999-1';
     await must(A, 'tick'); await must(A, 'spring', { poi: freeSpring(A, 93100) });
     eq(A.data.pass.gold, false); ok(A.data.pass.season !== '1999-1', 'сезон сменился');
+  });
+  atest('Сервер: экономика 4.16 — посылка Ордена, родник при полной сумке, переплавка, Мёртвая вода раз в неделю, дань', async () => {
+    const A = await newPlayer('ve', 55.52, 37.44, 'Хозяйка');
+    A.data.tut = 0;
+    const lim = asPlayer(A, () => S.bagLimit()), cnt = () => asPlayer(A, () => S.bagCount());
+    // полная сумка: родник не открывается и не тратится
+    A.data.items = { charm: lim };
+    const sp = freeSpring(A, 94000);
+    await refuse(A, 'spring', { poi: sp }, /Сумка полна/);
+    ok(!A.data.springs[sp.id], 'родник не потрачен'); eq(Rules.dayUsed(A.data, 'springs'), 0, 'дневной лимит не тронут');
+    // награда при полной сумке — в посылку, и об этом сообщение
+    const r = await call(A, 'daily'); ok(r.ok);
+    eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'награда ждёт в посылке');
+    ok(r.events.some(([ev, d]) => ev === 'toast' && /посылку Ордена/.test(d.text)), 'игроку сказано, где награда');
+    await refuse(A, 'parcelTake', {}, /Сумка полна/);
+    await must(A, 'discard', { k: 'charm', n: 100 });
+    const t = await must(A, 'parcelTake'); ok(t.got.length > 0); eq(t.left, 0); eq(A.data.parcel, null, 'посылка разобрана');
+    await refuse(A, 'parcelTake', {}, /пуста/);
+    // родник при почти полной сумке: что не влезло — в посылку
+    A.data.items = { charm: lim - 1 };
+    const s2 = await must(A, 'spring', { poi: sp });
+    eq(cnt(), lim); ok(asPlayer(A, () => S.parcelCount()) >= 3, 'добыча родника не пропала'); ok(!s2.got.some(x => !x.n));
+    const dr = await must(A, 'parcelTake', { drop: true }); ok(dr.dropped >= 3); eq(A.data.parcel, null, 'посылку можно выбросить');
+    A.data.items = { charm: 50 };
+    // переплавка амулетов
+    await refuse(A, 'amuletMelt', { from: 'perun', to: 'veles' }, /три|3/);
+    A.data.amulets = { perun: 4 }; A.data.sparks = Rules.MELT.SPARKS;
+    await refuse(A, 'amuletMelt', { from: 'perun', to: 'perun' }, /другой/);
+    await refuse(A, 'amuletMelt', { from: '__proto__', to: 'veles' }, /нет/);
+    const m = await must(A, 'amuletMelt', { from: 'perun', to: 'veles' });
+    eq(m.left, 1); eq(A.data.amulets.veles, 1); eq(A.data.sparks, 0);
+    await refuse(A, 'amuletMelt', { from: 'perun', to: 'veles' });
+    // Мёртвая вода в Лавке — раз в неделю
+    A.data.zlat = 1000;
+    await must(A, 'shopBuy', { id: 'dead1' }); eq(A.data.items.deadwater, 1);
+    await refuse(A, 'shopBuy', { id: 'dead1' }, /неделе/);
+    A.data.weekc.w -= 1; // прошла неделя
+    await must(A, 'shopBuy', { id: 'dead1' }); eq(A.data.items.deadwater, 2);
+    // обменник: трата лишних искр, не больше DAY обменов в день
+    A.data.sparks = 1e6; A.data.zlat = 0;
+    await must(A, 'exchange', { n: Rules.EXCHANGE.DAY }); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * Rules.EXCHANGE.DAY); eq(A.data.sparks, 1e6 - Rules.EXCHANGE.SPARKS * Rules.EXCHANGE.DAY);
+    await refuse(A, 'exchange', { n: 1 }, /закрыт/);
+    // дань: златники — не больше чем с Rules.ZLAT.tributeMax Капищ
+    A.data.clan = 'volk'; A.data.tributeDay = ''; A.data.zlat = 0;
+    const ids = [1, 2, 3, 4, 5].map(i => 'osm:n9' + i + '0000');
+    ids.forEach(id => { DB.holds[id] = { clan: 'volk', holders: [{ pid: A.data.pid, name: 'Хозяйка', sp: { sid: 'ugolek', lvl: 5, iv: [1, 1, 1] }, t: Date.now() }], ver: 1 }; });
+    try {
+      const tr = await must(A, 'tribute'); eq(tr.n, 5);
+      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'златники дани — с трёх Капищ');
+    } finally { ids.forEach(id => delete DB.holds[id]); }
   });
 
   /* ---------- вывод ---------- */
