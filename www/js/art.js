@@ -315,7 +315,7 @@ const Art = (() => {
   const elColor = sid => ELEMENTS[SP[sid].el].color;
   const glow = (sid, solo) => `drop-shadow(0 0 ${solo ? 2 : 3}px ${elColor(sid)}) drop-shadow(0 0 ${solo ? 5 : 9}px ${elColor(sid)}99)`;
   const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
-    : (shiny ? 'grayscale(.8) contrast(.72) brightness(1.35) ' + (solo ? 'sepia(.3) saturate(1.6) hue-rotate(250deg) ' : '') : '') + glow(sid, solo); // сияющий: контраст вниз — тёмное становится серебром
+    : (shiny ? 'grayscale(.4) contrast(.85) brightness(1.2) ' + (solo ? 'saturate(1.2) hue-rotate(30deg) ' : '') : '') + glow(sid, solo); // сияющий: лёгкое серебро поверх своего цвета
   const picImg = (sid, shiny, dark, cls) => {
     const solo = cls === 'art', pearl = solo && shiny && !dark, fl = pearl ? '' : picFilter(sid, shiny, dark, solo);
     return `<img class="${cls}${pearl ? ' sp-pearl' : ''}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : pearl ? ` style="--gl:${elColor(sid)}"` : ''}>`;
