@@ -4,8 +4,8 @@
   "at": [
    "www/js/album.js:22",
    "www/js/friends.js:308",
-   "www/js/ui-player.js:462",
-   "www/index.html:12"
+   "www/js/realms.js:149",
+   "www/js/ui-player.js:462"
   ],
   "ctx": "try { await navigator.share({ files: [file], title: ru`Духолов`, text: ru`Смотри, кого я поймал в Духолове!` }); return; }"
  },
@@ -521,7 +521,7 @@
    "www/js/auction.js:125",
    "www/js/auction.js:126",
    "www/js/raid.js:109",
-   "www/js/realms.js:118"
+   "www/js/realms.js:197"
   ],
   "ctx": "html: `<div class=\"au-fl\">${ru`Стихия`}</div><div class=\"chips au-wrap\">${chip('el', '', ru`Все`, f.el || '')}${ELEMENT_KEYS.map(e => chip('el', e, `${Art.elIcon(e, 14)} ${ELEMENTS[e].name}`, f.el)).join('')}</div>"
  },
@@ -1064,7 +1064,7 @@
    "www/js/book.js:18",
    "www/js/ui-player.js:10",
    "www/js/ui-spirits.js:556",
-   "www/index.html:159"
+   "www/index.html:161"
   ],
   "ctx": "{ id: 'story', ico: 'scroll', t: ru`Летопись`, s: ru`Пять книг истории Ордена` },"
  },
@@ -1848,7 +1848,7 @@
   "at": [
    "www/js/chat.js:32",
    "www/js/duel.js:530",
-   "www/js/game.js:198",
+   "www/js/game.js:202",
    "www/js/ui-player.js:34"
   ],
   "ctx": "buttons: [{ label: ru`Вернуть всех`, fn: () => { this.unhide(); UI.toast(ru`Все сообщения снова видны`, 'good'); after && after(); } }, { label: ru`Готово`, cls: 'primary' }],"
@@ -3665,7 +3665,7 @@
   "k": "Юг и Кавказ",
   "at": [
    "www/js/data.js:266",
-   "www/js/realms.js:11"
+   "www/js/realms.js:12"
   ],
   "ctx": "caucasus: { name: ru`Юг и Кавказ`,          where: ru`южнее 46,5° с. ш., 36–55° в. д.` },"
  },
@@ -3708,7 +3708,7 @@
   "k": "Дальний Восток",
   "at": [
    "www/js/data.js:269",
-   "www/js/realms.js:15"
+   "www/js/realms.js:16"
   ],
   "ctx": "fareast:  { name: ru`Дальний Восток`,       where: ru`восточнее 105° в. д.` },"
  },
@@ -5363,7 +5363,7 @@
   "k": "Калинов мост",
   "at": [
    "www/js/data.js:622",
-   "www/js/realms.js:19"
+   "www/js/realms.js:20"
   ],
   "ctx": "{ title: ru`Калинов мост`, lvl: 40,"
  },
@@ -8431,27 +8431,27 @@
  {
   "k": "Нет связи с сервером игры",
   "at": [
-   "www/js/game.js:19",
-   "www/js/game.js:57",
-   "www/js/game.js:68"
+   "www/js/game.js:22",
+   "www/js/game.js:61",
+   "www/js/game.js:72"
   ],
   "ctx": "if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);"
  },
  {
   "k": "Нет связи с сервером игры — проверь интернет",
   "at": [
-   "www/js/game.js:48",
-   "www/js/game.js:62",
-   "www/js/game.js:73",
-   "www/js/league-battle.js:26"
+   "www/js/game.js:23",
+   "www/js/game.js:52",
+   "www/js/game.js:66",
+   "www/js/game.js:77"
   ],
-  "ctx": "throw new PlayError(ru`Нет связи с сервером игры — проверь интернет`);"
+  "ctx": "const sb = await this.timed(Cloud.client()).catch(() => { throw new PlayError(ru`Нет связи с сервером игры — проверь интернет`); });"
  },
  {
   "k": "Ошибка сервера",
   "at": [
-   "www/js/game.js:90",
-   "www/js/game.js:124",
+   "www/js/game.js:94",
+   "www/js/game.js:128",
    "www/js/league-battle.js:28"
   ],
   "ctx": "throw new PlayError((res && res.error) || ru`Ошибка сервера`);"
@@ -8459,119 +8459,119 @@
  {
   "k": "Прогресс перенесён",
   "at": [
-   "www/js/game.js:149"
+   "www/js/game.js:153"
   ],
   "ctx": "title: ru`Прогресс перенесён`, dismiss: false,"
  },
  {
   "k": "Твой прогресс перенесён на другое устройство и продолжается там. На этом устройстве можно начать заново.",
   "at": [
-   "www/js/game.js:150"
+   "www/js/game.js:154"
   ],
   "ctx": "html: `<p>${ru`Твой прогресс перенесён на другое устройство и продолжается там. На этом устройстве можно начать заново.`}</p><p class=\"warn-box\">${ru`Если ты <b>не</b> переносил прогресс — не начинай заново: напиши на по"
  },
  {
   "k": "Если ты <b>не</b> переносил прогресс — не начинай заново: напиши на почту из «Оферты» (Лавка → Казна) и укажи имя Ловчего и когда это случилось. Прогресс можно вернуть.",
   "at": [
-   "www/js/game.js:150"
+   "www/js/game.js:154"
   ],
   "ctx": "html: `<p>${ru`Твой прогресс перенесён на другое устройство и продолжается там. На этом устройстве можно начать заново.`}</p><p class=\"warn-box\">${ru`Если ты <b>не</b> переносил прогресс — не начинай заново: напиши на по"
  },
  {
   "k": "Начать заново",
   "at": [
-   "www/js/game.js:151"
+   "www/js/game.js:155"
   ],
   "ctx": "buttons: [{ label: ru`Начать заново`, cls: 'primary', fn: () => this.startOver() }],"
  },
  {
   "k": "Перенести прогресс сюда",
   "at": [
-   "www/js/game.js:174"
+   "www/js/game.js:178"
   ],
   "ctx": "title: ru`Перенести прогресс сюда`,"
  },
  {
   "k": "На старом устройстве открой «Настройки → Перенести на другое устройство» и введи полученный код.",
   "at": [
-   "www/js/game.js:175"
+   "www/js/game.js:179"
   ],
   "ctx": "html: `<p>${ru`На старом устройстве открой «Настройки → Перенести на другое устройство» и введи полученный код.`}${S.d ? ' ' + ru`Текущий прогресс на этом устройстве будет заменён.` : ''}</p>"
  },
  {
   "k": "Текущий прогресс на этом устройстве будет заменён.",
   "at": [
-   "www/js/game.js:175"
+   "www/js/game.js:179"
   ],
   "ctx": "html: `<p>${ru`На старом устройстве открой «Настройки → Перенести на другое устройство» и введи полученный код.`}${S.d ? ' ' + ru`Текущий прогресс на этом устройстве будет заменён.` : ''}</p>"
  },
  {
   "k": "Вводи только код со своего же устройства. Если код прислал кто-то другой — это может быть обман.",
   "at": [
-   "www/js/game.js:176"
+   "www/js/game.js:180"
   ],
   "ctx": "<p class=\"small\">${ru`Вводи только код со своего же устройства. Если код прислал кто-то другой — это может быть обман.`}</p>"
  },
  {
   "k": "Перенести",
   "at": [
-   "www/js/game.js:178"
+   "www/js/game.js:182"
   ],
   "ctx": "buttons: [{ label: ru`Отмена` }, { label: ru`Перенести`, cls: 'primary', keep: true, fn: async w => {"
  },
  {
   "k": "Код — 12 букв и цифр",
   "at": [
-   "www/js/game.js:180"
+   "www/js/game.js:184"
   ],
   "ctx": "if (code.replace(/[^a-z0-9]/gi, '').length !== 12) { UI.toast(ru`Код — 12 букв и цифр`); return; }"
  },
  {
   "k": "Прогресс перенесён!",
   "at": [
-   "www/js/game.js:182"
+   "www/js/game.js:186"
   ],
   "ctx": "try { await this.claim(code); w.close(); UI.toast(ru`Прогресс перенесён!`, 'good'); (after || (() => location.reload()))(); }"
  },
  {
   "k": "Код переноса",
   "at": [
-   "www/js/game.js:192"
+   "www/js/game.js:196"
   ],
   "ctx": "title: ru`Код переноса`,"
  },
  {
   "k": "Введи этот код на новом устройстве: при первом запуске — «У меня уже есть прогресс», или «Настройки → Перенести прогресс сюда». Код действует 30 минут и один раз.",
   "at": [
-   "www/js/game.js:193"
+   "www/js/game.js:197"
   ],
   "ctx": "html: `<p>${ru`Введи этот код на новом устройстве: при первом запуске — «У меня уже есть прогресс», или «Настройки → Перенести прогресс сюда». Код действует 30 минут и один раз.`}</p>"
  },
  {
   "k": "После переноса прогресс продолжится на новом устройстве, а здесь можно будет начать заново.",
   "at": [
-   "www/js/game.js:195"
+   "www/js/game.js:199"
   ],
   "ctx": "<p class=\"small\">${ru`После переноса прогресс продолжится на новом устройстве, а здесь можно будет начать заново.`}</p>"
  },
  {
   "k": "<b>Никому не сообщай этот код.</b> По нему забирают весь прогресс — духов, златники и покупки. Орден, модераторы и друзья никогда не просят код; «подарок за код» — это обман.",
   "at": [
-   "www/js/game.js:196"
+   "www/js/game.js:200"
   ],
   "ctx": "<p class=\"warn-box\">${ru`<b>Никому не сообщай этот код.</b> По нему забирают весь прогресс — духов, златники и покупки. Орден, модераторы и друзья никогда не просят код; «подарок за код» — это обман.`}</p>`,"
  },
  {
   "k": "Скопировать",
   "at": [
-   "www/js/game.js:197"
+   "www/js/game.js:201"
   ],
   "ctx": "buttons: [{ label: ru`Скопировать`, keep: true, fn: async () => { try { await navigator.clipboard.writeText(code); UI.toast(ru`Код скопирован`, 'good'); } catch (e) { UI.toast(ru`Не удалось скопировать`); } } },"
  },
  {
   "k": "Код скопирован",
   "at": [
-   "www/js/game.js:197",
+   "www/js/game.js:201",
    "www/js/trade.js:28"
   ],
   "ctx": "buttons: [{ label: ru`Скопировать`, keep: true, fn: async () => { try { await navigator.clipboard.writeText(code); UI.toast(ru`Код скопирован`, 'good'); } catch (e) { UI.toast(ru`Не удалось скопировать`); } } },"
@@ -8579,7 +8579,7 @@
  {
   "k": "Не удалось скопировать",
   "at": [
-   "www/js/game.js:197"
+   "www/js/game.js:201"
   ],
   "ctx": "buttons: [{ label: ru`Скопировать`, keep: true, fn: async () => { try { await navigator.clipboard.writeText(code); UI.toast(ru`Код скопирован`, 'good'); } catch (e) { UI.toast(ru`Не удалось скопировать`); } } },"
  },
@@ -9936,7 +9936,7 @@
   "k": "Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.",
   "at": [
    "www/js/loader.js:9",
-   "www/index.html:128"
+   "www/index.html:130"
   ],
   "ctx": "ru`Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.`,"
  },
@@ -10022,7 +10022,7 @@
   "at": [
    "www/js/loader.js:49",
    "www/js/login.js:182",
-   "www/index.html:125"
+   "www/index.html:127"
   ],
   "ctx": "<div class=\"ld-logo\"><div class=\"ld-charm\">${Art.charm('charm3')}</div><h1>${ru`ДУХОЛОВ`}</h1><p>${ru`Лови духов Нави на улицах своего города`}</p></div>"
  },
@@ -10031,7 +10031,7 @@
   "at": [
    "www/js/loader.js:49",
    "www/js/ui.js:919",
-   "www/index.html:125"
+   "www/index.html:127"
   ],
   "ctx": "<div class=\"ld-logo\"><div class=\"ld-charm\">${Art.charm('charm3')}</div><h1>${ru`ДУХОЛОВ`}</h1><p>${ru`Лови духов Нави на улицах своего города`}</p></div>"
  },
@@ -10046,7 +10046,7 @@
   "k": "Предыдущая подсказка",
   "at": [
    "www/js/loader.js:53",
-   "www/index.html:129"
+   "www/index.html:131"
   ],
   "ctx": "<button class=\"ld-arrow prev\" aria-label=\"${ru`Предыдущая подсказка`}\">‹</button>"
  },
@@ -10054,14 +10054,14 @@
   "k": "Следующая подсказка",
   "at": [
    "www/js/loader.js:54",
-   "www/index.html:130"
+   "www/index.html:132"
   ],
   "ctx": "<button class=\"ld-arrow next\" aria-label=\"${ru`Следующая подсказка`}\">›</button>"
  },
  {
   "k": "Загружаю карту…",
   "at": [
-   "www/js/loader.js:111",
+   "www/js/loader.js:120",
    "www/js/main.js:23"
   ],
   "ctx": "this.set(62 + (here ? 10 : 0) + frac * 26, here || waited > 6000 ? ru`Загружаю карту…` : ru`Ищу тебя на карте…`);"
@@ -10069,7 +10069,7 @@
  {
   "k": "Ищу тебя на карте…",
   "at": [
-   "www/js/loader.js:111"
+   "www/js/loader.js:120"
   ],
   "ctx": "this.set(62 + (here ? 10 : 0) + frac * 26, here || waited > 6000 ? ru`Загружаю карту…` : ru`Ищу тебя на карте…`);"
  },
@@ -10284,7 +10284,7 @@
   "k": "Слишком много попыток — подожди минуту",
   "at": [
    "www/js/login.js:161",
-   "server/game/serve.js:601"
+   "server/game/serve.js:615"
   ],
   "ctx": "if (error) { fail(/rate|many/i.test(error.message) ? ru`Слишком много попыток — подожди минуту` : ru`Неверная почта или пароль`); return; }"
  },
@@ -10342,7 +10342,7 @@
   "k": "Закрыть",
   "at": [
    "www/js/login.js:201",
-   "www/js/realms.js:116",
+   "www/js/realms.js:195",
    "www/js/ui-player.js:290",
    "www/js/ui-player.js:407"
   ],
@@ -10354,14 +10354,14 @@
    "www/js/login.js:217",
    "www/js/ui.js:919"
   ],
-  "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${Realms.chip()}${this.logo(ru`С возвращением, Ловчий!`)}"
+  "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
  },
  {
   "k": "С возвращением, Ловчий!",
   "at": [
    "www/js/login.js:217"
   ],
-  "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${Realms.chip()}${this.logo(ru`С возвращением, Ловчий!`)}"
+  "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
  },
  {
   "k": "{0} уровень",
@@ -11892,149 +11892,149 @@
  {
   "k": "Китеж",
   "at": [
-   "www/js/realms.js:7"
+   "www/js/realms.js:8"
   ],
   "ctx": "{ id: 'kitezh', name: ru`Китеж`, region: ru`Москва и Центр`, tz: 'UTC+3', color: '#fbbf24', glyph: 'domes', load: 0.72, online: 18450, ping: 24, tags: ['rec'],"
  },
  {
   "k": "Москва и Центр",
   "at": [
-   "www/js/realms.js:7"
+   "www/js/realms.js:8"
   ],
   "ctx": "{ id: 'kitezh', name: ru`Китеж`, region: ru`Москва и Центр`, tz: 'UTC+3', color: '#fbbf24', glyph: 'domes', load: 0.72, online: 18450, ping: 24, tags: ['rec'],"
  },
  {
   "k": "Старейший сервер: здесь самая сильная Лига и больше всего Орденов.",
   "at": [
-   "www/js/realms.js:8"
+   "www/js/realms.js:9"
   ],
   "ctx": "about: ru`Старейший сервер: здесь самая сильная Лига и больше всего Орденов.` },"
  },
  {
   "k": "Лукоморье",
   "at": [
-   "www/js/realms.js:9"
+   "www/js/realms.js:10"
   ],
   "ctx": "{ id: 'lukomorye', name: ru`Лукоморье`, region: ru`Северо-Запад`, tz: 'UTC+3', color: '#34d399', glyph: 'oak', load: 0.48, online: 9120, ping: 31,"
  },
  {
   "k": "Северо-Запад",
   "at": [
-   "www/js/realms.js:9"
+   "www/js/realms.js:10"
   ],
   "ctx": "{ id: 'lukomorye', name: ru`Лукоморье`, region: ru`Северо-Запад`, tz: 'UTC+3', color: '#34d399', glyph: 'oak', load: 0.48, online: 9120, ping: 31,"
  },
  {
   "k": "Белые ночи — Разломы открываются чаще, чем где-либо.",
   "at": [
-   "www/js/realms.js:10"
+   "www/js/realms.js:11"
   ],
   "ctx": "about: ru`Белые ночи — Разломы открываются чаще, чем где-либо.` },"
  },
  {
   "k": "Буян",
   "at": [
-   "www/js/realms.js:11"
+   "www/js/realms.js:12"
   ],
   "ctx": "{ id: 'buyan', name: ru`Буян`, region: ru`Юг и Кавказ`, tz: 'UTC+3', color: '#38bdf8', glyph: 'island', load: 0.31, online: 6230, ping: 46,"
  },
  {
   "k": "Тёплые моря и водные духи круглый год.",
   "at": [
-   "www/js/realms.js:12"
+   "www/js/realms.js:13"
   ],
   "ctx": "about: ru`Тёплые моря и водные духи круглый год.` },"
  },
  {
   "k": "Беловодье",
   "at": [
-   "www/js/realms.js:13"
+   "www/js/realms.js:14"
   ],
   "ctx": "{ id: 'belovodye', name: ru`Беловодье`, region: ru`Урал и Сибирь`, tz: 'UTC+5…+7', color: '#e2e8f0', glyph: 'peaks', load: 0.56, online: 7810, ping: 62,"
  },
  {
   "k": "Урал и Сибирь",
   "at": [
-   "www/js/realms.js:13"
+   "www/js/realms.js:14"
   ],
   "ctx": "{ id: 'belovodye', name: ru`Беловодье`, region: ru`Урал и Сибирь`, tz: 'UTC+5…+7', color: '#e2e8f0', glyph: 'peaks', load: 0.56, online: 7810, ping: 62,"
  },
  {
   "k": "Горные Капища и Хозяйка Медной горы.",
   "at": [
-   "www/js/realms.js:14"
+   "www/js/realms.js:15"
   ],
   "ctx": "about: ru`Горные Капища и Хозяйка Медной горы.` },"
  },
  {
   "k": "Ирий",
   "at": [
-   "www/js/realms.js:15"
+   "www/js/realms.js:16"
   ],
   "ctx": "{ id: 'iriy', name: ru`Ирий`, region: ru`Дальний Восток`, tz: 'UTC+10', color: '#f472b6', glyph: 'bird', load: 0.22, online: 2940, ping: 118,"
  },
  {
   "k": "Первым встречает рассвет: ежедневные задания обновляются раньше всех.",
   "at": [
-   "www/js/realms.js:16"
+   "www/js/realms.js:17"
   ],
   "ctx": "about: ru`Первым встречает рассвет: ежедневные задания обновляются раньше всех.` },"
  },
  {
   "k": "Тридевятое царство",
   "at": [
-   "www/js/realms.js:17"
+   "www/js/realms.js:18"
   ],
   "ctx": "{ id: 'tridevyatoe', name: ru`Тридевятое царство`, region: ru`Вся Россия`, tz: 'UTC+3', color: '#a78bfa', glyph: 'crown', load: 0.08, online: 640, ping: 38, tags: ['new'],"
  },
  {
   "k": "Вся Россия",
   "at": [
-   "www/js/realms.js:17",
-   "www/js/realms.js:19"
+   "www/js/realms.js:18",
+   "www/js/realms.js:20"
   ],
   "ctx": "{ id: 'tridevyatoe', name: ru`Тридевятое царство`, region: ru`Вся Россия`, tz: 'UTC+3', color: '#a78bfa', glyph: 'crown', load: 0.08, online: 640, ping: 38, tags: ['new'],"
  },
  {
   "k": "Новый сервер: все начинают с нуля — самое время занять первые места в Лиге.",
   "at": [
-   "www/js/realms.js:18"
+   "www/js/realms.js:19"
   ],
   "ctx": "about: ru`Новый сервер: все начинают с нуля — самое время занять первые места в Лиге.` },"
  },
  {
   "k": "Сервер для опытных Ловчих: сильные духи и суровые Разломы.",
   "at": [
-   "www/js/realms.js:20"
+   "www/js/realms.js:21"
   ],
   "ctx": "about: ru`Сервер для опытных Ловчих: сильные духи и суровые Разломы.` },"
  },
  {
   "k": "Заполнен",
   "at": [
-   "www/js/realms.js:35",
-   "www/js/realms.js:96"
+   "www/js/realms.js:36",
+   "www/js/realms.js:175"
   ],
   "ctx": "return r.load >= 0.95 ? { t: ru`Заполнен`, c: '#fb7185', k: 'full' } : r.load >= 0.75 ? { t: ru`Людно`, c: '#fb923c', k: 'busy' }"
  },
  {
   "k": "Людно",
   "at": [
-   "www/js/realms.js:35"
+   "www/js/realms.js:36"
   ],
   "ctx": "return r.load >= 0.95 ? { t: ru`Заполнен`, c: '#fb7185', k: 'full' } : r.load >= 0.75 ? { t: ru`Людно`, c: '#fb923c', k: 'busy' }"
  },
  {
   "k": "Оживлённо",
   "at": [
-   "www/js/realms.js:36"
+   "www/js/realms.js:37"
   ],
   "ctx": ": r.load >= 0.4 ? { t: ru`Оживлённо`, c: '#fde047', k: 'mid' } : { t: ru`Свободно`, c: '#4ade80', k: 'free' };"
  },
  {
   "k": "Свободно",
   "at": [
-   "www/js/realms.js:36",
+   "www/js/realms.js:37",
    "www/js/ui-spirits.js:706"
   ],
   "ctx": ": r.load >= 0.4 ? { t: ru`Оживлённо`, c: '#fde047', k: 'mid' } : { t: ru`Свободно`, c: '#4ade80', k: 'free' };"
@@ -12042,93 +12042,160 @@
  {
   "k": "{0} тыс.",
   "at": [
-   "www/js/realms.js:48"
+   "www/js/realms.js:49"
   ],
   "ctx": "fmtOnline(n) { return n < 1000 ? String(n) : I18N.lang === 'ru' ? ru`${(n / 1000).toLocaleString(I18N.locale, { maximumFractionDigits: n >= 10000 ? 0 : 1 })} тыс.` : new Intl.NumberFormat(I18N.locale, { notation: 'compac"
  },
  {
-  "k": "Сервер: {0}. Сменить",
+  "k": "Москва",
   "at": [
-   "www/js/realms.js:75",
-   "www/js/realms.js:82"
+   "www/js/realms.js:75"
   ],
-  "ctx": "return `<button class=\"realm-chip\" aria-label=\"${ru`Сервер: ${U.esc(r.name)}. Сменить`}\">${this.crest(r, 30)}` +"
+  "ctx": "WHERE: { msk: ru`Москва`, spb: ru`Санкт-Петербург` },"
  },
  {
-  "k": "Сервер",
+  "k": "Санкт-Петербург",
   "at": [
-   "www/js/realms.js:76"
+   "www/js/realms.js:75"
   ],
-  "ctx": "`<span class=\"rc-main\"><small>${ru`Сервер`}</small><b>${U.esc(r.name)}</b></span><i class=\"rc-dot\" style=\"--c:${L.c}\"></i><svg class=\"rc-chev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 9l6 6 6-6\" fill=\"none\" str"
+  "ctx": "WHERE: { msk: ru`Москва`, spb: ru`Санкт-Петербург` },"
  },
  {
-  "k": "Твой сервер",
+  "k": "Проверяем связь…",
   "at": [
-   "www/js/realms.js:84"
+   "www/js/realms.js:79"
   ],
-  "ctx": "<small>${ru`Твой сервер`}</small><b>${U.esc(r.name)}</b>"
+  "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
+ },
+ {
+  "k": "Сервер на связи",
+  "at": [
+   "www/js/realms.js:79"
+  ],
+  "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
+ },
+ {
+  "k": "Сервер отвечает медленно",
+  "at": [
+   "www/js/realms.js:79"
+  ],
+  "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
+ },
+ {
+  "k": "Сервер не отвечает",
+  "at": [
+   "www/js/realms.js:79"
+  ],
+  "ctx": "return { wait: ru`Проверяем связь…`, ok: ru`Сервер на связи`, slow: ru`Сервер отвечает медленно`, down: ru`Сервер не отвечает`,"
+ },
+ {
+  "k": "Нет интернета",
+  "at": [
+   "www/js/realms.js:80"
+  ],
+  "ctx": "net: ru`Нет интернета`, none: ru`Игра без сервера` }[st];"
+ },
+ {
+  "k": "Игра без сервера",
+  "at": [
+   "www/js/realms.js:80"
+  ],
+  "ctx": "net: ru`Нет интернета`, none: ru`Игра без сервера` }[st];"
  },
  {
   "k": "{0} мс",
   "at": [
-   "www/js/realms.js:85",
-   "www/js/realms.js:106"
+   "www/js/realms.js:115",
+   "www/js/realms.js:118",
+   "www/js/realms.js:167",
+   "www/js/realms.js:185"
   ],
-  "ctx": "<span class=\"rh-meta\">${U.esc(r.region)} · <i class=\"rc-dot\" style=\"--c:${L.c}\"></i> ${L.t} · <span class=\"rl-sig\">${[1, 2, 3, 4].map(i => `<i class=\"${i <= bars ? 'on' : ''}\" style=\"height:${2 + i * 2.5}px\"></i>`).join("
+  "ctx": "const ms = el.querySelector('.srv-ms'); if (ms) ms.textContent = up ? ru`${l.ms} мс` : '';"
+ },
+ {
+  "k": "Сервер: {0}. Сменить",
+  "at": [
+   "www/js/realms.js:141",
+   "www/js/realms.js:141",
+   "www/js/realms.js:149"
+  ],
+  "ctx": "return `<button class=\"realm-chip\" data-lbl=\"${ru`Сервер: ${U.esc(r.name)}. Сменить`}\" aria-label=\"${ru`Сервер: ${U.esc(r.name)}. Сменить`}\">${this.crest(r, 30)}` +"
+ },
+ {
+  "k": "Сервер",
+  "at": [
+   "www/js/realms.js:142"
+  ],
+  "ctx": "`<span class=\"rc-main\"><small>${ru`Сервер`}</small><b>${U.esc(r.name)}</b></span><span class=\"srv-live\" data-srv style=\"--c:${c}\"><i class=\"rc-dot srv-dot\"></i><em class=\"srv-ms\"></em></span><svg class=\"rc-chev\" viewBox="
+ },
+ {
+  "k": "Сервер игры",
+  "at": [
+   "www/js/realms.js:149",
+   "www/js/realms.js:152"
+  ],
+  "ctx": "const name = home ? this.where() || ru`Духолов` : r.name, lbl = home ? ru`Сервер игры` + ' · ' + name : ru`Сервер: ${r.name}. Сменить`;"
+ },
+ {
+  "k": "Твой сервер",
+  "at": [
+   "www/js/realms.js:152"
+  ],
+  "ctx": "<small>${home ? ru`Сервер игры` : ru`Твой сервер`}</small><b>${U.esc(name)}</b>"
  },
  {
   "k": "Сменить сервер",
   "at": [
-   "www/js/realms.js:86"
+   "www/js/realms.js:154"
   ],
-  "ctx": "<span class=\"rh-change\">${ru`Сменить сервер`} <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 6l6 6-6 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
+  "ctx": "${home ? '' : `<span class=\"rh-change\">${ru`Сменить сервер`} <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 6l6 6-6 6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin="
  },
  {
   "k": "Рекомендуем",
   "at": [
-   "www/js/realms.js:95"
+   "www/js/realms.js:174"
   ],
   "ctx": "const tags = (r.tags || []).map(t => t === 'rec' ? `<span class=\"rl-tag rec\">✦ ${ru`Рекомендуем`}</span>` : t === 'new' ? `<span class=\"rl-tag new\">${ru`Новый`}</span>` : '').join('') +"
  },
  {
   "k": "Новый",
   "at": [
-   "www/js/realms.js:95"
+   "www/js/realms.js:174"
   ],
   "ctx": "const tags = (r.tags || []).map(t => t === 'rec' ? `<span class=\"rl-tag rec\">✦ ${ru`Рекомендуем`}</span>` : t === 'new' ? `<span class=\"rl-tag new\">${ru`Новый`}</span>` : '').join('') +"
  },
  {
   "k": "Твой Ловчий: <b>{0}</b> · {1} ур.",
   "at": [
-   "www/js/realms.js:103"
+   "www/js/realms.js:182"
   ],
   "ctx": "${me ? `<div class=\"rl-me\"><span class=\"rl-ava\">${Art.avatar ? Art.avatar(S.d.look) : ''}</span><span>${ru`Твой Ловчий: <b>${U.esc(me.name)}</b> · ${me.lvl} ур.`}</span></div>` : ''}"
  },
  {
   "k": "Заполненность",
   "at": [
-   "www/js/realms.js:105"
+   "www/js/realms.js:184"
   ],
   "ctx": "<span class=\"rl-load\" title=\"${ru`Заполненность`}\"><span class=\"rl-seg\">${seg}</span><em>${L.t}</em></span>"
  },
  {
   "k": "Отклик",
   "at": [
-   "www/js/realms.js:106"
+   "www/js/realms.js:185"
   ],
   "ctx": "<span class=\"rl-ping\" title=\"${ru`Отклик`}\"><span class=\"rl-sig\">${[1, 2, 3, 4].map(i => `<i class=\"${i <= bars ? 'on' : ''}\" style=\"height:${3 + i * 3}px\"></i>`).join('')}</span>${ru`${r.ping} мс`}</span>"
  },
  {
   "k": "{0} Ловчих",
   "at": [
-   "www/js/realms.js:107"
+   "www/js/realms.js:186"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>"
  },
  {
   "k": "друг",
   "at": [
-   "www/js/realms.js:107"
+   "www/js/realms.js:186"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>",
   "forms": [
@@ -12140,7 +12207,7 @@
  {
   "k": "друга",
   "at": [
-   "www/js/realms.js:107"
+   "www/js/realms.js:186"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>",
   "forms": [
@@ -12152,7 +12219,7 @@
  {
   "k": "друзей",
   "at": [
-   "www/js/realms.js:107"
+   "www/js/realms.js:186"
   ],
   "ctx": "<span class=\"rl-online\">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>",
   "forms": [
@@ -12164,29 +12231,29 @@
  {
   "k": "Выбор сервера",
   "at": [
-   "www/js/realms.js:114",
-   "www/js/realms.js:116"
+   "www/js/realms.js:193",
+   "www/js/realms.js:195"
   ],
   "ctx": "const wrap = U.el(`<div class=\"rl-wrap\" role=\"dialog\" aria-label=\"${ru`Выбор сервера`}\"><div class=\"rl-sheet\">"
  },
  {
   "k": "Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.",
   "at": [
-   "www/js/realms.js:117"
+   "www/js/realms.js:196"
   ],
   "ctx": "<p class=\"rl-sub\">${ru`Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.`}</p>"
  },
  {
   "k": "Советуем",
   "at": [
-   "www/js/realms.js:118"
+   "www/js/realms.js:197"
   ],
   "ctx": "<div class=\"seg rl-filter\"><button data-f=\"all\" class=\"on\">${ru`Все`}</button><button data-f=\"rec\">${ru`Советуем`}</button><button data-f=\"mine\">${ru`Мои`}</button><button data-f=\"near\">${ru`Ближе`}</button></div>"
  },
  {
   "k": "Мои",
   "at": [
-   "www/js/realms.js:118",
+   "www/js/realms.js:197",
    "www/js/ui-spirits.js:539"
   ],
   "ctx": "<div class=\"seg rl-filter\"><button data-f=\"all\" class=\"on\">${ru`Все`}</button><button data-f=\"rec\">${ru`Советуем`}</button><button data-f=\"mine\">${ru`Мои`}</button><button data-f=\"near\">${ru`Ближе`}</button></div>"
@@ -12194,56 +12261,56 @@
  {
   "k": "Ближе",
   "at": [
-   "www/js/realms.js:118"
+   "www/js/realms.js:197"
   ],
   "ctx": "<div class=\"seg rl-filter\"><button data-f=\"all\" class=\"on\">${ru`Все`}</button><button data-f=\"rec\">${ru`Советуем`}</button><button data-f=\"mine\">${ru`Мои`}</button><button data-f=\"near\">${ru`Ближе`}</button></div>"
  },
  {
   "k": "Здесь пока пусто — выбери сервер во вкладке «Все»",
   "at": [
-   "www/js/realms.js:129"
+   "www/js/realms.js:208"
   ],
   "ctx": ": `<div class=\"rl-empty\">${ru`Здесь пока пусто — выбери сервер во вкладке «Все»`}</div>`;"
  },
  {
   "k": "Остаться здесь",
   "at": [
-   "www/js/realms.js:131"
+   "www/js/realms.js:210"
   ],
   "ctx": "foot.innerHTML = UI.rune(same ? ru`Остаться здесь` : ru`Перейти в ${U.esc(r.name)}`, 'rl-go') +"
  },
  {
   "k": "Перейти в {0}",
   "at": [
-   "www/js/realms.js:131"
+   "www/js/realms.js:210"
   ],
   "ctx": "foot.innerHTML = UI.rune(same ? ru`Остаться здесь` : ru`Перейти в ${U.esc(r.name)}`, 'rl-go') +"
  },
  {
   "k": "Твой Ловчий ждёт тебя здесь.",
   "at": [
-   "www/js/realms.js:132"
+   "www/js/realms.js:211"
   ],
   "ctx": "`<p class=\"rl-note\">${this.hero(r) ? ru`Твой Ловчий ждёт тебя здесь.` : ru`На этом сервере ты начнёшь новый путь Ловчего.`}</p>`;"
  },
  {
   "k": "На этом сервере ты начнёшь новый путь Ловчего.",
   "at": [
-   "www/js/realms.js:132"
+   "www/js/realms.js:211"
   ],
   "ctx": "`<p class=\"rl-note\">${this.hero(r) ? ru`Твой Ловчий ждёт тебя здесь.` : ru`На этом сервере ты начнёшь новый путь Ловчего.`}</p>`;"
  },
  {
   "k": "«{0}» заполнен: новых Ловчих пока не принимают",
   "at": [
-   "www/js/realms.js:142"
+   "www/js/realms.js:221"
   ],
   "ctx": "if (c.classList.contains('closed')) { UI.toast(ru`«${r.name}» заполнен: новых Ловчих пока не принимают`); return; }"
  },
  {
   "k": "Сервер: {0}",
   "at": [
-   "www/js/realms.js:147"
+   "www/js/realms.js:226"
   ],
   "ctx": "if (sel !== this.current().id) { this.save(sel); UI.toast(ru`Сервер: ${r.name}`); if (onPick) onPick(r); }"
  },
@@ -18515,136 +18582,136 @@
  {
   "k": "Этот сервер игры не принимает запросы с этой страницы",
   "at": [
-   "server/game/serve.js:583"
+   "server/game/serve.js:591"
   ],
   "ctx": "if (!allowed) return reply({ ok: false, error: ru`Этот сервер игры не принимает запросы с этой страницы` }, 403);"
  },
  {
   "k": "Закрытый контур: нужен ключ доступа",
   "at": [
-   "server/game/serve.js:597"
+   "server/game/serve.js:611"
   ],
   "ctx": "if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: ru`Закрытый контур: нужен ключ доступа` }, 403);"
  },
  {
   "k": "Нужен вход в игру",
   "at": [
-   "server/game/serve.js:604"
+   "server/game/serve.js:618"
   ],
   "ctx": "if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: ru`Нужен вход в игру`, auth: true }, 401); }"
  },
  {
   "k": "Некорректный запрос",
   "at": [
-   "server/game/serve.js:607"
+   "server/game/serve.js:621"
   ],
   "ctx": "try { body = await req.json(); } catch { return reply({ ok: false, error: ru`Некорректный запрос` }, 400); }"
  },
  {
   "k": "Слишком много запросов — подожди минуту",
   "at": [
-   "server/game/serve.js:610",
-   "server/game/serve.js:614"
+   "server/game/serve.js:624",
+   "server/game/serve.js:628"
   ],
   "ctx": "if (tooMany(pvpHits, uid, PVP_FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);"
  },
  {
   "k": "Ошибка сервера — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:612",
-   "server/game/serve.js:661"
+   "server/game/serve.js:626",
+   "server/game/serve.js:675"
   ],
   "ctx": "catch (e) { console.error('Лига:', String(e && e.stack || e)); return reply({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500); }"
  },
  {
   "k": "Вышла новая версия игры — обнови её",
   "at": [
-   "server/game/serve.js:615"
+   "server/game/serve.js:629"
   ],
   "ctx": "if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: ru`Вышла новая версия игры — обнови её` });"
  },
  {
   "k": "Ошибка входа — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:619"
+   "server/game/serve.js:633"
   ],
   "ctx": "if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 50"
  },
  {
   "k": "Предыдущее действие ещё выполняется — повтори",
   "at": [
-   "server/game/serve.js:639"
+   "server/game/serve.js:653"
   ],
   "ctx": "if (!got || got.locked) return reply({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });"
  },
  {
   "k": "Прогресс перенесён на другое устройство",
   "at": [
-   "server/game/serve.js:642"
+   "server/game/serve.js:656"
   ],
   "ctx": "if (row && row.moved_to) return reply({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });"
  },
  {
   "k": "Прогресс изменился на другом устройстве — повтори действие",
   "at": [
-   "server/game/serve.js:653"
+   "server/game/serve.js:667"
   ],
   "ctx": "if (rev == null) return reply({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });"
  },
  {
   "k": "✦ Совет Ордена",
   "at": [
-   "www/index.html:128"
+   "www/index.html:130"
   ],
   "ctx": "<div class=\"ld-tip\"><small>✦ Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>"
  },
  {
   "k": "Загрузка…",
   "at": [
-   "www/index.html:133"
+   "www/index.html:135"
   ],
   "ctx": "<div class=\"ld-prog\"><div class=\"ld-row\"><span class=\"ld-text\">Загрузка…</span><b class=\"ld-pct\"></b></div><div class=\"ld-bar\"><i class=\"boot\"></i></div></div>"
  },
  {
   "k": "Рядом",
   "at": [
-   "www/index.html:172",
-   "www/index.html:172"
+   "www/index.html:174",
+   "www/index.html:174"
   ],
   "ctx": "<button id=\"nearbyBtn\" class=\"nearby\" aria-label=\"Рядом\"><div class=\"nb-arts\"></div><span>Рядом</span></button>"
  },
  {
   "k": "Профиль",
   "at": [
-   "www/index.html:145"
+   "www/index.html:147"
   ],
   "ctx": "<button id=\"profileBtn\" class=\"profile\" aria-label=\"Профиль\">"
  },
  {
   "k": "Перестать следить",
   "at": [
-   "www/index.html:160"
+   "www/index.html:162"
   ],
   "ctx": "<div id=\"tracker\" class=\"hidden\"><div class=\"tr-arrow\"><svg viewBox=\"0 0 24 24\"><path d=\"M12 2l7 19-7-4-7 4z\" fill=\"currentColor\"/></svg></div><div class=\"tr-ico\"></div><div class=\"tr-main\"><b class=\"tr-name\"></b><small "
  },
  {
   "k": "К себе",
   "at": [
-   "www/index.html:162"
+   "www/index.html:164"
   ],
   "ctx": "<button id=\"recenterBtn\" class=\"btn-round recenter\" aria-label=\"К себе\"><svg class=\"ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"7\"/><circl"
  },
  {
   "k": "Компас: повернуть карту севером вверх",
   "at": [
-   "www/index.html:165"
+   "www/index.html:167"
   ],
   "ctx": "<button id=\"compassBtn\" class=\"compass\" aria-label=\"Компас: повернуть карту севером вверх\"></button>"
  },
  {
   "k": "Меню",
   "at": [
-   "www/index.html:167"
+   "www/index.html:169"
   ],
   "ctx": "<button id=\"menuBtn\" class=\"orb\" aria-label=\"Меню\">"
  }

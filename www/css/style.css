@@ -2350,6 +2350,17 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .rc-main b { font-family: var(--f-head); font-size: 15px; font-weight: 700; color: #fde68a; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
 .rc-chev { width: 16px; height: 16px; color: #f3cf6b; }
+/* 4.21: настоящее состояние сервера — точка (цвет --c), пинг и полоски связи; пока меряем — точка мигает */
+.srv-live { display: inline-flex; align-items: center; gap: 6px; }
+.srv-dot { position: relative; flex: none; background: var(--c); box-shadow: 0 0 8px var(--c); transition: background .3s, box-shadow .3s; }
+.srv-live[data-st="ok"] .srv-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--c); animation: pulse 2.4s ease-out infinite; }
+.srv-live[data-st="wait"] .srv-dot { animation: blink 1s ease-in-out infinite; }
+.srv-live .rl-sig { height: 13px; }
+.srv-live .rl-sig i.on { background: var(--c); }
+.srv-live[data-st="down"] .rl-sig, .srv-live[data-st="net"] .rl-sig, .srv-live[data-st="none"] .rl-sig { opacity: .45; }
+.srv-ms { font-style: normal; font-size: 12px; font-weight: 700; color: #e9e3ff; font-variant-numeric: tabular-nums; }
+.srv-ms:empty { display: none; }
+.calm .srv-dot::after, .calm .srv-dot { animation: none !important; }
 
 /* шторка */
 .rl-wrap { position: fixed; inset: 0; z-index: 2700; display: grid; place-items: end center; background: radial-gradient(120% 80% at 50% 40%, rgba(20, 10, 48, .55), rgba(4, 2, 12, .82));
@@ -4230,3 +4241,8 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
   box-shadow: 0 10px 30px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: lootIn .3s ease-out; }
 #speedWarn::before { content: '⚠'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 22px; }
 #speedWarn b { font-size: 15px; }
+/* 4.21: сервер у вернувшегося Ловчего — та же витрина, компактнее (над карточкой Ловчего) */
+.realm-hero.small { gap: 1px; padding: 4px 14px 6px; }
+.realm-hero.small .rh-crest { width: 92px; height: 92px; margin-bottom: 2px; }
+.realm-hero.small b { font-size: 22px; }
+@media (max-height: 700px) { .realm-hero.small .rh-crest { width: 70px; height: 70px; } .realm-hero.small .rh-crest .rl-crest { width: 50px; height: 50px; } .realm-hero.small b { font-size: 19px; } }
