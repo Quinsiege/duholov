@@ -1228,7 +1228,8 @@ const Art = (() => {
     const code = !bound && info && typeof S !== 'undefined' && S.spiritCode ? S.spiritCode(info) : '';
     prepSil(sid);
     // оборот зеркален (.stc-sil): так силуэт совпадает с лицом, как у настоящего стикера; надпись на плёнке — обратно прямая
-    return `<span class="art sp-sticker stc-r${SP[sid].rar}${bound ? ' stc-bound' : ''}" style="aspect-ratio:1;--el:${elColor(sid)}" data-sid="${sid}"${code ? ` data-code="${code}"` : ''}${info && info.uid ? ` data-uid="${U.esc(info.uid)}"` : ''}><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
+    const kind = info && info.dark && !info.purified ? ' stc-dark' : info && info.shiny ? ' stc-shiny' : ''; // плёнка — по виду духа
+    return `<span class="art sp-sticker${kind}${bound ? ' stc-bound' : ''}" style="aspect-ratio:1;--el:${elColor(sid)}" data-sid="${sid}"${code ? ` data-code="${code}"` : ''}${info && info.uid ? ` data-uid="${U.esc(info.uid)}"` : ''}><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
       `<span class="stc-back"><span class="stc-sil"><i class="stc-glue" style="${ms}"></i>` +
       (bound ? '' : `<i class="stc-liner" style="${ms}">${code ? codeFor(sid, code) : ''}</i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span>`) + '</span></span></span></span>';
   };
