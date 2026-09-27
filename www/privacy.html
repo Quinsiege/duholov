@@ -28,10 +28,14 @@
   .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px 8px 8px; border-radius: 999px; color: #fde68a; font-weight: 600; text-decoration: none; }
   .back:active { background: rgba(255, 255, 255, .08); }
   .back svg { width: 24px; height: 24px; }
+  /* открыт внутри игры (окно с кнопкой «назад»): игра добавляет к адресу #in-game (или якорь раздела) — полоса не нужна, фон прозрачный */
+  html:has(:target), html:has(:target) body { background: transparent; }
+  body:has(:target) .top { display: none; }
 </style>
 </head>
 <body>
-<nav class="top"><a class="back" href="./" aria-label="Назад в игру"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>В игру</a></nav>
+<a id="in-game"></a>
+<nav class="top"><a class="back" href="./" target="_top" aria-label="Назад в игру"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>В игру</a></nav>
 <main>
   <h1>Политика обработки персональных данных игры «Духолов»</h1>
   <p class="muted">Редакция от 25 сентября 2026 г.</p>

@@ -1065,7 +1065,7 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .pay-packs + .q-note { margin-bottom: 20px; }
 .offer-screen { z-index: 2100; } /* поверх окна оплаты */
 .offer-screen .screen-body { padding: 0; overflow: hidden; display: flex; }
-.offer-frame { flex: 1; width: 100%; border: 0; background: #140f2b; }
+.offer-frame { flex: 1; width: 100%; border: 0; background: transparent; color-scheme: dark; } /* 4.21.2: документ прозрачный — виден фон экрана */
 .onb-offer { display: block; margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted); text-decoration: underline; }
 .warn-box { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(244, 63, 94, .12); border: 1px solid rgba(244, 63, 94, .45); font-size: 13px; text-align: left; }
 /* кнопки цен: за искры — золотая обводка (раньше выглядели неактивными); не хватает валюты — приглушены */
@@ -3505,8 +3505,8 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
   -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 55%), linear-gradient(180deg, rgba(72, 44, 150, .82), rgba(40, 24, 96, .88)); }
 
 /* фон экранов меню — без неба, звёзд и леса: ровный фиолетовый Нави и почти незаметный узор, как рубашка игральной карты —
-   тонкая диагональная сетка ромбов с маленьким ромбиком в каждой ячейке */
-.screen {
+   тонкая диагональная сетка ромбов с маленьким ромбиком в каждой ячейке (4.21.2: и у экрана входа — прежний узор --lacq тут выключен) */
+.screen, .onb.lg {
   background:
     radial-gradient(90% 45% at 50% -8%, rgba(167, 139, 250, .3), transparent 70%),
     url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%3E%3Cpath%20d%3D%22M0%200L18%2018M18%200L0%2018%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.035%22%20stroke-width%3D%22.8%22%2F%3E%3Cpath%20d%3D%22M9%20-1.6l1.6%201.6-1.6%201.6-1.6-1.6zM9%2016.4l1.6%201.6-1.6%201.6-1.6-1.6zM-0%207.4l1.6%201.6-1.6%201.6-1.6-1.6zM18%207.4l1.6%201.6-1.6%201.6-1.6-1.6z%22%20fill%3D%22%23fff%22%20fill-opacity%3D%22.045%22%2F%3E%3C%2Fsvg%3E") center top / 18px 18px,
