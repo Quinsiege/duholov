@@ -79,7 +79,7 @@ const Treasury = {
     m.querySelector('.pay-offer').onclick = () => this.offer();
   },
   // Публичная оферта — экраном внутри игры (в приложении ссылка на свой сайт заменила бы игру)
-  offer() { UI.screen(ru`Публичная оферта`, `<iframe class="offer-frame" src="offer.html" title="${ru`Публичная оферта`}"></iframe>`, 'offer-screen'); },
+  offer() { UI.doc(ru`Публичная оферта`, 'offer.html'); },
   // Итог оплаты: сервер спрашивает ЮKassa и начисляет оплаченное
   async check(force) {
     if (this.waiting() && Date.now() - this.waiting() > 3 * 86400000) this.setWaiting(false); // старше 3 дней — не ждём

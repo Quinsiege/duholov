@@ -197,7 +197,9 @@ const UI = {
   glass(label, cls = '', icon = '') { return `<button class="rune glass ${cls}">${this.runeShape('glass')}<span class="rn-t">${icon}${label}</span></button>`; },
 
   // 4.1.2: документ сайта (соглашение, политика, оферта) — внутри игры, в том же окне
-  doc(title, src) { return this.screen(title, `<iframe class="offer-frame" src="${src}" title="${U.esc(title)}"></iframe>`, 'offer-screen'); },
+  doc(title, src) { // 4.21.2: #in-game — документ знает, что открыт в игре (без полосы «В игру», прозрачный фон)
+    if (!src.includes('#')) src += '#in-game';
+    return this.screen(title, `<iframe class="offer-frame" src="${src}" title="${U.esc(title)}"></iframe>`, 'offer-screen'); },
   screen(title, html, cls = '', onClose) {
     const el = U.el(`<div class="screen ${cls}"><div class="screen-head"><button class="btn-round back">${this.I.back}</button><h2>${title}</h2><div class="head-extra"></div></div><div class="screen-body">${html}</div></div>`);
     el._close = () => this.closeScreen(el);
