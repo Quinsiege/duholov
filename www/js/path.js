@@ -10,9 +10,9 @@ const Path = {
     const add = (l, ic, t, s) => (U2[l] = U2[l] || []).push({ ic, t, s });
     add(1, 'spirits', ru`Поимка духов`, ru`Обереги, мёд, родники и коконы`);
     add(1, 'scroll', ru`Задания и Летопись`, ru`Задания дня и сюжет Ордена`);
-    add(3, 'shield', ru`Капища предков`, ru`Поединки 3 на 3 с хранителями`);
+    add(DUEL_LEVEL, 'shield', ru`Капища предков`, ru`Поединки 3 на 3 с хранителями`);
     add(Rules.CHAT.LEVEL, 'chat', ru`Чат Ордена`, ru`Можно писать сообщения`);
-    add(4, 'rift', ru`Вторжения Нави`, ru`Освобождай захваченные родники`);
+    add(INVASION_LEVEL, 'rift', ru`Вторжения Нави`, ru`Освобождай захваченные родники`);
     add(League.LEVEL, 'trophy', ru`Лига Ордена`, ru`Бои с живыми Ловчими, рейтинг и лиги`);
     add(CLAN_LEVEL, 'shield', ru`Дружина`, ru`Сокол, Медведь или Волк — знамя над капищами`);
     add(Rules.AUCTION.LEVEL, 'gavel', ru`Аукцион`, ru`Продажа и покупка духов`);
@@ -35,6 +35,13 @@ const Path = {
     if (k.startsWith('eyes:')) return `<svg viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="40" fill="#150d2b" stroke="#1c0b33" stroke-width="4"/><ellipse cx="36" cy="50" rx="9" ry="6" fill="${k.slice(5)}"/><ellipse cx="64" cy="50" rx="9" ry="6" fill="${k.slice(5)}"/></svg>`;
     if (k === 'emb') return Art.charm('charm');
     return UI.menuIcon(k);
+  },
+  // 4.16: опыт за сегодня (дневной потолок) и опыт отдыха — те же правила, что у сервера (S.xpGain)
+  dayNote() {
+    const x = S.xpToday(), mul = Ev.xpMul(), F = XP_DAY.FULL * mul, H = XP_DAY.HALF * mul;
+    const now = x.n < F ? ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — полностью до ${U.fmtNum(F)}` : x.n < H ? ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — дальше вполовину до ${U.fmtNum(H)}` : ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — дальше на четверть`;
+    return `<p class="pth-note"><b>${now}</b>${x.rest > 0 ? `<br><b>${ru`Опыт отдыха: следующие ${U.fmtNum(x.rest)} опыта — вдвое`}</b>` : ''}<br>
+      ${ru`За день опыт идёт полностью до ${U.fmtNum(XP_DAY.FULL)}, дальше до ${U.fmtNum(XP_DAY.HALF)} — вполовину, сверх — на четверть. Главы Летописи, обучение и знаки Ордена дают опыт всегда полностью. За каждый день без игры копится опыт отдыха (${U.fmtNum(XP_DAY.REST)}, не больше чем за ${XP_DAY.REST_DAYS} ${U.plural(XP_DAY.REST_DAYS, ru`день`, ru`дня`, ru`дней`)}): пока он есть, опыт вдвое.`}</p>`;
   },
   rw(l) {
     return Object.entries(S.levelRewards(l)).map(([k, n]) => `<span class="pth-rw">${Art.item(k)}<b>${U.fmtNum(n)}</b></span>`).join('');
@@ -65,6 +72,7 @@ const Path = {
           <small>${d.level >= MAX_LEVEL ? ru`Ты прошёл весь путь!` : ru`До ${d.level + 1} уровня — ${U.fmtNum(next - d.xp)} опыта`}${nextUnlock ? ` · ${ru`дальше: ${un[nextUnlock][0].t} на ${nextUnlock}`}` : ''}</small></div>
       </div>
       <p class="pth-note">${ru`Опыт дают поимки, родники, разломы, капища, задания и Летопись. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`} ${ru`С ${S.AWAKE.LVL[0]} уровня духов можно пробуждать: каждая звезда поднимает предел уровня духа ещё на ${S.AWAKE.STEP}, до ${SPIRIT_MAX}.`}</p>
+      ${this.dayNote()}
       <div class="pth-road">${rows.join('')}</div>`, 'pth-screen');
     setTimeout(() => { const c = scr.querySelector('#pthCur'); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
   },

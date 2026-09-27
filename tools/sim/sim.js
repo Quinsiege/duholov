@@ -188,7 +188,7 @@ async function raidAt(p) {
   else ST.raids[1]++;
 }
 async function duelAt(p) {
-  if (P.data.level < 3 || ST.today.duels >= CFG.DUELS) return;
+  if (P.data.level < DUEL_LEVEL || ST.today.duels >= CFG.DUELS) return;
   const e = me(() => W.shrineFor(p, 0));
   if (e.won || W.riftAt(p.id, Math.floor(SIM_T / 3600000))) return;
   await heal(); await pickTeam();
@@ -310,7 +310,7 @@ async function walk(km) {
       sinceSpring = 0;
       const p = poi('spring'), e = me(() => W.springFor(p, 0));
       await tidyBag();
-      if (e.invaded) { if (P.data.level >= 3) await invasionAt(p); }
+      if (e.invaded) { if (P.data.level >= INVASION_LEVEL) await invasionAt(p); }
       else if (me(() => Rules.dayUsed(S.d, 'springs')) < 30) { const xp0 = P.data.xp; if (await act('spring', { poi: p })) { ST.springs++; xpAdd('родник', xp0); } }
     }
     if (sinceShrine >= CFG.SHRINE_EVERY) {

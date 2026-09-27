@@ -5,7 +5,7 @@
 const { parentPort, workerData } = require('worker_threads');
 const G = require('./engine.cjs').load();
 const BT = require('./battle.cjs');
-const { GameCore, S, W, U, SP, SPECIES, Rules, Raid, Duel, League, SHRINE_TIERS, TUT, STORY, CLAN_LEVEL, ITEMS } = G;
+const { GameCore, S, W, U, SP, SPECIES, Rules, Raid, Duel, League, SHRINE_TIERS, TUT, STORY, CLAN_LEVEL, DUEL_LEVEL, INVASION_LEVEL, ITEMS } = G;
 
 // ---------- связь с главным потоком ----------
 let rpcN = 0; const pending = new Map();
@@ -37,7 +37,7 @@ function newStats() {
     // 4.16 экономика: откуда пришли и куда ушли искры и златники (по действиям), сколько предметов пришло, переполнение сумки, снимки по дням
     eco: { sparksIn: {}, sparksOut: {}, zlatFree: {}, itemsIn: {}, amuletsIn: 0, bagOverMax: 0, parcelMax: 0, lost: 0, days: [] },
     // 4.16: исходы боёв по ступеням ([победы, поражения]) и сильнейшие духи на каждом новом уровне (для калибровки боёв)
-    bt: { raid: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, duel: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, inv: [0, 0], waters: 0, tiredSkip: 0 }, teamAt: {} };
+    bt: { raid: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, duel: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, inv: [0, 0], waters: 0, tiredSkip: 0 }, teamAt: {}, capped: 0, rested: 0 }; // capped/rested — сколько опыта срезал дневной потолок и добавил опыт отдыха
 }
 // 4.16: учёт экономики по каждому действию (до → после)
 const ITEM_KEYS = Object.keys(ITEMS);
@@ -59,6 +59,14 @@ function ecoTrack(type, a, b) {
   const pc = Object.values(pb).reduce((x, y) => x + y, 0); if (pc > E.parcelMax) E.parcelMax = pc;
 }
 let P = null, D = null; // текущий игрок и его статистика
+// 4.16: учёт дневного потолка и опыта отдыха (S.xpGain — общий путь всего опыта)
+const xpGain0 = S.xpGain;
+S.xpGain = function (n, once, mark) {
+  if (!mark || !D || !S.d) return xpGain0.call(S, n, once, mark);
+  const nominal = xpGain0.call(S, n, true, false), rest0 = S.xpDay().rest, got = xpGain0.call(S, n, once, true), bonus = rest0 - S.d.xpd.rest;
+  D.capped += Math.max(0, nominal - (got - bonus)); D.rested += bonus;
+  return got;
+};
 const adv = sec => { globalThis.SIM_T += Math.round(sec * 1000); D.play += sec; };
 const me = fn => { const d = S.d, tz = U.tz; S.d = P.data; U.tz = 180; try { return fn(); } finally { S.d = d; U.tz = tz; } };
 async function act(type, args = {}) {
@@ -198,7 +206,7 @@ async function raidAt(p, far) {
   D.raids[1]++; D.bt.raid[rift.tier][1]++; P.today.raidLost = Math.min(P.today.raidLost || 9, rift.tier); return false;
 }
 async function duelAt(p) {
-  if (P.data.level < 3 || P.today.duels >= P.pr.duels) return;
+  if (P.data.level < DUEL_LEVEL || P.today.duels >= P.pr.duels) return;
   const e = me(() => W.shrineFor(p, 0));
   if (e.won || W.riftAt(p.id, Math.floor(SIM_T / 3600000)) || me(() => Rules.dayUsed(S.d, 'duels')) >= 8) return;
   const hold = await rpc('holdGet', P.uid, [p.id]);
@@ -271,7 +279,7 @@ async function walk(km) {
       if (p.kind === 'spring') {
         const e = me(() => W.springFor(p, 0));
         await tidyBag();
-        if (e.invaded) { if (P.data.level >= 3) await invasionAt(p); }
+        if (e.invaded) { if (P.data.level >= INVASION_LEVEL) await invasionAt(p); }
         else if (e.ready && me(() => Rules.dayUsed(S.d, 'springs')) < 30) { const xp0 = P.data.xp; if (await act('spring', { poi: { id: p.id, lat: p.lat, lng: p.lng, name: p.name } })) { D.springs++; xpAdd('родник', xp0); } }
       } else if (p.kind === 'shrine') {
         if (P.today.raids < P.pr.raids && me(() => W.riftAt(p.id, Math.floor(SIM_T / 3600000)))) await raidAt(p);
@@ -540,7 +548,7 @@ parentPort.on('message', async m => {
           top: byP.slice(0, 3).map(x => `${SP[x.sid].name} ${x.lvl} ур. · ${S.power(x)}`), topPow: byP[0] ? S.power(byP[0]) : 0, team3: byP.slice(0, 3).reduce((a, x) => a + S.power(x), 0),
           lgPts: League.view().pts, lgBest: (S.d.league && S.d.league.best) || 0, story: S.d.story ? S.d.story.ch : 0, medals: S.d.medals ? Object.keys(S.d.medals).length : 0,
           friends: S.d.friends.length, bestFriend: Math.max(0, ...S.d.friends.map(f => f.pts)), clan: S.d.clan, amulets: Object.values(S.d.amulets || {}).reduce((a, b) => a + b, 0), km: Math.round(S.d.stats.km || 0), shinyAll: S.d.stats.shiny,
-          stars: byP.slice(0, 3).map(x => x.stars || 0), alatyr: S.d.alatyr || 0, rod: S.d.rod || 0, legendTop: Math.max(0, ...S.d.spirits.filter(x => SP[x.sid].legend).map(x => x.lvl)) };
+          stars: byP.slice(0, 3).map(x => x.stars || 0), alatyr: S.d.alatyr || 0, rod: S.d.rod || 0, legendTop: Math.max(0, ...S.d.spirits.filter(x => SP[x.sid].legend).map(x => x.lvl)), rest: S.d.xpd ? S.d.xpd.rest : 0 };
       });
       return { uid: pl.uid, name: pl.name, pr: pl.pr, arch: pl.arch, isMe: !!pl.isMe, st: pl.st, s };
     });

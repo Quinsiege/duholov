@@ -621,7 +621,7 @@ Object.assign(UI, {
     });
     m.addEventListener('click', async e => {
       const b = e.target.closest('.melt-to'); if (!b || m._busy) return;
-      const err = S.canMelt(from, b.dataset.k); if (err) { this.toast(U.esc(err)); return; }
+      const err = S.canMeltAmulet(from, b.dataset.k); if (err) { this.toast(U.esc(err)); return; }
       m._busy = true;
       const r = await Game.try('amuletMelt', { from, to: b.dataset.k });
       m._busy = false;

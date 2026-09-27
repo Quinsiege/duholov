@@ -4,6 +4,8 @@
 
 const Rules = {
   QUEST_BONUS: { charm: 10, honey: 2, sparks: 500 }, // 4.16: без ладана (был каждый день — копился десятками) и меньше искр
+  // 4.16: опыт за задание дня и за сундук дня (было 300 и 1000) — ежедневные цели заметнее для тех, кто играет понемногу
+  QUEST_XP: 500, QUEST_BONUS_XP: 2500,
   PLACE_REWARD: { xp: 1000, sparks: 500, charm: 10 },
   SUPPLY: { charm: 15, honey: 2, water: 1 },
   THROWABLE: ['charm', 'charm2', 'charm3'],
@@ -72,8 +74,8 @@ const Rules = {
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
   CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Дружина`]],
-  // 3.17: Аукцион духов — с LEVEL уровня; лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
-  AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
+  // 3.17: Аукцион духов — с LEVEL уровня (4.16: было 5); лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
+  AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
   // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
   // 4.16: был ✦ 500 → 10 златников трижды в день (30 златников в день почти даром) — теперь трата лишних искр:

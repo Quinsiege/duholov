@@ -25,7 +25,9 @@ const group = key => {
   return Object.fromEntries(Object.entries(g).map(([k, a]) => [k, { n: a.length, reached: a.filter(p => p.t40).length, medDay40: med(a.filter(p => p.t40).map(p => p.d40)), bestDay40: a.filter(p => p.t40).length ? Math.min(...a.filter(p => p.t40).map(p => p.d40)) : null,
     medLvl: med(a.map(p => p.s.lvl)), rubAvg: Math.round(avg(a.map(p => p.rub))), rubSum: a.reduce((x, p) => x + p.rub, 0), hoursDay: +avg(a.map(p => p.hours / Math.max(1, p.st.days))).toFixed(2), kmDay: +avg(a.map(p => p.kmDay)).toFixed(1),
     xpShare: (() => { const s = {}; let t = 0; a.forEach(p => { for (const [k2, v] of Object.entries(p.st.xpBy)) { s[k2] = (s[k2] || 0) + v; t += v; } }); return Object.fromEntries(Object.entries(s).sort((x, y) => y[1] - x[1]).map(([k2, v]) => [k2, Math.round(v / t * 1000) / 10])); })(),
-    team3: Math.round(avg(a.map(p => p.s.team3))), aucBought: +avg(a.map(p => p.st.aucBought)).toFixed(1), friends: +avg(a.map(p => p.s.friends)).toFixed(1) }]));
+    team3: Math.round(avg(a.map(p => p.s.team3))),
+    // 4.16: доля опыта, срезанная дневным потолком, и добавленная опытом отдыха (% от набранного)
+    xpCapped: +avg(a.map(p => (p.st.capped || 0) / Math.max(1, p.s.xp) * 100)).toFixed(1), xpRested: +avg(a.map(p => (p.st.rested || 0) / Math.max(1, p.s.xp) * 100)).toFixed(1), aucBought: +avg(a.map(p => p.st.aucBought)).toFixed(1), friends: +avg(a.map(p => p.s.friends)).toFixed(1) }]));
 };
 const byArch = group(p => p.arch), byDon = group(p => DON[p.don]), byArchDon = group(p => p.arch + ' · ' + DON[p.don]);
 const meP = P.find(p => p.isMe);

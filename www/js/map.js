@@ -502,7 +502,7 @@ const MapView = {
       Encounter.start({ mode: 'wild', sid: e.sid, lvl: e.lvl, seed: e.id, spawnId: e.id, shiny: e.shiny, boost: e.boost, tut: e.tut });
     } else if (e.type === 'spring') e.invaded ? Duel.openInvasion(e) : UI.spring(e);
     else if (e.type === 'shrine') {
-      if (S.d.level < 3) { UI.toast(ru`Капища открываются с 3 уровня Ловчего`); return; }
+      if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }
       Duel.open(e);
     } else Raid.open(e);
   },
