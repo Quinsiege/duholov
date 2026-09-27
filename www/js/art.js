@@ -314,8 +314,10 @@ const Art = (() => {
   // подсветка по стихии: ободок цвета стихии — дух читается и на тёмном фоне (омрачённый — свечение Нави)
   const elColor = sid => ELEMENTS[SP[sid].el].color;
   const glow = (sid, solo) => `drop-shadow(0 0 ${solo ? 2 : 3}px ${elColor(sid)}) drop-shadow(0 0 ${solo ? 5 : 9}px ${elColor(sid)}99)`;
-  const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
-    : (shiny ? 'grayscale(.4) contrast(.85) brightness(1.2) ' + (solo ? 'saturate(1.2) hue-rotate(30deg) ' : '') : '') + glow(sid, solo); // сияющий: лёгкое серебро поверх своего цвета
+  // белая кайма по контуру — дух вырезан, как стикер
+  const edge = solo => { const w = solo ? 1 : 1.6; return `drop-shadow(${w}px 0 0 #fff) drop-shadow(-${w}px 0 0 #fff) drop-shadow(0 ${w}px 0 #fff) drop-shadow(0 -${w}px 0 #fff) `; };
+  const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) ' + edge(solo) + 'drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
+    : (shiny ? 'grayscale(.4) contrast(.85) brightness(1.2) ' + (solo ? 'saturate(1.2) hue-rotate(30deg) ' : '') : '') + edge(solo) + glow(sid, solo); // сияющий: лёгкое серебро поверх своего цвета
   const picImg = (sid, shiny, dark, cls) => {
     const solo = cls === 'art', pearl = solo && shiny && !dark, fl = pearl ? '' : picFilter(sid, shiny, dark, solo);
     return `<img class="${cls}${pearl ? ' sp-pearl' : ''}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : pearl ? ` style="--gl:${elColor(sid)}"` : ''}>`;
@@ -1173,6 +1175,45 @@ const Art = (() => {
       L.parts.map(p => p.img ? `<img class="stk${p.cls ? ' ' + p.cls : ''}" src="${p.img}" alt="" draggable="false"${p.css ? ` style="${p.css}"` : ''}>` : p.svg.replace(/__L__/g, n)).join('') + '</span>';
   }
   const asImg = (svg, key, ctx) => stack(svg, key, '', ctx);
-  const spiritK = (sid, shiny, dark) => PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`);
+  // 4.17: дух — вырезанный стикер: лицевая сторона — рисунок с белой каймой, обратная — голографическая клейкая основа
+  // по его силуэту (радужная фольга, текстура подложки, блёстки, свечение стихии). Крутится пальцем там, где дух крупно (см. ниже)
+  const maskCache = {};
+  const maskOf = sid => PICS[sid] ? picUrl(sid) : (maskCache[sid] || (maskCache[sid] = toUrl(spirit(sid)).replace(/'/g, '%27')));
+  const sticker = (front, sid) => { const m = maskOf(sid);
+    return `<span class="art sp-sticker" style="aspect-ratio:1;--el:${elColor(sid)}"><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
+      `<span class="stc-back"><i style="-webkit-mask-image:url('${m}');mask-image:url('${m}')"></i></span></span></span>`; };
+  const spiritK = (sid, shiny, dark) => sticker(PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`), sid);
+  // Вращение стикера: тянуть — крутится (с разгона докручивается до ближайшей стороны), коснуться — перевернуть.
+  // Только крупные духи и не на поимке (там жест — бросок оберега)
+  if (typeof document !== 'undefined') {
+    const ROT = '.det-art, .res-art, .evo-stage, .hatch-sp, .bk-art, .onb-starters, .pf-buddy-a';
+    let g = null;
+    const set = (card, ry) => { card._ry = ry; card.style.setProperty('--ry', ry + 'deg'); card.style.setProperty('--hp', (((ry % 360) + 360) % 360 / 3.6).toFixed(1) + '%'); };
+    document.addEventListener('pointerdown', e => {
+      const st = e.target.closest && e.target.closest('.sp-sticker');
+      if (!st || !st.closest(ROT) || st.closest('.enc-art') || st.getBoundingClientRect().width < 90) return;
+      const card = st.querySelector('.stc-card');
+      g = { card, st, x: e.clientX, t: performance.now(), ry0: card._ry || 0, v: 0, lx: e.clientX, lt: performance.now(), moved: false };
+    }, { passive: true });
+    document.addEventListener('pointermove', e => {
+      if (!g) return;
+      const dx = e.clientX - g.x;
+      if (!g.moved && Math.abs(dx) < 6) return;
+      if (!g.moved) { g.moved = true; g.card.classList.add('drag'); g.st.classList.add('spin'); }
+      const now = performance.now(); g.v = (e.clientX - g.lx) / Math.max(1, now - g.lt); g.lx = e.clientX; g.lt = now;
+      set(g.card, g.ry0 + dx * 0.9);
+    }, { passive: true });
+    const up = () => {
+      if (!g) return;
+      const { card, st } = g; card.classList.remove('drag');
+      // коснулся — перевернуть; потянул — докрутить по инерции до ближайшей стороны
+      const target = g.moved ? Math.round(((card._ry || 0) + g.v * 260) / 180) * 180 : (card._ry || 0) + 180;
+      set(card, target); g = null;
+      setTimeout(() => st.classList.remove('spin'), 600);
+    };
+    document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+    // клик после вращения не должен открывать/выбирать (кнопки со стикером внутри)
+    document.addEventListener('click', e => { const st = e.target.closest && e.target.closest('.sp-sticker.spin'); if (st) { e.stopPropagation(); e.preventDefault(); } }, true);
+  }
   return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
 })();

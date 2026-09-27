@@ -2714,10 +2714,29 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 @keyframes spPearl { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
 /* сияющий в списках и на карте — перелив оттенка самим фильтром */
 .sp-pearl { animation: spPearlS 3s ease-in-out infinite alternate; } /* свой цвет чуть качается по радуге */
-@keyframes spPearlS { from { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(-35deg) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } to { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(35deg) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } }
-.calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); }
+@keyframes spPearlS { from { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(-35deg) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } to { filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(35deg) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); } }
+.calm .sp-pearl { animation: none; filter: grayscale(.4) contrast(.85) brightness(1.2) saturate(1.2) hue-rotate(0deg) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 0 2px var(--gl)) drop-shadow(0 0 5px var(--gl)); }
 @keyframes spSheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
 @keyframes spSmoke { 0%, 100% { opacity: .5; transform: translateY(0) scaleY(1); } 50% { opacity: 1; transform: translateY(-5px) scaleY(1.12); } }
+/* 4.17: дух-стикер — обратная сторона: приглушённо-белая клейкая основа по силуэту с лёгким голографическим отливом */
+.sp-sticker { position: relative; display: block; perspective: 900px; }
+.stc-card { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(var(--ry, 0deg)); transition: transform .7s cubic-bezier(.2, .9, .25, 1); }
+.stc-card.drag { transition: none; }
+.stc-front, .stc-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.stc-front > .art-stack { width: 100%; height: 100%; } /* лицевая сторона — без класса .art: чужие правила .art (анимации экранов) берёт сам стикер */
+.stc-back { transform: rotateY(180deg); filter: drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff) drop-shadow(0 -1.6px 0 #fff) drop-shadow(0 0 4px var(--el)) drop-shadow(0 0 14px var(--el)); }
+.stc-back > i { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(148, 163, 184, .55) 0 1.2px, transparent 2px) 0 0 / 21px 17px,
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, .95) 0 1.2px, transparent 2px) 0 0 / 15px 27px,
+    repeating-linear-gradient(135deg, rgba(71, 85, 105, .06) 0 1px, transparent 1px 6px),
+    linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .55) 50%, transparent 62%) var(--hp, 50%) 50% / 260% 100%,
+    linear-gradient(125deg, rgba(244, 114, 182, .14), rgba(96, 165, 250, .14) 30%, rgba(45, 212, 191, .12) 50%, rgba(250, 204, 21, .14) 75%, rgba(244, 114, 182, .14)) calc(100% - var(--hp, 50%)) 50% / 150% 150%,
+    linear-gradient(160deg, #e6e8ee, #cfd3dc 45%, #e1e4ea 75%, #c9cdd6);
+  animation: stcHolo 5s ease-in-out infinite alternate; }
+.stc-back > i::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .55), transparent 60%); mix-blend-mode: soft-light; }
+@keyframes stcHolo { from { filter: saturate(1) brightness(.97); } to { filter: saturate(1.4) brightness(1.03); } }
+.calm .stc-back > i { animation: none; }
 .calm .sp-pic > *, .calm .sp-pic .sp-smoke, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }
 /* блеск кнопок: сдвиг полосы (transform) — тот же проблеск, но без перерисовки кнопки 60 раз в секунду */
 .btn.primary::after, .btn.evolve::after, .btn.danger:not(.ghost)::after { inset: 0 auto 0 0 !important; width: 45% !important; border-radius: 0;
