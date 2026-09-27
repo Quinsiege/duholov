@@ -261,6 +261,20 @@ const MapView = {
     if (this.tracking) this.updateTracker();
   },
 
+  /* 4.20: скорость Ловчего — только шагом или бегом (Rules.SPEED); как на сервере: средняя от якоря не старше минуты */
+  tooFast() { return this.fastUntil > Date.now(); },
+  pace(q) {
+    const S2 = Rules.SPEED, a = this._pace, v = a ? Rules.speedOf(a, q) : null;
+    if (v != null && v > S2.MAX) {
+      const was = this.tooFast();
+      this.fastUntil = Date.now() + S2.COOL; this.kmh = Math.round(v * 3.6);
+      if (!was) U.vibrate([80, 60, 80]);
+      UI.speedWarn(this.kmh);
+      clearTimeout(this._fastT); this._fastT = setTimeout(() => { if (!this.tooFast()) UI.speedWarn(0); }, S2.COOL + 500);
+    }
+    if (!a || q.t - a.t > S2.WIN * 1000 || q.t < a.t) this._pace = q;
+  },
+
   /* ---------------- GPS ---------------- */
   startGPS() {
     this.stopDemo();
@@ -283,7 +297,8 @@ const MapView = {
     const first = !this.gpsOK;
     this.gpsOK = true;
     this.acc = accuracy;
-    Game.addPoint(lat, lng, accuracy); // путь считает сервер (быстрее ~32 км/ч — не засчитывается)
+    Game.addPoint(lat, lng, accuracy); // путь считает сервер (4.20: быстрее бега — не засчитывается)
+    if (accuracy <= Rules.SPEED.ACC) this.pace({ lat, lng, t: p.timestamp || Date.now() });
     UI.setGps(accuracy <= 40 ? 'ok' : 'weak', accuracy);
     if (this.lastGps && accuracy <= 40) {
       const d = U.dist(this.lastGps.lat, this.lastGps.lng, lat, lng);
@@ -573,6 +588,7 @@ const MapView = {
   tap(e) {
     if (!e || UI.blocking()) return;
     Sfx.init(); Sfx.play('tap');
+    if (this.tooFast()) { UI.toast(ru`Слишком быстро — около ${this.kmh} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`); return; } // 4.20
     const d = U.dist(this.pos.lat, this.pos.lng, e.lat, e.lng);
     const range = e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT;
     if (d > range && e.type === 'rift' && d <= Rules.FAR.R) { Raid.open(e); return; } // дальний бой по пропуску
