@@ -311,11 +311,11 @@ const Art = (() => {
   const PICS = {"kostrovik":"3235430501","ugolek":"3106337497","zharogriv":"2415565401"}; // tools/art/spirit-pics.mjs
   const picUrl = sid => PICS[sid] ? `img/spirits/${sid}.webp?v=${PICS[sid]}` : null;
   // solo — картинка без слоёв (списки, карта, фото с поимки): лиловый — самим фильтром, перламутр — анимацией оттенка (.sp-pearl в style.css)
-  // подсветка по стихии: ободок цвета стихии — дух читается и на тёмном фоне (омрачённый — свечение Нави)
   const elColor = sid => ELEMENTS[SP[sid].el].color;
-  const glow = (sid, solo) => `drop-shadow(0 0 ${solo ? 2 : 3}px ${elColor(sid)}) drop-shadow(0 0 ${solo ? 5 : 9}px ${elColor(sid)}99)`;
-  // белая кайма по контуру — дух вырезан, как стикер
-  const edge = solo => { const w = solo ? .6 : .9; return `drop-shadow(${w}px 0 0 #fff) drop-shadow(-${w}px 0 0 #fff) drop-shadow(0 ${w}px 0 #fff) drop-shadow(0 -${w}px 0 #fff) `; };
+  const glow = () => ''; // 4.17: без свечения по стихии — только контур стикера
+  // почти чёрная кайма по контуру — дух вырезан, как стикер
+  const EDGE = '#15121c';
+  const edge = solo => { const w = solo ? .6 : .9; return `drop-shadow(${w}px 0 0 ${EDGE}) drop-shadow(-${w}px 0 0 ${EDGE}) drop-shadow(0 ${w}px 0 ${EDGE}) drop-shadow(0 -${w}px 0 ${EDGE}) `; };
   const picFilter = (sid, shiny, dark, solo) => dark ? (solo ? 'sepia(.7) hue-rotate(215deg) saturate(1.6) ' : '') + 'brightness(.62) saturate(.5) contrast(1.2) ' + edge(solo) + 'drop-shadow(0 0 5px rgba(147, 51, 234, .95))'
     : (shiny ? 'grayscale(.4) contrast(.85) brightness(1.2) ' + (solo ? 'saturate(1.2) hue-rotate(30deg) ' : '') : '') + edge(solo) + glow(sid, solo); // сияющий: лёгкое серебро поверх своего цвета
   const picImg = (sid, shiny, dark, cls) => {
@@ -1178,25 +1178,99 @@ const Art = (() => {
   // 4.17: дух — вырезанный стикер: лицевая сторона — рисунок с белой каймой, обратная — клейкая основа по его силуэту,
   // закрытая защитной плёнкой с отогнутым углом (под ним виден клей; лоскут — тот же силуэт, отражённый через линию сгиба). Крутится пальцем там, где дух крупно (см. ниже)
   const maskCache = {};
-  const maskOf = sid => PICS[sid] ? picUrl(sid) : (maskCache[sid] || (maskCache[sid] = toUrl(spirit(sid)).replace(/'/g, '%27')));
+  const rawMask = sid => PICS[sid] ? picUrl(sid) : (maskCache[sid] || (maskCache[sid] = toUrl(spirit(sid)).replace(/'/g, '%27')));
+  const silMask = {}; // чёткий силуэт (порог по прозрачности, без сияния и теней рисунка) — считает prepSil
+  const maskOf = sid => silMask[sid] || rawMask(sid);
   // Код духа на плёнке — цифры из точек (матрица 5×7) столбиком: две группы по 4 — узкая полоска влезает и в маленького духа
   const DOTS = ['01110100011001110101110011000101110', '00100011000010000100001000010001110', '01110100010000100010001000100011111', '11111000100010000010000011000101110',
     '00010001100101010010111110001000010', '11111100001111000001000011000101110', '00110010001000011110100011000101110', '11111000010001000100010000100001000',
     '01110100011000101110100011000101110', '01110100011000101111000010001001100'];
+  // vert — столбиком (две группы по 4 одна под другой), иначе строкой
   const codeCache = {};
-  const codeSvg = code => codeCache[code] || (codeCache[code] = (() => {
-    let d = '', x = 0;
-    [...code].forEach((ch, i) => { const g = DOTS[+ch] || ''; for (let k = 0; k < 35; k++) if (g[k] === '1') d += `M${k % 5 + .5} ${x + Math.floor(k / 5) + .5}h0`; x += 9 + (i === 3 ? 4 : 0); });
-    return `<svg class="stc-code" viewBox="0 0 5 ${x - 2}" aria-hidden="true"><path d="${d}"/></svg>`;
-  })());
+  const codeSvg = (code, vert, style) => (codeCache[code + vert] || (codeCache[code + vert] = (() => {
+    let d = '', p = 0;
+    [...code].forEach((ch, i) => {
+      const g = DOTS[+ch] || '';
+      for (let k = 0; k < 35; k++) if (g[k] === '1') { const cx = k % 5 + .5, cy = Math.floor(k / 5) + .5; d += vert ? `M${cx} ${p + cy}h0` : `M${p + cx} ${cy}h0`; }
+      p += (vert ? 9 : 6) + (i === 3 ? (vert ? 4 : 3) : 0);
+    });
+    const L = p - (vert ? 2 : 1);
+    return `<svg class="stc-code" viewBox="0 0 ${vert ? 5 : L} ${vert ? L : 7}" preserveAspectRatio="none" aria-hidden="true"__S__><path d="${d}"/></svg>`;
+  })())).replace('__S__', ` style="${style}"`);
+  // Где на плёнке выбить код: игра сама разбирает силуэт духа (маска 128×128) и ищет самое крупное место, где код целиком
+  // внутри фигуры и не задевает отогнутый угол (x + y ≥ 1.36 — там плёнка дышит); столбиком или строкой — что влезет крупнее.
+  // Считается один раз на духа (и запоминается в браузере), готовое место подставляется во все его стикеры
+  const FIT_N = 128, FIT_V = 1, fits = {}, fitWait = {};
+  const fitKey = sid => sid + ':' + (PICS[sid] || 'svg') + ':' + FIT_V;
+  try { Object.assign(fits, JSON.parse(localStorage.getItem('duholov.codefit') || '{}')); } catch (e) { /* без хранилища — посчитаем заново */ }
+  const fitStyle = f => `left:${f[0]}%;top:${f[1]}%;width:${f[2]}%;height:${f[3]}%`;
+  function fitCompute(alpha) {
+    const N = FIT_N, I = new Int32Array((N + 1) * (N + 1));
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const ok = alpha[(y * N + x) * 4 + 3] > 200 && (x + y + 2) / N < 1.36 ? 1 : 0;
+      I[(y + 1) * (N + 1) + x + 1] = ok + I[y * (N + 1) + x + 1] + I[(y + 1) * (N + 1) + x] - I[y * (N + 1) + x];
+    }
+    const full = (x, y, w, h) => I[(y + h) * (N + 1) + x + w] - I[y * (N + 1) + x + w] - I[(y + h) * (N + 1) + x] + I[y * (N + 1) + x] === w * h;
+    // центр фигуры — из позиций подходят ближайшие к нему
+    let cx = 0, cy = 0, n = 0;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (alpha[(y * N + x) * 4 + 3] > 200) { cx += x; cy += y; n++; }
+    cx = n ? cx / n : N / 2; cy = n ? cy / n : N / 2;
+    const pad = 2;
+    for (let k = 1; k >= .3; k -= .05) for (const vert of [true, false]) {
+      // крупнейший размер: столбик — 47% высоты стикера, строка — 62% ширины
+      const h = Math.round(vert ? .47 * N * k : .62 * N * k * 7 / 50), w = Math.max(2, Math.round(vert ? h * 5 / 74 : .62 * N * k));
+      let best = null, bd = Infinity;
+      for (let y = 0; y + h + 2 * pad <= N; y++) for (let x = 0; x + w + 2 * pad <= N; x++) {
+        if (!full(x, y, w + 2 * pad, h + 2 * pad)) continue;
+        const dd = (x + pad + w / 2 - cx) ** 2 + (y + pad + h / 2 - cy) ** 2;
+        if (dd < bd) { bd = dd; best = [x + pad, y + pad]; }
+      }
+      if (best) return [+(best[0] / N * 100).toFixed(2), +(best[1] / N * 100).toFixed(2), +(w / N * 100).toFixed(2), +(h / N * 100).toFixed(2), vert ? 1 : 0];
+    }
+    return null; // места нет — дух слишком тонкий, код не выбиваем
+  }
+  // Силуэт духа разбирается один раз: чёткая маска оборота (256 px, порог прозрачности) и место для кода (128 px)
+  const silWait = {};
+  function prepSil(sid) {
+    const key = fitKey(sid);
+    if (silWait[sid] || typeof document === 'undefined' || (silMask[sid] && key in fits)) return;
+    silWait[sid] = true;
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const M = 256, c = document.createElement('canvas'); c.width = c.height = M;
+        const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, M, M);
+        const px = g.getImageData(0, 0, M, M);
+        for (let i = 3; i < px.data.length; i += 4) { const on = px.data[i] > 150; px.data[i - 3] = px.data[i - 2] = px.data[i - 1] = 255; px.data[i] = on ? 255 : 0; }
+        g.putImageData(px, 0, 0);
+        silMask[sid] = c.toDataURL('image/png');
+        if (!(key in fits)) {
+          const f = document.createElement('canvas'); f.width = f.height = FIT_N;
+          const fg = f.getContext('2d', { willReadFrequently: true }); fg.drawImage(c, 0, 0, FIT_N, FIT_N);
+          fits[key] = fitCompute(fg.getImageData(0, 0, FIT_N, FIT_N).data);
+          try { localStorage.setItem('duholov.codefit', JSON.stringify(fits)); } catch (e) { /* не запомнили — посчитаем в другой раз */ }
+        }
+      } catch (e) { if (!(key in fits)) fits[key] = null; }
+      // готовые стикеры этого духа: чёткий силуэт и код
+      const ms = silMask[sid] ? `-webkit-mask-image:url('${silMask[sid]}');mask-image:url('${silMask[sid]}')` : '';
+      document.querySelectorAll(`.sp-sticker[data-sid="${sid}"]`).forEach(st => {
+        if (ms) st.querySelectorAll('.stc-glue, .stc-liner, .stc-flap').forEach(el => el.setAttribute('style', ms));
+        const l = st.querySelector('.stc-liner'); if (l && st.dataset.code && !l.firstChild) l.innerHTML = codeFor(sid, st.dataset.code);
+      });
+    };
+    im.onerror = () => { const key2 = fitKey(sid); if (!(key2 in fits)) fits[key2] = null; };
+    im.src = rawMask(sid);
+  }
+  const codeFor = (sid, code) => { const f = fits[fitKey(sid)]; return f ? codeSvg(code, !!f[4], fitStyle(f)) : ''; };
   // info — сам дух (Art.of): код на плёнке, привязан ли (плёнка содрана), uid — чтобы содрать её в карточке
   const sticker = (front, sid, info) => {
     const m = maskOf(sid), ms = `-webkit-mask-image:url('${m}');mask-image:url('${m}')`, bound = !!(info && info.bound);
-    const code = info && typeof S !== 'undefined' && S.spiritCode ? codeSvg(S.spiritCode(info)) : '';
+    const code = !bound && info && typeof S !== 'undefined' && S.spiritCode ? S.spiritCode(info) : '';
+    prepSil(sid);
     // оборот зеркален (.stc-sil): так силуэт совпадает с лицом, как у настоящего стикера; надпись на плёнке — обратно прямая
-    return `<span class="art sp-sticker${bound ? ' stc-bound' : ''}" style="aspect-ratio:1;--el:${elColor(sid)}"${info && info.uid ? ` data-uid="${U.esc(info.uid)}"` : ''}><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
+    return `<span class="art sp-sticker${bound ? ' stc-bound' : ''}" style="aspect-ratio:1;--el:${elColor(sid)}" data-sid="${sid}"${code ? ` data-code="${code}"` : ''}${info && info.uid ? ` data-uid="${U.esc(info.uid)}"` : ''}><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
       `<span class="stc-back"><span class="stc-sil"><i class="stc-glue" style="${ms}"></i>` +
-      (bound ? '' : `<i class="stc-liner" style="${ms}">${code}</i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span>`) + '</span></span></span></span>';
+      (bound ? '' : `<i class="stc-liner" style="${ms}">${code ? codeFor(sid, code) : ''}</i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span>`) + '</span></span></span></span>';
   };
   const spiritK = (sid, shiny, dark, info) => sticker(PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`), sid, info);
   // Вращение стикера: тянуть — крутится (с разгона докручивается до ближайшей стороны), коснуться — перевернуть.
