@@ -3,9 +3,12 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-const root = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+// TEST_ROOT — проверить другую копию репозитория (git worktree); PW_CHANNEL=msedge — установленный Edge вместо скачанного Chromium
+const PORT = +process.env.TEST_PORT || 8123; // TEST_PORT — свой порт, если тесты идут параллельно
+const root = process.env.TEST_ROOT || fileURLToPath(new URL('..', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
 let failed = 0;
 const fail = msg => { console.error('✗ ' + msg); failed++; };
@@ -36,12 +39,12 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': types[extname(path)] || 'application/octet-stream' });
     res.end(body);
   } catch (e) { res.writeHead(404); res.end(); }
-}).listen(8123);
+}).listen(PORT);
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
 const page = await browser.newPage();
 page.on('pageerror', e => fail('ошибка на странице: ' + e.message));
-await page.goto('http://localhost:8123/tests/index.html');
+await page.goto(`http://localhost:${PORT}/tests/index.html`);
 await page.waitForFunction(() => window.TEST_RESULTS, null, { timeout: 30000 });
 const r = await page.evaluate(() => window.TEST_RESULTS);
 r.failed.forEach(fail);
@@ -50,7 +53,7 @@ console.log(`✓ автотесты: ${r.total - r.failed.length} из ${r.total
 // 3. Игра загружается без ошибок JavaScript
 const game = await browser.newPage();
 game.on('pageerror', e => fail('ошибка в игре: ' + e.message));
-await game.goto('http://localhost:8123/www/index.html');
+await game.goto(`http://localhost:${PORT}/www/index.html`);
 // 4.0: сначала трейлер «Тонкая ночь» (один раз на устройстве) — его можно пропустить, дальше стартовый экран.
 // 4.14: трейлер — видео; в Chromium тестов нет H.264, видео не играет — трейлер сам закрывается, это тоже правильно
 if (!(await game.waitForSelector('.tv', { state: 'attached', timeout: 15000 }).then(() => true, () => false))) fail('игра: не показан трейлер');
@@ -62,7 +65,7 @@ console.log('✓ игра открылась');
 // 4. Панель модерации открывается (без входа — форма входа)
 const admin = await browser.newPage();
 admin.on('pageerror', e => fail('ошибка в панели модерации: ' + e.message));
-await admin.goto('http://localhost:8123/www/admin.html');
+await admin.goto(`http://localhost:${PORT}/www/admin.html`);
 await admin.waitForSelector('.login', { timeout: 15000 }).catch(() => fail('панель модерации: нет формы входа'));
 console.log('✓ панель модерации открылась');
 
