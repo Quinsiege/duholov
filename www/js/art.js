@@ -1198,9 +1198,9 @@ const Art = (() => {
     return `<svg class="stc-code" viewBox="0 0 ${vert ? 5 : L} ${vert ? L : 7}" preserveAspectRatio="none" aria-hidden="true"__S__><path d="${d}"/></svg>`;
   })())).replace('__S__', ` style="${style}"`);
   // Где на плёнке выбить код: игра сама разбирает силуэт духа (маска 128×128) и ищет самое крупное место, где код целиком
-  // внутри фигуры и не задевает отогнутый угол (x + y ≥ 1.36 — там плёнка дышит); столбиком или строкой — что влезет крупнее.
+  // внутри фигуры и не задевает отогнутый угол (x + y ≥ 1.36 — там плёнка дышит); строкой — насколько крупно влезет.
   // Считается один раз на духа (и запоминается в браузере), готовое место подставляется во все его стикеры
-  const FIT_N = 128, FIT_V = 1, fits = {}, fitWait = {};
+  const FIT_N = 128, FIT_V = 2, fits = {}, fitWait = {};
   const fitKey = sid => sid + ':' + (PICS[sid] || 'svg') + ':' + FIT_V;
   try { Object.assign(fits, JSON.parse(localStorage.getItem('duholov.codefit') || '{}')); } catch (e) { /* без хранилища — посчитаем заново */ }
   const fitStyle = f => `left:${f[0]}%;top:${f[1]}%;width:${f[2]}%;height:${f[3]}%`;
@@ -1216,7 +1216,7 @@ const Art = (() => {
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (alpha[(y * N + x) * 4 + 3] > 200) { cx += x; cy += y; n++; }
     cx = n ? cx / n : N / 2; cy = n ? cy / n : N / 2;
     const pad = 2;
-    for (let k = 1; k >= .3; k -= .05) for (const vert of [true, false]) {
+    for (let k = 1; k >= .3; k -= .05) for (const vert of [false]) { // 4.17: код — строкой
       // крупнейший размер: столбик — 47% высоты стикера, строка — 62% ширины
       const h = Math.round(vert ? .47 * N * k : .62 * N * k * 7 / 50), w = Math.max(2, Math.round(vert ? h * 5 / 74 : .62 * N * k));
       let best = null, bd = Infinity;
