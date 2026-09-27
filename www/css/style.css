@@ -1874,7 +1874,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @media (max-width: 360px) { .lg-wrap { padding-left: 10px; padding-right: 10px; } .lg-panel { padding: 12px; } .lg-panel .acc-card { padding: 12px; } .lg-title { font-size: 42px; letter-spacing: 3px; } }
 
 /* ================= 4.5: дизайн-система «сказочная Навь» — шрифты, кнопки-обереги, экран входа ================= */
-:root { --f-display: 'Ruslan Display', 'Philosopher', Georgia, serif; --f-head: 'Philosopher', 'Rubik', Georgia, serif; }
+:root { --f-display: 'Duholov Display', 'Rubik', system-ui, sans-serif; --f-head: 'Rubik', system-ui, sans-serif; } /* 4.18: весь текст — Rubik (как в «Заданиях»); заголовки — Rubik Bold */
 /* кнопки: rune — главная (золотой оберег), rune.glass — второстепенная (стекло той же формы) */
 .rune { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 62px; padding: 0 30px; border: 0; background: none;
   cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: var(--f-head); font-weight: 700; font-size: 21px; letter-spacing: .3px; color: #3b1a02;
@@ -1894,7 +1894,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .calm .rune .rn-shine { animation: none; }
 
 /* экран входа 4.5: без коробки — сцена во весь экран, кнопки прямо на ней */
-.lg-title { font-family: var(--f-display); font-weight: 400; font-size: 60px; letter-spacing: 1px; line-height: 1; padding: 4px 8px 0;
+.lg-title { font-family: 'Ruslan Display', var(--f-display); font-weight: 400; /* знак игры — фирменный шрифт */ font-size: 60px; letter-spacing: 1px; line-height: 1; padding: 4px 8px 0;
   filter: drop-shadow(0 3px 0 rgba(80, 28, 4, .9)) drop-shadow(0 6px 22px rgba(251, 191, 36, .45)); }
 .lg-top p { font-family: var(--f-head); font-size: 17px; color: #eee6ff; margin-top: 8px; }
 .lg-cta { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 380px; margin: 0 auto; animation: lgUp .8s .15s cubic-bezier(.2, .8, .2, 1) both; }

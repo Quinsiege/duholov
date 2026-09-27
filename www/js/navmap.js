@@ -258,15 +258,15 @@ const NavMap = {
     const bldRules = this.extrude(p, p.bldHi); // отдельным слоем над зоной Ловчего (см. MapView.setTiles)
     const name = ['name:ru', 'name'], font = (w8, px, fam) => `${w8} ${px}px ${fam}`;
     const label = [
-      { dataLayer: 'places', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.place, stroke: p.labelHalo, width: 3, font: font(400, 15, "'Ruslan Display', serif"), textTransform: 'uppercase', letterSpacing: 2 }), filter: (z, f) => ['neighbourhood', 'macrohood', 'locality', 'suburb'].includes(kind(f)) },
-      { dataLayer: 'water', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.waterLabel, stroke: p.labelHalo, width: 2.5, font: font('italic 400', 13, "'Philosopher', serif"), letterSpacing: 1 }), filter: (z, f) => f.geomType === 1 },
-      { dataLayer: 'water', symbolizer: new S.LineLabelSymbolizer({ labelProps: name, fill: p.waterLabel, stroke: p.labelHalo, width: 2.5, font: font('italic 400', 13, "'Philosopher', serif") }), filter: (z, f) => f.geomType === 2 && kind(f) === 'river' },
-      { dataLayer: 'roads', minzoom: 13, symbolizer: new S.LineLabelSymbolizer({ labelProps: name, fill: p.labelMajor, stroke: p.labelHalo, width: 3, font: font(700, 13, "'Philosopher', serif") }), filter: (z, f) => ['highway', 'major_road'].includes(kind(f)) },
-      { dataLayer: 'roads', minzoom: 16, symbolizer: new S.LineLabelSymbolizer({ labelProps: name, fill: p.label, stroke: p.labelHalo, width: 2.6, font: font(400, 12, "'Philosopher', serif") }), filter: (z, f) => ['minor_road', 'path'].includes(kind(f)) },
+      { dataLayer: 'places', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.place, stroke: p.labelHalo, width: 3, font: font(700, 14, "'Rubik', sans-serif"), textTransform: 'uppercase', letterSpacing: 2 }), filter: (z, f) => ['neighbourhood', 'macrohood', 'locality', 'suburb'].includes(kind(f)) },
+      { dataLayer: 'water', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.waterLabel, stroke: p.labelHalo, width: 2.5, font: font('italic 400', 13, "'Rubik', sans-serif"), letterSpacing: 1 }), filter: (z, f) => f.geomType === 1 },
+      { dataLayer: 'water', symbolizer: new S.LineLabelSymbolizer({ labelProps: name, fill: p.waterLabel, stroke: p.labelHalo, width: 2.5, font: font('italic 400', 13, "'Rubik', sans-serif") }), filter: (z, f) => f.geomType === 2 && kind(f) === 'river' },
+      { dataLayer: 'roads', minzoom: 13, symbolizer: new S.LineLabelSymbolizer({ labelProps: name, fill: p.labelMajor, stroke: p.labelHalo, width: 3, font: font(700, 13, "'Rubik', sans-serif") }), filter: (z, f) => ['highway', 'major_road'].includes(kind(f)) },
+      { dataLayer: 'roads', minzoom: 16, symbolizer: new S.LineLabelSymbolizer({ labelProps: name, fill: p.label, stroke: p.labelHalo, width: 2.6, font: font(400, 12, "'Rubik', sans-serif") }), filter: (z, f) => ['minor_road', 'path'].includes(kind(f)) },
       // приметные места: золотая точка и имя (храмы, музеи, театры, достопримечательности, станции) — только значимые
       { dataLayer: 'pois', minzoom: 16, symbolizer: new S.GroupSymbolizer([
         new S.CircleSymbolizer({ radius: 2.6, fill: p.poi, stroke: p.labelHalo, width: 1.4 }),
-        new S.OffsetTextSymbolizer({ labelProps: name, fill: p.poi, stroke: p.labelHalo, width: 2.4, offsetX: 6, offsetY: 4, font: font('italic 400', 11, "'Philosopher', serif") }),
+        new S.OffsetTextSymbolizer({ labelProps: name, fill: p.poi, stroke: p.labelHalo, width: 2.4, offsetX: 6, offsetY: 4, font: font('italic 400', 11, "'Rubik', sans-serif") }),
       ]), filter: (z, f) => ['place_of_worship', 'museum', 'theatre', 'attraction', 'castle', 'station'].includes(kind(f)) && (f.props.min_zoom || 99) <= z - 1 },
     ];
     return { paintRules: paint, bldRules, labelRules: label, backgroundColor: p.bg };

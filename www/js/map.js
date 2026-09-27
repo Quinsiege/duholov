@@ -101,7 +101,7 @@ const MapView = {
           this.bldTiles.views = this.tiles.views;
           this.bldTiles.addTo(this.map);
           // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
-          if (document.fonts) Promise.all(["400 12px 'Philosopher'", "700 12px 'Philosopher'", "400 12px 'Ruslan Display'"].map(f => document.fonts.load(f).catch(() => {})))
+          if (document.fonts) Promise.all(["400 12px 'Rubik'", "700 12px 'Rubik'"].map(f => document.fonts.load(f).catch(() => {})))
             .then(() => { this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); });
         }
       } else {
