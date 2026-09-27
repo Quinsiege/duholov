@@ -394,6 +394,100 @@ const GameCore = {
     return list.map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, n).map(o => o.x);
   },
 
+  /* ---------- Лига: бои с живыми Ловчими (4.16) ---------- */
+  // Ход в бою Лиги — вне очереди запросов игрока и без его прогресса (serve.js: body.pvp): бой хранится в базе
+  // (league_matches), сторону a/b база определяет по входу игрока — телефон присылает только номер боя и намерения.
+  // Запись — с проверкой версии: два Ловчих ходят одновременно, проигравший гонку перечитывает бой и повторяет ход.
+  // peek — только досчитать бой (экран Лиги): отметку «на связи» не ставить
+  async pvp(op, a, env, now = Date.now(), peek = false) {
+    try {
+      this.need(op === 'state' || op === 'move', ru`Неизвестное действие`);
+      a = a && typeof a === 'object' ? a : {};
+      const ins = op === 'move' ? (Array.isArray(a.in) ? a.in.slice(0, 4) : []) : [];
+      this.need(op === 'state' || ins.length, ru`Пустой ход`);
+      for (let k = 0; k < 6; k++) {
+        const m = await env.pvpLoad(String(a.id || ''));
+        this.need(m && m.seat && m.state, ru`Бой не найден`);
+        const me = m.seat, st = PvP.ensure(m.state), n0 = st.n, res = [];
+        let dirty = st !== m.state;
+        PvP.advance(st, now);
+        if (!st.over && !peek) {
+          const x = st.s[me];
+          if (ins.length || now - x.seen >= PvP.SEEN_EVERY) { x.seen = now; dirty = true; }
+          for (const i of ins) { const r = PvP.act(st, me, i, now); this.need(!r.bad, r.bad); res.push(r.ok ? { ok: 1, got: r.got } : { ign: r.ign }); }
+        } else ins.forEach(() => res.push({ ign: 'over' }));
+        if (st.n !== n0) dirty = true;
+        let ver = m.ver;
+        if (dirty) { ver = await env.pvpPut(m.id, m.ver, st, !!st.over); if (ver == null) continue; }
+        return { ok: true, id: m.id, seat: me, ver, st, res, now };
+      }
+      this.fail(ru`Бой занят — повтори`);
+    } catch (e) {
+      if (e instanceof GameError) return { ok: false, error: e.message, now };
+      throw e;
+    }
+  },
+  // Идущий бой игрока (номер) — заодно досчитанный: брошенный обоими бой здесь и закончится
+  async leagueLive(ctx) {
+    const m = await ctx.env.pvpLive();
+    if (!m) return null;
+    const r = await this.pvp('state', { id: m.id }, ctx.env, ctx.now, true);
+    return r.ok && !r.st.over ? m.id : null;
+  },
+  // Итоги законченных боёв — в прогресс, ровно один раз (номер боя запоминается в L.done, как расчёты аукциона):
+  // жетон, рейтинг (посчитан в самом бою — от рейтингов обоих на момент подбора), награды за лиги, опыт и раны
+  async leagueSettle(ctx, board) {
+    const L = League.st(), out = [], today = U.today(ctx.now);
+    L.done = L.done || {};
+    Object.keys(L.done).forEach(k => { if (ctx.now - L.done[k] > 7 * 86400000) delete L.done[k]; });
+    for (const m of (await ctx.env.pvpPending()) || []) {
+      const st = m.state, me = m.seat;
+      if (!st || !st.over || !st.s || !st.s[me]) continue;
+      ctx.after.push(() => ctx.env.pvpSettled(m.id));
+      if (L.done[m.id]) continue;
+      L.done[m.id] = ctx.now;
+      const o = st.over, my = st.s[me], foe = st.s[PvP.other(me)], score = o.win === me ? 1 : o.win ? 0 : 0.5;
+      L.tickets = Math.max(0, L.tickets - 1); L.n++;
+      // с одним и тем же соперником рейтинг меняют первые League.SAME боёв за день; бой прошлого сезона рейтинг не меняет
+      const vs = L.vs = L.vs && L.vs.day === today ? L.vs : { day: today, m: {} };
+      vs.m[foe.pid] = (vs.m[foe.pid] || 0) + 1;
+      const d = m.season === L.season && vs.m[foe.pid] <= League.SAME && o.d && o.d[me] ? +o.d[me].d || 0 : 0;
+      const was = L.pts, rank0 = League.rank(was);
+      L.pts = U.clamp(L.pts + d, 0, League.MAXPTS);
+      const rNew = League.rank(L.pts), rewards = [];
+      for (let i = 1; i <= rNew; i++) {
+        if (L.got[i]) continue;
+        L.got[i] = true;
+        rewards.push(...S.giveRewards(LEAGUE_RANKS[i].reward));
+        // на рангах 3, 6 и 9 — гарантированный амулет
+        if (i % 3 === 0) { const am = S.rollAmulet(1, 'lg' + i); rewards.push({ k: 'amulet', n: 1, label: AMULETS[am].name }); }
+      }
+      if (rNew > L.best) L.best = rNew;
+      if (rNew > (L.peak || 0)) L.peak = rNew;
+      if (score === 1) S.progress('league', 1);
+      // опыт — за первые League.XP_RUNS боёв дня; сдавшемуся и пропавшему из боя — нет
+      const fled = score === 0 && (o.why === 'quit' || o.why === 'idle');
+      const xp = L.n <= League.XP_RUNS && !fled ? (score === 1 ? League.XP.win : score ? League.XP.draw : League.XP.loss) : 0;
+      if (xp) S.addXP(xp);
+      // раны: здоровье бойцов после боя посчитал сервер — выше того, что у духа сейчас, оно не станет
+      my.team.forEach(f => { const sp = S.findSpirit(f.uid); if (sp) S.setHp(sp, Math.min(S.hpNow(sp, ctx.now), Math.max(0, f.cur) / f.max), ctx.now); });
+      L.last = foe.pid;
+      J.add('pvp', { win: score, name: String(foe.name || '').slice(0, 20), rank: LEAGUE_RANKS[rNew].name, d: L.pts - was });
+      if (board !== false) { const row = { season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }; ctx.after.push(() => ctx.env.leagueScore(row)); }
+      out.push({ id: m.id, win: score === 1, draw: score === 0.5, why: o.why, d: L.pts - was, pts: L.pts, rank0, rNew, rewards, xp: Math.round(xp * Ev.xpMul()),
+        foe: { name: String(foe.name || '').slice(0, 20), pts: foe.pts | 0, rank: U.clamp(foe.rank | 0, 0, LEAGUE_RANKS.length - 1), look: this.safeLook(foe.look) } });
+    }
+    return out;
+  },
+  // Сундук за высшую лигу прошлого сезона (League.norm отметил его при смене сезона)
+  leaguePrize() {
+    const L = League.st(), p = L.prize;
+    if (!p) return null;
+    delete L.prize;
+    const rw = League.prize(p.rank);
+    return rw ? { season: p.season, rank: p.rank, got: S.giveRewards(rw) } : null;
+  },
+
   /* ---------- действия ---------- */
   H: {
     async load(a, ctx) {
@@ -1134,54 +1228,51 @@ const GameCore = {
       return { win: true, rw, rescue: { sid: rescue.sid, lvl: ctx.srv.rescue.lvl } };
     },
 
-    /* ----- Лига ----- */
-    leagueStart(a, ctx) {
-      const L = League.st(), team = S.team();
-      this.need(S.d.level >= 5, ru`Лига открывается с 5 уровня Ловчего`);
+    /* ----- Лига: бои с живыми Ловчими (4.16) ----- */
+    // прежний турнир с машинами закрыт: старый телефон узнаёт, что пора обновиться
+    leagueStart() { this.fail(ru`Лига теперь — бои с живыми Ловчими. Обнови игру`); },
+    leagueEnd() { this.fail(ru`Лига теперь — бои с живыми Ловчими. Обнови игру`); },
+    // Экран Лиги: засчитать бои, закончившиеся без экрана; сундук сезона; идущий бой (вернуться в него)
+    async leagueState(a, ctx) {
+      League.st();
+      const live = await this.leagueLive(ctx); // брошенный бой досчитывается здесь — и сразу засчитывается ниже
+      const done = await this.leagueSettle(ctx, a.board), prize = this.leaguePrize();
+      return { done, prize, live };
+    },
+    // Поиск соперника: телефон спрашивает раз в 2–3 секунды, пока не найдётся пара (или игрок не отменит поиск).
+    // Круг поиска считает сервер — по времени ожидания, которое помнит он сам (srv.lq), а не телефон
+    async pvpFind(a, ctx) {
+      this.need(S.d.level >= League.LEVEL, ru`Лига открывается с ${League.LEVEL} уровня Ловчего`);
+      const L = League.st();
+      const live = await this.leagueLive(ctx);
+      if (live) { ctx.srv.lq = null; return { match: live, done: [] }; }
+      // прошлые бои — до нового поиска (жетоны, рейтинг, раны); засчитали — ответ сразу, чтобы итог сохранился,
+      // даже если после боя в команде дух без сил (тогда следующий запрос поиска откажет)
+      const done = await this.leagueSettle(ctx, a.board);
+      if (done.length) { const r = League.rank(L.pts); return { wait: 0, n: 0, a: r, b: r, done }; }
+      const team = S.team();
       this.need(team.length === 3, ru`Нужно три духа`);
       this.readyTeam(team);
       this.need(L.tickets > 0, ru`Жетоны кончились — приходи завтра`);
-      L.tickets--;
-      // 4.15: опыт — только за первые League.XP_RUNS турниров дня (по числу потраченных жетонов)
-      L.run = { k: 0, won: 0, pts0: L.pts, rank0: League.rank(L.pts), seed: U.uid(), team: team.map(x => x.uid), xp: League.TICKETS - L.tickets <= League.XP_RUNS };
-      ctx.srv.battle = { type: 'league', k: 0, start: ctx.now, team: L.run.team };
-      return { run: L.run };
+      this.limit(ctx, 'pvpFind', 3000, 3600000);
+      const q = ctx.srv.lq && ctx.now - ctx.srv.lq.t < 15000 ? ctx.srv.lq : { since: ctx.now };
+      q.t = ctx.now; ctx.srv.lq = q;
+      const waited = (ctx.now - q.since) / 1000, w = League.window(L.pts, waited);
+      const info = { pid: S.d.pid, name: S.d.name, look: this.safeLook(S.d.look), lvl: S.d.level, pts: L.pts, rank: League.rank(L.pts), clan: CLANS[S.d.clan] ? S.d.clan : null,
+        power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)) };
+      const r = await ctx.env.pvpFind({ season: L.season, pts: L.pts, lo: w.lo, hi: w.hi, info, avoid: L.last || null, wide: waited >= 30 });
+      if (r && r.match) { ctx.srv.lq = null; return { match: r.match, done: [] }; }
+      return { wait: Math.round(waited), n: r ? r.n | 0 : 0, a: w.a, b: w.b, done: [] };
     },
-    leagueEnd(a, ctx) {
-      const L = League.st(), run = L.run;
-      this.need(run, ru`Турнир не найден`);
-      const b = this.endBattle(ctx, 'league');
-      this.need(b.k === run.k, ru`Турнир не найден`);
-      this.woundTeam(b, a.hp);
-      const win = !!a.win;
-      if (win) { const o = League.opponent(run.k); this.plausibleDuel(ctx, b, o.team, o.T.speed); }
-      // 4.15: рейтинг — победа +30, поражение −30 (не ниже нуля; можно выпасть в прошлую лигу, награды за лигу — раз в сезон)
-      const was = L.pts;
-      if (win) { run.won++; S.progress('league', 1); }
-      L.pts = U.clamp(L.pts + (win ? League.WIN : -League.LOSS), 0, League.MAXPTS);
-      const gained = L.pts - was, last = !win || run.k >= 2;
-      const rNew = League.rank(L.pts), rewards = [];
-      for (let i = 1; i <= rNew; i++) {
-        if (L.got[i]) continue;
-        L.got[i] = true;
-        rewards.push(...S.giveRewards(LEAGUE_RANKS[i].reward));
-        // на рангах 3, 6 и 9 — гарантированный амулет
-        if (i % 3 === 0) { const am = S.rollAmulet(1, 'lg' + i); rewards.push({ k: 'amulet', n: 1, label: AMULETS[am].name }); }
-      }
-      if (rNew > L.best) L.best = rNew;
-      if (run.xp !== false) S.addXP(win ? 400 + run.k * 200 : 100);
-      const res = { win, gained, last, k: run.k, won: run.won, pts: L.pts, ptsGot: L.pts - (run.pts0 != null ? run.pts0 : was), rNew, rank0: run.rank0, rewards };
-      // строка таблицы сезона — после каждого боя: рейтинг меняют и победы, и поражения
-      // 4.15.1: строку собираем сразу — after выполняется после сохранения, вне запроса, где S.d уже пуст (раньше запись падала)
-      if (a.board !== false) { const row = { season: L.season, name: S.d.name, pts: L.pts, rank: rNew, level: S.d.level, look: S.d.look }; ctx.after.push(() => ctx.env.leagueScore(row)); }
-      if (last) {
-        J.add('league', { won: run.won, rank: LEAGUE_RANKS[rNew].name });
-        L.run = null;
-      } else {
-        run.k++;
-        ctx.srv.battle = { type: 'league', k: run.k, start: ctx.now, team: run.team };
-      }
-      return res;
+    async pvpCancel(a, ctx) {
+      ctx.srv.lq = null;
+      const r = await ctx.env.pvpCancel();
+      return { match: r && r.match ? r.match : null }; // пара уже составлена — отменять поздно, бой начинается
+    },
+    // Итог боя: рейтинг, опыт, награды, раны — один раз (по номеру боя)
+    async pvpResult(a, ctx) {
+      League.st();
+      return { done: await this.leagueSettle(ctx, a.board), prize: this.leaguePrize() };
     },
 
     /* ----- обмен духами ----- */

@@ -13,7 +13,7 @@ const Path = {
     add(3, 'shield', ru`Капища предков`, ru`Поединки 3 на 3 с хранителями`);
     add(Rules.CHAT.LEVEL, 'chat', ru`Чат Ордена`, ru`Можно писать сообщения`);
     add(4, 'rift', ru`Вторжения Нави`, ru`Освобождай захваченные родники`);
-    add(League.LEVEL, 'trophy', ru`Лига Ордена`, ru`Турниры, рейтинг и лиги`);
+    add(League.LEVEL, 'trophy', ru`Лига Ордена`, ru`Бои с живыми Ловчими, рейтинг и лиги`);
     add(CLAN_LEVEL, 'shield', ru`Дружина`, ru`Сокол, Медведь или Волк — знамя над капищами`);
     add(Rules.AUCTION.LEVEL, 'gavel', ru`Аукцион`, ru`Продажа и покупка духов`);
     add(Propose.MIN_LEVEL, 'pin', ru`Места`, ru`Предлагай новые родники и капища`);

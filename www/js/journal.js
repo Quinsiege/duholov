@@ -4,7 +4,7 @@
 const J = {
   MAX: 250,
   FILTERS: [['all', ru`Всё`], ['catch', ru`Поимки`], ['battle', ru`Битвы`], ['other', ru`Прочее`]],
-  GROUP: { catch: 'catch', flee: 'catch', hatch: 'catch', raid: 'battle', duel: 'battle', invasion: 'battle', league: 'battle', spar: 'battle' },
+  GROUP: { catch: 'catch', flee: 'catch', hatch: 'catch', raid: 'battle', duel: 'battle', invasion: 'battle', league: 'battle', pvp: 'battle', spar: 'battle' },
   filter: 'all',
 
   add(type, data = {}) {
@@ -33,6 +33,8 @@ const J = {
       case 'duel': return { ico: glyph('⛩'), title: ru`Победа: ${e.name}`, sub: ru`Хранитель ${I18N.back(e.guard || '')}` };
       case 'invasion': return { ico: glyph('☾', 'dark'), title: ru`Родник освобождён`, sub: e.name || '' };
       case 'league': return { ico: glyph('★', 'gold'), title: ru`Турнир Лиги: побед ${e.won} из 3`, sub: ru`Ранг: ${I18N.back(e.rank)}` };
+      // 4.16: бой Лиги с живым Ловчим (e.name — имя соперника, e.d — изменение рейтинга)
+      case 'pvp': return { ico: glyph('★', 'gold'), title: e.win === 1 ? ru`Лига: победа над ${e.name}` : e.win ? ru`Лига: ничья с ${e.name}` : ru`Лига: поражение от ${e.name}`, sub: ru`Лига «${I18N.back(e.rank)}» · рейтинг ${e.d > 0 ? '+' : e.d < 0 ? '−' : '±'}${Math.abs(e.d || 0)}` };
       case 'level': return { ico: glyph(e.l, 'gold'), title: ru`Новый уровень: ${e.l}`, sub: '' };
       case 'medal': return { ico: glyph('✦', 'gold'), title: ru`Знак «${I18N.back(e.name)}»`, sub: MEDAL_TIERS[e.tier - 1] ? MEDAL_TIERS[e.tier - 1].name : '' };
       case 'story': return { ico: glyph('✎'), title: ru`Глава Летописи: «${I18N.back(e.title)}»`, sub: ru`Завершена` };

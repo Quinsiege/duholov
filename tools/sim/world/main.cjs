@@ -3,6 +3,8 @@
    Главный поток — «база» (аукцион, подарки, друзья, Капища дружин, таблица Лиги, платежи Казны),
    рабочие потоки ведут игроков через настоящий сервер игры. Итог — tools/sim/world/out/result.json */
 const { Worker } = require('worker_threads');
+const realNow = Date.now; // 4.16: движок игры (для боёв Лиги) подменяет Date.now временем симуляции
+const G = require('./engine.cjs').load();
 const fs = require('fs'), path = require('path'), os = require('os');
 const N = +process.argv[2] || 1000, MAX_DAYS = +process.argv[3] || 200, THREADS = +process.argv[4] || Math.max(1, os.cpus().length - 1);
 const OUT = path.join(__dirname, 'out'); fs.mkdirSync(OUT, { recursive: true });
@@ -130,6 +132,100 @@ const H = {
 const NOOP = ['tradeCreate', 'tradeTake', 'tradeReclaim', 'roomCreate', 'roomGet', 'roomJoin', 'roomStart', 'roomLeave', 'chatList', 'chatInsert', 'chatReport', 'deleteSave'];
 NOOP.forEach(k => { H[k] = () => null; });
 
+/// ---------- 4.16: Лига — живые бои. Очередь и бои — здесь (как таблицы league_queue / league_matches в базе) ----------
+DB.pvpQ = new Map(); DB.pvpM = new Map(); DB.stats.pvp = 0;
+let pvpN = 0;
+Object.assign(H, {
+  pvpFind(uid, now, t) {
+    for (const m of DB.pvpM.values()) if (m.status === 'live' && (m.a === uid || m.b === uid)) return { match: m.id };
+    const q0 = DB.pvpQ.get(uid);
+    const me = { uid, pid: t.info.pid, season: t.season, rating: t.pts, lo: t.lo, hi: t.hi, info: t.info, avoid: t.avoid,
+      since: q0 && !q0.match && now - q0.seen <= 15000 ? q0.since : now, seen: now, match: null };
+    DB.pvpQ.set(uid, me);
+    let o = null;
+    for (const q of DB.pvpQ.values()) {
+      if (q.uid === uid || q.match || q.season !== t.season || now - q.seen > 8000 || q.rating < t.lo || q.rating > t.hi || t.pts < q.lo || t.pts > q.hi) continue;
+      if (!t.wide && ((t.avoid && q.pid === t.avoid) || (q.avoid && q.avoid === t.info.pid))) continue;
+      if (!o || Math.abs(q.rating - t.pts) < Math.abs(o.rating - t.pts) || (Math.abs(q.rating - t.pts) === Math.abs(o.rating - t.pts) && q.since < o.since)) o = q;
+    }
+    if (!o) { let n = 0; for (const q of DB.pvpQ.values()) if (!q.match && now - q.seen <= 8000) n++; return { wait: true, n }; }
+    const id = 'm' + (++pvpN);
+    DB.pvpM.set(id, { id, season: t.season, a: o.uid, b: uid, ver: 0, status: 'live', aS: false, bS: false, state: { init: true, season: t.season, at: now, a: o.info, b: me.info } });
+    o.match = id; me.match = id; DB.stats.pvp++;
+    return { match: id };
+  },
+  pvpCancel(uid) { const q = DB.pvpQ.get(uid); if (q && q.match && DB.pvpM.has(q.match) && DB.pvpM.get(q.match).status === 'live') return { match: q.match }; DB.pvpQ.delete(uid); return {}; },
+  pvpLive(uid) { for (const m of DB.pvpM.values()) if (m.status === 'live' && (m.a === uid || m.b === uid)) return { id: m.id }; return null; },
+  pvpLoad(uid, now, id) { const m = DB.pvpM.get(id); return m ? { id, ver: m.ver, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === uid ? 'a' : m.b === uid ? 'b' : null } : null; },
+  pvpPut(uid, now, id, ver, state, done) {
+    const m = DB.pvpM.get(id);
+    if (!m || m.ver !== ver || m.status !== 'live') return null;
+    m.state = JSON.parse(JSON.stringify(state)); m.ver++;
+    if (done) { m.status = 'done'; for (const u of [m.a, m.b]) { const q = DB.pvpQ.get(u); if (q && q.match === id) DB.pvpQ.delete(u); } }
+    return m.ver;
+  },
+  pvpPending(uid) {
+    const out = [];
+    for (const m of DB.pvpM.values()) if (m.status === 'done' && ((m.a === uid && !m.aS) || (m.b === uid && !m.bS))) out.push({ id: m.id, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === uid ? 'a' : 'b' });
+    return out;
+  },
+  pvpSettled(uid, now, id) {
+    const m = DB.pvpM.get(id); if (!m || m.status !== 'done') return;
+    if (m.a === uid) m.aS = true; if (m.b === uid) m.bS = true;
+    if (m.aS && m.bS) DB.pvpM.delete(id);
+  },
+});
+// Бой двух ботов через настоящий сервер боя (GameCore.pvp): каждый «живой игрок» выжимает eff от предела —
+// тапает в среднем eff × 2 раза в секунду, приём — с eff × 12 тапов, щит ставит с вероятностью dodge
+const byUid = new Map(players.map(p => [p.uid, p]));
+async function runMatch(id, tStart) {
+  const m = DB.pvpM.get(id), sides = [m.a, m.b];
+  const env = uid => ({ pvpLoad: x => H.pvpLoad(uid, 0, x), pvpPut: (...a) => H.pvpPut(uid, 0, ...a) });
+  const first = await G.GameCore.pvp('state', { id }, env(m.a), tStart);
+  if (!first.ok) return;
+  let now = Math.max(tStart, first.st.t0 + 300);
+  for (let step = 0; step < 600; step++) {
+    const order = step % 2 ? [sides[1], sides[0]] : sides;
+    for (const uid of order) {
+      const pr = byUid.get(uid).pr, e = env(uid);
+      const s = await G.GameCore.pvp('state', { id }, e, now);
+      if (!s.ok || s.st.over) break;
+      const v = G.PvP.view(s.st, s.seat, now), p = v.pause, ins = [], my = v.me, f = my.team[my.idx];
+      if (p && p.k === 'charge' && !p.done) {
+        if (p.by === 'me') { if (now - p.t >= G.PvP.MINI) ins.push({ t: 'taps', n: Math.round(12 * pr.eff) }); }
+        else ins.push({ t: 'shield', on: my.sh > 0 && Math.random() < pr.dodge });
+      } else if (p && p.k === 'switch' && p.who.includes('me')) {
+        let best = -1; my.team.forEach((x, i) => { if (x.cur > 0 && (best < 0 || x.cur > my.team[best].cur)) best = i; });
+        if (best >= 0) ins.push({ t: 'switch', i: best });
+      } else if (!p && f) {
+        const n = (Math.random() < pr.eff ? 1 : 0) + (Math.random() < pr.eff ? 1 : 0);
+        if (n) ins.push({ t: 'hit', n });
+        const en = f.en + 7 * n * (s.st.s[s.seat].team[my.idx].emul || 1);
+        if (en >= G.MOVES.charge.cost && Math.random() < 0.85) ins.push({ t: 'charge', kind: 'charge' });
+      }
+      await G.GameCore.pvp(ins.length ? 'move' : 'state', { id, in: ins }, e, now);
+    }
+    const st = DB.pvpM.get(id).state;
+    if (st.over) return;
+    now = st.pause ? Math.max(now + 100, st.pause.t + (st.pause.k === 'charge' ? G.PvP.MINI + 100 : 1500)) : now + 1000;
+  }
+}
+// Вечер Лиги: несколько кругов — все желающие ищут соперника (круг поиска расширяется каждые 10 с), бои, итоги
+async function leagueEvening(dayStart) {
+  for (let round = 0; round < 7; round++) {
+    const t = dayStart + 22 * 3600000 + round * 8 * 60000;
+    let asked = 0;
+    for (let j = 0; j < 7; j++) {
+      const outs = await Promise.all(workers.map(w => ask(w, { t: 'lgFind', now: t + j * 10000, j }, 'lgFound')));
+      asked += outs.reduce((a, o) => a + o.n, 0);
+      if (j === 0 && !asked) break;
+    }
+    if (!asked) break;
+    for (const m of [...DB.pvpM.values()].filter(x => x.status === 'live')) await runMatch(m.id, m.state.at + 1000);
+    await Promise.all(workers.map(w => ask(w, { t: 'lgSettle', now: t + 7.5 * 60000, last: round === 6 }, 'lgSettled')));
+  }
+  DB.pvpQ.clear();
+}
 // ---------- потоки ----------
 const chunks = Array.from({ length: THREADS }, () => []);
 players.forEach((p, i) => chunks[i % THREADS].push(p));
@@ -145,11 +241,12 @@ workers.forEach(w => { w.on('message', m => { if (m.t === 'rpc') onRpc(w, m); })
 (async () => {
   await Promise.all(workers.map(w => new Promise(r => { const h = m => { if (m.t === 'ready') { w.off('message', h); r(); } }; w.on('message', h); })));
   console.log(`мир: ${N} игроков, ${pois.length} мест (${shrines.length} Капищ), ${THREADS} потоков`);
-  const base = Date.UTC(2026, 9, 1) - 3 * 3600000, t0 = Date.now(), daily = [];
+  const base = Date.UTC(2026, 9, 1) - 3 * 3600000, t0 = realNow(), daily = [];
   const reach = {}; // uid → момент 40 уровня
   for (let day = 1; day <= MAX_DAYS; day++) {
     const dayStart = base + (day - 1) * 86400000;
     const outs = await Promise.all(workers.map(w => ask(w, { t: 'day', day, dayStart }, 'dayDone')));
+    await leagueEvening(dayStart); // 4.16: вечер Лиги — живые бои игроков мира друг с другом
     const all = outs.flatMap(o => o.out);
     all.forEach(x => { DB.brief[x.uid] = { name: x.name, level: x.level, clan: x.clan, look: x.look, pid: x.pid }; if (x.lvl40 && !reach[x.uid]) reach[x.uid] = x.lvl40; });
     if (day === 1) {
@@ -163,12 +260,12 @@ workers.forEach(w => { w.on('message', m => { if (m.t === 'rpc') onRpc(w, m); })
     const row = { day, median: lv[Math.floor(lv.length / 2)], p90: lv[Math.floor(lv.length * 0.9)], max: lv[lv.length - 1], n40, n30: lv.filter(l => l >= 30).length, n20: lv.filter(l => l >= 20).length,
       lotsOpen: DB.lots.filter(l => l.status === 'open').length, lotsSold: DB.stats.lotsSold, rub: DB.stats.payRub, holds: holds.length, byClan, meLvl: (all.find(x => x.uid === 'u0') || {}).level };
     daily.push(row);
-    console.log(`день ${day}: медиана ${row.median}, 90% ${row.p90}, макс ${row.max}, на 40-м ${n40}, я ${row.meLvl} · лотов ${row.lotsOpen}/${row.lotsSold} продано · донат ${row.rub} ₽ · Капищ у дружин ${row.holds} · ${Math.round((Date.now() - t0) / 1000)} с`);
+    console.log(`день ${day}: медиана ${row.median}, 90% ${row.p90}, макс ${row.max}, на 40-м ${n40}, я ${row.meLvl} · лотов ${row.lotsOpen}/${row.lotsSold} продано · донат ${row.rub} ₽  · Капищ у дружин ${row.holds} · боёв Лиги ${DB.stats.pvp} · ${Math.round((realNow() - t0) / 1000)} с`);
     fs.writeFileSync(path.join(OUT, 'progress.json'), JSON.stringify({ daily, reach }, null, 0));
     if (n40 >= N) break;
   }
   const finals = await Promise.all(workers.map(w => ask(w, { t: 'final' }, 'final')));
-  const res = { N, THREADS, secs: Math.round((Date.now() - t0) / 1000), daily, reach, players: finals.flatMap(f => f.out), friends: Object.fromEntries(Object.entries(friendsOf).map(([k, v]) => [k, v.size])),
+  const res = { N, THREADS, secs: Math.round((realNow() - t0) / 1000), daily, reach, pvp: DB.stats.pvp, players: finals.flatMap(f => f.out), friends: Object.fromEntries(Object.entries(friendsOf).map(([k, v]) => [k, v.size])),
     db: { lots: DB.lots.length, lotsSold: DB.stats.lotsSold, lotsZlat: DB.stats.lotsZlat, lotsSparks: DB.stats.lotsSparks, payRub: DB.stats.payRub, payments: DB.payments.length, gifts: DB.gifts.length, giftsOpened: DB.gifts.filter(g => g.opened_at).length, freed: DB.stats.freed || 0,
       lotsByRar: DB.lots.filter(l => l.status === 'sold').reduce((o, l) => { o[l.rar] = (o[l.rar] || 0) + 1; return o; }, {}), topLots: DB.lots.filter(l => l.status === 'sold').sort((a, b) => (b.cur === 'zlat' ? b.price * 50 : b.price) - (a.cur === 'zlat' ? a.price * 50 : a.price)).slice(0, 10).map(l => ({ sid: l.sid, lvl: l.lvl, power: l.power, price: l.price, cur: l.cur, seller: l.seller_name, buyer: l.buyer_name })) },
     league: Object.entries(DB.league).map(([uid, x]) => ({ uid, name: x.name, pts: x.pts, rank: x.rank, level: x.level })).sort((a, b) => b.pts - a.pts).slice(0, 20) };

@@ -61,6 +61,7 @@
   <script src="../www/js/trailer.js"></script>
   <script src="../www/js/album.js"></script>
   <script src="../www/js/league.js"></script>
+  <script src="../www/js/league-battle.js"></script>
   <script src="../www/js/journal.js"></script>
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/order.js"></script>
@@ -360,12 +361,79 @@
   test('Лига: пороги рангов', () => {
     eq(League.rank(0), 0); eq(League.rank(299), 0); eq(League.rank(300), 1); eq(League.rank(5500), 9); eq(League.rank(99999), 9);
     for (let i = 1; i < LEAGUE_RANKS.length; i++) ok(LEAGUE_RANKS[i].pts > LEAGUE_RANKS[i - 1].pts);
-    // 4.15: звёзды старого сохранения — рейтинг ×100; новый сезон — срез половины сверх 1000
+    // 4.15: звёзды старого сохранения — рейтинг ×100; 4.16: новый сезон — срез половины сверх 1500
     const old = League.norm({ season: League.season(), stars: 12, best: 3, tickets: 3, day: U.today(), got: {}, run: null });
     eq(old.pts, 1200, 'звёзды → рейтинг ×100'); ok(!('stars' in old), 'звёзды убраны');
-    eq(League.reset(3000), 2000); eq(League.reset(800), 800);
-    eq(League.norm({ season: '2000-01', pts: 3000, best: 5, tickets: 3, day: U.today(), got: { 1: true }, run: null }).pts, 2000, 'новый сезон — срез');
-    eq(League.ratingOf({ season: League.season(), stars: 4 }), 400); eq(League.ratingOf({ season: '2000-01', pts: 1400 }), 1200);
+    eq(League.reset(3000), 2250); eq(League.reset(1400), 1400);
+    eq(League.norm({ season: '2000-01', pts: 3000, best: 5, tickets: 3, day: U.today(), got: { 1: true }, run: null }).pts, 2250, 'новый сезон — срез');
+    eq(League.ratingOf({ season: League.season(), stars: 4 }), 400); eq(League.ratingOf({ season: '2000-01', pts: 2000 }), 1750);
+  });
+  // 4.16: Лига — живые Ловчие: круг поиска, рейтинг как у Эло, сезонный сундук
+  test('Лига 4.16: круг поиска — своя лига, у границы — соседняя, ожидание расширяет', () => {
+    let w = League.window(100); eq(w.a, 0); eq(w.b, 0); eq(w.hi, 299, 'Новик ищет только Новиков');
+    w = League.window(280); eq(w.b, 1, 'до «Отрока» 20 — ищет и там'); eq(w.hi, 599);
+    w = League.window(1020); eq(w.a, 2, 'только что поднялся в «Кметь» — ищет и в «Гридне»'); eq(w.b, 3);
+    w = League.window(1200); eq(w.a, 3); eq(w.b, 3, 'середина лиги — только своя');
+    w = League.window(1200, 20); eq(w.a, 2); eq(w.b, 4, 'ждёт 20 с — ±1 лига');
+    w = League.window(1200, 40); eq(w.a, 1); eq(w.b, 5, 'ждёт 40 с — ±2 лиги');
+    w = League.window(1200, 65); eq(w.lo, 0); eq(w.hi, League.MAXPTS, 'ждёт минуту — все, но только живые Ловчие');
+    w = League.window(6000); eq(w.a, 9); eq(w.b, 9); eq(w.hi, League.MAXPTS);
+  });
+  test('Лига 4.16: рейтинг — по разнице рейтингов, наверху медленнее', () => {
+    eq(League.delta(0, 0, 1).d, 30, 'Новик: победа над равным +30'); eq(League.delta(100, 100, 0).d, -10, 'поражение −10');
+    eq(League.delta(5600, 5600, 1).d, 14, 'Хранитель: +14'); eq(League.delta(5600, 5600, 0).d, -14, 'и −14');
+    ok(League.delta(1000, 1400, 1).d > League.delta(1400, 1000, 1).d * 3, 'победа над сильным — много, над слабым — мало');
+    ok(League.delta(1400, 1000, 0).d < League.delta(1000, 1400, 0).d, 'поражение от слабого дороже');
+    ok(League.delta(3000, 200, 1).d >= 1, 'победа — хотя бы +1'); eq(League.delta(5, 5, 0).pts, 0, 'не ниже нуля');
+    eq(League.delta(3000, 3000, 0.5).d, 0, 'ничья с равным — без изменений');
+    for (let r = 1; r < LEAGUE_RANKS.length; r++) ok(League.KW[r] <= League.KW[r - 1], 'подъём медленнее с каждой лигой');
+    // новый сезон: срез и сундук за высшую лигу прошлого
+    const L = League.norm({ season: '2000-01', pts: 3000, best: 5, peak: 5, tickets: 3, n: 7, day: U.today(), got: { 1: true } });
+    eq(L.pts, 2250); eq(L.prize.rank, 5, 'сундук за «Богатыря»'); eq(L.peak, League.rank(2250)); eq(JSON.stringify(L.got), '{}');
+    ok(League.prize(5).sparks > League.prize(1).sparks && !League.prize(0), 'сундук растёт с лигой, у Новика — нет');
+  });
+  test('Лига 4.16: бой считает сервер — ходы, частота, энергия, приём, щит, время', () => {
+    const t = (sid, lvl) => ({ ...PvP.fighter(S.makeSpirit(sid, lvl, 'pv' + sid + lvl)), uid: 'u' + sid });
+    const side = (pid, pts) => ({ pid, name: pid, look: null, lvl: 10, pts, rank: League.rank(pts), power: 1, team: [t('ugolek', 12), t('kapelka', 12), t('mshonok', 12)] });
+    const st = PvP.ensure({ init: true, season: League.season(), at: 1000, a: side('pa', 0), b: side('pb', 0) }), t0 = st.t0;
+    eq(t0, 1000 + PvP.COUNT);
+    ok(PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 - 100).ign, 'до начала боя удары не засчитываются');
+    const f0 = st.s.b.team[0].cur;
+    eq(PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 + 100).got, 1);
+    ok(st.s.b.team[0].cur < f0 && st.s.a.team[0].en === 7, 'урон и энергия — у сервера');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 50 }, t0 + 200).bad, 'полсотни ударов разом — подделка');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 1.5 }, t0 + 200).bad && PvP.act(st, 'a', { t: 'fly' }, t0 + 200).bad && PvP.act(st, 'a', null, t0).bad, 'неизвестный ход — подделка');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 6 }, t0 + 300).got <= 3, 'не чаще двух ударов в секунду (запас — 3)');
+    ok(PvP.act(st, 'a', { t: 'charge', kind: 'charge' }, t0 + 400).ign === 'energy' && !st.pause, 'приём без энергии не выходит');
+    ok(PvP.act(st, 'a', { t: 'charge', kind: 'charge2' }, t0 + 400).bad, 'невыученный приём — подделка');
+    ok(PvP.act(st, 'b', { t: 'shield', on: true }, t0 + 400).ign, 'щит без приёма соперника не тратится'); eq(st.s.b.sh, 2);
+    // приём: мини-игра и щит — пауза, итог — когда оба решили; тапы — не быстрее руки
+    st.s.a.team[0].en = 60;
+    ok(PvP.act(st, 'a', { t: 'charge', kind: 'charge' }, t0 + 1000).ok && st.pause && st.pause.k === 'charge');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 + 1100).ign, 'во время приёма удары не идут');
+    ok(PvP.act(st, 'b', { t: 'shield', on: true }, t0 + 1500).ok && st.pause, 'щит выбран — ждём мини-игру');
+    PvP.act(st, 'a', { t: 'taps', n: 12 }, t0 + 1300 + 1000); // 1,3 с — не больше 9 тапов
+    ok(!st.pause && st.s.b.sh === 1, 'щит принял приём'); eq(st.log[st.log.length - 1].d, 1);
+    // приём без ответа защитника — через 3 с срабатывает сам (автоход), без щита
+    st.s.a.team[0].en = 60; const hp = st.s.b.team[0].cur;
+    PvP.act(st, 'a', { t: 'charge', kind: 'charge' }, t0 + 3000);
+    PvP.advance(st, t0 + 3000 + PvP.DECIDE + 10);
+    ok(!st.pause && st.s.b.team[0].cur < hp - 1, 'не ответил — удар прошёл'); eq(st.s.b.sh, 1);
+    // смена: перезарядка; поражение бойца — выбор духа, не выбрал за 6 с — первый живой
+    st.s.a.seen = st.s.b.seen = t0 + 7000;
+    ok(PvP.act(st, 'b', { t: 'switch', i: 1 }, t0 + 7000).ok); eq(st.s.b.idx, 1);
+    eq(PvP.act(st, 'b', { t: 'switch', i: 2 }, t0 + 8000).ign, 'cd', 'смена на перезарядке');
+    st.s.b.team[1].cur = 1; PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 + 9000);
+    ok(st.pause && st.pause.k === 'switch' && st.pause.who[0] === 'b', 'боец без сил — выбор духа');
+    PvP.advance(st, t0 + 9000 + PvP.SWITCH_T + 10);
+    ok(!st.pause && st.s.b.idx === 0, 'время вышло — выпущен первый живой');
+    // время боя: паузы не считаются; итог — по доле здоровья, рейтинг обоим — в той же записи
+    st.s.a.seen = st.s.b.seen = t0 + 160000;
+    PvP.advance(st, t0 + 170000);
+    ok(st.over && st.over.why === 'time' && st.over.win === 'a', 'время вышло — у кого больше сил');
+    eq(st.over.d.a.d, 30); eq(st.over.d.b.d, 0, 'рейтинг не ниже нуля');
+    const v = PvP.view(st, "b", t0 + 170000);
+    eq(v.over.win, 'foe'); eq(v.foe.team[0].en, 0, 'энергию соперника не показываем'); ok(!('atk' in v.foe.team[0]), 'и его показатели');
   });
   test('Задания дня: три разных', () => {
     S.d.quests = null; S.ensureQuests();
@@ -413,8 +481,6 @@
       const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Капище' });
       ok(!Rules.duelWinnable(team(1), g.team, SHRINE_TIERS[3].speed), 'команда 1-го уровня против Старейшины — нет');
       ok(Rules.duelWinnable(team(15), g.team, SHRINE_TIERS[3].speed), 'сильная команда — да');
-      const lg = League.opponent(0, { pts: 6000, season: 's', run: null });
-      ok(!Rules.duelWinnable(team(1), lg.team, lg.T.speed), 'в Лиге — тоже');
     } finally { S.d = saved; }
   });
   test('Совместный разлом: здоровье босса и бонусы', () => {
@@ -484,7 +550,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [] };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [], pvpQ: {}, pvpM: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -577,6 +643,34 @@
     chatReport: async (id, pid) => { if (!DB.reports.some(r => r.id === id && r.pid === pid)) DB.reports.push({ id, pid }); const n = DB.reports.filter(r => r.id === id).length; if (n >= 3) DB.chat.find(m => m.id === id).hidden = true; return n; },
     paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
     payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
+    // 4.16: Лига — как 022_league_pvp.sql: очередь, пара (взаимные окна, только свежие заявки), бой с версией, итоги
+    pvpFind: async t => {
+      const live = Object.values(DB.pvpM).find(m => m.status === 'live' && (m.a === who.uid || m.b === who.uid));
+      if (live) return { match: live.id };
+      const now = Date.now(), q0 = DB.pvpQ[who.uid];
+      const me = DB.pvpQ[who.uid] = { uid: who.uid, pid: t.info.pid, season: t.season, rating: t.pts, lo: t.lo, hi: t.hi, info: JSON.parse(JSON.stringify(t.info)), avoid: t.avoid,
+        since: q0 && !q0.match && now - q0.seen <= 15000 ? q0.since : now, seen: now, match: null };
+      const o = Object.values(DB.pvpQ).filter(q => q.uid !== who.uid && !q.match && q.season === t.season && now - q.seen <= 8000 && q.rating >= t.lo && q.rating <= t.hi && t.pts >= q.lo && t.pts <= q.hi
+        && (t.wide || ((!t.avoid || q.pid !== t.avoid) && (!q.avoid || q.avoid !== t.info.pid)))).sort((x, y) => Math.abs(x.rating - t.pts) - Math.abs(y.rating - t.pts) || x.since - y.since)[0];
+      if (!o) return { wait: true, n: Object.values(DB.pvpQ).filter(q => !q.match && q.season === t.season && now - q.seen <= 8000).length };
+      const id = crypto.randomUUID();
+      DB.pvpM[id] = { id, season: t.season, a: o.uid, b: who.uid, ver: 0, status: 'live', aS: false, bS: false, state: { init: true, season: t.season, at: now, a: o.info, b: me.info } };
+      o.match = id; me.match = id;
+      return { match: id };
+    },
+    pvpCancel: async () => { const q = DB.pvpQ[who.uid]; if (q && q.match && DB.pvpM[q.match] && DB.pvpM[q.match].status === 'live') return { match: q.match }; delete DB.pvpQ[who.uid]; return {}; },
+    pvpLive: async () => { const m = Object.values(DB.pvpM).find(x => x.status === 'live' && (x.a === who.uid || x.b === who.uid)); return m ? { id: m.id } : null; },
+    pvpLoad: async id => { const m = DB.pvpM[id]; return m ? { id, ver: m.ver, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : m.b === who.uid ? 'b' : null } : null; },
+    pvpPut: async (id, ver, state, done) => {
+      const m = DB.pvpM[id];
+      if (!m || m.ver !== ver || m.status !== 'live') return null;
+      m.state = JSON.parse(JSON.stringify(state)); m.ver++;
+      if (done) { m.status = 'done'; Object.values(DB.pvpQ).forEach(q => { if (q.match === id) delete DB.pvpQ[q.uid]; }); }
+      return m.ver;
+    },
+    pvpPending: async () => Object.values(DB.pvpM).filter(m => m.status === 'done' && ((m.a === who.uid && !m.aS) || (m.b === who.uid && !m.bS)))
+      .map(m => ({ id: m.id, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : 'b' })),
+    pvpSettled: async id => { const m = DB.pvpM[id]; if (m && m.status === 'done') { if (m.a === who.uid) m.aS = true; if (m.b === who.uid) m.bS = true; } },
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
@@ -827,20 +921,21 @@
     eq((await GameCore.checkWx(fake, pos, env)).key, sim, 'подделка — заменена смоделированной');
     eq((await GameCore.checkWx(fake, pos, { weather: async () => null })).key, fake, 'сервис погоды молчит — верим телефону');
   });
-  atest('Сервер: Лига — жетоны, турнир, таблица сезона', async () => {
+  atest('Сервер: Лига — уровень, команда, жетоны; турнира с машинами больше нет (4.16)', async () => {
     const A = await newPlayer('uh', 55.70, 37.58, 'Искра');
-    await refuse(A, 'leagueStart', {}, /5 уровня/);
+    await refuse(A, 'pvpFind', {}, /5 уровня/);
     A.data.level = 5;
-    await refuse(A, 'leagueStart', {}, /три духа/);
+    await refuse(A, 'pvpFind', {}, /три духа/);
     ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, sid))));
-    await must(A, 'leagueStart', {});
-    eq(A.data.league.tickets, League.TICKETS - 1); ok(A.data.league.run, 'турнир начат');
-    await must(A, 'leagueEnd', { win: false });
-    eq(A.data.league.run, null, 'поражение завершает турнир');
-    eq(A.data.league.pts, 0, 'рейтинг не уходит ниже нуля');
-    eq(DB.league.filter(x => x.user === 'uh').length, 1, 'строка таблицы сезона записана сервером');
-    eq(DB.league.find(x => x.user === 'uh').name, 'Искра', 'в строке — имя этого Ловчего');
-    await refuse(A, 'leagueEnd', { win: true }, /не найден/);
+    await refuse(A, 'leagueStart', {}, /Обнови игру/);
+    await refuse(A, 'leagueEnd', { win: true }, /Обнови игру/);
+    A.data.league = { season: League.season(), pts: 0, best: 0, peak: 0, tickets: 0, n: 10, day: asPlayer(A, () => U.today()), got: {} };
+    await refuse(A, 'pvpFind', {}, /Жетоны кончились/);
+    // новый сезон: сундук за высшую лигу прошлого — один раз
+    A.data.league = { season: '2000-01', pts: 1700, best: 4, peak: 4, tickets: 5, n: 5, day: asPlayer(A, () => U.today()), got: {} };
+    const sp0 = A.data.sparks, st = await must(A, 'leagueState', {});
+    ok(st.prize && st.prize.rank === 4 && A.data.sparks > sp0, 'сундук сезона'); eq(A.data.league.pts, 1600, 'срез сверх 1500 наполовину');
+    ok(!(await must(A, 'leagueState', {})).prize, 'сундук — один раз');
   });
   atest('Сервер: взаимная дружба, подарки и посылки между двумя Ловчими', async () => {
     const A = await newPlayer('ui', 55.69, 37.57, 'Ярослава'), B = await newPlayer('uj', 55.69, 37.57, 'Всеслав', 'kapelka');
@@ -1406,6 +1501,110 @@
     eq(A.data.pass.gold, false); ok(A.data.pass.season !== '1999-1', 'сезон сменился');
   });
 
+  // 4.16: Лига — два живых Ловчих через сервер игры (база в памяти — как 022_league_pvp.sql)
+  const pvp = (who, op, args, now) => GameCore.pvp(op, args, envFor(who), now);
+  const leaguer = async (uid, name, pts = 0) => {
+    const P = await newPlayer(uid, 55.45, 37.33, name);
+    P.data.tut = 0; P.data.level = 6;
+    ['kapelka', 'mshonok'].forEach(sid => P.data.spirits.push(asPlayer(P, () => S.makeSpirit(sid, 12, sid + uid))));
+    P.data.spirits[0].lvl = 12;
+    P.data.league = { season: League.season(), pts, best: League.rank(pts), peak: League.rank(pts), tickets: League.TICKETS, n: 0, day: asPlayer(P, () => U.today()), got: {} };
+    return P;
+  };
+  const ago = (P, sec) => { P.srv.lq.since -= sec * 1000; };
+  atest('Сервер: Лига 4.16 — два Ловчих: поиск, бой в реальном времени, итог и рейтинг обоим', async () => {
+    const A = await leaguer('pv-a', 'Ратибор'), B = await leaguer('pv-b', 'Милена'), C = await leaguer('pv-c', 'Чужак');
+    await refuse(A, 'leagueStart', {}, /Обнови игру/);
+    A.data.level = 4; await refuse(A, 'pvpFind', {}, /5 уровня/); A.data.level = 6;
+    A.data.team = [A.data.spirits[0].uid]; A.data.spirits.splice(1, 2); await refuse(A, 'pvpFind', {}, /три духа/);
+    ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 12, sid + 'a2')))); A.data.team = [];
+    const w = await must(A, 'pvpFind', {});
+    ok(w.wait >= 0 && !w.match && w.n >= 1, 'ждём живого соперника — ботов нет');
+    const f = await must(B, 'pvpFind', {});
+    ok(f.match, 'пара составлена'); eq((await must(A, 'pvpFind', {})).match, f.match, 'первый узнаёт о паре при следующем запросе');
+    const id = f.match;
+    const r0 = await pvp(A, 'state', { id });
+    ok(r0.ok && r0.seat === 'a' && r0.st.s.b.name === 'Милена', 'бой — у сервера, сторона — по входу');
+    ok(r0.st.s.a.team.length === 3 && r0.st.s.a.team[0].max > 0, 'бойцы посчитаны сервером из сохранения');
+    const t0 = r0.st.t0;
+    // чужой в бою не ходит; подделки отклоняются целиком
+    eq((await pvp(C, 'move', { id, in: [{ t: 'hit', n: 1 }] }, t0 + 100)).error, 'Бой не найден');
+    const ver0 = DB.pvpM[id].ver;
+    ok(!(await pvp(A, 'move', { id, in: [{ t: 'hit', n: 1 }, { t: 'hit', n: 40 }] }, t0 + 100)).ok, 'пачка с подделкой отклонена');
+    eq(DB.pvpM[id].ver, ver0, 'и ничего не записано');
+    const hp0 = DB.pvpM[id].state.s.b.team[0].cur;
+    const h = await pvp(A, 'move', { id, in: [{ t: 'hit', n: 2 }] }, t0 + 500);
+    ok(h.ok && h.res[0].got === 2 && h.st.s.b.team[0].cur < hp0, 'удар засчитан сервером');
+    const B1 = await pvp(B, 'state', { id }, t0 + 600);
+    eq(B1.st.s.b.team[0].cur, h.st.s.b.team[0].cur, 'соперник видит тот же бой');
+    // гонка: оба пишут одну версию — второй перечитывает бой и повторяет ход
+    const [x1, x2] = await Promise.all([pvp(A, 'move', { id, in: [{ t: 'hit', n: 1 }] }, t0 + 1600), pvp(B, 'move', { id, in: [{ t: 'hit', n: 1 }] }, t0 + 1600)]);
+    ok(x1.ok && x2.ok && DB.pvpM[id].state.s.a.hits === 3 && DB.pvpM[id].state.s.b.hits === 1, 'оба хода записаны');
+    // пока идёт бой — новый поиск возвращает его же, экран Лиги предлагает вернуться
+    eq((await must(B, 'leagueState', {})).live, id);
+    // Милена пропала со связи: через 20 с — поражение ей, победа Ратибору
+    const tB = DB.pvpM[id].state.s.b.seen;
+    await pvp(A, 'state', {}, tB + 5000).then(r => ok(!r.ok, 'без номера боя — отказ'));
+    await pvp(A, 'move', { id, in: [{ t: 'sync' }] }, tB + 10000);
+    const end = await pvp(A, 'state', { id }, tB + PvP.IDLE + 1000);
+    ok(end.st.over && end.st.over.win === 'a' && end.st.over.why === 'idle', 'пропавший проиграл');
+    eq(DB.pvpM[id].status, 'done');
+    ok(!(await pvp(B, 'move', { id, in: [{ t: 'hit', n: 1 }] }, tB + PvP.IDLE + 2000)).res.some(x => x.ok), 'после конца ходы не идут');
+    // итог — обоим, ровно один раз
+    const xp0 = A.data.xp;
+    const ra = (await must(A, 'pvpResult', {})).done;
+    eq(ra.length, 1); ok(ra[0].win && ra[0].d === 30, 'победа над равным: +30'); eq(A.data.league.pts, 30);
+    eq(A.data.league.tickets, League.TICKETS - 1, 'жетон — за сыгранный бой'); ok(A.data.xp > xp0, 'опыт за бой');
+    ok(A.data.journal.some(j => j.type === 'pvp'), 'запись в дневнике'); eq(DB.league.filter(x => x.user === 'pv-a').pop().pts, 30, 'строка таблицы сезона');
+    DB.pvpM[id].aS = false; // отметка в базе не записалась — повторно всё равно не засчитается
+    eq((await must(A, 'pvpResult', {})).done.length, 0); eq(A.data.league.pts, 30);
+    const xb = B.data.xp, rb = (await must(B, 'leagueState', {})).done;
+    ok(rb.length === 1 && !rb[0].win && rb[0].why === 'idle', 'проигравшему — тоже, при входе в Лигу'); eq(B.data.league.pts, 0, 'не ниже нуля');
+    eq(B.data.xp, xb, 'пропавшему опыта нет');
+    // раны — по серверу: боец Милены ранен
+    const uidB = DB.pvpM[id].state.s.b.team[0].uid;
+    ok(asPlayer(B, () => S.hpNow(B.data.spirits.find(x => x.uid === uidB))) < 1, 'раны после боя посчитал сервер');
+  });
+  atest('Сервер: Лига 4.16 — круг поиска, граница лиг, отмена, повторный соперник, KO и сдача', async () => {
+    Object.values(DB.pvpQ).forEach(q => { q.seen = 0; }); // прошлые заявки устарели
+    const K = await leaguer('pv-k', 'Кметь', 1200), N = await leaguer('pv-n', 'Новик', 100);
+    ok((await must(K, 'pvpFind', {})).wait != null && (await must(N, 'pvpFind', {})).wait != null, 'разные лиги — не пара');
+    ago(N, 65); ok((await must(N, 'pvpFind', {})).wait != null, 'Новик ждёт минуту — но Кметь его ещё не принимает (пара — взаимная)');
+    ago(K, 65); const m = await must(K, 'pvpFind', {});
+    ok(m.match, 'оба долго ждут — пара через лиги');
+    // брошенный с обеих сторон бой заканчивается при следующем входе: кто пропал раньше — проиграл
+    const s = DB.pvpM[m.match].state;
+    DB.pvpM[m.match].state = { ...s, at: s.at - 120000 };
+    await must(N, 'leagueState', {});
+    ok(DB.pvpM[m.match].status === 'done', 'брошенный бой закончен');
+    // у самой границы — и соседняя лига
+    const H = await leaguer('pv-h', 'Отрок-1', 290), I = await leaguer('pv-i', 'Отрок-2', 320);
+    await must(H, 'pvpFind', {}); const hi = await must(I, 'pvpFind', {});
+    ok(hi.match, '290 и 320: до границы чуть-чуть — пара сразу');
+    // отмена: заявка убрана — пары нет
+    const E = await leaguer('pv-e', 'Отменил', 2200), F = await leaguer('pv-f', 'Ждёт', 2210);
+    await must(E, 'pvpFind', {}); await must(E, 'pvpCancel', {});
+    ok(!(await must(F, 'pvpFind', {})).match, 'отменивший поиск в пару не попадает');
+    // старая заявка (телефон молчит) — тоже
+    DB.pvpQ['pv-f'].seen -= 9000;
+    ok(!(await must(E, 'pvpFind', {})).match, 'молчащий дольше 8 с — не в паре');
+    const ef = (await must(F, 'pvpFind', {})).match; ok(ef, 'вернулся — пара');
+    // бой до конца: KO — все духи без сил; сдача
+    const st = (await pvp(E, 'state', { id: ef })).st, t0 = st.t0, me = (await pvp(E, 'state', { id: ef })).seat, foe = PvP.other(me);
+    DB.pvpM[ef].state.s[foe].team.forEach((x, i) => { x.cur = i ? 0 : 1; });
+    const ko = await pvp(E, 'move', { id: ef, in: [{ t: 'hit', n: 1 }] }, t0 + 500);
+    ok(ko.st.over && ko.st.over.why === 'ko' && ko.st.over.win === me, 'все духи соперника без сил — победа');
+    const re = (await must(E, 'pvpResult', {})).done[0]; ok(re.win && re.d > 0);
+    const rf0 = (await must(F, 'pvpResult', {})).done[0]; ok(!rf0.win && F.data.spirits.some(x => x.ko), 'проигравшему — раны: духи без сил');
+    F.data.spirits.forEach(x => { delete x.ko; delete x.hpf; delete x.hpt; }); // вылечился
+    // повторный соперник: сразу снова в пару не ставим (кроме долгого ожидания)
+    await must(E, 'pvpFind', {}); ok(!(await must(F, 'pvpFind', {})).match, 'тот же соперник сразу — нет');
+    ago(F, 31); const again = (await must(F, 'pvpFind', {})).match; ok(again, 'после 30 с ожидания — можно');
+    const q = await pvp(F, 'move', { id: again, in: [{ t: 'quit' }] }, Date.now() + 100);
+    ok(q.st.over.why === 'quit' && q.st.over.win !== q.seat, 'сдался — поражение');
+    const xf = F.data.xp, rf = (await must(F, 'pvpResult', {})).done[0];
+    ok(!rf.win && rf.d < 0, 'рейтинг за сдачу снят'); eq(F.data.xp, xf, 'опыта за сдачу нет');
+  });
   /* ---------- вывод ---------- */
   (async () => {
     for (const t of pending) {
