@@ -203,9 +203,10 @@ Object.assign(UI, {
               <div class="det-hp">№${String(s.num).padStart(2, '0')} ${s.name} · ${ru`ОЗ ${st.hp}`}</div>
               <div class="det-power"><small>${ru`СИЛА`}</small><b>${st.power}</b></div>
               <div class="det-lvl"><span>${ru`Уровень <b>${sp.lvl}</b> из ${S.maxLvl(sp)}`}</span><div class="arc"><i style="width:${(sp.lvl / SPIRIT_MAX) * 100}%"></i></div></div>
-              <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${nStars ? `<span class="aw-t">${'★'.repeat(nStars)}</span>` : ''}${sp.shiny ? `<span class="shiny-t">✦ ${ru`Сияющий`}</span>` : ''}${sp.dark ? `<span class="dark-t">${ru`Омрачённый`}</span>` : ''}${sp.purified ? `<span class="pure-t">${ru`Очищенный`}</span>` : ''}${isBuddy ? `<span class="buddy-t">♥ ${ru`Спутник`}</span>` : ''}${hpN < 1 ? `<span class="hp-t ${hpN <= 0 ? 'ko' : ''}">${hpN <= 0 ? ru`без сил` : ru`ранен · ${Math.round(hpN * 100)}%`}</span>` : ''}</div>
+              <div class="det-tags"><span>${Art.elIcon(s.el, 18)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${nStars ? `<span class="aw-t">${'★'.repeat(nStars)}</span>` : ''}${sp.shiny ? `<span class="shiny-t">✦ ${ru`Сияющий`}</span>` : ''}${sp.dark ? `<span class="dark-t">${ru`Омрачённый`}</span>` : ''}${sp.purified ? `<span class="pure-t">${ru`Очищенный`}</span>` : ''}${isBuddy ? `<span class="buddy-t">♥ ${ru`Спутник`}</span>` : ''}${sp.bound ? `<span class="bind-t">${ru`Привязан`}</span>` : ''}${hpN < 1 ? `<span class="hp-t ${hpN <= 0 ? 'ko' : ''}">${hpN <= 0 ? ru`без сил` : ru`ранен · ${Math.round(hpN * 100)}%`}</span>` : ''}</div>
             </div>
           </div>
+          <div class="dt-bind ${sp.bound ? 'on' : ''}">${sp.bound ? ru`Плёнка на обороте содрана — дух привязан к тебе, продать его нельзя` : ru`Переверни стикер: плёнку на обороте можно содрать — дух привяжется к тебе`}</div>
           <div class="seg dt-tabs">${TABS.map(([k, t, dot]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${t}${dot ? '<i class="dt-dot"></i>' : ''}</button>`).join('')}</div>
           <div class="dt-panel">
             ${pane('grow', `
@@ -252,6 +253,7 @@ Object.assign(UI, {
                 ${row(ru`Редкость`, `<i style="color:${RARITY[s.rar].color};font-style:normal">${RARITY[s.rar].name}</i>`)}
                 ${sp.t ? row(ru`Пойман`, new Date(sp.t).toLocaleDateString(I18N.locale)) : ''}
                 ${sp.from ? row(ru`Подарок`, ru`от Ловчего ${U.esc(sp.from)}`) : ''}
+                ${row(ru`Код духа`, S.spiritCode(sp).replace(/^(\d{4})/, '$1 '))}
                 ${row(ru`Спутник`, isBuddy ? `♥ ${ru`находка через ${Math.max(0, S.buddyDist(sp) - S.d.buddy.km).toFixed(2)} км`}` : ru`эссенция каждые ${S.buddyDist(sp)} км`)}
               </div>
               <div class="dt-about-acts">
@@ -270,6 +272,20 @@ Object.assign(UI, {
       return r;
     };
     const pulse = () => { const a = scr.querySelector('.det-art'); if (a) a.classList.add('pulse'); };
+    // 4.17: плёнку с оборота стикера оторвали пальцем (Art) — подтвердить и привязать духа на сервере
+    scr.addEventListener('stickerpeel', e => {
+      const sp = S.findSpirit(e.detail.uid), done = e.detail.done;
+      if (!sp || sp.bound) { done(false); return; }
+      this.modal({ title: ru`Содрать плёнку?`, dismiss: false,
+        html: `<p>${ru`«${U.esc(sp.nick || SP[sp.sid].name)}» привяжется к тебе навсегда: выставить его на аукцион будет нельзя. Вернуть плёнку не получится.`}</p>`,
+        buttons: [{ label: ru`Оставить`, fn: () => done(false) }, { label: ru`Содрать`, cls: 'primary', fn: async () => {
+          const r = await Game.try('spiritBind', { uid: sp.uid });
+          done(!!r);
+          if (!r) return;
+          Sfx.play('catch'); U.vibrate([20, 40, 60]);
+          setTimeout(() => { if (scr.isConnected) { render(); this.toast(ru`Дух привязан к тебе`, 'good'); } }, 650);
+        } }] });
+    });
     scr.addEventListener('click', e => {
       const t = e.target.closest('button'); if (!t) return;
       if (t.dataset.tab) { tab = t.dataset.tab; Sfx.play('tap'); U.$$('[data-tab]', scr).forEach(x => x.classList.toggle('on', x === t)); U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === tab)); return; }

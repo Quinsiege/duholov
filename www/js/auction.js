@@ -191,15 +191,16 @@ const Auction = {
     const list = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a));
     const m = UI.modal({
       title: ru`Какого духа выставить?`, cls: 'au-pick',
-      html: `<div class="au-picklist">${list.map(sp => `<button class="au-pk ${sp.fav ? 'off' : ''}" data-u="${sp.uid}">
+      html: `<div class="au-picklist">${list.map(sp => `<button class="au-pk ${sp.fav || sp.bound ? 'off' : ''}" data-u="${sp.uid}">
         <div class="au-art">${Art.img(sp.sid, sp.shiny, sp.dark && !sp.purified)}</div>
-        <div class="row-main"><b>${U.esc(sp.nick || SP[sp.sid].name)}</b><small>${ru`СИЛА ${U.fmtNum(S.power(sp))} · ур. ${sp.lvl}`} · ${this.starsHtml(S.ivPct(sp))} ${S.ivPct(sp)}%${sp.fav ? ' · ' + ru`избранный` : ''}</small></div></button>`).join('')}</div>`,
+        <div class="row-main"><b>${U.esc(sp.nick || SP[sp.sid].name)}</b><small>${ru`СИЛА ${U.fmtNum(S.power(sp))} · ур. ${sp.lvl}`} · ${this.starsHtml(S.ivPct(sp))} ${S.ivPct(sp)}%${sp.fav ? ' · ' + ru`избранный` : ''}${sp.bound ? ' · ' + ru`привязан` : ''}</small></div></button>`).join('')}</div>`,
       buttons: [{ label: ru`Отмена` }],
     });
     m.querySelector('.au-picklist').addEventListener('click', e => {
       const b = e.target.closest('.au-pk'); if (!b) return;
       const sp = S.findSpirit(b.dataset.u);
       if (sp.fav) { UI.toast(ru`Избранного духа продать нельзя — сними отметку на его карточке`); return; }
+      if (sp.bound) { UI.toast(ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`); return; }
       if (S.d.spirits.length <= 1) { UI.toast(ru`Нельзя продать последнего духа`); return; }
       m.close(); then(sp);
     });

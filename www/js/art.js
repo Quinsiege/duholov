@@ -1179,25 +1179,65 @@ const Art = (() => {
   // закрытая защитной плёнкой с отогнутым углом (под ним виден клей; лоскут — тот же силуэт, отражённый через линию сгиба). Крутится пальцем там, где дух крупно (см. ниже)
   const maskCache = {};
   const maskOf = sid => PICS[sid] ? picUrl(sid) : (maskCache[sid] || (maskCache[sid] = toUrl(spirit(sid)).replace(/'/g, '%27')));
-  const sticker = (front, sid) => { const m = maskOf(sid), ms = `-webkit-mask-image:url('${m}');mask-image:url('${m}')`;
-    return `<span class="art sp-sticker" style="aspect-ratio:1;--el:${elColor(sid)}"><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
-      `<span class="stc-back"><i class="stc-glue" style="${ms}"></i><i class="stc-liner" style="${ms}"></i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span></span></span></span>`; };
-  const spiritK = (sid, shiny, dark) => sticker(PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`), sid);
+  // Код духа на плёнке — цифры из точек (матрица 5×7), две группы по 4
+  const DOTS = ['01110100011001110101110011000101110', '00100011000010000100001000010001110', '01110100010000100010001000100011111', '11111000100010000010000011000101110',
+    '00010001100101010010111110001000010', '11111100001111000001000011000101110', '00110010001000011110100011000101110', '11111000010001000100010000100001000',
+    '01110100011000101110100011000101110', '01110100011000101111000010001001100'];
+  const codeCache = {};
+  const codeSvg = code => codeCache[code] || (codeCache[code] = (() => {
+    let d = '', x = 0;
+    [...code].forEach((ch, i) => { const g = DOTS[+ch] || ''; for (let k = 0; k < 35; k++) if (g[k] === '1') d += `M${x + k % 5 + .5} ${Math.floor(k / 5) + .5}h0`; x += 6 + (i === 3 ? 3 : 0); });
+    return `<svg class="stc-code" viewBox="0 0 ${x - 1} 7" aria-hidden="true"><path d="${d}"/></svg>`;
+  })());
+  // info — сам дух (Art.of): код на плёнке, привязан ли (плёнка содрана), uid — чтобы содрать её в карточке
+  const sticker = (front, sid, info) => {
+    const m = maskOf(sid), ms = `-webkit-mask-image:url('${m}');mask-image:url('${m}')`, bound = !!(info && info.bound);
+    const code = info && typeof S !== 'undefined' && S.spiritCode ? codeSvg(S.spiritCode(info)) : '';
+    // оборот зеркален (.stc-sil): так силуэт совпадает с лицом, как у настоящего стикера; надпись на плёнке — обратно прямая
+    return `<span class="art sp-sticker${bound ? ' stc-bound' : ''}" style="aspect-ratio:1;--el:${elColor(sid)}"${info && info.uid ? ` data-uid="${U.esc(info.uid)}"` : ''}><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
+      `<span class="stc-back"><span class="stc-sil"><i class="stc-glue" style="${ms}"></i>` +
+      (bound ? '' : `<i class="stc-liner" style="${ms}">${code}</i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span>`) + '</span></span></span></span>';
+  };
+  const spiritK = (sid, shiny, dark, info) => sticker(PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`), sid, info);
   // Вращение стикера: тянуть — крутится (с разгона докручивается до ближайшей стороны), коснуться — перевернуть.
-  // Только крупные духи и не на поимке (там жест — бросок оберега)
+  // Только крупные духи и не на поимке (там жест — бросок оберега).
+  // 4.17: в карточке своего непривязанного духа, повёрнутого оборотом, можно потянуть отогнутый угол плёнки — она отрывается;
+  // оторвал достаточно — стикер шлёт событие stickerpeel { uid, done(ok) }: подтверждение и сервер — у карточки (ui-spirits)
   if (typeof document !== 'undefined') {
     const ROT = '.det-art, .res-art, .evo-stage, .hatch-sp, .bk-art, .onb-starters, .pf-buddy-a';
+    const PC = 1.5, PEEL_AT = .4; // плёнка в покое отогнута до линии x + y = 1.5; оторвана, если сгиб дошёл до 0.4
     let g = null;
     const set = (card, ry) => { card._ry = ry; card.style.setProperty('--ry', ry + 'deg'); card.style.setProperty('--hp', (((ry % 360) + 360) % 360 / 3.6).toFixed(1) + '%'); };
+    const backShown = card => { const r = (((card._ry || 0) % 360) + 360) % 360; return r > 90 && r < 270; };
+    const peelTo = (back, pc, anim) => { back.classList.toggle('peel-anim', !!anim); back.style.setProperty('--pc', pc); };
     document.addEventListener('pointerdown', e => {
       const st = e.target.closest && e.target.closest('.sp-sticker');
-      if (!st || !st.closest(ROT) || st.closest('.enc-art') || st.getBoundingClientRect().width < 90) return;
-      const card = st.querySelector('.stc-card');
+      if (!st || !st.closest(ROT) || st.closest('.enc-art')) return;
+      const r = st.getBoundingClientRect();
+      if (r.width < 90) return;
+      const card = st.querySelector('.stc-card'), back = st.querySelector('.stc-back');
+      // угол плёнки: оборот зеркален — отогнутый угол виден слева внизу
+      const u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
+      const peel = st.dataset.uid && !st.classList.contains('stc-bound') && st.closest('.det-art') && backShown(card) && (1 - u) + v > PC - .3
+        && typeof S !== 'undefined' && S.d && S.findSpirit(st.dataset.uid);
+      if (peel) { g = { peel: true, st, back, x: e.clientX, y: e.clientY, w: r.width, pc: PC, moved: false }; return; }
       g = { card, st, x: e.clientX, t: performance.now(), ry0: card._ry || 0, v: 0, lx: e.clientX, lt: performance.now(), moved: false };
     }, { passive: true });
     document.addEventListener('pointermove', e => {
       if (!g) return;
       const dx = e.clientX - g.x;
+      if (g.peel) {
+        const dist = Math.hypot(dx, e.clientY - g.y);
+        if (!g.moved && dist < 6) return;
+        if (!g.moved) { g.moved = true; g.back.classList.add('peeling'); g.st.classList.add('spin'); }
+        // плёнка клеится крепко: первые 28 px не поддаётся, дальше идёт всё туже — оторвать можно, лишь протянув
+        // палец почти на две ширины стикера; по пути телефон «щёлкает» — плёнка отходит рывками
+        g.pc = U.clamp(PC - .55 * Math.pow(Math.max(0, dist - 28) / g.w, 1.45), -.4, PC);
+        const step = Math.floor((PC - g.pc) / .12);
+        if (step > (g.step || 0)) { g.step = step; U.vibrate(8); }
+        peelTo(g.back, g.pc.toFixed(3), false);
+        return;
+      }
       if (!g.moved && Math.abs(dx) < 6) return;
       if (!g.moved) { g.moved = true; g.card.classList.add('drag'); g.st.classList.add('spin'); }
       const now = performance.now(); g.v = (e.clientX - g.lx) / Math.max(1, now - g.lt); g.lx = e.clientX; g.lt = now;
@@ -1205,15 +1245,30 @@ const Art = (() => {
     }, { passive: true });
     const up = () => {
       if (!g) return;
-      const { card, st } = g; card.classList.remove('drag');
+      const cur = g; g = null;
+      if (cur.peel && cur.moved) {
+        const { st, back } = cur, back0 = () => { peelTo(back, PC, true); setTimeout(() => { back.classList.remove('peeling', 'peel-anim'); back.style.removeProperty('--pc'); }, 480); };
+        setTimeout(() => st.classList.remove('spin'), 600);
+        if (cur.pc > PEEL_AT) { back0(); return; }
+        peelTo(back, .45, true); // держим наполовину оторванной, пока Ловчий решает
+        st.dispatchEvent(new CustomEvent('stickerpeel', { bubbles: true, detail: { uid: st.dataset.uid, done: ok => {
+          if (!ok) { back0(); return; }
+          peelTo(back, -1.2, true); back.classList.add('peeled'); // плёнка слетает
+        } } }));
+        return;
+      }
+      if (cur.peel) { // просто коснулся угла — перевернуть, как везде
+        const card = cur.st.querySelector('.stc-card'); set(card, (card._ry || 0) + 180); return;
+      }
+      const { card, st } = cur; card.classList.remove('drag');
       // коснулся — перевернуть; потянул — докрутить по инерции до ближайшей стороны
-      const target = g.moved ? Math.round(((card._ry || 0) + g.v * 260) / 180) * 180 : (card._ry || 0) + 180;
-      set(card, target); g = null;
+      const target = cur.moved ? Math.round(((card._ry || 0) + cur.v * 260) / 180) * 180 : (card._ry || 0) + 180;
+      set(card, target);
       setTimeout(() => st.classList.remove('spin'), 600);
     };
     document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
     // клик после вращения не должен открывать/выбирать (кнопки со стикером внутри)
     document.addEventListener('click', e => { const st = e.target.closest && e.target.closest('.sp-sticker.spin'); if (st) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
-  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
+  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark, sp), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
 })();

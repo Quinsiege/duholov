@@ -156,8 +156,13 @@ const S = {
   makeSpirit(sid, lvl, seed, { ivMin = 0 } = {}) {
     const r = U.rng(seed);
     const iv = [0, 0, 0].map(() => ivMin + Math.floor(r() * (16 - ivMin)));
-    return { uid: U.uid(), sid, lvl, iv, t: Date.now(), fav: false, nick: null };
+    return { uid: U.uid(), sid, lvl, iv, t: Date.now(), fav: false, nick: null, code: this.newSpiritCode() };
   },
+  // 4.17: код духа — 8 цифр, выбит точками на защитной плёнке стикера. Идёт с духом через аукцион; у духов до 4.17 — из uid
+  newSpiritCode() { return String(1e7 + Math.floor(Math.random() * 9e7)); },
+  spiritCode(sp) { return sp.code || String(1e7 + Math.floor(U.h('code', sp.uid) * 9e7)); },
+  // 4.17: привязка — плёнка на обороте содрана (sp.bound — когда): дух остаётся у Ловчего навсегда, продать его нельзя
+  isBound(sp) { return !!sp.bound; },
   ivPct(sp) { return Math.round((sp.iv[0] + sp.iv[1] + sp.iv[2]) / 45 * 100); },
   // Предел уровня духа: уровень Ловчего +5 (не выше 40) и ещё AWAKE.STEP за каждую звезду пробуждения,
   // открытую уровнем Ловчего (купленный или подаренный дух без звёзд — как раньше)

@@ -1684,6 +1684,25 @@
     A.data.grivna = 77; A.data.zlat = 3;
     await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
   });
+  // 4.17: дух-стикер — плёнка на обороте с кодом духа; содрал — дух привязан, продать нельзя
+  atest('Сервер: привязка духа — плёнку содрать один раз, привязанного не продать, код духа идёт с ним через аукцион', async () => {
+    const P = await newPlayer('bd', 55.48, 37.36, 'Привязка');
+    P.data.tut = 0; P.data.level = 20; P.data.sparks = 100000; P.data.zlat = 500;
+    const a = { uid: U.uid(), sid: 'kapelka', lvl: 10, iv: [10, 10, 10], t: Date.now(), fav: false, code: '12345678' }, b = { uid: U.uid(), sid: 'mshonok', lvl: 10, iv: [5, 5, 5], t: Date.now(), fav: false };
+    P.data.spirits.push(a, b);
+    const find = uid => P.data.spirits.find(x => x.uid === uid);
+    ok(!find(a.uid).bound, 'пойманный дух не привязан');
+    await must(P, 'spiritBind', { uid: a.uid });
+    ok(find(a.uid).bound > 0, 'плёнка содрана — дух привязан');
+    await refuse(P, 'spiritBind', { uid: a.uid }, /уже содрана/);
+    await refuse(P, 'auctionSell', { uid: a.uid, cur: 'sparks', price: 1000 }, /привязан/);
+    // код: у нового духа — 8 цифр; у старого (без кода) — из uid, всегда один и тот же; через аукцион — тот же код
+    ok(/^[1-9]\d{7}$/.test(S.makeSpirit('kapelka', 1, 'x').code), 'новый дух с кодом');
+    const old = { uid: 'olduid1', sid: 'kapelka' };
+    eq(S.spiritCode(old), S.spiritCode({ ...old }), 'код старого духа стабилен');
+    eq(GameCore.unpackSpirit(GameCore.packSpirit(a), { now: 1 }, null, 40).code, '12345678', 'код переходит с духом');
+    ok(!GameCore.unpackSpirit(GameCore.packSpirit(a), { now: 1 }, null, 40).bound, 'купленный дух — с целой плёнкой');
+  });
   atest('Сервер: аукцион — выставить, фильтры, купить с комиссией, без двойных покупок и потерь', async () => {
     const S1 = await newPlayer('va', 55.48, 37.36, 'Продавец'), B1 = await newPlayer('vb', 55.48, 37.36, 'Покупатель'), C1 = await newPlayer('vc', 55.48, 37.36, 'Второй');
     for (const P of [S1, B1, C1]) { P.data.tut = 0; P.data.level = 20; P.data.sparks = 100000; P.data.zlat = 500; }
