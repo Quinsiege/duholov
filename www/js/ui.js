@@ -778,7 +778,7 @@ const UI = {
       const items = got.filter(x => x.k !== 'xp');
       const cocoonHtml = r.cocoon ? `<div class="loot-item spr2-cocoon" style="--k:${items.length}">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
       scr.querySelector('.spring-loot').innerHTML = items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `<div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}${r.full ? ` · ${ru`Сумка полна! Расширь её в Лавке Ордена`}` : ''}</div>` +
+        `<div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>${r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : ''}` +
         (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
       // опыт набегает счётчиком
       const xb = scr.querySelector('.spr2-xp'), t0 = performance.now(), T = 900;
