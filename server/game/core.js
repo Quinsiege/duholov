@@ -723,11 +723,10 @@ const GameCore = {
       const e = W.springFor(p, 0);
       this.need(!e.invaded, ru`Родник захвачен Навью`);
       this.need(e.ready, ru`Родник ещё набирает силу`);
-      // 4.16: при полной сумке родник не тратится впустую (раньше молча не давал ничего) — сначала освободить место
-      this.need(S.bagCount() < S.bagLimit(), ru`Сумка полна — родник подождёт. Выброси лишнее или расширь сумку в Лавке Ордена`);
       S.d.springs[p.id] = ctx.now;
       this.dayAdd(ctx, 'springs');
       const { loot, cocoon } = W.springLoot(p.id);
+      // 4.16: родник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
       const got = S.giveRewards({ ...loot, xp: 50 }); // не поместилось — в посылку Ордена
       S.d.stats.springs++;
       S.progress('spring', 1);

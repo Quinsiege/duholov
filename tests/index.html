@@ -2007,11 +2007,14 @@
     const A = await newPlayer('ve', 55.52, 37.44, 'Хозяйка');
     A.data.tut = 0;
     const lim = asPlayer(A, () => S.bagLimit()), cnt = () => asPlayer(A, () => S.bagCount());
-    // полная сумка: родник не открывается и не тратится
+    // полная сумка: родник открывается — опыт сразу, вещи ждут в посылке Ордена
     A.data.items = { charm: lim };
-    const sp = freeSpring(A, 94000);
-    await refuse(A, 'spring', { poi: sp }, /Сумка полна/);
-    ok(!A.data.springs[sp.id], 'родник не потрачен'); eq(Rules.dayUsed(A.data, 'springs'), 0, 'дневной лимит не тронут');
+    const sp = freeSpring(A, 94000), xp0 = A.data.xp;
+    const rs = await call(A, 'spring', { poi: sp }); ok(rs.ok, 'родник открылся');
+    ok(A.data.springs[sp.id], 'родник отдал силу'); eq(Rules.dayUsed(A.data, 'springs'), 1); ok(A.data.xp > xp0, 'опыт — сразу');
+    eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'вещи родника — в посылке');
+    ok(rs.events.some(([ev, d]) => ev === 'toast' && /посылку Ордена/.test(d.text)), 'игроку сказано, где вещи');
+    A.data.parcel = null;
     // награда при полной сумке — в посылку, и об этом сообщение
     const r = await call(A, 'daily'); ok(r.ok);
     eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'награда ждёт в посылке');
@@ -2022,7 +2025,7 @@
     await refuse(A, 'parcelTake', {}, /пуста/);
     // родник при почти полной сумке: что не влезло — в посылку
     A.data.items = { charm: lim - 1 };
-    const s2 = await must(A, 'spring', { poi: sp });
+    const s2 = await must(A, 'spring', { poi: freeSpring(A, 94500) }); // другой родник — первый уже отдал силу
     eq(cnt(), lim); ok(asPlayer(A, () => S.parcelCount()) >= 3, 'добыча родника не пропала'); ok(!s2.got.some(x => !x.n));
     const dr = await must(A, 'parcelTake', { drop: true }); ok(dr.dropped >= 3); eq(A.data.parcel, null, 'посылку можно выбросить');
     A.data.items = { charm: 50 };

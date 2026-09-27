@@ -3962,7 +3962,8 @@ const Rules = {
   // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
   // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
   // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
-  ZLAT: { streak: 1, streak7: 10, questBonus: 2, level: 3, level5: 15, story: 15, tribute: 1, tributeMax: 3 },
+  // 4.16.0: бесплатных златников у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
+  ZLAT: { streak: 1, streak7: 5, questBonus: 2, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
   // 3.15: Казна — златники за рубли (оплата через ЮKassa; цену и число златников сервер берёт отсюда, а не с телефона)
   PAY: [
@@ -4067,9 +4068,10 @@ const Rules = {
   passReward(track, lvl, plvl) {
     if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
     if (track === 'free') {
-      if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 20 };
-      if (lvl % 10 === 0) return { cocoon: 5, zlat: 10 };
-      if (lvl % 5 === 0) return { incense: 1, zlat: 5 };
+      // 4.16.0: бесплатная тропа — 29 златников за сезон (было 55)
+      if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
+      if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
+      if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
       return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 300 };
     }
     if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
@@ -4954,11 +4956,10 @@ const GameCore = {
       const e = W.springFor(p, 0);
       this.need(!e.invaded, ru`Родник захвачен Навью`);
       this.need(e.ready, ru`Родник ещё набирает силу`);
-      // 4.16: при полной сумке родник не тратится впустую (раньше молча не давал ничего) — сначала освободить место
-      this.need(S.bagCount() < S.bagLimit(), ru`Сумка полна — родник подождёт. Выброси лишнее или расширь сумку в Лавке Ордена`);
       S.d.springs[p.id] = ctx.now;
       this.dayAdd(ctx, 'springs');
       const { loot, cocoon } = W.springLoot(p.id);
+      // 4.16: родник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
       const got = S.giveRewards({ ...loot, xp: 50 }); // не поместилось — в посылку Ордена
       S.d.stats.springs++;
       S.progress('spring', 1);
