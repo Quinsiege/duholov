@@ -763,6 +763,7 @@ const UI = {
       if (!scr.isConnected) return;
       if (!r) { scr._done = false; view.classList.remove('spin'); setArc(0); update(); return; }
       view.classList.remove('spin'); void view.offsetWidth; view.classList.add('burst'); // всплеск
+      setTimeout(() => view.classList.add('taken'), 550); // колодец уходит — остаётся только награда
       U.vibrate([30, 50, 80]);
       const got = r.got, xp = got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50;
       const items = got.filter(x => x.k !== 'xp');
@@ -773,7 +774,7 @@ const UI = {
       // опыт набегает счётчиком
       const xb = scr.querySelector('.spr2-xp'), t0 = performance.now(), T = 900;
       const tick = t => { const p = Math.min(1, (t - t0) / T); if (xb) xb.textContent = Math.round(xp * (1 - Math.pow(1 - p, 3))); if (p < 1 && scr.isConnected) requestAnimationFrame(tick); };
-      setTimeout(() => requestAnimationFrame(tick), 500);
+      setTimeout(() => requestAnimationFrame(tick), 1100); // когда колодец ушёл и награда вылетела
       hint.textContent = '';
       go.textContent = ru`Готово`;
       go.disabled = false;
