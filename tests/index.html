@@ -620,10 +620,94 @@
     const saved = S.d; S.newGame('Проверка', 'ugolek'); S.d.level = 20;
     try {
       const team = lvl => ['ugolek', 'kapelka', 'mshonok'].map((sid, i) => S.makeSpirit(sid, lvl, 'bt' + sid + lvl + i));
+      S.d.spirits.push(...team(15)); // 4.16: хранитель — по силе сильнейших духов игрока
       const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Капище' });
       ok(!Rules.duelWinnable(team(1), g.team, SHRINE_TIERS[3].speed), 'команда 1-го уровня против Старейшины — нет');
       ok(Rules.duelWinnable(team(15), g.team, SHRINE_TIERS[3].speed), 'сильная команда — да');
+      // 4.16: здоровье на входе в бой — израненная команда не «побеждает» того, кого здоровая одолела бы
+      const t15 = team(15), low = Object.fromEntries(t15.map(sp => [sp.uid, 0.02]));
+      ok(!Rules.duelWinnable(t15, g.team, SHRINE_TIERS[3].speed, low), 'с 2% здоровья — нет');
+      ok(Rules.duelWinnable(t15, g.team, SHRINE_TIERS[3].speed, Object.fromEntries(t15.map(sp => [sp.uid, 1]))), 'здоровая — да');
     } finally { S.d = saved; }
+  });
+  // 4.16: хранитель и прислужник — по силе духов игрока, а не по его уровню
+  test('Капища и вторжения: сила соперника — от силы духов игрока (4.16)', () => {
+    const saved = S.d; S.newGame('Сила', 'ugolek'); S.d.level = 30;
+    try {
+      const pw = t => t.reduce((a, x) => a + S.power(x), 0);
+      const setTeam = lvl => { S.d.spirits = ['kostrovik', 'kapelka', 'mshonok', 'ugolek'].map((sid, i) => S.makeSpirit(sid, i < 3 ? lvl : 1, 'pw' + sid + lvl)); };
+      setTeam(10);
+      const top10 = W.topPower(); near(top10 * 3, pw(S.d.spirits.slice(0, 3)), 1, 'треть суммы трёх сильнейших');
+      const g10 = [1, 2, 3].map(t => W.guardian({ id: 'osm:n4242', tier: t }));
+      setTeam(30);
+      const top30 = W.topPower();
+      const g30 = [1, 2, 3].map(t => W.guardian({ id: 'osm:n4242', tier: t }));
+      ok(top30 > top10 * 2, 'сильнее духи — выше ориентир');
+      [1, 2, 3].forEach(t => {
+        ok(pw(g30[t - 1].team) > pw(g10[t - 1].team) * 1.8, `хранитель ${t}-й ступени растёт вместе с игроком`);
+        near(pw(g30[t - 1].team) / (top30 * 3), SHRINE_TIERS[t].pow, SHRINE_TIERS[t].pow * 0.2, `сила хранителя ${t}-й ступени — ${SHRINE_TIERS[t].pow} от силы игрока`);
+        ok(g30[t - 1].team.every(x => x.lvl >= 1 && x.lvl <= 40), 'уровни духов хранителя — от 1 до 40');
+      });
+      ok(SHRINE_TIERS[3].speed < SHRINE_TIERS[1].speed && SHRINE_TIERS[3].shield > SHRINE_TIERS[1].shield, 'Старейшина бьёт чаще Ученика и чаще ставит щиты');
+      ok(g30.every((g, i) => g.speed > 0 && g.speed <= SHRINE_TIERS[i + 1].speed), 'темп хранителя — не реже обычного для ступени');
+      // выбранная команда соперника не ослабляет: ориентир — сильнейшие духи, а не команда
+      S.d.team = [S.d.spirits[3].uid];
+      eq(pw(W.guardian({ id: 'osm:n4242', tier: 2 }).team), pw(g30[1].team), 'слабая команда — тот же хранитель');
+      const inv = W.grunt({ invId: 'osm:n9:77' });
+      ok(inv.team.every(x => x.dark && SP[x.sid].el === inv.el), 'отряд — омрачённые одной стихии');
+      near(pw(inv.team) / (top30 * 3), Duel.FOE.invasion.pow, Duel.FOE.invasion.pow * 0.2, 'сила отряда — от силы игрока');
+      // сильнейший без сил — соперник слабее, но не ниже 3/4 от силы по всем духам
+      S.d.team = []; S.d.spirits[0].ko = Date.now();
+      const koTop = W.topPower(); delete S.d.spirits[0].ko;
+      ok(koTop < top30 && koTop >= top30 * 0.75 - 1e-9, 'без сил — соперник слабее, но не ниже 3/4');
+      // у игрока легенды 40-го уровня: обычным видам силы не хватает — хранитель бьёт чаще
+      S.d.spirits = ['zharptica', 'koschey', 'gorynych'].map((sid, i) => S.makeSpirit(sid, 40, 'lg' + i, { ivMin: 15 }));
+      const gL = W.guardian({ id: 'osm:n4242', tier: 1 });
+      ok(gL.speed < SHRINE_TIERS[1].speed && gL.speed >= SHRINE_TIERS[1].speed * 0.5, 'не хватает силы — чаще бьёт, но не больше чем вдвое');
+      ok(gL.team.every(x => !SP[x.sid].legend && x.lvl <= 40), 'без легенд и не выше 40 уровня');
+      // новичок с одним духом: пустые места — ноль, хранитель ему по силам
+      S.d.spirits = [S.makeSpirit('ugolek', 5, 'solo')]; S.d.team = [];
+      const g1 = W.guardian({ id: 'osm:n4243', tier: 1 });
+      ok(Rules.duelWinnable(S.d.spirits, g1.team, SHRINE_TIERS[1].speed), 'одинокий дух новичка может победить Ученика');
+    } finally { S.d = saved; }
+  });
+  test('Разломы: босс — по уровню Ловчего, совместный бой нужен (4.16)', () => {
+    const lv = S.d.level;
+    try {
+      const b = (tier, rl) => Raid.bossStats({ tier, boss: 'zharptica', rl });
+      ok(b(3, 30).atk > b(3, 10).atk * 1.5 && b(3, 30).pw > b(3, 10).pw, 'сильнее с уровнем Ловчего');
+      ok(b(3, 20).hp > b(2, 20).hp && b(2, 20).hp > b(1, 20).hp && b(3, 20).pw > b(2, 20).pw && b(2, 20).pw > b(1, 20).pw, 'ступени — по порядку');
+      ok(b(2, 40).hp < b(2, 30).hp * 1.2, 'после 30-го уровня растёт медленнее');
+      S.d.level = 17; eq(Raid.bossStats({ tier: 2, boss: 'zharptica' }).rl, 17, 'без rl — по уровню игрока');
+      eq(b(1, 99).rl, 40, 'не выше 40');
+      eq(Raid.coopHp(1), 1); near(Raid.coopHp(3), 1 + 2 * Raid.COOP, 1e-9);
+      ok(Raid.coopHp(3) / 3 < 0.75, 'втроём на каждого — меньше трёх четвертей здоровья босса');
+    } finally { S.d.level = lv; }
+  });
+  test('Усталость духа: бои подряд срезают предел здоровья, отдых возвращает (4.16)', () => {
+    const T = Rules.HP.TIRED, t0 = 2e12, sp = { uid: 'tr1', sid: 'ugolek', lvl: 10, iv: [5, 5, 5] };
+    for (let i = 0; i < T.FREE; i++) S.tire(sp, 1, t0);
+    eq(S.hpCap(sp, t0), 1, `первые ${T.FREE} боя — даром`); eq(S.hpNow(sp, t0), 1);
+    S.tire(sp, 1, t0);
+    near(S.hpCap(sp, t0), 1 - T.STEP, 1e-9, 'следующий срезает предел'); near(S.hpNow(sp, t0), 1 - T.STEP, 1e-9, 'здоровье не выше предела');
+    for (let i = 0; i < 20; i++) S.tire(sp, 1, t0);
+    eq(S.hpCap(sp, t0), T.MIN, 'не ниже MIN');
+    const h = T.REST * 3600000;
+    near(S.tired(sp, t0 + 2 * h), T.FREE + 21 - 2, 1e-6, 'очко уходит за REST часов');
+    eq(S.hpCap(sp, t0 + (21 + 1) * h), 1, 'отдохнул');
+    ok(S.restLeft(sp, t0) > 0 && S.restLeft(sp, t0 + 30 * h) === 0, 'сколько отдыхать');
+    // лечение усталость не снимает
+    const keep = S.d;
+    S.d = JSON.parse(JSON.stringify(keep)); S.d.items.herb = 3;
+    try {
+      const x = S.makeSpirit('ugolek', 10, 'tr2'); S.d.spirits.push(x);
+      for (let i = 0; i < T.FREE + 2; i++) S.tire(x, 1);
+      const cap = S.hpCap(x);
+      S.setHp(x, cap - 0.1);
+      eq(S.heal(x, 'herb'), null); near(S.hpNow(x), cap, 0.002, 'подорожник — только до предела');
+      ok(/устал/.test(S.canHeal(x, 'herb')), 'выше предела не лечит');
+      eq(S.d.items.herb, 2, 'лишнее не потрачено');
+    } finally { S.d = keep; }
   });
   test('Совместный разлом: здоровье босса и бонусы', () => {
     ok(GameCore.ROOM_ALPHA.length === 32 && !/[01IO]/.test(GameCore.ROOM_ALPHA), 'алфавит кода без похожих символов');
@@ -1054,6 +1138,30 @@
     await refuse(A, 'heal', { uid, k: 'charm' }, /не лечат/);
     await must(A, 'duelStart', { shrine });
   });
+  atest('Сервер: усталость после боёв подряд, босс разлома — по уровню Ловчего (4.16)', async () => {
+    const A = await newPlayer('utr', 55.735, 37.615, 'Усталый'); A.data.spirits.forEach(x => { x.lvl = 5; }); A.data.level = 3;
+    const hour = Math.floor(Date.now() / 3600000), T = Rules.HP.TIRED;
+    const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 52000);
+    const shrine = { id, lat: A.lat, lng: A.lng, name: 'Вяз' }, uid = A.data.spirits[0].uid;
+    for (let i = 0; i < T.FREE; i++) { await must(A, 'duelStart', { shrine }); await must(A, 'duelEnd', { win: false, hp: { [uid]: 1 } }); }
+    eq(asPlayer(A, () => S.hpCap(A.data.spirits[0])), 1, `после ${T.FREE} боёв — ещё не устал`);
+    await must(A, 'duelStart', { shrine }); await must(A, 'duelEnd', { win: false, hp: { [uid]: 1 } });
+    near(A.data.spirits[0].tired, T.FREE + 1, 0.01, 'каждый бой — очко усталости');
+    near(asPlayer(A, () => S.hpNow(A.data.spirits[0])), 1 - T.STEP, 0.01, 'здоровье — не выше предела');
+    A.data.items.herb = 2;
+    await refuse(A, 'heal', { uid, k: 'herb' }, /устал/, 'лечение не снимает усталость');
+    eq(A.data.items.herb, 2);
+    // победу оценивают по здоровью на входе в бой
+    await must(A, 'duelStart', { shrine }); near(A.srv.battle.hp0[uid], 1 - T.STEP, 0.01, 'здоровье на входе запомнено');
+    await must(A, 'duelEnd', { win: false });
+    // разлом: босс — по уровню Ловчего, сервер запоминает его и сверяет с ним урон
+    A.data.level = 12;
+    const rid = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), 53000);
+    const st = await must(A, 'raidStart', { rift: { id: rid, lat: A.lat, lng: A.lng, name: 'Мельница' } });
+    eq(st.rl, 12, 'уровень босса — уровень Ловчего'); eq(A.srv.battle.rl, 12);
+    await must(A, 'raidEnd', { win: false });
+    ok(A.data.spirits[0].tired > T.FREE + 2, 'разлом тоже утомляет');
+  });
   atest('Сервер: погода с телефона сверяется с настоящей (4.15)', async () => {
     const pos = { lat: 55.75, lng: 37.62 }, sim = Sky.simulate(pos).key;
     const fake = Object.keys(WEATHER).find(k => k !== sim && k !== 'clear');
@@ -1310,6 +1418,7 @@
     await refuse(B, 'roomJoin', { code: 'ZZZZZ' }, /не найден/);
     const j = await must(B, 'roomJoin', { code: room.code.toLowerCase() });
     eq(j.members.length, 2); ok(!j.isHost); ok(j.members.every(m => !('pid' in m)), 'коды игроков не видны');
+    eq(j.rift.rl, Math.round((A.data.level + B.data.level) / 2), 'босс — по среднему уровню комнаты (4.16)'); near(j.hpMul, Raid.coopHp(2), 1e-9);
     await refuse(B, 'roomStart', { code: room.code }, /только хозяин/);
     // до начала боя союзников на сервере нет: гость не может начать бой издалека
     await refuse(B, 'raidStart', { rift, coop: { code: room.code } }, /не найден/);
@@ -1318,7 +1427,7 @@
     // старый способ «у меня три союзника» больше не работает: без комнаты — одиночный бой, нужно быть рядом
     await refuse(B, 'raidStart', { rift, coop: { host: false, allies: 3 } }, /далеко/);
     await must(B, 'raidStart', { rift: { id: 'osm:n1', lat: 0, lng: 0 }, coop: { code: room.code } });
-    eq(B.srv.battle.coop.allies, 1, 'союзников — по комнате'); eq(B.srv.battle.rid, asPlayer(A, () => W.riftFor({ id, lat: A.lat, lng: A.lng }, 0, hour).id), 'разлом — из комнаты');
+    eq(B.srv.battle.coop.allies, 1, 'союзников — по комнате'); eq(B.srv.battle.rl, j.rift.rl, 'уровень босса — как в комнате'); eq(B.srv.battle.rid, asPlayer(A, () => W.riftFor({ id, lat: A.lat, lng: A.lng }, 0, hour).id), 'разлом — из комнаты');
     B.srv.battle.start -= 85000;
     const r = await must(B, 'raidEnd', { win: true });
     ok(r.win && r.allies === 1, 'победа гостя засчитана с союзником');

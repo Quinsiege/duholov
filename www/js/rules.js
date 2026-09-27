@@ -109,7 +109,10 @@ const Rules = {
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
   // без сил (здоровье 0) — в бой не идёт и поднимается сам на BACK через KO_H часов (по редкости духа: от 2 до 24);
   // 4.15.1: Мёртвая вода сокращает ожидание на ITEMS.deadwater.revive часов, Живая вода духа без сил не поднимает
-  HP: { REGEN: 0.1, KO_H: { 1: 2, 2: 5, 3: 9, 4: 15, 5: 24 }, BACK: 0.1 },
+  // 4.16: усталость — каждый бой (разлом, Капище, вторжение) даёт духам команды очко; очко уходит за REST часов отдыха.
+  // Первые FREE боёв подряд даются даром, дальше каждое очко срезает STEP от предела здоровья (не ниже MIN) — ни лечение,
+  // ни время выше предела не поднимут: одной командой весь день не провоевать, нужны сменщики
+  HP: { REGEN: 0.1, KO_H: { 1: 2, 2: 5, 3: 9, 4: 15, 5: 24 }, BACK: 0.1, TIRED: { FREE: 3, STEP: 0.15, MIN: 0.4, REST: 1 } },
   koMs(sp) { return (this.HP.KO_H[(SP[sp.sid] || {}).rar] || 2) * 3600000; },
   // Товар дня: один из припасов со скидкой 40%, купить можно один раз в день
   shopDeal(day) {
@@ -196,17 +199,19 @@ const Rules = {
   // остаться «здоровее» (у кого больше доля здоровья). Всё считается в пользу игрока: его урон — максимальный (как в
   // duelMaxDamage), урон соперника — только быстрые удары, слабейшие из возможных; щиты и приёмы соперника не считаются.
   // Честный бой не отклоняется, а слабая команда против сильного соперника «победить» не может.
-  duelWinnable(team, foe, speed) {
+  // 4.16: hp0 — здоровье духов на входе в бой ({ uid: доля }, с раной и усталостью); нет — считаем здоровыми
+  duelWinnable(team, foe, speed, hp0) {
     if (!team.length || !foe.length) return false;
-    const me = team.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el })), fo = foe.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el }));
+    const h0 = sp => hp0 && Number.isFinite(+hp0[sp.uid]) ? U.clamp(+hp0[sp.uid], 0, 1) : 1;
+    const me = team.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el, h: h0(sp) })), fo = foe.map(sp => ({ x: S.battle(sp), el: SP[sp.sid].el }));
     const hit = Math.min(...fo.flatMap(f => me.map(m => Raid.dmg(f.x.atk, m.x.def, Duel.FAST, f.el, m.el))));
     const foeDps = hit / ((+speed || 0.85) + 0.25), myDps = this.duelMaxDamage(team, foe, 1);
-    const survive = me.reduce((a, m) => a + m.x.hp * Duel.HPX, 0) / foeDps; // дольше команда не проживёт
+    const survive = me.reduce((a, m) => a + m.x.hp * Duel.HPX * m.h, 0) / foeDps; // дольше команда не проживёт
     const kill = this.duelFoeHp(foe) / myDps;                               // быстрее соперника не убить
     if (kill <= survive) return true;
     if (survive < Duel.TIME) return false;
     const meMax = Math.max(...me.map(m => m.x.hp * Duel.HPX)), foeMin = Math.min(...fo.map(f => f.x.hp * Duel.HPX));
-    const meShare = Math.max(0, 1 - foeDps * Duel.TIME / (me.length * meMax));
+    const meShare = Math.max(0, me.reduce((a, m) => a + m.h, 0) / me.length - foeDps * Duel.TIME / (me.length * meMax));
     const foeShare = Math.max(0, 1 - myDps * Duel.TIME / (fo.length * foeMin));
     return meShare >= foeShare;
   },

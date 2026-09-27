@@ -7,7 +7,9 @@ const Duel = {
   st: null,
   FAST: 6, CHARGE: 65, COST: 50, TIME: 180, HPX: 3, SWITCH_CD: 25,
   // соперники без уровня Капища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
-  FOE: { invasion: { speed: 0.75, shield: 0.5 }, spar: { speed: 0.72, shield: 0.6 } },
+  // 4.16: прислужник Нави — pow: сила его омрачённых духов от силы духов игрока (W.grunt), темп ударов 0,52 (был 0,75,
+  // вторжения выигрывались 99 из 100); ориентир — ~70% побед
+  FOE: { invasion: { speed: 0.52, shield: 0.5, pow: 1.2 }, spar: { speed: 0.72, shield: 0.6 } },
 
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
@@ -54,7 +56,8 @@ const Duel = {
       UI.closeScreen(scr);
       // защитники дружины — вместо хранителя
       const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
-      this.start({ ...e, kind: 'shrine', held: r.clan || null }, foe, S.team());
+      // 4.16: темп хранителя — свой (W.foeSpeed), у защитников дружины — обычный для ступени
+      this.start({ ...e, kind: 'shrine', held: r.clan || null, T: r.foe ? T : { ...T, speed: g.speed } }, foe, S.team());
     };
     const def = scr.querySelector('.defend-go');
     if (def) def.onclick = () => Clans.defend(e, () => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
@@ -109,7 +112,7 @@ const Duel = {
       if (!e2.target.closest('.duel-go')) return;
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
-      this.start({ ...e, kind: 'invasion', tier: 1, T: this.FOE.invasion }, g, S.team());
+      this.start({ ...e, kind: 'invasion', tier: 1, T: { ...this.FOE.invasion, speed: g.speed } }, g, S.team());
     });
   },
 

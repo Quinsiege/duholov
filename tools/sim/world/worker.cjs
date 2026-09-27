@@ -4,6 +4,7 @@
    сюда приходят ответами на запросы env (как база у настоящего сервера). */
 const { parentPort, workerData } = require('worker_threads');
 const G = require('./engine.cjs').load();
+const BT = require('./battle.cjs');
 const { GameCore, S, W, U, SP, SPECIES, Rules, Raid, Duel, League, SHRINE_TIERS, TUT, STORY, CLAN_LEVEL, ITEMS } = G;
 
 // ---------- связь с главным потоком ----------
@@ -34,7 +35,9 @@ function newStats() {
     hatch: 0, evolve: 0, power: 0, released: 0, ko: 0, deadUsed: 0, heals: 0, tasks: 0, quests: 0, purified: 0, defend: 0, discarded: 0, play: 0, days: 0,
     rub: 0, zlatIn: 0, zlatSpent: {}, aucSold: 0, aucBought: 0, aucSparksIn: 0, aucZlatIn: 0, aucSparksOut: 0, aucZlatOut: 0, giftsSent: 0, giftsOpened: 0, friends: 0, exch: 0, fails: {},
     // 4.16 экономика: откуда пришли и куда ушли искры и златники (по действиям), сколько предметов пришло, переполнение сумки, снимки по дням
-    eco: { sparksIn: {}, sparksOut: {}, zlatFree: {}, itemsIn: {}, amuletsIn: 0, bagOverMax: 0, parcelMax: 0, lost: 0, days: [] } };
+    eco: { sparksIn: {}, sparksOut: {}, zlatFree: {}, itemsIn: {}, amuletsIn: 0, bagOverMax: 0, parcelMax: 0, lost: 0, days: [] },
+    // 4.16: исходы боёв по ступеням ([победы, поражения]) и сильнейшие духи на каждом новом уровне (для калибровки боёв)
+    bt: { raid: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, duel: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, inv: [0, 0], waters: 0, tiredSkip: 0 }, teamAt: {} };
 }
 // 4.16: учёт экономики по каждому действию (до → после)
 const ITEM_KEYS = Object.keys(ITEMS);
@@ -71,10 +74,11 @@ async function act(type, args = {}) {
   for (const fn of res.after) await fn();
   if (P.data.level > lvl0) {
     const pw = me(() => Math.max(0, ...S.d.spirits.map(x => S.power(x)))); // 4.16: сила сильнейшего духа на каждом уровне
-    for (let l = lvl0 + 1; l <= P.data.level; l++) { D.lvlT[l] = SIM_T; (D.powAt = D.powAt || {})[l] = pw; }
+    for (let l = lvl0 + 1; l <= P.data.level; l++) { D.lvlT[l] = SIM_T; (D.powAt = D.powAt || {})[l] = pw; if (lvl0) D.teamAt[l] = snapTeam(); }
   }
   return res.results[0];
 }
+const snapTeam = () => me(() => [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 3).map(x => ({ sid: x.sid, lvl: x.lvl, iv: x.iv, amulet: x.amulet || null, move2: !!x.move2, dark: !!x.dark, purified: !!x.purified })));
 const pick = dist => { let x = Math.random(); for (const [v, w] of dist) { if ((x -= w) < 0) return v; } return dist[dist.length - 1][0]; };
 const xpAdd = (src, before) => { const d = P.data.xp - before; if (d > 0) D.xpBy[src] = (D.xpBy[src] || 0) + d; };
 const spend = (what, n) => { D.zlatSpent[what] = (D.zlatSpent[what] || 0) + n; };
@@ -110,9 +114,13 @@ async function heal() {
       }
       continue;
     }
-    if (h < 0.7) {
-      const k = h < 0.35 && it.brew > 0 ? 'brew' : it.water > 0 && h < 0.45 ? 'water' : it.herb > 0 ? 'herb' : it.brew > 0 ? 'brew' : it.water > 0 ? 'water' : null;
-      if (k && await act('heal', { uid, k })) D.heals++;
+    // перед боем лечит до ~85% (до 3 предметов на духа); 4.16: усталого выше предела не вылечить — лечебное не тратит
+    for (let n = 0; n < 3; n++) {
+      const hh = me(() => S.hpNow(sp)), cap = me(() => S.hpCap(sp)), it2 = P.data.items;
+      if (!(hh < 0.85 && hh < cap - 0.05)) break;
+      const k = hh < 0.35 && it2.brew > 0 ? 'brew' : it2.water > 0 && hh < 0.45 ? 'water' : it2.herb > 0 ? 'herb' : it2.brew > 0 ? 'brew' : it2.water > 0 ? 'water' : null;
+      if (!k || !await act('heal', { uid, k })) break;
+      D.heals++;
     }
   }
 }
@@ -160,56 +168,34 @@ async function buyCharms() {
   if (P.data.sparks >= 2000) await act('shopBuy', { id: 'charm20' });
 }
 
-// ---------- бои: модель исхода (живой игрок выжимает EFF от максимального урона) ----------
-const bat = sp => me(() => S.battle(sp));
+// ---------- бои: модель боя (battle.cjs) — те же удары, щиты, уклоны и таймер, что на экране боя ----------
+// живой игрок: темп ударов, мини-игра приёма, щиты и уклоны — по его мастерству (pr.eff, pr.dodge)
+const skill = () => BT.skillOf(P.pr.eff * (0.85 + Math.random() * 0.3), P.pr.dodge);
+const fighters = tm => tm.map(sp => ({ sp, hpf: me(() => S.hpNow(sp)) }));
 function raidOutcome(tm, rift) {
-  const b = { boss: rift.boss, tier: rift.tier }, T = Raid.TIER[rift.tier], bs = me(() => Raid.bossStats(b)), bel = SP[rift.boss].el;
-  const dps = me(() => Rules.raidMaxDamage(tm, b, 1)) / 1.3 * P.pr.eff;
-  let t = 0, dealt = 0; const hp = {};
-  for (const sp of tm) {
-    const x = bat(sp), max = x.hp * 5, cur0 = max * me(() => S.hpNow(sp));
-    const hit = Raid.dmg(bs.atk, x.def, T.pw, bel, SP[sp.sid].el) * (P.pr.dodge * 0.2 + (1 - P.pr.dodge));
-    const life = cur0 / (hit / 3.8), need = (T.hp - dealt) / dps, use = Math.min(life, need, 90 - t);
-    t += use; dealt += dps * use;
-    hp[sp.uid] = Math.max(0, (cur0 - hit / 3.8 * use) / max);
-    if (dealt >= T.hp || t >= 90) break;
-  }
-  tm.forEach(sp => { if (!(sp.uid in hp)) hp[sp.uid] = me(() => S.hpNow(sp)); });
-  return { win: dealt >= T.hp, t: Math.max(3, t), hp };
+  return me(() => BT.raid(G, [{ team: fighters(tm), sk: skill(), waterLeft: P.data.items.water || 0 }], rift, 1));
 }
-function duelOutcome(tm, foe, speed) {
-  const myDps = me(() => Rules.duelMaxDamage(tm, foe, 1)) / 1.3 * P.pr.eff, foeHp = me(() => Rules.duelFoeHp(foe));
-  const fs = foe.map(f => ({ x: bat(f), el: SP[f.sid].el }));
-  let t = 0, dealt = 0; const hp = {};
-  for (const sp of tm) {
-    const x = bat(sp), max = x.hp * Duel.HPX, cur0 = max * me(() => S.hpNow(sp)), el = SP[sp.sid].el;
-    const fdps = fs.reduce((a, f) => a + Raid.dmg(f.x.atk, x.def, Duel.FAST, f.el, el), 0) / fs.length * 1.35 / (speed + 0.125);
-    const life = cur0 / fdps, need = (foeHp - dealt) / myDps, use = Math.min(life, need, Duel.TIME - t);
-    t += use; dealt += myDps * use;
-    hp[sp.uid] = Math.max(0, (cur0 - fdps * use) / max);
-    if (dealt >= foeHp || t >= Duel.TIME) break;
-  }
-  tm.forEach(sp => { if (!(sp.uid in hp)) hp[sp.uid] = me(() => S.hpNow(sp)); });
-  let win = dealt >= foeHp;
-  if (!win && t >= Duel.TIME) { const mine = tm.reduce((a, sp) => a + hp[sp.uid], 0) / tm.length; win = mine > 1 - dealt / foeHp; }
-  return { win, t: Math.max(6, t), hp };
+function duelOutcome(tm, foe, speed, shield) {
+  return me(() => BT.duel(G, fighters(tm), foe, { speed, shield: shield == null ? 0.5 : shield }, skill()));
 }
 const koCount = hp => Object.values(hp).filter(v => v <= 0).length;
+const teamPow = tm => tm.reduce((a, sp) => a + me(() => S.power(sp)), 0);
 
 async function raidAt(p, far) {
   const rift = me(() => W.riftFor(p, 0, Math.floor(SIM_T / 3600000)));
   if (!rift || P.data.rifts[rift.id] || me(() => Rules.dayUsed(S.d, 'raids')) >= 6) return false;
+  if (rift.tier >= (P.today.raidLost || 9)) return false; // сегодня уже проиграл такой ступени — не лезет
   await heal(); await pickTeam();
   if (!ready()) return false;
-  const o = raidOutcome(team(), rift);
-  if (!o.win && P.today.raidTry >= 1) return false;
   if (!await act('raidStart', { rift: { id: p.id, lat: p.lat, lng: p.lng, name: p.name }, far: !!far })) return false;
+  const o = raidOutcome(team(), { ...rift, rl: P.srv.battle && P.srv.battle.rl });
+  for (let k = 0; k < o.waters; k++) if (await act('water')) D.bt.waters++;
   P.today.raidTry++; if (far) D.far++;
   adv(o.t + Rules.COUNTDOWN);
   const xp0 = P.data.xp, e = await act('raidEnd', { win: o.win, hp: o.hp });
   D.ko += koCount(o.hp);
-  if (e && e.win) { xpAdd('разлом', xp0); D.raids[0]++; P.today.raids++; await encounter({ kind: 'raid' }, rift.boss); return true; }
-  D.raids[1]++; return false;
+  if (e && e.win) { xpAdd('разлом', xp0); D.raids[0]++; D.bt.raid[rift.tier][0]++; P.today.raids++; await encounter({ kind: 'raid' }, rift.boss); return true; }
+  D.raids[1]++; D.bt.raid[rift.tier][1]++; P.today.raidLost = Math.min(P.today.raidLost || 9, rift.tier); return false;
 }
 async function duelAt(p) {
   if (P.data.level < 3 || P.today.duels >= P.pr.duels) return;
@@ -222,13 +208,15 @@ async function duelAt(p) {
   }
   await heal(); await pickTeam();
   if (!ready()) return;
-  const foe = hold ? GameCore.holdTeam(hold) : me(() => W.guardian(e).team);
-  const o = duelOutcome(team(), foe, SHRINE_TIERS[e.tier].speed);
-  if (!o.win) return; // видно по силе соперника — к сильному не идёт
+  const g = hold ? null : me(() => W.guardian(e)), foe = hold ? GameCore.holdTeam(hold) : g.team;
+  // сила соперника видна заранее: к явно сильному (в полтора раза и больше) не идёт
+  if (teamPow(foe) > teamPow(team()) * 1.5) return;
   if (!await act('duelStart', { shrine: { id: p.id, lat: p.lat, lng: p.lng, name: p.name } })) return;
+  const T = SHRINE_TIERS[e.tier], o = duelOutcome(team(), foe, g ? g.speed : T.speed, T.shield);
   adv(o.t + Rules.COUNTDOWN);
   const xp0 = P.data.xp, r = await act('duelEnd', { win: o.win, hp: o.hp });
   D.ko += koCount(o.hp);
+  if (!hold) D.bt.duel[e.tier][r && r.win ? 0 : 1]++;
   if (r && r.win) { xpAdd('Капище', xp0); D.duels[0]++; P.today.duels++; if (r.freed) D.freed++; if (P.data.clan) await defendAt(p); }
   else D.duels[1]++;
 }
@@ -242,11 +230,14 @@ async function invasionAt(p) {
   await heal(); await pickTeam();
   if (!ready()) return;
   const e = me(() => W.springFor(p, 0)); if (!e.invaded) return;
-  const g = me(() => W.grunt(e)), o = duelOutcome(team(), g.team, Duel.FOE.invasion.speed);
+  const g = me(() => W.grunt(e));
+  if (teamPow(g.team) > teamPow(team()) * 1.5) return; // отряд явно сильнее — не идёт
   if (!await act('invStart', { spring: { id: p.id, lat: p.lat, lng: p.lng, name: p.name } })) return;
+  const o = duelOutcome(team(), g.team, g.speed, Duel.FOE.invasion.shield);
   adv(o.t + Rules.COUNTDOWN);
   const xp0 = P.data.xp, r = await act('invEnd', { win: o.win, hp: o.hp });
   D.ko += koCount(o.hp);
+  D.bt.inv[r && r.win ? 0 : 1]++;
   if (r && r.win) {
     xpAdd('вторжение', xp0); D.inv[0]++; P.today.inv++;
     const n0 = P.data.spirits.length;
@@ -290,7 +281,7 @@ async function walk(km) {
   }
   if (pts.length) await act('move', { pts });
 }
-// дальние разломы (Дальний пропуск): у Капищ в 5 км
+// дальние разломы (Дальний пропуск): у Капищ в 5 км; ступень — самая высокая, какую сегодня ещё не проигрывал (легенды — изредка)
 async function farRaids() {
   const want = P.pr.raids - P.today.raids;
   if (want <= 0) return;
@@ -300,9 +291,9 @@ async function farRaids() {
     }
     const list = [];
     for (const p of workerData.shrines) { if (U.dist(P.lat, P.lng, p.lat, p.lng) < 4800 && me(() => { const r = W.riftFor(p, 0, Math.floor(SIM_T / 3600000)); return r && !S.d.rifts[r.id]; })) list.push(p); if (list.length > 40) break; }
-    // лучший разлом, который реально победить
+    const cap = Math.min((P.today.raidLost || 4) - 1, Math.random() < 0.25 ? 3 : 2);
     let best = null;
-    for (const p of list) { const r = me(() => W.riftFor(p, 0, Math.floor(SIM_T / 3600000))); const o = raidOutcome(team(), r); if (o.win && (!best || r.tier > best.r.tier)) best = { p, r }; }
+    for (const p of list) { const r = me(() => W.riftFor(p, 0, Math.floor(SIM_T / 3600000))); if (r.tier <= cap && (!best || r.tier > best.r.tier)) best = { p, r }; }
     if (!best || !await raidAt(best.p, true)) return;
   }
 }

@@ -132,21 +132,21 @@ async function buyCharms() {
 // ---------- бои: модель исхода ----------
 const bat = sp => me(() => S.battle(sp));
 function raidOutcome(tm, rift) {
-  const b = { boss: rift.boss, tier: rift.tier }, T = Raid.TIER[rift.tier], bs = me(() => Raid.bossStats(b)), bel = SP[rift.boss].el;
+  const b = { boss: rift.boss, tier: rift.tier }, bs = me(() => Raid.bossStats(b)), bel = SP[rift.boss].el; // 4.16: босс — по уровню Ловчего
   const dps = me(() => Rules.raidMaxDamage(tm, b, 1)) / 1.3 * CFG.EFF;
   // бойцы по очереди: каждый держится, пока его не выбьет босс
   let t = 0, dealt = 0; const hp = {};
   for (const sp of tm) {
     const x = bat(sp), max = x.hp * 5, cur0 = max * me(() => S.hpNow(sp));
-    const hit = Raid.dmg(bs.atk, x.def, T.pw, bel, SP[sp.sid].el) * (CFG.DODGE * 0.2 + (1 - CFG.DODGE)); // средний удар с учётом уворотов
+    const hit = Raid.dmg(bs.atk, x.def, bs.pw, bel, SP[sp.sid].el) * (CFG.DODGE * 0.2 + (1 - CFG.DODGE)); // средний удар с учётом уворотов
     const life = cur0 / (hit / 3.8); // секунд до падения
-    const need = (T.hp - dealt) / dps, use = Math.min(life, need, 90 - t);
+    const need = (bs.hp - dealt) / dps, use = Math.min(life, need, 90 - t);
     t += use; dealt += dps * use;
     hp[sp.uid] = Math.max(0, (cur0 - hit / 3.8 * use) / max);
-    if (dealt >= T.hp || t >= 90) break;
+    if (dealt >= bs.hp || t >= 90) break;
   }
   tm.forEach(sp => { if (!(sp.uid in hp)) hp[sp.uid] = me(() => S.hpNow(sp)); });
-  return { win: dealt >= T.hp, t: Math.max(3, t), hp };
+  return { win: dealt >= bs.hp, t: Math.max(3, t), hp };
 }
 function duelOutcome(tm, foe, speed) {
   const myDps = me(() => Rules.duelMaxDamage(tm, foe, 1)) / 1.3 * CFG.EFF;

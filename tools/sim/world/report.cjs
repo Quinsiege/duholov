@@ -44,6 +44,16 @@ const out = {
     return o; })(),
   whales: P.filter(p => p.don === 3).sort((a, b) => (a.d40 || 999) - (b.d40 || 999)).slice(0, 15).map(row),
   notReached: P.filter(p => !p.t40).map(p => p.s.lvl).reduce((o, l) => { o[l] = (o[l] || 0) + 1; return o; }, {}),
+  // 4.16: бои — доля побед по ступеням (Капища — только с хранителем, без защитников дружин), падения и лечение на игрока в день
+  battles: (() => {
+    const o = {}, pct = ([w, l]) => w + l ? `${Math.round(w / (w + l) * 100)}% из ${w + l}` : '—';
+    for (const a of [...Object.keys(byArch), 'все']) {
+      const g = P.filter(p => (a === 'все' || p.arch === a) && p.st.bt), sum = f => g.reduce((x, p) => [x[0] + f(p)[0], x[1] + f(p)[1]], [0, 0]), days = g.reduce((x, p) => x + p.st.days, 0) || 1;
+      o[a] = { raid: [1, 2, 3].map(t => pct(sum(p => p.st.bt.raid[t]))), duel: [1, 2, 3].map(t => pct(sum(p => p.st.bt.duel[t]))), inv: pct(sum(p => p.st.bt.inv)),
+        koDay: +(g.reduce((x, p) => x + p.st.ko, 0) / days).toFixed(2), healsDay: +(g.reduce((x, p) => x + p.st.heals, 0) / days).toFixed(2), deadDay: +(g.reduce((x, p) => x + p.st.deadUsed, 0) / days).toFixed(3), watersDay: +(g.reduce((x, p) => x + p.st.bt.waters, 0) / days).toFixed(2) };
+    }
+    return o;
+  })(),
 };
 fs.writeFileSync(path.join(__dirname, 'out', 'report.json'), JSON.stringify(out, null, 1));
-console.log(JSON.stringify({ reachedN: out.reachedN, top5: out.top20.slice(0, 5).map(x => [x.place, x.name, x.arch, x.don, x.rub, x.d40, x.time40]), me: [out.me.place, out.me.d40], byArch: Object.fromEntries(Object.entries(byArch).map(([k, v]) => [k, [v.n, v.reached, v.medDay40]])), byDon: Object.fromEntries(Object.entries(byDon).map(([k, v]) => [k, [v.n, v.reached, v.medDay40, v.rubAvg]])) }, null, 1));
+console.log(JSON.stringify({ reachedN: out.reachedN, top5: out.top20.slice(0, 5).map(x => [x.place, x.name, x.arch, x.don, x.rub, x.d40, x.time40]), me: [out.me.place, out.me.d40], byArch: Object.fromEntries(Object.entries(byArch).map(([k, v]) => [k, [v.n, v.reached, v.medDay40]])), byDon: Object.fromEntries(Object.entries(byDon).map(([k, v]) => [k, [v.n, v.reached, v.medDay40, v.rubAvg]])), battles: out.battles }, null, 1));
