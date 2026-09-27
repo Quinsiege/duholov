@@ -277,6 +277,13 @@ const UI = {
     el.querySelector('.sp-t').textContent = t;
     el.querySelector('.sp-s').textContent = s;
   },
+  // 4.20: плашка над картой, пока Ловчий движется быстрее бега (kmh = 0 — убрать)
+  speedWarn(kmh) {
+    let el = document.getElementById('speedWarn');
+    if (!kmh) { if (el) el.remove(); return; }
+    if (!el) { el = U.el('<div id="speedWarn" role="alert"></div>'); document.body.appendChild(el); }
+    el.innerHTML = `<b>${ru`Слишком быстро — ${kmh} км/ч`}</b><span>${ru`Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!`}</span>`;
+  },
   setGps(state, acc) {
     const c = U.$('#gpsChip');
     const map = { search: [ru`Ищу GPS…`, 'warn'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };

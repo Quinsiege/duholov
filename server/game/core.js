@@ -107,10 +107,19 @@ const GameCore = {
       if (v > 60 && U.dist(last.lat, last.lng, p.lat, p.lng) > 300) ctx.srv.fastUntil = ctx.now + 60000;
     }
     ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now };
+    if (!(p.acc > Rules.SPEED.ACC)) this.pace(ctx, { lat: p.lat, lng: p.lng, t: ctx.now });
+  },
+  // 4.20: скорость Ловчего — средняя от «якоря» (точка не старше WIN с) до новой точки; быстрее бега — пауза на COOL
+  pace(ctx, q) {
+    const S2 = Rules.SPEED, a = ctx.srv.pace;
+    const v = a ? Rules.speedOf(a, q) : null;
+    if (v != null && v > S2.MAX) { ctx.srv.speedUntil = ctx.now + S2.COOL; ctx.srv.kmh = Math.round(v * 3.6); }
+    if (!a || q.t - a.t > S2.WIN * 1000 || q.t < a.t) ctx.srv.pace = q; // якорь двигается раз в минуту
   },
   here(ctx) {
     this.need(ctx.pos, ru`Нет данных о местоположении — включи GPS`);
     this.need(!(ctx.srv.fastUntil > ctx.now), ru`Похоже, GPS скачет — подожди минуту`);
+    this.need(!(ctx.srv.speedUntil > ctx.now), ru`Слишком быстро — около ${ctx.srv.kmh || 20} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`);
     return ctx.pos;
   },
   near(ctx, lat, lng, max) {
@@ -598,15 +607,16 @@ const GameCore = {
         if (!prev) { prev = q; continue; }
         const d = U.dist(prev.lat, prev.lng, q.lat, q.lng), dt = (q.t - prev.t) / 1000;
         if (d < 4) continue;
-        if (dt > 0 && d / dt < 9) m += d;
+        if (dt > 0 && d / dt <= Rules.SPEED.MAX) m += d; // 4.20: только шагом или бегом (было < 32 км/ч)
+        this.pace(ctx, q);
         prev = q;
       }
-      // не больше, чем можно пройти быстрым шагом с прошлой отметки
+      // не больше, чем можно пробежать с прошлой отметки
       const since = last ? (ctx.now - last.t) / 1000 : 60;
-      m = Math.min(m, since * 9);
+      m = Math.min(m, since * Rules.SPEED.MAX);
       if (prev) ctx.srv.mv = { lat: prev.lat, lng: prev.lng, t: Math.min(prev.t, ctx.now) };
       if (m > 0) S.addDistance(m);
-      return { m };
+      return { m, fast: ctx.srv.speedUntil > ctx.now ? ctx.srv.kmh : 0 };
     },
 
     /* ----- встреча с духом ----- */

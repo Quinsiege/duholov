@@ -1332,6 +1332,21 @@
     await must(A, 'move', { pts: [[55.69, 37.56, Date.now() - 5000, 10], [55.692, 37.56, Date.now(), 10]] });
     eq(A.data.stats.km, km0, 'транспорт не считается');
   });
+  // 4.20: только шагом или бегом — быстрее ~16 км/ч путь не засчитывается, а действия на карте на минуту замирают
+  atest('Сервер: бег засчитывается, самокат и машина — нет, и на карте пауза', async () => {
+    const A = await newPlayer('us', 55.66, 37.55, 'Бегунья');
+    const run = [], t0 = Date.now() - 130000;
+    for (let i = 0; i <= 12; i++) run.push([55.66 + i * 0.000125, 37.55, t0 + i * 5000, 10]); // ≈ 10 км/ч
+    await must(A, 'move', { pts: run });
+    near(A.data.stats.km * 1000, 12 * 13.9, 6, 'бег засчитан');
+    const sp = freeSpring(A, 96000);
+    await must(A, 'spring', { poi: sp }); // бегом — можно
+    const km0 = A.data.stats.km, car = [], t1 = Date.now() - 62000;
+    for (let i = 0; i <= 12; i++) car.push([55.67 + i * 0.00075, 37.55, t1 + i * 5000, 10]); // ≈ 60 км/ч
+    const r = await must(A, 'move', { pts: car });
+    eq(A.data.stats.km, km0, 'на машине путь не считается'); ok(r.fast > 16, 'сервер заметил скорость: ' + r.fast);
+    await refuse(A, 'spring', { poi: freeSpring(A, 96500) }, /Слишком быстро/);
+  });
   atest('Сервер: награда за одобренное место — один раз', async () => {
     const A = await newPlayer('ul', 55.67, 37.55, 'Мила');
     DB.subs.push({ user: 'ul', id: 's1', name: 'Мозаика', status: 'approved' }, { user: 'ul', id: 's2', name: 'Забор', status: 'rejected', reason: 'Неинтересный объект' }, { user: 'ul', id: 's3', name: 'Ждёт', status: 'pending' });
