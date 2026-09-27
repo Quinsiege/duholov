@@ -1175,13 +1175,13 @@ const Art = (() => {
       L.parts.map(p => p.img ? `<img class="stk${p.cls ? ' ' + p.cls : ''}" src="${p.img}" alt="" draggable="false"${p.css ? ` style="${p.css}"` : ''}>` : p.svg.replace(/__L__/g, n)).join('') + '</span>';
   }
   const asImg = (svg, key, ctx) => stack(svg, key, '', ctx);
-  // 4.17: дух — вырезанный стикер: лицевая сторона — рисунок с белой каймой, обратная — голографическая клейкая основа
-  // по его силуэту (радужная фольга, текстура подложки, блёстки, свечение стихии). Крутится пальцем там, где дух крупно (см. ниже)
+  // 4.17: дух — вырезанный стикер: лицевая сторона — рисунок с белой каймой, обратная — клейкая основа по его силуэту,
+  // закрытая защитной плёнкой с отогнутым углом (под ним виден клей; лоскут — тот же силуэт, отражённый через линию сгиба). Крутится пальцем там, где дух крупно (см. ниже)
   const maskCache = {};
   const maskOf = sid => PICS[sid] ? picUrl(sid) : (maskCache[sid] || (maskCache[sid] = toUrl(spirit(sid)).replace(/'/g, '%27')));
-  const sticker = (front, sid) => { const m = maskOf(sid);
+  const sticker = (front, sid) => { const m = maskOf(sid), ms = `-webkit-mask-image:url('${m}');mask-image:url('${m}')`;
     return `<span class="art sp-sticker" style="aspect-ratio:1;--el:${elColor(sid)}"><span class="stc-card"><span class="stc-front">${front.replace('class="art ', 'class="')}</span>` +
-      `<span class="stc-back"><i style="-webkit-mask-image:url('${m}');mask-image:url('${m}')"></i></span></span></span>`; };
+      `<span class="stc-back"><i class="stc-glue" style="${ms}"></i><i class="stc-liner" style="${ms}"></i><span class="stc-flapw"><i class="stc-flap" style="${ms}"></i></span></span></span></span>`; };
   const spiritK = (sid, shiny, dark) => sticker(PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`), sid);
   // Вращение стикера: тянуть — крутится (с разгона докручивается до ближайшей стороны), коснуться — перевернуть.
   // Только крупные духи и не на поимке (там жест — бросок оберега)

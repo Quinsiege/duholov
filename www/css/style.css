@@ -2725,18 +2725,22 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .stc-front, .stc-back { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .stc-front > .art-stack { width: 100%; height: 100%; } /* лицевая сторона — без класса .art: чужие правила .art (анимации экранов) берёт сам стикер */
 .stc-back { transform: rotateY(180deg); filter: drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff) drop-shadow(0 -1.6px 0 #fff) drop-shadow(0 0 4px var(--el)) drop-shadow(0 0 14px var(--el)); }
-.stc-back > i { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  background:
-    radial-gradient(circle at 22% 18%, rgba(148, 163, 184, .55) 0 1.2px, transparent 2px) 0 0 / 21px 17px,
-    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, .95) 0 1.2px, transparent 2px) 0 0 / 15px 27px,
-    repeating-linear-gradient(135deg, rgba(71, 85, 105, .06) 0 1px, transparent 1px 6px),
-    linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .55) 50%, transparent 62%) var(--hp, 50%) 50% / 260% 100%,
-    linear-gradient(125deg, rgba(244, 114, 182, .14), rgba(96, 165, 250, .14) 30%, rgba(45, 212, 191, .12) 50%, rgba(250, 204, 21, .14) 75%, rgba(244, 114, 182, .14)) calc(100% - var(--hp, 50%)) 50% / 150% 150%,
-    linear-gradient(160deg, #e6e8ee, #cfd3dc 45%, #e1e4ea 75%, #c9cdd6);
-  animation: stcHolo 5s ease-in-out infinite alternate; }
-.stc-back > i::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .55), transparent 60%); mix-blend-mode: soft-light; }
-@keyframes stcHolo { from { filter: saturate(1) brightness(.97); } to { filter: saturate(1.4) brightness(1.03); } }
-.calm .stc-back > i { animation: none; }
+/* --pc — линия сгиба x + y = pc (в долях стикера): плёнка отогнута от правого нижнего угла и чуть «дышит» */
+@property --pc { syntax: '<number>'; inherits: true; initial-value: 1.5; }
+.stc-back { --pc: 1.5; animation: stcPeel 3.6s ease-in-out infinite alternate; }
+.stc-back i { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+/* клей под плёнкой: чуть темнее и теплее, влажный блеск */
+.stc-glue { background: radial-gradient(120% 90% at 80% 85%, rgba(255, 255, 255, .5), transparent 55%), linear-gradient(150deg, #d9d6cf, #c6c2ba); }
+/* защитная плёнка: ровная матовая белая, мягкий блик по повороту */
+.stc-liner { background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .45) 50%, transparent 65%) var(--hp, 50%) 50% / 260% 100%, linear-gradient(160deg, #eceef2, #dfe2e8 60%, #e8eaee);
+  clip-path: polygon(0 0, 100% 0, 100% calc((var(--pc) - 1) * 100%), calc((var(--pc) - 1) * 100%) 100%, 0 100%); }
+/* отогнутый лоскут: угол плёнки за линией сгиба, отражённый через неё; тень от лоскута — на обёртке (фильтр до маски не доживает) */
+.stc-flapw { position: absolute; inset: 0; filter: drop-shadow(-2px -2px 3px rgba(15, 23, 42, .35)); }
+.stc-flap { transform-origin: 0 0; transform: translate(calc(var(--pc) * 100%), calc(var(--pc) * 100%)) matrix(0, -1, -1, 0, 0, 0);
+  clip-path: polygon(100% calc((var(--pc) - 1) * 100%), 100% 100%, calc((var(--pc) - 1) * 100%) 100%);
+  background: linear-gradient(to bottom right, #aeb3bd calc((var(--pc) - 1) * 50% + 25%), #eef0f3 calc((var(--pc) - 1) * 50% + 45%), #ffffff 80%, #dfe2e7); }
+@keyframes stcPeel { from { --pc: 1.56; } to { --pc: 1.46; } }
+.calm .stc-back { animation: none; }
 .calm .sp-pic > *, .calm .sp-pic .sp-smoke, .calm .sp-pic .art-blink, .calm .sp-pic .art-aura { animation: none !important; }
 /* блеск кнопок: сдвиг полосы (transform) — тот же проблеск, но без перерисовки кнопки 60 раз в секунду */
 .btn.primary::after, .btn.evolve::after, .btn.danger:not(.ghost)::after { inset: 0 auto 0 0 !important; width: 45% !important; border-radius: 0;
