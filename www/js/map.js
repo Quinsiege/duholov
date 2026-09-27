@@ -1,6 +1,85 @@
 'use strict';
 /* Карта (Leaflet + OSM/CARTO), позиция игрока по GPS или демо-джойстику, маркеры мира */
 
+/* 4.19: опасные места для духов — по данным той же карты (Protomaps, плитки z15 из pmtiles): вода, железная дорога и трамвайные
+   пути, крупные трассы, стройки, ж/д зоны и платформы, болота, аэродромы, военные зоны, карьеры и свалки. Дух в таком месте
+   на карте не показывается; рядом — можно (запасы небольшие: полотно дороги, ширина путей). Без векторной карты — проверки нет. */
+const Hazard = {
+  Z: 15, EXT: 512,          // уровень данных pmtiles и размер плитки в её координатах
+  tiles: new Map(),         // 'x:y' → { st: 'wait' | 'ok' | 'fail', polys, lines }
+  // запасы от линий, м (по середине объекта)
+  RAIL: { rail: 14, light_rail: 12, narrow_gauge: 10, tram: 5, preserved: 8, disused: 6 },
+  ROAD: { motorway: 24, motorway_link: 14, trunk: 20, trunk_link: 12, primary: 9, primary_link: 6, secondary: 7, secondary_link: 5, tertiary: 5 },
+  WATERWAY: { river: 8, canal: 6, stream: 3, drain: 2, ditch: 2 },
+  LAND: new Set(['railway', 'construction', 'military', 'quarry', 'landfill', 'platform', 'brownfield', 'aerodrome', 'runway', 'taxiway', 'apron', 'wetland', 'swamp', 'marsh', 'bog']),
+  view() {
+    if (this._view) return this._view;
+    const t = typeof MapView !== 'undefined' && MapView.tiles; // карта ещё не готова — спросим в следующий раз
+    return (this._view = t && t.views ? t.views.get('') || null : null);
+  },
+  tileOf(lat, lng) {
+    const n = 2 ** this.Z, x = (lng + 180) / 360 * n, r = lat * Math.PI / 180, y = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n;
+    const tx = Math.floor(x), ty = Math.floor(y);
+    return { tx, ty, px: (x - tx) * this.EXT, py: (y - ty) * this.EXT };
+  },
+  // true — опасно, false — можно, null — данные ещё грузятся (дух пока не показываем)
+  bad(lat, lng) {
+    const v = this.view();
+    if (!v) return false;
+    const { tx, ty, px, py } = this.tileOf(lat, lng), key = tx + ':' + ty;
+    let t = this.tiles.get(key);
+    if (!t) { t = { st: 'wait' }; this.tiles.set(key, t); this.fetch(v, tx, ty, t, lat); }
+    if (t.st === 'wait') return null;
+    if (t.st === 'fail') return false;
+    for (const p of t.polys) if (px >= p.b[0] && px <= p.b[2] && py >= p.b[1] && py <= p.b[3] && this.inside(p.rings, px, py)) return true;
+    for (const l of t.lines) if (px >= l.b[0] - l.r && px <= l.b[2] + l.r && py >= l.b[1] - l.r && py <= l.b[3] + l.r && this.near(l.parts, px, py, l.r)) return true;
+    return false;
+  },
+  async fetch(v, tx, ty, t, lat) {
+    try {
+      const data = await v.tileCache.get({ z: this.Z, x: tx, y: ty });
+      const upm = this.EXT / (40075016.686 * Math.cos(lat * Math.PI / 180) / 2 ** this.Z); // единиц плитки на метр
+      const polys = [], lines = [];
+      const box = g => { let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity; g.forEach(r => r.forEach(p => { if (p.x < a) a = p.x; if (p.y < b) b = p.y; if (p.x > c) c = p.x; if (p.y > d) d = p.y; })); return [a, b, c, d]; };
+      const addLine = (f, m) => lines.push({ parts: f.geom, b: box(f.geom), r: m * upm });
+      for (const f of data.get('water') || []) {
+        const k = f.props.kind || '';
+        if (f.geomType === 3 && k !== 'fountain') polys.push({ rings: f.geom, b: box(f.geom) });
+        else if (f.geomType === 2 && this.WATERWAY[k]) addLine(f, this.WATERWAY[k]);
+      }
+      for (const f of data.get('roads') || []) {
+        if (f.geomType !== 2 || f.props.is_tunnel) continue;
+        const k = f.props.kind || '', d = f.props.kind_detail || '';
+        if (k === 'rail' && this.RAIL[d]) addLine(f, this.RAIL[d]);
+        else if ((k === 'major_road' || k === 'highway') && this.ROAD[d]) addLine(f, this.ROAD[d]);
+      }
+      for (const f of data.get('landuse') || []) if (f.geomType === 3 && this.LAND.has(f.props.kind)) polys.push({ rings: f.geom, b: box(f.geom) });
+      Object.assign(t, { st: 'ok', polys, lines });
+    } catch (e) { t.st = 'fail'; }
+    MapView.refresh();
+  },
+  // точка внутри многоугольника (все кольца вместе — дыры учтены правилом чёт-нечет)
+  inside(rings, x, y) {
+    let c = false;
+    for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const a = r[i], b = r[j];
+      if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+  },
+  // точка ближе r к линии
+  near(parts, x, y, r) {
+    const r2 = r * r;
+    for (const p of parts) for (let i = 1; i < p.length; i++) {
+      const a = p[i - 1], b = p[i], dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy;
+      const t = l ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l)) : 0;
+      const ex = a.x + t * dx - x, ey = a.y + t * dy - y;
+      if (ex * ex + ey * ey <= r2) return true;
+    }
+    return false;
+  },
+};
+
 const MapView = {
   map: null, pos: null, follow: true, heading: 0, markers: new Map(), nearby: [],
   gpsOK: false, watchId: null, lastGps: null, demo: false, tiles: null, night: null,
@@ -463,7 +542,9 @@ const MapView = {
     if (rebuild) { for (const m of this.markers.values()) m.remove(); this.markers.clear(); }
     const { lat, lng } = this.pos;
     // 4.18: Разломы появляются на карте с RAID_LEVEL уровня — до этого не отвлекают новичка
-    const ents = [...(S.d.level >= RAID_LEVEL ? W.riftsAround(lat, lng) : []), ...W.shrinesAround(lat, lng), ...W.springsAround(lat, lng), ...W.spawnsAround(lat, lng)];
+    // 4.19: дух виден, только если он вне тумана Нави и не в опасном месте (вода, пути, трассы, стройки — см. Hazard)
+    const spirits = W.spawnsAround(lat, lng).filter(e => e.tut || (Fog.clearAt(e.lat, e.lng) && Hazard.bad(e.lat, e.lng) === false));
+    const ents = [...(S.d.level >= RAID_LEVEL ? W.riftsAround(lat, lng) : []), ...W.shrinesAround(lat, lng), ...W.springsAround(lat, lng), ...spirits];
     const seen = new Set();
     ents.forEach(e => {
       seen.add(e.id);
@@ -483,6 +564,9 @@ const MapView = {
     for (const [id, m] of this.markers) if (!seen.has(id)) { m.remove(); this.markers.delete(id); }
     this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
+    const ids = new Set(this.nearby.map(e => e.id));
+    if (this._spIds && this.nearby.some(e => !this._spIds.has(e.id)) && Date.now() - (this._vibT || 0) > 3000) { this._vibT = Date.now(); U.vibrate([60, 90, 60]); } // 4.19: появился дух — двойная вибрация
+    this._spIds = ids;
     UI.updateNearby(this.nearby);
     if (this.tracking) this.updateTracker();
   },
@@ -501,7 +585,7 @@ const MapView = {
     if (e.type === 'spirit') {
       if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }
       Encounter.start({ mode: 'wild', sid: e.sid, lvl: e.lvl, seed: e.id, spawnId: e.id, shiny: e.shiny, boost: e.boost, tut: e.tut });
-    } else if (e.type === 'spring') e.invaded ? Duel.openInvasion(e) : UI.spring(e);
+    } else if (e.type === 'spring') UI.spring(e); // 4.19: захваченный — откроется на вкладке «Вторжение»
     else if (e.type === 'shrine') {
       if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }
       Duel.open(e);
