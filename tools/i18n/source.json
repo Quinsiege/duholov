@@ -217,7 +217,7 @@
   "at": [
    "www/js/auction.js:37",
    "www/js/path.js:22",
-   "www/js/ui.js:626"
+   "www/js/ui.js:628"
   ],
   "ctx": "const scr = UI.screen(ru`Аукцион`, `<div class=\"seg au-tabs\"><button data-tab=\"buy\">${ru`Купить`}</button><button data-tab=\"mine\">${ru`Мои лоты`}</button></div><div class=\"au-body\"></div>`, 'au-screen');"
  },
@@ -1110,7 +1110,7 @@
    "www/js/book.js:25",
    "www/js/book.js:35",
    "www/js/ui-player.js:458",
-   "www/js/ui.js:627"
+   "www/js/ui.js:629"
   ],
   "ctx": "const scr = UI.screen(ru`Книга Ордена`, `"
  },
@@ -1709,7 +1709,7 @@
    "www/js/book.js:118",
    "www/js/ui-player.js:142",
    "www/js/ui-player.js:290",
-   "www/js/ui.js:779"
+   "www/js/ui.js:781"
   ],
   "ctx": "this.cards(FRIEND_LEVELS.map(f => [UI.menuIcon('swap'), f.name, f.pts ? `${ru`${f.pts} очков дружбы`}${f.xp ? ` · ${ru`+${U.fmtNum(f.xp)} опыта`}` : ''}` : ru`Начало дружбы`])) +"
  },
@@ -7728,7 +7728,7 @@
    "www/js/friends.js:105",
    "www/js/friends.js:116",
    "www/js/path.js:14",
-   "www/js/ui.js:618"
+   "www/js/ui.js:620"
   ],
   "ctx": "const scr = UI.screen(ru`Друзья`, `"
  },
@@ -8211,7 +8211,7 @@
   "at": [
    "www/js/friends.js:249",
    "www/js/ui-spirits.js:9",
-   "www/js/ui.js:613"
+   "www/js/ui.js:615"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['ach', ru`Достижения`], ['spirits', ru`Духи`], ['friend', p.me ? ru`Это ты` : ru`Дружба`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</div>"
  },
@@ -8673,7 +8673,7 @@
    "www/js/hints.js:52",
    "www/js/tutorial.js:92",
    "www/js/ui.js:123",
-   "www/js/ui.js:691"
+   "www/js/ui.js:693"
   ],
   "ctx": "for (const [k, l, text, go] of NEWS) if (d.level >= l && !opened[k]) out.push({ id: 'open:' + k, btn: go ? ru`Показать` : ru`Понятно`, text, go: go ? () => { UI.markOpened(k); go(); } : null });"
  },
@@ -8852,7 +8852,7 @@
   "at": [
    "www/js/journal.js:29",
    "www/js/shop.js:22",
-   "www/js/ui.js:777",
+   "www/js/ui.js:779",
    "server/game/core.js:237"
   ],
   "ctx": "case 'hatch': return { ico: icon(e.sid), title: ru`Из кокона появился ${sp(e.sid)}`, sub: e.km ? ru`Кокон ${e.km} км` : '' };"
@@ -9694,7 +9694,7 @@
   "k": "В бой",
   "at": [
    "www/js/league.js:163",
-   "www/js/ui.js:731"
+   "www/js/ui.js:733"
   ],
   "ctx": "${live ? `<div class=\"lgx-card lgx-livebout\"><div class=\"row-main\"><b>${ru`Бой ещё идёт!`}</b><small>${ru`Соперник ждёт. Не вернёшься — через ${PvP.IDLE / 1000} с тебе засчитают поражение.`}</small></div><button class=\"b"
  },
@@ -10030,7 +10030,7 @@
   "k": "Лови духов Нави на улицах своего города",
   "at": [
    "www/js/loader.js:49",
-   "www/js/ui.js:919",
+   "www/js/ui.js:921",
    "www/index.html:127"
   ],
   "ctx": "<div class=\"ld-logo\"><div class=\"ld-charm\">${Art.charm('charm3')}</div><h1>${ru`ДУХОЛОВ`}</h1><p>${ru`Лови духов Нави на улицах своего города`}</p></div>"
@@ -10352,7 +10352,7 @@
   "k": "Возрастная категория",
   "at": [
    "www/js/login.js:217",
-   "www/js/ui.js:919"
+   "www/js/ui.js:921"
   ],
   "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
  },
@@ -11039,7 +11039,7 @@
   "at": [
    "www/js/path.js:23",
    "www/js/propose.js:21",
-   "www/js/ui.js:628"
+   "www/js/ui.js:630"
   ],
   "ctx": "add(Propose.MIN_LEVEL, 'pin', ru`Места`, ru`Предлагай новые родники и капища`);"
  },
@@ -11184,7 +11184,7 @@
   "k": "Звание «{0}»",
   "at": [
    "www/js/path.js:67",
-   "www/js/ui.js:898"
+   "www/js/ui.js:900"
   ],
   "ctx": "<div class=\"pth-card\">${rank ? `<div class=\"pth-rank\">${ru`Звание «${rank}»`}</div>` : ''}${st === 'cur' ? `<div class=\"pth-here\">${ru`Ты здесь`}</div>` : ''}"
  },
@@ -11348,7 +11348,7 @@
    "www/js/propose.js:44",
    "www/js/propose.js:145",
    "www/js/rules.js:212",
-   "www/js/ui.js:708"
+   "www/js/ui.js:710"
   ],
   "ctx": "<small>${r.kind === 'shrine' ? ru`Капище` : ru`Родник`} · ${new Date(r.created_at).toLocaleDateString(I18N.locale)}${r.reason ? ' · ' + U.esc(r.reason) : ''}</small></div>"
  },
@@ -11398,7 +11398,7 @@
   "k": "Ищу GPS…",
   "at": [
    "www/js/propose.js:77",
-   "www/js/ui.js:289"
+   "www/js/ui.js:291"
   ],
   "ctx": "<div class=\"cam-top\"><button class=\"btn-round cam-x\">${UI.I.close}</button><span class=\"cam-gps\">${ru`Ищу GPS…`}</span></div>"
  },
@@ -11421,8 +11421,8 @@
   "k": "GPS ±{0} м",
   "at": [
    "www/js/propose.js:98",
-   "www/js/ui.js:289",
-   "www/js/ui.js:289"
+   "www/js/ui.js:291",
+   "www/js/ui.js:291"
   ],
   "ctx": "gpsEl.textContent = ru`GPS ±${Math.round(f.acc)} м`;"
  },
@@ -11430,7 +11430,7 @@
   "k": "Нет GPS",
   "at": [
    "www/js/propose.js:104",
-   "www/js/ui.js:289"
+   "www/js/ui.js:291"
   ],
   "ctx": "() => { gpsEl.textContent = ru`Нет GPS`; gpsEl.className = 'cam-gps bad'; }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });"
  },
@@ -12577,7 +12577,7 @@
   "k": "Кокон",
   "at": [
    "www/js/rules.js:212",
-   "www/js/ui.js:833"
+   "www/js/ui.js:835"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
@@ -12592,7 +12592,7 @@
   "k": "Вторжение",
   "at": [
    "www/js/rules.js:212",
-   "www/js/ui.js:703"
+   "www/js/ui.js:705"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
@@ -12661,28 +12661,28 @@
   "at": [
    "www/js/shop.js:55"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.`} <button class=\"linkish pay-off"
+  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
  },
  {
-  "k": "Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.",
+  "k": "Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.",
   "at": [
    "www/js/shop.js:55"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.`} <button class=\"linkish pay-off"
+  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
  },
  {
   "k": "Оферта",
   "at": [
    "www/js/shop.js:55"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.`} <button class=\"linkish pay-off"
+  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
  },
  {
   "k": "Я оплатил — проверить",
   "at": [
    "www/js/shop.js:55"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay, ЮMoney или с баланса телефона — на защищённой странице ЮKassa.`} <button class=\"linkish pay-off"
+  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
  },
  {
   "k": "с бонусом +{0}%",
@@ -12706,11 +12706,11 @@
   "ctx": "${info.receipt ? `<input type=\"email\" class=\"pay-email\" placeholder=\"${ru`Почта для чека`}\" autocomplete=\"email\" inputmode=\"email\">` : ''}"
  },
  {
-  "k": "Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney или баланс телефона. После оплаты вернись в игру — златники придут сами.",
+  "k": "Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay или ЮMoney. После оплаты вернись в игру — златники придут сами.",
   "at": [
    "www/js/shop.js:63"
   ],
-  "ctx": "<p class=\"pay-note\">${ru`Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney или баланс телефона. После оплаты вернись в игру — златники придут сами.`}</p>"
+  "ctx": "<p class=\"pay-note\">${ru`Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay или ЮMoney. После оплаты вернись в игру — златники придут сами.`}</p>"
  },
  {
   "k": "публичной оферты",
@@ -12743,10 +12743,9 @@
  {
   "k": "Публичная оферта",
   "at": [
-   "www/js/shop.js:82",
    "www/js/shop.js:82"
   ],
-  "ctx": "offer() { UI.screen(ru`Публичная оферта`, `<iframe class=\"offer-frame\" src=\"offer.html\" title=\"${ru`Публичная оферта`}\"></iframe>`, 'offer-screen'); },"
+  "ctx": "offer() { UI.doc(ru`Публичная оферта`, 'offer.html'); },"
  },
  {
   "k": "Спасибо, что поддерживаешь Орден!",
@@ -12839,7 +12838,7 @@
    "www/js/shop.js:135",
    "www/js/ui-player.js:335",
    "www/js/ui-spirits.js:223",
-   "www/js/ui.js:643"
+   "www/js/ui.js:645"
   ],
   "ctx": "const lvlLock = it => it.lvl && S.d.level < it.lvl ? ru`с ${it.lvl} ур.` : '';"
  },
@@ -12932,7 +12931,7 @@
   "at": [
    "www/js/shop.js:160",
    "www/js/ui-spirits.js:583",
-   "www/js/ui.js:615"
+   "www/js/ui.js:617"
   ],
   "ctx": "<div class=\"pf-mh\"><span>${ru`Сумка`}</span><b>${S.bagCount()} / ${S.bagLimit()}</b></div>"
  },
@@ -13609,7 +13608,7 @@
    "www/js/tutorial.js:180",
    "www/js/tutorial.js:192",
    "www/js/ui-player.js:87",
-   "www/js/ui.js:927"
+   "www/js/ui.js:929"
   ],
   "ctx": "<div class=\"ts-box\"><div class=\"ts-who\"></div><div class=\"ts-line\"></div><div class=\"ts-foot\"><span class=\"ts-prog\"></span><span class=\"ts-next\"><span class=\"tn-t\">${ru`Дальше`}</span><i class=\"tn-a\"></i></span></div></d"
  },
@@ -13680,7 +13679,7 @@
   "k": "Задания",
   "at": [
    "www/js/ui-player.js:11",
-   "www/js/ui.js:617"
+   "www/js/ui.js:619"
   ],
   "ctx": "const scr = this.screen(ru`Задания`, `<div class=\"seg dt-tabs q-tabs\"><button data-tab=\"day\">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab=\"story\">${ru`Ле"
  },
@@ -13702,7 +13701,7 @@
   "k": "Летопись дочитана",
   "at": [
    "www/js/ui-player.js:17",
-   "www/js/ui.js:261"
+   "www/js/ui.js:263"
   ],
   "ctx": "scr.querySelector('.quests').innerHTML = `<div class=\"story-card\"><div class=\"story-num\">${ru`Летопись дочитана`}</div><p>${ru`Ты прошёл все ${STORY.length} глав. Новые главы появятся в следующих обновлениях Ордена.`}</p"
  },
@@ -13770,7 +13769,7 @@
   "k": "откроется на {0} уровне",
   "at": [
    "www/js/ui-player.js:38",
-   "www/js/ui.js:263"
+   "www/js/ui.js:265"
   ],
   "ctx": "<div class=\"q-main\"><b>${ru`Награда главы`}</b><div class=\"qd-pips\">${ch.steps.map((s, i) => `<i class=\"${st.p[i] >= s.n ? 'on' : ''}\"></i>`).join('')}<small>${ready ? ru`можно завершить` : open ? ru`выполни все шаги гла"
  },
@@ -13982,8 +13981,8 @@
   "k": "Родников",
   "at": [
    "www/js/ui-player.js:206",
-   "www/js/ui.js:727",
-   "www/js/ui.js:849"
+   "www/js/ui.js:729",
+   "www/js/ui.js:851"
   ],
   "ctx": "[ru`Разведано кварталов`, typeof Fog !== 'undefined' ? Fog.explored() : 0], [ru`Родников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],"
  },
@@ -14062,7 +14061,7 @@
   "k": "Дневник",
   "at": [
    "www/js/ui-player.js:231",
-   "www/js/ui.js:631"
+   "www/js/ui.js:633"
   ],
   "ctx": "<button class=\"btn ghost small journal-btn\">${this.I.journal} ${ru`Дневник`}</button>"
  },
@@ -14355,7 +14354,7 @@
   "k": "Настройки",
   "at": [
    "www/js/ui-player.js:422",
-   "www/js/ui.js:632"
+   "www/js/ui.js:634"
   ],
   "ctx": "const scr = this.screen(ru`Настройки`, `"
  },
@@ -14920,7 +14919,7 @@
   "k": "Имя",
   "at": [
    "www/js/ui-spirits.js:11",
-   "www/js/ui.js:927"
+   "www/js/ui.js:929"
   ],
   "ctx": "<div class=\"seg\">${[['power', ru`Сила`], ['new', ru`Новые`], ['num', ru`Номер`], ['name', ru`Имя`]].map(([k, t]) => `<button data-sort=\"${k}\">${t}</button>`).join('')}</div>"
  },
@@ -14928,7 +14927,7 @@
   "k": "Выбрать",
   "at": [
    "www/js/ui-spirits.js:12",
-   "www/js/ui.js:930"
+   "www/js/ui.js:932"
   ],
   "ctx": "<div class=\"chips\"><button data-el=\"all\">${ru`Все`}</button>${ELEMENT_KEYS.map(e => `<button data-el=\"${e}\">${Art.elIcon(e, 18)}</button>`).join('')}<button class=\"sel-toggle\">${ru`Выбрать`}</button></div>"
  },
@@ -16012,7 +16011,7 @@
   "k": "Бестиарий",
   "at": [
    "www/js/ui-spirits.js:500",
-   "www/js/ui.js:614"
+   "www/js/ui.js:616"
   ],
   "ctx": "const scr = this.screen(ru`Бестиарий`, `"
  },
@@ -16439,7 +16438,7 @@
   "k": "Коконы",
   "at": [
    "www/js/ui-spirits.js:689",
-   "www/js/ui.js:616"
+   "www/js/ui.js:618"
   ],
   "ctx": "const scr = this.screen(ru`Коконы`, '<div class=\"coc-info\"></div><div class=\"coc-box\"></div>', 'coc-screen');"
  },
@@ -16685,86 +16684,86 @@
  {
   "k": "Встреча ждёт: {0}",
   "at": [
-   "www/js/ui.js:261"
+   "www/js/ui.js:263"
   ],
   "ctx": "if (!ch) { t = ru`Летопись дочитана`; s = ru`Встреча ждёт: ${SP[gift].name}`; ready = true; }"
  },
  {
   "k": "Глава {0}: «{1}»",
   "at": [
-   "www/js/ui.js:262",
-   "www/js/ui.js:263",
-   "www/js/ui.js:266"
+   "www/js/ui.js:264",
+   "www/js/ui.js:265",
+   "www/js/ui.js:268"
   ],
   "ctx": "else if (S.storyReady()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`Глава завершена — забери награду!`; ready = true; }"
  },
  {
   "k": "Глава завершена — забери награду!",
   "at": [
-   "www/js/ui.js:262"
+   "www/js/ui.js:264"
   ],
   "ctx": "else if (S.storyReady()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`Глава завершена — забери награду!`; ready = true; }"
  },
  {
   "k": "Пройди пешком",
   "at": [
-   "www/js/ui.js:268"
+   "www/js/ui.js:270"
   ],
   "ctx": "const bare = step.t === 'walk' ? ru`Пройди пешком` : stepText({ ...step, n: '\\u0001' }).replace(/\\s*[:：]?\\s*\\u0001\\s*[:：]?\\s*/, ' ').trim();"
  },
  {
   "k": "{0}/{1} км",
   "at": [
-   "www/js/ui.js:269"
+   "www/js/ui.js:271"
   ],
   "ctx": "s = `${bare} · ${step.t === 'walk' ? ru`${p.toFixed(1)}/${step.n} км` : `${Math.floor(p)}/${step.n}`}`;"
  },
  {
   "k": "Слишком быстро — {0} км/ч",
   "at": [
-   "www/js/ui.js:285"
+   "www/js/ui.js:287"
   ],
   "ctx": "el.innerHTML = `<b>${ru`Слишком быстро — ${kmh} км/ч`}</b><span>${ru`Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!`}</span>`;"
  },
  {
   "k": "Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!",
   "at": [
-   "www/js/ui.js:285"
+   "www/js/ui.js:287"
   ],
   "ctx": "el.innerHTML = `<b>${ru`Слишком быстро — ${kmh} км/ч`}</b><span>${ru`Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!`}</span>`;"
  },
  {
   "k": "Демо-режим",
   "at": [
-   "www/js/ui.js:289"
+   "www/js/ui.js:291"
   ],
   "ctx": "const map = { search: [ru`Ищу GPS…`, 'warn'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };"
  },
  {
   "k": "Двигайся джойстиком или клавишами WASD. Выключить — в настройках.",
   "at": [
-   "www/js/ui.js:294"
+   "www/js/ui.js:296"
   ],
   "ctx": "c.onclick = state === 'demo' ? () => this.toast(ru`Двигайся джойстиком или клавишами WASD. Выключить — в настройках.`) : null;"
  },
  {
   "k": "Чат",
   "at": [
-   "www/js/ui.js:619"
+   "www/js/ui.js:621"
   ],
   "ctx": "['chat', ru`Чат`, () => Chat.screen(), Chat.badge()],"
  },
  {
   "k": "Лига",
   "at": [
-   "www/js/ui.js:620"
+   "www/js/ui.js:622"
   ],
   "ctx": "['trophy', ru`Лига`, () => { if (S.d.level < League.LEVEL) { this.toast(ru`Лига открывается с ${League.LEVEL} уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],"
  },
  {
   "k": "Лига открывается с {0} уровня Ловчего",
   "at": [
-   "www/js/ui.js:620",
+   "www/js/ui.js:622",
    "server/game/core.js:1345"
   ],
   "ctx": "['trophy', ru`Лига`, () => { if (S.d.level < League.LEVEL) { this.toast(ru`Лига открывается с ${League.LEVEL} уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],"
@@ -16772,119 +16771,119 @@
  {
   "k": "Лавка",
   "at": [
-   "www/js/ui.js:621"
+   "www/js/ui.js:623"
   ],
   "ctx": "['shop', ru`Лавка`, () => Shop.screen(), Shop.dealFresh() ? '!' : ''],"
  },
  {
   "k": "Тропа",
   "at": [
-   "www/js/ui.js:622"
+   "www/js/ui.js:624"
   ],
   "ctx": "['trail', ru`Тропа`, () => Pass.screen(), Pass.claimable() || ''],"
  },
  {
   "k": "Путь",
   "at": [
-   "www/js/ui.js:624"
+   "www/js/ui.js:626"
   ],
   "ctx": "['path', ru`Путь`, () => Path.screen()],"
  },
  {
   "k": "Дружину можно выбрать с {0} уровня Ловчего",
   "at": [
-   "www/js/ui.js:630"
+   "www/js/ui.js:632"
   ],
   "ctx": "['shield', ru`Дружина`, () => { if (S.d.level < CLAN_LEVEL) { this.toast(ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],"
  },
  {
   "k": "Новое",
   "at": [
-   "www/js/ui.js:643"
+   "www/js/ui.js:645"
   ],
   "ctx": "return `<button class=\"tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}\" data-i=\"${i}\" data-k=\"${t[0]}\">${this.menuIcon(t[0])}<span>${t[1]}</span>${far(t[0]) ? `<small class=\"tile-lvl\">${ru`с ${th"
  },
  {
   "k": "Страница {0}",
   "at": [
-   "www/js/ui.js:646"
+   "www/js/ui.js:648"
   ],
   "ctx": "${pages.length > 1 ? `<div class=\"menu-dots\">${pages.map((_, i) => `<button class=\"${i === 0 ? 'on' : ''}\" data-p=\"${i}\" aria-label=\"${ru`Страница ${i + 1}`}\"></button>`).join('')}</div>` : ''}</div></div>`);"
  },
  {
   "k": "Откроется на {0} уровне Ловчего",
   "at": [
-   "www/js/ui.js:656"
+   "www/js/ui.js:658"
   ],
   "ctx": "const k = tiles[+t.dataset.i][0], lk = Tut.tileLock(k) || (far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '');"
  },
  {
   "k": "Праздник продлится до {0}.",
   "at": [
-   "www/js/ui.js:679"
+   "www/js/ui.js:681"
   ],
   "ctx": "html: `<p>${h.desc}</p>${h.seasonal ? `<div class=\"chain\">${h.seasonal.map(id => `<div>${Art.spirit(id)}</div>`).join('')}</div>` : ''}<p class=\"small\">${ru`Праздник продлится до ${h.end.toLocaleDateString(I18N.locale, {"
  },
  {
   "k": "Ура!",
   "at": [
-   "www/js/ui.js:680"
+   "www/js/ui.js:682"
   ],
   "ctx": "buttons: [{ label: ru`Ура!`, cls: 'primary' }],"
  },
  {
   "k": "До конца события: {0}",
   "at": [
-   "www/js/ui.js:689"
+   "www/js/ui.js:691"
   ],
   "ctx": "html: `<p>${ev.desc}</p><p class=\"small\">${ru`До конца события: ${U.fmtTime(Ev.endsAt() - Date.now())}`}</p>"
  },
  {
   "k": "Следующая неделя",
   "at": [
-   "www/js/ui.js:690"
+   "www/js/ui.js:692"
   ],
   "ctx": "<div class=\"ev-next\"><small>${ru`Следующая неделя`}</small><b>${nx.name}</b><small>${nx.desc}</small></div>`,"
  },
  {
   "k": "Колодец",
   "at": [
-   "www/js/ui.js:703"
+   "www/js/ui.js:705"
   ],
   "ctx": "const tabs = [['well', ru`Колодец`], ['loot', ru`Добыча`], ['place', ru`О месте`], ...(e.invaded ? [['inv', ru`Вторжение`]] : [])], tab0 = e.invaded ? 'inv' : 'well';"
  },
  {
   "k": "Добыча",
   "at": [
-   "www/js/ui.js:703"
+   "www/js/ui.js:705"
   ],
   "ctx": "const tabs = [['well', ru`Колодец`], ['loot', ru`Добыча`], ['place', ru`О месте`], ...(e.invaded ? [['inv', ru`Вторжение`]] : [])], tab0 = e.invaded ? 'inv' : 'well';"
  },
  {
   "k": "О месте",
   "at": [
-   "www/js/ui.js:703"
+   "www/js/ui.js:705"
   ],
   "ctx": "const tabs = [['well', ru`Колодец`], ['loot', ru`Добыча`], ['place', ru`О месте`], ...(e.invaded ? [['inv', ru`Вторжение`]] : [])], tab0 = e.invaded ? 'inv' : 'well';"
  },
  {
   "k": "Зачерпнуть силу",
   "at": [
-   "www/js/ui.js:726"
+   "www/js/ui.js:728"
   ],
   "ctx": "<button class=\"btn primary wide spring-go\">${ru`Зачерпнуть силу`}</button>"
  },
  {
   "k": "Навь захватила этот родник. Победи её прислужников — и родник снова твой, с наградой.",
   "at": [
-   "www/js/ui.js:731"
+   "www/js/ui.js:733"
   ],
   "ctx": "${e.invaded ? `<div class=\"spr2-pane${tab0 === 'inv' ? ' on' : ''}\" data-pane=\"inv\"><div class=\"spr2-inv\"><div class=\"spr2-inv-ico\">${Art.springIcon(false, true)}</div><p>${ru`Навь захватила этот родник. Победи её прислу"
  },
  {
   "k": "Родник захвачен Навью",
   "at": [
-   "www/js/ui.js:748",
+   "www/js/ui.js:750",
    "server/game/core.js:736"
   ],
   "ctx": "if (e.invaded) { hint.textContent = ru`Родник захвачен Навью`; go.disabled = true; view.classList.add('used'); return; }"
@@ -16892,259 +16891,259 @@
  {
   "k": "Родник набирает силу: {0}",
   "at": [
-   "www/js/ui.js:751"
+   "www/js/ui.js:753"
   ],
   "ctx": "hint.textContent = ru`Родник набирает силу: ${U.fmtTime(left)}`;"
  },
  {
   "k": "Смахни по кругу или нажми кнопку",
   "at": [
-   "www/js/ui.js:755"
+   "www/js/ui.js:757"
   ],
   "ctx": "hint.textContent = ru`Смахни по кругу или нажми кнопку`;"
  },
  {
   "k": "Сумка полна! Расширь её в Лавке Ордена",
   "at": [
-   "www/js/ui.js:779"
+   "www/js/ui.js:781"
   ],
-  "ctx": "`<div class=\"loot-xp\">${ru`+${'<b class=\"spr2-xp\">0</b>'} опыта`}${r.full ? ` · ${ru`Сумка полна! Расширь её в Лавке Ордена`}` : ''}</div>` +"
+  "ctx": "`<div class=\"loot-xp\">${ru`+${'<b class=\"spr2-xp\">0</b>'} опыта`}</div>${r.full ? `<div class=\"loot-full\">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : ''}` +"
  },
  {
   "k": "Новое поручение: <b>{0}</b>",
   "at": [
-   "www/js/ui.js:780"
+   "www/js/ui.js:782"
   ],
   "ctx": "(r.task ? `<div class=\"loot-task\">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');"
  },
  {
   "k": "Награда — встреча с духом. Смотри «Меню → Задания».",
   "at": [
-   "www/js/ui.js:780"
+   "www/js/ui.js:782"
   ],
   "ctx": "(r.task ? `<div class=\"loot-task\">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');"
  },
  {
   "k": "почти всегда",
   "at": [
-   "www/js/ui.js:824"
+   "www/js/ui.js:826"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "часто",
   "at": [
-   "www/js/ui.js:824"
+   "www/js/ui.js:826"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "иногда",
   "at": [
-   "www/js/ui.js:824"
+   "www/js/ui.js:826"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "редко",
   "at": [
-   "www/js/ui.js:824"
+   "www/js/ui.js:826"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "очень редко",
   "at": [
-   "www/js/ui.js:824"
+   "www/js/ui.js:826"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "За один раз родник даёт {0}–{1} вещей и {2} опыта. Чем выше уровень Ловчего, тем больше видов добычи.",
   "at": [
-   "www/js/ui.js:830"
+   "www/js/ui.js:832"
   ],
   "ctx": "<p class=\"spr2-note\">${ru`За один раз родник даёт ${4}–${6} вещей и ${50} опыта. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>"
  },
  {
   "k": "Место",
   "at": [
-   "www/js/ui.js:845"
+   "www/js/ui.js:847"
   ],
   "ctx": "${cat ? row(ru`Место`, U.esc(cat)) : ''}"
  },
  {
   "k": "Расстояние",
   "at": [
-   "www/js/ui.js:846"
+   "www/js/ui.js:848"
   ],
   "ctx": "${row(ru`Расстояние`, U.fmtDist(MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, e.lat, e.lng) : e.d))}"
  },
  {
   "k": "захвачен Навью",
   "at": [
-   "www/js/ui.js:847"
+   "www/js/ui.js:849"
   ],
   "ctx": "${row(ru`Родник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}"
  },
  {
   "k": "наберёт силу через {0}",
   "at": [
-   "www/js/ui.js:847"
+   "www/js/ui.js:849"
   ],
   "ctx": "${row(ru`Родник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}"
  },
  {
   "k": "полон силы",
   "at": [
-   "www/js/ui.js:847"
+   "www/js/ui.js:849"
   ],
   "ctx": "${row(ru`Родник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}"
  },
  {
   "k": "Духи рядом",
   "at": [
-   "www/js/ui.js:858"
+   "www/js/ui.js:860"
   ],
   "ctx": "title: ru`Духи рядом`, cls: 'nearby-modal',"
  },
  {
   "k": "Коснись духа — Следопыт покажет к нему дорогу.",
   "at": [
-   "www/js/ui.js:863"
+   "www/js/ui.js:865"
   ],
   "ctx": "}).join('')}</div><p class=\"small nb-hint\">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,"
  },
  {
   "k": "Поблизости тихо. Прогуляйся или зажги ладан.",
   "at": [
-   "www/js/ui.js:863"
+   "www/js/ui.js:865"
   ],
   "ctx": "}).join('')}</div><p class=\"small nb-hint\">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,"
  },
  {
   "k": "К роднику",
   "at": [
-   "www/js/ui.js:865"
+   "www/js/ui.js:867"
   ],
   "ctx": "{ label: ru`К роднику`, fn: () => this.trackNearest('spring') },"
  },
  {
   "k": "К капищу",
   "at": [
-   "www/js/ui.js:866"
+   "www/js/ui.js:868"
   ],
   "ctx": "{ label: ru`К капищу`, fn: () => this.trackNearest('shrine') },"
  },
  {
   "k": "Рядом нет готовых родников",
   "at": [
-   "www/js/ui.js:877"
+   "www/js/ui.js:879"
   ],
   "ctx": "if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых родников` : ru`Рядом нет свободных капищ`); return; }"
  },
  {
   "k": "Рядом нет свободных капищ",
   "at": [
-   "www/js/ui.js:877"
+   "www/js/ui.js:879"
   ],
   "ctx": "if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых родников` : ru`Рядом нет свободных капищ`); return; }"
  },
  {
   "k": "Следопыт: {0}, {1}",
   "at": [
-   "www/js/ui.js:879"
+   "www/js/ui.js:881"
   ],
   "ctx": "this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);"
  },
  {
   "k": "Открыто: {0}",
   "at": [
-   "www/js/ui.js:898"
+   "www/js/ui.js:900"
   ],
   "ctx": "const unlock = (Path.RANKS[l] ? `<p class=\"unlock\">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class=\"unlock\">${ru`Открыто: ${opened.join(', ')}`}</p>` : '');"
  },
  {
   "k": "Новый уровень!",
   "at": [
-   "www/js/ui.js:901"
+   "www/js/ui.js:903"
   ],
   "ctx": "html: `<div class=\"lvl-num\">${l}</div><div class=\"lvl-t\">${ru`Новый уровень!`}</div>${unlock}<div class=\"lvl-rw\">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,"
  },
  {
   "k": "Вперёд",
   "at": [
-   "www/js/ui.js:902"
+   "www/js/ui.js:904"
   ],
   "ctx": "buttons: [{ label: ru`Вперёд`, cls: 'primary', fn: () => { this._lvOpen = false; this.flushLevelUps(); } }],"
  },
  {
   "k": "Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок",
   "at": [
-   "www/js/ui.js:921"
+   "www/js/ui.js:923"
   ],
   "ctx": "${Invite.ref() ? `<div class=\"lg-invite\">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}"
  },
  {
   "k": "Начать игру",
   "at": [
-   "www/js/ui.js:922"
+   "www/js/ui.js:924"
   ],
   "ctx": "${this.rune(ru`Начать игру`, 'next')}"
  },
  {
   "k": "Уже играю — войти",
   "at": [
-   "www/js/ui.js:923"
+   "www/js/ui.js:925"
   ],
   "ctx": "${Game.on() ? this.glass(ru`Уже играю — войти`, 'lg-have', this.I.key) : ''}"
  },
  {
   "k": "Соглашение",
   "at": [
-   "www/js/ui.js:924"
+   "www/js/ui.js:926"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Политику",
   "at": [
-   "www/js/ui.js:924"
+   "www/js/ui.js:926"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Оферту",
   "at": [
-   "www/js/ui.js:924"
+   "www/js/ui.js:926"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Без регистрации. Продолжая, ты принимаешь {0}, {1} и {2}",
   "at": [
-   "www/js/ui.js:924"
+   "www/js/ui.js:926"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Вступить в Орден",
   "at": [
-   "www/js/ui.js:926"
+   "www/js/ui.js:928"
   ],
   "ctx": "if (n === 1) html = `<div class=\"onb-lore\">${LORE.map((p, i) => `<p style=\"animation-delay:${i * 0.5}s\">${p}</p>`).join('')}</div>${this.rune(ru`Вступить в Орден`, 'next')}`;"
  },
  {
   "k": "Как тебя зовут, Ловчий?",
   "at": [
-   "www/js/ui.js:927"
+   "www/js/ui.js:929"
   ],
   "ctx": "if (n === 2) html = `<div class=\"onb-q\"><div class=\"onb-ava\">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class=\"input big\" maxlength=\"16\" placeholder=\"${ru`Имя`}\" value=\"${U.esc(name)}\"></div>${th"
  },
  {
   "k": "Выбери первого духа",
   "at": [
-   "www/js/ui.js:928",
+   "www/js/ui.js:930",
    "server/game/core.js:541"
   ],
   "ctx": "if (n === 3) html = `<div class=\"onb-q\"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>"
@@ -17152,49 +17151,49 @@
  {
   "k": "Он будет с тобой с первого дня.",
   "at": [
-   "www/js/ui.js:928"
+   "www/js/ui.js:930"
   ],
   "ctx": "if (n === 3) html = `<div class=\"onb-q\"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>"
  },
  {
   "k": "Духи живут рядом с тобой",
   "at": [
-   "www/js/ui.js:931"
+   "www/js/ui.js:933"
   ],
   "ctx": "if (n === 4) html = `<div class=\"onb-q\"><div class=\"onb-pin\">${this.I.pin}</div><h2>${ru`Духи живут рядом с тобой`}</h2>"
  },
  {
   "k": "Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие (поэтому нужен интернет), в прогрессе есть дневник с местами поимок. Для проверки действий на карте сервер получает твоё местоположение. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.",
   "at": [
-   "www/js/ui.js:932"
+   "www/js/ui.js:934"
   ],
   "ctx": "<p>${ru`Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие (поэтому нужен интернет), в прогрессе есть дневник"
  },
  {
   "k": "Разрешить геопозицию",
   "at": [
-   "www/js/ui.js:933"
+   "www/js/ui.js:935"
   ],
   "ctx": "${this.rune(ru`Разрешить геопозицию`, 'gps', this.I.pin)}${DEV ? '<button class=\"btn ghost wide demo\">Демо-режим (разработка)</button>' : ''}`;"
  },
  {
   "k": "Уже играешь?",
   "at": [
-   "www/js/ui.js:938"
+   "www/js/ui.js:940"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Войди — и твой прогресс откроется на этом устройстве",
   "at": [
-   "www/js/ui.js:938"
+   "www/js/ui.js:940"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Назови себя",
   "at": [
-   "www/js/ui.js:942",
+   "www/js/ui.js:944",
    "server/game/core.js:540"
   ],
   "ctx": "nx.onclick = () => { name = inp.value.trim(); if (!name) { this.toast(ru`Назови себя`); return; } Sfx.play('tap'); step(3); };"
