@@ -1,3 +1,5 @@
 #!/bin/sh
 # Ежедневная уборка базы (020_cleanup.sql). cron: /etc/cron.d/duholov-cleanup
 docker exec supabase-db psql -U supabase_admin -d postgres -tAc "select now()::timestamp(0) || ' ' || public.duholov_cleanup()"
+# 4.16 (023_auction_shrines.sql): защитники Капищ, чей срок на посту вышел (72 ч = Rules.HOLD.MAX_H), — долой
+docker exec supabase-db psql -U supabase_admin -d postgres -tAc "select 'shrine_prune ' || public.shrine_prune((extract(epoch from now() - interval '72 hours') * 1000)::bigint)"

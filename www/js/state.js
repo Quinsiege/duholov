@@ -36,16 +36,17 @@ const S = {
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
-    // 3.19: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается)
-    if (!d.xpv) {
-      const L = d.level || 1;
+    // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
+    // xpv: нет — кривая до 3.19 (levelXPOld), 2 — кривая 3.19–4.15 (levelXP2), 3 — нынешняя (levelXP)
+    if (d.xpv !== 3) {
+      const L = d.level || 1, F = d.xpv === 2 ? levelXP2 : levelXPOld;
       if (L >= MAX_LEVEL) d.xp = Math.max(d.xp || 0, levelXP(MAX_LEVEL));
-      else if (L >= 10) {
-        const o0 = levelXPOld(L), o1 = levelXPOld(L + 1), n0 = levelXP(L), n1 = levelXP(L + 1);
+      else if (L > 1 || d.xp > 0) {
+        const o0 = F(L), o1 = F(L + 1), n0 = levelXP(L), n1 = levelXP(L + 1);
         const f = U.clamp(((d.xp || 0) - o0) / (o1 - o0), 0, 0.999);
         d.xp = Math.round(n0 + f * (n1 - n0));
       }
-      d.xpv = 2;
+      d.xpv = 3;
     }
     d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
     d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
@@ -58,6 +59,8 @@ const S = {
     d.spirits = d.spirits || []; d.cocoons = d.cocoons || []; d.springs = d.springs || {}; d.rifts = d.rifts || {}; d.caught = d.caught || {};
     d.medals = d.medals || {};
     d.story = d.story || { ch: 0, p: [0, 0, 0] };
+    // 4.16: осколки Алатыря (пробуждение духов) и эссенция Рода (подходит любому семейству)
+    d.alatyr = d.alatyr || 0; d.rod = d.rod || 0; d.stats.awakened = d.stats.awakened || 0;
     // 4.0: обучение стало длиннее — шаги прежнего (1 поймать, 2 родник, 3 меню) переводятся в новые
     if (d.tut && d.tutV !== 4) { d.tut = { 1: 1, 2: TUT.findIndex(s => s.id === 'springs') + 1, 3: TUT.findIndex(s => s.id === 'road') + 1 }[d.tut] || 1; d.tutV = 4; }
     if (d.buddy === undefined) d.buddy = null;
@@ -120,6 +123,22 @@ const S = {
     sp.amulet = null;
     this.save();
   },
+  // 4.16: переплавка — Rules.MELT.N одинаковых амулетов из сумки и искры → один амулет на выбор (лишние амулеты копились сотнями)
+  canMeltAmulet(from, to) {
+    const M = Rules.MELT;
+    if (!AMULET_KEYS.includes(from) || !AMULET_KEYS.includes(to)) return ru`Такого амулета нет`;
+    if (from === to) return ru`Выбери другой амулет`;
+    if ((this.d.amulets[from] || 0) < M.N) return ru`Для переплавки нужно ${M.N} одинаковых амулета`;
+    if (this.d.sparks < M.SPARKS) return ru`Нужно ✦ ${M.SPARKS}`;
+    return null;
+  },
+  meltAmulet(from, to) {
+    if (this.canMeltAmulet(from, to)) return false;
+    this.d.amulets[from] -= Rules.MELT.N;
+    this.d.sparks -= Rules.MELT.SPARKS;
+    this.addAmulet(to);
+    return true;
+  },
   canLearnMove2(sp) {
     if (sp.move2) return ru`Приём уже выучен`;
     if (this.d.sparks < MOVE2_COST.sparks) return ru`Нужно ✦ ${MOVE2_COST.sparks}`;
@@ -140,17 +159,107 @@ const S = {
     return { uid: U.uid(), sid, lvl, iv, t: Date.now(), fav: false, nick: null };
   },
   ivPct(sp) { return Math.round((sp.iv[0] + sp.iv[1] + sp.iv[2]) / 45 * 100); },
-  maxLvl() { return Math.min(40, this.d.level + 5); },
+  // Предел уровня духа: уровень Ловчего +5 (не выше 40) и ещё AWAKE.STEP за каждую звезду пробуждения,
+  // открытую уровнем Ловчего (купленный или подаренный дух без звёзд — как раньше)
+  maxLvl(sp) { return Math.min(40, this.d.level + 5) + (sp ? this.AWAKE.STEP * this.starsOn(sp) : 0); },
+
+  /* ---------- 4.16: пробуждение — прогресс духа после предела уровня ----------
+     Звезда n (1…5) открывается на уровне Ловчего LVL[n-1], стоит осколков Алатыря, эссенции семейства и искр
+     и поднимает предел уровня духа на STEP (до SPIRIT_MAX = 50). Дух должен сначала дойти до своего предела. */
+  AWAKE: { MAX: 5, STEP: 2, LVL: [20, 25, 30, 35, 40], ALATYR: [2, 3, 4, 5, 6], ESS: [10, 15, 20, 25, 30], SPARKS: [10000, 20000, 30000, 40000, 50000] },
+  starsOn(sp) { return Math.min(sp.stars || 0, this.AWAKE.LVL.filter(l => this.d.level >= l).length); },
+  awakenCost(sp) { const n = sp.stars || 0, A = this.AWAKE; return n >= A.MAX ? null : { lvl: A.LVL[n], alatyr: A.ALATYR[n], essence: A.ESS[n], sparks: A.SPARKS[n] }; },
+  canAwaken(sp) {
+    const c = this.awakenCost(sp);
+    if (!c) return ru`Дух пробуждён полностью`;
+    if (this.d.level < c.lvl) return ru`Следующая звезда откроется на ${c.lvl} уровне Ловчего`;
+    if (sp.lvl < this.maxLvl(sp)) return ru`Сначала усиль духа до предела: уровень ${this.maxLvl(sp)}`;
+    if ((this.d.alatyr || 0) < c.alatyr) return ru`Нужно осколков Алатыря: ${c.alatyr}`;
+    if ((this.d.essence[SP[sp.sid].fam] || 0) < c.essence) return ru`Нужно ${c.essence} эссенции`;
+    if (this.d.sparks < c.sparks) return ru`Нужно ✦ ${c.sparks}`;
+    return null;
+  },
+  awaken(sp) {
+    if (this.canAwaken(sp)) return false;
+    const c = this.awakenCost(sp);
+    this.d.alatyr -= c.alatyr; this.d.essence[SP[sp.sid].fam] -= c.essence; this.d.sparks -= c.sparks;
+    sp.stars = (sp.stars || 0) + 1;
+    this.d.stats.awakened++;
+    J.add('awaken', { sid: sp.sid, stars: sp.stars });
+    this.progress('awaken', 1);
+    this.save();
+    return true;
+  },
+
+  /* ---------- 4.16: эссенция Рода — общая для всех семейств ----------
+     Лишнюю эссенцию семейства можно переплавить: MELT эссенции → 1 эссенция Рода. Эссенция Рода вливается
+     в любое семейство: 1 → 1, а в семейство легенды — LEGEND → 1 (эссенции легенд иначе почти не добыть) */
+  ESS: { MELT: 5, LEGEND: 3 },
+  famOk(fam) { return !!(SP[fam] && SP[fam].fam === fam); },
+  canMelt(fam, n) {
+    if (!this.famOk(fam)) return ru`Нет такого семейства`;
+    if (SP[fam].legend) return ru`Эссенцию легенд переплавить нельзя`;
+    if (!(n >= 1 && n === Math.floor(n))) return ru`Сколько переплавить?`;
+    if ((this.d.essence[fam] || 0) < n * this.ESS.MELT) return ru`Нужно ${n * this.ESS.MELT} эссенции`;
+    return null;
+  },
+  melt(fam, n) { // n — сколько эссенции Рода получить
+    if (this.canMelt(fam, n)) return false;
+    this.d.essence[fam] -= n * this.ESS.MELT; this.d.rod = (this.d.rod || 0) + n;
+    this.save();
+    return true;
+  },
+  pourRate(fam) { return SP[fam] && SP[fam].legend ? this.ESS.LEGEND : 1; },
+  canPour(fam, n) {
+    if (!this.famOk(fam)) return ru`Нет такого семейства`;
+    if (!(n >= 1 && n === Math.floor(n))) return ru`Сколько влить?`;
+    if ((this.d.rod || 0) < n * this.pourRate(fam)) return ru`Нужно эссенции Рода: ${n * this.pourRate(fam)}`;
+    return null;
+  },
+  pour(fam, n) { // n — сколько эссенции семейства получить
+    if (this.canPour(fam, n)) return false;
+    this.d.rod -= n * this.pourRate(fam); this.addEssence(fam, n);
+    this.save();
+    return true;
+  },
+  // Трофеи разлома сверх обычной награды: эссенция семейства босса (легенды — из великих разломов) и осколки Алатыря
+  RIFT_ESS: { 1: 2, 2: 4, 3: 6 },
+  ALATYR_DROP: { rift: { 2: 0.2, 3: 1 }, duel: { 3: 0.1 } }, ALATYR_DAY: 2, // в бою — не больше двух осколков в день (дальние великие разломы не фармятся)
+  riftSpoils(boss, tier) {
+    const out = [], fam = SP[boss].fam, n = this.RIFT_ESS[tier] || 0;
+    if (n) { this.addEssence(fam, n); out.push({ k: 'ess', n, label: ru`Эссенция «${SP[fam].name}»` }); }
+    return out.concat(this.alatyrDrop('rift', tier));
+  },
+  alatyrDrop(kind, tier) {
+    const p = (this.ALATYR_DROP[kind] || {})[tier] || 0, day = U.today();
+    if (this.d.alaDay && this.d.alaDay.day !== day) this.d.alaDay = null;
+    if (!p || (this.d.alaDay && this.d.alaDay.n >= this.ALATYR_DAY) || Math.random() >= p) return [];
+    this.d.alaDay = { day, n: (this.d.alaDay ? this.d.alaDay.n : 0) + 1 };
+    this.d.alatyr = (this.d.alatyr || 0) + 1;
+    return [{ k: 'alatyr', n: 1, label: ru`Осколки Алатыря` }];
+  },
+  resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
   /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
      hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
      до Rules.koMs (2–24 ч по редкости) в бой не идёт, потом поднимается сам на Rules.HP.BACK (10%) */
   hpNow(sp, now = U.now()) {
     const H = Rules.HP;
     if (!sp) return 0;
-    if (sp.ko) { const t = now - sp.ko, ko = Rules.koMs(sp); return t < ko ? 0 : Math.min(1, H.BACK + H.REGEN * (t - ko) / 3600000); }
-    if (sp.hpf == null) return 1;
-    return Math.min(1, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
+    const cap = this.hpCap(sp, now); // 4.16: усталый дух выше предела не поднимется
+    if (sp.ko) { const t = now - sp.ko, ko = Rules.koMs(sp); return t < ko ? 0 : Math.min(cap, H.BACK + H.REGEN * (t - ko) / 3600000); }
+    if (sp.hpf == null) return cap;
+    return Math.min(cap, sp.hpf + H.REGEN * Math.max(0, now - (sp.hpt || now)) / 3600000);
   },
+  /* 4.16: усталость — очки боёв (sp.tired на момент sp.tiredT), тают по очку за Rules.HP.TIRED.REST часов.
+     Сверх FREE очков каждое срезает STEP от предела здоровья (hpCap), не ниже MIN */
+  tired(sp, now = U.now()) { return sp && sp.tired ? Math.max(0, sp.tired - Math.max(0, now - (sp.tiredT || now)) / (Rules.HP.TIRED.REST * 3600000)) : 0; },
+  hpCap(sp, now = U.now()) { const T = Rules.HP.TIRED; return Math.max(T.MIN, 1 - T.STEP * Math.max(0, this.tired(sp, now) - T.FREE)); },
+  tire(sp, n = 1, now = U.now()) {
+    const t = Math.round((this.tired(sp, now) + n) * 100) / 100;
+    if (t > 0) { sp.tired = t; sp.tiredT = now; } else { delete sp.tired; delete sp.tiredT; }
+  },
+  // сколько отдыхать до полного предела здоровья, мс
+  restLeft(sp, now = U.now()) { const T = Rules.HP.TIRED; return Math.max(0, this.tired(sp, now) - T.FREE) * T.REST * 3600000; },
   alive(sp) { return this.hpNow(sp) > 0; },
   koLeft(sp, now = U.now()) { return sp && sp.ko ? Math.max(0, Rules.koMs(sp) - (now - sp.ko)) : 0; },
   setHp(sp, f, now = U.now()) {
@@ -167,6 +276,7 @@ const S = {
     if (h <= 0 && !it.revive) return ru`Дух без сил — поможет только Мёртвая вода или время`;
     if (h > 0 && !it.heal) return ru`Мёртвая вода не лечит живых — только поднимает духов без сил`;
     if (h >= 1) return ru`Дух здоров`;
+    if (h >= this.hpCap(sp) - 0.02) return ru`Дух устал — лечение не поможет, нужен отдых`; // 4.16
     return null;
   },
   heal(sp, k) {
@@ -175,7 +285,7 @@ const S = {
     this.useItem(k);
     // 4.15.1: Мёртвая вода сдвигает время падения на revive часов назад; срок вышел — дух поднимается ровно на BACK (10%)
     if (h <= 0) { sp.ko -= it.revive * 3600000; if (!this.koLeft(sp)) this.setHp(sp, Rules.HP.BACK); }
-    else this.setHp(sp, h + it.heal);
+    else this.setHp(sp, Math.min(this.hpCap(sp), h + it.heal)); // 4.16: не выше предела усталого духа
     this.save();
     return null;
   },
@@ -248,10 +358,21 @@ const S = {
     }
   },
   addEssence(fam, n) { this.d.essence[fam] = (this.d.essence[fam] || 0) + n; },
-  powerUpCost(sp) { return { sparks: 200 + 200 * Math.floor((sp.lvl - 1) / 4), essence: 1 + Math.floor(sp.lvl / 10) }; },
+  // 4.16: искр до 20 уровня — как раньше (200…1 200), выше — дороже на 15% за каждый уровень после 20-го (30 → ✦ 4 000,
+  // 39 → ✦ 7 700): прежде усиление стоило 200–2 000, и к 40 уровню Ловчего копились сотни тысяч лишних искр
+  powerUpSparks(lvl) {
+    const base = 200 + 200 * Math.floor((lvl - 1) / 4);
+    return lvl <= 20 ? base : Math.round(base * (1 + 0.15 * (lvl - 20)) / 50) * 50;
+  },
+  powerUpCost(sp) { return { sparks: this.powerUpSparks(sp.lvl), essence: 1 + Math.floor(sp.lvl / 10) }; },
   canPowerUp(sp) {
     const c = this.powerUpCost(sp), fam = SP[sp.sid].fam;
-    if (sp.lvl >= this.maxLvl()) return ru`Предел: уровень духа не может быть выше уровня Ловчего +5`;
+    if (sp.lvl >= this.maxLvl(sp)) {
+      const a = this.awakenCost(sp);
+      if (sp.lvl >= SPIRIT_MAX) return ru`Дух достиг наивысшего уровня`;
+      if (a && this.d.level >= a.lvl) return ru`Предел уровня — пробуди духа, чтобы поднять его`;
+      return sp.stars ? ru`Предел уровня растёт с уровнем Ловчего и пробуждением` : ru`Предел: уровень духа не может быть выше уровня Ловчего +5`;
+    }
     if (this.d.sparks < c.sparks) return ru`Не хватает искр`;
     if ((this.d.essence[fam] || 0) < c.essence) return ru`Не хватает эссенции`;
     return null;
@@ -267,16 +388,21 @@ const S = {
     return true;
   },
   PURIFY: { sparks: 3000, essence: 25 }, // 3.19: было 1000 и 10 — дешевле, чем усилить духа до 25 уровня (16 800 ✦)
+  // 4.16: цена очищения растёт с редкостью духа (обычный ✦ 3 000 … легендарный ✦ 20 000) — при избытке искр оно было даровым
+  PURIFY_SPARKS: { 1: 3000, 2: 5000, 3: 8000, 4: 12000, 5: 20000 },
+  purifyCost(sp) { return { sparks: this.PURIFY_SPARKS[(SP[sp.sid] || {}).rar] || this.PURIFY.sparks, essence: this.PURIFY.essence }; },
   canPurify(sp) {
+    const c = this.purifyCost(sp);
     if (!sp.dark) return ru`Дух не омрачён`;
-    if (this.d.sparks < this.PURIFY.sparks) return ru`Нужно ✦ ${this.PURIFY.sparks}`;
-    if ((this.d.essence[SP[sp.sid].fam] || 0) < this.PURIFY.essence) return ru`Нужно ${this.PURIFY.essence} эссенции`;
+    if (this.d.sparks < c.sparks) return ru`Нужно ✦ ${c.sparks}`;
+    if ((this.d.essence[SP[sp.sid].fam] || 0) < c.essence) return ru`Нужно ${c.essence} эссенции`;
     return null;
   },
   purify(sp) {
     if (this.canPurify(sp)) return false;
-    this.d.sparks -= this.PURIFY.sparks;
-    this.d.essence[SP[sp.sid].fam] -= this.PURIFY.essence;
+    const c = this.purifyCost(sp);
+    this.d.sparks -= c.sparks;
+    this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.dark = false;
     sp.purified = true;
     sp.iv = sp.iv.map(v => Math.min(15, v + 2));
@@ -304,7 +430,8 @@ const S = {
     this.d.stats.evolved++;
     J.add('evolve', { from: s.id, to: sp.sid });
     if (this.d.buddy && this.d.buddy.uid === sp.uid) Bus.emit('buddyChanged');
-    this.addXP(isNew ? 1000 : 500);
+    // 4.16: опыт — за новый вид в бестиарии; повторные превращения в тот же вид дают немного (было 500 за каждое)
+    this.addXP(isNew ? 1000 : 200);
     this.progress('evolve', 1);
     this.save();
     return { isNew };
@@ -313,33 +440,106 @@ const S = {
   /* ---------- предметы ---------- */
   bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
-  // over — награда за достижение (уровень, серия дней, задание, Летопись, Тропа, бой): кладётся и сверх лимита сумки,
-  // иначе она молча пропадала бы. Добыча родника и находки спутника лимит соблюдают
+  // 4.16: сумка больше не переполняется. over — награда (уровень, серия дней, задание, Летопись, Тропа, бой, родник):
+  // что не поместилось — в посылку Ордена (Rules.PARCEL, забрать — parcelTake), а не сверх лимита (раньше сумка
+  // раздувалась в разы, а родники при полной сумке молча ничего не давали). Без over (находки спутника) — только в сумку
   addItem(k, n = 1, over = false) {
-    const room = over ? n : this.bagLimit() - this.bagCount();
-    const add = Math.max(0, Math.min(n, room));
-    this.d.items[k] = (this.d.items[k] || 0) + add;
+    const add = Math.max(0, Math.min(n, this.bagLimit() - this.bagCount()));
+    if (add) this.d.items[k] = (this.d.items[k] || 0) + add;
+    const put = over ? this.parcelPut(k, n - add) : 0;
     this.save();
-    return add;
+    return add + put;
+  },
+  parcelCount() { return Object.values((this.d.parcel && this.d.parcel.items) || {}).reduce((a, b) => a + b, 0); },
+  // в посылку — сколько войдёт (не больше Rules.PARCEL.MAX вещей); остальное пропадает. Счёт — для сообщения игроку
+  parcelPut(k, n) {
+    if (!(n > 0)) return 0;
+    const P = this.d.parcel = this.d.parcel || { items: {} };
+    const m = Math.max(0, Math.min(n, Rules.PARCEL.MAX - this.parcelCount()));
+    if (m) P.items[k] = (P.items[k] || 0) + m;
+    const c = this._parcelNote = this._parcelNote || { put: 0, lost: 0 };
+    c.put += m; c.lost += n - m;
+    return m;
+  },
+  // забрать посылку: сколько влезет в сумку — сначала редкое и нужное
+  PARCEL_ORDER: ['deadwater', 'gift', 'charm3', 'charm2', 'farpass', 'incense', 'brew', 'water', 'herb', 'honey', 'charm'],
+  parcelTake() {
+    const P = this.d.parcel, got = [];
+    if (!P) return got;
+    const keys = [...this.PARCEL_ORDER, ...Object.keys(P.items).filter(k => !this.PARCEL_ORDER.includes(k))];
+    for (const k of keys) {
+      const n = P.items[k] || 0, add = Math.min(n, Math.max(0, this.bagLimit() - this.bagCount()));
+      if (!(add > 0) || !ITEMS[k]) continue;
+      this.d.items[k] = (this.d.items[k] || 0) + add;
+      P.items[k] = n - add;
+      if (!P.items[k]) delete P.items[k];
+      got.push({ k, n: add, label: ITEMS[k].name });
+    }
+    if (!Object.keys(P.items).length) this.d.parcel = null;
+    this.save();
+    return got;
   },
   useItem(k) { if ((this.d.items[k] || 0) <= 0) return false; this.d.items[k]--; this.save(); return true; },
-  giveRewards(rw, over = true) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа; over — см. addItem
-    const out = [];
+  // over — см. addItem; once — разовая награда (глава Летописи, обучение, место): опыт без дневного потолка (см. addXP)
+  giveRewards(rw, over = true, once = false) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа
+    const out = [], prev = this._parcelNote;
+    this._parcelNote = { put: 0, lost: 0 }; // своя сводка: награда за уровень внутри (addXP) считает свою
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
       else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Златники` }); }
-      else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: ru`Опыт` }); this.addXP(n); }
+      else if (k === 'xp') { const o = { k, n: 0, label: ru`Опыт` }; out.push(o); o.n = this.addXP(n, once); }
+      else if (k === 'alatyr' || k === 'rod') { this.d[k] = (this.d[k] || 0) + n; out.push({ k, n, label: this.resName(k) }); } // 4.16: не вещи — в сумку не идут
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
+    const c = this._parcelNote;
+    this._parcelNote = prev;
+    if (c && c.put) Bus.emit('toast', { text: ru`Сумка полна — в посылку Ордена ушло вещей: ${c.put}. Забери её в Сумке, когда освободится место` });
+    if (c && c.lost) Bus.emit('toast', { text: ru`Сумка и посылка Ордена полны — не поместилось вещей: ${c.lost}. Освободи место в Сумке`, cls: 'bad' });
     this.save();
     return out;
   },
   incenseActive() { return this.d.incenseUntil > Date.now(); },
 
   /* ---------- опыт ---------- */
-  addXP(n) {
-    n = Math.round(n * Ev.xpMul());
+  /* 4.16: учёт опыта за день (d.xpd = { day, n, rest }): n — опыт за сегодня (для дневного потолка), rest — опыт отдыха.
+     За каждый день без опыта копится XP_DAY.REST (не больше, чем за XP_DAY.REST_DAYS дней) */
+  xpToday() { // учёт на сегодня, ничего не меняя (для показа на телефоне)
+    const today = U.today(), x = this.d.xpd;
+    if (x && x.day === today) return x;
+    let rest = (x && x.rest) || 0;
+    if (x && x.day) {
+      const t = s => { const [y, m, d] = String(s).split('-').map(Number); return Date.UTC(y, m - 1, d); };
+      const gap = Math.round((t(today) - t(x.day)) / 86400000) - 1; // полных дней без игры
+      if (gap > 0) rest = Math.max(rest, Math.min(XP_DAY.REST * XP_DAY.REST_DAYS, rest + gap * XP_DAY.REST));
+    }
+    return { day: today, n: 0, rest };
+  },
+  xpDay() {
+    const x = this.d.xpd, t = this.xpToday();
+    if (t === x) return x;
+    if (t.rest > ((x && x.rest) || 0)) Bus.emit('toast', { text: ru`Ты хорошо отдохнул: следующие ${U.fmtNum(t.rest)} опыта — вдвое!`, cls: 'good' });
+    return (this.d.xpd = t);
+  },
+  // Сколько опыта даст n в этот раз: событие недели (Звездопад ×2), дневной потолок (XP_DAY.FULL за день — полностью,
+  // дальше до XP_DAY.HALF — вполовину, сверх — четверть; разовые награды once — без потолка) и опыт отдыха (удваивает,
+  // пока не кончится). mark — записать в учёт дня
+  xpGain(n, once, mark) {
+    const x = this.xpDay(), mul = Ev.xpMul();
+    let raw = Math.max(0, +n || 0) * mul, got = raw;
+    if (!once) {
+      const F = XP_DAY.FULL * mul, H = XP_DAY.HALF * mul, a = x.n, b = a + raw;
+      const part = (lo, hi) => Math.max(0, Math.min(b, hi) - Math.max(a, lo));
+      got = part(0, F) + part(F, H) * 0.5 + part(H, Infinity) * 0.25;
+    }
+    got = Math.round(got);
+    const bonus = once ? 0 : Math.min(x.rest, got);
+    if (mark) { if (!once) x.n += raw; x.rest -= bonus; }
+    return got + bonus;
+  },
+  // Начислить опыт; возвращает, сколько начислено на самом деле (см. xpGain). once — разовая награда
+  addXP(n, once = false) {
+    n = this.xpGain(n, once, true);
     this.d.xp += n;
     let leveled = [];
     while (this.d.level < MAX_LEVEL && this.d.xp >= levelXP(this.d.level + 1)) {
@@ -354,9 +554,11 @@ const S = {
     });
     Bus.emit('xp');
     this.save();
+    return n;
   },
   levelRewards(l) {
-    const r = { charm: 10 + l, honey: 3, water: 3, herb: 5, brew: 2, zlat: Rules.ZLAT.level };
+    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); златники — 3, на каждом пятом — 15
+    const r = { charm: 10 + l, honey: 2, water: 1, herb: 3, brew: 1, zlat: l % 5 ? Rules.ZLAT.level : Rules.ZLAT.level5 };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
     if (l >= 16) r.charm3 = l === 16 ? 10 : 3;
@@ -440,9 +642,9 @@ const S = {
       changed = true;
       if (q.p >= q.n) Bus.emit('toast', { text: ru`Поручение выполнено: ${I18N.back(q.text)}`, cls: 'good' });
     });
-    // Летопись
+    // Летопись (4.16: глава, закрытая уровнем Ловчего, шаги не считает)
     const ch = STORY[this.d.story.ch];
-    if (ch) ch.steps.forEach((s, i) => {
+    if (ch && this.storyOpen()) ch.steps.forEach((s, i) => {
       if (s.t !== type || this.d.story.p[i] >= s.n) return;
       if (type === 'catchEl' && meta.el !== s.el) return;
       this.d.story.p[i] = Math.min(s.n, this.d.story.p[i] + amount);
@@ -456,13 +658,24 @@ const S = {
     return daily + (this.storyReady() ? 1 : 0) + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
   },
   // Новое поручение (выдаёт сервер у родника): задание и дух, который встретится в награду
-  makeTask() {
+  // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests)
+  makeTask(pos) {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
     const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
     const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar));
-    return { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
+    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar)), guest = false;
+    if (q.tier === 3 && pos && r() < this.GUEST) {
+      const far = this.guests(pos.lat, pos.lng), fresh = far.filter(s => !(this.d.dex[s.id] && this.d.dex[s.id].caught));
+      if (far.length) { sps = fresh.length ? fresh : far; guest = true; }
+    }
+    const t = { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
+    if (guest) t.guest = true;
+    return t;
   },
+  /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
+     земель и сезонные не в свой сезон. Их приводят трудные поручения родников (шанс GUEST), так что поймать можно всех */
+  GUEST: 0.3,
+  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
 
 
   /* ---------- 4.0: обучение «Посвящение в Ловчие» ---------- */
@@ -471,21 +684,31 @@ const S = {
   tutAdvance(kind, id) {
     const st = this.tutAt();
     if (!st || st.kind !== kind || (id && st.id !== id)) return null;
-    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward) : [];
+    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward, true, true) : [];
     this.d.tut = next ? this.d.tut + 1 : 0;
     if (got.length) Bus.emit('tutChapter', { ch: st.ch, got, done: !next });
     this.save();
     return { got, done: !next };
   },
-  /* ---------- Летопись ---------- */
+  /* ---------- Летопись ----------
+     4.16: главы идут по всему пути до 40 уровня — каждая открывается на своём уровне Ловчего (ch.lvl, и не раньше, чем
+     откроется нужный раздел: Лига, дружины). Опыт главы — доля опыта на её уровне (storyXP), поэтому Летопись
+     остаётся заметной и на высоких уровнях при любой кривой опыта */
+  storyLvl(ch) { return Math.max(ch.lvl || 1, ...ch.steps.map(s => s.t === 'league' ? League.LEVEL : s.t === 'defend' ? CLAN_LEVEL : 1)); },
+  storyOpen() { const ch = STORY[this.d.story.ch]; return !ch || this.d.level >= this.storyLvl(ch); },
+  storyXP(L) {
+    const n = Math.min(MAX_LEVEL, L + 1), f = 0.5 - 0.41 * (Math.min(L, MAX_LEVEL) - 1) / (MAX_LEVEL - 1);
+    return Math.max(500, Math.round((levelXP(n) - levelXP(n - 1)) * f / 50) * 50);
+  },
+  storyReward(ch) { return { ...ch.reward, xp: this.storyXP(this.storyLvl(ch)) }; },
   storyReady() {
     const ch = STORY[this.d.story.ch];
-    return !!ch && ch.steps.every((s, i) => this.d.story.p[i] >= s.n);
+    return !!ch && this.storyOpen() && ch.steps.every((s, i) => this.d.story.p[i] >= s.n);
   },
   claimStory() {
     const ch = STORY[this.d.story.ch];
     if (!ch || !this.storyReady()) return null;
-    const got = this.giveRewards({ ...ch.reward, zlat: Rules.ZLAT.story });
+    const got = this.giveRewards({ ...this.storyReward(ch), zlat: Rules.ZLAT.story }, true, true); // разовая награда — без дневного потолка
     this.d.story = { ch: this.d.story.ch + 1, p: [0, 0, 0] };
     this.save();
     return { ch, got };
@@ -507,7 +730,7 @@ const S = {
       const tier = this.medalTier(m), had = this.d.medals[m.id] || 0;
       if (tier > had) {
         this.d.medals[m.id] = tier;
-        for (let t = had; t < tier; t++) this.addXP(MEDAL_TIERS[t].xp);
+        for (let t = had; t < tier; t++) this.addXP(MEDAL_TIERS[t].xp, true); // разовая награда — без дневного потолка
         Bus.emit('medal', { m, tier });
         J.add('medal', { name: m.name, tier });
       }

@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Духолов — симуляция 1→40</title>
+  <style>body { font: 13px/1.45 ui-monospace, Consolas, monospace; background: #120c24; color: #f4f1ff; margin: 0; padding: 14px; } #log { white-space: pre-wrap; }</style>
+</head>
+<body>
+  <h3>Духолов: прогон Ловчего с 1 по 40 уровень (игровой сервер в памяти)</h3>
+  <div id="log">Загрузка…</div>
+  <script src="../../www/js/version.js"></script>
+  <script src="../../www/js/i18n.js" data-lang="ru"></script>
+  <script src="../../www/js/config.js"></script>
+  <script src="../../www/js/settings.js"></script>
+  <script src="../../www/js/data.js"></script>
+  <script src="../../www/js/util.js"></script>
+  <script src="../../www/js/diff.js"></script>
+  <script src="../../www/js/art.js"></script>
+  <script src="../../www/js/skins-art.js"></script>
+  <script src="../../www/js/looks-art.js"></script>
+  <script src="../../www/js/art-kit.js"></script>
+  <script src="../../www/js/cutscene-art.js"></script>
+  <script src="../../www/js/sp-fire.js"></script>
+  <script src="../../www/js/sp-water.js"></script>
+  <script src="../../www/js/sp-forest.js"></script>
+  <script src="../../www/js/sp-forest2.js"></script>
+  <script src="../../www/js/sp-wind.js"></script>
+  <script src="../../www/js/sp-wind2.js"></script>
+  <script src="../../www/js/sp-current.js"></script>
+  <script src="../../www/js/sp-shadow.js"></script>
+  <script src="../../www/js/sp-shadow2.js"></script>
+  <script src="../../www/js/state.js"></script>
+  <script src="../../www/js/events.js"></script>
+  <script src="../../www/js/sky.js"></script>
+  <script src="../../www/js/music.js"></script>
+  <script src="../../www/js/world.js"></script>
+  <script src="../../www/js/navmap.js"></script>
+  <script src="../../www/js/fog.js"></script>
+  <script src="../../www/js/map.js"></script>
+  <script src="../../www/js/encounter.js"></script>
+  <script src="../../www/js/raid.js"></script>
+  <script src="../../www/js/duel.js"></script>
+  <script src="../../www/js/rules.js"></script>
+  <script src="../../www/js/trade.js"></script>
+  <script src="../../www/js/tutorial.js"></script>
+  <script src="../../www/js/path.js"></script>
+  <script src="../../www/js/book.js"></script>
+  <script src="../../www/js/trailer.js"></script>
+  <script src="../../www/js/album.js"></script>
+  <script src="../../www/js/league.js"></script>
+  <script src="../../www/js/journal.js"></script>
+  <script src="../../www/js/friends.js"></script>
+  <script src="../../www/js/order.js"></script>
+  <script src="../../www/js/clans.js"></script>
+  <script src="../../www/js/hints.js"></script>
+  <script src="../../www/js/shop.js"></script>
+  <script src="../../www/js/auction.js"></script>
+  <script src="../../www/js/chat.js"></script>
+  <script src="../../www/js/coop.js"></script>
+  <script src="../../www/js/cloud.js"></script>
+  <script src="../../www/js/game.js"></script>
+  <script src="../../www/js/realms.js"></script>
+  <script src="../../www/js/login.js"></script>
+  <script src="../../www/js/exif.js"></script>
+  <script src="../../www/js/osm.js"></script>
+  <script src="../../www/js/pois.js"></script>
+  <script src="../../www/js/propose.js"></script>
+  <script src="../../www/js/updater.js"></script>
+  <script src="../../www/js/ui.js"></script>
+  <script src="../../www/js/ui-spirits.js"></script>
+  <script src="../../www/js/ui-player.js"></script>
+  <script src="../../server/game/core.js"></script>
+  <script>
+  'use strict';
+  // игровое время — своё: сервер и мир берут «сейчас» из Date.now()
+  let SIM_T = Date.UTC(2026, 9, 1, 5, 0);
+  Date.now = () => SIM_T;
+  S.save = () => {}; Bus.emit = () => {}; UI.toast = () => {}; Friends.sync = () => {}; Game.on = () => false;
+  S.newGame('Тест', 'ugolek');
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [], pvpQ: {}, pvpM: {} };
+  const envFor = who => ({
+    poi: async id => DB.pois[id] || null,
+    poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
+    registerPid: async pid => {
+      const o = DB.players[pid];
+      if (o && o !== who.uid) return 'taken';
+      for (const k in DB.players) if (DB.players[k] === who.uid) delete DB.players[k];
+      DB.players[pid] = who.uid;
+      return 'ok';
+    },
+    player: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { name: d.name, level: d.level } : null; },
+    friendSave: async pid => { const d = DB.saves[DB.players[pid]]; return d ? { data: JSON.parse(JSON.stringify(d)), seen: new Date().toISOString() } : null; },
+    briefByPid: async pids => { const o = {}; pids.forEach(p => { const d = DB.saves[DB.players[p]]; if (d) o[p] = { name: d.name, level: d.level, clan: d.clan, look: d.look }; }); return o; },
+    leagueTop: async (season, rank) => {
+      const last = {}; DB.league.filter(x => x.season === season).forEach(x => { last[x.user] = x; });
+      const all = Object.values(last).sort((a, b) => b.pts - a.pts), rows = all.slice(0, 50);
+      const pidOf = u => Object.keys(DB.players).find(p => DB.players[p] === u) || null;
+      const i = all.findIndex(x => x.user === who.uid);
+      const view = x => { const d = DB.saves[x.user]; return { user_id: x.user, name: x.name, pts: x.pts, rank: x.rank, level: x.level, look: x.look, pid: pidOf(x.user), me: x.user === who.uid, cur: d ? { name: d.name, level: d.level, clan: d.clan, look: d.look } : null }; };
+      return { total: all.length, me: i >= 50 ? { place: i + 1, pts: all[i].pts } : null, rows: rows.map(view), tier: all.filter(x => x.rank === rank).slice(0, 3).map(view) };
+    },
+    link: async (from, to, name, level) => {
+      DB.links = DB.links.filter(l => !(l.from_pid === from && l.to_pid === to));
+      DB.links.push({ from_pid: from, to_pid: to, from_name: name, from_level: level, created_at: new Date().toISOString() });
+    },
+    linksTo: async pid => DB.links.filter(l => l.to_pid === pid),
+    giftsTo: async pid => DB.gifts.filter(g => g.to_pid === pid && !g.opened_at).map(g => ({ ...g, invite: g.contents && g.contents.invite })),
+    invitesTo: async pid => DB.gifts.filter(g => g.to_pid === pid && g.contents && g.contents.invite === 1).length,
+    giftCreate: async (from, to, name, contents) => { DB.gifts.push({ id: 'gift' + DB.gifts.length, from_pid: from, to_pid: to, from_name: name, contents, created_at: new Date().toISOString() }); },
+    gift: async id => DB.gifts.find(g => g.id === id) || null,
+    giftTake: async (id, pid) => { const g = DB.gifts.find(x => x.id === id && x.to_pid === pid && !x.opened_at); if (!g) return false; g.opened_at = Date.now(); return true; },
+    tradeCreate: async (code, pid, name, spirit) => { DB.trades[code] = { code, from_pid: pid, from_name: name, spirit }; },
+    tradeTake: async (code, pid) => { const t = DB.trades[code]; if (!t || t.taken_by) return null; if (t.from_pid === pid) return { own: true }; t.taken_by = pid; return t; },
+    tradeReclaim: async (code, pid) => { const t = DB.trades[code]; if (!t || t.taken_by || t.from_pid !== pid) return null; t.taken_by = pid; return t; },
+    mySubmissions: async () => DB.subs.filter(s => s.user === who.uid),
+    leagueScore: async x => { DB.league.push({ user: who.uid, ...x }); },
+    orderPut: async x => { DB.order[x.week + ':' + x.pid] = { ...x }; },
+    orderStats: async (week, pid) => {
+      const rows = Object.values(DB.order).filter(r => r.week === week && r.n > 0), me = rows.find(r => r.pid === pid);
+      return { players: rows.length, total: rows.reduce((a, r) => a + r.n, 0), mine: me ? me.n : null, top: rows.sort((a, b) => b.n - a.n).slice(0, 10).map(r => ({ pid: r.pid, name: r.name, n: r.n })) };
+    },
+    holdGet: async poi => { const h = DB.holds[poi]; return h && h.holders.length ? JSON.parse(JSON.stringify(h)) : null; },
+    holdDefend: async (poi, lat, lng, clan, holder) => {
+      const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 };
+      if (h.holders.length && h.clan !== clan) return false;
+      if (h.holders.length >= 6 || h.holders.some(x => x.pid === holder.pid)) return false;
+      h.clan = clan; h.holders.push(holder); h.ver++; return true;
+    },
+    holdDefeat: async (poi, ver) => { const h = DB.holds[poi]; if (!h || h.ver !== ver) return false; h.holders = []; h.ver++; return true; },
+    myHolds: async pid => Object.values(DB.holds).filter(h => h.holders.some(x => x.pid === pid)).length,
+    roomCreate: async row => { if (DB.rooms[row.code]) return null; DB.rooms[row.code] = { ...JSON.parse(JSON.stringify(row)), status: 'lobby', created_at: new Date().toISOString(), started_at: null }; return JSON.parse(JSON.stringify(DB.rooms[row.code])); },
+    roomGet: async code => DB.rooms[code] ? JSON.parse(JSON.stringify(DB.rooms[code])) : null,
+    roomJoin: async (code, m) => {
+      const r = DB.rooms[code];
+      if (!r || r.status === 'closed') return { error: 'Разлом с таким кодом не найден' };
+      const i = r.members.findIndex(x => x.pid === m.pid);
+      if (i >= 0) r.members[i] = m;
+      else { if (r.status !== 'lobby') return { error: 'Бой уже начался' }; if (r.members.length >= 4) return { error: 'В разломе уже 4 Ловчих' }; r.members.push(m); }
+      return JSON.parse(JSON.stringify(r));
+    },
+    roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
+    roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
+    // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
+    lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
+    lotsFind: async f => DB.lots.filter(l => l.status === 'open' && Date.parse(l.expires_at) > Date.now() && (!f.sids || f.sids.includes(l.sid)) && (!f.el || l.el === f.el) && (!f.rar || l.rar === f.rar) && (!f.cur || l.cur === f.cur) && (!f.shiny || l.shiny)
+      && l.iv_pct >= (f.minIv || 0) && l.iv_a >= (f.minA || 0) && l.iv_d >= (f.minD || 0) && l.iv_s >= (f.minS || 0) && l.power >= (f.minPower || 0) && (!f.maxPrice || l.price <= f.maxPrice) && l.seller_pid !== f.notPid)
+      .sort((a, b) => f.sort === 'cheap' ? a.price - b.price : f.sort === 'iv' ? b.iv_pct - a.iv_pct : 0).slice(f.from, f.from + 30).map(l => ({ ...l })),
+    lotsMine: async pid => DB.lots.filter(l => l.seller_pid === pid).map(l => ({ ...l })),
+    lotsOpenCount: async pid => DB.lots.filter(l => l.seller_pid === pid && l.status === 'open').length,
+    lotGet: async id => { const l = DB.lots.find(x => x.id === id); return l ? { ...l } : null; },
+    lotBuy: async (id, pid, name) => {
+      const l = DB.lots.find(x => x.id === id);
+      if (l && l.status === 'open' && Date.parse(l.expires_at) > Date.now() && l.seller_pid !== pid) { Object.assign(l, { status: 'sold', buyer_pid: pid, buyer_name: name }); return { ...l }; }
+      return l && l.status === 'sold' && l.buyer_pid === pid && !l.delivered ? { ...l } : null;
+    },
+    lotCancel: async (id, pid) => {
+      const l = DB.lots.find(x => x.id === id && x.seller_pid === pid);
+      if (l && l.status === 'open') { l.status = 'cancelled'; return { ...l }; }
+      return l && l.status === 'cancelled' && !l.settled ? { ...l } : null;
+    },
+    lotsToSettle: async pid => {
+      DB.lots.forEach(l => { if (l.seller_pid === pid && l.status === 'open' && Date.parse(l.expires_at) < Date.now()) l.status = 'expired'; });
+      return DB.lots.filter(l => l.seller_pid === pid && !l.settled && ['sold', 'cancelled', 'expired'].includes(l.status)).map(l => ({ ...l }));
+    },
+    lotsDone: async (ids, field) => { DB.lots.forEach(l => { if (ids.includes(l.id)) l[field] = true; }); },
+    chatList: async (ch, after) => DB.chat.filter(m => m.channel === ch && !m.hidden && m.id > (after || 0)).slice(-50).map(m => ({ ...m })),
+    chatInsert: async row => { const m = { id: DB.chat.length + 1, created_at: new Date().toISOString(), hidden: false, ...row }; DB.chat.push(m); return { ...m }; },
+    chatReport: async (id, pid) => { if (!DB.reports.some(r => r.id === id && r.pid === pid)) DB.reports.push({ id, pid }); const n = DB.reports.filter(r => r.id === id).length; if (n >= 3) DB.chat.find(m => m.id === id).hidden = true; return n; },
+    paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
+    payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
+    // 4.16: Лига — как 022_league_pvp.sql: очередь, пара (взаимные окна, только свежие заявки), бой с версией, итоги
+    pvpFind: async t => {
+      const live = Object.values(DB.pvpM).find(m => m.status === 'live' && (m.a === who.uid || m.b === who.uid));
+      if (live) return { match: live.id };
+      const now = Date.now(), q0 = DB.pvpQ[who.uid];
+      const me = DB.pvpQ[who.uid] = { uid: who.uid, pid: t.info.pid, season: t.season, rating: t.pts, lo: t.lo, hi: t.hi, info: JSON.parse(JSON.stringify(t.info)), avoid: t.avoid,
+        since: q0 && !q0.match && now - q0.seen <= 15000 ? q0.since : now, seen: now, match: null };
+      const o = Object.values(DB.pvpQ).filter(q => q.uid !== who.uid && !q.match && q.season === t.season && now - q.seen <= 8000 && q.rating >= t.lo && q.rating <= t.hi && t.pts >= q.lo && t.pts <= q.hi
+        && (t.wide || ((!t.avoid || q.pid !== t.avoid) && (!q.avoid || q.avoid !== t.info.pid)))).sort((x, y) => Math.abs(x.rating - t.pts) - Math.abs(y.rating - t.pts) || x.since - y.since)[0];
+      if (!o) return { wait: true, n: Object.values(DB.pvpQ).filter(q => !q.match && q.season === t.season && now - q.seen <= 8000).length };
+      const id = crypto.randomUUID();
+      DB.pvpM[id] = { id, season: t.season, a: o.uid, b: who.uid, ver: 0, status: 'live', aS: false, bS: false, state: { init: true, season: t.season, at: now, a: o.info, b: me.info } };
+      o.match = id; me.match = id;
+      return { match: id };
+    },
+    pvpCancel: async () => { const q = DB.pvpQ[who.uid]; if (q && q.match && DB.pvpM[q.match] && DB.pvpM[q.match].status === 'live') return { match: q.match }; delete DB.pvpQ[who.uid]; return {}; },
+    pvpLive: async () => { const m = Object.values(DB.pvpM).find(x => x.status === 'live' && (x.a === who.uid || x.b === who.uid)); return m ? { id: m.id } : null; },
+    pvpLoad: async id => { const m = DB.pvpM[id]; return m ? { id, ver: m.ver, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : m.b === who.uid ? 'b' : null } : null; },
+    pvpPut: async (id, ver, state, done) => {
+      const m = DB.pvpM[id];
+      if (!m || m.ver !== ver || m.status !== 'live') return null;
+      m.state = JSON.parse(JSON.stringify(state)); m.ver++;
+      if (done) { m.status = 'done'; Object.values(DB.pvpQ).forEach(q => { if (q.match === id) delete DB.pvpQ[q.uid]; }); }
+      return m.ver;
+    },
+    pvpPending: async () => Object.values(DB.pvpM).filter(m => m.status === 'done' && ((m.a === who.uid && !m.aS) || (m.b === who.uid && !m.bS)))
+      .map(m => ({ id: m.id, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : 'b' })),
+    pvpSettled: async id => { const m = DB.pvpM[id]; if (m && m.status === 'done') { if (m.a === who.uid) m.aS = true; if (m.b === who.uid) m.bS = true; } },
+    deleteSave: async () => { delete DB.saves[who.uid]; },
+  });
+  async function call(who, type, args = {}) {
+    if (type === 'encThrow' && who.srv && who.srv.enc && who.srv.enc.lastThrow) who.srv.enc.lastThrow -= 5000; // живой игрок бросает не чаще раза в секунду
+    const res = await GameCore.run({ a: [{ type, args }], tz: who.tz != null ? who.tz : 180, wx: null, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: APP_VERSION }, { data: who.data, srv: who.srv }, envFor(who));
+    if (!res.ok && res.rl) who.srv = { ...who.srv, rl: res.rl }; // как на сервере: счётчики частоты сохраняются и при отказе
+    if (res.ok) {
+      who.data = res.data; who.srv = res.srv;
+      if (res.data) DB.saves[who.uid] = res.data; else delete DB.saves[who.uid];
+      for (const fn of res.after) await fn();
+    }
+    return res;
+  }
+  const must = async (who, type, args) => { const r = await call(who, type, args); if (!r.ok) throw new Error(`${type}: ${r.error}`); return r.results[0]; };
+  const refuse = async (who, type, args, re) => {
+    const r = await call(who, type, args);
+    if (r.ok) throw new Error(`${type} должно быть отклонено`);
+    if (re && !re.test(r.error)) throw new Error(`${type}: неожиданная ошибка «${r.error}»`);
+  };
+  // сервер сам бросает кубики — для проверки исходов подменяем Math.random
+  const withRandom = async (v, fn) => { const m = Math.random; Math.random = () => v; try { return await fn(); } finally { Math.random = m; } };
+  // взгляд на мир глазами игрока (поиск духов и разломов)
+  const asPlayer = (who, fn) => { const d = S.d, tz = U.tz; S.d = who.data; U.tz = 180; try { return fn(); } finally { S.d = d; U.tz = tz; } };
+  const newPlayer = async (uid, lat, lng, name, starter = 'ugolek') => {
+    const p = { uid, lat, lng, data: null, srv: {} };
+    await must(p, 'newGame', { name, starter });
+    return p;
+  };
+  const poiId = (test, from = 90000) => { for (let i = from; i < from + 3000; i++) if (test('osm:n' + i)) return 'osm:n' + i; return null; };
+  // родник у игрока, не захваченный Навью прямо сейчас (вторжения меняются каждые 2 часа)
+  const freeSpring = (P, from) => ({ id: poiId(i => !asPlayer(P, () => W.springFor({ id: i, lat: P.lat, lng: P.lng, name: 'Родник' }, 0).invaded), from), lat: P.lat, lng: P.lng, name: 'Родник' });
+  </script>
+  <script src="sim.js"></script>
+</body>
+</html>

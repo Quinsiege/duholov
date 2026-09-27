@@ -64,6 +64,7 @@ const UI = {
     U.$('#menuBtn').onclick = () => this.menu();
     U.$('#nearbyBtn').onclick = () => this.nearbyList();
     U.$('#incenseChip').onclick = () => this.toast(ru`Ладан курится ещё ${U.fmtTime(S.d.incenseUntil - Date.now())}`);
+    const xc = U.$('#xpChip'); if (xc) xc.onclick = () => this.toast(ru`Настой опыта действует ещё ${U.fmtTime(S.d.xpUntil - U.now())}`);
     Bus.on('xp', () => this.refreshHud());
     Bus.on('levelup', l => this.levelUp(l));
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
@@ -243,6 +244,13 @@ const UI = {
       put(inc.querySelector('span'), U.fmtTime(d.incenseUntil - Date.now()));
     }
     else inc.classList.add('hidden');
+    const xc = U.$('#xpChip'); // 4.16: Настой опыта
+    if (xc && d.xpUntil > U.now()) {
+      xc.classList.remove('hidden');
+      if (!xc.querySelector('span')) xc.innerHTML = `${Art.item('xpbrew')}<span></span>`;
+      put(xc.querySelector('span'), U.fmtTime(d.xpUntil - U.now()));
+    }
+    else if (xc) xc.classList.add('hidden');
   },
   // Летопись на карте: текущий шаг главы или «глава завершена» — чтобы сюжет не терялся в меню
   storyPill() {
@@ -252,6 +260,7 @@ const UI = {
     let t, s, ready = false;
     if (!ch) { t = ru`Летопись дочитана`; s = ru`Встреча ждёт: ${SP[gift].name}`; ready = true; }
     else if (S.storyReady()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`Глава завершена — забери награду!`; ready = true; }
+    else if (!S.storyOpen()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`откроется на ${S.storyLvl(ch)} уровне`; } // 4.16: главы идут по уровням до 40-го
     else {
       const i = ch.steps.findIndex((x, k) => d.story.p[k] < x.n), step = ch.steps[i], p = d.story.p[i];
       t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`;
@@ -577,7 +586,7 @@ const UI = {
       ['scroll', ru`Задания`, () => this.quests(), q ? '!' : ''],
       ['swap', ru`Друзья`, () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
       ['chat', ru`Чат`, () => Chat.screen(), Chat.badge()],
-      ['trophy', ru`Лига`, () => { if (S.d.level < 5) { this.toast(ru`Лига открывается с 5 уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],
+      ['trophy', ru`Лига`, () => { if (S.d.level < League.LEVEL) { this.toast(ru`Лига открывается с ${League.LEVEL} уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],
       ['shop', ru`Лавка`, () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
       ['trail', ru`Тропа`, () => Pass.screen(), Pass.claimable() || ''],
       ['rift', ru`Разломы`, () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
@@ -744,7 +753,9 @@ const UI = {
       if (Encounter.st || Raid.st || Duel.st) { this._lv.unshift(lv); this._lvOpen = false; return; }
       const got = lv.got || [];
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
-      const unlock = l === 8 ? `<p class="unlock">${ru`Открыт <b>Серебряный оберег</b>!`}</p>` : l === 16 ? `<p class="unlock">${ru`Открыт <b>Золотой оберег</b>!`}</p>` : l === 5 ? `<p class="unlock">${ru`Ты теперь <b>Ловчий</b>. Разломы ждут — и можно вступить в <b>дружину</b>: открой любое Капище!`}</p>` : '';
+      // 4.16: что открылось на этом уровне — из «Пути Ловчего» (те же пороги, что проверяет сервер)
+      const opened = (Path.unlocks()[l] || []).filter(x => !x.ic.startsWith('look:') && !x.ic.startsWith('eyes:') && x.ic !== 'emb').map(x => `<b>${x.t}</b>`);
+      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${ru`Открыто: ${opened.join(', ')}`}</p>` : '');
       this.modal({
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,

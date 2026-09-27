@@ -61,6 +61,7 @@
   <script src="../www/js/trailer.js"></script>
   <script src="../www/js/album.js"></script>
   <script src="../www/js/league.js"></script>
+  <script src="../www/js/league-battle.js"></script>
   <script src="../www/js/journal.js"></script>
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/order.js"></script>
@@ -301,27 +302,77 @@
     ok(S.purify(sp)); eq(sp.iv.join(), '15,5,15'); ok(!sp.dark && sp.purified);
   });
   test('Баланс 3.19: кривая уровней, перенос опыта, коконы, сумка, эссенция', () => {
-    // кривая: до 10 как раньше, дальше круче; растёт строго
-    for (let n = 2; n <= 10; n++) eq(levelXP(n), levelXPOld(n), 'до 10 уровня без изменений');
-    for (let n = 2; n <= 40; n++) ok(levelXP(n) > levelXP(n - 1), 'растёт');
-    ok(levelXP(20) > 80000 && levelXP(20) < 100000, 'L20 ≈ 90 тыс.'); ok(levelXP(40) > 1.8e6 && levelXP(40) < 2.4e6, 'L40 ≈ 2,1 млн');
-    // перенос опыта: уровень не падает, место внутри уровня сохраняется
+    // кривая 3.19 (levelXP2): до 10 как раньше, дальше круче — теперь только для переноса опыта (4.16)
+    for (let n = 2; n <= 10; n++) eq(levelXP2(n), levelXPOld(n), 'до 10 уровня без изменений');
+    ok(levelXP2(20) > 80000 && levelXP2(20) < 100000, 'L20 ≈ 90 тыс.'); ok(levelXP2(40) > 1.8e6 && levelXP2(40) < 2.4e6, 'L40 ≈ 2,1 млн');
+    // перенос опыта: уровень не падает, место внутри уровня сохраняется (с кривой до 3.19 — сразу на нынешнюю)
     const keep = S.d;
     S.d = { level: 21, xp: 77180, spirits: [], items: {}, stats: {} }; S.migrate();
-    eq(S.d.level, 21); ok(S.d.xp >= levelXP(21) && S.d.xp < levelXP(22), 'опыт внутри 21 уровня по новой кривой'); eq(S.d.xpv, 2);
+    eq(S.d.level, 21); ok(S.d.xp >= levelXP(21) && S.d.xp < levelXP(22), 'опыт внутри 21 уровня по новой кривой'); eq(S.d.xpv, 3);
     const x1 = S.d.xp; S.migrate(); eq(S.d.xp, x1, 'второй раз не переносится');
-    S.d = { level: 5, xp: 5000, spirits: [], items: {}, stats: {} }; S.migrate(); eq(S.d.xp, 5000, 'новичков не трогает');
     S.d = keep;
     // коконы — только первая стадия
     for (let i = 0; i < 60; i++) { const km = [2, 5, 10][i % 3]; const r = S.hatch({ id: 'balance' + i, km }); eq(SP[r.sp.sid].stage, 1, 'из кокона первая стадия'); }
-    // сумка полна: награда за достижение приходит, добыча родника — нет
-    S.d.items = { charm: S.bagLimit() };
-    const got = S.giveRewards({ honey: 3 }); eq(S.d.items.honey, 3, 'награда сверх лимита'); eq(got[0].n, 3);
-    const loot = S.giveRewards({ water: 2 }, false); ok(!S.d.items.water && !loot.length, 'родник лимит соблюдает');
-    S.d.items = { charm: 50 };
+    // сумка полна: награда приходит в посылку Ордена (4.16: раньше — сверх лимита сумки), находки без over — нет
+    S.d.items = { charm: S.bagLimit() }; S.d.parcel = null;
+    const got = S.giveRewards({ honey: 3 }); ok(!S.d.items.honey, 'сумка не переполняется'); eq(S.d.parcel.items.honey, 3, 'награда — в посылке'); eq(got[0].n, 3);
+    const loot = S.giveRewards({ water: 2 }, false); ok(!S.d.items.water && !loot.length && !S.d.parcel.items.water, 'без over — только в сумку');
+    S.d.items = { charm: 50 }; S.d.parcel = null;
     // эссенция растёт с редкостью
     const common = SPECIES.find(s => s.rar === 1 && s.stage === 1), epic = SPECIES.find(s => s.rar === 4 && s.stage === 1);
     eq(Rules.catchReward({ sid: common.id, mode: 'wild' }).ess, 3); eq(Rules.catchReward({ sid: epic.id, mode: 'wild' }).ess, 9, 'эпический — 9 эссенции');
+  });
+  test('Опыт 4.16: кривая, перенос с 3.19, дневной потолок, опыт отдыха, превращения, лестница открытий', () => {
+    // кривая: строго растёт, цена уровня растёт плавно (без стены после 30-го), ориентиры
+    for (let n = 2; n <= 40; n++) ok(levelXP(n) > levelXP(n - 1), 'растёт ' + n);
+    const cost = n => levelXP(n + 1) - levelXP(n);
+    for (let n = 3; n < 40; n++) ok(cost(n) >= cost(n - 1), 'цена уровня не падает ' + n);
+    for (let n = 25; n < 40; n++) ok(cost(n) / cost(n - 1) < 1.2, 'после 25-го цена растёт не больше чем на 20% за уровень ' + n);
+    ok(cost(39) / cost(30) < 2.5, 'нет стены: 39→40 дороже 30→31 меньше чем в 2,5 раза (было ×4)');
+    ok(levelXP(10) >= 60000 && levelXP(10) <= 90000, 'L10 — за 3–4 дня'); ok(levelXP(20) >= 350000 && levelXP(20) <= 480000, 'L20 — к двум неделям');
+    ok(levelXP(40) >= 4e6 && levelXP(40) <= 5e6, 'L40 — за 5–6 месяцев'); ok(levelXP(41) > levelXP(40), 'за пределом — не NaN');
+    const keep = S.d;
+    try {
+      // перенос с кривой 3.19–4.15: уровень тот же, место внутри уровня — то же
+      S.d = { level: 25, xp: Math.round((levelXP2(25) + levelXP2(26)) / 2), xpv: 2, spirits: [], items: {}, stats: {} }; S.migrate();
+      eq(S.d.level, 25); near((S.d.xp - levelXP(25)) / (levelXP(26) - levelXP(25)), 0.5, 0.01, 'середина 25 уровня'); eq(S.d.xpv, 3);
+      S.d = { level: 40, xp: levelXP2(40) + 5, xpv: 2, spirits: [], items: {}, stats: {} }; S.migrate(); eq(S.d.level, 40); ok(S.d.xp >= levelXP(40), '40 уровень остаётся');
+      S.d = { level: 4, xp: 2000, spirits: [], items: {}, stats: {} }; S.migrate(); eq(S.d.level, 4); ok(S.d.xp >= levelXP(4) && S.d.xp < levelXP(5), 'новичок — внутри своего уровня');
+      // дневной потолок: до FULL — полностью, дальше вполовину, сверх HALF — на четверть; разовые награды — полностью
+      S.d = JSON.parse(JSON.stringify(keep)); S.d.level = 30; S.d.xp = levelXP(30);
+      const mul = Ev.xpMul(), today = U.today(), F = XP_DAY.FULL, H = XP_DAY.HALF;
+      S.d.xpd = { day: today, n: 0, rest: 0 };
+      eq(S.addXP(F), F * mul, 'до потолка — полностью');
+      eq(S.addXP(1000), 500 * mul, 'сверх — вполовину');
+      S.d.xpd.n = H * mul; eq(S.addXP(1000), 250 * mul, 'сверх второго порога — на четверть');
+      eq(S.addXP(1000, true), 1000 * mul, 'разовая награда — без потолка');
+      eq(S.giveRewards({ xp: 2000 }, true, true).find(x => x.k === 'xp').n, 2000 * mul, 'глава Летописи: показано столько, сколько начислено');
+      S.d.xpd = { day: today, n: (F - 100) * mul, rest: 0 }; eq(S.addXP(300), (100 + 100) * mul, 'граница посередине награды');
+      // опыт отдыха: за дни без игры копится, удваивает опыт, пока не кончится; не больше чем за REST_DAYS дней
+      const ago = k => U.today(Date.now() - k * 86400000);
+      S.d.xpd = { day: ago(3), n: 99999, rest: 0 };
+      eq(S.xpToday().rest, 2 * XP_DAY.REST, 'два пропущенных дня'); eq(S.d.xpd.day, ago(3), 'показ ничего не меняет');
+      eq(S.addXP(1000), 2000 * mul, 'опыт вдвое'); eq(S.d.xpd.day, today); eq(S.d.xpd.n, 1000 * mul, 'новый день — счётчик заново');
+      eq(S.d.xpd.rest, 2 * XP_DAY.REST - 1000 * mul, 'бонус тратится');
+      S.d.xpd.rest = 300; eq(S.addXP(1000), 1000 * mul + 300, 'остаток отдыха — сколько есть'); eq(S.d.xpd.rest, 0);
+      eq(S.addXP(1000, true), 1000 * mul, 'отдых не тратится на разовые награды');
+      S.d.xpd = { day: ago(40), n: 0, rest: 0 }; eq(S.xpToday().rest, XP_DAY.REST * XP_DAY.REST_DAYS, 'не больше чем за неделю');
+      S.d.xpd = { day: ago(1), n: 0, rest: 5000 }; eq(S.xpToday().rest, 5000, 'играл вчера — отдых не копится');
+      const note = Path.dayNote(); ok(note.includes(U.fmtNum(5000)) && !/NaN|undefined/.test(note), 'Путь Ловчего показывает опыт отдыха');
+      // превращение: новый вид — 1000, повторное в тот же вид — 200 (было 500)
+      S.d.xpd = { day: today, n: 0, rest: 0 }; S.d.dex = {}; S.d.essence = { ugolek: 999 };
+      const a = S.makeSpirit('ugolek', 10, 'evoA'), b = S.makeSpirit('ugolek', 10, 'evoB'); S.d.spirits.push(a, b);
+      let x0 = S.d.xp; S.evolve(a); eq(S.d.xp - x0, 1000 * mul, 'новый вид');
+      x0 = S.d.xp; S.evolve(b); eq(S.d.xp - x0, 200 * mul, 'повторное превращение');
+    } finally { S.d = keep; }
+    // лестница открытий: Капища → вторжения → Лига → дружины → Аукцион, всё — в «Пути Ловчего»
+    ok(DUEL_LEVEL < INVASION_LEVEL && INVASION_LEVEL < League.LEVEL && League.LEVEL < CLAN_LEVEL && CLAN_LEVEL < Rules.AUCTION.LEVEL, 'по порядку');
+    const un = Path.unlocks();
+    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Дружина'], [Rules.AUCTION.LEVEL, 'Аукцион']]
+      .forEach(([l, t]) => ok((un[l] || []).some(x => I18N.back(x.t) === t), `${t} — на ${l} уровне пути`));
+    const d0 = S.d.level; S.d.level = INVASION_LEVEL - 1;
+    try { ok(!Array.from({ length: 300 }, (_, i) => W.springFor({ id: 'osm:n' + (70000 + i), lat: 55.75, lng: 37.62, name: 'Р' }, 0)).some(e => e.invaded), 'до INVASION_LEVEL вторжений нет'); }
+    finally { S.d.level = d0; }
   });
   test('Амулеты: надеть, снять, вернуть при отпускании', () => {
     const sp = fresh('mshonok', 10); S.d.amulets = { perun: 1 };
@@ -334,6 +385,38 @@
   test('Второй приём: цена и повторное изучение запрещено', () => {
     const sp = fresh('vayfayka', 10); S.d.sparks = MOVE2_COST.sparks; S.d.essence.vayfayka = MOVE2_COST.essence;
     ok(S.learnMove2(sp)); ok(sp.move2); eq(S.d.sparks, 0); ok(!!S.canLearnMove2(sp));
+  });
+  test('Экономика 4.16: посылка Ордена, цены усиления и очищения, переплавка, награды', () => {
+    const items0 = S.d.items, parcel0 = S.d.parcel, am0 = S.d.amulets, sp0 = S.d.sparks;
+    try {
+      // сумка не переполняется: лишнее — в посылку (до Rules.PARCEL.MAX), дальше — пропадает; забрать — редкое первым
+      S.d.items = { charm: S.bagLimit() - 2 }; S.d.parcel = null;
+      const got = S.giveRewards({ honey: 5, deadwater: 1 });
+      eq(S.bagCount(), S.bagLimit(), 'сумка заполнена до лимита, не больше'); eq(S.d.items.honey, 2); eq(S.parcelCount(), 4);
+      eq(got.find(x => x.k === 'honey').n, 5, 'в награде — всё, что получено (сумка + посылка)');
+      S.giveRewards({ charm: Rules.PARCEL.MAX }); eq(S.parcelCount(), Rules.PARCEL.MAX, 'посылка не больше предела'); eq(S.bagCount(), S.bagLimit());
+      S.d.items.charm -= 3;
+      const t = S.parcelTake(); eq(t[0].k, 'deadwater', 'сначала — Мёртвая вода'); eq(S.bagCount(), S.bagLimit(), 'забрано, сколько влезло');
+      ok(S.parcelCount() > 0, 'остальное ждёт');
+      S.d.items = { charm: 10 }; S.parcelTake(); eq(S.d.parcel, null, 'посылка разобрана'); ok(S.bagCount() <= S.bagLimit());
+      // усиление: до 20 уровня — как раньше, выше — дороже; цена не убывает
+      for (let l = 1; l <= 20; l++) eq(S.powerUpSparks(l), 200 + 200 * Math.floor((l - 1) / 4), 'до 20 — прежняя цена');
+      for (let l = 2; l < 40; l++) ok(S.powerUpSparks(l) >= S.powerUpSparks(l - 1), 'не дешевеет');
+      eq(S.powerUpSparks(30), 4000); eq(S.powerUpSparks(39), 7700);
+      // очищение дороже для редких
+      const common = SPECIES.find(s => s.rar === 1), epic = SPECIES.find(s => s.rar === 4);
+      eq(S.purifyCost({ sid: common.id }).sparks, 3000); eq(S.purifyCost({ sid: epic.id }).sparks, 12000);
+      // переплавка: три одинаковых и искры → один на выбор
+      S.d.amulets = { perun: 2 }; S.d.sparks = Rules.MELT.SPARKS;
+      ok(!!S.canMeltAmulet('perun', 'veles'), 'нужно три'); S.d.amulets.perun = 3;
+      ok(!!S.canMeltAmulet('perun', 'perun'), 'в себя же нельзя'); ok(!!S.canMeltAmulet('perun', 'constructor'), 'только известные амулеты'); ok(!!S.canMeltAmulet('toString', 'veles'));
+      ok(S.meltAmulet('perun', 'veles')); eq(S.d.amulets.perun, 0); eq(S.d.amulets.veles, 1); eq(S.d.sparks, 0);
+      // награды: златники за уровень — 5, на каждом пятом — 20; Мёртвая вода — не в товаре дня, на 30-й ступени Тропы
+      eq(S.levelRewards(12).zlat, Rules.ZLAT.level); eq(S.levelRewards(15).zlat, Rules.ZLAT.level5);
+      for (let d = 0; d < 60; d++) ok(Rules.shopDeal('2026-10-' + d).id !== 'dead1', 'Мёртвая вода без скидки');
+      eq(Rules.passReward('free', 30).deadwater, 1, 'Мёртвая вода — на вершине бесплатной Тропы');
+      ok(Rules.SHOP.find(x => x.id === 'dead1').week === 1, 'Мёртвая вода в Лавке — раз в неделю');
+    } finally { S.d.items = items0; S.d.parcel = parcel0; S.d.amulets = am0; S.d.sparks = sp0; }
   });
   test('Эффективность стихий в бою', () => {
     eq(Raid.eff('fire', 'forest'), 1.6); eq(Raid.eff('forest', 'fire'), 0.625); eq(Raid.eff('fire', 'fire'), 1);
@@ -360,12 +443,79 @@
   test('Лига: пороги рангов', () => {
     eq(League.rank(0), 0); eq(League.rank(299), 0); eq(League.rank(300), 1); eq(League.rank(5500), 9); eq(League.rank(99999), 9);
     for (let i = 1; i < LEAGUE_RANKS.length; i++) ok(LEAGUE_RANKS[i].pts > LEAGUE_RANKS[i - 1].pts);
-    // 4.15: звёзды старого сохранения — рейтинг ×100; новый сезон — срез половины сверх 1000
+    // 4.15: звёзды старого сохранения — рейтинг ×100; 4.16: новый сезон — срез половины сверх 1500
     const old = League.norm({ season: League.season(), stars: 12, best: 3, tickets: 3, day: U.today(), got: {}, run: null });
     eq(old.pts, 1200, 'звёзды → рейтинг ×100'); ok(!('stars' in old), 'звёзды убраны');
-    eq(League.reset(3000), 2000); eq(League.reset(800), 800);
-    eq(League.norm({ season: '2000-01', pts: 3000, best: 5, tickets: 3, day: U.today(), got: { 1: true }, run: null }).pts, 2000, 'новый сезон — срез');
-    eq(League.ratingOf({ season: League.season(), stars: 4 }), 400); eq(League.ratingOf({ season: '2000-01', pts: 1400 }), 1200);
+    eq(League.reset(3000), 2250); eq(League.reset(1400), 1400);
+    eq(League.norm({ season: '2000-01', pts: 3000, best: 5, tickets: 3, day: U.today(), got: { 1: true }, run: null }).pts, 2250, 'новый сезон — срез');
+    eq(League.ratingOf({ season: League.season(), stars: 4 }), 400); eq(League.ratingOf({ season: '2000-01', pts: 2000 }), 1750);
+  });
+  // 4.16: Лига — живые Ловчие: круг поиска, рейтинг как у Эло, сезонный сундук
+  test('Лига 4.16: круг поиска — своя лига, у границы — соседняя, ожидание расширяет', () => {
+    let w = League.window(100); eq(w.a, 0); eq(w.b, 0); eq(w.hi, 299, 'Новик ищет только Новиков');
+    w = League.window(280); eq(w.b, 1, 'до «Отрока» 20 — ищет и там'); eq(w.hi, 599);
+    w = League.window(1020); eq(w.a, 2, 'только что поднялся в «Кметь» — ищет и в «Гридне»'); eq(w.b, 3);
+    w = League.window(1200); eq(w.a, 3); eq(w.b, 3, 'середина лиги — только своя');
+    w = League.window(1200, 20); eq(w.a, 2); eq(w.b, 4, 'ждёт 20 с — ±1 лига');
+    w = League.window(1200, 40); eq(w.a, 1); eq(w.b, 5, 'ждёт 40 с — ±2 лиги');
+    w = League.window(1200, 65); eq(w.lo, 0); eq(w.hi, League.MAXPTS, 'ждёт минуту — все, но только живые Ловчие');
+    w = League.window(6000); eq(w.a, 9); eq(w.b, 9); eq(w.hi, League.MAXPTS);
+  });
+  test('Лига 4.16: рейтинг — по разнице рейтингов, наверху медленнее', () => {
+    eq(League.delta(0, 0, 1).d, 30, 'Новик: победа над равным +30'); eq(League.delta(100, 100, 0).d, -10, 'поражение −10');
+    eq(League.delta(5600, 5600, 1).d, 14, 'Хранитель: +14'); eq(League.delta(5600, 5600, 0).d, -14, 'и −14');
+    ok(League.delta(1000, 1400, 1).d > League.delta(1400, 1000, 1).d * 3, 'победа над сильным — много, над слабым — мало');
+    ok(League.delta(1400, 1000, 0).d < League.delta(1000, 1400, 0).d, 'поражение от слабого дороже');
+    ok(League.delta(3000, 200, 1).d >= 1, 'победа — хотя бы +1'); eq(League.delta(5, 5, 0).pts, 0, 'не ниже нуля');
+    eq(League.delta(3000, 3000, 0.5).d, 0, 'ничья с равным — без изменений');
+    for (let r = 1; r < LEAGUE_RANKS.length; r++) ok(League.KW[r] <= League.KW[r - 1], 'подъём медленнее с каждой лигой');
+    // новый сезон: срез и сундук за высшую лигу прошлого
+    const L = League.norm({ season: '2000-01', pts: 3000, best: 5, peak: 5, tickets: 3, n: 7, day: U.today(), got: { 1: true } });
+    eq(L.pts, 2250); eq(L.prize.rank, 5, 'сундук за «Богатыря»'); eq(L.peak, League.rank(2250)); eq(JSON.stringify(L.got), '{}');
+    ok(League.prize(5).sparks > League.prize(1).sparks && !League.prize(0), 'сундук растёт с лигой, у Новика — нет');
+  });
+  test('Лига 4.16: бой считает сервер — ходы, частота, энергия, приём, щит, время', () => {
+    const t = (sid, lvl) => ({ ...PvP.fighter(S.makeSpirit(sid, lvl, 'pv' + sid + lvl)), uid: 'u' + sid });
+    const side = (pid, pts) => ({ pid, name: pid, look: null, lvl: 10, pts, rank: League.rank(pts), power: 1, team: [t('ugolek', 12), t('kapelka', 12), t('mshonok', 12)] });
+    const st = PvP.ensure({ init: true, season: League.season(), at: 1000, a: side('pa', 0), b: side('pb', 0) }), t0 = st.t0;
+    eq(t0, 1000 + PvP.COUNT);
+    ok(PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 - 100).ign, 'до начала боя удары не засчитываются');
+    const f0 = st.s.b.team[0].cur;
+    eq(PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 + 100).got, 1);
+    ok(st.s.b.team[0].cur < f0 && st.s.a.team[0].en === 7, 'урон и энергия — у сервера');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 50 }, t0 + 200).bad, 'полсотни ударов разом — подделка');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 1.5 }, t0 + 200).bad && PvP.act(st, 'a', { t: 'fly' }, t0 + 200).bad && PvP.act(st, 'a', null, t0).bad, 'неизвестный ход — подделка');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 6 }, t0 + 300).got <= 3, 'не чаще двух ударов в секунду (запас — 3)');
+    ok(PvP.act(st, 'a', { t: 'charge', kind: 'charge' }, t0 + 400).ign === 'energy' && !st.pause, 'приём без энергии не выходит');
+    ok(PvP.act(st, 'a', { t: 'charge', kind: 'charge2' }, t0 + 400).bad, 'невыученный приём — подделка');
+    ok(PvP.act(st, 'b', { t: 'shield', on: true }, t0 + 400).ign, 'щит без приёма соперника не тратится'); eq(st.s.b.sh, 2);
+    // приём: мини-игра и щит — пауза, итог — когда оба решили; тапы — не быстрее руки
+    st.s.a.team[0].en = 60;
+    ok(PvP.act(st, 'a', { t: 'charge', kind: 'charge' }, t0 + 1000).ok && st.pause && st.pause.k === 'charge');
+    ok(PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 + 1100).ign, 'во время приёма удары не идут');
+    ok(PvP.act(st, 'b', { t: 'shield', on: true }, t0 + 1500).ok && st.pause, 'щит выбран — ждём мини-игру');
+    PvP.act(st, 'a', { t: 'taps', n: 12 }, t0 + 1300 + 1000); // 1,3 с — не больше 9 тапов
+    ok(!st.pause && st.s.b.sh === 1, 'щит принял приём'); eq(st.log[st.log.length - 1].d, 1);
+    // приём без ответа защитника — через 3 с срабатывает сам (автоход), без щита
+    st.s.a.team[0].en = 60; const hp = st.s.b.team[0].cur;
+    PvP.act(st, 'a', { t: 'charge', kind: 'charge' }, t0 + 3000);
+    PvP.advance(st, t0 + 3000 + PvP.DECIDE + 10);
+    ok(!st.pause && st.s.b.team[0].cur < hp - 1, 'не ответил — удар прошёл'); eq(st.s.b.sh, 1);
+    // смена: перезарядка; поражение бойца — выбор духа, не выбрал за 6 с — первый живой
+    st.s.a.seen = st.s.b.seen = t0 + 7000;
+    ok(PvP.act(st, 'b', { t: 'switch', i: 1 }, t0 + 7000).ok); eq(st.s.b.idx, 1);
+    eq(PvP.act(st, 'b', { t: 'switch', i: 2 }, t0 + 8000).ign, 'cd', 'смена на перезарядке');
+    st.s.b.team[1].cur = 1; PvP.act(st, 'a', { t: 'hit', n: 1 }, t0 + 9000);
+    ok(st.pause && st.pause.k === 'switch' && st.pause.who[0] === 'b', 'боец без сил — выбор духа');
+    PvP.advance(st, t0 + 9000 + PvP.SWITCH_T + 10);
+    ok(!st.pause && st.s.b.idx === 0, 'время вышло — выпущен первый живой');
+    // время боя: паузы не считаются; итог — по доле здоровья, рейтинг обоим — в той же записи
+    st.s.a.seen = st.s.b.seen = t0 + 160000;
+    PvP.advance(st, t0 + 170000);
+    ok(st.over && st.over.why === 'time' && st.over.win === 'a', 'время вышло — у кого больше сил');
+    eq(st.over.d.a.d, 30); eq(st.over.d.b.d, 0, 'рейтинг не ниже нуля');
+    const v = PvP.view(st, "b", t0 + 170000);
+    eq(v.over.win, 'foe'); eq(v.foe.team[0].en, 0, 'энергию соперника не показываем'); ok(!('atk' in v.foe.team[0]), 'и его показатели');
   });
   test('Задания дня: три разных', () => {
     S.d.quests = null; S.ensureQuests();
@@ -378,24 +528,134 @@
     S.progress('power', 1); ok(S.storyReady());
     const r = S.claimStory(); ok(r && r.ch.title === 'Посвящение'); eq(S.d.story.ch, 1);
   });
-  test('Летопись: 21 глава, у всех шагов есть текст, подарки существуют', () => {
-    eq(STORY.length, 21);
+  test('Летопись: 28 глав, у всех шагов есть текст, подарки существуют', () => {
+    eq(STORY.length, 28); // 4.16: пятая книга «Калинов мост» — главы до 40 уровня
     STORY.forEach((ch, i) => {
       eq(ch.steps.length, 3, 'шагов в главе ' + (i + 1));
       ch.steps.forEach(s => { ok(stepText(s).length > 5, `шаг «${s.t}» в главе ${i + 1}`); if (s.el) ok(ELEMENTS[s.el], 'стихия'); });
       if (ch.gift) ok(SP[ch.gift], 'подарок ' + ch.gift);
-      Object.keys(ch.reward).forEach(k => ok(k === 'xp' || k === 'sparks' || ITEMS[k], 'награда ' + k));
+      Object.keys(ch.reward).forEach(k => ok(k === 'sparks' || k === 'alatyr' || k === 'rod' || ITEMS[k], 'награда ' + k));
     });
-    ok([12, 18, STORY.length].every(n => LOOK.emblem.some(e => e.story === n)), 'эмблемы за вторую, третью и четвёртую книги');
+    ok([12, 18, 21].every(n => LOOK.emblem.some(e => e.story === n)), 'эмблемы за вторую, третью и четвёртую книги');
     ok(SP.indrik.legend && SP.indrik.story, 'Индрик — легенда Летописи');
-    ok(SP.svyatogor.legend && SP.svyatogor.story && STORY[STORY.length - 1].gift === 'svyatogor', 'Святогор — легенда четвёртой книги');
+    ok(SP.svyatogor.legend && SP.svyatogor.story && STORY[20].gift === 'svyatogor', 'Святогор — легенда четвёртой книги');
+    eq(STORY[STORY.length - 1].gift, 'gorynych', 'Змей Горыныч — финал пятой книги');
+    eq(STORY_BOOKS.length, 5); ok(STORY_BOOKS.every((b, i) => STORY[b.from] && (!i || b.from > STORY_BOOKS[i - 1].from)), 'книги по порядку');
   });
   test('Новые шаги Летописи засчитываются (вторжение, очищение, фото, Лига)', () => {
+    const lv = S.d.level; S.d.level = 20; // 4.16: главы открываются по уровню Ловчего
     S.d.story = { ch: 7, p: [0, 0, 0] }; // «Прислужники Нави»
     S.progress('invasion', 3); S.progress('purify', 1); S.progress('duel', 2);
     ok(S.storyReady(), 'глава 8 готова');
     S.d.story = { ch: 8, p: [0, 0, 0] };
     S.progress('photo', 1); eq(S.d.story.p[2], 1, 'фото');
+    S.d.level = lv;
+  });
+  /* ---------- 4.16: прокачка духов, коллекция, Летопись ---------- */
+  test('Пробуждение (4.16): звёзды по уровню Ловчего, предел до 50, цена', () => {
+    const lv = S.d.level;
+    try {
+      const sp = fresh('ugolek', 10);
+      S.d.level = 19; eq(S.maxLvl(sp), 24); sp.lvl = 24;
+      ok(/20 уровне/.test(S.canAwaken(sp)), 'первая звезда — с 20 уровня');
+      S.d.level = 20; ok(/до предела/.test(S.canAwaken(sp)), 'сначала — до предела');
+      sp.lvl = 25; S.d.alatyr = 0; S.d.sparks = 1e6; S.d.essence.ugolek = 1000;
+      ok(/Алатыря/.test(S.canAwaken(sp)), 'нужны осколки');
+      ok(/пробуди/.test(S.canPowerUp(sp)), 'на пределе «Усилить» зовёт к пробуждению');
+      S.d.alatyr = 100;
+      const a0 = S.d.alatyr, s0 = S.d.sparks, e0 = S.d.essence.ugolek, c = S.awakenCost(sp);
+      ok(S.awaken(sp)); eq(sp.stars, 1); eq(S.maxLvl(sp), 27, 'звезда: предел +2');
+      eq(S.d.alatyr, a0 - c.alatyr); eq(S.d.sparks, s0 - c.sparks); eq(S.d.essence.ugolek, e0 - c.essence);
+      eq(S.canPowerUp(sp), null, 'после звезды дух растёт дальше');
+      sp.lvl = 27; ok(/25 уровне/.test(S.canAwaken(sp)), 'вторая звезда — с 25 уровня');
+      const b = { ...sp, stars: 5 };
+      eq(S.maxLvl(b), 27, 'звёзды сверх уровня Ловчего не действуют');
+      S.d.level = 40; eq(S.maxLvl(b), SPIRIT_MAX, 'пять звёзд — до 50');
+      ok(/полностью/.test(S.canAwaken(b)), 'больше пяти нельзя');
+      sp.stars = 4; sp.lvl = S.maxLvl(sp); eq(sp.lvl, 48); ok(S.awaken(sp)); sp.lvl = SPIRIT_MAX;
+      ok(/наивысшего/.test(S.canPowerUp(sp)), '50 — наивысший уровень');
+      ok(S.power({ ...sp, lvl: 50 }) > S.power({ ...sp, lvl: 40 }) * 1.15, 'сила 50 уровня заметно выше 40-го');
+      // звёзды переходят с духом при обмене и на Аукционе (действуют по уровню получателя)
+      const pk = GameCore.packSpirit(sp); eq(pk.a, 5);
+      eq(GameCore.unpackSpirit({ ...pk, a: 99 }, { now: 1 }, null, 40).stars, S.AWAKE.MAX, 'не больше пяти');
+      eq(GameCore.cleanSpirit({ sid: 'ugolek', lvl: 99, iv: [1, 1, 1] }, 0).lvl, SPIRIT_MAX, 'соперник — до 50 уровня');
+      S.release(sp.uid);
+    } finally { S.d.level = lv; }
+  });
+  test('Эссенция Рода (4.16): переплавка 5 → 1, вливание 1 → 1, в легенды 3 → 1', () => {
+    S.d.essence.kapelka = 23; S.d.rod = 0;
+    ok(/Нужно 25/.test(S.canMelt('kapelka', 5)));
+    ok(S.melt('kapelka', 4)); eq(S.d.essence.kapelka, 3); eq(S.d.rod, 4);
+    ok(/легенд/.test(S.canMelt('zharptica', 1)), 'эссенция легенд не плавится');
+    ok(!!S.canMelt('luzhnica', 1), 'семейство — по первой форме');
+    ok(!!S.canMelt('kapelka', 0.5) && !!S.canMelt('kapelka', -1) && !!S.canMelt('__proto__', 1), 'мусор отклоняется');
+    S.d.rod = 10; S.d.essence.svyatogor = 0;
+    ok(S.pour('svyatogor', 3)); eq(S.d.essence.svyatogor, 3); eq(S.d.rod, 1, 'легенда: 3 Рода за единицу');
+    ok(/Рода: 3/.test(S.canPour('svyatogor', 1)));
+    const k0 = S.d.essence.kikimora || 0; ok(S.pour('kikimora', 1)); eq(S.d.rod, 0); eq(S.d.essence.kikimora, k0 + 1);
+  });
+  test('Трофеи разлома (4.16): эссенция семейства босса и осколки Алатыря', () => {
+    const m = Math.random;
+    try {
+      Math.random = () => 0.5;
+      S.d.alatyr = 0; S.d.essence.koschey = 0; const u0 = S.d.essence.ugolek || 0;
+      const r3 = S.riftSpoils('koschey', 3); eq(S.d.essence.koschey, S.RIFT_ESS[3], 'эссенция легенды'); eq(S.d.alatyr, 1, 'великий разлом — всегда осколок'); ok(r3.some(x => x.k === 'alatyr'));
+      const r2 = S.riftSpoils('kostrovik', 2); eq(S.d.essence.ugolek, u0 + S.RIFT_ESS[2], 'эссенция семейства босса'); eq(S.d.alatyr, 1); eq(r2.length, 1);
+      Math.random = () => 0.1; S.riftSpoils('kostrovik', 2); eq(S.d.alatyr, 2, 'разлом — иногда');
+      S.riftSpoils('koschey', 3); eq(S.d.alatyr, 2, `в бою — не больше ${S.ALATYR_DAY} осколков в день`);
+      S.d.alaDay = { day: 'вчера', n: 9 };
+      eq(S.alatyrDrop('duel', 2).length, 0, 'Капище мастера — без осколков'); Math.random = () => 0.05; eq(S.alatyrDrop('duel', 3).length, 1, 'старейшина — изредка; новый день — новый счёт');
+      S.d.alatyr = 3;
+      const b0 = S.bagCount(), got = S.giveRewards({ alatyr: 2, rod: 5 }); eq(S.d.alatyr, 5); eq(got.length, 2); eq(S.bagCount(), b0, 'в сумку не идут');
+    } finally { Math.random = m; }
+  });
+  test('Летопись (4.16): главы до 40 уровня, пороги, опыт по кривой, подсказки к шагам', () => {
+    let prev = 0;
+    STORY.forEach((ch, i) => {
+      const L = S.storyLvl(ch); ok(L >= prev, 'пороги не убывают, глава ' + (i + 1)); prev = L;
+      ch.steps.forEach(s => ok(stepHint(s).length > 20, 'подсказка ' + s.t));
+    });
+    eq(S.storyLvl(STORY[STORY.length - 1]), MAX_LEVEL, 'последняя глава — на 40 уровне');
+    ok(S.storyLvl(STORY[5]) <= 10 && S.storyLvl(STORY[20]) <= 30, 'первые книги — раньше');
+    ['catch', 'catchEl', 'spring', 'power', 'throw', 'walk', 'raid', 'evolve', 'hatch', 'duel', 'invasion', 'purify', 'photo', 'league', 'task', 'defend', 'land', 'spar', 'coop', 'gift', 'awaken']
+      .forEach(t => ok(stepHint({ t, n: 1, el: 'fire' }).length > 20 && stepText({ t, n: 1, el: 'fire' }).length > 5, 'шаг ' + t));
+    const tot = STORY.reduce((a, ch) => a + S.storyXP(S.storyLvl(ch)), 0);
+    ok(tot > levelXP(MAX_LEVEL) * 0.08 && tot < levelXP(MAX_LEVEL) * 0.16, 'опыт Летописи — 8–16% пути: ' + tot);
+    ok(S.storyXP(38) > S.storyXP(10) * 4, 'поздние главы дают больше опыта');
+    const keep = { lv: S.d.level, st: S.d.story };
+    try {
+      S.d.level = 12; S.d.story = { ch: 21, p: [0, 0, 0] }; ok(!S.storyOpen(), 'глава 22 закрыта до 31 уровня');
+      S.progress('raid', 6); eq(S.d.story.p[0], 0, 'закрытая глава шаги не считает');
+      S.d.story.p = [6, 40, 1]; ok(!S.storyReady(), 'и не завершается'); eq(S.claimStory(), null);
+      S.d.level = 31; ok(S.storyReady());
+      const r = S.claimStory(); ok(r && r.got.some(x => x.k === 'alatyr' && x.n === 3) && r.got.some(x => x.k === 'xp'), 'награда главы');
+      eq(S.d.story.ch, 22);
+    } finally { S.d.level = keep.lv; S.d.story = keep.st; }
+  });
+  test('Коллекция (4.16): каждый вид достижим — карта, превращение, разломы, Летопись, гости издалека', () => {
+    const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35]];
+    SPECIES.forEach(s => {
+      const wild = !s.legend && PTS.some(([la, ln]) => W.local(s, ln, la)), evo = SPECIES.some(x => x.evo === s.id);
+      const rift = s.legend && !s.story, story = STORY.some(ch => ch.gift === s.id);
+      ok(wild || evo || rift || story, 'недостижим: ' + s.id);
+    });
+    // где бы ни был Ловчий, духа чужих краёв (и не своего сезона) приведёт поручение: он либо здешний, либо гость
+    PTS.forEach(([la, ln]) => {
+      const g = new Set(S.guests(la, ln).map(s => s.id));
+      SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season)).forEach(s =>
+        ok(g.has(s.id) !== (W.local(s, ln, la) && Ev.seasonal(s) > 0), `${s.id} в ${la},${ln}`));
+    });
+  });
+  test('Поручения (4.16): трудное поручение может привести гостя издалека', () => {
+    const lv = S.d.level, m = Math.random;
+    try {
+      S.d.level = 30;
+      const seq = [0.99, 0.5, 0.5, 0.1, 0.5]; let i = 0; Math.random = () => seq[i++ % seq.length];
+      const t = S.makeTask({ lat: 55.75, lng: 37.62 }); eq(t.tier, 3); ok(t.guest, 'гость');
+      ok(S.guests(55.75, 37.62).some(s => s.id === t.sid), 'гость — не здешний дух');
+      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].region && !SP[t2.sid].land && !SP[t2.sid].season, 'обычно — обычный дух');
+      i = 0; seq[3] = 0.1; ok(!S.makeTask().guest, 'без места — без гостей');
+    } finally { Math.random = m; S.d.level = lv; }
   });
   test('Дневник: записи с местом, ограничение по размеру', () => {
     S.d.journal = [];
@@ -410,12 +670,94 @@
     const saved = S.d; S.newGame('Проверка', 'ugolek'); S.d.level = 20;
     try {
       const team = lvl => ['ugolek', 'kapelka', 'mshonok'].map((sid, i) => S.makeSpirit(sid, lvl, 'bt' + sid + lvl + i));
+      S.d.spirits.push(...team(15)); // 4.16: хранитель — по силе сильнейших духов игрока
       const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Капище' });
       ok(!Rules.duelWinnable(team(1), g.team, SHRINE_TIERS[3].speed), 'команда 1-го уровня против Старейшины — нет');
       ok(Rules.duelWinnable(team(15), g.team, SHRINE_TIERS[3].speed), 'сильная команда — да');
-      const lg = League.opponent(0, { pts: 6000, season: 's', run: null });
-      ok(!Rules.duelWinnable(team(1), lg.team, lg.T.speed), 'в Лиге — тоже');
+      // 4.16: здоровье на входе в бой — израненная команда не «побеждает» того, кого здоровая одолела бы
+      const t15 = team(15), low = Object.fromEntries(t15.map(sp => [sp.uid, 0.02]));
+      ok(!Rules.duelWinnable(t15, g.team, SHRINE_TIERS[3].speed, low), 'с 2% здоровья — нет');
+      ok(Rules.duelWinnable(t15, g.team, SHRINE_TIERS[3].speed, Object.fromEntries(t15.map(sp => [sp.uid, 1]))), 'здоровая — да');
     } finally { S.d = saved; }
+  });
+  // 4.16: хранитель и прислужник — по силе духов игрока, а не по его уровню
+  test('Капища и вторжения: сила соперника — от силы духов игрока (4.16)', () => {
+    const saved = S.d; S.newGame('Сила', 'ugolek'); S.d.level = 30;
+    try {
+      const pw = t => t.reduce((a, x) => a + S.power(x), 0);
+      const setTeam = lvl => { S.d.spirits = ['kostrovik', 'kapelka', 'mshonok', 'ugolek'].map((sid, i) => S.makeSpirit(sid, i < 3 ? lvl : 1, 'pw' + sid + lvl)); };
+      setTeam(10);
+      const top10 = W.topPower(); near(top10 * 3, pw(S.d.spirits.slice(0, 3)), 1, 'треть суммы трёх сильнейших');
+      const g10 = [1, 2, 3].map(t => W.guardian({ id: 'osm:n4242', tier: t }));
+      setTeam(30);
+      const top30 = W.topPower();
+      const g30 = [1, 2, 3].map(t => W.guardian({ id: 'osm:n4242', tier: t }));
+      ok(top30 > top10 * 2, 'сильнее духи — выше ориентир');
+      [1, 2, 3].forEach(t => {
+        ok(pw(g30[t - 1].team) > pw(g10[t - 1].team) * 1.8, `хранитель ${t}-й ступени растёт вместе с игроком`);
+        near(pw(g30[t - 1].team) / (top30 * 3), SHRINE_TIERS[t].pow, SHRINE_TIERS[t].pow * 0.2, `сила хранителя ${t}-й ступени — ${SHRINE_TIERS[t].pow} от силы игрока`);
+        ok(g30[t - 1].team.every(x => x.lvl >= 1 && x.lvl <= 40), 'уровни духов хранителя — от 1 до 40');
+      });
+      ok(SHRINE_TIERS[3].speed < SHRINE_TIERS[1].speed && SHRINE_TIERS[3].shield > SHRINE_TIERS[1].shield, 'Старейшина бьёт чаще Ученика и чаще ставит щиты');
+      ok(g30.every((g, i) => g.speed > 0 && g.speed <= SHRINE_TIERS[i + 1].speed), 'темп хранителя — не реже обычного для ступени');
+      // выбранная команда соперника не ослабляет: ориентир — сильнейшие духи, а не команда
+      S.d.team = [S.d.spirits[3].uid];
+      eq(pw(W.guardian({ id: 'osm:n4242', tier: 2 }).team), pw(g30[1].team), 'слабая команда — тот же хранитель');
+      const inv = W.grunt({ invId: 'osm:n9:77' });
+      ok(inv.team.every(x => x.dark && SP[x.sid].el === inv.el), 'отряд — омрачённые одной стихии');
+      near(pw(inv.team) / (top30 * 3), Duel.FOE.invasion.pow, Duel.FOE.invasion.pow * 0.2, 'сила отряда — от силы игрока');
+      // сильнейший без сил — соперник слабее, но не ниже 3/4 от силы по всем духам
+      S.d.team = []; S.d.spirits[0].ko = Date.now();
+      const koTop = W.topPower(); delete S.d.spirits[0].ko;
+      ok(koTop < top30 && koTop >= top30 * 0.75 - 1e-9, 'без сил — соперник слабее, но не ниже 3/4');
+      // у игрока легенды 40-го уровня: обычным видам силы не хватает — хранитель бьёт чаще
+      S.d.spirits = ['zharptica', 'koschey', 'gorynych'].map((sid, i) => S.makeSpirit(sid, 40, 'lg' + i, { ivMin: 15 }));
+      const gL = W.guardian({ id: 'osm:n4242', tier: 1 });
+      ok(gL.speed < SHRINE_TIERS[1].speed && gL.speed >= SHRINE_TIERS[1].speed * 0.5, 'не хватает силы — чаще бьёт, но не больше чем вдвое');
+      ok(gL.team.every(x => !SP[x.sid].legend && x.lvl <= 40), 'без легенд и не выше 40 уровня');
+      // новичок с одним духом: пустые места — ноль, хранитель ему по силам
+      S.d.spirits = [S.makeSpirit('ugolek', 5, 'solo')]; S.d.team = [];
+      const g1 = W.guardian({ id: 'osm:n4243', tier: 1 });
+      ok(Rules.duelWinnable(S.d.spirits, g1.team, SHRINE_TIERS[1].speed), 'одинокий дух новичка может победить Ученика');
+    } finally { S.d = saved; }
+  });
+  test('Разломы: босс — по уровню Ловчего, совместный бой нужен (4.16)', () => {
+    const lv = S.d.level;
+    try {
+      const b = (tier, rl) => Raid.bossStats({ tier, boss: 'zharptica', rl });
+      ok(b(3, 30).atk > b(3, 10).atk * 1.5 && b(3, 30).pw > b(3, 10).pw, 'сильнее с уровнем Ловчего');
+      ok(b(3, 20).hp > b(2, 20).hp && b(2, 20).hp > b(1, 20).hp && b(3, 20).pw > b(2, 20).pw && b(2, 20).pw > b(1, 20).pw, 'ступени — по порядку');
+      ok(b(2, 40).hp < b(2, 30).hp * 1.2, 'после 30-го уровня растёт медленнее');
+      S.d.level = 17; eq(Raid.bossStats({ tier: 2, boss: 'zharptica' }).rl, 17, 'без rl — по уровню игрока');
+      eq(b(1, 99).rl, 40, 'не выше 40');
+      eq(Raid.coopHp(1), 1); near(Raid.coopHp(3), 1 + 2 * Raid.COOP, 1e-9);
+      ok(Raid.coopHp(3) / 3 < 0.75, 'втроём на каждого — меньше трёх четвертей здоровья босса');
+    } finally { S.d.level = lv; }
+  });
+  test('Усталость духа: бои подряд срезают предел здоровья, отдых возвращает (4.16)', () => {
+    const T = Rules.HP.TIRED, t0 = 2e12, sp = { uid: 'tr1', sid: 'ugolek', lvl: 10, iv: [5, 5, 5] };
+    for (let i = 0; i < T.FREE; i++) S.tire(sp, 1, t0);
+    eq(S.hpCap(sp, t0), 1, `первые ${T.FREE} боя — даром`); eq(S.hpNow(sp, t0), 1);
+    S.tire(sp, 1, t0);
+    near(S.hpCap(sp, t0), 1 - T.STEP, 1e-9, 'следующий срезает предел'); near(S.hpNow(sp, t0), 1 - T.STEP, 1e-9, 'здоровье не выше предела');
+    for (let i = 0; i < 20; i++) S.tire(sp, 1, t0);
+    eq(S.hpCap(sp, t0), T.MIN, 'не ниже MIN');
+    const h = T.REST * 3600000;
+    near(S.tired(sp, t0 + 2 * h), T.FREE + 21 - 2, 1e-6, 'очко уходит за REST часов');
+    eq(S.hpCap(sp, t0 + (21 + 1) * h), 1, 'отдохнул');
+    ok(S.restLeft(sp, t0) > 0 && S.restLeft(sp, t0 + 30 * h) === 0, 'сколько отдыхать');
+    // лечение усталость не снимает
+    const keep = S.d;
+    S.d = JSON.parse(JSON.stringify(keep)); S.d.items.herb = 3;
+    try {
+      const x = S.makeSpirit('ugolek', 10, 'tr2'); S.d.spirits.push(x);
+      for (let i = 0; i < T.FREE + 2; i++) S.tire(x, 1);
+      const cap = S.hpCap(x);
+      S.setHp(x, cap - 0.1);
+      eq(S.heal(x, 'herb'), null); near(S.hpNow(x), cap, 0.002, 'подорожник — только до предела');
+      ok(/устал/.test(S.canHeal(x, 'herb')), 'выше предела не лечит');
+      eq(S.d.items.herb, 2, 'лишнее не потрачено');
+    } finally { S.d = keep; }
   });
   test('Совместный разлом: здоровье босса и бонусы', () => {
     ok(GameCore.ROOM_ALPHA.length === 32 && !/[01IO]/.test(GameCore.ROOM_ALPHA), 'алфавит кода без похожих символов');
@@ -440,7 +782,7 @@
   test('Советы Велимира: подсказки по делу и в нужном порядке', () => {
     const keep = S.d;
     S.d = JSON.parse(JSON.stringify(keep));
-    S.d.level = 6; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
+    S.d.level = CLAN_LEVEL; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
     S.d.spirits = [S.makeSpirit('ugolek', 5, 'h1')]; S.d.essence = { ugolek: 30 };
     S.d.story = { ch: 0, p: [3, 2, 0] };
     let ids = Hints.list().map(h => h.id);
@@ -483,8 +825,29 @@
     eq(Diff.make(b, b).length, 0, 'без изменений — пусто');
   });
 
+  test('Правила 4.16: подсказка цены, залог, усталость защитников, вольные Капища, Золотая тропа на поздних уровнях', () => {
+    const h = Rules.auctionHint([{ cur: 'sparks', price: 100, lvl: 10 }, { cur: 'sparks', price: 300, lvl: 10 }, { cur: 'sparks', price: 200, lvl: 12 },
+      { cur: 'zlat', price: 5, lvl: 30 }, { cur: 'sparks', price: 9000, lvl: 35 }], 10);
+    eq(h.sparks.n, 3, 'только близкие по уровню'); eq(h.sparks.med, 200); eq(h.sparks.lo, 100); eq(h.sparks.hi, 300); eq(h.zlat.n, 1);
+    eq(Rules.auctionHint([{ cur: 'sparks', price: 100, lvl: 30 }], 10).sparks.n, 1, 'мало близких — все сделки вида');
+    eq(Object.keys(Rules.auctionHint([], 10)).length, 0, 'сделок нет');
+    eq(Rules.auctionDeposit('sparks', 100), Rules.AUCTION.DEP_MIN.sparks); eq(Rules.auctionDeposit('sparks', 10000), 500); eq(Rules.auctionDeposit('zlat', 3), 1);
+    const now = Date.now(), H = Rules.HOLD;
+    eq(Rules.holdK(now - 3600000, now), 1, 'свежий защитник — в полной силе');
+    near(Rules.holdK(now - (H.FRESH_H + (H.MAX_H - H.FRESH_H) / 2) * 3600000, now), 1 - H.WEAK / 2, 1e-9, 'на полпути');
+    eq(Rules.holdSpirit({ sid: 'kapelka', lvl: 30 }, now - H.MAX_H * 3600000 + 1000, now).lvl, Math.round(30 * (1 - H.WEAK)), 'к концу срока');
+    ok(Rules.holdFresh({ t: now - 3600000 }, now) && !Rules.holdFresh({ t: now - H.MAX_H * 3600000 - 1 }, now), 'срок на посту');
+    let free = 0; for (let i = 0; i < 4000; i++) if (Rules.shrineFree('osm:n' + i)) free++;
+    near(free / 4000, H.FREE, 0.03, 'доля вольных Капищ');
+    const late = Rules.passReward('gold', 1, Rules.PASS.LATE), early = Rules.passReward('gold', 1, 10);
+    ok(early.charm2 && !late.charm2 && late.charm3, 'на поздних уровнях — золото вместо серебра'); ok(late.sparks > early.sparks, 'и больше искр');
+    ok(Rules.passReward('gold', 10, 30).xpbrew, 'настой опыта'); eq(Rules.passReward('gold', 30, 30).look, 'trail', 'Знак Тропы остаётся');
+    eq(JSON.stringify(Rules.passReward('free', 5, 30)), JSON.stringify(Rules.passReward('free', 5, 10)), 'бесплатная тропа — как была');
+    ok(!Rules.SHOP.filter(x => x.day).some(x => x.id === Rules.shopDeal(U.today()).id), 'товары «раз в день» не бывают товаром дня');
+  });
+
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [] };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [], pvpQ: {}, pvpM: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -527,14 +890,16 @@
       return { players: rows.length, total: rows.reduce((a, r) => a + r.n, 0), mine: me ? me.n : null, top: rows.sort((a, b) => b.n - a.n).slice(0, 10).map(r => ({ pid: r.pid, name: r.name, n: r.n })) };
     },
     holdGet: async poi => { const h = DB.holds[poi]; return h && h.holders.length ? JSON.parse(JSON.stringify(h)) : null; },
+    // как shrine_defend (023): защитники, чей срок вышел (Rules.HOLD.MAX_H), убираются перед проверками
     holdDefend: async (poi, lat, lng, clan, holder) => {
-      const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 };
+      const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000;
+      h.holders = h.holders.filter(x => +x.t >= cut);
       if (h.holders.length && h.clan !== clan) return false;
-      if (h.holders.length >= 6 || h.holders.some(x => x.pid === holder.pid)) return false;
+      if (h.holders.length >= HOLD_MAX || h.holders.some(x => x.pid === holder.pid)) return false;
       h.clan = clan; h.holders.push(holder); h.ver++; return true;
     },
     holdDefeat: async (poi, ver) => { const h = DB.holds[poi]; if (!h || h.ver !== ver) return false; h.holders = []; h.ver++; return true; },
-    myHolds: async pid => Object.values(DB.holds).filter(h => h.holders.some(x => x.pid === pid)).length,
+    myHolds: async pid => Object.values(DB.holds).filter(h => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).length,
     roomCreate: async row => { if (DB.rooms[row.code]) return null; DB.rooms[row.code] = { ...JSON.parse(JSON.stringify(row)), status: 'lobby', created_at: new Date().toISOString(), started_at: null }; return JSON.parse(JSON.stringify(DB.rooms[row.code])); },
     roomGet: async code => DB.rooms[code] ? JSON.parse(JSON.stringify(DB.rooms[code])) : null,
     roomJoin: async (code, m) => {
@@ -547,19 +912,20 @@
     },
     roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
-    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
     // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
     lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
     lotsFind: async f => DB.lots.filter(l => l.status === 'open' && Date.parse(l.expires_at) > Date.now() && (!f.sids || f.sids.includes(l.sid)) && (!f.el || l.el === f.el) && (!f.rar || l.rar === f.rar) && (!f.cur || l.cur === f.cur) && (!f.shiny || l.shiny)
-      && l.iv_pct >= (f.minIv || 0) && l.iv_a >= (f.minA || 0) && l.iv_d >= (f.minD || 0) && l.iv_s >= (f.minS || 0) && l.power >= (f.minPower || 0) && (!f.maxPrice || l.price <= f.maxPrice) && l.seller_pid !== f.notPid)
-      .sort((a, b) => f.sort === 'cheap' ? a.price - b.price : f.sort === 'iv' ? b.iv_pct - a.iv_pct : 0).slice(f.from, f.from + 30).map(l => ({ ...l })),
+      && l.iv_pct >= (f.minIv || 0) && l.iv_a >= (f.minA || 0) && l.iv_d >= (f.minD || 0) && l.iv_s >= (f.minS || 0) && l.power >= (f.minPower || 0) && (!f.maxPrice || l.price <= f.maxPrice) && (!f.maxLvl || l.lvl <= f.maxLvl) && l.seller_pid !== f.notPid)
+      .sort((a, b) => f.sort === 'cheap' ? a.price - b.price : f.sort === 'iv' ? b.iv_pct - a.iv_pct : f.sort === 'power' ? b.power - a.power : 0).slice(f.from, f.from + 30).map(l => ({ ...l })),
+    lotsRecent: async (sid, since) => DB.lots.filter(l => l.sid === sid && l.status === 'sold' && (l.closed || 0) >= since).map(l => ({ cur: l.cur, price: l.price, lvl: l.lvl })),
     lotsMine: async pid => DB.lots.filter(l => l.seller_pid === pid).map(l => ({ ...l })),
     lotsOpenCount: async pid => DB.lots.filter(l => l.seller_pid === pid && l.status === 'open').length,
     lotGet: async id => { const l = DB.lots.find(x => x.id === id); return l ? { ...l } : null; },
     lotBuy: async (id, pid, name) => {
       const l = DB.lots.find(x => x.id === id);
-      if (l && l.status === 'open' && Date.parse(l.expires_at) > Date.now() && l.seller_pid !== pid) { Object.assign(l, { status: 'sold', buyer_pid: pid, buyer_name: name }); return { ...l }; }
+      if (l && l.status === 'open' && Date.parse(l.expires_at) > Date.now() && l.seller_pid !== pid) { Object.assign(l, { status: 'sold', buyer_pid: pid, buyer_name: name, closed: Date.now() }); return { ...l }; }
       return l && l.status === 'sold' && l.buyer_pid === pid && !l.delivered ? { ...l } : null;
     },
     lotCancel: async (id, pid) => {
@@ -577,6 +943,34 @@
     chatReport: async (id, pid) => { if (!DB.reports.some(r => r.id === id && r.pid === pid)) DB.reports.push({ id, pid }); const n = DB.reports.filter(r => r.id === id).length; if (n >= 3) DB.chat.find(m => m.id === id).hidden = true; return n; },
     paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
     payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
+    // 4.16: Лига — как 022_league_pvp.sql: очередь, пара (взаимные окна, только свежие заявки), бой с версией, итоги
+    pvpFind: async t => {
+      const live = Object.values(DB.pvpM).find(m => m.status === 'live' && (m.a === who.uid || m.b === who.uid));
+      if (live) return { match: live.id };
+      const now = Date.now(), q0 = DB.pvpQ[who.uid];
+      const me = DB.pvpQ[who.uid] = { uid: who.uid, pid: t.info.pid, season: t.season, rating: t.pts, lo: t.lo, hi: t.hi, info: JSON.parse(JSON.stringify(t.info)), avoid: t.avoid,
+        since: q0 && !q0.match && now - q0.seen <= 15000 ? q0.since : now, seen: now, match: null };
+      const o = Object.values(DB.pvpQ).filter(q => q.uid !== who.uid && !q.match && q.season === t.season && now - q.seen <= 8000 && q.rating >= t.lo && q.rating <= t.hi && t.pts >= q.lo && t.pts <= q.hi
+        && (t.wide || ((!t.avoid || q.pid !== t.avoid) && (!q.avoid || q.avoid !== t.info.pid)))).sort((x, y) => Math.abs(x.rating - t.pts) - Math.abs(y.rating - t.pts) || x.since - y.since)[0];
+      if (!o) return { wait: true, n: Object.values(DB.pvpQ).filter(q => !q.match && q.season === t.season && now - q.seen <= 8000).length };
+      const id = crypto.randomUUID();
+      DB.pvpM[id] = { id, season: t.season, a: o.uid, b: who.uid, ver: 0, status: 'live', aS: false, bS: false, state: { init: true, season: t.season, at: now, a: o.info, b: me.info } };
+      o.match = id; me.match = id;
+      return { match: id };
+    },
+    pvpCancel: async () => { const q = DB.pvpQ[who.uid]; if (q && q.match && DB.pvpM[q.match] && DB.pvpM[q.match].status === 'live') return { match: q.match }; delete DB.pvpQ[who.uid]; return {}; },
+    pvpLive: async () => { const m = Object.values(DB.pvpM).find(x => x.status === 'live' && (x.a === who.uid || x.b === who.uid)); return m ? { id: m.id } : null; },
+    pvpLoad: async id => { const m = DB.pvpM[id]; return m ? { id, ver: m.ver, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : m.b === who.uid ? 'b' : null } : null; },
+    pvpPut: async (id, ver, state, done) => {
+      const m = DB.pvpM[id];
+      if (!m || m.ver !== ver || m.status !== 'live') return null;
+      m.state = JSON.parse(JSON.stringify(state)); m.ver++;
+      if (done) { m.status = 'done'; Object.values(DB.pvpQ).forEach(q => { if (q.match === id) delete DB.pvpQ[q.uid]; }); }
+      return m.ver;
+    },
+    pvpPending: async () => Object.values(DB.pvpM).filter(m => m.status === 'done' && ((m.a === who.uid && !m.aS) || (m.b === who.uid && !m.bS)))
+      .map(m => ({ id: m.id, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : 'b' })),
+    pvpSettled: async id => { const m = DB.pvpM[id]; if (m && m.status === 'done') { if (m.a === who.uid) m.aS = true; if (m.b === who.uid) m.bS = true; } },
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
@@ -643,6 +1037,27 @@
     DB.pois['osm:n779'] = { id: 'osm:n779', kind: 'spring', lat: 55.76, lng: 37.63, name: 'Скрыт', active: false };
     await refuse(A, 'spring', { poi: { id: 'osm:n779', lat: 55.76, lng: 37.63 } }, /больше нет/);
     await refuse(A, 'spring', { poi: { id: '../../etc', lat: 1, lng: 1 } }, /Неизвестное место/);
+  });
+  atest('Сервер: опыт 4.16 — дневной потолок и опыт отдыха на сервере, награда показывает начисленное', async () => {
+    const A = await newPlayer('uxp', 55.41, 37.27, 'Отдых'); A.data.tut = 0;
+    const mul = Ev.xpMul(), day = asPlayer(A, () => U.today()), ago = asPlayer(A, () => U.today(Date.now() - 4 * 86400000));
+    const spring = async (i, xpd) => {
+      A.data.xpd = xpd; const x0 = A.data.xp;
+      const r = await must(A, 'spring', { poi: { id: 'osm:n' + (7770 + i), lat: A.lat, lng: A.lng, name: 'Ключ' } });
+      const shown = r.got.find(x => x.k === 'xp').n;
+      eq(A.data.xp - x0, shown, 'показано столько, сколько начислено');
+      return shown;
+    };
+    eq(await spring(0, { day, n: 0, rest: 0 }), 50 * mul, 'обычный опыт');
+    eq(await spring(1, { day, n: XP_DAY.FULL * mul, rest: 0 }), 25 * mul, 'сверх дневного потолка — вполовину');
+    eq(await spring(2, { day: ago, n: 0, rest: 0 }), 100 * mul, 'после трёх дней отдыха — вдвое');
+    eq(A.data.xpd.rest, 3 * XP_DAY.REST - 50 * mul, 'отдых копится и тратится на сервере'); eq(A.data.xpd.day, day);
+    // уровни открытия проверяет сервер
+    A.data.level = DUEL_LEVEL - 1;
+    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7790', lat: A.lat, lng: A.lng, name: 'К' } }, new RegExp(DUEL_LEVEL + ' уровня'));
+    A.data.level = League.LEVEL - 1; await refuse(A, 'pvpFind', {}, new RegExp(League.LEVEL + ' уровня'));
+    A.data.level = CLAN_LEVEL - 1; await refuse(A, 'clanJoin', { clan: 'sokol' }, new RegExp(CLAN_LEVEL + ' уровня'));
+    A.data.level = Rules.AUCTION.LEVEL - 1; await refuse(A, 'auctionFind', {}, new RegExp(Rules.AUCTION.LEVEL + ' уровня'));
   });
   atest('Сервер: поимка — дух должен быть рядом, исход решает сервер', async () => {
     // сначала ищем место, где сейчас есть дух, и «ставим» игрока туда (перемещение скачком сервер не примет)
@@ -778,8 +1193,8 @@
     // Капище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
     const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 50000);
     const shrine = { id, lat: A.lat, lng: A.lng, name: 'Старый дуб' };
-    await refuse(A, 'duelStart', { shrine }, /3 уровня/);
-    A.data.level = 3;
+    await refuse(A, 'duelStart', { shrine }, new RegExp(DUEL_LEVEL + ' уровня')); // 4.16: Капища — с DUEL_LEVEL (было с 3)
+    A.data.level = DUEL_LEVEL;
     await must(A, 'duelStart', { shrine });
     await refuse(A, 'duelEnd', { win: true }, /слишком быстрая/);
     await must(A, 'duelStart', { shrine });
@@ -789,7 +1204,7 @@
     await refuse(A, 'duelStart', { shrine }, /уже победил/);
   });
   atest('Сервер: раны после боя, без сил не пускают в бой, лечение (4.15)', async () => {
-    const A = await newPlayer('uhp', 55.73, 37.61, 'Лекарь'); A.data.spirits.forEach(x => { x.lvl = 5; }); A.data.level = 3;
+    const A = await newPlayer('uhp', 55.73, 37.61, 'Лекарь'); A.data.spirits.forEach(x => { x.lvl = 5; }); A.data.level = DUEL_LEVEL;
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 51000);
     const shrine = { id, lat: A.lat, lng: A.lng, name: 'Дуб' }, uid = A.data.spirits[0].uid;
@@ -818,6 +1233,30 @@
     await refuse(A, 'heal', { uid, k: 'charm' }, /не лечат/);
     await must(A, 'duelStart', { shrine });
   });
+  atest('Сервер: усталость после боёв подряд, босс разлома — по уровню Ловчего (4.16)', async () => {
+    const A = await newPlayer('utr', 55.735, 37.615, 'Усталый'); A.data.spirits.forEach(x => { x.lvl = 5; }); A.data.level = DUEL_LEVEL;
+    const hour = Math.floor(Date.now() / 3600000), T = Rules.HP.TIRED;
+    const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 52000);
+    const shrine = { id, lat: A.lat, lng: A.lng, name: 'Вяз' }, uid = A.data.spirits[0].uid;
+    for (let i = 0; i < T.FREE; i++) { await must(A, 'duelStart', { shrine }); await must(A, 'duelEnd', { win: false, hp: { [uid]: 1 } }); }
+    eq(asPlayer(A, () => S.hpCap(A.data.spirits[0])), 1, `после ${T.FREE} боёв — ещё не устал`);
+    await must(A, 'duelStart', { shrine }); await must(A, 'duelEnd', { win: false, hp: { [uid]: 1 } });
+    near(A.data.spirits[0].tired, T.FREE + 1, 0.01, 'каждый бой — очко усталости');
+    near(asPlayer(A, () => S.hpNow(A.data.spirits[0])), 1 - T.STEP, 0.01, 'здоровье — не выше предела');
+    A.data.items.herb = 2;
+    await refuse(A, 'heal', { uid, k: 'herb' }, /устал/, 'лечение не снимает усталость');
+    eq(A.data.items.herb, 2);
+    // победу оценивают по здоровью на входе в бой
+    await must(A, 'duelStart', { shrine }); near(A.srv.battle.hp0[uid], 1 - T.STEP, 0.01, 'здоровье на входе запомнено');
+    await must(A, 'duelEnd', { win: false });
+    // разлом: босс — по уровню Ловчего, сервер запоминает его и сверяет с ним урон
+    A.data.level = 12;
+    const rid = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), 53000);
+    const st = await must(A, 'raidStart', { rift: { id: rid, lat: A.lat, lng: A.lng, name: 'Мельница' } });
+    eq(st.rl, 12, 'уровень босса — уровень Ловчего'); eq(A.srv.battle.rl, 12);
+    await must(A, 'raidEnd', { win: false });
+    ok(A.data.spirits[0].tired > T.FREE + 2, 'разлом тоже утомляет');
+  });
   atest('Сервер: погода с телефона сверяется с настоящей (4.15)', async () => {
     const pos = { lat: 55.75, lng: 37.62 }, sim = Sky.simulate(pos).key;
     const fake = Object.keys(WEATHER).find(k => k !== sim && k !== 'clear');
@@ -827,20 +1266,21 @@
     eq((await GameCore.checkWx(fake, pos, env)).key, sim, 'подделка — заменена смоделированной');
     eq((await GameCore.checkWx(fake, pos, { weather: async () => null })).key, fake, 'сервис погоды молчит — верим телефону');
   });
-  atest('Сервер: Лига — жетоны, турнир, таблица сезона', async () => {
+  atest('Сервер: Лига — уровень, команда, жетоны; турнира с машинами больше нет (4.16)', async () => {
     const A = await newPlayer('uh', 55.70, 37.58, 'Искра');
-    await refuse(A, 'leagueStart', {}, /5 уровня/);
-    A.data.level = 5;
-    await refuse(A, 'leagueStart', {}, /три духа/);
+    await refuse(A, 'pvpFind', {}, new RegExp(League.LEVEL + ' уровня')); // 4.16: Лига — с League.LEVEL (было с 5)
+    A.data.level = League.LEVEL;
+    await refuse(A, 'pvpFind', {}, /три духа/);
     ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, sid))));
-    await must(A, 'leagueStart', {});
-    eq(A.data.league.tickets, League.TICKETS - 1); ok(A.data.league.run, 'турнир начат');
-    await must(A, 'leagueEnd', { win: false });
-    eq(A.data.league.run, null, 'поражение завершает турнир');
-    eq(A.data.league.pts, 0, 'рейтинг не уходит ниже нуля');
-    eq(DB.league.filter(x => x.user === 'uh').length, 1, 'строка таблицы сезона записана сервером');
-    eq(DB.league.find(x => x.user === 'uh').name, 'Искра', 'в строке — имя этого Ловчего');
-    await refuse(A, 'leagueEnd', { win: true }, /не найден/);
+    await refuse(A, 'leagueStart', {}, /Обнови игру/);
+    await refuse(A, 'leagueEnd', { win: true }, /Обнови игру/);
+    A.data.league = { season: League.season(), pts: 0, best: 0, peak: 0, tickets: 0, n: 10, day: asPlayer(A, () => U.today()), got: {} };
+    await refuse(A, 'pvpFind', {}, /Жетоны кончились/);
+    // новый сезон: сундук за высшую лигу прошлого — один раз
+    A.data.league = { season: '2000-01', pts: 1700, best: 4, peak: 4, tickets: 5, n: 5, day: asPlayer(A, () => U.today()), got: {} };
+    const sp0 = A.data.sparks, st = await must(A, 'leagueState', {});
+    ok(st.prize && st.prize.rank === 4 && A.data.sparks > sp0, 'сундук сезона'); eq(A.data.league.pts, 1600, 'срез сверх 1500 наполовину');
+    ok(!(await must(A, 'leagueState', {})).prize, 'сундук — один раз');
   });
   atest('Сервер: взаимная дружба, подарки и посылки между двумя Ловчими', async () => {
     const A = await newPlayer('ui', 55.69, 37.57, 'Ярослава'), B = await newPlayer('uj', 55.69, 37.57, 'Всеслав', 'kapelka');
@@ -994,8 +1434,8 @@
     await refuse(A, 'spring', { poi: { id: 'osm:n7002', lat: A.lat, lng: A.lng, name: 'Выдуманный родник' } }, /нет на карте/);
     const r = await must(A, 'spring', { poi: { id: 'osm:n7001', lat: 0, lng: 0, name: 'подмена' } });
     ok(r.got.length > 0, 'родник из базы работает, координаты — из базы');
-    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /3 уровня|нет такого объекта/);
-    A.data.level = 3;
+    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /уровня|нет такого объекта/);
+    A.data.level = DUEL_LEVEL;
     await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /нет такого объекта/);
     // вдали от загруженных мест (за пределами России) — объекты OSM с телефона, как раньше
     const B = await newPlayer('uv', 43.2, 76.9, 'Алма');
@@ -1004,20 +1444,20 @@
   });
   atest('Сервер: дружины — защитник на Капище, бой с защитниками, дань', async () => {
     const hour = Math.floor(Date.now() / 3600000);
-    const id = poiId(i => !W.riftAt(i, hour), 61000);
+    const id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), 61000); // 4.16: не вольное
     const [lat, lng] = [55.58, 37.46];
     const shrine = { id, lat, lng, name: 'Старый вяз' };
     const mk = async (uid, name) => {
       const P = await newPlayer(uid, lat, lng, name);
-      P.data.level = 5; P.data.tut = 0;
+      P.data.level = CLAN_LEVEL; P.data.tut = 0;
       ['kapelka', 'mshonok'].forEach(sid => P.data.spirits.push(asPlayer(P, () => S.makeSpirit(sid, 12, sid + uid))));
       await must(P, 'team', { uids: P.data.spirits.map(x => x.uid) });
       return P;
     };
     const A = await mk('uw', 'Сокольник'), B = await mk('ux', 'Медвежич'), C = await mk('uy', 'Второй сокол');
-    A.data.level = 4;
-    await refuse(A, 'clanJoin', { clan: 'sokol' }, /5 уровня/);
-    A.data.level = 5;
+    A.data.level = CLAN_LEVEL - 1; // 4.16: дружины — с CLAN_LEVEL (было с 5)
+    await refuse(A, 'clanJoin', { clan: 'sokol' }, new RegExp(CLAN_LEVEL + ' уровня'));
+    A.data.level = CLAN_LEVEL;
     await refuse(A, 'clanJoin', { clan: 'orel' }, /нет/);
     await must(A, 'clanJoin', { clan: 'sokol' }); eq(A.data.clan, 'sokol');
     await refuse(A, 'clanJoin', { clan: 'volk' }, /уже выбрана/);
@@ -1047,6 +1487,9 @@
     await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid });
     eq(DB.holds[id].clan, 'medved');
     // дань — раз в день за каждое Капище с моим защитником
+    // 4.16: только что поставленный защитник дань не приносит — нужно отстоять Rules.HOLD.TRIBUTE_H часов
+    const t0 = await must(B, 'tribute'); eq(t0.n, 0); ok(t0.next > Date.now(), 'дань — позже'); ok(!B.data.tributeDay, 'день не закрыт');
+    DB.holds[id].holders[0].t -= Rules.HOLD.TRIBUTE_H * 3600000; B.data.tributeNext = 0;
     const t = await must(B, 'tribute'); eq(t.n, 1); ok(t.got.some(x => x.k === 'sparks'));
     ok((await must(B, 'tribute')).already, 'второй раз за день — нет');
     eq((await must(A, 'tribute')).n, 0, 'защитника Сокольника прогнали');
@@ -1073,6 +1516,7 @@
     await refuse(B, 'roomJoin', { code: 'ZZZZZ' }, /не найден/);
     const j = await must(B, 'roomJoin', { code: room.code.toLowerCase() });
     eq(j.members.length, 2); ok(!j.isHost); ok(j.members.every(m => !('pid' in m)), 'коды игроков не видны');
+    eq(j.rift.rl, Math.round((A.data.level + B.data.level) / 2), 'босс — по среднему уровню комнаты (4.16)'); near(j.hpMul, Raid.coopHp(2), 1e-9);
     await refuse(B, 'roomStart', { code: room.code }, /только хозяин/);
     // до начала боя союзников на сервере нет: гость не может начать бой издалека
     await refuse(B, 'raidStart', { rift, coop: { code: room.code } }, /не найден/);
@@ -1081,7 +1525,7 @@
     // старый способ «у меня три союзника» больше не работает: без комнаты — одиночный бой, нужно быть рядом
     await refuse(B, 'raidStart', { rift, coop: { host: false, allies: 3 } }, /далеко/);
     await must(B, 'raidStart', { rift: { id: 'osm:n1', lat: 0, lng: 0 }, coop: { code: room.code } });
-    eq(B.srv.battle.coop.allies, 1, 'союзников — по комнате'); eq(B.srv.battle.rid, asPlayer(A, () => W.riftFor({ id, lat: A.lat, lng: A.lng }, 0, hour).id), 'разлом — из комнаты');
+    eq(B.srv.battle.coop.allies, 1, 'союзников — по комнате'); eq(B.srv.battle.rl, j.rift.rl, 'уровень босса — как в комнате'); eq(B.srv.battle.rid, asPlayer(A, () => W.riftFor({ id, lat: A.lat, lng: A.lng }, 0, hour).id), 'разлом — из комнаты');
     B.srv.battle.start -= 85000;
     const r = await must(B, 'raidEnd', { win: true });
     ok(r.win && r.allies === 1, 'победа гостя засчитана с союзником');
@@ -1090,7 +1534,7 @@
   });
   atest('Сервер: третья книга Летописи — новые шаги, Индрик и эмблема', async () => {
     const A = await newPlayer('vc', 55.56, 37.44, 'Летописец');
-    A.data.tut = 0;
+    A.data.tut = 0; A.data.level = 27; A.data.xp = levelXP(27); // 4.16: главы третьей книги открываются с 20 по 27 уровень
     // «Весть с окраин»: поручение засчитывается шагом Летописи
     A.data.story = { ch: 12, p: [0, 0, 0] };
     A.data.tasks = [{ id: 't9', t: 'photo', n: 1, el: 'fire', p: 1, tier: 1, sid: 'ugolek', text: 'Фото' }];
@@ -1107,6 +1551,55 @@
     const enc = await must(A, 'encStart', { kind: 'story' }); eq(enc.sid, 'indrik');
     await must(A, 'encEnd');
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }); eq(A.data.look.emblem, 'horn');
+  });
+  atest('Сервер: пробуждение, эссенция Рода, трофеи разлома, Летопись по уровням (4.16)', async () => {
+    const A = await newPlayer('aw1', 55.43, 37.31, 'Пробуждённый');
+    A.data.tut = 0;
+    const uid = A.data.spirits[0].uid;
+    A.data.level = 20; A.data.xp = levelXP(20); A.data.spirits[0].lvl = 25; A.data.sparks = 100000; A.data.essence.ugolek = 100; A.data.alatyr = 1;
+    await refuse(A, 'awaken', { uid }, /Алатыря/);
+    A.data.alatyr = 5;
+    const r = await must(A, 'awaken', { uid }); eq(r.stars, 1); eq(r.max, 27); eq(A.data.alatyr, 3); eq(A.data.spirits[0].stars, 1);
+    await must(A, 'powerUp', { uid }); eq(A.data.spirits[0].lvl, 26, 'выше прежнего предела');
+    await must(A, 'powerUp', { uid }); await refuse(A, 'powerUp', { uid }, /Предел/);
+    await refuse(A, 'awaken', { uid }, /25 уровне/);
+    await refuse(A, 'awaken', { uid: 'чужой' }, /не найден/);
+    // эссенция Рода
+    A.data.essence.kapelka = 12;
+    await refuse(A, 'essMelt', { fam: 'kapelka', n: 3 }, /Нужно 15/);
+    await must(A, 'essMelt', { fam: 'kapelka', n: 2 }); eq(A.data.rod, 2); eq(A.data.essence.kapelka, 2);
+    await refuse(A, 'essMelt', { fam: 'zharptica', n: 1 }, /легенд/);
+    await refuse(A, 'essPour', { fam: 'svyatogor', n: 1 }, /Рода: 3/);
+    await refuse(A, 'essPour', { fam: '__proto__', n: 1 }, /семейства/);
+    await refuse(A, 'essPour', { fam: 'kikimora', n: 'много' }, /Сколько/);
+    await must(A, 'essPour', { fam: 'kikimora', n: 2 }); eq(A.data.rod, 0); eq(A.data.essence.kikimora, 2);
+    // трофеи разлома: эссенция семейства босса
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => asPlayer(A, () => { const x = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return x && x.tier === 1; }), 30000);
+    const rift = { id, lat: A.lat, lng: A.lng, name: 'Памятник' };
+    // команда из трёх сильных духов разных стихий — босс растёт с уровнем Ловчего, а его стихия зависит от часа (4.16)
+    ['leshiy', 'vodyanoy', 'gromovik'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 25, sid + 'aw'))));
+    A.data.team = A.data.spirits.slice(-3).map(x => x.uid);
+    const st = await must(A, 'raidStart', { rift }), fam = SP[st.boss].fam, e0 = A.data.essence[fam] || 0;
+    A.srv.battle.start -= 85000;
+    const w = await must(A, 'raidEnd', { win: true });
+    ok(w.win && w.rw.some(x => x.k === 'ess' && x.n === S.RIFT_ESS[1]), 'эссенция босса в награде'); eq(A.data.essence[fam], e0 + S.RIFT_ESS[1]);
+    // Летопись: глава, закрытая уровнем, не завершается
+    A.data.story = { ch: 21, p: [6, 40, 1] };
+    await refuse(A, 'storyClaim', {}, /31 уровне/);
+    A.data.level = 31; A.data.xp = levelXP(31);
+    const c = await must(A, 'storyClaim'); eq(c.ch, 21); ok(c.got.some(x => x.k === 'alatyr' && x.n === 3)); eq(A.data.alatyr, 6);
+    eq(A.data.story.ch, 22);
+    // шаг «Лига» — за сыгранный бой, и поражение тоже (с живыми соперниками победа не гарантирована)
+    Object.values(DB.pvpQ).forEach(q => { q.seen = 0; }); // чужие заявки устарели
+    const X = await leaguer('st-x', 'Летописец'), Y = await leaguer('st-y', 'Соперник');
+    X.data.level = 31; X.data.xp = levelXP(31); X.data.story = { ch: 10, p: [0, 0, 0] };
+    await must(X, 'pvpFind', {}); const mY = (await must(Y, 'pvpFind', {})).match; ok(mY, 'пара');
+    const sY = (await pvp(Y, 'state', { id: mY })), seatX = PvP.other(sY.seat);
+    DB.pvpM[mY].state.s[seatX].team.forEach((x, i) => { x.cur = i ? 0 : 1; });
+    ok((await pvp(Y, 'move', { id: mY, in: [{ t: 'hit', n: 1 }] }, sY.st.t0 + 500)).st.over, 'бой окончен');
+    ok(!(await must(X, 'pvpResult', {})).done[0].win, 'Летописец проиграл');
+    eq(X.data.story.p[0], 1, 'бой Лиги засчитан и при поражении');
   });
   atest('Сервер: приглашение по ссылке — сразу друзья и подарки обоим, без накрутки', async () => {
     const A = await newPlayer('vd', 55.55, 37.43, 'Зазывала');
@@ -1188,8 +1681,8 @@
   });
   atest('Сервер: аукцион — выставить, фильтры, купить с комиссией, без двойных покупок и потерь', async () => {
     const S1 = await newPlayer('va', 55.48, 37.36, 'Продавец'), B1 = await newPlayer('vb', 55.48, 37.36, 'Покупатель'), C1 = await newPlayer('vc', 55.48, 37.36, 'Второй');
-    for (const P of [S1, B1, C1]) { P.data.tut = 0; P.data.level = 10; P.data.sparks = 100000; P.data.zlat = 500; }
-    S1.data.level = 3; await refuse(S1, 'auctionFind', {}, /уровня/); S1.data.level = 10;
+    for (const P of [S1, B1, C1]) { P.data.tut = 0; P.data.level = 20; P.data.sparks = 100000; P.data.zlat = 500; }
+    S1.data.level = Rules.AUCTION.LEVEL - 1; await refuse(S1, 'auctionFind', {}, /уровня/); S1.data.level = 20; // 4.16: Аукцион — с 15 (было с 5)
     // продавцу — три духа с разной оценкой
     const mk = (iv, sid) => ({ uid: U.uid(), sid, lvl: 20, iv, t: Date.now(), fav: false });
     const good = mk([15, 14, 15], 'kapelka'), weak = mk([2, 3, 1], 'mshonok'), fav = { ...mk([10, 10, 10], 'ugolek'), fav: true };
@@ -1225,8 +1718,8 @@
     await refuse(B1, 'auctionBuy', { id: sold.id }, /уже у тебя/); eq(B1.data.spirits.length, n0 + 1);
     // продавец заходит в аукцион — выручка минус комиссия, один раз
     const z0 = S1.data.zlat, mine = await must(S1, 'auctionMine');
-    eq(S1.data.zlat, z0 + 180, 'выручка 200 − 20'); eq(mine.got[0].type, 'sold');
-    DB.lots.find(l => l.id === sold.id).settled = false; await must(S1, 'auctionMine'); eq(S1.data.zlat, z0 + 180, 'второй раз не начисляется');
+    eq(S1.data.zlat, z0 + 190, 'выручка 200 − 20 и залог 10'); eq(mine.got[0].type, 'sold');
+    DB.lots.find(l => l.id === sold.id).settled = false; await must(S1, 'auctionMine'); eq(S1.data.zlat, z0 + 190, 'второй раз не начисляется');
     // снятие лота возвращает духа; истёкший — тоже
     const weakLot = DB.lots.find(l => l.sid === 'mshonok');
     const c0 = S1.data.spirits.length; await must(S1, 'auctionCancel', { id: weakLot.id }); eq(S1.data.spirits.length, c0 + 1, 'снятый дух вернулся');
@@ -1236,10 +1729,115 @@
     DB.lots.find(l => l.id === exp.id).expires_at = new Date(Date.now() - 1000).toISOString();
     await refuse(B1, 'auctionBuy', { id: exp.id }, /купили|снял/);
     const r = await must(S1, 'auctionMine'); eq(r.got[0].type, 'expired'); ok(S1.data.spirits.some(s => s.sid === 'mshonok'), 'истёкший дух вернулся');
-    // не больше 5 открытых лотов
-    for (let i = 0; i < 5; i++) { const x = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(x); await must(S1, 'auctionSell', { uid: x.uid, cur: 'sparks', price: 100 + i }); }
+    // 4.16: не больше 3 открытых лотов (было 5)
+    for (let i = 0; i < Rules.AUCTION.MAX_OPEN; i++) { const x = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(x); await must(S1, 'auctionSell', { uid: x.uid, cur: 'sparks', price: 100 + i }); }
     const extra = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(extra);
-    await refuse(S1, 'auctionSell', { uid: extra.uid, cur: 'sparks', price: 100 }, /не больше 5/);
+    await refuse(S1, 'auctionSell', { uid: extra.uid, cur: 'sparks', price: 100 }, /не больше 3/);
+  });
+  atest('Сервер: аукцион 4.16 — залог, подсказка цены, «не выше моего уровня» и сила после урезания', async () => {
+    const S2 = await newPlayer('wc', 55.47, 37.35, 'Торговка'), B2 = await newPlayer('wd', 55.47, 37.35, 'Новичок');
+    for (const P of [S2, B2]) { P.data.tut = 0; P.data.sparks = 100000; P.data.zlat = 100; }
+    S2.data.level = 30; B2.data.level = Rules.AUCTION.LEVEL;
+    const mk = (lvl, sid) => ({ uid: U.uid(), sid, lvl, iv: [10, 10, 10], t: Date.now(), fav: false });
+    const hi = mk(30, 'kapelka'), lo = mk(10, 'mshonok'), z = mk(5, 'ugolek');
+    S2.data.spirits.push(hi, lo, z);
+    // залог: списывается при выставлении, не меньше минимума
+    const s0 = S2.data.sparks;
+    const L1 = await must(S2, 'auctionSell', { uid: hi.uid, cur: 'sparks', price: 20000 });
+    eq(L1.deposit, 1000); eq(S2.data.sparks, s0 - 1000, 'залог 5%');
+    const L2 = await must(S2, 'auctionSell', { uid: lo.uid, cur: 'sparks', price: 500 });
+    eq(L2.deposit, Rules.AUCTION.DEP_MIN.sparks, 'залог не меньше минимума');
+    S2.data.zlat = 0;
+    await refuse(S2, 'auctionSell', { uid: z.uid, cur: 'zlat', price: 50 }, /Залог/);
+    ok(S2.data.spirits.some(s => s.uid === z.uid), 'дух остался у продавца');
+    // поиск: сила после урезания до уровня покупателя и «не выше моего уровня»
+    const all = (await must(B2, 'auctionFind', { f: { sort: 'power', sids: ['kapelka', 'mshonok'] } })).lots; // лоты прошлых тестов — не в счёт
+    eq(all.length, 2); const hl = all.find(l => l.sid === 'kapelka');
+    eq(hl.myLvl, Rules.AUCTION.LEVEL, 'у покупателя будет его уровень'); ok(hl.myPower < hl.power, 'сила урезается');
+    eq(hl.myPower, asPlayer(B2, () => S.power({ ...hi, lvl: Rules.AUCTION.LEVEL })), 'сила после урезания');
+    const mine = (await must(B2, 'auctionFind', { f: { mine: true, sids: ['kapelka', 'mshonok'] } })).lots;
+    eq(mine.length, 1, 'только не выше моего уровня'); eq(mine[0].sid, 'mshonok'); eq(mine[0].myPower, mine[0].power);
+    // подсказка цены — по недавним сделкам
+    eq(Object.keys((await must(B2, 'auctionPrice', { sid: 'mshonok' })).hint).length, 0, 'сделок ещё нет');
+    await refuse(B2, 'auctionPrice', { sid: 'nichego' }, /нет/);
+    await must(B2, 'auctionBuy', { id: L2.id });
+    const hint = (await must(S2, 'auctionPrice', { sid: 'mshonok', lvl: 10 })).hint;
+    eq(hint.sparks.n, 1); eq(hint.sparks.med, 500);
+    // продан — выручка и залог обратно; снят — залог пропал
+    const s1 = S2.data.sparks; await must(S2, 'auctionMine');
+    eq(S2.data.sparks, s1 + 500 - Rules.auctionFee(500) + L2.deposit, 'выручка и залог');
+    const s2 = S2.data.sparks; await must(S2, 'auctionCancel', { id: L1.id });
+    eq(S2.data.sparks, s2, 'залог за снятый лот не вернулся'); ok(S2.data.spirits.some(s => s.sid === 'kapelka'), 'дух вернулся');
+  });
+  atest('Сервер: Капища 4.16 — защитники устают и уходят, вольные Капища, 3 на игрока, дань за активную защиту', async () => {
+    const hour = Math.floor(Date.now() / 3600000), [lat, lng] = [55.57, 37.45], ids = [];
+    let from = 62000;
+    while (ids.length < 4) { const id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), from); ids.push(id); from = +id.slice(5) + 1; }
+    const freeId = poiId(i => !W.riftAt(i, hour) && Rules.shrineFree(i), 62000);
+    [...ids, freeId].forEach((id, k) => { DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Капище ' + k, active: true }; });
+    const shrine = id => ({ id, lat, lng, name: 'Капище' });
+    const mk = async (uid, name, clan) => {
+      const P = await newPlayer(uid, lat, lng, name);
+      P.data.level = CLAN_LEVEL; P.data.tut = 0;
+      ['kapelka', 'mshonok'].forEach(sid => P.data.spirits.push(asPlayer(P, () => S.makeSpirit(sid, 20, sid + uid))));
+      await must(P, 'team', { uids: P.data.spirits.map(x => x.uid) });
+      await must(P, 'clanJoin', { clan });
+      return P;
+    };
+    const A = await mk('wf', 'Сокол', 'sokol'), B = await mk('wg', 'Волк', 'volk');
+    const win = async (P, id) => { P.srv.rl = {}; const st = await must(P, 'duelStart', { shrine: shrine(id) }); P.srv.battle.start -= 200000; const r = await must(P, 'duelEnd', { win: true }); return { st, r }; };
+    const guard = A.data.spirits.find(x => x.sid === 'kapelka' && x.lvl === 20).uid;
+    // вольное Капище: бой с хранителем есть, защитника не поставить
+    await win(A, freeId);
+    await refuse(A, 'shrineDefend', { shrine: shrine(freeId), uid: guard }, /вольное/);
+    // не больше HOLD_MY_MAX Капищ с моими защитниками
+    for (let k = 0; k < 4; k++) await win(A, ids[k]);
+    for (let k = 0; k < HOLD_MY_MAX; k++) await must(A, 'shrineDefend', { shrine: shrine(ids[k]), uid: guard });
+    await refuse(A, 'shrineDefend', { shrine: shrine(ids[3]), uid: guard }, new RegExp(`на ${HOLD_MY_MAX} Капищах`));
+    // усталость: через 48 ч на посту защитник слабее
+    const aged = (id, h) => { DB.holds[id].holders[0].t = Date.now() - h * 3600000; const g = A.data.guards.find(x => x.id === id); if (g) g.t = DB.holds[id].holders[0].t; };
+    aged(ids[0], 48);
+    const b1 = await win(B, ids[0]);
+    eq(b1.st.clan, 'sokol'); eq(b1.st.foe[0].lvl, Math.round(20 * Rules.holdK(Date.now() - 48 * 3600000)), 'уставший защитник');
+    ok(b1.r.freed, 'Капище освобождено');
+    // срок вышел — защитник ушёл: бьётся хранитель, место у игрока освободилось
+    aged(ids[1], Rules.HOLD.MAX_H + 1);
+    const b2 = await win(B, ids[1]);
+    eq(b2.st.clan, null, 'защитника уже нет'); eq(b2.st.foe, null, 'бьётся хранитель');
+    await must(A, 'shrineDefend', { shrine: shrine(ids[3]), uid: guard });
+    // дань — только за защитников, отстоявших Rules.HOLD.TRIBUTE_H часов
+    const t0 = await must(A, 'tribute'); eq(t0.n, 0); ok(t0.next, 'дань позже');
+    aged(ids[2], Rules.HOLD.TRIBUTE_H + 1); A.data.tributeNext = 0;
+    const z0 = A.data.zlat, t1 = await must(A, 'tribute');
+    eq(t1.n, 1, 'одно Капище с активной защитой'); eq(A.data.zlat - z0, Rules.ZLAT.tribute);
+    ok((await must(A, 'tribute')).already, 'второй раз за день — нет');
+    // домой: побеждённый — за время на посту, ушедший по сроку — за весь срок
+    const g = await must(A, 'myGuards');
+    eq(g.back.length, 2); ok(g.back.find(x => x.id === ids[1]).tired, 'срок вышел'); ok(!g.back.find(x => x.id === ids[0]).tired, 'побеждён');
+    eq(g.list.length, 2, 'на посту — два');
+  });
+  atest('Сервер: Настой опыта и связка ладана (4.16) — раз в день, опыт больше на сутки', async () => {
+    const A = await newPlayer('wh', 55.52, 37.40, 'Зельевар');
+    A.data.tut = 0; A.data.level = 10; A.data.zlat = 1000;
+    await refuse(A, 'xpBrew', {}, /нет/);
+    await must(A, 'shopBuy', { id: 'xpbrew' }); eq(A.data.items.xpbrew, 1); eq(A.data.zlat, 1000 - Rules.SHOP.find(x => x.id === 'xpbrew').price);
+    await refuse(A, 'shopBuy', { id: 'xpbrew' }, /Сегодня уже/);
+    eq(A.data.weekc['shop:xpbrew'], 1, 'счётчик недели');
+    A.data.dayc = {}; A.data.weekc['shop:xpbrew'] = Rules.SHOP.find(x => x.id === 'xpbrew').week; // будто недельный предел выбран
+    await refuse(A, 'shopBuy', { id: 'xpbrew' }, /На этой неделе/);
+    A.data.weekc.w = Ev.week() - 1; // прошлая неделя — снова можно
+    await must(A, 'shopBuy', { id: 'xpbrew' }); eq(A.data.items.xpbrew, 2); eq(A.data.weekc['shop:xpbrew'], 1); A.data.items.xpbrew = 1;
+    const i0 = A.data.items.incense || 0;
+    await must(A, 'shopBuy', { id: 'incense5' }); eq(A.data.items.incense, i0 + 5);
+    await refuse(A, 'shopBuy', { id: 'incense5' }, /Сегодня уже/);
+    const gain = () => asPlayer(A, () => { const x0 = S.d.xp; S.addXP(1000); return S.d.xp - x0; });
+    const base = gain();
+    await must(A, 'xpBrew'); ok(A.data.xpUntil > Date.now() + (Rules.XP_BREW.H - 1) * 3600000, 'на сутки'); eq(A.data.items.xpbrew, 0);
+    eq(gain(), Math.round(base * Rules.XP_BREW.MUL), 'опыта больше на Rules.XP_BREW.MUL');
+    A.data.items.xpbrew = 1;
+    await refuse(A, 'xpBrew', {}, /действует/);
+    A.data.xpUntil = Date.now() - 1;
+    eq(gain(), base, 'настой кончился');
   });
   atest('Сервер: дневные лимиты объектов — родники, разломы, капища, вторжения, поимки', async () => {
     const A = await newPlayer('da', 55.46, 37.34, 'Фармер');
@@ -1405,7 +2003,164 @@
     await must(A, 'tick'); await must(A, 'spring', { poi: freeSpring(A, 93100) });
     eq(A.data.pass.gold, false); ok(A.data.pass.season !== '1999-1', 'сезон сменился');
   });
+  atest('Сервер: экономика 4.16 — посылка Ордена, родник при полной сумке, переплавка, Мёртвая вода раз в неделю, дань', async () => {
+    const A = await newPlayer('ve', 55.52, 37.44, 'Хозяйка');
+    A.data.tut = 0;
+    const lim = asPlayer(A, () => S.bagLimit()), cnt = () => asPlayer(A, () => S.bagCount());
+    // полная сумка: родник открывается — опыт сразу, вещи ждут в посылке Ордена
+    A.data.items = { charm: lim };
+    const sp = freeSpring(A, 94000), xp0 = A.data.xp;
+    const rs = await call(A, 'spring', { poi: sp }); ok(rs.ok, 'родник открылся');
+    ok(A.data.springs[sp.id], 'родник отдал силу'); eq(Rules.dayUsed(A.data, 'springs'), 1); ok(A.data.xp > xp0, 'опыт — сразу');
+    eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'вещи родника — в посылке');
+    ok(rs.events.some(([ev, d]) => ev === 'toast' && /посылку Ордена/.test(d.text)), 'игроку сказано, где вещи');
+    A.data.parcel = null;
+    // награда при полной сумке — в посылку, и об этом сообщение
+    const r = await call(A, 'daily'); ok(r.ok);
+    eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'награда ждёт в посылке');
+    ok(r.events.some(([ev, d]) => ev === 'toast' && /посылку Ордена/.test(d.text)), 'игроку сказано, где награда');
+    await refuse(A, 'parcelTake', {}, /Сумка полна/);
+    await must(A, 'discard', { k: 'charm', n: 100 });
+    const t = await must(A, 'parcelTake'); ok(t.got.length > 0); eq(t.left, 0); eq(A.data.parcel, null, 'посылка разобрана');
+    await refuse(A, 'parcelTake', {}, /пуста/);
+    // родник при почти полной сумке: что не влезло — в посылку
+    A.data.items = { charm: lim - 1 };
+    const s2 = await must(A, 'spring', { poi: freeSpring(A, 94500) }); // другой родник — первый уже отдал силу
+    eq(cnt(), lim); ok(asPlayer(A, () => S.parcelCount()) >= 3, 'добыча родника не пропала'); ok(!s2.got.some(x => !x.n));
+    const dr = await must(A, 'parcelTake', { drop: true }); ok(dr.dropped >= 3); eq(A.data.parcel, null, 'посылку можно выбросить');
+    A.data.items = { charm: 50 };
+    // переплавка амулетов
+    await refuse(A, 'amuletMelt', { from: 'perun', to: 'veles' }, /три|3/);
+    A.data.amulets = { perun: 4 }; A.data.sparks = Rules.MELT.SPARKS;
+    await refuse(A, 'amuletMelt', { from: 'perun', to: 'perun' }, /другой/);
+    await refuse(A, 'amuletMelt', { from: '__proto__', to: 'veles' }, /нет/);
+    const m = await must(A, 'amuletMelt', { from: 'perun', to: 'veles' });
+    eq(m.left, 1); eq(A.data.amulets.veles, 1); eq(A.data.sparks, 0);
+    await refuse(A, 'amuletMelt', { from: 'perun', to: 'veles' });
+    // Мёртвая вода в Лавке — раз в неделю
+    A.data.zlat = 1000;
+    await must(A, 'shopBuy', { id: 'dead1' }); eq(A.data.items.deadwater, 1);
+    await refuse(A, 'shopBuy', { id: 'dead1' }, /неделе/);
+    A.data.weekc.w -= 1; // прошла неделя
+    await must(A, 'shopBuy', { id: 'dead1' }); eq(A.data.items.deadwater, 2);
+    // обменник: трата лишних искр, не больше DAY обменов в день
+    A.data.sparks = 1e6; A.data.zlat = 0;
+    await must(A, 'exchange', { n: Rules.EXCHANGE.DAY }); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * Rules.EXCHANGE.DAY); eq(A.data.sparks, 1e6 - Rules.EXCHANGE.SPARKS * Rules.EXCHANGE.DAY);
+    await refuse(A, 'exchange', { n: 1 }, /закрыт/);
+    // дань: златники — не больше чем с Rules.ZLAT.tributeMax Капищ
+    A.data.clan = 'volk'; A.data.tributeDay = ''; A.data.zlat = 0;
+    const ids = [1, 2, 3, 4, 5].map(i => 'osm:n9' + i + '0000');
+    ids.forEach(id => { DB.holds[id] = { clan: 'volk', holders: [{ pid: A.data.pid, name: 'Хозяйка', sp: { sid: 'ugolek', lvl: 5, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; }); // на посту дольше TRIBUTE_H
+    try {
+      const tr = await must(A, 'tribute'); eq(tr.n, Math.min(5, HOLD_MY_MAX), 'дань — не больше чем с HOLD_MY_MAX Капищ');
+      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'златники дани — с трёх Капищ');
+    } finally { ids.forEach(id => delete DB.holds[id]); }
+  });
 
+  // 4.16: Лига — два живых Ловчих через сервер игры (база в памяти — как 022_league_pvp.sql)
+  const pvp = (who, op, args, now) => GameCore.pvp(op, args, envFor(who), now);
+  const leaguer = async (uid, name, pts = 0) => {
+    const P = await newPlayer(uid, 55.45, 37.33, name);
+    P.data.tut = 0; P.data.level = League.LEVEL;
+    ['kapelka', 'mshonok'].forEach(sid => P.data.spirits.push(asPlayer(P, () => S.makeSpirit(sid, 12, sid + uid))));
+    P.data.spirits[0].lvl = 12;
+    P.data.league = { season: League.season(), pts, best: League.rank(pts), peak: League.rank(pts), tickets: League.TICKETS, n: 0, day: asPlayer(P, () => U.today()), got: {} };
+    return P;
+  };
+  const ago = (P, sec) => { P.srv.lq.since -= sec * 1000; };
+  atest('Сервер: Лига 4.16 — два Ловчих: поиск, бой в реальном времени, итог и рейтинг обоим', async () => {
+    const A = await leaguer('pv-a', 'Ратибор'), B = await leaguer('pv-b', 'Милена'), C = await leaguer('pv-c', 'Чужак');
+    await refuse(A, 'leagueStart', {}, /Обнови игру/);
+    A.data.level = League.LEVEL - 1; await refuse(A, 'pvpFind', {}, new RegExp(League.LEVEL + ' уровня')); A.data.level = League.LEVEL;
+    A.data.team = [A.data.spirits[0].uid]; A.data.spirits.splice(1, 2); await refuse(A, 'pvpFind', {}, /три духа/);
+    ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 12, sid + 'a2')))); A.data.team = [];
+    const w = await must(A, 'pvpFind', {});
+    ok(w.wait >= 0 && !w.match && w.n >= 1, 'ждём живого соперника — ботов нет');
+    const f = await must(B, 'pvpFind', {});
+    ok(f.match, 'пара составлена'); eq((await must(A, 'pvpFind', {})).match, f.match, 'первый узнаёт о паре при следующем запросе');
+    const id = f.match;
+    const r0 = await pvp(A, 'state', { id });
+    ok(r0.ok && r0.seat === 'a' && r0.st.s.b.name === 'Милена', 'бой — у сервера, сторона — по входу');
+    ok(r0.st.s.a.team.length === 3 && r0.st.s.a.team[0].max > 0, 'бойцы посчитаны сервером из сохранения');
+    const t0 = r0.st.t0;
+    // чужой в бою не ходит; подделки отклоняются целиком
+    eq((await pvp(C, 'move', { id, in: [{ t: 'hit', n: 1 }] }, t0 + 100)).error, 'Бой не найден');
+    const ver0 = DB.pvpM[id].ver;
+    ok(!(await pvp(A, 'move', { id, in: [{ t: 'hit', n: 1 }, { t: 'hit', n: 40 }] }, t0 + 100)).ok, 'пачка с подделкой отклонена');
+    eq(DB.pvpM[id].ver, ver0, 'и ничего не записано');
+    const hp0 = DB.pvpM[id].state.s.b.team[0].cur;
+    const h = await pvp(A, 'move', { id, in: [{ t: 'hit', n: 2 }] }, t0 + 500);
+    ok(h.ok && h.res[0].got === 2 && h.st.s.b.team[0].cur < hp0, 'удар засчитан сервером');
+    const B1 = await pvp(B, 'state', { id }, t0 + 600);
+    eq(B1.st.s.b.team[0].cur, h.st.s.b.team[0].cur, 'соперник видит тот же бой');
+    // гонка: оба пишут одну версию — второй перечитывает бой и повторяет ход
+    const [x1, x2] = await Promise.all([pvp(A, 'move', { id, in: [{ t: 'hit', n: 1 }] }, t0 + 1600), pvp(B, 'move', { id, in: [{ t: 'hit', n: 1 }] }, t0 + 1600)]);
+    ok(x1.ok && x2.ok && DB.pvpM[id].state.s.a.hits === 3 && DB.pvpM[id].state.s.b.hits === 1, 'оба хода записаны');
+    // пока идёт бой — новый поиск возвращает его же, экран Лиги предлагает вернуться
+    eq((await must(B, 'leagueState', {})).live, id);
+    // Милена пропала со связи: через 20 с — поражение ей, победа Ратибору
+    const tB = DB.pvpM[id].state.s.b.seen;
+    await pvp(A, 'state', {}, tB + 5000).then(r => ok(!r.ok, 'без номера боя — отказ'));
+    await pvp(A, 'move', { id, in: [{ t: 'sync' }] }, tB + 10000);
+    const end = await pvp(A, 'state', { id }, tB + PvP.IDLE + 1000);
+    ok(end.st.over && end.st.over.win === 'a' && end.st.over.why === 'idle', 'пропавший проиграл');
+    eq(DB.pvpM[id].status, 'done');
+    ok(!(await pvp(B, 'move', { id, in: [{ t: 'hit', n: 1 }] }, tB + PvP.IDLE + 2000)).res.some(x => x.ok), 'после конца ходы не идут');
+    // итог — обоим, ровно один раз
+    const xp0 = A.data.xp;
+    const ra = (await must(A, 'pvpResult', {})).done;
+    eq(ra.length, 1); ok(ra[0].win && ra[0].d === 30, 'победа над равным: +30'); eq(A.data.league.pts, 30);
+    eq(A.data.league.tickets, League.TICKETS - 1, 'жетон — за сыгранный бой'); ok(A.data.xp > xp0, 'опыт за бой');
+    ok(A.data.journal.some(j => j.type === 'pvp'), 'запись в дневнике'); eq(DB.league.filter(x => x.user === 'pv-a').pop().pts, 30, 'строка таблицы сезона');
+    DB.pvpM[id].aS = false; // отметка в базе не записалась — повторно всё равно не засчитается
+    eq((await must(A, 'pvpResult', {})).done.length, 0); eq(A.data.league.pts, 30);
+    const xb = B.data.xp, rb = (await must(B, 'leagueState', {})).done;
+    ok(rb.length === 1 && !rb[0].win && rb[0].why === 'idle', 'проигравшему — тоже, при входе в Лигу'); eq(B.data.league.pts, 0, 'не ниже нуля');
+    eq(B.data.xp, xb, 'пропавшему опыта нет');
+    // раны — по серверу: боец Милены ранен
+    const uidB = DB.pvpM[id].state.s.b.team[0].uid;
+    ok(asPlayer(B, () => S.hpNow(B.data.spirits.find(x => x.uid === uidB))) < 1, 'раны после боя посчитал сервер');
+  });
+  atest('Сервер: Лига 4.16 — круг поиска, граница лиг, отмена, повторный соперник, KO и сдача', async () => {
+    Object.values(DB.pvpQ).forEach(q => { q.seen = 0; }); // прошлые заявки устарели
+    const K = await leaguer('pv-k', 'Кметь', 1200), N = await leaguer('pv-n', 'Новик', 100);
+    ok((await must(K, 'pvpFind', {})).wait != null && (await must(N, 'pvpFind', {})).wait != null, 'разные лиги — не пара');
+    ago(N, 65); ok((await must(N, 'pvpFind', {})).wait != null, 'Новик ждёт минуту — но Кметь его ещё не принимает (пара — взаимная)');
+    ago(K, 65); const m = await must(K, 'pvpFind', {});
+    ok(m.match, 'оба долго ждут — пара через лиги');
+    // брошенный с обеих сторон бой заканчивается при следующем входе: кто пропал раньше — проиграл
+    const s = DB.pvpM[m.match].state;
+    DB.pvpM[m.match].state = { ...s, at: s.at - 120000 };
+    await must(N, 'leagueState', {});
+    ok(DB.pvpM[m.match].status === 'done', 'брошенный бой закончен');
+    // у самой границы — и соседняя лига
+    const H = await leaguer('pv-h', 'Отрок-1', 290), I = await leaguer('pv-i', 'Отрок-2', 320);
+    await must(H, 'pvpFind', {}); const hi = await must(I, 'pvpFind', {});
+    ok(hi.match, '290 и 320: до границы чуть-чуть — пара сразу');
+    // отмена: заявка убрана — пары нет
+    const E = await leaguer('pv-e', 'Отменил', 2200), F = await leaguer('pv-f', 'Ждёт', 2210);
+    await must(E, 'pvpFind', {}); await must(E, 'pvpCancel', {});
+    ok(!(await must(F, 'pvpFind', {})).match, 'отменивший поиск в пару не попадает');
+    // старая заявка (телефон молчит) — тоже
+    DB.pvpQ['pv-f'].seen -= 9000;
+    ok(!(await must(E, 'pvpFind', {})).match, 'молчащий дольше 8 с — не в паре');
+    const ef = (await must(F, 'pvpFind', {})).match; ok(ef, 'вернулся — пара');
+    // бой до конца: KO — все духи без сил; сдача
+    const st = (await pvp(E, 'state', { id: ef })).st, t0 = st.t0, me = (await pvp(E, 'state', { id: ef })).seat, foe = PvP.other(me);
+    DB.pvpM[ef].state.s[foe].team.forEach((x, i) => { x.cur = i ? 0 : 1; });
+    const ko = await pvp(E, 'move', { id: ef, in: [{ t: 'hit', n: 1 }] }, t0 + 500);
+    ok(ko.st.over && ko.st.over.why === 'ko' && ko.st.over.win === me, 'все духи соперника без сил — победа');
+    const re = (await must(E, 'pvpResult', {})).done[0]; ok(re.win && re.d > 0);
+    const rf0 = (await must(F, 'pvpResult', {})).done[0]; ok(!rf0.win && F.data.spirits.some(x => x.ko), 'проигравшему — раны: духи без сил');
+    F.data.spirits.forEach(x => { delete x.ko; delete x.hpf; delete x.hpt; }); // вылечился
+    // повторный соперник: сразу снова в пару не ставим (кроме долгого ожидания)
+    await must(E, 'pvpFind', {}); ok(!(await must(F, 'pvpFind', {})).match, 'тот же соперник сразу — нет');
+    ago(F, 31); const again = (await must(F, 'pvpFind', {})).match; ok(again, 'после 30 с ожидания — можно');
+    const q = await pvp(F, 'move', { id: again, in: [{ t: 'quit' }] }, Date.now() + 100);
+    ok(q.st.over.why === 'quit' && q.st.over.win !== q.seat, 'сдался — поражение');
+    const xf = F.data.xp, rf = (await must(F, 'pvpResult', {})).done[0];
+    ok(!rf.win && rf.d < 0, 'рейтинг за сдачу снят'); eq(F.data.xp, xf, 'опыта за сдачу нет');
+  });
   /* ---------- вывод ---------- */
   (async () => {
     for (const t of pending) {

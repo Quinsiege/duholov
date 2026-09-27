@@ -7,15 +7,20 @@ const Duel = {
   st: null,
   FAST: 6, CHARGE: 65, COST: 50, TIME: 180, HPX: 3, SWITCH_CD: 25,
   // соперники без уровня Капища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
-  FOE: { invasion: { speed: 0.75, shield: 0.5 }, spar: { speed: 0.72, shield: 0.6 } },
+  // 4.16: прислужник Нави — pow: сила его омрачённых духов от силы духов игрока (W.grunt), темп ударов 0,52 (был 0,75,
+  // вторжения выигрывались 99 из 100); ориентир — ~70% побед
+  FOE: { invasion: { speed: 0.52, shield: 0.5, pow: 1.2 }, spar: { speed: 0.72, shield: 0.6 } },
 
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
   open(e) {
-    const hold = Clans.info(e.id), mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
+    // 4.16: вольное Капище дружины не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
+    const free = Rules.shrineFree(e.id), now = U.now();
+    const holders0 = !free && Clans.info(e.id) ? Clans.info(e.id).holders.filter(h => h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)) : [];
+    const hold = holders0.length ? Clans.info(e.id) : null, mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
     const g = W.guardian(e), T = SHRINE_TIERS[e.tier], mul = Ev.duelMul();
     let team = S.team();
-    const holders = hold ? hold.holders.filter(h => h.sp && SP[h.sp.sid]) : [];
+    const holders = holders0.map(h => ({ ...h, sp: Rules.holdSpirit(h.sp, h.t, now) }));
     const who = hold
       ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
          <div class="rift-team-title">${ru`Защитники`}</div>
@@ -28,7 +33,7 @@ const Duel = {
     if (mine) action = `<div class="rift-tip">${ru`Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
         <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
     else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
-        ${S.d.clan && !hold ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
+        ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
     else action = `
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
         <div class="rift-team my">${UI.teamHtml(team)}</div>
@@ -38,7 +43,7 @@ const Duel = {
       <div class="shrine-view t${e.tier}">
         ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}</div>
+        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
         ${who}
         ${action}
         ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}
@@ -54,7 +59,8 @@ const Duel = {
       UI.closeScreen(scr);
       // защитники дружины — вместо хранителя
       const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
-      this.start({ ...e, kind: 'shrine', held: r.clan || null }, foe, S.team());
+      // 4.16: темп хранителя — свой (W.foeSpeed), у защитников дружины — обычный для ступени
+      this.start({ ...e, kind: 'shrine', held: r.clan || null, T: r.foe ? T : { ...T, speed: g.speed } }, foe, S.team());
     };
     const def = scr.querySelector('.defend-go');
     if (def) def.onclick = () => Clans.defend(e, () => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
@@ -109,7 +115,7 @@ const Duel = {
       if (!e2.target.closest('.duel-go')) return;
       if (!await this.begin('invStart', { spring: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } })) return;
       UI.closeScreen(scr);
-      this.start({ ...e, kind: 'invasion', tier: 1, T: this.FOE.invasion }, g, S.team());
+      this.start({ ...e, kind: 'invasion', tier: 1, T: { ...this.FOE.invasion, speed: g.speed } }, g, S.team());
     });
   },
 
@@ -153,7 +159,7 @@ const Duel = {
     this._starting = false;
     return !!ok;
   },
-  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'league' ? 'leagueEnd' : kind === 'spar' ? 'sparEnd' : 'duelEnd'; },
+  endType(kind) { return kind === 'invasion' ? 'invEnd' : kind === 'spar' ? 'sparEnd' : 'duelEnd'; },
 
   // 4.15: боец выходит с тем здоровьем, что есть у духа (раны общие на всю игру); в поединке с другом — с полным
   fighter(sp, full) {
@@ -197,8 +203,7 @@ const Duel = {
     const $ = s => root.querySelector(s);
     const st = this.st = {
       e, g, T: e.T || SHRINE_TIERS[e.tier], root, $, time: this.TIME, paused: true, over: false,
-      // e.carry — бойцы из прошлого боя турнира (раны не лечатся)
-      me: { team: e.carry || team.map(sp => this.fighter(sp, e.kind === 'spar')), idx: Math.max(0, (e.carry || []).findIndex(f => f.cur > 0)), shields: 2, busy: 0, cd: 0 },
+      me: { team: team.map(sp => this.fighter(sp, e.kind === 'spar')), idx: 0, shields: 2, busy: 0, cd: 0 },
       foe: { team: g.team.map(sp => this.fighter(sp)), idx: 0, shields: 2, busy: 1.5 },
     };
     UI.pushLayer(() => this.quit());
@@ -467,7 +472,6 @@ const Duel = {
     await U.wait(500);
     if (this.st !== st) return;
     let html;
-    if (st.e.kind === 'league') return League.afterDuel(win, st);
     // итог боя проверяет сервер: победа засчитывается, если команда могла нанести столько урона за это время
     let r = null;
     try { r = await Game.act(this.endType(st.e.kind), { win: !!win, hp: S.hpReport(st.me.team) }); } catch (e) { if (win) UI.toast(U.esc(e.message)); }
@@ -567,7 +571,6 @@ const Duel = {
     // сдался или вышел до конца боя — это поражение
     if (!st.over) {
       Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }).catch(() => {});
-      if (st.e.kind === 'league') League.carry = null;
     }
     st.over = true;
     st.root.remove();

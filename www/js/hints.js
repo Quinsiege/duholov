@@ -48,6 +48,11 @@ const Hints = {
     if (canEvo) out.push({ id: 'evolve:' + canEvo.sid, btn: ru`Показать`,
       text: ru`Эссенции хватает: «${U.esc(canEvo.nick || SP[canEvo.sid].name)}» может превратиться ${S.d.dex[SP[canEvo.sid].evo] && S.d.dex[SP[canEvo.sid].evo].seen ? ru`в <b>${SP[SP[canEvo.sid].evo].name}</b>` : ru`в <b>неизвестную форму</b>`}. Превращённый дух намного сильнее.`,
       go: () => this.openCard(canEvo.uid, '.act-evo') });
+    // 4.16: сильный дух упёрся в предел уровня, а на звезду пробуждения всего хватает
+    const canAw = byPower.slice(0, 6).find(sp => !S.canAwaken(sp));
+    if (canAw) out.push({ id: 'awaken:' + canAw.uid + ':' + (canAw.stars || 0), btn: ru`Показать`,
+      text: ru`«${U.esc(canAw.nick || SP[canAw.sid].name)}» дошёл до предела уровня, а осколков Алатыря хватает на <b>пробуждение</b>: звезда поднимет предел ещё на ${S.AWAKE.STEP} уровня.`,
+      go: () => UI.awaken(canAw.uid) });
     // Летопись ждёт закрытого Разлома, а до Капищ далеко — есть Дальний пропуск
     const ch = STORY[d.story.ch], ri = ch ? ch.steps.findIndex(s => s.t === 'raid') : -1;
     if (ri >= 0 && d.story.p[ri] < ch.steps[ri].n && d.items.farpass) out.push({ id: 'rifts:' + d.story.ch, btn: ru`Разломы вокруг`,
@@ -59,7 +64,7 @@ const Hints = {
       go: () => Pass.screen() });
     // пора в дружину
     if (d.level >= CLAN_LEVEL && !d.clan) out.push({ id: 'clan', btn: ru`Выбрать дружину`,
-      text: ru`Ты уже Ловчий пятого уровня — пора выбрать <b>дружину</b>. Дружины держат Капища: победи на Капище, поставь своего духа защитником — и каждый день получай дань.`,
+      text: ru`Ты уже на ${CLAN_LEVEL} уровне — пора выбрать <b>дружину</b>. Дружины держат Капища: победи на Капище, поставь своего духа защитником — и каждый день получай дань.`,
       go: () => Clans.choose() });
     // коконы лежат без дела
     if (d.cocoons.some(c => !c.inc) && S.incubating() < 3) out.push({ id: 'cocoon:' + today, btn: ru`К коконам`,

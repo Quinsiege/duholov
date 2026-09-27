@@ -20,6 +20,8 @@ const UUID = /^[0-9a-f-]{36}$/;
 // 4.3: запросы разных игроков выполняются одновременно — у каждого свои поля игрового кода (GameCore.isolate)
 GameCore.isolate(new AsyncLocalStorage());
 const must = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
+// 4.16: защитник Капища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
+const holdCutoff = () => Date.now() - Rules.HOLD.MAX_H * 3600000;
 const verCmp = (a, b) => {
   const pa = String(a || '0').split('.').map(Number), pb = String(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return Math.sign(d); }
@@ -386,6 +388,34 @@ function makeEnv(uid) {
       must(await db.from('league_scores').upsert({ user_id: uid, season: x.season, name: String(x.name).slice(0, 20), rating: pts, stars: Math.min(1000, Math.floor(pts / 100)), rank: x.rank,
         level: x.level, look: x.look, updated_at: new Date().toISOString() }, { onConflict: 'user_id,season' }));
     },
+    // 4.16: Лига — бои с живыми Ловчими (022_league_pvp.sql). Очередь поиска и пара — атомарно в базе (league_find,
+    // SKIP LOCKED); бой — строка league_matches (state ведёт GameCore.pvp, запись — с проверкой версии, league_put);
+    // обновления боя база сама рассылает обоим в их личные каналы Realtime (league:<user_id>).
+    // Коды входа (user_id) наружу не уходят: сторону a/b считаем здесь
+    async pvpFind(t) {
+      return must(await db.rpc('league_find', { p_uid: uid, p_pid: t.info.pid, p_season: t.season, p_rating: t.pts | 0, p_lo: t.lo | 0, p_hi: t.hi | 0,
+        p_info: t.info, p_avoid: t.avoid || null, p_wide: !!t.wide, p_now: Date.now() }));
+    },
+    async pvpCancel() { return must(await db.rpc('league_cancel', { p_uid: uid })); },
+    async pvpLive() {
+      const rows = must(await db.from('league_matches').select('id').eq('status', 'live').or(`a_uid.eq.${uid},b_uid.eq.${uid}`).order('created_at', { ascending: false }).limit(1)) || [];
+      return rows[0] ? { id: rows[0].id } : null;
+    },
+    async pvpLoad(id) {
+      if (!UUID.test(id)) return null;
+      const r = must(await db.from('league_matches').select('id, ver, state, season, a_uid, b_uid').eq('id', id).maybeSingle());
+      if (!r) return null;
+      return { id: r.id, ver: r.ver, state: r.state, season: r.season, seat: r.a_uid === uid ? 'a' : r.b_uid === uid ? 'b' : null };
+    },
+    // новая версия боя или null — бой успел измениться (ход соперника) или уже закончен
+    async pvpPut(id, ver, state, done) { return must(await db.rpc('league_put', { p_id: id, p_ver: ver, p_state: state, p_done: !!done })); },
+    // законченные бои игрока, ещё не засчитанные в его прогресс
+    async pvpPending() {
+      const rows = must(await db.from('league_matches').select('id, state, season, a_uid, b_uid').eq('status', 'done')
+        .or(`and(a_uid.eq.${uid},a_settled.eq.false),and(b_uid.eq.${uid},b_settled.eq.false)`).order('updated_at').limit(10)) || [];
+      return rows.map(r => ({ id: r.id, state: r.state, season: r.season, seat: r.a_uid === uid ? 'a' : 'b' }));
+    },
+    async pvpSettled(id) { must(await db.rpc('league_settled', { p_id: id, p_uid: uid })); },
     // Общее дело Ордена: вклад игрока за неделю (n только растёт) и итоги недели
     async orderPut(x) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
@@ -396,16 +426,22 @@ function makeEnv(uid) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
     },
-    async holdDefend(poi, lat, lng, clan, holder) { return !!must(await db.rpc('shrine_defend', { p_poi: poi, p_lat: lat, p_lng: lng, p_clan: clan, p_holder: holder })); },
+    // 4.16: защитники старше Rules.HOLD.MAX_H часов уже ушли — shrine_defend (023) убирает их перед проверками
+    async holdDefend(poi, lat, lng, clan, holder) {
+      return !!must(await db.rpc('shrine_defend', { p_poi: poi, p_lat: lat, p_lng: lng, p_clan: clan, p_holder: holder, p_cutoff: holdCutoff(), p_max: HOLD_MAX }));
+    },
     async holdDefeat(poi, ver) { return !!must(await db.rpc('shrine_defeat', { p_poi: poi, p_ver: ver })); },
+    // 4.16: считаются только защитники, которые ещё на посту (ушедшие по сроку остаются в строке до уборки)
     async myHolds(pid) {
-      const { count, error } = await db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).contains('holders', JSON.stringify([{ pid }]));
-      if (error) throw new Error(error.message);
-      return count || 0;
+      const rows = must(await db.from('shrine_holds').select('holders').contains('holders', JSON.stringify([{ pid }])).limit(200)) || [];
+      const cut = holdCutoff();
+      return rows.filter(r => (r.holders || []).some(h => h.pid === pid && +h.t >= cut)).length;
     },
     // Капища, где стоят защитники игрока: название — из таблицы мест
     async myHoldsList(pid) {
-      const rows = must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(HOLD_MY_MAX + 5)) || [];
+      const cut = holdCutoff();
+      const rows = (must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(200)) || [])
+        .filter(r => (r.holders || []).some(h => h.pid === pid && +h.t >= cut)).slice(0, HOLD_MY_MAX + 5);
       const ids = rows.map(r => r.poi_id);
       const names = ids.length ? must(await db.from('pois').select('id, name').in('id', ids)) || [] : [];
       return rows.map(r => {
@@ -454,13 +490,19 @@ function makeEnv(uid) {
       if (f.shiny) q = q.eq('shiny', true);
       for (const [k, col] of [['minIv', 'iv_pct'], ['minA', 'iv_a'], ['minD', 'iv_d'], ['minS', 'iv_s'], ['minPower', 'power'], ['minLvl', 'lvl']]) if (f[k]) q = q.gte(col, f[k]);
       if (f.maxPrice) q = q.lte('price', f.maxPrice);
+      if (f.maxLvl) q = q.lte('lvl', f.maxLvl); // 4.16: «не выше моего уровня»
       if (f.notPid) q = q.neq('seller_pid', f.notPid);
       const [col, asc] = { new: ['created_at', false], cheap: ['price', true], dear: ['price', false], power: ['power', false], iv: ['iv_pct', false] }[f.sort] || ['created_at', false];
       return must(await q.order(col, { ascending: asc }).order('id').range(f.from, f.from + 29)) || [];
     },
+    // 4.16: недавние сделки с духом вида sid (для подсказки цены) — индекс auction_sold_idx (023)
+    async lotsRecent(sid, since) {
+      return must(await db.from('auction_lots').select('cur, price, lvl').eq('sid', sid).eq('status', 'sold').gte('closed_at', new Date(since).toISOString())
+        .order('closed_at', { ascending: false }).limit(60)) || [];
+    },
     async lotsMine(pid) {
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
-      return must(await db.from('auction_lots').select('id, spirit, sid, lvl, power, iv_pct, cur, price, status, buyer_name, created_at, expires_at, closed_at, settled')
+      return must(await db.from('auction_lots').select('id, spirit, sid, lvl, power, iv_pct, cur, price, deposit, status, buyer_name, created_at, expires_at, closed_at, settled')
         .eq('seller_pid', pid).or(`status.eq.open,created_at.gte."${since}"`).order('created_at', { ascending: false }).limit(40)) || [];
     },
     async lotsOpenCount(pid) {
@@ -504,6 +546,9 @@ function makeEnv(uid) {
 // Защита от перебора и наводнения запросами: не больше FLOOD запросов в минуту от одного игрока
 // и не больше BAD_TOKENS неверных входов в минуту с одного адреса (в пределах экземпляра функции)
 const FLOOD = 150, BAD_TOKENS = 20;
+// 4.16: ходы в бою Лиги: телефон шлёт их не чаще ~3 в секунду (удары — пачками) и раз в 2 с — «я на связи»
+const PVP_FLOOD = 360;
+const pvpHits = new Map();
 // Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
 const LOCK_MS = 30000, LOCK_TRIES = 25;
 const hits = new Map(), badTokens = new Map(), errHits = new Map();
@@ -558,9 +603,15 @@ Deno.serve(async req => {
   const who = token ? (await db.auth.getUser(token)).data : null;
   if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: ru`Нужен вход в игру`, auth: true }, 401); }
   const uid = who.user.id;
-  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);
   let body;
   try { body = await req.json(); } catch { return reply({ ok: false, error: ru`Некорректный запрос` }, 400); }
+  // 4.16: ходы в бою Лиги идут чаще обычных действий — у них своя граница частоты (саму частоту ударов проверяет PvP)
+  if (body && body.pvp) {
+    if (tooMany(pvpHits, uid, PVP_FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);
+    try { return reply(await GameCore.pvp(String(body.pvp), body.args || {}, makeEnv(uid))); }
+    catch (e) { console.error('Лига:', String(e && e.stack || e)); return reply({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500); }
+  }
+  if (tooMany(hits, uid, FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);
   if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: ru`Вышла новая версия игры — обнови её` });
   // Казна: создать оплату / узнать итог — вне очереди игровых действий (ждём ответа ЮKassa)
   if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));

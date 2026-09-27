@@ -45,7 +45,9 @@ const Ev = {
     const h = this.hol;
     return (this.cur.el === el ? 2.5 : 1) * (h && h.el.includes(el) ? (h.elMul || 2) : 1);
   },
-  xpMul() { return (this.cur.xp || 1) * ((this.hol && this.hol.xp) || 1); },
+  // опыт: события (Звездопад, праздники) × 4.16: Настой опыта игрока (Rules.XP_BREW, пока действует)
+  evXpMul() { return (this.cur.xp || 1) * ((this.hol && this.hol.xp) || 1); },
+  xpMul() { return this.evXpMul() * (typeof S !== 'undefined' && S.d && S.d.xpUntil > Date.now() ? Rules.XP_BREW.MUL : 1); },
   lootMul() { return (this.cur.loot || 1) * ((this.hol && this.hol.loot) || 1); },
   kmMul() { return this.cur.km || 1; },
   shinyMul() {

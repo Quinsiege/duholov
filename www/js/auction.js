@@ -5,7 +5,8 @@
 
 const Auction = {
   tab: 'buy',
-  f: { sort: 'new' },     // фильтры поиска (сохраняются, пока открыта игра)
+  f: { sort: 'new', mine: true }, // фильтры поиска (сохраняются, пока открыта игра); mine — 4.16: «не выше моего уровня»
+  hints: {},              // 4.16: подсказки цены по недавним сделкам: sid:lvl → { sparks, zlat }
   q: '',                  // поиск по названию духа
   mine: null,             // последний ответ auctionMine
 
@@ -16,7 +17,18 @@ const Auction = {
   curName(cur, n) { return cur === 'zlat' ? U.plural(n, ru`златник`, ru`златника`, ru`златников`) : U.plural(n, ru`искра`, ru`искры`, ru`искр`); },
   // дух из упакованного лота: { s, l, i, y, d, n, p, m }
   sp(p) { return { sid: p.s, lvl: p.l, iv: p.i, shiny: !!p.y, dark: !!p.d, purified: !!p.p, nick: p.n || null }; },
-  filters() { return Object.entries(this.f).filter(([k, v]) => k !== 'sort' && v).length + (this.q ? 1 : 0); },
+  filters() { return Object.entries(this.f).filter(([k, v]) => k !== 'sort' && k !== 'mine' && v).length + (this.q ? 1 : 0); },
+  // 4.16: подсказка цены (недавние сделки с этим видом) — с сервера, запоминается на время игры
+  async hint(sid, lvl) {
+    const k = sid + ':' + lvl;
+    if (!this.hints[k]) { try { this.hints[k] = (await Game.act('auctionPrice', { sid, lvl })).hint; } catch (e) { return null; } }
+    return this.hints[k];
+  },
+  hintHtml(h) {
+    const parts = ['sparks', 'zlat'].filter(c => h && h[c]).map(c => { const x = h[c];
+      return x.lo === x.hi ? ru`${this.priceHtml(c, x.med)} (сделок: ${x.n})` : ru`${this.priceHtml(c, x.lo)}–${U.fmtNum(x.hi)}, чаще около ${U.fmtNum(x.med)} (сделок: ${x.n})`; });
+    return parts.length ? ru`Недавно продавали: ${parts.join(' · ')}` : ru`За последние ${Rules.AUCTION.RECENT} дней таких духов не продавали.`;
+  },
   left(iso) { const ms = Date.parse(iso) - U.now(); return ms > 0 ? U.fmtTime(ms) : ru`истёк`; },
 
   screen() {
@@ -41,7 +53,7 @@ const Auction = {
     const sorts = [['new', ru`Новые`], ['cheap', ru`Дешевле`], ['dear', ru`Дороже`], ['power', ru`Сила`], ['iv', ru`Оценка`]];
     box.innerHTML = `<div class="au-bar"><input class="input au-q" placeholder="${ru`Найти духа по названию`}" value="${U.esc(this.q)}" maxlength="24">
         <button class="btn small au-filt ${this.filters() ? 'primary' : ''}">${ru`Фильтры`}${this.filters() ? ` · ${this.filters()}` : ''}</button></div>
-      <div class="chips au-sorts">${sorts.map(([k, t]) => `<button data-sort="${k}" class="${this.f.sort === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="chips au-sorts">${sorts.map(([k, t]) => `<button data-sort="${k}" class="${this.f.sort === k ? 'on' : ''}">${t}</button>`).join('')}<button data-mine class="${this.f.mine ? 'on' : ''}">${ru`Не выше ${S.catchLvl()} ур.`}</button></div>
       <div class="au-list"><div class="q-note">${ru`Ищу лоты…`}</div></div>`;
     const list = box.querySelector('.au-list');
     const load = async () => {
@@ -57,6 +69,7 @@ const Auction = {
     box.onclick = e => {
       const s = e.target.closest('[data-sort]');
       if (s) { this.f.sort = s.dataset.sort; this.renderBuy(box, true); return; }
+      if (e.target.closest('[data-mine]')) { this.f.mine = !this.f.mine; this.renderBuy(box, true); return; }
       if (e.target.closest('.au-filt')) { this.filterSheet(() => this.renderBuy(box, true)); return; }
       if (e.target.closest('.au-more')) { e.target.closest('.au-more').disabled = true; load(); return; }
       const row = e.target.closest('.au-lot');
@@ -73,18 +86,19 @@ const Auction = {
     return `<button class="au-lot" data-i="${i}">
       <div class="au-art">${Art.img(p.s, !!p.y, !!p.d)}</div>
       <div class="row-main"><b>${U.esc(p.n || s.name)}${p.y ? ' <span class="au-shiny">✦</span>' : ''}</b>
-        <small>${ru`СИЛА ${U.fmtNum(l.power)} · ур. ${l.lvl}`} · ${U.esc(l.seller_name)}</small>
+        <small>${l.myLvl < l.lvl ? ru`СИЛА ${U.fmtNum(l.power)} → у тебя ${U.fmtNum(l.myPower)} (ур. ${l.myLvl})` : ru`СИЛА ${U.fmtNum(l.power)} · ур. ${l.lvl}`} · ${U.esc(l.seller_name)}</small>
         <small class="au-ivs">${this.starsHtml(l.iv_pct)} <b>${l.iv_pct}%</b> · ${ru`А ${l.iv_a} · З ${l.iv_d} · С ${l.iv_s}`}</small></div>
       <span class="btn small ${l.cur === 'zlat' ? 'primary' : 'spark-btn'} ${poor ? 'poor' : ''} au-price">${this.priceHtml(l.cur, l.price)}</span></button>`;
   },
   lotModal(l, done) {
     const p = l.spirit, s = SP[l.sid], mine = Math.min(l.lvl, S.catchLvl());
     const bar = (t, v) => `<div class="au-stat"><span>${t}</span><div class="pbar"><i style="width:${v / 15 * 100}%"></i></div><b>${v}/15</b></div>`;
-    UI.modal({
+    const m = UI.modal({
       title: U.esc(p.n || s.name), cls: 'au-modal',
       html: `<div class="au-big">${Art.img(p.s, !!p.y, !!p.d)}</div>
         <div class="au-tags"><span>${Art.elIcon(s.el, 14)} ${ELEMENTS[s.el].name}</span><span style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name}</span>${p.y ? `<span>✦ ${ru`Сияющий`}</span>` : ''}${p.d ? `<span>${ru`Омрачённый`}</span>` : ''}</div>
-        <div class="au-meta">${ru`СИЛА <b>${U.fmtNum(l.power)}</b> · уровень ${l.lvl}`}${mine < l.lvl ? ` <small>${ru`(у тебя будет ${mine}: выше твоего уровня нельзя)`}</small>` : ''}</div>
+        <div class="au-meta">${ru`СИЛА <b>${U.fmtNum(l.power)}</b> · уровень ${l.lvl}`}${mine < l.lvl ? ` <small>${l.myPower ? ru`(у тебя будет ${mine} ур. и СИЛА ${U.fmtNum(l.myPower)}: выше твоего уровня нельзя)` : ru`(у тебя будет ${mine}: выше твоего уровня нельзя)`}</small>` : ''}</div>
+        <p class="small au-hint">${ru`Узнаю, за сколько продавали таких духов…`}</p>
         <div class="au-appr">${ru`Оценка Ордена`} ${this.starsHtml(l.iv_pct)} <b>${l.iv_pct}%</b></div>
         ${bar(ru`Атака`, l.iv_a)}${bar(ru`Защита`, l.iv_d)}${bar(ru`Стойкость`, l.iv_s)}
         <div class="au-price-big">${this.priceHtml(l.cur, l.price)}</div>
@@ -100,6 +114,7 @@ const Auction = {
         UI.refreshHud(); done && done();
       } }],
     });
+    this.hint(l.sid, l.lvl).then(h => { const el = m.querySelector('.au-hint'); if (el) el.innerHTML = h ? this.hintHtml(h) : ''; });
   },
   filterSheet(done) {
     const f = { ...this.f };
@@ -115,7 +130,7 @@ const Auction = {
         <div class="au-nums"><label>${ru`Сила от`}<input class="input" type="number" inputmode="numeric" data-n="minPower" value="${f.minPower || ''}" placeholder="${ru`любая`}"></label>
           <label>${ru`Цена до`}<input class="input" type="number" inputmode="numeric" data-n="maxPrice" value="${f.maxPrice || ''}" placeholder="${ru`любая`}"></label></div>
         <label class="au-check"><input type="checkbox" data-c="shiny" ${f.shiny ? 'checked' : ''}> ${ru`Только сияющие`}</label>`,
-      buttons: [{ label: ru`Сбросить`, fn: () => { this.f = { sort: this.f.sort }; this.q = ''; done(); } },
+      buttons: [{ label: ru`Сбросить`, fn: () => { this.f = { sort: this.f.sort, mine: this.f.mine }; this.q = ''; done(); } },
         { label: ru`Показать`, cls: 'primary', fn: () => {
           m.querySelectorAll('[data-n]').forEach(i => { const v = Math.floor(+i.value); f[i.dataset.n] = v > 0 ? v : 0; });
           f.shiny = m.querySelector('[data-c="shiny"]').checked;
@@ -137,13 +152,13 @@ const Auction = {
   /* ---------- Мои лоты ---------- */
   async renderMine(box) {
     const A = Rules.AUCTION;
-    box.innerHTML = `<div class="au-info">${ru`Комиссия ${Math.round(A.FEE * 100)}% с продажи · лот живёт ${A.HOURS / 24} дня · до ${A.MAX_OPEN} лотов сразу`}</div>
+    box.innerHTML = `<div class="au-info">${ru`Комиссия ${Math.round(A.FEE * 100)}% с продажи · залог ${Math.round(A.DEPOSIT * 100)}% вернётся при продаже · лот живёт ${A.HOURS / 24} дня · до ${A.MAX_OPEN} лотов сразу`}</div>
       <button class="btn primary wide au-sell">${ru`Выставить духа`}</button><div class="au-mine"><div class="q-note">${ru`Загружаю…`}</div></div>`;
     box.onclick = e => {
       if (e.target.closest('.au-sell')) { this.pickSpirit(sp => this.sellModal(sp, () => this.renderMine(box))); return; }
       const c = e.target.closest('.au-cancel');
       if (c) {
-        UI.confirm(ru`Снять с продажи?`, ru`Дух вернётся в твою коллекцию.`, ru`Снять`, async () => {
+        UI.confirm(ru`Снять с продажи?`, ru`Дух вернётся в твою коллекцию, а залог — нет.`, ru`Снять`, async () => {
           if (await Game.try('auctionCancel', { id: c.dataset.id })) { UI.toast(ru`Дух вернулся в коллекцию`, 'good'); this.renderMine(box); }
         });
       }
@@ -166,8 +181,8 @@ const Auction = {
   },
   gotModal(got) {
     const rows = got.map(g => g.type === 'sold'
-      ? `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} продан${g.buyer ? ` (${U.esc(g.buyer)})` : ''}: +${this.priceHtml(g.cur, g.net)}`}</span></div>`
-      : `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} вернулся: ${g.type === 'expired' ? ru`срок лота истёк` : ru`лот снят`}`}</span></div>`).join('');
+      ? `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} продан${g.buyer ? ` (${U.esc(g.buyer)})` : ''}: +${this.priceHtml(g.cur, g.net)}`}${g.dep ? ' ' + ru`и залог ${this.priceHtml(g.cur, g.dep)}` : ''}</span></div>`
+      : `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} вернулся: ${g.type === 'expired' ? ru`срок лота истёк` : ru`лот снят`}`}${g.lost ? ' · ' + ru`залог ${this.priceHtml(g.cur, g.lost)} не вернулся` : ''}</span></div>`).join('');
     Sfx.play('spin');
     UI.modal({ title: ru`Итоги аукциона`, html: `<div class="au-got">${rows}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
   },
@@ -196,9 +211,10 @@ const Auction = {
       title: ru`Выставить на аукцион`, cls: 'au-sellm',
       html: `<div class="au-sellsp">${Art.img(sp.sid, sp.shiny, sp.dark && !sp.purified)}<div><b>${U.esc(sp.nick || SP[sp.sid].name)}</b><small>${ru`СИЛА ${U.fmtNum(S.power(sp))}`} · ${this.starsHtml(S.ivPct(sp))} ${S.ivPct(sp)}%</small></div></div>
         <div class="seg au-cur"><button data-c="sparks" class="on">✦ ${ru`Искры`}</button><button data-c="zlat">${ru`Златники`}</button></div>
+        <p class="small au-hint">${ru`Узнаю, за сколько продавали таких духов…`}</p>
         <input class="input big au-pr" type="number" inputmode="numeric" placeholder="${ru`Цена`}">
         <div class="au-fee"></div>
-        <p class="small">${ru`Дух уйдёт из коллекции на время продажи. Если его не купят за ${A.HOURS / 24} дня или ты снимешь лот — он вернётся.`}</p>`,
+        <p class="small">${ru`Дух уйдёт из коллекции на время продажи. Если его не купят за ${A.HOURS / 24} дня или ты снимешь лот — он вернётся.`} ${ru`Залог ${Math.round(A.DEPOSIT * 100)}% от цены вернётся вместе с выручкой, если духа купят, и пропадёт, если нет.`}</p>`,
       buttons: [{ label: ru`Отмена` }, { label: ru`Выставить`, cls: 'primary', keep: true, fn: async w => {
         const price = Math.floor(+pr.value);
         if (!(price >= A.MIN[cur] && price <= A.MAX[cur])) { UI.toast(ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} ${this.curName(cur, A.MAX[cur])}`); return; }
@@ -214,8 +230,15 @@ const Auction = {
     const upd = () => {
       const p = Math.floor(+pr.value);
       fee.innerHTML = p > 0 ? ru`Комиссия ${Math.round(A.FEE * 100)}%: ${this.priceHtml(cur, Rules.auctionFee(p))} · тебе придёт <b>${this.priceHtml(cur, Math.max(0, p - Rules.auctionFee(p)))}</b>`
+          + ' · ' + ru`залог сейчас ${this.priceHtml(cur, Rules.auctionDeposit(cur, p))}`
         : ru`Минимум ${this.priceHtml(cur, A.MIN[cur])}. Комиссия ${Math.round(A.FEE * 100)}% с продажи.`;
     };
+    // 4.16: подсказка цены по недавним сделкам; пустое поле цены — заполняем обычной ценой
+    this.hint(sp.sid, sp.lvl).then(h => {
+      const el = m.querySelector('.au-hint'); if (!el) return;
+      el.innerHTML = h ? this.hintHtml(h) : '';
+      if (h && !pr.value) { const c = h.sparks ? 'sparks' : h.zlat ? 'zlat' : null; if (c) { m.querySelector(`.au-cur [data-c="${c}"]`).click(); pr.value = h[c].med; upd(); } }
+    });
     m.querySelector('.au-cur').addEventListener('click', e => {
       const b = e.target.closest('[data-c]'); if (!b) return;
       cur = b.dataset.c; m.querySelectorAll('.au-cur button').forEach(x => x.classList.toggle('on', x === b)); upd();

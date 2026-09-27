@@ -2,18 +2,29 @@
 /* Разломы: битва с боссом (тап — атака, свайп/кнопка — уклон), затем поимка босса */
 
 const Raid = {
+  /* 4.16: босс — по уровню Ловчего (rl; в совместном бою — средний уровень Ловчих комнаты): атака и защита — как у духа
+     уровня rl, умноженные на k; здоровье hp и сила удара pw — для Ловчего 20-го уровня, с уровнем растут вместе с силой
+     духов (Raid.grow). Раньше босс был один на все уровни (hp 600 / 1800 / 4500, атака и защита — как у духа 14 / 22 / 28
+     уровня): новичку не по силам, сильный закрывал 9 из 10, и легенды тоже. Ориентир побед живого игрока своей командой:
+     малый — ~85%, средний — ~55–60%, великий (легенды) — в одиночку ~25%, втроём ~70%. lvl — уровень пойманного босса */
   TIER: {
-    // slvl — уровень, по которому считаются атака/защита босса; lvl — уровень пойманного босса
-    1: { hp: 600,  slvl: 14, lvl: 15, pw: 10, charms: 6, name: ru`Малый разлом` },
-    2: { hp: 1800, slvl: 22, lvl: 22, pw: 16, charms: 7, name: ru`Разлом` },
-    3: { hp: 4500, slvl: 28, lvl: 30, pw: 24, charms: 9, name: ru`Великий разлом` },
+    1: { hp: 3000, k: 1.35, lvl: 15, pw: 10, charms: 6, name: ru`Малый разлом` },
+    2: { hp: 4500, k: 1,    lvl: 22, pw: 16, charms: 7, name: ru`Разлом` },
+    3: { hp: 6000, k: 0.72, lvl: 30, pw: 24, charms: 9, name: ru`Великий разлом` },
   },
+  // здоровье босса в совместном бою: +COOP за каждого союзника (раньше +80% — втроём было почти как в одиночку)
+  COOP: 0.6,
+  coopHp(n) { return 1 + this.COOP * Math.max(0, (n | 0) - 1); },
   st: null,
 
   team() { return S.team(); },
+  // во сколько раз сильнее «опорного» (20-го уровня) дух уровня rl: здоровье босса растёт как урон духов, удар — как их здоровье
+  // после 30-го уровня босс растёт вдвое медленнее: сила духов там упирается в предел уровня
+  grow(rl) { const x = S.cpm(this.bossLvl(rl)) / S.cpm(20); return { hp: Math.pow(x, 1.2), pw: x }; },
+  bossLvl(rl) { return rl <= 30 ? rl : 30 + (rl - 30) / 2; },
   bossStats(r) {
-    const T = this.TIER[r.tier], b = SP[r.boss].base, c = S.cpm(T.slvl);
-    return { atk: (b[0] + 15) * c, def: (b[1] + 15) * c, hp: T.hp };
+    const T = this.TIER[r.tier], b = SP[r.boss].base, rl = U.clamp(Math.round(+r.rl || S.catchLvl()), 1, 40), c = S.cpm(this.bossLvl(rl)) * T.k, g = this.grow(rl);
+    return { atk: (b[0] + 15) * c, def: (b[1] + 15) * c, hp: Math.round(T.hp * g.hp), pw: T.pw * g.pw, rl };
   },
   eff(att, def) {
     if (ELEMENTS[att].beats.includes(def)) return 1.6;
@@ -38,8 +49,9 @@ const Raid = {
         <div class="rift-title">${T.name} <span class="stars">${'★'.repeat(r.tier)}</span></div>
         <div class="rift-name">${Art.elIcon(s.el, 20)} ${s.name}</div>
         ${r.place ? `<div class="rift-meta">${ru`Разлом открылся у «${U.esc(r.place)}»`}</div>` : ''}
-        <div class="rift-meta">${ru`Сила босса ≈ ${U.fmtNum(T.hp * 1.5)} · закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
+        <div class="rift-meta">${ru`Сила босса ≈ ${U.fmtNum(this.bossStats(r).hp * 1.5)} · закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
         <div class="rift-tip">${ru`Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}`}</div>
+        ${r.tier === 3 && !r.done ? `<div class="rift-tip">${ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.`}</div>` : ''}
         ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${ru`${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`}</div>` : ''}
         ${r.done ? `<div class="rift-done">${ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`}</div>` : `
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
@@ -164,7 +176,7 @@ const Raid = {
     const $ = sel => root.querySelector(sel);
     const st = this.st = {
       r, s, bs, root, $, bossHp: bs.hp, time: 90, energy: 0, cool: 0, idx: 0, coop: coop || null, ko: false,
-      team: team.map(sp => { const x = S.battle(sp); return { sp, ...x, max: x.hp * 5, cur: Math.max(1, Math.round(x.hp * 5 * S.hpNow(sp))) }; }), // 4.15: с тем здоровьем, что есть
+      team: team.map(sp => { const x = S.battle(sp); return { sp, ...x, max: x.hp * 5, lim: Math.round(x.hp * 5 * S.hpCap(sp)), cur: Math.max(1, Math.round(x.hp * 5 * S.hpNow(sp))) }; }), // 4.15: с тем здоровьем, что есть; 4.16: lim — предел усталого
       nextAtk: 3.2, tele: 0, dodgeT: -9, waters: 0, running: false, over: false,
     };
     UI.pushLayer(() => this.quit());
@@ -303,14 +315,14 @@ const Raid = {
     if (!st || !st.running || st.over || st.drinking) return;
     const m = this.cur();
     if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }
-    if (m.cur >= m.max) { UI.toast(ru`Дух и так полон сил`); return; }
+    if (m.cur >= m.lim) { UI.toast(m.lim < m.max ? ru`Дух устал — выше не поднять, нужен отдых` : ru`Дух и так полон сил`); return; }
     if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }
     st.drinking = true;
     const ok = await Game.try('water');
     st.drinking = false;
     if (!ok || this.st !== st || st.over) return;
     st.waters++;
-    m.cur = Math.min(m.max, m.cur + m.max / 2);
+    m.cur = Math.min(m.lim, m.cur + m.max / 2);
     Sfx.play('hatch');
     st.$('.raid-water span').textContent = S.d.items.water || 0;
     this.render();
@@ -337,8 +349,7 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-boss').classList.remove('charging');
     st.nextAtk = 2.2 + Math.random() * 1.4;
-    const T = this.TIER[st.r.tier];
-    let n = this.dmg(st.bs.atk, m.def, T.pw, st.s.el, SP[m.sp.sid].el);
+    let n = this.dmg(st.bs.atk, m.def, st.bs.pw, st.s.el, SP[m.sp.sid].el);
     const dodged = st.dodgeT > 0;
     if (dodged) n = Math.max(1, Math.floor(n * 0.2));
     m.cur = Math.max(0, m.cur - n);

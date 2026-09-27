@@ -1130,6 +1130,7 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .au-sellsp { display: flex; align-items: center; gap: 10px; text-align: left; margin-bottom: 12px; } .au-sellsp img, .au-sellsp svg { width: 56px; height: 56px; flex: none; } .au-sellsp small { display: block; color: var(--muted); font-size: 12px; }
 .au-cur { margin-bottom: 10px; } .au-pr { width: 100%; text-align: center; }
 .au-fee { font-size: 13px; margin: 8px 0; min-height: 18px; } .au-fee b { color: var(--gold2); }
+.au-hint { color: var(--muted); margin: 6px 0; min-height: 16px; } .au-hint .cur .art { width: 14px; height: 14px; vertical-align: -2px; }
 .au-got div { display: flex; align-items: center; gap: 10px; margin: 6px 0; text-align: left; font-size: 14px; } .au-got img, .au-got svg { width: 40px; height: 40px; flex: none; }
 .au-ivs b { display: inline; font-size: 12px; color: var(--text); }
 .au-price-big { text-align: center; font-size: 24px; font-weight: 900; color: var(--gold2); margin: 12px 0 0; } .au-price-big .cur { vertical-align: -0.12em; }
@@ -3914,6 +3915,9 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .hp-bar > i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #4ade80, #86efac); }
 .hp-bar.mid > i { background: linear-gradient(90deg, #facc15, #fde68a); }
 .hp-bar.low > i { background: linear-gradient(90deg, #ef4444, #fb7185); }
+/* 4.16: усталость — недоступная часть полоски здоровья заштрихована */
+.hp-bar.tired { position: relative; }
+.hp-bar .hp-cap { position: absolute; top: 0; right: 0; height: 100%; background: repeating-linear-gradient(135deg, rgba(148, 163, 184, .6) 0 2px, transparent 2px 4px); }
 .hp-ko { display: block; margin-top: 4px; font-size: 10.5px; font-weight: 700; color: #fda4af; white-space: nowrap; }
 .card.ko .card-art, .mini.ko img, .mini.ko .art, .lg2-mem.ko .pcs-a { filter: grayscale(1) brightness(.6); }
 .card.ko .card-pw, .card.ko .card-name { opacity: .6; }
@@ -3990,3 +3994,48 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .inv2-foot { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
 .inv2-foot .day-left { text-align: center; margin: 0; }
 .calm .inv2-mist, .calm .inv2-art > svg, .calm .inv2-art > img { animation: none; }
+/* 4.16: Лига — поиск живого соперника и бой с ним */
+.lgs { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 18px 8px 8px; }
+.lgs-radar { position: relative; width: 150px; height: 150px; display: grid; place-items: center; margin: 8px 0 4px; }
+.lgs-radar > i { position: absolute; inset: 20px; border-radius: 50%; border: 2px solid var(--gold); animation: pulse 2.2s ease-out infinite; }
+.lgs-radar > i + i { animation-delay: 1.1s; }
+.lgs-ava { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; border: 2px solid var(--gold); background: rgba(0, 0, 0, .3); position: relative; }
+.lgs-ava.big { width: 110px; height: 110px; margin: 0 auto 6px; }
+.lgs-time { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--gold2); }
+.lgs-where { color: #e2dcf7; }
+.lgs-n { font-size: 13px; color: var(--muted); min-height: 18px; margin-bottom: 8px; }
+.lgs-title { font-family: var(--f-display); font-size: 26px; color: var(--gold2); }
+.lgs-foe b { display: block; font-size: 20px; }
+.lgs-foe small { color: var(--muted); }
+.lgs-rank { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px 0; }
+.lgs-go { margin-top: 6px; font-size: 16px; }
+.lgs-go b { color: var(--gold2); font-size: 22px; }
+.pvp-wait, .pvp-net { position: absolute; left: 50%; top: 44%; transform: translateX(-50%); z-index: 8; padding: 6px 14px; border-radius: 14px; background: rgba(8, 5, 18, .72); color: #e2dcf7; font-size: 13px; white-space: nowrap; pointer-events: none; }
+.pvp-net { top: auto; bottom: 30%; color: #fecdd3; }
+.lgx-livebout { border-color: rgba(251, 191, 36, .55); }
+.lg-prize { text-align: center; }
+.calm .lgs-radar > i { animation: none; }
+
+/* ================= 4.16: пробуждение духов, эссенция Рода, подсказки Летописи ================= */
+.aw-mark { position: absolute; right: 7px; bottom: 34px; z-index: 1; font-family: var(--f-head); font-size: 11px; font-weight: 700; color: #fde68a; text-shadow: 0 0 6px rgba(251, 191, 36, .6); }
+.det2 .det-tags .aw-t { color: #fde68a; letter-spacing: 1px; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.dt-row.dt-aw { width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; color: inherit; font: inherit; cursor: pointer; }
+.dt-row.dt-aw small { font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 11.5px; color: rgba(255, 255, 255, .55); }
+.aw-stars { font-style: normal; color: #fde68a; letter-spacing: 1px; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.aw-stars s, .aw-big s { text-decoration: none; color: rgba(255, 255, 255, .28); text-shadow: none; }
+.dt-go { font-style: normal; font-size: 18px; color: rgba(255, 255, 255, .45); }
+.dt-plus { width: 24px; height: 24px; margin-left: 4px; padding: 0; border-radius: 50%; border: 1px solid rgba(253, 230, 138, .45); background: rgba(253, 230, 138, .12);
+  color: #fde68a; font: 700 16px/1 var(--f-head); cursor: pointer; }
+.det2 .det-power .aw-big { font-size: 23px; letter-spacing: 0; line-height: 1.2; white-space: nowrap; color: #fde68a; text-shadow: 0 0 12px rgba(251, 191, 36, .5); }
+.aw-screen .det-hp .dt-up { font-style: normal; color: #fde68a; }
+.dt-row.aw-have > b { color: #86efac; }
+.dt-row.aw-need > b { color: #fca5a5; }
+.dt-row > b small { font-family: 'Rubik', system-ui, sans-serif; font-weight: 500; font-size: 12px; color: rgba(255, 255, 255, .5); }
+.aw-ok { font-style: normal; color: #86efac; }
+.dt-pane[data-pane=star] .det-actions.top, .dt-pane[data-pane=ess] .det-actions.top { margin-top: auto; }
+.dt-pane[data-pane=star] .det-actions .btn, .dt-pane[data-pane=ess] .det-actions .btn { min-height: 50px; font-size: 15px; padding-top: 6px; padding-bottom: 6px; }
+.dt-pane[data-pane=star] .det-actions .btn small, .dt-pane[data-pane=ess] .det-actions .btn small { font-size: 11px; }
+.qd-hint { display: block; margin-top: 2px; font-size: 12px; line-height: 1.35; color: rgba(255, 255, 255, .6); }
+.qd-go { padding: 0; border: 0; background: none; color: var(--gold2); font-size: 12px; font-weight: 700; line-height: 1.35; cursor: pointer; white-space: nowrap; }
+.story-card.locked { border-color: rgba(255, 255, 255, .18); background: linear-gradient(160deg, rgba(148, 163, 184, .14), rgba(94, 234, 212, .04)); }
+.story-lock { margin: 0 0 8px; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.4; color: #fde68a; background: rgba(251, 191, 36, .1); box-shadow: inset 0 0 0 1px rgba(251, 191, 36, .25); }

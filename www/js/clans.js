@@ -28,7 +28,7 @@ const Clans = {
       const { data, error } = await sb.rpc('shrines_in_box', { s: box[0], w: box[1], n: box[2], e: box[3] });
       if (error) throw new Error(error.message);
       const m = {};
-      (data || []).forEach(r => { if (CLANS[r.clan]) m[r.id] = { clan: r.clan, since: r.since, holders: Array.isArray(r.holders) ? r.holders : [] }; });
+      (data || []).forEach(r => { if (CLANS[r.clan] && !Rules.shrineFree(r.id)) m[r.id] = { clan: r.clan, since: r.since, holders: Array.isArray(r.holders) ? r.holders : [] }; });
       this.map = m; this.box = box; this.t = Date.now();
       MapView.refresh();
     } catch (e) { console.warn('Дружины:', e.message); }
@@ -65,7 +65,8 @@ const Clans = {
     const list = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 40);
     const m = UI.modal({
       title: ru`Кого поставить защитником?`, cls: 'defend-modal',
-      html: `<p class="small">${ru`Дух останется у тебя: на Капище встанет его отражение. Пока он стоит, раз в день приходит дань — ✦ ${TRIBUTE.sparks} и оберег.`}</p>
+      html: `<p class="small">${ru`Дух останется у тебя: на Капище встанет его отражение. Пока он стоит, раз в день приходит дань — ✦ ${TRIBUTE.sparks} и оберег.`}
+        ${ru`Отражение стоит до ${Rules.HOLD.MAX_H / 24} суток: первые ${Rules.HOLD.FRESH_H} ч в полной силе, потом устаёт и слабеет, а затем возвращается домой. Защитники — не больше чем на ${HOLD_MY_MAX} Капищах.`}</p>
         <div class="defend-list">${list.map(sp => `<button class="mini defend-sp" data-uid="${sp.uid}">${Art.imgOf(sp)}<b>${S.power(sp)}</b><small>${U.esc(sp.nick || SP[sp.sid].name)}</small></button>`).join('')}</div>`,
       buttons: [{ label: ru`Отмена` }],
     });
@@ -94,7 +95,8 @@ const Clans = {
         Sfx.play('miss');
         const names = r.back.map(g => `«${U.esc(g.name)}»`).join(', ');
         const got = r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ');
-        UI.toast(r.back.length > 1 ? ru`Защитники вернулись с ${names}: соперники победили. За службу: ${got}` : ru`Защитник вернулся с ${names}: соперники победили. За службу: ${got}`);
+        UI.toast(r.back.every(g => g.tired) ? ru`Срок на посту вышел — защитники вернулись с ${names}. За службу: ${got}`
+          : r.back.length > 1 ? ru`Защитники вернулись с ${names}: соперники победили. За службу: ${got}` : ru`Защитник вернулся с ${names}: соперники победили. За службу: ${got}`);
         this.refresh(true);
       }
     } catch (e) { /* позже */ }
@@ -124,7 +126,8 @@ const Clans = {
       const d = pos ? U.dist(pos.lat, pos.lng, g.lat, g.lng) : null;
       const h = g.t ? Math.max(0, (U.now() - g.t) / 3600000) : 0;
       return `<div class="row guard-row" data-id="${U.esc(g.id)}"><div class="row-ico">${g.sp && SP[g.sp.sid] ? Art.imgOf(g.sp) : ''}</div>
-        <div class="row-main"><b>${U.esc(g.name)}</b><small>${ru`на посту ${h < 1 ? ru`меньше часа` : ru`${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}`}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small></div>
+        <div class="row-main"><b>${U.esc(g.name)}</b><small>${ru`на посту ${h < 1 ? ru`меньше часа` : ru`${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}`}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small>
+          <small>${h >= Rules.HOLD.FRESH_H ? ru`устал: уровень −${Math.round((1 - Rules.holdK(g.t, U.now())) * 100)}% · домой через ${Math.max(1, Math.ceil(Rules.HOLD.MAX_H - h))} ч` : ru`в полной силе ещё ${Math.max(1, Math.ceil(Rules.HOLD.FRESH_H - h))} ч`}</small></div>
         <button class="btn small ghost show-guard">${ru`Показать`}</button></div>`;
     };
     scr.querySelector('.clan-body').innerHTML = `
@@ -132,7 +135,7 @@ const Clans = {
       ${bars(stats && stats.all, ru`Капища по всей России`)}
       <h3 class="prof-h">${ru`Мои защитники`} <small>${ru`${list.length} из ${HOLD_MY_MAX}`}</small></h3>
       <div class="list">${list.map(guardRow).join('') || `<div class="row"><div class="row-main"><small>${ru`Пока нигде. Победи на Капище и поставь защитника — каждый день будет приходить дань.`}</small></div></div>`}</div>
-      <div class="q-note">${ru`Дань — ✦ ${TRIBUTE.sparks} и оберег в день за каждое Капище с твоим защитником. Если соперники его победят, защитник вернётся с искрами за время на посту.`}</div>`;
+      <div class="q-note">${ru`Дань — ✦ ${TRIBUTE.sparks}, оберег и ${Rules.ZLAT.tribute} ${U.plural(Rules.ZLAT.tribute, ru`златник`, ru`златника`, ru`златников`)} в день за каждое Капище, где твой защитник отстоял хотя бы ${Rules.HOLD.TRIBUTE_H} ч. Защитник стоит до ${Rules.HOLD.MAX_H / 24} суток и понемногу устаёт; если соперники его победят или срок выйдет, он вернётся с искрами за время на посту. Часть Капищ — вольные: их не держит ни одна дружина.`}</div>`;
     scr.querySelector('.clan-body').addEventListener('click', e => {
       const row = e.target.closest('.guard-row');
       if (!row || !e.target.closest('.show-guard')) return;
@@ -147,7 +150,7 @@ const Clans = {
 
   // Дань с Капищ — раз в день, вместе с наградой за серию дней
   async tribute() {
-    if (!S.d || !S.d.clan || S.d.tributeDay === U.today() || this._tribute) return;
+    if (!S.d || !S.d.clan || S.d.tributeDay === U.today() || S.d.tributeNext > U.now() || this._tribute) return;
     this._tribute = true;
     try {
       const r = await Game.act('tribute');

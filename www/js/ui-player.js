@@ -17,21 +17,25 @@ Object.assign(UI, {
           ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} ${ru`Встретить: ${SP[gift].name}`}</button>` : ''}</div>`;
         return;
       }
-      const ready = S.storyReady();
+      const ready = S.storyReady(), open = S.storyOpen(), need = S.storyLvl(ch);
+      const book = [...STORY_BOOKS].reverse().find(b => b.from <= st.ch);
       scr.querySelector('.quests').innerHTML = `
-        <div class="story-card">
-          <div class="story-num">${ru`Глава ${st.ch + 1} из ${STORY.length}`}</div>
+        <div class="story-card ${open ? '' : 'locked'}">
+          <div class="story-num">${ru`Глава ${st.ch + 1} из ${STORY.length}`}${book ? ` · ${book.title}` : ''}</div>
           <h3>${ch.title}</h3>
+          ${open ? '' : `<div class="story-lock">${ru`Глава откроется на <b>${need}</b> уровне Ловчего — ты на ${S.d.level}. Опыт дают поимки, родники, бои и задания дня.`}</div>`}
           <p class="story-text">${ch.intro}</p>
         </div>
         ${ch.steps.map((s, i) => {
           const p = st.p[i], done = p >= s.n, pv = s.t === 'walk' ? ru`${Math.min(p, s.n).toFixed(2)} / ${s.n} км` : `${Math.min(Math.floor(p), s.n)} / ${s.n}`;
+          const go = !done && open && this.storyGo(s, true); // 4.16: подсказка — куда идти и что делать
           return `<div class="quest qd ${done ? 'done' : ''}"><div class="qd-ico">${this.qIcon(s.t, s.el)}</div>
-            <div class="q-main"><b>${stepText(s)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, p / s.n * 100)}%"></i></div><span>${pv}</span></div></div>${done ? `<span class="q-ok" aria-label="${ru`Готово`}">✓</span>` : ''}</div>`;
+            <div class="q-main"><b>${stepText(s)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, p / s.n * 100)}%"></i></div><span>${pv}</span></div>
+            ${done ? '' : `<small class="qd-hint">${stepHint(s)}${go ? ` <button class="qd-go" data-go="${i}">${ru`Показать`} ›</button>` : ''}</small>`}</div>${done ? `<span class="q-ok" aria-label="${ru`Готово`}">✓</span>` : ''}</div>`;
         }).join('')}
         <div class="quest bonus qd-chest ${ready ? 'done' : ''}"><div class="qd-ico chest">${ch.gift ? Art.spirit(ch.gift) : Art.item('gift')}</div>
-          <div class="q-main"><b>${ru`Награда главы`}</b><div class="qd-pips">${ch.steps.map((s, i) => `<i class="${st.p[i] >= s.n ? 'on' : ''}"></i>`).join('')}<small>${ready ? ru`можно завершить` : ru`выполни все шаги главы`}</small></div>
-          ${this.rwChips(ch.reward, true, ch.gift ? `<span class="qd-rw legend">${Art.spirit(ch.gift)}${ru`встреча: ${SP[ch.gift].name}`}</span>` : '')}</div>
+          <div class="q-main"><b>${ru`Награда главы`}</b><div class="qd-pips">${ch.steps.map((s, i) => `<i class="${st.p[i] >= s.n ? 'on' : ''}"></i>`).join('')}<small>${ready ? ru`можно завершить` : open ? ru`выполни все шаги главы` : ru`откроется на ${need} уровне`}</small></div>
+          ${this.rwChips(S.storyReward(ch), true, ch.gift ? `<span class="qd-rw legend">${Art.spirit(ch.gift)}${ru`встреча: ${SP[ch.gift].name}`}</span>` : '')}</div>
           ${ready ? `<button class="btn small primary claim-story">${ru`Завершить`}</button>` : ''}</div>
         ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} ${ru`Встретить: ${SP[gift].name}`}</button>` : ''}`;
     };
@@ -85,6 +89,15 @@ Object.assign(UI, {
         });
         return;
       }
+      const go = e.target.closest('.qd-go');
+      if (go) {
+        const s = (STORY[S.d.story.ch] || { steps: [] }).steps[+go.dataset.go];
+        if (!s) return;
+        Sfx.play('tap');
+        if (s.t === 'task') { this.qTab = 'day'; render(); this.slideIn(scr.querySelector('.quests'), -1); return; }
+        this.storyGo(s);
+        return;
+      }
       if (e.target.closest('.story-gift')) {
         this.closeScreen(scr);
         Encounter.start({ mode: 'story', seed: 'gift' + S.d.created });
@@ -132,10 +145,28 @@ Object.assign(UI, {
     }).join('') + extra;
     return wrap ? `<div class="qd-rws">${chips}</div>` : chips;
   },
+  // 4.16: шаг Летописи → нужный раздел игры. check — только узнать, есть ли куда вести
+  storyGo(s, check) {
+    const d = S.d, byPower = [...d.spirits].sort((a, b) => S.power(b) - S.power(a));
+    const dark = d.spirits.find(x => x.dark), atCap = byPower.find(x => x.lvl >= S.maxLvl(x) && S.awakenCost(x));
+    const to = {
+      raid: () => Raid.list(),
+      power: () => this.collection(), evolve: () => this.collection(),
+      purify: dark ? () => Hints.openCard(dark.uid, '.act-purify') : null,
+      hatch: () => this.cocoons(),
+      league: d.level >= League.LEVEL ? () => League.screen() : null,
+      task: () => {},
+      defend: d.level >= CLAN_LEVEL && !d.clan ? () => Clans.choose() : null,
+      awaken: byPower.length ? () => this.awaken((atCap || byPower[0]).uid) : null,
+    }[s.t];
+    if (check) return !!to;
+    if (to) to();
+    return !!to;
+  },
   // Значок задания по его типу (задания дня, Летопись)
   qIcon(t, el) {
     if (t === 'catchEl' && el) return Art.elIcon(el, 22);
-    return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin' }[t] || 'scroll'];
+    return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin', awaken: 'star' }[t] || 'scroll'];
   },
   // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня
   dayLimitsHtml() {
@@ -151,7 +182,7 @@ Object.assign(UI, {
       <button class="btn small primary t-meet" data-id="${m.id}">${ru`Встретить`}</button></div>`).join('');
     const tasks = d.tasks.map(q => {
       const done = q.p >= q.n, pv = q.t === 'walk' ? `${q.p.toFixed(2)} / ${q.n}` : `${Math.floor(q.p)} / ${q.n}`;
-      return `<div class="quest t-row ${done ? 'done' : ''}"><div class="t-sp mystery">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class="q-main"><b>${I18N.back(q.text)}</b><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><small>${ru`${pv} · Награда: встреча с духом`}</small></div>
+      return `<div class="quest t-row ${done ? 'done' : ''}"><div class="t-sp mystery">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class="q-main"><b>${I18N.back(q.text)}</b><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><small>${q.guest ? ru`${pv} · Награда: гость издалека` : ru`${pv} · Награда: встреча с духом`}</small></div>
         ${done ? `<button class="btn small primary t-claim" data-id="${q.id}">${ru`Сдать`}</button>` : `<button class="btn-round small t-drop" data-id="${q.id}" aria-label="${ru`Отказаться`}">${this.I.close}</button>`}</div>`;
     }).join('');
     return `<h3 class="q-h">${ru`Поручения родников`} <small>${d.tasks.length} / ${TASK_LIMIT}</small></h3>${meets}${tasks ||
