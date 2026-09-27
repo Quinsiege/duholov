@@ -304,6 +304,14 @@ const Art = (() => {
   function shinyHue(sid) { return 90 + Math.round(U.h('shinyhue', sid) * 180); }
   const DARK_AURA = `<g class="art-aura" opacity=".85"><circle cx="100" cy="118" r="78" fill="#3b0764" opacity=".35"/><circle cx="86" cy="104" r="56" fill="#581c87" opacity=".3"/><circle cx="118" cy="128" r="50" fill="#1e0b36" opacity=".35"/></g>` +
     `<g class="art-flicker" fill="#a21caf" opacity=".75"><path d="M40 176 C34 150 52 140 48 118 C62 136 66 154 60 176Z"/><path d="M160 176 C166 150 148 140 152 118 C138 136 134 154 140 176Z"/><path d="M92 180 C88 162 100 156 98 140 C108 154 110 166 106 180Z" opacity=".7"/></g>`;
+  // 4.17: рисунки духов картинками (img/spirits/<id>.webp, 400×400, прозрачный фон) — у кого уже есть; остальные рисуются SVG, как прежде.
+  // Список (id → метка содержимого) пишет tools/art/spirit-pics.mjs; оттенок сияющего и омрачение — фильтром поверх картинки
+  const PICS = {"kostrovik":"3235430501","ugolek":"3106337497","zharogriv":"2415565401"}; // tools/art/spirit-pics.mjs
+  const picUrl = sid => PICS[sid] ? `img/spirits/${sid}.webp?v=${PICS[sid]}` : null;
+  const picFilter = (sid, shiny, dark) => [shiny ? `hue-rotate(${shinyHue(sid)}deg) saturate(1.3) brightness(1.05)` : '', dark ? 'saturate(.7) brightness(.85) contrast(1.1)' : ''].filter(Boolean).join(' ');
+  const picImg = (sid, shiny, dark, cls) => { const fl = picFilter(sid, shiny, dark); return `<img class="${cls}" src="${picUrl(sid)}" alt="" draggable="false" decoding="async"${fl ? ` style="filter:${fl}"` : ''}>`; };
+  const over = svg => `<svg class="stk" viewBox="0 0 200 200">${svg}</svg>`;
+  const pic = (sid, shiny, dark) => `<span class="art art-stack sp-pic" style="aspect-ratio:1">${dark ? over(DARK_AURA) : ''}${picImg(sid, shiny, dark, 'stk')}${shiny ? over(SPARKLES) : ''}</span>`;
   // shiny — сияющий вариант (другой оттенок и искры), dark — омрачённый Навью
   function spirit(sid, shiny, dark) {
     if (!cache[sid]) cache[sid] = ArtKit.render(SP[sid]) || build(SP[sid]); // 4.6: новый рисунок, если он уже есть
@@ -322,6 +330,7 @@ const Art = (() => {
   // рисуется как обычная картинка — вместо сотен DOM-узлов на каждого духа
   const imgCache = {};
   function img(sid, shiny, dark) {
+    if (PICS[sid]) return picImg(sid, shiny, dark, 'art');
     const k = sid + (shiny ? ':s' : '') + (dark ? ':d' : '');
     if (!imgCache[k]) imgCache[k] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(spirit(sid, shiny, dark));
     return `<img class="art" src="${imgCache[k]}" alt="" draggable="false">`;
@@ -1142,6 +1151,6 @@ const Art = (() => {
       L.parts.map(p => p.img ? `<img class="stk${p.cls ? ' ' + p.cls : ''}" src="${p.img}" alt="" draggable="false"${p.css ? ` style="${p.css}"` : ''}>` : p.svg.replace(/__L__/g, n)).join('') + '</span>';
   }
   const asImg = (svg, key, ctx) => stack(svg, key, '', ctx);
-  const spiritK = (sid, shiny, dark) => stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`);
-  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
+  const spiritK = (sid, shiny, dark) => PICS[sid] ? pic(sid, shiny, dark) : stack(spirit(sid, shiny, dark), `sp:${sid}${shiny ? ':s' : ''}${dark ? ':d' : ''}`);
+  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
 })();
