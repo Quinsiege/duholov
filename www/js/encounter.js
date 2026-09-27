@@ -400,7 +400,7 @@ const Encounter = {
         ${r.isNew ? `<div class="badge-new">${ru`Новая запись в Бестиарии!`}</div>` : ''}
         ${mine.shiny ? `<div class="badge-new shiny">${ru`Сияющий дух — редкая удача!`}</div>` : ''}
         <div class="res-rw">
-          <div>${ru`<b>+${U.fmtNum(r.xp)}</b> опыта`}${Ev.xpMul() > 1 ? ` ${ru`(Звездопад ×2)`}` : ''}</div><div>${ru`<b>+${r.sparks}</b> искр`}</div><div>${ru`<b>+${r.ess}</b> эссенции «${SP[s.fam].name}»`}</div>
+          <div>${ru`<b>+${U.fmtNum(r.xp)}</b> опыта`}${Ev.evXpMul() > 1 ? ` ${ru`(Звездопад ×2)`}` : ''}</div><div>${ru`<b>+${r.sparks}</b> искр`}</div><div>${ru`<b>+${r.ess}</b> эссенции «${SP[s.fam].name}»`}</div>
         </div>
         <button class="btn primary wide">${ru`Отлично`}</button>
       </div></div>`);

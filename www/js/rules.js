@@ -67,6 +67,7 @@ const Rules = {
   // 10–20 родников в день), а бесконечный фарм и боты упираются в потолок
   DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
   DAILY_NAMES: { springs: ru`Родники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
+  // 4.16: сколько раз товар Лавки с недельным пределом (week) куплен на этой неделе (неделя — как у событий, Ev.week)
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
   weekUsed(d, key) { return d && d.weekc && d.weekc.w === Ev.week() ? (d.weekc[key] || 0) : 0; }, // 4.16: за неделю (с понедельника)
   // строка «Родников сегодня: 12 из 30» для окон объектов
@@ -75,8 +76,27 @@ const Rules = {
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
   CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Дружина`]],
   // 3.17: Аукцион духов — с LEVEL уровня (4.16: было 5); лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
-  AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 72, MAX_OPEN: 5, PER_DAY: 20, MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
+  // 4.16: лот живёт 48 ч (было 72), открытых лотов — до 3 (было 5), выставлять — до 10 в день (было 20);
+  // залог DEPOSIT от цены (не меньше DEP_MIN) — вернётся при продаже, пропадёт, если лот истечёт или его снимут:
+  // так на аукционе меньше залежалых лотов по несбыточной цене. RECENT — за сколько дней смотреть сделки для подсказки цены
+  AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
+    MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
+  auctionDeposit(cur, price) { const A = this.AUCTION; return Math.max(A.DEP_MIN[cur === 'zlat' ? 'zlat' : 'sparks'], Math.ceil((price || 0) * A.DEPOSIT)); },
+  // Подсказка цены по недавним сделкам с духом того же вида: rows — [{ cur, price, lvl }]. Для каждой валюты — число
+  // сделок, медиана и «обычный» разброс (от четверти до трёх четвертей сделок). lvl — уровень духа: сделки с духами
+  // ±5 уровней, если таких хотя бы 3, иначе все сделки вида
+  auctionHint(rows, lvl) {
+    const out = {};
+    for (const cur of ['sparks', 'zlat']) {
+      let r = (rows || []).filter(x => x && x.cur === cur && x.price > 0);
+      if (lvl) { const near = r.filter(x => Math.abs((x.lvl || 0) - lvl) <= 5); if (near.length >= 3) r = near; }
+      if (!r.length) continue;
+      const p = r.map(x => x.price).sort((a, b) => a - b), q = f => p[Math.min(p.length - 1, Math.floor(f * p.length))];
+      out[cur] = { n: p.length, med: q(0.5), lo: q(0.25), hi: q(0.75) };
+    }
+    return out;
+  },
   // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
   // 4.16: был ✦ 500 → 10 златников трижды в день (30 златников в день почти даром) — теперь трата лишних искр:
   // ✦ 1 000 → 1 златник, до 5 обменов в день
@@ -106,7 +126,13 @@ const Rules = {
     { id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },
     { id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },
     { id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },
+    // 4.16: средние покупки — ощутимо, но не «плати и побеждай»: настой опыта на сутки (+25%) — не больше двух в неделю
+    // (week: иначе кит пил бы его каждый день), связка ладана — раз в день
+    { id: 'xpbrew',   name: ru`Настой опыта`,        desc: ru`Сутки опыта на четверть больше. До двух в неделю`, cur: 'zlat', price: 60, give: { xpbrew: 1 }, day: 1, week: 2 },
+    { id: 'incense5', name: ru`Связка ладана`,       desc: ru`5 ладана дешевле, чем по одному. Одна в день`, cur: 'zlat', price: 200, give: { incense: 5 }, day: 1 },
   ],
+  // 4.16: Настой опыта — MUL опыта на H часов (пьётся из сумки, пока действует — второй не выпить)
+  XP_BREW: { MUL: 1.25, H: 24 },
   bagPrice(n) { return 150 + 50 * n; }, // n — сколько раз сумку уже расширяли
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
   // без сил (здоровье 0) — в бой не идёт и поднимается сам на BACK через KO_H часов (по редкости духа: от 2 до 24);
@@ -123,11 +149,13 @@ const Rules = {
     return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
   },
   // Сезонная тропа: сезон — календарный месяц, 30 ступеней по 40 очков (очки — как в общем деле Ордена)
-  PASS: { LEVELS: 30, PER: 40, GOLD: 600 },
+  PASS: { LEVELS: 30, PER: 40, GOLD: 600, LATE: 25 },
   passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
-  // Награда ступени: free — всем, gold — на Золотой тропе
+  // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
+  // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
   // 4.16: на бесплатной тропе 55 златников за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
-  passReward(track, lvl) {
+  passReward(track, lvl, plvl) {
+    if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
     if (track === 'free') {
       if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 20 };
       if (lvl % 10 === 0) return { cocoon: 5, zlat: 10 };
@@ -141,8 +169,31 @@ const Rules = {
     if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
     return lvl % 2 ? { charm2: 5, sparks: 500 } : { water: 3, sparks: 800 };
   },
+  // 4.16: Золотая тропа с LATE уровня: вместо серебряных оберегов и мелочи — то, что нужно на поздних уровнях:
+  // искры на усиление (втрое больше), золотые обереги, целебный отвар, настои опыта; облик и Знак Тропы — как раньше
+  passGoldLate(lvl) {
+    if (lvl === 30) return { look: 'trail', charm3: 10, xpbrew: 1 };
+    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 3000 };
+    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 3000 };
+    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
+    if (lvl % 3 === 0) return { charm3: 5, zlat: 15 };
+    return lvl % 2 ? { charm3: 3, sparks: 1500 } : { brew: 2, sparks: 2500 };
+  },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
+  /* 4.16: Капища не должны навсегда оставаться за дружинами.
+     Защитник первые FRESH_H часов на посту в полной силе, потом устаёт: к MAX_H часам его уровень падает до (1 − WEAK)
+     от своего, а в MAX_H часов он уходит домой (с искрами за службу, как побеждённый). Дань (Rules.ZLAT.tribute и TRIBUTE) —
+     только за защитников, которые простояли не меньше TRIBUTE_H часов и ещё на посту («активная защита»), и не больше чем
+     за HOLD_MY_MAX Капищ. Доля FREE Капищ — вольные: их не держит ни одна дружина, там всегда бьётся хранитель. */
+  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25 },
+  holdHours(t, now) { return Math.max(0, ((now == null ? Date.now() : now) - (+t || 0)) / 3600000); },
+  holdFresh(h, now) { return !!h && this.holdHours(h.t, now) < this.HOLD.MAX_H; },
+  // во сколько раз уменьшен уровень защитника (1 — в полной силе)
+  holdK(t, now) { const H = this.HOLD, h = this.holdHours(t, now); return 1 - H.WEAK * U.clamp((h - H.FRESH_H) / (H.MAX_H - H.FRESH_H), 0, 1); },
+  // отражение духа на посту: уровень — с учётом усталости
+  holdSpirit(sp, t, now) { return { ...sp, lvl: Math.max(1, Math.round((sp.lvl || 1) * this.holdK(t, now))) }; },
+  shrineFree(id) { return U.h('freeShrine', String(id)) < this.HOLD.FREE; },
   ORDER_RULES: [
     [ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],

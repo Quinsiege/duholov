@@ -292,16 +292,17 @@ const GameCore = {
       if (r.status === 'sold') {
         if (A.paid[r.id]) continue;
         const cur = r.cur === 'zlat' ? 'zlat' : 'sparks', net = r.price - Rules.auctionFee(r.price);
-        S.d[cur] = (S.d[cur] || 0) + net;
+        const dep = U.clamp(Math.floor(+r.deposit) || 0, 0, Rules.auctionDeposit(cur, r.price)); // 4.16: залог — обратно (не больше, чем положено за эту цену)
+        S.d[cur] = (S.d[cur] || 0) + net + dep;
         A.paid[r.id] = ctx.now;
         S.d.stats.traded++;
-        got.push({ type: 'sold', sid: r.spirit.s, cur, price: r.price, net, buyer: String(r.buyer_name || '').slice(0, 20) });
+        got.push({ type: 'sold', sid: r.spirit.s, cur, price: r.price, net, dep, buyer: String(r.buyer_name || '').slice(0, 20) });
         J.add('auction', { sid: r.spirit.s, dir: 'sold', cur, price: net, who: r.buyer_name });
       } else {
         if (A.back[r.id]) continue;
         S.addSpirit(this.unpackSpirit(r.spirit, ctx));
         A.back[r.id] = ctx.now;
-        got.push({ type: r.status, sid: r.spirit.s });
+        got.push({ type: r.status, sid: r.spirit.s, lost: Math.max(0, Math.floor(+r.deposit) || 0), cur: r.cur === 'zlat' ? 'zlat' : 'sparks' });
       }
     }
     if (rows.length) ctx.after.push(() => ctx.env.lotsDone(rows.map(r => r.id), 'settled'));
@@ -399,10 +400,17 @@ const GameCore = {
     return { code: r.code, status: r.status, rift: { ...r.rift, rl: this.roomRl(r) }, isHost: r.host_pid === S.d.pid, hpMul: Raid.coopHp(r.members.length),
       members: r.members.map((m, i) => ({ name: String(m.name || 'Ловчий').slice(0, 20), look: m.look, lvl: m.lvl, power: m.power, sid: m.sid, host: i === 0, me: m.pid === S.d.pid })) };
   },
-  // Защитники Капища в бою — три сильнейших
-  holdTeam(hold) {
-    return hold.holders.filter(h => h && h.sp && SP[h.sp.sid]).map((h, i) => this.cleanSpirit(h.sp, i))
+  // Защитники Капища в бою — три сильнейших (4.16: только те, кто ещё на посту, и с учётом усталости — Rules.HOLD)
+  holdTeam(hold, now = Date.now()) {
+    return hold.holders.filter(h => h && h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)).map((h, i) => Rules.holdSpirit(this.cleanSpirit(h.sp, i), h.t, now))
       .map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, 3).map(o => o.x);
+  },
+  // 4.16: Капище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Капище дружин нет.
+  // null — Капище свободно (бьётся хранитель)
+  liveHold(hold, now, id) {
+    if (!hold || Rules.shrineFree(id)) return null;
+    const holders = (hold.holders || []).filter(h => Rules.holdFresh(h, now));
+    return holders.length ? { ...hold, holders } : null;
   },
   // Три сильнейших духа друга
   topSpirits(d, n = 3) {
@@ -749,6 +757,13 @@ const GameCore = {
       S.d.incenseUntil = ctx.now + 30 * 60000;
       return { until: S.d.incenseUntil };
     },
+    // 4.16: Настой опыта — Rules.XP_BREW.MUL опыта на XP_BREW.H часов (множитель — в Ev.xpMul)
+    xpBrew(a, ctx) {
+      this.need(!(S.d.xpUntil > ctx.now), ru`Настой опыта ещё действует`);
+      this.need(S.useItem('xpbrew'), ru`Настоя опыта нет`);
+      S.d.xpUntil = ctx.now + Rules.XP_BREW.H * 3600000;
+      return { until: S.d.xpUntil };
+    },
     // Выбросить предметы из сумки (освободить место)
     discard(a) {
       const k = String(a.k || ''), have = (ITEMS[k] && S.d.items[k]) || 0, n = Math.floor(+a.n);
@@ -1043,9 +1058,9 @@ const GameCore = {
       this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
       // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
-      const hold = await ctx.env.holdGet(p.id);
+      const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
       this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твоя дружина — здесь можно поставить защитника`);
-      const ht = hold ? this.holdTeam(hold) : [], foe = ht.length ? ht : null;
+      const ht = hold ? this.holdTeam(hold, ctx.now) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
       this.limit(ctx, 'duel', 40, 3600000);
       ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true,
@@ -1165,7 +1180,7 @@ const GameCore = {
       this.need(track === 'free' || P.gold, ru`Сначала открой Золотую тропу`);
       this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
       P.got[track].push(lvl);
-      let rw = Rules.passReward(track, lvl);
+      let rw = Rules.passReward(track, lvl, S.d.level);
       if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — златниками (4.16: было 40)
       return { got: this.grant(rw) };
     },
@@ -1193,9 +1208,10 @@ const GameCore = {
       this.need(S.d.clan, ru`Сначала выбери дружину`);
       const p = await this.place(a.shrine, ctx, 'shrine');
       this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);
+      this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни одна дружина`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const sp = this.spirit(a.uid);
-      const hold = await ctx.env.holdGet(p.id);
+      const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
       if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Капище`);
       else {
         this.need(hold.clan === S.d.clan, ru`Капище держит другая дружина — сначала победи её защитников`);
@@ -1219,7 +1235,9 @@ const GameCore = {
       const standing = new Set(list.map(x => x.id)), back = [];
       S.d.guards = S.d.guards.filter(g => {
         if (standing.has(g.id)) return true;
-        back.push({ ...g, hours: Math.round(Math.max(0, ctx.now - g.t) / 360000) / 10 });
+        // 4.16: срок на посту вышел (Rules.HOLD.MAX_H) — защитник ушёл сам, а не побеждён; служба — до срока
+        const tired = !Rules.holdFresh(g, ctx.now), ms = tired ? Rules.HOLD.MAX_H * 3600000 : Math.max(0, ctx.now - g.t);
+        back.push({ ...g, hours: Math.round(ms / 360000) / 10, tired });
         return false;
       });
       // защитники, поставленные до 3.6, — тоже в список
@@ -1237,11 +1255,19 @@ const GameCore = {
       const box = p ? [p.lat - 0.045, p.lng - 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)), p.lat + 0.045, p.lng + 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180))] : null;
       return { all: await ctx.env.clanCounts(null), near: box ? await ctx.env.clanCounts(box) : null };
     },
-    // Дань: раз в день — за каждое Капище, где стоит мой защитник
+    // Дань: раз в день — за каждое Капище, где мой защитник на посту (4.16: «активная защита» — стоит не меньше
+    // Rules.HOLD.TRIBUTE_H часов и срок ещё не вышел; не больше HOLD_MY_MAX Капищ). Если защитники есть, но ещё не
+    // отстояли своё, день не закрывается — дань можно забрать позже (next — когда)
     async tribute(a, ctx) {
       this.need(S.d.clan, ru`Сначала выбери дружину`);
       if (S.d.tributeDay === U.today(ctx.now)) return { n: 0, already: true };
-      const n = Math.min(HOLD_MY_MAX, await ctx.env.myHolds(S.d.pid));
+      const H = Rules.HOLD, list = (await ctx.env.myHoldsList(S.d.pid)).filter(x => Rules.holdFresh(x, ctx.now));
+      const n = Math.min(HOLD_MY_MAX, list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H).length);
+      if (!n) {
+        if (!list.length) { S.d.tributeDay = U.today(ctx.now); return { n: 0, got: [] }; }
+        S.d.tributeNext = Math.min(...list.map(x => (+x.t || 0) + H.TRIBUTE_H * 3600000));
+        return { n: 0, got: [], next: S.d.tributeNext };
+      }
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
       // 4.16: златники — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 златника с каждого, до 30 в день)
@@ -1362,8 +1388,20 @@ const GameCore = {
       if (f.shiny) q.shiny = true;
       q.minIv = n(f.minIv, 100); q.minA = n(f.minA, 15); q.minD = n(f.minD, 15); q.minS = n(f.minS, 15);
       q.minPower = n(f.minPower, 1e6); q.minLvl = n(f.minLvl, 50); q.maxPrice = n(f.maxPrice, 1e9);
-      const rows = await ctx.env.lotsFind(q);
-      return { lots: rows.filter(r => r.spirit && SP[r.spirit.s]) };
+      const cap = S.catchLvl();
+      if (f.mine) q.maxLvl = cap; // 4.16: «не выше моего уровня» — только духи, которые не урежутся при покупке
+      const rows = (await ctx.env.lotsFind(q)).filter(r => r.spirit && SP[r.spirit.s]);
+      // 4.16: какой дух станет у покупателя — уровень не выше его уровня Ловчего, сила после урезания
+      rows.forEach(r => { const sp = this.unpackSpirit(r.spirit, ctx, null, cap); r.myLvl = sp.lvl; r.myPower = S.power(sp); });
+      return { lots: rows, cap };
+    },
+    // 4.16: подсказка цены — недавние сделки (Rules.AUCTION.RECENT дней) с духом того же вида, для уровня lvl
+    async auctionPrice(a, ctx) {
+      this.need(S.d.level >= Rules.AUCTION.LEVEL, ru`Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);
+      this.need(typeof a.sid === 'string' && Object.prototype.hasOwnProperty.call(SP, a.sid), ru`Такого духа нет`);
+      this.limit(ctx, 'aucPrice', 240, 3600000);
+      const rows = await ctx.env.lotsRecent(a.sid, ctx.now - Rules.AUCTION.RECENT * 86400000);
+      return { sid: a.sid, hint: Rules.auctionHint(rows, U.clamp(Math.floor(+a.lvl) || 0, 0, 50)) };
     },
     // Мои лоты; заодно — выручка за проданные и возврат снятых и истёкших духов
     async auctionMine(a, ctx) {
@@ -1380,14 +1418,18 @@ const GameCore = {
       const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
       this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} златников` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
       this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);
+      // 4.16: залог — списывается сразу, возвращается вместе с выручкой, если духа купят
+      const deposit = Rules.auctionDeposit(cur, price);
+      this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`златник`, ru`златника`, ru`златников`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);
       this.limit(ctx, 'aucSell', A.PER_DAY, 86400000);
       const iv = sp.iv, s = SP[sp.sid];
       const lot = await ctx.env.lotCreate({ seller_pid: S.d.pid, seller_name: S.d.name, spirit: this.packSpirit(sp), sid: sp.sid, el: s.el, rar: s.rar,
-        lvl: sp.lvl, power: S.power(sp), iv_pct: S.ivPct(sp), iv_a: iv[0], iv_d: iv[1], iv_s: iv[2], shiny: !!sp.shiny, cur, price,
+        lvl: sp.lvl, power: S.power(sp), iv_pct: S.ivPct(sp), iv_a: iv[0], iv_d: iv[1], iv_s: iv[2], shiny: !!sp.shiny, cur, price, deposit,
         expires_at: new Date(ctx.now + A.HOURS * 3600000).toISOString() });
+      S.d[cur] -= deposit;
       this.detachSpirit(sp);
       J.add('auction', { sid: sp.sid, dir: 'sell', cur, price });
-      return { id: lot.id, fee: Rules.auctionFee(price) };
+      return { id: lot.id, fee: Rules.auctionFee(price), deposit };
     },
     async auctionBuy(a, ctx) {
       this.need(S.d.level >= Rules.AUCTION.LEVEL, ru`Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`);

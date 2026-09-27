@@ -498,6 +498,17 @@ const Art = (() => {
         `<ellipse cx="50" cy="46" rx="27" ry="7" fill="url(#${k}c)" stroke="#3b1706" stroke-width="3"/>` +
         `<path d="M21 60Q50 70 79 60" stroke="#f7d77e" stroke-width="3" fill="none" opacity=".9"/><g fill="#f7d77e"><circle cx="34" cy="66" r="2"/><circle cx="50" cy="69" r="2"/><circle cx="66" cy="66" r="2"/></g>` +
         `<path d="M28 72C29 80 34 85 40 88" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".45"/>` + glint(78, 40, 6, '#bbf7d0'));
+      // 4.16: Настой опыта — пузатая склянка с янтарным медовым настоем, пробка с сургучом, над горлышком звёздочки
+      case 'xpbrew': return svg(`<defs><radialGradient id="${k}a"><stop offset="0" stop-color="#fbbf24" stop-opacity=".5"/><stop offset="1" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>` +
+        `<radialGradient id="${k}b" cx=".38" cy=".35" r=".8"><stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#f59e0b"/><stop offset="1" stop-color="#7c2d12"/></radialGradient>` +
+        `<linearGradient id="${k}c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a16207"/><stop offset=".5" stop-color="#fde68a"/><stop offset="1" stop-color="#854d0e"/></linearGradient></defs>` +
+        `<circle class="art-aura" cx="50" cy="62" r="44" fill="url(#${k}a)"/>` + floor(28, 95) +
+        `<path d="M42 22H58V38C72 43 80 54 80 66C80 82 67 93 50 93C33 93 20 82 20 66C20 54 28 43 42 38Z" fill="url(#${k}b)" stroke="#431407" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M24 64Q50 74 76 64" stroke="#fde68a" stroke-width="2.6" fill="none" opacity=".85"/>` +
+        `<rect x="39" y="12" width="22" height="12" rx="4" fill="url(#${k}c)" stroke="#431407" stroke-width="2.6"/>` +
+        `<circle cx="61" cy="24" r="5" fill="#b91c1c" stroke="#450a0a" stroke-width="1.8"/>` +
+        `<path d="M30 70C31 79 36 84 42 87" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".5"/>` +
+        glint(72, 16, 6, '#fde68a') + glint(28, 24, 4, '#fff', .9) + glint(50, 58, 5, '#fff', .8));
       // Златник: толстая золотая монета с бисерным ободком и чеканным солнцем
       case 'zlat': {
         let rays = '', rib = '';

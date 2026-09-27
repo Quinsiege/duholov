@@ -19,7 +19,7 @@ function poisNear(lat, lng, r) {
   return out.sort((a, b) => a.d - b.d);
 }
 const ENVFN = ['registerPid', 'player', 'friendSave', 'briefByPid', 'link', 'linksTo', 'giftsTo', 'invitesTo', 'giftCreate', 'gift', 'giftTake', 'leagueScore', 'orderPut', 'orderStats',
-  'holdGet', 'holdDefend', 'holdDefeat', 'myHolds', 'myHoldsList', 'clanCounts', 'lotCreate', 'lotsFind', 'lotsMine', 'lotsOpenCount', 'lotGet', 'lotBuy', 'lotCancel', 'lotsToSettle', 'lotsDone',
+  'holdGet', 'holdDefend', 'holdDefeat', 'myHolds', 'myHoldsList', 'clanCounts', 'lotCreate', 'lotsFind', 'lotsRecent', 'lotsMine', 'lotsOpenCount', 'lotGet', 'lotBuy', 'lotCancel', 'lotsToSettle', 'lotsDone',
   'paidList', 'payCredited', 'leagueTop', 'tradeCreate', 'tradeTake', 'tradeReclaim', 'roomCreate', 'roomGet', 'roomJoin', 'roomStart', 'roomLeave', 'chatList', 'chatInsert', 'chatReport', 'deleteSave',
   'pvpFind', 'pvpCancel', 'pvpLive', 'pvpLoad', 'pvpPut', 'pvpPending', 'pvpSettled']; // 4.16: Лига — очередь и бои в главном потоке (как в базе)
 function envFor(P) {
@@ -209,7 +209,7 @@ async function duelAt(p) {
   if (P.data.level < DUEL_LEVEL || P.today.duels >= P.pr.duels) return;
   const e = me(() => W.shrineFor(p, 0));
   if (e.won || W.riftAt(p.id, Math.floor(SIM_T / 3600000)) || me(() => Rules.dayUsed(S.d, 'duels')) >= 8) return;
-  const hold = await rpc('holdGet', P.uid, [p.id]);
+  const hold = GameCore.liveHold(await rpc('holdGet', P.uid, [p.id]), SIM_T, p.id); // 4.16: ушедшие по сроку и вольные Капища — без защитников
   if (hold && P.data.clan && hold.clan === P.data.clan) { // своё Капище — поставить защитника
     if (hold.holders.length < 6 && !hold.holders.some(h => h.pid === P.data.pid)) await defendAt(p);
     return;
@@ -225,13 +225,14 @@ async function duelAt(p) {
   const xp0 = P.data.xp, r = await act('duelEnd', { win: o.win, hp: o.hp });
   D.ko += koCount(o.hp);
   if (!hold) D.bt.duel[e.tier][r && r.win ? 0 : 1]++;
-  if (r && r.win) { xpAdd('Капище', xp0); D.duels[0]++; P.today.duels++; if (r.freed) D.freed++; if (P.data.clan) await defendAt(p); }
+  if (r && r.win) { xpAdd('Капище', xp0); D.duels[0]++; P.today.duels++; if (r.freed) D.freed++; if (P.data.clan && !Rules.shrineFree(p.id)) await defendAt(p); }
   else D.duels[1]++;
 }
 async function defendAt(p) {
+  if (P.today.myHolds >= G.HOLD_MY_MAX) return; // 4.16: мест нет — сервер всё равно откажет
   const tm = new Set(P.data.team || []);
   const sp = me(() => [...S.d.spirits].filter(x => !tm.has(x.uid) && S.alive(x)).sort((a, b) => S.power(b) - S.power(a))[1]);
-  if (sp && await act('shrineDefend', { shrine: { id: p.id, lat: p.lat, lng: p.lng, name: p.name }, uid: sp.uid })) D.defend++;
+  if (sp && await act('shrineDefend', { shrine: { id: p.id, lat: p.lat, lng: p.lng, name: p.name }, uid: sp.uid })) { D.defend++; P.today.myHolds++; }
 }
 async function invasionAt(p) {
   if (P.today.inv >= P.pr.inv || me(() => Rules.dayUsed(S.d, 'invasions')) >= 6) return;
@@ -320,8 +321,21 @@ async function spendZlat() {
   const d = P.data, don = P.pr.don;
   // Золотая тропа: у донатеров — в начале сезона
   if (don >= 2 && d.pass && !d.pass.gold && d.zlat >= Rules.PASS.GOLD + 50 && await act('passGold')) spend('Золотая тропа', Rules.PASS.GOLD);
-  // ладан: киты — дважды в день, средние — раз в день, остальные — если златников скопилось много
-  const inc = don >= 3 ? 2 : don === 2 ? 1 : P.data.zlat >= 600 ? 1 : 0;
+  // 4.16: Настой опыта (раз в день): киты и средние — когда хватает (средние оставляют запас на Золотую тропу), остальные —
+  // если златников скопилось много. Пьют утром (playerDay), настой в сумке — на завтра
+  const brewAt = don >= 3 ? 150 : don === 2 ? 100 + (d.pass && !d.pass.gold ? Rules.PASS.GOLD : 60) : 500;
+  const room = n => me(() => S.bagCount()) + n <= me(() => S.bagLimit());
+  const brew = Rules.SHOP.find(x => x.id === 'xpbrew');
+  if (don >= 2 && !room(1) && !(P.data.items.xpbrew > 0)) { // сумка полна — живой игрок выбросит лишние обереги, чтобы купить настой
+    const k = ['charm', 'charm2', 'herb', 'honey'].sort((a, b) => (P.data.items[b] || 0) - (P.data.items[a] || 0))[0];
+    const n = Math.min((P.data.items[k] || 0) - 10, me(() => S.bagCount() - S.bagLimit()) + 1); // сумка бывает переполнена наградами
+    if (n > 0 && await act('discard', { k, n })) D.discarded += n;
+  }
+  if (!(P.data.items.xpbrew > 0) && P.data.zlat >= brewAt && room(1) && Rules.weekUsed(P.data, 'shop:xpbrew') < brew.week && await act('shopBuy', { id: 'xpbrew' })) spend('Настой опыта', brew.price);
+  // ладан: киты — связка раз в день, средние — по одному, остальные — если златников скопилось много
+  // (связка — через день, когда ладан кончился: столько же ладана, сколько киты брали раньше, по 2 в день)
+  if (don >= 3 && !(P.data.items.incense > 0) && P.dayN % 2 === 0 && P.data.zlat >= 200 + 100 && room(5) && await act('shopBuy', { id: 'incense5' })) spend('Ладан', 200);
+  const inc = (don === 2 && P.data.zlat >= 300) || (don < 2 && P.data.zlat >= 600) ? 1 : 0; // средние: сперва настой, ладан — с остатка
   for (let i = 0; i < inc; i++) if ((P.data.items.incense || 0) < 2 && P.data.zlat >= 50 + 20 && await act('shopBuy', { id: 'incense' })) spend('Ладан', 50);
   // коконы и амулеты — киты
   if (don >= 3 && P.data.cocoons.length < 9 && P.data.zlat >= 150 + 100 && await act('shopBuy', { id: 'cocoon10' })) spend('Коконы', 150);
@@ -332,26 +346,37 @@ async function spendZlat() {
 async function auction() {
   if (P.data.level < Rules.AUCTION.LEVEL) return;
   const mine = await act('auctionMine');
-  if (mine && mine.got) for (const g of mine.got) if (g.type === 'sold') { D.aucSold++; }
-  const open = mine ? mine.open : 5;
+  P.aucFail = P.aucFail || {};
+  if (mine && mine.got) for (const g of mine.got) {
+    if (g.type === 'sold') { D.aucSold++; P.aucFail[g.sid] = 0; }
+    else if (g.type === 'expired') { D.aucExpired = (D.aucExpired || 0) + 1; D.aucDepLost = (D.aucDepLost || 0) + (g.cur === 'zlat' ? (g.lost || 0) * 50 : g.lost || 0); P.aucFail[g.sid] = (P.aucFail[g.sid] || 0) + 1; }
+  }
+  const open = mine ? mine.open : Rules.AUCTION.MAX_OPEN;
   // продать: лишние редкие, легенды-дубли, сияющие дубли, высокий IV
   if (open < Rules.AUCTION.MAX_OPEN) {
     const keep = me(() => { const by = {}; S.d.spirits.forEach(sp => (by[sp.sid] = by[sp.sid] || []).push(sp)); return new Set(Object.values(by).flatMap(a => a.sort((x, y) => S.power(y) - S.power(x)).slice(0, 1)).map(x => x.uid).concat(S.d.team || [])); });
     const sell = me(() => S.d.spirits.filter(sp => !keep.has(sp.uid) && !sp.fav && !sp.dark && (SP[sp.sid].rar >= 3 || sp.shiny || S.ivPct(sp) >= 90) && !(S.d.buddy && S.d.buddy.uid === sp.uid)).sort((a, b) => S.power(b) - S.power(a)).slice(0, Rules.AUCTION.MAX_OPEN - open));
     for (const sp of sell) {
-      const pow = me(() => S.power(sp)), zl = SP[sp.sid].rar >= 4 || sp.shiny;
-      const price = zl ? Math.max(5, Math.round(pow / 10 * (0.8 + Math.random() * 0.6))) : Math.max(300, Math.round(pow * 6 * (0.8 + Math.random() * 0.6)));
-      if (await act('auctionSell', { uid: sp.uid, cur: zl ? 'zlat' : 'sparks', price })) D.aucListed = (D.aucListed || 0) + 1;
+      const fails = P.aucFail[sp.sid] || 0;
+      if (fails >= 3) continue; // 4.16: трижды не продался (и залог пропал) — больше не выставляет
+      const pow = me(() => S.power(sp)), zl = SP[sp.sid].rar >= 4 || sp.shiny, cur = zl ? 'zlat' : 'sparks';
+      let price = zl ? Math.max(5, Math.round(pow / 10 * (0.8 + Math.random() * 0.6))) : Math.max(300, Math.round(pow * 6 * (0.8 + Math.random() * 0.6)));
+      // 4.16: подсказка цены по недавним сделкам — живой игрок ставит около обычной цены; не продался — дешевле
+      const h = await act('auctionPrice', { sid: sp.sid, lvl: sp.lvl });
+      if (h && h.hint[cur] && h.hint[cur].n >= 2) price = Math.max(Rules.AUCTION.MIN[cur], Math.round(h.hint[cur].med * (0.85 + Math.random() * 0.3)));
+      price = Math.max(Rules.AUCTION.MIN[cur], Math.round(price * Math.pow(0.75, fails)));
+      if (await act('auctionSell', { uid: sp.uid, cur, price })) D.aucListed = (D.aucListed || 0) + 1;
     }
   }
   // купить: сильнее самого слабого в команде (с учётом, что уровень урежется до уровня Ловчего)
   const tm = team(); if (tm.length < 3) return;
   const weak = Math.min(...tm.map(x => me(() => S.power(x)))), cap = me(() => S.catchLvl());
-  const budgetS = P.data.sparks - 20000, budgetZ = P.data.zlat - (P.pr.don >= 2 ? 100 : 400);
+  const budgetS = P.data.sparks - 20000, budgetZ = P.data.zlat - (P.pr.don >= 2 ? 200 : 400); // 4.16: средние держат запас на настой опыта
   if (budgetS < 500 && budgetZ < 5) return;
-  const found = await act('auctionFind', { f: { sort: 'power' } });
+  // 4.16: фильтр «не выше моего уровня» и сила после урезания — с сервера
+  const found = await act('auctionFind', { f: { sort: 'power', mine: true } });
   if (!found) return;
-  const lots = found.lots.filter(l => l.lvl <= cap && l.power > weak * 1.12 && (l.cur === 'sparks' ? l.price <= budgetS : l.price <= budgetZ));
+  const lots = found.lots.filter(l => l.myLvl <= cap && l.myPower > weak * 1.12 && (l.cur === 'sparks' ? l.price <= budgetS : l.price <= budgetZ));
   const buys = P.pr.don >= 3 ? 3 : P.pr.don === 2 ? 2 : 1;
   for (const l of lots.slice(0, buys)) {
     const r = await act('auctionBuy', { id: l.id });
@@ -473,8 +498,10 @@ async function playerDay(pl, dayN, dayStart) {
   globalThis.SIM_T = dayStart + (P.pr.sessions[0][0] + Math.random()) * 3600000; // у каждого игрока свой день — с его утра
   await act('tick'); await act('daily');
   await donate();
+  if (P.data.items.xpbrew > 0 && !(P.data.xpUntil > SIM_T) && await act('xpBrew')) D.brews = (D.brews || 0) + 1; // 4.16: настой опыта — на весь игровой день
   if (!P.data.clan && P.data.level >= CLAN_LEVEL) await act('clanJoin', { clan: P.clan });
-  if (P.data.clan) await act('tribute');
+  P.today.myHolds = 0;
+  if (P.data.clan) { const tr = await act('tribute'); if (tr && tr.got) for (const g of tr.got) if (g.k === 'zlat') D.zlatTribute = (D.zlatTribute || 0) + g.n; P.today.myHolds = await rpc('myHolds', P.uid, [P.data.pid]); }
   if (Math.random() < 0.5) await act('photo');
   const last = P.pr.sessions.length - 1;
   for (let i = 0; i < P.pr.sessions.length; i++) {
@@ -555,4 +582,4 @@ parentPort.on('message', async m => {
     parentPort.postMessage({ t: 'final', out });
   }
 });
-parentPort.postMessage({ t: 'ready' });
+parentPort.postMessage({ t: 'ready', k: { MAX_H: Rules.HOLD.MAX_H, HOLD_MAX: G.HOLD_MAX } });

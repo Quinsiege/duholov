@@ -134,11 +134,11 @@ const Shop = {
       const today = U.today(), deal = Rules.shopDeal(today), dealBought = S.d.shop.deal === today;
       const lvlLock = it => it.lvl && S.d.level < it.lvl ? ru`с ${it.lvl} ур.` : '';
       const row = (it, id, extra = '') => {
-        const lock = lvlLock(it), left = it.bag ? Rules.BAG_MAX_UP - S.d.bagExtra : it.day ? Math.max(0, it.day - Rules.dayUsed(S.d, 'shop:' + it.id))
-          : it.week ? Math.max(0, it.week - Rules.weekUsed(S.d, 'shop:' + it.id)) : 1;
+        const lock = lvlLock(it), lim = [it.day ? it.day - Rules.dayUsed(S.d, 'shop:' + it.id) : Infinity, it.week ? it.week - Rules.weekUsed(S.d, 'shop:' + it.id) : Infinity];
+        const left = it.bag ? Rules.BAG_MAX_UP - S.d.bagExtra : it.day || it.week ? Math.max(0, Math.min(...lim)) : 1, weekOut = it.week && lim[1] <= 0; // 4.16: лимиты в день и в неделю
         const icon = it.bag ? `<div class="shop-ico bag">${UI.I.bag}</div>` : `<div class="shop-ico">${Loot.art(it.give ? Object.keys(it.give)[0] : it.cocoon ? 'cocoon' : 'amulet', it)}</div>`;
         return `<div class="shop-row ${lock || !left ? 'off' : ''}">${icon}<div class="row-main"><b>${it.name}</b><small>${it.desc || ''}${extra}</small></div>
-          <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : it.day ? ru`Завтра` : it.week ? ru`В понедельник` : ru`Максимум`)}</button></div>`;
+          <button class="btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy" data-id="${id}" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : weekOut ? ru`В понедельник` : it.day ? ru`Завтра` : ru`Максимум`)}</button></div>`;
       };
       const bag = { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) };
       const cloaks = LOOK.cloak.filter(c => c.shop), zl = S.d.zlat || 0, exLeft = this.exLeft();
@@ -243,7 +243,7 @@ const Pass = {
       const month = this.MONTHS[+P.season.split('-')[1] - 1];
       const inLvl = L >= max ? per : P.pts - L * per;
       const cell = (track, l) => {
-        const rw = Loot.parts(Rules.passReward(track, l)), got = P.got[track].includes(l), open = L >= l, can = open && !got && (track === 'free' || P.gold);
+        const rw = Loot.parts(Rules.passReward(track, l, S.d.level)), got = P.got[track].includes(l), open = L >= l, can = open && !got && (track === 'free' || P.gold);
         const lock = track === 'gold' && !P.gold;
         return `<button class="pass-cell ${track} ${got ? 'got' : can ? 'can' : ''} ${lock ? 'lock' : ''}" data-t="${track}" data-l="${l}" ${can ? '' : 'disabled'}>
           <div class="pc-art">${Loot.art(rw[0].k, rw[0])}</div><small>${rw.map(x => x.label).join(' · ')}</small>${got ? '<i>✓</i>' : ''}</button>`;
@@ -255,7 +255,7 @@ const Pass = {
           <div class="pbar big"><i style="width:${inLvl / per * 100}%"></i></div>
           <small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, родники, прогулки, коконы и бои`}</small>
           ${P.gold ? `<div class="pass-gold on">★ ${ru`Золотая тропа открыта`}</div>`
-            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу · ${Art.item('zlat')} ${Rules.PASS.GOLD}`}</button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`златник`, ru`златника`, ru`златников`)}.`}</small>`}
+            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу · ${Art.item('zlat')} ${Rules.PASS.GOLD}`}</button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`златник`, ru`златника`, ru`златников`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
         </div>
         <div class="pass-cols"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>
         ${Array.from({ length: max }, (_, i) => i + 1).map(l => `<div class="pass-row ${L >= l ? 'open' : ''}"><div class="pass-l">${l}</div>${cell('free', l)}${cell('gold', l)}</div>`).join('')}`;
