@@ -7,7 +7,8 @@ Object.assign(UI, {
   quests(tab) {
     Tut.ui('quests'); // 4.0: шаг обучения
     this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
-    const scr = this.screen(ru`Задания`, `<div class="seg q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? ' •' : ''}</button><button data-tab="story">${ru`Летопись`}${S.storyReady() ? ' •' : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? ' •' : ''}</button></div><div class="quests"></div>`, 'q-screen');
+    const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и родника — есть что забрать → зелёная точка
+    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="story">${ru`Летопись`}${S.storyReady() ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const BONUS = Rules.QUEST_BONUS;
     const renderStory = () => {
       const st = S.d.story, ch = STORY[st.ch];
