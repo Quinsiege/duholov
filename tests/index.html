@@ -1577,6 +1577,9 @@
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => asPlayer(A, () => { const x = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return x && x.tier === 1; }), 30000);
     const rift = { id, lat: A.lat, lng: A.lng, name: 'Памятник' };
+    // команда из трёх сильных духов разных стихий — босс растёт с уровнем Ловчего, а его стихия зависит от часа (4.16)
+    ['leshiy', 'vodyanoy', 'gromovik'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 25, sid + 'aw'))));
+    A.data.team = A.data.spirits.slice(-3).map(x => x.uid);
     const st = await must(A, 'raidStart', { rift }), fam = SP[st.boss].fam, e0 = A.data.essence[fam] || 0;
     A.srv.battle.start -= 85000;
     const w = await must(A, 'raidEnd', { win: true });
