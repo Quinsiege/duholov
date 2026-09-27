@@ -109,7 +109,7 @@ const W = {
     // вторжение Нави: ~12% родников захвачены на двухчасовое окно (с INVASION_LEVEL уровня)
     const invId = `${id}:${slot}`;
     const invaded = S.d.level >= INVASION_LEVEL &&U.h('inv', id, slot) < 0.12 && !S.d.freed[invId];
-    return { type: 'spring', id, invId, invaded, lat: p.lat, lng: p.lng, d, name: p.name, photo: p.photo,
+    return { type: 'spring', id, invId, invaded, lat: p.lat, lng: p.lng, d, name: p.name, photo: p.photo, cat: p.cat,
       ready: U.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN };
   },
   springsAround(lat, lng, radius = this.VIEW + 150) {
@@ -138,24 +138,30 @@ const W = {
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
   },
 
+  // 4.19: что и с каким весом кладёт родник (на каждый из 4–6 бросков) — общее для добычи и вкладки «Добыча»
+  SPRING_GIFT: 0.6, SPRING_COCOON: 0.12,
+  springOpts(lvl) {
+    // 4.15: лечебное; 4.16: мёда, Живой воды и ладана меньше (к 40 уровню копились сотнями и десятками),
+    // Мёртвая вода — ~1 родник из 500 (раньше из 300, но при полной сумке родник не давал ничего)
+    const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 1], ['water', 0.6], ['herb', 2], ['brew', 0.8], ['deadwater', 0.009]];
+    if (lvl >= 8) opts.push(['charm2', 3]);
+    if (lvl >= 16) opts.push(['charm3', 1.5]);
+    if (lvl >= 3) opts.push(['incense', 0.08]);
+    return opts;
+  },
   springLoot(id) {
     const r = U.rng(id + Math.random());
     const lvl = S.d.level, loot = {};
     const n = (4 + Math.floor(r() * 3)) * Ev.lootMul();
+    const opts = this.springOpts(lvl);
     for (let k = 0; k < n; k++) {
-      // 4.15: лечебное; 4.16: мёда, Живой воды и ладана меньше (к 40 уровню копились сотнями и десятками),
-      // Мёртвая вода — ~1 родник из 500 (раньше из 300, но при полной сумке родник не давал ничего)
-      const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 1], ['water', 0.6], ['herb', 2], ['brew', 0.8], ['deadwater', 0.009]];
-      if (lvl >= 8) opts.push(['charm2', 3]);
-      if (lvl >= 16) opts.push(['charm3', 1.5]);
-      if (lvl >= 3) opts.push(['incense', 0.08]);
       const it = U.weighted(opts, r());
       loot[it] = (loot[it] || 0) + 1;
     }
     // подарок для друга — в трёх родниках из пяти (4.16: было в каждом втором), пока их меньше GIFT_LIMIT
-    if ((S.d.items.gift || 0) < GIFT_LIMIT && r() < 0.6) loot.gift = 1;
+    if ((S.d.items.gift || 0) < GIFT_LIMIT && r() < this.SPRING_GIFT) loot.gift = 1;
     let cocoon = null;
-    if (S.d.cocoons.length < 9 && r() < 0.12 * Ev.kmMul()) cocoon = U.weighted([[2, 5], [5, 4], [10, 1]], r());
+    if (S.d.cocoons.length < 9 && r() < this.SPRING_COCOON * Ev.kmMul()) cocoon = U.weighted([[2, 5], [5, 4], [10, 1]], r());
     return { loot, cocoon };
   },
 

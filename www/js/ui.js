@@ -692,11 +692,15 @@ const UI = {
   SPRING_RUNES: 'ᚱ · ᛟ · ᚦ · ᛗ · ᚨ · ᛉ · ᛒ · ᛞ · ᛜ · ᛇ · ',
   spring(e) {
     const photo = Poi.photoUrl(e.photo), C = 2 * Math.PI * 138; // длина дуги по краю колодца
+    // вкладки: колодец, что может дать родник, о месте; захваченный Навью — сначала вкладка вторжения
+    const tabs = [['well', ru`Колодец`], ['loot', ru`Добыча`], ['place', ru`О месте`], ...(e.invaded ? [['inv', ru`Вторжение`]] : [])], tab0 = e.invaded ? 'inv' : 'well';
     const motes = Array.from({ length: 14 }, (_, k) => `<i style="--x:${(U.h('sm', e.id, k) * 100).toFixed(1)}%;--d:${(5 + U.h('sd', e.id, k) * 6).toFixed(1)}s;--t:${(-U.h('st', e.id, k) * 10).toFixed(1)}s;--s:${(.5 + U.h('ss', e.id, k)).toFixed(2)}"></i>`).join('');
     const scr = this.screen('', `
       <div class="spr2 spring-view">
         <div class="spr2-motes" aria-hidden="true">${motes}</div>
         <div class="spr2-head"><small>${ru`Родник`}</small><div class="spring-title">${U.esc(e.name)}</div></div>
+        <div class="seg dt-tabs spr2-tabs">${tabs.map(([k, t]) => `<button data-tab="${k}" class="${k === tab0 ? 'on' : ''}${k === 'inv' ? ' inv' : ''}">${t}</button>`).join('')}</div>
+        <div class="spr2-pane${tab0 === 'well' ? ' on' : ''}" data-pane="well">
         <div class="spr2-well spring-disc">
           <div class="spr2-glow"></div>
           <div class="spr2-ripples" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -714,14 +718,27 @@ const UI = {
         <div class="spring-loot spr2-loot"></div>
         <button class="btn primary wide spring-go">${ru`Зачерпнуть силу`}</button>
         ${Rules.dayLine(S.d, 'springs', ru`Родников`)}
+        </div>
+        <div class="spr2-pane${tab0 === 'loot' ? ' on' : ''}" data-pane="loot">${this.springLootHtml()}</div>
+        <div class="spr2-pane${tab0 === 'place' ? ' on' : ''}" data-pane="place">${this.springPlaceHtml(e)}</div>
+        ${e.invaded ? `<div class="spr2-pane${tab0 === 'inv' ? ' on' : ''}" data-pane="inv"><div class="spr2-inv"><div class="spr2-inv-ico">${Art.springIcon(false, true)}</div><p>${ru`Навь захватила этот родник. Победи её прислужников — и родник снова твой, с наградой.`}</p><button class="btn primary wide spr2-fight">${ru`В бой`}</button></div></div>` : ''}
       </div>`, 'spring-screen spr2-screen');
     const view = scr.querySelector('.spr2'), hint = scr.querySelector('.spring-hint'), go = scr.querySelector('.spring-go');
     const disc = scr.querySelector('.spr2-well'), ring = scr.querySelector('.spr2-runes'), arc = scr.querySelector('.spr2-arc');
-    const ready = () => U.now() - (S.d.springs[e.id] || 0) > W.SPRING_COOLDOWN;
+    const ready = () => !e.invaded && U.now() - (S.d.springs[e.id] || 0) > W.SPRING_COOLDOWN; // захваченный — сначала освободить
+    scr.querySelector('.spr2-tabs').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-tab]'); if (!b) return;
+      Sfx.play('tap');
+      U.$$('.spr2-tabs button', scr).forEach(x => x.classList.toggle('on', x === b));
+      U.$$('.spr2-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+    });
+    const fight = scr.querySelector('.spr2-fight');
+    if (fight) fight.onclick = () => { this.closeScreen(scr); Duel.openInvasion(e); };
     const setArc = f => { arc.style.strokeDashoffset = (C * (1 - U.clamp(f, 0, 1))).toFixed(1); };
     const update = () => {
       if (!scr.isConnected) return clearInterval(timer);
       if (scr._done) return;
+      if (e.invaded) { hint.textContent = ru`Родник захвачен Навью`; go.disabled = true; view.classList.add('used'); return; }
       if (!ready()) {
         const left = (S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now();
         hint.textContent = ru`Родник набирает силу: ${U.fmtTime(left)}`;
@@ -791,6 +808,38 @@ const UI = {
       if (!scr._done) setArc(0);
     };
     disc.addEventListener('pointerup', end); disc.addEventListener('pointercancel', end);
+  },
+
+  // вкладка «Добыча»: что может дать родник — по тем же весам, что у сервера (W.springOpts); редкое помечено
+  springLootHtml() {
+    const lvl = S.d.level, opts = W.springOpts(lvl), sum = opts.reduce((a, o) => a + o[1], 0), draws = 5 * Ev.lootMul();
+    const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;
+    const pct = p => p >= .995 ? '100%' : p >= .1 ? Math.round(p * 100) + '%' : p >= .01 ? (p * 100).toFixed(1).replace('.', ',') + '%' : '<1%';
+    const row = (ico, name, p, lock) => `<div class="spr2-lr${lock ? ' lock' : ''}${p < .02 && !lock ? ' rare' : ''}"><i>${ico}</i><b>${name}</b><em>${lock ? ru`с ${lock} ур.` : `${word(p)} · ${pct(p)}`}</em></div>`;
+    const items = opts.map(([k, w]) => [k, 1 - Math.pow(1 - w / sum, draws)]).sort((a, b) => b[1] - a[1]);
+    const locked = [['charm2', 8], ['charm3', 16], ['incense', 3]].filter(([, l]) => lvl < l);
+    return `<div class="spr2-loot-tab">
+      <p class="spr2-note">${ru`За один раз родник даёт ${4}–${6} вещей и ${50} опыта. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>
+      ${items.map(([k, p]) => row(Art.item(k), ITEMS[k].name, p)).join('')}
+      ${(S.d.items.gift || 0) < GIFT_LIMIT ? row(Art.item('gift'), ITEMS.gift.name, W.SPRING_GIFT) : ''}
+      ${row(Art.cocoon(5), ru`Кокон`, W.SPRING_COCOON * Ev.kmMul())}
+      ${locked.map(([k, l]) => row(Art.item(k), ITEMS[k].name, 0, l)).join('')}
+    </div>`;
+  },
+  // вкладка «О месте»: настоящее место, у которого бьёт родник
+  springPlaceHtml(e) {
+    const photo = Poi.photoUrl(e.photo), cat = e.cat && Osm.CATS[e.cat] ? I18N.back(Osm.CATS[e.cat][0]) : '';
+    const left = (S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now();
+    const row = (t, v) => `<div class="dt-row"><span>${t}</span><b>${v}</b></div>`;
+    return `<div class="spr2-place">
+      ${photo ? `<div class="spr2-place-photo" style="background-image:url('${photo}')"></div>` : `<div class="spr2-place-ico">${Art.springIcon(false)}</div>`}
+      <div class="dt-rows">
+        ${cat ? row(ru`Место`, U.esc(cat)) : ''}
+        ${row(ru`Расстояние`, U.fmtDist(MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, e.lat, e.lng) : e.d))}
+        ${row(ru`Родник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}
+      </div>
+      ${Rules.dayLine(S.d, 'springs', ru`Родников`)}
+    </div>`;
   },
 
   /* ---------------- РЯДОМ ---------------- */
