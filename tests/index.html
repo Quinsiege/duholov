@@ -2060,7 +2060,7 @@
     A.data.items = { charm: lim };
     const sp = freeSpring(A, 94000), xp0 = A.data.xp;
     const rs = await call(A, 'spring', { poi: sp }); ok(rs.ok, 'родник открылся');
-    ok(A.data.springs[sp.id], 'родник отдал силу'); eq(Rules.dayUsed(A.data, 'springs'), 1); ok(A.data.xp > xp0, 'опыт — сразу');
+    ok(A.data.springs[sp.id], 'родник отдал силу'); eq(asPlayer(A, () => Rules.dayUsed(A.data, 'springs')), 1); ok(A.data.xp > xp0, 'опыт — сразу');
     eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'вещи родника — в посылке');
     ok(rs.events.some(([ev, d]) => ev === 'toast' && /посылку Ордена/.test(d.text)), 'игроку сказано, где вещи');
     A.data.parcel = null;
