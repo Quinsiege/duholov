@@ -36,16 +36,17 @@ const S = {
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
-    // 3.19: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается)
-    if (!d.xpv) {
-      const L = d.level || 1;
+    // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
+    // xpv: нет — кривая до 3.19 (levelXPOld), 2 — кривая 3.19–4.15 (levelXP2), 3 — нынешняя (levelXP)
+    if (d.xpv !== 3) {
+      const L = d.level || 1, F = d.xpv === 2 ? levelXP2 : levelXPOld;
       if (L >= MAX_LEVEL) d.xp = Math.max(d.xp || 0, levelXP(MAX_LEVEL));
-      else if (L >= 10) {
-        const o0 = levelXPOld(L), o1 = levelXPOld(L + 1), n0 = levelXP(L), n1 = levelXP(L + 1);
+      else if (L > 1 || d.xp > 0) {
+        const o0 = F(L), o1 = F(L + 1), n0 = levelXP(L), n1 = levelXP(L + 1);
         const f = U.clamp(((d.xp || 0) - o0) / (o1 - o0), 0, 0.999);
         d.xp = Math.round(n0 + f * (n1 - n0));
       }
-      d.xpv = 2;
+      d.xpv = 3;
     }
     d.bagExtra = d.bagExtra || 0; // расширения сумки из Лавки: +50 мест каждое
     d.owned = d.owned || {}; // купленный облик: цвет плаща или id эмблемы → true
@@ -304,7 +305,8 @@ const S = {
     this.d.stats.evolved++;
     J.add('evolve', { from: s.id, to: sp.sid });
     if (this.d.buddy && this.d.buddy.uid === sp.uid) Bus.emit('buddyChanged');
-    this.addXP(isNew ? 1000 : 500);
+    // 4.16: опыт — за новый вид в бестиарии; повторные превращения в тот же вид дают немного (было 500 за каждое)
+    this.addXP(isNew ? 1000 : 200);
     this.progress('evolve', 1);
     this.save();
     return { isNew };
@@ -323,13 +325,14 @@ const S = {
     return add;
   },
   useItem(k) { if ((this.d.items[k] || 0) <= 0) return false; this.d.items[k]--; this.save(); return true; },
-  giveRewards(rw, over = true) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа; over — см. addItem
+  // over — см. addItem; once — разовая награда (глава Летописи, обучение, место): опыт без дневного потолка (см. addXP)
+  giveRewards(rw, over = true, once = false) { // { charm: 5, sparks: 300, xp: 100 ... } → массив строк для показа
     const out = [];
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
       else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Златники` }); }
-      else if (k === 'xp') { out.push({ k, n: Math.round(n * Ev.xpMul()), label: ru`Опыт` }); this.addXP(n); }
+      else if (k === 'xp') { const o = { k, n: 0, label: ru`Опыт` }; out.push(o); o.n = this.addXP(n, once); }
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
     }
     this.save();
@@ -338,8 +341,44 @@ const S = {
   incenseActive() { return this.d.incenseUntil > Date.now(); },
 
   /* ---------- опыт ---------- */
-  addXP(n) {
-    n = Math.round(n * Ev.xpMul());
+  /* 4.16: учёт опыта за день (d.xpd = { day, n, rest }): n — опыт за сегодня (для дневного потолка), rest — опыт отдыха.
+     За каждый день без опыта копится XP_DAY.REST (не больше, чем за XP_DAY.REST_DAYS дней) */
+  xpToday() { // учёт на сегодня, ничего не меняя (для показа на телефоне)
+    const today = U.today(), x = this.d.xpd;
+    if (x && x.day === today) return x;
+    let rest = (x && x.rest) || 0;
+    if (x && x.day) {
+      const t = s => { const [y, m, d] = String(s).split('-').map(Number); return Date.UTC(y, m - 1, d); };
+      const gap = Math.round((t(today) - t(x.day)) / 86400000) - 1; // полных дней без игры
+      if (gap > 0) rest = Math.max(rest, Math.min(XP_DAY.REST * XP_DAY.REST_DAYS, rest + gap * XP_DAY.REST));
+    }
+    return { day: today, n: 0, rest };
+  },
+  xpDay() {
+    const x = this.d.xpd, t = this.xpToday();
+    if (t === x) return x;
+    if (t.rest > ((x && x.rest) || 0)) Bus.emit('toast', { text: ru`Ты хорошо отдохнул: следующие ${U.fmtNum(t.rest)} опыта — вдвое!`, cls: 'good' });
+    return (this.d.xpd = t);
+  },
+  // Сколько опыта даст n в этот раз: событие недели (Звездопад ×2), дневной потолок (XP_DAY.FULL за день — полностью,
+  // дальше до XP_DAY.HALF — вполовину, сверх — четверть; разовые награды once — без потолка) и опыт отдыха (удваивает,
+  // пока не кончится). mark — записать в учёт дня
+  xpGain(n, once, mark) {
+    const x = this.xpDay(), mul = Ev.xpMul();
+    let raw = Math.max(0, +n || 0) * mul, got = raw;
+    if (!once) {
+      const F = XP_DAY.FULL * mul, H = XP_DAY.HALF * mul, a = x.n, b = a + raw;
+      const part = (lo, hi) => Math.max(0, Math.min(b, hi) - Math.max(a, lo));
+      got = part(0, F) + part(F, H) * 0.5 + part(H, Infinity) * 0.25;
+    }
+    got = Math.round(got);
+    const bonus = once ? 0 : Math.min(x.rest, got);
+    if (mark) { if (!once) x.n += raw; x.rest -= bonus; }
+    return got + bonus;
+  },
+  // Начислить опыт; возвращает, сколько начислено на самом деле (см. xpGain). once — разовая награда
+  addXP(n, once = false) {
+    n = this.xpGain(n, once, true);
     this.d.xp += n;
     let leveled = [];
     while (this.d.level < MAX_LEVEL && this.d.xp >= levelXP(this.d.level + 1)) {
@@ -354,6 +393,7 @@ const S = {
     });
     Bus.emit('xp');
     this.save();
+    return n;
   },
   levelRewards(l) {
     const r = { charm: 10 + l, honey: 3, water: 3, herb: 5, brew: 2, zlat: Rules.ZLAT.level };
@@ -471,7 +511,7 @@ const S = {
   tutAdvance(kind, id) {
     const st = this.tutAt();
     if (!st || st.kind !== kind || (id && st.id !== id)) return null;
-    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward) : [];
+    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward, true, true) : [];
     this.d.tut = next ? this.d.tut + 1 : 0;
     if (got.length) Bus.emit('tutChapter', { ch: st.ch, got, done: !next });
     this.save();
@@ -485,7 +525,7 @@ const S = {
   claimStory() {
     const ch = STORY[this.d.story.ch];
     if (!ch || !this.storyReady()) return null;
-    const got = this.giveRewards({ ...ch.reward, zlat: Rules.ZLAT.story });
+    const got = this.giveRewards({ ...ch.reward, zlat: Rules.ZLAT.story }, true, true); // разовая награда — без дневного потолка
     this.d.story = { ch: this.d.story.ch + 1, p: [0, 0, 0] };
     this.save();
     return { ch, got };
@@ -507,7 +547,7 @@ const S = {
       const tier = this.medalTier(m), had = this.d.medals[m.id] || 0;
       if (tier > had) {
         this.d.medals[m.id] = tier;
-        for (let t = had; t < tier; t++) this.addXP(MEDAL_TIERS[t].xp);
+        for (let t = had; t < tier; t++) this.addXP(MEDAL_TIERS[t].xp, true); // разовая награда — без дневного потолка
         Bus.emit('medal', { m, tier });
         J.add('medal', { name: m.name, tier });
       }

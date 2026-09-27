@@ -57,6 +57,7 @@ for (let k = 0; k < N; k++) {
 }
 // друзья: из соседей по району и знакомых по игре, взаимно
 const friendsOf = {}; players.forEach(p => { friendsOf[p.uid] = new Set(); });
+const archOf = Object.fromEntries(players.map(p => [p.uid, p.arch]));
 for (const p of players) {
   const near = players.filter(q => q !== p && Math.hypot(q.home.lat - p.home.lat, (q.home.lng - p.home.lng) * 0.56) < 0.025).sort(() => rnd() - 0.5);
   for (const q of near) {
@@ -161,9 +162,11 @@ workers.forEach(w => { w.on('message', m => { if (m.t === 'rpc') onRpc(w, m); })
     const lv = all.map(x => x.level).sort((a, b) => a - b), n40 = lv.filter(l => l >= 40).length;
     const holds = Object.values(DB.holds).filter(h => h.holders.length), byClan = { sokol: 0, medved: 0, volk: 0 }; holds.forEach(h => byClan[h.clan]++);
     const row = { day, median: lv[Math.floor(lv.length / 2)], p90: lv[Math.floor(lv.length * 0.9)], max: lv[lv.length - 1], n40, n30: lv.filter(l => l >= 30).length, n20: lv.filter(l => l >= 20).length,
-      lotsOpen: DB.lots.filter(l => l.status === 'open').length, lotsSold: DB.stats.lotsSold, rub: DB.stats.payRub, holds: holds.length, byClan, meLvl: (all.find(x => x.uid === 'u0') || {}).level };
+      lotsOpen: DB.lots.filter(l => l.status === 'open').length, lotsSold: DB.stats.lotsSold, rub: DB.stats.payRub, holds: holds.length, byClan, meLvl: (all.find(x => x.uid === 'u0') || {}).level,
+      // 4.16: медианный уровень по типам игроков — видно, держатся ли ориентиры прогрессии, не дожидаясь конца прогона
+      byArch: Object.fromEntries(Object.keys(ARCH).map(a => { const l = all.filter(x => archOf[x.uid] === a).map(x => x.level).sort((p, q) => p - q); return [a, l[Math.floor(l.length / 2)]]; })) };
     daily.push(row);
-    console.log(`день ${day}: медиана ${row.median}, 90% ${row.p90}, макс ${row.max}, на 40-м ${n40}, я ${row.meLvl} · лотов ${row.lotsOpen}/${row.lotsSold} продано · донат ${row.rub} ₽ · Капищ у дружин ${row.holds} · ${Math.round((Date.now() - t0) / 1000)} с`);
+    console.log(`день ${day}: медиана ${row.median}, 90% ${row.p90}, макс ${row.max}, на 40-м ${n40}, я ${row.meLvl} · ${Object.entries(row.byArch).map(([a, l]) => `${a} ${l}`).join(', ')} ·лотов ${row.lotsOpen}/${row.lotsSold} продано · донат ${row.rub} ₽ · Капищ у дружин ${row.holds} · ${Math.round((Date.now() - t0) / 1000)} с`);
     fs.writeFileSync(path.join(OUT, 'progress.json'), JSON.stringify({ daily, reach }, null, 0));
     if (n40 >= N) break;
   }

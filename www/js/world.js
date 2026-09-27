@@ -106,9 +106,9 @@ const W = {
   // p — объект карты { id, lat, lng, name, photo }; d — расстояние до игрока
   springFor(p, d) {
     const slot = Math.floor(U.now() / 7200000), id = p.id, last = S.d.springs[id] || 0;
-    // вторжение Нави: ~12% родников захвачены на двухчасовое окно (с 4 уровня)
+    // вторжение Нави: ~12% родников захвачены на двухчасовое окно (с INVASION_LEVEL уровня)
     const invId = `${id}:${slot}`;
-    const invaded = S.d.level >= 4 && U.h('inv', id, slot) < 0.12 && !S.d.freed[invId];
+    const invaded = S.d.level >= INVASION_LEVEL &&U.h('inv', id, slot) < 0.12 && !S.d.freed[invId];
     return { type: 'spring', id, invId, invaded, lat: p.lat, lng: p.lng, d, name: p.name, photo: p.photo,
       ready: U.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN };
   },

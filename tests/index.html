@@ -301,16 +301,14 @@
     ok(S.purify(sp)); eq(sp.iv.join(), '15,5,15'); ok(!sp.dark && sp.purified);
   });
   test('Баланс 3.19: кривая уровней, перенос опыта, коконы, сумка, эссенция', () => {
-    // кривая: до 10 как раньше, дальше круче; растёт строго
-    for (let n = 2; n <= 10; n++) eq(levelXP(n), levelXPOld(n), 'до 10 уровня без изменений');
-    for (let n = 2; n <= 40; n++) ok(levelXP(n) > levelXP(n - 1), 'растёт');
-    ok(levelXP(20) > 80000 && levelXP(20) < 100000, 'L20 ≈ 90 тыс.'); ok(levelXP(40) > 1.8e6 && levelXP(40) < 2.4e6, 'L40 ≈ 2,1 млн');
-    // перенос опыта: уровень не падает, место внутри уровня сохраняется
+    // кривая 3.19 (levelXP2): до 10 как раньше, дальше круче — теперь только для переноса опыта (4.16)
+    for (let n = 2; n <= 10; n++) eq(levelXP2(n), levelXPOld(n), 'до 10 уровня без изменений');
+    ok(levelXP2(20) > 80000 && levelXP2(20) < 100000, 'L20 ≈ 90 тыс.'); ok(levelXP2(40) > 1.8e6 && levelXP2(40) < 2.4e6, 'L40 ≈ 2,1 млн');
+    // перенос опыта: уровень не падает, место внутри уровня сохраняется (с кривой до 3.19 — сразу на нынешнюю)
     const keep = S.d;
     S.d = { level: 21, xp: 77180, spirits: [], items: {}, stats: {} }; S.migrate();
-    eq(S.d.level, 21); ok(S.d.xp >= levelXP(21) && S.d.xp < levelXP(22), 'опыт внутри 21 уровня по новой кривой'); eq(S.d.xpv, 2);
+    eq(S.d.level, 21); ok(S.d.xp >= levelXP(21) && S.d.xp < levelXP(22), 'опыт внутри 21 уровня по новой кривой'); eq(S.d.xpv, 3);
     const x1 = S.d.xp; S.migrate(); eq(S.d.xp, x1, 'второй раз не переносится');
-    S.d = { level: 5, xp: 5000, spirits: [], items: {}, stats: {} }; S.migrate(); eq(S.d.xp, 5000, 'новичков не трогает');
     S.d = keep;
     // коконы — только первая стадия
     for (let i = 0; i < 60; i++) { const km = [2, 5, 10][i % 3]; const r = S.hatch({ id: 'balance' + i, km }); eq(SP[r.sp.sid].stage, 1, 'из кокона первая стадия'); }
@@ -322,6 +320,58 @@
     // эссенция растёт с редкостью
     const common = SPECIES.find(s => s.rar === 1 && s.stage === 1), epic = SPECIES.find(s => s.rar === 4 && s.stage === 1);
     eq(Rules.catchReward({ sid: common.id, mode: 'wild' }).ess, 3); eq(Rules.catchReward({ sid: epic.id, mode: 'wild' }).ess, 9, 'эпический — 9 эссенции');
+  });
+  test('Опыт 4.16: кривая, перенос с 3.19, дневной потолок, опыт отдыха, превращения, лестница открытий', () => {
+    // кривая: строго растёт, цена уровня растёт плавно (без стены после 30-го), ориентиры
+    for (let n = 2; n <= 40; n++) ok(levelXP(n) > levelXP(n - 1), 'растёт ' + n);
+    const cost = n => levelXP(n + 1) - levelXP(n);
+    for (let n = 3; n < 40; n++) ok(cost(n) >= cost(n - 1), 'цена уровня не падает ' + n);
+    for (let n = 25; n < 40; n++) ok(cost(n) / cost(n - 1) < 1.2, 'после 25-го цена растёт не больше чем на 20% за уровень ' + n);
+    ok(cost(39) / cost(30) < 2.5, 'нет стены: 39→40 дороже 30→31 меньше чем в 2,5 раза (было ×4)');
+    ok(levelXP(10) >= 60000 && levelXP(10) <= 90000, 'L10 — за 3–4 дня'); ok(levelXP(20) >= 350000 && levelXP(20) <= 480000, 'L20 — к двум неделям');
+    ok(levelXP(40) >= 4e6 && levelXP(40) <= 5e6, 'L40 — за 5–6 месяцев'); ok(levelXP(41) > levelXP(40), 'за пределом — не NaN');
+    const keep = S.d;
+    try {
+      // перенос с кривой 3.19–4.15: уровень тот же, место внутри уровня — то же
+      S.d = { level: 25, xp: Math.round((levelXP2(25) + levelXP2(26)) / 2), xpv: 2, spirits: [], items: {}, stats: {} }; S.migrate();
+      eq(S.d.level, 25); near((S.d.xp - levelXP(25)) / (levelXP(26) - levelXP(25)), 0.5, 0.01, 'середина 25 уровня'); eq(S.d.xpv, 3);
+      S.d = { level: 40, xp: levelXP2(40) + 5, xpv: 2, spirits: [], items: {}, stats: {} }; S.migrate(); eq(S.d.level, 40); ok(S.d.xp >= levelXP(40), '40 уровень остаётся');
+      S.d = { level: 4, xp: 2000, spirits: [], items: {}, stats: {} }; S.migrate(); eq(S.d.level, 4); ok(S.d.xp >= levelXP(4) && S.d.xp < levelXP(5), 'новичок — внутри своего уровня');
+      // дневной потолок: до FULL — полностью, дальше вполовину, сверх HALF — на четверть; разовые награды — полностью
+      S.d = JSON.parse(JSON.stringify(keep)); S.d.level = 30; S.d.xp = levelXP(30);
+      const mul = Ev.xpMul(), today = U.today(), F = XP_DAY.FULL, H = XP_DAY.HALF;
+      S.d.xpd = { day: today, n: 0, rest: 0 };
+      eq(S.addXP(F), F * mul, 'до потолка — полностью');
+      eq(S.addXP(1000), 500 * mul, 'сверх — вполовину');
+      S.d.xpd.n = H * mul; eq(S.addXP(1000), 250 * mul, 'сверх второго порога — на четверть');
+      eq(S.addXP(1000, true), 1000 * mul, 'разовая награда — без потолка');
+      eq(S.giveRewards({ xp: 2000 }, true, true).find(x => x.k === 'xp').n, 2000 * mul, 'глава Летописи: показано столько, сколько начислено');
+      S.d.xpd = { day: today, n: (F - 100) * mul, rest: 0 }; eq(S.addXP(300), (100 + 100) * mul, 'граница посередине награды');
+      // опыт отдыха: за дни без игры копится, удваивает опыт, пока не кончится; не больше чем за REST_DAYS дней
+      const ago = k => U.today(Date.now() - k * 86400000);
+      S.d.xpd = { day: ago(3), n: 99999, rest: 0 };
+      eq(S.xpToday().rest, 2 * XP_DAY.REST, 'два пропущенных дня'); eq(S.d.xpd.day, ago(3), 'показ ничего не меняет');
+      eq(S.addXP(1000), 2000 * mul, 'опыт вдвое'); eq(S.d.xpd.day, today); eq(S.d.xpd.n, 1000 * mul, 'новый день — счётчик заново');
+      eq(S.d.xpd.rest, 2 * XP_DAY.REST - 1000 * mul, 'бонус тратится');
+      S.d.xpd.rest = 300; eq(S.addXP(1000), 1000 * mul + 300, 'остаток отдыха — сколько есть'); eq(S.d.xpd.rest, 0);
+      eq(S.addXP(1000, true), 1000 * mul, 'отдых не тратится на разовые награды');
+      S.d.xpd = { day: ago(40), n: 0, rest: 0 }; eq(S.xpToday().rest, XP_DAY.REST * XP_DAY.REST_DAYS, 'не больше чем за неделю');
+      S.d.xpd = { day: ago(1), n: 0, rest: 5000 }; eq(S.xpToday().rest, 5000, 'играл вчера — отдых не копится');
+      const note = Path.dayNote(); ok(note.includes(U.fmtNum(5000)) && !/NaN|undefined/.test(note), 'Путь Ловчего показывает опыт отдыха');
+      // превращение: новый вид — 1000, повторное в тот же вид — 200 (было 500)
+      S.d.xpd = { day: today, n: 0, rest: 0 }; S.d.dex = {}; S.d.essence = { ugolek: 999 };
+      const a = S.makeSpirit('ugolek', 10, 'evoA'), b = S.makeSpirit('ugolek', 10, 'evoB'); S.d.spirits.push(a, b);
+      let x0 = S.d.xp; S.evolve(a); eq(S.d.xp - x0, 1000 * mul, 'новый вид');
+      x0 = S.d.xp; S.evolve(b); eq(S.d.xp - x0, 200 * mul, 'повторное превращение');
+    } finally { S.d = keep; }
+    // лестница открытий: Капища → вторжения → Лига → дружины → Аукцион, всё — в «Пути Ловчего»
+    ok(DUEL_LEVEL < INVASION_LEVEL && INVASION_LEVEL < League.LEVEL && League.LEVEL < CLAN_LEVEL && CLAN_LEVEL < Rules.AUCTION.LEVEL, 'по порядку');
+    const un = Path.unlocks();
+    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Дружина'], [Rules.AUCTION.LEVEL, 'Аукцион']]
+      .forEach(([l, t]) => ok((un[l] || []).some(x => I18N.back(x.t) === t), `${t} — на ${l} уровне пути`));
+    const d0 = S.d.level; S.d.level = INVASION_LEVEL - 1;
+    try { ok(!Array.from({ length: 300 }, (_, i) => W.springFor({ id: 'osm:n' + (70000 + i), lat: 55.75, lng: 37.62, name: 'Р' }, 0)).some(e => e.invaded), 'до INVASION_LEVEL вторжений нет'); }
+    finally { S.d.level = d0; }
   });
   test('Амулеты: надеть, снять, вернуть при отпускании', () => {
     const sp = fresh('mshonok', 10); S.d.amulets = { perun: 1 };
@@ -440,7 +490,7 @@
   test('Советы Велимира: подсказки по делу и в нужном порядке', () => {
     const keep = S.d;
     S.d = JSON.parse(JSON.stringify(keep));
-    S.d.level = 6; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
+    S.d.level = CLAN_LEVEL; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
     S.d.spirits = [S.makeSpirit('ugolek', 5, 'h1')]; S.d.essence = { ugolek: 30 };
     S.d.story = { ch: 0, p: [3, 2, 0] };
     let ids = Hints.list().map(h => h.id);
@@ -644,6 +694,27 @@
     await refuse(A, 'spring', { poi: { id: 'osm:n779', lat: 55.76, lng: 37.63 } }, /больше нет/);
     await refuse(A, 'spring', { poi: { id: '../../etc', lat: 1, lng: 1 } }, /Неизвестное место/);
   });
+  atest('Сервер: опыт 4.16 — дневной потолок и опыт отдыха на сервере, награда показывает начисленное', async () => {
+    const A = await newPlayer('uxp', 55.41, 37.27, 'Отдых'); A.data.tut = 0;
+    const mul = Ev.xpMul(), day = asPlayer(A, () => U.today()), ago = asPlayer(A, () => U.today(Date.now() - 4 * 86400000));
+    const spring = async (i, xpd) => {
+      A.data.xpd = xpd; const x0 = A.data.xp;
+      const r = await must(A, 'spring', { poi: { id: 'osm:n' + (7770 + i), lat: A.lat, lng: A.lng, name: 'Ключ' } });
+      const shown = r.got.find(x => x.k === 'xp').n;
+      eq(A.data.xp - x0, shown, 'показано столько, сколько начислено');
+      return shown;
+    };
+    eq(await spring(0, { day, n: 0, rest: 0 }), 50 * mul, 'обычный опыт');
+    eq(await spring(1, { day, n: XP_DAY.FULL * mul, rest: 0 }), 25 * mul, 'сверх дневного потолка — вполовину');
+    eq(await spring(2, { day: ago, n: 0, rest: 0 }), 100 * mul, 'после трёх дней отдыха — вдвое');
+    eq(A.data.xpd.rest, 3 * XP_DAY.REST - 50 * mul, 'отдых копится и тратится на сервере'); eq(A.data.xpd.day, day);
+    // уровни открытия проверяет сервер
+    A.data.level = DUEL_LEVEL - 1;
+    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7790', lat: A.lat, lng: A.lng, name: 'К' } }, new RegExp(DUEL_LEVEL + ' уровня'));
+    A.data.level = League.LEVEL - 1; await refuse(A, 'leagueStart', {}, new RegExp(League.LEVEL + ' уровня'));
+    A.data.level = CLAN_LEVEL - 1; await refuse(A, 'clanJoin', { clan: 'sokol' }, new RegExp(CLAN_LEVEL + ' уровня'));
+    A.data.level = Rules.AUCTION.LEVEL - 1; await refuse(A, 'auctionFind', {}, new RegExp(Rules.AUCTION.LEVEL + ' уровня'));
+  });
   atest('Сервер: поимка — дух должен быть рядом, исход решает сервер', async () => {
     // сначала ищем место, где сейчас есть дух, и «ставим» игрока туда (перемещение скачком сервер не примет)
     const probe = { data: asPlayer({ data: S.d }, () => JSON.parse(JSON.stringify(S.d))) };
@@ -778,8 +849,8 @@
     // Капище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
     const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 50000);
     const shrine = { id, lat: A.lat, lng: A.lng, name: 'Старый дуб' };
-    await refuse(A, 'duelStart', { shrine }, /3 уровня/);
-    A.data.level = 3;
+    await refuse(A, 'duelStart', { shrine }, new RegExp(DUEL_LEVEL + ' уровня')); // 4.16: Капища — с DUEL_LEVEL (было с 3)
+    A.data.level = DUEL_LEVEL;
     await must(A, 'duelStart', { shrine });
     await refuse(A, 'duelEnd', { win: true }, /слишком быстрая/);
     await must(A, 'duelStart', { shrine });
@@ -789,7 +860,7 @@
     await refuse(A, 'duelStart', { shrine }, /уже победил/);
   });
   atest('Сервер: раны после боя, без сил не пускают в бой, лечение (4.15)', async () => {
-    const A = await newPlayer('uhp', 55.73, 37.61, 'Лекарь'); A.data.spirits.forEach(x => { x.lvl = 5; }); A.data.level = 3;
+    const A = await newPlayer('uhp', 55.73, 37.61, 'Лекарь'); A.data.spirits.forEach(x => { x.lvl = 5; }); A.data.level = DUEL_LEVEL;
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 51000);
     const shrine = { id, lat: A.lat, lng: A.lng, name: 'Дуб' }, uid = A.data.spirits[0].uid;
@@ -829,8 +900,8 @@
   });
   atest('Сервер: Лига — жетоны, турнир, таблица сезона', async () => {
     const A = await newPlayer('uh', 55.70, 37.58, 'Искра');
-    await refuse(A, 'leagueStart', {}, /5 уровня/);
-    A.data.level = 5;
+    await refuse(A, 'leagueStart', {}, new RegExp(League.LEVEL + ' уровня')); // 4.16: Лига — с League.LEVEL (было с 5)
+    A.data.level = League.LEVEL;
     await refuse(A, 'leagueStart', {}, /три духа/);
     ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, sid))));
     await must(A, 'leagueStart', {});
@@ -994,8 +1065,8 @@
     await refuse(A, 'spring', { poi: { id: 'osm:n7002', lat: A.lat, lng: A.lng, name: 'Выдуманный родник' } }, /нет на карте/);
     const r = await must(A, 'spring', { poi: { id: 'osm:n7001', lat: 0, lng: 0, name: 'подмена' } });
     ok(r.got.length > 0, 'родник из базы работает, координаты — из базы');
-    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /3 уровня|нет такого объекта/);
-    A.data.level = 3;
+    await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /уровня|нет такого объекта/);
+    A.data.level = DUEL_LEVEL;
     await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /нет такого объекта/);
     // вдали от загруженных мест (за пределами России) — объекты OSM с телефона, как раньше
     const B = await newPlayer('uv', 43.2, 76.9, 'Алма');
@@ -1009,15 +1080,15 @@
     const shrine = { id, lat, lng, name: 'Старый вяз' };
     const mk = async (uid, name) => {
       const P = await newPlayer(uid, lat, lng, name);
-      P.data.level = 5; P.data.tut = 0;
+      P.data.level = CLAN_LEVEL; P.data.tut = 0;
       ['kapelka', 'mshonok'].forEach(sid => P.data.spirits.push(asPlayer(P, () => S.makeSpirit(sid, 12, sid + uid))));
       await must(P, 'team', { uids: P.data.spirits.map(x => x.uid) });
       return P;
     };
     const A = await mk('uw', 'Сокольник'), B = await mk('ux', 'Медвежич'), C = await mk('uy', 'Второй сокол');
-    A.data.level = 4;
-    await refuse(A, 'clanJoin', { clan: 'sokol' }, /5 уровня/);
-    A.data.level = 5;
+    A.data.level = CLAN_LEVEL - 1; // 4.16: дружины — с CLAN_LEVEL (было с 5)
+    await refuse(A, 'clanJoin', { clan: 'sokol' }, new RegExp(CLAN_LEVEL + ' уровня'));
+    A.data.level = CLAN_LEVEL;
     await refuse(A, 'clanJoin', { clan: 'orel' }, /нет/);
     await must(A, 'clanJoin', { clan: 'sokol' }); eq(A.data.clan, 'sokol');
     await refuse(A, 'clanJoin', { clan: 'volk' }, /уже выбрана/);
@@ -1188,8 +1259,8 @@
   });
   atest('Сервер: аукцион — выставить, фильтры, купить с комиссией, без двойных покупок и потерь', async () => {
     const S1 = await newPlayer('va', 55.48, 37.36, 'Продавец'), B1 = await newPlayer('vb', 55.48, 37.36, 'Покупатель'), C1 = await newPlayer('vc', 55.48, 37.36, 'Второй');
-    for (const P of [S1, B1, C1]) { P.data.tut = 0; P.data.level = 10; P.data.sparks = 100000; P.data.zlat = 500; }
-    S1.data.level = 3; await refuse(S1, 'auctionFind', {}, /уровня/); S1.data.level = 10;
+    for (const P of [S1, B1, C1]) { P.data.tut = 0; P.data.level = 20; P.data.sparks = 100000; P.data.zlat = 500; }
+    S1.data.level = Rules.AUCTION.LEVEL - 1; await refuse(S1, 'auctionFind', {}, /уровня/); S1.data.level = 20; // 4.16: Аукцион — с 15 (было с 5)
     // продавцу — три духа с разной оценкой
     const mk = (iv, sid) => ({ uid: U.uid(), sid, lvl: 20, iv, t: Date.now(), fav: false });
     const good = mk([15, 14, 15], 'kapelka'), weak = mk([2, 3, 1], 'mshonok'), fav = { ...mk([10, 10, 10], 'ugolek'), fav: true };

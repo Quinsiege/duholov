@@ -4,7 +4,7 @@
    сюда приходят ответами на запросы env (как база у настоящего сервера). */
 const { parentPort, workerData } = require('worker_threads');
 const G = require('./engine.cjs').load();
-const { GameCore, S, W, U, SP, SPECIES, Rules, Raid, Duel, League, SHRINE_TIERS, TUT, STORY, CLAN_LEVEL, ITEMS } = G;
+const { GameCore, S, W, U, SP, SPECIES, Rules, Raid, Duel, League, SHRINE_TIERS, TUT, STORY, CLAN_LEVEL, DUEL_LEVEL, INVASION_LEVEL, ITEMS } = G;
 
 // ---------- связь с главным потоком ----------
 let rpcN = 0; const pending = new Map();
@@ -31,9 +31,18 @@ const PL = workerData.players.map(pr => ({ ...pr, data: null, srv: {}, lat: pr.h
 function newStats() {
   return { xpBy: {}, lvlT: {}, catches: 0, tries: 0, fled: 0, shiny: 0, springs: 0, km: 0, raids: [0, 0], far: 0, duels: [0, 0], freed: 0, inv: [0, 0], league: [0, 0], tourn: 0,
     hatch: 0, evolve: 0, power: 0, released: 0, ko: 0, deadUsed: 0, heals: 0, tasks: 0, quests: 0, purified: 0, defend: 0, discarded: 0, play: 0, days: 0,
-    rub: 0, zlatIn: 0, zlatSpent: {}, aucSold: 0, aucBought: 0, aucSparksIn: 0, aucZlatIn: 0, aucSparksOut: 0, aucZlatOut: 0, giftsSent: 0, giftsOpened: 0, friends: 0, exch: 0, fails: {} };
+    rub: 0, zlatIn: 0, zlatSpent: {}, aucSold: 0, aucBought: 0, aucSparksIn: 0, aucZlatIn: 0, aucSparksOut: 0, aucZlatOut: 0, giftsSent: 0, giftsOpened: 0, friends: 0, exch: 0, fails: {},
+    capped: 0, rested: 0 }; // 4.16: сколько опыта срезал дневной потолок и сколько добавил опыт отдыха
 }
 let P = null, D = null; // текущий игрок и его статистика
+// 4.16: учёт дневного потолка и опыта отдыха (S.xpGain — общий путь всего опыта)
+const xpGain0 = S.xpGain;
+S.xpGain = function (n, once, mark) {
+  if (!mark || !D || !S.d) return xpGain0.call(S, n, once, mark);
+  const nominal = xpGain0.call(S, n, true, false), rest0 = S.xpDay().rest, got = xpGain0.call(S, n, once, true), bonus = rest0 - S.d.xpd.rest;
+  D.capped += Math.max(0, nominal - (got - bonus)); D.rested += bonus;
+  return got;
+};
 const adv = sec => { globalThis.SIM_T += Math.round(sec * 1000); D.play += sec; };
 const me = fn => { const d = S.d, tz = U.tz; S.d = P.data; U.tz = 180; try { return fn(); } finally { S.d = d; U.tz = tz; } };
 async function act(type, args = {}) {
@@ -185,7 +194,7 @@ async function raidAt(p, far) {
   D.raids[1]++; return false;
 }
 async function duelAt(p) {
-  if (P.data.level < 3 || P.today.duels >= P.pr.duels) return;
+  if (P.data.level < DUEL_LEVEL || P.today.duels >= P.pr.duels) return;
   const e = me(() => W.shrineFor(p, 0));
   if (e.won || W.riftAt(p.id, Math.floor(SIM_T / 3600000)) || me(() => Rules.dayUsed(S.d, 'duels')) >= 8) return;
   const hold = await rpc('holdGet', P.uid, [p.id]);
@@ -229,7 +238,7 @@ async function invasionAt(p) {
   } else D.inv[1]++;
 }
 async function league() {
-  if (P.data.level < 5) return;
+  if (P.data.level < League.LEVEL) return;
   for (let n = 0; n < P.pr.league; n++) {
     await heal(); await pickTeam();
     if (!ready() || !await act('leagueStart')) return;
@@ -266,7 +275,7 @@ async function walk(km) {
       if (p.kind === 'spring') {
         const e = me(() => W.springFor(p, 0));
         await tidyBag();
-        if (e.invaded) { if (P.data.level >= 3) await invasionAt(p); }
+        if (e.invaded) { if (P.data.level >= INVASION_LEVEL) await invasionAt(p); }
         else if (e.ready && me(() => Rules.dayUsed(S.d, 'springs')) < 30) { const xp0 = P.data.xp; if (await act('spring', { poi: { id: p.id, lat: p.lat, lng: p.lng, name: p.name } })) { D.springs++; xpAdd('родник', xp0); } }
       } else if (p.kind === 'shrine') {
         if (P.today.raids < P.pr.raids && me(() => W.riftAt(p.id, Math.floor(SIM_T / 3600000)))) await raidAt(p);
@@ -471,7 +480,8 @@ parentPort.on('message', async m => {
         return { lvl: S.d.level, xp: S.d.xp, sparks: S.d.sparks, zlat: S.d.zlat, spirits: S.d.spirits.length, dex: Object.values(S.d.dex).filter(x => x.caught > 0).length,
           top: byP.slice(0, 3).map(x => `${SP[x.sid].name} ${x.lvl} ур. · ${S.power(x)}`), topPow: byP[0] ? S.power(byP[0]) : 0, team3: byP.slice(0, 3).reduce((a, x) => a + S.power(x), 0),
           lgPts: League.view().pts, lgBest: (S.d.league && S.d.league.best) || 0, story: S.d.story ? S.d.story.ch : 0, medals: S.d.medals ? Object.keys(S.d.medals).length : 0,
-          friends: S.d.friends.length, bestFriend: Math.max(0, ...S.d.friends.map(f => f.pts)), clan: S.d.clan, amulets: Object.values(S.d.amulets || {}).reduce((a, b) => a + b, 0), km: Math.round(S.d.stats.km || 0), shinyAll: S.d.stats.shiny };
+          friends: S.d.friends.length, bestFriend: Math.max(0, ...S.d.friends.map(f => f.pts)), clan: S.d.clan, amulets: Object.values(S.d.amulets || {}).reduce((a, b) => a + b, 0), km: Math.round(S.d.stats.km || 0), shinyAll: S.d.stats.shiny,
+          rest: S.d.xpd ? S.d.xpd.rest : 0 };
       });
       return { uid: pl.uid, name: pl.name, pr: pl.pr, arch: pl.arch, isMe: !!pl.isMe, st: pl.st, s };
     });

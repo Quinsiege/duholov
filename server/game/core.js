@@ -193,8 +193,8 @@ const GameCore = {
     const after = lv(f.pts);
     if (after > before) {
       const L = FRIEND_LEVELS[after];
-      S.addXP(L.xp);
-      Bus.emit('toast', { text: ru`Дружба с ${f.name}: теперь «${L.name}»! +${U.fmtNum(L.xp * Ev.xpMul())} опыта`, cls: 'good' });
+      const xp = S.addXP(L.xp); // 4.16: обычный опыт — под дневным потолком (друзья «дозревают» волнами)
+      Bus.emit('toast', { text: ru`Дружба с ${f.name}: теперь «${L.name}»! +${U.fmtNum(xp)} опыта`, cls: 'good' });
     }
   },
 
@@ -584,14 +584,14 @@ const GameCore = {
       S.addEssence(s.fam, rw.ess);
       S.d.sparks += rw.sparks;
       S.d.stats.caught++;
-      S.addXP(rw.xp);
+      const xp = S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
       if (s.land) S.progress('land', 1); // дух родной земли — для Летописи
       if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'story') S.d.storyGift = null;
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
-      return { wobbles: 3, caught: true, label: bonus.label, uid: sp.uid, isNew, xp: Math.round(rw.xp * Ev.xpMul()), sparks: rw.sparks, ess: rw.ess };
+      return { wobbles: 3, caught: true, label: bonus.label, uid: sp.uid, isNew, xp, sparks: rw.sparks, ess: rw.ess };
     },
     encEnd(a, ctx) { ctx.srv.enc = null; return { ok: true }; },
 
@@ -727,13 +727,13 @@ const GameCore = {
       const q = S.d.quests.list[a.i | 0];
       this.need(q && q.p >= q.n && !q.claimed, ru`Задание ещё не выполнено`);
       q.claimed = true;
-      return { got: S.giveRewards({ ...q.reward, xp: 300 }) };
+      return { got: S.giveRewards({ ...q.reward, xp: Rules.QUEST_XP }) };
     },
     questBonus() {
       const Q = S.d.quests;
       this.need(Q.list.every(q => q.claimed) && !Q.bonus, ru`Сундук ещё закрыт`);
       Q.bonus = true;
-      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: 1000, zlat: Rules.ZLAT.questBonus }) };
+      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: Rules.QUEST_BONUS_XP, zlat: Rules.ZLAT.questBonus }) };
     },
     storyClaim() {
       const ch = S.d.story.ch, res = S.claimStory();
@@ -774,7 +774,7 @@ const GameCore = {
       const out = [];
       rows.filter(r => r.status !== 'pending' && !S.d.props[r.id]).forEach(r => {
         S.d.props[r.id] = r.status;
-        out.push({ name: r.name, status: r.status, reason: r.reason, got: r.status === 'approved' ? S.giveRewards(Rules.PLACE_REWARD) : [] });
+        out.push({ name: r.name, status: r.status, reason: r.reason, got: r.status === 'approved' ? S.giveRewards(Rules.PLACE_REWARD, true, true) : [] });
       });
       return { list: out };
     },
@@ -893,7 +893,7 @@ const GameCore = {
 
     /* ----- бои: капище и вторжение ----- */
     async duelStart(a, ctx) {
-      this.need(S.d.level >= 3, ru`Капища открываются с 3 уровня Ловчего`);
+      this.need(S.d.level >= DUEL_LEVEL, ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`);
       const p = await this.place(a.shrine, ctx, 'shrine');
       this.need(!W.riftAt(p.id, Math.floor(ctx.now / 3600000)), ru`Сейчас здесь открыт Разлом`);
       const e = W.shrineFor(p, 0);
@@ -1137,7 +1137,7 @@ const GameCore = {
     /* ----- Лига ----- */
     leagueStart(a, ctx) {
       const L = League.st(), team = S.team();
-      this.need(S.d.level >= 5, ru`Лига открывается с 5 уровня Ловчего`);
+      this.need(S.d.level >= League.LEVEL, ru`Лига открывается с ${League.LEVEL} уровня Ловчего`);
       this.need(team.length === 3, ru`Нужно три духа`);
       this.readyTeam(team);
       this.need(L.tickets > 0, ru`Жетоны кончились — приходи завтра`);
@@ -1481,7 +1481,8 @@ const GameCore = {
       const { cocoon, ...items } = g.contents || {};
       const clean = {};
       for (const [k, n] of Object.entries(items)) if (ITEMS[k] && n > 0 && n <= 10) clean[k] = n | 0;
-      const got = S.giveRewards({ ...clean, xp: 200 + (() => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; })() * 100 });
+      // 4.16: опыт за открытый подарок — 100 + 50 за каждую ступень дружбы (было 200 + 100: до 600 за подарок)
+      const got = S.giveRewards({ ...clean, xp: 100 + (() => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; })() * 50 });
       if (cocoon && S.d.cocoons.length < 9) { S.d.cocoons.push({ id: U.uid(), km: 5, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, label: ru`Кокон ${5} км` }); }
       this.friendPoint(f);
       J.add('gift', { dir: 'in', name: f.name });

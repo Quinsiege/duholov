@@ -24,7 +24,7 @@ function load() {
   Date.now = () => Math.round(globalThis.SIM_T);
   let src = PRELUDE;
   for (const f of FILES) src += `\n// ===== ${f} =====\n` + fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/^﻿?'use strict';\s*/m, '');
-  src += `\nglobalThis.G = { GameCore, S, W, U, SP, SPECIES, Rules, Raid, Duel, League, LEAGUE_RANKS, SHRINE_TIERS, ITEMS, TUT, STORY, stepText, CLAN_LEVEL, CLANS, AMULETS, RARITY, ELEMENTS, Sky, Bus, levelXP, GIFT_LIMIT, HOLD_MAX, TRIBUTE, I18N };`;
+  src += `\nglobalThis.G = { GameCore, S, W, U, SP, SPECIES, Rules, Raid, Duel, League, LEAGUE_RANKS, SHRINE_TIERS, ITEMS, TUT, STORY, stepText, CLAN_LEVEL, DUEL_LEVEL, INVASION_LEVEL, XP_DAY, CLANS, AMULETS, RARITY, ELEMENTS, Sky, Bus, levelXP, GIFT_LIMIT, HOLD_MAX, TRIBUTE, I18N };`;
   vm.runInThisContext(src, { filename: 'duholov-game.js' });
   return globalThis.G;
 }

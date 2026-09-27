@@ -577,7 +577,7 @@ const UI = {
       ['scroll', ru`Задания`, () => this.quests(), q ? '!' : ''],
       ['swap', ru`Друзья`, () => Friends.screen(), Friends.inbox.length ? '!' : S.d.items.gift ? S.d.items.gift : ''],
       ['chat', ru`Чат`, () => Chat.screen(), Chat.badge()],
-      ['trophy', ru`Лига`, () => { if (S.d.level < 5) { this.toast(ru`Лига открывается с 5 уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],
+      ['trophy', ru`Лига`, () => { if (S.d.level < League.LEVEL) { this.toast(ru`Лига открывается с ${League.LEVEL} уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],
       ['shop', ru`Лавка`, () => Shop.screen(), Shop.dealFresh() ? '!' : ''],
       ['trail', ru`Тропа`, () => Pass.screen(), Pass.claimable() || ''],
       ['rift', ru`Разломы`, () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
@@ -744,7 +744,9 @@ const UI = {
       if (Encounter.st || Raid.st || Duel.st) { this._lv.unshift(lv); this._lvOpen = false; return; }
       const got = lv.got || [];
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
-      const unlock = l === 8 ? `<p class="unlock">${ru`Открыт <b>Серебряный оберег</b>!`}</p>` : l === 16 ? `<p class="unlock">${ru`Открыт <b>Золотой оберег</b>!`}</p>` : l === 5 ? `<p class="unlock">${ru`Ты теперь <b>Ловчий</b>. Разломы ждут — и можно вступить в <b>дружину</b>: открой любое Капище!`}</p>` : '';
+      // 4.16: что открылось на этом уровне — из «Пути Ловчего» (те же пороги, что проверяет сервер)
+      const opened = (Path.unlocks()[l] || []).filter(x => !x.ic.startsWith('look:') && !x.ic.startsWith('eyes:') && x.ic !== 'emb').map(x => `<b>${x.t}</b>`);
+      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${ru`Открыто: ${opened.join(', ')}`}</p>` : '');
       this.modal({
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,
