@@ -240,7 +240,7 @@ const MapView = {
 
   moveTo(lat, lng, jump) {
     this.pos = { lat, lng };
-    if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.12: туман Нави рассеивается там, где прошёл Ловчий
+    if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.25.2: туман Нави расступается вокруг Ловчего и смыкается позади
     this.glide(lat, lng, jump);
     const el = this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + this.rot}deg)`; // с учётом поворота карты
