@@ -83,7 +83,10 @@ const Rules = {
   // 4.20: скорость Ловчего — только шагом или бегом. Шаг ≈ 5 км/ч, бег 8–12, быстрый бег до 16; быстрее (самокат, велосипед,
   // машина, метро) — действия на карте на COOL мс замирают, путь не засчитывается. Скорость — средняя за MIN_T…WIN с на MIN_D м и
   // больше (GPS «дрожит» на десятки метров — короткие скачки не в счёт); точки с точностью хуже ACC м не берутся
-  SPEED: { MAX: 4.5, MIN_T: 15, WIN: 60, MIN_D: 60, ACC: 40, COOL: 60000 },
+  // 4.24.1: скорость — по недавним точкам (не старше WIN с): средняя от самой свежей точки, что старше MIN_T с. Пауза COOL
+  // снимается раньше, если Ловчий уже CALM с идёт шагом или стоит (раньше якорь держался минуту, и после остановки игра ещё
+  // до двух минут считала, что он едет). STEP — точки в истории не чаще раза в STEP мс, MAX_PTS — не больше стольких точек
+  SPEED: { MAX: 4.5, MIN_T: 15, WIN: 60, MIN_D: 60, ACC: 40, COOL: 60000, CALM: 30, STEP: 2000, MAX_PTS: 40 },
   // средняя скорость от a к b (м/с), если её можно честно измерить, иначе null; t — мс
   speedOf(a, b) {
     if (!a || !b) return null;
@@ -91,6 +94,30 @@ const Rules = {
     if (dt < S2.MIN_T || dt > S2.WIN * 3) return null;
     const d = U.dist(a.lat, a.lng, b.lat, b.lng);
     return d < S2.MIN_D ? null : d / dt;
+  },
+  // Новая точка q ({ lat, lng, t }) в счётчике скорости st ({ pts, until, kmh }): until — до какого времени (мс) Ловчий «едет».
+  // Общий для телефона и сервера. Возвращает скорость (м/с), если её удалось честно измерить
+  paceStep(st, q) {
+    const S2 = this.SPEED;
+    // точки могут прийти не по порядку (пачка пройденного пути — позже текущей позиции): история всегда по времени
+    const pts = (st.pts || []).filter(p => p && Number.isFinite(p.t)).sort((x, y) => x.t - y.t);
+    const newest = pts.length ? pts[pts.length - 1].t : -Infinity;
+    st.pts = pts.filter(p => Math.max(newest, q.t) - p.t <= S2.WIN * 1000);
+    // самая свежая точка, что старше q хотя бы на sec секунд
+    const back = sec => { for (let i = st.pts.length - 1; i >= 0; i--) if (q.t - st.pts[i].t >= sec * 1000) return st.pts[i]; return null; };
+    const a = back(S2.MIN_T), v = a ? this.speedOf(a, q) : null;
+    if (v != null && v > S2.MAX) { st.until = Math.max(st.until || 0, q.t + S2.COOL); st.kmh = Math.round(v * 3.6); }
+    else if (st.until > q.t && q.t >= newest) {
+      // уже CALM с не быстрее шага или бега (или стоит на месте) — пауза снимается
+      const c = back(S2.CALM), dt = c ? (q.t - c.t) / 1000 : 0;
+      if (c && U.dist(c.lat, c.lng, q.lat, q.lng) / dt <= S2.MAX) st.until = 0;
+    }
+    if (!st.pts.some(p => Math.abs(p.t - q.t) < S2.STEP)) {
+      st.pts.push({ lat: q.lat, lng: q.lng, t: q.t });
+      st.pts.sort((x, y) => x.t - y.t);
+    }
+    if (st.pts.length > S2.MAX_PTS) st.pts.splice(0, st.pts.length - S2.MAX_PTS);
+    return v;
   },
   AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
