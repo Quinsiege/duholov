@@ -1438,11 +1438,11 @@
   "ctx": "[ru`Безопасность`, this.p(ru`Духи никогда не появляются в опасных местах: на железной дороге, стройках, в воде и на болотах, на трассах и аэродромах. Рядом с ними — можно, но за ограждения не заходи: ни один дух этого не"
  },
  {
-  "k": "Духолов — игра для пешеходов. Идёшь быстрее {0} км/ч (самокат, велосипед, машина, метро) — действия на карте на минуту замирают, а путь не засчитывается. Смотри по сторонам и не играй за рулём.",
+  "k": "Духолов — игра для пешеходов. Идёшь быстрее {0} км/ч (самокат, велосипед, машина, метро) — действия на карте замирают, пока не пойдёшь шагом или не остановишься, а путь не засчитывается. Смотри по сторонам и не играй за рулём.",
   "at": [
    "www/js/book.js:107"
   ],
-  "ctx": "this.p(ru`Духолов — игра для пешеходов. Идёшь быстрее ${kmh} км/ч (самокат, велосипед, машина, метро) — действия на карте на минуту замирают, а путь не засчитывается. Смотри по сторонам и не играй за рулём.`)],"
+  "ctx": "this.p(ru`Духолов — игра для пешеходов. Идёшь быстрее ${kmh} км/ч (самокат, велосипед, машина, метро) — действия на карте замирают, пока не пойдёшь шагом или не остановишься, а путь не засчитывается. Смотри по сторонам и"
  },
  {
   "k": "Погода",
@@ -1598,7 +1598,7 @@
    "www/js/book.js:125",
    "www/js/propose.js:44",
    "www/js/propose.js:145",
-   "www/js/rules.js:239"
+   "www/js/rules.js:238"
   ],
   "ctx": "return [[ru`Родник`, this.p(ru`Родники — старые колодцы у настоящих мест: памятников, фонтанов, храмов, арт-объектов. Подойди и коснись — выпадут припасы, иногда кокон. Потом родник набирает силу несколько минут.`) +"
  },
@@ -1900,7 +1900,7 @@
   "at": [
    "www/js/book.js:160",
    "www/js/book.js:160",
-   "www/js/map.js:620",
+   "www/js/map.js:622",
    "www/js/raid.js:12"
   ],
   "ctx": "return [[ru`Разлом`, this.cards([[Art.riftIcon(3), ru`Разлом`, ru`Портал со звёздами у Капища, открыт час. Внутри — босс Нави. Собери команду из трёх духов.`],"
@@ -2752,7 +2752,7 @@
   "at": [
    "www/js/clans.js:46",
    "www/js/hints.js:87",
-   "www/js/map.js:356",
+   "www/js/map.js:358",
    "www/js/updater.js:30"
   ],
   "ctx": "buttons: [{ label: ru`Позже` }],"
@@ -4504,7 +4504,7 @@
   "k": "Целебный отвар",
   "at": [
    "www/js/data.js:286",
-   "www/js/rules.js:159"
+   "www/js/rules.js:158"
   ],
   "ctx": "brew:    { name: ru`Целебный отвар`,     desc: ru`Травы Велеса, сваренные в родниковой воде. Возвращает духу 60% здоровья.`, heal: 0.6 },"
  },
@@ -4519,7 +4519,7 @@
   "k": "Мёртвая вода",
   "at": [
    "www/js/data.js:288",
-   "www/js/rules.js:162"
+   "www/js/rules.js:161"
   ],
   "ctx": "deadwater: { name: ru`Мёртвая вода`,     desc: ru`Редкая сказочная вода, что сращивает самые тяжкие раны. Дух без сил поднимется на 4 часа раньше. Живых не лечит.`, revive: 4 },"
  },
@@ -4534,7 +4534,7 @@
   "k": "Живая вода",
   "at": [
    "www/js/data.js:289",
-   "www/js/rules.js:157"
+   "www/js/rules.js:156"
   ],
   "ctx": "water:   { name: ru`Живая вода`,         desc: ru`Возвращает духу половину здоровья, а в разломе — лечит прямо в бою. Духа без сил не поднимет.`, heal: 0.5 },"
  },
@@ -4549,7 +4549,7 @@
   "k": "Ладан",
   "at": [
    "www/js/data.js:290",
-   "www/js/rules.js:165"
+   "www/js/rules.js:164"
   ],
   "ctx": "incense: { name: ru`Ладан`,              desc: ru`Дымок приманивает духов: 30 минут их вокруг вдвое больше.` },"
  },
@@ -4564,7 +4564,7 @@
   "k": "Дальний пропуск",
   "at": [
    "www/js/data.js:291",
-   "www/js/rules.js:153"
+   "www/js/rules.js:152"
   ],
   "ctx": "farpass: { name: ru`Дальний пропуск`,    desc: ru`Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.` },"
  },
@@ -4579,7 +4579,7 @@
   "k": "Настой опыта",
   "at": [
    "www/js/data.js:293",
-   "www/js/rules.js:171"
+   "www/js/rules.js:170"
   ],
   "ctx": "xpbrew:  { name: ru`Настой опыта`,       desc: ru`Медовый настой на травах Велеса: сутки опыта на четверть больше.` },"
  },
@@ -10108,7 +10108,7 @@
    "www/js/main.js:16",
    "www/js/main.js:53",
    "www/js/main.js:89",
-   "www/js/map.js:356"
+   "www/js/map.js:358"
   ],
   "ctx": "const f = U.el(`<div class=\"fatal\"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class=\"btn primary\">${ru`Повторить`}</button></div>`);"
  },
@@ -10180,85 +10180,85 @@
  {
   "k": "Доступ к геолокации запрещён.",
   "at": [
-   "www/js/map.js:339"
+   "www/js/map.js:341"
   ],
   "ctx": "if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? ru`Доступ к геолокации запрещён.` : ru`Не удалось получить координаты.`);"
  },
  {
   "k": "Не удалось получить координаты.",
   "at": [
-   "www/js/map.js:339"
+   "www/js/map.js:341"
   ],
   "ctx": "if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? ru`Доступ к геолокации запрещён.` : ru`Не удалось получить координаты.`);"
  },
  {
   "k": "GPS не отвечает.",
   "at": [
-   "www/js/map.js:341"
+   "www/js/map.js:343"
   ],
   "ctx": "offerDemo(reason = ru`GPS не отвечает.`) {"
  },
  {
   "k": "Нет сигнала GPS",
   "at": [
-   "www/js/map.js:345",
-   "www/js/map.js:351"
+   "www/js/map.js:347",
+   "www/js/map.js:353"
   ],
   "ctx": "UI.confirm(ru`Нет сигнала GPS`, `${reason} Включить демо-режим (джойстик)? Доступен только при разработке.`,"
  },
  {
   "k": "Включи геолокацию (местоположение) в шторке уведомлений телефона.",
   "at": [
-   "www/js/map.js:353"
+   "www/js/map.js:355"
   ],
   "ctx": "<li>${ru`Включи геолокацию (местоположение) в шторке уведомлений телефона.`}</li>"
  },
  {
   "k": "Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.",
   "at": [
-   "www/js/map.js:354"
+   "www/js/map.js:356"
   ],
   "ctx": "<li>${ru`Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.`}</li>"
  },
  {
   "k": "Выйди на открытое место: в помещении спутники ловятся хуже.",
   "at": [
-   "www/js/map.js:355"
+   "www/js/map.js:357"
   ],
   "ctx": "<li>${ru`Выйди на открытое место: в помещении спутники ловятся хуже.`}</li></ul>`,"
  },
  {
   "k": "С",
   "at": [
-   "www/js/map.js:495"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "В",
   "at": [
-   "www/js/map.js:495"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Ю",
   "at": [
-   "www/js/map.js:495"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "З",
   "at": [
-   "www/js/map.js:495"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Слишком быстро — около {0} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега",
   "at": [
-   "www/js/map.js:615",
+   "www/js/map.js:617",
    "server/game/core.js:123"
   ],
   "ctx": "if (this.tooFast()) { UI.toast(ru`Слишком быстро — около ${this.kmh} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`); return; } // 4.20"
@@ -10266,14 +10266,14 @@
  {
   "k": "{0}: {1}. Подойди ближе — нужно {2} м",
   "at": [
-   "www/js/map.js:621"
+   "www/js/map.js:623"
   ],
   "ctx": "UI.toast(ru`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);"
  },
  {
   "k": "Дух уже растворился в воздухе…",
   "at": [
-   "www/js/map.js:626",
+   "www/js/map.js:628",
    "server/game/core.js:631"
   ],
   "ctx": "if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }"
@@ -10281,7 +10281,7 @@
  {
   "k": "Капища открываются с {0} уровня Ловчего",
   "at": [
-   "www/js/map.js:630",
+   "www/js/map.js:632",
    "server/game/core.js:1059"
   ],
   "ctx": "if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }"
@@ -10289,21 +10289,21 @@
  {
   "k": "Цель",
   "at": [
-   "www/js/map.js:669"
+   "www/js/map.js:671"
   ],
   "ctx": "this.tracking = { id: e.id, type: e.type, lat: e.lat, lng: e.lng, sid: e.sid, name: e.type === 'spirit' ? SP[e.sid].name : e.name || ru`Цель` };"
  },
  {
   "k": "{0} растворился — след потерян",
   "at": [
-   "www/js/map.js:684"
+   "www/js/map.js:686"
   ],
   "ctx": "UI.toast(ru`${t.name} растворился — след потерян`);"
  },
  {
   "k": "Ты на месте — коснись цели!",
   "at": [
-   "www/js/map.js:698"
+   "www/js/map.js:700"
   ],
   "ctx": "box.querySelector('.tr-dist').textContent = near ? ru`Ты на месте — коснись цели!` : U.fmtDist(d);"
  },
@@ -12065,217 +12065,217 @@
  {
   "k": "Расширение сумки",
   "at": [
-   "www/js/rules.js:152"
+   "www/js/rules.js:151"
   ],
   "ctx": "{ id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },"
  },
  {
   "k": "+50 мест в сумке навсегда",
   "at": [
-   "www/js/rules.js:152"
+   "www/js/rules.js:151"
   ],
   "ctx": "{ id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },"
  },
  {
   "k": "Закрыть Разлом до 5 км, не подходя к нему",
   "at": [
-   "www/js/rules.js:153"
+   "www/js/rules.js:152"
   ],
   "ctx": "{ id: 'farpass',  name: ru`Дальний пропуск`,     desc: ru`Закрыть Разлом до 5 км, не подходя к нему`, cur: 'sparks', price: 1000, give: { farpass: 1 } },"
  },
  {
   "k": "Три дальних пропуска",
   "at": [
-   "www/js/rules.js:154"
+   "www/js/rules.js:153"
   ],
   "ctx": "{ id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)"
  },
  {
   "k": "Три грамоты на дальние Разломы",
   "at": [
-   "www/js/rules.js:154"
+   "www/js/rules.js:153"
   ],
   "ctx": "{ id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)"
  },
  {
   "k": "Связка оберегов",
   "at": [
-   "www/js/rules.js:155"
+   "www/js/rules.js:154"
   ],
   "ctx": "{ id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },"
  },
  {
   "k": "20 оберегов",
   "at": [
-   "www/js/rules.js:155"
+   "www/js/rules.js:154"
   ],
   "ctx": "{ id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },"
  },
  {
   "k": "Горшок мёда",
   "at": [
-   "www/js/rules.js:156"
+   "www/js/rules.js:155"
   ],
   "ctx": "{ id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },"
  },
  {
   "k": "5 мёда",
   "at": [
-   "www/js/rules.js:156"
+   "www/js/rules.js:155"
   ],
   "ctx": "{ id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },"
  },
  {
   "k": "5 флаконов: половина здоровья, в разломе — прямо в бою",
   "at": [
-   "www/js/rules.js:157"
+   "www/js/rules.js:156"
   ],
   "ctx": "{ id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: половина здоровья, в разломе — прямо в бою`, cur: 'sparks', price: 2000, give: { water: 5 } },"
  },
  {
   "k": "Пучок подорожника",
   "at": [
-   "www/js/rules.js:158"
+   "www/js/rules.js:157"
   ],
   "ctx": "{ id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },"
  },
  {
   "k": "10 листьев: четверть здоровья каждый",
   "at": [
-   "www/js/rules.js:158"
+   "www/js/rules.js:157"
   ],
   "ctx": "{ id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },"
  },
  {
   "k": "5 горшочков: 60% здоровья каждый",
   "at": [
-   "www/js/rules.js:159"
+   "www/js/rules.js:158"
   ],
   "ctx": "{ id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },"
  },
  {
   "k": "Один флакон в неделю: дух без сил поднимется на 4 часа раньше",
   "at": [
-   "www/js/rules.js:162"
+   "www/js/rules.js:161"
   ],
   "ctx": "{ id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в неделю: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 80, give: { deadwater: 1 }, week: 1 },"
  },
  {
   "k": "Серебряные обереги",
   "at": [
-   "www/js/rules.js:163"
+   "www/js/rules.js:162"
   ],
   "ctx": "{ id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },"
  },
  {
   "k": "10 серебряных оберегов",
   "at": [
-   "www/js/rules.js:163"
+   "www/js/rules.js:162"
   ],
   "ctx": "{ id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },"
  },
  {
   "k": "Золотые обереги",
   "at": [
-   "www/js/rules.js:164"
+   "www/js/rules.js:163"
   ],
   "ctx": "{ id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },"
  },
  {
   "k": "10 золотых оберегов",
   "at": [
-   "www/js/rules.js:164"
+   "www/js/rules.js:163"
   ],
   "ctx": "{ id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },"
  },
  {
   "k": "30 минут духов вокруг вдвое больше",
   "at": [
-   "www/js/rules.js:165"
+   "www/js/rules.js:164"
   ],
   "ctx": "{ id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },"
  },
  {
   "k": "Кокон 5 км",
   "at": [
-   "www/js/rules.js:166"
+   "www/js/rules.js:165"
   ],
   "ctx": "{ id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },"
  },
  {
   "k": "Необычные и редкие духи",
   "at": [
-   "www/js/rules.js:166"
+   "www/js/rules.js:165"
   ],
   "ctx": "{ id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },"
  },
  {
   "k": "Кокон 10 км",
   "at": [
-   "www/js/rules.js:167"
+   "www/js/rules.js:166"
   ],
   "ctx": "{ id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },"
  },
  {
   "k": "Редкие и эпические духи",
   "at": [
-   "www/js/rules.js:167"
+   "www/js/rules.js:166"
   ],
   "ctx": "{ id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },"
  },
  {
   "k": "Случайный амулет",
   "at": [
-   "www/js/rules.js:168"
+   "www/js/rules.js:167"
   ],
   "ctx": "{ id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },"
  },
  {
   "k": "Перуна, Мокоши, Велеса, Сварога или Лады",
   "at": [
-   "www/js/rules.js:168"
+   "www/js/rules.js:167"
   ],
   "ctx": "{ id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },"
  },
  {
   "k": "Сутки опыта на четверть больше. До двух в неделю",
   "at": [
-   "www/js/rules.js:171"
+   "www/js/rules.js:170"
   ],
   "ctx": "{ id: 'xpbrew',   name: ru`Настой опыта`,        desc: ru`Сутки опыта на четверть больше. До двух в неделю`, cur: 'zlat', price: 60, give: { xpbrew: 1 }, day: 1, week: 2 },"
  },
  {
   "k": "Связка ладана",
   "at": [
-   "www/js/rules.js:172"
+   "www/js/rules.js:171"
   ],
   "ctx": "{ id: 'incense5', name: ru`Связка ладана`,       desc: ru`5 ладана дешевле, чем по одному. Одна в день`, cur: 'zlat', price: 200, give: { incense: 5 }, day: 1 },"
  },
  {
   "k": "5 ладана дешевле, чем по одному. Одна в день",
   "at": [
-   "www/js/rules.js:172"
+   "www/js/rules.js:171"
   ],
   "ctx": "{ id: 'incense5', name: ru`Связка ладана`,       desc: ru`5 ладана дешевле, чем по одному. Одна в день`, cur: 'zlat', price: 200, give: { incense: 5 }, day: 1 },"
  },
  {
   "k": "Поимка духа",
   "at": [
-   "www/js/rules.js:239"
+   "www/js/rules.js:238"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
  {
   "k": "500 м пути",
   "at": [
-   "www/js/rules.js:239"
+   "www/js/rules.js:238"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
  {
   "k": "Кокон",
   "at": [
-   "www/js/rules.js:239",
+   "www/js/rules.js:238",
    "www/js/ui.js:807"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
@@ -12283,14 +12283,14 @@
  {
   "k": "Победа в капище",
   "at": [
-   "www/js/rules.js:239"
+   "www/js/rules.js:238"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
  {
   "k": "Вторжение",
   "at": [
-   "www/js/rules.js:239",
+   "www/js/rules.js:238",
    "www/js/ui.js:677"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
@@ -12298,21 +12298,21 @@
  {
   "k": "Хорошо!",
   "at": [
-   "www/js/rules.js:256"
+   "www/js/rules.js:255"
   ],
   "ctx": "return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };"
  },
  {
   "k": "Отлично!",
   "at": [
-   "www/js/rules.js:256"
+   "www/js/rules.js:255"
   ],
   "ctx": "return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };"
  },
  {
   "k": "Превосходно!",
   "at": [
-   "www/js/rules.js:256"
+   "www/js/rules.js:255"
   ],
   "ctx": "return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };"
  },

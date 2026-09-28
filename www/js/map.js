@@ -296,7 +296,7 @@ const MapView = {
       if (!was) U.vibrate([80, 60, 80]);
       UI.speedWarn(this.kmh);
       clearTimeout(this._fastT); this._fastT = setTimeout(() => { if (!this.tooFast()) UI.speedWarn(0); }, this.fastUntil - Date.now() + 500);
-    } else if (was) { clearTimeout(this._fastT); UI.speedWarn(0); }
+    } else if (was) { clearTimeout(this._fastT); UI.speedWarn(0); Game.flushMove(); } // сразу — точки серверу: пусть и он снимет паузу
   },
 
   /* ---------------- GPS ---------------- */
