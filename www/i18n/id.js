@@ -1370,7 +1370,6 @@ I18N.dict = {
 "Погода усиливает духов своей стихии: в дождь чаще встречаются водные.":"Cuaca memperkuat roh elemennya: saat hujan roh air lebih sering muncul.",
 "Привяжи вход через Google, Яндекс или Telegram — прогресс не потеряется при смене телефона.":"Tautkan login lewat Google, Yandex, atau Telegram — progres tak hilang saat ganti ponsel.",
 "Дари друзьям подарки каждый день — дружба растёт и приносит опыт.":"Beri teman hadiah tiap hari — pertemanan tumbuh dan memberi XP.",
-"ДУХОЛОВ":"DUKHOLOV",
 "Лови духов Нави на улицах своего города":"Tangkap roh Nav di jalanan kotamu",
 "Совет Ордена":"Saran Ordo",
 "Предыдущая подсказка":"Tips sebelumnya",

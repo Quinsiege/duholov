@@ -12,13 +12,14 @@
   <title>Духолов</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="preload" href="img/logo.webp" as="image" fetchpriority="high"><!-- 4.22: логотип экрана загрузки -->
   <link rel="preload" href="vendor/fonts/ruslan-display-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="vendor/fonts/rubik.css?v=dev">
   <link rel="stylesheet" href="vendor/fonts/display.css?v=dev">
   <link rel="preload" href="vendor/fonts/rubik-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="vendor/fonts/rubik-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="vendor/fonts/rubik-cyrillic-900-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
   <link rel="dns-prefetch" href="https://oauth.yandex.ru">
   <link rel="dns-prefetch" href="https://passport.yandex.ru">
   <link rel="dns-prefetch" href="https://accounts.google.com">
@@ -39,9 +40,10 @@
     .ld-bg.on { opacity: 1; transform: scale(1); }
     .ld-shade { background: linear-gradient(180deg, rgba(6, 3, 18, .45) 0%, rgba(6, 3, 18, 0) 28%, rgba(6, 3, 18, 0) 46%, rgba(6, 3, 18, calc(.6 + var(--ld-shade, .25) * .4)) 100%); }
     .ld-logo { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
-    .ld-charm { width: 104px; height: 104px; filter: drop-shadow(0 0 28px rgba(253, 224, 71, .6)); animation: ldFloat 3.2s ease-in-out infinite; }
-    .ld-charm svg { width: 100%; height: 100%; display: block; overflow: visible; }
-    @keyframes ldFloat { 50% { transform: translateY(-7px) rotate(4deg); } }
+    /* 4.22: логотип — картинка (надпись в дымке Нави) */
+    .logo-img { display: block; width: min(88vw, 400px); height: auto; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, .45)); }
+    .ld-logo .logo-img { animation: ldFloat 3.6s ease-in-out infinite; }
+    @keyframes ldFloat { 50% { transform: translateY(-6px); } }
     .ld-logo h1 { margin: 0; padding: 4px 8px 0; font-family: 'Duholov Display', 'Rubik', system-ui, sans-serif; font-size: 56px; line-height: 1; font-weight: 700; letter-spacing: 1px; color: transparent;
       background: linear-gradient(100deg, #fde047 0%, #fbbf24 38%, #fffbeb 48%, #fbbf24 58%, #f59e0b 100%); background-size: 250% 100%;
       -webkit-background-clip: text; background-clip: text; animation: ldGlint 4.5s ease-in-out infinite;
@@ -91,7 +93,7 @@
     .ld-pct { font-family: 'Rubik', system-ui, sans-serif; font-size: 15px; color: #fde68a; }
     .ld-bar { height: 10px; border-radius: 5px; background: rgba(8, 4, 22, .75); border: 1px solid rgba(243, 207, 107, .45); box-shadow: 0 0 0 2px rgba(8, 4, 22, .5), inset 0 1px 3px rgba(0, 0, 0, .6); }
     .ld-bar i { background: linear-gradient(90deg, #2dd4bf, #a3e635 45%, #fde047 80%, #fff7c7); }
-    @media (max-height: 640px) { .ld-charm { width: 76px; height: 76px; } .ld-logo h1 { font-size: 46px; } .ld-tip { min-height: 80px; } }
+    @media (max-height: 640px) { .logo-img { width: min(80vw, 320px); } .ld-tip { min-height: 80px; } }
     /* 4.6: руническая полоса — чтение заклинания: желобок пуст, огонь идёт по нему, и руны проступают по одной, когда огонь дошёл до них целиком */
     .ld-bar { position: relative; height: 18px; margin: 0 14px; border-radius: 9px; border: 1px solid rgba(243, 207, 107, .5);
       background: linear-gradient(180deg, #07031a, #1a0f3a 60%, #0c0722);
@@ -108,8 +110,8 @@
     .ld-bar > i::after { right: -9px; width: 20px; height: 20px; margin-top: -10px; background: radial-gradient(circle, #fff 0%, #fde047 30%, rgba(251, 191, 36, .5) 50%, rgba(251, 191, 36, 0) 70%); }
     .ld-row { padding: 0 2px; }
     .ld-pct { min-width: 44px; text-align: right; }
-    .calm .ld-charm, .calm .ld-logo h1, .calm .ld-bar i::after, .calm .ld-bar > i:not(.boot) { animation: none; }
-    @media (prefers-reduced-motion: reduce) { .ld-charm, .ld-logo h1, .ld-bar i::after, .ld-bar > i:not(.boot) { animation: none; } }
+    .calm .ld-logo .logo-img, .calm .ld-bar i::after, .calm .ld-bar > i:not(.boot) { animation: none; }
+    @media (prefers-reduced-motion: reduce) { .ld-logo .logo-img, .ld-bar i::after, .ld-bar > i:not(.boot) { animation: none; } }
     /* 4.19: без подложки — совет и полоса прямо на фоне; фон — как у экранов игры (style.css: .screen) */
     .ld-foot { background: none; border: 0; outline: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
     .loader { background: radial-gradient(90% 45% at 50% -8%, rgba(167, 139, 250, .3), transparent 70%),
@@ -124,7 +126,7 @@
     <div class="ld-scene" aria-hidden="true">
     </div>
     <div class="ld-bg"></div><div class="ld-shade"></div>
-    <div class="ld-logo"><div class="ld-charm"><svg viewBox="0 0 100 100"><defs><radialGradient id="ldc" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#a16207"/></radialGradient></defs><path d="M50 8 L40 0 M50 8 L60 0" stroke="#a16207" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="54" r="40" fill="url(#ldc)" stroke="#a16207" stroke-width="4"/><circle cx="50" cy="54" r="27" fill="none" stroke="#fffbeb" stroke-width="2.5" stroke-dasharray="6 5" opacity=".9"/><path d="M50 32 V76 M35 43 L65 65 M65 43 L35 65" stroke="#fffbeb" stroke-width="4" stroke-linecap="round" opacity=".95"/><circle cx="50" cy="54" r="7" fill="#fffbeb"/><circle cx="50" cy="10" r="6" fill="#fde047" stroke="#a16207" stroke-width="3"/></svg></div><h1>ДУХОЛОВ</h1><p>Лови духов Нави на улицах своего города</p></div>
+    <div class="ld-logo"><img class="logo-img" src="img/logo.webp" width="883" height="391" alt="Духолов" decoding="async" fetchpriority="high"><p>Лови духов Нави на улицах своего города</p></div>
     <div class="ld-foot">
       <div class="ld-hint">
         <div class="ld-tip"><small>✦ Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>

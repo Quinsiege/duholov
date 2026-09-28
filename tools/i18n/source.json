@@ -4,8 +4,8 @@
   "at": [
    "www/js/album.js:22",
    "www/js/friends.js:308",
-   "www/js/realms.js:30",
-   "www/js/ui-player.js:464"
+   "www/js/loader.js:49",
+   "www/js/login.js:182"
   ],
   "ctx": "try { await navigator.share({ files: [file], title: ru`Духолов`, text: ru`Смотри, кого я поймал в Духолове!` }); return; }"
  },
@@ -1064,7 +1064,7 @@
    "www/js/book.js:18",
    "www/js/ui-player.js:11",
    "www/js/ui-spirits.js:556",
-   "www/index.html:161"
+   "www/index.html:163"
   ],
   "ctx": "{ id: 'story', ico: 'scroll', t: ru`Летопись`, s: ru`Пять книг истории Ордена` },"
  },
@@ -9936,7 +9936,7 @@
   "k": "Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.",
   "at": [
    "www/js/loader.js:9",
-   "www/index.html:130"
+   "www/index.html:132"
   ],
   "ctx": "ru`Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.`,"
  },
@@ -10018,22 +10018,13 @@
   "ctx": "ru`Дари друзьям подарки каждый день — дружба растёт и приносит опыт.`,"
  },
  {
-  "k": "ДУХОЛОВ",
-  "at": [
-   "www/js/loader.js:49",
-   "www/js/login.js:182",
-   "www/index.html:127"
-  ],
-  "ctx": "<div class=\"ld-logo\"><div class=\"ld-charm\">${Art.charm('charm3')}</div><h1>${ru`ДУХОЛОВ`}</h1><p>${ru`Лови духов Нави на улицах своего города`}</p></div>"
- },
- {
   "k": "Лови духов Нави на улицах своего города",
   "at": [
    "www/js/loader.js:49",
    "www/js/ui.js:921",
-   "www/index.html:127"
+   "www/index.html:129"
   ],
-  "ctx": "<div class=\"ld-logo\"><div class=\"ld-charm\">${Art.charm('charm3')}</div><h1>${ru`ДУХОЛОВ`}</h1><p>${ru`Лови духов Нави на улицах своего города`}</p></div>"
+  "ctx": "<div class=\"ld-logo\"><img class=\"logo-img\" src=\"img/logo.webp\" width=\"883\" height=\"391\" alt=\"${ru`Духолов`}\" decoding=\"async\" fetchpriority=\"high\"><p>${ru`Лови духов Нави на улицах своего города`}</p></div>"
  },
  {
   "k": "Совет Ордена",
@@ -10046,7 +10037,7 @@
   "k": "Предыдущая подсказка",
   "at": [
    "www/js/loader.js:53",
-   "www/index.html:131"
+   "www/index.html:133"
   ],
   "ctx": "<button class=\"ld-arrow prev\" aria-label=\"${ru`Предыдущая подсказка`}\">‹</button>"
  },
@@ -10054,7 +10045,7 @@
   "k": "Следующая подсказка",
   "at": [
    "www/js/loader.js:54",
-   "www/index.html:132"
+   "www/index.html:134"
   ],
   "ctx": "<button class=\"ld-arrow next\" aria-label=\"${ru`Следующая подсказка`}\">›</button>"
  },
@@ -18702,57 +18693,57 @@
  {
   "k": "✦ Совет Ордена",
   "at": [
-   "www/index.html:130"
+   "www/index.html:132"
   ],
   "ctx": "<div class=\"ld-tip\"><small>✦ Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>"
  },
  {
   "k": "Загрузка…",
   "at": [
-   "www/index.html:135"
+   "www/index.html:137"
   ],
   "ctx": "<div class=\"ld-prog\"><div class=\"ld-row\"><span class=\"ld-text\">Загрузка…</span><b class=\"ld-pct\"></b></div><div class=\"ld-bar\"><i class=\"boot\"></i></div></div>"
  },
  {
   "k": "Рядом",
   "at": [
-   "www/index.html:174",
-   "www/index.html:174"
+   "www/index.html:176",
+   "www/index.html:176"
   ],
   "ctx": "<button id=\"nearbyBtn\" class=\"nearby\" aria-label=\"Рядом\"><div class=\"nb-arts\"></div><span>Рядом</span></button>"
  },
  {
   "k": "Профиль",
   "at": [
-   "www/index.html:147"
+   "www/index.html:149"
   ],
   "ctx": "<button id=\"profileBtn\" class=\"profile\" aria-label=\"Профиль\">"
  },
  {
   "k": "Перестать следить",
   "at": [
-   "www/index.html:162"
+   "www/index.html:164"
   ],
   "ctx": "<div id=\"tracker\" class=\"hidden\"><div class=\"tr-arrow\"><svg viewBox=\"0 0 24 24\"><path d=\"M12 2l7 19-7-4-7 4z\" fill=\"currentColor\"/></svg></div><div class=\"tr-ico\"></div><div class=\"tr-main\"><b class=\"tr-name\"></b><small "
  },
  {
   "k": "К себе",
   "at": [
-   "www/index.html:164"
+   "www/index.html:166"
   ],
   "ctx": "<button id=\"recenterBtn\" class=\"btn-round recenter\" aria-label=\"К себе\"><svg class=\"ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"7\"/><circl"
  },
  {
   "k": "Компас: повернуть карту севером вверх",
   "at": [
-   "www/index.html:167"
+   "www/index.html:169"
   ],
   "ctx": "<button id=\"compassBtn\" class=\"compass\" aria-label=\"Компас: повернуть карту севером вверх\"></button>"
  },
  {
   "k": "Меню",
   "at": [
-   "www/index.html:169"
+   "www/index.html:171"
   ],
   "ctx": "<button id=\"menuBtn\" class=\"orb\" aria-label=\"Меню\">"
  }

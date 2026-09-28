@@ -1370,7 +1370,6 @@ I18N.dict = {
 "Погода усиливает духов своей стихии: в дождь чаще встречаются водные.":"Weather boosts spirits of its element: in the rain water spirits appear more often.",
 "Привяжи вход через Google, Яндекс или Telegram — прогресс не потеряется при смене телефона.":"Link a Google, Yandex or Telegram sign-in — your progress won't be lost when you change phones.",
 "Дари друзьям подарки каждый день — дружба растёт и приносит опыт.":"Give friends gifts every day — friendship grows and brings XP.",
-"ДУХОЛОВ":"DUKHOLOV",
 "Лови духов Нави на улицах своего города":"Catch the spirits of Nav on the streets of your city",
 "Совет Ордена":"Order tip",
 "Предыдущая подсказка":"Previous tip",

@@ -46,7 +46,7 @@ const Loader = {
       } else {
         this.hint = Math.floor(Math.random() * this.HINTS.length);
         this.el = U.el(`<div class="loader" role="status" aria-live="polite"><div class="ld-scene"></div><div class="ld-bg"></div><div class="ld-shade"></div>
-          <div class="ld-logo"><div class="ld-charm">${Art.charm('charm3')}</div><h1>${ru`ДУХОЛОВ`}</h1><p>${ru`Лови духов Нави на улицах своего города`}</p></div>
+          <div class="ld-logo"><img class="logo-img" src="img/logo.webp" width="883" height="391" alt="${ru`Духолов`}" decoding="async" fetchpriority="high"><p>${ru`Лови духов Нави на улицах своего города`}</p></div>
           <div class="ld-foot">
             <div class="ld-hint">
               <div class="ld-tip"><small>✦ ${ru`Совет Ордена`}</small><p></p></div>

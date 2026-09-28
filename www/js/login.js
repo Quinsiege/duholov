@@ -179,7 +179,7 @@ const Login = {
   // 4.4: экран входа — сцена во весь экран (Scene, «3D» от наклона телефона), наверху знак Ордена, внизу стеклянная панель.
   // Вход через сервисы — выезжающая снизу панель (sheet), а не всегда на экране
   logo(sub) {
-    return `<div class="lg-top"><h1 class="lg-title">${ru`ДУХОЛОВ`}</h1><p>${sub}</p></div>`;
+    return `<div class="lg-top"><h1 class="lg-title"><img class="logo-img" src="img/logo.webp" width="883" height="391" alt="${ru`Духолов`}" decoding="async" fetchpriority="high"></h1><p>${sub}</p></div>`; // 4.22: логотип-картинка
   },
   // корень экрана входа: фон + содержимое
   screenRoot() {
