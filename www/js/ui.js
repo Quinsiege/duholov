@@ -558,6 +558,15 @@ const UI = {
         <path d="${star(50, 48.5, 11, 6.4, 8)}" fill="${u('j')}" stroke="#0b3b36" stroke-width="1.6" stroke-linejoin="round"/><circle cx="50" cy="48.5" r="2.6" fill="#fff7d1"/>` +
         hl(36, 14.5, 12, 1.8, 0, .55) + hl(44, 41, 3, 1.8, -35, .8),
       // Настройки: стальная шестерня и малая золотая
+      // 4.25.2: Поддержка — конверт с сургучной печатью-сердцем
+      support: () => D(lg('p', PAPER), lg('f', [[0, '#fffaf0'], [1, '#ecd09a']]), rg('w', [[0, '#ff9b8a'], [.45, '#dc2626'], [1, '#7a0c0c']], .38, .3, .8), lg('a', AU, .5, 1)) + sh(32) +
+        `<rect x="11" y="30" width="78" height="52" rx="7" fill="${u('p')}" stroke="#5c3310" stroke-width="3.2"/>
+        <path d="M14 78 L41 55 M86 78 L59 55" stroke="#c9a064" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M12.5 34 Q12.5 31.5 15 31.5 H85 Q87.5 31.5 87.5 34 L50 62Z" fill="${u('f')}" stroke="#5c3310" stroke-width="3" stroke-linejoin="round"/>
+        ${hl(30, 40, 9, 3, -20, .6)}
+        <circle cx="50" cy="61" r="12.5" fill="${u('w')}" stroke="#4c0808" stroke-width="2.6"/>
+        <path d="M50 67.5 C44 63 42.5 59.5 44.5 57 C46.5 54.8 49 55.8 50 57.8 C51 55.8 53.5 54.8 55.5 57 C57.5 59.5 56 63 50 67.5Z" fill="${u('a')}" stroke="#5a1a06" stroke-width="1.2" stroke-linejoin="round"/>
+        ${spk(82, 20, 7)}${spk(18, 18, 4.5, '#ccfbf1')}`,
       gear: () => D(lg('s', [[0, '#f1f5f9'], [.45, '#a3b1c6'], [1, '#475569']], .6, 1), lg('a', AU, .6, 1), rg('h', [[0, '#fff7d1'], [.45, '#f7d77e'], [1, '#8a5a14']], .35, .3, .8)) + sh(32) +
         `<path d="${cog(74, 27, 18, 13, 10)}" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.8" stroke-linejoin="round"/><circle cx="74" cy="27" r="5" fill="#2a1405" stroke="#4a2c06" stroke-width="2"/>
         <path d="${cog(43, 57, 34, 26, 12)}" fill="${u('s')}" stroke="#1e293b" stroke-width="3.2" stroke-linejoin="round"/>
@@ -616,6 +625,7 @@ const UI = {
       ['user', ru`Ловчий`, () => this.profile()],
       ['shield', ru`Дружина`, () => { if (S.d.level < CLAN_LEVEL) { this.toast(ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
       ['journal', ru`Дневник`, () => J.screen()],
+      ['support', ru`Поддержка`, () => this.support()], // 4.25.2: написать на почту
       ['gear', ru`Настройки`, () => this.settings()],
     ];
     Tut.ui('menu'); // 4.0: шаг обучения «открой меню»

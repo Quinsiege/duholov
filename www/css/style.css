@@ -4546,3 +4546,9 @@ body:has(> .screen:not(.out)) #toasts { top: auto; bottom: calc(104px + var(--sb
 .rm-it .tile-lvl { font-size: 11px; }
 body.rm-open #toasts { top: calc(12px + var(--st)); } /* при открытом меню — над значками, а не на верхнем ряду */
 body.rm-open:has(#coach:not(.hidden)) #toasts { top: auto; bottom: calc(112px + var(--sb)); } /* вверху подсказка обучения — всплывашка над кнопкой меню */
+
+/* 4.25.2: окно «Поддержка» — адрес почты крупно */
+.support-modal .sup-mail { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0; font-size: 17px; word-break: break-all; }
+.support-modal .sup-mail b { color: #fde68a; }
+.support-modal .sup-mail svg { width: 22px; height: 22px; flex: none; }
+.support-modal .modal-btns { flex-direction: column-reverse; } .support-modal .modal-btns .btn { width: 100%; }
