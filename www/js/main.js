@@ -33,7 +33,6 @@ window.addEventListener('load', () => {
     Sky.init();
     Music.init();
     Music.play('map');
-    Tut.init();
     Bus.on('cocoonReady', c => UI.toast(ru`${COCOON_TIERS[c.km].name} готов вылупиться!`, 'good'));
     const ready = S.readyCocoons().length;
     if (ready) setTimeout(() => UI.toast(ru`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);
@@ -43,7 +42,7 @@ window.addEventListener('load', () => {
     setTimeout(() => Order.daily(), 2500); // серия дней: награда за первый вход за день
     setTimeout(() => Order.refresh(), 8000); // общее дело Ордена — для значка меню
     setTimeout(() => Clans.refresh(), 5000); // кто держит Капища вокруг
-    setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); Hints.check(); } }, 60000);
+    setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); } }, 60000);
     Updater.init();
     setTimeout(() => Treasury.check(), 3000); // Казна: итог оплаты, если игрок вернулся со страницы оплаты
   };
@@ -75,14 +74,12 @@ window.addEventListener('load', () => {
       await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
     Loader.set(58);
-    Music.play('map'); // трейлер, вход и знакомство — мелодия карты (зазвучит с первым касанием)
-    // 4.0: трейлер «Тонкая ночь» — один раз на устройстве после обновления до 4.0 (потом — из «Книги Ордена»)
-    if (!Game.moved && Trailer.due()) { Loader.hide(); await Trailer.play(); }
-    // только что вошёл через сервис или по почте — сразу в игру (или к истории новичка), без экрана входа (3.30)
+    Music.play('map'); // вход и знакомство — мелодия карты (зазвучит с первым касанием)
+    // только что вошёл через сервис или по почте — сразу в игру (или к имени новичка), без экрана входа (3.30)
     const logged = Login.justLogged();
     if (Game.moved) { Loader.hide(); Game.onMoved(); }
     else if (S.d && logged) start();
-    else { Loader.hide(); if (S.d) Login.gate(start); else UI.onboarding(start, logged ? 1 : 0); } // экран входа: чей прогресс, «Продолжить» (3.28)
+    else { Loader.hide(); if (S.d) Login.gate(start); else UI.onboarding(start, logged ? 2 : 0); } // экран входа: чей прогресс, «Продолжить» (3.28)
   };
   // 4.1: сбой при запуске — не вечный экран загрузки, а понятная ошибка с повтором (и отчёт на сервер)
   boot().catch(e => {

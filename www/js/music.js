@@ -1,13 +1,13 @@
 'use strict';
-/* Музыка — три мелодии-петли (www/audio, Suno, автор quinsis): «Сказочный лес» — карта днём,
-   «Noche de cuentos» — карта ночью, «Мудрый старик» — сцены с наставником Велимиром.
+/* Музыка — две мелодии-петли (www/audio, Suno, автор quinsis): «Сказочный лес» — карта днём,
+   «Noche de cuentos» — карта ночью.
    4.8.1: звучит фоном, как в Clash Royale — тихо, мягко (срез верхов и компрессор на общей шине);
    громкость — ползунок в настройках (Cfg.s.musicVol). Петли сведены бесшовно: конец плавно переходит в начало.
-   Своей процедурной музыки больше нет: в боях и везде, кроме сцен с наставником, играет мелодия карты. */
+   Своей процедурной музыки больше нет: везде играет мелодия карты. */
 
 const Music = {
   want: 'map', mode: null,
-  FILES: { day: 'audio/day.mp3', night: 'audio/night.mp3', mentor: 'audio/mentor.mp3' },
+  FILES: { day: 'audio/day.mp3', night: 'audio/night.mp3' },
   MAX: 0.35, FADE: 1.4,     // громкость при ползунке на 100% и длительность перехода, с
   tracks: {}, cur: null,
 
@@ -17,10 +17,10 @@ const Music = {
   play(mode) { this.want = mode; this.apply(); },
   // уровень из настроек: 0…1 (по умолчанию 0,6 — тихий фон)
   level() { const v = Cfg.s.musicVol; return (v == null ? 0.6 : Math.max(0, Math.min(1, +v))) * this.MAX; },
-  // что должно звучать: у наставника — его мелодия, иначе — мелодия карты (днём или ночью)
-  target() { return this.want === 'mentor' ? 'mentor' : document.body.classList.contains('night') ? 'night' : 'day'; },
+  // что должно звучать: мелодия карты — днём или ночью
+  target() { return document.body.classList.contains('night') ? 'night' : 'day'; },
   apply() {
-    const ctx = Sfx.ctx, on = !!(Cfg.s.music && ctx && !document.hidden && !this.hold && this.level() > 0); // hold — трейлер играет свою музыку
+    const ctx = Sfx.ctx, on = !!(Cfg.s.music && ctx && !document.hidden && !this.hold && this.level() > 0); // hold — музыку попросили придержать
     const mode = on ? this.target() : null;
     if (mode === this.mode) return;
     this.mode = mode;

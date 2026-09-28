@@ -97,8 +97,6 @@ const W = {
       const shiny = U.h('shiny', id) < Sky.shinyRate();
       out.push({ type: 'spirit', id, sid, lvl, boost, shiny, lat: pLat, lng: pLng, d, expires: (slot + 1) * this.SLOT - phase });
     });
-    const tut = Tut.spawn(lat, lng);
-    if (tut) out.push(tut);
     return out;
   },
 
@@ -125,7 +123,7 @@ const W = {
     const r = U.rng(id);
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    if (tier === 3) pool = SPECIES.filter(s => s.legend && !s.story && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')); // легенды Летописи — только в награду
+    if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
     else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
     else pool = SPECIES.filter(s => s.rar === 2);
     // в неделю стихии разломы чаще охраняют духи этой стихии

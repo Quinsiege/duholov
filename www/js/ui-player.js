@@ -5,44 +5,12 @@
 Object.assign(UI, {
   /* ---------------- ЗАДАНИЯ ---------------- */
   quests(tab) {
-    Tut.ui('quests'); // 4.0: шаг обучения
-    this.qTab = tab || this.qTab || (S.storyReady() ? 'story' : 'day');
+    this.qTab = tab || (this.qTab === 'order' ? 'order' : 'day');
     const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и родника — есть что забрать → зелёная точка
-    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="story">${ru`Летопись`}${S.storyReady() ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
+    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const BONUS = Rules.QUEST_BONUS;
-    const renderStory = () => {
-      const st = S.d.story, ch = STORY[st.ch];
-      const gift = S.d.storyGift;
-      if (!ch) {
-        scr.querySelector('.quests').innerHTML = `<div class="story-card"><div class="story-num">${ru`Летопись дочитана`}</div><p>${ru`Ты прошёл все ${STORY.length} глав. Новые главы появятся в следующих обновлениях Ордена.`}</p>
-          ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} ${ru`Встретить: ${SP[gift].name}`}</button>` : ''}</div>`;
-        return;
-      }
-      const ready = S.storyReady(), open = S.storyOpen(), need = S.storyLvl(ch);
-      const book = [...STORY_BOOKS].reverse().find(b => b.from <= st.ch);
-      scr.querySelector('.quests').innerHTML = `
-        <div class="story-card ${open ? '' : 'locked'}">
-          <div class="story-num">${ru`Глава ${st.ch + 1} из ${STORY.length}`}${book ? ` · ${book.title}` : ''}</div>
-          <h3>${ch.title}</h3>
-          ${open ? '' : `<div class="story-lock">${ru`Глава откроется на <b>${need}</b> уровне Ловчего — ты на ${S.d.level}. Опыт дают поимки, родники, бои и задания дня.`}</div>`}
-          <p class="story-text">${ch.intro}</p>
-        </div>
-        ${ch.steps.map((s, i) => {
-          const p = st.p[i], done = p >= s.n, pv = s.t === 'walk' ? ru`${Math.min(p, s.n).toFixed(2)} / ${s.n} км` : `${Math.min(Math.floor(p), s.n)} / ${s.n}`;
-          const go = !done && open && this.storyGo(s, true); // 4.16: подсказка — куда идти и что делать
-          return `<div class="quest qd ${done ? 'done' : ''}"><div class="qd-ico">${this.qIcon(s.t, s.el)}</div>
-            <div class="q-main"><b>${stepText(s)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, p / s.n * 100)}%"></i></div><span>${pv}</span></div>
-            ${done ? '' : `<small class="qd-hint">${stepHint(s)}${go ? ` <button class="qd-go" data-go="${i}">${ru`Показать`} ›</button>` : ''}</small>`}</div>${done ? `<span class="q-ok" aria-label="${ru`Готово`}">✓</span>` : ''}</div>`;
-        }).join('')}
-        <div class="quest bonus qd-chest ${ready ? 'done' : ''}"><div class="qd-ico chest">${ch.gift ? Art.spirit(ch.gift) : Art.item('gift')}</div>
-          <div class="q-main"><b>${ru`Награда главы`}</b><div class="qd-pips">${ch.steps.map((s, i) => `<i class="${st.p[i] >= s.n ? 'on' : ''}"></i>`).join('')}<small>${ready ? ru`можно завершить` : open ? ru`выполни все шаги главы` : ru`откроется на ${need} уровне`}</small></div>
-          ${this.rwChips(S.storyReward(ch), true, ch.gift ? `<span class="qd-rw legend">${Art.spirit(ch.gift)}${ru`встреча: ${SP[ch.gift].name}`}</span>` : '')}</div>
-          ${ready ? `<button class="btn small primary claim-story">${ru`Завершить`}</button>` : ''}</div>
-        ${gift ? `<button class="btn primary wide story-gift">${Art.spirit(gift)} ${ru`Встретить: ${SP[gift].name}`}</button>` : ''}`;
-    };
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.qTab));
-      if (this.qTab === 'story') return renderStory();
       if (this.qTab === 'order') {
         Order.render(scr.querySelector('.quests'));
         if (!this._orderAsked) { this._orderAsked = true; Order.refresh(true).then(() => { this._orderAsked = false; if (scr.isConnected && this.qTab === 'order') Order.render(scr.querySelector('.quests')); }); }
@@ -71,39 +39,11 @@ Object.assign(UI, {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
       const tab = e.target.closest('[data-tab]');
       if (tab) {
-        const order = ['day', 'story', 'order'], dir = Math.sign(order.indexOf(tab.dataset.tab) - order.indexOf(this.qTab));
+        const order = ['day', 'order'], dir = Math.sign(order.indexOf(tab.dataset.tab) - order.indexOf(this.qTab));
         this.qTab = tab.dataset.tab; Sfx.play('tap'); render(); this.slideIn(scr.querySelector('.quests'), dir); return;
       }
       const oc = e.target.closest('.o-claim');
       if (oc) { oc.disabled = true; Order.claim(+oc.dataset.w, +oc.dataset.i).then(() => { render(); this.refreshHud(); }); return; }
-      if (e.target.closest('.claim-story')) {
-        Game.try('storyClaim').then(res => {
-          if (!res) return;
-          const ch = STORY[res.ch];
-          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
-          this.modal({
-            cls: 'story-modal', title: ru`«${ch.title}» — глава завершена`,
-            html: `<p class="story-text">${ch.outro}</p><div class="lvl-rw">${res.got.map(x => `<div>${x.k === 'xp' || x.k === 'sparks' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : Art.item(x.k)}<span>${I18N.back(x.label)}${x.k === 'xp' || x.k === 'sparks' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>`,
-            buttons: [{ label: ru`Дальше`, cls: 'primary', fn: () => render() }],
-          });
-          render(); this.refreshHud();
-        });
-        return;
-      }
-      const go = e.target.closest('.qd-go');
-      if (go) {
-        const s = (STORY[S.d.story.ch] || { steps: [] }).steps[+go.dataset.go];
-        if (!s) return;
-        Sfx.play('tap');
-        if (s.t === 'task') { this.qTab = 'day'; render(); this.slideIn(scr.querySelector('.quests'), -1); return; }
-        this.storyGo(s);
-        return;
-      }
-      if (e.target.closest('.story-gift')) {
-        this.closeScreen(scr);
-        Encounter.start({ mode: 'story', seed: 'gift' + S.d.created });
-        return;
-      }
       const tc = e.target.closest('.t-claim'), td = e.target.closest('.t-drop'), tm = e.target.closest('.t-meet');
       if (tc) {
         tc.disabled = true;
@@ -130,7 +70,7 @@ Object.assign(UI, {
       if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'spin');
       else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'levelup');
     });
-    this.swipeTabs(scr, ['day', 'story', 'order'], () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
+    this.swipeTabs(scr, ['day', 'order'], () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
     // таймер до новых заданий — каждую секунду, пока экран открыт
     const tm = setInterval(() => { if (!scr.isConnected) { clearInterval(tm); return; } const el = scr.querySelector('.qd-left'); if (el) el.textContent = U.fmtTime(this.toMidnight()); }, 1000);
@@ -146,25 +86,7 @@ Object.assign(UI, {
     }).join('') + extra;
     return wrap ? `<div class="qd-rws">${chips}</div>` : chips;
   },
-  // 4.16: шаг Летописи → нужный раздел игры. check — только узнать, есть ли куда вести
-  storyGo(s, check) {
-    const d = S.d, byPower = [...d.spirits].sort((a, b) => S.power(b) - S.power(a));
-    const dark = d.spirits.find(x => x.dark), atCap = byPower.find(x => x.lvl >= S.maxLvl(x) && S.awakenCost(x));
-    const to = {
-      raid: () => Raid.list(),
-      power: () => this.collection(), evolve: () => this.collection(),
-      purify: dark ? () => Hints.openCard(dark.uid, '.act-purify') : null,
-      hatch: () => this.cocoons(),
-      league: d.level >= League.LEVEL ? () => League.screen() : null,
-      task: () => {},
-      defend: d.level >= CLAN_LEVEL && !d.clan ? () => Clans.choose() : null,
-      awaken: byPower.length ? () => this.awaken((atCap || byPower[0]).uid) : null,
-    }[s.t];
-    if (check) return !!to;
-    if (to) to();
-    return !!to;
-  },
-  // Значок задания по его типу (задания дня, Летопись)
+  // Значок задания по его типу
   qIcon(t, el) {
     if (t === 'catchEl' && el) return Art.elIcon(el, 22);
     return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin', awaken: 'star' }[t] || 'scroll'];
@@ -339,7 +261,7 @@ Object.assign(UI, {
     const lockOf = (x, kind) => {
       if (kind === 'cloak') return (x.shop || x.pass) && !S.d.owned[x.c] ? (x.shop ? 'shop' : 'pass') : x.lvl > lvl ? x.lvl : '';
       if (kind === 'eyes') return x.lvl > lvl ? x.lvl : '';
-      return x.league && League.view().best < x.league ? 'league' : x.story && S.d.story.ch < x.story ? 'story' : x.pass && !S.d.owned[x.id] ? 'pass' : x.lvl > lvl ? x.lvl : '';
+      return x.league && League.view().best < x.league ? 'league' : x.pass && !S.d.owned[x.id] ? 'pass' : x.lvl > lvl ? x.lvl : '';
     };
     const swatches = (kind, title) => `<h3 class="wd-h">${title}</h3><div class="wd-sw">${LOOK[kind].map(x => {
       const v = kind === 'emblem' ? x.id : x.c, lk = lockOf(x, kind), on = look[kind] === v;
@@ -375,7 +297,6 @@ Object.assign(UI, {
       if (sw) {
         const l = sw.dataset.l;
         if (l === 'league') return this.toast(ru`Венец Лиги — награда за ранг «Хранитель Лиги»`);
-        if (l === 'story') return this.toast(ru`Эта эмблема — награда за Летопись`);
         if (l === 'shop') return this.toast(ru`Этот плащ продаётся в Лавке Ордена за златники`);
         if (l === 'pass') return this.toast(ru`Награда Золотой сезонной тропы`);
         if (l) return this.toast(ru`Откроется на ${l} уровне`);
@@ -455,7 +376,7 @@ Object.assign(UI, {
       </div>
       ${sec(ru`Об игре`)}
       <div class="list">
-        ${link('about', 'info', ru`Книга Ордена`, ru`Мир, духи и все правила игры; трейлер`)}
+        ${link('about', 'info', ru`Книга Ордена`, ru`Мир, духи и все правила игры`)}
         ${link('terms', 'info', ru`Правила игры`, ru`Соглашение, безопасность на улице, чат · 12+`)}
         ${link('privacy', 'info', ru`Персональные данные`, ru`Какие данные хранит игра и как их удалить`)}
         <button class="row link set-row reset"><span class="set-ico danger">${this.I.trash}</span><div class="row-main"><b class="danger-t">${ru`Сбросить прогресс`}</b><small>${ru`Удалить всех духов и начать заново`}</small></div><span class="set-chev">›</span></button>

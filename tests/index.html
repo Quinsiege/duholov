@@ -32,7 +32,6 @@
   <script src="../www/js/skins-art.js"></script>
   <script src="../www/js/looks-art.js"></script>
   <script src="../www/js/art-kit.js"></script>
-  <script src="../www/js/cutscene-art.js"></script>
   <script src="../www/js/sp-fire.js"></script>
   <script src="../www/js/sp-water.js"></script>
   <script src="../www/js/sp-forest.js"></script>
@@ -55,10 +54,8 @@
   <script src="../www/js/duel.js"></script>
   <script src="../www/js/rules.js"></script>
   <script src="../www/js/trade.js"></script>
-  <script src="../www/js/tutorial.js"></script>
   <script src="../www/js/path.js"></script>
   <script src="../www/js/book.js"></script>
-  <script src="../www/js/trailer.js"></script>
   <script src="../www/js/album.js"></script>
   <script src="../www/js/league.js"></script>
   <script src="../www/js/league-battle.js"></script>
@@ -66,7 +63,6 @@
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/order.js"></script>
   <script src="../www/js/clans.js"></script>
-  <script src="../www/js/hints.js"></script>
   <script src="../www/js/shop.js"></script>
   <script src="../www/js/auction.js"></script>
   <script src="../www/js/chat.js"></script>
@@ -527,35 +523,6 @@
     eq(S.d.quests.list.length, 3);
     eq(new Set(S.d.quests.list.map(q => q.t)).size, 3);
   });
-  test('Летопись: шаги засчитываются, глава завершается', () => {
-    S.d.story = { ch: 0, p: [0, 0, 0] };
-    S.progress('catch', 3); S.progress('spring', 2); ok(!S.storyReady());
-    S.progress('power', 1); ok(S.storyReady());
-    const r = S.claimStory(); ok(r && r.ch.title === 'Посвящение'); eq(S.d.story.ch, 1);
-  });
-  test('Летопись: 28 глав, у всех шагов есть текст, подарки существуют', () => {
-    eq(STORY.length, 28); // 4.16: пятая книга «Калинов мост» — главы до 40 уровня
-    STORY.forEach((ch, i) => {
-      eq(ch.steps.length, 3, 'шагов в главе ' + (i + 1));
-      ch.steps.forEach(s => { ok(stepText(s).length > 5, `шаг «${s.t}» в главе ${i + 1}`); if (s.el) ok(ELEMENTS[s.el], 'стихия'); });
-      if (ch.gift) ok(SP[ch.gift], 'подарок ' + ch.gift);
-      Object.keys(ch.reward).forEach(k => ok(k === 'sparks' || k === 'alatyr' || k === 'rod' || ITEMS[k], 'награда ' + k));
-    });
-    ok([12, 18, 21].every(n => LOOK.emblem.some(e => e.story === n)), 'эмблемы за вторую, третью и четвёртую книги');
-    ok(SP.indrik.legend && SP.indrik.story, 'Индрик — легенда Летописи');
-    ok(SP.svyatogor.legend && SP.svyatogor.story && STORY[20].gift === 'svyatogor', 'Святогор — легенда четвёртой книги');
-    eq(STORY[STORY.length - 1].gift, 'gorynych', 'Змей Горыныч — финал пятой книги');
-    eq(STORY_BOOKS.length, 5); ok(STORY_BOOKS.every((b, i) => STORY[b.from] && (!i || b.from > STORY_BOOKS[i - 1].from)), 'книги по порядку');
-  });
-  test('Новые шаги Летописи засчитываются (вторжение, очищение, фото, Лига)', () => {
-    const lv = S.d.level; S.d.level = 20; // 4.16: главы открываются по уровню Ловчего
-    S.d.story = { ch: 7, p: [0, 0, 0] }; // «Прислужники Нави»
-    S.progress('invasion', 3); S.progress('purify', 1); S.progress('duel', 2);
-    ok(S.storyReady(), 'глава 8 готова');
-    S.d.story = { ch: 8, p: [0, 0, 0] };
-    S.progress('photo', 1); eq(S.d.story.p[2], 1, 'фото');
-    S.d.level = lv;
-  });
   /* ---------- 4.16: прокачка духов, коллекция, Летопись ---------- */
   test('Пробуждение (4.16): звёзды по уровню Ловчего, предел до 50, цена', () => {
     const lv = S.d.level;
@@ -614,35 +581,12 @@
       const b0 = S.bagCount(), got = S.giveRewards({ alatyr: 2, rod: 5 }); eq(S.d.alatyr, 5); eq(got.length, 2); eq(S.bagCount(), b0, 'в сумку не идут');
     } finally { Math.random = m; }
   });
-  test('Летопись (4.16): главы до 40 уровня, пороги, опыт по кривой, подсказки к шагам', () => {
-    let prev = 0;
-    STORY.forEach((ch, i) => {
-      const L = S.storyLvl(ch); ok(L >= prev, 'пороги не убывают, глава ' + (i + 1)); prev = L;
-      ch.steps.forEach(s => ok(stepHint(s).length > 20, 'подсказка ' + s.t));
-    });
-    eq(S.storyLvl(STORY[STORY.length - 1]), MAX_LEVEL, 'последняя глава — на 40 уровне');
-    ok(S.storyLvl(STORY[5]) <= 10 && S.storyLvl(STORY[20]) <= 30, 'первые книги — раньше');
-    ['catch', 'catchEl', 'spring', 'power', 'throw', 'walk', 'raid', 'evolve', 'hatch', 'duel', 'invasion', 'purify', 'photo', 'league', 'task', 'defend', 'land', 'spar', 'coop', 'gift', 'awaken']
-      .forEach(t => ok(stepHint({ t, n: 1, el: 'fire' }).length > 20 && stepText({ t, n: 1, el: 'fire' }).length > 5, 'шаг ' + t));
-    const tot = STORY.reduce((a, ch) => a + S.storyXP(S.storyLvl(ch)), 0);
-    ok(tot > levelXP(MAX_LEVEL) * 0.08 && tot < levelXP(MAX_LEVEL) * 0.16, 'опыт Летописи — 8–16% пути: ' + tot);
-    ok(S.storyXP(38) > S.storyXP(10) * 4, 'поздние главы дают больше опыта');
-    const keep = { lv: S.d.level, st: S.d.story };
-    try {
-      S.d.level = 12; S.d.story = { ch: 21, p: [0, 0, 0] }; ok(!S.storyOpen(), 'глава 22 закрыта до 31 уровня');
-      S.progress('raid', 6); eq(S.d.story.p[0], 0, 'закрытая глава шаги не считает');
-      S.d.story.p = [6, 40, 1]; ok(!S.storyReady(), 'и не завершается'); eq(S.claimStory(), null);
-      S.d.level = 31; ok(S.storyReady());
-      const r = S.claimStory(); ok(r && r.got.some(x => x.k === 'alatyr' && x.n === 3) && r.got.some(x => x.k === 'xp'), 'награда главы');
-      eq(S.d.story.ch, 22);
-    } finally { S.d.level = keep.lv; S.d.story = keep.st; }
-  });
-  test('Коллекция (4.16): каждый вид достижим — карта, превращение, разломы, Летопись, гости издалека', () => {
+  test('Коллекция (4.16): каждый вид достижим — карта, превращение, разломы, гости издалека', () => {
     const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35]];
     SPECIES.forEach(s => {
       const wild = !s.legend && PTS.some(([la, ln]) => W.local(s, ln, la)), evo = SPECIES.some(x => x.evo === s.id);
-      const rift = s.legend && !s.story, story = STORY.some(ch => ch.gift === s.id);
-      ok(wild || evo || rift || story, 'недостижим: ' + s.id);
+      const rift = s.legend; // 4.24: легенды бывшей Летописи — тоже в разломах
+      ok(wild || evo || rift, 'недостижим: ' + s.id);
     });
     // где бы ни был Ловчий, духа чужих краёв (и не своего сезона) приведёт поручение: он либо здешний, либо гость
     PTS.forEach(([la, ln]) => {
@@ -783,27 +727,6 @@
     const found = new Set();
     for (let k = 0; k < 400; k++) found.add(W.pickSpecies(U.rng('land' + k), 'water', false, 49.12, 55.79));
     ok(![...found].some(sid => SP[sid].land && SP[sid].land !== 'volga'), 'в Казани — только духи Поволжья');
-  });
-  test('Советы Велимира: подсказки по делу и в нужном порядке', () => {
-    const keep = S.d;
-    S.d = JSON.parse(JSON.stringify(keep));
-    S.d.level = CLAN_LEVEL; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
-    S.d.spirits = [S.makeSpirit('ugolek', 5, 'h1')]; S.d.essence = { ugolek: 30 };
-    S.d.story = { ch: 0, p: [3, 2, 0] };
-    const op = UI._opened; UI._opened = { shop: 1, swap: 1, trail: 1, rift: 1, shrine: 1, invasion: 1, trophy: 1, gavel: 1 };
-    let ids = Hints.list().map(h => h.id);
-    eq(ids.join(), 'power,evolve:ugolek,clan', 'усиление, превращение, дружина');
-    // 4.18: только что открылся раздел — Велимир рассказывает о нём (и только о том, что уже открыто по уровню)
-    delete UI._opened.rift; S.d.level = RAID_LEVEL;
-    ok(Hints.list().some(h => h.id === 'open:rift'), 'совет о Разломах'); ok(!Hints.list().some(h => h.id === 'open:trophy' && !UI._opened.trophy), 'о Лиге — рано');
-    S.d.level = CLAN_LEVEL; UI._opened.rift = 1;
-    S.d.story = { ch: 0, p: [3, 2, 1] }; // глава готова
-    ids = Hints.list().map(h => h.id);
-    eq(ids[0], 'story:0', 'сначала — готовая глава'); ok(!ids.includes('power'), 'усиливать уже умеет');
-    S.d.clan = 'volk'; S.d.essence = {}; S.d.story = { ch: 1, p: [0, 0, 0] };
-    eq(Hints.list().length, 0, 'без повода — без советов');
-    UI._opened = op;
-    S.d = keep;
   });
   test('Обновления: сравнение версий', () => {
     eq(Updater.cmp('2.0.0', '2.0.0'), 0); eq(Updater.cmp('2.0.1', '2.0.0'), 1); eq(Updater.cmp('2.0.0', '2.1.0'), -1);
@@ -1097,44 +1020,14 @@
     A.data.items.charm = 0; A.data.items.charm2 = 0; A.data.items.charm3 = 0;
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /Обереги закончились/);
   });
-  atest('Сервер: обучение 4.0 — пропустить нельзя, шаги строго по порядку, награды за главы', async () => {
+  atest('Сервер: обучения больше нет (4.24) — новичок сразу играет, начатое обучение считается пройденным', async () => {
     const A = await newPlayer('ud', 55.73, 37.61, 'Дельта');
-    const at = () => TUT[A.data.tut - 1], idx = id => TUT.findIndex(s => s.id === id) + 1;
-    eq(A.data.tut, 1); eq(at().id, 'meet');
-    await refuse(A, 'tutFinish', {}, /нельзя пропустить/);
-    await refuse(A, 'encStart', { kind: 'tut' }, /не нужен/);
-    await refuse(A, 'tutNext', { id: 'lore' }, /текущий шаг/);
-    const charm0 = A.data.items.charm;
-    await must(A, 'tutNext', { id: 'meet' });
-    const g0 = await must(A, 'tutNext', { id: 'lore' });
-    ok(g0.got.length > 0 && A.data.items.charm > charm0, 'награда за первую главу'); eq(at().id, 'catch1');
-    // шаги «поймай» засчитывает поимка учебного духа (его вид — из шага)
-    for (const id of ['catch1', 'catch2']) {
-      eq(at().id, id);
-      await must(A, 'encStart', { kind: 'tut' });
-      const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
-      ok(r.caught, 'учебный дух пойман'); eq(A.data.spirits[A.data.spirits.length - 1].sid, TUT[idx(id) - 1].sid);
-      if (id === 'catch1') { await refuse(A, 'encStart', { kind: 'tut' }, /не нужен/); await must(A, 'tutNext', { id: 'ring' }); }
-    }
-    for (const id of ['menu', 'spirits', 'card']) await must(A, 'tutNext', { id });
-    eq(at().id, 'power');
-    await refuse(A, 'tutNext', { id: 'power' }, /текущий шаг/); // усиление нельзя «отметить» — только сделать
-    await must(A, 'powerUp', { uid: A.data.spirits[0].uid });
-    eq(at().id, 'dex');
-    await must(A, 'tutNext', { id: 'dex' }); await must(A, 'tutNext', { id: 'springs' });
-    eq(at().id, 'spring');
-    await refuse(A, 'tutNext', { id: 'spring' }, /текущий шаг/);
-    await must(A, 'spring', { poi: { id: 'osm:n555', lat: A.lat, lng: A.lng, name: 'Родник' } });
-    for (const id of ['bag', 'road', 'cocoons', 'quests', 'path']) await must(A, 'tutNext', { id });
-    eq(at().id, 'oath');
-    const zl = A.data.zlat || 0, fin = await must(A, 'tutNext', { id: 'oath' });
-    ok(fin.done && fin.got.length > 0, 'финальная награда'); eq(A.data.tut, 0); ok((A.data.zlat || 0) > zl, 'златники за клятву');
-    await refuse(A, 'tutNext', { id: 'oath' }, /пройдено/);
-    // прежнее обучение (шаг «родник» из 3.x) продолжается с того же места в новом
+    ok(!A.data.tut, 'обучения нет'); ok(A.data.items.charm >= 60 && A.data.sparks >= 1500, 'стартовый набор');
+    await refuse(A, 'tutNext', { id: 'meet' }, /Неизвестное действие/);
+    await refuse(A, 'encStart', { kind: 'tut' }, /Неизвестная встреча/);
+    await refuse(A, 'storyClaim', {}, /Неизвестное действие/);
     const B = await newPlayer('ud2', 55.731, 37.611, 'Ясень');
-    B.data.tut = 2; delete B.data.tutV;
-    await must(B, 'tutNext', { id: 'springs' });
-    eq(TUT[B.data.tut - 1].id, 'spring');
+    B.data.tut = 7; asPlayer(B, () => S.migrate()); eq(B.data.tut, 0, 'начатое обучение закрыто');
   });
   atest('Сервер: коллекция — усиление, превращение, отпускание, команда, облик', async () => {
     const A = await newPlayer('ue', 55.72, 37.60, 'Ёлка');
@@ -1562,27 +1455,15 @@
     await refuse(C, 'raidStart', { rift, coop: { code: room.code } }, /не в этом разломе/);
     await must(A, 'roomLeave', { code: room.code });
   });
-  atest('Сервер: третья книга Летописи — новые шаги, Индрик и эмблема', async () => {
+  atest('Сервер: эмблемы бывших книг Летописи — по уровню Ловчего, Индрик — в разломах (4.24)', async () => {
     const A = await newPlayer('vc', 55.56, 37.44, 'Летописец');
-    A.data.tut = 0; A.data.level = 27; A.data.xp = levelXP(27); // 4.16: главы третьей книги открываются с 20 по 27 уровень
-    // «Весть с окраин»: поручение засчитывается шагом Летописи
-    A.data.story = { ch: 12, p: [0, 0, 0] };
-    A.data.tasks = [{ id: 't9', t: 'photo', n: 1, el: 'fire', p: 1, tier: 1, sid: 'ugolek', text: 'Фото' }];
-    await must(A, 'taskClaim', { id: 't9' });
-    eq(A.data.story.p[0], 1, 'поручение — шаг главы 13');
-    // Индрик — только награда Летописи: в разломах его нет
-    const hour = Math.floor(Date.now() / 3600000);
-    for (let i = 0; i < 300; i++) { const r = asPlayer(A, () => W.riftFor({ id: 'osm:n' + (70000 + i), lat: 55.5, lng: 37.4 }, 0, hour)); ok(!r || r.boss !== 'indrik', 'Индрика нет в разломах'); }
-    // финал книги: встреча с Индриком и эмблема
-    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }, /Летопись/);
-    A.data.story = { ch: 17, p: STORY[17].steps.map(s => s.n) };
-    const r = await must(A, 'storyClaim');
-    eq(r.ch, 17); eq(A.data.storyGift, 'indrik');
-    const enc = await must(A, 'encStart', { kind: 'story' }); eq(enc.sid, 'indrik');
-    await must(A, 'encEnd');
+    A.data.level = 27; A.data.xp = levelXP(27);
+    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }, /не открыт/);
+    A.data.level = 28; A.data.xp = levelXP(28);
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'horn' } }); eq(A.data.look.emblem, 'horn');
+    ok(['needle', 'horn', 'oak'].every(id => LOOK.emblem.find(e => e.id === id).lvl > 1), 'эмблемы — по уровню');
   });
-  atest('Сервер: пробуждение, эссенция Рода, трофеи разлома, Летопись по уровням (4.16)', async () => {
+  atest('Сервер: пробуждение, эссенция Рода, трофеи разлома (4.16)', async () => {
     const A = await newPlayer('aw1', 55.43, 37.31, 'Пробуждённый');
     A.data.tut = 0;
     const uid = A.data.spirits[0].uid;
@@ -1614,22 +1495,6 @@
     A.srv.battle.start -= 85000;
     const w = await must(A, 'raidEnd', { win: true });
     ok(w.win && w.rw.some(x => x.k === 'ess' && x.n === S.RIFT_ESS[1]), 'эссенция босса в награде'); eq(A.data.essence[fam], e0 + S.RIFT_ESS[1]);
-    // Летопись: глава, закрытая уровнем, не завершается
-    A.data.story = { ch: 21, p: [6, 40, 1] };
-    await refuse(A, 'storyClaim', {}, /31 уровне/);
-    A.data.level = 31; A.data.xp = levelXP(31);
-    const c = await must(A, 'storyClaim'); eq(c.ch, 21); ok(c.got.some(x => x.k === 'alatyr' && x.n === 3)); eq(A.data.alatyr, 6);
-    eq(A.data.story.ch, 22);
-    // шаг «Лига» — за сыгранный бой, и поражение тоже (с живыми соперниками победа не гарантирована)
-    Object.values(DB.pvpQ).forEach(q => { q.seen = 0; }); // чужие заявки устарели
-    const X = await leaguer('st-x', 'Летописец'), Y = await leaguer('st-y', 'Соперник');
-    X.data.level = 31; X.data.xp = levelXP(31); X.data.story = { ch: 10, p: [0, 0, 0] };
-    await must(X, 'pvpFind', {}); const mY = (await must(Y, 'pvpFind', {})).match; ok(mY, 'пара');
-    const sY = (await pvp(Y, 'state', { id: mY })), seatX = PvP.other(sY.seat);
-    DB.pvpM[mY].state.s[seatX].team.forEach((x, i) => { x.cur = i ? 0 : 1; });
-    ok((await pvp(Y, 'move', { id: mY, in: [{ t: 'hit', n: 1 }] }, sY.st.t0 + 500)).st.over, 'бой окончен');
-    ok(!(await must(X, 'pvpResult', {})).done[0].win, 'Летописец проиграл');
-    eq(X.data.story.p[0], 1, 'бой Лиги засчитан и при поражении');
   });
   atest('Сервер: приглашение по ссылке — сразу друзья и подарки обоим, без накрутки', async () => {
     const A = await newPlayer('vd', 55.55, 37.43, 'Зазывала');

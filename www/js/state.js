@@ -58,18 +58,17 @@ const S = {
     d.items = d.items || {}; d.essence = d.essence || {}; d.dex = d.dex || {};
     d.spirits = d.spirits || []; d.cocoons = d.cocoons || []; d.springs = d.springs || {}; d.rifts = d.rifts || {}; d.caught = d.caught || {};
     d.medals = d.medals || {};
-    d.story = d.story || { ch: 0, p: [0, 0, 0] };
     // 4.16: осколки Алатыря (пробуждение духов) и эссенция Рода (подходит любому семейству)
     d.alatyr = d.alatyr || 0; d.rod = d.rod || 0; d.stats.awakened = d.stats.awakened || 0;
-    // 4.0: обучение стало длиннее — шаги прежнего (1 поймать, 2 родник, 3 меню) переводятся в новые
-    if (d.tut && d.tutV !== 4) { d.tut = { 1: 1, 2: TUT.findIndex(s => s.id === 'springs') + 1, 3: TUT.findIndex(s => s.id === 'road') + 1 }[d.tut] || 1; d.tutV = 4; }
+    // 4.24: обучения больше нет — начатое считается пройденным
+    if (d.tut) d.tut = 0;
     if (d.buddy === undefined) d.buddy = null;
   },
 
   newGame(name, starter) {
     this.d = {
-      v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),
-      items: { charm: 30, honey: 3, water: 3, incense: 1 },
+      v: 1, name, level: 1, xp: 0, sparks: 1500, created: Date.now(),
+      items: { charm: 60, honey: 5, water: 5, incense: 2 }, // 4.24: обучения больше нет — его награды сразу в стартовом наборе
       essence: {}, spirits: [], dex: {}, cocoons: [{ id: U.uid(), km: 2, walked: 0, inc: true }],
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
@@ -78,7 +77,6 @@ const S = {
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
-    this.d.tut = 1; this.d.tutV = 4; // обучение «Посвящение в Ловчие» (4.0)
     this.ensureQuests();
     this.save(true);
   },
@@ -388,7 +386,6 @@ const S = {
     this.d.sparks -= c.sparks; this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.lvl++;
     this.progress('power', 1);
-    this.tutAdvance('power'); // 4.0: шаг обучения «Усиль духа»
     this.save();
     return true;
   },
@@ -590,7 +587,7 @@ const S = {
     const tier = COCOON_TIERS[c.km], r = U.rng(c.id + 'hatch');
     const rar = U.weighted(Object.entries(tier.pool).map(([k, w]) => [+k, w]), r());
     // из кокона — только первая стадия (3.19: раньше редкие коконы давали сразу превращённых духов)
-    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season && !s.story);
+    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season);
     if (!pool.length) pool = SPECIES.filter(s => s.stage === 1 && !s.legend);
     const s = pool[Math.floor(r() * pool.length)];
     const sp = this.makeSpirit(s.id, Math.min(this.d.level, 20), c.id, { ivMin: 10 });
@@ -647,20 +644,11 @@ const S = {
       changed = true;
       if (q.p >= q.n) Bus.emit('toast', { text: ru`Поручение выполнено: ${I18N.back(q.text)}`, cls: 'good' });
     });
-    // Летопись (4.16: глава, закрытая уровнем Ловчего, шаги не считает)
-    const ch = STORY[this.d.story.ch];
-    if (ch && this.storyOpen()) ch.steps.forEach((s, i) => {
-      if (s.t !== type || this.d.story.p[i] >= s.n) return;
-      if (type === 'catchEl' && meta.el !== s.el) return;
-      this.d.story.p[i] = Math.min(s.n, this.d.story.p[i] + amount);
-      changed = true;
-      if (this.d.story.p[i] >= s.n) Bus.emit('storyStep', s);
-    });
     if (changed) { Bus.emit('quests'); this.save(); }
   },
   questsClaimable() {
     const daily = this.d.quests ? this.d.quests.list.filter(q => q.p >= q.n && !q.claimed).length : 0;
-    return daily + (this.storyReady() ? 1 : 0) + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
+    return daily + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
   },
   // Новое поручение (выдаёт сервер у родника): задание и дух, который встретится в награду
   // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests)
@@ -682,42 +670,6 @@ const S = {
   GUEST: 0.3,
   guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
 
-
-  /* ---------- 4.0: обучение «Посвящение в Ловчие» ---------- */
-  tutAt() { return (this.d && this.d.tut && TUT[this.d.tut - 1]) || null; },
-  // Шаг выполнен: kind — что сделал игрок, id — для сцен и разделов. В конце главы — её награда.
-  tutAdvance(kind, id) {
-    const st = this.tutAt();
-    if (!st || st.kind !== kind || (id && st.id !== id)) return null;
-    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward, true, true) : [];
-    this.d.tut = next ? this.d.tut + 1 : 0;
-    if (got.length) Bus.emit('tutChapter', { ch: st.ch, got, done: !next });
-    this.save();
-    return { got, done: !next };
-  },
-  /* ---------- Летопись ----------
-     4.16: главы идут по всему пути до 40 уровня — каждая открывается на своём уровне Ловчего (ch.lvl, и не раньше, чем
-     откроется нужный раздел: Лига, дружины). Опыт главы — доля опыта на её уровне (storyXP), поэтому Летопись
-     остаётся заметной и на высоких уровнях при любой кривой опыта */
-  storyLvl(ch) { return Math.max(ch.lvl || 1, ...ch.steps.map(s => s.t === 'league' ? League.LEVEL : s.t === 'defend' ? CLAN_LEVEL : 1)); },
-  storyOpen() { const ch = STORY[this.d.story.ch]; return !ch || this.d.level >= this.storyLvl(ch); },
-  storyXP(L) {
-    const n = Math.min(MAX_LEVEL, L + 1), f = 0.5 - 0.41 * (Math.min(L, MAX_LEVEL) - 1) / (MAX_LEVEL - 1);
-    return Math.max(500, Math.round((levelXP(n) - levelXP(n - 1)) * f / 50) * 50);
-  },
-  storyReward(ch) { return { ...ch.reward, xp: this.storyXP(this.storyLvl(ch)) }; },
-  storyReady() {
-    const ch = STORY[this.d.story.ch];
-    return !!ch && this.storyOpen() && ch.steps.every((s, i) => this.d.story.p[i] >= s.n);
-  },
-  claimStory() {
-    const ch = STORY[this.d.story.ch];
-    if (!ch || !this.storyReady()) return null;
-    const got = this.giveRewards({ ...this.storyReward(ch), zlat: Rules.ZLAT.story }, true, true); // разовая награда — без дневного потолка
-    this.d.story = { ch: this.d.story.ch + 1, p: [0, 0, 0] };
-    this.save();
-    return { ch, got };
-  },
 
   /* ---------- Знаки Ордена ---------- */
   medalValue(m) {

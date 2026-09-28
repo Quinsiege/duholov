@@ -54,12 +54,8 @@ console.log(`✓ автотесты: ${r.total - r.failed.length} из ${r.total
 const game = await browser.newPage();
 game.on('pageerror', e => fail('ошибка в игре: ' + e.message));
 await game.goto(`http://localhost:${PORT}/www/index.html`);
-// 4.0: сначала трейлер «Тонкая ночь» (один раз на устройстве) — его можно пропустить, дальше стартовый экран.
-// 4.14: трейлер — видео; в Chromium тестов нет H.264, видео не играет — трейлер сам закрывается, это тоже правильно
-if (!(await game.waitForSelector('.tv', { state: 'attached', timeout: 15000 }).then(() => true, () => false))) fail('игра: не показан трейлер');
-else if (await game.$('.tv-skip')) await game.click('.tv-skip').catch(() => {});
-await game.waitForTimeout(2500);
-if (!(await game.$('.onb'))) fail('игра: не показан стартовый экран');
+// 4.24: трейлера больше нет — сразу стартовый экран
+if (!(await game.waitForSelector('.onb', { timeout: 15000 }).then(() => true, () => false))) fail('игра: не показан стартовый экран');
 console.log('✓ игра открылась');
 
 // 4. Панель модерации открывается (без входа — форма входа)

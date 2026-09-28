@@ -626,15 +626,10 @@ const GameCore = {
         this.dayNeed(ctx, 'catches');
         this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), ru`Обереги закончились! Загляни к роднику.`);
         const p = this.here(ctx);
-        const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit' && !x.tut);
+        const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit');
         this.need(e, ru`Дух уже растворился в воздухе…`);
         this.near(ctx, e.lat, e.lng, W.INTERACT);
         return this.openEnc(ctx, { mode: 'wild', sid: e.sid, lvl: e.lvl, shiny: e.shiny, boost: e.boost, seed: e.id, spawnId: e.id });
-      }
-      if (kind === 'tut') {
-        const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
-        this.need(st && st.kind === 'catch', ru`Учебный дух сейчас не нужен`);
-        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -652,10 +647,6 @@ const GameCore = {
         const m = S.d.taskMeet.find(x => x.id === a.id);
         this.need(m, ru`Встреча за поручение не найдена`);
         return this.openEnc(ctx, { mode: 'task', sid: m.sid, lvl: m.lvl, seed: 'task:' + m.id, taskId: m.id });
-      }
-      if (kind === 'story') {
-        this.need(S.d.storyGift && SP[S.d.storyGift], ru`Встреча Летописи недоступна`);
-        return this.openEnc(ctx, { mode: 'story', sid: S.d.storyGift, lvl: Math.min(25, S.catchLvl()), seed: 'gift' + S.d.created });
       }
       this.fail(ru`Неизвестная встреча`);
     },
@@ -717,9 +708,6 @@ const GameCore = {
       S.d.stats.caught++;
       const xp = S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
-      if (s.land) S.progress('land', 1); // дух родной земли — для Летописи
-      if (e.mode === 'tut') S.tutAdvance('catch');
-      if (e.mode === 'story') S.d.storyGift = null;
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
       return { wobbles: 3, caught: true, label: bonus.label, uid: sp.uid, isNew, xp, sparks: rw.sparks, ess: rw.ess };
@@ -744,10 +732,9 @@ const GameCore = {
       S.progress('spring', 1);
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
-      S.tutAdvance('spring');
       // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
       let task = null;
-      if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
+      if (S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
         S.d.taskDay = U.today(ctx.now);
         task = S.makeTask(p); // 4.16: трудное поручение может позвать «гостя издалека» — духа, которого здесь не встретить
         S.d.tasks.push(task);
@@ -864,7 +851,6 @@ const GameCore = {
       this.need((g.lvl || 1) <= lvl && (fr.lvl || 1) <= lvl, ru`Этот облик ещё не открыт`);
       this.need(c.lvl <= lvl && e.lvl <= lvl && m.lvl <= lvl, ru`Этот облик ещё не открыт`);
       this.need(!m.league || League.st().best >= m.league, ru`Венец Лиги — награда за ранг «Хранитель Лиги»`);
-      this.need(!m.story || S.d.story.ch >= m.story, ru`Эта эмблема — награда за Летопись`);
       this.need((!c.shop && !c.pass) || S.d.owned[c.c], c.shop ? ru`Этот плащ продаётся в Лавке Ордена` : ru`Этот плащ — награда Золотой тропы`);
       this.need(!m.pass || S.d.owned[m.id], ru`Знак Тропы — награда Золотой тропы`);
       S.d.look = { cloak: c.c, eyes: e.c, emblem: m.id };
@@ -902,14 +888,6 @@ const GameCore = {
       Q.bonus = true;
       return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: Rules.QUEST_BONUS_XP, zlat: Rules.ZLAT.questBonus }) };
     },
-    storyClaim() {
-      const ch = S.d.story.ch, res = S.claimStory();
-      this.need(res || S.storyOpen() || !STORY[ch], ru`Глава откроется на ${STORY[ch] ? S.storyLvl(STORY[ch]) : 0} уровне Ловчего`);
-      this.need(res, ru`Глава ещё не завершена`);
-      if (res.ch.gift) S.d.storyGift = res.ch.gift;
-      J.add('story', { title: res.ch.title });
-      return { ch, got: res.got };
-    },
     // Поручение выполнено: предметы сразу, дух — во встрече (ждёт в «Заданиях», пока не пойман)
     taskClaim(a) {
       const q = S.d.tasks.find(x => x.id === a.id);
@@ -929,14 +907,6 @@ const GameCore = {
       this.need(S.d.tasks.length < n, ru`Поручение не найдено`);
       return { ok: true };
     },
-    // 4.0: сцены и разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
-    tutNext(a) {
-      const st = S.tutAt();
-      this.need(st, ru`Обучение уже пройдено`);
-      this.need((st.kind === 'talk' || st.kind === 'ui') && st.id === a.id, ru`Сначала выполни текущий шаг обучения`);
-      return S.tutAdvance(st.kind, st.id);
-    },
-    tutFinish() { this.need(false, ru`Обучение нельзя пропустить`); },
     async placeRewards(a, ctx) {
       const rows = await ctx.env.mySubmissions();
       const out = [];
