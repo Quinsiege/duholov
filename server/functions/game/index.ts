@@ -87,7 +87,9 @@ const I18N = {
       this._pats = Object.keys(this.dict).filter(k => /\{\d+\}/.test(k)).map(k => ({
         k, re: new RegExp('^' + esc(k).replace(/\\\{(\d+)\\\}/g, '([\\s\\S]*?)') + '$'),
         ids: (k.match(/\{\d+\}/g) || []).map(x => +x.slice(1, -1)),
-      }));
+      })).sort((a, b) => b.k.replace(/\{\d+\}/g, '').length - a.k.replace(/\{\d+\}/g, '').length);
+      // 4.27: сначала самые точные шаблоны (больше постоянного текста) — иначе общий «{0} из {1}» перехватывал
+      // «Зачерпни силы из {0} родников» и задание выходило наполовину по-русски
     }
     for (const p of this._pats) {
       const m = msg.match(p.re);
