@@ -4361,10 +4361,16 @@ body.rm-open #menuBtn .ob-x { opacity: 1; transform: none; }
 #hud #nearbyBtn { bottom: calc(40px + var(--sb)) !important; } /* ряд — на высоте центра кнопки меню */
 #hud #nearbyBtn .nb-arts .art { width: 46px !important; height: 46px !important; margin: -3px; }
 #hud #nearbyBtn span::before, #hud #nearbyBtn span::after { content: none !important; display: none !important; }
-/* 4.25: центральная кнопка — медальон с логотипа игры (золотой компас-амулет с духом), крупнее */
-#hud #menuBtn.orb { width: 84px; height: 84px; margin-left: -42px; bottom: calc(18px + var(--sb)); }
-#menuBtn .ob-ico { width: 80px !important; height: 80px !important; }
-#menuBtn img.ob-emb { border-radius: 50%; filter: drop-shadow(0 3px 6px rgba(20, 8, 2, .5)) drop-shadow(0 0 10px rgba(94, 234, 212, .3)); animation: obLogo 4s ease-in-out infinite; -webkit-user-select: none; user-select: none; pointer-events: none; }
-@keyframes obLogo { 50% { filter: drop-shadow(0 3px 6px rgba(20, 8, 2, .5)) drop-shadow(0 0 16px rgba(94, 234, 212, .55)); } }
-.calm #menuBtn img.ob-emb, .eco #menuBtn img.ob-emb { animation: none; }
 #hud #nearbyBtn { bottom: calc(40px + var(--sb)) !important; }
+/* 4.25: баффы Ловчего (ладан, настой опыта) — под званием, рядом с аватаром, как значки эффектов с таймером */
+#hud .hud-left { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+#hud .hud-left > #profileBtn { flex: none; max-width: 100% !important; }
+#hud .hud-buffs { display: flex; gap: 12px; margin: -13px 0 0 78px; min-height: 0; }
+#hud .hud-buffs:not(:has(.chip:not(.hidden))) { display: none; }
+#hud .hud-buffs .chip { display: flex; align-items: center; gap: 4px; padding: 0 !important; min-height: 0 !important; height: auto !important; pointer-events: auto;
+  background: none !important; border: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  color: #fff !important; font-family: var(--f-head); font-size: 12.5px !important; font-weight: 700; text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 8px rgba(8, 4, 24, .6) !important; }
+#hud .hud-buffs .chip.hidden { display: none !important; }
+#hud .hud-buffs .chip::before, #hud .hud-buffs .chip::after { content: none !important; }
+#hud .hud-buffs .chip .art, #hud .hud-buffs .chip svg { width: 22px !important; height: 22px !important; filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .8)) drop-shadow(0 0 5px rgba(251, 191, 36, .35)); }
+@media (max-width: 399px) { #hud .hud-buffs { margin-left: 66px; margin-top: -10px; } }
