@@ -664,7 +664,7 @@ const S = {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
     const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
     const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar)), guest = false;
+    let sps = W.here(SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar)), pos && pos.lat, pos && pos.lng), guest = false;
     if (q.tier === 3 && pos && r() < this.GUEST) {
       const far = this.guests(pos.lat, pos.lng), fresh = far.filter(s => !(this.d.dex[s.id] && this.d.dex[s.id].caught));
       if (far.length) { sps = fresh.length ? fresh : far; guest = true; }
@@ -676,7 +676,7 @@ const S = {
   /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
      земель и сезонные не в свой сезон. Их приводят трудные поручения родников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
-  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
+  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season || !W.home(s, lat, lng)) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
 
 
   /* ---------- 4.0: обучение новичка ---------- */
@@ -697,6 +697,7 @@ const S = {
     const st = this.d.stats;
     if (m.stat === 'dex') return SPECIES.filter(s => this.d.dex[s.id] && this.d.dex[s.id].caught).length;
     if (m.stat === 'lands') return SPECIES.filter(s => s.land && this.d.dex[s.id] && this.d.dex[s.id].caught).length;
+    if (m.stat === 'myths') return SPECIES.filter(s => s.myth !== 'slavic' && this.d.dex[s.id] && this.d.dex[s.id].caught).length; // 4.28
     if (m.stat.startsWith('el:')) return st.byEl[m.stat.slice(3)] || 0;
     return st[m.stat] || 0;
   },

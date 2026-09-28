@@ -4587,3 +4587,9 @@ body:not(.night) .toast, body:not(.night) .upd-bar, body:not(.night) #coach, bod
 .eco .toast, .eco .upd-bar, .eco #coach, .eco #speedWarn { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(12, 7, 30, .88) !important; }
 /* пока на экране «Слишком быстро» — всплывашки под ней, а не поверх */
 body:has(> #speedWarn) #toasts { top: calc(246px + var(--st)); }
+
+/* 4.28: Бестиарий — выбор мифологии (листается вбок, если не помещается) */
+.dex-myths { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 10px; padding-bottom: 2px; }
+.dex-myths::-webkit-scrollbar { display: none; }
+.dex-myths button { flex: none; white-space: nowrap; }
+.grid.dex .dex-cell.hidden { display: none; }

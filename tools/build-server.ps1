@@ -5,7 +5,7 @@ $root = Resolve-Path (Join-Path $PSScriptRoot '..')
 $utf8 = New-Object System.Text.UTF8Encoding $false
 $files = @(
   'server/game/prelude.js', 'www/js/i18n.js',
-  'www/js/data.js', 'www/js/util.js', 'www/js/events.js', 'www/js/sky.js', 'www/js/world.js',
+  'www/js/myth-greek.js', 'www/js/myth-norse.js', 'www/js/myth-celtic.js', 'www/js/myth-egypt.js', 'www/js/myth-china.js', 'www/js/myth-aztec.js', 'www/js/data.js', 'www/js/util.js', 'www/js/events.js', 'www/js/sky.js', 'www/js/world.js',
   'www/js/state.js', 'www/js/journal.js', 'www/js/league.js', 'www/js/raid.js', 'www/js/duel.js',
   'www/js/rules.js', 'www/js/diff.js', 'server/game/core.js', 'server/game/serve.js'
 )

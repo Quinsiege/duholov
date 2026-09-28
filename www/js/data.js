@@ -273,6 +273,23 @@ const REGIONS = {
   center: { name: ru`Центр`,  range: ru`40–90° в. д.` },
   east:   { name: ru`Восток`, range: ru`от 90° в. д.` },
 };
+/* ---------- 4.28: мифологии мира ----------
+   Духи и боги других мифологий — по файлу данных на мифологию (js/myth-<ключ>.js, подключается до data.js:
+   globalThis.MYTH_SP[ключ] = [...виды]) и файлу рисунков (js/sp-<ключ>.js). Номера в Бестиарии — после славянских,
+   в порядке MYTHS. Где водятся — W.myth(lat, lng): у каждой мифологии своя часть света (там её духи на карте, в разломах
+   и у хранителей); в остальных местах её духов приводят трудные поручения родников, Аукцион и обмен. */
+const MYTHS = {
+  slavic: { name: ru`Славянская`,    where: ru`Россия, Восточная Европа, Кавказ и Средняя Азия`,          color: '#f59e0b' },
+  greek:  { name: ru`Греческая`,     where: ru`Средиземноморье: Греция, Италия, Испания, Турция`,         color: '#60a5fa' },
+  norse:  { name: ru`Скандинавская`, where: ru`Скандинавия, Исландия, Дания, Германия, Прибалтика`,       color: '#93c5fd' },
+  celtic: { name: ru`Кельтская`,     where: ru`Ирландия, Британия, Франция, Бельгия, Нидерланды`,          color: '#34d399' },
+  egypt:  { name: ru`Египетская`,    where: ru`Египет, Северная Африка, Аравия и Ближний Восток`,          color: '#fbbf24' },
+  china:  { name: ru`Китайская`,     where: ru`Китай, Корея, Япония и Юго-Восточная Азия`,                 color: '#ef4444' },
+  aztec:  { name: ru`Ацтекская`,     where: ru`Америка — от Аляски до Огненной Земли`,                     color: '#10b981' },
+};
+const MYTH_KEYS = Object.keys(MYTHS);
+for (const m of MYTH_KEYS) for (const x of (globalThis.MYTH_SP || {})[m] || []) SPECIES.push({ ...x, myth: m });
+SPECIES.forEach(s => { if (!s.myth) s.myth = 'slavic'; });
 SPECIES.forEach((s, i) => { s.num = i + 1; });
 const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
 
@@ -400,7 +417,8 @@ const MEDALS = [
   { id: 'walker',  name: ru`Странник`,      desc: ru`Пройди километров`,            stat: 'km',          tiers: [10, 100, 1000] },
   { id: 'springs', name: ru`Водонос`,       desc: ru`Зачерпни силы из родников`,    stat: 'springs',     tiers: [30, 300, 2000] },
   { id: 'raids',   name: ru`Затворник`,     desc: ru`Закрой разломов`,              stat: 'raids',       tiers: [3, 30, 200] },
-  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.length] },
+  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.filter(s => s.myth === 'slavic').length] },
+  { id: 'myths',   name: ru`Странник миров`, desc: ru`Видов духов других мифологий`, stat: 'myths',       tiers: [3, 25, 80] }, // 4.28
   { id: 'purify',  name: ru`Очиститель`,    desc: ru`Победи прислужников Нави`,     stat: 'invasions',   tiers: [3, 30, 200] },
   { id: 'trade',   name: ru`Щедрая душа`,   desc: ru`Купи или продай духов на Аукционе`,     stat: 'traded',      tiers: [1, 10, 50] },
   { id: 'throws',  name: ru`Меткий глаз`,   desc: ru`Отличных бросков`,             stat: 'throwsGreat', tiers: [20, 200, 1000] },

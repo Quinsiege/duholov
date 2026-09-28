@@ -48,10 +48,30 @@ const W = {
     if (lng >= 44) return 'volga';
     return 'center';
   },
-  // региональные духи водятся только в своей части света, духи земель — только в своём краю
-  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
-    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng));
+  /* 4.28: мифология места — чьи духи здесь водятся (грубые прямоугольники по широте и долготе, порядок проверок важен).
+     'world' — Африка южнее Сахары, Индия, Океания: там встречаются духи всех мифологий */
+  myth(lat, lng) {
+    if (lng < -30) return 'aztec';                                                     // обе Америки
+    if (lat >= 18 && lat < 48 && lng >= 97 && lng < 146
+      && !(lng >= 130.5 && lng < 134 && lat >= 42.3) && !(lng >= 141 && lat >= 45.5)) return 'china'; // кроме Приморья и Сахалина
+    if (lat >= 54.3 && lat < 55.3 && lng >= 19.6 && lng < 22.9) return 'slavic';        // Калининград
+    if (lat >= 54 && lng >= -25 && lng < 28) return 'norse';                           // Скандинавия, Исландия, Дания, Прибалтика
+    if (lat >= 47 && lat < 54 && lng >= 5 && lng < 14) return 'norse';                 // германский север: Германия
+    if (lat >= 48 && lat < 61 && lng >= -11 && lng < 5) return 'celtic';               // Ирландия, Британия, север Франции, Бенилюкс
+    if (lat >= 44.5 && lat < 48 && lng >= -5 && lng < 8) return 'celtic';              // Галлия
+    if (lat >= 12 && lat < 37.5 && lng >= -18 && lng < 63) return 'egypt';             // Северная Африка, Аравия, Ближний Восток
+    if (lat >= 34 && lat < 47 && lng >= -10 && lng < 45 && !(lng >= 19 && lat >= 42.3)) return 'greek'; // Средиземноморье, Турция
+    if (lat >= 35 && lng >= 14) return 'slavic';                                        // Россия, Восточная Европа, Средняя Азия
+    return 'world';
   },
+  // дух своей мифологии в этом месте (или место «всего мира»)
+  home(s, lat, lng) { const m = this.myth(lat, lng); return m === 'world' || s.myth === m; },
+  // региональные духи водятся только в своей части света, духи земель — только в своём краю; 4.28 — и только в краях своей мифологии
+  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
+    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng)) && this.home(s, lat, lng);
+  },
+  // 4.28: отбор по месту, если оно известно (хранители, прислужники, поручения)
+  here(list, lat, lng) { if (lat == null || lng == null) return list; const h = list.filter(s => this.home(s, lat, lng)); return h.length ? h : list; },
 
   pickSpecies(r, biome, night, lng, lat) {
     const fullMoon = night && Sky.moonEvent() === 'full';
@@ -125,9 +145,9 @@ const W = {
     const r = U.rng(id);
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
+    if (tier === 3) pool = this.here(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), p.lat, p.lng); // 4.28: легенды своей мифологии
     else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
-    else pool = SPECIES.filter(s => s.rar === 2);
+    else pool = this.here(SPECIES.filter(s => s.rar === 2), p.lat, p.lng);
     // в неделю стихии разломы чаще охраняют духи этой стихии
     const evPool = pool.filter(s => s.el === Ev.cur.el);
     if (evPool.length && r() < 0.6) pool = evPool;
@@ -219,8 +239,8 @@ const W = {
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3);
-    const strong = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo);
+    const pool = this.here(SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3), e.lat, e.lng);
+    const strong = this.here(SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo), e.lat, e.lng);
     const pw = this.topPower() * Duel.FOE.invasion.pow;
     const team = [];
     for (let k = 0; k < 3; k++) {
@@ -242,14 +262,14 @@ const W = {
     // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
-    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage);
+    const pool = this.here(SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage), e.lat, e.lng);
     const pw = this.topPower() * T.pow;
     const team = [];
     while (team.length < 3) {
       const s = pool[Math.floor(r() * pool.length)];
       if (team.some(x => SP[x.sid].fam === s.fam)) continue;
       // сильному Ловчему — сильнейшие виды (у Старейшины — и эпические), без повторов семейств
-      const strong = SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam));
+      const strong = this.here(SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), e.lat, e.lng);
       team.push(this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.id + U.today() + team.length, e.tier * 4, strong));
     }
     return { name, color, title: T.title, team, speed: this.foeSpeed(T.speed, team, pw) };
