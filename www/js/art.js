@@ -1263,7 +1263,8 @@ const Art = (() => {
   // 4.17: в карточке своего непривязанного духа, повёрнутого оборотом, можно потянуть отогнутый угол плёнки — она отрывается;
   // оторвал достаточно — стикер шлёт событие stickerpeel { uid, done(ok) }: подтверждение и сервер — у карточки (ui-spirits)
   if (typeof document !== 'undefined') {
-    const ROT = '.det-art, .res-art, .evo-stage, .hatch-sp, .bk-art, .onb-starters, .pf-buddy-a';
+    // 4.25: без выбора стартового духа — касание карточки выбирает духа, а переворачивало стикер оборотом (белый силуэт вместо лица)
+    const ROT = '.det-art, .res-art, .evo-stage, .hatch-sp, .bk-art, .pf-buddy-a';
     const PC = 1.5, PEEL_AT = .4; // плёнка в покое отогнута до линии x + y = 1.5; оторвана, если сгиб дошёл до 0.4
     let g = null;
     const set = (card, ry) => { card._ry = ry; card.style.setProperty('--ry', ry + 'deg'); card.style.setProperty('--hp', (((ry % 360) + 360) % 360 / 3.6).toFixed(1) + '%'); };

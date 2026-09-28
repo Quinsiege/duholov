@@ -486,7 +486,7 @@ const Encounter = {
     const st = this.st; if (!st) return;
     if (st.phase === 'capture') return;
     if (st.o.mode === 'raid' && st.phase !== 'done') {
-      UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`);
+      UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`, true); // 4.25: дух будет потерян — красной кнопкой
       return;
     }
     this.end('run');

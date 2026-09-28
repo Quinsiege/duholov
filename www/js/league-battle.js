@@ -432,7 +432,7 @@ const LeagueBattle = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) { this.close(); return; }
-    UI.confirm(ru`Сдаться?`, ru`Бой будет проигран, рейтинг уменьшится, опыта не будет.`, ru`Сдаться`, () => { if (this.st === st && !st.over) { st.out.push({ t: 'quit' }); this.pump(); } }, ru`Продолжить`);
+    UI.confirm(ru`Сдаться?`, ru`Бой будет проигран, рейтинг уменьшится, опыта не будет.`, ru`Сдаться`, () => { if (this.st === st && !st.over) { st.out.push({ t: 'quit' }); this.pump(); } }, ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой
   },
 
   /* ---------------- ИТОГ ---------------- */

@@ -78,6 +78,7 @@ const UI = {
     });
     U.$('#wxChip').onclick = () => this.skyInfo();
     U.$('#moonChip').onclick = () => this.skyInfo();
+    U.$('#wxPill').onclick = () => this.skyInfo(); // 4.25: погода и время — одной плашкой
     U.$('#eventChip').onclick = () => this.eventInfo();
     this.applyA11y();
     // 4.6.3: когда непрозрачный экран (меню, поимка, разлом, сцена обучения) уже полностью проявился, карта под ним
@@ -105,6 +106,9 @@ const UI = {
   refreshSky() {
     const c = U.$('#wxChip'), m = U.$('#moonChip');
     if (Sky.w) { c.classList.remove('hidden'); c.innerHTML = `${Art.wxIcon(Sky.w.key, 18)}${Sky.w.temp != null ? `<span>${Sky.w.temp > 0 ? '+' : ''}${Sky.w.temp}°</span>` : ''}`; }
+    const p = U.$('#wxPill .wp-w'); // 4.25: погода в плашке «погода · время»
+    if (p) p.innerHTML = Sky.w ? `${Art.wxIcon(Sky.w.key, 20)}${Sky.w.temp != null ? `<b>${Sky.w.temp > 0 ? '+' : ''}${Sky.w.temp}°</b>` : ''}` : '';
+    U.$('#wxPill').classList.toggle('no-wx', !Sky.w);
     const ev = Sky.moonEvent();
     m.classList.toggle('hidden', !ev);
     if (ev) m.innerHTML = `${Art.moonIcon(ev, 18)}<span>${MOON_EVENTS[ev].name}</span>`;
@@ -230,24 +234,28 @@ const UI = {
       document.documentElement.style.setProperty('--pc', d.look.cloak);
     }
     put(U.$('#hudName'), d.name);
+    put(U.$('#hudRank'), ru`${this.rank(d.level)} · ур. ${d.level}`);
     const xw = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%', xb = U.$('#hudXp');
-    if (xb._w !== xw) { xb._w = xw; xb.style.width = xw; }
+    if (xb._w !== xw) { xb._w = xw; xb.style.width = xw; U.$('#profileBtn').style.setProperty('--xp', parseFloat(xw).toFixed(1)); } // 4.25: опыт — кольцо вокруг аватара
+    const now = new Date(); put(U.$('#wxPill .wp-t'), `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`);
     if (Tut.step()) Tut.show();
     Hints.check();
     const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); put(b, badge);
     const inc = U.$('#incenseChip');
+    // 4.25: остаток баффа — минутами («18 мин»), а не «17:56»: рядом настоящие часы, и остаток путали со временем
+    const left = ms => ms >= 3600000 ? U.fmtTime(ms) : ru`${Math.max(1, Math.ceil(ms / 60000))} мин`;
     if (S.incenseActive()) {
       inc.classList.remove('hidden');
       if (!inc.querySelector('span')) inc.innerHTML = `${Art.item('incense')}<span></span>`;
-      put(inc.querySelector('span'), U.fmtTime(d.incenseUntil - Date.now()));
+      put(inc.querySelector('span'), left(d.incenseUntil - Date.now()));
     }
     else inc.classList.add('hidden');
     const xc = U.$('#xpChip'); // 4.16: Настой опыта
     if (xc && d.xpUntil > U.now()) {
       xc.classList.remove('hidden');
       if (!xc.querySelector('span')) xc.innerHTML = `${Art.item('xpbrew')}<span></span>`;
-      put(xc.querySelector('span'), U.fmtTime(d.xpUntil - U.now()));
+      put(xc.querySelector('span'), left(d.xpUntil - U.now()));
     }
     else if (xc) xc.classList.add('hidden');
   },
@@ -260,19 +268,23 @@ const UI = {
   },
   setGps(state, acc) {
     const c = U.$('#gpsChip');
-    const map = { search: [ru`Ищу GPS…`, 'warn'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };
+    const map = { search: [ru`Ищу GPS…`, 'warn search'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };
     const [t, cls] = map[state];
     if (c._k === t + cls) return; // GPS приходит каждую секунду — без изменений не перестраиваем значок
     c._k = t + cls;
     c.className = 'chip ' + cls; c.innerHTML = `${this.I.pin}<span>${t}</span>`;
-    c.onclick = state === 'demo' ? () => this.toast(ru`Двигайся джойстиком или клавишами WASD. Выключить — в настройках.`) : null;
+    c.onclick = state === 'demo' ? () => this.toast(ru`Двигайся джойстиком или клавишами WASD. Выключить — в настройках.`) : () => this.toast(t); // 4.25: кнопка круглая — точность по касанию
+    c.setAttribute('aria-label', t);
   },
+  // 4.25: круглая кнопка «Рядом» — до трёх ближайших духов и их число; дух не из Бестиария — знак вопроса, как на карте
   updateNearby(list) {
-    const box = U.$('#nearbyBtn .nb-arts');
-    const key = list.slice(0, 3).map(e => e.id).join();
+    const box = U.$('#nearbyBtn .nb-arts'), cnt = U.$('#nearbyBtn .nb-cnt');
+    const known = e => typeof MapView === 'undefined' || !MapView.known || MapView.known(e.sid);
+    const key = list.slice(0, 3).map(e => e.id + known(e)).join() + ':' + list.length;
     if (box._key === key) return;
     box._key = key;
-    box.innerHTML = list.slice(0, 3).map(e => `<div>${Art.img(e.sid)}</div>`).join('');
+    box.innerHTML = list.slice(0, 3).map(e => `<div>${known(e) ? Art.img(e.sid) : '<span class="nb-q">?</span>'}</div>`).join('');
+    if (cnt) { cnt.textContent = list.length > 9 ? '9+' : list.length; cnt.classList.toggle('hidden', !list.length); }
   },
 
   /* ---------------- СВАЙП ПО ВКЛАДКАМ ---------------- */
@@ -581,6 +593,7 @@ const UI = {
   isNew(k) { const l = this.openLvl(k); return l > 1 && S.d.level >= l && !this.opened()[k]; },
   menu() {
     Sfx.init(); Sfx.play('tap');
+    if (this._rm) { this._rm(); return; } // 4.25: меню открыто — центральная кнопка его закрывает
     const ml = Tut.menuLock(); if (ml) { this.toast(ml); return; } // 4.0: меню открывается по ходу обучения
     const q = S.questsClaimable() + Order.claimable(), eggs = S.readyCocoons().length;
     const tiles = [
@@ -607,34 +620,48 @@ const UI = {
     ];
     Tut.ui('menu'); // 4.0: шаг обучения «открой меню»
     // 4.21: все разделы видны с начала — ещё закрытые по уровню с замком «с N ур.»
-    const lvl = S.d.level, shown = tiles;
+    const lvl = S.d.level;
     const far = k => !Tut.tileLock(k) && this.openLvl(k) > lvl; // закрыт по уровню
-    // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
-    const PER = 12, pages = [];
-    for (let i = 0; i < shown.length; i += PER) pages.push(shown.slice(i, i + PER).map(t => [t, tiles.indexOf(t)]));
-    // 4.0: во время обучения — замки на ещё не пройденных разделах и подсветка нужного
-    const tile = ([t, i]) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
-      return `<button class="tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}${lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
-    const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
-      <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
-      ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="${ru`Страница ${i + 1}`}"></button>`).join('')}</div>` : ''}</div></div>`);
-    const close = () => { this.popLayer(close); sheet.classList.add('out'); setTimeout(() => sheet.remove(), 200); };
-    const box = sheet.querySelector('.menu-pages'), dots = [...sheet.querySelectorAll('.menu-dots button')];
-    const page = () => Math.round(box.scrollLeft / Math.max(1, box.clientWidth));
-    box.addEventListener('scroll', () => { const p = page(); dots.forEach((d, i) => d.classList.toggle('on', i === p)); this.menuPage = p; }, { passive: true });
-    sheet.addEventListener('click', e => {
-      const d = e.target.closest('[data-p]');
-      if (d) { box.scrollTo({ left: +d.dataset.p * box.clientWidth, behavior: 'smooth' }); return; }
+    // 4.25: меню — круглые значки разделов на «жидком стекле»: вылетают из центральной кнопки снизу вверх и туда же
+    // возвращаются. Класс .tile и data-k остались — по ним обучение подсвечивает нужный раздел
+    const tile = (t, i) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
+      const badge = lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : '';
+      return `<button class="tile rm-it${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}"><span class="rm-c">${this.menuIcon(t[0])}${badge}</span><span class="rm-l">${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}</button>`; };
+    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid">${tiles.map(tile).join('')}</div></div>`);
+    const orb = U.$('#menuBtn');
+    let closing = false;
+    const close = (then) => {
+      if (closing) return; closing = true;
+      this.popLayer(close); this._rm = null;
+      document.body.classList.remove('rm-open');
+      // 4.25: HUD возвращается, когда значки уже почти долетели в кнопку, — без «призраков» подписей поверх карты (style.css)
+      document.body.classList.add('rm-closing'); clearTimeout(this._rmT);
+      this._rmT = setTimeout(() => document.body.classList.remove('rm-closing'), 240);
+      wrap.classList.remove('rm-in'); wrap.classList.add('rm-back');
+      setTimeout(() => { wrap.remove(); if (typeof then === 'function') then(); }, 300);
+    };
+    wrap.addEventListener('click', e => {
       const t = e.target.closest('.tile');
       if (t) {
         const k = tiles[+t.dataset.i][0], lk = Tut.tileLock(k) || (far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '');
-        if (lk) { this.toast(lk); Sfx.play('miss'); return; }
-        this.markOpened(k); close(); Sfx.play('tap'); tiles[+t.dataset.i][2]();
-      }
-      else if (e.target === sheet) close();
+        if (lk) { this.toast(lk); Sfx.play('miss'); t.classList.remove('rm-no'); void t.offsetWidth; t.classList.add('rm-no'); return; }
+        this.markOpened(k); Sfx.play('tap'); t.classList.add('rm-pick');
+        close(); tiles[+t.dataset.i][2]();
+      } else close();
     });
-    document.body.appendChild(sheet);
-    if (this.menuPage) box.scrollLeft = this.menuPage * box.clientWidth; // открываем на той странице, где закрыли
+    document.body.appendChild(wrap);
+    // откуда вылетать: каждый значок стартует из центра кнопки; ближние к ней — раньше (волна снизу вверх)
+    const o = orb.getBoundingClientRect(), ox = o.left + o.width / 2, oy = o.top + o.height / 2;
+    const its = [...wrap.querySelectorAll('.rm-it')], pos = its.map(it => { const c = it.querySelector('.rm-c').getBoundingClientRect(); return [c.left + c.width / 2, c.top + c.height / 2]; });
+    const far2 = Math.max(1, ...pos.map(([x, y]) => Math.hypot(x - ox, y - oy)));
+    its.forEach((it, i) => {
+      const [x, y] = pos[i], d = Math.hypot(x - ox, y - oy) / far2;
+      it.style.setProperty('--dx', (ox - x).toFixed(1) + 'px'); it.style.setProperty('--dy', (oy - y).toFixed(1) + 'px');
+      it.style.setProperty('--d', Math.round(d * 260) + 'ms'); it.style.setProperty('--db', Math.round((1 - d) * 120) + 'ms');
+    });
+    void wrap.offsetWidth; // стартовые положения применены — дальше переход к местам
+    wrap.classList.add('rm-in'); document.body.classList.add('rm-open');
+    this._rm = close;
     this.pushLayer(close);
   },
 
@@ -869,7 +896,7 @@ const UI = {
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
       // 4.16: что открылось на этом уровне — из «Пути Ловчего» (те же пороги, что проверяет сервер)
       const opened = (Path.unlocks()[l] || []).filter(x => !x.ic.startsWith('look:') && !x.ic.startsWith('eyes:') && x.ic !== 'emb').map(x => `<b>${x.t}</b>`);
-      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${ru`Открыто: ${opened.join(', ')}`}</p>` : '');
+      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${ru`Открыто: ${'<br>' + opened.join(', ')}`}</p>` : ''); // 4.25: список — с новой строки (в названиях бывает своё двоеточие)
       this.modal({
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,
@@ -907,6 +934,8 @@ const UI = {
       body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
       const nx = body.querySelector('.next');
       Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
+      // 4.25: соглашение, политика и оферта — внутри игры (как в Настройках), а не уходом со страницы
+      body.querySelectorAll('.lg-legal a[href]').forEach(a => { a.onclick = ev => { ev.preventDefault(); Sfx.play('tap'); this.doc(a.textContent, a.getAttribute('href')); }; });
       const have = body.querySelector('.lg-have');
       if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));
       if (n === 2) {

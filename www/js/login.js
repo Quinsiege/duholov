@@ -358,7 +358,8 @@ const Login = {
       return;
     }
     const names = this.available().map(k => this.NAMES[k]);
-    UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`или` + ' ')}.` : ''),
+    const list = names.length > 1 ? names.slice(0, -1).join(', ') + ' ' + ru`или` + ' ' + names[names.length - 1] : names[0]; // 4.25: «A, B или C», а не «A или B или C»
+    UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${list}.` : ''),
       ru`Выйти`, () => this.signOut(true), ru`Отмена`, true);
   },
   async signOut(guest) {

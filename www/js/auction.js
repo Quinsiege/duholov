@@ -160,7 +160,7 @@ const Auction = {
       if (c) {
         UI.confirm(ru`Снять с продажи?`, ru`Дух вернётся в твою коллекцию, а залог — нет.`, ru`Снять`, async () => {
           if (await Game.try('auctionCancel', { id: c.dataset.id })) { UI.toast(ru`Дух вернулся в коллекцию`, 'good'); this.renderMine(box); }
-        });
+        }, ru`Отмена`, true); // 4.25: залог пропадёт — красной кнопкой
       }
     };
     let r;
