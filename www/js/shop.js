@@ -103,7 +103,7 @@ const Treasury = {
       <div class="row-main"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`} · ${U.fmtNum(x.rub)} ₽</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>
       ${x.receipt ? `<a class="pl-rc" href="${U.esc(x.receipt)}" target="_blank" rel="noopener">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class="pl-wait">${ru`чек готовится`}</span>`}</div>`;
     UI.modal({ title: ru`Мои покупки и чеки`, cls: 'pay-modal pay-list',
-      html: list.length ? `<div class="pl-rows">${list.map(row).join('')}</div><p class="pay-note">${ru`Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.`}</p>`
+      html: list.length ? `<div class="pl-rows">${list.map(row).join('')}</div>`
         : `<p class="pay-note">${ru`Покупок пока нет`}</p>`,
       buttons: [{ label: ru`Закрыть` }] });
   },
@@ -279,7 +279,7 @@ const Pass = {
           <div class="pbar big"><i style="width:${inLvl / per * 100}%"></i></div>
           <small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, родники, прогулки, коконы и бои`}</small>
           ${P.gold ? `<div class="pass-gold on">★ ${ru`Золотая тропа открыта`}</div>`
-            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу · ${Art.item('zlat')} ${Rules.PASS.GOLD}`}</button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`златник`, ru`златника`, ru`златников`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
+            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`златник`, ru`златника`, ru`златников`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
         </div>
         <div class="pass-cols"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>
         ${Array.from({ length: max }, (_, i) => i + 1).map(l => `<div class="pass-row ${L >= l ? 'open' : ''}"><div class="pass-l">${l}</div>${cell('free', l)}${cell('gold', l)}</div>`).join('')}`;

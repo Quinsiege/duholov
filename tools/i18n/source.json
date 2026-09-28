@@ -5,7 +5,7 @@
    "www/js/album.js:22",
    "www/js/friends.js:308",
    "www/js/loader.js:49",
-   "www/js/login.js:205"
+   "www/js/login.js:221"
   ],
   "ctx": "try { await navigator.share({ files: [file], title: ru`Духолов`, text: ru`Смотри, кого я поймал в Духолове!` }); return; }"
  },
@@ -510,6 +510,7 @@
   "k": "Стихия",
   "at": [
    "www/js/auction.js:125",
+   "www/js/raid.js:81",
    "www/js/ui-spirits.js:255",
    "www/js/ui-spirits.js:557"
   ],
@@ -520,7 +521,7 @@
   "at": [
    "www/js/auction.js:125",
    "www/js/auction.js:126",
-   "www/js/raid.js:109",
+   "www/js/raid.js:157",
    "www/js/realms.js:198"
   ],
   "ctx": "html: `<div class=\"au-fl\">${ru`Стихия`}</div><div class=\"chips au-wrap\">${chip('el', '', ru`Все`, f.el || '')}${ELEMENT_KEYS.map(e => chip('el', e, `${Art.elIcon(e, 14)} ${ELEMENTS[e].name}`, f.el)).join('')}</div>"
@@ -553,8 +554,8 @@
   "at": [
    "www/js/auction.js:127",
    "www/js/auction.js:214",
-   "www/js/state.js:246",
-   "www/js/state.js:494"
+   "www/js/raid.js:91",
+   "www/js/state.js:246"
   ],
   "ctx": "<div class=\"au-fl\">${ru`Валюта`}</div><div class=\"chips au-wrap\">${chip('cur', '', ru`Любая`, f.cur || '')}${chip('cur', 'sparks', '✦ ' + ru`Искры`, f.cur)}${chip('cur', 'zlat', ru`Златники`, f.cur)}</div>"
  },
@@ -1189,7 +1190,7 @@
   "k": "и",
   "at": [
    "www/js/book.js:49",
-   "www/js/raid.js:56"
+   "www/js/raid.js:83"
   ],
   "ctx": "const el = ELEMENT_KEYS.map(k => [Art.elIcon(k, 40), ELEMENTS[k].name, ru`Сильнее против: ${ELEMENTS[k].beats.map(b => ELEMENTS[b].name).join(` ${ru`и`} `)}. Приёмы: «${ELEMENTS[k].fast}», «${ELEMENTS[k].charge}».`]);"
  },
@@ -1288,7 +1289,8 @@
  {
   "k": "Обереги",
   "at": [
-   "www/js/book.js:62"
+   "www/js/book.js:62",
+   "www/js/raid.js:92"
   ],
   "ctx": "[Art.item('charm3'), ru`Обереги`, ru`Обычный, серебряный (×1,5, с ${ITEMS.charm2.unlock} ур.) и золотой (×2, с ${ITEMS.charm3.unlock} ур.).`]]) +"
  },
@@ -1478,7 +1480,7 @@
    "www/js/book.js:90",
    "www/js/map.js:596",
    "www/js/raid.js:12",
-   "www/js/raid.js:65"
+   "www/js/raid.js:103"
   ],
   "ctx": "return this.cards([[Art.riftIcon(3), ru`Разлом`, ru`Портал со звёздами у Капища, открыт час. Внутри — босс Нави. Собери команду из трёх духов.`],"
  },
@@ -1493,7 +1495,8 @@
   "k": "Бой",
   "at": [
    "www/js/book.js:91",
-   "www/js/league.js:147"
+   "www/js/league.js:147",
+   "www/js/raid.js:67"
   ],
   "ctx": "[Art.item('water'), ru`Бой`, ru`Тапай, чтобы атаковать; уклоняйся при «!». Живая вода лечит духа прямо в бою.`],"
  },
@@ -1508,7 +1511,8 @@
   "k": "Награда",
   "at": [
    "www/js/book.js:92",
-   "www/js/path.js:63"
+   "www/js/path.js:63",
+   "www/js/raid.js:67"
   ],
   "ctx": "[Art.spirit('zharptica'), ru`Награда`, ru`Победа — шанс поймать босса, обереги разлома и амулеты. Боссы меняются каждый час.`]]) +"
  },
@@ -2315,8 +2319,8 @@
   "at": [
    "www/js/cloud.js:64",
    "www/js/friends.js:129",
-   "www/js/login.js:160",
-   "www/js/login.js:165"
+   "www/js/login.js:176",
+   "www/js/login.js:181"
   ],
   "ctx": "buttons: [{ label: ru`Войти`, cls: 'primary', keep: true, fn: w => {"
  },
@@ -2369,7 +2373,8 @@
  {
   "k": "Позвать друзей",
   "at": [
-   "www/js/coop.js:115"
+   "www/js/coop.js:115",
+   "www/js/raid.js:77"
   ],
   "ctx": "${this.host ? `<div class=\"fr-btns\"><button class=\"btn small coop-qr\">${ru`QR-код`}</button><button class=\"btn small primary coop-share\">${ru`Позвать друзей`}</button></div>` : ''}"
  },
@@ -6859,7 +6864,7 @@
    "www/js/duel.js:51",
    "www/js/propose.js:44",
    "www/js/propose.js:145",
-   "www/js/raid.js:112"
+   "www/js/raid.js:160"
   ],
   "ctx": "const scr = UI.screen(ru`Капище`, html, 'shrine-screen');"
  },
@@ -6874,7 +6879,8 @@
   "k": "сила {0} · ур. {1}",
   "at": [
    "www/js/duel.js:81",
-   "www/js/league.js:156"
+   "www/js/league.js:156",
+   "www/js/raid.js:49"
   ],
   "ctx": "const card = (x, foe) => `<${foe ? 'div' : 'button'} class=\"lg2-mem el-${SP[x.sid].el} ${foe ? 'inv2-dark' : S.alive(x) ? 'team-edit' : 'ko team-edit'}\"><span class=\"pcs-a\">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.si"
  },
@@ -6910,7 +6916,8 @@
   "k": "выбрать духа",
   "at": [
    "www/js/duel.js:100",
-   "www/js/league.js:157"
+   "www/js/league.js:157",
+   "www/js/raid.js:50"
   ],
   "ctx": "const slots = team.map(x => card(x)).join('') + `<button class=\"lg2-mem empty team-slot\"><span class=\"lg2-plus\">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));"
  },
@@ -6946,7 +6953,9 @@
   "k": "сила {0}",
   "at": [
    "www/js/duel.js:105",
-   "www/js/league.js:166"
+   "www/js/league.js:166",
+   "www/js/raid.js:72",
+   "www/js/raid.js:120"
   ],
   "ctx": "<div class=\"pf-mh lg2-th\"><span>${ru`Твоя команда`}</span>${mine ? `<b>${ru`сила ${U.fmtNum(mine)}`}</b>` : ''}<button class=\"lg2-edit team-edit\">${ru`Изменить`}</button></div>"
  },
@@ -7040,7 +7049,7 @@
   "at": [
    "www/js/duel.js:194",
    "www/js/league-battle.js:158",
-   "www/js/raid.js:170"
+   "www/js/raid.js:218"
   ],
   "ctx": "<button class=\"raid-special\"><svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"44\" class=\"bg\"/><circle cx=\"50\" cy=\"50\" r=\"44\" class=\"fill\"/></svg><span>${ru`Приём`}</span></button>"
  },
@@ -7144,7 +7153,7 @@
   "k": "Победа не засчитана",
   "at": [
    "www/js/duel.js:480",
-   "www/js/raid.js:420"
+   "www/js/raid.js:468"
   ],
   "ctx": "html = `<div class=\"res-title lose\">${ru`Победа не засчитана`}</div>"
  },
@@ -7161,7 +7170,7 @@
    "www/js/duel.js:482",
    "www/js/duel.js:508",
    "www/js/duel.js:553",
-   "www/js/raid.js:422"
+   "www/js/raid.js:470"
   ],
   "ctx": "const res = U.el(`<div class=\"raid-result\"><div class=\"res-card\">${html}<button class=\"btn wide\">${ru`На карту`}</button></div></div>`);"
  },
@@ -7309,7 +7318,7 @@
   "at": [
    "www/js/duel.js:567",
    "www/js/league-battle.js:435",
-   "www/js/login.js:249",
+   "www/js/login.js:265",
    "www/js/tutorial.js:192"
   ],
   "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);"
@@ -7574,7 +7583,7 @@
   "k": "Остаться",
   "at": [
    "www/js/encounter.js:489",
-   "www/js/raid.js:440"
+   "www/js/raid.js:488"
   ],
   "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`);"
  },
@@ -8226,7 +8235,7 @@
   "k": "бестиарий",
   "at": [
    "www/js/friends.js:254",
-   "www/js/login.js:246",
+   "www/js/login.js:262",
    "www/js/ui-player.js:242"
   ],
   "ctx": "<div><b>${p.dex}<em>/${SPECIES.length}</em></b><small>${ru`бестиарий`}</small></div>"
@@ -8715,7 +8724,7 @@
   "k": "Разломы вокруг",
   "at": [
    "www/js/hints.js:71",
-   "www/js/raid.js:92"
+   "www/js/raid.js:140"
   ],
   "ctx": "if (ri >= 0 && d.story.p[ri] < ch.steps[ri].n && d.items.farpass) out.push({ id: 'rifts:' + d.story.ch, btn: ru`Разломы вокруг`,"
  },
@@ -10073,7 +10082,7 @@
  {
   "k": "Этот способ входа пока не подключён",
   "at": [
-   "www/js/login.js:51",
+   "www/js/login.js:53",
    "server/game/serve.js:256"
   ],
   "ctx": "if (!p) { UI.toast(ru`Этот способ входа пока не подключён`); return; }"
@@ -10081,14 +10090,14 @@
  {
   "k": "Браузер не даёт сохранить вход — проверь настройки",
   "at": [
-   "www/js/login.js:54"
+   "www/js/login.js:56"
   ],
   "ctx": "try { sessionStorage.setItem(this.PEND, JSON.stringify(pend)); } catch (e) { UI.toast(ru`Браузер не даёт сохранить вход — проверь настройки`); return; }"
  },
  {
   "k": "Вход устарел — попробуй ещё раз",
   "at": [
-   "www/js/login.js:76",
+   "www/js/login.js:92",
    "server/game/serve.js:243"
   ],
   "ctx": "if (Date.now() - pend.t > 15 * 60000) { UI.toast(ru`Вход устарел — попробуй ещё раз`); return false; }"
@@ -10096,49 +10105,49 @@
  {
   "k": "Вход не выполнен: {0}",
   "at": [
-   "www/js/login.js:77"
+   "www/js/login.js:93"
   ],
   "ctx": "if (cb.error) { UI.toast(cb.error_description ? ru`Вход не выполнен: ${U.esc(cb.error_description)}` : ru`Вход отменён`); return false; }"
  },
  {
   "k": "Вход отменён",
   "at": [
-   "www/js/login.js:77"
+   "www/js/login.js:93"
   ],
   "ctx": "if (cb.error) { UI.toast(cb.error_description ? ru`Вход не выполнен: ${U.esc(cb.error_description)}` : ru`Вход отменён`); return false; }"
  },
  {
   "k": "Вход через Telegram отменён",
   "at": [
-   "www/js/login.js:82"
+   "www/js/login.js:98"
   ],
   "ctx": "if (!data) { UI.toast(ru`Вход через Telegram отменён`); return false; }"
  },
  {
   "k": "Вход не подтверждён — попробуй ещё раз",
   "at": [
-   "www/js/login.js:85"
+   "www/js/login.js:101"
   ],
   "ctx": "if (cb.state !== pend.state) { UI.toast(ru`Вход не подтверждён — попробуй ещё раз`); return false; } // защита от подмены ответа"
  },
  {
   "k": "Вход через {0} уже привязан",
   "at": [
-   "www/js/login.js:96"
+   "www/js/login.js:112"
   ],
   "ctx": "UI.toast(r.already ? ru`Вход через ${name} уже привязан` : ru`Готово: вход через ${name} привязан — прогресс не потеряется`, 'good');"
  },
  {
   "k": "Готово: вход через {0} привязан — прогресс не потеряется",
   "at": [
-   "www/js/login.js:96"
+   "www/js/login.js:112"
   ],
   "ctx": "UI.toast(r.already ? ru`Вход через ${name} уже привязан` : ru`Готово: вход через ${name} привязан — прогресс не потеряется`, 'good');"
  },
  {
   "k": "Не удалось войти — попробуй ещё раз",
   "at": [
-   "www/js/login.js:104",
+   "www/js/login.js:120",
    "server/game/serve.js:268"
   ],
   "ctx": "if (error) { UI.toast(ru`Не удалось войти — попробуй ещё раз`); return false; }"
@@ -10146,106 +10155,106 @@
  {
   "k": "«{0}» ({1} ур.)",
   "at": [
-   "www/js/login.js:108"
+   "www/js/login.js:124"
   ],
   "ctx": "const who = r.player ? ru`«${U.esc(r.player.name)}» (${r.player.level} ур.)` : ru`другому Ловчему`;"
  },
  {
   "k": "другому Ловчему",
   "at": [
-   "www/js/login.js:108"
+   "www/js/login.js:124"
   ],
   "ctx": "const who = r.player ? ru`«${U.esc(r.player.name)}» (${r.player.level} ур.)` : ru`другому Ловчему`;"
  },
  {
   "k": "Привязать вход сюда?",
   "at": [
-   "www/js/login.js:112"
+   "www/js/login.js:128"
   ],
   "ctx": "title: ru`Привязать вход сюда?`,"
  },
  {
   "k": "Вход через {0} перейдёт к твоему текущему Ловчему, а у {1} его больше не будет.",
   "at": [
-   "www/js/login.js:113"
+   "www/js/login.js:129"
   ],
   "ctx": "html: `<p>${ru`Вход через ${name} перейдёт к твоему текущему Ловчему, а у ${who} его больше не будет.`}</p><p class=\"small\">${r.others"
  },
  {
   "k": "У того Ловчего есть и другие способы входа — его прогресс останется доступен через них.",
   "at": [
-   "www/js/login.js:114"
+   "www/js/login.js:130"
   ],
   "ctx": "? ru`У того Ловчего есть и другие способы входа — его прогресс останется доступен через них.`"
  },
  {
   "k": "<b>У того Ловчего не останется других способов входа — его прогресс станет недоступен навсегда.</b>",
   "at": [
-   "www/js/login.js:115"
+   "www/js/login.js:131"
   ],
   "ctx": ": ru`<b>У того Ловчего не останется других способов входа — его прогресс станет недоступен навсегда.</b>`}</p>`,"
  },
  {
   "k": "Привязать сюда",
   "at": [
-   "www/js/login.js:116",
-   "www/js/login.js:134"
+   "www/js/login.js:132",
+   "www/js/login.js:150"
   ],
   "ctx": "buttons: [{ label: ru`Отмена`, fn: () => y(false) }, { label: ru`Привязать сюда`, cls: r.others ? 'primary' : 'danger', fn: () => y(true) }],"
  },
  {
   "k": "Готово: вход через {0} теперь у этого Ловчего",
   "at": [
-   "www/js/login.js:124"
+   "www/js/login.js:140"
   ],
   "ctx": "UI.toast(ru`Готово: вход через ${name} теперь у этого Ловчего`, 'good');"
  },
  {
   "k": "Не удалось привязать — попробуй ещё раз",
   "at": [
-   "www/js/login.js:125"
+   "www/js/login.js:141"
   ],
   "ctx": "} catch (e) { UI.toast(U.esc(e.message || ru`Не удалось привязать — попробуй ещё раз`)); }"
  },
  {
   "k": "Вход уже привязан",
   "at": [
-   "www/js/login.js:129"
+   "www/js/login.js:145"
   ],
   "ctx": "title: ru`Вход уже привязан`,"
  },
  {
   "k": "Вход через {0} привязан к Ловчему {1}.",
   "at": [
-   "www/js/login.js:130"
+   "www/js/login.js:146"
   ],
   "ctx": "html: `<p>${ru`Вход через ${name} привязан к Ловчему ${who}.`}</p><p class=\"small\">${this.isGuest()"
  },
  {
   "k": "Можно перейти в ту учётную запись — тогда текущий гостевой прогресс на этом устройстве останется в прежней учётной записи, вернуться в неё будет нельзя. Или привязать этот вход к текущему Ловчему.",
   "at": [
-   "www/js/login.js:131"
+   "www/js/login.js:147"
   ],
   "ctx": "? ru`Можно перейти в ту учётную запись — тогда текущий гостевой прогресс на этом устройстве останется в прежней учётной записи, вернуться в неё будет нельзя. Или привязать этот вход к текущему Ловчему.`"
  },
  {
   "k": "Можно перейти в ту учётную запись — текущий прогресс останется в своей. Или привязать этот вход к текущему Ловчему.",
   "at": [
-   "www/js/login.js:132"
+   "www/js/login.js:148"
   ],
   "ctx": ": ru`Можно перейти в ту учётную запись — текущий прогресс останется в своей. Или привязать этот вход к текущему Ловчему.`}</p>`,"
  },
  {
   "k": "ту запись",
   "at": [
-   "www/js/login.js:135"
+   "www/js/login.js:151"
   ],
   "ctx": "{ label: ru`Перейти в ${r.player ? U.esc(r.player.name) : ru`ту запись`}`, cls: 'primary', fn: async () => res(await go()) }],"
  },
  {
   "k": "Перейти в {0}",
   "at": [
-   "www/js/login.js:135",
+   "www/js/login.js:151",
    "www/js/realms.js:211"
   ],
   "ctx": "{ label: ru`Перейти в ${r.player ? U.esc(r.player.name) : ru`ту запись`}`, cls: 'primary', fn: async () => res(await go()) }],"
@@ -10253,35 +10262,35 @@
  {
   "k": "Гость",
   "at": [
-   "www/js/login.js:148"
+   "www/js/login.js:164"
   ],
   "ctx": ": `<span class=\"acc-tag guest\">${ru`Гость`}</span>`;"
  },
  {
   "k": "Вход по почте",
   "at": [
-   "www/js/login.js:154"
+   "www/js/login.js:170"
   ],
   "ctx": "html: `<div class=\"mail-head\"><span class=\"mail-ic\">${UI.I.key}</span><b>${ru`Вход по почте`}</b><small>${ru`Для учётных записей, выданных Орденом`}</small>${S.d && this.isGuest() ? `<small class=\"mail-note\">${ru`Гостево"
  },
  {
   "k": "Для учётных записей, выданных Орденом",
   "at": [
-   "www/js/login.js:154"
+   "www/js/login.js:170"
   ],
   "ctx": "html: `<div class=\"mail-head\"><span class=\"mail-ic\">${UI.I.key}</span><b>${ru`Вход по почте`}</b><small>${ru`Для учётных записей, выданных Орденом`}</small>${S.d && this.isGuest() ? `<small class=\"mail-note\">${ru`Гостево"
  },
  {
   "k": "Гостевой прогресс на этом устройстве сменится прогрессом этой учётной записи",
   "at": [
-   "www/js/login.js:154"
+   "www/js/login.js:170"
   ],
   "ctx": "html: `<div class=\"mail-head\"><span class=\"mail-ic\">${UI.I.key}</span><b>${ru`Вход по почте`}</b><small>${ru`Для учётных записей, выданных Орденом`}</small>${S.d && this.isGuest() ? `<small class=\"mail-note\">${ru`Гостево"
  },
  {
   "k": "Почта",
   "at": [
-   "www/js/login.js:156",
+   "www/js/login.js:172",
    "www/js/ui-player.js:518"
   ],
   "ctx": "<label class=\"fld\"><span class=\"fld-ic\">${UI.I.mail}</span><input name=\"email\" type=\"email\" inputmode=\"email\" autocomplete=\"username\" placeholder=\"${ru`Почта`}\" required></label>"
@@ -10289,50 +10298,50 @@
  {
   "k": "Пароль",
   "at": [
-   "www/js/login.js:157"
+   "www/js/login.js:173"
   ],
   "ctx": "<label class=\"fld\"><span class=\"fld-ic\">${UI.I.lock}</span><input name=\"password\" type=\"password\" autocomplete=\"current-password\" placeholder=\"${ru`Пароль`}\" required>"
  },
  {
   "k": "Показать пароль",
   "at": [
-   "www/js/login.js:158",
-   "www/js/login.js:172"
+   "www/js/login.js:174",
+   "www/js/login.js:188"
   ],
   "ctx": "<button type=\"button\" class=\"fld-eye\" aria-label=\"${ru`Показать пароль`}\">${UI.I.eye}</button></label>"
  },
  {
   "k": "Скрыть пароль",
   "at": [
-   "www/js/login.js:172"
+   "www/js/login.js:188"
   ],
   "ctx": "eye.setAttribute('aria-label', show ? ru`Скрыть пароль` : ru`Показать пароль`);"
  },
  {
   "k": "Проверь почту",
   "at": [
-   "www/js/login.js:178"
+   "www/js/login.js:194"
   ],
   "ctx": "if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { fail(ru`Проверь почту`); f.email.focus(); return; }"
  },
  {
   "k": "Введи пароль",
   "at": [
-   "www/js/login.js:179"
+   "www/js/login.js:195"
   ],
   "ctx": "if (!password) { fail(ru`Введи пароль`); f.password.focus(); return; }"
  },
  {
   "k": "Вхожу…",
   "at": [
-   "www/js/login.js:180"
+   "www/js/login.js:196"
   ],
   "ctx": "go.disabled = true; go.textContent = ru`Вхожу…`; err.textContent = '';"
  },
  {
   "k": "Слишком много попыток — подожди минуту",
   "at": [
-   "www/js/login.js:184",
+   "www/js/login.js:200",
    "server/game/serve.js:713"
   ],
   "ctx": "if (error) { fail(/rate|many/i.test(error.message) ? ru`Слишком много попыток — подожди минуту` : ru`Неверная почта или пароль`); return; }"
@@ -10340,57 +10349,57 @@
  {
   "k": "Неверная почта или пароль",
   "at": [
-   "www/js/login.js:184"
+   "www/js/login.js:200"
   ],
   "ctx": "if (error) { fail(/rate|many/i.test(error.message) ? ru`Слишком много попыток — подожди минуту` : ru`Неверная почта или пароль`); return; }"
  },
  {
   "k": "Готово!",
   "at": [
-   "www/js/login.js:185"
+   "www/js/login.js:201"
   ],
   "ctx": "go.textContent = ru`Готово!`;"
  },
  {
   "k": "Нет связи с сервером — попробуй ещё раз",
   "at": [
-   "www/js/login.js:187"
+   "www/js/login.js:203"
   ],
   "ctx": "} catch (x) { fail(ru`Нет связи с сервером — попробуй ещё раз`); }"
  },
  {
   "k": "скачать",
   "at": [
-   "www/js/login.js:194"
+   "www/js/login.js:210"
   ],
   "ctx": "${this.appTooOld() ? `<p class=\"small onb-note\">${ru`Вход через Яндекс и Telegram — в новой версии приложения: ${'<a href=\"' + Updater.apkUrl() + '\">' + ru`скачать` + '</a>'}.`}</p>` : ''}"
  },
  {
   "k": "Вход через Яндекс и Telegram — в новой версии приложения: {0}.",
   "at": [
-   "www/js/login.js:194"
+   "www/js/login.js:210"
   ],
   "ctx": "${this.appTooOld() ? `<p class=\"small onb-note\">${ru`Вход через Яндекс и Telegram — в новой версии приложения: ${'<a href=\"' + Updater.apkUrl() + '\">' + ru`скачать` + '</a>'}.`}</p>` : ''}"
  },
  {
   "k": "или",
   "at": [
-   "www/js/login.js:195",
-   "www/js/login.js:291"
+   "www/js/login.js:211",
+   "www/js/login.js:307"
   ],
   "ctx": "<div class=\"auth-or\"><span>${ru`или`}</span></div>"
  },
  {
   "k": "Почта и пароль",
   "at": [
-   "www/js/login.js:196"
+   "www/js/login.js:212"
   ],
   "ctx": "<div class=\"auth-foot\"><button class=\"btn mail-login\"><span class=\"ml-ic\">${UI.I.key}</span><span class=\"ml-t\">${ru`Почта и пароль`}</span><span class=\"ml-chev\">›</span></button>${extra}</div></div>`;"
  },
  {
   "k": "Закрыть",
   "at": [
-   "www/js/login.js:224",
+   "www/js/login.js:240",
    "www/js/realms.js:196",
    "www/js/shop.js:108",
    "www/js/ui-player.js:291"
@@ -10400,7 +10409,7 @@
  {
   "k": "Возрастная категория",
   "at": [
-   "www/js/login.js:240",
+   "www/js/login.js:256",
    "www/js/ui.js:921"
   ],
   "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
@@ -10408,14 +10417,14 @@
  {
   "k": "С возвращением, Ловчий!",
   "at": [
-   "www/js/login.js:240"
+   "www/js/login.js:256"
   ],
   "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
  },
  {
   "k": "{0} уровень",
   "at": [
-   "www/js/login.js:244",
+   "www/js/login.js:260",
    "www/js/path.js:74"
   ],
   "ctx": "<div class=\"hero-main\"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${ru`${d.level} уровень`}</small><div class=\"acc-tags\">${this.accountTags()}</div></div>"
@@ -10423,7 +10432,7 @@
  {
   "k": "Выйти из учётной записи",
   "at": [
-   "www/js/login.js:245",
+   "www/js/login.js:261",
    "www/js/ui-player.js:521"
   ],
   "ctx": "${Game.on() ? `<button class=\"hero-exit\" aria-label=\"${ru`Выйти из учётной записи`}\">${UI.I.logout}</button>` : ''}"
@@ -10431,7 +10440,7 @@
  {
   "k": "духов",
   "at": [
-   "www/js/login.js:246",
+   "www/js/login.js:262",
    "www/js/ui-spirits.js:36"
   ],
   "ctx": "<div class=\"hero-stats\"><div><b>${U.fmtNum(d.spirits.length)}</b><span>${ru`духов`}</span></div><div><b>${dex}<small>/${SPECIES.length}</small></b><span>${ru`бестиарий`}</span></div>",
@@ -10444,108 +10453,108 @@
  {
   "k": "поймано",
   "at": [
-   "www/js/login.js:247"
+   "www/js/login.js:263"
   ],
   "ctx": "<div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>${ru`поймано`}</span></div></div>"
  },
  {
   "k": "Сохрани прогресс",
   "at": [
-   "www/js/login.js:250",
-   "www/js/login.js:256"
+   "www/js/login.js:266",
+   "www/js/login.js:272"
   ],
   "ctx": "${!Game.on() ? '' : guest ? UI.glass(ru`Сохрани прогресс`, 'lg-save', UI.I.cloud) : UI.glass(ru`Другой аккаунт`, 'lg-more', UI.I.swap)}"
  },
  {
   "k": "Другой аккаунт",
   "at": [
-   "www/js/login.js:250",
-   "www/js/login.js:258"
+   "www/js/login.js:266",
+   "www/js/login.js:274"
   ],
   "ctx": "${!Game.on() ? '' : guest ? UI.glass(ru`Сохрани прогресс`, 'lg-save', UI.I.cloud) : UI.glass(ru`Другой аккаунт`, 'lg-more', UI.I.swap)}"
  },
  {
   "k": "Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс",
   "at": [
-   "www/js/login.js:251"
+   "www/js/login.js:267"
   ],
   "ctx": "${guest && Game.on() ? `<p class=\"lg-legal\">${ru`Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс`}</p>` : ''}"
  },
  {
   "k": "Привяжи вход — и прогресс откроется на любом устройстве",
   "at": [
-   "www/js/login.js:256"
+   "www/js/login.js:272"
   ],
   "ctx": "if (save) save.onclick = () => this.sheet(root, `<b>${ru`Сохрани прогресс`}</b><small>${ru`Привяжи вход — и прогресс откроется на любом устройстве`}</small>`, this.buttons('link'));"
  },
  {
   "k": "Текущий прогресс останется в своей учётной записи",
   "at": [
-   "www/js/login.js:258"
+   "www/js/login.js:274"
   ],
   "ctx": "if (more) more.onclick = () => this.sheet(root, `<b>${ru`Другой аккаунт`}</b><small>${ru`Текущий прогресс останется в своей учётной записи`}</small>`,"
  },
  {
   "k": "вход",
   "at": [
-   "www/js/login.js:279"
+   "www/js/login.js:295"
   ],
   "ctx": "Loader.show(ru`Открываю ${this.NAMES[provider] || ru`вход`}…`); Loader.set(30);"
  },
  {
   "k": "Открываю {0}…",
   "at": [
-   "www/js/login.js:279"
+   "www/js/login.js:295"
   ],
   "ctx": "Loader.show(ru`Открываю ${this.NAMES[provider] || ru`вход`}…`); Loader.set(30);"
  },
  {
   "k": "Выйти?",
   "at": [
-   "www/js/login.js:287"
+   "www/js/login.js:303"
   ],
   "ctx": "UI.confirm(ru`Выйти?`, ru`Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.`, ru`Выйти`, () => this.signOut());"
  },
  {
   "k": "Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.",
   "at": [
-   "www/js/login.js:287"
+   "www/js/login.js:303"
   ],
   "ctx": "UI.confirm(ru`Выйти?`, ru`Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.`, ru`Выйти`, () => this.signOut());"
  },
  {
   "k": "Выйти",
   "at": [
-   "www/js/login.js:287",
-   "www/js/login.js:292"
+   "www/js/login.js:303",
+   "www/js/login.js:308"
   ],
   "ctx": "UI.confirm(ru`Выйти?`, ru`Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.`, ru`Выйти`, () => this.signOut());"
  },
  {
   "k": "Выйти из гостевой игры?",
   "at": [
-   "www/js/login.js:291"
+   "www/js/login.js:307"
   ],
   "ctx": "UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`и"
  },
  {
   "k": "<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.",
   "at": [
-   "www/js/login.js:291"
+   "www/js/login.js:307"
   ],
   "ctx": "UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`и"
  },
  {
   "k": "Чтобы сохранить его, сначала привяжи вход через {0}.",
   "at": [
-   "www/js/login.js:291"
+   "www/js/login.js:307"
   ],
   "ctx": "UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`и"
  },
  {
   "k": "Выхожу…",
   "at": [
-   "www/js/login.js:296"
+   "www/js/login.js:312"
   ],
   "ctx": "Loader.show(ru`Выхожу…`); Loader.set(40);"
  },
@@ -11642,7 +11651,7 @@
   "k": "Разломы открываются с {0} уровня Ловчего",
   "at": [
    "www/js/raid.js:36",
-   "www/js/raid.js:91",
+   "www/js/raid.js:139",
    "server/game/core.js:952",
    "server/game/core.js:988"
   ],
@@ -11663,164 +11672,307 @@
   "ctx": ": `<button class=\"btn primary wide rift-shop\">${Art.item('farpass')} ${ru`Нужен Дальний пропуск — в Лавку`}</button>`;"
  },
  {
-  "k": "Разлом открылся у «{0}»",
+  "k": "СИЛА БОССА",
   "at": [
-   "www/js/raid.js:52"
+   "www/js/raid.js:62"
   ],
-  "ctx": "${r.place ? `<div class=\"rift-meta\">${ru`Разлом открылся у «${U.esc(r.place)}»`}</div>` : ''}"
+  "ctx": "<div class=\"det-power\"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>"
  },
  {
-  "k": "Сила босса ≈ {0} · закроется через {1}",
+  "k": "закроется через {0}",
   "at": [
-   "www/js/raid.js:53"
+   "www/js/raid.js:63"
   ],
-  "ctx": "<div class=\"rift-meta\">${ru`Сила босса ≈ ${U.fmtNum(this.bossStats(r).hp * 1.5)} · закроется через ${`<b class=\"rift-left\">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>"
+  "ctx": "<div class=\"rift2-left\">${ru`закроется через ${`<b class=\"rift-left\">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>"
  },
  {
-  "k": "Слабость: {0}",
+  "k": "у «{0}»",
   "at": [
-   "www/js/raid.js:54"
+   "www/js/raid.js:64"
   ],
-  "ctx": "<div class=\"rift-tip\">${ru`Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}`}</div>"
+  "ctx": "${r.place ? `<div class=\"rift2-place\">${ru`у «${U.esc(r.place)}»`}</div>` : ''}"
  },
  {
-  "k": "Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.",
+  "k": "Босс",
   "at": [
-   "www/js/raid.js:55"
+   "www/js/raid.js:67"
   ],
-  "ctx": "${r.tier === 3 && !r.done ? `<div class=\"rift-tip\">${ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.`}</div>` : ''}"
- },
- {
-  "k": "{0}: урон +20% у {1}",
-  "at": [
-   "www/js/raid.js:56"
-  ],
-  "ctx": "${Sky.w ? `<div class=\"rift-tip\">${Art.wxIcon(Sky.w.key, 16)} ${ru`${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`}</div>` : ''}"
+  "ctx": "<div class=\"seg dt-tabs\"><button data-tab=\"fight\" class=\"on\">${ru`Бой`}</button><button data-tab=\"boss\">${ru`Босс`}</button><button data-tab=\"loot\">${ru`Награда`}</button></div>"
  },
  {
   "k": "Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.",
   "at": [
-   "www/js/raid.js:57",
-   "www/js/raid.js:83"
+   "www/js/raid.js:70",
+   "www/js/raid.js:131"
   ],
   "ctx": "${r.done ? `<div class=\"rift-done\">${ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`}</div>` : `"
  },
  {
+  "k": "До Разлома {0}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.",
+  "at": [
+   "www/js/raid.js:74"
+  ],
+  "ctx": "${far ? `<div class=\"rift-tip rift-far\">${ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>` : ''}"
+ },
+ {
   "k": "Разломов закрыто",
   "at": [
-   "www/js/raid.js:61"
+   "www/js/raid.js:75"
   ],
   "ctx": "${Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}"
  },
  {
-  "k": "До Разлома {0}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.",
+  "k": "Слабость",
   "at": [
-   "www/js/raid.js:62"
+   "www/js/raid.js:82"
   ],
-  "ctx": "${far ? `<div class=\"rift-tip rift-far\">${ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>`"
+  "ctx": "${row(ru`Слабость`, counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' '))}"
  },
  {
-  "k": "Позвать друзей — совместный бой",
+  "k": "урон +20% у {0}",
   "at": [
-   "www/js/raid.js:63"
+   "www/js/raid.js:83"
   ],
-  "ctx": ": `<button class=\"btn ghost wide rift-coop\">${ru`Позвать друзей — совместный бой`}</button>`}`}"
+  "ctx": "${w ? row(`${Art.wxIcon(Sky.w.key, 16)} ${w.name}`, ru`урон +20% у ${w.boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`) : ''}"
+ },
+ {
+  "k": "Уровень босса",
+  "at": [
+   "www/js/raid.js:84"
+  ],
+  "ctx": "${row(ru`Уровень босса`, ru`растёт с уровнем Ловчего`)}"
+ },
+ {
+  "k": "растёт с уровнем Ловчего",
+  "at": [
+   "www/js/raid.js:84"
+  ],
+  "ctx": "${row(ru`Уровень босса`, ru`растёт с уровнем Ловчего`)}"
+ },
+ {
+  "k": "Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.",
+  "at": [
+   "www/js/raid.js:85"
+  ],
+  "ctx": "<p class=\"rift2-note\">${T2 === 3 ? ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.` : ru`Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону"
+ },
+ {
+  "k": "Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону — уклон от удара босса.",
+  "at": [
+   "www/js/raid.js:85"
+  ],
+  "ctx": "<p class=\"rift2-note\">${T2 === 3 ? ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.` : ru`Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону"
+ },
+ {
+  "k": "Опыт",
+  "at": [
+   "www/js/raid.js:90",
+   "www/js/state.js:246",
+   "www/js/state.js:496"
+  ],
+  "ctx": "${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far ? '' : ru` · с друзьями +25%`))}"
+ },
+ {
+  "k": " · с друзьями +25%",
+  "at": [
+   "www/js/raid.js:90"
+  ],
+  "ctx": "${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far ? '' : ru` · с друзьями +25%`))}"
+ },
+ {
+  "k": "Припасы",
+  "at": [
+   "www/js/raid.js:93",
+   "www/js/shop.js:185"
+  ],
+  "ctx": "${row(ru`Припасы`, it('honey', T2) + ' · ' + (T2 === 1 ? it('herb', 1) : it('water', 1)))}"
+ },
+ {
+  "k": "Эссенция «{0}»",
+  "at": [
+   "www/js/raid.js:94",
+   "www/js/state.js:235",
+   "www/js/ui-spirits.js:381",
+   "www/js/ui-spirits.js:389"
+  ],
+  "ctx": "${row(ru`Эссенция «${SP[s.fam].name}»`, S.RIFT_ESS[T2] || 0)}"
+ },
+ {
+  "k": "Осколок Алатыря",
+  "at": [
+   "www/js/raid.js:95"
+  ],
+  "ctx": "${S.ALATYR_DROP.rift[T2] ? row(ru`Осколок Алатыря`, S.ALATYR_DROP.rift[T2] >= 1 ? ru`точно` : ru`шанс ${Math.round(S.ALATYR_DROP.rift[T2] * 100)}%`) : ''}"
+ },
+ {
+  "k": "точно",
+  "at": [
+   "www/js/raid.js:95"
+  ],
+  "ctx": "${S.ALATYR_DROP.rift[T2] ? row(ru`Осколок Алатыря`, S.ALATYR_DROP.rift[T2] >= 1 ? ru`точно` : ru`шанс ${Math.round(S.ALATYR_DROP.rift[T2] * 100)}%`) : ''}"
+ },
+ {
+  "k": "шанс {0}%",
+  "at": [
+   "www/js/raid.js:95",
+   "www/js/raid.js:96"
+  ],
+  "ctx": "${S.ALATYR_DROP.rift[T2] ? row(ru`Осколок Алатыря`, S.ALATYR_DROP.rift[T2] >= 1 ? ru`точно` : ru`шанс ${Math.round(S.ALATYR_DROP.rift[T2] * 100)}%`) : ''}"
+ },
+ {
+  "k": "Амулет",
+  "at": [
+   "www/js/raid.js:96",
+   "www/js/shop.js:23",
+   "www/js/ui-spirits.js:200"
+  ],
+  "ctx": "${row(ru`Амулет`, ru`шанс ${[5, 12, 30][T2 - 1]}%`)}"
+ },
+ {
+  "k": "Поимка босса",
+  "at": [
+   "www/js/raid.js:97"
+  ],
+  "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}"
+ },
+ {
+  "k": "оберег",
+  "at": [
+   "www/js/raid.js:97"
+  ],
+  "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}",
+  "forms": [
+   "оберег",
+   "оберега",
+   "оберегов"
+  ]
+ },
+ {
+  "k": "оберега",
+  "at": [
+   "www/js/raid.js:97"
+  ],
+  "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}",
+  "forms": [
+   "оберег",
+   "оберега",
+   "оберегов"
+  ]
+ },
+ {
+  "k": "оберегов",
+  "at": [
+   "www/js/raid.js:97"
+  ],
+  "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}",
+  "forms": [
+   "оберег",
+   "оберега",
+   "оберегов"
+  ]
+ },
+ {
+  "k": "После победы босса можно поймать. Оберегов на поимку больше за быструю победу (+1 за каждые 15 с быстрее 90 с) и за друзей (+2 за каждого). Уровень пойманного духа — не выше твоего, сияющий — примерно 1 из 20.",
+  "at": [
+   "www/js/raid.js:98"
+  ],
+  "ctx": "<p class=\"rift2-note\">${ru`После победы босса можно поймать. Оберегов на поимку больше за быструю победу (+1 за каждые 15 с быстрее 90 с) и за друзей (+2 за каждого). Уровень пойманного духа — не выше твоего, сияющий — п"
  },
  {
   "k": "Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.",
   "at": [
-   "www/js/raid.js:83"
+   "www/js/raid.js:131"
   ],
-  "ctx": "scr.querySelector('.rift-view').insertAdjacentHTML('beforeend', `<div class=\"rift-done\">${done ? ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.` : ru`Разлом схлопнулся — его час прошёл. Новые открыв"
+  "ctx": "scr.querySelector('[data-pane=\"fight\"]').innerHTML = `<div class=\"rift-done\">${done ? ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.` : ru`Разлом схлопнулся — его час прошёл. Новые открываются в нач"
  },
  {
   "k": "Ищу Разломы у Капищ вокруг…",
   "at": [
-   "www/js/raid.js:92"
+   "www/js/raid.js:140"
   ],
   "ctx": "const scr = UI.screen(ru`Разломы вокруг`, `<div class=\"rift-list\"><div class=\"q-note\">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');"
  },
  {
   "k": "Жду, когда найдётся твоё место на карте…",
   "at": [
-   "www/js/raid.js:94"
+   "www/js/raid.js:142"
   ],
   "ctx": "if (!pos) { box.innerHTML = `<div class=\"q-note\">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }"
  },
  {
   "k": "Пропусков: {0}",
   "at": [
-   "www/js/raid.js:108"
+   "www/js/raid.js:156"
   ],
   "ctx": "box.innerHTML = `<div class=\"shop-wallet\"><span class=\"zlat\">${Art.item('farpass')} ${ru`Пропусков: ${passes}`}</span><span>${ru`новые через ${`<b class=\"rl-left\">${left()}</b>`}`}</span></div>"
  },
  {
   "k": "новые через {0}",
   "at": [
-   "www/js/raid.js:108"
+   "www/js/raid.js:156"
   ],
   "ctx": "box.innerHTML = `<div class=\"shop-wallet\"><span class=\"zlat\">${Art.item('farpass')} ${ru`Пропусков: ${passes}`}</span><span>${ru`новые через ${`<b class=\"rl-left\">${left()}</b>`}`}</span></div>"
  },
  {
   "k": "закрыт",
   "at": [
-   "www/js/raid.js:113"
+   "www/js/raid.js:161"
   ],
   "ctx": "<div class=\"rr-d\">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')"
  },
  {
   "k": "рядом",
   "at": [
-   "www/js/raid.js:113"
+   "www/js/raid.js:161"
   ],
   "ctx": "<div class=\"rr-d\">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')"
  },
  {
   "k": "Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.",
   "at": [
-   "www/js/raid.js:114"
+   "www/js/raid.js:162"
   ],
   "ctx": ": `<div class=\"q-note\">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}"
  },
  {
   "k": "…и ещё {0} дальше",
   "at": [
-   "www/js/raid.js:115"
+   "www/js/raid.js:163"
   ],
   "ctx": "${more ? `<div class=\"q-note\">${ru`…и ещё ${more} дальше`}</div>` : ''}"
  },
  {
   "k": "Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.",
   "at": [
-   "www/js/raid.js:116"
+   "www/js/raid.js:164"
   ],
   "ctx": "<div class=\"q-note\">${ru`Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;"
  },
  {
   "k": "Уклон",
   "at": [
-   "www/js/raid.js:171"
+   "www/js/raid.js:219"
   ],
   "ctx": "<button class=\"raid-dodge\">${ru`Уклон`}</button>"
  },
  {
   "k": "Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.",
   "at": [
-   "www/js/raid.js:173"
+   "www/js/raid.js:221"
   ],
   "ctx": "<div class=\"raid-hint\">${ru`Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.`}</div>"
  },
  {
   "k": "В бой!",
   "at": [
-   "www/js/raid.js:206"
+   "www/js/raid.js:254"
   ],
   "ctx": "$('.raid-count').textContent = ru`В бой!`;"
  },
  {
   "k": "За бой можно выпить не больше 3 флаконов",
   "at": [
-   "www/js/raid.js:319",
+   "www/js/raid.js:367",
    "server/game/core.js:1036"
   ],
   "ctx": "if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }"
@@ -11828,21 +11980,21 @@
  {
   "k": "Дух устал — выше не поднять, нужен отдых",
   "at": [
-   "www/js/raid.js:320"
+   "www/js/raid.js:368"
   ],
   "ctx": "if (m.cur >= m.lim) { UI.toast(m.lim < m.max ? ru`Дух устал — выше не поднять, нужен отдых` : ru`Дух и так полон сил`); return; }"
  },
  {
   "k": "Дух и так полон сил",
   "at": [
-   "www/js/raid.js:320"
+   "www/js/raid.js:368"
   ],
   "ctx": "if (m.cur >= m.lim) { UI.toast(m.lim < m.max ? ru`Дух устал — выше не поднять, нужен отдых` : ru`Дух и так полон сил`); return; }"
  },
  {
   "k": "Живой воды нет",
   "at": [
-   "www/js/raid.js:321",
+   "www/js/raid.js:369",
    "server/game/core.js:1037"
   ],
   "ctx": "if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }"
@@ -11850,91 +12002,91 @@
  {
   "k": "Уклон! −{0}",
   "at": [
-   "www/js/raid.js:359"
+   "www/js/raid.js:407"
   ],
   "ctx": "this.float(dodged ? ru`Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');"
  },
  {
   "k": "Твои духи без сил.<br>Союзники ещё сражаются!",
   "at": [
-   "www/js/raid.js:371"
+   "www/js/raid.js:419"
   ],
   "ctx": "st.root.appendChild(U.el(`<div class=\"raid-ko\">${ru`Твои духи без сил.<br>Союзники ещё сражаются!`}</div>`));"
  },
  {
   "k": "Разлом закрыт!",
   "at": [
-   "www/js/raid.js:408"
+   "www/js/raid.js:456"
   ],
   "ctx": "<div class=\"res-title\">${ru`Разлом закрыт!`}</div>"
  },
  {
   "k": " (+{0} за скорость)",
   "at": [
-   "www/js/raid.js:411"
+   "www/js/raid.js:459"
   ],
   "ctx": "<div class=\"res-note\">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>"
  },
  {
   "k": " (+{0} за союзников)",
   "at": [
-   "www/js/raid.js:411"
+   "www/js/raid.js:459"
   ],
   "ctx": "<div class=\"res-note\">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>"
  },
  {
   "k": "Ослабленный {0} остался в нашем мире. У тебя <b>{1}</b> оберегов разлома{2}{3}.",
   "at": [
-   "www/js/raid.js:411"
+   "www/js/raid.js:459"
   ],
   "ctx": "<div class=\"res-note\">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>"
  },
  {
   "k": "Ловить!",
   "at": [
-   "www/js/raid.js:412"
+   "www/js/raid.js:460"
   ],
   "ctx": "<button class=\"btn primary wide\">${ru`Ловить!`}</button></div></div>`);"
  },
  {
   "k": "Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.",
   "at": [
-   "www/js/raid.js:421"
+   "www/js/raid.js:469"
   ],
   "ctx": "<div class=\"res-note\">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div>"
  },
  {
   "k": "Разлом устоял",
   "at": [
-   "www/js/raid.js:428"
+   "www/js/raid.js:476"
   ],
   "ctx": "<div class=\"res-title lose\">${ru`Разлом устоял`}</div>"
  },
  {
   "k": "Осталось сил у босса: {0}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.",
   "at": [
-   "www/js/raid.js:430"
+   "www/js/raid.js:478"
   ],
   "ctx": "<div class=\"res-note\">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div>"
  },
  {
   "k": "Покинуть битву?",
   "at": [
-   "www/js/raid.js:440"
+   "www/js/raid.js:488"
   ],
   "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);"
  },
  {
   "k": "Прогресс боя будет потерян.",
   "at": [
-   "www/js/raid.js:440"
+   "www/js/raid.js:488"
   ],
   "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);"
  },
  {
   "k": "Покинуть",
   "at": [
-   "www/js/raid.js:440"
+   "www/js/raid.js:488"
   ],
   "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);"
  },
@@ -12660,14 +12812,6 @@
   "ctx": "return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };"
  },
  {
-  "k": "Амулет",
-  "at": [
-   "www/js/shop.js:23",
-   "www/js/ui-spirits.js:200"
-  ],
-  "ctx": "else if (k === 'amulet') out.push({ k, n: 1, label: ru`Амулет` });"
- },
- {
   "k": "Облик",
   "at": [
    "www/js/shop.js:24",
@@ -12831,13 +12975,6 @@
    "www/js/shop.js:104"
   ],
   "ctx": "${x.receipt ? `<a class=\"pl-rc\" href=\"${U.esc(x.receipt)}\" target=\"_blank\" rel=\"noopener\">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class=\"pl-wait\">${ru`чек готовится`}</span>`}</div>`;"
- },
- {
-  "k": "Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.",
-  "at": [
-   "www/js/shop.js:106"
-  ],
-  "ctx": "html: list.length ? `<div class=\"pl-rows\">${list.map(row).join('')}</div><p class=\"pay-note\">${ru`Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.`}</p>`"
  },
  {
   "k": "Покупок пока нет",
@@ -13033,13 +13170,6 @@
    "www/js/shop.js:184"
   ],
   "ctx": "${row(bag, 'bag', ' · ' + ru`расширено ${S.d.bagExtra} из ${Rules.BAG_MAX_UP}`)}"
- },
- {
-  "k": "Припасы",
-  "at": [
-   "www/js/shop.js:185"
-  ],
-  "ctx": "<div class=\"pf-mh\"><span>${ru`Припасы`}</span></div>"
  },
  {
   "k": "Курс",
@@ -13273,32 +13403,32 @@
   "ctx": "${P.gold ? `<div class=\"pass-gold on\">★ ${ru`Золотая тропа открыта`}</div>`"
  },
  {
-  "k": "Открыть Золотую тропу · {0} {1}",
+  "k": "Открыть Золотую тропу",
   "at": [
    "www/js/shop.js:282"
   ],
-  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу · ${Art.item('zlat')} ${Rules.PASS.GOLD}`}</button><small class=\"pass-note\">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, "
+  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, плащ «Сезонная тропа» и Знак Тропы. У тебя {0} {1}.",
   "at": [
    "www/js/shop.js:282"
   ],
-  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу · ${Art.item('zlat')} ${Rules.PASS.GOLD}`}</button><small class=\"pass-note\">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, "
+  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.",
   "at": [
    "www/js/shop.js:282"
   ],
-  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу · ${Art.item('zlat')} ${Rules.PASS.GOLD}`}</button><small class=\"pass-note\">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, "
+  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "С {0} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.",
   "at": [
    "www/js/shop.js:282"
   ],
-  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу · ${Art.item('zlat')} ${Rules.PASS.GOLD}`}</button><small class=\"pass-note\">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, "
+  "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "Ступень",
@@ -13462,24 +13592,6 @@
    "www/js/state.js:221"
   ],
   "ctx": "if ((this.d.rod || 0) < n * this.pourRate(fam)) return ru`Нужно эссенции Рода: ${n * this.pourRate(fam)}`;"
- },
- {
-  "k": "Эссенция «{0}»",
-  "at": [
-   "www/js/state.js:235",
-   "www/js/ui-spirits.js:381",
-   "www/js/ui-spirits.js:389",
-   "www/js/ui-spirits.js:448"
-  ],
-  "ctx": "if (n) { this.addEssence(fam, n); out.push({ k: 'ess', n, label: ru`Эссенция «${SP[fam].name}»` }); }"
- },
- {
-  "k": "Опыт",
-  "at": [
-   "www/js/state.js:246",
-   "www/js/state.js:496"
-  ],
-  "ctx": "resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },"
  },
  {
   "k": "Дух не найден",

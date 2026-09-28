@@ -995,7 +995,8 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .sw.special::after { content: '₴'; position: absolute; right: -3px; top: -5px; font-size: 10px; font-weight: 800; color: var(--gold2); text-shadow: 0 1px 2px #000; }
 .sw { position: relative; }
 .pass-head h3 { margin: 4px 0 8px; } .pass-head > small { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; }
-.pass-buy { margin-top: 12px; display: inline-flex; flex-direction: row; justify-content: center; align-items: center; gap: 6px; }
+.pass-buy { margin-top: 12px; display: inline-flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; } /* 4.22.2: название и цена — строками, как у покупок в Лавке */
+.pass-buy small { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; opacity: .85; } .pass-buy small .art { width: 16px; height: 16px; }
 .pass-note { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; }
 .pass-gold { margin-top: 12px; text-align: center; font-weight: 800; color: var(--gold2); }
 .pass-cols { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 8px; margin: 14px 0 6px; font-size: 11px; color: var(--muted); text-align: center; }
@@ -4264,7 +4265,7 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .mk-rift.locked { filter: grayscale(.85) brightness(.8); opacity: .75; }
 .mk-rift.locked .mk-boss { animation: none; }
 /* 4.21: карточка духа — прокручиваются только строки (здоровье, усиление, характеристики…), кнопки и «В наличии» закреплены внизу */
-.det2 .dt-pane { overflow: hidden; }
+.det2 .dt-pane:has(> .dt-scroll) { overflow: hidden; } /* 4.22.2: только вкладки с прокруткой строк внутри (дух, Разлом) — у Лавки и других листается вся вкладка */
 .det2 .dt-pane > * { flex: none; }
 .det2 .dt-pane > .dt-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .det2 .dt-scroll > * { flex-shrink: 0; } /* строки не сжимаются — прокручиваются */
@@ -4302,6 +4303,22 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 /* 4.22.1: окно с тремя вариантами (вход уже привязан) — кнопки столбиком, главная сверху */
 .modal.btns-col .modal-btns { flex-direction: column-reverse; align-items: stretch; }
 .modal.btns-col .modal-btns .btn { width: 100%; margin: 0; }
-/* 4.22.1: портрет в профиле — Ловчий с кнопки меню на тёмном круге */
-.prof2 .pf-ava .prof-ava.hood { background: radial-gradient(circle at 50% 40%, #2d2159, #120b28 75%); }
-.prof2 .pf-ava .prof-ava.hood .mi { width: 84%; height: 84%; margin: 9% auto 0; }
+/* 4.22.2: экран Разлома — как у духа и Лиги: портал с боссом слева, сведения справа, вкладки «Бой · Босс · Награда» */
+.rift2-art { position: relative; display: grid; place-items: center; }
+.rift2-art .rift-portal { position: absolute; inset: 0; left: 0; top: 0; width: 100%; height: 100%; margin: 0; opacity: .85; }
+.rift2-art .rift-boss { position: relative; width: 74%; height: 74%; margin: 0; }
+.rift2 .det-hp { font-size: 12.5px; color: #fde68a; }
+.rift2 .det-hp .stars { letter-spacing: 1px; }
+.rift2-name { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-display); font-size: 24px; line-height: 1.1; }
+.rift2-left, .rift2-place { font-size: 12.5px; color: rgba(255, 255, 255, .65); }
+.rift2-left b { color: #fff; font-variant-numeric: tabular-nums; }
+.rift2 .dt-pane[data-pane="fight"] { gap: 8px; }
+.rift2-fight { display: flex; flex-direction: column; gap: 8px; }
+.rift2 .rift-team { margin: 0; }
+.rift2-acts { display: flex; flex-direction: column; gap: 8px; }
+.rift2-acts .btn { min-height: 48px; }
+.rift2 .rift-far { font-size: 12px; text-align: left; }
+.rift2 .rift-done { margin: auto 0; }
+.rift2-note { margin: 6px 2px 0; font-size: 12.5px; line-height: 1.4; color: rgba(255, 255, 255, .62); text-align: left; }
+.rift2 .dt-row > b { white-space: normal; text-align: right; }
+.rift2 .dt-row > b .art { width: 16px; height: 16px; }
