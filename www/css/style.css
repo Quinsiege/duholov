@@ -4282,16 +4282,24 @@ body.rm-open #hud > :not(#menuBtn) { opacity: 0; pointer-events: none; transitio
   background: var(--lg-bg); box-shadow: var(--lg-sh), 0 0 18px rgba(251, 191, 36, .22); border: 1px solid rgba(255, 255, 255, .34);
   -webkit-backdrop-filter: blur(12px) saturate(1.7) brightness(1.08); backdrop-filter: blur(12px) saturate(1.7) brightness(1.08); transition: transform .2s; }
 #hud #menuBtn.orb:active { transform: scale(.92); }
-#menuBtn .ob-ico { position: relative; width: 30px; height: 30px; }
-#menuBtn .ob-grid { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), opacity .2s; }
-#menuBtn .ob-grid i { border-radius: 5px; background: linear-gradient(145deg, #fff7d1, #fde68a 40%, #f59e0b); box-shadow: 0 1px 3px rgba(60, 20, 4, .45), inset 0 1px 0 rgba(255, 255, 255, .7); }
+#menuBtn .ob-ico { position: relative; width: 54px; height: 54px; }
+#menuBtn .ob-emb { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 1px 2px rgba(20, 8, 2, .55)) drop-shadow(0 0 8px rgba(251, 191, 36, .28)); transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), opacity .2s; }
+/* огонёк-дух в медальоне: дышит, свечение пульсирует, искорки мерцают по очереди */
+#menuBtn .ob-wisp { animation: obWisp 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 90%; }
+@keyframes obWisp { 50% { transform: scale(1.05, .96) translateY(1px); } }
+#menuBtn .ob-halo { animation: obHalo 3.4s ease-in-out infinite; }
+@keyframes obHalo { 50% { opacity: .55; } }
+#menuBtn .ob-sp { transform-box: fill-box; transform-origin: center; animation: obSp 2.6s ease-in-out infinite; }
+#menuBtn .ob-sp.s2 { animation-delay: -.9s; } #menuBtn .ob-sp.s3 { animation-delay: -1.7s; }
+@keyframes obSp { 0%, 100% { opacity: .35; transform: scale(.6); } 50% { opacity: 1; transform: scale(1); } }
+.calm #menuBtn .ob-wisp, .calm #menuBtn .ob-halo, .calm #menuBtn .ob-sp, .eco #menuBtn .ob-wisp, .eco #menuBtn .ob-halo, .eco #menuBtn .ob-sp { animation: none; }
 #menuBtn .ob-x { position: absolute; inset: 0; opacity: 0; transform: rotate(-90deg) scale(.4); transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), opacity .2s; }
 #menuBtn .ob-x i { position: absolute; left: 50%; top: 50%; width: 30px; height: 5px; margin: -2.5px 0 0 -15px; border-radius: 3px; background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 1px 3px rgba(60, 20, 4, .45); transform: rotate(45deg); }
 #menuBtn .ob-x i + i { transform: rotate(-45deg); }
-body.rm-open #menuBtn .ob-grid { opacity: 0; transform: rotate(90deg) scale(.4); }
+body.rm-open #menuBtn .ob-emb { opacity: 0; transform: rotate(90deg) scale(.4); }
 body.rm-open #menuBtn .ob-x { opacity: 1; transform: none; }
 #hud #menuBtn .badge { top: -2px; right: -2px; }
-.calm #menuBtn .ob-grid, .calm #menuBtn .ob-x { transition: opacity .2s; }
+.calm #menuBtn .ob-emb, .calm #menuBtn .ob-x { transition: opacity .2s; }
 #hud #profileBtn #hudName, #hud #profileBtn #hudRank { font-family: var(--f-head) !important; -webkit-text-stroke: 0 !important; paint-order: normal !important; letter-spacing: .1px !important; filter: none !important; }
 #hud #profileBtn #hudName { font-weight: 700 !important; font-size: 20px !important; }
 #hud #profileBtn #hudRank { font-weight: 500 !important; font-size: 12.5px !important; }
