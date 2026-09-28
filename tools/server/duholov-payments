@@ -1,0 +1,38 @@
+#!/bin/bash
+# Оплаты Казны → Telegram (тот же бот и чат, что у duholov-monitor). cron: каждую минуту.
+# О каждой новой оплате — сообщение с данными для чека в «Мой налог»; о возврате — напоминание аннулировать чек.
+# Кому уже сообщили — /var/lib/duholov-monitor/payments (номер заказа:статус). «duholov-payments test» — пример сообщения.
+set -u
+S=/var/lib/duholov-monitor; mkdir -p "$S"; touch "$S/payments"
+exec 9>"$S/payments.lock"; flock -n 9 || exit 0 # один запуск за раз — иначе сообщение ушло бы дважды
+TG_TOKEN=$(grep -E '^TELEGRAM_BOT_TOKEN=' /opt/duholov/functions.env | cut -d= -f2-)
+TG_CHAT=$(grep -E '^TG_CHAT=' /root/.duholov-alerts 2>/dev/null | cut -d= -f2-)
+[ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
+send() { curl -s --max-time 20 "https://api.telegram.org/bot$TG_TOKEN/sendMessage" --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$1" | grep -q '"ok":true'; }
+Q() { docker exec supabase-db psql -U supabase_admin -d postgres -tAF '|' -c "$1" 2>/dev/null; }
+METHOD() { case "$1" in sbp) echo "СБП";; bank_card) echo "карта";; sberbank) echo "SberPay";; tinkoff_bank) echo "T-Pay";; yoo_money) echo "ЮMoney";; *) echo "${1:-—}";; esac; }
+
+if [ "${1:-}" = "test" ]; then send "🧪 Духолов: так будут выглядеть оплаты
+💰 Оплата 99 ₽ · СБП · 100 златников
+Игрок: Пример · 28.09 03:05 МСК
+Чек в «Мой налог»: «Игровая валюта в игре «Духолов»», 99 ₽, физлицо, дата 28.09.2026"; exit 0; fi
+
+# оплаты и возвраты за 3 дня, о которых ещё не сообщали
+Q "select p.id, p.status, p.amount, p.zlat, coalesce(p.method, ''), coalesce(s.data->>'name', '—'),
+     to_char(p.updated_at at time zone 'Europe/Moscow', 'DD.MM HH24:MI'), to_char(p.updated_at at time zone 'Europe/Moscow', 'DD.MM.YYYY')
+   from payments p left join saves s on s.user_id = p.user_id
+   where p.status in ('succeeded', 'refunded') and p.updated_at > now() - interval '3 days' order by p.updated_at" |
+while IFS='|' read -r id st amount zlat method name at day; do
+  [ -n "$id" ] || continue
+  grep -qx "$id:$st" "$S/payments" && continue
+  sum=$(printf '%.0f' "$amount")
+  if [ "$st" = "succeeded" ]; then
+    text="💰 Оплата $sum ₽ · $(METHOD "$method") · $zlat златников
+Игрок: $name · $at МСК
+Чек в «Мой налог»: «Игровая валюта в игре «Духолов»», $sum ₽, физлицо, дата $day"
+  else
+    text="↩️ Возврат $sum ₽ · игрок: $name · $at МСК
+Аннулируй чек этой продажи в «Мой налог» (причина — возврат средств)"
+  fi
+  send "$text" && echo "$id:$st" >> "$S/payments"
+done
