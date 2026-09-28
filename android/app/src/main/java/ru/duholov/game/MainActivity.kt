@@ -5,7 +5,11 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import android.webkit.GeolocationPermissions
@@ -49,7 +53,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 8 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 9 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
         // геолокацию и камеру получает только сама игра, не страницы сервисов входа
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
@@ -123,6 +127,38 @@ class MainActivity : ComponentActivity() {
     }
     private fun googleResult(o: JSONObject) {
         if (onGame()) web.evaluateJavascript("window.nativeGoogle && window.nativeGoogle($o)", null)
+    }
+
+    // 9: положение только по сетям (Wi-Fi и вышки связи, без спутников) — игра сверяет с ним GPS: в России спутниковый
+    // сигнал глушат и подменяют, а положение по сетям подмена не трогает. Ответ — window.nativeNetFix({ lat, lng, acc } | { error })
+    private fun netFix() {
+        val lm = getSystemService(LOCATION_SERVICE) as LocationManager
+        var sent = false
+        fun send(l: Location?) {
+            if (sent) return
+            sent = true
+            val o = if (l != null) JSONObject().put("lat", l.latitude).put("lng", l.longitude).put("acc", l.accuracy.toDouble()).put("t", l.time)
+                else JSONObject().put("error", "none")
+            if (onGame()) web.evaluateJavascript("window.nativeNetFix && window.nativeNetFix($o)", null)
+        }
+        if (!onGame() || !(has(Manifest.permission.ACCESS_COARSE_LOCATION) || has(Manifest.permission.ACCESS_FINE_LOCATION))) return send(null)
+        try {
+            if (!lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) return send(null)
+            if (Build.VERSION.SDK_INT >= 30) {
+                lm.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, ContextCompat.getMainExecutor(this)) { send(it) }
+            } else {
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(l: Location) { lm.removeUpdates(this); send(l) }
+                    override fun onProviderEnabled(provider: String) {}
+                    override fun onProviderDisabled(provider: String) {}
+                    @Deprecated("Deprecated in Java")
+                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+                }
+                @Suppress("DEPRECATION")
+                lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, mainLooper)
+                web.postDelayed({ if (!sent) { lm.removeUpdates(listener); send(null) } }, 25000)
+            }
+        } catch (e: Exception) { send(null) }
     }
 
     // 6: ссылка не на страницу (intent:, sberpay:, bank…: — приложение банка, СБП, SberPay, T-Pay) — открыть приложение;
@@ -211,6 +247,12 @@ class MainActivity : ComponentActivity() {
             @JavascriptInterface
             fun yandexSignIn() {
                 runOnUiThread { signInYandex() }
+            }
+
+            // 9: положение по сетям (ответ — window.nativeNetFix)
+            @JavascriptInterface
+            fun netLocation() {
+                runOnUiThread { netFix() }
             }
         }, "DuholovNative")
 

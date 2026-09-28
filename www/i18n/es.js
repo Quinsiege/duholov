@@ -1382,6 +1382,7 @@ I18N.dict = {
 "Прогресс загружен":"Progreso cargado",
 "Не получилось запустить игру":"No se pudo iniciar el juego",
 "Проверь подключение к интернету и попробуй ещё раз.":"Revisa tu conexión a internet y vuelve a intentarlo.",
+"GPS подменяют — ведём тебя по Wi-Fi и вышкам связи.":"El GPS está siendo falseado: te seguimos por Wi-Fi y antenas de telefonía.",
 "Похоже, GPS глушат или подменяют — держим твоё последнее место и сверяемся с сетями.":"Parece que el GPS está siendo bloqueado o falseado: mantenemos tu última posición y la comprobamos con las redes.",
 "Доступ к геолокации запрещён.":"El acceso a la ubicación está denegado.",
 "Не удалось получить координаты.":"No se pudieron obtener las coordenadas.",

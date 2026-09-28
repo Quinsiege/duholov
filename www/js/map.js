@@ -309,25 +309,27 @@ const MapView = {
       { enableHighAccuracy: true, maximumAge: Cfg.s.eco ? 5000 : 1000, timeout: 30000 });
     clearTimeout(this._gpsTimer);
     this._gpsTimer = setTimeout(() => { if (!this.gpsOK && !this.demo) this.offerDemo(); }, 15000);
+    clearInterval(this._netT); this._netT = setInterval(() => this.netTick(), 5000); // 4.25.3: сверка с сетями (защита от подмены GPS)
   },
   stopGPS() {
     if (this.watchId != null) navigator.geolocation.clearWatch(this.watchId);
     this.watchId = null;
     clearTimeout(this._gpsTimer);
+    clearInterval(this._netT);
   },
   onFix(p) {
     if (this.demo) return;
-    const { latitude: lat, longitude: lng, accuracy } = p.coords, q = { lat, lng, acc: accuracy || 50, t: p.timestamp || Date.now() };
+    const { latitude: lat, longitude: lng, accuracy } = p.coords, q = { lat, lng, acc: accuracy || 50, t: p.timestamp || Date.now(), rt: Date.now() }; // rt — время получения: при подмене время спутников тоже врёт
     if (!this.guardOk(q)) return; // 4.25.2: скачок от глушения или подмены GPS — не верим, держим последнее надёжное место
     this.applyFix(q);
   },
   // точка принята: путь, скорость, значок GPS, направление, карта
   applyFix({ lat, lng, acc: accuracy, t }, net) {
     const first = !this.gpsOK;
-    this.gpsOK = true;
+    this.gpsOK = true; this._fixAt = Date.now();
     this.acc = accuracy;
     Game.addPoint(lat, lng, accuracy); // путь считает сервер (4.20: быстрее бега — не засчитывается)
-    if (accuracy <= Rules.SPEED.ACC) this.pace({ lat, lng, t });
+    if (!net && accuracy <= Rules.SPEED.ACC) this.pace({ lat, lng, t }); // по сетям скорость не мерим — их точки прыгают
     UI.setGps(this.jam ? 'jam' : accuracy <= 40 ? 'ok' : 'weak', accuracy);
     if (!net && this.lastGps && accuracy <= 40) {
       const d = U.dist(this.lastGps.lat, this.lastGps.lng, lat, lng);
@@ -341,71 +343,101 @@ const MapView = {
     if (first) { this.refresh(); Poi.ensure(); }
   },
 
-  /* 4.25.2: защита от глушения и подмены GPS (в России спутниковый сигнал глушат и подменяют — телефон вдруг «видит»
-     себя за километры, в аэропорту или в другом городе). Скачок — точка дальше погрешности и «быстрее» VMAX — не принимается:
-     Ловчий остаётся на последнем надёжном месте, значок GPS — «Помехи GPS». Сверяемся с положением по сетям (Wi-Fi и вышки
-     связи — их подмена спутников не трогает): сети рядом с прежним местом — это подмена, дальше ведём Ловчего по сетям;
-     сети рядом с новой точкой — это настоящий переезд (метро, тоннель), принимаем. Без сетей новое место принимается,
-     если спутники держат его STABLE_MS и не меньше STABLE_N точек подряд. */
-  GUARD: { VMAX: 70, SLACK: 40, CLUSTER: 150, STABLE_MS: 90000, STABLE_N: 6, NET_EVERY: 20000, NET_ACC: 3000, NET_USE: 400 },
+  /* 4.25.2–4.25.3: защита от глушения и подмены GPS. В России спутниковый сигнал глушат (координат нет) и подменяют
+     (телефон уверенно «видит» себя за километры — в аэропорту, в другом городе, иногда с самого запуска игры).
+     Второй источник — положение по сетям: Wi-Fi и вышки связи, их подмена спутников не трогает. В приложении его даёт сам
+     Android (DuholovNative.netLocation — только сети, без спутников), в браузере — запрос низкой точности.
+     Сверяемся с ним раз в NET_OK, при помехах — раз в NET_JAM:
+     - спутники и сети расходятся (дважды подряд или сразу на FAR) — подмена: ведём Ловчего по сетям, пока спутники не вернутся;
+     - спутники молчат — глушение: тоже ведём по сетям;
+     - скачок спутников дальше погрешности и «быстрее» VMAX — ждём сверки с сетями: сети там же — настоящий переезд;
+       сетей нет вовсе — новое место принимается, если спутники держат его STABLE_MS и не меньше STABLE_N точек подряд. */
+  GUARD: { VMAX: 70, SLACK: 40, CLUSTER: 150, STABLE_MS: 90000, STABLE_N: 6, NET_OK: 45000, NET_JAM: 10000, NET_ACC: 3000,
+    DISAGREE: 1000, FAR: 5000, QUIET: 20000 },
   guardOk(q) {
     const G = this.GUARD, g = this._good;
-    if (!g) { this._good = q; this.netCheck(q, true); return true; }
-    const d = U.dist(g.lat, g.lng, q.lat, q.lng), dt = Math.max(1, (q.t - g.t) / 1000);
+    this._gps = q;
+    if (this.spoof) {
+      // подмена подтверждена сетями: спутникам верим, только когда они снова рядом с положением по сетям
+      const n = this._net;
+      if (n && U.dist(n.lat, n.lng, q.lat, q.lng) <= q.acc + n.acc + G.SLACK) { this.endJam(); this._good = q; this._sus = null; return true; }
+      return false;
+    }
+    if (!g) { this._good = q; setTimeout(() => this.netCheck(true)); return true; } // первая точка — сразу сверим с сетями (подмена с запуска)
+    const d = U.dist(g.lat, g.lng, q.lat, q.lng), dt = Math.max(1, (q.rt - g.rt) / 1000);
     if (d <= q.acc + g.acc + G.SLACK || d / dt <= G.VMAX) {
-      if (this.jam && this._netOld && d > q.acc + g.acc + G.SLACK) return false; // сети уже подтвердили подмену — ждём, пока спутники вернутся к нам
       if (this.jam) this.endJam();
       this._good = q; this._sus = null;
       return true;
     }
     // скачок: копим «подозрительное» место — вдруг это настоящий переезд
     const s = this._sus;
-    if (s && U.dist(s.lat, s.lng, q.lat, q.lng) <= q.acc + s.acc + G.CLUSTER) { s.n++; s.last = q; } else this._sus = { lat: q.lat, lng: q.lng, acc: q.acc, t0: q.t, n: 1, last: q };
+    if (s && U.dist(s.lat, s.lng, q.lat, q.lng) <= q.acc + s.acc + G.CLUSTER) { s.n++; s.last = q; } else this._sus = { lat: q.lat, lng: q.lng, acc: q.acc, t0: q.rt, n: 1, last: q };
     this.startJam();
-    this.netCheck(q);
-    const s2 = this._sus;
-    if (!this._netOld && s2.n >= G.STABLE_N && q.t - s2.t0 >= G.STABLE_MS) { this.endJam(); this._good = q; this._sus = null; return true; }
+    this.netCheck(true);
+    const s2 = this._sus, netAlive = Date.now() - (this._netOkAt || 0) < 3 * G.NET_OK;
+    if (!netAlive && s2.n >= G.STABLE_N && q.rt - s2.t0 >= G.STABLE_MS) { this.endJam(); this._good = q; this._sus = null; return true; }
     return false;
   },
-  startJam() {
+  startJam(spoof) {
+    if (spoof && !this.spoof) { this.spoof = true; if (this.jam) UI.toast(ru`GPS подменяют — ведём тебя по Wi-Fi и вышкам связи.`); }
     if (this.jam) return;
-    this.jam = true; this._netOld = false;
+    this.jam = true;
     UI.setGps('jam', this.acc);
-    UI.toast(ru`Похоже, GPS глушат или подменяют — держим твоё последнее место и сверяемся с сетями.`);
-    clearInterval(this._jamT);
-    this._jamT = setInterval(() => { if (this.jam && !document.hidden) this.netCheck(this._sus ? this._sus.last : this._good); }, this.GUARD.NET_EVERY);
+    UI.toast(spoof ? ru`GPS подменяют — ведём тебя по Wi-Fi и вышкам связи.` : ru`Похоже, GPS глушат или подменяют — держим твоё последнее место и сверяемся с сетями.`);
   },
   endJam() {
+    this.spoof = false; this._dis = 0;
     if (!this.jam) return;
-    this.jam = false; this._netOld = false;
-    clearInterval(this._jamT);
+    this.jam = false;
     UI.setGps(this.acc <= 40 ? 'ok' : 'weak', this.acc);
   },
-  // положение по сетям (enableHighAccuracy: false) — не чаще раза в NET_EVERY; first — сверка первой точки при запуске
-  netCheck(q, first) {
-    const G = this.GUARD;
-    if (!q || !('geolocation' in navigator) || Date.now() - (this._netAt || 0) < G.NET_EVERY - 1000) return;
-    this._netAt = Date.now();
-    navigator.geolocation.getCurrentPosition(p => {
-      const n = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 1000, t: p.timestamp || Date.now() };
-      if (!(n.acc <= G.NET_ACC) || this.demo) return;
-      const g = this._good, dNew = U.dist(n.lat, n.lng, q.lat, q.lng);
-      if (first) {
-        // спутники с самого начала показывают другое место, а сети — это: верим сетям
-        if (dNew > Math.max(3000, n.acc * 3)) { this._good = n; this._netOld = true; this.startJam(); this.applyFix(n, true); }
-        return;
-      }
-      if (!this.jam || !g) return;
-      const dOld = U.dist(n.lat, n.lng, g.lat, g.lng);
-      if (dNew <= n.acc + q.acc + 300 && dNew < dOld) { this.endJam(); this._good = q; this._sus = null; this.applyFix(q); return; } // настоящий переезд
-      if (dOld < dNew) { // подмена: сети рядом с нами
-        this._netOld = true;
-        if (n.acc <= G.NET_USE) { this._good = n; this.applyFix(n, true); } // точное положение по сетям — ведём Ловчего по нему
-      }
-    }, () => { /* сетей нет — решим по устойчивости нового места */ }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 });
+  // сверка с сетями: по таймеру (раз в NET_OK, при помехах — NET_JAM) или сразу (soon) — не чаще раза в NET_JAM
+  netTick() {
+    if (this.demo || document.hidden || this.watchId == null) return;
+    if (Date.now() - (this._netAt || 0) >= (this.jam || !this.gpsOK ? this.GUARD.NET_JAM : this.GUARD.NET_OK)) this.netCheck();
   },
+  netCheck(soon) {
+    const now = Date.now();
+    if (this._netBusy && now - this._netBusy < 35000) return;
+    if (soon && now - (this._netAt || 0) < this.GUARD.NET_JAM - 1000) return;
+    this._netAt = now; this._netBusy = now;
+    const done = n => { this._netBusy = 0; if (n) this.onNet(n); };
+    const N = window.DuholovNative;
+    if (N && N.netLocation) { // приложение: только сети (Wi-Fi, вышки) — ответ в window.nativeNetFix
+      window.nativeNetFix = o => done(o && isFinite(o.lat) && isFinite(o.lng) ? { lat: +o.lat, lng: +o.lng, acc: +o.acc || 1000 } : null);
+      try { N.netLocation(); return; } catch (e) { /* не вышло — как в браузере */ }
+    }
+    if (!('geolocation' in navigator)) { done(null); return; }
+    // maximumAge: 0 — иначе браузер отдаёт последнюю точку спутников (ту самую подменённую)
+    navigator.geolocation.getCurrentPosition(p => done({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 1000 }),
+      () => done(null), { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 });
+  },
+  onNet(n) {
+    const G = this.GUARD;
+    if (this.demo || !(n.acc <= G.NET_ACC)) return;
+    n.rt = n.t = Date.now();
+    this._net = n; this._netOkAt = n.rt;
+    const q = this._gps, fresh = q && n.rt - q.rt < 30000;
+    if (!fresh) { // спутники молчат — глушат: ведём по сетям
+      if (!this.gpsOK || n.rt - (this._fixAt || 0) > G.QUIET) { this.startJam(); this.follow(n); }
+      return;
+    }
+    const d = U.dist(n.lat, n.lng, q.lat, q.lng);
+    if (d > Math.max(G.DISAGREE, 2 * n.acc + q.acc)) { // спутники не там, где сети
+      this._dis = (this._dis || 0) + 1;
+      if (this.spoof || this._dis >= 2 || d > G.FAR + 2 * n.acc) { this.startJam(true); this.follow(n); }
+      else setTimeout(() => this.netCheck(true), G.NET_JAM); // расхождение небольшое — перепроверим
+      return;
+    }
+    this._dis = 0;
+    if (this.jam) { this.endJam(); this._good = q; this._sus = null; this.applyFix(q); } // сети там же, где спутники: переезд настоящий или помехи кончились
+  },
+  follow(n) { this._good = n; this.applyFix(n, true); },
   gpsFail(err) {
     if (this.demo) return;
+    if (err && err.code !== 1) this.netCheck(true); // спутники не отвечают — может, глушат: сверимся с сетями
+    if (this.jam) return;
     UI.setGps('off');
     if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? ru`Доступ к геолокации запрещён.` : ru`Не удалось получить координаты.`);
   },

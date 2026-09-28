@@ -12,8 +12,9 @@ android {
         minSdk = 24
         targetSdk = 34
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
-        versionCode = 8
-        versionName = "4.23.0"
+        versionCode = 9
+        versionName = "4.25.3"
+        // 9: положение по сетям для защиты от подмены GPS (DuholovNative.netLocation)
         // 8: вход через Яндекс в приложении (Yandex LoginSDK) — ID приложения Яндекса публичный (игра отдаёт его каждому клиенту)
         manifestPlaceholders["YANDEX_CLIENT_ID"] = "03990507cbdf4990b2cb031891caa4d7"
     }
