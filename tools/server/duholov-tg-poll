@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+# 4.23: сообщения боту Telegram → сервер игры (вход через бота на телефоне). Вебхук Telegram до сервера в России
+# не достучался (соединение режется по пути), поэтому сервер сам забирает сообщения (getUpdates, долгий опрос)
+# и передаёт их функции игры локально — на …/functions/v1/game/tg с тем же секретом заголовка, что у вебхука.
+# Служба systemd: duholov-tg-poll.service (tools/server/duholov-tg-poll.service). Токен бота — из /opt/duholov/functions.env.
+import hashlib, json, re, time, urllib.request
+
+env = open('/opt/duholov/functions.env', encoding='utf-8').read()
+m = re.search(r'^TELEGRAM_BOT_TOKEN=(.*)$', env, re.M)
+if not m or not m.group(1).strip():
+    raise SystemExit('Нет TELEGRAM_BOT_TOKEN — задай его командой duholov-secrets')
+T = m.group(1).strip()
+S = hashlib.sha256(('tgwh:' + T).encode()).hexdigest()[:48]   # как TG.secret на сервере игры
+API = f'https://api.telegram.org/bot{T}'
+LOCAL = 'http://127.0.0.1:8000/functions/v1/game/tg'
+
+def call(url, data=None, timeout=70):
+    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'} if data else {})
+    return json.load(urllib.request.urlopen(req, timeout=timeout))
+
+try: call(API + '/deleteWebhook', timeout=20)   # с вебхуком getUpdates не работает
+except Exception as e: print('deleteWebhook:', e, flush=True)
+
+offset = 0
+while True:
+    try:
+        r = call(f'{API}/getUpdates?timeout=50&offset={offset}&allowed_updates=%5B%22message%22%5D')
+        for u in r.get('result', []):
+            offset = u['update_id'] + 1
+            req = urllib.request.Request(LOCAL, data=json.dumps(u).encode(), method='POST',
+                                         headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': S})
+            try: urllib.request.urlopen(req, timeout=30).read()
+            except Exception as e: print('игра:', e, flush=True)
+    except Exception as e:
+        print('Telegram:', e, flush=True)
+        time.sleep(5)

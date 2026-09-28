@@ -1,15 +1,18 @@
 #!/bin/bash
-# 4.23: приёмник сообщений бота Telegram (вход через бота на телефоне): сообщения боту → сервер игры …/functions/v1/game/tg.
-# Секрет заголовка — sha256("tgwh:" + токен бота), первые 48 знаков (так же считает сервер игры: TG.secret).
-# «duholov-tg-webhook» — подключить; «duholov-tg-webhook info» — состояние; «duholov-tg-webhook off» — отключить.
+# 4.23: вебхук бота Telegram — ДИАГНОСТИКА. Telegram до сервера в России не достучался (Connection timed out), поэтому
+# сообщения боту забирает служба duholov-tg-poll (getUpdates) и передаёт серверу игры локально. С вебхуком служба не работает.
+# «duholov-tg-webhook» / «info» — состояние; «off» — снять вебхук; «on» — поставить (только если доступ Telegram к серверу появился:
+# тогда останови службу: systemctl disable --now duholov-tg-poll).
 set -euo pipefail
 T=$(grep -E '^TELEGRAM_BOT_TOKEN=' /opt/duholov/functions.env | cut -d= -f2-)
 [ -n "$T" ] || { echo "Нет TELEGRAM_BOT_TOKEN — задай его командой duholov-secrets"; exit 1; }
 API="https://api.telegram.org/bot$T"
-case "${1:-on}" in
-  info) curl -s --max-time 20 "$API/getWebhookInfo" | jq '{url: .result.url, pending: .result.pending_update_count, last_error: .result.last_error_message, last_error_date: .result.last_error_date}' ;;
+case "${1:-info}" in
+  info) curl -s --max-time 20 "$API/getWebhookInfo" | jq '{url: .result.url, pending: .result.pending_update_count, last_error: .result.last_error_message}'
+        echo "служба duholov-tg-poll: $(systemctl is-active duholov-tg-poll 2>/dev/null || true)" ;;
   off)  curl -s --max-time 20 "$API/deleteWebhook" | jq -c . ;;
-  *)    S=$(printf 'tgwh:%s' "$T" | sha256sum | cut -c1-48)
+  on)   S=$(printf 'tgwh:%s' "$T" | sha256sum | cut -c1-48)
         curl -s --max-time 20 "$API/setWebhook" --data-urlencode "url=https://api.duholov.ru/functions/v1/game/tg" \
           --data-urlencode "secret_token=$S" --data-urlencode 'allowed_updates=["message"]' | jq -c . ;;
+  *)    echo "info | off | on"; exit 1 ;;
 esac
