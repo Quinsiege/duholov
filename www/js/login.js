@@ -25,6 +25,8 @@ const Login = {
   app() { const m = /DuholovApp\/(\d+)/.exec(navigator.userAgent); return m ? +m[1] : 0; },
   // 7: в приложении Google — через системное окно выбора аккаунта (DuholovNative.googleSignIn); в старых приложениях его нет
   nativeGoogle() { return !!(window.DuholovNative && window.DuholovNative.googleSignIn); },
+  // 8: в приложении Яндекс — официальный вход (приложение Яндекса); не вышло — прежний вход через страницу Яндекса
+  nativeYandex() { return !!(window.DuholovNative && window.DuholovNative.yandexSignIn); },
   available() {
     const p = (this.info && this.info.providers) || {}, app = this.app();
     return this.ORDER.filter(k => p[k] && !(app && (app < 3 || (k === 'google' && !this.nativeGoogle()))));
@@ -69,6 +71,19 @@ const Login = {
       };
       Sfx.play('tap');
       window.DuholovNative.googleSignIn(p.client_id, nonce);
+      return;
+    }
+    if (provider === 'yandex' && this.app() && this.nativeYandex() && !this._yaWeb) {
+      window.nativeYandex = r => {
+        window.nativeYandex = null;
+        if (r && r.error === 'cancel') { try { sessionStorage.removeItem(this.PEND); } catch (e) {} return; }
+        if (!r || !r.access_token) { this._yaWeb = true; this.start(provider, mode); return; } // SDK не смог — как раньше, страницей
+        try { sessionStorage.setItem(this.CB, JSON.stringify({ state, access_token: r.access_token })); } catch (e) {}
+        this.leaving(provider);
+        location.reload();
+      };
+      Sfx.play('tap');
+      window.DuholovNative.yandexSignIn();
       return;
     }
     let url;

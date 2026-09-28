@@ -12,8 +12,10 @@ android {
         minSdk = 24
         targetSdk = 34
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
-        versionCode = 7
-        versionName = "4.22.1"
+        versionCode = 8
+        versionName = "4.23.0"
+        // 8: вход через Яндекс в приложении (Yandex LoginSDK) — ID приложения Яндекса публичный (игра отдаёт его каждому клиенту)
+        manifestPlaceholders["YANDEX_CLIENT_ID"] = "03990507cbdf4990b2cb031891caa4d7"
     }
 
     // 4.3.2: где распространяется приложение. site — APK с сайта duholov.ru (обновление — скачать APK),
@@ -64,4 +66,6 @@ dependencies {
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    // 8: вход через Яндекс — откроется приложение Яндекса (если есть), иначе окно входа Яндекса
+    implementation("com.yandex.android:authsdk:3.1.3")
 }

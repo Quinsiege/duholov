@@ -21,6 +21,11 @@ import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import org.json.JSONObject
+import androidx.activity.result.ActivityResultLauncher
+import com.yandex.authsdk.YandexAuthLoginOptions
+import com.yandex.authsdk.YandexAuthOptions
+import com.yandex.authsdk.YandexAuthResult
+import com.yandex.authsdk.YandexAuthSdk
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -44,7 +49,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 7 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 8 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
         // геолокацию и камеру получает только сама игра, не страницы сервисов входа
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
@@ -61,6 +66,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var web: WebView
+    private lateinit var yandexLogin: ActivityResultLauncher<YandexAuthLoginOptions>
     private var paying = false // 6: открыта оплата ЮKassa — до возврата на свои страницы
     private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
     private var pendingCamera: PermissionRequest? = null
@@ -107,6 +113,14 @@ class MainActivity : ComponentActivity() {
                 }
             })
     }
+    // 8: вход через Яндекс — приложение Яндекса (или окно входа Яндекса); токен — только странице игры
+    private fun signInYandex() {
+        if (!onGame()) return
+        try { yandexLogin.launch(YandexAuthLoginOptions()) } catch (e: Exception) { yandexResult(JSONObject().put("error", "failed").put("message", e.message ?: "")) }
+    }
+    private fun yandexResult(o: JSONObject) {
+        if (onGame()) web.evaluateJavascript("window.nativeYandex && window.nativeYandex($o)", null)
+    }
     private fun googleResult(o: JSONObject) {
         if (onGame()) web.evaluateJavascript("window.nativeGoogle && window.nativeGoogle($o)", null)
     }
@@ -134,6 +148,15 @@ class MainActivity : ComponentActivity() {
 
         web = WebView(this)
         setContentView(web)
+
+        // 8: вход через Яндекс — результат приходит сюда (регистрация — до старта активности)
+        yandexLogin = registerForActivityResult(YandexAuthSdk.create(YandexAuthOptions(applicationContext)).contract) { result ->
+            when (result) {
+                is YandexAuthResult.Success -> yandexResult(JSONObject().put("access_token", result.token.value))
+                is YandexAuthResult.Failure -> yandexResult(JSONObject().put("error", "failed").put("message", result.exception.message ?: ""))
+                else -> yandexResult(JSONObject().put("error", "cancel"))
+            }
+        }
 
         web.settings.apply {
             javaScriptEnabled = true
@@ -182,6 +205,12 @@ class MainActivity : ComponentActivity() {
             @JavascriptInterface
             fun googleSignIn(clientId: String, nonce: String) {
                 runOnUiThread { signInGoogle(clientId, nonce) }
+            }
+
+            // 8: вход через Яндекс (ответ — window.nativeYandex({ access_token } | { error }))
+            @JavascriptInterface
+            fun yandexSignIn() {
+                runOnUiThread { signInYandex() }
             }
         }, "DuholovNative")
 
