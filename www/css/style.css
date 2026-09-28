@@ -4347,3 +4347,17 @@ body.rm-open #menuBtn .ob-x { opacity: 1; transform: none; }
 #tracker .tr-main small, #tracker .tr-x { color: #fde68a !important; }
 #tracker { width: auto !important; max-width: calc(100vw - 24px) !important; gap: 8px !important; }
 #tracker .tr-main b, #tracker .tr-main small { white-space: nowrap; }
+/* значок меню — крупнее, медальон почти во всю кнопку */
+#menuBtn .ob-ico { width: 64px !important; height: 64px !important; }
+/* «Рядом» — без подложки и лишнего: три ближайших духа в ряд */
+#hud #nearbyBtn { width: auto !important; height: auto !important; border-radius: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; right: 12px !important; }
+#hud #nearbyBtn .nb-cnt { display: none !important; }
+#hud #nearbyBtn .nb-arts { gap: 4px !important; }
+#hud #nearbyBtn .nb-arts > div { width: 40px !important; height: 40px !important; margin: 0 !important; filter: drop-shadow(0 3px 5px rgba(8, 4, 24, .45)); }
+#hud #nearbyBtn .nb-arts .art { width: 40px !important; height: 40px !important; }
+#hud #nearbyBtn .nb-q { font-size: 19px; }
+#hud #nearbyBtn .nb-arts::before, #hud #nearbyBtn .nb-arts::after, #hud #nearbyBtn .nb-arts > div::before, #hud #nearbyBtn .nb-arts > div::after { content: none !important; display: none !important; }
+#hud #nearbyBtn { bottom: calc(40px + var(--sb)) !important; } /* ряд — на высоте центра кнопки меню */
+#hud #nearbyBtn .nb-arts .art { width: 46px !important; height: 46px !important; margin: -3px; }
+#hud #nearbyBtn span::before, #hud #nearbyBtn span::after { content: none !important; display: none !important; }
