@@ -335,6 +335,25 @@ Object.assign(UI, {
       Sfx.play('tap'); I18N.set(b.dataset.l);
     });
   },
+  // 4.25.2: Поддержка — письмо на почту для обращений; в письмо сразу подставляются имя, номер Ловчего, версия и устройство
+  SUPPORT_MAIL: 'urazov.buj@gmail.com',
+  support() {
+    Sfx.play('tap');
+    const mail = this.SUPPORT_MAIL, d = S.d || {};
+    const body = [ru`Опиши, что случилось или что хочешь предложить:`, '', '', '—', ru`Ловчий: ${d.name || '—'}`, ru`Номер: ${(d.pid || '—').slice(0, 12)}`,
+      ru`Версия игры: ${APP_VERSION}`, ru`Устройство: ${navigator.userAgent.slice(0, 160)}`].join('\n');
+    const href = `mailto:${mail}?subject=${encodeURIComponent(ru`Духолов — поддержка`)}&body=${encodeURIComponent(body)}`;
+    this.modal({
+      title: ru`Поддержка`, cls: 'support-modal',
+      html: `<p>${ru`Нашёл ошибку, есть вопрос по игре или оплате, хочешь что-то предложить — напиши нам на почту, ответим.`}</p>
+        <p class="sup-mail">${this.I.mail || '✉'} <b>${mail}</b></p>
+        <p class="small">${ru`В письмо сразу добавятся имя Ловчего, версия игры и устройство — так мы быстрее разберёмся.`}</p>`,
+      buttons: [
+        { label: ru`Скопировать адрес`, keep: true, fn: () => { const ok = () => this.toast(ru`Адрес скопирован`, 'good'); try { navigator.clipboard.writeText(mail).then(ok, () => this.toast(mail)); } catch (e) { this.toast(mail); } } },
+        { label: ru`Написать письмо`, cls: 'primary', fn: () => { location.href = href; } },
+      ],
+    });
+  },
   settings() {
     const s = Cfg.s;
     // 3.28: разделы с заголовками, у каждого пункта — значок
