@@ -4190,3 +4190,13 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 /* 4.24: у подсказок обучения и советов — значок Книги Ордена вместо наставника */
 .coach-ava, .hint-ava { display: grid; place-items: center; }
 .coach-ava .mi, .hint-ava .mi { width: 76%; height: 76%; display: block; }
+/* 4.24.1: под духом — волна ровно как от Ловчего, только в разы меньше; у каждого духа свой такт (--wd) */
+.zn.rz.sp { opacity: 1; } /* фон — заметный; волна — ровно как у Ловчего (его круг целиком на .5) */
+.zn.rz.sp > .rz-wave { animation-delay: var(--wd, 0s); filter: opacity(.5); }
+.zn.rz.sp > .sp-bg { background: radial-gradient(circle, rgba(139, 92, 246, .22) 0%, rgba(124, 58, 237, .3) 55%, rgba(76, 29, 149, .5) 84%, rgba(243, 207, 107, .7) 95%, rgba(243, 207, 107, 0) 100%);
+  box-shadow: 0 0 10px rgba(251, 191, 36, .35); }
+body.night .zn.rz.sp > .sp-bg { background: radial-gradient(circle, rgba(167, 139, 250, .2) 0%, rgba(139, 92, 246, .3) 55%, rgba(109, 40, 217, .5) 84%, rgba(253, 224, 71, .75) 95%, rgba(253, 224, 71, 0) 100%); }
+/* от парящего духа вниз — еле заметный красный пунктир проекции на землю (дальше по земле к Ловчему — .sp-line) */
+.mk-drop { position: absolute; left: 50%; top: 62px; width: 0; margin-left: -.75px; border-left: 1.5px dashed rgba(239, 68, 68, .5); pointer-events: none; }
+.mk.far .mk-drop { opacity: .7; }
+.sp-line { pointer-events: none; }

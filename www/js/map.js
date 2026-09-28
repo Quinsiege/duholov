@@ -255,6 +255,7 @@ const MapView = {
     this.shown = { lat, lng };
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
+    this.fitLines();
     if (this.follow) {
       if (jump) this.map.setView(ll, 17.5, { animate: false });
       else this.map.panTo(ll, { animate: false });
@@ -564,8 +565,9 @@ const MapView = {
   icon(e) {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
-      return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62],
-        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
+      // 4.24.1: дух парит чуть над землёй (DROP px), от него вниз — пунктир проекции на землю, дальше по земле — линия к Ловчему
+      return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62 + this.DROP],
+        html: `<i class="mk-drop" style="height:${this.DROP}px"></i><div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
@@ -604,6 +606,7 @@ const MapView = {
     });
     for (const [id, m] of this.markers) if (!seen.has(id)) { m.remove(); this.markers.delete(id); }
     this.syncZones(ents);
+    this.syncLines(spirits);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     const ids = new Set(this.nearby.map(e => e.id));
     if (this._spIds && this.nearby.some(e => !this._spIds.has(e.id)) && Date.now() - (this._vibT || 0) > 3000) { this._vibT = Date.now(); U.vibrate([60, 90, 60]); } // 4.19: появился дух — двойная вибрация
@@ -638,22 +641,48 @@ const MapView = {
   pxR(ll, meters, z) {
     return Math.abs(this.map.project(ll, z).y - this.map.project(L.latLng(ll.lat + meters / 111320, ll.lng), z).y);
   },
-  // земли дружин (сияние цвета дружины вокруг Капища) и марево Нави вокруг открытых разломов
+  // земли дружин (сияние цвета дружины вокруг Капища) и марево Нави вокруг открытых разломов;
+  // 4.24.1: под каждым духом — еле заметная волна, как от Ловчего, только в разы меньше (SPIRIT_R м); у каждого духа — свой такт
+  SPIRIT_R: 25, DROP: 22,
   zones: new Map(),
   syncZones(ents) {
     const want = new Map();
     ents.forEach(e => {
       if (e.type === 'shrine' && e.clan && CLANS[e.clan]) want.set('z:' + e.id, { e, r: 100, cls: 'clan', css: `--cc:${CLANS[e.clan].color}`, inner: '<i class="zn-glow"></i><i class="zn-ring"></i><i class="zn-ring2"></i>' });
       if (e.type === 'rift' && !e.done) want.set('z:' + e.id, { e, r: 90, cls: 'rift', css: '', inner: '<i class="zn-haze"></i><i class="zn-cracks"></i>' });
+      if (e.type === 'spirit') want.set('s:' + e.id, { e, r: this.SPIRIT_R, cls: 'rz sp', css: `--wd:-${(U.h('wave', e.id) * 4.5).toFixed(2)}s`, pane: 'zone', inner: '<i class="sp-bg"></i><i class="rz-wave"></i>' });
     });
     for (const [id, z] of this.zones) if (!want.has(id) || want.get(id).css !== z.css) { z.m.remove(); this.zones.delete(id); }
     for (const [id, w] of want) {
       if (this.zones.has(id)) continue;
-      const m = L.marker([w.e.lat, w.e.lng], { interactive: false, keyboard: false, zIndexOffset: -4000, flat: true,
+      const m = L.marker([w.e.lat, w.e.lng], { interactive: false, keyboard: false, zIndexOffset: -4000, flat: true, ...(w.pane ? { pane: w.pane } : {}),
         icon: L.divIcon({ className: 'mk-zone', iconSize: [0, 0], iconAnchor: [0, 0], html: `<div class="zn ${w.cls}" style="${w.css}">${w.inner}</div>` }) }).addTo(this.map);
       this.zones.set(id, { m, r: w.r, css: w.css });
       this.fitZone(m, w.r);
     }
+  },
+  // 4.24.1: от каждого духа по земле к Ловчему — еле заметная красная пунктирная линия (в слое земли, под домами)
+  lines: new Map(),
+  syncLines(spirits) {
+    if (!this._lineR) this._lineR = L.svg({ pane: 'zone', padding: 0.5 });
+    const me = this.shown || this.pos, want = new Set(spirits.map(e => e.id));
+    for (const [id, l] of this.lines) if (!want.has(id)) { l.remove(); this.lines.delete(id); }
+    spirits.forEach(e => {
+      let l = this.lines.get(e.id);
+      if (!l) {
+        l = L.polyline([[e.lat, e.lng], [me.lat, me.lng]], { renderer: this._lineR, interactive: false, className: 'sp-line', color: '#ef4444', weight: 1.5, opacity: 0.4, dashArray: '4 6', lineCap: 'round' }).addTo(this.map);
+        this.lines.set(e.id, l);
+      }
+      l._sp = [e.lat, e.lng];
+    });
+    this.fitLines(true);
+  },
+  // конец линий — там, где значок Ловчего на экране (он едет плавно); не чаще раза в 60 мс
+  fitLines(now) {
+    if (!this.lines.size || (!now && performance.now() - (this._linesAt || 0) < 60)) return;
+    this._linesAt = performance.now();
+    const me = this.shown || this.pos;
+    for (const l of this.lines.values()) l.setLatLngs([l._sp, [me.lat, me.lng]]);
   },
   fitZone(m, r, z, anim) {
     const box = m.getElement() && m.getElement().firstElementChild;
