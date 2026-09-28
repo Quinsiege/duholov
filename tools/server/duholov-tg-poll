@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+# 4.23: сообщения боту Telegram → сервер игры (вход через бота на телефоне). Telegram до сервера в России не достучался
+# (вебхук: Connection timed out), а сервер игры из своего контейнера не достучится до Telegram — поэтому посредник эта служба:
+# забирает сообщения (getUpdates, долгий опрос), передаёт их функции игры локально (…/functions/v1/game/tg, тот же секрет
+# заголовка, что у вебхука), а ответ бота, который вернула игра, отправляет в Telegram сама. При запуске сообщает игре имя бота.
+# Служба systemd: duholov-tg-poll.service. Токен бота — из /opt/duholov/functions.env.
+import hashlib, json, re, time, urllib.request
+
+env = open('/opt/duholov/functions.env', encoding='utf-8').read()
+m = re.search(r'^TELEGRAM_BOT_TOKEN=(.*)$', env, re.M)
+if not m or not m.group(1).strip():
+    raise SystemExit('Нет TELEGRAM_BOT_TOKEN — задай его командой duholov-secrets')
+T = m.group(1).strip()
+S = hashlib.sha256(('tgwh:' + T).encode()).hexdigest()[:48]   # как TG.secret на сервере игры
+API = f'https://api.telegram.org/bot{T}'
+LOCAL = 'http://127.0.0.1:8000/functions/v1/game/tg'
+
+def call(url, data=None, timeout=70):
+    req = urllib.request.Request(url, data=json.dumps(data).encode() if data is not None else None,
+                                 headers={'Content-Type': 'application/json'} if data is not None else {})
+    return json.load(urllib.request.urlopen(req, timeout=timeout))
+
+def game(obj):  # передать игре; её ответ (reply) — отправить в Telegram
+    req = urllib.request.Request(LOCAL, data=json.dumps(obj).encode(), method='POST',
+                                 headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': S})
+    try:
+        r = json.load(urllib.request.urlopen(req, timeout=30))
+        if isinstance(r, dict) and isinstance(r.get('reply'), dict):
+            call(API + '/sendMessage', r['reply'], timeout=20)
+    except Exception as e:
+        print('игра:', e, flush=True)
+
+try: call(API + '/deleteWebhook', {}, timeout=20)   # с вебхуком getUpdates не работает
+except Exception as e: print('deleteWebhook:', e, flush=True)
+try: game({'_meta': {'bot': call(API + '/getMe', timeout=20)['result']['username']}})   # имя бота — для ссылки t.me в игре
+except Exception as e: print('getMe:', e, flush=True)
+
+offset = 0
+while True:
+    try:
+        r = call(f'{API}/getUpdates?timeout=50&offset={offset}&allowed_updates=%5B%22message%22%5D')
+        for u in r.get('result', []):
+            offset = u['update_id'] + 1
+            game(u)
+    except Exception as e:
+        print('Telegram:', e, flush=True)
+        time.sleep(5)

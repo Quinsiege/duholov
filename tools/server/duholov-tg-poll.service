@@ -1,0 +1,12 @@
+[Unit]
+Description=Духолов: сообщения боту Telegram → сервер игры (вход через бота)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/duholov-tg-poll
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
