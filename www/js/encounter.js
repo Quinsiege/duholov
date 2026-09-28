@@ -9,7 +9,7 @@ const Encounter = {
 
   throwables() { return Rules.THROWABLE.filter(k => (S.d.items[k] || 0) > 0); },
 
-  // o: { mode: 'wild'|'raid'|'rescue'|'story', tut, spawnId, seed, onEnd } — вид и уровень духа сообщает сервер
+  // o: { mode: 'wild'|'raid'|'rescue'|'task', tut, spawnId, seed, onEnd } — вид и уровень духа сообщает сервер
   async start(o) {
     if (this.st || this._opening) return;
     if (o.mode !== 'raid' && !this.throwables().length) { UI.toast(ru`Обереги закончились! Загляни к роднику.`); return; }

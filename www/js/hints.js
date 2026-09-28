@@ -1,6 +1,6 @@
 'use strict';
-/* Советы Велимира: разовые подсказки о возможностях, которые игрок ещё не нашёл
-   (усилить духа, превратить, сдать поручение, забрать главу Летописи, вступить в дружину…).
+/* Советы: разовые подсказки о возможностях, которые игрок ещё не нашёл
+   (превратить духа, сдать поручение, открывшийся раздел, вступить в дружину…). 4.24: без наставника и сюжета.
    Каждый совет показывается один раз; что уже показано — помнит телефон (это удобство, не прогресс). */
 
 const Hints = {
@@ -30,14 +30,11 @@ const Hints = {
     const d = S.d, today = U.today();
     const byPower = [...d.spirits].sort((a, b) => S.power(b) - S.power(a));
     const out = [];
-    // глава Летописи завершена
-    if (STORY[d.story.ch] && S.storyReady()) out.push({ id: 'story:' + d.story.ch, btn: ru`Открыть Летопись`,
-      text: ru`Глава «${STORY[d.story.ch].title}» Летописи завершена! Забери награду — и узнаешь, что было дальше.`, go: () => UI.quests('story') });
     // выполненное поручение ждёт сдачи
     const task = d.tasks.find(q => q.p >= q.n);
     if (task) out.push({ id: 'task:' + task.id, btn: ru`К поручениям`,
       text: ru`Поручение «${I18N.back(task.text)}» выполнено. Сдай его — и тебя ждёт встреча с духом: ${SP[task.sid].name}.`, go: () => UI.quests('day') });
-    // 4.18: открылся новый раздел — Велимир коротко рассказывает, что это (по одному, пока раздел не открыт)
+    // 4.18: открылся новый раздел — коротко о том, что это (по одному, пока раздел не открыт)
     const opened = UI.opened();
     const NEWS = [
       ['shop', 2, ru`Открылась <b>Лавка Ордена</b>: обереги, мёд и живая вода за искры и златники. Каждый день там новое выгодное предложение.`, () => Shop.screen()],
@@ -50,12 +47,6 @@ const Hints = {
       ['gavel', Rules.AUCTION.LEVEL, ru`Открылся <b>Аукцион</b>: здесь Ловчие продают и покупают духов за искры и златники.`, () => Auction.screen()],
     ];
     for (const [k, l, text, go] of NEWS) if (d.level >= l && !opened[k]) out.push({ id: 'open:' + k, btn: go ? ru`Показать` : ru`Понятно`, text, go: go ? () => { UI.markOpened(k); go(); } : null });
-    // можно усилить духа, а игрок ещё ни разу этого не делал
-    const canPower = byPower.find(sp => !S.canPowerUp(sp));
-    const neverPowered = d.story.ch === 0 && d.story.p[2] < 1;
-    if (canPower && neverPowered && d.stats.caught >= 3) out.push({ id: 'power', btn: ru`Показать`,
-      text: ru`Искры и эссенция нужны, чтобы <b>усиливать духов</b>: сильный дух легче побеждает в разломах и на капищах. Открой карточку духа и нажми «Усилить» — например, у «${U.esc(canPower.nick || SP[canPower.sid].name)}».`,
-      go: () => this.openCard(canPower.uid, '.act-power') });
     // дух может превратиться
     const canEvo = byPower.find(sp => SP[sp.sid].evo && !S.canEvolve(sp));
     if (canEvo) out.push({ id: 'evolve:' + canEvo.sid, btn: ru`Показать`,
@@ -66,11 +57,6 @@ const Hints = {
     if (canAw) out.push({ id: 'awaken:' + canAw.uid + ':' + (canAw.stars || 0), btn: ru`Показать`,
       text: ru`«${U.esc(canAw.nick || SP[canAw.sid].name)}» дошёл до предела уровня, а осколков Алатыря хватает на <b>пробуждение</b>: звезда поднимет предел ещё на ${S.AWAKE.STEP} уровня.`,
       go: () => UI.awaken(canAw.uid) });
-    // Летопись ждёт закрытого Разлома, а до Капищ далеко — есть Дальний пропуск
-    const ch = STORY[d.story.ch], ri = ch ? ch.steps.findIndex(s => s.t === 'raid') : -1;
-    if (ri >= 0 && d.story.p[ri] < ch.steps[ri].n && d.items.farpass) out.push({ id: 'rifts:' + d.story.ch, btn: ru`Разломы вокруг`,
-      text: ru`Летопись ждёт, когда ты закроешь <b>Разлом</b>. Не обязательно идти к Капищу: в «Меню → Разломы» видны все Разломы на 5 км вокруг, а <b>Дальний пропуск</b> позволяет сразиться издалека. Один пропуск Орден дарит каждый день.`,
-      go: () => Raid.list() });
     // на Сезонной тропе ждут награды (раз в сезон)
     if (Pass.claimable() > 0) out.push({ id: 'pass:' + Pass.season(), btn: ru`К Тропе`,
       text: ru`Ты уже прошёл первые ступени <b>Сезонной тропы</b> — награды ждут! Очки Тропы дают за обычную игру: поимки, родники, прогулки и бои.`,
@@ -97,7 +83,7 @@ const Hints = {
     this.mark(h.id);
     UI.modal({
       title: '', cls: 'hint-modal',
-      html: `<div class="hint"><div class="hint-ava">${Art.stack(CutArt.velimir(true).replace('class="vm-breath"', ''), 'velimir-mini')}</div><div><b>${ru`Совет Велимира`}</b><p>${h.text}</p></div></div>`,
+      html: `<div class="hint"><div class="hint-ava">${UI.menuIcon('orderbook')}</div><div><b>${ru`Совет`}</b><p>${h.text}</p></div></div>`,
       buttons: h.go ? [{ label: ru`Позже` }, { label: h.btn, cls: 'primary', fn: h.go }] : [{ label: h.btn, cls: 'primary' }],
     });
   },

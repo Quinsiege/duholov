@@ -1,9 +1,8 @@
 'use strict';
-/* 4.0: «Посвящение в Ловчие» — большое обучение с наставником Велимиром (шаги — TUT в data.js).
-   Пропустить нельзя: шаг хранит сервер (S.d.tut), после перезахода игра продолжает с того же места.
-   Сцены (talk) — полноэкранные диалоги; остальные шаги — подсказка-наставник над картой. Разделы меню
-   открываются по ходу обучения. Шаги засчитывает сервер: поимка, родник и усиление — сам, сцены и разделы —
-   по действию tutNext строго по порядку. */
+/* 4.0: обучение новичка (шаги — TUT в data.js). 4.24: без сцен, заставок и наставника — только подсказка над картой
+   с подсветкой нужной кнопки. Пропустить нельзя: шаг хранит сервер (S.d.tut), после перезахода игра продолжает
+   с того же места. Разделы меню открываются по ходу обучения. Шаги засчитывает сервер: поимка, родник и усиление —
+   сам, разделы — по действию tutNext строго по порядку. */
 
 const Tut = {
   // какой раздел меню открывается на каком шаге (до него — замок), и какой раздел подсветить
@@ -32,10 +31,8 @@ const Tut = {
     this.shown = s; this.opened = null;
     if (!s) { this.close(); this.refreshTiles(); return; }
     this.refreshTiles();
-    const st = this.at(), newCh = st.ch !== this.ch;
-    this.ch = st.ch;
+    const st = this.at();
     const go = () => {
-      if (st.kind === 'talk') { this.hideCoach(); this.scene(st); return; }
       this.coach(st);
       MapView.refresh(true);
       // на шаге «родник» Следопыт сам показывает дорогу к ближайшему
@@ -45,12 +42,11 @@ const Tut = {
       if (this.step() !== s) return; // пока ждали, шаг уже сменился — покажет следующий вызов
       this._pending = false;
       if (!first) Sfx.play('spin');
-      // новая глава — сначала её заставка (кроме глав, что начинаются со сцены: там заставка внутри сцены)
-      if (newCh && st.kind !== 'talk') this.titleCard(st.ch, go); else go();
+      go();
     };
     if (first) { run(); return; }
     this._pending = true; this.hideCoach();
-    const free = () => !(Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st) || document.querySelector('.enc, .tut-title'));
+    const free = () => !(Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st) || document.querySelector('.enc, .tut-final'));
     const when = () => free() ? run() : setTimeout(when, 400);
     setTimeout(when, 1100);
   },
@@ -71,11 +67,11 @@ const Tut = {
     path: ['.tile[data-k="path"]', '#menuBtn'],
   },
   // важное, что наставник не должен закрывать (кроме самой цели)
-  KEEP: ['.hud-top', '#tracker', '#storyPill', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots', '.screen .spring-disc'],
+  KEEP: ['.hud-top', '#tracker', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots', '.screen .spring-disc'],
   coach(st) {
     if (!this.el) {
-      this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${Art.stack(CutArt.velimir(true).replace('class="vm-breath"', ''), 'velimir-mini')}</div>
-        <div class="coach-main"><div class="coach-top"><b>${ru`Велимир`}</b><span class="coach-ch"></span></div><div class="coach-text"></div>
+      this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${UI.menuIcon('orderbook')}</div>
+        <div class="coach-main"><div class="coach-top"><b>${ru`Подсказка`}</b><span class="coach-ch"></span></div><div class="coach-text"></div>
         <div class="coach-bar"><i></i></div></div></div>`);
       // 4.7: подсветка — затемнение вокруг цели, золотая рамка с уголками, волна и указатель
       this.ring = U.el('<div id="tutRing" class="hidden"><b class="tr-g"></b><b class="tr-w"></b><b class="tr-f"></b><b class="tr-r"></b><b class="tr-c c1"></b><b class="tr-c c2"></b><b class="tr-c c3"></b><b class="tr-c c4"></b><i class="tr-p"></i></div>');
@@ -85,7 +81,7 @@ const Tut = {
       addEventListener('resize', this._rs = () => this.track());
     }
     const n = this.step();
-    this.el.querySelector('.coach-ch').textContent = ru`Посвящение · ${n}/${TUT.length}`;
+    this.el.querySelector('.coach-ch').textContent = ru`Обучение · ${n}/${TUT.length}`;
     this.el.querySelector('.coach-bar i').style.width = ((n - 1) / TUT.length * 100) + '%';
     // открыл нужный раздел — объяснение экрана и «Понятно» (шаг засчитывается только по кнопке)
     const info = st.kind === 'ui' && this.opened === st.id;
@@ -119,8 +115,8 @@ const Tut = {
   // Раз в 300 мс: где цель, куда поставить наставника, чтобы не закрыть ни её, ни важное
   track() {
     if (!this.el) return;
-    const st = this.at(), busy = !st || this._pending || st.kind === 'talk' || this.sc || Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st)
-      || U.$$('.modal-wrap').some(m => !m.classList.contains('out') && !m.classList.contains('sheet-wrap')) || document.querySelector('.onb, .tut-title, .tut-final, .trl');
+    const st = this.at(), busy = !st || this._pending || Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st)
+      || U.$$('.modal-wrap').some(m => !m.classList.contains('out') && !m.classList.contains('sheet-wrap')) || document.querySelector('.onb, .tut-final');
     this.el.classList.toggle('hidden', !!busy);
     U.$('#menuBtn').classList.remove('tut-pulse');
     if (busy) { this.ring.classList.add('hidden'); return; }
@@ -167,102 +163,28 @@ const Tut = {
   show() { this.track(); },
   hideCoach() { if (this.el) this.el.classList.add('hidden'); if (this.ring) this.ring.classList.add('hidden'); U.$('#menuBtn').classList.remove('tut-pulse'); },
 
-  /* ---------- сцена с Велимиром ---------- */
-  scene(st) {
-    if (this.sc) this.sc.remove();
-    const first = TUT.find(s => s.ch === st.ch) === st; // сцена открывает главу — сначала заставка главы
-    // 4.6: кинокадр — ночной двор, сияние Нави, Велимир и ты; реплики в лаковой шкатулке
-    const root = this.sc = U.el(`<div class="tut-scene">
-      <div class="ts-bg"><i class="ts-aur a1"></i><i class="ts-aur a2"></i><i class="ts-moon"></i>${'<i class="ts-star"></i>'.repeat(14)}${CutArt.yard()}<i class="ts-mist"></i></div>
-      <div class="ts-film"><i></i><i></i></div>
-      <div class="ts-chap"></div>
-      <div class="ts-stage"><div class="ts-mentor"><i class="ts-halo"></i>${Art.stack(CutArt.velimir().replace('class="vm-breath"', ''), 'velimir')}</div><div class="ts-me"><div class="ts-hero">${Art.stack(CutArt.hero(S.d.look).replace('class="vm-breath"', ''))}</div><span class="ts-me-name">${U.esc(S.d.name || ru`Ты`)}</span></div></div>
-      <div class="ts-box"><div class="ts-who"></div><div class="ts-line"></div><div class="ts-foot"><span class="ts-prog"></span><span class="ts-next"><span class="tn-t">${ru`Дальше`}</span><i class="tn-a"></i></span></div></div>
-    </div>`);
-    document.body.appendChild(root);
-    Music.play('mentor'); // 4.8: сцены с наставником — его мелодия
-    UI.pushLayer(this._noBack = () => {}); // «Назад» сцену не закрывает — обучение не пропустить
-    const box = root.querySelector('.ts-box'), who = root.querySelector('.ts-who'), line = root.querySelector('.ts-line'), btn = root.querySelector('.ts-next .tn-t');
-    let i = -1, typing = null, busy = false;
-    const say = () => {
-      const [w, text] = st.lines[i];
-      root.dataset.who = w;
-      who.textContent = w === 'v' ? ru`Велимир` : w === 'you' ? (S.d.name || ru`Ты`) : '';
-      root.querySelector('.ts-prog').innerHTML = st.lines.map((_, k) => `<i class="${k < i ? 'done' : k === i ? 'on' : ''}"></i>`).join('');
-      btn.textContent = i === st.lines.length - 1 ? ru`Продолжить` : ru`Дальше`;
-      line.classList.remove('in'); void line.offsetWidth; line.classList.add('in');
-      // печать по буквам (теги — целиком); касание — допечатать сразу
-      const parts = text.split(/(<[^>]+>)/).filter(Boolean);
-      let out = '', p = 0, c = 0;
-      clearInterval(typing);
-      const calm = document.documentElement.classList.contains('calm') || (Cfg.s && Cfg.s.calm);
-      if (calm) { line.innerHTML = text; typing = null; return; }
-      typing = setInterval(() => {
-        if (p >= parts.length) { clearInterval(typing); typing = null; return; }
-        const part = parts[p];
-        if (part[0] === '<') { out += part; p++; c = 0; }
-        else { out += part[c++]; if (c >= part.length) { p++; c = 0; } }
-        line.innerHTML = out;
-      }, 22);
-      line._full = text;
-    };
-    const next = async () => {
-      if (typing) { clearInterval(typing); typing = null; line.innerHTML = line._full; return; }
-      if (i < st.lines.length - 1) { i++; Sfx.play('tap'); say(); return; }
-      if (busy) return;
-      busy = true; box.classList.add('wait');
-      const r = await Game.try('tutNext', { id: st.id });
-      busy = false; box.classList.remove('wait');
-      if (!r) return;
-      this.closeScene();
-      this.sync();
-    };
-    box.onclick = () => next();
-    const start = () => { root.classList.add('talk'); i = 0; say(); };
-    if (first) this.titleCard(st.ch, start, root.querySelector('.ts-chap')); else start();
-  },
-  closeScene() {
-    if (!this.sc) return;
-    const el = this.sc; this.sc = null;
-    UI.popLayer(this._noBack);
-    Music.play('map');
-    el.classList.add('out'); setTimeout(() => el.remove(), 350);
-  },
-
-  /* ---------- заставка главы ---------- */
-  titleCard(ch, done, into) {
-    const c = TUT_CHAPTERS[ch];
-    const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
-    const el = U.el(`<div class="tut-title"><div class="tt-ring"></div><small>${ru`Посвящение в Ловчие`}</small><b>${ru`Глава ${ROMAN[ch] || ch + 1}`}</b><h2>${c.title}</h2><i></i></div>`);
-    (into || document.body).appendChild(el);
-    Sfx.play('spin');
-    setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 450); }, 2300);
-  },
-
-  /* ---------- награды за главы и финал ---------- */
+  /* ---------- награды за этапы и финал ---------- */
   chapterDone({ ch, got, done }) {
     const list = got.map(x => `<div class="lvl-rw-i">${I18N.back(x.label)} <b>+${U.fmtNum(x.n)}</b></div>`).join('');
     if (!done) {
       Sfx.play('levelup');
-      UI.toast(ru`Глава ${ch + 1} «${TUT_CHAPTERS[ch].title}» пройдена! ${got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');
+      UI.toast(ru`Обучение: «${TUT_CHAPTERS[ch].title}» — готово! ${got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');
       return;
     }
-    // Финал: клятва дана — посвящение пройдено
+    // Финал: обучение пройдено
     Sfx.play('levelup');
     const root = U.el(`<div class="tut-final"><div class="tf-rays"></div>
       <div class="tf-me"><div class="tf-ring"></div><div class="ts-me-ring">${Art.avatar(S.d.look)}</div></div>
-      <small>${ru`Орден Оберега`}</small><h2>${ru`Посвящение пройдено!`}</h2><p>${ru`Отныне ты — <b>Ловчий Ордена</b>. Духи Нави ждут на улицах твоего города.`}</p>
+      <small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Духи ждут на улицах твоего города.`}</p>
       <div class="tf-got">${list}</div>${UI.rune(ru`В путь!`, 'tf-go')}</div>`);
     document.body.appendChild(root);
-    Music.play('mentor'); // финал посвящения — мелодия наставника
-    root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); Music.play('map'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
+    root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
   },
 
   close() {
     U.$('#menuBtn').classList.remove('tut-pulse');
     if (this.el) { this.el.remove(); this.el = null; clearInterval(this.loop); removeEventListener('resize', this._rs); }
     if (this.ring) { this.ring.remove(); this.ring = null; }
-    this.closeScene();
     MapView.refresh(true);
   },
 
@@ -270,7 +192,7 @@ const Tut = {
   // Меню открывается с шага «открой меню»
   menuLock() {
     const n = this.step();
-    return n && n < this.idx('menu') ? ru`Сначала закончи с Велимиром: меню откроется чуть позже.` : null;
+    return n && n < this.idx('menu') ? ru`Сначала поймай духов: меню откроется чуть позже.` : null;
   },
   // Раздел меню: замок до своего шага обучения (настройки и Ловчий — всегда)
   tileLock(key) {
@@ -278,7 +200,7 @@ const Tut = {
     if (!n || key === 'gear' || key === 'user') return null;
     const need = this.TILE_STEP[key];
     if (need && n >= this.idx(need)) return null;
-    return need ? ru`Откроется по ходу обучения — Велимир подскажет` : ru`Откроется после посвящения в Ловчие`;
+    return need ? ru`Откроется по ходу обучения — подсказка покажет` : ru`Откроется после обучения`;
   },
   tileTarget(key) { const st = this.at(); return !!st && st.kind === 'ui' && this.UI_TILE[st.id] === key; },
   // открытое меню: обновить замки и подсветку после перехода на новый шаг
@@ -289,7 +211,7 @@ const Tut = {
       const li = t.querySelector('i.lock'); if (!lock && li) li.remove();
     });
   },
-  // Игрок открыл раздел текущего шага: Велимир объясняет, что это за экран; дальше — только по «Понятно»
+  // Игрок открыл раздел текущего шага: подсказка объясняет, что это за экран; дальше — только по «Понятно»
   ui(id) {
     const st = this.at();
     if (!st || st.kind !== 'ui' || st.id !== id || this.opened === id) return;

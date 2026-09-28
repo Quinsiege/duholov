@@ -190,7 +190,7 @@ const Shop = {
               <div class="dt-row"><span>${ru`Курс`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>
               <div class="dt-row"><span>${ru`Обменов в день`}</span><b>${Rules.EXCHANGE.DAY}</b></div>
             </div>
-            <div class="q-note">${ru`Златники дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, главы Летописи, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}
+            <div class="q-note">${ru`Златники дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}
           ${pane('look', `
             <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>${ru`Гардероб Ловчего`}</b><small>${ru`${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} златников`}</small></span><span class="sw-go">›</span></button>
             <div class="pf-mh"><span>${ru`Плащи`}</span></div>

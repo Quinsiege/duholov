@@ -195,7 +195,8 @@ Object.assign(UI, {
       const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
       const aErr = S.canAwaken(sp), aCost = S.awakenCost(sp), nStars = sp.stars || 0; // 4.16: пробуждение
       // 4.21: запас искр и эссенции Рода — строкой над кнопками (в «Росте» и у второго приёма)
-      const have = `<div class="dt-have"><span>${ru`В наличии`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}</b><i>·</i><b>${ru`${ess} эсс. «${fam.name}»`}</b><button class="dt-plus act-pour" aria-label="${ru`Влить эссенцию Рода`}">+</button></div>`;
+      // 4.23.3: собирается заново для каждой вкладки — иначе у копий иконки искр одинаковые градиенты, и во второй вкладке она тёмная
+      const have = () => `<div class="dt-have"><span>${ru`В наличии`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.d.sparks)}</b><i>·</i><b>${ru`${ess} эсс. «${fam.name}»`}</b><button class="dt-plus act-pour" aria-label="${ru`Влить эссенцию Рода`}">+</button></div>`;
       const m2Err = S.d.level < MOVE2_LEVEL ? ru`Второй приём открывается с ${MOVE2_LEVEL} уровня Ловчего` : S.canLearnMove2(sp); // 4.21: видно с начала, закрыто замком
       const TABS = [['grow', ru`Рост`, !pErr || (s.evo && !eErr) || !aErr], ['fight', ru`Характеристики`, false], ['amulet', ru`Амулет`, false], ['about', ru`О духе`, false]];
       scr.querySelector('.screen-body').innerHTML = `
@@ -225,7 +226,7 @@ Object.assign(UI, {
                   <button class="btn small act-purify" ${S.canPurify(sp) ? `data-err="${U.esc(S.canPurify(sp))}"` : ''}>${ru`Очистить`}<small><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(S.purifyCost(sp).sparks)} · ${ru`${S.purifyCost(sp).essence} эсс.`}</small></button></div>` : ''}
               </div>
               ${pErr ? `<div class="det-why">${U.esc(pErr)}</div>` : ''}
-              ${have}
+              ${have()}
               <div class="det-actions top ${s.evo ? '' : 'one'}">
                 ${pErr && sp.lvl >= S.maxLvl(sp) && aCost && S.d.level >= aCost.lvl
                   ? `<button class="btn primary act-awaken-open">${ru`Пробудить`}<small>${ru`звезда ${nStars + 1} · предел +${S.AWAKE.STEP}`}</small></button>`
@@ -239,7 +240,7 @@ Object.assign(UI, {
                 ${bar(ru`Атака`, sp.iv[0])}${bar(ru`Защита`, sp.iv[1])}${bar(ru`Стойкость`, sp.iv[2])}
                 ${moves.map(([t, n]) => row(t, n)).join('')}
               </div>
-              ${sp.move2 ? '' : have}
+              ${sp.move2 ? '' : have()}
               ${sp.move2 ? '' : `<button class="btn ghost small wide dt-bottom act-move2" ${m2Err ? `data-err="${U.esc(m2Err)}"` : ''}>${ru`Выучить «${ELEMENTS[s.el].charge2}»`}<small><span class="cur">${Art.item('sparks')}</span> ${MOVE2_COST.sparks} · ${ru`${MOVE2_COST.essence} эсс.`}</small></button>`}`)}
             ${pane('amulet', `
               <div class="amulet-slot dt-am">
@@ -393,8 +394,8 @@ Object.assign(UI, {
               <div class="det-actions top"><button class="btn primary act-pour" ${S.canPour(s.fam, 1) ? `data-err="${U.esc(S.canPour(s.fam, 1))}"` : ''}>${ru`Влить Рода`}<small>${ru`в «${fam.name}»`}</small></button><button class="btn act-melt">${ru`Переплавить`}<small>${ru`лишнюю эссенцию`}</small></button></div>`)}
             ${pane('how', `
               <div class="dt-rows">
-                ${row(ru`Осколки Алатыря`, ru`великие разломы — всегда, разломы — иногда, Капища Старейшин — редко (в боях — до ${S.ALATYR_DAY} в день), главы Летописи с третьей книги`, 'wrap')}
-                ${row(ru`Эссенция Рода`, ru`переплавка лишней эссенции и главы Летописи`, 'wrap')}
+                ${row(ru`Осколки Алатыря`, ru`великие разломы — всегда, разломы — иногда, Капища Старейшин — редко (в боях — до ${S.ALATYR_DAY} в день)`, 'wrap')}
+                ${row(ru`Эссенция Рода`, ru`переплавка лишней эссенции`, 'wrap')}
                 ${row(ru`Эссенция легенд`, ru`победы в разломах, где легенда — босс, спутник-легенда и эссенция Рода`, 'wrap')}
                 ${row(ru`Звёзды`, A.LVL.map((l, i) => ru`★${i + 1} — с ${l} ур.`).join(', '), 'wrap')}
               </div>`)}
@@ -444,7 +445,7 @@ Object.assign(UI, {
   // Влить эссенцию Рода в семейство духа (легенды — по S.ESS.LEGEND за единицу)
   pourPick(sp, done) {
     const fam = SP[sp.sid].fam, rate = S.pourRate(fam), max = Math.floor((S.d.rod || 0) / rate);
-    if (!max) { this.toast(rate > 1 ? ru`Нужно эссенции Рода: ${rate}. Её дают переплавка лишней эссенции и главы Летописи.` : ru`Эссенции Рода нет. Её дают переплавка лишней эссенции и главы Летописи.`); return; }
+    if (!max) { this.toast(rate > 1 ? ru`Нужно эссенции Рода: ${rate}. Её даёт переплавка лишней эссенции.` : ru`Эссенции Рода нет. Её даёт переплавка лишней эссенции.`); return; }
     this.amount({ title: ru`Влить эссенцию Рода`, art: Art.item('rod'), name: ru`Эссенция «${SP[fam].name}»`, max, ok: ru`Влить`,
       sum: k => ru`+${k} эссенции · потратится Рода: ${k * rate} из ${S.d.rod}`,
       fn: k => Game.try('essPour', { fam, n: k }), after: r => { done && done(); Sfx.play('spin'); this.toast(ru`Эссенция «${SP[fam].name}»: ${r.ess}`, 'good'); } });
@@ -548,12 +549,11 @@ Object.assign(UI, {
           ${pane('where', `
             <div class="dt-rows">
               ${row(ru`Время`, s.time === 'night' ? ru`чаще ночью` : s.time === 'day' ? ru`только днём` : ru`днём и ночью`)}
-              ${row(ru`Где`, s.legend ? (s.story ? ru`награда Летописи` : ru`только в разломах`) : ru`на карте, рядом с Ловчим`)}
+              ${row(ru`Где`, s.legend ? ru`только в разломах` : ru`на карте, рядом с Ловчим`)}
               ${s.region ? row(ru`Регион`, `${REGIONS[s.region].name} · ${REGIONS[s.region].range}`, 'wrap') : ''}
               ${s.land ? row(ru`Земля`, `${LANDS[s.land].name}`, 'wrap') + row(ru`Граница`, LANDS[s.land].where, 'wrap') : ''}
               ${s.season ? row(ru`Сезон`, SEASON[s.season] || s.season, 'wrap') : row(ru`Сезон`, ru`круглый год`)}
               ${s.region || s.land || s.season ? row(ru`Издалека`, ru`трудные поручения родников, Аукцион, обмен с друзьями`, 'wrap') : ''}
-              ${!s.story && STORY.some(ch => ch.gift === s.id) ? row(ru`Летопись`, ru`встреча в финале книги`, 'wrap') : ''}
               ${row(ru`Стихия`, `${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}`)}
             </div>`)}
           ${pane('family', `
@@ -567,7 +567,7 @@ Object.assign(UI, {
           ${pane('mine', mine.length ? `
             <div class="dt-rows">${mine.slice(0, 6).map(x => `<button class="dt-row dx-mine" data-uid="${x.uid}"><span>${x.shiny ? '<i class="dx-sh">✦</i> ' : ''}${U.esc(x.nick || s.name)} <small>${ru`ур. ${x.lvl}`}</small></span><b>${ru`СИЛА`} ${S.power(x)}</b></button>`).join('')}</div>
             ${mine.length > 6 ? `<div class="det-why">${ru`и ещё ${mine.length - 6} — в «Духах»`}</div>` : ''}`
-            : `<div class="dx-none"><b>${ru`Пока не пойман`}</b><small>${s.legend ? (s.story ? ru`Этот дух — награда Летописи.` : ru`Ищи его в разломах.`) : (s.time === 'night' ? ru`Ищи его на карте — чаще ночью.` : s.time === 'day' ? ru`Ищи его на карте — только днём.` : ru`Ищи его на карте — днём и ночью.`)}</small></div>`)}
+            : `<div class="dx-none"><b>${ru`Пока не пойман`}</b><small>${s.legend ? ru`Ищи его в разломах.` : (s.time === 'night' ? ru`Ищи его на карте — чаще ночью.` : s.time === 'day' ? ru`Ищи его на карте — только днём.` : ru`Ищи его на карте — днём и ночью.`)}</small></div>`)}
         </div>
       </div>`;
     scr.addEventListener('click', e => {

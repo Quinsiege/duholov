@@ -528,11 +528,13 @@ const MapView = {
   },
 
   /* ---------------- МАРКЕРЫ ---------------- */
+  // 4.24: дух уже в Бестиарии — встречался или пойман; иначе на карте он знак вопроса
+  known(sid) { const x = S.d.dex[sid]; return !!(x && (x.seen || x.caught)); },
   icon(e) {
     if (e.type === 'spirit') {
-      const s = SP[e.sid];
+      const s = SP[e.sid], known = this.known(e.sid);
       return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62],
-        html: `<div class="mk-spirit r${s.rar}" style="--c:${ELEMENTS[s.el].color}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${Art.img(e.sid)}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
+        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
@@ -556,7 +558,7 @@ const MapView = {
     const seen = new Set();
     ents.forEach(e => {
       seen.add(e.id);
-      const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? `${e.done}${S.d.level < RAID_LEVEL}` : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : 0;
+      const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? `${e.done}${S.d.level < RAID_LEVEL}` : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : e.type === 'spirit' ? this.known(e.sid) : 0;
       let m = this.markers.get(e.id);
       if (m && m._key !== key) { m.remove(); m = null; }
       if (!m) {

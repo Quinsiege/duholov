@@ -75,14 +75,12 @@ window.addEventListener('load', () => {
       await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
     Loader.set(58);
-    Music.play('map'); // трейлер, вход и знакомство — мелодия карты (зазвучит с первым касанием)
-    // 4.0: трейлер «Тонкая ночь» — один раз на устройстве после обновления до 4.0 (потом — из «Книги Ордена»)
-    if (!Game.moved && Trailer.due()) { Loader.hide(); await Trailer.play(); }
-    // только что вошёл через сервис или по почте — сразу в игру (или к истории новичка), без экрана входа (3.30)
+    Music.play('map'); // вход и знакомство — мелодия карты (зазвучит с первым касанием)
+    // только что вошёл через сервис или по почте — сразу в игру (или к имени новичка), без экрана входа (3.30)
     const logged = Login.justLogged();
     if (Game.moved) { Loader.hide(); Game.onMoved(); }
     else if (S.d && logged) start();
-    else { Loader.hide(); if (S.d) Login.gate(start); else UI.onboarding(start, logged ? 1 : 0); } // экран входа: чей прогресс, «Продолжить» (3.28)
+    else { Loader.hide(); if (S.d) Login.gate(start); else UI.onboarding(start, logged ? 2 : 0); } // экран входа: чей прогресс, «Продолжить» (3.28)
   };
   // 4.1: сбой при запуске — не вечный экран загрузки, а понятная ошибка с повтором (и отчёт на сервер)
   boot().catch(e => {

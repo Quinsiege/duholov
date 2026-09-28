@@ -9,7 +9,7 @@ const Path = {
     const U2 = {};
     const add = (l, ic, t, s) => (U2[l] = U2[l] || []).push({ ic, t, s });
     add(1, 'spirits', ru`Поимка духов`, ru`Обереги, мёд, родники и коконы`);
-    add(1, 'scroll', ru`Задания и Летопись`, ru`Задания дня и сюжет Ордена`);
+    add(1, 'scroll', ru`Задания`, ru`Задания дня и поручения родников`);
     add(2, 'shop', ru`Лавка Ордена`, ru`Обереги, мёд и живая вода`); // 4.18: лестница открытий (см. UI.openLvl)
     add(2, 'swap', ru`Друзья`, ru`Коды дружбы и ежедневные подарки`);
     add(3, 'trail', ru`Сезонная тропа`, ru`Награды за обычную игру`);
@@ -26,10 +26,9 @@ const Path = {
     Object.entries(TASK_TIERS).forEach(([t, x]) => add(x.lvl, 'egg', ru`Поручения родников · ${'I'.repeat(+t)}`, ru`Особые встречи и награды`));
     LOOK.cloak.filter(c => c.lvl > 1 && !c.shop && !c.pass).forEach(c => add(c.lvl, 'look:' + c.c, ru`Плащ «${c.name}»`, ru`Для облика Ловчего`));
     LOOK.eyes.filter(c => c.lvl > 1).forEach(c => add(c.lvl, 'eyes:' + c.c, ru`Глаза «${c.name}»`, ru`Для облика Ловчего`));
-    LOOK.emblem.filter(c => c.lvl > 1 && !c.league && !c.story && !c.pass).forEach(c => add(c.lvl, 'emb', ru`Знак «${c.name}»`, ru`Для облика Ловчего`));
-    // 4.16: пробуждение духов и книги Летописи — тоже по уровням, до самого 40-го
+    LOOK.emblem.filter(c => c.lvl > 1 && !c.league && !c.pass).forEach(c => add(c.lvl, 'emb', ru`Знак «${c.name}»`, ru`Для облика Ловчего`));
+    // 4.16: пробуждение духов — тоже по уровням, до самого 40-го
     S.AWAKE.LVL.forEach((l, i) => add(l, 'item:alatyr', ru`Пробуждение: звезда ${i + 1}`, ru`Предел уровня духа +${S.AWAKE.STEP} за осколки Алатыря`));
-    STORY_BOOKS.filter(b => b.from > 0).forEach(b => add(S.storyLvl(STORY[b.from]), 'scroll', ru`Летопись: ${b.title}`, ru`Новые главы сюжета Ордена`));
     add(MAX_LEVEL, 'trophy', ru`Вершина пути`, ru`Максимальный уровень Ловчего`);
     return U2;
   },
@@ -45,7 +44,7 @@ const Path = {
     const x = S.xpToday(), mul = Ev.xpMul(), F = XP_DAY.FULL * mul, H = XP_DAY.HALF * mul;
     const now = x.n < F ? ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — полностью до ${U.fmtNum(F)}` : x.n < H ? ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — дальше вполовину до ${U.fmtNum(H)}` : ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — дальше на четверть`;
     return `<p class="pth-note"><b>${now}</b>${x.rest > 0 ? `<br><b>${ru`Опыт отдыха: следующие ${U.fmtNum(x.rest)} опыта — вдвое`}</b>` : ''}<br>
-      ${ru`За день опыт идёт полностью до ${U.fmtNum(XP_DAY.FULL)}, дальше до ${U.fmtNum(XP_DAY.HALF)} — вполовину, сверх — на четверть. Главы Летописи, обучение и знаки Ордена дают опыт всегда полностью. За каждый день без игры копится опыт отдыха (${U.fmtNum(XP_DAY.REST)}, не больше чем за ${XP_DAY.REST_DAYS} ${U.plural(XP_DAY.REST_DAYS, ru`день`, ru`дня`, ru`дней`)}): пока он есть, опыт вдвое.`}</p>`;
+      ${ru`За день опыт идёт полностью до ${U.fmtNum(XP_DAY.FULL)}, дальше до ${U.fmtNum(XP_DAY.HALF)} — вполовину, сверх — на четверть. Обучение и знаки Ордена дают опыт всегда полностью. За каждый день без игры копится опыт отдыха (${U.fmtNum(XP_DAY.REST)}, не больше чем за ${XP_DAY.REST_DAYS} ${U.plural(XP_DAY.REST_DAYS, ru`день`, ru`дня`, ru`дней`)}): пока он есть, опыт вдвое.`}</p>`;
   },
   rw(l) {
     return Object.entries(S.levelRewards(l)).map(([k, n]) => `<span class="pth-rw">${Art.item(k)}<b>${U.fmtNum(n)}</b></span>`).join('');
@@ -75,7 +74,7 @@ const Path = {
           <div class="pbar"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
           <small>${d.level >= MAX_LEVEL ? ru`Ты прошёл весь путь!` : ru`До ${d.level + 1} уровня — ${U.fmtNum(next - d.xp)} опыта`}${nextUnlock ? ` · ${ru`дальше: ${un[nextUnlock][0].t} на ${nextUnlock}`}` : ''}</small></div>
       </div>
-      <p class="pth-note">${ru`Опыт дают поимки, родники, разломы, капища, задания и Летопись. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`} ${ru`С ${S.AWAKE.LVL[0]} уровня духов можно пробуждать: каждая звезда поднимает предел уровня духа ещё на ${S.AWAKE.STEP}, до ${SPIRIT_MAX}.`}</p>
+      <p class="pth-note">${ru`Опыт дают поимки, родники, разломы, капища и задания. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`} ${ru`С ${S.AWAKE.LVL[0]} уровня духов можно пробуждать: каждая звезда поднимает предел уровня духа ещё на ${S.AWAKE.STEP}, до ${SPIRIT_MAX}.`}</p>
       ${this.dayNote()}
       <div class="pth-road">${rows.join('')}</div>`, 'pth-screen');
     setTimeout(() => { const c = scr.querySelector('#pthCur'); if (c) c.scrollIntoView({ block: 'center' }); }, 60);

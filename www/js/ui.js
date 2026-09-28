@@ -69,7 +69,6 @@ const UI = {
     Bus.on('levelup', l => this.levelUp(l));
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
     Bus.on('quests', () => this.refreshHud());
-    Bus.on('storyStep', s => this.toast(ru`Летопись: ${stepText(s)} — готово`, 'good'));
     Bus.on('buddyFind', text => this.toast(text, 'good'));
     Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });
     Bus.on('weather', ({ w, changed }) => {
@@ -85,11 +84,10 @@ const UI = {
     // не видна — помечаем его, и карта с HUD не рисуются и не анимируются (style.css); при закрытии снова видны сразу
     new MutationObserver(ms => {
       for (const m of ms) for (const n of m.addedNodes) {
-        if (n.nodeType === 1 && n.matches('.screen, .enc, .raid, .tut-scene, .tut-final')) setTimeout(() => n.isConnected && n.classList.add('covers'), 700);
+        if (n.nodeType === 1 && n.matches('.screen, .enc, .raid, .tut-final')) setTimeout(() => n.isConnected && n.classList.add('covers'), 700);
       }
     }).observe(document.body, { childList: true });
     U.$('#tracker .tr-x').onclick = e => { e.stopPropagation(); MapView.untrack(); };
-    U.$('#storyPill').onclick = () => { Sfx.init(); Sfx.play('tap'); this.quests('story'); };
     U.$('#tracker').onclick = () => { if (MapView.tracking) MapView.flyTo(MapView.tracking); };
     U.$('#profileBtn .ava-art').innerHTML = Art.avatar(S.d.look);
     this.refreshEvent();
@@ -235,7 +233,6 @@ const UI = {
     const xw = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%', xb = U.$('#hudXp');
     if (xb._w !== xw) { xb._w = xw; xb.style.width = xw; }
     if (Tut.step()) Tut.show();
-    this.storyPill();
     Hints.check();
     const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); put(b, badge);
@@ -253,31 +250,6 @@ const UI = {
       put(xc.querySelector('span'), U.fmtTime(d.xpUntil - U.now()));
     }
     else if (xc) xc.classList.add('hidden');
-  },
-  // Летопись на карте: текущий шаг главы или «глава завершена» — чтобы сюжет не терялся в меню
-  storyPill() {
-    const el = U.$('#storyPill'); if (!el) return;
-    const d = S.d, ch = STORY[d.story.ch], gift = d.storyGift;
-    if (Tut.step() || (!ch && !gift)) { el.classList.add('hidden'); return; }
-    let t, s, ready = false;
-    if (!ch) { t = ru`Летопись дочитана`; s = ru`Встреча ждёт: ${SP[gift].name}`; ready = true; }
-    else if (S.storyReady()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`Глава завершена — забери награду!`; ready = true; }
-    else if (!S.storyOpen()) { t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`; s = ru`откроется на ${S.storyLvl(ch)} уровне`; } // 4.16: главы идут по уровням до 40-го
-    else {
-      const i = ch.steps.findIndex((x, k) => d.story.p[k] < x.n), step = ch.steps[i], p = d.story.p[i];
-      t = ru`Глава ${d.story.ch + 1}: «${ch.title}»`;
-      // 4.15: подпись шага без числа (число — справа, «2/5») — на любом языке: число подставляем меткой и убираем её
-      const bare = step.t === 'walk' ? ru`Пройди пешком` : stepText({ ...step, n: '\u0001' }).replace(/\s*[:：]?\s*\u0001\s*[:：]?\s*/, ' ').trim();
-      s = `${bare} · ${step.t === 'walk' ? ru`${p.toFixed(1)}/${step.n} км` : `${Math.floor(p)}/${step.n}`}`;
-    }
-    const key = t + s + ready;
-    if (el._key === key && !el.classList.contains('hidden')) return;
-    el._key = key;
-    el.classList.remove('hidden');
-    el.classList.toggle('ready', ready);
-    el.querySelector('.sp-ico').innerHTML = this.menuIcon('scroll'); // 4.7: тот же значок, что у «Заданий» в меню
-    el.querySelector('.sp-t').textContent = t;
-    el.querySelector('.sp-s').textContent = s;
   },
   // 4.20: плашка над картой, пока Ловчий движется быстрее бега (kmh = 0 — убрать)
   speedWarn(kmh) {
@@ -909,7 +881,7 @@ const UI = {
   },
 
   /* ---------------- ЗНАКОМСТВО ---------------- */
-  onboarding(done, from = 0) { // from: 1 — сразу к истории (новичок только что вошёл через сервис или по почте)
+  onboarding(done, from = 0) { // from: 2 — сразу к имени (новичок только что вошёл через сервис или по почте)
     // 4.4: сцена экрана входа остаётся на всех шагах знакомства, шаги рисуются поверх неё
     const root = Login.screenRoot(), body = root.querySelector('.lg-body');
     let name = '', starter = null;
@@ -925,7 +897,6 @@ const UI = {
           ${Game.on() ? this.glass(ru`Уже играю — войти`, 'lg-have', this.I.key) : ''}
           <p class="lg-legal">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href="terms.html">${ru`Соглашение`}</a>`}, ${`<a href="privacy.html">${ru`Политику`}</a>`} и ${`<a href="offer.html">${ru`Оферту`}</a>`}`}</p>
         </div>`;
-      if (n === 1) html = `<div class="onb-lore">${LORE.map((p, i) => `<p style="animation-delay:${i * 0.5}s">${p}</p>`).join('')}</div>${this.rune(ru`Вступить в Орден`, 'next')}`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class="input big" maxlength="16" placeholder="${ru`Имя`}" value="${U.esc(name)}"></div>${this.rune(ru`Дальше`, 'next')}`;
       if (n === 3) html = `<div class="onb-q"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>
         <div class="onb-starters">${['ugolek', 'kapelka', 'mshonok'].map(id => `<button class="starter el-${SP[id].el}" data-id="${id}">${Art.spirit(id)}<b>${SP[id].name}</b><span>${Art.elIcon(SP[id].el, 16)} ${ELEMENTS[SP[id].el].name}</span></button>`).join('')}</div>
@@ -962,7 +933,7 @@ const UI = {
         body.querySelector('.gps').onclick = () => finish(false);
         const demoBtn = body.querySelector('.demo');
         if (demoBtn) demoBtn.onclick = () => finish(true);
-      } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n + 1); };
+      } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n ? n + 1 : 2); }; // 4.24: истории перед игрой больше нет
     };
     step(from);
   },
