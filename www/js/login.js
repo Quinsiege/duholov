@@ -141,6 +141,7 @@ const Login = {
         } catch (e) { UI.toast(U.esc(e.message || ru`Не удалось привязать — попробуй ещё раз`)); }
         return false;
       };
+      Loader.hide(); // 4.22.2: окно выбора — не под экраном загрузки (он выше всех окон — игра «висела» на 45%)
       return new Promise(res => UI.modal({
         title: ru`Вход уже привязан`,
         html: `<p>${ru`Вход через ${name} привязан к Ловчему ${who}.`}</p><p class="small">${this.isGuest()
