@@ -262,13 +262,16 @@ const UI = {
   // 4.20: плашка над картой, пока Ловчий движется быстрее бега (kmh = 0 — убрать)
   speedWarn(kmh) {
     let el = document.getElementById('speedWarn');
-    if (!kmh) { if (el) el.remove(); return; }
+    if (!kmh) { this._speedOff = false; if (el) el.remove(); return; } // скорость снова обычная — в следующий раз плашка покажется
+    if (this._speedOff) { if (el) el.remove(); return; } // 4.25.2: «я пассажир» — до конца этой поездки плашку не показываем
     if (!el) { el = U.el('<div id="speedWarn" role="alert"></div>'); document.body.appendChild(el); }
-    el.innerHTML = `<b>${ru`Слишком быстро — ${kmh} км/ч`}</b><span>${ru`Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!`}</span>`;
+    el.innerHTML = `<b>${ru`Слишком быстро — ${kmh} км/ч`}</b><span>${ru`Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!`}</span><button class="sw-x" aria-label="${ru`Скрыть`}">✕</button>`;
+    // 4.25.2: закрыть можно, только подтвердив, что едешь пассажиром (ограничения игры при этом остаются)
+    el.querySelector('.sw-x').onclick = () => { Sfx.play('tap'); this.confirm(ru`Ты пассажир?`, ru`Скрыть плашку можно, только если ты едешь пассажиром, а не за рулём. Пока скорость высокая, духи и родники недоступны, а путь не засчитывается.`, ru`Да, я пассажир`, () => { this._speedOff = true; const w = document.getElementById('speedWarn'); if (w) w.remove(); }, ru`Нет`); };
   },
   setGps(state, acc) {
     const c = U.$('#gpsChip');
-    const map = { search: [ru`Ищу GPS…`, 'warn search'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };
+    const map = { search: [ru`Ищу GPS…`, 'warn search'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'], jam: [ru`Помехи GPS — держим последнее место`, 'warn jam'] }; // 4.25.2: глушение или подмена GPS
     const [t, cls] = map[state];
     if (c._k === t + cls) return; // GPS приходит каждую секунду — без изменений не перестраиваем значок
     c._k = t + cls;

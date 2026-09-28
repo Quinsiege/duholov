@@ -4552,3 +4552,15 @@ body.rm-open:has(#coach:not(.hidden)) #toasts { top: auto; bottom: calc(112px + 
 .support-modal .sup-mail b { color: #fde68a; }
 .support-modal .sup-mail svg { width: 22px; height: 22px; flex: none; }
 .support-modal .modal-btns { flex-direction: column-reverse; } .support-modal .modal-btns .btn { width: 100%; }
+
+/* 4.25.2: «Слишком быстро» — крестик справа снизу (скрыть можно, только подтвердив, что едешь пассажиром) */
+#speedWarn { padding-right: 44px; padding-bottom: 12px; }
+#speedWarn .sw-x { position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; padding: 0;
+  font-size: 14px; font-weight: 800; color: #fff; background: rgba(0, 0, 0, .28); border: 1px solid rgba(255, 255, 255, .45); cursor: pointer; }
+#speedWarn .sw-x:active { transform: scale(.92); }
+/* 4.25.2: «Духи рядом» — плитки по центру: один дух не прижат влево, неполный ряд тоже по центру */
+.nb-list { display: flex !important; flex-wrap: wrap; justify-content: center; }
+.nb-list > .nb-item { flex: 0 0 calc((100% - 16px) / 3); box-sizing: border-box; }
+/* 4.25.2: помехи GPS — значок оранжевый, точка мигает */
+#hud #gpsChip.jam { color: #fb923c !important; }
+#hud #gpsChip.jam::before { animation: gpsBlink .8s ease-in-out infinite !important; }
