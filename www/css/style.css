@@ -4374,3 +4374,26 @@ body.rm-open #menuBtn .ob-x { opacity: 1; transform: none; }
 #hud .hud-buffs .chip::before, #hud .hud-buffs .chip::after { content: none !important; }
 #hud .hud-buffs .chip .art, #hud .hud-buffs .chip svg { width: 22px !important; height: 22px !important; filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .8)) drop-shadow(0 0 5px rgba(251, 191, 36, .35)); }
 @media (max-width: 399px) { #hud .hud-buffs { margin-left: 63px; margin-top: -4px; } }
+
+/* ===== 4.25: все окна игры — на том же матовом полупрозрачном стекле, что и главное меню (.rm-glass) =====
+   Под окном видна размытая карта (она не движется — анимации под окном на паузе); HUD под окном прячется, как при меню.
+   В режиме экономии — без размытия: плотный фон, карта под окном, как раньше, не рисуется */
+.screen:not(.cam-screen), .screen.spring-screen, .screen.rift-screen, .screen.shrine-screen, .screen.invasion-screen {
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .12), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 60%), rgba(24, 14, 56, .3) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); }
+.screen:not(.cam-screen)::before, .screen:not(.cam-screen)::after { background: none !important; }
+body:not(.eco):has(> .covers:not(.out):not(.closing)) #map { visibility: visible !important; }
+body:has(> .screen:not(.out)) #hud { opacity: 0; pointer-events: none; transition: opacity .2s; }
+.modal-wrap, .sheet-wrap:not(.rm-wrap) {
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(24, 14, 56, .3) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5) !important; backdrop-filter: blur(18px) saturate(1.5) !important; }
+.eco .screen:not(.cam-screen) { -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(180deg, #221650, #120a2c) !important; }
+.eco .modal-wrap, .eco .sheet-wrap:not(.rm-wrap) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(12, 7, 30, .82) !important; }
+/* на стекле текст читается при любой карте под ним: приглушённый цвет светлее, у текста — лёгкая тень (как подписи меню) */
+.screen:not(.cam-screen), .modal-wrap { --muted: #e4dcf7; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25); }
+.screen:not(.cam-screen) small, .screen:not(.cam-screen) .small, .screen:not(.cam-screen) .muted, .screen:not(.cam-screen) .q-note, .screen:not(.cam-screen) p { color: #ece6fb; }
+.eco .screen:not(.cam-screen), .eco .modal-wrap { text-shadow: none; }
+/* надписи с градиентом (заголовки окон, имя и сила духа): тень текста легла бы поверх градиента — вместо неё мягкая тень фильтром */
+.screen-head h2, .screen-head h2 *, .det-name, .dt-pw, .dt-pw *, .big-n, .screen .prof-h, .screen .q-h { text-shadow: none !important; }
+.screen-head h2 { filter: drop-shadow(0 1px 2px rgba(12, 6, 32, .6)); }
+.det-power b { text-shadow: none !important; filter: drop-shadow(0 1px 2px rgba(12, 6, 32, .55)); }
