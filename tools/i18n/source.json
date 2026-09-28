@@ -1901,7 +1901,7 @@
   "at": [
    "www/js/book.js:163",
    "www/js/book.js:163",
-   "www/js/map.js:625",
+   "www/js/map.js:622",
    "www/js/raid.js:12"
   ],
   "ctx": "return [[ru`Разлом`, this.cards([[Art.riftIcon(3), ru`Разлом`, ru`Портал со звёздами у Капища, открыт час. Внутри — босс Нави. Собери команду из трёх духов.`],"
@@ -2753,7 +2753,7 @@
   "at": [
    "www/js/clans.js:46",
    "www/js/hints.js:87",
-   "www/js/map.js:359",
+   "www/js/map.js:358",
    "www/js/updater.js:30"
   ],
   "ctx": "buttons: [{ label: ru`Позже` }],"
@@ -10116,7 +10116,7 @@
    "www/js/main.js:16",
    "www/js/main.js:53",
    "www/js/main.js:89",
-   "www/js/map.js:359"
+   "www/js/map.js:358"
   ],
   "ctx": "const f = U.el(`<div class=\"fatal\"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class=\"btn primary\">${ru`Повторить`}</button></div>`);"
  },
@@ -10188,85 +10188,85 @@
  {
   "k": "Доступ к геолокации запрещён.",
   "at": [
-   "www/js/map.js:342"
+   "www/js/map.js:341"
   ],
   "ctx": "if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? ru`Доступ к геолокации запрещён.` : ru`Не удалось получить координаты.`);"
  },
  {
   "k": "Не удалось получить координаты.",
   "at": [
-   "www/js/map.js:342"
+   "www/js/map.js:341"
   ],
   "ctx": "if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? ru`Доступ к геолокации запрещён.` : ru`Не удалось получить координаты.`);"
  },
  {
   "k": "GPS не отвечает.",
   "at": [
-   "www/js/map.js:344"
+   "www/js/map.js:343"
   ],
   "ctx": "offerDemo(reason = ru`GPS не отвечает.`) {"
  },
  {
   "k": "Нет сигнала GPS",
   "at": [
-   "www/js/map.js:348",
-   "www/js/map.js:354"
+   "www/js/map.js:347",
+   "www/js/map.js:353"
   ],
   "ctx": "UI.confirm(ru`Нет сигнала GPS`, `${reason} Включить демо-режим (джойстик)? Доступен только при разработке.`,"
  },
  {
   "k": "Включи геолокацию (местоположение) в шторке уведомлений телефона.",
   "at": [
-   "www/js/map.js:356"
+   "www/js/map.js:355"
   ],
   "ctx": "<li>${ru`Включи геолокацию (местоположение) в шторке уведомлений телефона.`}</li>"
  },
  {
   "k": "Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.",
   "at": [
-   "www/js/map.js:357"
+   "www/js/map.js:356"
   ],
   "ctx": "<li>${ru`Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.`}</li>"
  },
  {
   "k": "Выйди на открытое место: в помещении спутники ловятся хуже.",
   "at": [
-   "www/js/map.js:358"
+   "www/js/map.js:357"
   ],
   "ctx": "<li>${ru`Выйди на открытое место: в помещении спутники ловятся хуже.`}</li></ul>`,"
  },
  {
   "k": "С",
   "at": [
-   "www/js/map.js:498"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "В",
   "at": [
-   "www/js/map.js:498"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Ю",
   "at": [
-   "www/js/map.js:498"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "З",
   "at": [
-   "www/js/map.js:498"
+   "www/js/map.js:497"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Слишком быстро — около {0} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега",
   "at": [
-   "www/js/map.js:620",
+   "www/js/map.js:617",
    "server/game/core.js:123"
   ],
   "ctx": "if (this.tooFast()) { UI.toast(ru`Слишком быстро — около ${this.kmh} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`); return; } // 4.20"
@@ -10274,14 +10274,14 @@
  {
   "k": "{0}: {1}. Подойди ближе — нужно {2} м",
   "at": [
-   "www/js/map.js:626"
+   "www/js/map.js:623"
   ],
   "ctx": "UI.toast(ru`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);"
  },
  {
   "k": "Дух уже растворился в воздухе…",
   "at": [
-   "www/js/map.js:631",
+   "www/js/map.js:628",
    "server/game/core.js:631"
   ],
   "ctx": "if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }"
@@ -10289,7 +10289,7 @@
  {
   "k": "Капища открываются с {0} уровня Ловчего",
   "at": [
-   "www/js/map.js:635",
+   "www/js/map.js:632",
    "server/game/core.js:1059"
   ],
   "ctx": "if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }"
@@ -10297,21 +10297,21 @@
  {
   "k": "Цель",
   "at": [
-   "www/js/map.js:700"
+   "www/js/map.js:674"
   ],
   "ctx": "this.tracking = { id: e.id, type: e.type, lat: e.lat, lng: e.lng, sid: e.sid, name: e.type === 'spirit' ? SP[e.sid].name : e.name || ru`Цель` };"
  },
  {
   "k": "{0} растворился — след потерян",
   "at": [
-   "www/js/map.js:715"
+   "www/js/map.js:689"
   ],
   "ctx": "UI.toast(ru`${t.name} растворился — след потерян`);"
  },
  {
   "k": "Ты на месте — коснись цели!",
   "at": [
-   "www/js/map.js:729"
+   "www/js/map.js:703"
   ],
   "ctx": "box.querySelector('.tr-dist').textContent = near ? ru`Ты на месте — коснись цели!` : U.fmtDist(d);"
  },
