@@ -1,9 +1,19 @@
 #!/bin/bash
-# Куда слать оповещения: напиши боту игры в Telegram любое сообщение, затем запусти эту команду на сервере.
+# Куда слать оповещения (сервер, оплаты, чеки): напиши боту игры в Telegram любое сообщение, затем запусти эту команду на сервере.
+# Боту пишут и игроки (вход через Telegram) — поэтому скрипт показывает, кто получит оповещения, и ждёт подтверждения.
 set -euo pipefail
 T=$(grep -E '^TELEGRAM_BOT_TOKEN=' /opt/duholov/functions.env | cut -d= -f2-)
 [ -n "$T" ] || { echo "Нет TELEGRAM_BOT_TOKEN — задай его командой duholov-secrets"; exit 1; }
-C=$(curl -s --max-time 20 "https://api.telegram.org/bot$T/getUpdates" | jq -r '[.result[] | (.message // .edited_message) | select(.chat.type == "private") | .chat.id] | last // empty')
-[ -n "$C" ] || { echo "Сообщений боту не найдено — напиши ему что-нибудь и запусти ещё раз"; exit 1; }
+# последние личные чаты, написавшие боту: id, имя, @логин
+mapfile -t CH < <(curl -s --max-time 20 "https://api.telegram.org/bot$T/getUpdates" | jq -r '[.result[] | (.message // .edited_message) | select(.chat.type == "private") | .chat]
+  | reverse | unique_by(.id) | .[] | "\(.id)|\(.first_name // "") \(.last_name // "")|\(.username // "—")"' | head -5)
+[ "${#CH[@]}" -gt 0 ] || { echo "Сообщений боту не найдено — напиши ему что-нибудь и запусти ещё раз"; exit 1; }
+echo "Кто недавно писал боту:"
+for i in "${!CH[@]}"; do IFS='|' read -r id name user <<< "${CH[$i]}"; echo "  $((i + 1)) — $name (@$user)"; done
+read -rp "Кому слать оповещения о сервере, оплатах и чеках? Номер [1]: " n
+n=${n:-1}; [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le "${#CH[@]}" ] || { echo "Нет такого номера"; exit 1; }
+IFS='|' read -r C name user <<< "${CH[$((n - 1))]}"
+read -rp "Оповещения будет получать только $name (@$user). Верно? [д/н]: " ok
+[[ "${ok,,}" =~ ^(д|y|да|yes)$ ]] || { echo "Отменено — ничего не изменилось"; exit 1; }
 umask 077; echo "TG_CHAT=$C" > /root/.duholov-alerts
-/usr/local/bin/duholov-monitor test && echo "Готово: оповещения — в этот чат"
+/usr/local/bin/duholov-monitor test && echo "Готово: оповещения — только в этот чат"

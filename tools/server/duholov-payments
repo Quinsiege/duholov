@@ -1,0 +1,109 @@
+#!/bin/bash
+# Оплаты Казны → чеки в «Мой налог» и сообщения в Telegram (тот же бот и чат, что у duholov-monitor). cron: каждую минуту.
+# Чеки — если владелец вошёл в «Мой налог» (duholov-npd-setup): оплата → чек (продажа физлицу), возврат → чек аннулируется.
+# Номер чека — в payments.npd_receipt ('manual' — пробит вручную). Без входа — в сообщении данные для чека вручную.
+# Кому уже сообщили — /var/lib/duholov-monitor/payments (номер заказа:статус). «duholov-payments test» — пример сообщения.
+# «Мой налог» — неофициальный API веб-кабинета lknpd.nalog.ru: если он изменится, придёт тревога, чек можно пробить вручную.
+set -u
+S=/var/lib/duholov-monitor; mkdir -p "$S"; touch "$S/payments"
+exec 9>"$S/payments.lock"; flock -n 9 || exit 0 # один запуск за раз — иначе сообщение ушло бы дважды
+TG_TOKEN=$(grep -E '^TELEGRAM_BOT_TOKEN=' /opt/duholov/functions.env | cut -d= -f2-)
+TG_CHAT=$(grep -E '^TG_CHAT=' /root/.duholov-alerts 2>/dev/null | cut -d= -f2-)
+send() { [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || return 0
+  curl -s --max-time 20 "https://api.telegram.org/bot$TG_TOKEN/sendMessage" --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$1" | grep -q '"ok":true'; }
+Q() { docker exec supabase-db psql -U supabase_admin -d postgres -tAF '|' -c "$1" 2>/dev/null; }
+METHOD() { case "$1" in sbp) echo "СБП";; bank_card) echo "карта";; sberbank) echo "SberPay";; tinkoff_bank) echo "T-Pay";; yoo_money) echo "ЮMoney";; *) echo "${1:-—}";; esac; }
+TITLE="Игровая валюта в игре «Духолов»"
+
+if [ "${1:-}" = "test" ]; then send "🧪 Духолов: так будут выглядеть оплаты
+💰 Оплата 99 ₽ · СБП · 100 златников
+Игрок: Пример · 28.09 03:05 МСК
+🧾 Чек в «Мой налог» пробит: https://lknpd.nalog.ru/…"; exit 0; fi
+
+# ---------- «Мой налог» ----------
+NPD=/root/.duholov-npd
+INN=$(grep -E '^INN=' "$NPD" 2>/dev/null | cut -d= -f2-); DEV=$(grep -E '^DEVICE=' "$NPD" 2>/dev/null | cut -d= -f2-)
+REFRESH=$(grep -E '^REFRESH=' "$NPD" 2>/dev/null | cut -d= -f2-)
+API=https://lknpd.nalog.ru/api
+UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+npost() { curl -s --max-time 30 -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Referer: https://lknpd.nalog.ru/' -H "User-Agent: $UA" ${3:+-H "Authorization: Bearer $3"} -d "$2" "$API$1"; }
+# ключ доступа живёт около часа — берём из кэша или обновляем по ключу сессии
+npd_token() {
+  local T="$S/npd-token" now; now=$(date +%s)
+  if [ -f "$T" ] && [ "$(cut -d' ' -f1 "$T")" -gt $(( now + 120 )) ]; then cut -d' ' -f2 "$T"; return 0; fi
+  local di r tok exp nref
+  di=$(jq -nc --arg d "$DEV" --arg ua "$UA" '{sourceDeviceId: $d, sourceType: "WEB", appVersion: "1.0.0", metaDetails: {userAgent: $ua}}')
+  r=$(npost /v1/auth/token "$(jq -nc --arg r "$REFRESH" --argjson di "$di" '{refreshToken: $r, deviceInfo: $di}')")
+  tok=$(echo "$r" | jq -r '.token // empty' 2>/dev/null); [ -n "$tok" ] || return 1
+  exp=$(date -d "$(echo "$r" | jq -r '.tokenExpireIn // empty')" +%s 2>/dev/null || echo $(( now + 1800 )))
+  (umask 077; echo "$exp $tok" > "$T")
+  nref=$(echo "$r" | jq -r '.refreshToken // empty'); [ -n "$nref" ] && [ "$nref" != "$REFRESH" ] && sed -i "s|^REFRESH=.*|REFRESH=$nref|" "$NPD"
+  echo "$tok"
+}
+# вход истёк или API изменился — тревога не чаще раза в 12 часов
+npd_alarm() { local A="$S/npd-alarm"; [ -f "$A" ] && [ $(( $(date +%s) - $(stat -c %Y "$A") )) -lt 43200 ] && return 0
+  send "⚠️ Мой налог: $1
+Чеки пока не пробиваются — пробей вручную или войди заново: duholov-npd-setup" && touch "$A"; }
+
+if [ -n "$INN" ] && [ -n "$REFRESH" ]; then
+  now_iso() { TZ=Europe/Moscow date +%Y-%m-%dT%H:%M:%S+03:00; }
+  # оплаты без чека (за 30 дней): пробить
+  todo=$(Q "select id, amount, zlat, to_char(coalesce(paid_at, created_at) at time zone 'Europe/Moscow', 'YYYY-MM-DD\"T\"HH24:MI:SS\"+03:00\"')
+    from payments where status = 'succeeded' and npd_receipt is null and created_at > now() - interval '30 days' order by created_at limit 20")
+  # возвраты с пробитым чеком: аннулировать
+  undo=$(Q "select id, npd_receipt from payments where status = 'refunded' and npd_receipt is not null and npd_receipt <> 'manual' and not npd_cancelled limit 20")
+  if [ -n "$todo$undo" ]; then
+    if TOK=$(npd_token); then
+      rm -f "$S/npd-alarm"
+      while IFS='|' read -r id amount zlat at; do
+        [ -n "$id" ] || continue
+        body=$(jq -nc --arg t "$at" --arg rq "$(now_iso)" --arg n "$TITLE ($zlat златников)" --argjson a "$amount" \
+          '{operationTime: $t, requestTime: $rq, services: [{name: $n, amount: $a, quantity: 1}], totalAmount: ($a | tostring),
+            client: {contactPhone: null, displayName: null, inn: null, incomeType: "FROM_INDIVIDUAL"}, paymentType: "WIRE", ignoreMaxTotalIncomeRestriction: false}')
+        r=$(npost /v1/income "$body" "$TOK"); uuid=$(echo "$r" | jq -r '.approvedReceiptUuid // empty' 2>/dev/null)
+        if [ -n "$uuid" ] && [[ "$uuid" =~ ^[A-Za-z0-9-]+$ ]]; then
+          Q "update payments set npd_receipt = '$uuid', npd_url = 'https://lknpd.nalog.ru/api/v1/receipt/$INN/$uuid/print' where id = '$id' and npd_receipt is null" >/dev/null # ссылку видит и игрок (Казна → «Мои покупки и чеки»)
+          # об оплате уже сообщили (чек пробит позже) — отдельное сообщение со ссылкой на чек
+          grep -qx "$id:succeeded" "$S/payments" && send "🧾 Чек в «Мой налог» пробит: $(printf '%.0f' "$amount") ₽, ${at:8:2}.${at:5:2}.${at:0:4}
+https://lknpd.nalog.ru/api/v1/receipt/$INN/$uuid/print"
+        else npd_alarm "не удалось пробить чек на $amount ₽ ($(echo "$r" | jq -r '.message // .code // "нет ответа"' 2>/dev/null | head -c 150))"; break; fi
+      done <<< "$todo"
+      while IFS='|' read -r id rec; do
+        [ -n "$id" ] || continue
+        r=$(npost /v1/cancel "$(jq -nc --arg u "$rec" --arg t "$(now_iso)" '{operationTime: $t, requestTime: $t, comment: "Возврат средств", receiptUuid: $u, partnerCode: null}')" "$TOK")
+        if echo "$r" | jq -e '.incomeInfo // .approvedReceiptUuid // .cancellationInfo' >/dev/null 2>&1; then Q "update payments set npd_cancelled = true where id = '$id'" >/dev/null
+        else npd_alarm "не удалось аннулировать чек ($(echo "$r" | jq -r '.message // "нет ответа"' 2>/dev/null | head -c 150))"; break; fi
+      done <<< "$undo"
+    else npd_alarm "вход истёк или сервис недоступен"; fi
+  fi
+fi
+
+# ---------- сообщения: оплаты и возвраты за 3 дня, о которых ещё не сообщали ----------
+Q "select p.id, p.status, p.amount, p.zlat, coalesce(p.method, ''), coalesce(s.data->>'name', '—'),
+     to_char(coalesce(p.paid_at, p.updated_at) at time zone 'Europe/Moscow', 'DD.MM HH24:MI'), to_char(coalesce(p.paid_at, p.updated_at) at time zone 'Europe/Moscow', 'DD.MM.YYYY'),
+     coalesce(p.npd_receipt, ''), p.npd_cancelled
+   from payments p left join saves s on s.user_id = p.user_id
+   where p.status in ('succeeded', 'refunded') and p.updated_at > now() - interval '3 days' order by p.updated_at" |
+while IFS='|' read -r id st amount zlat method name at day rec canc; do
+  [ -n "$id" ] || continue
+  grep -qx "$id:$st" "$S/payments" && continue
+  sum=$(printf '%.0f' "$amount")
+  if [ "$st" = "succeeded" ]; then
+    # вход в «Мой налог» есть, а чека ещё нет — подождать следующей минуты (или тревоги)
+    [ -z "$rec" ] && [ -n "$INN" ] && [ -f "$S/npd-token" ] && [ ! -f "$S/npd-alarm" ] && continue
+    if [ -n "$rec" ] && [ "$rec" != "manual" ]; then chk="🧾 Чек в «Мой налог» пробит: https://lknpd.nalog.ru/api/v1/receipt/$INN/$rec/print"
+    elif [ "$rec" = "manual" ]; then chk="🧾 Чек отмечен как пробитый вручную"
+    else chk="Чек в «Мой налог»: «$TITLE», $sum ₽, физлицо, дата $day"; fi
+    text="💰 Оплата $sum ₽ · $(METHOD "$method") · $zlat златников
+Игрок: $name · $at МСК
+$chk"
+  else
+    # возврат: чек аннулирован автоматически — или напомнить сделать это вручную
+    [ "$canc" = "f" ] && [ -n "$rec" ] && [ "$rec" != "manual" ] && [ ! -f "$S/npd-alarm" ] && continue
+    if [ "$canc" = "t" ]; then chk="🧾 Чек в «Мой налог» аннулирован (возврат средств)"
+    else chk="Аннулируй чек этой продажи в «Мой налог» (причина — возврат средств)"; fi
+    text="↩️ Возврат $sum ₽ · игрок: $name · $at МСК
+$chk"
+  fi
+  send "$text" && echo "$id:$st" >> "$S/payments"
+done

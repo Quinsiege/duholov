@@ -1,0 +1,50 @@
+#!/bin/bash
+# Вход в «Мой налог» для автоматических чеков (tools/server/duholov-payments). Запускает владелец на сервере под root.
+# Вход — по телефону и коду из СМС (как в приложении «Мой налог») или по ИНН и паролю от личного кабинета nalog.ru.
+# Пароль и код никуда не записываются: сохраняется только ключ сессии (refresh token) в /root/.duholov-npd (только для root).
+# «duholov-npd-setup off» — выключить автоматические чеки (ключ удаляется).
+set -euo pipefail
+F=/root/.duholov-npd
+API=https://lknpd.nalog.ru/api
+UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+
+if [ "${1:-}" = "off" ]; then rm -f "$F" /var/lib/duholov-monitor/npd-token; echo "Автоматические чеки выключены"; exit 0; fi
+
+DEV=$(grep -E '^DEVICE=' "$F" 2>/dev/null | cut -d= -f2- || true)
+[ -n "$DEV" ] || DEV=$(head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 21)
+DI=$(jq -nc --arg d "$DEV" --arg ua "$UA" '{sourceDeviceId: $d, sourceType: "WEB", appVersion: "1.0.0", metaDetails: {userAgent: $ua}}')
+post() { curl -s --max-time 30 -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Referer: https://lknpd.nalog.ru/' -H "User-Agent: $UA" -d "$2" "$API$1"; }
+
+echo "Вход в «Мой налог»: 1 — телефон и код из СМС, 2 — ИНН и пароль от nalog.ru"
+read -rp "Способ [1]: " how
+if [ "${how:-1}" = "2" ]; then
+  read -rp "ИНН: " inn
+  read -rsp "Пароль (не показывается и не сохраняется): " pass; echo
+  R=$(post /v1/auth/lkfl "$(jq -nc --arg u "$inn" --arg p "$pass" --argjson di "$DI" '{username: $u, password: $p, deviceInfo: $di}')")
+  unset pass
+else
+  read -rp "Телефон (7XXXXXXXXXX): " phone
+  phone=$(echo "$phone" | tr -dc 0-9); [ "${phone:0:1}" = "8" ] && phone="7${phone:1}"
+  C=$(post /v2/auth/challenge/sms/start "$(jq -nc --arg p "$phone" '{phone: $p, requireTpToBeActive: true}')")
+  ct=$(echo "$C" | jq -r '.challengeToken // empty')
+  [ -n "$ct" ] || { echo "Не удалось отправить СМС: $(echo "$C" | jq -r '.message // .' 2>/dev/null)"; exit 1; }
+  read -rp "Код из СМС: " code
+  R=$(post /v1/auth/challenge/sms/verify "$(jq -nc --arg p "$phone" --arg c "$code" --arg t "$ct" --argjson di "$DI" '{phone: $p, code: $c, challengeToken: $t, deviceInfo: $di}')")
+fi
+ref=$(echo "$R" | jq -r '.refreshToken // empty'); inn=$(echo "$R" | jq -r '.profile.inn // empty')
+[ -n "$ref" ] && [ -n "$inn" ] || { echo "Вход не удался: $(echo "$R" | jq -r '.message // .' 2>/dev/null)"; exit 1; }
+umask 077
+printf 'INN=%s\nDEVICE=%s\nREFRESH=%s\n' "$inn" "$DEV" "$ref" > "$F"
+rm -f /var/lib/duholov-monitor/npd-token
+echo "Вход выполнен: ИНН $inn, $(echo "$R" | jq -r '.profile.displayName // .profile.fio // ""')"
+
+# оплаты, по которым чека ещё нет: пробить сейчас или считать пробитыми вручную
+Q() { docker exec supabase-db psql -U supabase_admin -d postgres -tAc "$1"; }
+n=$(Q "select count(*) from payments where status = 'succeeded' and npd_receipt is null")
+if [ "${n:-0}" -gt 0 ]; then
+  Q "select to_char(coalesce(paid_at, created_at) at time zone 'Europe/Moscow', 'DD.MM.YYYY HH24:MI') || ' — ' || amount || ' ₽' from payments where status = 'succeeded' and npd_receipt is null order by created_at" | sed 's/^/  /'
+  read -rp "Оплат без чека: $n. Пробить их автоматически? Если ты уже пробил их вручную — ответь «н» [д/н]: " ans
+  if [[ "${ans,,}" =~ ^(д|y|да|yes)$ ]]; then echo "Пробью в течение минуты — ссылки на чеки придут в Telegram"
+  else Q "update payments set npd_receipt = 'manual' where status = 'succeeded' and npd_receipt is null" >/dev/null; echo "Отмечены как пробитые вручную"; fi
+fi
+echo "Готово: новые оплаты будут пробиваться в «Мой налог» автоматически"

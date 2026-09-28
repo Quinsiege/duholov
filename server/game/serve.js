@@ -61,6 +61,7 @@ const Pay = {
     try {
       if (op === 'create') return await this.create(uid, a || {});
       if (op === 'sync') return await this.sync(uid);
+      if (op === 'list') return await this.list(uid);
     } catch (e) {
       console.error('Казна:', String(e));
       return { ok: false, error: ru`Платёжный сервис не ответил — попробуй чуть позже` };
@@ -101,6 +102,14 @@ const Pay = {
     const { count: open } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).in('status', ['pending', 'waiting_for_capture']).gte('created_at', since);
     return { ok: true, paid: count || 0, open: open || 0, credited };
   },
+  // 4.22.1: мои покупки — для Казны: когда, что, сколько, ссылка на чек «Мой налог» (пробивает tools/server/duholov-payments)
+  async list(uid) {
+    const rows = must(await db.from('payments').select('zlat, amount, status, paid_at, created_at, npd_url').eq('user_id', uid)
+      .in('status', ['succeeded', 'refunded']).order('created_at', { ascending: false }).limit(30)) || [];
+    const RC = /^https:\/\/lknpd\.nalog\.ru\/api\/v1\/receipt\/\d{10,12}\/[A-Za-z0-9-]+\/print$/;
+    return { ok: true, list: rows.map(r => ({ t: Date.parse(r.paid_at || r.created_at), zlat: r.zlat, rub: +r.amount, refunded: r.status === 'refunded',
+      receipt: r.npd_url && RC.test(r.npd_url) ? r.npd_url : null })) };
+  },
   // Итог платежа — только из ответа ЮKassa (платёж должен быть именно этим заказом и на эту сумму)
   async refresh(r) {
     const p = await yk('GET', `/payments/${encodeURIComponent(r.ext_id)}`);
@@ -111,7 +120,9 @@ const Pay = {
     // возврат уже начисленного платежа — владельцу видно в журнале (списывать златники вручную по обращению)
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
-    must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
+    // 4.22.1: paid_at — когда ЮKassa приняла оплату: время продажи в чеке «Мой налог» (tools/server/duholov-payments)
+    const paidAt = status === 'succeeded' ? { paid_at: p.captured_at || new Date().toISOString() } : {};
+    must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, ...paidAt, updated_at: new Date().toISOString() }).eq('id', r.id));
     if (status === 'succeeded' && !r.credited && r.user_id) await this.credit(r.user_id);
     return status;
   },
@@ -204,6 +215,15 @@ const Auth = {
     }
     throw new Error(ru`Такого способа входа нет`);
   },
+  // 4.22.1: подписанный билет «перенести вход» (15 минут): ticket(data) — выдать, ticket(null, str) — проверить и вернуть data
+  async ticket(data, str) {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('relink:' + serviceKey()), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sign = async body => hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body)));
+    if (data) { const body = btoa(unescape(encodeURIComponent(JSON.stringify({ ...data, exp: Date.now() + 15 * 60000 })))); return body + '.' + await sign(body); }
+    const [body, sig] = String(str || '').split('.');
+    if (!body || !sig || !sameKey(sig, await sign(body))) return null;
+    try { const t = JSON.parse(decodeURIComponent(escape(atob(body)))); return t.exp > Date.now() ? t : null; } catch { return null; }
+  },
   async handle(uid, op, a) {
     if (op === 'info') {
       const links = must(await db.from('auth_links').select('provider, name, created_at').eq('user_id', uid)) || [];
@@ -216,6 +236,20 @@ const Auth = {
       const { error } = await db.auth.admin.deleteUser(uid);
       if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: ru`Не получилось удалить — попробуй ещё раз` }; }
       return { ok: true };
+    }
+    // 4.22.1: вход был привязан к другому Ловчему, игрок выбрал «привязать сюда» — переносим по билету из signin
+    if (op === 'relink') {
+      const t = await this.ticket(null, a.ticket);
+      if (!t || t.to !== uid) return { ok: false, error: ru`Вход устарел — попробуй ещё раз` };
+      const { data: me } = await db.auth.admin.getUserById(uid);
+      if (me && me.user && !me.user.email) {
+        const { error } = await db.auth.admin.updateUserById(uid, { email: `u${uid.replace(/-/g, '')}@users.duholov.invalid`, email_confirm: true });
+        if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: ru`Не удалось сохранить вход — попробуй ещё раз` }; }
+      }
+      const moved = must(await db.from('auth_links').update({ user_id: uid, name: t.name }).eq('provider', t.p).eq('subject', t.s).eq('user_id', t.from).select('provider')) || [];
+      if (!moved.length) return { ok: false, error: ru`Вход уже изменился — попробуй ещё раз` };
+      console.warn('Вход перенесён:', t.p, t.from, '→', uid);
+      return { ok: true, linked: true, moved: true, name: t.name };
     }
     if (op !== 'signin') return { ok: false, error: ru`Неизвестная операция` };
     const provider = String(a.provider || '');
@@ -233,7 +267,10 @@ const Auth = {
       const { data: link, error: le } = await db.auth.admin.generateLink({ type: 'magiclink', email: u.user.email });
       if (le || !link || !link.properties) return { ok: false, error: ru`Не удалось войти — попробуй ещё раз` };
       const s = must(await db.from('saves').select('name:data->name, level:data->level').eq('user_id', row.user_id).maybeSingle());
-      return { ok: true, switch: true, token_hash: link.properties.hashed_token, player: s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null };
+      // 4.22.1: или перенести этот вход к текущему Ловчему — билет на 15 минут; у старого останутся ли другие способы входа
+      const others = (must(await db.from('auth_links').select('provider').eq('user_id', row.user_id)) || []).length - 1 + (/\.invalid$/i.test(u.user.email) ? 0 : 1);
+      return { ok: true, switch: true, token_hash: link.properties.hashed_token, relink: await this.ticket({ p: provider, s: who.sub, from: row.user_id, to: uid, name }),
+        others: Math.max(0, others), player: s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null };
     }
     // новый вход — привязываем к текущему игроку; гость становится постоянной учётной записью
     const { data: me } = await db.auth.admin.getUserById(uid);

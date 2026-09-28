@@ -4284,3 +4284,24 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .lg-title:has(.logo-img) { padding: 0; background: none; filter: none; animation: none; letter-spacing: 0; font-size: 0; line-height: 0; }
 .lg-top:has(.logo-img) { padding-top: 22px; } /* ниже значка «12+» */
 @media (max-height: 700px) { .lg-title .logo-img { width: min(70vw, 268px); } .lg-top:has(.logo-img) { padding-top: 14px; } }
+/* 4.22.1: Казна — мои покупки и чеки */
+.pl-rows { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 8px; text-align: left; }
+.pl-row { display: flex; align-items: center; gap: 10px; padding: 6px 2px; }
+.pl-ico .art { width: 28px; height: 28px; }
+.pl-row .row-main { flex: 1; min-width: 0; }
+.pl-row .row-main b { display: block; font-size: 14.5px; }
+.pl-row .row-main small { color: var(--muted); font-size: 12px; }
+.pl-rc { flex: none; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--au-line); color: #fde68a; font-weight: 700; font-size: 13px; text-decoration: none; }
+.pl-wait { flex: none; font-size: 12px; color: var(--muted); }
+/* 4.22.1: верх экранов духа, Лавки, Лиги и профиля — по высоте содержимого. В браузере телефона (видно ≈690 px)
+   правая колонка не влезала в «30% высоты» и вылезала вверх и вниз (обрезанные строки, «Гость» на кнопках);
+   арт — не шире 40% ширины, чтобы справа хватало места; «ЗЛАТНИКИ ··· 140» переносится, если не влезает в строку */
+.dt-hero { max-height: none; grid-template-columns: min(calc(30dvh - 40px), 40vw) minmax(0, 1fr); }
+.det2 .det-art { max-width: 40vw; }
+.det2 .det-power { flex-wrap: wrap; column-gap: 6px; row-gap: 2px; }
+/* 4.22.1: окно с тремя вариантами (вход уже привязан) — кнопки столбиком, главная сверху */
+.modal.btns-col .modal-btns { flex-direction: column-reverse; align-items: stretch; }
+.modal.btns-col .modal-btns .btn { width: 100%; margin: 0; }
+/* 4.22.1: портрет в профиле — Ловчий с кнопки меню на тёмном круге */
+.prof2 .pf-ava .prof-ava.hood { background: radial-gradient(circle at 50% 40%, #2d2159, #120b28 75%); }
+.prof2 .pf-ava .prof-ava.hood .mi { width: 84%; height: 84%; margin: 9% auto 0; }
