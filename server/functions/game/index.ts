@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.22.0';
+const APP_VERSION = '4.22.1';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -6076,7 +6076,9 @@ const Pay = {
     // возврат уже начисленного платежа — владельцу видно в журнале (списывать златники вручную по обращению)
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
-    must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
+    // 4.22.1: paid_at — когда ЮKassa приняла оплату: время продажи в чеке «Мой налог» (tools/server/duholov-payments)
+    const paidAt = status === 'succeeded' ? { paid_at: p.captured_at || new Date().toISOString() } : {};
+    must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, ...paidAt, updated_at: new Date().toISOString() }).eq('id', r.id));
     if (status === 'succeeded' && !r.credited && r.user_id) await this.credit(r.user_id);
     return status;
   },
