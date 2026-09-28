@@ -17,11 +17,44 @@ const app = $('#app');
 let maps = [];
 const clearMaps = () => { maps.forEach(m => m.remove()); maps = []; };
 
+// 4.26: второй фактор модератора — код из приложения-аутентификатора (TOTP). Без него сервер не считает вход модераторским
+// (is_admin() требует aal2): украденного пароля мало
+async function mfaGate() {
+  const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal && aal.currentLevel === 'aal2') return true;
+  const { data: f } = await sb.auth.mfa.listFactors();
+  let factor = f && (f.totp || []).find(x => x.status === 'verified'), qr = '';
+  if (!factor) {
+    for (const x of ((f && f.all) || []).filter(x => x.status !== 'verified')) await sb.auth.mfa.unenroll({ factorId: x.id }); // брошенные попытки
+    const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Духолов ' + new Date().toISOString().slice(0, 10) });
+    if (error) { app.innerHTML = `<div class="card login"><h2>Второй фактор</h2><p>Не удалось подключить: ${esc(error.message)}</p></div>`; return false; }
+    factor = data;
+    qr = `<p>Подключи второй фактор: отсканируй код приложением-аутентификатором (Яндекс Ключ, Google Authenticator и т. п.).</p>
+      <img src="${esc(data.totp.qr_code)}" alt="QR-код" style="width:200px;height:200px;background:#fff;border-radius:8px;padding:6px">
+      <p class="small muted">Или введи ключ вручную: <code>${esc(data.totp.secret)}</code></p>`;
+  }
+  app.innerHTML = `<div class="card login"><h2>Код подтверждения</h2>${qr}<p>Введи 6 цифр из приложения-аутентификатора.</p>
+    <input class="input code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+    <div class="row"><button class="btn ok go">Подтвердить</button></div><p class="small msg"></p></div>`;
+  return new Promise(res => {
+    const go = async () => {
+      const code = $('.code').value.replace(/\D/g, '');
+      const { data: ch, error: ce } = await sb.auth.mfa.challenge({ factorId: factor.id });
+      const { error } = ce ? { error: ce } : await sb.auth.mfa.verify({ factorId: factor.id, challengeId: ch.id, code });
+      if (error) { $('.msg').textContent = 'Неверный код: ' + error.message; return; }
+      res(true);
+    };
+    $('.go').onclick = go;
+    $('.code').onkeydown = e => { if (e.key === 'Enter') go(); };
+  });
+}
+
 async function boot() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session || session.user.is_anonymous) return login();
   $('.who').innerHTML = `${esc(session.user.email || session.user.id)} · <button class="btn small out">Выйти</button>`;
   $('.who .out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  if (!(await mfaGate())) return;
   const { data: isAdmin, error } = await sb.rpc('is_admin');
   if (error || !isAdmin) {
     app.innerHTML = `<div class="card login"><h2>Нет прав модератора</h2>
@@ -98,7 +131,7 @@ async function detail(s, done) {
       ${s.descr ? `<p>${esc(s.descr)}</p>` : '<p class="muted small">Без описания</p>'}
       <ul class="checks">
         <li class="${shift <= 50 ? 'ok' : 'bad'}">Точка объекта в ${Math.round(shift)} м от места съёмки (допустимо до 50 м)</li>
-        <li class="exif muted">Проверяю геометку в файле…</li>
+        <li class="exif muted">Проверяю место игрока…</li>
         <li class="dups muted">Ищу объекты рядом…</li>
       </ul>
       <div class="map"></div>
@@ -125,15 +158,10 @@ async function detail(s, done) {
   L.circleMarker([s.photo_lat, s.photo_lng], { radius: 6, className: 'pin-me' }).bindTooltip('Место съёмки').addTo(m);
   L.circleMarker([s.lat, s.lng], { radius: 9, className: 'pin-obj' }).bindTooltip('Объект').addTo(m);
 
-  // геометка внутри файла должна совпасть с координатами заявки
-  fetch(photoUrl(s.photo)).then(r => r.arrayBuffer()).then(buf => {
-    const g = Exif.read(buf), li = $('.exif', box);
-    if (!g) { li.className = 'bad'; li.textContent = 'В файле нет геометки'; return; }
-    const d = dist(g.lat, g.lng, s.photo_lat, s.photo_lng);
-    const dt = g.time ? Math.abs(g.time - Date.parse(s.shot_at)) / 60000 : null;
-    li.className = d <= 5 && (dt == null || dt < 5) ? 'ok' : 'bad';
-    li.textContent = `Геометка в файле: ${g.lat.toFixed(6)}, ${g.lng.toFixed(6)} — ${d <= 5 ? 'совпадает с заявкой' : `расходится на ${Math.round(d)} м`}${dt != null ? `, время съёмки ${dt < 5 ? 'совпадает' : `расходится на ${Math.round(dt)} мин`}` : ''}`;
-  }).catch(() => { const li = $('.exif', box); li.className = 'bad'; li.textContent = 'Не удалось прочитать файл снимка'; });
+  // 4.26: где был игрок по данным сервера игры в момент заявки (снимки больше без геометки в файле — её писал сам телефон)
+  { const li = $('.exif', box);
+    if (s.srv_dist == null) { li.className = 'muted'; li.textContent = 'Место игрока по серверу неизвестно (заявка подана до 4.26)'; }
+    else { li.className = s.srv_dist <= 150 ? 'ok' : 'bad'; li.textContent = `Сервер игры видел игрока в ${s.srv_dist} м от места съёмки`; } }
 
   const d = 0.003;
   placesIn(s.lat - d, s.lng - d * 2, s.lat + d, s.lng + d * 2).then(list => {

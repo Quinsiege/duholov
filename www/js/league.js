@@ -452,6 +452,19 @@ const PvP = {
     return bad(ru`Неизвестный ход`);
   },
 
+  // 4.26: бой для телефона Ловчего seat (ответы сервера) — в том же виде, что в базе, но без скрытого: энергии, атаки, второго
+  // приёма и перезарядок духов соперника, его счётчиков ударов, а в паузе приёма — чужого решения (щит у атакующего, сила
+  // приёма у защищающегося), пока оно не раскрыто. Защита духа (def) остаётся: по ней телефон заранее показывает свой урон
+  mask(st, seat) {
+    if (!st || !st.s || !st.s[seat]) return st;
+    const x = JSON.parse(JSON.stringify(st)), foe = x.s[this.other(seat)], p = x.pause;
+    if (foe) {
+      foe.team = (foe.team || []).map(f => { const { atk, emul, ...o } = f; return { ...o, en: 0, move2: false }; });
+      Object.assign(foe, { cd: 0, tok: 0, tokAt: 0, hits: 0, rej: 0 });
+    }
+    if (p && p.k === 'charge') { if (p.by === seat) p.sh = null; else p.taps = null; }
+    return x;
+  },
   // Бой глазами Ловчего seat: «я» и «соперник»; энергию и показатели духов соперника не показываем
   view(st, seat, now) {
     const rel = s => (s === seat ? 'me' : s ? 'foe' : null), p = st.pause, o = st.over;

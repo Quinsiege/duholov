@@ -825,6 +825,51 @@
     ok(!Rules.SHOP.filter(x => x.day).some(x => x.id === Rules.shopDeal(U.today()).id), 'товары «раз в день» не бывают товаром дня');
   });
 
+  test('Правила 4.26: перезарядка после перемещения, сверка пути, бой в разломе, нижняя граница ран, скрытое в Лиге', () => {
+    // перезарядка (как в Pokémon GO): км → минуты, между строками — плавно; дрожь GPS (меньше 1 км) не в счёт
+    eq(Rules.jumpCool(0.5), 0, 'ближе 1 км — не в счёт'); eq(Rules.jumpCool(1), 1); eq(Rules.jumpCool(10), 6); eq(Rules.jumpCool(500), 60); eq(Rules.jumpCool(1000), 100);
+    eq(Rules.jumpCool(1001), 120, 'дальше 1000 км — 2 часа'); near(Rules.jumpCool(7.5), 4, 1e-9, 'между 5 и 10 км — плавно');
+    ok(Rules.JUMP.T.every((r, i, T) => !i || (r[0] > T[i - 1][0] && r[1] >= T[i - 1][1])), 'таблица по возрастанию');
+    const now = Date.now(), a = { lat: 55.75, lng: 37.62, t: now }, far = { lat: 56.65, lng: 37.62 }, km = U.dist(a.lat, a.lng, far.lat, far.lng) / 1000;
+    near(Rules.jumpWait(a, far, now) / 60000, Rules.jumpCool(km), 1e-6, 'сразу после прыжка — вся перезарядка');
+    near(Rules.jumpWait({ ...a, t: now - 10 * 60000 }, far, now) / 60000, Rules.jumpCool(km) - 10, 1e-6, 'прошедшее время — в зачёт');
+    eq(Rules.jumpWait({ ...a, t: now - 3 * 3600000 }, far, now), 0, 'прошло больше — ждать не нужно');
+    eq(Rules.jumpWait(a, { lat: 55.7501, lng: 37.62 }, now), 0, 'рядом — без перезарядки'); eq(Rules.jumpWait(null, far, now), 0, 'первое действие');
+    // путь: точка — не дальше, чем можно пробежать от позиции, где сервер видел Ловчего
+    const ref = { lat: 55.75, lng: 37.62, t: now, acc: 10 };
+    ok(Rules.trackNear({ lat: 55.7515, lng: 37.62, t: now }, ref), '170 м — в пределах TRACK.MIN');
+    ok(!Rules.trackNear({ lat: 55.76, lng: 37.62, t: now - 30000 }, ref), '1,1 км за 30 с — нет');
+    ok(Rules.trackNear({ lat: 55.76, lng: 37.62, t: now - 600000 }, ref), '1,1 км за 10 минут — да');
+    ok(Rules.trackNear({ lat: 55.753, lng: 37.62, t: now }, { ...ref, acc: 200 }), 'точность позиции — в запас');
+    // нижняя граница ран: недостающее снимается с бойцов по порядку; больше ран от телефона — верим телефону
+    const wf = Rules.woundFloor([{ max: 100, up: 1, rep: 1 }, { max: 100, up: 0.8, rep: 0.9 }], 150);
+    near(wf[0], 0, 1e-9, 'первый — без сил'); near(wf[1], 0.3, 1e-9, 'второй — остаток (и не выше предела)');
+    eq(Rules.woundFloor([{ max: 100, up: 1, rep: 0.2 }], 50)[0], 0.2, 'ран уже больше — не меняется');
+    // разлом: может ли команда выстоять, пока наносит нужный урон (4.26)
+    const saved = S.d; S.newGame('Проверка', 'ugolek'); S.d.level = 10;
+    try {
+      const t10 = ['ugolek', 'kapelka', 'mshonok'].map(sid => S.makeSpirit(sid, 10, 'r26' + sid)), b1 = { tier: 1, boss: 'kikimora', rl: 10 }, need = Raid.bossStats(b1).hp;
+      ok(Rules.raidWinnable(t10, b1, need), 'здоровая команда — может'); ok(Rules.raidWinnable(t10, b1, need, Object.fromEntries(t10.map(sp => [sp.uid, 1]))));
+      ok(!Rules.raidWinnable(t10, b1, need, Object.fromEntries(t10.map(sp => [sp.uid, 0.02]))), 'с 2% здоровья — нет');
+      const b3 = { tier: 3, boss: 'koschey', rl: 40 };
+      ok(!Rules.raidWinnable([S.makeSpirit('mshonok', 1, 'r26w')], b3, Raid.bossStats(b3).hp), 'дух 1-го уровня против великого разлома — нет');
+      ok(Rules.raidMinLoss(t10, b1, need) > 0, 'после победы раны есть наверняка'); eq(Rules.raidMinLoss(t10, b1, 0), 0);
+      S.d.spirits.push(...t10); // хранитель — по силе духов игрока
+      const g = W.guardian({ id: 'osm:n7775', tier: 1, name: 'Капище' });
+      ok(Rules.duelMinLoss(t10, g.team, g.speed) > 0, 'на Капище — тоже');
+    } finally { S.d = saved; }
+    // Лига: в ответе сервера — бой без скрытого от соперника (4.26)
+    const side = pid => ({ pid, name: pid, team: [{ uid: pid + '1', sid: 'ugolek', el: 'fire', atk: 120, def: 100, max: 90, cur: 90, emul: 1.3, move2: true, power: 500 }] });
+    const st = PvP.ensure({ init: true, season: 's', at: 0, a: side('pa'), b: side('pb') });
+    st.s.a.team[0].en = 40; st.s.b.team[0].en = 80; st.s.b.cd = 5; st.pause = { k: 'charge', by: 'b', kind: 'charge', t: 0, until: 1, taps: 7, sh: null };
+    const ma = PvP.mask(st, 'a'), mb = PvP.mask(st, 'b'), fb = ma.s.b.team[0];
+    ok(fb.en === 0 && fb.atk === undefined && fb.emul === undefined && fb.move2 === false && ma.s.b.cd === 0, 'энергия, атака и приёмы соперника скрыты');
+    ok(fb.def === 100 && fb.cur === 90 && ma.s.b.name === 'pb', 'видимое — на месте');
+    eq(ma.s.a.team[0].en, 40, 'своя энергия видна'); eq(ma.pause.taps, null, 'сила чужого приёма скрыта до удара');
+    eq(mb.pause.taps, 7, 'свой приём — виден'); eq(mb.s.b.team[0].en, 80); eq(st.s.b.team[0].en, 80, 'исходный бой не изменился');
+    const v = PvP.view(ma, 'a', 0); eq(v.foe.team[0].en, 0); eq(v.me.team[0].en, 40, 'PvP.view на телефоне работает как раньше');
+  });
+
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
   const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [], pvpQ: {}, pvpM: {} };
   const envFor = who => ({
@@ -1247,7 +1292,8 @@
     eq((await GameCore.checkWx('clear', pos, env)).key, 'clear', 'настоящая — принимается');
     eq((await GameCore.checkWx(sim, pos, env)).key, sim, 'смоделированная — принимается');
     eq((await GameCore.checkWx(fake, pos, env)).key, sim, 'подделка — заменена смоделированной');
-    eq((await GameCore.checkWx(fake, pos, { weather: async () => null })).key, fake, 'сервис погоды молчит — верим телефону');
+    eq((await GameCore.checkWx(fake, pos, { weather: async () => null })).key, sim, 'сервис погоды молчит — смоделированная (4.26: раньше верили телефону)');
+    eq((await GameCore.checkWx(fake, pos, { weather: async () => { throw new Error('нет сети'); } })).key, sim, 'сервис погоды упал — тоже');
   });
   atest('Сервер: Лига — уровень, команда, жетоны; турнира с машинами больше нет (4.16)', async () => {
     const A = await newPlayer('uh', 55.70, 37.58, 'Искра');
@@ -1535,7 +1581,16 @@
     await refuse(C, 'roomJoin', { code: room.code }, /уже начался/);
     // старый способ «у меня три союзника» больше не работает: без комнаты — одиночный бой, нужно быть рядом
     await refuse(B, 'raidStart', { rift, coop: { host: false, allies: 3 } }, /далеко/);
+    // 4.26: гость совместного боя — тоже у Разлома (раньше мог вступить из другого города)
+    await refuse(B, 'raidStart', { rift, coop: { code: room.code } }, /далеко/);
+    B.lat = A.lat + 0.02; B.lng = A.lng; delete B.srv.pos; // ≈ 2,2 км от Разлома (приехал — позиция с прошлого раза устарела)
+    B.data.items.farpass = 0;
+    await refuse(B, 'raidStart', { rift, coop: { code: room.code } }, /Дальний пропуск/);
+    B.lat = A.lat; B.lng = A.lng;
+    // хозяйка тоже вступила в бой — союзник засчитывается только тот, кто сам вступил (4.26)
+    await must(A, 'raidStart', { rift, coop: { code: room.code } });
     await must(B, 'raidStart', { rift: { id: 'osm:n1', lat: 0, lng: 0 }, coop: { code: room.code } });
+    ok(DB.rooms[room.code].members.every(m => m.f > 0), 'в комнате отмечено, кто в бою');
     eq(B.srv.battle.coop.allies, 1, 'союзников — по комнате'); eq(B.srv.battle.rl, j.rift.rl, 'уровень босса — как в комнате'); eq(B.srv.battle.rid, asPlayer(A, () => W.riftFor({ id, lat: A.lat, lng: A.lng }, 0, hour).id), 'разлом — из комнаты');
     B.srv.battle.start -= 85000;
     const r = await must(B, 'raidEnd', { win: true });
@@ -1787,7 +1842,9 @@
       return P;
     };
     const A = await mk('wf', 'Сокол', 'sokol'), B = await mk('wg', 'Волк', 'volk');
-    const win = async (P, id) => { P.srv.rl = {}; const st = await must(P, 'duelStart', { shrine: shrine(id) }); P.srv.battle.start -= 200000; const r = await must(P, 'duelEnd', { win: true }); return { st, r }; };
+    // 4.26: после победы раны — не меньше посчитанных сервером: между боями духи лечатся
+    const heal = P => P.data.spirits.forEach(x => { delete x.ko; delete x.hpf; delete x.hpt; });
+    const win = async (P, id) => { P.srv.rl = {}; heal(P); const st = await must(P, 'duelStart', { shrine: shrine(id) }); P.srv.battle.start -= 200000; const r = await must(P, 'duelEnd', { win: true }); return { st, r }; };
     const guard = A.data.spirits.find(x => x.sid === 'kapelka' && x.lvl === 20).uid;
     // вольное Капище: бой с хранителем есть, защитника не поставить
     await win(A, freeId);
@@ -1894,6 +1951,11 @@
     // новые после after; жалобы: после трёх разных — скрыто
     const all = (await must(B, 'chatList', { ch: 'all' })).msgs; eq(all.length, 1); ok(!all[0].mine);
     eq((await must(B, 'chatList', { ch: 'all', after: all[0].id })).msgs.length, 0, 'только новые');
+    // 4.26: жаловаться — с Rules.CHAT.LEVEL уровня и после 3 дней в игре
+    await refuse(B, 'chatReport', { id: all[0].id }, /3 дней/);
+    B.data.level = Rules.CHAT.LEVEL - 1; B.data.created = Date.now() - 4 * 86400000;
+    await refuse(B, 'chatReport', { id: all[0].id }, /уровня/);
+    for (const P of [B, C, D2]) { P.data.level = 5; P.data.created = Date.now() - 4 * 86400000; }
     await must(B, 'chatReport', { id: all[0].id }); await must(B, 'chatReport', { id: all[0].id }); await must(C, 'chatReport', { id: all[0].id });
     eq((await must(B, 'chatList', { ch: 'all' })).msgs.length, 1, 'две разных жалобы — ещё видно');
     await must(D2, 'chatReport', { id: all[0].id }); eq((await must(B, 'chatList', { ch: 'all' })).msgs.length, 0, 'после трёх — скрыто');
@@ -2031,7 +2093,8 @@
     await refuse(A, 'parcelTake', {}, /пуста/);
     // родник при почти полной сумке: что не влезло — в посылку
     A.data.items = { charm: lim - 1 };
-    const s2 = await must(A, 'spring', { poi: freeSpring(A, 94500) }); // другой родник — первый уже отдал силу
+    const sp2 = freeSpring(A, 94500); DB.pois[sp2.id] = { ...sp2, kind: 'spring', active: true }; // 4.26: место из базы — добыча полная
+    const s2 = await must(A, 'spring', { poi: sp2 }); // другой родник — первый уже отдал силу
     eq(cnt(), lim); ok(asPlayer(A, () => S.parcelCount()) >= 3, 'добыча родника не пропала'); ok(!s2.got.some(x => !x.n));
     const dr = await must(A, 'parcelTake', { drop: true }); ok(dr.dropped >= 3); eq(A.data.parcel, null, 'посылку можно выбросить');
     A.data.items = { charm: 50 };
@@ -2166,6 +2229,79 @@
     ok(q.st.over.why === 'quit' && q.st.over.win !== q.seat, 'сдался — поражение');
     const xf = F.data.xp, rf = (await must(F, 'pvpResult', {})).done[0];
     ok(!rf.win && rf.d < 0, 'рейтинг за сдачу снят'); eq(F.data.xp, xf, 'опыта за сдачу нет');
+  });
+
+  /* ---------- 4.26: защита от подделок ---------- */
+  atest('Сервер 4.26: перезарядка после дальнего перемещения; путь сверяется с позицией, повтор не засчитывается, дневной предел', async () => {
+    const A = await newPlayer('tp1', 55.40, 37.20, 'Путник'); A.data.tut = 0;
+    await must(A, 'spring', { poi: freeSpring(A, 91500) });
+    ok(A.srv.at && A.srv.at.lat === A.lat, 'место действия запомнено');
+    // «телепорт» на 100 км: позиция принимается, действия на карте — после перезарядки
+    A.lat += 0.9; delete A.srv.pos; // прошлая точка давно устарела — без «GPS скачет»
+    await must(A, 'tick'); eq(A.srv.pos.lat, A.lat, 'позиция принята');
+    await refuse(A, 'spring', { poi: freeSpring(A, 91600) }, /Слишком быстрое перемещение — подожди \d+ мин/);
+    A.srv.at.t -= (Rules.jumpCool(100) + 1) * 60000; // прошло больше перезарядки
+    await must(A, 'spring', { poi: freeSpring(A, 91700) });
+    A.lat += 0.005; delete A.srv.pos; // дрожь GPS (≈ 550 м) — без перезарядки
+    await must(A, 'spring', { poi: freeSpring(A, 91800) });
+    // путь
+    const B = await newPlayer('tp2', 55.38, 37.18, 'Ходок');
+    const walk = (lat0, t0) => Array.from({ length: 13 }, (_, i) => [lat0 + i * 0.00005, B.lng, t0 + i * 5000, 10]);
+    await must(B, 'move', { pts: walk(B.lat, Date.now() - 60000) });
+    near(B.data.stats.km * 1000, 12 * 5.56, 3, 'шагом рядом — засчитано');
+    const km0 = B.data.stats.km;
+    B.srv.mv.t = Date.now() - 15 * 60000; // прошлый зачёт давно — точки старше него всё равно не в счёт
+    await must(B, 'move', { pts: walk(B.lat, Date.now() - 20 * 60000) }); eq(B.data.stats.km, km0, 'старые точки (повтор пачки) не засчитаны');
+    await must(B, 'move', { pts: walk(B.lat + 0.05, Date.now() - 60000) }); eq(B.data.stats.km, km0, 'путь в 5 км от позиции не засчитан');
+    B.srv.mv = null; B.data.dayc = { day: asPlayer(B, () => U.today()), walk: Rules.TRACK.DAY - 10 };
+    await must(B, 'move', { pts: walk(B.lat, Date.now() - 60000) });
+    near((B.data.stats.km - km0) * 1000, 10, 0.01, 'сверх дневного предела путь не засчитан'); eq(B.data.dayc.walk, Rules.TRACK.DAY);
+  });
+  atest('Сервер 4.26: разлом — команда должна выстоять; раны после победы; союзники — только вступившие в бой', async () => {
+    const A = await newPlayer('rw1', 55.36, 37.16, 'Стойкий'); A.data.tut = 0; A.data.level = 10;
+    ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, 'rw' + sid))));
+    A.data.spirits[0].lvl = 10; A.data.team = A.data.spirits.map(x => x.uid);
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), 31000);
+    const rift = { id, lat: A.lat, lng: A.lng, name: 'Камень' };
+    await must(A, 'raidStart', { rift });
+    ok(A.srv.battle.hp0 && Object.keys(A.srv.battle.hp0).length === 3, 'здоровье на входе запомнено');
+    Object.assign(A.srv.battle, { boss: 'kikimora', tier: 1, rl: 10 }); A.srv.battle.start -= 85000; // босс — один и тот же в любой час
+    const low = A.srv.battle.hp0; Object.keys(low).forEach(u => { low[u] = 0.02; });
+    await refuse(A, 'raidEnd', { win: true }, /не могла победить/);
+    Object.keys(low).forEach(u => { low[u] = 1; });
+    const r = await must(A, 'raidEnd', { win: true }); ok(r.win, 'здоровая — победила');
+    ok(A.data.spirits.some(x => asPlayer(A, () => S.hpNow(x)) < 1), 'раны после победы — даже без отчёта телефона');
+    // союзники: в комнате из четырёх в бой вступил один
+    DB.rooms.TST26 = { code: 'TST26', members: [{ pid: A.data.pid, f: 1 }, { pid: 'x1', f: 1 }, { pid: 'x2' }, { pid: 'x3' }] };
+    const d0 = S.d; S.d = A.data;
+    try { eq(await GameCore.coopAllies({ env: envFor(A) }, { coop: { code: 'TST26', allies: 3 } }), 1, 'союзник — только вступивший в бой'); } finally { S.d = d0; }
+    delete DB.rooms.TST26;
+  });
+  atest('Сервер 4.26: замок игрока, места не из базы, жалобы, чужие ключи, время друга', async () => {
+    const A = await newPlayer('lk1', 55.34, 37.14, 'Замок'); A.data.tut = 0; A.data.level = 16;
+    // запись в общую таблицу — только пока замок игрока точно держится (serve.js: env.lockAt, env.LOCK_MS)
+    const send = lockAt => GameCore.run({ a: [{ type: 'chatSend', args: { ch: 'trade', text: 'Проверка замка' } }], tz: 180, wx: null, pos: { lat: A.lat, lng: A.lng, acc: 10 }, v: APP_VERSION },
+      { data: A.data, srv: A.srv }, { ...envFor(A), lockAt, LOCK_MS: 30000 });
+    const late = await send(Date.now() - 25000);
+    ok(!late.ok && /не успел/.test(late.error), 'замок вот-вот истечёт — не пишем'); eq(DB.chat.filter(m => m.text === 'Проверка замка').length, 0);
+    ok((await send(Date.now() - 1000)).ok, 'замок свежий — пишем'); eq(DB.chat.filter(m => m.text === 'Проверка замка').length, 1);
+    // у места не из базы — только малые бои
+    const hour = Math.floor(Date.now() / 3600000);
+    const sid = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) >= 2, 54000);
+    await refuse(A, 'duelStart', { shrine: { id: sid, lat: A.lat, lng: A.lng, name: 'К' } }, /малые бои/);
+    // ключи из запроса — только свои ключи таблиц
+    await refuse(A, 'clanJoin', { clan: '__proto__' }, /Такой дружины нет/);
+    await refuse(A, 'clanJoin', { clan: 'constructor' }, /Такой дружины нет/);
+    ok(Array.isArray((await must(A, 'auctionFind', { f: { el: '__proto__', rar: 'constructor', sids: ['__proto__', 'toString'] } })).lots), 'аукцион — без сбоев');
+    await refuse(A, 'equip', { uid: A.data.spirits[0].uid, k: '__proto__' }, /амулета нет/);
+    // время друга в игре — «сейчас» или с точностью до часа
+    const B = await newPlayer('lk2', 55.34, 37.14, 'Друг');
+    await must(A, 'friendAdd', { pid: B.data.pid }); await must(B, 'friendsSync');
+    const seenAgo = ms => GameCore.run({ a: [{ type: 'friendProfile', args: { pid: B.data.pid } }], tz: 180, wx: null, pos: null, v: APP_VERSION }, { data: A.data, srv: A.srv },
+      { ...envFor(A), friendSave: async () => ({ data: JSON.parse(JSON.stringify(DB.saves.lk2)), seen: new Date(Date.now() - ms).toISOString() }) }).then(r => r.results[0].seen);
+    eq(await seenAgo(3 * 60000), 'now', 'только что — «сейчас»');
+    const s = await seenAgo(3 * 3600000 + 17 * 60000); ok(/T\d\d:00:00\.000Z$/.test(s) && Date.parse(s) <= Date.now() - 3 * 3600000, 'иначе — до часа: ' + s);
   });
   /* ---------- вывод ---------- */
   (async () => {
