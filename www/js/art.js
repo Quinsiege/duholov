@@ -306,7 +306,7 @@ const Art = (() => {
   // Список (id → метка содержимого) пишет tools/art/spirit-pics.mjs.
   // Сияющий — бело-радужный перламутр: фигура почти белая, по ней мягко переливается радуга, бежит блик, вокруг ореол и искры; омрачённый — тёмный
   // холодный лиловый тон, тёмное свечение и дым Нави у ног. Перелив и тон ложатся только на фигуру (маска — сама картинка), стили — .sp-pic в style.css
-  const PICS = {"kostrovik":"3235430501","ugolek":"3106337497","zharogriv":"2415565401"}; // tools/art/spirit-pics.mjs
+  const PICS = {}; // tools/art/spirit-pics.mjs
   const picUrl = sid => PICS[sid] ? `img/spirits/${sid}.webp?v=${PICS[sid]}` : null;
   // solo — картинка без слоёв (списки, карта, фото с поимки): лиловый — самим фильтром, перламутр — анимацией оттенка (.sp-pearl в style.css)
   const elColor = sid => ELEMENTS[SP[sid].el].color;
