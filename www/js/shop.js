@@ -71,7 +71,7 @@ const Treasury = {
           this.setWaiting(true);
           m.close();
           if (!/^https:\/\/([a-z0-9-]+\.)*(yoomoney\.ru|yookassa\.ru)\//i.test(r.url || '')) throw new Error(ru`Неверная ссылка на оплату`);
-          location.href = r.url; // в приложении откроется браузер, в браузере — страница оплаты
+          location.href = r.url; // страница оплаты ЮKassa (в приложении 6+ — внутри него; после оплаты — обратно в игру)
         } catch (e) { UI.toast(U.esc(e.message), 'bad'); } finally { m._busy = false; }
         onDone && onDone();
       } }],

@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 5 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 6 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
         // геолокацию и камеру получает только сама игра, не страницы сервисов входа
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
@@ -41,9 +41,16 @@ class MainActivity : ComponentActivity() {
         // (Google во встроенные окна не пускает — эту кнопку игра в приложении не показывает)
         private fun isAuthHost(host: String?) = host != null && (host == "oauth.yandex.ru" || host.endsWith(".yandex.ru") || host.endsWith(".yandex.com") ||
             host == "id.vk.com" || host == "vk.com" || host.endsWith(".vk.com") || host == "oauth.telegram.org")
+        // 6: оплата ЮKassa — внутри приложения: после оплаты ЮKassa возвращает на duholov.ru прямо в игру (раньше — в браузер,
+        // где мог быть открыт другой аккаунт). Пока идёт оплата, страницы банка (3-D Secure) — тоже внутри
+        private fun isPayHost(host: String?) = host != null && (host == "yoomoney.ru" || host.endsWith(".yoomoney.ru") ||
+            host == "yookassa.ru" || host.endsWith(".yookassa.ru"))
+        // ссылка СБП (qr.nspk.ru) — Android сам предложит приложение банка
+        private fun isSbpHost(host: String?) = host != null && (host == "nspk.ru" || host.endsWith(".nspk.ru"))
     }
 
     private lateinit var web: WebView
+    private var paying = false // 6: открыта оплата ЮKassa — до возврата на свои страницы
     private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
     private var pendingCamera: PermissionRequest? = null
 
@@ -69,6 +76,20 @@ class MainActivity : ComponentActivity() {
         try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (e: ActivityNotFoundException) { /* нет браузера */ }
     }
 
+    // 6: ссылка не на страницу (intent:, sberpay:, bank…: — приложение банка, СБП, SberPay, T-Pay) — открыть приложение;
+    // intent: — только как ссылку из браузера (без явного компонента), нет приложения — его запасная страница
+    private fun openApp(uri: Uri) {
+        if (uri.scheme == "intent") {
+            val intent = try { Intent.parseUri(uri.toString(), Intent.URI_INTENT_SCHEME) } catch (e: Exception) { return }
+            intent.addCategory(Intent.CATEGORY_BROWSABLE)
+            intent.component = null
+            intent.selector = null
+            try { startActivity(intent) } catch (e: ActivityNotFoundException) {
+                intent.getStringExtra("browser_fallback_url")?.let { web.loadUrl(it) }
+            }
+        } else openExternal(uri)
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,10 +113,16 @@ class MainActivity : ComponentActivity() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                 assetLoader.shouldInterceptRequest(request.url)
 
-            // свои страницы — внутри приложения; внешние ссылки и APK — в браузере
+            // свои страницы, вход через сервисы и оплата — внутри приложения; внешние ссылки и APK — в браузере
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url
-                if ((url.host in OWN_HOSTS || isAuthHost(url.host)) && url.path?.endsWith(".apk") != true) return false
+                val isWeb = url.scheme == "http" || url.scheme == "https"
+                if (!isWeb) { openApp(url); return true }
+                if (!request.isForMainFrame) return false // рамки внутри страницы (3-D Secure банка)
+                if (url.path?.endsWith(".apk") == true || isSbpHost(url.host)) { openExternal(url); return true }
+                if (url.host in OWN_HOSTS) { paying = false; return false }
+                if (isPayHost(url.host)) { paying = true; return false }
+                if (isAuthHost(url.host) || paying) return false
                 openExternal(url)
                 return true
             }
@@ -152,6 +179,11 @@ class MainActivity : ComponentActivity() {
         // «Назад» закрывает окна игры; на карте — двойное нажатие для выхода
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                // 6: на странице оплаты или входа «Назад» ведёт назад по страницам (в игру), а не закрывает приложение
+                if (Uri.parse(web.url ?: HOME).host !in OWN_HOSTS) {
+                    if (web.canGoBack()) web.goBack() else web.loadUrl(HOME)
+                    return
+                }
                 web.evaluateJavascript("window.nativeBack ? window.nativeBack() : true") { result ->
                     if (result == "true") finish()
                 }
