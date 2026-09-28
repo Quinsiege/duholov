@@ -2209,7 +2209,6 @@ I18N.dict = {
 "Путь":"Voie",
 "Дружину можно выбрать с {0} уровня Ловчего":"Tu pourras choisir un clan dès le niveau {0} de Chasseur",
 "Новое":"Nouveau",
-"Страница {0}":"Page {0}",
 "Откроется на {0} уровне Ловчего":"S’ouvre au niveau {0} de Chasseur",
 "Праздник продлится до {0}.":"La fête dure jusqu'au {0}.",
 "Ура!":"Hourra !",

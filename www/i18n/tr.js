@@ -2209,7 +2209,6 @@ I18N.dict = {
 "Путь":"Yol",
 "Дружину можно выбрать с {0} уровня Ловчего":"Klan {0}. Avcı seviyesinden itibaren seçilebilir",
 "Новое":"Yeni",
-"Страница {0}":"Sayfa {0}",
 "Откроется на {0} уровне Ловчего":"{0}. Avcı seviyesinde açılır",
 "Праздник продлится до {0}.":"Bayram şu tarihe kadar sürecek: {0}.",
 "Ура!":"Yaşasın!",

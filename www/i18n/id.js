@@ -2209,7 +2209,6 @@ I18N.dict = {
 "Путь":"Jalan",
 "Дружину можно выбрать с {0} уровня Ловчего":"Klan bisa dipilih mulai Pemburu level {0}",
 "Новое":"Baru",
-"Страница {0}":"Halaman {0}",
 "Откроется на {0} уровне Ловчего":"Terbuka di Pemburu level {0}",
 "Праздник продлится до {0}.":"Hari raya berlangsung sampai {0}.",
 "Ура!":"Hore!",

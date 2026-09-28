@@ -581,6 +581,7 @@ const UI = {
   isNew(k) { const l = this.openLvl(k); return l > 1 && S.d.level >= l && !this.opened()[k]; },
   menu() {
     Sfx.init(); Sfx.play('tap');
+    if (this._rm) { this._rm(); return; } // 4.25: меню открыто — центральная кнопка его закрывает
     const ml = Tut.menuLock(); if (ml) { this.toast(ml); return; } // 4.0: меню открывается по ходу обучения
     const q = S.questsClaimable() + Order.claimable(), eggs = S.readyCocoons().length;
     const tiles = [
@@ -607,34 +608,45 @@ const UI = {
     ];
     Tut.ui('menu'); // 4.0: шаг обучения «открой меню»
     // 4.21: все разделы видны с начала — ещё закрытые по уровню с замком «с N ур.»
-    const lvl = S.d.level, shown = tiles;
+    const lvl = S.d.level;
     const far = k => !Tut.tileLock(k) && this.openLvl(k) > lvl; // закрыт по уровню
-    // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
-    const PER = 12, pages = [];
-    for (let i = 0; i < shown.length; i += PER) pages.push(shown.slice(i, i + PER).map(t => [t, tiles.indexOf(t)]));
-    // 4.0: во время обучения — замки на ещё не пройденных разделах и подсветка нужного
-    const tile = ([t, i]) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
-      return `<button class="tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}${lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
-    const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
-      <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
-      ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="${ru`Страница ${i + 1}`}"></button>`).join('')}</div>` : ''}</div></div>`);
-    const close = () => { this.popLayer(close); sheet.classList.add('out'); setTimeout(() => sheet.remove(), 200); };
-    const box = sheet.querySelector('.menu-pages'), dots = [...sheet.querySelectorAll('.menu-dots button')];
-    const page = () => Math.round(box.scrollLeft / Math.max(1, box.clientWidth));
-    box.addEventListener('scroll', () => { const p = page(); dots.forEach((d, i) => d.classList.toggle('on', i === p)); this.menuPage = p; }, { passive: true });
-    sheet.addEventListener('click', e => {
-      const d = e.target.closest('[data-p]');
-      if (d) { box.scrollTo({ left: +d.dataset.p * box.clientWidth, behavior: 'smooth' }); return; }
+    // 4.25: меню — круглые значки разделов на «жидком стекле»: вылетают из центральной кнопки снизу вверх и туда же
+    // возвращаются. Класс .tile и data-k остались — по ним обучение подсвечивает нужный раздел
+    const tile = (t, i) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
+      const badge = lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : '';
+      return `<button class="tile rm-it${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}"><span class="rm-c">${this.menuIcon(t[0])}${badge}</span><span class="rm-l">${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}</button>`; };
+    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid">${tiles.map(tile).join('')}</div></div>`);
+    const orb = U.$('#menuBtn');
+    let closing = false;
+    const close = (then) => {
+      if (closing) return; closing = true;
+      this.popLayer(close); this._rm = null;
+      document.body.classList.remove('rm-open');
+      wrap.classList.remove('rm-in'); wrap.classList.add('rm-back');
+      setTimeout(() => { wrap.remove(); if (typeof then === 'function') then(); }, 300);
+    };
+    wrap.addEventListener('click', e => {
       const t = e.target.closest('.tile');
       if (t) {
         const k = tiles[+t.dataset.i][0], lk = Tut.tileLock(k) || (far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '');
-        if (lk) { this.toast(lk); Sfx.play('miss'); return; }
-        this.markOpened(k); close(); Sfx.play('tap'); tiles[+t.dataset.i][2]();
-      }
-      else if (e.target === sheet) close();
+        if (lk) { this.toast(lk); Sfx.play('miss'); t.classList.remove('rm-no'); void t.offsetWidth; t.classList.add('rm-no'); return; }
+        this.markOpened(k); Sfx.play('tap'); t.classList.add('rm-pick');
+        close(); tiles[+t.dataset.i][2]();
+      } else close();
     });
-    document.body.appendChild(sheet);
-    if (this.menuPage) box.scrollLeft = this.menuPage * box.clientWidth; // открываем на той странице, где закрыли
+    document.body.appendChild(wrap);
+    // откуда вылетать: каждый значок стартует из центра кнопки; ближние к ней — раньше (волна снизу вверх)
+    const o = orb.getBoundingClientRect(), ox = o.left + o.width / 2, oy = o.top + o.height / 2;
+    const its = [...wrap.querySelectorAll('.rm-it')], pos = its.map(it => { const c = it.querySelector('.rm-c').getBoundingClientRect(); return [c.left + c.width / 2, c.top + c.height / 2]; });
+    const far2 = Math.max(1, ...pos.map(([x, y]) => Math.hypot(x - ox, y - oy)));
+    its.forEach((it, i) => {
+      const [x, y] = pos[i], d = Math.hypot(x - ox, y - oy) / far2;
+      it.style.setProperty('--dx', (ox - x).toFixed(1) + 'px'); it.style.setProperty('--dy', (oy - y).toFixed(1) + 'px');
+      it.style.setProperty('--d', Math.round(d * 260) + 'ms'); it.style.setProperty('--db', Math.round((1 - d) * 120) + 'ms');
+    });
+    void wrap.offsetWidth; // стартовые положения применены — дальше переход к местам
+    wrap.classList.add('rm-in'); document.body.classList.add('rm-open');
+    this._rm = close;
     this.pushLayer(close);
   },
 
