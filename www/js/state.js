@@ -60,15 +60,21 @@ const S = {
     d.medals = d.medals || {};
     // 4.16: осколки Алатыря (пробуждение духов) и эссенция Рода (подходит любому семейству)
     d.alatyr = d.alatyr || 0; d.rod = d.rod || 0; d.stats.awakened = d.stats.awakened || 0;
-    // 4.24: обучения больше нет — начатое считается пройденным
-    if (d.tut) d.tut = 0;
+    // 4.24: обучение без сцен — шаг прежнего списка (4.0: tutV 4; 3.x: 1 поймать, 2 родник, 3 меню) переводится
+    // на ближайший шаг нового, который ещё впереди; дальше последнего — обучение пройдено
+    if (d.tut && d.tutV !== TUT_V) {
+      const OLD = ['meet', 'lore', 'catch1', 'ring', 'catch2', 'menu', 'spirits', 'card', 'power', 'dex', 'springs', 'spring', 'bag', 'road', 'cocoons', 'quests', 'path', 'oath'];
+      const from = d.tutV === 4 ? d.tut - 1 : Math.max(0, OLD.indexOf({ 1: 'catch1', 2: 'springs', 3: 'road' }[d.tut]));
+      const next = OLD.slice(from).map(id => TUT.findIndex(x => x.id === id)).find(k => k >= 0);
+      d.tut = next === undefined ? 0 : next + 1; d.tutV = TUT_V;
+    }
     if (d.buddy === undefined) d.buddy = null;
   },
 
   newGame(name, starter) {
     this.d = {
-      v: 1, name, level: 1, xp: 0, sparks: 1500, created: Date.now(),
-      items: { charm: 60, honey: 5, water: 5, incense: 2 }, // 4.24: обучения больше нет — его награды сразу в стартовом наборе
+      v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),
+      items: { charm: 30, honey: 3, water: 3, incense: 1 },
       essence: {}, spirits: [], dex: {}, cocoons: [{ id: U.uid(), km: 2, walked: 0, inc: true }],
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
@@ -77,6 +83,7 @@ const S = {
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
+    this.d.tut = 1; this.d.tutV = TUT_V; // обучение новичка (4.0; 4.24 — подсказками)
     this.ensureQuests();
     this.save(true);
   },
@@ -386,6 +393,7 @@ const S = {
     this.d.sparks -= c.sparks; this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.lvl++;
     this.progress('power', 1);
+    this.tutAdvance('power'); // 4.0: шаг обучения «Усиль духа»
     this.save();
     return true;
   },
@@ -670,6 +678,19 @@ const S = {
   GUEST: 0.3,
   guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
 
+
+  /* ---------- 4.0: обучение новичка ---------- */
+  tutAt() { return (this.d && this.d.tut && TUT[this.d.tut - 1]) || null; },
+  // Шаг выполнен: kind — что сделал игрок, id — для разделов. В конце этапа — его награда.
+  tutAdvance(kind, id) {
+    const st = this.tutAt();
+    if (!st || st.kind !== kind || (id && st.id !== id)) return null;
+    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward, true, true) : [];
+    this.d.tut = next ? this.d.tut + 1 : 0;
+    if (got.length) Bus.emit('tutChapter', { ch: st.ch, got, done: !next });
+    this.save();
+    return { got, done: !next };
+  },
 
   /* ---------- Знаки Ордена ---------- */
   medalValue(m) {

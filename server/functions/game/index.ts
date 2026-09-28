@@ -11,6 +11,7 @@ const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
 const Poi = { near: () => [], nearest: () => null };
+const Tut = { SID: 'vayfayka', spawn: () => null, step: () => 0 };
 const UI = { toast() {}, refreshHud() {} };
 const Sync = { touch() {} };
 const Cloud = { configured: () => false };
@@ -691,6 +692,32 @@ const SKIN_RAR = [{ name: ru`Обычный`, c: '#c4b5fd' }, { name: ru`Ред�
 MEDALS.splice(4, 0, { id: 'duels', name: ru`Поединщик`, desc: ru`Победи хранителей капищ`, stat: 'duels', tiers: [5, 50, 300] });
 QUEST_TEMPLATES.push({ t: 'duel', min: 1, max: 2, text: n => ru.k`Победи хранителей капищ: ${n}`, reward: { charm2: 4, sparks: 600 } });
 
+/* ---------- 4.0: обучение новичка ----------
+   Пропустить нельзя: шаги ведёт сервер (S.d.tut — номер текущего шага, 0 — пройдено), после перезахода игра
+   продолжает с того же места. 4.24: без сцен и сюжета — только подсказки. kind: ui — открыть раздел; catch — поймать
+   учебного духа (sid); spring — зачерпнуть из родника; power — усилить духа. За каждый этап — награда. */
+const TUT_V = 5; // версия списка шагов: при смене — перевод S.d.tut в S.migrate
+const TUT_CHAPTERS = [
+  { title: ru`Первый дух`,  reward: { charm: 15, honey: 3, sparks: 500, xp: 400 } },
+  { title: ru`Твои духи`,   reward: { sparks: 500, xp: 300 } },
+  { title: ru`Родники`,     reward: { charm: 15, water: 3, xp: 400 } },
+  { title: ru`Прогулки`,    reward: { charm: 20, honey: 5, water: 3, incense: 1, sparks: 1500, zlat: 20, xp: 1400 } },
+];
+const TUT = [
+  { ch: 0, kind: 'catch', id: 'catch1', sid: 'vayfayka', hint: ru`Рядом появился дух — видишь светящийся круг на карте? <b>Коснись духа</b>, а потом <b>смахни оберег вверх</b>, прямо в него.` },
+  { ch: 0, kind: 'catch', id: 'catch2', sid: 'mshonok', hint: ru`Второй учебный дух рядом. Кольцо вокруг духа сжимается: бросай, когда оно <b>маленькое</b>, — выйдет «Отлично!». Зелёное кольцо — дух покладистый, красное — упрямый.` },
+  { ch: 1, kind: 'ui', id: 'menu', info: ru`Это меню — здесь все разделы. Пока открыто не всё: разделы откроются по ходу обучения, подсвеченный — следующий.`, hint: ru`Каждый пойманный дух — твой. Открой <b>меню</b> — золотой оберег внизу экрана.` },
+  { ch: 1, kind: 'ui', id: 'spirits', info: ru`Это твоя коллекция — все пойманные духи. Сверху — сортировка по силе, новизне и имени и фильтр по стихиям.`, hint: ru`Это разделы Ордена. Открой <b>«Духи»</b> — там твоя коллекция.` },
+  { ch: 1, kind: 'ui', id: 'card', info: ru`Это карточка духа: сила, стихия, приёмы и семейство. Ниже — кнопки «Усилить» и «Превратить», а ещё можно сделать духа спутником.`, hint: ru`Коснись любого духа, чтобы открыть его <b>карточку</b>.` },
+  { ch: 1, kind: 'power', id: 'power', hint: ru`На карточке — сила духа. Нажми <b>«Усилить»</b>: за искры и эссенцию дух станет сильнее. Эссенцию приносят поимки духов того же семейства.` },
+  { ch: 1, kind: 'ui', id: 'dex', info: ru`Бестиарий — все виды духов. Пойманные видны целиком, встреченные — тенью. Коснись вида, чтобы прочитать о нём.`, hint: ru`Теперь загляни в <b>«Бестиарий»</b> (меню) — там все виды духов. Сколько найдёшь ты?` },
+  { ch: 2, kind: 'spring', id: 'spring', hint: ru`Обереги пополняют <b>родники</b> — синие колодцы у памятников, фонтанов и храмов. Иди к ближайшему по <b>стрелке вверху</b> и коснись его. Если рядом нет — прогуляйся.` },
+  { ch: 2, kind: 'ui', id: 'bag', info: ru`Сумка: обереги, мёд, живая вода и ладан. Сверху видно, сколько ещё поместится; лишнее можно выбросить.`, hint: ru`Добыча уже в <b>Сумке</b>. Открой меню → «Сумка» и посмотри, что у тебя есть.` },
+  { ch: 3, kind: 'ui', id: 'cocoons', info: ru`Коконы греются шагами — одновременно можно греть три. Готовый кокон вылупится одним касанием. А твой первый дух идёт рядом — это спутник: в пути он находит эссенцию.`, hint: ru`Открой меню → <b>«Коконы»</b>. Первый кокон уже греется — пройди 2 км, и он вылупится.` },
+  { ch: 3, kind: 'ui', id: 'quests', info: ru`Здесь задания дня — они обновляются в полночь. А родники иногда дают поручения: выполнишь — встретишь особого духа.`, hint: ru`Открой <b>«Задания»</b> — там задания дня.` },
+  { ch: 3, kind: 'ui', id: 'path', info: ru`Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.`, hint: ru`И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.` },
+];
+
 
 // ===== www/js/util.js =====
 /* Утилиты: детерминированный хеш/ГСЧ, гео, DOM, звук, вибрация, события */
@@ -1130,6 +1157,8 @@ const W = {
       const shiny = U.h('shiny', id) < Sky.shinyRate();
       out.push({ type: 'spirit', id, sid, lvl, boost, shiny, lat: pLat, lng: pLng, d, expires: (slot + 1) * this.SLOT - phase });
     });
+    const tut = Tut.spawn(lat, lng);
+    if (tut) out.push(tut);
     return out;
   },
 
@@ -1361,15 +1390,21 @@ const S = {
     d.medals = d.medals || {};
     // 4.16: осколки Алатыря (пробуждение духов) и эссенция Рода (подходит любому семейству)
     d.alatyr = d.alatyr || 0; d.rod = d.rod || 0; d.stats.awakened = d.stats.awakened || 0;
-    // 4.24: обучения больше нет — начатое считается пройденным
-    if (d.tut) d.tut = 0;
+    // 4.24: обучение без сцен — шаг прежнего списка (4.0: tutV 4; 3.x: 1 поймать, 2 родник, 3 меню) переводится
+    // на ближайший шаг нового, который ещё впереди; дальше последнего — обучение пройдено
+    if (d.tut && d.tutV !== TUT_V) {
+      const OLD = ['meet', 'lore', 'catch1', 'ring', 'catch2', 'menu', 'spirits', 'card', 'power', 'dex', 'springs', 'spring', 'bag', 'road', 'cocoons', 'quests', 'path', 'oath'];
+      const from = d.tutV === 4 ? d.tut - 1 : Math.max(0, OLD.indexOf({ 1: 'catch1', 2: 'springs', 3: 'road' }[d.tut]));
+      const next = OLD.slice(from).map(id => TUT.findIndex(x => x.id === id)).find(k => k >= 0);
+      d.tut = next === undefined ? 0 : next + 1; d.tutV = TUT_V;
+    }
     if (d.buddy === undefined) d.buddy = null;
   },
 
   newGame(name, starter) {
     this.d = {
-      v: 1, name, level: 1, xp: 0, sparks: 1500, created: Date.now(),
-      items: { charm: 60, honey: 5, water: 5, incense: 2 }, // 4.24: обучения больше нет — его награды сразу в стартовом наборе
+      v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),
+      items: { charm: 30, honey: 3, water: 3, incense: 1 },
       essence: {}, spirits: [], dex: {}, cocoons: [{ id: U.uid(), km: 2, walked: 0, inc: true }],
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
@@ -1378,6 +1413,7 @@ const S = {
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
+    this.d.tut = 1; this.d.tutV = TUT_V; // обучение новичка (4.0; 4.24 — подсказками)
     this.ensureQuests();
     this.save(true);
   },
@@ -1687,6 +1723,7 @@ const S = {
     this.d.sparks -= c.sparks; this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.lvl++;
     this.progress('power', 1);
+    this.tutAdvance('power'); // 4.0: шаг обучения «Усиль духа»
     this.save();
     return true;
   },
@@ -1971,6 +2008,19 @@ const S = {
   GUEST: 0.3,
   guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
 
+
+  /* ---------- 4.0: обучение новичка ---------- */
+  tutAt() { return (this.d && this.d.tut && TUT[this.d.tut - 1]) || null; },
+  // Шаг выполнен: kind — что сделал игрок, id — для разделов. В конце этапа — его награда.
+  tutAdvance(kind, id) {
+    const st = this.tutAt();
+    if (!st || st.kind !== kind || (id && st.id !== id)) return null;
+    const next = TUT[this.d.tut], got = !next || next.ch !== st.ch ? this.giveRewards(TUT_CHAPTERS[st.ch].reward, true, true) : [];
+    this.d.tut = next ? this.d.tut + 1 : 0;
+    if (got.length) Bus.emit('tutChapter', { ch: st.ch, got, done: !next });
+    this.save();
+    return { got, done: !next };
+  },
 
   /* ---------- Знаки Ордена ---------- */
   medalValue(m) {
@@ -3864,6 +3914,7 @@ const Rules = {
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
   catchChance(o) {
     const s = SP[o.sid];
+    if (o.mode === 'tut') return 1; // учебного духа поймать можно всегда
     const base = o.mode === 'raid' ? (s.legend ? 0.1 : 0.2)
       : RARITY[s.rar].base * U.clamp(1.15 - o.lvl / 60, 0.55, 1.15) * (o.mode === 'task' ? 1.5 : 1); // дух за поручение ловится легче
     const cm = o.mode === 'raid' ? 1.5 : ITEMS[o.item].mult;
@@ -3878,7 +3929,7 @@ const Rules = {
   },
   // Награда за пойманного духа
   catchReward(o) {
-    const s = SP[o.sid], special = o.mode !== 'wild';
+    const s = SP[o.sid], special = o.mode !== 'wild' && o.mode !== 'tut';
     return {
       xp: (special ? 300 : 100) + (o.isNew ? 500 : 0) + (o.ringXp || 0) + (o.throws === 1 ? 50 : 0) + (o.shiny ? 500 : 0),
       ess: (special ? 10 : s.stage === 3 ? 10 : s.stage === 2 ? 5 : 3) + (s.rar - 1) * 2, // редкие — больше эссенции (эпический 1-й стадии: 9 вместо 3)
@@ -4609,10 +4660,15 @@ const GameCore = {
         this.dayNeed(ctx, 'catches');
         this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), ru`Обереги закончились! Загляни к роднику.`);
         const p = this.here(ctx);
-        const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit');
+        const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit' && !x.tut);
         this.need(e, ru`Дух уже растворился в воздухе…`);
         this.near(ctx, e.lat, e.lng, W.INTERACT);
         return this.openEnc(ctx, { mode: 'wild', sid: e.sid, lvl: e.lvl, shiny: e.shiny, boost: e.boost, seed: e.id, spawnId: e.id });
+      }
+      if (kind === 'tut') {
+        const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
+        this.need(st && st.kind === 'catch', ru`Учебный дух сейчас не нужен`);
+        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -4691,6 +4747,7 @@ const GameCore = {
       S.d.stats.caught++;
       const xp = S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
+      if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
       return { wobbles: 3, caught: true, label: bonus.label, uid: sp.uid, isNew, xp, sparks: rw.sparks, ess: rw.ess };
@@ -4715,9 +4772,10 @@ const GameCore = {
       S.progress('spring', 1);
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
+      S.tutAdvance('spring');
       // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
       let task = null;
-      if (S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
+      if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
         S.d.taskDay = U.today(ctx.now);
         task = S.makeTask(p); // 4.16: трудное поручение может позвать «гостя издалека» — духа, которого здесь не встретить
         S.d.tasks.push(task);
@@ -4871,6 +4929,14 @@ const GameCore = {
       Q.bonus = true;
       return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: Rules.QUEST_BONUS_XP, zlat: Rules.ZLAT.questBonus }) };
     },
+    // 4.0: разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
+    tutNext(a) {
+      const st = S.tutAt();
+      this.need(st, ru`Обучение уже пройдено`);
+      this.need(st.kind === 'ui' && st.id === a.id, ru`Сначала выполни текущий шаг обучения`);
+      return S.tutAdvance(st.kind, st.id);
+    },
+    tutFinish() { this.need(false, ru`Обучение нельзя пропустить`); },
     // Поручение выполнено: предметы сразу, дух — во встрече (ждёт в «Заданиях», пока не пойман)
     taskClaim(a) {
       const q = S.d.tasks.find(x => x.id === a.id);

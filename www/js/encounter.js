@@ -9,12 +9,12 @@ const Encounter = {
 
   throwables() { return Rules.THROWABLE.filter(k => (S.d.items[k] || 0) > 0); },
 
-  // o: { mode: 'wild'|'raid'|'rescue'|'task', spawnId, seed, onEnd } — вид и уровень духа сообщает сервер
+  // o: { mode: 'wild'|'raid'|'rescue'|'task', tut, spawnId, seed, onEnd } — вид и уровень духа сообщает сервер
   async start(o) {
     if (this.st || this._opening) return;
     if (o.mode !== 'raid' && !this.throwables().length) { UI.toast(ru`Обереги закончились! Загляни к роднику.`); return; }
     this._opening = true;
-    const r = await Game.try('encStart', { kind: o.mode, id: o.spawnId });
+    const r = await Game.try('encStart', { kind: o.tut ? 'tut' : o.mode, id: o.spawnId });
     this._opening = false;
     if (!r) { MapView.refresh(); return; }
     o = { ...o, mode: r.mode, sid: r.sid, lvl: r.lvl, shiny: r.shiny, dark: r.dark, boost: r.boost, charms: r.charms };
@@ -88,7 +88,7 @@ const Encounter = {
       if (this.st !== st) return;
       st.phase = 'aim';
       if (sp.shiny) { this.flash(`✦ ${ru`Сияющий дух!`} ✦`, 'bonus'); Sfx.play('spin'); }
-      if (!S.d.stats.caught) { // 4.24: самый первый бросок — показать жест
+      if (o.tut) {
         st.$('.enc-hint').innerHTML = ru`<b>Зажми оберег и смахни вверх</b>, прямо к духу.<br>Чем быстрее свайп — тем дальше бросок.`;
         st.root.appendChild(U.el(`<div class="tut-hand" style="left:${st.rest.x}px;top:${st.rest.y}px"><i></i></div>`));
       }
@@ -406,6 +406,7 @@ const Encounter = {
       </div></div>`);
     card.querySelector('button').onclick = () => { Sfx.play('tap'); this.end('caught'); };
     st.root.appendChild(card);
+    if (st.o.tut) Tut.sync();
   },
   /* ---------------- ФОТО ---------------- */
   // Снимок: кадр камеры (в AR) или сцена + дух + подпись; превью, «Поделиться», запись в альбом

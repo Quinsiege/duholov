@@ -84,7 +84,7 @@ const UI = {
     // не видна — помечаем его, и карта с HUD не рисуются и не анимируются (style.css); при закрытии снова видны сразу
     new MutationObserver(ms => {
       for (const m of ms) for (const n of m.addedNodes) {
-        if (n.nodeType === 1 && n.matches('.screen, .enc, .raid')) setTimeout(() => n.isConnected && n.classList.add('covers'), 700);
+        if (n.nodeType === 1 && n.matches('.screen, .enc, .raid, .tut-final')) setTimeout(() => n.isConnected && n.classList.add('covers'), 700);
       }
     }).observe(document.body, { childList: true });
     U.$('#tracker .tr-x').onclick = e => { e.stopPropagation(); MapView.untrack(); };
@@ -232,6 +232,8 @@ const UI = {
     put(U.$('#hudName'), d.name);
     const xw = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%', xb = U.$('#hudXp');
     if (xb._w !== xw) { xb._w = xw; xb.style.width = xw; }
+    if (Tut.step()) Tut.show();
+    Hints.check();
     const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); put(b, badge);
     const inc = U.$('#incenseChip');
@@ -566,7 +568,7 @@ const UI = {
     let o = null;
     try { o = JSON.parse(localStorage.getItem(this.OPEN_KEY)); } catch (e) { /* нет хранилища — как впервые */ }
     // первый запуск 4.18 у того, кто уже играл: всё, что у него уже открыто, — знакомо (без меток «Новое» и советов про старое)
-    if (!o && S.d && S.d.level > 2) {
+    if (!o && S.d && !Tut.step() && S.d.level > 2) {
       o = {};
       ['shop', 'swap', 'journal', 'trail', 'chat', 'rift', 'pin', 'trophy', 'shield', 'gavel'].forEach(k => { if (this.openLvl(k) <= S.d.level) o[k] = 1; });
       if (S.d.level >= DUEL_LEVEL) o.shrine = 1;
@@ -579,6 +581,7 @@ const UI = {
   isNew(k) { const l = this.openLvl(k); return l > 1 && S.d.level >= l && !this.opened()[k]; },
   menu() {
     Sfx.init(); Sfx.play('tap');
+    const ml = Tut.menuLock(); if (ml) { this.toast(ml); return; } // 4.0: меню открывается по ходу обучения
     const q = S.questsClaimable() + Order.claimable(), eggs = S.readyCocoons().length;
     const tiles = [
       ['spirits', ru`Духи`, () => this.collection(), S.d.spirits.length],
@@ -602,14 +605,16 @@ const UI = {
       ['journal', ru`Дневник`, () => J.screen()],
       ['gear', ru`Настройки`, () => this.settings()],
     ];
+    Tut.ui('menu'); // 4.0: шаг обучения «открой меню»
     // 4.21: все разделы видны с начала — ещё закрытые по уровню с замком «с N ур.»
     const lvl = S.d.level, shown = tiles;
-    const far = k => this.openLvl(k) > lvl; // закрыт по уровню
+    const far = k => !Tut.tileLock(k) && this.openLvl(k) > lvl; // закрыт по уровню
     // страницы по 12 плиток; листаются свайпом, внизу — точки текущей страницы
     const PER = 12, pages = [];
     for (let i = 0; i < shown.length; i += PER) pages.push(shown.slice(i, i + PER).map(t => [t, tiles.indexOf(t)]));
-    const tile = ([t, i]) => { const lock = far(t[0]), fresh = !lock && this.isNew(t[0]);
-      return `<button class="tile${lock ? ' locked' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}${lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
+    // 4.0: во время обучения — замки на ещё не пройденных разделах и подсветка нужного
+    const tile = ([t, i]) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
+      return `<button class="tile${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}">${this.menuIcon(t[0])}<span>${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}${lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : ''}</button>`; };
     const sheet = U.el(`<div class="sheet-wrap"><div class="sheet"><div class="sheet-grip"></div>
       <div class="menu-pages">${pages.map(p => `<div class="menu-grid">${p.map(tile).join('')}</div>`).join('')}</div>
       ${pages.length > 1 ? `<div class="menu-dots">${pages.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" data-p="${i}" aria-label="${ru`Страница ${i + 1}`}"></button>`).join('')}</div>` : ''}</div></div>`);
@@ -622,7 +627,7 @@ const UI = {
       if (d) { box.scrollTo({ left: +d.dataset.p * box.clientWidth, behavior: 'smooth' }); return; }
       const t = e.target.closest('.tile');
       if (t) {
-        const k = tiles[+t.dataset.i][0], lk = far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '';
+        const k = tiles[+t.dataset.i][0], lk = Tut.tileLock(k) || (far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '');
         if (lk) { this.toast(lk); Sfx.play('miss'); return; }
         this.markOpened(k); close(); Sfx.play('tap'); tiles[+t.dataset.i][2]();
       }

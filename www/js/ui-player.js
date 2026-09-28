@@ -5,6 +5,7 @@
 Object.assign(UI, {
   /* ---------------- ЗАДАНИЯ ---------------- */
   quests(tab) {
+    Tut.ui('quests'); // 4.0: шаг обучения
     this.qTab = tab || (this.qTab === 'order' ? 'order' : 'day');
     const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и родника — есть что забрать → зелёная точка
     const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');

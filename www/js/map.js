@@ -534,7 +534,7 @@ const MapView = {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
       return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62],
-        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}"><div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
+        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
@@ -553,7 +553,7 @@ const MapView = {
     const { lat, lng } = this.pos;
     // 4.21: Разломы видны с начала; до RAID_LEVEL — серые, с замком (нажатие скажет, с какого уровня)
     // 4.19: дух виден, только если он вне тумана Нави и не в опасном месте (вода, пути, трассы, стройки — см. Hazard)
-    const spirits = W.spawnsAround(lat, lng).filter(e => Fog.clearAt(e.lat, e.lng) && Hazard.bad(e.lat, e.lng) === false);
+    const spirits = W.spawnsAround(lat, lng).filter(e => e.tut || (Fog.clearAt(e.lat, e.lng) && Hazard.bad(e.lat, e.lng) === false));
     const ents = [...W.riftsAround(lat, lng), ...W.shrinesAround(lat, lng), ...W.springsAround(lat, lng), ...spirits];
     const seen = new Set();
     ents.forEach(e => {
@@ -595,7 +595,7 @@ const MapView = {
     if (this.tracking && this.tracking.id === e.id) this.untrack();
     if (e.type === 'spirit') {
       if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }
-      Encounter.start({ mode: 'wild', sid: e.sid, lvl: e.lvl, seed: e.id, spawnId: e.id, shiny: e.shiny, boost: e.boost });
+      Encounter.start({ mode: 'wild', sid: e.sid, lvl: e.lvl, seed: e.id, spawnId: e.id, shiny: e.shiny, boost: e.boost, tut: e.tut });
     } else if (e.type === 'spring') UI.spring(e); // 4.19: захваченный — откроется на вкладке «Вторжение»
     else if (e.type === 'shrine') {
       if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }

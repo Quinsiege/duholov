@@ -33,6 +33,7 @@ window.addEventListener('load', () => {
     Sky.init();
     Music.init();
     Music.play('map');
+    Tut.init();
     Bus.on('cocoonReady', c => UI.toast(ru`${COCOON_TIERS[c.km].name} готов вылупиться!`, 'good'));
     const ready = S.readyCocoons().length;
     if (ready) setTimeout(() => UI.toast(ru`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);
@@ -42,7 +43,7 @@ window.addEventListener('load', () => {
     setTimeout(() => Order.daily(), 2500); // серия дней: награда за первый вход за день
     setTimeout(() => Order.refresh(), 8000); // общее дело Ордена — для значка меню
     setTimeout(() => Clans.refresh(), 5000); // кто держит Капища вокруг
-    setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); } }, 60000);
+    setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); Hints.check(); } }, 60000);
     Updater.init();
     setTimeout(() => Treasury.check(), 3000); // Казна: итог оплаты, если игрок вернулся со страницы оплаты
   };

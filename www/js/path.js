@@ -44,13 +44,14 @@ const Path = {
     const x = S.xpToday(), mul = Ev.xpMul(), F = XP_DAY.FULL * mul, H = XP_DAY.HALF * mul;
     const now = x.n < F ? ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — полностью до ${U.fmtNum(F)}` : x.n < H ? ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — дальше вполовину до ${U.fmtNum(H)}` : ru`Сегодня получено ${U.fmtNum(Math.round(x.n))} опыта — дальше на четверть`;
     return `<p class="pth-note"><b>${now}</b>${x.rest > 0 ? `<br><b>${ru`Опыт отдыха: следующие ${U.fmtNum(x.rest)} опыта — вдвое`}</b>` : ''}<br>
-      ${ru`За день опыт идёт полностью до ${U.fmtNum(XP_DAY.FULL)}, дальше до ${U.fmtNum(XP_DAY.HALF)} — вполовину, сверх — на четверть. Знаки Ордена дают опыт всегда полностью. За каждый день без игры копится опыт отдыха (${U.fmtNum(XP_DAY.REST)}, не больше чем за ${XP_DAY.REST_DAYS} ${U.plural(XP_DAY.REST_DAYS, ru`день`, ru`дня`, ru`дней`)}): пока он есть, опыт вдвое.`}</p>`;
+      ${ru`За день опыт идёт полностью до ${U.fmtNum(XP_DAY.FULL)}, дальше до ${U.fmtNum(XP_DAY.HALF)} — вполовину, сверх — на четверть. Обучение и знаки Ордена дают опыт всегда полностью. За каждый день без игры копится опыт отдыха (${U.fmtNum(XP_DAY.REST)}, не больше чем за ${XP_DAY.REST_DAYS} ${U.plural(XP_DAY.REST_DAYS, ru`день`, ru`дня`, ru`дней`)}): пока он есть, опыт вдвое.`}</p>`;
   },
   rw(l) {
     return Object.entries(S.levelRewards(l)).map(([k, n]) => `<span class="pth-rw">${Art.item(k)}<b>${U.fmtNum(n)}</b></span>`).join('');
   },
   screen() {
     Sfx.init(); Sfx.play('tap');
+    Tut.ui('path'); // 4.0: шаг обучения
     const d = S.d, cur = levelXP(d.level), next = levelXP(d.level + 1), un = this.unlocks();
     const nextUnlock = Object.keys(un).map(Number).sort((a, b) => a - b).find(l => l > d.level);
     const rows = [];

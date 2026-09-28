@@ -5,6 +5,7 @@
 Object.assign(UI, {
   /* ---------------- КОЛЛЕКЦИЯ ---------------- */
   collection() {
+    Tut.ui('spirits'); // 4.0: шаг обучения
     const scr = this.screen(ru`Духи`, `
       <div class="toolbar">
         <div class="seg">${[['power', ru`Сила`], ['new', ru`Новые`], ['num', ru`Номер`], ['name', ru`Имя`]].map(([k, t]) => `<button data-sort="${k}">${t}</button>`).join('')}</div>
@@ -173,6 +174,7 @@ Object.assign(UI, {
   },
 
   detail(uid, onChange) {
+    Tut.ui('card'); // 4.0: шаг обучения
     if (!S.findSpirit(uid)) return;
     const scr = this.screen('', '', 'det-screen', onChange);
     let tab = 'grow'; // 4.14.1: карточка без прокрутки — сверху дух, ниже вкладки
@@ -493,6 +495,7 @@ Object.assign(UI, {
 
   /* ---------------- БЕСТИАРИЙ ---------------- */
   dex() {
+    Tut.ui('dex'); // 4.0: шаг обучения
     const caught = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].caught).length;
     const seen = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].seen).length;
     const scr = this.screen(ru`Бестиарий`, `
@@ -576,6 +579,7 @@ Object.assign(UI, {
 
   /* ---------------- СУМКА ---------------- */
   bag() {
+    Tut.ui('bag'); // 4.0: шаг обучения
     const scr = this.screen(ru`Сумка`, '<div class="list bag"></div>', 'bag-screen');
     const render = () => {
       scr.querySelector('.head-extra').textContent = `${S.bagCount()}/${S.bagLimit()}`;
@@ -681,6 +685,7 @@ Object.assign(UI, {
 
   /* ---------------- КОКОНЫ ---------------- */
   cocoons() {
+    Tut.ui('cocoons'); // 4.0: шаг обучения
     const scr = this.screen(ru`Коконы`, '<div class="coc-info"></div><div class="coc-box"></div>', 'coc-screen');
     const render = () => {
       const inc = S.incubating();

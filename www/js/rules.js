@@ -215,6 +215,7 @@ const Rules = {
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
   catchChance(o) {
     const s = SP[o.sid];
+    if (o.mode === 'tut') return 1; // учебного духа поймать можно всегда
     const base = o.mode === 'raid' ? (s.legend ? 0.1 : 0.2)
       : RARITY[s.rar].base * U.clamp(1.15 - o.lvl / 60, 0.55, 1.15) * (o.mode === 'task' ? 1.5 : 1); // дух за поручение ловится легче
     const cm = o.mode === 'raid' ? 1.5 : ITEMS[o.item].mult;
@@ -229,7 +230,7 @@ const Rules = {
   },
   // Награда за пойманного духа
   catchReward(o) {
-    const s = SP[o.sid], special = o.mode !== 'wild';
+    const s = SP[o.sid], special = o.mode !== 'wild' && o.mode !== 'tut';
     return {
       xp: (special ? 300 : 100) + (o.isNew ? 500 : 0) + (o.ringXp || 0) + (o.throws === 1 ? 50 : 0) + (o.shiny ? 500 : 0),
       ess: (special ? 10 : s.stage === 3 ? 10 : s.stage === 2 ? 5 : 3) + (s.rar - 1) * 2, // редкие — больше эссенции (эпический 1-й стадии: 9 вместо 3)

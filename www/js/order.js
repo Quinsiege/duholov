@@ -38,8 +38,8 @@ const Order = {
   },
   // игрок занят: обучение, поимка, бой, заставка или уже открытое окно
   busy() {
-    return !!(Encounter.st || Raid.st || Duel.st || document.hidden
-      || document.querySelector('.onb, .enc, .raid')
+    return !!(S.d.tut || Encounter.st || Raid.st || Duel.st || document.hidden
+      || document.querySelector('.tut-final, .onb, .enc, .raid')
       || U.$$('.modal-wrap').some(m => !m.classList.contains('out')));
   },
   rwCell(x) {

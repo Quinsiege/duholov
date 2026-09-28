@@ -97,6 +97,8 @@ const W = {
       const shiny = U.h('shiny', id) < Sky.shinyRate();
       out.push({ type: 'spirit', id, sid, lvl, boost, shiny, lat: pLat, lng: pLng, d, expires: (slot + 1) * this.SLOT - phase });
     });
+    const tut = Tut.spawn(lat, lng);
+    if (tut) out.push(tut);
     return out;
   },
 

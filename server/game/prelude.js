@@ -11,6 +11,7 @@ const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
 const Poi = { near: () => [], nearest: () => null };
+const Tut = { SID: 'vayfayka', spawn: () => null, step: () => 0 };
 const UI = { toast() {}, refreshHud() {} };
 const Sync = { touch() {} };
 const Cloud = { configured: () => false };

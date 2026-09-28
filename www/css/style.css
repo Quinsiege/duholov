@@ -313,6 +313,10 @@ body.night .range-circle { fill-opacity: .1; }
 .prof-clan { margin: 6px 0 4px; } .prof-clan small { display: block; color: var(--muted); margin-top: 4px; }
 .clan-btn { margin: 8px auto 4px; display: block; }
 /* Летопись на карте и советы Велимира (3.10) */
+.hint { display: flex; gap: 12px; text-align: left; align-items: flex-start; }
+.hint-ava { width: 54px; height: 54px; flex: none; border-radius: 50%; overflow: hidden; border: 2px solid #4ade80; }
+.hint b { color: #86efac; } .hint p { margin: 4px 0 0; line-height: 1.45; }
+.hint-glow { animation: hintGlow 1s ease-in-out 4; }
 @keyframes hintGlow { 50% { box-shadow: 0 0 0 4px rgba(251, 191, 36, .8), 0 0 24px rgba(251, 191, 36, .8); transform: scale(1.04); } }
 .det-actions.top { margin: 12px 0 10px; }
 
@@ -724,7 +728,15 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 .col-screen .screen-body { padding-bottom: calc(80px + var(--sb)); }
 
 /* ---------- v1.3: обучение, обмен ---------- */
+#coach { position: fixed; left: 12px; right: 12px; bottom: calc(152px + var(--sb)); z-index: 600; display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 18px; background: rgba(28, 20, 56, .96); border: 1px solid rgba(74, 222, 128, .45); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); animation: popIn .3s; max-width: 520px; margin: 0 auto; }
+.coach-ava { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; border: 2px solid #4ade80; flex: none; }
+.coach-main { flex: 1; font-size: 14px; line-height: 1.4; }
+.coach-main > b { color: #86efac; font-size: 13px; }
+.coach-text b { color: var(--gold2); }
+.coach-skip { font-size: 11px; color: var(--muted); padding: 4px; }
+.tut-pulse { animation: tutPulse 1.2s ease-in-out infinite; }
 @keyframes tutPulse { 50% { transform: scale(1.12); filter: drop-shadow(0 0 18px #fde047); } }
+.tut-ring { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%; border: 3px solid #fde047; animation: pulse 1.4s ease-out infinite; }
 .tut-hand { position: absolute; z-index: 6; pointer-events: none; }
 .tut-hand i { position: absolute; left: -14px; top: -6px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255, 255, 255, .85); box-shadow: 0 0 0 6px rgba(255, 255, 255, .25); animation: handSwipe 1.6s ease-in-out infinite; }
 @keyframes handSwipe { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 70% { transform: translateY(-230px); opacity: 1; } 100% { transform: translateY(-260px); opacity: 0; } }
@@ -847,7 +859,7 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 /* крупный текст */
 html.big-text body { font-size: 17px; }
 html.big-text small, html.big-text .small, html.big-text .row-main small, html.big-text .card-name, html.big-text .tile span { font-size: 14px; }
-html.big-text .modal-body, html.big-text .det-desc, html.big-text .toast, html.big-text .res-note { font-size: 17px; }
+html.big-text .modal-body, html.big-text .det-desc, html.big-text .coach-main, html.big-text .toast, html.big-text .res-note { font-size: 17px; }
 html.big-text .row-main b, html.big-text .quest b, html.big-text .btn { font-size: 17px; }
 html.big-text .chip { font-size: 14px; }
 /* меньше движения */
@@ -1641,8 +1653,16 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .menu-grid .tile span { font-size: 12.5px; font-weight: 700; }
 
 /* ---------- 4.0: «Посвящение в Ловчие» ---------- */
+#coach.tut-coach { top: calc(84px + var(--st)); bottom: auto; align-items: flex-start; padding: 12px 14px; border-radius: 18px;
+  background: linear-gradient(180deg, rgba(21, 61, 39, .96), rgba(20, 14, 42, .96)); border: 1px solid rgba(74, 222, 128, .45); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+#coach.tut-coach.bump { animation: popIn .35s ease-out; }
+.coach-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+.coach-ch { font-size: 11px; color: #bbf7d0; opacity: .8; font-variant-numeric: tabular-nums; }
+.coach-bar { height: 4px; margin-top: 9px; border-radius: 2px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.coach-bar i { display: block; height: 100%; background: linear-gradient(90deg, #4ade80, var(--gold2)); transition: width .4s; }
 .tile.locked { opacity: .45; } .tile.locked .mi { filter: grayscale(.9); }
 .tile i.lock { background: none; font-size: 12px; padding: 0; }
+.tile.tut-target { border-color: rgba(253, 224, 71, .9); box-shadow: 0 0 0 2px rgba(253, 224, 71, .35), 0 0 22px rgba(253, 224, 71, .35); animation: tutPulse 1.2s ease-in-out infinite; }
 
 /* сцена с Велимиром */
 
@@ -1650,6 +1670,20 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes tutLine { to { width: 220px; } }
 
 /* финал посвящения */
+.tut-final { position: fixed; inset: 0; z-index: 3200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center;
+  background: radial-gradient(70% 50% at 50% 38%, #4c2a91, #140a2c 70%); animation: fadeIn .4s; overflow: hidden; }
+.tut-final.out { opacity: 0; transition: opacity .4s; }
+.tf-rays { position: absolute; left: 50%; top: 32%; width: 700px; height: 700px; margin: -350px 0 0 -350px; opacity: .35;
+  background: repeating-conic-gradient(from 0deg, rgba(253, 224, 71, .5) 0 8deg, transparent 8deg 22deg); animation: spin 30s linear infinite; border-radius: 50%;
+  -webkit-mask: radial-gradient(closest-side, #000 20%, transparent); mask: radial-gradient(closest-side, #000 20%, transparent); }
+.tf-charm { position: relative; width: 130px; height: 130px; filter: drop-shadow(0 0 30px rgba(253, 224, 71, .6)); animation: popIn .6s ease-out; }
+.tut-final small { position: relative; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); font-size: 12px; }
+.tut-final h2 { position: relative; margin: 0; font-size: 30px; font-weight: 900; color: var(--gold2); }
+.tut-final p { position: relative; margin: 0 0 6px; max-width: 320px; color: #e9e3ff; line-height: 1.45; } .tut-final p b { color: var(--gold2); }
+.tf-got { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 340px; margin-bottom: 10px; }
+.tf-got .lvl-rw-i { padding: 5px 10px; border-radius: 10px; background: rgba(255, 255, 255, .08); font-size: 13px; } .tf-got b { color: var(--gold2); }
+.tut-final .btn { position: relative; max-width: 320px; }
+.calm .tf-rays { animation: none; }
 
 /* ---------- 4.14: трейлер «Тонкая ночь» — видео (мелодия внутри): из темноты, в конце — в темноту ---------- */
 
@@ -1699,8 +1733,25 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .bk-chip.on { color: var(--text); border-color: rgba(253, 224, 71, .5); background: rgba(251, 191, 36, .12); }
 
 /* ---------- 4.0: наставник поверх интерфейса, подсветка цели ---------- */
+#coach.tut-coach { z-index: 2300; padding: 10px 12px; gap: 10px; max-width: 520px; margin: 0 auto; transition: none; } /* без анимации места: его меряет Tut.track() */
+#coach.tut-coach .coach-ava { width: 38px; height: 38px; }
+#coach.tut-coach .coach-main { font-size: 13.5px; line-height: 1.38; }
+#coach.tut-coach .coach-bar { margin-top: 7px; }
+#coach.tut-coach.pos-top { top: calc(84px + var(--st)); bottom: auto; }
+#coach.tut-coach.pos-bottom { top: auto; bottom: calc(118px + var(--sb)); }
+#coach.tut-coach.in-screen.pos-top { top: calc(68px + var(--st)); }
+#coach.tut-coach.in-screen.pos-bottom { bottom: calc(12px + var(--sb)); }
+.coach-back { display: block; margin-top: 4px; font-size: 12px; color: #fde68a; }
+#tutRing { position: fixed; z-index: 2290; pointer-events: none; border-radius: 18px; border: 3px solid var(--gold2);
+  box-shadow: 0 0 0 4px rgba(253, 224, 71, .25), 0 0 24px rgba(253, 224, 71, .6); transition: left .2s, top .2s, width .2s, height .2s; animation: tutRing 1.2s ease-in-out infinite; }
+#tutRing.round { border-radius: 50%; }
+#tutRing i { position: absolute; left: 50%; top: -30px; width: 0; height: 0; margin-left: -9px; border: 9px solid transparent; border-top: 14px solid var(--gold2);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .5)); animation: tutArrow 1s ease-in-out infinite; }
 @keyframes tutRing { 50% { box-shadow: 0 0 0 9px rgba(253, 224, 71, .12), 0 0 34px rgba(253, 224, 71, .8); } }
 @keyframes tutArrow { 50% { transform: translateY(-6px); } }
+.calm #tutRing, .calm #tutRing i { animation: none; }
+#coach .coach-ok { display: flex; width: auto; min-height: 36px; margin-top: 8px; padding: 6px 18px; font-size: 13.5px; }
+#coach.info { border-color: rgba(253, 224, 71, .55); }
 
 /* 4.1.2: согласие с правилами и возрастная маркировка (436-ФЗ) на стартовом экране */
 .onb-cta .onb-agree { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: 11.5px; color: var(--muted); text-align: center; line-height: 1.4; }
@@ -2394,14 +2445,37 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 /* кинорамка */
 /* сцена: Велимир слева, ты справа */
 @keyframes vmBreath { 50% { transform: scale(1.012, 1.018); } }
+.ts-me-ring { width: 100%; aspect-ratio: 1; border-radius: 50%; padding: 4px; background: conic-gradient(from 210deg, #fff3b0, #f59e0b, #fde68a, #b45309, #fff3b0);
+  box-shadow: 0 0 0 3px rgba(12, 7, 32, .7), 0 0 26px rgba(251, 191, 36, .45), 0 12px 24px rgba(0, 0, 0, .5); }
+.ts-me-ring .art { width: 100%; height: 100%; border-radius: 50%; display: block; }
 /* шкатулка с репликами */
 
 /* заставка главы — кинотитр */
 @keyframes tutLine { to { width: 240px; } }
 
 /* финал посвящения */
+.tut-final { background: var(--lacq), radial-gradient(70% 50% at 50% 34%, #4c2a91, #140a2c 70%); }
+.tf-me { position: relative; width: 150px; height: 150px; margin-bottom: 8px; display: grid; place-items: center; animation: popIn .6s ease-out; }
+.tf-me .ts-me-ring { width: 118px; }
+.tf-ring { position: absolute; inset: -14px; background: var(--ring) center / contain no-repeat; animation: spin 30s linear infinite; opacity: .8; }
+.tut-final small { font-family: var(--f-head); letter-spacing: .24em; color: #cbbde9; }
+.tut-final h2 { font-family: var(--f-display); font-weight: 400; font-size: 32px; letter-spacing: .5px;
+  background: linear-gradient(180deg, #fffbeb 10%, #fde68a 55%, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 3px 0 rgba(60, 20, 4, .8)); }
+.tut-final p { font-family: var(--f-head); font-size: 16px; }
+.tf-got .lvl-rw-i { font-family: var(--f-head); border: 1px solid var(--au-soft); background: rgba(12, 7, 32, .55); }
+.tut-final .rune { position: relative; max-width: 320px; }
 
 /* подсказки Велимира в игре */
+#coach.tut-coach { border: 1px solid var(--au-line); outline: 1px solid var(--au-soft); outline-offset: -6px;
+  background: var(--orn-sm), var(--lacq), radial-gradient(80% 60% at 0% 0%, rgba(74, 222, 128, .22), transparent 70%), linear-gradient(180deg, rgba(34, 24, 72, .97), rgba(12, 7, 30, .98)); }
+#coach .coach-ava { flex: none; width: 58px; height: 58px; border-radius: 50%; overflow: hidden; padding: 0; border: 2px solid #f3cf6b; background: radial-gradient(circle at 50% 40%, #1d5a36, #0b1f14);
+  box-shadow: 0 0 14px rgba(74, 222, 128, .35); }
+#coach .coach-ava .art { width: 100%; height: 100%; }
+#coach .coach-top b { font-family: var(--f-display); font-weight: 400; font-size: 16px; color: #86efac; letter-spacing: .3px; }
+#coach .coach-text { font-family: var(--f-head); font-size: 15px; line-height: 1.4; }
+.coach-bar { background: rgba(8, 4, 22, .6); box-shadow: 0 0 0 1px rgba(243, 207, 107, .15); }
+.coach-bar i { background: linear-gradient(90deg, #4ade80, #fde68a); box-shadow: 0 0 8px rgba(253, 224, 71, .5); }
+.calm .tf-ring { animation: none; }
 
 /* ================= 4.6: Гардероб Ловчего — облики-скины, плащ, глаза, эмблема ================= */
 .wd { display: flex; flex-direction: column; gap: 12px; padding-bottom: 8px; }
@@ -2738,16 +2812,43 @@ body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-s
 #hud .nearby span::before, #hud .nearby span::after { content: ''; width: 5px; height: 5px; transform: rotate(45deg); background: #f3cf6b; box-shadow: 0 0 5px rgba(251, 191, 36, .7); }
 
 /* ================= 4.7: подсветка обучения — затемнение вокруг цели, золотая рамка, волна и указатель ================= */
+#tutRing { border: 0; border-radius: 20px; animation: none; box-shadow: 0 0 0 200vmax rgba(7, 3, 20, .52);
+  transition: left .3s cubic-bezier(.2, .9, .3, 1), top .3s cubic-bezier(.2, .9, .3, 1), width .3s cubic-bezier(.2, .9, .3, 1), height .3s cubic-bezier(.2, .9, .3, 1); }
+#tutRing.round { border-radius: 50%; }
+#tutRing > b { position: absolute; display: block; border-radius: inherit; pointer-events: none; }
+#tutRing .tr-f { inset: 0; border: 2px solid #f3cf6b; box-shadow: 0 0 0 1px rgba(70, 30, 4, .7), inset 0 0 0 1px rgba(70, 30, 4, .5), inset 0 0 18px rgba(253, 224, 71, .25); }
+#tutRing .tr-g { inset: -6px; box-shadow: 0 0 22px 6px rgba(253, 224, 71, .55); animation: trGlow 1.6s ease-in-out infinite; }
+#tutRing .tr-w { inset: 0; border: 2px solid rgba(253, 224, 71, .85); animation: trWave 1.6s ease-out infinite; }
+#tutRing .tr-r { inset: -10px; border-radius: 50%; border: 1.5px dashed rgba(253, 224, 71, .75); display: none; animation: spin 9s linear infinite; }
+#tutRing.round .tr-r { display: block; }
+#tutRing .tr-c { width: 24px; height: 24px; border-radius: 0; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .7)); }
+#tutRing .c1 { left: -10px; top: -10px; background: var(--tl) 0 0 / 100% 100%; } #tutRing .c2 { right: -10px; top: -10px; background: var(--tr) 0 0 / 100% 100%; }
+#tutRing .c3 { left: -10px; bottom: -10px; background: var(--bl) 0 0 / 100% 100%; } #tutRing .c4 { right: -10px; bottom: -10px; background: var(--br) 0 0 / 100% 100%; }
+#tutRing.round .tr-c { display: none; }
+#tutRing i.tr-p { position: absolute; left: 50%; top: -52px; width: 32px; height: 42px; margin-left: -16px; border: 0; animation: trPoint 1s ease-in-out infinite;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 42'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fffbe0'/%3E%3Cstop offset='.45' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23c2711a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 1.5l5 5-5 5-5-5z' fill='url(%23g)' stroke='%235a2a06' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M3 16l13 24 13-24-8 3.5L16 13l-5 6.5z' fill='url(%23g)' stroke='%235a2a06' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M16 17.5v17' stroke='%23fffbe0' stroke-width='1.4' stroke-linecap='round' opacity='.8'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, .8)) drop-shadow(0 3px 4px rgba(0, 0, 0, .5)); }
+#tutRing.below i.tr-p { top: auto; bottom: -52px; animation-name: trPointUp; }
 @keyframes trGlow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 @keyframes trWave { from { transform: scale(1); opacity: .9; } to { transform: scale(1.18); opacity: 0; } }
 @keyframes trPoint { 0%, 100% { transform: translateY(-4px); } 50% { transform: translateY(4px); } }
 @keyframes trPointUp { 0%, 100% { transform: translateY(4px) scaleY(-1); } 50% { transform: translateY(-4px) scaleY(-1); } }
+.calm #tutRing > b, .calm #tutRing i.tr-p { animation: none; }
+.calm #tutRing.below i.tr-p { transform: scaleY(-1); }
 /* нужная плитка меню больше не раздувается (её обрезало краем меню) — светится внутри, рамку рисует подсветка */
+.tile.tut-target { animation: none; transform: none; border-color: rgba(253, 224, 71, .9); box-shadow: inset 0 0 22px rgba(253, 224, 71, .22);
+  background: radial-gradient(70% 55% at 50% 40%, rgba(253, 224, 71, .26), transparent 70%), rgba(255, 255, 255, .08); }
 
 /* ================= 4.7: реплики Велимира — без кнопок: «Дальше ›» подписью справа внизу, нажать можно по всей плашке ================= */
+#coach .coach-ok { display: inline-flex; align-items: center; gap: 6px; width: auto; min-height: 0; margin: 0; padding: 2px 0 0 12px; border: 0; background: none; box-shadow: none;
+  font-family: var(--f-head); font-weight: 700; font-size: 15px; letter-spacing: .4px; color: #fde68a; text-shadow: 0 0 10px rgba(251, 191, 36, .35); }
+#coach .coach-ok { display: flex; justify-content: flex-end; margin-top: 6px; font-size: 14px; }
 .tn-a { flex: none; width: 18px; height: 16px; background: var(--tn-arrow) center / contain no-repeat; animation: tnNudge 1.2s ease-in-out infinite; }
 @keyframes tnNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
 .calm .tn-a { animation: none; }
+#coach.info { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#coach.info:active { filter: brightness(1.06); }
+#coach.wait .coach-ok { opacity: .45; }
 
 /* ================= 4.7: поворот карты и компас ================= */
 /* пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют), повёрнутый вокруг центра экрана */
@@ -2803,6 +2904,11 @@ body.tilt #mapHaze { opacity: 1; }
 .modal-wrap:has(> .update-modal) { z-index: 9800; }
 
 /* ================= 4.8: Велимир в советах — тот же портрет, что у наставника в обучении ================= */
+.hint-ava { width: 58px; height: 58px; border: 2px solid #f3cf6b; background: radial-gradient(circle at 50% 40%, #1d5a36, #0b1f14);
+  box-shadow: 0 0 0 1px rgba(60, 25, 4, .7), 0 0 12px rgba(74, 222, 128, .25), 0 4px 10px rgba(0, 0, 0, .4); }
+.hint-ava .art { display: block; width: 100%; height: 100%; }
+.hint b { font-family: var(--f-display); font-weight: 400; font-size: 16px; letter-spacing: .3px; color: #86efac; }
+.hint p { font-family: var(--f-head); font-size: 15px; }
 
 /* ================= 4.8.1: ползунок громкости музыки ================= */
 .vol-row .row-main { flex: 1; }
@@ -4081,3 +4187,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
   border: 2px dashed rgba(226, 232, 240, .6); background: radial-gradient(circle at 50% 40%, rgba(71, 60, 110, .92), rgba(18, 12, 36, .92));
   font-family: var(--f-display); font-size: 30px; line-height: 1; color: #e2e8f0; text-shadow: 0 0 8px rgba(203, 213, 225, .6); }
 .mk-spirit.unk .mk-glow { opacity: .5; }
+/* 4.24: у подсказок обучения и советов — значок Книги Ордена вместо наставника */
+.coach-ava, .hint-ava { display: grid; place-items: center; }
+.coach-ava .mi, .hint-ava .mi { width: 76%; height: 76%; display: block; }

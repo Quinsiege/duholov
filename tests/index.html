@@ -54,6 +54,7 @@
   <script src="../www/js/duel.js"></script>
   <script src="../www/js/rules.js"></script>
   <script src="../www/js/trade.js"></script>
+  <script src="../www/js/tutorial.js"></script>
   <script src="../www/js/path.js"></script>
   <script src="../www/js/book.js"></script>
   <script src="../www/js/album.js"></script>
@@ -63,6 +64,7 @@
   <script src="../www/js/friends.js"></script>
   <script src="../www/js/order.js"></script>
   <script src="../www/js/clans.js"></script>
+  <script src="../www/js/hints.js"></script>
   <script src="../www/js/shop.js"></script>
   <script src="../www/js/auction.js"></script>
   <script src="../www/js/chat.js"></script>
@@ -728,6 +730,30 @@
     for (let k = 0; k < 400; k++) found.add(W.pickSpecies(U.rng('land' + k), 'water', false, 49.12, 55.79));
     ok(![...found].some(sid => SP[sid].land && SP[sid].land !== 'volga'), 'в Казани — только духи Поволжья');
   });
+  test('Советы (4.24 — без наставника): подсказки по делу и в нужном порядке', () => {
+    const keep = S.d;
+    S.d = JSON.parse(JSON.stringify(keep));
+    S.d.level = CLAN_LEVEL; S.d.clan = null; S.d.sparks = 100000; S.d.stats.caught = 5; S.d.tasks = []; S.d.cocoons = [];
+    S.d.spirits = [S.makeSpirit('ugolek', 5, 'h1')]; S.d.essence = { ugolek: 30 };
+    const op = UI._opened; UI._opened = { shop: 1, swap: 1, trail: 1, rift: 1, shrine: 1, invasion: 1, trophy: 1, gavel: 1 };
+    let ids = Hints.list().map(h => h.id);
+    eq(ids.join(), 'evolve:ugolek,clan', 'превращение, дружина');
+    // 4.18: только что открылся раздел — совет о нём (и только о том, что уже открыто по уровню)
+    delete UI._opened.rift; S.d.level = RAID_LEVEL;
+    ok(Hints.list().some(h => h.id === 'open:rift'), 'совет о Разломах'); ok(!Hints.list().some(h => h.id === 'open:trophy' && !UI._opened.trophy), 'о Лиге — рано');
+    S.d.level = CLAN_LEVEL; UI._opened.rift = 1;
+    S.d.clan = 'volk'; S.d.essence = {};
+    eq(Hints.list().length, 0, 'без повода — без советов');
+    ok(!Hints.list.toString().includes('story'), 'советов о Летописи нет');
+    UI._opened = op;
+    S.d = keep;
+  });
+  test('Обучение (4.24): только подсказки — без сцен, у каждого шага есть текст', () => {
+    ok(TUT.length === 12 && TUT.every(s => s.kind !== 'talk'), 'шаги без сцен');
+    TUT.forEach(s => { ok((s.hint || '').length > 20, 'подсказка ' + s.id); if (s.kind === 'ui') ok(s.info.length > 20, 'объяснение ' + s.id); ok(TUT_CHAPTERS[s.ch], 'этап ' + s.id); });
+    ok(!JSON.stringify(TUT).includes('Велимир') && !JSON.stringify(TUT).includes('Летопис'), 'без наставника и сюжета');
+    ok(TUT_CHAPTERS.every(c => c.reward && c.title), 'награды этапов');
+  });
   test('Обновления: сравнение версий', () => {
     eq(Updater.cmp('2.0.0', '2.0.0'), 0); eq(Updater.cmp('2.0.1', '2.0.0'), 1); eq(Updater.cmp('2.0.0', '2.1.0'), -1);
     eq(Updater.cmp('10.0.0', '9.9.9'), 1); eq(Updater.cmp('2.1', '2.0.9'), 1);
@@ -1020,14 +1046,46 @@
     A.data.items.charm = 0; A.data.items.charm2 = 0; A.data.items.charm3 = 0;
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /Обереги закончились/);
   });
-  atest('Сервер: обучения больше нет (4.24) — новичок сразу играет, начатое обучение считается пройденным', async () => {
+  atest('Сервер: обучение подсказками (4.24) — пропустить нельзя, шаги строго по порядку, награды за этапы', async () => {
     const A = await newPlayer('ud', 55.73, 37.61, 'Дельта');
-    ok(!A.data.tut, 'обучения нет'); ok(A.data.items.charm >= 60 && A.data.sparks >= 1500, 'стартовый набор');
-    await refuse(A, 'tutNext', { id: 'meet' }, /Неизвестное действие/);
-    await refuse(A, 'encStart', { kind: 'tut' }, /Неизвестная встреча/);
+    const at = () => TUT[A.data.tut - 1], idx = id => TUT.findIndex(s => s.id === id) + 1;
+    eq(A.data.tut, 1); eq(A.data.tutV, TUT_V); eq(at().id, 'catch1');
+    await refuse(A, 'tutFinish', {}, /нельзя пропустить/);
+    await refuse(A, 'tutNext', { id: 'menu' }, /текущий шаг/);
     await refuse(A, 'storyClaim', {}, /Неизвестное действие/);
+    const charm0 = A.data.items.charm;
+    // шаги «поймай» засчитывает поимка учебного духа (его вид — из шага)
+    for (const id of ['catch1', 'catch2']) {
+      eq(at().id, id);
+      await refuse(A, 'tutNext', { id }, /текущий шаг/); // поимку нельзя «отметить» — только сделать
+      await must(A, 'encStart', { kind: 'tut' });
+      const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+      ok(r.caught, 'учебный дух пойман'); eq(A.data.spirits[A.data.spirits.length - 1].sid, TUT[idx(id) - 1].sid);
+    }
+    ok(A.data.items.charm > charm0 + 10, 'награда за первый этап');
+    await refuse(A, 'encStart', { kind: 'tut' }, /не нужен/);
+    for (const id of ['menu', 'spirits', 'card']) await must(A, 'tutNext', { id });
+    eq(at().id, 'power');
+    await refuse(A, 'tutNext', { id: 'power' }, /текущий шаг/);
+    await must(A, 'powerUp', { uid: A.data.spirits[0].uid });
+    await must(A, 'tutNext', { id: 'dex' });
+    eq(at().id, 'spring');
+    await refuse(A, 'tutNext', { id: 'spring' }, /текущий шаг/);
+    await must(A, 'spring', { poi: { id: 'osm:n555', lat: A.lat, lng: A.lng, name: 'Родник' } });
+    for (const id of ['bag', 'cocoons', 'quests']) await must(A, 'tutNext', { id });
+    const zl = A.data.zlat || 0, fin = await must(A, 'tutNext', { id: 'path' });
+    ok(fin.done && fin.got.length > 0, 'финальная награда'); eq(A.data.tut, 0); ok((A.data.zlat || 0) > zl, 'златники за обучение');
+    await refuse(A, 'tutNext', { id: 'path' }, /пройдено/);
+    // прежнее обучение 4.0 (со сценами) продолжается с ближайшего шага нового; 3.x — тоже
     const B = await newPlayer('ud2', 55.731, 37.611, 'Ясень');
-    B.data.tut = 7; asPlayer(B, () => S.migrate()); eq(B.data.tut, 0, 'начатое обучение закрыто');
+    const mig = (tut, tutV) => { B.data.tut = tut; B.data.tutV = tutV; asPlayer(B, () => S.migrate()); return B.data.tut ? TUT[B.data.tut - 1].id : 0; };
+    eq(mig(1, 4), 'catch1', 'сцена знакомства → первая поимка');
+    eq(mig(4, 4), 'catch2', 'сцена о кольце → вторая поимка');
+    eq(mig(11, 4), 'spring', 'сцена о родниках → родник');
+    eq(mig(14, 4), 'cocoons', 'сцена о дороге → коконы');
+    eq(mig(18, 4), 0, 'клятва → обучение пройдено');
+    eq(mig(2, undefined), 'spring', '3.x: родник');
+    eq(B.data.tutV, TUT_V);
   });
   atest('Сервер: коллекция — усиление, превращение, отпускание, команда, облик', async () => {
     const A = await newPlayer('ue', 55.72, 37.60, 'Ёлка');
