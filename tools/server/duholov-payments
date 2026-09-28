@@ -59,7 +59,7 @@ if [ -n "$INN" ] && [ -n "$REFRESH" ]; then
         [ -n "$id" ] || continue
         body=$(jq -nc --arg t "$at" --arg rq "$(now_iso)" --arg n "$TITLE ($zlat златников)" --argjson a "$amount" \
           '{operationTime: $t, requestTime: $rq, services: [{name: $n, amount: $a, quantity: 1}], totalAmount: ($a | tostring),
-            client: {contactPhone: null, displayName: null, inn: null, incomeType: "FROM_INDIVIDUAL"}, paymentType: "ACCOUNT", ignoreMaxTotalIncomeRestriction: false}')
+            client: {contactPhone: null, displayName: null, inn: null, incomeType: "FROM_INDIVIDUAL"}, paymentType: "WIRE", ignoreMaxTotalIncomeRestriction: false}')
         r=$(npost /v1/income "$body" "$TOK"); uuid=$(echo "$r" | jq -r '.approvedReceiptUuid // empty' 2>/dev/null)
         if [ -n "$uuid" ] && [[ "$uuid" =~ ^[A-Za-z0-9-]+$ ]]; then
           Q "update payments set npd_receipt = '$uuid' where id = '$id' and npd_receipt is null" >/dev/null
