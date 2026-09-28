@@ -109,17 +109,18 @@ const GameCore = {
     ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now };
     if (!(p.acc > Rules.SPEED.ACC)) this.pace(ctx, { lat: p.lat, lng: p.lng, t: ctx.now });
   },
-  // 4.20: скорость Ловчего — средняя от «якоря» (точка не старше WIN с) до новой точки; быстрее бега — пауза на COOL
+  // 4.20: скорость Ловчего; быстрее бега — пауза на COOL. 4.24.1: по недавним точкам (Rules.paceStep) — после остановки
+  // пауза снимается, как только Ловчий полминуты идёт шагом или стоит
   pace(ctx, q) {
-    const S2 = Rules.SPEED, a = ctx.srv.pace;
-    const v = a ? Rules.speedOf(a, q) : null;
-    if (v != null && v > S2.MAX) { ctx.srv.speedUntil = ctx.now + S2.COOL; ctx.srv.kmh = Math.round(v * 3.6); }
-    if (!a || q.t - a.t > S2.WIN * 1000 || q.t < a.t) ctx.srv.pace = q; // якорь двигается раз в минуту
+    const st = ctx.srv.spd = ctx.srv.spd || { pts: [], until: ctx.srv.speedUntil || 0, kmh: ctx.srv.kmh || 0 };
+    delete ctx.srv.pace; delete ctx.srv.speedUntil; // прежний счётчик (якорь раз в минуту)
+    Rules.paceStep(st, q);
   },
+  speedUntil(ctx) { return (ctx.srv.spd && ctx.srv.spd.until) || ctx.srv.speedUntil || 0; },
   here(ctx) {
     this.need(ctx.pos, ru`Нет данных о местоположении — включи GPS`);
     this.need(!(ctx.srv.fastUntil > ctx.now), ru`Похоже, GPS скачет — подожди минуту`);
-    this.need(!(ctx.srv.speedUntil > ctx.now), ru`Слишком быстро — около ${ctx.srv.kmh || 20} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`);
+    this.need(!(this.speedUntil(ctx) > ctx.now), ru`Слишком быстро — около ${(ctx.srv.spd && ctx.srv.spd.kmh) || ctx.srv.kmh || 20} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`);
     return ctx.pos;
   },
   near(ctx, lat, lng, max) {
@@ -616,7 +617,7 @@ const GameCore = {
       m = Math.min(m, since * Rules.SPEED.MAX);
       if (prev) ctx.srv.mv = { lat: prev.lat, lng: prev.lng, t: Math.min(prev.t, ctx.now) };
       if (m > 0) S.addDistance(m);
-      return { m, fast: ctx.srv.speedUntil > ctx.now ? ctx.srv.kmh : 0 };
+      return { m, fast: this.speedUntil(ctx) > ctx.now ? (ctx.srv.spd && ctx.srv.spd.kmh) || ctx.srv.kmh || 20 : 0 };
     },
 
     /* ----- встреча с духом ----- */

@@ -754,6 +754,25 @@
     ok(!JSON.stringify(TUT).includes('Велимир') && !JSON.stringify(TUT).includes('Летопис'), 'без наставника и сюжета');
     ok(TUT_CHAPTERS.every(c => c.reward && c.title), 'награды этапов');
   });
+  test('Скорость (4.24.1): после поездки остановился — пауза снимается; дрожь GPS и бег — не скорость', () => {
+    const t0 = 1e12, P = (sec, lat) => ({ lat, lng: 37.6, t: t0 + sec * 1000 });
+    const st = {};
+    for (let sec = 0; sec <= 60; sec += 2) Rules.paceStep(st, P(sec, 55.7 + sec * 0.0001)); // ≈ 40 км/ч
+    ok(st.until > t0 + 60000 && st.kmh > 30, 'едет: ' + st.kmh);
+    let at = 0;
+    for (let sec = 62; sec <= 180; sec += 2) { Rules.paceStep(st, P(sec, 55.706)); if (!at && !(st.until > t0 + sec * 1000)) at = sec; }
+    ok(at > 60 && at <= 72, 'пауза снята через ' + (at - 60) + ' с после остановки (раньше — до двух минут)');
+    const st2 = {};
+    for (let sec = 0; sec <= 120; sec += 2) Rules.paceStep(st2, { lat: 55.7 + (sec % 4 ? 0.00018 : 0), lng: 37.6, t: t0 + sec * 1000 });
+    ok(!(st2.until > 0), 'дрожь GPS на месте — не скорость');
+    const st3 = {};
+    for (let sec = 0; sec <= 120; sec += 2) Rules.paceStep(st3, P(sec, 55.7 + sec * 0.000025)); // ≈ 10 км/ч
+    ok(!(st3.until > 0), 'бег — можно');
+    const st4 = {}; // точки не по порядку — история всё равно по времени
+    [10, 0, 30, 20].forEach(sec => Rules.paceStep(st4, P(sec, 55.7)));
+    eq(st4.pts.map(p => (p.t - t0) / 1000).join(), '0,10,20,30');
+    ok(st.pts.length <= Rules.SPEED.MAX_PTS, 'история не растёт');
+  });
   test('Обновления: сравнение версий', () => {
     eq(Updater.cmp('2.0.0', '2.0.0'), 0); eq(Updater.cmp('2.0.1', '2.0.0'), 1); eq(Updater.cmp('2.0.0', '2.1.0'), -1);
     eq(Updater.cmp('10.0.0', '9.9.9'), 1); eq(Updater.cmp('2.1', '2.0.9'), 1);
@@ -1297,6 +1316,17 @@
     const r = await must(A, 'move', { pts: car });
     eq(A.data.stats.km, km0, 'на машине путь не считается'); ok(r.fast > 16, 'сервер заметил скорость: ' + r.fast);
     await refuse(A, 'spring', { poi: freeSpring(A, 96500) }, /Слишком быстро/);
+  });
+  atest('Сервер: после машины остановился — через несколько секунд снова можно действовать (4.24.1)', async () => {
+    const A = await newPlayer('us2', 55.64, 37.53, 'Стоп');
+    const car = [], t1 = Date.now() - 72000;
+    for (let i = 0; i <= 12; i++) car.push([55.64 - 0.009 + i * 0.00075, 37.53, t1 + i * 5000, 10]); // ≈ 60 км/ч, стоп 12 с назад
+    await must(A, 'move', { pts: car });
+    ok(A.srv.spd.kmh > 16, 'сервер заметил поездку: ' + A.srv.spd.kmh);
+    const stay = [];
+    for (let i = 0; i <= 5; i++) stay.push([55.64, 37.53, Date.now() - 11000 + i * 2000, 10]);
+    await must(A, 'move', { pts: stay });
+    await must(A, 'spring', { poi: freeSpring(A, 97000) }); // раньше — «Слишком быстро» ещё минуту-две
   });
   atest('Сервер: награда за одобренное место — один раз', async () => {
     const A = await newPlayer('ul', 55.67, 37.55, 'Мила');

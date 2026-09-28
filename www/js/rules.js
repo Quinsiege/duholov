@@ -83,7 +83,10 @@ const Rules = {
   // 4.20: скорость Ловчего — только шагом или бегом. Шаг ≈ 5 км/ч, бег 8–12, быстрый бег до 16; быстрее (самокат, велосипед,
   // машина, метро) — действия на карте на COOL мс замирают, путь не засчитывается. Скорость — средняя за MIN_T…WIN с на MIN_D м и
   // больше (GPS «дрожит» на десятки метров — короткие скачки не в счёт); точки с точностью хуже ACC м не берутся
-  SPEED: { MAX: 4.5, MIN_T: 15, WIN: 60, MIN_D: 60, ACC: 40, COOL: 60000 },
+  // 4.24.1: скорость — по недавним точкам (не старше WIN с): средняя от самой свежей точки, что старше MIN_T с. Пауза COOL
+  // снимается, как только Ловчий последние CALM с идёт шагом, бегом или стоит (раньше якорь держался минуту, и после остановки
+  // игра ещё до двух минут считала, что он едет). STEP — точки в истории не чаще раза в STEP мс, MAX_PTS — не больше стольких точек
+  SPEED: { MAX: 4.5, MIN_T: 15, WIN: 60, MIN_D: 60, ACC: 40, COOL: 60000, CALM: 8, STEP: 2000, MAX_PTS: 40 },
   // средняя скорость от a к b (м/с), если её можно честно измерить, иначе null; t — мс
   speedOf(a, b) {
     if (!a || !b) return null;
@@ -91,6 +94,29 @@ const Rules = {
     if (dt < S2.MIN_T || dt > S2.WIN * 3) return null;
     const d = U.dist(a.lat, a.lng, b.lat, b.lng);
     return d < S2.MIN_D ? null : d / dt;
+  },
+  // Новая точка q ({ lat, lng, t }) в счётчике скорости st ({ pts, until, kmh }): until — до какого времени (мс) Ловчий «едет».
+  // Общий для телефона и сервера. Возвращает скорость (м/с), если её удалось честно измерить
+  paceStep(st, q) {
+    const S2 = this.SPEED;
+    // точки могут прийти не по порядку (пачка пройденного пути — позже текущей позиции): история всегда по времени
+    st.pts = (st.pts || []).filter(p => p && Number.isFinite(p.t));
+    if (!st.pts.some(p => Math.abs(p.t - q.t) < S2.STEP)) st.pts.push({ lat: q.lat, lng: q.lng, t: q.t });
+    st.pts.sort((x, y) => x.t - y.t);
+    const N = st.pts[st.pts.length - 1];
+    st.pts = st.pts.filter(p => N.t - p.t <= S2.WIN * 1000);
+    if (st.pts.length > S2.MAX_PTS) st.pts.splice(0, st.pts.length - S2.MAX_PTS);
+    // самая свежая точка, что старше точки b хотя бы на sec секунд
+    const back = (b, sec) => { for (let i = st.pts.length - 1; i >= 0; i--) if (b.t - st.pts[i].t >= sec * 1000) return st.pts[i]; return null; };
+    // идёт шагом, бегом или стоит — за последние CALM с до точки b (дрожь GPS тут не мешает: она «замедляет», а не ускоряет)
+    const calm = b => { const c = back(b, S2.CALM); return !!c && U.dist(c.lat, c.lng, b.lat, b.lng) / ((b.t - c.t) / 1000) <= S2.MAX; };
+    // быстро: средняя за MIN_T с и больше — быстрее бега, и последние CALM с до этой точки он тоже не шёл шагом
+    // (иначе после остановки замеры, захватившие поездку, ещё секунд 15 продлевали бы паузу)
+    const a = back(q, S2.MIN_T), v = a ? this.speedOf(a, q) : null;
+    if (v != null && v > S2.MAX && !calm(q)) { st.until = Math.max(st.until || 0, q.t + S2.COOL); st.kmh = Math.round(v * 3.6); }
+    // пауза снимается по самой свежей точке: последние CALM с — шагом, бегом или на месте
+    if (st.until > N.t && calm(N)) st.until = 0;
+    return v;
   },
   AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
