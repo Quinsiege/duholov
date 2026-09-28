@@ -25,6 +25,8 @@ const Login = {
   app() { const m = /DuholovApp\/(\d+)/.exec(navigator.userAgent); return m ? +m[1] : 0; },
   // 7: в приложении Google — через системное окно выбора аккаунта (DuholovNative.googleSignIn); в старых приложениях его нет
   nativeGoogle() { return !!(window.DuholovNative && window.DuholovNative.googleSignIn); },
+  // 8: в приложении Яндекс — официальный вход (приложение Яндекса); не вышло — прежний вход через страницу Яндекса
+  nativeYandex() { return !!(window.DuholovNative && window.DuholovNative.yandexSignIn); },
   available() {
     const p = (this.info && this.info.providers) || {}, app = this.app();
     return this.ORDER.filter(k => p[k] && !(app && (app < 3 || (k === 'google' && !this.nativeGoogle()))));
@@ -55,6 +57,8 @@ const Login = {
     const pend = { provider, mode, state, nonce, verifier, redirect, t: Date.now() };
     try { sessionStorage.setItem(this.PEND, JSON.stringify(pend)); } catch (e) { UI.toast(ru`Браузер не даёт сохранить вход — проверь настройки`); return; }
     const q = o => new URLSearchParams(o).toString();
+    // 4.23: телефон (приложение или браузер) — вход через бота: откроется приложение Telegram, а не страница входа
+    if (provider === 'telegram' && p.bot && (this.app() || /Android|iPhone|iPad/i.test(navigator.userAgent))) return this.tgBot(mode, pend);
     // 7: приложение — вход Google без страницы: ответ кладём туда же, куда его кладёт auth.html, и перезапускаем игру —
     // дальше обычный путь (resume: привязать, перейти в ту учётную запись или привязать сюда)
     if (provider === 'google' && this.app() && this.nativeGoogle()) {
@@ -67,6 +71,19 @@ const Login = {
       };
       Sfx.play('tap');
       window.DuholovNative.googleSignIn(p.client_id, nonce);
+      return;
+    }
+    if (provider === 'yandex' && this.app() && this.nativeYandex() && !this._yaWeb) {
+      window.nativeYandex = r => {
+        window.nativeYandex = null;
+        if (r && r.error === 'cancel') { try { sessionStorage.removeItem(this.PEND); } catch (e) {} return; }
+        if (!r || !r.access_token) { this._yaWeb = true; this.start(provider, mode); return; } // SDK не смог — как раньше, страницей
+        try { sessionStorage.setItem(this.CB, JSON.stringify({ state, access_token: r.access_token })); } catch (e) {}
+        this.leaving(provider);
+        location.reload();
+      };
+      Sfx.play('tap');
+      window.DuholovNative.yandexSignIn();
       return;
     }
     let url;
@@ -82,6 +99,41 @@ const Login = {
     location.href = url;
   },
 
+  // 4.23: вход через бота Telegram: код у сервера → бот в приложении Telegram («Запустить») → бот подтвердил →
+  // ответ туда же, куда его кладёт auth.html, и перезапуск — дальше обычный путь (resume)
+  async tgBot(mode, pend) {
+    let r;
+    try { r = await Game.auth('tgstart'); } catch (e) { UI.toast(U.esc(e.message)); return; }
+    const url = `https://t.me/${r.bot}?start=login_${r.code}`;
+    // приложение — ссылка уходит в Telegram сама; браузер — новая вкладка, чтобы игра ждала подтверждения
+    const open = () => { if (this.app() || !window.open(url, '_blank')) location.href = url; };
+    try { sessionStorage.setItem(this.PEND, JSON.stringify({ ...pend, code: r.code })); } catch (e) {}
+    let done = false, iv = 0;
+    const stop = () => { done = true; clearInterval(iv); document.removeEventListener('visibilitychange', onVis); };
+    const check = async () => {
+      if (done) return;
+      let c = null;
+      try { c = await Game.auth('tgcheck', { code: r.code }); } catch (e) { return; }
+      if (!c || !c.ready || done) return;
+      stop(); m.close();
+      try { sessionStorage.setItem(this.CB, JSON.stringify({ tgcode: r.code })); } catch (e) {}
+      this.leaving('telegram');
+      location.reload();
+    };
+    const onVis = () => { if (!document.hidden) check(); };
+    const m = UI.modal({
+      title: ru`Вход через Telegram`,
+      html: `<p>${ru`В Telegram откроется бот @${U.esc(r.bot)}. Нажми «Запустить» — и возвращайся сюда: вход завершится сам.`}</p>`,
+      buttons: [{ label: ru`Отмена`, fn: () => { stop(); try { sessionStorage.removeItem(this.PEND); } catch (e) {} } },
+        { label: ru`Открыть Telegram`, cls: 'primary', keep: true, fn: open }],
+      dismiss: false,
+    });
+    iv = setInterval(() => { if (!document.hidden) check(); }, 2500);
+    document.addEventListener('visibilitychange', onVis);
+    Sfx.play('tap');
+    open();
+  },
+
   /* ---------- вернулись со страницы сервиса (вызывается при запуске, после загрузки прогресса) ---------- */
   // true — учётная запись сменилась, страницу нужно перезагрузить
   async resume() {
@@ -92,7 +144,8 @@ const Login = {
     if (Date.now() - pend.t > 15 * 60000) { UI.toast(ru`Вход устарел — попробуй ещё раз`); return false; }
     if (cb.error) { UI.toast(cb.error_description ? ru`Вход не выполнен: ${U.esc(cb.error_description)}` : ru`Вход отменён`); return false; }
     let proof;
-    if (pend.provider === 'telegram') {
+    if (pend.provider === 'telegram' && cb.tgcode) proof = { code: cb.tgcode }; // 4.23: вход через бота
+    else if (pend.provider === 'telegram') {
       let data = null;
       try { data = JSON.parse(decodeURIComponent(escape(atob(String(cb.tgAuthResult || '').replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) {}
       if (!data) { UI.toast(ru`Вход через Telegram отменён`); return false; }

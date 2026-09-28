@@ -4,9 +4,14 @@
 set -euo pipefail
 T=$(grep -E '^TELEGRAM_BOT_TOKEN=' /opt/duholov/functions.env | cut -d= -f2-)
 [ -n "$T" ] || { echo "Нет TELEGRAM_BOT_TOKEN — задай его командой duholov-secrets"; exit 1; }
-# последние личные чаты, написавшие боту: id, имя, @логин
-mapfile -t CH < <(curl -s --max-time 20 "https://api.telegram.org/bot$T/getUpdates" | jq -r '[.result[] | (.message // .edited_message) | select(.chat.type == "private") | .chat]
-  | reverse | unique_by(.id) | .[] | "\(.id)|\(.first_name // "") \(.last_name // "")|\(.username // "—")"' | head -5)
+# последние личные чаты, написавшие боту: id|имя|@логин. 4.23: их записывает приёмник сообщений бота (таблица tg_chats) —
+# с ним getUpdates не работает; таблица пуста (приёмник не подключён) — как раньше, через getUpdates
+mapfile -t CH < <(docker exec supabase-db psql -U supabase_admin -d postgres -tA -F '|' \
+  -c "select chat_id, name, coalesce(nullif(username, ''), '—') from tg_chats order by last_at desc limit 5" 2>/dev/null | grep -v '^$' || true)
+if [ "${#CH[@]}" -eq 0 ]; then
+  mapfile -t CH < <(curl -s --max-time 20 "https://api.telegram.org/bot$T/getUpdates" | jq -r '[.result[] | (.message // .edited_message) | select(.chat.type == "private") | .chat]
+    | reverse | unique_by(.id) | .[] | "\(.id)|\(.first_name // "") \(.last_name // "")|\(.username // "—")"' | head -5)
+fi
 [ "${#CH[@]}" -gt 0 ] || { echo "Сообщений боту не найдено — напиши ему что-нибудь и запусти ещё раз"; exit 1; }
 echo "Кто недавно писал боту:"
 for i in "${!CH[@]}"; do IFS='|' read -r id name user <<< "${CH[$i]}"; echo "  $((i + 1)) — $name (@$user)"; done

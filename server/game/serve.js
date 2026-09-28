@@ -160,6 +160,33 @@ const AUTHP = {
   telegram: Deno.env.get('TELEGRAM_BOT_TOKEN') || '',
 };
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+// 4.23: вход через бота Telegram — на телефоне открывается приложение Telegram: игрок жмёт «Запустить» у бота,
+// бот (приёмник сообщений …/game/tg) отмечает код входа подтверждённым, игра завершает вход. Имя бота — из getMe
+const TG = {
+  bot: '',
+  async name() {
+    if (this.bot || !AUTHP.telegram) return this.bot;
+    try { const r = await (await fetch(`https://api.telegram.org/bot${AUTHP.telegram}/getMe`)).json(); this.bot = (r.result && r.result.username) || ''; } catch { /* не ответил — позже */ }
+    return this.bot;
+  },
+  // секрет заголовка X-Telegram-Bot-Api-Secret-Token: sha256("tgwh:" + токен), 48 знаков (так же считает duholov-tg-webhook)
+  async secret() { return AUTHP.telegram ? hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tgwh:' + AUTHP.telegram))).slice(0, 48) : ''; },
+  send(chat, text) { return fetch(`https://api.telegram.org/bot${AUTHP.telegram}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text }) }).catch(() => {}); },
+  async update(u) {
+    const m = u && (u.message || u.edited_message);
+    if (!m || !m.chat || m.chat.type !== 'private' || !m.from) return;
+    const name = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || (m.from.username ? '@' + m.from.username : 'Telegram');
+    await db.from('tg_chats').upsert({ chat_id: m.chat.id, name: name.slice(0, 80), username: String(m.from.username || '').slice(0, 64), last_at: new Date().toISOString() });
+    const code = /^\/start login_([A-Za-z0-9_-]{8,64})$/.exec(String(m.text || '').trim());
+    if (code) {
+      const since = new Date(Date.now() - 15 * 60000).toISOString();
+      const { data } = await db.from('tg_login').update({ tg_id: m.from.id, tg_name: name.slice(0, 80), confirmed_at: new Date().toISOString() })
+        .eq('code', code[1]).is('confirmed_at', null).gte('created_at', since).select('code');
+      await this.send(m.chat.id, data && data.length ? '✅ Вход в «Духолов» подтверждён — возвращайся в игру.' : 'Ссылка для входа устарела — начни вход в игре заново.');
+      if (Math.random() < 0.05) await db.from('tg_login').delete().lt('created_at', new Date(Date.now() - 86400000).toISOString());
+    } else if (/^\/start\b/.test(String(m.text || ''))) await this.send(m.chat.id, 'Это бот игры «Духолов» — лови духов Нави на улицах своего города: https://duholov.ru');
+  },
+};
 const getJson = async (url, init) => {
   const r = await fetch(url, { ...init, signal: AbortSignal.timeout(12000) });
   const j = await r.json().catch(() => ({}));
@@ -173,11 +200,11 @@ const Auth = {
     if (AUTHP.google) p.google = { client_id: AUTHP.google };
     if (AUTHP.yandex) p.yandex = { client_id: AUTHP.yandex };
     if (AUTHP.vk) p.vk = { client_id: AUTHP.vk };
-    if (AUTHP.telegram) p.telegram = { bot_id: AUTHP.telegram.split(':')[0] };
+    if (AUTHP.telegram) p.telegram = { bot_id: AUTHP.telegram.split(':')[0], bot: TG.bot || null };
     return p;
   },
   // Проверка входа у сервиса → { sub, name }
-  async verify(provider, a) {
+  async verify(provider, a, uid) {
     if (provider === 'google') {
       const t = await getJson('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(String(a.id_token || '')));
       if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error(ru`вход Google не подтверждён`);
@@ -200,6 +227,13 @@ const Auth = {
         if (u.user) name = [u.user.first_name, u.user.last_name].filter(Boolean).join(' ') || name;
       } catch { /* имя не обязательно */ }
       return { sub: String(t.user_id), name };
+    }
+    if (provider === 'telegram' && a.code) {
+      // 4.23: вход через бота — код одноразовый, только того игрока, который его получил, и не старше 15 минут
+      const { data: row } = await db.from('tg_login').select('tg_id, tg_name, confirmed_at, created_at').eq('code', String(a.code)).eq('user_id', uid).maybeSingle();
+      if (!row || !row.confirmed_at || !row.tg_id || Date.parse(row.created_at) < Date.now() - 15 * 60000) throw new Error(ru`вход Telegram не подтверждён`);
+      await db.from('tg_login').delete().eq('code', String(a.code));
+      return { sub: String(row.tg_id), name: row.tg_name || 'Telegram' };
     }
     if (provider === 'telegram') {
       // подпись Telegram Login: HMAC-SHA256 от строк «ключ=значение» (по алфавиту, без hash) на ключе SHA256(токена бота)
@@ -225,6 +259,20 @@ const Auth = {
     try { const t = JSON.parse(decodeURIComponent(escape(atob(body)))); return t.exp > Date.now() ? t : null; } catch { return null; }
   },
   async handle(uid, op, a) {
+    if (op === 'info' && AUTHP.telegram && !TG.bot) await TG.name();
+    // 4.23: вход через бота Telegram — выдать код; проверить, подтвердил ли бот
+    if (op === 'tgstart') {
+      if (!AUTHP.telegram || !(await TG.name())) return { ok: false, error: ru`Вход через Telegram сейчас недоступен` };
+      const b = new Uint8Array(18); crypto.getRandomValues(b);
+      const code = btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const { error } = await db.from('tg_login').insert({ code, user_id: uid });
+      if (error) return { ok: false, error: ru`Не удалось начать вход — попробуй ещё раз` };
+      return { ok: true, code, bot: TG.bot };
+    }
+    if (op === 'tgcheck') {
+      const { data: row } = await db.from('tg_login').select('confirmed_at').eq('code', String(a.code || '')).eq('user_id', uid).maybeSingle();
+      return { ok: true, ready: !!(row && row.confirmed_at) };
+    }
     if (op === 'info') {
       const links = must(await db.from('auth_links').select('provider, name, created_at').eq('user_id', uid)) || [];
       return { ok: true, providers: this.providers(), links };
@@ -255,7 +303,7 @@ const Auth = {
     const provider = String(a.provider || '');
     if (!this.providers()[provider]) return { ok: false, error: ru`Этот способ входа пока не подключён` };
     let who;
-    try { who = await this.verify(provider, a.proof || {}); }
+    try { who = await this.verify(provider, a.proof || {}, uid); }
     catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: ru`Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }
     const name = String(who.name).slice(0, 60);
     const row = must(await db.from('auth_links').select('user_id').eq('provider', provider).eq('subject', who.sub).maybeSingle());
@@ -682,6 +730,12 @@ Deno.serve(async req => {
   const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
   // уведомление ЮKassa о платеже: итог проверяем сами (Pay.notify); при сбое — 500, и ЮKassa повторит уведомление позже
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/tg')) {
+    const sec = await TG.secret();
+    if (!sec || !sameKey(req.headers.get('x-telegram-bot-api-secret-token') || '', sec)) return new Response('forbidden', { status: 403 });
+    try { await TG.update(await req.json().catch(() => null)); } catch (e) { console.error('Telegram:', String(e)); }
+    return new Response('ok'); // Telegram не повторяет — даже при сбое
+  }
   if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/yookassa')) {
     try { await Pay.notify(await req.json().catch(() => null)); return new Response('ok'); }
     catch (e) { console.error('Казна, уведомление:', String(e)); return new Response('retry', { status: 500 }); }

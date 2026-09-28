@@ -4322,3 +4322,33 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .rift2-note { margin: 6px 2px 0; font-size: 12.5px; line-height: 1.4; color: rgba(255, 255, 255, .62); text-align: left; }
 .rift2 .dt-row > b { white-space: normal; text-align: right; }
 .rift2 .dt-row > b .art { width: 16px; height: 16px; }
+/* 4.22.3: Книга Ордена — оглавление разделами, списком без подложек; глава — шапка, вкладки, строки без подложек, соседние главы внизу */
+.bk-gh { margin: 14px 2px 4px; }
+.bk-list { display: flex; flex-direction: column; gap: 2px; }
+.bk-list .bk-ch { flex-direction: row; align-items: center; gap: 12px; width: 100%; padding: 6px 2px; border: 0; border-radius: 12px; background: none; }
+.bk-list .bk-ch:active { transform: none; background: rgba(255, 255, 255, .06); }
+.bk-list .bk-ico { width: 44px; height: 44px; margin: 0; flex: none; }
+.bk-cht { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bk-cht b { font-family: var(--f-head); font-size: 15px; } .bk-cht small { color: var(--muted); font-size: 12px; line-height: 1.3; }
+.bk-chev { width: 18px; height: 18px; flex: none; color: rgba(255, 255, 255, .4); }
+.bk-page .bk-hero { padding: 4px 2px 12px; margin: 0 0 4px; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.bk-page .bk-hero .bk-ico.big { width: 72px; height: 72px; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .4)); }
+.bk-page .bk-hero b { font-family: var(--f-display); font-weight: 400; font-size: 24px; line-height: 1.15; }
+.bk-page .bk-hero p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.bk-tabs { margin: 0 0 6px; }
+.bk-tabs button { white-space: nowrap; }
+.bk-pane { display: none; }
+.bk-pane.on { display: block; animation: fadeIn .2s ease-out; }
+.bk-cards { gap: 2px; }
+.bk-card { padding: 6px 2px; border: 0; border-radius: 0; background: none; align-items: flex-start; }
+.bk-card .bk-art { width: 46px; height: 46px; }
+.bk-kv { margin: 6px 0; }
+.bk-kv .dt-row > b { white-space: normal; text-align: right; flex-wrap: wrap; justify-content: flex-end; font-size: 14px; }
+.bk-kv .dt-row > b .art { width: 16px; height: 16px; }
+.bk-nav { display: flex; justify-content: space-between; gap: 10px; margin: 18px 0 6px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .08); }
+.bk-nb { min-width: 0; max-width: 48%; padding: 8px 4px; font-family: var(--f-head); font-size: 13px; font-weight: 700; color: #fde68a; text-align: left; }
+.bk-nb.next { margin-left: auto; text-align: right; }
+.bk-nb span { overflow: hidden; text-overflow: ellipsis; }
+.bk-tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; justify-content: flex-start; }
+.bk-tabs::-webkit-scrollbar { display: none; }
+.bk-tabs button { flex: 1 0 auto; padding-left: 12px; padding-right: 12px; }
