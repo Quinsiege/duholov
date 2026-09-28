@@ -916,18 +916,38 @@ const Art = (() => {
   };
   // цвет — только #rrggbb: облик приходит и от других игроков (Лига, разломы), в атрибут SVG попадает лишь проверенное
   const HEX = /^#[0-9a-f]{6}$/i;
+  // 4.22.2: Ловчий везде в игре — как на кнопке «Ловчий» в меню: объёмный плащ с капюшоном, светящиеся глаза, копья с флажками;
+  // цвета плаща и глаз, эмблема на груди — из Гардероба. Номер у градиентов свой у каждого рисунка (на экране их может быть много)
+  let hoodN = 0;
+  function hood(c, eye, emblem) {
+    const p = 'hd' + (++hoodN), ol = shade(c, -0.6), u = id => `url(#${p}${id})`;
+    const em = (Object.prototype.hasOwnProperty.call(EMBLEM, emblem) && EMBLEM[emblem]) || EMBLEM.charm;
+    return `<svg viewBox="0 0 100 100" class="art"><defs>` +
+      `<linearGradient id="${p}c" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="${shade(c, .35)}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${shade(c, -.4)}"/></linearGradient>` +
+      `<radialGradient id="${p}f" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#2a1f4a"/><stop offset="1" stop-color="#07040f"/></radialGradient>` +
+      `<radialGradient id="${p}e" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${eye}" stop-opacity=".7"/><stop offset="1" stop-color="${eye}" stop-opacity="0"/></radialGradient></defs>` +
+      `<circle cx="50" cy="50" r="48" fill="#241a45"/><g transform="translate(5 8) scale(.9)">` +
+      `<path d="M70 62 L86 24 M76 64 L92 32" stroke="#2a1405" stroke-width="5" stroke-linecap="round"/><path d="M70 62 L86 24 M76 64 L92 32" stroke="#c98a4a" stroke-width="2.2" stroke-linecap="round"/>` +
+      `<g fill="#ef4444" stroke="#4c0808" stroke-width="1.5" stroke-linejoin="round"><path transform="translate(86 24) rotate(22.8)" d="M0 1 L-4.5 -3 V8 L0 12Z M0 1 L4.5 -3 V8 L0 12Z"/><path transform="translate(92 32) rotate(26.6)" d="M0 1 L-4.5 -3 V8 L0 12Z M0 1 L4.5 -3 V8 L0 12Z"/></g>` +
+      `<path d="M10 92 C10 74 24 62 38 58 H62 C76 62 90 74 90 92Z" fill="${u('c')}" stroke="${ol}" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="M62 58 C76 62 90 74 90 92 H73 C73 78 69 66 62 58Z" fill="#000" opacity=".2"/><path d="M18 90 C20 78 28 70 36 66" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".3"/>` +
+      `<path d="M47 78 L43 92 M53 78 L57 92" stroke="#f7d77e" stroke-width="2.2" stroke-linecap="round"/>` +
+      `<path d="M50 5 C31 9 21 26 21 44 C21 57 28 65 38 67 H62 C72 65 79 57 79 44 C79 26 69 9 50 5Z" fill="${u('c')}" stroke="${ol}" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="M58 10 C70 18 79 30 79 44 C79 56 72 64 62 66 C68 56 70 34 58 10Z" fill="#000" opacity=".2"/>` +
+      `<path d="M50 23 C62 23 67 36 67 46 C67 56 59 63 50 63 C41 63 33 56 33 46 C33 36 38 23 50 23Z" fill="${u('f')}" stroke="${ol}" stroke-width="2.4"/>` +
+      `<path d="M36 38 C38 29 43 25 50 25" stroke="${shade(c, .3)}" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/>` +
+      `<ellipse cx="50" cy="46" rx="16" ry="9" fill="${u('e')}"/><ellipse cx="43" cy="46" rx="4.2" ry="2.8" fill="${eye}"/><ellipse cx="57" cy="46" rx="4.2" ry="2.8" fill="${eye}"/>` +
+      `<circle cx="44" cy="45.3" r="1.1" fill="#fff"/><circle cx="58" cy="45.3" r="1.1" fill="#fff"/>` +
+      `<ellipse cx="33" cy="21" rx="7" ry="3.5" transform="rotate(-50 33 21)" fill="#fff" opacity=".5"/>` +
+      `<g transform="translate(0 -10)">${em}</g></g></svg>`;
+  }
   function avatar(look) {
     look = look || {};
     // 4.6: облик-скин (js/skins-art.js) — поверх него те же глаза и эмблема
     // только облики из списка LOOK.skin: облик приходит и от других игроков ('constructor', 'draw' и т. п. — мимо)
     if (look.skin && look.skin !== 'hood' && typeof SkinArt !== 'undefined' && LOOK.skin.some(k => k.id === look.skin)) return SkinArt.draw(look.skin, look);
     const cloak = HEX.test(look.cloak) ? look.cloak : '#6d28d9', eyes = HEX.test(look.eyes) ? look.eyes : '#5eead4';
-    return `<svg viewBox="0 0 100 100" class="art"><circle cx="50" cy="50" r="48" fill="#241a45"/>` +
-      `<path d="M50 14 C70 14 80 34 80 54 L84 96 H16 L20 54 C20 34 30 14 50 14Z" fill="${cloak}"/>` +
-      `<path d="M50 14 C70 14 80 34 80 54 L84 96 H70 L66 58 C66 40 60 26 50 22Z" fill="#000" opacity=".18"/>` +
-      `<path d="M50 22 C64 22 70 38 70 52 C70 62 62 70 50 70 C38 70 30 62 30 52 C30 38 36 22 50 22Z" fill="#150d2b"/>` +
-      `<ellipse cx="42" cy="50" rx="4" ry="2.6" fill="${eyes}"/><ellipse cx="58" cy="50" rx="4" ry="2.6" fill="${eyes}"/>` +
-      ((Object.prototype.hasOwnProperty.call(EMBLEM, look.emblem) && EMBLEM[look.emblem]) || EMBLEM.charm) + `</svg>`;
+    return hood(cloak, eyes, look.emblem);
   }
 
   // 4.6: фон и рамка карточки Ловчего (Гардероб): только значения из LOOK.bg / LOOK.frame; картинки — js/looks-art.js

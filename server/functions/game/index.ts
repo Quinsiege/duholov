@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.22.1';
+const APP_VERSION = '4.22.2';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -2929,44 +2929,92 @@ const Raid = {
     const goBtn = !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>`
       : passes ? `<button class="btn primary wide rift-go far" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} ${ru`Дальний бой · пропусков: ${passes}`}</button>`
       : `<button class="btn primary wide rift-shop">${Art.item('farpass')} ${ru`Нужен Дальний пропуск — в Лавку`}</button>`;
+    // 4.22.2: в композиции карточки духа и Лиги: сверху портал с боссом, справа ступень, босс, сила и таймер;
+    // вкладки «Бой» (команда и кнопки — закреплены внизу), «Босс» (слабость, погода, как бить), «Награда»
+    const st = this.bossStats(r), el = s.el, w = Sky.w ? WEATHER[Sky.w.key] : null;
+    const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${UI.hpBar(x)}</button>`;
+    const teamHtml = t => t.map(mem).join('') + `<button class="lg2-mem empty team-edit"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - t.length));
+    const power = t => t.reduce((a, x) => a + S.power(x), 0);
+    const row = (t, v) => `<div class="dt-row"><span>${t}</span><b>${v}</b></div>`;
+    const it = (k, n) => `<span class="cur">${Art.item(k)}</span> ${n}`;
+    const T2 = r.tier;
     const html = `
-      <div class="rift-view t${r.tier}">
-        <div class="rift-portal">${Art.riftIcon(r.tier)}</div>
-        <div class="rift-boss">${Art.spirit(r.boss)}</div>
-        <div class="rift-title">${T.name} <span class="stars">${'★'.repeat(r.tier)}</span></div>
-        <div class="rift-name">${Art.elIcon(s.el, 20)} ${s.name}</div>
-        ${r.place ? `<div class="rift-meta">${ru`Разлом открылся у «${U.esc(r.place)}»`}</div>` : ''}
-        <div class="rift-meta">${ru`Сила босса ≈ ${U.fmtNum(this.bossStats(r).hp * 1.5)} · закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
-        <div class="rift-tip">${ru`Слабость: ${counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' ')}`}</div>
-        ${r.tier === 3 && !r.done ? `<div class="rift-tip">${ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.`}</div>` : ''}
-        ${Sky.w ? `<div class="rift-tip">${Art.wxIcon(Sky.w.key, 16)} ${ru`${WEATHER[Sky.w.key].name}: урон +20% у ${WEATHER[Sky.w.key].boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`}</div>` : ''}
-        ${r.done ? `<div class="rift-done">${ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`}</div>` : `
-        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team">${UI.teamHtml(team)}</div>
-        ${goBtn}
-        ${Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
-        ${far ? `<div class="rift-tip rift-far">${ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>`
-          : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей — совместный бой`}</button>`}`}
+      <div class="det det2 rift2 t${T2}">
+        <div class="dt-hero">
+          <div class="det-art rift2-art"><div class="rift-portal">${Art.riftIcon(T2)}</div><div class="rift-boss">${Art.spirit(r.boss)}</div></div>
+          <div class="dt-info">
+            <div class="det-hp">${T.name} <span class="stars">${'★'.repeat(T2)}</span></div>
+            <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
+            <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
+            <div class="rift2-left">${ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
+            ${r.place ? `<div class="rift2-place">${ru`у «${U.esc(r.place)}»`}</div>` : ''}
+          </div>
+        </div>
+        <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="boss">${ru`Босс`}</button><button data-tab="loot">${ru`Награда`}</button></div>
+        <div class="dt-panel">
+          <div class="dt-pane on" data-pane="fight">
+            ${r.done ? `<div class="rift-done">${ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`}</div>` : `
+            <div class="dt-scroll rift2-fight">
+              <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
+              <div class="lg2-team rift-team">${teamHtml(team)}</div>
+              ${far ? `<div class="rift-tip rift-far">${ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>` : ''}
+              ${Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
+            </div>
+            <div class="rift2-acts">${goBtn}${far ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
+          </div>
+          <div class="dt-pane" data-pane="boss">
+            <div class="dt-scroll dt-rows">
+              ${row(ru`Стихия`, `${Art.elIcon(el, 16)} ${ELEMENTS[el].name}`)}
+              ${row(ru`Слабость`, counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' '))}
+              ${w ? row(`${Art.wxIcon(Sky.w.key, 16)} ${w.name}`, ru`урон +20% у ${w.boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`) : ''}
+              ${row(ru`Уровень босса`, ru`растёт с уровнем Ловчего`)}
+              <p class="rift2-note">${T2 === 3 ? ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.` : ru`Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону — уклон от удара босса.`}</p>
+            </div>
+          </div>
+          <div class="dt-pane" data-pane="loot">
+            <div class="dt-scroll dt-rows">
+              ${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far ? '' : ru` · с друзьями +25%`))}
+              ${row(ru`Искры`, it('sparks', U.fmtNum(350 * T2)))}
+              ${row(ru`Обереги`, it('charm', 5) + (T2 >= 2 ? ' · ' + it('charm2', 3) : ''))}
+              ${row(ru`Припасы`, it('honey', T2) + ' · ' + (T2 === 1 ? it('herb', 1) : it('water', 1)))}
+              ${row(ru`Эссенция «${SP[s.fam].name}»`, S.RIFT_ESS[T2] || 0)}
+              ${S.ALATYR_DROP.rift[T2] ? row(ru`Осколок Алатыря`, S.ALATYR_DROP.rift[T2] >= 1 ? ru`точно` : ru`шанс ${Math.round(S.ALATYR_DROP.rift[T2] * 100)}%`) : ''}
+              ${row(ru`Амулет`, ru`шанс ${[5, 12, 30][T2 - 1]}%`)}
+              ${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}
+              <p class="rift2-note">${ru`После победы босса можно поймать. Оберегов на поимку больше за быструю победу (+1 за каждые 15 с быстрее 90 с) и за друзей (+2 за каждого). Уровень пойманного духа — не выше твоего, сияющий — примерно 1 из 20.`}</p>
+            </div>
+          </div>
+        </div>
       </div>`;
-    const scr = UI.screen(ru`Разлом`, html, 'rift-screen');
+    const scr = UI.screen(ru`Разлом`, html, 'rift-screen det-screen');
     scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
+    scr.querySelector('.dt-tabs').addEventListener('click', e => {
+      const b = e.target.closest('[data-tab]'); if (!b) return;
+      Sfx.play('tap');
+      U.$$('.dt-tabs button', scr).forEach(x => x.classList.toggle('on', x === b));
+      U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+    });
     const go = scr.querySelector('.rift-go');
     if (go) go.onclick = async () => { if (await this.battle(r, this.team(), null, far)) UI.closeScreen(scr); };
     const shop = scr.querySelector('.rift-shop');
     if (shop) shop.onclick = () => { UI.closeScreen(scr); Shop.screen(); };
     const cb = scr.querySelector('.rift-coop');
     if (cb) cb.onclick = () => { UI.closeScreen(scr); Coop.hostRift(r); };
-    const edit = scr.querySelector('.team-edit');
-    if (edit) edit.onclick = () => UI.pickTeam(() => { team = this.team(); scr.querySelector('.rift-team').innerHTML = UI.teamHtml(team); });
-    // каждую секунду: таймер; разлом закрыт (победа) или его час прошёл — вместо кнопок сообщение
+    const edit = () => UI.pickTeam(() => {
+      team = this.team();
+      const box = scr.querySelector('.rift-team'); if (box) box.innerHTML = teamHtml(team);
+      const pw = scr.querySelector('.rift2-pw'); if (pw) pw.textContent = team.length ? ru`сила ${U.fmtNum(power(team))}` : '';
+      const g = scr.querySelector('.rift-go'); if (g) g.disabled = !team.length;
+    });
+    scr.querySelector('.dt-panel').addEventListener('click', e => { if (e.target.closest('.team-edit')) edit(); });
+    // каждую секунду: таймер; разлом закрыт (победа) или его час прошёл — вместо команды и кнопок сообщение
     const timer = setInterval(() => {
       if (!scr.isConnected) { clearInterval(timer); return; }
       const t = scr.querySelector('.rift-left'); if (t) t.textContent = U.fmtTime(Math.max(0, r.endsAt - U.now()));
       const done = !!S.d.rifts[r.id], gone = U.now() >= r.endsAt;
       if ((done || gone) && !scr._ended) {
         scr._ended = true;
-        scr.querySelectorAll('.rift-go, .rift-shop, .rift-coop, .rift-far, .rift-team-title, .rift-team, .day-left').forEach(x => x.remove());
-        scr.querySelector('.rift-view').insertAdjacentHTML('beforeend', `<div class="rift-done">${done ? ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.` : ru`Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.`}</div>`);
+        scr.querySelector('[data-pane="fight"]').innerHTML = `<div class="rift-done">${done ? ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.` : ru`Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.`}</div>`;
       }
     }, 1000);
   },
