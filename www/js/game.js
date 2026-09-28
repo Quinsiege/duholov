@@ -112,6 +112,7 @@ const Game = {
     this._snap = DEV && S.d ? JSON.stringify(S.d) : null;
     (res.events || []).forEach(([ev, data]) => this.emit(ev, data));
     Tut.sync(); // сервер мог перевести обучение на следующий шаг
+    if (S.d && S.d.payNew && typeof Treasury !== 'undefined') setTimeout(() => Treasury.notice(), 400); // 4.22: сервер начислил оплату
   },
   emit(ev, data) {
     if (ev === 'medal') { const m = MEDALS.find(x => x.id === data.m); if (m) Bus.emit('medal', { m, tier: data.tier }); return; }

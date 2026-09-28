@@ -71,7 +71,7 @@ const Treasury = {
           this.setWaiting(true);
           m.close();
           if (!/^https:\/\/([a-z0-9-]+\.)*(yoomoney\.ru|yookassa\.ru)\//i.test(r.url || '')) throw new Error(ru`Неверная ссылка на оплату`);
-          location.href = r.url; // в приложении откроется браузер, в браузере — страница оплаты
+          location.href = r.url; // страница оплаты ЮKassa (в приложении 6+ — внутри него; после оплаты — обратно в игру)
         } catch (e) { UI.toast(U.esc(e.message), 'bad'); } finally { m._busy = false; }
         onDone && onDone();
       } }],
@@ -81,23 +81,31 @@ const Treasury = {
   // Публичная оферта — экраном внутри игры (в приложении ссылка на свой сайт заменила бы игру)
   offer() { UI.doc(ru`Публичная оферта`, 'offer.html'); },
   // Итог оплаты: сервер спрашивает ЮKassa и начисляет оплаченное
+  // 4.22: златники начисляет сервер, как только ЮKassa подтвердила оплату (игрок может быть и не в игре);
+  // игра показывает «+N златников» один раз — по отметке S.d.payNew — и сообщает серверу, что игрок увидел
+  notice() {
+    const n = S.d && S.d.payNew;
+    if (!n || this._noticed === n || document.querySelector('.onb, .loader:not(.out)')) return; // не поверх загрузки и входа
+    this._noticed = n;
+    Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златники уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+    UI.refreshHud();
+    Game.act('payAck').then(() => { this._noticed = 0; }).catch(() => { this._noticed = 0; });
+  },
   async check(force) {
+    this.notice();
     if (this.waiting() && Date.now() - this.waiting() > 3 * 86400000) this.setWaiting(false); // старше 3 дней — не ждём
     if (!S.d || this._checking || (!force && !this.waiting())) return;
     this._checking = true;
     try {
       const s = await Game.pay('sync');
-      if (s.paid) {
-        const r = await Game.try('payClaim');
-        if (r && r.zlat) {
-          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
-          UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(r.zlat)} ${U.plural(r.zlat, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Спасибо, что поддерживаешь Орден!`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
-          UI.refreshHud();
-        }
-      }
+      // сервер начисляет сам (при проверке или по уведомлению ЮKassa) — забираем свежий прогресс; payClaim — если что-то осталось
+      if (s.paid || s.credited) await Game.try(s.paid ? 'payClaim' : 'tick');
+      const shown = !!(S.d && S.d.payNew);
+      this.notice();
       if (!s.open) this.setWaiting(false);
       else if (force) UI.toast(ru`Оплата ещё не завершена — если ты оплатил, проверь через минуту`);
-      if (force && !s.paid && !s.open) UI.toast(ru`Оплаченных наборов не найдено`);
+      if (force && !shown && !s.open) UI.toast(ru`Оплаченных наборов не найдено`);
     } catch (e) { if (force) UI.toast(U.esc(e.message), 'bad'); }
     finally { this._checking = false; }
   },

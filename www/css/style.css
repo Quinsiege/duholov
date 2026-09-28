@@ -4279,3 +4279,8 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .dt-have .dt-plus { margin-left: 0; width: 22px; height: 22px; }
 .dt-pane[data-pane=fight] .dt-have + .dt-bottom { margin-top: 0; }
 .dt-pane[data-pane=fight] .dt-scroll + .dt-have { margin-top: auto; }
+/* 4.22: логотип-картинка на экране входа (надпись в дымке Нави); размеры — как у экрана загрузки */
+.lg-title .logo-img { display: block; width: min(86vw, 380px); height: auto; margin: 0 auto; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, .45)); }
+.lg-title:has(.logo-img) { padding: 0; background: none; filter: none; animation: none; letter-spacing: 0; font-size: 0; line-height: 0; }
+.lg-top:has(.logo-img) { padding-top: 22px; } /* ниже значка «12+» */
+@media (max-height: 700px) { .lg-title .logo-img { width: min(70vw, 268px); } .lg-top:has(.logo-img) { padding-top: 14px; } }
