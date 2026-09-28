@@ -12,8 +12,8 @@ android {
         minSdk = 24
         targetSdk = 34
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
-        versionCode = 6
-        versionName = "4.22.0"
+        versionCode = 7
+        versionName = "4.22.1"
     }
 
     // 4.3.2: где распространяется приложение. site — APK с сайта duholov.ru (обновление — скачать APK),
@@ -60,4 +60,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-ktx:1.9.2")
     implementation("androidx.webkit:webkit:1.11.0")
+    // 7: вход через Google в приложении — системное окно выбора аккаунта (Credential Manager); веб-вход Google во встроенных окнах запрещён
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }

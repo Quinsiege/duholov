@@ -4302,3 +4302,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 /* 4.22.1: окно с тремя вариантами (вход уже привязан) — кнопки столбиком, главная сверху */
 .modal.btns-col .modal-btns { flex-direction: column-reverse; align-items: stretch; }
 .modal.btns-col .modal-btns .btn { width: 100%; margin: 0; }
+/* 4.22.1: портрет в профиле — Ловчий с кнопки меню на тёмном круге */
+.prof2 .pf-ava .prof-ava.hood { background: radial-gradient(circle at 50% 40%, #2d2159, #120b28 75%); }
+.prof2 .pf-ava .prof-ava.hood .mi { width: 84%; height: 84%; margin: 9% auto 0; }

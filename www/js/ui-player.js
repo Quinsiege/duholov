@@ -193,6 +193,8 @@ Object.assign(UI, {
   /* ---------------- ПРОФИЛЬ ---------------- */
   rank(l) { return l >= 30 ? ru`Хранитель` : l >= 20 ? ru`Ведун` : l >= 10 ? ru`Следопыт` : l >= 5 ? ru`Ловчий` : ru`Послушник`; },
   profile() {
+    // 4.22.1: портрет — тот же Ловчий, что на кнопке «Ловчий» в меню (цвета плаща и глаз — из Гардероба); купленный облик — как был
+    const skin = !!(S.d.look && S.d.look.skin && S.d.look.skin !== 'hood');
     Sfx.init(); Sfx.play('tap');
     const d = S.d, cur = levelXP(d.level), next = levelXP(d.level + 1);
     const caught = SPECIES.filter(s => d.dex[s.id] && d.dex[s.id].caught).length;
@@ -217,7 +219,7 @@ Object.assign(UI, {
     const scr = this.screen(U.esc(d.name), `
       <div class="det det2 prof2" style="--c:${cc}">
         <div class="dt-hero">
-          <div class="det-art pf-ava"><div class="prof-ava">${this.avatar()}</div></div>
+          <div class="det-art pf-ava"><div class="prof-ava${skin ? '' : ' hood'}">${skin ? this.avatar() : this.menuIcon('user')}</div></div>
           <div class="dt-info">
             <div class="det-hp">${ru`${this.rank(d.level)} Ордена Оберега`}</div>
             <div class="det-power"><small>${ru`УРОВЕНЬ`}</small><b>${d.level}</b></div>

@@ -23,9 +23,11 @@ const Login = {
   },
   // приложение для Android до 3-й версии открывало страницы сервисов во внешнем браузере; Google не пускает во встроенные окна
   app() { const m = /DuholovApp\/(\d+)/.exec(navigator.userAgent); return m ? +m[1] : 0; },
+  // 7: в приложении Google — через системное окно выбора аккаунта (DuholovNative.googleSignIn); в старых приложениях его нет
+  nativeGoogle() { return !!(window.DuholovNative && window.DuholovNative.googleSignIn); },
   available() {
     const p = (this.info && this.info.providers) || {}, app = this.app();
-    return this.ORDER.filter(k => p[k] && !(app && (app < 3 || k === 'google')));
+    return this.ORDER.filter(k => p[k] && !(app && (app < 3 || (k === 'google' && !this.nativeGoogle()))));
   },
   appTooOld() { const app = this.app(); return app > 0 && app < 3 && this.ORDER.some(k => this.info && this.info.providers && this.info.providers[k]); },
   linked() { return (this.info && this.info.links) || []; },
@@ -53,6 +55,20 @@ const Login = {
     const pend = { provider, mode, state, nonce, verifier, redirect, t: Date.now() };
     try { sessionStorage.setItem(this.PEND, JSON.stringify(pend)); } catch (e) { UI.toast(ru`Браузер не даёт сохранить вход — проверь настройки`); return; }
     const q = o => new URLSearchParams(o).toString();
+    // 7: приложение — вход Google без страницы: ответ кладём туда же, куда его кладёт auth.html, и перезапускаем игру —
+    // дальше обычный путь (resume: привязать, перейти в ту учётную запись или привязать сюда)
+    if (provider === 'google' && this.app() && this.nativeGoogle()) {
+      window.nativeGoogle = r => {
+        window.nativeGoogle = null;
+        if (r && r.error === 'cancel') { try { sessionStorage.removeItem(this.PEND); } catch (e) {} return; }
+        try { sessionStorage.setItem(this.CB, JSON.stringify(r && r.id_token ? { state, id_token: r.id_token } : { error: 'failed', error_description: (r && r.message) || '' })); } catch (e) {}
+        this.leaving(provider);
+        location.reload();
+      };
+      Sfx.play('tap');
+      window.DuholovNative.googleSignIn(p.client_id, nonce);
+      return;
+    }
     let url;
     if (provider === 'google') url = 'https://accounts.google.com/o/oauth2/v2/auth?' + q({ client_id: p.client_id, redirect_uri: redirect, response_type: 'id_token', scope: 'openid profile', nonce, state, prompt: 'select_account' });
     else if (provider === 'yandex') url = 'https://oauth.yandex.ru/authorize?' + q({ response_type: 'token', client_id: p.client_id, redirect_uri: redirect, state });

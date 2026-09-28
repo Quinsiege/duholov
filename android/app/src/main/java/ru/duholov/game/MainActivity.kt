@@ -10,6 +10,17 @@ import android.os.Bundle
 import android.view.WindowManager
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
+import android.os.CancellationSignal
+import androidx.credentials.CredentialManager
+import androidx.credentials.CredentialManagerCallback
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import org.json.JSONObject
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -33,7 +44,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 6 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 7 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
         // геолокацию и камеру получает только сама игра, не страницы сервисов входа
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
@@ -74,6 +85,30 @@ class MainActivity : ComponentActivity() {
 
     private fun openExternal(uri: Uri) {
         try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (e: ActivityNotFoundException) { /* нет браузера */ }
+    }
+
+    // 7: вход через Google — системное окно выбора аккаунта. Токен (id_token для веб-клиента игры, с nonce игры)
+    // отдаётся только странице игры (duholov.ru): в приложении открываются и страницы ЮKassa, банков и сервисов входа
+    private fun onGame() = Uri.parse(web.url ?: "").host == "duholov.ru"
+    private fun signInGoogle(clientId: String, nonce: String) {
+        if (!onGame()) return
+        val option = GetSignInWithGoogleOption.Builder(clientId).setNonce(nonce).build()
+        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
+        CredentialManager.create(this).getCredentialAsync(this, request, CancellationSignal(), ContextCompat.getMainExecutor(this),
+            object : CredentialManagerCallback<GetCredentialResponse, GetCredentialException> {
+                override fun onResult(result: GetCredentialResponse) {
+                    val c = result.credential
+                    val token = if (c is CustomCredential && c.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)
+                        GoogleIdTokenCredential.createFrom(c.data).idToken else null
+                    googleResult(if (token != null) JSONObject().put("id_token", token) else JSONObject().put("error", "no_token"))
+                }
+                override fun onError(e: GetCredentialException) {
+                    googleResult(JSONObject().put("error", if (e is GetCredentialCancellationException) "cancel" else "failed").put("message", e.message ?: e.type))
+                }
+            })
+    }
+    private fun googleResult(o: JSONObject) {
+        if (onGame()) web.evaluateJavascript("window.nativeGoogle && window.nativeGoogle($o)", null)
     }
 
     // 6: ссылка не на страницу (intent:, sberpay:, bank…: — приложение банка, СБП, SberPay, T-Pay) — открыть приложение;
@@ -141,6 +176,12 @@ class MainActivity : ComponentActivity() {
                     if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
+            }
+
+            // 7: вход через Google (игра зовёт, если есть этот метод; ответ — window.nativeGoogle({ id_token } | { error }))
+            @JavascriptInterface
+            fun googleSignIn(clientId: String, nonce: String) {
+                runOnUiThread { signInGoogle(clientId, nonce) }
             }
         }, "DuholovNative")
 
