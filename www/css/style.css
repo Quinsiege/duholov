@@ -4361,3 +4361,10 @@ body.rm-open #menuBtn .ob-x { opacity: 1; transform: none; }
 #hud #nearbyBtn { bottom: calc(40px + var(--sb)) !important; } /* ряд — на высоте центра кнопки меню */
 #hud #nearbyBtn .nb-arts .art { width: 46px !important; height: 46px !important; margin: -3px; }
 #hud #nearbyBtn span::before, #hud #nearbyBtn span::after { content: none !important; display: none !important; }
+/* 4.25: центральная кнопка — медальон с логотипа игры (золотой компас-амулет с духом), крупнее */
+#hud #menuBtn.orb { width: 84px; height: 84px; margin-left: -42px; bottom: calc(18px + var(--sb)); }
+#menuBtn .ob-ico { width: 80px !important; height: 80px !important; }
+#menuBtn img.ob-emb { border-radius: 50%; filter: drop-shadow(0 3px 6px rgba(20, 8, 2, .5)) drop-shadow(0 0 10px rgba(94, 234, 212, .3)); animation: obLogo 4s ease-in-out infinite; -webkit-user-select: none; user-select: none; pointer-events: none; }
+@keyframes obLogo { 50% { filter: drop-shadow(0 3px 6px rgba(20, 8, 2, .5)) drop-shadow(0 0 16px rgba(94, 234, 212, .55)); } }
+.calm #menuBtn img.ob-emb, .eco #menuBtn img.ob-emb { animation: none; }
+#hud #nearbyBtn { bottom: calc(40px + var(--sb)) !important; }
