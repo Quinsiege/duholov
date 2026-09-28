@@ -630,7 +630,6 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 @keyframes windBlow { to { transform: translateX(160vw); } }
 @keyframes fogDrift { from { transform: translateX(-4%); opacity: .8; } to { transform: translateX(4%); opacity: 1; } }
 
-.mk-player .mk-buddy { position: absolute; left: -26px; top: 18px; width: 40px; height: 40px; animation: bob 1.4s ease-in-out infinite; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .4)); }
 .mk-boost { position: absolute; right: 2px; top: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(18, 12, 36, .85); display: grid; place-items: center; border: 1.5px solid rgba(255, 255, 255, .5); }
 
 .enc-tag { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 3px 9px; border-radius: 10px; background: rgba(18, 12, 36, .6); font-size: 12px; font-weight: 700; }

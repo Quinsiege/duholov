@@ -110,10 +110,9 @@ const MapView = {
     this.player = L.marker([this.pos.lat, this.pos.lng], {
       interactive: false, zIndexOffset: 1000,
       icon: L.divIcon({ className: 'mk-player-wrap', iconSize: [64, 64], iconAnchor: [32, 32],
-        html: '<div class="mk-player"><div class="pulse"></div><div class="arrow"></div><div class="dot"></div><div class="mk-buddy"></div></div>' }),
+        html: '<div class="mk-player"><div class="pulse"></div><div class="arrow"></div><div class="dot"></div></div>' }),
     }).addTo(this.map);
-    this.updateBuddy();
-    Bus.on('buddyChanged', () => this.updateBuddy());
+    // 4.23.2: спутник на карте рядом с Ловчим не показывается
     Bus.on('weather', () => { this.setWeatherFx(); this.setTiles(); this.refresh(true); });
 
     this.map.on('dragstart', () => { this.follow = false; U.$('#recenterBtn').classList.add('show'); });
@@ -201,12 +200,6 @@ const MapView = {
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
 
-  updateBuddy() {
-    const el = this.player && this.player.getElement();
-    if (!el) return;
-    const sp = S.buddySpirit();
-    el.querySelector('.mk-buddy').innerHTML = sp ? Art.imgOf(sp) : '';
-  },
   setWeatherFx() {
     const box = U.$('#wxfx'), w = Sky.w;
     const fx = w && WEATHER[w.key].fx;
