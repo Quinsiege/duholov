@@ -452,9 +452,9 @@
   "k": "Отмена",
   "at": [
    "www/js/auction.js:106",
+   "www/js/auction.js:163",
    "www/js/auction.js:197",
-   "www/js/auction.js:219",
-   "www/js/clans.js:71"
+   "www/js/auction.js:219"
   ],
   "ctx": "buttons: [{ label: ru`Отмена` }, { label: ru`Купить`, cls: 'primary', keep: true, fn: async w => {"
  },
@@ -2563,78 +2563,78 @@
  {
   "k": "Общий разговор Ловчих.",
   "at": [
-   "www/js/chat.js:65"
+   "www/js/chat.js:68"
   ],
   "ctx": "const hint = { all: ru`Общий разговор Ловчих.`, trade: ru`Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.`, raid: ru`Ищите команду для Разломов: пишите код комнаты и место.`, help: ru`Вопросы новичк"
  },
  {
   "k": "Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.",
   "at": [
-   "www/js/chat.js:65"
+   "www/js/chat.js:68"
   ],
   "ctx": "const hint = { all: ru`Общий разговор Ловчих.`, trade: ru`Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.`, raid: ru`Ищите команду для Разломов: пишите код комнаты и место.`, help: ru`Вопросы новичк"
  },
  {
   "k": "Ищите команду для Разломов: пишите код комнаты и место.",
   "at": [
-   "www/js/chat.js:65"
+   "www/js/chat.js:68"
   ],
   "ctx": "const hint = { all: ru`Общий разговор Ловчих.`, trade: ru`Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.`, raid: ru`Ищите команду для Разломов: пишите код комнаты и место.`, help: ru`Вопросы новичк"
  },
  {
   "k": "Вопросы новичков и советы бывалых.",
   "at": [
-   "www/js/chat.js:65"
+   "www/js/chat.js:68"
   ],
   "ctx": "const hint = { all: ru`Общий разговор Ловчих.`, trade: ru`Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.`, raid: ru`Ищите команду для Разломов: пишите код комнаты и место.`, help: ru`Вопросы новичк"
  },
  {
   "k": "Канал твоей дружины — его видят только свои.",
   "at": [
-   "www/js/chat.js:65"
+   "www/js/chat.js:68"
   ],
   "ctx": "const hint = { all: ru`Общий разговор Ловчих.`, trade: ru`Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.`, raid: ru`Ищите команду для Разломов: пишите код комнаты и место.`, help: ru`Вопросы новичк"
  },
  {
   "k": "Сегодня",
   "at": [
-   "www/js/chat.js:74"
+   "www/js/chat.js:77"
   ],
   "ctx": "return `<div class=\"chat-day\"><span>${k === new Date().toDateString() ? ru`Сегодня` : k === y.toDateString() ? ru`Вчера` : d.toLocaleDateString(I18N.locale, { day: 'numeric', month: 'long' })}</span></div>`;"
  },
  {
   "k": "Вчера",
   "at": [
-   "www/js/chat.js:74"
+   "www/js/chat.js:77"
   ],
   "ctx": "return `<div class=\"chat-day\"><span>${k === new Date().toDateString() ? ru`Сегодня` : k === y.toDateString() ? ru`Вчера` : d.toLocaleDateString(I18N.locale, { day: 'numeric', month: 'long' })}</span></div>`;"
  },
  {
   "k": "Ссылки запрещены, грубость скрывается.",
   "at": [
-   "www/js/chat.js:78"
+   "www/js/chat.js:81"
   ],
   "ctx": "list.innerHTML = `<div class=\"chat-hint\"><span>${hint} ${ru`Ссылки запрещены, грубость скрывается.`} <button class=\"linkish chat-rules\">${ru`Правила чата`}</button></span>${nh ? `<button class=\"linkish chat-unhide\">${ru`"
  },
  {
   "k": "Правила чата",
   "at": [
-   "www/js/chat.js:78",
-   "www/js/chat.js:117"
+   "www/js/chat.js:81",
+   "www/js/chat.js:120"
   ],
   "ctx": "list.innerHTML = `<div class=\"chat-hint\"><span>${hint} ${ru`Ссылки запрещены, грубость скрывается.`} <button class=\"linkish chat-rules\">${ru`Правила чата`}</button></span>${nh ? `<button class=\"linkish chat-unhide\">${ru`"
  },
  {
   "k": "Скрытых Ловчих: {0} · Вернуть",
   "at": [
-   "www/js/chat.js:78"
+   "www/js/chat.js:81"
   ],
   "ctx": "list.innerHTML = `<div class=\"chat-hint\"><span>${hint} ${ru`Ссылки запрещены, грубость скрывается.`} <button class=\"linkish chat-rules\">${ru`Правила чата`}</button></span>${nh ? `<button class=\"linkish chat-unhide\">${ru`"
  },
  {
   "k": "ур. {0}",
   "at": [
-   "www/js/chat.js:84",
+   "www/js/chat.js:87",
    "www/js/encounter.js:35",
    "www/js/friends.js:150",
    "www/js/league.js:187"
@@ -2644,49 +2644,49 @@
  {
   "k": "Здесь пока тихо",
   "at": [
-   "www/js/chat.js:86"
+   "www/js/chat.js:89"
   ],
   "ctx": "}).join('') : `<div class=\"chat-empty\"><div class=\"ce-ico\">${UI.I.chat}</div><b>${ru`Здесь пока тихо`}</b><small>${this.ch === 'clan' ? ru`Напиши первым — тебя увидят все Ловчие твоей дружины.` : ru`Напиши первым — тебя "
  },
  {
   "k": "Напиши первым — тебя увидят все Ловчие твоей дружины.",
   "at": [
-   "www/js/chat.js:86"
+   "www/js/chat.js:89"
   ],
   "ctx": "}).join('') : `<div class=\"chat-empty\"><div class=\"ce-ico\">${UI.I.chat}</div><b>${ru`Здесь пока тихо`}</b><small>${this.ch === 'clan' ? ru`Напиши первым — тебя увидят все Ловчие твоей дружины.` : ru`Напиши первым — тебя "
  },
  {
   "k": "Напиши первым — тебя увидят все Ловчие Ордена.",
   "at": [
-   "www/js/chat.js:86"
+   "www/js/chat.js:89"
   ],
   "ctx": "}).join('') : `<div class=\"chat-empty\"><div class=\"ce-ico\">${UI.I.chat}</div><b>${ru`Здесь пока тихо`}</b><small>${this.ch === 'clan' ? ru`Напиши первым — тебя увидят все Ловчие твоей дружины.` : ru`Напиши первым — тебя "
  },
  {
   "k": "Новые сообщения: {0}",
   "at": [
-   "www/js/chat.js:106"
+   "www/js/chat.js:109"
   ],
   "ctx": "if (!stick && fresh.length) { unseen += fresh.length; jump.textContent = '↓ ' + ru`Новые сообщения: ${unseen}`; jump.classList.remove('hidden'); }"
  },
  {
   "k": "Пожаловаться?",
   "at": [
-   "www/js/chat.js:121"
+   "www/js/chat.js:124"
   ],
   "ctx": "report: () => UI.confirm(ru`Пожаловаться?`, ru`На сообщение Ловчего «${U.esc(name)}». После трёх жалоб от разных Ловчих оно скрывается для всех.`, ru`Пожаловаться`, async () => {"
  },
  {
   "k": "На сообщение Ловчего «{0}». После трёх жалоб от разных Ловчих оно скрывается для всех.",
   "at": [
-   "www/js/chat.js:121"
+   "www/js/chat.js:124"
   ],
   "ctx": "report: () => UI.confirm(ru`Пожаловаться?`, ru`На сообщение Ловчего «${U.esc(name)}». После трёх жалоб от разных Ловчих оно скрывается для всех.`, ru`Пожаловаться`, async () => {"
  },
  {
   "k": "Пожаловаться",
   "at": [
-   "www/js/chat.js:121",
+   "www/js/chat.js:124",
    "www/js/friends.js:204"
   ],
   "ctx": "report: () => UI.confirm(ru`Пожаловаться?`, ru`На сообщение Ловчего «${U.esc(name)}». После трёх жалоб от разных Ловчих оно скрывается для всех.`, ru`Пожаловаться`, async () => {"
@@ -2694,35 +2694,35 @@
  {
   "k": "Жалоба отправлена — спасибо",
   "at": [
-   "www/js/chat.js:122"
+   "www/js/chat.js:125"
   ],
   "ctx": "if (await Game.try('chatReport', { id: +msg.dataset.id })) UI.toast(ru`Жалоба отправлена — спасибо`);"
  },
  {
   "k": "Скрыть сообщения?",
   "at": [
-   "www/js/chat.js:124"
+   "www/js/chat.js:127"
   ],
   "ctx": "hide: () => UI.confirm(ru`Скрыть сообщения?`, ru`Сообщения Ловчего «${U.esc(name)}» перестанут показываться на этом телефоне. Вернуть можно в любой момент — строкой «Скрытых Ловчих» вверху чата.`, ru`Скрыть`, () => {"
  },
  {
   "k": "Сообщения Ловчего «{0}» перестанут показываться на этом телефоне. Вернуть можно в любой момент — строкой «Скрытых Ловчих» вверху чата.",
   "at": [
-   "www/js/chat.js:124"
+   "www/js/chat.js:127"
   ],
   "ctx": "hide: () => UI.confirm(ru`Скрыть сообщения?`, ru`Сообщения Ловчего «${U.esc(name)}» перестанут показываться на этом телефоне. Вернуть можно в любой момент — строкой «Скрытых Ловчих» вверху чата.`, ru`Скрыть`, () => {"
  },
  {
   "k": "Скрыть",
   "at": [
-   "www/js/chat.js:124"
+   "www/js/chat.js:127"
   ],
   "ctx": "hide: () => UI.confirm(ru`Скрыть сообщения?`, ru`Сообщения Ловчего «${U.esc(name)}» перестанут показываться на этом телефоне. Вернуть можно в любой момент — строкой «Скрытых Ловчих» вверху чата.`, ru`Скрыть`, () => {"
  },
  {
   "k": "Скрыто. Вернуть — «Скрытых Ловчих» вверху чата",
   "at": [
-   "www/js/chat.js:125"
+   "www/js/chat.js:128"
   ],
   "ctx": "this.hide(pid, name); render(false); UI.toast(ru`Скрыто. Вернуть — «Скрытых Ловчих» вверху чата`);"
  },
@@ -6312,7 +6312,14 @@
   "at": [
    "www/js/duel.js:25"
   ],
-  "ctx": "? `<div class=\"guard\"><div class=\"guard-ava clan\" style=\"--cc:${CLANS[hold.clan].color}\">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${ru`держит Капище с ${new Date(hold.since)"
+  "ctx": "? `<div class=\"guard\"><div class=\"guard-ava clan\" style=\"--cc:${CLANS[hold.clan].color}\">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${hold.since && !isNaN(new Date(hold.since)"
+ },
+ {
+  "k": "держит Капище · защитников: {0} из {1}",
+  "at": [
+   "www/js/duel.js:25"
+  ],
+  "ctx": "? `<div class=\"guard\"><div class=\"guard-ava clan\" style=\"--cc:${CLANS[hold.clan].color}\">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${hold.since && !isNaN(new Date(hold.since)"
  },
  {
   "k": "Защитники",
@@ -6861,14 +6868,14 @@
    "www/js/duel.js:567",
    "www/js/league-battle.js:435"
   ],
-  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);"
+  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой"
  },
  {
   "k": "Поединок будет проигран.",
   "at": [
    "www/js/duel.js:567"
   ],
-  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);"
+  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой"
  },
  {
   "k": "Сдаться",
@@ -6876,7 +6883,7 @@
    "www/js/duel.js:567",
    "www/js/league-battle.js:435"
   ],
-  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);"
+  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой"
  },
  {
   "k": "Продолжить",
@@ -6885,7 +6892,7 @@
    "www/js/league-battle.js:435",
    "www/js/login.js:319"
   ],
-  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);"
+  "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой"
  },
  {
   "k": "Обереги закончились! Загляни к роднику.",
@@ -7134,14 +7141,14 @@
   "at": [
    "www/js/encounter.js:489"
   ],
-  "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`);"
+  "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`, true); // 4.25: дух будет потерян — красной кнопкой"
  },
  {
   "k": "Если уйти, дух из разлома будет потерян.",
   "at": [
    "www/js/encounter.js:489"
   ],
-  "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`);"
+  "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`, true); // 4.25: дух будет потерян — красной кнопкой"
  },
  {
   "k": "Остаться",
@@ -7149,7 +7156,7 @@
    "www/js/encounter.js:489",
    "www/js/raid.js:488"
   ],
-  "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`);"
+  "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`, true); // 4.25: дух будет потерян — красной кнопкой"
  },
  {
   "k": "Нет координат или времени снимка",
@@ -8822,7 +8829,7 @@
   "at": [
    "www/js/league-battle.js:435"
   ],
-  "ctx": "UI.confirm(ru`Сдаться?`, ru`Бой будет проигран, рейтинг уменьшится, опыта не будет.`, ru`Сдаться`, () => { if (this.st === st && !st.over) { st.out.push({ t: 'quit' }); this.pump(); } }, ru`Продолжить`);"
+  "ctx": "UI.confirm(ru`Сдаться?`, ru`Бой будет проигран, рейтинг уменьшится, опыта не будет.`, ru`Сдаться`, () => { if (this.st === st && !st.over) { st.out.push({ t: 'quit' }); this.pump(); } }, ru`Продолжить`, true); // 4.25: с"
  },
  {
   "k": "Все духи {0} без сил.",
@@ -11573,21 +11580,21 @@
   "at": [
    "www/js/raid.js:488"
   ],
-  "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);"
+  "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой"
  },
  {
   "k": "Прогресс боя будет потерян.",
   "at": [
    "www/js/raid.js:488"
   ],
-  "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);"
+  "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой"
  },
  {
   "k": "Покинуть",
   "at": [
    "www/js/raid.js:488"
   ],
-  "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);"
+  "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой"
  },
  {
   "k": "Китеж",
@@ -15788,7 +15795,7 @@
   "at": [
    "www/js/ui-spirits.js:617"
   ],
-  "ctx": "this.confirm(ru`Посылка Ордена`, ru`Выбросить всё, что лежит в посылке (${S.parcelCount()})?`, ru`Выбросить`, async () => { if (await Game.try('parcelTake', { drop: true })) { render(); this.refreshHud(); } });"
+  "ctx": "this.confirm(ru`Посылка Ордена`, ru`Выбросить всё, что лежит в посылке (${S.parcelCount()})?`, ru`Выбросить`, async () => { if (await Game.try('parcelTake', { drop: true })) { render(); this.refreshHud(); } }, ru`Отмена`"
  },
  {
   "k": "Настой опыта действует ещё {0}",
@@ -16519,21 +16526,21 @@
  {
   "k": "Уже играешь?",
   "at": [
-   "www/js/ui.js:938"
+   "www/js/ui.js:940"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Войди — и твой прогресс откроется на этом устройстве",
   "at": [
-   "www/js/ui.js:938"
+   "www/js/ui.js:940"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Назови себя",
   "at": [
-   "www/js/ui.js:942",
+   "www/js/ui.js:944",
    "server/game/core.js:541"
   ],
   "ctx": "nx.onclick = () => { name = inp.value.trim(); if (!name) { this.toast(ru`Назови себя`); return; } Sfx.play('tap'); step(3); };"

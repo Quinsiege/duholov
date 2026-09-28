@@ -856,6 +856,7 @@ I18N.dict = {
 "Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.":"Jalan Pemburu: apa yang terbuka di tiap level dan hadiah apa yang menanti. Gelar naik: Novis, Pemburu, Pelacak, Resi, Penjaga.",
 "И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.":"Terakhir: buka <b>“Jalan”</b> di menu — di sana terlihat apa yang terbuka di tiap level Pemburu.",
 "держит Капище с {0} · защитников: {1} из {2}":"menguasai Kapishche sejak {0} · pembela: {1} dari {2}",
+"держит Капище · защитников: {0} из {1}":"menguasai Kapishche · pembela: {0} dari {1}",
 "Защитники":"Pembela",
 "Хранитель · {0}":"Penjaga · {0}",
 "Духи хранителя":"Roh penjaga",

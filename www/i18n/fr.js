@@ -856,6 +856,7 @@ I18N.dict = {
 "Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.":"La Voie du Chasseur : ce qui s'ouvre à chaque niveau et les récompenses qui t'attendent. Les titres évoluent : Novice, Chasseur, Pisteur, Sage, Gardien.",
 "И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.":"Et pour finir : ouvre <b>« Voie »</b> dans le menu — tu y verras ce qui s'ouvre à chaque niveau de Chasseur.",
 "держит Капище с {0} · защитников: {1} из {2}":"tient le Kapishche depuis {0} · défenseurs : {1} sur {2}",
+"держит Капище · защитников: {0} из {1}":"tient le Kapishche · défenseurs : {0} sur {1}",
 "Защитники":"Défenseurs",
 "Хранитель · {0}":"Gardien · {0}",
 "Духи хранителя":"Esprits du gardien",

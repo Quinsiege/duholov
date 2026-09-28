@@ -4478,3 +4478,75 @@ body.rm-closing #hud > :not(#menuBtn) { opacity: 0; pointer-events: none; }
 /* З6: остаток баффов «18 мин» — в одну строку; на узком экране плотнее, чтобы не наехать на правую колонку HUD */
 #hud .hud-buffs .chip span { white-space: nowrap; }
 @media (max-width: 370px) { #hud .hud-buffs { gap: 7px; } #hud .hud-buffs .chip { gap: 2px; } #hud .hud-buffs .chip span { font-size: 11px !important; letter-spacing: -.1px; } #hud .hud-buffs .chip .art, #hud .hud-buffs .chip svg { width: 19px !important; height: 19px !important; } }
+
+/* ===== 4.25: правки по дневному обзору UI ===== */
+/* Д1: днём под стеклом окон светлая карта — стекло темнее, иначе светлый текст на нём не читается (ночью — как было) */
+body:not(.night) .screen:not(.cam-screen), body:not(.night) .screen.spring-screen, body:not(.night) .screen.rift-screen, body:not(.night) .screen.shrine-screen, body:not(.night) .screen.invasion-screen {
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02) 60%), rgba(22, 12, 50, .58) !important; }
+body:not(.night) .modal-wrap, body:not(.night) .sheet-wrap:not(.rm-wrap) {
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .08), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .01) 60%), rgba(22, 12, 50, .58) !important; }
+body:not(.night) .rm-glass { background-color: rgba(22, 12, 50, .45); }
+/* Д2: маленькие золотые кнопки в окнах — тёмный текст (светлый цвет «мелкого текста» стекла ловил и .btn.small) */
+.screen:not(.cam-screen) .btn.small.primary, .screen:not(.cam-screen) .btn.small.evolve, .modal-wrap .btn.small.primary, .modal-wrap .btn.small.evolve { color: #2a1203 !important; }
+.screen:not(.cam-screen) .btn.small.danger:not(.ghost), .modal-wrap .btn.small.danger:not(.ghost) { color: #fff !important; }
+/* Д3: стартовые духи не вращаются — касание только выбирает духа (art.js) */
+.onb-starters .sp-sticker { touch-action: auto; }
+/* Д4: HUD над светлой дневной картой — затемнение сверху глубже, жёлтые подписи светлее */
+body:not(.night) #mapShade { background: linear-gradient(180deg, rgba(18, 12, 36, .62), rgba(18, 12, 36, .32) 130px, rgba(18, 12, 36, 0) 220px), linear-gradient(0deg, rgba(18, 12, 36, .55), rgba(18, 12, 36, 0) 170px),
+  radial-gradient(120% 90% at 50% 50%, rgba(18, 12, 36, 0) 60%, rgba(18, 12, 36, .35)) !important; }
+body:not(.night) #tracker .tr-main small { color: #fff6cf !important; }
+body:not(.night) .rm-it .tile-lvl { color: #fff3c4; text-shadow: 0 1px 2px rgba(8, 4, 24, .95), 0 0 8px rgba(8, 4, 24, .7); }
+/* Д6: сиреневые заголовки (дни Дневника, неделя Ордена, сезон Тропы) на сиреневом стекле — золотом */
+.screen .j-day, .screen .story-num, .screen .pc-sp-l { color: #fde68a; text-shadow: 0 1px 2px rgba(12, 6, 32, .7); }
+/* Д7: «Духи рядом» — расстояние и имена читаются */
+.modal-wrap .nb-item small { color: #f4f1ff; }
+.modal-wrap .nb-item small.near { color: #bef264; text-shadow: 0 1px 2px rgba(12, 6, 32, .8); }
+/* Д8: новый уровень — «Открыто: …» и подписи наград */
+.lvl-modal .unlock { color: #99f6e4; font-weight: 700; text-shadow: 0 1px 2px rgba(12, 6, 32, .7); }
+.lvl-modal .lvl-rw div { font-size: 13px; color: #fff; }
+/* Д9: плитки духов, лотов и «Рядом» днём чуть плотнее; подпись «СИЛА» светлее */
+body:not(.night) .screen .card, body:not(.night) .modal-wrap .card, body:not(.night) .nb-item, body:not(.night) .au-lot {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)), rgba(16, 10, 38, .38); }
+.screen .card-pw, .modal-wrap .card-pw { color: #efe9ff; }
+/* Д10: своя дружина — белым с подчёркиванием её цвета (красный «Сокол» не читался) */
+.clan-row.mine span { color: #fff; text-decoration: underline 2px var(--cc); text-underline-offset: 3px; }
+.tag-crest { color: #fff !important; } .tag-crest > i { filter: drop-shadow(0 0 4px rgba(0, 0, 0, .4)); }
+/* Д11: без второй подложки — подсказка чата, пропуска в «Разломах вокруг», статистика и шапка дружины, духи на Капище */
+.screen .chat-hint, .screen .shop-wallet, .screen .clan-stat { background: none; border: 0; box-shadow: none; border-radius: 0; }
+.screen .chat-hint, .screen .clan-stat { border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.screen .clan-stat { padding: 4px 2px 12px; }
+.screen .clan-head { background: radial-gradient(70% 120% at 15% 50%, color-mix(in srgb, var(--cc) 30%, transparent), transparent 70%); border: 0; box-shadow: none; }
+.shrine-screen .rift-team .mini { background: none; border: 0; box-shadow: none; }
+body:not(.night) .screen .linkish { color: #99f6e4; text-shadow: 0 1px 2px rgba(12, 6, 32, .7); }
+/* Д12: надписи-градиенты на светлом стекле — своя тень фильтром */
+body:not(.night) .inv2-title { background-image: linear-gradient(180deg, #faf5ff 5%, #f0abfc 60%, #d946ef) !important;
+  filter: drop-shadow(0 1px 1px rgba(20, 4, 40, .9)) drop-shadow(0 0 6px rgba(20, 4, 40, .6)); }
+body:not(.night) .lg2-rank, body:not(.night) .wd-name, body:not(.night) .rift-name, body:not(.night) .spr2 .spring-title { filter: drop-shadow(0 1px 1px rgba(40, 14, 4, .95)) drop-shadow(0 0 6px rgba(20, 8, 40, .55)); }
+body:not(.night) .spr2-tabs button.inv { color: #f5d0fe; }
+/* Д14: подсказка боя — справа от своего духа, а не поверх него */
+.raid-hint { top: auto; left: calc(6% + min(38vw, 180px) + 6px); right: 14px; bottom: calc(210px + var(--sb)); text-align: left; }
+/* Д15: окно смены духа — без подсказки боя под кнопками */
+.raid:has(.duel-ov:not(.hidden)) .raid-hint { visibility: hidden; }
+/* Д16: «Бросить вызов» на Капище — закреплена внизу, как «Сразиться» у Разлома и Вторжения */
+.shrine-screen .duel-go { position: sticky; bottom: calc(8px + var(--sb)); z-index: 2; }
+/* Д19: загрузка уходит — знак и подсказка гаснут сразу, не накладываются на экран входа */
+.loader.out .ld-logo, .loader.out .ld-foot { opacity: 0; transition: opacity .12s; }
+/* документы (соглашение, политика, оферта) — поверх экрана входа */
+.onb ~ .screen { z-index: 2600; }
+/* Д20: невысокий экран — шаг «Духи живут рядом с тобой» помещается */
+@media (max-height: 700px) { .onb-step.s4 { gap: 12px; } .onb-step.s4 .onb-q p { font-size: 12.5px; line-height: 1.35; } .onb-step.s4 .onb-pin { transform: scale(.8); margin: -6px 0; } }
+/* Д21: ленты вкладок листаются целыми вкладками; каналы чата — с тенью-намёком, как вкладки Книги */
+.bk-tabs, .chat-screen .chat-tabs { scroll-snap-type: x proximity; } .bk-tabs button, .chat-screen .chat-tabs button { scroll-snap-align: start; }
+.bk-tabs:has(> button:nth-child(4)) button { font-size: 12px; padding-left: 8px; padding-right: 8px; letter-spacing: 0; }
+.chat-screen .chat-tabs.more { -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent); }
+/* Д22: «без сил · 1 ч 59 мин» под духом переносится в плитке; место вторжения — в две строки */
+.mini .hp-ko { white-space: normal; text-align: center; line-height: 1.15; max-width: 100%; }
+.inv2-place { -webkit-line-clamp: 2; }
+/* Д23: кнопки совета — в одну строку; всплывашки при открытом окне — над нижними кнопками, не на шапке */
+.hint-modal .modal-btns .btn { white-space: nowrap; font-size: 14px; padding-left: 12px; padding-right: 12px; }
+body:has(> .screen:not(.out)) #toasts { top: auto; bottom: calc(104px + var(--sb)); }
+/* Д25: самые мелкие подписи — не меньше 11 px */
+.day-limits small { font-size: 11px; }
+.rm-it .tile-lvl { font-size: 11px; }
+body.rm-open #toasts { top: calc(12px + var(--st)); } /* при открытом меню — над значками, а не на верхнем ряду */
+body.rm-open:has(#coach:not(.hidden)) #toasts { top: auto; bottom: calc(112px + var(--sb)); } /* вверху подсказка обучения — всплывашка над кнопкой меню */

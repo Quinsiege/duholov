@@ -934,6 +934,8 @@ const UI = {
       body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
       const nx = body.querySelector('.next');
       Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
+      // 4.25: соглашение, политика и оферта — внутри игры (как в Настройках), а не уходом со страницы
+      body.querySelectorAll('.lg-legal a[href]').forEach(a => { a.onclick = ev => { ev.preventDefault(); Sfx.play('tap'); this.doc(a.textContent, a.getAttribute('href')); }; });
       const have = body.querySelector('.lg-have');
       if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));
       if (n === 2) {

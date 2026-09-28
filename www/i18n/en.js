@@ -856,6 +856,7 @@ I18N.dict = {
 "Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.":"Catcher's Path: what unlocks at each level and what rewards await. Your title grows: Novice, Catcher, Tracker, Seer, Guardian.",
 "И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.":"And last: open <b>“Path”</b> in the menu — it shows what unlocks at each Catcher level.",
 "держит Капище с {0} · защитников: {1} из {2}":"holds the Kapishche since {0} · defenders: {1} of {2}",
+"держит Капище · защитников: {0} из {1}":"holds the Kapishche · defenders: {0} of {1}",
 "Защитники":"Defenders",
 "Хранитель · {0}":"Guardian · {0}",
 "Духи хранителя":"Guardian's spirits",

@@ -55,7 +55,10 @@ const Chat = {
     jump.onclick = () => { body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' }); hideJump(); };
     const body = scr.querySelector('.screen-body'), list = scr.querySelector('.chat-list'), tabs = scr.querySelector('.chat-tabs');
     scr.insertBefore(tabs, body); // вкладки — над лентой, вне прокрутки: без подложки, которая не совпадала с фоном экрана
-    const renderTabs = () => { tabs.innerHTML = this.channels().map(([k, t]) => `<button data-ch="${k}" class="${k === this.ch ? 'on' : ''}">${t}</button>`).join(''); };
+    // 4.25: каналы не влезли — у правого края тень-намёк, что ленту можно листать; выбранный канал — целиком в виду
+    const more = () => tabs.classList.toggle('more', tabs.scrollLeft + tabs.clientWidth < tabs.scrollWidth - 4);
+    tabs.addEventListener('scroll', more, { passive: true });
+    const renderTabs = () => { tabs.innerHTML = this.channels().map(([k, t]) => `<button data-ch="${k}" class="${k === this.ch ? 'on' : ''}">${t}</button>`).join(''); const on = tabs.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); requestAnimationFrame(more); };
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 80;
     const render = (stick) => {
       const hid = this.hidden(), ms = (this.msgs[this.ch] || []).filter(m => !hid.includes(m.pid));

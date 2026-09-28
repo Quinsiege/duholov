@@ -614,7 +614,7 @@ Object.assign(UI, {
         render(); this.refreshHud(); return;
       }
       if (e.target.closest('.parcel-drop')) {
-        this.confirm(ru`Посылка Ордена`, ru`Выбросить всё, что лежит в посылке (${S.parcelCount()})?`, ru`Выбросить`, async () => { if (await Game.try('parcelTake', { drop: true })) { render(); this.refreshHud(); } });
+        this.confirm(ru`Посылка Ордена`, ru`Выбросить всё, что лежит в посылке (${S.parcelCount()})?`, ru`Выбросить`, async () => { if (await Game.try('parcelTake', { drop: true })) { render(); this.refreshHud(); } }, ru`Отмена`, true); // 4.25: красной кнопкой
         return;
       }
       const ml = e.target.closest('.melt'); if (ml) { this.melt(ml.dataset.k, render); return; }

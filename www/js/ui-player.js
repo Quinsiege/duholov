@@ -457,7 +457,7 @@ Object.assign(UI, {
         try { localStorage.removeItem(CLOUD_CONFIG.auth); } catch (e) {}
         location.reload();
       }, ru`Нет`, true);
-    });
+    }, ru`Отмена`, true); // 4.25: удаление — красной кнопкой уже на первом шаге (как «Сбросить прогресс?»)
     scr.querySelector('.reset').onclick = () => this.confirm(ru`Сбросить прогресс?`, ru`Все духи, предметы и уровень будут удалены с сервера навсегда.`, ru`Сбросить`, () => {
       this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {
         if (await Game.try('reset')) location.reload();

@@ -856,6 +856,7 @@ I18N.dict = {
 "Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.":"Avcının Yolu: her seviyede neler açılır ve hangi ödüller bekliyor. Unvanlar yükselir: Acemi, Avcı, İzci, Bilici, Koruyucu.",
 "И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.":"Son olarak: menüden <b>“Yol”</b>u aç — her Avcı seviyesinde neyin açılacağı orada görünür.",
 "держит Капище с {0} · защитников: {1} из {2}":"{0} tarihinden beri Kapishche'yi tutuyor · savunucu: {1}/{2}",
+"держит Капище · защитников: {0} из {1}":"Kapishche'yi tutuyor · savunucu: {0}/{1}",
 "Защитники":"Savunucular",
 "Хранитель · {0}":"Bekçi · {0}",
 "Духи хранителя":"Bekçinin ruhları",

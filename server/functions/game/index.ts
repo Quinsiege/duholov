@@ -3097,7 +3097,7 @@ const Raid = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) return this.close();
-    UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);
+    UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой
   },
   close() {
     const st = this.st; if (!st) return;
@@ -3137,7 +3137,7 @@ const Duel = {
     let team = S.team();
     const holders = holders0.map(h => ({ ...h, sp: Rules.holdSpirit(h.sp, h.t, now) }));
     const who = hold
-      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
+      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${hold.since && !isNaN(new Date(hold.since)) ? ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}` : ru`держит Капище · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
          <div class="rift-team-title">${ru`Защитники`}</div>
          <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
       : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
@@ -3679,7 +3679,7 @@ const Duel = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) return this.close();
-    UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);
+    UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой
   },
   close() {
     const st = this.st; if (!st) return;

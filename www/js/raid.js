@@ -485,7 +485,7 @@ const Raid = {
   quit() {
     const st = this.st; if (!st) return;
     if (st.over) return this.close();
-    UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`);
+    UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой
   },
   close() {
     const st = this.st; if (!st) return;

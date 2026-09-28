@@ -856,6 +856,7 @@ I18N.dict = {
 "Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.":"Pfad des Fängers: was jedes Level freischaltet und welche Belohnungen warten. Die Titel steigen: Novize, Fänger, Spurenleser, Seher, Hüter.",
 "И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.":"Und zuletzt: Öffne <b>„Pfad“</b> im Menü — dort siehst du, was jedes Fänger-Level freischaltet.",
 "держит Капище с {0} · защитников: {1} из {2}":"hält das Kapishche seit {0} · Verteidiger: {1} von {2}",
+"держит Капище · защитников: {0} из {1}":"hält das Kapishche · Verteidiger: {0} von {1}",
 "Защитники":"Verteidiger",
 "Хранитель · {0}":"Hüter · {0}",
 "Духи хранителя":"Geister des Hüters",
