@@ -4564,3 +4564,26 @@ body.rm-open:has(#coach:not(.hidden)) #toasts { top: auto; bottom: calc(112px + 
 /* 4.25.2: помехи GPS — значок оранжевый, точка мигает */
 #hud #gpsChip.jam { color: #fb923c !important; }
 #hud #gpsChip.jam::before { animation: gpsBlink .8s ease-in-out infinite !important; }
+
+/* ===== 4.25.3: «Духи рядом» — дух не из Бестиария знаком вопроса, как на карте ===== */
+.nb-art .nb-q { display: grid; place-items: center; width: 52px; height: 52px; margin: 4px; box-sizing: border-box; border-radius: 50%; border: 2px dashed rgba(226, 232, 240, .6);
+  background: radial-gradient(circle at 50% 40%, rgba(71, 60, 110, .92), rgba(18, 12, 36, .92)); font-family: var(--f-display); font-size: 30px; line-height: 1; color: #e2e8f0; text-shadow: 0 0 8px rgba(203, 213, 225, .6); }
+
+/* ===== 4.25.3: всплывашки, подсказки, плашка обновления и «Слишком быстро» — то же матовое полупрозрачное стекло, что у главного меню ===== */
+.toast, .upd-bar, #coach, #speedWarn {
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 60%), rgba(24, 14, 56, .42) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5) !important; backdrop-filter: blur(18px) saturate(1.5) !important;
+  border: 0 !important; outline: 0 !important; color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25);
+  box-shadow: var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35) !important; }
+.toast::after, .upd-bar::after { content: none !important; }
+.toast.good { box-shadow: inset 3px 0 0 #84cc16, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35), 0 0 18px rgba(132, 204, 22, .22) !important; }
+.toast.bad { box-shadow: inset 3px 0 0 #f87171, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35), 0 0 18px rgba(248, 113, 113, .2) !important; }
+#speedWarn { box-shadow: inset 3px 0 0 #f87171, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35), 0 0 20px rgba(248, 113, 113, .25) !important; }
+#speedWarn::before { color: #fca5a5; }
+#speedWarn b { color: #fecaca; }
+#coach.info { box-shadow: inset 3px 0 0 #fde047, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35) !important; }
+/* днём под стеклом светлая карта — стекло плотнее, как у окон */
+body:not(.night) .toast, body:not(.night) .upd-bar, body:not(.night) #coach, body:not(.night) #speedWarn { background-color: rgba(22, 12, 50, .58) !important; }
+.eco .toast, .eco .upd-bar, .eco #coach, .eco #speedWarn { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(12, 7, 30, .88) !important; }
+/* пока на экране «Слишком быстро» — всплывашки под ней, а не поверх */
+body:has(> #speedWarn) #toasts { top: calc(246px + var(--st)); }

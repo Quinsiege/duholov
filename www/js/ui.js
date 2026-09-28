@@ -872,8 +872,9 @@ const UI = {
       title: ru`Духи рядом`, cls: 'nearby-modal',
       html: list.length ? `<div class="nb-list">${list.map((e, i) => {
         const s = SP[e.sid], d = U.dist(MapView.pos.lat, MapView.pos.lng, e.lat, e.lng);
-        const known = S.d.dex[s.id] && S.d.dex[s.id].caught;
-        return `<button class="nb-item" data-i="${i}"><div class="nb-art ${S.d.dex[s.id] && S.d.dex[s.id].seen ? '' : 'unknown'}">${Art.img(e.sid)}</div><b>${S.d.dex[s.id] && S.d.dex[s.id].seen ? s.name : '???'}</b><small class="${d <= W.INTERACT ? 'near' : ''}">${U.fmtDist(d)}</small>${known ? '' : '<i class="new">new</i>'}</button>`;
+        // 4.25.3: дух не из Бестиария — знак вопроса, как на карте и на кнопке «Рядом»
+        const seen = MapView.known(e.sid), caught = S.d.dex[s.id] && S.d.dex[s.id].caught;
+        return `<button class="nb-item" data-i="${i}"><div class="nb-art">${seen ? Art.img(e.sid) : '<span class="nb-q">?</span>'}</div><b>${seen ? s.name : '???'}</b><small class="${d <= W.INTERACT ? 'near' : ''}">${U.fmtDist(d)}</small>${seen && !caught ? '<i class="new">new</i>' : ''}</button>`;
       }).join('')}</div><p class="small nb-hint">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,
       buttons: [
         { label: ru`К роднику`, fn: () => this.trackNearest('spring') },

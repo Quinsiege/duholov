@@ -1382,6 +1382,7 @@ I18N.dict = {
 "Прогресс загружен":"İlerleme yüklendi",
 "Не получилось запустить игру":"Oyun başlatılamadı",
 "Проверь подключение к интернету и попробуй ещё раз.":"İnternet bağlantını kontrol et ve yeniden dene.",
+"GPS подменяют — ведём тебя по Wi-Fi и вышкам связи.":"GPS taklit ediliyor — seni Wi-Fi ve baz istasyonlarıyla izliyoruz.",
 "Похоже, GPS глушат или подменяют — держим твоё последнее место и сверяемся с сетями.":"GPS karıştırılıyor ya da taklit ediliyor gibi görünüyor — son konumunu koruyor ve ağlarla doğruluyoruz.",
 "Доступ к геолокации запрещён.":"Konum erişimi reddedildi.",
 "Не удалось получить координаты.":"Koordinatlar alınamadı.",
