@@ -53,7 +53,10 @@ const Login = {
   async start(provider, mode) {
     const p = this.info && this.info.providers && this.info.providers[provider];
     if (!p) { UI.toast(ru`Этот способ входа пока не подключён`); return; }
-    const state = this.rand(16), nonce = this.rand(16), verifier = this.rand(48), redirect = this.cbUrl();
+    const state = this.rand(16), verifier = this.rand(48), redirect = this.cbUrl();
+    // 4.26: nonce для Google выдаёт сервер (подписанный билет этого игрока) — вход по чужому токену не пройдёт
+    let nonce = this.rand(16);
+    if (provider === 'google') { try { const g = await Game.auth('gnonce'); if (g && g.nonce) nonce = g.nonce; } catch (e) { UI.toast(U.esc(e.message)); return; } }
     const pend = { provider, mode, state, nonce, verifier, redirect, t: Date.now() };
     try { sessionStorage.setItem(this.PEND, JSON.stringify(pend)); } catch (e) { UI.toast(ru`Браузер не даёт сохранить вход — проверь настройки`); return; }
     const q = o => new URLSearchParams(o).toString();

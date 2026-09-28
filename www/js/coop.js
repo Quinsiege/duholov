@@ -2,7 +2,8 @@
 /* Совместные разломы: до 4 Ловчих.
    Комнату ведёт сервер игры (код, участники, начало боя — roomCreate/roomJoin/roomStart): число союзников
    для урона и наград он берёт оттуда. Во время боя телефоны обмениваются ударами и здоровьем босса
-   через Supabase Realtime (канал raid-<код>): хозяин ведёт счёт, гости присылают свой урон. */
+   через Supabase Realtime (канал raid:<код>, 4.26 — закрытый: читать и писать в него могут только участники комнаты,
+   028_security.sql): хозяин ведёт счёт, гости присылают свой урон. */
 
 const Coop = {
   MAX: 4,
@@ -13,7 +14,9 @@ const Coop = {
   /* ---------------- КАНАЛ ---------------- */
   async connect(code) {
     const sb = await Cloud.client();
-    this.ch = sb.channel(`raid-${code}`, { config: { broadcast: { self: false } } });
+    const { data: { session: s } } = await sb.auth.getSession();
+    if (s) await sb.realtime.setAuth(s.access_token);
+    this.ch = sb.channel(`raid:${code}`, { config: { private: true, broadcast: { self: false } } });
     this.ch.on('broadcast', { event: 'm' }, ({ payload }) => this.onMsg(payload || {}));
     await new Promise(res => this.ch.subscribe(s => { if (s === 'SUBSCRIBED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') res(s); }));
   },

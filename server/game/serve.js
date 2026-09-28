@@ -117,20 +117,22 @@ const Pay = {
     let status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
     if (same && p.refunded_amount && +p.refunded_amount.value > 0) status = 'refunded';
     if (status === r.status) return status;
-    // возврат уже начисленного платежа — владельцу видно в журнале (списывать златники вручную по обращению)
+    // 4.26: возврат уже начисленного платежа — златники списываются (действие payRefund; может уйти в минус — Казна и аукцион
+    // закрыты до погашения). Владельцу — в журнале
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
     // 4.22.1: paid_at — когда ЮKassa приняла оплату: время продажи в чеке «Мой налог» (tools/server/duholov-payments)
     const paidAt = status === 'succeeded' ? { paid_at: p.captured_at || new Date().toISOString() } : {};
     must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, ...paidAt, updated_at: new Date().toISOString() }).eq('id', r.id));
     if (status === 'succeeded' && !r.credited && r.user_id) await this.credit(r.user_id);
+    if (status === 'refunded' && r.credited && r.user_id) await this.credit(r.user_id, 'payRefund');
     return status;
   },
   // 4.22: начислить оплаченное сразу — действие игры payClaim от имени игрока, в общей очереди его действий (замок);
   // игра покажет «+N златников», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
-  async credit(uid) {
+  async credit(uid, type = 'payClaim') {
     const { data: sv } = await db.from('saves').select('app_version').eq('user_id', uid).maybeSingle(); // версия игры игрока — прежняя
-    const out = await play(uid, { a: [{ type: 'payClaim' }], sys: true, v: (sv && sv.app_version) || '' }, makeEnv(uid));
+    const out = await play(uid, { a: [{ type }], sys: true, v: (sv && sv.app_version) || '' }, makeEnv(uid));
     if (!out.body.ok && !/Прогресс не найден/.test(out.body.error || '')) throw new Error('начисление: ' + (out.body.error || out.status));
   },
   // 4.1: HTTP-уведомление ЮKassa (Интеграция → HTTP-уведомления: https://api.duholov.ru/functions/v1/game/yookassa).
@@ -164,6 +166,7 @@ const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, 
 // бот (приёмник сообщений …/game/tg) отмечает код входа подтверждённым, игра завершает вход. Имя бота — из getMe
 const TG = {
   bot: '', at: 0,
+  TTL: 10 * 60000, // 4.26: код входа через бота живёт 10 минут (было 15)
   // 4.23.1: имя бота — из базы (tg_meta: его пишет служба duholov-tg-poll). Сам сервер игры до Telegram не достучится —
   // запрос getMe висел до обрыва по времени, и вместе с ним — вход и привязки у всех игроков
   async name() {
@@ -181,17 +184,39 @@ const TG = {
       await db.from('tg_meta').upsert({ k: 'bot', v: u._meta.bot }); this.bot = u._meta.bot; this.at = Date.now();
       return null;
     }
+    const tgName = f => [f.first_name, f.last_name].filter(Boolean).join(' ') || (f.username ? '@' + f.username : 'Telegram');
+    const since = () => new Date(Date.now() - this.TTL).toISOString();
+    // 4.26: ответ кнопкой «Да, это я» / «Нет» — только тот, кто нажимал «Запустить» (tg_id), и только свежий код
+    const cq = u && u.callback_query;
+    if (cq) {
+      const k = /^(ok|no):([A-Za-z0-9_-]{8,64})$/.exec(String(cq.data || '')), msg = cq.message;
+      if (!k || !cq.from || !msg || !msg.chat || msg.chat.type !== 'private') return { answer: { callback_query_id: cq.id } };
+      let text;
+      if (k[1] === 'no') {
+        await db.from('tg_login').delete().eq('code', k[2]).is('confirmed_at', null);
+        text = '✖ Вход отменён. Если ссылку тебе прислал кто-то другой — не переходи по таким ссылкам: так пытаются получить доступ к чужому Ловчему.';
+      } else {
+        const { data } = await db.from('tg_login').update({ tg_id: cq.from.id, tg_name: tgName(cq.from).slice(0, 80), confirmed_at: new Date().toISOString() })
+          .eq('code', k[2]).eq('asked_tg', cq.from.id).is('confirmed_at', null).gte('created_at', since()).select('code');
+        text = data && data.length ? '✅ Вход в «Духолов» подтверждён — возвращайся в игру.' : 'Ссылка для входа устарела — начни вход в игре заново.';
+      }
+      return { answer: { callback_query_id: cq.id }, edit: { chat_id: msg.chat.id, message_id: msg.message_id, text } };
+    }
     const m = u && (u.message || u.edited_message);
     if (!m || !m.chat || m.chat.type !== 'private' || !m.from) return null;
-    const name = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || (m.from.username ? '@' + m.from.username : 'Telegram');
+    const name = tgName(m.from);
     await db.from('tg_chats').upsert({ chat_id: m.chat.id, name: name.slice(0, 80), username: String(m.from.username || '').slice(0, 64), last_at: new Date().toISOString() });
     const code = /^\/start login_([A-Za-z0-9_-]{8,64})$/.exec(String(m.text || '').trim());
     if (code) {
-      const since = new Date(Date.now() - 15 * 60000).toISOString();
-      const { data } = await db.from('tg_login').update({ tg_id: m.from.id, tg_name: name.slice(0, 80), confirmed_at: new Date().toISOString() })
-        .eq('code', code[1]).is('confirmed_at', null).gte('created_at', since).select('code');
       if (Math.random() < 0.05) await db.from('tg_login').delete().lt('created_at', new Date(Date.now() - 86400000).toISOString());
-      return { chat_id: m.chat.id, text: data && data.length ? '✅ Вход в «Духолов» подтверждён — возвращайся в игру.' : 'Ссылка для входа устарела — начни вход в игре заново.' };
+      const { data } = await db.from('tg_login').update({ asked_tg: m.from.id }).eq('code', code[1]).is('confirmed_at', null).gte('created_at', since()).select('code');
+      if (!data || !data.length) return { chat_id: m.chat.id, text: 'Ссылка для входа устарела — начни вход в игре заново.' };
+      // к этому Telegram уже привязан Ловчий — назовём его: вход откроет именно его
+      const { data: link } = await db.from('auth_links').select('user_id').eq('provider', 'telegram').eq('subject', String(m.from.id)).maybeSingle();
+      const sv = link ? (await db.from('saves').select('name:data->name').eq('user_id', link.user_id).maybeSingle()).data : null;
+      const who = sv && sv.name ? ` — в твоего Ловчего «${String(sv.name).slice(0, 20)}»` : '';
+      return { chat_id: m.chat.id, text: `🔐 Вход в «Духолов» через твой Telegram${who}.\n\nНажми «Да, это я», только если ты сам сейчас входишь в игру. Если ссылку тебе прислал кто-то другой — это обман: не нажимай, иначе чужой человек получит доступ к твоему Ловчему.`,
+        reply_markup: { inline_keyboard: [[{ text: '✅ Да, это я', callback_data: 'ok:' + code[1] }], [{ text: '✖ Нет, это не я', callback_data: 'no:' + code[1] }]] } };
     }
     if (/^\/start\b/.test(String(m.text || ''))) return { chat_id: m.chat.id, text: 'Это бот игры «Духолов» — лови духов Нави на улицах своего города: https://duholov.ru' };
     return null;
@@ -218,7 +243,9 @@ const Auth = {
     if (provider === 'google') {
       const t = await getJson('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(String(a.id_token || '')));
       if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error(ru`вход Google не подтверждён`);
-      if (!a.nonce || t.nonce !== a.nonce) throw new Error(ru`вход Google не подтверждён`);
+      // 4.26: nonce — подписанный сервером билет этого игрока (op 'gnonce'), а не случайная строка телефона
+      const nt = a.nonce && t.nonce === a.nonce ? await this.ticket(null, a.nonce) : null;
+      if (!nt || nt.g !== uid) throw new Error(ru`вход Google не подтверждён`);
       return { sub: String(t.sub), name: t.name || t.email || 'Google' };
     }
     if (provider === 'yandex') {
@@ -241,7 +268,7 @@ const Auth = {
     if (provider === 'telegram' && a.code) {
       // 4.23: вход через бота — код одноразовый, только того игрока, который его получил, и не старше 15 минут
       const { data: row } = await db.from('tg_login').select('tg_id, tg_name, confirmed_at, created_at').eq('code', String(a.code)).eq('user_id', uid).maybeSingle();
-      if (!row || !row.confirmed_at || !row.tg_id || Date.parse(row.created_at) < Date.now() - 15 * 60000) throw new Error(ru`вход Telegram не подтверждён`);
+      if (!row || !row.confirmed_at || !row.tg_id || Date.parse(row.created_at) < Date.now() - TG.TTL) throw new Error(ru`вход Telegram не подтверждён`);
       await db.from('tg_login').delete().eq('code', String(a.code));
       return { sub: String(row.tg_id), name: row.tg_name || 'Telegram' };
     }
@@ -249,12 +276,12 @@ const Auth = {
       // подпись Telegram Login: HMAC-SHA256 от строк «ключ=значение» (по алфавиту, без hash) на ключе SHA256(токена бота)
       const d = a.data && typeof a.data === 'object' ? a.data : {};
       if (!d.id || !d.hash || !d.auth_date) throw new Error(ru`вход Telegram не подтверждён`);
-      if (Date.now() / 1000 - +d.auth_date > 86400) throw new Error(ru`вход Telegram устарел — попробуй ещё раз`);
+      if (Date.now() / 1000 - +d.auth_date > 600) throw new Error(ru`вход Telegram устарел — попробуй ещё раз`); // 4.26: 10 минут (было сутки)
       const check = Object.keys(d).filter(k => k !== 'hash').sort().map(k => `${k}=${d[k]}`).join('\n');
       const secret = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(AUTHP.telegram));
       const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
       const sig = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(check)));
-      if (sig !== String(d.hash)) throw new Error(ru`вход Telegram не подтверждён`);
+      if (!sameKey(sig, String(d.hash))) throw new Error(ru`вход Telegram не подтверждён`);
       return { sub: String(d.id), name: [d.first_name, d.last_name].filter(Boolean).join(' ') || (d.username ? '@' + d.username : 'Telegram') };
     }
     throw new Error(ru`Такого способа входа нет`);
@@ -279,6 +306,7 @@ const Auth = {
       if (error) return { ok: false, error: ru`Не удалось начать вход — попробуй ещё раз` };
       return { ok: true, code, bot: TG.bot };
     }
+    if (op === 'gnonce') { const b = new Uint8Array(12); crypto.getRandomValues(b); return { ok: true, nonce: await this.ticket({ g: uid, r: hex(b) }) }; }
     if (op === 'tgcheck') {
       const { data: row } = await db.from('tg_login').select('confirmed_at').eq('code', String(a.code || '')).eq('user_id', uid).maybeSingle();
       return { ok: true, ready: !!(row && row.confirmed_at) };
@@ -291,6 +319,11 @@ const Auth = {
     // с ней в базе, удаляется вместе с ней; записи о платежах остаются без привязки (налоговый учёт, 018)
     if (op === 'delete') {
       if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: ru`Нужно подтверждение` };
+      // 4.26: снимки предложенных мест — файлы хранилища (папка <uid>/) удаляются отдельно
+      try {
+        const { data: files } = await db.storage.from('poi-photos').list(uid, { limit: 1000 });
+        if (files && files.length) await db.storage.from('poi-photos').remove(files.map(f => `${uid}/${f.name}`));
+      } catch (e) { console.error('Удаление снимков:', String(e)); }
       const { error } = await db.auth.admin.deleteUser(uid);
       if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: ru`Не получилось удалить — попробуй ещё раз` }; }
       return { ok: true };
@@ -642,6 +675,9 @@ function makeEnv(uid) {
     // Казна: оплаченные, но ещё не начисленные наборы златников; отметка «начислено»
     async paidList() { return must(await db.from('payments').select('id, pack, zlat').eq('user_id', uid).eq('status', 'succeeded').eq('credited', false).limit(50)) || []; },
     async payCredited(ids) { must(await db.from('payments').update({ credited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
+    // 4.26: возвращённые (refunded) и уже начисленные, но ещё не списанные платежи; отметка «списано»
+    async refundList() { return must(await db.from('payments').select('id, zlat').eq('user_id', uid).eq('status', 'refunded').eq('credited', true).eq('debited', false).limit(50)) || []; },
+    async payDebited(ids) { must(await db.from('payments').update({ debited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));
@@ -657,7 +693,9 @@ const PVP_FLOOD = 360;
 const pvpHits = new Map();
 // Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
 const LOCK_MS = 30000, LOCK_TRIES = 25;
-const hits = new Map(), badTokens = new Map(), errHits = new Map(), pingHits = new Map();
+const hits = new Map(), badTokens = new Map(), errHits = new Map(), pingHits = new Map(), ykHits = new Map();
+// 4.26: тело запроса — не больше MAX_BODY байт (перед сервером — ещё и Caddy, 256 КБ)
+const MAX_BODY = 128 * 1024;
 let dbCheck = { at: 0, p: null };
 const dbHealth = () => {
   if (dbCheck.p && Date.now() - dbCheck.at < 5000) return dbCheck.p;
@@ -705,6 +743,7 @@ async function play(uid, body, env) {
     }
     if (!got || got.locked) return R({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });
     locked = true;
+    env.lockAt = Date.now(); env.LOCK_MS = LOCK_MS; // 4.26: core.js не пишет в общие таблицы, если замок вот-вот истечёт
     const row = got.row, srv = got.srv || {};
     if (row && row.moved_to) return R({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });
     // от имени сервера (начисление оплаты): часовой пояс — тот, что сервер помнит у игрока
@@ -739,6 +778,7 @@ Deno.serve(async req => {
   const headers = { ...CORS, 'Access-Control-Allow-Origin': allowed && origin ? origin : ORIGINS[0], Vary: 'Origin' };
   const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
+  if (+(req.headers.get('content-length') || 0) > MAX_BODY) return reply({ ok: false, error: ru`Слишком большой запрос` }, 413);
   // уведомление ЮKassa о платеже: итог проверяем сами (Pay.notify); при сбое — 500, и ЮKassa повторит уведомление позже
   if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/tg')) {
     const sec = await TG.secret();
@@ -748,6 +788,7 @@ Deno.serve(async req => {
     return new Response(JSON.stringify({ ok: true, reply }), { headers: { 'Content-Type': 'application/json' } }); // ответ боту отправит служба
   }
   if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/yookassa')) {
+    if (tooMany(ykHits, (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown', 120)) return new Response('slow down', { status: 429 });
     try { await Pay.notify(await req.json().catch(() => null)); return new Response('ok'); }
     catch (e) { console.error('Казна, уведомление:', String(e)); return new Response('retry', { status: 500 }); }
   }
@@ -782,6 +823,7 @@ Deno.serve(async req => {
   const uid = who.user.id;
   let body;
   try { body = await req.json(); } catch { return reply({ ok: false, error: ru`Некорректный запрос` }, 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return reply({ ok: false, error: ru`Некорректный запрос` }, 400);
   // 4.16: ходы в бою Лиги идут чаще обычных действий — у них своя граница частоты (саму частоту ударов проверяет PvP)
   if (body && body.pvp) {
     if (tooMany(pvpHits, uid, PVP_FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);

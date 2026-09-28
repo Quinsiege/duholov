@@ -39,15 +39,14 @@ const GameCore = {
   // 4.15: погоде от телефона сервер не верит на слово. Годится настоящая погода этой точки (текущая или прошлая —
   // телефон мог запросить её чуть раньше) и смоделированная (у кого «настоящая погода» выключена или нет сети).
   // Иначе — смоделированная: её нельзя подделать, духи на карте у честного игрока от этого не меняются.
-  // Нет ответа от сервиса погоды — верим телефону, как раньше.
+  // 4.26: нет ответа от сервиса погоды — тоже смоделированная (раньше верили телефону — погоду можно было выбрать)
   async checkWx(key, pos, env) {
     if (!key || !pos) return key ? { key } : null;
     const sim = Sky.simulate(pos).key;
-    if (key === sim || !env || typeof env.weather !== 'function') return { key };
+    if (key === sim) return { key };
     let real = null;
-    try { real = await env.weather(pos.lat, pos.lng); } catch (e) { real = null; }
-    if (!real || !real.length) return { key };
-    return { key: real.includes(key) ? key : sim };
+    if (env && typeof env.weather === 'function') { try { real = await env.weather(pos.lat, pos.lng); } catch (e) { real = null; } }
+    return { key: real && real.length && real.includes(key) ? key : sim };
   },
   async run(req, save, env) {
     if (this.als && !this.als.getStore()) return this.als.run({}, () => this.run(req, save, env));
@@ -63,7 +62,7 @@ const GameCore = {
       const p = req.pos;
       ctx.pos = p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180
         ? { lat: +p.lat, lng: +p.lng, acc: U.clamp(+p.acc || 30, 1, 5000) } : null;
-      Sky.w = await this.checkWx(req.wx && WEATHER[req.wx] ? req.wx : null, ctx.pos, env);
+      Sky.w = await this.checkWx(this.own(WEATHER, req.wx) ? req.wx : null, ctx.pos, env);
       MapView.pos = ctx.pos;
       Bus.emit = (ev, data) => ctx.events.push([ev, this.ser(ev, data)]);
       S.save = () => {};
@@ -101,12 +100,13 @@ const GameCore = {
   // Позиция игрока: скачок быстрее ~200 км/ч включает паузу для действий на карте
   track(ctx) {
     const p = ctx.pos, last = ctx.srv.pos;
+    ctx.prevPos = last && Number.isFinite(+last.t) ? last : null; // 4.26: где сервер видел Ловчего до этого запроса (сверка пути в move)
     if (!p) return;
     if (last && ctx.now - last.t < 10 * 60000) {
       const v = U.dist(last.lat, last.lng, p.lat, p.lng) / Math.max(1, (ctx.now - last.t) / 1000);
       if (v > 60 && U.dist(last.lat, last.lng, p.lat, p.lng) > 300) ctx.srv.fastUntil = ctx.now + 60000;
     }
-    ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now };
+    ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now, acc: Math.round(p.acc) };
     if (!(p.acc > Rules.SPEED.ACC)) this.pace(ctx, { lat: p.lat, lng: p.lng, t: ctx.now });
   },
   // 4.20: скорость Ловчего; быстрее бега — пауза на COOL. 4.24.1: по недавним точкам (Rules.paceStep) — после остановки
@@ -121,6 +121,11 @@ const GameCore = {
     this.need(ctx.pos, ru`Нет данных о местоположении — включи GPS`);
     this.need(!(ctx.srv.fastUntil > ctx.now), ru`Похоже, GPS скачет — подожди минуту`);
     this.need(!(this.speedUntil(ctx) > ctx.now), ru`Слишком быстро — около ${(ctx.srv.spd && ctx.srv.spd.kmh) || ctx.srv.kmh || 20} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`);
+    // 4.26: после дальнего перемещения — перезарядка (Rules.jumpWait) от места и времени последнего действия на карте,
+    // сколько бы ни прошло с последней точки. Позиция при этом принимается как обычно; место действия запоминается
+    const wait = Rules.jumpWait(ctx.srv.at, ctx.pos, ctx.now);
+    this.need(!(wait > 0), ru`Слишком быстрое перемещение — подожди ${Math.ceil(wait / 60000)} мин`);
+    ctx.srv.at = { lat: ctx.pos.lat, lng: ctx.pos.lng, t: ctx.now };
     return ctx.pos;
   },
   near(ctx, lat, lng, max) {
@@ -133,6 +138,18 @@ const GameCore = {
     if (!r || ctx.now - r[1] > windowMs) { rl[key] = [1, ctx.now]; return; }
     this.need(r[0] < max, ru`Слишком часто — передохни немного`);
     r[0]++;
+  },
+  // 4.26: ключ из запроса или чужих данных — только собственный ключ таблицы (не __proto__, constructor и т. п.)
+  own(o, k) { return (typeof k === 'string' || typeof k === 'number') && Object.prototype.hasOwnProperty.call(o, k); },
+  // 4.26: общие таблицы (аукцион, подарки, друзья, Капища, комнаты, чат) обработчики пишут до сохранения прогресса — только
+  // пока замок игрока точно держится (serve.js: env.lockAt — когда взят, env.LOCK_MS — на сколько; LOCK_SPARE — запас на
+  // сохранение). Иначе другой запрос того же игрока мог уже взять замок — и запись разошлась бы с прогрессом.
+  // Нет данных о замке (автотесты) — не проверяем
+  LOCK_SPARE: 8000,
+  shared(ctx) {
+    const e = ctx.env || {}, at = +e.lockAt, ms = +e.LOCK_MS;
+    if (!(at > 0) || !(ms > 0)) return;
+    this.need(Date.now() - at <= ms - this.LOCK_SPARE, ru`Сервер не успел — повтори действие`);
   },
   spirit(uid) { const sp = S.findSpirit(String(uid)); this.need(sp, ru`Дух не найден`); return sp; },
   // Объект карты из запроса. Места игроков и правки модераторов сверяются с сервером.
@@ -162,14 +179,15 @@ const GameCore = {
   // 4.15: раны после боя — общие на всю игру. Телефон присылает долю здоровья каждого бойца (hp: { uid: 0..1 });
   // выше той, с какой дух вошёл в бой, она не станет (в разломе — плюс выпитая Живая вода). Нет данных — здоровье не меняется
   // 4.16: и усталость — каждый бой (разлом, Капище, вторжение) прибавляет духам команды по очку (см. Rules.HP.TIRED)
-  woundTeam(b, hp) {
-    const now = U.now();
-    if (hp && typeof hp === 'object') (b.team || []).forEach(uid => {
-      const sp = S.findSpirit(uid), rep = +hp[uid];
-      if (!sp || !Number.isFinite(rep)) return;
-      S.setHp(sp, Math.min(rep, Math.min(S.hpCap(sp, now), S.hpNow(sp, now) + (b.waters || 0) * ITEMS.water.heal)), now);
-    });
-    if (b.tire) this.team(b.team).forEach(sp => S.tire(sp, 1, now));
+  // 4.26: после победы — и не ниже, чем посчитал сервер: команда потеряла не меньше loss единиц здоровья (Rules.raidMinLoss,
+  // duelMinLoss; mul — здоровье духа в единицах боя: 5 в разломе, Duel.HPX на Капище) — даже если телефон ран не прислал
+  woundTeam(b, hp, loss = 0, mul = 5) {
+    const now = U.now(), team = this.team(b.team), rep = hp && typeof hp === 'object' ? hp : {};
+    const up = sp => Math.min(S.hpCap(sp, now), S.hpNow(sp, now) + (b.waters || 0) * ITEMS.water.heal);
+    let out = team.map(sp => (Number.isFinite(+rep[sp.uid]) ? Math.min(+rep[sp.uid], up(sp)) : null));
+    if (loss > 0) out = Rules.woundFloor(team.map((sp, i) => ({ max: S.battle(sp).hp * mul, up: up(sp), rep: out[i] != null ? out[i] : S.hpNow(sp, now) })), loss);
+    team.forEach((sp, i) => { if (out[i] != null) S.setHp(sp, out[i], now); });
+    if (b.tire) team.forEach(sp => S.tire(sp, 1, now));
   },
   // здоровье бойцов на входе в бой: { uid: доля } — по нему сервер судит, могла ли команда победить (Rules.duelWinnable)
   hpMap(team) { const o = {}; team.forEach(sp => { o[sp.uid] = S.hpNow(sp); }); return o; },
@@ -269,7 +287,7 @@ const GameCore = {
     const iv = (Array.isArray(x.iv) ? x.iv : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
     return { uid: 'foe' + i, sid: x.sid, lvl: U.clamp(Math.floor(+x.lvl) || 1, 1, SPIRIT_MAX), iv, shiny: !!x.shiny, dark: !!x.dark && !x.purified,
-      purified: !!x.purified, move2: !!x.move2, amulet: AMULETS[x.amulet] ? x.amulet : null, nick: x.nick ? this.cleanText(x.nick, 16) || null : null };
+      purified: !!x.purified, move2: !!x.move2, amulet: this.own(AMULETS, x.amulet) ? x.amulet : null, nick: x.nick ? this.cleanText(x.nick, 16) || null : null };
   },
   // Приглашение: новичок по ссылке друга сразу в друзьях у него, оба получают подарки.
   // Пригласивший — подарком в «Друзья» (не больше INVITE_MAX за все приглашения, чтобы не накручивали).
@@ -281,6 +299,7 @@ const GameCore = {
     const who = await ctx.env.player(ref);
     if (!who) return null;
     S.d.friends.push({ id: ref, name: who.name, lvl: who.level, pts: 1, added: ctx.now, sent: '', recv: '', linked: true, invitedBy: true });
+    this.shared(ctx);
     await ctx.env.link(S.d.pid, ref, S.d.name, S.d.level); // пригласивший увидит новичка в друзьях
     S.giveRewards(this.INVITE_WELCOME);
     J.add('friend', { name: who.name });
@@ -298,7 +317,7 @@ const GameCore = {
     for (const m of [A.got, A.back, A.paid]) for (const k of Object.keys(m)) if (ctx.now - m[k] > 14 * 86400000) delete m[k];
     const rows = await ctx.env.lotsToSettle(S.d.pid), got = [];
     for (const r of rows) {
-      if (!r.spirit || !SP[r.spirit.s]) continue;
+      if (!r.spirit || !this.own(SP, r.spirit.s)) continue;
       if (r.status === 'sold') {
         if (A.paid[r.id]) continue;
         const cur = r.cur === 'zlat' ? 'zlat' : 'sparks', net = r.price - Rules.auctionFee(r.price);
@@ -373,7 +392,7 @@ const GameCore = {
   // 4.17: c — код духа (плёнка стикера): переходит к новому хозяину вместе с духом
   packSpirit(sp) { return { s: sp.sid, l: sp.lvl, i: sp.iv, y: sp.shiny ? 1 : 0, d: sp.dark ? 1 : 0, n: sp.nick || '', p: sp.purified ? 1 : 0, m: sp.move2 ? 1 : 0, a: sp.stars || 0, c: S.spiritCode(sp) }; },
   unpackSpirit(p, ctx, from, cap = S.maxLvl()) {
-    this.need(p && SP[p.s], ru`Посылка повреждена`);
+    this.need(p && this.own(SP, p.s), ru`Посылка повреждена`);
     const iv = (Array.isArray(p.i) ? p.i : []).slice(0, 3).map(v => U.clamp(Math.floor(+v) || 0, 0, 15));
     while (iv.length < 3) iv.push(0);
     const sp = { uid: U.uid(), sid: p.s, lvl: U.clamp(Math.min(+p.l || 1, cap), 1, 50), iv, t: ctx.now, fav: false, nick: this.cleanText(p.n, 16) || null };
@@ -389,7 +408,7 @@ const GameCore = {
   // Текст от игрока (имя, кличка духа): без управляющих символов и символов разметки, пробелы схлопнуты
   cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>"'`&\\]/g, '').trim().replace(/\s+/g, ' ').slice(0, max); },
   safeLook(lk) {
-    lk = lk || {};
+    lk = lk && typeof lk === 'object' ? lk : {}; // 4.26: только объект
     if (!(LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem))) return null;
     const out = { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem };
     if (lk.skin !== 'hood' && LOOK.skin.some(x => x.id === lk.skin)) out.skin = lk.skin; // 4.6: облик-скин, фон, рамка
@@ -400,7 +419,7 @@ const GameCore = {
   // 3.21: текущие данные Ловчего из его сохранения — только проверенные значения (попадают в разметку)
   brief(b) {
     if (!b) return null;
-    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: CLANS[b.clan] ? b.clan : null, look: this.safeLook(b.look) };
+    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: this.own(CLANS, b.clan) ? b.clan : null, look: this.safeLook(b.look) };
   },
   roomMember() {
     const team = S.team();
@@ -412,9 +431,18 @@ const GameCore = {
     return { code: r.code, status: r.status, rift: { ...r.rift, rl: this.roomRl(r) }, isHost: r.host_pid === S.d.pid, hpMul: Raid.coopHp(r.members.length),
       members: r.members.map((m, i) => ({ name: String(m.name || 'Ловчий').slice(0, 20), look: m.look, lvl: m.lvl, power: m.power, sid: m.sid, host: i === 0, me: m.pid === S.d.pid })) };
   },
+  // 4.26: союзники в совместном бою — участники комнаты, которые сами вступили в бой (отметка f ставится в raidStart);
+  // «мёртвые души» в комнате не уменьшают долю урона. Комнаты не прочитать — как раньше, по комнате на старте
+  async coopAllies(ctx, b) {
+    const c = b.coop;
+    if (!c) return 0;
+    const room = c.code ? await ctx.env.roomGet(c.code) : null;
+    if (!room || !Array.isArray(room.members)) return c.allies;
+    return U.clamp(room.members.filter(m => m && m.pid !== S.d.pid && +m.f > 0).length, 0, c.allies);
+  },
   // Защитники Капища в бою — три сильнейших (4.16: только те, кто ещё на посту, и с учётом усталости — Rules.HOLD)
   holdTeam(hold, now = Date.now()) {
-    return hold.holders.filter(h => h && h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)).map((h, i) => Rules.holdSpirit(this.cleanSpirit(h.sp, i), h.t, now))
+    return hold.holders.filter(h => h && h.sp && this.own(SP, h.sp.sid) && Rules.holdFresh(h, now)).map((h, i) => Rules.holdSpirit(this.cleanSpirit(h.sp, i), h.t, now))
       .map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, 3).map(o => o.x);
   },
   // 4.16: Капище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Капище дружин нет.
@@ -426,7 +454,7 @@ const GameCore = {
   },
   // Три сильнейших духа друга
   topSpirits(d, n = 3) {
-    const list = (Array.isArray(d.spirits) ? d.spirits : []).filter(x => x && SP[x.sid]).map((x, i) => this.cleanSpirit(x, i));
+    const list = (Array.isArray(d.spirits) ? d.spirits : []).filter(x => x && this.own(SP, x.sid)).map((x, i) => this.cleanSpirit(x, i));
     return list.map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, n).map(o => o.x);
   },
 
@@ -455,7 +483,7 @@ const GameCore = {
         if (st.n !== n0) dirty = true;
         let ver = m.ver;
         if (dirty) { ver = await env.pvpPut(m.id, m.ver, st, !!st.over); if (ver == null) continue; }
-        return { ok: true, id: m.id, seat: me, ver, st, res, now };
+        return { ok: true, id: m.id, seat: me, ver, st: PvP.mask(st, me), res, now }; // 4.26: без скрытого от соперника
       }
       this.fail(ru`Бой занят — повтори`);
     } catch (e) {
@@ -602,20 +630,26 @@ const GameCore = {
         .filter(q => Array.isArray(q) && q.length >= 4 && [0, 1, 2, 3].every(i => Number.isFinite(+q[i])))
         .map(q => ({ lat: +q[0], lng: +q[1], t: +q[2], acc: +q[3] })).sort((x, y) => x.t - y.t);
       const last = ctx.srv.mv && ctx.now - ctx.srv.mv.t < 10 * 60000 ? ctx.srv.mv : null;
-      let prev = last, m = 0;
+      // 4.26: точки не старше уже засчитанных (любой давности: повтор той же пачки не засчитается дважды) и рядом с тем,
+      // где сервер видел Ловчего до запроса и видит сейчас (Rules.trackNear); отрезок с далёкой точкой не засчитывается
+      const floor = ctx.srv.mv ? +ctx.srv.mv.t || 0 : 0, refs = [ctx.prevPos, ctx.pos && { ...ctx.pos, t: ctx.now }].filter(Boolean);
+      let prev = last, prevOk = true, m = 0;
       for (const q of pts) {
-        if (q.acc > 40 || q.t > ctx.now + 5000 || (prev && q.t <= prev.t)) continue;
-        if (!prev) { prev = q; continue; }
+        if (q.acc > 40 || q.t > ctx.now + 5000 || q.t <= floor || (prev && q.t <= prev.t)) continue;
+        const ok = refs.every(r => Rules.trackNear(q, r));
+        if (!prev) { prev = q; prevOk = ok; continue; }
         const d = U.dist(prev.lat, prev.lng, q.lat, q.lng), dt = (q.t - prev.t) / 1000;
         if (d < 4) continue;
-        if (dt > 0 && d / dt <= Rules.SPEED.MAX) m += d; // 4.20: только шагом или бегом (было < 32 км/ч)
+        if (ok && prevOk && dt > 0 && d / dt <= Rules.SPEED.MAX) m += d; // 4.20: только шагом или бегом (было < 32 км/ч)
         this.pace(ctx, q);
-        prev = q;
+        prev = q; prevOk = ok;
       }
       // не больше, чем можно пробежать с прошлой отметки
       const since = last ? (ctx.now - last.t) / 1000 : 60;
       m = Math.min(m, since * Rules.SPEED.MAX);
       if (prev) ctx.srv.mv = { lat: prev.lat, lng: prev.lng, t: Math.min(prev.t, ctx.now) };
+      // 4.26: в зачёт — не больше Rules.TRACK.DAY метров в день (по часам игрока)
+      if (m > 0) { const c = this.dayc(ctx); m = Math.min(m, Math.max(0, Rules.TRACK.DAY - (c.walk || 0))); c.walk = (c.walk || 0) + m; }
       if (m > 0) S.addDistance(m);
       return { m, fast: this.speedUntil(ctx) > ctx.now ? (ctx.srv.spd && ctx.srv.spd.kmh) || ctx.srv.kmh || 20 : 0 };
     },
@@ -732,7 +766,10 @@ const GameCore = {
       this.need(e.ready, ru`Родник ещё набирает силу`);
       S.d.springs[p.id] = ctx.now;
       this.dayAdd(ctx, 'springs');
-      const { loot, cocoon } = W.springLoot(p.id);
+      const sl = W.springLoot(p.id), loot = { ...sl.loot };
+      // 4.26: место, которого нет в базе (id и координаты — от телефона, вне загруженных мест): добыча вполовину, без кокона
+      if (!p.verified) Object.keys(loot).forEach(k => { loot[k] = Math.ceil(loot[k] / 2); });
+      const cocoon = p.verified ? sl.cocoon : 0;
       // 4.16: родник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
       const got = S.giveRewards({ ...loot, xp: 50 }); // не поместилось — в посылку Ордена
       S.d.stats.springs++;
@@ -772,7 +809,7 @@ const GameCore = {
     },
     // Выбросить предметы из сумки (освободить место)
     discard(a) {
-      const k = String(a.k || ''), have = (ITEMS[k] && S.d.items[k]) || 0, n = Math.floor(+a.n);
+      const k = String(a.k || ''), have = (this.own(ITEMS, k) && S.d.items[k]) || 0, n = Math.floor(+a.n);
       this.need(have > 0, ru`Такого предмета в сумке нет`);
       this.need(n >= 1 && n <= have, ru`Можно выбросить от 1 до ${have}`);
       S.d.items[k] -= n;
@@ -837,7 +874,7 @@ const GameCore = {
     essPour(a) { const fam = String(a.fam || ''), n = Math.floor(+a.n), err = S.canPour(fam, n); this.need(!err, err); S.pour(fam, n); return { rod: S.d.rod, ess: S.d.essence[fam] }; },
     equip(a) {
       const sp = this.spirit(a.uid);
-      this.need(AMULETS[a.k] && S.d.amulets[a.k] > 0, ru`Такого амулета нет`);
+      this.need(this.own(AMULETS, a.k) && S.d.amulets[a.k] > 0, ru`Такого амулета нет`);
       S.equip(sp, a.k);
       return { ok: true };
     },
@@ -953,20 +990,27 @@ const GameCore = {
       this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);
       this.need(!S.d.rifts[r.id], ru`Этот разлом ты уже закрыл`);
       // дальний бой: вместо того чтобы подойти — грамота Ордена (до Rules.FAR.R от игрока)
-      const far = !coop && !!a.far;
+      let far = !coop && !!a.far;
+      // 4.26: гость совместного боя — тоже у Разлома (раньше мог вступить откуда угодно), а дальше W.BATTLE_R — по Дальнему пропуску
+      if (coop && !coop.host) { const me = this.here(ctx); far = U.dist(me.lat, me.lng, p.lat, p.lng) > W.BATTLE_R + Math.min(me.acc, 30) + 10; }
       if (far) {
         this.near(ctx, p.lat, p.lng, Rules.FAR.R);
         this.need((S.d.items.farpass || 0) > 0, ru`Нужен Дальний пропуск — его можно купить в Лавке`);
-      } else if (!coop || coop.host) this.near(ctx, p.lat, p.lng, W.BATTLE_R);
+      } else this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const team = S.team();
       this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
       this.dayNeed(ctx, 'raids'); // до списания Дальнего пропуска
+      // 4.26: у места, которого нет в базе, — только малые Разломы (легендарные — см. выше)
+      this.need(p.verified || r.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`);
       this.limit(ctx, 'raid', 30, 3600000);
+      // 4.26: отметка в комнате «я в бою» — союзником в raidEnd считается только тот, кто сам вступил в бой
+      if (coop) { this.shared(ctx); await ctx.env.roomJoin(coop.code, { ...this.roomMember(), f: ctx.now }); }
       if (far) S.d.items.farpass--;
       // 4.16: босс — по уровню Ловчего (в совместном — по среднему уровню комнаты); rl телефон считает так же (Raid.bossStats)
       const rl = coop ? coop.rl : S.catchLvl();
-      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), coop, waters: 0, far, tire: true };
+      // 4.26: hp0 — здоровье бойцов на входе (Rules.raidWinnable)
+      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop, waters: 0, far, tire: true };
       return { rid: r.id, tier: r.tier, boss: r.boss, rl, far };
     },
     /* ----- совместный разлом: комната на сервере ----- */
@@ -978,8 +1022,10 @@ const GameCore = {
       this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);
       this.need(!S.d.rifts[r.id], ru`Этот разлом ты уже закрыл`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
+      this.need(p.verified || r.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`); // 4.26
       this.limit(ctx, 'room', 20, 3600000);
       const rift = { id: r.id, tier: r.tier, boss: r.boss, endsAt: r.endsAt, poi: p.id, lat: p.lat, lng: p.lng, place: p.name }; // как у разлома на карте
+      this.shared(ctx);
       for (let i = 0; i < 5; i++) {
         const code = U.code(5, this.ROOM_ALPHA);
         const room = await ctx.env.roomCreate({ code, host_pid: S.d.pid, rift, members: [this.roomMember()] });
@@ -992,6 +1038,7 @@ const GameCore = {
       const code = String(a.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       this.need(code.length === 5, ru`Код разлома — 5 символов`);
       this.limit(ctx, 'roomJoin', 60, 3600000);
+      this.shared(ctx);
       const r = await ctx.env.roomJoin(code, this.roomMember());
       this.need(r && !r.error, (r && r.error) || ru`Разлом с таким кодом не найден`);
       return this.roomView(r);
@@ -1006,6 +1053,7 @@ const GameCore = {
       const code = String(a.code || '').toUpperCase(), r = await ctx.env.roomGet(code);
       this.need(r && r.host_pid === S.d.pid, ru`Начать бой может только хозяин разлома`);
       this.need(r.members.length >= 2, ru`Ждём хотя бы одного друга`);
+      this.shared(ctx);
       const s = await ctx.env.roomStart(code, S.d.pid);
       this.need(s, ru`Бой уже начался`);
       return this.roomView(s);
@@ -1024,22 +1072,25 @@ const GameCore = {
       b.waters++;
       return { left: S.d.items.water || 0 };
     },
-    raidEnd(a, ctx) {
+    async raidEnd(a, ctx) {
       const b = this.endBattle(ctx, 'raid');
-      this.woundTeam(b, a.hp);
-      if (!a.win) return { win: false };
-      const t = Math.min(90, this.battleTime(ctx, b));
-      // 4.16: в совместном бою урон союзников сервер не видит — от каждого нужна хотя бы половина своей доли
-      const n = b.coop ? b.coop.allies + 1 : 1, hpMul = Raid.coopHp(n);
+      if (!a.win) { this.woundTeam(b, a.hp); return { win: false }; }
+      const t = Math.min(90, this.battleTime(ctx, b)), team = this.team(b.team);
+      // 4.16: в совместном бою урон союзников сервер не видит — от каждого нужна хотя бы половина своей доли.
+      // 4.26: здоровье босса — по числу Ловчих в комнате на старте, а доля — только на тех, кто сам вступил в бой (coopAllies)
+      const allies = await this.coopAllies(ctx, b), n = allies + 1, hpMul = b.coop ? Raid.coopHp(b.coop.allies + 1) : 1;
       const need = Raid.bossStats(b).hp * hpMul / n * (n > 1 ? 0.5 : 1);
-      this.need(t >= 2 && Rules.raidMaxDamage(this.team(b.team), b, t) >= need, ru`Бой не засчитан: слишком быстрая победа`);
+      this.woundTeam(b, a.hp, Rules.raidMinLoss(team, b, need), 5); // 4.26: раны после победы — не меньше, чем наверняка нанёс босс
+      this.need(t >= 2 && Rules.raidMaxDamage(team, b, t) >= need, ru`Бой не засчитан: слишком быстрая победа`);
+      // 4.26: и команда могла выстоять, пока наносила этот урон (как Rules.duelWinnable на Капищах)
+      this.need(Rules.raidWinnable(team, b, need, b.hp0, b.waters), ru`Бой не засчитан: эта команда не могла победить такого соперника`);
       S.d.rifts[b.rid] = true;
-      const allies = b.coop ? b.coop.allies : 0, tier = b.tier;
+      const tier = b.tier;
       J.add('raid', { sid: b.boss, tier, coop: allies });
       S.d.stats.raids++;
       this.dayAdd(ctx, 'raids');
       S.progress('raid', 1);
-      if (b.coop && b.coop.allies > 0) S.progress('coop', 1);
+      if (allies > 0) S.progress('coop', 1);
       // 4.16: меньше лечебного, мёда и амулетов (было ✦ 400 × ступень, мёда 2 + ступень, Живой воды 2 за каждую победу,
       // амулет с шансом 25/40/70%) — к 40 уровню копились сотни флаконов и амулетов
       const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 350 * tier, charm: 5, honey: tier, herb: tier === 1 ? 1 : 0, water: tier >= 2 ? 1 : 0, charm2: tier >= 2 ? 3 : 0 });
@@ -1070,6 +1121,7 @@ const GameCore = {
       this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твоя дружина — здесь можно поставить защитника`);
       const ht = hold ? this.holdTeam(hold, ctx.now) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
+      this.need(p.verified || e.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`); // 4.26: у места не из базы — только Капища «Ученика»
       this.limit(ctx, 'duel', 40, 3600000);
       ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true,
         foe, hold: hold ? { clan: hold.clan, ver: hold.ver } : null };
@@ -1077,15 +1129,17 @@ const GameCore = {
     },
     async duelEnd(a, ctx) {
       const b = this.endBattle(ctx, 'duel');
-      this.woundTeam(b, a.hp);
-      if (!a.win) return { win: false };
+      if (!a.win) { this.woundTeam(b, a.hp); return { win: false }; }
       const e = { id: b.id, tier: b.tier, name: b.name };
       const g = b.foe ? null : W.guardian(e); // 4.16: у хранителя свой темп (W.foeSpeed)
-      this.plausibleDuel(ctx, b, b.foe || g.team, g ? g.speed : SHRINE_TIERS[e.tier].speed);
+      const foe = b.foe || g.team, speed = g ? g.speed : SHRINE_TIERS[e.tier].speed;
+      this.woundTeam(b, a.hp, Rules.duelMinLoss(this.team(b.team), foe, speed), Duel.HPX); // 4.26: раны после победы — не меньше наверняка нанесённых
+      this.plausibleDuel(ctx, b, foe, speed);
       const T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier;
       S.d.shrines[e.id] = U.today();
       let freed = false;
       if (b.hold) {
+        this.shared(ctx);
         freed = await ctx.env.holdDefeat(e.id, b.hold.ver); // защитники могли смениться за время боя — тогда Капище не освобождается
         if (freed) S.d.stats.freed = (S.d.stats.freed || 0) + 1;
       }
@@ -1168,6 +1222,21 @@ const GameCore = {
       if (rows.length) ctx.after.push(() => ctx.env.payCredited(rows.map(r => r.id)));
       return { zlat, n: packs.length };
     },
+    // 4.26: оплату вернули (refunded) — начисленные по ней златники списываются; счёт может уйти в минус (тратить нечего,
+    // пока не пополнится). Зовёт сам сервер по уведомлению ЮKassa; список — только из базы, повтор безопасен
+    async payRefund(a, ctx) {
+      const rows = ctx.env.refundList ? await ctx.env.refundList() : [];
+      S.d.refunded = S.d.refunded || {};
+      let zlat = 0;
+      for (const r of rows) {
+        if (S.d.refunded[r.id]) continue;
+        S.d.refunded[r.id] = 1;
+        zlat += r.zlat;
+      }
+      if (zlat) S.d.zlat = (S.d.zlat || 0) - zlat;
+      if (rows.length) ctx.after.push(() => ctx.env.payDebited(rows.map(r => r.id)));
+      return { zlat: -zlat };
+    },
     // 4.22: игрок увидел «+N златников» из Казны
     payAck() { delete S.d.payNew; return {}; },
     // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
@@ -1209,7 +1278,7 @@ const GameCore = {
     clanJoin(a) {
       this.need(S.d.level >= CLAN_LEVEL, ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня`);
       this.need(!S.d.clan, ru`Дружина уже выбрана`);
-      this.need(CLANS[a.clan], ru`Такой дружины нет`);
+      this.need(this.own(CLANS, a.clan), ru`Такой дружины нет`);
       S.d.clan = a.clan;
       J.add('clan', { clan: a.clan });
       return { clan: a.clan };
@@ -1231,6 +1300,7 @@ const GameCore = {
       }
       this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, ru`Твои защитники уже стоят на ${HOLD_MY_MAX} Капищах`);
       this.limit(ctx, 'defend', 30, 3600000);
+      this.shared(ctx);
       const ok = await ctx.env.holdDefend(p.id, p.lat, p.lng, S.d.clan, { pid: S.d.pid, name: S.d.name, sp: this.cleanSpirit(sp, 0), t: ctx.now });
       this.need(ok, ru`Капище только что изменилось — открой его заново`);
       S.d.stats.defends = (S.d.stats.defends || 0) + 1;
@@ -1300,9 +1370,9 @@ const GameCore = {
     },
     invEnd(a, ctx) {
       const b = this.endBattle(ctx, 'inv');
-      this.woundTeam(b, a.hp);
-      if (!a.win) return { win: false };
+      if (!a.win) { this.woundTeam(b, a.hp); return { win: false }; }
       const g = W.grunt({ invId: b.invId });
+      this.woundTeam(b, a.hp, Rules.duelMinLoss(this.team(b.team), g.team, g.speed), Duel.HPX); // 4.26: как на Капище
       this.plausibleDuel(ctx, b, g.team, g.speed);
       S.d.freed[b.invId] = true;
       S.d.stats.invasions++;
@@ -1375,8 +1445,9 @@ const GameCore = {
       for (const s of S.d.sent) {
         const m = String(s.code || '').match(/DUH2\.([A-Z2-9]{10})/);
         if (!m) continue;
+        this.shared(ctx);
         const t = await ctx.env.tradeReclaim(m[1], S.d.pid);
-        if (t && t.spirit && SP[t.spirit.s]) { S.addSpirit(this.unpackSpirit(t.spirit, ctx)); n++; }
+        if (t && t.spirit && this.own(SP, t.spirit.s)) { S.addSpirit(this.unpackSpirit(t.spirit, ctx)); n++; }
       }
       S.d.sent = [];
       S.d.tradeClosed = 1;
@@ -1391,17 +1462,17 @@ const GameCore = {
       this.limit(ctx, 'aucFind', 240, 3600000);
       const f = a.f || {}, n = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       const q = { from: n(a.from, 3000), sort: ['new', 'cheap', 'dear', 'power', 'iv'].includes(f.sort) ? f.sort : 'new', notPid: S.d.pid };
-      const sids = Array.isArray(f.sids) ? f.sids.filter(s => SP[s]).slice(0, 60) : null;
+      const sids = Array.isArray(f.sids) ? f.sids.filter(s => this.own(SP, s)).slice(0, 60) : null;
       if (sids && sids.length) q.sids = sids;
-      if (ELEMENTS[f.el]) q.el = f.el;
-      if (RARITY[f.rar]) q.rar = +f.rar;
+      if (this.own(ELEMENTS, f.el)) q.el = f.el;
+      if (this.own(RARITY, f.rar)) q.rar = +f.rar;
       if (f.cur === 'sparks' || f.cur === 'zlat') q.cur = f.cur;
       if (f.shiny) q.shiny = true;
       q.minIv = n(f.minIv, 100); q.minA = n(f.minA, 15); q.minD = n(f.minD, 15); q.minS = n(f.minS, 15);
       q.minPower = n(f.minPower, 1e6); q.minLvl = n(f.minLvl, 50); q.maxPrice = n(f.maxPrice, 1e9);
       const cap = S.catchLvl();
       if (f.mine) q.maxLvl = cap; // 4.16: «не выше моего уровня» — только духи, которые не урежутся при покупке
-      const rows = (await ctx.env.lotsFind(q)).filter(r => r.spirit && SP[r.spirit.s]);
+      const rows = (await ctx.env.lotsFind(q)).filter(r => r.spirit && this.own(SP, r.spirit.s));
       // 4.16: какой дух станет у покупателя — уровень не выше его уровня Ловчего, сила после урезания
       rows.forEach(r => { const sp = this.unpackSpirit(r.spirit, ctx, null, cap); r.myLvl = sp.lvl; r.myPower = S.power(sp); });
       return { lots: rows, cap };
@@ -1435,6 +1506,7 @@ const GameCore = {
       this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`златник`, ru`златника`, ru`златников`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);
       this.limit(ctx, 'aucSell', A.PER_DAY, 86400000);
       const iv = sp.iv, s = SP[sp.sid];
+      this.shared(ctx);
       const lot = await ctx.env.lotCreate({ seller_pid: S.d.pid, seller_name: S.d.name, spirit: this.packSpirit(sp), sid: sp.sid, el: s.el, rar: s.rar,
         lvl: sp.lvl, power: S.power(sp), iv_pct: S.ivPct(sp), iv_a: iv[0], iv_d: iv[1], iv_s: iv[2], shiny: !!sp.shiny, cur, price, deposit,
         expires_at: new Date(ctx.now + A.HOURS * 3600000).toISOString() });
@@ -1456,6 +1528,7 @@ const GameCore = {
       const cur = pre.cur === 'zlat' ? 'zlat' : 'sparks';
       this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? ru`Не хватает златников` : ru`Не хватает искр`);
       this.limit(ctx, 'aucBuy', 60, 3600000);
+      this.shared(ctx);
       const lot = await ctx.env.lotBuy(id, S.d.pid, S.d.name);
       this.need(lot && lot.price === pre.price && lot.cur === pre.cur, ru`Лот уже купили или сняли с продажи`);
       S.d[cur] -= lot.price;
@@ -1468,6 +1541,7 @@ const GameCore = {
       return { uid: sp.uid, isNew, cur, price: lot.price };
     },
     async auctionCancel(a, ctx) {
+      this.shared(ctx);
       const lot = await ctx.env.lotCancel(String(a.id || ''), S.d.pid);
       this.need(lot, ru`Лот уже продан или снят`);
       S.d.auc = S.d.auc || { got: {}, back: {}, paid: {} };
@@ -1498,13 +1572,18 @@ const GameCore = {
       this.need(!(text === c.last && ctx.now - c.t < 60000), ru`Это сообщение уже отправлено`);
       this.limit(ctx, 'chat', C.PER_DAY, 86400000);
       c.t = ctx.now; c.last = text;
+      this.shared(ctx);
       const m = await ctx.env.chatInsert({ channel: ch, pid: S.d.pid, name: S.d.name, lvl: S.d.level, clan: S.d.clan || null, text });
       return { msg: { id: m.id, pid: m.pid, name: m.name, lvl: m.lvl, clan: m.clan, text: m.text, t: Date.parse(m.created_at), mine: true } };
     },
     async chatReport(a, ctx) {
       const id = Math.floor(+a.id);
       this.need(id > 0, ru`Сообщение не найдено`);
+      // 4.26: жалобы — как и сообщения, с Rules.CHAT.LEVEL уровня и не раньше 3 дней в игре: иначе три свежих Ловчих скрывали бы чужие сообщения
+      const age = +S.d.created > 0 ? ctx.now - S.d.created : Infinity;
+      this.need(S.d.level >= Rules.CHAT.LEVEL && age >= 3 * 86400000, ru`Жаловаться можно с ${Rules.CHAT.LEVEL} уровня и после 3 дней в игре`);
       this.limit(ctx, 'chatReport', 30, 86400000);
+      this.shared(ctx);
       await ctx.env.chatReport(id, S.d.pid);
       return { ok: true };
     },
@@ -1519,7 +1598,7 @@ const GameCore = {
       this.need(s && s.data, ru`Ловчий не найден — возможно, он давно не заходил в игру`);
       const d = s.data, num = (v, max) => U.clamp(Math.floor(+v) || 0, 0, max);
       const b = this.brief(d), st = d.stats || {}, L = d.league || {};
-      const spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
+      const spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && this.own(SP, x.sid)) : [];
       const bud = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
       const buddy = bud ? this.cleanSpirit(bud, 0) : null, best = this.topSpirits(d, 1)[0] || null;
       const pts = League.ratingOf(L); // 4.15: рейтинг (старые звёзды ×100; прошлый сезон — со срезом)
@@ -1546,6 +1625,7 @@ const GameCore = {
       // своя строка отстала от рейтинга (перевод звёзд в рейтинг, брошенные турниры) — поправить и перечитать
       const mine = r.rows.find(x => x.me), had = mine ? mine.pts : r.me ? r.me.pts : null;
       if (a.board !== false && (L.pts > 0 || had != null) && had !== L.pts) {
+        this.shared(ctx);
         await ctx.env.leagueScore({ season, name: S.d.name, pts: L.pts, rank, level: S.d.level, look: S.d.look });
         r = await ctx.env.leagueTop(season, rank);
       }
@@ -1573,6 +1653,7 @@ const GameCore = {
         isNew = true;
       } else { f.name = who.name; f.lvl = who.level; }
       f.linked = true;
+      this.shared(ctx);
       await ctx.env.link(S.d.pid, pid, S.d.name, S.d.level);
       return { name: f.name, isNew };
     },
@@ -1586,12 +1667,15 @@ const GameCore = {
       // облик — только из известных вариантов (он попадает в картинку)
       const look = this.safeLook(d.look);
       if (look) f.look = look;
-      const st = d.stats || {}, spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && SP[x.sid]) : [];
+      const st = d.stats || {}, spirits = Array.isArray(d.spirits) ? d.spirits.filter(x => x && this.own(SP, x.sid)) : [];
       const top = this.topSpirits(d).map(x => ({ ...x, power: S.power(x) }));
       const buddy = d.buddy && spirits.find(x => x.uid === d.buddy.uid);
       const L = d.league || {};
+      // 4.26: когда друг был в игре — не точное время: «сейчас» (меньше 10 минут назад) или с точностью до часа
+      const seenT = s.seen ? Date.parse(s.seen) : NaN, seen = !Number.isFinite(seenT) ? null
+        : ctx.now - seenT < 10 * 60000 ? 'now' : new Date(Math.floor(seenT / 3600000) * 3600000).toISOString();
       return {
-        name: f.name, level: num(d.level, MAX_LEVEL) || 1, look, seen: s.seen || null,
+        name: f.name, level: num(d.level, MAX_LEVEL) || 1, look, seen,
         dex: Object.values(d.dex || {}).filter(x => x && x.caught).length, caught: num(st.caught, 1e7), km: U.clamp(+st.km || 0, 0, 1e5),
         raids: num(st.raids, 1e6), duels: num(st.duels, 1e6), streak: num(d.streak && d.streak.n, 1e5),
         medals: Object.values(d.medals || {}).filter(t => t >= 3).length, rank: num(L.best, LEAGUE_RANKS.length - 1),
@@ -1630,7 +1714,9 @@ const GameCore = {
     friendRemove(a) { S.d.friends = S.d.friends.filter(f => f.id !== a.pid); return { ok: true }; },
     // Кто добавил меня (дружба взаимная) + подарки, которые ждут открытия
     async friendsSync(a, ctx) {
-      for (const f of S.d.friends.filter(x => !x.linked && this.PID.test(x.id))) {
+      const unlinked = S.d.friends.filter(x => !x.linked && this.PID.test(x.id));
+      if (unlinked.length) this.shared(ctx);
+      for (const f of unlinked) {
         try { await ctx.env.link(S.d.pid, f.id, S.d.name, S.d.level); f.linked = true; } catch (e) {}
       }
       const seen = S.d.friendLinks, added = [];
@@ -1659,6 +1745,7 @@ const GameCore = {
       if (lv >= 2 && r() < 0.5) c.charm2 = 2;
       if (lv >= 3 && r() < 0.3) c.charm3 = 1;
       if (r() < 0.12 + lv * 0.03) c.cocoon = 5;
+      this.shared(ctx);
       await ctx.env.giftCreate(S.d.pid, f.id, S.d.name, c);
       f.sent = U.today();
       S.progress('gift', 1);
@@ -1673,11 +1760,12 @@ const GameCore = {
       const f = S.d.friends.find(x => x.id === g.from_pid);
       this.need(f, g.from_name ? ru`Сначала добавь ${g.from_name} в друзья` : ru`Сначала добавь отправителя в друзья`);
       this.need(f.recv !== U.today(), ru`Сегодня ты уже открывал подарок от этого друга — попробуй завтра`);
+      this.shared(ctx);
       this.need(await ctx.env.giftTake(g.id, S.d.pid), ru`Подарок уже открыт`);
       f.recv = U.today();
       const { cocoon, ...items } = g.contents || {};
       const clean = {};
-      for (const [k, n] of Object.entries(items)) if (ITEMS[k] && n > 0 && n <= 10) clean[k] = n | 0;
+      for (const [k, n] of Object.entries(items)) if (this.own(ITEMS, k) && n > 0 && n <= 10) clean[k] = n | 0;
       // 4.16: опыт за открытый подарок — 100 + 50 за каждую ступень дружбы (было 200 + 100: до 600 за подарок)
       const got = S.giveRewards({ ...clean, xp: 100 + (() => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; })() * 50 });
       if (cocoon && S.d.cocoons.length < 9) { S.d.cocoons.push({ id: U.uid(), km: 5, walked: 0, inc: S.incubating() < 3 }); got.push({ k: 'cocoon', n: 1, label: ru`Кокон ${5} км` }); }

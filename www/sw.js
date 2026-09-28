@@ -47,6 +47,8 @@ self.addEventListener('fetch', e => {
   if (sameOrigin && (url.pathname.endsWith('version.json') || url.pathname.endsWith('.apk'))) return;
   // 4.1: все библиотеки и шрифты — свои (vendor/), чужие адреса (Supabase, погода, Overpass) — всегда напрямую из сети
   if (!sameOrigin) return;
+  // 4.26: ответ сервиса входа (auth.html?code=…) не кэшируем — одноразовый код не должен оседать в кэше
+  if (url.pathname.endsWith('/auth.html') || url.searchParams.has('code')) return;
   // карта (tiles/*.pmtiles) читается кусками (Range, ответ 206) — такие ответы кэширует сам браузер, не service worker
   if (url.pathname.includes('/tiles/')) return;
   // 4.8: музыка (audio/*.mp3) тоже читается кусками — её кэширует браузер

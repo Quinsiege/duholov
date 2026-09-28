@@ -118,6 +118,30 @@ const Rules = {
     if (st.until > N.t && calm(N)) st.until = 0;
     return v;
   },
+  // 4.26: перезарядка после дальнего перемещения (как в Pokémon GO): от места последнего действия на карте до нового —
+  // [км, минут]; между строками — плавно, дальше последней — MAX минут. Ближе MIN км — дрожь GPS, не в счёт
+  JUMP: { MIN: 1, MAX: 120, T: [[1, 1], [5, 2], [10, 6], [25, 11], [30, 14], [65, 22], [81, 25], [100, 35], [250, 45], [500, 60], [750, 80], [1000, 100]] },
+  jumpCool(km) {
+    const J = this.JUMP, T = J.T;
+    if (!(km >= J.MIN)) return 0;
+    if (km > T[T.length - 1][0]) return J.MAX;
+    for (let i = 1; i < T.length; i++) if (km <= T[i][0]) { const [a, x] = T[i - 1], [b, y] = T[i]; return x + (y - x) * (km - a) / (b - a); }
+    return T[0][1];
+  },
+  // сколько ещё ждать (мс) в точке b ({ lat, lng }) в момент now после действия в точке a ({ lat, lng, t }): время с тех пор идёт в зачёт
+  jumpWait(a, b, now) {
+    if (!a || !b || !Number.isFinite(+a.t)) return 0;
+    return Math.max(0, +a.t + this.jumpCool(U.dist(a.lat, a.lng, b.lat, b.lng) / 1000) * 60000 - now);
+  },
+  // 4.26: пройденный путь сверяется с тем, где сервер видел Ловчего: точка q ({ lat, lng, t }) не дальше, чем можно пробежать
+  // от позиции ref ({ lat, lng, t, acc }) за время между ними (бег × K), но не меньше MIN м, плюс точность ref (до ACC м).
+  // DAY — сколько метров пути в день идёт в зачёт (коконы, задания, Орден); дальше путь не засчитывается
+  TRACK: { MIN: 200, K: 1.5, ACC: 300, DAY: 60000 },
+  trackNear(q, ref) {
+    if (!ref) return true;
+    const T = this.TRACK, dt = Math.abs(q.t - ref.t) / 1000;
+    return U.dist(ref.lat, ref.lng, q.lat, q.lng) <= Math.max(T.MIN, this.SPEED.MAX * T.K * (Number.isFinite(dt) ? dt : 0)) + U.clamp(+ref.acc || 0, 0, T.ACC);
+  },
   AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
@@ -274,6 +298,63 @@ const Rules = {
       return fast + special;
     });
     return Math.max(0, ...dps) * Math.max(0, t) * 1.3;
+  },
+  /* 4.26: бой в разломе глазами сервера (как Raid.tick/bossStrike): первый удар босса — на FIRST с, дальше не реже раза в GAP с
+     (замах 0,9 с + пауза до 3,6 с), уклон срезает удар до DODGE. Всё — в пользу игрока: каждый удар уклонён, погода боссу
+     не помогает, урон духов — наибольший (как в raidMaxDamage), SLACK — запас сверху, LOSS — доля ран, которую сервер
+     засчитает после победы наверняка */
+  RAID_SIM: { FIRST: 4.1, GAP: 4.5, DODGE: 0.2, SLACK: 1.5, LOSS: 0.5 },
+  // удар босса по духу sp с уклоном, без погоды; bs — Raid.bossStats, bel — стихия босса
+  raidHit(bs, bel, sp) {
+    const n = Math.floor(0.5 * bs.pw * (bs.atk / S.battle(sp).def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
+    return Math.max(1, Math.floor(n * this.RAID_SIM.DODGE));
+  },
+  // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Капищ). Каждый дух живёт
+  // не дольше, чем выдерживает уклонённые удары (здоровье на входе — hp0, { uid: доля }; нет — здоров), и бьёт с наибольшим
+  // уроном; выпитая Живая вода (waters) — полфлакона здоровья тому, кому она выгоднее всего. В совместном бою need — своя доля
+  raidWinnable(team, boss, need, hp0, waters = 0) {
+    if (!team.length) return false;
+    const R = this.RAID_SIM, bs = Raid.bossStats(boss), bel = SP[boss.boss].el;
+    const h0 = sp => hp0 && Number.isFinite(+hp0[sp.uid]) ? U.clamp(+hp0[sp.uid], 0, 1) : 1;
+    const me = team.map(sp => {
+      const max = S.battle(sp).hp * 5, hit = this.raidHit(bs, bel, sp), dps = this.raidMaxDamage([sp], boss, 1) / 1.3;
+      return { max, hit, dps, cap: dps * Math.ceil(Math.max(1, Math.round(max * h0(sp))) / hit) * R.GAP };
+    });
+    const water = Math.max(0, ...me.map(m => m.dps * Math.ceil(m.max / 2 / m.hit) * R.GAP)) * U.clamp(waters | 0, 0, 3);
+    return (me.reduce((a, m) => a + m.cap, 0) + water) * R.SLACK >= need;
+  },
+  // 4.26: сколько здоровья (в единицах разлома: здоровье духа × 5) команда потеряла наверняка, победив: быстрее need / (наибольший
+  // урон в секунду) не победить, а за это время босс ударил не меньше стольких раз — каждый удар не слабее уклонённого
+  raidMinLoss(team, boss, need) {
+    if (!team.length || !(need > 0)) return 0;
+    const R = this.RAID_SIM, bs = Raid.bossStats(boss), bel = SP[boss.boss].el, dps = this.raidMaxDamage(team, boss, 1);
+    const t = Math.min(90, need / Math.max(1e-9, dps)), strikes = t < R.FIRST ? 0 : Math.floor((t - R.FIRST) / R.GAP) + 1;
+    return strikes * Math.min(...team.map(sp => this.raidHit(bs, bel, sp))) * R.LOSS;
+  },
+  // 4.26: то же на Капище и во вторжении (здоровье духа × Duel.HPX): быстрее, чем за duelFoeHp / наибольший урон, соперника не
+  // победить; он бьёт раз в speed…speed+0,25 с игрового времени (первый удар — на 1,5 с, пауза после каждого побеждённого
+  // бойца — 1,2 с); два удара могут уйти в щиты, остальные — не слабее быстрого удара без погоды
+  duelMinLoss(team, foe, speed) {
+    if (!team.length || !foe.length) return 0;
+    const dps = this.duelMaxDamage(team, foe, 1);
+    const t = Math.min(Duel.TIME, this.duelFoeHp(foe) / Math.max(1e-9, dps)) - 1.5 - 1.2 * (foe.length - 1);
+    const acts = Math.max(0, Math.floor(t / ((+speed || 0.85) + 0.25)) - 2);
+    const hit = Math.min(...foe.flatMap(f => team.map(m => {
+      const y = S.battle(f), x = S.battle(m);
+      return Math.floor(0.5 * Duel.FAST * (y.atk / x.def) * 1.2 * Raid.eff(SP[f.sid].el, SP[m.sid].el)) + 1;
+    })));
+    return acts * hit * this.RAID_SIM.LOSS;
+  },
+  // 4.26: нижняя граница ран: list — бойцы { max — здоровье в единицах боя, up — выше этой доли быть не может, rep — доля
+  // по словам телефона }; команда потеряла не меньше loss единиц — недостающие раны снимаются с бойцов по порядку. Доли — после боя
+  woundFloor(list, loss) {
+    const out = list.map(x => U.clamp(Math.min(+x.rep, +x.up), 0, 1) || 0);
+    let left = loss - list.reduce((a, x, i) => a + Math.max(0, x.up - out[i]) * x.max, 0);
+    for (let i = 0; i < list.length && left > 0; i++) {
+      const take = Math.min(out[i] * list[i].max, left);
+      out[i] -= take / list[i].max; left -= take;
+    }
+    return out;
   },
   // Сколько урона команда может нанести в поединке за t секунд
   duelMaxDamage(team, foe, t) {

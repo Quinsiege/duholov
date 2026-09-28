@@ -116,7 +116,8 @@ const Propose = {
       } catch (e) { UI.toast(ru`Не удалось сделать снимок`); }
     };
   },
-  // кадр → JPEG (до 1280 px) с геометкой в EXIF
+  // кадр → JPEG (до 1280 px). 4.26: без геометки в файле — снимок одобренного места виден всем, а где и когда стоял
+  // игрок, модератор видит в самой заявке (координаты, время и место игрока по серверу — 028)
   async capture(video, fix) {
     const k = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
     const c = document.createElement('canvas');
@@ -124,8 +125,7 @@ const Propose = {
     c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
     for (const q of [0.85, 0.72, 0.6]) {
       const b = await new Promise(r => c.toBlob(r, 'image/jpeg', q));
-      const out = new Blob([Exif.embed(await b.arrayBuffer(), { lat: fix.lat, lng: fix.lng, acc: fix.acc, time: fix.t })], { type: 'image/jpeg' });
-      if (out.size < 950000) return out;
+      if (b && b.size < 950000) return b;
     }
     throw new Error('Слишком большой снимок');
   },

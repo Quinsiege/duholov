@@ -1,13 +1,30 @@
 #!/bin/sh
-# Ежедневная копия базы Духолова: сжатый дамп (public, auth, storage) — 14 последних дней.
-# Копия уходит и в S3 (если настроен /root/.duholov-s3, см. README) — на случай потери сервера.
+# Ежедневная копия базы Духолова: сжатый дамп (public, private, auth, storage) — 14 последних дней на сервере.
+# 4.26: копия в S3 (если настроен /root/.duholov-s3, см. README) уходит ЗАШИФРОВАННОЙ (age, открытый ключ владельца
+# /etc/duholov/backup-recipients.txt). Закрытый ключ есть только у владельца (~/.ssh/duholov_backup_ed25519 на его
+# компьютере) — ни на сервере, ни в S3 его нет, поэтому утечка бакета или ключа S3 не раскрывает данные игроков.
+# Файлы хранилища (снимки мест) — отдельным архивом, тоже зашифрованным.
+# Восстановление: age -d -i ~/.ssh/duholov_backup_ed25519 duholov-….dump.age > duholov.dump; pg_restore …
 set -e
-D=/var/backups/duholov; F=$D/duholov-$(date -u +%Y%m%d-%H%M).dump
-docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --schema=public --schema=auth --schema=storage > "$F.part"
+umask 077
+D=/var/backups/duholov; T=$(date -u +%Y%m%d-%H%M); F=$D/duholov-$T.dump
+K=/etc/duholov/backup-recipients.txt
+docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc --schema=public --schema=private --schema=auth --schema=storage > "$F.part"
 mv "$F.part" "$F"; chmod 600 "$F"
 find "$D" -name 'duholov-*.dump' -mtime +14 -delete
+find "$D" -name 'duholov-*.age' -delete
 if [ -f /root/.duholov-s3 ] && command -v aws >/dev/null; then
+  [ -s "$K" ] && command -v age >/dev/null || { echo "backup: нет age или ключа $K — в S3 не отправляю" >&2; exit 1; }
   . /root/.duholov-s3
-  aws --endpoint-url "$S3_ENDPOINT" s3 cp "$F" "s3://$S3_BUCKET/db/$(basename "$F")" --only-show-errors
+  age -R "$K" -o "$F.age" "$F"
+  aws --endpoint-url "$S3_ENDPOINT" s3 cp "$F.age" "s3://$S3_BUCKET/db/$(basename "$F").age" --only-show-errors
+  rm -f "$F.age"
+  # файлы хранилища (снимки мест) — раз в сутки, в 03:xx (cron 03:17)
+  SD=/opt/duholov/volumes/storage
+  if [ "$(date -u +%H)" = "03" ] && [ -d "$SD" ]; then
+    tar -C "$SD" -cz . | age -R "$K" -o "$D/storage-$T.tar.gz.age"
+    aws --endpoint-url "$S3_ENDPOINT" s3 cp "$D/storage-$T.tar.gz.age" "s3://$S3_BUCKET/storage/storage-$T.tar.gz.age" --only-show-errors
+    rm -f "$D/storage-$T.tar.gz.age"
+  fi
 fi
 echo "backup ok: $F ($(du -h "$F" | cut -f1))"

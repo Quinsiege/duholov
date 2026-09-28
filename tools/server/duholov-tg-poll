@@ -25,8 +25,12 @@ def game(obj):  # передать игре; её ответ (reply) — отп�
                                  headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': S})
     try:
         r = json.load(urllib.request.urlopen(req, timeout=30))
-        if isinstance(r, dict) and isinstance(r.get('reply'), dict):
-            call(API + '/sendMessage', r['reply'], timeout=20)
+        rep = r.get('reply') if isinstance(r, dict) else None
+        if isinstance(rep, dict):
+            # 4.26: ответ на нажатие кнопки и правка сообщения с кнопками (вход через бота — подтверждение «Да, это я»)
+            if isinstance(rep.get('answer'), dict): call(API + '/answerCallbackQuery', rep['answer'], timeout=20)
+            if isinstance(rep.get('edit'), dict): call(API + '/editMessageText', rep['edit'], timeout=20)
+            if rep.get('chat_id') and rep.get('text'): call(API + '/sendMessage', rep, timeout=20)
     except Exception as e:
         print('игра:', e, flush=True)
 
@@ -38,7 +42,7 @@ except Exception as e: print('getMe:', e, flush=True)
 offset = 0
 while True:
     try:
-        r = call(f'{API}/getUpdates?timeout=50&offset={offset}&allowed_updates=%5B%22message%22%5D')
+        r = call(f'{API}/getUpdates?timeout=50&offset={offset}&allowed_updates=%5B%22message%22%2C%22callback_query%22%5D')
         for u in r.get('result', []):
             offset = u['update_id'] + 1
             game(u)

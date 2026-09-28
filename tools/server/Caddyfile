@@ -7,6 +7,9 @@
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
+		# 4.26: странице — только геолокация и камера (свои); окна входа (window.open) не теряют связь с игрой
+		Permissions-Policy "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), bluetooth=(), serial=(), browsing-topics=()"
+		Cross-Origin-Opener-Policy same-origin-allow-popups
 		-Server
 	}
 }
@@ -14,6 +17,11 @@
 # API игры: только публичные пути Supabase. Панель Studio наружу не открыта (доступ — через SSH-туннель).
 api.duholov.ru {
 	import security
+	# 4.26: запросы к функции игры — не больше 256 КБ (снимки мест идут в /storage, там свой лимит)
+	@fn path /functions/v1/*
+	request_body @fn {
+		max_size 256KB
+	}
 	@api path /auth/v1/* /rest/v1/* /realtime/v1/* /storage/v1/* /functions/v1/*
 	handle @api {
 		reverse_proxy 127.0.0.1:8000
@@ -81,6 +89,10 @@ test.duholov.ru {
 api-test.duholov.ru {
 	import security
 	header X-Robots-Tag "noindex, nofollow"
+	@fn path /functions/v1/*
+	request_body @fn {
+		max_size 256KB
+	}
 	@api path /auth/v1/* /rest/v1/* /realtime/v1/* /storage/v1/* /functions/v1/*
 	handle @api {
 		reverse_proxy 127.0.0.1:8100

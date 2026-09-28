@@ -97,15 +97,19 @@ jobs:
         run: npm ci --prefix tools/web --no-audit --no-fund && node tools/web/build.mjs
       - name: Метка версии в адресах файлов
         run: sh tools/stamp-version.sh
+      # 4.26: свой ключ и пользователь deploy-test — пишет только в тестовый контур (сайт test.duholov.ru и функцию dt-functions).
+      # Боевой ключ DEPLOY_SSH_KEY проверкам PR не нужен (его держит окружение production у pages.yml); пока секрета
+      # DEPLOY_TEST_SSH_KEY нет — по-старому
       - name: Выкладка на test.duholov.ru
         env:
-          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KEY: ${{ secrets.DEPLOY_TEST_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          U: ${{ secrets.DEPLOY_TEST_SSH_KEY && 'deploy-test' || 'deploy' }}
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
           echo "$SERVER_KEY" > ~/.ssh/known_hosts
           # функция game тестового контура (api-test.duholov.ru) — из этого же PR, потом сайт
-          scp -q server/functions/game/index.ts deploy@$SERVER:/opt/duholov-test/volumes/functions/game/index.ts.new
-          ssh deploy@$SERVER 'mv /opt/duholov-test/volumes/functions/game/index.ts.new /opt/duholov-test/volumes/functions/game/index.ts && sudo -n docker restart dt-functions'
-          rsync -rlptz --delete --exclude='video/' www/ deploy@$SERVER:/srv/www/test/
+          scp -q server/functions/game/index.ts $U@$SERVER:/opt/duholov-test/volumes/functions/game/index.ts.new
+          ssh $U@$SERVER 'mv /opt/duholov-test/volumes/functions/game/index.ts.new /opt/duholov-test/volumes/functions/game/index.ts && sudo -n docker restart dt-functions'
+          rsync -rlptz --delete --exclude='video/' www/ $U@$SERVER:/srv/www/test/
           echo "https://test.duholov.ru/ — сборка ${GITHUB_SHA::7}"
