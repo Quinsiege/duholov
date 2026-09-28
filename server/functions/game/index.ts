@@ -6180,6 +6180,15 @@ const Auth = {
     }
     throw new Error(ru`Такого способа входа нет`);
   },
+  // 4.22.1: подписанный билет «перенести вход» (15 минут): ticket(data) — выдать, ticket(null, str) — проверить и вернуть data
+  async ticket(data, str) {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('relink:' + serviceKey()), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sign = async body => hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body)));
+    if (data) { const body = btoa(unescape(encodeURIComponent(JSON.stringify({ ...data, exp: Date.now() + 15 * 60000 })))); return body + '.' + await sign(body); }
+    const [body, sig] = String(str || '').split('.');
+    if (!body || !sig || !sameKey(sig, await sign(body))) return null;
+    try { const t = JSON.parse(decodeURIComponent(escape(atob(body)))); return t.exp > Date.now() ? t : null; } catch { return null; }
+  },
   async handle(uid, op, a) {
     if (op === 'info') {
       const links = must(await db.from('auth_links').select('provider, name, created_at').eq('user_id', uid)) || [];
@@ -6192,6 +6201,20 @@ const Auth = {
       const { error } = await db.auth.admin.deleteUser(uid);
       if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: ru`Не получилось удалить — попробуй ещё раз` }; }
       return { ok: true };
+    }
+    // 4.22.1: вход был привязан к другому Ловчему, игрок выбрал «привязать сюда» — переносим по билету из signin
+    if (op === 'relink') {
+      const t = await this.ticket(null, a.ticket);
+      if (!t || t.to !== uid) return { ok: false, error: ru`Вход устарел — попробуй ещё раз` };
+      const { data: me } = await db.auth.admin.getUserById(uid);
+      if (me && me.user && !me.user.email) {
+        const { error } = await db.auth.admin.updateUserById(uid, { email: `u${uid.replace(/-/g, '')}@users.duholov.invalid`, email_confirm: true });
+        if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: ru`Не удалось сохранить вход — попробуй ещё раз` }; }
+      }
+      const moved = must(await db.from('auth_links').update({ user_id: uid, name: t.name }).eq('provider', t.p).eq('subject', t.s).eq('user_id', t.from).select('provider')) || [];
+      if (!moved.length) return { ok: false, error: ru`Вход уже изменился — попробуй ещё раз` };
+      console.warn('Вход перенесён:', t.p, t.from, '→', uid);
+      return { ok: true, linked: true, moved: true, name: t.name };
     }
     if (op !== 'signin') return { ok: false, error: ru`Неизвестная операция` };
     const provider = String(a.provider || '');
@@ -6209,7 +6232,10 @@ const Auth = {
       const { data: link, error: le } = await db.auth.admin.generateLink({ type: 'magiclink', email: u.user.email });
       if (le || !link || !link.properties) return { ok: false, error: ru`Не удалось войти — попробуй ещё раз` };
       const s = must(await db.from('saves').select('name:data->name, level:data->level').eq('user_id', row.user_id).maybeSingle());
-      return { ok: true, switch: true, token_hash: link.properties.hashed_token, player: s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null };
+      // 4.22.1: или перенести этот вход к текущему Ловчему — билет на 15 минут; у старого останутся ли другие способы входа
+      const others = (must(await db.from('auth_links').select('provider').eq('user_id', row.user_id)) || []).length - 1 + (/\.invalid$/i.test(u.user.email) ? 0 : 1);
+      return { ok: true, switch: true, token_hash: link.properties.hashed_token, relink: await this.ticket({ p: provider, s: who.sub, from: row.user_id, to: uid, name }),
+        others: Math.max(0, others), player: s ? { name: String(s.name || 'Ловчий').slice(0, 20), level: +s.level || 1 } : null };
     }
     // новый вход — привязываем к текущему игроку; гость становится постоянной учётной записью
     const { data: me } = await db.auth.admin.getUserById(uid);

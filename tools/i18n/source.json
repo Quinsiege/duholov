@@ -5,7 +5,7 @@
    "www/js/album.js:22",
    "www/js/friends.js:308",
    "www/js/loader.js:49",
-   "www/js/login.js:182"
+   "www/js/login.js:205"
   ],
   "ctx": "try { await navigator.share({ files: [file], title: ru`Духолов`, text: ru`Смотри, кого я поймал в Духолове!` }); return; }"
  },
@@ -1367,7 +1367,7 @@
   "at": [
    "www/js/book.js:75",
    "www/js/friends.js:265",
-   "www/js/ui-player.js:236",
+   "www/js/ui-player.js:237",
    "www/js/ui-spirits.js:209"
   ],
   "ctx": "this.h(ru`Спутник`) + this.p(ru`Выбери спутника на карточке духа — он будет идти рядом и приносить эссенцию своего семейства. Амулет Лады делает находки вдвое чаще.`);"
@@ -2146,7 +2146,7 @@
    "www/js/clans.js:111",
    "www/js/path.js:21",
    "www/js/rules.js:78",
-   "www/js/ui-player.js:232"
+   "www/js/ui-player.js:233"
   ],
   "ctx": "const scr = UI.screen(ru`Дружина`, `<div class=\"clan-view\" style=\"--cc:${c.color}\">"
  },
@@ -2315,8 +2315,8 @@
   "at": [
    "www/js/cloud.js:64",
    "www/js/friends.js:129",
-   "www/js/login.js:137",
-   "www/js/login.js:142"
+   "www/js/login.js:160",
+   "www/js/login.js:165"
   ],
   "ctx": "buttons: [{ label: ru`Войти`, cls: 'primary', keep: true, fn: w => {"
  },
@@ -7309,7 +7309,7 @@
   "at": [
    "www/js/duel.js:567",
    "www/js/league-battle.js:435",
-   "www/js/login.js:226",
+   "www/js/login.js:249",
    "www/js/tutorial.js:192"
   ],
   "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`);"
@@ -7574,7 +7574,6 @@
   "k": "Остаться",
   "at": [
    "www/js/encounter.js:489",
-   "www/js/login.js:112",
    "www/js/raid.js:440"
   ],
   "ctx": "UI.confirm(ru`Уйти?`, ru`Если уйти, дух из разлома будет потерян.`, ru`Уйти`, () => this.end('run'), ru`Остаться`);"
@@ -8202,7 +8201,7 @@
   "k": "Достижения",
   "at": [
    "www/js/friends.js:249",
-   "www/js/ui-player.js:236"
+   "www/js/ui-player.js:237"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['ach', ru`Достижения`], ['spirits', ru`Духи`], ['friend', p.me ? ru`Это ты` : ru`Дружба`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</div>"
  },
@@ -8227,7 +8226,7 @@
   "k": "бестиарий",
   "at": [
    "www/js/friends.js:254",
-   "www/js/login.js:223",
+   "www/js/login.js:246",
    "www/js/ui-player.js:242"
   ],
   "ctx": "<div><b>${p.dex}<em>/${SPECIES.length}</em></b><small>${ru`бестиарий`}</small></div>"
@@ -10075,7 +10074,7 @@
   "k": "Этот способ входа пока не подключён",
   "at": [
    "www/js/login.js:51",
-   "server/game/serve.js:233"
+   "server/game/serve.js:256"
   ],
   "ctx": "if (!p) { UI.toast(ru`Этот способ входа пока не подключён`); return; }"
  },
@@ -10089,7 +10088,8 @@
  {
   "k": "Вход устарел — попробуй ещё раз",
   "at": [
-   "www/js/login.js:76"
+   "www/js/login.js:76",
+   "server/game/serve.js:243"
   ],
   "ctx": "if (Date.now() - pend.t > 15 * 60000) { UI.toast(ru`Вход устарел — попробуй ещё раз`); return false; }"
  },
@@ -10139,7 +10139,7 @@
   "k": "Не удалось войти — попробуй ещё раз",
   "at": [
    "www/js/login.js:104",
-   "server/game/serve.js:245"
+   "server/game/serve.js:268"
   ],
   "ctx": "if (error) { UI.toast(ru`Не удалось войти — попробуй ещё раз`); return false; }"
  },
@@ -10158,72 +10158,130 @@
   "ctx": "const who = r.player ? ru`«${U.esc(r.player.name)}» (${r.player.level} ур.)` : ru`другому Ловчему`;"
  },
  {
+  "k": "Привязать вход сюда?",
+  "at": [
+   "www/js/login.js:112"
+  ],
+  "ctx": "title: ru`Привязать вход сюда?`,"
+ },
+ {
+  "k": "Вход через {0} перейдёт к твоему текущему Ловчему, а у {1} его больше не будет.",
+  "at": [
+   "www/js/login.js:113"
+  ],
+  "ctx": "html: `<p>${ru`Вход через ${name} перейдёт к твоему текущему Ловчему, а у ${who} его больше не будет.`}</p><p class=\"small\">${r.others"
+ },
+ {
+  "k": "У того Ловчего есть и другие способы входа — его прогресс останется доступен через них.",
+  "at": [
+   "www/js/login.js:114"
+  ],
+  "ctx": "? ru`У того Ловчего есть и другие способы входа — его прогресс останется доступен через них.`"
+ },
+ {
+  "k": "<b>У того Ловчего не останется других способов входа — его прогресс станет недоступен навсегда.</b>",
+  "at": [
+   "www/js/login.js:115"
+  ],
+  "ctx": ": ru`<b>У того Ловчего не останется других способов входа — его прогресс станет недоступен навсегда.</b>`}</p>`,"
+ },
+ {
+  "k": "Привязать сюда",
+  "at": [
+   "www/js/login.js:116",
+   "www/js/login.js:134"
+  ],
+  "ctx": "buttons: [{ label: ru`Отмена`, fn: () => y(false) }, { label: ru`Привязать сюда`, cls: r.others ? 'primary' : 'danger', fn: () => y(true) }],"
+ },
+ {
+  "k": "Готово: вход через {0} теперь у этого Ловчего",
+  "at": [
+   "www/js/login.js:124"
+  ],
+  "ctx": "UI.toast(ru`Готово: вход через ${name} теперь у этого Ловчего`, 'good');"
+ },
+ {
+  "k": "Не удалось привязать — попробуй ещё раз",
+  "at": [
+   "www/js/login.js:125"
+  ],
+  "ctx": "} catch (e) { UI.toast(U.esc(e.message || ru`Не удалось привязать — попробуй ещё раз`)); }"
+ },
+ {
   "k": "Вход уже привязан",
   "at": [
-   "www/js/login.js:110"
+   "www/js/login.js:129"
   ],
   "ctx": "title: ru`Вход уже привязан`,"
  },
  {
   "k": "Вход через {0} привязан к Ловчему {1}.",
   "at": [
-   "www/js/login.js:111"
+   "www/js/login.js:130"
   ],
-  "ctx": "html: `<p>${ru`Вход через ${name} привязан к Ловчему ${who}.`}</p><p class=\"small\">${this.isGuest() ? ru`Перейти в ту учётную запись? Текущий прогресс на этом устройстве гостевой — он останется в прежней учётной записи, "
+  "ctx": "html: `<p>${ru`Вход через ${name} привязан к Ловчему ${who}.`}</p><p class=\"small\">${this.isGuest()"
  },
  {
-  "k": "Перейти в ту учётную запись? Текущий прогресс на этом устройстве гостевой — он останется в прежней учётной записи, вернуться в неё будет нельзя.",
+  "k": "Можно перейти в ту учётную запись — тогда текущий гостевой прогресс на этом устройстве останется в прежней учётной записи, вернуться в неё будет нельзя. Или привязать этот вход к текущему Ловчему.",
   "at": [
-   "www/js/login.js:111"
+   "www/js/login.js:131"
   ],
-  "ctx": "html: `<p>${ru`Вход через ${name} привязан к Ловчему ${who}.`}</p><p class=\"small\">${this.isGuest() ? ru`Перейти в ту учётную запись? Текущий прогресс на этом устройстве гостевой — он останется в прежней учётной записи, "
+  "ctx": "? ru`Можно перейти в ту учётную запись — тогда текущий гостевой прогресс на этом устройстве останется в прежней учётной записи, вернуться в неё будет нельзя. Или привязать этот вход к текущему Ловчему.`"
  },
  {
-  "k": "Перейти в ту учётную запись? Текущий прогресс на этом устройстве останется в своей учётной записи.",
+  "k": "Можно перейти в ту учётную запись — текущий прогресс останется в своей. Или привязать этот вход к текущему Ловчему.",
   "at": [
-   "www/js/login.js:111"
+   "www/js/login.js:132"
   ],
-  "ctx": "html: `<p>${ru`Вход через ${name} привязан к Ловчему ${who}.`}</p><p class=\"small\">${this.isGuest() ? ru`Перейти в ту учётную запись? Текущий прогресс на этом устройстве гостевой — он останется в прежней учётной записи, "
+  "ctx": ": ru`Можно перейти в ту учётную запись — текущий прогресс останется в своей. Или привязать этот вход к текущему Ловчему.`}</p>`,"
  },
  {
-  "k": "Перейти",
+  "k": "ту запись",
   "at": [
-   "www/js/login.js:112"
+   "www/js/login.js:135"
   ],
-  "ctx": "buttons: [{ label: ru`Остаться`, fn: () => res(false) }, { label: ru`Перейти`, cls: 'primary', fn: async () => res(await go()) }],"
+  "ctx": "{ label: ru`Перейти в ${r.player ? U.esc(r.player.name) : ru`ту запись`}`, cls: 'primary', fn: async () => res(await go()) }],"
+ },
+ {
+  "k": "Перейти в {0}",
+  "at": [
+   "www/js/login.js:135",
+   "www/js/realms.js:211"
+  ],
+  "ctx": "{ label: ru`Перейти в ${r.player ? U.esc(r.player.name) : ru`ту запись`}`, cls: 'primary', fn: async () => res(await go()) }],"
  },
  {
   "k": "Гость",
   "at": [
-   "www/js/login.js:125"
+   "www/js/login.js:148"
   ],
   "ctx": ": `<span class=\"acc-tag guest\">${ru`Гость`}</span>`;"
  },
  {
   "k": "Вход по почте",
   "at": [
-   "www/js/login.js:131"
+   "www/js/login.js:154"
   ],
   "ctx": "html: `<div class=\"mail-head\"><span class=\"mail-ic\">${UI.I.key}</span><b>${ru`Вход по почте`}</b><small>${ru`Для учётных записей, выданных Орденом`}</small>${S.d && this.isGuest() ? `<small class=\"mail-note\">${ru`Гостево"
  },
  {
   "k": "Для учётных записей, выданных Орденом",
   "at": [
-   "www/js/login.js:131"
+   "www/js/login.js:154"
   ],
   "ctx": "html: `<div class=\"mail-head\"><span class=\"mail-ic\">${UI.I.key}</span><b>${ru`Вход по почте`}</b><small>${ru`Для учётных записей, выданных Орденом`}</small>${S.d && this.isGuest() ? `<small class=\"mail-note\">${ru`Гостево"
  },
  {
   "k": "Гостевой прогресс на этом устройстве сменится прогрессом этой учётной записи",
   "at": [
-   "www/js/login.js:131"
+   "www/js/login.js:154"
   ],
   "ctx": "html: `<div class=\"mail-head\"><span class=\"mail-ic\">${UI.I.key}</span><b>${ru`Вход по почте`}</b><small>${ru`Для учётных записей, выданных Орденом`}</small>${S.d && this.isGuest() ? `<small class=\"mail-note\">${ru`Гостево"
  },
  {
   "k": "Почта",
   "at": [
-   "www/js/login.js:133",
+   "www/js/login.js:156",
    "www/js/ui-player.js:518"
   ],
   "ctx": "<label class=\"fld\"><span class=\"fld-ic\">${UI.I.mail}</span><input name=\"email\" type=\"email\" inputmode=\"email\" autocomplete=\"username\" placeholder=\"${ru`Почта`}\" required></label>"
@@ -10231,108 +10289,108 @@
  {
   "k": "Пароль",
   "at": [
-   "www/js/login.js:134"
+   "www/js/login.js:157"
   ],
   "ctx": "<label class=\"fld\"><span class=\"fld-ic\">${UI.I.lock}</span><input name=\"password\" type=\"password\" autocomplete=\"current-password\" placeholder=\"${ru`Пароль`}\" required>"
  },
  {
   "k": "Показать пароль",
   "at": [
-   "www/js/login.js:135",
-   "www/js/login.js:149"
+   "www/js/login.js:158",
+   "www/js/login.js:172"
   ],
   "ctx": "<button type=\"button\" class=\"fld-eye\" aria-label=\"${ru`Показать пароль`}\">${UI.I.eye}</button></label>"
  },
  {
   "k": "Скрыть пароль",
   "at": [
-   "www/js/login.js:149"
+   "www/js/login.js:172"
   ],
   "ctx": "eye.setAttribute('aria-label', show ? ru`Скрыть пароль` : ru`Показать пароль`);"
  },
  {
   "k": "Проверь почту",
   "at": [
-   "www/js/login.js:155"
+   "www/js/login.js:178"
   ],
   "ctx": "if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { fail(ru`Проверь почту`); f.email.focus(); return; }"
  },
  {
   "k": "Введи пароль",
   "at": [
-   "www/js/login.js:156"
+   "www/js/login.js:179"
   ],
   "ctx": "if (!password) { fail(ru`Введи пароль`); f.password.focus(); return; }"
  },
  {
   "k": "Вхожу…",
   "at": [
-   "www/js/login.js:157"
+   "www/js/login.js:180"
   ],
   "ctx": "go.disabled = true; go.textContent = ru`Вхожу…`; err.textContent = '';"
  },
  {
   "k": "Слишком много попыток — подожди минуту",
   "at": [
-   "www/js/login.js:161",
-   "server/game/serve.js:687"
+   "www/js/login.js:184",
+   "server/game/serve.js:713"
   ],
   "ctx": "if (error) { fail(/rate|many/i.test(error.message) ? ru`Слишком много попыток — подожди минуту` : ru`Неверная почта или пароль`); return; }"
  },
  {
   "k": "Неверная почта или пароль",
   "at": [
-   "www/js/login.js:161"
+   "www/js/login.js:184"
   ],
   "ctx": "if (error) { fail(/rate|many/i.test(error.message) ? ru`Слишком много попыток — подожди минуту` : ru`Неверная почта или пароль`); return; }"
  },
  {
   "k": "Готово!",
   "at": [
-   "www/js/login.js:162"
+   "www/js/login.js:185"
   ],
   "ctx": "go.textContent = ru`Готово!`;"
  },
  {
   "k": "Нет связи с сервером — попробуй ещё раз",
   "at": [
-   "www/js/login.js:164"
+   "www/js/login.js:187"
   ],
   "ctx": "} catch (x) { fail(ru`Нет связи с сервером — попробуй ещё раз`); }"
  },
  {
   "k": "скачать",
   "at": [
-   "www/js/login.js:171"
+   "www/js/login.js:194"
   ],
   "ctx": "${this.appTooOld() ? `<p class=\"small onb-note\">${ru`Вход через Яндекс и Telegram — в новой версии приложения: ${'<a href=\"' + Updater.apkUrl() + '\">' + ru`скачать` + '</a>'}.`}</p>` : ''}"
  },
  {
   "k": "Вход через Яндекс и Telegram — в новой версии приложения: {0}.",
   "at": [
-   "www/js/login.js:171"
+   "www/js/login.js:194"
   ],
   "ctx": "${this.appTooOld() ? `<p class=\"small onb-note\">${ru`Вход через Яндекс и Telegram — в новой версии приложения: ${'<a href=\"' + Updater.apkUrl() + '\">' + ru`скачать` + '</a>'}.`}</p>` : ''}"
  },
  {
   "k": "или",
   "at": [
-   "www/js/login.js:172",
-   "www/js/login.js:268"
+   "www/js/login.js:195",
+   "www/js/login.js:291"
   ],
   "ctx": "<div class=\"auth-or\"><span>${ru`или`}</span></div>"
  },
  {
   "k": "Почта и пароль",
   "at": [
-   "www/js/login.js:173"
+   "www/js/login.js:196"
   ],
   "ctx": "<div class=\"auth-foot\"><button class=\"btn mail-login\"><span class=\"ml-ic\">${UI.I.key}</span><span class=\"ml-t\">${ru`Почта и пароль`}</span><span class=\"ml-chev\">›</span></button>${extra}</div></div>`;"
  },
  {
   "k": "Закрыть",
   "at": [
-   "www/js/login.js:201",
+   "www/js/login.js:224",
    "www/js/realms.js:196",
    "www/js/shop.js:108",
    "www/js/ui-player.js:291"
@@ -10342,7 +10400,7 @@
  {
   "k": "Возрастная категория",
   "at": [
-   "www/js/login.js:217",
+   "www/js/login.js:240",
    "www/js/ui.js:921"
   ],
   "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
@@ -10350,14 +10408,14 @@
  {
   "k": "С возвращением, Ловчий!",
   "at": [
-   "www/js/login.js:217"
+   "www/js/login.js:240"
   ],
   "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
  },
  {
   "k": "{0} уровень",
   "at": [
-   "www/js/login.js:221",
+   "www/js/login.js:244",
    "www/js/path.js:74"
   ],
   "ctx": "<div class=\"hero-main\"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${ru`${d.level} уровень`}</small><div class=\"acc-tags\">${this.accountTags()}</div></div>"
@@ -10365,7 +10423,7 @@
  {
   "k": "Выйти из учётной записи",
   "at": [
-   "www/js/login.js:222",
+   "www/js/login.js:245",
    "www/js/ui-player.js:521"
   ],
   "ctx": "${Game.on() ? `<button class=\"hero-exit\" aria-label=\"${ru`Выйти из учётной записи`}\">${UI.I.logout}</button>` : ''}"
@@ -10373,7 +10431,7 @@
  {
   "k": "духов",
   "at": [
-   "www/js/login.js:223",
+   "www/js/login.js:246",
    "www/js/ui-spirits.js:36"
   ],
   "ctx": "<div class=\"hero-stats\"><div><b>${U.fmtNum(d.spirits.length)}</b><span>${ru`духов`}</span></div><div><b>${dex}<small>/${SPECIES.length}</small></b><span>${ru`бестиарий`}</span></div>",
@@ -10386,108 +10444,108 @@
  {
   "k": "поймано",
   "at": [
-   "www/js/login.js:224"
+   "www/js/login.js:247"
   ],
   "ctx": "<div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>${ru`поймано`}</span></div></div>"
  },
  {
   "k": "Сохрани прогресс",
   "at": [
-   "www/js/login.js:227",
-   "www/js/login.js:233"
+   "www/js/login.js:250",
+   "www/js/login.js:256"
   ],
   "ctx": "${!Game.on() ? '' : guest ? UI.glass(ru`Сохрани прогресс`, 'lg-save', UI.I.cloud) : UI.glass(ru`Другой аккаунт`, 'lg-more', UI.I.swap)}"
  },
  {
   "k": "Другой аккаунт",
   "at": [
-   "www/js/login.js:227",
-   "www/js/login.js:235"
+   "www/js/login.js:250",
+   "www/js/login.js:258"
   ],
   "ctx": "${!Game.on() ? '' : guest ? UI.glass(ru`Сохрани прогресс`, 'lg-save', UI.I.cloud) : UI.glass(ru`Другой аккаунт`, 'lg-more', UI.I.swap)}"
  },
  {
   "k": "Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс",
   "at": [
-   "www/js/login.js:228"
+   "www/js/login.js:251"
   ],
   "ctx": "${guest && Game.on() ? `<p class=\"lg-legal\">${ru`Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс`}</p>` : ''}"
  },
  {
   "k": "Привяжи вход — и прогресс откроется на любом устройстве",
   "at": [
-   "www/js/login.js:233"
+   "www/js/login.js:256"
   ],
   "ctx": "if (save) save.onclick = () => this.sheet(root, `<b>${ru`Сохрани прогресс`}</b><small>${ru`Привяжи вход — и прогресс откроется на любом устройстве`}</small>`, this.buttons('link'));"
  },
  {
   "k": "Текущий прогресс останется в своей учётной записи",
   "at": [
-   "www/js/login.js:235"
+   "www/js/login.js:258"
   ],
   "ctx": "if (more) more.onclick = () => this.sheet(root, `<b>${ru`Другой аккаунт`}</b><small>${ru`Текущий прогресс останется в своей учётной записи`}</small>`,"
  },
  {
   "k": "вход",
   "at": [
-   "www/js/login.js:256"
+   "www/js/login.js:279"
   ],
   "ctx": "Loader.show(ru`Открываю ${this.NAMES[provider] || ru`вход`}…`); Loader.set(30);"
  },
  {
   "k": "Открываю {0}…",
   "at": [
-   "www/js/login.js:256"
+   "www/js/login.js:279"
   ],
   "ctx": "Loader.show(ru`Открываю ${this.NAMES[provider] || ru`вход`}…`); Loader.set(30);"
  },
  {
   "k": "Выйти?",
   "at": [
-   "www/js/login.js:264"
+   "www/js/login.js:287"
   ],
   "ctx": "UI.confirm(ru`Выйти?`, ru`Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.`, ru`Выйти`, () => this.signOut());"
  },
  {
   "k": "Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.",
   "at": [
-   "www/js/login.js:264"
+   "www/js/login.js:287"
   ],
   "ctx": "UI.confirm(ru`Выйти?`, ru`Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.`, ru`Выйти`, () => this.signOut());"
  },
  {
   "k": "Выйти",
   "at": [
-   "www/js/login.js:264",
-   "www/js/login.js:269"
+   "www/js/login.js:287",
+   "www/js/login.js:292"
   ],
   "ctx": "UI.confirm(ru`Выйти?`, ru`Прогресс останется в учётной записи — вернуться в неё можно тем же входом. На этом устройстве начнётся новая гостевая игра.`, ru`Выйти`, () => this.signOut());"
  },
  {
   "k": "Выйти из гостевой игры?",
   "at": [
-   "www/js/login.js:268"
+   "www/js/login.js:291"
   ],
   "ctx": "UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`и"
  },
  {
   "k": "<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.",
   "at": [
-   "www/js/login.js:268"
+   "www/js/login.js:291"
   ],
   "ctx": "UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`и"
  },
  {
   "k": "Чтобы сохранить его, сначала привяжи вход через {0}.",
   "at": [
-   "www/js/login.js:268"
+   "www/js/login.js:291"
   ],
   "ctx": "UI.confirm(ru`Выйти из гостевой игры?`, ru`<b>Прогресс гостя пропадёт навсегда</b> — у гостя нет входа, чтобы вернуться.` + (names.length ? ' ' + ru`Чтобы сохранить его, сначала привяжи вход через ${names.join(' ' + ru`и"
  },
  {
   "k": "Выхожу…",
   "at": [
-   "www/js/login.js:273"
+   "www/js/login.js:296"
   ],
   "ctx": "Loader.show(ru`Выхожу…`); Loader.set(40);"
  },
@@ -12272,13 +12330,6 @@
  },
  {
   "k": "Остаться здесь",
-  "at": [
-   "www/js/realms.js:211"
-  ],
-  "ctx": "foot.innerHTML = UI.rune(same ? ru`Остаться здесь` : ru`Перейти в ${U.esc(r.name)}`, 'rl-go') +"
- },
- {
-  "k": "Перейти в {0}",
   "at": [
    "www/js/realms.js:211"
   ],
@@ -14091,9 +14142,16 @@
   "ctx": "<div class=\"det-tags\">${d.clan ? `<span class=\"tag-crest\" style=\"color:${cc}\"><i>${Art.clanCrest(d.clan)}</i>${CLANS[d.clan].short}</span>` : ''}<span>${ru`в Ордене ${days} ${U.plural(days, ru`день`, ru`дня`, ru`дней`)}`"
  },
  {
+  "k": "Привяжи вход — прогресс откроется на любом устройстве:",
+  "at": [
+   "www/js/ui-player.js:229"
+  ],
+  "ctx": "${Game.on() && Login.isGuest() && Login.available().length ? `<div class=\"prof-acc guest\"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class=\"login-row\">${Login.buttons('link')}</div><"
+ },
+ {
   "k": "Гардероб",
   "at": [
-   "www/js/ui-player.js:230",
+   "www/js/ui-player.js:231",
    "www/js/ui-player.js:305"
   ],
   "ctx": "<button class=\"btn ghost small look-btn\">${this.I.edit} ${ru`Гардероб`}</button>"
@@ -14101,7 +14159,7 @@
  {
   "k": "Дневник",
   "at": [
-   "www/js/ui-player.js:231",
+   "www/js/ui-player.js:232",
    "www/js/ui.js:633"
   ],
   "ctx": "<button class=\"btn ghost small journal-btn\">${this.I.journal} ${ru`Дневник`}</button>"
@@ -14109,30 +14167,23 @@
  {
   "k": "Дружина откроется на {0} уровне",
   "at": [
-   "www/js/ui-player.js:234"
+   "www/js/ui-player.js:235"
   ],
   "ctx": ": `<button class=\"btn ghost small disabled\" data-err=\"${ru`Дружина откроется на ${CLAN_LEVEL} уровне`}\">${this.I.shield} ${ru`Дружина`}</button>`}"
  },
  {
   "k": "Знаки",
   "at": [
-   "www/js/ui-player.js:236"
+   "www/js/ui-player.js:237"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['ach', ru`Достижения`], ['buddy', ru`Спутник`], ['medals', ru`Знаки`], ['album', ru`Альбом`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</d"
  },
  {
   "k": "Альбом",
   "at": [
-   "www/js/ui-player.js:236"
+   "www/js/ui-player.js:237"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['ach', ru`Достижения`], ['buddy', ru`Спутник`], ['medals', ru`Знаки`], ['album', ru`Альбом`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</d"
- },
- {
-  "k": "Привяжи вход — прогресс откроется на любом устройстве:",
-  "at": [
-   "www/js/ui-player.js:239"
-  ],
-  "ctx": "${Game.on() && Login.isGuest() && Login.available().length ? `<div class=\"prof-acc guest\"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class=\"login-row\">${Login.buttons('link')}</div><"
  },
  {
   "k": "Находок",
@@ -18529,7 +18580,7 @@
   "k": "Неизвестная операция",
   "at": [
    "server/game/serve.js:69",
-   "server/game/serve.js:231"
+   "server/game/serve.js:254"
   ],
   "ctx": "return { ok: false, error: ru`Неизвестная операция` };"
  },
@@ -18615,128 +18666,136 @@
  {
   "k": "Нужно подтверждение",
   "at": [
-   "server/game/serve.js:226"
+   "server/game/serve.js:235"
   ],
   "ctx": "if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: ru`Нужно подтверждение` };"
  },
  {
   "k": "Не получилось удалить — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:228"
+   "server/game/serve.js:237"
   ],
   "ctx": "if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: ru`Не получилось удалить — попробуй ещё раз` }; }"
  },
  {
+  "k": "Не удалось сохранить вход — попробуй ещё раз",
+  "at": [
+   "server/game/serve.js:247",
+   "server/game/serve.js:279"
+  ],
+  "ctx": "if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: ru`Не удалось сохранить вход — попробуй ещё раз` }; }"
+ },
+ {
+  "k": "Вход уже изменился — попробуй ещё раз",
+  "at": [
+   "server/game/serve.js:250"
+  ],
+  "ctx": "if (!moved.length) return { ok: false, error: ru`Вход уже изменился — попробуй ещё раз` };"
+ },
+ {
   "k": "Не удалось войти: {0}",
   "at": [
-   "server/game/serve.js:236"
+   "server/game/serve.js:259"
   ],
   "ctx": "catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: ru`Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }"
  },
  {
   "k": "Учётная запись не найдена",
   "at": [
-   "server/game/serve.js:243"
+   "server/game/serve.js:266"
   ],
   "ctx": "if (error || !u || !u.user || !u.user.email) return { ok: false, error: ru`Учётная запись не найдена` };"
  },
  {
-  "k": "Не удалось сохранить вход — попробуй ещё раз",
-  "at": [
-   "server/game/serve.js:253"
-  ],
-  "ctx": "if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: ru`Не удалось сохранить вход — попробуй ещё раз` }; }"
- },
- {
   "k": "Этот вход уже привязан — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:256"
+   "server/game/serve.js:282"
   ],
   "ctx": "if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? ru`Этот вход уже привязан — попробуй ещё раз` : ru`Не удалось сохранить вход` };"
  },
  {
   "k": "Не удалось сохранить вход",
   "at": [
-   "server/game/serve.js:256"
+   "server/game/serve.js:282"
   ],
   "ctx": "if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? ru`Этот вход уже привязан — попробуй ещё раз` : ru`Не удалось сохранить вход` };"
  },
  {
   "k": "Предыдущее действие ещё выполняется — повтори",
   "at": [
-   "server/game/serve.js:622"
+   "server/game/serve.js:648"
   ],
   "ctx": "if (!got || got.locked) return R({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });"
  },
  {
   "k": "Прогресс перенесён на другое устройство",
   "at": [
-   "server/game/serve.js:625"
+   "server/game/serve.js:651"
   ],
   "ctx": "if (row && row.moved_to) return R({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });"
  },
  {
   "k": "Прогресс изменился на другом устройстве — повтори действие",
   "at": [
-   "server/game/serve.js:638"
+   "server/game/serve.js:664"
   ],
   "ctx": "if (rev == null) return R({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });"
  },
  {
   "k": "Ошибка сервера — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:646",
-   "server/game/serve.js:698"
+   "server/game/serve.js:672",
+   "server/game/serve.js:724"
   ],
   "ctx": "return R({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500);"
  },
  {
   "k": "Этот сервер игры не принимает запросы с этой страницы",
   "at": [
-   "server/game/serve.js:663"
+   "server/game/serve.js:689"
   ],
   "ctx": "if (!allowed) return reply({ ok: false, error: ru`Этот сервер игры не принимает запросы с этой страницы` }, 403);"
  },
  {
   "k": "Закрытый контур: нужен ключ доступа",
   "at": [
-   "server/game/serve.js:683"
+   "server/game/serve.js:709"
   ],
   "ctx": "if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: ru`Закрытый контур: нужен ключ доступа` }, 403);"
  },
  {
   "k": "Нужен вход в игру",
   "at": [
-   "server/game/serve.js:690"
+   "server/game/serve.js:716"
   ],
   "ctx": "if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: ru`Нужен вход в игру`, auth: true }, 401); }"
  },
  {
   "k": "Некорректный запрос",
   "at": [
-   "server/game/serve.js:693"
+   "server/game/serve.js:719"
   ],
   "ctx": "try { body = await req.json(); } catch { return reply({ ok: false, error: ru`Некорректный запрос` }, 400); }"
  },
  {
   "k": "Слишком много запросов — подожди минуту",
   "at": [
-   "server/game/serve.js:696",
-   "server/game/serve.js:700"
+   "server/game/serve.js:722",
+   "server/game/serve.js:726"
   ],
   "ctx": "if (tooMany(pvpHits, uid, PVP_FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);"
  },
  {
   "k": "Вышла новая версия игры — обнови её",
   "at": [
-   "server/game/serve.js:701"
+   "server/game/serve.js:727"
   ],
   "ctx": "if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: ru`Вышла новая версия игры — обнови её` });"
  },
  {
   "k": "Ошибка входа — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:705"
+   "server/game/serve.js:731"
   ],
   "ctx": "if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 50"
  },

@@ -4299,3 +4299,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .dt-hero { max-height: none; grid-template-columns: min(calc(30dvh - 40px), 40vw) minmax(0, 1fr); }
 .det2 .det-art { max-width: 40vw; }
 .det2 .det-power { flex-wrap: wrap; column-gap: 6px; row-gap: 2px; }
+/* 4.22.1: окно с тремя вариантами (вход уже привязан) — кнопки столбиком, главная сверху */
+.modal.btns-col .modal-btns { flex-direction: column-reverse; align-items: stretch; }
+.modal.btns-col .modal-btns .btn { width: 100%; margin: 0; }
