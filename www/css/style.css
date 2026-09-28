@@ -4293,3 +4293,9 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .pl-row .row-main small { color: var(--muted); font-size: 12px; }
 .pl-rc { flex: none; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--au-line); color: #fde68a; font-weight: 700; font-size: 13px; text-decoration: none; }
 .pl-wait { flex: none; font-size: 12px; color: var(--muted); }
+/* 4.22.1: верх экранов духа, Лавки, Лиги и профиля — по высоте содержимого. В браузере телефона (видно ≈690 px)
+   правая колонка не влезала в «30% высоты» и вылезала вверх и вниз (обрезанные строки, «Гость» на кнопках);
+   арт — не шире 40% ширины, чтобы справа хватало места; «ЗЛАТНИКИ ··· 140» переносится, если не влезает в строку */
+.dt-hero { max-height: none; grid-template-columns: min(calc(30dvh - 40px), 40vw) minmax(0, 1fr); }
+.det2 .det-art { max-width: 40vw; }
+.det2 .det-power { flex-wrap: wrap; column-gap: 6px; row-gap: 2px; }

@@ -226,6 +226,7 @@ Object.assign(UI, {
             ${Game.on() ? `<div class="acc-tags">${Login.accountTags()}</div>` : ''}
           </div>
         </div>
+        ${Game.on() && Login.isGuest() && Login.available().length ? `<div class="prof-acc guest"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class="login-row">${Login.buttons('link')}</div></div>` : ''} <!-- 4.22.1: привязка входа — над «Гардероб · Дневник · Дружина» -->
         <div class="pf-acts">
           <button class="btn ghost small look-btn">${this.I.edit} ${ru`Гардероб`}</button>
           <button class="btn ghost small journal-btn">${this.I.journal} ${ru`Дневник`}</button>
@@ -236,7 +237,6 @@ Object.assign(UI, {
         <div class="seg dt-tabs">${[['ach', ru`Достижения`], ['buddy', ru`Спутник`], ['medals', ru`Знаки`], ['album', ru`Альбом`]].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
         <div class="dt-panel">
           ${pane('ach', `
-            ${Game.on() && Login.isGuest() && Login.available().length ? `<div class="prof-acc guest"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class="login-row">${Login.buttons('link')}</div></div>` : ''}
             <div class="pf-key">
               <div><b>${U.fmtNum(d.stats.caught)}</b><small>${ru`поймано духов`}</small></div>
               <div><b>${caught}<em>/${SPECIES.length}</em></b><small>${ru`бестиарий`}</small></div>
