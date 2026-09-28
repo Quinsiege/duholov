@@ -59,8 +59,10 @@ class MainActivity : ComponentActivity() {
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
         // 3: вход через Яндекс, VK и Telegram — внутри приложения, чтобы сервис вернул игрока прямо в игру
         // (Google во встроенные окна не пускает — эту кнопку игра в приложении не показывает)
-        private fun isAuthHost(host: String?) = host != null && (host == "oauth.yandex.ru" || host.endsWith(".yandex.ru") || host.endsWith(".yandex.com") ||
-            host == "id.vk.com" || host == "vk.com" || host.endsWith(".vk.com") || host == "oauth.telegram.org")
+        // 9: только страницы входа (раньше — любые *.yandex.ru и *.vk.com, то есть и чужой контент без адресной строки)
+        private val AUTH_HOSTS = setOf("oauth.yandex.ru", "oauth.yandex.com", "passport.yandex.ru", "passport.yandex.com", "sso.passport.yandex.ru",
+            "sso.yandex.ru", "sso.yandex.com", "id.vk.com", "oauth.vk.com", "login.vk.com", "vk.com", "m.vk.com", "oauth.telegram.org")
+        private fun isAuthHost(host: String?) = host != null && host in AUTH_HOSTS
         // 6: оплата ЮKassa — внутри приложения: после оплаты ЮKassa возвращает на duholov.ru прямо в игру (раньше — в браузер,
         // где мог быть открыт другой аккаунт). Пока идёт оплата, страницы банка (3-D Secure) — тоже внутри
         private fun isPayHost(host: String?) = host != null && (host == "yoomoney.ru" || host.endsWith(".yoomoney.ru") ||
@@ -169,8 +171,13 @@ class MainActivity : ComponentActivity() {
             intent.addCategory(Intent.CATEGORY_BROWSABLE)
             intent.component = null
             intent.selector = null
+            // 9: ссылка не выдаёт приложению банка доступ к нашим файлам
+            intent.flags = intent.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION).inv()
             try { startActivity(intent) } catch (e: ActivityNotFoundException) {
-                intent.getStringExtra("browser_fallback_url")?.let { web.loadUrl(it) }
+                // 9: запасная страница — только https и только во внешнем браузере (раньше открывалась в приложении —
+                // так любая страница внутри могла выполнить javascript: или открыть чужой сайт без адресной строки)
+                intent.getStringExtra("browser_fallback_url")?.let { Uri.parse(it) }?.takeIf { it.scheme == "https" }?.let { openExternal(it) }
             }
         } else openExternal(uri)
     }
@@ -199,6 +206,10 @@ class MainActivity : ComponentActivity() {
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
             setGeolocationEnabled(true)
+            // 9: явно — без доступа к файлам телефона и без http на https-страницах
+            allowFileAccess = false
+            allowContentAccess = false
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
             // канал распространения: у приложения из магазина игра не предлагает скачивать APK (обновления — через магазин)
             userAgentString = "$userAgentString DuholovApp/$WRAPPER_VERSION" + (if (BuildConfig.STORE != "site") " (store=${BuildConfig.STORE})" else "")
         }
