@@ -1774,7 +1774,6 @@ I18N.dict = {
 "возврат":"iade",
 "Чек":"Fiş",
 "чек готовится":"fiş hazırlanıyor",
-"Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.":"Fiş, Rus vergi servisinin («Moy Nalog») elektronik fişidir: ödemeden birkaç dakika sonra görünür.",
 "Покупок пока нет":"Henüz satın alma yok",
 "Оплата ещё не завершена — если ты оплатил, проверь через минуту":"Ödeme henüz tamamlanmadı — ödediysen bir dakika sonra kontrol et",
 "Оплаченных наборов не найдено":"Ödenmiş paket bulunamadı",

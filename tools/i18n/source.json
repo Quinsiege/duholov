@@ -12977,13 +12977,6 @@
   "ctx": "${x.receipt ? `<a class=\"pl-rc\" href=\"${U.esc(x.receipt)}\" target=\"_blank\" rel=\"noopener\">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class=\"pl-wait\">${ru`чек готовится`}</span>`}</div>`;"
  },
  {
-  "k": "Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.",
-  "at": [
-   "www/js/shop.js:106"
-  ],
-  "ctx": "html: list.length ? `<div class=\"pl-rows\">${list.map(row).join('')}</div><p class=\"pay-note\">${ru`Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.`}</p>`"
- },
- {
   "k": "Покупок пока нет",
   "at": [
    "www/js/shop.js:107"

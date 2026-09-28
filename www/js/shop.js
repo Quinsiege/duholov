@@ -103,7 +103,7 @@ const Treasury = {
       <div class="row-main"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`} · ${U.fmtNum(x.rub)} ₽</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>
       ${x.receipt ? `<a class="pl-rc" href="${U.esc(x.receipt)}" target="_blank" rel="noopener">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class="pl-wait">${ru`чек готовится`}</span>`}</div>`;
     UI.modal({ title: ru`Мои покупки и чеки`, cls: 'pay-modal pay-list',
-      html: list.length ? `<div class="pl-rows">${list.map(row).join('')}</div><p class="pay-note">${ru`Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.`}</p>`
+      html: list.length ? `<div class="pl-rows">${list.map(row).join('')}</div>`
         : `<p class="pay-note">${ru`Покупок пока нет`}</p>`,
       buttons: [{ label: ru`Закрыть` }] });
   },

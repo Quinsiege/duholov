@@ -1774,7 +1774,6 @@ I18N.dict = {
 "возврат":"refund",
 "Чек":"Receipt",
 "чек готовится":"receipt pending",
-"Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.":"The receipt is an electronic receipt from the Russian tax service (“Moy Nalog”): it appears a couple of minutes after payment.",
 "Покупок пока нет":"No purchases yet",
 "Оплата ещё не завершена — если ты оплатил, проверь через минуту":"Payment isn't complete yet — if you've paid, check again in a minute",
 "Оплаченных наборов не найдено":"No paid packs found",

@@ -1774,7 +1774,6 @@ I18N.dict = {
 "возврат":"pengembalian",
 "Чек":"Struk",
 "чек готовится":"struk sedang dibuat",
-"Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.":"Struk ini adalah struk elektronik dari layanan pajak Rusia («Moy Nalog»): muncul beberapa menit setelah pembayaran.",
 "Покупок пока нет":"Belum ada pembelian",
 "Оплата ещё не завершена — если ты оплатил, проверь через минуту":"Pembayaran belum selesai — kalau sudah bayar, cek lagi semenit lagi",
 "Оплаченных наборов не найдено":"Tak ada paket yang sudah dibayar",
