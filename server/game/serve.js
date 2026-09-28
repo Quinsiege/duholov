@@ -53,10 +53,53 @@ async function yk(method, path, body, idem) {
   if (!r.ok) throw new Error(`ЮKassa ${r.status}: ${j.description || j.code || ''}`);
   return j;
 }
+/* ---------- 4.27: Казна в версии для Google Play — покупки через Google Play Billing ----------
+   Секрет GOOGLE_PLAY_SA — ключ сервисного аккаунта Google Cloud (JSON одной строкой, вписывает duholov-secrets), которому
+   в Play Console выданы права на приложение («Просмотр финансовых данных», «Управление заказами и подписками»).
+   Телефону не верим: сервер сам спрашивает Google Play Developer API о покупке — набор, состояние и владельца
+   (obfuscatedExternalAccountId = хэш id игрока, его задаёт приложение при покупке), — начисляет (payClaim) и «потребляет» её.
+   Возвраты: раз в час сервер смотрит отменённые покупки (voidedpurchases) и списывает начисленное (payRefund). */
+const GPLAY = { pkg: 'ru.duholov.game', sa: null, tok: '', exp: 0, voidAt: 0 };
+try { GPLAY.sa = JSON.parse(Deno.env.get('GOOGLE_PLAY_SA') || 'null'); } catch { console.error('GOOGLE_PLAY_SA: не JSON'); }
+const b64u = bytes => btoa(typeof bytes === 'string' ? unescape(encodeURIComponent(bytes)) : String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+// вход сервисного аккаунта: подписанный RS256 JWT → токен доступа (живёт час)
+async function gpToken() {
+  if (GPLAY.tok && Date.now() < GPLAY.exp) return GPLAY.tok;
+  const sa = GPLAY.sa, now = Math.floor(Date.now() / 1000);
+  const body = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' })) + '.' + b64u(JSON.stringify({ iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/androidpublisher', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
+  const der = Uint8Array.from(atob(String(sa.private_key).replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(body)));
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', signal: AbortSignal.timeout(12000),
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: body + '.' + b64u(sig) }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) throw new Error('Google OAuth ' + r.status + ': ' + (j.error_description || j.error || ''));
+  GPLAY.tok = j.access_token; GPLAY.exp = Date.now() + (Math.max(300, +j.expires_in || 3600) - 120) * 1000;
+  return GPLAY.tok;
+}
+async function gp(method, path) {
+  const r = await fetch(`https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${GPLAY.pkg}${path}`,
+    { method, headers: { Authorization: 'Bearer ' + await gpToken() }, signal: AbortSignal.timeout(15000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`Google Play ${r.status}: ${(j.error && j.error.message) || ''}`);
+  return j;
+}
+// владелец покупки — хэш id игрока (сам id Google не отдаём)
+const gpAcct = async uid => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('gplay:' + uid))).slice(0, 64);
+
 const Pay = {
   on() { return !!(PAY.shop && PAY.key); },
   async handle(uid, op, a) {
-    if (op === 'info') return { ok: true, on: this.on(), receipt: PAY.receipt };
+    if (op === 'info') {
+      if (GPLAY.sa && Date.now() - GPLAY.voidAt > 3600000) { GPLAY.voidAt = Date.now(); this.gplayVoided().catch(e => console.error('Google Play, возвраты:', String(e))); }
+      return { ok: true, on: this.on(), receipt: PAY.receipt, gplay: GPLAY.sa ? { acct: await gpAcct(uid) } : null };
+    }
+    if (op === 'gplay') {
+      if (!GPLAY.sa) return { ok: false, error: ru`Покупки через Google Play пока не подключены` };
+      try { return await this.gplay(uid, a || {}); }
+      catch (e) { console.error('Казна, Google Play:', String(e)); return { ok: false, error: ru`Google Play не ответил — покупка не пропадёт, проверим её позже` }; }
+    }
     if (!this.on()) return { ok: false, error: ru`Покупки пока не подключены` };
     try {
       if (op === 'create') return await this.create(uid, a || {});
@@ -91,6 +134,39 @@ const Pay = {
     if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: ru`Платёжный сервис не выдал страницу оплаты` };
     return { ok: true, order: row.id, url: p.confirmation.confirmation_url };
   },
+  // 4.27: покупка через Google Play — проверить у Google, записать (номер заказа Google — ext_id «gp:…»), начислить, потребить
+  async gplay(uid, a) {
+    const pack = Rules.PAY.find(p => p.id === a.product), token = String(a.token || '');
+    if (!pack || !/^[A-Za-z0-9._:-]{20,1000}$/.test(token)) return { ok: false, error: ru`Такого набора нет` };
+    const path = `/purchases/products/${encodeURIComponent(pack.id)}/tokens/${encodeURIComponent(token)}`;
+    const p = await gp('GET', path);
+    if (p.obfuscatedExternalAccountId !== await gpAcct(uid)) return { ok: false, error: ru`Эту покупку сделал другой Ловчий` };
+    if (p.purchaseState === 2) return { ok: true, pending: true }; // отложенная оплата — засчитаем, когда пройдёт
+    if (p.purchaseState !== 0) return { ok: false, error: ru`Покупка отменена` };
+    const ext = 'gp:' + String(p.orderId || token.slice(0, 64)).slice(0, 80);
+    let row = must(await db.from('payments').select('id, credited, status').eq('ext_id', ext).maybeSingle());
+    if (!row) {
+      const ins = await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount: pack.rub.toFixed(2), provider: 'gplay',
+        ext_id: ext, status: 'succeeded', method: 'google_play', paid_at: new Date(+p.purchaseTimeMillis || Date.now()).toISOString() }).select('id, credited, status').single();
+      row = ins.data || must(await db.from('payments').select('id, credited, status').eq('ext_id', ext).maybeSingle()); // гонка двух запросов — запись одна
+      if (!row) throw new Error(ins.error ? ins.error.message : 'нет записи');
+    }
+    if (row.status === 'succeeded' && !row.credited) await this.credit(uid);
+    if (p.consumptionState !== 1) { try { await gp('POST', path + ':consume'); } catch (e) { console.error('Google Play, consume:', String(e)); } }
+    return { ok: true, credited: row.status === 'succeeded' };
+  },
+  // 4.27: отменённые и возвращённые покупки Google Play за 30 дней → статус refunded и списание начисленного
+  async gplayVoided() {
+    const r = await gp('GET', `/purchases/voidedpurchases?startTime=${Date.now() - 30 * 86400000}&maxResults=1000`);
+    for (const v of r.voidedPurchases || []) {
+      if (!v.orderId) continue;
+      const row = must(await db.from('payments').select('id, user_id, credited, status').eq('ext_id', 'gp:' + String(v.orderId).slice(0, 80)).maybeSingle());
+      if (!row || row.status === 'refunded') continue;
+      must(await db.from('payments').update({ status: 'refunded', updated_at: new Date().toISOString() }).eq('id', row.id));
+      console.error(`Казна: возврат Google Play ${row.id}`);
+      if (row.credited && row.user_id) await this.credit(row.user_id, 'payRefund');
+    }
+  },
   // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня); остальные доводит уведомление ЮKassa (notify)
   async sync(uid) {
     const since = new Date(Date.now() - 3 * 86400000).toISOString();
@@ -104,10 +180,10 @@ const Pay = {
   },
   // 4.22.1: мои покупки — для Казны: когда, что, сколько, ссылка на чек «Мой налог» (пробивает tools/server/duholov-payments)
   async list(uid) {
-    const rows = must(await db.from('payments').select('zlat, amount, status, paid_at, created_at, npd_url').eq('user_id', uid)
+    const rows = must(await db.from('payments').select('zlat, amount, status, paid_at, created_at, npd_url, provider').eq('user_id', uid)
       .in('status', ['succeeded', 'refunded']).order('created_at', { ascending: false }).limit(30)) || [];
     const RC = /^https:\/\/lknpd\.nalog\.ru\/api\/v1\/receipt\/\d{10,12}\/[A-Za-z0-9-]+\/print$/;
-    return { ok: true, list: rows.map(r => ({ t: Date.parse(r.paid_at || r.created_at), zlat: r.zlat, rub: +r.amount, refunded: r.status === 'refunded',
+    return { ok: true, list: rows.map(r => ({ t: Date.parse(r.paid_at || r.created_at), zlat: r.zlat, rub: +r.amount, refunded: r.status === 'refunded', gp: r.provider === 'gplay',
       receipt: r.npd_url && RC.test(r.npd_url) ? r.npd_url : null })) };
   },
   // Итог платежа — только из ответа ЮKassa (платёж должен быть именно этим заказом и на эту сумму)

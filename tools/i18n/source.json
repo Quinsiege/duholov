@@ -227,7 +227,7 @@
   "at": [
    "www/js/auction.js:37",
    "www/js/auction.js:106",
-   "www/js/shop.js:230",
+   "www/js/shop.js:313",
    "www/js/ui-player.js:309"
   ],
   "ctx": "const scr = UI.screen(ru`Аукцион`, `<div class=\"seg au-tabs\"><button data-tab=\"buy\">${ru`Купить`}</button><button data-tab=\"mine\">${ru`Мои лоты`}</button></div><div class=\"au-body\"></div>`, 'au-screen');"
@@ -782,7 +782,7 @@
    "www/js/auction.js:187",
    "www/js/encounter.js:405",
    "www/js/order.js:100",
-   "www/js/shop.js:91"
+   "www/js/shop.js:173"
   ],
   "ctx": "UI.modal({ title: ru`Итоги аукциона`, html: `<div class=\"au-got\">${rows}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });"
  },
@@ -1628,7 +1628,7 @@
   "k": "Сумка",
   "at": [
    "www/js/book.js:131",
-   "www/js/shop.js:183",
+   "www/js/shop.js:266",
    "www/js/ui-spirits.js:583",
    "www/js/ui.js:614"
   ],
@@ -2283,7 +2283,7 @@
   "k": "Обменник",
   "at": [
    "www/js/book.js:205",
-   "www/js/shop.js:144"
+   "www/js/shop.js:227"
   ],
   "ctx": "[ru`Обменник`, this.p(ru`Лишние искры можно обменять на златники: ${U.fmtNum(E.SPARKS)} искр → ${E.ZLAT} ${U.plural(E.ZLAT, ru`златник`, ru`златника`, ru`златников`)}, до ${E.DAY} обменов в день.`)],"
  },
@@ -2298,7 +2298,7 @@
   "k": "Казна",
   "at": [
    "www/js/book.js:206",
-   "www/js/shop.js:179"
+   "www/js/shop.js:262"
   ],
   "ctx": "[ru`Казна`, this.p(ru`Златники можно купить в Казне Ордена. Оплата — на защищённой странице ЮKassa: картой, через СБП, SberPay, T-Pay или ЮMoney. Златники приходят сами, как только оплата прошла, — даже если ты закрыл иг"
  },
@@ -5758,7 +5758,7 @@
   "at": [
    "www/js/data.js:490",
    "www/js/path.js:15",
-   "www/js/shop.js:263"
+   "www/js/shop.js:346"
   ],
   "ctx": "{ c: '#065f46', name: ru`Сезонная тропа`, lvl: 1, pass: true },"
  },
@@ -7433,7 +7433,7 @@
   "k": "Открыть",
   "at": [
    "www/js/friends.js:144",
-   "www/js/shop.js:289",
+   "www/js/shop.js:372",
    "www/js/ui-player.js:36"
   ],
   "ctx": "<button class=\"btn small primary open-gift\">${ru`Открыть`}</button></div>`).join('')}</div>` : '';"
@@ -8515,7 +8515,7 @@
   "k": "Обмен",
   "at": [
    "www/js/journal.js:42",
-   "www/js/shop.js:179"
+   "www/js/shop.js:262"
   ],
   "ctx": "case 'trade': return { ico: icon(e.sid), title: e.dir === 'out' ? ru`${sp(e.sid)} упакован для друга` : e.who ? ru`${sp(e.sid)} получен от ${e.who}` : ru`${sp(e.sid)} получен от друга`, sub: ru`Обмен` };"
  },
@@ -8601,9 +8601,9 @@
   "k": "Казна Ордена",
   "at": [
    "www/js/journal.js:51",
-   "www/js/shop.js:50",
-   "www/js/shop.js:60",
-   "www/js/shop.js:91"
+   "www/js/shop.js:131",
+   "www/js/shop.js:142",
+   "www/js/shop.js:173"
   ],
   "ctx": "case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} златников` };"
  },
@@ -9071,7 +9071,7 @@
    "www/js/league.js:124",
    "www/js/order.js:62",
    "www/js/order.js:77",
-   "www/js/shop.js:303"
+   "www/js/shop.js:386"
   ],
   "ctx": "if (r.prize) UI.modal({ title: ru`Итоги сезона`, html: `<div class=\"lg-prize\"><span class=\"lg-badge\">${this.badge(r.prize.rank)}</span><p>${ru`В прошлом сезоне ты дошёл до лиги «${LEAGUE_RANKS[r.prize.rank].name}». Награ"
  },
@@ -9593,7 +9593,7 @@
   "k": "Этот способ входа пока не подключён",
   "at": [
    "www/js/login.js:55",
-   "server/game/serve.js:347"
+   "server/game/serve.js:423"
   ],
   "ctx": "if (!p) { UI.toast(ru`Этот способ входа пока не подключён`); return; }"
  },
@@ -9629,7 +9629,7 @@
   "k": "Вход устарел — попробуй ещё раз",
   "at": [
    "www/js/login.js:147",
-   "server/game/serve.js:334"
+   "server/game/serve.js:410"
   ],
   "ctx": "if (Date.now() - pend.t > 15 * 60000) { UI.toast(ru`Вход устарел — попробуй ещё раз`); return false; }"
  },
@@ -9679,7 +9679,7 @@
   "k": "Не удалось войти — попробуй ещё раз",
   "at": [
    "www/js/login.js:176",
-   "server/game/serve.js:359"
+   "server/game/serve.js:435"
   ],
   "ctx": "if (error) { UI.toast(ru`Не удалось войти — попробуй ещё раз`); return false; }"
  },
@@ -9873,7 +9873,7 @@
   "k": "Слишком много попыток — подожди минуту",
   "at": [
    "www/js/login.js:257",
-   "server/game/serve.js:819"
+   "server/game/serve.js:895"
   ],
   "ctx": "if (error) { fail(/rate|many/i.test(error.message) ? ru`Слишком много попыток — подожди минуту` : ru`Неверная почта или пароль`); return; }"
  },
@@ -9932,7 +9932,7 @@
   "at": [
    "www/js/login.js:297",
    "www/js/realms.js:196",
-   "www/js/shop.js:108",
+   "www/js/shop.js:190",
    "www/js/ui-player.js:214"
   ],
   "ctx": "<button class=\"lg-sheet-x\" aria-label=\"${ru`Закрыть`}\">${UI.I.close}</button>${this.panel(head, buttons)}</div></div>`);"
@@ -10557,7 +10557,7 @@
   "k": "Лавка Ордена",
   "at": [
    "www/js/path.js:13",
-   "www/js/shop.js:153"
+   "www/js/shop.js:236"
   ],
   "ctx": "add(2, 'shop', ru`Лавка Ордена`, ru`Обереги, мёд и живая вода`); // 4.18: лестница открытий (см. UI.openLvl)"
  },
@@ -10686,7 +10686,7 @@
   "k": "Плащ «{0}»",
   "at": [
    "www/js/path.js:27",
-   "www/js/shop.js:228",
+   "www/js/shop.js:311",
    "server/game/core.js:1174"
   ],
   "ctx": "LOOK.cloak.filter(c => c.lvl > 1 && !c.shop && !c.pass).forEach(c => add(c.lvl, 'look:' + c.c, ru`Плащ «${c.name}»`, ru`Для облика Ловчего`));"
@@ -11298,7 +11298,7 @@
   "k": "Припасы",
   "at": [
    "www/js/raid.js:93",
-   "www/js/shop.js:185"
+   "www/js/shop.js:268"
   ],
   "ctx": "${row(ru`Припасы`, it('honey', T2) + ' · ' + (T2 === 1 ? it('herb', 1) : it('water', 1)))}"
  },
@@ -12330,7 +12330,7 @@
   "k": "Облик",
   "at": [
    "www/js/shop.js:24",
-   "www/js/shop.js:179",
+   "www/js/shop.js:262",
    "www/js/ui-player.js:226",
    "server/game/core.js:261"
   ],
@@ -12344,185 +12344,264 @@
   "ctx": ": x.k === 'bag' ? ru`+${x.n} мест в сумке` : x.n > 1 ? `${I18N.back(x.label)} ×${x.n}` : I18N.back(x.label);"
  },
  {
+  "k": "Google Play не ответил — попробуй ещё раз",
+  "at": [
+   "www/js/shop.js:46"
+  ],
+  "ctx": "const t = setTimeout(() => done(null, new Error(ru`Google Play не ответил — попробуй ещё раз`)), ms);"
+ },
+ {
+  "k": "Покупка отменена",
+  "at": [
+   "www/js/shop.js:59",
+   "server/game/serve.js:145"
+  ],
+  "ctx": "if (o.code === 1) return ru`Покупка отменена`;"
+ },
+ {
+  "k": "Покупки через Google Play недоступны на этом устройстве или в твоей стране",
+  "at": [
+   "www/js/shop.js:60"
+  ],
+  "ctx": "if (o.code === 2 || o.code === 3 || o.code === -1) return ru`Покупки через Google Play недоступны на этом устройстве или в твоей стране`;"
+ },
+ {
+  "k": "Этот набор уже оплачен — засчитываем",
+  "at": [
+   "www/js/shop.js:61"
+  ],
+  "ctx": "if (o.code === 7) return ru`Этот набор уже оплачен — засчитываем`;"
+ },
+ {
+  "k": "Google Play: ошибка {0}",
+  "at": [
+   "www/js/shop.js:62"
+  ],
+  "ctx": "return ru`Google Play: ошибка ${o.code}`;"
+ },
+ {
+  "k": "Покупки через Google Play пока не подключены",
+  "at": [
+   "www/js/shop.js:92",
+   "server/game/serve.js:99"
+  ],
+  "ctx": "if (!i.gplay) i.why = ru`Покупки через Google Play пока не подключены`;"
+ },
+ {
+  "k": "Наборы златников в Google Play ещё не открыты",
+  "at": [
+   "www/js/shop.js:98"
+  ],
+  "ctx": "if (!i.on) i.why = ru`Наборы златников в Google Play ещё не открыты`;"
+ },
+ {
+  "k": "Оплата ещё не завершена — златники придут, когда Google Play её подтвердит",
+  "at": [
+   "www/js/shop.js:121"
+  ],
+  "ctx": "else if (c.pend) UI.toast(ru`Оплата ещё не завершена — златники придут, когда Google Play её подтвердит`);"
+ },
+ {
   "k": "златники за рубли",
   "at": [
-   "www/js/shop.js:50"
+   "www/js/shop.js:131"
   ],
   "ctx": "return `<h3 class=\"prof-h\">${ru`Казна Ордена`} <small>${ru`златники за рубли`}</small></h3>"
  },
  {
   "k": "Выгодно",
   "at": [
-   "www/js/shop.js:52"
+   "www/js/shop.js:133"
   ],
   "ctx": "${p.hot ? `<span class=\"pay-hot\">${ru`Выгодно`}</span>` : p.bonus ? `<span class=\"pay-bonus\">+${p.bonus}%</span>` : ''}"
  },
  {
+  "k": "Оплата — через Google Play.",
+  "at": [
+   "www/js/shop.js:136"
+  ],
+  "ctx": "${info.play ? `<div class=\"q-note\">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class=\"linkish pay-mine\">${ru`Мои покупки`}</button></div>` : `<div class=\"q-note\">${info.on ? '"
+ },
+ {
+  "k": "Мои покупки",
+  "at": [
+   "www/js/shop.js:136"
+  ],
+  "ctx": "${info.play ? `<div class=\"q-note\">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class=\"linkish pay-mine\">${ru`Мои покупки`}</button></div>` : `<div class=\"q-note\">${info.on ? '"
+ },
+ {
   "k": "Оплата скоро откроется.",
   "at": [
-   "www/js/shop.js:55"
+   "www/js/shop.js:136"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
+  "ctx": "${info.play ? `<div class=\"q-note\">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class=\"linkish pay-mine\">${ru`Мои покупки`}</button></div>` : `<div class=\"q-note\">${info.on ? '"
  },
  {
   "k": "Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.",
   "at": [
-   "www/js/shop.js:55"
+   "www/js/shop.js:136"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
+  "ctx": "${info.play ? `<div class=\"q-note\">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class=\"linkish pay-mine\">${ru`Мои покупки`}</button></div>` : `<div class=\"q-note\">${info.on ? '"
  },
  {
   "k": "Оферта",
   "at": [
-   "www/js/shop.js:55"
+   "www/js/shop.js:136"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
+  "ctx": "${info.play ? `<div class=\"q-note\">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class=\"linkish pay-mine\">${ru`Мои покупки`}</button></div>` : `<div class=\"q-note\">${info.on ? '"
  },
  {
   "k": "Мои покупки и чеки",
   "at": [
-   "www/js/shop.js:55",
-   "www/js/shop.js:105"
+   "www/js/shop.js:136",
+   "www/js/shop.js:187"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
+  "ctx": "${info.play ? `<div class=\"q-note\">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class=\"linkish pay-mine\">${ru`Мои покупки`}</button></div>` : `<div class=\"q-note\">${info.on ? '"
  },
  {
   "k": "Я оплатил — проверить",
   "at": [
-   "www/js/shop.js:55"
+   "www/js/shop.js:136"
   ],
-  "ctx": "<div class=\"q-note\">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class=\"linkish pay-offer\">${ru`Оферта`}</b"
+  "ctx": "${info.play ? `<div class=\"q-note\">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class=\"linkish pay-mine\">${ru`Мои покупки`}</button></div>` : `<div class=\"q-note\">${info.on ? '"
  },
  {
   "k": "с бонусом +{0}%",
   "at": [
-   "www/js/shop.js:61"
+   "www/js/shop.js:143"
   ],
   "ctx": "html: `<div class=\"pay-sum\">${Art.item('zlat')}<div><b>${ru`${U.fmtNum(p.zlat)} ${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}`}</b><small>${p.bonus ? ru`с бонусом +${p.bonus}%` : ru`набор`}</small></div><"
  },
  {
   "k": "набор",
   "at": [
-   "www/js/shop.js:61"
+   "www/js/shop.js:143"
   ],
   "ctx": "html: `<div class=\"pay-sum\">${Art.item('zlat')}<div><b>${ru`${U.fmtNum(p.zlat)} ${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}`}</b><small>${p.bonus ? ru`с бонусом +${p.bonus}%` : ru`набор`}</small></div><"
  },
  {
   "k": "Почта для чека",
   "at": [
-   "www/js/shop.js:62"
+   "www/js/shop.js:144"
   ],
   "ctx": "${info.receipt ? `<input type=\"email\" class=\"pay-email\" placeholder=\"${ru`Почта для чека`}\" autocomplete=\"email\" inputmode=\"email\">` : ''}"
  },
  {
   "k": "Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay или ЮMoney. После оплаты вернись в игру — златники придут сами.",
   "at": [
-   "www/js/shop.js:63"
+   "www/js/shop.js:145"
   ],
   "ctx": "<p class=\"pay-note\">${ru`Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay или ЮMoney. После оплаты вернись в игру — златники придут сами.`}</p>"
  },
  {
   "k": "публичной оферты",
   "at": [
-   "www/js/shop.js:64"
+   "www/js/shop.js:146"
   ],
   "ctx": "<p class=\"pay-note\">${ru`Оплачивая, ты принимаешь условия ${`<button class=\"linkish pay-offer\">${ru`публичной оферты`}</button>`}.`}</p>`,"
  },
  {
   "k": "Оплачивая, ты принимаешь условия {0}.",
   "at": [
-   "www/js/shop.js:64"
+   "www/js/shop.js:146"
   ],
   "ctx": "<p class=\"pay-note\">${ru`Оплачивая, ты принимаешь условия ${`<button class=\"linkish pay-offer\">${ru`публичной оферты`}</button>`}.`}</p>`,"
  },
  {
   "k": "Оплатить {0} ₽",
   "at": [
-   "www/js/shop.js:65"
+   "www/js/shop.js:147"
   ],
   "ctx": "buttons: [{ label: ru`Отмена` }, { label: ru`Оплатить ${U.fmtNum(p.rub)} ₽`, cls: 'primary', keep: true, fn: async () => {"
  },
  {
   "k": "Неверная ссылка на оплату",
   "at": [
-   "www/js/shop.js:73"
+   "www/js/shop.js:155"
   ],
   "ctx": "if (!/^https:\\/\\/([a-z0-9-]+\\.)*(yoomoney\\.ru|yookassa\\.ru)\\//i.test(r.url || '')) throw new Error(ru`Неверная ссылка на оплату`);"
  },
  {
   "k": "Публичная оферта",
   "at": [
-   "www/js/shop.js:82"
+   "www/js/shop.js:164"
   ],
   "ctx": "offer() { UI.doc(ru`Публичная оферта`, 'offer.html'); },"
  },
  {
   "k": "Оплата прошла — златники уже в твоей Казне. Спасибо, что поддерживаешь Орден!",
   "at": [
-   "www/js/shop.js:91"
+   "www/js/shop.js:173"
+  ],
+  "ctx": "UI.modal({ title: ru`Казна Ордена`, html: `<div class=\"lvl-rw\"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златн"
+ },
+ {
+  "k": "Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.",
+  "at": [
+   "www/js/shop.js:173"
   ],
   "ctx": "UI.modal({ title: ru`Казна Ордена`, html: `<div class=\"lvl-rw\"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златн"
  },
  {
   "k": "Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».",
   "at": [
-   "www/js/shop.js:91"
+   "www/js/shop.js:173"
   ],
   "ctx": "UI.modal({ title: ru`Казна Ордена`, html: `<div class=\"lvl-rw\"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златн"
  },
  {
   "k": "возврат",
   "at": [
-   "www/js/shop.js:103"
+   "www/js/shop.js:185"
   ],
-  "ctx": "<div class=\"row-main\"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`} · ${U.fmtNum(x.rub)} ₽</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>"
+  "ctx": "<div class=\"row-main\"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`}${x.gp ? '' : ` · ${U.fmtNum(x.rub)} ₽`}</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</sm"
  },
  {
   "k": "Чек",
   "at": [
-   "www/js/shop.js:104"
+   "www/js/shop.js:186"
   ],
-  "ctx": "${x.receipt ? `<a class=\"pl-rc\" href=\"${U.esc(x.receipt)}\" target=\"_blank\" rel=\"noopener\">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class=\"pl-wait\">${ru`чек готовится`}</span>`}</div>`;"
+  "ctx": "${x.gp ? '<span class=\"pl-wait\">Google Play</span>' : x.receipt ? `<a class=\"pl-rc\" href=\"${U.esc(x.receipt)}\" target=\"_blank\" rel=\"noopener\">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class=\"pl-wait\">${ru`чек готовитс"
  },
  {
   "k": "чек готовится",
   "at": [
-   "www/js/shop.js:104"
+   "www/js/shop.js:186"
   ],
-  "ctx": "${x.receipt ? `<a class=\"pl-rc\" href=\"${U.esc(x.receipt)}\" target=\"_blank\" rel=\"noopener\">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class=\"pl-wait\">${ru`чек готовится`}</span>`}</div>`;"
+  "ctx": "${x.gp ? '<span class=\"pl-wait\">Google Play</span>' : x.receipt ? `<a class=\"pl-rc\" href=\"${U.esc(x.receipt)}\" target=\"_blank\" rel=\"noopener\">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class=\"pl-wait\">${ru`чек готовитс"
  },
  {
   "k": "Покупок пока нет",
   "at": [
-   "www/js/shop.js:107"
+   "www/js/shop.js:189"
   ],
   "ctx": ": `<p class=\"pay-note\">${ru`Покупок пока нет`}</p>`,"
  },
  {
   "k": "Оплата ещё не завершена — если ты оплатил, проверь через минуту",
   "at": [
-   "www/js/shop.js:122"
+   "www/js/shop.js:205"
   ],
   "ctx": "else if (force) UI.toast(ru`Оплата ещё не завершена — если ты оплатил, проверь через минуту`);"
  },
  {
   "k": "Оплаченных наборов не найдено",
   "at": [
-   "www/js/shop.js:123"
+   "www/js/shop.js:206"
   ],
   "ctx": "if (force && !shown && !s.open) UI.toast(ru`Оплаченных наборов не найдено`);"
  },
  {
   "k": "{0} искр",
   "at": [
-   "www/js/shop.js:133"
+   "www/js/shop.js:216"
   ],
   "ctx": "wallet() { return `<div class=\"shop-wallet\"><span class=\"spark\"><span class=\"cur\">${Art.item('sparks')}</span> ${ru`${U.fmtNum(S.d.sparks)} искр`}</span><span class=\"zlat\">${Art.item('zlat')} ${ru`${U.fmtNum(S.d.zlat || "
  },
  {
   "k": "обмен",
   "at": [
-   "www/js/shop.js:144"
+   "www/js/shop.js:227"
   ],
   "ctx": "<div class=\"row-main\"><b>${ru`Обменник`}</b><small>${left ? ru`Сегодня ещё ${left} ${U.plural(left, ru`обмен`, ru`обмена`, ru`обменов`)}` : ru`На сегодня всё — приходи завтра`}</small></div>",
   "forms": [
@@ -12534,7 +12613,7 @@
  {
   "k": "обмена",
   "at": [
-   "www/js/shop.js:144"
+   "www/js/shop.js:227"
   ],
   "ctx": "<div class=\"row-main\"><b>${ru`Обменник`}</b><small>${left ? ru`Сегодня ещё ${left} ${U.plural(left, ru`обмен`, ru`обмена`, ru`обменов`)}` : ru`На сегодня всё — приходи завтра`}</small></div>",
   "forms": [
@@ -12546,7 +12625,7 @@
  {
   "k": "обменов",
   "at": [
-   "www/js/shop.js:144"
+   "www/js/shop.js:227"
   ],
   "ctx": "<div class=\"row-main\"><b>${ru`Обменник`}</b><small>${left ? ru`Сегодня ещё ${left} ${U.plural(left, ru`обмен`, ru`обмена`, ru`обменов`)}` : ru`На сегодня всё — приходи завтра`}</small></div>",
   "forms": [
@@ -12558,406 +12637,406 @@
  {
   "k": "Сегодня ещё {0} {1}",
   "at": [
-   "www/js/shop.js:144"
+   "www/js/shop.js:227"
   ],
   "ctx": "<div class=\"row-main\"><b>${ru`Обменник`}</b><small>${left ? ru`Сегодня ещё ${left} ${U.plural(left, ru`обмен`, ru`обмена`, ru`обменов`)}` : ru`На сегодня всё — приходи завтра`}</small></div>"
  },
  {
   "k": "На сегодня всё — приходи завтра",
   "at": [
-   "www/js/shop.js:144"
+   "www/js/shop.js:227"
   ],
   "ctx": "<div class=\"row-main\"><b>${ru`Обменник`}</b><small>${left ? ru`Сегодня ещё ${left} ${U.plural(left, ru`обмен`, ru`обмена`, ru`обменов`)}` : ru`На сегодня всё — приходи завтра`}</small></div>"
  },
  {
   "k": "В понедельник",
   "at": [
-   "www/js/shop.js:164"
+   "www/js/shop.js:247"
   ],
   "ctx": "<button class=\"btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy\" data-id=\"${id}\" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : weekOut ?"
  },
  {
   "k": "Завтра",
   "at": [
-   "www/js/shop.js:164"
+   "www/js/shop.js:247"
   ],
   "ctx": "<button class=\"btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy\" data-id=\"${id}\" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : weekOut ?"
  },
  {
   "k": "Максимум",
   "at": [
-   "www/js/shop.js:164"
+   "www/js/shop.js:247"
   ],
   "ctx": "<button class=\"btn small ${it.cur === 'zlat' ? 'primary' : 'spark-btn'} ${!lock && left && this.poor(it) ? 'poor' : ''} buy\" data-id=\"${id}\" ${lock || !left ? 'disabled' : ''}>${lock || (left ? this.price(it) : weekOut ?"
  },
  {
   "k": "Всё для Ловчего — за искры и златники",
   "at": [
-   "www/js/shop.js:173"
+   "www/js/shop.js:256"
   ],
   "ctx": "<div class=\"det-hp\">${ru`Всё для Ловчего — за искры и златники`}</div>"
  },
  {
   "k": "ЗЛАТНИКИ",
   "at": [
-   "www/js/shop.js:174"
+   "www/js/shop.js:257"
   ],
   "ctx": "<div class=\"det-power\"><small>${ru`ЗЛАТНИКИ`}</small><b><span class=\"cur\">${Art.item('zlat')}</span>${U.fmtNum(zl)}</b></div>"
  },
  {
   "k": "Искры <b>{0}</b> · обменов сегодня <b>{1}</b>",
   "at": [
-   "www/js/shop.js:175"
+   "www/js/shop.js:258"
   ],
   "ctx": "<div class=\"det-lvl\"><span>${ru`Искры <b>${U.fmtNum(S.d.sparks)}</b> · обменов сегодня <b>${exLeft}</b>`}</span></div>"
  },
  {
   "k": "товар дня куплен",
   "at": [
-   "www/js/shop.js:176"
+   "www/js/shop.js:259"
   ],
   "ctx": "<div class=\"det-tags\">${dealBought ? `<span>${ru`товар дня куплен`}</span>` : `<span class=\"shop2-hot\">${ru`Товар дня · −40%`}</span>`}</div>"
  },
  {
   "k": "Товар дня · −40%",
   "at": [
-   "www/js/shop.js:176"
+   "www/js/shop.js:259"
   ],
   "ctx": "<div class=\"det-tags\">${dealBought ? `<span>${ru`товар дня куплен`}</span>` : `<span class=\"shop2-hot\">${ru`Товар дня · −40%`}</span>`}</div>"
  },
  {
   "k": "Товары",
   "at": [
-   "www/js/shop.js:179"
+   "www/js/shop.js:262"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['goods', ru`Товары`], ['pay', ru`Казна`], ['ex', ru`Обмен`], ['look', ru`Облик`]].map(([k, t]) => `<button data-tab=\"${k}\" class=\"${tab === k ? 'on' : ''}\">${t}${k === 'goods' && !dealBought "
  },
  {
   "k": "−40% · товар дня",
   "at": [
-   "www/js/shop.js:182"
+   "www/js/shop.js:265"
   ],
   "ctx": "<div class=\"shop-deal ${dealBought ? 'off' : ''}\">${row({ ...deal, name: `${deal.name} <i class=\"shop2-chip\">${ru`−40% · товар дня`}</i>` }, 'deal', dealBought ? ' · ' + ru`куплен, завтра будет новый` : '')}</div>"
  },
  {
   "k": "куплен, завтра будет новый",
   "at": [
-   "www/js/shop.js:182"
+   "www/js/shop.js:265"
   ],
   "ctx": "<div class=\"shop-deal ${dealBought ? 'off' : ''}\">${row({ ...deal, name: `${deal.name} <i class=\"shop2-chip\">${ru`−40% · товар дня`}</i>` }, 'deal', dealBought ? ' · ' + ru`куплен, завтра будет новый` : '')}</div>"
  },
  {
   "k": "расширено {0} из {1}",
   "at": [
-   "www/js/shop.js:184"
+   "www/js/shop.js:267"
   ],
   "ctx": "${row(bag, 'bag', ' · ' + ru`расширено ${S.d.bagExtra} из ${Rules.BAG_MAX_UP}`)}"
  },
  {
   "k": "Курс",
   "at": [
-   "www/js/shop.js:190"
+   "www/js/shop.js:273"
   ],
   "ctx": "<div class=\"dt-row\"><span>${ru`Курс`}</span><b><span class=\"cur\">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class=\"cur\">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>"
  },
  {
   "k": "Обменов в день",
   "at": [
-   "www/js/shop.js:191"
+   "www/js/shop.js:274"
   ],
   "ctx": "<div class=\"dt-row\"><span>${ru`Обменов в день`}</span><b>${Rules.EXCHANGE.DAY}</b></div>"
  },
  {
   "k": "Златники дают за серию дней (на 7-й день — {0}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.",
   "at": [
-   "www/js/shop.js:193"
+   "www/js/shop.js:276"
   ],
   "ctx": "<div class=\"q-note\">${ru`Златники дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}"
  },
  {
   "k": "Гардероб Ловчего",
   "at": [
-   "www/js/shop.js:195"
+   "www/js/shop.js:278"
   ],
   "ctx": "<button class=\"shop-wd\"><span class=\"sw-avas\">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class=\"sw-t\"><b>${ru`Гардероб Ловчего`}</b><small>${ru"
  },
  {
   "k": "{0} особых обликов · от {1} златников",
   "at": [
-   "www/js/shop.js:195"
+   "www/js/shop.js:278"
   ],
   "ctx": "<button class=\"shop-wd\"><span class=\"sw-avas\">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class=\"sw-t\"><b>${ru`Гардероб Ловчего`}</b><small>${ru"
  },
  {
   "k": "Плащи",
   "at": [
-   "www/js/shop.js:196"
+   "www/js/shop.js:279"
   ],
   "ctx": "<div class=\"pf-mh\"><span>${ru`Плащи`}</span></div>"
  },
  {
   "k": "Уже твой",
   "at": [
-   "www/js/shop.js:198"
+   "www/js/shop.js:281"
   ],
   "ctx": "<div class=\"shop-ava\">${Art.avatar({ cloak: c.c, eyes: S.d.look.eyes, emblem: S.d.look.emblem })}</div><b>${c.name}</b><small>${S.d.owned[c.c] ? ru`Уже твой` : this.price({ cur: 'zlat', price: c.shop })}</small></button>"
  },
  {
   "k": "Оплата скоро откроется — следи за обновлениями",
   "at": [
-   "www/js/shop.js:204"
+   "www/js/shop.js:287"
   ],
-  "ctx": "const pk = e.target.closest('[data-pay]'); if (pk) { if (pay.on) Treasury.buy(pk.dataset.pay, pay, render); else UI.toast(ru`Оплата скоро откроется — следи за обновлениями`); return; }"
+  "ctx": "const pk = e.target.closest('[data-pay]'); if (pk) { if (pay.on) Treasury.buy(pk.dataset.pay, pay, render); else UI.toast(pay.play ? U.esc(pay.why || '') : ru`Оплата скоро откроется — следи за обновлениями`); return; }"
  },
  {
   "k": "Обмен: ✦ {0} → {1} {2}",
   "at": [
-   "www/js/shop.js:214"
+   "www/js/shop.js:297"
   ],
   "ctx": "UI.toast(ru`Обмен: ✦ ${U.fmtNum(E.SPARKS * n)} → ${E.ZLAT * n} ${U.plural(E.ZLAT * n, ru`златник`, ru`златника`, ru`златников`)}`, 'good');"
  },
  {
   "k": "Не хватает златников — обменяй искры в Обменнике или загляни в Казну",
   "at": [
-   "www/js/shop.js:223"
+   "www/js/shop.js:306"
   ],
   "ctx": "UI.toast(zl ? ru`Не хватает златников — обменяй искры в Обменнике или загляни в Казну` : ru`Не хватает искр — их дают за поимки, родники и бои`);"
  },
  {
   "k": "Не хватает искр — их дают за поимки, родники и бои",
   "at": [
-   "www/js/shop.js:223"
+   "www/js/shop.js:306"
   ],
   "ctx": "UI.toast(zl ? ru`Не хватает златников — обменяй искры в Обменнике или загляни в Казну` : ru`Не хватает искр — их дают за поимки, родники и бои`);"
  },
  {
   "k": "Купить за {0}? После покупки останется {1}.",
   "at": [
-   "www/js/shop.js:230"
+   "www/js/shop.js:313"
   ],
   "ctx": "UI.confirm(it.name, ru`Купить за ${this.price(it)}? После покупки останется ${this.price({ cur: it.cur, price: left })}.`, ru`Купить`, async () => {"
  },
  {
   "k": "Покупка",
   "at": [
-   "www/js/shop.js:234"
+   "www/js/shop.js:317"
   ],
   "ctx": "UI.modal({ title: ru`Покупка`, html: `<p>${ru`${U.esc(it.name)} — твоё!`}</p>${Loot.cells(r.got)}`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });"
  },
  {
   "k": "{0} — твоё!",
   "at": [
-   "www/js/shop.js:234"
+   "www/js/shop.js:317"
   ],
   "ctx": "UI.modal({ title: ru`Покупка`, html: `<p>${ru`${U.esc(it.name)} — твоё!`}</p>${Loot.cells(r.got)}`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });"
  },
  {
   "k": "Январская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Февральская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Мартовская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Апрельская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Майская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Июньская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Июльская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Августовская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Сентябрьская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Октябрьская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Ноябрьская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "Декабрьская",
   "at": [
-   "www/js/shop.js:259"
+   "www/js/shop.js:342"
   ],
   "ctx": "MONTHS: [ru`Январская`, ru`Февральская`, ru`Мартовская`, ru`Апрельская`, ru`Майская`, ru`Июньская`, ru`Июльская`, ru`Августовская`, ru`Сентябрьская`, ru`Октябрьская`, ru`Ноябрьская`, ru`Декабрьская`],"
  },
  {
   "k": "{0} тропа",
   "at": [
-   "www/js/shop.js:277"
+   "www/js/shop.js:360"
   ],
   "ctx": "<div class=\"story-num\">${ru`${month} тропа`} · <span class=\"nowrap\">${ru`до конца ${U.fmtTime(Math.max(0, this.endsAt() - U.now()))}`}</span></div>"
  },
  {
   "k": "до конца {0}",
   "at": [
-   "www/js/shop.js:277"
+   "www/js/shop.js:360"
   ],
   "ctx": "<div class=\"story-num\">${ru`${month} тропа`} · <span class=\"nowrap\">${ru`до конца ${U.fmtTime(Math.max(0, this.endsAt() - U.now()))}`}</span></div>"
  },
  {
   "k": "Ступень {0} из {1}",
   "at": [
-   "www/js/shop.js:278"
+   "www/js/shop.js:361"
   ],
   "ctx": "<h3>${ru`Ступень ${L} из ${max}`}</h3>"
  },
  {
   "k": "Тропа пройдена!",
   "at": [
-   "www/js/shop.js:280"
+   "www/js/shop.js:363"
   ],
   "ctx": "<small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, родники, прогулки, коконы и бои`}</small>"
  },
  {
   "k": "{0} / {1} очков до ступени {2}",
   "at": [
-   "www/js/shop.js:280"
+   "www/js/shop.js:363"
   ],
   "ctx": "<small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, родники, прогулки, коконы и бои`}</small>"
  },
  {
   "k": "очки — за поимки, родники, прогулки, коконы и бои",
   "at": [
-   "www/js/shop.js:280"
+   "www/js/shop.js:363"
   ],
   "ctx": "<small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, родники, прогулки, коконы и бои`}</small>"
  },
  {
   "k": "Золотая тропа открыта",
   "at": [
-   "www/js/shop.js:281"
+   "www/js/shop.js:364"
   ],
   "ctx": "${P.gold ? `<div class=\"pass-gold on\">★ ${ru`Золотая тропа открыта`}</div>`"
  },
  {
   "k": "Открыть Золотую тропу",
   "at": [
-   "www/js/shop.js:282"
+   "www/js/shop.js:365"
   ],
   "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, плащ «Сезонная тропа» и Знак Тропы. У тебя {0} {1}.",
   "at": [
-   "www/js/shop.js:282"
+   "www/js/shop.js:365"
   ],
   "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.",
   "at": [
-   "www/js/shop.js:282"
+   "www/js/shop.js:365"
   ],
   "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "С {0} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.",
   "at": [
-   "www/js/shop.js:282"
+   "www/js/shop.js:365"
   ],
   "ctx": ": `<button class=\"btn primary wide pass-buy\">${ru`Открыть Золотую тропу`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class=\"pass-note\">${ru`Золотые ступени: золотые обере"
  },
  {
   "k": "Ступень",
   "at": [
-   "www/js/shop.js:284"
+   "www/js/shop.js:367"
   ],
   "ctx": "<div class=\"pass-cols\"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>"
  },
  {
   "k": "Для всех",
   "at": [
-   "www/js/shop.js:284"
+   "www/js/shop.js:367"
   ],
   "ctx": "<div class=\"pass-cols\"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>"
  },
  {
   "k": "Золотая",
   "at": [
-   "www/js/shop.js:284"
+   "www/js/shop.js:367"
   ],
   "ctx": "<div class=\"pass-cols\"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>"
  },
  {
   "k": "Золотая тропа",
   "at": [
-   "www/js/shop.js:289"
+   "www/js/shop.js:372"
   ],
   "ctx": "UI.confirm(ru`Золотая тропа`, ru`Открыть Золотую тропу этого сезона за ${Rules.PASS.GOLD} златников? Золотые награды уже пройденных ступеней можно будет забрать сразу.`, ru`Открыть`, async () => {"
  },
  {
   "k": "Открыть Золотую тропу этого сезона за {0} златников? Золотые награды уже пройденных ступеней можно будет забрать сразу.",
   "at": [
-   "www/js/shop.js:289"
+   "www/js/shop.js:372"
   ],
   "ctx": "UI.confirm(ru`Золотая тропа`, ru`Открыть Золотую тропу этого сезона за ${Rules.PASS.GOLD} златников? Золотые награды уже пройденных ступеней можно будет забрать сразу.`, ru`Открыть`, async () => {"
  },
  {
   "k": "Золотая тропа открыта!",
   "at": [
-   "www/js/shop.js:292"
+   "www/js/shop.js:375"
   ],
   "ctx": "UI.toast(ru`Золотая тропа открыта!`, 'good');"
  },
  {
   "k": "Ступень {0}",
   "at": [
-   "www/js/shop.js:303"
+   "www/js/shop.js:386"
   ],
   "ctx": "UI.modal({ title: ru`Ступень ${c.dataset.l}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }] });"
  },
@@ -16734,35 +16813,35 @@
  {
   "k": "Обновите приложение",
   "at": [
-   "www/js/updater.js:113"
+   "www/js/updater.js:114"
   ],
   "ctx": "title: ru`Обновите приложение`, cls: 'update-modal', dismiss: false,"
  },
  {
   "k": "Вышла новая версия приложения Духолов. Обновите его в {0} — прогресс сохранится.",
   "at": [
-   "www/js/updater.js:114"
+   "www/js/updater.js:115"
   ],
   "ctx": "html: st ? `<p>${ru`Вышла новая версия приложения Духолов. Обновите его в ${st.name} — прогресс сохранится.`}</p>`"
  },
  {
   "k": "Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.",
   "at": [
-   "www/js/updater.js:115"
+   "www/js/updater.js:116"
   ],
   "ctx": ": `<p>${ru`Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.`}</p>`,"
  },
  {
   "k": "Открыть {0}",
   "at": [
-   "www/js/updater.js:116"
+   "www/js/updater.js:117"
   ],
   "ctx": "buttons: [{ label: st ? ru`Открыть ${st.name}` : ru`Скачать обновление`, cls: 'primary', keep: true, fn: () => { location.href = this.apkUrl(); } }],"
  },
  {
   "k": "Скачать обновление",
   "at": [
-   "www/js/updater.js:116"
+   "www/js/updater.js:117"
   ],
   "ctx": "buttons: [{ label: st ? ru`Открыть ${st.name}` : ru`Скачать обновление`, cls: 'primary', keep: true, fn: () => { location.href = this.apkUrl(); } }],"
  },
@@ -17951,262 +18030,277 @@
   "ctx": "this.need(f.recv !== U.today(), ru`Сегодня ты уже открывал подарок от этого друга — попробуй завтра`);"
  },
  {
+  "k": "Google Play не ответил — покупка не пропадёт, проверим её позже",
+  "at": [
+   "server/game/serve.js:101"
+  ],
+  "ctx": "catch (e) { console.error('Казна, Google Play:', String(e)); return { ok: false, error: ru`Google Play не ответил — покупка не пропадёт, проверим её позже` }; }"
+ },
+ {
   "k": "Покупки пока не подключены",
   "at": [
-   "server/game/serve.js:60"
+   "server/game/serve.js:103"
   ],
   "ctx": "if (!this.on()) return { ok: false, error: ru`Покупки пока не подключены` };"
  },
  {
   "k": "Платёжный сервис не ответил — попробуй чуть позже",
   "at": [
-   "server/game/serve.js:67"
+   "server/game/serve.js:110"
   ],
   "ctx": "return { ok: false, error: ru`Платёжный сервис не ответил — попробуй чуть позже` };"
  },
  {
   "k": "Неизвестная операция",
   "at": [
-   "server/game/serve.js:69",
-   "server/game/serve.js:345"
+   "server/game/serve.js:112",
+   "server/game/serve.js:421"
   ],
   "ctx": "return { ok: false, error: ru`Неизвестная операция` };"
  },
  {
   "k": "Такого набора нет",
   "at": [
-   "server/game/serve.js:73"
+   "server/game/serve.js:116",
+   "server/game/serve.js:140"
   ],
   "ctx": "if (!pack) return { ok: false, error: ru`Такого набора нет` };"
  },
  {
   "k": "Укажи почту — на неё придёт чек",
   "at": [
-   "server/game/serve.js:75"
+   "server/game/serve.js:118"
   ],
   "ctx": "if (PAY.receipt && !EMAIL.test(email)) return { ok: false, error: ru`Укажи почту — на неё придёт чек` };"
  },
  {
   "k": "Слишком много попыток оплаты — подожди немного",
   "at": [
-   "server/game/serve.js:78"
+   "server/game/serve.js:121"
   ],
   "ctx": "if ((count || 0) >= 10) return { ok: false, error: ru`Слишком много попыток оплаты — подожди немного` };"
  },
  {
   "k": "Платёжный сервис не выдал страницу оплаты",
   "at": [
-   "server/game/serve.js:91"
+   "server/game/serve.js:134"
   ],
   "ctx": "if (!p.confirmation || !p.confirmation.confirmation_url) return { ok: false, error: ru`Платёжный сервис не выдал страницу оплаты` };"
  },
  {
+  "k": "Эту покупку сделал другой Ловчий",
+  "at": [
+   "server/game/serve.js:143"
+  ],
+  "ctx": "if (p.obfuscatedExternalAccountId !== await gpAcct(uid)) return { ok: false, error: ru`Эту покупку сделал другой Ловчий` };"
+ },
+ {
   "k": "ответ {0}",
   "at": [
-   "server/game/serve.js:228"
+   "server/game/serve.js:304"
   ],
   "ctx": "if (!r.ok) throw new Error(j.error_description || j.error || ru`ответ ${r.status}`);"
  },
  {
   "k": "вход Google не подтверждён",
   "at": [
-   "server/game/serve.js:245",
-   "server/game/serve.js:248"
+   "server/game/serve.js:321",
+   "server/game/serve.js:324"
   ],
   "ctx": "if (t.aud !== AUTHP.google || !['accounts.google.com', 'https://accounts.google.com'].includes(t.iss) || +t.exp * 1000 < Date.now()) throw new Error(ru`вход Google не подтверждён`);"
  },
  {
   "k": "вход Яндекса не подтверждён",
   "at": [
-   "server/game/serve.js:253"
+   "server/game/serve.js:329"
   ],
   "ctx": "if (String(t.client_id) !== AUTHP.yandex || !t.id) throw new Error(ru`вход Яндекса не подтверждён`); // токен выдан именно нашему приложению"
  },
  {
   "k": "вход VK не подтверждён",
   "at": [
-   "server/game/serve.js:260"
+   "server/game/serve.js:336"
   ],
   "ctx": "if (!t.user_id || !t.access_token) throw new Error(ru`вход VK не подтверждён`);"
  },
  {
   "k": "вход Telegram не подтверждён",
   "at": [
-   "server/game/serve.js:271",
-   "server/game/serve.js:278",
-   "server/game/serve.js:284"
+   "server/game/serve.js:347",
+   "server/game/serve.js:354",
+   "server/game/serve.js:360"
   ],
   "ctx": "if (!row || !row.confirmed_at || !row.tg_id || Date.parse(row.created_at) < Date.now() - TG.TTL) throw new Error(ru`вход Telegram не подтверждён`);"
  },
  {
   "k": "вход Telegram устарел — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:279"
+   "server/game/serve.js:355"
   ],
   "ctx": "if (Date.now() / 1000 - +d.auth_date > 600) throw new Error(ru`вход Telegram устарел — попробуй ещё раз`); // 4.26: 10 минут (было сутки)"
  },
  {
   "k": "Такого способа входа нет",
   "at": [
-   "server/game/serve.js:287"
+   "server/game/serve.js:363"
   ],
   "ctx": "throw new Error(ru`Такого способа входа нет`);"
  },
  {
   "k": "Вход через Telegram сейчас недоступен",
   "at": [
-   "server/game/serve.js:302"
+   "server/game/serve.js:378"
   ],
   "ctx": "if (!AUTHP.telegram || !(await TG.name())) return { ok: false, error: ru`Вход через Telegram сейчас недоступен` };"
  },
  {
   "k": "Не удалось начать вход — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:306"
+   "server/game/serve.js:382"
   ],
   "ctx": "if (error) return { ok: false, error: ru`Не удалось начать вход — попробуй ещё раз` };"
  },
  {
   "k": "Нужно подтверждение",
   "at": [
-   "server/game/serve.js:321"
+   "server/game/serve.js:397"
   ],
   "ctx": "if (a.confirm !== 'УДАЛИТЬ') return { ok: false, error: ru`Нужно подтверждение` };"
  },
  {
   "k": "Не получилось удалить — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:328"
+   "server/game/serve.js:404"
   ],
   "ctx": "if (error) { console.error('Удаление учётной записи:', error.message); return { ok: false, error: ru`Не получилось удалить — попробуй ещё раз` }; }"
  },
  {
   "k": "Не удалось сохранить вход — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:338",
-   "server/game/serve.js:370"
+   "server/game/serve.js:414",
+   "server/game/serve.js:446"
   ],
   "ctx": "if (error) { console.error('Вход: почта', String(error.message)); return { ok: false, error: ru`Не удалось сохранить вход — попробуй ещё раз` }; }"
  },
  {
   "k": "Вход уже изменился — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:341"
+   "server/game/serve.js:417"
   ],
   "ctx": "if (!moved.length) return { ok: false, error: ru`Вход уже изменился — попробуй ещё раз` };"
  },
  {
   "k": "Не удалось войти: {0}",
   "at": [
-   "server/game/serve.js:350"
+   "server/game/serve.js:426"
   ],
   "ctx": "catch (e) { console.warn('Вход:', provider, String(e)); return { ok: false, error: ru`Не удалось войти: ${String(e.message || e).slice(0, 120)}` }; }"
  },
  {
   "k": "Учётная запись не найдена",
   "at": [
-   "server/game/serve.js:357"
+   "server/game/serve.js:433"
   ],
   "ctx": "if (error || !u || !u.user || !u.user.email) return { ok: false, error: ru`Учётная запись не найдена` };"
  },
  {
   "k": "Этот вход уже привязан — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:373"
+   "server/game/serve.js:449"
   ],
   "ctx": "if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? ru`Этот вход уже привязан — попробуй ещё раз` : ru`Не удалось сохранить вход` };"
  },
  {
   "k": "Не удалось сохранить вход",
   "at": [
-   "server/game/serve.js:373"
+   "server/game/serve.js:449"
   ],
   "ctx": "if (ie) return { ok: false, error: /duplicate/i.test(ie.message) ? ru`Этот вход уже привязан — попробуй ещё раз` : ru`Не удалось сохранить вход` };"
  },
  {
   "k": "Предыдущее действие ещё выполняется — повтори",
   "at": [
-   "server/game/serve.js:744"
+   "server/game/serve.js:820"
   ],
   "ctx": "if (!got || got.locked) return R({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });"
  },
  {
   "k": "Прогресс перенесён на другое устройство",
   "at": [
-   "server/game/serve.js:748"
+   "server/game/serve.js:824"
   ],
   "ctx": "if (row && row.moved_to) return R({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });"
  },
  {
   "k": "Прогресс изменился на другом устройстве — повтори действие",
   "at": [
-   "server/game/serve.js:761"
+   "server/game/serve.js:837"
   ],
   "ctx": "if (rev == null) return R({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });"
  },
  {
   "k": "Ошибка сервера — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:769",
-   "server/game/serve.js:831"
+   "server/game/serve.js:845",
+   "server/game/serve.js:907"
   ],
   "ctx": "return R({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500);"
  },
  {
   "k": "Слишком большой запрос",
   "at": [
-   "server/game/serve.js:781"
+   "server/game/serve.js:857"
   ],
   "ctx": "if (+(req.headers.get('content-length') || 0) > MAX_BODY) return reply({ ok: false, error: ru`Слишком большой запрос` }, 413);"
  },
  {
   "k": "Этот сервер игры не принимает запросы с этой страницы",
   "at": [
-   "server/game/serve.js:795"
+   "server/game/serve.js:871"
   ],
   "ctx": "if (!allowed) return reply({ ok: false, error: ru`Этот сервер игры не принимает запросы с этой страницы` }, 403);"
  },
  {
   "k": "Закрытый контур: нужен ключ доступа",
   "at": [
-   "server/game/serve.js:815"
+   "server/game/serve.js:891"
   ],
   "ctx": "if (ACCESS && !sameKey(req.headers.get('x-duholov-access') || '', ACCESS)) return reply({ ok: false, error: ru`Закрытый контур: нужен ключ доступа` }, 403);"
  },
  {
   "k": "Нужен вход в игру",
   "at": [
-   "server/game/serve.js:822"
+   "server/game/serve.js:898"
   ],
   "ctx": "if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, error: ru`Нужен вход в игру`, auth: true }, 401); }"
  },
  {
   "k": "Некорректный запрос",
   "at": [
-   "server/game/serve.js:825",
-   "server/game/serve.js:826"
+   "server/game/serve.js:901",
+   "server/game/serve.js:902"
   ],
   "ctx": "try { body = await req.json(); } catch { return reply({ ok: false, error: ru`Некорректный запрос` }, 400); }"
  },
  {
   "k": "Слишком много запросов — подожди минуту",
   "at": [
-   "server/game/serve.js:829",
-   "server/game/serve.js:833"
+   "server/game/serve.js:905",
+   "server/game/serve.js:909"
   ],
   "ctx": "if (tooMany(pvpHits, uid, PVP_FLOOD)) return reply({ ok: false, error: ru`Слишком много запросов — подожди минуту` }, 429);"
  },
  {
   "k": "Вышла новая версия игры — обнови её",
   "at": [
-   "server/game/serve.js:834"
+   "server/game/serve.js:910"
   ],
   "ctx": "if (verCmp(body.v, GameCore.MIN_CLIENT) < 0) return reply({ ok: false, upgrade: true, error: ru`Вышла новая версия игры — обнови её` });"
  },
  {
   "k": "Ошибка входа — попробуй ещё раз",
   "at": [
-   "server/game/serve.js:838"
+   "server/game/serve.js:914"
   ],
   "ctx": "if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 50"
  },

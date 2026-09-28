@@ -5,15 +5,16 @@ plugins {
 
 android {
     namespace = "ru.duholov.game"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ru.duholov.game"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36 // 11: Google Play — новые приложения и обновления с 31.08.2026 — API 36
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
-        versionCode = 10
-        versionName = "4.26.0"
+        versionCode = 11
+        versionName = "4.27.0"
+        // 11: версия для Google Play (flavor play): Android 16, оплата через Google Play, обновления — через Play
         // 10: запасная ссылка intent: — только https во внешнем браузере; вход — только страницы входа; без переноса данных
         // 9: положение по сетям для защиты от подмены GPS (DuholovNative.netLocation)
         // 8: вход через Яндекс в приложении (Yandex LoginSDK) — ID приложения Яндекса публичный (игра отдаёт его каждому клиенту)
@@ -26,6 +27,8 @@ android {
     productFlavors {
         create("site") { dimension = "store"; buildConfigField("String", "STORE", "\"site\"") }
         create("rustore") { dimension = "store"; buildConfigField("String", "STORE", "\"rustore\"") }
+        // 11: Google Play — AAB для Play Console; покупки Казны только через Google Play, обновления — только через Play
+        create("play") { dimension = "store"; buildConfigField("String", "STORE", "\"play\"") }
     }
     buildFeatures { buildConfig = true }
 
@@ -70,4 +73,6 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     // 8: вход через Яндекс — откроется приложение Яндекса (если есть), иначе окно входа Яндекса
     implementation("com.yandex.android:authsdk:3.1.3")
+    // 11: оплата через Google Play — только в сборке для Play (Play Billing Library 8+ обязательна с 31.08.2026)
+    "playImplementation"("com.android.billingclient:billing:8.3.0")
 }

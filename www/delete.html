@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Духолов — удаление учётной записи</title>
+<meta name="theme-color" content="#140f2b">
+<style>
+  :root { color-scheme: dark; --muted: #94a3b8; --gold: #fbbf24; --line: rgba(255, 255, 255, .12); }
+  body { margin: 0; background: #140f2b; color: #e2e8f0; font: 15px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 24px; line-height: 1.3; margin: 0 0 4px; color: #fff; }
+  h2 { font-size: 17px; margin: 28px 0 8px; color: var(--gold); }
+  p, li { margin: 0 0 8px; }
+  ol, ul { padding-left: 22px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 4px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  td:last-child, th:last-child { text-align: right; white-space: nowrap; }
+  .req { padding: 14px 16px; border-radius: 14px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+  .req b { color: #fff; }
+  a { color: #5eead4; }
+  /* 4.21: стрелка «назад в игру» — закреплена сверху (скрипты на странице запрещены — обычная ссылка) */
+  .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; height: 56px; padding: env(safe-area-inset-top, 0) 8px 0;
+    background: rgba(20, 15, 43, .88); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px 8px 8px; border-radius: 999px; color: #fde68a; font-weight: 600; text-decoration: none; }
+  .back:active { background: rgba(255, 255, 255, .08); }
+  .back svg { width: 24px; height: 24px; }
+  /* открыт внутри игры (окно с кнопкой «назад»): игра добавляет к адресу #in-game (или якорь раздела) — полоса не нужна, фон прозрачный */
+  html:has(:target), html:has(:target) body { background: transparent; }
+  body:has(:target) .top { display: none; }
+</style>
+</head>
+<body>
+<a id="in-game"></a>
+<nav class="top"><a class="back" href="./" target="_top" aria-label="Назад в игру"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>В игру</a></nav>
+<main>
+  <h1>Удаление учётной записи и данных игры «Духолов»</h1>
+  <p class="muted">Редакция от 29 сентября 2026 г. · English below</p>
+
+  <h2>Удалить самому — в игре</h2>
+  <ol>
+    <li>Открой игру (сайт duholov.ru или приложение «Духолов»).</li>
+    <li>Меню → «Настройки» → «Удалить учётную запись».</li>
+    <li>Подтверди удаление. Учётная запись удаляется сразу.</li>
+  </ol>
+
+  <h2>Попросить удалить — по почте</h2>
+  <p>Если войти в игру не получается, напиши на <a href="mailto:urazov.buj@gmail.com?subject=%D0%94%D1%83%D1%85%D0%BE%D0%BB%D0%BE%D0%B2%20%E2%80%94%20%D1%83%D0%B4%D0%B0%D0%BB%D0%B8%D1%82%D1%8C%20%D1%83%D1%87%D1%91%D1%82%D0%BD%D1%83%D1%8E%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D1%8C">urazov.buj@gmail.com</a> с темой «Удалить учётную запись». Укажи имя Ловчего и код игрока (Меню → Друзья) или способ входа (Google, Яндекс, VK, Telegram) — по ним мы найдём учётную запись. Удалим в течение 10 рабочих дней и ответим на письмо.</p>
+
+  <h2>Что удаляется</h2>
+  <ul>
+    <li>Прогресс: духи, предметы, уровень, задания, альбом, друзья, место в Лиге и в Ордене.</li>
+    <li>Способы входа (Google, Яндекс, VK, Telegram) и сама учётная запись.</li>
+    <li>Лоты аукциона, подарки, сообщения в чате, защитники на Капищах.</li>
+    <li>Предложенные места и их снимки.</li>
+  </ul>
+
+  <h2>Что остаётся</h2>
+  <ul>
+    <li>Записи о покупках (дата, сумма, чек) — без связи с учётной записью: их требует налоговый учёт, хранятся столько, сколько он требует.</li>
+    <li>Резервные копии базы — до 90 дней, затем удаляются сами.</li>
+  </ul>
+  <p class="muted">Купленные златники после удаления не возвращаются. Подробнее — в <a href="privacy.html">политике обработки персональных данных</a>.</p>
+
+  <h2 lang="en">Account and data deletion (English)</h2>
+  <div lang="en">
+    <p><b>In the game:</b> Menu → Settings → “Delete account”, then confirm. The account is deleted immediately.</p>
+    <p><b>By e-mail:</b> write to <a href="mailto:urazov.buj@gmail.com">urazov.buj@gmail.com</a> with the subject “Delete account”, stating your Catcher name and player code or sign-in method. We delete the account within 10 business days.</p>
+    <p><b>Deleted:</b> game progress, spirits, items, friends, league place, sign-in methods, auction lots, gifts, chat messages, proposed places and their photos. <b>Kept:</b> purchase records (date, amount, receipt) without a link to the account — as long as tax accounting requires; database backups — up to 90 days.</p>
+  </div>
+</main>
+</body>
+</html>
