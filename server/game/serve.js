@@ -61,6 +61,7 @@ const Pay = {
     try {
       if (op === 'create') return await this.create(uid, a || {});
       if (op === 'sync') return await this.sync(uid);
+      if (op === 'list') return await this.list(uid);
     } catch (e) {
       console.error('Казна:', String(e));
       return { ok: false, error: ru`Платёжный сервис не ответил — попробуй чуть позже` };
@@ -100,6 +101,14 @@ const Pay = {
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'succeeded').eq('credited', false);
     const { count: open } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).in('status', ['pending', 'waiting_for_capture']).gte('created_at', since);
     return { ok: true, paid: count || 0, open: open || 0, credited };
+  },
+  // 4.22.1: мои покупки — для Казны: когда, что, сколько, ссылка на чек «Мой налог» (пробивает tools/server/duholov-payments)
+  async list(uid) {
+    const rows = must(await db.from('payments').select('zlat, amount, status, paid_at, created_at, npd_url').eq('user_id', uid)
+      .in('status', ['succeeded', 'refunded']).order('created_at', { ascending: false }).limit(30)) || [];
+    const RC = /^https:\/\/lknpd\.nalog\.ru\/api\/v1\/receipt\/\d{10,12}\/[A-Za-z0-9-]+\/print$/;
+    return { ok: true, list: rows.map(r => ({ t: Date.parse(r.paid_at || r.created_at), zlat: r.zlat, rub: +r.amount, refunded: r.status === 'refunded',
+      receipt: r.npd_url && RC.test(r.npd_url) ? r.npd_url : null })) };
   },
   // Итог платежа — только из ответа ЮKassa (платёж должен быть именно этим заказом и на эту сумму)
   async refresh(r) {

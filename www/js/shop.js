@@ -52,7 +52,7 @@ const Treasury = {
         ${p.hot ? `<span class="pay-hot">${ru`Выгодно`}</span>` : p.bonus ? `<span class="pay-bonus">+${p.bonus}%</span>` : ''}
         <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}</small>
         <span class="pay-price">${U.fmtNum(p.rub)} ₽</span></button>`).join('')}</div>
-      <div class="q-note">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class="linkish pay-offer">${ru`Оферта`}</button>${this.waiting() ? ` <button class="linkish pay-recheck">${ru`Я оплатил — проверить`}</button>` : ''}</div>`;
+      <div class="q-note">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class="linkish pay-offer">${ru`Оферта`}</button> <button class="linkish pay-mine">${ru`Мои покупки и чеки`}</button>${this.waiting() ? ` <button class="linkish pay-recheck">${ru`Я оплатил — проверить`}</button>` : ''}</div>`;
   },
   buy(id, info, onDone) {
     const p = Rules.PAY.find(x => x.id === id);
@@ -88,9 +88,24 @@ const Treasury = {
     if (!n || this._noticed === n || document.querySelector('.onb, .loader:not(.out)')) return; // не поверх загрузки и входа
     this._noticed = n;
     Sfx.play('levelup'); U.vibrate([40, 60, 120]);
-    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златники уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златники уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     UI.refreshHud();
     Game.act('payAck').then(() => { this._noticed = 0; }).catch(() => { this._noticed = 0; });
+  },
+  // 4.22.1: мои покупки — когда, что, сколько и чек об оплате (электронный чек самозанятого из «Мой налог»,
+  // сервер пробивает его в течение минуты после оплаты — tools/server/duholov-payments)
+  async purchases() {
+    let r;
+    try { r = await Game.pay('list'); } catch (e) { UI.toast(U.esc(e.message), 'bad'); return; }
+    const list = (r && r.list) || [];
+    const when = t => new Date(t).toLocaleString(I18N.locale, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const row = x => `<div class="pl-row"><span class="pl-ico">${Art.item('zlat')}</span>
+      <div class="row-main"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`} · ${U.fmtNum(x.rub)} ₽</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>
+      ${x.receipt ? `<a class="pl-rc" href="${U.esc(x.receipt)}" target="_blank" rel="noopener">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class="pl-wait">${ru`чек готовится`}</span>`}</div>`;
+    UI.modal({ title: ru`Мои покупки и чеки`, cls: 'pay-modal pay-list',
+      html: list.length ? `<div class="pl-rows">${list.map(row).join('')}</div><p class="pay-note">${ru`Чек — электронный чек самозанятого из «Мой налог»: он появляется через пару минут после оплаты.`}</p>`
+        : `<p class="pay-note">${ru`Покупок пока нет`}</p>`,
+      buttons: [{ label: ru`Закрыть` }] });
   },
   async check(force) {
     this.notice();
@@ -189,6 +204,7 @@ const Shop = {
       const pk = e.target.closest('[data-pay]'); if (pk) { if (pay.on) Treasury.buy(pk.dataset.pay, pay, render); else UI.toast(ru`Оплата скоро откроется — следи за обновлениями`); return; }
       if (e.target.closest('.pay-recheck')) { await Treasury.check(true); render(); return; }
       if (e.target.closest('.pay-offer')) { Treasury.offer(); return; }
+      if (e.target.closest('.pay-mine')) { Treasury.purchases(); return; }
       const x = e.target.closest('[data-ex]');
       if (x && !x.disabled) {
         const n = +x.dataset.ex, E = Rules.EXCHANGE;

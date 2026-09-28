@@ -62,7 +62,7 @@ if [ -n "$INN" ] && [ -n "$REFRESH" ]; then
             client: {contactPhone: null, displayName: null, inn: null, incomeType: "FROM_INDIVIDUAL"}, paymentType: "WIRE", ignoreMaxTotalIncomeRestriction: false}')
         r=$(npost /v1/income "$body" "$TOK"); uuid=$(echo "$r" | jq -r '.approvedReceiptUuid // empty' 2>/dev/null)
         if [ -n "$uuid" ] && [[ "$uuid" =~ ^[A-Za-z0-9-]+$ ]]; then
-          Q "update payments set npd_receipt = '$uuid' where id = '$id' and npd_receipt is null" >/dev/null
+          Q "update payments set npd_receipt = '$uuid', npd_url = 'https://lknpd.nalog.ru/api/v1/receipt/$INN/$uuid/print' where id = '$id' and npd_receipt is null" >/dev/null # ссылку видит и игрок (Казна → «Мои покупки и чеки»)
           # об оплате уже сообщили (чек пробит позже) — отдельное сообщение со ссылкой на чек
           grep -qx "$id:succeeded" "$S/payments" && send "🧾 Чек в «Мой налог» пробит: $(printf '%.0f' "$amount") ₽, ${at:8:2}.${at:5:2}.${at:0:4}
 https://lknpd.nalog.ru/api/v1/receipt/$INN/$uuid/print"
