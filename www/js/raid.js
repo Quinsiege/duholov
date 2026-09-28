@@ -51,7 +51,7 @@ const Raid = {
     const power = t => t.reduce((a, x) => a + S.power(x), 0);
     const row = (t, v) => `<div class="dt-row"><span>${t}</span><b>${v}</b></div>`;
     const it = (k, n) => `<span class="cur">${Art.item(k)}</span> ${n}`;
-    const T2 = r.tier;
+    const T2 = r.tier; // 4.25: место Разлома — значком булавки, без «у «…»» (название места не склоняется)
     const html = `
       <div class="det det2 rift2 t${T2}">
         <div class="dt-hero">
@@ -61,7 +61,7 @@ const Raid = {
             <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
             <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
             <div class="rift2-left">${ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
-            ${r.place ? `<div class="rift2-place">${ru`у «${U.esc(r.place)}»`}</div>` : ''}
+            ${r.place ? `<div class="rift2-place">${UI.I.pin}${U.esc(r.place)}</div>` : ''}
           </div>
         </div>
         <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="boss">${ru`Босс`}</button><button data-tab="loot">${ru`Награда`}</button></div>

@@ -58,6 +58,9 @@ const Book = {
       ${tabs.map(([, html], k) => `<div class="bk-pane${k ? '' : ' on'}" data-pane="${k}">${html}</div>`).join('')}
       <div class="bk-nav">${near(i - 1, 'prev')}${near(i + 1, 'next')}</div></div>`, 'bk-screen');
     const body = scr.querySelector('.screen-body');
+    // 4.25: вкладки не влезли — у правого края тень-намёк, что ленту можно листать (style.css .bk-tabs.more)
+    const tb = scr.querySelector('.bk-tabs');
+    if (tb) { const more = () => tb.classList.toggle('more', tb.scrollLeft + tb.clientWidth < tb.scrollWidth - 4); tb.addEventListener('scroll', more, { passive: true }); requestAnimationFrame(more); }
     scr.addEventListener('click', e => {
       const t = e.target.closest('.bk-tabs [data-tab]');
       if (t) {
@@ -100,7 +103,7 @@ const Book = {
             [Art.item('charm3'), ru`Плёнка содрана`, ru`Дух <b>привязан к тебе</b> навсегда — продать его уже нельзя. Плёнка отрывается с усилием: переверни стикер и тяни за уголок.`]])]];
     },
     map() {
-      const kmh = Math.round(Rules.SPEED.MAX * 3.6), wx = Object.values(WEATHER).map(w => [UI.menuIcon('trail'), w.name, ru`Урон +20% у ${w.boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`]);
+      const kmh = Math.round(Rules.SPEED.MAX * 3.6), wx = Object.entries(WEATHER).map(([k, w]) => [Art.wxIcon(k, 40), w.name, ru`Урон +20% у ${w.boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`]); // 4.25: у каждой погоды — свой значок
       return [[ru`Туман Нави`, this.p(ru`Карта укрыта туманом Нави — он рассеивается там, где ты прошёл, и вокруг тебя. Духи показываются только там, где тумана нет: чем больше гуляешь, тем больше вокруг духов. Пройденный путь хранится только на твоём телефоне.`) +
           this.p(ru`Когда рядом появляется дух, телефон коротко вибрирует дважды. Туман можно скрыть в «Настройках → Вид» — духи от этого не прибавятся.`)],
         [ru`Безопасность`, this.p(ru`Духи никогда не появляются в опасных местах: на железной дороге, стройках, в воде и на болотах, на трассах и аэродромах. Рядом с ними — можно, но за ограждения не заходи: ни один дух этого не стоит.`) +

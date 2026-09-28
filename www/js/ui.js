@@ -243,17 +243,19 @@ const UI = {
     const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
     const b = U.$('#menuBtn .badge'); b.classList.toggle('hidden', !badge); put(b, badge);
     const inc = U.$('#incenseChip');
+    // 4.25: остаток баффа — минутами («18 мин»), а не «17:56»: рядом настоящие часы, и остаток путали со временем
+    const left = ms => ms >= 3600000 ? U.fmtTime(ms) : ru`${Math.max(1, Math.ceil(ms / 60000))} мин`;
     if (S.incenseActive()) {
       inc.classList.remove('hidden');
       if (!inc.querySelector('span')) inc.innerHTML = `${Art.item('incense')}<span></span>`;
-      put(inc.querySelector('span'), U.fmtTime(d.incenseUntil - Date.now()));
+      put(inc.querySelector('span'), left(d.incenseUntil - Date.now()));
     }
     else inc.classList.add('hidden');
     const xc = U.$('#xpChip'); // 4.16: Настой опыта
     if (xc && d.xpUntil > U.now()) {
       xc.classList.remove('hidden');
       if (!xc.querySelector('span')) xc.innerHTML = `${Art.item('xpbrew')}<span></span>`;
-      put(xc.querySelector('span'), U.fmtTime(d.xpUntil - U.now()));
+      put(xc.querySelector('span'), left(d.xpUntil - U.now()));
     }
     else if (xc) xc.classList.add('hidden');
   },
@@ -266,7 +268,7 @@ const UI = {
   },
   setGps(state, acc) {
     const c = U.$('#gpsChip');
-    const map = { search: [ru`Ищу GPS…`, 'warn'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };
+    const map = { search: [ru`Ищу GPS…`, 'warn search'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'] };
     const [t, cls] = map[state];
     if (c._k === t + cls) return; // GPS приходит каждую секунду — без изменений не перестраиваем значок
     c._k = t + cls;
@@ -632,6 +634,9 @@ const UI = {
       if (closing) return; closing = true;
       this.popLayer(close); this._rm = null;
       document.body.classList.remove('rm-open');
+      // 4.25: HUD возвращается, когда значки уже почти долетели в кнопку, — без «призраков» подписей поверх карты (style.css)
+      document.body.classList.add('rm-closing'); clearTimeout(this._rmT);
+      this._rmT = setTimeout(() => document.body.classList.remove('rm-closing'), 240);
       wrap.classList.remove('rm-in'); wrap.classList.add('rm-back');
       setTimeout(() => { wrap.remove(); if (typeof then === 'function') then(); }, 300);
     };
@@ -891,7 +896,7 @@ const UI = {
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
       // 4.16: что открылось на этом уровне — из «Пути Ловчего» (те же пороги, что проверяет сервер)
       const opened = (Path.unlocks()[l] || []).filter(x => !x.ic.startsWith('look:') && !x.ic.startsWith('eyes:') && x.ic !== 'emb').map(x => `<b>${x.t}</b>`);
-      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${ru`Открыто: ${opened.join(', ')}`}</p>` : '');
+      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${ru`Открыто: ${'<br>' + opened.join(', ')}`}</p>` : ''); // 4.25: список — с новой строки (в названиях бывает своё двоеточие)
       this.modal({
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,

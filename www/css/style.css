@@ -4405,3 +4405,76 @@ body:has(> .screen:not(.out)) #hud { opacity: 0; pointer-events: none; transitio
 .screen .shop-deal::before, .screen .shop-deal::after, .screen .pth-head::before, .screen .pth-head::after, .screen .pth-card::before, .screen .pth-card::after,
 .modal-wrap .modal::before, .modal-wrap .modal::after { content: none !important; }
 .modal-wrap .modal-body, .modal-wrap .modal h2, .modal-wrap .modal h3 { background: none !important; }
+
+/* ===== 4.25: правки по ночному обзору UI ===== */
+/* К1: надписи с градиентом (прозрачные буквы, background-clip: text) — без тени текста стекла: тень просвечивала сквозь буквы
+   и делала их мутно-бурыми («Новик», «Захвачен Навью», «20» уровня, «Леший ★★», «Ловчий» в Гардеробе, «Дружина Сокола») */
+.lvl-num, .lg2-rank, .inv2-title, .rift-name, .wd-name, .clan-head b, .clan-opt b, .lgx-rank, .rh-info b, .pc .pc-name,
+.spring-title, .res-title, .charge-title, .tut-final h2, .rl-title h3, .onb-q h2, .lg-title, .onb-logo h1 { text-shadow: none !important; }
+.clan-head b, .clan-opt b { filter: drop-shadow(0 1px 2px rgba(12, 6, 32, .6)); }
+/* К2: цель Следопыта не заезжает на правую колонку значков (луна, неделя, праздник): имя — с многоточием, подпись переносится */
+#hud:has(#holChip:not(.hidden)) #tracker, #hud:has(#moonChip:not(.hidden)) #tracker { max-width: calc(100vw - 176px) !important; }
+#tracker .tr-main { min-width: 0; }
+#tracker .tr-main b { display: block; overflow: hidden; text-overflow: ellipsis; }
+#tracker .tr-main small { white-space: normal !important; line-height: 1.2; }
+/* К3: крестик листа входа был под панелью с размытием (backdrop-filter) — не виден и не нажимался */
+.lg-sheet-x { z-index: 2; }
+/* К4: подсказка обучения при открытом меню — у самого верха (HUD спрятан), не закрывает верхний ряд значков */
+body.rm-open #coach.tut-coach.pos-top { top: calc(8px + var(--st)); }
+@media (max-height: 720px) { body.rm-open #coach.tut-coach .coach-ava { display: none; } body.rm-open #coach.tut-coach .coach-main { font-size: 12.5px; } }
+/* К5: плашка «Доступно обновление» — только над картой, не поверх окон и меню */
+body:has(> .screen:not(.out)) .upd-bar, body:has(> .modal-wrap:not(.out)) .upd-bar, body.rm-open .upd-bar { visibility: hidden; }
+/* К6: строка в шапке «Друзей» переносится, а не обрезается («подарок каждому другу — раз в день») */
+.fr2 .fr2-tags { flex-wrap: wrap; overflow: visible; }
+.fr2 .fr2-tags span { white-space: normal; }
+/* З1: всплывашки — ниже Следопыта и правой колонки HUD; успех и ошибка различаются меткой слева */
+#toasts { top: calc(140px + var(--st)); }
+.toast.good { box-shadow: inset 3px 0 0 #84cc16, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .4), 0 0 18px rgba(132, 204, 22, .22); }
+.toast.bad { box-shadow: inset 3px 0 0 #f87171, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .4), 0 0 18px rgba(248, 113, 113, .2); }
+/* З2: «Слишком быстро» — под второй строкой HUD, не закрывает баффы, неделю и Следопыта */
+#speedWarn { top: calc(136px + var(--st, 0px)); }
+/* З3: силуэт незнакомого духа на тёмном стекле — со светлым контуром, иначе его не видно */
+.screen .unknown .art, .modal-wrap .unknown .art { filter: brightness(0) drop-shadow(0 0 1px rgba(226, 232, 240, .9)) drop-shadow(0 0 6px rgba(167, 139, 250, .6)); }
+/* З5: «Выбрать» (режим выбора духов) не уезжает за край ленты стихий — прилипает к правому краю */
+.col-screen .chips .sel-toggle { position: sticky; right: 0; z-index: 1; box-shadow: -12px 0 12px -2px rgba(22, 14, 50, .9); }
+.col-screen .chips .sel-toggle:not(.on) { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .06)), #2a1d5c; }
+/* З7: подсказка боя не просвечивает через карточку итога */
+.raid:has(.raid-result) .raid-hint { visibility: hidden; }
+/* З8: закрытые ступени Золотой тропы читаются (было 45% прозрачности) */
+.screen .pass-cell.lock { opacity: .74; filter: saturate(.3); }
+/* З9: без второй подложки: шапка Тропы, неделя Ордена, «Лучшие Ловчие недели», строки Дневника */
+.screen .story-card, .screen .o-top { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 4px 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.screen .j-row { background: none; border-radius: 0; margin-bottom: 0; padding: 8px 2px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+/* З10: невысокий экран — верх карточки (дух, Лавка, Лига, профиль) компактнее, вкладкам больше места */
+@media (max-height: 700px) {
+  .dt-hero { grid-template-columns: min(calc(24dvh - 20px), 34vw) minmax(0, 1fr); padding-bottom: 6px; }
+  .det2 .det-art { max-width: 34vw; }
+  .dt-info { gap: 3px; }
+  .det2 .dt-bind:not(.on) { display: none; }
+}
+/* мелочи */
+.night #wxfx.wx-fog { background: radial-gradient(ellipse at 30% 40%, rgba(226, 232, 240, .42), transparent 60%), radial-gradient(ellipse at 70% 70%, rgba(226, 232, 240, .38), transparent 55%), rgba(203, 213, 225, .07); }
+body.rm-closing #hud > :not(#menuBtn) { opacity: 0; pointer-events: none; }
+.rm-back .rm-l, .rm-back .tile-lvl { opacity: 0; transition: opacity .1s; } /* подписи гаснут сразу, значки улетают в кнопку */
+.rl-sheet { min-height: min(78vh, 680px); }
+@media (min-height: 760px) { .lg-wrap > .realm-hero { margin-bottom: 11vh; } }
+.onb .input.big { border-color: rgba(253, 230, 138, .35); background: rgba(255, 255, 255, .09); }
+.rune:disabled { opacity: .75; filter: grayscale(1) brightness(.8); }
+.fatal { background: radial-gradient(120% 60% at 50% 0%, rgba(124, 58, 237, .35), transparent 60%), linear-gradient(180deg, #1c1240, #0b0628); }
+.fatal::before { content: ''; width: min(70vw, 280px); aspect-ratio: 883 / 391; margin-bottom: 18px; background: url(../img/logo.webp) center / contain no-repeat; }
+.res-card .res-title + .res-art { margin-top: 12px; }
+.nv-moon { background: radial-gradient(circle at 42% 40%, #4a3d80 0, #2a2058 30%, #15103a 55%, #fff4ff 58.5%, #e9d5ff 60.5%, rgba(192, 132, 252, .5) 65%, rgba(192, 132, 252, 0) 74%); }
+.wd-body { padding-bottom: 10px; }
+.night .prop-map .leaflet-container { background: #1b1b1f; }
+.night .prop-map .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) brightness(.8) saturate(.6); }
+.au-lot small:not(.au-ivs) { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#hud #gpsChip.warn:not(.search)::before { animation: none; }
+#hud #gpsChip.search svg { animation: gpsSearch 1.3s ease-in-out infinite; }
+@keyframes gpsSearch { 50% { opacity: .45; transform: scale(.88); } }
+.calm #hud #gpsChip.search svg { animation: none; opacity: .6; }
+.screen .set-ico:not(.danger):not(.warn):not(.out) { background: rgba(196, 181, 253, .2); color: #ddd6fe; }
+.bk-tabs.more { -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent); }
+.rift2-place .ico { display: inline-block; width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; }
+/* З6: остаток баффов «18 мин» — в одну строку; на узком экране плотнее, чтобы не наехать на правую колонку HUD */
+#hud .hud-buffs .chip span { white-space: nowrap; }
+@media (max-width: 370px) { #hud .hud-buffs { gap: 7px; } #hud .hud-buffs .chip { gap: 2px; } #hud .hud-buffs .chip span { font-size: 11px !important; letter-spacing: -.1px; } #hud .hud-buffs .chip .art, #hud .hud-buffs .chip svg { width: 19px !important; height: 19px !important; } }
