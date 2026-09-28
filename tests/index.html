@@ -2027,6 +2027,10 @@
     DB.payments[1].status = 'succeeded';
     eq((await must(A, 'payClaim')).zlat, 100); eq(A.data.zlat, 430);
     eq((await must(B, 'payClaim')).zlat, 2600, 'у соседа — своя оплата');
+    // 4.22: начисленное (сервер начисляет сам, игрока может не быть в игре) ждёт показа «+N» — до payAck
+    eq(A.data.payNew, 430, 'игра покажет «+430» при входе');
+    await must(A, 'payClaim'); eq(A.data.payNew, 430, 'повтор не добавляет');
+    await must(A, 'payAck'); eq(A.data.payNew, undefined, 'показано — отметка снята'); eq(A.data.zlat, 430);
   });
   atest('Сервер: Сезонная тропа — очки за игру, ступени, Золотая тропа', async () => {
     const A = await newPlayer('vi', 55.53, 37.41, 'Путник');

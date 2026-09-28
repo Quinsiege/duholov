@@ -93,12 +93,13 @@ const Pay = {
   // Спросить у ЮKassa итог незавершённых оплат игрока (за 3 дня); остальные доводит уведомление ЮKassa (notify)
   async sync(uid) {
     const since = new Date(Date.now() - 3 * 86400000).toISOString();
-    const rows = must(await db.from('payments').select('id, ext_id, amount, status, credited').eq('user_id', uid)
+    const rows = must(await db.from('payments').select('id, user_id, ext_id, amount, status, credited').eq('user_id', uid)
       .in('status', ['pending', 'waiting_for_capture']).not('ext_id', 'is', null).gte('created_at', since).limit(20)) || [];
-    for (const r of rows) await this.refresh(r);
+    let credited = 0;
+    for (const r of rows) if (await this.refresh(r) === 'succeeded' && !r.credited) credited++;
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('status', 'succeeded').eq('credited', false);
     const { count: open } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).in('status', ['pending', 'waiting_for_capture']).gte('created_at', since);
-    return { ok: true, paid: count || 0, open: open || 0 };
+    return { ok: true, paid: count || 0, open: open || 0, credited };
   },
   // Итог платежа — только из ответа ЮKassa (платёж должен быть именно этим заказом и на эту сумму)
   async refresh(r) {
@@ -111,7 +112,15 @@ const Pay = {
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
     must(await db.from('payments').update({ status, method: p.payment_method ? String(p.payment_method.type).slice(0, 40) : null, updated_at: new Date().toISOString() }).eq('id', r.id));
+    if (status === 'succeeded' && !r.credited && r.user_id) await this.credit(r.user_id);
     return status;
+  },
+  // 4.22: начислить оплаченное сразу — действие игры payClaim от имени игрока, в общей очереди его действий (замок);
+  // игра покажет «+N златников», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
+  async credit(uid) {
+    const { data: sv } = await db.from('saves').select('app_version').eq('user_id', uid).maybeSingle(); // версия игры игрока — прежняя
+    const out = await play(uid, { a: [{ type: 'payClaim' }], sys: true, v: (sv && sv.app_version) || '' }, makeEnv(uid));
+    if (!out.body.ok && !/Прогресс не найден/.test(out.body.error || '')) throw new Error('начисление: ' + (out.body.error || out.status));
   },
   // 4.1: HTTP-уведомление ЮKassa (Интеграция → HTTP-уведомления: https://api.duholov.ru/functions/v1/game/yookassa).
   // Телу уведомления не верим — берём из него только номер платежа и сами спрашиваем ЮKassa.
@@ -119,8 +128,10 @@ const Pay = {
     if (!this.on() || !body || !body.object) return;
     const ext = String((String(body.event || '').startsWith('refund.') ? body.object.payment_id : body.object.id) || '').slice(0, 64);
     if (!/^[0-9a-f-]{20,64}$/i.test(ext)) return;
-    const r = must(await db.from('payments').select('id, ext_id, amount, status, credited').eq('ext_id', ext).maybeSingle());
+    const r = must(await db.from('payments').select('id, user_id, ext_id, amount, status, credited').eq('ext_id', ext).maybeSingle());
     if (r) await this.refresh(r);
+    // оплачен, но не начислен (например, прошлая попытка не взяла замок) — начислить; ошибка → 500, ЮKassa повторит уведомление
+    if (r && !r.credited && (await db.from('payments').select('status, credited').eq('id', r.id).single()).data?.status === 'succeeded') await this.credit(r.user_id);
   },
 };
 
@@ -577,6 +588,56 @@ const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || 'https://duholov.ru,https://
 const ACCESS = Deno.env.get('ACCESS_KEY') || '';
 const sameKey = (a, b) => { if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
 
+/* Действия игрока — строго по очереди (замок в базе): запрос из игры или сам сервер (4.22: начисление оплаты) */
+async function play(uid, body, env) {
+  const R = (b, status = 200) => ({ body: b, status });
+  // 4.1: действия одного игрока выполняются строго по очереди — на всех экземплярах функции (замок в базе, 017_request_lock.sql).
+  // Прогресс и служебные данные сервера записываются одной транзакцией вместе со снятием замка.
+  const tok = crypto.randomUUID();
+  let locked = false;
+  const release = async srv => {
+    if (!locked) return;
+    locked = false;
+    const { error } = await db.rpc('game_release', { p_uid: uid, p_token: tok, p_srv: srv || null });
+    if (error) console.error('Замок:', error.message);
+  };
+  try {
+    let got = null;
+    for (let i = 0; i < LOCK_TRIES; i++) {
+      got = must(await db.rpc('game_begin', { p_uid: uid, p_token: tok, p_ms: LOCK_MS }));
+      if (got && !got.locked) break;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    if (!got || got.locked) return R({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });
+    locked = true;
+    const row = got.row, srv = got.srv || {};
+    if (row && row.moved_to) return R({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });
+    // от имени сервера (начисление оплаты): часовой пояс — тот, что сервер помнит у игрока
+    if (body.sys) body.tz = srv.tz ? srv.tz.v : 180;
+    const res = await GameCore.run(body, { data: row ? row.data : null, srv }, env);
+    if (!res.ok) {
+      if (res.rl) await release({ ...srv, rl: res.rl });
+      return R({ ok: false, error: res.error, rev: row ? row.rev : 0 });
+    }
+    if (res.reset) return R({ ok: true, reset: true, results: res.results, events: [], now: res.now });
+    // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
+    const ops = row && res.data ? Diff.make(row.data, res.data) : null;
+    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
+      p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
+    if (rev == null) return R({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });
+    locked = false; // замок снят вместе с сохранением
+    for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
+    // разница — только если телефон знает предыдущую версию прогресса
+    const patch = !res.full && row && body.rev === row.rev ? ops : null;
+    return R({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
+  } catch (e) {
+    console.error(String(e && e.stack || e));
+    return R({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500);
+  } finally {
+    await release();
+  }
+}
+
 Deno.serve(async req => {
   const origin = req.headers.get('origin');
   const allowed = !origin || ORIGINS.includes(origin);
@@ -631,49 +692,6 @@ Deno.serve(async req => {
   if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));
   // Вход через сервисы: список, привязка и переключение учётной записи — тоже вне очереди игровых действий
   if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 500); } }
-  const env = makeEnv(uid);
-
-  // 4.1: действия одного игрока выполняются строго по очереди — на всех экземплярах функции (замок в базе, 017_request_lock.sql).
-  // Прогресс и служебные данные сервера записываются одной транзакцией вместе со снятием замка.
-  const tok = crypto.randomUUID();
-  let locked = false;
-  const release = async srv => {
-    if (!locked) return;
-    locked = false;
-    const { error } = await db.rpc('game_release', { p_uid: uid, p_token: tok, p_srv: srv || null });
-    if (error) console.error('Замок:', error.message);
-  };
-  try {
-    let got = null;
-    for (let i = 0; i < LOCK_TRIES; i++) {
-      got = must(await db.rpc('game_begin', { p_uid: uid, p_token: tok, p_ms: LOCK_MS }));
-      if (got && !got.locked) break;
-      await new Promise(r => setTimeout(r, 200));
-    }
-    if (!got || got.locked) return reply({ ok: false, error: ru`Предыдущее действие ещё выполняется — повтори` });
-    locked = true;
-    const row = got.row, srv = got.srv || {};
-    if (row && row.moved_to) return reply({ ok: false, moved: true, error: ru`Прогресс перенесён на другое устройство` });
-    const res = await GameCore.run(body, { data: row ? row.data : null, srv }, env);
-    if (!res.ok) {
-      if (res.rl) await release({ ...srv, rl: res.rl });
-      return reply({ ok: false, error: res.error, rev: row ? row.rev : 0 });
-    }
-    if (res.reset) return reply({ ok: true, reset: true, results: res.results, events: [], now: res.now });
-    // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
-    const ops = row && res.data ? Diff.make(row.data, res.data) : null;
-    const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
-      p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
-    if (rev == null) return reply({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });
-    locked = false; // замок снят вместе с сохранением
-    for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
-    // разница — только если телефон знает предыдущую версию прогресса
-    const patch = !res.full && row && body.rev === row.rev ? ops : null;
-    return reply({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
-  } catch (e) {
-    console.error(String(e && e.stack || e));
-    return reply({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500);
-  } finally {
-    await release();
-  }
+  const out = await play(uid, body, makeEnv(uid));
+  return reply(out.body, out.status);
 });

@@ -1176,11 +1176,14 @@ const GameCore = {
       }
       if (zlat) {
         S.d.zlat = (S.d.zlat || 0) + zlat;
+        S.d.payNew = (S.d.payNew || 0) + zlat; // 4.22: игра покажет «+N златников» при входе (начислить мог и сам сервер)
         J.add('pay', { zlat });
       }
       if (rows.length) ctx.after.push(() => ctx.env.payCredited(rows.map(r => r.id)));
       return { zlat, n: packs.length };
     },
+    // 4.22: игрок увидел «+N златников» из Казны
+    payAck() { delete S.d.payNew; return {}; },
     // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
