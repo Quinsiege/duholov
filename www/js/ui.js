@@ -78,6 +78,7 @@ const UI = {
     });
     U.$('#wxChip').onclick = () => this.skyInfo();
     U.$('#moonChip').onclick = () => this.skyInfo();
+    U.$('#wxPill').onclick = () => this.skyInfo(); // 4.25: погода и время — одной плашкой
     U.$('#eventChip').onclick = () => this.eventInfo();
     this.applyA11y();
     // 4.6.3: когда непрозрачный экран (меню, поимка, разлом, сцена обучения) уже полностью проявился, карта под ним
@@ -105,6 +106,9 @@ const UI = {
   refreshSky() {
     const c = U.$('#wxChip'), m = U.$('#moonChip');
     if (Sky.w) { c.classList.remove('hidden'); c.innerHTML = `${Art.wxIcon(Sky.w.key, 18)}${Sky.w.temp != null ? `<span>${Sky.w.temp > 0 ? '+' : ''}${Sky.w.temp}°</span>` : ''}`; }
+    const p = U.$('#wxPill .wp-w'); // 4.25: погода в плашке «погода · время»
+    if (p) p.innerHTML = Sky.w ? `${Art.wxIcon(Sky.w.key, 20)}${Sky.w.temp != null ? `<b>${Sky.w.temp > 0 ? '+' : ''}${Sky.w.temp}°</b>` : ''}` : '';
+    U.$('#wxPill').classList.toggle('no-wx', !Sky.w);
     const ev = Sky.moonEvent();
     m.classList.toggle('hidden', !ev);
     if (ev) m.innerHTML = `${Art.moonIcon(ev, 18)}<span>${MOON_EVENTS[ev].name}</span>`;
@@ -230,8 +234,10 @@ const UI = {
       document.documentElement.style.setProperty('--pc', d.look.cloak);
     }
     put(U.$('#hudName'), d.name);
+    put(U.$('#hudRank'), ru`${this.rank(d.level)} · ур. ${d.level}`);
     const xw = d.level >= MAX_LEVEL ? '100%' : ((d.xp - cur) / (next - cur) * 100) + '%', xb = U.$('#hudXp');
-    if (xb._w !== xw) { xb._w = xw; xb.style.width = xw; }
+    if (xb._w !== xw) { xb._w = xw; xb.style.width = xw; U.$('#profileBtn').style.setProperty('--xp', parseFloat(xw).toFixed(1)); } // 4.25: опыт — кольцо вокруг аватара
+    const now = new Date(); put(U.$('#wxPill .wp-t'), `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`);
     if (Tut.step()) Tut.show();
     Hints.check();
     const badge = S.questsClaimable() + S.readyCocoons().length + Friends.inbox.length + Order.claimable(); // задания, коконы, подарки, общее дело
@@ -265,14 +271,18 @@ const UI = {
     if (c._k === t + cls) return; // GPS приходит каждую секунду — без изменений не перестраиваем значок
     c._k = t + cls;
     c.className = 'chip ' + cls; c.innerHTML = `${this.I.pin}<span>${t}</span>`;
-    c.onclick = state === 'demo' ? () => this.toast(ru`Двигайся джойстиком или клавишами WASD. Выключить — в настройках.`) : null;
+    c.onclick = state === 'demo' ? () => this.toast(ru`Двигайся джойстиком или клавишами WASD. Выключить — в настройках.`) : () => this.toast(t); // 4.25: кнопка круглая — точность по касанию
+    c.setAttribute('aria-label', t);
   },
+  // 4.25: круглая кнопка «Рядом» — до трёх ближайших духов и их число; дух не из Бестиария — знак вопроса, как на карте
   updateNearby(list) {
-    const box = U.$('#nearbyBtn .nb-arts');
-    const key = list.slice(0, 3).map(e => e.id).join();
+    const box = U.$('#nearbyBtn .nb-arts'), cnt = U.$('#nearbyBtn .nb-cnt');
+    const known = e => typeof MapView === 'undefined' || !MapView.known || MapView.known(e.sid);
+    const key = list.slice(0, 3).map(e => e.id + known(e)).join() + ':' + list.length;
     if (box._key === key) return;
     box._key = key;
-    box.innerHTML = list.slice(0, 3).map(e => `<div>${Art.img(e.sid)}</div>`).join('');
+    box.innerHTML = list.slice(0, 3).map(e => `<div>${known(e) ? Art.img(e.sid) : '<span class="nb-q">?</span>'}</div>`).join('');
+    if (cnt) { cnt.textContent = list.length > 9 ? '9+' : list.length; cnt.classList.toggle('hidden', !list.length); }
   },
 
   /* ---------------- СВАЙП ПО ВКЛАДКАМ ---------------- */

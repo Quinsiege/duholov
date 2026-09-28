@@ -2201,6 +2201,7 @@ I18N.dict = {
 "Луна: {0}":"Ay: {0}",
 "Ни полнолуния, ни новолуния — обычная ночь.":"Ne dolunay ne yeni ay — sıradan bir gece.",
 "Нажми «Назад» ещё раз, чтобы выйти":"Çıkmak için “Geri”ye bir kez daha bas",
+"{0} · ур. {1}":"{0} · sv. {1}",
 "Слишком быстро — {0} км/ч":"Çok hızlı — {0} km/sa",
 "Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!":"Ruhlar ve pınarlar yayaları bekler: yürüme ya da koşu hızına in. Direksiyondayken asla oynama!",
 "Демо-режим":"Demo modu",

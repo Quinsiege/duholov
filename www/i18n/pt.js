@@ -2201,6 +2201,7 @@ I18N.dict = {
 "Луна: {0}":"Lua: {0}",
 "Ни полнолуния, ни новолуния — обычная ночь.":"Nem lua cheia, nem lua nova — uma noite comum.",
 "Нажми «Назад» ещё раз, чтобы выйти":"Toque em “Voltar” de novo para sair",
+"{0} · ур. {1}":"{0} · nv. {1}",
 "Слишком быстро — {0} км/ч":"Rápido demais — {0} km/h",
 "Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!":"Espíritos e fontes esperam pedestres: diminua para caminhada ou corrida. Nunca jogue dirigindo!",
 "Демо-режим":"Modo demo",

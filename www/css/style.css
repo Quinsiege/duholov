@@ -4233,8 +4233,95 @@ body.night .zn.rz.sp > .sp-bg { background: radial-gradient(circle, rgba(139, 92
 @keyframes rmNo { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
 .rm-it.tut-target .rm-c { border-color: rgba(253, 224, 71, .95); box-shadow: 0 0 0 3px rgba(253, 224, 71, .35), 0 0 22px rgba(253, 224, 71, .5); }
 body.rm-open #hud > :not(#menuBtn) { opacity: 0; pointer-events: none; transition: opacity .2s; }
-#menuBtn { transition: transform .35s cubic-bezier(.34, 1.56, .64, 1); }
-body.rm-open #menuBtn { transform: rotate(45deg) scale(.92); }
 @media (max-height: 720px) { .rm-grid { gap: 8px 10px; } .rm-c { width: 56px; height: 56px; } .rm-c .mi { width: 36px !important; height: 36px !important; } .rm-l { font-size: 11.5px; } .sheet-wrap.rm-wrap { padding-bottom: calc(112px + var(--sb)); } }
 .calm .rm-it, .calm .rm-in .rm-it, .calm .rm-back .rm-it { transform: none !important; transition: opacity .2s ease !important; }
 .eco .rm-glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(20, 12, 44, .86); }
+
+/* ===== 4.25: HUD «Чистое стекло» — аватар с кольцом опыта, имя и звание прямо на карте, погода и время одной плашкой,
+   круглые стеклянные кнопки GPS, «Рядом» и меню ===== */
+#hud .hud-top { align-items: flex-start; }
+#hud #profileBtn { display: flex; align-items: center; gap: 14px; padding: 0 !important; width: auto !important; min-width: 0 !important; max-width: calc(100vw - 210px);
+  background: none !important; border: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+#hud #profileBtn::before, #hud #profileBtn::after { content: none !important; }
+#hud #profileBtn .avatar { position: relative; flex: none; width: 64px !important; height: 64px !important; padding: 4px !important; border-radius: 50%;
+  background: conic-gradient(#fde68a calc(var(--xp, 0) * 1%), rgba(255, 255, 255, .24) 0) !important; box-shadow: 0 6px 18px rgba(12, 6, 32, .4) !important; }
+#hud #profileBtn .ava-art { width: 100% !important; height: 100% !important; border-radius: 50%; overflow: hidden; background: #1c1236; }
+#hud #profileBtn #hudLvl { position: absolute; left: 50% !important; right: auto !important; top: auto !important; bottom: -8px !important; transform: translateX(-50%); font-size: 12px !important; }
+#hud #profileBtn .pinfo { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
+#hud #profileBtn .xpbar { display: none !important; }
+#hud #hudName { font-family: var(--f-head); font-size: 21px !important; font-weight: 800; line-height: 1.1; color: #fff !important; -webkit-text-fill-color: #fff !important; background: none !important;
+  text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 10px rgba(8, 4, 24, .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+#hud #hudRank { font-family: var(--f-head); font-size: 13px; font-weight: 700; color: #fde68a; margin-top: 2px; text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 8px rgba(8, 4, 24, .5); white-space: nowrap; }
+#hud .hud-right { align-items: flex-end; }
+#hud .hr-top { display: flex; align-items: center; gap: 10px; }
+#hud #wxPill { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 22px !important; font-family: var(--f-head); font-weight: 700; font-size: 15px; color: #fff; pointer-events: auto; }
+#hud #wxPill .wp-w { display: flex; align-items: center; gap: 5px; } #hud #wxPill .wp-w svg { width: 20px; height: 20px; }
+#hud #wxPill > i { width: 1px; height: 16px; background: rgba(255, 255, 255, .35); }
+#hud #wxPill.no-wx .wp-w, #hud #wxPill.no-wx > i { display: none; }
+#hud #wxChip { display: none !important; }
+#hud #gpsChip { width: 44px !important; height: 44px !important; min-width: 0 !important; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; position: relative; pointer-events: auto; }
+#hud #gpsChip > span { display: none !important; }
+#hud #gpsChip svg, #hud #gpsChip .ico { width: 22px !important; height: 22px !important; margin: 0 !important; }
+#hud #gpsChip.ok { color: #4ade80 !important; } #hud #gpsChip.warn { color: #fbbf24 !important; } #hud #gpsChip.bad { color: #f87171 !important; } #hud #gpsChip.demo { color: #c4b5fd !important; }
+#hud #gpsChip::before { content: '' !important; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; inset: 6px 6px auto auto; border: 0 !important; -webkit-mask: none !important; mask: none !important; opacity: 1 !important; }
+#hud #gpsChip.search::before, #hud #gpsChip.warn::before { animation: gpsBlink 1.2s ease-in-out infinite; }
+@keyframes gpsBlink { 50% { opacity: .25; } }
+#tracker { top: calc(96px + var(--st)) !important; }
+/* «Рядом» — круглая кнопка: до трёх духов и их число */
+#hud #nearbyBtn { width: 72px !important; height: 72px !important; min-width: 0 !important; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center; right: 16px !important; }
+#hud #nearbyBtn::before, #hud #nearbyBtn::after { border-radius: 50% !important; }
+#hud #nearbyBtn > span { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+#hud #nearbyBtn .nb-arts { display: flex; justify-content: center; position: relative; z-index: 1; margin: 0; gap: 0; }
+#hud #nearbyBtn .nb-arts > div { width: 30px !important; height: 30px !important; margin: 0 -7px !important; }
+#hud #nearbyBtn .nb-arts .art { width: 30px !important; height: 30px !important; }
+#hud .nb-q { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #473c6e, #120c24); border: 1.5px dashed rgba(226, 232, 240, .55); color: #e2e8f0; font-family: var(--f-display); font-size: 16px; line-height: 1; }
+#hud #nearbyBtn .nb-cnt { position: absolute !important; top: -3px; right: -3px; z-index: 2; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: #ef4444; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+#hud #nearbyBtn .nb-cnt.hidden { display: none; }
+/* центральная кнопка — стеклянный круг со значком разделов; меню открыто — значок складывается в крестик */
+#hud #menuBtn.orb { width: 72px; height: 72px; margin-left: -36px; bottom: calc(24px + var(--sb)); border-radius: 50%; filter: none; display: grid; place-items: center;
+  background: var(--lg-bg); box-shadow: var(--lg-sh), 0 0 18px rgba(251, 191, 36, .22); border: 1px solid rgba(255, 255, 255, .34);
+  -webkit-backdrop-filter: blur(12px) saturate(1.7) brightness(1.08); backdrop-filter: blur(12px) saturate(1.7) brightness(1.08); transition: transform .2s; }
+#hud #menuBtn.orb:active { transform: scale(.92); }
+#menuBtn .ob-ico { position: relative; width: 30px; height: 30px; }
+#menuBtn .ob-grid { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), opacity .2s; }
+#menuBtn .ob-grid i { border-radius: 5px; background: linear-gradient(145deg, #fff7d1, #fde68a 40%, #f59e0b); box-shadow: 0 1px 3px rgba(60, 20, 4, .45), inset 0 1px 0 rgba(255, 255, 255, .7); }
+#menuBtn .ob-x { position: absolute; inset: 0; opacity: 0; transform: rotate(-90deg) scale(.4); transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), opacity .2s; }
+#menuBtn .ob-x i { position: absolute; left: 50%; top: 50%; width: 30px; height: 5px; margin: -2.5px 0 0 -15px; border-radius: 3px; background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 1px 3px rgba(60, 20, 4, .45); transform: rotate(45deg); }
+#menuBtn .ob-x i + i { transform: rotate(-45deg); }
+body.rm-open #menuBtn .ob-grid { opacity: 0; transform: rotate(90deg) scale(.4); }
+body.rm-open #menuBtn .ob-x { opacity: 1; transform: none; }
+#hud #menuBtn .badge { top: -2px; right: -2px; }
+.calm #menuBtn .ob-grid, .calm #menuBtn .ob-x { transition: opacity .2s; }
+#hud #profileBtn #hudName, #hud #profileBtn #hudRank { font-family: var(--f-head) !important; -webkit-text-stroke: 0 !important; paint-order: normal !important; letter-spacing: .1px !important; filter: none !important; }
+#hud #profileBtn #hudName { font-weight: 700 !important; font-size: 20px !important; }
+#hud #profileBtn #hudRank { font-weight: 500 !important; font-size: 12.5px !important; }
+#hud .chip:empty { display: none !important; }
+/* имя и звание занимают ровно то место, что осталось слева от погоды и GPS */
+#hud .hud-top { display: flex; gap: 8px; }
+#hud #profileBtn { flex: 1 1 auto; min-width: 0 !important; max-width: none !important; }
+#hud #profileBtn .pinfo { flex: 1 1 auto; overflow: hidden; }
+#hud #profileBtn #hudRank { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+#hud .hud-right { flex: none; }
+@media (max-width: 399px) {
+  #hud #profileBtn { gap: 10px; }
+  #hud #profileBtn .avatar { width: 56px !important; height: 56px !important; padding: 3px !important; }
+  #hud #profileBtn #hudName { font-size: 17px !important; }
+  #hud #profileBtn #hudRank { font-size: 11.5px !important; }
+  #hud #wxPill { gap: 6px; padding: 0 10px; font-size: 13.5px; height: 40px; }
+  #hud #wxPill .wp-w svg { width: 18px; height: 18px; }
+  #hud #gpsChip { width: 40px !important; height: 40px !important; }
+  #hud .hr-top { gap: 6px; }
+}
+/* погода и GPS — без подложки: только значки и текст с тенью, как имя Ловчего */
+#hud #wxPill, #hud #gpsChip { background: none !important; border: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+#hud #wxPill::after, #hud #wxPill::before, #hud #gpsChip::after { content: none !important; }
+#hud #wxPill { padding: 0 4px !important; text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 10px rgba(8, 4, 24, .6); }
+#hud #wxPill > i { background: rgba(255, 255, 255, .6); box-shadow: 0 0 4px rgba(8, 4, 24, .6); }
+#hud #wxPill svg, #hud #gpsChip svg { filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .8)) drop-shadow(0 0 6px rgba(8, 4, 24, .45)); }
+#hud #gpsChip svg, #hud #gpsChip .ico { width: 26px !important; height: 26px !important; }
+/* круглые кнопки главного экрана — как круглые значки меню (.rm-c): стекло, светлый ободок и блик */
+#hud #menuBtn.orb, #hud #nearbyBtn, #hud #recenterBtn, #hud #compassBtn {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, .07)), rgba(40, 24, 90, .32) !important; border: 1px solid rgba(255, 255, 255, .36) !important;
+  box-shadow: 0 8px 18px rgba(8, 4, 24, .3), inset 0 1px 1px rgba(255, 255, 255, .55), inset 0 -2px 6px rgba(255, 255, 255, .06) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.4) !important; backdrop-filter: blur(10px) saturate(1.4) !important; border-radius: 50% !important; }
+#hud #nearbyBtn::before, #hud #nearbyBtn::after, #hud #recenterBtn::before, #hud #recenterBtn::after, #hud #menuBtn::before, #hud #menuBtn::after { content: none !important; }

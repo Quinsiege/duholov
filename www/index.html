@@ -148,10 +148,10 @@
     <div class="hud-top">
       <button id="profileBtn" class="profile" aria-label="Профиль">
         <div class="avatar"><div class="ava-art"></div><span id="hudLvl">1</span></div>
-        <div class="pinfo"><div id="hudName"></div><div class="xpbar"><i id="hudXp"></i></div></div>
+        <div class="pinfo"><div id="hudName"></div><small id="hudRank"></small><div class="xpbar"><i id="hudXp"></i></div></div>
       </button>
       <div class="hud-right">
-        <div id="gpsChip" class="chip"></div>
+        <div class="hr-top"><button id="wxPill" class="chip wx-pill" aria-label="Погода"><span class="wp-w"></span><i></i><span class="wp-t"></span></button><div id="gpsChip" class="chip"></div></div>
         <div class="chip-row"><div id="moonChip" class="chip hidden"></div><div id="wxChip" class="chip hidden"></div></div>
         <div id="eventChip" class="chip event"></div>
         <div id="holChip" class="chip event hol hidden"></div>
@@ -168,11 +168,11 @@
     <button id="compassBtn" class="compass" aria-label="Компас: повернуть карту севером вверх"></button>
 
     <button id="menuBtn" class="orb" aria-label="Меню">
-      <svg viewBox="0 0 100 100"><defs><linearGradient id="orbR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffbeb"/><stop offset=".45" stop-color="#fde047"/><stop offset="1" stop-color="#f59e0b"/></linearGradient></defs><g class="orb-rose" fill="url(#orbR)" stroke="#7c2d12" stroke-width="1" stroke-linejoin="round"><circle cx="50" cy="50" r="25.5" fill="none" stroke="url(#orbR)" stroke-width="2"/><path d="M50 50A25 25 0 0 1 50 25A25 25 0 0 1 50 50Z" transform="rotate(0 50 50)"/><path d="M50 50A25 25 0 0 1 50 25A25 25 0 0 1 50 50Z" transform="rotate(60 50 50)"/><path d="M50 50A25 25 0 0 1 50 25A25 25 0 0 1 50 50Z" transform="rotate(120 50 50)"/><path d="M50 50A25 25 0 0 1 50 25A25 25 0 0 1 50 50Z" transform="rotate(180 50 50)"/><path d="M50 50A25 25 0 0 1 50 25A25 25 0 0 1 50 50Z" transform="rotate(240 50 50)"/><path d="M50 50A25 25 0 0 1 50 25A25 25 0 0 1 50 50Z" transform="rotate(300 50 50)"/><circle cx="59.5" cy="33.5" r="2.1"/><circle cx="69.0" cy="50.0" r="2.1"/><circle cx="59.5" cy="66.5" r="2.1"/><circle cx="40.5" cy="66.5" r="2.1"/><circle cx="31.0" cy="50.0" r="2.1"/><circle cx="40.5" cy="33.5" r="2.1"/><circle cx="50" cy="50" r="3.2"/></g><g class="orb-dots" fill="url(#orbR)" stroke="#7c2d12" stroke-width=".6"><circle cx="50.0" cy="18.0" r="1.7"/><circle cx="58.3" cy="19.1" r="1"/><circle cx="66.0" cy="22.3" r="1.7"/><circle cx="72.6" cy="27.4" r="1"/><circle cx="77.7" cy="34.0" r="1.7"/><circle cx="80.9" cy="41.7" r="1"/><circle cx="82.0" cy="50.0" r="1.7"/><circle cx="80.9" cy="58.3" r="1"/><circle cx="77.7" cy="66.0" r="1.7"/><circle cx="72.6" cy="72.6" r="1"/><circle cx="66.0" cy="77.7" r="1.7"/><circle cx="58.3" cy="80.9" r="1"/><circle cx="50.0" cy="82.0" r="1.7"/><circle cx="41.7" cy="80.9" r="1"/><circle cx="34.0" cy="77.7" r="1.7"/><circle cx="27.4" cy="72.6" r="1"/><circle cx="22.3" cy="66.0" r="1.7"/><circle cx="19.1" cy="58.3" r="1"/><circle cx="18.0" cy="50.0" r="1.7"/><circle cx="19.1" cy="41.7" r="1"/><circle cx="22.3" cy="34.0" r="1.7"/><circle cx="27.4" cy="27.4" r="1"/><circle cx="34.0" cy="22.3" r="1.7"/><circle cx="41.7" cy="19.1" r="1"/></g></svg>
+      <span class="ob-ico" aria-hidden="true"><span class="ob-grid"><i></i><i></i><i></i><i></i></span><span class="ob-x"><i></i><i></i></span></span>
       <i class="badge hidden"></i>
     </button>
 
-    <button id="nearbyBtn" class="nearby" aria-label="Рядом"><div class="nb-arts"></div><span>Рядом</span></button>
+    <button id="nearbyBtn" class="nearby" aria-label="Рядом"><div class="nb-arts"></div><span>Рядом</span><b class="nb-cnt hidden"></b></button>
   </div>
 
   <div id="toasts"></div>
