@@ -126,7 +126,7 @@ Object.assign(UI, {
     const cc = d.clan ? CLANS[d.clan].color : '#fbbf24', maxed = d.level >= MAX_LEVEL;
     const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
     const ach = [
-      [ru`Разведано кварталов`, typeof Fog !== 'undefined' ? Fog.explored() : 0], [ru`Родников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
+      [ru`Пробуждений`, d.stats.awakened || 0], [ru`Родников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
       [ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],
       [ru`Очищено духов`, d.stats.purified], [ru`Отличных бросков`, d.stats.throwsGreat],
       ...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Капищ освобождено`, d.stats.freed || 0]] : []),
@@ -365,7 +365,7 @@ Object.assign(UI, {
         <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>
           <div class="seg map-theme">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('tilt3d', 'map', ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`)}
-        ${row('fog', 'map', ru`Туман Нави`, ru`Неизведанное скрыто дымкой — она рассеивается там, где ты прошёл. Пройденный путь хранится только на этом телефоне.`)}
+        ${row('fog', 'map', ru`Туман Нави`, ru`Всё, что дальше от тебя, скрыто дымкой: она расступается вокруг тебя и снова смыкается, когда уходишь.`)}
         ${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}
         ${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}
         ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте, реже обновление и запросы GPS.`)}

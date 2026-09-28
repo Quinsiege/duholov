@@ -240,7 +240,7 @@ const MapView = {
 
   moveTo(lat, lng, jump) {
     this.pos = { lat, lng };
-    if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.12: туман Нави рассеивается там, где прошёл Ловчий
+    if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.25.2: туман Нави расступается вокруг Ловчего и смыкается позади
     this.glide(lat, lng, jump);
     const el = this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + this.rot}deg)`; // с учётом поворота карты
@@ -255,7 +255,6 @@ const MapView = {
     this.shown = { lat, lng };
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
-    this.fitLines();
     if (this.follow) {
       if (jump) this.map.setView(ll, 17.5, { animate: false });
       else this.map.panTo(ll, { animate: false });
@@ -565,9 +564,8 @@ const MapView = {
   icon(e) {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
-      // 4.24.1: дух парит чуть над землёй (DROP px), от него вниз — пунктир проекции на землю, дальше по земле — линия к Ловчему
-      return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62 + this.DROP],
-        html: `<i class="mk-drop" style="height:${this.DROP}px"></i><div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
+      return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62],
+        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
@@ -606,7 +604,6 @@ const MapView = {
     });
     for (const [id, m] of this.markers) if (!seen.has(id)) { m.remove(); this.markers.delete(id); }
     this.syncZones(ents);
-    this.syncLines(spirits);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     const ids = new Set(this.nearby.map(e => e.id));
     if (this._spIds && this.nearby.some(e => !this._spIds.has(e.id)) && Date.now() - (this._vibT || 0) > 3000) { this._vibT = Date.now(); U.vibrate([60, 90, 60]); } // 4.19: появился дух — двойная вибрация
@@ -643,7 +640,7 @@ const MapView = {
   },
   // земли дружин (сияние цвета дружины вокруг Капища) и марево Нави вокруг открытых разломов;
   // 4.24.1: под каждым духом — еле заметная волна, как от Ловчего, только в разы меньше (SPIRIT_R м); у каждого духа — свой такт
-  SPIRIT_R: 25, DROP: 22,
+  SPIRIT_R: 25,
   zones: new Map(),
   syncZones(ents) {
     const want = new Map();
@@ -660,29 +657,6 @@ const MapView = {
       this.zones.set(id, { m, r: w.r, css: w.css });
       this.fitZone(m, w.r);
     }
-  },
-  // 4.24.1: от каждого духа по земле к Ловчему — еле заметная красная пунктирная линия (в слое земли, под домами)
-  lines: new Map(),
-  syncLines(spirits) {
-    if (!this._lineR) this._lineR = L.svg({ pane: 'zone', padding: 0.5 });
-    const me = this.shown || this.pos, want = new Set(spirits.map(e => e.id));
-    for (const [id, l] of this.lines) if (!want.has(id)) { l.remove(); this.lines.delete(id); }
-    spirits.forEach(e => {
-      let l = this.lines.get(e.id);
-      if (!l) {
-        l = L.polyline([[e.lat, e.lng], [me.lat, me.lng]], { renderer: this._lineR, interactive: false, className: 'sp-line', color: '#ef4444', weight: 1.5, opacity: 0.4, dashArray: '4 6', lineCap: 'round' }).addTo(this.map);
-        this.lines.set(e.id, l);
-      }
-      l._sp = [e.lat, e.lng];
-    });
-    this.fitLines(true);
-  },
-  // конец линий — там, где значок Ловчего на экране (он едет плавно); не чаще раза в 60 мс
-  fitLines(now) {
-    if (!this.lines.size || (!now && performance.now() - (this._linesAt || 0) < 60)) return;
-    this._linesAt = performance.now();
-    const me = this.shown || this.pos;
-    for (const l of this.lines.values()) l.setLatLngs([l._sp, [me.lat, me.lng]]);
   },
   fitZone(m, r, z, anim) {
     const box = m.getElement() && m.getElement().firstElementChild;

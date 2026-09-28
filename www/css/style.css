@@ -4195,10 +4195,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .zn.rz.sp > .rz-wave { animation-delay: var(--wd, 0s); filter: opacity(.5); }
 .zn.rz.sp > .sp-bg { background: radial-gradient(circle, rgba(42, 27, 90, 0) 40%, rgba(42, 27, 90, .2) 68%, rgba(42, 27, 90, .45) 90%, rgba(243, 207, 107, .45) 98%, transparent 100%); } /* как у Ловчего (.rz-fill), но заметнее */
 body.night .zn.rz.sp > .sp-bg { background: radial-gradient(circle, rgba(139, 92, 246, 0) 40%, rgba(139, 92, 246, .16) 68%, rgba(139, 92, 246, .38) 90%, rgba(243, 207, 107, .42) 98%, transparent 100%); }
-/* от парящего духа вниз — еле заметный красный пунктир проекции на землю (дальше по земле к Ловчему — .sp-line) */
-.mk-drop { position: absolute; left: 50%; top: 62px; width: 0; margin-left: -.75px; border-left: 1.5px dashed rgba(239, 68, 68, .5); pointer-events: none; }
-.mk.far .mk-drop { opacity: .7; }
-.sp-line { pointer-events: none; }
 
 /* ===== 4.25: меню — круглые значки на «жидком стекле», вылетают из центральной кнопки ===== */
 /* стекло ниже HUD (z 500): центральная кнопка остаётся сверху и закрывает меню; остальной HUD на это время прячется */
