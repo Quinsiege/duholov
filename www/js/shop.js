@@ -34,6 +34,50 @@ const Loot = {
   },
 };
 
+// 4.27: версия приложения для Google Play (store=play) — покупки Казны только через Google Play Billing.
+// Приложение проводит покупку (DuholovNative.billing*, ответы — window.nativeBilling), засчитывает её сервер (Game.pay('gplay')).
+const GPlay = {
+  waits: {}, // ждём ответа приложения по запросу: products | buy | pending (у каждого свой — запросы не перебивают друг друга)
+  on() { return typeof Updater !== 'undefined' && Updater.STORE === 'play' && !!(window.DuholovNative && window.DuholovNative.billingBuy); },
+  // ответ приложения на запрос op (или ошибка Google Play: code — BillingResponseCode)
+  ask(op, fn, ms = 20000) {
+    return new Promise((res, rej) => {
+      const done = (o, e) => { clearTimeout(t); if (this.waits[op] === w) delete this.waits[op]; e ? rej(e) : res(o); };
+      const t = setTimeout(() => done(null, new Error(ru`Google Play не ответил — попробуй ещё раз`)), ms);
+      const w = o => o.type === 'error' ? done(null, Object.assign(new Error(this.msg(o)), { code: o.code })) : done(o);
+      this.waits[op] = w;
+      try { fn(); } catch (e) { done(null, e); }
+    });
+  },
+  // ответ приложения → тот, кто его ждёт; покупка без ожидания (отложенная оплата прошла позже) — засчитать сразу
+  got(o) {
+    if (!o) return;
+    const op = o.type === 'error' ? o.op : { products: 'products', purchases: 'buy', pending: 'pending' }[o.type];
+    if (this.waits[op]) this.waits[op](o); else if (o.type === 'purchases') Treasury.recover();
+  },
+  msg(o) {
+    if (o.code === 1) return ru`Покупка отменена`;
+    if (o.code === 2 || o.code === 3 || o.code === -1) return ru`Покупки через Google Play недоступны на этом устройстве или в твоей стране`;
+    if (o.code === 7) return ru`Этот набор уже оплачен — засчитываем`;
+    return ru`Google Play: ошибка ${o.code}`;
+  },
+  products() { return this.ask('products', () => window.DuholovNative.billingProducts(JSON.stringify(Rules.PAY.map(p => p.id)))); },
+  buy(id, acct) { return this.ask('buy', () => window.DuholovNative.billingBuy(id, acct), 10 * 60000); },
+  pending() { return this.ask('pending', () => window.DuholovNative.billingPending()); },
+  // засчитать покупки на сервере: state 1 — оплачено, 2 — отложенная оплата (засчитаем, когда пройдёт)
+  async claim(list) {
+    let n = 0, pend = 0;
+    for (const p of list || []) {
+      if (p.state === 2) { pend++; continue; }
+      if (p.state !== 1) continue;
+      for (const id of p.products || []) { const r = await Game.pay('gplay', { product: id, token: p.token }); if (r.pending) pend++; else if (r.credited) n++; }
+    }
+    return { n, pend };
+  },
+};
+// ответы приложения; покупка, завершившаяся без ожидания (отложенная оплата прошла), — засчитать сразу
+window.nativeBilling = o => GPlay.got(o);
+
 // Казна Ордена: златники за рубли. Страница оплаты — ЮKassa (карта, СБП, SberPay, T-Pay, ЮMoney);
 // итог сервер узнаёт у ЮKassa сам (Game.pay('sync')), а начисляет действие payClaim.
 const Treasury = {
@@ -41,7 +85,44 @@ const Treasury = {
   info: null,
   async load() {
     if (!this.info) { try { this.info = await Game.pay('info'); } catch (e) { return { on: false }; } }
-    return this.info;
+    // 4.27: версия для Google Play — наборы и цены (в валюте игрока) из Google Play; ЮKassa здесь не используется
+    const i = this.info;
+    if (GPlay.on() && !(i.play && i.on)) {
+      i.play = true; i.on = false; i.prices = i.prices || {};
+      if (!i.gplay) i.why = ru`Покупки через Google Play пока не подключены`;
+      else {
+        try {
+          const r = await GPlay.products();
+          for (const x of r.list || []) i.prices[x.id] = x.price;
+          i.on = Rules.PAY.some(p => i.prices[p.id]);
+          if (!i.on) i.why = ru`Наборы златников в Google Play ещё не открыты`;
+        } catch (e) { i.why = e.message; }
+        this.recover();
+      }
+    }
+    return i;
+  },
+  // 4.27: оплаченные в Google Play, но ещё не засчитанные покупки (игра закрылась посреди покупки, нет сети)
+  async recover(show) {
+    if (!GPlay.on() || this._recovering) return;
+    this._recovering = true;
+    try {
+      const r = await GPlay.pending(), c = await GPlay.claim(r.list);
+      if (c.n) { await Game.try('tick'); this.notice(); }
+    } catch (e) { if (show) UI.toast(U.esc(e.message), 'bad'); }
+    finally { this._recovering = false; }
+  },
+  async buyPlay(id, info, onDone) {
+    if (this._busy) return;
+    this._busy = true;
+    try {
+      const r = await GPlay.buy(id, info.gplay.acct), c = await GPlay.claim(r.list);
+      if (c.n) { await Game.try('tick'); this.notice(); }
+      else if (c.pend) UI.toast(ru`Оплата ещё не завершена — златники придут, когда Google Play её подтвердит`);
+    } catch (e) {
+      if (e.code === 7) await this.recover(true);
+      else if (e.code !== 1) UI.toast(U.esc(e.message), 'bad');
+    } finally { this._busy = false; onDone && onDone(); }
   },
   waiting() { try { return +localStorage.getItem(this.KEY) || 0; } catch (e) { return 0; } },
   setWaiting(v) { try { v ? localStorage.setItem(this.KEY, String(Date.now())) : localStorage.removeItem(this.KEY); } catch (e) {} },
@@ -51,10 +132,11 @@ const Treasury = {
       <div class="pay-packs">${Rules.PAY.map(p => `<button class="pay-pack ${p.hot ? 'hot' : ''}" data-pay="${p.id}">
         ${p.hot ? `<span class="pay-hot">${ru`Выгодно`}</span>` : p.bonus ? `<span class="pay-bonus">+${p.bonus}%</span>` : ''}
         <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}</small>
-        <span class="pay-price">${U.fmtNum(p.rub)} ₽</span></button>`).join('')}</div>
-      <div class="q-note">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class="linkish pay-offer">${ru`Оферта`}</button> <button class="linkish pay-mine">${ru`Мои покупки и чеки`}</button>${this.waiting() ? ` <button class="linkish pay-recheck">${ru`Я оплатил — проверить`}</button>` : ''}</div>`;
+        <span class="pay-price">${info.play ? U.esc(info.prices[p.id] || '—') : `${U.fmtNum(p.rub)} ₽`}</span></button>`).join('')}</div>
+      ${info.play ? `<div class="q-note">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class="linkish pay-mine">${ru`Мои покупки`}</button></div>` : `<div class="q-note">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class="linkish pay-offer">${ru`Оферта`}</button> <button class="linkish pay-mine">${ru`Мои покупки и чеки`}</button>${this.waiting() ? ` <button class="linkish pay-recheck">${ru`Я оплатил — проверить`}</button>` : ''}</div>`}`;
   },
   buy(id, info, onDone) {
+    if (info.play) return this.buyPlay(id, info, onDone);
     const p = Rules.PAY.find(x => x.id === id);
     const m = UI.modal({
       title: ru`Казна Ордена`, cls: 'pay-modal pay-buy',
@@ -88,7 +170,7 @@ const Treasury = {
     if (!n || this._noticed === n || document.querySelector('.onb, .loader:not(.out)')) return; // не поверх загрузки и входа
     this._noticed = n;
     Sfx.play('levelup'); U.vibrate([40, 60, 120]);
-    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златники уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златники уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${this.info && this.info.play ? ru`Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.` : ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     UI.refreshHud();
     Game.act('payAck').then(() => { this._noticed = 0; }).catch(() => { this._noticed = 0; });
   },
@@ -100,8 +182,8 @@ const Treasury = {
     const list = (r && r.list) || [];
     const when = t => new Date(t).toLocaleString(I18N.locale, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
     const row = x => `<div class="pl-row"><span class="pl-ico">${Art.item('zlat')}</span>
-      <div class="row-main"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`} · ${U.fmtNum(x.rub)} ₽</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>
-      ${x.receipt ? `<a class="pl-rc" href="${U.esc(x.receipt)}" target="_blank" rel="noopener">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class="pl-wait">${ru`чек готовится`}</span>`}</div>`;
+      <div class="row-main"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`}${x.gp ? '' : ` · ${U.fmtNum(x.rub)} ₽`}</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>
+      ${x.gp ? '<span class="pl-wait">Google Play</span>' : x.receipt ? `<a class="pl-rc" href="${U.esc(x.receipt)}" target="_blank" rel="noopener">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class="pl-wait">${ru`чек готовится`}</span>`}</div>`;
     UI.modal({ title: ru`Мои покупки и чеки`, cls: 'pay-modal pay-list',
       html: list.length ? `<div class="pl-rows">${list.map(row).join('')}</div>`
         : `<p class="pay-note">${ru`Покупок пока нет`}</p>`,
@@ -109,6 +191,7 @@ const Treasury = {
   },
   async check(force) {
     this.notice();
+    if (GPlay.on()) { this.recover(force); return; } // 4.27: версия для Google Play — ЮKassa не используется
     if (this.waiting() && Date.now() - this.waiting() > 3 * 86400000) this.setWaiting(false); // старше 3 дней — не ждём
     if (!S.d || this._checking || (!force && !this.waiting())) return;
     this._checking = true;
@@ -201,7 +284,7 @@ const Shop = {
     box.addEventListener('click', async e => {
       const tb = e.target.closest('[data-tab]');
       if (tb) { tab = tb.dataset.tab; Sfx.play('tap'); U.$$('[data-tab]', box).forEach(x => x.classList.toggle('on', x === tb)); U.$$('.dt-pane', box).forEach(p => p.classList.toggle('on', p.dataset.pane === tab)); return; }
-      const pk = e.target.closest('[data-pay]'); if (pk) { if (pay.on) Treasury.buy(pk.dataset.pay, pay, render); else UI.toast(ru`Оплата скоро откроется — следи за обновлениями`); return; }
+      const pk = e.target.closest('[data-pay]'); if (pk) { if (pay.on) Treasury.buy(pk.dataset.pay, pay, render); else UI.toast(pay.play ? U.esc(pay.why || '') : ru`Оплата скоро откроется — следи за обновлениями`); return; }
       if (e.target.closest('.pay-recheck')) { await Treasury.check(true); render(); return; }
       if (e.target.closest('.pay-offer')) { Treasury.offer(); return; }
       if (e.target.closest('.pay-mine')) { Treasury.purchases(); return; }

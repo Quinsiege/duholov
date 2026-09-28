@@ -81,7 +81,7 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.13'
       # релизная подпись постоянным ключом (секреты ANDROID_KEYSTORE_*); без ключа выпуск не собирается
       - name: Ключ подписи
         env:
@@ -94,9 +94,10 @@ jobs:
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          gradle -p android assembleSiteRelease assembleRustoreRelease --no-daemon
+          gradle -p android assembleSiteRelease assembleRustoreRelease bundlePlayRelease --no-daemon
           mv android/app/build/outputs/apk/site/release/app-site-release.apk duholov.apk
           mv android/app/build/outputs/apk/rustore/release/app-rustore-release.apk duholov-rustore.apk
+          mv android/app/build/outputs/bundle/playRelease/app-play-release.aab duholov-play.aab
       - uses: actions/upload-artifact@v4
         with:
           name: duholov-apk
@@ -106,6 +107,12 @@ jobs:
         with:
           name: duholov-rustore-apk
           path: duholov-rustore.apk
+          retention-days: 90
+      # 4.27: приложение для Google Play (AAB) — загружать в Play Console (Actions → этот запуск → Artifacts → duholov-play-aab)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duholov-play-aab
+          path: duholov-play.aab
           retention-days: 90
 
   server:

@@ -12,6 +12,11 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import android.widget.FrameLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import org.json.JSONArray
 import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
 import android.os.CancellationSignal
@@ -53,7 +58,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 10 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 11 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
         // геолокацию и камеру получает только сама игра, не страницы сервисов входа
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
@@ -72,6 +77,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var web: WebView
+    private lateinit var billing: Billing // 11: Google Play Billing (сборка play; в остальных — заглушка)
     private lateinit var yandexLogin: ActivityResultLauncher<YandexAuthLoginOptions>
     private var paying = false // 6: открыта оплата ЮKassa — до возврата на свои страницы
     private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
@@ -190,7 +196,20 @@ class MainActivity : ComponentActivity() {
             .build()
 
         web = WebView(this)
-        setContentView(web)
+        // 11: Android 15+ (targetSdk 35+) рисует окно от края до края — игра под строкой состояния и панелью навигации
+        // не видна: отступы по системным панелям, вырезу экрана и клавиатуре задаёт рамка вокруг WebView
+        val root = FrameLayout(this)
+        root.setBackgroundColor(0xFF120C24.toInt())
+        root.addView(web, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        setContentView(root)
+        WindowCompat.getInsetsController(window, root).apply { isAppearanceLightStatusBars = false; isAppearanceLightNavigationBars = false }
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            WindowInsetsCompat.CONSUMED
+        }
+        billing = Billing(this) { o -> if (onGame()) web.evaluateJavascript("window.nativeBilling && window.nativeBilling($o)", null) }
 
         // 8: вход через Яндекс — результат приходит сюда (регистрация — до старта активности)
         yandexLogin = registerForActivityResult(YandexAuthSdk.create(YandexAuthOptions(applicationContext)).contract) { result ->
@@ -265,6 +284,23 @@ class MainActivity : ComponentActivity() {
             fun netLocation() {
                 runOnUiThread { netFix() }
             }
+
+            // 11: Казна через Google Play (сборка play): наборы и цены, покупка, незасчитанные покупки → window.nativeBilling
+            @JavascriptInterface
+            fun billingProducts(ids: String) {
+                val list = try { JSONArray(ids).let { a -> (0 until minOf(a.length(), 20)).map { a.getString(it) } } } catch (e: Exception) { emptyList() }
+                runOnUiThread { if (onGame()) billing.products(list.filter { Regex("^[a-z0-9_.]{1,40}$").matches(it) }) }
+            }
+
+            @JavascriptInterface
+            fun billingBuy(id: String, acct: String) {
+                runOnUiThread { if (onGame() && Regex("^[a-z0-9_.]{1,40}$").matches(id) && Regex("^[0-9a-f]{16,64}$").matches(acct)) billing.buy(id, acct) }
+            }
+
+            @JavascriptInterface
+            fun billingPending() {
+                runOnUiThread { if (onGame()) billing.pending() }
+            }
         }, "DuholovNative")
 
         web.setDownloadListener { url, _, _, _, _ -> openExternal(Uri.parse(url)) }
@@ -335,6 +371,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        billing.end()
         web.destroy()
         super.onDestroy()
     }

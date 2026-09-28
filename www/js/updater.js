@@ -102,7 +102,8 @@ const Updater = {
   // 4.3.2: откуда приложение — с сайта (APK) или из магазина (store=rustore в User-Agent, см. MainActivity):
   // приложению из магазина новая версия приходит только через магазин
   STORE: (navigator.userAgent.match(/store=([a-z]+)/) || [])[1] || '',
-  STORES: { rustore: { name: 'RuStore', url: 'https://www.rustore.ru/catalog/app/ru.duholov.game' } },
+  STORES: { rustore: { name: 'RuStore', url: 'https://www.rustore.ru/catalog/app/ru.duholov.game' },
+    play: { name: 'Google Play', url: 'https://play.google.com/store/apps/details?id=ru.duholov.game' } }, // 4.27: версия для Google Play обновляется только через Play
   apkUrl() { return this.STORES[this.STORE] ? this.STORES[this.STORE].url : 'duholov.apk'; },
 
   // Устаревшее приложение-обёртка: новую версию нужно скачать и установить (или обновить в магазине)

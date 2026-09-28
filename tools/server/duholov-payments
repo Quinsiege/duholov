@@ -49,7 +49,7 @@ if [ -n "$INN" ] && [ -n "$REFRESH" ]; then
   now_iso() { TZ=Europe/Moscow date +%Y-%m-%dT%H:%M:%S+03:00; }
   # оплаты без чека (за 30 дней): пробить
   todo=$(Q "select id, amount, zlat, to_char(coalesce(paid_at, created_at) at time zone 'Europe/Moscow', 'YYYY-MM-DD\"T\"HH24:MI:SS\"+03:00\"')
-    from payments where status = 'succeeded' and npd_receipt is null and created_at > now() - interval '30 days' order by created_at limit 20")
+    from payments where status = 'succeeded' and provider = 'yookassa' and npd_receipt is null and created_at > now() - interval '30 days' order by created_at limit 20")
   # возвраты с пробитым чеком: аннулировать
   undo=$(Q "select id, npd_receipt from payments where status = 'refunded' and npd_receipt is not null and npd_receipt <> 'manual' and not npd_cancelled limit 20")
   if [ -n "$todo$undo" ]; then
