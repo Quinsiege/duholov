@@ -10,6 +10,7 @@ Invite.grab();
 if (/[?&](u|ref)=/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
 
 window.addEventListener('load', () => {
+  Walk.load(); // 5.1.1: место Ловчего — когда все скрипты уже загружены
   if (Move.moving) return; // 4.1: старый адрес — браузер уже уходит на duholov.ru
   if (typeof L === 'undefined') {
     const bl = document.getElementById('bootLoader'); if (bl) bl.remove(); // экран загрузки из index.html не должен закрыть ошибку
