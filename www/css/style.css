@@ -1128,7 +1128,7 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .msg.mine { margin-left: auto; border-radius: 16px 16px 4px 16px; background: rgba(251, 191, 36, .14); border-color: rgba(251, 191, 36, .35); }
 .msg-who { display: flex; align-items: baseline; gap: 6px; background: none; border: 0; padding: 0; margin-bottom: 2px; color: var(--text); }
 .msg-who b { font-size: 13px; color: #c4b5fd; } .msg-who small { color: var(--muted); font-size: 11px; }
-.msg-who b.cl-sokol { color: #fca5a5; } .msg-who b.cl-medved { color: #93c5fd; } .msg-who b.cl-volk { color: #fde68a; } /* как цвета дружин (CLANS) */
+.msg-who b.cl { color: color-mix(in srgb, var(--cc) 55%, #fff); } /* 4.28: цвет клана (CLANS) — из style */
 .msg-text { font-size: 15px; line-height: 1.35; word-break: break-word; white-space: pre-wrap; }
 .msg time { display: block; text-align: right; font-size: 10px; color: var(--muted); margin-top: 2px; }
 .chat-bar { display: flex; gap: 8px; padding: 8px 12px calc(10px + var(--sb)); background: rgba(12, 8, 26, .92); border-top: 1px solid var(--line); }
@@ -2899,6 +2899,43 @@ body.tilt #mapHaze { opacity: 1; }
 .clan-head .clan-crest { flex: none; width: 82px; height: 90px; margin: -6px 0; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--cc) 70%, transparent)) drop-shadow(0 4px 6px rgba(0, 0, 0, .45)); }
 .clan-head b { font-family: var(--f-display); font-weight: 400; font-size: 21px; letter-spacing: .4px; background: linear-gradient(180deg, #fffbea, #f7dd8f 55%, #e0a93e); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .clan-head small { font-family: var(--f-head); font-size: 13.5px; color: color-mix(in srgb, var(--cc) 35%, #e9e1ff); }
+/* ================= 4.28: кланы мифологий — 7+ кланов и «?», карточка клана, переход ================= */
+/* выбор: компактные знамёна, чтобы все кланы и «?» помещались на 390px */
+.clan-modal .clan-pick { gap: 8px; margin-top: 10px; }
+.clan-modal .clan-opt { grid-template-columns: 52px minmax(0, 1fr) 14px; min-height: 60px; padding: 6px 12px 6px 8px; column-gap: 10px; }
+.clan-modal .clan-opt .clan-crest { width: 52px; height: 57px; margin: -2px 0; }
+.clan-modal .clan-opt b { font-size: clamp(13px, 3.9vw, 16.5px); }
+.clan-modal .clan-opt small { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clan-opt.mine { border-color: #f3cf6b; box-shadow: 0 0 0 1px rgba(6, 3, 18, .6), 0 0 16px color-mix(in srgb, var(--cc) 45%, transparent); }
+.clan-opt.clan-q { opacity: .82; }
+.clan-opt.clan-q b { background: linear-gradient(180deg, #f8fafc, #94a3b8); -webkit-background-clip: text; background-clip: text; }
+.clan-opt.clan-q small { color: #a8a3c4; }
+/* карточка клана */
+.clan-card { text-align: center; padding: 2px 2px 0; }
+.clan-card .clan-crest { display: block; width: 112px; height: 123px; margin: 0 auto 6px; filter: drop-shadow(0 0 16px color-mix(in srgb, var(--cc) 70%, transparent)) drop-shadow(0 6px 8px rgba(0, 0, 0, .45)); }
+.clan-card .cc-name { display: block; font-family: var(--f-display); font-weight: 400; font-size: 24px; letter-spacing: .4px; line-height: 1.15; color: #f7dd8f;
+  text-shadow: 0 1px 2px rgba(12, 6, 32, .7), 0 0 16px color-mix(in srgb, var(--cc) 45%, transparent); }
+.clan-card .cc-motto { font-family: var(--f-head); font-size: 14px; font-style: italic; color: color-mix(in srgb, var(--cc) 35%, #e9e1ff); margin: 3px 0 10px; }
+.clan-card .cc-tags { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.clan-card .cc-tags span { padding: 3px 10px; border-radius: 999px; font-size: 12.5px; background: color-mix(in srgb, var(--cc) 20%, transparent); border: 1px solid color-mix(in srgb, var(--cc) 55%, transparent); }
+.clan-card .cc-desc { text-align: left; margin: 0 0 10px; }
+.clan-card .cc-bonus { text-align: left; font-size: 13px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .05); border-left: 3px solid var(--cc); margin-bottom: 8px; }
+.clan-card .cc-note { text-align: left; color: var(--muted); margin: 0; }
+/* объявление «Дружины стали кланами»: мой клан сейчас */
+.clan-now { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; margin: 8px 0 10px; border: 1px solid color-mix(in srgb, var(--cc) 65%, #f3cf6b 20%);
+  background: radial-gradient(90px 90px at 40px 50%, color-mix(in srgb, var(--cc) 40%, transparent), transparent 75%), rgba(255, 255, 255, .04); }
+.clan-now .clan-crest { flex: none; width: 58px; height: 64px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--cc) 70%, transparent)); }
+.clan-now small { display: block; color: var(--muted); font-size: 12px; line-height: 1.3; }
+.clan-now b { display: block; font-family: var(--f-display); font-weight: 400; font-size: 18px; color: #f7dd8f; margin: 1px 0 2px; }
+/* экран клана: шапка открывает карточку, звание, переход, строки кланов с цветной меткой */
+button.clan-head { display: flex; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.clan-head .ch-rank { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.clan-screen .clan-move { margin: -4px 0 14px; }
+.clan-row { grid-template-columns: 96px 1fr 40px; }
+.clan-row span { display: flex; align-items: center; gap: 7px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clan-row .cr-dot { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--cc); transform: rotate(45deg); box-shadow: 0 0 6px var(--cc); }
+.guard-row .gr-own { color: #fde68a; }
+.rift-tip.own-myth { text-align: left; margin: 8px 0 4px; border-left: 3px solid var(--cc); padding-left: 10px; }
 
 /* 4.7.3: окно обновления — поверх всего: сцен и заставок обучения, трейлера и экрана загрузки */
 .modal-wrap:has(> .update-modal) { z-index: 9800; }
@@ -4125,7 +4162,7 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .pl-wait { flex: none; font-size: 12px; color: var(--muted); }
 /* 4.22.1: верх экранов духа, Лавки, Лиги и профиля — по высоте содержимого. В браузере телефона (видно ≈690 px)
    правая колонка не влезала в «30% высоты» и вылезала вверх и вниз (обрезанные строки, «Гость» на кнопках);
-   арт — не шире 40% ширины, чтобы справа хватало места; «ЗЛАТНИКИ ··· 140» переносится, если не влезает в строку */
+   арт — не шире 40% ширины, чтобы справа хватало места; «МОНЕТЫ ··· 140» переносится, если не влезает в строку */
 .dt-hero { max-height: none; grid-template-columns: min(calc(30dvh - 40px), 40vw) minmax(0, 1fr); }
 .det2 .det-art { max-width: 40vw; }
 .det2 .det-power { flex-wrap: wrap; column-gap: 6px; row-gap: 2px; }

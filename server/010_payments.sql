@@ -1,6 +1,6 @@
--- 3.15: покупки златников за рубли (ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney, баланс телефона).
+-- 3.15: покупки монет за рубли (ЮKassa: карта, СБП, SberPay, T-Pay, ЮMoney, баланс телефона).
 -- Пишет и читает только сервер игры (Edge Function game, секретный ключ). Телефону таблица недоступна.
--- Златники начисляет действие payClaim: номер оплаты запоминается в прогрессе (paid), поэтому
+-- Монеты начисляет действие payClaim: номер оплаты запоминается в прогрессе (paid), поэтому
 -- начисление ровно одно, даже если отметка credited не успела записаться.
 
 create table if not exists public.payments (
@@ -14,7 +14,7 @@ create table if not exists public.payments (
   status      text not null default 'new'
               check (status in ('new', 'pending', 'waiting_for_capture', 'succeeded', 'canceled', 'failed')),
   method      text,                              -- bank_card, sbp, sberbank, tinkoff_bank, yoo_money, mobile_balance…
-  credited    boolean not null default false,    -- златники уже начислены в прогресс
+  credited    boolean not null default false,    -- монеты уже начислены в прогресс
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );

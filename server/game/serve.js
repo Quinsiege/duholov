@@ -28,12 +28,12 @@ const verCmp = (a, b) => {
   return 0;
 };
 
-/* ---------- Казна: покупка златников через ЮKassa ----------
+/* ---------- Казна: покупка монет через ЮKassa ----------
    Секреты задаёт владелец в Supabase → Edge Functions → Secrets:
      YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY — магазин ЮKassa (для проверки — тестовый магазин);
      PAY_RECEIPT=on — передавать чек по 54-ФЗ (тогда игрок вводит почту);
      PAY_RETURN_URL — куда вернуть игрока после оплаты (по умолчанию paid.html сайта игры).
-   Телефону не верим: пакет, сумма и число златников — из Rules.PAY; итог платежа сервер
+   Телефону не верим: пакет, сумма и число монет — из Rules.PAY; итог платежа сервер
    сам спрашивает у ЮKassa (sync), а начисляет его действие игры payClaim. */
 const PAY = {
   shop: Deno.env.get('YOOKASSA_SHOP_ID') || '',
@@ -119,7 +119,7 @@ const Pay = {
     const since = new Date(Date.now() - 3600000).toISOString();
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
     if ((count || 0) >= 10) return { ok: false, error: ru`Слишком много попыток оплаты — подожди немного` };
-    const amount = pack.rub.toFixed(2), title = `${pack.zlat} златников — «Духолов»`;
+    const amount = pack.rub.toFixed(2), title = `${pack.zlat} монет — «Духолов»`;
     const row = must(await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount }).select('id').single());
     const p = await yk('POST', '/payments', {
       amount: { value: amount, currency: 'RUB' },
@@ -193,7 +193,7 @@ const Pay = {
     let status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
     if (same && p.refunded_amount && +p.refunded_amount.value > 0) status = 'refunded';
     if (status === r.status) return status;
-    // 4.26: возврат уже начисленного платежа — златники списываются (действие payRefund; может уйти в минус — Казна и аукцион
+    // 4.26: возврат уже начисленного платежа — монеты списываются (действие payRefund; может уйти в минус — Казна и аукцион
     // закрыты до погашения). Владельцу — в журнале
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
@@ -205,7 +205,7 @@ const Pay = {
     return status;
   },
   // 4.22: начислить оплаченное сразу — действие игры payClaim от имени игрока, в общей очереди его действий (замок);
-  // игра покажет «+N златников», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
+  // игра покажет «+N монет», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
   async credit(uid, type = 'payClaim') {
     const { data: sv } = await db.from('saves').select('app_version').eq('user_id', uid).maybeSingle(); // версия игры игрока — прежняя
     const out = await play(uid, { a: [{ type }], sys: true, v: (sv && sv.app_version) || '' }, makeEnv(uid));
@@ -642,8 +642,10 @@ function makeEnv(uid) {
       return rows && rows.length ? t : null;
     },
     // Чат: последние 50 сообщений канала (или новые после after); отправка; жалоба (после 3 — сообщение скрыто)
+    // 4.28: канал клана clan:<мифология> читается вместе с каналом прежней дружины (clan:sokol…), пока миграция 032 их не перенесла
     async chatList(channel, after) {
-      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').eq('channel', channel).eq('hidden', false);
+      const chs = /^clan:/.test(channel) ? clanIds(channel.slice(5)).map(k => 'clan:' + k) : [channel];
+      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').in('channel', chs).eq('hidden', false);
       if (after) q = q.gt('id', after);
       const rows = must(await q.order('id', { ascending: false }).limit(50)) || [];
       return rows.reverse();
@@ -659,7 +661,7 @@ function makeEnv(uid) {
       if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
       return count || 0;
     },
-    // 3.21: текущие имя, уровень, дружина и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
+    // 3.21: текущие имя, уровень, клан и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
     async briefByUid(uids) {
       const out = {};
       if (!uids.length) return out;
@@ -747,7 +749,7 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
-    // Дружины: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    // Кланы: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
     async holdGet(poi) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
@@ -776,16 +778,17 @@ function makeEnv(uid) {
         return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
       });
     },
-    // Сколько Капищ держит каждая дружина (во всей стране или в прямоугольнике [s, w, n, e])
+    // Сколько Капищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
+    // 4.28: кланы — мифологии (MYTH_KEYS), считаются параллельно; до миграции 032 — вместе с прежними дружинами (clanIds)
     async clanCounts(box) {
       const out = {};
-      for (const k of Object.keys(CLANS)) {
-        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).eq('clan', k).neq('holders', '[]');
+      await Promise.all(MYTH_KEYS.map(async k => {
+        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).in('clan', clanIds(k)).neq('holders', '[]');
         if (box) q = q.gte('lat', box[0]).lte('lat', box[2]).gte('lng', box[1]).lte('lng', box[3]);
         const { count, error } = await q;
         if (error) throw new Error(error.message);
         out[k] = count || 0;
-      }
+      }));
       return out;
     },
     // Совместные разломы: комнаты (код, участники, начало боя)
@@ -859,7 +862,7 @@ function makeEnv(uid) {
       return must(await db.from('auction_lots').select('*').eq('seller_pid', pid).eq('settled', false).in('status', ['sold', 'cancelled', 'expired']).limit(50)) || [];
     },
     async lotsDone(ids, field) { if (ids.length) must(await db.from('auction_lots').update({ [field]: true }).in('id', ids)); },
-    // Казна: оплаченные, но ещё не начисленные наборы златников; отметка «начислено»
+    // Казна: оплаченные, но ещё не начисленные наборы монет; отметка «начислено»
     async paidList() { return must(await db.from('payments').select('id, pack, zlat').eq('user_id', uid).eq('status', 'succeeded').eq('credited', false).limit(50)) || []; },
     async payCredited(ids) { must(await db.from('payments').update({ credited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
     // 4.26: возвращённые (refunded) и уже начисленные, но ещё не списанные платежи; отметка «списано»

@@ -796,15 +796,34 @@ const Art = (() => {
       `<circle class="art-float" cx="32" cy="58" r="1.5" fill="${fire}"/><circle class="art-float" style="animation-delay:.8s" cx="47" cy="52" r="1.2" fill="#fff" opacity=".85"/>` +
       `</svg>`;
   }
-  // 4.7: герб дружины — щит в рельефной золотой кайме с заклёпками, венец с самоцветом, за щитом скрещённое оружие,
-  // на поле — объёмный зверь с тенями и бликами: сокол (крылья из перьев), рычащий медведь, серебряный волк
+  // 4.7: герб клана — щит в рельефной золотой кайме с заклёпками, венец с самоцветом, за щитом скрещённое оружие,
+  // на поле — объёмный зверь с тенями и бликами. 4.28: кланы — мифологии (CLANS): зверь — CLANS[k].crest, поле — цвет клана.
+  // Сокол-Рарог (славянский), сова Афины (греческий), волк Одина (скандинавский), медведица Артио (кельтский), скарабей
+  // с солнцем (египетский), Лазурный дракон (китайский), ягуар (ацтекский), лиса-кицунэ (японский); у будущих кланов без
+  // своего зверя — звезда Алатыря; '?' — клан следующего сезона
   const CREST = {
-    sokol: { f: ['#fca5a5', '#dc2626', '#4c0808'], gem: '#ef4444', gl: '#fecaca', arm: 'arrow' },
-    medved: { f: ['#bfdbfe', '#2563eb', '#0b1a4d'], gem: '#3b82f6', gl: '#bfdbfe', arm: 'axe' },
-    volk: { f: ['#fcd34d', '#a16207', '#2a1603'], gem: '#eab308', gl: '#fef08a', arm: 'spear', silver: true },
+    slavic: { f: ['#fdba74', '#c2410c', '#3b0d02'], gem: '#f97316', gl: '#fed7aa' },
+    greek: { f: ['#bfdbfe', '#2563eb', '#0b1a4d'], gem: '#3b82f6', gl: '#bfdbfe' },
+    norse: { f: ['#ddd6fe', '#6d28d9', '#1e0b4b'], gem: '#a78bfa', gl: '#ede9fe' },
+    celtic: { f: ['#bbf7d0', '#15803d', '#052e16'], gem: '#22c55e', gl: '#dcfce7' },
+    egypt: { f: ['#fde68a', '#b45309', '#2a1603'], gem: '#facc15', gl: '#fef9c3' },
+    china: { f: ['#fca5a5', '#dc2626', '#4c0808'], gem: '#ef4444', gl: '#fecaca' },
+    aztec: { f: ['#a5f3fc', '#0e7490', '#042f2e'], gem: '#06b6d4', gl: '#cffafe' },
+    japan: { f: ['#fbcfe8', '#be185d', '#4a0424'], gem: '#f472b6', gl: '#fce7f3' },
+    '?': { f: ['#cbd5e1', '#475569', '#0f172a'], gem: '#94a3b8', gl: '#e2e8f0' },
   };
+  const CREST_ARM = { falcon: 'arrow', bear: 'axe', wolf: 'spear', owl: 'trident', scarab: 'ankh', dragon: 'glaive', jaguar: 'club', fox: 'katana' };
+  // цвет #rrggbb, смешанный с белым (t > 0) или чёрным (t < 0)
+  const crestMix = (hex, t) => '#' + [1, 3, 5].map(i => { const v = parseInt(hex.slice(i, i + 2), 16), x = t > 0 ? v + (255 - v) * t : v * (1 + t); return Math.round(x).toString(16).padStart(2, '0'); }).join('');
+  function crestOf(k) {
+    if (k === '?') return { ...CREST['?'], beast: 'q', arm: 'spear', key: 'q' };
+    const cl = typeof CLANS !== 'undefined' && CLANS[k] ? CLANS[k] : null, key = cl ? cl.myth : 'slavic';
+    const beast = cl ? cl.crest : 'falcon', col = cl && /^#[0-9a-f]{6}$/i.test(cl.color) ? cl.color : '#f97316';
+    const pal = CREST[key] || { f: [crestMix(col, 0.55), crestMix(col, -0.2), crestMix(col, -0.82)], gem: col, gl: crestMix(col, 0.7) };
+    return { ...pal, beast, arm: CREST_ARM[beast] || 'spear', silver: beast === 'wolf' || beast === 'fox', key };
+  }
   function clanCrest(k) {
-    const c = CREST[k] || CREST.sokol, id = 'cr' + k, O = '#2a1405';
+    const c = crestOf(k), id = 'cr' + c.key, O = '#2a1405';
     const G = `url(#${id}g)`, M = `url(#${id}m)`, f2 = n => n.toFixed(1);
     const S = 'M60 16 L98 22 Q104 23 104 29 V62 C104 94 84 114 60 126 C36 114 16 94 16 62 V29 Q16 23 22 22Z';
     const S2 = 'M60 23 L94 28 Q97 28.5 97 32 V62 C97 90 80 107 60 118 C40 107 23 90 23 62 V32 Q23 28.5 26 28Z';
@@ -816,11 +835,21 @@ const Art = (() => {
         ? `<path d="M0 -84 L6 -69 L0 -72 L-6 -69Z" fill="${G}" stroke="${O}" stroke-width=".9"/><path d="M0 50 L-6 57 L-6 66 L0 60 L6 66 L6 57Z" fill="${c.gem}" stroke="${O}" stroke-width=".8"/>`
         : c.arm === 'axe'
           ? `<path d="M0 -74 C8 -71 17 -74 19 -86 C14 -92 6 -92 0 -88Z" fill="${M}" stroke="${O}" stroke-width=".9"/><path d="M0 -94 L3 -86 L-3 -86Z" fill="${G}" stroke="${O}" stroke-width=".7"/><circle cy="60" r="3" fill="${G}" stroke="${O}" stroke-width=".8"/>`
+        : c.arm === 'trident' // трезубец Посейдона
+          ? `<path d="M-11 -62 V-79 H-13.5 L-9.5 -89 L-5.5 -79 H-8 V-67 H-1.6 V-83 H-4 L0 -94 L4 -83 H1.6 V-67 H8 V-79 H5.5 L9.5 -89 L13.5 -79 H11 V-62Z" fill="${M}" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><circle cy="60" r="3" fill="${G}" stroke="${O}" stroke-width=".8"/>`
+        : c.arm === 'ankh' // посох с анхом — знаком жизни
+          ? `<ellipse cy="-86" rx="5.2" ry="7.4" fill="none" stroke="${O}" stroke-width="4.4"/><ellipse cy="-86" rx="5.2" ry="7.4" fill="none" stroke="${G}" stroke-width="2.4"/><path d="M-10 -74.5 H10" stroke="${O}" stroke-width="4.6" stroke-linecap="round"/><path d="M-10 -74.5 H10" stroke="${G}" stroke-width="2.6" stroke-linecap="round"/><path d="M-4 60 L0 66 L4 60Z" fill="${G}" stroke="${O}" stroke-width=".8"/>`
+        : c.arm === 'glaive' // гуань дао: изогнутый клинок и алая кисть
+          ? `<path d="M-2 -64 L-2 -74 C4 -78 7 -85 6 -95 C12 -87 14 -76 8 -68 C5 -65 2 -64 -2 -64Z" fill="${M}" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><path d="M-1 -66 C3 -69 5.5 -75 5.5 -82" stroke="#fff" stroke-width=".8" fill="none" opacity=".6"/><path d="M0 -63 C-4 -58 -6 -54 -5 -48 M0 -63 C-2 -57 -2 -53 0 -47 M0 -63 C2 -58 3 -54 3 -49" stroke="${c.gem}" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cy="60" r="3" fill="${G}" stroke="${O}" stroke-width=".8"/>`
+        : c.arm === 'club' // макуауитль: деревянная лопасть с обсидиановыми лезвиями
+          ? `<path d="M-5 -60 L-6.5 -87 Q0 -94 6.5 -87 L5 -60Z" fill="url(#${id}w)" stroke="${O}" stroke-width=".9"/>${[-85, -78, -71, -64].map(y => `<path d="M-6 ${y} L-10.5 ${y + 2.5} L-6 ${y + 5}Z M6 ${y} L10.5 ${y + 2.5} L6 ${y + 5}Z" fill="#1f2937" stroke="${O}" stroke-width=".6"/>`).join('')}<circle cy="60" r="3" fill="${G}" stroke="${O}" stroke-width=".8"/>`
+        : c.arm === 'katana' // катана: изогнутый клинок, круглая цуба
+          ? `<path d="M-1.8 -68 C-1.8 -78 0 -87 4.5 -95 C3.2 -86 1.8 -78 1.8 -68Z" fill="${M}" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><ellipse cy="-69" rx="6" ry="2.2" fill="${G}" stroke="${O}" stroke-width=".8"/><path d="M-3 56 H3 M-3 60 H3" stroke="${c.gem}" stroke-width="1.4"/><circle cy="63" r="2.4" fill="${G}" stroke="${O}" stroke-width=".8"/>`
           : `<path d="M0 -92 C6 -83 6 -74 0 -68 C-6 -74 -6 -83 0 -92Z" fill="${M}" stroke="${O}" stroke-width=".9"/><path d="M-6 -67 H6" stroke="${G}" stroke-width="2.6" stroke-linecap="round"/><path d="M-6 -67 H6" stroke="${O}" stroke-width=".6" opacity=".6"/><circle cy="60" r="2.8" fill="${G}" stroke="${O}" stroke-width=".8"/>`;
       return `<g transform="translate(60 66) rotate(${rot})"><path d="M0 -70 V58" stroke="${O}" stroke-width="4.2" stroke-linecap="round"/><path d="M0 -70 V58" stroke="url(#${id}w)" stroke-width="2.4" stroke-linecap="round"/>${head}</g>`;
     };
     let beast = '';
-    if (k === 'sokol') {
+    if (c.beast === 'falcon') {
       // сокол: крылья подняты, два яруса перьев, хвост веером, голова в профиль с крючковатым клювом и «усами»
       let wing = '';
       [-12, -26, -40, -54, -68, -82, -96].forEach((a, i) => { wing += feather(51, 60, a, 34 - Math.abs(i - 2) * 1.6, 5.2, `url(#${id}e2)`); });
@@ -840,7 +869,7 @@ const Art = (() => {
         <path d="M52.5 39.6 Q57 37.2 61 39.8" stroke="${O}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
         <circle cx="56.5" cy="42.3" r="2.5" fill="${c.gem}" stroke="${O}" stroke-width=".9"/><circle cx="55.8" cy="41.6" r=".8" fill="#fff"/>
         <path d="M58 38 C62 37.5 65 39.5 66 43" stroke="#fff" stroke-width="1" fill="none" opacity=".55" stroke-linecap="round"/>`;
-    } else if (k === 'medved') {
+    } else if (c.beast === 'bear') {
       // медведь: зубчатая грива, уши, тяжёлые брови, светлая морда, раскрытая пасть с клыками
       beast = `        <circle cx="37" cy="48" r="9.5" fill="${G}" stroke="${O}" stroke-width="1"/><circle cx="83" cy="48" r="9.5" fill="${G}" stroke="${O}" stroke-width="1"/>
         <circle cx="37.5" cy="48.5" r="5" fill="#7a4a12" opacity=".75"/><circle cx="82.5" cy="48.5" r="5" fill="#7a4a12" opacity=".75"/>
@@ -855,7 +884,7 @@ const Art = (() => {
         <path d="M51.5 90.5 L53.5 96.5 L55.5 89.6Z M68.5 90.5 L66.5 96.5 L64.5 89.6Z M53.5 101 L55 96.5 L56.8 101.6Z M66.5 101 L65 96.5 L63.2 101.6Z" fill="#fffbe6" stroke="${O}" stroke-width=".6" stroke-linejoin="round"/>
         <path d="M44 52 Q52 48 60 49 M34 76 L40 78.5 M33 82 L39 83.5 M35 88 L40.5 88.5 M86 76 L80 78.5 M87 82 L81 83.5 M85 88 L79.5 88.5" stroke="${O}" stroke-width="1" fill="none" stroke-linecap="round" opacity=".4"/>
         <path d="M46 54 Q55 50 64 52" stroke="#fff" stroke-width="1.3" fill="none" opacity=".45" stroke-linecap="round"/>`;
-    } else {
+    } else if (c.beast === 'wolf') {
       // волк: острые уши, меховые скулы, тёмная маска, раскосые янтарные глаза, длинная морда и оскал
       beast = `<g transform="translate(60 72) scale(.9) translate(-60 -72)"><path d="M60 110 L53 103 L47 97 L41 94 L36 89 L29 88 L32 83 L25 79 L31 75 L26 69 L32 66 L30 50 L27 28 L42 43 L51 41 L60 39 L69 41 L78 43 L93 28 L90 50 L88 66 L94 69 L89 75 L95 79 L88 83 L91 88 L84 89 L79 94 L73 97 L67 103Z" fill="${M}" stroke="${O}" stroke-width="1" stroke-linejoin="round"/>
         <path d="M30.5 33 L41 45.5 L33.5 50Z M89.5 33 L79 45.5 L86.5 50Z" fill="#4b5568" stroke="${O}" stroke-width=".7" stroke-linejoin="round"/><path d="M32 37 L37 46 M88 37 L83 46" stroke="#e5e7eb" stroke-width=".7" opacity=".7"/>
@@ -868,6 +897,94 @@ const Art = (() => {
         <path d="M54.8 101.5 L56.2 106 L57.6 102.4Z M65.2 101.5 L63.8 106 L62.4 102.4Z" fill="#fffbe6" stroke="${O}" stroke-width=".6"/>
         <path d="M33 74 L39 76 M31 80 L37 81 M87 74 L81 76 M89 80 L83 81 M40 88 L45 90 M80 88 L75 90" stroke="${O}" stroke-width="1" stroke-linecap="round" opacity=".45"/>
         <path d="M44 46 Q52 43 60 44 M62 44 Q68 43.5 74 46" stroke="#fff" stroke-width="1.2" fill="none" opacity=".7" stroke-linecap="round"/></g>`;
+    } else if (c.beast === 'owl') {
+      // сова Афины: ушки-перья, лицевые диски, большие глаза, сложенные крылья, сидит на оливковой ветви
+      let sc = '';
+      for (let r = 0; r < 4; r++) for (let j = -1; j <= 1; j++) sc += `<path d="M${f2(60 + j * 6 - 3)} ${f2(76 + r * 6.5)} q3 3.4 6 0" fill="none" stroke="${O}" stroke-width=".6" opacity=".45"/>`;
+      beast = `<path d="M32 108 Q60 101 88 108" stroke="${O}" stroke-width="4.2" fill="none" stroke-linecap="round"/><path d="M32 108 Q60 101 88 108" stroke="url(#${id}w)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <g fill="#86efac" stroke="${O}" stroke-width=".6"><ellipse cx="36" cy="103.5" rx="4.6" ry="1.9" transform="rotate(-24 36 103.5)"/><ellipse cx="84" cy="103.5" rx="4.6" ry="1.9" transform="rotate(24 84 103.5)"/><ellipse cx="29" cy="110" rx="4.2" ry="1.8" transform="rotate(18 29 110)"/><ellipse cx="91" cy="110" rx="4.2" ry="1.8" transform="rotate(-18 91 110)"/></g>
+        <path d="M60 60 C77 60 83 76 81 90 C79 101 71 106 60 107 C49 106 41 101 39 90 C37 76 43 60 60 60Z" fill="${G}" stroke="${O}" stroke-width="1"/>
+        <path d="M60 66 C69 67 72 78 71 88 C70 97 65 101 60 102 C55 101 50 97 49 88 C48 78 51 67 60 66Z" fill="#fff6d0" opacity=".42"/>${sc}
+        <path d="M43 70 C34 80 34 97 45 106 C47 95 47 83 50 73Z M77 70 C86 80 86 97 75 106 C73 95 73 83 70 73Z" fill="url(#${id}e2)" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/>
+        <path d="M44 78 C41 86 41 94 45 100 M76 78 C79 86 79 94 75 100" stroke="${O}" stroke-width=".7" fill="none" opacity=".45"/>
+        <path d="M53 106 L51 110 M56 106.5 L55.5 110.5 M64 106.5 L64.5 110.5 M67 106 L69 110" stroke="${O}" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M41 42 L37 26 L49 37Z M79 42 L83 26 L71 37Z" fill="url(#${id}e2)" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/>
+        <path d="M60 33 C75 33 81 42 81 53 C81 64 72 70 60 70 C48 70 39 64 39 53 C39 42 45 33 60 33Z" fill="${G}" stroke="${O}" stroke-width="1"/>
+        <circle cx="50.5" cy="52" r="8.6" fill="#fff6d0" opacity=".6" stroke="${O}" stroke-width=".7"/><circle cx="69.5" cy="52" r="8.6" fill="#fff6d0" opacity=".6" stroke="${O}" stroke-width=".7"/>
+        <path d="M42.5 44 Q51 46.5 60 53 Q69 46.5 77.5 44" stroke="${O}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <circle cx="50.5" cy="52.5" r="5.2" fill="${c.gem}" stroke="${O}" stroke-width="1"/><circle cx="69.5" cy="52.5" r="5.2" fill="${c.gem}" stroke="${O}" stroke-width="1"/>
+        <circle cx="50.5" cy="52.5" r="2.5" fill="${O}"/><circle cx="69.5" cy="52.5" r="2.5" fill="${O}"/><circle cx="49.4" cy="51.3" r="1" fill="#fff"/><circle cx="68.4" cy="51.3" r="1" fill="#fff"/>
+        <path d="M57 55 L63 55 L60 63Z" fill="url(#${id}e2)" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/>
+        <path d="M49 37 Q56 34.5 62 35.5" stroke="#fff" stroke-width="1.2" fill="none" opacity=".55" stroke-linecap="round"/>`;
+    } else if (c.beast === 'scarab') {
+      // скарабей Хепри: катит солнечный диск, крылья из трёх ярусов перьев (золото и лазурит)
+      let wing = '';
+      [-62, -76, -90, -104, -118].forEach((a, i) => { wing += feather(49, 72, a, 35 - i * 1.5, 5.4, `url(#${id}e2)`); });
+      [-70, -86, -102, -118].forEach((a, i) => { wing += feather(50, 72, a, 23 - i, 5, `url(#${id}lp)`); });
+      const legs = 'M51 61 L43 55 L46 47 M69 61 L77 55 L74 47 M50 76 L40 79 L35 87 M70 76 L80 79 L85 87 M52 92 L44 99 L42 107 M68 92 L76 99 L78 107';
+      beast = `${wing}<g transform="translate(120 0) scale(-1 1)">${wing}</g>
+        <path d="${legs}" stroke="${O}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${legs}" stroke="${G}" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="60" cy="37" r="11" fill="url(#${id}sun)" stroke="${O}" stroke-width="1"/><circle cx="60" cy="37" r="12.6" fill="none" stroke="${G}" stroke-width="1.6"/><path d="M53 32 Q57 28.5 62 29" stroke="#fff" stroke-width="1.2" fill="none" opacity=".6" stroke-linecap="round"/>
+        <path d="M49 71 C48 90 55 101 60 104 C65 101 72 90 71 71 C71 68 49 68 49 71Z" fill="url(#${id}lp)" stroke="${O}" stroke-width="1"/>
+        <path d="M60 71 V103" stroke="${G}" stroke-width="1.3"/><path d="M53 74 C52 84 55 93 58 98" stroke="#fff" stroke-width="1.1" fill="none" opacity=".5" stroke-linecap="round"/>
+        <path d="M60 58 C67 58 71 62 71 66 C71 70 67 72 60 72 C53 72 49 70 49 66 C49 62 53 58 60 58Z" fill="url(#${id}lp)" stroke="${O}" stroke-width="1"/><path d="M52 64 H68" stroke="${G}" stroke-width="1" opacity=".8"/>
+        <path d="M60 49 C65 49 68 52 68 56 L66 58.5 L63 57 L60 59 L57 57 L54 58.5 L52 56 C52 52 55 49 60 49Z" fill="${G}" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/>
+        <circle cx="56" cy="54" r="1.3" fill="${O}"/><circle cx="64" cy="54" r="1.3" fill="${O}"/>`;
+    } else if (c.beast === 'dragon') {
+      // Лазурный дракон: тело кольцами с гребнем и чешуёй, голова в профиль с рогами и усами, огненная жемчужина
+      const body = 'M58 51 C50 60 41 66 43 77 C45 88 60 87 70 85 C82 83 87 93 80 101 C73 109 59 108 50 104 C45 102 41 104 38 108';
+      beast = `<path d="${body}" stroke="${c.gem}" stroke-width="16" fill="none" stroke-dasharray="2.6 3.4" stroke-linecap="butt"/>
+        <path d="${body}" stroke="${O}" stroke-width="12.4" fill="none" stroke-linecap="round"/><path d="${body}" stroke="${G}" stroke-width="10" fill="none" stroke-linecap="round"/>
+        <path d="${body}" stroke="#8a5a14" stroke-width="6" fill="none" stroke-dasharray="1.6 3" opacity=".5"/><path d="${body}" stroke="#fff6d0" stroke-width="1.6" fill="none" opacity=".55" transform="translate(-1.6 -1.6)"/>
+        <path d="M36 109 C32 104 30 110 26 106 C29 112 34 114 38 112Z" fill="#f59e0b" stroke="${O}" stroke-width=".8"/>
+        <path d="M44 76 L37 80 L33 78 M37 80 L35 84 M37 80 L39 85 M77 90 L85 88 L88 91 M85 88 L87 84 M85 88 L89 86" stroke="${O}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M44 76 L37 80 L33 78 M37 80 L35 84 M37 80 L39 85 M77 90 L85 88 L88 91 M85 88 L87 84 M85 88 L89 86" stroke="${G}" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M55 45 L46 42 L50 48 L41 50 L49 53 L44 58 L55 55Z" fill="#f59e0b" stroke="${O}" stroke-width=".8" stroke-linejoin="round"/>
+        <path d="M58 36 C54 29 50 26 43 26 C48 29 51 33 54 38Z M63 34 C62 27 60 22 55 19 C59 25 60 29 59.5 35Z" fill="#fff6d0" stroke="${O}" stroke-width=".8" stroke-linejoin="round"/>
+        <path d="M52 46 C52 38 58 33 66 33 C72 33 76 35 80 38 L88 38 C90.5 40 90.5 44 87.5 46 L80 47 C78 51 72 53 66 52.5 C60 52.5 54 51 52 46Z" fill="${G}" stroke="${O}" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M80 47 L88.5 49 C86.5 52.5 82 53.5 78 52.5Z" fill="#7f1d1d" stroke="${O}" stroke-width=".8"/><path d="M82 47.6 L83 50 L84.2 48Z" fill="#fffbe6"/>
+        <path d="M63 38 Q68 35.5 73 38" stroke="${O}" stroke-width="1.5" fill="none" stroke-linecap="round"/><circle cx="68" cy="41" r="2.4" fill="${c.gem}" stroke="${O}" stroke-width=".9"/><circle cx="67.4" cy="40.4" r=".7" fill="#fff"/>
+        <path d="M86.5 45.5 C92 49 94 55 90.5 61 M84 39 C90 35 93 29 91 23" stroke="${G}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <path d="M57 42 Q64 37 72 36.5" stroke="#fff" stroke-width="1" fill="none" opacity=".55" stroke-linecap="round"/>
+        <g class="art-flicker"><path d="M85 70 C80 66 81 60 85 57 C85 61 88 61 88 58 C92 62 92 67 88 70Z" fill="#fbbf24" opacity=".85"/></g>
+        <circle cx="86.5" cy="67" r="4.4" fill="#fff7d6" stroke="${O}" stroke-width=".9"/><circle cx="85.3" cy="65.8" r="1.3" fill="#fff"/>`;
+    } else if (c.beast === 'jaguar') {
+      // ягуар: круглые уши, морда в розетках, изумрудные глаза, светлые брыли и клыки
+      const ros = [[45, 58], [75, 58], [60, 52], [39, 72], [81, 72], [52, 50], [68, 50], [42, 88], [78, 88], [36, 80], [84, 80]]
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.1" fill="#b7791f" stroke="#2a1405" stroke-width="1.5"/><circle cx="${x}" cy="${y}" r=".9" fill="#2a1405" opacity=".7"/>`).join('');
+      beast = `<circle cx="37" cy="47" r="8.5" fill="${G}" stroke="${O}" stroke-width="1"/><circle cx="83" cy="47" r="8.5" fill="${G}" stroke="${O}" stroke-width="1"/>
+        <circle cx="37.5" cy="47.5" r="4.4" fill="#2a1405" opacity=".75"/><circle cx="82.5" cy="47.5" r="4.4" fill="#2a1405" opacity=".75"/>
+        <path d="M60 42 C80 42 91 55 91 72 C91 90 78 104 60 106 C42 104 29 90 29 72 C29 55 40 42 60 42Z" fill="${G}" stroke="${O}" stroke-width="1"/>${ros}
+        <path d="M40 64 L54.5 67.5 L44.5 72Z M80 64 L65.5 67.5 L75.5 72Z" fill="#a3e635" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><path d="M48.5 65.6 V71 M71.5 65.6 V71" stroke="${O}" stroke-width="1.5"/>
+        <path d="M45 72 C44 77 45 81 47 84 M75 72 C76 77 75 81 73 84" stroke="${O}" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".7"/>
+        <path d="M56 68 C57 74 58 78 60 80 C62 78 63 74 64 68" fill="#fff6d0" opacity=".5"/>
+        <ellipse cx="53.5" cy="90" rx="7.4" ry="5.6" fill="url(#${id}mz)" stroke="${O}" stroke-width=".7"/><ellipse cx="66.5" cy="90" rx="7.4" ry="5.6" fill="url(#${id}mz)" stroke="${O}" stroke-width=".7"/>
+        <path d="M54 80 L66 80 L60 86.5Z" fill="#7f1d1d" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><ellipse cx="58" cy="81.2" rx="2" ry=".8" fill="#fff" opacity=".5"/>
+        <path d="M55.5 95 L57 101 L58.5 95.6Z M64.5 95 L63 101 L61.5 95.6Z" fill="#fffbe6" stroke="${O}" stroke-width=".6" stroke-linejoin="round"/>
+        <g fill="${O}" opacity=".55"><circle cx="50" cy="89" r=".8"/><circle cx="53" cy="92" r=".8"/><circle cx="70" cy="89" r=".8"/><circle cx="67" cy="92" r=".8"/></g>
+        <path d="M49 91 L37 89 M49 93.5 L38 95 M71 91 L83 89 M71 93.5 L82 95" stroke="#fffbe6" stroke-width=".8" opacity=".8"/>
+        <path d="M46 49 Q54 45.5 62 46.5" stroke="#fff" stroke-width="1.3" fill="none" opacity=".5" stroke-linecap="round"/>`;
+    } else if (c.beast === 'fox') {
+      // лиса-кицунэ богини Инари: белая маска с алыми знаками, высокие уши, золотые глаза
+      beast = `<g transform="translate(60 72) scale(.92) translate(-60 -72)"><path d="M60 110 L52 102 L44 94 L37 88 L31 84 L26 78 L31 75 L28 68 L32 63 L31 47 L29 22 L46 42 L60 39 L74 42 L91 22 L89 47 L88 63 L92 68 L89 75 L94 78 L89 84 L83 88 L76 94 L68 102Z" fill="${M}" stroke="${O}" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M32 28 L43 44 L35 50Z M88 28 L77 44 L85 50Z" fill="#dc2626" stroke="${O}" stroke-width=".7" stroke-linejoin="round"/><path d="M34 34 L38 44 M86 34 L82 44" stroke="#fecaca" stroke-width=".7" opacity=".8"/>
+        <path d="M60 45 C55 52 56 59 60 64 C64 59 65 52 60 45Z" fill="#dc2626" stroke="${O}" stroke-width=".6"/><circle cx="60" cy="56" r="2" fill="#fbbf24" stroke="${O}" stroke-width=".5"/>
+        <path d="M38 60 C42 53 48 52 54 57 M82 60 C78 53 72 52 66 57" stroke="#dc2626" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path d="M39 65 L53.5 67.5 L43 71.5Z M81 65 L66.5 67.5 L77 71.5Z" fill="#fbbf24" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/><path d="M46.5 66 V70.4 M73.5 66 V70.4" stroke="${O}" stroke-width="1.3"/>
+        <path d="M44 73 C42 78 43 83 46 86 M76 73 C78 78 77 83 74 86" stroke="#dc2626" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <path d="M51 72 C54 70 66 70 69 72 C69 83 66 94 60 104 C54 94 51 83 51 72Z" fill="url(#${id}mz)" opacity=".8"/>
+        <path d="M55.5 98 L64.5 98 L60 103.5Z" fill="#141a26" stroke="${O}" stroke-width=".8" stroke-linejoin="round"/><ellipse cx="58.3" cy="99" rx="1.6" ry=".7" fill="#fff" opacity=".6"/>
+        <path d="M60 103.5 V106 M55 106.5 Q60 109.5 65 106.5" stroke="${O}" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+        <path d="M31 76 L37 77 M29 81 L35 81 M89 76 L83 77 M91 81 L85 81" stroke="${O}" stroke-width="1" stroke-linecap="round" opacity=".45"/>
+        <path d="M45 47 Q52 44 58 45 M62 45 Q68 44 75 47" stroke="#fff" stroke-width="1.2" fill="none" opacity=".75" stroke-linecap="round"/></g>`;
+    } else if (c.beast === 'q') {
+      // клан следующего сезона — знак вопроса
+      beast = `<text x="60" y="97" text-anchor="middle" font-size="66" font-weight="900" font-family="Georgia, 'Times New Roman', serif" fill="${G}" stroke="${O}" stroke-width="1.6" paint-order="stroke">?</text>`;
+    } else {
+      // клан без своего зверя — восьмилучевая звезда Алатыря с самоцветом
+      const pts = [...Array(16)].map((_, i) => { const a = Math.PI * i / 8 - Math.PI / 2, r = i % 2 ? 13 : 31; return `${f2(60 + r * Math.cos(a))},${f2(70 + r * Math.sin(a))}`; }).join(' ');
+      beast = `<polygon points="${pts}" fill="${G}" stroke="${O}" stroke-width="1" stroke-linejoin="round"/>
+        <path d="M60 58 L70 66 L66 80 L54 80 L50 66Z" fill="${c.gem}" stroke="${O}" stroke-width="1" stroke-linejoin="round"/><path d="M60 58 L60 80 M50 66 L70 66" stroke="#fff" stroke-width=".8" opacity=".55"/>`;
     }
     const rivets = [[22, 28], [98, 28], [16.5, 50], [103.5, 50], [19, 80], [101, 80], [35, 107], [85, 107], [60, 122]]
       .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.7" fill="#fff4c4" stroke="${O}" stroke-width=".7"/>`).join('');
@@ -878,6 +995,8 @@ const Art = (() => {
       <linearGradient id="${id}e2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7d77e"/><stop offset=".6" stop-color="#b97a22"/><stop offset="1" stop-color="#6e430c"/></linearGradient>
       <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1">${c.silver ? '<stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#e3e8f0"/><stop offset=".65" stop-color="#a7b2c4"/><stop offset=".88" stop-color="#5d6a80"/><stop offset="1" stop-color="#c9d2e0"/>' : '<stop offset="0" stop-color="#f1f5f9"/><stop offset=".5" stop-color="#b6c0cf"/><stop offset="1" stop-color="#5d6a80"/>'}</linearGradient>
       <radialGradient id="${id}mz" cx=".5" cy=".3" r=".8"><stop offset="0" stop-color="${c.silver ? '#ffffff' : '#fff6d6'}"/><stop offset="1" stop-color="${c.silver ? '#c3ccda' : '#e6bc68'}"/></radialGradient>
+      <linearGradient id="${id}lp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#93c5fd"/><stop offset=".45" stop-color="#1d4ed8"/><stop offset="1" stop-color="#0b1a4d"/></linearGradient>
+      <radialGradient id="${id}sun" cx=".38" cy=".34" r=".8"><stop offset="0" stop-color="#fecaca"/><stop offset=".45" stop-color="#ef4444"/><stop offset="1" stop-color="#7f1d1d"/></radialGradient>
       <linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6b4222"/><stop offset=".5" stop-color="#c08a4f"/><stop offset="1" stop-color="#6b4222"/></linearGradient>
       <linearGradient id="${id}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".35" stop-color="#f3cf6b"/><stop offset=".7" stop-color="#a86a18"/><stop offset="1" stop-color="#f0c75e"/></linearGradient>
       <pattern id="${id}p" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M4 .8L7.2 4 4 7.2 .8 4Z" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width=".7"/></pattern>

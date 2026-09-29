@@ -422,7 +422,7 @@
       ok(!!S.canMeltAmulet('perun', 'veles'), 'нужно три'); S.d.amulets.perun = 3;
       ok(!!S.canMeltAmulet('perun', 'perun'), 'в себя же нельзя'); ok(!!S.canMeltAmulet('perun', 'constructor'), 'только известные амулеты'); ok(!!S.canMeltAmulet('toString', 'veles'));
       ok(S.meltAmulet('perun', 'veles')); eq(S.d.amulets.perun, 0); eq(S.d.amulets.veles, 1); eq(S.d.sparks, 0);
-      // награды: златники за уровень — 5, на каждом пятом — 20; Мёртвая вода — не в товаре дня, на 30-й ступени Тропы
+      // награды: монеты за уровень — 5, на каждом пятом — 20; Мёртвая вода — не в товаре дня, на 30-й ступени Тропы
       eq(S.levelRewards(12).zlat, Rules.ZLAT.level); eq(S.levelRewards(15).zlat, Rules.ZLAT.level5);
       for (let d = 0; d < 60; d++) ok(Rules.shopDeal('2026-10-' + d).id !== 'dead1', 'Мёртвая вода без скидки');
       eq(Rules.passReward('free', 30).deadwater, 1, 'Мёртвая вода — на вершине бесплатной Тропы');
@@ -504,6 +504,37 @@
     } else ok(Rules.alaStage(2, Rules.alaCost(2)).done, 'мифология есть — сезон собирается целиком');
     // очки вклада сезона: осколок — 1, победа над Кощеем — FINALE.KILL
     eq(Rules.alaPoints({ s: 1, n: 5, k: 2 }), 5 + 2 * Rules.ALATYR_WORLD.FINALE.KILL); eq(Rules.alaPoints(null), 0);
+  });
+  test('Кланы (4.28): клан — мифология, клан следующего сезона закрыт, прежние дружины — к кланам', () => {
+    const a0 = Ev.ala, keep = S.d;
+    try {
+      eq(Object.keys(CLANS).join(), MYTH_ALL.join(), 'у каждой мифологии — свой клан, в порядке сезонов');
+      Ev.ala = { s: 1, from: 0, start: 0, fin: null, brk: null }; mythOpen(1, true);
+      ok(MYTH_KEYS.length >= 7 && MYTH_KEYS.every(k => clanOpen(k)), 'кланы открытых мифологий открыты');
+      ok(!clanOpen('japan'), 'японский клан до раскола закрыт');
+      eq(CLANS.japan.name, 'Клан Кицунэ', 'клан из MYTH_META.japan.clan'); eq(CLANS.japan.crest, 'fox'); eq(CLANS.japan.member, 'самурай');
+      mythOpen(2, true); ok(clanOpen('japan'), 'сезон 2 — японский клан открыт'); mythOpen(1, true);
+      // сущности кланов: всё заполнено, «дружина» — только у славянского, цвета различимы
+      MYTH_ALL.forEach(k => { const c = CLANS[k]; ok(c.name && c.short && c.member && c.motto && c.desc && c.crest && /^#[0-9a-f]{6}$/i.test(c.color), k); });
+      eq(MYTH_ALL.filter(k => /дружин/i.test(CLANS[k].name)).join(), 'slavic', 'слово «дружина» — только у славянского клана');
+      eq(new Set(MYTH_ALL.map(k => CLANS[k].color)).size, MYTH_ALL.length, 'у кланов разные цвета');
+      MYTH_ALL.concat('?').forEach(k => { const s = Art.clanCrest(k); ok(s.startsWith('<svg') && !/NaN|undefined|null/.test(s), 'герб ' + k); });
+      // прежние дружины
+      eq(clanOf('sokol'), 'slavic'); eq(clanOf('medved'), 'celtic'); eq(clanOf('volk'), 'norse');
+      eq(CLANS.sokol, CLANS.slavic, 'старый id — тот же клан'); ok(!Object.keys(CLANS).includes('sokol'), 'в списках старых id нет');
+      eq(clanOf('slavic'), 'slavic'); eq(clanOf('orel'), null); eq(clanOf('__proto__'), null); eq(clanOf(''), null);
+      ok(!clanOpen('sokol') && !clanOpen('__proto__'), 'старый id — не для вступления');
+      eq(clanIds('celtic').join(), 'celtic,medved'); eq(clanIds('greek').join(), 'greek');
+      // сохранение до 4.28: дружина → клан и один бесплатный переход; повторный перенос ничего не даёт
+      S.d = JSON.parse(JSON.stringify(keep)); S.d.clan = 'medved'; delete S.d.clanV; delete S.d.clanFree;
+      S.migrate(); eq(S.d.clan, 'celtic'); eq(S.d.clanFree, 1); eq(S.d.clanV, 2);
+      S.d.clanFree = 0; S.migrate(); eq(S.d.clanFree, 0, 'переход не возвращается');
+      S.d.clan = 'volk'; S.migrate(); eq(S.d.clan, 'norse', 'старый id и после переноса'); eq(S.d.clanFree, 0);
+      S.d = JSON.parse(JSON.stringify(keep)); S.d.clan = null; delete S.d.clanV; S.migrate(); ok(!S.d.clanFree, 'без дружины — без перехода');
+      // дань со святилищ своей мифологии — ×1,5 (искры и обереги)
+      eq(Rules.tributeFor(1, 0).sparks, TRIBUTE.sparks); eq(Rules.tributeFor(1, 1).sparks, TRIBUTE.sparks * 1.5); eq(Rules.tributeFor(1, 1).charm, 2);
+      eq(Rules.tributeFor(3, 1).sparks, 350); eq(Rules.tributeFor(3, 5).sparks, 450, 'не больше n святилищ');
+    } finally { S.d = keep; Ev.ala = a0; mythOpen(Ev.alaSeason(), true); }
   });
   test('Сезоны Алатыря (4.28): закрытая мифология не появляется нигде, открывается с сезоном', () => {
     // временная мифология второго сезона (как файл myth-<ключ>.js с MYTH_META): её виды — в SPECIES_ALL и SP, но не в SPECIES
@@ -859,12 +890,12 @@
     S.d.spirits = [S.makeSpirit('ugolek', 5, 'h1')]; S.d.essence = { ugolek: 30 };
     const op = UI._opened; UI._opened = { shop: 1, swap: 1, trail: 1, rift: 1, shrine: 1, invasion: 1, trophy: 1, gavel: 1 };
     let ids = Hints.list().map(h => h.id);
-    eq(ids.join(), 'evolve:ugolek,clan', 'превращение, дружина');
+    eq(ids.join(), 'evolve:ugolek,clan', 'превращение, клан');
     // 4.18: только что открылся раздел — совет о нём (и только о том, что уже открыто по уровню)
     delete UI._opened.rift; S.d.level = RAID_LEVEL;
     ok(Hints.list().some(h => h.id === 'open:rift'), 'совет о Разломах'); ok(!Hints.list().some(h => h.id === 'open:trophy' && !UI._opened.trophy), 'о Лиге — рано');
     S.d.level = CLAN_LEVEL; UI._opened.rift = 1;
-    S.d.clan = 'volk'; S.d.essence = {};
+    S.d.clan = 'norse'; S.d.essence = {};
     eq(Hints.list().length, 0, 'без повода — без советов');
     ok(!Hints.list.toString().includes('story'), 'советов о Летописи нет');
     UI._opened = op;
@@ -914,7 +945,7 @@
     ok(!R.list(3, 4).some(x => x.k === 'medal'), '4 осколка — без знака');
     eq(R.list(3, 1).find(x => x.k === 'sparks').n, T[0].rw.sparks);
     const all = R.list(3, 1000), zl = T.reduce((a, t) => a + (t.rw.zlat || 0), 0);
-    eq(all.find(x => x.k === 'zlat').n, zl, 'златники ступеней суммируются');
+    eq(all.find(x => x.k === 'zlat').n, zl, 'монеты ступеней суммируются');
     ok(all.every(x => x.k === 'medal' || ['sparks', 'zlat', 'rod'].includes(x.k) || ITEMS[x.k]), 'только валюта, предметы и знак — без обликов');
     eq(R.roman(14), 'XIV'); eq(R.roman(49), 'XLIX'); eq(R.title(2), 'Итоги сезона Алатыря II', 'номер не отрывается');
     // выдача: один раз на сезон; знак — за сезоны с вкладом от MEDAL_MIN
@@ -1067,7 +1098,7 @@
     holdDefend: async (poi, lat, lng, clan, holder) => {
       const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000;
       h.holders = h.holders.filter(x => +x.t >= cut);
-      if (h.holders.length && h.clan !== clan) return false;
+      if (h.holders.length && clanOf(h.clan) !== clanOf(clan)) return false; // 4.28: как clan_key в 031 — прежняя дружина и её клан — одно знамя
       if (h.holders.length >= HOLD_MAX || h.holders.some(x => x.pid === holder.pid)) return false;
       h.clan = clan; h.holders.push(holder); h.ver++; return true;
     },
@@ -1086,7 +1117,7 @@
     roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
     myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
-    clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
+    clanCounts: async box => { const o = {}; MYTH_KEYS.forEach(k => { o[k] = 0; }); Object.values(DB.holds).forEach(h => { const k = clanOf(h.clan); if (h.holders.length && k in o) o[k]++; }); return o; },
     // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
     lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
     lotsFind: async f => DB.lots.filter(l => l.status === 'open' && Date.parse(l.expires_at) > Date.now() && (!f.sids || f.sids.includes(l.sid)) && (!f.el || l.el === f.el) && (!f.rar || l.rar === f.rar) && (!f.cur || l.cur === f.cur) && (!f.shiny || l.shiny)
@@ -1111,7 +1142,7 @@
       return DB.lots.filter(l => l.seller_pid === pid && !l.settled && ['sold', 'cancelled', 'expired'].includes(l.status)).map(l => ({ ...l }));
     },
     lotsDone: async (ids, field) => { DB.lots.forEach(l => { if (ids.includes(l.id)) l[field] = true; }); },
-    chatList: async (ch, after) => DB.chat.filter(m => m.channel === ch && !m.hidden && m.id > (after || 0)).slice(-50).map(m => ({ ...m })),
+    chatList: async (ch, after) => { const chs = /^clan:/.test(ch) ? clanIds(ch.slice(5)).map(k => 'clan:' + k) : [ch]; return DB.chat.filter(m => chs.includes(m.channel) && !m.hidden && m.id > (after || 0)).slice(-50).map(m => ({ ...m })); },
     chatInsert: async row => { const m = { id: DB.chat.length + 1, created_at: new Date().toISOString(), hidden: false, ...row }; DB.chat.push(m); return { ...m }; },
     chatReport: async (id, pid) => { if (!DB.reports.some(r => r.id === id && r.pid === pid)) DB.reports.push({ id, pid }); const n = DB.reports.filter(r => r.id === id).length; if (n >= 3) DB.chat.find(m => m.id === id).hidden = true; return n; },
     paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
@@ -1233,7 +1264,7 @@
     A.data.level = DUEL_LEVEL - 1;
     await refuse(A, 'duelStart', { shrine: { id: 'osm:n7790', lat: A.lat, lng: A.lng, name: 'К' } }, new RegExp(DUEL_LEVEL + ' уровня'));
     A.data.level = League.LEVEL - 1; await refuse(A, 'pvpFind', {}, new RegExp(League.LEVEL + ' уровня'));
-    A.data.level = CLAN_LEVEL - 1; await refuse(A, 'clanJoin', { clan: 'sokol' }, new RegExp(CLAN_LEVEL + ' уровня'));
+    A.data.level = CLAN_LEVEL - 1; await refuse(A, 'clanJoin', { clan: 'slavic' }, new RegExp(CLAN_LEVEL + ' уровня'));
     A.data.level = Rules.AUCTION.LEVEL - 1; await refuse(A, 'auctionFind', {}, new RegExp(Rules.AUCTION.LEVEL + ' уровня'));
   });
   atest('Сервер: поимка — дух должен быть рядом, исход решает сервер', async () => {
@@ -1291,7 +1322,7 @@
     await must(A, 'spring', { poi: { id: 'osm:n555', lat: A.lat, lng: A.lng, name: 'Родник' } });
     for (const id of ['bag', 'cocoons', 'quests']) await must(A, 'tutNext', { id });
     const zl = A.data.zlat || 0, fin = await must(A, 'tutNext', { id: 'path' });
-    ok(fin.done && fin.got.length > 0, 'финальная награда'); eq(A.data.tut, 0); ok((A.data.zlat || 0) > zl, 'златники за обучение');
+    ok(fin.done && fin.got.length > 0, 'финальная награда'); eq(A.data.tut, 0); ok((A.data.zlat || 0) > zl, 'монеты за обучение');
     await refuse(A, 'tutNext', { id: 'path' }, /пройдено/);
     // прежнее обучение 4.0 (со сценами) продолжается с ближайшего шага нового; 3.x — тоже
     const B = await newPlayer('ud2', 55.731, 37.611, 'Ясень');
@@ -1650,7 +1681,7 @@
     B.data.tut = 0;
     ok((await must(B, 'spring', { poi: { id: 'osm:n7003', lat: B.lat, lng: B.lng, name: 'Фонтан' } })).got.length > 0);
   });
-  atest('Сервер: дружины — защитник на Капище, бой с защитниками, дань', async () => {
+  atest('Сервер: кланы — защитник на Капище, бой с защитниками, дань', async () => {
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), 61000); // 4.16: не вольное
     const [lat, lng] = [55.58, 37.46];
@@ -1663,13 +1694,13 @@
       return P;
     };
     const A = await mk('uw', 'Сокольник'), B = await mk('ux', 'Медвежич'), C = await mk('uy', 'Второй сокол');
-    A.data.level = CLAN_LEVEL - 1; // 4.16: дружины — с CLAN_LEVEL (было с 5)
-    await refuse(A, 'clanJoin', { clan: 'sokol' }, new RegExp(CLAN_LEVEL + ' уровня'));
+    A.data.level = CLAN_LEVEL - 1; // 4.16: кланы — с CLAN_LEVEL (было с 5)
+    await refuse(A, 'clanJoin', { clan: 'slavic' }, new RegExp(CLAN_LEVEL + ' уровня'));
     A.data.level = CLAN_LEVEL;
     await refuse(A, 'clanJoin', { clan: 'orel' }, /нет/);
-    await must(A, 'clanJoin', { clan: 'sokol' }); eq(A.data.clan, 'sokol');
-    await refuse(A, 'clanJoin', { clan: 'volk' }, /уже выбрана/);
-    await must(B, 'clanJoin', { clan: 'medved' }); await must(C, 'clanJoin', { clan: 'sokol' });
+    await must(A, 'clanJoin', { clan: 'slavic' }); eq(A.data.clan, 'slavic');
+    await refuse(A, 'clanJoin', { clan: 'norse' }, /уже выбран/);
+    await must(B, 'clanJoin', { clan: 'celtic' }); await must(C, 'clanJoin', { clan: 'slavic' });
     // 4.1: Капище, которого нет в базе мест (id и координаты — от телефона), защищать нельзя
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /известные Ордену/);
     DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Старый вяз', active: true };
@@ -1679,21 +1710,21 @@
     A.srv.battle.start -= 200000;
     await must(A, 'duelEnd', { win: true });
     await must(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid });
-    eq(DB.holds[id].clan, 'sokol'); eq(DB.holds[id].holders.length, 1);
+    eq(DB.holds[id].clan, 'slavic'); eq(DB.holds[id].holders.length, 1);
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[1].uid }, /уже стоит/);
-    await must(C, 'shrineDefend', { shrine, uid: C.data.spirits[0].uid }); // своя дружина — без боя
-    await refuse(C, 'duelStart', { shrine }, /твоя дружина/);
-    // чужая дружина: бой с защитниками
+    await must(C, 'shrineDefend', { shrine, uid: C.data.spirits[0].uid }); // свой клан — без боя
+    await refuse(C, 'duelStart', { shrine }, /твой клан/);
+    // чужой клан: бой с защитниками
     const st = await must(B, 'duelStart', { shrine });
-    eq(st.clan, 'sokol'); eq(st.foe.length, 2); eq(st.holders.join(), 'Сокольник,Второй сокол');
+    eq(st.clan, 'slavic'); eq(st.foe.length, 2); eq(st.holders.join(), 'Сокольник,Второй сокол');
     await refuse(B, 'duelEnd', { win: true }, /слишком быстрая/);
-    await refuse(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid }, /другая дружина/);
+    await refuse(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid }, /другой клан/);
     await must(B, 'duelStart', { shrine });
     B.srv.battle.start -= 200000;
     const r = await must(B, 'duelEnd', { win: true });
     ok(r.win && r.freed, 'Капище освобождено'); eq(DB.holds[id].holders.length, 0);
     await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid });
-    eq(DB.holds[id].clan, 'medved');
+    eq(DB.holds[id].clan, 'celtic');
     // дань — раз в день за каждое Капище с моим защитником
     // 4.16: только что поставленный защитник дань не приносит — нужно отстоять Rules.HOLD.TRIBUTE_H часов
     const t0 = await must(B, 'tribute'); eq(t0.n, 0); ok(t0.next > Date.now(), 'дань — позже'); ok(!B.data.tributeDay, 'день не закрыт');
@@ -1709,7 +1740,7 @@
     eq(A.data.guards.length, 0); ok(A.data.journal.some(e => e.type === 'guardBack'), 'в дневнике');
     eq((await must(A, 'myGuards')).back.length, 0, 'второй раз не возвращается');
     const gb = await must(B, 'myGuards'); eq(gb.list.length, 1); eq(gb.list[0].sid, B.data.spirits[0].sid);
-    const cs = await must(B, 'clanStats'); eq(cs.all.medved, 1); eq(cs.all.sokol, 0);
+    const cs = await must(B, 'clanStats'); eq(cs.all.celtic, 1); eq(cs.all.slavic, 0); eq(Object.keys(cs.all).join(), MYTH_KEYS.join(), 'все открытые кланы');
   });
   atest('Сервер: совместный разлом — комната на сервере, союзников считает сервер', async () => {
     const A = await newPlayer('uz', 55.57, 37.45, 'Хозяйка'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
@@ -1814,7 +1845,7 @@
   atest('Сервер: Лавка Ордена — сумка, припасы, товар дня, плащи', async () => {
     const A = await newPlayer('vh', 55.54, 37.42, 'Покупатель');
     A.data.tut = 0;
-    await refuse(A, 'shopBuy', { id: 'bag' }, /златников/);
+    await refuse(A, 'shopBuy', { id: 'bag' }, /монет/);
     A.data.zlat = 1000; A.data.sparks = 5000;
     const b = await must(A, 'shopBuy', { id: 'bag' });
     eq(A.data.bagExtra, 1); eq(A.data.zlat, 1000 - Rules.bagPrice(0)); eq(b.got[0].k, 'bag');
@@ -1830,7 +1861,7 @@
     await must(A, 'shopBuy', { id: 'look:#7c2d12' });
     await must(A, 'look', { look: { cloak: '#7c2d12', eyes: '#5eead4', emblem: 'charm' } }); eq(A.data.look.cloak, '#7c2d12');
     await refuse(A, 'shopBuy', { id: 'look:#7c2d12' }, /уже твой/);
-    // 4.6: облики-скины из Гардероба — за златники, надеть можно только купленный
+    // 4.6: облики-скины из Гардероба — за монеты, надеть можно только купленный
     await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'volhv' } }, /Гардеробе/);
     await refuse(A, 'shopBuy', { id: 'skin:nichego' }, /нет/);
     A.data.zlat = 450;
@@ -1845,12 +1876,12 @@
     await must(A, 'shopBuy', { id: 'bg:gate' }); await must(A, 'shopBuy', { id: 'frame:oak' }); eq(A.data.zlat, 1000 - 650 - 250);
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', bg: 'gate', frame: 'oak' } }); eq(A.data.look.bg, 'gate'); eq(A.data.look.frame, 'oak');
     eq(GameCore.safeLook({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', bg: 'x', frame: 'toString' }).frame, undefined, 'чужая рамка — только из списка');
-    // златники приходят за серию дней
+    // монеты приходят за серию дней
     const g0 = A.data.zlat;
-    const dl = await must(A, 'daily'); // опыт серии может поднять уровень — за него свои златники
+    const dl = await must(A, 'daily'); // опыт серии может поднять уровень — за него свои монеты
     eq(dl.got.find(x => x.k === 'zlat').n, Rules.ZLAT.streak); ok(A.data.zlat >= g0 + Rules.ZLAT.streak);
   });
-  atest('Сервер: выбросить из сумки, обменник искр, гривны → златники', async () => {
+  atest('Сервер: выбросить из сумки, обменник искр, гривны → монеты', async () => {
     const A = await newPlayer('vk', 55.51, 37.39, 'Бережливый');
     A.data.tut = 0;
     const c0 = A.data.items.charm;
@@ -1866,7 +1897,7 @@
     A.data.sparks = 1e6;
     await must(A, 'exchange', { n: Rules.EXCHANGE.DAY - 2 });
     await refuse(A, 'exchange', { n: 1 }, /закрыт/);
-    // старые сохранения: гривны переходят в златники один к одному
+    // старые сохранения: гривны переходят в монеты один к одному
     A.data.grivna = 77; A.data.zlat = 3;
     await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
   });
@@ -1915,7 +1946,7 @@
     eq((await must(B1, 'auctionFind', { f: { el: SP.kapelka.el } })).lots.length, 1, 'по стихии');
     // покупка: денег не хватает — лот остаётся открытым
     B1.data.zlat = 10;
-    await refuse(B1, 'auctionBuy', { id: sold.id }, /златников/);
+    await refuse(B1, 'auctionBuy', { id: sold.id }, /монет/);
     eq(DB.lots.find(l => l.id === sold.id).status, 'open', 'лот не застрял проданным');
     B1.data.zlat = 500;
     await refuse(S1, 'auctionBuy', { id: sold.id }, /собственный/);
@@ -1979,6 +2010,55 @@
     const s2 = S2.data.sparks; await must(S2, 'auctionCancel', { id: L1.id });
     eq(S2.data.sparks, s2, 'залог за снятый лот не вернулся'); ok(S2.data.spirits.some(s => s.sid === 'kapelka'), 'дух вернулся');
   });
+  atest('Сервер: кланы мифологий (4.28) — закрытый клан, прежние дружины, бесплатный переход один раз, дань ×1,5', async () => {
+    const a0 = Ev.ala, made = [];
+    try {
+      Ev.ala = { s: 1, from: 0, start: 0, fin: null, brk: null };
+      const [lat, lng] = [55.56, 37.44];
+      const A = await newPlayer('ma', lat, lng, 'Новичок'); A.data.level = CLAN_LEVEL; A.data.tut = 0;
+      await refuse(A, 'clanJoin', { clan: 'japan' }, /закрыт/);
+      await refuse(A, 'clanJoin', { clan: 'sokol' }, /Такого клана нет/);
+      await refuse(A, 'clanJoin', { clan: '?' }, /Такого клана нет/);
+      await must(A, 'clanJoin', { clan: 'egypt' }); eq(A.data.clan, 'egypt'); ok(!A.data.clanFree, 'вступившим после кланов — без бесплатного перехода');
+      await refuse(A, 'clanMove', { clan: 'china' }, /уже использован/);
+      // Ловчий прежней дружины: сохранение до 4.28 (без clanV)
+      const B = await newPlayer('mb', lat, lng, 'Старый сокол'); B.data.level = CLAN_LEVEL; B.data.tut = 0;
+      B.data.clan = 'sokol'; delete B.data.clanV; delete B.data.clanFree;
+      ['kapelka', 'mshonok'].forEach(sid => B.data.spirits.push(asPlayer(B, () => S.makeSpirit(sid, 12, sid + 'mb'))));
+      await must(B, 'team', { uids: B.data.spirits.map(x => x.uid) });
+      eq(B.data.clan, 'slavic', 'сокол — Дружина Перуна'); eq(B.data.clanFree, 1, 'один бесплатный переход');
+      // Капище прежней дружины (до миграции 032) — своё: без боя, защитник встаёт рядом, счёт — клану
+      const hour = Math.floor(Date.now() / 3600000), id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), 63000); made.push(id);
+      DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Сокольня', active: true };
+      DB.holds[id] = { clan: 'sokol', holders: [{ pid: 'oldfalcon0', name: 'Сокольник', sp: { sid: 'ugolek', lvl: 10, iv: [5, 5, 5] }, t: Date.now() - 3600000 }], ver: 1 };
+      const shrine = { id, lat, lng, name: 'Сокольня' };
+      await refuse(B, 'duelStart', { shrine }, /твой клан/);
+      await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid }); eq(DB.holds[id].holders.length, 2, 'рядом с защитником прежней дружины');
+      eq((await must(B, 'clanStats')).all.slavic, 1, 'Капище прежней дружины — в счёте клана');
+      const eg = await must(A, 'duelStart', { shrine }); eq(eg.clan, 'slavic', 'для чужого клана — Капище Дружины Перуна'); A.srv.battle = null;
+      // переход — один раз и только в открытый клан
+      await refuse(B, 'clanMove', { clan: 'slavic' }, /уже в этом клане/);
+      await refuse(B, 'clanMove', { clan: 'japan' }, /закрыт/);
+      await refuse(B, 'clanMove', { clan: 'volk' }, /Такого клана нет/);
+      await must(B, 'clanMove', { clan: 'greek' }); eq(B.data.clan, 'greek'); eq(B.data.clanFree, 0);
+      ok(B.data.journal.some(e => e.type === 'clan' && e.move && e.from === 'slavic'), 'переход — в дневнике');
+      await refuse(B, 'clanMove', { clan: 'norse' }, /уже использован/);
+      // дань: святилище мифологии своего клана — ×1,5
+      delete DB.holds[id];
+      Ev.alaSync();
+      const own = poiId(i => W.placeMyth({ id: i }) === 'greek', 64000), other = poiId(i => W.placeMyth({ id: i }) !== 'greek', 64000);
+      made.push(own, other);
+      [own, other].forEach(x => { DB.holds[x] = { clan: 'greek', holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
+      B.data.tributeDay = ''; B.data.tributeNext = 0;
+      const s0 = B.data.sparks, tr = await must(B, 'tribute');
+      eq(tr.n, 2); eq(tr.own, 1, 'одно святилище своей мифологии'); eq(B.data.sparks - s0, Rules.tributeFor(2, 1).sparks, 'искры дани ×1,5 с храма');
+      // новый сезон — открылся японский клан
+      Ev.ala = { s: 2, from: 0, start: 0, fin: null, brk: null };
+      const D = await newPlayer('md', lat, lng, 'Самурай'); D.data.level = CLAN_LEVEL;
+      await must(D, 'clanJoin', { clan: 'japan' }); eq(D.data.clan, 'japan');
+      ok(Object.keys((await must(D, 'clanStats')).all).includes('japan'), 'японский клан — в счёте');
+    } finally { made.forEach(x => delete DB.holds[x]); Ev.ala = a0; Ev.alaSync(); mythOpen(Ev.alaSeason(), true); }
+  });
   atest('Сервер: Капища 4.16 — защитники устают и уходят, вольные Капища, 3 на игрока, дань за активную защиту', async () => {
     const hour = Math.floor(Date.now() / 3600000), [lat, lng] = [55.57, 37.45], ids = [];
     let from = 62000;
@@ -1994,7 +2074,7 @@
       await must(P, 'clanJoin', { clan });
       return P;
     };
-    const A = await mk('wf', 'Сокол', 'sokol'), B = await mk('wg', 'Волк', 'volk');
+    const A = await mk('wf', 'Сокол', 'slavic'), B = await mk('wg', 'Волк', 'norse');
     // 4.26: после победы раны — не меньше посчитанных сервером: между боями духи лечатся
     const heal = P => P.data.spirits.forEach(x => { delete x.ko; delete x.hpf; delete x.hpt; });
     const win = async (P, id) => { P.srv.rl = {}; heal(P); const st = await must(P, 'duelStart', { shrine: shrine(id) }); P.srv.battle.start -= 200000; const r = await must(P, 'duelEnd', { win: true }); return { st, r }; };
@@ -2010,7 +2090,7 @@
     const aged = (id, h) => { DB.holds[id].holders[0].t = Date.now() - h * 3600000; const g = A.data.guards.find(x => x.id === id); if (g) g.t = DB.holds[id].holders[0].t; };
     aged(ids[0], 48);
     const b1 = await win(B, ids[0]);
-    eq(b1.st.clan, 'sokol'); eq(b1.st.foe[0].lvl, Math.round(20 * Rules.holdK(Date.now() - 48 * 3600000)), 'уставший защитник');
+    eq(b1.st.clan, 'slavic'); eq(b1.st.foe[0].lvl, Math.round(20 * Rules.holdK(Date.now() - 48 * 3600000)), 'уставший защитник');
     ok(b1.r.freed, 'Капище освобождено');
     // срок вышел — защитник ушёл: бьётся хранитель, место у игрока освободилось
     aged(ids[1], Rules.HOLD.MAX_H + 1);
@@ -2085,7 +2165,7 @@
     eq((await must(A, 'chatList', { ch: 'all' })).msgs.length, 0, 'читать можно и новичку');
     A.data.level = 5;
     await refuse(A, 'chatSend', { ch: 'nowhere', text: 'x' }, /канала нет/);
-    await refuse(A, 'chatSend', { ch: 'clan', text: 'x' }, /дружине/);
+    await refuse(A, 'chatSend', { ch: 'clan', text: 'x' }, /клане/);
     await refuse(A, 'chatSend', { ch: 'all', text: '   ' }, /Напиши/);
     await refuse(A, 'chatSend', { ch: 'all', text: 'заходи на https://evil.example' }, /Ссылки/);
     await refuse(A, 'chatSend', { ch: 'all', text: 'пиши мне в t.me/scam' }, /Ссылки/);
@@ -2096,11 +2176,15 @@
     // фильтр слов — только начало слова, обычные слова не трогает
     eq(GameCore.chatClean('корабля ребус застрахуй себастьян худой'), 'корабля ребус застрахуй себастьян худой', 'без ложных срабатываний');
     ok(/\*{3}/.test(GameCore.chatClean('ну ты и мудак')) && !/мудак/.test(GameCore.chatClean('ну ты и мудак')), 'грубое слово скрыто');
-    // канал дружины видят только свои
-    A.data.clan = 'medved'; B.data.clan = 'volk';
-    A.srv.chat.t -= 5000; await must(A, 'chatSend', { ch: 'clan', text: 'Медведи, на Капище!' });
-    eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 0, 'чужая дружина не видит');
-    B.data.clan = 'medved'; eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 1, 'своя видит');
+    // канал клана видят только свои
+    A.data.clan = 'celtic'; B.data.clan = 'norse';
+    A.srv.chat.t -= 5000; await must(A, 'chatSend', { ch: 'clan', text: 'Братство, на Капище!' });
+    eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 0, 'чужой клан не видит');
+    B.data.clan = 'celtic'; eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 1, 'свой видит');
+    // 4.28: до миграции 032 — и сообщения прежней дружины (clan:medved → Братство Дуба)
+    DB.chat.push({ id: DB.chat.length + 1, channel: 'clan:medved', pid: 'oldbear00', name: 'Медвежич', lvl: 20, clan: 'medved', text: 'Старое', created_at: new Date().toISOString(), hidden: false });
+    const old = (await must(B, 'chatList', { ch: 'clan' })).msgs; eq(old.length, 2, 'канал прежней дружины — в канале клана'); eq(old[1].clan, 'celtic', 'клан автора — по прежней дружине');
+    B.data.clan = 'norse'; eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 0, 'волки медвежий канал не видят');
     // новые после after; жалобы: после трёх разных — скрыто
     const all = (await must(B, 'chatList', { ch: 'all' })).msgs; eq(all.length, 1); ok(!all[0].mine);
     eq((await must(B, 'chatList', { ch: 'all', after: all[0].id })).msgs.length, 0, 'только новые');
@@ -2117,16 +2201,16 @@
     const A = await newPlayer('pa', 55.47, 37.35, 'Илья'), B = await newPlayer('pb', 55.47, 37.35, 'Гость');
     for (const P of [A, B]) { P.data.tut = 0; P.data.level = 5; }
     await must(A, 'chatSend', { ch: 'help', text: 'Всем привет!' });
-    A.data.level = 9; A.data.clan = 'sokol';
+    A.data.level = 9; A.data.clan = 'sokol'; // 4.28: прежняя дружина в сохранении — клан мифологии
     const m = (await must(B, 'chatList', { ch: 'help' })).msgs[0];
-    eq(m.lvl, 9, 'в сообщении — текущий уровень, а не на момент отправки'); eq(m.clan, 'sokol');
+    eq(m.lvl, 9, 'в сообщении — текущий уровень, а не на момент отправки'); eq(m.clan, 'slavic');
     A.data.level = 10;
     const r = await must(B, 'chatList', { ch: 'help', after: m.id, who: [A.data.pid, 'bad pid<>'] });
     eq(r.msgs.length, 0); eq(r.who[A.data.pid].lvl, 10, 'уровни уже показанных Ловчих обновляются'); eq(Object.keys(r.who).length, 1, 'чужие коды отброшены');
     // карточка: только открытые данные, дружба, проверка кода
     A.data.clan = 'чужая'; A.data.look = { cloak: '#fff"/><script>', eyes: 'x', emblem: 'y' };
     const c = await must(B, 'playerCard', { pid: A.data.pid });
-    eq(c.name, 'Илья'); eq(c.lvl, 10); eq(c.clan, null, 'неизвестная дружина отброшена'); eq(c.look, null, 'облик — только из известных');
+    eq(c.name, 'Илья'); eq(c.lvl, 10); eq(c.clan, null, 'неизвестный клан отброшен'); eq(c.look, null, 'облик — только из известных');
     ok(c.buddy && SP[c.buddy.sid] && c.best && c.best.power > 0, 'спутник и сильнейший дух'); eq(c.friend, null); eq(c.seen, 'now'); ok(!c.me);
     ok(!('spirits' in c) && !('items' in c) && !('zlat' in c), 'сохранение целиком не отдаётся');
     await must(B, 'friendAdd', { pid: A.data.pid }); eq((await must(B, 'playerCard', { pid: A.data.pid })).friend, 'sent');
@@ -2177,7 +2261,7 @@
       const tr = doc.querySelector(`#packs tr[data-pack="${p.id}"]`);
       ok(tr, 'набор ' + p.id);
       const [name, price] = [...tr.children].map(td => td.textContent.replace(/\s/g, ''));
-      eq(name, `${p.zlat}златников`); eq(price, `${p.rub}₽`);
+      eq(name, `${p.zlat}монет`); eq(price, `${p.rub}₽`);
     });
   });
   atest('Сервер: Казна — оплаченные наборы начисляются ровно один раз', async () => {
@@ -2211,7 +2295,7 @@
     await refuse(A, 'passClaim', { lvl: 1, track: 'free' }, /уже получена/);
     await refuse(A, 'passClaim', { lvl: 3, track: 'free' }, /не пройдена/);
     await refuse(A, 'passClaim', { lvl: 1, track: 'gold' }, /Золотую тропу/);
-    await refuse(A, 'passGold', {}, /златников/);
+    await refuse(A, 'passGold', {}, /монет/);
     A.data.zlat = Rules.PASS.GOLD;
     await must(A, 'passGold'); eq(A.data.zlat, 0); ok(A.data.pass.gold);
     await must(A, 'passClaim', { lvl: 1, track: 'gold' });
@@ -2269,13 +2353,13 @@
     A.data.sparks = 1e6; A.data.zlat = 0;
     await must(A, 'exchange', { n: Rules.EXCHANGE.DAY }); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * Rules.EXCHANGE.DAY); eq(A.data.sparks, 1e6 - Rules.EXCHANGE.SPARKS * Rules.EXCHANGE.DAY);
     await refuse(A, 'exchange', { n: 1 }, /закрыт/);
-    // дань: златники — не больше чем с Rules.ZLAT.tributeMax Капищ
-    A.data.clan = 'volk'; A.data.tributeDay = ''; A.data.zlat = 0;
+    // дань: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ
+    A.data.clan = 'norse'; A.data.tributeDay = ''; A.data.zlat = 0;
     const ids = [1, 2, 3, 4, 5].map(i => 'osm:n9' + i + '0000');
     ids.forEach(id => { DB.holds[id] = { clan: 'volk', holders: [{ pid: A.data.pid, name: 'Хозяйка', sp: { sid: 'ugolek', lvl: 5, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; }); // на посту дольше TRIBUTE_H
     try {
       const tr = await must(A, 'tribute'); eq(tr.n, Math.min(5, HOLD_MY_MAX), 'дань — не больше чем с HOLD_MY_MAX Капищ');
-      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'златники дани — с трёх Капищ');
+      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'монеты дани — с трёх Капищ');
     } finally { ids.forEach(id => delete DB.holds[id]); }
   });
 
@@ -2444,8 +2528,8 @@
     const sid = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) >= 2, 54000);
     await refuse(A, 'duelStart', { shrine: { id: sid, lat: A.lat, lng: A.lng, name: 'К' } }, /малые бои/);
     // ключи из запроса — только свои ключи таблиц
-    await refuse(A, 'clanJoin', { clan: '__proto__' }, /Такой дружины нет/);
-    await refuse(A, 'clanJoin', { clan: 'constructor' }, /Такой дружины нет/);
+    await refuse(A, 'clanJoin', { clan: '__proto__' }, /Такого клана нет/);
+    await refuse(A, 'clanJoin', { clan: 'constructor' }, /Такого клана нет/);
     ok(Array.isArray((await must(A, 'auctionFind', { f: { el: '__proto__', rar: 'constructor', sids: ['__proto__', 'toString'] } })).lots), 'аукцион — без сбоев');
     await refuse(A, 'equip', { uid: A.data.spirits[0].uid, k: '__proto__' }, /амулета нет/);
     // время друга в игре — «сейчас» или с точностью до часа

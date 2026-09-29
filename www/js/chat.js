@@ -1,12 +1,12 @@
 'use strict';
 /* Чат Ордена (3.18): каналы — Общий, Торговля, Разломы, Помощь и своя Дружина. Сообщения пишет и отдаёт сервер
-   (chatSend / chatList / chatReport): он проверяет уровень, дружину, частоту, чистит текст и не пропускает ссылки.
+   (chatSend / chatList / chatReport): он проверяет уровень, клан, частоту, чистит текст и не пропускает ссылки.
    Пока экран открыт, новые сообщения подгружаются раз в несколько секунд. */
 
 const Chat = {
   ch: 'all',
   msgs: {},          // канал → сообщения
-  people: {},        // код Ловчего → текущие имя, уровень и дружина (3.21)
+  people: {},        // код Ловчего → текущие имя, уровень и клан (3.21)
   KEY: 'duholov.chat.hide', // скрытые игроки (удобство на этом телефоне)
   POLL: 4000,
 
@@ -62,10 +62,10 @@ const Chat = {
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 80;
     const render = (stick) => {
       const hid = this.hidden(), ms = (this.msgs[this.ch] || []).filter(m => !hid.includes(m.pid));
-      // уровень, имя и дружина — текущие: сервер присылает их для новых сообщений и раз в ~20 с для уже показанных (who)
+      // уровень, имя и клан — текущие: сервер присылает их для новых сообщений и раз в ~20 с для уже показанных (who)
       const cur = {}; Object.values(this.msgs).flat().forEach(m => { if (!cur[m.pid] || m.id > cur[m.pid].id) cur[m.pid] = m; });
       const who = m => this.people[m.pid] || cur[m.pid] || m;
-      const hint = { all: ru`Общий разговор Ловчих.`, trade: ru`Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.`, raid: ru`Ищите команду для Разломов: пишите код комнаты и место.`, help: ru`Вопросы новичков и советы бывалых.`, clan: ru`Канал твоей дружины — его видят только свои.` }[this.ch];
+      const hint = { all: ru`Общий разговор Ловчих.`, trade: ru`Торговля: договаривайтесь о сделках — сами сделки идут через Аукцион.`, raid: ru`Ищите команду для Разломов: пишите код комнаты и место.`, help: ru`Вопросы новичков и советы бывалых.`, clan: ru`Канал твоего клана — его видят только свои.` }[this.ch];
       const nh = hid.length;
       // разделитель дня: «Сегодня», «Вчера» или дата — перед первым сообщением нового дня
       let lastDay = '';
@@ -76,7 +76,7 @@ const Chat = {
         const y = new Date(); y.setDate(y.getDate() - 1);
         return `<div class="chat-day"><span>${k === new Date().toDateString() ? ru`Сегодня` : k === y.toDateString() ? ru`Вчера` : d.toLocaleDateString(I18N.locale, { day: 'numeric', month: 'long' })}</span></div>`;
       };
-      // 3.25: у чужих сообщений — кружок с первой буквой имени (цвет дружины), подряд идущие — без повторного имени
+      // 3.25: у чужих сообщений — кружок с первой буквой имени (цвет клана), подряд идущие — без повторного имени
       const ava = w => { const c = CLANS[w.clan] ? CLANS[w.clan].color : GUARD_COLORS[Math.floor(U.h('ava' + w.name) * GUARD_COLORS.length)]; return `style="--ac:${c}"`; };
       list.innerHTML = `<div class="chat-hint"><span>${hint} ${ru`Ссылки запрещены, грубость скрывается.`} <button class="linkish chat-rules">${ru`Правила чата`}</button></span>${nh ? `<button class="linkish chat-unhide">${ru`Скрытых Ловчих: ${nh} · Вернуть`}</button>` : ''}</div>` + (ms.length ? ms.map((m, i) => {
         const day = dayLine(m.t), p = ms[i - 1], cont = !day && p && p.pid === m.pid && m.t - p.t < 300000, w = who(m);
@@ -84,9 +84,9 @@ const Chat = {
         return `${day}<div class="mrow ${m.mine ? 'mine' : ''} ${cont ? 'cont' : ''}">
           ${m.mine ? '' : cont ? '<span class="m-ava sp"></span>' : `<button class="m-ava msg-who" ${whoAttr} ${ava(w)} aria-label="${U.esc(w.name)}">${U.esc(String(w.name).trim().charAt(0).toUpperCase() || '?')}</button>`}
           <div class="msg ${m.mine ? 'mine' : ''} ${cont ? 'cont' : ''}" data-id="${m.id}">
-          ${m.mine || cont ? '' : `<button class="msg-who" ${whoAttr}><b class="${w.clan ? 'cl-' + U.esc(w.clan) : ''}">${U.esc(w.name)}</b><small>${ru`ур. ${w.lvl | 0}`}</small></button>`}
+          ${m.mine || cont ? '' : `<button class="msg-who" ${whoAttr}><b ${CLANS[w.clan] ? `class="cl" style="--cc:${CLANS[w.clan].color}"` : ''}>${U.esc(w.name)}</b><small>${ru`ур. ${w.lvl | 0}`}</small></button>`}
           <div class="msg-text">${U.esc(m.text)}</div><time>${this.time(m.t)}</time></div></div>`;
-      }).join('') : `<div class="chat-empty"><div class="ce-ico">${UI.I.chat}</div><b>${ru`Здесь пока тихо`}</b><small>${this.ch === 'clan' ? ru`Напиши первым — тебя увидят все Ловчие твоей дружины.` : ru`Напиши первым — тебя увидят все Ловчие Ордена.`}</small></div>`);
+      }).join('') : `<div class="chat-empty"><div class="ce-ico">${UI.I.chat}</div><b>${ru`Здесь пока тихо`}</b><small>${this.ch === 'clan' ? ru`Напиши первым — тебя увидят все Ловчие твоего клана.` : ru`Напиши первым — тебя увидят все Ловчие Ордена.`}</small></div>`);
       if (stick) { body.scrollTop = body.scrollHeight; hideJump(); }
     };
     body.addEventListener('scroll', () => { if (unseen && atBottom()) hideJump(); }, { passive: true });

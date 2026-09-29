@@ -14,7 +14,7 @@ const Auction = {
   stars(pct) { return pct >= 100 ? 4 : pct >= 82 ? 3 : pct >= 67 ? 2 : pct >= 50 ? 1 : 0; },
   starsHtml(pct) { const n = this.stars(pct); return `<span class="au-stars">${'★'.repeat(n)}${'☆'.repeat(4 - n)}</span>`; },
   priceHtml(cur, price) { return cur === 'zlat' ? `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(price)}` : `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(price)}`; },
-  curName(cur, n) { return cur === 'zlat' ? U.plural(n, ru`златник`, ru`златника`, ru`златников`) : U.plural(n, ru`искра`, ru`искры`, ru`искр`); },
+  curName(cur, n) { return cur === 'zlat' ? U.plural(n, ru`монета`, ru`монеты`, ru`монет`) : U.plural(n, ru`искра`, ru`искры`, ru`искр`); },
   // дух из упакованного лота: { s, l, i, y, d, n, p, m }
   sp(p) { return { sid: p.s, lvl: p.l, iv: p.i, shiny: !!p.y, dark: !!p.d, purified: !!p.p, nick: p.n || null }; },
   filters() { return Object.entries(this.f).filter(([k, v]) => k !== 'sort' && k !== 'mine' && v).length + (this.q ? 1 : 0); },
@@ -104,7 +104,7 @@ const Auction = {
         <div class="au-price-big">${this.priceHtml(l.cur, l.price)}</div>
         <p class="small au-seller">${ru`Продаёт ${U.esc(l.seller_name)} · до конца ${this.left(l.expires_at)}`}</p>`,
       buttons: [{ label: ru`Отмена` }, { label: ru`Купить`, cls: 'primary', keep: true, fn: async w => {
-        if ((S.d[l.cur] || 0) < l.price) { UI.toast(l.cur === 'zlat' ? ru`Не хватает златников — обменяй искры в Лавке или загляни в Казну` : ru`Не хватает искр`); return; }
+        if ((S.d[l.cur] || 0) < l.price) { UI.toast(l.cur === 'zlat' ? ru`Не хватает монет — обменяй искры в Лавке или загляни в Казну` : ru`Не хватает искр`); return; }
         if (w._busy) return; w._busy = true;
         const r = await Game.try('auctionBuy', { id: l.id });
         w._busy = false;
@@ -124,7 +124,7 @@ const Auction = {
       title: ru`Фильтры`, cls: 'au-filters',
       html: `<div class="au-fl">${ru`Стихия`}</div><div class="chips au-wrap">${chip('el', '', ru`Все`, f.el || '')}${ELEMENT_KEYS.map(e => chip('el', e, `${Art.elIcon(e, 14)} ${ELEMENTS[e].name}`, f.el)).join('')}</div>
         <div class="au-fl">${ru`Редкость`}</div><div class="chips au-wrap">${chip('rar', '', ru`Все`, f.rar || '')}${Object.keys(RARITY).map(r => chip('rar', r, RARITY[r].name, f.rar)).join('')}</div>
-        <div class="au-fl">${ru`Валюта`}</div><div class="chips au-wrap">${chip('cur', '', ru`Любая`, f.cur || '')}${chip('cur', 'sparks', '✦ ' + ru`Искры`, f.cur)}${chip('cur', 'zlat', ru`Златники`, f.cur)}</div>
+        <div class="au-fl">${ru`Валюта`}</div><div class="chips au-wrap">${chip('cur', '', ru`Любая`, f.cur || '')}${chip('cur', 'sparks', '✦ ' + ru`Искры`, f.cur)}${chip('cur', 'zlat', ru`Монеты`, f.cur)}</div>
         <div class="au-fl">${ru`Оценка Ордена и показатели`}</div>
         ${range('minIv', ru`Оценка`, 100, 5)}${range('minA', ru`Атака`, 15, 1)}${range('minD', ru`Защита`, 15, 1)}${range('minS', ru`Стойкость`, 15, 1)}
         <div class="au-nums"><label>${ru`Сила от`}<input class="input" type="number" inputmode="numeric" data-n="minPower" value="${f.minPower || ''}" placeholder="${ru`любая`}"></label>
@@ -211,7 +211,7 @@ const Auction = {
     const m = UI.modal({
       title: ru`Выставить на аукцион`, cls: 'au-sellm',
       html: `<div class="au-sellsp">${Art.img(sp.sid, sp.shiny, sp.dark && !sp.purified)}<div><b>${U.esc(sp.nick || SP[sp.sid].name)}</b><small>${ru`СИЛА ${U.fmtNum(S.power(sp))}`} · ${this.starsHtml(S.ivPct(sp))} ${S.ivPct(sp)}%</small></div></div>
-        <div class="seg au-cur"><button data-c="sparks" class="on">✦ ${ru`Искры`}</button><button data-c="zlat">${ru`Златники`}</button></div>
+        <div class="seg au-cur"><button data-c="sparks" class="on">✦ ${ru`Искры`}</button><button data-c="zlat">${ru`Монеты`}</button></div>
         <p class="small au-hint">${ru`Узнаю, за сколько продавали таких духов…`}</p>
         <input class="input big au-pr" type="number" inputmode="numeric" placeholder="${ru`Цена`}">
         <div class="au-fee"></div>

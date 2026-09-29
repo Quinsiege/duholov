@@ -18,7 +18,7 @@ const Loot = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') out.push({ k, n, label: `✦ ${U.fmtNum(n)}` });
-      else if (k === 'zlat') out.push({ k, n, label: ru`${n} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}` });
+      else if (k === 'zlat') out.push({ k, n, label: ru`${n} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}` });
       else if (k === 'cocoon') out.push({ k, n: 1, label: ru`Кокон ${n} км`, cocoon: n });
       else if (k === 'amulet') out.push({ k, n: 1, label: ru`Амулет` });
       else if (k === 'look') { const x = LOOK.cloak.find(c => c.c === n) || LOOK.emblem.find(m => m.id === n) || LOOK.skin.find(k => `skin:${k.id}` === n) || LOOK.bg.find(k => `bg:${k.id}` === n) || LOOK.frame.find(k => `frame:${k.id}` === n); out.push({ k, n: 1, label: x ? x.name : ru`Облик`, look: n }); }
@@ -78,7 +78,7 @@ const GPlay = {
 // ответы приложения; покупка, завершившаяся без ожидания (отложенная оплата прошла), — засчитать сразу
 window.nativeBilling = o => GPlay.got(o);
 
-// Казна Ордена: златники за рубли. Страница оплаты — ЮKassa (карта, СБП, SberPay, T-Pay, ЮMoney);
+// Казна Ордена: монеты за рубли. Страница оплаты — ЮKassa (карта, СБП, SberPay, T-Pay, ЮMoney);
 // итог сервер узнаёт у ЮKassa сам (Game.pay('sync')), а начисляет действие payClaim.
 const Treasury = {
   KEY: 'duholov.pay.open', // ждём итог оплаты (удобство: проверить при возвращении в игру)
@@ -95,7 +95,7 @@ const Treasury = {
           const r = await GPlay.products();
           for (const x of r.list || []) i.prices[x.id] = x.price;
           i.on = Rules.PAY.some(p => i.prices[p.id]);
-          if (!i.on) i.why = ru`Наборы златников в Google Play ещё не открыты`;
+          if (!i.on) i.why = ru`Наборы монет в Google Play ещё не открыты`;
         } catch (e) { i.why = e.message; }
         this.recover();
       }
@@ -118,7 +118,7 @@ const Treasury = {
     try {
       const r = await GPlay.buy(id, info.gplay.acct), c = await GPlay.claim(r.list);
       if (c.n) { await Game.try('tick'); this.notice(); }
-      else if (c.pend) UI.toast(ru`Оплата ещё не завершена — златники придут, когда Google Play её подтвердит`);
+      else if (c.pend) UI.toast(ru`Оплата ещё не завершена — монеты придут, когда Google Play её подтвердит`);
     } catch (e) {
       if (e.code === 7) await this.recover(true);
       else if (e.code !== 1) UI.toast(U.esc(e.message), 'bad');
@@ -128,10 +128,10 @@ const Treasury = {
   setWaiting(v) { try { v ? localStorage.setItem(this.KEY, String(Date.now())) : localStorage.removeItem(this.KEY); } catch (e) {} },
   html(info) {
     // наборы с ценами видны всегда; пока оплата не подключена (info.on = false), купить нельзя
-    return `<h3 class="prof-h">${ru`Казна Ордена`} <small>${ru`златники за рубли`}</small></h3>
+    return `<h3 class="prof-h">${ru`Казна Ордена`} <small>${ru`монеты за рубли`}</small></h3>
       <div class="pay-packs">${Rules.PAY.map(p => `<button class="pay-pack ${p.hot ? 'hot' : ''}" data-pay="${p.id}">
         ${p.hot ? `<span class="pay-hot">${ru`Выгодно`}</span>` : p.bonus ? `<span class="pay-bonus">+${p.bonus}%</span>` : ''}
-        <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}</small>
+        <div class="pay-coins">${Art.item('zlat')}</div><b>${U.fmtNum(p.zlat)}</b><small>${U.plural(p.zlat, ru`монета`, ru`монеты`, ru`монет`)}</small>
         <span class="pay-price">${info.play ? U.esc(info.prices[p.id] || '—') : `${U.fmtNum(p.rub)} ₽`}</span></button>`).join('')}</div>
       ${info.play ? `<div class="q-note">${info.on ? ru`Оплата — через Google Play.` : `<b>${U.esc(info.why || '')}</b>`} <button class="linkish pay-mine">${ru`Мои покупки`}</button></div>` : `<div class="q-note">${info.on ? '' : `<b>${ru`Оплата скоро откроется.`}</b> `}${ru`Оплата картой, через СБП, SberPay, T-Pay или ЮMoney — на защищённой странице ЮKassa.`} <button class="linkish pay-offer">${ru`Оферта`}</button> <button class="linkish pay-mine">${ru`Мои покупки и чеки`}</button>${this.waiting() ? ` <button class="linkish pay-recheck">${ru`Я оплатил — проверить`}</button>` : ''}</div>`}`;
   },
@@ -140,9 +140,9 @@ const Treasury = {
     const p = Rules.PAY.find(x => x.id === id);
     const m = UI.modal({
       title: ru`Казна Ордена`, cls: 'pay-modal pay-buy',
-      html: `<div class="pay-sum">${Art.item('zlat')}<div><b>${ru`${U.fmtNum(p.zlat)} ${U.plural(p.zlat, ru`златник`, ru`златника`, ru`златников`)}`}</b><small>${p.bonus ? ru`с бонусом +${p.bonus}%` : ru`набор`}</small></div><span>${U.fmtNum(p.rub)} ₽</span></div>
+      html: `<div class="pay-sum">${Art.item('zlat')}<div><b>${ru`${U.fmtNum(p.zlat)} ${U.plural(p.zlat, ru`монета`, ru`монеты`, ru`монет`)}`}</b><small>${p.bonus ? ru`с бонусом +${p.bonus}%` : ru`набор`}</small></div><span>${U.fmtNum(p.rub)} ₽</span></div>
         ${info.receipt ? `<input type="email" class="pay-email" placeholder="${ru`Почта для чека`}" autocomplete="email" inputmode="email">` : ''}
-        <p class="pay-note">${ru`Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay или ЮMoney. После оплаты вернись в игру — златники придут сами.`}</p>
+        <p class="pay-note">${ru`Откроется страница оплаты ЮKassa: карта, СБП, SberPay, T-Pay или ЮMoney. После оплаты вернись в игру — монеты придут сами.`}</p>
         <p class="pay-note">${ru`Оплачивая, ты принимаешь условия ${`<button class="linkish pay-offer">${ru`публичной оферты`}</button>`}.`}</p>`,
       buttons: [{ label: ru`Отмена` }, { label: ru`Оплатить ${U.fmtNum(p.rub)} ₽`, cls: 'primary', keep: true, fn: async () => {
         const email = info.receipt ? m.querySelector('.pay-email').value.trim() : '';
@@ -163,14 +163,14 @@ const Treasury = {
   // Публичная оферта — экраном внутри игры (в приложении ссылка на свой сайт заменила бы игру)
   offer() { UI.doc(ru`Публичная оферта`, 'offer.html'); },
   // Итог оплаты: сервер спрашивает ЮKassa и начисляет оплаченное
-  // 4.22: златники начисляет сервер, как только ЮKassa подтвердила оплату (игрок может быть и не в игре);
-  // игра показывает «+N златников» один раз — по отметке S.d.payNew — и сообщает серверу, что игрок увидел
+  // 4.22: монеты начисляет сервер, как только ЮKassa подтвердила оплату (игрок может быть и не в игре);
+  // игра показывает «+N монет» один раз — по отметке S.d.payNew — и сообщает серверу, что игрок увидел
   notice() {
     const n = S.d && S.d.payNew;
     if (!n || this._noticed === n || document.querySelector('.onb, .loader:not(.out)')) return; // не поверх загрузки и входа
     this._noticed = n;
     Sfx.play('levelup'); U.vibrate([40, 60, 120]);
-    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`златник`, ru`златника`, ru`златников`)}`}</span></div></div><p>${ru`Оплата прошла — златники уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${this.info && this.info.play ? ru`Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.` : ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}`}</span></div></div><p>${ru`Оплата прошла — монеты уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${this.info && this.info.play ? ru`Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.` : ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     UI.refreshHud();
     Game.act('payAck').then(() => { this._noticed = 0; }).catch(() => { this._noticed = 0; });
   },
@@ -182,7 +182,7 @@ const Treasury = {
     const list = (r && r.list) || [];
     const when = t => new Date(t).toLocaleString(I18N.locale, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
     const row = x => `<div class="pl-row"><span class="pl-ico">${Art.item('zlat')}</span>
-      <div class="row-main"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`златник`, ru`златника`, ru`златников`)}`}${x.gp ? '' : ` · ${U.fmtNum(x.rub)} ₽`}</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>
+      <div class="row-main"><b>${ru`${U.fmtNum(x.zlat)} ${U.plural(x.zlat, ru`монета`, ru`монеты`, ru`монет`)}`}${x.gp ? '' : ` · ${U.fmtNum(x.rub)} ₽`}</b><small>${when(x.t)}${x.refunded ? ' · ' + ru`возврат` : ''}</small></div>
       ${x.gp ? '<span class="pl-wait">Google Play</span>' : x.receipt ? `<a class="pl-rc" href="${U.esc(x.receipt)}" target="_blank" rel="noopener">${ru`Чек`} ›</a>` : x.refunded ? '' : `<span class="pl-wait">${ru`чек готовится`}</span>`}</div>`;
     UI.modal({ title: ru`Мои покупки и чеки`, cls: 'pay-modal pay-list',
       html: list.length ? `<div class="pl-rows">${list.map(row).join('')}</div>`
@@ -213,7 +213,7 @@ const Shop = {
   // Товар дня ещё не куплен — значок на плитке меню
   dealFresh() { return S.d && S.d.shop.deal !== U.today(); },
   price(it) { return it.cur === 'sparks' ? `<span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(it.price)}` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(it.price)}`; },
-  wallet() { return `<div class="shop-wallet"><span class="spark"><span class="cur">${Art.item('sparks')}</span> ${ru`${U.fmtNum(S.d.sparks)} искр`}</span><span class="zlat">${Art.item('zlat')} ${ru`${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`златник`, ru`златника`, ru`златников`)}`}</span></div>`; },
+  wallet() { return `<div class="shop-wallet"><span class="spark"><span class="cur">${Art.item('sparks')}</span> ${ru`${U.fmtNum(S.d.sparks)} искр`}</span><span class="zlat">${Art.item('zlat')} ${ru`${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`монета`, ru`монеты`, ru`монет`)}`}</span></div>`; },
 
   // На покупку не хватает валюты
   poor(it) { return (S.d[it.cur === 'sparks' ? 'sparks' : 'zlat'] || 0) < it.price; },
@@ -229,7 +229,7 @@ const Shop = {
     </div>`;
   },
 
-  // 4.15: Лавка — в композиции карточки духа: сверху (≤30%) лоток в волшебном круге, справа «ЗЛАТНИКИ ··· N», искры и обмены
+  // 4.15: Лавка — в композиции карточки духа: сверху (≤30%) лоток в волшебном круге, справа «МОНЕТЫ ··· N», искры и обмены
   // отдельным блоком, метка товара дня; ниже вкладки «Товары · Казна · Обмен · Облик», содержимое листается внутри панели
   screen() {
     Sfx.init(); Sfx.play('tap');
@@ -253,8 +253,8 @@ const Shop = {
         <div class="dt-hero">
           <div class="det-art shop2-art"><span class="shop2-ico">${UI.menuIcon('shop')}</span></div>
           <div class="dt-info">
-            <div class="det-hp">${ru`Всё для Ловчего — за искры и златники`}</div>
-            <div class="det-power"><small>${ru`ЗЛАТНИКИ`}</small><b><span class="cur">${Art.item('zlat')}</span>${U.fmtNum(zl)}</b></div>
+            <div class="det-hp">${ru`Всё для Ловчего — за искры и монеты`}</div>
+            <div class="det-power"><small>${ru`МОНЕТЫ`}</small><b><span class="cur">${Art.item('zlat')}</span>${U.fmtNum(zl)}</b></div>
             <div class="det-lvl"><span>${ru`Искры <b>${U.fmtNum(S.d.sparks)}</b> · обменов сегодня <b>${exLeft}</b>`}</span></div>
             <div class="det-tags">${dealBought ? `<span>${ru`товар дня куплен`}</span>` : `<span class="shop2-hot">${ru`Товар дня · −40%`}</span>`}</div>
           </div>
@@ -273,9 +273,9 @@ const Shop = {
               <div class="dt-row"><span>${ru`Курс`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>
               <div class="dt-row"><span>${ru`Обменов в день`}</span><b>${Rules.EXCHANGE.DAY}</b></div>
             </div>
-            <div class="q-note">${ru`Златники дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}
+            <div class="q-note">${ru`Монеты дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}
           ${pane('look', `
-            <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>${ru`Гардероб Ловчего`}</b><small>${ru`${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} златников`}</small></span><span class="sw-go">›</span></button>
+            <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>${ru`Гардероб Ловчего`}</b><small>${ru`${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} монет`}</small></span><span class="sw-go">›</span></button>
             <div class="pf-mh"><span>${ru`Плащи`}</span></div>
             <div class="shop-cloaks">${cloaks.map(c => `<button class="shop-cloak ${S.d.owned[c.c] ? 'owned' : this.poor({ cur: 'zlat', price: c.shop }) ? 'poor' : ''}" data-id="look:${c.c}" ${S.d.owned[c.c] ? 'disabled' : ''}>
               <div class="shop-ava">${Art.avatar({ cloak: c.c, eyes: S.d.look.eyes, emblem: S.d.look.emblem })}</div><b>${c.name}</b><small>${S.d.owned[c.c] ? ru`Уже твой` : this.price({ cur: 'zlat', price: c.shop })}</small></button>`).join('')}</div>`)}
@@ -294,7 +294,7 @@ const Shop = {
         const r = await Game.try('exchange', { n });
         if (!r) return;
         Sfx.play('spin'); U.vibrate(20);
-        UI.toast(ru`Обмен: ✦ ${U.fmtNum(E.SPARKS * n)} → ${E.ZLAT * n} ${U.plural(E.ZLAT * n, ru`златник`, ru`златника`, ru`златников`)}`, 'good');
+        UI.toast(ru`Обмен: ✦ ${U.fmtNum(E.SPARKS * n)} → ${E.ZLAT * n} ${U.plural(E.ZLAT * n, ru`монета`, ru`монеты`, ru`монет`)}`, 'good');
         render(); UI.refreshHud();
         return;
       }
@@ -303,7 +303,7 @@ const Shop = {
       // не хватает валюты — сразу подсказка, где её взять, без окна покупки
       if (b.classList.contains('poor')) {
         const zl = b.classList.contains('primary') || b.classList.contains('shop-cloak');
-        UI.toast(zl ? ru`Не хватает златников — обменяй искры в Обменнике или загляни в Казну` : ru`Не хватает искр — их дают за поимки, родники и бои`);
+        UI.toast(zl ? ru`Не хватает монет — обменяй искры в Обменнике или загляни в Казну` : ru`Не хватает искр — их дают за поимки, родники и бои`);
         return;
       }
       const id = b.dataset.id, deal = id === 'deal';
@@ -362,14 +362,14 @@ const Pass = {
           <div class="pbar big"><i style="width:${inLvl / per * 100}%"></i></div>
           <small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, родники, прогулки, коконы и бои`}</small>
           ${P.gold ? `<div class="pass-gold on">★ ${ru`Золотая тропа открыта`}</div>`
-            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, златники, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`златник`, ru`златника`, ru`златников`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
+            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, монеты, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`монета`, ru`монеты`, ru`монет`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
         </div>
         <div class="pass-cols"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>
         ${Array.from({ length: max }, (_, i) => i + 1).map(l => `<div class="pass-row ${L >= l ? 'open' : ''}"><div class="pass-l">${l}</div>${cell('free', l)}${cell('gold', l)}</div>`).join('')}`;
     };
     box.addEventListener('click', async e => {
       if (e.target.closest('.pass-buy')) {
-        UI.confirm(ru`Золотая тропа`, ru`Открыть Золотую тропу этого сезона за ${Rules.PASS.GOLD} златников? Золотые награды уже пройденных ступеней можно будет забрать сразу.`, ru`Открыть`, async () => {
+        UI.confirm(ru`Золотая тропа`, ru`Открыть Золотую тропу этого сезона за ${Rules.PASS.GOLD} монет? Золотые награды уже пройденных ступеней можно будет забрать сразу.`, ru`Открыть`, async () => {
           if (!await Game.try('passGold')) return;
           Sfx.play('levelup'); U.vibrate([40, 60, 120]);
           UI.toast(ru`Золотая тропа открыта!`, 'good');

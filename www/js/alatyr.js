@@ -113,7 +113,8 @@ const Alatyr = {
     if (!S.d || S.d.tut) return;
     if (typeof Order !== 'undefined' && Order.busy()) return; // игрок занят — покажем, когда вернётся к карте (tick раз в минуту)
     if (U.$('.modal-wrap')) return; // одно окно за раз
-    this.sumShow() || this.brkShow() || this.finShow() || this.roadShow();
+    // 4.28: и объявление «Дружины стали кланами» (clans.js) — после итогов и раскола
+    this.sumShow() || this.brkShow() || (typeof Clans !== 'undefined' && Clans.moveShow()) || this.finShow() || this.roadShow();
   },
   roadShow() {
     const now = U.now(), seen = this.seen(), roads = Ev.roads || [];
@@ -167,7 +168,8 @@ const Alatyr = {
       title: ru`Кощей расколол Алатырь!`, cls: 'ala-modal ala-brk-modal',
       html: `<div class="ala-mstone">${this.stone(st, 150, -1, true)}</div>
         ${m ? `<div class="ala-brk-new" style="--road:${this.color(m)}"><span class="ala-brk-place">${Art.shrineIcon(2, false, m)}</span>${kids.map(x => `<span class="ala-brk-sp">${Art.img(x.id)}</span>`).join('')}</div>
-          <p>${ru`Бел-горюч камень снова треснул — и из трещины вышли духи нового мира. Открылась новая мифология — «${MYTHS[m].name}»: её духи, Разломы и святилища уже на карте.`}</p>`
+          <p>${ru`Бел-горюч камень снова треснул — и из трещины вышли духи нового мира. Открылась новая мифология — «${MYTHS[m].name}»: её духи, Разломы и святилища уже на карте.`}</p>
+          ${CLANS[m] ? `<p class="small">${ru`С ней в Орден пришёл новый клан — «${CLANS[m].name}».`}</p>` : ''}`
         : `<p>${ru`Бел-горюч камень снова треснул, но какой мир открылся — Орден узнает с обновлением игры.`}</p>`}
         <div class="ala-ev on" style="--road:${this.color(m)}">${this.gem(m, 26)}<div><b>${ru`Начался сезон ${s}`}</b>
           <small>${ru`Камень теперь — ${st.K} граней, и собирать его — с начала. В Лиге тоже новый сезон.`}</small></div></div>`,

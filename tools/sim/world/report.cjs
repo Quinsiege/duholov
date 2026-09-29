@@ -33,7 +33,7 @@ const byArch = group(p => p.arch), byDon = group(p => DON[p.don]), byArchDon = g
 const meP = P.find(p => p.isMe);
 // сколько на 40-м к дню
 const cum = r.daily.map(d => ({ day: d.day, n40: d.n40, n30: d.n30, n20: d.n20, median: d.median, p90: d.p90, max: d.max, lotsSold: d.lotsSold, rub: d.rub, holds: d.holds, byClan: d.byClan, me: d.meLvl }));
-// златники: откуда и куда
+// монеты: откуда и куда
 const zl = { in: 0, spent: {} }; P.forEach(p => { zl.in += p.st.zlatIn; for (const [k, v] of Object.entries(p.st.zlatSpent)) zl.spent[k] = (zl.spent[k] || 0) + v; });
 const fails = {}; P.forEach(p => Object.entries(p.st.fails).forEach(([k, v]) => { fails[k] = (fails[k] || 0) + v; }));
 const out = {

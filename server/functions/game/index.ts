@@ -764,9 +764,12 @@ I18N.init();
   world: ru`Такамагахара`, road: ru`Дорога в Такамагахару`, // мир мифологии для экрана Алатыря — Равнина Высокого Неба, где живут ками
   rift: ru`Врата Ёми`, riftDesc: ru`Врата в Ёми, подземную страну мрака, приоткрылись в тумане: оттуда вышел сильный дух. Закрой врата, пока не прошёл час.`,
   shrine: ru`Святилище`, shrineOf: g => ru`Святилище ${g}`,
-  shrineDesc: ru`Святилище ками за алыми воротами-тории. Победи хранителя — и твоя дружина сможет держать святилище.`,
+  shrineDesc: ru`Святилище ками за алыми воротами-тории. Победи хранителя — и твой клан сможет держать святилище.`,
   gods: [ru`Аматэрасу`, ru`Сусаноо`, ru`Цукуёми`, ru`Инари`, ru`Хатимана`, ru`Идзанаги`, ru`Идзанами`, ru`Эбису`, ru`Рюдзина`, ru`Тэндзина`],
   guards: [ru`Харуто`, ru`Сакура`, ru`Рэн`, ru`Аой`, ru`Кэйта`, ru`Хина`],
+  // клан мифологии (data.js, CLANS): открывается вместе с ней
+  clan: { name: ru`Клан Кицунэ`, short: ru`Кицунэ`, member: ru`самурай`, motto: ru`Упади семь раз — встань восемь`, crest: 'fox', color: '#f472b6',
+    desc: ru`Самураи под покровительством белых лис богини Инари. Клан пришёл, когда Кощей снова расколол Алатырь, и держит святилища за алыми тории.` },
 };
 
 // ===== www/js/data.js =====
@@ -1052,7 +1055,7 @@ const REGIONS = {
    4.28: сезоны Алатыря — season: с какого сезона мифология открыта (у первых семи — 1). Мифология следующих сезонов приходит
    своим файлом js/myth-<ключ>.js: globalThis.MYTH_SP[ключ] = [...виды] и globalThis.MYTH_META[ключ] = { name, where, color,
    season, rift, riftDesc, shrine, shrineOf, shrineDesc, gods, guards } (и по желанию world — куда ведёт её дорога, road —
-   «Дорога в …»). Пока её сезон не настал, она закрыта: её духов нет в SPECIES, её нет в MYTH_KEYS (mythOpen ниже). */
+   «Дорога в …», clan — её клан, см. CLANS). Пока её сезон не настал, она закрыта: её духов нет в SPECIES, её нет в MYTH_KEYS (mythOpen ниже). */
 const MYTHS = {
   slavic: { name: ru`Славянская`,    where: ru`Россия, Восточная Европа, Кавказ и Средняя Азия`,          color: '#f59e0b', season: 1 },
   greek:  { name: ru`Греческая`,     where: ru`Средиземноморье: Греция, Италия, Испания, Турция`,         color: '#60a5fa', season: 1 },
@@ -1263,29 +1266,29 @@ const GUARDIANS = [ru`Ярослава`, ru`Мирон`, ru`Всеслав`, ru`
    (имена богов — в родительном падеже: «Храм Зевса»). Мифология места — W.placeMyth */
 const MYTH_PLACES = {
   slavic: { rift: ru`Разлом`, riftDesc: ru`Портал в Навь: из него вышел сильный дух. Закрой разлом, пока не прошёл час.`,
-    shrine: ru`Капище`, shrineOf: g => ru`Капище ${g}`, shrineDesc: ru`Святилище древних богов. Победи хранителя — и твоя дружина сможет держать капище.`, gods: SHRINE_GODS, guards: GUARDIANS },
+    shrine: ru`Капище`, shrineOf: g => ru`Капище ${g}`, shrineDesc: ru`Святилище древних богов. Победи хранителя — и твой клан сможет держать капище.`, gods: SHRINE_GODS, guards: GUARDIANS },
   greek: { rift: ru`Врата Аида`, riftDesc: ru`Трещина в подземное царство Аида: оттуда вырвался сильный дух. Закрой врата, пока не прошёл час.`,
-    shrine: ru`Храм`, shrineOf: g => ru`Храм ${g}`, shrineDesc: ru`Мраморный храм богов Олимпа. Победи хранителя — и твоя дружина сможет держать храм.`,
+    shrine: ru`Храм`, shrineOf: g => ru`Храм ${g}`, shrineDesc: ru`Мраморный храм богов Олимпа. Победи хранителя — и твой клан сможет держать храм.`,
     gods: [ru`Зевса`, ru`Геры`, ru`Афины`, ru`Аполлона`, ru`Артемиды`, ru`Гермеса`, ru`Посейдона`, ru`Деметры`, ru`Гефеста`, ru`Афродиты`],
     guards: [ru`Ариадна`, ru`Леонид`, ru`Елена`, ru`Ясон`, ru`Кассандра`, ru`Никос`] },
   norse: { rift: ru`Разлом Гиннунгагап`, riftDesc: ru`Трещина в первозданную бездну, где лёд встречает пламя: оттуда вышел могучий дух. Закрой разлом, пока не прошёл час.`,
-    shrine: ru`Рунный камень`, shrineOf: g => ru`Рунный камень ${g}`, shrineDesc: ru`Резной камень с рунами в честь богов Асгарда. Победи хранителя — и твоя дружина сможет держать камень.`,
+    shrine: ru`Рунный камень`, shrineOf: g => ru`Рунный камень ${g}`, shrineDesc: ru`Резной камень с рунами в честь богов Асгарда. Победи хранителя — и твой клан сможет держать камень.`,
     gods: [ru`Одина`, ru`Тора`, ru`Фрейи`, ru`Фрейра`, ru`Бальдра`, ru`Тюра`, ru`Хеймдалля`, ru`Фригг`, ru`Браги`, ru`Идунн`],
     guards: [ru`Сигрид`, ru`Бьорн`, ru`Астрид`, ru`Лейф`, ru`Ингрид`, ru`Рагнар`] },
   celtic: { rift: ru`Холм сидов`, riftDesc: ru`Холм распахнулся в Иной мир волшебного народа: оттуда вышел сильный дух. Закрой проход, пока не прошёл час.`,
-    shrine: ru`Каменный круг`, shrineOf: g => ru`Каменный круг ${g}`, shrineDesc: ru`Кольцо стоячих камней, где друиды встречали солнце. Победи хранителя — и твоя дружина сможет держать круг.`,
+    shrine: ru`Каменный круг`, shrineOf: g => ru`Каменный круг ${g}`, shrineDesc: ru`Кольцо стоячих камней, где друиды встречали солнце. Победи хранителя — и твой клан сможет держать круг.`,
     gods: [ru`Дагды`, ru`Луга`, ru`Бригиты`, ru`Морриган`, ru`Мананнана`, ru`Цернунна`, ru`Эпоны`, ru`Дану`, ru`Огмы`],
     guards: [ru`Финн`, ru`Ниам`, ru`Кухулин`, ru`Мэйв`, ru`Эйдан`, ru`Бранвен`] },
   egypt: { rift: ru`Врата Дуата`, riftDesc: ru`Врата в Дуат, царство за закатом, открылись: из них вышел древний дух. Закрой врата, пока не прошёл час.`,
-    shrine: ru`Обелиск`, shrineOf: g => ru`Обелиск ${g}`, shrineDesc: ru`Обелиск с иероглифами в честь богов Египта. Победи хранителя — и твоя дружина сможет держать обелиск.`,
+    shrine: ru`Обелиск`, shrineOf: g => ru`Обелиск ${g}`, shrineDesc: ru`Обелиск с иероглифами в честь богов Египта. Победи хранителя — и твой клан сможет держать обелиск.`,
     gods: [ru`Ра`, ru`Осириса`, ru`Исиды`, ru`Гора`, ru`Тота`, ru`Анубиса`, ru`Бастет`, ru`Хатхор`, ru`Птаха`, ru`Маат`],
     guards: [ru`Нефер`, ru`Аменхет`, ru`Мерит`, ru`Ками`, ru`Сенеб`, ru`Иси`] },
   china: { rift: ru`Небесные врата`, riftDesc: ru`Небесные врата приоткрылись среди облаков: с небес спустился сильный дух. Закрой врата, пока не прошёл час.`,
-    shrine: ru`Пагода`, shrineOf: g => ru`Пагода ${g}`, shrineDesc: ru`Многоярусная пагода с фонарями в честь небесных стражей. Победи хранителя — и твоя дружина сможет держать пагоду.`,
+    shrine: ru`Пагода`, shrineOf: g => ru`Пагода ${g}`, shrineDesc: ru`Многоярусная пагода с фонарями в честь небесных стражей. Победи хранителя — и твой клан сможет держать пагоду.`,
     gods: [ru`Лазурного дракона`, ru`Белого тигра`, ru`Красной птицы`, ru`Чёрной черепахи`, ru`Цилиня`, ru`Фэнхуана`, ru`Нюйвы`, ru`Фуси`, ru`Пань-гу`],
     guards: [ru`Ли Мин`, ru`Мэйлин`, ru`Вэй`, ru`Лань`, ru`Чжан Юнь`, ru`Сяо Лун`] },
   aztec: { rift: ru`Врата Миктлана`, riftDesc: ru`Проход в Миктлан, подземное царство, открылся в камне: оттуда вышел сильный дух. Закрой врата, пока не прошёл час.`,
-    shrine: ru`Пирамида`, shrineOf: g => ru`Пирамида ${g}`, shrineDesc: ru`Ступенчатая пирамида древних богов. Победи хранителя — и твоя дружина сможет держать пирамиду.`,
+    shrine: ru`Пирамида`, shrineOf: g => ru`Пирамида ${g}`, shrineDesc: ru`Ступенчатая пирамида древних богов. Победи хранителя — и твой клан сможет держать пирамиду.`,
     gods: [ru`Кецалькоатля`, ru`Тлалока`, ru`Уицилопочтли`, ru`Шочикецаль`, ru`Тонатиу`, ru`Эекатля`, ru`Чальчиуитликуэ`, ru`Сентеотля`],
     guards: [ru`Ицель`, ru`Куаутемок`, ru`Шочитль`, ru`Тонали`, ru`Ситлали`, ru`Некали`] },
 };
@@ -1298,13 +1301,53 @@ for (const [k, m] of Object.entries(globalThis.MYTH_META || {})) {
     gods: list(m.gods, S0.gods), guards: list(m.guards, S0.guards) };
 }
 const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'];
-/* ---------- Дружины (3.5): Капища под знаменем ---------- */
-const CLANS = {
-  sokol:  { name: ru`Дружина Сокола`,  short: ru`Сокол`,   color: '#ef4444', motto: ru`Быстрота и отвага` },
-  medved: { name: ru`Дружина Медведя`, short: ru`Медведь`, color: '#3b82f6', motto: ru`Сила и стойкость` },
-  volk:   { name: ru`Дружина Волка`,   short: ru`Волк`,    color: '#eab308', motto: ru`Верность и чутьё` },
+/* ---------- Кланы: Капища под знаменем ----------
+   3.5: три дружины (сокол, медведь, волк). 4.28: клан — это мифология: ключ клана = ключ мифологии (MYTHS), открыт клан
+   только открытой мифологии (MYTH_KEYS — mythOpen), клан следующего сезона показывается как «?». name — название,
+   short — коротко (знак на карте, в списках; у прежних трёх — тот же зверь), member — звание участника, motto — девиз,
+   desc — кто они в Перепутицу, crest — зверь на гербе (Art.clanCrest), color — цвет знамени (от цвета мифологии, но
+   различимый на карте). Мифология следующих сезонов приносит свой клан в MYTH_META[ключ].clan = { name, short, member,
+   motto, desc, crest, color } — чего нет, берётся по умолчанию. */
+const CLAN_META = {
+  slavic: { name: ru`Дружина Перуна`,   short: ru`Сокол`,    member: ru`дружинник`,  motto: ru`Быстрота и отвага`, crest: 'falcon', color: '#f97316',
+    desc: ru`Наследники княжеских дружин под знаком сокола-Рарога. Когда Кощей расколол Алатырь, они первыми встали у Капищ и держат Навь громом Перуна.` },
+  greek:  { name: ru`Фаланга Олимпа`,   short: ru`Сова`,     member: ru`гоплит`,     motto: ru`Щит к щиту`, crest: 'owl', color: '#3b82f6',
+    desc: ru`Ловчие, что сомкнули щиты под знаком совы Афины. В Перепутицу они стерегут храмы, чтобы тени Аида не вышли к живым.` },
+  norse:  { name: ru`Хирд Асгарда`,     short: ru`Волк`,     member: ru`хирдман`,    motto: ru`Верность и чутьё`, crest: 'wolf', color: '#a78bfa',
+    desc: ru`Верные, как волки Одина. Хирд стоит у рунных камней, пока не затянутся трещины к Гиннунгагапу.` },
+  celtic: { name: ru`Братство Дуба`,    short: ru`Медведь`,  member: ru`друид`,      motto: ru`Сила и стойкость`, crest: 'bear', color: '#22c55e',
+    desc: ru`Друиды и воины священных рощ под рукой медведицы Артио. Братство держит каменные круги, чтобы холмы сидов не распахнулись навсегда.` },
+  egypt:  { name: ru`Стражи Дуата`,     short: ru`Скарабей`, member: ru`страж`,      motto: ru`Солнце взойдёт снова`, crest: 'scarab', color: '#facc15',
+    desc: ru`Хранители солнечной ладьи Ра. Пока Алатырь расколот, стражи стоят у обелисков, чтобы ночь Дуата не поглотила рассвет.` },
+  china:  { name: ru`Небесная Гвардия`, short: ru`Дракон`,   member: ru`гвардеец`,   motto: ru`Небо и земля в равновесии`, crest: 'dragon', color: '#ef4444',
+    desc: ru`Воины под знаменем Лазурного дракона. В Перепутицу гвардия держит пагоды, чтобы Небесные врата не остались распахнутыми.` },
+  aztec:  { name: ru`Орден Ягуара`,     short: ru`Ягуар`,    member: ru`воин-ягуар`, motto: ru`Солнце не должно погаснуть`, crest: 'jaguar', color: '#06b6d4',
+    desc: ru`Самые отважные воины древних городов Америки. Орден держит пирамиды, чтобы из Миктлана не пришла вечная ночь.` },
 };
-const CLAN_LEVEL = 12;     // с какого уровня выбирается дружина (4.16: было 5; см. DUEL_LEVEL)
+const CLANS = {};
+for (const k of MYTH_ALL) {
+  const m = MYTHS[k], x = CLAN_META[k] || ((globalThis.MYTH_META || {})[k] || {}).clan || {}, s = v => (typeof v === 'string' && v ? v : null);
+  const place = m.world || m.name;
+  CLANS[k] = { myth: k, name: s(x.name) || ru`Клан «${place}»`, short: s(x.short) || place, member: s(x.member) || ru`воин клана`,
+    motto: s(x.motto) || ru`Вместе — за Алатырь`, desc: s(x.desc) || ru`Ловчие мифологии «${m.name}»: они держат её святилища, пока Алатырь расколот.`,
+    crest: /^[a-z]{2,16}$/.test(x.crest || '') ? x.crest : 'star', color: /^#[0-9a-f]{6}$/i.test(x.color || '') ? x.color : m.color };
+}
+// 4.28: прежние дружины (до 4.28 в сохранениях, на Капищах и в чате) — к кланам мифологий. Сокол — славянский (сокол-Рарог,
+// знак Рюриковичей), волк — скандинавский (волки Одина, ульфхеднары), медведь — кельтский (медведица Артио; имя Артура —
+// «медведь»). Под старыми ключами — те же кланы, но не перечисляются (Object.keys / entries их не видят)
+const CLAN_OLD = { sokol: 'slavic', medved: 'celtic', volk: 'norse' };
+for (const [o, k] of Object.entries(CLAN_OLD)) Object.defineProperty(CLANS, o, { value: CLANS[k], enumerable: false });
+// ключ клана по любому id (прежнему — его клан мифологии) или null, если такого клана нет
+function clanOf(k) {
+  k = String(k || '');
+  if (Object.prototype.hasOwnProperty.call(CLAN_OLD, k)) return CLAN_OLD[k];
+  return Object.prototype.hasOwnProperty.call(CLANS, k) && Object.prototype.propertyIsEnumerable.call(CLANS, k) ? k : null;
+}
+// клан открыт — его мифология открыта в этом сезоне Алатыря
+function clanOpen(k) { return clanOf(k) === k && MYTH_KEYS.includes(k); }
+// все id клана в базе: сам ключ и прежние, что к нему ведут (до миграции 032_myth_clans_data)
+function clanIds(k) { return [k, ...Object.keys(CLAN_OLD).filter(o => CLAN_OLD[o] === k)]; }
+const CLAN_LEVEL = 12;     // с какого уровня выбирается клан (4.16: было 5; см. DUEL_LEVEL)
 const HOLD_MAX = 6;       // защитников на одном Капище
 const HOLD_MY_MAX = 3;    // Капищ с моими защитниками одновременно (4.16: было 10 — дружины держали почти все Капища)
 const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Капище с моим защитником
@@ -1342,7 +1385,7 @@ const LOOK = {
     { c: '#6d28d9', name: ru`Фиалковый`, lvl: 1 }, { c: '#1d4ed8', name: ru`Синий`, lvl: 1 }, { c: '#15803d', name: ru`Лесной`, lvl: 1 },
     { c: '#b91c1c', name: ru`Алый`, lvl: 5 }, { c: '#0f766e', name: ru`Бирюзовый`, lvl: 8 }, { c: '#a16207', name: ru`Охряный`, lvl: 10 },
     { c: '#1f2937', name: ru`Полночный`, lvl: 15 }, { c: '#e2e8f0', name: ru`Снежный`, lvl: 20 }, { c: '#be185d', name: ru`Малиновый`, lvl: 25 }, { c: '#ca8a04', name: ru`Золотой`, lvl: 30 },
-    // 3.12: из Лавки Ордена (за златники) и с Золотой тропы — открываются покупкой, а не уровнем
+    // 3.12: из Лавки Ордена (за монеты) и с Золотой тропы — открываются покупкой, а не уровнем
     { c: '#7c2d12', name: ru`Бронзовый`, lvl: 1, shop: 250 }, { c: '#0c4a6e', name: ru`Глубинный`, lvl: 1, shop: 250 }, { c: '#4a044e', name: ru`Навья ночь`, lvl: 1, shop: 400 },
     { c: '#065f46', name: ru`Сезонная тропа`, lvl: 1, pass: true },
   ],
@@ -1359,7 +1402,7 @@ const LOOK = {
     { id: 'oak', name: ru`Дубовый венок`, lvl: 31 },
     { id: 'trail', name: ru`Знак Тропы`, lvl: 1, pass: true },
   ],
-  // 4.6: облики-скины — полный наряд Ловчего (рисунки — js/skins-art.js); покупаются в Гардеробе за златники.
+  // 4.6: облики-скины — полный наряд Ловчего (рисунки — js/skins-art.js); покупаются в Гардеробе за монеты.
   // rar: 0 — обычный, 1 — редкий, 2 — эпический, 3 — легендарный. Глаза и эмблема видны у всех обликов, цвет плаща — только у обычного
   skin: [
     { id: 'hood', name: ru`Ловчий`, rar: 0, desc: ru`Плащ Ордена Оберега — с него начинает каждый Ловчий.` },
@@ -1373,7 +1416,7 @@ const LOOK = {
     { id: 'zharpero', name: ru`Жар-перо`, rar: 3, shop: 900, desc: ru`Убор из огненных перьев Жар-птицы. Светится даже в самую тёмную ночь.` },
     { id: 'knyaz', name: ru`Княжий`, rar: 3, shop: 1000, desc: ru`Княжья шапка с соболем и самоцветами — наряд первых Ловчих Ордена.` },
   ],
-  // 4.6: фон и рамка карточки Ловчего (её видят все) — тоже в Гардеробе (рисунки — js/looks-art.js). lvl — открывается уровнем, shop — цена в златниках
+  // 4.6: фон и рамка карточки Ловчего (её видят все) — тоже в Гардеробе (рисунки — js/looks-art.js). lvl — открывается уровнем, shop — цена в монетах
   bg: [
     { id: 'night', name: ru`Ночь`, rar: 0, lvl: 1 },
     { id: 'dusk', name: ru`Сумерки`, rar: 0, lvl: 5 },
@@ -2151,7 +2194,7 @@ const S = {
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
-    // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
+    // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
     // xpv: нет — кривая до 3.19 (levelXPOld), 2 — кривая 3.19–4.15 (levelXP2), 3 — нынешняя (levelXP)
@@ -2186,6 +2229,13 @@ const S = {
       d.tut = next === undefined ? 0 : next + 1; d.tutV = TUT_V;
     }
     if (d.buddy === undefined) d.buddy = null;
+    // 4.28: дружины стали кланами мифологий (CLAN_OLD): прежняя дружина — её клан, и один бесплатный переход в любой
+    // открытый клан (clanFree) — тем, кто был в дружине до обновления. clanV 2 — перенос сделан (и у новых Ловчих)
+    if (d.clanV !== 2) {
+      if (d.clan) { d.clan = clanOf(d.clan); if (d.clan) d.clanFree = 1; }
+      d.clanV = 2;
+    }
+    if (d.clan && clanOf(d.clan) !== d.clan) d.clan = clanOf(d.clan);
   },
 
   newGame(name, starter) {
@@ -2374,7 +2424,7 @@ const S = {
     if (!a || typeof a !== 'object' || !(a.s >= 1)) this.d.alaS = { s, n: 0, k: 0 };
     return this.d.alaS;
   },
-  resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
+  resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Монеты` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
   /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
      hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
      до Rules.koMs (2–24 ч по редкости) в бой не идёт, потом поднимается сам на Rules.HP.BACK (10%) */
@@ -2623,7 +2673,7 @@ const S = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
-      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Златники` }); }
+      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Монеты` }); }
       else if (k === 'xp') { const o = { k, n: 0, label: ru`Опыт` }; out.push(o); o.n = this.addXP(n, once); }
       else if (k === 'alatyr' || k === 'rod') { this.d[k] = (this.d[k] || 0) + n; out.push({ k, n, label: this.resName(k) }); } // 4.16: не вещи — в сумку не идут
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
@@ -2693,7 +2743,7 @@ const S = {
     return n;
   },
   levelRewards(l) {
-    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); златники — 3, на каждом пятом — 15
+    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); монеты — 3, на каждом пятом — 15
     const r = { charm: 10 + l, honey: 2, water: 1, herb: 3, brew: 1, zlat: l % 5 ? Rules.ZLAT.level : Rules.ZLAT.level5 };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
@@ -2991,15 +3041,15 @@ const J = {
       case 'trade': return { ico: icon(e.sid), title: e.dir === 'out' ? ru`${sp(e.sid)} упакован для друга` : e.who ? ru`${sp(e.sid)} получен от ${e.who}` : ru`${sp(e.sid)} получен от друга`, sub: ru`Обмен` };
       case 'friend': return { ico: glyph('♥', 'pink'), title: ru`Новый друг: ${e.name}`, sub: '' };
       case 'spar': return { ico: glyph('⚔'), title: ru`Победа в поединке с другом`, sub: e.name || '' };
-      case 'clan': return { ico: glyph('⚑', 'gold'), title: ru`Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`дружина`}`, sub: '' };
+      case 'clan': return { ico: glyph('⚑', 'gold'), title: e.move ? ru`Переход в клан: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`клан`}` : ru`Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`клан`}`, sub: '' };
       case 'guardBack': return { ico: icon(e.sid), title: ru`Защитник вернулся с Капища`, sub: `${e.name || ''} · ${ru`стоял ${e.hours} ч`}` };
       case 'defend': return { ico: icon(e.sid), title: ru`Защитник на Капище`, sub: e.name || '' };
       case 'shop': return { ico: glyph('☉', 'gold'), title: ru`Покупка в Лавке: ${I18N.back(e.name || '')}`, sub: '' };
       case 'passGold': return { ico: glyph('★', 'gold'), title: ru`Открыта Золотая тропа`, sub: e.season || '' };
-      case 'exchange': return { ico: glyph('⇄', 'gold'), title: ru`Обмен в Лавке`, sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${ru`${e.zlat || 0} златников`}` };
-      case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} златников` };
+      case 'exchange': return { ico: glyph('⇄', 'gold'), title: ru`Обмен в Лавке`, sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${ru`${e.zlat || 0} монет`}` };
+      case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} монет` };
       case 'auction': { const n = SP[e.sid] ? SP[e.sid].name : '', p = U.fmtNum(e.price || 0);
-        return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? ru`Куплен на аукционе: ${n}` : e.dir === 'sold' ? ru`Продан на аукционе: ${n}` : ru`Выставлен на аукцион: ${n}`, sub: `${e.cur === 'zlat' ? ru`${p} златников` : '✦ ' + p}${e.who ? ' · ' + e.who : ''}` }; }
+        return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? ru`Куплен на аукционе: ${n}` : e.dir === 'sold' ? ru`Продан на аукционе: ${n}` : ru`Выставлен на аукцион: ${n}`, sub: `${e.cur === 'zlat' ? ru`${p} монет` : '✦ ' + p}${e.who ? ' · ' + e.who : ''}` }; }
       case 'order': return { ico: glyph('⚑', 'gold'), title: ru`Общее дело Ордена`, sub: ru`Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? ru`Подарок отправлен: ${e.name}` : ru`Подарок от ${e.name}`, sub: '' };
       case 'melt': return { ico: glyph('♁', 'gold'), title: ru`Переплавка амулетов`, sub: AMULETS[e.from] && AMULETS[e.to] ? `${AMULETS[e.from].name} ×${Rules.MELT.N} → ${AMULETS[e.to].name}` : '' };
@@ -3055,16 +3105,16 @@ const J = {
 
 // pts — с какого рейтинга начинается лига
 const LEAGUE_RANKS = [
-  { name: ru`Новик`, pts: 0 },
-  { name: ru`Отрок`, pts: 300, reward: { charm: 10, sparks: 500 } },
-  { name: ru`Гридень`, pts: 600, reward: { honey: 5, sparks: 800 } },
-  { name: ru`Кметь`, pts: 1000, reward: { charm2: 5, water: 5 } },
-  { name: ru`Витязь`, pts: 1500, reward: { charm2: 8, sparks: 1500 } },
-  { name: ru`Богатырь`, pts: 2100, reward: { charm3: 3, incense: 1 } },
-  { name: ru`Воевода`, pts: 2800, reward: { charm2: 10, sparks: 3000 } },
-  { name: ru`Волхв`, pts: 3600, reward: { charm3: 5, water: 10 } },
-  { name: ru`Сказитель`, pts: 4500, reward: { incense: 3, sparks: 5000 } },
-  { name: ru`Хранитель Лиги`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
+  { name: ru`Дерево`, pts: 0 },
+  { name: ru`Медь`, pts: 300, reward: { charm: 10, sparks: 500 } },
+  { name: ru`Бронза`, pts: 600, reward: { honey: 5, sparks: 800 } },
+  { name: ru`Железо`, pts: 1000, reward: { charm2: 5, water: 5 } },
+  { name: ru`Серебро`, pts: 1500, reward: { charm2: 8, sparks: 1500 } },
+  { name: ru`Золото`, pts: 2100, reward: { charm3: 3, incense: 1 } },
+  { name: ru`Платина`, pts: 2800, reward: { charm2: 10, sparks: 3000 } },
+  { name: ru`Изумруд`, pts: 3600, reward: { charm3: 5, water: 10 } },
+  { name: ru`Алмаз`, pts: 4500, reward: { incense: 3, sparks: 5000 } },
+  { name: ru`Легенда`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
 ];
 
 const League = {
@@ -3074,10 +3124,10 @@ const League = {
   SAME: 3,     // с одним и тем же соперником рейтинг меняют только первые три боя за день (против сговора)
   // 4.16: рейтинг — как у Эло: изменение = K × (итог − ожидаемый итог), ожидание — по разнице рейтингов (шкала 400).
   // Победа над равным: +KW/2, поражение от равного: −KL/2. На нижних лигах победа весит больше поражения (подъём
-  // идёт и при половине побед), с «Воеводы» — поровну и всё медленнее: наверх пробиваются только сильнейшие.
+  // идёт и при половине побед), с «Платины» — поровну и всё медленнее: наверх пробиваются только сильнейшие.
   KW: [60, 60, 56, 52, 48, 44, 40, 36, 32, 28],
   KL: [20, 28, 34, 40, 42, 42, 40, 36, 32, 28],
-  SOFT: 1500,        // 4.16: в новом сезоне рейтинг сверх этого (лига «Витязь») срезается наполовину
+  SOFT: 1500,        // 4.16: в новом сезоне рейтинг сверх этого (лига «Серебро») срезается наполовину
   MAXPTS: 20000,
   LEVEL: 10,   // с какого уровня Ловчего открыта Лига (проверяет сервер; 4.16: было 5)
   tab: 'play',
@@ -4056,7 +4106,7 @@ const Duel = {
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
   open(e) {
-    // 4.16: вольное Капище дружины не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
+    // 4.16: вольное Капище кланы не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
     const free = Rules.shrineFree(e.id), now = U.now();
     const holders0 = !free && Clans.info(e.id) ? Clans.info(e.id).holders.filter(h => h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)) : [];
     const hold = holders0.length ? Clans.info(e.id) : null, mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
@@ -4072,7 +4122,7 @@ const Duel = {
          <div class="rift-team">${UI.teamHtml(g.team)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
     let action;
-    if (mine) action = `<div class="rift-tip">${ru`Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
+    if (mine) action = `<div class="rift-tip">${ru`Капище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
         <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
     else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
         ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
@@ -4085,11 +4135,12 @@ const Duel = {
       <div class="shrine-view t${e.tier}">
         ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won, e.myth)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${MYTH_PLACES[e.myth || 'slavic'].shrineOf(e.god)}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
+        <div class="rift-meta">${MYTH_PLACES[e.myth || 'slavic'].shrineOf(e.god)}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: кланы его не держат` : ''}</div>
         <div class="q-note place-desc">${MYTH_PLACES[e.myth || 'slavic'].shrineDesc}</div>
+        ${!free && S.d.clan && (e.myth || 'slavic') === S.d.clan ? `<div class="rift-tip own-myth" style="--cc:${CLANS[S.d.clan].color}">${ru`Святилище мифологии твоего клана: защитник здесь приносит дань ${Clans.mythX()}.`}</div>` : ''}
         ${who}
         ${action}
-        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}
+        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать клан`}</button>` : ''}
       </div>`;
     const scr = UI.screen(MYTH_PLACES[e.myth || 'slavic'].shrine, html, 'shrine-screen'); // 4.28: своё у каждой мифологии
     const go = scr.querySelector('.duel-go');
@@ -4100,9 +4151,9 @@ const Duel = {
       this._starting = false;
       if (!r) return;
       UI.closeScreen(scr);
-      // защитники дружины — вместо хранителя
+      // защитники клана — вместо хранителя
       const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
-      // 4.16: темп хранителя — свой (W.foeSpeed), у защитников дружины — обычный для ступени
+      // 4.16: темп хранителя — свой (W.foeSpeed), у защитников клана — обычный для ступени
       this.start({ ...e, kind: 'shrine', held: r.clan || null, T: r.foe ? T : { ...T, speed: g.speed } }, foe, S.team());
     };
     const def = scr.querySelector('.defend-go');
@@ -4538,7 +4589,7 @@ const Duel = {
       const canDefend = S.d.clan && (!r.clan || r.freed);
       html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоей дружине.`}` : ''}</div>
+        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоему клану.`}` : ''}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
         ${canDefend ? `<button class="btn primary wide defend-now">${ru`Поставить защитника`}</button>` : ''}`;
       if (r.clan) Clans.refresh(true);
@@ -4736,15 +4787,15 @@ const Rules = {
   alaHour(t) { return Math.ceil((t + this.ALATYR_WORLD.LEAD * 60000) / 3600000) * 3600000; },
   // финал, если последняя грань собрана в момент t: с полного часа на FINALE.DAYS дней
   alaFinale(t) { const from = this.alaHour(t); return { from, to: from + this.ALATYR_WORLD.FINALE.DAYS * 86400000 }; },
-  /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
-  // Златники — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
-  // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
+  /* ---------- 3.12: монеты, Лавка Ордена, Сезонная тропа ---------- */
+  // Монеты — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
+  // 4.16: бесплатных монет было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
   // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
   // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
-  // 4.16.0: бесплатных златников у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
+  // 4.16.0: бесплатных монет у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
   ZLAT: { streak: 1, streak7: 5, questBonus: 2, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
-  // 3.15: Казна — златники за рубли (оплата через ЮKassa; цену и число златников сервер берёт отсюда, а не с телефона)
+  // 3.15: Казна — монеты за рубли (оплата через ЮKassa; цену и число монет сервер берёт отсюда, а не с телефона)
   PAY: [
     { id: 'z100',  zlat: 100,  rub: 99 },
     { id: 'z330',  zlat: 330,  rub: 299,  bonus: 10 },
@@ -4764,7 +4815,7 @@ const Rules = {
   dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <b>${u}</b> из ${m}`}</div>`; },
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
-  CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Дружина`]],
+  CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Клан`]],
   // 3.17: Аукцион духов — с LEVEL уровня (4.16: было 5); лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
   // 4.16: лот живёт 48 ч (было 72), открытых лотов — до 3 (было 5), выставлять — до 10 в день (было 20);
   // залог DEPOSIT от цены (не меньше DEP_MIN) — вернётся при продаже, пропадёт, если лот истечёт или его снимут:
@@ -4849,9 +4900,9 @@ const Rules = {
     }
     return out;
   },
-  // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
-  // 4.16: был ✦ 500 → 10 златников трижды в день (30 златников в день почти даром) — теперь трата лишних искр:
-  // ✦ 1 000 → 1 златник, до 5 обменов в день
+  // 3.14: обменник — SPARKS искр → ZLAT монет за один обмен, не больше DAY обменов в день
+  // 4.16: был ✦ 500 → 10 монет трижды в день (30 монет в день почти даром) — теперь трата лишних искр:
+  // ✦ 1 000 → 1 монета, до 5 обменов в день
   EXCHANGE: { SPARKS: 1000, ZLAT: 1, DAY: 5 },
   // 4.16: посылка Ордена — награда, которая не поместилась в сумку, ждёт здесь (не больше MAX вещей), пока не освободится место
   PARCEL: { MAX: 200 },
@@ -4859,7 +4910,7 @@ const Rules = {
   MELT: { N: 3, SPARKS: 3000 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
-  // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
+  // cur — валюта: sparks (искры) или zlat (монеты). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
     { id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },
     { id: 'farpass',  name: ru`Дальний пропуск`,     desc: ru`Закрыть Разлом до 5 км, не подходя к нему`, cur: 'sparks', price: 1000, give: { farpass: 1 } },
@@ -4870,7 +4921,7 @@ const Rules = {
     { id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },
     { id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },
     // 4.15.1: Мёртвая вода — редкость, в товар дня не попадает. 4.16: один флакон в неделю (week — сколько раз за неделю
-    // можно купить, day — за день), а не каждый день на бесплатные златники
+    // можно купить, day — за день), а не каждый день на бесплатные монеты
     { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в неделю: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 80, give: { deadwater: 1 }, week: 1 },
     { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
@@ -4905,11 +4956,11 @@ const Rules = {
   passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
   // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
   // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
-  // 4.16: на бесплатной тропе 55 златников за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
+  // 4.16: на бесплатной тропе 55 монет за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
   passReward(track, lvl, plvl) {
     if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
     if (track === 'free') {
-      // 4.16.0: бесплатная тропа — 29 златников за сезон (было 55)
+      // 4.16.0: бесплатная тропа — 29 монет за сезон (было 55)
       if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
       if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
       if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
@@ -4934,12 +4985,15 @@ const Rules = {
   },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
-  /* 4.16: Капища не должны навсегда оставаться за дружинами.
+  /* 4.16: Капища не должны навсегда оставаться за кланами.
      Защитник первые FRESH_H часов на посту в полной силе, потом устаёт: к MAX_H часам его уровень падает до (1 − WEAK)
      от своего, а в MAX_H часов он уходит домой (с искрами за службу, как побеждённый). Дань (Rules.ZLAT.tribute и TRIBUTE) —
      только за защитников, которые простояли не меньше TRIBUTE_H часов и ещё на посту («активная защита»), и не больше чем
-     за HOLD_MY_MAX Капищ. Доля FREE Капищ — вольные: их не держит ни одна дружина, там всегда бьётся хранитель. */
-  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25 },
+     за HOLD_MY_MAX Капищ. Доля FREE Капищ — вольные: их не держит ни один клан, там всегда бьётся хранитель.
+     4.28: кланы — мифологии; защитник на святилище мифологии своего клана (W.placeMyth) приносит дань ×MYTH (искры и обереги;
+     монеты — как с любого Капища). Кланов стало 7+ при тех же Ловчих — на удержание Капищ это не влияет: защитников на
+     Капище и Капищ у Ловчего столько же, вольных — та же доля. */
+  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25, MYTH: 1.5 },
   holdHours(t, now) { return Math.max(0, ((now == null ? Date.now() : now) - (+t || 0)) / 3600000); },
   holdFresh(h, now) { return !!h && this.holdHours(h.t, now) < this.HOLD.MAX_H; },
   // во сколько раз уменьшен уровень защитника (1 — в полной силе)
@@ -4947,6 +5001,8 @@ const Rules = {
   // отражение духа на посту: уровень — с учётом усталости
   holdSpirit(sp, t, now) { return { ...sp, lvl: Math.max(1, Math.round((sp.lvl || 1) * this.holdK(t, now))) }; },
   shrineFree(id) { return U.h('freeShrine', String(id)) < this.HOLD.FREE; },
+  // 4.28: дань за n Капищ, из них own — святилища мифологии своего клана (там ×HOLD.MYTH; обереги — с округлением вверх)
+  tributeFor(n, own) { const k = n + Math.min(own, n) * (this.HOLD.MYTH - 1); return { sparks: Math.round(TRIBUTE.sparks * k), charm: Math.ceil(TRIBUTE.charm * k - 1e-9) }; },
   ORDER_RULES: [
     [ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],
@@ -5415,7 +5471,7 @@ const GameCore = {
     return S.d.pass;
   },
   passAdd(ctx, pts) { if (pts > 0) this.passState(ctx).pts += pts; },
-  // Награда: предметы, искры, златники + кокон, случайный амулет, облик
+  // Награда: предметы, искры, монеты + кокон, случайный амулет, облик
   grant(rw) {
     const { cocoon, amulet, look, ...rest } = rw;
     const got = S.giveRewards(rest);
@@ -5526,9 +5582,10 @@ const GameCore = {
   },
   weekUsed(ctx, key) { return this.weekc(ctx)[key] || 0; },
   weekAdd(ctx, key) { const c = this.weekc(ctx); c[key] = (c[key] || 0) + 1; },
-  // Канал чата: общий, торговля, разломы, помощь или своя дружина
+  // Канал чата: общий, торговля, разломы, помощь или свой клан (4.28: clan:<ключ мифологии>; до миграции 032 в базе ещё
+  // есть сообщения прежних дружин clan:sokol… — их читает serve.js вместе с каналом клана, clanIds)
   chatChannel(ch) {
-    if (ch === 'clan') { this.need(S.d.clan, ru`Канал дружины — для тех, кто в дружине`); return 'clan:' + S.d.clan; }
+    if (ch === 'clan') { this.need(clanOf(S.d.clan), ru`Канал клана — для тех, кто в клане`); return 'clan:' + clanOf(S.d.clan); }
     this.need(['all', 'trade', 'raid', 'help'].includes(ch), ru`Такого канала нет`);
     return ch;
   },
@@ -5585,7 +5642,12 @@ const GameCore = {
   // 3.21: текущие данные Ловчего из его сохранения — только проверенные значения (попадают в разметку)
   brief(b) {
     if (!b) return null;
-    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: this.own(CLANS, b.clan) ? b.clan : null, look: this.safeLook(b.look) };
+    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: clanOf(b.clan), look: this.safeLook(b.look) }; // 4.28: прежняя дружина — её клан
+  },
+  // 4.28: клан для вступления и перехода: известный (не прежний id дружины) и открытый в этом сезоне Алатыря
+  clanCheck(k) {
+    this.need(typeof k === 'string' && clanOf(k) === k, ru`Такого клана нет`);
+    this.need(clanOpen(k), ru`Этот клан ещё закрыт — он откроется в новом сезоне Алатыря`);
   },
   roomMember() {
     const team = S.team();
@@ -5611,12 +5673,13 @@ const GameCore = {
     return hold.holders.filter(h => h && h.sp && this.own(SP, h.sp.sid) && Rules.holdFresh(h, now)).map((h, i) => Rules.holdSpirit(this.cleanSpirit(h.sp, i), h.t, now))
       .map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, 3).map(o => o.x);
   },
-  // 4.16: Капище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Капище дружин нет.
-  // null — Капище свободно (бьётся хранитель)
+  // 4.16: Капище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Капище кланов нет.
+  // null — Капище свободно (бьётся хранитель). 4.28: clan — ключ клана мифологии (до миграции 032 в базе бывают прежние
+  // sokol / medved / volk — clanOf); неизвестный клан — Капище как свободное
   liveHold(hold, now, id) {
-    if (!hold || Rules.shrineFree(id)) return null;
+    if (!hold || Rules.shrineFree(id) || !clanOf(hold.clan)) return null;
     const holders = (hold.holders || []).filter(h => Rules.holdFresh(h, now));
-    return holders.length ? { ...hold, holders } : null;
+    return holders.length ? { ...hold, clan: clanOf(hold.clan), holders } : null;
   },
   // Три сильнейших духа друга
   topSpirits(d, n = 3) {
@@ -6303,9 +6366,9 @@ const GameCore = {
       const team = S.team();
       this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
-      // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
+      // Капище держит клан — сражаться придётся с его защитниками (тремя сильнейшими)
       const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
-      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твоя дружина — здесь можно поставить защитника`);
+      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твой клан — здесь можно поставить защитника`);
       const ht = hold ? this.holdTeam(hold, ctx.now) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
       this.need(p.verified || e.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`); // 4.26: у места не из базы — только Капища «Ученика»
@@ -6376,7 +6439,7 @@ const GameCore = {
         this.need(S.bagCount() + n <= S.bagLimit(), ru`Сумка полна — освободи место или расширь её`);
       }
       const key = it.cur === 'sparks' ? 'sparks' : 'zlat';
-      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? ru`Не хватает искр` : ru`Не хватает златников`);
+      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? ru`Не хватает искр` : ru`Не хватает монет`);
       this.limit(ctx, 'shop', 120, 3600000);
       S.d[key] -= it.price;
       let got;
@@ -6389,7 +6452,7 @@ const GameCore = {
       return { got, price: it.price, cur: key };
     },
 
-    // Казна: начислить оплаченные наборы златников. Номер оплаты запоминается в прогрессе (paid) —
+    // Казна: начислить оплаченные наборы монет. Номер оплаты запоминается в прогрессе (paid) —
     // так начисление ровно одно, даже если отметка в таблице payments не успела записаться
     async payClaim(a, ctx) {
       const rows = await ctx.env.paidList();
@@ -6403,13 +6466,13 @@ const GameCore = {
       }
       if (zlat) {
         S.d.zlat = (S.d.zlat || 0) + zlat;
-        S.d.payNew = (S.d.payNew || 0) + zlat; // 4.22: игра покажет «+N златников» при входе (начислить мог и сам сервер)
+        S.d.payNew = (S.d.payNew || 0) + zlat; // 4.22: игра покажет «+N монет» при входе (начислить мог и сам сервер)
         J.add('pay', { zlat });
       }
       if (rows.length) ctx.after.push(() => ctx.env.payCredited(rows.map(r => r.id)));
       return { zlat, n: packs.length };
     },
-    // 4.26: оплату вернули (refunded) — начисленные по ней златники списываются; счёт может уйти в минус (тратить нечего,
+    // 4.26: оплату вернули (refunded) — начисленные по ней монеты списываются; счёт может уйти в минус (тратить нечего,
     // пока не пополнится). Зовёт сам сервер по уведомлению ЮKassa; список — только из базы, повтор безопасен
     async payRefund(a, ctx) {
       const rows = ctx.env.refundList ? await ctx.env.refundList() : [];
@@ -6424,9 +6487,9 @@ const GameCore = {
       if (rows.length) ctx.after.push(() => ctx.env.payDebited(rows.map(r => r.id)));
       return { zlat: -zlat };
     },
-    // 4.22: игрок увидел «+N златников» из Казны
+    // 4.22: игрок увидел «+N монет» из Казны
     payAck() { delete S.d.payNew; return {}; },
-    // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
+    // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
       const ex = S.d.shop.ex && S.d.shop.ex.day === today ? S.d.shop.ex : (S.d.shop.ex = { day: today, n: 0 });
@@ -6448,40 +6511,53 @@ const GameCore = {
       this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
       P.got[track].push(lvl);
       let rw = Rules.passReward(track, lvl, S.d.level);
-      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — златниками (4.16: было 40)
+      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — монетами (4.16: было 40)
       return { got: this.grant(rw) };
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
       this.need(!P.gold, ru`Золотая тропа уже открыта`);
-      this.need(S.d.zlat >= Rules.PASS.GOLD, ru`Нужно ${Rules.PASS.GOLD} златников`);
+      this.need(S.d.zlat >= Rules.PASS.GOLD, ru`Нужно ${Rules.PASS.GOLD} монет`);
       S.d.zlat -= Rules.PASS.GOLD;
       P.gold = true;
       J.add('passGold', { season: P.season });
       return { ok: true };
     },
 
-    /* ----- дружины ----- */
+    /* ----- кланы (4.28: клан — мифология; открыт, пока открыта мифология — clanOpen) ----- */
     clanJoin(a) {
-      this.need(S.d.level >= CLAN_LEVEL, ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня`);
-      this.need(!S.d.clan, ru`Дружина уже выбрана`);
-      this.need(this.own(CLANS, a.clan), ru`Такой дружины нет`);
+      this.need(S.d.level >= CLAN_LEVEL, ru`Клан можно выбрать с ${CLAN_LEVEL} уровня`);
+      this.need(!S.d.clan, ru`Клан уже выбран`);
+      this.clanCheck(a.clan);
       S.d.clan = a.clan;
       J.add('clan', { clan: a.clan });
       return { clan: a.clan };
     },
-    // Поставить духа защищать Капище: свободное — после своей победы здесь сегодня, своей дружины — если есть место
+    // 4.28: один бесплатный переход в другой открытый клан — у тех, кто был в дружине до кланов мифологий (S.migrate,
+    // clanFree; предложение не сгорает, пока не использовано). Защитники достаивают свой срок на Капищах прежнего клана,
+    // чат — уже нового
+    clanMove(a) {
+      this.need(S.d.clan, ru`Сначала выбери клан`);
+      this.need(S.d.clanFree > 0, ru`Бесплатный переход уже использован`);
+      this.clanCheck(a.clan);
+      this.need(a.clan !== S.d.clan, ru`Ты уже в этом клане`);
+      const from = S.d.clan;
+      S.d.clan = a.clan; S.d.clanFree = 0;
+      J.add('clan', { clan: a.clan, from, move: 1 });
+      return { clan: a.clan };
+    },
+    // Поставить духа защищать Капище: свободное — после своей победы здесь сегодня, своего клана — если есть место
     async shrineDefend(a, ctx) {
-      this.need(S.d.clan, ru`Сначала выбери дружину`);
+      this.need(S.d.clan, ru`Сначала выбери клан`);
       const p = await this.place(a.shrine, ctx, 'shrine');
       this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);
-      this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни одна дружина`);
+      this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни один клан`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const sp = this.spirit(a.uid);
       const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
       if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Капище`);
       else {
-        this.need(hold.clan === S.d.clan, ru`Капище держит другая дружина — сначала победи её защитников`);
+        this.need(hold.clan === S.d.clan, ru`Капище держит другой клан — сначала победи его защитников`);
         this.need(hold.holders.length < HOLD_MAX, ru`На Капище уже ${HOLD_MAX} защитников`);
         this.need(!hold.holders.some(h => h.pid === S.d.pid), ru`Твой защитник уже стоит здесь`);
       }
@@ -6517,7 +6593,7 @@ const GameCore = {
       }
       return { list, back, got };
     },
-    // Сколько Капищ держит каждая дружина: по всей России и в округе ~5 км
+    // Сколько Капищ держит каждый открытый клан: по всему свету и в округе ~5 км
     async clanStats(a, ctx) {
       const p = ctx.pos;
       const box = p ? [p.lat - 0.045, p.lng - 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)), p.lat + 0.045, p.lng + 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180))] : null;
@@ -6527,7 +6603,7 @@ const GameCore = {
     // Rules.HOLD.TRIBUTE_H часов и срок ещё не вышел; не больше HOLD_MY_MAX Капищ). Если защитники есть, но ещё не
     // отстояли своё, день не закрывается — дань можно забрать позже (next — когда)
     async tribute(a, ctx) {
-      this.need(S.d.clan, ru`Сначала выбери дружину`);
+      this.need(S.d.clan, ru`Сначала выбери клан`);
       if (S.d.tributeDay === U.today(ctx.now)) return { n: 0, already: true };
       const H = Rules.HOLD, list = (await ctx.env.myHoldsList(S.d.pid)).filter(x => Rules.holdFresh(x, ctx.now));
       const n = Math.min(HOLD_MY_MAX, list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H).length);
@@ -6538,8 +6614,11 @@ const GameCore = {
       }
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
-      // 4.16: златники — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 златника с каждого, до 30 в день)
-      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, zlat: Rules.ZLAT.tribute * Math.min(n, Rules.ZLAT.tributeMax) }) };
+      // 4.16: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 монеты с каждого, до 30 в день)
+      // 4.28: с святилищ мифологии своего клана — искры и обереги ×Rules.HOLD.MYTH (Rules.tributeFor); сначала — они
+      const mine = list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H && W.placeMyth({ id: x.id }) === S.d.clan).length;
+      const T = Rules.tributeFor(n, mine);
+      return { n, own: Math.min(n, mine), got: S.giveRewards({ sparks: T.sparks, charm: T.charm, zlat: Rules.ZLAT.tribute * Math.min(n, Rules.ZLAT.tributeMax) }) };
     },
 
     async invStart(a, ctx) {
@@ -6604,7 +6683,7 @@ const GameCore = {
       const q = ctx.srv.lq && ctx.now - ctx.srv.lq.t < 15000 ? ctx.srv.lq : { since: ctx.now };
       q.t = ctx.now; ctx.srv.lq = q;
       const waited = (ctx.now - q.since) / 1000, w = League.window(L.pts, waited);
-      const info = { pid: S.d.pid, name: S.d.name, look: this.safeLook(S.d.look), lvl: S.d.level, pts: L.pts, rank: League.rank(L.pts), clan: CLANS[S.d.clan] ? S.d.clan : null,
+      const info = { pid: S.d.pid, name: S.d.name, look: this.safeLook(S.d.look), lvl: S.d.level, pts: L.pts, rank: League.rank(L.pts), clan: clanOf(S.d.clan),
         power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)) };
       const r = await ctx.env.pvpFind({ season: L.season, pts: L.pts, lo: w.lo, hi: w.hi, info, avoid: L.last || null, wide: waited >= 30 });
       if (r && r.match) { ctx.srv.lq = null; return { match: r.match, done: [] }; }
@@ -6686,11 +6765,11 @@ const GameCore = {
       this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);
       this.need(!sp.bound, ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`);
       const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
-      this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} златников` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
+      this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} монет` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
       this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);
       // 4.16: залог — списывается сразу, возвращается вместе с выручкой, если духа купят
       const deposit = Rules.auctionDeposit(cur, price);
-      this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`златник`, ru`златника`, ru`златников`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);
+      this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`монета`, ru`монеты`, ru`монет`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);
       this.limit(ctx, 'aucSell', A.PER_DAY, 86400000);
       const iv = sp.iv, s = SP[sp.sid];
       this.shared(ctx);
@@ -6713,7 +6792,7 @@ const GameCore = {
       // деньги проверяем ДО покупки, по цене из базы (цену с телефона не принимаем): иначе лот
       // пометился бы проданным, а покупатель ушёл бы ни с чем
       const cur = pre.cur === 'zlat' ? 'zlat' : 'sparks';
-      this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? ru`Не хватает златников` : ru`Не хватает искр`);
+      this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? ru`Не хватает монет` : ru`Не хватает искр`);
       this.limit(ctx, 'aucBuy', 60, 3600000);
       this.shared(ctx);
       const lot = await ctx.env.lotBuy(id, S.d.pid, S.d.name);
@@ -6742,11 +6821,11 @@ const GameCore = {
       const ch = this.chatChannel(a.ch);
       this.limit(ctx, 'chatRead', 1200, 3600000);
       const rows = await ctx.env.chatList(ch, Math.max(0, Math.floor(+a.after) || 0));
-      // 3.21: имя, уровень и дружина в сообщении — на момент отправки; отдаём текущие (a.who — Ловчие уже показанных сообщений)
+      // 3.21: имя, уровень и клан в сообщении — на момент отправки; отдаём текущие (a.who — Ловчие уже показанных сообщений)
       const ask = [...new Set(rows.map(m => m.pid).concat(Array.isArray(a.who) ? a.who.slice(0, 40).map(String) : []))].filter(p => this.PID.test(p)).slice(0, 90);
       const who = {};
       try { const cur = await ctx.env.briefByPid(ask); Object.keys(cur).forEach(p => { const w = this.brief(cur[p]); who[p] = { name: w.name, lvl: w.lvl, clan: w.clan }; }); } catch (e) { /* покажем данные из сообщений */ }
-      return { ch: a.ch, who, msgs: rows.map(m => { const w = who[m.pid]; return { id: m.id, pid: m.pid, name: w ? w.name : m.name, lvl: w ? w.lvl : m.lvl, clan: w ? w.clan : m.clan, text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid }; }) };
+      return { ch: a.ch, who, msgs: rows.map(m => { const w = who[m.pid]; return { id: m.id, pid: m.pid, name: w ? w.name : m.name, lvl: w ? w.lvl : m.lvl, clan: w ? w.clan : clanOf(m.clan), text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid }; }) };
     },
     async chatSend(a, ctx) {
       const C = Rules.CHAT, ch = this.chatChannel(a.ch);
@@ -6776,7 +6855,7 @@ const GameCore = {
     },
 
     /* ----- карточка Ловчего и таблица Лиги (3.21) ----- */
-    // Открытая карточка любого Ловчего (из чата или таблицы Лиги): облик, уровень, дружина, Лига, успехи, спутник
+    // Открытая карточка любого Ловчего (из чата или таблицы Лиги): облик, уровень, клан, Лига, успехи, спутник
     async playerCard(a, ctx) {
       const pid = String(a.pid || '');
       this.need(this.PID.test(pid), ru`Ловчий не найден`);
@@ -6994,12 +7073,12 @@ const verCmp = (a, b) => {
   return 0;
 };
 
-/* ---------- Казна: покупка златников через ЮKassa ----------
+/* ---------- Казна: покупка монет через ЮKassa ----------
    Секреты задаёт владелец в Supabase → Edge Functions → Secrets:
      YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY — магазин ЮKassa (для проверки — тестовый магазин);
      PAY_RECEIPT=on — передавать чек по 54-ФЗ (тогда игрок вводит почту);
      PAY_RETURN_URL — куда вернуть игрока после оплаты (по умолчанию paid.html сайта игры).
-   Телефону не верим: пакет, сумма и число златников — из Rules.PAY; итог платежа сервер
+   Телефону не верим: пакет, сумма и число монет — из Rules.PAY; итог платежа сервер
    сам спрашивает у ЮKassa (sync), а начисляет его действие игры payClaim. */
 const PAY = {
   shop: Deno.env.get('YOOKASSA_SHOP_ID') || '',
@@ -7085,7 +7164,7 @@ const Pay = {
     const since = new Date(Date.now() - 3600000).toISOString();
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
     if ((count || 0) >= 10) return { ok: false, error: ru`Слишком много попыток оплаты — подожди немного` };
-    const amount = pack.rub.toFixed(2), title = `${pack.zlat} златников — «Духолов»`;
+    const amount = pack.rub.toFixed(2), title = `${pack.zlat} монет — «Духолов»`;
     const row = must(await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount }).select('id').single());
     const p = await yk('POST', '/payments', {
       amount: { value: amount, currency: 'RUB' },
@@ -7159,7 +7238,7 @@ const Pay = {
     let status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
     if (same && p.refunded_amount && +p.refunded_amount.value > 0) status = 'refunded';
     if (status === r.status) return status;
-    // 4.26: возврат уже начисленного платежа — златники списываются (действие payRefund; может уйти в минус — Казна и аукцион
+    // 4.26: возврат уже начисленного платежа — монеты списываются (действие payRefund; может уйти в минус — Казна и аукцион
     // закрыты до погашения). Владельцу — в журнале
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
@@ -7171,7 +7250,7 @@ const Pay = {
     return status;
   },
   // 4.22: начислить оплаченное сразу — действие игры payClaim от имени игрока, в общей очереди его действий (замок);
-  // игра покажет «+N златников», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
+  // игра покажет «+N монет», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
   async credit(uid, type = 'payClaim') {
     const { data: sv } = await db.from('saves').select('app_version').eq('user_id', uid).maybeSingle(); // версия игры игрока — прежняя
     const out = await play(uid, { a: [{ type }], sys: true, v: (sv && sv.app_version) || '' }, makeEnv(uid));
@@ -7608,8 +7687,10 @@ function makeEnv(uid) {
       return rows && rows.length ? t : null;
     },
     // Чат: последние 50 сообщений канала (или новые после after); отправка; жалоба (после 3 — сообщение скрыто)
+    // 4.28: канал клана clan:<мифология> читается вместе с каналом прежней дружины (clan:sokol…), пока миграция 032 их не перенесла
     async chatList(channel, after) {
-      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').eq('channel', channel).eq('hidden', false);
+      const chs = /^clan:/.test(channel) ? clanIds(channel.slice(5)).map(k => 'clan:' + k) : [channel];
+      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').in('channel', chs).eq('hidden', false);
       if (after) q = q.gt('id', after);
       const rows = must(await q.order('id', { ascending: false }).limit(50)) || [];
       return rows.reverse();
@@ -7625,7 +7706,7 @@ function makeEnv(uid) {
       if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
       return count || 0;
     },
-    // 3.21: текущие имя, уровень, дружина и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
+    // 3.21: текущие имя, уровень, клан и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
     async briefByUid(uids) {
       const out = {};
       if (!uids.length) return out;
@@ -7713,7 +7794,7 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
-    // Дружины: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    // Кланы: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
     async holdGet(poi) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
@@ -7742,16 +7823,17 @@ function makeEnv(uid) {
         return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
       });
     },
-    // Сколько Капищ держит каждая дружина (во всей стране или в прямоугольнике [s, w, n, e])
+    // Сколько Капищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
+    // 4.28: кланы — мифологии (MYTH_KEYS), считаются параллельно; до миграции 032 — вместе с прежними дружинами (clanIds)
     async clanCounts(box) {
       const out = {};
-      for (const k of Object.keys(CLANS)) {
-        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).eq('clan', k).neq('holders', '[]');
+      await Promise.all(MYTH_KEYS.map(async k => {
+        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).in('clan', clanIds(k)).neq('holders', '[]');
         if (box) q = q.gte('lat', box[0]).lte('lat', box[2]).gte('lng', box[1]).lte('lng', box[3]);
         const { count, error } = await q;
         if (error) throw new Error(error.message);
         out[k] = count || 0;
-      }
+      }));
       return out;
     },
     // Совместные разломы: комнаты (код, участники, начало боя)
@@ -7825,7 +7907,7 @@ function makeEnv(uid) {
       return must(await db.from('auction_lots').select('*').eq('seller_pid', pid).eq('settled', false).in('status', ['sold', 'cancelled', 'expired']).limit(50)) || [];
     },
     async lotsDone(ids, field) { if (ids.length) must(await db.from('auction_lots').update({ [field]: true }).in('id', ids)); },
-    // Казна: оплаченные, но ещё не начисленные наборы златников; отметка «начислено»
+    // Казна: оплаченные, но ещё не начисленные наборы монет; отметка «начислено»
     async paidList() { return must(await db.from('payments').select('id, pack, zlat').eq('user_id', uid).eq('status', 'succeeded').eq('credited', false).limit(50)) || []; },
     async payCredited(ids) { must(await db.from('payments').update({ credited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
     // 4.26: возвращённые (refunded) и уже начисленные, но ещё не списанные платежи; отметка «списано»
