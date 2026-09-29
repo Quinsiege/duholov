@@ -385,7 +385,6 @@ Object.assign(UI, {
         <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>
           <div class="seg map-theme">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('tilt3d', 'map', ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`)}
-        ${row('fog', 'map', ru`Туман Нави`, ru`Всё, что дальше от тебя, скрыто дымкой: она расступается вокруг тебя и снова смыкается, когда уходишь.`)}
         ${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}
         ${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}
         ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`)}
@@ -420,7 +419,6 @@ Object.assign(UI, {
       if (k === 'eco') document.body.classList.toggle('eco', s.eco);
       if (k === 'bigText' || k === 'calm') this.applyA11y();
       if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
-      if (k === 'fog') Fog.apply();
       if (k === 'awake') Awake.apply();
     });
     // 5.1: джойстик слева или справа
