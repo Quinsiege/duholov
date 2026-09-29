@@ -121,7 +121,16 @@ const MapView = {
     // в режиме экономии батареи карта обновляется вдвое реже
     document.body.classList.toggle('eco', !!Cfg.s.eco);
     let tickN = 0;
-    setInterval(() => { if (!document.hidden && (!Cfg.s.eco || ++tickN % 2 === 0)) this.refresh(); }, 1500);
+    setInterval(() => { if (Stage.idle() && (!Cfg.s.eco || ++tickN % 2 === 0)) this.refresh(); }, 1500);
+    // 5.2: одна активная сцена (stage.js) — пока открыта поимка, бой или экран, карта не пересчитывается и не перерисовывается;
+    // сцена закрылась — облик карты, духи и места обновляются один раз
+    Stage.on(busy => { if (!busy) this.wake(); });
+  },
+  wake() {
+    if (!this.map) return;
+    this.map.invalidateSize({ animate: false }); // размер экрана мог смениться, пока карта не рисовалась
+    this.setTiles();
+    if (this._miss) this.refresh(this._miss === 2);
   },
 
   // 4.1: своя карта — векторные тайлы (Protomaps, данные OpenStreetMap) одним файлом; 4.28 — всего мира (в S3, отдаёт сервер игры);
@@ -138,6 +147,7 @@ const MapView = {
     return { phase, season, snow, night: phase === 'night' || phase === 'dusk', key: [phase, season, snow].join(':') };
   },
   setTiles() {
+    if (this.tiles && Stage.busy) return; // 5.2: под сценой плитки не перерисовываются — облик сверится, когда она закроется (wake)
     const lk = this.look();
     if (lk.key === this._look) return;
     this._look = lk.key;
@@ -457,6 +467,9 @@ const MapView = {
   },
   refresh(rebuild) {
     if (!this.map) return;
+    // 5.2: под полноэкранной сценой духи и места не пересчитываются — один раз, когда она закроется (wake)
+    if (Stage.busy) { this._miss = Math.max(this._miss || 0, rebuild ? 2 : 1); return; }
+    if (rebuild || this._miss !== 2) this._miss = 0; // пропущенное догнали (сцена, закрываясь, сама позвала пересчёт)
     if (rebuild) { for (const m of this.markers.values()) m.remove(); this.markers.clear(); }
     const { lat, lng } = this.pos;
     // 4.21: Разломы видны с начала; до RAID_LEVEL — серые, с замком (нажатие скажет, с какого уровня)

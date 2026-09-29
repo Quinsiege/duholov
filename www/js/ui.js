@@ -82,19 +82,16 @@ const UI = {
     U.$('#wxPill').onclick = () => this.skyInfo(); // 4.25: погода и время — одной плашкой
     U.$('#eventChip').onclick = () => this.eventInfo();
     this.applyA11y();
-    // 4.6.3: когда непрозрачный экран (меню, поимка, разлом, сцена обучения) уже полностью проявился, карта под ним
-    // не видна — помечаем его, и карта с HUD не рисуются и не анимируются (style.css); при закрытии снова видны сразу
-    new MutationObserver(ms => {
-      for (const m of ms) for (const n of m.addedNodes) {
-        if (n.nodeType === 1 && n.matches('.screen, .enc, .raid, .tut-final')) setTimeout(() => n.isConnected && n.classList.add('covers'), 700);
-      }
-    }).observe(document.body, { childList: true });
+    // 5.2: одна активная сцена (stage.js) — пока открыт экран, поимка, бой или Атлас, карта и HUD под ними не работают;
+    // HUD не пересчитывается, а когда сцена закрылась — обновляется сразу
+    Stage.init();
+    Stage.on(busy => { if (busy) return; this.refreshHud(); if (this._evMiss) { this._evMiss = false; this.refreshEvent(); } });
     U.$('#tracker .tr-x').onclick = e => { e.stopPropagation(); MapView.untrack(); };
     U.$('#tracker').onclick = () => { if (MapView.tracking) MapView.flyTo(MapView.tracking); };
     U.$('#profileBtn .ava-art').innerHTML = Art.avatar(S.d.look);
     this.refreshEvent();
-    setInterval(() => this.refreshEvent(), 60000);
-    setInterval(() => { if (!document.hidden) this.refreshHud(); }, 1000);
+    setInterval(() => { if (Stage.busy) this._evMiss = true; else this.refreshEvent(); }, 60000);
+    setInterval(() => { if (Stage.idle()) this.refreshHud(); }, 1000);
     this.refreshHud();
     this.refreshSky();
   },

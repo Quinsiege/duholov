@@ -2688,15 +2688,26 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 /* кат-сцены: «дыхание» — у рисунка целиком (сдвиг), а не внутри SVG */
 @keyframes vmBreath2 { 50% { transform: scale(1.012, 1.018); } }
 /* пока открыто окно или меню, духи на карте под размытой подложкой не двигаются — размытие не пересчитывается каждый кадр */
-body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map * { animation-play-state: paused !important; }
+/* 5.2: и погода, и «хвосты» значков (::before, ::after) — иначе стекло окна пересчитывает размытие каждый кадр */
+body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) :is(#map *, #wxfx, #wxfx *),
+body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map *::before, body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map *::after,
+body:has(> .modal-wrap:not(.out)) #hud *, body:has(> .modal-wrap:not(.out)) #hud *::before, body:has(> .modal-wrap:not(.out)) #hud *::after { animation-play-state: paused !important; }
 
 /* ================= 4.6.3: плавнее и холоднее — вид тот же ================= */
 /* движущиеся части рисунков — картинки, их движение делает видеокарта (art.js) */
 .art-stack > .stk.sa { inset: auto; max-width: none; }
 .calm .art-stack > .stk.sa-c { animation: none !important; }
-/* карта и HUD под полностью проявившимся непрозрачным экраном не рисуются (ui.js помечает экран .covers) */
-body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) { visibility: hidden; }
-body:has(> .covers:not(.out):not(.closing)) :is(#map, #hud) * { animation-play-state: paused !important; }
+/* 5.2: одна активная сцена (stage.js). body.stage — открыта полноэкранная сцена: всё на карте, в HUD и погода замирают сразу;
+   body.stage-cover — сцена проявилась целиком: карта, HUD и погода не рисуются вовсе (content-visibility — и не пересчитываются).
+   body.stage-glass — сверху стеклянный экран меню (4.25): карта под ним остаётся видна размытой, но неподвижной
+   (в режиме экономии стекла нет — карта прячется, как под остальными сценами). Сцена под верхней — .stage-under (замирает),
+   под непрозрачной верхней — ещё и .stage-hid (не рисуется). */
+body.stage :is(#map *, #hud *, #wxfx, #wxfx *, #mapHaze), .stage-under, .stage-under *,
+body.stage :is(#map *, #hud *, #wxfx *)::before, body.stage :is(#map *, #hud *, #wxfx *)::after, .stage-under *::before, .stage-under *::after { animation-play-state: paused !important; }
+body.stage-cover :is(#hud, #wxfx, #mapAttr),
+body.stage-cover:not(.stage-glass) :is(#map, #mapShade, #mapHaze),
+body.stage-cover.eco :is(#map, #mapShade, #mapHaze) { visibility: hidden !important; content-visibility: hidden; }
+.stage-under.stage-hid { visibility: hidden !important; }
 /* частицы поимки поднимаются сдвигом (transform), а не через top — тот же путь, но без пересчёта раскладки каждый кадр */
 @supports (height: 1cqh) {
   .enc-motes { position: absolute; inset: 0; container-type: size; pointer-events: none; }
@@ -4404,7 +4415,6 @@ body.rm-open #menuBtn .ob-x { opacity: 1; transform: none; }
   background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .12), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 60%), rgba(24, 14, 56, .3) !important;
   -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); }
 .screen:not(.cam-screen)::before, .screen:not(.cam-screen)::after { background: none !important; }
-body:not(.eco):has(> .covers:not(.out):not(.closing)) #map { visibility: visible !important; }
 body:has(> .screen:not(.out)) #hud { opacity: 0; pointer-events: none; transition: opacity .2s; }
 .modal-wrap, .sheet-wrap:not(.rm-wrap) {
   background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(24, 14, 56, .3) !important;

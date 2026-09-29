@@ -27,7 +27,10 @@ const Poi = {
     } catch (e) {}
     this.expireServer(); // кэш с сервера показываем сразу, но при запуске перечитываем
     this.rebuild();
-    setInterval(() => { if (document.hidden) return; this.ensure(); if (MapView.pos) this.shrinesFar(MapView.pos.lat, MapView.pos.lng, Rules.FAR.R); }, 15000);
+    const tick = () => { if (document.hidden) return; this.ensure(); if (MapView.pos) this.shrinesFar(MapView.pos.lat, MapView.pos.lng, Rules.FAR.R); };
+    // 5.2: места нужны карте — под полноэкранной сценой (stage.js) не подгружаем; сцена закрылась — догоняем один раз
+    setInterval(() => { if (Stage.busy) this._miss = true; else tick(); }, 15000);
+    Stage.on(busy => { if (!busy && this._miss) { this._miss = false; setTimeout(() => { if (!Stage.busy) tick(); }, 400); } });
   },
   // Перечитать места игроков и правки модераторов (например, когда одобрили мою заявку)
   expireServer() { for (const t of Object.values(this.srv)) t.t = 0; },

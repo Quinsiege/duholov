@@ -695,7 +695,9 @@ const Atlas = {
       b.querySelector('.ab-m').textContent = ru`${this.cdMin()} мин`;
     };
     tick();
-    setInterval(() => { if (!document.hidden) tick(); }, 20000);
+    // 5.2: значок — в HUD карты: под полноэкранной сценой (stage.js) не обновляется, сцена закрылась — сразу
+    setInterval(() => { if (Stage.idle()) tick(); }, 20000);
+    Stage.on(busy => { if (!busy) tick(); });
     document.addEventListener('duholov:teleported', () => setTimeout(tick, 100));
   },
 };

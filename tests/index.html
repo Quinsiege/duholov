@@ -55,6 +55,7 @@
   <script src="../www/js/music.js"></script>
   <script src="../www/js/world.js"></script>
   <script src="../www/js/navmap.js"></script>
+  <script src="../www/js/stage.js"></script>
   <script src="../www/js/fog.js"></script>
   <script src="../www/js/walk.js"></script>
   <script src="../www/js/map.js"></script>
@@ -2677,6 +2678,90 @@
     } finally {
       delete H.__alaTest; Ev.ala = a0; Ev.roads = r0; Ev.alaSync();
       if (had) R.grant = g0; else delete globalThis.SeasonRewards;
+    }
+  });
+  /* ---------- 5.2: одна активная сцена (stage.js) ---------- */
+  const stageWait = ms => new Promise(r => setTimeout(r, ms));
+  atest('5.2: одна сцена — открыл экран: карта на паузе, вложенная сцена, закрыл: карта проснулась один раз', async () => {
+    const box = document.createElement('div'); document.body.appendChild(box);
+    const St = Object.assign(Object.create(Stage), { list: [], fns: [], root: null, _busy: false, _said: false, _cov: false, _top: null, _mo: null, _co: null, _t: 0, _rt: 0, COVER_MS: 60, RESUME_MS: 25 });
+    const log = [], el = cls => { const e = document.createElement('div'); e.className = cls; box.appendChild(e); return e; }, has = c => box.classList.contains(c);
+    try {
+      St.init(box);
+      St.on(b => log.push(b));
+      eq(St.busy, false, 'сцен нет');
+      const mw = el('modal-wrap');
+      eq(St.busy, false, 'окно — не сцена: карта под ним работает');
+      mw.remove();
+      const a = el('screen');
+      eq(St.busy, true, 'экран открыт — карта на паузе сразу'); eq(St.top(), a);
+      ok(has('stage') && !has('stage-cover'), 'пока экран проявляется — карта видна, но замерла');
+      eq(JSON.stringify(log), '[true]', 'подписчики узнали о паузе');
+      await stageWait(90);
+      ok(has('stage-cover') && has('stage-glass'), 'экран проявился — HUD не рисуется, под стеклом карта неподвижна');
+      // вложенная сцена: из экрана — поимка
+      const b = el('enc');
+      eq(St.top(), b, 'сверху — поимка');
+      ok(a.classList.contains('stage-under') && !a.classList.contains('stage-hid'), 'экран под поимкой замер, но ещё виден');
+      await stageWait(90);
+      ok(a.classList.contains('stage-hid'), 'поимка проявилась — экран под ней не рисуется');
+      ok(has('stage-cover') && !has('stage-glass'), 'под непрозрачной сценой карта не рисуется');
+      b.classList.add('closing');
+      eq(St.top(), a, 'поимка закрывается — сверху снова экран');
+      ok(!a.classList.contains('stage-under') && !a.classList.contains('stage-hid'), 'экран снова виден и работает');
+      eq(St.busy, true, 'карта всё ещё на паузе — открыт экран');
+      b.remove();
+      // переход между экранами (закрыл один — тут же открыл другой): карта не просыпается зря
+      a.classList.add('out'); const c = el('screen');
+      eq(St.busy, true, 'переход экранов — пауза не прерывается');
+      await stageWait(50);
+      eq(JSON.stringify(log), '[true]', 'между экранами карта не будилась');
+      c.remove(); a.remove();
+      eq(St.busy, false, 'последняя сцена закрыта');
+      ok(!has('stage') && !has('stage-cover') && !has('stage-glass'), 'карта и HUD снова видны сразу');
+      eq(JSON.stringify(log), '[true]', 'проснуться — чуть позже (вдруг откроется следующая сцена)');
+      await stageWait(50);
+      eq(JSON.stringify(log), '[true,false]', 'карта проснулась один раз');
+      // сцены: поимка, бои, Атлас, книга, итог обучения, камера, вход, ошибка
+      ['enc', 'raid', 'raid duel', 'raid duel pvp', 'atlas', 'intro', 'tut-final', 'cam-screen', 'onb lg', 'fatal'].forEach(k => {
+        const e = el(k); ok(St.busy, k + ' — сцена'); e.remove(); ok(!St.busy, k + ' закрыта');
+      });
+      ['sheet-wrap rm-wrap', 'toast', 'at-gate', 'loader'].forEach(k => { const e = el(k); ok(!St.busy, k + ' — не сцена'); e.remove(); });
+    } finally { if (St._mo) { St._mo.disconnect(); St._co.disconnect(); } clearTimeout(St._t); clearTimeout(St._rt); box.remove(); }
+  });
+  atest('5.2: одна сцена — под поимкой карта не пересчитывается, Ловчий стоит; после — догоняет один раз', async () => {
+    const box = document.createElement('div'); document.body.appendChild(box);
+    const sv = { map: MapView.map, setTiles: MapView.setTiles, refresh: MapView.refresh, miss: MapView._miss, joy: Walk.joy, keys: Walk.keys, pos: Walk.pos, stop: Walk.stop,
+      st: { list: Stage.list, fns: Stage.fns, root: Stage.root, RESUME_MS: Stage.RESUME_MS } };
+    const calls = [];
+    try {
+      Stage.init(box); Stage.RESUME_MS = 10; Stage.fns = [];
+      Stage.on(b => { if (!b) MapView.wake(); });
+      MapView.map = { invalidateSize: () => calls.push('size') }; MapView._miss = 0;
+      const enc = document.createElement('div'); enc.className = 'enc'; box.appendChild(enc);
+      ok(Stage.busy && !Stage.idle(), 'поимка открыта — карта не работает');
+      MapView.refresh(); MapView.refresh(true); MapView.refresh();
+      eq(MapView._miss, 2, 'пересчёт карты отложен (и с перестройкой значков)');
+      // Ловчий: цикл кадров не запускается и сам останавливается
+      Walk.stop = () => {}; Walk.keys = {}; Walk.joy = { x: 0, y: -0.8 }; Walk.pos = { lat: 10, lng: 20 };
+      ok(Walk.held(), 'Ловчий стоит');
+      eq(Walk.tick(0.1, 1e7), false, 'цикл кадров не крутится вхолостую');
+      eq(Walk.pos.lat, 10, 'и не сдвинулся');
+      Walk.run(); eq(Walk._raf, 0, 'цикл кадров не запущен');
+      MapView.setTiles = () => calls.push('tiles'); MapView.refresh = rb => calls.push('refresh:' + !!rb);
+      enc.classList.add('closing');
+      ok(!Stage.busy, 'поимка закрывается — карта снова работает');
+      await stageWait(40);
+      eq(calls.join(','), 'size,tiles,refresh:true', 'карта догнала пропущенное один раз');
+      MapView._miss = 0; MapView.wake();
+      eq(calls.join(','), 'size,tiles,refresh:true,size,tiles', 'ничего не пропущено — духи и места не пересчитываются зря');
+    } finally {
+      if (Stage._mo) { Stage._mo.disconnect(); Stage._co.disconnect(); }
+      clearTimeout(Stage._t); clearTimeout(Stage._rt);
+      Object.assign(Stage, sv.st, { _mo: null, _co: null, _busy: false, _said: false, _cov: false, _top: null, _t: 0, _rt: 0 });
+      Object.assign(MapView, { map: sv.map, setTiles: sv.setTiles, refresh: sv.refresh, _miss: sv.miss });
+      Object.assign(Walk, { joy: sv.joy, keys: sv.keys, pos: sv.pos, stop: sv.stop }); Walk.setMode(0);
+      box.remove();
     }
   });
   /* ---------- 5.1: джойстик и Атлас (walk.js, телепорт) ---------- */

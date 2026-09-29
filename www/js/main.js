@@ -44,8 +44,12 @@ window.addEventListener('load', () => {
     setInterval(() => { if (!document.hidden) Game.act('tick').then(() => { UI.refreshHud(); Order.daily(); Order.refresh(); }).catch(() => {}); }, 5 * 60000);
     setTimeout(() => Order.daily(), 2500); // серия дней: награда за первый вход за день
     setTimeout(() => Order.refresh(), 8000); // общее дело Ордена — для значка меню
-    setTimeout(() => Clans.refresh(), 5000); // кто держит Капища вокруг
-    setInterval(() => { if (!document.hidden) { Clans.refresh(); Clans.tribute(); Clans.checkGuards(); Hints.check(); } }, 60000);
+    // кто держит Капища вокруг — это нужно только карте: под полноэкранной сценой (stage.js) не спрашиваем, догоняем один раз после
+    let clansMiss = false;
+    const clans = () => { if (Stage.busy) clansMiss = true; else Clans.refresh(); };
+    Stage.on(busy => { if (!busy && clansMiss) { clansMiss = false; setTimeout(clans, 700); } });
+    setTimeout(clans, 5000);
+    setInterval(() => { if (!document.hidden) { clans(); Clans.tribute(); Clans.checkGuards(); Hints.check(); } }, 60000);
     Updater.init();
     setTimeout(() => Treasury.check(), 3000); // Казна: итог оплаты, если игрок вернулся со страницы оплаты
   };
