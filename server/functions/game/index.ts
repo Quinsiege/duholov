@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.28.0';
+const APP_VERSION = '5.0.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -5195,7 +5195,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '4.28.0', // 4.28: мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
+  MIN_CLIENT: '5.0.0', // 5.0 (4.28): мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
