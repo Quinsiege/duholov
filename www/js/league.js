@@ -292,7 +292,7 @@ const League = {
 
   // Таблица сезона — только с сервера игры (текущие уровни и имена, коды для карточки)
   async top() {
-    return Game.act('leagueTop', { board: Cfg.s.cloud !== false }); // таблицу напрямую не читает никто (3.23): только через сервер игры
+    return Game.act('leagueTop', { board: true }); // таблицу напрямую не читает никто (3.23): только через сервер игры
   },
 
   // 4.16: итоги боёв, которые сервер засчитал без экрана (телефон закрылся посреди боя), и сундук за прошлый сезон
@@ -370,7 +370,7 @@ const League = {
       const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>${ru`Ты`}</b><small>${LEAGUE_RANKS[r].name} · ${ru`ур. ${S.d.level}`}</small></div><span class="lgx-stars">${cup}${U.fmtNum(data.me.pts)}</span></div>` : '';
       pane.innerHTML = head + (pod ? `<div class="lgx-sub"><span class="lg-badge sm">${this.badge(tier.rank)}</span>${ru`Лучшие в лиге «${LEAGUE_RANKS[tier.rank].name}»`}</div><div class="lgx-podium">${pod}</div>` : '')
         + (list ? `<div class="lgx-sub">${ru`Топ-50 сезона`}</div><div class="list lgx-list">${list}</div>` : '') + mine
-        + (Cfg.s.cloud === false ? `<div class="q-note">${ru`Тебя нет в таблице: так выбрано в Настройках.`}</div>` : `<div class="q-note">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`);
+        + `<div class="q-note">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`;
     };
 
     const renderRanks = () => {
@@ -387,7 +387,7 @@ const League = {
       const el = scr.querySelector('.lgx-place'); if (!el || !data || data.error) return;
       const i = data.rows.findIndex(x => x.me);
       el.innerHTML = i >= 0 ? ru`<b>${i + 1}-е место</b> из ${data.total} в сезоне` : data.me ? ru`<b>${data.me.place}-е место</b> из ${data.total} в сезоне`
-        : Cfg.s.cloud === false ? ru`Тебя нет в таблице (Настройки)` : ru`Сыграй бой, чтобы попасть в таблицу`;
+        : ru`Сыграй бой, чтобы попасть в таблицу`;
     };
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.tab));
@@ -419,7 +419,7 @@ const League = {
     // 4.16: при входе — засчитать бои, закончившиеся без экрана, сундук сезона и идущий бой
     const state = async () => {
       if (!Game.on() || S.d.level < this.LEVEL) return;
-      const st = await Game.act('leagueState', { board: Cfg.s.cloud !== false }).catch(() => null);
+      const st = await Game.act('leagueState', { board: true }).catch(() => null);
       if (!st || !scr.isConnected) return;
       this.showDone(st);
       live = st.live;

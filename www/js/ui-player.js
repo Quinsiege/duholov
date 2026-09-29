@@ -378,7 +378,6 @@ Object.assign(UI, {
           <div class="seg joy-side">${[['left', ru`Слева`], ['right', ru`Справа`]].map(([k, t]) => `<button data-side="${k}" class="${(s.joySide || 'right') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('ar', 'camera', ru`AR-камера`, ru`Духи появляются поверх изображения с камеры.`)}
         ${row('tapThrow', 'hand', ru`Бросок одним касанием`, ru`Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.`)}
-        ${Cloud.configured() ? row('cloud', 'trophy', ru`Общая таблица Лиги`, ru`Показывать твоё имя, облик, уровень и звёзды в таблице сезона.`) : ''}
       </div>
       ${sec(ru`Вид`)}
       <div class="list">

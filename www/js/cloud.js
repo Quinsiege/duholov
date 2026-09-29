@@ -9,7 +9,7 @@ const Cloud = {
 
   // автотесты (браузер под управлением Playwright) на боевой сервер не ходят
   configured() { return !!(CLOUD_CONFIG.url && CLOUD_CONFIG.anonKey) && !navigator.webdriver; },
-  enabled() { return this.configured(); }, // таблицу видят все; Cfg.s.cloud — показывать ли в ней себя
+  enabled() { return this.configured(); }, // таблицу Лиги видят все, в ней — все Ловчие (5.1.11)
 
   async client() {
     if (this.sb) return this.sb;

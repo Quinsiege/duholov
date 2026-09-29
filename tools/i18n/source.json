@@ -776,7 +776,7 @@
   "at": [
    "www/js/album.js:51",
    "www/js/friends.js:301",
-   "www/js/ui-player.js:479"
+   "www/js/ui-player.js:478"
   ],
   "ctx": "{ label: ru`Удалить`, cls: 'danger', fn: () => { this.remove(i); UI.toast(ru`Снимок удалён`); } },"
  },
@@ -2755,7 +2755,7 @@
   "k": "Сбросить",
   "at": [
    "www/js/auction.js:133",
-   "www/js/ui-player.js:486"
+   "www/js/ui-player.js:485"
   ],
   "ctx": "buttons: [{ label: ru`Сбросить`, fn: () => { this.f = { sort: this.f.sort, mine: this.f.mine }; this.q = ''; done(); } },"
  },
@@ -3358,7 +3358,7 @@
    "www/js/book.js:41",
    "www/js/intro.js:160",
    "www/js/intro.js:161",
-   "www/js/ui-player.js:399"
+   "www/js/ui-player.js:398"
   ],
   "ctx": "const scr = UI.screen(ru`Книга Ордена`, `"
  },
@@ -3503,7 +3503,7 @@
   "at": [
    "www/js/book.js:102"
   ],
-  "ctx": "(typeof Atlas !== 'undefined' ? `<button class=\"btn wide bk-atlas\">${Atlas.icon()}<span>${ru`Открыть Атлас мира`}</span></button>` : '')]];"
+  "ctx": "(typeof Atlas !== 'undefined' ? `<button class=\"btn wide bk-atlas\">${Atlas.hudIcon()}<span>${ru`Открыть Атлас мира`}</span></button>` : '')]];"
  },
  {
   "k": "и",
@@ -3723,7 +3723,7 @@
   "k": "Экономия батареи",
   "at": [
    "www/js/book.js:129",
-   "www/js/ui-player.js:390"
+   "www/js/ui-player.js:389"
   ],
   "ctx": "[ru`Батарея`, this.cards([[UI.menuIcon('gear'), ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`],"
  },
@@ -3731,7 +3731,7 @@
   "k": "Меньше анимаций на карте и реже её обновление.",
   "at": [
    "www/js/book.js:129",
-   "www/js/ui-player.js:390"
+   "www/js/ui-player.js:389"
   ],
   "ctx": "[ru`Батарея`, this.cards([[UI.menuIcon('gear'), ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`],"
  },
@@ -3739,7 +3739,7 @@
   "k": "Не гасить экран",
   "at": [
    "www/js/book.js:130",
-   "www/js/ui-player.js:391"
+   "www/js/ui-player.js:390"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`],"
  },
@@ -3747,7 +3747,7 @@
   "k": "Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.",
   "at": [
    "www/js/book.js:130",
-   "www/js/ui-player.js:391"
+   "www/js/ui-player.js:390"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`],"
  },
@@ -3755,7 +3755,7 @@
   "k": "Объёмная карта",
   "at": [
    "www/js/book.js:131",
-   "www/js/ui-player.js:387"
+   "www/js/ui-player.js:386"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`]])]];"
  },
@@ -3763,7 +3763,7 @@
   "k": "Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.",
   "at": [
    "www/js/book.js:131",
-   "www/js/ui-player.js:387"
+   "www/js/ui-player.js:386"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`]])]];"
  },
@@ -9661,7 +9661,7 @@
   "k": "Ночь",
   "at": [
    "www/js/data.js:649",
-   "www/js/ui-player.js:386"
+   "www/js/ui-player.js:385"
   ],
   "ctx": "{ id: 'night', name: ru`Ночь`, rar: 0, lvl: 1 },"
  },
@@ -13078,18 +13078,11 @@
   "ctx": "+ (list ? `<div class=\"lgx-sub\">${ru`Топ-50 сезона`}</div><div class=\"list lgx-list\">${list}</div>` : '') + mine"
  },
  {
-  "k": "Тебя нет в таблице: так выбрано в Настройках.",
-  "at": [
-   "www/js/league.js:373"
-  ],
-  "ctx": "+ (Cfg.s.cloud === false ? `<div class=\"q-note\">${ru`Тебя нет в таблице: так выбрано в Настройках.`}</div>` : `<div class=\"q-note\">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`);"
- },
- {
   "k": "Нажми на Ловчего, чтобы открыть его карточку.",
   "at": [
    "www/js/league.js:373"
   ],
-  "ctx": "+ (Cfg.s.cloud === false ? `<div class=\"q-note\">${ru`Тебя нет в таблице: так выбрано в Настройках.`}</div>` : `<div class=\"q-note\">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`);"
+  "ctx": "+ `<div class=\"q-note\">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`;"
  },
  {
   "k": "ты здесь",
@@ -13135,18 +13128,11 @@
   "ctx": "el.innerHTML = i >= 0 ? ru`<b>${i + 1}-е место</b> из ${data.total} в сезоне` : data.me ? ru`<b>${data.me.place}-е место</b> из ${data.total} в сезоне`"
  },
  {
-  "k": "Тебя нет в таблице (Настройки)",
-  "at": [
-   "www/js/league.js:390"
-  ],
-  "ctx": ": Cfg.s.cloud === false ? ru`Тебя нет в таблице (Настройки)` : ru`Сыграй бой, чтобы попасть в таблицу`;"
- },
- {
   "k": "Сыграй бой, чтобы попасть в таблицу",
   "at": [
    "www/js/league.js:390"
   ],
-  "ctx": ": Cfg.s.cloud === false ? ru`Тебя нет в таблице (Настройки)` : ru`Сыграй бой, чтобы попасть в таблицу`;"
+  "ctx": ": ru`Сыграй бой, чтобы попасть в таблицу`;"
  },
  {
   "k": "Карточка откроется после обновления сервера",
@@ -13577,7 +13563,7 @@
   "k": "Почта",
   "at": [
    "www/js/login.js:229",
-   "www/js/ui-player.js:465"
+   "www/js/ui-player.js:464"
   ],
   "ctx": "<label class=\"fld\"><span class=\"fld-ic\">${UI.I.mail}</span><input name=\"email\" type=\"email\" inputmode=\"email\" autocomplete=\"username\" placeholder=\"${ru`Почта`}\" required></label>"
  },
@@ -13709,7 +13695,7 @@
   "k": "Выйти из учётной записи",
   "at": [
    "www/js/login.js:318",
-   "www/js/ui-player.js:468"
+   "www/js/ui-player.js:467"
   ],
   "ctx": "${Game.on() ? `<button class=\"hero-exit\" aria-label=\"${ru`Выйти из учётной записи`}\">${UI.I.logout}</button>` : ''}"
  },
@@ -20327,376 +20313,362 @@
   "ctx": "${row('tapThrow', 'hand', ru`Бросок одним касанием`, ru`Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.`)}"
  },
  {
-  "k": "Общая таблица Лиги",
-  "at": [
-   "www/js/ui-player.js:381"
-  ],
-  "ctx": "${Cloud.configured() ? row('cloud', 'trophy', ru`Общая таблица Лиги`, ru`Показывать твоё имя, облик, уровень и звёзды в таблице сезона.`) : ''}"
- },
- {
-  "k": "Показывать твоё имя, облик, уровень и звёзды в таблице сезона.",
-  "at": [
-   "www/js/ui-player.js:381"
-  ],
-  "ctx": "${Cloud.configured() ? row('cloud', 'trophy', ru`Общая таблица Лиги`, ru`Показывать твоё имя, облик, уровень и звёзды в таблице сезона.`) : ''}"
- },
- {
   "k": "Вид",
   "at": [
-   "www/js/ui-player.js:383"
+   "www/js/ui-player.js:382"
   ],
   "ctx": "${sec(ru`Вид`)}"
  },
  {
   "k": "Тема карты",
   "at": [
-   "www/js/ui-player.js:385"
+   "www/js/ui-player.js:384"
   ],
   "ctx": "<div class=\"row set-row\"><span class=\"set-ico\">${this.I.map}</span><div class=\"row-main\"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>"
  },
  {
   "k": "Авто — по солнцу: рассвет, день, закат и ночь",
   "at": [
-   "www/js/ui-player.js:385"
+   "www/js/ui-player.js:384"
   ],
   "ctx": "<div class=\"row set-row\"><span class=\"set-ico\">${this.I.map}</span><div class=\"row-main\"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>"
  },
  {
   "k": "Авто",
   "at": [
-   "www/js/ui-player.js:386"
+   "www/js/ui-player.js:385"
   ],
   "ctx": "<div class=\"seg map-theme\">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme=\"${k}\" class=\"${(s.mapTheme || 'auto') === k ? 'on' : ''}\">${t}</button>`).join('')}</div></d"
  },
  {
   "k": "День",
   "at": [
-   "www/js/ui-player.js:386"
+   "www/js/ui-player.js:385"
   ],
   "ctx": "<div class=\"seg map-theme\">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme=\"${k}\" class=\"${(s.mapTheme || 'auto') === k ? 'on' : ''}\">${t}</button>`).join('')}</div></d"
  },
  {
   "k": "Крупный текст",
   "at": [
-   "www/js/ui-player.js:388"
+   "www/js/ui-player.js:387"
   ],
   "ctx": "${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}"
  },
  {
   "k": "Увеличенный шрифт в меню, карточках и подсказках.",
   "at": [
-   "www/js/ui-player.js:388"
+   "www/js/ui-player.js:387"
   ],
   "ctx": "${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}"
  },
  {
   "k": "Меньше движения",
   "at": [
-   "www/js/ui-player.js:389"
+   "www/js/ui-player.js:388"
   ],
   "ctx": "${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}"
  },
  {
   "k": "Без покачиваний, мерцания и погодных эффектов.",
   "at": [
-   "www/js/ui-player.js:389"
+   "www/js/ui-player.js:388"
   ],
   "ctx": "${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}"
  },
  {
   "k": "Установить на главный экран",
   "at": [
-   "www/js/ui-player.js:394"
+   "www/js/ui-player.js:393"
   ],
   "ctx": "<button class=\"row link set-row inst-pwa hidden\"><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное прил"
  },
  {
   "k": "Духолов откроется на весь экран, как обычное приложение",
   "at": [
-   "www/js/ui-player.js:394"
+   "www/js/ui-player.js:393"
   ],
   "ctx": "<button class=\"row link set-row inst-pwa hidden\"><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное прил"
  },
  {
   "k": "Скачать APK для Android",
   "at": [
-   "www/js/ui-player.js:395"
+   "www/js/ui-player.js:394"
   ],
   "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"duholov.apk\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши ус"
  },
  {
   "k": "Приложение-обёртка: разреши установку из этого источника",
   "at": [
-   "www/js/ui-player.js:395"
+   "www/js/ui-player.js:394"
   ],
   "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"duholov.apk\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши ус"
  },
  {
   "k": "Об игре",
   "at": [
-   "www/js/ui-player.js:397"
+   "www/js/ui-player.js:396"
   ],
   "ctx": "${sec(ru`Об игре`)}"
  },
  {
   "k": "Мир, духи и все правила игры",
   "at": [
-   "www/js/ui-player.js:399"
+   "www/js/ui-player.js:398"
   ],
   "ctx": "${link('about', 'info', ru`Книга Ордена`, ru`Мир, духи и все правила игры`)}"
  },
  {
   "k": "Правила игры",
   "at": [
-   "www/js/ui-player.js:400",
-   "www/js/ui-player.js:475"
+   "www/js/ui-player.js:399",
+   "www/js/ui-player.js:474"
   ],
   "ctx": "${link('terms', 'info', ru`Правила игры`, ru`Соглашение, безопасность на улице, чат · 12+`)}"
  },
  {
   "k": "Соглашение, безопасность на улице, чат · 12+",
   "at": [
-   "www/js/ui-player.js:400"
+   "www/js/ui-player.js:399"
   ],
   "ctx": "${link('terms', 'info', ru`Правила игры`, ru`Соглашение, безопасность на улице, чат · 12+`)}"
  },
  {
   "k": "Персональные данные",
   "at": [
-   "www/js/ui-player.js:401",
-   "www/js/ui-player.js:476"
+   "www/js/ui-player.js:400",
+   "www/js/ui-player.js:475"
   ],
   "ctx": "${link('privacy', 'info', ru`Персональные данные`, ru`Какие данные хранит игра и как их удалить`)}"
  },
  {
   "k": "Какие данные хранит игра и как их удалить",
   "at": [
-   "www/js/ui-player.js:401"
+   "www/js/ui-player.js:400"
   ],
   "ctx": "${link('privacy', 'info', ru`Персональные данные`, ru`Какие данные хранит игра и как их удалить`)}"
  },
  {
   "k": "Сбросить прогресс",
   "at": [
-   "www/js/ui-player.js:402"
+   "www/js/ui-player.js:401"
   ],
   "ctx": "<button class=\"row link set-row reset\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Сбросить прогресс`}</b><small>${ru`Удалить всех духов и начать заново`}</small></di"
  },
  {
   "k": "Удалить всех духов и начать заново",
   "at": [
-   "www/js/ui-player.js:402"
+   "www/js/ui-player.js:401"
   ],
   "ctx": "<button class=\"row link set-row reset\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Сбросить прогресс`}</b><small>${ru`Удалить всех духов и начать заново`}</small></di"
  },
  {
   "k": "Удалить учётную запись",
   "at": [
-   "www/js/ui-player.js:403"
+   "www/js/ui-player.js:402"
   ],
   "ctx": "${Game.on() ? `<button class=\"row link set-row del-acc\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Удалить учётную запись`}</b><small>${ru`Прогресс, способы входа и "
  },
  {
   "k": "Прогресс, способы входа и все данные — навсегда",
   "at": [
-   "www/js/ui-player.js:403"
+   "www/js/ui-player.js:402"
   ],
   "ctx": "${Game.on() ? `<button class=\"row link set-row del-acc\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Удалить учётную запись`}</b><small>${ru`Прогресс, способы входа и "
  },
  {
   "k": "приложение {0}",
   "at": [
-   "www/js/ui-player.js:405"
+   "www/js/ui-player.js:404"
   ],
   "ctx": "<div class=\"ver\">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class=\"link-btn check-upd\">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStre"
  },
  {
   "k": "Проверить обновления",
   "at": [
-   "www/js/ui-player.js:405"
+   "www/js/ui-player.js:404"
   ],
   "ctx": "<div class=\"ver\">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class=\"link-btn check-upd\">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStre"
  },
  {
   "k": "Карта © участники OpenStreetMap",
   "at": [
-   "www/js/ui-player.js:405"
+   "www/js/ui-player.js:404"
   ],
   "ctx": "<div class=\"ver\">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class=\"link-btn check-upd\">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStre"
  },
  {
   "k": "У тебя последняя версия — {0}",
   "at": [
-   "www/js/ui-player.js:443"
+   "www/js/ui-player.js:442"
   ],
   "ctx": "if (!Updater.shown) this.toast(ru`У тебя последняя версия — ${APP_VERSION}`, 'good');"
  },
  {
   "k": "ещё один способ входа",
   "at": [
-   "www/js/ui-player.js:458"
+   "www/js/ui-player.js:457"
   ],
   "ctx": "const addRows = guest ? '' : avail.map(k => way(Login.icon(k), Login.NAMES[k], ru`ещё один способ входа`,"
  },
  {
   "k": "Привязать",
   "at": [
-   "www/js/ui-player.js:459"
+   "www/js/ui-player.js:458"
   ],
   "ctx": "`<button class=\"btn acc-link\" data-login=\"${k}\" data-mode=\"link\">${ru`Привязать`}</button>`)).join('');"
  },
  {
   "k": "{0} · {1} уровень",
   "at": [
-   "www/js/ui-player.js:462"
+   "www/js/ui-player.js:461"
   ],
   "ctx": "<div class=\"acc-main\"><b>${U.esc(d.name)}</b><small>${ru`${this.rank(d.level)} · ${d.level} уровень`}</small>"
  },
  {
   "k": "Гость · только на этом устройстве",
   "at": [
-   "www/js/ui-player.js:463"
+   "www/js/ui-player.js:462"
   ],
   "ctx": "<span class=\"acc-status ${guest ? 'warn' : 'ok'}\">${guest ? `${this.I.user}${ru`Гость · только на этом устройстве`}` : `${this.I.cloud}${ru`Прогресс в облаке`}`}</span></div>"
  },
  {
   "k": "Прогресс в облаке",
   "at": [
-   "www/js/ui-player.js:463"
+   "www/js/ui-player.js:462"
   ],
   "ctx": "<span class=\"acc-status ${guest ? 'warn' : 'ok'}\">${guest ? `${this.I.user}${ru`Гость · только на этом устройстве`}` : `${this.I.cloud}${ru`Прогресс в облаке`}`}</span></div>"
  },
  {
   "k": "Способы входа",
   "at": [
-   "www/js/ui-player.js:465"
+   "www/js/ui-player.js:464"
   ],
   "ctx": "+ (links.length || Login.email ? `<div class=\"acc-ways\"><div class=\"acc-cap\">${ru`Способы входа`}</div>${Login.email ? way(`<span class=\"lg-ic mail\">${this.I.mail}</span>`, ru`Почта`, U.esc(Login.email)) : ''}${links.map"
  },
  {
   "k": "вход привязан",
   "at": [
-   "www/js/ui-player.js:465"
+   "www/js/ui-player.js:464"
   ],
   "ctx": "+ (links.length || Login.email ? `<div class=\"acc-ways\"><div class=\"acc-cap\">${ru`Способы входа`}</div>${Login.email ? way(`<span class=\"lg-ic mail\">${this.I.mail}</span>`, ru`Почта`, U.esc(Login.email)) : ''}${links.map"
  },
  {
   "k": "Привяжи вход — прогресс откроется на любом устройстве",
   "at": [
-   "www/js/ui-player.js:466"
+   "www/js/ui-player.js:465"
   ],
   "ctx": "+ (guest && avail.length ? `<div class=\"acc-add\"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве`}</small><div class=\"login-row\">${Login.buttons('link', avail)}</div></div>` : '')"
  },
  {
   "k": "<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пропадёт), потом удали это приложение и установи новое.",
   "at": [
-   "www/js/ui-player.js:467"
+   "www/js/ui-player.js:466"
   ],
   "ctx": "+ (Updater.oldApp() ? `<div class=\"acc-add\"><small>${guest ? ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пр"
  },
  {
   "k": "<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: удали это приложение и установи новое.",
   "at": [
-   "www/js/ui-player.js:467"
+   "www/js/ui-player.js:466"
   ],
   "ctx": "+ (Updater.oldApp() ? `<div class=\"acc-add\"><small>${guest ? ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пр"
  },
  {
   "k": "Скачать новое приложение",
   "at": [
-   "www/js/ui-player.js:467"
+   "www/js/ui-player.js:466"
   ],
   "ctx": "+ (Updater.oldApp() ? `<div class=\"acc-add\"><small>${guest ? ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пр"
  },
  {
   "k": "Прогресс гостя будет потерян",
   "at": [
-   "www/js/ui-player.js:468"
+   "www/js/ui-player.js:467"
   ],
   "ctx": "+ `<button class=\"row link set-row acc-out\"><span class=\"set-ico out\">${this.I.logout}</span><div class=\"row-main\"><b>${ru`Выйти из учётной записи`}</b><small>${guest ? ru`Прогресс гостя будет потерян` : ru`Вернуться мож"
  },
  {
   "k": "Вернуться можно тем же входом",
   "at": [
-   "www/js/ui-player.js:468"
+   "www/js/ui-player.js:467"
   ],
   "ctx": "+ `<button class=\"row link set-row acc-out\"><span class=\"set-ico out\">${this.I.logout}</span><div class=\"row-main\"><b>${ru`Выйти из учётной записи`}</b><small>${guest ? ru`Прогресс гостя будет потерян` : ru`Вернуться мож"
  },
  {
   "k": "Удалить учётную запись?",
   "at": [
-   "www/js/ui-player.js:479"
+   "www/js/ui-player.js:478"
   ],
   "ctx": "if (del) del.onclick = () => this.confirm(ru`Удалить учётную запись?`, ru`Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные монеты не вернутся.`, ru`Удалить`, () => {"
  },
  {
   "k": "Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные монеты не вернутся.",
   "at": [
-   "www/js/ui-player.js:479"
+   "www/js/ui-player.js:478"
   ],
   "ctx": "if (del) del.onclick = () => this.confirm(ru`Удалить учётную запись?`, ru`Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные монеты не вернутся.`, ru`Удалить`, () => {"
  },
  {
   "k": "Точно удалить?",
   "at": [
-   "www/js/ui-player.js:480"
+   "www/js/ui-player.js:479"
   ],
   "ctx": "this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {"
  },
  {
   "k": "Восстановить учётную запись будет нельзя.",
   "at": [
-   "www/js/ui-player.js:480"
+   "www/js/ui-player.js:479"
   ],
   "ctx": "this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {"
  },
  {
   "k": "Да, удалить навсегда",
   "at": [
-   "www/js/ui-player.js:480"
+   "www/js/ui-player.js:479"
   ],
   "ctx": "this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {"
  },
  {
   "k": "Нет",
   "at": [
-   "www/js/ui-player.js:484",
-   "www/js/ui-player.js:489"
+   "www/js/ui-player.js:483",
+   "www/js/ui-player.js:488"
   ],
   "ctx": "}, ru`Нет`, true);"
  },
  {
   "k": "Сбросить прогресс?",
   "at": [
-   "www/js/ui-player.js:486"
+   "www/js/ui-player.js:485"
   ],
   "ctx": "scr.querySelector('.reset').onclick = () => this.confirm(ru`Сбросить прогресс?`, ru`Все духи, предметы и уровень будут удалены с сервера навсегда.`, ru`Сбросить`, () => {"
  },
  {
   "k": "Все духи, предметы и уровень будут удалены с сервера навсегда.",
   "at": [
-   "www/js/ui-player.js:486"
+   "www/js/ui-player.js:485"
   ],
   "ctx": "scr.querySelector('.reset').onclick = () => this.confirm(ru`Сбросить прогресс?`, ru`Все духи, предметы и уровень будут удалены с сервера навсегда.`, ru`Сбросить`, () => {"
  },
  {
   "k": "Точно?",
   "at": [
-   "www/js/ui-player.js:487"
+   "www/js/ui-player.js:486"
   ],
   "ctx": "this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {"
  },
  {
   "k": "Это действие нельзя отменить.",
   "at": [
-   "www/js/ui-player.js:487"
+   "www/js/ui-player.js:486"
   ],
   "ctx": "this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {"
  },
  {
   "k": "Да, сбросить",
   "at": [
-   "www/js/ui-player.js:487"
+   "www/js/ui-player.js:486"
   ],
   "ctx": "this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {"
  },

@@ -64,7 +64,7 @@ const LeagueBattle = {
       if (sr.done || sr.busy) return;
       sr.busy = true; sr.last = Date.now();
       let r = null;
-      try { r = await Game.act('pvpFind', { board: Cfg.s.cloud !== false }); }
+      try { r = await Game.act('pvpFind', { board: true }); }
       catch (e) { sr.busy = false; if (sr.done) return; UI.toast(U.esc(e.message)); sr.done = true; UI.closeScreen(scr); return; }
       sr.busy = false;
       if (sr.done) return;
@@ -463,7 +463,7 @@ const LeagueBattle = {
     res.querySelector('.lg-again').onclick = () => { this.close(); setTimeout(() => this.search(), 150); };
     res.querySelector('.lg-done').onclick = () => { this.close(); setTimeout(() => League.screen(), 150); };
     let r = null;
-    try { r = await Game.act('pvpResult', { board: Cfg.s.cloud !== false }); } catch (e) { UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('pvpResult', { board: true }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;
     const x = r && r.done ? r.done.find(y => y.id === st.id) : null, more = res.querySelector('.lg-res-more');
     if (x) res.querySelector('.lg-res-league').innerHTML = ` · ${ru`Лига: <b>${LEAGUE_RANKS[x.rNew].name}</b> · рейтинг ${U.fmtNum(x.pts)}`}`;
