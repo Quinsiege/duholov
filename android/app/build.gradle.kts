@@ -12,8 +12,8 @@ android {
         minSdk = 24
         targetSdk = 36 // 11: Google Play — новые приложения и обновления с 31.08.2026 — API 36
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
-        versionCode = 13
-        versionName = "5.1.0"
+        versionCode = 14
+        versionName = "5.1.7"
         // 11: версия для Google Play (flavor play): Android 16, оплата через Google Play, обновления — через Play
         // 10: запасная ссылка intent: — только https во внешнем браузере; вход — только страницы входа; без переноса данных
         // 9: положение по сетям для защиты от подмены GPS (DuholovNative.netLocation)
