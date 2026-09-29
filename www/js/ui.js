@@ -648,9 +648,6 @@ const UI = {
     const at = Object.fromEntries(tiles.map((t, i) => [t[0], i]));
     const secs = SECS.map(([h, ks]) => `<section class="rm-sec"><div class="rm-h" role="heading" aria-level="2"><span>${h}</span></div><div class="rm-row">${ks.map(k => tile(tiles[at[k]], at[k])).join('')}</div></section>`);
     const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid rm-secs">${secs.join('')}</div></div>`);
-    // обучение: подсказка встаёт сверху — панель начинается под ней, чтобы подсвеченный раздел и указатель над ним не закрывало
-    const co = Tut.step() && U.$('#coach:not(.hidden)');
-    if (co) { wrap.classList.add('rm-tut'); wrap.style.setProperty('--rm-co', co.offsetHeight + 'px'); }
     const orb = U.$('#menuBtn');
     let closing = false;
     const close = (then) => {
@@ -673,6 +670,14 @@ const UI = {
       } else close();
     });
     document.body.appendChild(wrap);
+    // 5.2: обучение — меню стоит там же, где без него, а подсказка (при открытом меню — компактная) встаёт над разделами.
+    // Только если сверху ей и указателю над разделом места нет (совсем низкий экран), панель начинается под подсказкой
+    const co = Tut.step() && U.$('#coach:not(.hidden)'), h1 = wrap.querySelector('.rm-h'), ts = Tut.at();
+    if (co && h1) {
+      document.body.classList.add('rm-open'); co.classList.remove('pos-bottom'); co.classList.add('pos-top');
+      const ptr = ts && ts.kind === 'ui' && Tut.opened !== ts.id; // над разделом будет указатель (заголовок ряда — на 6px ниже до вылета)
+      if (h1.getBoundingClientRect().top - 6 - co.getBoundingClientRect().bottom < (ptr ? 30 : 4)) { wrap.classList.add('rm-tut'); wrap.style.setProperty('--rm-co', co.offsetHeight + 'px'); }
+    }
     // откуда вылетать: каждый значок стартует из центра кнопки; ближние к ней — раньше (волна снизу вверх)
     const o = orb.getBoundingClientRect(), ox = o.left + o.width / 2, oy = o.top + o.height / 2;
     const its = [...wrap.querySelectorAll('.rm-it')], pos = its.map(it => { const c = it.querySelector('.rm-c').getBoundingClientRect(); return [c.left + c.width / 2, c.top + c.height / 2]; });
@@ -684,7 +689,7 @@ const UI = {
       it._d = d;
     });
     // заголовок раздела проявляется, когда долетает первый значок его ряда
-    wrap.querySelectorAll('.rm-sec').forEach(s => s.style.setProperty('--hd', Math.round(Math.min(...[...s.querySelectorAll('.rm-it')].map(it => it._d)) * 260 + 120) + 'ms'));
+    wrap.querySelectorAll('.rm-sec').forEach(s => s.style.setProperty('--hd', Math.round(Math.max(...[...s.querySelectorAll('.rm-it')].map(it => it._d)) * 260 + 360) + 'ms')); // заголовок раздела — после того, как долетели его значки
     void wrap.offsetWidth; // стартовые положения применены — дальше переход к местам
     wrap.classList.add('rm-in'); document.body.classList.add('rm-open');
     this._rm = close;
@@ -832,18 +837,14 @@ const UI = {
       hint.textContent = '';
       go.textContent = ru`В сумку`;
       go.disabled = false;
-      // «В сумку»: вещи слетаются к кнопке и гаснут, потом экран закрывается
+      // «В сумку» (5.2): опыт и поручение гаснут, под наградой появляется Сумка (значок «Сумка» из меню) и открывается,
+      // вещи по очереди летят дугой ей в горловину — сумка подпрыгивает от каждой; клапан закрывается, сумка чуть сжимается —
+      // и только потом экран закрывается. «Меньше движения» — сразу
       go.onclick = () => {
         if (view.classList.contains('stow')) return;
         if (document.body.classList.contains('calm')) return this.closeScreen(scr);
-        const gb = go.getBoundingClientRect(), gx = gb.left + gb.width / 2, gy = gb.top + gb.height / 2;
-        U.$$('.loot-item, .loot-xp', loot).forEach(it => {
-          const b = it.getBoundingClientRect();
-          it.style.setProperty('--bx', `${Math.round(gx - (b.left + b.width / 2))}px`);
-          it.style.setProperty('--by', `${Math.round(gy - (b.top + b.height / 2))}px`);
-        });
-        view.classList.add('stow'); rw.classList.add('stow'); Sfx.play('tap'); U.vibrate(15);
-        setTimeout(() => { if (scr.isConnected) this.closeScreen(scr); }, 520 + n * 60);
+        view.classList.add('stow'); rw.classList.add('bagging'); Sfx.play('tap'); U.vibrate(15);
+        this.springBag(scr, rw, loot, go);
       };
       MapView.refresh();
     };
@@ -875,6 +876,47 @@ const UI = {
       if (!scr._done) setArc(0);
     };
     disc.addEventListener('pointerup', end); disc.addEventListener('pointercancel', end);
+  },
+
+  // 5.2: Сумка — тот же рисунок, что значок «Сумка» в меню, двумя слоями: тело (с горловиной) и клапан, который откидывается
+  bagArt() {
+    const svg = this.menuIcon('bag'), i = svg.indexOf('<path d="M12 44 Q12 35'), j = svg.lastIndexOf('</svg>'), head = svg.slice(0, svg.indexOf('>') + 1);
+    if (i < 0) return `<div class="bg-body">${svg}</div>`; // рисунок сумки поменялся — без откидного клапана
+    const mouth = '<ellipse class="bg-mouth" cx="50" cy="40.5" rx="33" ry="6.5" fill="#1a0a02" stroke="#2a1405" stroke-width="2"/>';
+    return `<div class="bg-body">${svg.slice(0, i)}${mouth}</svg></div><i class="bg-glow"></i><div class="bg-flap">${head}${svg.slice(i, j)}</svg></div>`;
+  },
+  springBag(scr, rw, loot, go) {
+    const done = () => { if (scr.isConnected) this.closeScreen(scr); };
+    const its = U.$$('.loot-item', loot), n = its.length;
+    if (!n || typeof Element === 'undefined' || !Element.prototype.animate) { setTimeout(done, 300); return; }
+    const fade = el => el && el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 240, fill: 'forwards' });
+    U.$$('.loot-xp, .spr2-after, .spr2-rays', rw).forEach(fade); fade(go);
+    // сумка — под сеткой наград, на месте погасших опыта и поручения (кнопка «В сумку» тоже гаснет); у нижнего края — не ниже экрана
+    const R = rw.getBoundingClientRect(), gb = U.$('.spr2-grid', loot).getBoundingClientRect(), S = Math.round(Math.min(150, Math.max(120, R.width * .34)));
+    const y = Math.min(gb.bottom - R.top + 18, go.getBoundingClientRect().bottom - R.top - S);
+    const bag = U.el(`<div class="spr2-bag" style="top:${Math.round(y)}px;width:${S}px;height:${S}px;margin-left:${-S / 2}px"><div class="bg-in">${this.bagArt()}</div></div>`);
+    rw.appendChild(bag);
+    const inner = bag.querySelector('.bg-in');
+    bag.animate([{ transform: 'translateY(26px) scale(.3)', opacity: 0 }, { transform: 'translateY(-6px) scale(1.07)', opacity: 1, offset: .65 }, { transform: 'none', opacity: 1 }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'both' });
+    const bump = () => { inner.animate([{ transform: 'none' }, { transform: 'scale(1.09, .88)', offset: .3 }, { transform: 'scale(.96, 1.05)', offset: .65 }, { transform: 'none' }], { duration: 280, easing: 'ease-out' }); };
+    const OPEN = 400, START = 700, FLY = 480, gap = Math.min(150, 900 / n);
+    setTimeout(() => { bag.classList.add('open'); Sfx.play('tap'); }, OPEN);
+    setTimeout(() => {
+      if (!scr.isConnected) return;
+      const b = bag.getBoundingClientRect(), tx = b.left + b.width / 2, ty = b.top + b.height * .4; // горловина
+      its.forEach((it, k) => {
+        const r = it.getBoundingClientRect(), dx = tx - (r.left + r.width / 2), dy = ty - (r.top + r.height * .36), lift = 70 + Math.abs(dx) * .25;
+        const o = { delay: k * gap, duration: FLY, fill: 'both' };
+        it.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${dx * .45}px, ${Math.min(0, dy) * .45 - lift}px) scale(.8)`, opacity: 1, offset: .45 },
+          { transform: `translate(${dx}px, ${dy}px) scale(.2)`, opacity: .9, offset: .92 }, { transform: `translate(${dx}px, ${dy + 6}px) scale(.12)`, opacity: 0 }], { ...o, easing: 'cubic-bezier(.45,.05,.55,.95)' });
+        const lb = it.querySelector('span'); if (lb) lb.animate([{ opacity: 1 }, { opacity: 0 }], { delay: k * gap, duration: 140, fill: 'both' });
+        setTimeout(() => { if (!scr.isConnected) return; bump(); Sfx.play('tap'); U.vibrate(8); }, k * gap + FLY * .92);
+      });
+      const T = (n - 1) * gap + FLY;
+      setTimeout(() => bag.classList.remove('open'), T + 160); // клапан закрывается
+      setTimeout(() => inner.animate([{ transform: 'none' }, { transform: 'scale(.9, .94)', offset: .45 }, { transform: 'scale(.94)' }], { duration: 300, easing: 'ease-in-out', fill: 'forwards' }), T + 480);
+      setTimeout(done, T + 820);
+    }, START);
   },
 
   // вкладка «Добыча»: что может дать источник — по тем же весам, что у сервера (W.springOpts); редкое помечено

@@ -1561,15 +1561,76 @@
     await must(A, 'raidEnd', { win: false });
     ok(A.data.spirits[0].tired > T.FREE + 2, 'разлом тоже утомляет');
   });
-  atest('Сервер: погода с телефона сверяется с настоящей (4.15)', async () => {
-    const pos = { lat: 55.75, lng: 37.62 }, sim = Sky.simulate(pos).key;
-    const fake = Object.keys(WEATHER).find(k => k !== sim && k !== 'clear');
-    const env = { weather: async () => ['clear'] };
-    eq((await GameCore.checkWx('clear', pos, env)).key, 'clear', 'настоящая — принимается');
-    eq((await GameCore.checkWx(sim, pos, env)).key, sim, 'смоделированная — принимается');
-    eq((await GameCore.checkWx(fake, pos, env)).key, sim, 'подделка — заменена смоделированной');
-    eq((await GameCore.checkWx(fake, pos, { weather: async () => null })).key, sim, 'сервис погоды молчит — смоделированная (4.26: раньше верили телефону)');
-    eq((await GameCore.checkWx(fake, pos, { weather: async () => { throw new Error('нет сети'); } })).key, sim, 'сервис погоды упал — тоже');
+  atest('Сервер 5.2: погоду решает сервер — погода телефона не читается; нет сервиса — модель', async () => {
+    GameCore.WX.clear();
+    const A = await newPlayer('uwx1', 43.23, 76.93, 'Погодник');
+    const t0 = GameCore.H.tick;
+    let seen = null, asked = [];
+    GameCore.H.tick = function (a, ctx) { seen = Sky.w && Sky.w.key; return t0.call(this, a, ctx); }; // какая погода в игре во время действия
+    const run = (who, type, args, wx, weather) => GameCore.run({ a: [{ type, args }], tz: 180, wx, pos: { lat: who.lat, lng: who.lng, acc: 10 }, v: APP_VERSION },
+      { data: who.data, srv: who.srv }, { ...envFor(who), weather });
+    try {
+      // настоящая — дождь, телефон уверяет, что ясно: в игре дождь, телефону — дождь с температурой
+      let r = await run(A, 'tick', {}, 'clear', async (lat, lng) => { asked.push([lat, lng]); return { key: 'rain', temp: 6.6 }; });
+      ok(r.ok, r.error); eq(seen, 'rain', 'в игре — настоящая погода'); eq(r.wx.key, 'rain'); eq(r.wx.temp, 7); eq(r.wx.src, 'real');
+      eq(asked.length, 1); eq(asked[0][0], 43.25, 'сервису погоды — центр клетки ~0.1°, не точка Ловчего'); eq(asked[0][1], 76.95);
+      // без погоды телефона (новый клиент) — то же самое
+      r = await run(A, 'tick', {}, undefined, async () => ({ key: 'storm' }));
+      eq(r.wx.key, 'rain', 'та же клетка — погода из кэша, без нового запроса');
+      // сервис молчит или упал — модель этой клетки, что бы ни прислал телефон
+      const B = await newPlayer('uwx2', 44.23, 77.93, 'Туча'), sim = Sky.simulate({ lat: B.lat, lng: B.lng }).key;
+      const fake = Object.keys(WEATHER).find(k => k !== sim);
+      r = await run(B, 'tick', {}, fake, async () => null);
+      eq(seen, sim, 'сервис погоды молчит — в игре модель'); eq(r.wx.key, sim); eq(r.wx.src, 'sim'); eq(r.wx.temp, null);
+      const C = await newPlayer('uwx3', 45.23, 78.93, 'Гроза'), simC = Sky.simulate({ lat: C.lat, lng: C.lng }).key;
+      r = await run(C, 'tick', {}, Object.keys(WEATHER).find(k => k !== simC), async () => { throw new Error('нет сети'); });
+      eq(seen, simC, 'сервис погоды упал — модель'); eq(r.wx.src, 'sim');
+      // несколько значений — берётся первое (одинаково для всех)
+      const D = await newPlayer('uwx4', 46.23, 79.93, 'Вьюга');
+      r = await run(D, 'tick', {}, 'clear', async () => ['snow', 'clear']);
+      eq(seen, 'snow', 'из нескольких — первое'); eq(r.wx.key, 'snow');
+      // телепорт в другую клетку — телефону сразу погода нового места
+      const E = await newPlayer('uwx5', 47.23, 80.93, 'Странник');
+      r = await run(E, 'teleport', { lat: 48.33, lng: 81.47, first: true }, 'clear', async lat => (lat > 48 ? { key: 'fog', temp: -2 } : { key: 'windy', temp: 3 }));
+      ok(r.ok, r.error); eq(r.wx.key, 'fog', 'после телепорта — погода нового места'); eq(r.wx.temp, -2);
+    } finally { GameCore.H.tick = t0; GameCore.WX.clear(); }
+  });
+  atest('Сервер 5.2: кэш погоды — клетка и час, один запрос на всех; неудача помнится 5 минут', async () => {
+    GameCore.WX.clear();
+    const T = Date.UTC(2026, 8, 30, 10, 5), pos = { lat: 55.751, lng: 37.618 };
+    let n = 0;
+    const env = { weather: async () => { n++; await new Promise(r => setTimeout(r, 20)); return { key: 'overcast', temp: 11 }; } };
+    try {
+      const [a, b] = await Promise.all([GameCore.weather(pos, env, T), GameCore.weather({ lat: 55.79, lng: 37.61 }, env, T + 1000)]);
+      eq(a.key, 'overcast'); eq(b.key, 'overcast'); eq(n, 1, 'одновременные запросы в клетке — один запрос к сервису');
+      eq((await GameCore.weather({ lat: 55.702, lng: 37.699 }, env, T + 50 * 60000)).key, 'overcast'); eq(n, 1, 'та же клетка и час — из кэша');
+      await GameCore.weather(pos, env, T + 60 * 60000); eq(n, 2, 'новый час — новый запрос');
+      await GameCore.weather({ lat: 55.851, lng: 37.618 }, env, T); eq(n, 3, 'соседняя клетка — свой запрос');
+      // неудача: модель, повтор запроса — не раньше чем через 5 минут
+      let f = 0;
+      const bad = { weather: async () => { f++; return null; } }, q = { lat: 60.01, lng: 30.31 };
+      eq((await GameCore.weather(q, bad, T)).src, 'sim'); eq(f, 1);
+      eq((await GameCore.weather(q, bad, T + 60000)).key, Sky.simulate(q).key); eq(f, 1, 'неудача помнится — сервис не дёргается на каждое действие');
+      await GameCore.weather(q, bad, T + 5 * 60000 + 1); eq(f, 2, 'через 5 минут — новая попытка');
+      eq(await GameCore.weather(null, env, T), null, 'без места — без погоды');
+    } finally { GameCore.WX.clear(); }
+  });
+  test('Телефон 5.2: погода от сервера, настройки «Настоящая погода» нет', () => {
+    const w0 = Sky.w, pos0 = MapView.pos, emit = Bus.emit, got = [];
+    Bus.emit = (ev, d) => { if (ev === 'weather') got.push(d); };
+    try {
+      ok(!('weather' in Cfg.DEFAULTS) && !('weather' in Cfg.s), 'настройки погоды нет');
+      ok(!Sky.fetchReal, 'телефон сам в сервис погоды не ходит');
+      MapView.pos = { lat: 55.75, lng: 37.62 };
+      Sky.w = Sky.simulate(MapView.pos); // до ответа сервера — модель
+      Sky.set({ key: 'rain', temp: 5, src: 'real' });
+      eq(Sky.w.key, 'rain'); eq(Sky.w.src, 'real'); eq(got.length, 1); eq(got[0].changed, false, 'модель → погода сервера: без всплывашки');
+      Sky.set({ key: 'rain', temp: 5, src: 'real' }); eq(got.length, 1, 'та же погода — без лишних обновлений');
+      Sky.set({ key: 'snow', temp: -1, src: 'real' }); eq(got.length, 2); eq(got[1].changed, true);
+      Sky.set({ key: 'нет-такой' }); eq(Sky.w.key, 'snow', 'неизвестная погода не принимается');
+      const S0 = S.d; S.d = S.d || {};
+      try { Sky.update(true); eq(Sky.w.key, 'snow', 'свежая погода сервера не заменяется моделью'); } finally { S.d = S0; }
+    } finally { Sky.w = w0; MapView.pos = pos0; Bus.emit = emit; }
   });
   atest('Сервер: Лига — уровень, команда, жетоны; турнира с машинами больше нет (4.16)', async () => {
     const A = await newPlayer('uh', 55.70, 37.58, 'Искра');
@@ -2972,7 +3033,16 @@
       ok(Atlas.el && !Atlas.el.querySelector('.at-x'), 'в первый раз — без крестика');
       Atlas.back(); ok(Atlas.el, '«Назад» не закрывает первое появление');
       Atlas.select('europe'); Atlas.toLand(); Atlas.choose(0);
-      await Atlas.go(55.7539, 37.6208, 'Москва');
+      // 5.2: шаг — только после подтверждения; «Отмена» — шага нет, Атлас открыт
+      let p0 = Atlas.go(55.7539, 37.6208, 'Москва', 'Красная площадь');
+      await wait(30);
+      const ask = Atlas.el.querySelector('.at-cd:not(.out)');
+      ok(ask && /Начать путь здесь/.test(ask.textContent) && /Москва/.test(ask.textContent) && /Красная площадь/.test(ask.textContent), 'первый выбор — «Начать путь здесь?» с городом и местом');
+      ask.querySelector('.at-no').click(); await p0;
+      eq(calls.length, 0, 'отмена — без шага'); ok(Atlas.el, 'после отмены Атлас открыт');
+      p0 = Atlas.go(55.7539, 37.6208, 'Москва', 'Красная площадь');
+      await wait(30);
+      Atlas.el.querySelector('.at-cd:not(.out) .at-ok').click(); await p0;
       await wait(700);
       eq(calls.length, 1); eq(calls[0].o.first, true, 'первое появление — first'); ok(!calls[0].o.item, 'без Врат');
       ok(!Atlas.el, 'после шага Атлас закрылся');
@@ -2982,21 +3052,26 @@
       ok(Atlas.el.querySelector('.at-x'), 'дальше Атлас можно закрыть');
       let p = Atlas.go(35.6595, 139.7005, 'Токио');
       await wait(30);
-      const cd = Atlas.el.querySelector('.at-cd');
+      const cd = Atlas.el.querySelector('.at-cd:not(.out)');
       ok(cd && /20 мин/.test(cd.textContent) && !cd.querySelector('.at-use'), 'Врата отдыхают — ждать 20 мин, предмета нет');
+      eq(Atlas.el.querySelectorAll('.at-cd').length, 1, 'Врата отдыхают — одно окно (оно же подтверждение)');
       cd.querySelector('.at-wait').click(); await p;
       eq(calls.length, 1, 'подождать — без шага');
       // с Вратами Перепутицы — шаг с item: true
       Walk.gates = () => 2;
       p = Atlas.go(35.6595, 139.7005, 'Токио');
       await wait(30);
-      const use = Atlas.el.querySelector('.at-cd .at-use');
+      const use = Atlas.el.querySelector('.at-cd:not(.out) .at-use');
       ok(use && /у тебя 2/.test(use.textContent), 'предложены Врата Перепутицы');
       use.click(); await p; await wait(700);
       eq(calls.length, 2); eq(calls[1].o.item, true, 'шаг за Врата — item: true'); ok(!calls[1].o.first);
       // отказ сервера — Атлас остаётся, игрок видит причину
       Walk.cooldownLeft = () => 0; Walk.teleport = async () => ({ ok: false, error: 'Такого места нет на карте' });
-      Atlas.open(); await Atlas.go(0, 0, 'x'); await wait(600);
+      Atlas.open(); p = Atlas.go(0, 0, '');
+      await wait(30);
+      const own = Atlas.el.querySelector('.at-cd:not(.out)');
+      ok(own && /Шагнуть во Врата/.test(own.textContent) && /Выбранная точка/.test(own.textContent) && /30 мин/.test(own.textContent), 'своё место — подтверждение с точкой и перезарядкой');
+      own.querySelector('.at-ok').click(); await p; await wait(600);
       ok(Atlas.el && toasts.some(t => /нет на карте/.test(t)), 'отказ — сообщение, Атлас открыт');
     } finally {
       if (Atlas.el) { Atlas.opts.first = false; Atlas.close(); }

@@ -67,7 +67,7 @@ const Tut = {
     path: ['.tile[data-k="path"]', '#menuBtn'],
   },
   // важное, что наставник не должен закрывать (кроме самой цели)
-  KEEP: ['.hud-top', '#tracker', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots', '.screen .spring-disc'],
+  KEEP: ['.hud-top', '#tracker', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.rm-h > span', '.menu-dots', '.screen .spring-disc'],
   coach(st) {
     if (!this.el) {
       this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${UI.menuIcon('orderbook')}</div>
@@ -131,12 +131,15 @@ const Tut = {
             : mode === 'go' ? ru`Это источник! Смахни по кругу или нажми <b>«Зачерпнуть силу»</b> — он поделится с тобой силой.` : this._hint;
     }
     let tr = null;
+    // 5.2: в открытом меню указатель над разделом короче (меню стоит на своём месте, над ним — компактная подсказка)
+    const inMenu = !!U.$$('.rm-wrap').find(s => !s.classList.contains('out'));
+    this.ring.classList.toggle('in-menu', inMenu);
     if (t && t.el) {
       tr = t.el.getBoundingClientRect();
       const pad = 6, R = this.ring.style, round = t.el.matches('#menuBtn, .tut-ring, .btn-round, .back');
       R.left = (tr.left - pad) + 'px'; R.top = (tr.top - pad) + 'px'; R.width = (tr.width + pad * 2) + 'px'; R.height = (tr.height + pad * 2) + 'px';
       this.ring.classList.toggle('round', round);
-      this.ring.classList.toggle('below', tr.top < 96 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--st')) || 0)); // у верхнего края — указатель снизу
+      this.ring.classList.toggle('below', tr.top < (inMenu ? 48 : 96) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--st')) || 0)); // у верхнего края — указатель снизу
       this.ring.classList.remove('hidden');
     } else this.ring.classList.add('hidden');
     // место: сверху или снизу — где меньше перекрытий с целью (втройне важна) и важными элементами
@@ -147,7 +150,8 @@ const Tut = {
       keep.push([tr, 3]);
       // указатель над целью (или под ней у верхнего края) тоже не закрываем
       const below = this.ring.classList.contains('below');
-      keep.push([{ left: tr.left + tr.width / 2 - 18, right: tr.left + tr.width / 2 + 18, top: below ? tr.bottom : tr.top - 60, bottom: below ? tr.bottom + 60 : tr.top }, 2]);
+      const ph = inMenu ? 48 : 60;
+      keep.push([{ left: tr.left + tr.width / 2 - 18, right: tr.left + tr.width / 2 + 18, top: below ? tr.bottom : tr.top - ph, bottom: below ? tr.bottom + ph : tr.top }, 2]);
     }
     const cost = pos => {
       this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);

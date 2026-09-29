@@ -22,7 +22,7 @@ const Game = {
     if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);
     const sb = await this.timed(Cloud.client()).catch(() => { throw new PlayError(ru`Нет связи с сервером игры — проверь интернет`); });
     const p = Walk.wire(); // 5.1: место Ловчего (джойстик и Атлас) — без GPS
-    const body = { a: actions, rev: this.rev, tz: -new Date().getTimezoneOffset(), wx: Sky.w ? Sky.w.key : null, pos: p, v: APP_VERSION };
+    const body = { a: actions, rev: this.rev, tz: -new Date().getTimezoneOffset(), pos: p, v: APP_VERSION }; // 5.2: погоду решает сервер — телефон её не присылает
     let res;
     for (let attempt = 0; attempt < 2; attempt++) {
       const headers = await Cloud.headers(); // в закрытом контуре — ключ доступа (спросит окном, если его нет)
@@ -109,6 +109,7 @@ const Game = {
     else if (res.patch) S.d = Diff.apply(S.d, res.patch);
     if (res.rev != null) this.rev = res.rev;
     if (S.d) S.migrate();
+    if (res.wx) Sky.set(res.wx); // 5.2: погода — от сервера (та же, по которой он отбирает духов и считает бои)
     this._snap = DEV && S.d ? JSON.stringify(S.d) : null;
     (res.events || []).forEach(([ev, data]) => this.emit(ev, data));
     Tut.sync(); // сервер мог перевести обучение на следующий шаг

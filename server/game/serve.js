@@ -452,23 +452,17 @@ const Auth = {
 };
 
 // Доступ к общим таблицам для GameCore (от имени сервера, в пределах одного игрока uid)
-// 4.15: настоящая погода для проверки погоды телефона — Open-Meteo (как у телефона), кэш по точке на 20 минут
-const WX = new Map();
+// 5.2: настоящая погода — её решает сервер (телефон в Open-Meteo больше не ходит). Координаты — центр клетки ~0.1°
+// (GameCore.weather: там же кэш по клетке и часу, один запрос на клетку в час). Нет ответа за 3 с — null (модель)
 async function realWeather(lat, lng) {
-  const k = lat.toFixed(2) + ',' + lng.toFixed(2), c = WX.get(k), now = Date.now();
-  if (c && now - c.at < 20 * 60000) return c.keys;
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 3000);
   try {
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&current=weather_code,wind_speed_10m`, { signal: ctrl.signal });
-    if (!r.ok) return c ? c.keys : null;
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&current=weather_code,wind_speed_10m,temperature_2m`, { signal: ctrl.signal });
+    if (!r.ok) return null;
     const cur = (await r.json()).current;
-    if (!cur) return c ? c.keys : null;
-    const key = Sky.fromCode(cur.weather_code, cur.wind_speed_10m);
-    const keys = c && c.keys[0] !== key ? [key, c.keys[0]] : [key];
-    if (WX.size > 5000) WX.clear();
-    WX.set(k, { keys, at: now });
-    return keys;
-  } catch (e) { return c ? c.keys : null; } finally { clearTimeout(t); }
+    if (!cur || cur.weather_code == null || !Number.isFinite(+cur.weather_code)) return null;
+    return { key: Sky.fromCode(+cur.weather_code, +cur.wind_speed_10m || 0), temp: Number.isFinite(+cur.temperature_2m) && cur.temperature_2m !== null ? Math.round(+cur.temperature_2m) : null };
+  } catch (e) { return null; } finally { clearTimeout(t); }
 }
 
 /* ---------- 4.28: общий Алатырь (029_alatyr_world.sql) ----------
@@ -993,7 +987,7 @@ async function play(uid, body, env) {
       if (res.rl) await release({ ...srv, rl: res.rl });
       return R({ ok: false, error: res.error, rev: row ? row.rev : 0 });
     }
-    if (res.reset) return R({ ok: true, reset: true, results: res.results, events: [], now: res.now });
+    if (res.reset) return R({ ok: true, reset: true, results: res.results, events: [], now: res.now, wx: res.wx || null });
     // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
     const ops = row && res.data ? Diff.make(row.data, res.data) : null;
     const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
@@ -1003,7 +997,7 @@ async function play(uid, body, env) {
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
     const patch = !res.full && row && body.rev === row.rev ? ops : null;
-    return R({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now });
+    return R({ ok: true, rev, patch, data: patch ? undefined : res.data, results: res.results, events: res.events, now: res.now, wx: res.wx || null });
   } catch (e) {
     console.error(String(e && e.stack || e));
     return R({ ok: false, error: ru`Ошибка сервера — попробуй ещё раз` }, 500);

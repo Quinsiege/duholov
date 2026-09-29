@@ -2708,6 +2708,12 @@ body.stage-cover :is(#hud, #wxfx, #mapAttr),
 body.stage-cover:not(.stage-glass) :is(#map, #mapShade, #mapHaze),
 body.stage-cover.eco :is(#map, #mapShade, #mapHaze) { visibility: hidden !important; content-visibility: hidden; }
 .stage-under.stage-hid { visibility: hidden !important; }
+/* 5.2: под стеклом (экраны меню, Источник, Атлас) — только подложка карты: плитки земли, дома и подписи улиц.
+   Значки духов и мест, Ловчий, его круг и зоны духов, всплывающие подписи не рисуются (гаснут под уже проявившимся стеклом,
+   а когда сцена закрылась — сразу на месте) */
+#map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-shadow-pane, .leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane) { transition: none; }
+body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-shadow-pane, .leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane) {
+  opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; }
 /* частицы поимки поднимаются сдвигом (transform), а не через top — тот же путь, но без пересчёта раскладки каждый кадр */
 @supports (height: 1cqh) {
   .enc-motes { position: absolute; inset: 0; container-type: size; pointer-events: none; }
@@ -5094,6 +5100,7 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 /* «Своё место» — настоящая карта; то же небо, карта в стеклянной кромке, внизу — стеклянная панель */
 .at-pick { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding-top: var(--st); background: inherit;
   transform: translateY(100%); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+.atlas:has(> .at-pick.in) > .at-head { visibility: hidden; } /* фон «Своего места» — то же полупрозрачное стекло: заголовок Атласа не просвечивает сквозь его заголовок */
 .at-pick.in { transform: none; }
 .at-pick .at-head::after { content: ''; flex: none; width: 40px; } /* заголовок — по центру, как у Атласа */
 .at-pmap { position: relative; flex: 1; min-height: 0; margin: 8px 10px 0; border-radius: 22px; overflow: hidden; background: #aad3df; box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
@@ -5107,27 +5114,55 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .at-phint { margin: 0 0 8px; min-height: 20px; text-align: center; font-size: 13.5px; color: #ece6fb; text-shadow: 0 1px 2px rgba(12, 6, 32, .5); }
 .at-pin i { display: block; width: 26px; height: 26px; margin: 3px auto 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #7c4a0b;
   background: radial-gradient(circle at 50% 50%, #5eead4 0 26%, #fde68a 30% 100%); box-shadow: 0 4px 10px rgba(0, 0, 0, .45), 0 0 14px rgba(251, 191, 36, .6); }
-/* перезарядка Врат — окно жидкого стекла, как окна игры (.modal): под ним Атлас размыт */
-.at-cd { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity .22s;
-  background: rgba(6, 3, 16, .42); -webkit-backdrop-filter: blur(8px) saturate(1.2); backdrop-filter: blur(8px) saturate(1.2); }
-.at-cd.in { opacity: 1; }
-.at-cdb { position: relative; width: min(370px, calc(100% - 20px)); margin-bottom: calc(14px + var(--sb)); padding: 18px 16px 14px; border-radius: 26px; text-align: center;
-  display: flex; flex-direction: column; gap: 8px; color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55);
-  background: var(--g-sheen), radial-gradient(90% 50% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(40, 28, 86, .56), rgba(16, 10, 38, .64));
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 24px 60px rgba(0, 0, 0, .5);
-  transform: translateY(24px); transition: transform .25s cubic-bezier(.2, .9, .3, 1.2); }
-.at-cd.in .at-cdb { transform: none; }
-.at-cd.out { opacity: 0; }
-.at-cdb b { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: #fde68a; text-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
-.at-cdb p { margin: 0; font-size: 14.5px; color: #f4f0ff; }
-.at-cdb p.small { font-size: 13px; color: #d9cff2; }
-.at-cdb .rune { height: 58px; padding: 0 22px; }
-.at-cdb .rune .rn-t { font-size: 15.5px; line-height: 1.15; text-align: center; }
-.at-cdr { position: relative; width: 76px; height: 76px; margin: 0 auto 2px; }
+/* 5.2: подтверждение шага во Врата и «Врата отдыхают» — на весь экран: матовое полупрозрачное стекло, как у экранов игры
+   (Атлас под ним сильно размыт), без отдельной плашки. Посередине — значок Врат, заголовок, крупно куда, строка про перезарядку;
+   внизу — кнопки. Появляется плавно; в режиме экономии — плотный фон без размытия */
+/* размытие — у самого Атласа под окном (Atlas.askBox: filter его слоёв; backdrop-filter внутри Атласа, который сам под стеклом,
+   не срабатывает), здесь — тонировка стекла; проявляется плавно вместе с размытием */
+.at-cd { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; }
+.at-cd.out { pointer-events: none; }
+.at-cdb { position: relative; z-index: 0; flex: 1; display: flex; flex-direction: column; align-items: center; width: 100%;
+  padding: calc(28px + var(--st)) max(20px, calc(50% - 210px)) calc(18px + var(--sb)); text-align: center; color: #fff; text-shadow: 0 1px 3px rgba(12, 6, 32, .6), 0 0 12px rgba(12, 6, 32, .35);
+  background-color: rgba(20, 12, 48, 0); transition: background-color .32s ease; }
+.at-cdb::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity .32s ease;
+  background: radial-gradient(90% 50% at 50% 100%, rgba(253, 224, 71, .12), transparent 60%), radial-gradient(80% 45% at 50% 34%, rgba(139, 92, 246, .24), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%); }
+.at-cdb::after { content: none; }
+.at-cd.in .at-cdb { background-color: rgba(20, 12, 48, .52); }
+.at-cd.in .at-cdb::before { opacity: 1; }
+.at-cd.in.out .at-cdb { background-color: rgba(20, 12, 48, 0); transition-duration: .24s; }
+.at-cd.in.out .at-cdb::before { opacity: 0; transition-duration: .24s; }
+.at-cdm { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  opacity: 0; transform: translateY(18px) scale(.97); transition: opacity .35s ease .05s, transform .45s cubic-bezier(.2, .9, .3, 1.15) .05s; }
+/* кнопки — сразу под названием места, одним блоком с ним */
+.at-cdk { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 360px; margin-top: 14px; opacity: 0; transform: translateY(16px); transition: opacity .3s ease .14s, transform .4s cubic-bezier(.2, .9, .3, 1) .14s; }
+.at-cdk + .at-okn { margin-top: 12px !important; }
+.at-cdk + .at-oks { margin-top: 10px; }
+.at-cd.in :is(.at-cdm, .at-cdk) { opacity: 1; transform: none; }
+.at-cd.in.out :is(.at-cdm, .at-cdk) { opacity: 0; transition: opacity .18s ease; }
+.at-cdb b { font-family: var(--f-display); font-weight: 400; font-size: 30px; line-height: 1.12; color: #fde68a; text-shadow: 0 2px 10px rgba(0, 0, 0, .5), 0 0 22px rgba(251, 191, 36, .25); }
+.at-cdt { font-family: var(--f-head); font-weight: 700; font-size: 11.5px; letter-spacing: .18em; text-transform: uppercase; color: #c4b5fd; margin-top: 6px; }
+.at-cdb p { margin: 0; font-size: 15px; color: #f4f0ff; }
+.at-cdb p.small { font-size: 13.5px; color: #e4dcf7; max-width: 320px; }
+.at-cdb .rune { height: 60px; padding: 0 22px; }
+.at-cdb .rune .rn-t { font-size: 16px; line-height: 1.15; text-align: center; }
+/* куда: крупно город, под ним место (или координаты «Своего места») */
+.at-okw { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 10px 0 4px; }
+.at-okc { font-family: var(--f-head); font-weight: 800; font-size: 26px; line-height: 1.15; color: #fff; }
+.at-okw.own .at-okc { font-size: 21px; }
+.at-okp { font-size: 17px; line-height: 1.3; color: #ece6fb; }
+.at-okll { font-size: 14px; color: #d9cff2; font-variant-numeric: tabular-nums; }
+.at-cdb p.at-okn { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 5px 14px; border-radius: 999px; font-size: 14px; color: #ece6fb;
+  background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1px rgba(253, 230, 138, .22); }
+.at-cdb p.at-okn.rest { color: #fde68a; }
+.at-cdr { position: relative; width: 104px; height: 104px; margin: 0 auto 2px; filter: drop-shadow(0 0 18px rgba(251, 191, 36, .28)); }
 .at-cdr > svg:first-child { width: 100%; height: 100%; transform: rotate(-90deg); }
-.at-cdr .bg { fill: none; stroke: rgba(255, 255, 255, .1); stroke-width: 5; }
-.at-cdr .fg { fill: none; stroke: #fde68a; stroke-width: 5; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
-.at-cdr > :not(:first-child) { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+.at-cdr .bg { fill: none; stroke: rgba(255, 255, 255, .12); stroke-width: 4.5; }
+.at-cdr .fg { fill: none; stroke: #fde68a; stroke-width: 4.5; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
+.at-cdr > :not(:first-child) { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; }
+@media (max-height: 700px) { .at-cdr { width: 84px; height: 84px; } .at-cdr > :not(:first-child) { width: 44px; height: 44px; margin: -22px 0 0 -22px; } .at-cdb b { font-size: 26px; } .at-okc { font-size: 23px; } }
+.eco .at-cd.in .at-cdb { background-color: rgba(18, 11, 44, .95); }
+.calm .at-cd :is(.at-cdm, .at-cdk) { transform: none; transition: opacity .2s ease; }
 /* портал Врат Перепутицы */
 .at-gate { position: fixed; inset: 0; z-index: 2800; display: grid; place-items: center; overflow: hidden; transition: opacity .9s ease; }
 .at-gate.out { opacity: 0; pointer-events: none; }
@@ -5182,7 +5217,7 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .calm .atlas, .calm .at-panel, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
 .eco .ag-ring .o, .eco .at-cdr .fg, .eco .at-cities.on { filter: none; }
 /* экономия батареи: стекло без живого размытия — плотнее, чтобы текст читался */
-.eco .at-pbar, .eco .at-cdb { -webkit-backdrop-filter: none; backdrop-filter: none;
+.eco .at-pbar { -webkit-backdrop-filter: none; backdrop-filter: none;
   background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(46, 30, 100, .92), rgba(20, 12, 48, .95)); }
 .eco .at-cd, .eco .ag-veil { -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }
@@ -5343,6 +5378,23 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 /* «В сумку»: вещи и опыт слетаются к кнопке, лучи и поручение гаснут */
 .spr2-reward.stow .spr2-loot .loot-item, .spr2-reward.stow .spr2-loot .loot-xp { animation: srcStow .45s cubic-bezier(.55, 0, .75, .35) calc(var(--k, 0) * .06s) both; }
 .spr2-reward.stow .spr2-loot.fly .spr2-rays { opacity: 1; animation: srcRaysOut .4s ease-in forwards; }
+/* 5.2: «В сумку» — Сумка (значок меню: тело с горловиной и откидной клапан) под наградой: открывается, вещи летят в горловину
+   (UI.springBag — анимации через element.animate), клапан закрывается, сумка сжимается */
+.spr2-bag { position: absolute; left: 50%; z-index: 2; pointer-events: none; }
+.spr2-reward.bagging .spr2-loot { z-index: 3; } /* вещи летят поверх сумки и тают в горловине */
+.spr2-bag .bg-in { position: absolute; inset: 0; transform-origin: 50% 92%; }
+.spr2-bag .bg-in::before { content: ''; position: absolute; left: 8%; right: 8%; top: 20%; bottom: 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(94, 234, 212, .35), rgba(94, 234, 212, 0)); filter: blur(6px); }
+.spr2-bag :is(.bg-body, .bg-flap) { position: absolute; inset: 0; }
+.spr2-bag svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 6px 10px rgba(8, 4, 24, .55)); }
+.spr2-bag .bg-flap { transform-origin: 50% 36%; transform: perspective(300px) rotateX(0deg); transition: transform .32s cubic-bezier(.3, 1.3, .5, 1), filter .32s; }
+.spr2-bag.open .bg-flap { transform: perspective(300px) rotateX(152deg); filter: brightness(.72); }
+.spr2-bag .bg-flap svg { filter: none; }
+.spr2-bag .bg-mouth { opacity: 0; transition: opacity .15s; }
+.spr2-bag.open .bg-mouth { opacity: 1; transition-delay: .08s; }
+.spr2-bag .bg-glow { position: absolute; left: 22%; right: 22%; top: 30%; height: 22%; border-radius: 50%; opacity: 0; transform: scale(.4);
+  background: radial-gradient(closest-side, rgba(255, 247, 209, .95), rgba(253, 224, 71, .55) 45%, rgba(253, 224, 71, 0)); mix-blend-mode: screen; transition: opacity .3s, transform .35s cubic-bezier(.2, 1.4, .5, 1); }
+.spr2-bag.open .bg-glow { opacity: 1; transform: scale(1.35); }
+.spr2.stow .spring-go { animation: none; }
 .spr2-reward.stow .spr2-after { opacity: 0; transition: opacity .3s ease; }
 
 /* ===== 5.1.6: меню разделами ===== */
@@ -5358,7 +5410,7 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .rm-h > span { overflow: hidden; text-overflow: ellipsis; }
 .rm-in .rm-h { opacity: 1; transform: none; transition: opacity .3s ease var(--hd, 0ms), transform .3s ease var(--hd, 0ms); }
 .rm-back .rm-h { opacity: 0; transition: opacity .1s; }
-.rm-row { display: flex; justify-content: center; gap: 0 8px; }
+.rm-row { display: flex; gap: 0 8px; }
 .rm-row > .rm-it { flex: 0 0 80px; }
 .rm-secs .rm-it { gap: 5px; }
 .rm-secs .rm-c { width: 58px; height: 58px; }
@@ -5369,11 +5421,23 @@ html.big-text .rm-secs .rm-it .rm-l { font-size: 13px; }
 /* «с N ур.» — плашкой на нижнем краю кружка, а не лишней строкой: ряды с замками не выше остальных */
 .rm-secs .rm-it .tile-lvl { position: absolute; top: 47px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); margin: 0; padding: 0 6px; border-radius: 8px; white-space: nowrap;
   font-size: 10px; line-height: 14px; color: #fde68a; background: rgba(12, 7, 32, .88); border: 1px solid rgba(253, 230, 138, .45); text-shadow: none; }
-/* обучение: подсказка сверху — панель начинается под ней (высоту подсказки UI.menu кладёт в --rm-co) */
+/* 5.2: обучение — меню стоит там же, где без него; подсказка при открытом меню компактная (без значка книги, мельче текст)
+   и встаёт над разделами, указатель над подсвеченным разделом — короче. Только на совсем низком экране, где сверху
+   места нет (360×640), панель начинается под подсказкой, как раньше (UI.menu: .rm-tut, высота подсказки — в --rm-co) */
 .sheet-wrap.rm-wrap.rm-tut { padding-top: calc(var(--st) + var(--rm-co, 110px) + 52px); }
+body.rm-open #coach.tut-coach { padding: 7px 12px 8px; gap: 0; }
+body.rm-open #coach.tut-coach.pos-top { top: calc(6px + var(--st)); }
+body.rm-open #coach.tut-coach :is(.coach-ava, .coach-top) { display: none; } /* ход обучения виден по полоске */
+body.rm-open #coach.tut-coach .coach-text { font-size: 13px; line-height: 1.32; }
+body.rm-open #coach.tut-coach .coach-bar { height: 3px; margin-top: 5px; }
+body.rm-open #coach.tut-coach .coach-ok { display: inline-flex; float: right; margin: 0 0 0 10px; padding: 1px 0 0; font-size: 13.5px; } /* «Понятно» — в конце текста, а не отдельной строкой */
+#tutRing.in-menu i.tr-p { top: -40px; width: 24px; height: 32px; margin-left: -12px; }
+#tutRing.in-menu.below i.tr-p { top: auto; bottom: -40px; }
 @media (max-width: 370px) { .rm-row { gap: 0 2px; } .rm-row > .rm-it { flex-basis: 82px; } .rm-secs .rm-it .rm-l { font-size: 11.5px; } .rm-h { margin-left: 4px; margin-right: 4px; } }
-@media (max-height: 760px) {
-  .sheet-wrap.rm-wrap { padding-top: calc(40px + var(--st)); }
+/* 5.2: плотнее и на телефонах средней высоты (до 870: 390×844, 412×~800 в приложении) — меню целиком помещается над кнопкой,
+   а сверху остаётся место для подсказки обучения и всплывашек; с обучением и без — одно и то же место */
+@media (max-height: 870px) {
+  .sheet-wrap.rm-wrap { padding-top: calc(40px + var(--st)); padding-bottom: calc(114px + var(--sb)); }
   .rm-grid.rm-secs { gap: 6px; }
   .rm-h { margin-bottom: 5px; }
   .rm-secs .rm-c { width: 52px; height: 52px; }
