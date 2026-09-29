@@ -26,90 +26,98 @@
   <link rel="dns-prefetch" href="https://oauth.telegram.org">
   <!-- 3.31.1: экран загрузки рисуется сразу — его стили здесь, а таблицы стилей игры подключаются в body после него -->
   <style>
-    /* 5.2: экран загрузки — «жидкое стекло», как весь UI игры (style.css: --g-*, .modal, .toast). Ночное небо с цветными туманами
-       (стеклу есть что преломлять), знак игры, стеклянные панели: совет Ордена и прогресс; полоса — стеклянный жёлоб с золотой заливкой.
-       Все стили экрана загрузки — здесь (style.css подключается позже, и экран не должен «прыгнуть», когда она подгрузится) */
+    /* 4.4: экран загрузки — ночная сцена (как на экране входа, js/scene.js), знак Ордена, стеклянная панель с советом и прогрессом.
+       Картинка из scenes/scenes.json (loading.images) плавно ложится поверх нарисованной сцены (Scene.loading) */
     :root { --bg: #0b0620; --text: #f4f1ff; --muted: #b3aacb; --line: rgba(255, 255, 255, .12); --gold: #fbbf24; --gold2: #fde047; --teal: #5eead4;
       --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px); color-scheme: dark; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 15px; }
-    .loader, .loader * { box-sizing: border-box; }
-    .loader { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden;
-      padding: calc(24px + var(--st)) 16px calc(20px + var(--sb)); text-align: center; transition: opacity .45s; user-select: none; -webkit-user-select: none;
-      background: radial-gradient(90% 45% at 50% -8%, rgba(167, 139, 250, .3), transparent 70%),
-        url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%3E%3Cpath%20d%3D%22M0%200L18%2018M18%200L0%2018%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.035%22%20stroke-width%3D%22.8%22%2F%3E%3Cpath%20d%3D%22M9%20-1.6l1.6%201.6-1.6%201.6-1.6-1.6zM9%2016.4l1.6%201.6-1.6%201.6-1.6-1.6zM-0%207.4l1.6%201.6-1.6%201.6-1.6-1.6zM18%207.4l1.6%201.6-1.6%201.6-1.6-1.6z%22%20fill%3D%22%23fff%22%20fill-opacity%3D%22.045%22%2F%3E%3C%2Fsvg%3E") center top / 18px 18px,
-        linear-gradient(180deg, #2a1a5c 0%, #1d1146 45%, #140b33 100%); }
+    .loader { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: space-between; box-sizing: border-box; overflow: hidden;
+      padding: calc(24px + var(--st)) 18px calc(22px + var(--sb)); background: #0b0620; text-align: center; transition: opacity .45s; user-select: none; -webkit-user-select: none; }
     .loader.out { opacity: 0; pointer-events: none; }
-    /* цветные туманы Нави — медленно плывут под стеклом (тот же фон у экрана входа: style.css, .onb.lg .lg-scene) */
-    .ld-scene { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-      background: radial-gradient(55% 30% at 6% 40%, rgba(236, 72, 153, .2), transparent 70%), radial-gradient(50% 28% at 98% 58%, rgba(56, 189, 248, .18), transparent 70%),
-        radial-gradient(70% 30% at 85% 102%, rgba(45, 212, 191, .2), transparent 70%), radial-gradient(70% 26% at 10% 98%, rgba(167, 139, 250, .26), transparent 70%); }
-    .ld-scene::before, .ld-scene::after { content: ""; position: absolute; border-radius: 50%; will-change: transform; }
-    .ld-scene::before { left: -22vw; bottom: 4%; width: 78vw; height: 78vw; max-width: 460px; max-height: 460px;
-      background: radial-gradient(circle, rgba(236, 72, 153, .34), rgba(168, 85, 247, .16) 45%, transparent 70%); animation: ldFogA 16s ease-in-out infinite alternate; }
-    .ld-scene::after { right: -20vw; bottom: 22%; width: 70vw; height: 70vw; max-width: 420px; max-height: 420px;
-      background: radial-gradient(circle, rgba(45, 212, 191, .3), rgba(56, 189, 248, .14) 45%, transparent 70%); animation: ldFogB 19s ease-in-out infinite alternate; }
-    @keyframes ldFogA { to { transform: translate(18vw, -6vh) scale(1.12); } }
-    @keyframes ldFogB { to { transform: translate(-16vw, 8vh) scale(.92); } }
-    .ld-bg, .ld-shade { display: none; }
+    .ld-scene, .ld-bg, .ld-shade { position: absolute; inset: 0; pointer-events: none; }
+    .ld-scene { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 3l7 7-7 7-7-7z M0 21l7 7-7 7 M36 21l-7 7 7 7' fill='none' stroke='%23fff' stroke-opacity='.035' stroke-width='1'/%3E%3C/svg%3E"), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .32), transparent 70%), linear-gradient(180deg, #261a4f, #0c0720); } /* 4.6: фон как во вкладках игры */
+    .ld-bg { background: center / cover no-repeat; opacity: 0; transform: scale(1.06); transition: opacity 1s, transform 12s ease-out; }
+    .ld-bg.on { opacity: 1; transform: scale(1); }
+    .ld-shade { background: linear-gradient(180deg, rgba(6, 3, 18, .45) 0%, rgba(6, 3, 18, 0) 28%, rgba(6, 3, 18, 0) 46%, rgba(6, 3, 18, calc(.6 + var(--ld-shade, .25) * .4)) 100%); }
     .ld-logo { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
     /* 4.22: логотип — картинка (надпись в дымке Нави) */
     .logo-img { display: block; width: min(88vw, 400px); height: auto; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, .45)); }
     .ld-logo .logo-img { animation: ldFloat 3.6s ease-in-out infinite; }
     @keyframes ldFloat { 50% { transform: translateY(-6px); } }
+    .ld-logo h1 { margin: 0; padding: 4px 8px 0; font-family: 'Duholov Display', 'Rubik', system-ui, sans-serif; font-size: 56px; line-height: 1; font-weight: 700; letter-spacing: 1px; color: transparent;
+      background: linear-gradient(100deg, #fde047 0%, #fbbf24 38%, #fffbeb 48%, #fbbf24 58%, #f59e0b 100%); background-size: 250% 100%;
+      -webkit-background-clip: text; background-clip: text; animation: ldGlint 4.5s ease-in-out infinite;
+      filter: drop-shadow(0 3px 0 rgba(80, 28, 4, .9)) drop-shadow(0 6px 22px rgba(251, 191, 36, .45)); }
+    @keyframes ldGlint { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
     .ld-logo p { margin: 0; font-family: 'Rubik', system-ui, sans-serif; font-size: 17px; color: #eee6ff; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
-    .ld-foot { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
-    /* стеклянные панели — как окна и всплывашки игры: заливка, отсвет сверху, кромка (--g-rim) отдельным слоем */
-    .ld-hint, .ld-prog { position: relative; border-radius: 22px; color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25);
-      background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), radial-gradient(120% 70% at 25% -15%, rgba(255, 255, 255, .16), transparent 55%),
-        linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 60%), rgba(24, 14, 56, .42);
-      -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .32), inset 1px 0 0 rgba(255, 255, 255, .1), inset -1px 0 0 rgba(255, 255, 255, .04), inset 0 -1px 0 rgba(255, 255, 255, .09),
-        inset 0 0 16px rgba(255, 255, 255, .05), 0 10px 28px rgba(0, 0, 0, .35); }
-    .ld-hint::after, .ld-prog::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none;
-      background: linear-gradient(135deg, rgba(255, 255, 255, .9) 0%, rgba(255, 255, 255, .35) 16%, rgba(255, 255, 255, .06) 38%, rgba(255, 255, 255, .04) 60%, rgba(255, 255, 255, .28) 84%, rgba(255, 255, 255, .75) 100%);
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-    /* высота — под четыре строки совета: столько же займёт самая длинная подсказка, когда loader.js подхватит экран (без скачка) */
-    .ld-tip { min-height: 140px; display: flex; flex-direction: column; justify-content: center; gap: 7px; padding: 14px 48px 15px; }
-    .ld-tip small { font-family: 'Rubik', system-ui, sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #fde68a; }
-    .ld-tip p { margin: 0; font-family: 'Rubik', system-ui, sans-serif; font-size: 15.5px; line-height: 1.42; color: #fff; }
+    .ld-foot { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 14px; padding: 16px; box-sizing: border-box; border-radius: 26px;
+      background: linear-gradient(180deg, rgba(34, 20, 68, .55), rgba(14, 8, 32, .8)); border: 1px solid rgba(255, 255, 255, .13);
+      -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: 0 24px 60px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .09); }
+    .ld-hint { position: relative; }
+    .ld-tip { min-height: 92px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 4px 38px; }
+    .ld-tip small { font-family: 'Rubik', system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gold2); }
+    .ld-tip p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #efeaff; }
     .ld-tip p.in { animation: ldIn .35s ease-out; }
     /* высота подсказки — по самой длинной (loader.js кладёт их все невидимыми в одну клетку) */
     .ld-tw { display: grid; } .ld-tw > p { grid-area: 1 / 1; align-self: center; } .ld-tw > .ld-ghost { visibility: hidden; }
     @keyframes ldIn { from { opacity: 0; transform: translateY(6px); } }
-    /* ‹ › — круглые стеклянные кнопки, как значки меню */
-    .ld-arrow { position: absolute; top: 50%; z-index: 1; width: 34px; height: 34px; margin: -17px 0 0; padding: 0 0 3px; display: grid; place-items: center; border-radius: 50%;
-      font: 700 22px/1 'Rubik', system-ui, sans-serif; color: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .12s;
-      border: 1px solid rgba(255, 255, 255, .3); background: linear-gradient(180deg, rgba(255, 255, 255, .24), rgba(255, 255, 255, .06)), rgba(40, 24, 90, .3);
-      box-shadow: 0 4px 10px rgba(8, 4, 24, .25), inset 0 1px 1px rgba(255, 255, 255, .5); text-shadow: 0 1px 2px rgba(8, 4, 24, .6); }
-    .ld-arrow.prev { left: 8px; } .ld-arrow.next { right: 8px; }
-    .ld-arrow:active { transform: scale(.9); }
+    .ld-arrow { position: absolute; top: 50%; margin-top: -18px; width: 34px; height: 36px; padding: 0; border: 0; background: none; font: inherit; font-size: 28px; line-height: 1;
+      color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .ld-arrow.prev { left: -4px; } .ld-arrow.next { right: -4px; }
+    .ld-arrow:active { transform: scale(.88); color: var(--text); }
     .ld-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 6px; }
-    .ld-dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .28); box-shadow: 0 1px 2px rgba(8, 4, 24, .35); cursor: pointer; transition: width .2s, background .2s; }
-    .ld-dots i.on { width: 18px; background: linear-gradient(90deg, #fde68a, #fbbf24); box-shadow: 0 0 8px rgba(251, 191, 36, .45); }
-    .ld-prog { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 15px; }
-    .ld-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; min-height: 18px; }
-    .ld-text { font-family: 'Rubik', system-ui, sans-serif; font-size: 14px; color: #ece6fb; text-align: left; }
-    .ld-pct { min-width: 44px; text-align: right; font-family: 'Rubik', system-ui, sans-serif; font-size: 15px; font-weight: 700; color: #fde68a; font-variant-numeric: tabular-nums; }
-    /* полоса — стеклянный жёлоб, заливка — стекло, тонированное золотом (как главная кнопка игры), по ней бежит блик */
-    .ld-bar { position: relative; height: 14px; padding: 2px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .14);
-      background: linear-gradient(180deg, rgba(8, 4, 24, .38), rgba(255, 255, 255, .06));
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .4), inset 0 -1px 0 rgba(255, 255, 255, .08), 0 1px 0 rgba(255, 255, 255, .06); }
-    .ld-bar > i { display: block; position: relative; height: 100%; width: 0; min-width: 8px; border-radius: 6px; transition: width .35s ease-out;
-      background: linear-gradient(90deg, transparent 0 40%, rgba(255, 255, 255, .5) 50%, transparent 60%) 0 0 / 200% 100% no-repeat,
-        radial-gradient(120% 90% at 25% -20%, rgba(255, 255, 255, .6), transparent 60%),
-        linear-gradient(180deg, rgba(254, 240, 170, .95), rgba(251, 191, 36, .88) 55%, rgba(217, 119, 6, .88));
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -1px 0 rgba(255, 255, 255, .25), 0 0 10px rgba(251, 191, 36, .45); animation: ldShine 2.4s linear infinite; }
-    .ld-bar > i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards, ldShine 2.4s linear infinite; } /* пока грузится код игры — ползёт сам */
+    .ld-dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .2); cursor: pointer; transition: width .2s, background .2s; }
+    .ld-dots i.on { width: 16px; background: var(--gold); }
+    .ld-prog { display: flex; flex-direction: column; gap: 8px; }
+    .ld-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+    .ld-text { font-size: 13px; color: var(--muted); text-align: left; }
+    .ld-pct { font-size: 13px; font-weight: 700; color: var(--gold2); font-variant-numeric: tabular-nums; }
+    .ld-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45); }
+    .ld-bar i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .35s ease-out; position: relative;
+      background: linear-gradient(90deg, var(--teal), var(--gold2)); box-shadow: 0 0 12px rgba(253, 224, 71, .55); }
+    .ld-bar i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards; } /* пока грузится код игры — ползёт сам */
     @keyframes ldBoot { from { width: 3%; } to { width: 11%; } }
-    @keyframes ldShine { from { background-position: 150% 0, 0 0, 0 0; } to { background-position: -50% 0, 0 0, 0 0; } }
-    /* искра на конце заливки */
-    .ld-bar > i::after { content: ""; position: absolute; right: -6px; top: 50%; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%;
-      background: radial-gradient(circle, #fff 0%, rgba(254, 240, 170, .85) 30%, rgba(251, 191, 36, .35) 55%, rgba(251, 191, 36, 0) 72%); animation: ldSpark 1.2s ease-in-out infinite; }
-    @keyframes ldSpark { 50% { transform: scale(1.4); opacity: .7; } }
-    @media (max-height: 640px) { .logo-img { width: min(80vw, 320px); } .ld-tip { min-height: 132px; padding-top: 10px; padding-bottom: 11px; } .ld-foot { gap: 10px; } }
-    .calm .ld-logo .logo-img, .calm .ld-bar > i::after, .calm .ld-bar > i:not(.boot), .calm .ld-scene::before, .calm .ld-scene::after { animation: none; }
-    @media (prefers-reduced-motion: reduce) { .ld-logo .logo-img, .ld-bar > i::after, .ld-bar > i:not(.boot), .ld-scene::before, .ld-scene::after { animation: none; } }
-    .eco .ld-scene::before, .eco .ld-scene::after { animation: none; }
+    .ld-bar i::after { content: ""; position: absolute; right: -5px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%;
+      background: radial-gradient(circle, #fffbeb 0%, #fde047 45%, rgba(253, 224, 71, 0) 70%); animation: ldSpark 1.2s ease-in-out infinite; }
+    @keyframes ldSpark { 50% { transform: scale(1.5); opacity: .7; } }
+    /* 4.6: панель совета и прогресса — лаковая шкатулка с золотыми уголками, прогресс — золотая нить */
+    .ld-foot { border-radius: 22px; border: 1px solid rgba(243, 207, 107, .42); outline: 1px solid rgba(243, 207, 107, .16); outline-offset: -7px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform=''%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") left 0 top 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(-1 0 0 1 30 0)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") right 0 top 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(1 0 0 -1 0 30)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") left 0 bottom 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(-1 0 0 -1 30 30)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") right 0 bottom 0 / 26px 26px no-repeat, radial-gradient(90% 50% at 50% 0%, rgba(139, 92, 246, .28), transparent 70%), linear-gradient(180deg, rgba(38, 26, 79, .88), rgba(14, 8, 32, .93));
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 40px rgba(139, 92, 246, .15); }
+    .ld-tip small { font-size: 14px; letter-spacing: .1em; color: #fde68a; padding-bottom: 12px; text-shadow: 0 0 12px rgba(251, 191, 36, .35);
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 14'%3E%3Cpath d='M32 1l6 6-6 6-6-6z' fill='%23f3cf6b'/%3E%3Cpath d='M32 4.4l2.6 2.6-2.6 2.6-2.6-2.6z' fill='%231d1238'/%3E%3Ccircle cx='20.5' cy='7' r='1.6' fill='%23f3cf6b'/%3E%3Ccircle cx='43.5' cy='7' r='1.6' fill='%23f3cf6b'/%3E%3Ccircle cx='13' cy='7' r='1' fill='%23f3cf6b' opacity='.7'/%3E%3Ccircle cx='51' cy='7' r='1' fill='%23f3cf6b' opacity='.7'/%3E%3C/svg%3E") center bottom / 56px 12px no-repeat; }
+    .ld-tip p { font-family: 'Rubik', system-ui, sans-serif; font-size: 16px; line-height: 1.4; }
+    .ld-arrow { color: #f3cf6b; font-family: 'Rubik', system-ui, sans-serif; }
+    .ld-dots i { background: rgba(243, 207, 107, .22); } .ld-dots i.on { background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 0 8px rgba(251, 191, 36, .5); }
+    .ld-text { font-family: 'Rubik', system-ui, sans-serif; font-size: 14px; color: #d9cff2; }
+    .ld-pct { font-family: 'Rubik', system-ui, sans-serif; font-size: 15px; color: #fde68a; }
+    .ld-bar { height: 10px; border-radius: 5px; background: rgba(8, 4, 22, .75); border: 1px solid rgba(243, 207, 107, .45); box-shadow: 0 0 0 2px rgba(8, 4, 22, .5), inset 0 1px 3px rgba(0, 0, 0, .6); }
+    .ld-bar i { background: linear-gradient(90deg, #2dd4bf, #a3e635 45%, #fde047 80%, #fff7c7); }
+    @media (max-height: 640px) { .logo-img { width: min(80vw, 320px); } .ld-tip { min-height: 80px; } }
+    /* 4.6: руническая полоса — чтение заклинания: желобок пуст, огонь идёт по нему, и руны проступают по одной, когда огонь дошёл до них целиком */
+    .ld-bar { position: relative; height: 18px; margin: 0 14px; border-radius: 9px; border: 1px solid rgba(243, 207, 107, .5);
+      background: linear-gradient(180deg, #07031a, #1a0f3a 60%, #0c0722);
+      box-shadow: 0 0 0 2px rgba(8, 4, 22, .6), 0 0 0 3px rgba(243, 207, 107, .18), inset 0 2px 5px rgba(0, 0, 0, .75); }
+    .ld-bar::before, .ld-bar::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M7 .5L13.5 7 7 13.5.5 7z' fill='%23f3cf6b' stroke='%235b210a' stroke-width='1'/%3E%3Cpath d='M7 4L10 7 7 10 4 7z' fill='%231d1238'/%3E%3C/svg%3E") center / contain no-repeat;
+      filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
+    .ld-bar::before { left: -16px; } .ld-bar::after { right: -16px; }
+    .ld-bar > i { border-radius: 8px;
+      background: linear-gradient(90deg, transparent 0 40%, rgba(255, 255, 255, .45) 50%, transparent 60%) 0 0 / 200% 100% no-repeat,
+        linear-gradient(180deg, #fff3b0 0%, #fbbf24 45%, #d97706 80%, #92400e 100%);
+      box-shadow: 0 0 14px rgba(251, 191, 36, .75), inset 0 1px 0 rgba(255, 255, 255, .7); animation: ldShine 2.4s linear infinite; }
+    .ld-bar > i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards, ldShine 2.4s linear infinite; }
+    @keyframes ldShine { from { background-position: 150% 0, 0 0; } to { background-position: -50% 0, 0 0; } }
+    .ld-bar > i::after { right: -9px; width: 20px; height: 20px; margin-top: -10px; background: radial-gradient(circle, #fff 0%, #fde047 30%, rgba(251, 191, 36, .5) 50%, rgba(251, 191, 36, 0) 70%); }
+    .ld-row { padding: 0 2px; }
+    .ld-pct { min-width: 44px; text-align: right; }
+    .calm .ld-logo .logo-img, .calm .ld-bar i::after, .calm .ld-bar > i:not(.boot) { animation: none; }
+    @media (prefers-reduced-motion: reduce) { .ld-logo .logo-img, .ld-bar i::after, .ld-bar > i:not(.boot) { animation: none; } }
+    /* 4.19: без подложки — совет и полоса прямо на фоне; фон — как у экранов игры (style.css: .screen) */
+    .ld-foot { background: none; border: 0; outline: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .loader { background: radial-gradient(90% 45% at 50% -8%, rgba(167, 139, 250, .3), transparent 70%),
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%3E%3Cpath%20d%3D%22M0%200L18%2018M18%200L0%2018%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.035%22%20stroke-width%3D%22.8%22%2F%3E%3Cpath%20d%3D%22M9%20-1.6l1.6%201.6-1.6%201.6-1.6-1.6zM9%2016.4l1.6%201.6-1.6%201.6-1.6-1.6zM-0%207.4l1.6%201.6-1.6%201.6-1.6-1.6zM18%207.4l1.6%201.6-1.6%201.6-1.6-1.6z%22%20fill%3D%22%23fff%22%20fill-opacity%3D%22.045%22%2F%3E%3C%2Fsvg%3E") center top / 18px 18px,
+    linear-gradient(180deg, #2a1a5c 0%, #1d1146 45%, #140b33 100%); }
+    .ld-scene, .ld-bg, .ld-shade { display: none; }
   </style>
 </head>
 <body>

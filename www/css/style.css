@@ -4941,458 +4941,174 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .calm .art .art-gate-spin, .eco .art .art-gate-spin { animation: none; }
 
 /* ===== 5.1: Атлас ===== */
-/* экран Атласа мира — в блоке «5.2: Атлас — стекло» (в конце файла); здесь — глобус на карте и кнопка в Книге Ордена */
-/* глобус на карте: в правом столбце HUD под погодой и плашками недели — без подложки, с тенью, как они */
-#hud .hud-right > #atlasBtn { position: relative; width: 44px; height: 44px; margin: 4px 0 0 0 !important; padding: 0; border: 0; background: none; pointer-events: auto;
-  filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .8)) drop-shadow(0 0 6px rgba(8, 4, 24, .45)); transition: transform .15s; -webkit-tap-highlight-color: transparent; }
-#hud #atlasBtn > svg.mi { display: block; width: 100%; height: 100%; }
-#hud #atlasBtn:active { transform: scale(.88); }
-#hud #atlasBtn .ab-cd { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); transform: rotate(-90deg); display: none; pointer-events: none; }
-#hud #atlasBtn .ab-cd .bg { fill: none; stroke: rgba(8, 4, 24, .45); stroke-width: 3; }
-#hud #atlasBtn .ab-cd .fg { fill: none; stroke: #fde68a; stroke-width: 3; stroke-linecap: round; }
-#hud #atlasBtn .ab-min { position: absolute; right: -6px; bottom: -3px; display: none; min-width: 18px; padding: 0 4px; border-radius: 9px; font-size: 10.5px; font-weight: 800; line-height: 16px;
-  color: #3b1a02; background: linear-gradient(180deg, #fef3c7, #fbbf24); box-shadow: 0 1px 3px rgba(8, 4, 24, .6); }
-#hud #atlasBtn.rest .ab-cd, #hud #atlasBtn.rest .ab-min { display: block; }
-#hud #atlasBtn.rest > svg.mi { opacity: .9; }
-/* Книга Ордена → «Мир Духолова» → «Врата»: кнопка Атласа — как у Алатыря */
-.bk-atlas { display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
-.bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; }
-
-/* ===== 5.2: книга — стекло ===== */
-/* Книга-вступление (intro.js): фон — ночное небо с цветными туманами, как у экранов; страница — лист жидкого стекла
-   (размывает туманы под собой, кромка ловит свет), без золотых уголков, рамки и тени корешка. Листание — как было */
-.intro { background:
-    var(--woods) left bottom / 480px 150px repeat-x,
-    var(--stars) 0 0 / 220px 220px,
-    radial-gradient(90% 38% at 50% -6%, rgba(139, 92, 246, .55), transparent 70%),
-    radial-gradient(60% 30% at 2% 30%, rgba(236, 72, 153, .3), transparent 70%),
-    radial-gradient(55% 30% at 100% 58%, rgba(56, 189, 248, .26), transparent 70%),
-    radial-gradient(70% 28% at 10% 86%, rgba(45, 212, 191, .24), transparent 70%),
-    radial-gradient(50% 24% at 72% 26%, rgba(251, 191, 36, .1), transparent 70%),
-    linear-gradient(180deg, #1c1242 0%, #110a2a 45%, #0b0620 100%); }
-.intro .in-lbl { color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .6); }
-.intro .in-skip.rune { flex: none; width: auto; height: 38px; padding: 0 16px; border-radius: 999px; font-size: 14px; color: #fff; }
-.intro .in-skip.rune .rn-t { gap: 0; }
-/* стопка листов — стекло под стеклом */
-.intro .in-edge { border-radius: 26px; border: 1px solid rgba(255, 255, 255, .12); background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .03));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16); }
-.intro .in-sheet { border: 0; border-radius: 26px;
-  background: var(--g-sheen), radial-gradient(100% 42% at 50% 0%, rgba(167, 139, 250, .2), transparent 70%), linear-gradient(180deg, rgba(50, 32, 108, .52), rgba(18, 11, 44, .64));
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 24px 60px rgba(0, 0, 0, .45); }
-/* лист в движении плотнее: в повороте браузер не размывает под ним, и под стеклом проступал бы текст следующей страницы */
-.intro .in-sheet::before { content: ''; position: absolute; inset: 0; z-index: -1; width: auto; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .18s;
-  background: linear-gradient(180deg, rgba(40, 26, 92, .94), rgba(18, 11, 44, .97)); }
-.intro .in-page.turning .in-sheet::before { opacity: 1; }
-.intro .in-sheet::after { inset: 0; z-index: 5; border: 0; border-radius: inherit; padding: 1.2px; background: var(--g-rim);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-.intro .in-art::before { background: radial-gradient(circle, rgba(255, 255, 255, .1), rgba(167, 139, 250, .08) 45%, transparent 70%); }
-/* подпись главы — золотом, без черточек; текст — белый с лёгкой тенью, как на стекле окон */
-.intro .in-k { font-size: 11.5px; letter-spacing: .16em; color: var(--gold2); }
-.intro .in-k::before, .intro .in-k::after { content: none; }
-.intro .in-txt h2 { filter: drop-shadow(0 1px 2px rgba(12, 6, 32, .6)); }
-.intro .in-txt p { color: #f4f0ff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25); }
-.intro .in-txt .in-aside { color: #e4dcf7; }
-.intro .in-pn { font-weight: 600; color: rgba(255, 255, 255, .5); }
-.intro .in-pn::before, .intro .in-pn::after { content: none; }
-/* подписи городов — стеклянные капсулы */
-.intro .in-chip { color: #fff; border: 1px solid rgba(255, 255, 255, .26); text-shadow: 0 1px 2px rgba(12, 6, 32, .6);
-  background: var(--g-sheen), linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05)), rgba(20, 12, 44, .35);
-  -webkit-backdrop-filter: blur(8px) saturate(1.5); backdrop-filter: blur(8px) saturate(1.5); box-shadow: var(--g-edge), 0 4px 12px rgba(0, 0, 0, .3); }
-/* точки страниц — стеклянные бусины, текущая — золотая */
-.intro .in-dots i { background: rgba(255, 255, 255, .22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
-.intro .in-dots i.on { background: linear-gradient(180deg, #fef3c7, var(--gold2)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 0 8px rgba(251, 191, 36, .55); }
-/* страница проявляется (точка далеко, «Меньше движения») — прозрачность на самом листе, а не на странице:
-   иначе размытие под стеклом пропадало бы на время проявления */
-.intro .in-page.in-fade { animation: none; }
-.intro .in-page.in-fade > .in-sheet { animation: fadeIn .35s ease-out both; }
-.calm .intro .in-page.in-fade { animation: none !important; }
-.calm .intro .in-page.in-fade > .in-sheet { animation: fadeIn .2s ease-out both !important; }
-.eco .intro .in-sheet { -webkit-backdrop-filter: none; backdrop-filter: none;
-  background: var(--g-sheen), radial-gradient(100% 42% at 50% 0%, rgba(167, 139, 250, .2), transparent 70%), linear-gradient(180deg, rgba(46, 30, 100, .94), rgba(20, 12, 48, .96)); }
-.eco .intro .in-chip { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--g-sheen), rgba(36, 24, 80, .9); }
-
-/* Книга Ордена (book.js): значки глав — в круглых стеклянных линзах, как значки меню; карточки, строки и метки — стекло;
-   соседние главы — стеклянные капсулы. Общее для всех глав */
-.bk-screen .bk-ico { box-sizing: border-box; display: grid; place-items: center; padding: 8px; border-radius: 50%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, .07)), rgba(40, 24, 90, .32); border: 1px solid rgba(255, 255, 255, .36);
-  box-shadow: 0 6px 14px rgba(8, 4, 24, .26), inset 0 1px 1px rgba(255, 255, 255, .55), inset 0 -2px 6px rgba(255, 255, 255, .06); }
-.bk-screen .bk-list .bk-ico { width: 48px; height: 48px; padding: 7px; }
-.bk-screen .bk-list .bk-ch { padding: 6px 2px; }
-.bk-screen .bk-list .bk-ch:active { background: none; }
-.bk-screen .bk-list .bk-ch:active .bk-ico { transform: scale(.92); }
-.bk-screen .bk-ico { transition: transform .15s; }
-.bk-page .bk-hero .bk-ico.big { width: 84px; height: 84px; padding: 12px; filter: none;
-  box-shadow: 0 10px 24px rgba(8, 4, 24, .32), 0 0 22px rgba(251, 191, 36, .12), inset 0 1.5px 1px rgba(255, 255, 255, .6), inset 0 -2px 8px rgba(255, 255, 255, .08); }
-.bk-page .bk-hero { gap: 16px; }
-/* карточки глав и строки «название ··· значение» — светлое стекло без размытия (прокрутка остаётся плавной) */
-.bk-screen .bk-cards { gap: 8px; margin: 10px 0; }
-.bk-screen .bk-card { align-items: center; padding: 10px 12px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .1); background: var(--g-sheen), var(--g-fill); box-shadow: var(--g-edge); }
-.bk-screen .bk-card p { color: #ece6fb; }
-.bk-screen .bk-kv { margin: 10px 0; padding: 2px 12px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .1); background: var(--g-sheen), var(--g-fill); box-shadow: var(--g-edge); }
-.bk-screen .bk-tag { border-radius: 999px; padding: 5px 12px; border: 1px solid rgba(255, 255, 255, .16); background: var(--g-sheen), rgba(255, 255, 255, .07); box-shadow: var(--g-edge); }
-.bk-screen .bk-p { margin: 12px 2px; }
-/* соседние главы — стеклянные капсулы */
-.bk-screen .bk-nav { align-items: center; border-top: 0; padding-top: 16px; background: var(--div); background-position: center top; }
-.bk-screen .bk-nb { display: inline-flex; align-items: center; gap: 4px; max-width: 48%; padding: 9px 14px; border-radius: 999px; color: #fde68a;
-  border: 1px solid rgba(255, 255, 255, .14); background: var(--g-sheen), var(--g-fill), rgba(20, 12, 44, .3); box-shadow: var(--g-edge), 0 4px 12px rgba(0, 0, 0, .22); transition: transform .12s; }
-.bk-screen .bk-nb span { min-width: 0; white-space: nowrap; }
-.bk-screen .bk-nb:active { transform: scale(.96); }
-
-/* ===== 5.2: загрузка и вход — стекло ===== */
-/* Экран входа, знакомство, панель «Уже играешь?», вход по почте, выбор сервера — на том же «жидком стекле», что окна,
-   шторка меню и всплывашки игры. Фон — ночное небо Нави с цветными туманами, как у экрана загрузки (index.html): стеклу есть что размывать */
-.onb.lg > .lg-scene { display: block; pointer-events: none;
-  background: radial-gradient(55% 30% at 6% 40%, rgba(236, 72, 153, .2), transparent 70%), radial-gradient(50% 28% at 98% 58%, rgba(56, 189, 248, .18), transparent 70%),
-    radial-gradient(70% 30% at 85% 102%, rgba(45, 212, 191, .2), transparent 70%), radial-gradient(70% 26% at 10% 98%, rgba(167, 139, 250, .26), transparent 70%); }
-.onb.lg > .lg-scene::before, .onb.lg > .lg-scene::after { content: ""; position: absolute; border-radius: 50%; will-change: transform; }
-.onb.lg > .lg-scene::before { left: -22vw; bottom: 4%; width: 78vw; height: 78vw; max-width: 460px; max-height: 460px;
-  background: radial-gradient(circle, rgba(236, 72, 153, .34), rgba(168, 85, 247, .16) 45%, transparent 70%); animation: lgFogA 16s ease-in-out infinite alternate; }
-.onb.lg > .lg-scene::after { right: -20vw; bottom: 22%; width: 70vw; height: 70vw; max-width: 420px; max-height: 420px;
-  background: radial-gradient(circle, rgba(45, 212, 191, .3), rgba(56, 189, 248, .14) 45%, transparent 70%); animation: lgFogB 19s ease-in-out infinite alternate; }
-.onb.lg.deep > .lg-scene { opacity: .8; }
-@keyframes lgFogA { to { transform: translate(18vw, -6vh) scale(1.12); } }
-@keyframes lgFogB { to { transform: translate(-16vw, 8vh) scale(.92); } }
-.calm .onb.lg > .lg-scene::before, .calm .onb.lg > .lg-scene::after, .eco .onb.lg > .lg-scene::before, .eco .onb.lg > .lg-scene::after { animation: none; }
-@media (prefers-reduced-motion: reduce) { .onb.lg > .lg-scene::before, .onb.lg > .lg-scene::after { animation: none; } }
-.onb.lg { --muted: #e4dcf7; }
-
-/* стеклянные панели: карточка Ловчего, витрина сервера, вопросы знакомства, описание духа, приглашение */
-.onb.lg .hero, .onb.lg .realm-hero, .onb.lg .onb-step.s2 .onb-q, .onb.lg .onb-step.s4 .onb-q, .onb.lg .onb-desc, .onb.lg .lg-invite {
-  position: relative; border: 0; outline: 0; border-radius: 22px; color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25);
-  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), var(--g-sheen), linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 60%), rgba(24, 14, 56, .42);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); box-shadow: var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35); }
-.onb.lg .hero::after, .onb.lg .realm-hero::after, .onb.lg .onb-step.s2 .onb-q::after, .onb.lg .onb-step.s4 .onb-q::after, .onb.lg .onb-desc::after, .onb.lg .lg-invite::after,
-.lg-sheet-card::after, .rl-sheet::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none; background: var(--g-rim);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-/* гость — кромка тонирована золотом: прогресс ещё не привязан */
-.onb.lg .hero.is-guest::after { background: linear-gradient(135deg, rgba(254, 240, 170, .95) 0%, rgba(253, 224, 71, .4) 16%, rgba(253, 224, 71, .08) 40%, rgba(253, 224, 71, .06) 60%, rgba(253, 224, 71, .32) 84%, rgba(254, 240, 170, .8) 100%); }
-.onb.lg .hero-ava { box-shadow: 0 0 16px rgba(253, 224, 71, .3), 0 4px 10px rgba(8, 4, 24, .35); }
-.onb.lg .hero-lvl { border-color: rgba(40, 24, 90, .9); }
-.onb.lg .hero-main b { text-shadow: 0 1px 3px rgba(8, 4, 24, .6); }
-.onb.lg .hero-main small, .onb.lg .hero-stats span { color: #e4dcf7; }
-.onb.lg .hero-stats { border-top-color: rgba(255, 255, 255, .12); }
-.onb.lg .hero-stats div + div { border-left-color: rgba(255, 255, 255, .12); }
-.onb.lg .hero-stats b { color: #fde68a; }
-/* круглые кнопки — как значки меню (.rm-c): стекло, светлый ободок и блик */
-.onb.lg .hero-exit, .lg-sheet-x, .rl-x {
-  border: 1px solid rgba(255, 255, 255, .32); color: #fff; background: linear-gradient(180deg, rgba(255, 255, 255, .26), rgba(255, 255, 255, .06)), rgba(40, 24, 90, .3);
-  box-shadow: 0 4px 10px rgba(8, 4, 24, .25), inset 0 1px 1px rgba(255, 255, 255, .5); transition: transform .12s; }
-.onb.lg .hero-exit:active, .lg-sheet-x:active, .rl-x:active { transform: scale(.92); }
-/* плашки учётной записи — капсулы стекла */
-.onb.lg .acc-tag, .lg-sheet .acc-tag { border: 1px solid rgba(255, 255, 255, .16); background: var(--g-sheen), rgba(255, 255, 255, .09); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22); color: #fff; }
-.onb.lg .acc-tag.guest { color: #fde68a; border-color: rgba(253, 224, 71, .38); background: var(--g-sheen), rgba(253, 224, 71, .14); }
-/* 12+ — маленькая капсула стекла */
-.onb.lg .age-chip { border: 1px solid rgba(255, 255, 255, .3); color: #fff; background: linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .05)), rgba(40, 24, 90, .3);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .4); -webkit-backdrop-filter: blur(10px) saturate(1.4); backdrop-filter: blur(10px) saturate(1.4); }
-/* приглашение друга — стекло с зелёным отсветом */
-.onb.lg .lg-invite { padding: 10px 14px; border-radius: 16px; color: #d9f99d; background: radial-gradient(90% 90% at 50% 0%, rgba(132, 204, 22, .2), transparent 70%), var(--g-sheen), rgba(24, 14, 56, .42); }
-/* кнопки экрана входа — те же, что в игре (UI.rune / UI.glass); у стеклянной — настоящее размытие фона */
-.onb.lg .rune.glass { border-radius: 20px; -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); } /* скругление — как у золотой кнопки над ней */
-.onb.lg .rune.glass .rn-t .ico { color: #fde68a; }
-.onb.lg .lg-legal { color: rgba(236, 230, 251, .78); text-shadow: 0 1px 3px rgba(8, 4, 24, .7); }
-
-/* витрина сервера — стеклянная карточка: герб, «Сервер игры · Москва», ниже капсула «Сменить сервер» */
-.onb.lg .realm-hero { align-self: center; width: 100%; max-width: 380px; padding: 12px 16px 14px 12px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; align-items: center; }
-.onb.lg .realm-hero .rh-row { display: contents; }
-.onb.lg .realm-hero .rh-crest { grid-row: 1 / span 2; }
-.onb.lg .realm-hero .rh-change { grid-column: 2; justify-self: start; }
-.onb.lg .realm-hero.small { padding: 10px 14px 12px 10px; gap: 4px 10px; }
-.onb.lg .rh-info small { color: #e4dcf7; }
-.onb.lg .rh-meta { color: #ece6fb; }
-.onb.lg .rh-change { padding: 7px 12px 7px 16px; color: #fde68a; border: 1px solid rgba(255, 255, 255, .2); text-shadow: 0 1px 2px rgba(8, 4, 24, .6);
-  background: var(--g-sheen), linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .04)), rgba(20, 12, 44, .25); box-shadow: var(--g-edge), 0 4px 12px rgba(0, 0, 0, .22); }
-.onb.lg .realm-hero.small .rh-change { padding: 5px 10px 5px 14px; }
-@media (min-height: 760px) { .onb.lg .lg-wrap > .realm-hero.small { margin-bottom: 3vh; } } /* у вернувшегося Ловчего ниже ещё карточка — экран не прокручивается */
-@media (max-height: 700px) { .onb.lg .lg-wrap { gap: 12px; } .onb.lg .realm-hero.small { padding: 7px 12px 9px 8px; gap: 2px 8px; } .onb.lg .realm-hero.small .rh-crest { width: 52px; height: 52px; }
-  .onb.lg .hero { padding: 10px 12px 8px; } .onb.lg .hero .hero-stats { margin-top: 6px; padding-top: 6px; } }
-
-/* выезжающая панель входа — как шторка меню: плотное фиолетовое стекло с кромкой; под ней — размытый экран, как под окнами */
-.lg-sheet { background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(24, 14, 56, .3);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); }
-.lg-sheet-card { border: 0; padding-top: 22px; color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25);
-  background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(167, 139, 250, .2), transparent 70%), var(--glass-deep);
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 -18px 50px rgba(0, 0, 0, .45); }
-.lg-sheet-card::before { width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: rgba(255, 255, 255, .35); }
-.lg-sheet-x { top: 14px; right: 14px; }
-.lg-sheet .auth-head small { color: #e4dcf7; }
-.lg-sheet .auth-or, .onb.lg .auth-or { color: #d9cff2; }
-/* кнопки сервисов — капли стекла с белым текстом (как .btn игры); знак Google — на белом кружке, чтобы читался */
-.onb.lg .login-btn, .lg-sheet .login-btn { color: #fff; border: 1px solid rgba(255, 255, 255, .18); border-radius: 16px; min-height: 48px; font-weight: 700; text-shadow: 0 1px 2px rgba(8, 4, 24, .5);
-  background: var(--g-sheen), var(--g-fill), rgba(20, 12, 44, .3); box-shadow: var(--g-edge), 0 4px 12px rgba(0, 0, 0, .22); }
-.onb.lg .login-btn:active, .lg-sheet .login-btn:active { background: var(--g-sheen), linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .08)), rgba(20, 12, 44, .3); }
-.onb.lg .login-btn .lg-ic, .lg-sheet .login-btn .lg-ic { width: 24px; height: 24px; border-radius: 50%; filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .35)); }
-.onb.lg .login-btn .lg-ic svg, .lg-sheet .login-btn .lg-ic svg { width: 24px; height: 24px; }
-.lg-sheet [data-login="google"] .lg-ic, .lg-sheet [data-switch="google"] .lg-ic, .onb.lg [data-login="google"] .lg-ic { background: #fff; }
-.lg-sheet [data-login="google"] .lg-ic svg, .lg-sheet [data-switch="google"] .lg-ic svg, .onb.lg [data-login="google"] .lg-ic svg { width: 16px; height: 16px; }
-/* «Почта и пароль» — строка стекла, ключ — на золотой линзе */
-.onb.lg .btn.mail-login, .lg-sheet .btn.mail-login { min-height: 50px; border-radius: 16px; color: #fff; border: 1px solid rgba(255, 255, 255, .16);
-  background: var(--g-sheen), var(--g-fill), rgba(20, 12, 44, .3); box-shadow: var(--g-edge), 0 4px 12px rgba(0, 0, 0, .22); }
-.onb.lg .btn.mail-login:active, .lg-sheet .btn.mail-login:active { background: var(--g-sheen), linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .08)), rgba(20, 12, 44, .3); }
-.onb.lg .ml-ic, .lg-sheet .ml-ic { border-radius: 12px; color: #fde68a; border: 1px solid rgba(253, 224, 71, .35);
-  background: radial-gradient(120% 80% at 30% -20%, rgba(255, 255, 255, .3), transparent 60%), rgba(253, 224, 71, .14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
-.onb.lg .ml-chev, .lg-sheet .ml-chev { color: #fde68a; }
-
-/* вход по почте — поля как стеклянные лунки, значок — золотая линза */
-.mail-modal .mail-ic { border: 1px solid rgba(253, 224, 71, .35); color: #fde68a;
-  background: radial-gradient(120% 80% at 30% -20%, rgba(255, 255, 255, .35), transparent 60%), linear-gradient(180deg, rgba(253, 224, 71, .22), rgba(253, 224, 71, .06));
-  box-shadow: var(--g-edge), 0 6px 18px rgba(245, 158, 11, .22); }
-.mail-modal .mail-head small { color: #ece6fb; }
-.mail-modal .fld, .onb.lg .input.big { border: 1px solid rgba(255, 255, 255, .16); background: linear-gradient(180deg, rgba(8, 4, 24, .22), rgba(255, 255, 255, .06));
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .32), inset 0 -1px 0 rgba(255, 255, 255, .08); }
-.mail-modal .fld:focus-within, .onb.lg .input.big:focus { border-color: rgba(253, 224, 71, .55); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .32), 0 0 0 3px rgba(253, 224, 71, .14); }
-.mail-modal .fld-ic { color: #e4dcf7; } .mail-modal .fld:focus-within .fld-ic { color: #fde68a; }
-.mail-modal .fld input::placeholder, .onb.lg .input.big::placeholder { color: rgba(236, 230, 251, .6); }
-.mail-modal .fld-eye { color: #e4dcf7; }
-.mail-modal .mail-cancel { color: #ece6fb; }
-.mail-modal .mail-head small.mail-note { border: 1px solid rgba(253, 224, 71, .3); background: rgba(253, 224, 71, .12); color: #fde68a; }
-
-/* знакомство: имя и «Весь мир — твой» — в стеклянной карточке, стартовые духи — стеклянные плитки */
-.onb.lg .onb-step.s2 .onb-q, .onb.lg .onb-step.s4 .onb-q { width: 100%; max-width: 380px; padding: 22px 18px 20px; }
-.onb.lg .onb-step.s2 .onb-q .input.big { width: 100%; margin-top: 8px; }
-.onb.lg .onb-step.s2 .onb-q h2 { margin-top: 14px; }
-.onb.lg .onb-q p { color: #ece6fb; }
-.onb.lg .onb-step.s4 .onb-q p { font-size: 14.5px; line-height: 1.45; margin-bottom: 0; }
-.onb.lg .onb-pin { filter: drop-shadow(0 0 14px rgba(94, 234, 212, .45)); }
-.onb.lg .starter { border: 1px solid rgba(255, 255, 255, .16); color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55);
-  background: radial-gradient(60% 45% at 50% 42%, color-mix(in srgb, var(--elc) 22%, transparent), transparent 75%), var(--g-sheen), var(--g-fill), rgba(24, 14, 56, .3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); box-shadow: var(--g-edge), var(--g-drop); transition: transform .2s, border-color .2s, box-shadow .2s; }
-.onb.lg .starter span { color: #ece6fb; }
-.onb.lg .starter.on { border-color: rgba(253, 224, 71, .75);
-  background: radial-gradient(60% 45% at 50% 42%, color-mix(in srgb, var(--elc) 45%, transparent), transparent 75%), radial-gradient(120% 70% at 25% -15%, rgba(255, 255, 255, .26), transparent 55%), linear-gradient(180deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .06)), rgba(24, 14, 56, .3);
-  box-shadow: var(--g-edge), 0 0 0 1px rgba(253, 224, 71, .3), 0 0 22px rgba(251, 191, 36, .28), var(--g-drop); }
-.onb.lg .onb-desc { width: 100%; max-width: 380px; min-height: 74px; padding: 12px 16px; display: grid; place-items: center; font-size: 14.5px; color: #fff; }
-.onb.lg .onb-desc:empty { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.onb.lg .onb-desc:empty::after { content: none; }
-@media (max-height: 700px) { .onb.lg .onb-step.s4 .onb-q { padding: 14px 14px 14px; } .onb.lg .onb-step.s2 .onb-q { padding: 16px 16px 16px; } }
-
-/* выбор сервера — шторка того же стекла, что меню; карточки — стеклянные, выбранная — с золотой кромкой (без двойной рамки и уголков) */
-.rl-wrap { background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(24, 14, 56, .3);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); }
-.rl-sheet { border: 0; color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25);
-  background: var(--g-sheen), radial-gradient(80% 30% at 50% 0%, rgba(167, 139, 250, .2), transparent 70%), var(--glass-deep);
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 -18px 50px rgba(0, 0, 0, .45); }
-.rl-grip { flex: none; width: 44px; height: 5px; margin: 4px auto 10px; border-radius: 3px; background: rgba(255, 255, 255, .35); }
-.rl-title h3 { text-shadow: none; filter: drop-shadow(0 1px 2px rgba(12, 6, 32, .6)); }
-.rl-sub, .rl-about { color: #ece6fb; }
-.rl-card { border: 1px solid rgba(255, 255, 255, .12); color: #fff;
-  background: radial-gradient(70% 90% at 0% 0%, color-mix(in srgb, var(--rc) 18%, transparent), transparent 70%), var(--g-sheen), var(--g-fill);
-  box-shadow: var(--g-edge), var(--g-drop); }
-.rl-card.on { border-color: rgba(253, 224, 71, .6); box-shadow: var(--g-edge), 0 0 0 1px rgba(253, 224, 71, .28), 0 0 22px rgba(251, 191, 36, .22), var(--g-drop); }
-.rl-card.on::before { content: none; }
-.rl-head b { color: #fff; }
-.rl-head small, .rl-stats, .rl-note { color: #e4dcf7; }
-.rl-radio { border-color: rgba(255, 255, 255, .4); background: rgba(8, 4, 24, .3); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35); }
-.rl-card.on .rl-radio { border-color: #fde68a; background: radial-gradient(circle, #fff3b0 0 30%, #f59e0b 32% 45%, transparent 48%), rgba(8, 4, 24, .3); }
-.rl-me { border: 1px solid rgba(255, 255, 255, .14); background: var(--g-sheen), rgba(255, 255, 255, .07); }
-.rl-stats { border-top-color: rgba(255, 255, 255, .1); }
-.rl-foot { border-top: 1px solid rgba(255, 255, 255, .1); background: none; }
-.eco .lg-sheet, .eco .rl-wrap { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(12, 7, 30, .82); }
-.eco .onb.lg .hero, .eco .onb.lg .realm-hero, .eco .onb.lg .onb-q, .eco .onb.lg .onb-desc, .eco .onb.lg .starter, .eco .lg-sheet-card, .eco .rl-sheet {
-  -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgba(30, 18, 66, .88); }
-
-/* ===== 5.2: Атлас — стекло ===== */
-/* Атлас мира (js/atlas.js) — «жидкое стекло», как все окна игры: фон — ночное небо с цветными туманами (как .screen), шапка — как у экранов,
-   диски-полушария — стеклянные линзы со светящимися материками, нижняя панель — шторка стекла, материки — вкладки .seg.dt-tabs,
-   места — стеклянные карточки, главная кнопка — золотое стекло (.rune); «Врата отдыхают» — как окна игры (содержимое прямо на матовом стекле);
-   «Своё место» — стеклянные панели над настоящей картой; портал Врат — прежний, подпись — на стеклянной плашке */
-.atlas { position: fixed; inset: 0; z-index: 2750; display: flex; flex-direction: column; overflow: hidden; color: #fff; user-select: none; -webkit-user-select: none;
-  opacity: 0; transition: opacity .35s ease; --muted: #e4dcf7; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25);
-  background: var(--stars) 0 0 / 220px 220px,
-    radial-gradient(90% 40% at 50% -6%, rgba(139, 92, 246, .42), transparent 70%),
-    radial-gradient(55% 32% at 8% 34%, rgba(236, 72, 153, .16), transparent 70%),
-    radial-gradient(50% 30% at 96% 58%, rgba(56, 189, 248, .14), transparent 70%),
-    radial-gradient(60% 30% at 88% 100%, rgba(45, 212, 191, .14), transparent 70%),
-    linear-gradient(180deg, #1c1242 0%, #110a2a 45%, #0b0620 100%); }
+/* Атлас мира (js/atlas.js): старинная карта Ордена — «небесное» море, два диска-полушария с золотым ободом, светящиеся материки,
+   звёзды и дымка; шаг 2 — приближение к материку и места; «Своё место» — настоящая карта; портал Врат Перепутицы */
+.atlas { position: fixed; inset: 0; z-index: 2750; display: flex; flex-direction: column; overflow: hidden; color: var(--text); user-select: none; -webkit-user-select: none;
+  padding: var(--st) 0 0; opacity: 0; transition: opacity .35s ease;
+  background: radial-gradient(90% 38% at 50% 0%, rgba(99, 102, 241, .28), transparent 70%), radial-gradient(70% 40% at 80% 100%, rgba(20, 184, 166, .14), transparent 70%),
+    linear-gradient(180deg, #0d1840 0%, #081030 45%, #050819 100%); }
 .atlas.in { opacity: 1; }
 .atlas.out { opacity: 0; pointer-events: none; }
-.at-fog { position: absolute; width: 130vw; height: 60vh; left: -15vw; border-radius: 50%; pointer-events: none; opacity: .55;
-  background: radial-gradient(closest-side, rgba(167, 139, 250, .2), rgba(167, 139, 250, 0)); animation: atFog 28s ease-in-out infinite alternate; }
+.at-fog { position: absolute; width: 130vw; height: 60vh; left: -15vw; border-radius: 50%; pointer-events: none; opacity: .5;
+  background: radial-gradient(closest-side, rgba(139, 92, 246, .22), rgba(139, 92, 246, 0)); animation: atFog 28s ease-in-out infinite alternate; }
 .at-fog.f1 { top: -18vh; }
-.at-fog.f2 { bottom: -20vh; background: radial-gradient(closest-side, rgba(236, 72, 153, .12), rgba(236, 72, 153, 0)); animation-duration: 34s; animation-direction: alternate-reverse; }
+.at-fog.f2 { bottom: -20vh; background: radial-gradient(closest-side, rgba(45, 212, 191, .16), rgba(45, 212, 191, 0)); animation-duration: 34s; animation-direction: alternate-reverse; }
 @keyframes atFog { from { transform: translateX(-8vw) scale(1); } to { transform: translateX(8vw) scale(1.12); } }
-/* шапка — как у экранов игры: «назад» слева, золотой заголовок, над ним — «Орден Оберега»; крестик — только когда можно закрыть весь Атлас с мест */
-.atlas > .at-head { flex: none; gap: 12px; padding: calc(8px + var(--st)) 14px 12px; margin-bottom: 2px; }
-.at-head .btn-round { width: 42px; height: 42px; flex: none; }
-.at-head .btn-round .ico, .at-head .btn-round svg { width: 22px; height: 22px; }
-.atlas.first:not(.s2) > .at-head .at-back, .atlas:not(.s2) > .at-head .at-x { display: none; }
-.at-ttl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.at-ttl small { font-family: var(--f-head); font-size: 10.5px; font-weight: 700; line-height: 1.2; letter-spacing: .2em; text-transform: uppercase; color: #cbbef0; }
-.atlas .at-ttl h2 { flex: none; margin: 0; }
-.at-story { position: relative; flex: none; margin: 0 18px 2px; font-size: 14.5px; line-height: 1.35; color: #ece6fb; }
+.at-head { position: relative; display: flex; align-items: center; gap: 8px; padding: 10px 12px 2px; }
+.at-head .btn-round { flex: none; width: 40px; height: 40px; }
+.at-head .btn-round .ico, .at-head .btn-round svg { width: 20px; height: 20px; }
+.atlas:not(.s2) > .at-head .at-back { visibility: hidden; }
+.atlas.first > .at-head::after { content: ''; flex: none; width: 40px; }
+.at-ttl { flex: 1; min-width: 0; text-align: center; }
+.at-ttl small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #a5b4fc; }
+.at-ttl h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 26px; line-height: 1.15; letter-spacing: .5px; color: transparent;
+  background: linear-gradient(100deg, #fde047 0%, #fbbf24 40%, #fffbeb 50%, #fbbf24 60%, #f59e0b 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text;
+  animation: ldGlint 5s ease-in-out infinite; filter: drop-shadow(0 2px 0 rgba(80, 28, 4, .8)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.at-story { position: relative; margin: 2px 22px 0; text-align: center; font-size: 14.5px; line-height: 1.35; font-style: italic; color: #e0e7ff; text-shadow: 0 0 14px rgba(129, 140, 248, .6); }
 .atlas.s2 .at-story { display: none; }
-/* карта */
 .at-map { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; transition: height .7s cubic-bezier(.65, 0, .35, 1); }
 .at-map.fixed { flex: none; }
-.at-svg { position: absolute; inset: 4px 6px; width: calc(100% - 12px); height: calc(100% - 8px); overflow: visible; -webkit-tap-highlight-color: transparent; text-shadow: none; transition: opacity .35s; }
+.at-svg { position: absolute; inset: 4px 6px; width: calc(100% - 12px); height: calc(100% - 8px); overflow: visible; -webkit-tap-highlight-color: transparent; }
+.at-svg { transition: opacity .35s; }
 .at-svg.off { opacity: 0; pointer-events: none; }
+/* шаг 2: карта материка — своя проекция поверх листа */
+.at-loc { opacity: 0; transform: scale(1.08); transition: opacity .4s ease, transform .6s cubic-bezier(.2, .8, .2, 1); pointer-events: none; }
+.at-loc.in { opacity: 1; transform: none; pointer-events: auto; }
+.at-loc .at-grat { stroke: rgba(147, 197, 253, .13); }
+.at-loc .at-land { cursor: default; }
+.at-loc .at-land.on .f { fill: rgba(134, 239, 222, .3); stroke: #fde68a; }
+.at-loc .at-land.dim .f { fill: rgba(134, 239, 222, .16); }
+.at-loc .at-land.on .h { stroke: rgba(251, 191, 36, .3); stroke-width: 5; animation: none; }
+.atlas .at-loc .at-land.dim { opacity: .42 !important; }
 .at-mist { position: absolute; pointer-events: none; border-radius: 50%; opacity: .9; }
-.at-mist.m1 { width: 80%; height: 34%; left: -10%; top: 18%; background: radial-gradient(closest-side, rgba(196, 181, 253, .12), rgba(196, 181, 253, 0)); animation: atMist 22s ease-in-out infinite alternate; }
-.at-mist.m2 { width: 70%; height: 30%; right: -12%; top: 58%; background: radial-gradient(closest-side, rgba(153, 246, 228, .09), rgba(153, 246, 228, 0)); animation: atMist 27s ease-in-out infinite alternate-reverse; }
+.at-mist.m1 { width: 80%; height: 34%; left: -10%; top: 18%; background: radial-gradient(closest-side, rgba(196, 181, 253, .13), rgba(196, 181, 253, 0)); animation: atMist 22s ease-in-out infinite alternate; }
+.at-mist.m2 { width: 70%; height: 30%; right: -12%; top: 58%; background: radial-gradient(closest-side, rgba(153, 246, 228, .11), rgba(153, 246, 228, 0)); animation: atMist 27s ease-in-out infinite alternate-reverse; }
 @keyframes atMist { from { transform: translate(-12%, 4%) scale(1); } to { transform: translate(16%, -6%) scale(1.15); } }
-.at-star { fill: #fff; opacity: .5; }
+/* лист карты */
+.at-star { fill: #e0e7ff; opacity: .5; }
 .at-star.tw { animation: atTw 3.4s ease-in-out infinite alternate; }
 @keyframes atTw { from { opacity: .15; } to { opacity: .95; } }
-/* диски-полушария — линзы стекла: толща с отсветом, кромка ловит свет, мягкая тень под диском */
-.at-drop, .at-shine, .at-inner, .at-rim { pointer-events: none; }
-.at-inner { fill: none; stroke: rgba(255, 255, 255, .08); stroke-width: 14; }
-.at-rim { fill: none; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
-.at-grat { fill: none; stroke: rgba(255, 255, 255, .09); stroke-width: .7; vector-effect: non-scaling-stroke; }
-.at-eq { fill: none; stroke: rgba(255, 255, 255, .24); stroke-width: .8; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
-/* материки светятся изнутри стекла; выбранный — золотом */
+.at-grat { fill: none; stroke: rgba(147, 197, 253, .16); stroke-width: .7; vector-effect: non-scaling-stroke; }
+.at-eq { fill: none; stroke: rgba(253, 224, 71, .32); stroke-width: .8; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
 .at-land { cursor: pointer; transition: opacity .35s; }
-.at-land .h { fill: none; stroke: rgba(153, 246, 228, .2); stroke-width: 6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.at-land .f { fill: url(#atLand); stroke: rgba(240, 253, 250, .92); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke .3s; }
-.at-land.cold .f { fill: rgba(248, 250, 252, .5); stroke: #f8fafc; }
+.at-land .h { fill: none; stroke: rgba(94, 234, 212, .2); stroke-width: 6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.at-land .f { fill: url(#atLand); stroke: #a5f3e4; stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke .3s; }
+.at-land.cold .f { fill: rgba(241, 245, 249, .5); stroke: #f1f5f9; }
 .at-land.cold .h { stroke: rgba(226, 232, 240, .16); }
-.atlas.picked .at-land:not(.on) { opacity: .62; }
-.at-land.on .f { fill: url(#atLandOn); stroke: #fef3c7; }
+.atlas.picked .at-land:not(.on) { opacity: .6; }
+.at-land.on .f { fill: url(#atLandOn); stroke: #fef08a; }
 .at-land.on .h { stroke: rgba(251, 191, 36, .42); stroke-width: 10; animation: atGlow 2.2s ease-in-out infinite alternate; }
-.at-land.dim { opacity: .3 !important; }
+.at-land.dim { opacity: .28 !important; }
 @keyframes atGlow { from { stroke-opacity: .5; } to { stroke-opacity: 1; } }
-.at-arc { font-family: var(--f-head); font-weight: 700; font-size: 9.5px; letter-spacing: 3.5px; text-transform: uppercase; fill: rgba(236, 230, 251, .75); text-anchor: middle; }
+.at-shine { pointer-events: none; }
+.at-rim { fill: none; stroke: #f3cf6b; stroke-width: 2.4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .45)); pointer-events: none; }
+.at-rim2 { fill: none; stroke: rgba(243, 207, 107, .3); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
+.at-tick { fill: none; stroke: rgba(243, 207, 107, .55); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
+.at-gem { fill: #fde68a; stroke: #7c4a0b; stroke-width: .8; pointer-events: none; }
+.at-arc { font-family: var(--f-display); font-size: 12px; letter-spacing: 3px; fill: #f3cf6b; text-anchor: middle; opacity: .85; }
 .at-arc.lo { dominant-baseline: hanging; }
-.at-lbl { font-family: var(--f-head); font-weight: 700; font-size: 12.5px; letter-spacing: .3px; fill: #fff; text-anchor: middle; cursor: pointer;
-  paint-order: stroke; stroke: rgba(20, 10, 48, .82); stroke-width: 3.2px; stroke-linejoin: round; transition: opacity .3s, fill .3s; }
-.at-lbl.sm { font-size: 10.5px; }
-.at-lbl.cold { fill: #e2e8f0; font-size: 9.5px; }
-.at-lbl.on { fill: #fff; stroke: rgba(92, 45, 6, .88); }
-/* роза ветров — тонкое стекло */
-.at-rose .rr { fill: rgba(255, 255, 255, .05); stroke: rgba(255, 255, 255, .28); stroke-width: .8; }
-.at-rose .rr2 { fill: none; stroke: rgba(255, 255, 255, .22); stroke-width: .6; stroke-dasharray: 1.5 2.5; }
-.at-rose .r1 { fill: rgba(255, 255, 255, .82); stroke: rgba(20, 10, 48, .5); stroke-width: .6; }
-.at-rose .r2 { fill: rgba(255, 255, 255, .32); }
-.at-rose .rc { fill: #1c1242; stroke: #fde68a; stroke-width: .8; }
-.at-rose .rn { font-family: var(--f-head); font-weight: 700; font-size: 10px; fill: #fde68a; text-anchor: middle; }
+.at-lbl { font-family: var(--f-display); font-size: 13.5px; letter-spacing: 1px; fill: #fef3c7; text-anchor: middle; cursor: pointer;
+  paint-order: stroke; stroke: rgba(5, 10, 36, .85); stroke-width: 3.2px; stroke-linejoin: round; transition: opacity .3s, fill .3s; }
+.at-lbl.sm { font-size: 11px; }
+.at-lbl.cold { fill: #e2e8f0; font-size: 10px; }
+.at-lbl.on { fill: #fde047; }
+.at-rose .rr { fill: rgba(8, 16, 48, .5); stroke: rgba(243, 207, 107, .5); stroke-width: .8; }
+.at-rose .rr2 { fill: none; stroke: rgba(243, 207, 107, .35); stroke-width: .6; stroke-dasharray: 1.5 2.5; }
+.at-rose .r1 { fill: #f3cf6b; stroke: #7c4a0b; stroke-width: .6; }
+.at-rose .r2 { fill: rgba(243, 207, 107, .45); }
+.at-rose .rc { fill: #0b1433; stroke: #fde68a; stroke-width: .8; }
+.at-rose .rn { font-family: var(--f-display); font-size: 11px; fill: #fde68a; text-anchor: middle; }
 .atlas.s2 .at-lbl, .atlas.s2 .at-rose, .atlas.s2 .at-arc, .atlas.s2 .at-stars { opacity: 0; pointer-events: none; }
-/* шаг 2: карта материка — светится прямо на небе, края растворяются в тумане */
-.at-loc { opacity: 0; transform: scale(1.08); transition: opacity .4s ease, transform .6s cubic-bezier(.2, .8, .2, 1); pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 7%, #000 90%, transparent);
-  -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 7%, #000 90%, transparent); mask-composite: intersect; }
-.at-loc.in { opacity: 1; transform: none; pointer-events: auto; }
-.at-loc .at-grat { stroke: rgba(255, 255, 255, .08); }
-.at-loc .at-land { cursor: default; }
-.at-loc .at-land.on .f { fill: rgba(204, 251, 241, .2); stroke: #fde68a; }
-.at-loc .at-land.dim .f { fill: rgba(204, 251, 241, .12); }
-.at-loc .at-land.on .h { stroke: rgba(251, 191, 36, .3); stroke-width: 5; animation: none; }
-.atlas .at-loc .at-land.dim { opacity: .45 !important; }
 /* Ловчий сейчас */
 .at-mek path { fill: #5eead4; stroke: #064e3b; stroke-width: 1; }
 .at-mek .w { fill: rgba(94, 234, 212, .3); transform-box: fill-box; transform-origin: center; animation: atPing 2s ease-out infinite; }
 @keyframes atPing { from { transform: scale(.6); opacity: 1; } to { transform: scale(2); opacity: 0; } }
-/* места материка — золотые огоньки */
+/* места материка */
 .at-pt { cursor: pointer; animation: atIn .45s ease-out both; }
 @keyframes atIn { from { opacity: 0; } }
 .at-pt .hit { fill: transparent; }
-.at-pt .gl { fill: rgba(253, 224, 71, .24); }
-.at-pt .c { fill: #fde68a; stroke: rgba(120, 53, 15, .85); stroke-width: 1.2; }
+.at-pt .gl { fill: rgba(253, 224, 71, .26); }
+.at-pt .c { fill: #fde68a; stroke: #7c2d12; stroke-width: 1.2; }
 .at-pt .ring { fill: none; stroke: #fde047; stroke-width: 1.6; opacity: 0; }
-.at-pt .nm { display: none; font-family: var(--f-head); font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(20, 10, 48, .9); stroke-width: 3.5px; stroke-linejoin: round; }
+.at-pt .nm { display: none; font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(5, 10, 36, .9); stroke-width: 3.5px; stroke-linejoin: round; }
 .at-pt.on .c { fill: #fff; }
 .at-pt.on .gl { fill: rgba(253, 224, 71, .5); }
 .at-pt.on .nm { display: block; }
 .at-pt.on .ring { opacity: 1; transform-box: fill-box; transform-origin: center; animation: atRing 1.6s ease-out infinite; }
 @keyframes atRing { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.7); opacity: 0; } }
-/* нижняя панель — шторка «жидкого стекла», как меню */
-.at-panel { position: relative; flex: none; display: flex; flex-direction: column; margin: 0; padding: 14px 14px calc(12px + var(--sb)); border: 0; border-radius: 28px 28px 0 0;
-  background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .22), transparent 70%), linear-gradient(180deg, rgba(40, 28, 86, .58), rgba(12, 7, 32, .7));
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 -18px 50px rgba(0, 0, 0, .45); }
-.at-panel::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none; background: var(--g-rim);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+/* нижняя панель */
+.at-panel { position: relative; flex: none; display: flex; flex-direction: column; margin: 0 8px; padding: 12px 12px calc(12px + var(--sb)); border-radius: 24px 24px 0 0;
+  background: linear-gradient(180deg, rgba(22, 30, 72, .88), rgba(10, 14, 40, .96)); border: 1px solid rgba(243, 207, 107, .28); border-bottom: 0;
+  box-shadow: 0 -12px 34px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .07); }
 .atlas.s2 .at-panel { flex: 1 1 auto; min-height: 0; }
-/* материки — вкладки как во всех окнах игры (.seg.dt-tabs), не помещаются — листаются вбок */
-.atlas .at-chips.seg { flex: none; margin: 0 0 12px; overflow-x: auto; scrollbar-width: none; }
+.at-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px 10px; }
 .at-chips::-webkit-scrollbar { display: none; }
-.atlas .at-chips.seg button { flex: none; padding: 8px 14px; white-space: nowrap; }
-/* вкладки материков листаются: правый край мягко гаснет (не выглядит обрезкой), в конце ленты — без затухания */
-.atlas .at-chips.seg { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
-.atlas .at-chips.seg.at-end { -webkit-mask-image: none; mask-image: none; }
-.at-info { min-height: 160px; }
-.at-info h3, .at-lh b { margin: 0 0 8px; font-family: var(--f-display); font-weight: 400; font-size: 23px; line-height: 1.12; letter-spacing: .3px; color: transparent; text-shadow: none;
-  background: linear-gradient(180deg, #fffbeb 5%, #fde68a 45%, #f59e0b 100%); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 1px 2px rgba(12, 6, 32, .6)); }
-.at-info p { margin: 0 0 8px; font-size: 14px; line-height: 1.42; color: #ece6fb; }
-.at-info small { display: block; font-size: 12.5px; line-height: 1.35; color: #cbbef0; }
+.at-chip { flex: none; padding: 7px 13px; border-radius: 999px; border: 1px solid rgba(147, 197, 253, .3); background: rgba(30, 58, 138, .32); color: #dbeafe; font: inherit; font-size: 13px; font-weight: 600; }
+.at-chip.on { color: #3b1a02; border-color: #fde68a; background: linear-gradient(180deg, #fef3c7, #fbbf24); box-shadow: 0 0 12px rgba(251, 191, 36, .4); }
+.at-info { min-height: 168px; }
+.at-info h3 { margin: 0 0 6px; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.1; color: #fde68a; }
+.at-info p { margin: 0 0 6px; font-size: 14px; line-height: 1.4; color: #e2e8f0; }
+.at-info small { display: block; font-size: 12.5px; line-height: 1.35; color: #a5b4fc; }
 .at-info.hint { display: grid; place-items: center; }
-.at-info.hint p { text-align: center; font-size: 15px; max-width: 290px; }
-/* мифологии — стеклянные капсулы с огоньком своего цвета */
-.at-myths { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 9px; }
-.at-myth { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px 4px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: #fff;
-  border: 1px solid rgba(255, 255, 255, .12); background: var(--g-sheen), rgba(255, 255, 255, .06); box-shadow: var(--g-edge); }
-.at-myth::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 7px var(--c); }
+.at-info.hint p { text-align: center; color: #c7d2fe; font-size: 15px; max-width: 290px; }
+.at-myths { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 7px; }
+.at-myth { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; background: rgba(255, 255, 255, .06); border: 1px solid var(--c); }
+.at-myth::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
 .at-foot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 10px; }
 .at-foot .rune { height: 56px; }
 .at-foot .rune .rn-t svg { width: 20px; height: 20px; }
-.at-gates { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; min-height: 20px; font-size: 12.5px; font-weight: 700; color: #99f6e4; }
+.at-gates { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #5eead4; min-height: 20px; }
 .at-gates.rest { color: #fde68a; }
 .at-gates svg, .at-gates .art { width: 20px; height: 20px; flex: none; }
-/* шаг 2: места — стеклянные карточки, выбранная — стекло, тонированное золотом */
 .at-lh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; }
-.at-lh b { margin: 0; font-size: 21px; }
-.at-lh small { font-size: 13px; color: #cbbef0; }
-.at-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 7px; margin: 0 -6px; padding: 2px 6px 8px; scrollbar-width: none; }
+.at-lh b { font-family: var(--f-display); font-weight: 400; font-size: 21px; color: #fde68a; line-height: 1.1; }
+.at-lh small { font-size: 13px; color: #a5b4fc; }
+.at-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 6px; margin: 0 -4px; padding: 0 4px 4px; scrollbar-width: none; }
 .at-list::-webkit-scrollbar { display: none; }
-.at-pl { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px 11px; border-radius: 16px; text-align: left; font: inherit; color: #fff;
-  border: 1px solid rgba(255, 255, 255, .1); background: var(--g-sheen), var(--g-fill); box-shadow: var(--g-edge), 0 4px 12px rgba(4, 2, 14, .2);
-  transition: background .2s, border-color .2s, box-shadow .2s, transform .12s; }
+.at-pl { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px 10px; border-radius: 14px; text-align: left; font: inherit; color: inherit;
+  background: rgba(30, 41, 90, .5); border: 1px solid rgba(147, 197, 253, .16); transition: background .2s, border-color .2s, box-shadow .2s; }
 .at-pl span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .at-pl b { font-size: 14px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.at-pl small { font-size: 11.5px; line-height: 1.25; color: #cbbef0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.at-pl:active { transform: scale(.98); background: var(--g-sheen), linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .08)); }
-.at-pl.on { border-color: rgba(253, 224, 71, .5);
-  background: radial-gradient(120% 80% at 30% -20%, rgba(255, 244, 199, .3), transparent 60%), linear-gradient(180deg, rgba(253, 224, 71, .2), rgba(245, 158, 11, .08));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), var(--g-edge), 0 0 16px rgba(251, 191, 36, .22); }
+.at-pl small { font-size: 11.5px; line-height: 1.25; color: #a5b4fc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-pl:active { transform: scale(.98); }
+.at-pl.on { border-color: #fde68a; background: linear-gradient(180deg, rgba(146, 98, 14, .5), rgba(80, 52, 10, .42)); box-shadow: 0 0 0 1px rgba(253, 224, 71, .3), 0 0 16px rgba(251, 191, 36, .22); }
 .at-pl.on small { color: #fde68a; }
-.at-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 0 2px rgba(120, 53, 15, .55), 0 0 8px rgba(253, 224, 71, .7); display: grid; place-items: center; }
-.at-pl.own { grid-column: 1 / -1; border-color: rgba(153, 246, 228, .24); background: radial-gradient(70% 120% at 0% 50%, rgba(45, 212, 191, .18), transparent 70%), var(--g-sheen), var(--g-fill); }
-.at-pl.own .at-dot { width: 22px; height: 22px; background: none; box-shadow: none; color: #99f6e4; }
+.at-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 0 2px rgba(124, 45, 18, .8), 0 0 8px rgba(253, 224, 71, .7); display: grid; place-items: center; }
+.at-pl.own { grid-column: 1 / -1; border-style: dashed; border-color: rgba(94, 234, 212, .45); background: rgba(19, 78, 74, .28); }
+.at-pl.own .at-dot { width: 22px; height: 22px; background: none; box-shadow: none; color: #5eead4; }
 .at-pl.own .at-dot svg { width: 20px; height: 20px; }
-/* «Своё место» — настоящая карта на весь экран, шапка и низ — стеклянные панели над ней */
-.at-pick { position: absolute; inset: 0; z-index: 5; background: #0b0620; transform: translateY(100%); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+/* «Своё место» — настоящая карта */
+.at-pick { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding-top: var(--st); background: linear-gradient(180deg, #0d1840, #050819);
+  transform: translateY(100%); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
 .at-pick.in { transform: none; }
-.at-pmap { position: absolute; inset: 0; background: #aad3df; }
-.at-pmap .leaflet-tile-pane { filter: saturate(.85) brightness(.96); }
+.at-pmap { flex: 1; min-height: 0; margin: 8px 10px 0; border-radius: 20px; overflow: hidden; border: 1px solid rgba(243, 207, 107, .4); background: #aad3df; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.at-pmap .leaflet-tile-pane { filter: saturate(.8) brightness(.95); }
 .at-pmap .leaflet-control-attribution { font-size: 9px; background: rgba(255, 255, 255, .7); }
-.at-pick .leaflet-bottom { bottom: calc(var(--pbh, 110px) + 14px + var(--sb)); }
-.at-phead, .at-pbar { position: absolute; left: 10px; right: 10px; z-index: 1001; border-radius: 26px; color: #fff;
-  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(22, 12, 50, .68);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); box-shadow: var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35); }
-.at-phead::after, .at-pbar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none; background: var(--g-rim);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-.at-phead { top: calc(8px + var(--st)); display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 8px; }
-.at-phead .btn-round { width: 42px; height: 42px; flex: none; }
-.at-phead .btn-round .ico, .at-phead .btn-round svg { width: 22px; height: 22px; }
-.at-phead h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 23px; line-height: 1.1; letter-spacing: .5px; color: transparent; text-shadow: none;
-  background: linear-gradient(180deg, #fffbeb 5%, #fde68a 45%, #f59e0b 100%); -webkit-background-clip: text; background-clip: text;
-  filter: drop-shadow(0 2px 0 rgba(60, 20, 4, .8)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.at-pbar { bottom: calc(10px + var(--sb)); padding: 12px 12px 12px; text-shadow: 0 1px 2px rgba(12, 6, 32, .55); }
-.at-phint { margin: 0 0 10px; min-height: 20px; text-align: center; font-size: 13.5px; color: #ece6fb; }
-.at-pbar .rune { height: 56px; }
-.at-pbar .rune .rn-t svg { width: 20px; height: 20px; }
-.at-pin i { display: block; width: 26px; height: 26px; margin: 3px auto 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid rgba(255, 255, 255, .9);
-  background: radial-gradient(circle at 50% 50%, #5eead4 0 26%, #fcd34d 30% 100%); box-shadow: 0 4px 10px rgba(0, 0, 0, .45), 0 0 14px rgba(251, 191, 36, .6); }
-/* перезарядка Врат — как окна игры: матовое стекло на весь экран, заголовок с чертой, кнопки на стекле */
-.at-cd { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 20px; opacity: 0; transition: opacity .22s;
-  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(24, 14, 56, .34);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); }
+.at-pbar { padding: 10px 14px calc(12px + var(--sb)); }
+.at-phint { margin: 0 0 8px; min-height: 20px; text-align: center; font-size: 13.5px; color: #c7d2fe; }
+.at-pin i { display: block; width: 26px; height: 26px; margin: 3px auto 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #7c4a0b;
+  background: radial-gradient(circle at 50% 50%, #5eead4 0 26%, #fde68a 30% 100%); box-shadow: 0 4px 10px rgba(0, 0, 0, .45), 0 0 14px rgba(251, 191, 36, .6); }
+/* перезарядка Врат */
+.at-cd { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; justify-content: center; background: rgba(3, 6, 20, .62); opacity: 0; transition: opacity .22s; }
 .at-cd.in { opacity: 1; }
-.at-cd.out { opacity: 0; }
-.at-cdb { width: min(380px, 100%); padding: 6px 2px; text-align: center; display: flex; flex-direction: column; gap: 10px; transform: scale(.94); transition: transform .25s cubic-bezier(.2, 1.4, .5, 1); }
+.at-cdb { width: min(370px, calc(100% - 20px)); margin-bottom: calc(14px + var(--sb)); padding: 18px 16px 14px; border-radius: 24px; text-align: center; display: flex; flex-direction: column; gap: 8px;
+  background: linear-gradient(180deg, #1d2658, #0d1234); border: 1px solid rgba(243, 207, 107, .42); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); transform: translateY(24px); transition: transform .25s cubic-bezier(.2, .9, .3, 1.2); }
 .at-cd.in .at-cdb { transform: none; }
-.at-cdb .modal-title { margin: 0 8px 2px; }
-.at-cdb p { margin: 0 0 4px; font-size: 15px; line-height: 1.4; color: #ece6fb; }
-.at-cdb p.small { font-size: 13.5px; color: #cbbef0; }
+.at-cd.out { opacity: 0; }
+.at-cdb b { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: #fde68a; }
+.at-cdb p { margin: 0; font-size: 14.5px; color: #e2e8f0; }
+.at-cdb p.small { font-size: 13px; color: #a5b4fc; }
 .at-cdb .rune { height: 58px; padding: 0 22px; }
-.at-cdb .rune .rn-t { font-size: 15.5px; line-height: 1.15; text-align: center; text-wrap: balance; }
-.at-cdr { position: relative; width: 84px; height: 84px; margin: 0 auto 4px; border-radius: 50%;
-  background: var(--g-sheen), var(--g-fill); box-shadow: var(--g-edge), 0 8px 22px rgba(4, 2, 14, .3); }
+.at-cdb .rune .rn-t { font-size: 15.5px; line-height: 1.15; text-align: center; }
+.at-cdr { position: relative; width: 76px; height: 76px; margin: 0 auto 2px; }
 .at-cdr > svg:first-child { width: 100%; height: 100%; transform: rotate(-90deg); }
-.at-cdr .bg { fill: none; stroke: rgba(255, 255, 255, .12); stroke-width: 4; }
-.at-cdr .fg { fill: none; stroke: #fde68a; stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
-.at-cdr > :not(:first-child) { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; margin: -21px 0 0 -21px; }
-/* портал Врат Перепутицы — прежний вихрь; подпись — на стеклянной плашке, как всплывашки игры */
+.at-cdr .bg { fill: none; stroke: rgba(255, 255, 255, .1); stroke-width: 5; }
+.at-cdr .fg { fill: none; stroke: #fde68a; stroke-width: 5; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
+.at-cdr > :not(:first-child) { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+/* портал Врат Перепутицы */
 .at-gate { position: fixed; inset: 0; z-index: 2800; display: grid; place-items: center; overflow: hidden; transition: opacity .9s ease; }
 .at-gate.out { opacity: 0; pointer-events: none; }
-.ag-veil { position: absolute; inset: 0; opacity: 0; transition: opacity .5s; background: radial-gradient(circle at 50% 45%, rgba(46, 26, 104, .6), rgba(8, 4, 22, .97) 70%); }
+.ag-veil { position: absolute; inset: 0; opacity: 0; transition: opacity .5s; background: radial-gradient(circle at 50% 45%, rgba(30, 16, 72, .6), rgba(3, 2, 12, .97) 70%); }
 .at-gate.open .ag-veil { opacity: 1; }
 .ag-portal { position: relative; width: min(78vw, 320px); aspect-ratio: 1; margin-top: -8vh; opacity: 0; transform: scale(.15) rotate(-40deg);
   transition: transform .8s cubic-bezier(.2, 1.25, .35, 1), opacity .4s; }
@@ -5410,27 +5126,35 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .ag-ring .i { fill: none; stroke: rgba(243, 207, 107, .55); stroke-width: 1; stroke-dasharray: 2 4; }
 .ag-ring .d { fill: none; stroke: rgba(94, 234, 212, .7); stroke-width: 3; stroke-dasharray: 1 7; stroke-linecap: round; }
 .ag-ring .rn path { fill: none; stroke: #fde68a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.ag-txt { position: absolute; left: 50%; bottom: calc(12vh + var(--sb)); width: min(360px, calc(100% - 32px)); padding: 13px 18px 15px; border-radius: 22px; text-align: center;
-  opacity: 0; transform: translate(-50%, 12px); transition: opacity .5s .35s, transform .5s .35s; color: #fff;
-  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 60%), rgba(24, 14, 56, .42);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); box-shadow: var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35); }
-.at-gate.open .ag-txt { opacity: 1; transform: translate(-50%, 0); }
-.ag-txt small { display: block; font-family: var(--f-head); font-size: 10.5px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #cbbef0; text-shadow: 0 1px 2px rgba(12, 6, 32, .55); }
-.ag-txt b { display: block; margin-top: 5px; font-family: var(--f-display); font-weight: 400; font-size: 23px; line-height: 1.2; color: transparent; text-shadow: none;
-  background: linear-gradient(180deg, #fffbeb 5%, #fde68a 45%, #f59e0b 100%); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 2px 0 rgba(60, 20, 4, .8)); }
+.ag-txt { position: absolute; left: 16px; right: 16px; bottom: calc(15vh + var(--sb)); text-align: center; opacity: 0; transform: translateY(12px); transition: opacity .5s .35s, transform .5s .35s; }
+.at-gate.open .ag-txt { opacity: 1; transform: none; }
+.ag-txt small { display: block; font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #fde68a; }
+.ag-txt b { display: block; margin-top: 6px; font-family: var(--f-display); font-weight: 400; font-size: 25px; line-height: 1.2; color: #fff; text-shadow: 0 0 18px rgba(94, 234, 212, .8), 0 2px 0 rgba(20, 10, 50, .8); }
 .ag-flash { position: absolute; inset: 0; opacity: 0; transform: scale(.25); pointer-events: none; transition: opacity .42s ease-in, transform .42s ease-in;
   background: radial-gradient(circle at 50% 42%, #fff 0%, #fef9c3 26%, rgba(253, 224, 71, .7) 48%, rgba(255, 255, 255, 0) 72%); }
 .at-gate.flash .ag-flash { opacity: 1; transform: scale(2.6); }
 .at-gate.flash .ag-txt { opacity: 0; transition-delay: 0s; }
 .at-gate.fail .ag-portal { opacity: 0; transform: scale(.1) rotate(60deg); transition: transform .45s ease-in, opacity .45s; }
 .at-gate.fail .ag-veil, .at-gate.fail .ag-txt { opacity: 0; transition-delay: 0s; }
-/* экономия батареи — без размытия: плотное стекло */
-.eco .at-panel, .eco .at-cd, .eco .at-phead, .eco .at-pbar, .eco .ag-txt { -webkit-backdrop-filter: none; backdrop-filter: none; }
-.eco .at-panel { background: var(--g-sheen), linear-gradient(180deg, #2a1d5c, #150c34); }
-.eco .at-cd, .eco .at-phead, .eco .at-pbar, .eco .ag-txt { background: rgba(12, 7, 30, .9); }
-.eco .at-cdr .fg { filter: none; }
+/* глобус на карте: в правом столбце HUD под погодой и плашками недели — без подложки, с тенью, как они */
+#hud .hud-right > #atlasBtn { position: relative; width: 44px; height: 44px; margin: 4px 0 0 0 !important; padding: 0; border: 0; background: none; pointer-events: auto;
+  filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .8)) drop-shadow(0 0 6px rgba(8, 4, 24, .45)); transition: transform .15s; -webkit-tap-highlight-color: transparent; }
+#hud #atlasBtn > svg.mi { display: block; width: 100%; height: 100%; }
+#hud #atlasBtn:active { transform: scale(.88); }
+#hud #atlasBtn .ab-cd { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); transform: rotate(-90deg); display: none; pointer-events: none; }
+#hud #atlasBtn .ab-cd .bg { fill: none; stroke: rgba(8, 4, 24, .45); stroke-width: 3; }
+#hud #atlasBtn .ab-cd .fg { fill: none; stroke: #fde68a; stroke-width: 3; stroke-linecap: round; }
+#hud #atlasBtn .ab-min { position: absolute; right: -6px; bottom: -3px; display: none; min-width: 18px; padding: 0 4px; border-radius: 9px; font-size: 10.5px; font-weight: 800; line-height: 16px;
+  color: #3b1a02; background: linear-gradient(180deg, #fef3c7, #fbbf24); box-shadow: 0 1px 3px rgba(8, 4, 24, .6); }
+#hud #atlasBtn.rest .ab-cd, #hud #atlasBtn.rest .ab-min { display: block; }
+#hud #atlasBtn.rest > svg.mi { opacity: .9; }
+/* Книга Ордена → «Мир Духолова» → «Врата»: кнопка Атласа — как у Алатыря */
+.bk-atlas { display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
+.bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; }
+/* меньше движения и экономия батареи */
 .calm .atlas *, .eco .atlas *, .calm .at-gate *, .eco .at-gate * { animation: none !important; }
-.calm .atlas, .calm .at-map, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash, .calm .ag-txt, .calm .at-cdb { transition: none !important; }
+.calm .atlas, .calm .at-map, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
+.eco .at-rim, .eco .ag-ring .o, .eco .at-cdr .fg { filter: none; }
 @media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }
 
 /* ===== 5.2: движение и значок Атласа ===== */

@@ -118,7 +118,7 @@
   "k": "{0} мин",
   "at": [
    "www/js/alatyr.js:27",
-   "www/js/atlas.js:699",
+   "www/js/atlas.js:695",
    "www/js/ui.js:248"
   ],
   "ctx": "left(ms) { return ms >= 3600000 ? U.fmtTime(ms) : ru`${Math.max(1, Math.ceil(ms / 60000))} мин`; },"
@@ -797,105 +797,105 @@
  {
   "k": "Европа",
   "at": [
-   "www/js/atlas.js:19"
+   "www/js/atlas.js:18"
   ],
   "ctx": "{ id: 'europe', disc: 'e', name: ru`Европа`, label: [22, 53], myths: ['slavic', 'greek', 'norse', 'celtic'],"
  },
  {
   "k": "Здесь сходятся старые дороги Нави, Олимпа, Асгарда и холмов сидов — от Москвы до Дублина.",
   "at": [
-   "www/js/atlas.js:20"
+   "www/js/atlas.js:19"
   ],
   "ctx": "text: ru`Здесь сходятся старые дороги Нави, Олимпа, Асгарда и холмов сидов — от Москвы до Дублина.`,"
  },
  {
   "k": "Азия",
   "at": [
-   "www/js/atlas.js:32"
+   "www/js/atlas.js:31"
   ],
   "ctx": "{ id: 'asia', disc: 'e', name: ru`Азия`, label: [95, 50], myths: ['china', 'japan', 'slavic', 'egypt'],"
  },
  {
   "k": "От Уральских гор до Тихого океана. Отсюда родом небесные драконы Китая, а Сибирь и Средняя Азия — края славянских духов.",
   "at": [
-   "www/js/atlas.js:33"
+   "www/js/atlas.js:32"
   ],
   "ctx": "text: ru`От Уральских гор до Тихого океана. Отсюда родом небесные драконы Китая, а Сибирь и Средняя Азия — края славянских духов.`,"
  },
  {
   "k": "Африка",
   "at": [
-   "www/js/atlas.js:52"
+   "www/js/atlas.js:51"
   ],
   "ctx": "{ id: 'africa', disc: 'e', name: ru`Африка`, label: [21, 6], myths: ['egypt'],"
  },
  {
   "k": "Здесь, у Нила, стоят врата Дуата — родины египетских богов и духов пустыни.",
   "at": [
-   "www/js/atlas.js:53"
+   "www/js/atlas.js:52"
   ],
   "ctx": "text: ru`Здесь, у Нила, стоят врата Дуата — родины египетских богов и духов пустыни.`,"
  },
  {
   "k": "Северная Америка",
   "at": [
-   "www/js/atlas.js:58"
+   "www/js/atlas.js:57"
   ],
   "ctx": "{ id: 'namerica', disc: 'w', name: ru`Северная Америка`, label: [-101, 47], myths: ['aztec'],"
  },
  {
   "k": "Земля пернатых змеев: из долины Мехико вышли ацтекские боги и духи.",
   "at": [
-   "www/js/atlas.js:59"
+   "www/js/atlas.js:58"
   ],
   "ctx": "text: ru`Земля пернатых змеев: из долины Мехико вышли ацтекские боги и духи.`,"
  },
  {
   "k": "Южная Америка",
   "at": [
-   "www/js/atlas.js:74"
+   "www/js/atlas.js:73"
   ],
   "ctx": "{ id: 'samerica', disc: 'w', name: ru`Южная Америка`, label: [-60, -12], myths: ['aztec'],"
  },
  {
   "k": "Сельва, Анды и Амазонка. Ацтекские духи разлетелись и сюда — до самой Огненной Земли.",
   "at": [
-   "www/js/atlas.js:75"
+   "www/js/atlas.js:74"
   ],
   "ctx": "text: ru`Сельва, Анды и Амазонка. Ацтекские духи разлетелись и сюда — до самой Огненной Земли.`,"
  },
  {
   "k": "Австралия и Океания",
   "at": [
-   "www/js/atlas.js:79"
+   "www/js/atlas.js:78"
   ],
   "ctx": "{ id: 'oceania', disc: 'e', name: ru`Австралия и Океания`, label: [134, -25], myths: [],"
  },
  {
   "k": "Своих мифологий у Ордена здесь пока нет: все духи Австралии и Океании — гости, которых занесла Перепутица.",
   "at": [
-   "www/js/atlas.js:80"
+   "www/js/atlas.js:79"
   ],
   "ctx": "text: ru`Своих мифологий у Ордена здесь пока нет: все духи Австралии и Океании — гости, которых занесла Перепутица.`,"
  },
  {
   "k": "Антарктида",
   "at": [
-   "www/js/atlas.js:90"
+   "www/js/atlas.js:89"
   ],
   "ctx": "{ id: 'antarctica', disc: 'e', name: ru`Антарктида`, label: [75, -76], myths: [], cold: true,"
  },
  {
   "k": "Здесь только пингвины и ледяные духи. Врата сюда не открываются — слишком холодно даже для Ловчих.",
   "at": [
-   "www/js/atlas.js:91"
+   "www/js/atlas.js:90"
   ],
   "ctx": "text: ru`Здесь только пингвины и ледяные духи. Врата сюда не открываются — слишком холодно даже для Ловчих.`,"
  },
  {
   "k": "Москва",
   "at": [
-   "www/js/atlas.js:97",
+   "www/js/atlas.js:96",
    "www/js/intro.js:128",
    "www/js/realms.js:82"
   ],
@@ -904,14 +904,14 @@
  {
   "k": "Красная площадь",
   "at": [
-   "www/js/atlas.js:97"
+   "www/js/atlas.js:96"
   ],
   "ctx": "['moscow', ru`Москва`, ru`Красная площадь`, 55.7539, 37.6208],"
  },
  {
   "k": "Санкт-Петербург",
   "at": [
-   "www/js/atlas.js:98",
+   "www/js/atlas.js:97",
    "www/js/realms.js:82"
   ],
   "ctx": "['spb', ru`Санкт-Петербург`, ru`Дворцовая площадь`, 59.9390, 30.3158],"
@@ -919,350 +919,350 @@
  {
   "k": "Дворцовая площадь",
   "at": [
-   "www/js/atlas.js:98"
+   "www/js/atlas.js:97"
   ],
   "ctx": "['spb', ru`Санкт-Петербург`, ru`Дворцовая площадь`, 59.9390, 30.3158],"
  },
  {
   "k": "Казань",
   "at": [
-   "www/js/atlas.js:99"
+   "www/js/atlas.js:98"
   ],
   "ctx": "['kazan', ru`Казань`, ru`Улица Баумана`, 55.7887, 49.1221],"
  },
  {
   "k": "Улица Баумана",
   "at": [
-   "www/js/atlas.js:99"
+   "www/js/atlas.js:98"
   ],
   "ctx": "['kazan', ru`Казань`, ru`Улица Баумана`, 55.7887, 49.1221],"
  },
  {
   "k": "Стамбул",
   "at": [
-   "www/js/atlas.js:100"
+   "www/js/atlas.js:99"
   ],
   "ctx": "['istanbul', ru`Стамбул`, ru`Площадь Султанахмет`, 41.0058, 28.9768],"
  },
  {
   "k": "Площадь Султанахмет",
   "at": [
-   "www/js/atlas.js:100"
+   "www/js/atlas.js:99"
   ],
   "ctx": "['istanbul', ru`Стамбул`, ru`Площадь Султанахмет`, 41.0058, 28.9768],"
  },
  {
   "k": "Лондон",
   "at": [
-   "www/js/atlas.js:101"
+   "www/js/atlas.js:100"
   ],
   "ctx": "['london', ru`Лондон`, ru`Трафальгарская площадь`, 51.5080, -0.1281],"
  },
  {
   "k": "Трафальгарская площадь",
   "at": [
-   "www/js/atlas.js:101"
+   "www/js/atlas.js:100"
   ],
   "ctx": "['london', ru`Лондон`, ru`Трафальгарская площадь`, 51.5080, -0.1281],"
  },
  {
   "k": "Дублин",
   "at": [
-   "www/js/atlas.js:102"
+   "www/js/atlas.js:101"
   ],
   "ctx": "['dublin', ru`Дублин`, ru`Улица О’Коннелла`, 53.3510, -6.2605],"
  },
  {
   "k": "Улица О’Коннелла",
   "at": [
-   "www/js/atlas.js:102"
+   "www/js/atlas.js:101"
   ],
   "ctx": "['dublin', ru`Дублин`, ru`Улица О’Коннелла`, 53.3510, -6.2605],"
  },
  {
   "k": "Париж",
   "at": [
-   "www/js/atlas.js:103"
+   "www/js/atlas.js:102"
   ],
   "ctx": "['paris', ru`Париж`, ru`Марсово поле`, 48.8556, 2.2986],"
  },
  {
   "k": "Марсово поле",
   "at": [
-   "www/js/atlas.js:103"
+   "www/js/atlas.js:102"
   ],
   "ctx": "['paris', ru`Париж`, ru`Марсово поле`, 48.8556, 2.2986],"
  },
  {
   "k": "Берлин",
   "at": [
-   "www/js/atlas.js:104"
+   "www/js/atlas.js:103"
   ],
   "ctx": "['berlin', ru`Берлин`, ru`Бранденбургские ворота`, 52.5163, 13.3777],"
  },
  {
   "k": "Бранденбургские ворота",
   "at": [
-   "www/js/atlas.js:104"
+   "www/js/atlas.js:103"
   ],
   "ctx": "['berlin', ru`Берлин`, ru`Бранденбургские ворота`, 52.5163, 13.3777],"
  },
  {
   "k": "Прага",
   "at": [
-   "www/js/atlas.js:105"
+   "www/js/atlas.js:104"
   ],
   "ctx": "['prague', ru`Прага`, ru`Староместская площадь`, 50.0875, 14.4213],"
  },
  {
   "k": "Староместская площадь",
   "at": [
-   "www/js/atlas.js:105"
+   "www/js/atlas.js:104"
   ],
   "ctx": "['prague', ru`Прага`, ru`Староместская площадь`, 50.0875, 14.4213],"
  },
  {
   "k": "Рим",
   "at": [
-   "www/js/atlas.js:106"
+   "www/js/atlas.js:105"
   ],
   "ctx": "['rome', ru`Рим`, ru`Колизей`, 41.8902, 12.4922],"
  },
  {
   "k": "Колизей",
   "at": [
-   "www/js/atlas.js:106"
+   "www/js/atlas.js:105"
   ],
   "ctx": "['rome', ru`Рим`, ru`Колизей`, 41.8902, 12.4922],"
  },
  {
   "k": "Афины{0}",
   "at": [
-   "www/js/atlas.js:107"
+   "www/js/atlas.js:106"
   ],
   "ctx": "['athens', ru`Афины${''}`, ru`Площадь Синтагма`, 37.9755, 23.7348], // ключ «Афины{0}»: «Афины» в словаре — богиня (data.js)"
  },
  {
   "k": "Площадь Синтагма",
   "at": [
-   "www/js/atlas.js:107"
+   "www/js/atlas.js:106"
   ],
   "ctx": "['athens', ru`Афины${''}`, ru`Площадь Синтагма`, 37.9755, 23.7348], // ключ «Афины{0}»: «Афины» в словаре — богиня (data.js)"
  },
  {
   "k": "Мадрид",
   "at": [
-   "www/js/atlas.js:108"
+   "www/js/atlas.js:107"
   ],
   "ctx": "['madrid', ru`Мадрид`, ru`Пуэрта-дель-Соль`, 40.4169, -3.7035],"
  },
  {
   "k": "Пуэрта-дель-Соль",
   "at": [
-   "www/js/atlas.js:108"
+   "www/js/atlas.js:107"
   ],
   "ctx": "['madrid', ru`Мадрид`, ru`Пуэрта-дель-Соль`, 40.4169, -3.7035],"
  },
  {
   "k": "Осло",
   "at": [
-   "www/js/atlas.js:109"
+   "www/js/atlas.js:108"
   ],
   "ctx": "['oslo', ru`Осло`, ru`Улица Карла Юхана`, 59.9133, 10.7389],"
  },
  {
   "k": "Улица Карла Юхана",
   "at": [
-   "www/js/atlas.js:109"
+   "www/js/atlas.js:108"
   ],
   "ctx": "['oslo', ru`Осло`, ru`Улица Карла Юхана`, 59.9133, 10.7389],"
  },
  {
   "k": "Стокгольм",
   "at": [
-   "www/js/atlas.js:110"
+   "www/js/atlas.js:109"
   ],
   "ctx": "['stockholm', ru`Стокгольм`, ru`Старый город Гамла Стан`, 59.3251, 18.0710],"
  },
  {
   "k": "Старый город Гамла Стан",
   "at": [
-   "www/js/atlas.js:110"
+   "www/js/atlas.js:109"
   ],
   "ctx": "['stockholm', ru`Стокгольм`, ru`Старый город Гамла Стан`, 59.3251, 18.0710],"
  },
  {
   "k": "Рейкьявик",
   "at": [
-   "www/js/atlas.js:111"
+   "www/js/atlas.js:110"
   ],
   "ctx": "['reykjavik', ru`Рейкьявик`, ru`Церковь Хадльгримскиркья`, 64.1417, -21.9266],"
  },
  {
   "k": "Церковь Хадльгримскиркья",
   "at": [
-   "www/js/atlas.js:111"
+   "www/js/atlas.js:110"
   ],
   "ctx": "['reykjavik', ru`Рейкьявик`, ru`Церковь Хадльгримскиркья`, 64.1417, -21.9266],"
  },
  {
   "k": "Екатеринбург",
   "at": [
-   "www/js/atlas.js:114"
+   "www/js/atlas.js:113"
   ],
   "ctx": "['ekb', ru`Екатеринбург`, ru`Площадь 1905 года`, 56.8380, 60.5975],"
  },
  {
   "k": "Площадь 1905 года",
   "at": [
-   "www/js/atlas.js:114"
+   "www/js/atlas.js:113"
   ],
   "ctx": "['ekb', ru`Екатеринбург`, ru`Площадь 1905 года`, 56.8380, 60.5975],"
  },
  {
   "k": "Новосибирск",
   "at": [
-   "www/js/atlas.js:115"
+   "www/js/atlas.js:114"
   ],
   "ctx": "['nsk', ru`Новосибирск`, ru`Площадь Ленина`, 55.0302, 82.9204],"
  },
  {
   "k": "Площадь Ленина",
   "at": [
-   "www/js/atlas.js:115"
+   "www/js/atlas.js:114"
   ],
   "ctx": "['nsk', ru`Новосибирск`, ru`Площадь Ленина`, 55.0302, 82.9204],"
  },
  {
   "k": "Иркутск",
   "at": [
-   "www/js/atlas.js:116"
+   "www/js/atlas.js:115"
   ],
   "ctx": "['irk', ru`Иркутск`, ru`130-й квартал`, 52.2775, 104.2860],"
  },
  {
   "k": "130-й квартал",
   "at": [
-   "www/js/atlas.js:116"
+   "www/js/atlas.js:115"
   ],
   "ctx": "['irk', ru`Иркутск`, ru`130-й квартал`, 52.2775, 104.2860],"
  },
  {
   "k": "Владивосток",
   "at": [
-   "www/js/atlas.js:117"
+   "www/js/atlas.js:116"
   ],
   "ctx": "['vvo', ru`Владивосток`, ru`Центральная площадь`, 43.1155, 131.8855],"
  },
  {
   "k": "Центральная площадь",
   "at": [
-   "www/js/atlas.js:117"
+   "www/js/atlas.js:116"
   ],
   "ctx": "['vvo', ru`Владивосток`, ru`Центральная площадь`, 43.1155, 131.8855],"
  },
  {
   "k": "Алматы",
   "at": [
-   "www/js/atlas.js:118"
+   "www/js/atlas.js:117"
   ],
   "ctx": "['almaty', ru`Алматы`, ru`Площадь Республики`, 43.2380, 76.9454],"
  },
  {
   "k": "Площадь Республики",
   "at": [
-   "www/js/atlas.js:118"
+   "www/js/atlas.js:117"
   ],
   "ctx": "['almaty', ru`Алматы`, ru`Площадь Республики`, 43.2380, 76.9454],"
  },
  {
   "k": "Ташкент",
   "at": [
-   "www/js/atlas.js:119"
+   "www/js/atlas.js:118"
   ],
   "ctx": "['tashkent', ru`Ташкент`, ru`Сквер Амира Темура`, 41.3111, 69.2797],"
  },
  {
   "k": "Сквер Амира Темура",
   "at": [
-   "www/js/atlas.js:119"
+   "www/js/atlas.js:118"
   ],
   "ctx": "['tashkent', ru`Ташкент`, ru`Сквер Амира Темура`, 41.3111, 69.2797],"
  },
  {
   "k": "Дубай",
   "at": [
-   "www/js/atlas.js:120"
+   "www/js/atlas.js:119"
   ],
   "ctx": "['dubai', ru`Дубай`, ru`Бурдж-Халифа`, 25.1972, 55.2744],"
  },
  {
   "k": "Бурдж-Халифа",
   "at": [
-   "www/js/atlas.js:120"
+   "www/js/atlas.js:119"
   ],
   "ctx": "['dubai', ru`Дубай`, ru`Бурдж-Халифа`, 25.1972, 55.2744],"
  },
  {
   "k": "Нью-Дели",
   "at": [
-   "www/js/atlas.js:121"
+   "www/js/atlas.js:120"
   ],
   "ctx": "['delhi', ru`Нью-Дели`, ru`Ворота Индии`, 28.6129, 77.2295],"
  },
  {
   "k": "Ворота Индии",
   "at": [
-   "www/js/atlas.js:121"
+   "www/js/atlas.js:120"
   ],
   "ctx": "['delhi', ru`Нью-Дели`, ru`Ворота Индии`, 28.6129, 77.2295],"
  },
  {
   "k": "Пекин",
   "at": [
-   "www/js/atlas.js:122"
+   "www/js/atlas.js:121"
   ],
   "ctx": "['beijing', ru`Пекин`, ru`Площадь Тяньаньмэнь`, 39.9055, 116.3976],"
  },
  {
   "k": "Площадь Тяньаньмэнь",
   "at": [
-   "www/js/atlas.js:122"
+   "www/js/atlas.js:121"
   ],
   "ctx": "['beijing', ru`Пекин`, ru`Площадь Тяньаньмэнь`, 39.9055, 116.3976],"
  },
  {
   "k": "Шанхай",
   "at": [
-   "www/js/atlas.js:123"
+   "www/js/atlas.js:122"
   ],
   "ctx": "['shanghai', ru`Шанхай`, ru`Улица Нанкин-лу`, 31.2355, 121.4747],"
  },
  {
   "k": "Улица Нанкин-лу",
   "at": [
-   "www/js/atlas.js:123"
+   "www/js/atlas.js:122"
   ],
   "ctx": "['shanghai', ru`Шанхай`, ru`Улица Нанкин-лу`, 31.2355, 121.4747],"
  },
  {
   "k": "Сеул",
   "at": [
-   "www/js/atlas.js:124"
+   "www/js/atlas.js:123"
   ],
   "ctx": "['seoul', ru`Сеул`, ru`Площадь Кванхвамун`, 37.5720, 126.9769],"
  },
  {
   "k": "Площадь Кванхвамун",
   "at": [
-   "www/js/atlas.js:124"
+   "www/js/atlas.js:123"
   ],
   "ctx": "['seoul', ru`Сеул`, ru`Площадь Кванхвамун`, 37.5720, 126.9769],"
  },
  {
   "k": "Токио",
   "at": [
-   "www/js/atlas.js:125",
+   "www/js/atlas.js:124",
    "www/js/intro.js:129"
   ],
   "ctx": "['tokyo', ru`Токио`, ru`Перекрёсток Сибуя`, 35.6595, 139.7005],"
@@ -1270,56 +1270,56 @@
  {
   "k": "Перекрёсток Сибуя",
   "at": [
-   "www/js/atlas.js:125"
+   "www/js/atlas.js:124"
   ],
   "ctx": "['tokyo', ru`Токио`, ru`Перекрёсток Сибуя`, 35.6595, 139.7005],"
  },
  {
   "k": "Бангкок",
   "at": [
-   "www/js/atlas.js:126"
+   "www/js/atlas.js:125"
   ],
   "ctx": "['bangkok', ru`Бангкок`, ru`Площадь Санам Луанг`, 13.7550, 100.4930],"
  },
  {
   "k": "Площадь Санам Луанг",
   "at": [
-   "www/js/atlas.js:126"
+   "www/js/atlas.js:125"
   ],
   "ctx": "['bangkok', ru`Бангкок`, ru`Площадь Санам Луанг`, 13.7550, 100.4930],"
  },
  {
   "k": "Сингапур",
   "at": [
-   "www/js/atlas.js:127"
+   "www/js/atlas.js:126"
   ],
   "ctx": "['singapore', ru`Сингапур`, ru`Орчард-роуд`, 1.3048, 103.8318],"
  },
  {
   "k": "Орчард-роуд",
   "at": [
-   "www/js/atlas.js:127"
+   "www/js/atlas.js:126"
   ],
   "ctx": "['singapore', ru`Сингапур`, ru`Орчард-роуд`, 1.3048, 103.8318],"
  },
  {
   "k": "Джакарта",
   "at": [
-   "www/js/atlas.js:128"
+   "www/js/atlas.js:127"
   ],
   "ctx": "['jakarta', ru`Джакарта`, ru`Площадь Мердека`, -6.1754, 106.8272],"
  },
  {
   "k": "Площадь Мердека",
   "at": [
-   "www/js/atlas.js:128"
+   "www/js/atlas.js:127"
   ],
   "ctx": "['jakarta', ru`Джакарта`, ru`Площадь Мердека`, -6.1754, 106.8272],"
  },
  {
   "k": "Каир",
   "at": [
-   "www/js/atlas.js:131",
+   "www/js/atlas.js:130",
    "www/js/intro.js:130"
   ],
   "ctx": "['cairo', ru`Каир`, ru`Площадь Тахрир`, 30.0444, 31.2357],"
@@ -1327,662 +1327,662 @@
  {
   "k": "Площадь Тахрир",
   "at": [
-   "www/js/atlas.js:131"
+   "www/js/atlas.js:130"
   ],
   "ctx": "['cairo', ru`Каир`, ru`Площадь Тахрир`, 30.0444, 31.2357],"
  },
  {
   "k": "Гиза",
   "at": [
-   "www/js/atlas.js:132"
+   "www/js/atlas.js:131"
   ],
   "ctx": "['giza', ru`Гиза`, ru`Плато пирамид`, 29.9773, 31.1325],"
  },
  {
   "k": "Плато пирамид",
   "at": [
-   "www/js/atlas.js:132"
+   "www/js/atlas.js:131"
   ],
   "ctx": "['giza', ru`Гиза`, ru`Плато пирамид`, 29.9773, 31.1325],"
  },
  {
   "k": "Луксор",
   "at": [
-   "www/js/atlas.js:133"
+   "www/js/atlas.js:132"
   ],
   "ctx": "['luxor', ru`Луксор`, ru`Карнакский храм`, 25.7188, 32.6573],"
  },
  {
   "k": "Карнакский храм",
   "at": [
-   "www/js/atlas.js:133"
+   "www/js/atlas.js:132"
   ],
   "ctx": "['luxor', ru`Луксор`, ru`Карнакский храм`, 25.7188, 32.6573],"
  },
  {
   "k": "Марракеш",
   "at": [
-   "www/js/atlas.js:134"
+   "www/js/atlas.js:133"
   ],
   "ctx": "['marrakesh', ru`Марракеш`, ru`Площадь Джемаа-эль-Фна`, 31.6258, -7.9891],"
  },
  {
   "k": "Площадь Джемаа-эль-Фна",
   "at": [
-   "www/js/atlas.js:134"
+   "www/js/atlas.js:133"
   ],
   "ctx": "['marrakesh', ru`Марракеш`, ru`Площадь Джемаа-эль-Фна`, 31.6258, -7.9891],"
  },
  {
   "k": "Тунис",
   "at": [
-   "www/js/atlas.js:135"
+   "www/js/atlas.js:134"
   ],
   "ctx": "['tunis', ru`Тунис`, ru`Проспект Хабиба Бургибы`, 36.8008, 10.1815],"
  },
  {
   "k": "Проспект Хабиба Бургибы",
   "at": [
-   "www/js/atlas.js:135"
+   "www/js/atlas.js:134"
   ],
   "ctx": "['tunis', ru`Тунис`, ru`Проспект Хабиба Бургибы`, 36.8008, 10.1815],"
  },
  {
   "k": "Дакар",
   "at": [
-   "www/js/atlas.js:136"
+   "www/js/atlas.js:135"
   ],
   "ctx": "['dakar', ru`Дакар`, ru`Площадь Независимости`, 14.6675, -17.4318],"
  },
  {
   "k": "Площадь Независимости",
   "at": [
-   "www/js/atlas.js:136",
-   "www/js/atlas.js:161"
+   "www/js/atlas.js:135",
+   "www/js/atlas.js:160"
   ],
   "ctx": "['dakar', ru`Дакар`, ru`Площадь Независимости`, 14.6675, -17.4318],"
  },
  {
   "k": "Лагос",
   "at": [
-   "www/js/atlas.js:137"
+   "www/js/atlas.js:136"
   ],
   "ctx": "['lagos', ru`Лагос`, ru`Остров Лагос`, 6.4550, 3.3940],"
  },
  {
   "k": "Остров Лагос",
   "at": [
-   "www/js/atlas.js:137"
+   "www/js/atlas.js:136"
   ],
   "ctx": "['lagos', ru`Лагос`, ru`Остров Лагос`, 6.4550, 3.3940],"
  },
  {
   "k": "Аддис-Абеба",
   "at": [
-   "www/js/atlas.js:138"
+   "www/js/atlas.js:137"
   ],
   "ctx": "['addis', ru`Аддис-Абеба`, ru`Площадь Мескель`, 9.0108, 38.7613],"
  },
  {
   "k": "Площадь Мескель",
   "at": [
-   "www/js/atlas.js:138"
+   "www/js/atlas.js:137"
   ],
   "ctx": "['addis', ru`Аддис-Абеба`, ru`Площадь Мескель`, 9.0108, 38.7613],"
  },
  {
   "k": "Найроби",
   "at": [
-   "www/js/atlas.js:139"
+   "www/js/atlas.js:138"
   ],
   "ctx": "['nairobi', ru`Найроби`, ru`Проспект Кениаты`, -1.2864, 36.8172],"
  },
  {
   "k": "Проспект Кениаты",
   "at": [
-   "www/js/atlas.js:139"
+   "www/js/atlas.js:138"
   ],
   "ctx": "['nairobi', ru`Найроби`, ru`Проспект Кениаты`, -1.2864, 36.8172],"
  },
  {
   "k": "Занзибар",
   "at": [
-   "www/js/atlas.js:140"
+   "www/js/atlas.js:139"
   ],
   "ctx": "['zanzibar', ru`Занзибар`, ru`Каменный город`, -6.1622, 39.1890],"
  },
  {
   "k": "Каменный город",
   "at": [
-   "www/js/atlas.js:140"
+   "www/js/atlas.js:139"
   ],
   "ctx": "['zanzibar', ru`Занзибар`, ru`Каменный город`, -6.1622, 39.1890],"
  },
  {
   "k": "Кейптаун",
   "at": [
-   "www/js/atlas.js:141"
+   "www/js/atlas.js:140"
   ],
   "ctx": "['capetown', ru`Кейптаун`, ru`Гринмаркет-сквер`, -33.9209, 18.4204],"
  },
  {
   "k": "Гринмаркет-сквер",
   "at": [
-   "www/js/atlas.js:141"
+   "www/js/atlas.js:140"
   ],
   "ctx": "['capetown', ru`Кейптаун`, ru`Гринмаркет-сквер`, -33.9209, 18.4204],"
  },
  {
   "k": "Йоханнесбург",
   "at": [
-   "www/js/atlas.js:142"
+   "www/js/atlas.js:141"
   ],
   "ctx": "['joburg', ru`Йоханнесбург`, ru`Площадь Нельсона Манделы`, -26.1076, 28.0567],"
  },
  {
   "k": "Площадь Нельсона Манделы",
   "at": [
-   "www/js/atlas.js:142"
+   "www/js/atlas.js:141"
   ],
   "ctx": "['joburg', ru`Йоханнесбург`, ru`Площадь Нельсона Манделы`, -26.1076, 28.0567],"
  },
  {
   "k": "Нью-Йорк",
   "at": [
-   "www/js/atlas.js:145"
+   "www/js/atlas.js:144"
   ],
   "ctx": "['nyc', ru`Нью-Йорк`, ru`Таймс-сквер`, 40.7580, -73.9855],"
  },
  {
   "k": "Таймс-сквер",
   "at": [
-   "www/js/atlas.js:145"
+   "www/js/atlas.js:144"
   ],
   "ctx": "['nyc', ru`Нью-Йорк`, ru`Таймс-сквер`, 40.7580, -73.9855],"
  },
  {
   "k": "Вашингтон",
   "at": [
-   "www/js/atlas.js:146"
+   "www/js/atlas.js:145"
   ],
   "ctx": "['dc', ru`Вашингтон`, ru`Национальная аллея`, 38.8895, -77.0230],"
  },
  {
   "k": "Национальная аллея",
   "at": [
-   "www/js/atlas.js:146"
+   "www/js/atlas.js:145"
   ],
   "ctx": "['dc', ru`Вашингтон`, ru`Национальная аллея`, 38.8895, -77.0230],"
  },
  {
   "k": "Чикаго",
   "at": [
-   "www/js/atlas.js:147"
+   "www/js/atlas.js:146"
   ],
   "ctx": "['chicago', ru`Чикаго`, ru`Миллениум-парк`, 41.8826, -87.6226],"
  },
  {
   "k": "Миллениум-парк",
   "at": [
-   "www/js/atlas.js:147"
+   "www/js/atlas.js:146"
   ],
   "ctx": "['chicago', ru`Чикаго`, ru`Миллениум-парк`, 41.8826, -87.6226],"
  },
  {
   "k": "Новый Орлеан",
   "at": [
-   "www/js/atlas.js:148"
+   "www/js/atlas.js:147"
   ],
   "ctx": "['nola', ru`Новый Орлеан`, ru`Площадь Джексона`, 29.9574, -90.0629],"
  },
  {
   "k": "Площадь Джексона",
   "at": [
-   "www/js/atlas.js:148"
+   "www/js/atlas.js:147"
   ],
   "ctx": "['nola', ru`Новый Орлеан`, ru`Площадь Джексона`, 29.9574, -90.0629],"
  },
  {
   "k": "Лос-Анджелес",
   "at": [
-   "www/js/atlas.js:149"
+   "www/js/atlas.js:148"
   ],
   "ctx": "['la', ru`Лос-Анджелес`, ru`Голливудский бульвар`, 34.1016, -118.3267],"
  },
  {
   "k": "Голливудский бульвар",
   "at": [
-   "www/js/atlas.js:149"
+   "www/js/atlas.js:148"
   ],
   "ctx": "['la', ru`Лос-Анджелес`, ru`Голливудский бульвар`, 34.1016, -118.3267],"
  },
  {
   "k": "Сан-Франциско",
   "at": [
-   "www/js/atlas.js:150"
+   "www/js/atlas.js:149"
   ],
   "ctx": "['sf', ru`Сан-Франциско`, ru`Юнион-сквер`, 37.7880, -122.4075],"
  },
  {
   "k": "Юнион-сквер",
   "at": [
-   "www/js/atlas.js:150"
+   "www/js/atlas.js:149"
   ],
   "ctx": "['sf', ru`Сан-Франциско`, ru`Юнион-сквер`, 37.7880, -122.4075],"
  },
  {
   "k": "Ванкувер",
   "at": [
-   "www/js/atlas.js:151"
+   "www/js/atlas.js:150"
   ],
   "ctx": "['vancouver', ru`Ванкувер`, ru`Робсон-сквер`, 49.2820, -123.1210],"
  },
  {
   "k": "Робсон-сквер",
   "at": [
-   "www/js/atlas.js:151"
+   "www/js/atlas.js:150"
   ],
   "ctx": "['vancouver', ru`Ванкувер`, ru`Робсон-сквер`, 49.2820, -123.1210],"
  },
  {
   "k": "Торонто",
   "at": [
-   "www/js/atlas.js:152"
+   "www/js/atlas.js:151"
   ],
   "ctx": "['toronto', ru`Торонто`, ru`Площадь Натана Филлипса`, 43.6525, -79.3832],"
  },
  {
   "k": "Площадь Натана Филлипса",
   "at": [
-   "www/js/atlas.js:152"
+   "www/js/atlas.js:151"
   ],
   "ctx": "['toronto', ru`Торонто`, ru`Площадь Натана Филлипса`, 43.6525, -79.3832],"
  },
  {
   "k": "Монреаль",
   "at": [
-   "www/js/atlas.js:153"
+   "www/js/atlas.js:152"
   ],
   "ctx": "['montreal', ru`Монреаль`, ru`Площадь Армс`, 45.5046, -73.5566],"
  },
  {
   "k": "Площадь Армс",
   "at": [
-   "www/js/atlas.js:153"
+   "www/js/atlas.js:152"
   ],
   "ctx": "['montreal', ru`Монреаль`, ru`Площадь Армс`, 45.5046, -73.5566],"
  },
  {
   "k": "Мехико",
   "at": [
-   "www/js/atlas.js:154"
+   "www/js/atlas.js:153"
   ],
   "ctx": "['mexico', ru`Мехико`, ru`Площадь Сокало`, 19.4326, -99.1332],"
  },
  {
   "k": "Площадь Сокало",
   "at": [
-   "www/js/atlas.js:154"
+   "www/js/atlas.js:153"
   ],
   "ctx": "['mexico', ru`Мехико`, ru`Площадь Сокало`, 19.4326, -99.1332],"
  },
  {
   "k": "Теотиуакан",
   "at": [
-   "www/js/atlas.js:155"
+   "www/js/atlas.js:154"
   ],
   "ctx": "['teotihuacan', ru`Теотиуакан`, ru`Дорога мёртвых`, 19.6925, -98.8438],"
  },
  {
   "k": "Дорога мёртвых",
   "at": [
-   "www/js/atlas.js:155"
+   "www/js/atlas.js:154"
   ],
   "ctx": "['teotihuacan', ru`Теотиуакан`, ru`Дорога мёртвых`, 19.6925, -98.8438],"
  },
  {
   "k": "Чичен-Ица",
   "at": [
-   "www/js/atlas.js:156"
+   "www/js/atlas.js:155"
   ],
   "ctx": "['chichen', ru`Чичен-Ица`, ru`Пирамида Кукулькана`, 20.6843, -88.5678],"
  },
  {
   "k": "Пирамида Кукулькана",
   "at": [
-   "www/js/atlas.js:156"
+   "www/js/atlas.js:155"
   ],
   "ctx": "['chichen', ru`Чичен-Ица`, ru`Пирамида Кукулькана`, 20.6843, -88.5678],"
  },
  {
   "k": "Гавана",
   "at": [
-   "www/js/atlas.js:157"
+   "www/js/atlas.js:156"
   ],
   "ctx": "['havana', ru`Гавана`, ru`Старая площадь`, 23.1361, -82.3506],"
  },
  {
   "k": "Старая площадь",
   "at": [
-   "www/js/atlas.js:157"
+   "www/js/atlas.js:156"
   ],
   "ctx": "['havana', ru`Гавана`, ru`Старая площадь`, 23.1361, -82.3506],"
  },
  {
   "k": "Богота",
   "at": [
-   "www/js/atlas.js:160"
+   "www/js/atlas.js:159"
   ],
   "ctx": "['bogota', ru`Богота`, ru`Площадь Боливара`, 4.5981, -74.0760],"
  },
  {
   "k": "Площадь Боливара",
   "at": [
-   "www/js/atlas.js:160"
+   "www/js/atlas.js:159"
   ],
   "ctx": "['bogota', ru`Богота`, ru`Площадь Боливара`, 4.5981, -74.0760],"
  },
  {
   "k": "Кито",
   "at": [
-   "www/js/atlas.js:161"
+   "www/js/atlas.js:160"
   ],
   "ctx": "['quito', ru`Кито`, ru`Площадь Независимости`, -0.2201, -78.5123],"
  },
  {
   "k": "Лима",
   "at": [
-   "www/js/atlas.js:162"
+   "www/js/atlas.js:161"
   ],
   "ctx": "['lima', ru`Лима`, ru`Главная площадь`, -12.0464, -77.0305],"
  },
  {
   "k": "Главная площадь",
   "at": [
-   "www/js/atlas.js:162"
+   "www/js/atlas.js:161"
   ],
   "ctx": "['lima', ru`Лима`, ru`Главная площадь`, -12.0464, -77.0305],"
  },
  {
   "k": "Куско",
   "at": [
-   "www/js/atlas.js:163"
+   "www/js/atlas.js:162"
   ],
   "ctx": "['cusco', ru`Куско`, ru`Площадь Армас`, -13.5167, -71.9787],"
  },
  {
   "k": "Площадь Армас",
   "at": [
-   "www/js/atlas.js:163",
-   "www/js/atlas.js:169"
+   "www/js/atlas.js:162",
+   "www/js/atlas.js:168"
   ],
   "ctx": "['cusco', ru`Куско`, ru`Площадь Армас`, -13.5167, -71.9787],"
  },
  {
   "k": "Мачу-Пикчу",
   "at": [
-   "www/js/atlas.js:164"
+   "www/js/atlas.js:163"
   ],
   "ctx": "['machu', ru`Мачу-Пикчу`, ru`Город инков в горах`, -13.1631, -72.5450],"
  },
  {
   "k": "Город инков в горах",
   "at": [
-   "www/js/atlas.js:164"
+   "www/js/atlas.js:163"
   ],
   "ctx": "['machu', ru`Мачу-Пикчу`, ru`Город инков в горах`, -13.1631, -72.5450],"
  },
  {
   "k": "Манаус",
   "at": [
-   "www/js/atlas.js:165"
+   "www/js/atlas.js:164"
   ],
   "ctx": "['manaus', ru`Манаус`, ru`Театр Амазонас`, -3.1302, -60.0234],"
  },
  {
   "k": "Театр Амазонас",
   "at": [
-   "www/js/atlas.js:165"
+   "www/js/atlas.js:164"
   ],
   "ctx": "['manaus', ru`Манаус`, ru`Театр Амазонас`, -3.1302, -60.0234],"
  },
  {
   "k": "Рио-де-Жанейро",
   "at": [
-   "www/js/atlas.js:166"
+   "www/js/atlas.js:165"
   ],
   "ctx": "['rio', ru`Рио-де-Жанейро`, ru`Набережная Копакабаны`, -22.9711, -43.1822],"
  },
  {
   "k": "Набережная Копакабаны",
   "at": [
-   "www/js/atlas.js:166"
+   "www/js/atlas.js:165"
   ],
   "ctx": "['rio', ru`Рио-де-Жанейро`, ru`Набережная Копакабаны`, -22.9711, -43.1822],"
  },
  {
   "k": "Сан-Паулу",
   "at": [
-   "www/js/atlas.js:167"
+   "www/js/atlas.js:166"
   ],
   "ctx": "['saopaulo', ru`Сан-Паулу`, ru`Проспект Паулиста`, -23.5614, -46.6559],"
  },
  {
   "k": "Проспект Паулиста",
   "at": [
-   "www/js/atlas.js:167"
+   "www/js/atlas.js:166"
   ],
   "ctx": "['saopaulo', ru`Сан-Паулу`, ru`Проспект Паулиста`, -23.5614, -46.6559],"
  },
  {
   "k": "Буэнос-Айрес",
   "at": [
-   "www/js/atlas.js:168"
+   "www/js/atlas.js:167"
   ],
   "ctx": "['baires', ru`Буэнос-Айрес`, ru`Майская площадь`, -34.6083, -58.3712],"
  },
  {
   "k": "Майская площадь",
   "at": [
-   "www/js/atlas.js:168"
+   "www/js/atlas.js:167"
   ],
   "ctx": "['baires', ru`Буэнос-Айрес`, ru`Майская площадь`, -34.6083, -58.3712],"
  },
  {
   "k": "Сантьяго",
   "at": [
-   "www/js/atlas.js:169"
+   "www/js/atlas.js:168"
   ],
   "ctx": "['santiago', ru`Сантьяго`, ru`Площадь Армас`, -33.4378, -70.6505],"
  },
  {
   "k": "Ушуая",
   "at": [
-   "www/js/atlas.js:170"
+   "www/js/atlas.js:169"
   ],
   "ctx": "['ushuaia', ru`Ушуая`, ru`Город на краю света`, -54.8060, -68.3050],"
  },
  {
   "k": "Город на краю света",
   "at": [
-   "www/js/atlas.js:170"
+   "www/js/atlas.js:169"
   ],
   "ctx": "['ushuaia', ru`Ушуая`, ru`Город на краю света`, -54.8060, -68.3050],"
  },
  {
   "k": "Сидней",
   "at": [
-   "www/js/atlas.js:173"
+   "www/js/atlas.js:172"
   ],
   "ctx": "['sydney', ru`Сидней`, ru`Сиднейский оперный театр`, -33.8587, 151.2140],"
  },
  {
   "k": "Сиднейский оперный театр",
   "at": [
-   "www/js/atlas.js:173"
+   "www/js/atlas.js:172"
   ],
   "ctx": "['sydney', ru`Сидней`, ru`Сиднейский оперный театр`, -33.8587, 151.2140],"
  },
  {
   "k": "Мельбурн",
   "at": [
-   "www/js/atlas.js:174"
+   "www/js/atlas.js:173"
   ],
   "ctx": "['melbourne', ru`Мельбурн`, ru`Федерейшн-сквер`, -37.8180, 144.9691],"
  },
  {
   "k": "Федерейшн-сквер",
   "at": [
-   "www/js/atlas.js:174"
+   "www/js/atlas.js:173"
   ],
   "ctx": "['melbourne', ru`Мельбурн`, ru`Федерейшн-сквер`, -37.8180, 144.9691],"
  },
  {
   "k": "Брисбен",
   "at": [
-   "www/js/atlas.js:175"
+   "www/js/atlas.js:174"
   ],
   "ctx": "['brisbane', ru`Брисбен`, ru`Саут-Бэнк`, -27.4785, 153.0230],"
  },
  {
   "k": "Саут-Бэнк",
   "at": [
-   "www/js/atlas.js:175"
+   "www/js/atlas.js:174"
   ],
   "ctx": "['brisbane', ru`Брисбен`, ru`Саут-Бэнк`, -27.4785, 153.0230],"
  },
  {
   "k": "Перт",
   "at": [
-   "www/js/atlas.js:176"
+   "www/js/atlas.js:175"
   ],
   "ctx": "['perth', ru`Перт`, ru`Кингс-парк`, -31.9610, 115.8330],"
  },
  {
   "k": "Кингс-парк",
   "at": [
-   "www/js/atlas.js:176"
+   "www/js/atlas.js:175"
   ],
   "ctx": "['perth', ru`Перт`, ru`Кингс-парк`, -31.9610, 115.8330],"
  },
  {
   "k": "Аделаида",
   "at": [
-   "www/js/atlas.js:177"
+   "www/js/atlas.js:176"
   ],
   "ctx": "['adelaide', ru`Аделаида`, ru`Рандл-молл`, -34.9225, 138.6030],"
  },
  {
   "k": "Рандл-молл",
   "at": [
-   "www/js/atlas.js:177"
+   "www/js/atlas.js:176"
   ],
   "ctx": "['adelaide', ru`Аделаида`, ru`Рандл-молл`, -34.9225, 138.6030],"
  },
  {
   "k": "Дарвин",
   "at": [
-   "www/js/atlas.js:178"
+   "www/js/atlas.js:177"
   ],
   "ctx": "['darwin', ru`Дарвин`, ru`Митчелл-стрит`, -12.4630, 130.8410],"
  },
  {
   "k": "Митчелл-стрит",
   "at": [
-   "www/js/atlas.js:178"
+   "www/js/atlas.js:177"
   ],
   "ctx": "['darwin', ru`Дарвин`, ru`Митчелл-стрит`, -12.4630, 130.8410],"
  },
  {
   "k": "Улуру",
   "at": [
-   "www/js/atlas.js:179"
+   "www/js/atlas.js:178"
   ],
   "ctx": "['uluru', ru`Улуру`, ru`У подножия Красной скалы`, -25.3530, 131.0350],"
  },
  {
   "k": "У подножия Красной скалы",
   "at": [
-   "www/js/atlas.js:179"
+   "www/js/atlas.js:178"
   ],
   "ctx": "['uluru', ru`Улуру`, ru`У подножия Красной скалы`, -25.3530, 131.0350],"
  },
  {
   "k": "Хобарт",
   "at": [
-   "www/js/atlas.js:180"
+   "www/js/atlas.js:179"
   ],
   "ctx": "['hobart', ru`Хобарт`, ru`Саламанка-плейс`, -42.8870, 147.3320],"
  },
  {
   "k": "Саламанка-плейс",
   "at": [
-   "www/js/atlas.js:180"
+   "www/js/atlas.js:179"
   ],
   "ctx": "['hobart', ru`Хобарт`, ru`Саламанка-плейс`, -42.8870, 147.3320],"
  },
  {
   "k": "Окленд",
   "at": [
-   "www/js/atlas.js:181"
+   "www/js/atlas.js:180"
   ],
   "ctx": "['auckland', ru`Окленд`, ru`Куин-стрит`, -36.8485, 174.7633],"
  },
  {
   "k": "Куин-стрит",
   "at": [
-   "www/js/atlas.js:181"
+   "www/js/atlas.js:180"
   ],
   "ctx": "['auckland', ru`Окленд`, ru`Куин-стрит`, -36.8485, 174.7633],"
  },
  {
   "k": "Веллингтон",
   "at": [
-   "www/js/atlas.js:182"
+   "www/js/atlas.js:181"
   ],
   "ctx": "['wellington', ru`Веллингтон`, ru`Куба-стрит`, -41.2924, 174.7760],"
  },
  {
   "k": "Куба-стрит",
   "at": [
-   "www/js/atlas.js:182"
+   "www/js/atlas.js:181"
   ],
   "ctx": "['wellington', ru`Веллингтон`, ru`Куба-стрит`, -41.2924, 174.7760],"
  },
  {
   "k": "Квинстаун",
   "at": [
-   "www/js/atlas.js:183"
+   "www/js/atlas.js:182"
   ],
   "ctx": "['queenstown', ru`Квинстаун`, ru`Город у Южных Альп`, -45.0312, 168.6626],"
  },
  {
   "k": "Город у Южных Альп",
   "at": [
-   "www/js/atlas.js:183"
+   "www/js/atlas.js:182"
   ],
   "ctx": "['queenstown', ru`Квинстаун`, ru`Город у Южных Альп`, -45.0312, 168.6626],"
  },
  {
   "k": "Новый Свет",
   "at": [
-   "www/js/atlas.js:279"
+   "www/js/atlas.js:282"
   ],
   "ctx": "const lb = d === 'w' ? ru`Новый Свет` : ru`Старый Свет`, rr = c.r + 7;"
  },
  {
   "k": "Старый Свет",
   "at": [
-   "www/js/atlas.js:279"
+   "www/js/atlas.js:282"
   ],
   "ctx": "const lb = d === 'w' ? ru`Новый Свет` : ru`Старый Свет`, rr = c.r + 7;"
  },
  {
   "k": "Атлас мира",
   "at": [
-   "www/js/atlas.js:347",
-   "www/js/atlas.js:351",
-   "www/js/atlas.js:688",
+   "www/js/atlas.js:348",
+   "www/js/atlas.js:352",
+   "www/js/atlas.js:684",
    "www/js/book.js:123"
   ],
   "ctx": "const el = this.el = U.el(`<div class=\"atlas${opts.first ? ' first' : ''}\" role=\"dialog\" aria-modal=\"true\" aria-label=\"${ru`Атлас мира`}\">"
@@ -1990,24 +1990,24 @@
  {
   "k": "Назад",
   "at": [
-   "www/js/atlas.js:350",
-   "www/js/atlas.js:569",
+   "www/js/atlas.js:351",
+   "www/js/atlas.js:566",
    "www/js/clans.js:96",
-   "www/js/intro.js:161"
+   "www/js/intro.js:163"
   ],
   "ctx": "<button class=\"btn-round at-back\" aria-label=\"${ru`Назад`}\">${UI.I.back}</button>"
  },
  {
   "k": "Орден Оберега",
   "at": [
-   "www/js/atlas.js:351"
+   "www/js/atlas.js:352"
   ],
   "ctx": "<div class=\"at-ttl\"><small>${ru`Орден Оберега`}</small><h2>${ru`Атлас мира`}</h2></div>"
  },
  {
   "k": "Закрыть",
   "at": [
-   "www/js/atlas.js:352",
+   "www/js/atlas.js:353",
    "www/js/clans.js:96",
    "www/js/login.js:297",
    "www/js/realms.js:196"
@@ -2017,184 +2017,184 @@
  {
   "k": "Врата Перепутицы открыты. Куда шагнёшь, Ловчий?",
   "at": [
-   "www/js/atlas.js:354"
+   "www/js/atlas.js:355"
   ],
   "ctx": "${story ? `<p class=\"at-story\">${ru`Врата Перепутицы открыты. Куда шагнёшь, Ловчий?`}</p>` : ''}"
  },
  {
   "k": "Сначала выбери, куда шагнуть",
   "at": [
-   "www/js/atlas.js:384"
+   "www/js/atlas.js:385"
   ],
   "ctx": "if (this.opts.first) { UI.toast(ru`Сначала выбери, куда шагнуть`); return; }"
  },
  {
   "k": "Врата откроются через {0} мин",
   "at": [
-   "www/js/atlas.js:421",
-   "www/js/atlas.js:610"
+   "www/js/atlas.js:422",
+   "www/js/atlas.js:606"
   ],
   "ctx": "s.innerHTML = cd > 0 ? `${this.gateIcon()}<span>${ru`Врата откроются через ${this.cdMin()} мин`}${n ? ` · ${ru`у тебя ${n}`}` : ''}</span>` : `${this.gateIcon()}<span>${ru`Врата открыты`}</span>`;"
  },
  {
   "k": "у тебя {0}",
   "at": [
-   "www/js/atlas.js:421"
+   "www/js/atlas.js:422"
   ],
   "ctx": "s.innerHTML = cd > 0 ? `${this.gateIcon()}<span>${ru`Врата откроются через ${this.cdMin()} мин`}${n ? ` · ${ru`у тебя ${n}`}` : ''}</span>` : `${this.gateIcon()}<span>${ru`Врата открыты`}</span>`;"
  },
  {
   "k": "Врата открыты",
   "at": [
-   "www/js/atlas.js:421"
+   "www/js/atlas.js:422"
   ],
   "ctx": "s.innerHTML = cd > 0 ? `${this.gateIcon()}<span>${ru`Врата откроются через ${this.cdMin()} мин`}${n ? ` · ${ru`у тебя ${n}`}` : ''}</span>` : `${this.gateIcon()}<span>${ru`Врата открыты`}</span>`;"
  },
  {
   "k": "После Перепутицы духи любых мифологий встречаются везде.",
   "at": [
-   "www/js/atlas.js:432"
+   "www/js/atlas.js:433"
   ],
   "ctx": "const info = L ? `<div class=\"at-info\"><h3>${U.esc(L.name)}</h3>${myths ? `<div class=\"at-myths\">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`После Перепутицы духи любых мифологий встречаются везде"
  },
  {
   "k": "Коснись материка — там и начнётся твой путь Ловчего.",
   "at": [
-   "www/js/atlas.js:433"
+   "www/js/atlas.js:434"
   ],
   "ctx": ": `<div class=\"at-info hint\"><p>${first ? ru`Коснись материка — там и начнётся твой путь Ловчего.` : ru`Коснись материка, чтобы выбрать, куда шагнуть.`}</p></div>`;"
  },
  {
   "k": "Коснись материка, чтобы выбрать, куда шагнуть.",
   "at": [
-   "www/js/atlas.js:433"
+   "www/js/atlas.js:434"
   ],
   "ctx": ": `<div class=\"at-info hint\"><p>${first ? ru`Коснись материка — там и начнётся твой путь Ловчего.` : ru`Коснись материка, чтобы выбрать, куда шагнуть.`}</p></div>`;"
  },
  {
   "k": "Выбрать место",
   "at": [
-   "www/js/atlas.js:434"
+   "www/js/atlas.js:435"
   ],
-  "ctx": "P.innerHTML = `<div class=\"seg dt-tabs at-chips\">${chips}</div>${info}<div class=\"at-foot\">${UI.rune(ru`Выбрать место`, 'at-go', UI.I.pin)}${gates}</div>`;"
+  "ctx": "P.innerHTML = `<div class=\"at-chips\">${chips}</div>${info}<div class=\"at-foot\">${UI.rune(ru`Выбрать место`, 'at-go', UI.I.pin)}${gates}</div>`;"
  },
  {
   "k": "Куда шагнуть?",
   "at": [
-   "www/js/atlas.js:443"
+   "www/js/atlas.js:442"
   ],
   "ctx": "P.innerHTML = `<div class=\"at-lh\"><b>${U.esc(L.name)}</b><small>${ru`Куда шагнуть?`}</small></div>"
  },
  {
   "k": "Своё место",
   "at": [
-   "www/js/atlas.js:445",
-   "www/js/atlas.js:570"
+   "www/js/atlas.js:444",
+   "www/js/atlas.js:567"
   ],
   "ctx": "<button class=\"at-pl own\" data-own=\"1\"><i class=\"at-dot\">${UI.I.pin}</i><span><b>${ru`Своё место`}</b><small>${ru`Любая точка на настоящей карте`}</small></span></button></div>"
  },
  {
   "k": "Любая точка на настоящей карте",
   "at": [
-   "www/js/atlas.js:445"
+   "www/js/atlas.js:444"
   ],
   "ctx": "<button class=\"at-pl own\" data-own=\"1\"><i class=\"at-dot\">${UI.I.pin}</i><span><b>${ru`Своё место`}</b><small>${ru`Любая точка на настоящей карте`}</small></span></button></div>"
  },
  {
   "k": "Шагнуть во Врата",
   "at": [
-   "www/js/atlas.js:446"
+   "www/js/atlas.js:445"
   ],
   "ctx": "<div class=\"at-foot\">${UI.rune(ru`Шагнуть во Врата`, 'at-step', '')}${gates}</div>`;"
  },
  {
   "k": "Карта не загрузилась — проверь связь",
   "at": [
-   "www/js/atlas.js:564"
+   "www/js/atlas.js:563"
   ],
   "ctx": "if (typeof L === 'undefined') { UI.toast(ru`Карта не загрузилась — проверь связь`); return; }"
  },
  {
   "k": "Приблизь карту и коснись улицы, где хочешь появиться.",
   "at": [
-   "www/js/atlas.js:571"
+   "www/js/atlas.js:568"
   ],
-  "ctx": "<div class=\"at-pbar\"><p class=\"at-phint\">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p>${UI.rune(ru`Шагнуть сюда`, 'at-pgo', UI.I.pin)}</div></div>`);"
+  "ctx": "<div class=\"at-pmap\"></div><div class=\"at-pbar\"><p class=\"at-phint\">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p>${UI.rune(ru`Шагнуть сюда`, 'at-pgo')}</div></div>`);"
  },
  {
   "k": "Шагнуть сюда",
   "at": [
-   "www/js/atlas.js:571"
+   "www/js/atlas.js:568"
   ],
-  "ctx": "<div class=\"at-pbar\"><p class=\"at-phint\">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p>${UI.rune(ru`Шагнуть сюда`, 'at-pgo', UI.I.pin)}</div></div>`);"
+  "ctx": "<div class=\"at-pmap\"></div><div class=\"at-pbar\"><p class=\"at-phint\">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p>${UI.rune(ru`Шагнуть сюда`, 'at-pgo')}</div></div>`);"
  },
  {
   "k": "Теперь коснись улицы, где хочешь появиться.",
   "at": [
-   "www/js/atlas.js:583"
+   "www/js/atlas.js:579"
   ],
   "ctx": "if (z < NEED) { m.setView(e.latlng, Math.min(NEED + 1, z + 4)); hint.textContent = z + 4 >= NEED ? ru`Теперь коснись улицы, где хочешь появиться.` : ru`Ещё ближе — выбери улицу.`; return; }"
  },
  {
   "k": "Ещё ближе — выбери улицу.",
   "at": [
-   "www/js/atlas.js:583"
+   "www/js/atlas.js:579"
   ],
   "ctx": "if (z < NEED) { m.setView(e.latlng, Math.min(NEED + 1, z + 4)); hint.textContent = z + 4 >= NEED ? ru`Теперь коснись улицы, где хочешь появиться.` : ru`Ещё ближе — выбери улицу.`; return; }"
  },
  {
   "k": "Врата отдыхают",
   "at": [
-   "www/js/atlas.js:610"
+   "www/js/atlas.js:606"
   ],
-  "ctx": "<div class=\"modal-title\">${ru`Врата отдыхают`}</div><p>${ru`Врата откроются через ${this.cdMin()} мин`}</p>"
+  "ctx": "<b>${ru`Врата отдыхают`}</b><p>${ru`Врата откроются через ${this.cdMin()} мин`}</p>"
  },
  {
   "k": "Использовать Врата Перепутицы (у тебя {0})",
   "at": [
-   "www/js/atlas.js:611"
+   "www/js/atlas.js:607"
   ],
   "ctx": "${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : `<p class=\"small\">${ru`Врата Перепутицы открываются сразу — их можно купить в Лавке.`}</p>${typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, '"
  },
  {
   "k": "Врата Перепутицы открываются сразу — их можно купить в Лавке.",
   "at": [
-   "www/js/atlas.js:611"
+   "www/js/atlas.js:607"
   ],
   "ctx": "${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : `<p class=\"small\">${ru`Врата Перепутицы открываются сразу — их можно купить в Лавке.`}</p>${typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, '"
  },
  {
   "k": "В Лавку",
   "at": [
-   "www/js/atlas.js:611"
+   "www/js/atlas.js:607"
   ],
   "ctx": "${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : `<p class=\"small\">${ru`Врата Перепутицы открываются сразу — их можно купить в Лавке.`}</p>${typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, '"
  },
  {
   "k": "Подождать",
   "at": [
-   "www/js/atlas.js:612"
+   "www/js/atlas.js:608"
   ],
   "ctx": "${UI.glass(ru`Подождать`, 'at-wait')}</div></div>`);"
  },
  {
   "k": "Врата Перепутицы пока закрыты — обнови игру",
   "at": [
-   "www/js/atlas.js:628"
+   "www/js/atlas.js:624"
   ],
   "ctx": "if (!w || !w.teleport) { UI.toast(ru`Врата Перепутицы пока закрыты — обнови игру`); return; }"
  },
  {
   "k": "Врата не открылись. Попробуй ещё раз.",
   "at": [
-   "www/js/atlas.js:643"
+   "www/js/atlas.js:639"
   ],
   "ctx": "const msg = r && r.error ? (typeof I18N !== 'undefined' && I18N.back ? I18N.back(r.error) : r.error) : ru`Врата не открылись. Попробуй ещё раз.`;"
  },
  {
   "k": "Врата Перепутицы",
   "at": [
-   "www/js/atlas.js:658",
+   "www/js/atlas.js:654",
    "www/js/data.js:337",
    "www/js/rules.js:305"
   ],
@@ -2203,21 +2203,21 @@
  {
   "k": "Шаг — и перед тобой {0}",
   "at": [
-   "www/js/atlas.js:658"
+   "www/js/atlas.js:654"
   ],
   "ctx": "<div class=\"ag-txt\"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class=\"ag-flash\"></i></div>`);"
  },
  {
   "k": "Шаг — и ты на месте",
   "at": [
-   "www/js/atlas.js:658"
+   "www/js/atlas.js:654"
   ],
   "ctx": "<div class=\"ag-txt\"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class=\"ag-flash\"></i></div>`);"
  },
  {
   "k": "Атлас",
   "at": [
-   "www/js/atlas.js:690"
+   "www/js/atlas.js:686"
   ],
   "ctx": "<span class=\"ab-t\">${ru`Атлас`}</span><span class=\"ab-m\"></span></button>`);"
  },
@@ -3338,8 +3338,8 @@
   "k": "Книга Ордена",
   "at": [
    "www/js/book.js:41",
-   "www/js/intro.js:158",
-   "www/js/intro.js:159",
+   "www/js/intro.js:160",
+   "www/js/intro.js:161",
    "www/js/ui-player.js:400"
   ],
   "ctx": "const scr = UI.screen(ru`Книга Ордена`, `"
@@ -3691,7 +3691,7 @@
   "k": "Погода",
   "at": [
    "www/js/book.js:128",
-   "www/index.html:149"
+   "www/index.html:157"
   ],
   "ctx": "[ru`Погода`, this.p(ru`Погода настоящая — та, что сейчас стоит там, где ты на карте. В разломах, на Капищах и в Лиге она усиливает свои стихии:`) + this.cards(wx) +"
  },
@@ -12017,29 +12017,29 @@
  {
   "k": "Пропустить",
   "at": [
-   "www/js/intro.js:159"
+   "www/js/intro.js:161"
   ],
-  "ctx": "<div class=\"in-top\"><span class=\"in-lbl\">${UI.I.book}${ru`Книга Ордена`}</span>${UI.glass(ru`Пропустить`, 'in-skip')}</div>"
+  "ctx": "<div class=\"in-top\"><span class=\"in-lbl\">${UI.I.book}${ru`Книга Ордена`}</span><button class=\"in-skip\">${ru`Пропустить`}</button></div>"
  },
  {
   "k": "Далее",
   "at": [
-   "www/js/intro.js:163",
-   "www/js/intro.js:189"
+   "www/js/intro.js:165",
+   "www/js/intro.js:191"
   ],
   "ctx": "<div class=\"in-nextw\">${UI.rune(ru`Далее`, 'in-next')}</div></div></div>`);"
  },
  {
   "k": "Закрыть книгу",
   "at": [
-   "www/js/intro.js:189"
+   "www/js/intro.js:191"
   ],
   "ctx": "t.textContent = last ? (this.opts.again ? ru`Закрыть книгу` : ru`В путь!`) : ru`Далее`;"
  },
  {
   "k": "В путь!",
   "at": [
-   "www/js/intro.js:189",
+   "www/js/intro.js:191",
    "www/js/tutorial.js:179"
   ],
   "ctx": "t.textContent = last ? (this.opts.again ? ru`Закрыть книгу` : ru`В путь!`) : ru`Далее`;"
@@ -13207,7 +13207,7 @@
   "k": "Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.",
   "at": [
    "www/js/loader.js:9",
-   "www/index.html:124"
+   "www/index.html:132"
   ],
   "ctx": "ru`Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.`,"
  },
@@ -13307,7 +13307,7 @@
   "at": [
    "www/js/loader.js:51",
    "www/js/ui.js:921",
-   "www/index.html:121"
+   "www/index.html:129"
   ],
   "ctx": "<div class=\"ld-logo\"><img class=\"logo-img\" src=\"img/logo.webp\" width=\"883\" height=\"391\" alt=\"${ru`Духолов`}\" decoding=\"async\" fetchpriority=\"high\"><p>${ru`Лови духов Нави по всему свету`}</p></div>"
  },
@@ -13322,7 +13322,7 @@
   "k": "Предыдущая подсказка",
   "at": [
    "www/js/loader.js:55",
-   "www/index.html:125"
+   "www/index.html:133"
   ],
   "ctx": "<button class=\"ld-arrow prev\" aria-label=\"${ru`Предыдущая подсказка`}\">‹</button>"
  },
@@ -13330,7 +13330,7 @@
   "k": "Следующая подсказка",
   "at": [
    "www/js/loader.js:56",
-   "www/index.html:126"
+   "www/index.html:134"
   ],
   "ctx": "<button class=\"ld-arrow next\" aria-label=\"${ru`Следующая подсказка`}\">›</button>"
  },
@@ -24504,57 +24504,57 @@
  {
   "k": "✦ Совет Ордена",
   "at": [
-   "www/index.html:124"
+   "www/index.html:132"
   ],
   "ctx": "<div class=\"ld-tip\"><small>✦ Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>"
  },
  {
   "k": "Загрузка…",
   "at": [
-   "www/index.html:129"
+   "www/index.html:137"
   ],
   "ctx": "<div class=\"ld-prog\"><div class=\"ld-row\"><span class=\"ld-text\">Загрузка…</span><b class=\"ld-pct\"></b></div><div class=\"ld-bar\"><i class=\"boot\"></i></div></div>"
  },
  {
   "k": "Рядом",
   "at": [
-   "www/index.html:168",
-   "www/index.html:168"
+   "www/index.html:176",
+   "www/index.html:176"
   ],
   "ctx": "<button id=\"nearbyBtn\" class=\"nearby\" aria-label=\"Рядом\"><div class=\"nb-arts\"></div><span>Рядом</span><b class=\"nb-cnt hidden\"></b></button>"
  },
  {
   "k": "Профиль",
   "at": [
-   "www/index.html:142"
+   "www/index.html:150"
   ],
   "ctx": "<button id=\"profileBtn\" class=\"profile\" aria-label=\"Профиль\">"
  },
  {
   "k": "Перестать следить",
   "at": [
-   "www/index.html:156"
+   "www/index.html:164"
   ],
   "ctx": "<div id=\"tracker\" class=\"hidden\"><div class=\"tr-arrow\"><svg viewBox=\"0 0 24 24\"><path d=\"M12 2l7 19-7-4-7 4z\" fill=\"currentColor\"/></svg></div><div class=\"tr-ico\"></div><div class=\"tr-main\"><b class=\"tr-name\"></b><small "
  },
  {
   "k": "К себе",
   "at": [
-   "www/index.html:158"
+   "www/index.html:166"
   ],
   "ctx": "<button id=\"recenterBtn\" class=\"btn-round recenter\" aria-label=\"К себе\"><svg class=\"ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"7\"/><circl"
  },
  {
   "k": "Компас: повернуть карту севером вверх",
   "at": [
-   "www/index.html:161"
+   "www/index.html:169"
   ],
   "ctx": "<button id=\"compassBtn\" class=\"compass\" aria-label=\"Компас: повернуть карту севером вверх\"></button>"
  },
  {
   "k": "Меню",
   "at": [
-   "www/index.html:163"
+   "www/index.html:171"
   ],
   "ctx": "<button id=\"menuBtn\" class=\"orb\" aria-label=\"Меню\">"
  }

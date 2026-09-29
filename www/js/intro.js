@@ -140,10 +140,12 @@ const Intro = {
     ];
   },
 
-  // 5.2: страница — стеклянный лист (style.css «5.2: книга — стекло»): без золотых уголков и рамки
+  corner: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M3 30 V9 Q3 3 9 3 H30" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 24 V12 Q8 8 12 8 H24" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/><path d="M3 3 l5 5" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>',
+
   pageEl(n) {
     const p = this.P[n], N = this.P.length;
     return U.el(`<article class="in-page${p.last ? ' last' : ''}" aria-label="${n + 1} / ${N}"><div class="in-sheet">
+      ${['tl', 'tr', 'bl', 'br'].map(c => `<i class="in-cn ${c}">${this.corner}</i>`).join('')}
       <div class="in-art"><div class="in-stage">${p.art()}</div></div>
       <div class="in-txt"><small class="in-k">${p.k}</small><h2${p.t.length > 16 ? ' class="long"' : ''}>${p.t}</h2><p>${p.x}</p>${p.aside ? `<p class="in-aside">${p.aside}</p>` : ''}</div>
       <span class="in-pn">${n + 1}</span><i class="in-shade"></i></div></article>`);
@@ -156,7 +158,7 @@ const Intro = {
     this.opts = opts; this.P = this.pages(); this.i = 0;
     const N = this.P.length;
     const el = this.el = U.el(`<div class="intro" role="dialog" aria-modal="true" aria-label="${ru`Книга Ордена`}">
-      <div class="in-top"><span class="in-lbl">${UI.I.book}${ru`Книга Ордена`}</span>${UI.glass(ru`Пропустить`, 'in-skip')}</div>
+      <div class="in-top"><span class="in-lbl">${UI.I.book}${ru`Книга Ордена`}</span><button class="in-skip">${ru`Пропустить`}</button></div>
       <div class="in-book"><i class="in-edge e2"></i><i class="in-edge e1"></i></div>
       <div class="in-foot"><button class="btn-round in-prev" aria-label="${ru`Назад`}">${UI.I.back}</button>
         <div class="in-dots">${this.P.map((_, k) => `<i data-k="${k}"></i>`).join('')}</div>
