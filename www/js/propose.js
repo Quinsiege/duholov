@@ -1,12 +1,11 @@
 'use strict';
 /* «Места»: игрок предлагает реальный объект для карты.
-   Снимок делается только камерой в игре, в момент съёмки фиксируется GPS — координаты записываются в сам
-   файл (EXIF) и в заявку. Точку объекта можно сдвинуть не дальше 50 м от места съёмки (это же проверяет сервер).
+   Снимок делается только камерой в игре; место заявки — где сейчас стоит Ловчий на карте (5.1: без GPS — walk.js),
+   координаты записываются в заявку. Точку объекта можно сдвинуть не дальше 50 м от места съёмки (это же проверяет сервер).
    Заявку рассматривает модератор; одобренная появляется на карте как Родник или Капище. */
 
 const Propose = {
   MIN_LEVEL: 5,
-  MAX_ACC: 30,        // требуемая точность GPS, м
   MAX_SHIFT: 50,      // насколько можно сдвинуть точку от места съёмки, м
   DUP: 20,            // ближе этого к существующему объекту — дубликат
   unseen: 0,
@@ -74,17 +73,16 @@ const Propose = {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { UI.toast(ru`Камера недоступна на этом устройстве`); return; }
     const el = U.el(`<div class="cam-screen">
       <video autoplay playsinline muted></video>
-      <div class="cam-top"><button class="btn-round cam-x">${UI.I.close}</button><span class="cam-gps">${ru`Ищу GPS…`}</span></div>
+      <div class="cam-top"><button class="btn-round cam-x">${UI.I.close}</button><span class="cam-gps"></span></div>
       <div class="cam-hint">${ru`Наведи камеру на объект целиком`}</div>
       <button class="cam-shot" aria-label="${ru`Снимок`}"></button>
     </div>`);
     document.body.appendChild(el);
     const video = el.querySelector('video'), gpsEl = el.querySelector('.cam-gps');
-    let stream = null, watch = null, fix = null;
+    let stream = null;
     const close = () => {
       UI.popLayer(close);
       if (stream) stream.getTracks().forEach(t => t.stop());
-      if (watch != null) navigator.geolocation.clearWatch(watch);
       el.remove();
     };
     UI.pushLayer(close);
@@ -92,23 +90,13 @@ const Propose = {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 } }, audio: false })
       .then(s => { if (!el.isConnected) { s.getTracks().forEach(t => t.stop()); return; } stream = s; video.srcObject = s; video.play().catch(() => {}); })
       .catch(() => { UI.toast(ru`Нет доступа к камере`); close(); });
-    // геопозиция следит всё время съёмки: к моменту снимка уже есть свежая точка
-    const onFix = f => {
-      fix = f;
-      gpsEl.textContent = ru`GPS ±${Math.round(f.acc)} м`;
-      gpsEl.className = 'cam-gps ' + (f.acc <= this.MAX_ACC ? 'ok' : 'weak');
-    };
-    if (DEV && MapView.demo) onFix({ lat: MapView.pos.lat, lng: MapView.pos.lng, acc: 5, t: Date.now() });
-    else if ('geolocation' in navigator) {
-      watch = navigator.geolocation.watchPosition(p => onFix({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, t: p.timestamp }),
-        () => { gpsEl.textContent = ru`Нет GPS`; gpsEl.className = 'cam-gps bad'; }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
-    }
+    // 5.1: место снимка — где Ловчий на карте
+    gpsEl.textContent = ru`Место — где ты на карте`; gpsEl.className = 'cam-gps ok';
     el.querySelector('.cam-shot').onclick = async () => {
       if (!stream || !video.videoWidth) { UI.toast(ru`Камера ещё включается`); return; }
-      if (!fix || Date.now() - fix.t > 15000) { UI.toast(ru`Жду сигнал GPS…`); return; }
-      if (fix.acc > this.MAX_ACC) { UI.toast(ru`GPS неточный (±${Math.round(fix.acc)} м). Выйди на открытое место и подожди.`); return; }
+      if (!Walk.pos) { UI.toast(ru`Сначала выбери место в Атласе мира`); return; }
       Sfx.play('hit'); U.vibrate(30);
-      const shot = { ...fix, t: Date.now() };
+      const shot = { lat: Walk.pos.lat, lng: Walk.pos.lng, acc: 5, t: Date.now() };
       try {
         const blob = await this.capture(video, shot);
         close();
@@ -146,7 +134,7 @@ const Propose = {
         <p class="small prop-kind-hint">${ru`Родник — для любого интересного объекта. Капище — для заметных мест: памятник, парк, крупное здание.`}</p>
         <label class="prop-label">${ru`Точка объекта`}</label>
         <div class="prop-map"></div>
-        <p class="small">${ru`Круг — ${this.MAX_SHIFT} м от места съёмки (±${Math.round(fix.acc)} м). Перетащи булавку точно на объект.`}</p>
+        <p class="small">${ru`Круг — ${this.MAX_SHIFT} м от места, где ты стоишь на карте. Перетащи булавку точно на объект.`}</p>
         <div class="prop-warn small"></div>
         <button class="btn primary wide prop-send">${ru`Отправить на проверку`}</button>
       </div>`, 'prop-screen', () => { URL.revokeObjectURL(url); if (map) map.remove(); });

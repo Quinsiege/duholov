@@ -56,6 +56,7 @@
   <script src="../www/js/world.js"></script>
   <script src="../www/js/navmap.js"></script>
   <script src="../www/js/fog.js"></script>
+  <script src="../www/js/walk.js"></script>
   <script src="../www/js/map.js"></script>
   <script src="../www/js/encounter.js"></script>
   <script src="../www/js/raid.js"></script>
@@ -86,6 +87,7 @@
   <script src="../www/js/pois.js"></script>
   <script src="../www/js/propose.js"></script>
   <script src="../www/js/updater.js"></script>
+  <script src="../www/js/atlas.js"></script>
   <script src="../www/js/ui.js"></script>
   <script src="../www/js/ui-spirits.js"></script>
   <script src="../www/js/ui-player.js"></script>
@@ -535,6 +537,41 @@
       eq(Rules.tributeFor(1, 0).sparks, TRIBUTE.sparks); eq(Rules.tributeFor(1, 1).sparks, TRIBUTE.sparks * 1.5); eq(Rules.tributeFor(1, 1).charm, 2);
       eq(Rules.tributeFor(3, 1).sparks, 350); eq(Rules.tributeFor(3, 5).sparks, 450, 'не больше n святилищ');
     } finally { S.d = keep; Ev.ala = a0; mythOpen(Ev.alaSeason(), true); }
+  });
+  test('Цена граней Алатыря (5.x): растёт с числом активных Ловчих, ограничена ×2, фиксируется при открытии', () => {
+    const A = Rules.ALATYR_WORLD, b = k => Rules.alaGoal(1, k);
+    // N = 0 — базовые цены; без цен в базе — как до 5.x
+    for (let n = 0; n < 20; n++) { const f = Rules.alaFace(n); eq(Rules.alaPriceNew(n, 0, n ? Rules.alaPriceNew(n - 1, 0, 0) : 0), Rules.alaGoal(f.s, f.k), 'грань ' + n); }
+    eq(Rules.alaCost(1), 490); eq(Rules.alaCost(1, { goals: {}, N: 0 }), 490);
+    // N = 1 — ×1,1; N = 3 — ×1,3
+    eq(Rules.alaMul(1), 1.1); eq(Rules.alaMul(3), 1.3); eq(Rules.alaPriceNew(0, 1, 0), Math.round(A.FIRST * 1.1)); eq(Rules.alaPriceNew(0, 3, 0), 52);
+    // не дороже ×2 предыдущей грани (и через границу сезона), не дешевле базовой
+    eq(Rules.alaPriceNew(1, 100, 44), 88, 'не дороже вдвое прошлой'); eq(Rules.alaPriceNew(1, 100, 20), b(1), 'не дешевле базовой');
+    eq(Rules.alaPriceNew(Rules.alaBase(2), 100, 60), 120, 'первая грань сезона — от последней грани прошлого'); eq(Rules.alaPriceNew(0, 100, 0), b(0) * 11, 'первой грани — только формула');
+    // цена зафиксирована — от N больше не зависит; следующая грань — ориентир по нынешнему множителю
+    const G = { goals: { 0: 44 }, N: 50 };
+    let st = Rules.alaStage(1, 43, G); eq(st.n, 0); eq(st.need, 44); ok(!st.est, 'текущая грань — зафиксирована');
+    eq(Rules.alaStage(1, 43, { goals: { 0: 44 }, N: 0 }).need, 44, 'N изменилось — цена та же');
+    st = Rules.alaStage(1, 44, G); eq(st.n, 1, 'грань собрана по своей цене'); eq(st.need, 88, 'ориентир — не дороже вдвое'); ok(st.est);
+    eq(Rules.alaNextFix(1, 44, G), 1, 'собрана грань — пора фиксировать следующую'); eq(Rules.alaNextFix(1, 43, G), -1, 'текущая уже зафиксирована');
+    // первый запуск (цен нет): фиксируется та грань, что собирается сейчас, собранные до неё — по базовой цене
+    eq(Rules.alaNextFix(1, 0, { goals: {}, N: 9 }), 0); eq(Rules.alaNextFix(1, b(0) + b(1) + 5, { goals: {}, N: 9 }), 2);
+    const G2 = { goals: { 2: 100 }, N: 9 }; st = Rules.alaStage(1, b(0) + b(1) + 5, G2);
+    eq(st.n, 2); eq(st.need, 100); eq(st.prices[0].kind, 'old'); eq(st.prices[0].p, b(0), 'собранные до 5.x — по базовой цене');
+    // новый сезон: первая грань — открыта раскол, фиксируется
+    const last = Rules.alaBase(2) - 1, G3 = { goals: { [last]: 130 }, N: 4 };
+    eq(Rules.alaNextFix(2, 0, G3), Rules.alaBase(2)); eq(Rules.alaStage(2, 0, G3).need, Rules.alaPriceNew(Rules.alaBase(2), 4, 130));
+    // телефон и сервер считают одинаково: телефон получает цены в событии ala (JSON), сервер — из базы
+    const a0 = Ev.ala;
+    try {
+      const srv = { s: 1, from: 0, start: 100, fin: null, brk: null, goals: { 0: 44, 1: 60 }, N: 7 };
+      Ev.ala = srv; const view = JSON.parse(JSON.stringify(Ev.alaView()));
+      Ev.ala = Ev.alaClean(view); const phone = Ev.alaStage(100 + 44 + 30);
+      const server = Rules.alaStage(1, 44 + 30, srv);
+      eq(JSON.stringify([phone.n, phone.have, phone.need, phone.prices]), JSON.stringify([server.n, server.have, server.need, server.prices]));
+      eq(phone.need, 60); eq(Ev.ala.N, 7);
+      const k1 = Ev.alaKey(); Ev.ala.goals[2] = 90; ok(Ev.alaKey() !== k1, 'новая цена — телефону снова');
+    } finally { Ev.ala = a0; }
   });
   test('Сезоны Алатыря (4.28): закрытая мифология не появляется нигде, открывается с сезоном', () => {
     // временная мифология второго сезона (как файл myth-<ключ>.js с MYTH_META): её виды — в SPECIES_ALL и SP, но не в SPECIES
@@ -2570,6 +2607,9 @@
       let r = await withRandom(0.5, () => call(A, '__alaTest')); ok(r.ok, r.error);
       eq(A.data.alaS.s, 1); eq(A.data.alaS.n, 1, 'осколок — во вклад сезона'); eq(A.data.alaGiven, 1);
       let st = await must(A, 'alatyr'); eq(st.season.s, 1); eq(st.my.n, 1); eq(st.my.pts, 1);
+      // 5.x: цены граней и число активных Ловчих — телефону вместе с сезоном
+      Ev.ala = { ...Ev.ala, goals: { 0: 44 }, N: 3 }; r = await call(A, 'alatyr'); st = r.results[0];
+      eq(st.season.goals[0], 44); eq(st.season.N, 3); ok(r.events.some(e => e[0] === 'ala' && e[1].goals[0] === 44), 'цены — событием ala');
       // финал: во всех Разломах Кощей, победа — во вклад Ловчего и в общий счёт (после сохранения)
       Ev.ala = { s: 1, from: 0, start: 0, fin: { from: t - 3600000, to: t + 86400000, kills: 0, goal: 5 }, brk: null };
       r = await call(A, 'alatyr'); const ev = r.events.find(e => e[0] === 'ala');
@@ -2597,6 +2637,164 @@
     } finally {
       delete H.__alaTest; Ev.ala = a0; Ev.roads = r0; Ev.alaSync();
       if (had) R.grant = g0; else delete globalThis.SeasonRewards;
+    }
+  });
+  /* ---------- 5.1: джойстик и Атлас (walk.js, телепорт) ---------- */
+  test('5.1: джойстик — наклон: шаг и бег, направление с учётом поворота карты', () => {
+    const M = Rules.MOVE, j0 = Walk.joy, k0 = Walk.keys, rot = MapView.rot;
+    try {
+      Walk.keys = {};
+      Walk.joy = { x: 0, y: -0.05 }; eq(Walk.input(), null, 'мёртвая зона — стоит');
+      Walk.joy = { x: 0, y: -0.5 }; eq(Walk.input().v, M.WALK, 'лёгкий наклон — шаг');
+      Walk.joy = { x: 0.7, y: -0.7 }; eq(Walk.input().v, M.RUN, 'до упора — бег');
+      Walk.joy = { x: 0, y: 0 }; Walk.keys = { u: true }; eq(Walk.input().v, M.WALK, 'клавиша — шаг');
+      Walk.keys = { u: true, shift: true }; eq(Walk.input().v, M.RUN, 'Shift — бег');
+      ok(M.RUN < Rules.SPEED.MAX && M.WALK < M.RUN, 'бег медленнее предела сервера — путь засчитывается');
+      eq(Rules.tpWait(0, 5), 0); eq(Rules.tpWait(1000, 1000 + M.TP_CD - 60000), 60000); eq(Rules.tpWait(1000, 1000 + M.TP_CD), 0);
+      ok(ITEMS[M.TP_ITEM] && Rules.SHOP.some(x => x.give && x.give[M.TP_ITEM]), 'Врата Перепутицы — предмет и товар Лавки');
+      ok(Art.item('gate').startsWith('<svg') && !/NaN|undefined/.test(Art.item('gate')), 'значок Врат');
+      // карта повёрнута на 90° — «вверх» по экрану ведёт на запад
+      const p0 = Walk.pos, sv = Walk.save, add = Game.addPoint, fl = Game.flushMove;
+      Walk.save = () => {}; Game.addPoint = () => {}; Game.flushMove = () => {};
+      try {
+        Walk.keys = {}; Walk.joy = { x: 0, y: -0.5 }; MapView.rot = 90; Walk.pos = { lat: 10, lng: 20 };
+        Walk.tick(1, 1e7);
+        ok(Walk.pos.lng < 20 && Math.abs(Walk.pos.lat - 10) < 1e-7, 'шаг на запад: ' + JSON.stringify(Walk.pos));
+        near(U.dist(10, 20, Walk.pos.lat, Walk.pos.lng), M.WALK, 0.01, 'за секунду — шаг');
+      } finally { Walk.pos = p0; Walk.save = sv; Game.addPoint = add; Game.flushMove = fl; Walk.setMode(0); }
+    } finally { Walk.joy = j0; Walk.keys = k0; MapView.rot = rot; }
+  });
+  atest('Сервер 5.1: телепорт — первый даром, второй раньше перезарядки отклонён, с Вратами Перепутицы — можно', async () => {
+    const A = await newPlayer('tp51', 55.30, 37.10, 'Странник'); A.data.tut = 0; A.data.items.gate = 0;
+    ok(!A.data.atlasV, 'новичок ещё не выбирал место в Атласе');
+    const km0 = A.data.stats.km, go = (lat, lng) => { A.lat = lat; A.lng = lng; };
+    let r = await must(A, 'teleport', { lat: 48.8584, lng: 2.2945, first: true });
+    eq(r.first, true); eq(A.data.atlasV, 1); ok(!A.data.tpAt, 'первое появление — без перезарядки'); eq(r.cd, 0);
+    eq(A.srv.pos.lat, 48.8584); eq(A.srv.at.lat, 48.8584); eq(A.srv.mv.lat, 48.8584); ok(!A.srv.fastUntil); ok(!A.srv.spd.until);
+    eq(A.data.wpos.lat, 48.8584, 'место — в прогрессе');
+    go(48.8584, 2.2945);
+    await must(A, 'spring', { poi: freeSpring(A, 92500) }); // на новом месте можно действовать сразу — без «Слишком быстро» и перезарядки
+    // ещё раз «первый» — уже нет: Ловчий на карте; перезарядки пока не было — даром, и она пошла
+    r = await must(A, 'teleport', { lat: 35.6586, lng: 139.7454, first: true });
+    eq(r.first, false); ok(A.data.tpAt > 0, 'перезарядка пошла'); ok(r.cd > Rules.MOVE.TP_CD - 5000, 'до следующего даром — полчаса');
+    go(35.6586, 139.7454);
+    await refuse(A, 'teleport', { lat: 40.7128, lng: -74.006 }, /Врата откроются через \d+ мин/);
+    eq(A.srv.pos.lat, 35.6586, 'отказ — место прежнее');
+    await refuse(A, 'teleport', { lat: 40.7128, lng: -74.006, item: true }, /Нет Врат Перепутицы/);
+    A.data.items.gate = 1;
+    await refuse(A, 'teleport', { lat: 40.7128, lng: -74.006 }, /Врата откроются/); eq(A.data.items.gate, 1, 'без согласия Врата не тратятся');
+    r = await must(A, 'teleport', { lat: 40.7128, lng: -74.006, item: true });
+    eq(r.used, 'gate', 'потрачены Врата'); eq(A.data.items.gate, 0); eq(A.srv.pos.lng, -74.006);
+    go(40.7128, -74.006);
+    await refuse(A, 'teleport', { lat: 95, lng: 0 }, /нет на карте/);
+    await refuse(A, 'teleport', { lat: '10', lng: 20 }, /нет на карте/);
+    A.data.tpAt -= Rules.MOVE.TP_CD; // прошло полчаса — снова даром
+    r = await must(A, 'teleport', { lat: 51.5007, lng: -0.1246 }); eq(r.used, null);
+    eq(A.data.stats.km, km0, 'телепорт не засчитывает километры');
+  });
+  atest('Сервер 5.1: джойстик — шаг и бег засчитываются, быстрее бега (подделка) — нет', async () => {
+    const A = await newPlayer('jw51', 55.28, 37.08, 'Ходок');
+    const sv = { add: Game.addPoint, flush: Game.flushMove, save: Walk.save, pos: Walk.pos, joy: Walk.joy, keys: Walk.keys, run: Rules.MOVE.RUN };
+    const pts = []; let clock = Date.now() - 200000, t = 1e6;
+    Game.addPoint = (lat, lng, acc) => pts.push([+lat.toFixed(6), +lng.toFixed(6), Math.round(clock), acc]);
+    Game.flushMove = () => {}; Walk.save = () => {};
+    // sec секунд джойстиком (30 кадров в секунду), потом путь — серверу, как Game.flushMove
+    const walk = async (joy, sec) => {
+      pts.length = 0; Walk._ptT = 0; Walk.keys = {}; Walk.joy = joy;
+      for (let i = 0; i < sec * 30; i++) { t += 1000 / 30; clock += 1000 / 30; Walk.tick(1 / 30, t); }
+      Walk.joy = { x: 0, y: 0 }; Walk.stop();
+      A.lat = Walk.pos.lat; A.lng = Walk.pos.lng;
+      const km = A.data.stats.km, r = await must(A, 'move', { pts: pts.slice() });
+      return { m: (A.data.stats.km - km) * 1000, r };
+    };
+    try {
+      Walk.pos = { lat: A.lat, lng: A.lng };
+      let w = await walk({ x: 0, y: -0.5 }, 60);
+      near(w.m, 60 * Rules.MOVE.WALK, 4, 'шаг засчитан: ' + w.m);
+      w = await walk({ x: 0.9, y: 0 }, 30);
+      near(w.m, 30 * Rules.MOVE.RUN, 6, 'бег засчитан: ' + w.m);
+      Rules.MOVE.RUN = 8; // подделка: «джойстик» быстрее бега
+      w = await walk({ x: 0.9, y: 0 }, 30);
+      eq(w.m, 0, 'быстрее бега — не засчитано');
+    } finally {
+      Game.addPoint = sv.add; Game.flushMove = sv.flush; Walk.save = sv.save; Walk.pos = sv.pos; Walk.joy = sv.joy; Walk.keys = sv.keys; Rules.MOVE.RUN = sv.run;
+      clearTimeout(Walk._stopT); Walk.setMode(0);
+    }
+  });
+  /* ---------- 5.1: Атлас мира (atlas.js) ---------- */
+  test('5.1: Атлас мира — материки, места и их координаты', () => {
+    // рамки материков [широта от, до, долгота от, до] — грубая проверка «на своём материке», плюс точка внутри его очертаний (на суше)
+    const BOX = { europe: [34, 72, -25, 60], asia: [-11, 78, 25, 180], africa: [-35, 38, -18, 52], namerica: [7, 72, -170, -52], samerica: [-56, 13, -82, -34], oceania: [-47, 0, 112, 180] };
+    const inPoly = (r, x, y) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[i], b = r[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+    const ids = new Set(), names = new Set(), lands = Atlas.LANDS.filter(l => !l.cold);
+    eq(lands.map(l => l.id).sort().join(), Object.keys(BOX).sort().join(), 'шесть частей света');
+    for (const l of lands) {
+      const list = Atlas.PLACES[l.id], b = BOX[l.id];
+      ok(Array.isArray(list) && list.length >= 6 && list.length <= 15, l.id + ': от 6 до 15 мест');
+      ok(l.name && l.text && l.polys.length && ['w', 'e'].includes(l.disc), l.id + ': название, описание, очертания, диск');
+      ok(l.myths.every(m => MYTHS[m]), l.id + ': мифологии — из MYTHS');
+      ok(!l.text.includes(MYTHS.japan ? MYTHS.japan.name : '—'), l.id + ': закрытая мифология не названа в тексте');
+      for (const [id, name, spot, lat, lng] of list) {
+        ok(!ids.has(id), 'ключ места повторяется: ' + id); ids.add(id);
+        ok(!names.has(name), 'название повторяется: ' + name); names.add(name);
+        ok(typeof name === 'string' && name && typeof spot === 'string' && spot && spot !== name, id + ': город и место в нём');
+        ok(Number.isFinite(lat) && Number.isFinite(lng) && lat >= b[0] && lat <= b[1] && lng >= b[2] && lng <= b[3], `${id}: координаты в пределах материка (${lat}, ${lng})`);
+        ok(Math.abs(lat) <= Rules.MOVE.LAT && Math.abs(lng) <= 180, id + ': сервер примет точку');
+        ok(l.polys.some(s => inPoly(Atlas.ring(s), lng, lat)), id + ': точка на суше — внутри очертаний материка');
+      }
+    }
+    ok(Atlas.LANDS.some(l => l.cold) && !Atlas.PLACES.antarctica, 'в Антарктиду Врата не открываются');
+    // проекция: центр диска — в центре листа; очертания без NaN; значок и лист рисуются
+    for (const d of ['w', 'e']) { const p = Atlas.pj(d), c = Atlas.proj(d, p.lng, p.lat); near(c[0], p.cx, 1e-6); near(c[1], p.cy, 1e-6); eq(c[2], 0); }
+    const sheet = Atlas.sheet();
+    ok(sheet.startsWith('<svg') && !/NaN|undefined|Infinity/.test(sheet), 'лист Атласа без NaN');
+    ok((sheet.match(/class="at-land/g) || []).length >= 8, 'материки на обоих дисках');
+    ok(Atlas.icon().startsWith('<svg') && !/NaN|undefined/.test(Atlas.icon()), 'значок Атласа');
+  });
+  atest('5.1: Атлас мира — первое появление, перезарядка и Врата Перепутицы', async () => {
+    const sv = { tp: Walk.teleport, placed: Walk.placed, cd: Walk.cooldownLeft, gates: Walk.gates, toast: UI.toast, ms: Atlas.GATE_MS };
+    Atlas.GATE_MS = 0;
+    const calls = [], toasts = [];
+    Walk.teleport = async (lat, lng, o) => { calls.push({ lat, lng, o }); return { ok: true, cd: 0 }; };
+    UI.toast = t => toasts.push(t);
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    try {
+      // первое появление: закрыть нельзя, шаг — с first
+      Walk.placed = () => false; Walk.cooldownLeft = () => 0;
+      Atlas.open({ first: true });
+      ok(Atlas.el && !Atlas.el.querySelector('.at-x'), 'в первый раз — без крестика');
+      Atlas.back(); ok(Atlas.el, '«Назад» не закрывает первое появление');
+      Atlas.select('europe'); Atlas.toLand(); Atlas.choose(0);
+      await Atlas.go(55.7539, 37.6208, 'Москва');
+      await wait(700);
+      eq(calls.length, 1); eq(calls[0].o.first, true, 'первое появление — first'); ok(!calls[0].o.item, 'без Врат');
+      ok(!Atlas.el, 'после шага Атлас закрылся');
+      // перезарядка: без предмета — окно ожидания, шага нет
+      Walk.placed = () => true; Walk.cooldownLeft = () => 20 * 60000; Walk.gates = () => 0;
+      Atlas.open();
+      ok(Atlas.el.querySelector('.at-x'), 'дальше Атлас можно закрыть');
+      let p = Atlas.go(35.6595, 139.7005, 'Токио');
+      await wait(30);
+      const cd = Atlas.el.querySelector('.at-cd');
+      ok(cd && /20 мин/.test(cd.textContent) && !cd.querySelector('.at-use'), 'Врата отдыхают — ждать 20 мин, предмета нет');
+      cd.querySelector('.at-wait').click(); await p;
+      eq(calls.length, 1, 'подождать — без шага');
+      // с Вратами Перепутицы — шаг с item: true
+      Walk.gates = () => 2;
+      p = Atlas.go(35.6595, 139.7005, 'Токио');
+      await wait(30);
+      const use = Atlas.el.querySelector('.at-cd .at-use');
+      ok(use && /у тебя 2/.test(use.textContent), 'предложены Врата Перепутицы');
+      use.click(); await p; await wait(700);
+      eq(calls.length, 2); eq(calls[1].o.item, true, 'шаг за Врата — item: true'); ok(!calls[1].o.first);
+      // отказ сервера — Атлас остаётся, игрок видит причину
+      Walk.cooldownLeft = () => 0; Walk.teleport = async () => ({ ok: false, error: 'Такого места нет на карте' });
+      Atlas.open(); await Atlas.go(0, 0, 'x'); await wait(600);
+      ok(Atlas.el && toasts.some(t => /нет на карте/.test(t)), 'отказ — сообщение, Атлас открыт');
+    } finally {
+      if (Atlas.el) { Atlas.opts.first = false; Atlas.close(); }
+      document.querySelectorAll('.at-gate').forEach(e => e.remove());
+      Object.assign(Walk, { teleport: sv.tp, placed: sv.placed, cooldownLeft: sv.cd, gates: sv.gates }); UI.toast = sv.toast; Atlas.GATE_MS = sv.ms;
     }
   });
   /* ---------- вывод ---------- */

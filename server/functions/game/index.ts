@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.0.0';
+const APP_VERSION = '5.1.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1107,6 +1107,8 @@ const ITEMS = {
   water:   { name: ru`Живая вода`,         desc: ru`Возвращает духу половину здоровья, а в разломе — лечит прямо в бою. Духа без сил не поднимет.`, heal: 0.5 },
   incense: { name: ru`Ладан`,              desc: ru`Дымок приманивает духов: 30 минут их вокруг вдвое больше.` },
   farpass: { name: ru`Дальний пропуск`,    desc: ru`Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.` },
+  // 5.1: телепорт через Атлас без перезарядки (Rules.MOVE.TP_ITEM)
+  gate:    { name: ru`Врата Перепутицы`,   desc: ru`Кольцо Ордена с воронкой дорог: шагни в любое место Атласа мира сразу, не дожидаясь перезарядки. Одни Врата дарят на седьмой день серии.` },
   // 4.16: Настой опыта (Лавка, Золотая тропа) — пьётся из сумки, см. Rules.XP_BREW
   xpbrew:  { name: ru`Настой опыта`,       desc: ru`Медовый настой на травах Велеса: сутки опыта на четверть больше.` },
   gift:    { name: ru`Подарок`,           desc: ru`Узелок для друга: обереги, мёд, иногда кокон. Отправляется в «Меню → Друзья», раз в день каждому.` },
@@ -1466,7 +1468,7 @@ const TUT = [
   { ch: 1, kind: 'ui', id: 'card', info: ru`Это карточка духа: сила, стихия, приёмы и семейство. Ниже — кнопки «Усилить» и «Превратить», а ещё можно сделать духа спутником.`, hint: ru`Коснись любого духа, чтобы открыть его <b>карточку</b>.` },
   { ch: 1, kind: 'power', id: 'power', hint: ru`На карточке — сила духа. Нажми <b>«Усилить»</b>: за искры и эссенцию дух станет сильнее. Эссенцию приносят поимки духов того же семейства.` },
   { ch: 1, kind: 'ui', id: 'dex', info: ru`Бестиарий — все виды духов. Пойманные видны целиком, встреченные — тенью. Коснись вида, чтобы прочитать о нём.`, hint: ru`Теперь загляни в <b>«Бестиарий»</b> (меню) — там все виды духов. Сколько найдёшь ты?` },
-  { ch: 2, kind: 'spring', id: 'spring', hint: ru`Обереги пополняют <b>родники</b> — синие колодцы у памятников, фонтанов и храмов. Иди к ближайшему по <b>стрелке вверху</b> и коснись его. Если рядом нет — прогуляйся.` },
+  { ch: 2, kind: 'spring', id: 'spring', hint: ru`Обереги пополняют <b>родники</b> — синие колодцы у памятников, фонтанов и храмов. Дойди до ближайшего джойстиком по <b>стрелке вверху</b> и коснись его. Если рядом нет — прогуляйся по карте.` },
   { ch: 2, kind: 'ui', id: 'bag', info: ru`Сумка: обереги, мёд, живая вода и ладан. Сверху видно, сколько ещё поместится; лишнее можно выбросить.`, hint: ru`Добыча уже в <b>Сумке</b>. Открой меню → «Сумка» и посмотри, что у тебя есть.` },
   { ch: 3, kind: 'ui', id: 'cocoons', info: ru`Коконы греются шагами — одновременно можно греть три. Готовый кокон вылупится одним касанием. А твой первый дух идёт рядом — это спутник: в пути он находит эссенцию.`, hint: ru`Открой меню → <b>«Коконы»</b>. Первый кокон уже греется — пройди 2 км, и он вылупится.` },
   { ch: 3, kind: 'ui', id: 'quests', info: ru`Здесь задания дня — они обновляются в полночь. А родники иногда дают поручения: выполнишь — встретишь особого духа.`, hint: ru`Открой <b>«Задания»</b> — там задания дня.` },
@@ -1709,17 +1711,24 @@ const Ev = {
   // открыть мифологии сезона, что идёт в момент t (data.js, mythOpen) — перед отбором духов
   alaSync(t = U.now()) { if (typeof mythOpen === 'function') mythOpen(this.alaSeason(t)); },
   // где камень текущего сезона при общем счёте total (сезон уже сменился, а база не записала начало — с нуля)
-  alaStage(total, t = U.now()) { const A = this.ala || {}, s = this.alaSeason(t); return Rules.alaStage(s, s === A.s ? (+total || 0) - (+A.start || 0) : 0); },
+  // 5.x: и по зафиксированным ценам граней (goals — { n: цена }) и числу активных Ловчих N (Rules.alaPrices)
+  alaG() { const A = this.ala || {}; return { goals: A.goals || {}, N: A.N || 0 }; },
+  alaStage(total, t = U.now()) { const A = this.ala || {}, s = this.alaSeason(t); return Rules.alaStage(s, s === A.s ? (+total || 0) - (+A.start || 0) : 0, this.alaG()); },
   // для телефона и проверка присланного сервером
-  alaView() { const A = this.ala || {}; return { s: A.s, from: A.from, start: A.start, fin: A.fin ? { ...A.fin } : null, brk: A.brk || null }; },
+  alaView() { const A = this.ala || {}; return { s: A.s, from: A.from, start: A.start, fin: A.fin ? { ...A.fin } : null, brk: A.brk || null, goals: { ...(A.goals || {}) }, N: A.N || 0 }; },
   alaClean(x) {
     const num = v => (Number.isFinite(+v) && v !== null && v !== '' ? +v : 0);
-    if (!x || typeof x !== 'object') return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    if (!x || typeof x !== 'object') return { s: 1, from: 0, start: 0, fin: null, brk: null, goals: {}, N: 0 };
     const f = x.fin && typeof x.fin === 'object' && num(x.fin.to) > num(x.fin.from) ? { from: num(x.fin.from), to: num(x.fin.to), kills: Math.max(0, num(x.fin.kills)), goal: Math.max(1, num(x.fin.goal) || Rules.ALATYR_WORLD.FINALE.GOAL) } : null;
-    return { s: Math.max(1, Math.floor(num(x.s)) || 1), from: num(x.from), start: Math.max(0, num(x.start)), fin: f, brk: num(x.brk) || null };
+    const goals = {};
+    if (x.goals && typeof x.goals === 'object') Object.keys(x.goals).slice(0, 300).forEach(k => { const n = +k, p = Math.floor(num(x.goals[k])); if (Number.isInteger(n) && n >= 0 && n < 1e6 && p > 0) goals[n] = p; });
+    return { s: Math.max(1, Math.floor(num(x.s)) || 1), from: num(x.from), start: Math.max(0, num(x.start)), fin: f, brk: num(x.brk) || null, goals, N: Math.max(0, Math.floor(num(x.N))) };
   },
   // подпись сезона (сервер помнит, какую уже отдал телефону); победы над Кощеем в неё не входят — их телефон спрашивает сам
-  alaKey() { const A = this.ala || {}; return `${A.s}:${A.start}:${A.fin ? A.fin.from + '-' + A.fin.to : ''}:${A.brk || ''}`; },
+  alaKey() {
+    const A = this.ala || {}, g = Object.keys(A.goals || {}).sort((a, b) => a - b).map(k => `${k}=${A.goals[k]}`).join(',');
+    return `${A.s}:${A.start}:${A.fin ? A.fin.from + '-' + A.fin.to : ''}:${A.brk || ''}:${g}:${A.N || 0}`;
+  },
 
   // Православная Пасха (юлианский расчёт + 13 дней, верно для 1900–2099); дата в UTC
   easter(y) {
@@ -2241,7 +2250,7 @@ const S = {
   newGame(name, starter) {
     this.d = {
       v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),
-      items: { charm: 30, honey: 3, water: 3, incense: 1 },
+      items: { charm: 30, honey: 3, water: 3, incense: 1, gate: 1 }, // 5.1: и одни Врата Перепутицы — сменить место через Атлас сразу
       essence: {}, spirits: [], dex: {}, cocoons: [{ id: U.uid(), km: 2, walked: 0, inc: true }],
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
@@ -2648,7 +2657,7 @@ const S = {
     return m;
   },
   // забрать посылку: сколько влезет в сумку — сначала редкое и нужное
-  PARCEL_ORDER: ['deadwater', 'gift', 'charm3', 'charm2', 'farpass', 'incense', 'brew', 'water', 'herb', 'honey', 'charm'],
+  PARCEL_ORDER: ['deadwater', 'gift', 'charm3', 'charm2', 'gate', 'farpass', 'incense', 'brew', 'water', 'herb', 'honey', 'charm'],
   parcelTake() {
     const P = this.d.parcel, got = [];
     if (!P) return got;
@@ -4863,7 +4872,7 @@ const Rules = {
     { charm2: 3, gift: 1, xp: 500 },
     { incense: 1, honey: 1, xp: 600 },
     { charm2: 5, brew: 1, xp: 800 },
-    { charm3: 3, sparks: 1000, xp: 1500 }, // 7-й день — ещё и кокон 10 км
+    { charm3: 3, sparks: 1000, gate: 1, xp: 1500 }, // 7-й день — ещё и кокон 10 км; 5.1: и Врата Перепутицы
   ],
 
   /* Общее дело Ордена: все Ловчие неделю вместе копят очки. Цель растёт с числом участников.
@@ -4905,9 +4914,52 @@ const Rules = {
      Калибровка: десятки–сотни Ловчих по 0,3–1 осколку в день — ~15–50 осколков в день на весь Орден: первая грань за 1–3 дня,
      первый сезон (490) — за 10–30 дней, второй (8 граней, 720) — за 2–7 недель, третий (9 граней, ~1040) — за 3–10 недель.
      Финал: у десятков Ловчих ~1–2 победы над Кощеем в день у каждого (великий разлом, совместно проще) — GOAL за 3–7 дней,
-     у сотен — за день-два. KILL — сколько очков вклада сезона даёт победа над Кощеем (осколок — одно) */
+     у сотен — за день-два. KILL — сколько очков вклада сезона даёт победа над Кощеем (осколок — одно)
+     5.x: цена грани растёт с числом активных Ловчих: базовая цена (alaGoal) × (1 + PER × N), N — Ловчие уровня LEVEL+, игравшие
+     за последние DAYS дней; не дороже CAP × цены предыдущей грани (сквозной номер n − 1, и через границу сезона), не дешевле
+     базовой. Цена фиксируется, когда грань открывается (собрана предыдущая или начался сезон): её записывает сервер в базу
+     (033_alatyr_goals.sql, первый записавший побеждает), телефон получает цены граней от сервера (Ev.ala.goals) — оба считают
+     камень по ним (alaStage с G = { goals, N }). Грани без записанной цены: старше первой записанной — по базовой цене (собраны
+     до 5.x), дальше — ориентир по нынешнему множителю */
   ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], BASE: 6, FIRST: 40, STEP: 10, SEASON: 1.2, MUL: 2, HOURS: 72, LEAD: 10,
-    FINALE: { GOAL: 300, DAYS: 7, KILL: 3 } },
+    FINALE: { GOAL: 300, DAYS: 7, KILL: 3 }, GOALS: { LEVEL: 20, DAYS: 14, PER: 0.1, CAP: 2 } },
+  // множитель Ордена при N активных Ловчих
+  alaMul(N) { return Math.round((1 + Math.max(0, Math.floor(+N) || 0) * this.ALATYR_WORLD.GOALS.PER) * 1000) / 1000; },
+  // цена грани n (сквозной номер), если она открывается сейчас: N активных Ловчих, prev — цена грани n − 1 (0 — без ограничения)
+  alaPriceNew(n, N, prev) {
+    const f = this.alaFace(n), b = this.alaGoal(f.s, f.k);
+    let p = Math.round(b * this.alaMul(N));
+    if (+prev > 0) p = Math.min(p, Math.round(+prev * this.ALATYR_WORLD.GOALS.CAP));
+    return Math.max(b, p);
+  },
+  // цены граней 0…n: { p, kind } — kind: fixed (записана в базе), old (старше первой записанной — базовая), est (ориентир)
+  alaPrices(n, G) {
+    const goals = (G && G.goals) || {}, N = (G && G.N) || 0, out = [];
+    const keys = Object.keys(goals).map(Number).filter(x => +goals[x] > 0), low = keys.length ? Math.min(...keys) : Infinity;
+    let prev = 0;
+    for (let i = 0; i <= n; i++) {
+      let p, kind;
+      if (+goals[i] > 0) { p = +goals[i]; kind = 'fixed'; }
+      else if (i < low) { const f = this.alaFace(i); p = keys.length ? this.alaGoal(f.s, f.k) : this.alaPriceNew(i, N, prev); kind = keys.length ? 'old' : 'est'; }
+      else { p = this.alaPriceNew(i, N, prev); kind = 'est'; }
+      out.push({ p, kind }); prev = p;
+    }
+    return out;
+  },
+  // какую грань пора зафиксировать (сервер): первая грань сезона без записанной цены, до которой дошёл счёт, иначе −1.
+  // Цен ещё нет совсем (первый запуск 5.x) — фиксируется та, что собирается сейчас (собранные до неё — по базовой цене)
+  alaNextFix(s, have, G) {
+    const goals = (G && G.goals) || {}, fresh = !Object.keys(goals).some(k => +goals[k] > 0);
+    const st = this.alaStage(s, have, fresh ? { goals: {}, N: 0 } : G), t = st.total;
+    let from = 0;
+    for (let k = 0; k < st.K; k++) {
+      const p = st.prices[k];
+      if (p.kind === 'est' && !(fresh && t >= from + p.p && st.faces[k])) return st.base + k;
+      if (!st.faces[k] || t < from + p.p) return -1;
+      from += p.p;
+    }
+    return -1;
+  },
   // сколько граней в сезоне s
   alaK(s) { return this.ALATYR_WORLD.BASE + Math.max(1, Math.floor(+s) || 1); },
   // мифологии граней сезона s по порядку; null — мифологии этого сезона ещё нет в игре
@@ -4922,8 +4974,9 @@ const Rules = {
     const A = this.ALATYR_WORLD;
     return Math.max(1, Math.round((A.FIRST + A.STEP * k) * Math.pow(A.SEASON, Math.max(1, Math.floor(+s) || 1) - 1)));
   },
-  // весь камень сезона s
-  alaCost(s) { let c = 0; for (let k = 0; k < this.alaK(s); k++) c += this.alaGoal(s, k); return c; },
+  // весь камень сезона s (G — зафиксированные цены и N, см. alaPrices; нет — базовые цены)
+  alaCost(s, G) { return this.alaSeasonPrices(s, G).reduce((a, x) => a + x.p, 0); },
+  alaSeasonPrices(s, G) { const b = this.alaBase(s); return this.alaPrices(b + this.alaK(s) - 1, G).slice(b); },
   // сквозной номер первой грани сезона s и обратно: грань n → { s, k }
   alaBase(s) { s = Math.max(1, Math.floor(+s) || 1); return this.ALATYR_WORLD.BASE * (s - 1) + s * (s - 1) / 2; },
   alaFace(n) { n = Math.max(0, Math.floor(+n) || 0); let s = 1; while (s < 10000 && this.alaBase(s + 1) <= n) s++; return { s, k: n - this.alaBase(s) }; },
@@ -4932,14 +4985,16 @@ const Rules = {
   alatyrGoal(n) { const f = this.alaFace(n); return this.alaGoal(f.s, f.k); },
   /* где сезон s, если за него собрано have осколков: n — сколько граней собрано, done — все (финал), face — какая собирается,
      myth — её мифология (null — её нет в игре: locked, грань ждёт обновления), from/at — счёт сезона в начале и в конце этой
-     грани, have/need — собрано и нужно на ней, base — сквозной номер первой грани сезона */
-  alaStage(s, have) {
+     грани, have/need — собрано и нужно на ней, base — сквозной номер первой грани сезона.
+     5.x: G — { goals: { n: цена }, N } (Ev.ala): цены граней — зафиксированные, прочие — см. alaPrices; prices — цены граней
+     сезона { p, kind }, est — цена текущей грани пока ориентир (сервер ещё не записал) */
+  alaStage(s, have, G) {
     s = Math.max(1, Math.floor(+s) || 1);
-    const K = this.alaK(s), faces = this.alaFaces(s), t = Math.max(0, Math.floor(+have || 0));
+    const K = this.alaK(s), faces = this.alaFaces(s), t = Math.max(0, Math.floor(+have || 0)), P = this.alaSeasonPrices(s, G), g = k => P[k].p;
     let n = 0, from = 0;
-    while (n < K && faces[n] && t >= from + this.alaGoal(s, n)) { from += this.alaGoal(s, n); n++; }
-    const done = n >= K, need = done ? this.alaGoal(s, K - 1) : this.alaGoal(s, n), h = done ? need : Math.min(t - from, need);
-    return { s, K, faces, n, face: Math.min(n, K - 1), done, myth: done ? null : faces[n], locked: !done && !faces[n],
+    while (n < K && faces[n] && t >= from + g(n)) { from += g(n); n++; }
+    const done = n >= K, need = done ? g(K - 1) : g(n), h = done ? need : Math.min(t - from, need);
+    return { s, K, faces, n, face: Math.min(n, K - 1), done, myth: done ? null : faces[n], locked: !done && !faces[n], prices: P, est: !done && P[n].kind === 'est',
       from: done ? from - need : from, at: done ? from : from + need, have: h, need, pct: h / need, total: t, base: this.alaBase(s) };
   },
   // очки вклада сезона: осколки и победы над Кощеем в финале (S.d.alaS — { s, n, k })
@@ -5048,6 +5103,14 @@ const Rules = {
     const T = this.TRACK, dt = Math.abs(q.t - ref.t) / 1000;
     return U.dist(ref.lat, ref.lng, q.lat, q.lng) <= Math.max(T.MIN, this.SPEED.MAX * T.K * (Number.isFinite(dt) ? dt : 0)) + U.clamp(+ref.acc || 0, 0, T.ACC);
   },
+  /* ---------- 5.1: джойстик и Атлас ---------- */
+  // Ловчий ходит мини-джойстиком (walk.js): лёгкий наклон — шаг WALK, до упора (от RUN_AT наклона) — бег RUN, м/с; бег медленнее
+  // SPEED.MAX, поэтому путь засчитывается, а проверки скорости сервера (SPEED, TRACK, jumpWait) остаются защитой от накрутки.
+  // SYNC_MS — как часто, пока Ловчий идёт, путь уходит серверу (действие move); PT_MS — точки пути не чаще раза в столько мс.
+  // Телепорт через Атлас (действие teleport): первое появление — даром, дальше — раз в TP_CD или мгновенно за предмет TP_ITEM
+  MOVE: { WALK: 5 / 3.6, RUN: 15 / 3.6, RUN_AT: 0.8, DEAD: 0.12, SYNC_MS: 10000, PT_MS: 1000, TP_CD: 30 * 60000, TP_ITEM: 'gate', LAT: 85 },
+  // сколько ещё ждать до телепорта даром (мс): tpAt — время прошлого телепорта (S.d.tpAt)
+  tpWait(tpAt, now) { return Number.isFinite(+tpAt) && +tpAt > 0 ? Math.max(0, +tpAt + this.MOVE.TP_CD - now) : 0; },
   AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
@@ -5091,7 +5154,10 @@ const Rules = {
     { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в неделю: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 80, give: { deadwater: 1 }, week: 1 },
     { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
-    { id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
+    // 5.1: Врата Перепутицы — телепорт через Атлас сразу, без перезарядки (за искры — один в день)
+    { id: 'gate',     name: ru`Врата Перепутицы`,    desc: ru`Шагнуть в любое место Атласа сразу, без ожидания. Одни в день`, cur: 'sparks', price: 3000, give: { gate: 1 }, day: 1 },
+    { id: 'gate3',    name: ru`Трое Врат Перепутицы`, desc: ru`Три мгновенных перехода через Атлас`,     cur: 'zlat', price: 75,  give: { gate: 3 } },
+    { id: 'incense',  name: ru`Ладан`,              desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
     { id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },
     { id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },
     { id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },
@@ -5361,7 +5427,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '5.0.0', // 5.0 (4.28): мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
+  MIN_CLIENT: '5.1.0', // 5.1: джойстик и Атлас вместо GPS; 5.0: мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -5464,6 +5530,14 @@ const GameCore = {
     }
     ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now, acc: Math.round(p.acc) };
     if (!(p.acc > Rules.SPEED.ACC)) this.pace(ctx, { lat: p.lat, lng: p.lng, t: ctx.now });
+    this.keepPos(p);
+  },
+  // 5.1: место Ловчего в мире игры (выбрано в Атласе, дальше — джойстиком) — в прогрессе: на новом устройстве и после
+  // долгого перерыва Ловчий там же (srv.pos через сутки без входа стирается — 028). Пишется, если сдвинулся дальше 25 м
+  keepPos(p) {
+    if (!S.d || !p) return;
+    const w = S.d.wpos;
+    if (!w || !(U.dist(w.lat, w.lng, p.lat, p.lng) <= 25)) S.d.wpos = { lat: +(+p.lat).toFixed(5), lng: +(+p.lng).toFixed(5) };
   },
   // 4.20: скорость Ловчего; быстрее бега — пауза на COOL. 4.24.1: по недавним точкам (Rules.paceStep) — после остановки
   // пауза снимается, как только Ловчий полминуты идёт шагом или стоит
@@ -5474,9 +5548,10 @@ const GameCore = {
   },
   speedUntil(ctx) { return (ctx.srv.spd && ctx.srv.spd.until) || ctx.srv.speedUntil || 0; },
   here(ctx) {
-    this.need(ctx.pos, ru`Нет данных о местоположении — включи GPS`);
-    this.need(!(ctx.srv.fastUntil > ctx.now), ru`Похоже, GPS скачет — подожди минуту`);
-    this.need(!(this.speedUntil(ctx) > ctx.now), ru`Слишком быстро — около ${(ctx.srv.spd && ctx.srv.spd.kmh) || ctx.srv.kmh || 20} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`);
+    // 5.1: GPS больше нет — позицию двигает джойстик (walk.js), место выбирают в Атласе; проверки скорости — защита от накрутки
+    this.need(ctx.pos, ru`Ловчий ещё не на карте — выбери место в Атласе мира`);
+    this.need(!(ctx.srv.fastUntil > ctx.now), ru`Ловчий слишком резко сменил место — подожди минуту`);
+    this.need(!(this.speedUntil(ctx) > ctx.now), ru`Слишком быстро — подожди минуту`);
     // 4.26: после дальнего перемещения — перезарядка (Rules.jumpWait) от места и времени последнего действия на карте,
     // сколько бы ни прошло с последней точки. Позиция при этом принимается как обычно; место действия запоминается
     const wait = Rules.jumpWait(ctx.srv.at, ctx.pos, ctx.now);
@@ -6032,7 +6107,38 @@ const GameCore = {
         my: { s: my.s, n: my.n | 0, k: my.k | 0, pts: Rules.alaPoints(my) } };
     },
 
-    // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.
+    // 5.1: телепорт через Атлас мира. Первое появление (first и ещё нет S.d.atlasV: новичок или первый вход после 5.1) — даром
+    // и без перезарядки; дальше — раз в Rules.MOVE.TP_CD даром или сразу за Врата Перепутицы (Rules.MOVE.TP_ITEM).
+    // Врата тратятся только с согласия Ловчего (item: true — Атлас спрашивает). Позиция, место последнего действия (jumpWait), начало отрезка пути и счётчик скорости переставляются в новую точку:
+    // без «Слишком быстро», без перезарядки дальнего перемещения и без засчитанных километров
+    teleport(a, ctx) {
+      const M = Rules.MOVE, lat = +a.lat, lng = +a.lng;
+      this.need(typeof a.lat === 'number' && typeof a.lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= M.LAT && Math.abs(lng) <= 180, ru`Такого места нет на карте`);
+      this.limit(ctx, 'tp', 30, 3600000);
+      const first = a.first === true && !S.d.atlasV;
+      let used = null;
+      if (!first) {
+        const wait = Rules.tpWait(S.d.tpAt, ctx.now);
+        if (wait > 0) {
+          this.need(a.item === true, ru`Врата откроются через ${Math.ceil(wait / 60000)} мин — или шагни сразу через Врата Перепутицы`);
+          this.need((S.d.items[M.TP_ITEM] || 0) > 0, ru`Нет Врат Перепутицы — их можно купить в Лавке`);
+          S.d.items[M.TP_ITEM]--; used = M.TP_ITEM;
+        } else S.d.tpAt = ctx.now;
+      }
+      S.d.atlasV = 1;
+      ctx.srv.enc = null; // встреча с духом не переезжает вместе с Ловчим
+      const p = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
+      ctx.srv.pos = { ...p, t: ctx.now, acc: 5 };
+      ctx.srv.at = { ...p, t: ctx.now };
+      ctx.srv.mv = { ...p, t: ctx.now };
+      ctx.srv.spd = { pts: [], until: 0, kmh: 0 };
+      delete ctx.srv.fastUntil; delete ctx.srv.speedUntil; delete ctx.srv.kmh; delete ctx.srv.pace;
+      ctx.pos = { ...p, acc: 5 }; ctx.prevPos = ctx.srv.pos; MapView.pos = ctx.pos;
+      S.d.wpos = null; this.keepPos(p);
+      return { ok: true, lat: p.lat, lng: p.lng, first, used, cd: Rules.tpWait(S.d.tpAt, ctx.now) };
+    },
+
+    // Пройденный путь: точки с отметками времени (5.1: их кладёт джойстик, walk.js). Быстрее бега (Rules.SPEED.MAX) не считается.
     move(a, ctx) {
       const pts = (Array.isArray(a.pts) ? a.pts : []).slice(0, 200)
         .filter(q => Array.isArray(q) && q.length >= 4 && [0, 1, 2, 3].every(i => Number.isFinite(+q[i])))
@@ -7505,7 +7611,7 @@ const TG = {
       return { chat_id: m.chat.id, text: `🔐 Вход в «Духолов» через твой Telegram${who}.\n\nНажми «Да, это я», только если ты сам сейчас входишь в игру. Если ссылку тебе прислал кто-то другой — это обман: не нажимай, иначе чужой человек получит доступ к твоему Ловчему.`,
         reply_markup: { inline_keyboard: [[{ text: '✅ Да, это я', callback_data: 'ok:' + code[1] }], [{ text: '✖ Нет, это не я', callback_data: 'no:' + code[1] }]] } };
     }
-    if (/^\/start\b/.test(String(m.text || ''))) return { chat_id: m.chat.id, text: 'Это бот игры «Духолов» — лови духов Нави на улицах своего города: https://duholov.ru' };
+    if (/^\/start\b/.test(String(m.text || ''))) return { chat_id: m.chat.id, text: 'Это бот игры «Духолов» — лови духов Нави по всему свету: https://duholov.ru' };
     return null;
   },
 };
@@ -7697,6 +7803,7 @@ async function realWeather(lat, lng) {
    не применена) — первый сезон с нуля, без финала */
 const World = {
   st: null, at: 0, p: null, TTL: 60000,
+  Nc: null, // 5.x: число активных Ловчих { v, at } (active)
   season(rows, now) {
     const [top, prev] = rows;
     if (!top) return { s: 1, from: 0, start: 0, fin: null, brk: null };
@@ -7714,12 +7821,23 @@ const World = {
     const sq = await db.from('alatyr_seasons').select('season, start_total, from_ms, finale_from, finale_to, kills, goal, broken_ms').order('season', { ascending: false }).limit(8);
     if (sq.error && depth === 0) console.warn('Алатырь: сезоны недоступны —', sq.error.message);
     const srows = sq.error ? [] : sq.data || [];
+    // 5.x: зафиксированные цены граней (033_alatyr_goals.sql) и число активных Ловчих; нет таблицы — базовые цены, без фиксации
+    const gq = await db.from('alatyr_goals').select('n, goal').order('n', { ascending: false }).limit(120);
+    if (gq.error && depth === 0) console.warn('Алатырь: цены граней недоступны —', gq.error.message);
+    const goals = {};
+    (gq.error ? [] : gq.data || []).forEach(r => { if (+r.goal > 0) goals[r.n] = +r.goal; });
     const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })), ...this.season(srows, now),
-      seasons: srows.map(r => this.row(r)), db: !sq.error };
+      seasons: srows.map(r => this.row(r)), db: !sq.error, gdb: !gq.error, goals, N: gq.error ? 0 : await this.active() };
     if (depth > 3) return st;
     // финал кончился, а Орден не одолел Кощея — раскол в конце финала
     if (st.db && st.fin && !st.brk && now >= st.fin.to) { if (await this.brk(st.s, st.fin.to)) return this.load(depth + 1); }
-    const stg = Rules.alaStage(st.s, st.total - st.start);
+    // 5.x: грань открылась (собрана предыдущая, начался сезон, первый запуск 5.x), а её цена ещё не записана — записать сейчас
+    const end = st.brk || (st.fin && st.fin.to) || 0; // раскол уже настал, а строки нового сезона нет — подождём её
+    if (st.gdb && !(end && now >= end)) {
+      const nf = Rules.alaNextFix(st.s, st.total - st.start, st);
+      if (nf >= 0 && await this.fix(nf, st)) return this.load(depth + 1);
+    }
+    const stg = Rules.alaStage(st.s, st.total - st.start, st);
     // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
     const n = stg.base + stg.n - 1;
     if (stg.n > 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
@@ -7733,9 +7851,31 @@ const World = {
     this.st = st; this.at = Date.now();
     const cut = Date.now() - 86400000;
     Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
-    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk };
+    // 5.x: цены граней — текущего сезона и последней грани прошлого (от неё ограничение ×CAP для первой грани сезона)
+    const low = Rules.alaBase(st.s) - 1, goals = {};
+    Object.keys(st.goals || {}).forEach(k => { if (+k >= low) goals[k] = st.goals[k]; });
+    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk, goals, N: st.N || 0 };
     Ev.alaSync();
     return st;
+  },
+  // 5.x: сколько Ловчих уровня GOALS.LEVEL+ играли за GOALS.DAYS дней (alatyr_active) — не чаще раза в 10 минут
+  async active() {
+    const c = this.Nc, G = Rules.ALATYR_WORLD.GOALS;
+    if (c && Date.now() - c.at < 600000) return c.v;
+    const r = await db.rpc('alatyr_active', { p_level: G.LEVEL, p_days: G.DAYS });
+    if (r.error) console.warn('Алатырь: число активных Ловчих —', r.error.message);
+    const v = r.error ? (c ? c.v : 0) : Math.max(0, Math.floor(+r.data) || 0);
+    this.Nc = { v, at: Date.now() };
+    return v;
+  },
+  // 5.x: записать цену открывшейся грани n (G — { goals, N } сервера); в базе уже есть — берём её (первый записавший побеждает)
+  async fix(n, G) {
+    const N = await this.active(), fresh = !Object.keys(G.goals || {}).length;
+    const prev = n > 0 ? Rules.alaPrices(n - 1, fresh ? { goals: {}, N: 0 } : G)[n - 1].p : 0; // до 5.x грани стоили базовую цену
+    const p = Rules.alaPriceNew(n, N, prev);
+    const got = +must(await db.rpc('alatyr_goal', { p_n: n, p_goal: p, p_players: N, p_mul: Rules.alaMul(N) })) || 0;
+    if (got > 0) { G.goals = G.goals || {}; G.goals[n] = got; G.N = N; if (got === p) console.warn(`Алатырь: цена грани ${n} — ${p} (активных Ловчих ${N}, ×${Rules.alaMul(N)})`); }
+    return got > 0;
   },
   async finale(s, now) {
     const f = Rules.alaFinale(now);
@@ -7767,7 +7907,8 @@ const World = {
     const road = Rules.alatyrRoad(n), f = Rules.alaFace(n);
     if (!road) return false; // мифологии этой грани ещё нет в игре — грань ждёт обновления
     let at = st && st.s === f.s ? st.start : 0;
-    for (let k = 0; k <= f.k; k++) at += Rules.alaGoal(f.s, k);
+    const P = Rules.alaSeasonPrices(f.s, st); // 5.x: по зафиксированным ценам граней
+    for (let k = 0; k <= f.k; k++) at += P[k].p;
     const t = Rules.alatyrOpen(now);
     return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: road, p_goal: at, p_from: t.from, p_to: t.to }));
   },
@@ -7778,8 +7919,14 @@ const World = {
     const now = Date.now(), st = this.st;
     // сезон сменился, а кэш об этом ещё не знает — вехи отметит load по свежему состоянию
     if (!st || Ev.alaSeason(now) !== st.s) { this.at = 0; await this.get(); return; }
-    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start), B = Rules.alaStage(st.s, (+r.total || 0) - st.start);
     let changed = false;
+    // 5.x: собрана грань — цена следующей фиксируется сейчас, до того как считать, не собрана ли и она
+    for (let i = 0; st.gdb && i < 12; i++) {
+      const nf = Rules.alaNextFix(st.s, (+r.total || 0) - st.start, st);
+      if (nf < 0 || !(await this.fix(nf, st))) break;
+      changed = true;
+    }
+    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start, st), B = Rules.alaStage(st.s, (+r.total || 0) - st.start, st);
     for (let k = Math.max(A.n, B.n - 3); k < B.n; k++) {
       if (await this.open(B.base + k, now, st)) { changed = true; console.warn(`Алатырь: сезон ${st.s}, грань ${k + 1} из ${B.K} собрана — ${B.faces[k]}`); }
     }

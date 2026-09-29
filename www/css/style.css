@@ -897,8 +897,6 @@ a.row.link { color: inherit; text-decoration: none; }
   padding: 8px 8px 8px 16px; border-radius: 22px; background: rgba(18, 12, 36, .94); border: 1px solid rgba(251, 191, 36, .55); box-shadow: 0 6px 20px rgba(0, 0, 0, .45);
   font-weight: 700; font-size: 14px; white-space: nowrap; animation: fadeIn .3s ease-out; }
 .upd-bar .btn { padding: 7px 14px; }
-.gps-help { padding-left: 18px; margin: 6px 0 0; font-size: 14px; }
-.gps-help li { margin-bottom: 6px; }
 .link-btn { color: var(--teal); text-decoration: underline; font-size: inherit; }
 
 /* ---------- 2.1: реальные места, заявки, прогресс на сервере ---------- */
@@ -4119,11 +4117,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .spr2-inv-ico { width: 150px; height: 150px; filter: drop-shadow(0 0 24px rgba(192, 38, 211, .7)); animation: sprGlow 3s ease-in-out infinite; } .spr2-inv-ico .art { width: 100%; height: 100%; }
 .spr2-inv p { margin: 0; font-size: 15px; line-height: 1.45; color: #f5e8ff; max-width: 340px; }
 /* 4.20: «слишком быстро» — плашка над картой */
-#speedWarn { position: fixed; left: 12px; right: 12px; top: calc(76px + var(--st, 0px)); z-index: 1400; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 10px 46px;
-  border-radius: 16px; background: linear-gradient(135deg, rgba(185, 28, 28, .92), rgba(124, 45, 18, .92)); color: #fff; font-size: 13px; line-height: 1.35; text-align: left;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: lootIn .3s ease-out; }
-#speedWarn::before { content: '⚠'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 22px; }
-#speedWarn b { font-size: 15px; }
 /* 4.21: задания — вкладки как у духа и родника; задания списком без подложек, с небольшим зазором */
 .q-screen .q-tabs { margin-bottom: 10px; }
 .q-screen .quest, .q-screen .quest.bonus { background: none; border: 0; border-radius: 0; padding: 7px 2px; margin-bottom: 2px; }
@@ -4467,7 +4460,6 @@ body:has(> .screen:not(.out)) .upd-bar, body:has(> .modal-wrap:not(.out)) .upd-b
 .toast.good { box-shadow: inset 3px 0 0 #84cc16, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .4), 0 0 18px rgba(132, 204, 22, .22); }
 .toast.bad { box-shadow: inset 3px 0 0 #f87171, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .4), 0 0 18px rgba(248, 113, 113, .2); }
 /* З2: «Слишком быстро» — под второй строкой HUD, не закрывает баффы, неделю и Следопыта */
-#speedWarn { top: calc(136px + var(--st, 0px)); }
 /* З3: силуэт незнакомого духа на тёмном стекле — со светлым контуром, иначе его не видно */
 .screen .unknown .art, .modal-wrap .unknown .art { filter: brightness(0) drop-shadow(0 0 1px rgba(226, 232, 240, .9)) drop-shadow(0 0 6px rgba(167, 139, 250, .6)); }
 /* З5: «Выбрать» (режим выбора духов) не уезжает за край ленты стихий — прилипает к правому краю */
@@ -4593,10 +4585,6 @@ body.rm-open:has(#coach:not(.hidden)) #toasts { top: auto; bottom: calc(112px + 
 .support-modal .modal-btns { flex-direction: column-reverse; } .support-modal .modal-btns .btn { width: 100%; }
 
 /* 4.25.2: «Слишком быстро» — крестик справа снизу (скрыть можно, только подтвердив, что едешь пассажиром) */
-#speedWarn { padding-right: 44px; padding-bottom: 12px; }
-#speedWarn .sw-x { position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; padding: 0;
-  font-size: 14px; font-weight: 800; color: #fff; background: rgba(0, 0, 0, .28); border: 1px solid rgba(255, 255, 255, .45); cursor: pointer; }
-#speedWarn .sw-x:active { transform: scale(.92); }
 /* 4.25.2: «Духи рядом» — плитки по центру: один дух не прижат влево, неполный ряд тоже по центру */
 .nb-list { display: flex !important; flex-wrap: wrap; justify-content: center; }
 .nb-list > .nb-item { flex: 0 0 calc((100% - 16px) / 3); box-sizing: border-box; }
@@ -4617,15 +4605,11 @@ body.rm-open:has(#coach:not(.hidden)) #toasts { top: auto; bottom: calc(112px + 
 .toast::after, .upd-bar::after { content: none !important; }
 .toast.good { box-shadow: inset 3px 0 0 #84cc16, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35), 0 0 18px rgba(132, 204, 22, .22) !important; }
 .toast.bad { box-shadow: inset 3px 0 0 #f87171, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35), 0 0 18px rgba(248, 113, 113, .2) !important; }
-#speedWarn { box-shadow: inset 3px 0 0 #f87171, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35), 0 0 20px rgba(248, 113, 113, .25) !important; }
-#speedWarn::before { color: #fca5a5; }
-#speedWarn b { color: #fecaca; }
 #coach.info { box-shadow: inset 3px 0 0 #fde047, var(--g-edge), 0 10px 28px rgba(0, 0, 0, .35) !important; }
 /* днём под стеклом светлая карта — стекло плотнее, как у окон */
 body:not(.night) .toast, body:not(.night) .upd-bar, body:not(.night) #coach, body:not(.night) #speedWarn { background-color: rgba(22, 12, 50, .58) !important; }
 .eco .toast, .eco .upd-bar, .eco #coach, .eco #speedWarn { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(12, 7, 30, .88) !important; }
 /* пока на экране «Слишком быстро» — всплывашки под ней, а не поверх */
-body:has(> #speedWarn) #toasts { top: calc(246px + var(--st)); }
 
 /* 4.28: Бестиарий — выбор мифологии (листается вбок, если не помещается) */
 .dex-myths { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 10px; padding-bottom: 2px; }
@@ -4911,3 +4895,264 @@ body:has(> #speedWarn) #toasts { top: calc(246px + var(--st)); }
 .ala-ev-ic > .art, .ala-ev-ic > svg { width: 100%; height: 100%; }
 .ala-sr { margin: 0 0 8px; }
 .ala-sum-l { margin-top: 6px; color: rgba(255, 255, 255, .72); font-size: 13px; }
+/* 5.x: множитель Ордена — цена граней от числа активных Ловчих */
+.ala-mul { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; margin: 0 0 10px; border-radius: 14px; text-align: left;
+  background: linear-gradient(135deg, rgba(253, 224, 71, .12), rgba(255, 255, 255, .04)); border: 1px solid rgba(253, 224, 71, .22); }
+.ala-mul b { font-size: 14px; line-height: 1.3; color: var(--gold2); }
+.ala-mul small { font-size: 12px; line-height: 1.35; color: rgba(255, 255, 255, .72); }
+
+/* ===== 5.1: джойстик ===== */
+/* мини-джойстик в нижнем углу карты (сторона — настройка joySide: body.joy-right / body.joy-left), над кнопкой «Рядом» или компасом;
+   кнопка «К себе» — на другой стороне. Основа и ручка — матовое «жидкое стекло» (как плашки карты); до упора — бег (.run) */
+#hud #gpsChip { display: none !important; } /* GPS больше нет */
+#hud .joystick { --js: 112px; position: absolute; left: auto; right: auto; bottom: calc(100px + var(--sb)); width: var(--js); height: var(--js); border: 0; background: none; border-radius: 50%;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+body.joy-right #hud .joystick { right: 12px; }
+body.joy-left #hud .joystick { left: 12px; }
+#hud #joystick:not(.hidden) ~ .compass { bottom: calc(30px + var(--sb)); }
+body.joy-right #hud .recenter { right: auto; left: 18px; bottom: calc(100px + var(--sb)); }
+body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
+#hud .joystick .jy-base, #hud .joystick .stick { border-radius: 50%; pointer-events: none;
+  -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); }
+/* основа — матовое стекло одного ровного тона: светлая полупрозрачная заливка, сильное размытие карты под ней, тонкий блик по краю, мягкая тень */
+#hud .joystick .jy-base { position: absolute; inset: 0; background: rgba(255, 255, 255, .14);
+  box-shadow: 0 10px 26px rgba(4, 2, 14, .28), 0 2px 6px rgba(4, 2, 14, .16), inset 0 1px 1px rgba(255, 255, 255, .3); transition: background-color .2s; }
+#hud .joystick .jy-base::after, #hud .joystick .stick::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; background: var(--lg-rim);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+/* ручка — то же стекло, плотнее, с мягким бликом; нажата — чуть больше */
+#hud .joystick .stick { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px;
+  background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 58%), rgba(255, 255, 255, .34);
+  box-shadow: 0 6px 16px rgba(4, 2, 14, .32), inset 0 1px 1px rgba(255, 255, 255, .55), inset 0 -2px 6px rgba(4, 2, 14, .12);
+  transition: transform .18s cubic-bezier(.2, 1.4, .4, 1), scale .15s ease-out, box-shadow .2s; }
+#hud .joystick.on .stick { transition: scale .15s ease-out, box-shadow .2s; scale: 1.1; }
+#hud .joystick.on .jy-base { background-color: rgba(255, 255, 255, .18); }
+#hud .joystick.run .stick { box-shadow: 0 6px 16px rgba(4, 2, 14, .32), inset 0 1px 1px rgba(255, 255, 255, .55), 0 0 18px rgba(255, 255, 255, .5); }
+.eco #hud .joystick .jy-base, .eco #hud .joystick .stick { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.eco #hud .joystick .jy-base { background: rgba(40, 30, 80, .45); }
+/* значок Ловчего на ходу: лёгкое покачивание шага, на бегу — чаще и выше */
+.mk-player.walk .dot, .mk-player.run .dot { animation: jyStep .5s ease-in-out infinite; }
+.mk-player.run .dot { animation-duration: .3s; }
+.mk-player.walk .pulse, .mk-player.run .pulse { animation-duration: 1.1s; }
+@keyframes jyStep { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.06, .95); } }
+.calm .mk-player.walk .dot, .calm .mk-player.run .dot { animation: none; }
+/* Врата Перепутицы: воронка в кольце медленно кружится */
+.art .art-gate-spin { transform-origin: 50px 46px; animation: spin 9s linear infinite reverse; }
+.calm .art .art-gate-spin, .eco .art .art-gate-spin { animation: none; }
+
+/* ===== 5.1: Атлас ===== */
+/* Атлас мира (js/atlas.js): старинная карта Ордена — «небесное» море, два диска-полушария с золотым ободом, светящиеся материки,
+   звёзды и дымка; шаг 2 — приближение к материку и места; «Своё место» — настоящая карта; портал Врат Перепутицы */
+.atlas { position: fixed; inset: 0; z-index: 2750; display: flex; flex-direction: column; overflow: hidden; color: var(--text); user-select: none; -webkit-user-select: none;
+  padding: var(--st) 0 0; opacity: 0; transition: opacity .35s ease;
+  background: radial-gradient(90% 38% at 50% 0%, rgba(99, 102, 241, .28), transparent 70%), radial-gradient(70% 40% at 80% 100%, rgba(20, 184, 166, .14), transparent 70%),
+    linear-gradient(180deg, #0d1840 0%, #081030 45%, #050819 100%); }
+.atlas.in { opacity: 1; }
+.atlas.out { opacity: 0; pointer-events: none; }
+.at-fog { position: absolute; width: 130vw; height: 60vh; left: -15vw; border-radius: 50%; pointer-events: none; opacity: .5;
+  background: radial-gradient(closest-side, rgba(139, 92, 246, .22), rgba(139, 92, 246, 0)); animation: atFog 28s ease-in-out infinite alternate; }
+.at-fog.f1 { top: -18vh; }
+.at-fog.f2 { bottom: -20vh; background: radial-gradient(closest-side, rgba(45, 212, 191, .16), rgba(45, 212, 191, 0)); animation-duration: 34s; animation-direction: alternate-reverse; }
+@keyframes atFog { from { transform: translateX(-8vw) scale(1); } to { transform: translateX(8vw) scale(1.12); } }
+.at-head { position: relative; display: flex; align-items: center; gap: 8px; padding: 10px 12px 2px; }
+.at-head .btn-round { flex: none; width: 40px; height: 40px; }
+.at-head .btn-round .ico, .at-head .btn-round svg { width: 20px; height: 20px; }
+.atlas:not(.s2) > .at-head .at-back { visibility: hidden; }
+.atlas.first > .at-head::after { content: ''; flex: none; width: 40px; }
+.at-ttl { flex: 1; min-width: 0; text-align: center; }
+.at-ttl small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #a5b4fc; }
+.at-ttl h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 26px; line-height: 1.15; letter-spacing: .5px; color: transparent;
+  background: linear-gradient(100deg, #fde047 0%, #fbbf24 40%, #fffbeb 50%, #fbbf24 60%, #f59e0b 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text;
+  animation: ldGlint 5s ease-in-out infinite; filter: drop-shadow(0 2px 0 rgba(80, 28, 4, .8)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.at-story { position: relative; margin: 2px 22px 0; text-align: center; font-size: 14.5px; line-height: 1.35; font-style: italic; color: #e0e7ff; text-shadow: 0 0 14px rgba(129, 140, 248, .6); }
+.atlas.s2 .at-story { display: none; }
+.at-map { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; transition: height .7s cubic-bezier(.65, 0, .35, 1); }
+.at-map.fixed { flex: none; }
+.at-svg { position: absolute; inset: 4px 6px; width: calc(100% - 12px); height: calc(100% - 8px); overflow: visible; -webkit-tap-highlight-color: transparent; }
+.at-svg { transition: opacity .35s; }
+.at-svg.off { opacity: 0; pointer-events: none; }
+/* шаг 2: карта материка — своя проекция поверх листа */
+.at-loc { opacity: 0; transform: scale(1.08); transition: opacity .4s ease, transform .6s cubic-bezier(.2, .8, .2, 1); pointer-events: none; }
+.at-loc.in { opacity: 1; transform: none; pointer-events: auto; }
+.at-loc .at-grat { stroke: rgba(147, 197, 253, .13); }
+.at-loc .at-land { cursor: default; }
+.at-loc .at-land.on .f { fill: rgba(134, 239, 222, .3); stroke: #fde68a; }
+.at-loc .at-land.dim .f { fill: rgba(134, 239, 222, .16); }
+.at-loc .at-land.on .h { stroke: rgba(251, 191, 36, .3); stroke-width: 5; animation: none; }
+.atlas .at-loc .at-land.dim { opacity: .42 !important; }
+.at-mist { position: absolute; pointer-events: none; border-radius: 50%; opacity: .9; }
+.at-mist.m1 { width: 80%; height: 34%; left: -10%; top: 18%; background: radial-gradient(closest-side, rgba(196, 181, 253, .13), rgba(196, 181, 253, 0)); animation: atMist 22s ease-in-out infinite alternate; }
+.at-mist.m2 { width: 70%; height: 30%; right: -12%; top: 58%; background: radial-gradient(closest-side, rgba(153, 246, 228, .11), rgba(153, 246, 228, 0)); animation: atMist 27s ease-in-out infinite alternate-reverse; }
+@keyframes atMist { from { transform: translate(-12%, 4%) scale(1); } to { transform: translate(16%, -6%) scale(1.15); } }
+/* лист карты */
+.at-star { fill: #e0e7ff; opacity: .5; }
+.at-star.tw { animation: atTw 3.4s ease-in-out infinite alternate; }
+@keyframes atTw { from { opacity: .15; } to { opacity: .95; } }
+.at-grat { fill: none; stroke: rgba(147, 197, 253, .16); stroke-width: .7; vector-effect: non-scaling-stroke; }
+.at-eq { fill: none; stroke: rgba(253, 224, 71, .32); stroke-width: .8; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+.at-land { cursor: pointer; transition: opacity .35s; }
+.at-land .h { fill: none; stroke: rgba(94, 234, 212, .2); stroke-width: 6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.at-land .f { fill: url(#atLand); stroke: #a5f3e4; stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke .3s; }
+.at-land.cold .f { fill: rgba(241, 245, 249, .5); stroke: #f1f5f9; }
+.at-land.cold .h { stroke: rgba(226, 232, 240, .16); }
+.atlas.picked .at-land:not(.on) { opacity: .6; }
+.at-land.on .f { fill: url(#atLandOn); stroke: #fef08a; }
+.at-land.on .h { stroke: rgba(251, 191, 36, .42); stroke-width: 10; animation: atGlow 2.2s ease-in-out infinite alternate; }
+.at-land.dim { opacity: .28 !important; }
+@keyframes atGlow { from { stroke-opacity: .5; } to { stroke-opacity: 1; } }
+.at-shine { pointer-events: none; }
+.at-rim { fill: none; stroke: #f3cf6b; stroke-width: 2.4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .45)); pointer-events: none; }
+.at-rim2 { fill: none; stroke: rgba(243, 207, 107, .3); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
+.at-tick { fill: none; stroke: rgba(243, 207, 107, .55); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
+.at-gem { fill: #fde68a; stroke: #7c4a0b; stroke-width: .8; pointer-events: none; }
+.at-arc { font-family: var(--f-display); font-size: 12px; letter-spacing: 3px; fill: #f3cf6b; text-anchor: middle; opacity: .85; }
+.at-arc.lo { dominant-baseline: hanging; }
+.at-lbl { font-family: var(--f-display); font-size: 13.5px; letter-spacing: 1px; fill: #fef3c7; text-anchor: middle; cursor: pointer;
+  paint-order: stroke; stroke: rgba(5, 10, 36, .85); stroke-width: 3.2px; stroke-linejoin: round; transition: opacity .3s, fill .3s; }
+.at-lbl.sm { font-size: 11px; }
+.at-lbl.cold { fill: #e2e8f0; font-size: 10px; }
+.at-lbl.on { fill: #fde047; }
+.at-rose .rr { fill: rgba(8, 16, 48, .5); stroke: rgba(243, 207, 107, .5); stroke-width: .8; }
+.at-rose .rr2 { fill: none; stroke: rgba(243, 207, 107, .35); stroke-width: .6; stroke-dasharray: 1.5 2.5; }
+.at-rose .r1 { fill: #f3cf6b; stroke: #7c4a0b; stroke-width: .6; }
+.at-rose .r2 { fill: rgba(243, 207, 107, .45); }
+.at-rose .rc { fill: #0b1433; stroke: #fde68a; stroke-width: .8; }
+.at-rose .rn { font-family: var(--f-display); font-size: 11px; fill: #fde68a; text-anchor: middle; }
+.atlas.s2 .at-lbl, .atlas.s2 .at-rose, .atlas.s2 .at-arc, .atlas.s2 .at-stars { opacity: 0; pointer-events: none; }
+/* Ловчий сейчас */
+.at-mek path { fill: #5eead4; stroke: #064e3b; stroke-width: 1; }
+.at-mek .w { fill: rgba(94, 234, 212, .3); transform-box: fill-box; transform-origin: center; animation: atPing 2s ease-out infinite; }
+@keyframes atPing { from { transform: scale(.6); opacity: 1; } to { transform: scale(2); opacity: 0; } }
+/* места материка */
+.at-pt { cursor: pointer; animation: atIn .45s ease-out both; }
+@keyframes atIn { from { opacity: 0; } }
+.at-pt .hit { fill: transparent; }
+.at-pt .gl { fill: rgba(253, 224, 71, .26); }
+.at-pt .c { fill: #fde68a; stroke: #7c2d12; stroke-width: 1.2; }
+.at-pt .ring { fill: none; stroke: #fde047; stroke-width: 1.6; opacity: 0; }
+.at-pt .nm { display: none; font-size: 13px; font-weight: 700; fill: #fff; text-anchor: middle; paint-order: stroke; stroke: rgba(5, 10, 36, .9); stroke-width: 3.5px; stroke-linejoin: round; }
+.at-pt.on .c { fill: #fff; }
+.at-pt.on .gl { fill: rgba(253, 224, 71, .5); }
+.at-pt.on .nm { display: block; }
+.at-pt.on .ring { opacity: 1; transform-box: fill-box; transform-origin: center; animation: atRing 1.6s ease-out infinite; }
+@keyframes atRing { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.7); opacity: 0; } }
+/* нижняя панель */
+.at-panel { position: relative; flex: none; display: flex; flex-direction: column; margin: 0 8px; padding: 12px 12px calc(12px + var(--sb)); border-radius: 24px 24px 0 0;
+  background: linear-gradient(180deg, rgba(22, 30, 72, .88), rgba(10, 14, 40, .96)); border: 1px solid rgba(243, 207, 107, .28); border-bottom: 0;
+  box-shadow: 0 -12px 34px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .07); }
+.atlas.s2 .at-panel { flex: 1 1 auto; min-height: 0; }
+.at-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px 10px; }
+.at-chips::-webkit-scrollbar { display: none; }
+.at-chip { flex: none; padding: 7px 13px; border-radius: 999px; border: 1px solid rgba(147, 197, 253, .3); background: rgba(30, 58, 138, .32); color: #dbeafe; font: inherit; font-size: 13px; font-weight: 600; }
+.at-chip.on { color: #3b1a02; border-color: #fde68a; background: linear-gradient(180deg, #fef3c7, #fbbf24); box-shadow: 0 0 12px rgba(251, 191, 36, .4); }
+.at-info { min-height: 168px; }
+.at-info h3 { margin: 0 0 6px; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.1; color: #fde68a; }
+.at-info p { margin: 0 0 6px; font-size: 14px; line-height: 1.4; color: #e2e8f0; }
+.at-info small { display: block; font-size: 12.5px; line-height: 1.35; color: #a5b4fc; }
+.at-info.hint { display: grid; place-items: center; }
+.at-info.hint p { text-align: center; color: #c7d2fe; font-size: 15px; max-width: 290px; }
+.at-myths { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 7px; }
+.at-myth { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; background: rgba(255, 255, 255, .06); border: 1px solid var(--c); }
+.at-myth::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
+.at-foot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 10px; }
+.at-foot .rune { height: 56px; }
+.at-foot .rune .rn-t svg { width: 20px; height: 20px; }
+.at-gates { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #5eead4; min-height: 20px; }
+.at-gates.rest { color: #fde68a; }
+.at-gates svg, .at-gates .art { width: 20px; height: 20px; flex: none; }
+.at-lh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; }
+.at-lh b { font-family: var(--f-display); font-weight: 400; font-size: 21px; color: #fde68a; line-height: 1.1; }
+.at-lh small { font-size: 13px; color: #a5b4fc; }
+.at-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 6px; margin: 0 -4px; padding: 0 4px 4px; scrollbar-width: none; }
+.at-list::-webkit-scrollbar { display: none; }
+.at-pl { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px 10px; border-radius: 14px; text-align: left; font: inherit; color: inherit;
+  background: rgba(30, 41, 90, .5); border: 1px solid rgba(147, 197, 253, .16); transition: background .2s, border-color .2s, box-shadow .2s; }
+.at-pl span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.at-pl b { font-size: 14px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-pl small { font-size: 11.5px; line-height: 1.25; color: #a5b4fc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-pl:active { transform: scale(.98); }
+.at-pl.on { border-color: #fde68a; background: linear-gradient(180deg, rgba(146, 98, 14, .5), rgba(80, 52, 10, .42)); box-shadow: 0 0 0 1px rgba(253, 224, 71, .3), 0 0 16px rgba(251, 191, 36, .22); }
+.at-pl.on small { color: #fde68a; }
+.at-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 0 2px rgba(124, 45, 18, .8), 0 0 8px rgba(253, 224, 71, .7); display: grid; place-items: center; }
+.at-pl.own { grid-column: 1 / -1; border-style: dashed; border-color: rgba(94, 234, 212, .45); background: rgba(19, 78, 74, .28); }
+.at-pl.own .at-dot { width: 22px; height: 22px; background: none; box-shadow: none; color: #5eead4; }
+.at-pl.own .at-dot svg { width: 20px; height: 20px; }
+/* «Своё место» — настоящая карта */
+.at-pick { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding-top: var(--st); background: linear-gradient(180deg, #0d1840, #050819);
+  transform: translateY(100%); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+.at-pick.in { transform: none; }
+.at-pmap { flex: 1; min-height: 0; margin: 8px 10px 0; border-radius: 20px; overflow: hidden; border: 1px solid rgba(243, 207, 107, .4); background: #aad3df; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.at-pmap .leaflet-tile-pane { filter: saturate(.8) brightness(.95); }
+.at-pmap .leaflet-control-attribution { font-size: 9px; background: rgba(255, 255, 255, .7); }
+.at-pbar { padding: 10px 14px calc(12px + var(--sb)); }
+.at-phint { margin: 0 0 8px; min-height: 20px; text-align: center; font-size: 13.5px; color: #c7d2fe; }
+.at-pin i { display: block; width: 26px; height: 26px; margin: 3px auto 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #7c4a0b;
+  background: radial-gradient(circle at 50% 50%, #5eead4 0 26%, #fde68a 30% 100%); box-shadow: 0 4px 10px rgba(0, 0, 0, .45), 0 0 14px rgba(251, 191, 36, .6); }
+/* перезарядка Врат */
+.at-cd { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; justify-content: center; background: rgba(3, 6, 20, .62); opacity: 0; transition: opacity .22s; }
+.at-cd.in { opacity: 1; }
+.at-cdb { width: min(370px, calc(100% - 20px)); margin-bottom: calc(14px + var(--sb)); padding: 18px 16px 14px; border-radius: 24px; text-align: center; display: flex; flex-direction: column; gap: 8px;
+  background: linear-gradient(180deg, #1d2658, #0d1234); border: 1px solid rgba(243, 207, 107, .42); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); transform: translateY(24px); transition: transform .25s cubic-bezier(.2, .9, .3, 1.2); }
+.at-cd.in .at-cdb { transform: none; }
+.at-cd.out { opacity: 0; }
+.at-cdb b { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: #fde68a; }
+.at-cdb p { margin: 0; font-size: 14.5px; color: #e2e8f0; }
+.at-cdb p.small { font-size: 13px; color: #a5b4fc; }
+.at-cdb .rune { height: 58px; padding: 0 22px; }
+.at-cdb .rune .rn-t { font-size: 15.5px; line-height: 1.15; text-align: center; }
+.at-cdr { position: relative; width: 76px; height: 76px; margin: 0 auto 2px; }
+.at-cdr > svg:first-child { width: 100%; height: 100%; transform: rotate(-90deg); }
+.at-cdr .bg { fill: none; stroke: rgba(255, 255, 255, .1); stroke-width: 5; }
+.at-cdr .fg { fill: none; stroke: #fde68a; stroke-width: 5; stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
+.at-cdr > :not(:first-child) { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+/* портал Врат Перепутицы */
+.at-gate { position: fixed; inset: 0; z-index: 2800; display: grid; place-items: center; overflow: hidden; transition: opacity .9s ease; }
+.at-gate.out { opacity: 0; pointer-events: none; }
+.ag-veil { position: absolute; inset: 0; opacity: 0; transition: opacity .5s; background: radial-gradient(circle at 50% 45%, rgba(30, 16, 72, .6), rgba(3, 2, 12, .97) 70%); }
+.at-gate.open .ag-veil { opacity: 1; }
+.ag-portal { position: relative; width: min(78vw, 320px); aspect-ratio: 1; margin-top: -8vh; opacity: 0; transform: scale(.15) rotate(-40deg);
+  transition: transform .8s cubic-bezier(.2, 1.25, .35, 1), opacity .4s; }
+.at-gate.open .ag-portal { opacity: 1; transform: none; }
+.ag-portal > i { position: absolute; border-radius: 50%; }
+.ag-glow { inset: -22%; background: radial-gradient(closest-side, rgba(94, 234, 212, .42), rgba(139, 92, 246, .24) 50%, rgba(139, 92, 246, 0)); animation: agBreath 1.8s ease-in-out infinite alternate; }
+.ag-vortex { inset: 11%; background: conic-gradient(from 0deg, #5eead4, #1e1b4b 16%, #a78bfa 32%, #0b1030 50%, #fde68a 64%, #1e1b4b 80%, #5eead4);
+  -webkit-mask-image: radial-gradient(closest-side, #000 60%, transparent 100%); mask-image: radial-gradient(closest-side, #000 60%, transparent 100%); animation: spin 2.2s linear infinite; }
+.ag-vortex.v2 { inset: 22%; opacity: .75; mix-blend-mode: screen; animation-duration: 1.5s; animation-direction: reverse; }
+.ag-core { inset: 34%; background: radial-gradient(closest-side, #fff, #ccfbf1 35%, rgba(94, 234, 212, 0)); animation: agBreath .9s ease-in-out infinite alternate; }
+@keyframes agBreath { from { transform: scale(.92); opacity: .8; } to { transform: scale(1.08); opacity: 1; } }
+.ag-ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; animation: spin 16s linear infinite; }
+.ag-ring.r2 { animation-duration: 8s; animation-direction: reverse; }
+.ag-ring .o { fill: none; stroke: #f3cf6b; stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(251, 191, 36, .7)); }
+.ag-ring .i { fill: none; stroke: rgba(243, 207, 107, .55); stroke-width: 1; stroke-dasharray: 2 4; }
+.ag-ring .d { fill: none; stroke: rgba(94, 234, 212, .7); stroke-width: 3; stroke-dasharray: 1 7; stroke-linecap: round; }
+.ag-ring .rn path { fill: none; stroke: #fde68a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ag-txt { position: absolute; left: 16px; right: 16px; bottom: calc(15vh + var(--sb)); text-align: center; opacity: 0; transform: translateY(12px); transition: opacity .5s .35s, transform .5s .35s; }
+.at-gate.open .ag-txt { opacity: 1; transform: none; }
+.ag-txt small { display: block; font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #fde68a; }
+.ag-txt b { display: block; margin-top: 6px; font-family: var(--f-display); font-weight: 400; font-size: 25px; line-height: 1.2; color: #fff; text-shadow: 0 0 18px rgba(94, 234, 212, .8), 0 2px 0 rgba(20, 10, 50, .8); }
+.ag-flash { position: absolute; inset: 0; opacity: 0; transform: scale(.25); pointer-events: none; transition: opacity .42s ease-in, transform .42s ease-in;
+  background: radial-gradient(circle at 50% 42%, #fff 0%, #fef9c3 26%, rgba(253, 224, 71, .7) 48%, rgba(255, 255, 255, 0) 72%); }
+.at-gate.flash .ag-flash { opacity: 1; transform: scale(2.6); }
+.at-gate.flash .ag-txt { opacity: 0; transition-delay: 0s; }
+.at-gate.fail .ag-portal { opacity: 0; transform: scale(.1) rotate(60deg); transition: transform .45s ease-in, opacity .45s; }
+.at-gate.fail .ag-veil, .at-gate.fail .ag-txt { opacity: 0; transition-delay: 0s; }
+/* глобус на карте: в правом столбце HUD под погодой и плашками недели — без подложки, с тенью, как они */
+#hud .hud-right > #atlasBtn { position: relative; width: 44px; height: 44px; margin: 4px 0 0 0 !important; padding: 0; border: 0; background: none; pointer-events: auto;
+  filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .8)) drop-shadow(0 0 6px rgba(8, 4, 24, .45)); transition: transform .15s; -webkit-tap-highlight-color: transparent; }
+#hud #atlasBtn > svg.mi { display: block; width: 100%; height: 100%; }
+#hud #atlasBtn:active { transform: scale(.88); }
+#hud #atlasBtn .ab-cd { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); transform: rotate(-90deg); display: none; pointer-events: none; }
+#hud #atlasBtn .ab-cd .bg { fill: none; stroke: rgba(8, 4, 24, .45); stroke-width: 3; }
+#hud #atlasBtn .ab-cd .fg { fill: none; stroke: #fde68a; stroke-width: 3; stroke-linecap: round; }
+#hud #atlasBtn .ab-min { position: absolute; right: -6px; bottom: -3px; display: none; min-width: 18px; padding: 0 4px; border-radius: 9px; font-size: 10.5px; font-weight: 800; line-height: 16px;
+  color: #3b1a02; background: linear-gradient(180deg, #fef3c7, #fbbf24); box-shadow: 0 1px 3px rgba(8, 4, 24, .6); }
+#hud #atlasBtn.rest .ab-cd, #hud #atlasBtn.rest .ab-min { display: block; }
+#hud #atlasBtn.rest > svg.mi { opacity: .9; }
+/* Книга Ордена → «Мир Духолова» → «Врата»: кнопка Атласа — как у Алатыря */
+.bk-atlas { display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
+.bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; }
+/* меньше движения и экономия батареи */
+.calm .atlas *, .eco .atlas *, .calm .at-gate *, .eco .at-gate * { animation: none !important; }
+.calm .atlas, .calm .at-map, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
+.eco .at-rim, .eco .ag-ring .o, .eco .at-cdr .fg { filter: none; }
+@media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }

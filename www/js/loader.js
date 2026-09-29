@@ -13,6 +13,8 @@ const Loader = {
     ru`Разломы открываются у Капищ каждый час: собери команду из трёх духов.`,
     ru`Сияющие духи редки — их выдают искры вокруг.`,
     ru`Коконы греются шагами: одновременно можно греть три.`,
+    ru`Ходи джойстиком: лёгкий наклон — шаг, до упора — бег. Километры для коконов считаются так же.`,
+    ru`Атлас мира переносит в любой уголок Земли раз в полчаса, а Врата Перепутицы — сразу.`,
     ru`Задания дня обновляются в полночь, а за все три ждёт Сундук дня.`,
     ru`Поставь защитника на Капище своего клана — он принесёт искры.`,
     ru`Погода усиливает духов своей стихии: в дождь чаще встречаются водные.`,
@@ -46,7 +48,7 @@ const Loader = {
       } else {
         this.hint = Math.floor(Math.random() * this.HINTS.length);
         this.el = U.el(`<div class="loader" role="status" aria-live="polite"><div class="ld-scene"></div><div class="ld-bg"></div><div class="ld-shade"></div>
-          <div class="ld-logo"><img class="logo-img" src="img/logo.webp" width="883" height="391" alt="${ru`Духолов`}" decoding="async" fetchpriority="high"><p>${ru`Лови духов Нави на улицах своего города`}</p></div>
+          <div class="ld-logo"><img class="logo-img" src="img/logo.webp" width="883" height="391" alt="${ru`Духолов`}" decoding="async" fetchpriority="high"><p>${ru`Лови духов Нави по всему свету`}</p></div>
           <div class="ld-foot">
             <div class="ld-hint">
               <div class="ld-tip"><small>✦ ${ru`Совет Ордена`}</small><p></p></div>
@@ -109,16 +111,16 @@ const Loader = {
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 450); }, 250);
   },
 
-  // Карта готова: известно, где Ловчий (или прошло 6 с), и подложка вокруг загружена. Не дольше 15 с.
+  // Карта готова: подложка вокруг Ловчего загружена (5.1: место известно сразу — walk.js). Не дольше 15 с.
   waitMap() {
     return new Promise(res => {
       const t0 = Date.now();
       const tick = () => {
         const tl = MapView.tiles, tiles = tl && tl._tiles ? Object.values(tl._tiles) : [];
         const frac = tiles.length ? tiles.filter(t => t.loaded).length / tiles.length : 0;
-        const here = MapView.gpsOK || MapView.demo, waited = Date.now() - t0;
-        this.set(62 + (here ? 10 : 0) + frac * 26, here || waited > 6000 ? ru`Загружаю карту…` : ru`Ищу тебя на карте…`);
-        if ((tiles.length && frac >= 1 && (here || waited > 6000)) || waited > 15000) { res(); return; }
+        const waited = Date.now() - t0;
+        this.set(72 + frac * 26, ru`Загружаю карту…`); // 5.1: место Ловчего известно сразу (walk.js) — ждём только подложку
+        if ((tiles.length && frac >= 1) || waited > 15000) { res(); return; }
         setTimeout(tick, 200);
       };
       tick();

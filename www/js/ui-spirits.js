@@ -45,7 +45,7 @@ Object.assign(UI, {
           <div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
           <div class="card-art">${Art.imgOf(x)}</div>
           <div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}
-        </button>`).join('') || `<div class="empty">${ru`Пока никого. Выходи на улицу — духи ждут!`}</div>`;
+        </button>`).join('') || `<div class="empty">${ru`Пока никого. Пройдись по карте — духи ждут!`}</div>`;
       updateBar();
     };
     scr.addEventListener('click', e => {

@@ -1,5 +1,5 @@
 'use strict';
-/* Карта (Leaflet + OSM/CARTO), позиция игрока по GPS или демо-джойстику, маркеры мира */
+/* Карта (Leaflet + OSM/CARTO), значок Ловчего (позиция — walk.js: джойстик и Атлас, 5.1), маркеры мира */
 
 /* 4.19: опасные места для духов — по данным той же карты (Protomaps, плитки z15 из pmtiles): вода, железная дорога и трамвайные
    пути, крупные трассы, стройки, ж/д зоны и платформы, болота, аэродромы, военные зоны, карьеры и свалки. Дух в таком месте
@@ -81,15 +81,12 @@ const Hazard = {
 };
 
 const MapView = {
-  map: null, pos: null, follow: true, heading: 0, markers: new Map(), nearby: [],
-  gpsOK: false, watchId: null, lastGps: null, demo: false, tiles: null, night: null,
-  joy: { x: 0, y: 0 }, keys: {},
+  map: null, pos: null, follow: true, heading: 0, markers: new Map(), nearby: [], tiles: null, night: null,
 
   init() {
-    let start = null;
-    try { start = JSON.parse(localStorage.getItem('duholov.lastPos')); } catch (e) {}
-    if (!Array.isArray(start)) start = [55.7539, 37.6208];
-    this.pos = { lat: start[0], lng: start[1] };
+    // 5.1: место Ловчего — Walk (телефон или прогресс); ещё нет (новичок до Атласа) — карта ждёт на Красной площади
+    const start = Walk.load() || { lat: 55.7539, lng: 37.6208 };
+    this.pos = { lat: start.lat, lng: start.lng };
     this.map = L.map('map', { zoomControl: false, minZoom: 15, maxZoom: 19, zoomSnap: 0.25, tap: true })
       .setView([this.pos.lat, this.pos.lng], 17.5);
     this.map.attributionControl.setPrefix(false);
@@ -119,28 +116,12 @@ const MapView = {
     U.$('#recenterBtn').onclick = () => this.recenter();
     this.initRotate();
 
-    this.initJoystick();
-    window.addEventListener('keydown', e => { this.keys[e.key.toLowerCase()] = true; });
-    window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; });
-
-    if (Cfg.s.demo && DEV) this.startDemo(); else this.startGPS();
-    // 4.1: свёрнутая игра не держит GPS (батарея); при возвращении — сразу свежая точка
-    document.addEventListener('visibilitychange', () => {
-      if (this.demo) return;
-      if (document.hidden) this.stopGPS(); else if (this.watchId == null) this.startGPS();
-    });
+    Walk.init(); // 5.1: мини-джойстик вместо GPS
     this.refresh();
     // в режиме экономии батареи карта обновляется вдвое реже
     document.body.classList.toggle('eco', !!Cfg.s.eco);
     let tickN = 0;
     setInterval(() => { if (!document.hidden && (!Cfg.s.eco || ++tickN % 2 === 0)) this.refresh(); }, 1500);
-  },
-  // 4.6.3: цикл кадров нужен только демо-ходьбе (джойстик, клавиши) — без неё страница не просыпается 120 раз в секунду
-  runLoop() {
-    if (this._raf || !this.demo) return;
-    let last = performance.now();
-    const loop = t => { if (!this.demo) { this._raf = 0; return; } this.tick(Math.min(0.1, (t - last) / 1000)); last = t; this._raf = requestAnimationFrame(loop); };
-    this._raf = requestAnimationFrame(loop);
   },
 
   // 4.1: своя карта — векторные тайлы (Protomaps, данные OpenStreetMap) одним файлом; 4.28 — всего мира (в S3, отдаёт сервер игры);
@@ -215,9 +196,10 @@ const MapView = {
     });
   },
 
-  recenter() {
+  recenter(quick) {
     this.follow = true;
     U.$('#recenterBtn').classList.remove('show');
+    if (quick) return; // 5.1: пошёл джойстиком — карта догонит значок со следующего шага
     const p = this.shown || this.pos; // 4.24.1: туда, где значок сейчас на экране
     this.map.setView([p.lat, p.lng], Math.max(this.map.getZoom(), 17), { animate: true });
   },
@@ -244,8 +226,6 @@ const MapView = {
     this.glide(lat, lng, jump);
     const el = this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + this.rot}deg)`; // с учётом поворота карты
-    // последняя точка — только на этом телефоне, чтобы карта открывалась на привычном месте
-    if (Date.now() - (this._lpT || 0) > 10000) { this._lpT = Date.now(); try { localStorage.setItem('duholov.lastPos', JSON.stringify([+lat.toFixed(5), +lng.toFixed(5)])); } catch (e) {} }
     if (this.tracking) this.updateTracker();
   },
 
@@ -260,7 +240,7 @@ const MapView = {
       else this.map.panTo(ll, { animate: false });
     }
   },
-  /* 4.24.1: GPS даёт точку раз в секунду (в режиме экономии — реже), и значок прыгал от точки к точке. Теперь он плавно
+  /* 4.24.1: точка приходила раз в секунду (GPS; 5.1 — джойстик даёт её каждый кадр), и значок прыгал от точки к точке. Теперь он плавно
      едет к новой точке — линейная интерполяция (lerp) за то время, что прошло между точками: к приходу следующей точки
      он как раз на месте, движение непрерывное. Далёкий скачок (больше GLIDE_MAX м) и первая точка — сразу, без езды */
   GLIDE_MAX: 150,
@@ -284,181 +264,31 @@ const MapView = {
     this._glideEnd = setTimeout(() => { if (this._glideRaf) { cancelAnimationFrame(this._glideRaf); this._glideRaf = 0; this.drawAt(lat, lng); } }, dur + 200);
   },
 
-  /* 4.20: скорость Ловчего — только шагом или бегом (Rules.SPEED); как на сервере */
-  tooFast() { return this.fastUntil > Date.now(); },
-  // 4.24.1: по недавним точкам (Rules.paceStep): остановился — через полминуты шага или стоянки плашка уходит
-  pace(q) {
-    const S2 = Rules.SPEED, st = this._spd = this._spd || { pts: [] }, was = this.tooFast();
-    Rules.paceStep(st, q);
-    const skew = Date.now() - q.t; // время точки GPS и часы телефона могут чуть расходиться
-    this.fastUntil = st.until ? st.until + skew : 0; this.kmh = st.kmh;
-    if (this.tooFast()) {
-      if (!was) U.vibrate([80, 60, 80]);
-      UI.speedWarn(this.kmh);
-      clearTimeout(this._fastT); this._fastT = setTimeout(() => { if (!this.tooFast()) UI.speedWarn(0); }, this.fastUntil - Date.now() + 500);
-    } else if (was) { clearTimeout(this._fastT); UI.speedWarn(0); Game.flushMove(); } // сразу — точки серверу: пусть и он снимет паузу
+  /* 5.1: Ловчий идёт джойстиком (walk.js): каждый кадр — новая точка; значок поворачивается по направлению, шагает или бежит */
+  walkTo(lat, lng, heading) {
+    this.heading = heading;
+    if (!this.follow) this.recenter(true); // пошёл — карта снова за Ловчим
+    this.moveTo(lat, lng, false);
   },
-
-  /* ---------------- GPS ---------------- */
-  startGPS() {
-    this.stopDemo();
-    if (!('geolocation' in navigator)) { this.gpsFail(); return; }
-    UI.setGps('search');
-    if (this.watchId != null) navigator.geolocation.clearWatch(this.watchId);
-    this.watchId = navigator.geolocation.watchPosition(p => this.onFix(p), e => this.gpsFail(e),
-      { enableHighAccuracy: true, maximumAge: Cfg.s.eco ? 5000 : 1000, timeout: 30000 });
-    clearTimeout(this._gpsTimer);
-    this._gpsTimer = setTimeout(() => { if (!this.gpsOK && !this.demo) this.offerDemo(); }, 15000);
-    clearInterval(this._netT); this._netT = setInterval(() => this.netTick(), 5000); // 4.25.3: сверка с сетями (защита от подмены GPS)
+  // походка значка: 0 — стоит, 1 — шаг, 2 — бег (лёгкое покачивание, быстрее на бегу)
+  setGait(m) {
+    const el = this.player && this.player.getElement(), p = el && el.querySelector('.mk-player');
+    if (!p) return;
+    p.classList.toggle('walk', m === 1); p.classList.toggle('run', m === 2);
   },
-  stopGPS() {
-    if (this.watchId != null) navigator.geolocation.clearWatch(this.watchId);
-    this.watchId = null;
-    clearTimeout(this._gpsTimer);
-    clearInterval(this._netT);
+  // 5.1: телепорт (Walk.teleport): сразу в новую точку, карта — туда же, места и духи вокруг — заново
+  jump(lat, lng) {
+    this.follow = true;
+    U.$('#recenterBtn').classList.remove('show');
+    if (this.tracking) this.untrack();
+    this.moveTo(lat, lng, true);
+    this.setTiles(); // время суток и сезон — у нового места свои
+    this.refresh(true);
+    if (typeof Poi !== 'undefined') Poi.ensure();
+    if (typeof Sky !== 'undefined' && Sky.update) Sky.update(true); // погода — нового места
+    if (typeof Clans !== 'undefined' && Clans.refresh) setTimeout(() => Clans.refresh(true), 1500); // чьи Капища вокруг
   },
-  onFix(p) {
-    if (this.demo) return;
-    const { latitude: lat, longitude: lng, accuracy } = p.coords, q = { lat, lng, acc: accuracy || 50, t: p.timestamp || Date.now(), rt: Date.now() }; // rt — время получения: при подмене время спутников тоже врёт
-    if (!this.guardOk(q)) return; // 4.25.2: скачок от глушения или подмены GPS — не верим, держим последнее надёжное место
-    this.applyFix(q);
-  },
-  // точка принята: путь, скорость, значок GPS, направление, карта
-  applyFix({ lat, lng, acc: accuracy, t }, net) {
-    const first = !this.gpsOK;
-    this.gpsOK = true; this._fixAt = Date.now();
-    this.acc = accuracy;
-    Game.addPoint(lat, lng, accuracy); // путь считает сервер (4.20: быстрее бега — не засчитывается)
-    if (!net && accuracy <= Rules.SPEED.ACC) this.pace({ lat, lng, t }); // по сетям скорость не мерим — их точки прыгают
-    UI.setGps(this.jam ? 'jam' : accuracy <= 40 ? 'ok' : 'weak', accuracy);
-    if (!net && this.lastGps && accuracy <= 40) {
-      const d = U.dist(this.lastGps.lat, this.lastGps.lng, lat, lng);
-      const dt = (t - this.lastGps.t) / 1000;
-      if (d >= 4 && dt > 0) {
-        this.heading = Math.atan2((lng - this.lastGps.lng) * Math.cos(lat * Math.PI / 180), lat - this.lastGps.lat) * 180 / Math.PI;
-        this.lastGps = { lat, lng, t };
-      }
-    } else if (!net && (!this.lastGps || accuracy <= 40)) this.lastGps = { lat, lng, t };
-    this.moveTo(lat, lng, first || !!net && U.dist(this.pos.lat, this.pos.lng, lat, lng) > this.GLIDE_MAX);
-    if (first) { this.refresh(); Poi.ensure(); }
-  },
-
-  /* 4.25.2–4.25.3: защита от глушения и подмены GPS. В России спутниковый сигнал глушат (координат нет) и подменяют
-     (телефон уверенно «видит» себя за километры — в аэропорту, в другом городе, иногда с самого запуска игры).
-     Второй источник — положение по сетям: Wi-Fi и вышки связи, их подмена спутников не трогает. В приложении его даёт сам
-     Android (DuholovNative.netLocation — только сети, без спутников), в браузере — запрос низкой точности.
-     Сверяемся с ним раз в NET_OK, при помехах — раз в NET_JAM:
-     - спутники и сети расходятся (дважды подряд или сразу на FAR) — подмена: ведём Ловчего по сетям, пока спутники не вернутся;
-     - спутники молчат — глушение: тоже ведём по сетям;
-     - скачок спутников дальше погрешности и «быстрее» VMAX — ждём сверки с сетями: сети там же — настоящий переезд;
-       сетей нет вовсе — новое место принимается, если спутники держат его STABLE_MS и не меньше STABLE_N точек подряд. */
-  GUARD: { VMAX: 70, SLACK: 40, CLUSTER: 150, STABLE_MS: 90000, STABLE_N: 6, NET_OK: 45000, NET_JAM: 10000, NET_ACC: 3000,
-    DISAGREE: 1000, FAR: 5000, QUIET: 20000 },
-  guardOk(q) {
-    const G = this.GUARD, g = this._good;
-    this._gps = q;
-    if (this.spoof) {
-      // подмена подтверждена сетями: спутникам верим, только когда они снова рядом с положением по сетям
-      const n = this._net;
-      if (n && U.dist(n.lat, n.lng, q.lat, q.lng) <= q.acc + n.acc + G.SLACK) { this.endJam(); this._good = q; this._sus = null; return true; }
-      return false;
-    }
-    if (!g) { this._good = q; setTimeout(() => this.netCheck(true)); return true; } // первая точка — сразу сверим с сетями (подмена с запуска)
-    const d = U.dist(g.lat, g.lng, q.lat, q.lng), dt = Math.max(1, (q.rt - g.rt) / 1000);
-    if (d <= q.acc + g.acc + G.SLACK || d / dt <= G.VMAX) {
-      if (this.jam) this.endJam();
-      this._good = q; this._sus = null;
-      return true;
-    }
-    // скачок: копим «подозрительное» место — вдруг это настоящий переезд
-    const s = this._sus;
-    if (s && U.dist(s.lat, s.lng, q.lat, q.lng) <= q.acc + s.acc + G.CLUSTER) { s.n++; s.last = q; } else this._sus = { lat: q.lat, lng: q.lng, acc: q.acc, t0: q.rt, n: 1, last: q };
-    this.startJam();
-    this.netCheck(true);
-    const s2 = this._sus, netAlive = Date.now() - (this._netOkAt || 0) < 3 * G.NET_OK;
-    if (!netAlive && s2.n >= G.STABLE_N && q.rt - s2.t0 >= G.STABLE_MS) { this.endJam(); this._good = q; this._sus = null; return true; }
-    return false;
-  },
-  startJam(spoof) {
-    if (spoof && !this.spoof) { this.spoof = true; if (this.jam) UI.toast(ru`GPS подменяют — ведём тебя по Wi-Fi и вышкам связи.`); }
-    if (this.jam) return;
-    this.jam = true;
-    UI.setGps('jam', this.acc);
-    UI.toast(spoof ? ru`GPS подменяют — ведём тебя по Wi-Fi и вышкам связи.` : ru`Похоже, GPS глушат или подменяют — держим твоё последнее место и сверяемся с сетями.`);
-  },
-  endJam() {
-    this.spoof = false; this._dis = 0;
-    if (!this.jam) return;
-    this.jam = false;
-    UI.setGps(this.acc <= 40 ? 'ok' : 'weak', this.acc);
-  },
-  // сверка с сетями: по таймеру (раз в NET_OK, при помехах — NET_JAM) или сразу (soon) — не чаще раза в NET_JAM
-  netTick() {
-    if (this.demo || document.hidden || this.watchId == null) return;
-    if (Date.now() - (this._netAt || 0) >= (this.jam || !this.gpsOK ? this.GUARD.NET_JAM : this.GUARD.NET_OK)) this.netCheck();
-  },
-  netCheck(soon) {
-    const now = Date.now();
-    if (this._netBusy && now - this._netBusy < 35000) return;
-    if (soon && now - (this._netAt || 0) < this.GUARD.NET_JAM - 1000) return;
-    this._netAt = now; this._netBusy = now;
-    const done = n => { this._netBusy = 0; if (n) this.onNet(n); };
-    const N = window.DuholovNative;
-    if (N && N.netLocation) { // приложение: только сети (Wi-Fi, вышки) — ответ в window.nativeNetFix
-      window.nativeNetFix = o => done(o && isFinite(o.lat) && isFinite(o.lng) ? { lat: +o.lat, lng: +o.lng, acc: +o.acc || 1000 } : null);
-      try { N.netLocation(); return; } catch (e) { /* не вышло — как в браузере */ }
-    }
-    if (!('geolocation' in navigator)) { done(null); return; }
-    // maximumAge: 0 — иначе браузер отдаёт последнюю точку спутников (ту самую подменённую)
-    navigator.geolocation.getCurrentPosition(p => done({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 1000 }),
-      () => done(null), { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 });
-  },
-  onNet(n) {
-    const G = this.GUARD;
-    if (this.demo || !(n.acc <= G.NET_ACC)) return;
-    n.rt = n.t = Date.now();
-    this._net = n; this._netOkAt = n.rt;
-    const q = this._gps, fresh = q && n.rt - q.rt < 30000;
-    if (!fresh) { // спутники молчат — глушат: ведём по сетям
-      if (!this.gpsOK || n.rt - (this._fixAt || 0) > G.QUIET) { this.startJam(); this.follow(n); }
-      return;
-    }
-    const d = U.dist(n.lat, n.lng, q.lat, q.lng);
-    if (d > Math.max(G.DISAGREE, 2 * n.acc + q.acc)) { // спутники не там, где сети
-      this._dis = (this._dis || 0) + 1;
-      if (this.spoof || this._dis >= 2 || d > G.FAR + 2 * n.acc) { this.startJam(true); this.follow(n); }
-      else setTimeout(() => this.netCheck(true), G.NET_JAM); // расхождение небольшое — перепроверим
-      return;
-    }
-    this._dis = 0;
-    if (this.jam) { this.endJam(); this._good = q; this._sus = null; this.applyFix(q); } // сети там же, где спутники: переезд настоящий или помехи кончились
-  },
-  follow(n) { this._good = n; this.applyFix(n, true); },
-  gpsFail(err) {
-    if (this.demo) return;
-    if (err && err.code !== 1) this.netCheck(true); // спутники не отвечают — может, глушат: сверимся с сетями
-    if (this.jam) return;
-    UI.setGps('off');
-    if (!this.gpsOK) this.offerDemo(err && err.code === 1 ? ru`Доступ к геолокации запрещён.` : ru`Не удалось получить координаты.`);
-  },
-  offerDemo(reason = ru`GPS не отвечает.`) {
-    if (this._offered) return;
-    this._offered = true;
-    if (DEV) {
-      UI.confirm(ru`Нет сигнала GPS`, `${reason} Включить демо-режим (джойстик)? Доступен только при разработке.`,
-        'Демо-режим', () => { Cfg.s.demo = true; Cfg.save(); this.startDemo(); }, 'Ждать GPS');
-      return;
-    }
-    // в проде — подсказка, как включить геолокацию
-    UI.modal({
-      title: ru`Нет сигнала GPS`,
-      html: `<p>${reason}</p><ul class="gps-help">
-        <li>${ru`Включи геолокацию (местоположение) в шторке уведомлений телефона.`}</li>
-        <li>${ru`Разреши доступ к местоположению: в браузере — значок замка у адреса сайта, в приложении — Настройки → Приложения → Духолов → Разрешения.`}</li>
-        <li>${ru`Выйди на открытое место: в помещении спутники ловятся хуже.`}</li></ul>`,
-      buttons: [{ label: ru`Позже` }, { label: ru`Повторить`, cls: 'primary', fn: () => { this._offered = false; this.startGPS(); } }],
-    });
-  },
+  updateBuddy() {}, // 4.23.2: спутник на карте не показывается (ui-spirits.js зовёт после выбора спутника)
 
   /* ---------------- 4.7: ПОВОРОТ КАРТЫ И КОМПАС ---------------- */
   // Карту крутят двумя пальцами; компас слева внизу показывает север, касание — вернуть север вверх.
@@ -610,55 +440,6 @@ const MapView = {
       ${lt}</svg>`;
   },
 
-  /* ---------------- ДЕМО-РЕЖИМ ---------------- */
-  startDemo() {
-    this.stopGPS();
-    this.demo = true;
-    U.$('#joystick').classList.remove('hidden');
-    UI.setGps('demo');
-    this.runLoop();
-  },
-  stopDemo() {
-    this.demo = false;
-    U.$('#joystick').classList.add('hidden');
-  },
-  initJoystick() {
-    const j = U.$('#joystick'), stick = j.querySelector('.stick');
-    let id = null;
-    const set = e => {
-      const r = j.getBoundingClientRect(), R = r.width / 2 - 14;
-      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-      const m = Math.hypot(dx, dy);
-      if (m > R) { dx *= R / m; dy *= R / m; }
-      stick.style.transform = `translate(${dx}px, ${dy}px)`;
-      this.joy = { x: dx / R, y: dy / R };
-    };
-    j.addEventListener('pointerdown', e => { id = e.pointerId; j.setPointerCapture(id); set(e); });
-    j.addEventListener('pointermove', e => { if (e.pointerId === id) set(e); });
-    const end = e => { if (e.pointerId !== id) return; id = null; stick.style.transform = ''; this.joy = { x: 0, y: 0 }; };
-    j.addEventListener('pointerup', end);
-    j.addEventListener('pointercancel', end);
-  },
-  tick(dt) {
-    if (!this.demo || UI.blocking()) return;
-    let { x, y } = this.joy;
-    const k = this.keys;
-    if (k.w || k.arrowup || k['ц']) y = -1;
-    if (k.s || k.arrowdown || k['ы']) y = 1;
-    if (k.a || k.arrowleft || k['ф']) x = -1;
-    if (k.d || k.arrowright || k['в']) x = 1;
-    const mag = Math.min(1, Math.hypot(x, y));
-    if (mag < 0.08) return;
-    const m = 8 * mag * dt; // до 8 м/с — быстрый шаг
-    const n = Math.hypot(x, y);
-    const lat = this.pos.lat - (y / n) * m / 111320;
-    const lng = this.pos.lng + (x / n) * m / (111320 * Math.cos(this.pos.lat * Math.PI / 180));
-    this.heading = Math.atan2(x, -y) * 180 / Math.PI;
-    this._demoAcc = (this._demoAcc || 0) + m;
-    if (this._demoAcc > 5) { Game.addPoint(lat, lng, 5); this._demoAcc = 0; }
-    this.moveTo(lat, lng, false);
-  },
-
   /* ---------------- МАРКЕРЫ ---------------- */
   // 4.24: дух уже в Бестиарии — встречался или пойман; иначе на карте он знак вопроса
   known(sid) { const x = S.d.dex[sid]; return !!(x && (x.seen || x.caught)); },
@@ -715,7 +496,6 @@ const MapView = {
   tap(e) {
     if (!e || UI.blocking()) return;
     Sfx.init(); Sfx.play('tap');
-    if (this.tooFast()) { UI.toast(ru`Слишком быстро — около ${this.kmh} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`); return; } // 4.20
     const d = U.dist(this.pos.lat, this.pos.lng, e.lat, e.lng);
     const range = e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT;
     if (d > range && e.type === 'rift' && d <= Rules.FAR.R) { Raid.open(e); return; } // дальний бой по пропуску
