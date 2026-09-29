@@ -5186,6 +5186,18 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
   background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(46, 30, 100, .92), rgba(20, 12, 48, .95)); }
 .eco .at-cd, .eco .ag-veil { -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }
+/* 5.1.6: в Атласе всё чётко — без растворяющихся краёв (масок) и расплывчатых ореолов у текста; подписи контрастнее,
+   стекло чуть плотнее, чтобы светлая карта под ним не спорила с текстом */
+.atlas { background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02) 60%), rgba(20, 12, 48, .5); }
+.atlas.s2 .at-map, .atlas .at-tabs, .atlas .at-info.more, .atlas .at-list.more { -webkit-mask-image: none; mask-image: none; }
+.atlas .at-panel, .atlas .at-pl, .atlas .at-tabs button, .atlas .at-phint { text-shadow: 0 1px 2px rgba(8, 4, 24, .7); }
+.atlas .at-tabs button.on { text-shadow: 0 1px 2px rgba(8, 4, 24, .7); }
+.atlas .at-info h3, .atlas .at-story { text-shadow: 0 1px 2px rgba(8, 4, 24, .75); }
+.atlas .at-tabs button { color: rgba(245, 241, 255, .78); }
+.atlas .at-pl small, .atlas .at-info small { color: #efe9ff; }
+.atlas .at-pl em { color: rgba(245, 241, 255, .9); }
+.atlas .at-chev { stroke: rgba(255, 255, 255, .72); }
+.atlas .at-pl + .at-pl { border-top-color: rgba(255, 255, 255, .16); }
 /* Атлас — одна сцена (Stage): фон — матовое стекло (5.1.6), карта под ним неподвижна и размыта, HUD и погода через Stage.COVER_MS не рисуются (body.stage-cover).
    Сверх того, пока он открыт (body.atlas-on), не рисуются подсказка обучения и её рамка, чужие всплывашки и плашка обновления;
    остаются его собственные всплывашки (.at-t), окна самого Атласа и портал Врат. Закрыли — всё вернулось */
