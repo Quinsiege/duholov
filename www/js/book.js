@@ -232,8 +232,8 @@ const Book = {
           this.p(ru`<b>Золотая тропа</b> за ${U.fmtNum(P.GOLD)} монет открывает вторую награду на каждой ступени: золотые обереги, коконы, амулеты, монеты, плащ «Сезонная тропа» и Знак Тропы. С ${P.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`)]];
     },
     hunter() {
-      const L = ['shop', 'swap', 'journal', 'trail', 'chat', 'rift', 'pin', 'trophy', 'shield', 'gavel'].map(k => [k, UI.openLvl(k)]).sort((a, b) => a[1] - b[1]);
-      const NAMES = { shop: ru`Лавка`, swap: ru`Друзья`, journal: ru`Дневник`, trail: ru`Тропа`, chat: ru`Чат`, rift: ru`Разломы`, pin: ru`Предложить место`, trophy: ru`Лига`, shield: ru`Дружины`, gavel: ru`Аукцион` };
+      const L = ['shop', 'swap', 'journal', 'trail', 'chat', 'rift', 'trophy', 'shield', 'gavel'].map(k => [k, UI.openLvl(k)]).sort((a, b) => a[1] - b[1]);
+      const NAMES = { shop: ru`Лавка`, swap: ru`Друзья`, journal: ru`Дневник`, trail: ru`Тропа`, chat: ru`Чат`, rift: ru`Разломы`, trophy: ru`Лига`, shield: ru`Дружины`, gavel: ru`Аукцион` };
       return [[ru`Уровни`, this.p(ru`Опыт дают поимки, источники, разломы, Капища и задания. Уровней — ${MAX_LEVEL}. Разделы открываются постепенно — закрытые видны в меню с замком и подписью «с N ур.».`) +
           this.kv([...L.map(([k, l]) => [NAMES[k], ru`с ${l} ур.`]), [ru`Капища`, ru`с ${DUEL_LEVEL} ур.`], [ru`Второй приём`, ru`с ${MOVE2_LEVEL} ур.`], [ru`Вторжения`, ru`с ${INVASION_LEVEL} ур.`]].sort((a, b) => parseInt(a[1].replace(/\D+/g, '')) - parseInt(b[1].replace(/\D+/g, '')))) +
           this.p(ru`Подробно, что даёт каждый уровень, — в главе «Путь Ловчего».`)],

@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.5';
+const APP_VERSION = '5.1.6';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -3445,8 +3445,7 @@ const League = {
     // 4.16: вкладка «Бой» — команда, жетоны и поиск живого соперника; идущий бой (телефон закрывали) — «Вернуться в бой»
     const renderPlay = () => {
       const team = S.team(), locked = S.d.level < this.LEVEL, power = team.reduce((a, x) => a + S.power(x), 0);
-      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${UI.hpBar(x)}</button>`;
-      const cards = team.map(mem).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
+      const cards = UI.teamCards(team); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
       const ko = team.some(x => !S.alive(x));
       const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;
       const w = this.window(L.pts), ranks = w.a === w.b ? ru`в лиге «${LEAGUE_RANKS[r].name}»` : ru`в лигах «${LEAGUE_RANKS[w.a].name}» — «${LEAGUE_RANKS[w.b].name}»`;
@@ -3823,8 +3822,7 @@ const Raid = {
     // 4.22.2: в композиции карточки духа и Лиги: сверху портал с боссом, справа ступень, босс, сила и таймер;
     // вкладки «Бой» (команда и кнопки — закреплены внизу), «Босс» (слабость, погода, как бить), «Награда»
     const st = this.bossStats(r), el = s.el, w = Sky.w ? WEATHER[Sky.w.key] : null;
-    const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${UI.hpBar(x)}</button>`;
-    const teamHtml = t => t.map(mem).join('') + `<button class="lg2-mem empty team-edit"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - t.length));
+    const teamHtml = t => UI.teamCards(t); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
     const power = t => t.reduce((a, x) => a + S.power(x), 0);
     const row = (t, v) => `<div class="dt-row"><span>${t}</span><b>${v}</b></div>`;
     const it = (k, n) => `<span class="cur">${Art.item(k)}</span> ${n}`;
@@ -4309,7 +4307,7 @@ const Duel = {
          <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
       : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
          <div class="rift-team-title">${ru`Духи хранителя`}</div>
-         <div class="rift-team">${UI.teamHtml(g.team)}</div>`;
+         <div class="lg2-team tm-row">${UI.teamCards(g.team, true)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
     let action;
     if (mine) action = `<div class="rift-tip">${ru`Капище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
@@ -4318,7 +4316,7 @@ const Duel = {
         ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
     else action = `
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
         <div class="rift-tip">${hold ? `${ru`Победа освободит Капище от защитников.`} ` : ''}${ru`Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</div>
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
@@ -4350,8 +4348,15 @@ const Duel = {
     if (def) def.onclick = () => Clans.defend(e, () => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
     const cg = scr.querySelector('.clan-go');
     if (cg) cg.onclick = () => Clans.choose(() => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
-    const edit = scr.querySelector('.team-edit');
-    if (edit) edit.onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
+    // 5.1.5: «Изменить», карточка духа и пустое место — выбор команды
+    scr.addEventListener('click', ev => {
+      if (!ev.target.closest('.team-edit, .team-slot')) return;
+      UI.pickTeam(() => {
+        team = S.team();
+        const box = scr.querySelector('.tm-my'); if (box) box.innerHTML = UI.teamCards(team);
+        const b = scr.querySelector('.duel-go'); if (b) b.disabled = !team.length;
+      });
+    });
     Clans.refresh(); // сводка могла устареть
   },
 
@@ -4362,7 +4367,6 @@ const Duel = {
     const g = W.grunt(e);
     const pw = t => t.reduce((a, x) => a + S.power(x), 0);
     const weak = ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el));
-    const card = (x, foe) => `<${foe ? 'div' : 'button'} class="lg2-mem el-${SP[x.sid].el} ${foe ? 'inv2-dark' : S.alive(x) ? 'team-edit' : 'ko team-edit'}"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${foe ? '' : UI.hpBar(x)}</${foe ? 'div' : 'button'}>`;
     const scr = UI.screen(ru`Вторжение Нави`, `
       <div class="det det2 inv2 el-${g.el}">
         <div class="dt-hero">
@@ -4381,10 +4385,10 @@ const Duel = {
     const body = scr.querySelector('.inv2-body'), foot = scr.querySelector('.inv2-foot');
     const render = () => {
       const team = S.team(), ko = team.some(x => !S.alive(x)), mine = pw(team);
-      const slots = team.map(x => card(x)).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
+      const slots = UI.teamCards(team); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
       body.innerHTML = `
         <div class="pf-mh lg2-th"><span>${ru`Омрачённые духи`}</span><em class="inv2-weak">${ru`слабость`}${weak.map(x => `<i>${Art.elIcon(x, 15)} ${ELEMENTS[x].name}</i>`).join('')}</em></div>
-        <div class="lg2-team">${g.team.map(x => card(x, true)).join('')}</div>
+        <div class="lg2-team">${UI.teamCards(g.team, 'inv2-dark')}</div>
         <div class="inv2-vs"><i></i><b>${mine >= pw(g.team) ? ru`силы на твоей стороне` : ru`отряд сильнее — бей в слабость`}</b><i></i></div>
         <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span>${mine ? `<b>${ru`сила ${U.fmtNum(mine)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${slots}</div>`;
@@ -4411,9 +4415,9 @@ const Duel = {
       <div class="shrine-view spar">
         <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>${ru`Дружеский поединок`}</small></div></div>
         <div class="rift-team-title">${ru`Сильнейшие духи друга`}</div>
-        <div class="rift-team">${UI.teamHtml(top)}</div>
+        <div class="lg2-team tm-row">${UI.teamCards(top, true)}</div>
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
         <div class="rift-tip">${today ? ru`Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).` : ru`Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.`}</div>
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
       </div>`;
@@ -4428,10 +4432,13 @@ const Duel = {
       const color = (r.look && r.look.cloak) || GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)];
       this.start({ kind: 'spar', name: f.name, T: this.FOE.spar }, { name: U.esc(r.name), color, team: r.foe }, S.team());
     };
-    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => {
-      team = S.team();
-      scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team);
-      scr.querySelector('.duel-go').disabled = !team.length;
+    scr.addEventListener('click', ev => { // 5.1.5: «Изменить», карточка духа и пустое место — выбор команды
+      if (!ev.target.closest('.team-edit, .team-slot')) return;
+      UI.pickTeam(() => {
+        team = S.team();
+        scr.querySelector('.tm-my').innerHTML = UI.teamCards(team);
+        scr.querySelector('.duel-go').disabled = !team.length;
+      });
     });
   },
 

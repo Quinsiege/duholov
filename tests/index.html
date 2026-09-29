@@ -2856,7 +2856,7 @@
     for (const l of lands) {
       const list = Atlas.PLACES[l.id], b = BOX[l.id];
       ok(Array.isArray(list) && list.length >= 6 && list.length <= 15, l.id + ': от 6 до 15 мест');
-      ok(l.name && l.text && l.polys.length && ['w', 'e'].includes(l.disc), l.id + ': название, описание, очертания, диск');
+      ok(l.name && l.text && l.polys.length && l.label.length === 2, l.id + ': название, описание, очертания, точка подписи');
       ok(l.myths.every(m => MYTHS[m]), l.id + ': мифологии — из MYTHS');
       ok(!l.text.includes(MYTHS.japan ? MYTHS.japan.name : '—'), l.id + ': закрытая мифология не названа в тексте');
       for (const [id, name, spot, lat, lng] of list) {
@@ -2869,11 +2869,18 @@
       }
     }
     ok(Atlas.LANDS.some(l => l.cold) && !Atlas.PLACES.antarctica, 'в Антарктиду Врата не открываются');
-    // проекция: центр диска — в центре листа; очертания без NaN; значок и лист рисуются
-    for (const d of ['w', 'e']) { const p = Atlas.pj(d), c = Atlas.proj(d, p.lng, p.lat); near(c[0], p.cx, 1e-6); near(c[1], p.cy, 1e-6); eq(c[2], 0); }
-    const sheet = Atlas.sheet();
-    ok(sheet.startsWith('<svg') && !/NaN|undefined|Infinity/.test(sheet), 'лист Атласа без NaN');
-    ok((sheet.match(/class="at-land/g) || []).length >= 8, 'материки на обоих дисках');
+    // 5.1.6: глобус — центр вида в центре шара, касание находит ту же точку; с любой стороны очертания без NaN, видны не меньше двух материков
+    for (const [lng, lat] of [[37, 55], [-100, 30], [140, -30], [0, -62]]) {
+      const M = Atlas.mat(lng, lat), c = Atlas.rot(M, Atlas.vec(lng, lat)); near(c[0], 0, 1e-9); near(c[1], 0, 1e-9); near(c[2], 1, 1e-9);
+      const q = Atlas.rot(M, Atlas.vec(lng + 20, lat - 10)), back = Atlas.unproj(M, q[0], q[1]); near(back[0], lng + 20, 1e-6); near(back[1], lat - 10, 1e-6);
+      const d = Atlas.geo().lands.map(rs => rs.map(r => Atlas.ringPath(r, M, 150, 195, 200)).join(''));
+      ok(!d.some(s => /NaN|undefined|Infinity/.test(s)), 'очертания без NaN');
+      ok(d.filter(Boolean).length >= 2, `с (${lng}, ${lat}) видны материки`);
+      ok(!/NaN/.test(Atlas.linePath(Atlas.geo().grat, M, 150, 195, 200)), 'сетка без NaN');
+    }
+    const globe = Atlas.globe();
+    ok(globe.startsWith('<svg') && !/NaN|undefined|Infinity/.test(globe), 'глобус без NaN');
+    eq((globe.match(/class="at-land[ "]/g) || []).length, Atlas.LANDS.length, 'все материки на одном глобусе');
     ok(Atlas.icon().startsWith('<svg') && !/NaN|undefined/.test(Atlas.icon()), 'значок Атласа');
   });
   atest('5.1: Атлас мира — первое появление, перезарядка и Врата Перепутицы', async () => {

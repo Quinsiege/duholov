@@ -65,7 +65,8 @@ const Walk = {
     if (this._ensure) return;
     this._ensure = true;
     let tries = 0;
-    const busy = () => UI.blocking() || (typeof Intro !== 'undefined' && (Intro.el || Intro.need()) && tries < 60)
+    // 5.1.6: открытая книга-вступление ждётся всегда — Атлас не встаёт поверх неё (ещё не открытая — не дольше 90 с)
+    const busy = () => UI.blocking() || (typeof Intro !== 'undefined' && (Intro.el || (Intro.need() && tries < 60)))
       || document.querySelector('.modal-wrap, .sheet-wrap, .screen, .enc, .raid, .onb, .loader, .fatal, .cam-screen, .lg-sheet, .atlas');
     const tick = () => {
       if (!S.d || this.placed() || (typeof Atlas !== 'undefined' && Atlas.el)) { this._ensure = false; return; }
