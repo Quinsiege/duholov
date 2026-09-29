@@ -3382,15 +3382,12 @@ const League = {
     return { d: pts - me, pts, rank: this.rank(pts) };
   },
   // 4.16: кого ищем. Своя лига; у границы (ближе NEAR) — и соседняя; после 15 с — ±1 лига, после 30 с — ±2, после 60 с — все
-  near(r) { const x = LEAGUE_RANKS[r], nx = LEAGUE_RANKS[r + 1]; return Math.max(40, Math.round((nx ? nx.pts - x.pts : 1000) * 0.15)); },
-  window(pts, waited = 0) {
-    const r = this.rank(pts), n = LEAGUE_RANKS.length, lo = LEAGUE_RANKS[r].pts, up = LEAGUE_RANKS[r + 1];
-    let a = r, b = r;
-    if (r > 0 && pts - lo < this.near(r)) a = r - 1;
-    if (up && up.pts - pts <= this.near(r)) b = r + 1;
-    const w = waited >= 60 ? n : waited >= 30 ? 2 : waited >= 15 ? 1 : 0;
-    a = Math.max(0, Math.min(a, r - w)); b = Math.min(n - 1, Math.max(b, r + w));
-    return { a, b, w, lo: LEAGUE_RANKS[a].pts, hi: LEAGUE_RANKS[b + 1] ? LEAGUE_RANKS[b + 1].pts - 1 : this.MAXPTS };
+  // 5.1.11: соперник — в пределах ±RANGE очков рейтинга от Ловчего (независимо от лиг и времени ожидания); пара — взаимная
+  RANGE: 150,
+  window(pts) {
+    pts = Math.max(0, Math.round(+pts || 0));
+    const lo = Math.max(0, pts - this.RANGE), hi = Math.min(this.MAXPTS, pts + this.RANGE);
+    return { a: this.rank(lo), b: this.rank(hi), w: 0, lo, hi };
   },
   // сундук за высшую лигу прошлого сезона
   prize(r) { return r > 0 ? { sparks: 400 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
@@ -3451,7 +3448,6 @@ const League = {
       const cards = UI.teamCards(team); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
       const ko = team.some(x => !S.alive(x));
       const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;
-      const w = this.window(L.pts), ranks = w.a === w.b ? ru`в лиге «${LEAGUE_RANKS[r].name}»` : ru`в лигах «${LEAGUE_RANKS[w.a].name}» — «${LEAGUE_RANKS[w.b].name}»`;
       pane.innerHTML = `
         ${locked ? `<div class="lgx-card lgx-lock"><b>${ru`Лига откроется на ${this.LEVEL} уровне Ловчего`}</b><small>${ru`Сейчас у тебя ${S.d.level}-й. Лови духов, проходи источники и разломы — опыт придёт быстро.`}</small></div>` : ''}
         ${live ? `<div class="lgx-card lgx-livebout"><div class="row-main"><b>${ru`Бой ещё идёт!`}</b><small>${ru`Соперник ждёт. Не вернёшься — через ${PvP.IDLE / 1000} с тебе засчитают поражение.`}</small></div><button class="btn primary small lg-back">${ru`В бой`}</button></div>` : ''}
@@ -3459,7 +3455,7 @@ const League = {
         <div class="lg2-tix-s">${ru`жетоны обновятся через ${'<b class="lgx-mid"></b>'}`}</div>
         <div class="pf-mh lg2-th"><span>${ru`Команда на бой`}</span>${power ? `<b>${ru`сила ${U.fmtNum(power)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${cards}</div>
-        <div class="lg2-rule">${ru`Соперник — живой Ловчий: ищу ${ranks}. Рейтинг зависит от силы соперника · опыт — за первые ${this.XP_RUNS} боёв дня`}</div>
+        <div class="lg2-rule">${ru`Соперник — живой Ловчий с рейтингом ±${this.RANGE} от твоего. Рейтинг зависит от силы соперника · опыт — за первые ${this.XP_RUNS} боёв дня`}</div>
         <button class="btn primary wide lg-go" ${!locked && !ko && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 

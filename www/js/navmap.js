@@ -271,6 +271,32 @@ const NavMap = {
         new S.OffsetTextSymbolizer({ labelProps: name, fill: p.poi, stroke: p.labelHalo, width: 2.4, offsetX: 6, offsetY: 4, font: font('italic 400', 11, "'Rubik', sans-serif") }),
       ]), filter: (z, f) => ['place_of_worship', 'museum', 'theatre', 'attraction', 'castle', 'station'].includes(kind(f)) && (f.props.min_zoom || 99) <= z - 1 },
     ];
-    return { paintRules: paint, bldRules, labelRules: label, backgroundColor: p.bg };
+    return { paintRules: paint, bldRules, labelRules: label, backgroundColor: p.bg, pal: p, names: name };
+  },
+
+  // 5.1.12: Атлас мира, «Своё место» — та же карта, но от материка до улицы одним слоем: на мелких масштабах — границы стран,
+  // названия стран и городов (на языке игрока, как подписи карты игры); ближе — подписи и дома карты игры
+  far(phase, season, snow) {
+    const th = this.theme(phase, season, snow), p = th.pal, S = protomapsL, name = th.names, kind = f => f.props.kind || '';
+    const font = (w8, px) => `${w8} ${px}px 'Rubik', sans-serif`, NEAR = 11;
+    const paint = [...th.paintRules,
+      { dataLayer: 'boundaries', symbolizer: new S.LineSymbolizer({ color: p.place, opacity: .3, width: S.exp(1.4, [[4, .5], [10, 1.2]]), dash: [3, 3], dashColor: p.place, dashWidth: S.exp(1.4, [[4, .5], [10, 1.2]]) }),
+        minzoom: 4, filter: (z, f) => kind(f) === 'region' },
+      { dataLayer: 'boundaries', symbolizer: new S.LineSymbolizer({ color: p.place, opacity: .75, width: S.exp(1.4, [[2, .7], [8, 1.6], [14, 2.4]]) }), filter: (z, f) => kind(f) === 'country' },
+      ...th.bldRules.map(r => ({ ...r, minzoom: 14 })),
+    ];
+    const label = [
+      // города: точка и имя сбоку (на точке может стоять золотая метка Атласа); крупные раньше (порядок данных — по величине), столицы жирнее
+      { dataLayer: 'places', maxzoom: NEAR - 1, symbolizer: new S.GroupSymbolizer([
+        new S.CircleSymbolizer({ radius: 2.2, fill: p.label, stroke: p.labelHalo, width: 1.2 }),
+        new S.OffsetTextSymbolizer({ labelProps: name, fill: p.label, stroke: p.labelHalo, width: 3, offsetX: 10, offsetY: 6,
+          font: (z, f) => font(f && f.props.capital === 'yes' ? 700 : 500, 12) }),
+      ]), filter: (z, f) => kind(f) === 'locality' && (f.props.min_zoom || 0) <= z + 2 },
+      // страны — тише городов: мельче и приглушённым золотом
+      { dataLayer: 'places', maxzoom: 7, symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: this.mix(p.place, p.bg, .42), stroke: p.labelHalo, width: 2.5, font: font(600, 9.5),
+        textTransform: 'uppercase', letterSpacing: 1.2 }), filter: (z, f) => kind(f) === 'country' },
+      ...th.labelRules.map(r => ({ ...r, minzoom: Math.max(r.minzoom || 0, NEAR) })),
+    ];
+    return { paintRules: paint, labelRules: label, backgroundColor: th.backgroundColor };
   },
 };

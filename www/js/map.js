@@ -137,6 +137,9 @@ const MapView = {
   TILES: 'tiles/world-20260928.pmtiles', // 4.28: карта всего мира (Protomaps, в S3 — см. tools/server/duholov-world-tiles)
   COVER: [-180, -85.06, 180, 85.06], // 4.28: карта всего мира — рамка на весь мир (долгота, широта: юго-запад → северо-восток)
   covered(p) { const b = this.COVER; return !!p && p.lng >= b[0] && p.lng <= b[2] && p.lat >= b[1] && p.lat <= b[3]; },
+  // 5.1.12: адрес карты мира — на duholov.ru рядом с игрой (APK открывает её же), с других адресов (тестовый контур, GitHub Pages,
+  // локальный сервер разработки — файла карты мира у него нет) — с duholov.ru (CORS разрешён)
+  tilesUrl() { return location.hostname === 'duholov.ru' ? this.TILES : 'https://duholov.ru/' + this.TILES; },
   // 4.10: облик карты — время суток по настоящему солнцу над игроком, время года и снег (зимой и в снегопад);
   // в настройках можно закрепить день или ночь
   look() {
@@ -156,7 +159,7 @@ const MapView = {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
         // 4.9: «Карта Нави» — своя отрисовка (js/navmap.js); без неё — стандартная светлая с CSS-фильтром тонов Нави
-        const url = ['duholov.ru', 'localhost', '127.0.0.1'].includes(location.hostname) ? this.TILES : 'https://duholov.ru/' + this.TILES;
+        const url = this.tilesUrl();
         const th = nav ? NavMap.theme(lk.phase, lk.season, lk.snow) : null;
         this.tiles = protomapsL.leafletLayer({
           url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,

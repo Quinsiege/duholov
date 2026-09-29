@@ -532,6 +532,7 @@ const Atlas = {
     document.removeEventListener('keydown', this.key);
     removeEventListener('resize', this.rs);
     if (this.layer) { UI.popLayer(this.layer); this.layer = null; }
+    if (this.pick) { clearTimeout(this.pick.t); this.pick = null; }
     if (this.pmap) { try { this.pmap.remove(); } catch (e) { /* уже убрана */ } this.pmap = null; }
     this.G = null; this._drag = null;
     document.body.classList.remove('atlas-on');
@@ -552,7 +553,20 @@ const Atlas = {
   panel() {
     const P = this.el.querySelector('.at-panel'), first = this.opts.first;
     const gates = first ? '' : '<p class="at-gates"></p>';
-    if (this.step === 1) {
+    if (this.pick) {
+      // «Своё место»: та же панель шага 2 — материк, Врата, подсказка строкой и список: выбранная точка, затем крупнейшие города на карте
+      const L = this.LANDS.find(l => l.id === this.land);
+      P.innerHTML = `<div class="at-lh"><b>${U.esc(L.name)}</b><small>${ru`Своё место`}</small></div>${gates}
+        <p class="at-phint">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p><div class="at-list"></div>`;
+      const ls = P.querySelector('.at-list');
+      ls.onclick = e => {
+        const b = e.target.closest('.at-pl'), pk = this.pick; if (!b || !pk || this._busy) return;
+        if (b.dataset.pin) { const ll = pk.ll; if (ll) { Sfx.play('tap'); this.go(ll.lat, ll.lng, '', '', this.pickNear(ll.lat, ll.lng)); } return; }
+        this.pickCity(+b.dataset.c);
+      };
+      ls.onscroll = () => this.more(ls);
+      this.pickList();
+    } else if (this.step === 1) {
       // панель одной высоты при любом материке: вкладки — лента, описание — в окне постоянной высоты (длинное прокручивается внутри)
       const tabs = this.LANDS.filter(l => !l.cold).map(l => `<button data-l="${l.id}">${U.esc(l.name)}</button>`).join('');
       P.innerHTML = `<div class="seg dt-tabs at-tabs">${tabs}</div><div class="at-info"></div><div class="at-foot">${UI.rune(ru`Выбрать место`, 'at-go', UI.I.pin)}${gates}</div>`;
@@ -565,7 +579,7 @@ const Atlas = {
       // Касание строки — сразу во Врата (точка на глобусе подсвечивается); «Своё место» — последней строкой
       const list = this.PLACES[this.land] || [], L = this.LANDS.find(l => l.id === this.land);
       const w = this.walk(), me = w && this.placed() && w.pos && isFinite(w.pos.lat) ? w.pos : null;
-      const km = p => { if (!me) return ''; const d = U.dist(me.lat, me.lng, p[3], p[4]); return d < 1000 ? '' : `<em>${U.fmtDist(d)}</em>`; };
+      const km = p => this.kmHtml(me, p[3], p[4]);
       const chev = '<svg class="at-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
       P.innerHTML = `<div class="at-lh"><b>${U.esc(L.name)}</b><small>${ru`Куда шагнуть?`}</small></div>${gates}
         <div class="at-list">${list.map((p, i) => `<button class="at-pl${this.sel === i ? ' on' : ''}" data-i="${i}"><i class="at-dot"></i><span><b>${U.esc(p[1])}</b><small>${U.esc(p[2])}</small></span>${km(p)}${chev}</button>`).join('')}
@@ -582,6 +596,8 @@ const Atlas = {
     }
     this.status();
   },
+  // сколько до места от Ловчего; он уже здесь (ближе километра) — «ты здесь»
+  kmHtml(me, lat, lng) { if (!me) return ''; const d = U.dist(me.lat, me.lng, lat, lng); return `<em>${d < 1000 ? ru`ты здесь` : U.fmtDist(d)}</em>`; },
   // окно с прокруткой: пока ниже есть ещё — низ растворяется
   more(el) { if (el && el.isConnected) el.classList.toggle('more', el.scrollHeight - el.scrollTop - el.clientHeight > 4); },
   // описание выбранного материка (шаг 1) — меняется только содержимое окна постоянной высоты, вкладки остаются на месте
@@ -667,42 +683,305 @@ const Atlas = {
     }
   },
 
-  /* ---------- «Своё место»: точка на настоящей карте ---------- */
+  /* ---------- «Своё место»: настоящая карта на месте глобуса шага 2 ---------- */
+  // 5.1.12: карта встаёт в то же окно и на тот же вид, что глобус шага 2 (рамка — видимая часть глобуса), панель — та же, что на шаге 2:
+  // материк, Врата, подсказка строкой и список — 10 крупнейших городов в видимой части карты (слой places тех же плиток Protomaps,
+  // обновляется при сдвиге и приближении), а коснулся карты — золотой пин и первой строкой «выбранная точка».
+  // Шаг — касанием строки, через то же подтверждение, что у мест шага 2
+  NEED: 13,  // с этого приближения касание — уже улица (дальше не приближаем)
+  CITIES: 10, // сколько городов в списке
   pickOpen() {
     if (typeof L === 'undefined') { UI.toast(ru`Карта не загрузилась — проверь связь`, 'at-t'); return; }
-    const land = this.LANDS.find(l => l.id === this.land), list = this.PLACES[this.land] || [];
-    const c = list.length ? [list.reduce((s, p) => s + p[3], 0) / list.length, list.reduce((s, p) => s + p[4], 0) / list.length] : [30, 30];
-    const box = U.el(`<div class="at-pick"><div class="at-head"><button class="btn-round at-pback" aria-label="${ru`Назад`}">${UI.I.back}</button>
-      <div class="at-ttl"><small>${U.esc(land.name)}</small><h2>${ru`Своё место`}</h2></div></div>
-      <div class="at-pmap"></div><div class="at-pbar"><p class="at-phint">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p>${UI.rune(ru`Шагнуть сюда`, 'at-pgo')}</div></div>`);
-    this.el.appendChild(box);
-    this.pick = { box, ll: null };
-    const go = box.querySelector('.at-pgo'); go.disabled = true;
-    box.querySelector('.at-pback').onclick = () => { Sfx.play('tap'); this.pickClose(); };
-    const m = this.pmap = L.map(box.querySelector('.at-pmap'), { zoomControl: false, minZoom: 2, maxZoom: 18, worldCopyJump: true, attributionControl: true }).setView(c, 4);
+    if (this.pick || !this.el || !this.G || this.step !== 2) return;
+    // глобус мог ещё доворачиваться — сразу в конечный вид шага 2: с него снимается рамка карты
+    const v = this.view, tw = this._tw, sw = this._sw;
+    if (tw) { v.lng = tw.l0 + tw.dl; v.lat = tw.f0 + tw.df; this._tw = null; }
+    if (sw) { this._s = sw.s0 + sw.ds; this._sw = null; }
+    this.measure(); this.draw();
+    const box = U.el('<div class="at-pmap"></div>');
+    this.el.querySelector('.at-map').appendChild(box);
+    this.pick = { box, ll: null, mk: null, cities: [], all: [], seen: new Map(), sel: null, seq: 0, get: null, fail: false, t: 0, busy: true, marks: null };
+    this.el.classList.add('own');
+    this.panel();
+    const m = this.pmap = L.map(box, { zoomControl: false, minZoom: 1.5, maxZoom: 18, zoomSnap: 0, zoomDelta: 1, wheelPxPerZoomLevel: 90, worldCopyJump: true, attributionControl: true });
     m.attributionControl.setPrefix(false);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(m);
-    const hint = box.querySelector('.at-phint'), NEED = 13;
-    m.on('click', e => {
-      const z = m.getZoom();
-      if (z < NEED) { m.setView(e.latlng, Math.min(NEED + 1, z + 4)); hint.textContent = z + 4 >= NEED ? ru`Теперь коснись улицы, где хочешь появиться.` : ru`Ещё ближе — выбери улицу.`; return; }
-      Sfx.play('tap');
-      const ll = e.latlng.wrap();
-      this.pick.ll = ll;
-      if (this.pick.mk) this.pick.mk.setLatLng(e.latlng);
-      else this.pick.mk = L.marker(e.latlng, { interactive: false, icon: L.divIcon({ className: 'at-pin', iconSize: [34, 44], iconAnchor: [17, 42], html: '<i></i>' }) }).addTo(m);
-      hint.textContent = `${ll.lat.toFixed(4)}, ${ll.lng.toFixed(4)}`;
-      go.disabled = false;
-    });
-    go.onclick = () => { const ll = this.pick && this.pick.ll; if (ll) this.go(ll.lat, ll.lng, ''); };
-    requestAnimationFrame(() => { box.classList.add('in'); m.invalidateSize(); });
+    const vw = this.pickView(box);
+    if (vw) m.setView(vw.c, vw.z, { animate: false }); else m.fitBounds(this.placesBox(), { padding: [32, 36], animate: false });
+    this.pickTiles(m, box); // слой — когда вид уже задан
+    this.pick.marks = L.layerGroup().addTo(m);
+    m.on('click', e => this.pickTap(e));
+    m.on('moveend', () => this.pickSoon(300));
+    this.pickSoon(0);
+    requestAnimationFrame(() => m.invalidateSize());
   },
   pickClose() {
-    const p = this.pick; if (!p) return;
-    this.pick = null;
-    if (this.pmap) { try { this.pmap.remove(); } catch (e) { /* уже убрана */ } this.pmap = null; }
-    p.box.classList.remove('in');
-    setTimeout(() => p.box.remove(), 260);
+    const pk = this.pick; if (!pk) return;
+    this.pick = null; clearTimeout(pk.t); clearTimeout(pk.showT);
+    const m = this.pmap; this.pmap = null;
+    if (this.el) { this.el.classList.remove('own', 'own-in'); this.panel(); }
+    pk.box.classList.remove('in');
+    setTimeout(() => { if (m) { try { m.remove(); } catch (e) { /* уже убрана */ } } pk.box.remove(); }, 320);
+  },
+  // карта проявляется плавно, когда плитки нарисованы (глобус под ней в это время ещё виден и гаснет вместе с её появлением)
+  pickShow() {
+    const pk = this.pick; if (!pk || pk.shown || !this.el) return;
+    pk.shown = true; clearTimeout(pk.showT);
+    pk.box.classList.add('in'); this.el.classList.add('own-in');
+  },
+  // рамка мест материка — запасной вид
+  placesBox() {
+    const list = this.PLACES[this.land] || [];
+    return list.length ? [[Math.min(...list.map(p => p[3])), Math.min(...list.map(p => p[4]))], [Math.max(...list.map(p => p[3])), Math.max(...list.map(p => p[4]))]] : [[-30, -30], [50, 60]];
+  },
+  // вид карты = вид глобуса шага 2: очертания материка и его места, как они стоят на глобусе в окне, переносятся на карту (Меркатор)
+  // с тем же центром и масштабом — наименьшими квадратами (места весомее); места, не влезшие в окно с отступом, — чуть отдаляем
+  pickView(box) {
+    const G = this.G, li = this.LANDS.findIndex(l => l.id === this.land); if (!G || !G.M || li < 0) return null;
+    const sb = G.svg.getBoundingClientRect(), b = box.getBoundingClientRect(), bw = b.width, bh = b.height, ox = sb.left - b.left, oy = sb.top - b.top;
+    if (bw < 20 || bh < 20) return null;
+    const c0 = this.unproj(G.M, 0, 0), lng0 = c0 ? c0[0] : this.view.lng;
+    const merc = (lng, lat) => { const r = Math.max(-85, Math.min(85, lat)) * Math.PI / 180, l = lng0 + ((lng - lng0) % 360 + 540) % 360 - 180; // долгота — рядом с центром (через 180°)
+      return [(l + 180) / 360, (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2]; };
+    const P = [], list = this.PLACES[this.land] || [];
+    const add = (lng, lat, w) => { const p = this.rot(G.M, this.vec(lng, lat)); if (p[2] <= .02) return; const X = merc(lng, lat); P.push({ X: X[0], Y: X[1], x: G.cx + G.R * p[0] + ox, y: G.cy - G.R * p[1] + oy, w }); };
+    this.geo().rings[li].forEach(r => r.forEach(q => add(q[0], q[1], 1)));
+    list.forEach(p => add(p[4], p[3], 4));
+    if (P.length < 3) return null;
+    const sw = P.reduce((a, q) => a + q.w, 0), mean = k => P.reduce((a, q) => a + q.w * q[k], 0) / sw;
+    const mX = mean('X'), mY = mean('Y'), mx = mean('x'), my = mean('y');
+    let num = 0, den = 0;
+    for (const q of P) { const X = q.X - mX, Y = q.Y - mY; num += q.w * (X * (q.x - mx) + Y * (q.y - my)); den += q.w * (X * X + Y * Y); }
+    if (!(den > 0) || !(num > 0)) return null;
+    let s = num / den, tx = mx - s * mX, ty = my - s * mY; // x = s·X + tx, y = s·Y + ty (точки окна карты)
+    // места — внутри окна с отступом (Меркатор к полюсам растягивает — иначе север материка мог бы уйти за край)
+    const PAD = 12; let k = 1;
+    list.forEach(p => { const X = merc(p[4], p[3]), x = s * X[0] + tx - bw / 2, y = s * X[1] + ty - bh / 2;
+      if (Math.abs(x) > 1) k = Math.min(k, (bw / 2 - PAD) / Math.abs(x)); if (Math.abs(y) > 1) k = Math.min(k, (bh / 2 - PAD) / Math.abs(y)); });
+    if (k < 1 && k > 0) { s *= k; tx = bw / 2 + k * (tx - bw / 2); ty = bh / 2 + k * (ty - bh / 2); }
+    const Xc = (bw / 2 - tx) / s, Yc = (bh / 2 - ty) / s;
+    const z = Math.log2(s / 256), lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * Yc))) * 180 / Math.PI, lng = Xc * 360 - 180;
+    return isFinite(z) && isFinite(lat) && isFinite(lng) ? { c: [lat, lng], z: Math.max(1.5, Math.min(18, z)) } : null;
+  },
+  // карта игры: те же плитки Protomaps и облик (Карта Нави, время суток и сезон — как сейчас на карте), подписи на языке игрока;
+  // без неё или если плитки не читаются — OSM (подписи — местные)
+  pickTiles(m, box) {
+    const pk = this.pick;
+    pk.showT = setTimeout(() => this.pickShow(), 6000); // плитки так и не нарисовались — всё равно показать (касаться можно)
+    if (typeof protomapsL !== 'undefined' && typeof NavMap !== 'undefined' && typeof MapView !== 'undefined' && MapView.tilesUrl) {
+      try {
+        const lk = MapView.look(), th = NavMap.far(lk.phase, lk.season, lk.snow);
+        const lay = pk.lay = protomapsL.leafletLayer({ url: MapView.tilesUrl(), attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>', ...th });
+        lay.once('load', () => this.pickShow());
+        lay.addTo(m);
+        // города для списка — из того же файла карты, но своим чтением (источник карты отменяет чтение плиток другого масштаба —
+        // её плитки рисовались бы пустыми) и только слой places
+        const src = lay.views && lay.views.get('') && lay.views.get('').tileCache.source;
+        pk.get = src && src.p ? this.placesGetter(src.p, MapView.tilesUrl()) : null;
+        box.classList.add('vec'); box.style.background = th.backgroundColor;
+        if (document.fonts) Promise.all(["500 12px 'Rubik'", "700 12px 'Rubik'"].map(f => document.fonts.load(f).catch(() => {})))
+          .then(() => { if (this.pick === pk && pk.lay === lay) { lay.clearLayout(); lay.rerenderTiles(); } });
+        return;
+      } catch (e) { pk.get = null; pk.lay = null; }
+    }
+    this.pickOsm(m, box);
+  },
+  pickOsm(m, box) {
+    const pk = this.pick; if (!pk) return;
+    if (pk.lay) { try { m.removeLayer(pk.lay); } catch (e) { /* уже убран */ } pk.lay = null; }
+    box.classList.remove('vec'); box.style.background = '';
+    const t = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
+    t.once('load', () => this.pickShow());
+    t.addTo(m);
+  },
+  pickSoon(ms) { const pk = this.pick; if (!pk) return; clearTimeout(pk.t); pk.t = setTimeout(() => this.pickFind(), ms); },
+  // города в видимой части карты: из плиток (слой places), не вышло — места Атласа, попавшие в рамку
+  async pickFind() {
+    const pk = this.pick, m = this.pmap; if (!pk || !m) return;
+    const seq = ++pk.seq, b = m.getBounds(), B = { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() };
+    let all = null;
+    if (pk.get && !pk.fail) {
+      try { all = await this.tileCities(pk.get, B, m.getZoom()); }
+      catch (e) { pk.fail = true; if (this.pick === pk && this.pmap) this.pickOsm(this.pmap, pk.box); } // плитки не читаются — карта OSM
+    }
+    if (this.pick !== pk || seq !== pk.seq) return; // карту уже сдвинули — ответ устарел
+    if (!all) all = this.atlasCities(B);
+    all.forEach(c => pk.seen.set(c.key, c));
+    pk.all = all; pk.cities = this.topCities(all, B, this.CITIES); pk.busy = false;
+    this.pickList(); this.pickMarks();
+  },
+  // чтение слоя places: плитка из файла карты (PMTiles; заголовок и каталог — общие с картой), разбирается только этот слой;
+  // кэш — по плиткам (лишь точки мест, немного памяти), на весь сеанс
+  placesGetter(pm, url) {
+    if (this._pg && this._pg.url === url) return this._pg.get;
+    const cache = new Map();
+    const get = ({ z, x, y }) => {
+      const k = `${z}/${x}/${y}`;
+      if (!cache.has(k)) {
+        const pr = pm.getZxy(z, x, y).then(r => (r && r.data ? this.mvtPlaces(r.data) : []));
+        pr.catch(() => cache.delete(k)); // не вышло — в другой раз заново
+        cache.set(k, pr);
+        if (cache.size > 400) cache.delete(cache.keys().next().value);
+      }
+      return cache.get(k);
+    };
+    this._pg = { url, get };
+    return get;
+  },
+  // слой places из плитки MVT (protobuf): точки [{ props, x, y }], x, y — доли плитки (0…1, запас по краям — за пределами); прочие слои пропускаются
+  mvtPlaces(buf) {
+    const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf), dv = new DataView(b.buffer, b.byteOffset, b.byteLength), td = new TextDecoder();
+    let p = 0;
+    const vint = () => { let r = 0, m = 1, c; do { c = b[p++]; r += (c & 127) * m; m *= 128; } while (c & 128 && p < b.length); return r; };
+    const zz = n => (n % 2 ? -(n + 1) / 2 : n / 2);
+    const skip = w => { if (w === 0) vint(); else if (w === 1) p += 8; else if (w === 2) { const l = vint(); p += l; } else if (w === 5) p += 4; else p = b.length; };
+    const out = [];
+    while (p < b.length) {
+      const t = vint(), w = t % 8;
+      if (Math.floor(t / 8) !== 3 || w !== 2) { skip(w); continue; }
+      const end = vint() + p; let name = '', ext = 4096; const keys = [], vals = [], feats = [];
+      while (p < end) { // слой: имя, ключи, значения, размер, объекты (объекты разбираются, только если это places)
+        const t2 = vint(), f2 = Math.floor(t2 / 8), w2 = t2 % 8;
+        if (w2 === 2 && (f2 === 1 || f2 === 3)) { const l = vint(), v = td.decode(b.subarray(p, p + l)); p += l; if (f2 === 1) name = v; else keys.push(v); }
+        else if (w2 === 2 && f2 === 2) { const l = vint(); feats.push([p, p + l]); p += l; }
+        else if (w2 === 2 && f2 === 4) {
+          const ve = vint() + p; let v = null;
+          while (p < ve) {
+            const t3 = vint(), f3 = Math.floor(t3 / 8), w3 = t3 % 8;
+            if (f3 === 1 && w3 === 2) { const l = vint(); v = td.decode(b.subarray(p, p + l)); p += l; }
+            else if (f3 === 2 && w3 === 5) { v = dv.getFloat32(p, true); p += 4; }
+            else if (f3 === 3 && w3 === 1) { v = dv.getFloat64(p, true); p += 8; }
+            else if ((f3 === 4 || f3 === 5) && w3 === 0) v = vint();
+            else if (f3 === 6 && w3 === 0) v = zz(vint());
+            else if (f3 === 7 && w3 === 0) v = !!vint();
+            else skip(w3);
+          }
+          vals.push(v); p = ve;
+        } else if (f2 === 5 && w2 === 0) ext = vint() || 4096;
+        else skip(w2);
+      }
+      if (name === 'places') for (const [a, e] of feats) {
+        p = a; const props = {}; let x = null, y = null;
+        while (p < e) {
+          const t4 = vint(), f4 = Math.floor(t4 / 8), w4 = t4 % 8;
+          if (f4 === 2 && w4 === 2) { const pe = vint() + p; while (p < pe) { const ki = vint(), vi = vint(); if (keys[ki] != null) props[keys[ki]] = vals[vi]; } }
+          else if (f4 === 4 && w4 === 2) { const ge = vint() + p, cmd = vint(); if (cmd % 8 === 1 && cmd >= 8) { x = zz(vint()); y = zz(vint()); } p = ge; }
+          else skip(w4);
+        }
+        if (x != null) out.push({ props, x: x / ext, y: y / ext });
+      }
+      p = end;
+    }
+    return out;
+  },
+  // плитки, покрывающие рамку B: на мелких масштабах — на уровень подробнее карты (там есть все крупные города), вблизи — те же, что у карты;
+  // плиток не больше 24 (иначе — уровнем мельче). Точка города — в своей плитке (из запаса по краям не берём — без повторов)
+  async tileCities(get, B, Z) {
+    const ty = lat => { const r = Math.max(-85.05, Math.min(85.05, lat)) * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2; };
+    let dz = Math.max(2, Math.min(15, Z < 8 ? Math.floor(Z) + 1 : Math.round(Z) - 1)), n, x0, x1, y0, y1;
+    for (;; dz--) {
+      n = 1 << dz; x0 = Math.floor((B.w + 180) / 360 * n); x1 = Math.floor((B.e + 180) / 360 * n);
+      y0 = Math.max(0, Math.floor(ty(B.n) * n)); y1 = Math.min(n - 1, Math.floor(ty(B.s) * n));
+      if ((x1 - x0 + 1) * (y1 - y0 + 1) <= 24 || dz <= 1) break;
+    }
+    const jobs = [];
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) jobs.push(get({ z: dz, x: ((x % n) + n) % n, y }).then(d => ({ d, x, y })));
+    const res = await Promise.allSettled(jobs), ok = res.filter(r => r.status === 'fulfilled').map(r => r.value);
+    if (!ok.length && jobs.length) throw new Error('tiles');
+    const lg = (typeof I18N !== 'undefined' && I18N.lang) || 'ru';
+    const keys = [`name:${lg}`, lg === 'ru' ? '' : 'name:en', 'name'].filter(Boolean); // как подписи карты (NavMap.theme)
+    const out = [];
+    for (const { d, x, y } of ok) for (const f of d || []) {
+      const pr = f.props || {};
+      if (pr.kind !== 'locality' || !(f.x >= 0 && f.x < 1 && f.y >= 0 && f.y < 1)) continue;
+      let name = ''; for (const k of keys) if (pr[k] && String(pr[k]).trim()) { name = String(pr[k]).trim(); break; }
+      if (!name) continue;
+      const lng = (x + f.x) / n * 360 - 180, lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + f.y) / n))) * 180 / Math.PI;
+      const c = { key: pr.wikidata || `${name}@${lat.toFixed(2)},${lng.toFixed(2)}`, name, lat, lng, pop: +pr.population || 0, rank: +pr.population_rank || 0, minz: pr.min_zoom == null ? 99 : +pr.min_zoom, cap: pr.capital === 'yes' };
+      c.note = this.cityNote(c);
+      out.push(c);
+    }
+    return out;
+  },
+  // запасные города — места Атласа в рамке (долгота — в той же «копии мира», что и рамка)
+  atlasCities(B) {
+    const out = [];
+    Object.values(this.PLACES).forEach(l => l.forEach(p => {
+      for (const k of [0, 360, -360]) { const lng = p[4] + k; if (lng >= B.w && lng <= B.e) { out.push({ key: 'at:' + p[0], name: p[1], note: p[2], lat: p[3], lng, pop: 0, rank: 0, minz: 99 }); break; } }
+    }));
+    return out;
+  },
+  // n крупнейших в рамке B { s, w, n, e }: по населению, затем по рангу и по тому, с какого масштаба город виден; без повторов
+  topCities(all, B, n = this.CITIES) {
+    const seen = new Set();
+    return all.filter(c => c.lat >= B.s && c.lat <= B.n && c.lng >= B.w && c.lng <= B.e)
+      .sort((a, b) => (b.pop - a.pop) || (b.rank - a.rank) || (a.minz - b.minz))
+      .filter(c => !seen.has(c.key) && seen.add(c.key)).slice(0, n);
+  },
+  // подпись города: столица, сколько жителей
+  cityNote(c) {
+    const p = c.pop, lg = (typeof I18N !== 'undefined' && I18N.lang) || 'ru', f = (x, d) => { try { return x.toLocaleString(lg, { maximumFractionDigits: d }); } catch (e) { return String(+x.toFixed(d)); } };
+    const people = p >= 1e6 ? ru`${f(p / 1e6, p >= 1e7 ? 0 : 1)} млн жителей` : p >= 1000 ? ru`${f(Math.round(p / 1000), 0)} тыс. жителей` : '';
+    return [c.cap ? ru`Столица` : '', people].filter(Boolean).join(' · ');
+  },
+  // ближайший к точке город (ближе 60 км): из всех, что уже были на карте, иначе — из мест Атласа
+  pickNear(lat, lng) {
+    let near = null, nd = 60000;
+    const see = (name, la, ln) => { const d = U.dist(lat, lng, la, ln); if (d < nd) { nd = d; near = name; } };
+    if (this.pick) this.pick.seen.forEach(c => see(c.name, c.lat, c.lng));
+    if (!near) Object.values(this.PLACES).forEach(l => l.forEach(p => see(p[1], p[3], p[4])));
+    return near;
+  },
+  // список: выбранная точка (если есть) — первой, затем города; как места шага 2 — точка, название, подпись, сколько до него и «›»
+  pickList() {
+    const pk = this.pick, ls = pk && this.el && this.el.querySelector('.at-panel .at-list'); if (!ls) return;
+    const w = this.walk(), me = w && this.placed() && w.pos && isFinite(w.pos.lat) ? w.pos : null;
+    const km = (lat, lng) => this.kmHtml(me, lat, lng);
+    const chev = '<svg class="at-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+    let h = '';
+    if (pk.ll) {
+      const ll = pk.ll, near = this.pickNear(ll.lat, ll.lng);
+      h += `<button class="at-pl own" data-pin="1"><i class="at-dot">${UI.I.pin}</i><span><b>${ru`Своё место`} — ${ru`выбранная точка`}</b>
+        <small>${ll.lat.toFixed(4)}, ${ll.lng.toFixed(4)}${near ? ` · ${ru`рядом: ${U.esc(near)}`}` : ''}</small></span>${km(ll.lat, ll.lng)}${chev}</button>`;
+    }
+    h += pk.cities.map((c, i) => `<button class="at-pl${pk.sel === c.key ? ' on' : ''}" data-c="${i}"><i class="at-dot"></i><span><b>${U.esc(c.name)}</b>${c.note ? `<small>${U.esc(c.note)}</small>` : ''}</span>${km(c.lat, c.lng)}${chev}</button>`).join('');
+    if (!pk.cities.length) h += `<p class="at-pnone">${pk.busy ? ru`Ищу города на карте…` : ru`Здесь на карте нет городов — сдвинь карту или коснись её.`}</p>`;
+    ls.innerHTML = h;
+    ls.scrollTop = 0; this.more(ls);
+  },
+  // города списка — золотые точки на карте, как места на глобусе; касание точки — как касание строки
+  pickMarks() {
+    const pk = this.pick; if (!pk || !pk.marks) return;
+    pk.marks.clearLayers();
+    pk.cities.forEach((c, i) => {
+      const mk = L.marker([c.lat, c.lng], { keyboard: false, icon: L.divIcon({ className: 'at-mpt' + (pk.sel === c.key ? ' on' : ''), iconSize: [22, 22], iconAnchor: [11, 11], html: '<i></i>' }) });
+      mk.on('click', () => this.pickCity(i));
+      pk.marks.addLayer(mk);
+    });
+  },
+  // город: карта — к нему, и то же подтверждение, что у мест шага 2 (шаг — в центр города)
+  pickCity(i) {
+    const pk = this.pick, c = pk && pk.cities[i]; if (!c || this._busy || !this.pmap || this.el.querySelector('.at-cd:not(.out)')) return;
+    Sfx.play('tap');
+    pk.sel = c.key;
+    this.el.querySelectorAll('.at-panel .at-pl[data-c]').forEach(b => b.classList.toggle('on', +b.dataset.c === i));
+    this.pickMarks();
+    this.pmap.panTo([c.lat, c.lng], { animate: !this.calm() });
+    this.go(c.lat, ((c.lng + 540) % 360) - 180, c.name, c.note);
+  },
+  // касание карты — золотой пин и строка «выбранная точка»; издалека карта ещё и приближается к пину (улицу видно вблизи)
+  pickTap(e) {
+    const m = this.pmap, pk = this.pick; if (!m || !pk || this._busy) return;
+    Sfx.play('tap');
+    const z = m.getZoom();
+    pk.ll = e.latlng.wrap();
+    if (pk.mk) pk.mk.setLatLng(e.latlng);
+    else pk.mk = L.marker(e.latlng, { interactive: false, keyboard: false, zIndexOffset: 1000, icon: L.divIcon({ className: 'at-pin', iconSize: [34, 44], iconAnchor: [17, 42], html: '<i></i>' }) }).addTo(m);
+    const hint = this.el.querySelector('.at-phint');
+    if (z < this.NEED - .01) {
+      m.setView(e.latlng, Math.min(this.NEED + 1, z + 4), { animate: !this.calm() });
+      if (hint) hint.textContent = z + 4 >= this.NEED ? ru`Теперь коснись улицы, где хочешь появиться.` : ru`Ещё ближе — выбери улицу.`;
+    }
+    this.pickList();
   },
 
   /* ---------- окно над Атласом: подтверждение шага и перезарядка ---------- */
@@ -734,10 +1013,10 @@ const Atlas = {
     return `<div class="at-cdr"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" class="bg"/><circle cx="32" cy="32" r="${R}" class="fg" stroke-dasharray="${(C * frac).toFixed(1)} ${C.toFixed(1)}"/></svg>${this.gateIcon()}</div>`;
   },
   // 5.2: куда шагнуть — крупно город, под ним место; «Своё место» — «выбранная точка», её координаты и ближайший город из Атласа
-  whereHtml(lat, lng, name, place) {
+  whereHtml(lat, lng, name, place, near) {
     if (name) return `<div class="at-okw"><span class="at-okc">${U.esc(name)}</span>${place ? `<span class="at-okp">${U.esc(place)}</span>` : ''}</div>`;
-    let near = null, nd = 60000; // ближе 60 км
-    Object.values(this.PLACES).forEach(l => l.forEach(p => { const d = U.dist(lat, lng, p[3], p[4]); if (d < nd) { nd = d; near = p[1]; } }));
+    if (near === undefined) { let nd = 60000; near = null; // ближе 60 км
+      Object.values(this.PLACES).forEach(l => l.forEach(p => { const d = U.dist(lat, lng, p[3], p[4]); if (d < nd) { nd = d; near = p[1]; } })); }
     return `<div class="at-okw own"><span class="at-okc">${ru`Выбранная точка на карте`}</span>
       <span class="at-okp at-okll">${lat.toFixed(4)}, ${lng.toFixed(4)}${near ? ` · ${ru`рядом: ${U.esc(near)}`}` : ''}</span></div>`;
   },
@@ -765,12 +1044,12 @@ const Atlas = {
   },
 
   /* ---------- шаг во Врата: вспышка, затемнение — и Ловчий уже на новом месте ---------- */
-  // name, place — город и место в нём (строка списка); без name — «Своё место», точка на настоящей карте
-  async go(lat, lng, name, place) {
+  // name, place — город и место в нём (строка списка); без name — «Своё место», точка на настоящей карте (near — город рядом с ней)
+  async go(lat, lng, name, place, near) {
     if (this._busy || !this.el || this.el.querySelector('.at-cd:not(.out)')) return; // окно подтверждения или «Врата отдыхают» уже открыто
     const w = this.walk();
     if (!w || !w.teleport) { UI.toast(ru`Врата Перепутицы пока закрыты — обнови игру`, 'at-t'); return; }
-    const first = !!this.opts.first, opt = { first }, where = this.whereHtml(lat, lng, name, place);
+    const first = !!this.opts.first, opt = { first }, where = this.whereHtml(lat, lng, name, place, near);
     // 5.2: шаг — только после подтверждения. Врата отдыхают — сразу окно перезарядки (оно же и подтверждение, одно окно)
     if (!first && this.cd() > 0) {
       const use = await this.askItem(where);

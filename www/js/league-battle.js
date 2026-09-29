@@ -53,7 +53,7 @@ const LeagueBattle = {
       <div class="lgs">
         <div class="lgs-radar"><i></i><i></i><div class="lgs-ava">${Art.avatar(S.d.look)}</div></div>
         <div class="lgs-time">0:00</div>
-        <div class="lgs-where">${ru`Ищу живого Ловчего…`}</div>
+        <div class="lgs-where">${ru`Ищем соперника`}</div>
         <div class="lgs-n"></div>
         <button class="btn wide lgs-cancel">${ru`Отменить поиск`}</button>
       </div>`, 'league-search', () => this.stopSearch(true));
@@ -71,7 +71,7 @@ const LeagueBattle = {
       if (r.done && r.done.length) League.showDone({ done: r.done });
       if (r.match) { this.found(r.match); return; }
       const where = scr.querySelector('.lgs-where'), n = scr.querySelector('.lgs-n');
-      if (where) where.innerHTML = r.a === r.b ? ru`Ищу в лиге «${LEAGUE_RANKS[r.a].name}»` : r.b - r.a >= LEAGUE_RANKS.length - 1 ? ru`Ищу во всех лигах` : ru`Ищу в лигах «${LEAGUE_RANKS[r.a].name}» — «${LEAGUE_RANKS[r.b].name}»`;
+      if (where) where.textContent = ru`Ищем соперника`; // 5.1.11: соперник — ±League.RANGE очков, без лиг
       if (n) n.textContent = r.n > 1 ? ru`Сейчас ищут соперника: ${r.n}` : ru`Пока ищешь только ты — позови друзей в Лигу`;
     };
     sr.timer = setInterval(() => {
