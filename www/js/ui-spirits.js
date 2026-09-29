@@ -89,8 +89,15 @@ Object.assign(UI, {
   rwText(rw) { return Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${U.fmtNum(n)}` : `${S.resName(k)} ×${n}`).join(', '); },
 
   /* ---------------- КОМАНДА ---------------- */
-  teamHtml(team) {
-    return team.map(sp => `<div class="mini ${S.alive(sp) ? '' : 'ko'}">${Art.imgOf(sp)}<b>${S.power(sp)}</b>${this.hpBar(sp)}</div>`).join('') || `<i>${ru`Нет духов`}</i>`;
+  // 5.1.5: команда перед боем — три карточки в один ряд (Лига, Разлом, Капище, Вторжение, совместный Разлом, поединок):
+  // арт, знак стихии, имя, сила и уровень, здоровье; пустое место — такая же карточка с «+» (.team-slot/.team-edit — выбор команды).
+  // foe — духи соперника: не кнопки, без здоровья и пустых мест (строка — ещё класс карточки)
+  teamCards(team, foe) {
+    const card = x => {
+      const el = SP[x.sid].el, tag = foe ? 'div' : 'button';
+      return `<${tag} class="lg2-mem tm-card el-${el} ${foe ? 'tm-foe ' + (typeof foe === 'string' ? foe : '') : 'team-edit'} ${!foe && !S.alive(x) ? 'ko' : ''}"><span class="pcs-a">${Art.of(x)}<i class="tm-el">${Art.elIcon(el, 15)}</i></span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`.replace(/ (?=\d)/g, ' ')}</em>${foe ? '' : this.hpBar(x)}</${tag}>`;
+    };
+    return team.map(card).join('') + (foe ? '' : `<button class="lg2-mem tm-card tm-slot team-slot team-edit"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length)));
   },
   /* 4.15: здоровье духа — полоска (если ранен) или «без сил · 3 ч 20 мин» */
   // 4.16: у усталого духа недоступная часть полоски заштрихована

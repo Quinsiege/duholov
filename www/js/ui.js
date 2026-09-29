@@ -717,10 +717,8 @@ const UI = {
           </svg>
           <div class="spr2-water">${photo ? `<div class="spr2-photo" style="background-image:url('${photo}')"></div>` : `<div class="spr2-icon">${Art.springIcon(!e.ready && !e.invaded, e.invaded)}</div>`}<i class="spr2-caustic"></i><i class="spr2-shine"></i></div>
           <div class="spr2-burst" aria-hidden="true">${Array.from({ length: 14 }, (_, k) => `<i style="--a:${k * 360 / 14}deg;--r:${110 + (k % 3) * 22}px"></i>`).join('')}</div>
-          <div class="spring-loot spr2-loot"></div>
         </div>
         <div class="spring-hint spr2-hint"></div>
-        <div class="spr2-after"></div>
         <button class="btn primary wide spring-go">${ru`Зачерпнуть силу`}</button>
         ${Rules.dayLine(S.d, 'springs', ru`Источников`)}
         </div>
@@ -768,20 +766,24 @@ const UI = {
       if (!scr.isConnected) return;
       if (!r) { scr._done = false; view.classList.remove('spin'); setArc(0); update(); return; }
       view.classList.remove('spin'); void view.offsetWidth; view.classList.add('burst'); // всплеск
-      setTimeout(() => view.classList.add('taken'), 350); // 5.1.5: чаша гаснет, но остаётся на месте — награда встаёт посередине, над ней
+      setTimeout(() => view.classList.add('taken'), 350); // 5.1.5: чаша гаснет и уходит на фон, «В сумку» — внизу экрана
       U.vibrate([30, 50, 80]);
       const got = r.got, xp = got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50;
       const items = got.filter(x => x.k !== 'xp');
       const cocoonHtml = r.cocoon ? `<div class="loot-item spr2-cocoon" style="--k:${items.length}">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
-      const loot = scr.querySelector('.spring-loot'), n = items.length + (r.cocoon ? 1 : 0);
+      // 5.1.5: награда — отдельным слоем поверх окна, посередине видимой части экрана (между шапкой и «В сумку»);
+      // под сеткой — «Сумка полна» и новое поручение
+      const rw = U.el('<div class="spr2-reward"><div class="spring-loot spr2-loot"></div><div class="spr2-after"></div></div>');
+      scr.appendChild(rw);
+      const loot = rw.querySelector('.spring-loot'), n = items.length + (r.cocoon ? 1 : 0);
       loot.classList.toggle('many', n > 6);
       loot.innerHTML = `<div class="spr2-rays" aria-hidden="true"></div><div class="spr2-grid">` +
         items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
         `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>`;
-      scr.querySelector('.spr2-after').innerHTML = (r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +
+      rw.querySelector('.spr2-after').innerHTML = (r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +
         (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
-      // каждая вещь вылетает из середины воды на своё место в сетке (--fx/--fy — путь от центра)
-      const lb = loot.getBoundingClientRect(), lcx = lb.left + lb.width / 2, lcy = lb.top + lb.height / 2;
+      // каждая вещь вылетает из середины воды на своё место в сетке (--fx/--fy — путь от центра чаши)
+      const lb = disc.getBoundingClientRect(), lcx = lb.left + lb.width / 2, lcy = lb.top + lb.height / 2;
       U.$$('.loot-item', loot).forEach(it => {
         const b = it.getBoundingClientRect();
         it.style.setProperty('--fx', `${Math.round(lcx - (b.left + b.width / 2))}px`);
@@ -805,7 +807,7 @@ const UI = {
           it.style.setProperty('--bx', `${Math.round(gx - (b.left + b.width / 2))}px`);
           it.style.setProperty('--by', `${Math.round(gy - (b.top + b.height / 2))}px`);
         });
-        view.classList.add('stow'); Sfx.play('tap'); U.vibrate(15);
+        view.classList.add('stow'); rw.classList.add('stow'); Sfx.play('tap'); U.vibrate(15);
         setTimeout(() => { if (scr.isConnected) this.closeScreen(scr); }, 520 + n * 60);
       };
       MapView.refresh();
