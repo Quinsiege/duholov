@@ -5029,10 +5029,9 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 /* нижняя панель — лист жидкого стекла над небом (как шторка меню): размывает туманы и лес под собой, кромка ловит свет.
    Шаг 1 — постоянной высоты при любом материке: ничего не прыгает; шаг 2 — выше, под список мест (переход — высотой панели) */
 .at-panel { position: relative; flex: none; display: flex; flex-direction: column; height: 336px; margin: 0 10px calc(10px + var(--sb)); padding: 12px 12px 10px; border-radius: 26px;
-  background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(40, 28, 86, .5), rgba(12, 7, 32, .62));
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 18px 50px rgba(0, 0, 0, .45);
-  text-shadow: 0 1px 2px rgba(12, 6, 32, .5); transition: height .7s cubic-bezier(.65, 0, .35, 1); }
-.at-panel::after, .at-cdb::after, .at-pbar::after, .at-pmap::after {
+  background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; /* 5.1.6: без подложки — описание и список прямо на небе */
+  text-shadow: 0 1px 3px rgba(8, 4, 24, .85), 0 0 12px rgba(8, 4, 24, .55); transition: height .7s cubic-bezier(.65, 0, .35, 1); }
+.at-cdb::after, .at-pbar::after, .at-pmap::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none; background: var(--g-rim);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 .atlas.s2 .at-panel { height: 52%; min-height: 300px; }
@@ -5186,7 +5185,7 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .calm .atlas, .calm .at-panel, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
 .eco .ag-ring .o, .eco .at-cdr .fg, .eco .at-cities.on { filter: none; }
 /* экономия батареи: стекло без живого размытия — плотнее, чтобы текст читался */
-.eco .at-panel, .eco .at-pbar, .eco .at-cdb { -webkit-backdrop-filter: none; backdrop-filter: none;
+.eco .at-pbar, .eco .at-cdb { -webkit-backdrop-filter: none; backdrop-filter: none;
   background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(46, 30, 100, .92), rgba(20, 12, 48, .95)); }
 .eco .at-cd, .eco .ag-veil { -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }
