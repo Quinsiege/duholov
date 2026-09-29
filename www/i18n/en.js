@@ -308,6 +308,7 @@ I18N.dict = {
 "Врата Перепутицы":"Gates of the Great Tangle",
 "Шаг — и перед тобой {0}":"One step — and {0} lies before you",
 "Шаг — и ты на месте":"One step — and you’re there",
+"Атлас":"Atlas",
 "монета":"coin",
 "монеты":"coins",
 "монет":"coins",

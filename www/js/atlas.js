@@ -1,6 +1,7 @@
 'use strict';
 /* 5.1: Атлас мира — старинная карта Ордена. Реального GPS больше нет: Ловчий сам выбирает, куда шагнуть через Врата Перепутицы.
    Шаг 1 — материки на двух дисках-полушариях («Новый Свет» и «Старый Свет», азимутальная проекция, всё рисуется кодом).
+   5.2: весь экран — «жидкое стекло», как окна игры: ночное небо с туманами, диски — стеклянные линзы, панели и кнопки — стекло.
    Шаг 2 — известные места материка (или «Своё место» — точка на настоящей карте) и «Шагнуть во Врата» → Walk.teleport.
    Открывается: пока у Ловчего нет места в мире игры (Walk.placed() — нет S.d.atlasV: новичок после книги-вступления, до обучения,
    или первый вход после 5.1) — сам, без выхода (Walk.ensurePlaced, main.js); дальше — меню «Атлас мира» и кнопка-глобус на карте.
@@ -274,19 +275,15 @@ const Atlas = {
     }).join('');
     const disc = d => {
       const c = L[d], lands = this.lands(d);
-      // обод как у астролябии: золотое кольцо, насечки через 10°, ромбы по сторонам света
-      const ticks = Array.from({ length: 72 }, (_, i) => { const a = i * Math.PI / 36, r1 = c.r - (i % 2 ? 4 : 7);
-        return `M${(c.cx + c.r * Math.cos(a)).toFixed(1)} ${(c.cy + c.r * Math.sin(a)).toFixed(1)}L${(c.cx + r1 * Math.cos(a)).toFixed(1)} ${(c.cy + r1 * Math.sin(a)).toFixed(1)}`; }).join('');
-      const gems = [0, 1, 2, 3].map(i => { const a = i * Math.PI / 2, x = c.cx + (c.r + 1) * Math.cos(a), y = c.cy + (c.r + 1) * Math.sin(a);
-        return `<path class="at-gem" d="M${x.toFixed(1)} ${(y - 6).toFixed(1)}l5 6-5 6-5-6z"/>`; }).join('');
+      // 5.2: диск — линза «жидкого стекла»: полупрозрачная толща, отсвет сверху-слева, кромка ловит свет (ярче в углах сверху-слева и снизу-справа)
       const lb = d === 'w' ? ru`Новый Свет` : ru`Старый Свет`, rr = c.r + 7;
       const arc = d === 'w' ? `M${c.cx - rr} ${c.cy}A${rr} ${rr} 0 0 1 ${c.cx + rr} ${c.cy}` : `M${c.cx - rr} ${c.cy}A${rr} ${rr} 0 0 0 ${c.cx + rr} ${c.cy}`;
       return `<g class="at-disc" data-d="${d}">
+        <circle class="at-drop" cx="${c.cx}" cy="${c.cy + 9}" r="${c.r + 14}" fill="url(#atDrop)"/>
         <circle class="at-sea" cx="${c.cx}" cy="${c.cy}" r="${c.r}" fill="url(#atSea${d})"/>
-        <g clip-path="url(#atClip${d})">${this.grat(d)}${lands}<circle class="at-shine" cx="${c.cx}" cy="${c.cy}" r="${c.r}" fill="url(#atShine)"/></g>
-        <circle class="at-rim2" cx="${c.cx}" cy="${c.cy}" r="${c.r - 9}"/>
-        <path class="at-tick" d="${ticks}"/>
-        <circle class="at-rim" cx="${c.cx}" cy="${c.cy}" r="${c.r}"/>${gems}
+        <g clip-path="url(#atClip${d})">${this.grat(d)}${lands}<circle class="at-shine" cx="${c.cx}" cy="${c.cy}" r="${c.r}" fill="url(#atShine)"/>
+          <circle class="at-inner" cx="${c.cx}" cy="${c.cy}" r="${c.r}"/></g>
+        <circle class="at-rim" cx="${c.cx}" cy="${c.cy}" r="${c.r - .6}" stroke="url(#atRim)"/>
         <path id="atArc${d}" d="${arc}" fill="none"/>
         <text class="at-arc${d === 'e' ? ' lo' : ''}"><textPath href="#atArc${d}" startOffset="50%">${lb}</textPath></text></g>`;
     };
@@ -300,11 +297,13 @@ const Atlas = {
       <path class="r2" d="${[45, 135, 225, 315].map(a => this.ray(a, r * .62, r * .12)).join('')}"/><path class="r1" d="${[0, 90, 180, 270].map(a => this.ray(a, r, r * .16)).join('')}"/>
       <circle r="${r * .1}" class="rc"/><text class="rn" y="${-r - 5}">N</text></g>`;
     return `<svg class="at-svg" viewBox="0 0 ${L.W} ${L.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><defs>
-      ${['w', 'e'].map(d => `<radialGradient id="atSea${d}" cx="46%" cy="40%" r="62%"><stop offset="0" stop-color="#1f4f94"/><stop offset=".55" stop-color="#143574"/><stop offset="1" stop-color="#0a1a45"/></radialGradient>
+      ${['w', 'e'].map(d => `<radialGradient id="atSea${d}" cx="42%" cy="34%" r="70%"><stop offset="0" stop-color="#a5b4fc" stop-opacity=".3"/><stop offset=".5" stop-color="#6d5dd3" stop-opacity=".26"/><stop offset="1" stop-color="#1e1250" stop-opacity=".62"/></radialGradient>
         <clipPath id="atClip${d}"><circle cx="${L[d].cx}" cy="${L[d].cy}" r="${L[d].r}"/></clipPath>`).join('')}
-      <linearGradient id="atLand" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#a7f3d0" stop-opacity=".5"/><stop offset=".55" stop-color="#5eead4" stop-opacity=".3"/><stop offset="1" stop-color="#0d9488" stop-opacity=".22"/></linearGradient>
-      <linearGradient id="atLandOn" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#fef3c7" stop-opacity=".75"/><stop offset=".55" stop-color="#fcd34d" stop-opacity=".5"/><stop offset="1" stop-color="#d97706" stop-opacity=".38"/></linearGradient>
-      <radialGradient id="atShine" cx="36%" cy="28%" r="75%"><stop offset="0" stop-color="#bfdbfe" stop-opacity=".16"/><stop offset=".5" stop-color="#bfdbfe" stop-opacity="0"/><stop offset="1" stop-color="#020617" stop-opacity=".45"/></radialGradient>
+      <linearGradient id="atLand" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#f0fdfa" stop-opacity=".62"/><stop offset=".55" stop-color="#99f6e4" stop-opacity=".36"/><stop offset="1" stop-color="#5eead4" stop-opacity=".24"/></linearGradient>
+      <linearGradient id="atLandOn" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#fffbeb" stop-opacity=".85"/><stop offset=".55" stop-color="#fde68a" stop-opacity=".6"/><stop offset="1" stop-color="#f59e0b" stop-opacity=".42"/></linearGradient>
+      <radialGradient id="atShine" cx="30%" cy="12%" r="78%"><stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset=".42" stop-color="#fff" stop-opacity=".04"/><stop offset=".78" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#0b0620" stop-opacity=".3"/></radialGradient>
+      <radialGradient id="atDrop"><stop offset=".8" stop-color="#04020e" stop-opacity=".42"/><stop offset="1" stop-color="#04020e" stop-opacity="0"/></radialGradient>
+      <linearGradient id="atRim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".18" stop-color="#fff" stop-opacity=".4"/><stop offset=".4" stop-color="#fff" stop-opacity=".08"/><stop offset=".6" stop-color="#fff" stop-opacity=".06"/><stop offset=".84" stop-color="#fff" stop-opacity=".34"/><stop offset="1" stop-color="#fff" stop-opacity=".85"/></linearGradient>
       </defs><g class="at-stars">${stars}</g>${rose(352, 62, 30)}${disc('w')}${disc('e')}<g class="at-me"></g><g class="at-pts"></g>${labels}</svg>`;
   },
   ray(a, R, w) { const r = a * Math.PI / 180, s = Math.sin(r), c = Math.cos(r); return `M0 0L${(w * c).toFixed(1)} ${(w * s).toFixed(1)}L${(R * s).toFixed(1)} ${(-R * c).toFixed(1)}L${(-w * c).toFixed(1)} ${(-w * s).toFixed(1)}Z`; },
@@ -347,7 +346,7 @@ const Atlas = {
     const story = opts.first;
     const el = this.el = U.el(`<div class="atlas${opts.first ? ' first' : ''}" role="dialog" aria-modal="true" aria-label="${ru`Атлас мира`}">
       <i class="at-fog f1"></i><i class="at-fog f2"></i>
-      <div class="at-head">
+      <div class="screen-head at-head">
         <button class="btn-round at-back" aria-label="${ru`Назад`}">${UI.I.back}</button>
         <div class="at-ttl"><small>${ru`Орден Оберега`}</small><h2>${ru`Атлас мира`}</h2></div>
         ${opts.first ? '' : `<button class="btn-round at-x" aria-label="${ru`Закрыть`}">${UI.I.close}</button>`}
@@ -432,10 +431,12 @@ const Atlas = {
       const myths = L ? L.myths.filter(m => MYTH_KEYS.includes(m) && MYTHS[m]).map(m => `<span class="at-myth" style="--c:${MYTHS[m].color}">${MYTHS[m].name}</span>`).join('') : '';
       const info = L ? `<div class="at-info"><h3>${U.esc(L.name)}</h3>${myths ? `<div class="at-myths">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`После Перепутицы духи любых мифологий встречаются везде.`}</small>`}</div>`
         : `<div class="at-info hint"><p>${first ? ru`Коснись материка — там и начнётся твой путь Ловчего.` : ru`Коснись материка, чтобы выбрать, куда шагнуть.`}</p></div>`;
-      P.innerHTML = `<div class="at-chips">${chips}</div>${info}<div class="at-foot">${UI.rune(ru`Выбрать место`, 'at-go', UI.I.pin)}${gates}</div>`;
+      P.innerHTML = `<div class="seg dt-tabs at-chips">${chips}</div>${info}<div class="at-foot">${UI.rune(ru`Выбрать место`, 'at-go', UI.I.pin)}${gates}</div>`;
       const go = P.querySelector('.at-go'); go.disabled = !L || !!L.cold;
       go.onclick = () => { Sfx.play('tap'); this.toLand(); };
       P.querySelector('.at-chips').onclick = e => { const c = e.target.closest('[data-l]'); if (c) this.select(c.dataset.l); };
+      { const ch = P.querySelector('.at-chips'), end = () => ch.classList.toggle('at-end', ch.scrollLeft + ch.clientWidth >= ch.scrollWidth - 2);
+        ch.addEventListener('scroll', end, { passive: true }); setTimeout(end, 0); } // 5.2: в конце ленты — без затухания края
       const on = P.querySelector('.at-chip.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
     } else {
       const list = this.PLACES[this.land] || [], L = this.LANDS.find(l => l.id === this.land);
@@ -493,7 +494,7 @@ const Atlas = {
     const vb = this.fit(list.map(p => this.proj('loc', p[4], p[3])), box, 0.14, 240);
     const big = [vb[0] - vb[2], vb[1] - vb[3], vb[2] * 3, vb[3] * 3];
     const svg = U.el(`<svg class="at-svg at-loc" viewBox="${vb.map(v => v.toFixed(1)).join(' ')}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <defs><radialGradient id="atSeaL" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1f4f94"/><stop offset=".6" stop-color="#143574"/><stop offset="1" stop-color="#0a1a45"/></radialGradient></defs>
+      <defs><radialGradient id="atSeaL" cx="50%" cy="40%" r="62%"><stop offset="0" stop-color="#8b7cf0" stop-opacity=".3"/><stop offset=".6" stop-color="#4c3aa8" stop-opacity=".24"/><stop offset="1" stop-color="#1e1250" stop-opacity=".1"/></radialGradient></defs>
       <rect x="${big[0].toFixed(0)}" y="${big[1].toFixed(0)}" width="${big[2].toFixed(0)}" height="${big[3].toFixed(0)}" fill="url(#atSeaL)"/>
       ${this.grat('loc', 10)}${this.lands('loc', id)}<g class="at-me"></g><g class="at-pts"></g></svg>`);
     this._lvb = vb;
@@ -563,10 +564,13 @@ const Atlas = {
     if (typeof L === 'undefined') { UI.toast(ru`Карта не загрузилась — проверь связь`); return; }
     const land = this.LANDS.find(l => l.id === this.land), list = this.PLACES[this.land] || [];
     const c = list.length ? [list.reduce((s, p) => s + p[3], 0) / list.length, list.reduce((s, p) => s + p[4], 0) / list.length] : [30, 30];
-    const box = U.el(`<div class="at-pick"><div class="at-head"><button class="btn-round at-pback" aria-label="${ru`Назад`}">${UI.I.back}</button>
+    // карта на весь экран, шапка и низ — стеклянные панели над ней
+    const box = U.el(`<div class="at-pick"><div class="at-pmap"></div>
+      <div class="at-phead"><button class="btn-round at-pback" aria-label="${ru`Назад`}">${UI.I.back}</button>
       <div class="at-ttl"><small>${U.esc(land.name)}</small><h2>${ru`Своё место`}</h2></div></div>
-      <div class="at-pmap"></div><div class="at-pbar"><p class="at-phint">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p>${UI.rune(ru`Шагнуть сюда`, 'at-pgo')}</div></div>`);
+      <div class="at-pbar"><p class="at-phint">${ru`Приблизь карту и коснись улицы, где хочешь появиться.`}</p>${UI.rune(ru`Шагнуть сюда`, 'at-pgo', UI.I.pin)}</div></div>`);
     this.el.appendChild(box);
+    const fit = () => { if (box.isConnected) box.style.setProperty('--pbh', box.querySelector('.at-pbar').offsetHeight + 'px'); };
     this.pick = { box, ll: null };
     const go = box.querySelector('.at-pgo'); go.disabled = true;
     box.querySelector('.at-pback').onclick = () => { Sfx.play('tap'); this.pickClose(); };
@@ -586,7 +590,7 @@ const Atlas = {
       go.disabled = false;
     });
     go.onclick = () => { const ll = this.pick && this.pick.ll; if (ll) this.go(ll.lat, ll.lng, ''); };
-    requestAnimationFrame(() => { box.classList.add('in'); m.invalidateSize(); });
+    requestAnimationFrame(() => { fit(); box.classList.add('in'); m.invalidateSize(); });
   },
   pickClose() {
     const p = this.pick; if (!p) return;
@@ -596,14 +600,14 @@ const Atlas = {
     setTimeout(() => p.box.remove(), 260);
   },
 
-  /* ---------- перезарядка: ждать или открыть Врата предметом ---------- */
+  /* ---------- перезарядка: ждать или открыть Врата предметом (окно — как окна игры: содержимое прямо на матовом стекле) ---------- */
   askItem() {
     return new Promise(res => {
       const n = this.items(), cd = this.cd(), full = this.tpMin() * 60000, frac = Math.max(0, Math.min(1, 1 - cd / full));
       const R = 26, C = 2 * Math.PI * R;
       const box = U.el(`<div class="at-cd"><div class="at-cdb">
         <div class="at-cdr"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" class="bg"/><circle cx="32" cy="32" r="${R}" class="fg" stroke-dasharray="${(C * frac).toFixed(1)} ${C.toFixed(1)}"/></svg>${this.gateIcon()}</div>
-        <b>${ru`Врата отдыхают`}</b><p>${ru`Врата откроются через ${this.cdMin()} мин`}</p>
+        <div class="modal-title">${ru`Врата отдыхают`}</div><p>${ru`Врата откроются через ${this.cdMin()} мин`}</p>
         ${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : `<p class="small">${ru`Врата Перепутицы открываются сразу — их можно купить в Лавке.`}</p>${typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, 'at-shop') : ''}`}
         ${UI.glass(ru`Подождать`, 'at-wait')}</div></div>`);
       const end = v => { if (!box.isConnected) return; box.classList.add('out'); setTimeout(() => box.remove(), 220); res(v); };
@@ -666,12 +670,24 @@ const Atlas = {
   },
 
   /* ---------- глобус на карте: справа вверху, под погодой и плашками недели (без подложки, как они) ---------- */
-  // пока Врата отдыхают — золотое кольцо вокруг глобуса убывает, рядом минуты
+  // 5.2: значок как у плашки недели — золотой круг с тёмным рисунком (настольный глобус), справа подпись «Атлас»;
+  // пока Врата отдыхают — вокруг значка убывает тонкое золотое кольцо, в подписи — минуты
+  hudIcon() {
+    const p = 'ahi' + (this._iN = (this._iN || 0) + 1);
+    return `<svg class="ab-g" viewBox="0 0 24 24" aria-hidden="true"><defs>
+      <radialGradient id="${p}s" cx=".34" cy=".28" r=".8"><stop offset="0" stop-color="#fff6d6"/><stop offset=".4" stop-color="#f3cf6b"/><stop offset="1" stop-color="#a8741f"/></radialGradient>
+      <clipPath id="${p}c"><circle cx="12" cy="11" r="6"/></clipPath></defs>
+      <circle cx="12" cy="12" r="12" fill="url(#${p}s)"/>
+      <g fill="none" stroke="#1b1030" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="6" fill="#1b1030" fill-opacity=".12" stroke-width="1.5"/>
+        <g clip-path="url(#${p}c)" transform="rotate(-22 12 11)" stroke-width="1.15"><ellipse cx="12" cy="11" rx="2.9" ry="6"/><path d="M12 3v16M4 8.9h16M4 13.1h16"/></g>
+        <path d="M4.9 13.6A7.6 7.6 0 0 0 18.6 7M12 18.6v2M9.6 20.6h4.8" stroke-width="1.5"/></g></svg>`;
+  },
   mountHud() {
     const col = U.$('#hud .hud-right'); if (!col || U.$('#atlasBtn')) return;
-    const R = 21, C = (2 * Math.PI * R).toFixed(1);
-    const b = U.el(`<button id="atlasBtn" class="atlas-btn" aria-label="${ru`Атлас мира`}">${this.icon()}
-      <svg class="ab-cd" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="${R}" class="bg"/><circle cx="24" cy="24" r="${R}" class="fg" stroke-dasharray="0 ${C}"/></svg><b class="ab-min"></b></button>`);
+    const R = 13, C = (2 * Math.PI * R).toFixed(1);
+    const b = U.el(`<button id="atlasBtn" class="atlas-btn ab2" aria-label="${ru`Атлас мира`}"><span class="ab-i">${this.hudIcon()}
+      <svg class="ab-ring" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="${R}" class="bg"/><circle cx="15" cy="15" r="${R}" class="fg" stroke-dasharray="0 ${C}"/></svg></span>
+      <span class="ab-t">${ru`Атлас`}</span><span class="ab-m"></span></button>`);
     b.onclick = () => { Sfx.init(); this.open(); };
     col.appendChild(b);
     const tick = () => {
@@ -680,7 +696,7 @@ const Atlas = {
       if (!on) return;
       const frac = Math.max(0, Math.min(1, cd / (this.tpMin() * 60000)));
       b.querySelector('.fg').setAttribute('stroke-dasharray', `${(C * frac).toFixed(1)} ${C}`);
-      b.querySelector('.ab-min').textContent = this.cdMin();
+      b.querySelector('.ab-m').textContent = ru`${this.cdMin()} мин`;
     };
     tick();
     setInterval(() => { if (!document.hidden) tick(); }, 20000);
