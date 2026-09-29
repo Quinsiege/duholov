@@ -143,6 +143,8 @@ const Walk = {
     document.body.classList.toggle('joy-left', left);
     document.body.classList.toggle('joy-right', !left);
   },
+  // 5.2: поверх карты открыта полноэкранная сцена (stage.js) или идёт поимка — Ловчий стоит; снова пойдёт от следующего касания
+  held() { return (typeof Stage !== 'undefined' && Stage.busy) || (typeof Encounter !== 'undefined' && !!Encounter.st); },
   // вектор движения на экране (x вправо, y вниз) и скорость, м/с
   input() {
     const M = Rules.MOVE, k = this.keys;
@@ -155,7 +157,7 @@ const Walk = {
   },
   // цикл кадров (requestAnimationFrame) — только пока есть ввод: без него страница не просыпается
   run() {
-    if (this._raf || document.hidden) return;
+    if (this._raf || document.hidden || this.held()) return;
     this._last = performance.now();
     const loop = t => {
       const dt = Math.min(0.1, Math.max(0, (t - this._last) / 1000));
@@ -169,7 +171,8 @@ const Walk = {
   tick(dt, t) {
     const inp = this.input();
     if (!inp) return false;
-    if (!this.pos || document.hidden || UI.blocking() || (typeof Encounter !== 'undefined' && Encounter.st)) { this.setMode(0); return true; }
+    if (this.held()) return false; // 5.2: открыта сцена (поимка, бой, экран) — цикл кадров останавливается, а не крутится вхолостую
+    if (!this.pos || document.hidden || UI.blocking()) { this.setMode(0); return true; }
     const n = Math.hypot(inp.x, inp.y) || 1;
     // направление на экране → направление на карте: карта повёрнута на MapView.rot
     const rot = typeof MapView !== 'undefined' ? MapView.rot || 0 : 0;

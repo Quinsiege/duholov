@@ -683,7 +683,7 @@ const Atlas = {
     const R = 13, C = (2 * Math.PI * R).toFixed(1);
     const b = U.el(`<button id="atlasBtn" class="atlas-btn ab2" aria-label="${ru`Атлас мира`}"><span class="ab-i">${this.hudIcon()}
       <svg class="ab-ring" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="${R}" class="bg"/><circle cx="15" cy="15" r="${R}" class="fg" stroke-dasharray="0 ${C}"/></svg></span>
-      <span class="ab-t">${ru`Атлас`}</span><span class="ab-m"></span></button>`);
+      <span class="ab-t">${ru`Атлас мира`}</span><span class="ab-m"></span></button>`);
     b.onclick = () => { Sfx.init(); this.open(); };
     col.appendChild(b);
     const tick = () => {
@@ -695,7 +695,9 @@ const Atlas = {
       b.querySelector('.ab-m').textContent = ru`${this.cdMin()} мин`;
     };
     tick();
-    setInterval(() => { if (!document.hidden) tick(); }, 20000);
+    // 5.2: значок — в HUD карты: под полноэкранной сценой (stage.js) не обновляется, сцена закрылась — сразу
+    setInterval(() => { if (Stage.idle()) tick(); }, 20000);
+    Stage.on(busy => { if (!busy) tick(); });
     document.addEventListener('duholov:teleported', () => setTimeout(tick, 100));
   },
 };

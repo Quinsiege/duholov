@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.2';
+const APP_VERSION = '5.1.4';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1801,7 +1801,9 @@ const Sky = {
 
   init() {
     this.update(true);
-    setInterval(() => this.update(), 5 * 60000);
+    // 5.2: погода нужна карте — под полноэкранной сценой (stage.js) не спрашиваем; сцена закрылась — сверим один раз
+    setInterval(() => { if (Stage.busy) this._miss = true; else this.update(); }, 5 * 60000);
+    Stage.on(busy => { if (!busy && this._miss) { this._miss = false; setTimeout(() => this.update(), 500); } });
   },
 
   async update(force) {
@@ -1993,6 +1995,19 @@ const W = {
     return out;
   },
 
+  /* ---------- 5.2: места спят и просыпаются по неделям (Rules.PLACES) ---------- */
+  /* Родник, Капище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
+     недели) бодрствует доля SHARE мест, остальные пустые. У каждого места своя фаза (хэш id), окно бодрствования каждую
+     неделю сдвигается на SHARE: место бодрствует, если (фаза + неделя × SHARE) mod 1 < SHARE. При SHARE = 0,4 — две недели
+     из пяти, и никогда две недели подряд: на следующей неделе просыпаются другие места. Места игроков (usr:) не спят;
+     новичку на обучении открыты все Родники (первый Родник — рядом). Считается одинаково на телефоне и на сервере. */
+  awake(p, kind, t = U.now()) {
+    const id = String((p && p.id) || ''), P = Rules.PLACES;
+    if (id.startsWith('usr:')) return true;
+    if (kind === 'spring' && typeof S !== 'undefined' && S.d && S.d.tut) return true;
+    return (U.h('wake', id) + Ev.week(t) * P.SHARE) % 1 < P.SHARE;
+  },
+
   /* ---------- Родники: у реальных объектов (см. pois.js) ---------- */
   // p — объект карты { id, lat, lng, name, photo }; d — расстояние до игрока
   springFor(p, d) {
@@ -2004,14 +2019,14 @@ const W = {
       ready: U.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN };
   },
   springsAround(lat, lng, radius = this.VIEW + 150) {
-    return Poi.near(lat, lng, radius, 'spring').map(p => this.springFor(p, p.d));
+    return Poi.near(lat, lng, radius, 'spring').filter(p => this.awake(p, 'spring')).map(p => this.springFor(p, p.d)); // 5.2: спящих нет
   },
 
   /* ---------- Разломы: каждый час открываются у части Капищ ---------- */
   riftAt(id, hour) { return U.h('rr', id, hour) < 0.35; },
-  // Разлом у капища p в этот час (или null)
+  // Разлом у капища p в этот час (или null); 5.2: у спящего места Разломов нет — и Великих (Кощей) тоже
   riftFor(p, d, hour = Math.floor(U.now() / 3600000)) {
-    if (!this.riftAt(p.id, hour)) return null;
+    if (!this.riftAt(p.id, hour) || !this.awake(p, 'shrine', hour * 3600000)) return null;
     const id = `${p.id}:${hour}`;
     const r = U.rng(id);
     const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
@@ -2074,7 +2089,7 @@ const W = {
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
     Ev.alaSync();
-    return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
+    return Poi.near(lat, lng, radius, 'shrine').filter(p => this.awake(p, 'shrine') && !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
   /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
      раньше уровень хранителя равнялся уровню духов игрока, но виды у хранителя слабее — и сильный Ловчий не проигрывал.
@@ -5139,6 +5154,9 @@ const Rules = {
   MELT: { N: 3, SPARKS: 3000 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
+  // 5.2: места (Родники, Капища и Разломы у них): каждую неделю бодрствует доля SHARE, остальные спят (W.awake);
+  // на карте места видны в радиусе VIEW м от Ловчего (подойти, чтобы открыть, — как раньше: W.INTERACT, W.BATTLE_R)
+  PLACES: { SHARE: 0.4, VIEW: 200 },
   // cur — валюта: sparks (искры) или zlat (монеты). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
     { id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },
@@ -5599,6 +5617,8 @@ const GameCore = {
     // 4.1: такое место сервер проверить не может (id и координаты — от телефона): на нём нет легендарных разломов и удержания Капищ
     return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null, verified: false };
   },
+  // 5.2: место спит на этой неделе (W.awake, Rules.PLACES) — ни Родника, ни Капища, ни Разлома здесь нет
+  placeAwake(p, kind, t) { this.need(W.awake(p, kind, t), ru`Это место сейчас спит — на этой неделе здесь ничего нет`); },
   team(uids) { return (uids || []).map(u => S.findSpirit(u)).filter(Boolean); },
   battleTime(ctx, b) { return (ctx.now - b.start) / 1000 - Rules.COUNTDOWN; },
   endBattle(ctx, type) {
@@ -6272,6 +6292,7 @@ const GameCore = {
     /* ----- родник ----- */
     async spring(a, ctx) {
       const p = await this.place(a.poi, ctx, 'spring');
+      this.placeAwake(p, 'spring', ctx.now);
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       this.limit(ctx, 'spring', 60, 3600000);
       this.dayNeed(ctx, 'springs');
@@ -6500,6 +6521,7 @@ const GameCore = {
       const hour = Math.floor(ctx.now / 3600000);
       // бой мог начаться за минуту до смены часа
       const r = W.riftFor(p, 0, hour) || (ctx.now % 3600000 < 90000 ? W.riftFor(p, 0, hour - 1) : null);
+      if (!r) this.placeAwake(p, 'shrine', ctx.now); // 5.2: место уснуло — так и сказать
       this.need(r, ru`Разлом уже закрылся`);
       this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);
       this.need(!S.d.rifts[r.id], ru`Этот разлом ты уже закрыл`);
@@ -6532,6 +6554,7 @@ const GameCore = {
     async roomCreate(a, ctx) {
       this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`);
       const p = await this.place(a.rift, ctx, 'shrine');
+      this.placeAwake(p, 'shrine', ctx.now);
       const r = W.riftFor(p, 0, Math.floor(ctx.now / 3600000));
       this.need(r, ru`Разлом уже закрылся`);
       this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);
@@ -6631,6 +6654,7 @@ const GameCore = {
     async duelStart(a, ctx) {
       this.need(S.d.level >= DUEL_LEVEL, ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`);
       const p = await this.place(a.shrine, ctx, 'shrine');
+      this.placeAwake(p, 'shrine', ctx.now);
       this.need(!W.riftAt(p.id, Math.floor(ctx.now / 3600000)), ru`Сейчас здесь открыт Разлом`);
       const e = W.shrineFor(p, 0);
       this.need(!e.won, ru`Сегодня ты уже победил здесь`);
@@ -6823,6 +6847,8 @@ const GameCore = {
       this.need(S.d.clan, ru`Сначала выбери клан`);
       const p = await this.place(a.shrine, ctx, 'shrine');
       this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);
+      // 5.2: на уснувшее Капище новых защитников не ставят; стоящие достаивают свой срок (Rules.HOLD) и возвращаются, как обычно
+      this.placeAwake(p, 'shrine', ctx.now);
       this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни один клан`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const sp = this.spirit(a.uid);
@@ -6895,6 +6921,7 @@ const GameCore = {
 
     async invStart(a, ctx) {
       const p = await this.place(a.spring, ctx, 'spring');
+      this.placeAwake(p, 'spring', ctx.now);
       const e = W.springFor(p, 0);
       this.need(e.invaded, ru`Родник свободен`);
       this.near(ctx, p.lat, p.lng, W.INTERACT);

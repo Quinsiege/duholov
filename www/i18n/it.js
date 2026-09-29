@@ -3196,6 +3196,7 @@ I18N.dict = {
 "Здесь нет такого объекта":"Qui non c'è un luogo del genere",
 "Место не найдено":"Luogo non trovato",
 "Этого места нет на карте — обнови игру":"Questo luogo non è sulla mappa: aggiorna il gioco",
+"Это место сейчас спит — на этой неделе здесь ничего нет":"Questo luogo ora dorme: questa settimana qui non c'è niente",
 "Бой не найден — начни его заново":"Battaglia non trovata: ricominciala",
 "В команде дух без сил — вылечи его или замени":"C'è uno spirito esausto in squadra: curalo o sostituiscilo",
 "Бой не засчитан: слишком быстрая победа":"Battaglia non convalidata: vittoria troppo rapida",

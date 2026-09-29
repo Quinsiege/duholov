@@ -3196,6 +3196,7 @@ I18N.dict = {
 "Здесь нет такого объекта":"Burada böyle bir nesne yok",
 "Место не найдено":"Yer bulunamadı",
 "Этого места нет на карте — обнови игру":"Bu yer haritada yok — oyunu güncelle",
+"Это место сейчас спит — на этой неделе здесь ничего нет":"Bu yer şu an uykuda — bu hafta burada hiçbir şey yok",
 "Бой не найден — начни его заново":"Savaş bulunamadı — yeniden başlat",
 "В команде дух без сил — вылечи его или замени":"Takımda bitkin ruh var — onu iyileştir ya da değiştir",
 "Бой не засчитан: слишком быстрая победа":"Savaş sayılmadı: zafer fazla hızlı",

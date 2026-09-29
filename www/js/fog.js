@@ -34,7 +34,9 @@ const Fog = {
     this.lay = new Layer({ pane: 'fog', tileSize: 256, updateWhenZooming: false, keepBuffer: 1, minZoom: 12 });
     this.apply();
     // туман плывёт: раз в минуту — чуть дальше по ветру (в экономии батареи и в свёрнутой игре — стоит)
-    setInterval(() => { if (!document.hidden && !Cfg.s.eco) this.redraw(); }, 60000);
+    // 5.2: под полноэкранной сценой (stage.js) туман не перерисовывается — один раз, когда она закроется
+    setInterval(() => { if (document.hidden || Cfg.s.eco) return; if (Stage.busy) this._miss = true; else this.redraw(); }, 60000);
+    Stage.on(busy => { if (!busy && this._miss) { this._miss = false; setTimeout(() => { if (!Stage.busy) this.redraw(); }, 300); } });
   },
   // включить или выключить по настройке
   apply() {

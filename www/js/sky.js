@@ -7,7 +7,9 @@ const Sky = {
 
   init() {
     this.update(true);
-    setInterval(() => this.update(), 5 * 60000);
+    // 5.2: погода нужна карте — под полноэкранной сценой (stage.js) не спрашиваем; сцена закрылась — сверим один раз
+    setInterval(() => { if (Stage.busy) this._miss = true; else this.update(); }, 5 * 60000);
+    Stage.on(busy => { if (!busy && this._miss) { this._miss = false; setTimeout(() => this.update(), 500); } });
   },
 
   async update(force) {
