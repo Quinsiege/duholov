@@ -575,7 +575,7 @@ function clanOf(k) {
 function clanOpen(k) { return clanOf(k) === k && MYTH_KEYS.includes(k); }
 // все id клана в базе: сам ключ и прежние, что к нему ведут (до миграции 032_myth_clans_data)
 function clanIds(k) { return [k, ...Object.keys(CLAN_OLD).filter(o => CLAN_OLD[o] === k)]; }
-const CLAN_LEVEL = 12;     // с какого уровня выбирается клан (4.16: было 5; см. DUEL_LEVEL)
+const CLAN_LEVEL = 5;      // с какого уровня выбирается клан (4.16: было 12, 5.1.11: снова 5; см. DUEL_LEVEL)
 const HOLD_MAX = 6;       // защитников на одном Капище
 const HOLD_MY_MAX = 3;    // Капищ с моими защитниками одновременно (4.16: было 10 — дружины держали почти все Капища)
 const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Капище с моим защитником

@@ -5218,9 +5218,9 @@
   "k": "Клан",
   "at": [
    "www/js/clans.js:192",
+   "www/js/path.js:21",
    "www/js/rules.js:186",
-   "www/js/ui-player.js:156",
-   "www/js/ui-player.js:157"
+   "www/js/ui-player.js:156"
   ],
   "ctx": "const scr = UI.screen(ru`Клан`, `<div class=\"clan-view\" style=\"--cc:${c.color}\">"
  },
@@ -16630,18 +16630,11 @@
   "ctx": "add(League.LEVEL, 'trophy', ru`Лига Ордена`, ru`Бои с живыми Ловчими, рейтинг и лиги`);"
  },
  {
-  "k": "Дружина",
+  "k": "Клан своей мифологии — знамя над святилищами",
   "at": [
    "www/js/path.js:21"
   ],
-  "ctx": "add(CLAN_LEVEL, 'shield', ru`Дружина`, ru`Сокол, Медведь или Волк — знамя над капищами`);"
- },
- {
-  "k": "Сокол, Медведь или Волк — знамя над капищами",
-  "at": [
-   "www/js/path.js:21"
-  ],
-  "ctx": "add(CLAN_LEVEL, 'shield', ru`Дружина`, ru`Сокол, Медведь или Волк — знамя над капищами`);"
+  "ctx": "add(CLAN_LEVEL, 'shield', ru`Клан`, ru`Клан своей мифологии — знамя над святилищами`);"
  },
  {
   "k": "Продажа и покупка духов",

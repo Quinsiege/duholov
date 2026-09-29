@@ -18,7 +18,7 @@ const Path = {
     add(Rules.CHAT.LEVEL, 'chat', ru`Чат Ордена`, ru`Можно писать сообщения`);
     add(INVASION_LEVEL, 'rift', ru`Вторжения Нави`, ru`Освобождай захваченные источники`);
     add(League.LEVEL, 'trophy', ru`Лига Ордена`, ru`Бои с живыми Ловчими, рейтинг и лиги`);
-    add(CLAN_LEVEL, 'shield', ru`Дружина`, ru`Сокол, Медведь или Волк — знамя над капищами`);
+    add(CLAN_LEVEL, 'shield', ru`Клан`, ru`Клан своей мифологии — знамя над святилищами`);
     add(Rules.AUCTION.LEVEL, 'gavel', ru`Аукцион`, ru`Продажа и покупка духов`);
     add(ITEMS.charm2.unlock, 'item:charm2', ru`Серебряный оберег`, ru`Шанс поимки ×1,5`);
     add(ITEMS.charm3.unlock, 'item:charm3', ru`Золотой оберег`, ru`Шанс поимки ×2`);

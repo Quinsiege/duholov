@@ -1349,7 +1349,7 @@ function clanOf(k) {
 function clanOpen(k) { return clanOf(k) === k && MYTH_KEYS.includes(k); }
 // все id клана в базе: сам ключ и прежние, что к нему ведут (до миграции 032_myth_clans_data)
 function clanIds(k) { return [k, ...Object.keys(CLAN_OLD).filter(o => CLAN_OLD[o] === k)]; }
-const CLAN_LEVEL = 12;     // с какого уровня выбирается клан (4.16: было 5; см. DUEL_LEVEL)
+const CLAN_LEVEL = 5;      // с какого уровня выбирается клан (4.16: было 12, 5.1.11: снова 5; см. DUEL_LEVEL)
 const HOLD_MAX = 6;       // защитников на одном Капище
 const HOLD_MY_MAX = 3;    // Капищ с моими защитниками одновременно (4.16: было 10 — дружины держали почти все Капища)
 const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Капище с моим защитником
@@ -3326,7 +3326,7 @@ const League = {
   KL: [20, 28, 34, 40, 42, 42, 40, 36, 32, 28],
   SOFT: 1500,        // 4.16: в новом сезоне рейтинг сверх этого (лига «Серебро») срезается наполовину
   MAXPTS: 20000,
-  LEVEL: 10,   // с какого уровня Ловчего открыта Лига (проверяет сервер; 4.16: было 5)
+  LEVEL: 5,    // с какого уровня Ловчего открыта Лига (проверяет сервер; 4.16: было 10, 5.1.11: снова 5)
   tab: 'play',
   TABS: ['play', 'table', 'ranks'],
 
@@ -5136,7 +5136,7 @@ const Rules = {
   MOVE: { WALK: 5 / 3.6, RUN: 15 / 3.6, RUN_AT: 0.8, DEAD: 0.12, SYNC_MS: 10000, PT_MS: 1000, TP_CD: 30 * 60000, TP_ITEM: 'gate', LAT: 85 },
   // сколько ещё ждать до телепорта даром (мс): tpAt — время прошлого телепорта (S.d.tpAt)
   tpWait(tpAt, now) { return Number.isFinite(+tpAt) && +tpAt > 0 ? Math.max(0, +tpAt + this.MOVE.TP_CD - now) : 0; },
-  AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
+  AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
   auctionDeposit(cur, price) { const A = this.AUCTION; return Math.max(A.DEP_MIN[cur === 'zlat' ? 'zlat' : 'sparks'], Math.ceil((price || 0) * A.DEPOSIT)); },

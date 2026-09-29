@@ -418,10 +418,10 @@
       let x0 = S.d.xp; S.evolve(a); eq(S.d.xp - x0, 1000 * mul, 'новый вид');
       x0 = S.d.xp; S.evolve(b); eq(S.d.xp - x0, 200 * mul, 'повторное превращение');
     } finally { S.d = keep; }
-    // лестница открытий: Капища → вторжения → Лига → дружины → Аукцион, всё — в «Пути Ловчего»
-    ok(DUEL_LEVEL < INVASION_LEVEL && INVASION_LEVEL < League.LEVEL && League.LEVEL < CLAN_LEVEL && CLAN_LEVEL < Rules.AUCTION.LEVEL, 'по порядку');
+    // лестница открытий: Капища, Лига, кланы и Аукцион — с 5 уровня (5.1.11), вторжения — позже; всё — в «Пути Ловчего»
+    ok(DUEL_LEVEL === 5 && League.LEVEL === 5 && CLAN_LEVEL === 5 && Rules.AUCTION.LEVEL === 5 && INVASION_LEVEL > 5, 'уровни открытия');
     const un = Path.unlocks();
-    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Дружина'], [Rules.AUCTION.LEVEL, 'Аукцион']]
+    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Клан'], [Rules.AUCTION.LEVEL, 'Аукцион']]
       .forEach(([l, t]) => ok((un[l] || []).some(x => I18N.back(x.t) === t), `${t} — на ${l} уровне пути`));
     const d0 = S.d.level; S.d.level = INVASION_LEVEL - 1;
     try { ok(!Array.from({ length: 300 }, (_, i) => W.springFor({ id: 'osm:n' + (70000 + i), lat: 55.75, lng: 37.62, name: 'Р' }, 0)).some(e => e.invaded), 'до INVASION_LEVEL вторжений нет'); }
@@ -2194,7 +2194,7 @@
     for (const P of [S2, B2]) { P.data.tut = 0; P.data.sparks = 100000; P.data.zlat = 100; }
     S2.data.level = 30; B2.data.level = Rules.AUCTION.LEVEL;
     const mk = (lvl, sid) => ({ uid: U.uid(), sid, lvl, iv: [10, 10, 10], t: Date.now(), fav: false });
-    const hi = mk(30, 'kapelka'), lo = mk(10, 'mshonok'), z = mk(5, 'ugolek');
+    const hi = mk(30, 'kapelka'), lo = mk(Rules.AUCTION.LEVEL, 'mshonok'), z = mk(5, 'ugolek'); // lo — не выше уровня покупателя (Аукцион с 5 уровня)
     S2.data.spirits.push(hi, lo, z);
     // залог: списывается при выставлении, не меньше минимума
     const s0 = S2.data.sparks;
