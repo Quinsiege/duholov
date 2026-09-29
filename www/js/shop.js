@@ -209,6 +209,58 @@ const Treasury = {
   },
 };
 
+// 5.x: промокоды — ввод кода (Настройки → «Промокод», Лавка → Казна → «Есть промокод?»). Проверяет и начисляет сервер
+// (действие promo, 034_promo_codes.sql): один раз на учётную запись, не больше 10 попыток в час
+const Promo = {
+  ask(onDone) {
+    if (!S.d || !Game.on()) { UI.toast(ru`Промокоды работают, когда игра на связи с сервером`); return; }
+    Sfx.init(); Sfx.play('tap');
+    let busy = false;
+    const m = UI.modal({
+      title: ru`Промокод`, cls: 'promo-modal',
+      html: `<div class="promo-ico">${Art.item('zlat')}</div>
+        <p>${ru`Введи промокод — награда сразу придёт в игру. Каждый код можно ввести один раз.`}</p>
+        <input class="input big promo-in" maxlength="40" placeholder="${ru`КОД`}" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-label="${ru`Промокод`}">
+        <p class="promo-err" role="alert" hidden></p>`,
+      buttons: [{ label: ru`Отмена` }, { label: ru`Активировать`, cls: 'primary', keep: true, fn: () => go() }],
+    });
+    const inp = m.querySelector('.promo-in'), err = m.querySelector('.promo-err'), btn = m.querySelector('.modal-btns .primary');
+    const go = async () => {
+      const code = inp.value.trim();
+      if (!code) { inp.focus(); return; }
+      if (busy) return;
+      busy = true; btn.disabled = true; err.hidden = true;
+      try {
+        const r = await Game.act('promo', { code });
+        m.close();
+        this.show(r);
+        onDone && onDone();
+      } catch (e) {
+        err.textContent = e.message; err.hidden = false;
+        Sfx.play('miss'); U.vibrate(30);
+        inp.select();
+      } finally { busy = false; btn.disabled = false; }
+    };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    inp.addEventListener('input', () => { err.hidden = true; });
+    setTimeout(() => { if (m.isConnected) inp.focus(); }, 250);
+    return m;
+  },
+  // Окно «Промокод активирован!» — полученное с сервера: [{ k, n, label }]
+  show(r) {
+    const got = ((r && r.got) || []).map(x => x.k === 'zlat' ? { ...x, label: U.plural(x.n, ru`монета`, ru`монеты`, ru`монет`) }
+      : x.k === 'sparks' ? { ...x, label: U.plural(x.n, ru`искра`, ru`искры`, ru`искр`) } : x);
+    Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+    UI.modal({
+      title: ru`Промокод активирован!`, cls: 'promo-modal promo-ok',
+      html: `<div class="promo-code">${U.esc((r && r.code) || '')}</div>${got.length ? Loot.cells(got) : ''}
+        <p>${ru`Награда уже у тебя — монеты в Казне, вещи в Сумке.`}</p>`,
+      buttons: [{ label: ru`Отлично`, cls: 'primary' }],
+    });
+    UI.refreshHud();
+  },
+};
+
 const Shop = {
   // Товар дня ещё не куплен — значок на плитке меню
   dealFresh() { return S.d && S.d.shop.deal !== U.today(); },
@@ -267,7 +319,7 @@ const Shop = {
             ${row(bag, 'bag', ' · ' + ru`расширено ${S.d.bagExtra} из ${Rules.BAG_MAX_UP}`)}
             <div class="pf-mh"><span>${ru`Припасы`}</span></div>
             ${Rules.SHOP.filter(x => !x.bag).map(x => row(x, x.id)).join('')}`)}
-          ${pane('pay', Treasury.html(pay))}
+          ${pane('pay', `${Treasury.html(pay)}<div class="q-note promo-q"><button class="linkish promo-open">${ru`Есть промокод?`}</button></div>`)}
           ${pane('ex', `${this.exchangeHtml()}
             <div class="dt-rows">
               <div class="dt-row"><span>${ru`Курс`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>
@@ -288,6 +340,7 @@ const Shop = {
       if (e.target.closest('.pay-recheck')) { await Treasury.check(true); render(); return; }
       if (e.target.closest('.pay-offer')) { Treasury.offer(); return; }
       if (e.target.closest('.pay-mine')) { Treasury.purchases(); return; }
+      if (e.target.closest('.promo-open')) { Promo.ask(() => { if (scr.isConnected) render(); }); return; }
       const x = e.target.closest('[data-ex]');
       if (x && !x.disabled) {
         const n = +x.dataset.ex, E = Rules.EXCHANGE;

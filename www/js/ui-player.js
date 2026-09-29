@@ -361,7 +361,8 @@ Object.assign(UI, {
     const link = (cls, ico, title, sub) => `<button class="row link set-row ${cls}"><span class="set-ico">${this.I[ico]}</span><div class="row-main"><b>${title}</b><small>${sub}</small></div><span class="set-chev">›</span></button>`;
     const sec = t => `<div class="set-h">${t}</div>`;
     const scr = this.screen(ru`Настройки`, `
-      ${Game.on() ? `${sec(ru`Учётная запись`)}<div class="list acc-box"></div>` : ''}
+      ${Game.on() ? `${sec(ru`Учётная запись`)}<div class="list acc-box"></div>
+        <div class="list">${link('promo-open', 'gift', ru`Промокод`, ru`Введи код — получи монеты и награды`)}</div>` : ''}
       ${sec(ru`Язык`)}
       <div class="list"><button class="row link set-row lang-pick"><span class="set-ico">${this.I.text}</span><div class="row-main"><b>${ru`Язык игры`}${I18N.lang === 'en' ? '' : ' · Language'}</b><small>${I18N.LANGS[I18N.lang]}</small></div><span class="set-chev">›</span></button></div>
       ${sec(ru`Звук и отклик`)}
@@ -404,6 +405,8 @@ Object.assign(UI, {
       </div>
       <div class="ver">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class="link-btn check-upd">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStreetMap`}</div>`, 'set-screen');
     scr.querySelector('.lang-pick').onclick = () => this.pickLang();
+    const promo = scr.querySelector('.promo-open'); // 5.x: промокоды (shop.js → Promo)
+    if (promo) promo.onclick = () => Promo.ask();
     // 4.8.1: ползунок громкости музыки — меняется сразу, сохраняется при отпускании
     const vol = scr.querySelector('.vol'), volV = scr.querySelector('.vol-v');
     const showVol = () => { volV.textContent = vol.value + '%'; vol.style.setProperty('--p', vol.value + '%'); };

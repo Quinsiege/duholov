@@ -1,0 +1,73 @@
+#!/bin/bash
+# Промокоды Духолова (server/034_promo_codes.sql). Запуск на сервере под root:
+#   duholov-promo add КОД МОНЕТЫ [--uses N] [--until ГГГГ-ММ-ДД] [--from ГГГГ-ММ-ДД] [--sparks N] [--item ключ=N]... [--note текст]
+#   duholov-promo list            — все коды: награда, сколько ввели, сроки, включён ли
+#   duholov-promo off КОД         — выключить (больше не вводится); on КОД — включить снова
+# --until 2026-12-31 — действует по 31 декабря включительно (по Москве); --from — с начала этого дня.
+# --item — предмет из ITEMS (www/js/data.js): charm, charm2, charm3, honey, herb, brew, deadwater, water, incense, farpass,
+#          gate, xpbrew, gift. Пример: duholov-promo add STREAM-1 50 --sparks 2000 --item charm3=5 --uses 300 --until 2026-11-30
+# --test (первым аргументом) — то же на тестовом контуре (контейнер dt-db).
+# Код — латинские буквы, цифры и дефис, 3–32 знака; игрок может вводить его в любом регистре.
+set -euo pipefail
+DB=supabase-db
+[ "${1:-}" = "--test" ] && { DB=dt-db; shift; }
+die() { echo "$*" >&2; exit 1; }
+sql() { docker exec -i "$DB" psql -U supabase_admin -d postgres -X -q -v ON_ERROR_STOP=1 -P pager=off "$@"; }
+usage() { sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+num() { [[ "$1" =~ ^[0-9]{1,6}$ ]] || die "$2: нужно целое число, а не «$1»"; }
+day() { [[ "$1" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && date -d "$1" >/dev/null 2>&1 || die "$2: дата в виде ГГГГ-ММ-ДД, а не «$1»"; }
+
+cmd=${1:-}; [ -n "$cmd" ] || usage; shift
+case "$cmd" in
+  add)
+    [ $# -ge 2 ] || usage
+    CODE=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]'); ZLAT=$2; shift 2
+    [[ "$CODE" =~ ^[A-Z0-9-]{3,32}$ ]] || die "Код: латинские буквы, цифры и дефис, 3–32 знака — «$CODE»"
+    num "$ZLAT" "Монеты"
+    USES= UNTIL= FROM= NOTE= RW=
+    ZLAT=$((10#$ZLAT)); [ "$ZLAT" -gt 0 ] && RW="\"zlat\":$ZLAT"
+    add() { [ $((10#$2)) -gt 0 ] || die "$1: от 1"; RW="${RW:+$RW,}\"$1\":$((10#$2))"; }
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --uses) USES=${2:-}; num "$USES" "--uses"; [ "$USES" -gt 0 ] || die "--uses: от 1"; shift 2 ;;
+        --until) UNTIL=${2:-}; day "$UNTIL" "--until"; shift 2 ;;
+        --from) FROM=${2:-}; day "$FROM" "--from"; shift 2 ;;
+        --note) NOTE=${2:-}; shift 2 ;;
+        --sparks) num "${2:-}" "--sparks"; add sparks "$2"; shift 2 ;;
+        --item) [[ "${2:-}" =~ ^([a-z0-9]{2,12})=([0-9]{1,6})$ ]] || die "--item: ключ=число, например charm3=5"; add "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"; shift 2 ;;
+        *) die "Непонятный параметр: $1" ;;
+      esac
+    done
+    [ -n "$RW" ] || die "Награда пустая: укажи монеты больше 0, --sparks или --item"
+    sql -tA -v code="$CODE" -v rw="{$RW}" -v uses="$USES" -v until="$UNTIL" -v from="$FROM" -v note="$NOTE" <<'SQL'
+select 'Создан код ' || public.promo_add(:'code', (:'rw')::jsonb, nullif(:'uses', '')::int,
+  (nullif(:'until', '')::date + 1)::timestamp at time zone 'Europe/Moscow', nullif(:'note', ''),
+  nullif(:'from', '')::date::timestamp at time zone 'Europe/Moscow') || ': ' || (:'rw');
+SQL
+    ;;
+  list)
+    sql <<'SQL'
+select code as "код", reward::text as "награда", used || coalesce(' из ' || max_uses, '') as "введён",
+       coalesce(to_char(starts_at at time zone 'Europe/Moscow', 'DD.MM.YYYY'), '') as "с",
+       coalesce(to_char(ends_at at time zone 'Europe/Moscow' - interval '1 second', 'DD.MM.YYYY HH24:MI'), '') as "по",
+       case when not active then 'выкл'
+            when ends_at is not null and now() >= ends_at then 'истёк'
+            when starts_at is not null and now() < starts_at then 'ещё не начался'
+            when max_uses is not null and used >= max_uses then 'закончился'
+            else 'действует' end as "статус",
+       coalesce(note, '') as "заметка"
+  from public.promo_codes order by created_at desc;
+SQL
+    ;;
+  off|on)
+    [ $# -eq 1 ] || usage
+    CODE=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+    R=$(sql -tA -v code="$CODE" <<SQL
+select public.promo_$cmd(:'code');
+SQL
+)
+    [ "$R" = "t" ] || die "Кода $CODE нет"
+    [ "$cmd" = off ] && echo "Код $CODE выключен" || echo "Код $CODE включён"
+    ;;
+  *) usage ;;
+esac

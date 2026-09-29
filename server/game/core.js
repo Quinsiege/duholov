@@ -145,10 +145,10 @@ const GameCore = {
     this.need(d <= max + Math.min(p.acc, 30) + 10, ru`Слишком далеко — подойди ближе`);
     return d;
   },
-  limit(ctx, key, max, windowMs) {
+  limit(ctx, key, max, windowMs, msg) {
     const rl = ctx.srv.rl = ctx.srv.rl || {}, r = rl[key];
     if (!r || ctx.now - r[1] > windowMs) { rl[key] = [1, ctx.now]; return; }
-    this.need(r[0] < max, ru`Слишком часто — передохни немного`);
+    this.need(r[0] < max, msg || ru`Слишком часто — передохни немного`);
     r[0]++;
   },
   // 4.26: ключ из запроса или чужих данных — только собственный ключ таблицы (не __proto__, constructor и т. п.)
@@ -395,6 +395,35 @@ const GameCore = {
     duels: ru`Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра`,
     invasions: ru`Сегодня отбито уже 6 вторжений — Навь вернётся завтра`,
     catches: ru`Сегодня поймано уже 120 духов — обереги отдохнут до завтра`,
+  },
+  // 5.x: промокоды (034_promo_codes.sql): причины отказа базы → текст для игрока
+  PROMO_MSG: {
+    not_found: ru`Такого промокода нет`,
+    inactive: ru`Промокод больше не действует`,
+    expired: ru`Промокод больше не действует`,
+    not_started: ru`Промокод ещё не начал действовать`,
+    exhausted: ru`Промокоды закончились`,
+    already: ru`Ты уже вводил этот промокод`,
+    off: ru`Промокоды пока недоступны — попробуй позже`,
+  },
+  PROMO_RE: /^[A-Z0-9-]{3,32}$/,
+  // Код, как его ввёл игрок → вид в базе: без пробелов, в верхнем регистре; русские буквы, похожие на латинские
+  // (набрал на русской раскладке), — латинскими. Не годится — null
+  promoCode(s) {
+    const c = String(s == null ? '' : s).slice(0, 64).replace(/\s+/g, '').toUpperCase()
+      .replace(/[АВЕКМНОРСТУХ]/g, x => 'ABEKMHOPCTYX'['АВЕКМНОРСТУХ'.indexOf(x)]).replace(/[‐-―−]/g, '-');
+    return this.PROMO_RE.test(c) ? c : null;
+  },
+  // Награда из базы → только известные ключи и разумные числа (база проверяет то же — promo_reward_ok)
+  promoReward(r) {
+    const rw = {};
+    for (const [k, n] of Object.entries(r && typeof r === 'object' ? r : {})) {
+      const v = Math.floor(+n);
+      if (!(v > 0)) continue;
+      if (k === 'zlat' || k === 'sparks') rw[k] = Math.min(v, 1000000);
+      else if (this.own(ITEMS, k)) rw[k] = Math.min(v, 1000);
+    }
+    return rw;
   },
   dayNeed(ctx, key) { this.need((this.dayc(ctx)[key] || 0) < Rules.DAILY[key], this.DAY_MSG[key]); },
   dayAdd(ctx, key) { const c = this.dayc(ctx); c[key] = (c[key] || 0) + 1; },
@@ -1348,6 +1377,31 @@ const GameCore = {
     },
     // 4.22: игрок увидел «+N монет» из Казны
     payAck() { delete S.d.payNew; return {}; },
+    // 5.x: промокод — награда один раз на учётную запись. Код гасит база (promo_redeem: есть ли, включён, сроки, лимит,
+    // не вводил ли этот игрок — одной транзакцией), награда пишется в прогресс, а после сохранения база отмечает её выданной
+    // (promo_done). Введённые коды помнит и прогресс (promo): не сохранилось — повторный ввод выдаст награду («again»),
+    // сохранилось, а отметка не дошла до базы, — «уже вводил». Перебор кодов — не больше 10 попыток в час
+    async promo(a, ctx) {
+      const code = this.promoCode(a.code);
+      this.need(code, ru`Такого промокода нет`);
+      this.limit(ctx, 'promo', 10, 3600000, ru`Слишком много попыток — попробуй через час`);
+      const mine = S.d.promo = S.d.promo && typeof S.d.promo === 'object' ? S.d.promo : {};
+      if (this.own(mine, code)) {
+        // отказ не сохраняет прогресс и не выполняет after — отметку в базе (если прошлая не дошла) ставим сразу
+        if (ctx.env && typeof ctx.env.promoDone === 'function') { try { await ctx.env.promoDone(code); } catch (e) {} }
+        this.fail(this.PROMO_MSG.already);
+      }
+      this.need(ctx.env && typeof ctx.env.promo === 'function', this.PROMO_MSG.off);
+      this.shared(ctx);
+      const r = (await ctx.env.promo(code)) || { error: 'not_found' };
+      if (r.error) this.fail(this.own(this.PROMO_MSG, r.error) ? this.PROMO_MSG[r.error] : this.PROMO_MSG.not_found);
+      const got = S.giveRewards(this.promoReward(r.reward));
+      mine[code] = ctx.now;
+      J.add('promo', { code, zlat: (got.find(x => x.k === 'zlat') || {}).n || 0 });
+      ctx.after.push(() => ctx.env.promoDone(code));
+      Bus.emit('promo', { code, got });
+      return { code, got };
+    },
     // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);

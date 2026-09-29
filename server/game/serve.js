@@ -909,6 +909,14 @@ function makeEnv(uid) {
     // 4.26: возвращённые (refunded) и уже начисленные, но ещё не списанные платежи; отметка «списано»
     async refundList() { return must(await db.from('payments').select('id, zlat').eq('user_id', uid).eq('status', 'refunded').eq('credited', true).eq('debited', false).limit(50)) || []; },
     async payDebited(ids) { must(await db.from('payments').update({ debited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
+    // 5.x: промокод (034_promo_codes.sql): погасить → { reward[, again] } | { error }; награда сохранена в прогрессе.
+    // Миграции ещё нет в базе — «промокоды пока недоступны», а не ошибка сервера
+    async promo(code) {
+      const { data, error } = await db.rpc('promo_redeem', { p_code: code, p_user: uid });
+      if (error) { if (error.code === 'PGRST202' || /promo_redeem/.test(error.message)) return { error: 'off' }; throw new Error(error.message); }
+      return data;
+    },
+    async promoDone(code) { must(await db.rpc('promo_done', { p_code: code, p_user: uid })); },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));

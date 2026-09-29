@@ -5381,3 +5381,17 @@ html.big-text .rm-secs .rm-it .rm-l { font-size: 13px; }
   .rm-secs .rm-it .rm-l { font-size: 11.5px; }
   .rm-secs .rm-it .tile-lvl { top: 41px; }
 }
+
+/* 5.x: промокод — окно ввода (Настройки, Лавка → Казна) и окно награды */
+.promo-modal .modal-body { text-align: center; }
+.promo-modal .promo-ico { width: 60px; height: 60px; margin: 0 auto 8px; filter: drop-shadow(0 4px 14px rgba(251, 191, 36, .35)); }
+.promo-modal .promo-ico > * { width: 100%; height: 100%; }
+.promo-modal .promo-in { margin: 6px 0 2px; text-transform: uppercase; letter-spacing: .16em; user-select: text; -webkit-user-select: text; }
+.promo-modal .promo-in::placeholder { letter-spacing: .3em; opacity: .4; }
+.promo-modal .promo-err { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: rgba(239, 68, 68, .14); border: 1px solid rgba(248, 113, 113, .35); color: #fecaca; font-size: 13px; }
+.promo-modal .promo-err[hidden] { display: none; }
+.promo-ok .promo-code { display: inline-block; margin: 0 auto 14px; padding: 5px 14px; border-radius: 10px; border: 1px dashed rgba(243, 207, 107, .6); background: rgba(243, 207, 107, .08); color: #fde68a; font-family: var(--f-head); font-weight: 700; letter-spacing: .14em; }
+.promo-ok .lvl-rw { margin-bottom: 12px; }
+.promo-ok .lvl-rw div { width: 96px; font-size: 13px; color: #fff; }
+.promo-ok .lvl-rw .art, .promo-ok .lvl-rw svg, .promo-ok .lvl-rw img { width: 52px; height: 52px; }
+.promo-q { margin-top: -12px; }
