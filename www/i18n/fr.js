@@ -308,6 +308,7 @@ I18N.dict = {
 "Врата Перепутицы":"Portes du Grand Embrouillamini",
 "Шаг — и перед тобой {0}":"Un pas — et voici {0}",
 "Шаг — и ты на месте":"Un pas — et tu y es",
+"Атлас":"Atlas",
 "монета":"pièce",
 "монеты":"pièces",
 "монет":"pièces",

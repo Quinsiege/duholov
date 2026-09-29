@@ -223,7 +223,7 @@ const MapView = {
   moveTo(lat, lng, jump) {
     this.pos = { lat, lng };
     if (typeof Fog !== 'undefined') Fog.visit(lat, lng); // 4.25.2: туман Нави расступается вокруг Ловчего и смыкается позади
-    this.glide(lat, lng, jump);
+    this.drawAt(lat, lng, jump); // 5.2: точка приходит каждый кадр (Walk) — рисуем сразу, без плавной «езды» от точки к точке
     const el = this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + this.rot}deg)`; // с учётом поворота карты
     if (this.tracking) this.updateTracker();
@@ -231,37 +231,31 @@ const MapView = {
 
   // Значок Ловчего, круг и карта — в точке (lat, lng) на экране
   drawAt(lat, lng, jump) {
-    const ll = [lat, lng];
+    const ll = L.latLng(lat, lng);
     this.shown = { lat, lng };
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
     if (this.follow) {
       if (jump) this.map.setView(ll, 17.5, { animate: false });
-      else this.map.panTo(ll, { animate: false });
+      else this.camTo(ll);
     }
   },
-  /* 4.24.1: точка приходила раз в секунду (GPS; 5.1 — джойстик даёт её каждый кадр), и значок прыгал от точки к точке. Теперь он плавно
-     едет к новой точке — линейная интерполяция (lerp) за то время, что прошло между точками: к приходу следующей точки
-     он как раз на месте, движение непрерывное. Далёкий скачок (больше GLIDE_MAX м) и первая точка — сразу, без езды */
-  GLIDE_MAX: 150,
-  glide(lat, lng, jump) {
-    const now = performance.now(), gap = this._glideAt ? now - this._glideAt : 0, from = this.shown;
-    this._glideAt = now;
-    cancelAnimationFrame(this._glideRaf); this._glideRaf = 0; clearTimeout(this._glideEnd);
-    const far = !from || U.dist(from.lat, from.lng, lat, lng) > this.GLIDE_MAX;
-    if (jump || far || gap < 60 || document.hidden) { this.drawAt(lat, lng, jump); return; }
-    const dur = Math.min(gap, 1500) * 0.95, fps = Cfg.s.eco ? 20 : 45, t0 = now; // режим экономии — реже кадры
-    let last = 0;
-    const step = t => {
-      const k = Math.min(1, (t - t0) / dur);
-      if (k < 1 && t - last < 1000 / fps) { this._glideRaf = requestAnimationFrame(step); return; }
-      last = t;
-      this.drawAt(from.lat + (lat - from.lat) * k, from.lng + (lng - from.lng) * k);
-      this._glideRaf = k < 1 ? requestAnimationFrame(step) : 0;
-    };
-    this._glideRaf = requestAnimationFrame(step);
-    // кадры могут не прийти (браузер их придерживает) — тогда значок всё равно встанет в точку
-    this._glideEnd = setTimeout(() => { if (this._glideRaf) { cancelAnimationFrame(this._glideRaf); this._glideRaf = 0; this.drawAt(lat, lng); } }, dur + 200);
+  /* 5.2: камера за Ловчим — без округления до целых пикселей. Leaflet (panTo) двигает карту целыми CSS-пикселями:
+     на шаге (~3 px/с) земля под Ловчим дёргалась на пиксель (на телефоне это 3 точки экрана) раз в треть секунды,
+     на бегу — чаще, и круг на земле «трясся». Теперь слой карты сдвигается ровно на пройденное (с точностью до точки
+     экрана), а значок и круг ставятся точно в точку опоры — они стоят на экране неподвижно, карта плывёт под ними. */
+  camTo(ll) {
+    const m = this.map;
+    if (!m._loaded || m._animatingZoom || (m._panAnim && m._panAnim._inProgress)) { m.panTo(ll, { animate: false }); return; }
+    // плоская карта — до точки экрана (чёткие подписи); наклонённая или повёрнутая и так рисуется не по сетке точек — без округления
+    const k = this.tilt || this.rot ? 1e3 : window.devicePixelRatio || 1, half = m.getSize().divideBy(2), pane = m._getMapPanePos();
+    const lp = m.project(ll, m.getZoom()).subtract(m.getPixelOrigin()); // точка Ловчего в слое карты, без округления
+    const want = L.point(Math.round((half.x - lp.x) * k) / k, Math.round((half.y - lp.y) * k) / k);
+    const d = pane.subtract(want);
+    if (Math.abs(d.x) > half.x || Math.abs(d.y) > half.y) { m.panTo(ll, { animate: false }); return; } // далёкий скачок — как раньше
+    if (d.x || d.y) { m._rawPanBy(d); m.fire('move').fire('moveend'); }
+    const at = half.subtract(want); // = точка Ловчего в слое, до точки экрана
+    for (const mk of [this.player, this.range]) if (mk._icon) { L.DomUtil.setPosition(mk._icon, at); this.upright(mk); }
   },
 
   /* 5.1: Ловчий идёт джойстиком (walk.js): каждый кадр — новая точка; значок поворачивается по направлению, шагает или бежит */
@@ -317,15 +311,7 @@ const MapView = {
     // значки на карте стоят прямо: поворот в обратную сторону вокруг точки привязки;
     // 4.11: при наклоне ещё и встают с земли лицом к игроку (плоские круги — зоны, круг Ловчего — лежат на земле)
     const setPos = L.Marker.prototype._setPos;
-    L.Marker.prototype._setPos = function (p) {
-      setPos.call(this, p);
-      const el = this._icon;
-      if (!el || this._map !== self.map || (!self.rot && !self.tilt)) return;
-      el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
-      if (self.rot) el.style.transform += ` rotate(${-self.rot}deg)`;
-      // и чуть приподняты над землёй: иначе нижняя половина значка ушла бы «под» плитки карты
-      if (self.tilt && !this.options.flat) el.style.transform += ` rotateX(${-self.tilt}deg) translateZ(36px)`;
-    };
+    L.Marker.prototype._setPos = function (p) { setPos.call(this, p); self.upright(this); };
     // жест: два пальца поворачиваются — карта за ними (с порогом, чтобы щипок-масштаб не крутил карту)
     let g = null;
     const ang = t => Math.atan2(t[1].clientY - t[0].clientY, t[1].clientX - t[0].clientX) * 180 / Math.PI;
@@ -406,6 +392,15 @@ const MapView = {
     const c = U.$('#compassBtn');
     if (c) { c.firstElementChild.style.transform = `rotate(${r}deg)`; c.classList.toggle('turned', !!r); }
     if (this.tracking) this.updateTracker();
+  },
+  // значок на повёрнутой/наклонённой карте стоит прямо (см. initRotate)
+  upright(mk) {
+    const el = mk._icon;
+    if (!el || mk._map !== this.map || (!this.rot && !this.tilt)) return;
+    el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
+    if (this.rot) el.style.transform += ` rotate(${-this.rot}deg)`;
+    // и чуть приподняты над землёй: иначе нижняя половина значка ушла бы «под» плитки карты
+    if (this.tilt && !mk.options.flat) el.style.transform += ` rotateX(${-this.tilt}deg) translateZ(36px)`;
   },
   northUp() {
     const from = this.rot, t0 = performance.now();

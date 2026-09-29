@@ -118,6 +118,7 @@
   "k": "{0} мин",
   "at": [
    "www/js/alatyr.js:27",
+   "www/js/atlas.js:695",
    "www/js/ui.js:248"
   ],
   "ctx": "left(ms) { return ms >= 3600000 ? U.fmtTime(ms) : ru`${Math.max(1, Math.ceil(ms / 60000))} мин`; },"
@@ -1981,7 +1982,7 @@
   "at": [
    "www/js/atlas.js:348",
    "www/js/atlas.js:352",
-   "www/js/atlas.js:673",
+   "www/js/atlas.js:684",
    "www/js/book.js:123"
   ],
   "ctx": "const el = this.el = U.el(`<div class=\"atlas${opts.first ? ' first' : ''}\" role=\"dialog\" aria-modal=\"true\" aria-label=\"${ru`Атлас мира`}\">"
@@ -2212,6 +2213,13 @@
    "www/js/atlas.js:654"
   ],
   "ctx": "<div class=\"ag-txt\"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class=\"ag-flash\"></i></div>`);"
+ },
+ {
+  "k": "Атлас",
+  "at": [
+   "www/js/atlas.js:686"
+  ],
+  "ctx": "<span class=\"ab-t\">${ru`Атлас`}</span><span class=\"ab-m\"></span></button>`);"
  },
  {
   "k": "монета",
@@ -4137,7 +4145,7 @@
    "www/js/book.js:180",
    "www/js/book.js:180",
    "www/js/data.js:496",
-   "www/js/map.js:503"
+   "www/js/map.js:498"
   ],
   "ctx": "return [[ru`Разлом`, this.cards([[Art.riftIcon(3), ru`Разлом`, ru`Портал со звёздами у святилища, открыт час. Внутри — босс из иного мира. Собери команду из трёх духов.`],"
  },
@@ -13330,7 +13338,7 @@
   "k": "Загружаю карту…",
   "at": [
    "www/js/loader.js:122",
-   "www/js/main.js:23"
+   "www/js/main.js:24"
   ],
   "ctx": "this.set(72 + frac * 26, ru`Загружаю карту…`); // 5.1: место Ловчего известно сразу (walk.js) — ждём только подложку"
  },
@@ -13834,59 +13842,59 @@
  {
   "k": "Нет связи с Навью",
   "at": [
-   "www/js/main.js:16",
-   "www/js/main.js:54"
+   "www/js/main.js:17",
+   "www/js/main.js:55"
   ],
   "ctx": "const f = U.el(`<div class=\"fatal\"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class=\"btn primary\">${ru`Повторить`}</button></div>`);"
  },
  {
   "k": "Не удалось загрузить карту. Проверь подключение к интернету.",
   "at": [
-   "www/js/main.js:16"
+   "www/js/main.js:17"
   ],
   "ctx": "const f = U.el(`<div class=\"fatal\"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class=\"btn primary\">${ru`Повторить`}</button></div>`);"
  },
  {
   "k": "Повторить",
   "at": [
-   "www/js/main.js:16",
-   "www/js/main.js:54",
-   "www/js/main.js:90"
+   "www/js/main.js:17",
+   "www/js/main.js:55",
+   "www/js/main.js:91"
   ],
   "ctx": "const f = U.el(`<div class=\"fatal\"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class=\"btn primary\">${ru`Повторить`}</button></div>`);"
  },
  {
   "k": "{0} готов вылупиться!",
   "at": [
-   "www/js/main.js:38"
+   "www/js/main.js:39"
   ],
   "ctx": "Bus.on('cocoonReady', c => UI.toast(ru`${COCOON_TIERS[c.km].name} готов вылупиться!`, 'good'));"
  },
  {
   "k": "Коконов готово: {0}. Загляни в меню!",
   "at": [
-   "www/js/main.js:40"
+   "www/js/main.js:41"
   ],
   "ctx": "if (ready) setTimeout(() => UI.toast(ru`Коконов готово: ${ready}. Загляни в меню!`, 'good'), 1500);"
  },
  {
   "k": "Прогресс хранится на сервере игры, поэтому нужен интернет.",
   "at": [
-   "www/js/main.js:54"
+   "www/js/main.js:55"
   ],
   "ctx": "const el = U.el(`<div class=\"fatal\"><h2>${ru`Нет связи с Навью`}</h2><p>${U.esc(msg)}</p><p class=\"small\">${ru`Прогресс хранится на сервере игры, поэтому нужен интернет.`}</p><button class=\"btn primary\">${ru`Повторить`}<"
  },
  {
   "k": "Проверяю обновления…",
   "at": [
-   "www/js/main.js:61"
+   "www/js/main.js:62"
   ],
   "ctx": "Loader.show(ru`Проверяю обновления…`); Loader.set(6);"
  },
  {
   "k": "Загружаю обновление {0}…",
   "at": [
-   "www/js/main.js:64",
+   "www/js/main.js:65",
    "www/js/updater.js:56"
   ],
   "ctx": "if (upd) { Loader.set(30, ru`Загружаю обновление ${upd.version}…`); await Updater.apply(upd.version); return; }"
@@ -13894,71 +13902,71 @@
  {
   "k": "Связь с Навью…",
   "at": [
-   "www/js/main.js:65",
-   "www/js/main.js:69"
+   "www/js/main.js:66",
+   "www/js/main.js:70"
   ],
   "ctx": "Loader.show(ru`Связь с Навью…`); Loader.set(12);"
  },
  {
   "k": "Прогресс загружен",
   "at": [
-   "www/js/main.js:72"
+   "www/js/main.js:73"
   ],
   "ctx": "Loader.set(45, ru`Прогресс загружен`);"
  },
  {
   "k": "Не получилось запустить игру",
   "at": [
-   "www/js/main.js:90"
+   "www/js/main.js:91"
   ],
   "ctx": "const f = U.el(`<div class=\"fatal\"><h2>${ru`Не получилось запустить игру`}</h2><p>${ru`Проверь подключение к интернету и попробуй ещё раз.`}</p><button class=\"btn primary\">${ru`Повторить`}</button></div>`);"
  },
  {
   "k": "Проверь подключение к интернету и попробуй ещё раз.",
   "at": [
-   "www/js/main.js:90"
+   "www/js/main.js:91"
   ],
   "ctx": "const f = U.el(`<div class=\"fatal\"><h2>${ru`Не получилось запустить игру`}</h2><p>${ru`Проверь подключение к интернету и попробуй ещё раз.`}</p><button class=\"btn primary\">${ru`Повторить`}</button></div>`);"
  },
  {
   "k": "С",
   "at": [
-   "www/js/map.js:428"
+   "www/js/map.js:423"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "В",
   "at": [
-   "www/js/map.js:428"
+   "www/js/map.js:423"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Ю",
   "at": [
-   "www/js/map.js:428"
+   "www/js/map.js:423"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "З",
   "at": [
-   "www/js/map.js:428"
+   "www/js/map.js:423"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "{0}: {1}. Подойди ближе — нужно {2} м",
   "at": [
-   "www/js/map.js:504"
+   "www/js/map.js:499"
   ],
   "ctx": "UI.toast(ru`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);"
  },
  {
   "k": "Дух уже растворился в воздухе…",
   "at": [
-   "www/js/map.js:509",
+   "www/js/map.js:504",
    "server/game/core.js:760"
   ],
   "ctx": "if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }"
@@ -13966,7 +13974,7 @@
  {
   "k": "Капища открываются с {0} уровня Ловчего",
   "at": [
-   "www/js/map.js:513",
+   "www/js/map.js:508",
    "server/game/core.js:1213"
   ],
   "ctx": "if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }"
@@ -13974,21 +13982,21 @@
  {
   "k": "Цель",
   "at": [
-   "www/js/map.js:555"
+   "www/js/map.js:550"
   ],
   "ctx": "this.tracking = { id: e.id, type: e.type, lat: e.lat, lng: e.lng, sid: e.sid, name: e.type === 'spirit' ? SP[e.sid].name : e.name || ru`Цель` };"
  },
  {
   "k": "{0} растворился — след потерян",
   "at": [
-   "www/js/map.js:570"
+   "www/js/map.js:565"
   ],
   "ctx": "UI.toast(ru`${t.name} растворился — след потерян`);"
  },
  {
   "k": "Ты на месте — коснись цели!",
   "at": [
-   "www/js/map.js:584"
+   "www/js/map.js:579"
   ],
   "ctx": "box.querySelector('.tr-dist').textContent = near ? ru`Ты на месте — коснись цели!` : U.fmtDist(d);"
  },

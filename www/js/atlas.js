@@ -666,12 +666,24 @@ const Atlas = {
   },
 
   /* ---------- глобус на карте: справа вверху, под погодой и плашками недели (без подложки, как они) ---------- */
-  // пока Врата отдыхают — золотое кольцо вокруг глобуса убывает, рядом минуты
+  // 5.2: значок как у плашки недели — золотой круг с тёмным рисунком (настольный глобус), справа подпись «Атлас»;
+  // пока Врата отдыхают — вокруг значка убывает тонкое золотое кольцо, в подписи — минуты
+  hudIcon() {
+    const p = 'ahi' + (this._iN = (this._iN || 0) + 1);
+    return `<svg class="ab-g" viewBox="0 0 24 24" aria-hidden="true"><defs>
+      <radialGradient id="${p}s" cx=".34" cy=".28" r=".8"><stop offset="0" stop-color="#fff6d6"/><stop offset=".4" stop-color="#f3cf6b"/><stop offset="1" stop-color="#a8741f"/></radialGradient>
+      <clipPath id="${p}c"><circle cx="12" cy="11" r="6"/></clipPath></defs>
+      <circle cx="12" cy="12" r="12" fill="url(#${p}s)"/>
+      <g fill="none" stroke="#1b1030" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="11" r="6" fill="#1b1030" fill-opacity=".12" stroke-width="1.5"/>
+        <g clip-path="url(#${p}c)" transform="rotate(-22 12 11)" stroke-width="1.15"><ellipse cx="12" cy="11" rx="2.9" ry="6"/><path d="M12 3v16M4 8.9h16M4 13.1h16"/></g>
+        <path d="M4.9 13.6A7.6 7.6 0 0 0 18.6 7M12 18.6v2M9.6 20.6h4.8" stroke-width="1.5"/></g></svg>`;
+  },
   mountHud() {
     const col = U.$('#hud .hud-right'); if (!col || U.$('#atlasBtn')) return;
-    const R = 21, C = (2 * Math.PI * R).toFixed(1);
-    const b = U.el(`<button id="atlasBtn" class="atlas-btn" aria-label="${ru`Атлас мира`}">${this.icon()}
-      <svg class="ab-cd" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="${R}" class="bg"/><circle cx="24" cy="24" r="${R}" class="fg" stroke-dasharray="0 ${C}"/></svg><b class="ab-min"></b></button>`);
+    const R = 13, C = (2 * Math.PI * R).toFixed(1);
+    const b = U.el(`<button id="atlasBtn" class="atlas-btn ab2" aria-label="${ru`Атлас мира`}"><span class="ab-i">${this.hudIcon()}
+      <svg class="ab-ring" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="${R}" class="bg"/><circle cx="15" cy="15" r="${R}" class="fg" stroke-dasharray="0 ${C}"/></svg></span>
+      <span class="ab-t">${ru`Атлас`}</span><span class="ab-m"></span></button>`);
     b.onclick = () => { Sfx.init(); this.open(); };
     col.appendChild(b);
     const tick = () => {
@@ -680,7 +692,7 @@ const Atlas = {
       if (!on) return;
       const frac = Math.max(0, Math.min(1, cd / (this.tpMin() * 60000)));
       b.querySelector('.fg').setAttribute('stroke-dasharray', `${(C * frac).toFixed(1)} ${C}`);
-      b.querySelector('.ab-min').textContent = this.cdMin();
+      b.querySelector('.ab-m').textContent = ru`${this.cdMin()} мин`;
     };
     tick();
     setInterval(() => { if (!document.hidden) tick(); }, 20000);

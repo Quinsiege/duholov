@@ -308,6 +308,7 @@ I18N.dict = {
 "Врата Перепутицы":"Büyük Düğüm Kapıları",
 "Шаг — и перед тобой {0}":"Bir adım — ve karşında {0}",
 "Шаг — и ты на месте":"Bir adım — ve oradasın",
+"Атлас":"Atlas",
 "монета":"sikke",
 "монеты":"sikke",
 "монет":"sikke",

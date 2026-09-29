@@ -5156,3 +5156,26 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .calm .atlas, .calm .at-map, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
 .eco .at-rim, .eco .ag-ring .o, .eco .at-cdr .fg { filter: none; }
 @media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }
+
+/* ===== 5.2: движение и значок Атласа ===== */
+/* значок Ловчего на ходу — без покачивания (на бегу оно читалось как дрожь) и без скачка «пульса»: смена длительности
+   его анимации перезапускала её с другого места. Бег — только чуть ярче свечение, плавно */
+.mk-player.walk .dot, .mk-player.run .dot { animation: none; }
+.mk-player.walk .pulse, .mk-player.run .pulse { animation-duration: 2s; }
+.mk-player .dot { transition: box-shadow .5s; }
+.mk-player.run .dot { box-shadow: 0 0 0 2px #2a1508, 0 0 22px rgba(94, 234, 212, 1), 0 3px 6px rgba(0, 0, 0, .5); }
+/* глобус на карте: значок как у плашки недели (20 px), справа подпись «Атлас» — тем же шрифтом, по её левому краю */
+#hud .hud-right > #atlasBtn.ab2 { position: relative; display: flex; align-items: center; gap: 7px; width: auto; height: auto; margin: 2px 0 0 4px !important; padding: 3px 0;
+  border: 0; background: none; filter: none; color: #fff; font-family: var(--f-head); font-size: 11.5px; font-weight: 700; line-height: 14px; white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 10px rgba(8, 4, 24, .6); transform-origin: 10px 50%; transition: transform .15s; -webkit-tap-highlight-color: transparent; }
+#hud #atlasBtn.ab2::before { content: ''; position: absolute; inset: -6px -4px -6px -8px; } /* пальцу — побольше места */
+#hud #atlasBtn.ab2:active { transform: scale(.94); }
+#hud #atlasBtn .ab-i { position: relative; flex: none; width: 20px; height: 20px; }
+#hud #atlasBtn .ab-g { display: block; width: 20px; height: 20px; filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .8)) drop-shadow(0 0 6px rgba(8, 4, 24, .45)); }
+/* Врата отдыхают: тонкое кольцо вокруг значка убывает, в подписи — минуты (золотом, как числа) */
+#hud #atlasBtn .ab-ring { position: absolute; left: -5px; top: -5px; width: 30px; height: 30px; transform: rotate(-90deg); display: none; overflow: visible; pointer-events: none; }
+#hud #atlasBtn .ab-ring .bg { fill: none; stroke: rgba(8, 4, 24, .5); stroke-width: 2.2; }
+#hud #atlasBtn .ab-ring .fg { fill: none; stroke: #fde68a; stroke-width: 2.2; stroke-linecap: round; filter: drop-shadow(0 0 2px rgba(251, 191, 36, .7)); }
+#hud #atlasBtn .ab-m { display: none; margin-left: -3px; color: #fde68a; }
+#hud #atlasBtn .ab-m::before { content: '·'; margin-right: 4px; color: #fff; opacity: .75; }
+#hud #atlasBtn.rest .ab-ring, #hud #atlasBtn.rest .ab-m { display: block; }

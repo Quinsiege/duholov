@@ -119,15 +119,18 @@ const Fog = {
   // прогалина вокруг игрока: при движении перерисовываются только плитки рядом
   liveR() { return this.reach() + this.LIVE; },
   moveLive(lat, lng) {
-    const prev = this.live;
+    // 5.2: сверка — с местом последней перерисовки просвета, а не с прошлым кадром: джойстик сдвигает Ловчего каждый кадр
+    // меньше чем на 2 м, и просвет иначе почти не перерисовывался
+    const at = this._liveAt;
     this.live = { lat, lng };
-    if (prev && U.dist(prev.lat, prev.lng, lat, lng) < 2) return;
-    if (!this._livePrev) this._livePrev = prev;
+    if (at && U.dist(at.lat, at.lng, lat, lng) < 2) return;
+    if (!this._livePrev) this._livePrev = at;
     if (this._liveT) return;
     this._liveT = setTimeout(() => {
       this._liveT = 0;
       const a = this._livePrev;
       this._livePrev = null;
+      this._liveAt = this.live;
       this.touch(this.live, this.liveR());
       if (a) this.touch(a, this.liveR());
     }, 200);
