@@ -5405,7 +5405,7 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
    5.2: панель — на всю высоту экрана, от верхнего края до кнопки закрытия, без пустот: разделы разнесены по высоте поровну,
    размер кружков (--rmc) — по высоте экрана (панель — контейнер размера: 1cqh — сотая её высоты без отступов).
    С обучением и без — одно и то же место: подсказка обучения при открытом меню — пузырь у подсвеченного пункта (Tut.track) */
-.sheet-wrap.rm-wrap { --rmc: 58px; padding-top: calc(10px + var(--st)); padding-bottom: calc(106px + var(--sb)); }
+.sheet-wrap.rm-wrap { --rmc: 58px; padding-top: calc(28px + var(--st)); padding-bottom: calc(124px + var(--sb)); } /* 5.1.10: от краёв — 28 px сверху и над кнопкой закрытия */
 /* 6 разделов: заголовок с отступом 20px, кружок, подпись 20px (у «Книги Ордена» — ещё строка 15px), между разделами — не меньше 6px */
 @supports (height: 1cqh) { .sheet-wrap.rm-wrap { container-type: size; --rmc: clamp(44px, calc((100cqh - 285px) / 6), 64px); } }
 .rm-grid.rm-secs { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: space-between; gap: 6px; max-width: 360px;
