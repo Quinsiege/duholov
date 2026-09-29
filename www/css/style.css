@@ -5214,7 +5214,7 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 #hud #atlasBtn.rest > svg.mi { opacity: .9; }
 /* Книга Ордена → «Мир Духолова» → «Врата»: кнопка Атласа — как у Алатыря */
 .bk-atlas { display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
-.bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; }
+.bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; } .bk-atlas .ab-g { width: 26px; height: 26px; flex: none; filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .6)); } /* 5.1.11: значок как на карте */
 /* меньше движения и экономия батареи */
 .calm .atlas *, .eco .atlas *, .calm .at-gate *, .eco .at-gate * { animation: none !important; }
 .calm .atlas, .calm .at-panel, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
