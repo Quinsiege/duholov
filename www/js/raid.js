@@ -55,13 +55,14 @@ const Raid = {
     const html = `
       <div class="det det2 rift2 t${T2}">
         <div class="dt-hero">
-          <div class="det-art rift2-art"><div class="rift-portal">${Art.riftIcon(T2)}</div><div class="rift-boss">${Art.spirit(r.boss)}</div></div>
+          <div class="det-art rift2-art"><div class="rift-portal">${Art.riftIcon(T2, r.myth)}</div><div class="rift-boss">${Art.spirit(r.boss)}</div></div>
           <div class="dt-info">
             <div class="det-hp">${T.name} <span class="stars">${'★'.repeat(T2)}</span></div>
             <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
             <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
             <div class="rift2-left">${ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
             ${r.place ? `<div class="rift2-place">${UI.I.pin}${U.esc(r.place)}</div>` : ''}
+            <div class="rift2-place place-kind">${MYTH_PLACES[r.myth || 'slavic'].rift}</div>
           </div>
         </div>
         <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="boss">${ru`Босс`}</button><button data-tab="loot">${ru`Награда`}</button></div>
@@ -77,6 +78,7 @@ const Raid = {
             <div class="rift2-acts">${goBtn}${far ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
           </div>
           <div class="dt-pane" data-pane="boss">
+            <p class="det-desc place-desc">${MYTH_PLACES[r.myth || 'slavic'].riftDesc}</p>
             <div class="dt-scroll dt-rows">
               ${row(ru`Стихия`, `${Art.elIcon(el, 16)} ${ELEMENTS[el].name}`)}
               ${row(ru`Слабость`, counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' '))}
@@ -100,7 +102,7 @@ const Raid = {
           </div>
         </div>
       </div>`;
-    const scr = UI.screen(ru`Разлом`, html, 'rift-screen det-screen');
+    const scr = UI.screen(MYTH_PLACES[r.myth || 'slavic'].rift, html, 'rift-screen det-screen'); // 4.28: свой у каждой мифологии
     scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
     scr.querySelector('.dt-tabs').addEventListener('click', e => {
       const b = e.target.closest('[data-tab]'); if (!b) return;
@@ -157,7 +159,7 @@ const Raid = {
         <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : ru`Все`} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>
-          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || ru`Капище`)}</small></div>
+          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || MYTH_PLACES[r.myth || 'slavic'].shrine)}</small></div>
           <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
           : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
         ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}

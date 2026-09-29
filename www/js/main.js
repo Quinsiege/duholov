@@ -25,7 +25,7 @@ window.addEventListener('load', () => {
     Poi.init();
     MapView.init();
     Poi.ensure();
-    Loader.waitMap().then(() => Loader.hide());
+    Loader.waitMap().then(() => { Loader.hide(); Intro.later(); }); // 4.28: уже играющим — книга-вступление один раз, когда нет других окон
     setTimeout(() => Propose.checkResults(), 6000);
     setInterval(() => { if (!document.hidden) Propose.checkResults(); }, 3 * 60000);
     setTimeout(() => Friends.sync(), 4000); // взаимная дружба и подарки

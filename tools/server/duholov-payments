@@ -16,7 +16,7 @@ METHOD() { case "$1" in sbp) echo "СБП";; bank_card) echo "карта";; sber
 TITLE="Игровая валюта в игре «Духолов»"
 
 if [ "${1:-}" = "test" ]; then send "🧪 Духолов: так будут выглядеть оплаты
-💰 Оплата 99 ₽ · СБП · 100 златников
+💰 Оплата 99 ₽ · СБП · 100 монет
 Игрок: Пример · 28.09 03:05 МСК
 🧾 Чек в «Мой налог» пробит: https://lknpd.nalog.ru/…"; exit 0; fi
 
@@ -57,7 +57,7 @@ if [ -n "$INN" ] && [ -n "$REFRESH" ]; then
       rm -f "$S/npd-alarm"
       while IFS='|' read -r id amount zlat at; do
         [ -n "$id" ] || continue
-        body=$(jq -nc --arg t "$at" --arg rq "$(now_iso)" --arg n "$TITLE ($zlat златников)" --argjson a "$amount" \
+        body=$(jq -nc --arg t "$at" --arg rq "$(now_iso)" --arg n "$TITLE ($zlat монет)" --argjson a "$amount" \
           '{operationTime: $t, requestTime: $rq, services: [{name: $n, amount: $a, quantity: 1}], totalAmount: ($a | tostring),
             client: {contactPhone: null, displayName: null, inn: null, incomeType: "FROM_INDIVIDUAL"}, paymentType: "WIRE", ignoreMaxTotalIncomeRestriction: false}')
         r=$(npost /v1/income "$body" "$TOK"); uuid=$(echo "$r" | jq -r '.approvedReceiptUuid // empty' 2>/dev/null)
@@ -94,7 +94,7 @@ while IFS='|' read -r id st amount zlat method name at day rec canc; do
     if [ -n "$rec" ] && [ "$rec" != "manual" ]; then chk="🧾 Чек в «Мой налог» пробит: https://lknpd.nalog.ru/api/v1/receipt/$INN/$rec/print"
     elif [ "$rec" = "manual" ]; then chk="🧾 Чек отмечен как пробитый вручную"
     else chk="Чек в «Мой налог»: «$TITLE», $sum ₽, физлицо, дата $day"; fi
-    text="💰 Оплата $sum ₽ · $(METHOD "$method") · $zlat златников
+    text="💰 Оплата $sum ₽ · $(METHOD "$method") · $zlat монет
 Игрок: $name · $at МСК
 $chk"
   else

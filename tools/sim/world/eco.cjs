@@ -1,6 +1,6 @@
 'use strict';
 // 4.16: сводка по экономике мира: node tools/sim/world/eco.cjs [result.json]
-// Искры (приход, траты, запас), бесплатные златники в день и откуда они, предметы за 30 игровых дней, переполнение сумки
+// Искры (приход, траты, запас), бесплатные монеты в день и откуда они, предметы за 30 игровых дней, переполнение сумки
 const fs = require('fs'), path = require('path');
 const file = process.argv[2] || path.join(__dirname, 'out', 'result.json');
 const r = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -43,7 +43,7 @@ for (const [k, v] of Object.entries(out)) {
   console.log(`искры: сейчас ${v.sparksNow}, на 40-м ${v.sparksAt40}, приход ${v.sparksInDay}/день, траты ${v.sparksOutDay}/день`);
   console.log('  приход:', JSON.stringify(v.sparksIn));
   console.log('  траты:', JSON.stringify(v.sparksOut));
-  console.log(`златники бесплатно: ${v.zlatFreeDay}/день, на руках ${v.zlatNow}`, JSON.stringify(v.zlatSrc));
+  console.log(`монеты бесплатно: ${v.zlatFreeDay}/день, на руках ${v.zlatNow}`, JSON.stringify(v.zlatSrc));
   console.log('за 30 дней:', JSON.stringify(v.per30), `Мёртвой воды выпито ${v.deadUsed30}, лечений ${v.heals30}, выброшено ${v.discarded30}`);
   console.log(`сумка сверх лимита (макс.): ${v.bagOverMax}, посылка (макс.): ${v.parcelMax}`);
 }

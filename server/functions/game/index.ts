@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.27.0';
+const APP_VERSION = '5.0.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -145,6 +145,633 @@ ru.k = (s, ...v) => typeof s === 'string' ? s : s.reduce((a, p, i) => a + v[i - 
 
 I18N.init();
 
+// ===== www/js/myth-greek.js =====
+/* 4.28: духи и боги греческой мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).greek = [
+  // ---------- ОГОНЬ: Химерёнок → Химера ----------
+  { id: 'gr_himerenok', name: ru`Химерёнок`, el: 'fire', rar: 1, stage: 1, fam: 'gr_himerenok', evo: 'gr_himera', cost: 25, base: [120, 94, 106],
+    desc: ru`Львёнок с козьей головкой на спине и хвостом-змейкой — три характера в одном. Греется у жаровен с каштанами и чихает искрами.`,
+    look: { shape: 'round', c1: '#ffc46b', c2: '#d9661f', c3: '#ff8a1a', eyes: 'big', mouth: 'cat', back: ['mane', 'cattail'], feats: ['horns', 'cheeks'] } },
+  { id: 'gr_himera', name: ru`Химера`, el: 'fire', rar: 2, stage: 2, fam: 'gr_himerenok', base: [174, 132, 148],
+    desc: ru`Подросший Химерёнок. Лев рычит, коза бодается, змея шипит — договориться им удаётся только насчёт гироса. Пышет огнём, как в древней Ликии.`,
+    look: { shape: 'blob', c1: '#ffb04a', c2: '#b8410c', c3: '#ff6a1a', eyes: 'angry', mouth: 'teeth', back: ['mane', 'cattail', 'horns'], feats: ['flame'] } },
+
+  // ---------- ВОДА: Гиппокампчик → Гиппокамп ----------
+  { id: 'gr_gippokampik', name: ru`Гиппокампчик`, el: 'water', rar: 1, stage: 1, fam: 'gr_gippokampik', evo: 'gr_gippokamp', cost: 25, base: [104, 114, 122],
+    desc: ru`Морской жеребёнок с рыбьим хвостом. Живёт в городских фонтанах и ловит монетки, которые бросают туристы, — на счастье.`,
+    look: { shape: 'drop', c1: '#8ef0e6', c2: '#0e8a9a', c3: '#38bdf8', eyes: 'big', mouth: 'smile', back: ['mane', 'ripples'], feats: ['cheeks'] } },
+  { id: 'gr_gippokamp', name: ru`Гиппокамп`, el: 'water', rar: 2, stage: 2, fam: 'gr_gippokampik', base: [154, 160, 168],
+    desc: ru`Морской конь из упряжки Посейдона. Резвится в гаванях, обгоняет паромы и катает по волнам тех, кто угостит его яблоком.`,
+    look: { shape: 'blob', c1: '#6ee7d8', c2: '#0f5f7a', c3: '#38bdf8', eyes: 'round', mouth: 'smile', back: ['mane', 'tail', 'ripples'], feats: ['bubbles'] } },
+
+  // ---------- ЛЕС: Сатирёнок → Сатир → Пан ----------
+  { id: 'gr_satirenok', name: ru`Сатирёнок`, el: 'forest', rar: 1, stage: 1, fam: 'gr_satirenok', evo: 'gr_satir', cost: 25, base: [110, 108, 118],
+    desc: ru`Козлоногий малыш с рожками и кудряшками. Скачет по ступеням амфитеатров и дудит в свирель, пока его не прогонят.`,
+    look: { shape: 'round', c1: '#e8b98a', c2: '#8a5a2e', c3: '#84cc16', eyes: 'big', mouth: 'smile', back: ['ears'], feats: ['horns', 'leaves', 'cheeks'] } },
+  { id: 'gr_satir', name: ru`Сатир`, el: 'forest', rar: 2, stage: 2, fam: 'gr_satirenok', evo: 'gr_pan', cost: 100, base: [158, 150, 156],
+    desc: ru`Весельчак из свиты Диониса. Обожает уличные праздники и виноград на балконах, а играет на свирели так, что прохожие пускаются в пляс.`,
+    look: { shape: 'tall', c1: '#d9a577', c2: '#6b4220', c3: '#65a30d', eyes: 'round', mouth: 'smile', back: ['ears'], feats: ['horns', 'leaves'] } },
+  { id: 'gr_pan', name: ru`Пан`, el: 'forest', rar: 3, stage: 3, fam: 'gr_satirenok', base: [218, 204, 222],
+    desc: ru`Козлоногий бог лесов и пастбищ, мастер тростниковой свирели. Не буди его в полдень: крикнет так, что весь сквер охватит паника.`,
+    look: { shape: 'robe', c1: '#b8834f', c2: '#4a2c14', c3: '#4d7c0f', eyes: 'angry', mouth: 'smile', back: ['horns'], feats: ['beard', 'leaves'] } },
+
+  // ---------- ВЕТЕР: Гарпёнок → Гарпия → Аэлло ----------
+  { id: 'gr_garpyonok', name: ru`Гарпёнок`, el: 'wind', rar: 1, stage: 1, fam: 'gr_garpyonok', evo: 'gr_garpiya', cost: 25, base: [122, 92, 104],
+    desc: ru`Пушистый птенчик с девчачьим личиком. Выхватывает картошку фри из рук туристов быстрее любой чайки.`,
+    look: { shape: 'bird', c1: '#dcd6fb', c2: '#7c6fcf', c3: '#fbcfe8', eyes: 'big', mouth: 'smile', back: ['wings', 'hair'], feats: ['cheeks'] } },
+  { id: 'gr_garpiya', name: ru`Гарпия`, el: 'wind', rar: 2, stage: 2, fam: 'gr_garpyonok', evo: 'gr_aello', cost: 100, base: [172, 128, 144],
+    desc: ru`Крылатая похитительница, быстрая, как порыв ветра. Уносит со столиков кафе всё, что плохо лежит, — от салфеток до шляп.`,
+    look: { shape: 'bird', c1: '#c7c2f5', c2: '#4c3fa8', c3: '#f0abfc', eyes: 'angry', mouth: 'smile', back: ['wings', 'hair', 'tail'], feats: ['swirl'] } },
+  { id: 'gr_aello', name: ru`Аэлло`, el: 'wind', rar: 3, stage: 3, fam: 'gr_garpyonok', base: [238, 164, 188],
+    desc: ru`Старшая из гарпий, её имя значит «Вихрь». Когда она проносится над набережной, зонтики кафе взлетают, как стая чаек.`,
+    look: { shape: 'bird', c1: '#a5b4fc', c2: '#312e81', c3: '#e0e7ff', eyes: 'angry', mouth: 'teeth', back: ['wings', 'hair', 'tail', 'aura'], feats: ['crest', 'swirl'] } },
+
+  // ---------- ТОК: Циклопчик → Циклоп ----------
+  { id: 'gr_ciklopchik', name: ru`Циклопчик`, el: 'current', rar: 1, stage: 1, fam: 'gr_ciklopchik', evo: 'gr_ciklop', cost: 25, base: [114, 110, 110],
+    desc: ru`Одноглазый малыш-кузнец. Стучит молоточком по перилам и фонарным столбам, высекая искры, — учится ковать молнии, как старшие.`,
+    look: { shape: 'round', c1: '#b4c2ee', c2: '#4b5a9a', c3: '#facc15', eyes: 'one', mouth: 'smile', back: [], feats: ['bolt', 'cheeks'] } },
+  { id: 'gr_ciklop', name: ru`Циклоп`, el: 'current', rar: 2, stage: 2, fam: 'gr_ciklopchik', base: [162, 166, 152],
+    desc: ru`Кузнец громовых стрел — такие, как он, выковали молнии для самого Зевса. Чинит оборванные провода одним ударом молота и ворчит, если его отвлекают.`,
+    look: { shape: 'tall', c1: '#9fb0e4', c2: '#36407a', c3: '#facc15', eyes: 'one', mouth: 'teeth', back: [], feats: ['bolt', 'beard'] } },
+
+  // ---------- ТЕНЬ: Онейрик → Онейр → Морфей ----------
+  { id: 'gr_oneirik', name: ru`Онейрик`, el: 'shadow', rar: 1, stage: 1, fam: 'gr_oneirik', evo: 'gr_oneir', cost: 25, base: [116, 98, 108], time: 'night',
+    desc: ru`Маленький сон, сбежавший из пещеры Гипноса. Прячется в подушках и показывает прохожим короткие смешные сны прямо на ходу.`,
+    look: { shape: 'ghost', c1: '#b9a6f5', c2: '#4c2a8f', c3: '#f472b6', eye: '#e9d5ff', eyes: 'sleepy', mouth: 'o', back: ['wings'], feats: ['cheeks'] } },
+  { id: 'gr_oneir', name: ru`Онейр`, el: 'shadow', rar: 2, stage: 2, fam: 'gr_oneirik', evo: 'gr_morfey', cost: 100, base: [166, 138, 150],
+    desc: ru`Крылатый дух сновидений. Прилетает к окнам через ворота из рога или из слоновой кости — и сам не знает, вещий сегодня сон или нет.`,
+    look: { shape: 'wisp', c1: '#9b87f5', c2: '#2e1a66', c3: '#fbcfe8', eye: '#e9d5ff', eyes: 'glow', mouth: 'none', back: ['wings', 'aura'], feats: ['swirl'] } },
+  { id: 'gr_morfey', name: ru`Морфей`, el: 'shadow', rar: 3, stage: 3, fam: 'gr_oneirik', base: [228, 178, 196], time: 'night',
+    desc: ru`Бог сновидений, сын Гипноса. Во сне может принять облик любого человека — чаще всего почему-то учителя перед контрольной.`,
+    look: { shape: 'robe', c1: '#7c6cf0', c2: '#1b1147', c3: '#f87171', eye: '#e9d5ff', eyes: 'sleepy', mouth: 'none', back: ['wings', 'aura'], feats: ['runes'] } },
+
+  // ---------- Редкие: знаменитые существа ----------
+  { id: 'gr_kerber', name: ru`Цербер`, el: 'fire', rar: 3, stage: 1, fam: 'gr_kerber', base: [222, 180, 196],
+    desc: ru`Трёхголовый пёс, страж ворот Аида. В городе сторожит подземные переходы: одна голова спит, другая ест, третья глядит в оба. Тает от медовых лепёшек.`,
+    look: { shape: 'blob', c1: '#6b4a3a', c2: '#1f120c', c3: '#ff8a1a', eye: '#ffb020', eyes: 'glow', mouth: 'teeth', back: ['heads3', 'ears', 'cattail'], feats: ['flame'] } },
+  { id: 'gr_pegas', name: ru`Пегас`, el: 'current', rar: 3, stage: 1, fam: 'gr_pegas', base: [208, 170, 186],
+    desc: ru`Крылатый белый конь. Возит по небу молнии Зевса, а там, где ударит копытом о камень, пробивается родник.`,
+    look: { shape: 'blob', c1: '#f8fafc', c2: '#94a3b8', c3: '#facc15', eyes: 'round', mouth: 'none', back: ['wings', 'mane', 'tail'], feats: ['snout', 'bolt'] } },
+  { id: 'gr_meduza', name: ru`Медуза`, el: 'shadow', rar: 3, stage: 1, fam: 'gr_meduza', base: [216, 150, 178],
+    desc: ru`Горгона со змеями вместо волос. Носит тёмные очки, чтобы ненароком не превратить кого-нибудь в статую, а городские скульптуры считает старыми знакомыми.`,
+    look: { shape: 'robe', c1: '#86d0a4', c2: '#1f5a44', c3: '#a78bfa', eyes: 'glow', mouth: 'smile', back: ['hair'], feats: ['crown'] } },
+
+  // ---------- Эпические: боги Олимпа ----------
+  { id: 'gr_germes', name: ru`Гермес`, el: 'wind', rar: 4, stage: 1, fam: 'gr_germes', base: [226, 184, 190],
+    desc: ru`Вестник богов в крылатых сандалиях и шляпе. Покровитель путников, торговцев и курьеров: посылку доставит раньше, чем её отправят.`,
+    look: { shape: 'robe', c1: '#e0e7ff', c2: '#4f46e5', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['wings'], feats: ['hat'] } },
+  { id: 'gr_artemida', name: ru`Артемида`, el: 'forest', rar: 4, stage: 1, fam: 'gr_artemida', base: [220, 196, 204],
+    desc: ru`Богиня охоты и луны, хранительница лесного зверья. На рассвете бегает по паркам вместе с серебряной ланью и никогда не промахивается.`,
+    look: { shape: 'robe', c1: '#d9f99d', c2: '#3f6212', c3: '#e2e8f0', eyes: 'round', mouth: 'smile', back: ['hair', 'halo'], feats: ['crown'] } },
+
+  // ---------- Легенды: великие боги ----------
+  { id: 'gr_zeus', name: ru`Зевс`, el: 'current', rar: 5, stage: 1, fam: 'gr_zeus', legend: true, base: [300, 228, 248],
+    desc: ru`Легенда. Царь богов и владыка Олимпа, повелитель грома и молний. С высоты туч видит весь город разом. Встречают его только в разломах.`,
+    look: { shape: 'robe', c1: '#f8fafc', c2: '#64748b', c3: '#facc15', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['aura', 'halo'], feats: ['beard', 'crown', 'bolt'] } },
+  { id: 'gr_poseidon', name: ru`Посейдон`, el: 'water', rar: 5, stage: 1, fam: 'gr_poseidon', legend: true, base: [290, 246, 258],
+    desc: ru`Легенда. Владыка морей и колебатель земли: ударом трезубца поднимает волны и выводит родники из скалы. Встречают его только в разломах.`,
+    look: { shape: 'robe', c1: '#99f6e4', c2: '#0f5f7a', c3: '#fbbf24', eye: '#a5f3fc', eyes: 'glow', mouth: 'none', back: ['aura', 'ripples'], feats: ['beard', 'crown'] } },
+];
+
+// ===== www/js/myth-norse.js =====
+/* 4.28: духи и боги скандинавской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).norse = [
+  // ---------- ОГОНЬ: ниссе — домовой Севера ----------
+  { id: 'no_nisse', name: ru`Ниссе`, el: 'fire', rar: 1, stage: 1, fam: 'no_nisse', evo: 'no_tomte', cost: 25, base: [112, 104, 116],
+    desc: ru`Крошечный домовой в красном колпаке. Под Рождество ждёт миску каши с маслом — забудешь масло, и он спрячет твои варежки.`,
+    look: { shape: 'round', c1: '#f1c7a0', c2: '#b91c1c', c3: '#f8fafc', eyes: 'round', mouth: 'smile', back: [], feats: ['hat', 'beard', 'cheeks'] } },
+  { id: 'no_tomte', name: ru`Томте`, el: 'fire', rar: 2, stage: 2, fam: 'no_nisse', base: [164, 150, 158],
+    desc: ru`Седой хранитель дома и двора. Обходит подъезды с фонарём, греет у батарей замёрзших котов, а в Йоль разносит подарки.`,
+    look: { shape: 'robe', c1: '#ef4444', c2: '#7f1d1d', c3: '#f8fafc', eyes: 'sleepy', mouth: 'none', back: [], feats: ['hat', 'beard', 'lamp'] } },
+
+  // ---------- ВОДА: инеистые великаны ----------
+  { id: 'no_ineyonok', name: ru`Инеёнок`, el: 'water', rar: 1, stage: 1, fam: 'no_ineyonok', evo: 'no_jotun', cost: 25, base: [104, 114, 120],
+    desc: ru`Малыш-ётун из вечных льдов Нифльхейма. Дышит на окна трамваев и рисует на них морозные руны.`,
+    look: { shape: 'round', c1: '#e0f2fe', c2: '#38bdf8', c3: '#ffffff', eyes: 'big', mouth: 'o', back: [], feats: ['cheeks', 'horns'] } },
+  { id: 'no_jotun', name: ru`Ётун`, el: 'water', rar: 2, stage: 2, fam: 'no_ineyonok', evo: 'no_hrimthurs', cost: 100, base: [160, 160, 168],
+    desc: ru`Подросший ледяной великан. Обожает катки и сосульки, а весной ходит угрюмый и немного капает.`,
+    look: { shape: 'tall', c1: '#bae6fd', c2: '#0369a1', c3: '#f0f9ff', eyes: 'angry', mouth: 'teeth', back: [], feats: ['horns', 'beard'] } },
+  { id: 'no_hrimthurs', name: ru`Хримтурс`, el: 'water', rar: 3, stage: 3, fam: 'no_ineyonok', base: [220, 210, 236],
+    desc: ru`Инеистый великан из древнего рода Имира. Когда он зевает, во всём городе замерзают лужи и фонтаны.`,
+    look: { shape: 'robe', c1: '#bfdbfe', c2: '#1e3a8a', c3: '#e0f2fe', eye: '#67e8f9', eyes: 'glow', mouth: 'none', back: ['aura'], feats: ['beard', 'crown'] } },
+
+  // ---------- ЛЕС: тролли ----------
+  { id: 'no_trollenok', name: ru`Троллёнок`, el: 'forest', rar: 1, stage: 1, fam: 'no_trollenok', evo: 'no_troll', cost: 25, base: [108, 118, 122],
+    desc: ru`Вылупился из замшелого валуна у фьорда. На солнце каменеет, поэтому днём прикидывается булыжником в сквере.`,
+    look: { shape: 'round', c1: '#a8a29e', c2: '#57534e', c3: '#84cc16', eyes: 'round', mouth: 'smile', back: [], feats: ['sprout', 'cheeks'] } },
+  { id: 'no_troll', name: ru`Тролль`, el: 'forest', rar: 2, stage: 2, fam: 'no_trollenok', evo: 'no_bergtroll', cost: 100, base: [156, 170, 166],
+    desc: ru`Живёт под мостами и берёт с прохожих плату — обычно печеньем. На рассвете замирает и притворяется памятником.`,
+    look: { shape: 'blob', c1: '#a3b18a', c2: '#3f4a2a', c3: '#78350f', eyes: 'round', mouth: 'teeth', back: [], feats: ['snout', 'leaves'] } },
+  { id: 'no_bergtroll', name: ru`Горный тролль`, el: 'forest', rar: 3, stage: 3, fam: 'no_trollenok', base: [210, 232, 226],
+    desc: ru`Древний великан скал, поросший мхом и ёлками. Говорят, половина гранитных набережных — это его задремавшая родня.`,
+    look: { shape: 'tall', c1: '#9ca3af', c2: '#374151', c3: '#65a30d', eyes: 'sleepy', mouth: 'teeth', back: ['sprout'], feats: ['leaves', 'snout'] } },
+
+  // ---------- ВЕТЕР: вороны Одина ----------
+  { id: 'no_voronenok', name: ru`Воронёнок`, el: 'wind', rar: 1, stage: 1, fam: 'no_voronenok', evo: 'no_huginmunin', cost: 25, base: [118, 92, 106],
+    desc: ru`Мечтает стать вестником Одина, а пока облетает город и собирает новости и всё блестящее: ключи, пуговицы, фантики.`,
+    look: { shape: 'bird', c1: '#64748b', c2: '#1e293b', c3: '#fbbf24', eyes: 'big', mouth: 'beak', back: ['wings'], feats: ['crest'] } },
+  { id: 'no_huginmunin', name: ru`Хугин и Мунин`, el: 'wind', rar: 2, stage: 2, fam: 'no_voronenok', base: [170, 136, 150],
+    desc: ru`Мысль и Память — вороны Одина. Каждое утро облетают весь мир, а вечером пересказывают ему все новости, ничего не упустив.`,
+    look: { shape: 'bird', c1: '#475569', c2: '#0f172a', c3: '#a5b4fc', eye: '#e0e7ff', eyes: 'glow', mouth: 'beak', back: ['wings', 'tail'], feats: ['runes'] } },
+
+  // ---------- ТОК: козлы Тора ----------
+  { id: 'no_gromushka', name: ru`Громушка`, el: 'current', rar: 1, stage: 1, fam: 'no_gromushka', evo: 'no_tanngnjost', cost: 25, base: [122, 94, 104],
+    desc: ru`Козлёнок с искрящими рожками. Бодает электросамокаты — и те едут вдвое быстрее. Мечтает однажды возить колесницу Тора.`,
+    look: { shape: 'round', c1: '#f5f5f4', c2: '#a8a29e', c3: '#facc15', eyes: 'big', mouth: 'smile', back: ['horns'], feats: ['bolt', 'cheeks'] } },
+  { id: 'no_tanngnjost', name: ru`Тангниостр`, el: 'current', rar: 2, stage: 2, fam: 'no_gromushka', evo: 'no_tanngrisnir', cost: 100, base: [174, 130, 142],
+    desc: ru`Козёл громовой колесницы, его имя значит «Скрежещущий зубами». В грозу грохочет копытами по крышам и жуёт провода.`,
+    look: { shape: 'blob', c1: '#e7e5e4', c2: '#57534e', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['horns'], feats: ['bolt', 'beard'] } },
+  { id: 'no_tanngrisnir', name: ru`Тангриснир`, el: 'current', rar: 3, stage: 3, fam: 'no_gromushka', base: [240, 164, 188],
+    desc: ru`«Скалящий зубы» — старший козёл Тора. Когда он мчит колесницу по небу, над городом гремит гром и сверкают молнии.`,
+    look: { shape: 'blob', c1: '#fef9c3', c2: '#78716c', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['horns', 'aura'], feats: ['bolt', 'beard'] } },
+
+  // ---------- ТЕНЬ: курганные духи ----------
+  { id: 'no_kurgannik', name: ru`Курганник`, el: 'shadow', rar: 1, stage: 1, fam: 'no_kurgannik', evo: 'no_draugr', cost: 25, base: [114, 108, 110], time: 'night',
+    desc: ru`Дух старого кургана. Сторожит клад из трёх монеток и бутылочной крышки, а по ночам выглядывает из клумб.`,
+    look: { shape: 'ghost', c1: '#94a3b8', c2: '#1e293b', c3: '#fbbf24', eye: '#67e8f9', eyes: 'glow', mouth: 'o', back: [], feats: ['hat'] } },
+  { id: 'no_draugr', name: ru`Драугр`, el: 'shadow', rar: 2, stage: 2, fam: 'no_kurgannik', base: [168, 156, 146], time: 'night',
+    desc: ru`Хранитель курганных сокровищ в старом шлеме. В городе заведует бюро находок и очень не любит отдавать вещи.`,
+    look: { shape: 'tall', c1: '#94a3b8', c2: '#334155', c3: '#fbbf24', eye: '#67e8f9', eyes: 'glow', mouth: 'teeth', back: [], feats: ['horns', 'beard'] } },
+
+  // ---------- редкие: знаменитые чудовища ----------
+  { id: 'no_fenrir', name: ru`Фенрир`, el: 'shadow', rar: 3, stage: 1, fam: 'no_fenrir', base: [226, 150, 178], time: 'night',
+    desc: ru`Исполинский волк, которого боги связали лентой Глейпнир. Лента соткана из шума кошачьих шагов — вот почему кошки ходят бесшумно.`,
+    look: { shape: 'blob', c1: '#64748b', c2: '#1e293b', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'teeth', back: ['ears', 'cattail'], feats: ['snout'] } },
+  { id: 'no_sleipnir', name: ru`Слейпнир`, el: 'wind', rar: 3, stage: 1, fam: 'no_sleipnir', base: [196, 176, 200],
+    desc: ru`Восьминогий конь Одина, быстрее любого ветра. Скачет по крышам и проводам, а на поворотах путается, с какой ноги начинать.`,
+    look: { shape: 'blob', c1: '#e2e8f0', c2: '#64748b', c3: '#a5b4fc', eyes: 'round', mouth: 'none', back: ['mane', 'tail'], feats: ['snout'] } },
+  { id: 'no_jormungand', name: ru`Ёрмунганд`, el: 'water', rar: 3, stage: 1, fam: 'no_jormungand', base: [184, 212, 214],
+    desc: ru`Мировой змей, опоясавший всю землю и закусивший собственный хвост. Дремлет во фьордах и каналах, изредка показывая спину.`,
+    look: { shape: 'blob', c1: '#5eead4', c2: '#115e59', c3: '#fde047', eyes: 'sleepy', mouth: 'teeth', back: ['ripples'], feats: ['bubbles'] } },
+
+  // ---------- эпические: боги ----------
+  { id: 'no_loki', name: ru`Локи`, el: 'fire', rar: 4, stage: 1, fam: 'no_loki', base: [224, 180, 190],
+    desc: ru`Бог хитрости и огня, мастер превращений. Оборачивается лососем, кобылицей или прохожим — и шутит так, что смеются даже боги.`,
+    look: { shape: 'robe', c1: '#4ade80', c2: '#14532d', c3: '#f97316', eyes: 'angry', mouth: 'smile', back: ['hair'], feats: ['horns', 'flame'] } },
+  { id: 'no_freya', name: ru`Фрейя`, el: 'forest', rar: 4, stage: 1, fam: 'no_freya', base: [200, 206, 214],
+    desc: ru`Богиня любви и весны. Ездит в колеснице, запряжённой кошками, и носит плащ из соколиных перьев. Где она пройдёт — зацветают дворы.`,
+    look: { shape: 'robe', c1: '#fde68a', c2: '#15803d', c3: '#f472b6', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'wings'], feats: ['crown', 'leaves'] } },
+
+  // ---------- легенды: великие боги (только в разломах) ----------
+  { id: 'no_thor', name: ru`Тор`, el: 'current', rar: 5, stage: 1, fam: 'no_thor', legend: true, base: [302, 236, 248],
+    desc: ru`Легенда. Громовержец с молотом Мьёльниром, защитник богов и людей. Где он проезжает, там гремит гром. Появляется только в грозовых разломах.`,
+    look: { shape: 'robe', c1: '#fca5a5', c2: '#991b1b', c3: '#facc15', eyes: 'angry', mouth: 'none', back: ['aura'], feats: ['beard', 'bolt', 'horns'] } },
+  { id: 'no_odin', name: ru`Один`, el: 'wind', rar: 5, stage: 1, fam: 'no_odin', legend: true, base: [290, 248, 258],
+    desc: ru`Легенда. Всеотец, отдавший глаз за мудрость. Два ворона приносят ему вести со всего света. Появляется только в ветряных разломах.`,
+    look: { shape: 'robe', c1: '#94a3b8', c2: '#1e293b', c3: '#fbbf24', eyes: 'one', mouth: 'none', back: ['aura'], feats: ['beard', 'hat', 'runes'] } },
+];
+
+// ===== www/js/myth-celtic.js =====
+/* 4.28: духи и боги кельтской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).celtic = [
+  // ---------- огонь: блуждающий огонёк → Джек-фонарь ----------
+  { id: 'ce_wisp', name: ru`Блуждающий огонёк`, el: 'fire', rar: 1, stage: 1, fam: 'ce_wisp', evo: 'ce_jack', cost: 25, base: [120, 92, 104], time: 'night',
+    desc: ru`Когда-то водил путников кругами по болотам, а теперь мерцает над мокрыми газонами и зовёт срезать путь. Путь, конечно, выходит длиннее.`,
+    look: { shape: 'wisp', c1: '#fde68a', c2: '#f97316', c3: '#fff7ed', eyes: 'big', mouth: 'smile', back: ['aura'], feats: ['flame', 'cheeks'] } },
+  { id: 'ce_jack', name: ru`Джек-фонарь`, el: 'fire', rar: 2, stage: 2, fam: 'ce_wisp', base: [172, 132, 146],
+    desc: ru`Хитрец Джек бродит с угольком в резной репе с тех пор, как перехитрил всех на свете. В ночь Самайна подмигивает с каждого крыльца.`,
+    look: { shape: 'round', c1: '#fdba74', c2: '#c2410c', c3: '#fde047', eyes: 'glow', mouth: 'teeth', back: [], feats: ['flame', 'hat'] } },
+
+  // ---------- вода: Тюленёк → Селки → Мерроу ----------
+  { id: 'ce_seal', name: ru`Тюленёк`, el: 'water', rar: 1, stage: 1, fam: 'ce_seal', evo: 'ce_selkie', cost: 25, base: [104, 114, 122],
+    desc: ru`Любопытный тюлений малыш с глазами-пуговками. Выныривает у набережных и прячет в ластах гладкие морские стёклышки.`,
+    look: { shape: 'drop', c1: '#cbd5e1', c2: '#475569', c3: '#e0f2fe', eyes: 'big', mouth: 'cat', back: [], feats: ['whiskers', 'cheeks'] } },
+  { id: 'ce_selkie', name: ru`Селки`, el: 'water', rar: 2, stage: 2, fam: 'ce_seal', evo: 'ce_merrow', cost: 100, base: [152, 160, 168],
+    desc: ru`Сбрасывает тюленью шкурку и выходит на берег человеком. Гуляет по набережной со шкуркой через плечо: без неё в море не вернуться.`,
+    look: { shape: 'ghost', c1: '#bae6fd', c2: '#334155', c3: '#94a3b8', eyes: 'big', mouth: 'smile', back: ['hair'], feats: ['bubbles'] } },
+  { id: 'ce_merrow', name: ru`Мерроу`, el: 'water', rar: 3, stage: 3, fam: 'ce_seal', base: [210, 214, 232],
+    desc: ru`Морская дева ирландских берегов в красной шапочке — без неё не нырнуть. Поёт перед штормом, и портовые краны сами разворачиваются по ветру.`,
+    look: { shape: 'ghost', c1: '#99f6e4', c2: '#0f766e', c3: '#ef4444', eyes: 'round', mouth: 'smile', back: ['hair', 'ripples'], feats: ['hat', 'bubbles'] } },
+
+  // ---------- лес: Клеверок → Лепрекон → Иубдан ----------
+  { id: 'ce_clover', name: ru`Клеверок`, el: 'forest', rar: 1, stage: 1, fam: 'ce_clover', evo: 'ce_leprechaun', cost: 25, base: [106, 116, 118],
+    desc: ru`Трилистник, проснувшийся на газоне в день святого Патрика. Найдёшь у него четвёртый листок — весь день будет везти.`,
+    look: { shape: 'round', c1: '#86efac', c2: '#15803d', c3: '#fde047', eyes: 'round', mouth: 'smile', back: [], feats: ['sprout', 'cheeks'] } },
+  { id: 'ce_leprechaun', name: ru`Лепрекон`, el: 'forest', rar: 2, stage: 2, fam: 'ce_clover', evo: 'ce_iubdan', cost: 100, base: [158, 164, 156],
+    desc: ru`Сапожник волшебного народа: шьёт по одному башмаку, никогда — пару. Горшок золота прячет у конца радуги, а монетки роняет у банкоматов.`,
+    look: { shape: 'round', c1: '#4ade80', c2: '#166534', c3: '#facc15', eyes: 'round', mouth: 'smile', back: [], feats: ['hat', 'beard'] } },
+  { id: 'ce_iubdan', name: ru`Король Иубдан`, el: 'forest', rar: 3, stage: 3, fam: 'ce_clover', base: [218, 226, 206],
+    desc: ru`Король лепреконов из древней саги: ростом с ладонь, а гордости — на великана. Правит крошечным королевством под клумбами и считает каждую радугу своей.`,
+    look: { shape: 'robe', c1: '#22c55e', c2: '#14532d', c3: '#facc15', eyes: 'round', mouth: 'smile', back: ['aura'], feats: ['crown', 'beard'] } },
+
+  // ---------- ветер: Пикси → Фея холмов → Королева Мэб ----------
+  { id: 'ce_pixie', name: ru`Пикси`, el: 'wind', rar: 1, stage: 1, fam: 'ce_pixie', evo: 'ce_sidhe', cost: 25, base: [118, 94, 108],
+    desc: ru`Крошечная фея корнуоллских холмов, катается на сквозняках. Если ты заблудился в трёх дворах — значит, тебя водили пикси.`,
+    look: { shape: 'round', c1: '#bfdbfe', c2: '#6366f1', c3: '#f0abfc', eyes: 'big', mouth: 'smile', back: ['wings', 'ears'], feats: ['cheeks'] } },
+  { id: 'ce_sidhe', name: ru`Фея холмов`, el: 'wind', rar: 2, stage: 2, fam: 'ce_pixie', evo: 'ce_mab', cost: 100, base: [170, 130, 146],
+    desc: ru`Из народа ши, что живёт внутри зелёных холмов. Танцует в грибных кругах на газонах — не вставай в круг, а то протанцуешь до утра.`,
+    look: { shape: 'ghost', c1: '#e0e7ff', c2: '#6366f1', c3: '#a7f3d0', eyes: 'round', mouth: 'smile', back: ['wings', 'hair'], feats: ['leaves'] } },
+  { id: 'ce_mab', name: ru`Королева Мэб`, el: 'wind', rar: 3, stage: 3, fam: 'ce_pixie', base: [236, 172, 190],
+    desc: ru`Королева фей и повелительница снов. Разъезжает в колеснице из ореховой скорлупки и нашёптывает спящему городу сны.`,
+    look: { shape: 'robe', c1: '#c7d2fe', c2: '#4338ca', c3: '#f0abfc', eyes: 'sleepy', mouth: 'smile', back: ['wings', 'hair', 'aura'], feats: ['crown'] } },
+
+  // ---------- ток: Брауни → Боггарт ----------
+  { id: 'ce_brownie', name: ru`Брауни`, el: 'current', rar: 1, stage: 1, fam: 'ce_brownie', evo: 'ce_boggart', cost: 25, base: [110, 112, 112],
+    desc: ru`Косматый шотландский домовичок. По ночам тихо чинит зарядки и лампочки, а в награду просит лишь миску сливок. Только не дари ему одежду — обидится!`,
+    look: { shape: 'round', c1: '#d6a878', c2: '#7c4a1d', c3: '#fde047', eyes: 'round', mouth: 'smile', back: [], feats: ['beard', 'lamp'] } },
+  { id: 'ce_boggart', name: ru`Боггарт`, el: 'current', rar: 2, stage: 2, fam: 'ce_brownie', base: [166, 142, 150],
+    desc: ru`Брауни, которого обидели, — и он стал Боггартом. Щёлкает выключателями, выбивает пробки и прячет пульт, пока ему снова не нальют сливок.`,
+    look: { shape: 'blob', c1: '#a8a29e', c2: '#44403c', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['ears'], feats: ['bolt', 'cables'] } },
+
+  // ---------- тень: Пука → Пука-скакун ----------
+  { id: 'ce_puca', name: ru`Пука`, el: 'shadow', rar: 1, stage: 1, fam: 'ce_puca', evo: 'ce_pucahorse', cost: 25, base: [120, 96, 104], time: 'night',
+    desc: ru`Проказник-оборотень: то чёрный зайчонок, то козлёнок, то котёнок. После Самайна портит всю ежевику, поэтому в ноябре её не собирают.`,
+    look: { shape: 'round', c1: '#475569', c2: '#0f172a', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'cat', back: ['ears'], feats: ['horns'] } },
+  { id: 'ce_pucahorse', name: ru`Пука-скакун`, el: 'shadow', rar: 2, stage: 2, fam: 'ce_puca', base: [174, 128, 144], time: 'night',
+    desc: ru`Любимый облик Пуки — чёрный конь с золотыми глазами. Сажает на спину запоздалого прохожего и катает по ночному городу до рассвета.`,
+    look: { shape: 'blob', c1: '#334155', c2: '#020617', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'none', back: ['mane', 'tail'], feats: ['snout'] } },
+
+  // ---------- редкие ----------
+  { id: 'ce_draig', name: ru`Уэльский дракон`, el: 'fire', rar: 3, stage: 1, fam: 'ce_draig', base: [224, 164, 186],
+    desc: ru`Красный дракон с флага Уэльса, что одолел белого дракона под горой. Теперь греется на крышах вокзалов и чихает искрами в туман.`,
+    look: { shape: 'blob', c1: '#f87171', c2: '#991b1b', c3: '#fde047', eyes: 'angry', mouth: 'teeth', back: ['wings', 'tail'], feats: ['horns', 'flame'] } },
+  { id: 'ce_banshee', name: ru`Банши`, el: 'wind', rar: 3, stage: 1, fam: 'ce_banshee', base: [210, 150, 176], time: 'night',
+    desc: ru`Дева из холмов, чей плач над старыми улицами предупреждает о беде. Шумная, но добрая: расчёсывает серебряным гребнем волосы из тумана.`,
+    look: { shape: 'ghost', c1: '#f1f5f9', c2: '#64748b', c3: '#cbd5e1', eye: '#a5f3fc', eyes: 'glow', mouth: 'o', back: ['hair'], feats: [] } },
+  { id: 'ce_caitsith', name: ru`Кайт Ши`, el: 'shadow', rar: 3, stage: 1, fam: 'ce_caitsith', base: [200, 184, 196], time: 'night',
+    desc: ru`Огромный чёрный кот фей с белым пятном на груди. В Самайн шотландцы оставляли ему блюдце молока — и он до сих пор обходит дворы, проверяя, не забыли ли.`,
+    look: { shape: 'round', c1: '#374151', c2: '#030712', c3: '#f8fafc', eye: '#86efac', eyes: 'glow', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers'] } },
+
+  // ---------- эпические боги ----------
+  { id: 'ce_morrigan', name: ru`Морриган`, el: 'shadow', rar: 4, stage: 1, fam: 'ce_morrigan', base: [228, 180, 190],
+    desc: ru`Великая королева-прорицательница, что оборачивается вороном. Глядит на город со шпилей и башен и заранее знает, чем кончится любой спор.`,
+    look: { shape: 'robe', c1: '#475569', c2: '#0f172a', c3: '#dc2626', eye: '#f87171', eyes: 'glow', mouth: 'none', back: ['wings', 'hair'], feats: ['crown'] } },
+  { id: 'ce_manannan', name: ru`Мананнан мак Лир`, el: 'water', rar: 4, stage: 1, fam: 'ce_manannan', base: [212, 208, 214],
+    desc: ru`Бог моря и хозяин острова Мэн. Укрывает гавани плащом тумана, а по волнам скачет на коне Энбарр, как по полю.`,
+    look: { shape: 'robe', c1: '#7dd3fc', c2: '#0c4a6e', c3: '#e0f2fe', eyes: 'round', mouth: 'none', back: ['aura', 'ripples'], feats: ['beard', 'crown'] } },
+
+  // ---------- великие боги-легенды ----------
+  { id: 'ce_dagda', name: ru`Дагда`, el: 'forest', rar: 5, stage: 1, fam: 'ce_dagda', legend: true, base: [288, 250, 262],
+    desc: ru`Легенда. Добрый бог, отец ирландских богов: из его котла никто не уходит голодным, а арфа сама сменяет времена года. Встречается только в разломах.`,
+    look: { shape: 'robe', c1: '#65a30d', c2: '#1a2e05', c3: '#b45309', eyes: 'round', mouth: 'smile', back: ['aura', 'halo'], feats: ['beard', 'leaves'] } },
+  { id: 'ce_lugh', name: ru`Луг`, el: 'current', rar: 5, stage: 1, fam: 'ce_lugh', legend: true, base: [302, 224, 242],
+    desc: ru`Легенда. Сияющий бог, мастер всех искусств — кузнец, поэт, воин и арфист разом. Его копьё само рвётся в бой и сверкает, как молния. Появляется только в разломах.`,
+    look: { shape: 'robe', c1: '#fef08a', c2: '#ca8a04', c3: '#f8fafc', eye: '#fef9c3', eyes: 'glow', mouth: 'none', back: ['aura', 'halo'], feats: ['bolt', 'crown'] } },
+];
+
+// ===== www/js/myth-egypt.js =====
+/* 4.28: духи и боги египетской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).egypt = [
+  // ---------- семейства младших духов: скарабей → Хепри (огонь), крокодильчик → Себек (вода), ибис (ток) ----------
+  { id: 'eg_skarab', name: ru`Скарабейка`, el: 'fire', rar: 1, stage: 1, fam: 'eg_skarab', evo: 'eg_solncekat', cost: 25, base: [114, 104, 110],
+    desc: ru`Каждое утро катит по тротуару крошечное солнышко — совсем как её предки на берегах Нила. Если солнышко закатилось под скамейку, жужжит на весь двор.`,
+    look: { shape: 'round', c1: '#f2b845', c2: '#7c2d12', c3: '#fff0a0', eyes: 'big', mouth: 'smile', back: ['aura'], feats: ['cheeks'] } },
+  { id: 'eg_solncekat', name: ru`Солнцекат`, el: 'fire', rar: 2, stage: 2, fam: 'eg_skarab', evo: 'eg_khepri', cost: 100, base: [162, 146, 150],
+    desc: ru`Подросшая Скарабейка. Катит солнце уже размером с арбуз и греет им остановки холодным утром.`,
+    look: { shape: 'blob', c1: '#f5c04a', c2: '#7a2a0c', c3: '#fde68a', eyes: 'angry', mouth: 'smile', back: ['wings'], feats: ['cheeks'] } },
+  { id: 'eg_khepri', name: ru`Хепри`, el: 'fire', rar: 3, stage: 3, fam: 'eg_skarab', base: [224, 196, 204],
+    desc: ru`Бог утреннего солнца с головой-скарабеем. Каждый рассвет выкатывает солнце из-за крыш — поэтому утро в городе всегда наступает вовремя.`,
+    look: { shape: 'tall', c1: '#2dd4bf', c2: '#1e3a8a', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['wings', 'aura'], feats: ['crown'] } },
+
+  { id: 'eg_kroko', name: ru`Крокодильчик`, el: 'water', rar: 1, stage: 1, fam: 'eg_kroko', evo: 'eg_nilozub', cost: 25, base: [118, 108, 106],
+    desc: ru`Вылупился на берегу Нила и приплыл по трубам в городской фонтан. Улыбается во все зубы, но кусает только арбузы.`,
+    look: { shape: 'round', c1: '#86efac', c2: '#0f766e', c3: '#ecfccb', eyes: 'big', mouth: 'smile', back: ['tail'], feats: ['cheeks'] } },
+  { id: 'eg_nilozub', name: ru`Нилозуб`, el: 'water', rar: 2, stage: 2, fam: 'eg_kroko', evo: 'eg_sebek', cost: 100, base: [170, 150, 152],
+    desc: ru`Дремлет у набережных, притворяясь бревном. Заранее знает, когда река разольётся, и оттаскивает лодки повыше.`,
+    look: { shape: 'blob', c1: '#6ee7b7', c2: '#065f46', c3: '#bbf7d0', eyes: 'sleepy', mouth: 'teeth', back: ['ripples', 'tail'], feats: [] } },
+  { id: 'eg_sebek', name: ru`Себек`, el: 'water', rar: 3, stage: 3, fam: 'eg_kroko', base: [214, 224, 230],
+    desc: ru`Бог-крокодил, владыка Нила и его разливов. Следит, чтобы в каналах и фонтанах не кончалась вода, а рыбаки возвращались с уловом.`,
+    look: { shape: 'tall', c1: '#6ee7b7', c2: '#065f46', c3: '#fbbf24', eyes: 'round', mouth: 'teeth', back: ['aura'], feats: ['crown'] } },
+
+  { id: 'eg_ibisenok', name: ru`Ибисёнок`, el: 'current', rar: 1, stage: 1, fam: 'eg_ibisenok', evo: 'eg_ibis', cost: 25, base: [110, 102, 116],
+    desc: ru`Пушистый птенец священного ибиса. Тычет клювом в экраны и кнопки лифтов, а там, где он прошёл, у телефонов прибавляется заряд.`,
+    look: { shape: 'bird', c1: '#f8fafc', c2: '#94a3b8', c3: '#facc15', eyes: 'big', mouth: 'beak', back: [], feats: ['cheeks'] } },
+  { id: 'eg_ibis', name: ru`Ибис-писец`, el: 'current', rar: 2, stage: 2, fam: 'eg_ibisenok', evo: 'eg_svibis', cost: 100, base: [158, 138, 164],
+    desc: ru`Пишет клювом в воздухе светящиеся иероглифы. По ночам их принимают за неоновые вывески Каира.`,
+    look: { shape: 'bird', c1: '#f1f5f9', c2: '#1f2937', c3: '#facc15', eyes: 'round', mouth: 'beak', back: ['tail'], feats: [] } },
+  { id: 'eg_svibis', name: ru`Священный ибис`, el: 'current', rar: 3, stage: 3, fam: 'eg_ibisenok', base: [212, 190, 222],
+    desc: ru`Посланник Тота, бога мудрости. Записывает всё, что случилось в городе за день, на свиток из чистого света.`,
+    look: { shape: 'bird', c1: '#f8fafc', c2: '#1f2937', c3: '#fde68a', eyes: 'glow', mouth: 'beak', back: ['wings', 'aura'], feats: ['crown'] } },
+
+  // ---------- семейства из двух стадий: кошка мау (лес), джинн пустыни (ветер), мумийка (тень) ----------
+  { id: 'eg_kotmau', name: ru`Котёнок Мау`, el: 'forest', rar: 1, stage: 1, fam: 'eg_kotmau', evo: 'eg_mau', cost: 25, base: [122, 96, 108],
+    desc: ru`Пятнистый котёнок из зарослей папируса. Сторожит клумбы от мышей и спит в цветочных горшках, свернувшись вокруг лотоса.`,
+    look: { shape: 'round', c1: '#f3dfb0', c2: '#b7843a', c3: '#84cc16', eyes: 'big', mouth: 'cat', back: ['ears', 'cattail'], feats: ['whiskers'] } },
+  { id: 'eg_mau', name: ru`Храмовая кошка`, el: 'forest', rar: 2, stage: 2, fam: 'eg_kotmau', base: [168, 132, 148],
+    desc: ru`В древности кошки стерегли зерно в храмовых амбарах. Эта стережёт городские сады и огороды — за миску сметаны.`,
+    look: { shape: 'tall', c1: '#f0d9a4', c2: '#a8742c', c3: '#2dd4bf', eyes: 'sleepy', mouth: 'cat', back: ['ears', 'cattail'], feats: ['whiskers'] } },
+
+  { id: 'eg_peschinka', name: ru`Песчинка`, el: 'wind', rar: 1, stage: 1, fam: 'eg_peschinka', evo: 'eg_djinn', cost: 25, base: [116, 92, 120],
+    desc: ru`Крошечный вихрь из песка пустыни. Прилетает в город с жарким ветром и прячется в кроссовках.`,
+    look: { shape: 'wisp', c1: '#fde68a', c2: '#b45309', c3: '#fff7d6', eyes: 'big', mouth: 'o', back: [], feats: ['swirl'] } },
+  { id: 'eg_djinn', name: ru`Джинн`, el: 'wind', rar: 2, stage: 2, fam: 'eg_peschinka', base: [174, 124, 146],
+    desc: ru`Песчаный дух пустыни, свитый из горячего ветра. Исполняет желания, но только мелкие: найти ключи или поймать такси в дождь.`,
+    look: { shape: 'wisp', c1: '#fcd07a', c2: '#b0621a', c3: '#0ea5e9', eyes: 'angry', mouth: 'smile', back: [], feats: ['swirl', 'ears'] } },
+
+  { id: 'eg_mumiyka', name: ru`Мумийка`, el: 'shadow', rar: 1, stage: 1, fam: 'eg_mumiyka', evo: 'eg_mumiya', cost: 25, base: [104, 116, 118], time: 'night',
+    desc: ru`Маленький дух в бинтах, проспавший три тысячи лет. Днём дремлет в музеях, а ночью бродит по залам и путается в собственных бинтиках.`,
+    look: { shape: 'ghost', c1: '#f7efd9', c2: '#a8977a', c3: '#a78bfa', eyes: 'sleepy', mouth: 'o', back: [], feats: ['cheeks'] } },
+  { id: 'eg_mumiya', name: ru`Мумия`, el: 'shadow', rar: 2, stage: 2, fam: 'eg_mumiyka', base: [156, 168, 160], time: 'night',
+    desc: ru`Подросшая Мумийка. Добрая и немного рассеянная: раздаёт свои бинты всем, кто ободрал коленку.`,
+    look: { shape: 'tall', c1: '#f3ead2', c2: '#9c8a6c', c3: '#2dd4bf', eyes: 'round', mouth: 'smile', back: [], feats: [] } },
+
+  // ---------- редкие: знаменитые существа ----------
+  { id: 'eg_sfinks', name: ru`Сфинкс`, el: 'wind', rar: 3, stage: 1, fam: 'eg_sfinks', base: [196, 212, 206],
+    desc: ru`Каменный страж с телом льва и головой человека. Загадывает загадки у входа в метро и пропускает только тех, кто ответил.`,
+    look: { shape: 'blob', c1: '#f3d9a0', c2: '#a8742c', c3: '#1e3a8a', eyes: 'sleepy', mouth: 'smile', back: ['mane'], feats: ['beard'] } },
+  { id: 'eg_bennu', name: ru`Бенну`, el: 'fire', rar: 3, stage: 1, fam: 'eg_bennu', base: [218, 160, 180], time: 'day',
+    desc: ru`Египетский феникс, солнечная цапля. На закате сгорает, а на рассвете рождается заново — поэтому всегда выглядит отдохнувшей.`,
+    look: { shape: 'bird', c1: '#fed7aa', c2: '#c2410c', c3: '#fde68a', eyes: 'round', mouth: 'beak', back: ['wings', 'aura'], feats: ['crest'] } },
+  { id: 'eg_apop', name: ru`Апоп`, el: 'shadow', rar: 3, stage: 1, fam: 'eg_apop', base: [226, 150, 176], time: 'night',
+    desc: ru`Огромный змей тьмы, извечный враг солнца. Каждую ночь пытается проглотить солнечную ладью — и каждое утро остаётся ни с чем.`,
+    look: { shape: 'blob', c1: '#8b5cf6', c2: '#1e0b36', c3: '#facc15', eye: '#facc15', eyes: 'glow', mouth: 'teeth', back: ['tail'], feats: [] } },
+
+  // ---------- эпические боги ----------
+  { id: 'eg_anubis', name: ru`Анубис`, el: 'shadow', rar: 4, stage: 1, fam: 'eg_anubis', base: [212, 206, 196], time: 'night',
+    desc: ru`Бог с головой шакала, проводник душ и хранитель гробниц. Взвешивает сердца против пёрышка истины, а по ночам бережёт сон города.`,
+    look: { shape: 'tall', c1: '#4b5563', c2: '#0b0f19', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'none', back: ['ears', 'aura'], feats: ['snout'] } },
+  { id: 'eg_isida', name: ru`Исида`, el: 'water', rar: 4, stage: 1, fam: 'eg_isida', base: [198, 212, 220],
+    desc: ru`Великая богиня-чародейка с крыльями вместо рук. Говорят, это её слёзы каждое лето разливают Нил, а её заклинания оберегают детей.`,
+    look: { shape: 'robe', c1: '#e0f2fe', c2: '#1d4ed8', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['wings', 'hair'], feats: ['crown'] } },
+
+  // ---------- великие боги-легенды ----------
+  { id: 'eg_ra', name: ru`Ра`, el: 'fire', rar: 5, stage: 1, fam: 'eg_ra', legend: true, base: [302, 226, 250],
+    desc: ru`Легенда. Бог солнца с головой сокола и огненным диском над головой. Днём плывёт по небу в золотой ладье, а на землю спускается только через огненные разломы.`,
+    look: { shape: 'robe', c1: '#fef3c7', c2: '#b45309', c3: '#ef4444', eyes: 'round', mouth: 'beak', back: ['aura', 'halo'], feats: ['crown'] } },
+  { id: 'eg_osiris', name: ru`Осирис`, el: 'forest', rar: 5, stage: 1, fam: 'eg_osiris', legend: true, base: [288, 250, 262],
+    desc: ru`Легенда. Зеленокожий владыка возрождения: где он ступит, прорастают зёрна и распускаются сады. В мир живых приходит только через разломы.`,
+    look: { shape: 'robe', c1: '#f8fafc', c2: '#15803d', c3: '#fbbf24', eyes: 'sleepy', mouth: 'none', back: ['aura'], feats: ['crown', 'beard'] } },
+];
+
+// ===== www/js/myth-china.js =====
+/* 4.28: духи и боги китайской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).china = [
+  // ---------- младшие семейства ----------
+  // Ток: лисий дух — хвостов прибавляется с каждой стадией (1 → 3 → 9), лисья жемчужина искрит, как шаровая молния
+  { id: 'cn_huli', name: ru`Лисёнок Хули`, el: 'current', rar: 1, stage: 1, fam: 'cn_huli', evo: 'cn_hulijing', cost: 25, base: [116, 96, 106],
+    desc: ru`Юный лисий дух с одним пушистым хвостом. Прячется за вывесками ночных рынков и тренирует свою жемчужинку — пока она только щёлкает, как статика.`,
+    look: { shape: 'round', c1: '#fdba74', c2: '#ea580c', c3: '#fde047', eyes: 'big', mouth: 'cat', back: ['cattail', 'ears'], feats: ['cheeks', 'whiskers'] } },
+  { id: 'cn_hulijing', name: ru`Хули-цзин`, el: 'current', rar: 2, stage: 2, fam: 'cn_huli', evo: 'cn_jiuweihu', cost: 100, base: [172, 130, 144],
+    desc: ru`Лиса-оборотень с тремя хвостами. Может обернуться кем угодно, но всегда выдаёт себя хвостом, торчащим из-под плаща.`,
+    look: { shape: 'tall', c1: '#fb923c', c2: '#c2410c', c3: '#facc15', eyes: 'sleepy', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers', 'bolt'] } },
+  { id: 'cn_jiuweihu', name: ru`Девятихвостая лиса`, el: 'current', rar: 3, stage: 3, fam: 'cn_huli', base: [238, 168, 190],
+    desc: ru`Каждый хвост — сто лет мудрости. Когда она взмахивает всеми девятью, в квартале на миг гаснут и снова вспыхивают все вывески.`,
+    look: { shape: 'tall', c1: '#fef3c7', c2: '#f59e0b', c3: '#facc15', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['aura', 'cattail', 'ears'], feats: ['bolt', 'crown'] } },
+
+  // Вода: карп, прыгнувший через Врата дракона, становится драконом
+  { id: 'cn_karpik', name: ru`Карпик`, el: 'water', rar: 1, stage: 1, fam: 'cn_karpik', evo: 'cn_jinli', cost: 25, base: [102, 114, 122],
+    desc: ru`Маленький карп из пруда в парке. Каждый день тренируется прыгать через фонтан — готовится к Вратам дракона.`,
+    look: { shape: 'drop', c1: '#fdba74', c2: '#ea580c', c3: '#fff7ed', eyes: 'big', mouth: 'o', back: ['tail'], feats: ['bubbles'] } },
+  { id: 'cn_jinli', name: ru`Золотой карп`, el: 'water', rar: 2, stage: 2, fam: 'cn_karpik', evo: 'cn_jiaolong', cost: 100, base: [152, 160, 168],
+    desc: ru`Упрямо плывёт вверх по течению — хоть по водосточной трубе. До Врат дракона ему остался один прыжок.`,
+    look: { shape: 'blob', c1: '#fde047', c2: '#d97706', c3: '#fff7ed', eyes: 'angry', mouth: 'o', back: ['tail', 'ripples'], feats: ['whiskers', 'bubbles'] } },
+  { id: 'cn_jiaolong', name: ru`Цзяолун`, el: 'water', rar: 3, stage: 3, fam: 'cn_karpik', base: [224, 206, 226],
+    desc: ru`Карп, который перепрыгнул Врата дракона и стал драконом. Рога ещё растут, а плавники он по старой привычке не прячет.`,
+    look: { shape: 'tall', c1: '#fcd34d', c2: '#b45309', c3: '#38bdf8', eyes: 'angry', mouth: 'teeth', back: ['tail', 'mane'], feats: ['horns', 'whiskers'] } },
+
+  // Ветер: пиксиу — крылатый зверь фэншуя («фэн» — ветер), глотает монеты и хранит удачу
+  { id: 'cn_monetoed', name: ru`Монетоед`, el: 'wind', rar: 1, stage: 1, fam: 'cn_monetoed', evo: 'cn_pixiu', cost: 25, base: [108, 112, 118],
+    desc: ru`Детёныш пиксиу. Вылавливает монетки из фонтанов и сразу их глотает — что попало ему в пасть, назад уже не вернётся.`,
+    look: { shape: 'round', c1: '#fde68a', c2: '#ca8a04', c3: '#dc2626', eyes: 'big', mouth: 'smile', back: ['wings'], feats: ['cheeks', 'horns'] } },
+  { id: 'cn_pixiu', name: ru`Пиксиу`, el: 'wind', rar: 2, stage: 2, fam: 'cn_monetoed', evo: 'cn_tianlu', cost: 100, base: [160, 166, 156],
+    desc: ru`Крылатый зверь фэншуя. Сидит у дверей магазинов и банков и следит, чтобы ветер удачи не выдувал деньги за порог.`,
+    look: { shape: 'blob', c1: '#fcd34d', c2: '#a16207', c3: '#dc2626', eyes: 'angry', mouth: 'teeth', back: ['wings', 'mane'], feats: ['horns'] } },
+  { id: 'cn_tianlu', name: ru`Тяньлу`, el: 'wind', rar: 3, stage: 3, fam: 'cn_monetoed', base: [214, 228, 212],
+    desc: ru`Небесный пиксиу с одним рогом. Когда он раскрывает крылья над кварталом, в тот день никто в округе не теряет кошелёк.`,
+    look: { shape: 'blob', c1: '#fef3c7', c2: '#b45309', c3: '#10b981', eyes: 'angry', mouth: 'teeth', back: ['wings', 'mane', 'aura', 'unihorn'], feats: [] } },
+
+  // Тень: цзянши — прыгающий дух в шапочке с талисманом (только смешной)
+  { id: 'cn_prygun', name: ru`Прыгунчик`, el: 'shadow', rar: 1, stage: 1, fam: 'cn_prygun', evo: 'cn_jiangshi', cost: 25, base: [120, 92, 106], time: 'night',
+    desc: ru`Маленький цзянши в шапочке с жёлтым талисманом. Ходить не умеет — только прыгает, вытянув ручки, и очень этим гордится.`,
+    look: { shape: 'box', c1: '#a7f3d0', c2: '#047857', c3: '#facc15', eyes: 'sleepy', mouth: 'o', back: [], feats: ['hat', 'cheeks'] } },
+  { id: 'cn_jiangshi', name: ru`Цзянши`, el: 'shadow', rar: 2, stage: 2, fam: 'cn_prygun', base: [174, 128, 146], time: 'night',
+    desc: ru`Прыгающий дух в халате старинного чиновника. По поверью, если задержать дыхание, он тебя не заметит — вот Ловчие и ловят его красные от натуги.`,
+    look: { shape: 'box', c1: '#6ee7b7', c2: '#1e3a8a', c3: '#facc15', eyes: 'sleepy', mouth: 'teeth', back: [], feats: ['hat', 'runes'] } },
+
+  // Огонь: красный бумажный фонарик → фонарь желаний
+  { id: 'cn_fonarik', name: ru`Фонарик`, el: 'fire', rar: 1, stage: 1, fam: 'cn_fonarik', evo: 'cn_kongming', cost: 25, base: [114, 102, 110],
+    desc: ru`Красный бумажный фонарик с кисточкой, сбежавший с праздничной улицы. Светит тем, кто поздно возвращается домой.`,
+    look: { shape: 'round', c1: '#f87171', c2: '#b91c1c', c3: '#facc15', eyes: 'round', mouth: 'smile', back: [], feats: ['flame', 'cheeks'] } },
+  { id: 'cn_kongming', name: ru`Небесный фонарь`, el: 'fire', rar: 2, stage: 2, fam: 'cn_fonarik', base: [166, 142, 152],
+    desc: ru`Фонарь желаний: в него вписывают мечты и отпускают в небо. Летает над крышами и проверяет, какие желания уже сбылись.`,
+    look: { shape: 'tall', c1: '#fde68a', c2: '#ea580c', c3: '#dc2626', eyes: 'round', mouth: 'smile', back: ['aura'], feats: ['flame'] } },
+
+  // Лес: нефритовый заяц с Луны толчёт в ступке травы бессмертия
+  { id: 'cn_zaychonok', name: ru`Нефритовый зайчонок`, el: 'forest', rar: 1, stage: 1, fam: 'cn_zaychonok', evo: 'cn_yutu', cost: 25, base: [104, 116, 120],
+    desc: ru`Скатился с Луны прямо в городской сквер. Собирает травки на газонах и толчёт их в крышечке от бутылки.`,
+    look: { shape: 'round', c1: '#d1fae5', c2: '#10b981', c3: '#f9a8d4', eyes: 'big', mouth: 'cat', back: ['ears'], feats: ['cheeks', 'sprout'] } },
+  { id: 'cn_yutu', name: ru`Нефритовый заяц`, el: 'forest', rar: 2, stage: 2, fam: 'cn_zaychonok', base: [150, 168, 162],
+    desc: ru`Помощник лунной девы: толчёт в нефритовой ступке травы бессмертия. В полнолуние его стук слышно даже сквозь шум машин.`,
+    look: { shape: 'tall', c1: '#ecfdf5', c2: '#059669', c3: '#f9a8d4', eyes: 'round', mouth: 'cat', back: ['ears'], feats: ['leaves'] } },
+
+  // ---------- знаменитые существа ----------
+  { id: 'cn_fenghuang', name: ru`Фэнхуан`, el: 'fire', rar: 3, stage: 1, fam: 'cn_fenghuang', base: [212, 178, 200],
+    desc: ru`Птица-феникс, вестница мира и согласия. Садится только на дерево утун, поэтому над городом она подолгу кружит, выбирая ветку.`,
+    look: { shape: 'bird', c1: '#fca5a5', c2: '#dc2626', c3: '#fbbf24', eyes: 'round', mouth: 'beak', back: ['tail', 'wings'], feats: ['crest'] } },
+  { id: 'cn_qilin', name: ru`Цилинь`, el: 'forest', rar: 3, stage: 1, fam: 'cn_qilin', base: [186, 210, 212],
+    desc: ru`Добрый зверь с драконьей чешуёй и оленьими рогами. Ступает так легко, что не сминает ни травинки — даже на газоне, где ходить нельзя.`,
+    look: { shape: 'blob', c1: '#a7f3d0', c2: '#047857', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['mane', 'tail', 'antlers'], feats: [] } },
+  { id: 'cn_baihu', name: ru`Белый тигр`, el: 'current', rar: 3, stage: 1, fam: 'cn_baihu', base: [226, 150, 176],
+    desc: ru`Байху, страж Запада и повелитель металла. Когда он рычит, в проводах поднимается гул, а у прохожих волосы встают дыбом.`,
+    look: { shape: 'round', c1: '#f8fafc', c2: '#94a3b8', c3: '#1e293b', eyes: 'angry', mouth: 'teeth', back: ['cattail', 'ears'], feats: ['whiskers', 'bolt'] } },
+
+  // ---------- эпические ----------
+  { id: 'cn_change', name: ru`Чанъэ`, el: 'shadow', rar: 4, stage: 1, fam: 'cn_change', base: [210, 200, 212], time: 'night',
+    desc: ru`Лунная дева, что выпила эликсир бессмертия и поднялась на Луну. В Праздник середины осени спускается туда, где пекут лунные пряники.`,
+    look: { shape: 'robe', c1: '#f5f3ff', c2: '#7c3aed', c3: '#fde68a', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'halo'], feats: ['crown'] } },
+  { id: 'cn_houyi', name: ru`Хоу И`, el: 'fire', rar: 4, stage: 1, fam: 'cn_houyi', base: [232, 180, 190],
+    desc: ru`Великий лучник, сбивший девять солнц, когда их взошло десять и земля изнывала от зноя. До сих пор недоверчиво щурится на каждый прожектор.`,
+    look: { shape: 'robe', c1: '#fca5a5', c2: '#991b1b', c3: '#fbbf24', eyes: 'angry', mouth: 'none', back: ['aura'], feats: ['beard', 'hat'] } },
+
+  // ---------- великие легенды ----------
+  { id: 'cn_qinglong', name: ru`Цинлун`, el: 'water', rar: 5, stage: 1, fam: 'cn_qinglong', legend: true, base: [296, 238, 250],
+    desc: ru`Легенда. Лазурный дракон Востока, повелитель весенних дождей: где он пролетит, распускаются деревья. Встречается только в разломах.`,
+    look: { shape: 'tall', c1: '#5eead4', c2: '#0f766e', c3: '#fbbf24', eyes: 'angry', mouth: 'teeth', back: ['aura', 'mane', 'tail'], feats: ['horns', 'whiskers'] } },
+  { id: 'cn_wukong', name: ru`Сунь Укун`, el: 'wind', rar: 5, stage: 1, fam: 'cn_wukong', legend: true, base: [300, 224, 244],
+    desc: ru`Легенда. Царь обезьян, Великий мудрец, равный Небу: одним кувырком на облаке пролетает сто восемь тысяч ли. Встречается только в разломах.`,
+    look: { shape: 'round', c1: '#fcd34d', c2: '#92400e', c3: '#dc2626', eyes: 'angry', mouth: 'teeth', back: ['aura', 'cattail'], feats: ['crown'] } },
+];
+
+// ===== www/js/myth-aztec.js =====
+/* 4.28: духи и боги ацтекской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).aztec = [
+  // ---------- ОГОНЬ: Вулканчик → Дымогор → Попокатепетль ----------
+  { id: 'az_vulkanchik', name: ru`Вулканчик`, el: 'fire', rar: 1, stage: 1, fam: 'az_vulkanchik', evo: 'az_dymogor', cost: 25, base: [118, 96, 108],
+    desc: ru`Крошечный родственник великого Попокатепетля. Пыхает дымными колечками над клумбами и греет прохожим ладошки.`,
+    look: { shape: 'round', c1: '#a07a64', c2: '#4a2f24', c3: '#ff9a1a', eyes: 'round', mouth: 'smile', back: [], feats: ['flame', 'cheeks'] } },
+  { id: 'az_dymogor', name: ru`Дымогор`, el: 'fire', rar: 2, stage: 2, fam: 'az_vulkanchik', evo: 'az_popocatepetl', cost: 100, base: [172, 130, 146],
+    desc: ru`Подросший Вулканчик. Когда сердится, пускает столб дыма выше телебашни, но сразу остывает, если угостить его горячим шоколадом.`,
+    look: { shape: 'tall', c1: '#9a6a52', c2: '#3b2219', c3: '#ff7a1a', eyes: 'angry', mouth: 'teeth', back: ['steam'], feats: ['flame'] } },
+  { id: 'az_popocatepetl', name: ru`Попокатепетль`, el: 'fire', rar: 3, stage: 3, fam: 'az_vulkanchik', base: [236, 180, 200],
+    desc: ru`Курящаяся гора из старинного сказания: воин, который вечно стережёт сон своей любимой Истаксиуатль. Пыхает дымом над городом — тише, она спит.`,
+    look: { shape: 'tall', c1: '#a8a29e', c2: '#44403c', c3: '#f8fafc', eyes: 'angry', mouth: 'none', back: ['aura', 'steam'], feats: ['flame', 'crown'] } },
+
+  // ---------- ВОДА: Аксолотик → Аксолотль ----------
+  { id: 'az_axolotik', name: ru`Аксолотик`, el: 'water', rar: 1, stage: 1, fam: 'az_axolotik', evo: 'az_axolotl', cost: 25, base: [104, 114, 122],
+    desc: ru`Розовый малыш с пушистыми жабрами-веточками из каналов Шочимилько. Всегда улыбается и умеет отращивать потерянный хвостик.`,
+    look: { shape: 'round', c1: '#fbcfe8', c2: '#f472b6', c3: '#f43f5e', eyes: 'big', mouth: 'smile', back: [], feats: ['cheeks', 'bubbles'] } },
+  { id: 'az_axolotl', name: ru`Аксолотль`, el: 'water', rar: 2, stage: 2, fam: 'az_axolotik', base: [152, 166, 168],
+    desc: ru`По преданию, в его облике бог Шолотль однажды спрятался в воде. Катается на расписных лодках-трахинерах и помнит все каналы старого Теночтитлана.`,
+    look: { shape: 'blob', c1: '#f9a8d4', c2: '#db2777', c3: '#f43f5e', eyes: 'round', mouth: 'smile', back: ['ripples'], feats: ['bubbles', 'crown'] } },
+
+  // ---------- ЛЕС: Початок → Маисовик → Сентеотль ----------
+  { id: 'az_pochatok', name: ru`Початок`, el: 'forest', rar: 1, stage: 1, fam: 'az_pochatok', evo: 'az_maisovik', cost: 25, base: [108, 116, 118],
+    desc: ru`Кукурузный малыш в зелёной обёртке. Прорастает у лотков с варёной кукурузой и мечтает о своей милпе — поле, где кукуруза, фасоль и тыква растут дружно.`,
+    look: { shape: 'round', c1: '#fde047', c2: '#ca8a04', c3: '#65a30d', eyes: 'round', mouth: 'smile', back: [], feats: ['leaves', 'cheeks'] } },
+  { id: 'az_maisovik', name: ru`Маисовик`, el: 'forest', rar: 2, stage: 2, fam: 'az_pochatok', evo: 'az_centeotl', cost: 100, base: [158, 168, 156],
+    desc: ru`Дух кукурузного поля, обвитый фасолью, как шарфом. В городских огородах и на крышах следит, чтобы каждому зёрнышку хватило солнца.`,
+    look: { shape: 'tall', c1: '#facc15', c2: '#a16207', c3: '#4d7c0f', eyes: 'round', mouth: 'smile', back: ['wheat'], feats: ['leaves', 'sprout'] } },
+  { id: 'az_centeotl', name: ru`Сентеотль`, el: 'forest', rar: 3, stage: 3, fam: 'az_pochatok', base: [214, 228, 210],
+    desc: ru`Юный бог молодой кукурузы с золотыми початками в уборе. Ацтеки верили, что от него пошли все злаки; в городе он будит скверы и огороды на крышах.`,
+    look: { shape: 'robe', c1: '#fde68a', c2: '#15803d', c3: '#facc15', eyes: 'round', mouth: 'smile', back: ['aura', 'wheat'], feats: ['crown', 'leaves'] } },
+
+  // ---------- ВЕТЕР: Колибрик → Уицицилин ----------
+  { id: 'az_kolibrik', name: ru`Колибрик`, el: 'wind', rar: 1, stage: 1, fam: 'az_kolibrik', evo: 'az_uitsitsilin', cost: 25, base: [122, 92, 104],
+    desc: ru`Крошечный колибри, который жужжит громче шмеля. Облетает все цветы на балконах и ни одного не пропускает.`,
+    look: { shape: 'bird', c1: '#6ee7b7', c2: '#047857', c3: '#ef4444', eyes: 'round', mouth: 'beak', back: ['wings'], feats: [] } },
+  { id: 'az_uitsitsilin', name: ru`Уицицилин`, el: 'wind', rar: 2, stage: 2, fam: 'az_kolibrik', base: [176, 126, 144],
+    desc: ru`Так на языке ацтеков зовут колибри — посланца солнца. Зависает в воздухе перед витринами и сверкает бирюзовыми перьями ярче неоновых вывесок.`,
+    look: { shape: 'bird', c1: '#5eead4', c2: '#0f766e', c3: '#e11d48', eyes: 'round', mouth: 'beak', back: ['wings', 'tail'], feats: ['crest'] } },
+
+  // ---------- ТОК: Тлалокито → Тлалоке ----------
+  { id: 'az_tlalokito', name: ru`Тлалокито`, el: 'current', rar: 1, stage: 1, fam: 'az_tlalokito', evo: 'az_tlaloque', cost: 25, base: [116, 100, 110],
+    desc: ru`Маленький помощник бога дождя с глиняным кувшином. Если он уронит кувшин — над городом гремит гром и мигают фонари.`,
+    look: { shape: 'round', c1: '#7dd3fc', c2: '#0369a1', c3: '#facc15', eyes: 'big', mouth: 'smile', back: [], feats: ['bolt', 'cheeks'] } },
+  { id: 'az_tlaloque', name: ru`Тлалоке`, el: 'current', rar: 2, stage: 2, fam: 'az_tlalokito', base: [168, 140, 148],
+    desc: ru`Подросший помощник Тлалока. Разбивает кувшины о тучи, и из них вырываются гром и молнии. После грозы старательно склеивает осколки.`,
+    look: { shape: 'tall', c1: '#60a5fa', c2: '#1e3a8a', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: [], feats: ['bolt', 'drops'] } },
+
+  // ---------- ТЕНЬ: Шоло → Шолоитцкуинтли → Шолотль ----------
+  { id: 'az_sholo', name: ru`Шоло`, el: 'shadow', rar: 1, stage: 1, fam: 'az_sholo', evo: 'az_xoloitzcuintli', cost: 25, base: [114, 100, 106], time: 'night',
+    desc: ru`Голая собачка-шолоитцкуинтли, тёплая, как грелка. Провожает запоздавших прохожих до подъезда и никогда не путает дорогу.`,
+    look: { shape: 'round', c1: '#78716c', c2: '#292524', c3: '#fb923c', eyes: 'big', mouth: 'cat', back: ['ears'], feats: ['snout'] } },
+  { id: 'az_xoloitzcuintli', name: ru`Шолоитцкуинтли`, el: 'shadow', rar: 2, stage: 2, fam: 'az_sholo', evo: 'az_xolotl', cost: 100, base: [170, 128, 144],
+    desc: ru`Древний пёс-проводник: по поверьям ацтеков, такие собаки помогали душам перейти реку на пути в Миктлан. В городе знает все подземные переходы.`,
+    look: { shape: 'tall', c1: '#57534e', c2: '#1c1917', c3: '#fb923c', eyes: 'round', mouth: 'none', back: ['ears'], feats: ['snout', 'lamp'] } },
+  { id: 'az_xolotl', name: ru`Шолотль`, el: 'shadow', rar: 3, stage: 3, fam: 'az_sholo', base: [230, 168, 188],
+    desc: ru`Бог вечерней звезды с собачьей головой, брат-близнец Кецалькоатля. Каждый вечер провожает солнце за горизонт и зажигает первую звезду над городом.`,
+    look: { shape: 'robe', c1: '#6366f1', c2: '#1e1b4b', c3: '#fde68a', eye: '#fde68a', eyes: 'glow', mouth: 'none', back: ['ears', 'aura'], feats: ['snout', 'crown'] } },
+
+  // ---------- редкие существа ----------
+  { id: 'az_ahuizotl', name: ru`Ауисотль`, el: 'water', rar: 3, stage: 1, fam: 'az_ahuizotl', base: [214, 168, 190], time: 'night',
+    desc: ru`Водяной пёс с ладошкой на кончике хвоста. Живёт в фонтанах и каналах и утаскивает на дно брошенные монетки — а заодно и уроненные телефоны.`,
+    look: { shape: 'blob', c1: '#475569', c2: '#0f172a', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'teeth', back: ['cattail', 'ears'], feats: ['drops'] } },
+  { id: 'az_cipactli', name: ru`Сипактли`, el: 'forest', rar: 3, stage: 1, fam: 'az_cipactli', base: [184, 210, 206],
+    desc: ru`Исполинский крокодил первоокеана: из его спины боги сделали землю — поэтому на ней и растут травы и деревья. Дремлет в городских прудах.`,
+    look: { shape: 'blob', c1: '#6ee7b7', c2: '#065f46', c3: '#84cc16', eyes: 'round', mouth: 'teeth', back: ['sprout'], feats: ['snout', 'leaves'] } },
+  { id: 'az_xiuhcoatl', name: ru`Шиукоатль`, el: 'current', rar: 3, stage: 1, fam: 'az_xiuhcoatl', base: [224, 148, 176],
+    desc: ru`Бирюзовый огненный змей, оружие Уицилопочтли. Проносится молнией по проводам, а хвост у него искрит, как бенгальский огонь.`,
+    look: { shape: 'wisp', c1: '#5eead4', c2: '#0f766e', c3: '#f97316', eye: '#fde047', eyes: 'glow', mouth: 'teeth', back: ['tail'], feats: ['bolt', 'flame'] } },
+
+  // ---------- эпические боги ----------
+  { id: 'az_tlaloc', name: ru`Тлалок`, el: 'water', rar: 4, stage: 1, fam: 'az_tlaloc', base: [206, 214, 218],
+    desc: ru`Бог дождя и грома в маске с кругами у глаз. Живёт в горном саду Тлалокан и поливает город тёплыми ливнями — после них всё цветёт.`,
+    look: { shape: 'robe', c1: '#7dd3fc', c2: '#0c4a6e', c3: '#e0f2fe', eyes: 'big', mouth: 'teeth', back: ['aura', 'ripples'], feats: ['crown', 'bolt'] } },
+  { id: 'az_huitzilopochtli', name: ru`Уицилопочтли`, el: 'fire', rar: 4, stage: 1, fam: 'az_huitzilopochtli', base: [230, 186, 196], time: 'day',
+    desc: ru`Бог солнца в шлеме-колибри. По преданию, он привёл ацтеков к озеру, где орёл сидел на кактусе, — там и вырос Теночтитлан. Выходит только днём.`,
+    look: { shape: 'robe', c1: '#60a5fa', c2: '#1e3a8a', c3: '#fbbf24', eyes: 'angry', mouth: 'none', back: ['halo', 'wings'], feats: ['crest'] } },
+
+  // ---------- великие боги-легенды ----------
+  { id: 'az_quetzalcoatl', name: ru`Кецалькоатль`, el: 'wind', rar: 5, stage: 1, fam: 'az_quetzalcoatl', legend: true, base: [292, 238, 256],
+    desc: ru`Легенда. Пернатый Змей, бог ветра и мудрости, подаривший людям кукурузу и календарь. Его ветер расчищает дорогу дождям. Встречается только в разломах.`,
+    look: { shape: 'wisp', c1: '#34d399', c2: '#065f46', c3: '#fbbf24', eye: '#fde68a', eyes: 'glow', mouth: 'none', back: ['aura', 'wings', 'tail'], feats: ['crest', 'swirl'] } },
+  { id: 'az_tezcatlipoca', name: ru`Тескатлипока`, el: 'shadow', rar: 5, stage: 1, fam: 'az_tezcatlipoca', legend: true, base: [298, 226, 244],
+    desc: ru`Легенда. Дымящееся Зеркало, владыка ночного неба и вечный соперник Кецалькоатля. В его обсидиановом зеркале видно всё, что творится на свете. Ищи его в тёмных разломах.`,
+    look: { shape: 'robe', c1: '#44403c', c2: '#0c0a09', c3: '#facc15', eye: '#facc15', eyes: 'glow', mouth: 'none', back: ['aura', 'cattail'], feats: ['crown', 'runes'] } },
+];
+
+// ===== www/js/myth-japan.js =====
+/* 4.28: духи и боги японской мифологии — сезон 2 (данные: поля — как у SPECIES в data.js; мифология задаётся сама).
+   До раскола Алатыря мифология скрыта; MYTH_META.japan — её описание, Разлом и святилища */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).japan = [
+  // ---------- младшие семейства ----------
+  // Ветер: тэнгу — от листового коноха-тэнгу через воронового карасу-тэнгу к великому горному дайтэнгу с веером
+  { id: 'jp_konoha', name: ru`Коноха-тэнгу`, el: 'wind', rar: 1, stage: 1, fam: 'jp_konoha', evo: 'jp_karasu', cost: 25, base: [120, 92, 104],
+    desc: ru`Самый младший из тэнгу, лёгкий, как лист на ветру. Учится летать на сквозняках между высотками и пока приземляется в основном на козырьки остановок.`,
+    look: { shape: 'bird', c1: '#e0e7ff', c2: '#4338ca', c3: '#84cc16', eyes: 'big', mouth: 'beak', back: ['wings'], feats: ['leaves', 'cheeks'] } },
+  { id: 'jp_karasu', name: ru`Карасу-тэнгу`, el: 'wind', rar: 2, stage: 2, fam: 'jp_konoha', evo: 'jp_daitengu', cost: 100, base: [174, 128, 142],
+    desc: ru`Тэнгу с вороньим клювом и чёрными крыльями, мастер горных троп. Сторожит храмовые лестницы и поднимает вихрь, если кто-нибудь мусорит на горе.`,
+    look: { shape: 'bird', c1: '#475569', c2: '#0f172a', c3: '#f59e0b', eyes: 'angry', mouth: 'beak', back: ['wings'], feats: ['hat'] } },
+  { id: 'jp_daitengu', name: ru`Дайтэнгу`, el: 'wind', rar: 3, stage: 3, fam: 'jp_konoha', base: [240, 176, 192],
+    desc: ru`Великий горный тэнгу с длинным красным носом и веером из перьев. Одним взмахом веера поднимает бурю — и им же разгоняет тучи над городским праздником.`,
+    look: { shape: 'robe', c1: '#f87171', c2: '#7f1d1d', c3: '#f8fafc', eyes: 'angry', mouth: 'none', back: ['wings', 'aura'], feats: ['beard', 'hat'] } },
+
+  // Лес: тануки — стучит в живот-барабан «пон-поко» и превращается с помощью листика на голове
+  { id: 'jp_tanuchok', name: ru`Танучок`, el: 'forest', rar: 1, stage: 1, fam: 'jp_tanuchok', evo: 'jp_tanuki', cost: 25, base: [104, 110, 124],
+    desc: ru`Пушистый детёныш тануки учится превращаться: кладёт на голову листик — и становится… чуть более пушистым тануки. Зато в живот-барабан стучит уже отлично: пон-поко-пон!`,
+    look: { shape: 'round', c1: '#d6a77a', c2: '#6b4423', c3: '#1c1917', eyes: 'big', mouth: 'cat', back: ['ears', 'tail'], feats: ['leaves', 'cheeks'] } },
+  { id: 'jp_tanuki', name: ru`Тануки`, el: 'forest', rar: 2, stage: 2, fam: 'jp_tanuchok', evo: 'jp_ootanuki', cost: 100, base: [156, 150, 170],
+    desc: ru`Весельчак в соломенной шляпе, с бутылочкой рамунэ и счётом за ужин — таким его ставят у дверей раменных на удачу. Превращается во что угодно, но хвост всегда его выдаёт.`,
+    look: { shape: 'blob', c1: '#c8956a', c2: '#5b3a1e', c3: '#fde68a', eyes: 'round', mouth: 'smile', back: ['ears', 'tail'], feats: ['hat', 'leaves'] } },
+  { id: 'jp_ootanuki', name: ru`Великий тануки`, el: 'forest', rar: 3, stage: 3, fam: 'jp_tanuchok', base: [214, 218, 236],
+    desc: ru`Предводитель восьмисот восьми тануки из Мацуямы. Ударит в живот-барабан — и по всему парку кружится листопад, а превратиться может хоть в целый поезд.`,
+    look: { shape: 'blob', c1: '#b98457', c2: '#3f2a14', c3: '#84cc16', eyes: 'angry', mouth: 'smile', back: ['aura', 'ears', 'tail'], feats: ['leaves', 'crown'] } },
+
+  // Тень: кошка, прожившая много лет, становится бакэнэко, а потом нэкомата с раздвоенным хвостом
+  { id: 'jp_tama', name: ru`Котёнок Тама`, el: 'shadow', rar: 1, stage: 1, fam: 'jp_tama', evo: 'jp_bakeneko', cost: 25, base: [112, 100, 110], time: 'night',
+    desc: ru`С виду обычный котёнок с колокольчиком. Но кошка, прожившая много лет, становится духом — и Тама очень ждёт этого дня, тренируясь ходить на задних лапках.`,
+    look: { shape: 'round', c1: '#f8fafc', c2: '#94a3b8', c3: '#f97316', eyes: 'big', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers', 'cheeks'] } },
+  { id: 'jp_bakeneko', name: ru`Бакэнэко`, el: 'shadow', rar: 2, stage: 2, fam: 'jp_tama', evo: 'jp_nekomata', cost: 100, base: [166, 138, 150], time: 'night',
+    desc: ru`Кошка-оборотень: по ночам танцует на задних лапах, повязав на голову полотенце. Раньше лакомилась маслом из старых фонарей, а теперь — сливками из круглосуточного магазина.`,
+    look: { shape: 'tall', c1: '#e2e8f0', c2: '#475569', c3: '#a855f7', eyes: 'sleepy', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers'] } },
+  { id: 'jp_nekomata', name: ru`Нэкомата`, el: 'shadow', rar: 3, stage: 3, fam: 'jp_tama', base: [232, 170, 196],
+    desc: ru`Мудрая кошка с раздвоенным хвостом. Взмахнёт хвостами — и в переулке зажигаются блуждающие огоньки, провожая до дома тех, кто засиделся допоздна.`,
+    look: { shape: 'tall', c1: '#f1f5f9', c2: '#6b21a8', c3: '#c084fc', eye: '#e9d5ff', eyes: 'glow', mouth: 'cat', back: ['aura', 'cattail', 'ears'], feats: ['whiskers'] } },
+
+  // Вода: каппа с блюдцем воды на макушке
+  { id: 'jp_kappyonok', name: ru`Каппёнок`, el: 'water', rar: 1, stage: 1, fam: 'jp_kappyonok', evo: 'jp_kappa', cost: 25, base: [114, 104, 112],
+    desc: ru`Маленький каппа с блюдцем воды на макушке. Вежливо кланяется в ответ на поклон — и тут же бежит доливать блюдце из ближайшего фонтанчика.`,
+    look: { shape: 'round', c1: '#86efac', c2: '#15803d', c3: '#7dd3fc', eyes: 'big', mouth: 'beak', back: [], feats: ['bubbles', 'cheeks'] } },
+  { id: 'jp_kappa', name: ru`Каппа`, el: 'water', rar: 2, stage: 2, fam: 'jp_kappyonok', base: [168, 142, 154],
+    desc: ru`Речной дух с панцирем и клювом, чемпион по сумо среди водяных. Обожает огурцы — роллы с огурцом так и называются: каппа-маки.`,
+    look: { shape: 'tall', c1: '#4ade80', c2: '#166534', c3: '#fde68a', eyes: 'round', mouth: 'beak', back: ['ripples'], feats: ['bubbles'] } },
+
+  // Огонь: дарума-неваляшка — второй глаз дорисовывают, когда сбудется желание
+  { id: 'jp_darumka', name: ru`Дарумка`, el: 'fire', rar: 1, stage: 1, fam: 'jp_darumka', evo: 'jp_daruma', cost: 25, base: [106, 118, 120],
+    desc: ru`Красная неваляшка-дарума с одним нарисованным глазом: второй ей дорисуют, когда сбудется загаданное желание. Толкни её — покачается и снова встанет: семь раз упади, восемь раз поднимись!`,
+    look: { shape: 'round', c1: '#f87171', c2: '#b91c1c', c3: '#fde68a', eyes: 'round', mouth: 'smile', back: [], feats: ['cheeks'] } },
+  { id: 'jp_daruma', name: ru`Дарума`, el: 'fire', rar: 2, stage: 2, fam: 'jp_darumka', base: [152, 170, 164],
+    desc: ru`Желание сбылось — и дарума получила второй глаз. В Новый год старых дарум с благодарностью провожают в храмовом костре, и они выходят оттуда тёплыми огненными духами.`,
+    look: { shape: 'round', c1: '#ef4444', c2: '#7f1d1d', c3: '#fbbf24', eyes: 'angry', mouth: 'none', back: ['aura'], feats: ['beard', 'flame'] } },
+
+  // Ток: райдзю — громовой зверёк бога грома
+  { id: 'jp_gromushka', name: ru`Громушка`, el: 'current', rar: 1, stage: 1, fam: 'jp_gromushka', evo: 'jp_raiju', cost: 25, base: [118, 96, 106],
+    desc: ru`Детёныш райдзю, громового зверька. В грозу сворачивается клубком там, где потеплее, — например, в капюшоне у прохожего — и тихонько потрескивает.`,
+    look: { shape: 'round', c1: '#fde68a', c2: '#ca8a04', c3: '#60a5fa', eyes: 'big', mouth: 'cat', back: ['cattail', 'ears'], feats: ['bolt', 'cheeks'] } },
+  { id: 'jp_raiju', name: ru`Райдзю`, el: 'current', rar: 2, stage: 2, fam: 'jp_gromushka', base: [172, 132, 146],
+    desc: ru`Громовой зверь, спутник бога грома. Спрыгивает на землю вместе с молнией, носится по проводам и оставляет на деревьях следы когтей.`,
+    look: { shape: 'blob', c1: '#fef08a', c2: '#a16207', c3: '#3b82f6', eyes: 'angry', mouth: 'teeth', back: ['cattail', 'mane'], feats: ['bolt'] } },
+
+  // ---------- знаменитые существа и герои ----------
+  { id: 'jp_akaoni', name: ru`Ака-они`, el: 'fire', rar: 3, stage: 1, fam: 'jp_akaoni', base: [224, 180, 206],
+    desc: ru`Красный великан-они с железной палицей. На праздник Сэцубун в него бросают жареные бобы с криком «Они — вон, счастье — в дом!», и он честно убегает — но недалеко.`,
+    look: { shape: 'blob', c1: '#f87171', c2: '#991b1b', c3: '#fbbf24', eyes: 'angry', mouth: 'teeth', back: [], feats: ['horns'] } },
+  { id: 'jp_yukionna', name: ru`Юки-онна`, el: 'water', rar: 3, stage: 1, fam: 'jp_yukionna', base: [200, 196, 204],
+    desc: ru`Снежная дева в белом кимоно. Приходит с метелью и рисует иней на окнах трамваев; говорят, она щадит того, кто умеет держать слово.`,
+    look: { shape: 'ghost', c1: '#f8fafc', c2: '#7dd3fc', c3: '#e0f2fe', eyes: 'sleepy', mouth: 'smile', back: ['hair'], feats: [] } },
+  { id: 'jp_momotaro', name: ru`Момотаро`, el: 'forest', rar: 3, stage: 1, fam: 'jp_momotaro', base: [212, 176, 190],
+    desc: ru`Мальчик, родившийся из огромного персика. С собакой, обезьяной и фазаном он отправился на остров они и вернулся с победой, а друзей угощал рисовыми колобками кибиданго.`,
+    look: { shape: 'round', c1: '#fecdd3', c2: '#e11d48', c3: '#fde68a', eyes: 'round', mouth: 'smile', back: [], feats: ['hat', 'cheeks'] } },
+
+  // ---------- эпические ----------
+  { id: 'jp_raijin', name: ru`Райдзин`, el: 'current', rar: 4, stage: 1, fam: 'jp_raijin', base: [230, 180, 196],
+    desc: ru`Бог грома с кольцом барабанов за спиной: ударит в них — и над городом раскатывается гроза. В Японии до сих пор советуют в грозу прикрывать пупок: Райдзин, говорят, большой до них охотник.`,
+    look: { shape: 'robe', c1: '#60a5fa', c2: '#1e3a8a', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['aura'], feats: ['horns', 'bolt'] } },
+  { id: 'jp_fujin', name: ru`Фудзин`, el: 'wind', rar: 4, stage: 1, fam: 'jp_fujin', base: [206, 206, 214],
+    desc: ru`Бог ветра с огромным мешком за плечами, где хранятся все ветра мира. Приоткроет мешок — по улицам гуляет свежий бриз, развяжет совсем — берегите зонтики.`,
+    look: { shape: 'robe', c1: '#86efac', c2: '#166534', c3: '#e0e7ff', eyes: 'angry', mouth: 'teeth', back: ['aura'], feats: ['swirl', 'horns'] } },
+
+  // ---------- великие легенды ----------
+  { id: 'jp_amaterasu', name: ru`Аматэрасу`, el: 'fire', rar: 5, stage: 1, fam: 'jp_amaterasu', legend: true, base: [298, 236, 250],
+    desc: ru`Легенда. Богиня Солнца: когда она укрылась в небесной пещере, мир погрузился во тьму, и вернуть её сумели лишь смех богов и священное зеркало. Встречается только в разломах.`,
+    look: { shape: 'robe', c1: '#fff7ed', c2: '#dc2626', c3: '#fbbf24', eyes: 'sleepy', mouth: 'smile', back: ['aura', 'halo', 'hair'], feats: ['crown'] } },
+  { id: 'jp_susanoo', name: ru`Сусаноо`, el: 'water', rar: 5, stage: 1, fam: 'jp_susanoo', legend: true, base: [302, 226, 244],
+    desc: ru`Легенда. Буйный брат Аматэрасу, бог бурь и морей: он одолел восьмиглавого змея Ямата-но Ороти и нашёл в его хвосте священный меч. Встречается только в разломах.`,
+    look: { shape: 'robe', c1: '#93c5fd', c2: '#1e3a8a', c3: '#e5e7eb', eyes: 'angry', mouth: 'none', back: ['aura', 'hair'], feats: ['beard'] } },
+];
+(globalThis.MYTH_META = globalThis.MYTH_META || {}).japan = {
+  name: ru`Японская`, where: ru`Япония — острова восходящего солнца`, color: '#f43f5e', season: 2,
+  world: ru`Такамагахара`, road: ru`Дорога в Такамагахару`, // мир мифологии для экрана Алатыря — Равнина Высокого Неба, где живут ками
+  rift: ru`Врата Ёми`, riftDesc: ru`Врата в Ёми, подземную страну мрака, приоткрылись в тумане: оттуда вышел сильный дух. Закрой врата, пока не прошёл час.`,
+  shrine: ru`Святилище`, shrineOf: g => ru`Святилище ${g}`,
+  shrineDesc: ru`Святилище ками за алыми воротами-тории. Победи хранителя — и твой клан сможет держать святилище.`,
+  gods: [ru`Аматэрасу`, ru`Сусаноо`, ru`Цукуёми`, ru`Инари`, ru`Хатимана`, ru`Идзанаги`, ru`Идзанами`, ru`Эбису`, ru`Рюдзина`, ru`Тэндзина`],
+  guards: [ru`Харуто`, ru`Сакура`, ru`Рэн`, ru`Аой`, ru`Кэйта`, ru`Хина`],
+  // клан мифологии (data.js, CLANS): открывается вместе с ней
+  clan: { name: ru`Клан Кицунэ`, short: ru`Кицунэ`, member: ru`самурай`, motto: ru`Упади семь раз — встань восемь`, crest: 'fox', color: '#f472b6',
+    desc: ru`Самураи под покровительством белых лис богини Инари. Клан пришёл, когда Кощей снова расколол Алатырь, и держит святилища за алыми тории.` },
+};
+
 // ===== www/js/data.js =====
 /* ==========================================================================
    ДУХОЛОВ — данные игры: стихии, духи, предметы, уровни, задания
@@ -200,7 +827,7 @@ const SPECIES = [
     desc: ru`Сторож ночных костров. Если костёр бросили без присмотра — Костровик обидится и разгорится.`,
     look: { shape: 'blob', c1: '#ff9a52', c2: '#c2330f', c3: '#ffd23f', eyes: 'angry', mouth: 'teeth', back: [], feats: ['flame', 'horns'] } },
   { id: 'zharogriv', name: ru`Жарогрив`, el: 'fire', rar: 3, stage: 3, fam: 'ugolek', base: [232, 176, 196],
-    desc: ru`Грива из живого пламени. Говорят, в Тонкую ночь именно Жарогривы не дали городу замёрзнуть.`,
+    desc: ru`Грива из живого пламени. Говорят, в ночь Перепутицы Жарогривы до утра светили заблудившимся духам всех земель, чтобы те не потерялись совсем.`,
     look: { shape: 'tall', c1: '#ff8f4a', c2: '#a3260b', c3: '#ffcf40', eyes: 'angry', mouth: 'teeth', back: ['mane'], feats: ['horns', 'flame'] } },
   { id: 'domovoy', name: ru`Домовой`, el: 'fire', rar: 4, stage: 1, fam: 'domovoy', base: [190, 210, 220],
     desc: ru`Хранитель очага. В новостройках ему неуютно, поэтому он бродит по дворам в поисках старой печки.`,
@@ -282,7 +909,7 @@ const SPECIES = [
     desc: ru`Вестница из Нави, мира по ту сторону. Приходит туда, где граница тоньше всего.`,
     look: { shape: 'ghost', c1: '#e2e8f0', c2: '#64748b', c3: '#cbd5e1', eye: '#67e8f9', eyes: 'glow', mouth: 'none', back: ['hair'], feats: [] } },
   { id: 'koschey', name: ru`Кощей`, el: 'shadow', rar: 5, stage: 1, fam: 'koschey', legend: true, base: [294, 232, 236],
-    desc: ru`Легенда. Бессмертный царь Нави. Именно он истончил границу миров в Тонкую ночь. Ищи его в тёмных разломах.`,
+    desc: ru`Легенда. Бессмертный царь Нави: это он расколол Алатырь-камень, пряча в нём иглу со своей смертью, и перепутал все миры. Ищи его в тёмных разломах.`,
     look: { shape: 'robe', c1: '#475569', c2: '#0f172a', c3: '#4ade80', eye: '#4ade80', eyes: 'glow', mouth: 'teeth', back: ['aura'], feats: ['crown', 'bones', 'runes'] } },
 
   // ---------- v1.3: новые духи ----------
@@ -420,8 +1047,52 @@ const REGIONS = {
   center: { name: ru`Центр`,  range: ru`40–90° в. д.` },
   east:   { name: ru`Восток`, range: ru`от 90° в. д.` },
 };
+/* ---------- 4.28: мифологии мира ----------
+   Духи и боги других мифологий — по файлу данных на мифологию (js/myth-<ключ>.js, подключается до data.js:
+   globalThis.MYTH_SP[ключ] = [...виды]) и файлу рисунков (js/sp-<ключ>.js). Номера в Бестиарии — после славянских,
+   в порядке MYTHS. После Перепутицы (сюжет — LORE) духи всех мифологий водятся по всему свету, мифология выпадает
+   поровну (W.evenMyth); у Разлома и святилища — одна из семи мифологий (W.placeMyth). where — родина мифологии по легенде.
+   4.28: сезоны Алатыря — season: с какого сезона мифология открыта (у первых семи — 1). Мифология следующих сезонов приходит
+   своим файлом js/myth-<ключ>.js: globalThis.MYTH_SP[ключ] = [...виды] и globalThis.MYTH_META[ключ] = { name, where, color,
+   season, rift, riftDesc, shrine, shrineOf, shrineDesc, gods, guards } (и по желанию world — куда ведёт её дорога, road —
+   «Дорога в …», clan — её клан, см. CLANS). Пока её сезон не настал, она закрыта: её духов нет в SPECIES, её нет в MYTH_KEYS (mythOpen ниже). */
+const MYTHS = {
+  slavic: { name: ru`Славянская`,    where: ru`Россия, Восточная Европа, Кавказ и Средняя Азия`,          color: '#f59e0b', season: 1 },
+  greek:  { name: ru`Греческая`,     where: ru`Средиземноморье: Греция, Италия, Испания, Турция`,         color: '#60a5fa', season: 1 },
+  norse:  { name: ru`Скандинавская`, where: ru`Скандинавия, Исландия, Дания, Германия, Прибалтика`,       color: '#93c5fd', season: 1 },
+  celtic: { name: ru`Кельтская`,     where: ru`Ирландия, Британия, Франция, Бельгия, Нидерланды`,          color: '#34d399', season: 1 },
+  egypt:  { name: ru`Египетская`,    where: ru`Египет, Северная Африка, Аравия и Ближний Восток`,          color: '#fbbf24', season: 1 },
+  china:  { name: ru`Китайская`,     where: ru`Китай, Корея, Япония и Юго-Восточная Азия`,                 color: '#ef4444', season: 1 },
+  aztec:  { name: ru`Ацтекская`,     where: ru`Америка — от Аляски до Огненной Земли`,                     color: '#10b981', season: 1 },
+};
+// 4.28: мифологии следующих сезонов (MYTH_META) — после первых семи, по сезонам; ключ — только латиница
+for (const [k, m] of Object.entries(globalThis.MYTH_META || {})) {
+  if (MYTHS[k] || !/^[a-z]{2,16}$/.test(k) || !m || typeof m !== 'object') continue;
+  MYTHS[k] = { name: m.name || k, where: m.where || '', color: m.color || '#fde68a', season: Math.max(2, Math.floor(+m.season) || 2), world: m.world || null, road: m.road || null };
+}
+// все мифологии игры (и закрытые) — по сезону, в сезоне — по порядку объявления
+const MYTH_ALL = Object.keys(MYTHS).map((k, i) => [k, i]).sort((a, b) => MYTHS[a[0]].season - MYTHS[b[0]].season || a[1] - b[1]).map(x => x[0]);
+const MYTH_KEYS = MYTH_ALL.slice(); // открытые сейчас (mythOpen); массив меняется на месте — ссылки на него живут
+for (const m of MYTH_ALL) for (const x of (globalThis.MYTH_SP || {})[m] || []) SPECIES.push({ ...x, myth: m });
+SPECIES.forEach(s => { if (!s.myth) s.myth = 'slavic'; });
 SPECIES.forEach((s, i) => { s.num = i + 1; });
-const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+const SP = Object.fromEntries(SPECIES.map(s => [s.id, s])); // все виды, и закрытых мифологий: по нему узнают вид по id
+const SPECIES_ALL = SPECIES.slice();
+// 4.28: открыть мифологии сезона s: SPECIES и MYTH_KEYS меняются на месте — только открытые виды и мифологии. Сезон сейчас
+// знают Ev.alaSeason (сервер — из базы, телефон — от сервера): Ev.alaSync зовёт mythOpen перед отбором духов
+let MYTH_SEASON = 0;
+function mythOpen(s, force) {
+  s = Math.max(1, Math.floor(+s) || 1);
+  if (s === MYTH_SEASON && !force) return false;
+  MYTH_SEASON = s;
+  const open = MYTH_ALL.filter(m => (MYTHS[m].season || 1) <= s);
+  MYTH_KEYS.length = 0; MYTH_KEYS.push(...open);
+  SPECIES.length = 0; SPECIES.push(...SPECIES_ALL.filter(x => open.includes(x.myth)));
+  return true;
+}
+// мифология, что открывается в сезоне s (первая по порядку), или null — её ещё нет в игре
+function mythOfSeason(s) { return MYTH_ALL.find(m => MYTHS[m].season === s && s > 1) || null; }
+mythOpen(1);
 
 const ITEMS = {
   charm:   { name: ru`Оберег`,             desc: ru`Узелок с заговорённой травой. Бросай в духа, чтобы поймать.`, mult: 1,   throwable: true },
@@ -515,9 +1186,10 @@ const TASK_LIMIT = 5;
 
 
 const LORE = [
-  ru`2031 год. Геомагнитная буря, которую потом назовут <b>Тонкой ночью</b>, истончила границу между Явью — нашим миром — и Навью, миром духов.`,
-  ru`Теперь по улицам бродят духи. Древние — Леший, Водяной, Домовой. И новые, рождённые городом: Вайфайка, Трамвайник, Фонарник.`,
-  ru`Древний <b>Орден Оберега</b> снова набирает Ловчих. Твоя задача — находить духов, ловить их оберегами, черпать силу из родников и закрывать разломы, откуда лезет всё самое опасное.`,
+  ru`Миров духов всегда было много — у каждого народа свой: Навь у славян, царство Аида у греков, Асгард у скандинавов, холмы сидов у кельтов, Дуат у египтян, Небеса у китайцев, Миктлан у ацтеков. На местах их держал <b>Алатырь</b> — бел-горюч камень в середине всех миров. Каждые врата вели в свою землю, и духи не путали дорог.`,
+  ru`Однажды осенней ночью Кощей Бессмертный решил спрятать свою смерть понадёжнее — прямо в сердце Алатыря. Камень треснул и раскололся. Все врата распахнулись разом, дороги между мирами спутались в клубок, и духи и боги семи мифологий высыпали в наш мир — кто куда. Эту ночь назвали <b>Перепутицей</b>. Кощей уверяет, что камень треснул сам, но Локи и Сунь Укун при этих словах почему-то хихикают.`,
+  ru`Теперь Гиппокамп плещется в московском фонтане, Леший гуляет по токийскому парку, а Ниссе греет котов в подъездах Каира. Любого духа можно встретить в любом уголке земли. Разломы — трещины от расколотого камня — открываются в каждом городе, а боги ставят святилища там, где осели: Капище по соседству с Пагодой, Храм через улицу от Пирамиды. Город рождает и своих, новых духов: Вайфайку, Трамвайника, Фонарника.`,
+  ru`Первыми с гостями поладили не учёные, а бабушки со своими оберегами: оказалось, оберег, сделанный с заботой, успокаивает любого духа, откуда бы тот ни был. Так появился <b>Орден Оберега</b> — союз Ловчих всех земель. Твоя задача — находить духов, ловить их оберегами, черпать силу из родников, закрывать разломы и собирать осколки Алатыря. Кто знает — может, однажды их хватит, чтобы распутать дороги домой.`,
 ];
 
 /* ---------- Погода: усиливает стихии ---------- */
@@ -547,7 +1219,8 @@ const MEDALS = [
   { id: 'walker',  name: ru`Странник`,      desc: ru`Пройди километров`,            stat: 'km',          tiers: [10, 100, 1000] },
   { id: 'springs', name: ru`Водонос`,       desc: ru`Зачерпни силы из родников`,    stat: 'springs',     tiers: [30, 300, 2000] },
   { id: 'raids',   name: ru`Затворник`,     desc: ru`Закрой разломов`,              stat: 'raids',       tiers: [3, 30, 200] },
-  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.length] },
+  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.filter(s => s.myth === 'slavic').length] },
+  { id: 'myths',   name: ru`Странник миров`, desc: ru`Видов духов других мифологий`, stat: 'myths',       tiers: [3, 25, 80] }, // 4.28
   { id: 'purify',  name: ru`Очиститель`,    desc: ru`Победи прислужников Нави`,     stat: 'invasions',   tiers: [3, 30, 200] },
   { id: 'trade',   name: ru`Щедрая душа`,   desc: ru`Купи или продай духов на Аукционе`,     stat: 'traded',      tiers: [1, 10, 50] },
   { id: 'throws',  name: ru`Меткий глаз`,   desc: ru`Отличных бросков`,             stat: 'throwsGreat', tiers: [20, 200, 1000] },
@@ -556,6 +1229,8 @@ const MEDALS = [
   { id: 'shiny',   name: ru`Искатель сияния`, desc: ru`Поймай сияющих духов`,       stat: 'shiny',       tiers: [1, 10, 50] },
   { id: 'streak',  name: ru`Верность`,      desc: ru`Дней подряд в игре`,           stat: 'streakBest',  tiers: [7, 30, 100] },
   { id: 'order',   name: ru`Соратник`,      desc: ru`Очков в общем деле Ордена`,    stat: 'orderPts',    tiers: [100, 1000, 10000] },
+  // 4.28: сезоны Алатыря, в которых Ловчий принёс в общий камень не меньше SeasonRewards.MEDAL_MIN осколков (считает SeasonRewards.grant)
+  { id: 'alatyr',  name: ru`Хранитель Алатыря`, desc: ru`Сезонов Алатыря, где ты принёс 5+ осколков`, stat: 'alaSeasons', tiers: [1, 3, 10] },
   { id: 'lands',   name: ru`Землепроходец`, desc: ru`Поймай духов родных земель`,   stat: 'lands',       tiers: [1, 3, 7] },
   { id: 'el_fire',    name: ru`Истопник`,   desc: ru`Поймай духов Огня`,            stat: 'el:fire',     tiers: [10, 50, 200] },
   { id: 'el_water',   name: ru`Лодочник`,   desc: ru`Поймай духов Воды`,            stat: 'el:water',    tiers: [10, 50, 200] },
@@ -587,14 +1262,92 @@ WEEK_EVENTS.forEach(e => { if (e.el && !e.desc) e.desc = ru`Духи стихи�
 /* ---------- Капища и хранители ---------- */
 const SHRINE_GODS = [ru`Перуна`, ru`Велеса`, ru`Мокоши`, ru`Сварога`, ru`Даждьбога`, ru`Стрибога`, ru`Ярилы`, ru`Лады`, ru`Хорса`, ru`Рода`];
 const GUARDIANS = [ru`Ярослава`, ru`Мирон`, ru`Всеслав`, ru`Любава`, ru`Добрыня`, ru`Злата`, ru`Ратибор`, ru`Василиса`, ru`Святогор`, ru`Забава`, ru`Остромир`, ru`Милена`];
-const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'];
-/* ---------- Дружины (3.5): Капища под знаменем ---------- */
-const CLANS = {
-  sokol:  { name: ru`Дружина Сокола`,  short: ru`Сокол`,   color: '#ef4444', motto: ru`Быстрота и отвага` },
-  medved: { name: ru`Дружина Медведя`, short: ru`Медведь`, color: '#3b82f6', motto: ru`Сила и стойкость` },
-  volk:   { name: ru`Дружина Волка`,   short: ru`Волк`,    color: '#eab308', motto: ru`Верность и чутьё` },
+/* 4.28: Разломы и Капища других мифологий — интерфейс тот же, свои значок (js/places-art.js), название, описание и боги святилищ
+   (имена богов — в родительном падеже: «Храм Зевса»). Мифология места — W.placeMyth */
+const MYTH_PLACES = {
+  slavic: { rift: ru`Разлом`, riftDesc: ru`Портал в Навь: из него вышел сильный дух. Закрой разлом, пока не прошёл час.`,
+    shrine: ru`Капище`, shrineOf: g => ru`Капище ${g}`, shrineDesc: ru`Святилище древних богов. Победи хранителя — и твой клан сможет держать капище.`, gods: SHRINE_GODS, guards: GUARDIANS },
+  greek: { rift: ru`Врата Аида`, riftDesc: ru`Трещина в подземное царство Аида: оттуда вырвался сильный дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Храм`, shrineOf: g => ru`Храм ${g}`, shrineDesc: ru`Мраморный храм богов Олимпа. Победи хранителя — и твой клан сможет держать храм.`,
+    gods: [ru`Зевса`, ru`Геры`, ru`Афины`, ru`Аполлона`, ru`Артемиды`, ru`Гермеса`, ru`Посейдона`, ru`Деметры`, ru`Гефеста`, ru`Афродиты`],
+    guards: [ru`Ариадна`, ru`Леонид`, ru`Елена`, ru`Ясон`, ru`Кассандра`, ru`Никос`] },
+  norse: { rift: ru`Разлом Гиннунгагап`, riftDesc: ru`Трещина в первозданную бездну, где лёд встречает пламя: оттуда вышел могучий дух. Закрой разлом, пока не прошёл час.`,
+    shrine: ru`Рунный камень`, shrineOf: g => ru`Рунный камень ${g}`, shrineDesc: ru`Резной камень с рунами в честь богов Асгарда. Победи хранителя — и твой клан сможет держать камень.`,
+    gods: [ru`Одина`, ru`Тора`, ru`Фрейи`, ru`Фрейра`, ru`Бальдра`, ru`Тюра`, ru`Хеймдалля`, ru`Фригг`, ru`Браги`, ru`Идунн`],
+    guards: [ru`Сигрид`, ru`Бьорн`, ru`Астрид`, ru`Лейф`, ru`Ингрид`, ru`Рагнар`] },
+  celtic: { rift: ru`Холм сидов`, riftDesc: ru`Холм распахнулся в Иной мир волшебного народа: оттуда вышел сильный дух. Закрой проход, пока не прошёл час.`,
+    shrine: ru`Каменный круг`, shrineOf: g => ru`Каменный круг ${g}`, shrineDesc: ru`Кольцо стоячих камней, где друиды встречали солнце. Победи хранителя — и твой клан сможет держать круг.`,
+    gods: [ru`Дагды`, ru`Луга`, ru`Бригиты`, ru`Морриган`, ru`Мананнана`, ru`Цернунна`, ru`Эпоны`, ru`Дану`, ru`Огмы`],
+    guards: [ru`Финн`, ru`Ниам`, ru`Кухулин`, ru`Мэйв`, ru`Эйдан`, ru`Бранвен`] },
+  egypt: { rift: ru`Врата Дуата`, riftDesc: ru`Врата в Дуат, царство за закатом, открылись: из них вышел древний дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Обелиск`, shrineOf: g => ru`Обелиск ${g}`, shrineDesc: ru`Обелиск с иероглифами в честь богов Египта. Победи хранителя — и твой клан сможет держать обелиск.`,
+    gods: [ru`Ра`, ru`Осириса`, ru`Исиды`, ru`Гора`, ru`Тота`, ru`Анубиса`, ru`Бастет`, ru`Хатхор`, ru`Птаха`, ru`Маат`],
+    guards: [ru`Нефер`, ru`Аменхет`, ru`Мерит`, ru`Ками`, ru`Сенеб`, ru`Иси`] },
+  china: { rift: ru`Небесные врата`, riftDesc: ru`Небесные врата приоткрылись среди облаков: с небес спустился сильный дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Пагода`, shrineOf: g => ru`Пагода ${g}`, shrineDesc: ru`Многоярусная пагода с фонарями в честь небесных стражей. Победи хранителя — и твой клан сможет держать пагоду.`,
+    gods: [ru`Лазурного дракона`, ru`Белого тигра`, ru`Красной птицы`, ru`Чёрной черепахи`, ru`Цилиня`, ru`Фэнхуана`, ru`Нюйвы`, ru`Фуси`, ru`Пань-гу`],
+    guards: [ru`Ли Мин`, ru`Мэйлин`, ru`Вэй`, ru`Лань`, ru`Чжан Юнь`, ru`Сяо Лун`] },
+  aztec: { rift: ru`Врата Миктлана`, riftDesc: ru`Проход в Миктлан, подземное царство, открылся в камне: оттуда вышел сильный дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Пирамида`, shrineOf: g => ru`Пирамида ${g}`, shrineDesc: ru`Ступенчатая пирамида древних богов. Победи хранителя — и твой клан сможет держать пирамиду.`,
+    gods: [ru`Кецалькоатля`, ru`Тлалока`, ru`Уицилопочтли`, ru`Шочикецаль`, ru`Тонатиу`, ru`Эекатля`, ru`Чальчиуитликуэ`, ru`Сентеотля`],
+    guards: [ru`Ицель`, ru`Куаутемок`, ru`Шочитль`, ru`Тонали`, ru`Ситлали`, ru`Некали`] },
 };
-const CLAN_LEVEL = 12;     // с какого уровня выбирается дружина (4.16: было 5; см. DUEL_LEVEL)
+// 4.28: Разломы и святилища мифологий следующих сезонов — из MYTH_META (чего нет — как у славянских)
+for (const [k, m] of Object.entries(globalThis.MYTH_META || {})) {
+  if (MYTH_PLACES[k] || !MYTHS[k] || !m || typeof m !== 'object') continue;
+  const S0 = MYTH_PLACES.slavic, list = (a, d) => (Array.isArray(a) && a.length ? a : d);
+  MYTH_PLACES[k] = { rift: m.rift || S0.rift, riftDesc: m.riftDesc || S0.riftDesc, shrine: m.shrine || S0.shrine,
+    shrineOf: typeof m.shrineOf === 'function' ? m.shrineOf : g => `${m.shrine || S0.shrine} ${g}`, shrineDesc: m.shrineDesc || S0.shrineDesc,
+    gods: list(m.gods, S0.gods), guards: list(m.guards, S0.guards) };
+}
+const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'];
+/* ---------- Кланы: Капища под знаменем ----------
+   3.5: три дружины (сокол, медведь, волк). 4.28: клан — это мифология: ключ клана = ключ мифологии (MYTHS), открыт клан
+   только открытой мифологии (MYTH_KEYS — mythOpen), клан следующего сезона показывается как «?». name — название,
+   short — коротко (знак на карте, в списках; у прежних трёх — тот же зверь), member — звание участника, motto — девиз,
+   desc — кто они в Перепутицу, crest — зверь на гербе (Art.clanCrest), color — цвет знамени (от цвета мифологии, но
+   различимый на карте). Мифология следующих сезонов приносит свой клан в MYTH_META[ключ].clan = { name, short, member,
+   motto, desc, crest, color } — чего нет, берётся по умолчанию. */
+const CLAN_META = {
+  slavic: { name: ru`Дружина Перуна`,   short: ru`Сокол`,    member: ru`дружинник`,  motto: ru`Быстрота и отвага`, crest: 'falcon', color: '#f97316',
+    desc: ru`Наследники княжеских дружин под знаком сокола-Рарога. Когда Кощей расколол Алатырь, они первыми встали у Капищ и держат Навь громом Перуна.` },
+  greek:  { name: ru`Фаланга Олимпа`,   short: ru`Сова`,     member: ru`гоплит`,     motto: ru`Щит к щиту`, crest: 'owl', color: '#3b82f6',
+    desc: ru`Ловчие, что сомкнули щиты под знаком совы Афины. В Перепутицу они стерегут храмы, чтобы тени Аида не вышли к живым.` },
+  norse:  { name: ru`Хирд Асгарда`,     short: ru`Волк`,     member: ru`хирдман`,    motto: ru`Верность и чутьё`, crest: 'wolf', color: '#a78bfa',
+    desc: ru`Верные, как волки Одина. Хирд стоит у рунных камней, пока не затянутся трещины к Гиннунгагапу.` },
+  celtic: { name: ru`Братство Дуба`,    short: ru`Медведь`,  member: ru`друид`,      motto: ru`Сила и стойкость`, crest: 'bear', color: '#22c55e',
+    desc: ru`Друиды и воины священных рощ под рукой медведицы Артио. Братство держит каменные круги, чтобы холмы сидов не распахнулись навсегда.` },
+  egypt:  { name: ru`Стражи Дуата`,     short: ru`Скарабей`, member: ru`страж`,      motto: ru`Солнце взойдёт снова`, crest: 'scarab', color: '#facc15',
+    desc: ru`Хранители солнечной ладьи Ра. Пока Алатырь расколот, стражи стоят у обелисков, чтобы ночь Дуата не поглотила рассвет.` },
+  china:  { name: ru`Небесная Гвардия`, short: ru`Дракон`,   member: ru`гвардеец`,   motto: ru`Небо и земля в равновесии`, crest: 'dragon', color: '#ef4444',
+    desc: ru`Воины под знаменем Лазурного дракона. В Перепутицу гвардия держит пагоды, чтобы Небесные врата не остались распахнутыми.` },
+  aztec:  { name: ru`Орден Ягуара`,     short: ru`Ягуар`,    member: ru`воин-ягуар`, motto: ru`Солнце не должно погаснуть`, crest: 'jaguar', color: '#06b6d4',
+    desc: ru`Самые отважные воины древних городов Америки. Орден держит пирамиды, чтобы из Миктлана не пришла вечная ночь.` },
+};
+const CLANS = {};
+for (const k of MYTH_ALL) {
+  const m = MYTHS[k], x = CLAN_META[k] || ((globalThis.MYTH_META || {})[k] || {}).clan || {}, s = v => (typeof v === 'string' && v ? v : null);
+  const place = m.world || m.name;
+  CLANS[k] = { myth: k, name: s(x.name) || ru`Клан «${place}»`, short: s(x.short) || place, member: s(x.member) || ru`воин клана`,
+    motto: s(x.motto) || ru`Вместе — за Алатырь`, desc: s(x.desc) || ru`Ловчие мифологии «${m.name}»: они держат её святилища, пока Алатырь расколот.`,
+    crest: /^[a-z]{2,16}$/.test(x.crest || '') ? x.crest : 'star', color: /^#[0-9a-f]{6}$/i.test(x.color || '') ? x.color : m.color };
+}
+// 4.28: прежние дружины (до 4.28 в сохранениях, на Капищах и в чате) — к кланам мифологий. Сокол — славянский (сокол-Рарог,
+// знак Рюриковичей), волк — скандинавский (волки Одина, ульфхеднары), медведь — кельтский (медведица Артио; имя Артура —
+// «медведь»). Под старыми ключами — те же кланы, но не перечисляются (Object.keys / entries их не видят)
+const CLAN_OLD = { sokol: 'slavic', medved: 'celtic', volk: 'norse' };
+for (const [o, k] of Object.entries(CLAN_OLD)) Object.defineProperty(CLANS, o, { value: CLANS[k], enumerable: false });
+// ключ клана по любому id (прежнему — его клан мифологии) или null, если такого клана нет
+function clanOf(k) {
+  k = String(k || '');
+  if (Object.prototype.hasOwnProperty.call(CLAN_OLD, k)) return CLAN_OLD[k];
+  return Object.prototype.hasOwnProperty.call(CLANS, k) && Object.prototype.propertyIsEnumerable.call(CLANS, k) ? k : null;
+}
+// клан открыт — его мифология открыта в этом сезоне Алатыря
+function clanOpen(k) { return clanOf(k) === k && MYTH_KEYS.includes(k); }
+// все id клана в базе: сам ключ и прежние, что к нему ведут (до миграции 032_myth_clans_data)
+function clanIds(k) { return [k, ...Object.keys(CLAN_OLD).filter(o => CLAN_OLD[o] === k)]; }
+const CLAN_LEVEL = 12;     // с какого уровня выбирается клан (4.16: было 5; см. DUEL_LEVEL)
 const HOLD_MAX = 6;       // защитников на одном Капище
 const HOLD_MY_MAX = 3;    // Капищ с моими защитниками одновременно (4.16: было 10 — дружины держали почти все Капища)
 const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Капище с моим защитником
@@ -632,7 +1385,7 @@ const LOOK = {
     { c: '#6d28d9', name: ru`Фиалковый`, lvl: 1 }, { c: '#1d4ed8', name: ru`Синий`, lvl: 1 }, { c: '#15803d', name: ru`Лесной`, lvl: 1 },
     { c: '#b91c1c', name: ru`Алый`, lvl: 5 }, { c: '#0f766e', name: ru`Бирюзовый`, lvl: 8 }, { c: '#a16207', name: ru`Охряный`, lvl: 10 },
     { c: '#1f2937', name: ru`Полночный`, lvl: 15 }, { c: '#e2e8f0', name: ru`Снежный`, lvl: 20 }, { c: '#be185d', name: ru`Малиновый`, lvl: 25 }, { c: '#ca8a04', name: ru`Золотой`, lvl: 30 },
-    // 3.12: из Лавки Ордена (за златники) и с Золотой тропы — открываются покупкой, а не уровнем
+    // 3.12: из Лавки Ордена (за монеты) и с Золотой тропы — открываются покупкой, а не уровнем
     { c: '#7c2d12', name: ru`Бронзовый`, lvl: 1, shop: 250 }, { c: '#0c4a6e', name: ru`Глубинный`, lvl: 1, shop: 250 }, { c: '#4a044e', name: ru`Навья ночь`, lvl: 1, shop: 400 },
     { c: '#065f46', name: ru`Сезонная тропа`, lvl: 1, pass: true },
   ],
@@ -649,7 +1402,7 @@ const LOOK = {
     { id: 'oak', name: ru`Дубовый венок`, lvl: 31 },
     { id: 'trail', name: ru`Знак Тропы`, lvl: 1, pass: true },
   ],
-  // 4.6: облики-скины — полный наряд Ловчего (рисунки — js/skins-art.js); покупаются в Гардеробе за златники.
+  // 4.6: облики-скины — полный наряд Ловчего (рисунки — js/skins-art.js); покупаются в Гардеробе за монеты.
   // rar: 0 — обычный, 1 — редкий, 2 — эпический, 3 — легендарный. Глаза и эмблема видны у всех обликов, цвет плаща — только у обычного
   skin: [
     { id: 'hood', name: ru`Ловчий`, rar: 0, desc: ru`Плащ Ордена Оберега — с него начинает каждый Ловчий.` },
@@ -663,7 +1416,7 @@ const LOOK = {
     { id: 'zharpero', name: ru`Жар-перо`, rar: 3, shop: 900, desc: ru`Убор из огненных перьев Жар-птицы. Светится даже в самую тёмную ночь.` },
     { id: 'knyaz', name: ru`Княжий`, rar: 3, shop: 1000, desc: ru`Княжья шапка с соболем и самоцветами — наряд первых Ловчих Ордена.` },
   ],
-  // 4.6: фон и рамка карточки Ловчего (её видят все) — тоже в Гардеробе (рисунки — js/looks-art.js). lvl — открывается уровнем, shop — цена в златниках
+  // 4.6: фон и рамка карточки Ловчего (её видят все) — тоже в Гардеробе (рисунки — js/looks-art.js). lvl — открывается уровнем, shop — цена в монетах
   bg: [
     { id: 'night', name: ru`Ночь`, rar: 0, lvl: 1 },
     { id: 'dusk', name: ru`Сумерки`, rar: 0, lvl: 5 },
@@ -922,6 +1675,51 @@ const Ev = {
   get cur() { return WEEK_EVENTS[this.week() % WEEK_EVENTS.length]; },
   get next() { return WEEK_EVENTS[(this.week() + 1) % WEEK_EVENTS.length]; },
   endsAt() { return ((this.week() + 1) * 7 - 3) * 86400000; },
+  // 4.28: неделя мифологии — по кругу все семь (параллельно с событием недели): её духи встречаются в MYTH_MUL раз чаще
+  get myth() { return MYTH_KEYS[this.week() % MYTH_KEYS.length]; },
+  get nextMyth() { return MYTH_KEYS[(this.week() + 1) % MYTH_KEYS.length]; },
+  MYTH_MUL: 3,
+  // 4.28: × событие дороги Алатыря (Rules.ALATYR_WORLD): пока дорога в мир мифологии m распутана, её духи в MUL раз чаще
+  mythMul(m, t = U.now()) { return (m === this.myth ? this.MYTH_MUL : 1) * this.roadMul(m, t); },
+  /* 4.28: распутанные дороги Алатыря — [{ n, road, from, to }] (n — номер грани, road — мифология, from/to — мс).
+     Сервер берёт их из базы (serve.js, World), телефон — из ответов сервера (событие roads, alatyr.js): у обоих одни и те же */
+  roads: [],
+  road(m, t = U.now()) { return (this.roads || []).find(r => r && r.road === m && t >= r.from && t < r.to) || null; },
+  roadMul(m, t = U.now()) { return this.road(m, t) ? Rules.ALATYR_WORLD.MUL : 1; }, // две дороги одного мира разом — всё равно ×MUL
+  roadsNow(t = U.now()) { return (this.roads || []).filter(r => r && t >= r.from && t < r.to); },
+  // подпись набора дорог (сервер помнит, какой набор уже отдал телефону)
+  roadsKey() { return (this.roads || []).map(r => `${r.n}:${r.from}`).join(','); },
+  // только нужное для отбора духов и значка на карте: дороги, что ещё идут или скоро начнутся
+  roadsLive(t = U.now()) { return (this.roads || []).filter(r => r && r.to > t).map(r => ({ n: r.n, road: r.road, from: r.from, to: r.to })); },
+  // проверка присланного сервером (телефон): только известные мифологии и числа
+  roadsClean(list) {
+    return (Array.isArray(list) ? list : []).filter(r => r && typeof r.road === 'string' && Object.prototype.hasOwnProperty.call(MYTHS, r.road) && Number.isFinite(+r.from) && Number.isFinite(+r.to) && Number.isFinite(+r.n))
+      .slice(0, 30).map(r => ({ n: +r.n | 0, road: r.road, from: +r.from, to: +r.to }));
+  },
+
+  /* 4.28: сезон Алатыря (Rules.ALATYR_WORLD). s — сезон, from — когда он начался (мс), start — общий счёт осколков на его
+     начало, fin — финал { from, to, kills, goal } (все грани собраны: во всех Разломах Кощей), brk — когда Кощей расколет
+     камень (Орден одолел его goal раз; иначе — в конце финала fin.to). С момента раскола — сезон s + 1, даже если база ещё
+     не записала его. Сервер берёт всё из базы (serve.js, World), телефон — из ответов сервера (событие ala, alatyr.js) */
+  ala: { s: 1, from: 0, start: 0, fin: null, brk: null },
+  alaEnd() { const A = this.ala || {}; return A.brk || (A.fin && A.fin.to) || 0; },
+  alaSeason(t = U.now()) { const A = this.ala || {}, e = this.alaEnd(); return Math.max(1, Math.floor(+A.s) || 1) + (e && t >= e ? 1 : 0); },
+  // финал идёт (в момент t): все грани собраны, Кощей ещё не расколол камень
+  finale(t = U.now()) { const f = (this.ala || {}).fin; return f && t >= f.from && t < this.alaEnd() ? f : null; },
+  // открыть мифологии сезона, что идёт в момент t (data.js, mythOpen) — перед отбором духов
+  alaSync(t = U.now()) { if (typeof mythOpen === 'function') mythOpen(this.alaSeason(t)); },
+  // где камень текущего сезона при общем счёте total (сезон уже сменился, а база не записала начало — с нуля)
+  alaStage(total, t = U.now()) { const A = this.ala || {}, s = this.alaSeason(t); return Rules.alaStage(s, s === A.s ? (+total || 0) - (+A.start || 0) : 0); },
+  // для телефона и проверка присланного сервером
+  alaView() { const A = this.ala || {}; return { s: A.s, from: A.from, start: A.start, fin: A.fin ? { ...A.fin } : null, brk: A.brk || null }; },
+  alaClean(x) {
+    const num = v => (Number.isFinite(+v) && v !== null && v !== '' ? +v : 0);
+    if (!x || typeof x !== 'object') return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    const f = x.fin && typeof x.fin === 'object' && num(x.fin.to) > num(x.fin.from) ? { from: num(x.fin.from), to: num(x.fin.to), kills: Math.max(0, num(x.fin.kills)), goal: Math.max(1, num(x.fin.goal) || Rules.ALATYR_WORLD.FINALE.GOAL) } : null;
+    return { s: Math.max(1, Math.floor(num(x.s)) || 1), from: num(x.from), start: Math.max(0, num(x.start)), fin: f, brk: num(x.brk) || null };
+  },
+  // подпись сезона (сервер помнит, какую уже отдал телефону); победы над Кощеем в неё не входят — их телефон спрашивает сам
+  alaKey() { const A = this.ala || {}; return `${A.s}:${A.start}:${A.fin ? A.fin.from + '-' + A.fin.to : ''}:${A.brk || ''}`; },
 
   // Православная Пасха (юлианский расчёт + 13 дней, верно для 1900–2099); дата в UTC
   easter(y) {
@@ -1110,10 +1908,31 @@ const W = {
     if (lng >= 44) return 'volga';
     return 'center';
   },
-  // региональные духи водятся только в своей части света, духи земель — только в своём краю
-  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
-    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng));
+  /* 4.28: духи всех семи мифологий разлетелись по свету (сюжет — LORE): мифология к месту не привязана. Чтобы мифологии
+     встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
+  // Разлом и святилище у места — одной из открытых мифологий, поровну (постоянно, по id места).
+  // 4.28: сезоны — каждая новая мифология забирает себе места поровну у прежних: место переходит к ней с вероятностью
+  // 1 / (сколько мифологий стало), остальные места своей мифологии не меняют (закрытые мифологии мест не получают)
+  placeMyth(p) {
+    const base = Rules.ALATYR_WORLD.ORDER;
+    let m = base[Math.floor(U.h('pm', p.id) * base.length)], n = base.length;
+    for (const x of MYTH_KEYS) if (!base.includes(x)) { n++; if (U.h('pm', x, p.id) < 1 / n) m = x; }
+    return m;
   },
+  // из списка — виды одной мифологии, выбранной из тех, что в списке есть (x — случайное число 0…1): поровну, но с весом
+  // Ev.mythMul — 4.28: мифология недели втрое чаще
+  evenMyth(list, x) {
+    const ms = MYTH_KEYS.filter(m => list.some(s => s.myth === m));
+    if (ms.length < 2) return list;
+    const w = ms.map(m => Ev.mythMul(m));
+    let t = x * w.reduce((a, b) => a + b, 0), i = 0;
+    for (; i < ms.length - 1; i++) { t -= w[i]; if (t < 0) break; }
+    return list.filter(s => s.myth === ms[i]);
+  },
+  // из списка — виды мифологии m (если их нет — весь список)
+  ofMyth(list, m) { const h = list.filter(s => s.myth === m); return h.length ? h : list; },
+  // 4.28: все духи водятся везде — и духи родных земель, и вещие птицы частей света (их край — родина по легенде)
+  local() { return true; },
 
   pickSpecies(r, biome, night, lng, lat) {
     const fullMoon = night && Sky.moonEvent() === 'full';
@@ -1126,7 +1945,7 @@ const W = {
     }), r());
     const RW = { 1: 60, 2: 24, 3: 8, 4: 2 };
     const h = U.hour();
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)).map(s => {
+    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)), r()).map(s => { // 4.28: мифология — поровну
       let w = RW[s.rar] || 0;
       if (s.stage === 3) w *= 0.3;
       if (s.time === 'night') w *= night ? (fullMoon ? 4 : 1.5) : 0.35;
@@ -1139,6 +1958,7 @@ const W = {
 
   spawnsAround(lat, lng, radius = this.VIEW) {
     const now = U.now(), out = [];
+    Ev.alaSync(now); // 4.28: духи — только открытых в этом сезоне мифологий
     const P = S.incenseActive() ? 0.3 : 0.14;
     const night = U.isNight();
     this.cells(lat, lng, this.SPAWN_CELL, radius, (i, j, la, ln, sz, lsz) => {
@@ -1185,18 +2005,23 @@ const W = {
     if (!this.riftAt(p.id, hour)) return null;
     const id = `${p.id}:${hour}`;
     const r = U.rng(id);
+    const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
+    // 4.28: финал сезона Алатыря — во всех Разломах мира великий босс Кощей (fin — номер сезона: победы идут в общий счёт)
+    const t0 = hour * 3600000;
+    if (Ev.finale(t0)) return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier: 3, boss: 'koschey', myth, fin: Ev.alaSeason(t0), place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
-    else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
-    else pool = SPECIES.filter(s => s.rar === 2);
+    if (tier === 3) pool = this.ofMyth(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), myth);
+    else if (tier === 2) pool = this.ofMyth(SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0), myth);
+    else pool = this.ofMyth(SPECIES.filter(s => s.rar === 2), myth);
     // в неделю стихии разломы чаще охраняют духи этой стихии
     const evPool = pool.filter(s => s.el === Ev.cur.el);
     if (evPool.length && r() < 0.6) pool = evPool;
     const boss = pool[Math.floor(r() * pool.length)].id;
-    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
+    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
   },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
   },
 
@@ -1231,13 +2056,15 @@ const W = {
   shrineFor(p, d) {
     const id = p.id;
     const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
-    const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
+    const myth = this.placeMyth(p), gods = MYTH_PLACES[myth].gods; // 4.28: святилище мифологии места
+    const god = gods[Math.floor(U.h('kn', id) * gods.length)];
     const hold = typeof Clans !== 'undefined' ? Clans.info(id) : null; // на сервере сводки нет — он спрашивает базу сам
-    return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
+    return { type: 'shrine', id, tier, name: p.name, god, myth, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
   },
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
   /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
@@ -1281,8 +2108,8 @@ const W = {
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3);
-    const strong = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo);
+    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && s.rar <= 3), r()); // 4.28: мифология — поровну
+    const strong = this.ofMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && !s.evo), pool[0].myth);
     const pw = this.topPower() * Duel.FOE.invasion.pow;
     const team = [];
     for (let k = 0; k < 3; k++) {
@@ -1299,19 +2126,20 @@ const W = {
   guardian(e) {
     const r = U.rng(e.id + U.today());
     const T = SHRINE_TIERS[e.tier];
-    const name = GUARDIANS[Math.floor(r() * GUARDIANS.length)];
+    const myth = e.myth || this.placeMyth(e), gs = MYTH_PLACES[myth].guards; // 4.28: хранитель, его имя и духи — из мифологии святилища
+    const name = gs[Math.floor(r() * gs.length)];
     const color = GUARD_COLORS[Math.floor(r() * GUARD_COLORS.length)];
     // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
-    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage);
+    const pool = this.ofMyth(SPECIES.filter(s => !s.legend && !s.season && rars.includes(s.rar) && s.stage <= maxStage), myth);
     const pw = this.topPower() * T.pow;
     const team = [];
     while (team.length < 3) {
       const s = pool[Math.floor(r() * pool.length)];
       if (team.some(x => SP[x.sid].fam === s.fam)) continue;
       // сильному Ловчему — сильнейшие виды (у Старейшины — и эпические), без повторов семейств
-      const strong = SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam));
+      const strong = this.ofMyth(SPECIES.filter(x => !x.legend && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), myth);
       team.push(this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.id + U.today() + team.length, e.tier * 4, strong));
     }
     return { name, color, title: T.title, team, speed: this.foeSpeed(T.speed, team, pw) };
@@ -1366,7 +2194,7 @@ const S = {
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
-    // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
+    // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
     // xpv: нет — кривая до 3.19 (levelXPOld), 2 — кривая 3.19–4.15 (levelXP2), 3 — нынешняя (levelXP)
@@ -1401,6 +2229,13 @@ const S = {
       d.tut = next === undefined ? 0 : next + 1; d.tutV = TUT_V;
     }
     if (d.buddy === undefined) d.buddy = null;
+    // 4.28: дружины стали кланами мифологий (CLAN_OLD): прежняя дружина — её клан, и один бесплатный переход в любой
+    // открытый клан (clanFree) — тем, кто был в дружине до обновления. clanV 2 — перенос сделан (и у новых Ловчих)
+    if (d.clanV !== 2) {
+      if (d.clan) { d.clan = clanOf(d.clan); if (d.clan) d.clanFree = 1; }
+      d.clanV = 2;
+    }
+    if (d.clan && clanOf(d.clan) !== d.clan) d.clan = clanOf(d.clan);
   },
 
   newGame(name, starter) {
@@ -1578,9 +2413,18 @@ const S = {
     if (!p || (this.d.alaDay && this.d.alaDay.n >= this.ALATYR_DAY) || Math.random() >= p) return [];
     this.d.alaDay = { day, n: (this.d.alaDay ? this.d.alaDay.n : 0) + 1 };
     this.d.alatyr = (this.d.alatyr || 0) + 1;
+    this.d.alaGiven = (this.d.alaGiven || 0) + 1; // 4.28: и в общий счёт Ордена (осколок остаётся у Ловчего) — вклад за всё время
+    this.alaMine().n++; // 4.28: и вклад за сезон Алатыря (награда в конце сезона — GameCore.alaTurn)
     return [{ k: 'alatyr', n: 1, label: ru`Осколки Алатыря` }];
   },
-  resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
+  // 4.28: вклад Ловчего в сезон Алатыря: { s — сезон, n — осколков, k — побед над Кощеем в финале }. Смену сезона
+  // (награду за прошлый) делает сервер в начале запроса (GameCore.alaTurn) — здесь только запись текущего
+  alaMine() {
+    const s = typeof Ev !== 'undefined' && Ev.alaSeason ? Ev.alaSeason() : 1, a = this.d.alaS;
+    if (!a || typeof a !== 'object' || !(a.s >= 1)) this.d.alaS = { s, n: 0, k: 0 };
+    return this.d.alaS;
+  },
+  resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Монеты` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
   /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
      hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
      до Rules.koMs (2–24 ч по редкости) в бой не идёт, потом поднимается сам на Rules.HP.BACK (10%) */
@@ -1829,7 +2673,7 @@ const S = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
-      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Златники` }); }
+      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Монеты` }); }
       else if (k === 'xp') { const o = { k, n: 0, label: ru`Опыт` }; out.push(o); o.n = this.addXP(n, once); }
       else if (k === 'alatyr' || k === 'rod') { this.d[k] = (this.d[k] || 0) + n; out.push({ k, n, label: this.resName(k) }); } // 4.16: не вещи — в сумку не идут
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
@@ -1899,7 +2743,7 @@ const S = {
     return n;
   },
   levelRewards(l) {
-    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); златники — 3, на каждом пятом — 15
+    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); монеты — 3, на каждом пятом — 15
     const r = { charm: 10 + l, honey: 2, water: 1, herb: 3, brew: 1, zlat: l % 5 ? Rules.ZLAT.level : Rules.ZLAT.level5 };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
@@ -1927,7 +2771,7 @@ const S = {
     const tier = COCOON_TIERS[c.km], r = U.rng(c.id + 'hatch');
     const rar = U.weighted(Object.entries(tier.pool).map(([k, w]) => [+k, w]), r());
     // из кокона — только первая стадия (3.19: раньше редкие коконы давали сразу превращённых духов)
-    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season);
+    let pool = W.evenMyth(SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season), r()); // 4.28: мифология — поровну
     if (!pool.length) pool = SPECIES.filter(s => s.stage === 1 && !s.legend);
     const s = pool[Math.floor(r() * pool.length)];
     const sp = this.makeSpirit(s.id, Math.min(this.d.level, 20), c.id, { ivMin: 10 });
@@ -1996,11 +2840,12 @@ const S = {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
     const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
     const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar)), guest = false;
+    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.season && T.rar.includes(s.rar)), guest = false;
     if (q.tier === 3 && pos && r() < this.GUEST) {
       const far = this.guests(pos.lat, pos.lng), fresh = far.filter(s => !(this.d.dex[s.id] && this.d.dex[s.id].caught));
       if (far.length) { sps = fresh.length ? fresh : far; guest = true; }
     }
+    if (!guest) sps = W.evenMyth(sps, r()); // 4.28: мифология — поровну
     const t = { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
     if (guest) t.guest = true;
     return t;
@@ -2008,7 +2853,7 @@ const S = {
   /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
      земель и сезонные не в свой сезон. Их приводят трудные поручения родников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
-  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
+  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0)); },
 
 
   /* ---------- 4.0: обучение новичка ---------- */
@@ -2029,6 +2874,7 @@ const S = {
     const st = this.d.stats;
     if (m.stat === 'dex') return SPECIES.filter(s => this.d.dex[s.id] && this.d.dex[s.id].caught).length;
     if (m.stat === 'lands') return SPECIES.filter(s => s.land && this.d.dex[s.id] && this.d.dex[s.id].caught).length;
+    if (m.stat === 'myths') return SPECIES.filter(s => s.myth !== 'slavic' && this.d.dex[s.id] && this.d.dex[s.id].caught).length; // 4.28
     if (m.stat.startsWith('el:')) return st.byEl[m.stat.slice(3)] || 0;
     return st[m.stat] || 0;
   },
@@ -2046,6 +2892,108 @@ const S = {
       }
     });
     this._medalBusy = false;
+  },
+};
+
+// ===== www/js/season-rewards.js =====
+/* 4.28: награды сезонов Алатыря. Все Ловчие вместе собирают Алатырь-камень (js/alatyr.js); камень собран — Кощей раскалывает
+   его, и начинается новый сезон. По итогам сезона Ловчий получает награды по вкладу n — сколько осколков он принёс в общий
+   счёт за этот сезон. Ступени TIERS суммируются: принёс 30 — награды ступеней 1+, 5+, 15+ и 30+.
+   Калибровка: у Ловчего ~0,3–1 осколка в день (Rules: разломы и старейшины Капищ, не больше двух в день), сезон — недели:
+   1+ — заглянул в сезон, 5+ — играл, 15+ — играл регулярно, 30+ — почти каждый день, 60+ — весь сезон без перерыва.
+   Награды — валюта и предметы (обликов у сезонов нет). Знак «Хранитель Алатыря» (MEDALS, stat alaSeasons) —
+   число сезонов, где принесено не меньше MEDAL_MIN осколков: он про постоянство, а общий вклад и так виден на экране Алатыря.
+   grant выдаёт на сервере (общие S, U, ITEMS, MEDALS, без DOM) — один раз на сезон: отметка S.d.alaRw[сезон] = n.
+   html — окно «Итоги сезона Алатыря» на телефоне: UI.modal({ title: SeasonRewards.title(s), html: SeasonRewards.html(s, n) }). */
+const SeasonRewards = {
+  TIERS: [
+    { n: 1,  name: ru`Причастный`,         rw: { sparks: 1500, charm2: 10 } },
+    { n: 5,  name: ru`Искатель осколков`,  rw: { zlat: 10, honey: 5, brew: 3 }, medal: true },
+    { n: 15, name: ru`Собиратель Алатыря`, rw: { zlat: 20, charm3: 5, incense: 1, water: 5 } },
+    { n: 30, name: ru`Хранитель камня`,    rw: { zlat: 40, xpbrew: 2, rod: 15, deadwater: 1 } },
+    { n: 60, name: ru`Сердце Алатыря`,     rw: { zlat: 50, deadwater: 1, rod: 20, farpass: 3 } },
+  ],
+  MEDAL_MIN: 5, // сезон засчитывается в знак «Хранитель Алатыря» (ступень с medal: true)
+  ORDER: ['zlat', 'sparks', 'rod'], // порядок показа: сначала валюта, потом предметы
+
+  roman(n) {
+    n = Math.floor(+n) || 0;
+    return [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]
+      .reduce((s, [v, r]) => { while (n >= v) { s += r; n -= v; } return s; }, '');
+  },
+  // номер последней достигнутой ступени (−1 — ни одной)
+  tierOf(n) { let t = -1; this.TIERS.forEach((x, i) => { if (n >= x.n) t = i; }); return t; },
+  medal() { return MEDALS.find(m => m.id === 'alatyr') || null; },
+  label(k) { return typeof S !== 'undefined' && S.resName ? S.resName(k) : ITEMS[k] ? ITEMS[k].name : k; },
+  norm(s, n) { return [Math.floor(+s) || 0, Math.max(0, Math.floor(+n) || 0)]; },
+
+  // награды за вклад n в сезоне s (без картинок — годится и для сервера): [{ k, n, label, tier }]
+  list(s, n) {
+    [s, n] = this.norm(s, n);
+    const out = [], sum = {}, tier = {};
+    if (s < 1) return out;
+    this.TIERS.forEach((t, i) => {
+      if (n < t.n) return;
+      if (t.medal && this.medal()) out.push({ k: 'medal', n: 1, label: ru`Сезон засчитан в знак «${this.medal().name}»`, tier: i });
+      for (const [k, v] of Object.entries(t.rw)) { sum[k] = (sum[k] || 0) + v; if (!(k in tier)) tier[k] = i; }
+    });
+    const keys = Object.keys(sum).sort((a, b) => (this.ORDER.includes(b) - this.ORDER.includes(a)) || (this.ORDER.indexOf(a) - this.ORDER.indexOf(b)));
+    keys.forEach(k => out.push({ k, n: sum[k], label: this.label(k), tier: tier[k] }));
+    return out;
+  },
+  // то же для показа — с иконкой (разметка; на телефоне)
+  forContribution(s, n) {
+    return this.list(s, n).map(x => ({ ...x, icon: this.icon(x) }));
+  },
+  icon(x) {
+    if (typeof Art === 'undefined') return '';
+    if (x.k === 'medal') { const m = this.medal(); return Art.medal(m, Math.max(1, (S.d && S.d.medals && S.d.medals[m.id]) || 0)); }
+    return Art.item(x.k);
+  },
+
+  // выдать награды сезона s за вклад n в прогресс S.d — один раз на сезон; → что выдано [{ k, n, label }] (для окна итогов)
+  grant(St, s, n) {
+    [s, n] = this.norm(s, n);
+    const d = St && St.d;
+    if (!d || s < 1) return [];
+    if (!d.alaRw || typeof d.alaRw !== 'object' || Array.isArray(d.alaRw)) d.alaRw = {};
+    if (Object.prototype.hasOwnProperty.call(d.alaRw, String(s))) return []; // уже выдано
+    d.alaRw[s] = n;
+    const out = [], rw = {};
+    let medal = false;
+    for (const x of this.list(s, n)) {
+      if (x.k === 'medal') { d.stats = d.stats || {}; d.stats.alaSeasons = (d.stats.alaSeasons || 0) + 1; medal = true; out.push({ k: 'medal', n: 1, label: x.label }); }
+      else rw[x.k] = x.n;
+    }
+    if (Object.keys(rw).length) out.push(...St.giveRewards(rw, true, true));
+    if (medal && St.checkMedals) St.checkMedals();
+    if (St.save) St.save();
+    return out;
+  },
+
+  /* ---------- окно «Итоги сезона Алатыря» (только телефон) ---------- */
+  title(s) { return ru`Итоги сезона Алатыря ${this.roman(s)}`.replace(/ (?=[IVXLCDM]+$)/, ' '); }, // номер не отрывается от слова
+  html(s, n) {
+    [s, n] = this.norm(s, n);
+    const T = this.TIERS, t = this.tierOf(n), next = T[t + 1], rows = this.forContribution(s, n);
+    const word = U.plural(n, ru`осколок`, ru`осколка`, ru`осколков`);
+    const lead = n > 0
+      ? ru`Орден собрал Алатырь-камень — и Кощей снова расколол его. Твой вклад за сезон: <b>${U.fmtNum(n)} ${word}</b>.`
+      : ru`Орден собрал Алатырь-камень — и Кощей снова расколол его. В этом сезоне ты не принёс осколков: они выпадают в разломах и у старейшин Капищ.`;
+    const ladder = T.map((x, i) => `<i class="sr-step ${i <= t ? 'on' : ''} ${i === t ? 'cur' : ''}">${x.n}+</i>`).join('');
+    // знак — строкой во всю ширину, валюта и предметы — плитками в две колонки
+    const row = x => `<div class="sr-rw sr-k-${x.k}"><span class="sr-ic">${x.icon}</span><span class="sr-t"><b>${U.esc(x.label)}</b>${x.k === 'medal' ? '' : `<em>+${U.fmtNum(x.n)}</em>`}</span></div>`;
+    const big = rows.filter(x => x.k === 'medal').map(row).join(''), small = rows.filter(x => x.k !== 'medal').map(row).join('');
+    const list = big + (small ? `<div class="sr-grid">${small}</div>` : '');
+    const tail = next ? `<p class="sr-next">${ru`До ступени «${next.name}» не хватило ${U.fmtNum(next.n - n)} — в новом сезоне камень снова ждёт осколков.`}</p>`
+      : `<p class="sr-next">${ru`Высшая ступень сезона — ты среди главных собирателей Ордена!`}</p>`;
+    return `<div class="sr">
+      <div class="sr-hero"><span class="sr-stone">${Art.item('alatyr')}</span><div class="sr-num">${ru`Сезон ${this.roman(s)}`}</div></div>
+      <p class="sr-lead">${lead}</p>
+      <div class="sr-ladder">${ladder}</div>
+      ${t >= 0 ? `<div class="sr-rank">${ru`Твоя ступень — «${T[t].name}»`}</div>` : ''}
+      ${list ? `<div class="sr-list">${list}</div>` : ''}
+      ${tail}</div>`;
   },
 };
 
@@ -2093,15 +3041,15 @@ const J = {
       case 'trade': return { ico: icon(e.sid), title: e.dir === 'out' ? ru`${sp(e.sid)} упакован для друга` : e.who ? ru`${sp(e.sid)} получен от ${e.who}` : ru`${sp(e.sid)} получен от друга`, sub: ru`Обмен` };
       case 'friend': return { ico: glyph('♥', 'pink'), title: ru`Новый друг: ${e.name}`, sub: '' };
       case 'spar': return { ico: glyph('⚔'), title: ru`Победа в поединке с другом`, sub: e.name || '' };
-      case 'clan': return { ico: glyph('⚑', 'gold'), title: ru`Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`дружина`}`, sub: '' };
+      case 'clan': return { ico: glyph('⚑', 'gold'), title: e.move ? ru`Переход в клан: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`клан`}` : ru`Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`клан`}`, sub: '' };
       case 'guardBack': return { ico: icon(e.sid), title: ru`Защитник вернулся с Капища`, sub: `${e.name || ''} · ${ru`стоял ${e.hours} ч`}` };
       case 'defend': return { ico: icon(e.sid), title: ru`Защитник на Капище`, sub: e.name || '' };
       case 'shop': return { ico: glyph('☉', 'gold'), title: ru`Покупка в Лавке: ${I18N.back(e.name || '')}`, sub: '' };
       case 'passGold': return { ico: glyph('★', 'gold'), title: ru`Открыта Золотая тропа`, sub: e.season || '' };
-      case 'exchange': return { ico: glyph('⇄', 'gold'), title: ru`Обмен в Лавке`, sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${ru`${e.zlat || 0} златников`}` };
-      case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} златников` };
+      case 'exchange': return { ico: glyph('⇄', 'gold'), title: ru`Обмен в Лавке`, sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${ru`${e.zlat || 0} монет`}` };
+      case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} монет` };
       case 'auction': { const n = SP[e.sid] ? SP[e.sid].name : '', p = U.fmtNum(e.price || 0);
-        return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? ru`Куплен на аукционе: ${n}` : e.dir === 'sold' ? ru`Продан на аукционе: ${n}` : ru`Выставлен на аукцион: ${n}`, sub: `${e.cur === 'zlat' ? ru`${p} златников` : '✦ ' + p}${e.who ? ' · ' + e.who : ''}` }; }
+        return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? ru`Куплен на аукционе: ${n}` : e.dir === 'sold' ? ru`Продан на аукционе: ${n}` : ru`Выставлен на аукцион: ${n}`, sub: `${e.cur === 'zlat' ? ru`${p} монет` : '✦ ' + p}${e.who ? ' · ' + e.who : ''}` }; }
       case 'order': return { ico: glyph('⚑', 'gold'), title: ru`Общее дело Ордена`, sub: ru`Награда ${(e.i | 0) + 1}-й ступени` };
       case 'gift': return { ico: glyph('✉', 'pink'), title: e.dir === 'out' ? ru`Подарок отправлен: ${e.name}` : ru`Подарок от ${e.name}`, sub: '' };
       case 'melt': return { ico: glyph('♁', 'gold'), title: ru`Переплавка амулетов`, sub: AMULETS[e.from] && AMULETS[e.to] ? `${AMULETS[e.from].name} ×${Rules.MELT.N} → ${AMULETS[e.to].name}` : '' };
@@ -2149,24 +3097,195 @@ const J = {
    смена духа; сервер проверяет частоту, энергию и перезарядки, двигает время боя, хранит его в базе и рассылает
    обоим через Supabase Realtime (запасной путь — опрос). Итог — рейтинг обоим по разнице рейтингов (как Эло;
    на верхних лигах медленнее), опыт, награды за лиги и раны — засчитывает сервер ровно один раз (GameCore.leagueSettle).
-   Сезон — календарный месяц; в новом рейтинг сверх SOFT срезается наполовину, за высшую лигу прошлого сезона — сундук.
+   Сезон — 4.28: сезон Алатыря (до 4.28 — календарный месяц); в новом рейтинг сверх SOFT срезается наполовину, за высшую
+   лигу прошлого сезона — сундук.
    Звёзды старых сохранений переводятся в рейтинг ×100.
    Экран (3.21): герб ранга и место в таблице, вкладки «Бой», «Таблица» (живая, с текущими уровнями — leagueTop)
    и «Лиги»; строка таблицы открывает карточку Ловчего. Поиск и сам бой — league-battle.js. */
 
 // pts — с какого рейтинга начинается лига
 const LEAGUE_RANKS = [
-  { name: ru`Новик`, pts: 0 },
-  { name: ru`Отрок`, pts: 300, reward: { charm: 10, sparks: 500 } },
-  { name: ru`Гридень`, pts: 600, reward: { honey: 5, sparks: 800 } },
-  { name: ru`Кметь`, pts: 1000, reward: { charm2: 5, water: 5 } },
-  { name: ru`Витязь`, pts: 1500, reward: { charm2: 8, sparks: 1500 } },
-  { name: ru`Богатырь`, pts: 2100, reward: { charm3: 3, incense: 1 } },
-  { name: ru`Воевода`, pts: 2800, reward: { charm2: 10, sparks: 3000 } },
-  { name: ru`Волхв`, pts: 3600, reward: { charm3: 5, water: 10 } },
-  { name: ru`Сказитель`, pts: 4500, reward: { incense: 3, sparks: 5000 } },
-  { name: ru`Хранитель Лиги`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
+  { name: ru`Дерево`, pts: 0 },
+  { name: ru`Медь`, pts: 300, reward: { charm: 10, sparks: 500 } },
+  { name: ru`Бронза`, pts: 600, reward: { honey: 5, sparks: 800 } },
+  { name: ru`Железо`, pts: 1000, reward: { charm2: 5, water: 5 } },
+  { name: ru`Серебро`, pts: 1500, reward: { charm2: 8, sparks: 1500 } },
+  { name: ru`Золото`, pts: 2100, reward: { charm3: 3, incense: 1 } },
+  { name: ru`Платина`, pts: 2800, reward: { charm2: 10, sparks: 3000 } },
+  { name: ru`Изумруд`, pts: 3600, reward: { charm3: 5, water: 10 } },
+  { name: ru`Алмаз`, pts: 4500, reward: { incense: 3, sparks: 5000 } },
+  { name: ru`Легенда`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
 ];
+
+/* 5.0: значок лиги — медальон: кольцо-оправа из материала лиги, в центре огранённый кристалл Алатыря (общий для всех
+   мифологий). Чем выше лига, тем богаче: гладкое кольцо (Дерево, Медь) → бусины и зубцы (Бронза, Железо) → лучи-звезда
+   за кольцом (4 у Серебра, 8 у Золота) → лавры (Платина, Изумруд) → крылья (Алмаз, Легенда) → венец и сияние (Легенда);
+   кристалл растёт от осколка до полного камня, граней всё больше. id градиентов у каждого значка свои (seq). */
+const LeagueBadge = (() => {
+  let seq = 0;
+  const CX = 170, CY = 212, R = 118, r = 90, RAD = Math.PI / 180;
+  const f = n => +n.toFixed(1);
+  const P = (d, a) => [f(CX + d * Math.sin(a * RAD)), f(CY - d * Math.cos(a * RAD))]; // угол a — от 12 часов по часовой
+  const pts = a => a.map(p => p.join(',')).join(' ');
+  const mix = (a, b, t) => '#' + [1, 3, 5].map(k => Math.round(parseInt(a.slice(k, k + 2), 16) * (1 - t) + parseInt(b.slice(k, k + 2), 16) * t).toString(16).padStart(2, '0')).join('');
+  const GOLD = ['#fff6c8', '#fbd34d', '#d99a17', '#8a5206'];
+  // m — металл оправы (свет → тень), fld — поле (центр, край), o — контур, g — отблеск, cs — тень граней кристалла
+  const MAT = [
+    { m: ['#f4c088', '#c9813f', '#8f4e1f', '#58290b'], fld: ['#6a3d18', '#1e0f04'], o: '#2a1405', g: '#f59e0b' }, // Дерево
+    { m: ['#ffdcc6', '#f39664', '#c65c2e', '#702a10'], fld: ['#6b2c14', '#1f0904'], o: '#2e0f04', g: '#fb923c' }, // Медь
+    { m: ['#f6da9c', '#c99545', '#8a5a22', '#442806'], fld: ['#4d3514', '#140d03'], o: '#1f1203', g: '#e0a650' }, // Бронза
+    { m: ['#dfe3ea', '#8f97a3', '#4f5663', '#23272e'], fld: ['#39404c', '#0d1014'], o: '#090b0e', g: '#94a3b8', cs: '#646b78' }, // Железо
+    { m: ['#ffffff', '#e4eaf2', '#a9b5c6', '#65728a'], fld: ['#3a4d6e', '#111a2b'], o: '#172033', g: '#dbe4f0', cs: '#76839a' }, // Серебро
+    { m: GOLD, fld: ['#8a4c08', '#2a1402'], o: '#3a1f02', g: '#fbbf24' }, // Золото
+    { m: ['#ffffff', '#eaf3fc', '#b7cae0', '#6f86a6'], fld: ['#2b5282', '#0b1830'], o: '#122038', g: '#bae6fd', cs: '#7890b4' }, // Платина
+    { m: GOLD, fld: ['#19c48d', '#053d2c'], o: '#2f1a02', g: '#34d399', gem: ['#bbf7d0', '#10b981', '#064e3b'] }, // Изумруд
+    { m: ['#f2fcff', '#a5e9fc', '#38bdf8', '#0c4a6e'], fld: ['#1f6fb0', '#061631'], o: '#051a33', g: '#67e8f9', cs: '#4f8fc4' }, // Алмаз
+    { m: GOLD, fld: ['#8b46f0', '#1b0540'], o: '#2a0a45', g: '#e9b8ff', cs: '#8e74b8', gem: ['#f3e8ff', '#a855f7', '#3b0764'] }, // Легенда
+  ];
+  const lin = (id, c, x2 = .35, y2 = 1) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2}" y2="${y2}">${c.map((s, k) => `<stop offset="${f(k / (c.length - 1))}" stop-color="${s}"/>`).join('')}</linearGradient>`;
+  const circ = (d, a) => `<circle cx="${CX}" cy="${CY}" r="${d}" ${a}/>`;
+  const star = (x, y, s, o = 1) => `<path d="M${x} ${f(y - s)}L${f(x + s * .2)} ${f(y - s * .2)}L${f(x + s)} ${y}L${f(x + s * .2)} ${f(y + s * .2)}L${x} ${f(y + s)}L${f(x - s * .2)} ${f(y + s * .2)}L${f(x - s)} ${y}L${f(x - s * .2)} ${f(y - s * .2)}Z" fill="#fff" opacity="${o}"/>`;
+  const gem = (p, s, id, o) => { const q = [...Array(8)].map((_, k) => [f(p[0] + s * Math.cos((k * 45 + 22.5) * RAD)), f(p[1] + s * Math.sin((k * 45 + 22.5) * RAD))]);
+    return `<polygon points="${pts(q)}" fill="url(#${id}j)" stroke="${o}" stroke-width="2.2" stroke-linejoin="round"/><circle cx="${f(p[0] - s * .3)}" cy="${f(p[1] - s * .32)}" r="${f(s * .28)}" fill="#fff" opacity=".85"/>`; };
+  // лучи за кольцом: n лучей, длинные L1 и короткие L2 через один, w — полуширина у основания (градусы); свет — одна сторона
+  const rays = (n, L1, L2, w, lite, dark, o, off = 0) => {
+    let s = '';
+    for (let k = 0; k < n; k++) {
+      const a = off + k * 360 / n, L = k % 2 ? L2 : L1, ww = k % 2 ? w * .8 : w, c = P(R - 30, a), t = P(L, a), b1 = P(R + 2, a - ww), b2 = P(R + 2, a + ww);
+      s += `<polygon points="${pts([c, b1, t, b2])}" fill="none" stroke="${o}" stroke-width="7" stroke-linejoin="round"/><polygon points="${pts([c, b1, t])}" fill="${lite}"/><polygon points="${pts([c, b2, t])}" fill="${dark}"/>`;
+    }
+    return s;
+  };
+  // лавровая ветвь слева (от низа к 10 часам), справа — зеркально
+  const laurel = (fill, o) => {
+    const Rl = R + 11, leaf = (p, rot, L) => { const W = L * .32;
+      return `<g transform="translate(${p}) rotate(${f(rot)})"><path d="M0 0C${f(L * .3)} ${f(-W)} ${f(L * .75)} ${f(-W * .8)} ${L} 0C${f(L * .75)} ${f(W * .8)} ${f(L * .3)} ${f(W)} 0 0Z" fill="${fill}" stroke="${o}" stroke-width="3" stroke-linejoin="round"/><path d="M3 0H${f(L * .78)}" stroke="${o}" stroke-width="1.6" opacity=".45"/></g>`; };
+    let s = `<path d="M${P(Rl, 188)}A${Rl} ${Rl} 0 0 1 ${P(Rl, 302)}" fill="none" stroke="${o}" stroke-width="7" stroke-linecap="round"/><path d="M${P(Rl, 188)}A${Rl} ${Rl} 0 0 1 ${P(Rl, 302)}" fill="none" stroke="${fill}" stroke-width="3.5" stroke-linecap="round"/>`;
+    for (let k = 0; k < 7; k++) { const a = 192 + 108 * k / 6, L = 40 - k * 1.8; s += leaf(P(Rl + 1, a), a - 42, L) + leaf(P(Rl - 2, a + 6), a + 6, L * .82); }
+    s += leaf(P(Rl, 302), 300, 30);
+    return s + `<g transform="translate(${2 * CX} 0) scale(-1 1)">${s}</g>`;
+  };
+  // крылья: перья (Легенда) или кристаллические осколки (Алмаз), от спины медальона наружу и вверх
+  const wings = (kind, id, o) => {
+    const one = (th, L, W, fill, dark) => `<g transform="translate(${CX - 50} ${CY - 26}) rotate(${th})">` + (kind === 'feather'
+      ? `<path d="M0 ${f(-W)}C${f(L * .45)} ${f(-W * 1.35)} ${f(L * .88)} ${f(-W * .95)} ${L} 0C${f(L * .8)} ${f(W * .6)} ${f(L * .4)} ${f(W)} 0 ${f(W)}Z" fill="${fill}" stroke="${o}" stroke-width="4.5" stroke-linejoin="round"/><path d="M8 0H${f(L * .84)}" stroke="${o}" stroke-width="2.4" opacity=".45" stroke-linecap="round"/><path d="M${f(L * .22)} ${f(-W * .6)}C${f(L * .5)} ${f(-W * .9)} ${f(L * .75)} ${f(-W * .55)} ${f(L * .88)} ${f(-W * .2)}" stroke="#fff" stroke-width="2.6" fill="none" opacity=".6" stroke-linecap="round"/>`
+      : `<polygon points="0,${f(-W * .45)} ${f(L * .34)},${f(-W)} ${L},0 ${f(L * .34)},${f(W)} 0,${f(W * .45)}" fill="none" stroke="${o}" stroke-width="7" stroke-linejoin="round"/><polygon points="0,${f(-W * .45)} ${f(L * .34)},${f(-W)} ${L},0 ${f(L * .34)},0" fill="${fill}"/><polygon points="0,${f(W * .45)} ${f(L * .34)},${f(W)} ${L},0 ${f(L * .34)},0" fill="${dark}"/><path d="M${f(L * .34)} ${f(-W)}L${f(L * .34)} ${f(W)}M${f(L * .34)} 0H${f(L * .9)}" stroke="#fff" stroke-width="1.8" opacity=".6"/>`) + '</g>';
+    let s = '';
+    // маховые — веером вверх к углам, поверх — кроющие покороче
+    [[256, 112], [237, 124], [217, 124], [197, 112], [177, 98], [158, 82]].forEach(([th, L]) => { s += one(th, L, 15, `url(#${id}w)`, '#1f86c9'); });
+    [[246, 66], [224, 70], [202, 64], [180, 56]].forEach(([th, L]) => { s += one(th, L, 13, kind === 'feather' ? `url(#${id}m)` : '#ffffff', '#7dd3fc'); });
+    return s + `<g transform="translate(${2 * CX} 0) scale(-1 1)">${s}</g>`;
+  };
+  // кристалл Алатыря: 1 — вытянутый осколок, дальше больше граней и площадка сверху; на Легенде — знак Алатыря на площадке
+  const crystal = (i, id, M) => {
+    const N = [4, 5, 6, 6, 8, 8, 10, 10, 12, 12][i], s = [38, 43, 46, 50, 53, 55, 57, 59, 61, 63][i];
+    const st = [1.5, 1.36, 1.3, 1.26, 1.22, 1.2, 1.19, 1.18, 1.17, 1.16][i], tilt = [16, -10, 0, 0, 0, 0, 0, 0, 0, 0][i];
+    const cy = CY + 2, jit = i === 0 ? [1, .7, 1, .78] : i === 1 ? [1, .86, .96, .92, .84] : null;
+    const V = (d, a) => [f(CX + d * Math.sin(a * RAD)), f(cy - d * Math.cos(a * RAD) * st)];
+    const out = [...Array(N)].map((_, k) => V(s * (jit ? jit[k] : 1), k * 360 / N));
+    const tr = i < 2 ? 0 : i < 4 ? .42 : .48, inn = tr ? out.map((_, k) => V(s * tr, k * 360 / N)) : null, apex = [CX - 3, cy - 8];
+    const sh = M.cs || mix('#6f6252', M.g, .4), light = a => .5 + .5 * Math.cos((a - 315) * RAD);
+    let faces = '', seams = '';
+    for (let k = 0; k < N; k++) {
+      const k1 = (k + 1) % N, am = (k + .5) * 360 / N, t = Math.min(1, .1 + .88 * light(am) + (k % 2 ? 0 : .07));
+      faces += `<polygon points="${pts(inn ? [inn[k], out[k], out[k1], inn[k1]] : [apex, out[k], out[k1]])}" fill="${mix(sh, '#ffffff', t)}"/>`;
+      seams += `M${inn ? inn[k] : apex}L${out[k]}`;
+      if (i >= 5) { const mo = [f((out[k][0] + out[k1][0]) / 2), f((out[k][1] + out[k1][1]) / 2)]; seams += `M${inn[k]}L${mo}L${inn[k1]}`; }
+    }
+    const e0 = out[N - 1], e1 = out[0], ins = (p, t) => [f(p[0] + (CX - p[0]) * t), f(p[1] + (cy - p[1]) * t)];
+    // звезда Алатыря на площадке Легенды
+    const rune = i === 9 ? `<polygon points="${pts([...Array(16)].map((_, k) => V(k % 2 ? 7.5 : 19, k * 22.5)))}" fill="url(#${id}m)" stroke="#6b3a05" stroke-width="2.4" stroke-linejoin="round"/><circle cx="${CX}" cy="${cy}" r="4" fill="#fff6c8" stroke="#6b3a05" stroke-width="1.6"/>` : '';
+    return `<g transform="rotate(${tilt} ${CX} ${cy})">
+      <polygon points="${pts(out)}" fill="#000" opacity=".4" transform="translate(4 8)"/>${faces}
+      ${inn ? `<polygon points="${pts(inn)}" fill="url(#${id}t)"/>` : ''}
+      <path d="${seams}" fill="none" stroke="${mix(sh, '#000000', .35)}" stroke-width="1.6" opacity=".6" stroke-linecap="round"/>
+      ${inn ? `<polygon points="${pts(inn)}" fill="none" stroke="${mix(sh, '#000000', .3)}" stroke-width="1.8" opacity=".6" stroke-linejoin="round"/>` : ''}${rune}
+      <polygon points="${pts(out)}" fill="none" stroke="#221833" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M${ins(e0, .14)}L${ins(e1, .14)}" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      ${i >= 3 ? star(e1[0], f(e1[1] + 3), 12 + i * 1.5) : ''}</g>`;
+  };
+
+  return i => {
+    const M = MAT[i], id = 'lb' + (++seq), o = M.o;
+    const defs = lin(id + 'm', M.m) + `<linearGradient id="${id}n" x1="0" y1="1" x2=".2" y2="0"><stop offset="0" stop-color="${M.m[0]}"/><stop offset=".55" stop-color="${M.m[2]}"/><stop offset="1" stop-color="${M.m[3]}"/></linearGradient>`
+      + `<radialGradient id="${id}f" cx=".42" cy=".36" r=".72"><stop offset="0" stop-color="${M.fld[0]}"/><stop offset="1" stop-color="${M.fld[1]}"/></radialGradient>`
+      + `<radialGradient id="${id}h"><stop offset=".35" stop-color="${M.g}" stop-opacity="${i === 9 ? .9 : .6}"/><stop offset="1" stop-color="${M.g}" stop-opacity="0"/></radialGradient>`
+      + `<radialGradient id="${id}c"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".4" stop-color="${M.g}" stop-opacity=".45"/><stop offset="1" stop-color="${M.g}" stop-opacity="0"/></radialGradient>`
+      + `<radialGradient id="${id}t" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${mix('#e9dfc8', M.g, .25)}"/></radialGradient>`
+      + (M.gem ? `<radialGradient id="${id}j" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="${M.gem[0]}"/><stop offset=".45" stop-color="${M.gem[1]}"/><stop offset="1" stop-color="${M.gem[2]}"/></radialGradient>` : '')
+      + (i === 9 ? lin(id + 'w', ['#fff6c8', '#fbd34d', '#d99a17', '#9333ea'], 1, 0) + lin(id + 'v', ['#e9d5ff', '#8b5cf6', '#3b0764'], .2) : i === 8 ? lin(id + 'w', ['#ffffff', '#bff0ff', '#5cc9f5'], 1, .3) : '');
+    let back = '', rim = '', deco = '', field = '', front = '';
+    const M_ = `url(#${id}m)`;
+    // сияние и лучи
+    if (i >= 5) back += circ(i === 9 ? 170 : 166, `fill="url(#${id}h)"`);
+    if (i === 9) back += rays(8, 174, 150, 10, '#fde68a', '#a855f7', o);
+    else if (i === 8) back += rays(8, 170, 150, 11, '#e0f7ff', '#38bdf8', o);
+    else if (i >= 5) back += rays(8, i === 5 ? 170 : 160, i === 5 ? 144 : 134, i === 5 ? 13 : 11, i === 6 ? '#ffffff' : '#fff1b0', i === 6 ? '#8ea4c2' : '#c98a12', o);
+    else if (i === 4) back += rays(4, 168, 168, 13, '#ffffff', '#8d9ab0', o);
+    // лавры и крылья
+    if (i === 6) back += laurel(M_, o);
+    if (i === 7) back += laurel(`url(#${id}m)`, o);
+    if (i === 8) back += wings('shard', id, o);
+    if (i === 9) back += wings('feather', id, o);
+    // край оправы: бусины (Бронза), зубцы (Железо)
+    if (i === 2) for (let k = 0; k < 20; k++) { const p = P(R + 1, k * 18); rim += `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="${M_}" stroke="${o}" stroke-width="4.5"/>`; }
+    if (i === 3) for (let k = 0; k < 12; k++) { const a = k * 30; rim += `<polygon points="${pts([P(R - 4, a - 9), P(R + 17, a - 6), P(R + 17, a + 6), P(R - 4, a + 9)])}" fill="${M_}" stroke="${o}" stroke-width="4.5" stroke-linejoin="round"/>`; }
+    // кольцо: объём — сверху светлее, у поля обратный скос; Алмаз — из граней
+    let ring = circ(R, `fill="${M_}" stroke="${o}" stroke-width="6"`);
+    if (i === 8) {
+      ring = circ(R, `fill="${M.m[2]}" stroke="${o}" stroke-width="6"`);
+      for (let k = 0; k < 24; k++) {
+        const a0 = k * 15, a1 = a0 + 15, am = a0 + 7.5, O0 = P(R - 2, a0), O1 = P(R - 2, a1), I0 = P(r + 2, a0), I1 = P(r + 2, a1), Mp = P((R + r) / 2, am);
+        const L = d => mix(M.m[3], M.m[0], Math.max(0, Math.min(1, .5 + .5 * Math.cos((d - 315) * RAD))));
+        ring += `<polygon points="${pts([O0, O1, Mp])}" fill="${L(am)}"/><polygon points="${pts([O1, I1, Mp])}" fill="${L(am + 90)}"/><polygon points="${pts([I1, I0, Mp])}" fill="${L(am + 180)}"/><polygon points="${pts([I0, O0, Mp])}" fill="${L(am - 90)}"/>`;
+      }
+      ring += circ(R, `fill="none" stroke="${o}" stroke-width="6"`);
+    } else ring += circ(r + 10, `fill="url(#${id}n)"`) + circ(r + 10, `fill="none" stroke="${o}" stroke-width="1.6" opacity=".4"`);
+    ring += `<path d="M${P(R - 7, 250)}A${R - 7} ${R - 7} 0 0 1 ${P(R - 7, 350)}" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".55"/>`;
+    // узор оправы
+    if (i === 0) { // дерево: волокна, сучки, кованые уголки
+      deco += [112, 106.5, 101].map((d, k) => circ(d, `fill="none" stroke="#4a2208" stroke-width="2" opacity=".5" stroke-dasharray="${['70 9 34 14 96 7', '40 12 88 6 52 16', '110 10 30 8 64 12'][k]}"`)).join('');
+      [70, 205, 300].forEach(a => { const p = P(106, a); deco += `<ellipse cx="${p[0]}" cy="${p[1]}" rx="8" ry="4.5" transform="rotate(${a} ${p[0]} ${p[1]})" fill="#5a2c0e" stroke="#2a1405" stroke-width="1.6"/><ellipse cx="${p[0]}" cy="${p[1]}" rx="13" ry="7.5" transform="rotate(${a} ${p[0]} ${p[1]})" fill="none" stroke="#4a2208" stroke-width="1.4" opacity=".6"/>`; });
+      [45, 135, 225, 315].forEach(a => { deco += `<g transform="translate(${P(R - 14, a)}) rotate(${a})"><rect x="-13" y="-25" width="26" height="42" rx="5" fill="url(#${id}i)" stroke="${o}" stroke-width="3.5"/><circle cy="-12" r="4" fill="#cbd2dc" stroke="#16191e" stroke-width="1.8"/><circle cy="5" r="4" fill="#cbd2dc" stroke="#16191e" stroke-width="1.8"/></g>`; });
+    }
+    if (i === 1) { // медь: патина и заклёпки
+      [[25, 16], [118, 12], [168, 18], [242, 14], [300, 10], [338, 12]].forEach(([a, w]) => { const p = P(104, a); deco += `<ellipse cx="${p[0]}" cy="${p[1]}" rx="${w}" ry="6" transform="rotate(${a} ${p[0]} ${p[1]})" fill="#5cc2a4" opacity=".6"/><ellipse cx="${f(p[0] + 2)}" cy="${f(p[1] + 1)}" rx="${f(w * .45)}" ry="2.5" transform="rotate(${a} ${p[0]} ${p[1]})" fill="#a7f3d0" opacity=".55"/>`; });
+      for (let k = 0; k < 8; k++) { const p = P(104, k * 45 + 22.5); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="5.5" fill="#ffc8a8" stroke="${o}" stroke-width="2.2"/><circle cx="${f(p[0] - 1.5)}" cy="${f(p[1] - 1.5)}" r="1.8" fill="#fff"/>`; }
+    }
+    if (i === 2) { // бронза: литой поясок
+      deco += circ(104, `fill="none" stroke="${o}" stroke-width="2" opacity=".45" stroke-dasharray="14 7"`);
+      for (let k = 0; k < 10; k++) { const p = P(104, k * 36); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="#f6da9c" stroke="${o}" stroke-width="2"/>`; }
+    }
+    if (i === 3) for (let k = 0; k < 12; k++) { const p = P(104, k * 30 + 15); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="5.5" fill="#6b7280" stroke="${o}" stroke-width="2.2"/><circle cx="${f(p[0] - 1.6)}" cy="${f(p[1] - 1.6)}" r="1.8" fill="#e5e7eb"/>`; }
+    if (i === 4 || i === 6) { // серебро и платина: гравировка
+      deco += circ(110, `fill="none" stroke="${o}" stroke-width="1.4" opacity=".4"`) + circ(104, `fill="none" stroke="${o}" stroke-width="2" opacity=".35" stroke-dasharray="2 6" stroke-linecap="round"`);
+      for (let k = 0; k < 4; k++) { const p = P(104, k * 90 + 45); deco += `<path d="M${p[0]} ${f(p[1] - 7)}L${f(p[0] + 7)} ${p[1]}L${p[0]} ${f(p[1] + 7)}L${f(p[0] - 7)} ${p[1]}Z" fill="${i === 6 ? '#e0f2fe' : '#ffffff'}" stroke="${o}" stroke-width="2"/>`; }
+    }
+    if (i === 5) for (let k = 0; k < 24; k++) { const p = P(104, k * 15); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="3.4" fill="#fff3b8" stroke="${o}" stroke-width="1.4"/>`; }
+    if (i === 7) for (let k = 0; k < 8; k++) deco += gem(P(104, k * 45), 9, id, o);
+    if (i === 9) {
+      deco += circ(104, `fill="none" stroke="${o}" stroke-width="17"`) + circ(104, `fill="none" stroke="url(#${id}v)" stroke-width="12"`);
+      for (let k = 0; k < 16; k++) { const p = P(104, k * 22.5 + 11.25); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="#fde68a"/>`; }
+      [90, 180, 270].forEach(a => { deco += gem(P(104, a), 9, id, o); });
+    }
+    // поле: у Изумруда, Алмаза и Легенды — огранка
+    field = circ(r, `fill="url(#${id}f)" stroke="${o}" stroke-width="4.5"`);
+    if (i >= 7) { const n = i === 7 ? 8 : 12; for (let k = 0; k < n; k++) field += `<polygon points="${pts([[CX, CY], P(r - 3, k * 360 / n), P(r - 3, (k + 1) * 360 / n)])}" fill="${k % 2 ? '#fff' : '#000'}" opacity="${k % 2 ? .08 : .14}"/>`; }
+    field += circ(r - 3, `fill="none" stroke="#000" stroke-width="6" opacity=".25"`);
+    if (i >= 2) field += circ(i >= 7 ? 82 : 30 + i * 5, `fill="url(#${id}c)" opacity="${f(.3 + i * .06)}"`);
+    // искры
+    if (i >= 5) [[CX - 118, CY - 104, 12], [CX + 124, CY - 88, 9], [CX + 112, CY + 118, 10], [CX - 60, CY + 50, 6], [CX + 52, CY - 56, 5]].slice(0, i >= 8 ? 5 : 3).forEach(([x, y, s]) => { front += star(f(x), f(y), s + (i - 5) * 1.5, .95); });
+    // венец Легенды
+    if (i === 9) front += `<path d="M116 110L119 60L137 84L148 46L160 80L170 26L180 80L192 46L203 84L221 60L224 110Q170 98 116 110Z" fill="url(#${id}m)" stroke="${o}" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M118 104Q170 92 222 104" fill="none" stroke="#fff6c8" stroke-width="3" opacity=".7"/>
+      ${[[119, 60, 6], [148, 46, 6.5], [170, 26, 8], [192, 46, 6.5], [221, 60, 6]].map(([x, y, s]) => `<circle cx="${x}" cy="${y}" r="${s}" fill="#fff6c8" stroke="${o}" stroke-width="3"/>`).join('')}
+      ${gem([170, 78], 9, id, o)}${gem([141, 90], 6, id, o)}${gem([199, 90], 6, id, o)}`;
+    // у крылатых (Алмаз, Легенда) медальон чуть меньше — крыльям нужно место по бокам
+    const sc = s => i >= 8 ? `<g transform="translate(${CX} ${CY}) scale(.86) translate(${-CX} ${-CY})">${s}</g>` : s;
+    const iron = i === 0 ? lin(id + 'i', ['#d1d5db', '#6b7280', '#2b2f36']) : '';
+    return `<svg class="lg-badge-pic" viewBox="0 0 340 400" aria-hidden="true"><defs>${defs}${iron}</defs>${back}${rim}${sc(ring + deco + field + crystal(i, id, M) + front)}</svg>`;
+  };
+})();
 
 const League = {
   TICKETS: 10, // 4.16: боёв в день — жетон тратится за сыгранный бой
@@ -2175,18 +3294,28 @@ const League = {
   SAME: 3,     // с одним и тем же соперником рейтинг меняют только первые три боя за день (против сговора)
   // 4.16: рейтинг — как у Эло: изменение = K × (итог − ожидаемый итог), ожидание — по разнице рейтингов (шкала 400).
   // Победа над равным: +KW/2, поражение от равного: −KL/2. На нижних лигах победа весит больше поражения (подъём
-  // идёт и при половине побед), с «Воеводы» — поровну и всё медленнее: наверх пробиваются только сильнейшие.
+  // идёт и при половине побед), с «Платины» — поровну и всё медленнее: наверх пробиваются только сильнейшие.
   KW: [60, 60, 56, 52, 48, 44, 40, 36, 32, 28],
   KL: [20, 28, 34, 40, 42, 42, 40, 36, 32, 28],
-  SOFT: 1500,        // 4.16: в новом сезоне рейтинг сверх этого (лига «Витязь») срезается наполовину
+  SOFT: 1500,        // 4.16: в новом сезоне рейтинг сверх этого (лига «Серебро») срезается наполовину
   MAXPTS: 20000,
   LEVEL: 10,   // с какого уровня Ловчего открыта Лига (проверяет сервер; 4.16: было 5)
   tab: 'play',
   TABS: ['play', 'table', 'ranks'],
 
-  season(d = U.local()) { return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; },
-  seasonName() { return U.local().toLocaleDateString(I18N.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).replace(/\s*г\.?$/, ''); },
-  seasonEnds() { const d = U.local(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); },
+  /* 4.28: сезон Лиги — сезон Алатыря (Ev.alaSeason): начинается, когда Кощей раскалывает камень. Ключ — 'A<номер>'
+     (до 4.28 сезон был календарным месяцем, 'ГГГГ-ММ': первый ключ 'A1' закрывает последний месячный сезон — с наградой) */
+  season(t = U.now()) { return 'A' + (typeof Ev !== 'undefined' && Ev.alaSeason ? Ev.alaSeason(t) : 1); },
+  seasonNum(key) { const m = /^A(\d+)$/.exec(String(key || '')); return m ? +m[1] : 0; },
+  seasonName(key = this.season()) { const n = this.seasonNum(key); return n ? ru`Сезон ${n}` : String(key || ''); },
+  // что осталось до конца сезона: раскол назначен — через сколько; финал — «финал: Кощей»; иначе — грани камня
+  seasonLeft() {
+    const now = U.now(), e = Ev.alaEnd(), fin = Ev.finale(now), I = typeof Alatyr !== 'undefined' ? Alatyr.info : null;
+    if (fin) return (Ev.ala.brk ? ru`раскол через ${this.left(e - now)}` : ru`финал: Кощей · ещё ${this.left(e - now)}`);
+    if (!I) return ru`до раскола Алатыря`;
+    const st = Ev.alaStage(I.total, now);
+    return ru`грани ${st.n}/${st.K} до раскола`;
+  },
   reset(p) { return p > this.SOFT ? this.SOFT + Math.floor((p - this.SOFT) / 2) : p; },
   // 4.15: звёзды старого сохранения — в рейтинг ×100; 4.16: новый сезон — срез и сундук за высшую лигу прошлого;
   // новый день — снова жетоны; турнир с машинами (run) больше не нужен
@@ -2239,12 +3368,8 @@ const League = {
   // сундук за высшую лигу прошлого сезона
   prize(r) { return r > 0 ? { sparks: 400 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
 
-  // 4.15: значок лиги — рисованный щит своего металла со своим знаком (img/league/rank-NN.webp, 340×400)
-  IMG: 'img/league/',
-  badge(i) {
-    i = U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1);
-    return `<img class="lg-badge-pic" src="${this.IMG}rank-${String(i + 1).padStart(2, '0')}.webp" alt="" draggable="false" decoding="async">`;
-  },
+  // 5.0: значок лиги — медальон из материала лиги с кристаллом Алатыря в центре (инлайн-SVG 340×400, LeagueBadge)
+  badge(i) { return LeagueBadge(U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1)); },
   // значок рейтинга — кубок
   cup() { return '<svg class="lg-cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3.5a5 5 0 0 1-10 0z" fill="#fcd34d" stroke="#92400e" stroke-width="1.2"/><path d="M7 5.5H4.5a3 3 0 0 0 3 4M17 5.5h2.5a3 3 0 0 1-3 4" fill="none" stroke="#fcd34d" stroke-width="1.6"/><path d="M12 12.5v3.5M8.5 20h7l-.8-3.5H9.3z" fill="#f59e0b" stroke="#92400e" stroke-width="1.1"/></svg>'; },
   rwLine(i) { const x = LEAGUE_RANKS[i]; return x.reward ? UI.rwText(x.reward) + (i % 3 === 0 ? ' + ' + ru`амулет` : '') + (i === 9 ? ' + ' + ru`эмблема «Венец»` : '') : ''; },
@@ -2280,7 +3405,7 @@ const League = {
         <div class="dt-hero">
           <div class="det-art lg2-crest">${this.badge(r)}</div>
           <div class="dt-info">
-            <div class="det-hp">${ru`Сезон · ${this.seasonName()}`} · ⏳ <b class="lgx-ends"></b></div>
+            <div class="det-hp">${this.seasonName()} · <b class="lgx-ends"></b></div>
             <div class="lg2-rank${LEAGUE_RANKS[r].name.length > 10 ? ' long' : ''}">${LEAGUE_RANKS[r].name}</div>
             <div class="det-power"><small>${ru`РЕЙТИНГ`}</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
             <div class="det-lvl"><span>${next ? ru`до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : ru`высшая лига!`}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
@@ -2380,7 +3505,7 @@ const League = {
       if (changed && this.tab === 'table') renderTable();
     };
     const tick = () => {
-      const e = scr.querySelector('.lgx-ends'); if (e) e.textContent = this.left(this.seasonEnds().getTime() - U.local().getTime());
+      const e = scr.querySelector('.lgx-ends'); if (e) e.textContent = this.seasonLeft();
       const m = scr.querySelector('.lgx-mid'); if (m) m.textContent = this.left(this.toMidnight());
     };
     // 4.16: при входе — засчитать бои, закончившиеся без экрана, сундук сезона и идущий бой
@@ -2407,6 +3532,7 @@ const League = {
     });
     UI.swipeTabs(body, this.TABS, () => this.tab, show);
     render(); load(); state();
+    if (typeof Alatyr !== 'undefined') Alatyr.refresh().then(() => { if (scr.isConnected) tick(); }); // 4.28: грани камня — до конца сезона
     let n = 0;
     const t = setInterval(() => {
       if (!scr.isConnected) { clearInterval(t); return; }
@@ -2682,13 +3808,14 @@ const Raid = {
     const html = `
       <div class="det det2 rift2 t${T2}">
         <div class="dt-hero">
-          <div class="det-art rift2-art"><div class="rift-portal">${Art.riftIcon(T2)}</div><div class="rift-boss">${Art.spirit(r.boss)}</div></div>
+          <div class="det-art rift2-art"><div class="rift-portal">${Art.riftIcon(T2, r.myth)}</div><div class="rift-boss">${Art.spirit(r.boss)}</div></div>
           <div class="dt-info">
             <div class="det-hp">${T.name} <span class="stars">${'★'.repeat(T2)}</span></div>
             <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
             <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
             <div class="rift2-left">${ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
             ${r.place ? `<div class="rift2-place">${UI.I.pin}${U.esc(r.place)}</div>` : ''}
+            <div class="rift2-place place-kind">${MYTH_PLACES[r.myth || 'slavic'].rift}</div>
           </div>
         </div>
         <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="boss">${ru`Босс`}</button><button data-tab="loot">${ru`Награда`}</button></div>
@@ -2704,6 +3831,7 @@ const Raid = {
             <div class="rift2-acts">${goBtn}${far ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
           </div>
           <div class="dt-pane" data-pane="boss">
+            <p class="det-desc place-desc">${MYTH_PLACES[r.myth || 'slavic'].riftDesc}</p>
             <div class="dt-scroll dt-rows">
               ${row(ru`Стихия`, `${Art.elIcon(el, 16)} ${ELEMENTS[el].name}`)}
               ${row(ru`Слабость`, counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' '))}
@@ -2727,7 +3855,7 @@ const Raid = {
           </div>
         </div>
       </div>`;
-    const scr = UI.screen(ru`Разлом`, html, 'rift-screen det-screen');
+    const scr = UI.screen(MYTH_PLACES[r.myth || 'slavic'].rift, html, 'rift-screen det-screen'); // 4.28: свой у каждой мифологии
     scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
     scr.querySelector('.dt-tabs').addEventListener('click', e => {
       const b = e.target.closest('[data-tab]'); if (!b) return;
@@ -2784,7 +3912,7 @@ const Raid = {
         <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : ru`Все`} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>
-          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || ru`Капище`)}</small></div>
+          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || MYTH_PLACES[r.myth || 'slavic'].shrine)}</small></div>
           <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
           : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
         ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}
@@ -3144,7 +4272,7 @@ const Duel = {
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
   open(e) {
-    // 4.16: вольное Капище дружины не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
+    // 4.16: вольное Капище кланы не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
     const free = Rules.shrineFree(e.id), now = U.now();
     const holders0 = !free && Clans.info(e.id) ? Clans.info(e.id).holders.filter(h => h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)) : [];
     const hold = holders0.length ? Clans.info(e.id) : null, mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
@@ -3160,7 +4288,7 @@ const Duel = {
          <div class="rift-team">${UI.teamHtml(g.team)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
     let action;
-    if (mine) action = `<div class="rift-tip">${ru`Капище держит твоя дружина. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
+    if (mine) action = `<div class="rift-tip">${ru`Капище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
         <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
     else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
         ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
@@ -3171,14 +4299,16 @@ const Duel = {
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
       <div class="shrine-view t${e.tier}">
-        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
+        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won, e.myth)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
+        <div class="rift-meta">${MYTH_PLACES[e.myth || 'slavic'].shrineOf(e.god)}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: кланы его не держат` : ''}</div>
+        <div class="q-note place-desc">${MYTH_PLACES[e.myth || 'slavic'].shrineDesc}</div>
+        ${!free && S.d.clan && (e.myth || 'slavic') === S.d.clan ? `<div class="rift-tip own-myth" style="--cc:${CLANS[S.d.clan].color}">${ru`Святилище мифологии твоего клана: защитник здесь приносит дань ${Clans.mythX()}.`}</div>` : ''}
         ${who}
         ${action}
-        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}
+        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать клан`}</button>` : ''}
       </div>`;
-    const scr = UI.screen(ru`Капище`, html, 'shrine-screen');
+    const scr = UI.screen(MYTH_PLACES[e.myth || 'slavic'].shrine, html, 'shrine-screen'); // 4.28: своё у каждой мифологии
     const go = scr.querySelector('.duel-go');
     if (go) go.onclick = async () => {
       if (this.st || this._starting) return;
@@ -3187,9 +4317,9 @@ const Duel = {
       this._starting = false;
       if (!r) return;
       UI.closeScreen(scr);
-      // защитники дружины — вместо хранителя
+      // защитники клана — вместо хранителя
       const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
-      // 4.16: темп хранителя — свой (W.foeSpeed), у защитников дружины — обычный для ступени
+      // 4.16: темп хранителя — свой (W.foeSpeed), у защитников клана — обычный для ступени
       this.start({ ...e, kind: 'shrine', held: r.clan || null, T: r.foe ? T : { ...T, speed: g.speed } }, foe, S.team());
     };
     const def = scr.querySelector('.defend-go');
@@ -3625,7 +4755,7 @@ const Duel = {
       const canDefend = S.d.clan && (!r.clan || r.freed);
       html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоей дружине.`}` : ''}</div>
+        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоему клану.`}` : ''}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
         ${canDefend ? `<button class="btn primary wide defend-now">${ru`Поставить защитника`}</button>` : ''}`;
       if (r.clan) Clans.refresh(true);
@@ -3761,15 +4891,77 @@ const Rules = {
       + d('hatched') * (ev.km ? 6 : 3)
       + km * (ev.km ? 2 : 1);
   },
-  /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
-  // Златники — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
-  // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
+  /* 4.28: общий Алатырь. Каждый осколок Алатыря, найденный любым Ловчим (S.alatyrDrop), идёт ещё и в общий счёт Ордена
+     (осколок остаётся у Ловчего). Собрана грань — дорога в её мир распутана: HOURS часов духи этой мифологии встречаются
+     в MUL раз чаще (Ev.mythMul). Начало — с полного часа, не раньше чем через LEAD минут после вехи: телефоны и сервер
+     успевают узнать о ней заранее и отбирают духов одинаково.
+     Сезоны: в сезоне s камень — BASE + s граней, по одной на каждую открытую мифологию: семь первых (ORDER), дальше — мифологии
+     сезонов 2…s, новая — последней гранью (alaFaces). Грань k сезона s стоит (FIRST + STEP × k) × SEASON^(s − 1) осколков,
+     считая от счёта на начало сезона (start в базе). Собраны все грани — финал: с полного часа (как дорога) FINALE.DAYS дней во
+     всех Разломах мира Кощей; Орден одолел его FINALE.GOAL раз — он раскалывает камень раньше (с ближайшего полного часа), нет —
+     в конце финала всё равно. Раскол — начало сезона s + 1: открывается его мифология («?» на экране камня) и сезон Лиги.
+     Грань мифологии, которой ещё нет в игре (файл не вышел), не закрывается — ждёт обновления.
+     Номер грани n — сквозной по сезонам (alaBase): у первого сезона 0…6, как у граней 4.28 до сезонов.
+     Калибровка: десятки–сотни Ловчих по 0,3–1 осколку в день — ~15–50 осколков в день на весь Орден: первая грань за 1–3 дня,
+     первый сезон (490) — за 10–30 дней, второй (8 граней, 720) — за 2–7 недель, третий (9 граней, ~1040) — за 3–10 недель.
+     Финал: у десятков Ловчих ~1–2 победы над Кощеем в день у каждого (великий разлом, совместно проще) — GOAL за 3–7 дней,
+     у сотен — за день-два. KILL — сколько очков вклада сезона даёт победа над Кощеем (осколок — одно) */
+  ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], BASE: 6, FIRST: 40, STEP: 10, SEASON: 1.2, MUL: 2, HOURS: 72, LEAD: 10,
+    FINALE: { GOAL: 300, DAYS: 7, KILL: 3 } },
+  // сколько граней в сезоне s
+  alaK(s) { return this.ALATYR_WORLD.BASE + Math.max(1, Math.floor(+s) || 1); },
+  // мифологии граней сезона s по порядку; null — мифологии этого сезона ещё нет в игре
+  alaFaces(s) {
+    s = Math.max(1, Math.floor(+s) || 1);
+    const out = this.ALATYR_WORLD.ORDER.slice(0, this.alaK(1));
+    for (let j = 2; j <= s; j++) out.push(typeof mythOfSeason === 'function' ? mythOfSeason(j) : null);
+    return out.slice(0, this.alaK(s));
+  },
+  // цена грани k сезона s
+  alaGoal(s, k) {
+    const A = this.ALATYR_WORLD;
+    return Math.max(1, Math.round((A.FIRST + A.STEP * k) * Math.pow(A.SEASON, Math.max(1, Math.floor(+s) || 1) - 1)));
+  },
+  // весь камень сезона s
+  alaCost(s) { let c = 0; for (let k = 0; k < this.alaK(s); k++) c += this.alaGoal(s, k); return c; },
+  // сквозной номер первой грани сезона s и обратно: грань n → { s, k }
+  alaBase(s) { s = Math.max(1, Math.floor(+s) || 1); return this.ALATYR_WORLD.BASE * (s - 1) + s * (s - 1) / 2; },
+  alaFace(n) { n = Math.max(0, Math.floor(+n) || 0); let s = 1; while (s < 10000 && this.alaBase(s + 1) <= n) s++; return { s, k: n - this.alaBase(s) }; },
+  // мифология и цена грани n (сквозной номер)
+  alatyrRoad(n) { const f = this.alaFace(n); return this.alaFaces(f.s)[f.k] || null; },
+  alatyrGoal(n) { const f = this.alaFace(n); return this.alaGoal(f.s, f.k); },
+  /* где сезон s, если за него собрано have осколков: n — сколько граней собрано, done — все (финал), face — какая собирается,
+     myth — её мифология (null — её нет в игре: locked, грань ждёт обновления), from/at — счёт сезона в начале и в конце этой
+     грани, have/need — собрано и нужно на ней, base — сквозной номер первой грани сезона */
+  alaStage(s, have) {
+    s = Math.max(1, Math.floor(+s) || 1);
+    const K = this.alaK(s), faces = this.alaFaces(s), t = Math.max(0, Math.floor(+have || 0));
+    let n = 0, from = 0;
+    while (n < K && faces[n] && t >= from + this.alaGoal(s, n)) { from += this.alaGoal(s, n); n++; }
+    const done = n >= K, need = done ? this.alaGoal(s, K - 1) : this.alaGoal(s, n), h = done ? need : Math.min(t - from, need);
+    return { s, K, faces, n, face: Math.min(n, K - 1), done, myth: done ? null : faces[n], locked: !done && !faces[n],
+      from: done ? from - need : from, at: done ? from : from + need, have: h, need, pct: h / need, total: t, base: this.alaBase(s) };
+  },
+  // очки вклада сезона: осколки и победы над Кощеем в финале (S.d.alaS — { s, n, k })
+  alaPoints(a) { return a && typeof a === 'object' ? Math.max(0, Math.floor(+a.n) || 0) + Math.max(0, Math.floor(+a.k) || 0) * this.ALATYR_WORLD.FINALE.KILL : 0; },
+  // когда начнётся и кончится событие дороги, если веха взята в момент t (мс): с полного часа, не раньше LEAD минут
+  alatyrOpen(t) {
+    const A = this.ALATYR_WORLD, from = this.alaHour(t);
+    return { from, to: from + A.HOURS * 3600000 };
+  },
+  // ближайший полный час не раньше чем через LEAD минут после t — с него начинаются дороги, финал и раскол
+  alaHour(t) { return Math.ceil((t + this.ALATYR_WORLD.LEAD * 60000) / 3600000) * 3600000; },
+  // финал, если последняя грань собрана в момент t: с полного часа на FINALE.DAYS дней
+  alaFinale(t) { const from = this.alaHour(t); return { from, to: from + this.ALATYR_WORLD.FINALE.DAYS * 86400000 }; },
+  /* ---------- 3.12: монеты, Лавка Ордена, Сезонная тропа ---------- */
+  // Монеты — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
+  // 4.16: бесплатных монет было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
   // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
   // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
-  // 4.16.0: бесплатных златников у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
+  // 4.16.0: бесплатных монет у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
   ZLAT: { streak: 1, streak7: 5, questBonus: 2, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 },
   BAG_STEP: 50, BAG_MAX_UP: 10,
-  // 3.15: Казна — златники за рубли (оплата через ЮKassa; цену и число златников сервер берёт отсюда, а не с телефона)
+  // 3.15: Казна — монеты за рубли (оплата через ЮKassa; цену и число монет сервер берёт отсюда, а не с телефона)
   PAY: [
     { id: 'z100',  zlat: 100,  rub: 99 },
     { id: 'z330',  zlat: 330,  rub: 299,  bonus: 10 },
@@ -3789,7 +4981,7 @@ const Rules = {
   dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <b>${u}</b> из ${m}`}</div>`; },
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
-  CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Дружина`]],
+  CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Клан`]],
   // 3.17: Аукцион духов — с LEVEL уровня (4.16: было 5); лот живёт HOURS часов; комиссия FEE с продажи (платит продавец)
   // 4.16: лот живёт 48 ч (было 72), открытых лотов — до 3 (было 5), выставлять — до 10 в день (было 20);
   // залог DEPOSIT от цены (не меньше DEP_MIN) — вернётся при продаже, пропадёт, если лот истечёт или его снимут:
@@ -3874,9 +5066,9 @@ const Rules = {
     }
     return out;
   },
-  // 3.14: обменник — SPARKS искр → ZLAT златников за один обмен, не больше DAY обменов в день
-  // 4.16: был ✦ 500 → 10 златников трижды в день (30 златников в день почти даром) — теперь трата лишних искр:
-  // ✦ 1 000 → 1 златник, до 5 обменов в день
+  // 3.14: обменник — SPARKS искр → ZLAT монет за один обмен, не больше DAY обменов в день
+  // 4.16: был ✦ 500 → 10 монет трижды в день (30 монет в день почти даром) — теперь трата лишних искр:
+  // ✦ 1 000 → 1 монета, до 5 обменов в день
   EXCHANGE: { SPARKS: 1000, ZLAT: 1, DAY: 5 },
   // 4.16: посылка Ордена — награда, которая не поместилась в сумку, ждёт здесь (не больше MAX вещей), пока не освободится место
   PARCEL: { MAX: 200 },
@@ -3884,7 +5076,7 @@ const Rules = {
   MELT: { N: 3, SPARKS: 3000 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
-  // cur — валюта: sparks (искры) или zlat (златники). give — предметы; cocoon — кокон; amulet — случайный амулет
+  // cur — валюта: sparks (искры) или zlat (монеты). give — предметы; cocoon — кокон; amulet — случайный амулет
   SHOP: [
     { id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },
     { id: 'farpass',  name: ru`Дальний пропуск`,     desc: ru`Закрыть Разлом до 5 км, не подходя к нему`, cur: 'sparks', price: 1000, give: { farpass: 1 } },
@@ -3895,7 +5087,7 @@ const Rules = {
     { id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },
     { id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },
     // 4.15.1: Мёртвая вода — редкость, в товар дня не попадает. 4.16: один флакон в неделю (week — сколько раз за неделю
-    // можно купить, day — за день), а не каждый день на бесплатные златники
+    // можно купить, day — за день), а не каждый день на бесплатные монеты
     { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в неделю: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 80, give: { deadwater: 1 }, week: 1 },
     { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
@@ -3930,11 +5122,11 @@ const Rules = {
   passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
   // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
   // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
-  // 4.16: на бесплатной тропе 55 златников за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
+  // 4.16: на бесплатной тропе 55 монет за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
   passReward(track, lvl, plvl) {
     if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
     if (track === 'free') {
-      // 4.16.0: бесплатная тропа — 29 златников за сезон (было 55)
+      // 4.16.0: бесплатная тропа — 29 монет за сезон (было 55)
       if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
       if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
       if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
@@ -3959,12 +5151,15 @@ const Rules = {
   },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
-  /* 4.16: Капища не должны навсегда оставаться за дружинами.
+  /* 4.16: Капища не должны навсегда оставаться за кланами.
      Защитник первые FRESH_H часов на посту в полной силе, потом устаёт: к MAX_H часам его уровень падает до (1 − WEAK)
      от своего, а в MAX_H часов он уходит домой (с искрами за службу, как побеждённый). Дань (Rules.ZLAT.tribute и TRIBUTE) —
      только за защитников, которые простояли не меньше TRIBUTE_H часов и ещё на посту («активная защита»), и не больше чем
-     за HOLD_MY_MAX Капищ. Доля FREE Капищ — вольные: их не держит ни одна дружина, там всегда бьётся хранитель. */
-  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25 },
+     за HOLD_MY_MAX Капищ. Доля FREE Капищ — вольные: их не держит ни один клан, там всегда бьётся хранитель.
+     4.28: кланы — мифологии; защитник на святилище мифологии своего клана (W.placeMyth) приносит дань ×MYTH (искры и обереги;
+     монеты — как с любого Капища). Кланов стало 7+ при тех же Ловчих — на удержание Капищ это не влияет: защитников на
+     Капище и Капищ у Ловчего столько же, вольных — та же доля. */
+  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25, MYTH: 1.5 },
   holdHours(t, now) { return Math.max(0, ((now == null ? Date.now() : now) - (+t || 0)) / 3600000); },
   holdFresh(h, now) { return !!h && this.holdHours(h.t, now) < this.HOLD.MAX_H; },
   // во сколько раз уменьшен уровень защитника (1 — в полной силе)
@@ -3972,6 +5167,8 @@ const Rules = {
   // отражение духа на посту: уровень — с учётом усталости
   holdSpirit(sp, t, now) { return { ...sp, lvl: Math.max(1, Math.round((sp.lvl || 1) * this.holdK(t, now))) }; },
   shrineFree(id) { return U.h('freeShrine', String(id)) < this.HOLD.FREE; },
+  // 4.28: дань за n Капищ, из них own — святилища мифологии своего клана (там ×HOLD.MYTH; обереги — с округлением вверх)
+  tributeFor(n, own) { const k = n + Math.min(own, n) * (this.HOLD.MYTH - 1); return { sparks: Math.round(TRIBUTE.sparks * k), charm: Math.ceil(TRIBUTE.charm * k - 1e-9) }; },
   ORDER_RULES: [
     [ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],
@@ -4164,7 +5361,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '4.0.0', // 4.0: новые духи меняют появление духов на карте, обучение ведёт сервер — старым клиентам нужно обновиться
+  MIN_CLIENT: '5.0.0', // 5.0 (4.28): мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -4223,12 +5420,14 @@ const GameCore = {
       Bus.emit = (ev, data) => ctx.events.push([ev, this.ser(ev, data)]);
       S.save = () => {};
       S.d = save.data ? JSON.parse(JSON.stringify(save.data)) : null;
-      if (S.d) { S.migrate(); S.ensureQuests(); W.prune(); }
+      Ev.alaSync(ctx.now); // 4.28: мифологии, открытые в этом сезоне Алатыря (сезон — из базы, serve.js)
+      if (S.d) { S.migrate(); S.ensureQuests(); W.prune(); this.alaTurn(ctx); }
       this.track(ctx);
 
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
       this.need(actions.length, ru`Пустой запрос`);
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
+      const ala0 = S.d ? S.d.alaGiven || 0 : 0; // 4.28: осколки Алатыря, отданные в общий счёт Ордена
       for (const a of actions) {
         const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
         this.need(h, ru`Неизвестное действие`);
@@ -4236,6 +5435,7 @@ const GameCore = {
         ctx.results.push(await h.call(this, a.args || {}, ctx));
       }
       if (S.d && stats0) { const pts = Rules.orderPoints(stats0, S.d.stats, Ev.cur); this.orderAdd(ctx, pts); this.passAdd(ctx, pts); }
+      if (S.d) this.alatyrSync(ctx, (S.d.alaGiven || 0) - ala0, actions.some(a => a && a.type === 'load'));
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
     } catch (e) {
@@ -4397,6 +5597,38 @@ const GameCore = {
     const row = { week: w, pid: S.d.pid, name: S.d.name, n: o.n };
     ctx.after.push(() => ctx.env.orderPut(row));
   },
+  /* 4.28: общий Алатырь. n осколков, выпавших за запрос, — в общий счёт Ордена после сохранения прогресса (serve.js →
+     alatyr_add; веху и событие дороги сервер отмечает там же). Дороги (Ev.roads — сервер держит их из базы) телефон
+     получает событием roads: при входе и когда набор дорог изменился с прошлого раза (ctx.srv.alaV) */
+  alatyrSync(ctx, n, load) {
+    if (n > 0 && typeof ctx.env.alatyrAdd === 'function') { const k = Math.min(n, 10); ctx.after.push(() => ctx.env.alatyrAdd(k)); }
+    const key = Ev.roadsKey();
+    if ((load && key) || (ctx.srv.alaV || '') !== key) Bus.emit('roads', Ev.roadsLive(ctx.now));
+    if (key || ctx.srv.alaV) ctx.srv.alaV = key;
+    // 4.28: сезон Алатыря (финал, раскол) — событием ala: при входе и когда он изменился
+    const sk = Ev.alaKey();
+    if (load || (ctx.srv.alaW || '') !== sk) Bus.emit('ala', Ev.alaView());
+    ctx.srv.alaW = sk;
+  },
+  /* 4.28: сезон Алатыря сменился (Кощей расколол камень) — награда за вклад в прошлый сезон (S.d.alaS: осколки и победы над
+     Кощеем, Rules.alaPoints) из SeasonRewards (season-rewards.js; нет — без наград) и итоги для окна «Итоги сезона»
+     (S.d.alaSum — телефон показывает его один раз, alatyr.js). Вклад нового сезона — с нуля. Первый раз (сохранение до
+     сезонов) вклад первого сезона — всё, что Ловчий отдал в общий камень (alaGiven) */
+  alaTurn(ctx) {
+    const s = Ev.alaSeason(ctx.now), a = S.d.alaS;
+    if (!a || typeof a !== 'object' || !(a.s >= 1)) { S.d.alaS = { s, n: s === 1 ? Math.max(0, S.d.alaGiven | 0) : 0, k: 0 }; return; }
+    if (a.s >= s) return;
+    const pts = Rules.alaPoints(a);
+    let got = [];
+    if (pts > 0 && typeof SeasonRewards !== 'undefined' && SeasonRewards && typeof SeasonRewards.grant === 'function') {
+      try { const g = SeasonRewards.grant(S, a.s, pts); got = Array.isArray(g) ? g : []; } catch (e) { console.error('Награды сезона:', String(e && e.stack || e)); }
+    }
+    S.d.alaS = { s, n: 0, k: 0 };
+    if (pts > 0 || got.length) {
+      S.d.alaSum = { s: a.s, n: Math.max(0, a.n | 0), k: Math.max(0, a.k | 0), pts,
+        got: got.slice(0, 12).map(x => (x && typeof x === 'object' ? { label: String(x.label || x.name || '').slice(0, 120), n: Math.max(1, +x.n || 1) } : { label: String(x).slice(0, 120), n: 1 })) };
+    }
+  },
   // Сезонная тропа: сезон — календарный месяц по часам игрока
   passSeason(ctx) { const d = U.local(ctx.now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`; },
   passState(ctx) {
@@ -4405,7 +5637,7 @@ const GameCore = {
     return S.d.pass;
   },
   passAdd(ctx, pts) { if (pts > 0) this.passState(ctx).pts += pts; },
-  // Награда: предметы, искры, златники + кокон, случайный амулет, облик
+  // Награда: предметы, искры, монеты + кокон, случайный амулет, облик
   grant(rw) {
     const { cocoon, amulet, look, ...rest } = rw;
     const got = S.giveRewards(rest);
@@ -4516,9 +5748,10 @@ const GameCore = {
   },
   weekUsed(ctx, key) { return this.weekc(ctx)[key] || 0; },
   weekAdd(ctx, key) { const c = this.weekc(ctx); c[key] = (c[key] || 0) + 1; },
-  // Канал чата: общий, торговля, разломы, помощь или своя дружина
+  // Канал чата: общий, торговля, разломы, помощь или свой клан (4.28: clan:<ключ мифологии>; до миграции 032 в базе ещё
+  // есть сообщения прежних дружин clan:sokol… — их читает serve.js вместе с каналом клана, clanIds)
   chatChannel(ch) {
-    if (ch === 'clan') { this.need(S.d.clan, ru`Канал дружины — для тех, кто в дружине`); return 'clan:' + S.d.clan; }
+    if (ch === 'clan') { this.need(clanOf(S.d.clan), ru`Канал клана — для тех, кто в клане`); return 'clan:' + clanOf(S.d.clan); }
     this.need(['all', 'trade', 'raid', 'help'].includes(ch), ru`Такого канала нет`);
     return ch;
   },
@@ -4575,7 +5808,12 @@ const GameCore = {
   // 3.21: текущие данные Ловчего из его сохранения — только проверенные значения (попадают в разметку)
   brief(b) {
     if (!b) return null;
-    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: this.own(CLANS, b.clan) ? b.clan : null, look: this.safeLook(b.look) };
+    return { name: this.cleanText(b.name, 20) || 'Ловчий', lvl: U.clamp(Math.floor(+b.level) || 1, 1, MAX_LEVEL), clan: clanOf(b.clan), look: this.safeLook(b.look) }; // 4.28: прежняя дружина — её клан
+  },
+  // 4.28: клан для вступления и перехода: известный (не прежний id дружины) и открытый в этом сезоне Алатыря
+  clanCheck(k) {
+    this.need(typeof k === 'string' && clanOf(k) === k, ru`Такого клана нет`);
+    this.need(clanOpen(k), ru`Этот клан ещё закрыт — он откроется в новом сезоне Алатыря`);
   },
   roomMember() {
     const team = S.team();
@@ -4601,12 +5839,13 @@ const GameCore = {
     return hold.holders.filter(h => h && h.sp && this.own(SP, h.sp.sid) && Rules.holdFresh(h, now)).map((h, i) => Rules.holdSpirit(this.cleanSpirit(h.sp, i), h.t, now))
       .map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, 3).map(o => o.x);
   },
-  // 4.16: Капище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Капище дружин нет.
-  // null — Капище свободно (бьётся хранитель)
+  // 4.16: Капище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Капище кланов нет.
+  // null — Капище свободно (бьётся хранитель). 4.28: clan — ключ клана мифологии (до миграции 032 в базе бывают прежние
+  // sokol / medved / volk — clanOf); неизвестный клан — Капище как свободное
   liveHold(hold, now, id) {
-    if (!hold || Rules.shrineFree(id)) return null;
+    if (!hold || Rules.shrineFree(id) || !clanOf(hold.clan)) return null;
     const holders = (hold.holders || []).filter(h => Rules.holdFresh(h, now));
-    return holders.length ? { ...hold, holders } : null;
+    return holders.length ? { ...hold, clan: clanOf(hold.clan), holders } : null;
   },
   // Три сильнейших духа друга
   topSpirits(d, n = 3) {
@@ -4778,6 +6017,19 @@ const GameCore = {
       }
       J.add('order', { i });
       return { got };
+    },
+    // 4.28: общий Алатырь — счёт Ордена, распутанные дороги (последние, для истории) и вклад Ловчего. Грани и вехи
+    // телефон считает сам по Rules.alaStage (счёт — из кэша сервера, не старше ~15 с). Сезоны: текущий (season — с числом
+    // побед над Кощеем в финале), прошлые (seasons — для летописи: финалы и расколы), вклад Ловчего в сезон (my)
+    async alatyr(a, ctx) {
+      this.limit(ctx, 'alatyr', 30, 60000);
+      const w = typeof ctx.env.alatyrState === 'function' ? await ctx.env.alatyrState() : null;
+      const total = Math.max(0, Math.floor(+(w && w.total) || 0));
+      const roads = Ev.roadsClean(w && w.roads).sort((x, y) => y.n - x.n);
+      const seasons = (Array.isArray(w && w.seasons) ? w.seasons : []).slice(0, 12).map(x => ({ ...Ev.alaClean(x), s: Math.max(1, x.s | 0) }));
+      const my = S.alaMine();
+      return { total, roads, mine: S.d.alaGiven || 0, now: ctx.now, season: Ev.alaView(), seasons,
+        my: { s: my.s, n: my.n | 0, k: my.k | 0, pts: Rules.alaPoints(my) } };
     },
 
     // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.
@@ -5166,8 +6418,9 @@ const GameCore = {
       // 4.16: босс — по уровню Ловчего (в совместном — по среднему уровню комнаты); rl телефон считает так же (Raid.bossStats)
       const rl = coop ? coop.rl : S.catchLvl();
       // 4.26: hp0 — здоровье бойцов на входе (Rules.raidWinnable)
-      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop, waters: 0, far, tire: true };
-      return { rid: r.id, tier: r.tier, boss: r.boss, rl, far };
+      // 4.28: fin — Разлом финала сезона Алатыря (Кощей): победа идёт в общий счёт побед над ним
+      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop, waters: 0, far, tire: true, fin: r.fin || 0 };
+      return { rid: r.id, tier: r.tier, boss: r.boss, rl, far, fin: r.fin || 0 };
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {
@@ -5253,12 +6506,19 @@ const GameCore = {
       const am = S.rollAmulet([0.05, 0.12, 0.3][tier - 1], b.rid);
       rw.push(...S.riftSpoils(b.boss, tier)); // 4.16: эссенция семейства босса (и легенд) и осколки Алатыря
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
+      // 4.28: финал сезона Алатыря — победа над Кощеем: в вклад Ловчего за сезон и (после сохранения) в общий счёт побед
+      let fin = 0;
+      if (b.fin && b.boss === 'koschey') {
+        const my = S.alaMine();
+        if (my.s === b.fin) { my.k = (my.k | 0) + 1; fin = b.fin; }
+        if (fin && typeof ctx.env.alatyrKill === 'function') ctx.after.push(() => ctx.env.alatyrKill(fin));
+      }
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
       const shiny = U.h('rshiny', b.rid, S.d.created) < Sky.shinyRate(1 / 20);
       ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.catchLvl()), // 4.15: пойманный дух — не выше уровня Ловчего
         charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
-      return { win: true, rw, charms, bonus, allies };
+      return { win: true, rw, charms, bonus, allies, fin };
     },
 
     /* ----- бои: капище и вторжение ----- */
@@ -5272,9 +6532,9 @@ const GameCore = {
       const team = S.team();
       this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
-      // Капище держит дружина — сражаться придётся с её защитниками (тремя сильнейшими)
+      // Капище держит клан — сражаться придётся с его защитниками (тремя сильнейшими)
       const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
-      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твоя дружина — здесь можно поставить защитника`);
+      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твой клан — здесь можно поставить защитника`);
       const ht = hold ? this.holdTeam(hold, ctx.now) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
       this.need(p.verified || e.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`); // 4.26: у места не из базы — только Капища «Ученика»
@@ -5345,7 +6605,7 @@ const GameCore = {
         this.need(S.bagCount() + n <= S.bagLimit(), ru`Сумка полна — освободи место или расширь её`);
       }
       const key = it.cur === 'sparks' ? 'sparks' : 'zlat';
-      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? ru`Не хватает искр` : ru`Не хватает златников`);
+      this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? ru`Не хватает искр` : ru`Не хватает монет`);
       this.limit(ctx, 'shop', 120, 3600000);
       S.d[key] -= it.price;
       let got;
@@ -5358,7 +6618,7 @@ const GameCore = {
       return { got, price: it.price, cur: key };
     },
 
-    // Казна: начислить оплаченные наборы златников. Номер оплаты запоминается в прогрессе (paid) —
+    // Казна: начислить оплаченные наборы монет. Номер оплаты запоминается в прогрессе (paid) —
     // так начисление ровно одно, даже если отметка в таблице payments не успела записаться
     async payClaim(a, ctx) {
       const rows = await ctx.env.paidList();
@@ -5372,13 +6632,13 @@ const GameCore = {
       }
       if (zlat) {
         S.d.zlat = (S.d.zlat || 0) + zlat;
-        S.d.payNew = (S.d.payNew || 0) + zlat; // 4.22: игра покажет «+N златников» при входе (начислить мог и сам сервер)
+        S.d.payNew = (S.d.payNew || 0) + zlat; // 4.22: игра покажет «+N монет» при входе (начислить мог и сам сервер)
         J.add('pay', { zlat });
       }
       if (rows.length) ctx.after.push(() => ctx.env.payCredited(rows.map(r => r.id)));
       return { zlat, n: packs.length };
     },
-    // 4.26: оплату вернули (refunded) — начисленные по ней златники списываются; счёт может уйти в минус (тратить нечего,
+    // 4.26: оплату вернули (refunded) — начисленные по ней монеты списываются; счёт может уйти в минус (тратить нечего,
     // пока не пополнится). Зовёт сам сервер по уведомлению ЮKassa; список — только из базы, повтор безопасен
     async payRefund(a, ctx) {
       const rows = ctx.env.refundList ? await ctx.env.refundList() : [];
@@ -5393,9 +6653,9 @@ const GameCore = {
       if (rows.length) ctx.after.push(() => ctx.env.payDebited(rows.map(r => r.id)));
       return { zlat: -zlat };
     },
-    // 4.22: игрок увидел «+N златников» из Казны
+    // 4.22: игрок увидел «+N монет» из Казны
     payAck() { delete S.d.payNew; return {}; },
-    // Обменник: искры → златники, по курсу Rules.EXCHANGE и не больше DAY обменов в день
+    // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
       const ex = S.d.shop.ex && S.d.shop.ex.day === today ? S.d.shop.ex : (S.d.shop.ex = { day: today, n: 0 });
@@ -5417,40 +6677,53 @@ const GameCore = {
       this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
       P.got[track].push(lvl);
       let rw = Rules.passReward(track, lvl, S.d.level);
-      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — златниками (4.16: было 40)
+      if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — монетами (4.16: было 40)
       return { got: this.grant(rw) };
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
       this.need(!P.gold, ru`Золотая тропа уже открыта`);
-      this.need(S.d.zlat >= Rules.PASS.GOLD, ru`Нужно ${Rules.PASS.GOLD} златников`);
+      this.need(S.d.zlat >= Rules.PASS.GOLD, ru`Нужно ${Rules.PASS.GOLD} монет`);
       S.d.zlat -= Rules.PASS.GOLD;
       P.gold = true;
       J.add('passGold', { season: P.season });
       return { ok: true };
     },
 
-    /* ----- дружины ----- */
+    /* ----- кланы (4.28: клан — мифология; открыт, пока открыта мифология — clanOpen) ----- */
     clanJoin(a) {
-      this.need(S.d.level >= CLAN_LEVEL, ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня`);
-      this.need(!S.d.clan, ru`Дружина уже выбрана`);
-      this.need(this.own(CLANS, a.clan), ru`Такой дружины нет`);
+      this.need(S.d.level >= CLAN_LEVEL, ru`Клан можно выбрать с ${CLAN_LEVEL} уровня`);
+      this.need(!S.d.clan, ru`Клан уже выбран`);
+      this.clanCheck(a.clan);
       S.d.clan = a.clan;
       J.add('clan', { clan: a.clan });
       return { clan: a.clan };
     },
-    // Поставить духа защищать Капище: свободное — после своей победы здесь сегодня, своей дружины — если есть место
+    // 4.28: один бесплатный переход в другой открытый клан — у тех, кто был в дружине до кланов мифологий (S.migrate,
+    // clanFree; предложение не сгорает, пока не использовано). Защитники достаивают свой срок на Капищах прежнего клана,
+    // чат — уже нового
+    clanMove(a) {
+      this.need(S.d.clan, ru`Сначала выбери клан`);
+      this.need(S.d.clanFree > 0, ru`Бесплатный переход уже использован`);
+      this.clanCheck(a.clan);
+      this.need(a.clan !== S.d.clan, ru`Ты уже в этом клане`);
+      const from = S.d.clan;
+      S.d.clan = a.clan; S.d.clanFree = 0;
+      J.add('clan', { clan: a.clan, from, move: 1 });
+      return { clan: a.clan };
+    },
+    // Поставить духа защищать Капище: свободное — после своей победы здесь сегодня, своего клана — если есть место
     async shrineDefend(a, ctx) {
-      this.need(S.d.clan, ru`Сначала выбери дружину`);
+      this.need(S.d.clan, ru`Сначала выбери клан`);
       const p = await this.place(a.shrine, ctx, 'shrine');
       this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);
-      this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни одна дружина`);
+      this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни один клан`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const sp = this.spirit(a.uid);
       const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
       if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Капище`);
       else {
-        this.need(hold.clan === S.d.clan, ru`Капище держит другая дружина — сначала победи её защитников`);
+        this.need(hold.clan === S.d.clan, ru`Капище держит другой клан — сначала победи его защитников`);
         this.need(hold.holders.length < HOLD_MAX, ru`На Капище уже ${HOLD_MAX} защитников`);
         this.need(!hold.holders.some(h => h.pid === S.d.pid), ru`Твой защитник уже стоит здесь`);
       }
@@ -5486,7 +6759,7 @@ const GameCore = {
       }
       return { list, back, got };
     },
-    // Сколько Капищ держит каждая дружина: по всей России и в округе ~5 км
+    // Сколько Капищ держит каждый открытый клан: по всему свету и в округе ~5 км
     async clanStats(a, ctx) {
       const p = ctx.pos;
       const box = p ? [p.lat - 0.045, p.lng - 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)), p.lat + 0.045, p.lng + 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180))] : null;
@@ -5496,7 +6769,7 @@ const GameCore = {
     // Rules.HOLD.TRIBUTE_H часов и срок ещё не вышел; не больше HOLD_MY_MAX Капищ). Если защитники есть, но ещё не
     // отстояли своё, день не закрывается — дань можно забрать позже (next — когда)
     async tribute(a, ctx) {
-      this.need(S.d.clan, ru`Сначала выбери дружину`);
+      this.need(S.d.clan, ru`Сначала выбери клан`);
       if (S.d.tributeDay === U.today(ctx.now)) return { n: 0, already: true };
       const H = Rules.HOLD, list = (await ctx.env.myHoldsList(S.d.pid)).filter(x => Rules.holdFresh(x, ctx.now));
       const n = Math.min(HOLD_MY_MAX, list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H).length);
@@ -5507,8 +6780,11 @@ const GameCore = {
       }
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
-      // 4.16: златники — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 златника с каждого, до 30 в день)
-      return { n, got: S.giveRewards({ sparks: TRIBUTE.sparks * n, charm: TRIBUTE.charm * n, zlat: Rules.ZLAT.tribute * Math.min(n, Rules.ZLAT.tributeMax) }) };
+      // 4.16: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 монеты с каждого, до 30 в день)
+      // 4.28: с святилищ мифологии своего клана — искры и обереги ×Rules.HOLD.MYTH (Rules.tributeFor); сначала — они
+      const mine = list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H && W.placeMyth({ id: x.id }) === S.d.clan).length;
+      const T = Rules.tributeFor(n, mine);
+      return { n, own: Math.min(n, mine), got: S.giveRewards({ sparks: T.sparks, charm: T.charm, zlat: Rules.ZLAT.tribute * Math.min(n, Rules.ZLAT.tributeMax) }) };
     },
 
     async invStart(a, ctx) {
@@ -5573,7 +6849,7 @@ const GameCore = {
       const q = ctx.srv.lq && ctx.now - ctx.srv.lq.t < 15000 ? ctx.srv.lq : { since: ctx.now };
       q.t = ctx.now; ctx.srv.lq = q;
       const waited = (ctx.now - q.since) / 1000, w = League.window(L.pts, waited);
-      const info = { pid: S.d.pid, name: S.d.name, look: this.safeLook(S.d.look), lvl: S.d.level, pts: L.pts, rank: League.rank(L.pts), clan: CLANS[S.d.clan] ? S.d.clan : null,
+      const info = { pid: S.d.pid, name: S.d.name, look: this.safeLook(S.d.look), lvl: S.d.level, pts: L.pts, rank: League.rank(L.pts), clan: clanOf(S.d.clan),
         power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)) };
       const r = await ctx.env.pvpFind({ season: L.season, pts: L.pts, lo: w.lo, hi: w.hi, info, avoid: L.last || null, wide: waited >= 30 });
       if (r && r.match) { ctx.srv.lq = null; return { match: r.match, done: [] }; }
@@ -5655,11 +6931,11 @@ const GameCore = {
       this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);
       this.need(!sp.bound, ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`);
       const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
-      this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} златников` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
+      this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} монет` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
       this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);
       // 4.16: залог — списывается сразу, возвращается вместе с выручкой, если духа купят
       const deposit = Rules.auctionDeposit(cur, price);
-      this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`златник`, ru`златника`, ru`златников`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);
+      this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`монета`, ru`монеты`, ru`монет`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);
       this.limit(ctx, 'aucSell', A.PER_DAY, 86400000);
       const iv = sp.iv, s = SP[sp.sid];
       this.shared(ctx);
@@ -5682,7 +6958,7 @@ const GameCore = {
       // деньги проверяем ДО покупки, по цене из базы (цену с телефона не принимаем): иначе лот
       // пометился бы проданным, а покупатель ушёл бы ни с чем
       const cur = pre.cur === 'zlat' ? 'zlat' : 'sparks';
-      this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? ru`Не хватает златников` : ru`Не хватает искр`);
+      this.need((S.d[cur] || 0) >= pre.price, cur === 'zlat' ? ru`Не хватает монет` : ru`Не хватает искр`);
       this.limit(ctx, 'aucBuy', 60, 3600000);
       this.shared(ctx);
       const lot = await ctx.env.lotBuy(id, S.d.pid, S.d.name);
@@ -5711,11 +6987,11 @@ const GameCore = {
       const ch = this.chatChannel(a.ch);
       this.limit(ctx, 'chatRead', 1200, 3600000);
       const rows = await ctx.env.chatList(ch, Math.max(0, Math.floor(+a.after) || 0));
-      // 3.21: имя, уровень и дружина в сообщении — на момент отправки; отдаём текущие (a.who — Ловчие уже показанных сообщений)
+      // 3.21: имя, уровень и клан в сообщении — на момент отправки; отдаём текущие (a.who — Ловчие уже показанных сообщений)
       const ask = [...new Set(rows.map(m => m.pid).concat(Array.isArray(a.who) ? a.who.slice(0, 40).map(String) : []))].filter(p => this.PID.test(p)).slice(0, 90);
       const who = {};
       try { const cur = await ctx.env.briefByPid(ask); Object.keys(cur).forEach(p => { const w = this.brief(cur[p]); who[p] = { name: w.name, lvl: w.lvl, clan: w.clan }; }); } catch (e) { /* покажем данные из сообщений */ }
-      return { ch: a.ch, who, msgs: rows.map(m => { const w = who[m.pid]; return { id: m.id, pid: m.pid, name: w ? w.name : m.name, lvl: w ? w.lvl : m.lvl, clan: w ? w.clan : m.clan, text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid }; }) };
+      return { ch: a.ch, who, msgs: rows.map(m => { const w = who[m.pid]; return { id: m.id, pid: m.pid, name: w ? w.name : m.name, lvl: w ? w.lvl : m.lvl, clan: w ? w.clan : clanOf(m.clan), text: m.text, t: Date.parse(m.created_at), mine: m.pid === S.d.pid }; }) };
     },
     async chatSend(a, ctx) {
       const C = Rules.CHAT, ch = this.chatChannel(a.ch);
@@ -5745,7 +7021,7 @@ const GameCore = {
     },
 
     /* ----- карточка Ловчего и таблица Лиги (3.21) ----- */
-    // Открытая карточка любого Ловчего (из чата или таблицы Лиги): облик, уровень, дружина, Лига, успехи, спутник
+    // Открытая карточка любого Ловчего (из чата или таблицы Лиги): облик, уровень, клан, Лига, успехи, спутник
     async playerCard(a, ctx) {
       const pid = String(a.pid || '');
       this.need(this.PID.test(pid), ru`Ловчий не найден`);
@@ -5963,12 +7239,12 @@ const verCmp = (a, b) => {
   return 0;
 };
 
-/* ---------- Казна: покупка златников через ЮKassa ----------
+/* ---------- Казна: покупка монет через ЮKassa ----------
    Секреты задаёт владелец в Supabase → Edge Functions → Secrets:
      YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY — магазин ЮKassa (для проверки — тестовый магазин);
      PAY_RECEIPT=on — передавать чек по 54-ФЗ (тогда игрок вводит почту);
      PAY_RETURN_URL — куда вернуть игрока после оплаты (по умолчанию paid.html сайта игры).
-   Телефону не верим: пакет, сумма и число златников — из Rules.PAY; итог платежа сервер
+   Телефону не верим: пакет, сумма и число монет — из Rules.PAY; итог платежа сервер
    сам спрашивает у ЮKassa (sync), а начисляет его действие игры payClaim. */
 const PAY = {
   shop: Deno.env.get('YOOKASSA_SHOP_ID') || '',
@@ -6054,7 +7330,7 @@ const Pay = {
     const since = new Date(Date.now() - 3600000).toISOString();
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
     if ((count || 0) >= 10) return { ok: false, error: ru`Слишком много попыток оплаты — подожди немного` };
-    const amount = pack.rub.toFixed(2), title = `${pack.zlat} златников — «Духолов»`;
+    const amount = pack.rub.toFixed(2), title = `${pack.zlat} монет — «Духолов»`;
     const row = must(await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount }).select('id').single());
     const p = await yk('POST', '/payments', {
       amount: { value: amount, currency: 'RUB' },
@@ -6128,7 +7404,7 @@ const Pay = {
     let status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
     if (same && p.refunded_amount && +p.refunded_amount.value > 0) status = 'refunded';
     if (status === r.status) return status;
-    // 4.26: возврат уже начисленного платежа — златники списываются (действие payRefund; может уйти в минус — Казна и аукцион
+    // 4.26: возврат уже начисленного платежа — монеты списываются (действие payRefund; может уйти в минус — Казна и аукцион
     // закрыты до погашения). Владельцу — в журнале
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
@@ -6140,7 +7416,7 @@ const Pay = {
     return status;
   },
   // 4.22: начислить оплаченное сразу — действие игры payClaim от имени игрока, в общей очереди его действий (замок);
-  // игра покажет «+N златников», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
+  // игра покажет «+N монет», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
   async credit(uid, type = 'payClaim') {
     const { data: sv } = await db.from('saves').select('app_version').eq('user_id', uid).maybeSingle(); // версия игры игрока — прежняя
     const out = await play(uid, { a: [{ type }], sys: true, v: (sv && sv.app_version) || '' }, makeEnv(uid));
@@ -6406,9 +7682,120 @@ async function realWeather(lat, lng) {
   } catch (e) { return c ? c.keys : null; } finally { clearTimeout(t); }
 }
 
+/* ---------- 4.28: общий Алатырь (029_alatyr_world.sql) ----------
+   alatyr_world — общий счёт осколков Ордена (одна строка), alatyr_roads — распутанные дороги (грань n, мифология, начало
+   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alaStage)
+   отмечает только тот запрос, что их перешагнул; дорогу записывает alatyr_open (повтор той же грани ничего не меняет).
+   Состояние кэшируется в экземпляре на TTL и кладётся в Ev.roads — по нему сервер отбирает духов (Ev.mythMul), а телефон
+   получает те же дороги событием roads (core.js, alatyrSync). Событие начинается не раньше чем через Rules.ALATYR_WORLD.LEAD
+   минут после вехи — за это время о нём узнают все экземпляры сервера и телефоны */
+/* 4.28: сезоны Алатыря (030_alatyr_seasons.sql): alatyr_seasons — строка на сезон: счёт на его начало (start_total), начало
+   (from_ms — момент раскола прошлого), финал (finale_from/to, kills — победы над Кощеем, goal) и раскол (broken_ms — с него
+   идёт следующий сезон; строку следующего сезона пишет тот же alatyr_break). Кто первым заметил, что пора, — пишет:
+   собраны все грани — финал (alatyr_finale), Орден одолел Кощея goal раз — раскол с ближайшего полного часа (alatyr_break
+   в World.kill), финал кончился — раскол в его конце (здесь, в load). Повтор ничего не меняет. Нет таблицы (миграция ещё
+   не применена) — первый сезон с нуля, без финала */
+const World = {
+  st: null, at: 0, p: null, TTL: 60000,
+  season(rows, now) {
+    const [top, prev] = rows;
+    if (!top) return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    const cur = top.from_ms > now && prev ? prev : top; // раскол назначен, но ещё не настал — идёт прошлый сезон
+    return this.row(cur, cur === prev ? +top.from_ms : null);
+  },
+  row(r, brk) {
+    const fin = r.finale_from != null && r.finale_to != null ? { from: +r.finale_from, to: +r.finale_to, kills: +r.kills || 0, goal: +r.goal || Rules.ALATYR_WORLD.FINALE.GOAL } : null;
+    return { s: +r.season, from: +r.from_ms || 0, start: +r.start_total || 0, fin, brk: brk || (r.broken_ms != null ? +r.broken_ms : null) };
+  },
+  async load(depth = 0) {
+    const now = Date.now();
+    const w = must(await db.from('alatyr_world').select('total').eq('id', 1).maybeSingle());
+    const rows = must(await db.from('alatyr_roads').select('n, road, from_ms, to_ms').order('n', { ascending: false }).limit(30)) || [];
+    const sq = await db.from('alatyr_seasons').select('season, start_total, from_ms, finale_from, finale_to, kills, goal, broken_ms').order('season', { ascending: false }).limit(8);
+    if (sq.error && depth === 0) console.warn('Алатырь: сезоны недоступны —', sq.error.message);
+    const srows = sq.error ? [] : sq.data || [];
+    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })), ...this.season(srows, now),
+      seasons: srows.map(r => this.row(r)), db: !sq.error };
+    if (depth > 3) return st;
+    // финал кончился, а Орден не одолел Кощея — раскол в конце финала
+    if (st.db && st.fin && !st.brk && now >= st.fin.to) { if (await this.brk(st.s, st.fin.to)) return this.load(depth + 1); }
+    const stg = Rules.alaStage(st.s, st.total - st.start);
+    // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
+    const n = stg.base + stg.n - 1;
+    if (stg.n > 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
+      if (await this.open(n, now, st)) return this.load(depth + 1);
+    }
+    // все грани собраны, а финала нет (запрос, собравший последнюю грань, упал) — финал сейчас
+    if (st.db && stg.done && !st.fin && !st.brk) { if (await this.finale(st.s, now)) return this.load(depth + 1); }
+    return st;
+  },
+  apply(st) {
+    this.st = st; this.at = Date.now();
+    const cut = Date.now() - 86400000;
+    Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
+    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk };
+    Ev.alaSync();
+    return st;
+  },
+  async finale(s, now) {
+    const f = Rules.alaFinale(now);
+    const ok = !!must(await db.rpc('alatyr_finale', { p_season: s, p_from: f.from, p_to: f.to, p_goal: Rules.ALATYR_WORLD.FINALE.GOAL }));
+    if (ok) console.warn(`Алатырь: сезон ${s} — все грани собраны, финал с ${new Date(f.from).toISOString()}`);
+    return ok;
+  },
+  async brk(s, at) {
+    const ok = !!must(await db.rpc('alatyr_break', { p_season: s, p_at: at }));
+    if (ok) console.warn(`Алатырь: Кощей раскалывает камень — сезон ${s + 1} с ${new Date(at).toISOString()}`);
+    return ok;
+  },
+  // победа над Кощеем в финале сезона s; Орден одолел его goal раз — раскол с ближайшего полного часа
+  async kill(s) {
+    if (!(s >= 1)) return;
+    const now = Date.now(), r = must(await db.rpc('alatyr_kill', { p_season: s, p_n: 1, p_now: now }));
+    if (!r) return;
+    if (+r.prev < +r.goal && +r.kills >= +r.goal) { await this.brk(s, Rules.alaHour(now)); this.at = 0; await this.get(); }
+    else if (this.st && this.st.s === s && this.st.fin) this.st.fin.kills = Math.max(this.st.fin.kills, +r.kills || 0);
+  },
+  // состояние не старше ttl мс; база не ответила — прежнее (дороги не пропадают из-за сбоя)
+  async get(ttl = this.TTL) {
+    if (this.st && Date.now() - this.at < ttl) return this.st;
+    if (!this.p) this.p = this.load().then(st => this.apply(st)).catch(e => { console.error('Алатырь:', String(e)); return this.st; }).finally(() => { this.p = null; });
+    return this.p;
+  },
+  // дорога грани n (сквозной номер); goal — общий счёт, на котором грань собрана (st — сезон этой грани)
+  async open(n, now, st) {
+    const road = Rules.alatyrRoad(n), f = Rules.alaFace(n);
+    if (!road) return false; // мифологии этой грани ещё нет в игре — грань ждёт обновления
+    let at = st && st.s === f.s ? st.start : 0;
+    for (let k = 0; k <= f.k; k++) at += Rules.alaGoal(f.s, k);
+    const t = Rules.alatyrOpen(now);
+    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: road, p_goal: at, p_from: t.from, p_to: t.to }));
+  },
+  // +n осколков в общий счёт; перешагнули веху сезона — записать дорогу, собрали все грани — финал (и сразу обновить кэш)
+  async add(n) {
+    const r = must(await db.rpc('alatyr_add', { p_n: n }));
+    if (!r) return;
+    const now = Date.now(), st = this.st;
+    // сезон сменился, а кэш об этом ещё не знает — вехи отметит load по свежему состоянию
+    if (!st || Ev.alaSeason(now) !== st.s) { this.at = 0; await this.get(); return; }
+    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start), B = Rules.alaStage(st.s, (+r.total || 0) - st.start);
+    let changed = false;
+    for (let k = Math.max(A.n, B.n - 3); k < B.n; k++) {
+      if (await this.open(B.base + k, now, st)) { changed = true; console.warn(`Алатырь: сезон ${st.s}, грань ${k + 1} из ${B.K} собрана — ${B.faces[k]}`); }
+    }
+    if (st.db && B.done && !A.done && !st.fin && !st.brk && await this.finale(st.s, now)) changed = true;
+    if (changed) { this.at = 0; await this.get(); } else st.total = Math.max(st.total, +r.total || 0);
+  },
+};
+
 function makeEnv(uid) {
   return {
     weather: (lat, lng) => realWeather(lat, lng),
+    // 4.28: общий Алатырь — осколки в общий счёт (после сохранения прогресса) и состояние для экрана (не старше 15 с)
+    async alatyrAdd(n) { await World.add(Math.max(1, Math.min(10, n | 0))); },
+    async alatyrState() { return World.get(15000); },
+    // 4.28: победа над Кощеем в финале сезона s — в общий счёт (после сохранения прогресса)
+    async alatyrKill(s) { await World.kill(s | 0); },
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {
@@ -6466,8 +7853,10 @@ function makeEnv(uid) {
       return rows && rows.length ? t : null;
     },
     // Чат: последние 50 сообщений канала (или новые после after); отправка; жалоба (после 3 — сообщение скрыто)
+    // 4.28: канал клана clan:<мифология> читается вместе с каналом прежней дружины (clan:sokol…), пока миграция 032 их не перенесла
     async chatList(channel, after) {
-      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').eq('channel', channel).eq('hidden', false);
+      const chs = /^clan:/.test(channel) ? clanIds(channel.slice(5)).map(k => 'clan:' + k) : [channel];
+      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').in('channel', chs).eq('hidden', false);
       if (after) q = q.gt('id', after);
       const rows = must(await q.order('id', { ascending: false }).limit(50)) || [];
       return rows.reverse();
@@ -6483,7 +7872,7 @@ function makeEnv(uid) {
       if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
       return count || 0;
     },
-    // 3.21: текущие имя, уровень, дружина и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
+    // 3.21: текущие имя, уровень, клан и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
     async briefByUid(uids) {
       const out = {};
       if (!uids.length) return out;
@@ -6571,7 +7960,7 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
-    // Дружины: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    // Кланы: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
     async holdGet(poi) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
@@ -6600,16 +7989,17 @@ function makeEnv(uid) {
         return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
       });
     },
-    // Сколько Капищ держит каждая дружина (во всей стране или в прямоугольнике [s, w, n, e])
+    // Сколько Капищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
+    // 4.28: кланы — мифологии (MYTH_KEYS), считаются параллельно; до миграции 032 — вместе с прежними дружинами (clanIds)
     async clanCounts(box) {
       const out = {};
-      for (const k of Object.keys(CLANS)) {
-        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).eq('clan', k).neq('holders', '[]');
+      await Promise.all(MYTH_KEYS.map(async k => {
+        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).in('clan', clanIds(k)).neq('holders', '[]');
         if (box) q = q.gte('lat', box[0]).lte('lat', box[2]).gte('lng', box[1]).lte('lng', box[3]);
         const { count, error } = await q;
         if (error) throw new Error(error.message);
         out[k] = count || 0;
-      }
+      }));
       return out;
     },
     // Совместные разломы: комнаты (код, участники, начало боя)
@@ -6683,7 +8073,7 @@ function makeEnv(uid) {
       return must(await db.from('auction_lots').select('*').eq('seller_pid', pid).eq('settled', false).in('status', ['sold', 'cancelled', 'expired']).limit(50)) || [];
     },
     async lotsDone(ids, field) { if (ids.length) must(await db.from('auction_lots').update({ [field]: true }).in('id', ids)); },
-    // Казна: оплаченные, но ещё не начисленные наборы златников; отметка «начислено»
+    // Казна: оплаченные, но ещё не начисленные наборы монет; отметка «начислено»
     async paidList() { return must(await db.from('payments').select('id, pack, zlat').eq('user_id', uid).eq('status', 'succeeded').eq('credited', false).limit(50)) || []; },
     async payCredited(ids) { must(await db.from('payments').update({ credited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
     // 4.26: возвращённые (refunded) и уже начисленные, но ещё не списанные платежи; отметка «списано»
@@ -6746,6 +8136,7 @@ async function play(uid, body, env) {
     if (error) console.error('Замок:', error.message);
   };
   try {
+    await World.get(); // 4.28: дороги Алатыря (Ev.roads) — до отбора духов; из кэша экземпляра, база — не чаще раза в минуту
     let got = null;
     for (let i = 0; i < LOCK_TRIES; i++) {
       got = must(await db.rpc('game_begin', { p_uid: uid, p_token: tok, p_ms: LOCK_MS }));

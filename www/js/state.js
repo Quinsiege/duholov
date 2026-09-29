@@ -34,7 +34,7 @@ const S = {
     d.tasks = d.tasks || []; // поручения из родников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
-    // златники — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
+    // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
     // xpv: нет — кривая до 3.19 (levelXPOld), 2 — кривая 3.19–4.15 (levelXP2), 3 — нынешняя (levelXP)
@@ -69,6 +69,13 @@ const S = {
       d.tut = next === undefined ? 0 : next + 1; d.tutV = TUT_V;
     }
     if (d.buddy === undefined) d.buddy = null;
+    // 4.28: дружины стали кланами мифологий (CLAN_OLD): прежняя дружина — её клан, и один бесплатный переход в любой
+    // открытый клан (clanFree) — тем, кто был в дружине до обновления. clanV 2 — перенос сделан (и у новых Ловчих)
+    if (d.clanV !== 2) {
+      if (d.clan) { d.clan = clanOf(d.clan); if (d.clan) d.clanFree = 1; }
+      d.clanV = 2;
+    }
+    if (d.clan && clanOf(d.clan) !== d.clan) d.clan = clanOf(d.clan);
   },
 
   newGame(name, starter) {
@@ -246,9 +253,18 @@ const S = {
     if (!p || (this.d.alaDay && this.d.alaDay.n >= this.ALATYR_DAY) || Math.random() >= p) return [];
     this.d.alaDay = { day, n: (this.d.alaDay ? this.d.alaDay.n : 0) + 1 };
     this.d.alatyr = (this.d.alatyr || 0) + 1;
+    this.d.alaGiven = (this.d.alaGiven || 0) + 1; // 4.28: и в общий счёт Ордена (осколок остаётся у Ловчего) — вклад за всё время
+    this.alaMine().n++; // 4.28: и вклад за сезон Алатыря (награда в конце сезона — GameCore.alaTurn)
     return [{ k: 'alatyr', n: 1, label: ru`Осколки Алатыря` }];
   },
-  resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
+  // 4.28: вклад Ловчего в сезон Алатыря: { s — сезон, n — осколков, k — побед над Кощеем в финале }. Смену сезона
+  // (награду за прошлый) делает сервер в начале запроса (GameCore.alaTurn) — здесь только запись текущего
+  alaMine() {
+    const s = typeof Ev !== 'undefined' && Ev.alaSeason ? Ev.alaSeason() : 1, a = this.d.alaS;
+    if (!a || typeof a !== 'object' || !(a.s >= 1)) this.d.alaS = { s, n: 0, k: 0 };
+    return this.d.alaS;
+  },
+  resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Монеты` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
   /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
      hpf — доля на момент hpt, дальше дух сам восстанавливает Rules.HP.REGEN в час; ko — когда упал без сил:
      до Rules.koMs (2–24 ч по редкости) в бой не идёт, потом поднимается сам на Rules.HP.BACK (10%) */
@@ -497,7 +513,7 @@ const S = {
     for (const [k, n] of Object.entries(rw)) {
       if (!n) continue;
       if (k === 'sparks') { this.d.sparks += n; out.push({ k, n, label: ru`Искры` }); }
-      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Златники` }); }
+      else if (k === 'zlat') { this.d.zlat = (this.d.zlat || 0) + n; out.push({ k, n, label: ru`Монеты` }); }
       else if (k === 'xp') { const o = { k, n: 0, label: ru`Опыт` }; out.push(o); o.n = this.addXP(n, once); }
       else if (k === 'alatyr' || k === 'rod') { this.d[k] = (this.d[k] || 0) + n; out.push({ k, n, label: this.resName(k) }); } // 4.16: не вещи — в сумку не идут
       else if (ITEMS[k]) { const a = this.addItem(k, n, over); if (a) out.push({ k, n: a, label: ITEMS[k].name }); }
@@ -567,7 +583,7 @@ const S = {
     return n;
   },
   levelRewards(l) {
-    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); златники — 3, на каждом пятом — 15
+    // 4.16: лечебного и мёда меньше (было мёда 3, Живой воды 3, подорожника 5, отвара 2); монеты — 3, на каждом пятом — 15
     const r = { charm: 10 + l, honey: 2, water: 1, herb: 3, brew: 1, zlat: l % 5 ? Rules.ZLAT.level : Rules.ZLAT.level5 };
     if (l % 5 === 0) r.incense = 1;
     if (l >= 8) r.charm2 = l === 8 ? 10 : 4;
@@ -595,7 +611,7 @@ const S = {
     const tier = COCOON_TIERS[c.km], r = U.rng(c.id + 'hatch');
     const rar = U.weighted(Object.entries(tier.pool).map(([k, w]) => [+k, w]), r());
     // из кокона — только первая стадия (3.19: раньше редкие коконы давали сразу превращённых духов)
-    let pool = SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season);
+    let pool = W.evenMyth(SPECIES.filter(s => !s.legend && s.rar === rar && s.stage === 1 && W.local(s) && !s.season), r()); // 4.28: мифология — поровну
     if (!pool.length) pool = SPECIES.filter(s => s.stage === 1 && !s.legend);
     const s = pool[Math.floor(r() * pool.length)];
     const sp = this.makeSpirit(s.id, Math.min(this.d.level, 20), c.id, { ivMin: 10 });
@@ -664,11 +680,12 @@ const S = {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
     const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
     const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar)), guest = false;
+    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.season && T.rar.includes(s.rar)), guest = false;
     if (q.tier === 3 && pos && r() < this.GUEST) {
       const far = this.guests(pos.lat, pos.lng), fresh = far.filter(s => !(this.d.dex[s.id] && this.d.dex[s.id].caught));
       if (far.length) { sps = fresh.length ? fresh : far; guest = true; }
     }
+    if (!guest) sps = W.evenMyth(sps, r()); // 4.28: мифология — поровну
     const t = { id: U.uid(), t: q.t, n, el, p: 0, tier: q.tier, sid: sps[Math.floor(r() * sps.length)].id, text: q.text(n, el) };
     if (guest) t.guest = true;
     return t;
@@ -676,7 +693,7 @@ const S = {
   /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
      земель и сезонные не в свой сезон. Их приводят трудные поручения родников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
-  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
+  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0)); },
 
 
   /* ---------- 4.0: обучение новичка ---------- */
@@ -697,6 +714,7 @@ const S = {
     const st = this.d.stats;
     if (m.stat === 'dex') return SPECIES.filter(s => this.d.dex[s.id] && this.d.dex[s.id].caught).length;
     if (m.stat === 'lands') return SPECIES.filter(s => s.land && this.d.dex[s.id] && this.d.dex[s.id].caught).length;
+    if (m.stat === 'myths') return SPECIES.filter(s => s.myth !== 'slavic' && this.d.dex[s.id] && this.d.dex[s.id].caught).length; // 4.28
     if (m.stat.startsWith('el:')) return st.byEl[m.stat.slice(3)] || 0;
     return st[m.stat] || 0;
   },

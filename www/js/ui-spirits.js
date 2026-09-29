@@ -496,16 +496,35 @@ Object.assign(UI, {
   /* ---------------- БЕСТИАРИЙ ---------------- */
   dex() {
     Tut.ui('dex'); // 4.0: шаг обучения
-    const caught = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].caught).length;
-    const seen = SPECIES.filter(s => S.d.dex[s.id] && S.d.dex[s.id].seen).length;
+    // 4.28: мифологии мира — выбор мифологии над сеткой (последний выбор помнится до перезапуска)
+    // 4.28: сезоны Алатыря — виды закрытых мифологий не показываются; «?» — мифология следующего сезона (без её духов)
+    Ev.alaSync();
+    const myths = MYTH_KEYS.filter(m => SPECIES.some(s => s.myth === m));
+    let mf = myths.includes(this._dexMyth) ? this._dexMyth : 'all';
+    const next = () => `<div class="dex-next"><b>?</b><span>${ru`Мифология следующего сезона. Её духи появятся, когда Орден соберёт весь Алатырь-камень и Кощей расколет его.`}</span></div>`;
+    const sum = () => {
+      if (mf === '?') return next();
+      const list = SPECIES.filter(s => mf === 'all' || s.myth === mf);
+      const caught = list.filter(s => S.d.dex[s.id] && S.d.dex[s.id].caught).length, seen = list.filter(s => S.d.dex[s.id] && S.d.dex[s.id].seen).length;
+      return `<div class="dex-sum">${ru`Поймано <b>${caught}</b> из ${list.length} · встречено ${seen}`}</div><div class="pbar dex-prog"><i style="width:${caught / list.length * 100}%"></i></div>`;
+    };
     const scr = this.screen(ru`Бестиарий`, `
-      <div class="dex-sum">${ru`Поймано <b>${caught}</b> из ${SPECIES.length} · встречено ${seen}`}</div><div class="pbar dex-prog"><i style="width:${caught / SPECIES.length * 100}%"></i></div>
+      ${myths.length > 1 ? `<div class="chips dex-myths">${['all', ...myths].map(m => `<button data-myth="${m}" class="${m === mf ? 'on' : ''}">${m === 'all' ? ru`Все` : MYTHS[m].name}</button>`).join('')}<button data-myth="?" class="dex-q" aria-label="${ru`Мифология следующего сезона`}">?</button></div>` : ''}
+      <div class="dex-head">${sum()}</div>
       <div class="grid dex">${SPECIES.map(s => {
         const d = S.d.dex[s.id] || {};
         const cls = d.caught ? 'caught' : d.seen ? 'seen' : 'unknown';
-        return `<button class="dex-cell ${cls} el-${s.el}" data-sid="${s.id}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${d.seen ? Art.img(s.id) : '<span class="dx-q">?</span>'}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
+        return `<button class="dex-cell ${cls} el-${s.el}${mf !== 'all' && s.myth !== mf ? ' hidden' : ''}" data-sid="${s.id}" data-m="${s.myth}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${d.seen ? Art.img(s.id) : '<span class="dx-q">?</span>'}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
       }).join('')}</div>`, 'dex-screen');
     scr.addEventListener('click', e => {
+      const mb = e.target.closest('[data-myth]');
+      if (mb) {
+        mf = this._dexMyth = mb.dataset.myth;
+        scr.querySelectorAll('[data-myth]').forEach(b => b.classList.toggle('on', b === mb));
+        scr.querySelectorAll('.dex-cell').forEach(c => c.classList.toggle('hidden', mf !== 'all' && c.dataset.m !== mf));
+        scr.querySelector('.dex-head').innerHTML = sum();
+        return;
+      }
       const c = e.target.closest('.dex-cell'); if (!c) return;
       const s = SP[c.dataset.sid], d = S.d.dex[s.id];
       if (!d || !d.seen) { this.toast(ru`Этого духа ты ещё не встречал`); return; }
@@ -550,10 +569,11 @@ Object.assign(UI, {
             <div class="dt-rows">
               ${row(ru`Время`, s.time === 'night' ? ru`чаще ночью` : s.time === 'day' ? ru`только днём` : ru`днём и ночью`)}
               ${row(ru`Где`, s.legend ? ru`только в разломах` : ru`на карте, рядом с Ловчим`)}
-              ${s.region ? row(ru`Регион`, `${REGIONS[s.region].name} · ${REGIONS[s.region].range}`, 'wrap') : ''}
-              ${s.land ? row(ru`Земля`, `${LANDS[s.land].name}`, 'wrap') + row(ru`Граница`, LANDS[s.land].where, 'wrap') : ''}
+              ${s.region ? row(ru`Регион`, REGIONS[s.region].name, 'wrap') : ''}
+              ${s.land ? row(ru`Земля`, `${LANDS[s.land].name}`, 'wrap') : ''}
               ${s.season ? row(ru`Сезон`, SEASON[s.season] || s.season, 'wrap') : row(ru`Сезон`, ru`круглый год`)}
-              ${s.region || s.land || s.season ? row(ru`Издалека`, ru`трудные поручения родников, Аукцион, обмен с друзьями`, 'wrap') : ''}
+              ${row(ru`Мифология`, MYTHS[s.myth].name)}${row(ru`Родина`, MYTHS[s.myth].where, 'wrap')}
+              ${s.season ? row(ru`Издалека`, ru`трудные поручения родников, Аукцион, обмен с друзьями`, 'wrap') : ''}
               ${row(ru`Стихия`, `${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}`)}
             </div>`)}
           ${pane('family', `

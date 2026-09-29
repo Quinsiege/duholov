@@ -626,7 +626,7 @@ const UI = {
       ['orderbook', ru`Книга Ордена`, () => Book.screen()],
       ['pin', ru`Места`, () => Propose.screen(), Propose.badge()],
       ['user', ru`Ловчий`, () => this.profile()],
-      ['shield', ru`Дружина`, () => { if (S.d.level < CLAN_LEVEL) { this.toast(ru`Дружину можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
+      ['shield', ru`Клан`, () => { if (S.d.level < CLAN_LEVEL) { this.toast(ru`Клан можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
       ['journal', ru`Дневник`, () => J.screen()],
       ['support', ru`Поддержка`, () => this.support()], // 4.25.2: написать на почту
       ['gear', ru`Настройки`, () => this.settings()],
@@ -694,15 +694,20 @@ const UI = {
         buttons: [{ label: ru`Ура!`, cls: 'primary' }],
       });
     }
+    if (typeof Alatyr !== 'undefined') Alatyr.tick(); // 4.28: значок распутанной дороги Алатыря и объявление о ней
   },
   eventInfo() {
     Sfx.play('tap');
     const ev = Ev.cur, nx = Ev.next;
+    // 4.28: общий Алатырь — распутанная дорога (если есть) и вход на экран камня
+    const rd = Ev.finale() ? null : Ev.roadsNow()[0], ala = typeof Alatyr !== 'undefined', fin = Ev.finale(); // 4.28: финал сезона важнее дороги
     this.modal({
       title: ev.name, cls: 'event-modal',
       html: `<p>${ev.desc}</p><p class="small">${ru`До конца события: ${U.fmtTime(Ev.endsAt() - Date.now())}`}</p>
+        <div class="ev-next ev-myth"><small>${ru`Неделя мифологии`}</small><b>${MYTHS[Ev.myth].name}</b><small>${ru`Её духи встречаются втрое чаще. Следующая — ${MYTHS[Ev.nextMyth].name}.`}</small></div>
+        ${ala ? `<div class="ev-next ev-road"${rd ? ` style="--road:${Alatyr.color(rd.road)}"` : ''}><small>${ru`Алатырь-камень`}</small><b>${fin ? ru`Кощей пришёл за камнем!` : rd ? ru`${Alatyr.roadName(rd.road)} распутана` : ru`Орден собирает осколки`}</b><small>${fin ? ru`Финал сезона: во всех Разломах мира Кощей. Побед над ним: ${U.fmtNum(fin.kills)} из ${U.fmtNum(fin.goal)}.` : rd ? ru`Духи мифологии «${MYTHS[rd.road].name}» встречаются в ${Rules.ALATYR_WORLD.MUL} раза чаще — ещё ${U.fmtTime(rd.to - U.now())}.` : ru`Каждая собранная грань распутывает дорогу в один из миров.`}</small></div>` : ''}
         <div class="ev-next"><small>${ru`Следующая неделя`}</small><b>${nx.name}</b><small>${nx.desc}</small></div>`,
-      buttons: [{ label: ru`Понятно`, cls: 'primary' }],
+      buttons: [...(ala ? [{ label: ru`Алатырь`, fn: () => Alatyr.screen() }] : []), { label: ru`Понятно`, cls: 'primary' }],
     });
   },
 
@@ -927,6 +932,7 @@ const UI = {
     const root = Login.screenRoot(), body = root.querySelector('.lg-body');
     let name = '', starter = null;
     const step = n => {
+      if (n === 2 && Intro.need()) { Intro.open({ done: () => step(2) }); return; } // 4.28: сперва книга-вступление (сюжет), потом имя Ловчего
       body.innerHTML = '';
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';

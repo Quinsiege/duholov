@@ -28,12 +28,12 @@ const verCmp = (a, b) => {
   return 0;
 };
 
-/* ---------- Казна: покупка златников через ЮKassa ----------
+/* ---------- Казна: покупка монет через ЮKassa ----------
    Секреты задаёт владелец в Supabase → Edge Functions → Secrets:
      YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY — магазин ЮKassa (для проверки — тестовый магазин);
      PAY_RECEIPT=on — передавать чек по 54-ФЗ (тогда игрок вводит почту);
      PAY_RETURN_URL — куда вернуть игрока после оплаты (по умолчанию paid.html сайта игры).
-   Телефону не верим: пакет, сумма и число златников — из Rules.PAY; итог платежа сервер
+   Телефону не верим: пакет, сумма и число монет — из Rules.PAY; итог платежа сервер
    сам спрашивает у ЮKassa (sync), а начисляет его действие игры payClaim. */
 const PAY = {
   shop: Deno.env.get('YOOKASSA_SHOP_ID') || '',
@@ -119,7 +119,7 @@ const Pay = {
     const since = new Date(Date.now() - 3600000).toISOString();
     const { count } = await db.from('payments').select('id', { count: 'exact', head: true }).eq('user_id', uid).gte('created_at', since);
     if ((count || 0) >= 10) return { ok: false, error: ru`Слишком много попыток оплаты — подожди немного` };
-    const amount = pack.rub.toFixed(2), title = `${pack.zlat} златников — «Духолов»`;
+    const amount = pack.rub.toFixed(2), title = `${pack.zlat} монет — «Духолов»`;
     const row = must(await db.from('payments').insert({ user_id: uid, pack: pack.id, zlat: pack.zlat, amount }).select('id').single());
     const p = await yk('POST', '/payments', {
       amount: { value: amount, currency: 'RUB' },
@@ -193,7 +193,7 @@ const Pay = {
     let status = !same ? 'failed' : p.status === 'succeeded' && p.paid ? 'succeeded' : p.status;
     if (same && p.refunded_amount && +p.refunded_amount.value > 0) status = 'refunded';
     if (status === r.status) return status;
-    // 4.26: возврат уже начисленного платежа — златники списываются (действие payRefund; может уйти в минус — Казна и аукцион
+    // 4.26: возврат уже начисленного платежа — монеты списываются (действие payRefund; может уйти в минус — Казна и аукцион
     // закрыты до погашения). Владельцу — в журнале
     if (status === 'refunded' && r.credited) console.error(`Казна: возврат начисленного платежа ${r.id}`);
     // вернувшийся платёж больше не начисляется; начисленный остаётся «начисленным»
@@ -205,7 +205,7 @@ const Pay = {
     return status;
   },
   // 4.22: начислить оплаченное сразу — действие игры payClaim от имени игрока, в общей очереди его действий (замок);
-  // игра покажет «+N златников», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
+  // игра покажет «+N монет», когда игрок откроет её (S.d.payNew). Повтор безопасен: заказ отмечается в прогрессе и в базе
   async credit(uid, type = 'payClaim') {
     const { data: sv } = await db.from('saves').select('app_version').eq('user_id', uid).maybeSingle(); // версия игры игрока — прежняя
     const out = await play(uid, { a: [{ type }], sys: true, v: (sv && sv.app_version) || '' }, makeEnv(uid));
@@ -471,9 +471,120 @@ async function realWeather(lat, lng) {
   } catch (e) { return c ? c.keys : null; } finally { clearTimeout(t); }
 }
 
+/* ---------- 4.28: общий Алатырь (029_alatyr_world.sql) ----------
+   alatyr_world — общий счёт осколков Ордена (одна строка), alatyr_roads — распутанные дороги (грань n, мифология, начало
+   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alaStage)
+   отмечает только тот запрос, что их перешагнул; дорогу записывает alatyr_open (повтор той же грани ничего не меняет).
+   Состояние кэшируется в экземпляре на TTL и кладётся в Ev.roads — по нему сервер отбирает духов (Ev.mythMul), а телефон
+   получает те же дороги событием roads (core.js, alatyrSync). Событие начинается не раньше чем через Rules.ALATYR_WORLD.LEAD
+   минут после вехи — за это время о нём узнают все экземпляры сервера и телефоны */
+/* 4.28: сезоны Алатыря (030_alatyr_seasons.sql): alatyr_seasons — строка на сезон: счёт на его начало (start_total), начало
+   (from_ms — момент раскола прошлого), финал (finale_from/to, kills — победы над Кощеем, goal) и раскол (broken_ms — с него
+   идёт следующий сезон; строку следующего сезона пишет тот же alatyr_break). Кто первым заметил, что пора, — пишет:
+   собраны все грани — финал (alatyr_finale), Орден одолел Кощея goal раз — раскол с ближайшего полного часа (alatyr_break
+   в World.kill), финал кончился — раскол в его конце (здесь, в load). Повтор ничего не меняет. Нет таблицы (миграция ещё
+   не применена) — первый сезон с нуля, без финала */
+const World = {
+  st: null, at: 0, p: null, TTL: 60000,
+  season(rows, now) {
+    const [top, prev] = rows;
+    if (!top) return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    const cur = top.from_ms > now && prev ? prev : top; // раскол назначен, но ещё не настал — идёт прошлый сезон
+    return this.row(cur, cur === prev ? +top.from_ms : null);
+  },
+  row(r, brk) {
+    const fin = r.finale_from != null && r.finale_to != null ? { from: +r.finale_from, to: +r.finale_to, kills: +r.kills || 0, goal: +r.goal || Rules.ALATYR_WORLD.FINALE.GOAL } : null;
+    return { s: +r.season, from: +r.from_ms || 0, start: +r.start_total || 0, fin, brk: brk || (r.broken_ms != null ? +r.broken_ms : null) };
+  },
+  async load(depth = 0) {
+    const now = Date.now();
+    const w = must(await db.from('alatyr_world').select('total').eq('id', 1).maybeSingle());
+    const rows = must(await db.from('alatyr_roads').select('n, road, from_ms, to_ms').order('n', { ascending: false }).limit(30)) || [];
+    const sq = await db.from('alatyr_seasons').select('season, start_total, from_ms, finale_from, finale_to, kills, goal, broken_ms').order('season', { ascending: false }).limit(8);
+    if (sq.error && depth === 0) console.warn('Алатырь: сезоны недоступны —', sq.error.message);
+    const srows = sq.error ? [] : sq.data || [];
+    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })), ...this.season(srows, now),
+      seasons: srows.map(r => this.row(r)), db: !sq.error };
+    if (depth > 3) return st;
+    // финал кончился, а Орден не одолел Кощея — раскол в конце финала
+    if (st.db && st.fin && !st.brk && now >= st.fin.to) { if (await this.brk(st.s, st.fin.to)) return this.load(depth + 1); }
+    const stg = Rules.alaStage(st.s, st.total - st.start);
+    // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
+    const n = stg.base + stg.n - 1;
+    if (stg.n > 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
+      if (await this.open(n, now, st)) return this.load(depth + 1);
+    }
+    // все грани собраны, а финала нет (запрос, собравший последнюю грань, упал) — финал сейчас
+    if (st.db && stg.done && !st.fin && !st.brk) { if (await this.finale(st.s, now)) return this.load(depth + 1); }
+    return st;
+  },
+  apply(st) {
+    this.st = st; this.at = Date.now();
+    const cut = Date.now() - 86400000;
+    Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
+    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk };
+    Ev.alaSync();
+    return st;
+  },
+  async finale(s, now) {
+    const f = Rules.alaFinale(now);
+    const ok = !!must(await db.rpc('alatyr_finale', { p_season: s, p_from: f.from, p_to: f.to, p_goal: Rules.ALATYR_WORLD.FINALE.GOAL }));
+    if (ok) console.warn(`Алатырь: сезон ${s} — все грани собраны, финал с ${new Date(f.from).toISOString()}`);
+    return ok;
+  },
+  async brk(s, at) {
+    const ok = !!must(await db.rpc('alatyr_break', { p_season: s, p_at: at }));
+    if (ok) console.warn(`Алатырь: Кощей раскалывает камень — сезон ${s + 1} с ${new Date(at).toISOString()}`);
+    return ok;
+  },
+  // победа над Кощеем в финале сезона s; Орден одолел его goal раз — раскол с ближайшего полного часа
+  async kill(s) {
+    if (!(s >= 1)) return;
+    const now = Date.now(), r = must(await db.rpc('alatyr_kill', { p_season: s, p_n: 1, p_now: now }));
+    if (!r) return;
+    if (+r.prev < +r.goal && +r.kills >= +r.goal) { await this.brk(s, Rules.alaHour(now)); this.at = 0; await this.get(); }
+    else if (this.st && this.st.s === s && this.st.fin) this.st.fin.kills = Math.max(this.st.fin.kills, +r.kills || 0);
+  },
+  // состояние не старше ttl мс; база не ответила — прежнее (дороги не пропадают из-за сбоя)
+  async get(ttl = this.TTL) {
+    if (this.st && Date.now() - this.at < ttl) return this.st;
+    if (!this.p) this.p = this.load().then(st => this.apply(st)).catch(e => { console.error('Алатырь:', String(e)); return this.st; }).finally(() => { this.p = null; });
+    return this.p;
+  },
+  // дорога грани n (сквозной номер); goal — общий счёт, на котором грань собрана (st — сезон этой грани)
+  async open(n, now, st) {
+    const road = Rules.alatyrRoad(n), f = Rules.alaFace(n);
+    if (!road) return false; // мифологии этой грани ещё нет в игре — грань ждёт обновления
+    let at = st && st.s === f.s ? st.start : 0;
+    for (let k = 0; k <= f.k; k++) at += Rules.alaGoal(f.s, k);
+    const t = Rules.alatyrOpen(now);
+    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: road, p_goal: at, p_from: t.from, p_to: t.to }));
+  },
+  // +n осколков в общий счёт; перешагнули веху сезона — записать дорогу, собрали все грани — финал (и сразу обновить кэш)
+  async add(n) {
+    const r = must(await db.rpc('alatyr_add', { p_n: n }));
+    if (!r) return;
+    const now = Date.now(), st = this.st;
+    // сезон сменился, а кэш об этом ещё не знает — вехи отметит load по свежему состоянию
+    if (!st || Ev.alaSeason(now) !== st.s) { this.at = 0; await this.get(); return; }
+    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start), B = Rules.alaStage(st.s, (+r.total || 0) - st.start);
+    let changed = false;
+    for (let k = Math.max(A.n, B.n - 3); k < B.n; k++) {
+      if (await this.open(B.base + k, now, st)) { changed = true; console.warn(`Алатырь: сезон ${st.s}, грань ${k + 1} из ${B.K} собрана — ${B.faces[k]}`); }
+    }
+    if (st.db && B.done && !A.done && !st.fin && !st.brk && await this.finale(st.s, now)) changed = true;
+    if (changed) { this.at = 0; await this.get(); } else st.total = Math.max(st.total, +r.total || 0);
+  },
+};
+
 function makeEnv(uid) {
   return {
     weather: (lat, lng) => realWeather(lat, lng),
+    // 4.28: общий Алатырь — осколки в общий счёт (после сохранения прогресса) и состояние для экрана (не старше 15 с)
+    async alatyrAdd(n) { await World.add(Math.max(1, Math.min(10, n | 0))); },
+    async alatyrState() { return World.get(15000); },
+    // 4.28: победа над Кощеем в финале сезона s — в общий счёт (после сохранения прогресса)
+    async alatyrKill(s) { await World.kill(s | 0); },
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {
@@ -531,8 +642,10 @@ function makeEnv(uid) {
       return rows && rows.length ? t : null;
     },
     // Чат: последние 50 сообщений канала (или новые после after); отправка; жалоба (после 3 — сообщение скрыто)
+    // 4.28: канал клана clan:<мифология> читается вместе с каналом прежней дружины (clan:sokol…), пока миграция 032 их не перенесла
     async chatList(channel, after) {
-      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').eq('channel', channel).eq('hidden', false);
+      const chs = /^clan:/.test(channel) ? clanIds(channel.slice(5)).map(k => 'clan:' + k) : [channel];
+      let q = db.from('chat_messages').select('id, pid, name, lvl, clan, text, created_at').in('channel', chs).eq('hidden', false);
       if (after) q = q.gt('id', after);
       const rows = must(await q.order('id', { ascending: false }).limit(50)) || [];
       return rows.reverse();
@@ -548,7 +661,7 @@ function makeEnv(uid) {
       if ((count || 0) >= 3) must(await db.from('chat_messages').update({ hidden: true }).eq('id', id));
       return count || 0;
     },
-    // 3.21: текущие имя, уровень, дружина и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
+    // 3.21: текущие имя, уровень, клан и облик Ловчих — прямо из их сохранений (по user_id или по коду игрока)
     async briefByUid(uids) {
       const out = {};
       if (!uids.length) return out;
@@ -636,7 +749,7 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
-    // Дружины: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    // Кланы: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
     async holdGet(poi) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
@@ -665,16 +778,17 @@ function makeEnv(uid) {
         return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
       });
     },
-    // Сколько Капищ держит каждая дружина (во всей стране или в прямоугольнике [s, w, n, e])
+    // Сколько Капищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
+    // 4.28: кланы — мифологии (MYTH_KEYS), считаются параллельно; до миграции 032 — вместе с прежними дружинами (clanIds)
     async clanCounts(box) {
       const out = {};
-      for (const k of Object.keys(CLANS)) {
-        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).eq('clan', k).neq('holders', '[]');
+      await Promise.all(MYTH_KEYS.map(async k => {
+        let q = db.from('shrine_holds').select('poi_id', { count: 'exact', head: true }).in('clan', clanIds(k)).neq('holders', '[]');
         if (box) q = q.gte('lat', box[0]).lte('lat', box[2]).gte('lng', box[1]).lte('lng', box[3]);
         const { count, error } = await q;
         if (error) throw new Error(error.message);
         out[k] = count || 0;
-      }
+      }));
       return out;
     },
     // Совместные разломы: комнаты (код, участники, начало боя)
@@ -748,7 +862,7 @@ function makeEnv(uid) {
       return must(await db.from('auction_lots').select('*').eq('seller_pid', pid).eq('settled', false).in('status', ['sold', 'cancelled', 'expired']).limit(50)) || [];
     },
     async lotsDone(ids, field) { if (ids.length) must(await db.from('auction_lots').update({ [field]: true }).in('id', ids)); },
-    // Казна: оплаченные, но ещё не начисленные наборы златников; отметка «начислено»
+    // Казна: оплаченные, но ещё не начисленные наборы монет; отметка «начислено»
     async paidList() { return must(await db.from('payments').select('id, pack, zlat').eq('user_id', uid).eq('status', 'succeeded').eq('credited', false).limit(50)) || []; },
     async payCredited(ids) { must(await db.from('payments').update({ credited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
     // 4.26: возвращённые (refunded) и уже начисленные, но ещё не списанные платежи; отметка «списано»
@@ -811,6 +925,7 @@ async function play(uid, body, env) {
     if (error) console.error('Замок:', error.message);
   };
   try {
+    await World.get(); // 4.28: дороги Алатыря (Ev.roads) — до отбора духов; из кэша экземпляра, база — не чаще раза в минуту
     let got = null;
     for (let i = 0; i < LOCK_TRIES; i++) {
       got = must(await db.rpc('game_begin', { p_uid: uid, p_token: tok, p_ms: LOCK_MS }));

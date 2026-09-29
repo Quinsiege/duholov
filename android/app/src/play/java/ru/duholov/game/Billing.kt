@@ -17,7 +17,7 @@ import org.json.JSONObject
 /**
  * 11: Казна в версии для Google Play — покупки только через Google Play Billing (правило Google для цифровых товаров).
  * Приложение лишь проводит покупку; засчитывает её сервер игры: сам спрашивает о ней Google Play Developer API
- * (владелец — obfuscatedAccountId, хэш id игрока), начисляет златники и «потребляет» покупку.
+ * (владелец — obfuscatedAccountId, хэш id игрока), начисляет монеты и «потребляет» покупку.
  * Ответы — в игру: send → window.nativeBilling({ type: products | purchases | pending | error, … }).
  */
 class Billing(private val act: Activity, private val send: (JSONObject) -> Unit) : PurchasesUpdatedListener {
@@ -46,7 +46,7 @@ class Billing(private val act: Activity, private val send: (JSONObject) -> Unit)
             .put("state", p.purchaseState).put("order", p.orderId ?: ""))
     }
 
-    // наборы златников и их цены в валюте игрока (из Play Console)
+    // наборы монет и их цены в валюте игрока (из Play Console)
     fun products(ids: List<String>) = ready("products") {
         val list = ids.map { QueryProductDetailsParams.Product.newBuilder().setProductId(it).setProductType(BillingClient.ProductType.INAPP).build() }
         client.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(list).build()) { r, res ->

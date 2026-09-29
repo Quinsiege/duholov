@@ -122,8 +122,8 @@ Object.assign(UI, {
     const bsp = S.buddySpirit();
     const days = Math.max(1, Math.ceil((Date.now() - d.created) / 864e5));
     // 4.14.1: Ловчий — как карточка духа: всё на одном экране. Имя — у стрелки назад; сверху (≤30%) облик в руническом круге,
-    // звание, «УРОВЕНЬ ··· N», опыт отдельным блоком, метки; ниже — «Гардероб · Дневник · Дружина» и вкладки
-    const cc = d.clan ? CLANS[d.clan].color : '#fbbf24', maxed = d.level >= MAX_LEVEL;
+    // звание, «УРОВЕНЬ ··· N», опыт отдельным блоком, метки; ниже — «Гардероб · Дневник · Клан» и вкладки
+    const cc = d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24', maxed = d.level >= MAX_LEVEL;
     const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
     const ach = [
       [ru`Пробуждений`, d.stats.awakened || 0], [ru`Родников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
@@ -145,17 +145,17 @@ Object.assign(UI, {
             <div class="det-hp">${ru`${this.rank(d.level)} Ордена Оберега`}</div>
             <div class="det-power"><small>${ru`УРОВЕНЬ`}</small><b>${d.level}</b></div>
             <div class="det-lvl"><span>${maxed ? ru`Максимальный уровень` : ru`Опыт <b>${U.fmtNum(d.xp - cur)}</b> из ${U.fmtNum(next - cur)} до ${d.level + 1}`}</span><div class="arc"><i style="width:${maxed ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div></div>
-            <div class="det-tags">${d.clan ? `<span class="tag-crest" style="color:${cc}"><i>${Art.clanCrest(d.clan)}</i>${CLANS[d.clan].short}</span>` : ''}<span>${ru`в Ордене ${days} ${U.plural(days, ru`день`, ru`дня`, ru`дней`)}`}</span></div>
+            <div class="det-tags">${d.clan && CLANS[d.clan] ? `<span class="tag-crest" style="color:${cc}"><i>${Art.clanCrest(d.clan)}</i>${CLANS[d.clan].short}</span>` : ''}<span>${ru`в Ордене ${days} ${U.plural(days, ru`день`, ru`дня`, ru`дней`)}`}</span></div>
             ${Game.on() ? `<div class="acc-tags">${Login.accountTags()}</div>` : ''}
           </div>
         </div>
-        ${Game.on() && Login.isGuest() && Login.available().length ? `<div class="prof-acc guest"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class="login-row">${Login.buttons('link')}</div></div>` : ''} <!-- 4.22.1: привязка входа — над «Гардероб · Дневник · Дружина» -->
+        ${Game.on() && Login.isGuest() && Login.available().length ? `<div class="prof-acc guest"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class="login-row">${Login.buttons('link')}</div></div>` : ''} <!-- 4.22.1: привязка входа — над «Гардероб · Дневник · Клан» -->
         <div class="pf-acts">
           <button class="btn ghost small look-btn">${this.I.edit} ${ru`Гардероб`}</button>
           <button class="btn ghost small journal-btn">${this.I.journal} ${ru`Дневник`}</button>
-          ${d.clan ? `<button class="btn ghost small clan-open">${this.I.shield} ${ru`Дружина`}</button>`
-            : d.level >= CLAN_LEVEL ? `<button class="btn small primary clan-btn">${this.I.shield} ${ru`Дружина`}</button>`
-            : `<button class="btn ghost small disabled" data-err="${ru`Дружина откроется на ${CLAN_LEVEL} уровне`}">${this.I.shield} ${ru`Дружина`}</button>`}
+          ${d.clan ? `<button class="btn ghost small clan-open">${this.I.shield} ${ru`Клан`}</button>`
+            : d.level >= CLAN_LEVEL ? `<button class="btn small primary clan-btn">${this.I.shield} ${ru`Клан`}</button>`
+            : `<button class="btn ghost small disabled" data-err="${ru`Клан откроется на ${CLAN_LEVEL} уровне`}">${this.I.shield} ${ru`Клан`}</button>`}
         </div>
         <div class="seg dt-tabs">${[['ach', ru`Достижения`], ['buddy', ru`Спутник`], ['medals', ru`Знаки`], ['album', ru`Альбом`]].map(([k, t], i) => `<button data-tab="${k}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
         <div class="dt-panel">
@@ -216,7 +216,7 @@ Object.assign(UI, {
     });
   },
   avatar() { return Art.avatar(S.d ? S.d.look : undefined); },
-  // 4.6: Гардероб Ловчего — облики-скины (за златники или с уровнем), плащ, глаза, эмблема; примерка до сохранения
+  // 4.6: Гардероб Ловчего — облики-скины (за монеты или с уровнем), плащ, глаза, эмблема; примерка до сохранения
   // 4.14.1: вкладки «Фон» и «Рамка» убраны — карточки Ловчего показываются без них (выбранное остаётся в сохранении)
   editLook(done) {
     const look = { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', ...S.d.look };
@@ -280,7 +280,7 @@ Object.assign(UI, {
       const p = pending();
       if (p) {
         const [k, x] = p;
-        // 4.14.1: кнопки Гардероба — как в карточке духа: компактные, внизу; не хватает златников — выглядит недоступной
+        // 4.14.1: кнопки Гардероба — как в карточке духа: компактные, внизу; не хватает монет — выглядит недоступной
         const zl = S.d.zlat || 0, poor = zl < x.shop;
         $('.wd-foot').innerHTML = `<button class="btn primary wd-bb wd-buy ${poor ? 'disabled' : ''}">${ru`Купить ${I18N.low(KIND[k])}`}<small><span class="cur">${Art.item('zlat')}</span> ${ru`${U.fmtNum(x.shop)} · у тебя ${U.fmtNum(zl)}`}${poor ? ` — ${ru`не хватает`}` : ''}</small></button>`;
       } else $('.wd-foot').innerHTML = saved() ? `<button class="btn ghost wd-bb wd-save wd-done">${ru`✓ Облик надет`}</button>` : `<button class="btn primary wd-bb wd-save">${ru`Надеть облик`}</button>`;
@@ -298,15 +298,15 @@ Object.assign(UI, {
       if (sw) {
         const l = sw.dataset.l;
         if (l === 'league') return this.toast(ru`Венец Лиги — награда за ранг «Хранитель Лиги»`);
-        if (l === 'shop') return this.toast(ru`Этот плащ продаётся в Лавке Ордена за златники`);
+        if (l === 'shop') return this.toast(ru`Этот плащ продаётся в Лавке Ордена за монеты`);
         if (l === 'pass') return this.toast(ru`Награда Золотой сезонной тропы`);
         if (l) return this.toast(ru`Откроется на ${l} уровне`);
         look[sw.dataset.k] = sw.dataset.v; Sfx.play('tap'); render(); return;
       }
       if (e.target.closest('.wd-buy')) {
         const [k, x] = pending();
-        if ((S.d.zlat || 0) < x.shop) { this.toast(ru`Не хватает златников — их можно добыть в Казне Ордена`); return; }
-        this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}${ru`Цена: <b>${U.fmtNum(x.shop)}</b> златников.`}`, ru`Купить`, async () => {
+        if ((S.d.zlat || 0) < x.shop) { this.toast(ru`Не хватает монет — их можно добыть в Казне Ордена`); return; }
+        this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}${ru`Цена: <b>${U.fmtNum(x.shop)}</b> монет.`}`, ru`Купить`, async () => {
           const r = await Game.try('shopBuy', { id: `${k}:${x.id}` });
           if (!r) return;
           Sfx.play('catch'); this.toast(ru`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
@@ -470,7 +470,7 @@ Object.assign(UI, {
     scr.querySelector('.privacy').onclick = () => UI.doc(ru`Персональные данные`, 'privacy.html');
     // 4.1: полное удаление учётной записи (152-ФЗ) — после двух подтверждений; платежи остаются без привязки
     const del = scr.querySelector('.del-acc');
-    if (del) del.onclick = () => this.confirm(ru`Удалить учётную запись?`, ru`Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные златники не вернутся.`, ru`Удалить`, () => {
+    if (del) del.onclick = () => this.confirm(ru`Удалить учётную запись?`, ru`Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные монеты не вернутся.`, ru`Удалить`, () => {
       this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {
         try { await Game.auth('delete', { confirm: 'УДАЛИТЬ' }); } catch (e) { UI.toast(U.esc(I18N.back(e.message))); return; }
         try { localStorage.removeItem(CLOUD_CONFIG.auth); } catch (e) {}

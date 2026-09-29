@@ -143,10 +143,10 @@ const MapView = {
     this._raf = requestAnimationFrame(loop);
   },
 
-  // 4.1: своя карта — векторные тайлы России (Protomaps, данные OpenStreetMap) одним файлом на сервере игры;
+  // 4.1: своя карта — векторные тайлы (Protomaps, данные OpenStreetMap) одним файлом; 4.28 — всего мира (в S3, отдаёт сервер игры);
   // за пределами вырезки — стандартные тайлы OSM. Ночной вид и тона Нави — CSS-фильтр слоя (style.css).
-  TILES: 'tiles/russia-20260924.pmtiles',
-  COVER: [19.5, 41.1, 180, 72], // рамка вырезки: долгота, широта (юго-запад → северо-восток)
+  TILES: 'tiles/world-20260928.pmtiles', // 4.28: карта всего мира (Protomaps, в S3 — см. tools/server/duholov-world-tiles)
+  COVER: [-180, -85.06, 180, 85.06], // 4.28: карта всего мира — рамка на весь мир (долгота, широта: юго-запад → северо-восток)
   covered(p) { const b = this.COVER; return !!p && p.lng >= b[0] && p.lng <= b[2] && p.lat >= b[1] && p.lat <= b[3]; },
   // 4.10: облик карты — время суток по настоящему солнцу над игроком, время года и снег (зимой и в снегопад);
   // в настройках можно закрепить день или ночь
@@ -674,10 +674,10 @@ const MapView = {
     }
     if (e.type === 'shrine') {
       return L.divIcon({ className: 'mk', iconSize: [54, 76], iconAnchor: [27, 72],
-        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.asImg(Art.shrineIcon(e.tier, e.won), `shrine:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
     }
     return L.divIcon({ className: 'mk', iconSize: [84, 96], iconAnchor: [42, 86],
-      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL ? 'locked' : ''}">${Art.asImg(Art.riftIcon(e.tier), `rift:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL ? 'locked' : ''}">${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
   },
   refresh(rebuild) {
     if (!this.map) return;
@@ -739,7 +739,7 @@ const MapView = {
   pxR(ll, meters, z) {
     return Math.abs(this.map.project(ll, z).y - this.map.project(L.latLng(ll.lat + meters / 111320, ll.lng), z).y);
   },
-  // земли дружин (сияние цвета дружины вокруг Капища) и марево Нави вокруг открытых разломов;
+  // земли кланов (сияние цвета клана вокруг Капища) и марево Нави вокруг открытых разломов;
   // 4.24.1: под каждым духом — еле заметная волна, как от Ловчего, только в разы меньше (SPIRIT_R м); у каждого духа — свой такт
   SPIRIT_R: 25,
   zones: new Map(),
@@ -797,7 +797,7 @@ const MapView = {
     const near = d <= (t.type === 'rift' || t.type === 'shrine' ? 100 : W.INTERACT);
     box.classList.remove('hidden');
     box.classList.toggle('near', near);
-    const ico = t.type === 'spirit' ? Art.img(t.sid) : t.type === 'spring' ? Art.springIcon(false) : Art.shrineIcon(1, false);
+    const ico = t.type === 'spirit' ? Art.img(t.sid) : t.type === 'spring' ? Art.springIcon(false) : Art.shrineIcon(1, false, t.myth);
     if (box._id !== t.id) { box._id = t.id; box.querySelector('.tr-ico').innerHTML = ico; }
     box.querySelector('.tr-arrow svg').style.transform = `rotate(${brg + this.rot}deg)`; // 4.7: вращается только стрелка; с учётом поворота карты
     box.querySelector('.tr-name').textContent = t.name;

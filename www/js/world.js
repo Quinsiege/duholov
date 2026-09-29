@@ -48,10 +48,31 @@ const W = {
     if (lng >= 44) return 'volga';
     return 'center';
   },
-  // региональные духи водятся только в своей части света, духи земель — только в своём краю
-  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
-    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng));
+  /* 4.28: духи всех семи мифологий разлетелись по свету (сюжет — LORE): мифология к месту не привязана. Чтобы мифологии
+     встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
+  // Разлом и святилище у места — одной из открытых мифологий, поровну (постоянно, по id места).
+  // 4.28: сезоны — каждая новая мифология забирает себе места поровну у прежних: место переходит к ней с вероятностью
+  // 1 / (сколько мифологий стало), остальные места своей мифологии не меняют (закрытые мифологии мест не получают)
+  placeMyth(p) {
+    const base = Rules.ALATYR_WORLD.ORDER;
+    let m = base[Math.floor(U.h('pm', p.id) * base.length)], n = base.length;
+    for (const x of MYTH_KEYS) if (!base.includes(x)) { n++; if (U.h('pm', x, p.id) < 1 / n) m = x; }
+    return m;
   },
+  // из списка — виды одной мифологии, выбранной из тех, что в списке есть (x — случайное число 0…1): поровну, но с весом
+  // Ev.mythMul — 4.28: мифология недели втрое чаще
+  evenMyth(list, x) {
+    const ms = MYTH_KEYS.filter(m => list.some(s => s.myth === m));
+    if (ms.length < 2) return list;
+    const w = ms.map(m => Ev.mythMul(m));
+    let t = x * w.reduce((a, b) => a + b, 0), i = 0;
+    for (; i < ms.length - 1; i++) { t -= w[i]; if (t < 0) break; }
+    return list.filter(s => s.myth === ms[i]);
+  },
+  // из списка — виды мифологии m (если их нет — весь список)
+  ofMyth(list, m) { const h = list.filter(s => s.myth === m); return h.length ? h : list; },
+  // 4.28: все духи водятся везде — и духи родных земель, и вещие птицы частей света (их край — родина по легенде)
+  local() { return true; },
 
   pickSpecies(r, biome, night, lng, lat) {
     const fullMoon = night && Sky.moonEvent() === 'full';
@@ -64,7 +85,7 @@ const W = {
     }), r());
     const RW = { 1: 60, 2: 24, 3: 8, 4: 2 };
     const h = U.hour();
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)).map(s => {
+    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)), r()).map(s => { // 4.28: мифология — поровну
       let w = RW[s.rar] || 0;
       if (s.stage === 3) w *= 0.3;
       if (s.time === 'night') w *= night ? (fullMoon ? 4 : 1.5) : 0.35;
@@ -77,6 +98,7 @@ const W = {
 
   spawnsAround(lat, lng, radius = this.VIEW) {
     const now = U.now(), out = [];
+    Ev.alaSync(now); // 4.28: духи — только открытых в этом сезоне мифологий
     const P = S.incenseActive() ? 0.3 : 0.14;
     const night = U.isNight();
     this.cells(lat, lng, this.SPAWN_CELL, radius, (i, j, la, ln, sz, lsz) => {
@@ -123,18 +145,23 @@ const W = {
     if (!this.riftAt(p.id, hour)) return null;
     const id = `${p.id}:${hour}`;
     const r = U.rng(id);
+    const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
+    // 4.28: финал сезона Алатыря — во всех Разломах мира великий босс Кощей (fin — номер сезона: победы идут в общий счёт)
+    const t0 = hour * 3600000;
+    if (Ev.finale(t0)) return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier: 3, boss: 'koschey', myth, fin: Ev.alaSeason(t0), place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
-    else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
-    else pool = SPECIES.filter(s => s.rar === 2);
+    if (tier === 3) pool = this.ofMyth(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), myth);
+    else if (tier === 2) pool = this.ofMyth(SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0), myth);
+    else pool = this.ofMyth(SPECIES.filter(s => s.rar === 2), myth);
     // в неделю стихии разломы чаще охраняют духи этой стихии
     const evPool = pool.filter(s => s.el === Ev.cur.el);
     if (evPool.length && r() < 0.6) pool = evPool;
     const boss = pool[Math.floor(r() * pool.length)].id;
-    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
+    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
   },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
   },
 
@@ -169,13 +196,15 @@ const W = {
   shrineFor(p, d) {
     const id = p.id;
     const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
-    const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
+    const myth = this.placeMyth(p), gods = MYTH_PLACES[myth].gods; // 4.28: святилище мифологии места
+    const god = gods[Math.floor(U.h('kn', id) * gods.length)];
     const hold = typeof Clans !== 'undefined' ? Clans.info(id) : null; // на сервере сводки нет — он спрашивает базу сам
-    return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
+    return { type: 'shrine', id, tier, name: p.name, god, myth, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
   },
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
   /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
@@ -219,8 +248,8 @@ const W = {
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3);
-    const strong = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo);
+    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && s.rar <= 3), r()); // 4.28: мифология — поровну
+    const strong = this.ofMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && !s.evo), pool[0].myth);
     const pw = this.topPower() * Duel.FOE.invasion.pow;
     const team = [];
     for (let k = 0; k < 3; k++) {
@@ -237,19 +266,20 @@ const W = {
   guardian(e) {
     const r = U.rng(e.id + U.today());
     const T = SHRINE_TIERS[e.tier];
-    const name = GUARDIANS[Math.floor(r() * GUARDIANS.length)];
+    const myth = e.myth || this.placeMyth(e), gs = MYTH_PLACES[myth].guards; // 4.28: хранитель, его имя и духи — из мифологии святилища
+    const name = gs[Math.floor(r() * gs.length)];
     const color = GUARD_COLORS[Math.floor(r() * GUARD_COLORS.length)];
     // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
-    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage);
+    const pool = this.ofMyth(SPECIES.filter(s => !s.legend && !s.season && rars.includes(s.rar) && s.stage <= maxStage), myth);
     const pw = this.topPower() * T.pow;
     const team = [];
     while (team.length < 3) {
       const s = pool[Math.floor(r() * pool.length)];
       if (team.some(x => SP[x.sid].fam === s.fam)) continue;
       // сильному Ловчему — сильнейшие виды (у Старейшины — и эпические), без повторов семейств
-      const strong = SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam));
+      const strong = this.ofMyth(SPECIES.filter(x => !x.legend && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), myth);
       team.push(this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.id + U.today() + team.length, e.tier * 4, strong));
     }
     return { name, color, title: T.title, team, speed: this.foeSpeed(T.speed, team, pw) };

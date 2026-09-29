@@ -34,7 +34,7 @@ function newStats() {
   return { xpBy: {}, lvlT: {}, catches: 0, tries: 0, fled: 0, shiny: 0, springs: 0, km: 0, raids: [0, 0], far: 0, duels: [0, 0], freed: 0, inv: [0, 0], league: [0, 0], tourn: 0,
     hatch: 0, evolve: 0, power: 0, released: 0, ko: 0, deadUsed: 0, heals: 0, tasks: 0, quests: 0, purified: 0, defend: 0, discarded: 0, play: 0, days: 0,
     rub: 0, zlatIn: 0, zlatSpent: {}, aucSold: 0, aucBought: 0, aucSparksIn: 0, aucZlatIn: 0, aucSparksOut: 0, aucZlatOut: 0, giftsSent: 0, giftsOpened: 0, friends: 0, exch: 0, fails: {},
-    // 4.16 экономика: откуда пришли и куда ушли искры и златники (по действиям), сколько предметов пришло, переполнение сумки, снимки по дням
+    // 4.16 экономика: откуда пришли и куда ушли искры и монеты (по действиям), сколько предметов пришло, переполнение сумки, снимки по дням
     eco: { sparksIn: {}, sparksOut: {}, zlatFree: {}, itemsIn: {}, amuletsIn: 0, bagOverMax: 0, parcelMax: 0, lost: 0, days: [] },
     // 4.16: исходы боёв по ступеням ([победы, поражения]) и сильнейшие духи на каждом новом уровне (для калибровки боёв)
     bt: { raid: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, duel: { 1: [0, 0], 2: [0, 0], 3: [0, 0] }, inv: [0, 0], waters: 0, tiredSkip: 0 }, teamAt: {}, capped: 0, rested: 0 }; // capped/rested — сколько опыта срезал дневной потолок и добавил опыт отдыха
@@ -307,7 +307,7 @@ async function farRaids() {
   }
 }
 
-// ---------- донат и траты златников ----------
+// ---------- донат и траты монет ----------
 async function donate() {
   const plan = P.pr.pay; if (!plan) return;
   if (P.dayN < plan.next) return;
@@ -322,7 +322,7 @@ async function spendZlat() {
   // Золотая тропа: у донатеров — в начале сезона
   if (don >= 2 && d.pass && !d.pass.gold && d.zlat >= Rules.PASS.GOLD + 50 && await act('passGold')) spend('Золотая тропа', Rules.PASS.GOLD);
   // 4.16: Настой опыта (раз в день): киты и средние — когда хватает (средние оставляют запас на Золотую тропу), остальные —
-  // если златников скопилось много. Пьют утром (playerDay), настой в сумке — на завтра
+  // если монет скопилось много. Пьют утром (playerDay), настой в сумке — на завтра
   const brewAt = don >= 3 ? 150 : don === 2 ? 100 + (d.pass && !d.pass.gold ? Rules.PASS.GOLD : 60) : 500;
   const room = n => me(() => S.bagCount()) + n <= me(() => S.bagLimit());
   const brew = Rules.SHOP.find(x => x.id === 'xpbrew');
@@ -332,7 +332,7 @@ async function spendZlat() {
     if (n > 0 && await act('discard', { k, n })) D.discarded += n;
   }
   if (!(P.data.items.xpbrew > 0) && P.data.zlat >= brewAt && room(1) && Rules.weekUsed(P.data, 'shop:xpbrew') < brew.week && await act('shopBuy', { id: 'xpbrew' })) spend('Настой опыта', brew.price);
-  // ладан: киты — связка раз в день, средние — по одному, остальные — если златников скопилось много
+  // ладан: киты — связка раз в день, средние — по одному, остальные — если монет скопилось много
   // (связка — через день, когда ладан кончился: столько же ладана, сколько киты брали раньше, по 2 в день)
   if (don >= 3 && !(P.data.items.incense > 0) && P.dayN % 2 === 0 && P.data.zlat >= 200 + 100 && room(5) && await act('shopBuy', { id: 'incense5' })) spend('Ладан', 200);
   const inc = (don === 2 && P.data.zlat >= 300) || (don < 2 && P.data.zlat >= 600) ? 1 : 0; // средние: сперва настой, ладан — с остатка
@@ -454,7 +454,7 @@ async function chores() {
     for (let k = 0; k < 20; k++) { if (me(() => S.canPowerUp(sp)) || !await act('powerUp', { uid: sp.uid })) break; D.power++; }
   }
   if (!P.data.buddy) { const t = me(() => [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a))[0]); if (t) await act('buddy', { uid: t.uid }); }
-  // обменник: лишние искры → златники
+  // обменник: лишние искры → монеты
   if (P.data.sparks > 30000) { const n = Rules.EXCHANGE.DAY, ex = await act('exchange', { n }); if (ex) D.exch += n; }
   // 4.16: посылка Ордена — забрать, когда в сумке есть место
   if (P.data.parcel && me(() => S.bagCount() < S.bagLimit() - 20)) await act('parcelTake');

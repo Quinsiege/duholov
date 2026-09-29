@@ -1,0 +1,38 @@
+#!/bin/bash
+# 4.28: карта мира (Protomaps, полная, до масштаба 15, ~138 ГБ) → S3 (бакет duholov-tiles, публичное чтение).
+# Частями по PART байт: кусок качается (curl -r, с повторами) во временный файл и сразу уходит частью multipart-загрузки S3.
+# Место на диске — один кусок. Обрыв не страшен: запустить снова — продолжит с первой незалитой части
+# (состояние — /var/lib/duholov-tiles/<файл>.state). Запуск: duholov-world-tiles <дата сборки, напр. 20260928>
+set -u
+B=${1:?дата сборки}; U=https://build.protomaps.com/$B.pmtiles; K=world-$B.pmtiles
+PART=$((512 * 1024 * 1024)); DIR=/var/lib/duholov-tiles; ST=$DIR/$K.state; TMP=$DIR/part.bin
+mkdir -p "$DIR"; . /root/.duholov-s3
+S3() { aws --endpoint-url "$S3_ENDPOINT" s3api "$@"; }
+N=$(curl -sI --http1.1 "$U" | tr -d '\r' | awk -F': ' 'tolower($1)=="content-length"{print $2}')
+[ -n "$N" ] || { echo "$(date -u) нет размера $U"; exit 1; }
+P=$(( (N + PART - 1) / PART ))
+if [ -f "$ST" ]; then ID=$(head -1 "$ST"); else
+  ID=$(S3 create-multipart-upload --bucket duholov-tiles --key "$K" --acl public-read --content-type application/octet-stream --query UploadId --output text)
+  echo "$ID" > "$ST"
+fi
+echo "$(date -u) $U ($N байт, частей $P) → s3://duholov-tiles/$K, загрузка $ID"
+for ((i = 1; i <= P; i++)); do
+  grep -q "^$i " "$ST" && continue
+  a=$(( (i - 1) * PART )); b=$(( a + PART - 1 )); [ $b -ge $N ] && b=$((N - 1)); want=$(( b - a + 1 ))
+  ok=
+  for try in 1 2 3 4 5 6; do
+    if curl -sSf --http1.1 --retry 3 --connect-timeout 20 -r "$a-$b" -o "$TMP" "$U" && [ "$(stat -c %s "$TMP")" = "$want" ]; then
+      E=$(S3 upload-part --bucket duholov-tiles --key "$K" --upload-id "$ID" --part-number $i --body "$TMP" --query ETag --output text) && [ -n "$E" ] && { ok=1; break; }
+    fi
+    echo "$(date -u) часть $i: попытка $try не удалась"; sleep $((try * 10))
+  done
+  [ -n "$ok" ] || { echo "$(date -u) FAIL на части $i — запусти снова, продолжит отсюда"; exit 1; }
+  echo "$i $E" >> "$ST"
+  [ $((i % 10)) = 0 ] && echo "$(date -u) залито частей: $i из $P"
+done
+rm -f "$TMP"
+# собрать файл из частей
+tail -n +2 "$ST" | sort -n | awk 'BEGIN{printf "{\"Parts\":["} {gsub(/"/,"",$2); printf "%s{\"PartNumber\":%d,\"ETag\":\"\\\"%s\\\"\"}", (NR>1?",":""), $1, $2} END{printf "]}"}' > "$DIR/parts.json"
+S3 complete-multipart-upload --bucket duholov-tiles --key "$K" --upload-id "$ID" --multipart-upload "file://$DIR/parts.json" > /dev/null || { echo "$(date -u) FAIL: не собрался файл"; exit 1; }
+G=$(S3 head-object --bucket duholov-tiles --key "$K" --query ContentLength --output text)
+if [ "$G" = "$N" ]; then echo "$(date -u) DONE $K ($G байт)"; rm -f "$ST" "$DIR/parts.json"; else echo "$(date -u) FAIL: в S3 $G байт из $N"; fi

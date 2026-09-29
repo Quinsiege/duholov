@@ -89,7 +89,7 @@ grant execute on function public.game_commit(uuid, uuid, int, jsonb, jsonb, text
 
 /* ---------- 2. Казна: возвраты ----------
    Статуса 'refunded' не было в ограничении — запись возврата падала (ЮKassa повторяла уведомление без конца,
-   чек «Мой налог» не аннулировался). debited — начисленные по вернувшемуся платежу златники списаны (действие payRefund). */
+   чек «Мой налог» не аннулировался). debited — начисленные по вернувшемуся платежу монеты списаны (действие payRefund). */
 alter table public.payments drop constraint if exists payments_status_check;
 alter table public.payments add constraint payments_status_check
   check (status in ('new', 'pending', 'waiting_for_capture', 'succeeded', 'canceled', 'failed', 'refunded'));
