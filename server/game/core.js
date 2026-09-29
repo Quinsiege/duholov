@@ -18,7 +18,7 @@ const GameCore = {
   need(cond, msg) { if (!cond) this.fail(msg); },
 
   /* ---------- запуск запроса ----------
-     req:  { a: [{ type, args }], tz, wx, pos: { lat, lng, acc }, v }
+     req:  { a: [{ type, args }], tz, pos: { lat, lng, acc }, v } (5.2: погоду решает сервер — см. weather)
      save: { data, srv } — прогресс и служебные данные сервера (сессии встреч и боёв, позиция, лимиты)
      env:  доступ к общим таблицам (места, друзья, подарки, обмен, Лига) — см. serve.js / тесты */
   /* 4.3: сервер выполняет запросы разных игроков одновременно. Игровой код работает с общими полями (S.d — прогресс,
@@ -36,18 +36,37 @@ const GameCore = {
       });
     });
   },
-  // 4.15: погоде от телефона сервер не верит на слово. Годится настоящая погода этой точки (текущая или прошлая —
-  // телефон мог запросить её чуть раньше) и смоделированная (у кого «настоящая погода» выключена или нет сети).
-  // Иначе — смоделированная: её нельзя подделать, духи на карте у честного игрока от этого не меняются.
-  // 4.26: нет ответа от сервиса погоды — тоже смоделированная (раньше верили телефону — погоду можно было выбрать)
-  async checkWx(key, pos, env) {
-    if (!key || !pos) return key ? { key } : null;
-    const sim = Sky.simulate(pos).key;
-    if (key === sim) return { key };
-    let real = null;
-    if (env && typeof env.weather === 'function') { try { real = await env.weather(pos.lat, pos.lng); } catch (e) { real = null; } }
-    return { key: real && real.length && real.includes(key) ? key : sim };
+  /* 5.2: погоду решает сервер — телефон её больше не присылает (раньше присылал, и сервер сверял: выбор погоды был лазейкой).
+     Погода одна для всех Ловчих в клетке ~0.1° (как у Sky.simulate) в этот час: настоящая (env.weather — Open-Meteo по центру
+     клетки, serve.js), а если сервис погоды не ответил — смоделированная Sky.simulate. Кэш экземпляра — по клетке и часу:
+     один запрос к сервису на клетку в час; одновременные запросы ждут один и тот же ответ; неудача помнится 5 минут
+     (не ждать таймаут на каждое действие). Из нескольких ответов сервиса берётся первый. Окружение без env.weather
+     (автотесты старых сценариев) — без погоды, как раньше без погоды телефона */
+  WX: new Map(),
+  WX_FAIL: 5 * 60000,
+  wxCell(pos) { return Math.floor(pos.lat * 10) + ',' + Math.floor(pos.lng * 10); },
+  async weather(pos, env, now = Date.now()) {
+    if (!pos || !env || typeof env.weather !== 'function') return null;
+    const hour = Math.floor(now / 3600000), k = this.wxCell(pos) + ',' + hour;
+    let c = this.WX.get(k);
+    if (c && c.fail && now - c.at >= this.WX_FAIL) c = null;
+    if (!c) {
+      if (this.WX.size > 5000) this.WX.clear();
+      const lat = +((Math.floor(pos.lat * 10) + 0.5) / 10).toFixed(2), lng = +((Math.floor(pos.lng * 10) + 0.5) / 10).toFixed(2);
+      c = { at: now, fail: false };
+      c.p = Promise.resolve().then(() => env.weather(lat, lng)).catch(() => null).then(r => {
+        const w = Array.isArray(r) ? (r.length ? { key: r[0] } : null) : r; // старый ответ — список, новый — { key, temp }
+        if (w && Object.prototype.hasOwnProperty.call(WEATHER, w.key)) return { key: w.key, temp: Number.isFinite(+w.temp) && w.temp !== null ? Math.round(+w.temp) : null, src: 'real' };
+        c.fail = true; // неудача помнится WX_FAIL с момента запроса
+        return null;
+      });
+      this.WX.set(k, c);
+    }
+    const w = await c.p;
+    return w ? { ...w } : { key: Sky.simulate(pos).key, temp: null, src: 'sim' };
   },
+  // погода для телефона — в каждом ответе (несколько байт): телефон показывает её и по ней же видит духов на карте
+  wxOut(w) { return w ? { key: w.key, temp: w.temp != null ? w.temp : null, src: w.src === 'real' ? 'real' : 'sim' } : null; },
   async run(req, save, env) {
     if (this.als && !this.als.getStore()) return this.als.run({}, () => this.run(req, save, env));
     const ctx = { now: Date.now(), env, srv: JSON.parse(JSON.stringify(save.srv || {})), events: [], results: [], after: [], full: false, reset: false };
@@ -62,7 +81,8 @@ const GameCore = {
       const p = req.pos;
       ctx.pos = p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180
         ? { lat: +p.lat, lng: +p.lng, acc: U.clamp(+p.acc || 30, 1, 5000) } : null;
-      Sky.w = await this.checkWx(this.own(WEATHER, req.wx) ? req.wx : null, ctx.pos, env);
+      ctx.wxCell = ctx.pos ? this.wxCell(ctx.pos) : null;
+      Sky.w = await this.weather(ctx.pos, env, ctx.now); // 5.2: req.wx (погода телефона) не читается
       MapView.pos = ctx.pos;
       Bus.emit = (ev, data) => ctx.events.push([ev, this.ser(ev, data)]);
       S.save = () => {};
@@ -84,7 +104,9 @@ const GameCore = {
       if (S.d && stats0) { const pts = Rules.orderPoints(stats0, S.d.stats, Ev.cur); this.orderAdd(ctx, pts); this.passAdd(ctx, pts); }
       if (S.d) this.alatyrSync(ctx, (S.d.alaGiven || 0) - ala0, actions.some(a => a && a.type === 'load'));
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
-      return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
+      // 5.2: Ловчий перенёсся в другую клетку (телепорт) — телефону погода уже нового места
+      if (ctx.pos && this.wxCell(ctx.pos) !== ctx.wxCell) Sky.w = await this.weather(ctx.pos, env, ctx.now);
+      return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now, wx: this.wxOut(Sky.w) };
     } catch (e) {
       // при отказе сохраняются только счётчики частоты (rl): иначе неудачные попытки перебора не считались бы
       if (e instanceof GameError) return { ok: false, error: e.message, rl: ctx.srv.rl || null };

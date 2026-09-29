@@ -378,7 +378,6 @@ Object.assign(UI, {
           <div class="seg joy-side">${[['left', ru`Слева`], ['right', ru`Справа`]].map(([k, t]) => `<button data-side="${k}" class="${(s.joySide || 'right') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('ar', 'camera', ru`AR-камера`, ru`Духи появляются поверх изображения с камеры.`)}
         ${row('tapThrow', 'hand', ru`Бросок одним касанием`, ru`Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.`)}
-        ${row('weather', 'sun', ru`Настоящая погода`, ru`Погода через Open-Meteo (координаты с точностью ~1 км). Выключено — погода Нави моделируется.`)}
         ${Cloud.configured() ? row('cloud', 'trophy', ru`Общая таблица Лиги`, ru`Показывать твоё имя, облик, уровень и звёзды в таблице сезона.`) : ''}
       </div>
       ${sec(ru`Вид`)}
@@ -417,7 +416,6 @@ Object.assign(UI, {
       const k = e.target.dataset.k; if (!k) return;
       s[k] = e.target.checked; Cfg.save();
       if (k === 'sound' && s.sound) { Sfx.init(); Sfx.play('tap'); }
-      if (k === 'weather') Sky.update(true);
       if (k === 'music') { Sfx.init(); Music.apply(); }
       if (k === 'eco') document.body.classList.toggle('eco', s.eco);
       if (k === 'bigText' || k === 'calm') this.applyA11y();

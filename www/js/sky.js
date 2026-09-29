@@ -1,9 +1,12 @@
 'use strict';
-/* Небо: реальная погода (Open-Meteo, без ключа) или смоделированная, и фазы Луны.
-   Координаты округляются до ~1 км перед запросом. */
+/* Небо: погода и фазы Луны.
+   5.2: погоду решает сервер игры (GameCore.weather) — настоящую (Open-Meteo по клетке ~0.1°) или смоделированную, одну
+   для всех Ловчих в клетке в этот час, и присылает её в каждом ответе (Game.apply → Sky.set). Телефон сам в сервис погоды
+   не ходит; пока ответа сервера нет (запуск, нет связи) — показывает смоделированную (Sky.simulate). */
 
 const Sky = {
-  w: null, // { key, temp, src: 'real'|'sim', at, lat, lng }
+  w: null, // { key, temp, src: 'real'|'sim', srv: погода от сервера, at, lat, lng }
+  SRV_TTL: 2 * 3600000, // погода от сервера без обновления дольше — считается устаревшей (сервер давно не отвечал)
 
   init() {
     this.update(true);
@@ -12,31 +15,30 @@ const Sky = {
     Stage.on(busy => { if (!busy && this._miss) { this._miss = false; setTimeout(() => this.update(), 500); } });
   },
 
-  async update(force) {
+  // Запасной вариант: погода от сервера есть и свежая — она и остаётся (новое место сервер пришлёт с ответом на шаг/телепорт);
+  // нет — смоделированная, как её посчитал бы сервер без сервиса погоды
+  update(force) {
     const p = MapView.pos;
     if (!p || !S.d) return;
+    if (this.w && this.w.srv && Date.now() - this.w.at < this.SRV_TTL) return;
     const stale = !this.w || Date.now() - this.w.at > 30 * 60000 || U.dist(p.lat, p.lng, this.w.lat, this.w.lng) > 5000;
     if (!stale && !force) return;
-    let w = null;
-    if (Cfg.s.weather) { try { w = await this.fetchReal(p); } catch (e) { w = null; } }
-    if (!w) w = this.simulate(p);
-    const changed = !this.w || this.w.key !== w.key;
+    const w = this.simulate(p), changed = !this.w || this.w.key !== w.key;
     this.w = w;
     Bus.emit('weather', { w, changed });
   },
 
-  async fetchReal(p) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat.toFixed(2)}&longitude=${p.lng.toFixed(2)}&current=weather_code,wind_speed_10m,temperature_2m`;
-    const r = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!r.ok) return null;
-    const c = (await r.json()).current;
-    if (!c) return null;
-    return { key: this.fromCode(c.weather_code, c.wind_speed_10m), temp: Math.round(c.temperature_2m), src: 'real', at: Date.now(), lat: p.lat, lng: p.lng };
+  // Погода от сервера (ответ на любое действие). Плашка и эффекты обновляются, только если она изменилась;
+  // замена запасной модели настоящей при запуске — без всплывашки «Погода: …»
+  set(x) {
+    if (!x || !Object.prototype.hasOwnProperty.call(WEATHER, x.key)) return;
+    const p = MapView.pos, prev = this.w;
+    const w = { key: x.key, temp: Number.isFinite(x.temp) ? x.temp : null, src: x.src === 'real' ? 'real' : 'sim', srv: true, at: Date.now(), lat: p ? p.lat : 0, lng: p ? p.lng : 0 };
+    this.w = w;
+    if (prev && prev.srv && prev.key === w.key && prev.temp === w.temp && prev.src === w.src) return;
+    Bus.emit('weather', { w, changed: !!(prev && prev.srv && prev.key !== w.key) });
   },
-  // Коды погоды WMO → тип погоды игры
+  // Коды погоды WMO → тип погоды игры (сервер, serve.js)
   fromCode(code, wind) {
     if (code >= 95) return 'storm';
     if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';

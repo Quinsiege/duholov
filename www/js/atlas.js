@@ -574,8 +574,8 @@ const Atlas = {
         const b = e.target.closest('.at-pl'); if (!b || this._busy) return;
         if (b.dataset.own) { Sfx.play('tap'); this.pickOpen(); return; }
         const i = +b.dataset.i, p = list[i]; if (!p) return;
-        this.choose(i);
-        this.go(p[3], p[4], p[1]);
+        this.choose(i); // точка на глобусе подсвечивается сразу, шаг во Врата — после подтверждения
+        this.go(p[3], p[4], p[1], p[2]);
       };
       const ls = P.querySelector('.at-list'); ls.onscroll = () => this.more(ls);
       setTimeout(() => this.more(ls), 750); // после того как панель вырастет
@@ -705,38 +705,79 @@ const Atlas = {
     setTimeout(() => p.box.remove(), 260);
   },
 
-  /* ---------- перезарядка: ждать или открыть Врата предметом ---------- */
-  askItem() {
+  /* ---------- окно над Атласом: подтверждение шага и перезарядка ---------- */
+  // 5.2: на весь экран — матовое полупрозрачное стекло (Атлас под ним размыт); посередине одним блоком — значок Врат, заголовок,
+  // куда и сразу под ним кнопки. main — текст, btns — кнопки, after — строка под кнопками, bind(box, end) — действия кнопок;
+  // end(v) закрывает окно и отвечает v. «Назад», Esc — это «нет»
+  askBox(main, btns, after, bind) {
     return new Promise(res => {
-      const n = this.items(), cd = this.cd(), full = this.tpMin() * 60000, frac = Math.max(0, Math.min(1, 1 - cd / full));
-      const R = 26, C = 2 * Math.PI * R;
-      const box = U.el(`<div class="at-cd"><div class="at-cdb">
-        <div class="at-cdr"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" class="bg"/><circle cx="32" cy="32" r="${R}" class="fg" stroke-dasharray="${(C * frac).toFixed(1)} ${C.toFixed(1)}"/></svg>${this.gateIcon()}</div>
-        <b>${ru`Врата отдыхают`}</b><p>${ru`Врата откроются через ${this.cdMin()} мин`}</p>
-        ${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : `<p class="small">${ru`Врата Перепутицы открываются сразу — их можно купить в Лавке.`}</p>${typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, 'at-shop') : ''}`}
-        ${UI.glass(ru`Подождать`, 'at-wait')}</div></div>`);
-      const end = v => { if (!box.isConnected) return; box.classList.add('out'); setTimeout(() => box.remove(), 220); res(v); };
+      const box = U.el(`<div class="at-cd" role="dialog" aria-modal="true"><div class="at-cdb"><div class="at-cdm">${main}<div class="at-cdk">${btns}</div>${after}</div></div></div>`);
+      // матовое стекло: сам Атлас под окном размывается (backdrop-filter внутри Атласа — он сам под стеклом — не срабатывает)
+      const eco = document.body.classList.contains('eco'), calm = document.body.classList.contains('calm'), F = 'blur(14px) saturate(1.35)';
+      const under = eco || !Element.prototype.animate ? [] : [...this.el.children].filter(c => !c.classList.contains('at-cd'));
+      let anims = under.map(c => c.animate([{ filter: 'none' }, { filter: F }], { duration: calm ? 0 : 320, easing: 'ease-out', fill: 'forwards' }));
+      const unblur = () => {
+        anims.forEach(a => a.cancel());
+        anims = under.filter(c => c.isConnected).map(c => c.animate([{ filter: F }, { filter: 'none' }], { duration: calm ? 0 : 240, easing: 'ease-in' }));
+      };
+      let over = false;
+      const end = v => { if (over) return; over = true; box.classList.add('out'); unblur(); setTimeout(() => box.remove(), 260); res(v); };
       box._no = () => end(false);
-      box.addEventListener('click', e => { if (e.target === box) end(false); });
-      const use = box.querySelector('.at-use'); if (use) use.onclick = () => { Sfx.play('tap'); end(true); };
-      box.querySelector('.at-wait').onclick = () => { Sfx.play('tap'); end(false); };
-      const shop = box.querySelector('.at-shop'); if (shop) shop.onclick = () => { Sfx.play('tap'); end(false); if (!this.opts.first) { this.close(); Shop.screen(); } };
+      bind(box, end);
       this.el.appendChild(box);
-      requestAnimationFrame(() => box.classList.add('in'));
+      requestAnimationFrame(() => requestAnimationFrame(() => box.classList.add('in')));
     });
+  },
+  // значок Врат в золотом кольце: frac — сколько кольца залито (1 — Врата открыты)
+  gateRing(frac) {
+    const R = 26, C = 2 * Math.PI * R;
+    return `<div class="at-cdr"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" class="bg"/><circle cx="32" cy="32" r="${R}" class="fg" stroke-dasharray="${(C * frac).toFixed(1)} ${C.toFixed(1)}"/></svg>${this.gateIcon()}</div>`;
+  },
+  // 5.2: куда шагнуть — крупно город, под ним место; «Своё место» — «выбранная точка», её координаты и ближайший город из Атласа
+  whereHtml(lat, lng, name, place) {
+    if (name) return `<div class="at-okw"><span class="at-okc">${U.esc(name)}</span>${place ? `<span class="at-okp">${U.esc(place)}</span>` : ''}</div>`;
+    let near = null, nd = 60000; // ближе 60 км
+    Object.values(this.PLACES).forEach(l => l.forEach(p => { const d = U.dist(lat, lng, p[3], p[4]); if (d < nd) { nd = d; near = p[1]; } }));
+    return `<div class="at-okw own"><span class="at-okc">${ru`Выбранная точка на карте`}</span>
+      <span class="at-okp at-okll">${lat.toFixed(4)}, ${lng.toFixed(4)}${near ? ` · ${ru`рядом: ${U.esc(near)}`}` : ''}</span></div>`;
+  },
+  // 5.2: Врата открыты (или первый шаг, даром) — подтвердить переход: куда; под кнопками — когда Врата откроются снова
+  askGo(where) {
+    const first = !!this.opts.first;
+    return this.askBox(`${this.gateRing(1)}<small class="at-cdt">${ru`Врата Перепутицы`}</small><b>${first ? ru`Начать путь здесь?` : ru`Шагнуть во Врата?`}</b>${where}`,
+      `${UI.rune(ru`Шагнуть`, 'at-ok')}${UI.glass(ru`Отмена`, 'at-no')}`,
+      first ? '' : `<p class="at-okn">${ru`Следующий переход — через ${this.tpMin()} мин`}</p>`, (box, end) => {
+        box.querySelector('.at-ok').onclick = () => end(true); // звук шага — портал Врат
+        box.querySelector('.at-no').onclick = () => { Sfx.play('tap'); end(false); };
+      });
+  },
+  /* ---------- перезарядка: ждать или открыть Врата предметом (это окно и есть подтверждение шага) ---------- */
+  askItem(where = '') {
+    const n = this.items(), cd = this.cd(), full = this.tpMin() * 60000, frac = Math.max(0, Math.min(1, 1 - cd / full));
+    return this.askBox(`${this.gateRing(frac)}<small class="at-cdt">${ru`Врата Перепутицы`}</small><b>${ru`Врата отдыхают`}</b>${where}
+      <p class="at-okn rest">${ru`Врата откроются через ${this.cdMin()} мин`}</p>`,
+      `${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, 'at-shop') : ''}${UI.glass(ru`Подождать`, 'at-wait')}`,
+      n ? '' : `<p class="small at-oks">${ru`Врата Перепутицы открываются сразу — их можно купить в Лавке.`}</p>`, (box, end) => {
+        const use = box.querySelector('.at-use'); if (use) use.onclick = () => { Sfx.play('tap'); end(true); };
+        box.querySelector('.at-wait').onclick = () => { Sfx.play('tap'); end(false); };
+        const shop = box.querySelector('.at-shop'); if (shop) shop.onclick = () => { Sfx.play('tap'); end(false); if (!this.opts.first) { this.close(); Shop.screen(); } };
+      });
   },
 
   /* ---------- шаг во Врата: вспышка, затемнение — и Ловчий уже на новом месте ---------- */
-  async go(lat, lng, name) {
-    if (this._busy || !this.el || this.el.querySelector('.at-cd:not(.out)')) return; // окно «Врата отдыхают» уже открыто
+  // name, place — город и место в нём (строка списка); без name — «Своё место», точка на настоящей карте
+  async go(lat, lng, name, place) {
+    if (this._busy || !this.el || this.el.querySelector('.at-cd:not(.out)')) return; // окно подтверждения или «Врата отдыхают» уже открыто
     const w = this.walk();
     if (!w || !w.teleport) { UI.toast(ru`Врата Перепутицы пока закрыты — обнови игру`, 'at-t'); return; }
-    const first = !!this.opts.first, opt = { first };
+    const first = !!this.opts.first, opt = { first }, where = this.whereHtml(lat, lng, name, place);
+    // 5.2: шаг — только после подтверждения. Врата отдыхают — сразу окно перезарядки (оно же и подтверждение, одно окно)
     if (!first && this.cd() > 0) {
-      const use = await this.askItem();
+      const use = await this.askItem(where);
       if (!use || !this.el) return;
       opt.item = true;
-    }
+    } else if (!(await this.askGo(where)) || !this.el) return;
+    if (this._busy) return;
     this._busy = true;
     const gate = this.gate(name), t0 = Date.now();
     let r;
