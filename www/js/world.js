@@ -124,6 +124,19 @@ const W = {
     return out;
   },
 
+  /* ---------- 5.2: места спят и просыпаются по неделям (Rules.PLACES) ---------- */
+  /* Родник, Капище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
+     недели) бодрствует доля SHARE мест, остальные пустые. У каждого места своя фаза (хэш id), окно бодрствования каждую
+     неделю сдвигается на SHARE: место бодрствует, если (фаза + неделя × SHARE) mod 1 < SHARE. При SHARE = 0,4 — две недели
+     из пяти, и никогда две недели подряд: на следующей неделе просыпаются другие места. Места игроков (usr:) не спят;
+     новичку на обучении открыты все Родники (первый Родник — рядом). Считается одинаково на телефоне и на сервере. */
+  awake(p, kind, t = U.now()) {
+    const id = String((p && p.id) || ''), P = Rules.PLACES;
+    if (id.startsWith('usr:')) return true;
+    if (kind === 'spring' && typeof S !== 'undefined' && S.d && S.d.tut) return true;
+    return (U.h('wake', id) + Ev.week(t) * P.SHARE) % 1 < P.SHARE;
+  },
+
   /* ---------- Родники: у реальных объектов (см. pois.js) ---------- */
   // p — объект карты { id, lat, lng, name, photo }; d — расстояние до игрока
   springFor(p, d) {
@@ -135,14 +148,14 @@ const W = {
       ready: U.now() - last > this.SPRING_COOLDOWN, readyAt: last + this.SPRING_COOLDOWN };
   },
   springsAround(lat, lng, radius = this.VIEW + 150) {
-    return Poi.near(lat, lng, radius, 'spring').map(p => this.springFor(p, p.d));
+    return Poi.near(lat, lng, radius, 'spring').filter(p => this.awake(p, 'spring')).map(p => this.springFor(p, p.d)); // 5.2: спящих нет
   },
 
   /* ---------- Разломы: каждый час открываются у части Капищ ---------- */
   riftAt(id, hour) { return U.h('rr', id, hour) < 0.35; },
-  // Разлом у капища p в этот час (или null)
+  // Разлом у капища p в этот час (или null); 5.2: у спящего места Разломов нет — и Великих (Кощей) тоже
   riftFor(p, d, hour = Math.floor(U.now() / 3600000)) {
-    if (!this.riftAt(p.id, hour)) return null;
+    if (!this.riftAt(p.id, hour) || !this.awake(p, 'shrine', hour * 3600000)) return null;
     const id = `${p.id}:${hour}`;
     const r = U.rng(id);
     const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
@@ -205,7 +218,7 @@ const W = {
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
     Ev.alaSync();
-    return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
+    return Poi.near(lat, lng, radius, 'shrine').filter(p => this.awake(p, 'shrine') && !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
   /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
      раньше уровень хранителя равнялся уровню духов игрока, но виды у хранителя слабее — и сильный Ловчий не проигрывал.

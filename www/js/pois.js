@@ -1,5 +1,5 @@
 'use strict';
-/* Реальные объекты на карте: Родники и Капища стоят у настоящих мест.
+/* Реальные объекты на карте: Родники и Капища стоят у настоящих мест (5.2: не каждую неделю — см. W.awake).
    1) Сервер игры (таблица pois): объекты OpenStreetMap по всей России (раз в неделю их загружает импорт,
       tools/osm-import), места, предложенные игроками и одобренные модерацией, и правки модераторов.
       Телефон читает их квадратами 0.01° × 0.01° (≈ 1 км).
@@ -177,7 +177,8 @@ const Poi = {
     const { lat, lng } = MapView.pos;
     const store = this.covered() ? this.srv : this.osm;
     const loaded = this.tilesAround(lat, lng, 1000).every(([x, y]) => { const o = store[`${x}:${y}`]; return o && !o.fail; });
-    if (!loaded || this.near(lat, lng, 1000, 'spring').length || S.d.supplyDay === U.today() || this._supplying) return;
+    // 5.2: спящие на этой неделе Родники не в счёт (W.awake)
+    if (!loaded || this.near(lat, lng, 1000, 'spring').some(p => W.awake(p, 'spring')) || S.d.supplyDay === U.today() || this._supplying) return;
     this._supplying = true;
     Game.act('supply').then(r => { this._supplying = false; this.showSupply(r.got); }).catch(() => { this._supplying = false; });
   },

@@ -115,6 +115,12 @@
   S.d.level = 12;
   MapView.pos = { lat: 55.75, lng: 37.62 };
   const fresh = (sid, lvl = 10) => { const sp = S.makeSpirit(sid, lvl, 'seed' + sid + lvl); S.d.spirits.push(sp); return sp; };
+  // 5.2: места спят и просыпаются по неделям (W.awake). Тесты других правил берут места с произвольными id — для них все места
+  // бодрствуют; сами недели проверяют тесты «Места 5.2» с настоящим правилом (withSleep)
+  const W_AWAKE = W.awake;
+  W.awake = () => true;
+  const withSleep = fn => { W.awake = W_AWAKE; try { return fn(); } finally { W.awake = () => true; } };
+  const withSleepA = async fn => { W.awake = W_AWAKE; try { return await fn(); } finally { W.awake = () => true; } };
 
   /* ---------- данные ---------- */
   // 4.15: языки — перевод по русскому ключу, подстановки, ошибки сервера по шаблону, формы числа, без словаря — русский
@@ -238,6 +244,40 @@
     eq(g.team.length, 3, 'команда хранителя');
     ok(g.team.every(x => !SP[x.sid].legend && !SP[x.sid].region), 'без легенд и региональных');
   });
+  // 5.2: каждую неделю бодрствует ~40% мест (Rules.PLACES.SHARE), на следующей — другие; места игроков не спят, новичку — все Родники
+  test('Места 5.2: бодрствует ≈40%, каждую неделю — другие', () => withSleep(() => {
+    const tut = S.d.tut; S.d.tut = 0;
+    try {
+      eq(Rules.PLACES.SHARE, 0.4); eq(Rules.PLACES.VIEW, 200);
+      const ids = Array.from({ length: 5000 }, (_, i) => ({ id: 'osm:n' + (300000 + i) }));
+      const w0 = Ev.week(), t = k => ((w0 + k) * 7 - 3) * 86400000 + 3600000; // час после начала недели w0 + k
+      const on = [0, 1, 2, 3, 4, 5].map(k => new Set(ids.filter(p => W.awake(p, 'spring', t(k))).map(p => p.id)));
+      on.forEach((s, k) => near(s.size / ids.length, 0.4, 0.03, `неделя +${k}:`));
+      for (let k = 0; k < 5; k++) eq([...on[k]].filter(id => on[k + 1].has(id)).length, 0, `недели +${k} и +${k + 1} — разные места`);
+      ok(ids.every(p => [0, 1, 2, 3, 4].filter(k => on[k].has(p.id)).length === 2), 'каждое место — две недели из пяти');
+      // граница недели — как у событий недели (Ev.week: понедельник 00:00 UTC)
+      const edge = (w0 + 1) * 7 - 3, p = ids.find(x => on[0].has(x.id));
+      ok(W.awake(p, 'shrine', edge * 86400000 - 1) && !W.awake(p, 'shrine', edge * 86400000), 'засыпает ровно в понедельник 00:00 UTC');
+      ok(ids.slice(0, 50).every(x => W.awake(x, 'spring', t(0)) === W.awake(x, 'shrine', t(0))), 'правило одно для Родника и Капища');
+      ok([0, 1, 2, 3, 4].every(k => W.awake({ id: 'usr:00000000-0000-0000-0000-000000000001' }, 'shrine', t(k))), 'место игрока не спит');
+      const sleeping = ids.find(x => !on[0].has(x.id));
+      S.d.tut = 3;
+      ok(W.awake(sleeping, 'spring', t(0)), 'новичку на обучении — все Родники');
+      ok(!W.awake(sleeping, 'shrine', t(0)), 'Капища у новичка — как у всех');
+      S.d.tut = 0;
+      // на карте и в списках — только бодрствующие; у спящего Капища нет ни Капища, ни Разлома (и Великого — тоже)
+      const hour = Math.floor(U.now() / 3600000), aw = x => W.awake(x, x.kind);
+      const sp = W.springsAround(55.75, 37.62, 3000), in3 = x => U.dist(55.75, 37.62, x.lat, x.lng) <= 3000;
+      eq(sp.length, fakePois.filter(x => x.kind === 'spring' && in3(x) && aw(x)).length, 'Родники — только бодрствующие');
+      ok(sp.length < fakePois.filter(x => x.kind === 'spring' && in3(x)).length, 'часть Родников спит');
+      const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
+      eq(rf.length + sh.length, fakePois.filter(x => x.kind === 'shrine' && in3(x) && aw(x)).length, 'Капища и Разломы — только у бодрствующих');
+      const zz = fakePois.find(x => x.kind === 'shrine' && !aw(x)), rr = W.riftAt;
+      W.riftAt = () => true;
+      try { eq(W.riftFor(zz, 0, hour), null, 'у спящего места Разлома нет'); ok(W.riftFor(fakePois.find(x => x.kind === 'shrine' && aw(x)), 0, hour), 'у бодрствующего — есть'); }
+      finally { W.riftAt = rr; }
+    } finally { S.d.tut = tut; }
+  }));
   test('Квадраты карты и поиск объектов рядом', () => {
     eq(Poi.tileId(55.7515, 37.6195), '3761:5575');
     eq(Poi.tileId(-33.875, 151.215), '15121:-3388', 'южное и восточное полушарие');
@@ -2797,6 +2837,50 @@
       Object.assign(Walk, { teleport: sv.tp, placed: sv.placed, cooldownLeft: sv.cd, gates: sv.gates }); UI.toast = sv.toast; Atlas.GATE_MS = sv.ms;
     }
   });
+  // 5.2: сервер считает сон мест так же, как телефон, и отклоняет действия у спящих мест; новичку Родник — рядом
+  atest('Сервер 5.2: спящее место — ничего нельзя, у новичка Родник рядом', () => withSleepA(async () => {
+    const A = await newPlayer('uplw', 12.5, 21.5, 'Сон'); // вдали от мест из базы — места OSM с телефона
+    A.data.tut = 0; A.data.level = 12; A.data.clan = 'slavic';
+    const at = { lat: A.lat, lng: A.lng }, now = Date.now(), hour = Math.floor(now / 3600000);
+    const aw = (id, kind) => asPlayer(A, () => W.awake({ id }, kind, now));
+    const free = id => !asPlayer(A, () => W.springFor({ id, ...at, name: 'Р' }, 0).invaded);
+    const sleepSp = poiId(i => !aw(i, 'spring') && free(i), 96000), awakeSp = poiId(i => aw(i, 'spring') && free(i), 96000);
+    ok(sleepSp && awakeSp, 'нашлись спящий и бодрствующий Родники');
+    await refuse(A, 'spring', { poi: { id: sleepSp, ...at, name: 'Родник' } }, /спит/);
+    await must(A, 'spring', { poi: { id: awakeSp, ...at, name: 'Родник' } });
+    const invSp = poiId(i => !aw(i, 'spring') && !free(i), 96000);
+    if (invSp) await refuse(A, 'invStart', { spring: { id: invSp, ...at, name: 'Родник' } }, /спит/);
+    // Капище и Разлом у спящего места: ни боя, ни защитника, ни Разлома (и совместного)
+    const sleepSh = poiId(i => !aw(i, 'shrine'), 97000);
+    const shrine = { id: sleepSh, ...at, name: 'Капище' };
+    await refuse(A, 'duelStart', { shrine }, /спит/);
+    await refuse(A, 'raidStart', { rift: shrine }, /спит/);
+    await refuse(A, 'roomCreate', { rift: shrine }, /спит/);
+    const known = poiId(i => !aw(i, 'shrine') && !Rules.shrineFree(i), 97500);
+    DB.pois[known] = { id: known, kind: 'shrine', ...at, name: 'Спящее Капище', active: true };
+    A.data.shrines[known] = U.today(); // «победил здесь сегодня» — защитника всё равно не поставить
+    await refuse(A, 'shrineDefend', { shrine: { id: known, ...at }, uid: A.data.spirits[0].uid }, /спит/);
+    // бодрствующее Капище — как раньше (дальше проверки боя)
+    const awakeSh = poiId(i => aw(i, 'shrine') && !asPlayer(A, () => W.riftAt(i, hour)), 97000);
+    const r = await call(A, 'duelStart', { shrine: { id: awakeSh, ...at, name: 'Капище' } });
+    ok(r.ok || !/спит/.test(r.error), 'бодрствующее Капище не спит: ' + r.error);
+    // место игрока (usr:) не спит никогда
+    const usr = 'usr:00000000-0000-0000-0000-0000000005a2';
+    DB.pois[usr] = { id: usr, kind: 'spring', ...at, name: 'Родник игрока', active: true };
+    ok([0, 1, 2, 3, 4].every(k => W.awake({ id: usr }, 'spring', now + k * 7 * 86400000)), 'место игрока бодрствует каждую неделю');
+    if (free(usr)) await must(A, 'spring', { poi: { id: usr, ...at } });
+    // новичок: на обучении все Родники бодрствуют — первый Родник рядом (тот самый спящий у других)
+    const N = await newPlayer('uplw2', 12.5, 21.5, 'Новичок');
+    ok(N.data.tut > 0, 'новичок на обучении');
+    ok(asPlayer(N, () => W.awake({ id: sleepSp }, 'spring', now)), 'у новичка Родник не спит');
+    const fakeList = new Map([[sleepSp, { id: sleepSp, kind: 'spring', ...at, name: 'Родник', t: '' }]]), list0 = Poi.list;
+    Poi.list = fakeList;
+    try {
+      eq(asPlayer(N, () => W.springsAround(at.lat, at.lng, 500)).length, 1, 'новичок видит Родник рядом');
+      eq(asPlayer(A, () => W.springsAround(at.lat, at.lng, 500)).length, 0, 'опытный Ловчий — нет (Родник спит)');
+    } finally { Poi.list = list0; }
+    await must(N, 'spring', { poi: { id: sleepSp, ...at, name: 'Родник' } });
+  }));
   /* ---------- вывод ---------- */
   (async () => {
     for (const t of pending) {

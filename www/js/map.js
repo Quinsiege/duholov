@@ -462,24 +462,30 @@ const MapView = {
     // 4.21: Разломы видны с начала; до RAID_LEVEL — серые, с замком (нажатие скажет, с какого уровня)
     // 4.19: дух виден, только если он вне тумана Нави и не в опасном месте (вода, пути, трассы, стройки — см. Hazard)
     const spirits = W.spawnsAround(lat, lng).filter(e => e.tut || (Fog.clearAt(e.lat, e.lng) && Hazard.bad(e.lat, e.lng) === false));
-    const ents = [...W.riftsAround(lat, lng), ...W.shrinesAround(lat, lng), ...W.springsAround(lat, lng), ...spirits];
+    // 5.2: Родники, Капища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
+    // PLACE_HOLD м, чтобы значок на границе не мигал); Следопыт, «Рядом» и дальние Разломы по-прежнему берут места из данных
+    const R = Rules.PLACES.VIEW, inView = e => e.d <= R || (e.d <= R + this.PLACE_HOLD && this.markers.has(e.id));
+    const places = [...W.riftsAround(lat, lng, R + this.PLACE_HOLD), ...W.shrinesAround(lat, lng, R + this.PLACE_HOLD), ...W.springsAround(lat, lng, R + this.PLACE_HOLD)].filter(inView);
+    const ents = [...places, ...spirits];
     const seen = new Set();
     ents.forEach(e => {
       seen.add(e.id);
       const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? `${e.done}${S.d.level < RAID_LEVEL}` : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : e.type === 'spirit' ? this.known(e.sid) : 0;
       let m = this.markers.get(e.id);
+      const fresh = !m; // появился впервые (а не сменил вид)
       if (m && m._key !== key) { m.remove(); m = null; }
       if (!m) {
         m = L.marker([e.lat, e.lng], { icon: this.icon(e), zIndexOffset: e.type === 'spirit' ? 500 : 0 }).addTo(this.map);
         m.on('click', () => this.tap(m._ent));
         m._key = key;
         this.markers.set(e.id, m);
+        if (fresh && !rebuild && e.type !== 'spirit') this.fadeIn(m);
       }
       m._ent = e;
       const el = m.getElement();
       if (el) el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
     });
-    for (const [id, m] of this.markers) if (!seen.has(id)) { m.remove(); this.markers.delete(id); }
+    for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
     this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     const ids = new Set(this.nearby.map(e => e.id));
@@ -487,6 +493,21 @@ const MapView = {
     this._spIds = ids;
     UI.updateNearby(this.nearby);
     if (this.tracking) this.updateTracker();
+  },
+  // 5.2: место появляется и исчезает плавно (style.css: .pl-in, .pl-out); fade — false: сразу
+  PLACE_HOLD: 20, FADE_MS: 450,
+  fadeIn(m) {
+    const el = m.getElement();
+    if (!el) return;
+    el.classList.add('pl-in');
+    setTimeout(() => el.classList.remove('pl-in'), this.FADE_MS + 100);
+  },
+  fadeOut(m, fade) {
+    const el = fade && m.getElement();
+    if (!el) { m.remove(); return; }
+    m.off('click');
+    el.classList.remove('pl-in'); el.classList.add('pl-out');
+    setTimeout(() => m.remove(), this.FADE_MS);
   },
   tap(e) {
     if (!e || UI.blocking()) return;
@@ -522,16 +543,17 @@ const MapView = {
     const want = new Map();
     ents.forEach(e => {
       if (e.type === 'shrine' && e.clan && CLANS[e.clan]) want.set('z:' + e.id, { e, r: 100, cls: 'clan', css: `--cc:${CLANS[e.clan].color}`, inner: '<i class="zn-glow"></i><i class="zn-ring"></i><i class="zn-ring2"></i>' });
-      if (e.type === 'rift' && !e.done) want.set('z:' + e.id, { e, r: 90, cls: 'rift', css: '', inner: '<i class="zn-haze"></i><i class="zn-cracks"></i>' });
+      // 5.2: у Разлома больше нет «провала» под ним (лиловая дымка с трещинами) — только сам значок
       if (e.type === 'spirit') want.set('s:' + e.id, { e, r: this.SPIRIT_R, cls: 'rz sp', css: `--wd:-${(U.h('wave', e.id) * 4.5).toFixed(2)}s`, pane: 'zone', inner: '<i class="sp-bg"></i><i class="rz-wave"></i>' });
     });
-    for (const [id, z] of this.zones) if (!want.has(id) || want.get(id).css !== z.css) { z.m.remove(); this.zones.delete(id); }
+    for (const [id, z] of this.zones) if (!want.has(id) || want.get(id).css !== z.css) { this.fadeOut(z.m, z.cls === 'clan' && !want.has(id)); this.zones.delete(id); }
     for (const [id, w] of want) {
       if (this.zones.has(id)) continue;
       const m = L.marker([w.e.lat, w.e.lng], { interactive: false, keyboard: false, zIndexOffset: -4000, flat: true, ...(w.pane ? { pane: w.pane } : {}),
         icon: L.divIcon({ className: 'mk-zone', iconSize: [0, 0], iconAnchor: [0, 0], html: `<div class="zn ${w.cls}" style="${w.css}">${w.inner}</div>` }) }).addTo(this.map);
-      this.zones.set(id, { m, r: w.r, css: w.css });
+      this.zones.set(id, { m, r: w.r, css: w.css, cls: w.cls });
       this.fitZone(m, w.r);
+      if (w.cls === 'clan') this.fadeIn(m); // 5.2: земли клана — вместе со своим Капищем
     }
   },
   fitZone(m, r, z, anim) {
