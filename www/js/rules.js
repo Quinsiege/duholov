@@ -19,7 +19,7 @@ const Rules = {
     { charm2: 3, gift: 1, xp: 500 },
     { incense: 1, honey: 1, xp: 600 },
     { charm2: 5, brew: 1, xp: 800 },
-    { charm3: 3, sparks: 1000, xp: 1500 }, // 7-й день — ещё и кокон 10 км
+    { charm3: 3, sparks: 1000, gate: 1, xp: 1500 }, // 7-й день — ещё и кокон 10 км; 5.1: и Врата Перепутицы
   ],
 
   /* Общее дело Ордена: все Ловчие неделю вместе копят очки. Цель растёт с числом участников.
@@ -61,9 +61,52 @@ const Rules = {
      Калибровка: десятки–сотни Ловчих по 0,3–1 осколку в день — ~15–50 осколков в день на весь Орден: первая грань за 1–3 дня,
      первый сезон (490) — за 10–30 дней, второй (8 граней, 720) — за 2–7 недель, третий (9 граней, ~1040) — за 3–10 недель.
      Финал: у десятков Ловчих ~1–2 победы над Кощеем в день у каждого (великий разлом, совместно проще) — GOAL за 3–7 дней,
-     у сотен — за день-два. KILL — сколько очков вклада сезона даёт победа над Кощеем (осколок — одно) */
+     у сотен — за день-два. KILL — сколько очков вклада сезона даёт победа над Кощеем (осколок — одно)
+     5.x: цена грани растёт с числом активных Ловчих: базовая цена (alaGoal) × (1 + PER × N), N — Ловчие уровня LEVEL+, игравшие
+     за последние DAYS дней; не дороже CAP × цены предыдущей грани (сквозной номер n − 1, и через границу сезона), не дешевле
+     базовой. Цена фиксируется, когда грань открывается (собрана предыдущая или начался сезон): её записывает сервер в базу
+     (033_alatyr_goals.sql, первый записавший побеждает), телефон получает цены граней от сервера (Ev.ala.goals) — оба считают
+     камень по ним (alaStage с G = { goals, N }). Грани без записанной цены: старше первой записанной — по базовой цене (собраны
+     до 5.x), дальше — ориентир по нынешнему множителю */
   ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], BASE: 6, FIRST: 40, STEP: 10, SEASON: 1.2, MUL: 2, HOURS: 72, LEAD: 10,
-    FINALE: { GOAL: 300, DAYS: 7, KILL: 3 } },
+    FINALE: { GOAL: 300, DAYS: 7, KILL: 3 }, GOALS: { LEVEL: 20, DAYS: 14, PER: 0.1, CAP: 2 } },
+  // множитель Ордена при N активных Ловчих
+  alaMul(N) { return Math.round((1 + Math.max(0, Math.floor(+N) || 0) * this.ALATYR_WORLD.GOALS.PER) * 1000) / 1000; },
+  // цена грани n (сквозной номер), если она открывается сейчас: N активных Ловчих, prev — цена грани n − 1 (0 — без ограничения)
+  alaPriceNew(n, N, prev) {
+    const f = this.alaFace(n), b = this.alaGoal(f.s, f.k);
+    let p = Math.round(b * this.alaMul(N));
+    if (+prev > 0) p = Math.min(p, Math.round(+prev * this.ALATYR_WORLD.GOALS.CAP));
+    return Math.max(b, p);
+  },
+  // цены граней 0…n: { p, kind } — kind: fixed (записана в базе), old (старше первой записанной — базовая), est (ориентир)
+  alaPrices(n, G) {
+    const goals = (G && G.goals) || {}, N = (G && G.N) || 0, out = [];
+    const keys = Object.keys(goals).map(Number).filter(x => +goals[x] > 0), low = keys.length ? Math.min(...keys) : Infinity;
+    let prev = 0;
+    for (let i = 0; i <= n; i++) {
+      let p, kind;
+      if (+goals[i] > 0) { p = +goals[i]; kind = 'fixed'; }
+      else if (i < low) { const f = this.alaFace(i); p = keys.length ? this.alaGoal(f.s, f.k) : this.alaPriceNew(i, N, prev); kind = keys.length ? 'old' : 'est'; }
+      else { p = this.alaPriceNew(i, N, prev); kind = 'est'; }
+      out.push({ p, kind }); prev = p;
+    }
+    return out;
+  },
+  // какую грань пора зафиксировать (сервер): первая грань сезона без записанной цены, до которой дошёл счёт, иначе −1.
+  // Цен ещё нет совсем (первый запуск 5.x) — фиксируется та, что собирается сейчас (собранные до неё — по базовой цене)
+  alaNextFix(s, have, G) {
+    const goals = (G && G.goals) || {}, fresh = !Object.keys(goals).some(k => +goals[k] > 0);
+    const st = this.alaStage(s, have, fresh ? { goals: {}, N: 0 } : G), t = st.total;
+    let from = 0;
+    for (let k = 0; k < st.K; k++) {
+      const p = st.prices[k];
+      if (p.kind === 'est' && !(fresh && t >= from + p.p && st.faces[k])) return st.base + k;
+      if (!st.faces[k] || t < from + p.p) return -1;
+      from += p.p;
+    }
+    return -1;
+  },
   // сколько граней в сезоне s
   alaK(s) { return this.ALATYR_WORLD.BASE + Math.max(1, Math.floor(+s) || 1); },
   // мифологии граней сезона s по порядку; null — мифологии этого сезона ещё нет в игре
@@ -78,8 +121,9 @@ const Rules = {
     const A = this.ALATYR_WORLD;
     return Math.max(1, Math.round((A.FIRST + A.STEP * k) * Math.pow(A.SEASON, Math.max(1, Math.floor(+s) || 1) - 1)));
   },
-  // весь камень сезона s
-  alaCost(s) { let c = 0; for (let k = 0; k < this.alaK(s); k++) c += this.alaGoal(s, k); return c; },
+  // весь камень сезона s (G — зафиксированные цены и N, см. alaPrices; нет — базовые цены)
+  alaCost(s, G) { return this.alaSeasonPrices(s, G).reduce((a, x) => a + x.p, 0); },
+  alaSeasonPrices(s, G) { const b = this.alaBase(s); return this.alaPrices(b + this.alaK(s) - 1, G).slice(b); },
   // сквозной номер первой грани сезона s и обратно: грань n → { s, k }
   alaBase(s) { s = Math.max(1, Math.floor(+s) || 1); return this.ALATYR_WORLD.BASE * (s - 1) + s * (s - 1) / 2; },
   alaFace(n) { n = Math.max(0, Math.floor(+n) || 0); let s = 1; while (s < 10000 && this.alaBase(s + 1) <= n) s++; return { s, k: n - this.alaBase(s) }; },
@@ -88,14 +132,16 @@ const Rules = {
   alatyrGoal(n) { const f = this.alaFace(n); return this.alaGoal(f.s, f.k); },
   /* где сезон s, если за него собрано have осколков: n — сколько граней собрано, done — все (финал), face — какая собирается,
      myth — её мифология (null — её нет в игре: locked, грань ждёт обновления), from/at — счёт сезона в начале и в конце этой
-     грани, have/need — собрано и нужно на ней, base — сквозной номер первой грани сезона */
-  alaStage(s, have) {
+     грани, have/need — собрано и нужно на ней, base — сквозной номер первой грани сезона.
+     5.x: G — { goals: { n: цена }, N } (Ev.ala): цены граней — зафиксированные, прочие — см. alaPrices; prices — цены граней
+     сезона { p, kind }, est — цена текущей грани пока ориентир (сервер ещё не записал) */
+  alaStage(s, have, G) {
     s = Math.max(1, Math.floor(+s) || 1);
-    const K = this.alaK(s), faces = this.alaFaces(s), t = Math.max(0, Math.floor(+have || 0));
+    const K = this.alaK(s), faces = this.alaFaces(s), t = Math.max(0, Math.floor(+have || 0)), P = this.alaSeasonPrices(s, G), g = k => P[k].p;
     let n = 0, from = 0;
-    while (n < K && faces[n] && t >= from + this.alaGoal(s, n)) { from += this.alaGoal(s, n); n++; }
-    const done = n >= K, need = done ? this.alaGoal(s, K - 1) : this.alaGoal(s, n), h = done ? need : Math.min(t - from, need);
-    return { s, K, faces, n, face: Math.min(n, K - 1), done, myth: done ? null : faces[n], locked: !done && !faces[n],
+    while (n < K && faces[n] && t >= from + g(n)) { from += g(n); n++; }
+    const done = n >= K, need = done ? g(K - 1) : g(n), h = done ? need : Math.min(t - from, need);
+    return { s, K, faces, n, face: Math.min(n, K - 1), done, myth: done ? null : faces[n], locked: !done && !faces[n], prices: P, est: !done && P[n].kind === 'est',
       from: done ? from - need : from, at: done ? from : from + need, have: h, need, pct: h / need, total: t, base: this.alaBase(s) };
   },
   // очки вклада сезона: осколки и победы над Кощеем в финале (S.d.alaS — { s, n, k })
@@ -204,6 +250,14 @@ const Rules = {
     const T = this.TRACK, dt = Math.abs(q.t - ref.t) / 1000;
     return U.dist(ref.lat, ref.lng, q.lat, q.lng) <= Math.max(T.MIN, this.SPEED.MAX * T.K * (Number.isFinite(dt) ? dt : 0)) + U.clamp(+ref.acc || 0, 0, T.ACC);
   },
+  /* ---------- 5.1: джойстик и Атлас ---------- */
+  // Ловчий ходит мини-джойстиком (walk.js): лёгкий наклон — шаг WALK, до упора (от RUN_AT наклона) — бег RUN, м/с; бег медленнее
+  // SPEED.MAX, поэтому путь засчитывается, а проверки скорости сервера (SPEED, TRACK, jumpWait) остаются защитой от накрутки.
+  // SYNC_MS — как часто, пока Ловчий идёт, путь уходит серверу (действие move); PT_MS — точки пути не чаще раза в столько мс.
+  // Телепорт через Атлас (действие teleport): первое появление — даром, дальше — раз в TP_CD или мгновенно за предмет TP_ITEM
+  MOVE: { WALK: 5 / 3.6, RUN: 15 / 3.6, RUN_AT: 0.8, DEAD: 0.12, SYNC_MS: 10000, PT_MS: 1000, TP_CD: 30 * 60000, TP_ITEM: 'gate', LAT: 85 },
+  // сколько ещё ждать до телепорта даром (мс): tpAt — время прошлого телепорта (S.d.tpAt)
+  tpWait(tpAt, now) { return Number.isFinite(+tpAt) && +tpAt > 0 ? Math.max(0, +tpAt + this.MOVE.TP_CD - now) : 0; },
   AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
@@ -247,7 +301,10 @@ const Rules = {
     { id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в неделю: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 80, give: { deadwater: 1 }, week: 1 },
     { id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },
     { id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },
-    { id: 'incense',  name: ru`Ладан`,               desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
+    // 5.1: Врата Перепутицы — телепорт через Атлас сразу, без перезарядки (за искры — один в день)
+    { id: 'gate',     name: ru`Врата Перепутицы`,    desc: ru`Шагнуть в любое место Атласа сразу, без ожидания. Одни в день`, cur: 'sparks', price: 3000, give: { gate: 1 }, day: 1 },
+    { id: 'gate3',    name: ru`Трое Врат Перепутицы`, desc: ru`Три мгновенных перехода через Атлас`,     cur: 'zlat', price: 75,  give: { gate: 3 } },
+    { id: 'incense',  name: ru`Ладан`,              desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },
     { id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },
     { id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },
     { id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },

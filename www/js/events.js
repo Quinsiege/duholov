@@ -41,17 +41,24 @@ const Ev = {
   // открыть мифологии сезона, что идёт в момент t (data.js, mythOpen) — перед отбором духов
   alaSync(t = U.now()) { if (typeof mythOpen === 'function') mythOpen(this.alaSeason(t)); },
   // где камень текущего сезона при общем счёте total (сезон уже сменился, а база не записала начало — с нуля)
-  alaStage(total, t = U.now()) { const A = this.ala || {}, s = this.alaSeason(t); return Rules.alaStage(s, s === A.s ? (+total || 0) - (+A.start || 0) : 0); },
+  // 5.x: и по зафиксированным ценам граней (goals — { n: цена }) и числу активных Ловчих N (Rules.alaPrices)
+  alaG() { const A = this.ala || {}; return { goals: A.goals || {}, N: A.N || 0 }; },
+  alaStage(total, t = U.now()) { const A = this.ala || {}, s = this.alaSeason(t); return Rules.alaStage(s, s === A.s ? (+total || 0) - (+A.start || 0) : 0, this.alaG()); },
   // для телефона и проверка присланного сервером
-  alaView() { const A = this.ala || {}; return { s: A.s, from: A.from, start: A.start, fin: A.fin ? { ...A.fin } : null, brk: A.brk || null }; },
+  alaView() { const A = this.ala || {}; return { s: A.s, from: A.from, start: A.start, fin: A.fin ? { ...A.fin } : null, brk: A.brk || null, goals: { ...(A.goals || {}) }, N: A.N || 0 }; },
   alaClean(x) {
     const num = v => (Number.isFinite(+v) && v !== null && v !== '' ? +v : 0);
-    if (!x || typeof x !== 'object') return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    if (!x || typeof x !== 'object') return { s: 1, from: 0, start: 0, fin: null, brk: null, goals: {}, N: 0 };
     const f = x.fin && typeof x.fin === 'object' && num(x.fin.to) > num(x.fin.from) ? { from: num(x.fin.from), to: num(x.fin.to), kills: Math.max(0, num(x.fin.kills)), goal: Math.max(1, num(x.fin.goal) || Rules.ALATYR_WORLD.FINALE.GOAL) } : null;
-    return { s: Math.max(1, Math.floor(num(x.s)) || 1), from: num(x.from), start: Math.max(0, num(x.start)), fin: f, brk: num(x.brk) || null };
+    const goals = {};
+    if (x.goals && typeof x.goals === 'object') Object.keys(x.goals).slice(0, 300).forEach(k => { const n = +k, p = Math.floor(num(x.goals[k])); if (Number.isInteger(n) && n >= 0 && n < 1e6 && p > 0) goals[n] = p; });
+    return { s: Math.max(1, Math.floor(num(x.s)) || 1), from: num(x.from), start: Math.max(0, num(x.start)), fin: f, brk: num(x.brk) || null, goals, N: Math.max(0, Math.floor(num(x.N))) };
   },
   // подпись сезона (сервер помнит, какую уже отдал телефону); победы над Кощеем в неё не входят — их телефон спрашивает сам
-  alaKey() { const A = this.ala || {}; return `${A.s}:${A.start}:${A.fin ? A.fin.from + '-' + A.fin.to : ''}:${A.brk || ''}`; },
+  alaKey() {
+    const A = this.ala || {}, g = Object.keys(A.goals || {}).sort((a, b) => a - b).map(k => `${k}=${A.goals[k]}`).join(',');
+    return `${A.s}:${A.start}:${A.fin ? A.fin.from + '-' + A.fin.to : ''}:${A.brk || ''}:${g}:${A.N || 0}`;
+  },
 
   // Православная Пасха (юлианский расчёт + 13 дней, верно для 1900–2099); дата в UTC
   easter(y) {

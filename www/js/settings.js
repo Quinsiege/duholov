@@ -1,10 +1,10 @@
 'use strict';
-/* Настройки этого устройства: звук, музыка, AR, экономия батареи, вид карты и доступность.
+/* Настройки этого устройства: звук, музыка, AR, экономия батареи, вид карты, сторона джойстика (5.1) и доступность.
    Хранятся на телефоне (это не игровой прогресс), прогресс — на сервере. */
 
 const Cfg = {
   KEY: 'duholov.settings',
-  DEFAULTS: { demo: false, ar: false, sound: true, vibro: true, weather: true, music: true, musicVol: 0.6, cloud: true, eco: false,
+  DEFAULTS: { joySide: 'right', ar: false, sound: true, vibro: true, weather: true, music: true, musicVol: 0.6, cloud: true, eco: false,
     bigText: false, tapThrow: false, calm: null, mapTheme: 'auto', tilt3d: true, fog: true, awake: false },
   s: null,
 
@@ -16,7 +16,8 @@ const Cfg = {
     }
     this.s = Object.assign({}, this.DEFAULTS, s || {});
     if (this.s.calm == null) this.s.calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-    if (!DEV) this.s.demo = false; // демо-режим (джойстик) — только для разработки
+    delete this.s.demo; // 5.1: демо-режима больше нет — джойстик у всех (walk.js)
+    if (this.s.joySide !== 'left') this.s.joySide = 'right'; // 5.1: сторона джойстика на карте
     return this.s;
   },
   save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.s)); } catch (e) {} },

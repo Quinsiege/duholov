@@ -9,7 +9,7 @@ const Game = {
   rev: 0,
   q: Promise.resolve(),
   online: true,
-  pts: [],            // точки GPS для подсчёта пройденного пути (отправляются пачкой)
+  pts: [],            // точки пути (5.1: джойстик, walk.js) для подсчёта пройденного пути (отправляются пачкой)
   _snap: null,
 
   on() { return Cloud.configured(); },
@@ -21,7 +21,7 @@ const Game = {
   async call(actions) {
     if (!this.on()) throw new PlayError(ru`Нет связи с сервером игры`);
     const sb = await this.timed(Cloud.client()).catch(() => { throw new PlayError(ru`Нет связи с сервером игры — проверь интернет`); });
-    const p = MapView.pos && (MapView.gpsOK || MapView.demo) ? { lat: +MapView.pos.lat.toFixed(6), lng: +MapView.pos.lng.toFixed(6), acc: Math.round(MapView.acc || 20) } : null;
+    const p = Walk.wire(); // 5.1: место Ловчего (джойстик и Атлас) — без GPS
     const body = { a: actions, rev: this.rev, tz: -new Date().getTimezoneOffset(), wx: Sky.w ? Sky.w.key : null, pos: p, v: APP_VERSION };
     let res;
     for (let attempt = 0; attempt < 2; attempt++) {

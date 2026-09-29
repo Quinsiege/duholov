@@ -63,6 +63,7 @@ const UI = {
     U.$('#profileBtn').onclick = () => this.profile();
     U.$('#menuBtn').onclick = () => this.menu();
     U.$('#nearbyBtn').onclick = () => this.nearbyList();
+    if (typeof Atlas !== 'undefined') Atlas.mountHud(); // 5.1: глобус «Атлас мира» на карте — под погодой и неделей (atlas.js)
     U.$('#incenseChip').onclick = () => this.toast(ru`Ладан курится ещё ${U.fmtTime(S.d.incenseUntil - Date.now())}`);
     const xc = U.$('#xpChip'); if (xc) xc.onclick = () => this.toast(ru`Настой опыта действует ещё ${U.fmtTime(S.d.xpUntil - U.now())}`);
     Bus.on('xp', () => this.refreshHud());
@@ -258,26 +259,6 @@ const UI = {
       put(xc.querySelector('span'), left(d.xpUntil - U.now()));
     }
     else if (xc) xc.classList.add('hidden');
-  },
-  // 4.20: плашка над картой, пока Ловчий движется быстрее бега (kmh = 0 — убрать)
-  speedWarn(kmh) {
-    let el = document.getElementById('speedWarn');
-    if (!kmh) { this._speedOff = false; if (el) el.remove(); return; } // скорость снова обычная — в следующий раз плашка покажется
-    if (this._speedOff) { if (el) el.remove(); return; } // 4.25.2: «я пассажир» — до конца этой поездки плашку не показываем
-    if (!el) { el = U.el('<div id="speedWarn" role="alert"></div>'); document.body.appendChild(el); }
-    el.innerHTML = `<b>${ru`Слишком быстро — ${kmh} км/ч`}</b><span>${ru`Духи и родники ждут пешеходов: сбавь скорость до шага или бега. За рулём не играй!`}</span><button class="sw-x" aria-label="${ru`Скрыть`}">✕</button>`;
-    // 4.25.2: закрыть можно, только подтвердив, что едешь пассажиром (ограничения игры при этом остаются)
-    el.querySelector('.sw-x').onclick = () => { Sfx.play('tap'); this.confirm(ru`Ты пассажир?`, ru`Скрыть плашку можно, только если ты едешь пассажиром, а не за рулём. Пока скорость высокая, духи и родники недоступны, а путь не засчитывается.`, ru`Да, я пассажир`, () => { this._speedOff = true; const w = document.getElementById('speedWarn'); if (w) w.remove(); }, ru`Нет`); };
-  },
-  setGps(state, acc) {
-    const c = U.$('#gpsChip');
-    const map = { search: [ru`Ищу GPS…`, 'warn search'], ok: [ru`GPS ±${Math.round(acc)} м`, 'ok'], weak: [ru`GPS ±${Math.round(acc)} м`, 'warn'], off: [ru`Нет GPS`, 'bad'], demo: [ru`Демо-режим`, 'demo'], jam: [ru`Помехи GPS — держим последнее место`, 'warn jam'] }; // 4.25.2: глушение или подмена GPS
-    const [t, cls] = map[state];
-    if (c._k === t + cls) return; // GPS приходит каждую секунду — без изменений не перестраиваем значок
-    c._k = t + cls;
-    c.className = 'chip ' + cls; c.innerHTML = `${this.I.pin}<span>${t}</span>`;
-    c.onclick = state === 'demo' ? () => this.toast(ru`Двигайся джойстиком или клавишами WASD. Выключить — в настройках.`) : () => this.toast(t); // 4.25: кнопка круглая — точность по касанию
-    c.setAttribute('aria-label', t);
   },
   // 4.25: круглая кнопка «Рядом» — до трёх ближайших духов и их число; дух не из Бестиария — знак вопроса, как на карте
   updateNearby(list) {
@@ -937,7 +918,7 @@ const UI = {
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
       // 4.5: без коробки — сцена во весь экран, «оберег» и стеклянная кнопка прямо на ней; 12+ — значок в углу
-      if (n === 0) html = `<span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Login.logo(ru`Лови духов Нави на улицах своего города`)}${Realms.banner()}
+      if (n === 0) html = `<span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Login.logo(ru`Лови духов Нави по всему свету`)}${Realms.banner()}
         <div class="lg-cta">
           ${Invite.ref() ? `<div class="lg-invite">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}
           ${this.rune(ru`Начать игру`, 'next')}
@@ -948,9 +929,10 @@ const UI = {
       if (n === 3) html = `<div class="onb-q"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>
         <div class="onb-starters">${['ugolek', 'kapelka', 'mshonok'].map(id => `<button class="starter el-${SP[id].el}" data-id="${id}">${Art.spirit(id)}<b>${SP[id].name}</b><span>${Art.elIcon(SP[id].el, 16)} ${ELEMENTS[SP[id].el].name}</span></button>`).join('')}</div>
         <div class="onb-desc"></div>${this.rune(ru`Выбрать`, 'next').replace('<button ', '<button disabled ')}`;
-      if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>${ru`Духи живут рядом с тобой`}</h2>
-        <p>${ru`Игре нужна геопозиция, чтобы показать духов, родники и разломы вокруг. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие (поэтому нужен интернет), в прогрессе есть дневник с местами поимок. Для проверки действий на карте сервер получает твоё местоположение. Чтобы загрузить места на карте и погоду, район (~1 км) запрашивается у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках). Точные координаты уходят на сервер, только если ты сам предложишь новое место.`}</p></div>
-        ${this.rune(ru`Разрешить геопозицию`, 'gps', this.I.pin)}${DEV ? '<button class="btn ghost wide demo">Демо-режим (разработка)</button>' : ''}`;
+      // 5.1: GPS не нужен — Ловчий сам выбирает место в Атласе мира (откроется на карте: Walk.ensurePlaced) и ходит джойстиком
+      if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>${ru`Весь мир — твой`}</h2>
+        <p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).`}</p></div>
+        ${this.rune(ru`В путь`, 'go', this.I.pin)}`;
       body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
       const nx = body.querySelector('.next');
       Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
@@ -978,10 +960,7 @@ const UI = {
           Sfx.play('catch'); step(4);
         };
       } else if (n === 4) {
-        const finish = demo => { Cfg.s.demo = demo; Cfg.save(); Login.close(root, done); };
-        body.querySelector('.gps').onclick = () => finish(false);
-        const demoBtn = body.querySelector('.demo');
-        if (demoBtn) demoBtn.onclick = () => finish(true);
+        body.querySelector('.go').onclick = () => { Sfx.play('tap'); Login.close(root, done); };
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n ? n + 1 : 2); }; // 4.24: истории перед игрой больше нет
     };
     step(from);

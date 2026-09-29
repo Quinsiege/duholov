@@ -362,7 +362,6 @@ Object.assign(UI, {
     const sec = t => `<div class="set-h">${t}</div>`;
     const scr = this.screen(ru`Настройки`, `
       ${Game.on() ? `${sec(ru`Учётная запись`)}<div class="list acc-box"></div>` : ''}
-      ${DEV ? `${sec('Разработка')}<div class="list">${row('demo', 'target', 'Демо-режим', 'Джойстик вместо GPS. Доступен только на локальном сервере.')}</div>` : ''}
       ${sec(ru`Язык`)}
       <div class="list"><button class="row link set-row lang-pick"><span class="set-ico">${this.I.text}</span><div class="row-main"><b>${ru`Язык игры`}${I18N.lang === 'en' ? '' : ' · Language'}</b><small>${I18N.LANGS[I18N.lang]}</small></div><span class="set-chev">›</span></button></div>
       ${sec(ru`Звук и отклик`)}
@@ -374,6 +373,8 @@ Object.assign(UI, {
       </div>
       ${sec(ru`Игра`)}
       <div class="list">
+        <div class="row set-row"><span class="set-ico">${this.I.hand}</span><div class="row-main"><b>${ru`Джойстик`}</b><small>${ru`Наклон — шаг, до упора — бег`}</small></div>
+          <div class="seg joy-side">${[['left', ru`Слева`], ['right', ru`Справа`]].map(([k, t]) => `<button data-side="${k}" class="${(s.joySide || 'right') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('ar', 'camera', ru`AR-камера`, ru`Духи появляются поверх изображения с камеры.`)}
         ${row('tapThrow', 'hand', ru`Бросок одним касанием`, ru`Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.`)}
         ${row('weather', 'sun', ru`Настоящая погода`, ru`Погода через Open-Meteo (координаты с точностью ~1 км). Выключено — погода Нави моделируется.`)}
@@ -387,7 +388,7 @@ Object.assign(UI, {
         ${row('fog', 'map', ru`Туман Нави`, ru`Всё, что дальше от тебя, скрыто дымкой: она расступается вокруг тебя и снова смыкается, когда уходишь.`)}
         ${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}
         ${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}
-        ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте, реже обновление и запросы GPS.`)}
+        ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`)}
         ${row('awake', 'battery', ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`)}
       </div>
       <div class="list install-list">
@@ -413,15 +414,21 @@ Object.assign(UI, {
     scr.addEventListener('change', e => {
       const k = e.target.dataset.k; if (!k) return;
       s[k] = e.target.checked; Cfg.save();
-      if (k === 'demo') { s.demo ? MapView.startDemo() : (MapView._offered = false, MapView.startGPS()); }
       if (k === 'sound' && s.sound) { Sfx.init(); Sfx.play('tap'); }
       if (k === 'weather') Sky.update(true);
       if (k === 'music') { Sfx.init(); Music.apply(); }
-      if (k === 'eco') { document.body.classList.toggle('eco', s.eco); if (!s.demo) MapView.startGPS(); }
+      if (k === 'eco') document.body.classList.toggle('eco', s.eco);
       if (k === 'bigText' || k === 'calm') this.applyA11y();
       if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
       if (k === 'fog') Fog.apply();
       if (k === 'awake') Awake.apply();
+    });
+    // 5.1: джойстик слева или справа
+    scr.querySelector('.joy-side').addEventListener('click', e => {
+      const b = e.target.closest('[data-side]'); if (!b) return;
+      Sfx.play('tap'); s.joySide = b.dataset.side; Cfg.save();
+      U.$$('[data-side]', scr).forEach(x => x.classList.toggle('on', x === b));
+      Walk.side();
     });
     scr.querySelector('.map-theme').addEventListener('click', e => {
       const b = e.target.closest('[data-theme]'); if (!b) return;

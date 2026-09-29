@@ -8,7 +8,7 @@
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '5.0.0', // 5.0 (4.28): мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
+  MIN_CLIENT: '5.1.0', // 5.1: джойстик и Атлас вместо GPS; 5.0: мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -111,6 +111,14 @@ const GameCore = {
     }
     ctx.srv.pos = { lat: p.lat, lng: p.lng, t: ctx.now, acc: Math.round(p.acc) };
     if (!(p.acc > Rules.SPEED.ACC)) this.pace(ctx, { lat: p.lat, lng: p.lng, t: ctx.now });
+    this.keepPos(p);
+  },
+  // 5.1: место Ловчего в мире игры (выбрано в Атласе, дальше — джойстиком) — в прогрессе: на новом устройстве и после
+  // долгого перерыва Ловчий там же (srv.pos через сутки без входа стирается — 028). Пишется, если сдвинулся дальше 25 м
+  keepPos(p) {
+    if (!S.d || !p) return;
+    const w = S.d.wpos;
+    if (!w || !(U.dist(w.lat, w.lng, p.lat, p.lng) <= 25)) S.d.wpos = { lat: +(+p.lat).toFixed(5), lng: +(+p.lng).toFixed(5) };
   },
   // 4.20: скорость Ловчего; быстрее бега — пауза на COOL. 4.24.1: по недавним точкам (Rules.paceStep) — после остановки
   // пауза снимается, как только Ловчий полминуты идёт шагом или стоит
@@ -121,9 +129,10 @@ const GameCore = {
   },
   speedUntil(ctx) { return (ctx.srv.spd && ctx.srv.spd.until) || ctx.srv.speedUntil || 0; },
   here(ctx) {
-    this.need(ctx.pos, ru`Нет данных о местоположении — включи GPS`);
-    this.need(!(ctx.srv.fastUntil > ctx.now), ru`Похоже, GPS скачет — подожди минуту`);
-    this.need(!(this.speedUntil(ctx) > ctx.now), ru`Слишком быстро — около ${(ctx.srv.spd && ctx.srv.spd.kmh) || ctx.srv.kmh || 20} км/ч. Духолов — игра для пешеходов: сбавь скорость до шага или бега`);
+    // 5.1: GPS больше нет — позицию двигает джойстик (walk.js), место выбирают в Атласе; проверки скорости — защита от накрутки
+    this.need(ctx.pos, ru`Ловчий ещё не на карте — выбери место в Атласе мира`);
+    this.need(!(ctx.srv.fastUntil > ctx.now), ru`Ловчий слишком резко сменил место — подожди минуту`);
+    this.need(!(this.speedUntil(ctx) > ctx.now), ru`Слишком быстро — подожди минуту`);
     // 4.26: после дальнего перемещения — перезарядка (Rules.jumpWait) от места и времени последнего действия на карте,
     // сколько бы ни прошло с последней точки. Позиция при этом принимается как обычно; место действия запоминается
     const wait = Rules.jumpWait(ctx.srv.at, ctx.pos, ctx.now);
@@ -679,7 +688,38 @@ const GameCore = {
         my: { s: my.s, n: my.n | 0, k: my.k | 0, pts: Rules.alaPoints(my) } };
     },
 
-    // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.
+    // 5.1: телепорт через Атлас мира. Первое появление (first и ещё нет S.d.atlasV: новичок или первый вход после 5.1) — даром
+    // и без перезарядки; дальше — раз в Rules.MOVE.TP_CD даром или сразу за Врата Перепутицы (Rules.MOVE.TP_ITEM).
+    // Врата тратятся только с согласия Ловчего (item: true — Атлас спрашивает). Позиция, место последнего действия (jumpWait), начало отрезка пути и счётчик скорости переставляются в новую точку:
+    // без «Слишком быстро», без перезарядки дальнего перемещения и без засчитанных километров
+    teleport(a, ctx) {
+      const M = Rules.MOVE, lat = +a.lat, lng = +a.lng;
+      this.need(typeof a.lat === 'number' && typeof a.lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= M.LAT && Math.abs(lng) <= 180, ru`Такого места нет на карте`);
+      this.limit(ctx, 'tp', 30, 3600000);
+      const first = a.first === true && !S.d.atlasV;
+      let used = null;
+      if (!first) {
+        const wait = Rules.tpWait(S.d.tpAt, ctx.now);
+        if (wait > 0) {
+          this.need(a.item === true, ru`Врата откроются через ${Math.ceil(wait / 60000)} мин — или шагни сразу через Врата Перепутицы`);
+          this.need((S.d.items[M.TP_ITEM] || 0) > 0, ru`Нет Врат Перепутицы — их можно купить в Лавке`);
+          S.d.items[M.TP_ITEM]--; used = M.TP_ITEM;
+        } else S.d.tpAt = ctx.now;
+      }
+      S.d.atlasV = 1;
+      ctx.srv.enc = null; // встреча с духом не переезжает вместе с Ловчим
+      const p = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
+      ctx.srv.pos = { ...p, t: ctx.now, acc: 5 };
+      ctx.srv.at = { ...p, t: ctx.now };
+      ctx.srv.mv = { ...p, t: ctx.now };
+      ctx.srv.spd = { pts: [], until: 0, kmh: 0 };
+      delete ctx.srv.fastUntil; delete ctx.srv.speedUntil; delete ctx.srv.kmh; delete ctx.srv.pace;
+      ctx.pos = { ...p, acc: 5 }; ctx.prevPos = ctx.srv.pos; MapView.pos = ctx.pos;
+      S.d.wpos = null; this.keepPos(p);
+      return { ok: true, lat: p.lat, lng: p.lng, first, used, cd: Rules.tpWait(S.d.tpAt, ctx.now) };
+    },
+
+    // Пройденный путь: точки с отметками времени (5.1: их кладёт джойстик, walk.js). Быстрее бега (Rules.SPEED.MAX) не считается.
     move(a, ctx) {
       const pts = (Array.isArray(a.pts) ? a.pts : []).slice(0, 200)
         .filter(q => Array.isArray(q) && q.length >= 4 && [0, 1, 2, 3].every(i => Number.isFinite(+q[i])))

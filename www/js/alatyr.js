@@ -293,7 +293,7 @@ const Alatyr = {
       line = ru`Сезон ${st.s} · все грани собраны`; bar = 1; sub = ru`Кощей идёт за камнем…`;
     } else {
       line = ru`Сезон ${st.s} · грань ${st.n + 1} из ${st.K}`; bar = st.pct;
-      sub = st.locked ? ru`Грань «?» откроется с обновлением игры` : ru`${this.roadName(st.myth)}: ${U.fmtNum(st.have)} / ${U.fmtNum(st.need)}`;
+      sub = st.locked ? ru`Грань «?» откроется с обновлением игры` : ru`${this.roadName(st.myth)}: ${U.fmtNum(st.have)} / ${(st.est ? '≈ ' : '') + U.fmtNum(st.need)}`;
     }
     top.style.setProperty('--road', f ? this.KOS : this.color(st.myth));
     top.innerHTML = `<div class="ala-top-stone">${this.stone(st, 136)}</div>
@@ -350,17 +350,24 @@ const Alatyr = {
         : ru`Мифология сезона ${st.s + 1}. Когда Орден соберёт все ${st.K} граней, Кощей придёт за камнем и расколет его — и из трещины выйдет новый мир.`}</small></div></div>`;
   },
   // вкладка «Грани»: грани сезона по порядку и «?»
+  // 5.x: множитель Ордена — цена новых граней растёт с числом активных Ловчих (Rules.ALATYR_WORLD.GOALS)
+  mulCard() {
+    const G = Rules.ALATYR_WORLD.GOALS, N = Ev.ala.N || 0, mul = Rules.alaMul(N).toLocaleString(I18N.locale, { maximumFractionDigits: 2 });
+    return `<div class="ala-mul"><b>${ru`Множитель Ордена ×${mul} — активных Ловчих ${G.LEVEL}+ уровня: ${U.fmtNum(N)}`}</b>
+      <small>${ru`Чем больше Ловчих ${G.LEVEL}+ уровня играли за последние ${G.DAYS} дней, тем дороже новые грани: +${Math.round(G.PER * 100)}% за каждого, но не больше чем вдвое дороже прошлой грани. Цена грани фиксируется, когда грань открывается, и дальше не меняется. «≈» — ориентир для граней, что ещё не открылись.`}</small></div>`;
+  },
   paneFaces() {
-    const st = this.stage();
+    const st = this.stage(), ap = p => (p.kind === 'est' ? '≈ ' : '') + U.fmtNum(p.p);
     const rows = st.faces.map((m, k) => {
       const done = k < st.n || st.done, cur = !st.done && k === st.n;
-      const side = done ? `<span class="q-ok" aria-label="${ru`Собрана`}">✓</span>` : cur ? `<i>${U.fmtNum(st.have)} / ${U.fmtNum(st.need)}</i>` : `<i class="dim">${U.fmtNum(Rules.alaGoal(st.s, k))}</i>`;
+      const side = done ? `<span class="q-ok" aria-label="${ru`Собрана`}">✓</span>` : cur ? `<i>${U.fmtNum(st.have)} / ${ap(st.prices[k])}</i>` : `<i class="dim">${ap(st.prices[k])}</i>`;
       return `<div class="ala-face ${done ? 'done' : cur ? 'cur' : ''}${m ? '' : ' nomyth'}" style="--road:${this.color(m)}">${this.gem(m, 22)}<div class="af-main"><b>${m ? MYTHS[m].name : ru`Грань «?»`}</b><small>${m ? this.roadName(m) : ru`откроется с обновлением игры`}</small>
         ${cur ? `<div class="pbar"><i style="width:${(st.pct * 100).toFixed(1)}%"></i></div>` : ''}</div>${side}</div>`;
     }).join('');
-    return `<div class="ala-faces">${rows}
+    const cost = (st.prices.some(p => p.kind === 'est') ? '≈ ' : '') + U.fmtNum(st.prices.reduce((a, p) => a + p.p, 0));
+    return `${this.mulCard()}<div class="ala-faces">${rows}
       <div class="ala-face nx">${this.gem(null, 22)}<div class="af-main"><b>?</b><small>${ru`Мифология сезона ${st.s + 1}: откроется, когда Кощей расколет камень`}</small></div><i class="dim">🔒</i></div></div>
-      <div class="q-note">${ru`В сезоне ${st.s} у камня ${st.K} граней — по одной на каждую мифологию. Новая мифология сезона — последняя грань. Всего за сезон — ${U.fmtNum(Rules.alaCost(st.s))} осколков.`}</div>`;
+      <div class="q-note">${ru`В сезоне ${st.s} у камня ${st.K} граней — по одной на каждую мифологию. Новая мифология сезона — последняя грань. Всего за сезон — ${cost} осколков.`}</div>`;
   },
   // вкладка «Вклад»: мой вклад в сезон и за всё время, награда сезона
   paneMine() {

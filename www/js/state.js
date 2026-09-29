@@ -81,7 +81,7 @@ const S = {
   newGame(name, starter) {
     this.d = {
       v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),
-      items: { charm: 30, honey: 3, water: 3, incense: 1 },
+      items: { charm: 30, honey: 3, water: 3, incense: 1, gate: 1 }, // 5.1: и одни Врата Перепутицы — сменить место через Атлас сразу
       essence: {}, spirits: [], dex: {}, cocoons: [{ id: U.uid(), km: 2, walked: 0, inc: true }],
       springs: {}, rifts: {}, caught: {}, incenseUntil: 0, lastPos: null, quests: null,
     };
@@ -488,7 +488,7 @@ const S = {
     return m;
   },
   // забрать посылку: сколько влезет в сумку — сначала редкое и нужное
-  PARCEL_ORDER: ['deadwater', 'gift', 'charm3', 'charm2', 'farpass', 'incense', 'brew', 'water', 'herb', 'honey', 'charm'],
+  PARCEL_ORDER: ['deadwater', 'gift', 'charm3', 'charm2', 'gate', 'farpass', 'incense', 'brew', 'water', 'herb', 'honey', 'charm'],
   parcelTake() {
     const P = this.d.parcel, got = [];
     if (!P) return got;

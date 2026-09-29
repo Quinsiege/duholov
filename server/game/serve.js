@@ -294,7 +294,7 @@ const TG = {
       return { chat_id: m.chat.id, text: `🔐 Вход в «Духолов» через твой Telegram${who}.\n\nНажми «Да, это я», только если ты сам сейчас входишь в игру. Если ссылку тебе прислал кто-то другой — это обман: не нажимай, иначе чужой человек получит доступ к твоему Ловчему.`,
         reply_markup: { inline_keyboard: [[{ text: '✅ Да, это я', callback_data: 'ok:' + code[1] }], [{ text: '✖ Нет, это не я', callback_data: 'no:' + code[1] }]] } };
     }
-    if (/^\/start\b/.test(String(m.text || ''))) return { chat_id: m.chat.id, text: 'Это бот игры «Духолов» — лови духов Нави на улицах своего города: https://duholov.ru' };
+    if (/^\/start\b/.test(String(m.text || ''))) return { chat_id: m.chat.id, text: 'Это бот игры «Духолов» — лови духов Нави по всему свету: https://duholov.ru' };
     return null;
   },
 };
@@ -486,6 +486,7 @@ async function realWeather(lat, lng) {
    не применена) — первый сезон с нуля, без финала */
 const World = {
   st: null, at: 0, p: null, TTL: 60000,
+  Nc: null, // 5.x: число активных Ловчих { v, at } (active)
   season(rows, now) {
     const [top, prev] = rows;
     if (!top) return { s: 1, from: 0, start: 0, fin: null, brk: null };
@@ -503,12 +504,23 @@ const World = {
     const sq = await db.from('alatyr_seasons').select('season, start_total, from_ms, finale_from, finale_to, kills, goal, broken_ms').order('season', { ascending: false }).limit(8);
     if (sq.error && depth === 0) console.warn('Алатырь: сезоны недоступны —', sq.error.message);
     const srows = sq.error ? [] : sq.data || [];
+    // 5.x: зафиксированные цены граней (033_alatyr_goals.sql) и число активных Ловчих; нет таблицы — базовые цены, без фиксации
+    const gq = await db.from('alatyr_goals').select('n, goal').order('n', { ascending: false }).limit(120);
+    if (gq.error && depth === 0) console.warn('Алатырь: цены граней недоступны —', gq.error.message);
+    const goals = {};
+    (gq.error ? [] : gq.data || []).forEach(r => { if (+r.goal > 0) goals[r.n] = +r.goal; });
     const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })), ...this.season(srows, now),
-      seasons: srows.map(r => this.row(r)), db: !sq.error };
+      seasons: srows.map(r => this.row(r)), db: !sq.error, gdb: !gq.error, goals, N: gq.error ? 0 : await this.active() };
     if (depth > 3) return st;
     // финал кончился, а Орден не одолел Кощея — раскол в конце финала
     if (st.db && st.fin && !st.brk && now >= st.fin.to) { if (await this.brk(st.s, st.fin.to)) return this.load(depth + 1); }
-    const stg = Rules.alaStage(st.s, st.total - st.start);
+    // 5.x: грань открылась (собрана предыдущая, начался сезон, первый запуск 5.x), а её цена ещё не записана — записать сейчас
+    const end = st.brk || (st.fin && st.fin.to) || 0; // раскол уже настал, а строки нового сезона нет — подождём её
+    if (st.gdb && !(end && now >= end)) {
+      const nf = Rules.alaNextFix(st.s, st.total - st.start, st);
+      if (nf >= 0 && await this.fix(nf, st)) return this.load(depth + 1);
+    }
+    const stg = Rules.alaStage(st.s, st.total - st.start, st);
     // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
     const n = stg.base + stg.n - 1;
     if (stg.n > 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
@@ -522,9 +534,31 @@ const World = {
     this.st = st; this.at = Date.now();
     const cut = Date.now() - 86400000;
     Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
-    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk };
+    // 5.x: цены граней — текущего сезона и последней грани прошлого (от неё ограничение ×CAP для первой грани сезона)
+    const low = Rules.alaBase(st.s) - 1, goals = {};
+    Object.keys(st.goals || {}).forEach(k => { if (+k >= low) goals[k] = st.goals[k]; });
+    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk, goals, N: st.N || 0 };
     Ev.alaSync();
     return st;
+  },
+  // 5.x: сколько Ловчих уровня GOALS.LEVEL+ играли за GOALS.DAYS дней (alatyr_active) — не чаще раза в 10 минут
+  async active() {
+    const c = this.Nc, G = Rules.ALATYR_WORLD.GOALS;
+    if (c && Date.now() - c.at < 600000) return c.v;
+    const r = await db.rpc('alatyr_active', { p_level: G.LEVEL, p_days: G.DAYS });
+    if (r.error) console.warn('Алатырь: число активных Ловчих —', r.error.message);
+    const v = r.error ? (c ? c.v : 0) : Math.max(0, Math.floor(+r.data) || 0);
+    this.Nc = { v, at: Date.now() };
+    return v;
+  },
+  // 5.x: записать цену открывшейся грани n (G — { goals, N } сервера); в базе уже есть — берём её (первый записавший побеждает)
+  async fix(n, G) {
+    const N = await this.active(), fresh = !Object.keys(G.goals || {}).length;
+    const prev = n > 0 ? Rules.alaPrices(n - 1, fresh ? { goals: {}, N: 0 } : G)[n - 1].p : 0; // до 5.x грани стоили базовую цену
+    const p = Rules.alaPriceNew(n, N, prev);
+    const got = +must(await db.rpc('alatyr_goal', { p_n: n, p_goal: p, p_players: N, p_mul: Rules.alaMul(N) })) || 0;
+    if (got > 0) { G.goals = G.goals || {}; G.goals[n] = got; G.N = N; if (got === p) console.warn(`Алатырь: цена грани ${n} — ${p} (активных Ловчих ${N}, ×${Rules.alaMul(N)})`); }
+    return got > 0;
   },
   async finale(s, now) {
     const f = Rules.alaFinale(now);
@@ -556,7 +590,8 @@ const World = {
     const road = Rules.alatyrRoad(n), f = Rules.alaFace(n);
     if (!road) return false; // мифологии этой грани ещё нет в игре — грань ждёт обновления
     let at = st && st.s === f.s ? st.start : 0;
-    for (let k = 0; k <= f.k; k++) at += Rules.alaGoal(f.s, k);
+    const P = Rules.alaSeasonPrices(f.s, st); // 5.x: по зафиксированным ценам граней
+    for (let k = 0; k <= f.k; k++) at += P[k].p;
     const t = Rules.alatyrOpen(now);
     return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: road, p_goal: at, p_from: t.from, p_to: t.to }));
   },
@@ -567,8 +602,14 @@ const World = {
     const now = Date.now(), st = this.st;
     // сезон сменился, а кэш об этом ещё не знает — вехи отметит load по свежему состоянию
     if (!st || Ev.alaSeason(now) !== st.s) { this.at = 0; await this.get(); return; }
-    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start), B = Rules.alaStage(st.s, (+r.total || 0) - st.start);
     let changed = false;
+    // 5.x: собрана грань — цена следующей фиксируется сейчас, до того как считать, не собрана ли и она
+    for (let i = 0; st.gdb && i < 12; i++) {
+      const nf = Rules.alaNextFix(st.s, (+r.total || 0) - st.start, st);
+      if (nf < 0 || !(await this.fix(nf, st))) break;
+      changed = true;
+    }
+    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start, st), B = Rules.alaStage(st.s, (+r.total || 0) - st.start, st);
     for (let k = Math.max(A.n, B.n - 3); k < B.n; k++) {
       if (await this.open(B.base + k, now, st)) { changed = true; console.warn(`Алатырь: сезон ${st.s}, грань ${k + 1} из ${B.K} собрана — ${B.faces[k]}`); }
     }

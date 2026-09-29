@@ -563,6 +563,24 @@ const Art = (() => {
           `<g fill="#ffe9a0" stroke="#8a5a14" stroke-width="1.6" stroke-linejoin="round">${rays}<circle cx="50" cy="46" r="10"/></g><circle cx="50" cy="46" r="4.5" fill="#f5c451" stroke="#8a5a14" stroke-width="1.6"/>` +
           `<path d="M16 40A34 34 0 0 1 36 15" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>` + glint(75, 19, 10));
       }
+      // 5.1: Врата Перепутицы — золотое рунное кольцо на каменном подножии, внутри — воронка дорог (бирюза в фиолет)
+      case 'gate': {
+        const arm = a => `<path d="M50 46C50 33 60 25 71 27" transform="rotate(${a} 50 46)"/>`;
+        return svg(`<defs><radialGradient id="${k}a" cx=".5" cy=".5" r=".55"><stop offset="0" stop-color="#f0fdfa"/><stop offset=".2" stop-color="#5eead4"/><stop offset=".55" stop-color="#7c3aed"/><stop offset="1" stop-color="#1e0b3d"/></radialGradient>` +
+          `<linearGradient id="${k}b" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".45" stop-color="#f3cf6b"/><stop offset="1" stop-color="#b8741a"/></linearGradient>` +
+          `<linearGradient id="${k}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b7bb0"/><stop offset="1" stop-color="#3b2d5c"/></linearGradient></defs>` +
+          floor(32, 94) +
+          `<path d="M26 92L33 80H67L74 92Z" fill="url(#${k}c)" stroke="#1e0b3d" stroke-width="2.6" stroke-linejoin="round"/><path d="M34 84H66" stroke="#c4b5fd" stroke-width="1.6" opacity=".6"/>` +
+          `<circle cx="50" cy="46" r="31" fill="url(#${k}a)"/>` +
+          `<g class="art-gate-spin" fill="none" stroke="#ccfbf1" stroke-width="2.6" stroke-linecap="round" opacity=".85">${[0, 90, 180, 270].map(arm).join('')}</g>` +
+          `<g class="art-gate-spin" fill="none" stroke="#a78bfa" stroke-width="1.6" stroke-linecap="round" opacity=".7">${[45, 135, 225, 315].map(arm).join('')}</g>` +
+          `<circle cx="50" cy="46" r="6" fill="#fff" opacity=".95"/><circle cx="50" cy="46" r="10" fill="#fff" opacity=".25"/>` +
+          `<circle cx="50" cy="46" r="34" fill="none" stroke="#3a1d06" stroke-width="10.5"/><circle cx="50" cy="46" r="34" fill="none" stroke="url(#${k}b)" stroke-width="6.5"/>` +
+          `<circle cx="50" cy="46" r="34" fill="none" stroke="#fff4c4" stroke-width="2.4" stroke-dasharray="0 8.9" stroke-linecap="round"/>` +
+          `<path d="M50 7l5 6-5 6-5-6Z" fill="url(#${k}b)" stroke="#3a1d06" stroke-width="2"/><path d="M40 78l4-6h12l4 6" fill="url(#${k}b)" stroke="#3a1d06" stroke-width="2.2" stroke-linejoin="round"/>` +
+          `<path d="M21 33A32 32 0 0 1 37 16" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>` +
+          glint(80, 18, 7) + glint(20, 70, 5, '#ccfbf1', .9));
+      }
       // Дальний пропуск: грамота Ордена на свитке с печатью Разлома
       case 'farpass': return svg(`<defs><linearGradient id="${k}a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f3d58f"/><stop offset=".45" stop-color="#fff6dc"/><stop offset="1" stop-color="#e8c47a"/></linearGradient>` +
         `<linearGradient id="${k}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3cf"/><stop offset=".5" stop-color="#e9c27a"/><stop offset="1" stop-color="#9a6528"/></linearGradient>` +

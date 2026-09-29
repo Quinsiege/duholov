@@ -5,11 +5,7 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -17,7 +13,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import org.json.JSONArray
-import android.webkit.GeolocationPermissions
 import android.webkit.JavascriptInterface
 import android.os.CancellationSignal
 import androidx.credentials.CredentialManager
@@ -58,9 +53,9 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 12 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 13 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
-        // геолокацию и камеру получает только сама игра, не страницы сервисов входа
+        // камеру получает только сама игра, не страницы сервисов входа (5.1: геолокации больше нет — игра без GPS)
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
         // 3: вход через Яндекс, VK и Telegram — внутри приложения, чтобы сервис вернул игрока прямо в игру
         // (Google во встроенные окна не пускает — эту кнопку игра в приложении не показывает)
@@ -80,15 +75,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var billing: Billing // 11: Google Play Billing (сборка play; в остальных — заглушка)
     private lateinit var yandexLogin: ActivityResultLauncher<YandexAuthLoginOptions>
     private var paying = false // 6: открыта оплата ЮKassa — до возврата на свои страницы
-    private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
     private var pendingCamera: PermissionRequest? = null
-
-    private val locationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-            val granted = result.values.any { it }
-            pendingGeo?.let { (origin, callback) -> callback.invoke(origin, granted, false) }
-            pendingGeo = null
-        }
 
     private val cameraPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -135,38 +122,6 @@ class MainActivity : ComponentActivity() {
     }
     private fun googleResult(o: JSONObject) {
         if (onGame()) web.evaluateJavascript("window.nativeGoogle && window.nativeGoogle($o)", null)
-    }
-
-    // 9: положение только по сетям (Wi-Fi и вышки связи, без спутников) — игра сверяет с ним GPS: в России спутниковый
-    // сигнал глушат и подменяют, а положение по сетям подмена не трогает. Ответ — window.nativeNetFix({ lat, lng, acc } | { error })
-    private fun netFix() {
-        val lm = getSystemService(LOCATION_SERVICE) as LocationManager
-        var sent = false
-        fun send(l: Location?) {
-            if (sent) return
-            sent = true
-            val o = if (l != null) JSONObject().put("lat", l.latitude).put("lng", l.longitude).put("acc", l.accuracy.toDouble()).put("t", l.time)
-                else JSONObject().put("error", "none")
-            if (onGame()) web.evaluateJavascript("window.nativeNetFix && window.nativeNetFix($o)", null)
-        }
-        if (!onGame() || !(has(Manifest.permission.ACCESS_COARSE_LOCATION) || has(Manifest.permission.ACCESS_FINE_LOCATION))) return send(null)
-        try {
-            if (!lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) return send(null)
-            if (Build.VERSION.SDK_INT >= 30) {
-                lm.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, ContextCompat.getMainExecutor(this)) { send(it) }
-            } else {
-                val listener = object : LocationListener {
-                    override fun onLocationChanged(l: Location) { lm.removeUpdates(this); send(l) }
-                    override fun onProviderEnabled(provider: String) {}
-                    override fun onProviderDisabled(provider: String) {}
-                    @Deprecated("Deprecated in Java")
-                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-                }
-                @Suppress("DEPRECATION")
-                lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, listener, mainLooper)
-                web.postDelayed({ if (!sent) { lm.removeUpdates(listener); send(null) } }, 25000)
-            }
-        } catch (e: Exception) { send(null) }
     }
 
     // 6: ссылка не на страницу (intent:, sberpay:, bank…: — приложение банка, СБП, SberPay, T-Pay) — открыть приложение;
@@ -224,7 +179,7 @@ class MainActivity : ComponentActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
-            setGeolocationEnabled(true)
+            setGeolocationEnabled(false) // 5.1: игра без GPS — Ловчий ходит джойстиком
             // 10: явно — без доступа к файлам телефона и без http на https-страницах
             allowFileAccess = false
             allowContentAccess = false
@@ -256,7 +211,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 5: экран больше не держится включённым всегда (телефон грелся сильнее, чем с сайта: экран, GPS и карта работали без остановки).
+        // 5: экран больше не держится включённым всегда (телефон грелся сильнее, чем с сайта: экран, GPS и карта работали без остановки, 5.1: GPS больше нет).
         // Не гасить экран — по настройке игры «Не гасить экран»: игра зовёт DuholovNative.keepScreenOn(true/false)
         web.addJavascriptInterface(object {
             @JavascriptInterface
@@ -277,12 +232,6 @@ class MainActivity : ComponentActivity() {
             @JavascriptInterface
             fun yandexSignIn() {
                 runOnUiThread { signInYandex() }
-            }
-
-            // 9: положение по сетям (ответ — window.nativeNetFix)
-            @JavascriptInterface
-            fun netLocation() {
-                runOnUiThread { netFix() }
             }
 
             // 11: Казна через Google Play (сборка play): наборы и цены, покупка, незасчитанные покупки → window.nativeBilling
@@ -306,19 +255,6 @@ class MainActivity : ComponentActivity() {
         web.setDownloadListener { url, _, _, _, _ -> openExternal(Uri.parse(url)) }
 
         web.webChromeClient = object : WebChromeClient() {
-            override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
-                if (!isOwnOrigin(origin)) {
-                    callback.invoke(origin, false, false)
-                } else if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION)) {
-                    callback.invoke(origin, true, false)
-                } else {
-                    pendingGeo = origin to callback
-                    locationPermission.launch(
-                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                    )
-                }
-            }
-
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread {
                     if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in request.resources && isOwnOrigin(request.origin.toString())) {

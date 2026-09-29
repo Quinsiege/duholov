@@ -125,7 +125,7 @@ async function detail(s, done) {
   const shift = dist(s.lat, s.lng, s.photo_lat, s.photo_lng);
   box.innerHTML = `<div class="detail">
     <div><img class="photo" src="${photoUrl(s.photo)}" alt="Снимок объекта">
-      <p class="small muted">Автор: ${esc(s.author || '—')} · снято ${new Date(s.shot_at).toLocaleString('ru-RU')} · GPS ±${Math.round(s.accuracy)} м</p></div>
+      <p class="small muted">Автор: ${esc(s.author || '—')} · снято ${new Date(s.shot_at).toLocaleString('ru-RU')} · точность ±${Math.round(s.accuracy)} м</p></div>
     <div>
       <h2 style="margin-top:0">${esc(s.name)}</h2>
       ${s.descr ? `<p>${esc(s.descr)}</p>` : '<p class="muted small">Без описания</p>'}
@@ -207,7 +207,6 @@ function poiMap() {
   const m = L.map($('.bigmap')).setView([55.7539, 37.6208], 16);
   maps.push(m);
   tiles().addTo(m);
-  navigator.geolocation && navigator.geolocation.getCurrentPosition(p => m.setView([p.coords.latitude, p.coords.longitude], 16), () => {}, { timeout: 8000 });
   const layer = L.layerGroup().addTo(m), st = $('.st');
   let seq = 0, loaded = null;
   // грузим с запасом вокруг видимой области; пока карта в её пределах (например, сдвиг при открытии подсказки) — не перегружаем
