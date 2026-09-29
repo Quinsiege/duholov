@@ -1128,7 +1128,7 @@
   });
 
   /* ---------- сервер игры (server/game/core.js) — с базой в памяти ---------- */
-  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], lots: [], chat: [], reports: [], pvpQ: {}, pvpM: {} };
+  const DB = { pois: {}, players: {}, saves: {}, links: [], gifts: [], trades: {}, subs: [], league: [], order: {}, holds: {}, rooms: {}, payments: [], promos: {}, promoUsed: {}, lots: [], chat: [], reports: [], pvpQ: {}, pvpM: {} };
   const envFor = who => ({
     poi: async id => DB.pois[id] || null,
     poiCovered: async (lat, lng) => Object.values(DB.pois).some(p => p.imported && Math.abs(p.lat - lat) < 0.011 && Math.abs(p.lng - lng) < 0.02),
@@ -1224,6 +1224,21 @@
     chatReport: async (id, pid) => { if (!DB.reports.some(r => r.id === id && r.pid === pid)) DB.reports.push({ id, pid }); const n = DB.reports.filter(r => r.id === id).length; if (n >= 3) DB.chat.find(m => m.id === id).hidden = true; return n; },
     paidList: async () => DB.payments.filter(p => p.uid === who.uid && p.status === 'succeeded' && !p.credited).map(p => ({ id: p.id, pack: p.pack, zlat: p.zlat })),
     payCredited: async ids => { DB.payments.forEach(p => { if (p.uid === who.uid && ids.includes(p.id)) p.credited = true; }); },
+    // 5.x: промокоды — как promo_redeem / promo_done (034_promo_codes.sql); who.noPromo — база ещё без миграции
+    promo: async code => {
+      if (who.noPromo) return { error: 'off' };
+      const c = DB.promos[code], key = code + ':' + who.uid, now = Date.now();
+      if (!c) return { error: 'not_found' };
+      const rd = DB.promoUsed[key];
+      if (rd) return rd.done ? { error: 'already' } : { reward: { ...c.reward }, again: true };
+      if (!c.active) return { error: 'inactive' };
+      if (c.starts_at && now < c.starts_at) return { error: 'not_started' };
+      if (c.ends_at && now >= c.ends_at) return { error: 'expired' };
+      if (c.max_uses && c.used >= c.max_uses) return { error: 'exhausted' };
+      DB.promoUsed[key] = { done: false }; c.used++;
+      return { reward: { ...c.reward } };
+    },
+    promoDone: async code => { const rd = DB.promoUsed[code + ':' + who.uid]; if (rd) rd.done = true; },
     // 4.16: Лига — как 022_league_pvp.sql: очередь, пара (взаимные окна, только свежие заявки), бой с версией, итоги
     pvpFind: async t => {
       const live = Object.values(DB.pvpM).find(m => m.status === 'live' && (m.a === who.uid || m.b === who.uid));
@@ -1977,6 +1992,67 @@
     // старые сохранения: гривны переходят в монеты один к одному
     A.data.grivna = 77; A.data.zlat = 3;
     await must(A, 'load'); eq(A.data.zlat, 80); ok(!('grivna' in A.data), 'поле гривен убрано');
+  });
+  atest('Сервер: промокоды — награда один раз на аккаунт, лимит, сроки, выключенные, регистр, перебор (5.x)', async () => {
+    const now = Date.now(), day = 86400000;
+    Object.assign(DB.promos, {
+      PLAYTEST: { reward: { zlat: 100, charm3: 2 }, max_uses: null, used: 0, active: true },
+      'ONLY-2': { reward: { sparks: 500 }, max_uses: 2, used: 0, active: true },
+      OLD: { reward: { zlat: 5 }, used: 0, active: true, ends_at: now - day },
+      SOON: { reward: { zlat: 5 }, used: 0, active: true, starts_at: now + day },
+      OFF1: { reward: { zlat: 5 }, used: 0, active: false },
+      JUNK: { reward: { zlat: 50, sparks: -5, xp: 1e9, nichego: 3, constructor: 1 }, used: 0, active: true },
+    });
+    const A = await newPlayer('pr1', 55.52, 37.4, 'Промо'), B = await newPlayer('pr2', 55.52, 37.4, 'Промо2'), C = await newPlayer('pr3', 55.52, 37.4, 'Промо3');
+    // успешный ввод: монеты и предметы, код — без пробелов и в любом регистре
+    const z0 = A.data.zlat || 0, c0 = A.data.items.charm3 || 0;
+    const r = await must(A, 'promo', { code: '  playTest ' });
+    eq(r.code, 'PLAYTEST'); eq(A.data.zlat, z0 + 100, '+100 монет'); eq(A.data.items.charm3, c0 + 2, 'и предметы');
+    ok(r.got.some(x => x.k === 'zlat' && x.n === 100) && r.got.some(x => x.k === 'charm3' && x.n === 2), 'список полученного');
+    eq(DB.promoUsed['PLAYTEST:pr1'].done, true, 'после сохранения база отмечает награду выданной');
+    // повтор тем же аккаунтом — «уже вводил», награды нет
+    await refuse(A, 'promo', { code: 'PLAYTEST' }, /уже вводил/);
+    await refuse(A, 'promo', { code: 'play test' }, /уже вводил/);
+    eq(A.data.zlat, z0 + 100, 'повтор ничего не дал');
+    // русские буквы, похожие на латинские (Р, А, Т, Е, С) — тот же код
+    const zb = B.data.zlat || 0;
+    await must(B, 'promo', { code: 'РLАYТЕSТ' }); eq(B.data.zlat, zb + 100);
+    // лимит использований
+    await must(A, 'promo', { code: 'only-2' }); await must(B, 'promo', { code: 'ONLY-2' });
+    await refuse(C, 'promo', { code: 'ONLY-2' }, /закончились/);
+    eq(DB.promos['ONLY-2'].used, 2);
+    // сроки, выключенный, несуществующий, неверный вид
+    await refuse(C, 'promo', { code: 'OLD' }, /больше не действует/);
+    await refuse(C, 'promo', { code: 'SOON' }, /ещё не начал/);
+    await refuse(C, 'promo', { code: 'OFF1' }, /больше не действует/);
+    await refuse(C, 'promo', { code: 'NOPE' }, /Такого промокода нет/);
+    await refuse(C, 'promo', { code: 'a!' }, /Такого промокода нет/);
+    await refuse(C, 'promo', { code: 'x'.repeat(33) }, /Такого промокода нет/);
+    ok(!DB.promoUsed['OLD:pr3'] && !DB.promoUsed['ONLY-2:pr3'], 'отказы не гасят код');
+    // из базы — только известные ключи и положительные числа
+    const zc = C.data.zlat || 0, sc = C.data.sparks, xc = C.data.xp;
+    const j = await must(C, 'promo', { code: 'JUNK' });
+    eq(C.data.zlat, zc + 50); eq(C.data.sparks, sc); eq(C.data.xp, xc); eq(j.got.length, 1);
+    // сохранение прогресса не прошло (код погашен, награды в прогрессе нет) — повтор выдаёт её, а не «уже вводил»
+    const D = await newPlayer('pr4', 55.52, 37.4, 'Промо4'), zd = D.data.zlat || 0;
+    DB.promoUsed['PLAYTEST:pr4'] = { done: false };
+    await must(D, 'promo', { code: 'PLAYTEST' }); eq(D.data.zlat, zd + 100, 'награда выдана один раз');
+    eq(DB.promoUsed['PLAYTEST:pr4'].done, true);
+    await refuse(D, 'promo', { code: 'PLAYTEST' }, /уже вводил/); eq(D.data.zlat, zd + 100);
+    // награда в прогрессе есть, а отметка до базы не дошла — «уже вводил», и отметка ставится
+    DB.promoUsed['PLAYTEST:pr4'].done = false;
+    await refuse(D, 'promo', { code: 'PLAYTEST' }, /уже вводил/);
+    eq(DB.promoUsed['PLAYTEST:pr4'].done, true); eq(D.data.zlat, zd + 100);
+    // перебор: не больше 10 попыток в час (и верный код после этого не проходит), через час — снова можно
+    const E = await newPlayer('pr5', 55.52, 37.4, 'Перебор'), ze = E.data.zlat || 0;
+    for (let i = 0; i < 10; i++) await refuse(E, 'promo', { code: 'GUESS' + i }, /Такого промокода нет/);
+    await refuse(E, 'promo', { code: 'PLAYTEST' }, /Слишком много попыток — попробуй через час/);
+    eq(E.data.zlat || 0, ze);
+    E.srv.rl.promo[1] -= 3600001;
+    await must(E, 'promo', { code: 'PLAYTEST' }); eq(E.data.zlat, ze + 100);
+    // база ещё без миграции — понятный отказ, а не ошибка сервера
+    const F = await newPlayer('pr6', 55.52, 37.4, 'Промо6'); F.noPromo = true;
+    await refuse(F, 'promo', { code: 'PLAYTEST' }, /пока недоступны/);
   });
   // 4.17: дух-стикер — плёнка на обороте с кодом духа; содрал — дух привязан, продать нельзя
   atest('Сервер: привязка духа — плёнку содрать один раз, привязанного не продать, код духа идёт с ним через аукцион', async () => {

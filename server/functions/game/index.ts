@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.7';
+const APP_VERSION = '5.1.8';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -3072,6 +3072,7 @@ const J = {
       case 'passGold': return { ico: glyph('★', 'gold'), title: ru`Открыта Золотая тропа`, sub: e.season || '' };
       case 'exchange': return { ico: glyph('⇄', 'gold'), title: ru`Обмен в Лавке`, sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${ru`${e.zlat || 0} монет`}` };
       case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} монет` };
+      case 'promo': return { ico: glyph('✦', 'gold'), title: ru`Промокод ${U.esc(String(e.code || ''))}`, sub: e.zlat ? ru`+${e.zlat} монет` : ru`Награда получена` };
       case 'auction': { const n = SP[e.sid] ? SP[e.sid].name : '', p = U.fmtNum(e.price || 0);
         return { ico: glyph('⚖', 'gold'), title: e.dir === 'buy' ? ru`Куплен на аукционе: ${n}` : e.dir === 'sold' ? ru`Продан на аукционе: ${n}` : ru`Выставлен на аукцион: ${n}`, sub: `${e.cur === 'zlat' ? ru`${p} монет` : '✦ ' + p}${e.who ? ' · ' + e.who : ''}` }; }
       case 'order': return { ico: glyph('⚑', 'gold'), title: ru`Общее дело Ордена`, sub: ru`Награда ${(e.i | 0) + 1}-й ступени` };
@@ -5589,10 +5590,10 @@ const GameCore = {
     this.need(d <= max + Math.min(p.acc, 30) + 10, ru`Слишком далеко — подойди ближе`);
     return d;
   },
-  limit(ctx, key, max, windowMs) {
+  limit(ctx, key, max, windowMs, msg) {
     const rl = ctx.srv.rl = ctx.srv.rl || {}, r = rl[key];
     if (!r || ctx.now - r[1] > windowMs) { rl[key] = [1, ctx.now]; return; }
-    this.need(r[0] < max, ru`Слишком часто — передохни немного`);
+    this.need(r[0] < max, msg || ru`Слишком часто — передохни немного`);
     r[0]++;
   },
   // 4.26: ключ из запроса или чужих данных — только собственный ключ таблицы (не __proto__, constructor и т. п.)
@@ -5839,6 +5840,35 @@ const GameCore = {
     duels: ru`Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра`,
     invasions: ru`Сегодня отбито уже 6 вторжений — Навь вернётся завтра`,
     catches: ru`Сегодня поймано уже 120 духов — обереги отдохнут до завтра`,
+  },
+  // 5.x: промокоды (034_promo_codes.sql): причины отказа базы → текст для игрока
+  PROMO_MSG: {
+    not_found: ru`Такого промокода нет`,
+    inactive: ru`Промокод больше не действует`,
+    expired: ru`Промокод больше не действует`,
+    not_started: ru`Промокод ещё не начал действовать`,
+    exhausted: ru`Промокоды закончились`,
+    already: ru`Ты уже вводил этот промокод`,
+    off: ru`Промокоды пока недоступны — попробуй позже`,
+  },
+  PROMO_RE: /^[A-Z0-9-]{3,32}$/,
+  // Код, как его ввёл игрок → вид в базе: без пробелов, в верхнем регистре; русские буквы, похожие на латинские
+  // (набрал на русской раскладке), — латинскими. Не годится — null
+  promoCode(s) {
+    const c = String(s == null ? '' : s).slice(0, 64).replace(/\s+/g, '').toUpperCase()
+      .replace(/[АВЕКМНОРСТУХ]/g, x => 'ABEKMHOPCTYX'['АВЕКМНОРСТУХ'.indexOf(x)]).replace(/[‐-―−]/g, '-');
+    return this.PROMO_RE.test(c) ? c : null;
+  },
+  // Награда из базы → только известные ключи и разумные числа (база проверяет то же — promo_reward_ok)
+  promoReward(r) {
+    const rw = {};
+    for (const [k, n] of Object.entries(r && typeof r === 'object' ? r : {})) {
+      const v = Math.floor(+n);
+      if (!(v > 0)) continue;
+      if (k === 'zlat' || k === 'sparks') rw[k] = Math.min(v, 1000000);
+      else if (this.own(ITEMS, k)) rw[k] = Math.min(v, 1000);
+    }
+    return rw;
   },
   dayNeed(ctx, key) { this.need((this.dayc(ctx)[key] || 0) < Rules.DAILY[key], this.DAY_MSG[key]); },
   dayAdd(ctx, key) { const c = this.dayc(ctx); c[key] = (c[key] || 0) + 1; },
@@ -6792,6 +6822,31 @@ const GameCore = {
     },
     // 4.22: игрок увидел «+N монет» из Казны
     payAck() { delete S.d.payNew; return {}; },
+    // 5.x: промокод — награда один раз на учётную запись. Код гасит база (promo_redeem: есть ли, включён, сроки, лимит,
+    // не вводил ли этот игрок — одной транзакцией), награда пишется в прогресс, а после сохранения база отмечает её выданной
+    // (promo_done). Введённые коды помнит и прогресс (promo): не сохранилось — повторный ввод выдаст награду («again»),
+    // сохранилось, а отметка не дошла до базы, — «уже вводил». Перебор кодов — не больше 10 попыток в час
+    async promo(a, ctx) {
+      const code = this.promoCode(a.code);
+      this.need(code, ru`Такого промокода нет`);
+      this.limit(ctx, 'promo', 10, 3600000, ru`Слишком много попыток — попробуй через час`);
+      const mine = S.d.promo = S.d.promo && typeof S.d.promo === 'object' ? S.d.promo : {};
+      if (this.own(mine, code)) {
+        // отказ не сохраняет прогресс и не выполняет after — отметку в базе (если прошлая не дошла) ставим сразу
+        if (ctx.env && typeof ctx.env.promoDone === 'function') { try { await ctx.env.promoDone(code); } catch (e) {} }
+        this.fail(this.PROMO_MSG.already);
+      }
+      this.need(ctx.env && typeof ctx.env.promo === 'function', this.PROMO_MSG.off);
+      this.shared(ctx);
+      const r = (await ctx.env.promo(code)) || { error: 'not_found' };
+      if (r.error) this.fail(this.own(this.PROMO_MSG, r.error) ? this.PROMO_MSG[r.error] : this.PROMO_MSG.not_found);
+      const got = S.giveRewards(this.promoReward(r.reward));
+      mine[code] = ctx.now;
+      J.add('promo', { code, zlat: (got.find(x => x.k === 'zlat') || {}).n || 0 });
+      ctx.after.push(() => ctx.env.promoDone(code));
+      Bus.emit('promo', { code, got });
+      return { code, got };
+    },
     // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
@@ -8260,6 +8315,14 @@ function makeEnv(uid) {
     // 4.26: возвращённые (refunded) и уже начисленные, но ещё не списанные платежи; отметка «списано»
     async refundList() { return must(await db.from('payments').select('id, zlat').eq('user_id', uid).eq('status', 'refunded').eq('credited', true).eq('debited', false).limit(50)) || []; },
     async payDebited(ids) { must(await db.from('payments').update({ debited: true, updated_at: new Date().toISOString() }).eq('user_id', uid).in('id', ids)); },
+    // 5.x: промокод (034_promo_codes.sql): погасить → { reward[, again] } | { error }; награда сохранена в прогрессе.
+    // Миграции ещё нет в базе — «промокоды пока недоступны», а не ошибка сервера
+    async promo(code) {
+      const { data, error } = await db.rpc('promo_redeem', { p_code: code, p_user: uid });
+      if (error) { if (error.code === 'PGRST202' || /promo_redeem/.test(error.message)) return { error: 'off' }; throw new Error(error.message); }
+      return data;
+    },
+    async promoDone(code) { must(await db.rpc('promo_done', { p_code: code, p_user: uid })); },
     async deleteSave() {
       must(await db.from('saves').delete().eq('user_id', uid));
       must(await db.from('save_srv').delete().eq('user_id', uid));
