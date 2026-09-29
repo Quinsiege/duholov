@@ -7,6 +7,11 @@ const Ev = {
   get cur() { return WEEK_EVENTS[this.week() % WEEK_EVENTS.length]; },
   get next() { return WEEK_EVENTS[(this.week() + 1) % WEEK_EVENTS.length]; },
   endsAt() { return ((this.week() + 1) * 7 - 3) * 86400000; },
+  // 4.28: неделя мифологии — по кругу все семь (параллельно с событием недели): её духи встречаются в MYTH_MUL раз чаще
+  get myth() { return MYTH_KEYS[this.week() % MYTH_KEYS.length]; },
+  get nextMyth() { return MYTH_KEYS[(this.week() + 1) % MYTH_KEYS.length]; },
+  MYTH_MUL: 3,
+  mythMul(m) { return m === this.myth ? this.MYTH_MUL : 1; },
 
   // Православная Пасха (юлианский расчёт + 13 дней, верно для 1900–2099); дата в UTC
   easter(y) {

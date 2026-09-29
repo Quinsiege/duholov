@@ -701,6 +701,7 @@ const UI = {
     this.modal({
       title: ev.name, cls: 'event-modal',
       html: `<p>${ev.desc}</p><p class="small">${ru`До конца события: ${U.fmtTime(Ev.endsAt() - Date.now())}`}</p>
+        <div class="ev-next ev-myth"><small>${ru`Неделя мифологии`}</small><b>${MYTHS[Ev.myth].name}</b><small>${ru`Её духи встречаются втрое чаще. Следующая — ${MYTHS[Ev.nextMyth].name}.`}</small></div>
         <div class="ev-next"><small>${ru`Следующая неделя`}</small><b>${nx.name}</b><small>${nx.desc}</small></div>`,
       buttons: [{ label: ru`Понятно`, cls: 'primary' }],
     });

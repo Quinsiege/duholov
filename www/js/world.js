@@ -52,8 +52,16 @@ const W = {
      встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
   // Разлом и святилище у места — одной из семи мифологий, поровну (постоянно, по id места)
   placeMyth(p) { return MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
-  // из списка — виды одной мифологии, выбранной поровну из тех, что в списке есть (x — случайное число 0…1)
-  evenMyth(list, x) { const ms = MYTH_KEYS.filter(m => list.some(s => s.myth === m)); if (ms.length < 2) return list; const m = ms[Math.floor(x * ms.length)]; return list.filter(s => s.myth === m); },
+  // из списка — виды одной мифологии, выбранной из тех, что в списке есть (x — случайное число 0…1): поровну, но с весом
+  // Ev.mythMul — 4.28: мифология недели втрое чаще
+  evenMyth(list, x) {
+    const ms = MYTH_KEYS.filter(m => list.some(s => s.myth === m));
+    if (ms.length < 2) return list;
+    const w = ms.map(m => Ev.mythMul(m));
+    let t = x * w.reduce((a, b) => a + b, 0), i = 0;
+    for (; i < ms.length - 1; i++) { t -= w[i]; if (t < 0) break; }
+    return list.filter(s => s.myth === ms[i]);
+  },
   // из списка — виды мифологии m (если их нет — весь список)
   ofMyth(list, m) { const h = list.filter(s => s.myth === m); return h.length ? h : list; },
   // 4.28: все духи водятся везде — и духи родных земель, и вещие птицы частей света (их край — родина по легенде)
