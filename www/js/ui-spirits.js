@@ -114,7 +114,7 @@ Object.assign(UI, {
       return `<button class="heal-opt ${err ? 'off' : ''}" data-k="${k}" ${err ? `data-err="${U.esc(err)}"` : ''}><span class="heal-ico">${Art.item(k)}</span><span class="heal-t"><b>${it.name}</b><small>${eff}</small></span><em>×${n}</em></button>`;
     }).join('');
     const m = this.modal({ title: ru`Лечить: ${U.esc(sp.nick || SP[sp.sid].name)}`, cls: 'heal-modal',
-      html: `<div class="heal-now">${ru`Здоровье: <b>${this.hpText(sp)}</b>`}</div><div class="heal-opts">${opts}</div><p class="small">${ru`Лечебное — в родниках, в Лавке и в наградах за уровень. Раненый дух и сам восстанавливает ${Rules.HP.REGEN * 100}% в час.`} ${ru`Дух без сил поднимается сам на ${Rules.HP.BACK * 100}% — чем реже дух, тем дольше ждать (от ${Rules.HP.KO_H[1]} до ${Rules.HP.KO_H[5]} ч).`} ${ru`После ${Rules.HP.TIRED.FREE} боёв подряд дух устаёт: каждый следующий бой срезает ${Rules.HP.TIRED.STEP * 100}% от его предела здоровья, час отдыха возвращает столько же — лечение усталость не снимает.`}</p>`,
+      html: `<div class="heal-now">${ru`Здоровье: <b>${this.hpText(sp)}</b>`}</div><div class="heal-opts">${opts}</div><p class="small">${ru`Лечебное — в источниках, в Лавке и в наградах за уровень. Раненый дух и сам восстанавливает ${Rules.HP.REGEN * 100}% в час.`} ${ru`Дух без сил поднимается сам на ${Rules.HP.BACK * 100}% — чем реже дух, тем дольше ждать (от ${Rules.HP.KO_H[1]} до ${Rules.HP.KO_H[5]} ч).`} ${ru`После ${Rules.HP.TIRED.FREE} боёв подряд дух устаёт: каждый следующий бой срезает ${Rules.HP.TIRED.STEP * 100}% от его предела здоровья, час отдыха возвращает столько же — лечение усталость не снимает.`}</p>`,
       buttons: [{ label: ru`Закрыть` }] });
     m.querySelector('.heal-opts').addEventListener('click', async e => {
       const b = e.target.closest('.heal-opt'); if (!b) return;
@@ -573,7 +573,7 @@ Object.assign(UI, {
               ${s.land ? row(ru`Земля`, `${LANDS[s.land].name}`, 'wrap') : ''}
               ${s.season ? row(ru`Сезон`, SEASON[s.season] || s.season, 'wrap') : row(ru`Сезон`, ru`круглый год`)}
               ${row(ru`Мифология`, MYTHS[s.myth].name)}${row(ru`Родина`, MYTHS[s.myth].where, 'wrap')}
-              ${s.season ? row(ru`Издалека`, ru`трудные поручения родников, Аукцион, обмен с друзьями`, 'wrap') : ''}
+              ${s.season ? row(ru`Издалека`, ru`трудные поручения источников, Аукцион, обмен с друзьями`, 'wrap') : ''}
               ${row(ru`Стихия`, `${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}`)}
             </div>`)}
           ${pane('family', `
@@ -620,7 +620,7 @@ Object.assign(UI, {
         <div class="row-side"><span class="cnt">×${S.d.amulets[k]}</span>${S.d.amulets[k] >= Rules.MELT.N ? `<div class="row-acts"><button class="btn small melt" data-k="${k}">${ru`Переплавить`}</button></div>` : ''}</div></div>`).join('') + keys.map(k => `
         <div class="row"><div class="row-ico">${Art.item(k)}</div><div class="row-main"><b>${ITEMS[k].name}</b><small>${ITEMS[k].desc}</small></div>
         <div class="row-side"><span class="cnt">×${S.d.items[k]}</span><div class="row-acts">${k === 'incense' ? `<button class="btn small primary use-inc">${S.incenseActive() ? ru`Горит` : ru`Зажечь`}</button>` : ''}${k === 'xpbrew' ? `<button class="btn small primary use-xp">${S.d.xpUntil > U.now() ? ru`Действует` : ru`Выпить`}</button>` : ''}${ITEMS[k].heal || ITEMS[k].revive ? `<button class="btn small primary use-heal" data-k="${k}">${ru`Лечить`}</button>` : ''}<button class="btn-round small drop" data-k="${k}" aria-label="${ru`Выбросить`}">${this.I.trash}</button></div></div></div>`).join('')
-        || `<div class="empty">${ru`Сумка пуста. Загляни к ближайшему роднику!`}</div>`;
+        || `<div class="empty">${ru`Сумка пуста. Загляни к ближайшему источнику!`}</div>`;
     };
     scr.addEventListener('click', async e => {
       const drop = e.target.closest('.drop');
@@ -722,8 +722,8 @@ Object.assign(UI, {
       };
       // греются — три места (свободные видны), ждут — остальные
       const warm = S.d.cocoons.filter(c => c.inc), wait = S.d.cocoons.filter(c => !c.inc);
-      scr.querySelector('.coc-box').innerHTML = !S.d.cocoons.length ? `<div class="empty">${ru`Коконов нет. Иногда их можно найти в роднике.`}</div>`
-        : `<h3 class="prof-h">${ru`Греются`} <small>${ru`${warm.length} из 3`}</small></h3><div class="grid coc">${warm.map(card).join('')}${`<div class="coc-card coc-slot"><div class="coc-art"></div><b>${ru`Свободно`}</b><small>${wait.length ? ru`нажми «Греть» у кокона ниже` : ru`коконы находят в родниках`}</small></div>`.repeat(Math.max(0, 3 - warm.length))}</div>
+      scr.querySelector('.coc-box').innerHTML = !S.d.cocoons.length ? `<div class="empty">${ru`Коконов нет. Иногда их можно найти в источнике.`}</div>`
+        : `<h3 class="prof-h">${ru`Греются`} <small>${ru`${warm.length} из 3`}</small></h3><div class="grid coc">${warm.map(card).join('')}${`<div class="coc-card coc-slot"><div class="coc-art"></div><b>${ru`Свободно`}</b><small>${wait.length ? ru`нажми «Греть» у кокона ниже` : ru`коконы находят в источниках`}</small></div>`.repeat(Math.max(0, 3 - warm.length))}</div>
           ${wait.length ? `<h3 class="prof-h">${ru`Ждут`} <small>${wait.length}</small></h3><div class="grid coc">${wait.map(card).join('')}</div>` : ''}`;
     };
     scr.addEventListener('click', async e => {

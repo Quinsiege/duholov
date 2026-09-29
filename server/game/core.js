@@ -1,6 +1,6 @@
 'use strict';
 /* Сервер игры «Духолов»: все действия игрока выполняются здесь, а не на телефоне.
-   Телефон присылает намерение («бросил оберег», «зачерпнул родник», «усилил духа»), сервер проверяет его
+   Телефон присылает намерение («бросил оберег», «зачерпнул источник», «усилил духа»), сервер проверяет его
    (расстояние до объекта, перезарядки, предметы в сумке, правдоподобие боя), сам бросает кубики
    и сохраняет результат. В ответ — изменения прогресса (diff.js) и события для окон и подсказок.
    Файл работает и в браузере (автотесты), и в Edge Function (см. build-server.ps1). */
@@ -180,7 +180,7 @@ const GameCore = {
     // 4.1: такое место сервер проверить не может (id и координаты — от телефона): на нём нет легендарных разломов и удержания Капищ
     return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null, verified: false };
   },
-  // 5.2: место спит на этой неделе (W.awake, Rules.PLACES) — ни Родника, ни Капища, ни Разлома здесь нет
+  // 5.2: место спит на этой неделе (W.awake, Rules.PLACES) — ни Источника, ни Капища, ни Разлома здесь нет
   placeAwake(p, kind, t) { this.need(W.awake(p, kind, t), ru`Это место сейчас спит — на этой неделе здесь ничего нет`); },
   team(uids) { return (uids || []).map(u => S.findSpirit(u)).filter(Boolean); },
   battleTime(ctx, b) { return (ctx.now - b.start) / 1000 - Rules.COUNTDOWN; },
@@ -390,7 +390,7 @@ const GameCore = {
     return S.d.dayc;
   },
   DAY_MSG: {
-    springs: ru`Сегодня ты уже зачерпнул силу из 30 родников — они снова откроются завтра`,
+    springs: ru`Сегодня ты уже зачерпнул силу из 30 источников — они снова откроются завтра`,
     raids: ru`Сегодня закрыто уже 6 Разломов — Навь затихла до завтра`,
     duels: ru`Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра`,
     invasions: ru`Сегодня отбито уже 6 вторжений — Навь вернётся завтра`,
@@ -756,7 +756,7 @@ const GameCore = {
       const kind = a.kind;
       if (kind === 'wild') {
         this.dayNeed(ctx, 'catches');
-        this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), ru`Обереги закончились! Загляни к роднику.`);
+        this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), ru`Обереги закончились! Загляни к источнику.`);
         const p = this.here(ctx);
         const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit' && !x.tut);
         this.need(e, ru`Дух уже растворился в воздухе…`);
@@ -791,7 +791,7 @@ const GameCore = {
       const e = ctx.srv.enc;
       this.need(e, ru`Встреча закончилась`);
       this.need(!e.honey, ru`Дух уже лакомится мёдом`);
-      this.need(S.useItem('honey'), ru`Мёда нет. Его можно найти у родников.`);
+      this.need(S.useItem('honey'), ru`Мёда нет. Его можно найти у источников.`);
       e.honey = true;
       return { ok: true };
     },
@@ -852,7 +852,7 @@ const GameCore = {
     },
     encEnd(a, ctx) { ctx.srv.enc = null; return { ok: true }; },
 
-    /* ----- родник ----- */
+    /* ----- источник ----- */
     async spring(a, ctx) {
       const p = await this.place(a.poi, ctx, 'spring');
       this.placeAwake(p, 'spring', ctx.now);
@@ -860,22 +860,22 @@ const GameCore = {
       this.limit(ctx, 'spring', 60, 3600000);
       this.dayNeed(ctx, 'springs');
       const e = W.springFor(p, 0);
-      this.need(!e.invaded, ru`Родник захвачен Навью`);
-      this.need(e.ready, ru`Родник ещё набирает силу`);
+      this.need(!e.invaded, ru`Источник захвачен Навью`);
+      this.need(e.ready, ru`Источник ещё набирает силу`);
       S.d.springs[p.id] = ctx.now;
       this.dayAdd(ctx, 'springs');
       const sl = W.springLoot(p.id), loot = { ...sl.loot };
       // 4.26: место, которого нет в базе (id и координаты — от телефона, вне загруженных мест): добыча вполовину, без кокона
       if (!p.verified) Object.keys(loot).forEach(k => { loot[k] = Math.ceil(loot[k] / 2); });
       const cocoon = p.verified ? sl.cocoon : 0;
-      // 4.16: родник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
+      // 4.16: источник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
       const got = S.giveRewards({ ...loot, xp: 50 }); // не поместилось — в посылку Ордена
       S.d.stats.springs++;
       S.progress('spring', 1);
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
       S.tutAdvance('spring');
-      // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
+      // поручение: первое за день — всегда, дальше — в каждом четвёртом источнике
       let task = null;
       if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
         S.d.taskDay = U.today(ctx.now);
@@ -1486,7 +1486,7 @@ const GameCore = {
       const p = await this.place(a.spring, ctx, 'spring');
       this.placeAwake(p, 'spring', ctx.now);
       const e = W.springFor(p, 0);
-      this.need(e.invaded, ru`Родник свободен`);
+      this.need(e.invaded, ru`Источник свободен`);
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       const team = S.team();
       this.need(team.length, ru`Нужна команда`);
@@ -1865,7 +1865,7 @@ const GameCore = {
       const f = S.d.friends.find(x => x.id === a.pid);
       this.need(f, ru`Такого друга нет`);
       this.need(f.sent !== U.today(), ru`Сегодня этому другу подарок уже отправлен`);
-      this.need(S.useItem('gift'), ru`Подарков нет — они попадаются в родниках`);
+      this.need(S.useItem('gift'), ru`Подарков нет — они попадаются в источниках`);
       const lv = (() => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; })();
       const r = Math.random, c = { charm: 3 + Math.floor(r() * 4) };
       if (r() < 0.6) c.honey = 1 + Math.floor(r() * 2);

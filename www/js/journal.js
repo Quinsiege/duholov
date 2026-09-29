@@ -32,7 +32,7 @@ const J = {
       case 'raid': return { ico: icon(e.sid), title: ru`Разлом закрыт: ${sp(e.sid)}`, sub: '★'.repeat(e.tier || 1) };
       // e.name — название Капища с карты; e.guard / e.rank / e.name знака, лавки, e.title главы — русские названия из данных (сохранены сервером), переводим при показе
       case 'duel': return { ico: glyph('⛩'), title: ru`Победа: ${e.name}`, sub: ru`Хранитель ${I18N.back(e.guard || '')}` };
-      case 'invasion': return { ico: glyph('☾', 'dark'), title: ru`Родник освобождён`, sub: e.name || '' };
+      case 'invasion': return { ico: glyph('☾', 'dark'), title: ru`Источник освобождён`, sub: e.name || '' };
       case 'league': return { ico: glyph('★', 'gold'), title: ru`Турнир Лиги: побед ${e.won} из 3`, sub: ru`Ранг: ${I18N.back(e.rank)}` };
       // 4.16: бой Лиги с живым Ловчим (e.name — имя соперника, e.d — изменение рейтинга)
       case 'pvp': return { ico: glyph('★', 'gold'), title: e.win === 1 ? ru`Лига: победа над ${e.name}` : e.win ? ru`Лига: ничья с ${e.name}` : ru`Лига: поражение от ${e.name}`, sub: ru`Лига «${I18N.back(e.rank)}» · рейтинг ${e.d > 0 ? '+' : e.d < 0 ? '−' : '±'}${Math.abs(e.d || 0)}` };

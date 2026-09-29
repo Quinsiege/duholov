@@ -12,7 +12,7 @@ const Encounter = {
   // o: { mode: 'wild'|'raid'|'rescue'|'task', tut, spawnId, seed, onEnd } — вид и уровень духа сообщает сервер
   async start(o) {
     if (this.st || this._opening) return;
-    if (o.mode !== 'raid' && !this.throwables().length) { UI.toast(ru`Обереги закончились! Загляни к роднику.`); return; }
+    if (o.mode !== 'raid' && !this.throwables().length) { UI.toast(ru`Обереги закончились! Загляни к источнику.`); return; }
     this._opening = true;
     const r = await Game.try('encStart', { kind: o.tut ? 'tut' : o.mode, id: o.spawnId });
     this._opening = false;
@@ -198,7 +198,7 @@ const Encounter = {
     const st = this.st;
     if (st.phase !== 'aim' || st.honeyBusy) return;
     if (st.honey) { this.flash(ru`Дух уже лакомится мёдом`); return; }
-    if (!(S.d.items.honey > 0)) { UI.toast(ru`Мёда нет. Его можно найти у родников.`); return; }
+    if (!(S.d.items.honey > 0)) { UI.toast(ru`Мёда нет. Его можно найти у источников.`); return; }
     st.honeyBusy = true;
     const r = await Game.try('encHoney');
     st.honeyBusy = false;

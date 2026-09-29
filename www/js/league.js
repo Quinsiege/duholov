@@ -336,7 +336,7 @@ const League = {
       const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;
       const w = this.window(L.pts), ranks = w.a === w.b ? ru`в лиге «${LEAGUE_RANKS[r].name}»` : ru`в лигах «${LEAGUE_RANKS[w.a].name}» — «${LEAGUE_RANKS[w.b].name}»`;
       pane.innerHTML = `
-        ${locked ? `<div class="lgx-card lgx-lock"><b>${ru`Лига откроется на ${this.LEVEL} уровне Ловчего`}</b><small>${ru`Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.`}</small></div>` : ''}
+        ${locked ? `<div class="lgx-card lgx-lock"><b>${ru`Лига откроется на ${this.LEVEL} уровне Ловчего`}</b><small>${ru`Сейчас у тебя ${S.d.level}-й. Лови духов, проходи источники и разломы — опыт придёт быстро.`}</small></div>` : ''}
         ${live ? `<div class="lgx-card lgx-livebout"><div class="row-main"><b>${ru`Бой ещё идёт!`}</b><small>${ru`Соперник ждёт. Не вернёшься — через ${PvP.IDLE / 1000} с тебе засчитают поражение.`}</small></div><button class="btn primary small lg-back">${ru`В бой`}</button></div>` : ''}
         <div class="lg2-tix"><span>${ru`Жетоны`}</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
         <div class="lg2-tix-s">${ru`жетоны обновятся через ${'<b class="lgx-mid"></b>'}`}</div>

@@ -1,7 +1,7 @@
 'use strict';
 /* Прогон Ловчего с 1 по 40 уровень через настоящий сервер игры (server/game/core.js) с базой в памяти.
    Игрок — «активный»: каждый день ~5 км пешком в три выхода (утро, обед, вечер), ловит всех духов в радиусе,
-   заходит во все родники по пути, 2 разлома, 2 Капища, до 2 вторжений, 3 боя Лиги в день (с живым соперником своего уровня); вечером — усиление,
+   заходит во все источники по пути, 2 разлома, 2 Капища, до 2 вторжений, 3 боя Лиги в день (с живым соперником своего уровня); вечером — усиление,
    превращения, коконы, поручения, задания, Летопись. Исход боёв — своя модель: игрок выжимает EFF от максимального
    урона (сервер проверяет только верхнюю границу), раны — по ударам соперника. */
 
@@ -48,7 +48,7 @@ const xpAdd = (src, before) => { const d = P.data.xp - before; if (d > 0) ST.xpB
 // ---------- карта: места по пути регистрируются в базе, как настоящие ----------
 let poiN = 100000;
 function poi(kind) {
-  const id = 'osm:n' + (++poiN), p = { id, lat: P.lat + (Math.random() - 0.5) * 0.0004, lng: P.lng + (Math.random() - 0.5) * 0.0006, name: kind === 'spring' ? 'Родник' : 'Капище', kind, active: true, imported: true };
+  const id = 'osm:n' + (++poiN), p = { id, lat: P.lat + (Math.random() - 0.5) * 0.0004, lng: P.lng + (Math.random() - 0.5) * 0.0006, name: kind === 'spring' ? 'Источник' : 'Капище', kind, active: true, imported: true };
   DB.pois[id] = p;
   return { id, lat: p.lat, lng: p.lng, name: p.name };
 }
@@ -311,7 +311,7 @@ async function walk(km) {
       const p = poi('spring'), e = me(() => W.springFor(p, 0));
       await tidyBag();
       if (e.invaded) { if (P.data.level >= INVASION_LEVEL) await invasionAt(p); }
-      else if (me(() => Rules.dayUsed(S.d, 'springs')) < 30) { const xp0 = P.data.xp; if (await act('spring', { poi: p })) { ST.springs++; xpAdd('родник', xp0); } }
+      else if (me(() => Rules.dayUsed(S.d, 'springs')) < 30) { const xp0 = P.data.xp; if (await act('spring', { poi: p })) { ST.springs++; xpAdd('источник', xp0); } }
     }
     if (sinceShrine >= CFG.SHRINE_EVERY) {
       sinceShrine = 0;

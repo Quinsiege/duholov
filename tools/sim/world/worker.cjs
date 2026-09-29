@@ -281,7 +281,7 @@ async function walk(km) {
         const e = me(() => W.springFor(p, 0));
         await tidyBag();
         if (e.invaded) { if (P.data.level >= INVASION_LEVEL) await invasionAt(p); }
-        else if (e.ready && me(() => Rules.dayUsed(S.d, 'springs')) < 30) { const xp0 = P.data.xp; if (await act('spring', { poi: { id: p.id, lat: p.lat, lng: p.lng, name: p.name } })) { D.springs++; xpAdd('родник', xp0); } }
+        else if (e.ready && me(() => Rules.dayUsed(S.d, 'springs')) < 30) { const xp0 = P.data.xp; if (await act('spring', { poi: { id: p.id, lat: p.lat, lng: p.lng, name: p.name } })) { D.springs++; xpAdd('источник', xp0); } }
       } else if (p.kind === 'shrine') {
         if (P.today.raids < P.pr.raids && me(() => W.riftAt(p.id, Math.floor(SIM_T / 3600000)))) await raidAt(p);
         else await duelAt(p);

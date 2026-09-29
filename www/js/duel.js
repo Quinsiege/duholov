@@ -73,9 +73,9 @@ const Duel = {
     Clans.refresh(); // сводка могла устареть
   },
 
-  // Захваченный родник: поединок с прислужником Нави
+  // Захваченный источник: поединок с прислужником Нави
   openInvasion(e) {
-    // 4.15.1: в композиции карточки духа — сверху захваченный родник в тёмном круге Нави, справа «Захвачен Навью»,
+    // 4.15.1: в композиции карточки духа — сверху захваченный источник в тёмном круге Нави, справа «Захвачен Навью»,
     // сила отряда, прислужник и слабость отряда; ниже — омрачённые духи против твоей команды, внизу — «Сразиться»
     const g = W.grunt(e);
     const pw = t => t.reduce((a, x) => a + S.power(x), 0);
@@ -86,7 +86,7 @@ const Duel = {
         <div class="dt-hero">
           <div class="det-art inv2-art"><i class="inv2-mist"></i>${Art.springIcon(false, true)}</div>
           <div class="dt-info">
-            <div class="det-hp inv2-place">${ru`Родник «${U.esc(e.name)}»`}</div>
+            <div class="det-hp inv2-place">${ru`Источник «${U.esc(e.name)}»`}</div>
             <div class="inv2-title">${ru`Захвачен Навью`}</div>
             <div class="det-power"><small>${ru`СИЛА ОТРЯДА`}</small><b>${U.fmtNum(pw(g.team))}</b></div>
             <div class="inv2-grunt"><span class="inv2-ava">${Art.guardian(g.color)}</span><span><b>${g.name}</b><small>${g.title}</small></span></div>
@@ -107,7 +107,7 @@ const Duel = {
         <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span>${mine ? `<b>${ru`сила ${U.fmtNum(mine)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${slots}</div>`;
       foot.innerHTML = `
-        <div class="lg2-rule">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
+        <div class="lg2-rule">${ru`Победа освободит источник и позволит спасти одного из омрачённых духов.`}</div>
         ${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}
         <button class="btn primary wide duel-go" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;
     };
@@ -541,7 +541,7 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       rescue = g.team.find(x => x.sid === r.rescue.sid) || g.team[0];
-      html = `<div class="res-title">${ru`Родник освобождён!`}</div>
+      html = `<div class="res-title">${ru`Источник освобождён!`}</div>
         <div class="res-art">${Art.of(rescue)}</div>
         <div class="res-note">${ru`Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!`}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>

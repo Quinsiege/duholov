@@ -273,7 +273,7 @@ const Shop = {
               <div class="dt-row"><span>${ru`Курс`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>
               <div class="dt-row"><span>${ru`Обменов в день`}</span><b>${Rules.EXCHANGE.DAY}</b></div>
             </div>
-            <div class="q-note">${ru`Монеты дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, родники и бои.`}</div>`)}
+            <div class="q-note">${ru`Монеты дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, источники и бои.`}</div>`)}
           ${pane('look', `
             <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>${ru`Гардероб Ловчего`}</b><small>${ru`${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} монет`}</small></span><span class="sw-go">›</span></button>
             <div class="pf-mh"><span>${ru`Плащи`}</span></div>
@@ -303,7 +303,7 @@ const Shop = {
       // не хватает валюты — сразу подсказка, где её взять, без окна покупки
       if (b.classList.contains('poor')) {
         const zl = b.classList.contains('primary') || b.classList.contains('shop-cloak');
-        UI.toast(zl ? ru`Не хватает монет — обменяй искры в Обменнике или загляни в Казну` : ru`Не хватает искр — их дают за поимки, родники и бои`);
+        UI.toast(zl ? ru`Не хватает монет — обменяй искры в Обменнике или загляни в Казну` : ru`Не хватает искр — их дают за поимки, источники и бои`);
         return;
       }
       const id = b.dataset.id, deal = id === 'deal';
@@ -360,7 +360,7 @@ const Pass = {
           <div class="story-num">${ru`${month} тропа`} · <span class="nowrap">${ru`до конца ${U.fmtTime(Math.max(0, this.endsAt() - U.now()))}`}</span></div>
           <h3>${ru`Ступень ${L} из ${max}`}</h3>
           <div class="pbar big"><i style="width:${inLvl / per * 100}%"></i></div>
-          <small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, родники, прогулки, коконы и бои`}</small>
+          <small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, источники, прогулки, коконы и бои`}</small>
           ${P.gold ? `<div class="pass-gold on">★ ${ru`Золотая тропа открыта`}</div>`
             : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, монеты, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`монета`, ru`монеты`, ru`монет`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
         </div>

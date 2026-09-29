@@ -1,5 +1,5 @@
 'use strict';
-/* Реальные объекты на карте: Родники и Капища стоят у настоящих мест (5.2: не каждую неделю — см. W.awake).
+/* Реальные объекты на карте: Источники и Капища стоят у настоящих мест (5.2: не каждую неделю — см. W.awake).
    1) Сервер игры (таблица pois): объекты OpenStreetMap по всей России (раз в неделю их загружает импорт,
       tools/osm-import), места, предложенные игроками и одобренные модерацией, и правки модераторов.
       Телефон читает их квадратами 0.01° × 0.01° (≈ 1 км).
@@ -130,7 +130,7 @@ const Poi = {
     this.busy = true;
     if (!this.near(lat, lng, this.LOAD_R).length && !this._hinted) {
       this._hinted = true;
-      UI.toast(ru`Ищу настоящие места вокруг — Родники и Капища появятся через несколько секунд`);
+      UI.toast(ru`Ищу настоящие места вокруг — Источники и Капища появятся через несколько секунд`);
     }
     // 1) сервер игры: одним запросом на все квадраты
     if (needSrv.length) {
@@ -175,12 +175,12 @@ const Poi = {
     rows.forEach(p => { const k = this.tileId(p.lat, p.lng); if (fresh.has(k)) this.srv[k].items.push(p); });
   },
 
-  // Если в округе совсем нет Родников — раз в сутки Орден присылает посылку, чтобы было чем ловить
+  // Если в округе совсем нет Источников — раз в сутки Орден присылает посылку, чтобы было чем ловить
   checkSupply() {
     const { lat, lng } = MapView.pos;
     const store = this.covered() ? this.srv : this.osm;
     const loaded = this.tilesAround(lat, lng, 1000).every(([x, y]) => { const o = store[`${x}:${y}`]; return o && !o.fail; });
-    // 5.2: спящие на этой неделе Родники не в счёт (W.awake)
+    // 5.2: спящие на этой неделе Источники не в счёт (W.awake)
     if (!loaded || this.near(lat, lng, 1000, 'spring').some(p => W.awake(p, 'spring')) || S.d.supplyDay === U.today() || this._supplying) return;
     this._supplying = true;
     Game.act('supply').then(r => { this._supplying = false; this.showSupply(r.got); }).catch(() => { this._supplying = false; });
@@ -188,8 +188,8 @@ const Poi = {
   showSupply(got) {
     UI.modal({
       title: ru`Посылка из Ордена`,
-      html: `<p>${ru`Поблизости пока нет ни одного Родника, поэтому Орден раз в день присылает припасы: ${got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}.`}</p>
-        <p>${ru`Знаешь интересное место рядом? Предложи его в «Меню → Места» — после проверки там появится Родник.`}</p>`,
+      html: `<p>${ru`Поблизости пока нет ни одного Источника, поэтому Орден раз в день присылает припасы: ${got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}.`}</p>
+        <p>${ru`Знаешь интересное место рядом? Предложи его в «Меню → Места» — после проверки там появится Источник.`}</p>`,
       buttons: [{ label: ru`Спасибо`, cls: 'primary' }],
     });
   },

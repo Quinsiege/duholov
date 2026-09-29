@@ -467,7 +467,7 @@
       s += `<circle class="art-aura" cx="158" cy="52" r="46" fill="${K.rad([[0.3, '#fde68a', 0.55], [1, '#fde68a', 0]])}"/>`;
       s += '<circle cx="158" cy="52" r="33" fill="none" stroke="#fcd34d" stroke-width="2.6"/><circle cx="158" cy="52" r="28" fill="none" stroke="#fef3c7" stroke-width="1.2" stroke-dasharray="2 3"/>';
       for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; s += K.line(`M${r1(158 + Math.cos(a) * 36)} ${r1(52 + Math.sin(a) * 36)}L${r1(158 + Math.cos(a) * 42)} ${r1(52 + Math.sin(a) * 42)}`, '#fde68a', 2.2, { op: 0.9 }); }
-      // родники бьют из-под земли
+      // источники бьют из-под земли
       const spray = 'M24 168C22 152 24 140 30 128M24 168C20 154 14 146 6 140M24 168C26 156 32 150 40 146M182 170C182 154 178 142 172 132M182 170C186 156 192 148 198 142';
       s += K.line(spray, '#38bdf8', 5, { op: 0.45 }) + K.line(spray, '#e0f7ff', 1.6, { op: 0.9 });
       s += drop(30, 122, 2.8, '#bfeaff', 'art-float', 0) + drop(6, 134, 2.2, '#bfeaff', 'art-float', 0.7) + drop(42, 140, 2, '#bfeaff', 'art-float', 1.2) + drop(172, 126, 2.6, '#bfeaff', 'art-float', 0.4) + drop(197, 136, 2, '#bfeaff', 'art-float', 1);

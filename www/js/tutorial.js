@@ -1,7 +1,7 @@
 'use strict';
 /* 4.0: обучение новичка (шаги — TUT в data.js). 4.24: без сцен, заставок и наставника — только подсказка над картой
    с подсветкой нужной кнопки. Пропустить нельзя: шаг хранит сервер (S.d.tut), после перезахода игра продолжает
-   с того же места. Разделы меню открываются по ходу обучения. Шаги засчитывает сервер: поимка, родник и усиление —
+   с того же места. Разделы меню открываются по ходу обучения. Шаги засчитывает сервер: поимка, источник и усиление —
    сам, разделы — по действию tutNext строго по порядку. */
 
 const Tut = {
@@ -22,7 +22,7 @@ const Tut = {
   },
 
   // Сервер перевёл обучение на новый шаг (или игра только что запустилась).
-  // Новый шаг показывается не мгновенно: сначала игрок видит итог действия (поимку, родник, усиление),
+  // Новый шаг показывается не мгновенно: сначала игрок видит итог действия (поимку, источник, усиление),
   // а сцены и заставки глав ждут, пока закроется экран встречи или боя.
   sync(first) {
     if (!this.started) return;
@@ -35,7 +35,7 @@ const Tut = {
     const go = () => {
       this.coach(st);
       MapView.refresh(true);
-      // на шаге «родник» Следопыт сам показывает дорогу к ближайшему
+      // на шаге «источник» Следопыт сам показывает дорогу к ближайшему
       if (st.kind === 'spring') setTimeout(() => { const n = MapView.nearest('spring'); if (n) MapView.track(n); }, 800);
     };
     const run = () => {
@@ -60,7 +60,7 @@ const Tut = {
     card: ['.screen .grid.cards .card', '.tile[data-k="spirits"]', '#menuBtn'],
     power: ['.screen .act-power', '.screen .grid.cards .card', '.tile[data-k="spirits"]', '#menuBtn'],
     dex: ['.tile[data-k="book"]', '#menuBtn'],
-    spring: ['.screen .spring-go:not([disabled])', '#tracker', '.mk-spring'], // 4.7.3: на экране родника — кнопка «Зачерпнуть силу»
+    spring: ['.screen .spring-go:not([disabled])', '#tracker', '.mk-spring'], // 4.7.3: на экране источника — кнопка «Зачерпнуть силу»
     bag: ['.tile[data-k="bag"]', '#menuBtn'],
     cocoons: ['.tile[data-k="egg"]', '#menuBtn'],
     quests: ['.tile[data-k="scroll"]', '#menuBtn'],
@@ -94,7 +94,7 @@ const Tut = {
   vis(e) { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; },
   findTarget(st) {
     const top = U.$$('.screen').filter(s => !s.classList.contains('out')).pop(), sheet = U.$$('.sheet-wrap').filter(s => !s.classList.contains('out')).pop();
-    // 4.7.1: шаг «родник» — игрок дошёл до родника или перешёл к нему по стрелке: подсвечиваем сам родник, а не стрелку
+    // 4.7.1: шаг «источник» — игрок дошёл до источника или перешёл к нему по стрелке: подсвечиваем сам источник, а не стрелку
     if (st.id === 'spring' && !top && !sheet && typeof MapView !== 'undefined') {
       const tr = MapView.tracking, m = tr && MapView.markers.get(tr.id), icon = m && m.getElement();
       const el = icon && (icon.querySelector('.mk-spring') || icon), near = !!U.$('#tracker.near');
@@ -121,14 +121,14 @@ const Tut = {
     U.$('#menuBtn').classList.remove('tut-pulse');
     if (busy) { this.ring.classList.add('hidden'); return; }
     const t = st.kind === 'ui' && this.opened === st.id ? null : this.findTarget(st); // объясняет экран — подсвечивать нечего
-    // текст: если цель — «Назад», сначала вернуться; у родника — коснуться его
+    // текст: если цель — «Назад», сначала вернуться; у источника — коснуться его
     const mode = t && t.back ? 'back' : (t && t.spring) || '';
     if (mode !== this._back) {
       this._back = mode;
       this.el.querySelector('.coach-text').innerHTML = mode === 'back' ? `${this._hint}<small class="coach-back">${ru`Сначала вернись назад — кнопка подсвечена.`}</small>`
-        : mode === 'near' ? ru`Ты у родника! <b>Коснись его</b> — он подсвечен.`
-          : mode === 'seen' ? ru`Вот он, родник — <b>подсвечен</b>. Подойди ближе и коснись его.`
-            : mode === 'go' ? ru`Это родник! Смахни по кругу или нажми <b>«Зачерпнуть силу»</b> — он поделится с тобой силой.` : this._hint;
+        : mode === 'near' ? ru`Ты у источника! <b>Коснись его</b> — он подсвечен.`
+          : mode === 'seen' ? ru`Вот он, источник — <b>подсвечен</b>. Подойди ближе и коснись его.`
+            : mode === 'go' ? ru`Это источник! Смахни по кругу или нажми <b>«Зачерпнуть силу»</b> — он поделится с тобой силой.` : this._hint;
     }
     let tr = null;
     if (t && t.el) {
