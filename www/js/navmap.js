@@ -256,7 +256,9 @@ const NavMap = {
     }
     // 4.11: дома объёмные — стены, окна, крыши (высокие светлее, тонкая кромка); поверх улиц и фонарей
     const bldRules = this.extrude(p, p.bldHi); // отдельным слоем над зоной Ловчего (см. MapView.setTiles)
-    const name = ['name:ru', 'name'], font = (w8, px, fam) => `${w8} ${px}px ${fam}`;
+    // 5.1.9: подписи — на языке игрока (name:<язык>), иначе по-английски (кроме русского), иначе — местное название
+    const lg = (typeof I18N !== 'undefined' && I18N.lang) || 'ru';
+    const name = [...new Set([`name:${lg}`, lg === 'ru' ? null : 'name:en', 'name'].filter(Boolean))], font = (w8, px, fam) => `${w8} ${px}px ${fam}`;
     const label = [
       { dataLayer: 'places', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.place, stroke: p.labelHalo, width: 3, font: font(700, 14, "'Rubik', sans-serif"), textTransform: 'uppercase', letterSpacing: 2 }), filter: (z, f) => ['neighbourhood', 'macrohood', 'locality', 'suburb'].includes(kind(f)) },
       { dataLayer: 'water', symbolizer: new S.CenteredTextSymbolizer({ labelProps: name, fill: p.waterLabel, stroke: p.labelHalo, width: 2.5, font: font('italic 400', 13, "'Rubik', sans-serif"), letterSpacing: 1 }), filter: (z, f) => f.geomType === 1 },
