@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.3';
+const APP_VERSION = '5.1.4';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1801,7 +1801,9 @@ const Sky = {
 
   init() {
     this.update(true);
-    setInterval(() => this.update(), 5 * 60000);
+    // 5.2: погода нужна карте — под полноэкранной сценой (stage.js) не спрашиваем; сцена закрылась — сверим один раз
+    setInterval(() => { if (Stage.busy) this._miss = true; else this.update(); }, 5 * 60000);
+    Stage.on(busy => { if (!busy && this._miss) { this._miss = false; setTimeout(() => this.update(), 500); } });
   },
 
   async update(force) {
