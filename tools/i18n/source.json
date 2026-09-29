@@ -1983,7 +1983,7 @@
    "www/js/atlas.js:348",
    "www/js/atlas.js:352",
    "www/js/atlas.js:684",
-   "www/js/book.js:123"
+   "www/js/atlas.js:686"
   ],
   "ctx": "const el = this.el = U.el(`<div class=\"atlas${opts.first ? ' first' : ''}\" role=\"dialog\" aria-modal=\"true\" aria-label=\"${ru`Атлас мира`}\">"
  },
@@ -2213,13 +2213,6 @@
    "www/js/atlas.js:654"
   ],
   "ctx": "<div class=\"ag-txt\"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class=\"ag-flash\"></i></div>`);"
- },
- {
-  "k": "Атлас",
-  "at": [
-   "www/js/atlas.js:686"
-  ],
-  "ctx": "<span class=\"ab-t\">${ru`Атлас`}</span><span class=\"ab-m\"></span></button>`);"
  },
  {
   "k": "монета",

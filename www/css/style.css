@@ -5159,7 +5159,7 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .mk-player .dot { transition: box-shadow .5s; }
 .mk-player.run .dot { box-shadow: 0 0 0 2px #2a1508, 0 0 22px rgba(94, 234, 212, 1), 0 3px 6px rgba(0, 0, 0, .5); }
 /* глобус на карте: значок как у плашки недели (20 px), справа подпись «Атлас» — тем же шрифтом, по её левому краю */
-#hud .hud-right > #atlasBtn.ab2 { position: relative; display: flex; align-items: center; gap: 7px; width: auto; height: auto; margin: 2px 0 0 4px !important; padding: 3px 0;
+#hud .hud-right > #atlasBtn.ab2 { position: relative; display: flex; align-items: center; gap: 7px; width: auto; height: auto; margin: 9px 0 0 4px !important; padding: 3px 0;
   border: 0; background: none; filter: none; color: #fff; font-family: var(--f-head); font-size: 11.5px; font-weight: 700; line-height: 14px; white-space: nowrap;
   text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 10px rgba(8, 4, 24, .6); transform-origin: 10px 50%; transition: transform .15s; -webkit-tap-highlight-color: transparent; }
 #hud #atlasBtn.ab2::before { content: ''; position: absolute; inset: -6px -4px -6px -8px; } /* пальцу — побольше места */
