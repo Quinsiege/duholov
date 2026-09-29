@@ -5,7 +5,7 @@
 const Cfg = {
   KEY: 'duholov.settings',
   DEFAULTS: { joySide: 'right', ar: false, sound: true, vibro: true, weather: true, music: true, musicVol: 0.6, cloud: true, eco: false,
-    bigText: false, tapThrow: false, calm: null, mapTheme: 'auto', tilt3d: true, fog: true, awake: false },
+    bigText: false, tapThrow: false, calm: null, mapTheme: 'auto', tilt3d: true, awake: false },
   s: null,
 
   load() {
@@ -17,6 +17,7 @@ const Cfg = {
     this.s = Object.assign({}, this.DEFAULTS, s || {});
     if (this.s.calm == null) this.s.calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     delete this.s.demo; // 5.1: демо-режима больше нет — джойстик у всех (walk.js)
+    delete this.s.fog; // 5.1.6: тумана Нави больше нет
     if (this.s.joySide !== 'left') this.s.joySide = 'right'; // 5.1: сторона джойстика на карте
     return this.s;
   },
