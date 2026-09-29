@@ -4770,3 +4770,105 @@ body:has(> #speedWarn) #toasts { top: calc(246px + var(--st)); }
 .eco .intro .in-o.fl, .eco .intro .in-halo, .eco .intro .in-spark, .eco .intro .in-shard, .eco .intro .in-pulse, .eco .intro .in-flame { animation: none; }
 .eco .in-skip { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(20, 12, 44, .8); }
 .eco .in-shardi { filter: none; }
+
+/* ===== 4.28: сезонные награды ===== */
+/* окно «Итоги сезона Алатыря» (SeasonRewards.html) */
+.sr { --sr: #fde68a; text-align: center; }
+.sr-hero { position: relative; display: grid; place-items: center; margin: -4px 0 4px; }
+.sr-hero .sr-stone { display: block; width: 110px; height: 110px; filter: drop-shadow(0 0 16px color-mix(in srgb, var(--sr) 45%, transparent)); }
+.sr-stone > .art, .sr-stone > svg { width: 100%; height: 100%; display: block; }
+.sr-num { margin-top: -6px; font-family: var(--f-display); font-size: 24px; letter-spacing: .5px; color: var(--sr); text-shadow: 0 0 14px color-mix(in srgb, var(--sr) 45%, transparent); }
+.sr-lead { margin: 8px 0 12px; }
+.sr-lead b { color: var(--gold2); white-space: nowrap; }
+.sr-ladder { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin: 0 0 6px; }
+.sr-step { display: grid; place-items: center; height: 30px; border-radius: 10px; font-style: normal; font-weight: 800; font-size: 14px; color: rgba(226, 220, 247, .5);
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); }
+.sr-step.on { color: #1b1030; background: linear-gradient(180deg, color-mix(in srgb, var(--sr) 55%, #fff), var(--sr)); border-color: color-mix(in srgb, var(--sr) 70%, #000); }
+.sr-step.cur { box-shadow: 0 0 0 2px #1a1335, 0 0 0 3.5px var(--sr), 0 0 16px color-mix(in srgb, var(--sr) 60%, transparent); }
+.sr-rank { margin: 8px 0 2px; font-size: 13.5px; color: #fff; font-weight: 700; }
+.sr-list { display: flex; flex-direction: column; gap: 6px; margin: 0 0 10px; text-align: left; }
+.sr-rw { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; background: rgba(255, 255, 255, .05); }
+.sr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.sr-grid .sr-rw { gap: 7px; padding: 5px 8px; }
+.sr-grid .sr-ic, .sr-grid .sr-ic > .art, .sr-grid .sr-ic > svg { width: 32px; height: 32px; }
+.sr-grid .sr-t { flex-direction: column; align-items: flex-start; gap: 0; }
+.sr-grid .sr-rw b { font-size: 12.5px; }
+.sr-grid .sr-rw em { font-size: 13px; }
+.sr-rw.sr-k-medal { background: linear-gradient(90deg, color-mix(in srgb, var(--sr) 22%, transparent), rgba(255, 255, 255, .04)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sr) 40%, transparent); }
+.sr-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; }
+.sr-ic > .art, .sr-ic > svg { width: 40px; height: 40px; display: block; overflow: visible; }
+.sr-t { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.sr-rw b { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; line-height: 1.25; }
+.sr-rw em { font-style: normal; font-weight: 800; color: var(--gold2); white-space: nowrap; }
+.sr-next { margin: 4px 0 0; font-size: 13px; color: #cbbde9; }
+.calm .sr-stone *, .eco .sr-stone * { animation: none !important; }
+
+/* ===== 4.28: сезоны Алатыря ===== */
+/* экран камня: шапка (камень сезона и где Орден) и вкладки на месте, листается только содержимое вкладки */
+.ala-screen .ala { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: 0; }
+.ala-top { --road: #fde68a; flex: none; display: flex; align-items: center; gap: 12px; padding: 2px 0 10px; }
+.ala-top-stone { flex: none; width: 136px; height: 136px; }
+.ala-top-stone .ala-stone { width: 136px; height: 136px; }
+.ala-top-i { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ala-top-i small { color: rgba(255, 255, 255, .72); font-size: 12px; line-height: 1.3; }
+.ala-top-i .story-num { color: color-mix(in srgb, var(--road) 80%, #fff); font-size: 11px; }
+.ala-top-total { font-family: var(--f-display); font-size: 30px; line-height: 1.05; margin-top: 2px; color: var(--gold2); text-shadow: 0 0 14px rgba(253, 224, 71, .35); }
+.ala-top-i .pbar { margin: 7px 0 3px; }
+.ala-top-i .pbar i, .ala-kos .pbar i { background: linear-gradient(90deg, color-mix(in srgb, var(--road) 70%, #000), var(--road), #fff7c7); }
+.ala-top-sub { overflow-wrap: anywhere; }
+.ala-tabs { flex: none; }
+.ala-pane { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 2px 0 16px; -webkit-overflow-scrolling: touch; }
+.ala-pane > .empty { margin-top: 24px; }
+/* финал: Кощей во всех Разломах */
+.ala-kos { --road: #4ade80; display: flex; align-items: center; gap: 12px; padding: 12px; margin: 0 0 12px; border-radius: 16px; text-align: left;
+  border: 1px solid rgba(74, 222, 128, .35); background: radial-gradient(circle at 18% 30%, rgba(74, 222, 128, .2), rgba(15, 23, 42, .55) 70%); }
+.ala-kos.on { box-shadow: 0 0 22px rgba(74, 222, 128, .22); }
+.ala-kos-art { flex: none; width: 78px; height: 78px; filter: drop-shadow(0 0 10px rgba(74, 222, 128, .45)); }
+.ala-kos-art .art { width: 100%; height: 100%; }
+.ala-kos-i { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ala-kos-i b { font-size: 17px; line-height: 1.2; }
+.ala-kos-i small { color: rgba(255, 255, 255, .78); line-height: 1.35; }
+.ala-kos-i .story-num { color: #86efac; }
+.ala-kos .pbar { margin: 4px 0 2px; }
+/* грань «?» — мифология следующего сезона */
+.ala-q { font: 900 30px var(--f-display, system-ui); fill: #c4b5fd; opacity: .9; }
+.ala-qcard { border-style: dashed !important; border-color: rgba(196, 181, 253, .4) !important; }
+.ala-face.nx { border: 1px dashed rgba(196, 181, 253, .35); background: rgba(46, 37, 72, .45); }
+.ala-face.nx > i.dim, .ala-face.nomyth > i.dim { font-size: 13px; }
+.ala-face.nomyth .af-main b { color: #c4b5fd; }
+/* вклад и награда сезона */
+.ala-mine.big { background: linear-gradient(135deg, rgba(253, 224, 71, .14), rgba(255, 255, 255, .05)); border: 1px solid rgba(253, 224, 71, .25); }
+.ala-mine.big b { font-size: 19px; margin-top: 1px; }
+.ala-mine .story-num { color: var(--gold2); }
+.ala-rw { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.ala-rw > div { padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .07); font-size: 13px; }
+.ala-rw > small { color: rgba(255, 255, 255, .7); }
+/* летопись: финалы и расколы */
+.ala-h .art { width: 20px; height: 20px; flex: none; }
+.ala-h.kos span, .ala-h.brk span { font-weight: 600; }
+.ala-h.brk { background: linear-gradient(90deg, color-mix(in srgb, var(--road) 16%, transparent), transparent); border-radius: 8px; }
+/* значок финала на карте */
+#hud .chip.road.kos .art { width: 20px; height: 20px; flex: none; filter: drop-shadow(0 0 5px var(--road)); }
+#hud .chip.road.kos.soon .art { filter: grayscale(.4); }
+/* окна: финал, раскол, итоги */
+.ala-kos-modal .ala-kos-art { margin: -4px auto 6px; width: 120px; height: 120px; }
+.ala-brk-new { --road: #fde68a; display: flex; justify-content: center; align-items: flex-end; gap: 4px; margin: 2px 0 8px; }
+.ala-brk-place { width: 64px; height: 64px; filter: drop-shadow(0 0 10px var(--road)); }
+.ala-brk-place > svg, .ala-brk-place > .art { width: 100%; height: 100%; }
+.ala-brk-sp { width: 54px; height: 54px; }
+.ala-brk-sp .art { width: 100%; height: 100%; }
+.ala-split { animation: alaFlash 1.4s ease-in-out 3; }
+.ala-sum-h { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; text-align: left; }
+.ala-sum-h > .art, .ala-sum-h > svg { width: 46px; height: 46px; flex: none; }
+.ala-sum-h b, .ala-sum-h small { display: block; }
+.ala-sum-h b { font-size: 19px; }
+.ala-sum-h small { color: var(--gold2); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 11px; }
+/* Бестиарий: «?» — мифология следующего сезона */
+.dex-myths .dex-q { min-width: 40px; font-weight: 900; border-style: dashed; }
+.dex-next { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px; text-align: center; color: rgba(255, 255, 255, .75); }
+.dex-next b { font-size: 44px; line-height: 1; color: #c4b5fd; font-family: var(--f-display); }
+.calm .ala-split { animation: none; }
+.ala-ev-ic { flex: none; width: 34px; height: 34px; }
+.ala-ev-ic > .art, .ala-ev-ic > svg { width: 100%; height: 100%; }
+.ala-sr { margin: 0 0 8px; }
+.ala-sum-l { margin-top: 6px; color: rgba(255, 255, 255, .72); font-size: 13px; }

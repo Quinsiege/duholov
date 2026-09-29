@@ -98,9 +98,9 @@ const Order = {
   // 4.28: вход на экран общего Алатыря — камень Ордена за всё время (не за неделю)
   alatyrRow() {
     if (typeof Alatyr === 'undefined') return '';
-    const rd = Ev.roadsNow()[0], A = Alatyr.info, st = A ? Rules.alatyrStage(A.total) : null;
-    const sub = rd ? ru`${Alatyr.roadName(rd.road)} распутана — ещё ${U.fmtTime(rd.to - U.now())}`
-      : st ? ru`Орден собрал ${U.fmtNum(st.total)} осколков · до вехи ${U.fmtNum(st.need - st.have)}` : ru`Общий камень Ордена: каждая грань распутывает дорогу в один из миров`;
+    const rd = Ev.roadsNow()[0], A = Alatyr.info, st = A ? Ev.alaStage(A.total) : null; // 4.28: грань сезона Алатыря
+    const sub = Ev.finale() ? ru`Финал сезона: во всех Разломах Кощей` : rd ? ru`${Alatyr.roadName(rd.road)} распутана — ещё ${U.fmtTime(rd.to - U.now())}`
+      : st && !st.done ? ru`Орден собрал ${U.fmtNum(A.total)} осколков · до вехи ${U.fmtNum(st.need - st.have)}` : ru`Общий камень Ордена: каждая грань распутывает дорогу в один из миров`;
     return `<button class="o-ala"><span class="o-ala-ico">${Art.item('alatyr')}</span><span class="o-ala-t"><b>${ru`Алатырь-камень`}</b><small>${sub}</small></span><span class="o-ala-go">›</span></button>`;
   },
   async claim(week, i) {

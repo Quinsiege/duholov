@@ -379,5 +379,90 @@ const PLACE_ART = (() => {
           `</svg>`;
       },
     },
+
+    japan: {
+      // Врата Ёми: в туманном сосновом лесу стоят старые алые тории с чёрной перекладиной-касаги и тёмной табличкой,
+      // за ними — воронка в подземную страну Ёми; по бокам тёмные сосны, внизу стелется туман, у ворот парят огоньки
+      rift(tier, col, id) {
+        const pine = (x, s, m) => `<g transform="translate(${x} 93) scale(${m ? -s : s} ${s})">` +
+          `<path d="M-1.5 0 L-2.5 -30 Q-2 -44 2 -54 L4.5 -53 Q1 -44 1.5 -30 L2.5 0Z" fill="#57341a" stroke="#1c1917" stroke-width="1.2" stroke-linejoin="round"/>` +
+          `<path d="M-15 -18 Q-18 -26 -7 -28 Q6 -31 13 -24 Q16 -18 7 -16 Q-4 -14 -15 -18Z M-12 -36 Q-14 -44 -4 -45 Q8 -47 13 -41 Q15 -35 6 -34 Q-4 -33 -12 -36Z M-7 -52 Q-8 -59 0 -60 Q9 -61 12 -56 Q13 -51 6 -50 Q-1 -49 -7 -52Z" fill="url(#${id}p)" stroke="#022c22" stroke-width="1.4" stroke-linejoin="round"/>` +
+          `<path d="M-10 -22 Q0 -25 9 -22 M-8 -40 Q2 -42 9 -39 M-3 -56 Q3 -57 8 -55" stroke="#5eead4" stroke-width="1" fill="none" opacity=".45"/></g>`;
+        const wisp = (x, y, d) => `<g class="art-float" style="animation-delay:-${d}s"><circle cx="${x}" cy="${y}" r="4.2" fill="url(#${id}h)" opacity=".8"/><path d="M${x} ${y - 4.4} C${x + 3} ${y - 1} ${x + 2.6} ${y + 2.6} ${x} ${y + 2.8} C${x - 2.6} ${y + 2.6} ${x - 3} ${y - 1} ${x} ${y - 4.4}Z" fill="${col}"/><circle cx="${x}" cy="${y}" r="1" fill="#fff"/></g>`;
+        return `<svg viewBox="0 0 100 100" class="art"><defs>${riftDefs(id, col)}` +
+          `<linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7f1d1d"/><stop offset=".45" stop-color="#ef4444"/><stop offset="1" stop-color="#991b1b"/></linearGradient>` +
+          `<linearGradient id="${id}k" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57534e"/><stop offset="1" stop-color="#0c0a09"/></linearGradient>` +
+          `<linearGradient id="${id}p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14b8a6"/><stop offset=".55" stop-color="#0f5c4f"/><stop offset="1" stop-color="#042f2e"/></linearGradient></defs>` +
+          riftBack(id) +
+          // сосны и дальний туман
+          pine(22, 0.62, true) + pine(78, 0.62, false) + pine(8, 0.95, false) + pine(92, 0.95, true) +
+          `<g class="art-float" style="animation-delay:-1s"><path d="M0 60 Q14 55 28 59 Q20 64 0 64Z M100 58 Q86 53 72 57 Q80 62 100 62Z" fill="#e0e7ff" opacity=".35"/></g>` +
+          // воронка Ёми
+          `<ellipse cx="50" cy="63" rx="21" ry="25" fill="url(#${id}v)"/>` + arms(50, 63, 16, col) +
+          // тории: столбы с чёрными основаниями
+          `<path d="M26.5 91 L28.5 34 H34 L35 91Z M73.5 91 L71.5 34 H66 L65 91Z" fill="url(#${id}t)" stroke="#450a0a" stroke-width="1.5" stroke-linejoin="round"/>` +
+          `<path d="M24.5 86h12.5v6H24.5z M63 86h12.5v6H63z" fill="url(#${id}k)" stroke="#0c0a09" stroke-width="1.2"/>` +
+          `<path d="M30 38V84M69.5 38V84" stroke="#fca5a5" stroke-width="1" opacity=".5"/>` +
+          // нуки, симаки и чёрная касаги с загнутыми концами
+          `<path d="M18 38.5 H82 V44 H18Z" fill="url(#${id}t)" stroke="#450a0a" stroke-width="1.5"/>` +
+          `<path d="M14 25 H86 V31 H14Z" fill="url(#${id}t)" stroke="#450a0a" stroke-width="1.5"/>` +
+          `<path d="M3 15.5 Q50 23 97 15.5 L95.5 22 Q50 28.5 4.5 22Z" fill="url(#${id}k)" stroke="#0c0a09" stroke-width="1.6" stroke-linejoin="round"/>` +
+          `<path d="M8 18.4 Q50 25 92 18.4" stroke="#a8a29e" stroke-width=".9" fill="none" opacity=".7"/>` +
+          // табличка с огненным знаком
+          `<path d="M44 30 H56 V40 H44Z" fill="#1c1917" stroke="#fbbf24" stroke-width="1.2"/>` +
+          `<g class="art-blink"><circle cx="50" cy="35" r="2.6" fill="none" stroke="${col}" stroke-width="1.3"/><circle cx="50" cy="35" r="1" fill="${col}"/></g>` +
+          // стелющийся туман и огоньки
+          `<g class="art-float"><path d="M1 90 Q14 84 28 88 Q40 92 52 87 Q66 83 78 88 Q90 92 99 87 L99 95 Q50 99 1 95Z" fill="#eef2ff" opacity=".6"/></g>` +
+          `<path d="M4 94 Q30 90 50 93 Q72 90 96 94" stroke="#fff" stroke-width="1.2" fill="none" opacity=".5"/>` +
+          wisp(17, 70, 0.3) + wisp(84, 66, 1.1) +
+          `</svg>`;
+      },
+      // Святилище: за алыми тории — маленький храм-хондэн из кипариса: крыша с перекрещёнными брусьями тиги,
+      // священная верёвка симэнава с бумажными зигзагами, светящаяся дверь; по бокам дорожки — каменные фонари торо с огнём
+      shrine(tier, fire, won, id) {
+        const toro = x => `<path d="M${x - 5} 101 h10 v-2.6 h-10z" fill="url(#${id}s)" stroke="#292524" stroke-width="1"/>` +
+          `<path d="M${x - 1.6} 98.4 V90 h3.2 V98.4Z" fill="url(#${id}s)" stroke="#292524" stroke-width="1"/>` +
+          `<path d="M${x - 4.4} 90 h8.8 v-1.8 h-8.8z" fill="url(#${id}s)" stroke="#292524" stroke-width="1"/>` +
+          `<path d="M${x - 3.4} 88.2 V81.6 h6.8 V88.2Z" fill="${sh(fire, -0.45)}" stroke="#292524" stroke-width="1"/>` +
+          `<rect class="art-blink" x="${x - 2.2}" y="82.6" width="4.4" height="4.6" fill="${fire}"/>` +
+          `<path d="M${x - 6} 81.8 Q${x} 77 ${x + 6} 81.8 Z" fill="url(#${id}s)" stroke="#292524" stroke-width="1" stroke-linejoin="round"/>` +
+          `<circle cx="${x}" cy="77.6" r="1.4" fill="#a8a29e" stroke="#292524" stroke-width=".8"/>`;
+        return `<svg viewBox="0 -6 80 116" class="art"><defs>${shrineDefs(id, fire, won)}` +
+          `<linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7f1d1d"/><stop offset=".45" stop-color="#ef4444"/><stop offset="1" stop-color="#991b1b"/></linearGradient>` +
+          `<linearGradient id="${id}k" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57534e"/><stop offset="1" stop-color="#0c0a09"/></linearGradient>` +
+          `<linearGradient id="${id}w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a16207"/><stop offset=".45" stop-color="#fcd9a0"/><stop offset="1" stop-color="#92400e"/></linearGradient>` +
+          `<linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#78716c"/><stop offset="1" stop-color="#292524"/></linearGradient>` +
+          `<linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#78716c"/><stop offset=".45" stop-color="#d6d3d1"/><stop offset="1" stop-color="#57534e"/></linearGradient></defs>` +
+          shrineBack(id, won, 60) +
+          // каменное основание
+          `<path d="M17 86h46v5H17z" fill="url(#${id}s)" stroke="#292524" stroke-width="1.3"/><path d="M13 91h54v4H13z" fill="#a8a29e" stroke="#292524" stroke-width="1.3"/>` +
+          // хондэн: стены, столбики, светящаяся дверь
+          `<path d="M23 64h34v22H23z" fill="url(#${id}w)" stroke="#451a03" stroke-width="1.4"/>` +
+          `<path d="M26 64V86M54 64V86M23 70H34M46 70H57" stroke="#78350f" stroke-width="1.1"/>` +
+          `<path d="M34 86V68h12v18Z" fill="${sh(fire, -0.4)}" stroke="#451a03" stroke-width="1.3"/>` +
+          `<path class="art-blink" d="M35.5 86V69.5h9V86Z" fill="${fire}" opacity=".85"/>` +
+          `<path d="M40 69V86M35 75h10M35 80h10" stroke="#451a03" stroke-width=".8" opacity=".7"/>` +
+          // крыша из коры кипариса и брусья тиги
+          `<path d="M36 49 L31 40 M44 49 L49 40" stroke="#1c1917" stroke-width="4.6" stroke-linecap="round"/><path d="M36 49 L31 40 M44 49 L49 40" stroke="#a8a29e" stroke-width="2.4" stroke-linecap="round"/>` +
+          `<circle cx="31" cy="40" r="1.4" fill="#fbbf24"/><circle cx="49" cy="40" r="1.4" fill="#fbbf24"/>` +
+          `<path d="M12 66 Q26 60 40 46 Q54 60 68 66 L65 69 Q40 63 15 69Z" fill="url(#${id}r)" stroke="#0c0a09" stroke-width="1.5" stroke-linejoin="round"/>` +
+          `<path d="M16 66.4 Q40 60 64 66.4" stroke="#d6d3d1" stroke-width=".9" fill="none" opacity=".6"/><path d="M40 47 V52" stroke="#fbbf24" stroke-width="1.6"/>` +
+          // симэнава с сидэ
+          `<path d="M24 69.5 Q40 74 56 69.5" stroke="#78350f" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M24 69.5 Q40 74 56 69.5" stroke="#e8c07a" stroke-width="1.8" fill="none" stroke-dasharray="2 1.4"/>` +
+          `<path class="art-sway" style="transform-origin:50% 0" d="M31 71.5 h2.4 l-1.6 2.6 h2.4 l-1.6 2.6 h2.4 M46.5 71.5 h2.4 l-1.6 2.6 h2.4 l-1.6 2.6 h2.4" stroke="#f8fafc" stroke-width="1.6" fill="none" stroke-linejoin="round"/>` +
+          // тории
+          `<path d="M8.5 101 L10.5 30 H15.5 L16.5 101Z M71.5 101 L69.5 30 H64.5 L63.5 101Z" fill="url(#${id}t)" stroke="#450a0a" stroke-width="1.4" stroke-linejoin="round"/>` +
+          `<path d="M7 96h11v6H7z M62 96h11v6H62z" fill="url(#${id}k)" stroke="#0c0a09" stroke-width="1.1"/>` +
+          `<path d="M3 31 H77 V35.5 H3Z" fill="url(#${id}t)" stroke="#450a0a" stroke-width="1.4"/>` +
+          `<path d="M5 19 H75 V24.5 H5Z" fill="url(#${id}t)" stroke="#450a0a" stroke-width="1.4"/>` +
+          `<path d="M-1 10 Q40 17 81 10 L79.5 16.2 Q40 22.5 .5 16.2Z" fill="url(#${id}k)" stroke="#0c0a09" stroke-width="1.5" stroke-linejoin="round"/>` +
+          `<path d="M35.5 24 H44.5 V31.5 H35.5Z" fill="#1c1917" stroke="#fbbf24" stroke-width="1.1"/><circle cx="40" cy="27.8" r="1.8" fill="${fire}"/>` +
+          // каменные фонари торо и дорожка
+          `<ellipse cx="40" cy="101" rx="9" ry="2.4" fill="#78716c" stroke="#292524" stroke-width="1"/>` +
+          toro(25) + toro(55) + flame(id, 25, 87.5, 0.2) + flame(id, 55, 87.5, 0.2) +
+          sparks(fire, [30, 50], [52, 44]) +
+          `</svg>`;
+      },
+    },
   };
 })();

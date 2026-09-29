@@ -700,12 +700,12 @@ const UI = {
     Sfx.play('tap');
     const ev = Ev.cur, nx = Ev.next;
     // 4.28: общий Алатырь — распутанная дорога (если есть) и вход на экран камня
-    const rd = Ev.roadsNow()[0], ala = typeof Alatyr !== 'undefined';
+    const rd = Ev.finale() ? null : Ev.roadsNow()[0], ala = typeof Alatyr !== 'undefined', fin = Ev.finale(); // 4.28: финал сезона важнее дороги
     this.modal({
       title: ev.name, cls: 'event-modal',
       html: `<p>${ev.desc}</p><p class="small">${ru`До конца события: ${U.fmtTime(Ev.endsAt() - Date.now())}`}</p>
         <div class="ev-next ev-myth"><small>${ru`Неделя мифологии`}</small><b>${MYTHS[Ev.myth].name}</b><small>${ru`Её духи встречаются втрое чаще. Следующая — ${MYTHS[Ev.nextMyth].name}.`}</small></div>
-        ${ala ? `<div class="ev-next ev-road"${rd ? ` style="--road:${Alatyr.color(rd.road)}"` : ''}><small>${ru`Алатырь-камень`}</small><b>${rd ? ru`${Alatyr.roadName(rd.road)} распутана` : ru`Орден собирает осколки`}</b><small>${rd ? ru`Духи мифологии «${MYTHS[rd.road].name}» встречаются в ${Rules.ALATYR_WORLD.MUL} раза чаще — ещё ${U.fmtTime(rd.to - U.now())}.` : ru`Каждая собранная грань распутывает дорогу в один из семи миров.`}</small></div>` : ''}
+        ${ala ? `<div class="ev-next ev-road"${rd ? ` style="--road:${Alatyr.color(rd.road)}"` : ''}><small>${ru`Алатырь-камень`}</small><b>${fin ? ru`Кощей пришёл за камнем!` : rd ? ru`${Alatyr.roadName(rd.road)} распутана` : ru`Орден собирает осколки`}</b><small>${fin ? ru`Финал сезона: во всех Разломах мира Кощей. Побед над ним: ${U.fmtNum(fin.kills)} из ${U.fmtNum(fin.goal)}.` : rd ? ru`Духи мифологии «${MYTHS[rd.road].name}» встречаются в ${Rules.ALATYR_WORLD.MUL} раза чаще — ещё ${U.fmtTime(rd.to - U.now())}.` : ru`Каждая собранная грань распутывает дорогу в один из миров.`}</small></div>` : ''}
         <div class="ev-next"><small>${ru`Следующая неделя`}</small><b>${nx.name}</b><small>${nx.desc}</small></div>`,
       buttons: [...(ala ? [{ label: ru`Алатырь`, fn: () => Alatyr.screen() }] : []), { label: ru`Понятно`, cls: 'primary' }],
     });

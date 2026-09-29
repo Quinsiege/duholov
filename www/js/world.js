@@ -50,8 +50,15 @@ const W = {
   },
   /* 4.28: духи всех семи мифологий разлетелись по свету (сюжет — LORE): мифология к месту не привязана. Чтобы мифологии
      встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
-  // Разлом и святилище у места — одной из семи мифологий, поровну (постоянно, по id места)
-  placeMyth(p) { return MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
+  // Разлом и святилище у места — одной из открытых мифологий, поровну (постоянно, по id места).
+  // 4.28: сезоны — каждая новая мифология забирает себе места поровну у прежних: место переходит к ней с вероятностью
+  // 1 / (сколько мифологий стало), остальные места своей мифологии не меняют (закрытые мифологии мест не получают)
+  placeMyth(p) {
+    const base = Rules.ALATYR_WORLD.ORDER;
+    let m = base[Math.floor(U.h('pm', p.id) * base.length)], n = base.length;
+    for (const x of MYTH_KEYS) if (!base.includes(x)) { n++; if (U.h('pm', x, p.id) < 1 / n) m = x; }
+    return m;
+  },
   // из списка — виды одной мифологии, выбранной из тех, что в списке есть (x — случайное число 0…1): поровну, но с весом
   // Ev.mythMul — 4.28: мифология недели втрое чаще
   evenMyth(list, x) {
@@ -91,6 +98,7 @@ const W = {
 
   spawnsAround(lat, lng, radius = this.VIEW) {
     const now = U.now(), out = [];
+    Ev.alaSync(now); // 4.28: духи — только открытых в этом сезоне мифологий
     const P = S.incenseActive() ? 0.3 : 0.14;
     const night = U.isNight();
     this.cells(lat, lng, this.SPAWN_CELL, radius, (i, j, la, ln, sz, lsz) => {
@@ -137,9 +145,12 @@ const W = {
     if (!this.riftAt(p.id, hour)) return null;
     const id = `${p.id}:${hour}`;
     const r = U.rng(id);
+    const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
+    // 4.28: финал сезона Алатыря — во всех Разломах мира великий босс Кощей (fin — номер сезона: победы идут в общий счёт)
+    const t0 = hour * 3600000;
+    if (Ev.finale(t0)) return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier: 3, boss: 'koschey', myth, fin: Ev.alaSeason(t0), place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
     if (tier === 3) pool = this.ofMyth(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), myth);
     else if (tier === 2) pool = this.ofMyth(SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0), myth);
     else pool = this.ofMyth(SPECIES.filter(s => s.rar === 2), myth);
@@ -150,6 +161,7 @@ const W = {
     return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
   },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
   },
 
@@ -192,6 +204,7 @@ const W = {
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
   /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:

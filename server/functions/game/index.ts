@@ -670,6 +670,105 @@ I18N.init();
     look: { shape: 'robe', c1: '#44403c', c2: '#0c0a09', c3: '#facc15', eye: '#facc15', eyes: 'glow', mouth: 'none', back: ['aura', 'cattail'], feats: ['crown', 'runes'] } },
 ];
 
+// ===== www/js/myth-japan.js =====
+/* 4.28: духи и боги японской мифологии — сезон 2 (данные: поля — как у SPECIES в data.js; мифология задаётся сама).
+   До раскола Алатыря мифология скрыта; MYTH_META.japan — её описание, Разлом и святилища */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).japan = [
+  // ---------- младшие семейства ----------
+  // Ветер: тэнгу — от листового коноха-тэнгу через воронового карасу-тэнгу к великому горному дайтэнгу с веером
+  { id: 'jp_konoha', name: ru`Коноха-тэнгу`, el: 'wind', rar: 1, stage: 1, fam: 'jp_konoha', evo: 'jp_karasu', cost: 25, base: [120, 92, 104],
+    desc: ru`Самый младший из тэнгу, лёгкий, как лист на ветру. Учится летать на сквозняках между высотками и пока приземляется в основном на козырьки остановок.`,
+    look: { shape: 'bird', c1: '#e0e7ff', c2: '#4338ca', c3: '#84cc16', eyes: 'big', mouth: 'beak', back: ['wings'], feats: ['leaves', 'cheeks'] } },
+  { id: 'jp_karasu', name: ru`Карасу-тэнгу`, el: 'wind', rar: 2, stage: 2, fam: 'jp_konoha', evo: 'jp_daitengu', cost: 100, base: [174, 128, 142],
+    desc: ru`Тэнгу с вороньим клювом и чёрными крыльями, мастер горных троп. Сторожит храмовые лестницы и поднимает вихрь, если кто-нибудь мусорит на горе.`,
+    look: { shape: 'bird', c1: '#475569', c2: '#0f172a', c3: '#f59e0b', eyes: 'angry', mouth: 'beak', back: ['wings'], feats: ['hat'] } },
+  { id: 'jp_daitengu', name: ru`Дайтэнгу`, el: 'wind', rar: 3, stage: 3, fam: 'jp_konoha', base: [240, 176, 192],
+    desc: ru`Великий горный тэнгу с длинным красным носом и веером из перьев. Одним взмахом веера поднимает бурю — и им же разгоняет тучи над городским праздником.`,
+    look: { shape: 'robe', c1: '#f87171', c2: '#7f1d1d', c3: '#f8fafc', eyes: 'angry', mouth: 'none', back: ['wings', 'aura'], feats: ['beard', 'hat'] } },
+
+  // Лес: тануки — стучит в живот-барабан «пон-поко» и превращается с помощью листика на голове
+  { id: 'jp_tanuchok', name: ru`Танучок`, el: 'forest', rar: 1, stage: 1, fam: 'jp_tanuchok', evo: 'jp_tanuki', cost: 25, base: [104, 110, 124],
+    desc: ru`Пушистый детёныш тануки учится превращаться: кладёт на голову листик — и становится… чуть более пушистым тануки. Зато в живот-барабан стучит уже отлично: пон-поко-пон!`,
+    look: { shape: 'round', c1: '#d6a77a', c2: '#6b4423', c3: '#1c1917', eyes: 'big', mouth: 'cat', back: ['ears', 'tail'], feats: ['leaves', 'cheeks'] } },
+  { id: 'jp_tanuki', name: ru`Тануки`, el: 'forest', rar: 2, stage: 2, fam: 'jp_tanuchok', evo: 'jp_ootanuki', cost: 100, base: [156, 150, 170],
+    desc: ru`Весельчак в соломенной шляпе, с бутылочкой рамунэ и счётом за ужин — таким его ставят у дверей раменных на удачу. Превращается во что угодно, но хвост всегда его выдаёт.`,
+    look: { shape: 'blob', c1: '#c8956a', c2: '#5b3a1e', c3: '#fde68a', eyes: 'round', mouth: 'smile', back: ['ears', 'tail'], feats: ['hat', 'leaves'] } },
+  { id: 'jp_ootanuki', name: ru`Великий тануки`, el: 'forest', rar: 3, stage: 3, fam: 'jp_tanuchok', base: [214, 218, 236],
+    desc: ru`Предводитель восьмисот восьми тануки из Мацуямы. Ударит в живот-барабан — и по всему парку кружится листопад, а превратиться может хоть в целый поезд.`,
+    look: { shape: 'blob', c1: '#b98457', c2: '#3f2a14', c3: '#84cc16', eyes: 'angry', mouth: 'smile', back: ['aura', 'ears', 'tail'], feats: ['leaves', 'crown'] } },
+
+  // Тень: кошка, прожившая много лет, становится бакэнэко, а потом нэкомата с раздвоенным хвостом
+  { id: 'jp_tama', name: ru`Котёнок Тама`, el: 'shadow', rar: 1, stage: 1, fam: 'jp_tama', evo: 'jp_bakeneko', cost: 25, base: [112, 100, 110], time: 'night',
+    desc: ru`С виду обычный котёнок с колокольчиком. Но кошка, прожившая много лет, становится духом — и Тама очень ждёт этого дня, тренируясь ходить на задних лапках.`,
+    look: { shape: 'round', c1: '#f8fafc', c2: '#94a3b8', c3: '#f97316', eyes: 'big', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers', 'cheeks'] } },
+  { id: 'jp_bakeneko', name: ru`Бакэнэко`, el: 'shadow', rar: 2, stage: 2, fam: 'jp_tama', evo: 'jp_nekomata', cost: 100, base: [166, 138, 150], time: 'night',
+    desc: ru`Кошка-оборотень: по ночам танцует на задних лапах, повязав на голову полотенце. Раньше лакомилась маслом из старых фонарей, а теперь — сливками из круглосуточного магазина.`,
+    look: { shape: 'tall', c1: '#e2e8f0', c2: '#475569', c3: '#a855f7', eyes: 'sleepy', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers'] } },
+  { id: 'jp_nekomata', name: ru`Нэкомата`, el: 'shadow', rar: 3, stage: 3, fam: 'jp_tama', base: [232, 170, 196],
+    desc: ru`Мудрая кошка с раздвоенным хвостом. Взмахнёт хвостами — и в переулке зажигаются блуждающие огоньки, провожая до дома тех, кто засиделся допоздна.`,
+    look: { shape: 'tall', c1: '#f1f5f9', c2: '#6b21a8', c3: '#c084fc', eye: '#e9d5ff', eyes: 'glow', mouth: 'cat', back: ['aura', 'cattail', 'ears'], feats: ['whiskers'] } },
+
+  // Вода: каппа с блюдцем воды на макушке
+  { id: 'jp_kappyonok', name: ru`Каппёнок`, el: 'water', rar: 1, stage: 1, fam: 'jp_kappyonok', evo: 'jp_kappa', cost: 25, base: [114, 104, 112],
+    desc: ru`Маленький каппа с блюдцем воды на макушке. Вежливо кланяется в ответ на поклон — и тут же бежит доливать блюдце из ближайшего фонтанчика.`,
+    look: { shape: 'round', c1: '#86efac', c2: '#15803d', c3: '#7dd3fc', eyes: 'big', mouth: 'beak', back: [], feats: ['bubbles', 'cheeks'] } },
+  { id: 'jp_kappa', name: ru`Каппа`, el: 'water', rar: 2, stage: 2, fam: 'jp_kappyonok', base: [168, 142, 154],
+    desc: ru`Речной дух с панцирем и клювом, чемпион по сумо среди водяных. Обожает огурцы — роллы с огурцом так и называются: каппа-маки.`,
+    look: { shape: 'tall', c1: '#4ade80', c2: '#166534', c3: '#fde68a', eyes: 'round', mouth: 'beak', back: ['ripples'], feats: ['bubbles'] } },
+
+  // Огонь: дарума-неваляшка — второй глаз дорисовывают, когда сбудется желание
+  { id: 'jp_darumka', name: ru`Дарумка`, el: 'fire', rar: 1, stage: 1, fam: 'jp_darumka', evo: 'jp_daruma', cost: 25, base: [106, 118, 120],
+    desc: ru`Красная неваляшка-дарума с одним нарисованным глазом: второй ей дорисуют, когда сбудется загаданное желание. Толкни её — покачается и снова встанет: семь раз упади, восемь раз поднимись!`,
+    look: { shape: 'round', c1: '#f87171', c2: '#b91c1c', c3: '#fde68a', eyes: 'round', mouth: 'smile', back: [], feats: ['cheeks'] } },
+  { id: 'jp_daruma', name: ru`Дарума`, el: 'fire', rar: 2, stage: 2, fam: 'jp_darumka', base: [152, 170, 164],
+    desc: ru`Желание сбылось — и дарума получила второй глаз. В Новый год старых дарум с благодарностью провожают в храмовом костре, и они выходят оттуда тёплыми огненными духами.`,
+    look: { shape: 'round', c1: '#ef4444', c2: '#7f1d1d', c3: '#fbbf24', eyes: 'angry', mouth: 'none', back: ['aura'], feats: ['beard', 'flame'] } },
+
+  // Ток: райдзю — громовой зверёк бога грома
+  { id: 'jp_gromushka', name: ru`Громушка`, el: 'current', rar: 1, stage: 1, fam: 'jp_gromushka', evo: 'jp_raiju', cost: 25, base: [118, 96, 106],
+    desc: ru`Детёныш райдзю, громового зверька. В грозу сворачивается клубком там, где потеплее, — например, в капюшоне у прохожего — и тихонько потрескивает.`,
+    look: { shape: 'round', c1: '#fde68a', c2: '#ca8a04', c3: '#60a5fa', eyes: 'big', mouth: 'cat', back: ['cattail', 'ears'], feats: ['bolt', 'cheeks'] } },
+  { id: 'jp_raiju', name: ru`Райдзю`, el: 'current', rar: 2, stage: 2, fam: 'jp_gromushka', base: [172, 132, 146],
+    desc: ru`Громовой зверь, спутник бога грома. Спрыгивает на землю вместе с молнией, носится по проводам и оставляет на деревьях следы когтей.`,
+    look: { shape: 'blob', c1: '#fef08a', c2: '#a16207', c3: '#3b82f6', eyes: 'angry', mouth: 'teeth', back: ['cattail', 'mane'], feats: ['bolt'] } },
+
+  // ---------- знаменитые существа и герои ----------
+  { id: 'jp_akaoni', name: ru`Ака-они`, el: 'fire', rar: 3, stage: 1, fam: 'jp_akaoni', base: [224, 180, 206],
+    desc: ru`Красный великан-они с железной палицей. На праздник Сэцубун в него бросают жареные бобы с криком «Они — вон, счастье — в дом!», и он честно убегает — но недалеко.`,
+    look: { shape: 'blob', c1: '#f87171', c2: '#991b1b', c3: '#fbbf24', eyes: 'angry', mouth: 'teeth', back: [], feats: ['horns'] } },
+  { id: 'jp_yukionna', name: ru`Юки-онна`, el: 'water', rar: 3, stage: 1, fam: 'jp_yukionna', base: [200, 196, 204],
+    desc: ru`Снежная дева в белом кимоно. Приходит с метелью и рисует иней на окнах трамваев; говорят, она щадит того, кто умеет держать слово.`,
+    look: { shape: 'ghost', c1: '#f8fafc', c2: '#7dd3fc', c3: '#e0f2fe', eyes: 'sleepy', mouth: 'smile', back: ['hair'], feats: [] } },
+  { id: 'jp_momotaro', name: ru`Момотаро`, el: 'forest', rar: 3, stage: 1, fam: 'jp_momotaro', base: [212, 176, 190],
+    desc: ru`Мальчик, родившийся из огромного персика. С собакой, обезьяной и фазаном он отправился на остров они и вернулся с победой, а друзей угощал рисовыми колобками кибиданго.`,
+    look: { shape: 'round', c1: '#fecdd3', c2: '#e11d48', c3: '#fde68a', eyes: 'round', mouth: 'smile', back: [], feats: ['hat', 'cheeks'] } },
+
+  // ---------- эпические ----------
+  { id: 'jp_raijin', name: ru`Райдзин`, el: 'current', rar: 4, stage: 1, fam: 'jp_raijin', base: [230, 180, 196],
+    desc: ru`Бог грома с кольцом барабанов за спиной: ударит в них — и над городом раскатывается гроза. В Японии до сих пор советуют в грозу прикрывать пупок: Райдзин, говорят, большой до них охотник.`,
+    look: { shape: 'robe', c1: '#60a5fa', c2: '#1e3a8a', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['aura'], feats: ['horns', 'bolt'] } },
+  { id: 'jp_fujin', name: ru`Фудзин`, el: 'wind', rar: 4, stage: 1, fam: 'jp_fujin', base: [206, 206, 214],
+    desc: ru`Бог ветра с огромным мешком за плечами, где хранятся все ветра мира. Приоткроет мешок — по улицам гуляет свежий бриз, развяжет совсем — берегите зонтики.`,
+    look: { shape: 'robe', c1: '#86efac', c2: '#166534', c3: '#e0e7ff', eyes: 'angry', mouth: 'teeth', back: ['aura'], feats: ['swirl', 'horns'] } },
+
+  // ---------- великие легенды ----------
+  { id: 'jp_amaterasu', name: ru`Аматэрасу`, el: 'fire', rar: 5, stage: 1, fam: 'jp_amaterasu', legend: true, base: [298, 236, 250],
+    desc: ru`Легенда. Богиня Солнца: когда она укрылась в небесной пещере, мир погрузился во тьму, и вернуть её сумели лишь смех богов и священное зеркало. Встречается только в разломах.`,
+    look: { shape: 'robe', c1: '#fff7ed', c2: '#dc2626', c3: '#fbbf24', eyes: 'sleepy', mouth: 'smile', back: ['aura', 'halo', 'hair'], feats: ['crown'] } },
+  { id: 'jp_susanoo', name: ru`Сусаноо`, el: 'water', rar: 5, stage: 1, fam: 'jp_susanoo', legend: true, base: [302, 226, 244],
+    desc: ru`Легенда. Буйный брат Аматэрасу, бог бурь и морей: он одолел восьмиглавого змея Ямата-но Ороти и нашёл в его хвосте священный меч. Встречается только в разломах.`,
+    look: { shape: 'robe', c1: '#93c5fd', c2: '#1e3a8a', c3: '#e5e7eb', eyes: 'angry', mouth: 'none', back: ['aura', 'hair'], feats: ['beard'] } },
+];
+(globalThis.MYTH_META = globalThis.MYTH_META || {}).japan = {
+  name: ru`Японская`, where: ru`Япония — острова восходящего солнца`, color: '#f43f5e', season: 2,
+  world: ru`Такамагахара`, road: ru`Дорога в Такамагахару`, // мир мифологии для экрана Алатыря — Равнина Высокого Неба, где живут ками
+  rift: ru`Врата Ёми`, riftDesc: ru`Врата в Ёми, подземную страну мрака, приоткрылись в тумане: оттуда вышел сильный дух. Закрой врата, пока не прошёл час.`,
+  shrine: ru`Святилище`, shrineOf: g => ru`Святилище ${g}`,
+  shrineDesc: ru`Святилище ками за алыми воротами-тории. Победи хранителя — и твоя дружина сможет держать святилище.`,
+  gods: [ru`Аматэрасу`, ru`Сусаноо`, ru`Цукуёми`, ru`Инари`, ru`Хатимана`, ru`Идзанаги`, ru`Идзанами`, ru`Эбису`, ru`Рюдзина`, ru`Тэндзина`],
+  guards: [ru`Харуто`, ru`Сакура`, ru`Рэн`, ru`Аой`, ru`Кэйта`, ru`Хина`],
+};
+
 // ===== www/js/data.js =====
 /* ==========================================================================
    ДУХОЛОВ — данные игры: стихии, духи, предметы, уровни, задания
@@ -949,21 +1048,48 @@ const REGIONS = {
    Духи и боги других мифологий — по файлу данных на мифологию (js/myth-<ключ>.js, подключается до data.js:
    globalThis.MYTH_SP[ключ] = [...виды]) и файлу рисунков (js/sp-<ключ>.js). Номера в Бестиарии — после славянских,
    в порядке MYTHS. После Перепутицы (сюжет — LORE) духи всех мифологий водятся по всему свету, мифология выпадает
-   поровну (W.evenMyth); у Разлома и святилища — одна из семи мифологий (W.placeMyth). where — родина мифологии по легенде. */
+   поровну (W.evenMyth); у Разлома и святилища — одна из семи мифологий (W.placeMyth). where — родина мифологии по легенде.
+   4.28: сезоны Алатыря — season: с какого сезона мифология открыта (у первых семи — 1). Мифология следующих сезонов приходит
+   своим файлом js/myth-<ключ>.js: globalThis.MYTH_SP[ключ] = [...виды] и globalThis.MYTH_META[ключ] = { name, where, color,
+   season, rift, riftDesc, shrine, shrineOf, shrineDesc, gods, guards } (и по желанию world — куда ведёт её дорога, road —
+   «Дорога в …»). Пока её сезон не настал, она закрыта: её духов нет в SPECIES, её нет в MYTH_KEYS (mythOpen ниже). */
 const MYTHS = {
-  slavic: { name: ru`Славянская`,    where: ru`Россия, Восточная Европа, Кавказ и Средняя Азия`,          color: '#f59e0b' },
-  greek:  { name: ru`Греческая`,     where: ru`Средиземноморье: Греция, Италия, Испания, Турция`,         color: '#60a5fa' },
-  norse:  { name: ru`Скандинавская`, where: ru`Скандинавия, Исландия, Дания, Германия, Прибалтика`,       color: '#93c5fd' },
-  celtic: { name: ru`Кельтская`,     where: ru`Ирландия, Британия, Франция, Бельгия, Нидерланды`,          color: '#34d399' },
-  egypt:  { name: ru`Египетская`,    where: ru`Египет, Северная Африка, Аравия и Ближний Восток`,          color: '#fbbf24' },
-  china:  { name: ru`Китайская`,     where: ru`Китай, Корея, Япония и Юго-Восточная Азия`,                 color: '#ef4444' },
-  aztec:  { name: ru`Ацтекская`,     where: ru`Америка — от Аляски до Огненной Земли`,                     color: '#10b981' },
+  slavic: { name: ru`Славянская`,    where: ru`Россия, Восточная Европа, Кавказ и Средняя Азия`,          color: '#f59e0b', season: 1 },
+  greek:  { name: ru`Греческая`,     where: ru`Средиземноморье: Греция, Италия, Испания, Турция`,         color: '#60a5fa', season: 1 },
+  norse:  { name: ru`Скандинавская`, where: ru`Скандинавия, Исландия, Дания, Германия, Прибалтика`,       color: '#93c5fd', season: 1 },
+  celtic: { name: ru`Кельтская`,     where: ru`Ирландия, Британия, Франция, Бельгия, Нидерланды`,          color: '#34d399', season: 1 },
+  egypt:  { name: ru`Египетская`,    where: ru`Египет, Северная Африка, Аравия и Ближний Восток`,          color: '#fbbf24', season: 1 },
+  china:  { name: ru`Китайская`,     where: ru`Китай, Корея, Япония и Юго-Восточная Азия`,                 color: '#ef4444', season: 1 },
+  aztec:  { name: ru`Ацтекская`,     where: ru`Америка — от Аляски до Огненной Земли`,                     color: '#10b981', season: 1 },
 };
-const MYTH_KEYS = Object.keys(MYTHS);
-for (const m of MYTH_KEYS) for (const x of (globalThis.MYTH_SP || {})[m] || []) SPECIES.push({ ...x, myth: m });
+// 4.28: мифологии следующих сезонов (MYTH_META) — после первых семи, по сезонам; ключ — только латиница
+for (const [k, m] of Object.entries(globalThis.MYTH_META || {})) {
+  if (MYTHS[k] || !/^[a-z]{2,16}$/.test(k) || !m || typeof m !== 'object') continue;
+  MYTHS[k] = { name: m.name || k, where: m.where || '', color: m.color || '#fde68a', season: Math.max(2, Math.floor(+m.season) || 2), world: m.world || null, road: m.road || null };
+}
+// все мифологии игры (и закрытые) — по сезону, в сезоне — по порядку объявления
+const MYTH_ALL = Object.keys(MYTHS).map((k, i) => [k, i]).sort((a, b) => MYTHS[a[0]].season - MYTHS[b[0]].season || a[1] - b[1]).map(x => x[0]);
+const MYTH_KEYS = MYTH_ALL.slice(); // открытые сейчас (mythOpen); массив меняется на месте — ссылки на него живут
+for (const m of MYTH_ALL) for (const x of (globalThis.MYTH_SP || {})[m] || []) SPECIES.push({ ...x, myth: m });
 SPECIES.forEach(s => { if (!s.myth) s.myth = 'slavic'; });
 SPECIES.forEach((s, i) => { s.num = i + 1; });
-const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+const SP = Object.fromEntries(SPECIES.map(s => [s.id, s])); // все виды, и закрытых мифологий: по нему узнают вид по id
+const SPECIES_ALL = SPECIES.slice();
+// 4.28: открыть мифологии сезона s: SPECIES и MYTH_KEYS меняются на месте — только открытые виды и мифологии. Сезон сейчас
+// знают Ev.alaSeason (сервер — из базы, телефон — от сервера): Ev.alaSync зовёт mythOpen перед отбором духов
+let MYTH_SEASON = 0;
+function mythOpen(s, force) {
+  s = Math.max(1, Math.floor(+s) || 1);
+  if (s === MYTH_SEASON && !force) return false;
+  MYTH_SEASON = s;
+  const open = MYTH_ALL.filter(m => (MYTHS[m].season || 1) <= s);
+  MYTH_KEYS.length = 0; MYTH_KEYS.push(...open);
+  SPECIES.length = 0; SPECIES.push(...SPECIES_ALL.filter(x => open.includes(x.myth)));
+  return true;
+}
+// мифология, что открывается в сезоне s (первая по порядку), или null — её ещё нет в игре
+function mythOfSeason(s) { return MYTH_ALL.find(m => MYTHS[m].season === s && s > 1) || null; }
+mythOpen(1);
 
 const ITEMS = {
   charm:   { name: ru`Оберег`,             desc: ru`Узелок с заговорённой травой. Бросай в духа, чтобы поймать.`, mult: 1,   throwable: true },
@@ -1100,6 +1226,8 @@ const MEDALS = [
   { id: 'shiny',   name: ru`Искатель сияния`, desc: ru`Поймай сияющих духов`,       stat: 'shiny',       tiers: [1, 10, 50] },
   { id: 'streak',  name: ru`Верность`,      desc: ru`Дней подряд в игре`,           stat: 'streakBest',  tiers: [7, 30, 100] },
   { id: 'order',   name: ru`Соратник`,      desc: ru`Очков в общем деле Ордена`,    stat: 'orderPts',    tiers: [100, 1000, 10000] },
+  // 4.28: сезоны Алатыря, в которых Ловчий принёс в общий камень не меньше SeasonRewards.MEDAL_MIN осколков (считает SeasonRewards.grant)
+  { id: 'alatyr',  name: ru`Хранитель Алатыря`, desc: ru`Сезонов Алатыря, где ты принёс 5+ осколков`, stat: 'alaSeasons', tiers: [1, 3, 10] },
   { id: 'lands',   name: ru`Землепроходец`, desc: ru`Поймай духов родных земель`,   stat: 'lands',       tiers: [1, 3, 7] },
   { id: 'el_fire',    name: ru`Истопник`,   desc: ru`Поймай духов Огня`,            stat: 'el:fire',     tiers: [10, 50, 200] },
   { id: 'el_water',   name: ru`Лодочник`,   desc: ru`Поймай духов Воды`,            stat: 'el:water',    tiers: [10, 50, 200] },
@@ -1161,6 +1289,14 @@ const MYTH_PLACES = {
     gods: [ru`Кецалькоатля`, ru`Тлалока`, ru`Уицилопочтли`, ru`Шочикецаль`, ru`Тонатиу`, ru`Эекатля`, ru`Чальчиуитликуэ`, ru`Сентеотля`],
     guards: [ru`Ицель`, ru`Куаутемок`, ru`Шочитль`, ru`Тонали`, ru`Ситлали`, ru`Некали`] },
 };
+// 4.28: Разломы и святилища мифологий следующих сезонов — из MYTH_META (чего нет — как у славянских)
+for (const [k, m] of Object.entries(globalThis.MYTH_META || {})) {
+  if (MYTH_PLACES[k] || !MYTHS[k] || !m || typeof m !== 'object') continue;
+  const S0 = MYTH_PLACES.slavic, list = (a, d) => (Array.isArray(a) && a.length ? a : d);
+  MYTH_PLACES[k] = { rift: m.rift || S0.rift, riftDesc: m.riftDesc || S0.riftDesc, shrine: m.shrine || S0.shrine,
+    shrineOf: typeof m.shrineOf === 'function' ? m.shrineOf : g => `${m.shrine || S0.shrine} ${g}`, shrineDesc: m.shrineDesc || S0.shrineDesc,
+    gods: list(m.gods, S0.gods), guards: list(m.guards, S0.guards) };
+}
 const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'];
 /* ---------- Дружины (3.5): Капища под знаменем ---------- */
 const CLANS = {
@@ -1514,9 +1650,33 @@ const Ev = {
   roadsLive(t = U.now()) { return (this.roads || []).filter(r => r && r.to > t).map(r => ({ n: r.n, road: r.road, from: r.from, to: r.to })); },
   // проверка присланного сервером (телефон): только известные мифологии и числа
   roadsClean(list) {
-    return (Array.isArray(list) ? list : []).filter(r => r && MYTH_KEYS.includes(r.road) && Number.isFinite(+r.from) && Number.isFinite(+r.to) && Number.isFinite(+r.n))
+    return (Array.isArray(list) ? list : []).filter(r => r && typeof r.road === 'string' && Object.prototype.hasOwnProperty.call(MYTHS, r.road) && Number.isFinite(+r.from) && Number.isFinite(+r.to) && Number.isFinite(+r.n))
       .slice(0, 30).map(r => ({ n: +r.n | 0, road: r.road, from: +r.from, to: +r.to }));
   },
+
+  /* 4.28: сезон Алатыря (Rules.ALATYR_WORLD). s — сезон, from — когда он начался (мс), start — общий счёт осколков на его
+     начало, fin — финал { from, to, kills, goal } (все грани собраны: во всех Разломах Кощей), brk — когда Кощей расколет
+     камень (Орден одолел его goal раз; иначе — в конце финала fin.to). С момента раскола — сезон s + 1, даже если база ещё
+     не записала его. Сервер берёт всё из базы (serve.js, World), телефон — из ответов сервера (событие ala, alatyr.js) */
+  ala: { s: 1, from: 0, start: 0, fin: null, brk: null },
+  alaEnd() { const A = this.ala || {}; return A.brk || (A.fin && A.fin.to) || 0; },
+  alaSeason(t = U.now()) { const A = this.ala || {}, e = this.alaEnd(); return Math.max(1, Math.floor(+A.s) || 1) + (e && t >= e ? 1 : 0); },
+  // финал идёт (в момент t): все грани собраны, Кощей ещё не расколол камень
+  finale(t = U.now()) { const f = (this.ala || {}).fin; return f && t >= f.from && t < this.alaEnd() ? f : null; },
+  // открыть мифологии сезона, что идёт в момент t (data.js, mythOpen) — перед отбором духов
+  alaSync(t = U.now()) { if (typeof mythOpen === 'function') mythOpen(this.alaSeason(t)); },
+  // где камень текущего сезона при общем счёте total (сезон уже сменился, а база не записала начало — с нуля)
+  alaStage(total, t = U.now()) { const A = this.ala || {}, s = this.alaSeason(t); return Rules.alaStage(s, s === A.s ? (+total || 0) - (+A.start || 0) : 0); },
+  // для телефона и проверка присланного сервером
+  alaView() { const A = this.ala || {}; return { s: A.s, from: A.from, start: A.start, fin: A.fin ? { ...A.fin } : null, brk: A.brk || null }; },
+  alaClean(x) {
+    const num = v => (Number.isFinite(+v) && v !== null && v !== '' ? +v : 0);
+    if (!x || typeof x !== 'object') return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    const f = x.fin && typeof x.fin === 'object' && num(x.fin.to) > num(x.fin.from) ? { from: num(x.fin.from), to: num(x.fin.to), kills: Math.max(0, num(x.fin.kills)), goal: Math.max(1, num(x.fin.goal) || Rules.ALATYR_WORLD.FINALE.GOAL) } : null;
+    return { s: Math.max(1, Math.floor(num(x.s)) || 1), from: num(x.from), start: Math.max(0, num(x.start)), fin: f, brk: num(x.brk) || null };
+  },
+  // подпись сезона (сервер помнит, какую уже отдал телефону); победы над Кощеем в неё не входят — их телефон спрашивает сам
+  alaKey() { const A = this.ala || {}; return `${A.s}:${A.start}:${A.fin ? A.fin.from + '-' + A.fin.to : ''}:${A.brk || ''}`; },
 
   // Православная Пасха (юлианский расчёт + 13 дней, верно для 1900–2099); дата в UTC
   easter(y) {
@@ -1707,8 +1867,15 @@ const W = {
   },
   /* 4.28: духи всех семи мифологий разлетелись по свету (сюжет — LORE): мифология к месту не привязана. Чтобы мифологии
      встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
-  // Разлом и святилище у места — одной из семи мифологий, поровну (постоянно, по id места)
-  placeMyth(p) { return MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
+  // Разлом и святилище у места — одной из открытых мифологий, поровну (постоянно, по id места).
+  // 4.28: сезоны — каждая новая мифология забирает себе места поровну у прежних: место переходит к ней с вероятностью
+  // 1 / (сколько мифологий стало), остальные места своей мифологии не меняют (закрытые мифологии мест не получают)
+  placeMyth(p) {
+    const base = Rules.ALATYR_WORLD.ORDER;
+    let m = base[Math.floor(U.h('pm', p.id) * base.length)], n = base.length;
+    for (const x of MYTH_KEYS) if (!base.includes(x)) { n++; if (U.h('pm', x, p.id) < 1 / n) m = x; }
+    return m;
+  },
   // из списка — виды одной мифологии, выбранной из тех, что в списке есть (x — случайное число 0…1): поровну, но с весом
   // Ev.mythMul — 4.28: мифология недели втрое чаще
   evenMyth(list, x) {
@@ -1748,6 +1915,7 @@ const W = {
 
   spawnsAround(lat, lng, radius = this.VIEW) {
     const now = U.now(), out = [];
+    Ev.alaSync(now); // 4.28: духи — только открытых в этом сезоне мифологий
     const P = S.incenseActive() ? 0.3 : 0.14;
     const night = U.isNight();
     this.cells(lat, lng, this.SPAWN_CELL, radius, (i, j, la, ln, sz, lsz) => {
@@ -1794,9 +1962,12 @@ const W = {
     if (!this.riftAt(p.id, hour)) return null;
     const id = `${p.id}:${hour}`;
     const r = U.rng(id);
+    const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
+    // 4.28: финал сезона Алатыря — во всех Разломах мира великий босс Кощей (fin — номер сезона: победы идут в общий счёт)
+    const t0 = hour * 3600000;
+    if (Ev.finale(t0)) return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier: 3, boss: 'koschey', myth, fin: Ev.alaSeason(t0), place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
     if (tier === 3) pool = this.ofMyth(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), myth);
     else if (tier === 2) pool = this.ofMyth(SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0), myth);
     else pool = this.ofMyth(SPECIES.filter(s => s.rar === 2), myth);
@@ -1807,6 +1978,7 @@ const W = {
     return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
   },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
   },
 
@@ -1849,6 +2021,7 @@ const W = {
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
+    Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').filter(p => !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
   /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
@@ -2191,7 +2364,15 @@ const S = {
     this.d.alaDay = { day, n: (this.d.alaDay ? this.d.alaDay.n : 0) + 1 };
     this.d.alatyr = (this.d.alatyr || 0) + 1;
     this.d.alaGiven = (this.d.alaGiven || 0) + 1; // 4.28: и в общий счёт Ордена (осколок остаётся у Ловчего) — вклад за всё время
+    this.alaMine().n++; // 4.28: и вклад за сезон Алатыря (награда в конце сезона — GameCore.alaTurn)
     return [{ k: 'alatyr', n: 1, label: ru`Осколки Алатыря` }];
+  },
+  // 4.28: вклад Ловчего в сезон Алатыря: { s — сезон, n — осколков, k — побед над Кощеем в финале }. Смену сезона
+  // (награду за прошлый) делает сервер в начале запроса (GameCore.alaTurn) — здесь только запись текущего
+  alaMine() {
+    const s = typeof Ev !== 'undefined' && Ev.alaSeason ? Ev.alaSeason() : 1, a = this.d.alaS;
+    if (!a || typeof a !== 'object' || !(a.s >= 1)) this.d.alaS = { s, n: 0, k: 0 };
+    return this.d.alaS;
   },
   resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
   /* 4.15: здоровье духа — доля от полного (1 — здоров). Храним долю, а не очки: усиление и превращение ран не сбивают.
@@ -2664,6 +2845,108 @@ const S = {
   },
 };
 
+// ===== www/js/season-rewards.js =====
+/* 4.28: награды сезонов Алатыря. Все Ловчие вместе собирают Алатырь-камень (js/alatyr.js); камень собран — Кощей раскалывает
+   его, и начинается новый сезон. По итогам сезона Ловчий получает награды по вкладу n — сколько осколков он принёс в общий
+   счёт за этот сезон. Ступени TIERS суммируются: принёс 30 — награды ступеней 1+, 5+, 15+ и 30+.
+   Калибровка: у Ловчего ~0,3–1 осколка в день (Rules: разломы и старейшины Капищ, не больше двух в день), сезон — недели:
+   1+ — заглянул в сезон, 5+ — играл, 15+ — играл регулярно, 30+ — почти каждый день, 60+ — весь сезон без перерыва.
+   Награды — валюта и предметы (обликов у сезонов нет). Знак «Хранитель Алатыря» (MEDALS, stat alaSeasons) —
+   число сезонов, где принесено не меньше MEDAL_MIN осколков: он про постоянство, а общий вклад и так виден на экране Алатыря.
+   grant выдаёт на сервере (общие S, U, ITEMS, MEDALS, без DOM) — один раз на сезон: отметка S.d.alaRw[сезон] = n.
+   html — окно «Итоги сезона Алатыря» на телефоне: UI.modal({ title: SeasonRewards.title(s), html: SeasonRewards.html(s, n) }). */
+const SeasonRewards = {
+  TIERS: [
+    { n: 1,  name: ru`Причастный`,         rw: { sparks: 1500, charm2: 10 } },
+    { n: 5,  name: ru`Искатель осколков`,  rw: { zlat: 10, honey: 5, brew: 3 }, medal: true },
+    { n: 15, name: ru`Собиратель Алатыря`, rw: { zlat: 20, charm3: 5, incense: 1, water: 5 } },
+    { n: 30, name: ru`Хранитель камня`,    rw: { zlat: 40, xpbrew: 2, rod: 15, deadwater: 1 } },
+    { n: 60, name: ru`Сердце Алатыря`,     rw: { zlat: 50, deadwater: 1, rod: 20, farpass: 3 } },
+  ],
+  MEDAL_MIN: 5, // сезон засчитывается в знак «Хранитель Алатыря» (ступень с medal: true)
+  ORDER: ['zlat', 'sparks', 'rod'], // порядок показа: сначала валюта, потом предметы
+
+  roman(n) {
+    n = Math.floor(+n) || 0;
+    return [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]
+      .reduce((s, [v, r]) => { while (n >= v) { s += r; n -= v; } return s; }, '');
+  },
+  // номер последней достигнутой ступени (−1 — ни одной)
+  tierOf(n) { let t = -1; this.TIERS.forEach((x, i) => { if (n >= x.n) t = i; }); return t; },
+  medal() { return MEDALS.find(m => m.id === 'alatyr') || null; },
+  label(k) { return typeof S !== 'undefined' && S.resName ? S.resName(k) : ITEMS[k] ? ITEMS[k].name : k; },
+  norm(s, n) { return [Math.floor(+s) || 0, Math.max(0, Math.floor(+n) || 0)]; },
+
+  // награды за вклад n в сезоне s (без картинок — годится и для сервера): [{ k, n, label, tier }]
+  list(s, n) {
+    [s, n] = this.norm(s, n);
+    const out = [], sum = {}, tier = {};
+    if (s < 1) return out;
+    this.TIERS.forEach((t, i) => {
+      if (n < t.n) return;
+      if (t.medal && this.medal()) out.push({ k: 'medal', n: 1, label: ru`Сезон засчитан в знак «${this.medal().name}»`, tier: i });
+      for (const [k, v] of Object.entries(t.rw)) { sum[k] = (sum[k] || 0) + v; if (!(k in tier)) tier[k] = i; }
+    });
+    const keys = Object.keys(sum).sort((a, b) => (this.ORDER.includes(b) - this.ORDER.includes(a)) || (this.ORDER.indexOf(a) - this.ORDER.indexOf(b)));
+    keys.forEach(k => out.push({ k, n: sum[k], label: this.label(k), tier: tier[k] }));
+    return out;
+  },
+  // то же для показа — с иконкой (разметка; на телефоне)
+  forContribution(s, n) {
+    return this.list(s, n).map(x => ({ ...x, icon: this.icon(x) }));
+  },
+  icon(x) {
+    if (typeof Art === 'undefined') return '';
+    if (x.k === 'medal') { const m = this.medal(); return Art.medal(m, Math.max(1, (S.d && S.d.medals && S.d.medals[m.id]) || 0)); }
+    return Art.item(x.k);
+  },
+
+  // выдать награды сезона s за вклад n в прогресс S.d — один раз на сезон; → что выдано [{ k, n, label }] (для окна итогов)
+  grant(St, s, n) {
+    [s, n] = this.norm(s, n);
+    const d = St && St.d;
+    if (!d || s < 1) return [];
+    if (!d.alaRw || typeof d.alaRw !== 'object' || Array.isArray(d.alaRw)) d.alaRw = {};
+    if (Object.prototype.hasOwnProperty.call(d.alaRw, String(s))) return []; // уже выдано
+    d.alaRw[s] = n;
+    const out = [], rw = {};
+    let medal = false;
+    for (const x of this.list(s, n)) {
+      if (x.k === 'medal') { d.stats = d.stats || {}; d.stats.alaSeasons = (d.stats.alaSeasons || 0) + 1; medal = true; out.push({ k: 'medal', n: 1, label: x.label }); }
+      else rw[x.k] = x.n;
+    }
+    if (Object.keys(rw).length) out.push(...St.giveRewards(rw, true, true));
+    if (medal && St.checkMedals) St.checkMedals();
+    if (St.save) St.save();
+    return out;
+  },
+
+  /* ---------- окно «Итоги сезона Алатыря» (только телефон) ---------- */
+  title(s) { return ru`Итоги сезона Алатыря ${this.roman(s)}`.replace(/ (?=[IVXLCDM]+$)/, ' '); }, // номер не отрывается от слова
+  html(s, n) {
+    [s, n] = this.norm(s, n);
+    const T = this.TIERS, t = this.tierOf(n), next = T[t + 1], rows = this.forContribution(s, n);
+    const word = U.plural(n, ru`осколок`, ru`осколка`, ru`осколков`);
+    const lead = n > 0
+      ? ru`Орден собрал Алатырь-камень — и Кощей снова расколол его. Твой вклад за сезон: <b>${U.fmtNum(n)} ${word}</b>.`
+      : ru`Орден собрал Алатырь-камень — и Кощей снова расколол его. В этом сезоне ты не принёс осколков: они выпадают в разломах и у старейшин Капищ.`;
+    const ladder = T.map((x, i) => `<i class="sr-step ${i <= t ? 'on' : ''} ${i === t ? 'cur' : ''}">${x.n}+</i>`).join('');
+    // знак — строкой во всю ширину, валюта и предметы — плитками в две колонки
+    const row = x => `<div class="sr-rw sr-k-${x.k}"><span class="sr-ic">${x.icon}</span><span class="sr-t"><b>${U.esc(x.label)}</b>${x.k === 'medal' ? '' : `<em>+${U.fmtNum(x.n)}</em>`}</span></div>`;
+    const big = rows.filter(x => x.k === 'medal').map(row).join(''), small = rows.filter(x => x.k !== 'medal').map(row).join('');
+    const list = big + (small ? `<div class="sr-grid">${small}</div>` : '');
+    const tail = next ? `<p class="sr-next">${ru`До ступени «${next.name}» не хватило ${U.fmtNum(next.n - n)} — в новом сезоне камень снова ждёт осколков.`}</p>`
+      : `<p class="sr-next">${ru`Высшая ступень сезона — ты среди главных собирателей Ордена!`}</p>`;
+    return `<div class="sr">
+      <div class="sr-hero"><span class="sr-stone">${Art.item('alatyr')}</span><div class="sr-num">${ru`Сезон ${this.roman(s)}`}</div></div>
+      <p class="sr-lead">${lead}</p>
+      <div class="sr-ladder">${ladder}</div>
+      ${t >= 0 ? `<div class="sr-rank">${ru`Твоя ступень — «${T[t].name}»`}</div>` : ''}
+      ${list ? `<div class="sr-list">${list}</div>` : ''}
+      ${tail}</div>`;
+  },
+};
+
 // ===== www/js/journal.js =====
 /* Дневник Ловчего: хроника событий с местом и временем (последние 250 записей) */
 
@@ -2764,7 +3047,8 @@ const J = {
    смена духа; сервер проверяет частоту, энергию и перезарядки, двигает время боя, хранит его в базе и рассылает
    обоим через Supabase Realtime (запасной путь — опрос). Итог — рейтинг обоим по разнице рейтингов (как Эло;
    на верхних лигах медленнее), опыт, награды за лиги и раны — засчитывает сервер ровно один раз (GameCore.leagueSettle).
-   Сезон — календарный месяц; в новом рейтинг сверх SOFT срезается наполовину, за высшую лигу прошлого сезона — сундук.
+   Сезон — 4.28: сезон Алатыря (до 4.28 — календарный месяц); в новом рейтинг сверх SOFT срезается наполовину, за высшую
+   лигу прошлого сезона — сундук.
    Звёзды старых сохранений переводятся в рейтинг ×100.
    Экран (3.21): герб ранга и место в таблице, вкладки «Бой», «Таблица» (живая, с текущими уровнями — leagueTop)
    и «Лиги»; строка таблицы открывает карточку Ловчего. Поиск и сам бой — league-battle.js. */
@@ -2799,9 +3083,19 @@ const League = {
   tab: 'play',
   TABS: ['play', 'table', 'ranks'],
 
-  season(d = U.local()) { return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; },
-  seasonName() { return U.local().toLocaleDateString(I18N.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).replace(/\s*г\.?$/, ''); },
-  seasonEnds() { const d = U.local(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); },
+  /* 4.28: сезон Лиги — сезон Алатыря (Ev.alaSeason): начинается, когда Кощей раскалывает камень. Ключ — 'A<номер>'
+     (до 4.28 сезон был календарным месяцем, 'ГГГГ-ММ': первый ключ 'A1' закрывает последний месячный сезон — с наградой) */
+  season(t = U.now()) { return 'A' + (typeof Ev !== 'undefined' && Ev.alaSeason ? Ev.alaSeason(t) : 1); },
+  seasonNum(key) { const m = /^A(\d+)$/.exec(String(key || '')); return m ? +m[1] : 0; },
+  seasonName(key = this.season()) { const n = this.seasonNum(key); return n ? ru`Сезон ${n}` : String(key || ''); },
+  // что осталось до конца сезона: раскол назначен — через сколько; финал — «финал: Кощей»; иначе — грани камня
+  seasonLeft() {
+    const now = U.now(), e = Ev.alaEnd(), fin = Ev.finale(now), I = typeof Alatyr !== 'undefined' ? Alatyr.info : null;
+    if (fin) return (Ev.ala.brk ? ru`раскол через ${this.left(e - now)}` : ru`финал: Кощей · ещё ${this.left(e - now)}`);
+    if (!I) return ru`до раскола Алатыря`;
+    const st = Ev.alaStage(I.total, now);
+    return ru`грани ${st.n}/${st.K} до раскола`;
+  },
   reset(p) { return p > this.SOFT ? this.SOFT + Math.floor((p - this.SOFT) / 2) : p; },
   // 4.15: звёзды старого сохранения — в рейтинг ×100; 4.16: новый сезон — срез и сундук за высшую лигу прошлого;
   // новый день — снова жетоны; турнир с машинами (run) больше не нужен
@@ -2895,7 +3189,7 @@ const League = {
         <div class="dt-hero">
           <div class="det-art lg2-crest">${this.badge(r)}</div>
           <div class="dt-info">
-            <div class="det-hp">${ru`Сезон · ${this.seasonName()}`} · ⏳ <b class="lgx-ends"></b></div>
+            <div class="det-hp">${this.seasonName()} · <b class="lgx-ends"></b></div>
             <div class="lg2-rank${LEAGUE_RANKS[r].name.length > 10 ? ' long' : ''}">${LEAGUE_RANKS[r].name}</div>
             <div class="det-power"><small>${ru`РЕЙТИНГ`}</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
             <div class="det-lvl"><span>${next ? ru`до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : ru`высшая лига!`}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
@@ -2995,7 +3289,7 @@ const League = {
       if (changed && this.tab === 'table') renderTable();
     };
     const tick = () => {
-      const e = scr.querySelector('.lgx-ends'); if (e) e.textContent = this.left(this.seasonEnds().getTime() - U.local().getTime());
+      const e = scr.querySelector('.lgx-ends'); if (e) e.textContent = this.seasonLeft();
       const m = scr.querySelector('.lgx-mid'); if (m) m.textContent = this.left(this.toMidnight());
     };
     // 4.16: при входе — засчитать бои, закончившиеся без экрана, сундук сезона и идущий бой
@@ -3022,6 +3316,7 @@ const League = {
     });
     UI.swipeTabs(body, this.TABS, () => this.tab, show);
     render(); load(); state();
+    if (typeof Alatyr !== 'undefined') Alatyr.refresh().then(() => { if (scr.isConnected) tick(); }); // 4.28: грани камня — до конца сезона
     let n = 0;
     const t = setInterval(() => {
       if (!scr.isConnected) { clearInterval(t); return; }
@@ -4380,37 +4675,67 @@ const Rules = {
       + km * (ev.km ? 2 : 1);
   },
   /* 4.28: общий Алатырь. Каждый осколок Алатыря, найденный любым Ловчим (S.alatyrDrop), идёт ещё и в общий счёт Ордена
-     (осколок остаётся у Ловчего). Камень — семь граней, по одной на дорогу-мифологию (ORDER — порядок граней). Грань n
-     (с нуля, по всем виткам) стоит alatyrGoal(n) осколков: на витке FIRST, FIRST + STEP, … (по грани на мифологию),
-     каждый следующий виток — в RING раз дороже. Собрана грань — дорога в её мир распутана: HOURS часов духи этой мифологии
-     встречаются в MUL раз чаще (Ev.mythMul). Начало — с полного часа, не раньше чем через LEAD минут после вехи: телефоны
-     и сервер успевают узнать о ней заранее и отбирают духов одинаково.
+     (осколок остаётся у Ловчего). Собрана грань — дорога в её мир распутана: HOURS часов духи этой мифологии встречаются
+     в MUL раз чаще (Ev.mythMul). Начало — с полного часа, не раньше чем через LEAD минут после вехи: телефоны и сервер
+     успевают узнать о ней заранее и отбирают духов одинаково.
+     Сезоны: в сезоне s камень — BASE + s граней, по одной на каждую открытую мифологию: семь первых (ORDER), дальше — мифологии
+     сезонов 2…s, новая — последней гранью (alaFaces). Грань k сезона s стоит (FIRST + STEP × k) × SEASON^(s − 1) осколков,
+     считая от счёта на начало сезона (start в базе). Собраны все грани — финал: с полного часа (как дорога) FINALE.DAYS дней во
+     всех Разломах мира Кощей; Орден одолел его FINALE.GOAL раз — он раскалывает камень раньше (с ближайшего полного часа), нет —
+     в конце финала всё равно. Раскол — начало сезона s + 1: открывается его мифология («?» на экране камня) и сезон Лиги.
+     Грань мифологии, которой ещё нет в игре (файл не вышел), не закрывается — ждёт обновления.
+     Номер грани n — сквозной по сезонам (alaBase): у первого сезона 0…6, как у граней 4.28 до сезонов.
      Калибровка: десятки–сотни Ловчих по 0,3–1 осколку в день — ~15–50 осколков в день на весь Орден: первая грань за 1–3 дня,
-     весь первый виток (490) — за 10–30 дней */
-  ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], FIRST: 40, STEP: 10, RING: 1.5, MUL: 2, HOURS: 72, LEAD: 10 },
-  // сколько осколков стоит грань n (0 — первая грань первого витка)
-  alatyrGoal(n) {
-    const A = this.ALATYR_WORLD, k = A.ORDER.length, ring = Math.floor(n / k);
-    return Math.max(1, Math.round((A.FIRST + A.STEP * (n % k)) * Math.pow(A.RING, ring)));
+     первый сезон (490) — за 10–30 дней, второй (8 граней, 720) — за 2–7 недель, третий (9 граней, ~1040) — за 3–10 недель.
+     Финал: у десятков Ловчих ~1–2 победы над Кощеем в день у каждого (великий разлом, совместно проще) — GOAL за 3–7 дней,
+     у сотен — за день-два. KILL — сколько очков вклада сезона даёт победа над Кощеем (осколок — одно) */
+  ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], BASE: 6, FIRST: 40, STEP: 10, SEASON: 1.2, MUL: 2, HOURS: 72, LEAD: 10,
+    FINALE: { GOAL: 300, DAYS: 7, KILL: 3 } },
+  // сколько граней в сезоне s
+  alaK(s) { return this.ALATYR_WORLD.BASE + Math.max(1, Math.floor(+s) || 1); },
+  // мифологии граней сезона s по порядку; null — мифологии этого сезона ещё нет в игре
+  alaFaces(s) {
+    s = Math.max(1, Math.floor(+s) || 1);
+    const out = this.ALATYR_WORLD.ORDER.slice(0, this.alaK(1));
+    for (let j = 2; j <= s; j++) out.push(typeof mythOfSeason === 'function' ? mythOfSeason(j) : null);
+    return out.slice(0, this.alaK(s));
   },
-  // мифология грани n
-  alatyrRoad(n) { const O = this.ALATYR_WORLD.ORDER; return O[((n % O.length) + O.length) % O.length]; },
-  // где общий счёт total: n — сколько граней собрано за всё время, ring/face — виток и грань, что собирается сейчас,
-  // road — её мифология, from/at — счёт в начале и в конце этой грани, have/need — собрано и нужно на ней
-  alatyrStage(total) {
-    const t = Math.max(0, Math.floor(+total || 0)), k = this.ALATYR_WORLD.ORDER.length;
+  // цена грани k сезона s
+  alaGoal(s, k) {
+    const A = this.ALATYR_WORLD;
+    return Math.max(1, Math.round((A.FIRST + A.STEP * k) * Math.pow(A.SEASON, Math.max(1, Math.floor(+s) || 1) - 1)));
+  },
+  // весь камень сезона s
+  alaCost(s) { let c = 0; for (let k = 0; k < this.alaK(s); k++) c += this.alaGoal(s, k); return c; },
+  // сквозной номер первой грани сезона s и обратно: грань n → { s, k }
+  alaBase(s) { s = Math.max(1, Math.floor(+s) || 1); return this.ALATYR_WORLD.BASE * (s - 1) + s * (s - 1) / 2; },
+  alaFace(n) { n = Math.max(0, Math.floor(+n) || 0); let s = 1; while (s < 10000 && this.alaBase(s + 1) <= n) s++; return { s, k: n - this.alaBase(s) }; },
+  // мифология и цена грани n (сквозной номер)
+  alatyrRoad(n) { const f = this.alaFace(n); return this.alaFaces(f.s)[f.k] || null; },
+  alatyrGoal(n) { const f = this.alaFace(n); return this.alaGoal(f.s, f.k); },
+  /* где сезон s, если за него собрано have осколков: n — сколько граней собрано, done — все (финал), face — какая собирается,
+     myth — её мифология (null — её нет в игре: locked, грань ждёт обновления), from/at — счёт сезона в начале и в конце этой
+     грани, have/need — собрано и нужно на ней, base — сквозной номер первой грани сезона */
+  alaStage(s, have) {
+    s = Math.max(1, Math.floor(+s) || 1);
+    const K = this.alaK(s), faces = this.alaFaces(s), t = Math.max(0, Math.floor(+have || 0));
     let n = 0, from = 0;
-    while (n < 100000 && t >= from + this.alatyrGoal(n)) { from += this.alatyrGoal(n); n++; }
-    const need = this.alatyrGoal(n);
-    return { total: t, n, ring: Math.floor(n / k), face: n % k, road: this.alatyrRoad(n), from, at: from + need, have: t - from, need, pct: (t - from) / need };
+    while (n < K && faces[n] && t >= from + this.alaGoal(s, n)) { from += this.alaGoal(s, n); n++; }
+    const done = n >= K, need = done ? this.alaGoal(s, K - 1) : this.alaGoal(s, n), h = done ? need : Math.min(t - from, need);
+    return { s, K, faces, n, face: Math.min(n, K - 1), done, myth: done ? null : faces[n], locked: !done && !faces[n],
+      from: done ? from - need : from, at: done ? from : from + need, have: h, need, pct: h / need, total: t, base: this.alaBase(s) };
   },
-  // счёт, на котором собрана грань n (сумма граней 0…n)
-  alatyrAt(n) { let s = 0; for (let i = 0; i <= n; i++) s += this.alatyrGoal(i); return s; },
+  // очки вклада сезона: осколки и победы над Кощеем в финале (S.d.alaS — { s, n, k })
+  alaPoints(a) { return a && typeof a === 'object' ? Math.max(0, Math.floor(+a.n) || 0) + Math.max(0, Math.floor(+a.k) || 0) * this.ALATYR_WORLD.FINALE.KILL : 0; },
   // когда начнётся и кончится событие дороги, если веха взята в момент t (мс): с полного часа, не раньше LEAD минут
   alatyrOpen(t) {
-    const A = this.ALATYR_WORLD, from = Math.ceil((t + A.LEAD * 60000) / 3600000) * 3600000;
+    const A = this.ALATYR_WORLD, from = this.alaHour(t);
     return { from, to: from + A.HOURS * 3600000 };
   },
+  // ближайший полный час не раньше чем через LEAD минут после t — с него начинаются дороги, финал и раскол
+  alaHour(t) { return Math.ceil((t + this.ALATYR_WORLD.LEAD * 60000) / 3600000) * 3600000; },
+  // финал, если последняя грань собрана в момент t: с полного часа на FINALE.DAYS дней
+  alaFinale(t) { const from = this.alaHour(t); return { from, to: from + this.ALATYR_WORLD.FINALE.DAYS * 86400000 }; },
   /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
   // Златники — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
   // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
@@ -4814,7 +5139,7 @@ const Diff = {
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '4.0.0', // 4.0: новые духи меняют появление духов на карте, обучение ведёт сервер — старым клиентам нужно обновиться
+  MIN_CLIENT: '4.28.0', // 4.28: мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -4873,7 +5198,8 @@ const GameCore = {
       Bus.emit = (ev, data) => ctx.events.push([ev, this.ser(ev, data)]);
       S.save = () => {};
       S.d = save.data ? JSON.parse(JSON.stringify(save.data)) : null;
-      if (S.d) { S.migrate(); S.ensureQuests(); W.prune(); }
+      Ev.alaSync(ctx.now); // 4.28: мифологии, открытые в этом сезоне Алатыря (сезон — из базы, serve.js)
+      if (S.d) { S.migrate(); S.ensureQuests(); W.prune(); this.alaTurn(ctx); }
       this.track(ctx);
 
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
@@ -5057,6 +5383,29 @@ const GameCore = {
     const key = Ev.roadsKey();
     if ((load && key) || (ctx.srv.alaV || '') !== key) Bus.emit('roads', Ev.roadsLive(ctx.now));
     if (key || ctx.srv.alaV) ctx.srv.alaV = key;
+    // 4.28: сезон Алатыря (финал, раскол) — событием ala: при входе и когда он изменился
+    const sk = Ev.alaKey();
+    if (load || (ctx.srv.alaW || '') !== sk) Bus.emit('ala', Ev.alaView());
+    ctx.srv.alaW = sk;
+  },
+  /* 4.28: сезон Алатыря сменился (Кощей расколол камень) — награда за вклад в прошлый сезон (S.d.alaS: осколки и победы над
+     Кощеем, Rules.alaPoints) из SeasonRewards (season-rewards.js; нет — без наград) и итоги для окна «Итоги сезона»
+     (S.d.alaSum — телефон показывает его один раз, alatyr.js). Вклад нового сезона — с нуля. Первый раз (сохранение до
+     сезонов) вклад первого сезона — всё, что Ловчий отдал в общий камень (alaGiven) */
+  alaTurn(ctx) {
+    const s = Ev.alaSeason(ctx.now), a = S.d.alaS;
+    if (!a || typeof a !== 'object' || !(a.s >= 1)) { S.d.alaS = { s, n: s === 1 ? Math.max(0, S.d.alaGiven | 0) : 0, k: 0 }; return; }
+    if (a.s >= s) return;
+    const pts = Rules.alaPoints(a);
+    let got = [];
+    if (pts > 0 && typeof SeasonRewards !== 'undefined' && SeasonRewards && typeof SeasonRewards.grant === 'function') {
+      try { const g = SeasonRewards.grant(S, a.s, pts); got = Array.isArray(g) ? g : []; } catch (e) { console.error('Награды сезона:', String(e && e.stack || e)); }
+    }
+    S.d.alaS = { s, n: 0, k: 0 };
+    if (pts > 0 || got.length) {
+      S.d.alaSum = { s: a.s, n: Math.max(0, a.n | 0), k: Math.max(0, a.k | 0), pts,
+        got: got.slice(0, 12).map(x => (x && typeof x === 'object' ? { label: String(x.label || x.name || '').slice(0, 120), n: Math.max(1, +x.n || 1) } : { label: String(x).slice(0, 120), n: 1 })) };
+    }
   },
   // Сезонная тропа: сезон — календарный месяц по часам игрока
   passSeason(ctx) { const d = U.local(ctx.now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`; },
@@ -5441,13 +5790,17 @@ const GameCore = {
       return { got };
     },
     // 4.28: общий Алатырь — счёт Ордена, распутанные дороги (последние, для истории) и вклад Ловчего. Грани и вехи
-    // телефон считает сам по Rules.alatyrStage (счёт — из кэша сервера, не старше ~15 с)
+    // телефон считает сам по Rules.alaStage (счёт — из кэша сервера, не старше ~15 с). Сезоны: текущий (season — с числом
+    // побед над Кощеем в финале), прошлые (seasons — для летописи: финалы и расколы), вклад Ловчего в сезон (my)
     async alatyr(a, ctx) {
       this.limit(ctx, 'alatyr', 30, 60000);
       const w = typeof ctx.env.alatyrState === 'function' ? await ctx.env.alatyrState() : null;
       const total = Math.max(0, Math.floor(+(w && w.total) || 0));
       const roads = Ev.roadsClean(w && w.roads).sort((x, y) => y.n - x.n);
-      return { total, roads, mine: S.d.alaGiven || 0, now: ctx.now };
+      const seasons = (Array.isArray(w && w.seasons) ? w.seasons : []).slice(0, 12).map(x => ({ ...Ev.alaClean(x), s: Math.max(1, x.s | 0) }));
+      const my = S.alaMine();
+      return { total, roads, mine: S.d.alaGiven || 0, now: ctx.now, season: Ev.alaView(), seasons,
+        my: { s: my.s, n: my.n | 0, k: my.k | 0, pts: Rules.alaPoints(my) } };
     },
 
     // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.
@@ -5836,8 +6189,9 @@ const GameCore = {
       // 4.16: босс — по уровню Ловчего (в совместном — по среднему уровню комнаты); rl телефон считает так же (Raid.bossStats)
       const rl = coop ? coop.rl : S.catchLvl();
       // 4.26: hp0 — здоровье бойцов на входе (Rules.raidWinnable)
-      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop, waters: 0, far, tire: true };
-      return { rid: r.id, tier: r.tier, boss: r.boss, rl, far };
+      // 4.28: fin — Разлом финала сезона Алатыря (Кощей): победа идёт в общий счёт побед над ним
+      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop, waters: 0, far, tire: true, fin: r.fin || 0 };
+      return { rid: r.id, tier: r.tier, boss: r.boss, rl, far, fin: r.fin || 0 };
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {
@@ -5923,12 +6277,19 @@ const GameCore = {
       const am = S.rollAmulet([0.05, 0.12, 0.3][tier - 1], b.rid);
       rw.push(...S.riftSpoils(b.boss, tier)); // 4.16: эссенция семейства босса (и легенд) и осколки Алатыря
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
+      // 4.28: финал сезона Алатыря — победа над Кощеем: в вклад Ловчего за сезон и (после сохранения) в общий счёт побед
+      let fin = 0;
+      if (b.fin && b.boss === 'koschey') {
+        const my = S.alaMine();
+        if (my.s === b.fin) { my.k = (my.k | 0) + 1; fin = b.fin; }
+        if (fin && typeof ctx.env.alatyrKill === 'function') ctx.after.push(() => ctx.env.alatyrKill(fin));
+      }
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
       const shiny = U.h('rshiny', b.rid, S.d.created) < Sky.shinyRate(1 / 20);
       ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.catchLvl()), // 4.15: пойманный дух — не выше уровня Ловчего
         charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
-      return { win: true, rw, charms, bonus, allies };
+      return { win: true, rw, charms, bonus, allies, fin };
     },
 
     /* ----- бои: капище и вторжение ----- */
@@ -7078,29 +7439,77 @@ async function realWeather(lat, lng) {
 
 /* ---------- 4.28: общий Алатырь (029_alatyr_world.sql) ----------
    alatyr_world — общий счёт осколков Ордена (одна строка), alatyr_roads — распутанные дороги (грань n, мифология, начало
-   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alatyrStage)
+   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alaStage)
    отмечает только тот запрос, что их перешагнул; дорогу записывает alatyr_open (повтор той же грани ничего не меняет).
    Состояние кэшируется в экземпляре на TTL и кладётся в Ev.roads — по нему сервер отбирает духов (Ev.mythMul), а телефон
    получает те же дороги событием roads (core.js, alatyrSync). Событие начинается не раньше чем через Rules.ALATYR_WORLD.LEAD
    минут после вехи — за это время о нём узнают все экземпляры сервера и телефоны */
+/* 4.28: сезоны Алатыря (030_alatyr_seasons.sql): alatyr_seasons — строка на сезон: счёт на его начало (start_total), начало
+   (from_ms — момент раскола прошлого), финал (finale_from/to, kills — победы над Кощеем, goal) и раскол (broken_ms — с него
+   идёт следующий сезон; строку следующего сезона пишет тот же alatyr_break). Кто первым заметил, что пора, — пишет:
+   собраны все грани — финал (alatyr_finale), Орден одолел Кощея goal раз — раскол с ближайшего полного часа (alatyr_break
+   в World.kill), финал кончился — раскол в его конце (здесь, в load). Повтор ничего не меняет. Нет таблицы (миграция ещё
+   не применена) — первый сезон с нуля, без финала */
 const World = {
   st: null, at: 0, p: null, TTL: 60000,
-  async load() {
+  season(rows, now) {
+    const [top, prev] = rows;
+    if (!top) return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    const cur = top.from_ms > now && prev ? prev : top; // раскол назначен, но ещё не настал — идёт прошлый сезон
+    return this.row(cur, cur === prev ? +top.from_ms : null);
+  },
+  row(r, brk) {
+    const fin = r.finale_from != null && r.finale_to != null ? { from: +r.finale_from, to: +r.finale_to, kills: +r.kills || 0, goal: +r.goal || Rules.ALATYR_WORLD.FINALE.GOAL } : null;
+    return { s: +r.season, from: +r.from_ms || 0, start: +r.start_total || 0, fin, brk: brk || (r.broken_ms != null ? +r.broken_ms : null) };
+  },
+  async load(depth = 0) {
+    const now = Date.now();
     const w = must(await db.from('alatyr_world').select('total').eq('id', 1).maybeSingle());
     const rows = must(await db.from('alatyr_roads').select('n, road, from_ms, to_ms').order('n', { ascending: false }).limit(30)) || [];
-    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })) };
+    const sq = await db.from('alatyr_seasons').select('season, start_total, from_ms, finale_from, finale_to, kills, goal, broken_ms').order('season', { ascending: false }).limit(8);
+    if (sq.error && depth === 0) console.warn('Алатырь: сезоны недоступны —', sq.error.message);
+    const srows = sq.error ? [] : sq.data || [];
+    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })), ...this.season(srows, now),
+      seasons: srows.map(r => this.row(r)), db: !sq.error };
+    if (depth > 3) return st;
+    // финал кончился, а Орден не одолел Кощея — раскол в конце финала
+    if (st.db && st.fin && !st.brk && now >= st.fin.to) { if (await this.brk(st.s, st.fin.to)) return this.load(depth + 1); }
+    const stg = Rules.alaStage(st.s, st.total - st.start);
     // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
-    const n = Rules.alatyrStage(st.total).n - 1;
-    if (n >= 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
-      if (await this.open(n, Date.now())) return this.load();
+    const n = stg.base + stg.n - 1;
+    if (stg.n > 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
+      if (await this.open(n, now, st)) return this.load(depth + 1);
     }
+    // все грани собраны, а финала нет (запрос, собравший последнюю грань, упал) — финал сейчас
+    if (st.db && stg.done && !st.fin && !st.brk) { if (await this.finale(st.s, now)) return this.load(depth + 1); }
     return st;
   },
   apply(st) {
     this.st = st; this.at = Date.now();
     const cut = Date.now() - 86400000;
     Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
+    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk };
+    Ev.alaSync();
     return st;
+  },
+  async finale(s, now) {
+    const f = Rules.alaFinale(now);
+    const ok = !!must(await db.rpc('alatyr_finale', { p_season: s, p_from: f.from, p_to: f.to, p_goal: Rules.ALATYR_WORLD.FINALE.GOAL }));
+    if (ok) console.warn(`Алатырь: сезон ${s} — все грани собраны, финал с ${new Date(f.from).toISOString()}`);
+    return ok;
+  },
+  async brk(s, at) {
+    const ok = !!must(await db.rpc('alatyr_break', { p_season: s, p_at: at }));
+    if (ok) console.warn(`Алатырь: Кощей раскалывает камень — сезон ${s + 1} с ${new Date(at).toISOString()}`);
+    return ok;
+  },
+  // победа над Кощеем в финале сезона s; Орден одолел его goal раз — раскол с ближайшего полного часа
+  async kill(s) {
+    if (!(s >= 1)) return;
+    const now = Date.now(), r = must(await db.rpc('alatyr_kill', { p_season: s, p_n: 1, p_now: now }));
+    if (!r) return;
+    if (+r.prev < +r.goal && +r.kills >= +r.goal) { await this.brk(s, Rules.alaHour(now)); this.at = 0; await this.get(); }
+    else if (this.st && this.st.s === s && this.st.fin) this.st.fin.kills = Math.max(this.st.fin.kills, +r.kills || 0);
   },
   // состояние не старше ttl мс; база не ответила — прежнее (дороги не пропадают из-за сбоя)
   async get(ttl = this.TTL) {
@@ -7108,18 +7517,29 @@ const World = {
     if (!this.p) this.p = this.load().then(st => this.apply(st)).catch(e => { console.error('Алатырь:', String(e)); return this.st; }).finally(() => { this.p = null; });
     return this.p;
   },
-  async open(n, now) {
+  // дорога грани n (сквозной номер); goal — общий счёт, на котором грань собрана (st — сезон этой грани)
+  async open(n, now, st) {
+    const road = Rules.alatyrRoad(n), f = Rules.alaFace(n);
+    if (!road) return false; // мифологии этой грани ещё нет в игре — грань ждёт обновления
+    let at = st && st.s === f.s ? st.start : 0;
+    for (let k = 0; k <= f.k; k++) at += Rules.alaGoal(f.s, k);
     const t = Rules.alatyrOpen(now);
-    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: Rules.alatyrRoad(n), p_goal: Rules.alatyrAt(n), p_from: t.from, p_to: t.to }));
+    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: road, p_goal: at, p_from: t.from, p_to: t.to }));
   },
-  // +n осколков в общий счёт; перешагнули веху — записать дорогу (и сразу обновить кэш этого экземпляра)
+  // +n осколков в общий счёт; перешагнули веху сезона — записать дорогу, собрали все грани — финал (и сразу обновить кэш)
   async add(n) {
     const r = must(await db.rpc('alatyr_add', { p_n: n }));
     if (!r) return;
-    const a = Rules.alatyrStage(+r.prev || 0).n, b = Rules.alatyrStage(+r.total || 0).n;
-    let opened = false;
-    for (let k = Math.max(a, b - 3); k < b; k++) { if (await this.open(k, Date.now())) { opened = true; console.warn(`Алатырь: грань ${k} собрана — ${Rules.alatyrRoad(k)}`); } }
-    if (opened) { this.at = 0; await this.get(); } else if (this.st) this.st.total = Math.max(this.st.total, +r.total || 0);
+    const now = Date.now(), st = this.st;
+    // сезон сменился, а кэш об этом ещё не знает — вехи отметит load по свежему состоянию
+    if (!st || Ev.alaSeason(now) !== st.s) { this.at = 0; await this.get(); return; }
+    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start), B = Rules.alaStage(st.s, (+r.total || 0) - st.start);
+    let changed = false;
+    for (let k = Math.max(A.n, B.n - 3); k < B.n; k++) {
+      if (await this.open(B.base + k, now, st)) { changed = true; console.warn(`Алатырь: сезон ${st.s}, грань ${k + 1} из ${B.K} собрана — ${B.faces[k]}`); }
+    }
+    if (st.db && B.done && !A.done && !st.fin && !st.brk && await this.finale(st.s, now)) changed = true;
+    if (changed) { this.at = 0; await this.get(); } else st.total = Math.max(st.total, +r.total || 0);
   },
 };
 
@@ -7129,6 +7549,8 @@ function makeEnv(uid) {
     // 4.28: общий Алатырь — осколки в общий счёт (после сохранения прогресса) и состояние для экрана (не старше 15 с)
     async alatyrAdd(n) { await World.add(Math.max(1, Math.min(10, n | 0))); },
     async alatyrState() { return World.get(15000); },
+    // 4.28: победа над Кощеем в финале сезона s — в общий счёт (после сохранения прогресса)
+    async alatyrKill(s) { await World.kill(s | 0); },
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {

@@ -48,37 +48,67 @@ const Rules = {
       + km * (ev.km ? 2 : 1);
   },
   /* 4.28: общий Алатырь. Каждый осколок Алатыря, найденный любым Ловчим (S.alatyrDrop), идёт ещё и в общий счёт Ордена
-     (осколок остаётся у Ловчего). Камень — семь граней, по одной на дорогу-мифологию (ORDER — порядок граней). Грань n
-     (с нуля, по всем виткам) стоит alatyrGoal(n) осколков: на витке FIRST, FIRST + STEP, … (по грани на мифологию),
-     каждый следующий виток — в RING раз дороже. Собрана грань — дорога в её мир распутана: HOURS часов духи этой мифологии
-     встречаются в MUL раз чаще (Ev.mythMul). Начало — с полного часа, не раньше чем через LEAD минут после вехи: телефоны
-     и сервер успевают узнать о ней заранее и отбирают духов одинаково.
+     (осколок остаётся у Ловчего). Собрана грань — дорога в её мир распутана: HOURS часов духи этой мифологии встречаются
+     в MUL раз чаще (Ev.mythMul). Начало — с полного часа, не раньше чем через LEAD минут после вехи: телефоны и сервер
+     успевают узнать о ней заранее и отбирают духов одинаково.
+     Сезоны: в сезоне s камень — BASE + s граней, по одной на каждую открытую мифологию: семь первых (ORDER), дальше — мифологии
+     сезонов 2…s, новая — последней гранью (alaFaces). Грань k сезона s стоит (FIRST + STEP × k) × SEASON^(s − 1) осколков,
+     считая от счёта на начало сезона (start в базе). Собраны все грани — финал: с полного часа (как дорога) FINALE.DAYS дней во
+     всех Разломах мира Кощей; Орден одолел его FINALE.GOAL раз — он раскалывает камень раньше (с ближайшего полного часа), нет —
+     в конце финала всё равно. Раскол — начало сезона s + 1: открывается его мифология («?» на экране камня) и сезон Лиги.
+     Грань мифологии, которой ещё нет в игре (файл не вышел), не закрывается — ждёт обновления.
+     Номер грани n — сквозной по сезонам (alaBase): у первого сезона 0…6, как у граней 4.28 до сезонов.
      Калибровка: десятки–сотни Ловчих по 0,3–1 осколку в день — ~15–50 осколков в день на весь Орден: первая грань за 1–3 дня,
-     весь первый виток (490) — за 10–30 дней */
-  ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], FIRST: 40, STEP: 10, RING: 1.5, MUL: 2, HOURS: 72, LEAD: 10 },
-  // сколько осколков стоит грань n (0 — первая грань первого витка)
-  alatyrGoal(n) {
-    const A = this.ALATYR_WORLD, k = A.ORDER.length, ring = Math.floor(n / k);
-    return Math.max(1, Math.round((A.FIRST + A.STEP * (n % k)) * Math.pow(A.RING, ring)));
+     первый сезон (490) — за 10–30 дней, второй (8 граней, 720) — за 2–7 недель, третий (9 граней, ~1040) — за 3–10 недель.
+     Финал: у десятков Ловчих ~1–2 победы над Кощеем в день у каждого (великий разлом, совместно проще) — GOAL за 3–7 дней,
+     у сотен — за день-два. KILL — сколько очков вклада сезона даёт победа над Кощеем (осколок — одно) */
+  ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], BASE: 6, FIRST: 40, STEP: 10, SEASON: 1.2, MUL: 2, HOURS: 72, LEAD: 10,
+    FINALE: { GOAL: 300, DAYS: 7, KILL: 3 } },
+  // сколько граней в сезоне s
+  alaK(s) { return this.ALATYR_WORLD.BASE + Math.max(1, Math.floor(+s) || 1); },
+  // мифологии граней сезона s по порядку; null — мифологии этого сезона ещё нет в игре
+  alaFaces(s) {
+    s = Math.max(1, Math.floor(+s) || 1);
+    const out = this.ALATYR_WORLD.ORDER.slice(0, this.alaK(1));
+    for (let j = 2; j <= s; j++) out.push(typeof mythOfSeason === 'function' ? mythOfSeason(j) : null);
+    return out.slice(0, this.alaK(s));
   },
-  // мифология грани n
-  alatyrRoad(n) { const O = this.ALATYR_WORLD.ORDER; return O[((n % O.length) + O.length) % O.length]; },
-  // где общий счёт total: n — сколько граней собрано за всё время, ring/face — виток и грань, что собирается сейчас,
-  // road — её мифология, from/at — счёт в начале и в конце этой грани, have/need — собрано и нужно на ней
-  alatyrStage(total) {
-    const t = Math.max(0, Math.floor(+total || 0)), k = this.ALATYR_WORLD.ORDER.length;
+  // цена грани k сезона s
+  alaGoal(s, k) {
+    const A = this.ALATYR_WORLD;
+    return Math.max(1, Math.round((A.FIRST + A.STEP * k) * Math.pow(A.SEASON, Math.max(1, Math.floor(+s) || 1) - 1)));
+  },
+  // весь камень сезона s
+  alaCost(s) { let c = 0; for (let k = 0; k < this.alaK(s); k++) c += this.alaGoal(s, k); return c; },
+  // сквозной номер первой грани сезона s и обратно: грань n → { s, k }
+  alaBase(s) { s = Math.max(1, Math.floor(+s) || 1); return this.ALATYR_WORLD.BASE * (s - 1) + s * (s - 1) / 2; },
+  alaFace(n) { n = Math.max(0, Math.floor(+n) || 0); let s = 1; while (s < 10000 && this.alaBase(s + 1) <= n) s++; return { s, k: n - this.alaBase(s) }; },
+  // мифология и цена грани n (сквозной номер)
+  alatyrRoad(n) { const f = this.alaFace(n); return this.alaFaces(f.s)[f.k] || null; },
+  alatyrGoal(n) { const f = this.alaFace(n); return this.alaGoal(f.s, f.k); },
+  /* где сезон s, если за него собрано have осколков: n — сколько граней собрано, done — все (финал), face — какая собирается,
+     myth — её мифология (null — её нет в игре: locked, грань ждёт обновления), from/at — счёт сезона в начале и в конце этой
+     грани, have/need — собрано и нужно на ней, base — сквозной номер первой грани сезона */
+  alaStage(s, have) {
+    s = Math.max(1, Math.floor(+s) || 1);
+    const K = this.alaK(s), faces = this.alaFaces(s), t = Math.max(0, Math.floor(+have || 0));
     let n = 0, from = 0;
-    while (n < 100000 && t >= from + this.alatyrGoal(n)) { from += this.alatyrGoal(n); n++; }
-    const need = this.alatyrGoal(n);
-    return { total: t, n, ring: Math.floor(n / k), face: n % k, road: this.alatyrRoad(n), from, at: from + need, have: t - from, need, pct: (t - from) / need };
+    while (n < K && faces[n] && t >= from + this.alaGoal(s, n)) { from += this.alaGoal(s, n); n++; }
+    const done = n >= K, need = done ? this.alaGoal(s, K - 1) : this.alaGoal(s, n), h = done ? need : Math.min(t - from, need);
+    return { s, K, faces, n, face: Math.min(n, K - 1), done, myth: done ? null : faces[n], locked: !done && !faces[n],
+      from: done ? from - need : from, at: done ? from : from + need, have: h, need, pct: h / need, total: t, base: this.alaBase(s) };
   },
-  // счёт, на котором собрана грань n (сумма граней 0…n)
-  alatyrAt(n) { let s = 0; for (let i = 0; i <= n; i++) s += this.alatyrGoal(i); return s; },
+  // очки вклада сезона: осколки и победы над Кощеем в финале (S.d.alaS — { s, n, k })
+  alaPoints(a) { return a && typeof a === 'object' ? Math.max(0, Math.floor(+a.n) || 0) + Math.max(0, Math.floor(+a.k) || 0) * this.ALATYR_WORLD.FINALE.KILL : 0; },
   // когда начнётся и кончится событие дороги, если веха взята в момент t (мс): с полного часа, не раньше LEAD минут
   alatyrOpen(t) {
-    const A = this.ALATYR_WORLD, from = Math.ceil((t + A.LEAD * 60000) / 3600000) * 3600000;
+    const A = this.ALATYR_WORLD, from = this.alaHour(t);
     return { from, to: from + A.HOURS * 3600000 };
   },
+  // ближайший полный час не раньше чем через LEAD минут после t — с него начинаются дороги, финал и раскол
+  alaHour(t) { return Math.ceil((t + this.ALATYR_WORLD.LEAD * 60000) / 3600000) * 3600000; },
+  // финал, если последняя грань собрана в момент t: с полного часа на FINALE.DAYS дней
+  alaFinale(t) { const from = this.alaHour(t); return { from, to: from + this.ALATYR_WORLD.FINALE.DAYS * 86400000 }; },
   /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
   // Златники — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
   // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:

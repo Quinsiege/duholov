@@ -497,15 +497,19 @@ Object.assign(UI, {
   dex() {
     Tut.ui('dex'); // 4.0: шаг обучения
     // 4.28: мифологии мира — выбор мифологии над сеткой (последний выбор помнится до перезапуска)
+    // 4.28: сезоны Алатыря — виды закрытых мифологий не показываются; «?» — мифология следующего сезона (без её духов)
+    Ev.alaSync();
     const myths = MYTH_KEYS.filter(m => SPECIES.some(s => s.myth === m));
     let mf = myths.includes(this._dexMyth) ? this._dexMyth : 'all';
+    const next = () => `<div class="dex-next"><b>?</b><span>${ru`Мифология следующего сезона. Её духи появятся, когда Орден соберёт весь Алатырь-камень и Кощей расколет его.`}</span></div>`;
     const sum = () => {
+      if (mf === '?') return next();
       const list = SPECIES.filter(s => mf === 'all' || s.myth === mf);
       const caught = list.filter(s => S.d.dex[s.id] && S.d.dex[s.id].caught).length, seen = list.filter(s => S.d.dex[s.id] && S.d.dex[s.id].seen).length;
       return `<div class="dex-sum">${ru`Поймано <b>${caught}</b> из ${list.length} · встречено ${seen}`}</div><div class="pbar dex-prog"><i style="width:${caught / list.length * 100}%"></i></div>`;
     };
     const scr = this.screen(ru`Бестиарий`, `
-      ${myths.length > 1 ? `<div class="chips dex-myths">${['all', ...myths].map(m => `<button data-myth="${m}" class="${m === mf ? 'on' : ''}">${m === 'all' ? ru`Все` : MYTHS[m].name}</button>`).join('')}</div>` : ''}
+      ${myths.length > 1 ? `<div class="chips dex-myths">${['all', ...myths].map(m => `<button data-myth="${m}" class="${m === mf ? 'on' : ''}">${m === 'all' ? ru`Все` : MYTHS[m].name}</button>`).join('')}<button data-myth="?" class="dex-q" aria-label="${ru`Мифология следующего сезона`}">?</button></div>` : ''}
       <div class="dex-head">${sum()}</div>
       <div class="grid dex">${SPECIES.map(s => {
         const d = S.d.dex[s.id] || {};

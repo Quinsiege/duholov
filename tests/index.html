@@ -31,6 +31,7 @@
   <script src="../www/js/myth-egypt.js"></script>
   <script src="../www/js/myth-china.js"></script>
   <script src="../www/js/myth-aztec.js"></script>
+  <script src="../www/js/myth-japan.js"></script>
   <script src="../www/js/data.js"></script>
   <script src="../www/js/util.js"></script>
   <script src="../www/js/diff.js"></script>
@@ -48,6 +49,7 @@
   <script src="../www/js/sp-shadow.js"></script>
   <script src="../www/js/sp-shadow2.js"></script>
   <script src="../www/js/state.js"></script>
+  <script src="../www/js/season-rewards.js"></script>
   <script src="../www/js/events.js"></script>
   <script src="../www/js/sky.js"></script>
   <script src="../www/js/music.js"></script>
@@ -449,18 +451,22 @@
     eq(Ev.week(mon), Ev.week(mon + 6.9 * 86400000));
     eq(Ev.week(mon) + 1, Ev.week(mon + 7 * 86400000));
   });
-  test('Общий Алатырь (4.28): грани, витки, вехи и начало события дороги', () => {
-    const A = Rules.ALATYR_WORLD, K = A.ORDER.length;
+  test('Общий Алатырь (4.28): грани сезона, вехи и начало события дороги', () => {
+    const A = Rules.ALATYR_WORLD, K = Rules.alaK(1);
     eq(K, 7); eq(new Set(A.ORDER).size, 7); ok(A.ORDER.every(m => MYTH_KEYS.includes(m)), 'все семь мифологий');
-    eq(Rules.alatyrGoal(0), A.FIRST); eq(Rules.alatyrGoal(1), A.FIRST + A.STEP); ok(Rules.alatyrGoal(K) > Rules.alatyrGoal(0), 'следующий виток дороже');
-    let s = Rules.alatyrStage(0); eq(s.n, 0); eq(s.ring, 0); eq(s.face, 0); eq(s.road, A.ORDER[0]); eq(s.have, 0); eq(s.need, A.FIRST);
-    eq(Rules.alatyrStage(A.FIRST - 1).n, 0, 'до вехи');
-    s = Rules.alatyrStage(A.FIRST); eq(s.n, 1, 'веха взята'); eq(s.face, 1); eq(s.road, A.ORDER[1]); eq(s.have, 0); eq(s.from, A.FIRST);
-    s = Rules.alatyrStage(Rules.alatyrAt(K - 1)); eq(s.ring, 1, 'семь граней — новый виток'); eq(s.face, 0); eq(s.road, A.ORDER[0]);
-    for (let n = 0; n < 30; n++) { eq(Rules.alatyrStage(Rules.alatyrAt(n)).n, n + 1, 'грань ' + n); eq(Rules.alatyrStage(Rules.alatyrAt(n) - 1).n, n, 'грань ' + n); eq(Rules.alatyrRoad(n), A.ORDER[n % K]); }
-    eq(Rules.alatyrStage(-5).n, 0); eq(Rules.alatyrStage('x').total, 0);
-    // калибровка: ~15–50 осколков в день на весь Орден — первая грань за 1–3 дня, первый виток — за недели, а не годы
-    ok(A.FIRST / 15 <= 3 && A.FIRST / 50 >= 0.5, 'первая грань — за дни'); ok(Rules.alatyrAt(K - 1) / 15 <= 40, 'виток — за недели');
+    eq(JSON.stringify(Rules.alaFaces(1)), JSON.stringify(A.ORDER), 'первый сезон — семь граней, как до сезонов');
+    eq(Rules.alaGoal(1, 0), A.FIRST); eq(Rules.alaGoal(1, 1), A.FIRST + A.STEP); eq(Rules.alaCost(1), 490, 'первый сезон — как первый виток 4.28');
+    let s = Rules.alaStage(1, 0); eq(s.n, 0); eq(s.face, 0); eq(s.myth, A.ORDER[0]); eq(s.have, 0); eq(s.need, A.FIRST); ok(!s.done);
+    eq(Rules.alaStage(1, A.FIRST - 1).n, 0, 'до вехи');
+    s = Rules.alaStage(1, A.FIRST); eq(s.n, 1, 'веха взята'); eq(s.myth, A.ORDER[1]); eq(s.have, 0); eq(s.from, A.FIRST);
+    s = Rules.alaStage(1, Rules.alaCost(1)); ok(s.done, 'все грани — финал'); eq(s.n, K); eq(s.pct, 1);
+    ok(Rules.alaStage(1, 99999).done && Rules.alaStage(1, 99999).n === K, 'дальше финала грани не растут');
+    let at = 0;
+    for (let k = 0; k < K; k++) { at += Rules.alaGoal(1, k); eq(Rules.alaStage(1, at).n, k + 1, 'грань ' + k); eq(Rules.alaStage(1, at - 1).n, k, 'грань ' + k); eq(Rules.alatyrRoad(k), A.ORDER[k]); }
+    eq(Rules.alaStage(1, -5).n, 0); eq(Rules.alaStage(1, 'x').total, 0);
+    // калибровка: ~15–50 осколков в день на весь Орден — первая грань за 1–3 дня, сезон — за недели, а не годы
+    ok(A.FIRST / 15 <= 3 && A.FIRST / 50 >= 0.5, 'первая грань — за дни'); ok(Rules.alaCost(1) / 15 <= 40, 'первый сезон — за недели');
+    ok(Rules.alaCost(2) > Rules.alaCost(1) && Rules.alaCost(2) / 15 <= 60 && Rules.alaCost(3) / 15 <= 90, 'сезоны дороже, но достижимы');
     // событие — с полного часа, не раньше чем через LEAD минут после вехи
     const t = Date.UTC(2026, 9, 1, 12, 55), o = Rules.alatyrOpen(t);
     eq(o.from, Date.UTC(2026, 9, 1, 14), 'веха в 12:55 — дорога с 14:00'); eq(o.to - o.from, A.HOURS * 3600000); ok(o.from - t >= A.LEAD * 60000);
@@ -483,6 +489,84 @@
       Ev.roads = [{ n: 0, road: 'greek', from: t - 9e6, to: t - 1 }, { n: 1, road: 'norse', from: t + 60000, to: t + 9e6 }];
       eq(Ev.roadsNow(t).length, 0); eq(Ev.roadsLive(t).length, 1, 'телефону — только идущие и будущие'); eq(Ev.roadsKey(), `0:${t - 9e6},1:${t + 60000}`);
     } finally { Ev.roads = r0; }
+  });
+  test('Сезоны Алатыря (4.28): граней в сезоне s — 6 + s, новая мифология — последней гранью, сквозные номера', () => {
+    for (let s = 1; s <= 6; s++) { eq(Rules.alaK(s), 6 + s); eq(Rules.alaFaces(s).length, 6 + s, 'сезон ' + s); eq(Rules.alaStage(s, 0).K, 6 + s); }
+    eq(Rules.alaBase(1), 0); eq(Rules.alaBase(2), 7); eq(Rules.alaBase(3), 15);
+    for (let n = 0; n < 60; n++) { const f = Rules.alaFace(n); eq(Rules.alaBase(f.s) + f.k, n); ok(f.k >= 0 && f.k < Rules.alaK(f.s), 'грань ' + n); }
+    ok(Rules.alaGoal(2, 0) > Rules.alaGoal(1, 0), 'второй сезон дороже');
+    // мифология второго сезона: есть в игре — последняя грань, нет — грань «?» (null) и не закрывается, пока не выйдет обновление
+    const m2 = mythOfSeason(2), f2 = Rules.alaFaces(2);
+    eq(JSON.stringify(f2.slice(0, 7)), JSON.stringify(Rules.ALATYR_WORLD.ORDER)); eq(f2[7], m2);
+    if (!m2) {
+      const st = Rules.alaStage(2, Rules.alaCost(2) * 2);
+      eq(st.n, 7, 'грань без мифологии не собирается'); ok(st.locked && !st.done, 'ждёт обновления'); eq(Rules.alatyrRoad(Rules.alaBase(2) + 7), null);
+    } else ok(Rules.alaStage(2, Rules.alaCost(2)).done, 'мифология есть — сезон собирается целиком');
+    // очки вклада сезона: осколок — 1, победа над Кощеем — FINALE.KILL
+    eq(Rules.alaPoints({ s: 1, n: 5, k: 2 }), 5 + 2 * Rules.ALATYR_WORLD.FINALE.KILL); eq(Rules.alaPoints(null), 0);
+  });
+  test('Сезоны Алатыря (4.28): закрытая мифология не появляется нигде, открывается с сезоном', () => {
+    // временная мифология второго сезона (как файл myth-<ключ>.js с MYTH_META): её виды — в SPECIES_ALL и SP, но не в SPECIES
+    const a0 = Ev.ala, base = SPECIES_ALL.find(s => s.id === 'ugolek'), ids = ['zz_a', 'zz_b'];
+    const had = MYTHS.zzt;
+    MYTHS.zzt = { name: 'Тестовая', where: '', color: '#fff', season: 2 }; MYTH_ALL.push('zzt');
+    ids.forEach((id, i) => { const x = { ...base, id, fam: id, evo: null, myth: 'zzt', num: 9000 + i }; SPECIES_ALL.push(x); SP[id] = x; });
+    try {
+      Ev.ala = { s: 1, from: 0, start: 0, fin: null, brk: null }; mythOpen(1, true);
+      ok(!SPECIES.some(s => s.myth === 'zzt') && !MYTH_KEYS.includes('zzt'), 'в первом сезоне закрыта');
+      ok(SP.zz_a, 'вид можно узнать по id');
+      const places = [...Array(800)].map((_, i) => ({ id: 'osm:n' + (70000 + i) })), p1 = places.map(p => W.placeMyth(p));
+      ok(!p1.includes('zzt'), 'Разломы и святилища закрытой мифологии не выпадают');
+      let hit = 0; for (let i = 0; i < 400; i++) if (W.evenMyth(SPECIES, (i + 0.5) / 400).some(s => s.myth === 'zzt')) hit++;
+      eq(hit, 0, 'духи закрытой мифологии не выбираются');
+      // раскол: сезон 2 — мифология открыта, забирает себе около 1/8 мест, остальные места мифологию не меняют
+      Ev.ala = { s: 1, from: 0, start: 0, fin: { from: 1000, to: 2000, kills: 0, goal: 5 }, brk: null }; Ev.alaSync(3000);
+      ok(SPECIES.some(s => s.myth === 'zzt') && MYTH_KEYS.includes('zzt'), 'со вторым сезоном открыта');
+      const p2 = places.map(p => W.placeMyth(p)), moved = p2.filter((m, i) => m !== p1[i]), nz = p2.filter(m => m === 'zzt').length;
+      ok(moved.every(m => !Rules.ALATYR_WORLD.ORDER.includes(m)), 'места уходят только к новым мифологиям');
+      const k = MYTH_KEYS.length; // с мифологией второго сезона из игры (если её файл подключён) — их больше семи на одну
+      ok(nz > 800 / k * 0.6 && nz < 800 / k * 1.4, `к новой мифологии — около 1/${k} мест: ${nz}`);
+      eq(mythOfSeason(2) === 'zzt' || MYTHS[mythOfSeason(2)].season === 2, true);
+    } finally {
+      ids.forEach(id => { delete SP[id]; }); SPECIES_ALL.splice(SPECIES_ALL.findIndex(s => s.id === ids[0]), ids.length);
+      MYTH_ALL.splice(MYTH_ALL.indexOf('zzt'), 1); if (had) MYTHS.zzt = had; else delete MYTHS.zzt;
+      Ev.ala = a0; mythOpen(Ev.alaSeason(), true);
+    }
+    ok(!SPECIES.some(s => s.myth === 'zzt'), 'убрано');
+  });
+  test('Сезоны Алатыря (4.28): финал и раскол — по времени, с полного часа; Кощей во всех Разломах', () => {
+    const a0 = Ev.ala, H = 3600000, t = Date.UTC(2026, 9, 5, 12, 55), F = Rules.ALATYR_WORLD.FINALE;
+    const f = Rules.alaFinale(t); eq(f.from, Date.UTC(2026, 9, 5, 14), 'финал — с полного часа, не раньше LEAD'); eq(f.to - f.from, F.DAYS * 86400000);
+    eq(Rules.alaHour(Date.UTC(2026, 9, 5, 12, 20)), Date.UTC(2026, 9, 5, 13));
+    try {
+      Ev.ala = { s: 1, from: 0, start: 0, fin: { from: f.from, to: f.to, kills: 0, goal: F.GOAL }, brk: null };
+      ok(!Ev.finale(f.from - 1) && Ev.finale(f.from) && Ev.finale(f.to - 1) && !Ev.finale(f.to), 'финал — от начала до конца');
+      eq(Ev.alaSeason(f.to - 1), 1); eq(Ev.alaSeason(f.to), 2, 'конец финала — раскол, даже без записи в базе');
+      Ev.ala.brk = f.from + 5 * H; // Орден одолел Кощея — раскол раньше
+      eq(Ev.alaSeason(f.from + 5 * H - 1), 1); eq(Ev.alaSeason(f.from + 5 * H), 2); ok(!Ev.finale(f.from + 5 * H), 'после раскола финала нет');
+      // Разлом в час финала — великий, Кощей; до финала — как обычно
+      const h0 = f.from / H + 1, pid = [...Array(200)].map((_, i) => 'osm:n' + (4242 + i)).find(id => W.riftAt(id, h0) && W.riftAt(id, h0 - 30));
+      const p = { id: pid, lat: 55.7, lng: 37.6, name: 'Тест' }, r = W.riftFor(p, 0, h0);
+      eq(r.boss, 'koschey'); eq(r.tier, 3); eq(r.fin, 1, 'Разлом финала первого сезона');
+      ok(!W.riftFor(p, 0, h0 - 30).fin, 'до финала — без Кощея');
+      // стадия текущего сезона от общего счёта: после раскола (база ещё не записала начало) — с нуля
+      Ev.ala = { s: 2, from: f.to, start: 1000, fin: null, brk: null };
+      eq(Ev.alaStage(1000 + Rules.alaGoal(2, 0), f.to + 1).n, 1); eq(Ev.alaStage(1000).s, 2);
+      const cl = Ev.alaClean({ s: '3', from: 'x', start: -5, fin: { from: 10, to: 5 }, brk: 'zz' });
+      eq(cl.s, 3); eq(cl.start, 0); eq(cl.fin, null, 'кривой финал отброшен'); eq(cl.brk, null);
+    } finally { Ev.ala = a0; Ev.alaSync(); }
+  });
+  test('Лига (4.28): сезон Лиги — сезон Алатыря, месячный сезон закрывается с наградой', () => {
+    const a0 = Ev.ala;
+    try {
+      Ev.ala = { s: 1, from: 0, start: 0, fin: null, brk: null };
+      eq(League.season(), 'A1'); eq(League.seasonName(), 'Сезон 1'); eq(League.seasonNum('A12'), 12); eq(League.seasonNum('2026-09'), 0);
+      const L = League.norm({ season: '2026-09', pts: 3000, best: 5, peak: 5, tickets: 3, n: 7, day: U.today(), got: { 1: true } });
+      eq(L.season, 'A1', 'после месячного — сезон A1'); eq(L.prize.season, '2026-09'); eq(L.prize.rank, 5, 'награда за месячный сезон — как обычно'); eq(L.pts, 2250);
+      Ev.ala = { s: 1, from: 0, start: 0, fin: { from: 1, to: Date.now() - 1, kills: 0, goal: 300 }, brk: null };
+      eq(League.season(), 'A2', 'раскол — новый сезон Лиги');
+      const L2 = League.norm(L); eq(L2.season, 'A2'); eq(L2.prize.season, 'A1');
+    } finally { Ev.ala = a0; Ev.alaSync(); }
   });
   test('Лига: пороги рангов', () => {
     eq(League.rank(0), 0); eq(League.rank(299), 0); eq(League.rank(300), 1); eq(League.rank(5500), 9); eq(League.rank(99999), 9);
@@ -820,6 +904,33 @@
     S.d.medals = {}; S.d.stats.caught = 10; S.checkMedals();
     eq(S.d.medals.catcher, 1);
   });
+  // 4.28: награды сезонов Алатыря — ступени вклада, знак «Хранитель Алатыря», выдача без повторов
+  test('SeasonRewards: ступени и выдача без повторов', () => {
+    const R = SeasonRewards, T = R.TIERS;
+    T.forEach((t, i) => { ok(t.n > 0 && (!i || t.n > T[i - 1].n), 'ступени растут'); Object.keys(t.rw).forEach(k => ok(['sparks', 'zlat', 'rod'].includes(k) || ITEMS[k], 'награда ' + k)); });
+    eq(T.find(t => t.medal).n, R.MEDAL_MIN, 'знак — со ступени MEDAL_MIN');
+    eq(R.tierOf(0), -1); eq(R.tierOf(1), 0); eq(R.tierOf(14), 1); eq(R.tierOf(15), 2); eq(R.tierOf(999), T.length - 1);
+    eq(R.list(3, 0).length, 0, 'без вклада — без наград');
+    ok(!R.list(3, 4).some(x => x.k === 'medal'), '4 осколка — без знака');
+    eq(R.list(3, 1).find(x => x.k === 'sparks').n, T[0].rw.sparks);
+    const all = R.list(3, 1000), zl = T.reduce((a, t) => a + (t.rw.zlat || 0), 0);
+    eq(all.find(x => x.k === 'zlat').n, zl, 'златники ступеней суммируются');
+    ok(all.every(x => x.k === 'medal' || ['sparks', 'zlat', 'rod'].includes(x.k) || ITEMS[x.k]), 'только валюта, предметы и знак — без обликов');
+    eq(R.roman(14), 'XIV'); eq(R.roman(49), 'XLIX'); eq(R.title(2), 'Итоги сезона Алатыря II', 'номер не отрывается');
+    // выдача: один раз на сезон; знак — за сезоны с вкладом от MEDAL_MIN
+    const keep = S.d; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    try {
+      S.d.medals = {}; S.d.stats.alaSeasons = 0; S.d.sparks = 0; S.d.zlat = 0;
+      const got = R.grant(S, 5, 31), z30 = T.filter(t => t.n <= 31).reduce((a, t) => a + (t.rw.zlat || 0), 0);
+      ok(got.some(x => x.k === 'zlat' && x.n === z30) && got.some(x => x.k === 'medal'), 'выдано');
+      eq(S.d.zlat, z30); eq(S.d.sparks, T[0].rw.sparks); eq(S.d.stats.alaSeasons, 1); eq(S.d.medals.alatyr, 1, 'знак «Хранитель Алатыря»');
+      eq(R.grant(S, 5, 31).length, 0, 'второй раз — ничего'); eq(R.grant(S, '5', 100).length, 0, 'и с другим вкладом'); eq(S.d.zlat, z30);
+      R.grant(S, 6, 3); eq(S.d.stats.alaSeasons, 1, '3 осколка — сезон не в знак');
+      eq(R.grant(S, 7, 0).length, 0); ok('7' in S.d.alaRw, 'пустой сезон тоже отмечен');
+      R.grant(S, 8, 5); eq(S.d.stats.alaSeasons, 2);
+      eq(R.grant(S, 0, 50).length, 0, 'сезона 0 нет'); eq(R.grant(S, 'x', 50).length, 0);
+    } finally { S.d = keep; }
+  });
 
   test('Настройки и позиция на карте не входят в прогресс', () => {
     const keep = S.d, d = { ...JSON.parse(JSON.stringify(S.d)), settings: { sound: true }, lastPos: [1, 2], tutPos: [1, 2] };
@@ -1035,6 +1146,7 @@
     pvpSettled: async id => { const m = DB.pvpM[id]; if (m && m.status === 'done') { if (m.a === who.uid) m.aS = true; if (m.b === who.uid) m.bS = true; } },
     // 4.28: общий Алатырь — как serve.js (World): счёт прибавляется после сохранения, дороги — Ev.roads
     alatyrAdd: async n => { DB.ala = (DB.ala || 0) + n; },
+    alatyrKill: async s => { (DB.kills = DB.kills || []).push(s); }, // 4.28: победа над Кощеем в финале сезона s
     alatyrState: async () => ({ total: DB.ala || 0, roads: JSON.parse(JSON.stringify(Ev.roads || [])) }),
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
@@ -2362,6 +2474,46 @@
       q = await call(A, 'alatyr'); ok(!q.events.some(e => e[0] === 'roads'), 'второй раз — не шлём');
       q = await call(A, 'load'); ok(q.events.some(e => e[0] === 'roads'), 'при входе — всегда');
     } finally { delete H.__alaTest; Ev.roads = r0; }
+  });
+  atest('Сервер 4.28: сезон Алатыря — вклад за сезон, победа над Кощеем в финале, итоги и награда при расколе', async () => {
+    const A = await newPlayer('as1', 55.371, 37.171, 'Сезон'); A.data.tut = 0;
+    const H = GameCore.H, a0 = Ev.ala, r0 = Ev.roads, t = Date.now();
+    const had = typeof SeasonRewards !== 'undefined', R = had ? SeasonRewards : (globalThis.SeasonRewards = {}), g0 = R.grant, calls = [];
+    R.grant = (S2, s, n) => { calls.push([s, n]); S2.d.sparks += 7; return [{ label: 'Искры', n: 7 }]; };
+    H.__alaTest = function () { return S.alatyrDrop('rift', 3); };
+    try {
+      Ev.ala = { s: 1, from: 0, start: 0, fin: null, brk: null }; Ev.roads = []; DB.ala = 0; DB.kills = [];
+      let r = await withRandom(0.5, () => call(A, '__alaTest')); ok(r.ok, r.error);
+      eq(A.data.alaS.s, 1); eq(A.data.alaS.n, 1, 'осколок — во вклад сезона'); eq(A.data.alaGiven, 1);
+      let st = await must(A, 'alatyr'); eq(st.season.s, 1); eq(st.my.n, 1); eq(st.my.pts, 1);
+      // финал: во всех Разломах Кощей, победа — во вклад Ловчего и в общий счёт (после сохранения)
+      Ev.ala = { s: 1, from: 0, start: 0, fin: { from: t - 3600000, to: t + 86400000, kills: 0, goal: 5 }, brk: null };
+      r = await call(A, 'alatyr'); const ev = r.events.find(e => e[0] === 'ala');
+      ok(ev && ev[1].fin && ev[1].fin.goal === 5, 'финал — телефону'); ok(!(await call(A, 'alatyr')).events.some(e => e[0] === 'ala'), 'второй раз — не шлём');
+      const hour = Math.floor(Date.now() / 3600000);
+      const id = poiId(i => asPlayer(A, () => { const x = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return !!x; }), 41000);
+      DB.pois[id] = { id, kind: 'shrine', lat: A.lat, lng: A.lng, name: 'Камень', active: true };
+      A.data.level = 10;
+      ['burevey', 'zharogriv', 'gromovik'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 35, sid + 'kos'))));
+      A.data.team = A.data.spirits.slice(-3).map(x => x.uid);
+      const rs = await must(A, 'raidStart', { rift: { id, lat: A.lat, lng: A.lng, name: 'Камень' } });
+      eq(rs.boss, 'koschey'); eq(rs.tier, 3); eq(rs.fin, 1, 'Разлом финала');
+      A.srv.battle.start -= 85000;
+      const w = await must(A, 'raidEnd', { win: true });
+      ok(w.win); eq(w.fin, 1); eq(A.data.alaS.k, 1, 'победа над Кощеем — во вклад'); eq(DB.kills.join(), '1', 'и в общий счёт побед');
+      // раскол: новый сезон — награда за прошлый по вкладу (осколки + победы × KILL) и итоги для окна
+      const n0 = A.data.alaS.n, pts = n0 + Rules.ALATYR_WORLD.FINALE.KILL, sp0 = A.data.sparks;
+      Ev.ala = { s: 1, from: 0, start: 0, fin: { from: t - 3600000, to: t + 86400000, kills: 5, goal: 5 }, brk: t - 1000 };
+      r = await call(A, 'alatyr'); ok(r.ok, r.error);
+      eq(JSON.stringify(calls), JSON.stringify([[1, pts]]), 'SeasonRewards.grant(S, сезон, вклад)'); eq(A.data.sparks, sp0 + 7);
+      eq(A.data.alaS.s, 2); eq(A.data.alaS.n, 0, 'вклад нового сезона — с нуля');
+      eq(A.data.alaSum.s, 1); eq(A.data.alaSum.pts, pts); eq(A.data.alaSum.got[0].n, 7);
+      eq(r.results[0].season.s, 1); eq(Ev.alaSeason(), 2);
+      await call(A, 'alatyr'); eq(calls.length, 1, 'награда — один раз');
+    } finally {
+      delete H.__alaTest; Ev.ala = a0; Ev.roads = r0; Ev.alaSync();
+      if (had) R.grant = g0; else delete globalThis.SeasonRewards;
+    }
   });
   /* ---------- вывод ---------- */
   (async () => {

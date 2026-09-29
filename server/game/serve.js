@@ -473,29 +473,77 @@ async function realWeather(lat, lng) {
 
 /* ---------- 4.28: общий Алатырь (029_alatyr_world.sql) ----------
    alatyr_world — общий счёт осколков Ордена (одна строка), alatyr_roads — распутанные дороги (грань n, мифология, начало
-   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alatyrStage)
+   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alaStage)
    отмечает только тот запрос, что их перешагнул; дорогу записывает alatyr_open (повтор той же грани ничего не меняет).
    Состояние кэшируется в экземпляре на TTL и кладётся в Ev.roads — по нему сервер отбирает духов (Ev.mythMul), а телефон
    получает те же дороги событием roads (core.js, alatyrSync). Событие начинается не раньше чем через Rules.ALATYR_WORLD.LEAD
    минут после вехи — за это время о нём узнают все экземпляры сервера и телефоны */
+/* 4.28: сезоны Алатыря (030_alatyr_seasons.sql): alatyr_seasons — строка на сезон: счёт на его начало (start_total), начало
+   (from_ms — момент раскола прошлого), финал (finale_from/to, kills — победы над Кощеем, goal) и раскол (broken_ms — с него
+   идёт следующий сезон; строку следующего сезона пишет тот же alatyr_break). Кто первым заметил, что пора, — пишет:
+   собраны все грани — финал (alatyr_finale), Орден одолел Кощея goal раз — раскол с ближайшего полного часа (alatyr_break
+   в World.kill), финал кончился — раскол в его конце (здесь, в load). Повтор ничего не меняет. Нет таблицы (миграция ещё
+   не применена) — первый сезон с нуля, без финала */
 const World = {
   st: null, at: 0, p: null, TTL: 60000,
-  async load() {
+  season(rows, now) {
+    const [top, prev] = rows;
+    if (!top) return { s: 1, from: 0, start: 0, fin: null, brk: null };
+    const cur = top.from_ms > now && prev ? prev : top; // раскол назначен, но ещё не настал — идёт прошлый сезон
+    return this.row(cur, cur === prev ? +top.from_ms : null);
+  },
+  row(r, brk) {
+    const fin = r.finale_from != null && r.finale_to != null ? { from: +r.finale_from, to: +r.finale_to, kills: +r.kills || 0, goal: +r.goal || Rules.ALATYR_WORLD.FINALE.GOAL } : null;
+    return { s: +r.season, from: +r.from_ms || 0, start: +r.start_total || 0, fin, brk: brk || (r.broken_ms != null ? +r.broken_ms : null) };
+  },
+  async load(depth = 0) {
+    const now = Date.now();
     const w = must(await db.from('alatyr_world').select('total').eq('id', 1).maybeSingle());
     const rows = must(await db.from('alatyr_roads').select('n, road, from_ms, to_ms').order('n', { ascending: false }).limit(30)) || [];
-    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })) };
+    const sq = await db.from('alatyr_seasons').select('season, start_total, from_ms, finale_from, finale_to, kills, goal, broken_ms').order('season', { ascending: false }).limit(8);
+    if (sq.error && depth === 0) console.warn('Алатырь: сезоны недоступны —', sq.error.message);
+    const srows = sq.error ? [] : sq.data || [];
+    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })), ...this.season(srows, now),
+      seasons: srows.map(r => this.row(r)), db: !sq.error };
+    if (depth > 3) return st;
+    // финал кончился, а Орден не одолел Кощея — раскол в конце финала
+    if (st.db && st.fin && !st.brk && now >= st.fin.to) { if (await this.brk(st.s, st.fin.to)) return this.load(depth + 1); }
+    const stg = Rules.alaStage(st.s, st.total - st.start);
     // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
-    const n = Rules.alatyrStage(st.total).n - 1;
-    if (n >= 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
-      if (await this.open(n, Date.now())) return this.load();
+    const n = stg.base + stg.n - 1;
+    if (stg.n > 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
+      if (await this.open(n, now, st)) return this.load(depth + 1);
     }
+    // все грани собраны, а финала нет (запрос, собравший последнюю грань, упал) — финал сейчас
+    if (st.db && stg.done && !st.fin && !st.brk) { if (await this.finale(st.s, now)) return this.load(depth + 1); }
     return st;
   },
   apply(st) {
     this.st = st; this.at = Date.now();
     const cut = Date.now() - 86400000;
     Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
+    Ev.ala = { s: st.s, from: st.from, start: st.start, fin: st.fin, brk: st.brk };
+    Ev.alaSync();
     return st;
+  },
+  async finale(s, now) {
+    const f = Rules.alaFinale(now);
+    const ok = !!must(await db.rpc('alatyr_finale', { p_season: s, p_from: f.from, p_to: f.to, p_goal: Rules.ALATYR_WORLD.FINALE.GOAL }));
+    if (ok) console.warn(`Алатырь: сезон ${s} — все грани собраны, финал с ${new Date(f.from).toISOString()}`);
+    return ok;
+  },
+  async brk(s, at) {
+    const ok = !!must(await db.rpc('alatyr_break', { p_season: s, p_at: at }));
+    if (ok) console.warn(`Алатырь: Кощей раскалывает камень — сезон ${s + 1} с ${new Date(at).toISOString()}`);
+    return ok;
+  },
+  // победа над Кощеем в финале сезона s; Орден одолел его goal раз — раскол с ближайшего полного часа
+  async kill(s) {
+    if (!(s >= 1)) return;
+    const now = Date.now(), r = must(await db.rpc('alatyr_kill', { p_season: s, p_n: 1, p_now: now }));
+    if (!r) return;
+    if (+r.prev < +r.goal && +r.kills >= +r.goal) { await this.brk(s, Rules.alaHour(now)); this.at = 0; await this.get(); }
+    else if (this.st && this.st.s === s && this.st.fin) this.st.fin.kills = Math.max(this.st.fin.kills, +r.kills || 0);
   },
   // состояние не старше ttl мс; база не ответила — прежнее (дороги не пропадают из-за сбоя)
   async get(ttl = this.TTL) {
@@ -503,18 +551,29 @@ const World = {
     if (!this.p) this.p = this.load().then(st => this.apply(st)).catch(e => { console.error('Алатырь:', String(e)); return this.st; }).finally(() => { this.p = null; });
     return this.p;
   },
-  async open(n, now) {
+  // дорога грани n (сквозной номер); goal — общий счёт, на котором грань собрана (st — сезон этой грани)
+  async open(n, now, st) {
+    const road = Rules.alatyrRoad(n), f = Rules.alaFace(n);
+    if (!road) return false; // мифологии этой грани ещё нет в игре — грань ждёт обновления
+    let at = st && st.s === f.s ? st.start : 0;
+    for (let k = 0; k <= f.k; k++) at += Rules.alaGoal(f.s, k);
     const t = Rules.alatyrOpen(now);
-    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: Rules.alatyrRoad(n), p_goal: Rules.alatyrAt(n), p_from: t.from, p_to: t.to }));
+    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: road, p_goal: at, p_from: t.from, p_to: t.to }));
   },
-  // +n осколков в общий счёт; перешагнули веху — записать дорогу (и сразу обновить кэш этого экземпляра)
+  // +n осколков в общий счёт; перешагнули веху сезона — записать дорогу, собрали все грани — финал (и сразу обновить кэш)
   async add(n) {
     const r = must(await db.rpc('alatyr_add', { p_n: n }));
     if (!r) return;
-    const a = Rules.alatyrStage(+r.prev || 0).n, b = Rules.alatyrStage(+r.total || 0).n;
-    let opened = false;
-    for (let k = Math.max(a, b - 3); k < b; k++) { if (await this.open(k, Date.now())) { opened = true; console.warn(`Алатырь: грань ${k} собрана — ${Rules.alatyrRoad(k)}`); } }
-    if (opened) { this.at = 0; await this.get(); } else if (this.st) this.st.total = Math.max(this.st.total, +r.total || 0);
+    const now = Date.now(), st = this.st;
+    // сезон сменился, а кэш об этом ещё не знает — вехи отметит load по свежему состоянию
+    if (!st || Ev.alaSeason(now) !== st.s) { this.at = 0; await this.get(); return; }
+    const A = Rules.alaStage(st.s, (+r.prev || 0) - st.start), B = Rules.alaStage(st.s, (+r.total || 0) - st.start);
+    let changed = false;
+    for (let k = Math.max(A.n, B.n - 3); k < B.n; k++) {
+      if (await this.open(B.base + k, now, st)) { changed = true; console.warn(`Алатырь: сезон ${st.s}, грань ${k + 1} из ${B.K} собрана — ${B.faces[k]}`); }
+    }
+    if (st.db && B.done && !A.done && !st.fin && !st.brk && await this.finale(st.s, now)) changed = true;
+    if (changed) { this.at = 0; await this.get(); } else st.total = Math.max(st.total, +r.total || 0);
   },
 };
 
@@ -524,6 +583,8 @@ function makeEnv(uid) {
     // 4.28: общий Алатырь — осколки в общий счёт (после сохранения прогресса) и состояние для экрана (не старше 15 с)
     async alatyrAdd(n) { await World.add(Math.max(1, Math.min(10, n | 0))); },
     async alatyrState() { return World.get(15000); },
+    // 4.28: победа над Кощеем в финале сезона s — в общий счёт (после сохранения прогресса)
+    async alatyrKill(s) { await World.kill(s | 0); },
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {

@@ -8,7 +8,7 @@
 class GameError extends Error {}
 
 const GameCore = {
-  MIN_CLIENT: '4.0.0', // 4.0: новые духи меняют появление духов на карте, обучение ведёт сервер — старым клиентам нужно обновиться
+  MIN_CLIENT: '4.28.0', // 4.28: мифологии мира и сезоны Алатыря меняют появление духов на карте — старым клиентам нужно обновиться
   POI_ID: /^(osm:[nwr]\d{1,15}|usr:[0-9a-f-]{36})$/,
   PID: /^[a-z0-9]{8,40}$/,
   STARTERS: ['ugolek', 'kapelka', 'mshonok'],
@@ -67,7 +67,8 @@ const GameCore = {
       Bus.emit = (ev, data) => ctx.events.push([ev, this.ser(ev, data)]);
       S.save = () => {};
       S.d = save.data ? JSON.parse(JSON.stringify(save.data)) : null;
-      if (S.d) { S.migrate(); S.ensureQuests(); W.prune(); }
+      Ev.alaSync(ctx.now); // 4.28: мифологии, открытые в этом сезоне Алатыря (сезон — из базы, serve.js)
+      if (S.d) { S.migrate(); S.ensureQuests(); W.prune(); this.alaTurn(ctx); }
       this.track(ctx);
 
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
@@ -251,6 +252,29 @@ const GameCore = {
     const key = Ev.roadsKey();
     if ((load && key) || (ctx.srv.alaV || '') !== key) Bus.emit('roads', Ev.roadsLive(ctx.now));
     if (key || ctx.srv.alaV) ctx.srv.alaV = key;
+    // 4.28: сезон Алатыря (финал, раскол) — событием ala: при входе и когда он изменился
+    const sk = Ev.alaKey();
+    if (load || (ctx.srv.alaW || '') !== sk) Bus.emit('ala', Ev.alaView());
+    ctx.srv.alaW = sk;
+  },
+  /* 4.28: сезон Алатыря сменился (Кощей расколол камень) — награда за вклад в прошлый сезон (S.d.alaS: осколки и победы над
+     Кощеем, Rules.alaPoints) из SeasonRewards (season-rewards.js; нет — без наград) и итоги для окна «Итоги сезона»
+     (S.d.alaSum — телефон показывает его один раз, alatyr.js). Вклад нового сезона — с нуля. Первый раз (сохранение до
+     сезонов) вклад первого сезона — всё, что Ловчий отдал в общий камень (alaGiven) */
+  alaTurn(ctx) {
+    const s = Ev.alaSeason(ctx.now), a = S.d.alaS;
+    if (!a || typeof a !== 'object' || !(a.s >= 1)) { S.d.alaS = { s, n: s === 1 ? Math.max(0, S.d.alaGiven | 0) : 0, k: 0 }; return; }
+    if (a.s >= s) return;
+    const pts = Rules.alaPoints(a);
+    let got = [];
+    if (pts > 0 && typeof SeasonRewards !== 'undefined' && SeasonRewards && typeof SeasonRewards.grant === 'function') {
+      try { const g = SeasonRewards.grant(S, a.s, pts); got = Array.isArray(g) ? g : []; } catch (e) { console.error('Награды сезона:', String(e && e.stack || e)); }
+    }
+    S.d.alaS = { s, n: 0, k: 0 };
+    if (pts > 0 || got.length) {
+      S.d.alaSum = { s: a.s, n: Math.max(0, a.n | 0), k: Math.max(0, a.k | 0), pts,
+        got: got.slice(0, 12).map(x => (x && typeof x === 'object' ? { label: String(x.label || x.name || '').slice(0, 120), n: Math.max(1, +x.n || 1) } : { label: String(x).slice(0, 120), n: 1 })) };
+    }
   },
   // Сезонная тропа: сезон — календарный месяц по часам игрока
   passSeason(ctx) { const d = U.local(ctx.now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`; },
@@ -635,13 +659,17 @@ const GameCore = {
       return { got };
     },
     // 4.28: общий Алатырь — счёт Ордена, распутанные дороги (последние, для истории) и вклад Ловчего. Грани и вехи
-    // телефон считает сам по Rules.alatyrStage (счёт — из кэша сервера, не старше ~15 с)
+    // телефон считает сам по Rules.alaStage (счёт — из кэша сервера, не старше ~15 с). Сезоны: текущий (season — с числом
+    // побед над Кощеем в финале), прошлые (seasons — для летописи: финалы и расколы), вклад Ловчего в сезон (my)
     async alatyr(a, ctx) {
       this.limit(ctx, 'alatyr', 30, 60000);
       const w = typeof ctx.env.alatyrState === 'function' ? await ctx.env.alatyrState() : null;
       const total = Math.max(0, Math.floor(+(w && w.total) || 0));
       const roads = Ev.roadsClean(w && w.roads).sort((x, y) => y.n - x.n);
-      return { total, roads, mine: S.d.alaGiven || 0, now: ctx.now };
+      const seasons = (Array.isArray(w && w.seasons) ? w.seasons : []).slice(0, 12).map(x => ({ ...Ev.alaClean(x), s: Math.max(1, x.s | 0) }));
+      const my = S.alaMine();
+      return { total, roads, mine: S.d.alaGiven || 0, now: ctx.now, season: Ev.alaView(), seasons,
+        my: { s: my.s, n: my.n | 0, k: my.k | 0, pts: Rules.alaPoints(my) } };
     },
 
     // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.
@@ -1030,8 +1058,9 @@ const GameCore = {
       // 4.16: босс — по уровню Ловчего (в совместном — по среднему уровню комнаты); rl телефон считает так же (Raid.bossStats)
       const rl = coop ? coop.rl : S.catchLvl();
       // 4.26: hp0 — здоровье бойцов на входе (Rules.raidWinnable)
-      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop, waters: 0, far, tire: true };
-      return { rid: r.id, tier: r.tier, boss: r.boss, rl, far };
+      // 4.28: fin — Разлом финала сезона Алатыря (Кощей): победа идёт в общий счёт побед над ним
+      ctx.srv.battle = { type: 'raid', rid: r.id, poi: p, tier: r.tier, boss: r.boss, rl, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop, waters: 0, far, tire: true, fin: r.fin || 0 };
+      return { rid: r.id, tier: r.tier, boss: r.boss, rl, far, fin: r.fin || 0 };
     },
     /* ----- совместный разлом: комната на сервере ----- */
     async roomCreate(a, ctx) {
@@ -1117,12 +1146,19 @@ const GameCore = {
       const am = S.rollAmulet([0.05, 0.12, 0.3][tier - 1], b.rid);
       rw.push(...S.riftSpoils(b.boss, tier)); // 4.16: эссенция семейства босса (и легенд) и осколки Алатыря
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
+      // 4.28: финал сезона Алатыря — победа над Кощеем: в вклад Ловчего за сезон и (после сохранения) в общий счёт побед
+      let fin = 0;
+      if (b.fin && b.boss === 'koschey') {
+        const my = S.alaMine();
+        if (my.s === b.fin) { my.k = (my.k | 0) + 1; fin = b.fin; }
+        if (fin && typeof ctx.env.alatyrKill === 'function') ctx.after.push(() => ctx.env.alatyrKill(fin));
+      }
       const bonus = Math.max(0, Math.floor((90 - t) / 15));
       const charms = Raid.TIER[tier].charms + bonus + (Ev.cur.rifts ? 3 : 0) + allies * 2;
       const shiny = U.h('rshiny', b.rid, S.d.created) < Sky.shinyRate(1 / 20);
       ctx.srv.raidWin = { rid: b.rid, sid: b.boss, lvl: Math.min(Raid.TIER[tier].lvl, S.catchLvl()), // 4.15: пойманный дух — не выше уровня Ловчего
         charms, shiny, boost: Sky.boosted(SP[b.boss].el) };
-      return { win: true, rw, charms, bonus, allies };
+      return { win: true, rw, charms, bonus, allies, fin };
     },
 
     /* ----- бои: капище и вторжение ----- */

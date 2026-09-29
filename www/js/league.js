@@ -6,7 +6,8 @@
    смена духа; сервер проверяет частоту, энергию и перезарядки, двигает время боя, хранит его в базе и рассылает
    обоим через Supabase Realtime (запасной путь — опрос). Итог — рейтинг обоим по разнице рейтингов (как Эло;
    на верхних лигах медленнее), опыт, награды за лиги и раны — засчитывает сервер ровно один раз (GameCore.leagueSettle).
-   Сезон — календарный месяц; в новом рейтинг сверх SOFT срезается наполовину, за высшую лигу прошлого сезона — сундук.
+   Сезон — 4.28: сезон Алатыря (до 4.28 — календарный месяц); в новом рейтинг сверх SOFT срезается наполовину, за высшую
+   лигу прошлого сезона — сундук.
    Звёзды старых сохранений переводятся в рейтинг ×100.
    Экран (3.21): герб ранга и место в таблице, вкладки «Бой», «Таблица» (живая, с текущими уровнями — leagueTop)
    и «Лиги»; строка таблицы открывает карточку Ловчего. Поиск и сам бой — league-battle.js. */
@@ -41,9 +42,19 @@ const League = {
   tab: 'play',
   TABS: ['play', 'table', 'ranks'],
 
-  season(d = U.local()) { return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; },
-  seasonName() { return U.local().toLocaleDateString(I18N.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).replace(/\s*г\.?$/, ''); },
-  seasonEnds() { const d = U.local(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)); },
+  /* 4.28: сезон Лиги — сезон Алатыря (Ev.alaSeason): начинается, когда Кощей раскалывает камень. Ключ — 'A<номер>'
+     (до 4.28 сезон был календарным месяцем, 'ГГГГ-ММ': первый ключ 'A1' закрывает последний месячный сезон — с наградой) */
+  season(t = U.now()) { return 'A' + (typeof Ev !== 'undefined' && Ev.alaSeason ? Ev.alaSeason(t) : 1); },
+  seasonNum(key) { const m = /^A(\d+)$/.exec(String(key || '')); return m ? +m[1] : 0; },
+  seasonName(key = this.season()) { const n = this.seasonNum(key); return n ? ru`Сезон ${n}` : String(key || ''); },
+  // что осталось до конца сезона: раскол назначен — через сколько; финал — «финал: Кощей»; иначе — грани камня
+  seasonLeft() {
+    const now = U.now(), e = Ev.alaEnd(), fin = Ev.finale(now), I = typeof Alatyr !== 'undefined' ? Alatyr.info : null;
+    if (fin) return (Ev.ala.brk ? ru`раскол через ${this.left(e - now)}` : ru`финал: Кощей · ещё ${this.left(e - now)}`);
+    if (!I) return ru`до раскола Алатыря`;
+    const st = Ev.alaStage(I.total, now);
+    return ru`грани ${st.n}/${st.K} до раскола`;
+  },
   reset(p) { return p > this.SOFT ? this.SOFT + Math.floor((p - this.SOFT) / 2) : p; },
   // 4.15: звёзды старого сохранения — в рейтинг ×100; 4.16: новый сезон — срез и сундук за высшую лигу прошлого;
   // новый день — снова жетоны; турнир с машинами (run) больше не нужен
@@ -137,7 +148,7 @@ const League = {
         <div class="dt-hero">
           <div class="det-art lg2-crest">${this.badge(r)}</div>
           <div class="dt-info">
-            <div class="det-hp">${ru`Сезон · ${this.seasonName()}`} · ⏳ <b class="lgx-ends"></b></div>
+            <div class="det-hp">${this.seasonName()} · <b class="lgx-ends"></b></div>
             <div class="lg2-rank${LEAGUE_RANKS[r].name.length > 10 ? ' long' : ''}">${LEAGUE_RANKS[r].name}</div>
             <div class="det-power"><small>${ru`РЕЙТИНГ`}</small><b>${cup}${U.fmtNum(L.pts)}</b></div>
             <div class="det-lvl"><span>${next ? ru`до лиги «${next.name}» — <b>${U.fmtNum(next.pts)}</b>, ещё ${U.fmtNum(next.pts - L.pts)}` : ru`высшая лига!`}</span><div class="arc"><i style="width:${prog}%"></i></div></div>
@@ -237,7 +248,7 @@ const League = {
       if (changed && this.tab === 'table') renderTable();
     };
     const tick = () => {
-      const e = scr.querySelector('.lgx-ends'); if (e) e.textContent = this.left(this.seasonEnds().getTime() - U.local().getTime());
+      const e = scr.querySelector('.lgx-ends'); if (e) e.textContent = this.seasonLeft();
       const m = scr.querySelector('.lgx-mid'); if (m) m.textContent = this.left(this.toMidnight());
     };
     // 4.16: при входе — засчитать бои, закончившиеся без экрана, сундук сезона и идущий бой
@@ -264,6 +275,7 @@ const League = {
     });
     UI.swipeTabs(body, this.TABS, () => this.tab, show);
     render(); load(); state();
+    if (typeof Alatyr !== 'undefined') Alatyr.refresh().then(() => { if (scr.isConnected) tick(); }); // 4.28: грани камня — до конца сезона
     let n = 0;
     const t = setInterval(() => {
       if (!scr.isConnected) { clearInterval(t); return; }

@@ -749,6 +749,9 @@ const Art = (() => {
   function medal(m, tier) {
     const col = tier ? MEDAL_TIERS[tier - 1].color : '#4b5563';
     const inner = m.stat.startsWith('el:') ? `<g transform="translate(34 30) scale(1.35)">${elIcon(m.stat.slice(3), 24).replace(/<svg[^>]*>|<\/svg>/g, '')}</g>`
+      // 4.28: «Хранитель Алатыря» — гранёный камень (буква «Х» читалась как римская десятка)
+      : m.stat === 'alaSeasons' ? `<path d="M50 27 L64 35 L68 50 L60 63 L40 63 L32 50 L36 35Z" fill="#fff" fill-opacity=".35" stroke="#1b1030" stroke-width="3.2" stroke-linejoin="round"/>` +
+        `<path d="M42 40 L58 40 L61 50 L55 57 L45 57 L39 50Z" fill="#1b1030" fill-opacity=".85"/><path d="M50 27 V40 M64 35 L58 40 M36 35 L42 40 M68 50 H61 M32 50 H39" stroke="#1b1030" stroke-width="2" stroke-linecap="round"/>`
       : `<text x="50" y="60" text-anchor="middle" font-size="30" font-weight="900" fill="#1b1030" font-family="Rubik, sans-serif">${m.name[0]}</text>`;
     return `<svg class="art" viewBox="0 0 100 100"><path d="M32 60 L22 96 L38 88 L46 100 L50 64Z M68 60 L78 96 L62 88 L54 100 L50 64Z" fill="${tier ? '#7c3aed' : '#374151'}"/>` +
       `<circle cx="50" cy="46" r="36" fill="${col}" stroke="${shade(col, -0.4)}" stroke-width="4"/><circle cx="50" cy="46" r="27" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2" stroke-dasharray="4 4"/>` +
