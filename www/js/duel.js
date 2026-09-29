@@ -41,14 +41,15 @@ const Duel = {
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
       <div class="shrine-view t${e.tier}">
-        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
+        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won, e.myth)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
+        <div class="rift-meta">${MYTH_PLACES[e.myth || 'slavic'].shrineOf(e.god)}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
+        <div class="q-note place-desc">${MYTH_PLACES[e.myth || 'slavic'].shrineDesc}</div>
         ${who}
         ${action}
         ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}
       </div>`;
-    const scr = UI.screen(ru`Капище`, html, 'shrine-screen');
+    const scr = UI.screen(MYTH_PLACES[e.myth || 'slavic'].shrine, html, 'shrine-screen'); // 4.28: своё у каждой мифологии
     const go = scr.querySelector('.duel-go');
     if (go) go.onclick = async () => {
       if (this.st || this._starting) return;

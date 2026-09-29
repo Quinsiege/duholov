@@ -25,6 +25,12 @@
   <script src="../www/js/i18n.js" data-lang="ru"></script>
   <script src="../www/js/config.js"></script>
   <script src="../www/js/settings.js"></script>
+  <script src="../www/js/myth-greek.js"></script>
+  <script src="../www/js/myth-norse.js"></script>
+  <script src="../www/js/myth-celtic.js"></script>
+  <script src="../www/js/myth-egypt.js"></script>
+  <script src="../www/js/myth-china.js"></script>
+  <script src="../www/js/myth-aztec.js"></script>
   <script src="../www/js/data.js"></script>
   <script src="../www/js/util.js"></script>
   <script src="../www/js/diff.js"></script>
@@ -584,7 +590,9 @@
     } finally { Math.random = m; }
   });
   test('Коллекция (4.16): каждый вид достижим — карта, превращение, разломы, гости издалека', () => {
-    const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35]];
+    // 4.28: и по точке в краю каждой мифологии мира — Афины, Осло, Париж, Каир, Пекин, Мехико
+    const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35],
+      [37.98, 23.73], [59.91, 10.75], [30.04, 31.24], [39.9, 116.4], [19.43, -99.13]];
     SPECIES.forEach(s => {
       const wild = !s.legend && PTS.some(([la, ln]) => W.local(s, ln, la)), evo = SPECIES.some(x => x.evo === s.id);
       const rift = s.legend; // 4.24: легенды бывшей Летописи — тоже в разломах
@@ -593,7 +601,7 @@
     // где бы ни был Ловчий, духа чужих краёв (и не своего сезона) приведёт поручение: он либо здешний, либо гость
     PTS.forEach(([la, ln]) => {
       const g = new Set(S.guests(la, ln).map(s => s.id));
-      SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season)).forEach(s =>
+      SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season || !W.home(s, la, ln))).forEach(s =>
         ok(g.has(s.id) !== (W.local(s, ln, la) && Ev.seasonal(s) > 0), `${s.id} в ${la},${ln}`));
     });
   });

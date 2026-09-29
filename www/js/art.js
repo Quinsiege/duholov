@@ -706,8 +706,10 @@ const Art = (() => {
         `<ellipse cx="34" cy="62" rx="3.6" ry="2.4" fill="#f43f5e"/><ellipse cx="46" cy="62" rx="3.6" ry="2.4" fill="#f43f5e"/>` : '') + `</svg>`;
   }
   // 4.6: разлом — каменные врата-кольцо с рунами, внутри закручивается воронка Нави
-  function riftIcon(tier) {
+  function riftIcon(tier, myth) {
     const col = tier === 3 ? '#fbbf24' : tier === 2 ? '#f472b6' : '#a78bfa', id = 'rf' + (++seq);
+    // 4.28: свой Разлом у каждой мифологии (js/places-art.js)
+    if (myth && myth !== 'slavic' && typeof PLACE_ART !== 'undefined' && PLACE_ART[myth]) return PLACE_ART[myth].rift(tier, col, id);
     let stones = '', arms = '';
     for (let i = 0; i < 12; i++) {
       const a = i * 30, g = i % 3 === 0;
@@ -755,8 +757,10 @@ const Art = (() => {
 
   /* ---------------- КАПИЩЕ И ХРАНИТЕЛЬ ---------------- */
   // 4.6: капище — святилище: резные врата из двух идолов под балкой с коньками, между ними на каменном круге — священный огонь цвета капища
-  function shrineIcon(tier, won) {
+  function shrineIcon(tier, won, myth) {
     const fire = won ? '#fbbf24' : tier === 3 ? '#f43f5e' : tier === 2 ? '#c084fc' : '#2dd4bf', id = 'sh' + (++seq);
+    // 4.28: своё святилище у каждой мифологии (js/places-art.js)
+    if (myth && myth !== 'slavic' && typeof PLACE_ART !== 'undefined' && PLACE_ART[myth]) return PLACE_ART[myth].shrine(tier, fire, won, id);
     const post = x => `<path d="M${x - 6} 92 V44 Q${x - 6} 36 ${x} 33 Q${x + 6} 36 ${x + 6} 44 V92Z" fill="url(#${id}w)" stroke="#2a1508" stroke-width="2" stroke-linejoin="round"/>` +
       `<path d="M${x - 6} 56 H${x + 6} M${x - 6} 72 H${x + 6}" stroke="#2a1508" stroke-width="1.5"/>` +
       `<path d="M${x - 5} 61 l2.5 3 2.5-3 2.5 3 2.5-3" stroke="#e3b27a" stroke-width="1.1" fill="none"/>` +

@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '4.27.0';
+const APP_VERSION = '4.28.0';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -144,6 +144,531 @@ function ru(s, ...v) {
 ru.k = (s, ...v) => typeof s === 'string' ? s : s.reduce((a, p, i) => a + v[i - 1] + p);
 
 I18N.init();
+
+// ===== www/js/myth-greek.js =====
+/* 4.28: духи и боги греческой мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).greek = [
+  // ---------- ОГОНЬ: Химерёнок → Химера ----------
+  { id: 'gr_himerenok', name: ru`Химерёнок`, el: 'fire', rar: 1, stage: 1, fam: 'gr_himerenok', evo: 'gr_himera', cost: 25, base: [120, 94, 106],
+    desc: ru`Львёнок с козьей головкой на спине и хвостом-змейкой — три характера в одном. Греется у жаровен с каштанами и чихает искрами.`,
+    look: { shape: 'round', c1: '#ffc46b', c2: '#d9661f', c3: '#ff8a1a', eyes: 'big', mouth: 'cat', back: ['mane', 'cattail'], feats: ['horns', 'cheeks'] } },
+  { id: 'gr_himera', name: ru`Химера`, el: 'fire', rar: 2, stage: 2, fam: 'gr_himerenok', base: [174, 132, 148],
+    desc: ru`Подросший Химерёнок. Лев рычит, коза бодается, змея шипит — договориться им удаётся только насчёт гироса. Пышет огнём, как в древней Ликии.`,
+    look: { shape: 'blob', c1: '#ffb04a', c2: '#b8410c', c3: '#ff6a1a', eyes: 'angry', mouth: 'teeth', back: ['mane', 'cattail', 'horns'], feats: ['flame'] } },
+
+  // ---------- ВОДА: Гиппокампчик → Гиппокамп ----------
+  { id: 'gr_gippokampik', name: ru`Гиппокампчик`, el: 'water', rar: 1, stage: 1, fam: 'gr_gippokampik', evo: 'gr_gippokamp', cost: 25, base: [104, 114, 122],
+    desc: ru`Морской жеребёнок с рыбьим хвостом. Живёт в городских фонтанах и ловит монетки, которые бросают туристы, — на счастье.`,
+    look: { shape: 'drop', c1: '#8ef0e6', c2: '#0e8a9a', c3: '#38bdf8', eyes: 'big', mouth: 'smile', back: ['mane', 'ripples'], feats: ['cheeks'] } },
+  { id: 'gr_gippokamp', name: ru`Гиппокамп`, el: 'water', rar: 2, stage: 2, fam: 'gr_gippokampik', base: [154, 160, 168],
+    desc: ru`Морской конь из упряжки Посейдона. Резвится в гаванях, обгоняет паромы и катает по волнам тех, кто угостит его яблоком.`,
+    look: { shape: 'blob', c1: '#6ee7d8', c2: '#0f5f7a', c3: '#38bdf8', eyes: 'round', mouth: 'smile', back: ['mane', 'tail', 'ripples'], feats: ['bubbles'] } },
+
+  // ---------- ЛЕС: Сатирёнок → Сатир → Пан ----------
+  { id: 'gr_satirenok', name: ru`Сатирёнок`, el: 'forest', rar: 1, stage: 1, fam: 'gr_satirenok', evo: 'gr_satir', cost: 25, base: [110, 108, 118],
+    desc: ru`Козлоногий малыш с рожками и кудряшками. Скачет по ступеням амфитеатров и дудит в свирель, пока его не прогонят.`,
+    look: { shape: 'round', c1: '#e8b98a', c2: '#8a5a2e', c3: '#84cc16', eyes: 'big', mouth: 'smile', back: ['ears'], feats: ['horns', 'leaves', 'cheeks'] } },
+  { id: 'gr_satir', name: ru`Сатир`, el: 'forest', rar: 2, stage: 2, fam: 'gr_satirenok', evo: 'gr_pan', cost: 100, base: [158, 150, 156],
+    desc: ru`Весельчак из свиты Диониса. Обожает уличные праздники и виноград на балконах, а играет на свирели так, что прохожие пускаются в пляс.`,
+    look: { shape: 'tall', c1: '#d9a577', c2: '#6b4220', c3: '#65a30d', eyes: 'round', mouth: 'smile', back: ['ears'], feats: ['horns', 'leaves'] } },
+  { id: 'gr_pan', name: ru`Пан`, el: 'forest', rar: 3, stage: 3, fam: 'gr_satirenok', base: [218, 204, 222],
+    desc: ru`Козлоногий бог лесов и пастбищ, мастер тростниковой свирели. Не буди его в полдень: крикнет так, что весь сквер охватит паника.`,
+    look: { shape: 'robe', c1: '#b8834f', c2: '#4a2c14', c3: '#4d7c0f', eyes: 'angry', mouth: 'smile', back: ['horns'], feats: ['beard', 'leaves'] } },
+
+  // ---------- ВЕТЕР: Гарпёнок → Гарпия → Аэлло ----------
+  { id: 'gr_garpyonok', name: ru`Гарпёнок`, el: 'wind', rar: 1, stage: 1, fam: 'gr_garpyonok', evo: 'gr_garpiya', cost: 25, base: [122, 92, 104],
+    desc: ru`Пушистый птенчик с девчачьим личиком. Выхватывает картошку фри из рук туристов быстрее любой чайки.`,
+    look: { shape: 'bird', c1: '#dcd6fb', c2: '#7c6fcf', c3: '#fbcfe8', eyes: 'big', mouth: 'smile', back: ['wings', 'hair'], feats: ['cheeks'] } },
+  { id: 'gr_garpiya', name: ru`Гарпия`, el: 'wind', rar: 2, stage: 2, fam: 'gr_garpyonok', evo: 'gr_aello', cost: 100, base: [172, 128, 144],
+    desc: ru`Крылатая похитительница, быстрая, как порыв ветра. Уносит со столиков кафе всё, что плохо лежит, — от салфеток до шляп.`,
+    look: { shape: 'bird', c1: '#c7c2f5', c2: '#4c3fa8', c3: '#f0abfc', eyes: 'angry', mouth: 'smile', back: ['wings', 'hair', 'tail'], feats: ['swirl'] } },
+  { id: 'gr_aello', name: ru`Аэлло`, el: 'wind', rar: 3, stage: 3, fam: 'gr_garpyonok', base: [238, 164, 188],
+    desc: ru`Старшая из гарпий, её имя значит «Вихрь». Когда она проносится над набережной, зонтики кафе взлетают, как стая чаек.`,
+    look: { shape: 'bird', c1: '#a5b4fc', c2: '#312e81', c3: '#e0e7ff', eyes: 'angry', mouth: 'teeth', back: ['wings', 'hair', 'tail', 'aura'], feats: ['crest', 'swirl'] } },
+
+  // ---------- ТОК: Циклопчик → Циклоп ----------
+  { id: 'gr_ciklopchik', name: ru`Циклопчик`, el: 'current', rar: 1, stage: 1, fam: 'gr_ciklopchik', evo: 'gr_ciklop', cost: 25, base: [114, 110, 110],
+    desc: ru`Одноглазый малыш-кузнец. Стучит молоточком по перилам и фонарным столбам, высекая искры, — учится ковать молнии, как старшие.`,
+    look: { shape: 'round', c1: '#b4c2ee', c2: '#4b5a9a', c3: '#facc15', eyes: 'one', mouth: 'smile', back: [], feats: ['bolt', 'cheeks'] } },
+  { id: 'gr_ciklop', name: ru`Циклоп`, el: 'current', rar: 2, stage: 2, fam: 'gr_ciklopchik', base: [162, 166, 152],
+    desc: ru`Кузнец громовых стрел — такие, как он, выковали молнии для самого Зевса. Чинит оборванные провода одним ударом молота и ворчит, если его отвлекают.`,
+    look: { shape: 'tall', c1: '#9fb0e4', c2: '#36407a', c3: '#facc15', eyes: 'one', mouth: 'teeth', back: [], feats: ['bolt', 'beard'] } },
+
+  // ---------- ТЕНЬ: Онейрик → Онейр → Морфей ----------
+  { id: 'gr_oneirik', name: ru`Онейрик`, el: 'shadow', rar: 1, stage: 1, fam: 'gr_oneirik', evo: 'gr_oneir', cost: 25, base: [116, 98, 108], time: 'night',
+    desc: ru`Маленький сон, сбежавший из пещеры Гипноса. Прячется в подушках и показывает прохожим короткие смешные сны прямо на ходу.`,
+    look: { shape: 'ghost', c1: '#b9a6f5', c2: '#4c2a8f', c3: '#f472b6', eye: '#e9d5ff', eyes: 'sleepy', mouth: 'o', back: ['wings'], feats: ['cheeks'] } },
+  { id: 'gr_oneir', name: ru`Онейр`, el: 'shadow', rar: 2, stage: 2, fam: 'gr_oneirik', evo: 'gr_morfey', cost: 100, base: [166, 138, 150],
+    desc: ru`Крылатый дух сновидений. Прилетает к окнам через ворота из рога или из слоновой кости — и сам не знает, вещий сегодня сон или нет.`,
+    look: { shape: 'wisp', c1: '#9b87f5', c2: '#2e1a66', c3: '#fbcfe8', eye: '#e9d5ff', eyes: 'glow', mouth: 'none', back: ['wings', 'aura'], feats: ['swirl'] } },
+  { id: 'gr_morfey', name: ru`Морфей`, el: 'shadow', rar: 3, stage: 3, fam: 'gr_oneirik', base: [228, 178, 196], time: 'night',
+    desc: ru`Бог сновидений, сын Гипноса. Во сне может принять облик любого человека — чаще всего почему-то учителя перед контрольной.`,
+    look: { shape: 'robe', c1: '#7c6cf0', c2: '#1b1147', c3: '#f87171', eye: '#e9d5ff', eyes: 'sleepy', mouth: 'none', back: ['wings', 'aura'], feats: ['runes'] } },
+
+  // ---------- Редкие: знаменитые существа ----------
+  { id: 'gr_kerber', name: ru`Цербер`, el: 'fire', rar: 3, stage: 1, fam: 'gr_kerber', base: [222, 180, 196],
+    desc: ru`Трёхголовый пёс, страж ворот Аида. В городе сторожит подземные переходы: одна голова спит, другая ест, третья глядит в оба. Тает от медовых лепёшек.`,
+    look: { shape: 'blob', c1: '#6b4a3a', c2: '#1f120c', c3: '#ff8a1a', eye: '#ffb020', eyes: 'glow', mouth: 'teeth', back: ['heads3', 'ears', 'cattail'], feats: ['flame'] } },
+  { id: 'gr_pegas', name: ru`Пегас`, el: 'current', rar: 3, stage: 1, fam: 'gr_pegas', base: [208, 170, 186],
+    desc: ru`Крылатый белый конь. Возит по небу молнии Зевса, а там, где ударит копытом о камень, пробивается родник.`,
+    look: { shape: 'blob', c1: '#f8fafc', c2: '#94a3b8', c3: '#facc15', eyes: 'round', mouth: 'none', back: ['wings', 'mane', 'tail'], feats: ['snout', 'bolt'] } },
+  { id: 'gr_meduza', name: ru`Медуза`, el: 'shadow', rar: 3, stage: 1, fam: 'gr_meduza', base: [216, 150, 178],
+    desc: ru`Горгона со змеями вместо волос. Носит тёмные очки, чтобы ненароком не превратить кого-нибудь в статую, а городские скульптуры считает старыми знакомыми.`,
+    look: { shape: 'robe', c1: '#86d0a4', c2: '#1f5a44', c3: '#a78bfa', eyes: 'glow', mouth: 'smile', back: ['hair'], feats: ['crown'] } },
+
+  // ---------- Эпические: боги Олимпа ----------
+  { id: 'gr_germes', name: ru`Гермес`, el: 'wind', rar: 4, stage: 1, fam: 'gr_germes', base: [226, 184, 190],
+    desc: ru`Вестник богов в крылатых сандалиях и шляпе. Покровитель путников, торговцев и курьеров: посылку доставит раньше, чем её отправят.`,
+    look: { shape: 'robe', c1: '#e0e7ff', c2: '#4f46e5', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['wings'], feats: ['hat'] } },
+  { id: 'gr_artemida', name: ru`Артемида`, el: 'forest', rar: 4, stage: 1, fam: 'gr_artemida', base: [220, 196, 204],
+    desc: ru`Богиня охоты и луны, хранительница лесного зверья. На рассвете бегает по паркам вместе с серебряной ланью и никогда не промахивается.`,
+    look: { shape: 'robe', c1: '#d9f99d', c2: '#3f6212', c3: '#e2e8f0', eyes: 'round', mouth: 'smile', back: ['hair', 'halo'], feats: ['crown'] } },
+
+  // ---------- Легенды: великие боги ----------
+  { id: 'gr_zeus', name: ru`Зевс`, el: 'current', rar: 5, stage: 1, fam: 'gr_zeus', legend: true, base: [300, 228, 248],
+    desc: ru`Легенда. Царь богов и владыка Олимпа, повелитель грома и молний. С высоты туч видит весь город разом. Встречают его только в разломах.`,
+    look: { shape: 'robe', c1: '#f8fafc', c2: '#64748b', c3: '#facc15', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['aura', 'halo'], feats: ['beard', 'crown', 'bolt'] } },
+  { id: 'gr_poseidon', name: ru`Посейдон`, el: 'water', rar: 5, stage: 1, fam: 'gr_poseidon', legend: true, base: [290, 246, 258],
+    desc: ru`Легенда. Владыка морей и колебатель земли: ударом трезубца поднимает волны и выводит родники из скалы. Встречают его только в разломах.`,
+    look: { shape: 'robe', c1: '#99f6e4', c2: '#0f5f7a', c3: '#fbbf24', eye: '#a5f3fc', eyes: 'glow', mouth: 'none', back: ['aura', 'ripples'], feats: ['beard', 'crown'] } },
+];
+
+// ===== www/js/myth-norse.js =====
+/* 4.28: духи и боги скандинавской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).norse = [
+  // ---------- ОГОНЬ: ниссе — домовой Севера ----------
+  { id: 'no_nisse', name: ru`Ниссе`, el: 'fire', rar: 1, stage: 1, fam: 'no_nisse', evo: 'no_tomte', cost: 25, base: [112, 104, 116],
+    desc: ru`Крошечный домовой в красном колпаке. Под Рождество ждёт миску каши с маслом — забудешь масло, и он спрячет твои варежки.`,
+    look: { shape: 'round', c1: '#f1c7a0', c2: '#b91c1c', c3: '#f8fafc', eyes: 'round', mouth: 'smile', back: [], feats: ['hat', 'beard', 'cheeks'] } },
+  { id: 'no_tomte', name: ru`Томте`, el: 'fire', rar: 2, stage: 2, fam: 'no_nisse', base: [164, 150, 158],
+    desc: ru`Седой хранитель дома и двора. Обходит подъезды с фонарём, греет у батарей замёрзших котов, а в Йоль разносит подарки.`,
+    look: { shape: 'robe', c1: '#ef4444', c2: '#7f1d1d', c3: '#f8fafc', eyes: 'sleepy', mouth: 'none', back: [], feats: ['hat', 'beard', 'lamp'] } },
+
+  // ---------- ВОДА: инеистые великаны ----------
+  { id: 'no_ineyonok', name: ru`Инеёнок`, el: 'water', rar: 1, stage: 1, fam: 'no_ineyonok', evo: 'no_jotun', cost: 25, base: [104, 114, 120],
+    desc: ru`Малыш-ётун из вечных льдов Нифльхейма. Дышит на окна трамваев и рисует на них морозные руны.`,
+    look: { shape: 'round', c1: '#e0f2fe', c2: '#38bdf8', c3: '#ffffff', eyes: 'big', mouth: 'o', back: [], feats: ['cheeks', 'horns'] } },
+  { id: 'no_jotun', name: ru`Ётун`, el: 'water', rar: 2, stage: 2, fam: 'no_ineyonok', evo: 'no_hrimthurs', cost: 100, base: [160, 160, 168],
+    desc: ru`Подросший ледяной великан. Обожает катки и сосульки, а весной ходит угрюмый и немного капает.`,
+    look: { shape: 'tall', c1: '#bae6fd', c2: '#0369a1', c3: '#f0f9ff', eyes: 'angry', mouth: 'teeth', back: [], feats: ['horns', 'beard'] } },
+  { id: 'no_hrimthurs', name: ru`Хримтурс`, el: 'water', rar: 3, stage: 3, fam: 'no_ineyonok', base: [220, 210, 236],
+    desc: ru`Инеистый великан из древнего рода Имира. Когда он зевает, во всём городе замерзают лужи и фонтаны.`,
+    look: { shape: 'robe', c1: '#bfdbfe', c2: '#1e3a8a', c3: '#e0f2fe', eye: '#67e8f9', eyes: 'glow', mouth: 'none', back: ['aura'], feats: ['beard', 'crown'] } },
+
+  // ---------- ЛЕС: тролли ----------
+  { id: 'no_trollenok', name: ru`Троллёнок`, el: 'forest', rar: 1, stage: 1, fam: 'no_trollenok', evo: 'no_troll', cost: 25, base: [108, 118, 122],
+    desc: ru`Вылупился из замшелого валуна у фьорда. На солнце каменеет, поэтому днём прикидывается булыжником в сквере.`,
+    look: { shape: 'round', c1: '#a8a29e', c2: '#57534e', c3: '#84cc16', eyes: 'round', mouth: 'smile', back: [], feats: ['sprout', 'cheeks'] } },
+  { id: 'no_troll', name: ru`Тролль`, el: 'forest', rar: 2, stage: 2, fam: 'no_trollenok', evo: 'no_bergtroll', cost: 100, base: [156, 170, 166],
+    desc: ru`Живёт под мостами и берёт с прохожих плату — обычно печеньем. На рассвете замирает и притворяется памятником.`,
+    look: { shape: 'blob', c1: '#a3b18a', c2: '#3f4a2a', c3: '#78350f', eyes: 'round', mouth: 'teeth', back: [], feats: ['snout', 'leaves'] } },
+  { id: 'no_bergtroll', name: ru`Горный тролль`, el: 'forest', rar: 3, stage: 3, fam: 'no_trollenok', base: [210, 232, 226],
+    desc: ru`Древний великан скал, поросший мхом и ёлками. Говорят, половина гранитных набережных — это его задремавшая родня.`,
+    look: { shape: 'tall', c1: '#9ca3af', c2: '#374151', c3: '#65a30d', eyes: 'sleepy', mouth: 'teeth', back: ['sprout'], feats: ['leaves', 'snout'] } },
+
+  // ---------- ВЕТЕР: вороны Одина ----------
+  { id: 'no_voronenok', name: ru`Воронёнок`, el: 'wind', rar: 1, stage: 1, fam: 'no_voronenok', evo: 'no_huginmunin', cost: 25, base: [118, 92, 106],
+    desc: ru`Мечтает стать вестником Одина, а пока облетает город и собирает новости и всё блестящее: ключи, пуговицы, фантики.`,
+    look: { shape: 'bird', c1: '#64748b', c2: '#1e293b', c3: '#fbbf24', eyes: 'big', mouth: 'beak', back: ['wings'], feats: ['crest'] } },
+  { id: 'no_huginmunin', name: ru`Хугин и Мунин`, el: 'wind', rar: 2, stage: 2, fam: 'no_voronenok', base: [170, 136, 150],
+    desc: ru`Мысль и Память — вороны Одина. Каждое утро облетают весь мир, а вечером пересказывают ему все новости, ничего не упустив.`,
+    look: { shape: 'bird', c1: '#475569', c2: '#0f172a', c3: '#a5b4fc', eye: '#e0e7ff', eyes: 'glow', mouth: 'beak', back: ['wings', 'tail'], feats: ['runes'] } },
+
+  // ---------- ТОК: козлы Тора ----------
+  { id: 'no_gromushka', name: ru`Громушка`, el: 'current', rar: 1, stage: 1, fam: 'no_gromushka', evo: 'no_tanngnjost', cost: 25, base: [122, 94, 104],
+    desc: ru`Козлёнок с искрящими рожками. Бодает электросамокаты — и те едут вдвое быстрее. Мечтает однажды возить колесницу Тора.`,
+    look: { shape: 'round', c1: '#f5f5f4', c2: '#a8a29e', c3: '#facc15', eyes: 'big', mouth: 'smile', back: ['horns'], feats: ['bolt', 'cheeks'] } },
+  { id: 'no_tanngnjost', name: ru`Тангниостр`, el: 'current', rar: 2, stage: 2, fam: 'no_gromushka', evo: 'no_tanngrisnir', cost: 100, base: [174, 130, 142],
+    desc: ru`Козёл громовой колесницы, его имя значит «Скрежещущий зубами». В грозу грохочет копытами по крышам и жуёт провода.`,
+    look: { shape: 'blob', c1: '#e7e5e4', c2: '#57534e', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['horns'], feats: ['bolt', 'beard'] } },
+  { id: 'no_tanngrisnir', name: ru`Тангриснир`, el: 'current', rar: 3, stage: 3, fam: 'no_gromushka', base: [240, 164, 188],
+    desc: ru`«Скалящий зубы» — старший козёл Тора. Когда он мчит колесницу по небу, над городом гремит гром и сверкают молнии.`,
+    look: { shape: 'blob', c1: '#fef9c3', c2: '#78716c', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['horns', 'aura'], feats: ['bolt', 'beard'] } },
+
+  // ---------- ТЕНЬ: курганные духи ----------
+  { id: 'no_kurgannik', name: ru`Курганник`, el: 'shadow', rar: 1, stage: 1, fam: 'no_kurgannik', evo: 'no_draugr', cost: 25, base: [114, 108, 110], time: 'night',
+    desc: ru`Дух старого кургана. Сторожит клад из трёх монеток и бутылочной крышки, а по ночам выглядывает из клумб.`,
+    look: { shape: 'ghost', c1: '#94a3b8', c2: '#1e293b', c3: '#fbbf24', eye: '#67e8f9', eyes: 'glow', mouth: 'o', back: [], feats: ['hat'] } },
+  { id: 'no_draugr', name: ru`Драугр`, el: 'shadow', rar: 2, stage: 2, fam: 'no_kurgannik', base: [168, 156, 146], time: 'night',
+    desc: ru`Хранитель курганных сокровищ в старом шлеме. В городе заведует бюро находок и очень не любит отдавать вещи.`,
+    look: { shape: 'tall', c1: '#94a3b8', c2: '#334155', c3: '#fbbf24', eye: '#67e8f9', eyes: 'glow', mouth: 'teeth', back: [], feats: ['horns', 'beard'] } },
+
+  // ---------- редкие: знаменитые чудовища ----------
+  { id: 'no_fenrir', name: ru`Фенрир`, el: 'shadow', rar: 3, stage: 1, fam: 'no_fenrir', base: [226, 150, 178], time: 'night',
+    desc: ru`Исполинский волк, которого боги связали лентой Глейпнир. Лента соткана из шума кошачьих шагов — вот почему кошки ходят бесшумно.`,
+    look: { shape: 'blob', c1: '#64748b', c2: '#1e293b', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'teeth', back: ['ears', 'cattail'], feats: ['snout'] } },
+  { id: 'no_sleipnir', name: ru`Слейпнир`, el: 'wind', rar: 3, stage: 1, fam: 'no_sleipnir', base: [196, 176, 200],
+    desc: ru`Восьминогий конь Одина, быстрее любого ветра. Скачет по крышам и проводам, а на поворотах путается, с какой ноги начинать.`,
+    look: { shape: 'blob', c1: '#e2e8f0', c2: '#64748b', c3: '#a5b4fc', eyes: 'round', mouth: 'none', back: ['mane', 'tail'], feats: ['snout'] } },
+  { id: 'no_jormungand', name: ru`Ёрмунганд`, el: 'water', rar: 3, stage: 1, fam: 'no_jormungand', base: [184, 212, 214],
+    desc: ru`Мировой змей, опоясавший всю землю и закусивший собственный хвост. Дремлет во фьордах и каналах, изредка показывая спину.`,
+    look: { shape: 'blob', c1: '#5eead4', c2: '#115e59', c3: '#fde047', eyes: 'sleepy', mouth: 'teeth', back: ['ripples'], feats: ['bubbles'] } },
+
+  // ---------- эпические: боги ----------
+  { id: 'no_loki', name: ru`Локи`, el: 'fire', rar: 4, stage: 1, fam: 'no_loki', base: [224, 180, 190],
+    desc: ru`Бог хитрости и огня, мастер превращений. Оборачивается лососем, кобылицей или прохожим — и шутит так, что смеются даже боги.`,
+    look: { shape: 'robe', c1: '#4ade80', c2: '#14532d', c3: '#f97316', eyes: 'angry', mouth: 'smile', back: ['hair'], feats: ['horns', 'flame'] } },
+  { id: 'no_freya', name: ru`Фрейя`, el: 'forest', rar: 4, stage: 1, fam: 'no_freya', base: [200, 206, 214],
+    desc: ru`Богиня любви и весны. Ездит в колеснице, запряжённой кошками, и носит плащ из соколиных перьев. Где она пройдёт — зацветают дворы.`,
+    look: { shape: 'robe', c1: '#fde68a', c2: '#15803d', c3: '#f472b6', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'wings'], feats: ['crown', 'leaves'] } },
+
+  // ---------- легенды: великие боги (только в разломах) ----------
+  { id: 'no_thor', name: ru`Тор`, el: 'current', rar: 5, stage: 1, fam: 'no_thor', legend: true, base: [302, 236, 248],
+    desc: ru`Легенда. Громовержец с молотом Мьёльниром, защитник богов и людей. Где он проезжает, там гремит гром. Появляется только в грозовых разломах.`,
+    look: { shape: 'robe', c1: '#fca5a5', c2: '#991b1b', c3: '#facc15', eyes: 'angry', mouth: 'none', back: ['aura'], feats: ['beard', 'bolt', 'horns'] } },
+  { id: 'no_odin', name: ru`Один`, el: 'wind', rar: 5, stage: 1, fam: 'no_odin', legend: true, base: [290, 248, 258],
+    desc: ru`Легенда. Всеотец, отдавший глаз за мудрость. Два ворона приносят ему вести со всего света. Появляется только в ветряных разломах.`,
+    look: { shape: 'robe', c1: '#94a3b8', c2: '#1e293b', c3: '#fbbf24', eyes: 'one', mouth: 'none', back: ['aura'], feats: ['beard', 'hat', 'runes'] } },
+];
+
+// ===== www/js/myth-celtic.js =====
+/* 4.28: духи и боги кельтской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).celtic = [
+  // ---------- огонь: блуждающий огонёк → Джек-фонарь ----------
+  { id: 'ce_wisp', name: ru`Блуждающий огонёк`, el: 'fire', rar: 1, stage: 1, fam: 'ce_wisp', evo: 'ce_jack', cost: 25, base: [120, 92, 104], time: 'night',
+    desc: ru`Когда-то водил путников кругами по болотам, а теперь мерцает над мокрыми газонами и зовёт срезать путь. Путь, конечно, выходит длиннее.`,
+    look: { shape: 'wisp', c1: '#fde68a', c2: '#f97316', c3: '#fff7ed', eyes: 'big', mouth: 'smile', back: ['aura'], feats: ['flame', 'cheeks'] } },
+  { id: 'ce_jack', name: ru`Джек-фонарь`, el: 'fire', rar: 2, stage: 2, fam: 'ce_wisp', base: [172, 132, 146],
+    desc: ru`Хитрец Джек бродит с угольком в резной репе с тех пор, как перехитрил всех на свете. В ночь Самайна подмигивает с каждого крыльца.`,
+    look: { shape: 'round', c1: '#fdba74', c2: '#c2410c', c3: '#fde047', eyes: 'glow', mouth: 'teeth', back: [], feats: ['flame', 'hat'] } },
+
+  // ---------- вода: Тюленёк → Селки → Мерроу ----------
+  { id: 'ce_seal', name: ru`Тюленёк`, el: 'water', rar: 1, stage: 1, fam: 'ce_seal', evo: 'ce_selkie', cost: 25, base: [104, 114, 122],
+    desc: ru`Любопытный тюлений малыш с глазами-пуговками. Выныривает у набережных и прячет в ластах гладкие морские стёклышки.`,
+    look: { shape: 'drop', c1: '#cbd5e1', c2: '#475569', c3: '#e0f2fe', eyes: 'big', mouth: 'cat', back: [], feats: ['whiskers', 'cheeks'] } },
+  { id: 'ce_selkie', name: ru`Селки`, el: 'water', rar: 2, stage: 2, fam: 'ce_seal', evo: 'ce_merrow', cost: 100, base: [152, 160, 168],
+    desc: ru`Сбрасывает тюленью шкурку и выходит на берег человеком. Гуляет по набережной со шкуркой через плечо: без неё в море не вернуться.`,
+    look: { shape: 'ghost', c1: '#bae6fd', c2: '#334155', c3: '#94a3b8', eyes: 'big', mouth: 'smile', back: ['hair'], feats: ['bubbles'] } },
+  { id: 'ce_merrow', name: ru`Мерроу`, el: 'water', rar: 3, stage: 3, fam: 'ce_seal', base: [210, 214, 232],
+    desc: ru`Морская дева ирландских берегов в красной шапочке — без неё не нырнуть. Поёт перед штормом, и портовые краны сами разворачиваются по ветру.`,
+    look: { shape: 'ghost', c1: '#99f6e4', c2: '#0f766e', c3: '#ef4444', eyes: 'round', mouth: 'smile', back: ['hair', 'ripples'], feats: ['hat', 'bubbles'] } },
+
+  // ---------- лес: Клеверок → Лепрекон → Иубдан ----------
+  { id: 'ce_clover', name: ru`Клеверок`, el: 'forest', rar: 1, stage: 1, fam: 'ce_clover', evo: 'ce_leprechaun', cost: 25, base: [106, 116, 118],
+    desc: ru`Трилистник, проснувшийся на газоне в день святого Патрика. Найдёшь у него четвёртый листок — весь день будет везти.`,
+    look: { shape: 'round', c1: '#86efac', c2: '#15803d', c3: '#fde047', eyes: 'round', mouth: 'smile', back: [], feats: ['sprout', 'cheeks'] } },
+  { id: 'ce_leprechaun', name: ru`Лепрекон`, el: 'forest', rar: 2, stage: 2, fam: 'ce_clover', evo: 'ce_iubdan', cost: 100, base: [158, 164, 156],
+    desc: ru`Сапожник волшебного народа: шьёт по одному башмаку, никогда — пару. Горшок золота прячет у конца радуги, а монетки роняет у банкоматов.`,
+    look: { shape: 'round', c1: '#4ade80', c2: '#166534', c3: '#facc15', eyes: 'round', mouth: 'smile', back: [], feats: ['hat', 'beard'] } },
+  { id: 'ce_iubdan', name: ru`Король Иубдан`, el: 'forest', rar: 3, stage: 3, fam: 'ce_clover', base: [218, 226, 206],
+    desc: ru`Король лепреконов из древней саги: ростом с ладонь, а гордости — на великана. Правит крошечным королевством под клумбами и считает каждую радугу своей.`,
+    look: { shape: 'robe', c1: '#22c55e', c2: '#14532d', c3: '#facc15', eyes: 'round', mouth: 'smile', back: ['aura'], feats: ['crown', 'beard'] } },
+
+  // ---------- ветер: Пикси → Фея холмов → Королева Мэб ----------
+  { id: 'ce_pixie', name: ru`Пикси`, el: 'wind', rar: 1, stage: 1, fam: 'ce_pixie', evo: 'ce_sidhe', cost: 25, base: [118, 94, 108],
+    desc: ru`Крошечная фея корнуоллских холмов, катается на сквозняках. Если ты заблудился в трёх дворах — значит, тебя водили пикси.`,
+    look: { shape: 'round', c1: '#bfdbfe', c2: '#6366f1', c3: '#f0abfc', eyes: 'big', mouth: 'smile', back: ['wings', 'ears'], feats: ['cheeks'] } },
+  { id: 'ce_sidhe', name: ru`Фея холмов`, el: 'wind', rar: 2, stage: 2, fam: 'ce_pixie', evo: 'ce_mab', cost: 100, base: [170, 130, 146],
+    desc: ru`Из народа ши, что живёт внутри зелёных холмов. Танцует в грибных кругах на газонах — не вставай в круг, а то протанцуешь до утра.`,
+    look: { shape: 'ghost', c1: '#e0e7ff', c2: '#6366f1', c3: '#a7f3d0', eyes: 'round', mouth: 'smile', back: ['wings', 'hair'], feats: ['leaves'] } },
+  { id: 'ce_mab', name: ru`Королева Мэб`, el: 'wind', rar: 3, stage: 3, fam: 'ce_pixie', base: [236, 172, 190],
+    desc: ru`Королева фей и повелительница снов. Разъезжает в колеснице из ореховой скорлупки и нашёптывает спящему городу сны.`,
+    look: { shape: 'robe', c1: '#c7d2fe', c2: '#4338ca', c3: '#f0abfc', eyes: 'sleepy', mouth: 'smile', back: ['wings', 'hair', 'aura'], feats: ['crown'] } },
+
+  // ---------- ток: Брауни → Боггарт ----------
+  { id: 'ce_brownie', name: ru`Брауни`, el: 'current', rar: 1, stage: 1, fam: 'ce_brownie', evo: 'ce_boggart', cost: 25, base: [110, 112, 112],
+    desc: ru`Косматый шотландский домовичок. По ночам тихо чинит зарядки и лампочки, а в награду просит лишь миску сливок. Только не дари ему одежду — обидится!`,
+    look: { shape: 'round', c1: '#d6a878', c2: '#7c4a1d', c3: '#fde047', eyes: 'round', mouth: 'smile', back: [], feats: ['beard', 'lamp'] } },
+  { id: 'ce_boggart', name: ru`Боггарт`, el: 'current', rar: 2, stage: 2, fam: 'ce_brownie', base: [166, 142, 150],
+    desc: ru`Брауни, которого обидели, — и он стал Боггартом. Щёлкает выключателями, выбивает пробки и прячет пульт, пока ему снова не нальют сливок.`,
+    look: { shape: 'blob', c1: '#a8a29e', c2: '#44403c', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: ['ears'], feats: ['bolt', 'cables'] } },
+
+  // ---------- тень: Пука → Пука-скакун ----------
+  { id: 'ce_puca', name: ru`Пука`, el: 'shadow', rar: 1, stage: 1, fam: 'ce_puca', evo: 'ce_pucahorse', cost: 25, base: [120, 96, 104], time: 'night',
+    desc: ru`Проказник-оборотень: то чёрный зайчонок, то козлёнок, то котёнок. После Самайна портит всю ежевику, поэтому в ноябре её не собирают.`,
+    look: { shape: 'round', c1: '#475569', c2: '#0f172a', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'cat', back: ['ears'], feats: ['horns'] } },
+  { id: 'ce_pucahorse', name: ru`Пука-скакун`, el: 'shadow', rar: 2, stage: 2, fam: 'ce_puca', base: [174, 128, 144], time: 'night',
+    desc: ru`Любимый облик Пуки — чёрный конь с золотыми глазами. Сажает на спину запоздалого прохожего и катает по ночному городу до рассвета.`,
+    look: { shape: 'blob', c1: '#334155', c2: '#020617', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'none', back: ['mane', 'tail'], feats: ['snout'] } },
+
+  // ---------- редкие ----------
+  { id: 'ce_draig', name: ru`Уэльский дракон`, el: 'fire', rar: 3, stage: 1, fam: 'ce_draig', base: [224, 164, 186],
+    desc: ru`Красный дракон с флага Уэльса, что одолел белого дракона под горой. Теперь греется на крышах вокзалов и чихает искрами в туман.`,
+    look: { shape: 'blob', c1: '#f87171', c2: '#991b1b', c3: '#fde047', eyes: 'angry', mouth: 'teeth', back: ['wings', 'tail'], feats: ['horns', 'flame'] } },
+  { id: 'ce_banshee', name: ru`Банши`, el: 'wind', rar: 3, stage: 1, fam: 'ce_banshee', base: [210, 150, 176], time: 'night',
+    desc: ru`Дева из холмов, чей плач над старыми улицами предупреждает о беде. Шумная, но добрая: расчёсывает серебряным гребнем волосы из тумана.`,
+    look: { shape: 'ghost', c1: '#f1f5f9', c2: '#64748b', c3: '#cbd5e1', eye: '#a5f3fc', eyes: 'glow', mouth: 'o', back: ['hair'], feats: [] } },
+  { id: 'ce_caitsith', name: ru`Кайт Ши`, el: 'shadow', rar: 3, stage: 1, fam: 'ce_caitsith', base: [200, 184, 196], time: 'night',
+    desc: ru`Огромный чёрный кот фей с белым пятном на груди. В Самайн шотландцы оставляли ему блюдце молока — и он до сих пор обходит дворы, проверяя, не забыли ли.`,
+    look: { shape: 'round', c1: '#374151', c2: '#030712', c3: '#f8fafc', eye: '#86efac', eyes: 'glow', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers'] } },
+
+  // ---------- эпические боги ----------
+  { id: 'ce_morrigan', name: ru`Морриган`, el: 'shadow', rar: 4, stage: 1, fam: 'ce_morrigan', base: [228, 180, 190],
+    desc: ru`Великая королева-прорицательница, что оборачивается вороном. Глядит на город со шпилей и башен и заранее знает, чем кончится любой спор.`,
+    look: { shape: 'robe', c1: '#475569', c2: '#0f172a', c3: '#dc2626', eye: '#f87171', eyes: 'glow', mouth: 'none', back: ['wings', 'hair'], feats: ['crown'] } },
+  { id: 'ce_manannan', name: ru`Мананнан мак Лир`, el: 'water', rar: 4, stage: 1, fam: 'ce_manannan', base: [212, 208, 214],
+    desc: ru`Бог моря и хозяин острова Мэн. Укрывает гавани плащом тумана, а по волнам скачет на коне Энбарр, как по полю.`,
+    look: { shape: 'robe', c1: '#7dd3fc', c2: '#0c4a6e', c3: '#e0f2fe', eyes: 'round', mouth: 'none', back: ['aura', 'ripples'], feats: ['beard', 'crown'] } },
+
+  // ---------- великие боги-легенды ----------
+  { id: 'ce_dagda', name: ru`Дагда`, el: 'forest', rar: 5, stage: 1, fam: 'ce_dagda', legend: true, base: [288, 250, 262],
+    desc: ru`Легенда. Добрый бог, отец ирландских богов: из его котла никто не уходит голодным, а арфа сама сменяет времена года. Встречается только в разломах.`,
+    look: { shape: 'robe', c1: '#65a30d', c2: '#1a2e05', c3: '#b45309', eyes: 'round', mouth: 'smile', back: ['aura', 'halo'], feats: ['beard', 'leaves'] } },
+  { id: 'ce_lugh', name: ru`Луг`, el: 'current', rar: 5, stage: 1, fam: 'ce_lugh', legend: true, base: [302, 224, 242],
+    desc: ru`Легенда. Сияющий бог, мастер всех искусств — кузнец, поэт, воин и арфист разом. Его копьё само рвётся в бой и сверкает, как молния. Появляется только в разломах.`,
+    look: { shape: 'robe', c1: '#fef08a', c2: '#ca8a04', c3: '#f8fafc', eye: '#fef9c3', eyes: 'glow', mouth: 'none', back: ['aura', 'halo'], feats: ['bolt', 'crown'] } },
+];
+
+// ===== www/js/myth-egypt.js =====
+/* 4.28: духи и боги египетской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).egypt = [
+  // ---------- семейства младших духов: скарабей → Хепри (огонь), крокодильчик → Себек (вода), ибис (ток) ----------
+  { id: 'eg_skarab', name: ru`Скарабейка`, el: 'fire', rar: 1, stage: 1, fam: 'eg_skarab', evo: 'eg_solncekat', cost: 25, base: [114, 104, 110],
+    desc: ru`Каждое утро катит по тротуару крошечное солнышко — совсем как её предки на берегах Нила. Если солнышко закатилось под скамейку, жужжит на весь двор.`,
+    look: { shape: 'round', c1: '#f2b845', c2: '#7c2d12', c3: '#fff0a0', eyes: 'big', mouth: 'smile', back: ['aura'], feats: ['cheeks'] } },
+  { id: 'eg_solncekat', name: ru`Солнцекат`, el: 'fire', rar: 2, stage: 2, fam: 'eg_skarab', evo: 'eg_khepri', cost: 100, base: [162, 146, 150],
+    desc: ru`Подросшая Скарабейка. Катит солнце уже размером с арбуз и греет им остановки холодным утром.`,
+    look: { shape: 'blob', c1: '#f5c04a', c2: '#7a2a0c', c3: '#fde68a', eyes: 'angry', mouth: 'smile', back: ['wings'], feats: ['cheeks'] } },
+  { id: 'eg_khepri', name: ru`Хепри`, el: 'fire', rar: 3, stage: 3, fam: 'eg_skarab', base: [224, 196, 204],
+    desc: ru`Бог утреннего солнца с головой-скарабеем. Каждый рассвет выкатывает солнце из-за крыш — поэтому утро в городе всегда наступает вовремя.`,
+    look: { shape: 'tall', c1: '#2dd4bf', c2: '#1e3a8a', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['wings', 'aura'], feats: ['crown'] } },
+
+  { id: 'eg_kroko', name: ru`Крокодильчик`, el: 'water', rar: 1, stage: 1, fam: 'eg_kroko', evo: 'eg_nilozub', cost: 25, base: [118, 108, 106],
+    desc: ru`Вылупился на берегу Нила и приплыл по трубам в городской фонтан. Улыбается во все зубы, но кусает только арбузы.`,
+    look: { shape: 'round', c1: '#86efac', c2: '#0f766e', c3: '#ecfccb', eyes: 'big', mouth: 'smile', back: ['tail'], feats: ['cheeks'] } },
+  { id: 'eg_nilozub', name: ru`Нилозуб`, el: 'water', rar: 2, stage: 2, fam: 'eg_kroko', evo: 'eg_sebek', cost: 100, base: [170, 150, 152],
+    desc: ru`Дремлет у набережных, притворяясь бревном. Заранее знает, когда река разольётся, и оттаскивает лодки повыше.`,
+    look: { shape: 'blob', c1: '#6ee7b7', c2: '#065f46', c3: '#bbf7d0', eyes: 'sleepy', mouth: 'teeth', back: ['ripples', 'tail'], feats: [] } },
+  { id: 'eg_sebek', name: ru`Себек`, el: 'water', rar: 3, stage: 3, fam: 'eg_kroko', base: [214, 224, 230],
+    desc: ru`Бог-крокодил, владыка Нила и его разливов. Следит, чтобы в каналах и фонтанах не кончалась вода, а рыбаки возвращались с уловом.`,
+    look: { shape: 'tall', c1: '#6ee7b7', c2: '#065f46', c3: '#fbbf24', eyes: 'round', mouth: 'teeth', back: ['aura'], feats: ['crown'] } },
+
+  { id: 'eg_ibisenok', name: ru`Ибисёнок`, el: 'current', rar: 1, stage: 1, fam: 'eg_ibisenok', evo: 'eg_ibis', cost: 25, base: [110, 102, 116],
+    desc: ru`Пушистый птенец священного ибиса. Тычет клювом в экраны и кнопки лифтов, а там, где он прошёл, у телефонов прибавляется заряд.`,
+    look: { shape: 'bird', c1: '#f8fafc', c2: '#94a3b8', c3: '#facc15', eyes: 'big', mouth: 'beak', back: [], feats: ['cheeks'] } },
+  { id: 'eg_ibis', name: ru`Ибис-писец`, el: 'current', rar: 2, stage: 2, fam: 'eg_ibisenok', evo: 'eg_svibis', cost: 100, base: [158, 138, 164],
+    desc: ru`Пишет клювом в воздухе светящиеся иероглифы. По ночам их принимают за неоновые вывески Каира.`,
+    look: { shape: 'bird', c1: '#f1f5f9', c2: '#1f2937', c3: '#facc15', eyes: 'round', mouth: 'beak', back: ['tail'], feats: [] } },
+  { id: 'eg_svibis', name: ru`Священный ибис`, el: 'current', rar: 3, stage: 3, fam: 'eg_ibisenok', base: [212, 190, 222],
+    desc: ru`Посланник Тота, бога мудрости. Записывает всё, что случилось в городе за день, на свиток из чистого света.`,
+    look: { shape: 'bird', c1: '#f8fafc', c2: '#1f2937', c3: '#fde68a', eyes: 'glow', mouth: 'beak', back: ['wings', 'aura'], feats: ['crown'] } },
+
+  // ---------- семейства из двух стадий: кошка мау (лес), джинн пустыни (ветер), мумийка (тень) ----------
+  { id: 'eg_kotmau', name: ru`Котёнок Мау`, el: 'forest', rar: 1, stage: 1, fam: 'eg_kotmau', evo: 'eg_mau', cost: 25, base: [122, 96, 108],
+    desc: ru`Пятнистый котёнок из зарослей папируса. Сторожит клумбы от мышей и спит в цветочных горшках, свернувшись вокруг лотоса.`,
+    look: { shape: 'round', c1: '#f3dfb0', c2: '#b7843a', c3: '#84cc16', eyes: 'big', mouth: 'cat', back: ['ears', 'cattail'], feats: ['whiskers'] } },
+  { id: 'eg_mau', name: ru`Храмовая кошка`, el: 'forest', rar: 2, stage: 2, fam: 'eg_kotmau', base: [168, 132, 148],
+    desc: ru`В древности кошки стерегли зерно в храмовых амбарах. Эта стережёт городские сады и огороды — за миску сметаны.`,
+    look: { shape: 'tall', c1: '#f0d9a4', c2: '#a8742c', c3: '#2dd4bf', eyes: 'sleepy', mouth: 'cat', back: ['ears', 'cattail'], feats: ['whiskers'] } },
+
+  { id: 'eg_peschinka', name: ru`Песчинка`, el: 'wind', rar: 1, stage: 1, fam: 'eg_peschinka', evo: 'eg_djinn', cost: 25, base: [116, 92, 120],
+    desc: ru`Крошечный вихрь из песка пустыни. Прилетает в город с жарким ветром и прячется в кроссовках.`,
+    look: { shape: 'wisp', c1: '#fde68a', c2: '#b45309', c3: '#fff7d6', eyes: 'big', mouth: 'o', back: [], feats: ['swirl'] } },
+  { id: 'eg_djinn', name: ru`Джинн`, el: 'wind', rar: 2, stage: 2, fam: 'eg_peschinka', base: [174, 124, 146],
+    desc: ru`Песчаный дух пустыни, свитый из горячего ветра. Исполняет желания, но только мелкие: найти ключи или поймать такси в дождь.`,
+    look: { shape: 'wisp', c1: '#fcd07a', c2: '#b0621a', c3: '#0ea5e9', eyes: 'angry', mouth: 'smile', back: [], feats: ['swirl', 'ears'] } },
+
+  { id: 'eg_mumiyka', name: ru`Мумийка`, el: 'shadow', rar: 1, stage: 1, fam: 'eg_mumiyka', evo: 'eg_mumiya', cost: 25, base: [104, 116, 118], time: 'night',
+    desc: ru`Маленький дух в бинтах, проспавший три тысячи лет. Днём дремлет в музеях, а ночью бродит по залам и путается в собственных бинтиках.`,
+    look: { shape: 'ghost', c1: '#f7efd9', c2: '#a8977a', c3: '#a78bfa', eyes: 'sleepy', mouth: 'o', back: [], feats: ['cheeks'] } },
+  { id: 'eg_mumiya', name: ru`Мумия`, el: 'shadow', rar: 2, stage: 2, fam: 'eg_mumiyka', base: [156, 168, 160], time: 'night',
+    desc: ru`Подросшая Мумийка. Добрая и немного рассеянная: раздаёт свои бинты всем, кто ободрал коленку.`,
+    look: { shape: 'tall', c1: '#f3ead2', c2: '#9c8a6c', c3: '#2dd4bf', eyes: 'round', mouth: 'smile', back: [], feats: [] } },
+
+  // ---------- редкие: знаменитые существа ----------
+  { id: 'eg_sfinks', name: ru`Сфинкс`, el: 'wind', rar: 3, stage: 1, fam: 'eg_sfinks', base: [196, 212, 206],
+    desc: ru`Каменный страж с телом льва и головой человека. Загадывает загадки у входа в метро и пропускает только тех, кто ответил.`,
+    look: { shape: 'blob', c1: '#f3d9a0', c2: '#a8742c', c3: '#1e3a8a', eyes: 'sleepy', mouth: 'smile', back: ['mane'], feats: ['beard'] } },
+  { id: 'eg_bennu', name: ru`Бенну`, el: 'fire', rar: 3, stage: 1, fam: 'eg_bennu', base: [218, 160, 180], time: 'day',
+    desc: ru`Египетский феникс, солнечная цапля. На закате сгорает, а на рассвете рождается заново — поэтому всегда выглядит отдохнувшей.`,
+    look: { shape: 'bird', c1: '#fed7aa', c2: '#c2410c', c3: '#fde68a', eyes: 'round', mouth: 'beak', back: ['wings', 'aura'], feats: ['crest'] } },
+  { id: 'eg_apop', name: ru`Апоп`, el: 'shadow', rar: 3, stage: 1, fam: 'eg_apop', base: [226, 150, 176], time: 'night',
+    desc: ru`Огромный змей тьмы, извечный враг солнца. Каждую ночь пытается проглотить солнечную ладью — и каждое утро остаётся ни с чем.`,
+    look: { shape: 'blob', c1: '#8b5cf6', c2: '#1e0b36', c3: '#facc15', eye: '#facc15', eyes: 'glow', mouth: 'teeth', back: ['tail'], feats: [] } },
+
+  // ---------- эпические боги ----------
+  { id: 'eg_anubis', name: ru`Анубис`, el: 'shadow', rar: 4, stage: 1, fam: 'eg_anubis', base: [212, 206, 196], time: 'night',
+    desc: ru`Бог с головой шакала, проводник душ и хранитель гробниц. Взвешивает сердца против пёрышка истины, а по ночам бережёт сон города.`,
+    look: { shape: 'tall', c1: '#4b5563', c2: '#0b0f19', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'none', back: ['ears', 'aura'], feats: ['snout'] } },
+  { id: 'eg_isida', name: ru`Исида`, el: 'water', rar: 4, stage: 1, fam: 'eg_isida', base: [198, 212, 220],
+    desc: ru`Великая богиня-чародейка с крыльями вместо рук. Говорят, это её слёзы каждое лето разливают Нил, а её заклинания оберегают детей.`,
+    look: { shape: 'robe', c1: '#e0f2fe', c2: '#1d4ed8', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['wings', 'hair'], feats: ['crown'] } },
+
+  // ---------- великие боги-легенды ----------
+  { id: 'eg_ra', name: ru`Ра`, el: 'fire', rar: 5, stage: 1, fam: 'eg_ra', legend: true, base: [302, 226, 250],
+    desc: ru`Легенда. Бог солнца с головой сокола и огненным диском над головой. Днём плывёт по небу в золотой ладье, а на землю спускается только через огненные разломы.`,
+    look: { shape: 'robe', c1: '#fef3c7', c2: '#b45309', c3: '#ef4444', eyes: 'round', mouth: 'beak', back: ['aura', 'halo'], feats: ['crown'] } },
+  { id: 'eg_osiris', name: ru`Осирис`, el: 'forest', rar: 5, stage: 1, fam: 'eg_osiris', legend: true, base: [288, 250, 262],
+    desc: ru`Легенда. Зеленокожий владыка возрождения: где он ступит, прорастают зёрна и распускаются сады. В мир живых приходит только через разломы.`,
+    look: { shape: 'robe', c1: '#f8fafc', c2: '#15803d', c3: '#fbbf24', eyes: 'sleepy', mouth: 'none', back: ['aura'], feats: ['crown', 'beard'] } },
+];
+
+// ===== www/js/myth-china.js =====
+/* 4.28: духи и боги китайской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).china = [
+  // ---------- младшие семейства ----------
+  // Ток: лисий дух — хвостов прибавляется с каждой стадией (1 → 3 → 9), лисья жемчужина искрит, как шаровая молния
+  { id: 'cn_huli', name: ru`Лисёнок Хули`, el: 'current', rar: 1, stage: 1, fam: 'cn_huli', evo: 'cn_hulijing', cost: 25, base: [116, 96, 106],
+    desc: ru`Юный лисий дух с одним пушистым хвостом. Прячется за вывесками ночных рынков и тренирует свою жемчужинку — пока она только щёлкает, как статика.`,
+    look: { shape: 'round', c1: '#fdba74', c2: '#ea580c', c3: '#fde047', eyes: 'big', mouth: 'cat', back: ['cattail', 'ears'], feats: ['cheeks', 'whiskers'] } },
+  { id: 'cn_hulijing', name: ru`Хули-цзин`, el: 'current', rar: 2, stage: 2, fam: 'cn_huli', evo: 'cn_jiuweihu', cost: 100, base: [172, 130, 144],
+    desc: ru`Лиса-оборотень с тремя хвостами. Может обернуться кем угодно, но всегда выдаёт себя хвостом, торчащим из-под плаща.`,
+    look: { shape: 'tall', c1: '#fb923c', c2: '#c2410c', c3: '#facc15', eyes: 'sleepy', mouth: 'cat', back: ['cattail', 'ears'], feats: ['whiskers', 'bolt'] } },
+  { id: 'cn_jiuweihu', name: ru`Девятихвостая лиса`, el: 'current', rar: 3, stage: 3, fam: 'cn_huli', base: [238, 168, 190],
+    desc: ru`Каждый хвост — сто лет мудрости. Когда она взмахивает всеми девятью, в квартале на миг гаснут и снова вспыхивают все вывески.`,
+    look: { shape: 'tall', c1: '#fef3c7', c2: '#f59e0b', c3: '#facc15', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['aura', 'cattail', 'ears'], feats: ['bolt', 'crown'] } },
+
+  // Вода: карп, прыгнувший через Врата дракона, становится драконом
+  { id: 'cn_karpik', name: ru`Карпик`, el: 'water', rar: 1, stage: 1, fam: 'cn_karpik', evo: 'cn_jinli', cost: 25, base: [102, 114, 122],
+    desc: ru`Маленький карп из пруда в парке. Каждый день тренируется прыгать через фонтан — готовится к Вратам дракона.`,
+    look: { shape: 'drop', c1: '#fdba74', c2: '#ea580c', c3: '#fff7ed', eyes: 'big', mouth: 'o', back: ['tail'], feats: ['bubbles'] } },
+  { id: 'cn_jinli', name: ru`Золотой карп`, el: 'water', rar: 2, stage: 2, fam: 'cn_karpik', evo: 'cn_jiaolong', cost: 100, base: [152, 160, 168],
+    desc: ru`Упрямо плывёт вверх по течению — хоть по водосточной трубе. До Врат дракона ему остался один прыжок.`,
+    look: { shape: 'blob', c1: '#fde047', c2: '#d97706', c3: '#fff7ed', eyes: 'angry', mouth: 'o', back: ['tail', 'ripples'], feats: ['whiskers', 'bubbles'] } },
+  { id: 'cn_jiaolong', name: ru`Цзяолун`, el: 'water', rar: 3, stage: 3, fam: 'cn_karpik', base: [224, 206, 226],
+    desc: ru`Карп, который перепрыгнул Врата дракона и стал драконом. Рога ещё растут, а плавники он по старой привычке не прячет.`,
+    look: { shape: 'tall', c1: '#fcd34d', c2: '#b45309', c3: '#38bdf8', eyes: 'angry', mouth: 'teeth', back: ['tail', 'mane'], feats: ['horns', 'whiskers'] } },
+
+  // Ветер: пиксиу — крылатый зверь фэншуя («фэн» — ветер), глотает монеты и хранит удачу
+  { id: 'cn_monetoed', name: ru`Монетоед`, el: 'wind', rar: 1, stage: 1, fam: 'cn_monetoed', evo: 'cn_pixiu', cost: 25, base: [108, 112, 118],
+    desc: ru`Детёныш пиксиу. Вылавливает монетки из фонтанов и сразу их глотает — что попало ему в пасть, назад уже не вернётся.`,
+    look: { shape: 'round', c1: '#fde68a', c2: '#ca8a04', c3: '#dc2626', eyes: 'big', mouth: 'smile', back: ['wings'], feats: ['cheeks', 'horns'] } },
+  { id: 'cn_pixiu', name: ru`Пиксиу`, el: 'wind', rar: 2, stage: 2, fam: 'cn_monetoed', evo: 'cn_tianlu', cost: 100, base: [160, 166, 156],
+    desc: ru`Крылатый зверь фэншуя. Сидит у дверей магазинов и банков и следит, чтобы ветер удачи не выдувал деньги за порог.`,
+    look: { shape: 'blob', c1: '#fcd34d', c2: '#a16207', c3: '#dc2626', eyes: 'angry', mouth: 'teeth', back: ['wings', 'mane'], feats: ['horns'] } },
+  { id: 'cn_tianlu', name: ru`Тяньлу`, el: 'wind', rar: 3, stage: 3, fam: 'cn_monetoed', base: [214, 228, 212],
+    desc: ru`Небесный пиксиу с одним рогом. Когда он раскрывает крылья над кварталом, в тот день никто в округе не теряет кошелёк.`,
+    look: { shape: 'blob', c1: '#fef3c7', c2: '#b45309', c3: '#10b981', eyes: 'angry', mouth: 'teeth', back: ['wings', 'mane', 'aura', 'unihorn'], feats: [] } },
+
+  // Тень: цзянши — прыгающий дух в шапочке с талисманом (только смешной)
+  { id: 'cn_prygun', name: ru`Прыгунчик`, el: 'shadow', rar: 1, stage: 1, fam: 'cn_prygun', evo: 'cn_jiangshi', cost: 25, base: [120, 92, 106], time: 'night',
+    desc: ru`Маленький цзянши в шапочке с жёлтым талисманом. Ходить не умеет — только прыгает, вытянув ручки, и очень этим гордится.`,
+    look: { shape: 'box', c1: '#a7f3d0', c2: '#047857', c3: '#facc15', eyes: 'sleepy', mouth: 'o', back: [], feats: ['hat', 'cheeks'] } },
+  { id: 'cn_jiangshi', name: ru`Цзянши`, el: 'shadow', rar: 2, stage: 2, fam: 'cn_prygun', base: [174, 128, 146], time: 'night',
+    desc: ru`Прыгающий дух в халате старинного чиновника. По поверью, если задержать дыхание, он тебя не заметит — вот Ловчие и ловят его красные от натуги.`,
+    look: { shape: 'box', c1: '#6ee7b7', c2: '#1e3a8a', c3: '#facc15', eyes: 'sleepy', mouth: 'teeth', back: [], feats: ['hat', 'runes'] } },
+
+  // Огонь: красный бумажный фонарик → фонарь желаний
+  { id: 'cn_fonarik', name: ru`Фонарик`, el: 'fire', rar: 1, stage: 1, fam: 'cn_fonarik', evo: 'cn_kongming', cost: 25, base: [114, 102, 110],
+    desc: ru`Красный бумажный фонарик с кисточкой, сбежавший с праздничной улицы. Светит тем, кто поздно возвращается домой.`,
+    look: { shape: 'round', c1: '#f87171', c2: '#b91c1c', c3: '#facc15', eyes: 'round', mouth: 'smile', back: [], feats: ['flame', 'cheeks'] } },
+  { id: 'cn_kongming', name: ru`Небесный фонарь`, el: 'fire', rar: 2, stage: 2, fam: 'cn_fonarik', base: [166, 142, 152],
+    desc: ru`Фонарь желаний: в него вписывают мечты и отпускают в небо. Летает над крышами и проверяет, какие желания уже сбылись.`,
+    look: { shape: 'tall', c1: '#fde68a', c2: '#ea580c', c3: '#dc2626', eyes: 'round', mouth: 'smile', back: ['aura'], feats: ['flame'] } },
+
+  // Лес: нефритовый заяц с Луны толчёт в ступке травы бессмертия
+  { id: 'cn_zaychonok', name: ru`Нефритовый зайчонок`, el: 'forest', rar: 1, stage: 1, fam: 'cn_zaychonok', evo: 'cn_yutu', cost: 25, base: [104, 116, 120],
+    desc: ru`Скатился с Луны прямо в городской сквер. Собирает травки на газонах и толчёт их в крышечке от бутылки.`,
+    look: { shape: 'round', c1: '#d1fae5', c2: '#10b981', c3: '#f9a8d4', eyes: 'big', mouth: 'cat', back: ['ears'], feats: ['cheeks', 'sprout'] } },
+  { id: 'cn_yutu', name: ru`Нефритовый заяц`, el: 'forest', rar: 2, stage: 2, fam: 'cn_zaychonok', base: [150, 168, 162],
+    desc: ru`Помощник лунной девы: толчёт в нефритовой ступке травы бессмертия. В полнолуние его стук слышно даже сквозь шум машин.`,
+    look: { shape: 'tall', c1: '#ecfdf5', c2: '#059669', c3: '#f9a8d4', eyes: 'round', mouth: 'cat', back: ['ears'], feats: ['leaves'] } },
+
+  // ---------- знаменитые существа ----------
+  { id: 'cn_fenghuang', name: ru`Фэнхуан`, el: 'fire', rar: 3, stage: 1, fam: 'cn_fenghuang', base: [212, 178, 200],
+    desc: ru`Птица-феникс, вестница мира и согласия. Садится только на дерево утун, поэтому над городом она подолгу кружит, выбирая ветку.`,
+    look: { shape: 'bird', c1: '#fca5a5', c2: '#dc2626', c3: '#fbbf24', eyes: 'round', mouth: 'beak', back: ['tail', 'wings'], feats: ['crest'] } },
+  { id: 'cn_qilin', name: ru`Цилинь`, el: 'forest', rar: 3, stage: 1, fam: 'cn_qilin', base: [186, 210, 212],
+    desc: ru`Добрый зверь с драконьей чешуёй и оленьими рогами. Ступает так легко, что не сминает ни травинки — даже на газоне, где ходить нельзя.`,
+    look: { shape: 'blob', c1: '#a7f3d0', c2: '#047857', c3: '#fbbf24', eyes: 'round', mouth: 'smile', back: ['mane', 'tail', 'antlers'], feats: [] } },
+  { id: 'cn_baihu', name: ru`Белый тигр`, el: 'current', rar: 3, stage: 1, fam: 'cn_baihu', base: [226, 150, 176],
+    desc: ru`Байху, страж Запада и повелитель металла. Когда он рычит, в проводах поднимается гул, а у прохожих волосы встают дыбом.`,
+    look: { shape: 'round', c1: '#f8fafc', c2: '#94a3b8', c3: '#1e293b', eyes: 'angry', mouth: 'teeth', back: ['cattail', 'ears'], feats: ['whiskers', 'bolt'] } },
+
+  // ---------- эпические ----------
+  { id: 'cn_change', name: ru`Чанъэ`, el: 'shadow', rar: 4, stage: 1, fam: 'cn_change', base: [210, 200, 212], time: 'night',
+    desc: ru`Лунная дева, что выпила эликсир бессмертия и поднялась на Луну. В Праздник середины осени спускается туда, где пекут лунные пряники.`,
+    look: { shape: 'robe', c1: '#f5f3ff', c2: '#7c3aed', c3: '#fde68a', eyes: 'sleepy', mouth: 'smile', back: ['hair', 'halo'], feats: ['crown'] } },
+  { id: 'cn_houyi', name: ru`Хоу И`, el: 'fire', rar: 4, stage: 1, fam: 'cn_houyi', base: [232, 180, 190],
+    desc: ru`Великий лучник, сбивший девять солнц, когда их взошло десять и земля изнывала от зноя. До сих пор недоверчиво щурится на каждый прожектор.`,
+    look: { shape: 'robe', c1: '#fca5a5', c2: '#991b1b', c3: '#fbbf24', eyes: 'angry', mouth: 'none', back: ['aura'], feats: ['beard', 'hat'] } },
+
+  // ---------- великие легенды ----------
+  { id: 'cn_qinglong', name: ru`Цинлун`, el: 'water', rar: 5, stage: 1, fam: 'cn_qinglong', legend: true, base: [296, 238, 250],
+    desc: ru`Легенда. Лазурный дракон Востока, повелитель весенних дождей: где он пролетит, распускаются деревья. Встречается только в разломах.`,
+    look: { shape: 'tall', c1: '#5eead4', c2: '#0f766e', c3: '#fbbf24', eyes: 'angry', mouth: 'teeth', back: ['aura', 'mane', 'tail'], feats: ['horns', 'whiskers'] } },
+  { id: 'cn_wukong', name: ru`Сунь Укун`, el: 'wind', rar: 5, stage: 1, fam: 'cn_wukong', legend: true, base: [300, 224, 244],
+    desc: ru`Легенда. Царь обезьян, Великий мудрец, равный Небу: одним кувырком на облаке пролетает сто восемь тысяч ли. Встречается только в разломах.`,
+    look: { shape: 'round', c1: '#fcd34d', c2: '#92400e', c3: '#dc2626', eyes: 'angry', mouth: 'teeth', back: ['aura', 'cattail'], feats: ['crown'] } },
+];
+
+// ===== www/js/myth-aztec.js =====
+/* 4.28: духи и боги ацтекской мифологии — данные (поля — как у SPECIES в data.js; мифология задаётся сама) */
+(globalThis.MYTH_SP = globalThis.MYTH_SP || {}).aztec = [
+  // ---------- ОГОНЬ: Вулканчик → Дымогор → Попокатепетль ----------
+  { id: 'az_vulkanchik', name: ru`Вулканчик`, el: 'fire', rar: 1, stage: 1, fam: 'az_vulkanchik', evo: 'az_dymogor', cost: 25, base: [118, 96, 108],
+    desc: ru`Крошечный родственник великого Попокатепетля. Пыхает дымными колечками над клумбами и греет прохожим ладошки.`,
+    look: { shape: 'round', c1: '#a07a64', c2: '#4a2f24', c3: '#ff9a1a', eyes: 'round', mouth: 'smile', back: [], feats: ['flame', 'cheeks'] } },
+  { id: 'az_dymogor', name: ru`Дымогор`, el: 'fire', rar: 2, stage: 2, fam: 'az_vulkanchik', evo: 'az_popocatepetl', cost: 100, base: [172, 130, 146],
+    desc: ru`Подросший Вулканчик. Когда сердится, пускает столб дыма выше телебашни, но сразу остывает, если угостить его горячим шоколадом.`,
+    look: { shape: 'tall', c1: '#9a6a52', c2: '#3b2219', c3: '#ff7a1a', eyes: 'angry', mouth: 'teeth', back: ['steam'], feats: ['flame'] } },
+  { id: 'az_popocatepetl', name: ru`Попокатепетль`, el: 'fire', rar: 3, stage: 3, fam: 'az_vulkanchik', base: [236, 180, 200],
+    desc: ru`Курящаяся гора из старинного сказания: воин, который вечно стережёт сон своей любимой Истаксиуатль. Пыхает дымом над городом — тише, она спит.`,
+    look: { shape: 'tall', c1: '#a8a29e', c2: '#44403c', c3: '#f8fafc', eyes: 'angry', mouth: 'none', back: ['aura', 'steam'], feats: ['flame', 'crown'] } },
+
+  // ---------- ВОДА: Аксолотик → Аксолотль ----------
+  { id: 'az_axolotik', name: ru`Аксолотик`, el: 'water', rar: 1, stage: 1, fam: 'az_axolotik', evo: 'az_axolotl', cost: 25, base: [104, 114, 122],
+    desc: ru`Розовый малыш с пушистыми жабрами-веточками из каналов Шочимилько. Всегда улыбается и умеет отращивать потерянный хвостик.`,
+    look: { shape: 'round', c1: '#fbcfe8', c2: '#f472b6', c3: '#f43f5e', eyes: 'big', mouth: 'smile', back: [], feats: ['cheeks', 'bubbles'] } },
+  { id: 'az_axolotl', name: ru`Аксолотль`, el: 'water', rar: 2, stage: 2, fam: 'az_axolotik', base: [152, 166, 168],
+    desc: ru`По преданию, в его облике бог Шолотль однажды спрятался в воде. Катается на расписных лодках-трахинерах и помнит все каналы старого Теночтитлана.`,
+    look: { shape: 'blob', c1: '#f9a8d4', c2: '#db2777', c3: '#f43f5e', eyes: 'round', mouth: 'smile', back: ['ripples'], feats: ['bubbles', 'crown'] } },
+
+  // ---------- ЛЕС: Початок → Маисовик → Сентеотль ----------
+  { id: 'az_pochatok', name: ru`Початок`, el: 'forest', rar: 1, stage: 1, fam: 'az_pochatok', evo: 'az_maisovik', cost: 25, base: [108, 116, 118],
+    desc: ru`Кукурузный малыш в зелёной обёртке. Прорастает у лотков с варёной кукурузой и мечтает о своей милпе — поле, где кукуруза, фасоль и тыква растут дружно.`,
+    look: { shape: 'round', c1: '#fde047', c2: '#ca8a04', c3: '#65a30d', eyes: 'round', mouth: 'smile', back: [], feats: ['leaves', 'cheeks'] } },
+  { id: 'az_maisovik', name: ru`Маисовик`, el: 'forest', rar: 2, stage: 2, fam: 'az_pochatok', evo: 'az_centeotl', cost: 100, base: [158, 168, 156],
+    desc: ru`Дух кукурузного поля, обвитый фасолью, как шарфом. В городских огородах и на крышах следит, чтобы каждому зёрнышку хватило солнца.`,
+    look: { shape: 'tall', c1: '#facc15', c2: '#a16207', c3: '#4d7c0f', eyes: 'round', mouth: 'smile', back: ['wheat'], feats: ['leaves', 'sprout'] } },
+  { id: 'az_centeotl', name: ru`Сентеотль`, el: 'forest', rar: 3, stage: 3, fam: 'az_pochatok', base: [214, 228, 210],
+    desc: ru`Юный бог молодой кукурузы с золотыми початками в уборе. Ацтеки верили, что от него пошли все злаки; в городе он будит скверы и огороды на крышах.`,
+    look: { shape: 'robe', c1: '#fde68a', c2: '#15803d', c3: '#facc15', eyes: 'round', mouth: 'smile', back: ['aura', 'wheat'], feats: ['crown', 'leaves'] } },
+
+  // ---------- ВЕТЕР: Колибрик → Уицицилин ----------
+  { id: 'az_kolibrik', name: ru`Колибрик`, el: 'wind', rar: 1, stage: 1, fam: 'az_kolibrik', evo: 'az_uitsitsilin', cost: 25, base: [122, 92, 104],
+    desc: ru`Крошечный колибри, который жужжит громче шмеля. Облетает все цветы на балконах и ни одного не пропускает.`,
+    look: { shape: 'bird', c1: '#6ee7b7', c2: '#047857', c3: '#ef4444', eyes: 'round', mouth: 'beak', back: ['wings'], feats: [] } },
+  { id: 'az_uitsitsilin', name: ru`Уицицилин`, el: 'wind', rar: 2, stage: 2, fam: 'az_kolibrik', base: [176, 126, 144],
+    desc: ru`Так на языке ацтеков зовут колибри — посланца солнца. Зависает в воздухе перед витринами и сверкает бирюзовыми перьями ярче неоновых вывесок.`,
+    look: { shape: 'bird', c1: '#5eead4', c2: '#0f766e', c3: '#e11d48', eyes: 'round', mouth: 'beak', back: ['wings', 'tail'], feats: ['crest'] } },
+
+  // ---------- ТОК: Тлалокито → Тлалоке ----------
+  { id: 'az_tlalokito', name: ru`Тлалокито`, el: 'current', rar: 1, stage: 1, fam: 'az_tlalokito', evo: 'az_tlaloque', cost: 25, base: [116, 100, 110],
+    desc: ru`Маленький помощник бога дождя с глиняным кувшином. Если он уронит кувшин — над городом гремит гром и мигают фонари.`,
+    look: { shape: 'round', c1: '#7dd3fc', c2: '#0369a1', c3: '#facc15', eyes: 'big', mouth: 'smile', back: [], feats: ['bolt', 'cheeks'] } },
+  { id: 'az_tlaloque', name: ru`Тлалоке`, el: 'current', rar: 2, stage: 2, fam: 'az_tlalokito', base: [168, 140, 148],
+    desc: ru`Подросший помощник Тлалока. Разбивает кувшины о тучи, и из них вырываются гром и молнии. После грозы старательно склеивает осколки.`,
+    look: { shape: 'tall', c1: '#60a5fa', c2: '#1e3a8a', c3: '#facc15', eyes: 'angry', mouth: 'teeth', back: [], feats: ['bolt', 'drops'] } },
+
+  // ---------- ТЕНЬ: Шоло → Шолоитцкуинтли → Шолотль ----------
+  { id: 'az_sholo', name: ru`Шоло`, el: 'shadow', rar: 1, stage: 1, fam: 'az_sholo', evo: 'az_xoloitzcuintli', cost: 25, base: [114, 100, 106], time: 'night',
+    desc: ru`Голая собачка-шолоитцкуинтли, тёплая, как грелка. Провожает запоздавших прохожих до подъезда и никогда не путает дорогу.`,
+    look: { shape: 'round', c1: '#78716c', c2: '#292524', c3: '#fb923c', eyes: 'big', mouth: 'cat', back: ['ears'], feats: ['snout'] } },
+  { id: 'az_xoloitzcuintli', name: ru`Шолоитцкуинтли`, el: 'shadow', rar: 2, stage: 2, fam: 'az_sholo', evo: 'az_xolotl', cost: 100, base: [170, 128, 144],
+    desc: ru`Древний пёс-проводник: по поверьям ацтеков, такие собаки помогали душам перейти реку на пути в Миктлан. В городе знает все подземные переходы.`,
+    look: { shape: 'tall', c1: '#57534e', c2: '#1c1917', c3: '#fb923c', eyes: 'round', mouth: 'none', back: ['ears'], feats: ['snout', 'lamp'] } },
+  { id: 'az_xolotl', name: ru`Шолотль`, el: 'shadow', rar: 3, stage: 3, fam: 'az_sholo', base: [230, 168, 188],
+    desc: ru`Бог вечерней звезды с собачьей головой, брат-близнец Кецалькоатля. Каждый вечер провожает солнце за горизонт и зажигает первую звезду над городом.`,
+    look: { shape: 'robe', c1: '#6366f1', c2: '#1e1b4b', c3: '#fde68a', eye: '#fde68a', eyes: 'glow', mouth: 'none', back: ['ears', 'aura'], feats: ['snout', 'crown'] } },
+
+  // ---------- редкие существа ----------
+  { id: 'az_ahuizotl', name: ru`Ауисотль`, el: 'water', rar: 3, stage: 1, fam: 'az_ahuizotl', base: [214, 168, 190], time: 'night',
+    desc: ru`Водяной пёс с ладошкой на кончике хвоста. Живёт в фонтанах и каналах и утаскивает на дно брошенные монетки — а заодно и уроненные телефоны.`,
+    look: { shape: 'blob', c1: '#475569', c2: '#0f172a', c3: '#fbbf24', eye: '#fbbf24', eyes: 'glow', mouth: 'teeth', back: ['cattail', 'ears'], feats: ['drops'] } },
+  { id: 'az_cipactli', name: ru`Сипактли`, el: 'forest', rar: 3, stage: 1, fam: 'az_cipactli', base: [184, 210, 206],
+    desc: ru`Исполинский крокодил первоокеана: из его спины боги сделали землю — поэтому на ней и растут травы и деревья. Дремлет в городских прудах.`,
+    look: { shape: 'blob', c1: '#6ee7b7', c2: '#065f46', c3: '#84cc16', eyes: 'round', mouth: 'teeth', back: ['sprout'], feats: ['snout', 'leaves'] } },
+  { id: 'az_xiuhcoatl', name: ru`Шиукоатль`, el: 'current', rar: 3, stage: 1, fam: 'az_xiuhcoatl', base: [224, 148, 176],
+    desc: ru`Бирюзовый огненный змей, оружие Уицилопочтли. Проносится молнией по проводам, а хвост у него искрит, как бенгальский огонь.`,
+    look: { shape: 'wisp', c1: '#5eead4', c2: '#0f766e', c3: '#f97316', eye: '#fde047', eyes: 'glow', mouth: 'teeth', back: ['tail'], feats: ['bolt', 'flame'] } },
+
+  // ---------- эпические боги ----------
+  { id: 'az_tlaloc', name: ru`Тлалок`, el: 'water', rar: 4, stage: 1, fam: 'az_tlaloc', base: [206, 214, 218],
+    desc: ru`Бог дождя и грома в маске с кругами у глаз. Живёт в горном саду Тлалокан и поливает город тёплыми ливнями — после них всё цветёт.`,
+    look: { shape: 'robe', c1: '#7dd3fc', c2: '#0c4a6e', c3: '#e0f2fe', eyes: 'big', mouth: 'teeth', back: ['aura', 'ripples'], feats: ['crown', 'bolt'] } },
+  { id: 'az_huitzilopochtli', name: ru`Уицилопочтли`, el: 'fire', rar: 4, stage: 1, fam: 'az_huitzilopochtli', base: [230, 186, 196], time: 'day',
+    desc: ru`Бог солнца в шлеме-колибри. По преданию, он привёл ацтеков к озеру, где орёл сидел на кактусе, — там и вырос Теночтитлан. Выходит только днём.`,
+    look: { shape: 'robe', c1: '#60a5fa', c2: '#1e3a8a', c3: '#fbbf24', eyes: 'angry', mouth: 'none', back: ['halo', 'wings'], feats: ['crest'] } },
+
+  // ---------- великие боги-легенды ----------
+  { id: 'az_quetzalcoatl', name: ru`Кецалькоатль`, el: 'wind', rar: 5, stage: 1, fam: 'az_quetzalcoatl', legend: true, base: [292, 238, 256],
+    desc: ru`Легенда. Пернатый Змей, бог ветра и мудрости, подаривший людям кукурузу и календарь. Его ветер расчищает дорогу дождям. Встречается только в разломах.`,
+    look: { shape: 'wisp', c1: '#34d399', c2: '#065f46', c3: '#fbbf24', eye: '#fde68a', eyes: 'glow', mouth: 'none', back: ['aura', 'wings', 'tail'], feats: ['crest', 'swirl'] } },
+  { id: 'az_tezcatlipoca', name: ru`Тескатлипока`, el: 'shadow', rar: 5, stage: 1, fam: 'az_tezcatlipoca', legend: true, base: [298, 226, 244],
+    desc: ru`Легенда. Дымящееся Зеркало, владыка ночного неба и вечный соперник Кецалькоатля. В его обсидиановом зеркале видно всё, что творится на свете. Ищи его в тёмных разломах.`,
+    look: { shape: 'robe', c1: '#44403c', c2: '#0c0a09', c3: '#facc15', eye: '#facc15', eyes: 'glow', mouth: 'none', back: ['aura', 'cattail'], feats: ['crown', 'runes'] } },
+];
 
 // ===== www/js/data.js =====
 /* ==========================================================================
@@ -420,6 +945,23 @@ const REGIONS = {
   center: { name: ru`Центр`,  range: ru`40–90° в. д.` },
   east:   { name: ru`Восток`, range: ru`от 90° в. д.` },
 };
+/* ---------- 4.28: мифологии мира ----------
+   Духи и боги других мифологий — по файлу данных на мифологию (js/myth-<ключ>.js, подключается до data.js:
+   globalThis.MYTH_SP[ключ] = [...виды]) и файлу рисунков (js/sp-<ключ>.js). Номера в Бестиарии — после славянских,
+   в порядке MYTHS. Где водятся — W.myth(lat, lng): у каждой мифологии своя часть света (там её духи на карте, в разломах
+   и у хранителей); в остальных местах её духов приводят трудные поручения родников, Аукцион и обмен. */
+const MYTHS = {
+  slavic: { name: ru`Славянская`,    where: ru`Россия, Восточная Европа, Кавказ и Средняя Азия`,          color: '#f59e0b' },
+  greek:  { name: ru`Греческая`,     where: ru`Средиземноморье: Греция, Италия, Испания, Турция`,         color: '#60a5fa' },
+  norse:  { name: ru`Скандинавская`, where: ru`Скандинавия, Исландия, Дания, Германия, Прибалтика`,       color: '#93c5fd' },
+  celtic: { name: ru`Кельтская`,     where: ru`Ирландия, Британия, Франция, Бельгия, Нидерланды`,          color: '#34d399' },
+  egypt:  { name: ru`Египетская`,    where: ru`Египет, Северная Африка, Аравия и Ближний Восток`,          color: '#fbbf24' },
+  china:  { name: ru`Китайская`,     where: ru`Китай, Корея, Япония и Юго-Восточная Азия`,                 color: '#ef4444' },
+  aztec:  { name: ru`Ацтекская`,     where: ru`Америка — от Аляски до Огненной Земли`,                     color: '#10b981' },
+};
+const MYTH_KEYS = Object.keys(MYTHS);
+for (const m of MYTH_KEYS) for (const x of (globalThis.MYTH_SP || {})[m] || []) SPECIES.push({ ...x, myth: m });
+SPECIES.forEach(s => { if (!s.myth) s.myth = 'slavic'; });
 SPECIES.forEach((s, i) => { s.num = i + 1; });
 const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
 
@@ -547,7 +1089,8 @@ const MEDALS = [
   { id: 'walker',  name: ru`Странник`,      desc: ru`Пройди километров`,            stat: 'km',          tiers: [10, 100, 1000] },
   { id: 'springs', name: ru`Водонос`,       desc: ru`Зачерпни силы из родников`,    stat: 'springs',     tiers: [30, 300, 2000] },
   { id: 'raids',   name: ru`Затворник`,     desc: ru`Закрой разломов`,              stat: 'raids',       tiers: [3, 30, 200] },
-  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.length] },
+  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.filter(s => s.myth === 'slavic').length] },
+  { id: 'myths',   name: ru`Странник миров`, desc: ru`Видов духов других мифологий`, stat: 'myths',       tiers: [3, 25, 80] }, // 4.28
   { id: 'purify',  name: ru`Очиститель`,    desc: ru`Победи прислужников Нави`,     stat: 'invasions',   tiers: [3, 30, 200] },
   { id: 'trade',   name: ru`Щедрая душа`,   desc: ru`Купи или продай духов на Аукционе`,     stat: 'traded',      tiers: [1, 10, 50] },
   { id: 'throws',  name: ru`Меткий глаз`,   desc: ru`Отличных бросков`,             stat: 'throwsGreat', tiers: [20, 200, 1000] },
@@ -587,6 +1130,36 @@ WEEK_EVENTS.forEach(e => { if (e.el && !e.desc) e.desc = ru`Духи стихи�
 /* ---------- Капища и хранители ---------- */
 const SHRINE_GODS = [ru`Перуна`, ru`Велеса`, ru`Мокоши`, ru`Сварога`, ru`Даждьбога`, ru`Стрибога`, ru`Ярилы`, ru`Лады`, ru`Хорса`, ru`Рода`];
 const GUARDIANS = [ru`Ярослава`, ru`Мирон`, ru`Всеслав`, ru`Любава`, ru`Добрыня`, ru`Злата`, ru`Ратибор`, ru`Василиса`, ru`Святогор`, ru`Забава`, ru`Остромир`, ru`Милена`];
+/* 4.28: Разломы и Капища других мифологий — интерфейс тот же, свои значок (js/places-art.js), название, описание и боги святилищ
+   (имена богов — в родительном падеже: «Храм Зевса»). Мифология места — W.placeMyth */
+const MYTH_PLACES = {
+  slavic: { rift: ru`Разлом`, riftDesc: ru`Портал в Навь: из него вышел сильный дух. Закрой разлом, пока не прошёл час.`,
+    shrine: ru`Капище`, shrineOf: g => ru`Капище ${g}`, shrineDesc: ru`Святилище древних богов. Победи хранителя — и твоя дружина сможет держать капище.`, gods: SHRINE_GODS, guards: GUARDIANS },
+  greek: { rift: ru`Врата Аида`, riftDesc: ru`Трещина в подземное царство Аида: оттуда вырвался сильный дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Храм`, shrineOf: g => ru`Храм ${g}`, shrineDesc: ru`Мраморный храм богов Олимпа. Победи хранителя — и твоя дружина сможет держать храм.`,
+    gods: [ru`Зевса`, ru`Геры`, ru`Афины`, ru`Аполлона`, ru`Артемиды`, ru`Гермеса`, ru`Посейдона`, ru`Деметры`, ru`Гефеста`, ru`Афродиты`],
+    guards: [ru`Ариадна`, ru`Леонид`, ru`Елена`, ru`Ясон`, ru`Кассандра`, ru`Никос`] },
+  norse: { rift: ru`Разлом Гиннунгагап`, riftDesc: ru`Трещина в первозданную бездну, где лёд встречает пламя: оттуда вышел могучий дух. Закрой разлом, пока не прошёл час.`,
+    shrine: ru`Рунный камень`, shrineOf: g => ru`Рунный камень ${g}`, shrineDesc: ru`Резной камень с рунами в честь богов Асгарда. Победи хранителя — и твоя дружина сможет держать камень.`,
+    gods: [ru`Одина`, ru`Тора`, ru`Фрейи`, ru`Фрейра`, ru`Бальдра`, ru`Тюра`, ru`Хеймдалля`, ru`Фригг`, ru`Браги`, ru`Идунн`],
+    guards: [ru`Сигрид`, ru`Бьорн`, ru`Астрид`, ru`Лейф`, ru`Ингрид`, ru`Рагнар`] },
+  celtic: { rift: ru`Холм сидов`, riftDesc: ru`Холм распахнулся в Иной мир волшебного народа: оттуда вышел сильный дух. Закрой проход, пока не прошёл час.`,
+    shrine: ru`Каменный круг`, shrineOf: g => ru`Каменный круг ${g}`, shrineDesc: ru`Кольцо стоячих камней, где друиды встречали солнце. Победи хранителя — и твоя дружина сможет держать круг.`,
+    gods: [ru`Дагды`, ru`Луга`, ru`Бригиты`, ru`Морриган`, ru`Мананнана`, ru`Цернунна`, ru`Эпоны`, ru`Дану`, ru`Огмы`],
+    guards: [ru`Финн`, ru`Ниам`, ru`Кухулин`, ru`Мэйв`, ru`Эйдан`, ru`Бранвен`] },
+  egypt: { rift: ru`Врата Дуата`, riftDesc: ru`Врата в Дуат, царство за закатом, открылись: из них вышел древний дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Обелиск`, shrineOf: g => ru`Обелиск ${g}`, shrineDesc: ru`Обелиск с иероглифами в честь богов Египта. Победи хранителя — и твоя дружина сможет держать обелиск.`,
+    gods: [ru`Ра`, ru`Осириса`, ru`Исиды`, ru`Гора`, ru`Тота`, ru`Анубиса`, ru`Бастет`, ru`Хатхор`, ru`Птаха`, ru`Маат`],
+    guards: [ru`Нефер`, ru`Аменхет`, ru`Мерит`, ru`Ками`, ru`Сенеб`, ru`Иси`] },
+  china: { rift: ru`Небесные врата`, riftDesc: ru`Небесные врата приоткрылись среди облаков: с небес спустился сильный дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Пагода`, shrineOf: g => ru`Пагода ${g}`, shrineDesc: ru`Многоярусная пагода с фонарями в честь небесных стражей. Победи хранителя — и твоя дружина сможет держать пагоду.`,
+    gods: [ru`Лазурного дракона`, ru`Белого тигра`, ru`Красной птицы`, ru`Чёрной черепахи`, ru`Цилиня`, ru`Фэнхуана`, ru`Нюйвы`, ru`Фуси`, ru`Пань-гу`],
+    guards: [ru`Ли Мин`, ru`Мэйлин`, ru`Вэй`, ru`Лань`, ru`Чжан Юнь`, ru`Сяо Лун`] },
+  aztec: { rift: ru`Врата Миктлана`, riftDesc: ru`Проход в Миктлан, подземное царство, открылся в камне: оттуда вышел сильный дух. Закрой врата, пока не прошёл час.`,
+    shrine: ru`Пирамида`, shrineOf: g => ru`Пирамида ${g}`, shrineDesc: ru`Ступенчатая пирамида древних богов. Победи хранителя — и твоя дружина сможет держать пирамиду.`,
+    gods: [ru`Кецалькоатля`, ru`Тлалока`, ru`Уицилопочтли`, ru`Шочикецаль`, ru`Тонатиу`, ru`Эекатля`, ru`Чальчиуитликуэ`, ru`Сентеотля`],
+    guards: [ru`Ицель`, ru`Куаутемок`, ru`Шочитль`, ru`Тонали`, ru`Ситлали`, ru`Некали`] },
+};
 const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'];
 /* ---------- Дружины (3.5): Капища под знаменем ---------- */
 const CLANS = {
@@ -1110,10 +1683,32 @@ const W = {
     if (lng >= 44) return 'volga';
     return 'center';
   },
-  // региональные духи водятся только в своей части света, духи земель — только в своём краю
-  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
-    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng));
+  /* 4.28: мифология места — чьи духи здесь водятся (грубые прямоугольники по широте и долготе, порядок проверок важен).
+     'world' — Африка южнее Сахары, Индия, Океания: там встречаются духи всех мифологий */
+  myth(lat, lng) {
+    if (lng < -30) return 'aztec';                                                     // обе Америки
+    if (lat >= 18 && lat < 48 && lng >= 97 && lng < 146
+      && !(lng >= 130.5 && lng < 134 && lat >= 42.3) && !(lng >= 141 && lat >= 45.5)) return 'china'; // кроме Приморья и Сахалина
+    if (lat >= 54.3 && lat < 55.3 && lng >= 19.6 && lng < 22.9) return 'slavic';        // Калининград
+    if (lat >= 54 && lng >= -25 && lng < 28) return 'norse';                           // Скандинавия, Исландия, Дания, Прибалтика
+    if (lat >= 47 && lat < 54 && lng >= 5 && lng < 14) return 'norse';                 // германский север: Германия
+    if (lat >= 48 && lat < 61 && lng >= -11 && lng < 5) return 'celtic';               // Ирландия, Британия, север Франции, Бенилюкс
+    if (lat >= 44.5 && lat < 48 && lng >= -5 && lng < 8) return 'celtic';              // Галлия
+    if (lat >= 12 && lat < 37.5 && lng >= -18 && lng < 63) return 'egypt';             // Северная Африка, Аравия, Ближний Восток
+    if (lat >= 34 && lat < 47 && lng >= -10 && lng < 45 && !(lng >= 19 && lat >= 42.3)) return 'greek'; // Средиземноморье, Турция
+    if (lat >= 35 && lng >= 14) return 'slavic';                                        // Россия, Восточная Европа, Средняя Азия
+    return 'world';
   },
+  // 4.28: мифология Разлома и Капища у места p: своя у края; в местах «всего мира» — у каждого места своя (постоянно, по id места)
+  placeMyth(p) { const m = this.myth(p.lat, p.lng); return m !== 'world' ? m : MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
+  // дух своей мифологии в этом месте (или место «всего мира»)
+  home(s, lat, lng) { const m = this.myth(lat, lng); return m === 'world' || s.myth === m; },
+  // региональные духи водятся только в своей части света, духи земель — только в своём краю; 4.28 — и только в краях своей мифологии
+  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
+    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng)) && this.home(s, lat, lng);
+  },
+  // 4.28: отбор по месту, если оно известно (хранители, прислужники, поручения)
+  here(list, lat, lng) { if (lat == null || lng == null) return list; const h = list.filter(s => this.home(s, lat, lng)); return h.length ? h : list; },
 
   pickSpecies(r, biome, night, lng, lat) {
     const fullMoon = night && Sky.moonEvent() === 'full';
@@ -1187,14 +1782,14 @@ const W = {
     const r = U.rng(id);
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    if (tier === 3) pool = SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey'));
+    if (tier === 3) pool = this.here(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), p.lat, p.lng); // 4.28: легенды своей мифологии
     else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
-    else pool = SPECIES.filter(s => s.rar === 2);
+    else pool = this.here(SPECIES.filter(s => s.rar === 2), p.lat, p.lng);
     // в неделю стихии разломы чаще охраняют духи этой стихии
     const evPool = pool.filter(s => s.el === Ev.cur.el);
     if (evPool.length && r() < 0.6) pool = evPool;
     const boss = pool[Math.floor(r() * pool.length)].id;
-    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
+    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth: this.placeMyth(p), place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
   },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
@@ -1231,9 +1826,10 @@ const W = {
   shrineFor(p, d) {
     const id = p.id;
     const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
-    const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
+    const myth = this.placeMyth(p), gods = MYTH_PLACES[myth].gods; // 4.28: святилище мифологии места
+    const god = gods[Math.floor(U.h('kn', id) * gods.length)];
     const hold = typeof Clans !== 'undefined' ? Clans.info(id) : null; // на сервере сводки нет — он спрашивает базу сам
-    return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
+    return { type: 'shrine', id, tier, name: p.name, god, myth, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
   },
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
@@ -1281,8 +1877,8 @@ const W = {
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3);
-    const strong = SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo);
+    const pool = this.here(SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3), e.lat, e.lng);
+    const strong = this.here(SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo), e.lat, e.lng);
     const pw = this.topPower() * Duel.FOE.invasion.pow;
     const team = [];
     for (let k = 0; k < 3; k++) {
@@ -1299,19 +1895,20 @@ const W = {
   guardian(e) {
     const r = U.rng(e.id + U.today());
     const T = SHRINE_TIERS[e.tier];
-    const name = GUARDIANS[Math.floor(r() * GUARDIANS.length)];
+    const gs = MYTH_PLACES[e.myth || (e.lat != null && e.id ? this.placeMyth(e) : 'slavic')].guards; // 4.28: хранитель — из мифологии святилища
+    const name = gs[Math.floor(r() * gs.length)];
     const color = GUARD_COLORS[Math.floor(r() * GUARD_COLORS.length)];
     // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
-    const pool = SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage);
+    const pool = this.here(SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage), e.lat, e.lng);
     const pw = this.topPower() * T.pow;
     const team = [];
     while (team.length < 3) {
       const s = pool[Math.floor(r() * pool.length)];
       if (team.some(x => SP[x.sid].fam === s.fam)) continue;
       // сильному Ловчему — сильнейшие виды (у Старейшины — и эпические), без повторов семейств
-      const strong = SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam));
+      const strong = this.here(SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), e.lat, e.lng);
       team.push(this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.id + U.today() + team.length, e.tier * 4, strong));
     }
     return { name, color, title: T.title, team, speed: this.foeSpeed(T.speed, team, pw) };
@@ -1996,7 +2593,7 @@ const S = {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
     const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
     const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar)), guest = false;
+    let sps = W.here(SPECIES.filter(s => s.stage === 1 && !s.legend && !s.region && !s.land && !s.season && T.rar.includes(s.rar)), pos && pos.lat, pos && pos.lng), guest = false;
     if (q.tier === 3 && pos && r() < this.GUEST) {
       const far = this.guests(pos.lat, pos.lng), fresh = far.filter(s => !(this.d.dex[s.id] && this.d.dex[s.id].caught));
       if (far.length) { sps = fresh.length ? fresh : far; guest = true; }
@@ -2008,7 +2605,7 @@ const S = {
   /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
      земель и сезонные не в свой сезон. Их приводят трудные поручения родников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
-  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
+  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season || !W.home(s, lat, lng)) && !(W.local(s, lng, lat) && Ev.seasonal(s) > 0)); },
 
 
   /* ---------- 4.0: обучение новичка ---------- */
@@ -2029,6 +2626,7 @@ const S = {
     const st = this.d.stats;
     if (m.stat === 'dex') return SPECIES.filter(s => this.d.dex[s.id] && this.d.dex[s.id].caught).length;
     if (m.stat === 'lands') return SPECIES.filter(s => s.land && this.d.dex[s.id] && this.d.dex[s.id].caught).length;
+    if (m.stat === 'myths') return SPECIES.filter(s => s.myth !== 'slavic' && this.d.dex[s.id] && this.d.dex[s.id].caught).length; // 4.28
     if (m.stat.startsWith('el:')) return st.byEl[m.stat.slice(3)] || 0;
     return st[m.stat] || 0;
   },
@@ -2682,13 +3280,14 @@ const Raid = {
     const html = `
       <div class="det det2 rift2 t${T2}">
         <div class="dt-hero">
-          <div class="det-art rift2-art"><div class="rift-portal">${Art.riftIcon(T2)}</div><div class="rift-boss">${Art.spirit(r.boss)}</div></div>
+          <div class="det-art rift2-art"><div class="rift-portal">${Art.riftIcon(T2, r.myth)}</div><div class="rift-boss">${Art.spirit(r.boss)}</div></div>
           <div class="dt-info">
             <div class="det-hp">${T.name} <span class="stars">${'★'.repeat(T2)}</span></div>
             <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
             <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
             <div class="rift2-left">${ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
             ${r.place ? `<div class="rift2-place">${UI.I.pin}${U.esc(r.place)}</div>` : ''}
+            <div class="rift2-place place-kind">${MYTH_PLACES[r.myth || 'slavic'].rift}</div>
           </div>
         </div>
         <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="boss">${ru`Босс`}</button><button data-tab="loot">${ru`Награда`}</button></div>
@@ -2704,6 +3303,7 @@ const Raid = {
             <div class="rift2-acts">${goBtn}${far ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
           </div>
           <div class="dt-pane" data-pane="boss">
+            <p class="det-desc place-desc">${MYTH_PLACES[r.myth || 'slavic'].riftDesc}</p>
             <div class="dt-scroll dt-rows">
               ${row(ru`Стихия`, `${Art.elIcon(el, 16)} ${ELEMENTS[el].name}`)}
               ${row(ru`Слабость`, counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' '))}
@@ -2727,7 +3327,7 @@ const Raid = {
           </div>
         </div>
       </div>`;
-    const scr = UI.screen(ru`Разлом`, html, 'rift-screen det-screen');
+    const scr = UI.screen(MYTH_PLACES[r.myth || 'slavic'].rift, html, 'rift-screen det-screen'); // 4.28: свой у каждой мифологии
     scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
     scr.querySelector('.dt-tabs').addEventListener('click', e => {
       const b = e.target.closest('[data-tab]'); if (!b) return;
@@ -2784,7 +3384,7 @@ const Raid = {
         <div class="chips rift-tiers">${[0, 1, 2, 3].map(t => `<button class="chip ${tier === t ? 'on' : ''}" data-t="${t}">${t ? '★'.repeat(t) : ru`Все`} <small>${rifts.filter(r => (!t || r.tier === t) && !r.done).length}</small></button>`).join('')}</div>
         ${shown.length ? shown.slice(0, 40).map(({ r, i }) => `<button class="rift-row t${r.tier} ${r.done ? 'done' : ''}" data-i="${i}">
           <div class="rr-boss">${Art.spirit(r.boss)}</div>
-          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || ru`Капище`)}</small></div>
+          <div class="row-main"><b>${SP[r.boss].name} <span class="stars">${'★'.repeat(r.tier)}</span></b><small>${U.esc(r.place || MYTH_PLACES[r.myth || 'slavic'].shrine)}</small></div>
           <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
           : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
         ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}
@@ -3171,14 +3771,15 @@ const Duel = {
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
       <div class="shrine-view t${e.tier}">
-        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won)}</div>`}
+        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won, e.myth)}</div>`}
         <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${ru`Капище ${e.god}`}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
+        <div class="rift-meta">${MYTH_PLACES[e.myth || 'slavic'].shrineOf(e.god)}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: дружины его не держат` : ''}</div>
+        <div class="q-note place-desc">${MYTH_PLACES[e.myth || 'slavic'].shrineDesc}</div>
         ${who}
         ${action}
         ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать дружину`}</button>` : ''}
       </div>`;
-    const scr = UI.screen(ru`Капище`, html, 'shrine-screen');
+    const scr = UI.screen(MYTH_PLACES[e.myth || 'slavic'].shrine, html, 'shrine-screen'); // 4.28: своё у каждой мифологии
     const go = scr.querySelector('.duel-go');
     if (go) go.onclick = async () => {
       if (this.st || this._starting) return;

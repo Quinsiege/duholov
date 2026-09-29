@@ -64,6 +64,8 @@ const W = {
     if (lat >= 35 && lng >= 14) return 'slavic';                                        // Россия, Восточная Европа, Средняя Азия
     return 'world';
   },
+  // 4.28: мифология Разлома и Капища у места p: своя у края; в местах «всего мира» — у каждого места своя (постоянно, по id места)
+  placeMyth(p) { const m = this.myth(p.lat, p.lng); return m !== 'world' ? m : MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
   // дух своей мифологии в этом месте (или место «всего мира»)
   home(s, lat, lng) { const m = this.myth(lat, lng); return m === 'world' || s.myth === m; },
   // региональные духи водятся только в своей части света, духи земель — только в своём краю; 4.28 — и только в краях своей мифологии
@@ -152,7 +154,7 @@ const W = {
     const evPool = pool.filter(s => s.el === Ev.cur.el);
     if (evPool.length && r() < 0.6) pool = evPool;
     const boss = pool[Math.floor(r() * pool.length)].id;
-    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
+    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth: this.placeMyth(p), place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
   },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
@@ -189,9 +191,10 @@ const W = {
   shrineFor(p, d) {
     const id = p.id;
     const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
-    const god = SHRINE_GODS[Math.floor(U.h('kn', id) * SHRINE_GODS.length)];
+    const myth = this.placeMyth(p), gods = MYTH_PLACES[myth].gods; // 4.28: святилище мифологии места
+    const god = gods[Math.floor(U.h('kn', id) * gods.length)];
     const hold = typeof Clans !== 'undefined' ? Clans.info(id) : null; // на сервере сводки нет — он спрашивает базу сам
-    return { type: 'shrine', id, tier, name: p.name, god, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
+    return { type: 'shrine', id, tier, name: p.name, god, myth, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
   },
   // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
@@ -257,7 +260,8 @@ const W = {
   guardian(e) {
     const r = U.rng(e.id + U.today());
     const T = SHRINE_TIERS[e.tier];
-    const name = GUARDIANS[Math.floor(r() * GUARDIANS.length)];
+    const gs = MYTH_PLACES[e.myth || (e.lat != null && e.id ? this.placeMyth(e) : 'slavic')].guards; // 4.28: хранитель — из мифологии святилища
+    const name = gs[Math.floor(r() * gs.length)];
     const color = GUARD_COLORS[Math.floor(r() * GUARD_COLORS.length)];
     // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
