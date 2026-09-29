@@ -599,6 +599,7 @@ const UI = {
   },
   markOpened(k) { const o = this.opened(); if (o[k]) return; o[k] = 1; try { localStorage.setItem(this.OPEN_KEY, JSON.stringify(o)); } catch (e) { /* не запомнили — метка «Новое» останется */ } },
   isNew(k) { const l = this.openLvl(k); return l > 1 && S.d.level >= l && !this.opened()[k]; },
+  RM_FLY: 740, // 5.2: сколько значки меню вылетают на места (самый дальний — .26 с задержки и .46 с полёта)
   menu() {
     Sfx.init(); Sfx.play('tap');
     if (this._rm) { this._rm(); return; } // 4.25: меню открыто — центральная кнопка его закрывает
@@ -670,14 +671,10 @@ const UI = {
       } else close();
     });
     document.body.appendChild(wrap);
-    // 5.2: обучение — меню стоит там же, где без него, а подсказка (при открытом меню — компактная) встаёт над разделами.
-    // Только если сверху ей и указателю над разделом места нет (совсем низкий экран), панель начинается под подсказкой
-    const co = Tut.step() && U.$('#coach:not(.hidden)'), h1 = wrap.querySelector('.rm-h'), ts = Tut.at();
-    if (co && h1) {
-      document.body.classList.add('rm-open'); co.classList.remove('pos-bottom'); co.classList.add('pos-top');
-      const ptr = ts && ts.kind === 'ui' && Tut.opened !== ts.id; // над разделом будет указатель (заголовок ряда — на 6px ниже до вылета)
-      if (h1.getBoundingClientRect().top - 6 - co.getBoundingClientRect().bottom < (ptr ? 30 : 4)) { wrap.classList.add('rm-tut'); wrap.style.setProperty('--rm-co', co.offsetHeight + 'px'); }
-    }
+    // 5.2: обучение — меню стоит ровно там же, где без него; подсказка при открытом меню — пузырь у подсвеченного пункта
+    // (Tut.track). Пока значки вылетают, пузыря и рамки нет — появляются, когда меню встало на место
+    this._rmAt = performance.now();
+    if (Tut.step()) setTimeout(() => { try { Tut.track(); } catch (e) { /* обучение закрыто */ } }, this.RM_FLY + 20);
     // откуда вылетать: каждый значок стартует из центра кнопки; ближние к ней — раньше (волна снизу вверх)
     const o = orb.getBoundingClientRect(), ox = o.left + o.width / 2, oy = o.top + o.height / 2;
     const its = [...wrap.querySelectorAll('.rm-it')], pos = its.map(it => { const c = it.querySelector('.rm-c').getBoundingClientRect(); return [c.left + c.width / 2, c.top + c.height / 2]; });

@@ -131,17 +131,26 @@ const Tut = {
             : mode === 'go' ? ru`Это источник! Смахни по кругу или нажми <b>«Зачерпнуть силу»</b> — он поделится с тобой силой.` : this._hint;
     }
     let tr = null;
-    // 5.2: в открытом меню указатель над разделом короче (меню стоит на своём месте, над ним — компактная подсказка)
+    // 5.2: в открытом меню указатель над разделом короче, подсказка — пузырь у подсвеченного пункта (bubble).
+    // Пока значки меню вылетают на места — ни пузыря, ни рамки (UI.menu зовёт track, когда меню встало)
     const inMenu = !!U.$$('.rm-wrap').find(s => !s.classList.contains('out'));
     this.ring.classList.toggle('in-menu', inMenu);
+    if (inMenu && UI._rmAt && performance.now() - UI._rmAt < UI.RM_FLY) { this.el.classList.add('hidden'); this.ring.classList.add('hidden'); return; }
     if (t && t.el) {
       tr = t.el.getBoundingClientRect();
       const pad = 6, R = this.ring.style, round = t.el.matches('#menuBtn, .tut-ring, .btn-round, .back');
       R.left = (tr.left - pad) + 'px'; R.top = (tr.top - pad) + 'px'; R.width = (tr.width + pad * 2) + 'px'; R.height = (tr.height + pad * 2) + 'px';
       this.ring.classList.toggle('round', round);
-      this.ring.classList.toggle('below', tr.top < (inMenu ? 48 : 96) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--st')) || 0)); // у верхнего края — указатель снизу
+      // у верхнего края — указатель снизу (в меню верхняя безопасная зона — из отступа панели: 10px + зона)
+      const mw = inMenu && U.$$('.rm-wrap').find(x => !x.classList.contains('out')), mst = mw ? Math.max(0, parseFloat(getComputedStyle(mw).paddingTop) - 10) : 0;
+      this.ring.classList.toggle('below', inMenu ? tr.top < 48 + mst : tr.top < 96 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--st')) || 0));
       this.ring.classList.remove('hidden');
     } else this.ring.classList.add('hidden');
+    if (inMenu) { this.bubble(tr); return; }
+    if (this.el.classList.contains('bubble')) {
+      this.el.classList.remove('bubble', 'b-up', 'b-down');
+      ['left', 'top', 'width', 'right', 'bottom', '--ax'].forEach(k => this.el.style.removeProperty(k));
+    }
     // место: сверху или снизу — где меньше перекрытий с целью (втройне важна) и важными элементами
     // учитываем только видимое сверху: открытый экран или меню закрывают всё, что под ними
     const layer = U.$$('.sheet-wrap').filter(s => !s.classList.contains('out')).pop() || U.$$('.screen').filter(s => !s.classList.contains('out')).pop();
@@ -163,6 +172,35 @@ const Tut = {
     this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
     this.el.classList.toggle('in-screen', !!U.$$('.screen').find(s => !s.classList.contains('out')));
     this._pos = pos;
+  },
+  // 5.2: при открытом меню подсказка — пузырь у подсвеченного пункта: со стороны указателя за ним (или с другой стороны,
+  // если там не помещается), стрелка — к пункту; без цели (объясняет меню) — над кнопкой меню, стрелка к ней.
+  // Меню при этом не двигается; пузырь не выходит за края экрана и за верхнюю/нижнюю безопасную зону
+  bubble(tr) {
+    const E = this.el, s = E.style, W = innerWidth, H = innerHeight, m = 10, w = Math.min(320, W - 2 * m);
+    E.classList.remove('pos-top', 'pos-bottom'); E.classList.add('bubble');
+    s.width = w + 'px'; s.right = 'auto'; s.bottom = 'auto';
+    const h = E.offsetHeight;
+    // безопасные зоны — из отступов панели меню (у неё padding = 10px + верхняя зона, 106px + нижняя)
+    const wrap = U.$$('.rm-wrap').find(x => !x.classList.contains('out')), cs = wrap && getComputedStyle(wrap);
+    const top0 = m + (cs ? Math.max(0, parseFloat(cs.paddingTop) - 10) : 0), bot0 = H - m - (cs ? Math.max(0, parseFloat(cs.paddingBottom) - 106) : 0);
+    let cx, y, up;
+    if (tr) {
+      cx = tr.left + tr.width / 2;
+      const below = this.ring.classList.contains('below'), gA = below ? 14 : 56, gB = below ? 56 : 14; // указатель — между пунктом и пузырём
+      const yA = tr.top - gA - h, yB = tr.bottom + gB;
+      if (!below && yA >= top0) { y = yA; up = false; }
+      else if (yB + h <= bot0) { y = yB; up = true; }
+      else if (yA >= top0) { y = yA; up = false; }
+      else { y = Math.max(top0, Math.min(bot0 - h, yB)); up = true; }
+    } else {
+      const o = U.$('#menuBtn').getBoundingClientRect();
+      cx = o.left + o.width / 2; y = Math.max(top0, o.top - 14 - h); up = false;
+    }
+    const x = Math.round(Math.max(m, Math.min(W - m - w, cx - w / 2)));
+    s.left = x + 'px'; s.top = Math.round(y) + 'px';
+    s.setProperty('--ax', Math.round(Math.max(18, Math.min(w - 18, cx - x))) + 'px');
+    E.classList.toggle('b-up', up); E.classList.toggle('b-down', !up);
   },
   show() { this.track(); },
   hideCoach() { if (this.el) this.el.classList.add('hidden'); if (this.ring) this.ring.classList.add('hidden'); U.$('#menuBtn').classList.remove('tut-pulse'); },
