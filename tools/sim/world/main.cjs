@@ -14,13 +14,13 @@ const pickW = arr => { let x = rnd() * arr.reduce((a, [, w]) => a + w, 0); for (
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const gauss = () => { let u = 0; for (let i = 0; i < 6; i++) u += rnd(); return u / 6 - 0.5; };
 
-// ---------- город: родники и Капища — общие для всех ----------
+// ---------- город: источники и Капища — общие для всех ----------
 const C = { lat: 55.7558, lng: 37.6173 };
 const pois = [], shrines = []; let pn = 500000;
 for (let i = -37; i <= 37; i++) for (let j = -37; j <= 37; j++) {
   const shrine = i % 3 === 0 && j % 3 === 0;
   const p = { id: 'osm:n' + (++pn), lat: +(C.lat + i * 0.00135 + (rnd() - 0.5) * 0.0008).toFixed(6), lng: +(C.lng + j * 0.0024 + (rnd() - 0.5) * 0.0014).toFixed(6), kind: shrine ? 'shrine' : 'spring', active: true, imported: true };
-  p.name = (shrine ? 'Капище ' : 'Родник ') + pn;
+  p.name = (shrine ? 'Капище ' : 'Источник ') + pn;
   pois.push(p); if (shrine) shrines.push(p);
 }
 

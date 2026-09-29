@@ -332,7 +332,7 @@ body.night .range-circle { fill-opacity: .1; }
 .guard-row .row-ico .art { width: 44px; height: 44px; }
 .prof-clan .clan-open { margin-left: 6px; }
 
-/* поручения родников и профиль друга (3.2) */
+/* поручения источников и профиль друга (3.2) */
 .q-h { font-size: 16px; margin: 22px 0 10px; display: flex; align-items: baseline; gap: 8px; } .q-h small { color: var(--muted); font-weight: 500; font-size: 13px; }
 .t-row { gap: 10px; }
 .t-sp { position: relative; width: 48px; height: 48px; flex: none; }
@@ -373,7 +373,7 @@ body.night .range-circle { fill-opacity: .1; }
 .prof-stats b { display: block; font-size: 17px; } .prof-stats span { font-size: 11px; color: var(--muted); }
 .prof-since { color: var(--muted); font-size: 12px; text-align: center; margin: 18px 0 4px; }
 
-/* родник */
+/* источник */
 .spring-screen { background: radial-gradient(90% 60% at 50% 40%, #134e4a 0%, #0b1f2a 55%, var(--bg) 100%); }
 .spring-view { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 4px; }
 .spring-title { font-size: 26px; font-weight: 900; margin-bottom: 18px; }
@@ -2214,7 +2214,7 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .calm .mk-player::before { animation: none; }
 .modal-btns .btn.primary, .modal-btns .btn.evolve, .modal-btns .btn.danger:not(.ghost) { padding-left: 26px; padding-right: 26px; }
 
-/* ================= 4.6: родник и разлом — свои ночные фоны, золотой волшебный круг ================= */
+/* ================= 4.6: источник и разлом — свои ночные фоны, золотой волшебный круг ================= */
 .screen.spring-screen { background: var(--woods) left bottom / 480px 150px repeat-x, var(--stars) 0 0 / 220px 220px,
   radial-gradient(70% 40% at 50% 38%, rgba(45, 212, 191, .32), transparent 70%), linear-gradient(180deg, #0f1c3a 0%, #0b1d2c 45%, #081421 100%); }
 .screen.rift-screen { background: var(--woods) left bottom / 480px 150px repeat-x, var(--stars) 0 0 / 220px 220px,
@@ -4023,7 +4023,7 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .calm .tile > i.new { animation: none; }
 .mk-shrine.locked { filter: grayscale(.85) brightness(.8); opacity: .75; }
 
-/* ================= 4.19: родник — живая вода (UI.spring) ================= */
+/* ================= 4.19: источник — живая вода (UI.spring) ================= */
 .screen.spr2-screen { background:
     radial-gradient(70% 45% at 50% 42%, rgba(45, 212, 191, .28), transparent 70%),
     radial-gradient(90% 40% at 50% -6%, rgba(139, 92, 246, .35), transparent 70%),
@@ -4101,7 +4101,7 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 @keyframes sprLoot { 0% { opacity: 0; transform: translateY(-120px) scale(.2); } 70% { opacity: 1; } 100% { opacity: 1; transform: none; } }
 .spr2-loot .loot-xp { animation: lootIn .4s 1.1s backwards; font-size: 18px; margin-top: 2px; }
 .calm .spr2 *, .calm .spr2 *::before, .calm .spr2 *::after { animation: none !important; }
-/* 4.19: вкладки родника */
+/* 4.19: вкладки источника */
 .spr2-tabs { position: relative; z-index: 3; width: 100%; max-width: 420px; margin: 0 0 6px; } /* 4.21: выше свечения колодца — оно выходит за его край и перекрывало «Добычу» */
 .spr2-glow, .spr2-ripples, .spr2-burst { pointer-events: none; }
 .spr2-tabs button.inv { color: #f0abfc; }
@@ -4122,7 +4122,7 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .spr2-inv-ico { width: 150px; height: 150px; filter: drop-shadow(0 0 24px rgba(192, 38, 211, .7)); animation: sprGlow 3s ease-in-out infinite; } .spr2-inv-ico .art { width: 100%; height: 100%; }
 .spr2-inv p { margin: 0; font-size: 15px; line-height: 1.45; color: #f5e8ff; max-width: 340px; }
 /* 4.20: «слишком быстро» — плашка над картой */
-/* 4.21: задания — вкладки как у духа и родника; задания списком без подложек, с небольшим зазором */
+/* 4.21: задания — вкладки как у духа и источника; задания списком без подложек, с небольшим зазором */
 .q-screen .q-tabs { margin-bottom: 10px; }
 .q-screen .quest, .q-screen .quest.bonus { background: none; border: 0; border-radius: 0; padding: 7px 2px; margin-bottom: 2px; }
 .q-screen .quest.done > .q-main > b { color: var(--gold2); }
@@ -4945,92 +4945,75 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .calm .art .art-gate-spin, .eco .art .art-gate-spin { animation: none; }
 
 /* ===== 5.1: Атлас ===== */
-/* Атлас мира (js/atlas.js): старинная карта Ордена — «небесное» море, два диска-полушария с золотым ободом, светящиеся материки,
-   звёзды и дымка; шаг 2 — приближение к материку и места; «Своё место» — настоящая карта; портал Врат Перепутицы */
-.atlas { position: fixed; inset: 0; z-index: 2750; display: flex; flex-direction: column; overflow: hidden; color: var(--text); user-select: none; -webkit-user-select: none;
+/* Атлас мира (js/atlas.js), 5.1.6: один глобус прямо на ночном небе — без дисков, ободов, рамок и подложек; его крутят пальцем.
+   Всё остальное — «жидкое стекло» игры: нижняя панель, вкладки (.seg.dt-tabs), карточки мест, окно «Врата отдыхают», «Своё место».
+   Фон — ночное небо с цветными туманами, как у экранов (.screen): стеклу есть что размывать */
+.atlas { position: fixed; inset: 0; z-index: 2750; display: flex; flex-direction: column; overflow: hidden; overflow: clip; color: var(--text); user-select: none; -webkit-user-select: none;
   padding: var(--st) 0 0; opacity: 0; transition: opacity .35s ease;
-  background: radial-gradient(90% 38% at 50% 0%, rgba(99, 102, 241, .28), transparent 70%), radial-gradient(70% 40% at 80% 100%, rgba(20, 184, 166, .14), transparent 70%),
-    linear-gradient(180deg, #0d1840 0%, #081030 45%, #050819 100%); }
+  /* 5.1.6: фон — матовое полупрозрачное стекло, как у экранов меню: под ним видна размытая неподвижная карта (Stage.GLASS) */
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .12), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .03) 60%), rgba(24, 14, 56, .3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); }
+.atlas .at-fog { display: none; }
+.eco .atlas { -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(180deg, #221650, #120a2c); }
 .atlas.in { opacity: 1; }
 .atlas.out { opacity: 0; pointer-events: none; }
-.at-fog { position: absolute; width: 130vw; height: 60vh; left: -15vw; border-radius: 50%; pointer-events: none; opacity: .5;
-  background: radial-gradient(closest-side, rgba(139, 92, 246, .22), rgba(139, 92, 246, 0)); animation: atFog 28s ease-in-out infinite alternate; }
-.at-fog.f1 { top: -18vh; }
-.at-fog.f2 { bottom: -20vh; background: radial-gradient(closest-side, rgba(45, 212, 191, .16), rgba(45, 212, 191, 0)); animation-duration: 34s; animation-direction: alternate-reverse; }
-@keyframes atFog { from { transform: translateX(-8vw) scale(1); } to { transform: translateX(8vw) scale(1.12); } }
+/* туманы плывут по небу (за пределы экрана не выходят — .atlas обрезает, прокрутить его нечем) */
+.at-fog { position: absolute; left: 0; width: 100%; height: 55vh; border-radius: 50%; pointer-events: none; will-change: transform;
+  background: radial-gradient(closest-side, rgba(236, 72, 153, .2), rgba(168, 85, 247, .1) 50%, transparent); animation: atFog 26s ease-in-out infinite alternate; }
+.at-fog.f1 { top: 8vh; transform: translateX(-30%); }
+.at-fog.f2 { top: 34vh; background: radial-gradient(closest-side, rgba(45, 212, 191, .18), rgba(56, 189, 248, .08) 50%, transparent); animation-duration: 32s; animation-direction: alternate-reverse; }
+@keyframes atFog { from { transform: translateX(-32%) scale(.9); } to { transform: translateX(32%) scale(1.1); } }
 .at-head { position: relative; display: flex; align-items: center; gap: 8px; padding: 10px 12px 2px; }
 .at-head .btn-round { flex: none; width: 40px; height: 40px; }
 .at-head .btn-round .ico, .at-head .btn-round svg { width: 20px; height: 20px; }
 .atlas:not(.s2) > .at-head .at-back { visibility: hidden; }
 .atlas.first > .at-head::after { content: ''; flex: none; width: 40px; }
 .at-ttl { flex: 1; min-width: 0; text-align: center; }
-.at-ttl small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #a5b4fc; }
+.at-ttl small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(236, 230, 251, .72); text-shadow: 0 1px 2px rgba(8, 4, 24, .6); }
 .at-ttl h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 26px; line-height: 1.15; letter-spacing: .5px; color: transparent;
   background: linear-gradient(100deg, #fde047 0%, #fbbf24 40%, #fffbeb 50%, #fbbf24 60%, #f59e0b 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text;
   animation: ldGlint 5s ease-in-out infinite; filter: drop-shadow(0 2px 0 rgba(80, 28, 4, .8)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.at-story { position: relative; margin: 2px 22px 0; text-align: center; font-size: 14.5px; line-height: 1.35; font-style: italic; color: #e0e7ff; text-shadow: 0 0 14px rgba(129, 140, 248, .6); }
+.at-story { position: relative; margin: 2px 22px 0; text-align: center; font-size: 14.5px; line-height: 1.35; font-style: italic; color: #f4f0ff;
+  text-shadow: 0 1px 2px rgba(12, 6, 32, .6), 0 0 14px rgba(167, 139, 250, .55); }
 .atlas.s2 .at-story { display: none; }
-.at-map { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; transition: height .7s cubic-bezier(.65, 0, .35, 1); }
-.at-map.fixed { flex: none; }
-.at-svg { position: absolute; inset: 4px 6px; width: calc(100% - 12px); height: calc(100% - 8px); overflow: visible; -webkit-tap-highlight-color: transparent; }
-.at-svg { transition: opacity .35s; }
-.at-svg.off { opacity: 0; pointer-events: none; }
-/* шаг 2: карта материка — своя проекция поверх листа */
-.at-loc { opacity: 0; transform: scale(1.08); transition: opacity .4s ease, transform .6s cubic-bezier(.2, .8, .2, 1); pointer-events: none; }
-.at-loc.in { opacity: 1; transform: none; pointer-events: auto; }
-.at-loc .at-grat { stroke: rgba(147, 197, 253, .13); }
-.at-loc .at-land { cursor: default; }
-.at-loc .at-land.on .f { fill: rgba(134, 239, 222, .3); stroke: #fde68a; }
-.at-loc .at-land.dim .f { fill: rgba(134, 239, 222, .16); }
-.at-loc .at-land.on .h { stroke: rgba(251, 191, 36, .3); stroke-width: 5; animation: none; }
-.atlas .at-loc .at-land.dim { opacity: .42 !important; }
-.at-mist { position: absolute; pointer-events: none; border-radius: 50%; opacity: .9; }
-.at-mist.m1 { width: 80%; height: 34%; left: -10%; top: 18%; background: radial-gradient(closest-side, rgba(196, 181, 253, .13), rgba(196, 181, 253, 0)); animation: atMist 22s ease-in-out infinite alternate; }
-.at-mist.m2 { width: 70%; height: 30%; right: -12%; top: 58%; background: radial-gradient(closest-side, rgba(153, 246, 228, .11), rgba(153, 246, 228, 0)); animation: atMist 27s ease-in-out infinite alternate-reverse; }
-@keyframes atMist { from { transform: translate(-12%, 4%) scale(1); } to { transform: translate(16%, -6%) scale(1.15); } }
-/* лист карты */
-.at-star { fill: #e0e7ff; opacity: .5; }
-.at-star.tw { animation: atTw 3.4s ease-in-out infinite alternate; }
-@keyframes atTw { from { opacity: .15; } to { opacity: .95; } }
-.at-grat { fill: none; stroke: rgba(147, 197, 253, .16); stroke-width: .7; vector-effect: non-scaling-stroke; }
-.at-eq { fill: none; stroke: rgba(253, 224, 71, .32); stroke-width: .8; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
-.at-land { cursor: pointer; transition: opacity .35s; }
-.at-land .h { fill: none; stroke: rgba(94, 234, 212, .2); stroke-width: 6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.at-land .f { fill: url(#atLand); stroke: #a5f3e4; stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke .3s; }
-.at-land.cold .f { fill: rgba(241, 245, 249, .5); stroke: #f1f5f9; }
-.at-land.cold .h { stroke: rgba(226, 232, 240, .16); }
-.atlas.picked .at-land:not(.on) { opacity: .6; }
-.at-land.on .f { fill: url(#atLandOn); stroke: #fef08a; }
-.at-land.on .h { stroke: rgba(251, 191, 36, .42); stroke-width: 10; animation: atGlow 2.2s ease-in-out infinite alternate; }
-.at-land.dim { opacity: .28 !important; }
-@keyframes atGlow { from { stroke-opacity: .5; } to { stroke-opacity: 1; } }
-.at-shine { pointer-events: none; }
-.at-rim { fill: none; stroke: #f3cf6b; stroke-width: 2.4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 4px rgba(251, 191, 36, .45)); pointer-events: none; }
-.at-rim2 { fill: none; stroke: rgba(243, 207, 107, .3); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
-.at-tick { fill: none; stroke: rgba(243, 207, 107, .55); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
-.at-gem { fill: #fde68a; stroke: #7c4a0b; stroke-width: .8; pointer-events: none; }
-.at-arc { font-family: var(--f-display); font-size: 12px; letter-spacing: 3px; fill: #f3cf6b; text-anchor: middle; opacity: .85; }
-.at-arc.lo { dominant-baseline: hanging; }
-.at-lbl { font-family: var(--f-display); font-size: 13.5px; letter-spacing: 1px; fill: #fef3c7; text-anchor: middle; cursor: pointer;
-  paint-order: stroke; stroke: rgba(5, 10, 36, .85); stroke-width: 3.2px; stroke-linejoin: round; transition: opacity .3s, fill .3s; }
-.at-lbl.sm { font-size: 11px; }
-.at-lbl.cold { fill: #e2e8f0; font-size: 10px; }
+/* окно глобуса: всё свободное место между шапкой и панелью; глобус (svg, 1 единица = 1 px) крутится пальцем */
+.at-map { position: relative; flex: 1 1 0; min-height: 0; }
+.at-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; touch-action: none; cursor: grab; -webkit-tap-highlight-color: transparent; }
+.at-svg:active { cursor: grabbing; }
+/* шаг 2: приближенный глобус больше окна — края окна растворяются в небе, без рамки */
+.atlas.s2 .at-map { -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 92%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 9%, #000 92%, transparent 100%); }
+/* глобус: вода — полупрозрачное стекло, атмосфера по краю, свет сверху слева (градиенты — в atlas.js) */
+.at-air, .at-sea, .at-light, .at-spec, .at-grat, .at-eq, .at-cities, .at-lbls, .at-me { pointer-events: none; }
+.at-grat { fill: none; stroke: rgba(191, 219, 254, .17); stroke-width: .8; }
+.at-eq { fill: none; stroke: rgba(253, 224, 71, .36); stroke-width: .9; stroke-dasharray: 3 4; }
+.at-land { transition: opacity .35s; }
+.at-land .h { fill: none; stroke: rgba(251, 191, 36, .5); stroke-width: 9; stroke-linejoin: round; animation: atGlow 2.2s ease-in-out infinite alternate; }
+.at-land .f { fill: url(#atLand); stroke: rgba(204, 251, 241, .85); stroke-width: .9; stroke-linejoin: round; transition: stroke .3s; }
+.at-land.cold .f { fill: rgba(241, 245, 249, .62); stroke: #f8fafc; }
+.atlas.picked .at-land:not(.on) { opacity: .72; }
+.at-land.on .f { fill: url(#atLandOn); stroke: #fef08a; stroke-width: 1.2; }
+.atlas.s2 .at-land:not(.on) { opacity: .5; }
+/* шаг 2: материк во всё окно — заливка легче, чтобы светились его места */
+.atlas.s2 .at-land.on .f { fill: rgba(253, 230, 138, .2); stroke: #fde68a; stroke-width: 1.4; }
+.atlas.s2 .at-land.on .h { stroke-width: 6; stroke: rgba(251, 191, 36, .32); }
+@keyframes atGlow { from { stroke-opacity: .45; } to { stroke-opacity: 1; } }
+.at-cities { fill: rgba(253, 230, 138, .6); transition: opacity .35s; }
+.at-cities.on { fill: #fffbeb; filter: drop-shadow(0 0 3px rgba(251, 191, 36, .9)); }
+/* подписи материков — прямо на глобусе, тень вместо подложки */
+.at-lbl { font-family: var(--f-display); font-size: 13.5px; letter-spacing: .8px; fill: #fff; text-anchor: middle;
+  paint-order: stroke; stroke: rgba(8, 4, 28, .8); stroke-width: 3.4px; stroke-linejoin: round; transition: fill .3s; }
+.at-lbl.sm { font-size: 11.5px; }
+.at-lbl.cold { fill: #e2e8f0; font-size: 10.5px; }
 .at-lbl.on { fill: #fde047; }
-.at-rose .rr { fill: rgba(8, 16, 48, .5); stroke: rgba(243, 207, 107, .5); stroke-width: .8; }
-.at-rose .rr2 { fill: none; stroke: rgba(243, 207, 107, .35); stroke-width: .6; stroke-dasharray: 1.5 2.5; }
-.at-rose .r1 { fill: #f3cf6b; stroke: #7c4a0b; stroke-width: .6; }
-.at-rose .r2 { fill: rgba(243, 207, 107, .45); }
-.at-rose .rc { fill: #0b1433; stroke: #fde68a; stroke-width: .8; }
-.at-rose .rn { font-family: var(--f-display); font-size: 11px; fill: #fde68a; text-anchor: middle; }
-.atlas.s2 .at-lbl, .atlas.s2 .at-rose, .atlas.s2 .at-arc, .atlas.s2 .at-stars { opacity: 0; pointer-events: none; }
+.atlas.s2 .at-lbls, .atlas.s2 .at-cities { opacity: 0; }
 /* Ловчий сейчас */
 .at-mek path { fill: #5eead4; stroke: #064e3b; stroke-width: 1; }
 .at-mek .w { fill: rgba(94, 234, 212, .3); transform-box: fill-box; transform-origin: center; animation: atPing 2s ease-out infinite; }
 @keyframes atPing { from { transform: scale(.6); opacity: 1; } to { transform: scale(2); opacity: 0; } }
 /* места материка */
 .at-pt { cursor: pointer; animation: atIn .45s ease-out both; }
+.at-pts.shown .at-pt { animation: none; } /* выбранная точка переставляется наверх — не проявляется заново */
 @keyframes atIn { from { opacity: 0; } }
-.at-pt .hit { fill: transparent; }
 .at-pt .gl { fill: rgba(253, 224, 71, .26); }
 .at-pt .c { fill: #fde68a; stroke: #7c2d12; stroke-width: 1.2; }
 .at-pt .ring { fill: none; stroke: #fde047; stroke-width: 1.6; opacity: 0; }
@@ -5040,68 +5023,104 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .at-pt.on .nm { display: block; }
 .at-pt.on .ring { opacity: 1; transform-box: fill-box; transform-origin: center; animation: atRing 1.6s ease-out infinite; }
 @keyframes atRing { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.7); opacity: 0; } }
-/* нижняя панель */
-.at-panel { position: relative; flex: none; display: flex; flex-direction: column; margin: 0 8px; padding: 12px 12px calc(12px + var(--sb)); border-radius: 24px 24px 0 0;
-  background: linear-gradient(180deg, rgba(22, 30, 72, .88), rgba(10, 14, 40, .96)); border: 1px solid rgba(243, 207, 107, .28); border-bottom: 0;
-  box-shadow: 0 -12px 34px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .07); }
-.atlas.s2 .at-panel { flex: 1 1 auto; min-height: 0; }
-.at-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px 10px; }
-.at-chips::-webkit-scrollbar { display: none; }
-.at-chip { flex: none; padding: 7px 13px; border-radius: 999px; border: 1px solid rgba(147, 197, 253, .3); background: rgba(30, 58, 138, .32); color: #dbeafe; font: inherit; font-size: 13px; font-weight: 600; }
-.at-chip.on { color: #3b1a02; border-color: #fde68a; background: linear-gradient(180deg, #fef3c7, #fbbf24); box-shadow: 0 0 12px rgba(251, 191, 36, .4); }
-.at-info { min-height: 168px; }
-.at-info h3 { margin: 0 0 6px; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.1; color: #fde68a; }
-.at-info p { margin: 0 0 6px; font-size: 14px; line-height: 1.4; color: #e2e8f0; }
-.at-info small { display: block; font-size: 12.5px; line-height: 1.35; color: #a5b4fc; }
+/* нижняя панель — лист жидкого стекла над небом (как шторка меню): размывает туманы и лес под собой, кромка ловит свет.
+   Шаг 1 — постоянной высоты при любом материке: ничего не прыгает; шаг 2 — выше, под список мест (переход — высотой панели) */
+.at-panel { position: relative; flex: none; display: flex; flex-direction: column; height: 336px; margin: 0 10px calc(10px + var(--sb)); padding: 12px 12px 10px; border-radius: 26px;
+  background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; /* 5.1.6: без подложки — описание и список прямо на небе */
+  text-shadow: 0 1px 3px rgba(8, 4, 24, .85), 0 0 12px rgba(8, 4, 24, .55); transition: height .7s cubic-bezier(.65, 0, .35, 1); }
+.at-cdb::after, .at-pbar::after, .at-pmap::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none; background: var(--g-rim);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.atlas.s2 .at-panel { height: 52%; min-height: 300px; }
+/* вкладки материков — без подложек: просто подписи, выбранная — белая с тонкой золотой чертой снизу; лента прокручивается только внутри себя */
+.atlas .at-tabs { position: relative; flex: none; display: flex; gap: 2px; margin: -2px -4px 8px; padding: 0 8px; border: 0; border-radius: 0; background: none; box-shadow: none;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent); mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent); }
+.at-tabs::-webkit-scrollbar { display: none; }
+.atlas .at-tabs button { position: relative; flex: none; padding: 9px 10px 11px; white-space: nowrap; font-size: 14px; border-radius: 0; color: rgba(236, 230, 251, .58);
+  background: none; box-shadow: none; text-shadow: 0 1px 2px rgba(12, 6, 32, .5); transition: color .2s; }
+.atlas .at-tabs button.on { color: #fff; background: none; box-shadow: none; text-shadow: 0 1px 2px rgba(12, 6, 32, .5), 0 0 10px rgba(251, 191, 36, .35); }
+.atlas .at-tabs button::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; border-radius: 1px; background: linear-gradient(90deg, rgba(253, 230, 138, 0), #fde68a 30%, #fde68a 70%, rgba(253, 230, 138, 0));
+  opacity: 0; transform: scaleX(.4); transition: opacity .2s, transform .25s; }
+.atlas .at-tabs button.on::after { opacity: 1; transform: none; }
+.at-info { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 0 4px; }
+.at-info::-webkit-scrollbar { display: none; }
+/* не влезло (длинный перевод) — низ окна растворяется: видно, что дальше есть текст */
+.at-info.more, .at-list.more { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
+@media (max-height: 700px) { .at-panel { height: 300px; } .at-info h3 { font-size: 20px; margin-bottom: 4px; } .at-info p { font-size: 13.5px; } }
+.at-info h3 { margin: 0 0 6px; font-family: var(--f-display); font-weight: 400; font-size: 22px; line-height: 1.15; color: #fde68a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+.at-info p { margin: 0 0 6px; font-size: 14px; line-height: 1.4; color: #f4f0ff; }
+.at-info small { display: block; font-size: 12.5px; line-height: 1.35; color: #d9cff2; }
 .at-info.hint { display: grid; place-items: center; }
-.at-info.hint p { text-align: center; color: #c7d2fe; font-size: 15px; max-width: 290px; }
+.at-info.hint p { text-align: center; color: #ece6fb; font-size: 15px; max-width: 300px; margin: 0; }
 .at-myths { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 7px; }
-.at-myth { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; background: rgba(255, 255, 255, .06); border: 1px solid var(--c); }
+.at-myth { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff;
+  border: 1px solid rgba(255, 255, 255, .16); background: var(--g-sheen), rgba(255, 255, 255, .08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22); }
 .at-myth::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
-.at-foot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-top: 10px; }
-.at-foot .rune { height: 56px; }
+.at-foot { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin-top: 8px; }
+.at-foot .rune { height: 54px; }
 .at-foot .rune .rn-t svg { width: 20px; height: 20px; }
-.at-gates { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #5eead4; min-height: 20px; }
+.at-gates { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #5eead4; min-height: 22px; }
 .at-gates.rest { color: #fde68a; }
 .at-gates svg, .at-gates .art { width: 20px; height: 20px; flex: none; }
-.at-lh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; }
-.at-lh b { font-family: var(--f-display); font-weight: 400; font-size: 21px; color: #fde68a; line-height: 1.1; }
-.at-lh small { font-size: 13px; color: #a5b4fc; }
-.at-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 6px; margin: 0 -4px; padding: 0 4px 4px; scrollbar-width: none; }
+.at-lh { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 2px 4px 10px; }
+.at-lh b { min-width: 0; font-family: var(--f-display); font-weight: 400; font-size: 21px; color: #fde68a; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.at-lh small { flex: none; font-size: 13px; color: #d9cff2; }
+/* места — списком, как задания: строки без подложек, светящаяся точка слева, город и место в нём, справа — расстояние и «›»,
+   между строками — тонкие разделители. Касание строки — сразу во Врата */
+.at-list { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column;
+  margin: 0 -4px; padding: 0 4px 4px; scrollbar-width: none; }
 .at-list::-webkit-scrollbar { display: none; }
-.at-pl { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 8px 10px; border-radius: 14px; text-align: left; font: inherit; color: inherit;
-  background: rgba(30, 41, 90, .5); border: 1px solid rgba(147, 197, 253, .16); transition: background .2s, border-color .2s, box-shadow .2s; }
-.at-pl span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.at-pl b { font-size: 14px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.at-pl small { font-size: 11.5px; line-height: 1.25; color: #a5b4fc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.at-pl:active { transform: scale(.98); }
-.at-pl.on { border-color: #fde68a; background: linear-gradient(180deg, rgba(146, 98, 14, .5), rgba(80, 52, 10, .42)); box-shadow: 0 0 0 1px rgba(253, 224, 71, .3), 0 0 16px rgba(251, 191, 36, .22); }
-.at-pl.on small { color: #fde68a; }
-.at-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 0 2px rgba(124, 45, 18, .8), 0 0 8px rgba(253, 224, 71, .7); display: grid; place-items: center; }
-.at-pl.own { grid-column: 1 / -1; border-style: dashed; border-color: rgba(94, 234, 212, .45); background: rgba(19, 78, 74, .28); }
-.at-pl.own .at-dot { width: 22px; height: 22px; background: none; box-shadow: none; color: #5eead4; }
+.at-pl { flex: none; display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; padding: 9px 2px 9px 6px; border: 0; border-radius: 0; text-align: left; font: inherit; color: #fff;
+  background: none; box-shadow: none; text-shadow: 0 1px 2px rgba(12, 6, 32, .5); -webkit-tap-highlight-color: transparent; transition: opacity .15s; }
+.at-pl + .at-pl { border-top: 1px solid rgba(255, 255, 255, .08); }
+.at-pl span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.at-pl b { font-size: 15px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color .2s; }
+.at-pl small { font-size: 12.5px; line-height: 1.25; color: #d9cff2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.at-pl em { flex: none; font-style: normal; font-size: 12.5px; font-weight: 600; color: rgba(236, 230, 251, .6); white-space: nowrap; }
+.at-chev { flex: none; width: 18px; height: 18px; fill: none; stroke: rgba(255, 255, 255, .42); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: stroke .2s; }
+.at-pl:active { opacity: .6; }
+.at-pl.on b, .at-pl.on small, .at-pl.on em { color: #fde68a; }
+.at-pl.on .at-chev { stroke: #fde68a; }
+.at-dot { flex: none; width: 10px; height: 10px; margin: 0 5px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 0 2px rgba(124, 45, 18, .8), 0 0 8px rgba(253, 224, 71, .7); display: grid; place-items: center; transition: box-shadow .2s, transform .2s; }
+.at-pl.on .at-dot { background: #fff; transform: scale(1.2); box-shadow: 0 0 0 2px rgba(124, 45, 18, .8), 0 0 12px 3px rgba(253, 224, 71, .8); }
+.at-pl.own .at-dot { width: 20px; height: 20px; margin: 0; background: none; box-shadow: none; color: #5eead4; filter: drop-shadow(0 0 6px rgba(94, 234, 212, .6)); }
 .at-pl.own .at-dot svg { width: 20px; height: 20px; }
-/* «Своё место» — настоящая карта */
-.at-pick { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding-top: var(--st); background: linear-gradient(180deg, #0d1840, #050819);
+.at-pl.own b { color: #99f6e4; }
+/* шаг 2: «Врата открыты» / сколько ждать — маленькой подписью над списком */
+.atlas.s2 .at-gates { flex: none; justify-content: flex-start; margin: -4px 4px 4px; font-size: 12px; min-height: 18px; }
+.atlas.s2 .at-gates svg, .atlas.s2 .at-gates .art { width: 16px; height: 16px; }
+/* «Своё место» — настоящая карта; то же небо, карта в стеклянной кромке, внизу — стеклянная панель */
+.at-pick { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding-top: var(--st); background: inherit;
   transform: translateY(100%); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
 .at-pick.in { transform: none; }
-.at-pmap { flex: 1; min-height: 0; margin: 8px 10px 0; border-radius: 20px; overflow: hidden; border: 1px solid rgba(243, 207, 107, .4); background: #aad3df; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+.at-pick .at-head::after { content: ''; flex: none; width: 40px; } /* заголовок — по центру, как у Атласа */
+.at-pmap { position: relative; flex: 1; min-height: 0; margin: 8px 10px 0; border-radius: 22px; overflow: hidden; background: #aad3df; box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
+.at-pmap::after { z-index: 1000; }
 .at-pmap .leaflet-tile-pane { filter: saturate(.8) brightness(.95); }
 .at-pmap .leaflet-control-attribution { font-size: 9px; background: rgba(255, 255, 255, .7); }
-.at-pbar { padding: 10px 14px calc(12px + var(--sb)); }
-.at-phint { margin: 0 0 8px; min-height: 20px; text-align: center; font-size: 13.5px; color: #c7d2fe; }
+.at-pbar { position: relative; flex: none; margin: 10px 10px calc(10px + var(--sb)); padding: 10px 12px 12px; border-radius: 24px;
+  background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(40, 28, 86, .5), rgba(12, 7, 32, .62));
+  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 18px 50px rgba(0, 0, 0, .45); }
+.at-pbar .rune { height: 54px; }
+.at-phint { margin: 0 0 8px; min-height: 20px; text-align: center; font-size: 13.5px; color: #ece6fb; text-shadow: 0 1px 2px rgba(12, 6, 32, .5); }
 .at-pin i { display: block; width: 26px; height: 26px; margin: 3px auto 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #7c4a0b;
   background: radial-gradient(circle at 50% 50%, #5eead4 0 26%, #fde68a 30% 100%); box-shadow: 0 4px 10px rgba(0, 0, 0, .45), 0 0 14px rgba(251, 191, 36, .6); }
-/* перезарядка Врат */
-.at-cd { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; justify-content: center; background: rgba(3, 6, 20, .62); opacity: 0; transition: opacity .22s; }
+/* перезарядка Врат — окно жидкого стекла, как окна игры (.modal): под ним Атлас размыт */
+.at-cd { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; justify-content: center; opacity: 0; transition: opacity .22s;
+  background: rgba(6, 3, 16, .42); -webkit-backdrop-filter: blur(8px) saturate(1.2); backdrop-filter: blur(8px) saturate(1.2); }
 .at-cd.in { opacity: 1; }
-.at-cdb { width: min(370px, calc(100% - 20px)); margin-bottom: calc(14px + var(--sb)); padding: 18px 16px 14px; border-radius: 24px; text-align: center; display: flex; flex-direction: column; gap: 8px;
-  background: linear-gradient(180deg, #1d2658, #0d1234); border: 1px solid rgba(243, 207, 107, .42); box-shadow: 0 20px 50px rgba(0, 0, 0, .55); transform: translateY(24px); transition: transform .25s cubic-bezier(.2, .9, .3, 1.2); }
+.at-cdb { position: relative; width: min(370px, calc(100% - 20px)); margin-bottom: calc(14px + var(--sb)); padding: 18px 16px 14px; border-radius: 26px; text-align: center;
+  display: flex; flex-direction: column; gap: 8px; color: #fff; text-shadow: 0 1px 2px rgba(12, 6, 32, .55);
+  background: var(--g-sheen), radial-gradient(90% 50% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(40, 28, 86, .56), rgba(16, 10, 38, .64));
+  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 24px 60px rgba(0, 0, 0, .5);
+  transform: translateY(24px); transition: transform .25s cubic-bezier(.2, .9, .3, 1.2); }
 .at-cd.in .at-cdb { transform: none; }
 .at-cd.out { opacity: 0; }
-.at-cdb b { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: #fde68a; }
-.at-cdb p { margin: 0; font-size: 14.5px; color: #e2e8f0; }
-.at-cdb p.small { font-size: 13px; color: #a5b4fc; }
+.at-cdb b { font-family: var(--f-display); font-weight: 400; font-size: 22px; color: #fde68a; text-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+.at-cdb p { margin: 0; font-size: 14.5px; color: #f4f0ff; }
+.at-cdb p.small { font-size: 13px; color: #d9cff2; }
 .at-cdb .rune { height: 58px; padding: 0 22px; }
 .at-cdb .rune .rn-t { font-size: 15.5px; line-height: 1.15; text-align: center; }
 .at-cdr { position: relative; width: 76px; height: 76px; margin: 0 auto 2px; }
@@ -5112,7 +5131,10 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 /* портал Врат Перепутицы */
 .at-gate { position: fixed; inset: 0; z-index: 2800; display: grid; place-items: center; overflow: hidden; transition: opacity .9s ease; }
 .at-gate.out { opacity: 0; pointer-events: none; }
-.ag-veil { position: absolute; inset: 0; opacity: 0; transition: opacity .5s; background: radial-gradient(circle at 50% 45%, rgba(30, 16, 72, .6), rgba(3, 2, 12, .97) 70%); }
+/* под порталом Атлас не пропадает, а тонет в размытии — как под окнами игры */
+.ag-veil { position: absolute; inset: 0; opacity: 0; transition: opacity .5s; background: radial-gradient(circle at 50% 45%, rgba(40, 24, 96, .26), rgba(6, 3, 18, .7) 75%);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3); backdrop-filter: blur(10px) saturate(1.3); }
+.ag-portal { isolation: isolate; } /* смешение вихрей — внутри портала: иначе оно отрезало бы размытие Атласа под пеленой */
 .at-gate.open .ag-veil { opacity: 1; }
 .ag-portal { position: relative; width: min(78vw, 320px); aspect-ratio: 1; margin-top: -8vh; opacity: 0; transform: scale(.15) rotate(-40deg);
   transition: transform .8s cubic-bezier(.2, 1.25, .35, 1), opacity .4s; }
@@ -5157,9 +5179,30 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; }
 /* меньше движения и экономия батареи */
 .calm .atlas *, .eco .atlas *, .calm .at-gate *, .eco .at-gate * { animation: none !important; }
-.calm .atlas, .calm .at-map, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
-.eco .at-rim, .eco .ag-ring .o, .eco .at-cdr .fg { filter: none; }
+.calm .atlas, .calm .at-panel, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
+.eco .ag-ring .o, .eco .at-cdr .fg, .eco .at-cities.on { filter: none; }
+/* экономия батареи: стекло без живого размытия — плотнее, чтобы текст читался */
+.eco .at-pbar, .eco .at-cdb { -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(46, 30, 100, .92), rgba(20, 12, 48, .95)); }
+.eco .at-cd, .eco .ag-veil { -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }
+/* 5.1.6: в Атласе всё чётко — без растворяющихся краёв (масок) и расплывчатых ореолов у текста; подписи контрастнее,
+   стекло чуть плотнее, чтобы светлая карта под ним не спорила с текстом */
+.atlas { background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02) 60%), rgba(20, 12, 48, .5); }
+.atlas.s2 .at-map, .atlas .at-tabs, .atlas .at-info.more, .atlas .at-list.more { -webkit-mask-image: none; mask-image: none; }
+.atlas .at-panel, .atlas .at-pl, .atlas .at-tabs button, .atlas .at-phint { text-shadow: 0 1px 2px rgba(8, 4, 24, .7); }
+.atlas .at-tabs button.on { text-shadow: 0 1px 2px rgba(8, 4, 24, .7); }
+.atlas .at-info h3, .atlas .at-story { text-shadow: 0 1px 2px rgba(8, 4, 24, .75); }
+.atlas .at-tabs button { color: rgba(245, 241, 255, .78); }
+.atlas .at-pl small, .atlas .at-info small { color: #efe9ff; }
+.atlas .at-pl em { color: rgba(245, 241, 255, .9); }
+.atlas .at-chev { stroke: rgba(255, 255, 255, .72); }
+.atlas .at-pl + .at-pl { border-top-color: rgba(255, 255, 255, .16); }
+/* Атлас — одна сцена (Stage): фон — матовое стекло (5.1.6), карта под ним неподвижна и размыта, HUD и погода через Stage.COVER_MS не рисуются (body.stage-cover).
+   Сверх того, пока он открыт (body.atlas-on), не рисуются подсказка обучения и её рамка, чужие всплывашки и плашка обновления;
+   остаются его собственные всплывашки (.at-t), окна самого Атласа и портал Врат. Закрыли — всё вернулось */
+body.atlas-on :is(#coach, #tutRing, .upd-bar, #toasts > .toast:not(.at-t)) { visibility: hidden !important; animation-play-state: paused !important; }
+body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !important; }
 
 /* ===== 5.2: движение и значок Атласа ===== */
 /* значок Ловчего на ходу — без покачивания (на бегу оно читалось как дрожь) и без скачка «пульса»: смена длительности
@@ -5189,3 +5232,152 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .mk.pl-out, .mk-zone.pl-out { animation: plOut .45s ease-in both; pointer-events: none !important; }
 @keyframes plIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes plOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* ===== 5.1.5: Источник ===== */
+/* награда — посередине: чаша не сжимается и не уходит, а гаснет на своём месте; вещи вылетают из воды дугой
+   и встают сеткой над ней, опыт набегает под ними. «В сумку» — вещи слетаются к кнопке, экран закрывается */
+.spr2.taken .spr2-well { animation: none; max-height: 400px; margin: 6px auto 4px; transition: none; pointer-events: none; cursor: default; }
+.spr2.taken .spr2-ring, .spr2.taken .spr2-ripples { opacity: .12; transition: opacity .6s ease; }
+.spr2.taken .spr2-water { animation: sprFlash .9s ease-out, srcDim .7s .45s ease forwards; }
+@keyframes srcDim { to { opacity: .16; transform: scale(.82); filter: blur(2px) saturate(.6); } }
+.calm .spr2.taken .spr2-water { opacity: .16; filter: blur(2px) saturate(.6); } /* без анимаций — гаснет сразу */
+.spr2.taken .spr2-glow { animation: sprBurstGlow 1.2s ease-out, sprGlow 3.6s 1.2s ease-in-out infinite; }
+.spr2 .spr2-well .spr2-loot { position: absolute; left: 50%; top: 50%; z-index: 4; width: min(calc(100vw - 24px), 392px); max-width: none; min-height: 0; margin: 0;
+  transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.spr2-grid { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 6px; }
+.spr2 .spr2-well .spr2-loot .loot-item { width: 92px; gap: 4px; font-size: 12.5px; font-weight: 600; line-height: 1.2; color: #fff; text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 8px rgba(8, 4, 24, .6); }
+.spr2 .spr2-well .spr2-loot .loot-item .art { width: 64px; height: 64px; filter: drop-shadow(0 0 12px rgba(94, 234, 212, .75)) drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.spr2 .spr2-well .spr2-loot .spr2-cocoon .art { filter: drop-shadow(0 0 14px rgba(251, 191, 36, .85)) drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.spr2 .spr2-well .spr2-loot.many .loot-item { width: 80px; font-size: 11.5px; }
+.spr2 .spr2-well .spr2-loot.many .loot-item .art { width: 52px; height: 52px; }
+/* лучи-сияние за наградой */
+.spr2-rays { position: absolute; left: 50%; top: 50%; width: 380px; height: 380px; margin: -190px 0 0 -190px; border-radius: 50%; z-index: -1; opacity: 0;
+  background: radial-gradient(circle, rgba(255, 247, 209, .5), rgba(94, 234, 212, .18) 32%, transparent 62%),
+    repeating-conic-gradient(from 0deg, rgba(253, 230, 138, .26) 0deg 7deg, transparent 7deg 22.5deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 66%); mask: radial-gradient(circle, #000 18%, transparent 66%); }
+.spr2-well .spr2-loot.fly .spr2-rays { animation: srcRaysIn .9s ease-out .3s forwards, srcRays 18s linear infinite; }
+@keyframes srcRaysIn { from { opacity: 0; scale: .4; } to { opacity: 1; scale: 1; } }
+@keyframes srcRays { to { rotate: 360deg; } }
+/* вылет: из середины воды — вверх дугой — на своё место (--fx/--fy считает UI.spring) */
+.spr2-well .spr2-loot .loot-item, .spr2-well .spr2-loot .loot-xp { animation: none; }
+.spr2-well .spr2-loot.fly .loot-item { animation: srcFly .8s cubic-bezier(.25, .9, .35, 1) calc(.4s + var(--k, 0) * .11s) both; }
+@keyframes srcFly {
+  0% { opacity: 0; transform: translate(var(--fx, 0), var(--fy, 0)) scale(.15); }
+  20% { opacity: 1; }
+  55% { transform: translate(calc(var(--fx, 0px) * .3), calc(var(--fy, 0px) * .3 - 24px)) scale(1.12); }
+  80% { transform: translateY(4px) scale(.96); }
+  100% { opacity: 1; transform: none; } }
+.spr2-well .spr2-loot .loot-xp { width: auto; margin-top: 2px; font-size: 20px; font-weight: 800; color: var(--gold2, #fde68a); text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 10px rgba(251, 191, 36, .45); }
+.spr2-well .spr2-loot.fly .loot-xp { animation: srcXp .5s cubic-bezier(.2, 1.5, .4, 1) 1.05s both; }
+@keyframes srcXp { from { opacity: 0; transform: scale(.4); } }
+/* под чашей — «Сумка полна» и новое поручение */
+.spr2-after { position: relative; width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin: 0 0 12px; }
+.spr2-after:empty { display: none; }
+.spr2-after > * { animation: lootIn .45s 1.4s backwards; }
+.spr2-after .loot-full { font-size: 13px; font-weight: 600; color: #fcd34d; }
+.spr2-after .loot-task { margin: 0; padding: 8px 12px; font-size: 13px; }
+/* «В сумку»: слетаются к кнопке */
+.spr2.stow .spr2-well .spr2-loot .loot-item, .spr2.stow .spr2-well .spr2-loot .loot-xp { animation: srcStow .45s cubic-bezier(.55, 0, .75, .35) calc(var(--k, 0) * .06s) both; }
+@keyframes srcStow { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(var(--bx, 0), var(--by, 0)) scale(.2); } }
+.spr2.stow .spr2-well .spr2-loot.fly .spr2-rays { opacity: 1; animation: srcRaysOut .4s ease-in forwards; }
+@keyframes srcRaysOut { to { opacity: 0; scale: .5; } }
+.spr2.stow .spring-go { animation: srcBag .35s ease-out .3s 2; }
+@keyframes srcBag { 50% { transform: scale(1.05); filter: brightness(1.15); } }
+/* чаша в воде видна целиком — с постаментом и осколком над струёй */
+.spr2-well .spr2-icon { inset: 7% 17% 5%; }
+/* лор источника на вкладке «О месте» */
+.spr2-lore { margin: 0 6px; max-width: 360px; font-size: 14px; line-height: 1.45; font-style: italic; color: #cfe9e4; }
+
+/* ===== 5.1.5: команда в ряд, награда по центру ===== */
+/* команда перед боем (UI.teamCards: Лига, Разлом, Капище, Вторжение, совместный Разлом, поединок) — всегда три равные
+   карточки в один ряд. Пустое место раньше было .empty, и общий .empty { grid-column: 1 / -1 } растягивал его на всю ширину */
+.lg2-team { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch; justify-content: stretch; }
+.lg2-team.tm-row { width: 100%; margin: 0 0 14px; }
+.tm-card { position: relative; justify-content: flex-start; gap: 2px; min-width: 0; padding: 8px 4px; border-radius: 16px; text-align: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--elc, #fff) 13%, rgba(255, 255, 255, .03)), rgba(255, 255, 255, .03));
+  border: 1px solid color-mix(in srgb, var(--elc, #fff) 28%, rgba(255, 255, 255, .06)); }
+.tm-card .pcs-a { width: min(86px, 100%); height: auto; aspect-ratio: 1; flex: none; }
+.tm-el { position: absolute; right: 0; top: 0; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(16, 10, 36, .8); border: 1px solid color-mix(in srgb, var(--elc, #fff) 60%, transparent); }
+.tm-el .el-ico { vertical-align: 0; }
+.tm-card b { display: block; width: 100%; margin-top: 2px; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-card em { display: block; max-width: 100%; font-size: 11px; line-height: 1.25; }
+.tm-card .hp-bar { width: 78%; margin-top: 4px; }
+.tm-slot { justify-content: center; gap: 8px; min-height: 120px; background: rgba(253, 224, 71, .05); border: 1.5px dashed rgba(253, 224, 71, .4); }
+.tm-slot .lg2-plus { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; font-size: 28px; color: #fde68a;
+  background: rgba(253, 224, 71, .12); border: 1px solid rgba(253, 224, 71, .35); }
+.tm-slot em { padding: 0 2px; font-family: var(--f-head); font-weight: 700; font-size: 12.5px; color: #fde68a; }
+.tm-slot em::first-letter { text-transform: uppercase; } /* «Выбрать духа» */
+.tm-slot:active { background: rgba(253, 224, 71, .14); }
+.tm-foe { cursor: default; }
+.inv2 .tm-slot { min-height: 0; }
+.inv2 .tm-slot .lg2-plus { width: 36px; height: 36px; font-size: 24px; }
+@media (max-height: 700px) { .tm-card .pcs-a { width: min(68px, 100%); } .inv2 .lg2-mem .pcs-a { width: 56px; height: 56px; } }
+
+/* награда источника — отдельный слой поверх окна (UI.spring): посередине видимой части экрана, между шапкой и «В сумку»;
+   под сеткой — «Сумка полна» и новое поручение. Чаша и название гаснут и уходят на фон, «В сумку» — внизу экрана */
+/* три ряда: пустой · сетка с опытом · поручение. Верхний и нижний делят свободное место поровну — сетка ровно посередине;
+   не хватает места под поручение — сетка поднимается ровно настолько, насколько нужно */
+.spr2-reward { position: absolute; inset: 0; z-index: 5; display: grid; grid-template-rows: 1fr auto 1fr; justify-items: center; row-gap: 10px;
+  padding: calc(var(--st) + 76px) 12px calc(var(--sb) + 84px); text-align: center; pointer-events: none; overflow: hidden; }
+.spr2-reward .spr2-loot { grid-row: 2; position: relative; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(100%, 392px); max-width: none; min-height: 0; margin: 0; }
+.spr2-reward .loot-item { width: 92px; gap: 4px; font-size: 12.5px; font-weight: 600; line-height: 1.2; color: #fff; animation: none;
+  text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 8px rgba(8, 4, 24, .6); }
+.spr2-reward .loot-item .art { width: 64px; height: 64px; filter: drop-shadow(0 0 12px rgba(94, 234, 212, .75)) drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.spr2-reward .spr2-cocoon .art { filter: drop-shadow(0 0 14px rgba(251, 191, 36, .85)) drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.spr2-reward .spr2-loot.many .loot-item { width: 80px; font-size: 11.5px; }
+.spr2-reward .spr2-loot.many .loot-item .art { width: 52px; height: 52px; }
+.spr2-reward .spr2-loot.fly .spr2-rays { animation: srcRaysIn .9s ease-out .3s forwards, srcRays 18s linear infinite; }
+.spr2-reward .spr2-loot.fly .loot-item { animation: srcFly .8s cubic-bezier(.25, .9, .35, 1) calc(.4s + var(--k, 0) * .11s) both; }
+.spr2-reward .loot-xp { width: auto; margin-top: 2px; font-size: 20px; font-weight: 800; color: var(--gold2, #fde68a); animation: none;
+  text-shadow: 0 1px 3px rgba(8, 4, 24, .9), 0 0 10px rgba(251, 191, 36, .45); }
+.spr2-reward .spr2-loot.fly .loot-xp { animation: srcXp .5s cubic-bezier(.2, 1.5, .4, 1) 1.05s both; }
+.spr2-reward .spr2-after { grid-row: 3; align-self: start; width: min(100%, 380px); margin: 0; }
+.spr2-reward .spr2-after .loot-full { text-align: center; text-shadow: 0 1px 3px rgba(8, 4, 24, .9); }
+.spr2-reward .spr2-after .loot-task { background: rgba(40, 24, 8, .72); }
+.spr2.taken .spr2-head { opacity: .25; transition: opacity .5s ease; }
+@media (max-height: 760px) { .spr2.taken .spr2-head { opacity: 0; } } /* на низком экране сетка доходит до названия */
+.spr2.taken .spr2-well { opacity: .4; transition: opacity .6s ease .2s; }
+.spr2.taken .day-left { visibility: hidden; }
+.spr2.taken .spring-go { position: fixed; z-index: 6; left: 16px; right: 16px; bottom: calc(var(--sb) + 22px); width: auto; max-width: 388px; margin: 0 auto; }
+/* «В сумку»: вещи и опыт слетаются к кнопке, лучи и поручение гаснут */
+.spr2-reward.stow .spr2-loot .loot-item, .spr2-reward.stow .spr2-loot .loot-xp { animation: srcStow .45s cubic-bezier(.55, 0, .75, .35) calc(var(--k, 0) * .06s) both; }
+.spr2-reward.stow .spr2-loot.fly .spr2-rays { opacity: 1; animation: srcRaysOut .4s ease-in forwards; }
+.spr2-reward.stow .spr2-after { opacity: 0; transition: opacity .3s ease; }
+
+/* ===== 5.1.6: меню разделами ===== */
+/* одна панель без вкладок: заголовок раздела (как подписи-разделители в игре) и под ним ряд круглых значков.
+   Значки по-прежнему вылетают из центральной кнопки (UI.menu), заголовки проявляются вслед за первым значком своего ряда */
+.sheet-wrap.rm-wrap { padding-top: calc(52px + var(--st)); }
+.rm-grid.rm-secs { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; max-width: 360px; }
+.rm-h { display: flex; align-items: center; gap: 10px; margin: 0 8px 7px; font-family: var(--f-head); font-weight: 700; font-size: 11px; line-height: 14px; letter-spacing: .16em; text-transform: uppercase;
+  color: #fde68a; text-shadow: 0 1px 3px rgba(8, 4, 24, .85), 0 0 8px rgba(8, 4, 24, .5); white-space: nowrap;
+  opacity: 0; transform: translateY(6px); }
+.rm-h::before, .rm-h::after { content: ''; flex: 1; min-width: 12px; height: 1px; background: linear-gradient(90deg, transparent, rgba(253, 230, 138, .55)); }
+.rm-h::after { background: linear-gradient(90deg, rgba(253, 230, 138, .55), transparent); }
+.rm-h > span { overflow: hidden; text-overflow: ellipsis; }
+.rm-in .rm-h { opacity: 1; transform: none; transition: opacity .3s ease var(--hd, 0ms), transform .3s ease var(--hd, 0ms); }
+.rm-back .rm-h { opacity: 0; transition: opacity .1s; }
+.rm-row { display: flex; justify-content: center; gap: 0 8px; }
+.rm-row > .rm-it { flex: 0 0 80px; }
+.rm-secs .rm-it { gap: 5px; }
+.rm-secs .rm-c { width: 58px; height: 58px; }
+.rm-secs .rm-c .mi { width: 40px !important; height: 40px !important; }
+.rm-secs .rm-it .rm-l { max-width: 86px; font-size: 12.5px; letter-spacing: 0; } /* сильнее старого .menu-grid .tile span */
+html.big-text .rm-secs .rm-it .rm-l { font-size: 13px; }
+.sheet-wrap.rm-wrap { scrollbar-width: none; } .sheet-wrap.rm-wrap::-webkit-scrollbar { display: none; }
+/* «с N ур.» — плашкой на нижнем краю кружка, а не лишней строкой: ряды с замками не выше остальных */
+.rm-secs .rm-it .tile-lvl { position: absolute; top: 47px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); margin: 0; padding: 0 6px; border-radius: 8px; white-space: nowrap;
+  font-size: 10px; line-height: 14px; color: #fde68a; background: rgba(12, 7, 32, .88); border: 1px solid rgba(253, 230, 138, .45); text-shadow: none; }
+/* обучение: подсказка сверху — панель начинается под ней (высоту подсказки UI.menu кладёт в --rm-co) */
+.sheet-wrap.rm-wrap.rm-tut { padding-top: calc(var(--st) + var(--rm-co, 110px) + 52px); }
+@media (max-width: 370px) { .rm-row { gap: 0 2px; } .rm-row > .rm-it { flex-basis: 82px; } .rm-secs .rm-it .rm-l { font-size: 11.5px; } .rm-h { margin-left: 4px; margin-right: 4px; } }
+@media (max-height: 760px) {
+  .sheet-wrap.rm-wrap { padding-top: calc(40px + var(--st)); }
+  .rm-grid.rm-secs { gap: 6px; }
+  .rm-h { margin-bottom: 5px; }
+  .rm-secs .rm-c { width: 52px; height: 52px; }
+  .rm-secs .rm-c .mi { width: 36px !important; height: 36px !important; }
+  .rm-secs .rm-it .rm-l { font-size: 11.5px; }
+  .rm-secs .rm-it .tile-lvl { top: 41px; }
+}

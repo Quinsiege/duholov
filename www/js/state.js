@@ -31,7 +31,7 @@ const S = {
     d.order = d.order || {}; // вклад в общее дело Ордена: неделя → { n, got: [ступени] }
     d.stats.streakBest = d.stats.streakBest || 0;
     d.stats.orderPts = d.stats.orderPts || 0;
-    d.tasks = d.tasks || []; // поручения из родников
+    d.tasks = d.tasks || []; // поручения из источников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
@@ -60,7 +60,7 @@ const S = {
     d.medals = d.medals || {};
     // 4.16: осколки Алатыря (пробуждение духов) и эссенция Рода (подходит любому семейству)
     d.alatyr = d.alatyr || 0; d.rod = d.rod || 0; d.stats.awakened = d.stats.awakened || 0;
-    // 4.24: обучение без сцен — шаг прежнего списка (4.0: tutV 4; 3.x: 1 поймать, 2 родник, 3 меню) переводится
+    // 4.24: обучение без сцен — шаг прежнего списка (4.0: tutV 4; 3.x: 1 поймать, 2 источник, 3 меню) переводится
     // на ближайший шаг нового, который ещё впереди; дальше последнего — обучение пройдено
     if (d.tut && d.tutV !== TUT_V) {
       const OLD = ['meet', 'lore', 'catch1', 'ring', 'catch2', 'menu', 'spirits', 'card', 'power', 'dex', 'springs', 'spring', 'bag', 'road', 'cocoons', 'quests', 'path', 'oath'];
@@ -466,9 +466,9 @@ const S = {
   /* ---------- предметы ---------- */
   bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
-  // 4.16: сумка больше не переполняется. over — награда (уровень, серия дней, задание, Летопись, Тропа, бой, родник):
+  // 4.16: сумка больше не переполняется. over — награда (уровень, серия дней, задание, Летопись, Тропа, бой, источник):
   // что не поместилось — в посылку Ордена (Rules.PARCEL, забрать — parcelTake), а не сверх лимита (раньше сумка
-  // раздувалась в разы, а родники при полной сумке молча ничего не давали). Без over (находки спутника) — только в сумку
+  // раздувалась в разы, а источники при полной сумке молча ничего не давали). Без over (находки спутника) — только в сумку
   addItem(k, n = 1, over = false) {
     const add = Math.max(0, Math.min(n, this.bagLimit() - this.bagCount()));
     if (add) this.d.items[k] = (this.d.items[k] || 0) + add;
@@ -660,7 +660,7 @@ const S = {
       changed = true;
       if (q.p >= q.n) Bus.emit('questDone', q);
     });
-    // поручения из родников
+    // поручения из источников
     this.d.tasks.forEach(q => {
       if (q.t !== type || q.p >= q.n) return;
       if (type === 'catchEl' && meta.el !== q.el) return;
@@ -674,7 +674,7 @@ const S = {
     const daily = this.d.quests ? this.d.quests.list.filter(q => q.p >= q.n && !q.claimed).length : 0;
     return daily + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
   },
-  // Новое поручение (выдаёт сервер у родника): задание и дух, который встретится в награду
+  // Новое поручение (выдаёт сервер у источника): задание и дух, который встретится в награду
   // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests)
   makeTask(pos) {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
@@ -691,7 +691,7 @@ const S = {
     return t;
   },
   /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
-     земель и сезонные не в свой сезон. Их приводят трудные поручения родников (шанс GUEST), так что поймать можно всех */
+     земель и сезонные не в свой сезон. Их приводят трудные поручения источников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
   guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0)); },
 

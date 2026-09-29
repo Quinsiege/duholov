@@ -475,7 +475,7 @@ const MapView = {
     // 4.21: Разломы видны с начала; до RAID_LEVEL — серые, с замком (нажатие скажет, с какого уровня)
     // 4.19: дух виден, только если он вне тумана Нави и не в опасном месте (вода, пути, трассы, стройки — см. Hazard)
     const spirits = W.spawnsAround(lat, lng).filter(e => e.tut || (Fog.clearAt(e.lat, e.lng) && Hazard.bad(e.lat, e.lng) === false));
-    // 5.2: Родники, Капища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
+    // 5.2: Источники, Капища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
     // PLACE_HOLD м, чтобы значок на границе не мигал); Следопыт, «Рядом» и дальние Разломы по-прежнему берут места из данных
     const R = Rules.PLACES.VIEW, inView = e => e.d <= R || (e.d <= R + this.PLACE_HOLD && this.markers.has(e.id));
     const places = [...W.riftsAround(lat, lng, R + this.PLACE_HOLD), ...W.shrinesAround(lat, lng, R + this.PLACE_HOLD), ...W.springsAround(lat, lng, R + this.PLACE_HOLD)].filter(inView);

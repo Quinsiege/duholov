@@ -66,6 +66,12 @@ const Alatyr = {
     } catch (e) { /* без связи — покажем прошлое */ }
     return this.info;
   },
+  // 5.1.6: бейдж пункта меню «Алатырь»: идёт финал с Кощеем, не показаны итоги сезона или распутанная дорога
+  badge() {
+    const now = U.now(), sm = S.d && S.d.alaSum, seen = this.seen();
+    if (Ev.finale(now) || (sm && sm.s >= 1 && this.seen(this.SEEN_SUM) < sm.s)) return '!';
+    return (Ev.roads || []).some(r => r.n > seen && r.from <= now && r.to > now) ? '!' : '';
+  },
   // награды сезонов (season-rewards.js) — если файл подключён
   rewards() { return typeof SeasonRewards !== 'undefined' && SeasonRewards ? SeasonRewards : null; },
   // камень текущего сезона (счёт — из последнего ответа сервера)

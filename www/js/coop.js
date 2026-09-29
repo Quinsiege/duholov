@@ -119,7 +119,7 @@ const Coop = {
         <h3 class="prof-h">${ru`Ловчие`} <small class="coop-n"></small></h3>
         <div class="list coop-members"></div>
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(S.team())}</div>
+        <div class="lg2-team tm-row tm-my">${UI.teamCards(S.team())}</div>
         ${this.host ? `<button class="btn primary wide coop-start">${ru`Начать бой`}</button><p class="small">${ru`Здоровье босса растёт с каждым Ловчим, награда — у каждого своя.`}</p>`
           : `<p class="coop-wait">${ru`Ждём, когда хозяин начнёт бой…`}</p>`}
       </div>`, 'rift-screen coop-screen', () => { if (!this.running) this.leave(); });
@@ -127,10 +127,13 @@ const Coop = {
     const q = s.querySelector('.coop-qr'); if (q) q.onclick = () => Friends.showQR(ru`Код разлома`,this.code, this.inviteText());
     const sh = s.querySelector('.coop-share'); if (sh) sh.onclick = () => Friends.shareText(this.inviteText());
     const go = s.querySelector('.coop-start'); if (go) go.onclick = () => this.start();
-    s.querySelector('.team-edit').onclick = () => UI.pickTeam(async () => {
-      s.querySelector('.rift-team.my').innerHTML = UI.teamHtml(S.team());
-      const room = await Game.try('roomJoin', { code: this.code }); // обновить свою силу в комнате
-      if (room) { this.send({ t: 'lobby' }); this.apply(room); }
+    s.addEventListener('click', ev => { // 5.1.5: «Изменить», карточка духа и пустое место — выбор команды
+      if (!ev.target.closest('.team-edit, .team-slot')) return;
+      UI.pickTeam(async () => {
+        const box = s.querySelector('.tm-my'); if (box) box.innerHTML = UI.teamCards(S.team());
+        const room = await Game.try('roomJoin', { code: this.code }); // обновить свою силу в комнате
+        if (room) { this.send({ t: 'lobby' }); this.apply(room); }
+      });
     });
     this.renderLobby();
   },

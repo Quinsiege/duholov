@@ -695,33 +695,62 @@ const Art = (() => {
   }
 
   /* ---------------- ОБЪЕКТЫ КАРТЫ ---------------- */
-  // 4.6: родник — резной колодец-сруб под двускатной крышей, вода светится, над срубом — столб силы
+  // 5.1.5: Источник — общий для всех мифологий: каменная чаша-исток на постаменте, из неё бьёт светящаяся вода Перепутицы,
+  // над струёй парит осколок Алатыря. used — вода на исходе (струи нет, осколок потускнел и опустился);
+  // invaded — Навь: вода темнеет до лилового, осколок чернеет и трескается, постамент обвивают щупальца, из воды смотрят глаза
   function springIcon(used, invaded) {
-    const w = invaded ? '#d946ef' : used ? '#8b7fc0' : '#5eead4', id = 'sp' + (++seq);
-    const log = (y, i) => `<rect x="15" y="${y}" width="50" height="9" rx="4.5" fill="url(#${id}w)" stroke="#3b1f0e" stroke-width="1.6"/>` +
-      `<circle cx="${i % 2 ? 16 : 64}" cy="${y + 4.5}" r="3.6" fill="#d9a066" stroke="#3b1f0e" stroke-width="1.3"/><circle cx="${i % 2 ? 16 : 64}" cy="${y + 4.5}" r="1.4" fill="none" stroke="#8a5a2b" stroke-width=".8"/>`;
+    const w = invaded ? '#e879f9' : used ? '#94a3b8' : '#5eead4', id = 'sp' + (++seq);
+    const deep = invaded ? '#4a044e' : used ? '#334155' : '#0e7490', line = invaded ? '#1a0826' : '#1e1b2e';
+    const stone = invaded ? ['#a08cc0', '#5b4478', '#2a1840'] : used ? ['#cfccd9', '#8f8aa3', '#4a4560'] : ['#f1eef9', '#a8a1c4', '#4f4868'];
+    const cry = invaded ? ['#f5d0fe', '#7e22ce', '#2e1065'] : used ? ['#eceef2', '#b8b4aa', '#77736a'] : ['#ffffff', '#f3eee2', '#b9ab8c'];
+    const gold = used ? '#c8c2ae' : invaded ? '#e9a8f5' : '#f3cf6b';
+    // брызги-лепестки по бокам струи: тонкий серп от вершины к кромке чаши
+    const petal = s => `<path d="M40 41C${40 - s * 12} 38 ${40 - s * 22} 46 ${40 - s * 25} 61C${40 - s * 19} 51 ${40 - s * 11} 45.5 40 46Z" fill="url(#${id}j)" stroke="${shade(w, -0.45)}" stroke-width="1" stroke-linejoin="round"/>` +
+      `<path d="M${40 - s * 3} 42.5C${40 - s * 12} 41 ${40 - s * 19} 47 ${40 - s * 22} 56" fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".75"/>`;
     return `<svg viewBox="0 0 80 110" class="art"><defs>` +
-      `<linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${w}" stop-opacity="${used ? 0.35 : 0.85}"/><stop offset="1" stop-color="${w}" stop-opacity="0"/></linearGradient>` +
-      `<linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c98a4b"/><stop offset=".55" stop-color="#9a5b2a"/><stop offset="1" stop-color="#5e3314"/></linearGradient>` +
-      `<linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c4a22"/><stop offset="1" stop-color="#3b1f0e"/></linearGradient>` +
-      `<radialGradient id="${id}g"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="${w}"/><stop offset="1" stop-color="${w}" stop-opacity=".6"/></radialGradient></defs>` +
-      `<ellipse cx="40" cy="103" rx="30" ry="6" fill="#000" opacity=".35"/>` +
-      `<rect class="beam" x="28" y="0" width="24" height="74" rx="12" fill="url(#${id})"/>` +
-      // столбы и ворот с ведёрком
-      `<path d="M20 74V34M60 74V34" stroke="#3b1f0e" stroke-width="5" stroke-linecap="round"/><path d="M20 74V34M60 74V34" stroke="#9a5b2a" stroke-width="2.6" stroke-linecap="round"/>` +
-      `<path d="M19 44H61" stroke="#3b1f0e" stroke-width="4.5" stroke-linecap="round"/><path d="M19 44H61" stroke="#c98a4b" stroke-width="2" stroke-linecap="round"/>` +
-      `<path d="M44 44V56" stroke="#d6c7a1" stroke-width="1.3"/><path d="M39.5 56h9l-1.3 7h-6.4z" fill="#9a5b2a" stroke="#3b1f0e" stroke-width="1.2" stroke-linejoin="round"/>` +
-      // крыша с резным коньком
-      `<path d="M8 38 L40 14 L72 38 L66 40 L40 21 L14 40Z" fill="url(#${id}r)" stroke="#2a1508" stroke-width="1.8" stroke-linejoin="round"/>` +
-      `<path d="M14 38 L40 19 L66 38" fill="none" stroke="#d9a066" stroke-width="1.2" stroke-dasharray="3 3" opacity=".8"/>` +
-      `<path d="M40 14 C36 8 40 4 43 7 C45 9 43 12 40 11" fill="none" stroke="#3b1f0e" stroke-width="2.4" stroke-linecap="round"/>` +
-      // сруб: вода сверху, три венца
-      `<ellipse cx="40" cy="74" rx="25" ry="7" fill="#2a1508"/><ellipse cx="40" cy="74.5" rx="21" ry="5" fill="url(#${id}g)"/>` +
-      `<ellipse cx="34" cy="73.5" rx="6" ry="1.4" fill="#fff" opacity=".75"/>` +
-      log(75, 0) + log(83, 1) + log(91, 2) +
-      `<circle class="art-float" cx="30" cy="58" r="2.6" fill="${w}"/><circle class="art-float" style="animation-delay:.7s" cx="50" cy="44" r="2.2" fill="${w}"/><circle class="art-float" style="animation-delay:1.3s" cx="38" cy="30" r="1.6" fill="#fff" opacity=".8"/>` +
-      (invaded ? `<g class="art-flicker" fill="#3b0764" opacity=".88"><path d="M10 98 C4 76 20 66 16 44 C30 62 32 80 26 98Z"/><path d="M70 98 C76 76 60 66 64 44 C50 62 48 80 54 98Z"/></g>` +
-        `<ellipse cx="34" cy="62" rx="3.6" ry="2.4" fill="#f43f5e"/><ellipse cx="46" cy="62" rx="3.6" ry="2.4" fill="#f43f5e"/>` : '') + `</svg>`;
+      `<linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${w}" stop-opacity="${used ? 0.25 : 0.7}"/><stop offset="1" stop-color="${w}" stop-opacity="0"/></linearGradient>` +
+      `<linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${stone[0]}"/><stop offset=".45" stop-color="${stone[1]}"/><stop offset="1" stop-color="${stone[2]}"/></linearGradient>` +
+      `<linearGradient id="${id}t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${stone[0]}"/><stop offset="1" stop-color="${stone[1]}"/></linearGradient>` +
+      `<radialGradient id="${id}w" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#fff" stop-opacity="${used ? 0.35 : 0.95}"/><stop offset=".4" stop-color="${w}"/><stop offset="1" stop-color="${deep}"/></radialGradient>` +
+      `<linearGradient id="${id}j" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${w}"/><stop offset=".65" stop-color="${shade(w, 0.55)}"/><stop offset="1" stop-color="#fff"/></linearGradient>` +
+      `<radialGradient id="${id}a"><stop offset="0" stop-color="${w}" stop-opacity=".55"/><stop offset="1" stop-color="${w}" stop-opacity="0"/></radialGradient>` +
+      `<radialGradient id="${id}h"><stop offset="0" stop-color="${invaded ? '#f0abfc' : '#fff7d1'}" stop-opacity=".95"/><stop offset="1" stop-color="${invaded ? '#c026d3' : '#fde68a'}" stop-opacity="0"/></radialGradient>` +
+      `<linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cry[0]}"/><stop offset=".5" stop-color="${cry[1]}"/><stop offset="1" stop-color="${cry[2]}"/></linearGradient></defs>` +
+      (used ? '' : `<circle class="art-aura" cx="40" cy="42" r="38" fill="url(#${id}a)"/>`) +
+      `<ellipse cx="40" cy="104.5" rx="29" ry="5" fill="#000" opacity=".35"/>` +
+      `<rect class="beam" x="30" y="0" width="20" height="66" rx="10" fill="url(#${id})"/>` +
+      // постамент: плита и ножка с сияющим камнем-искрой
+      `<path d="M15 98Q15 94 19 94H61Q65 94 65 98V101Q65 104 61 104H19Q15 104 15 101Z" fill="url(#${id}s)" stroke="${line}" stroke-width="2.4" stroke-linejoin="round"/>` +
+      `<path d="M19 96.6H61" stroke="#fff" stroke-width="1.2" opacity=".5" stroke-linecap="round"/>` +
+      `<path d="M29 94C32.5 90 34 86.5 33 82H47C46 86.5 47.5 90 51 94Z" fill="url(#${id}s)" stroke="${line}" stroke-width="2.4" stroke-linejoin="round"/>` +
+      `<path d="M40 84.6l2.8 3.4-2.8 3.4-2.8-3.4Z" fill="${used ? '#cbd5e1' : w}" stroke="${line}" stroke-width="1.1"${used ? '' : ' class="art-blink"'}/>` +
+      // чаша: тело с золотой волной по поясу, кромка, вода
+      `<path d="M8.5 64C9.5 77 23.5 84.5 40 84.5C56.5 84.5 70.5 77 71.5 64Z" fill="url(#${id}s)" stroke="${line}" stroke-width="2.6" stroke-linejoin="round"/>` +
+      `<path d="M15.5 72q4-3.2 8.1 0t8.1 0 8.1 0 8.1 0 8.1 0 8.1 0" fill="none" stroke="${gold}" stroke-width="1.7" stroke-linecap="round"/>` +
+      `<path d="M14 67.5C17 75 25 79.5 33 80.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".4"/>` +
+      `<ellipse cx="40" cy="64" rx="32" ry="8.2" fill="url(#${id}t)" stroke="${line}" stroke-width="2.6"/>` +
+      (used
+        ? `<ellipse cx="40" cy="64.6" rx="26.5" ry="5.4" fill="#2b2740"/><ellipse cx="40" cy="66" rx="15" ry="3" fill="url(#${id}w)"/>` +
+          `<circle class="art-float" cx="36" cy="64" r="1.6" fill="#cbd5e1" opacity=".8"/><circle class="art-float" style="animation-delay:1.1s" cx="44.5" cy="63.4" r="1.2" fill="#e2e8f0" opacity=".7"/>`
+        : `<ellipse cx="40" cy="64.6" rx="26.5" ry="5.4" fill="url(#${id}w)"/><ellipse cx="29" cy="63.4" rx="6.5" ry="1.4" fill="#fff" opacity=".7"/>`) +
+      // струя: бьёт из середины чаши к осколку, по бокам — брызги
+      (used ? '' : petal(1) + petal(-1) +
+        `<path class="art-flicker" d="M35 65.5C36 57 36.5 47 37.5 38Q40 30 42.5 38C43.5 47 44 57 45 65.5Z" fill="url(#${id}j)" stroke="${shade(w, -0.45)}" stroke-width="1.3" stroke-linejoin="round"/>` +
+        `<circle class="art-float" cx="17" cy="50" r="2" fill="${w}"/><circle class="art-float" style="animation-delay:.8s" cx="63" cy="47" r="1.7" fill="${w}"/><circle class="art-float" style="animation-delay:1.5s" cx="52" cy="36" r="1.3" fill="#fff" opacity=".9"/>`) +
+      // осколок Алатыря парит над струёй (у иссякшего — опустился к самой воде и потускнел)
+      `<g class="art-float" style="animation-duration:3.2s"${used ? ' opacity=".75"' : ''}><g${used ? ' transform="translate(40 36) scale(.82) translate(-40 -18)"' : ''}>` +
+        (used ? '' : `<circle cx="40" cy="18" r="17" fill="url(#${id}h)"/>`) +
+        `<path d="M40 1.5L51 10.5L48.5 27L40 34.5L31.5 27L29.5 10.5Z" fill="url(#${id}c)" stroke="${invaded ? '#1a0826' : '#4a3d24'}" stroke-width="2.2" stroke-linejoin="round"/>` +
+        `<path d="M40 1.5L51 10.5L41.5 15.5Z" fill="#fff" opacity="${invaded ? 0.4 : 0.9}"/>` +
+        `<path d="M40 1.5L41.5 15.5L40 34.5M41.5 15.5L31.5 27M41.5 15.5L29.5 10.5M41.5 15.5L48.5 27" stroke="${invaded ? '#f0abfc' : '#8a7a58'}" stroke-width="1" fill="none" opacity=".55"/>` +
+        `<path d="M33 12L37 7" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity="${invaded ? 0.5 : 0.95}"/>` +
+        (invaded ? `<path d="M45 9L41.5 16L45 20L40.5 28" stroke="#f0abfc" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : '') +
+      `</g></g>` +
+      (used ? '' : glint(55, 7, 5, invaded ? '#f5d0fe' : '#fff7d1', .95) + glint(24, 28, 3.2, '#fff', .85)) +
+      // захвачен Навью: тёмные щупальца обвивают постамент, из воды смотрят глаза
+      (invaded ? `<g class="art-flicker" fill="#3b0764" stroke="#1a0826" stroke-width="1.2" opacity=".92"><path d="M8 102C1 85 13 75 9 55C23 68 27 85 21 102Z"/><path d="M72 102C79 85 67 75 71 55C57 68 53 85 59 102Z"/></g>` +
+        `<ellipse cx="33.5" cy="65.6" rx="3.4" ry="2" fill="#f43f5e" stroke="#1a0826" stroke-width=".8"/><ellipse cx="46.5" cy="65.6" rx="3.4" ry="2" fill="#f43f5e" stroke="#1a0826" stroke-width=".8"/>` +
+        `<circle cx="33.5" cy="65.2" r=".8" fill="#fff"/><circle cx="46.5" cy="65.2" r=".8" fill="#fff"/>` : '') + `</svg>`;
   }
   // 4.6: разлом — каменные врата-кольцо с рунами, внутри закручивается воронка Нави
   function riftIcon(tier, myth) {
@@ -1335,7 +1364,7 @@ const Art = (() => {
     return { ar, parts };
   }
   // key — кэш слоёв одинаковых рисунков (дух, знак карты, Велимир); cls — доп. классы обёртки
-  // ctx — классы места, от которых зависит анимация (например, луч родника движется только на карте)
+  // ctx — классы места, от которых зависит анимация (например, луч источника движется только на карте)
   function stack(svg, key, cls = '', ctx = '') {
     const L = key ? (stackCache[key] || (stackCache[key] = layers(svg, `${cls} ${ctx}`))) : layers(svg, `${cls} ${ctx}`);
     const n = 'k' + (++stkN);

@@ -476,6 +476,23 @@ const UI = {
         <circle cx="50" cy="38" r="15" fill="${u('a')}" stroke="#4a2c06" stroke-width="2.6"/><circle cx="50" cy="38" r="9.5" fill="${u('c')}" stroke="#0b4540" stroke-width="2"/>
         <path d="${star(50, 38, 6, 2.4, 4)}" fill="#fff" opacity=".85"/>
         <path d="M26 32 C28 21 36 13 46 11" stroke="#fff" stroke-width="4.2" fill="none" stroke-linecap="round" opacity=".6"/><circle cx="24" cy="41" r="2.2" fill="#fff" opacity=".6"/>` + spk(88, 14, 5) + spk(12, 66, 3.5),
+      // 5.1.6: Алатырь — бел-горюч камень: гранёный белый шестигранник в золотом свечении, на «столе» — золотая руна (как Alatyr.stone)
+      alatyr: () => { const R = [43, 40, 42, 43, 40, 42], a = i => -Math.PI / 2 + i * Math.PI / 3;
+        const O = R.map((r, i) => P(50, 47, r, a(i))), I = R.map((r, i) => P(50, 47, 17.5, a(i) + .05));
+        let fc = ''; // грани светлее сверху слева, темнее снизу справа
+        for (let i = 0; i < 6; i++) { const j = (i + 1) % 6, l = Math.cos(a(i) + Math.PI / 6 + 3 * Math.PI / 4);
+          fc += `<path d="M${O[i]} L${O[j]} L${I[j]} L${I[i]}Z" fill="${l > 0 ? '#fff' : '#5b4214'}" opacity="${f1(Math.abs(l) * (l > 0 ? .6 : .34))}"/>`; }
+        return D(rg('g', [[0, '#fde68a', .9], [.78, '#fbbf24', .5], [1, '#fbbf24', 0]], .5, .47, .5),lg('s', [[0, '#ffffff'], [.55, '#efe8d8'], [1, '#b3a484']], 1, 1),
+          rg('t', [[0, '#fffdf5'], [.7, '#f3ead3'], [1, '#d8ccb0']], .4, .35, .75)) +
+          `<circle cx="50" cy="47" r="49" fill="${u('g')}"/>` + sh(28) +
+          `<path d="M${O.join(' L')}Z" fill="${u('s')}"/>${fc}
+          <path d="${O.map((o, i) => `M${I[i]} L${o}`).join(' ')}" stroke="#6b5530" stroke-width="1.6" opacity=".55"/>
+          <path d="M${O.join(' L')}Z" fill="none" stroke="#4a3714" stroke-width="3.2" stroke-linejoin="round"/>
+          <path d="M${I.join(' L')}Z" fill="${u('t')}" stroke="#6b5530" stroke-width="2.2" stroke-linejoin="round"/>
+          <circle cx="50" cy="47" r="10" fill="#fde68a" opacity=".5"/>
+          <g fill="none" stroke="#b45309" stroke-width="2.4" stroke-linejoin="round"><rect x="43.5" y="40.5" width="13" height="13"/><rect x="43.5" y="40.5" width="13" height="13" transform="rotate(45 50 47)"/></g>
+          <circle cx="50" cy="47" r="2.5" fill="#b45309"/>` +
+          hl(31, 24, 7, 2.6, -30, .8) + hl(45, 38, 3, 1.3, -30, .7) + spk(87, 15, 6) + spk(13, 19, 4.5, '#fde68a') + spk(89, 72, 3.5); },
       // Ловчий: по пояс, в плаще с капюшоном (цвет плаща и глаз — из «Облика» игрока), стрелы за плечом, застёжка-оберег
       user: () => { const lk = (S.d && S.d.look) || {}, hex = /^#[0-9a-f]{6}$/i;
         const c = hex.test(lk.cloak) ? lk.cloak : '#6d28d9', eye = hex.test(lk.eyes) ? lk.eyes : '#5eead4', ol = Art.shade(c, -0.6);
@@ -562,7 +579,7 @@ const UI = {
   // только что открытые — с меткой «Новое», пока в раздел не заглянули (помнит телефон)
   OPEN_KEY: 'duholov.opened',
   openLvl(k) {
-    const L = { shop: 2, swap: 2, journal: 2, trail: 3, chat: Rules.CHAT.LEVEL, rift: RAID_LEVEL, pin: Propose.MIN_LEVEL, trophy: League.LEVEL, shield: CLAN_LEVEL, gavel: Rules.AUCTION.LEVEL };
+    const L = { shop: 2, swap: 2, journal: 2, trail: 3, chat: Rules.CHAT.LEVEL, rift: RAID_LEVEL, trophy: League.LEVEL, shield: CLAN_LEVEL, gavel: Rules.AUCTION.LEVEL };
     return L[k] || 1;
   },
   opened() {
@@ -572,7 +589,7 @@ const UI = {
     // первый запуск 4.18 у того, кто уже играл: всё, что у него уже открыто, — знакомо (без меток «Новое» и советов про старое)
     if (!o && S.d && !Tut.step() && S.d.level > 2) {
       o = {};
-      ['shop', 'swap', 'journal', 'trail', 'chat', 'rift', 'pin', 'trophy', 'shield', 'gavel'].forEach(k => { if (this.openLvl(k) <= S.d.level) o[k] = 1; });
+      ['shop', 'swap', 'journal', 'trail', 'chat', 'rift', 'trophy', 'shield', 'gavel'].forEach(k => { if (this.openLvl(k) <= S.d.level) o[k] = 1; });
       if (S.d.level >= DUEL_LEVEL) o.shrine = 1;
       if (S.d.level >= INVASION_LEVEL) o.invasion = 1;
       try { localStorage.setItem(this.OPEN_KEY, JSON.stringify(o)); } catch (e) { /* не запомнили — посчитаем снова */ }
@@ -599,10 +616,10 @@ const UI = {
       ['trail', ru`Тропа`, () => Pass.screen(), Pass.claimable() || ''],
       ['rift', ru`Разломы`, () => Raid.list(), (n => n > 9 ? '9+' : n || '')(Raid.openCount())],
       ['path', ru`Путь`, () => Path.screen()],
-      // вторая страница
       ['gavel', ru`Аукцион`, () => Auction.screen(), Auction.badge()],
       ['orderbook', ru`Книга Ордена`, () => Book.screen()],
-      ['pin', ru`Места`, () => Propose.screen(), Propose.badge()],
+      // 5.1.6: «Места» убраны — игроки больше не предлагают места (Propose остался: итоги старых заявок); вместо них — сезон Алатыря
+      ['alatyr', ru`Алатырь`, () => Alatyr.screen(), Alatyr.badge()],
       ['user', ru`Ловчий`, () => this.profile()],
       ['shield', ru`Клан`, () => { if (S.d.level < CLAN_LEVEL) { this.toast(ru`Клан можно выбрать с ${CLAN_LEVEL} уровня Ловчего`); return; } S.d.clan ? Clans.screen() : Clans.choose(); }],
       ['journal', ru`Дневник`, () => J.screen()],
@@ -618,7 +635,21 @@ const UI = {
     const tile = (t, i) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
       const badge = lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : '';
       return `<button class="tile rm-it${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}"><span class="rm-c">${this.menuIcon(t[0])}${badge}</span><span class="rm-l">${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}</button>`; };
-    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid">${tiles.map(tile).join('')}</div></div>`);
+    // 5.1.6: не сплошной плиткой, а разделами с общими заголовками — сразу видно, куда идти (без вкладок: всё на одной панели)
+    const SECS = [
+      [ru`Духи`, ['spirits', 'book', 'egg', 'bag']],
+      [ru`Приключения`, ['scroll', 'rift', 'path']],
+      [ru`Сезон и соперничество`, ['alatyr', 'trail', 'trophy', 'shield']],
+      [ru`Орден и друзья`, ['swap', 'chat', 'orderbook']],
+      [ru`Торговля`, ['shop', 'gavel']],
+      [ru`Ловчий`, ['user', 'journal', 'gear', 'support']],
+    ];
+    const at = Object.fromEntries(tiles.map((t, i) => [t[0], i]));
+    const secs = SECS.map(([h, ks]) => `<section class="rm-sec"><div class="rm-h" role="heading" aria-level="2"><span>${h}</span></div><div class="rm-row">${ks.map(k => tile(tiles[at[k]], at[k])).join('')}</div></section>`);
+    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid rm-secs">${secs.join('')}</div></div>`);
+    // обучение: подсказка встаёт сверху — панель начинается под ней, чтобы подсвеченный раздел и указатель над ним не закрывало
+    const co = Tut.step() && U.$('#coach:not(.hidden)');
+    if (co) { wrap.classList.add('rm-tut'); wrap.style.setProperty('--rm-co', co.offsetHeight + 'px'); }
     const orb = U.$('#menuBtn');
     let closing = false;
     const close = (then) => {
@@ -649,7 +680,10 @@ const UI = {
       const [x, y] = pos[i], d = Math.hypot(x - ox, y - oy) / far2;
       it.style.setProperty('--dx', (ox - x).toFixed(1) + 'px'); it.style.setProperty('--dy', (oy - y).toFixed(1) + 'px');
       it.style.setProperty('--d', Math.round(d * 260) + 'ms'); it.style.setProperty('--db', Math.round((1 - d) * 120) + 'ms');
+      it._d = d;
     });
+    // заголовок раздела проявляется, когда долетает первый значок его ряда
+    wrap.querySelectorAll('.rm-sec').forEach(s => s.style.setProperty('--hd', Math.round(Math.min(...[...s.querySelectorAll('.rm-it')].map(it => it._d)) * 260 + 120) + 'ms'));
     void wrap.offsetWidth; // стартовые положения применены — дальше переход к местам
     wrap.classList.add('rm-in'); document.body.classList.add('rm-open');
     this._rm = close;
@@ -697,12 +731,12 @@ const UI = {
   spring(e) {
     const photo = Poi.photoUrl(e.photo), C = 2 * Math.PI * 138; // длина дуги по краю колодца
     // вкладки: колодец, что может дать родник, о месте; захваченный Навью — сначала вкладка вторжения
-    const tabs = [['well', ru`Колодец`], ['loot', ru`Добыча`], ['place', ru`О месте`], ...(e.invaded ? [['inv', ru`Вторжение`]] : [])], tab0 = e.invaded ? 'inv' : 'well';
+    const tabs = [['well', ru`Исток`], ['loot', ru`Добыча`], ['place', ru`О месте`], ...(e.invaded ? [['inv', ru`Вторжение`]] : [])], tab0 = e.invaded ? 'inv' : 'well';
     const motes = Array.from({ length: 14 }, (_, k) => `<i style="--x:${(U.h('sm', e.id, k) * 100).toFixed(1)}%;--d:${(5 + U.h('sd', e.id, k) * 6).toFixed(1)}s;--t:${(-U.h('st', e.id, k) * 10).toFixed(1)}s;--s:${(.5 + U.h('ss', e.id, k)).toFixed(2)}"></i>`).join('');
     const scr = this.screen('', `
       <div class="spr2 spring-view">
         <div class="spr2-motes" aria-hidden="true">${motes}</div>
-        <div class="spr2-head"><small>${ru`Родник`}</small><div class="spring-title">${U.esc(e.name)}</div></div>
+        <div class="spr2-head"><small>${ru`Источник`}</small><div class="spring-title">${U.esc(e.name)}</div></div>
         <div class="seg dt-tabs spr2-tabs">${tabs.map(([k, t]) => `<button data-tab="${k}" class="${k === tab0 ? 'on' : ''}${k === 'inv' ? ' inv' : ''}">${t}</button>`).join('')}</div>
         <div class="spr2-pane${tab0 === 'well' ? ' on' : ''}" data-pane="well">
         <div class="spr2-well spring-disc">
@@ -715,17 +749,16 @@ const UI = {
             <circle class="spr2-arc" cx="150" cy="150" r="138" style="stroke-dasharray:${C.toFixed(1)};stroke-dashoffset:${C.toFixed(1)}"/>
             <g class="spr2-runes"><text><textPath href="#sprRunePath" startOffset="0">${this.SPRING_RUNES.repeat(3)}</textPath></text></g>
           </svg>
-          <div class="spr2-water">${photo ? `<div class="spr2-photo" style="background-image:url('${photo}')"></div>` : `<div class="spr2-icon">${Art.springIcon(!e.ready)}</div>`}<i class="spr2-caustic"></i><i class="spr2-shine"></i></div>
+          <div class="spr2-water">${photo ? `<div class="spr2-photo" style="background-image:url('${photo}')"></div>` : `<div class="spr2-icon">${Art.springIcon(!e.ready && !e.invaded, e.invaded)}</div>`}<i class="spr2-caustic"></i><i class="spr2-shine"></i></div>
           <div class="spr2-burst" aria-hidden="true">${Array.from({ length: 14 }, (_, k) => `<i style="--a:${k * 360 / 14}deg;--r:${110 + (k % 3) * 22}px"></i>`).join('')}</div>
         </div>
         <div class="spring-hint spr2-hint"></div>
-        <div class="spring-loot spr2-loot"></div>
         <button class="btn primary wide spring-go">${ru`Зачерпнуть силу`}</button>
-        ${Rules.dayLine(S.d, 'springs', ru`Родников`)}
+        ${Rules.dayLine(S.d, 'springs', ru`Источников`)}
         </div>
         <div class="spr2-pane${tab0 === 'loot' ? ' on' : ''}" data-pane="loot">${this.springLootHtml()}</div>
         <div class="spr2-pane${tab0 === 'place' ? ' on' : ''}" data-pane="place">${this.springPlaceHtml(e)}</div>
-        ${e.invaded ? `<div class="spr2-pane${tab0 === 'inv' ? ' on' : ''}" data-pane="inv"><div class="spr2-inv"><div class="spr2-inv-ico">${Art.springIcon(false, true)}</div><p>${ru`Навь захватила этот родник. Победи её прислужников — и родник снова твой, с наградой.`}</p><button class="btn primary wide spr2-fight">${ru`В бой`}</button></div></div>` : ''}
+        ${e.invaded ? `<div class="spr2-pane${tab0 === 'inv' ? ' on' : ''}" data-pane="inv"><div class="spr2-inv"><div class="spr2-inv-ico">${Art.springIcon(false, true)}</div><p>${ru`Навь захватила этот источник. Победи её прислужников — и источник снова твой, с наградой.`}</p><button class="btn primary wide spr2-fight">${ru`В бой`}</button></div></div>` : ''}
       </div>`, 'spring-screen spr2-screen');
     const view = scr.querySelector('.spr2'), hint = scr.querySelector('.spring-hint'), go = scr.querySelector('.spring-go');
     const disc = scr.querySelector('.spr2-well'), ring = scr.querySelector('.spr2-runes'), arc = scr.querySelector('.spr2-arc');
@@ -742,10 +775,10 @@ const UI = {
     const update = () => {
       if (!scr.isConnected) return clearInterval(timer);
       if (scr._done) return;
-      if (e.invaded) { hint.textContent = ru`Родник захвачен Навью`; go.disabled = true; view.classList.add('used'); return; }
+      if (e.invaded) { hint.textContent = ru`Источник захвачен Навью`; go.disabled = true; view.classList.add('used'); return; }
       if (!ready()) {
         const left = (S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now();
-        hint.textContent = ru`Родник набирает силу: ${U.fmtTime(left)}`;
+        hint.textContent = ru`Источник набирает силу: ${U.fmtTime(left)}`;
         go.disabled = true; view.classList.add('used');
         setArc(1 - left / W.SPRING_COOLDOWN); // дуга наполняется, пока родник набирает силу
       } else {
@@ -767,22 +800,50 @@ const UI = {
       if (!scr.isConnected) return;
       if (!r) { scr._done = false; view.classList.remove('spin'); setArc(0); update(); return; }
       view.classList.remove('spin'); void view.offsetWidth; view.classList.add('burst'); // всплеск
-      setTimeout(() => view.classList.add('taken'), 550); // колодец уходит — остаётся только награда
+      setTimeout(() => view.classList.add('taken'), 350); // 5.1.5: чаша гаснет и уходит на фон, «В сумку» — внизу экрана
       U.vibrate([30, 50, 80]);
       const got = r.got, xp = got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50;
       const items = got.filter(x => x.k !== 'xp');
       const cocoonHtml = r.cocoon ? `<div class="loot-item spr2-cocoon" style="--k:${items.length}">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
-      scr.querySelector('.spring-loot').innerHTML = items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `<div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>${r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : ''}` +
+      // 5.1.5: награда — отдельным слоем поверх окна, посередине видимой части экрана (между шапкой и «В сумку»);
+      // под сеткой — «Сумка полна» и новое поручение
+      const rw = U.el('<div class="spr2-reward"><div class="spring-loot spr2-loot"></div><div class="spr2-after"></div></div>');
+      scr.appendChild(rw);
+      const loot = rw.querySelector('.spring-loot'), n = items.length + (r.cocoon ? 1 : 0);
+      loot.classList.toggle('many', n > 6);
+      loot.innerHTML = `<div class="spr2-rays" aria-hidden="true"></div><div class="spr2-grid">` +
+        items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
+        `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>`;
+      rw.querySelector('.spr2-after').innerHTML = (r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +
         (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
+      // каждая вещь вылетает из середины воды на своё место в сетке (--fx/--fy — путь от центра чаши)
+      const lb = disc.getBoundingClientRect(), lcx = lb.left + lb.width / 2, lcy = lb.top + lb.height / 2;
+      U.$$('.loot-item', loot).forEach(it => {
+        const b = it.getBoundingClientRect();
+        it.style.setProperty('--fx', `${Math.round(lcx - (b.left + b.width / 2))}px`);
+        it.style.setProperty('--fy', `${Math.round(lcy - (b.top + b.height / 2))}px`);
+      });
+      loot.classList.add('fly'); // анимация — только после замера (иначе замер попал бы в её начальный кадр)
       // опыт набегает счётчиком
       const xb = scr.querySelector('.spr2-xp'), t0 = performance.now(), T = 900;
       const tick = t => { const p = Math.min(1, (t - t0) / T); if (xb) xb.textContent = Math.round(xp * (1 - Math.pow(1 - p, 3))); if (p < 1 && scr.isConnected) requestAnimationFrame(tick); };
-      setTimeout(() => requestAnimationFrame(tick), 1100); // когда колодец ушёл и награда вылетела
+      setTimeout(() => requestAnimationFrame(tick), 1000 + n * 110); // когда вся награда вылетела
       hint.textContent = '';
-      go.textContent = ru`Готово`;
+      go.textContent = ru`В сумку`;
       go.disabled = false;
-      go.onclick = () => this.closeScreen(scr);
+      // «В сумку»: вещи слетаются к кнопке и гаснут, потом экран закрывается
+      go.onclick = () => {
+        if (view.classList.contains('stow')) return;
+        if (document.body.classList.contains('calm')) return this.closeScreen(scr);
+        const gb = go.getBoundingClientRect(), gx = gb.left + gb.width / 2, gy = gb.top + gb.height / 2;
+        U.$$('.loot-item, .loot-xp', loot).forEach(it => {
+          const b = it.getBoundingClientRect();
+          it.style.setProperty('--bx', `${Math.round(gx - (b.left + b.width / 2))}px`);
+          it.style.setProperty('--by', `${Math.round(gy - (b.top + b.height / 2))}px`);
+        });
+        view.classList.add('stow'); rw.classList.add('stow'); Sfx.play('tap'); U.vibrate(15);
+        setTimeout(() => { if (scr.isConnected) this.closeScreen(scr); }, 520 + n * 60);
+      };
       MapView.refresh();
     };
     go.onclick = take;
@@ -815,7 +876,7 @@ const UI = {
     disc.addEventListener('pointerup', end); disc.addEventListener('pointercancel', end);
   },
 
-  // вкладка «Добыча»: что может дать родник — по тем же весам, что у сервера (W.springOpts); редкое помечено
+  // вкладка «Добыча»: что может дать источник — по тем же весам, что у сервера (W.springOpts); редкое помечено
   springLootHtml() {
     const lvl = S.d.level, opts = W.springOpts(lvl), sum = opts.reduce((a, o) => a + o[1], 0), draws = 5 * Ev.lootMul();
     const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;
@@ -824,26 +885,27 @@ const UI = {
     const items = opts.map(([k, w]) => [k, 1 - Math.pow(1 - w / sum, draws)]).sort((a, b) => b[1] - a[1]);
     const locked = [['charm2', 8], ['charm3', 16], ['incense', 3]].filter(([, l]) => lvl < l);
     return `<div class="spr2-loot-tab">
-      <p class="spr2-note">${ru`За один раз родник даёт ${4}–${6} вещей и ${50} опыта. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>
+      <p class="spr2-note">${ru`За один раз источник даёт ${4}–${6} вещей и ${50} опыта. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>
       ${items.map(([k, p]) => row(Art.item(k), ITEMS[k].name, p)).join('')}
       ${(S.d.items.gift || 0) < GIFT_LIMIT ? row(Art.item('gift'), ITEMS.gift.name, W.SPRING_GIFT) : ''}
       ${row(Art.cocoon(5), ru`Кокон`, W.SPRING_COCOON * Ev.kmMul())}
       ${locked.map(([k, l]) => row(Art.item(k), ITEMS[k].name, 0, l)).join('')}
     </div>`;
   },
-  // вкладка «О месте»: настоящее место, у которого бьёт родник
+  // вкладка «О месте»: настоящее место, у которого бьёт источник
   springPlaceHtml(e) {
     const photo = Poi.photoUrl(e.photo), cat = e.cat && Osm.CATS[e.cat] ? I18N.back(Osm.CATS[e.cat][0]) : '';
     const left = (S.d.springs[e.id] || 0) + W.SPRING_COOLDOWN - U.now();
     const row = (t, v) => `<div class="dt-row"><span>${t}</span><b>${v}</b></div>`;
     return `<div class="spr2-place">
-      ${photo ? `<div class="spr2-place-photo" style="background-image:url('${photo}')"></div>` : `<div class="spr2-place-ico">${Art.springIcon(false)}</div>`}
+      ${photo ? `<div class="spr2-place-photo" style="background-image:url('${photo}')"></div>` : `<div class="spr2-place-ico">${Art.springIcon(left > 0 && !e.invaded, e.invaded)}</div>`}
+      <p class="spr2-lore">${ru`Там, где Алатырь дал трещину, из-под земли бьёт вода Перепутицы. У Источников Ловчие всех земель черпают обереги и припасы.`}</p>
       <div class="dt-rows">
         ${cat ? row(ru`Место`, U.esc(cat)) : ''}
         ${row(ru`Расстояние`, U.fmtDist(MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, e.lat, e.lng) : e.d))}
-        ${row(ru`Родник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}
+        ${row(ru`Источник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}
       </div>
-      ${Rules.dayLine(S.d, 'springs', ru`Родников`)}
+      ${Rules.dayLine(S.d, 'springs', ru`Источников`)}
     </div>`;
   },
 
@@ -860,7 +922,7 @@ const UI = {
         return `<button class="nb-item" data-i="${i}"><div class="nb-art">${seen ? Art.img(e.sid) : '<span class="nb-q">?</span>'}</div><b>${seen ? s.name : '???'}</b><small class="${d <= W.INTERACT ? 'near' : ''}">${U.fmtDist(d)}</small>${seen && !caught ? '<i class="new">new</i>' : ''}</button>`;
       }).join('')}</div><p class="small nb-hint">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,
       buttons: [
-        { label: ru`К роднику`, fn: () => this.trackNearest('spring') },
+        { label: ru`К источнику`, fn: () => this.trackNearest('spring') },
         { label: ru`К капищу`, fn: () => this.trackNearest('shrine') },
       ],
     });
@@ -872,7 +934,7 @@ const UI = {
   },
   trackNearest(type) {
     const e = MapView.nearest(type);
-    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых родников` : ru`Рядом нет свободных капищ`); return; }
+    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных капищ`); return; }
     MapView.track(e); MapView.flyTo(e);
     this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);
   },

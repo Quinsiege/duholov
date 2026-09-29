@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.4';
+const APP_VERSION = '5.1.6';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -89,7 +89,7 @@ const I18N = {
         ids: (k.match(/\{\d+\}/g) || []).map(x => +x.slice(1, -1)),
       })).sort((a, b) => b.k.replace(/\{\d+\}/g, '').length - a.k.replace(/\{\d+\}/g, '').length);
       // 4.27: сначала самые точные шаблоны (больше постоянного текста) — иначе общий «{0} из {1}» перехватывал
-      // «Зачерпни силы из {0} родников» и задание выходило наполовину по-русски
+      // «Зачерпни силы из {0} источников» и задание выходило наполовину по-русски
     }
     for (const p of this._pats) {
       const m = msg.match(p.re);
@@ -210,7 +210,7 @@ I18N.init();
     desc: ru`Трёхголовый пёс, страж ворот Аида. В городе сторожит подземные переходы: одна голова спит, другая ест, третья глядит в оба. Тает от медовых лепёшек.`,
     look: { shape: 'blob', c1: '#6b4a3a', c2: '#1f120c', c3: '#ff8a1a', eye: '#ffb020', eyes: 'glow', mouth: 'teeth', back: ['heads3', 'ears', 'cattail'], feats: ['flame'] } },
   { id: 'gr_pegas', name: ru`Пегас`, el: 'current', rar: 3, stage: 1, fam: 'gr_pegas', base: [208, 170, 186],
-    desc: ru`Крылатый белый конь. Возит по небу молнии Зевса, а там, где ударит копытом о камень, пробивается родник.`,
+    desc: ru`Крылатый белый конь. Возит по небу молнии Зевса, а там, где ударит копытом о камень, пробивается источник.`,
     look: { shape: 'blob', c1: '#f8fafc', c2: '#94a3b8', c3: '#facc15', eyes: 'round', mouth: 'none', back: ['wings', 'mane', 'tail'], feats: ['snout', 'bolt'] } },
   { id: 'gr_meduza', name: ru`Медуза`, el: 'shadow', rar: 3, stage: 1, fam: 'gr_meduza', base: [216, 150, 178],
     desc: ru`Горгона со змеями вместо волос. Носит тёмные очки, чтобы ненароком не превратить кого-нибудь в статую, а городские скульптуры считает старыми знакомыми.`,
@@ -229,7 +229,7 @@ I18N.init();
     desc: ru`Легенда. Царь богов и владыка Олимпа, повелитель грома и молний. С высоты туч видит весь город разом. Встречают его только в разломах.`,
     look: { shape: 'robe', c1: '#f8fafc', c2: '#64748b', c3: '#facc15', eye: '#fde047', eyes: 'glow', mouth: 'none', back: ['aura', 'halo'], feats: ['beard', 'crown', 'bolt'] } },
   { id: 'gr_poseidon', name: ru`Посейдон`, el: 'water', rar: 5, stage: 1, fam: 'gr_poseidon', legend: true, base: [290, 246, 258],
-    desc: ru`Легенда. Владыка морей и колебатель земли: ударом трезубца поднимает волны и выводит родники из скалы. Встречают его только в разломах.`,
+    desc: ru`Легенда. Владыка морей и колебатель земли: ударом трезубца поднимает волны и выводит источники из скалы. Встречают его только в разломах.`,
     look: { shape: 'robe', c1: '#99f6e4', c2: '#0f5f7a', c3: '#fbbf24', eye: '#a5f3fc', eyes: 'glow', mouth: 'none', back: ['aura', 'ripples'], feats: ['beard', 'crown'] } },
 ];
 
@@ -1009,7 +1009,7 @@ const SPECIES = [
 
   // ---------- v3.9: легенда третьей книги (4.24: встречается в разломах) ----------
   { id: 'indrik', name: ru`Индрик-зверь`, el: 'water', rar: 5, stage: 1, fam: 'indrik', legend: true, base: [292, 244, 256],
-    desc: ru`Легенда. Всем зверям отец: ходит под землёй, как солнце по небу, и прочищает подземные реки, чтобы родники не иссякли.`,
+    desc: ru`Легенда. Всем зверям отец: ходит под землёй, как солнце по небу, и прочищает подземные реки, чтобы источники не иссякли.`,
     look: { shape: 'blob', c1: '#e0e7ff', c2: '#4338ca', c3: '#67e8f9', eye: '#a5f3fc', eyes: 'glow', mouth: 'none', back: ['aura', 'mane', 'tail', 'unihorn'], feats: [] } },
 
   // ---------- 4.0 «Осень Нави»: дубовое семейство, Самоварник, осенняя Листопадница и легенда четвёртой книги ----------
@@ -1101,7 +1101,7 @@ const ITEMS = {
   honey:   { name: ru`Мёд`,                desc: ru`Духи обожают мёд. Успокаивает духа: шанс поимки ×1,5 на один бросок.` },
   // 4.15: лечение духов (здоровье — общее на всю игру, см. Rules.HP): heal — сколько здоровья вернёт, revive — поднимает духа без сил
   herb:    { name: ru`Подорожник`,         desc: ru`Лист к ране — и полегчало. Возвращает духу четверть здоровья.`, heal: 0.25 },
-  brew:    { name: ru`Целебный отвар`,     desc: ru`Травы Велеса, сваренные в родниковой воде. Возвращает духу 60% здоровья.`, heal: 0.6 },
+  brew:    { name: ru`Целебный отвар`,     desc: ru`Травы Велеса, сваренные в воде из источника. Возвращает духу 60% здоровья.`, heal: 0.6 },
   // 4.15.1: revive — на сколько часов раньше поднимется дух без сил (живых Мёртвая вода не лечит)
   deadwater: { name: ru`Мёртвая вода`,     desc: ru`Редкая сказочная вода, что сращивает самые тяжкие раны. Дух без сил поднимется на 4 часа раньше. Живых не лечит.`, revive: 4 },
   water:   { name: ru`Живая вода`,         desc: ru`Возвращает духу половину здоровья, а в разломе — лечит прямо в бою. Духа без сил не поднимет.`, heal: 0.5 },
@@ -1148,14 +1148,14 @@ const XP_DAY = { FULL: 35000, HALF: 70000, REST: 15000, REST_DAYS: 7 };
 // 4.16: разделы открываются постепенно — лестница открытий (раньше Капища — с 3, вторжения — с 4, Лига, дружины и Аукцион — с 5:
 // всё открывалось в первые часы). Дружины — CLAN_LEVEL, Лига — League.LEVEL, Аукцион — Rules.AUCTION.LEVEL
 const DUEL_LEVEL = 5;      // с какого уровня бои на Капищах
-const INVASION_LEVEL = 7;  // с какого уровня Навь захватывает родники (вторжения)
+const INVASION_LEVEL = 7;  // с какого уровня Навь захватывает источники (вторжения)
 const RAID_LEVEL = 4;      // 4.18: с какого уровня Разломы (раньше — с начала; первая глава Летописи с Разломом — на 5-м)
 const MOVE2_LEVEL = 6;     // 4.18: с какого уровня в карточке духа показывается второй приём
 
 const QUEST_TEMPLATES = [
   { t: 'catch',   min: 5, max: 10, text: n => ru.k`Поймай ${n} духов`,                 reward: { charm: 8, sparks: 300 } },
   { t: 'catchEl', min: 2, max: 3,  text: (n, el) => ru.k`Поймай ${n} духов стихии «${ELEMENTS[el].name}»`, reward: { honey: 3, sparks: 400 } },
-  { t: 'spring',  min: 3, max: 5,  text: n => ru.k`Зачерпни силы из ${n} родников`,     reward: { charm: 5, herb: 2 } },
+  { t: 'spring',  min: 3, max: 5,  text: n => ru.k`Зачерпни силы из ${n} источников`,     reward: { charm: 5, herb: 2 } },
   { t: 'throw',   min: 2, max: 4,  text: n => ru.k`Сделай ${n} отличных бросков`,       reward: { honey: 2, sparks: 300 } },
   { t: 'walk',    min: 1, max: 2,  text: n => ru.k`Пройди ${n} км`,                     reward: { charm: 10, sparks: 500 } },
   { t: 'power',   min: 2, max: 4,  text: n => ru.k`Усиль духов ${n} ${U.plural(n, ru.k`раз`, ru.k`раза`, ru.k`раз`)}`,            reward: { herb: 2, sparks: 300 } },
@@ -1163,11 +1163,11 @@ const QUEST_TEMPLATES = [
   { t: 'raid',    min: 1, max: 1,  text: () => ru.k`Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
 ];
 
-/* ---------- Поручения из родников (3.2): задание → встреча с духом ---------- */
+/* ---------- Поручения из источников (3.2): задание → встреча с духом ---------- */
 // tier: 1 — лёгкое (обычные и необычные духи), 2 — среднее (необычные и редкие), 3 — трудное (редкие и эпические)
 const TASK_TEMPLATES = [
   { t: 'catch',    tier: 1, min: 5, max: 8, text: n => ru.k`Поймай ${n} духов` },
-  { t: 'spring',   tier: 1, min: 3, max: 5, text: n => ru.k`Зачерпни силы из ${n} родников` },
+  { t: 'spring',   tier: 1, min: 3, max: 5, text: n => ru.k`Зачерпни силы из ${n} источников` },
   { t: 'power',    tier: 1, min: 3, max: 5, text: n => ru.k`Усиль духов ${n} ${U.plural(n, ru.k`раз`, ru.k`раза`, ru.k`раз`)}` },
   { t: 'photo',    tier: 1, min: 1, max: 1, text: () => ru.k`Сфотографируй духа во время встречи` },
   { t: 'catchEl',  tier: 2, min: 3, max: 5, text: (n, el) => ru.k`Поймай ${n} духов стихии «${ELEMENTS[el].name}»` },
@@ -1176,7 +1176,7 @@ const TASK_TEMPLATES = [
   { t: 'evolve',   tier: 2, min: 1, max: 1, text: () => ru.k`Преврати духа` },
   { t: 'duel',     tier: 2, min: 1, max: 1, lvl: DUEL_LEVEL, text: () => ru.k`Победи хранителя капища` },
   { t: 'hatch',    tier: 3, min: 1, max: 1, text: () => ru.k`Выведи духа из кокона` },
-  { t: 'invasion', tier: 3, min: 1, max: 1, lvl: INVASION_LEVEL, text: () => ru.k`Освободи родник от прислужников Нави` },
+  { t: 'invasion', tier: 3, min: 1, max: 1, lvl: INVASION_LEVEL, text: () => ru.k`Освободи источник от прислужников Нави` },
   { t: 'raid',     tier: 3, min: 1, max: 1, lvl: 5, text: () => ru.k`Закрой разлом` },
 ];
 const TASK_TIERS = {
@@ -1191,7 +1191,7 @@ const LORE = [
   ru`Миров духов всегда было много — у каждого народа свой: Навь у славян, царство Аида у греков, Асгард у скандинавов, холмы сидов у кельтов, Дуат у египтян, Небеса у китайцев, Миктлан у ацтеков. На местах их держал <b>Алатырь</b> — бел-горюч камень в середине всех миров. Каждые врата вели в свою землю, и духи не путали дорог.`,
   ru`Однажды осенней ночью Кощей Бессмертный решил спрятать свою смерть понадёжнее — прямо в сердце Алатыря. Камень треснул и раскололся. Все врата распахнулись разом, дороги между мирами спутались в клубок, и духи и боги семи мифологий высыпали в наш мир — кто куда. Эту ночь назвали <b>Перепутицей</b>. Кощей уверяет, что камень треснул сам, но Локи и Сунь Укун при этих словах почему-то хихикают.`,
   ru`Теперь Гиппокамп плещется в московском фонтане, Леший гуляет по токийскому парку, а Ниссе греет котов в подъездах Каира. Любого духа можно встретить в любом уголке земли. Разломы — трещины от расколотого камня — открываются в каждом городе, а боги ставят святилища там, где осели: Капище по соседству с Пагодой, Храм через улицу от Пирамиды. Город рождает и своих, новых духов: Вайфайку, Трамвайника, Фонарника.`,
-  ru`Первыми с гостями поладили не учёные, а бабушки со своими оберегами: оказалось, оберег, сделанный с заботой, успокаивает любого духа, откуда бы тот ни был. Так появился <b>Орден Оберега</b> — союз Ловчих всех земель. Твоя задача — находить духов, ловить их оберегами, черпать силу из родников, закрывать разломы и собирать осколки Алатыря. Кто знает — может, однажды их хватит, чтобы распутать дороги домой.`,
+  ru`Первыми с гостями поладили не учёные, а бабушки со своими оберегами: оказалось, оберег, сделанный с заботой, успокаивает любого духа, откуда бы тот ни был. Так появился <b>Орден Оберега</b> — союз Ловчих всех земель. Твоя задача — находить духов, ловить их оберегами, черпать силу из источников, закрывать разломы и собирать осколки Алатыря. Кто знает — может, однажды их хватит, чтобы распутать дороги домой.`,
 ];
 
 /* ---------- Погода: усиливает стихии ---------- */
@@ -1219,7 +1219,7 @@ const MEDAL_TIERS = [
 const MEDALS = [
   { id: 'catcher', name: ru`Ловчий`,        desc: ru`Поймай духов`,                 stat: 'caught',      tiers: [10, 100, 1000] },
   { id: 'walker',  name: ru`Странник`,      desc: ru`Пройди километров`,            stat: 'km',          tiers: [10, 100, 1000] },
-  { id: 'springs', name: ru`Водонос`,       desc: ru`Зачерпни силы из родников`,    stat: 'springs',     tiers: [30, 300, 2000] },
+  { id: 'springs', name: ru`Водонос`,       desc: ru`Зачерпни силы из источников`,    stat: 'springs',     tiers: [30, 300, 2000] },
   { id: 'raids',   name: ru`Затворник`,     desc: ru`Закрой разломов`,              stat: 'raids',       tiers: [3, 30, 200] },
   { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.filter(s => s.myth === 'slavic').length] },
   { id: 'myths',   name: ru`Странник миров`, desc: ru`Видов духов других мифологий`, stat: 'myths',       tiers: [3, 25, 80] }, // 4.28
@@ -1248,14 +1248,14 @@ const SHINY_RATE = 1 / 128;
 /* ---------- События недели (меняются каждый понедельник) ---------- */
 const WEEK_EVENTS = [
   { id: 'fire',    name: ru`Неделя Огня`,       el: 'fire' },
-  { id: 'stars',   name: ru`Звездопад`,         xp: 2,  desc: ru`Двойной опыт за всё: поимку, родники, разломы и поединки.` },
+  { id: 'stars',   name: ru`Звездопад`,         xp: 2,  desc: ru`Двойной опыт за всё: поимку, источники, разломы и поединки.` },
   { id: 'water',   name: ru`Неделя Воды`,       el: 'water' },
-  { id: 'springs', name: ru`Родниковая неделя`, loot: 2, cooldown: 3, desc: ru`Родники дают вдвое больше предметов и восстанавливаются за 3 минуты.` },
+  { id: 'springs', name: ru`Неделя источников`, loot: 2, cooldown: 3, desc: ru`Источники дают вдвое больше предметов и восстанавливаются за 3 минуты.` },
   { id: 'forest',  name: ru`Неделя Леса`,       el: 'forest' },
   { id: 'nav',     name: ru`Навья неделя`,      el: 'shadow', shiny: 2, desc: ru`Духи Тени повсюду, а сияющие встречаются вдвое чаще.` },
   { id: 'duels',   name: ru`Неделя поединков`,  duel: 2, desc: ru`Хранители капищ дают двойную награду.` },
   { id: 'wind',    name: ru`Неделя Ветра`,      el: 'wind' },
-  { id: 'cocoons', name: ru`Неделя коконов`,    km: 2, desc: ru`Шаги для коконов и спутника считаются вдвое, коконы в родниках попадаются вдвое чаще.` },
+  { id: 'cocoons', name: ru`Неделя коконов`,    km: 2, desc: ru`Шаги для коконов и спутника считаются вдвое, коконы в источниках попадаются вдвое чаще.` },
   { id: 'current', name: ru`Неделя Тока`,       el: 'current' },
   { id: 'rifts',   name: ru`Неделя разломов`,   rifts: true, desc: ru`Великие разломы открываются втрое чаще, за победу — +3 оберега разлома.` },
 ];
@@ -1364,16 +1364,16 @@ const SHRINE_TIERS = {
 };
 /* ---------- Праздники (v1.4) ---------- */
 const HOLIDAYS = {
-  svyatki:     { name: ru`Святки`,          desc: ru`Зимние праздники: Морозко и Снегурка выходят к людям, духи Ветра и Воды встречаются чаще, в родниках — подарки.`, el: ['wind', 'water'], loot: 1.5, seasonal: ['morozko', 'snegurka'] },
-  maslenitsa:  { name: ru`Масленица`,       desc: ru`Провожаем зиму! Духи Огня встречаются вдвое чаще, в родниках много мёда («блинов»), опыт ×1,5.`, el: ['fire'], honey: true, xp: 1.5 },
+  svyatki:     { name: ru`Святки`,          desc: ru`Зимние праздники: Морозко и Снегурка выходят к людям, духи Ветра и Воды встречаются чаще, в источниках — подарки.`, el: ['wind', 'water'], loot: 1.5, seasonal: ['morozko', 'snegurka'] },
+  maslenitsa:  { name: ru`Масленица`,       desc: ru`Провожаем зиму! Духи Огня встречаются вдвое чаще, в источниках много мёда («блинов»), опыт ×1,5.`, el: ['fire'], honey: true, xp: 1.5 },
   kupala:      { name: ru`Купальская ночь`, desc: ru`Цветёт папоротник: Купалинка повсюду, духи Огня, Воды и Леса чаще, ночью сияющие — вдвое чаще.`, el: ['fire', 'water', 'forest'], shinyNight: 2, seasonal: ['kupalinka'] },
-  pokrov:      { name: ru`Покров`, desc: ru`Первые туманы и иней: духи Ветра и Воды встречаются чаще, Листопадница — повсюду, в родниках больше добычи.`, el: ['wind', 'water'], loot: 1.5, seasonal: ['listopadnica'] },
+  pokrov:      { name: ru`Покров`, desc: ru`Первые туманы и иней: духи Ветра и Воды встречаются чаще, Листопадница — повсюду, в источниках больше добычи.`, el: ['wind', 'water'], loot: 1.5, seasonal: ['listopadnica'] },
   veles:       { name: ru`Велесова ночь`,   desc: ru`Граница миров тоньше всего: духи Тени втрое чаще, в великих разломах ждёт Кощей, сияющие Тени вдвое чаще.`, el: ['shadow'], elMul: 3, koschey: true, shiny: 2 },
 };
 
 /* ---------- Вторжения Нави (v1.4) ---------- */
 const GRUNT_QUOTES = [
-  ru`Этот родник теперь принадлежит Нави!`,
+  ru`Этот источник теперь принадлежит Нави!`,
   ru`Твои духи будут служить Кощею!`,
   ru`Орден Оберега? Никогда о таком не слышал.`,
   ru`Граница рухнет, и мы заберём весь город!`,
@@ -1452,12 +1452,12 @@ QUEST_TEMPLATES.push({ t: 'duel', min: 1, max: 2, text: n => ru.k`Победи �
 /* ---------- 4.0: обучение новичка ----------
    Пропустить нельзя: шаги ведёт сервер (S.d.tut — номер текущего шага, 0 — пройдено), после перезахода игра
    продолжает с того же места. 4.24: без сцен и сюжета — только подсказки. kind: ui — открыть раздел; catch — поймать
-   учебного духа (sid); spring — зачерпнуть из родника; power — усилить духа. За каждый этап — награда. */
+   учебного духа (sid); spring — зачерпнуть из источника; power — усилить духа. За каждый этап — награда. */
 const TUT_V = 5; // версия списка шагов: при смене — перевод S.d.tut в S.migrate
 const TUT_CHAPTERS = [
   { title: ru`Первый дух`,  reward: { charm: 15, honey: 3, sparks: 500, xp: 400 } },
   { title: ru`Твои духи`,   reward: { sparks: 500, xp: 300 } },
-  { title: ru`Родники`,     reward: { charm: 15, water: 3, xp: 400 } },
+  { title: ru`Источники`,     reward: { charm: 15, water: 3, xp: 400 } },
   { title: ru`Прогулки`,    reward: { charm: 20, honey: 5, water: 3, incense: 1, sparks: 1500, zlat: 20, xp: 1400 } },
 ];
 const TUT = [
@@ -1468,10 +1468,10 @@ const TUT = [
   { ch: 1, kind: 'ui', id: 'card', info: ru`Это карточка духа: сила, стихия, приёмы и семейство. Ниже — кнопки «Усилить» и «Превратить», а ещё можно сделать духа спутником.`, hint: ru`Коснись любого духа, чтобы открыть его <b>карточку</b>.` },
   { ch: 1, kind: 'power', id: 'power', hint: ru`На карточке — сила духа. Нажми <b>«Усилить»</b>: за искры и эссенцию дух станет сильнее. Эссенцию приносят поимки духов того же семейства.` },
   { ch: 1, kind: 'ui', id: 'dex', info: ru`Бестиарий — все виды духов. Пойманные видны целиком, встреченные — тенью. Коснись вида, чтобы прочитать о нём.`, hint: ru`Теперь загляни в <b>«Бестиарий»</b> (меню) — там все виды духов. Сколько найдёшь ты?` },
-  { ch: 2, kind: 'spring', id: 'spring', hint: ru`Обереги пополняют <b>родники</b> — синие колодцы у памятников, фонтанов и храмов. Дойди до ближайшего джойстиком по <b>стрелке вверху</b> и коснись его. Если рядом нет — прогуляйся по карте.` },
+  { ch: 2, kind: 'spring', id: 'spring', hint: ru`Обереги пополняют <b>источники</b> — светящиеся чаши у памятников, фонтанов и храмов. Дойди до ближайшего джойстиком по <b>стрелке вверху</b> и коснись его. Если рядом нет — прогуляйся по карте.` },
   { ch: 2, kind: 'ui', id: 'bag', info: ru`Сумка: обереги, мёд, живая вода и ладан. Сверху видно, сколько ещё поместится; лишнее можно выбросить.`, hint: ru`Добыча уже в <b>Сумке</b>. Открой меню → «Сумка» и посмотри, что у тебя есть.` },
   { ch: 3, kind: 'ui', id: 'cocoons', info: ru`Коконы греются шагами — одновременно можно греть три. Готовый кокон вылупится одним касанием. А твой первый дух идёт рядом — это спутник: в пути он находит эссенцию.`, hint: ru`Открой меню → <b>«Коконы»</b>. Первый кокон уже греется — пройди 2 км, и он вылупится.` },
-  { ch: 3, kind: 'ui', id: 'quests', info: ru`Здесь задания дня — они обновляются в полночь. А родники иногда дают поручения: выполнишь — встретишь особого духа.`, hint: ru`Открой <b>«Задания»</b> — там задания дня.` },
+  { ch: 3, kind: 'ui', id: 'quests', info: ru`Здесь задания дня — они обновляются в полночь. А источники иногда дают поручения: выполнишь — встретишь особого духа.`, hint: ru`Открой <b>«Задания»</b> — там задания дня.` },
   { ch: 3, kind: 'ui', id: 'path', info: ru`Путь Ловчего: что откроется на каждом уровне и какие награды ждут. Звания растут: Послушник, Ловчий, Следопыт, Ведун, Хранитель.`, hint: ru`И последнее: открой <b>«Путь»</b> в меню — там видно, что откроется на каждом уровне Ловчего.` },
 ];
 
@@ -1871,8 +1871,8 @@ const Sky = {
 
 // ===== www/js/world.js =====
 /* Мир: духи появляются детерминированно по реальным координатам (одна точка в одно время — одно и то же),
-   а Родники, Капища и Разломы стоят у настоящих объектов (pois.js).
-   Этот же код работает на сервере игры: он пересчитывает, был ли дух, родник или разлом там, где его нашёл игрок. */
+   а Источники, Капища и Разломы стоят у настоящих объектов (pois.js).
+   Этот же код работает на сервере игры: он пересчитывает, был ли дух, источник или разлом там, где его нашёл игрок. */
 
 const W = {
   SPAWN_CELL: 0.00055,   // ≈ 60 м
@@ -1996,11 +1996,11 @@ const W = {
   },
 
   /* ---------- 5.2: места спят и просыпаются по неделям (Rules.PLACES) ---------- */
-  /* Родник, Капище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
+  /* Источник, Капище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
      недели) бодрствует доля SHARE мест, остальные пустые. У каждого места своя фаза (хэш id), окно бодрствования каждую
      неделю сдвигается на SHARE: место бодрствует, если (фаза + неделя × SHARE) mod 1 < SHARE. При SHARE = 0,4 — две недели
      из пяти, и никогда две недели подряд: на следующей неделе просыпаются другие места. Места игроков (usr:) не спят;
-     новичку на обучении открыты все Родники (первый Родник — рядом). Считается одинаково на телефоне и на сервере. */
+     новичку на обучении открыты все Источники (первый Источник — рядом). Считается одинаково на телефоне и на сервере. */
   awake(p, kind, t = U.now()) {
     const id = String((p && p.id) || ''), P = Rules.PLACES;
     if (id.startsWith('usr:')) return true;
@@ -2008,11 +2008,11 @@ const W = {
     return (U.h('wake', id) + Ev.week(t) * P.SHARE) % 1 < P.SHARE;
   },
 
-  /* ---------- Родники: у реальных объектов (см. pois.js) ---------- */
+  /* ---------- Источники: у реальных объектов (см. pois.js) ---------- */
   // p — объект карты { id, lat, lng, name, photo }; d — расстояние до игрока
   springFor(p, d) {
     const slot = Math.floor(U.now() / 7200000), id = p.id, last = S.d.springs[id] || 0;
-    // вторжение Нави: ~12% родников захвачены на двухчасовое окно (с INVASION_LEVEL уровня)
+    // вторжение Нави: ~12% источников захвачены на двухчасовое окно (с INVASION_LEVEL уровня)
     const invId = `${id}:${slot}`;
     const invaded = S.d.level >= INVASION_LEVEL &&U.h('inv', id, slot) < 0.12 && !S.d.freed[invId];
     return { type: 'spring', id, invId, invaded, lat: p.lat, lng: p.lng, d, name: p.name, photo: p.photo, cat: p.cat,
@@ -2049,11 +2049,11 @@ const W = {
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
   },
 
-  // 4.19: что и с каким весом кладёт родник (на каждый из 4–6 бросков) — общее для добычи и вкладки «Добыча»
+  // 4.19: что и с каким весом кладёт источник (на каждый из 4–6 бросков) — общее для добычи и вкладки «Добыча»
   SPRING_GIFT: 0.6, SPRING_COCOON: 0.12,
   springOpts(lvl) {
     // 4.15: лечебное; 4.16: мёда, Живой воды и ладана меньше (к 40 уровню копились сотнями и десятками),
-    // Мёртвая вода — ~1 родник из 500 (раньше из 300, но при полной сумке родник не давал ничего)
+    // Мёртвая вода — ~1 источник из 500 (раньше из 300, но при полной сумке источник не давал ничего)
     const opts = [['charm', 12], ['honey', Ev.hol && Ev.hol.honey ? 8 : 1], ['water', 0.6], ['herb', 2], ['brew', 0.8], ['deadwater', 0.009]];
     if (lvl >= 8) opts.push(['charm2', 3]);
     if (lvl >= 16) opts.push(['charm3', 1.5]);
@@ -2069,7 +2069,7 @@ const W = {
       const it = U.weighted(opts, r());
       loot[it] = (loot[it] || 0) + 1;
     }
-    // подарок для друга — в трёх родниках из пяти (4.16: было в каждом втором), пока их меньше GIFT_LIMIT
+    // подарок для друга — в трёх источниках из пяти (4.16: было в каждом втором), пока их меньше GIFT_LIMIT
     if ((S.d.items.gift || 0) < GIFT_LIMIT && r() < this.SPRING_GIFT) loot.gift = 1;
     let cocoon = null;
     if (S.d.cocoons.length < 9 && r() < this.SPRING_COCOON * Ev.kmMul()) cocoon = U.weighted([[2, 5], [5, 4], [10, 1]], r());
@@ -2128,7 +2128,7 @@ const W = {
     return Math.round(speed * U.clamp(Math.pow(got / 0.95, 3), 0.5, 1) * 1000) / 1000; // разброс силы ±10% темп не меняет
   },
 
-  // Прислужник Нави на захваченном роднике: трое омрачённых духов одной стихии (4.16: сила отряда — от силы духов игрока)
+  // Прислужник Нави на захваченном источнике: трое омрачённых духов одной стихии (4.16: сила отряда — от силы духов игрока)
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
@@ -2215,7 +2215,7 @@ const S = {
     d.order = d.order || {}; // вклад в общее дело Ордена: неделя → { n, got: [ступени] }
     d.stats.streakBest = d.stats.streakBest || 0;
     d.stats.orderPts = d.stats.orderPts || 0;
-    d.tasks = d.tasks || []; // поручения из родников
+    d.tasks = d.tasks || []; // поручения из источников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
     d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
     // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
@@ -2244,7 +2244,7 @@ const S = {
     d.medals = d.medals || {};
     // 4.16: осколки Алатыря (пробуждение духов) и эссенция Рода (подходит любому семейству)
     d.alatyr = d.alatyr || 0; d.rod = d.rod || 0; d.stats.awakened = d.stats.awakened || 0;
-    // 4.24: обучение без сцен — шаг прежнего списка (4.0: tutV 4; 3.x: 1 поймать, 2 родник, 3 меню) переводится
+    // 4.24: обучение без сцен — шаг прежнего списка (4.0: tutV 4; 3.x: 1 поймать, 2 источник, 3 меню) переводится
     // на ближайший шаг нового, который ещё впереди; дальше последнего — обучение пройдено
     if (d.tut && d.tutV !== TUT_V) {
       const OLD = ['meet', 'lore', 'catch1', 'ring', 'catch2', 'menu', 'spirits', 'card', 'power', 'dex', 'springs', 'spring', 'bag', 'road', 'cocoons', 'quests', 'path', 'oath'];
@@ -2650,9 +2650,9 @@ const S = {
   /* ---------- предметы ---------- */
   bagLimit() { return BAG_LIMIT + (this.d.bagExtra || 0) * Rules.BAG_STEP; },
   bagCount() { return Object.values(this.d.items).reduce((a, b) => a + b, 0); },
-  // 4.16: сумка больше не переполняется. over — награда (уровень, серия дней, задание, Летопись, Тропа, бой, родник):
+  // 4.16: сумка больше не переполняется. over — награда (уровень, серия дней, задание, Летопись, Тропа, бой, источник):
   // что не поместилось — в посылку Ордена (Rules.PARCEL, забрать — parcelTake), а не сверх лимита (раньше сумка
-  // раздувалась в разы, а родники при полной сумке молча ничего не давали). Без over (находки спутника) — только в сумку
+  // раздувалась в разы, а источники при полной сумке молча ничего не давали). Без over (находки спутника) — только в сумку
   addItem(k, n = 1, over = false) {
     const add = Math.max(0, Math.min(n, this.bagLimit() - this.bagCount()));
     if (add) this.d.items[k] = (this.d.items[k] || 0) + add;
@@ -2844,7 +2844,7 @@ const S = {
       changed = true;
       if (q.p >= q.n) Bus.emit('questDone', q);
     });
-    // поручения из родников
+    // поручения из источников
     this.d.tasks.forEach(q => {
       if (q.t !== type || q.p >= q.n) return;
       if (type === 'catchEl' && meta.el !== q.el) return;
@@ -2858,7 +2858,7 @@ const S = {
     const daily = this.d.quests ? this.d.quests.list.filter(q => q.p >= q.n && !q.claimed).length : 0;
     return daily + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
   },
-  // Новое поручение (выдаёт сервер у родника): задание и дух, который встретится в награду
+  // Новое поручение (выдаёт сервер у источника): задание и дух, который встретится в награду
   // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests)
   makeTask(pos) {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
@@ -2875,7 +2875,7 @@ const S = {
     return t;
   },
   /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
-     земель и сезонные не в свой сезон. Их приводят трудные поручения родников (шанс GUEST), так что поймать можно всех */
+     земель и сезонные не в свой сезон. Их приводят трудные поручения источников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
   guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0)); },
 
@@ -3055,7 +3055,7 @@ const J = {
       case 'raid': return { ico: icon(e.sid), title: ru`Разлом закрыт: ${sp(e.sid)}`, sub: '★'.repeat(e.tier || 1) };
       // e.name — название Капища с карты; e.guard / e.rank / e.name знака, лавки, e.title главы — русские названия из данных (сохранены сервером), переводим при показе
       case 'duel': return { ico: glyph('⛩'), title: ru`Победа: ${e.name}`, sub: ru`Хранитель ${I18N.back(e.guard || '')}` };
-      case 'invasion': return { ico: glyph('☾', 'dark'), title: ru`Родник освобождён`, sub: e.name || '' };
+      case 'invasion': return { ico: glyph('☾', 'dark'), title: ru`Источник освобождён`, sub: e.name || '' };
       case 'league': return { ico: glyph('★', 'gold'), title: ru`Турнир Лиги: побед ${e.won} из 3`, sub: ru`Ранг: ${I18N.back(e.rank)}` };
       // 4.16: бой Лиги с живым Ловчим (e.name — имя соперника, e.d — изменение рейтинга)
       case 'pvp': return { ico: glyph('★', 'gold'), title: e.win === 1 ? ru`Лига: победа над ${e.name}` : e.win ? ru`Лига: ничья с ${e.name}` : ru`Лига: поражение от ${e.name}`, sub: ru`Лига «${I18N.back(e.rank)}» · рейтинг ${e.d > 0 ? '+' : e.d < 0 ? '−' : '±'}${Math.abs(e.d || 0)}` };
@@ -3445,13 +3445,12 @@ const League = {
     // 4.16: вкладка «Бой» — команда, жетоны и поиск живого соперника; идущий бой (телефон закрывали) — «Вернуться в бой»
     const renderPlay = () => {
       const team = S.team(), locked = S.d.level < this.LEVEL, power = team.reduce((a, x) => a + S.power(x), 0);
-      const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${UI.hpBar(x)}</button>`;
-      const cards = team.map(mem).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
+      const cards = UI.teamCards(team); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
       const ko = team.some(x => !S.alive(x));
       const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;
       const w = this.window(L.pts), ranks = w.a === w.b ? ru`в лиге «${LEAGUE_RANKS[r].name}»` : ru`в лигах «${LEAGUE_RANKS[w.a].name}» — «${LEAGUE_RANKS[w.b].name}»`;
       pane.innerHTML = `
-        ${locked ? `<div class="lgx-card lgx-lock"><b>${ru`Лига откроется на ${this.LEVEL} уровне Ловчего`}</b><small>${ru`Сейчас у тебя ${S.d.level}-й. Лови духов, проходи родники и разломы — опыт придёт быстро.`}</small></div>` : ''}
+        ${locked ? `<div class="lgx-card lgx-lock"><b>${ru`Лига откроется на ${this.LEVEL} уровне Ловчего`}</b><small>${ru`Сейчас у тебя ${S.d.level}-й. Лови духов, проходи источники и разломы — опыт придёт быстро.`}</small></div>` : ''}
         ${live ? `<div class="lgx-card lgx-livebout"><div class="row-main"><b>${ru`Бой ещё идёт!`}</b><small>${ru`Соперник ждёт. Не вернёшься — через ${PvP.IDLE / 1000} с тебе засчитают поражение.`}</small></div><button class="btn primary small lg-back">${ru`В бой`}</button></div>` : ''}
         <div class="lg2-tix"><span>${ru`Жетоны`}</span><i class="lg2-pips">${Array.from({ length: this.TICKETS }, (_, i) => `<i class="${i < L.tickets ? 'on' : ''}"></i>`).join('')}</i><b>${L.tickets} / ${this.TICKETS}</b></div>
         <div class="lg2-tix-s">${ru`жетоны обновятся через ${'<b class="lgx-mid"></b>'}`}</div>
@@ -3823,8 +3822,7 @@ const Raid = {
     // 4.22.2: в композиции карточки духа и Лиги: сверху портал с боссом, справа ступень, босс, сила и таймер;
     // вкладки «Бой» (команда и кнопки — закреплены внизу), «Босс» (слабость, погода, как бить), «Награда»
     const st = this.bossStats(r), el = s.el, w = Sky.w ? WEATHER[Sky.w.key] : null;
-    const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${UI.hpBar(x)}</button>`;
-    const teamHtml = t => t.map(mem).join('') + `<button class="lg2-mem empty team-edit"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - t.length));
+    const teamHtml = t => UI.teamCards(t); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
     const power = t => t.reduce((a, x) => a + S.power(x), 0);
     const row = (t, v) => `<div class="dt-row"><span>${t}</span><b>${v}</b></div>`;
     const it = (k, n) => `<span class="cur">${Art.item(k)}</span> ${n}`;
@@ -4309,7 +4307,7 @@ const Duel = {
          <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
       : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
          <div class="rift-team-title">${ru`Духи хранителя`}</div>
-         <div class="rift-team">${UI.teamHtml(g.team)}</div>`;
+         <div class="lg2-team tm-row">${UI.teamCards(g.team, true)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
     let action;
     if (mine) action = `<div class="rift-tip">${ru`Капище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
@@ -4318,7 +4316,7 @@ const Duel = {
         ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
     else action = `
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
         <div class="rift-tip">${hold ? `${ru`Победа освободит Капище от защитников.`} ` : ''}${ru`Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</div>
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
@@ -4350,25 +4348,31 @@ const Duel = {
     if (def) def.onclick = () => Clans.defend(e, () => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
     const cg = scr.querySelector('.clan-go');
     if (cg) cg.onclick = () => Clans.choose(() => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
-    const edit = scr.querySelector('.team-edit');
-    if (edit) edit.onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
+    // 5.1.5: «Изменить», карточка духа и пустое место — выбор команды
+    scr.addEventListener('click', ev => {
+      if (!ev.target.closest('.team-edit, .team-slot')) return;
+      UI.pickTeam(() => {
+        team = S.team();
+        const box = scr.querySelector('.tm-my'); if (box) box.innerHTML = UI.teamCards(team);
+        const b = scr.querySelector('.duel-go'); if (b) b.disabled = !team.length;
+      });
+    });
     Clans.refresh(); // сводка могла устареть
   },
 
-  // Захваченный родник: поединок с прислужником Нави
+  // Захваченный источник: поединок с прислужником Нави
   openInvasion(e) {
-    // 4.15.1: в композиции карточки духа — сверху захваченный родник в тёмном круге Нави, справа «Захвачен Навью»,
+    // 4.15.1: в композиции карточки духа — сверху захваченный источник в тёмном круге Нави, справа «Захвачен Навью»,
     // сила отряда, прислужник и слабость отряда; ниже — омрачённые духи против твоей команды, внизу — «Сразиться»
     const g = W.grunt(e);
     const pw = t => t.reduce((a, x) => a + S.power(x), 0);
     const weak = ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el));
-    const card = (x, foe) => `<${foe ? 'div' : 'button'} class="lg2-mem el-${SP[x.sid].el} ${foe ? 'inv2-dark' : S.alive(x) ? 'team-edit' : 'ko team-edit'}"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${foe ? '' : UI.hpBar(x)}</${foe ? 'div' : 'button'}>`;
     const scr = UI.screen(ru`Вторжение Нави`, `
       <div class="det det2 inv2 el-${g.el}">
         <div class="dt-hero">
           <div class="det-art inv2-art"><i class="inv2-mist"></i>${Art.springIcon(false, true)}</div>
           <div class="dt-info">
-            <div class="det-hp inv2-place">${ru`Родник «${U.esc(e.name)}»`}</div>
+            <div class="det-hp inv2-place">${ru`Источник «${U.esc(e.name)}»`}</div>
             <div class="inv2-title">${ru`Захвачен Навью`}</div>
             <div class="det-power"><small>${ru`СИЛА ОТРЯДА`}</small><b>${U.fmtNum(pw(g.team))}</b></div>
             <div class="inv2-grunt"><span class="inv2-ava">${Art.guardian(g.color)}</span><span><b>${g.name}</b><small>${g.title}</small></span></div>
@@ -4381,15 +4385,15 @@ const Duel = {
     const body = scr.querySelector('.inv2-body'), foot = scr.querySelector('.inv2-foot');
     const render = () => {
       const team = S.team(), ko = team.some(x => !S.alive(x)), mine = pw(team);
-      const slots = team.map(x => card(x)).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
+      const slots = UI.teamCards(team); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
       body.innerHTML = `
         <div class="pf-mh lg2-th"><span>${ru`Омрачённые духи`}</span><em class="inv2-weak">${ru`слабость`}${weak.map(x => `<i>${Art.elIcon(x, 15)} ${ELEMENTS[x].name}</i>`).join('')}</em></div>
-        <div class="lg2-team">${g.team.map(x => card(x, true)).join('')}</div>
+        <div class="lg2-team">${UI.teamCards(g.team, 'inv2-dark')}</div>
         <div class="inv2-vs"><i></i><b>${mine >= pw(g.team) ? ru`силы на твоей стороне` : ru`отряд сильнее — бей в слабость`}</b><i></i></div>
         <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span>${mine ? `<b>${ru`сила ${U.fmtNum(mine)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${slots}</div>`;
       foot.innerHTML = `
-        <div class="lg2-rule">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
+        <div class="lg2-rule">${ru`Победа освободит источник и позволит спасти одного из омрачённых духов.`}</div>
         ${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}
         <button class="btn primary wide duel-go" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;
     };
@@ -4411,9 +4415,9 @@ const Duel = {
       <div class="shrine-view spar">
         <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>${ru`Дружеский поединок`}</small></div></div>
         <div class="rift-team-title">${ru`Сильнейшие духи друга`}</div>
-        <div class="rift-team">${UI.teamHtml(top)}</div>
+        <div class="lg2-team tm-row">${UI.teamCards(top, true)}</div>
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
         <div class="rift-tip">${today ? ru`Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).` : ru`Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.`}</div>
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
       </div>`;
@@ -4428,10 +4432,13 @@ const Duel = {
       const color = (r.look && r.look.cloak) || GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)];
       this.start({ kind: 'spar', name: f.name, T: this.FOE.spar }, { name: U.esc(r.name), color, team: r.foe }, S.team());
     };
-    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => {
-      team = S.team();
-      scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team);
-      scr.querySelector('.duel-go').disabled = !team.length;
+    scr.addEventListener('click', ev => { // 5.1.5: «Изменить», карточка духа и пустое место — выбор команды
+      if (!ev.target.closest('.team-edit, .team-slot')) return;
+      UI.pickTeam(() => {
+        team = S.team();
+        scr.querySelector('.tm-my').innerHTML = UI.teamCards(team);
+        scr.querySelector('.duel-go').disabled = !team.length;
+      });
     });
   },
 
@@ -4823,7 +4830,7 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       rescue = g.team.find(x => x.sid === r.rescue.sid) || g.team[0];
-      html = `<div class="res-title">${ru`Родник освобождён!`}</div>
+      html = `<div class="res-title">${ru`Источник освобождён!`}</div>
         <div class="res-art">${Art.of(rescue)}</div>
         <div class="res-note">${ru`Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!`}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
@@ -5039,15 +5046,15 @@ const Rules = {
     { id: 'z1200', zlat: 1200, rub: 999,  bonus: 20, hot: true },
     { id: 'z2600', zlat: 2600, rub: 1990, bonus: 30 },
   ],
-  // 3.20: дневные лимиты объектов карты (сутки — по часам игрока). Считаются только успехи: зачерпнутый родник,
+  // 3.20: дневные лимиты объектов карты (сутки — по часам игрока). Считаются только успехи: зачерпнутый источник,
   // победа в Разломе, на Капище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
-  // 10–20 родников в день), а бесконечный фарм и боты упираются в потолок
+  // 10–20 источников в день), а бесконечный фарм и боты упираются в потолок
   DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
-  DAILY_NAMES: { springs: ru`Родники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
+  DAILY_NAMES: { springs: ru`Источники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
   // 4.16: сколько раз товар Лавки с недельным пределом (week) куплен на этой неделе (неделя — как у событий, Ev.week)
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
   weekUsed(d, key) { return d && d.weekc && d.weekc.w === Ev.week() ? (d.weekc[key] || 0) : 0; }, // 4.16: за неделю (с понедельника)
-  // строка «Родников сегодня: 12 из 30» для окон объектов
+  // строка «Источников сегодня: 12 из 30» для окон объектов
   dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class="day-left ${u >= m ? 'out' : ''}">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <b>${u}</b> из ${m}`}</div>`; },
   // 3.18: Чат Ордена — писать с LEVEL уровня; не чаще раза в GAP мс и PER_DAY сообщений в сутки; до MAX символов
   CHAT: { LEVEL: 3, MAX: 200, GAP: 3000, PER_DAY: 300 },
@@ -5154,7 +5161,7 @@ const Rules = {
   MELT: { N: 3, SPARKS: 3000 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
-  // 5.2: места (Родники, Капища и Разломы у них): каждую неделю бодрствует доля SHARE, остальные спят (W.awake);
+  // 5.2: места (Источники, Капища и Разломы у них): каждую неделю бодрствует доля SHARE, остальные спят (W.awake);
   // на карте места видны в радиусе VIEW м от Ловчего (подойти, чтобы открыть, — как раньше: W.INTERACT, W.BATTLE_R)
   PLACES: { SHARE: 0.4, VIEW: 200 },
   // cur — валюта: sparks (искры) или zlat (монеты). give — предметы; cocoon — кокон; amulet — случайный амулет
@@ -5254,7 +5261,7 @@ const Rules = {
   // 4.28: дань за n Капищ, из них own — святилища мифологии своего клана (там ×HOLD.MYTH; обереги — с округлением вверх)
   tributeFor(n, own) { const k = n + Math.min(own, n) * (this.HOLD.MYTH - 1); return { sparks: Math.round(TRIBUTE.sparks * k), charm: Math.ceil(TRIBUTE.charm * k - 1e-9) }; },
   ORDER_RULES: [
-    [ru`Поимка духа`, 1], [ru`Родник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
+    [ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],
 
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
@@ -5437,7 +5444,7 @@ const Diff = {
 
 // ===== server/game/core.js =====
 /* Сервер игры «Духолов»: все действия игрока выполняются здесь, а не на телефоне.
-   Телефон присылает намерение («бросил оберег», «зачерпнул родник», «усилил духа»), сервер проверяет его
+   Телефон присылает намерение («бросил оберег», «зачерпнул источник», «усилил духа»), сервер проверяет его
    (расстояние до объекта, перезарядки, предметы в сумке, правдоподобие боя), сам бросает кубики
    и сохраняет результат. В ответ — изменения прогресса (diff.js) и события для окон и подсказок.
    Файл работает и в браузере (автотесты), и в Edge Function (см. build-server.ps1). */
@@ -5617,7 +5624,7 @@ const GameCore = {
     // 4.1: такое место сервер проверить не может (id и координаты — от телефона): на нём нет легендарных разломов и удержания Капищ
     return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null, verified: false };
   },
-  // 5.2: место спит на этой неделе (W.awake, Rules.PLACES) — ни Родника, ни Капища, ни Разлома здесь нет
+  // 5.2: место спит на этой неделе (W.awake, Rules.PLACES) — ни Источника, ни Капища, ни Разлома здесь нет
   placeAwake(p, kind, t) { this.need(W.awake(p, kind, t), ru`Это место сейчас спит — на этой неделе здесь ничего нет`); },
   team(uids) { return (uids || []).map(u => S.findSpirit(u)).filter(Boolean); },
   battleTime(ctx, b) { return (ctx.now - b.start) / 1000 - Rules.COUNTDOWN; },
@@ -5827,7 +5834,7 @@ const GameCore = {
     return S.d.dayc;
   },
   DAY_MSG: {
-    springs: ru`Сегодня ты уже зачерпнул силу из 30 родников — они снова откроются завтра`,
+    springs: ru`Сегодня ты уже зачерпнул силу из 30 источников — они снова откроются завтра`,
     raids: ru`Сегодня закрыто уже 6 Разломов — Навь затихла до завтра`,
     duels: ru`Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра`,
     invasions: ru`Сегодня отбито уже 6 вторжений — Навь вернётся завтра`,
@@ -6193,7 +6200,7 @@ const GameCore = {
       const kind = a.kind;
       if (kind === 'wild') {
         this.dayNeed(ctx, 'catches');
-        this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), ru`Обереги закончились! Загляни к роднику.`);
+        this.need(Rules.THROWABLE.some(k => S.d.items[k] > 0), ru`Обереги закончились! Загляни к источнику.`);
         const p = this.here(ctx);
         const e = W.spawnsAround(p.lat, p.lng, W.INTERACT + 80).find(x => x.id === a.id && x.type === 'spirit' && !x.tut);
         this.need(e, ru`Дух уже растворился в воздухе…`);
@@ -6228,7 +6235,7 @@ const GameCore = {
       const e = ctx.srv.enc;
       this.need(e, ru`Встреча закончилась`);
       this.need(!e.honey, ru`Дух уже лакомится мёдом`);
-      this.need(S.useItem('honey'), ru`Мёда нет. Его можно найти у родников.`);
+      this.need(S.useItem('honey'), ru`Мёда нет. Его можно найти у источников.`);
       e.honey = true;
       return { ok: true };
     },
@@ -6289,7 +6296,7 @@ const GameCore = {
     },
     encEnd(a, ctx) { ctx.srv.enc = null; return { ok: true }; },
 
-    /* ----- родник ----- */
+    /* ----- источник ----- */
     async spring(a, ctx) {
       const p = await this.place(a.poi, ctx, 'spring');
       this.placeAwake(p, 'spring', ctx.now);
@@ -6297,22 +6304,22 @@ const GameCore = {
       this.limit(ctx, 'spring', 60, 3600000);
       this.dayNeed(ctx, 'springs');
       const e = W.springFor(p, 0);
-      this.need(!e.invaded, ru`Родник захвачен Навью`);
-      this.need(e.ready, ru`Родник ещё набирает силу`);
+      this.need(!e.invaded, ru`Источник захвачен Навью`);
+      this.need(e.ready, ru`Источник ещё набирает силу`);
       S.d.springs[p.id] = ctx.now;
       this.dayAdd(ctx, 'springs');
       const sl = W.springLoot(p.id), loot = { ...sl.loot };
       // 4.26: место, которого нет в базе (id и координаты — от телефона, вне загруженных мест): добыча вполовину, без кокона
       if (!p.verified) Object.keys(loot).forEach(k => { loot[k] = Math.ceil(loot[k] / 2); });
       const cocoon = p.verified ? sl.cocoon : 0;
-      // 4.16: родник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
+      // 4.16: источник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
       const got = S.giveRewards({ ...loot, xp: 50 }); // не поместилось — в посылку Ордена
       S.d.stats.springs++;
       S.progress('spring', 1);
       let coc = null;
       if (cocoon) { coc = { id: U.uid(), km: cocoon, walked: 0, inc: S.incubating() < 3 }; S.d.cocoons.push(coc); }
       S.tutAdvance('spring');
-      // поручение: первое за день — всегда, дальше — в каждом четвёртом роднике
+      // поручение: первое за день — всегда, дальше — в каждом четвёртом источнике
       let task = null;
       if (!S.d.tut && S.d.tasks.length < TASK_LIMIT && (S.d.taskDay !== U.today(ctx.now) || Math.random() < 0.25)) {
         S.d.taskDay = U.today(ctx.now);
@@ -6923,7 +6930,7 @@ const GameCore = {
       const p = await this.place(a.spring, ctx, 'spring');
       this.placeAwake(p, 'spring', ctx.now);
       const e = W.springFor(p, 0);
-      this.need(e.invaded, ru`Родник свободен`);
+      this.need(e.invaded, ru`Источник свободен`);
       this.near(ctx, p.lat, p.lng, W.INTERACT);
       const team = S.team();
       this.need(team.length, ru`Нужна команда`);
@@ -7302,7 +7309,7 @@ const GameCore = {
       const f = S.d.friends.find(x => x.id === a.pid);
       this.need(f, ru`Такого друга нет`);
       this.need(f.sent !== U.today(), ru`Сегодня этому другу подарок уже отправлен`);
-      this.need(S.useItem('gift'), ru`Подарков нет — они попадаются в родниках`);
+      this.need(S.useItem('gift'), ru`Подарков нет — они попадаются в источниках`);
       const lv = (() => { let r = 0; FRIEND_LEVELS.forEach((x, i) => { if (f.pts >= x.pts) r = i; }); return r; })();
       const r = Math.random, c = { charm: 3 + Math.floor(r() * 4) };
       if (r() < 0.6) c.honey = 1 + Math.floor(r() * 2);

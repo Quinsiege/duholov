@@ -231,10 +231,10 @@
     fakePois.push({ id, name: 'Объект ' + i, kind: i % 3 ? 'spring' : 'shrine', lat: 55.75 + (U.h('la', i) - 0.5) * 0.02, lng: 37.62 + (U.h('ln', i) - 0.5) * 0.03, photo: i === 1 ? 'u/p.jpg' : null });
   }
   fakePois.forEach(p => { p.t = Poi.tileId(p.lat, p.lng); Poi.list.set(p.id, p); });
-  test('Родники, разломы и капища стоят у реальных объектов', () => {
+  test('Источники, разломы и капища стоят у реальных объектов', () => {
     const sp = W.springsAround(55.75, 37.62, 2000);
-    ok(sp.length > 0, 'родники');
-    ok(sp.every(s => Poi.list.get(s.id) && Poi.list.get(s.id).kind === 'spring'), 'родник = объект типа «родник»');
+    ok(sp.length > 0, 'источники');
+    ok(sp.every(s => Poi.list.get(s.id) && Poi.list.get(s.id).kind === 'spring'), 'источник = объект типа «источник»');
     const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
     ok(rf.every(r => SP[r.boss] && r.tier >= 1 && r.tier <= 3 && r.place), 'разломы');
     ok(sh.length > 0, 'капища');
@@ -245,7 +245,7 @@
     eq(g.team.length, 3, 'команда хранителя');
     ok(g.team.every(x => !SP[x.sid].legend && !SP[x.sid].region), 'без легенд и региональных');
   });
-  // 5.2: каждую неделю бодрствует ~40% мест (Rules.PLACES.SHARE), на следующей — другие; места игроков не спят, новичку — все Родники
+  // 5.2: каждую неделю бодрствует ~40% мест (Rules.PLACES.SHARE), на следующей — другие; места игроков не спят, новичку — все Источники
   test('Места 5.2: бодрствует ≈40%, каждую неделю — другие', () => withSleep(() => {
     const tut = S.d.tut; S.d.tut = 0;
     try {
@@ -259,18 +259,18 @@
       // граница недели — как у событий недели (Ev.week: понедельник 00:00 UTC)
       const edge = (w0 + 1) * 7 - 3, p = ids.find(x => on[0].has(x.id));
       ok(W.awake(p, 'shrine', edge * 86400000 - 1) && !W.awake(p, 'shrine', edge * 86400000), 'засыпает ровно в понедельник 00:00 UTC');
-      ok(ids.slice(0, 50).every(x => W.awake(x, 'spring', t(0)) === W.awake(x, 'shrine', t(0))), 'правило одно для Родника и Капища');
+      ok(ids.slice(0, 50).every(x => W.awake(x, 'spring', t(0)) === W.awake(x, 'shrine', t(0))), 'правило одно для Источника и Капища');
       ok([0, 1, 2, 3, 4].every(k => W.awake({ id: 'usr:00000000-0000-0000-0000-000000000001' }, 'shrine', t(k))), 'место игрока не спит');
       const sleeping = ids.find(x => !on[0].has(x.id));
       S.d.tut = 3;
-      ok(W.awake(sleeping, 'spring', t(0)), 'новичку на обучении — все Родники');
+      ok(W.awake(sleeping, 'spring', t(0)), 'новичку на обучении — все Источники');
       ok(!W.awake(sleeping, 'shrine', t(0)), 'Капища у новичка — как у всех');
       S.d.tut = 0;
       // на карте и в списках — только бодрствующие; у спящего Капища нет ни Капища, ни Разлома (и Великого — тоже)
       const hour = Math.floor(U.now() / 3600000), aw = x => W.awake(x, x.kind);
       const sp = W.springsAround(55.75, 37.62, 3000), in3 = x => U.dist(55.75, 37.62, x.lat, x.lng) <= 3000;
-      eq(sp.length, fakePois.filter(x => x.kind === 'spring' && in3(x) && aw(x)).length, 'Родники — только бодрствующие');
-      ok(sp.length < fakePois.filter(x => x.kind === 'spring' && in3(x)).length, 'часть Родников спит');
+      eq(sp.length, fakePois.filter(x => x.kind === 'spring' && in3(x) && aw(x)).length, 'Источники — только бодрствующие');
+      ok(sp.length < fakePois.filter(x => x.kind === 'spring' && in3(x)).length, 'часть Источников спит');
       const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
       eq(rf.length + sh.length, fakePois.filter(x => x.kind === 'shrine' && in3(x) && aw(x)).length, 'Капища и Разломы — только у бодрствующих');
       const zz = fakePois.find(x => x.kind === 'shrine' && !aw(x)), rr = W.riftAt;
@@ -313,7 +313,7 @@
     eq(p.find(x => x.id === 'osm:n10').name, 'Мемориальная доска', 'табличка');
     eq(p.find(x => x.id === 'osm:w3').name, 'Сквер Б', 'русское название');
     eq(p.find(x => x.id === 'osm:n4').name, 'Арт-объект', 'название по категории');
-    eq(p.find(x => x.id === 'osm:n8').kind, 'spring', 'храм — всегда Родник');
+    eq(p.find(x => x.id === 'osm:n8').kind, 'spring', 'храм — всегда Источник');
     eq(JSON.stringify(Osm.pick(els)), JSON.stringify(p), 'детерминированно');
     ok(/historic.*bbox|\(55\.75,37\.62,55\.76,37\.63\)/.test(Osm.query(55.75, 37.62, 55.76, 37.63)), 'запрос с рамкой');
   });
@@ -1287,8 +1287,8 @@
     return p;
   };
   const poiId = (test, from = 90000) => { for (let i = from; i < from + 3000; i++) if (test('osm:n' + i)) return 'osm:n' + i; return null; };
-  // родник у игрока, не захваченный Навью прямо сейчас (вторжения меняются каждые 2 часа)
-  const freeSpring = (P, from) => ({ id: poiId(i => !asPlayer(P, () => W.springFor({ id: i, lat: P.lat, lng: P.lng, name: 'Родник' }, 0).invaded), from), lat: P.lat, lng: P.lng, name: 'Родник' });
+  // источник у игрока, не захваченный Навью прямо сейчас (вторжения меняются каждые 2 часа)
+  const freeSpring = (P, from) => ({ id: poiId(i => !asPlayer(P, () => W.springFor({ id: i, lat: P.lat, lng: P.lng, name: 'Источник' }, 0).invaded), from), lat: P.lat, lng: P.lng, name: 'Источник' });
 
   atest('Сервер: новая игра, загрузка, неизвестные действия', async () => {
     const A = { uid: 'ua', lat: 55.75, lng: 37.62, data: null, srv: {} };
@@ -1312,7 +1312,7 @@
     A.srv.tz.t -= GameCore.TZ_LOCK; A.tz = 240;
     await must(A, 'tick'); eq(A.srv.tz.v, 240, 'через неделю пояс можно сменить (переезд)');
   });
-  atest('Сервер: родник — только рядом, с перезарядкой; скрытое модератором недоступно', async () => {
+  atest('Сервер: источник — только рядом, с перезарядкой; скрытое модератором недоступно', async () => {
     const A = await newPlayer('ub', 55.76, 37.63, 'Бета');
     const poi = { id: 'osm:n777', lat: 55.7601, lng: 37.6301, name: 'Фонтан' };
     const r = await must(A, 'spring', { poi });
@@ -1397,7 +1397,7 @@
     await must(A, 'tutNext', { id: 'dex' });
     eq(at().id, 'spring');
     await refuse(A, 'tutNext', { id: 'spring' }, /текущий шаг/);
-    await must(A, 'spring', { poi: { id: 'osm:n555', lat: A.lat, lng: A.lng, name: 'Родник' } });
+    await must(A, 'spring', { poi: { id: 'osm:n555', lat: A.lat, lng: A.lng, name: 'Источник' } });
     for (const id of ['bag', 'cocoons', 'quests']) await must(A, 'tutNext', { id });
     const zl = A.data.zlat || 0, fin = await must(A, 'tutNext', { id: 'path' });
     ok(fin.done && fin.got.length > 0, 'финальная награда'); eq(A.data.tut, 0); ok((A.data.zlat || 0) > zl, 'монеты за обучение');
@@ -1407,10 +1407,10 @@
     const mig = (tut, tutV) => { B.data.tut = tut; B.data.tutV = tutV; asPlayer(B, () => S.migrate()); return B.data.tut ? TUT[B.data.tut - 1].id : 0; };
     eq(mig(1, 4), 'catch1', 'сцена знакомства → первая поимка');
     eq(mig(4, 4), 'catch2', 'сцена о кольце → вторая поимка');
-    eq(mig(11, 4), 'spring', 'сцена о родниках → родник');
+    eq(mig(11, 4), 'spring', 'сцена о источниках → источник');
     eq(mig(14, 4), 'cocoons', 'сцена о дороге → коконы');
     eq(mig(18, 4), 0, 'клятва → обучение пройдено');
-    eq(mig(2, undefined), 'spring', '3.x: родник');
+    eq(mig(2, undefined), 'spring', '3.x: источник');
     eq(B.data.tutV, TUT_V);
   });
   atest('Сервер: коллекция — усиление, превращение, отпускание, команда, облик', async () => {
@@ -1662,9 +1662,9 @@
     DB.order = {};
     const w = Ev.week(Date.now());
     const A = await newPlayer('un', 55.65, 37.53, 'Велимир'), B = await newPlayer('uo', 55.65, 37.53, 'Злата', 'kapelka');
-    await must(A, 'spring', { poi: { id: 'osm:n901', lat: A.lat, lng: A.lng, name: 'Родник' } });
-    ok(A.data.order[w].n > 0, 'родник принёс очки'); eq(DB.order[w + ':' + A.data.pid].n, A.data.order[w].n, 'вклад записан в общую таблицу');
-    await must(B, 'spring', { poi: { id: 'osm:n902', lat: B.lat, lng: B.lng, name: 'Родник' } });
+    await must(A, 'spring', { poi: { id: 'osm:n901', lat: A.lat, lng: A.lng, name: 'Источник' } });
+    ok(A.data.order[w].n > 0, 'источник принёс очки'); eq(DB.order[w + ':' + A.data.pid].n, A.data.order[w].n, 'вклад записан в общую таблицу');
+    await must(B, 'spring', { poi: { id: 'osm:n902', lat: B.lat, lng: B.lng, name: 'Источник' } });
     A.data.order[w].n = 100; // будто Велимир много ловил на этой неделе
     const o = await must(A, 'order');
     eq(o.cur.players, 2); eq(o.cur.goal, Rules.orderGoal(2)); eq(o.cur.total, 100 + B.data.order[w].n);
@@ -1682,14 +1682,14 @@
     await refuse(A, 'orderClaim', { week: w - 2, i: 0 }, /закончилась/);
     ok(A.data.journal.some(e => e.type === 'order'), 'запись в дневнике');
   });
-  atest('Сервер: поручения родников — выдача, прогресс, награда-встреча', async () => {
+  atest('Сервер: поручения источников — выдача, прогресс, награда-встреча', async () => {
     const A = await newPlayer('up', 55.64, 37.52, 'Мирон');
     A.data.tut = 0;
     const r1 = await must(A, 'spring', { poi: freeSpring(A, 91100) });
     ok(r1.task && A.data.tasks.length === 1, 'первое поручение дня — всегда');
     const s2 = freeSpring(A, 91200);
     const r2 = await withRandom(0.99, () => must(A, 'spring', { poi: s2 }));
-    eq(r2.task, null, 'дальше — не в каждом роднике');
+    eq(r2.task, null, 'дальше — не в каждом источнике');
     A.data.tasks = [{ id: 't1', t: 'photo', n: 1, el: 'fire', p: 0, tier: 3, sid: 'domovoy', text: 'Сфотографируй духа' }];
     await refuse(A, 'taskClaim', { id: 't1' }, /не выполнено/);
     await must(A, 'photo');
@@ -1748,9 +1748,9 @@
     const A = await newPlayer('uu', 55.61, 37.49, 'Святогор');
     A.data.tut = 0;
     DB.pois['osm:n7001'] = { id: 'osm:n7001', kind: 'spring', lat: 55.6101, lng: 37.4901, name: 'Почта', active: true, imported: true };
-    await refuse(A, 'spring', { poi: { id: 'osm:n7002', lat: A.lat, lng: A.lng, name: 'Выдуманный родник' } }, /нет на карте/);
+    await refuse(A, 'spring', { poi: { id: 'osm:n7002', lat: A.lat, lng: A.lng, name: 'Выдуманный источник' } }, /нет на карте/);
     const r = await must(A, 'spring', { poi: { id: 'osm:n7001', lat: 0, lng: 0, name: 'подмена' } });
-    ok(r.got.length > 0, 'родник из базы работает, координаты — из базы');
+    ok(r.got.length > 0, 'источник из базы работает, координаты — из базы');
     await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /уровня|нет такого объекта/);
     A.data.level = DUEL_LEVEL;
     await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /нет такого объекта/);
@@ -2209,16 +2209,16 @@
     A.data.xpUntil = Date.now() - 1;
     eq(gain(), base, 'настой кончился');
   });
-  atest('Сервер: дневные лимиты объектов — родники, разломы, капища, вторжения, поимки', async () => {
+  atest('Сервер: дневные лимиты объектов — источники, разломы, капища, вторжения, поимки', async () => {
     const A = await newPlayer('da', 55.46, 37.34, 'Фармер');
     A.data.tut = 0; A.data.level = 10;
-    // 30 родников в день: каждый — отдельный объект, откат не мешает
+    // 30 источников в день: каждый — отдельный объект, откат не мешает
     for (let i = 0; i < Rules.DAILY.springs; i++) {
       const sp = freeSpring(A, 96000 + i * 37);
       A.srv.rl = {}; await must(A, 'spring', { poi: sp });
     }
     eq(A.data.dayc.springs, 30, 'засчитано 30');
-    A.srv.rl = {}; await refuse(A, 'spring', { poi: freeSpring(A, 99000) }, /30 родников/);
+    A.srv.rl = {}; await refuse(A, 'spring', { poi: freeSpring(A, 99000) }, /30 источников/);
     // исчерпанные лимиты остальных объектов
     const today = asPlayer(A, () => U.today());
     A.data.dayc = { day: today, springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 };
@@ -2366,7 +2366,7 @@
     const A = await newPlayer('vi', 55.53, 37.41, 'Путник');
     A.data.tut = 0;
     await must(A, 'spring', { poi: freeSpring(A, 93000) });
-    ok(A.data.pass && A.data.pass.pts > 0, 'очки Тропы за родник');
+    ok(A.data.pass && A.data.pass.pts > 0, 'очки Тропы за источник');
     const season = A.data.pass.season;
     A.data.pass = { season, pts: Rules.PASS.PER * 2 + 5, gold: false, got: { free: [], gold: [] } };
     const r = await must(A, 'passClaim', { lvl: 1, track: 'free' }); ok(r.got.length > 0, 'награда ступени 1');
@@ -2386,16 +2386,16 @@
     await must(A, 'tick'); await must(A, 'spring', { poi: freeSpring(A, 93100) });
     eq(A.data.pass.gold, false); ok(A.data.pass.season !== '1999-1', 'сезон сменился');
   });
-  atest('Сервер: экономика 4.16 — посылка Ордена, родник при полной сумке, переплавка, Мёртвая вода раз в неделю, дань', async () => {
+  atest('Сервер: экономика 4.16 — посылка Ордена, источник при полной сумке, переплавка, Мёртвая вода раз в неделю, дань', async () => {
     const A = await newPlayer('ve', 55.52, 37.44, 'Хозяйка');
     A.data.tut = 0;
     const lim = asPlayer(A, () => S.bagLimit()), cnt = () => asPlayer(A, () => S.bagCount());
-    // полная сумка: родник открывается — опыт сразу, вещи ждут в посылке Ордена
+    // полная сумка: источник открывается — опыт сразу, вещи ждут в посылке Ордена
     A.data.items = { charm: lim };
     const sp = freeSpring(A, 94000), xp0 = A.data.xp;
-    const rs = await call(A, 'spring', { poi: sp }); ok(rs.ok, 'родник открылся');
-    ok(A.data.springs[sp.id], 'родник отдал силу'); eq(asPlayer(A, () => Rules.dayUsed(A.data, 'springs')), 1); ok(A.data.xp > xp0, 'опыт — сразу');
-    eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'вещи родника — в посылке');
+    const rs = await call(A, 'spring', { poi: sp }); ok(rs.ok, 'источник открылся');
+    ok(A.data.springs[sp.id], 'источник отдал силу'); eq(asPlayer(A, () => Rules.dayUsed(A.data, 'springs')), 1); ok(A.data.xp > xp0, 'опыт — сразу');
+    eq(cnt(), lim, 'сумка не переполнилась'); ok(asPlayer(A, () => S.parcelCount()) > 0, 'вещи источника — в посылке');
     ok(rs.events.some(([ev, d]) => ev === 'toast' && /посылку Ордена/.test(d.text)), 'игроку сказано, где вещи');
     A.data.parcel = null;
     // награда при полной сумке — в посылку, и об этом сообщение
@@ -2406,11 +2406,11 @@
     await must(A, 'discard', { k: 'charm', n: 100 });
     const t = await must(A, 'parcelTake'); ok(t.got.length > 0); eq(t.left, 0); eq(A.data.parcel, null, 'посылка разобрана');
     await refuse(A, 'parcelTake', {}, /пуста/);
-    // родник при почти полной сумке: что не влезло — в посылку
+    // источник при почти полной сумке: что не влезло — в посылку
     A.data.items = { charm: lim - 1 };
     const sp2 = freeSpring(A, 94500); DB.pois[sp2.id] = { ...sp2, kind: 'spring', active: true }; // 4.26: место из базы — добыча полная
-    const s2 = await must(A, 'spring', { poi: sp2 }); // другой родник — первый уже отдал силу
-    eq(cnt(), lim); ok(asPlayer(A, () => S.parcelCount()) >= 3, 'добыча родника не пропала'); ok(!s2.got.some(x => !x.n));
+    const s2 = await must(A, 'spring', { poi: sp2 }); // другой источник — первый уже отдал силу
+    eq(cnt(), lim); ok(asPlayer(A, () => S.parcelCount()) >= 3, 'добыча источника не пропала'); ok(!s2.got.some(x => !x.n));
     const dr = await must(A, 'parcelTake', { drop: true }); ok(dr.dropped >= 3); eq(A.data.parcel, null, 'посылку можно выбросить');
     A.data.items = { charm: 50 };
     // переплавка амулетов
@@ -2856,7 +2856,7 @@
     for (const l of lands) {
       const list = Atlas.PLACES[l.id], b = BOX[l.id];
       ok(Array.isArray(list) && list.length >= 6 && list.length <= 15, l.id + ': от 6 до 15 мест');
-      ok(l.name && l.text && l.polys.length && ['w', 'e'].includes(l.disc), l.id + ': название, описание, очертания, диск');
+      ok(l.name && l.text && l.polys.length && l.label.length === 2, l.id + ': название, описание, очертания, точка подписи');
       ok(l.myths.every(m => MYTHS[m]), l.id + ': мифологии — из MYTHS');
       ok(!l.text.includes(MYTHS.japan ? MYTHS.japan.name : '—'), l.id + ': закрытая мифология не названа в тексте');
       for (const [id, name, spot, lat, lng] of list) {
@@ -2869,11 +2869,18 @@
       }
     }
     ok(Atlas.LANDS.some(l => l.cold) && !Atlas.PLACES.antarctica, 'в Антарктиду Врата не открываются');
-    // проекция: центр диска — в центре листа; очертания без NaN; значок и лист рисуются
-    for (const d of ['w', 'e']) { const p = Atlas.pj(d), c = Atlas.proj(d, p.lng, p.lat); near(c[0], p.cx, 1e-6); near(c[1], p.cy, 1e-6); eq(c[2], 0); }
-    const sheet = Atlas.sheet();
-    ok(sheet.startsWith('<svg') && !/NaN|undefined|Infinity/.test(sheet), 'лист Атласа без NaN');
-    ok((sheet.match(/class="at-land/g) || []).length >= 8, 'материки на обоих дисках');
+    // 5.1.6: глобус — центр вида в центре шара, касание находит ту же точку; с любой стороны очертания без NaN, видны не меньше двух материков
+    for (const [lng, lat] of [[37, 55], [-100, 30], [140, -30], [0, -62]]) {
+      const M = Atlas.mat(lng, lat), c = Atlas.rot(M, Atlas.vec(lng, lat)); near(c[0], 0, 1e-9); near(c[1], 0, 1e-9); near(c[2], 1, 1e-9);
+      const q = Atlas.rot(M, Atlas.vec(lng + 20, lat - 10)), back = Atlas.unproj(M, q[0], q[1]); near(back[0], lng + 20, 1e-6); near(back[1], lat - 10, 1e-6);
+      const d = Atlas.geo().lands.map(rs => rs.map(r => Atlas.ringPath(r, M, 150, 195, 200)).join(''));
+      ok(!d.some(s => /NaN|undefined|Infinity/.test(s)), 'очертания без NaN');
+      ok(d.filter(Boolean).length >= 2, `с (${lng}, ${lat}) видны материки`);
+      ok(!/NaN/.test(Atlas.linePath(Atlas.geo().grat, M, 150, 195, 200)), 'сетка без NaN');
+    }
+    const globe = Atlas.globe();
+    ok(globe.startsWith('<svg') && !/NaN|undefined|Infinity/.test(globe), 'глобус без NaN');
+    eq((globe.match(/class="at-land[ "]/g) || []).length, Atlas.LANDS.length, 'все материки на одном глобусе');
     ok(Atlas.icon().startsWith('<svg') && !/NaN|undefined/.test(Atlas.icon()), 'значок Атласа');
   });
   atest('5.1: Атлас мира — первое появление, перезарядка и Врата Перепутицы', async () => {
@@ -2922,19 +2929,19 @@
       Object.assign(Walk, { teleport: sv.tp, placed: sv.placed, cooldownLeft: sv.cd, gates: sv.gates }); UI.toast = sv.toast; Atlas.GATE_MS = sv.ms;
     }
   });
-  // 5.2: сервер считает сон мест так же, как телефон, и отклоняет действия у спящих мест; новичку Родник — рядом
-  atest('Сервер 5.2: спящее место — ничего нельзя, у новичка Родник рядом', () => withSleepA(async () => {
+  // 5.2: сервер считает сон мест так же, как телефон, и отклоняет действия у спящих мест; новичку Источник — рядом
+  atest('Сервер 5.2: спящее место — ничего нельзя, у новичка Источник рядом', () => withSleepA(async () => {
     const A = await newPlayer('uplw', 12.5, 21.5, 'Сон'); // вдали от мест из базы — места OSM с телефона
     A.data.tut = 0; A.data.level = 12; A.data.clan = 'slavic';
     const at = { lat: A.lat, lng: A.lng }, now = Date.now(), hour = Math.floor(now / 3600000);
     const aw = (id, kind) => asPlayer(A, () => W.awake({ id }, kind, now));
     const free = id => !asPlayer(A, () => W.springFor({ id, ...at, name: 'Р' }, 0).invaded);
     const sleepSp = poiId(i => !aw(i, 'spring') && free(i), 96000), awakeSp = poiId(i => aw(i, 'spring') && free(i), 96000);
-    ok(sleepSp && awakeSp, 'нашлись спящий и бодрствующий Родники');
-    await refuse(A, 'spring', { poi: { id: sleepSp, ...at, name: 'Родник' } }, /спит/);
-    await must(A, 'spring', { poi: { id: awakeSp, ...at, name: 'Родник' } });
+    ok(sleepSp && awakeSp, 'нашлись спящий и бодрствующий Источники');
+    await refuse(A, 'spring', { poi: { id: sleepSp, ...at, name: 'Источник' } }, /спит/);
+    await must(A, 'spring', { poi: { id: awakeSp, ...at, name: 'Источник' } });
     const invSp = poiId(i => !aw(i, 'spring') && !free(i), 96000);
-    if (invSp) await refuse(A, 'invStart', { spring: { id: invSp, ...at, name: 'Родник' } }, /спит/);
+    if (invSp) await refuse(A, 'invStart', { spring: { id: invSp, ...at, name: 'Источник' } }, /спит/);
     // Капище и Разлом у спящего места: ни боя, ни защитника, ни Разлома (и совместного)
     const sleepSh = poiId(i => !aw(i, 'shrine'), 97000);
     const shrine = { id: sleepSh, ...at, name: 'Капище' };
@@ -2951,20 +2958,20 @@
     ok(r.ok || !/спит/.test(r.error), 'бодрствующее Капище не спит: ' + r.error);
     // место игрока (usr:) не спит никогда
     const usr = 'usr:00000000-0000-0000-0000-0000000005a2';
-    DB.pois[usr] = { id: usr, kind: 'spring', ...at, name: 'Родник игрока', active: true };
+    DB.pois[usr] = { id: usr, kind: 'spring', ...at, name: 'Источник игрока', active: true };
     ok([0, 1, 2, 3, 4].every(k => W.awake({ id: usr }, 'spring', now + k * 7 * 86400000)), 'место игрока бодрствует каждую неделю');
     if (free(usr)) await must(A, 'spring', { poi: { id: usr, ...at } });
-    // новичок: на обучении все Родники бодрствуют — первый Родник рядом (тот самый спящий у других)
+    // новичок: на обучении все Источники бодрствуют — первый Источник рядом (тот самый спящий у других)
     const N = await newPlayer('uplw2', 12.5, 21.5, 'Новичок');
     ok(N.data.tut > 0, 'новичок на обучении');
-    ok(asPlayer(N, () => W.awake({ id: sleepSp }, 'spring', now)), 'у новичка Родник не спит');
-    const fakeList = new Map([[sleepSp, { id: sleepSp, kind: 'spring', ...at, name: 'Родник', t: '' }]]), list0 = Poi.list;
+    ok(asPlayer(N, () => W.awake({ id: sleepSp }, 'spring', now)), 'у новичка Источник не спит');
+    const fakeList = new Map([[sleepSp, { id: sleepSp, kind: 'spring', ...at, name: 'Источник', t: '' }]]), list0 = Poi.list;
     Poi.list = fakeList;
     try {
-      eq(asPlayer(N, () => W.springsAround(at.lat, at.lng, 500)).length, 1, 'новичок видит Родник рядом');
-      eq(asPlayer(A, () => W.springsAround(at.lat, at.lng, 500)).length, 0, 'опытный Ловчий — нет (Родник спит)');
+      eq(asPlayer(N, () => W.springsAround(at.lat, at.lng, 500)).length, 1, 'новичок видит Источник рядом');
+      eq(asPlayer(A, () => W.springsAround(at.lat, at.lng, 500)).length, 0, 'опытный Ловчий — нет (Источник спит)');
     } finally { Poi.list = list0; }
-    await must(N, 'spring', { poi: { id: sleepSp, ...at, name: 'Родник' } });
+    await must(N, 'spring', { poi: { id: sleepSp, ...at, name: 'Источник' } });
   }));
   /* ---------- вывод ---------- */
   (async () => {

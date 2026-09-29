@@ -46,8 +46,7 @@ const Raid = {
     // 4.22.2: в композиции карточки духа и Лиги: сверху портал с боссом, справа ступень, босс, сила и таймер;
     // вкладки «Бой» (команда и кнопки — закреплены внизу), «Босс» (слабость, погода, как бить), «Награда»
     const st = this.bossStats(r), el = s.el, w = Sky.w ? WEATHER[Sky.w.key] : null;
-    const mem = x => `<button class="lg2-mem el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'} team-edit"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${UI.hpBar(x)}</button>`;
-    const teamHtml = t => t.map(mem).join('') + `<button class="lg2-mem empty team-edit"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - t.length));
+    const teamHtml = t => UI.teamCards(t); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
     const power = t => t.reduce((a, x) => a + S.power(x), 0);
     const row = (t, v) => `<div class="dt-row"><span>${t}</span><b>${v}</b></div>`;
     const it = (k, n) => `<span class="cur">${Art.item(k)}</span> ${n}`;

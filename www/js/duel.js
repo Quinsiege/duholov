@@ -27,7 +27,7 @@ const Duel = {
          <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
       : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
          <div class="rift-team-title">${ru`Духи хранителя`}</div>
-         <div class="rift-team">${UI.teamHtml(g.team)}</div>`;
+         <div class="lg2-team tm-row">${UI.teamCards(g.team, true)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
     let action;
     if (mine) action = `<div class="rift-tip">${ru`Капище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
@@ -36,7 +36,7 @@ const Duel = {
         ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
     else action = `
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
         <div class="rift-tip">${hold ? `${ru`Победа освободит Капище от защитников.`} ` : ''}${ru`Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</div>
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
     const html = `
@@ -68,25 +68,31 @@ const Duel = {
     if (def) def.onclick = () => Clans.defend(e, () => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
     const cg = scr.querySelector('.clan-go');
     if (cg) cg.onclick = () => Clans.choose(() => { UI.closeScreen(scr); this.open(W.shrineFor(e, e.d)); });
-    const edit = scr.querySelector('.team-edit');
-    if (edit) edit.onclick = () => UI.pickTeam(() => { team = S.team(); scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team); });
+    // 5.1.5: «Изменить», карточка духа и пустое место — выбор команды
+    scr.addEventListener('click', ev => {
+      if (!ev.target.closest('.team-edit, .team-slot')) return;
+      UI.pickTeam(() => {
+        team = S.team();
+        const box = scr.querySelector('.tm-my'); if (box) box.innerHTML = UI.teamCards(team);
+        const b = scr.querySelector('.duel-go'); if (b) b.disabled = !team.length;
+      });
+    });
     Clans.refresh(); // сводка могла устареть
   },
 
-  // Захваченный родник: поединок с прислужником Нави
+  // Захваченный источник: поединок с прислужником Нави
   openInvasion(e) {
-    // 4.15.1: в композиции карточки духа — сверху захваченный родник в тёмном круге Нави, справа «Захвачен Навью»,
+    // 4.15.1: в композиции карточки духа — сверху захваченный источник в тёмном круге Нави, справа «Захвачен Навью»,
     // сила отряда, прислужник и слабость отряда; ниже — омрачённые духи против твоей команды, внизу — «Сразиться»
     const g = W.grunt(e);
     const pw = t => t.reduce((a, x) => a + S.power(x), 0);
     const weak = ELEMENT_KEYS.filter(x => ELEMENTS[x].beats.includes(g.el));
-    const card = (x, foe) => `<${foe ? 'div' : 'button'} class="lg2-mem el-${SP[x.sid].el} ${foe ? 'inv2-dark' : S.alive(x) ? 'team-edit' : 'ko team-edit'}"><span class="pcs-a">${Art.of(x)}</span><b>${U.esc(x.nick || SP[x.sid].name)}</b><em>${ru`сила ${U.fmtNum(S.power(x))} · ур. ${x.lvl}`}</em>${foe ? '' : UI.hpBar(x)}</${foe ? 'div' : 'button'}>`;
     const scr = UI.screen(ru`Вторжение Нави`, `
       <div class="det det2 inv2 el-${g.el}">
         <div class="dt-hero">
           <div class="det-art inv2-art"><i class="inv2-mist"></i>${Art.springIcon(false, true)}</div>
           <div class="dt-info">
-            <div class="det-hp inv2-place">${ru`Родник «${U.esc(e.name)}»`}</div>
+            <div class="det-hp inv2-place">${ru`Источник «${U.esc(e.name)}»`}</div>
             <div class="inv2-title">${ru`Захвачен Навью`}</div>
             <div class="det-power"><small>${ru`СИЛА ОТРЯДА`}</small><b>${U.fmtNum(pw(g.team))}</b></div>
             <div class="inv2-grunt"><span class="inv2-ava">${Art.guardian(g.color)}</span><span><b>${g.name}</b><small>${g.title}</small></span></div>
@@ -99,15 +105,15 @@ const Duel = {
     const body = scr.querySelector('.inv2-body'), foot = scr.querySelector('.inv2-foot');
     const render = () => {
       const team = S.team(), ko = team.some(x => !S.alive(x)), mine = pw(team);
-      const slots = team.map(x => card(x)).join('') + `<button class="lg2-mem empty team-slot"><span class="lg2-plus">+</span><em>${ru`выбрать духа`}</em></button>`.repeat(Math.max(0, 3 - team.length));
+      const slots = UI.teamCards(team); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
       body.innerHTML = `
         <div class="pf-mh lg2-th"><span>${ru`Омрачённые духи`}</span><em class="inv2-weak">${ru`слабость`}${weak.map(x => `<i>${Art.elIcon(x, 15)} ${ELEMENTS[x].name}</i>`).join('')}</em></div>
-        <div class="lg2-team">${g.team.map(x => card(x, true)).join('')}</div>
+        <div class="lg2-team">${UI.teamCards(g.team, 'inv2-dark')}</div>
         <div class="inv2-vs"><i></i><b>${mine >= pw(g.team) ? ru`силы на твоей стороне` : ru`отряд сильнее — бей в слабость`}</b><i></i></div>
         <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span>${mine ? `<b>${ru`сила ${U.fmtNum(mine)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${slots}</div>`;
       foot.innerHTML = `
-        <div class="lg2-rule">${ru`Победа освободит родник и позволит спасти одного из омрачённых духов.`}</div>
+        <div class="lg2-rule">${ru`Победа освободит источник и позволит спасти одного из омрачённых духов.`}</div>
         ${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}
         <button class="btn primary wide duel-go" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;
     };
@@ -129,9 +135,9 @@ const Duel = {
       <div class="shrine-view spar">
         <div class="guard"><div class="guard-ava">${Art.avatar(f.look || undefined)}</div><div><b>${U.esc(f.name)}</b><small>${ru`Дружеский поединок`}</small></div></div>
         <div class="rift-team-title">${ru`Сильнейшие духи друга`}</div>
-        <div class="rift-team">${UI.teamHtml(top)}</div>
+        <div class="lg2-team tm-row">${UI.teamCards(top, true)}</div>
         <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="rift-team my">${UI.teamHtml(team)}</div>
+        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
         <div class="rift-tip">${today ? ru`Награда за сегодня уже получена — сейчас это тренировка (+100 опыта за победу).` : ru`Награда за первую победу за день: 800 опыта, ✦ 500, обереги и мёд, +1 ★ дружбы.`}</div>
         <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>
       </div>`;
@@ -146,10 +152,13 @@ const Duel = {
       const color = (r.look && r.look.cloak) || GUARD_COLORS[Math.floor(U.h(f.id) * GUARD_COLORS.length)];
       this.start({ kind: 'spar', name: f.name, T: this.FOE.spar }, { name: U.esc(r.name), color, team: r.foe }, S.team());
     };
-    scr.querySelector('.team-edit').onclick = () => UI.pickTeam(() => {
-      team = S.team();
-      scr.querySelector('.rift-team.my').innerHTML = UI.teamHtml(team);
-      scr.querySelector('.duel-go').disabled = !team.length;
+    scr.addEventListener('click', ev => { // 5.1.5: «Изменить», карточка духа и пустое место — выбор команды
+      if (!ev.target.closest('.team-edit, .team-slot')) return;
+      UI.pickTeam(() => {
+        team = S.team();
+        scr.querySelector('.tm-my').innerHTML = UI.teamCards(team);
+        scr.querySelector('.duel-go').disabled = !team.length;
+      });
     });
   },
 
@@ -541,7 +550,7 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       rescue = g.team.find(x => x.sid === r.rescue.sid) || g.team[0];
-      html = `<div class="res-title">${ru`Родник освобождён!`}</div>
+      html = `<div class="res-title">${ru`Источник освобождён!`}</div>
         <div class="res-art">${Art.of(rescue)}</div>
         <div class="res-note">${ru`Прислужник растворился в тумане. Один из его духов — омрачённый ${SP[rescue.sid].name} — остался рядом. Его ещё можно спасти!`}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>

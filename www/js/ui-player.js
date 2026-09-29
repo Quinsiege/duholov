@@ -7,7 +7,7 @@ Object.assign(UI, {
   quests(tab) {
     Tut.ui('quests'); // 4.0: шаг обучения
     this.qTab = tab || (this.qTab === 'order' ? 'order' : 'day');
-    const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и родника — есть что забрать → зелёная точка
+    const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и источника — есть что забрать → зелёная точка
     const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const BONUS = Rules.QUEST_BONUS;
     const render = () => {
@@ -55,7 +55,7 @@ Object.assign(UI, {
         return;
       }
       if (td) {
-        this.confirm(ru`Отказаться от поручения?`, ru`Поручение исчезнет, новое можно получить у родника.`, ru`Отказаться`, () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), ru`Оставить`, true);
+        this.confirm(ru`Отказаться от поручения?`, ru`Поручение исчезнет, новое можно получить у источника.`, ru`Отказаться`, () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), ru`Оставить`, true);
         return;
       }
       if (tm) {
@@ -99,7 +99,7 @@ Object.assign(UI, {
       return `<div class="${u >= m ? 'out' : ''}"><b>${u}/${m}</b><small>${Rules.DAILY_NAMES[k]}</small></div>`;
     }).join('')}</div>`;
   },
-  // Поручения из родников: задание → предметы и встреча с духом
+  // Поручения из источников: задание → предметы и встреча с духом
   tasksHtml() {
     const d = S.d;
     const meets = d.taskMeet.map(m => `<div class="quest done t-row"><div class="t-sp">${Art.img(m.sid)}</div><div class="q-main"><b>${ru`Встреча: ${SP[m.sid].name}`}</b><small>${ru`${RARITY[SP[m.sid].rar].name} · ур. ${m.lvl}. Не сбежит, пока не поймаешь.`}</small></div>
@@ -109,8 +109,8 @@ Object.assign(UI, {
       return `<div class="quest t-row ${done ? 'done' : ''}"><div class="t-sp mystery">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class="q-main"><b>${I18N.back(q.text)}</b><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><small>${q.guest ? ru`${pv} · Награда: гость издалека` : ru`${pv} · Награда: встреча с духом`}</small></div>
         ${done ? `<button class="btn small primary t-claim" data-id="${q.id}">${ru`Сдать`}</button>` : `<button class="btn-round small t-drop" data-id="${q.id}" aria-label="${ru`Отказаться`}">${this.I.close}</button>`}</div>`;
     }).join('');
-    return `<h3 class="q-h">${ru`Поручения родников`} <small>${d.tasks.length} / ${TASK_LIMIT}</small></h3>${meets}${tasks ||
-      (meets ? '' : `<div class="q-note">${ru`Родники иногда дают поручения: первое за день — всегда. За выполненное — предметы и встреча с духом, которого на улице не найти так просто.`}</div>`)}`;
+    return `<h3 class="q-h">${ru`Поручения источников`} <small>${d.tasks.length} / ${TASK_LIMIT}</small></h3>${meets}${tasks ||
+      (meets ? '' : `<div class="q-note">${ru`Источники иногда дают поручения: первое за день — всегда. За выполненное — предметы и встреча с духом, которого на улице не найти так просто.`}</div>`)}`;
   },
 
   /* ---------------- ПРОФИЛЬ ---------------- */
@@ -126,7 +126,7 @@ Object.assign(UI, {
     const cc = d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24', maxed = d.level >= MAX_LEVEL;
     const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
     const ach = [
-      [ru`Пробуждений`, d.stats.awakened || 0], [ru`Родников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
+      [ru`Пробуждений`, d.stats.awakened || 0], [ru`Источников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
       [ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],
       [ru`Очищено духов`, d.stats.purified], [ru`Отличных бросков`, d.stats.throwsGreat],
       ...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Капищ освобождено`, d.stats.freed || 0]] : []),

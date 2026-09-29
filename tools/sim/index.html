@@ -227,8 +227,8 @@
     return p;
   };
   const poiId = (test, from = 90000) => { for (let i = from; i < from + 3000; i++) if (test('osm:n' + i)) return 'osm:n' + i; return null; };
-  // родник у игрока, не захваченный Навью прямо сейчас (вторжения меняются каждые 2 часа)
-  const freeSpring = (P, from) => ({ id: poiId(i => !asPlayer(P, () => W.springFor({ id: i, lat: P.lat, lng: P.lng, name: 'Родник' }, 0).invaded), from), lat: P.lat, lng: P.lng, name: 'Родник' });
+  // источник у игрока, не захваченный Навью прямо сейчас (вторжения меняются каждые 2 часа)
+  const freeSpring = (P, from) => ({ id: poiId(i => !asPlayer(P, () => W.springFor({ id: i, lat: P.lat, lng: P.lng, name: 'Источник' }, 0).invaded), from), lat: P.lat, lng: P.lng, name: 'Источник' });
   </script>
   <script src="sim.js"></script>
 </body>

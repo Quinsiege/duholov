@@ -1,21 +1,21 @@
 'use strict';
 /* 5.1: Атлас мира — старинная карта Ордена. Реального GPS больше нет: Ловчий сам выбирает, куда шагнуть через Врата Перепутицы.
-   Шаг 1 — материки на двух дисках-полушариях («Новый Свет» и «Старый Свет», азимутальная проекция, всё рисуется кодом).
-   Шаг 2 — известные места материка (или «Своё место» — точка на настоящей карте) и «Шагнуть во Врата» → Walk.teleport.
+   5.1.6: шаг 1 — один глобус на ночном небе (ортографическая проекция, всё рисуется кодом в SVG): его крутят пальцем (по двум осям,
+   с инерцией, наклон к полюсам ограничен), в покое он сам медленно вращается, при выборе материка плавно доворачивается к нему.
+   Шаг 2 — тот же глобус приближается к материку: его места (или «Своё место» — точка на настоящей карте) и «Шагнуть во Врата» → Walk.teleport.
+   Перепроекция — только когда вид изменился (перетаскивание, инерция, доворот, самовращение), одним кадром requestAnimationFrame.
    Открывается: пока у Ловчего нет места в мире игры (Walk.placed() — нет S.d.atlasV: новичок после книги-вступления, до обучения,
    или первый вход после 5.1) — сам, без выхода (Walk.ensurePlaced, main.js); дальше — меню «Атлас мира» и кнопка-глобус на карте.
    Перезарядка Врат (Rules.MOVE.TP_CD) и предмет «Врата Перепутицы» (Rules.MOVE.TP_ITEM) — решает сервер; Атлас только показывает
    и передаёт { first } или { item: true }. Модуль движения Walk (walk.js) может ещё не быть — тогда всё проверяется через typeof. */
 
 const Atlas = {
-  // диски-полушария: центр проекции (широта, долгота) и угловой радиус диска в градусах
-  DISCS: { w: { lat: 12, lng: -90, deg: 82 }, e: { lat: 15, lng: 85, deg: 105 } },
-  // расположение дисков на листе (единицы viewBox): «Новый Свет» сверху слева, «Старый Свет» — ниже и правее
-  LAYOUT: { W: 400, H: 640, w: { cx: 172, cy: 150, r: 124 }, e: { cx: 224, cy: 454, r: 168 } },
-  // материки: disc — «родной» диск (подпись, приближение, города), label — точка подписи [долгота, широта],
+  TILT: 62,     // наклон глобуса к полюсам — не больше, градусы
+  SPIN: 0.004,  // самовращение в покое, градусов за миллисекунду (4°/с)
+  // материки: label — точка подписи [долгота, широта] (к ней глобус доворачивается при выборе),
   // myths — мифологии, которые здесь «родом» (показываются только открытые — MYTH_KEYS), polys — очертания «долгота,широта …»
   LANDS: [
-    { id: 'europe', disc: 'e', name: ru`Европа`, label: [22, 53], myths: ['slavic', 'greek', 'norse', 'celtic'],
+    { id: 'europe', name: ru`Европа`, label: [22, 53], myths: ['slavic', 'greek', 'norse', 'celtic'],
       text: ru`Здесь сходятся старые дороги Нави, Олимпа, Асгарда и холмов сидов — от Москвы до Дублина.`,
       polys: [
         '-5.6,36 -6.3,36.8 -7.4,37.2 -8.9,37 -8.8,38.7 -9.5,39.4 -8.9,41.8 -9.3,43 -8,43.7 -5.8,43.6 -3.8,43.45 -1.8,43.4 -1.2,44.6 -1.3,46.2 -2.2,47.1 -4.7,48 -4.5,48.6 -3,48.8 -1.6,48.7 -1.9,49.7 0.2,49.5 1.6,50.2 2.5,51.1 3.6,51.4 4.2,52.3 4.8,53 6.9,53.4 8.6,53.9 8.6,55.5 8.1,56.8 10.6,57.7 10.3,56.2 10,55 10.9,54.4 11,54 13.2,54.3 14.3,53.9 16.5,54.5 18.6,54.8 19.9,54.4 21.1,55.3 21.1,56.4 22,57.6 23.5,57 24.1,57 24.4,58.3 23.4,59 24.7,59.5 28,59.5 30.2,59.9 29,60.2 27,60.5 22.9,59.8 21.4,60.6 21.5,61.8 21.2,63 22.3,63.9 24.5,64.9 25.4,65 25.3,65.5 24.2,65.8 22.2,65.6 21,64.5 19,63.4 17.6,62.4 17.2,61 18.6,60.2 18.8,59.4 16.9,58.3 16.5,57 15.9,56.1 14.2,55.4 12.9,55.4 12.6,56.2 11.8,57.7 11.1,59 10.6,59.9 9.8,59 8,58.1 6.6,58.1 5.6,58.9 5,60.4 5,61.9 6.2,62.5 8.5,63.4 9.6,64.2 12.3,65.8 13.6,67.5 15.8,68.5 18.9,69.7 21.5,70.2 25.8,71.1 28.5,70.9 31,70.3 33,69.4 36.5,69.1 40.8,67.7 41.2,66.2 38,66.1 35,66.5 34.8,64.5 37,63.9 40.5,64.6 43.5,66.2 44.2,68.3 48,67.6 53.5,68.2 59,68.5 66,69 60,68 59.5,65 59,61 59.5,58 59.2,55 58.8,52 55,51.2 51.5,49.5 51.8,47 49.5,46.5 47.5,45.6 47,44.3 48.5,41.8 46,42.5 43.5,43.2 41.5,43.3 40,43.4 39.7,43.6 38,44.5 37.3,45 38.2,46.2 39.7,47.2 37.5,46.7 35.5,45.4 36.4,45.1 35.4,44.9 34.2,44.5 33.5,44.6 32.6,45.4 33.6,46.1 31.8,46.5 30.7,46.5 29.7,45.3 28.6,44.3 28,43.2 27.7,42.1 28.9,41.3 29.05,41.2 29,41 28.6,40.97 27.5,40.95 27,40.7 26.2,40.6 26,40.8 24,40.9 22.9,40.6 22.9,39.35 22.5,38.9 23.6,38.46 24,38.15 24.02,37.65 23.63,37.94 23.35,38 22.93,37.94 22.8,37.57 23.05,36.69 23.2,36.44 22.56,36.76 22.48,36.39 22.1,37.03 21.7,36.82 21.67,37.25 21.35,37.67 21.73,38.25 21.43,38.37 20.75,38.96 20.26,39.5 19.4,40.3 19.4,41.8 18.5,42.4 16.4,43.5 15.2,44.2 13.9,44.8 13.7,45.6 12.3,45.4 12.3,44.4 13.6,43.6 14.8,42.1 16.2,41.9 17.1,41.1 18.5,40.1 17.2,40.4 16.6,39 15.7,37.9 15.6,38.3 16,39.3 15.7,40.1 14.3,40.8 12.5,41.7 10.5,42.9 10.2,43.9 8.9,44.4 7.5,43.8 6,43.1 4.8,43.4 3,43 3.2,41.9 2.2,41.4 0.9,41 -0.3,39.5 0.2,38.8 -0.5,38.3 -0.9,37.6 -2.1,36.7 -4.4,36.7 -5.4,36.1',
@@ -28,7 +28,7 @@ const Atlas = {
         '23.5,35.3 26.3,35.3 26.2,35 24,35',
         '10.9,55.7 11,55.2 12.1,55 12.6,55.7 12.5,56.1 11.8,55.9',
       ] },
-    { id: 'asia', disc: 'e', name: ru`Азия`, label: [95, 50], myths: ['china', 'japan', 'slavic', 'egypt'],
+    { id: 'asia', name: ru`Азия`, label: [95, 50], myths: ['china', 'japan', 'slavic', 'egypt'],
       text: ru`От Уральских гор до Тихого океана. Отсюда родом небесные драконы Китая, а Сибирь и Средняя Азия — края славянских духов.`,
       polys: [
         '66,69 66.5,70.8 69,73 72,72.5 75,72.3 80,73.5 87,75 95,76 104,77.7 113,73.7 120,73 127,73.5 132,71.3 140,72.5 150,71.5 160,69.7 170,70 178,69.5 179.8,68.9 179.8,65 177.5,64.7 174,61.8 170,60 166,59.8 163.5,59.9 163.3,58 162,56.3 159.5,53 156.7,51 156.1,52.5 156.3,55.5 157.5,57.5 160,60.5 161,62 156,61.8 151,59.5 143,59.3 140.5,58 137,54.5 135,54.5 138.2,53.6 141.2,52.9 140.4,50.2 140,48.3 138,46 135,43.5 132,43 130.7,42.3 129.8,41.5 129.4,40 128.4,38.6 129.4,36 129.3,35.2 127.5,34.6 126.3,34.5 126.5,35.8 126.6,37.5 125.3,37.7 125.1,38.8 124.3,39.9 122.2,40.4 121.2,38.8 121.5,40.9 119.5,39.8 117.8,39 118.9,37.5 120.5,37.4 122.6,37.4 120.3,36 119.2,34.8 120.9,32.1 121.9,31.2 121.9,30.2 122,29 121,27.7 119.6,25.5 118.1,24.5 116.5,23.3 114.2,22.3 113.5,22.2 111,21.4 110.2,20.3 109.7,21.6 108,21.5 106.7,20.7 105.8,19 106.6,17.4 108.3,16.1 109.2,13.8 109.2,12 107.6,10.5 106.7,10.3 105,8.6 104.8,10.2 103.5,10.6 102.3,12.2 100.9,12.7 100.5,13.5 99.9,12.5 99.2,10.3 100.3,8.5 100.6,7 102.2,6.2 103.4,4.2 104.3,1.5 103.9,1.25 103.6,1.3 102,2.5 100.4,4.8 100.3,6.5 98.4,7.9 98.6,10 98.5,12.5 97.6,16.5 95,15.8 94.3,16 94.6,18.5 92.9,20.5 92.2,21.5 91.8,22.4 90.5,22 89,21.7 87.2,21.5 86.9,20.4 85.3,19.6 84,18.3 82.3,16.6 80.3,15.3 80.3,13.1 79.8,11 79.3,10.3 78.2,8.5 77.5,8.1 76.3,9.9 75,12.9 73.8,15.6 72.8,19 72.6,21.3 72.2,22.3 71,20.7 69,22.3 70.4,23 68.8,23.8 67.1,24.8 66.5,25.4 62,25.2 58.8,25.5 57.3,26.8 56.3,27.1 54.5,26.6 52,27.8 50.8,28.9 50,30 48,29.9 48,29.3 49.6,27 50.2,26.2 50.8,25.6 51.2,26.1 51.6,25.3 51,24.6 52.6,24.2 54.4,24.5 55.3,25.3 56.1,26.1 56.3,24.8 57.8,23.7 58.6,23.6 59.8,22.5 58.8,20.7 57.8,19 56.8,18.1 55,17 52.2,15.6 49.1,14.5 45,12.8 43.5,12.7 42.7,15 42.6,16.8 41,19.5 39.2,21.5 38.1,24.1 36.5,26 35,28.1 34.9,29.5 34.2,31.3 34.5,31.6 34.8,32.1 35.1,33.1 35.5,33.9 35.8,34.8 35.9,35.9 36.2,36.6 35.5,36.6 34.6,36.8 32.8,36.1 30.6,36.8 29.1,36.6 27.4,37 26.3,38.3 27.1,38.4 26.6,39.4 26.2,39.9 26.5,40.2 27.5,40.4 29,40.4 29.9,40.7 29.1,41 29.2,41.2 31,41.1 33,42 35.2,42 37,41.1 39.7,41 41.6,41.6 41.6,42.6 40,43.4 41.5,43.3 43.5,43.2 46,42.5 48.5,41.8 49.5,40.4 50.3,40.4 49,39 48.9,38.4 50,37.4 51.5,36.8 53.9,36.9 53.9,39 53,40 52.8,41.5 52.5,42.8 51.3,43.2 50.3,44.5 51.5,45.5 53,46.8 51.8,47 51.5,49.5 55,51.2 58.8,52 59.2,55 59.5,58 59,61 59.5,65 60,68',
@@ -48,13 +48,13 @@ const Atlas = {
         '119.4,-5.6 120.5,-5.6 120.4,-2.9 121.3,-4.8 122.8,-4.5 121.4,-1.9 123.3,-0.9 121.8,-0.8 121,0.5 124.9,1.5 125,0.8 120.5,0.3 119.8,-0.6 119.4,-3.4',
         '32.3,34.7 33,34.6 34,35 34.6,35.7 33,35.4 32.3,35.1',
       ] },
-    { id: 'africa', disc: 'e', name: ru`Африка`, label: [21, 6], myths: ['egypt'],
+    { id: 'africa', name: ru`Африка`, label: [21, 6], myths: ['egypt'],
       text: ru`Здесь, у Нила, стоят врата Дуата — родины египетских богов и духов пустыни.`,
       polys: [
         '34.2,31.3 32.3,31.3 29.9,31.2 28,31 25.2,31.6 23.9,32.1 22,32.9 20.1,32.1 19.5,30.3 17,31 15.3,32.3 13.2,32.9 11.1,33.2 10.1,34.2 11.1,35.2 10.6,36.4 11,37 10.2,37.2 9.8,37.3 8.6,36.9 5,36.8 3,36.8 -0.6,35.7 -2,35.1 -4,35.2 -5.4,35.9 -6,35.8 -6.8,34 -7.6,33.6 -9.2,32.5 -9.8,30.4 -11.5,28.2 -13,27.6 -14.8,26 -16,23.7 -17.1,21 -16.3,19.5 -16,18 -16.5,16 -17.5,14.7 -16.8,13.5 -16.7,12.4 -15,11 -13.7,9.5 -13.2,8.5 -11.5,6.9 -9.4,5.3 -7.5,4.4 -5,5.1 -2,4.8 0,5.5 1.2,6.1 2.4,6.35 3.4,6.4 4.9,6.3 6,4.3 7,4.4 8.5,4.5 9.2,3.9 9.8,2 9.4,0.4 8.8,-0.7 9.9,-2.9 11.8,-4.8 12.3,-6 13.2,-8.8 13.6,-12.4 12.3,-15 11.8,-17.3 12.6,-19 14.5,-22.9 15.2,-26.6 16.5,-28.6 17.9,-31.5 18.3,-33.3 18.4,-34.3 20,-34.8 22.1,-34.2 25.6,-34 27.9,-33 30,-31.3 31,-29.9 32.4,-28.6 32.9,-26 35.5,-24 35.5,-21.5 34.8,-19.8 36.9,-17.9 40,-16.2 40.7,-14.5 40.5,-10.5 39.3,-6.8 39.7,-4 41.6,-1.7 43.5,0.5 45.3,2 48,5 49.8,8.5 51.3,11.8 49,11.3 45,10.4 43.2,11.6 43.3,12.6 41.7,13.9 39.5,15.6 38.5,18 37.2,19.6 36.5,22 35.5,23.9 34,26.1 32.6,29.9 33.6,28.2 34.3,27.7 34.9,29.5',
         '49.3,-12 50.2,-14.5 50.5,-15.9 49.6,-17 48,-21 47,-25 45.2,-25.6 43.7,-23.4 43.6,-21 44.2,-19.5 44,-17 46.3,-15.6 47.8,-14 48.9,-12.3',
       ] },
-    { id: 'namerica', disc: 'w', name: ru`Северная Америка`, label: [-101, 47], myths: ['aztec'],
+    { id: 'namerica', name: ru`Северная Америка`, label: [-101, 47], myths: ['aztec'],
       text: ru`Земля пернатых змеев: из долины Мехико вышли ацтекские боги и духи.`,
       polys: [
         '-168,65.6 -166,68.9 -162,70.2 -156.8,71.3 -152,70.8 -145,70.1 -139,69.6 -133,69.4 -128,70.2 -120,69.3 -114,68.2 -108,68.3 -100,67.8 -95,68.5 -90,68.5 -85,69.8 -84,69.5 -81.5,68 -82,66.8 -86,64.5 -88.5,64 -93.5,61.5 -94.2,58.8 -92,57.1 -88.5,56.5 -85,55.3 -82.3,55.1 -82,53 -80.5,51.3 -79,51.5 -78.8,54 -77,55.5 -77.5,58.5 -78,60.8 -77.5,62.5 -74,62.2 -71,61.2 -69.5,59 -67,58.4 -64.5,60.3 -62,57.5 -60,55.3 -57.3,54 -55.8,52 -57.5,51.4 -60,50.3 -64,50.2 -66.5,49.8 -68.5,48.9 -70.5,47.3 -68,48.6 -64.2,48.8 -65,47.9 -64.7,46.3 -64,46 -61,45.5 -60,46 -61.5,45.1 -63.6,44.6 -65.7,43.5 -66,44.7 -67,44.8 -69,44 -70.3,43.6 -70.6,42.6 -70,41.8 -71.5,41.4 -73.5,40.9 -74,40.6 -74,39.7 -75,38.8 -75.5,37.9 -76,37 -75.5,35.3 -77,34.5 -78.9,33.7 -80,32.7 -81.2,31.5 -81.4,30.3 -80.5,28.4 -80.1,26.7 -80.2,25.7 -81.1,25.1 -81.8,26.1 -82.7,27.8 -83,29.1 -84.3,30 -85.4,29.7 -87.2,30.4 -88,30.4 -89.4,30.2 -89.4,29 -90.2,29.1 -91.5,29.4 -93.8,29.7 -94.8,29.3 -97.2,27.8 -97.4,26 -97.7,24 -97.8,22.2 -97.2,20.5 -96.1,19.2 -94.5,18.2 -92.4,18.6 -91.5,18.5 -90.7,19.8 -90.3,21 -88,21.5 -86.8,21.2 -87.4,19.5 -88.2,17.9 -88.3,16.3 -88.8,15.8 -86,15.9 -84,15.8 -83.2,15 -83.6,13 -83.8,11 -83,10 -81.5,9 -79.9,9.35 -78.5,9.4 -77.4,8.6 -77.9,7.2 -78.4,8 -79.5,8.9 -80.4,8 -80.4,7.3 -81.8,8.1 -83.6,8.4 -85.8,10 -85.7,11.1 -87.3,12.9 -89.8,13.5 -91.8,14.4 -93.5,15.8 -94.8,16.2 -96.5,15.7 -98.5,16.4 -99.9,16.8 -101.8,17.6 -104.3,19.1 -105.7,20.4 -105.3,21.6 -106.4,23.2 -108,25 -109.5,26.8 -111,27.9 -112.8,30 -114.8,31.8 -114.3,30 -112.9,28.5 -111.3,26 -110.3,24.2 -109.9,22.9 -111.8,24.5 -112.2,26 -114,27.7 -115,28.5 -116.1,30.5 -117.1,32.5 -118.4,33.8 -120.6,34.6 -121.9,36.6 -122.5,37.8 -123.8,39.4 -124.4,40.4 -124.2,43 -124,46.2 -124.7,48.4 -123,48.3 -122.8,49 -125,50.5 -127.9,51 -128,52 -130,54.3 -133,56.5 -135.5,58.2 -139,59.6 -144,60 -146.5,60.9 -149.9,61.2 -151.5,59.2 -154,58 -157,56.9 -162,55.1 -164.8,54.4 -161,56.5 -158.2,58.7 -162,58.6 -164.8,60.4 -165.4,62.2 -164.5,63.5 -161,64.6 -165.4,64.5',
@@ -70,12 +70,12 @@ const Atlas = {
         '-128.4,50.8 -125,50 -123.3,48.4 -124.8,48.6 -126.5,49.5',
         '-59.3,47.6 -55.4,51.6 -53,49.5 -52.7,47.5 -54,46.8 -56,47.6',
       ] },
-    { id: 'samerica', disc: 'w', name: ru`Южная Америка`, label: [-60, -12], myths: ['aztec'],
+    { id: 'samerica', name: ru`Южная Америка`, label: [-60, -12], myths: ['aztec'],
       text: ru`Сельва, Анды и Амазонка. Ацтекские духи разлетелись и сюда — до самой Огненной Земли.`,
       polys: [
         '-77.4,8.6 -76,9.3 -75.5,10.4 -74.8,11 -73,11.5 -71.3,12.4 -71.6,10.8 -70.2,11.6 -68.4,10.5 -66.9,10.6 -64.2,10.6 -62,10.7 -61,9 -60.5,8.5 -58.2,6.8 -55.2,5.9 -52.3,4.9 -51,4 -50,1.8 -50,0 -48.5,-1.4 -44.3,-2.5 -41.5,-2.9 -38.5,-3.7 -35.2,-5.8 -34.8,-7.1 -35,-9 -37,-11 -38.5,-13 -39,-16 -40,-19.8 -41,-22 -42,-22.9 -43.2,-23 -45,-23.6 -46.3,-24 -48.5,-26.5 -48.6,-28.5 -50,-30.5 -51,-31.8 -52.1,-32.2 -53.4,-33.7 -54.9,-34.9 -56.2,-34.9 -57.8,-34.45 -58.5,-34.4 -58.33,-34.62 -58.2,-34.75 -57.1,-35.4 -56.7,-36.3 -57.5,-38 -60,-38.8 -62.3,-38.8 -62.2,-40.6 -65,-41 -65,-42.5 -64.2,-42.8 -65.5,-44.5 -67.5,-46 -67.5,-46.5 -65.8,-47.8 -68.3,-50.1 -69.2,-51.6 -68.4,-52.4 -68.6,-53 -66.5,-54.5 -68.3,-54.8 -67.3,-55.9 -71,-54.5 -73,-53 -75.5,-50 -75.5,-46.5 -74,-43.5 -74,-42 -73.6,-40 -73.5,-37 -71.7,-33 -71.5,-30 -70.6,-27 -70.4,-23.6 -70.2,-20.2 -70.3,-18.4 -71.4,-17.6 -74,-15.8 -76.3,-13.7 -77.1,-12 -78.8,-8.8 -79.9,-6.8 -81.3,-4.7 -80.4,-3.4 -80,-2.2 -81,-1 -80.1,0.8 -78.9,1.8 -77.4,3.9 -77.5,6 -77.9,7.2',
       ] },
-    { id: 'oceania', disc: 'e', name: ru`Австралия и Океания`, label: [134, -25], myths: [],
+    { id: 'oceania', name: ru`Австралия и Океания`, label: [134, -25], myths: [],
       text: ru`Своих мифологий у Ордена здесь пока нет: все духи Австралии и Океании — гости, которых занесла Перепутица.`,
       polys: [
         '114,-21.8 116.8,-20.6 118.6,-20.3 121.1,-19.4 122.2,-18 123.6,-16.5 125,-15 126.9,-13.9 128.1,-15.1 129.6,-14.9 130.3,-12.9 130.8,-12.4 132.6,-11.5 135.9,-12.2 136.8,-12.2 136,-13.4 135.4,-15 138,-16.8 140.8,-17.5 141.5,-15 141.6,-12.5 142.5,-10.7 143.5,-12.8 145.3,-15 145.8,-16.9 146.8,-19.2 148.8,-20.3 150.2,-22.2 151.3,-23.8 153.1,-25.3 153.2,-27.5 153.6,-28.6 152.9,-31.4 151.2,-33.9 150.2,-36 150,-37.5 147.5,-37.9 146.4,-39.1 144.9,-37.8 143.5,-38.8 140.9,-38.1 139.7,-37.2 138.1,-35.6 138.5,-34.9 138,-34.2 137.6,-35.1 137.4,-34 137.8,-32.5 136.3,-34 135.9,-34.8 134.2,-32.9 131.2,-31.5 128,-32.2 124,-33 121.9,-33.9 118,-35 115.1,-34.4 115.7,-33.3 115.8,-32 115,-29.5 113.5,-26.5 113.6,-24',
@@ -86,7 +86,7 @@ const Atlas = {
         '164,-20.2 165.5,-21 167,-22.3 166.4,-22.3 164.3,-20.8',
       ] },
     // шутка: сюда Врата не открываются
-    { id: 'antarctica', disc: 'e', name: ru`Антарктида`, label: [75, -76], myths: [], cold: true,
+    { id: 'antarctica', name: ru`Антарктида`, label: [75, -76], myths: [], cold: true,
       text: ru`Здесь только пингвины и ледяные духи. Врата сюда не открываются — слишком холодно даже для Ловчих.`,
       polys: ['-180,-78 -160,-78 -150,-76.5 -130,-74.5 -110,-74 -95,-72.5 -80,-73 -75,-71 -68,-67 -65,-65 -57,-63.3 -60,-66 -62,-70 -60,-74 -45,-77.8 -30,-77.5 -20,-73.5 -10,-71 0,-70 20,-70 40,-69 55,-66.5 70,-68 75,-69.5 90,-66.5 110,-66.2 130,-66.2 150,-68.5 165,-71 170,-72 180,-78'] },
   ],
@@ -183,7 +183,10 @@ const Atlas = {
     ],
   },
 
-  el: null, opts: null, step: 1, land: null, pick: null, _vb: null,
+  el: null, opts: null, step: 1, land: null, pick: null, sel: null,
+  G: null,      // глобус на экране: svg, размер, радиус, центр, поворот и ссылки на его части
+  view: null,   // { lng, lat } — точка земли в центре глобуса
+  _s: 0,        // приближение: 0 — весь глобус, 1 — материк во всё окно (шаг 2)
   GATE_MS: 1300, // сколько портал Врат раскрывается, даже если сервер ответил раньше
 
   /* ---------- состояние Врат (модуль движения Walk — от помощника «Движение») ---------- */
@@ -195,120 +198,250 @@ const Atlas = {
   cdMin() { return Math.max(1, Math.ceil(this.cd() / 60000)); },
   tpMin() { return Math.round(((typeof Rules !== 'undefined' && Rules.MOVE && Rules.MOVE.TP_CD) || 30 * 60000) / 60000); },
 
-  /* ---------- проекция: азимутальная равнопромежуточная, у каждого диска свой центр ---------- */
-  // d: 'w' | 'e' — диски листа, 'loc' — карта материка (шаг 2, центр в середине материка: север сверху, без перекоса)
-  pj(d) {
-    if (d === 'loc') return this._loc;
-    const c = this._pj || (this._pj = {});
-    return c[d] || (c[d] = { ...this.DISCS[d], ...this.LAYOUT[d] });
-  },
-  proj(d, lng, lat) {
-    const D = this.pj(d), rad = Math.PI / 180;
-    const f = lat * rad, f0 = D.lat * rad, dl = (lng - D.lng) * rad;
-    const cc = Math.max(-1, Math.min(1, Math.sin(f0) * Math.sin(f) + Math.cos(f0) * Math.cos(f) * Math.cos(dl)));
-    const c = Math.acos(cc), k = c < 1e-6 ? 1 : c / Math.sin(c);
-    const x = k * Math.cos(f) * Math.sin(dl), y = k * (Math.cos(f0) * Math.sin(f) - Math.sin(f0) * Math.cos(f) * Math.cos(dl));
-    const sc = D.r / (D.deg * rad);
-    return [D.cx + x * sc, D.cy - y * sc, c / rad];
-  },
+  /* ---------- глобус: ортографическая проекция ---------- */
   ring(str) { return str.split(' ').map(p => p.split(',').map(Number)); },
-  // очертание, обрезанное по краю «шапки» (чуть шире видимого круга): что за краем — дугой вне круга, без хорд через диск
-  clip(d, pts) {
-    const D = this.pj(d), cap = D.deg + 12, R = D.r * cap / D.deg;
-    const P = pts.map(p => this.proj(d, p[0], p[1])), inn = P.map(p => p[2] <= cap), n = pts.length;
-    if (!inn.some(Boolean)) return null;
-    if (inn.every(Boolean)) return P;
-    const cross = (a, b) => { // точка на краю шапки между a (внутри) и b (снаружи)
-      let dl = b[0] - a[0]; if (dl > 180) dl -= 360; else if (dl < -180) dl += 360;
-      let lo = 0, hi = 1;
-      for (let i = 0; i < 16; i++) { const m = (lo + hi) / 2; if (this.proj(d, a[0] + dl * m, a[1] + (b[1] - a[1]) * m)[2] <= cap) lo = m; else hi = m; }
-      return this.proj(d, a[0] + dl * lo, a[1] + (b[1] - a[1]) * lo);
-    };
-    const ang = p => Math.atan2(p[1] - D.cy, p[0] - D.cx);
-    const out = [], st0 = inn.indexOf(true);
-    let exit = null;
+  // точка в [долгота, широта] внутри очертания (чётно-нечётное правило)
+  inPoly(r, x, y) { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[i], b = r[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; },
+  // точка земли — единичный вектор: x — к долготе 0, y — к 90° в. д., z — к северному полюсу
+  vec(lng, lat) { const r = Math.PI / 180, f = lat * r, l = lng * r, c = Math.cos(f); return [c * Math.cos(l), c * Math.sin(l), Math.sin(f)]; },
+  // поворот вида с центром (lng, lat): строки — «вправо», «вверх», «к зрителю»
+  mat(lng, lat) {
+    const r = Math.PI / 180, sl = Math.sin(lng * r), cl = Math.cos(lng * r), sf = Math.sin(lat * r), cf = Math.cos(lat * r);
+    return [-sl, cl, 0, -cl * sf, -sl * sf, cf, cl * cf, sl * cf, sf];
+  },
+  // [вправо, вверх, глубина] в радиусах глобуса; глубина < 0 — точка на обратной стороне
+  rot(M, v) { return [M[0] * v[0] + M[1] * v[1], M[3] * v[0] + M[4] * v[1] + M[5] * v[2], M[6] * v[0] + M[7] * v[1] + M[8] * v[2]]; },
+  // точка на глобусе (в радиусах от центра, «вверх» — плюс) → [долгота, широта]; мимо глобуса — null
+  unproj(M, e, u) {
+    const q = e * e + u * u; if (q > 1) return null;
+    const d = Math.sqrt(1 - q), X = e * M[0] + u * M[3] + d * M[6], Y = e * M[1] + u * M[4] + d * M[7], Z = u * M[5] + d * M[8];
+    return [Math.atan2(Y, X) * 180 / Math.PI, Math.asin(Math.max(-1, Math.min(1, Z))) * 180 / Math.PI];
+  },
+  clampLat(f) { return Math.max(-this.TILT, Math.min(this.TILT, f)); },
+  // вся геометрия — один раз: очертания, сетка, города и подписи как векторы на сфере
+  geo() {
+    if (this._geo) return this._geo;
+    const V = (lng, lat) => this.vec(lng, lat), grat = [], eq = [];
+    for (let lng = -180; lng < 180; lng += 20) { const a = []; for (let lat = -80; lat <= 80; lat += 5) a.push(V(lng, lat)); grat.push(a); }
+    for (let lat = -60; lat <= 60; lat += 20) { if (!lat) continue; const a = []; for (let lng = -180; lng <= 180; lng += 5) a.push(V(lng, lat)); grat.push(a); }
+    for (let lng = -180; lng <= 180; lng += 5) eq.push(V(lng, 0));
+    const rings = this.LANDS.map(l => l.polys.map(s => this.ring(s)));
+    return this._geo = { rings, grat, eq: [eq],
+      lands: rings.map(rs => rs.map(r => r.map(p => V(p[0], p[1])))),
+      cities: this.LANDS.map(l => (this.PLACES[l.id] || []).map(p => V(p[4], p[3]))),
+      label: this.LANDS.map(l => V(l.label[0], l.label[1])) };
+  },
+  // точка на краю глобуса между видимой и скрытой (проекция линейна — пересечение с «глубиной 0» точное)
+  cut(a, b) { const t = a[2] / (a[2] - b[2]), e = a[0] + (b[0] - a[0]) * t, u = a[1] + (b[1] - a[1]) * t, k = 1 / (Math.hypot(e, u) || 1); return [e * k, u * k]; },
+  // замкнутое очертание: видимая часть, а где оно уходит за край — дугой по краю глобуса (без хорд через шар)
+  ringPath(ring, M, R, cx, cy) {
+    const n = ring.length, P = ring.map(v => this.rot(M, v)), pt = (e, u) => (cx + R * e).toFixed(1) + ' ' + (cy - R * u).toFixed(1);
+    let vis = 0; for (const p of P) if (p[2] >= 0) vis++;
+    if (!vis) return '';
+    if (vis === n) return 'M' + P.map(p => pt(p[0], p[1])).join('L') + 'Z';
+    let s = 0; while (!(P[s][2] >= 0 && P[(s + n - 1) % n][2] < 0)) s++; // начало — там, где очертание выходит из-за края
+    const out = []; let ex = null;
     for (let k = 0; k < n; k++) {
-      const i = (st0 + k) % n, j = (i + 1) % n;
-      if (inn[i]) out.push(P[i]);
-      if (inn[i] === inn[j]) continue;
-      if (inn[i]) { const X = cross(pts[i], pts[j]); out.push(X); exit = ang(X); }
-      else {
-        const X = cross(pts[j], pts[i]), a1 = ang(X);
-        if (exit != null) {
-          let da = a1 - exit; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
-          const st = Math.ceil(Math.abs(da) / 0.12);
-          for (let q = 1; q < st; q++) { const a = exit + da * q / st; out.push([D.cx + R * Math.cos(a), D.cy + R * Math.sin(a)]); }
+      const i = (s + k) % n, a = P[i], b = P[(i + 1) % n];
+      if (a[2] >= 0) { out.push(pt(a[0], a[1])); if (b[2] < 0) { const X = this.cut(a, b); out.push(pt(X[0], X[1])); ex = Math.atan2(X[1], X[0]); } }
+      else if (b[2] >= 0) {
+        const X = this.cut(a, b), a1 = Math.atan2(X[1], X[0]);
+        if (ex != null) {
+          let da = a1 - ex; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+          const st = Math.ceil(Math.abs(da) / 0.14);
+          for (let q = 1; q < st; q++) { const g = ex + da * q / st; out.push(pt(Math.cos(g), Math.sin(g))); }
         }
-        out.push(X);
+        out.push(pt(X[0], X[1]));
       }
     }
-    return out;
+    return 'M' + out.join('L') + 'Z';
   },
-  // все материки на диске d: подсвеченный — класс on, остальные на карте материка — dim
-  lands(d, on) {
-    return this.LANDS.map(l => {
-      const ps = l.polys.map(t => this.clip(d, this.ring(t))).filter(Boolean);
-      if (!ps.length) return '';
-      const dd = ps.map(p => this.path(p)).join('');
-      return `<g class="at-land${l.cold ? ' cold' : ''}${on ? (l.id === on ? ' on' : ' dim') : ''}" data-l="${l.id}"><path class="h" d="${dd}"/><path class="f" d="${dd}"/></g>`;
-    }).join('');
-  },
-  path(P) { return 'M' + P.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L') + 'Z'; },
-  // сетка меридианов и параллелей (шаг st°) — только внутри видимого круга
-  grat(d, st = 20) {
-    const D = this.pj(d), lines = [], eqL = [];
-    const run = (pts, to) => { let cur = []; for (const p of pts) { if (p[2] <= D.deg) cur.push(p); else { if (cur.length > 1) to.push(cur); cur = []; } } if (cur.length > 1) to.push(cur); };
-    for (let lng = -180; lng < 180; lng += st) { const a = []; for (let lat = -88; lat <= 88; lat += 2) a.push(this.proj(d, lng, lat)); run(a, lines); }
-    for (let lat = -80; lat <= 80; lat += st) { if (!lat) continue; const a = []; for (let lng = -180; lng <= 180; lng += 2) a.push(this.proj(d, lng, lat)); run(a, lines); }
-    const eq = []; for (let lng = -180; lng <= 180; lng += 2) eq.push(this.proj(d, lng, 0)); run(eq, eqL);
-    const pl = L => L.map(a => 'M' + a.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L')).join('');
-    return `<path class="at-grat" d="${pl(lines)}"/><path class="at-eq" d="${pl(eqL)}"/>`;
+  // линии сетки: только видимые куски, обрезанные точно по краю
+  linePath(lines, M, R, cx, cy) {
+    const pt = (e, u) => (cx + R * e).toFixed(1) + ' ' + (cy - R * u).toFixed(1);
+    let d = '';
+    for (const L of lines) {
+      let on = false, prev = null;
+      for (const v of L) {
+        const p = this.rot(M, v);
+        if (p[2] >= 0) {
+          if (on) d += 'L' + pt(p[0], p[1]);
+          else { if (prev) { const X = this.cut(prev, p); d += 'M' + pt(X[0], X[1]) + 'L' + pt(p[0], p[1]); } else d += 'M' + pt(p[0], p[1]); on = true; }
+        } else if (on) { const X = this.cut(prev, p); d += 'L' + pt(X[0], X[1]); on = false; }
+        prev = p;
+      }
+    }
+    return d;
   },
 
-  /* ---------- рисунок листа: два диска, материки, звёзды, роза ветров ---------- */
-  sheet() {
-    const L = this.LAYOUT, rnd = this.rng(7);
-    const stars = Array.from({ length: 46 }, (_, i) => {
-      const x = (rnd() * L.W).toFixed(0), y = (rnd() * L.H).toFixed(0), r = (0.5 + rnd() * 1.1).toFixed(1);
-      return `<circle class="at-star${i % 3 ? '' : ' tw'}" cx="${x}" cy="${y}" r="${r}" style="animation-delay:${(rnd() * 4).toFixed(1)}s"/>`;
-    }).join('');
-    const disc = d => {
-      const c = L[d], lands = this.lands(d);
-      // обод как у астролябии: золотое кольцо, насечки через 10°, ромбы по сторонам света
-      const ticks = Array.from({ length: 72 }, (_, i) => { const a = i * Math.PI / 36, r1 = c.r - (i % 2 ? 4 : 7);
-        return `M${(c.cx + c.r * Math.cos(a)).toFixed(1)} ${(c.cy + c.r * Math.sin(a)).toFixed(1)}L${(c.cx + r1 * Math.cos(a)).toFixed(1)} ${(c.cy + r1 * Math.sin(a)).toFixed(1)}`; }).join('');
-      const gems = [0, 1, 2, 3].map(i => { const a = i * Math.PI / 2, x = c.cx + (c.r + 1) * Math.cos(a), y = c.cy + (c.r + 1) * Math.sin(a);
-        return `<path class="at-gem" d="M${x.toFixed(1)} ${(y - 6).toFixed(1)}l5 6-5 6-5-6z"/>`; }).join('');
-      const lb = d === 'w' ? ru`Новый Свет` : ru`Старый Свет`, rr = c.r + 7;
-      const arc = d === 'w' ? `M${c.cx - rr} ${c.cy}A${rr} ${rr} 0 0 1 ${c.cx + rr} ${c.cy}` : `M${c.cx - rr} ${c.cy}A${rr} ${rr} 0 0 0 ${c.cx + rr} ${c.cy}`;
-      return `<g class="at-disc" data-d="${d}">
-        <circle class="at-sea" cx="${c.cx}" cy="${c.cy}" r="${c.r}" fill="url(#atSea${d})"/>
-        <g clip-path="url(#atClip${d})">${this.grat(d)}${lands}<circle class="at-shine" cx="${c.cx}" cy="${c.cy}" r="${c.r}" fill="url(#atShine)"/></g>
-        <circle class="at-rim2" cx="${c.cx}" cy="${c.cy}" r="${c.r - 9}"/>
-        <path class="at-tick" d="${ticks}"/>
-        <circle class="at-rim" cx="${c.cx}" cy="${c.cy}" r="${c.r}"/>${gems}
-        <path id="atArc${d}" d="${arc}" fill="none"/>
-        <text class="at-arc${d === 'e' ? ' lo' : ''}"><textPath href="#atArc${d}" startOffset="50%">${lb}</textPath></text></g>`;
-    };
-    const labels = this.LANDS.map(l => { const p = this.proj(l.disc, l.label[0], l.label[1]);
+  /* ---------- глобус на экране: висит прямо на ночном небе — без диска, обода и подложки ---------- */
+  // вода — полупрозрачное стекло (небо и туманы просвечивают), по краю — дымка атмосферы, свет сверху слева, тень к краю справа снизу
+  globe() {
+    const lbl = this.LANDS.map(l => {
       // длинное название — в две строки, по пробелу ближе к середине (на любом языке)
       const sm = l.id === 'europe' || l.cold, nm = l.name, mid = nm.length / 2;
       let cut = -1; for (let i = 0; i < nm.length; i++) if (nm[i] === ' ' && (cut < 0 || Math.abs(i - mid) < Math.abs(cut - mid))) cut = i;
       const lines = nm.length > 10 && cut > 0 ? [nm.slice(0, cut), nm.slice(cut + 1)] : [nm];
-      return `<text class="at-lbl${sm ? ' sm' : ''}${l.cold ? ' cold' : ''}" data-l="${l.id}" x="${p[0].toFixed(1)}" y="${p[1].toFixed(1)}">${lines.map((t, i) => `<tspan x="${p[0].toFixed(1)}" dy="${i ? '1.1em' : lines.length > 1 ? '-0.35em' : '0.35em'}">${U.esc(t)}</tspan>`).join('')}</text>`; }).join('');
-    const rose = (x, y, r) => `<g class="at-rose" transform="translate(${x} ${y})"><circle r="${r * .72}" class="rr"/><circle r="${r * .5}" class="rr2"/>
-      <path class="r2" d="${[45, 135, 225, 315].map(a => this.ray(a, r * .62, r * .12)).join('')}"/><path class="r1" d="${[0, 90, 180, 270].map(a => this.ray(a, r, r * .16)).join('')}"/>
-      <circle r="${r * .1}" class="rc"/><text class="rn" y="${-r - 5}">N</text></g>`;
-    return `<svg class="at-svg" viewBox="0 0 ${L.W} ${L.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><defs>
-      ${['w', 'e'].map(d => `<radialGradient id="atSea${d}" cx="46%" cy="40%" r="62%"><stop offset="0" stop-color="#1f4f94"/><stop offset=".55" stop-color="#143574"/><stop offset="1" stop-color="#0a1a45"/></radialGradient>
-        <clipPath id="atClip${d}"><circle cx="${L[d].cx}" cy="${L[d].cy}" r="${L[d].r}"/></clipPath>`).join('')}
-      <linearGradient id="atLand" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#a7f3d0" stop-opacity=".5"/><stop offset=".55" stop-color="#5eead4" stop-opacity=".3"/><stop offset="1" stop-color="#0d9488" stop-opacity=".22"/></linearGradient>
-      <linearGradient id="atLandOn" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#fef3c7" stop-opacity=".75"/><stop offset=".55" stop-color="#fcd34d" stop-opacity=".5"/><stop offset="1" stop-color="#d97706" stop-opacity=".38"/></linearGradient>
-      <radialGradient id="atShine" cx="36%" cy="28%" r="75%"><stop offset="0" stop-color="#bfdbfe" stop-opacity=".16"/><stop offset=".5" stop-color="#bfdbfe" stop-opacity="0"/><stop offset="1" stop-color="#020617" stop-opacity=".45"/></radialGradient>
-      </defs><g class="at-stars">${stars}</g>${rose(352, 62, 30)}${disc('w')}${disc('e')}<g class="at-me"></g><g class="at-pts"></g>${labels}</svg>`;
+      return `<text class="at-lbl${sm ? ' sm' : ''}${l.cold ? ' cold' : ''}" data-l="${l.id}">${lines.map((t, i) => `<tspan x="0" dy="${i ? '1.1em' : lines.length > 1 ? '-0.2em' : '0.35em'}">${U.esc(t)}</tspan>`).join('')}</text>`;
+    }).join('');
+    return `<svg class="at-svg" viewBox="0 0 390 400" aria-hidden="true"><defs>
+      <radialGradient id="atAir" cx="50%" cy="50%" r="50%"><stop offset=".84" stop-color="#38bdf8" stop-opacity="0"/><stop offset=".888" stop-color="#7dd3fc" stop-opacity=".5"/>
+        <stop offset=".93" stop-color="#818cf8" stop-opacity=".16"/><stop offset="1" stop-color="#818cf8" stop-opacity="0"/></radialGradient>
+      <radialGradient id="atSea" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#2563eb" stop-opacity=".46"/><stop offset=".72" stop-color="#1d4ed8" stop-opacity=".5"/>
+        <stop offset=".94" stop-color="#1e3a8a" stop-opacity=".62"/><stop offset="1" stop-color="#93c5fd" stop-opacity=".62"/></radialGradient>
+      <radialGradient id="atLight" cx="34%" cy="28%" r="78%"><stop offset="0" stop-color="#e0f2fe" stop-opacity=".2"/><stop offset=".36" stop-color="#0b1030" stop-opacity="0"/>
+        <stop offset=".72" stop-color="#050a24" stop-opacity=".3"/><stop offset="1" stop-color="#03061a" stop-opacity=".66"/></radialGradient>
+      <radialGradient id="atSpec" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".34"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <linearGradient id="atLand" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#a7f3d0" stop-opacity=".62"/><stop offset=".55" stop-color="#5eead4" stop-opacity=".42"/><stop offset="1" stop-color="#0d9488" stop-opacity=".34"/></linearGradient>
+      <linearGradient id="atLandOn" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#fef3c7" stop-opacity=".9"/><stop offset=".55" stop-color="#fcd34d" stop-opacity=".66"/><stop offset="1" stop-color="#d97706" stop-opacity=".52"/></linearGradient>
+      </defs>
+      <circle class="at-air" fill="url(#atAir)"/><circle class="at-sea" fill="url(#atSea)"/>
+      <path class="at-grat"/><path class="at-eq"/>
+      <g class="at-lands">${this.LANDS.map(l => `<g class="at-land${l.cold ? ' cold' : ''}" data-l="${l.id}"><path class="h"/><path class="f"/></g>`).join('')}</g>
+      <circle class="at-light" fill="url(#atLight)"/><ellipse class="at-spec" fill="url(#atSpec)"/>
+      <path class="at-cities"/><path class="at-cities on"/>
+      <g class="at-me"><g class="at-mek"><circle class="w" r="7"/><path d="M0 -5l4 5-4 5-4-5z"/></g></g>
+      <g class="at-pts"></g><g class="at-lbls">${lbl}</g></svg>`;
   },
-  ray(a, R, w) { const r = a * Math.PI / 180, s = Math.sin(r), c = Math.cos(r); return `M0 0L${(w * c).toFixed(1)} ${(w * s).toFixed(1)}L${(R * s).toFixed(1)} ${(-R * c).toFixed(1)}L${(-w * c).toFixed(1)} ${(-w * s).toFixed(1)}Z`; },
-  rng(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; },
+  // размер окна глобуса (viewBox = пиксели, 1:1); true — если изменился
+  measure() {
+    const G = this.G, b = G.svg.getBoundingClientRect(), W = Math.max(1, Math.round(b.width)), H = Math.max(1, Math.round(b.height));
+    if (W === G.W && H === G.H) return false;
+    G.W = W; G.H = H; G.svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    return true;
+  },
+  // перерисовать глобус под текущий вид: шаг 1 — весь шар по центру окна, шаг 2 (this._s → 1) — места материка во всё окно
+  draw() {
+    const G = this.G; if (!G) return;
+    const v = this.view, s = this._s, W = G.W || 390, H = G.H || 400, R1 = Math.max(40, Math.min(W, H) / 2 / 1.14);
+    v.lng = ((v.lng % 360) + 540) % 360 - 180;
+    let R = R1, cx = W / 2, cy = H / 2;
+    if (s > 0 && this._fit) {
+      const f = this._fit, Rf = Math.max(R1, Math.min(R1 * 9, (W - 64) / Math.max(.01, f[2] - f[0]), (H - 72) / Math.max(.01, f[3] - f[1])));
+      R = R1 * Math.pow(Rf / R1, s);
+      cx -= (f[0] + f[2]) / 2 * R * s; cy += ((f[1] + f[3]) / 2 * R + 8) * s;
+    }
+    const M = G.M = this.mat(v.lng, v.lat), geo = this.geo(), A = (el, o) => { for (const k in o) el.setAttribute(k, o[k]); };
+    G.R = R; G.cx = cx; G.cy = cy;
+    const c = { cx: cx.toFixed(1), cy: cy.toFixed(1) };
+    A(G.sea, { ...c, r: R.toFixed(1) }); A(G.light, { ...c, r: R.toFixed(1) }); A(G.air, { ...c, r: (R * 1.13).toFixed(1) });
+    A(G.spec, { cx: (cx - R * .4).toFixed(1), cy: (cy - R * .5).toFixed(1), rx: (R * .36).toFixed(1), ry: (R * .16).toFixed(1), transform: `rotate(-32 ${(cx - R * .4).toFixed(1)} ${(cy - R * .5).toFixed(1)})` });
+    G.grat.setAttribute('d', this.linePath(geo.grat, M, R, cx, cy));
+    G.eq.setAttribute('d', this.linePath(geo.eq, M, R, cx, cy));
+    geo.lands.forEach((rs, i) => { const d = rs.map(r => this.ringPath(r, M, R, cx, cy)).join(''); G.lands[i][1].setAttribute('d', d); G.lands[i][0].setAttribute('d', this.LANDS[i].id === this.land ? d : ''); });
+    // города: у выбранного материка — ярче
+    if (s < 1) {
+      let a = '', b = '';
+      geo.cities.forEach((cs, i) => { const on = this.LANDS[i].id === this.land, r = on ? 2.6 : 1.6;
+        for (const w of cs) { const p = this.rot(M, w); if (p[2] < .06) continue;
+          const x = cx + R * p[0], y = cy - R * p[1], t = `M${(x - r).toFixed(1)} ${y.toFixed(1)}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
+          if (on) b += t; else a += t; } });
+      G.dots.setAttribute('d', a); G.dotsOn.setAttribute('d', b);
+    }
+    // подписи материков — прямо на глобусе; у края гаснут
+    G.lblXY = geo.label.map((w, i) => { const p = this.rot(M, w), el = G.lbls[i];
+      if (p[2] < .12 || s >= 1) { el.style.opacity = 0; return null; }
+      const x = cx + R * p[0], y = cy - R * p[1];
+      el.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`); el.style.opacity = Math.min(1, (p[2] - .12) * 4).toFixed(2);
+      return [x, y]; });
+    // где Ловчий сейчас
+    const w = this.walk(), me = w && this.placed() && w.pos, mp = me && isFinite(me.lat) ? this.rot(M, this.vec(me.lng, me.lat)) : null;
+    if (mp && mp[2] > .05) { G.me.style.display = ''; G.me.setAttribute('transform', `translate(${(cx + R * mp[0]).toFixed(1)} ${(cy - R * mp[1]).toFixed(1)})`); } else G.me.style.display = 'none';
+    // шаг 2: места материка
+    const li = this.LANDS.findIndex(l => l.id === this.land), cs = li >= 0 ? geo.cities[li] : [];
+    G.ptsXY = G.ptEls.map((el, i) => { const p = cs[i] && this.rot(M, cs[i]);
+      if (!p || p[2] < 0) { el.style.display = 'none'; return null; }
+      const x = cx + R * p[0], y = cy - R * p[1]; el.style.display = ''; el.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+      return [x, y]; });
+  },
+
+  /* ---------- вращение: кадр рисуется, только когда вид изменился ---------- */
+  calm() { return document.body.classList.contains('calm'); },
+  still() { // «Меньше движения», экономия батареи или системная настройка — глобус сам не вращается
+    if (this._rm === undefined) this._rm = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+    return this.calm() || document.body.classList.contains('eco') || !!(this._rm && this._rm.matches);
+  },
+  ease(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; },
+  kick() { if (!this._raf && this.el) this._raf = requestAnimationFrame(t => this.frame(t)); },
+  spins(now) { return this.step === 1 && !this.land && !this._drag && !this._tw && !this.pick && now - (this._touchT || 0) > 2500 && !this.still(); },
+  frame(now) {
+    this._raf = 0;
+    if (!this.el || !this.G) return;
+    const dt = Math.min(48, Math.max(0, now - (this._ft || now))), v = this.view;
+    this._ft = now;
+    let dirty = this._dirty, more = false;
+    this._dirty = false;
+    if (now < (this._boxT || 0)) { dirty = this.measure() || dirty; more = true; } // окно глобуса меняет размер (панель растёт или сжимается)
+    if (this._tw) { const w = this._tw, e = this.ease(Math.min(1, (now - w.t0) / w.ms)); v.lng = w.l0 + w.dl * e; v.lat = w.f0 + w.df * e; if (e >= 1) this._tw = null; dirty = true; }
+    if (this._sw) { const w = this._sw, e = this.ease(Math.min(1, (now - w.t0) / w.ms)); this._s = w.s0 + w.ds * e; if (e >= 1) this._sw = null; dirty = true; }
+    if (!this._tw && !this._drag && (this._vx || this._vy)) { // инерция после броска
+      v.lng += this._vx * dt; v.lat = this.clampLat(v.lat + this._vy * dt);
+      const k = Math.pow(.9955, dt); this._vx *= k; this._vy *= k;
+      if (Math.hypot(this._vx, this._vy) < .0008) this._vx = this._vy = 0;
+      dirty = true;
+    } else if (this.spins(now)) { v.lng -= this.SPIN * dt; dirty = true; more = true; }
+    if (dirty) this.draw();
+    if (more || this._tw || this._sw || this._vx || this._vy) this.kick();
+  },
+  // плавно повернуть глобус к точке (кратчайшим путём по долготе)
+  turn(lng, lat, ms = 750) {
+    const v = this.view, dl = (((lng - v.lng) % 360) + 540) % 360 - 180;
+    this._vx = this._vy = 0;
+    this._tw = { t0: performance.now(), ms: this.calm() ? 1 : ms, l0: v.lng, dl, f0: v.lat, df: this.clampLat(lat) - v.lat };
+    this.kick();
+  },
+  zoom(s, ms = 800) { this._sw = { t0: performance.now(), ms: this.calm() ? 1 : ms, s0: this._s, ds: s - this._s }; this.kick(); },
+  boxAnim(ms) { this._boxT = performance.now() + ms; this.kick(); },
+  // палец или мышь: тянуть — вращать (по двум осям, наклон ограничен), отпустить — инерция, коснуться — выбрать
+  bind() {
+    const svg = this.G.svg;
+    svg.addEventListener('pointerdown', e => {
+      if (this._busy || this._drag || (e.pointerType === 'mouse' && e.button)) return;
+      try { svg.setPointerCapture(e.pointerId); } catch (x) { /* и так дойдёт */ }
+      this._drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: performance.now(), moved: false, hist: [] };
+      this._tw = null; this._vx = this._vy = 0; this._touchT = performance.now();
+    });
+    svg.addEventListener('pointermove', e => {
+      const d = this._drag; if (!d || d.id !== e.pointerId || !this.G) return;
+      if (!d.moved && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 7) return;
+      const k = 180 / Math.PI / this.G.R, dx = (e.clientX - d.x) * k, dy = (e.clientY - d.y) * k, now = performance.now();
+      d.moved = true; d.x = e.clientX; d.y = e.clientY;
+      this.view.lng -= dx; this.view.lat = this.clampLat(this.view.lat + dy);
+      d.hist.push([now, -dx, dy]); while (d.hist.length > 1 && now - d.hist[0][0] > 90) d.hist.shift();
+      this._dirty = true; this.kick();
+    });
+    const up = e => {
+      const d = this._drag; if (!d || d.id !== e.pointerId) return;
+      const now = performance.now();
+      this._drag = null; this._touchT = now;
+      if (!d.moved) { if (e.type === 'pointerup' && now - d.t0 < 700) { const b = svg.getBoundingClientRect(); this.tap(e.clientX - b.left, e.clientY - b.top); } }
+      else if (!this.calm()) {
+        const h = d.hist;
+        if (h.length && now - h[h.length - 1][0] < 70) { const span = Math.max(16, now - h[0][0]); this._vx = h.reduce((a, q) => a + q[1], 0) / span; this._vy = h.reduce((a, q) => a + q[2], 0) / span; }
+      }
+      clearTimeout(this._spinT); this._spinT = setTimeout(() => this.kick(), 2600); // самовращение вернётся само
+      this.kick();
+    };
+    svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  },
+  // касание: шаг 1 — материк (по подписи или по очертанию под пальцем), шаг 2 — ближайшее место
+  tap(x, y) {
+    const G = this.G; if (!G || !G.M) return;
+    const near = (pts, r) => { let best = -1, bd = r; pts.forEach((q, i) => { if (q) { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bd) { bd = d; best = i; } } }); return best; };
+    if (this.step === 2) { const i = near(G.ptsXY, 28); if (i >= 0) this.choose(i); return; }
+    let i = near(G.lblXY, 30);
+    if (i < 0) {
+      const ll = this.unproj(G.M, (x - G.cx) / G.R, (G.cy - y) / G.R); if (!ll) return;
+      const geo = this.geo();
+      i = geo.rings.findIndex(rs => rs.some(r => this.inPoly(r, ll[0], ll[1])));
+      if (i < 0 && ll[1] < -64) i = this.LANDS.findIndex(l => l.cold);
+      if (i < 0) { // рядом с берегом или у островов — ближайший материк, если он недалеко
+        const w = this.vec(ll[0], ll[1]); let bd = Math.cos(14 * Math.PI / 180);
+        geo.label.forEach((q, k) => { const dot = q[0] * w[0] + q[1] * w[1] + q[2] * w[2]; if (dot > bd) { bd = dot; i = k; } });
+      }
+    }
+    if (i >= 0) this.select(this.LANDS[i].id, true);
+  },
 
   // значок меню и кнопки на карте: старинный глобус на золотой подставке (в стиле значков UI.menuIcon)
   icon() {
@@ -343,7 +476,11 @@ const Atlas = {
     if (this.el) return;
     if (!opts.first && this.walk() && !this.placed()) opts = { ...opts, first: true }; // места ещё нет — это и есть первое появление (даром)
     try { Sfx.init(); Sfx.play('tap'); } catch (e) { /* без звука */ }
-    this.opts = opts; this.step = 1; this.land = null; this.pick = null;
+    this.opts = opts; this.step = 1; this.land = null; this.pick = null; this.sel = null;
+    this._s = 0; this._fit = null; this._tw = this._sw = null; this._vx = this._vy = 0; this._drag = null; this._touchT = 0; this._ft = 0;
+    // глобус сначала смотрит туда, где Ловчий сейчас (новичок — на Старый Свет)
+    const w = this.walk(), p = w && this.placed() && w.pos;
+    this.view = p && isFinite(p.lat) && isFinite(p.lng) ? { lng: p.lng + 12, lat: this.clampLat(p.lat * .55) } : { lng: 32, lat: 22 };
     const story = opts.first;
     const el = this.el = U.el(`<div class="atlas${opts.first ? ' first' : ''}" role="dialog" aria-modal="true" aria-label="${ru`Атлас мира`}">
       <i class="at-fog f1"></i><i class="at-fog f2"></i>
@@ -353,27 +490,30 @@ const Atlas = {
         ${opts.first ? '' : `<button class="btn-round at-x" aria-label="${ru`Закрыть`}">${UI.I.close}</button>`}
       </div>
       ${story ? `<p class="at-story">${ru`Врата Перепутицы открыты. Куда шагнёшь, Ловчий?`}</p>` : ''}
-      <div class="at-map">${this.sheet()}<i class="at-mist m1"></i><i class="at-mist m2"></i></div>
+      <div class="at-map">${this.globe()}</div>
       <div class="at-panel"></div>
     </div>`);
-    document.body.appendChild(el);
-    this.svg = el.querySelector('.at-svg');
-    this._vb = [0, 0, this.LAYOUT.W, this.LAYOUT.H];
-    this.me();
+    document.body.appendChild(el); // сцена для Stage (stage.js): через COVER_MS карта, HUD и погода под ней не рисуются
+    // пока Атлас открыт, ни под ним, ни поверх — ничего чужого: подсказки обучения, чужие всплывашки, плашка обновления (style.css, body.atlas-on)
+    document.body.classList.add('atlas-on');
+    const svg = el.querySelector('.at-svg'), q = s => svg.querySelector(s);
+    this.G = { svg, W: 0, H: 0, R: 100, cx: 0, cy: 0, M: null,
+      air: q('.at-air'), sea: q('.at-sea'), light: q('.at-light'), spec: q('.at-spec'), grat: q('.at-grat'), eq: q('.at-eq'),
+      lands: [...svg.querySelectorAll('.at-land')].map(g => [g.querySelector('.h'), g.querySelector('.f')]),
+      dots: q('.at-cities:not(.on)'), dotsOn: q('.at-cities.on'), lbls: [...svg.querySelectorAll('.at-lbl')], me: q('.at-mek'), pts: q('.at-pts'),
+      ptEls: [], ptsXY: [], lblXY: [] };
+    this.bind();
     el.querySelector('.at-back').onclick = () => { Sfx.play('tap'); this.back(); };
     const x = el.querySelector('.at-x'); if (x) x.onclick = () => { Sfx.play('tap'); this.close(); };
-    el.querySelector('.at-map').addEventListener('click', e => {
-      const pt = e.target.closest('.at-pt');
-      if (pt) { this.choose(+pt.dataset.i); return; }
-      const g = e.target.closest('[data-l]');
-      if (g && this.step === 1) this.select(g.dataset.l, true);
-    });
     this.layer = () => this.back();
     UI.pushLayer(this.layer);
     this.key = e => { if (e.key === 'Escape') this.back(); };
     document.addEventListener('keydown', this.key);
+    this.rs = () => { if (this.G && this.measure()) { this._dirty = true; this.kick(); } };
+    addEventListener('resize', this.rs);
     this.tmr = setInterval(() => this.status(), 15000);
     this.panel();
+    this.measure(); this.draw(); this.kick();
     requestAnimationFrame(() => el.classList.add('in'));
   },
   // «Назад»: выбор точки → места → материки → закрыть (первое появление закрыть нельзя)
@@ -382,35 +522,21 @@ const Atlas = {
     if (this.el.querySelector('.at-cd')) { this.el.querySelector('.at-cd')._no(); return; }
     if (this.pick) { this.pickClose(); return; }
     if (this.step === 2) { this.toWorld(); return; }
-    if (this.opts.first) { UI.toast(ru`Сначала выбери, куда шагнуть`); return; }
+    if (this.opts.first) { UI.toast(ru`Сначала выбери, куда шагнуть`, 'at-t'); return; }
     this.close();
   },
   close() {
     const el = this.el; if (!el) return;
     this.el = null;
-    clearInterval(this.tmr); cancelAnimationFrame(this._raf);
+    clearInterval(this.tmr); cancelAnimationFrame(this._raf); this._raf = 0; clearTimeout(this._spinT);
     document.removeEventListener('keydown', this.key);
+    removeEventListener('resize', this.rs);
     if (this.layer) { UI.popLayer(this.layer); this.layer = null; }
     if (this.pmap) { try { this.pmap.remove(); } catch (e) { /* уже убрана */ } this.pmap = null; }
+    this.G = null; this._drag = null;
+    document.body.classList.remove('atlas-on');
     el.classList.add('out');
     setTimeout(() => el.remove(), 320);
-  },
-
-  // где Ловчий сейчас — бирюзовый ромб (на листе — на «родном» диске материка, на карте материка — если попал в рамку)
-  me(svg = this.svg, d = null, k = 1) {
-    const w = this.walk(), g = svg.querySelector('.at-me'); if (!g) return;
-    const p = w && this.placed() && w.pos;
-    g.innerHTML = '';
-    if (!p || !isFinite(p.lat)) return;
-    if (!d) { const home = this.homeOf(p.lat, p.lng); d = home ? home.disc : ['w', 'e'].sort((a, b) => this.proj(a, p.lng, p.lat)[2] / this.DISCS[a].deg - this.proj(b, p.lng, p.lat)[2] / this.DISCS[b].deg)[0]; }
-    const q = this.proj(d, p.lng, p.lat); if (q[2] > this.pj(d).deg) return;
-    g.innerHTML = `<g class="at-mek" transform="translate(${q[0].toFixed(1)} ${q[1].toFixed(1)}) scale(${k.toFixed(3)})"><circle class="w" r="7"/><path d="M0 -5l4 5-4 5-4-5z"/></g>`;
-  },
-  // материк, где лежит точка (по местам Атласа — ближайший город, если ближе 2500 км)
-  homeOf(lat, lng) {
-    let best = null, bd = 2.5e6;
-    for (const l of this.LANDS) for (const p of this.PLACES[l.id] || []) { const d = U.dist(lat, lng, p[3], p[4]); if (d < bd) { bd = d; best = l; } }
-    return best;
   },
 
   // состояние Врат для подписи: открыты / сколько ждать / сколько предметов
@@ -427,140 +553,123 @@ const Atlas = {
     const P = this.el.querySelector('.at-panel'), first = this.opts.first;
     const gates = first ? '' : '<p class="at-gates"></p>';
     if (this.step === 1) {
-      const L = this.land && this.LANDS.find(l => l.id === this.land);
-      const chips = this.LANDS.filter(l => !l.cold).map(l => `<button class="at-chip${l.id === this.land ? ' on' : ''}" data-l="${l.id}">${U.esc(l.name)}</button>`).join('');
-      const myths = L ? L.myths.filter(m => MYTH_KEYS.includes(m) && MYTHS[m]).map(m => `<span class="at-myth" style="--c:${MYTHS[m].color}">${MYTHS[m].name}</span>`).join('') : '';
-      const info = L ? `<div class="at-info"><h3>${U.esc(L.name)}</h3>${myths ? `<div class="at-myths">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`После Перепутицы духи любых мифологий встречаются везде.`}</small>`}</div>`
-        : `<div class="at-info hint"><p>${first ? ru`Коснись материка — там и начнётся твой путь Ловчего.` : ru`Коснись материка, чтобы выбрать, куда шагнуть.`}</p></div>`;
-      P.innerHTML = `<div class="at-chips">${chips}</div>${info}<div class="at-foot">${UI.rune(ru`Выбрать место`, 'at-go', UI.I.pin)}${gates}</div>`;
-      const go = P.querySelector('.at-go'); go.disabled = !L || !!L.cold;
-      go.onclick = () => { Sfx.play('tap'); this.toLand(); };
-      P.querySelector('.at-chips').onclick = e => { const c = e.target.closest('[data-l]'); if (c) this.select(c.dataset.l); };
-      const on = P.querySelector('.at-chip.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+      // панель одной высоты при любом материке: вкладки — лента, описание — в окне постоянной высоты (длинное прокручивается внутри)
+      const tabs = this.LANDS.filter(l => !l.cold).map(l => `<button data-l="${l.id}">${U.esc(l.name)}</button>`).join('');
+      P.innerHTML = `<div class="seg dt-tabs at-tabs">${tabs}</div><div class="at-info"></div><div class="at-foot">${UI.rune(ru`Выбрать место`, 'at-go', UI.I.pin)}${gates}</div>`;
+      P.querySelector('.at-go').onclick = () => { Sfx.play('tap'); this.toLand(); };
+      P.querySelector('.at-tabs').onclick = e => { const c = e.target.closest('[data-l]'); if (c) this.select(c.dataset.l); };
+      const box = P.querySelector('.at-info'); box.onscroll = () => this.more(box);
+      this.info(true);
     } else {
+      // места — списком, как задания: строка без подложки, светящаяся точка, город и место в нём, справа — сколько до него и «›».
+      // Касание строки — сразу во Врата (точка на глобусе подсвечивается); «Своё место» — последней строкой
       const list = this.PLACES[this.land] || [], L = this.LANDS.find(l => l.id === this.land);
-      P.innerHTML = `<div class="at-lh"><b>${U.esc(L.name)}</b><small>${ru`Куда шагнуть?`}</small></div>
-        <div class="at-list">${list.map((p, i) => `<button class="at-pl${this.sel === i ? ' on' : ''}" data-i="${i}"><i class="at-dot"></i><span><b>${U.esc(p[1])}</b><small>${U.esc(p[2])}</small></span></button>`).join('')}
-          <button class="at-pl own" data-own="1"><i class="at-dot">${UI.I.pin}</i><span><b>${ru`Своё место`}</b><small>${ru`Любая точка на настоящей карте`}</small></span></button></div>
-        <div class="at-foot">${UI.rune(ru`Шагнуть во Врата`, 'at-step', '')}${gates}</div>`;
+      const w = this.walk(), me = w && this.placed() && w.pos && isFinite(w.pos.lat) ? w.pos : null;
+      const km = p => { if (!me) return ''; const d = U.dist(me.lat, me.lng, p[3], p[4]); return d < 1000 ? '' : `<em>${U.fmtDist(d)}</em>`; };
+      const chev = '<svg class="at-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+      P.innerHTML = `<div class="at-lh"><b>${U.esc(L.name)}</b><small>${ru`Куда шагнуть?`}</small></div>${gates}
+        <div class="at-list">${list.map((p, i) => `<button class="at-pl${this.sel === i ? ' on' : ''}" data-i="${i}"><i class="at-dot"></i><span><b>${U.esc(p[1])}</b><small>${U.esc(p[2])}</small></span>${km(p)}${chev}</button>`).join('')}
+          <button class="at-pl own" data-own="1"><i class="at-dot">${UI.I.pin}</i><span><b>${ru`Своё место`}</b><small>${ru`Любая точка на настоящей карте`}</small></span>${chev}</button></div>`;
       P.querySelector('.at-list').onclick = e => {
-        const b = e.target.closest('.at-pl'); if (!b) return;
+        const b = e.target.closest('.at-pl'); if (!b || this._busy) return;
         if (b.dataset.own) { Sfx.play('tap'); this.pickOpen(); return; }
-        this.choose(+b.dataset.i);
+        const i = +b.dataset.i, p = list[i]; if (!p) return;
+        this.choose(i);
+        this.go(p[3], p[4], p[1]);
       };
-      const st = P.querySelector('.at-step'); st.disabled = this.sel == null;
-      st.onclick = () => { const p = list[this.sel]; if (p) this.go(p[3], p[4], p[1]); };
+      const ls = P.querySelector('.at-list'); ls.onscroll = () => this.more(ls);
+      setTimeout(() => this.more(ls), 750); // после того как панель вырастет
     }
     this.status();
   },
+  // окно с прокруткой: пока ниже есть ещё — низ растворяется
+  more(el) { if (el && el.isConnected) el.classList.toggle('more', el.scrollHeight - el.scrollTop - el.clientHeight > 4); },
+  // описание выбранного материка (шаг 1) — меняется только содержимое окна постоянной высоты, вкладки остаются на месте
+  info(now) {
+    const P = this.el && this.el.querySelector('.at-panel'), box = P && P.querySelector('.at-info'); if (!box) return;
+    const L = this.land && this.LANDS.find(l => l.id === this.land), first = this.opts.first;
+    P.querySelectorAll('.at-tabs [data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === this.land));
+    const myths = L ? L.myths.filter(m => MYTH_KEYS.includes(m) && MYTHS[m]).map(m => `<span class="at-myth" style="--c:${MYTHS[m].color}">${MYTHS[m].name}</span>`).join('') : '';
+    box.className = 'at-info' + (L ? '' : ' hint');
+    box.innerHTML = L ? `<h3>${U.esc(L.name)}</h3>${myths ? `<div class="at-myths">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`После Перепутицы духи любых мифологий встречаются везде.`}</small>`}`
+      : `<p>${first ? ru`Поверни глобус пальцем и коснись материка — там и начнётся твой путь Ловчего.` : ru`Поверни глобус пальцем и коснись материка, чтобы выбрать, куда шагнуть.`}</p>`;
+    box.scrollTop = 0; this.more(box);
+    P.querySelector('.at-go').disabled = !L || !!L.cold;
+    // лента вкладок прокручивается только внутри себя — выбранная вкладка к середине (scrollIntoView сдвигал весь Атлас)
+    const strip = P.querySelector('.at-tabs'), b = strip.querySelector('.on');
+    if (b) strip.scrollTo({ left: Math.max(0, b.offsetLeft - (strip.clientWidth - b.offsetWidth) / 2), behavior: now || this.calm() ? 'auto' : 'smooth' });
+  },
   select(id, fromMap) {
-    const L = this.LANDS.find(l => l.id === id); if (!L) return;
+    const L = this.LANDS.find(l => l.id === id); if (!L || !this.el || this.step !== 1) return;
     if (this.land === id && fromMap && !L.cold) { Sfx.play('tap'); this.toLand(); return; } // второе касание — к местам
     Sfx.play('tap');
     this.land = id;
-    this.el.classList.toggle('picked', true);
-    this.svg.querySelectorAll('[data-l]').forEach(g => g.classList.toggle('on', g.dataset.l === id));
-    this.panel();
+    this.el.classList.add('picked');
+    this.G.svg.querySelectorAll('.at-land, .at-lbl').forEach(g => g.classList.toggle('on', g.dataset.l === id));
+    this.turn(L.label[0], L.label[1]);
+    this.info();
+    this._dirty = true; this.kick();
   },
 
-  /* ---------- приближение: плавная смена viewBox листа ---------- */
-  zoomTo(vb, ms, done) {
-    const from = this._vb.slice(), t0 = performance.now(), calm = document.body.classList.contains('calm');
-    cancelAnimationFrame(this._raf);
-    const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    const f = now => {
-      const t = calm ? 1 : Math.min(1, (now - t0) / ms), e = ease(t);
-      this._vb = from.map((v, i) => v + (vb[i] - v) * e);
-      this.svg.setAttribute('viewBox', this._vb.map(v => v.toFixed(2)).join(' '));
-      if (t < 1) this._raf = requestAnimationFrame(f); else if (done) done();
-    };
-    this._raf = requestAnimationFrame(f);
-  },
-  // рамка точек (на проекции d) с полями — под пропорции окна карты
-  fit(pts, box, pad, minW) {
-    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    pts.forEach(q => { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); });
-    let W = Math.max(minW || 0, (x1 - x0) * (1 + pad * 2)), H = (y1 - y0) * (1 + pad * 2);
-    const ar = box.width / Math.max(1, box.height), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    if (W / H < ar) W = H * ar; else H = W / ar;
-    return [cx - W / 2, cy - H / 2, W, H];
-  },
-  // карта материка: своя проекция с центром в середине его мест — север сверху, очертания без перекоса диска
-  local(id, box) {
-    const list = this.PLACES[id] || [], L = this.LANDS.find(l => l.id === id);
-    const c = L.c || [list.reduce((a, p) => a + p[4], 0) / list.length, list.reduce((a, p) => a + p[3], 0) / list.length];
-    this._loc = { lat: c[1], lng: c[0], deg: 90, cx: 0, cy: 0, r: 1000 };
-    const vb = this.fit(list.map(p => this.proj('loc', p[4], p[3])), box, 0.14, 240);
-    const big = [vb[0] - vb[2], vb[1] - vb[3], vb[2] * 3, vb[3] * 3];
-    const svg = U.el(`<svg class="at-svg at-loc" viewBox="${vb.map(v => v.toFixed(1)).join(' ')}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <defs><radialGradient id="atSeaL" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1f4f94"/><stop offset=".6" stop-color="#143574"/><stop offset="1" stop-color="#0a1a45"/></radialGradient></defs>
-      <rect x="${big[0].toFixed(0)}" y="${big[1].toFixed(0)}" width="${big[2].toFixed(0)}" height="${big[3].toFixed(0)}" fill="url(#atSeaL)"/>
-      ${this.grat('loc', 10)}${this.lands('loc', id)}<g class="at-me"></g><g class="at-pts"></g></svg>`);
-    this._lvb = vb;
-    return svg;
-  },
+  /* ---------- шаг 2: глобус приближается к материку, его места — светящиеся точки ---------- */
   toLand() {
-    if (!this.land || this.step === 2) return;
+    if (!this.land || this.step === 2 || !this.el) return;
+    const li = this.LANDS.findIndex(l => l.id === this.land), L = this.LANDS[li]; if (!L || L.cold) return;
     this.step = 2; this.sel = null;
-    // окно карты сжимается до h2 (CSS-переход); лист приближается к материку и уступает место карте материка
-    const map = this.el.querySelector('.at-map'), h2 = Math.round(Math.max(220, Math.min(innerHeight * .42, 380)));
-    this._h1 = map.offsetHeight;
-    map.style.height = this._h1 + 'px'; map.classList.add('fixed'); void map.offsetHeight;
-    map.style.height = h2 + 'px';
     this.el.classList.add('s2');
     this.panel();
-    const box = { width: map.getBoundingClientRect().width - 12, height: h2 - 8 }, id = this.land;
-    if (this.lsvg) this.lsvg.remove();
-    const lsvg = this.lsvg = this.local(id, box);
-    map.insertBefore(lsvg, map.querySelector('.at-mist'));
-    const L = this.LANDS.find(l => l.id === id), home = this.fit((this.PLACES[id] || []).map(p => this.proj(L.disc, p[4], p[3])), box, 0.3, 0);
-    this.zoomTo(home, 650);
-    setTimeout(() => { if (this.lsvg === lsvg && this.step === 2) { lsvg.classList.add('in'); this.svg.classList.add('off'); this.points(); } }, 420);
+    // центр — середина мест материка на сфере; рамка мест в радиусах глобуса — под неё подбирается приближение (draw)
+    const V = this.geo().cities[li], c = V.reduce((a, v) => [a[0] + v[0], a[1] + v[1], a[2] + v[2]], [0, 0, 0]);
+    const lng = Math.atan2(c[1], c[0]) * 180 / Math.PI, lat = this.clampLat(Math.atan2(c[2], Math.hypot(c[0], c[1])) * 180 / Math.PI);
+    const M = this.mat(lng, lat), P = V.map(v => this.rot(M, v));
+    this._fit = [Math.min(...P.map(p => p[0])), Math.min(...P.map(p => p[1])), Math.max(...P.map(p => p[0])), Math.max(...P.map(p => p[1]))];
+    this.turn(lng, lat, 850); this.zoom(1, 850); this.boxAnim(950);
+    this.points();
   },
   toWorld() {
-    if (this.step === 1) return;
+    if (this.step === 1 || !this.el) return;
     this.step = 1; this.sel = null;
-    const map = this.el.querySelector('.at-map');
     this.el.classList.remove('s2');
-    // окно карты возвращается к прежней высоте, потом снова тянется на всё свободное место
-    map.style.height = (this._h1 || map.offsetHeight) + 'px';
-    clearTimeout(this._mt); this._mt = setTimeout(() => { if (this.step === 1) { map.classList.remove('fixed'); map.style.height = ''; } }, 720);
-    const l = this.lsvg; this.lsvg = null;
-    if (l) { l.classList.remove('in'); setTimeout(() => l.remove(), 400); }
-    this.svg.classList.remove('off');
     this.panel();
-    this.zoomTo([0, 0, this.LAYOUT.W, this.LAYOUT.H], 650);
+    const L = this.LANDS.find(l => l.id === this.land);
+    if (L) this.turn(L.label[0], L.label[1], 800);
+    this.zoom(0, 800); this.boxAnim(950);
+    this.G.pts.innerHTML = ''; this.G.ptEls = []; this.G.ptsXY = [];
+    this._dirty = true; this.kick();
   },
-  // города материка — светящиеся точки (на экране одного размера при любом приближении)
+  // места материка — светящиеся точки на глобусе (положение — в draw)
   points() {
-    const g = this.lsvg; if (!this.el || this.step !== 2 || !g) return;
-    const list = this.PLACES[this.land] || [], vb = this._lvb;
-    const box = g.getBoundingClientRect(), k = vb[2] / Math.max(1, Math.min(box.width, box.height * vb[2] / vb[3]));
-    g.querySelector('.at-pts').innerHTML = list.map((p, i) => {
-      const q = this.proj('loc', p[4], p[3]);
-      return `<g class="at-pt${this.sel === i ? ' on' : ''}" data-i="${i}" transform="translate(${q[0].toFixed(1)} ${q[1].toFixed(1)}) scale(${k.toFixed(3)})" style="animation-delay:${i * 40}ms">
-        <circle class="hit" r="14"/><circle class="gl" r="9"/><circle class="c" r="4.2"/><circle class="ring" r="11"/>
-        <text class="nm" y="-15">${U.esc(p[1])}</text></g>`;
-    }).join('');
-    this.me(g, 'loc', k);
+    const G = this.G; if (!G || this.step !== 2) return;
+    const list = this.PLACES[this.land] || [];
+    G.pts.innerHTML = list.map((p, i) => `<g class="at-pt${this.sel === i ? ' on' : ''}" data-i="${i}" style="animation-delay:${350 + i * 40}ms">
+      <circle class="gl" r="9"/><circle class="c" r="4.2"/><circle class="ring" r="11"/><text class="nm" y="-15">${U.esc(p[1])}</text></g>`).join('');
+    G.ptEls = [...G.pts.children];
+    G.pts.classList.remove('shown');
+    clearTimeout(this._ptT); this._ptT = setTimeout(() => { if (this.G) this.G.pts.classList.add('shown'); }, 1400);
+    this._dirty = true; this.kick();
   },
   choose(i) {
-    const list = this.PLACES[this.land] || []; if (!list[i]) return;
+    const list = this.PLACES[this.land] || []; if (!list[i] || !this.el) return;
     Sfx.play('tap');
     this.sel = i;
-    const g = this.lsvg;
-    if (g) {
-      g.querySelectorAll('.at-pt').forEach(p => p.classList.toggle('on', +p.dataset.i === i));
-      const on = g.querySelector('.at-pt.on'); if (on) on.parentNode.appendChild(on); // выбранная точка — поверх соседних
+    const G = this.G;
+    if (G) {
+      G.ptEls.forEach(p => p.classList.toggle('on', +p.dataset.i === i));
+      G.pts.classList.add('shown'); // иначе переставленная точка проявилась бы заново
+      if (G.ptEls[i]) G.pts.appendChild(G.ptEls[i]); // выбранная точка — поверх соседних
     }
     this.el.querySelectorAll('.at-pl').forEach(b => b.classList.toggle('on', +b.dataset.i === i && !b.dataset.own));
-    const b = this.el.querySelector(`.at-pl[data-i="${i}"]`); if (b) b.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    const st = this.el.querySelector('.at-step'); if (st) st.disabled = false;
+    // список прокручивается только внутри себя
+    const b = this.el.querySelector(`.at-pl[data-i="${i}"]`), ls = b && b.parentNode;
+    if (b) {
+      const top = b.offsetTop - 4, bot = b.offsetTop + b.offsetHeight + 4, how = this.calm() ? 'auto' : 'smooth';
+      if (top < ls.scrollTop) ls.scrollTo({ top, behavior: how }); else if (bot > ls.scrollTop + ls.clientHeight) ls.scrollTo({ top: bot - ls.clientHeight, behavior: how });
+    }
   },
 
   /* ---------- «Своё место»: точка на настоящей карте ---------- */
   pickOpen() {
-    if (typeof L === 'undefined') { UI.toast(ru`Карта не загрузилась — проверь связь`); return; }
+    if (typeof L === 'undefined') { UI.toast(ru`Карта не загрузилась — проверь связь`, 'at-t'); return; }
     const land = this.LANDS.find(l => l.id === this.land), list = this.PLACES[this.land] || [];
     const c = list.length ? [list.reduce((s, p) => s + p[3], 0) / list.length, list.reduce((s, p) => s + p[4], 0) / list.length] : [30, 30];
     const box = U.el(`<div class="at-pick"><div class="at-head"><button class="btn-round at-pback" aria-label="${ru`Назад`}">${UI.I.back}</button>
@@ -619,9 +728,9 @@ const Atlas = {
 
   /* ---------- шаг во Врата: вспышка, затемнение — и Ловчий уже на новом месте ---------- */
   async go(lat, lng, name) {
-    if (this._busy || !this.el) return;
+    if (this._busy || !this.el || this.el.querySelector('.at-cd:not(.out)')) return; // окно «Врата отдыхают» уже открыто
     const w = this.walk();
-    if (!w || !w.teleport) { UI.toast(ru`Врата Перепутицы пока закрыты — обнови игру`); return; }
+    if (!w || !w.teleport) { UI.toast(ru`Врата Перепутицы пока закрыты — обнови игру`, 'at-t'); return; }
     const first = !!this.opts.first, opt = { first };
     if (!first && this.cd() > 0) {
       const use = await this.askItem();
@@ -637,7 +746,7 @@ const Atlas = {
       this._busy = false;
       gate.fail();
       const msg = r && r.error ? (typeof I18N !== 'undefined' && I18N.back ? I18N.back(r.error) : r.error) : ru`Врата не открылись. Попробуй ещё раз.`;
-      UI.toast(U.esc(msg));
+      UI.toast(U.esc(msg), 'at-t');
       this.status();
       return;
     }

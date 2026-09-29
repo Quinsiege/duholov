@@ -33,7 +33,7 @@ EXPLORE THE WHOLE WORLD
 • World Atlas: start anywhere and teleport to any place on Earth later
 • Walk and run with a mini joystick on the left or right (WASD and arrows on PC)
 • Every step counts: hatch cocoons and climb the Season Path as you travel
-• Springs, shrines and Rifts stand at real landmarks around the globe
+• Wellsprings, shrines and Rifts stand at real landmarks around the globe
 
 CATCH SPIRITS OF 7 MYTHOLOGIES
 • 195 spirits and gods — Slavic, Greek, Norse, Celtic, Egyptian, Chinese and Aztec
@@ -66,7 +66,7 @@ PLAY TOGETHER
 • Chat, the Catchers’ Order weekly goals and an auction for spirits
 
 EVERY DAY
-• Daily quests, spring errands, a login streak and seasonal events
+• Daily quests, wellspring errands, a login streak and seasonal events
 • A journal of your adventures and medals for achievements
 
 Available in 13 languages. Play as a guest or sign in with Google, Yandex, VK or Telegram to keep your progress on any device.
@@ -91,7 +91,7 @@ Available in 13 languages. Play as a guest or sign in with Google, Yandex, VK or
 • Атлас мира: начни где угодно, а потом телепортируйся в любую точку Земли
 • Ходи и бегай мини-джойстиком справа или слева (на ПК — WASD и стрелки)
 • Каждый шаг идёт в зачёт: выводи духов из коконов и поднимайся по Сезонной тропе
-• Родники, Капища и Разломы стоят у настоящих достопримечательностей по всему свету
+• Источники, Капища и Разломы стоят у настоящих достопримечательностей по всему свету
 
 ЛОВИ ДУХОВ 7 МИФОЛОГИЙ
 • 195 духов и богов — славянских, греческих, скандинавских, кельтских, египетских, китайских и ацтекских
@@ -124,7 +124,7 @@ Available in 13 languages. Play as a guest or sign in with Google, Yandex, VK or
 • Чат, общие цели недели Ордена Ловчих и аукцион духов
 
 КАЖДЫЙ ДЕНЬ
-• Задания дня, поручения родников, серия дней и сезонные события
+• Задания дня, поручения источников, серия дней и сезонные события
 • Дневник приключений и знаки за достижения
 
 13 языков. Играй гостем или войди через Google, Яндекс, VK или Telegram — прогресс сохранится на любом устройстве.

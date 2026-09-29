@@ -19,7 +19,7 @@ const Intro = {
     this._later = true;
     let tries = 0, ok = 0;
     const free = () => !this.el && !UI.blocking() && !(typeof Encounter !== 'undefined' && Encounter.st)
-      && !document.querySelector('.modal-wrap, .sheet-wrap, .screen, .enc, .raid, .onb, .loader, .tut-final, .fatal, .cam-screen, .lg-sheet');
+      && !document.querySelector('.modal-wrap, .sheet-wrap, .screen, .enc, .raid, .onb, .loader, .tut-final, .fatal, .cam-screen, .lg-sheet, .atlas'); // 5.1.6: и не поверх Атласа
     const tick = () => {
       if (!this.need() || this.el) return;
       ok = free() ? ok + 1 : 0;

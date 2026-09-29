@@ -2,7 +2,7 @@
 /* «Места»: игрок предлагает реальный объект для карты.
    Снимок делается только камерой в игре; место заявки — где сейчас стоит Ловчий на карте (5.1: без GPS — walk.js),
    координаты записываются в заявку. Точку объекта можно сдвинуть не дальше 50 м от места съёмки (это же проверяет сервер).
-   Заявку рассматривает модератор; одобренная появляется на карте как Родник или Капище. */
+   Заявку рассматривает модератор; одобренная появляется на карте как Источник или Капище. */
 
 const Propose = {
   MIN_LEVEL: 5,
@@ -19,9 +19,9 @@ const Propose = {
     const lock = S.d.level < this.MIN_LEVEL;
     const scr = UI.screen(ru`Места`, `
       <div class="prop-intro">
-        <p>${ru`Родники и Капища стоят у настоящих мест. Знаешь интересный объект рядом? Предложи его!`}</p>
+        <p>${ru`Источники и Капища стоят у настоящих мест. Знаешь интересный объект рядом? Предложи его!`}</p>
         <ul class="prop-rules">
-          <li>${ru`<b>Подходят:</b> памятники, скульптуры, фонтаны, мозаики, необычные здания, храмы, парки, родники, смотровые площадки.`}</li>
+          <li>${ru`<b>Подходят:</b> памятники, скульптуры, фонтаны, мозаики, необычные здания, храмы, парки, источники, смотровые площадки.`}</li>
           <li>${ru`<b>Не подходят:</b> частные дома и дворы, школы и детские сады, опасные места (проезжая часть, стройки), обычные магазины.`}</li>
           <li>${ru`Стой рядом с объектом: снимок получает геометку, модератор сверяет её с точкой на карте.`}</li>
         </ul>
@@ -40,7 +40,7 @@ const Propose = {
         <div class="prop-item">
           <div class="prop-thumb" style="background-image:url('${Poi.photoUrl(r.photo)}')"></div>
           <div class="row-main"><b>${U.esc(r.name)}</b>
-            <small>${r.kind === 'shrine' ? ru`Капище` : ru`Родник`} · ${new Date(r.created_at).toLocaleDateString(I18N.locale)}${r.reason ? ' · ' + U.esc(r.reason) : ''}</small></div>
+            <small>${r.kind === 'shrine' ? ru`Капище` : ru`Источник`} · ${new Date(r.created_at).toLocaleDateString(I18N.locale)}${r.reason ? ' · ' + U.esc(r.reason) : ''}</small></div>
           <span class="prop-st ${r.status}">${this.statusName[r.status]}</span>
         </div>`).join('') : `<p class="small">${ru`Заявок пока нет.`}</p>`;
     } catch (e) { box.innerHTML = `<p class="small">${ru`Нет связи с сервером: ${U.esc(e.message)}`}</p>`; }
@@ -130,8 +130,8 @@ const Propose = {
         <label class="prop-label">${ru`Чем интересно (необязательно)`}</label>
         <textarea class="input prop-descr" maxlength="300" rows="2" placeholder="${ru`Коротко для модератора`}"></textarea>
         <label class="prop-label">${ru`Что здесь будет`}</label>
-        <div class="seg prop-kind"><button data-k="spring" class="on">${ru`Родник`}</button><button data-k="shrine">${ru`Капище`}</button></div>
-        <p class="small prop-kind-hint">${ru`Родник — для любого интересного объекта. Капище — для заметных мест: памятник, парк, крупное здание.`}</p>
+        <div class="seg prop-kind"><button data-k="spring" class="on">${ru`Источник`}</button><button data-k="shrine">${ru`Капище`}</button></div>
+        <p class="small prop-kind-hint">${ru`Источник — для любого интересного объекта. Капище — для заметных мест: памятник, парк, крупное здание.`}</p>
         <label class="prop-label">${ru`Точка объекта`}</label>
         <div class="prop-map"></div>
         <p class="small">${ru`Круг — ${this.MAX_SHIFT} м от места, где ты стоишь на карте. Перетащи булавку точно на объект.`}</p>
