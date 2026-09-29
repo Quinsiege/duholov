@@ -3117,6 +3117,176 @@ const LEAGUE_RANKS = [
   { name: ru`Легенда`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
 ];
 
+/* 5.0: значок лиги — медальон: кольцо-оправа из материала лиги, в центре огранённый кристалл Алатыря (общий для всех
+   мифологий). Чем выше лига, тем богаче: гладкое кольцо (Дерево, Медь) → бусины и зубцы (Бронза, Железо) → лучи-звезда
+   за кольцом (4 у Серебра, 8 у Золота) → лавры (Платина, Изумруд) → крылья (Алмаз, Легенда) → венец и сияние (Легенда);
+   кристалл растёт от осколка до полного камня, граней всё больше. id градиентов у каждого значка свои (seq). */
+const LeagueBadge = (() => {
+  let seq = 0;
+  const CX = 170, CY = 212, R = 118, r = 90, RAD = Math.PI / 180;
+  const f = n => +n.toFixed(1);
+  const P = (d, a) => [f(CX + d * Math.sin(a * RAD)), f(CY - d * Math.cos(a * RAD))]; // угол a — от 12 часов по часовой
+  const pts = a => a.map(p => p.join(',')).join(' ');
+  const mix = (a, b, t) => '#' + [1, 3, 5].map(k => Math.round(parseInt(a.slice(k, k + 2), 16) * (1 - t) + parseInt(b.slice(k, k + 2), 16) * t).toString(16).padStart(2, '0')).join('');
+  const GOLD = ['#fff6c8', '#fbd34d', '#d99a17', '#8a5206'];
+  // m — металл оправы (свет → тень), fld — поле (центр, край), o — контур, g — отблеск, cs — тень граней кристалла
+  const MAT = [
+    { m: ['#f4c088', '#c9813f', '#8f4e1f', '#58290b'], fld: ['#6a3d18', '#1e0f04'], o: '#2a1405', g: '#f59e0b' }, // Дерево
+    { m: ['#ffdcc6', '#f39664', '#c65c2e', '#702a10'], fld: ['#6b2c14', '#1f0904'], o: '#2e0f04', g: '#fb923c' }, // Медь
+    { m: ['#f6da9c', '#c99545', '#8a5a22', '#442806'], fld: ['#4d3514', '#140d03'], o: '#1f1203', g: '#e0a650' }, // Бронза
+    { m: ['#dfe3ea', '#8f97a3', '#4f5663', '#23272e'], fld: ['#39404c', '#0d1014'], o: '#090b0e', g: '#94a3b8', cs: '#646b78' }, // Железо
+    { m: ['#ffffff', '#e4eaf2', '#a9b5c6', '#65728a'], fld: ['#3a4d6e', '#111a2b'], o: '#172033', g: '#dbe4f0', cs: '#76839a' }, // Серебро
+    { m: GOLD, fld: ['#8a4c08', '#2a1402'], o: '#3a1f02', g: '#fbbf24' }, // Золото
+    { m: ['#ffffff', '#eaf3fc', '#b7cae0', '#6f86a6'], fld: ['#2b5282', '#0b1830'], o: '#122038', g: '#bae6fd', cs: '#7890b4' }, // Платина
+    { m: GOLD, fld: ['#19c48d', '#053d2c'], o: '#2f1a02', g: '#34d399', gem: ['#bbf7d0', '#10b981', '#064e3b'] }, // Изумруд
+    { m: ['#f2fcff', '#a5e9fc', '#38bdf8', '#0c4a6e'], fld: ['#1f6fb0', '#061631'], o: '#051a33', g: '#67e8f9', cs: '#4f8fc4' }, // Алмаз
+    { m: GOLD, fld: ['#8b46f0', '#1b0540'], o: '#2a0a45', g: '#e9b8ff', cs: '#8e74b8', gem: ['#f3e8ff', '#a855f7', '#3b0764'] }, // Легенда
+  ];
+  const lin = (id, c, x2 = .35, y2 = 1) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2}" y2="${y2}">${c.map((s, k) => `<stop offset="${f(k / (c.length - 1))}" stop-color="${s}"/>`).join('')}</linearGradient>`;
+  const circ = (d, a) => `<circle cx="${CX}" cy="${CY}" r="${d}" ${a}/>`;
+  const star = (x, y, s, o = 1) => `<path d="M${x} ${f(y - s)}L${f(x + s * .2)} ${f(y - s * .2)}L${f(x + s)} ${y}L${f(x + s * .2)} ${f(y + s * .2)}L${x} ${f(y + s)}L${f(x - s * .2)} ${f(y + s * .2)}L${f(x - s)} ${y}L${f(x - s * .2)} ${f(y - s * .2)}Z" fill="#fff" opacity="${o}"/>`;
+  const gem = (p, s, id, o) => { const q = [...Array(8)].map((_, k) => [f(p[0] + s * Math.cos((k * 45 + 22.5) * RAD)), f(p[1] + s * Math.sin((k * 45 + 22.5) * RAD))]);
+    return `<polygon points="${pts(q)}" fill="url(#${id}j)" stroke="${o}" stroke-width="2.2" stroke-linejoin="round"/><circle cx="${f(p[0] - s * .3)}" cy="${f(p[1] - s * .32)}" r="${f(s * .28)}" fill="#fff" opacity=".85"/>`; };
+  // лучи за кольцом: n лучей, длинные L1 и короткие L2 через один, w — полуширина у основания (градусы); свет — одна сторона
+  const rays = (n, L1, L2, w, lite, dark, o, off = 0) => {
+    let s = '';
+    for (let k = 0; k < n; k++) {
+      const a = off + k * 360 / n, L = k % 2 ? L2 : L1, ww = k % 2 ? w * .8 : w, c = P(R - 30, a), t = P(L, a), b1 = P(R + 2, a - ww), b2 = P(R + 2, a + ww);
+      s += `<polygon points="${pts([c, b1, t, b2])}" fill="none" stroke="${o}" stroke-width="7" stroke-linejoin="round"/><polygon points="${pts([c, b1, t])}" fill="${lite}"/><polygon points="${pts([c, b2, t])}" fill="${dark}"/>`;
+    }
+    return s;
+  };
+  // лавровая ветвь слева (от низа к 10 часам), справа — зеркально
+  const laurel = (fill, o) => {
+    const Rl = R + 11, leaf = (p, rot, L) => { const W = L * .32;
+      return `<g transform="translate(${p}) rotate(${f(rot)})"><path d="M0 0C${f(L * .3)} ${f(-W)} ${f(L * .75)} ${f(-W * .8)} ${L} 0C${f(L * .75)} ${f(W * .8)} ${f(L * .3)} ${f(W)} 0 0Z" fill="${fill}" stroke="${o}" stroke-width="3" stroke-linejoin="round"/><path d="M3 0H${f(L * .78)}" stroke="${o}" stroke-width="1.6" opacity=".45"/></g>`; };
+    let s = `<path d="M${P(Rl, 188)}A${Rl} ${Rl} 0 0 1 ${P(Rl, 302)}" fill="none" stroke="${o}" stroke-width="7" stroke-linecap="round"/><path d="M${P(Rl, 188)}A${Rl} ${Rl} 0 0 1 ${P(Rl, 302)}" fill="none" stroke="${fill}" stroke-width="3.5" stroke-linecap="round"/>`;
+    for (let k = 0; k < 7; k++) { const a = 192 + 108 * k / 6, L = 40 - k * 1.8; s += leaf(P(Rl + 1, a), a - 42, L) + leaf(P(Rl - 2, a + 6), a + 6, L * .82); }
+    s += leaf(P(Rl, 302), 300, 30);
+    return s + `<g transform="translate(${2 * CX} 0) scale(-1 1)">${s}</g>`;
+  };
+  // крылья: перья (Легенда) или кристаллические осколки (Алмаз), от спины медальона наружу и вверх
+  const wings = (kind, id, o) => {
+    const one = (th, L, W, fill, dark) => `<g transform="translate(${CX - 50} ${CY - 26}) rotate(${th})">` + (kind === 'feather'
+      ? `<path d="M0 ${f(-W)}C${f(L * .45)} ${f(-W * 1.35)} ${f(L * .88)} ${f(-W * .95)} ${L} 0C${f(L * .8)} ${f(W * .6)} ${f(L * .4)} ${f(W)} 0 ${f(W)}Z" fill="${fill}" stroke="${o}" stroke-width="4.5" stroke-linejoin="round"/><path d="M8 0H${f(L * .84)}" stroke="${o}" stroke-width="2.4" opacity=".45" stroke-linecap="round"/><path d="M${f(L * .22)} ${f(-W * .6)}C${f(L * .5)} ${f(-W * .9)} ${f(L * .75)} ${f(-W * .55)} ${f(L * .88)} ${f(-W * .2)}" stroke="#fff" stroke-width="2.6" fill="none" opacity=".6" stroke-linecap="round"/>`
+      : `<polygon points="0,${f(-W * .45)} ${f(L * .34)},${f(-W)} ${L},0 ${f(L * .34)},${f(W)} 0,${f(W * .45)}" fill="none" stroke="${o}" stroke-width="7" stroke-linejoin="round"/><polygon points="0,${f(-W * .45)} ${f(L * .34)},${f(-W)} ${L},0 ${f(L * .34)},0" fill="${fill}"/><polygon points="0,${f(W * .45)} ${f(L * .34)},${f(W)} ${L},0 ${f(L * .34)},0" fill="${dark}"/><path d="M${f(L * .34)} ${f(-W)}L${f(L * .34)} ${f(W)}M${f(L * .34)} 0H${f(L * .9)}" stroke="#fff" stroke-width="1.8" opacity=".6"/>`) + '</g>';
+    let s = '';
+    // маховые — веером вверх к углам, поверх — кроющие покороче
+    [[256, 112], [237, 124], [217, 124], [197, 112], [177, 98], [158, 82]].forEach(([th, L]) => { s += one(th, L, 15, `url(#${id}w)`, '#1f86c9'); });
+    [[246, 66], [224, 70], [202, 64], [180, 56]].forEach(([th, L]) => { s += one(th, L, 13, kind === 'feather' ? `url(#${id}m)` : '#ffffff', '#7dd3fc'); });
+    return s + `<g transform="translate(${2 * CX} 0) scale(-1 1)">${s}</g>`;
+  };
+  // кристалл Алатыря: 1 — вытянутый осколок, дальше больше граней и площадка сверху; на Легенде — знак Алатыря на площадке
+  const crystal = (i, id, M) => {
+    const N = [4, 5, 6, 6, 8, 8, 10, 10, 12, 12][i], s = [38, 43, 46, 50, 53, 55, 57, 59, 61, 63][i];
+    const st = [1.5, 1.36, 1.3, 1.26, 1.22, 1.2, 1.19, 1.18, 1.17, 1.16][i], tilt = [16, -10, 0, 0, 0, 0, 0, 0, 0, 0][i];
+    const cy = CY + 2, jit = i === 0 ? [1, .7, 1, .78] : i === 1 ? [1, .86, .96, .92, .84] : null;
+    const V = (d, a) => [f(CX + d * Math.sin(a * RAD)), f(cy - d * Math.cos(a * RAD) * st)];
+    const out = [...Array(N)].map((_, k) => V(s * (jit ? jit[k] : 1), k * 360 / N));
+    const tr = i < 2 ? 0 : i < 4 ? .42 : .48, inn = tr ? out.map((_, k) => V(s * tr, k * 360 / N)) : null, apex = [CX - 3, cy - 8];
+    const sh = M.cs || mix('#6f6252', M.g, .4), light = a => .5 + .5 * Math.cos((a - 315) * RAD);
+    let faces = '', seams = '';
+    for (let k = 0; k < N; k++) {
+      const k1 = (k + 1) % N, am = (k + .5) * 360 / N, t = Math.min(1, .1 + .88 * light(am) + (k % 2 ? 0 : .07));
+      faces += `<polygon points="${pts(inn ? [inn[k], out[k], out[k1], inn[k1]] : [apex, out[k], out[k1]])}" fill="${mix(sh, '#ffffff', t)}"/>`;
+      seams += `M${inn ? inn[k] : apex}L${out[k]}`;
+      if (i >= 5) { const mo = [f((out[k][0] + out[k1][0]) / 2), f((out[k][1] + out[k1][1]) / 2)]; seams += `M${inn[k]}L${mo}L${inn[k1]}`; }
+    }
+    const e0 = out[N - 1], e1 = out[0], ins = (p, t) => [f(p[0] + (CX - p[0]) * t), f(p[1] + (cy - p[1]) * t)];
+    // звезда Алатыря на площадке Легенды
+    const rune = i === 9 ? `<polygon points="${pts([...Array(16)].map((_, k) => V(k % 2 ? 7.5 : 19, k * 22.5)))}" fill="url(#${id}m)" stroke="#6b3a05" stroke-width="2.4" stroke-linejoin="round"/><circle cx="${CX}" cy="${cy}" r="4" fill="#fff6c8" stroke="#6b3a05" stroke-width="1.6"/>` : '';
+    return `<g transform="rotate(${tilt} ${CX} ${cy})">
+      <polygon points="${pts(out)}" fill="#000" opacity=".4" transform="translate(4 8)"/>${faces}
+      ${inn ? `<polygon points="${pts(inn)}" fill="url(#${id}t)"/>` : ''}
+      <path d="${seams}" fill="none" stroke="${mix(sh, '#000000', .35)}" stroke-width="1.6" opacity=".6" stroke-linecap="round"/>
+      ${inn ? `<polygon points="${pts(inn)}" fill="none" stroke="${mix(sh, '#000000', .3)}" stroke-width="1.8" opacity=".6" stroke-linejoin="round"/>` : ''}${rune}
+      <polygon points="${pts(out)}" fill="none" stroke="#221833" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M${ins(e0, .14)}L${ins(e1, .14)}" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+      ${i >= 3 ? star(e1[0], f(e1[1] + 3), 12 + i * 1.5) : ''}</g>`;
+  };
+
+  return i => {
+    const M = MAT[i], id = 'lb' + (++seq), o = M.o;
+    const defs = lin(id + 'm', M.m) + `<linearGradient id="${id}n" x1="0" y1="1" x2=".2" y2="0"><stop offset="0" stop-color="${M.m[0]}"/><stop offset=".55" stop-color="${M.m[2]}"/><stop offset="1" stop-color="${M.m[3]}"/></linearGradient>`
+      + `<radialGradient id="${id}f" cx=".42" cy=".36" r=".72"><stop offset="0" stop-color="${M.fld[0]}"/><stop offset="1" stop-color="${M.fld[1]}"/></radialGradient>`
+      + `<radialGradient id="${id}h"><stop offset=".35" stop-color="${M.g}" stop-opacity="${i === 9 ? .9 : .6}"/><stop offset="1" stop-color="${M.g}" stop-opacity="0"/></radialGradient>`
+      + `<radialGradient id="${id}c"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".4" stop-color="${M.g}" stop-opacity=".45"/><stop offset="1" stop-color="${M.g}" stop-opacity="0"/></radialGradient>`
+      + `<radialGradient id="${id}t" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="${mix('#e9dfc8', M.g, .25)}"/></radialGradient>`
+      + (M.gem ? `<radialGradient id="${id}j" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="${M.gem[0]}"/><stop offset=".45" stop-color="${M.gem[1]}"/><stop offset="1" stop-color="${M.gem[2]}"/></radialGradient>` : '')
+      + (i === 9 ? lin(id + 'w', ['#fff6c8', '#fbd34d', '#d99a17', '#9333ea'], 1, 0) + lin(id + 'v', ['#e9d5ff', '#8b5cf6', '#3b0764'], .2) : i === 8 ? lin(id + 'w', ['#ffffff', '#bff0ff', '#5cc9f5'], 1, .3) : '');
+    let back = '', rim = '', deco = '', field = '', front = '';
+    const M_ = `url(#${id}m)`;
+    // сияние и лучи
+    if (i >= 5) back += circ(i === 9 ? 170 : 166, `fill="url(#${id}h)"`);
+    if (i === 9) back += rays(8, 174, 150, 10, '#fde68a', '#a855f7', o);
+    else if (i === 8) back += rays(8, 170, 150, 11, '#e0f7ff', '#38bdf8', o);
+    else if (i >= 5) back += rays(8, i === 5 ? 170 : 160, i === 5 ? 144 : 134, i === 5 ? 13 : 11, i === 6 ? '#ffffff' : '#fff1b0', i === 6 ? '#8ea4c2' : '#c98a12', o);
+    else if (i === 4) back += rays(4, 168, 168, 13, '#ffffff', '#8d9ab0', o);
+    // лавры и крылья
+    if (i === 6) back += laurel(M_, o);
+    if (i === 7) back += laurel(`url(#${id}m)`, o);
+    if (i === 8) back += wings('shard', id, o);
+    if (i === 9) back += wings('feather', id, o);
+    // край оправы: бусины (Бронза), зубцы (Железо)
+    if (i === 2) for (let k = 0; k < 20; k++) { const p = P(R + 1, k * 18); rim += `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="${M_}" stroke="${o}" stroke-width="4.5"/>`; }
+    if (i === 3) for (let k = 0; k < 12; k++) { const a = k * 30; rim += `<polygon points="${pts([P(R - 4, a - 9), P(R + 17, a - 6), P(R + 17, a + 6), P(R - 4, a + 9)])}" fill="${M_}" stroke="${o}" stroke-width="4.5" stroke-linejoin="round"/>`; }
+    // кольцо: объём — сверху светлее, у поля обратный скос; Алмаз — из граней
+    let ring = circ(R, `fill="${M_}" stroke="${o}" stroke-width="6"`);
+    if (i === 8) {
+      ring = circ(R, `fill="${M.m[2]}" stroke="${o}" stroke-width="6"`);
+      for (let k = 0; k < 24; k++) {
+        const a0 = k * 15, a1 = a0 + 15, am = a0 + 7.5, O0 = P(R - 2, a0), O1 = P(R - 2, a1), I0 = P(r + 2, a0), I1 = P(r + 2, a1), Mp = P((R + r) / 2, am);
+        const L = d => mix(M.m[3], M.m[0], Math.max(0, Math.min(1, .5 + .5 * Math.cos((d - 315) * RAD))));
+        ring += `<polygon points="${pts([O0, O1, Mp])}" fill="${L(am)}"/><polygon points="${pts([O1, I1, Mp])}" fill="${L(am + 90)}"/><polygon points="${pts([I1, I0, Mp])}" fill="${L(am + 180)}"/><polygon points="${pts([I0, O0, Mp])}" fill="${L(am - 90)}"/>`;
+      }
+      ring += circ(R, `fill="none" stroke="${o}" stroke-width="6"`);
+    } else ring += circ(r + 10, `fill="url(#${id}n)"`) + circ(r + 10, `fill="none" stroke="${o}" stroke-width="1.6" opacity=".4"`);
+    ring += `<path d="M${P(R - 7, 250)}A${R - 7} ${R - 7} 0 0 1 ${P(R - 7, 350)}" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".55"/>`;
+    // узор оправы
+    if (i === 0) { // дерево: волокна, сучки, кованые уголки
+      deco += [112, 106.5, 101].map((d, k) => circ(d, `fill="none" stroke="#4a2208" stroke-width="2" opacity=".5" stroke-dasharray="${['70 9 34 14 96 7', '40 12 88 6 52 16', '110 10 30 8 64 12'][k]}"`)).join('');
+      [70, 205, 300].forEach(a => { const p = P(106, a); deco += `<ellipse cx="${p[0]}" cy="${p[1]}" rx="8" ry="4.5" transform="rotate(${a} ${p[0]} ${p[1]})" fill="#5a2c0e" stroke="#2a1405" stroke-width="1.6"/><ellipse cx="${p[0]}" cy="${p[1]}" rx="13" ry="7.5" transform="rotate(${a} ${p[0]} ${p[1]})" fill="none" stroke="#4a2208" stroke-width="1.4" opacity=".6"/>`; });
+      [45, 135, 225, 315].forEach(a => { deco += `<g transform="translate(${P(R - 14, a)}) rotate(${a})"><rect x="-13" y="-25" width="26" height="42" rx="5" fill="url(#${id}i)" stroke="${o}" stroke-width="3.5"/><circle cy="-12" r="4" fill="#cbd2dc" stroke="#16191e" stroke-width="1.8"/><circle cy="5" r="4" fill="#cbd2dc" stroke="#16191e" stroke-width="1.8"/></g>`; });
+    }
+    if (i === 1) { // медь: патина и заклёпки
+      [[25, 16], [118, 12], [168, 18], [242, 14], [300, 10], [338, 12]].forEach(([a, w]) => { const p = P(104, a); deco += `<ellipse cx="${p[0]}" cy="${p[1]}" rx="${w}" ry="6" transform="rotate(${a} ${p[0]} ${p[1]})" fill="#5cc2a4" opacity=".6"/><ellipse cx="${f(p[0] + 2)}" cy="${f(p[1] + 1)}" rx="${f(w * .45)}" ry="2.5" transform="rotate(${a} ${p[0]} ${p[1]})" fill="#a7f3d0" opacity=".55"/>`; });
+      for (let k = 0; k < 8; k++) { const p = P(104, k * 45 + 22.5); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="5.5" fill="#ffc8a8" stroke="${o}" stroke-width="2.2"/><circle cx="${f(p[0] - 1.5)}" cy="${f(p[1] - 1.5)}" r="1.8" fill="#fff"/>`; }
+    }
+    if (i === 2) { // бронза: литой поясок
+      deco += circ(104, `fill="none" stroke="${o}" stroke-width="2" opacity=".45" stroke-dasharray="14 7"`);
+      for (let k = 0; k < 10; k++) { const p = P(104, k * 36); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="#f6da9c" stroke="${o}" stroke-width="2"/>`; }
+    }
+    if (i === 3) for (let k = 0; k < 12; k++) { const p = P(104, k * 30 + 15); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="5.5" fill="#6b7280" stroke="${o}" stroke-width="2.2"/><circle cx="${f(p[0] - 1.6)}" cy="${f(p[1] - 1.6)}" r="1.8" fill="#e5e7eb"/>`; }
+    if (i === 4 || i === 6) { // серебро и платина: гравировка
+      deco += circ(110, `fill="none" stroke="${o}" stroke-width="1.4" opacity=".4"`) + circ(104, `fill="none" stroke="${o}" stroke-width="2" opacity=".35" stroke-dasharray="2 6" stroke-linecap="round"`);
+      for (let k = 0; k < 4; k++) { const p = P(104, k * 90 + 45); deco += `<path d="M${p[0]} ${f(p[1] - 7)}L${f(p[0] + 7)} ${p[1]}L${p[0]} ${f(p[1] + 7)}L${f(p[0] - 7)} ${p[1]}Z" fill="${i === 6 ? '#e0f2fe' : '#ffffff'}" stroke="${o}" stroke-width="2"/>`; }
+    }
+    if (i === 5) for (let k = 0; k < 24; k++) { const p = P(104, k * 15); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="3.4" fill="#fff3b8" stroke="${o}" stroke-width="1.4"/>`; }
+    if (i === 7) for (let k = 0; k < 8; k++) deco += gem(P(104, k * 45), 9, id, o);
+    if (i === 9) {
+      deco += circ(104, `fill="none" stroke="${o}" stroke-width="17"`) + circ(104, `fill="none" stroke="url(#${id}v)" stroke-width="12"`);
+      for (let k = 0; k < 16; k++) { const p = P(104, k * 22.5 + 11.25); deco += `<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="#fde68a"/>`; }
+      [90, 180, 270].forEach(a => { deco += gem(P(104, a), 9, id, o); });
+    }
+    // поле: у Изумруда, Алмаза и Легенды — огранка
+    field = circ(r, `fill="url(#${id}f)" stroke="${o}" stroke-width="4.5"`);
+    if (i >= 7) { const n = i === 7 ? 8 : 12; for (let k = 0; k < n; k++) field += `<polygon points="${pts([[CX, CY], P(r - 3, k * 360 / n), P(r - 3, (k + 1) * 360 / n)])}" fill="${k % 2 ? '#fff' : '#000'}" opacity="${k % 2 ? .08 : .14}"/>`; }
+    field += circ(r - 3, `fill="none" stroke="#000" stroke-width="6" opacity=".25"`);
+    if (i >= 2) field += circ(i >= 7 ? 82 : 30 + i * 5, `fill="url(#${id}c)" opacity="${f(.3 + i * .06)}"`);
+    // искры
+    if (i >= 5) [[CX - 118, CY - 104, 12], [CX + 124, CY - 88, 9], [CX + 112, CY + 118, 10], [CX - 60, CY + 50, 6], [CX + 52, CY - 56, 5]].slice(0, i >= 8 ? 5 : 3).forEach(([x, y, s]) => { front += star(f(x), f(y), s + (i - 5) * 1.5, .95); });
+    // венец Легенды
+    if (i === 9) front += `<path d="M116 110L119 60L137 84L148 46L160 80L170 26L180 80L192 46L203 84L221 60L224 110Q170 98 116 110Z" fill="url(#${id}m)" stroke="${o}" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M118 104Q170 92 222 104" fill="none" stroke="#fff6c8" stroke-width="3" opacity=".7"/>
+      ${[[119, 60, 6], [148, 46, 6.5], [170, 26, 8], [192, 46, 6.5], [221, 60, 6]].map(([x, y, s]) => `<circle cx="${x}" cy="${y}" r="${s}" fill="#fff6c8" stroke="${o}" stroke-width="3"/>`).join('')}
+      ${gem([170, 78], 9, id, o)}${gem([141, 90], 6, id, o)}${gem([199, 90], 6, id, o)}`;
+    // у крылатых (Алмаз, Легенда) медальон чуть меньше — крыльям нужно место по бокам
+    const sc = s => i >= 8 ? `<g transform="translate(${CX} ${CY}) scale(.86) translate(${-CX} ${-CY})">${s}</g>` : s;
+    const iron = i === 0 ? lin(id + 'i', ['#d1d5db', '#6b7280', '#2b2f36']) : '';
+    return `<svg class="lg-badge-pic" viewBox="0 0 340 400" aria-hidden="true"><defs>${defs}${iron}</defs>${back}${rim}${sc(ring + deco + field + crystal(i, id, M) + front)}</svg>`;
+  };
+})();
+
 const League = {
   TICKETS: 10, // 4.16: боёв в день — жетон тратится за сыгранный бой
   XP_RUNS: 5,  // опыт дают первые пять боёв дня; дальше — только рейтинг
@@ -3198,12 +3368,8 @@ const League = {
   // сундук за высшую лигу прошлого сезона
   prize(r) { return r > 0 ? { sparks: 400 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
 
-  // 4.15: значок лиги — рисованный щит своего металла со своим знаком (img/league/rank-NN.webp, 340×400)
-  IMG: 'img/league/',
-  badge(i) {
-    i = U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1);
-    return `<img class="lg-badge-pic" src="${this.IMG}rank-${String(i + 1).padStart(2, '0')}.webp" alt="" draggable="false" decoding="async">`;
-  },
+  // 5.0: значок лиги — медальон из материала лиги с кристаллом Алатыря в центре (инлайн-SVG 340×400, LeagueBadge)
+  badge(i) { return LeagueBadge(U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1)); },
   // значок рейтинга — кубок
   cup() { return '<svg class="lg-cup" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3.5a5 5 0 0 1-10 0z" fill="#fcd34d" stroke="#92400e" stroke-width="1.2"/><path d="M7 5.5H4.5a3 3 0 0 0 3 4M17 5.5h2.5a3 3 0 0 1-3 4" fill="none" stroke="#fcd34d" stroke-width="1.6"/><path d="M12 12.5v3.5M8.5 20h7l-.8-3.5H9.3z" fill="#f59e0b" stroke="#92400e" stroke-width="1.1"/></svg>'; },
   rwLine(i) { const x = LEAGUE_RANKS[i]; return x.reward ? UI.rwText(x.reward) + (i % 3 === 0 ? ' + ' + ru`амулет` : '') + (i === 9 ? ' + ' + ru`эмблема «Венец»` : '') : ''; },
