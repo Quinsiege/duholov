@@ -48,32 +48,16 @@ const W = {
     if (lng >= 44) return 'volga';
     return 'center';
   },
-  /* 4.28: мифология места — чьи духи здесь водятся (грубые прямоугольники по широте и долготе, порядок проверок важен).
-     'world' — Африка южнее Сахары, Индия, Океания: там встречаются духи всех мифологий */
-  myth(lat, lng) {
-    if (lng < -30) return 'aztec';                                                     // обе Америки
-    if (lat >= 18 && lat < 48 && lng >= 97 && lng < 146
-      && !(lng >= 130.5 && lng < 134 && lat >= 42.3) && !(lng >= 141 && lat >= 45.5)) return 'china'; // кроме Приморья и Сахалина
-    if (lat >= 54.3 && lat < 55.3 && lng >= 19.6 && lng < 22.9) return 'slavic';        // Калининград
-    if (lat >= 54 && lng >= -25 && lng < 28) return 'norse';                           // Скандинавия, Исландия, Дания, Прибалтика
-    if (lat >= 47 && lat < 54 && lng >= 5 && lng < 14) return 'norse';                 // германский север: Германия
-    if (lat >= 48 && lat < 61 && lng >= -11 && lng < 5) return 'celtic';               // Ирландия, Британия, север Франции, Бенилюкс
-    if (lat >= 44.5 && lat < 48 && lng >= -5 && lng < 8) return 'celtic';              // Галлия
-    if (lat >= 12 && lat < 37.5 && lng >= -18 && lng < 63) return 'egypt';             // Северная Африка, Аравия, Ближний Восток
-    if (lat >= 34 && lat < 47 && lng >= -10 && lng < 45 && !(lng >= 19 && lat >= 42.3)) return 'greek'; // Средиземноморье, Турция
-    if (lat >= 35 && lng >= 14) return 'slavic';                                        // Россия, Восточная Европа, Средняя Азия
-    return 'world';
-  },
-  // 4.28: мифология Разлома и Капища у места p: своя у края; в местах «всего мира» — у каждого места своя (постоянно, по id места)
-  placeMyth(p) { const m = this.myth(p.lat, p.lng); return m !== 'world' ? m : MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
-  // дух своей мифологии в этом месте (или место «всего мира»)
-  home(s, lat, lng) { const m = this.myth(lat, lng); return m === 'world' || s.myth === m; },
-  // региональные духи водятся только в своей части света, духи земель — только в своём краю; 4.28 — и только в краях своей мифологии
-  local(s, lng = MapView.pos ? MapView.pos.lng : 37, lat = MapView.pos ? MapView.pos.lat : 55.75) {
-    return (!s.region || s.region === this.region(lng)) && (!s.land || s.land === this.land(lat, lng)) && this.home(s, lat, lng);
-  },
-  // 4.28: отбор по месту, если оно известно (хранители, прислужники, поручения)
-  here(list, lat, lng) { if (lat == null || lng == null) return list; const h = list.filter(s => this.home(s, lat, lng)); return h.length ? h : list; },
+  /* 4.28: духи всех семи мифологий разлетелись по свету (сюжет — LORE): мифология к месту не привязана. Чтобы мифологии
+     встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
+  // Разлом и святилище у места — одной из семи мифологий, поровну (постоянно, по id места)
+  placeMyth(p) { return MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
+  // из списка — виды одной мифологии, выбранной поровну из тех, что в списке есть (x — случайное число 0…1)
+  evenMyth(list, x) { const ms = MYTH_KEYS.filter(m => list.some(s => s.myth === m)); if (ms.length < 2) return list; const m = ms[Math.floor(x * ms.length)]; return list.filter(s => s.myth === m); },
+  // из списка — виды мифологии m (если их нет — весь список)
+  ofMyth(list, m) { const h = list.filter(s => s.myth === m); return h.length ? h : list; },
+  // 4.28: все духи водятся везде — и духи родных земель, и вещие птицы частей света (их край — родина по легенде)
+  local() { return true; },
 
   pickSpecies(r, biome, night, lng, lat) {
     const fullMoon = night && Sky.moonEvent() === 'full';
@@ -86,7 +70,7 @@ const W = {
     }), r());
     const RW = { 1: 60, 2: 24, 3: 8, 4: 2 };
     const h = U.hour();
-    const pool = SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)).map(s => {
+    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)), r()).map(s => { // 4.28: мифология — поровну
       let w = RW[s.rar] || 0;
       if (s.stage === 3) w *= 0.3;
       if (s.time === 'night') w *= night ? (fullMoon ? 4 : 1.5) : 0.35;
@@ -147,14 +131,15 @@ const W = {
     const r = U.rng(id);
     const tier = U.weighted(Ev.cur.rifts ? [[1, 40], [2, 30], [3, 30]] : [[1, 60], [2, 30], [3, 10]], r());
     let pool;
-    if (tier === 3) pool = this.here(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), p.lat, p.lng); // 4.28: легенды своей мифологии
-    else if (tier === 2) pool = SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0);
-    else pool = this.here(SPECIES.filter(s => s.rar === 2), p.lat, p.lng);
+    const myth = this.placeMyth(p); // 4.28: босс — из мифологии Разлома
+    if (tier === 3) pool = this.ofMyth(SPECIES.filter(s => s.legend && (!Ev.hol || !Ev.hol.koschey || s.id === 'koschey')), myth);
+    else if (tier === 2) pool = this.ofMyth(SPECIES.filter(s => !s.legend && s.rar >= 3 && this.local(s, p.lng, p.lat) && Ev.seasonal(s) > 0), myth);
+    else pool = this.ofMyth(SPECIES.filter(s => s.rar === 2), myth);
     // в неделю стихии разломы чаще охраняют духи этой стихии
     const evPool = pool.filter(s => s.el === Ev.cur.el);
     if (evPool.length && r() < 0.6) pool = evPool;
     const boss = pool[Math.floor(r() * pool.length)].id;
-    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth: this.placeMyth(p), place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
+    return { type: 'rift', id, poi: p.id, lat: p.lat, lng: p.lng, d, tier, boss, myth, place: p.name, done: !!S.d.rifts[id], endsAt: (hour + 1) * 3600000 };
   },
   riftsAround(lat, lng, radius = this.VIEW + 500) {
     return Poi.near(lat, lng, radius, 'shrine').map(p => this.riftFor(p, p.d)).filter(Boolean);
@@ -242,8 +227,8 @@ const W = {
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const pool = this.here(SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && s.rar <= 3), e.lat, e.lng);
-    const strong = this.here(SPECIES.filter(s => s.el === el && !s.legend && !s.region && !s.land && !s.season && !s.evo), e.lat, e.lng);
+    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && s.rar <= 3), r()); // 4.28: мифология — поровну
+    const strong = this.ofMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && !s.evo), pool[0].myth);
     const pw = this.topPower() * Duel.FOE.invasion.pow;
     const team = [];
     for (let k = 0; k < 3; k++) {
@@ -260,20 +245,20 @@ const W = {
   guardian(e) {
     const r = U.rng(e.id + U.today());
     const T = SHRINE_TIERS[e.tier];
-    const gs = MYTH_PLACES[e.myth || (e.lat != null && e.id ? this.placeMyth(e) : 'slavic')].guards; // 4.28: хранитель — из мифологии святилища
+    const myth = e.myth || this.placeMyth(e), gs = MYTH_PLACES[myth].guards; // 4.28: хранитель, его имя и духи — из мифологии святилища
     const name = gs[Math.floor(r() * gs.length)];
     const color = GUARD_COLORS[Math.floor(r() * GUARD_COLORS.length)];
     // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
-    const pool = this.here(SPECIES.filter(s => !s.legend && !s.region && !s.land && !s.season && rars.includes(s.rar) && s.stage <= maxStage), e.lat, e.lng);
+    const pool = this.ofMyth(SPECIES.filter(s => !s.legend && !s.season && rars.includes(s.rar) && s.stage <= maxStage), myth);
     const pw = this.topPower() * T.pow;
     const team = [];
     while (team.length < 3) {
       const s = pool[Math.floor(r() * pool.length)];
       if (team.some(x => SP[x.sid].fam === s.fam)) continue;
       // сильному Ловчему — сильнейшие виды (у Старейшины — и эпические), без повторов семейств
-      const strong = this.here(SPECIES.filter(x => !x.legend && !x.region && !x.land && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), e.lat, e.lng);
+      const strong = this.ofMyth(SPECIES.filter(x => !x.legend && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), myth);
       team.push(this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.id + U.today() + team.length, e.tier * 4, strong));
     }
     return { name, color, title: T.title, team, speed: this.foeSpeed(T.speed, team, pw) };

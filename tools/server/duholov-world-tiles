@@ -1,0 +1,11 @@
+#!/bin/sh
+# 4.28: карта мира (Protomaps, полная, до масштаба 15) — потоком прямо в S3 (бакет duholov-tiles, публичное чтение), без места на диске.
+# Запуск: duholov-world-tiles <дата сборки, напр. 20260928>. После — сверка размера с оригиналом.
+set -u
+B=${1:?дата сборки}; U=https://build.protomaps.com/$B.pmtiles; K=world-$B.pmtiles
+. /root/.duholov-s3
+N=$(curl -sI "$U" | tr -d "\r" | awk -F": " "tolower(\$1)==\"content-length\"{print \$2}")
+echo "$(date -u) начало: $U ($N байт) → s3://duholov-tiles/$K"
+curl -sSf "$U" | aws --endpoint-url "$S3_ENDPOINT" s3 cp - "s3://duholov-tiles/$K" --expected-size "$N" --acl public-read --only-show-errors
+G=$(aws --endpoint-url "$S3_ENDPOINT" s3api head-object --bucket duholov-tiles --key "$K" --query ContentLength --output text)
+if [ "$G" = "$N" ]; then echo "$(date -u) DONE $K ($G байт)"; else echo "$(date -u) FAIL: в S3 $G байт из $N — удалить и запустить заново"; fi

@@ -50,8 +50,21 @@ duholov.ru {
 		header Cache-Control "public, max-age=2592000, immutable"
 		@preflight method OPTIONS
 		respond @preflight 204
-		root * /srv
-		file_server
+		# 4.28: карта мира (138 ГБ) — в облачном хранилище S3 (бакет duholov-tiles, публичное чтение; залита duholov-world-tiles):
+		# отдаём её по тому же адресу, куски (Range) идут насквозь
+		@world path /tiles/world-*
+		handle @world {
+			uri replace /tiles/ /duholov-tiles/ 1
+			reverse_proxy https://s3.timeweb.cloud {
+				header_up Host s3.timeweb.cloud
+				header_down -Server
+				header_down -x-amz-request-id
+			}
+		}
+		handle {
+			root * /srv
+			file_server
+		}
 	}
 
 	handle {
