@@ -73,6 +73,7 @@ const GameCore = {
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
       this.need(actions.length, ru`Пустой запрос`);
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
+      const ala0 = S.d ? S.d.alaGiven || 0 : 0; // 4.28: осколки Алатыря, отданные в общий счёт Ордена
       for (const a of actions) {
         const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
         this.need(h, ru`Неизвестное действие`);
@@ -80,6 +81,7 @@ const GameCore = {
         ctx.results.push(await h.call(this, a.args || {}, ctx));
       }
       if (S.d && stats0) { const pts = Rules.orderPoints(stats0, S.d.stats, Ev.cur); this.orderAdd(ctx, pts); this.passAdd(ctx, pts); }
+      if (S.d) this.alatyrSync(ctx, (S.d.alaGiven || 0) - ala0, actions.some(a => a && a.type === 'load'));
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
     } catch (e) {
@@ -240,6 +242,15 @@ const GameCore = {
     Object.keys(O).forEach(k => { if (+k < w - 1) delete O[k]; }); // храним эту и прошлую неделю
     const row = { week: w, pid: S.d.pid, name: S.d.name, n: o.n };
     ctx.after.push(() => ctx.env.orderPut(row));
+  },
+  /* 4.28: общий Алатырь. n осколков, выпавших за запрос, — в общий счёт Ордена после сохранения прогресса (serve.js →
+     alatyr_add; веху и событие дороги сервер отмечает там же). Дороги (Ev.roads — сервер держит их из базы) телефон
+     получает событием roads: при входе и когда набор дорог изменился с прошлого раза (ctx.srv.alaV) */
+  alatyrSync(ctx, n, load) {
+    if (n > 0 && typeof ctx.env.alatyrAdd === 'function') { const k = Math.min(n, 10); ctx.after.push(() => ctx.env.alatyrAdd(k)); }
+    const key = Ev.roadsKey();
+    if ((load && key) || (ctx.srv.alaV || '') !== key) Bus.emit('roads', Ev.roadsLive(ctx.now));
+    if (key || ctx.srv.alaV) ctx.srv.alaV = key;
   },
   // Сезонная тропа: сезон — календарный месяц по часам игрока
   passSeason(ctx) { const d = U.local(ctx.now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`; },
@@ -622,6 +633,15 @@ const GameCore = {
       }
       J.add('order', { i });
       return { got };
+    },
+    // 4.28: общий Алатырь — счёт Ордена, распутанные дороги (последние, для истории) и вклад Ловчего. Грани и вехи
+    // телефон считает сам по Rules.alatyrStage (счёт — из кэша сервера, не старше ~15 с)
+    async alatyr(a, ctx) {
+      this.limit(ctx, 'alatyr', 30, 60000);
+      const w = typeof ctx.env.alatyrState === 'function' ? await ctx.env.alatyrState() : null;
+      const total = Math.max(0, Math.floor(+(w && w.total) || 0));
+      const roads = Ev.roadsClean(w && w.roads).sort((x, y) => y.n - x.n);
+      return { total, roads, mine: S.d.alaGiven || 0, now: ctx.now };
     },
 
     // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.

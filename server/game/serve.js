@@ -471,9 +471,59 @@ async function realWeather(lat, lng) {
   } catch (e) { return c ? c.keys : null; } finally { clearTimeout(t); }
 }
 
+/* ---------- 4.28: общий Алатырь (029_alatyr_world.sql) ----------
+   alatyr_world — общий счёт осколков Ордена (одна строка), alatyr_roads — распутанные дороги (грань n, мифология, начало
+   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alatyrStage)
+   отмечает только тот запрос, что их перешагнул; дорогу записывает alatyr_open (повтор той же грани ничего не меняет).
+   Состояние кэшируется в экземпляре на TTL и кладётся в Ev.roads — по нему сервер отбирает духов (Ev.mythMul), а телефон
+   получает те же дороги событием roads (core.js, alatyrSync). Событие начинается не раньше чем через Rules.ALATYR_WORLD.LEAD
+   минут после вехи — за это время о нём узнают все экземпляры сервера и телефоны */
+const World = {
+  st: null, at: 0, p: null, TTL: 60000,
+  async load() {
+    const w = must(await db.from('alatyr_world').select('total').eq('id', 1).maybeSingle());
+    const rows = must(await db.from('alatyr_roads').select('n, road, from_ms, to_ms').order('n', { ascending: false }).limit(30)) || [];
+    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })) };
+    // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
+    const n = Rules.alatyrStage(st.total).n - 1;
+    if (n >= 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
+      if (await this.open(n, Date.now())) return this.load();
+    }
+    return st;
+  },
+  apply(st) {
+    this.st = st; this.at = Date.now();
+    const cut = Date.now() - 86400000;
+    Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
+    return st;
+  },
+  // состояние не старше ttl мс; база не ответила — прежнее (дороги не пропадают из-за сбоя)
+  async get(ttl = this.TTL) {
+    if (this.st && Date.now() - this.at < ttl) return this.st;
+    if (!this.p) this.p = this.load().then(st => this.apply(st)).catch(e => { console.error('Алатырь:', String(e)); return this.st; }).finally(() => { this.p = null; });
+    return this.p;
+  },
+  async open(n, now) {
+    const t = Rules.alatyrOpen(now);
+    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: Rules.alatyrRoad(n), p_goal: Rules.alatyrAt(n), p_from: t.from, p_to: t.to }));
+  },
+  // +n осколков в общий счёт; перешагнули веху — записать дорогу (и сразу обновить кэш этого экземпляра)
+  async add(n) {
+    const r = must(await db.rpc('alatyr_add', { p_n: n }));
+    if (!r) return;
+    const a = Rules.alatyrStage(+r.prev || 0).n, b = Rules.alatyrStage(+r.total || 0).n;
+    let opened = false;
+    for (let k = Math.max(a, b - 3); k < b; k++) { if (await this.open(k, Date.now())) { opened = true; console.warn(`Алатырь: грань ${k} собрана — ${Rules.alatyrRoad(k)}`); } }
+    if (opened) { this.at = 0; await this.get(); } else if (this.st) this.st.total = Math.max(this.st.total, +r.total || 0);
+  },
+};
+
 function makeEnv(uid) {
   return {
     weather: (lat, lng) => realWeather(lat, lng),
+    // 4.28: общий Алатырь — осколки в общий счёт (после сохранения прогресса) и состояние для экрана (не старше 15 с)
+    async alatyrAdd(n) { await World.add(Math.max(1, Math.min(10, n | 0))); },
+    async alatyrState() { return World.get(15000); },
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {
@@ -811,6 +861,7 @@ async function play(uid, body, env) {
     if (error) console.error('Замок:', error.message);
   };
   try {
+    await World.get(); // 4.28: дороги Алатыря (Ev.roads) — до отбора духов; из кэша экземпляра, база — не чаще раза в минуту
     let got = null;
     for (let i = 0; i < LOCK_TRIES; i++) {
       got = must(await db.rpc('game_begin', { p_uid: uid, p_token: tok, p_ms: LOCK_MS }));

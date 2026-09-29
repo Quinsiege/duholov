@@ -47,6 +47,38 @@ const Rules = {
       + d('hatched') * (ev.km ? 6 : 3)
       + km * (ev.km ? 2 : 1);
   },
+  /* 4.28: общий Алатырь. Каждый осколок Алатыря, найденный любым Ловчим (S.alatyrDrop), идёт ещё и в общий счёт Ордена
+     (осколок остаётся у Ловчего). Камень — семь граней, по одной на дорогу-мифологию (ORDER — порядок граней). Грань n
+     (с нуля, по всем виткам) стоит alatyrGoal(n) осколков: на витке FIRST, FIRST + STEP, … (по грани на мифологию),
+     каждый следующий виток — в RING раз дороже. Собрана грань — дорога в её мир распутана: HOURS часов духи этой мифологии
+     встречаются в MUL раз чаще (Ev.mythMul). Начало — с полного часа, не раньше чем через LEAD минут после вехи: телефоны
+     и сервер успевают узнать о ней заранее и отбирают духов одинаково.
+     Калибровка: десятки–сотни Ловчих по 0,3–1 осколку в день — ~15–50 осколков в день на весь Орден: первая грань за 1–3 дня,
+     весь первый виток (490) — за 10–30 дней */
+  ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], FIRST: 40, STEP: 10, RING: 1.5, MUL: 2, HOURS: 72, LEAD: 10 },
+  // сколько осколков стоит грань n (0 — первая грань первого витка)
+  alatyrGoal(n) {
+    const A = this.ALATYR_WORLD, k = A.ORDER.length, ring = Math.floor(n / k);
+    return Math.max(1, Math.round((A.FIRST + A.STEP * (n % k)) * Math.pow(A.RING, ring)));
+  },
+  // мифология грани n
+  alatyrRoad(n) { const O = this.ALATYR_WORLD.ORDER; return O[((n % O.length) + O.length) % O.length]; },
+  // где общий счёт total: n — сколько граней собрано за всё время, ring/face — виток и грань, что собирается сейчас,
+  // road — её мифология, from/at — счёт в начале и в конце этой грани, have/need — собрано и нужно на ней
+  alatyrStage(total) {
+    const t = Math.max(0, Math.floor(+total || 0)), k = this.ALATYR_WORLD.ORDER.length;
+    let n = 0, from = 0;
+    while (n < 100000 && t >= from + this.alatyrGoal(n)) { from += this.alatyrGoal(n); n++; }
+    const need = this.alatyrGoal(n);
+    return { total: t, n, ring: Math.floor(n / k), face: n % k, road: this.alatyrRoad(n), from, at: from + need, have: t - from, need, pct: (t - from) / need };
+  },
+  // счёт, на котором собрана грань n (сумма граней 0…n)
+  alatyrAt(n) { let s = 0; for (let i = 0; i <= n; i++) s += this.alatyrGoal(i); return s; },
+  // когда начнётся и кончится событие дороги, если веха взята в момент t (мс): с полного часа, не раньше LEAD минут
+  alatyrOpen(t) {
+    const A = this.ALATYR_WORLD, from = Math.ceil((t + A.LEAD * 60000) / 3600000) * 3600000;
+    return { from, to: from + A.HOURS * 3600000 };
+  },
   /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
   // Златники — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
   // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:

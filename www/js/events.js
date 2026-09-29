@@ -11,7 +11,23 @@ const Ev = {
   get myth() { return MYTH_KEYS[this.week() % MYTH_KEYS.length]; },
   get nextMyth() { return MYTH_KEYS[(this.week() + 1) % MYTH_KEYS.length]; },
   MYTH_MUL: 3,
-  mythMul(m) { return m === this.myth ? this.MYTH_MUL : 1; },
+  // 4.28: × событие дороги Алатыря (Rules.ALATYR_WORLD): пока дорога в мир мифологии m распутана, её духи в MUL раз чаще
+  mythMul(m, t = U.now()) { return (m === this.myth ? this.MYTH_MUL : 1) * this.roadMul(m, t); },
+  /* 4.28: распутанные дороги Алатыря — [{ n, road, from, to }] (n — номер грани, road — мифология, from/to — мс).
+     Сервер берёт их из базы (serve.js, World), телефон — из ответов сервера (событие roads, alatyr.js): у обоих одни и те же */
+  roads: [],
+  road(m, t = U.now()) { return (this.roads || []).find(r => r && r.road === m && t >= r.from && t < r.to) || null; },
+  roadMul(m, t = U.now()) { return this.road(m, t) ? Rules.ALATYR_WORLD.MUL : 1; }, // две дороги одного мира разом — всё равно ×MUL
+  roadsNow(t = U.now()) { return (this.roads || []).filter(r => r && t >= r.from && t < r.to); },
+  // подпись набора дорог (сервер помнит, какой набор уже отдал телефону)
+  roadsKey() { return (this.roads || []).map(r => `${r.n}:${r.from}`).join(','); },
+  // только нужное для отбора духов и значка на карте: дороги, что ещё идут или скоро начнутся
+  roadsLive(t = U.now()) { return (this.roads || []).filter(r => r && r.to > t).map(r => ({ n: r.n, road: r.road, from: r.from, to: r.to })); },
+  // проверка присланного сервером (телефон): только известные мифологии и числа
+  roadsClean(list) {
+    return (Array.isArray(list) ? list : []).filter(r => r && MYTH_KEYS.includes(r.road) && Number.isFinite(+r.from) && Number.isFinite(+r.to) && Number.isFinite(+r.n))
+      .slice(0, 30).map(r => ({ n: +r.n | 0, road: r.road, from: +r.from, to: +r.to }));
+  },
 
   // Православная Пасха (юлианский расчёт + 13 дней, верно для 1900–2099); дата в UTC
   easter(y) {

@@ -449,6 +449,41 @@
     eq(Ev.week(mon), Ev.week(mon + 6.9 * 86400000));
     eq(Ev.week(mon) + 1, Ev.week(mon + 7 * 86400000));
   });
+  test('Общий Алатырь (4.28): грани, витки, вехи и начало события дороги', () => {
+    const A = Rules.ALATYR_WORLD, K = A.ORDER.length;
+    eq(K, 7); eq(new Set(A.ORDER).size, 7); ok(A.ORDER.every(m => MYTH_KEYS.includes(m)), 'все семь мифологий');
+    eq(Rules.alatyrGoal(0), A.FIRST); eq(Rules.alatyrGoal(1), A.FIRST + A.STEP); ok(Rules.alatyrGoal(K) > Rules.alatyrGoal(0), 'следующий виток дороже');
+    let s = Rules.alatyrStage(0); eq(s.n, 0); eq(s.ring, 0); eq(s.face, 0); eq(s.road, A.ORDER[0]); eq(s.have, 0); eq(s.need, A.FIRST);
+    eq(Rules.alatyrStage(A.FIRST - 1).n, 0, 'до вехи');
+    s = Rules.alatyrStage(A.FIRST); eq(s.n, 1, 'веха взята'); eq(s.face, 1); eq(s.road, A.ORDER[1]); eq(s.have, 0); eq(s.from, A.FIRST);
+    s = Rules.alatyrStage(Rules.alatyrAt(K - 1)); eq(s.ring, 1, 'семь граней — новый виток'); eq(s.face, 0); eq(s.road, A.ORDER[0]);
+    for (let n = 0; n < 30; n++) { eq(Rules.alatyrStage(Rules.alatyrAt(n)).n, n + 1, 'грань ' + n); eq(Rules.alatyrStage(Rules.alatyrAt(n) - 1).n, n, 'грань ' + n); eq(Rules.alatyrRoad(n), A.ORDER[n % K]); }
+    eq(Rules.alatyrStage(-5).n, 0); eq(Rules.alatyrStage('x').total, 0);
+    // калибровка: ~15–50 осколков в день на весь Орден — первая грань за 1–3 дня, первый виток — за недели, а не годы
+    ok(A.FIRST / 15 <= 3 && A.FIRST / 50 >= 0.5, 'первая грань — за дни'); ok(Rules.alatyrAt(K - 1) / 15 <= 40, 'виток — за недели');
+    // событие — с полного часа, не раньше чем через LEAD минут после вехи
+    const t = Date.UTC(2026, 9, 1, 12, 55), o = Rules.alatyrOpen(t);
+    eq(o.from, Date.UTC(2026, 9, 1, 14), 'веха в 12:55 — дорога с 14:00'); eq(o.to - o.from, A.HOURS * 3600000); ok(o.from - t >= A.LEAD * 60000);
+    eq(Rules.alatyrOpen(Date.UTC(2026, 9, 1, 12, 20)).from, Date.UTC(2026, 9, 1, 13), 'веха в 12:20 — с 13:00');
+  });
+  test('Дорога Алатыря (4.28): Ev.mythMul — её мифология чаще, пока идёт событие', () => {
+    const r0 = Ev.roads, t = Date.now(), m = MYTH_KEYS.find(x => x !== Ev.myth), base = Ev.mythMul(m), MUL = Rules.ALATYR_WORLD.MUL;
+    try {
+      Ev.roads = [{ n: 3, road: m, from: t - 3600000, to: t + 3600000 }];
+      eq(Ev.mythMul(m), base * MUL); eq(Ev.mythMul(Ev.myth), Ev.MYTH_MUL, 'другие мифологии — как были');
+      eq(Ev.mythMul(m, t + 2 * 3600000), base, 'после конца — как обычно'); eq(Ev.mythMul(m, t - 2 * 3600000), base, 'до начала — как обычно');
+      Ev.roads.push({ n: 10, road: m, from: t - 60000, to: t + 60000 }); eq(Ev.mythMul(m), base * MUL, 'две дороги одного мира — всё равно ×MUL');
+      Ev.roads = [{ n: 1, road: Ev.myth, from: t - 1000, to: t + 60000 }]; eq(Ev.mythMul(Ev.myth), Ev.MYTH_MUL * MUL, 'с неделей мифологии — умножается');
+      // отбор мифологии духа (W.evenMyth): доля мифологии дороги растёт
+      const share = () => { let k = 0; for (let i = 0; i < 700; i++) if (W.evenMyth(SPECIES, (i + 0.5) / 700)[0].myth === m) k++; return k / 700; };
+      Ev.roads = []; const s0 = share();
+      Ev.roads = [{ n: 3, road: m, from: t - 3600000, to: t + 3600000 }]; const s1 = share();
+      ok(s1 > s0 * 1.6, `доля мифологии ${m}: ${s0.toFixed(3)} → ${s1.toFixed(3)}`);
+      eq(Ev.roadsClean([{ n: 1, road: 'hack', from: 1, to: 2 }, { n: '2', road: 'greek', from: '5', to: 9 }, null]).length, 1, 'чужие мифологии отброшены');
+      Ev.roads = [{ n: 0, road: 'greek', from: t - 9e6, to: t - 1 }, { n: 1, road: 'norse', from: t + 60000, to: t + 9e6 }];
+      eq(Ev.roadsNow(t).length, 0); eq(Ev.roadsLive(t).length, 1, 'телефону — только идущие и будущие'); eq(Ev.roadsKey(), `0:${t - 9e6},1:${t + 60000}`);
+    } finally { Ev.roads = r0; }
+  });
   test('Лига: пороги рангов', () => {
     eq(League.rank(0), 0); eq(League.rank(299), 0); eq(League.rank(300), 1); eq(League.rank(5500), 9); eq(League.rank(99999), 9);
     for (let i = 1; i < LEAGUE_RANKS.length; i++) ok(LEAGUE_RANKS[i].pts > LEAGUE_RANKS[i - 1].pts);
@@ -998,6 +1033,9 @@
     pvpPending: async () => Object.values(DB.pvpM).filter(m => m.status === 'done' && ((m.a === who.uid && !m.aS) || (m.b === who.uid && !m.bS)))
       .map(m => ({ id: m.id, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : 'b' })),
     pvpSettled: async id => { const m = DB.pvpM[id]; if (m && m.status === 'done') { if (m.a === who.uid) m.aS = true; if (m.b === who.uid) m.bS = true; } },
+    // 4.28: общий Алатырь — как serve.js (World): счёт прибавляется после сохранения, дороги — Ev.roads
+    alatyrAdd: async n => { DB.ala = (DB.ala || 0) + n; },
+    alatyrState: async () => ({ total: DB.ala || 0, roads: JSON.parse(JSON.stringify(Ev.roads || [])) }),
     deleteSave: async () => { delete DB.saves[who.uid]; },
   });
   async function call(who, type, args = {}) {
@@ -2305,6 +2343,25 @@
       { ...envFor(A), friendSave: async () => ({ data: JSON.parse(JSON.stringify(DB.saves.lk2)), seen: new Date(Date.now() - ms).toISOString() }) }).then(r => r.results[0].seen);
     eq(await seenAgo(3 * 60000), 'now', 'только что — «сейчас»');
     const s = await seenAgo(3 * 3600000 + 17 * 60000); ok(/T\d\d:00:00\.000Z$/.test(s) && Date.parse(s) <= Date.now() - 3 * 3600000, 'иначе — до часа: ' + s);
+  });
+  atest('Сервер 4.28: осколок Алатыря — в общий счёт Ордена после сохранения; дороги — телефону', async () => {
+    const A = await newPlayer('al1', 55.36, 37.16, 'Камень'); A.data.tut = 0;
+    const H = GameCore.H, r0 = Ev.roads;
+    H.__alaTest = function () { return S.alatyrDrop('rift', 3); }; // как в raidEnd: великий разлом — осколок всегда
+    try {
+      Ev.roads = []; DB.ala = 0;
+      const r = await withRandom(0.5, () => call(A, '__alaTest'));
+      ok(r.ok, r.error); eq(A.data.alatyr, 1, 'осколок остаётся у Ловчего'); eq(A.data.alaGiven, 1, 'вклад Ловчего'); eq(DB.ala, 1, 'общий счёт — после сохранения');
+      ok(!r.events.some(e => e[0] === 'roads'), 'дорог нет — телефону нечего слать');
+      await refuse(A, 'hack', {}); eq(DB.ala, 1, 'отказ — без вклада');
+      const st = await must(A, 'alatyr'); eq(st.total, 1); eq(st.mine, 1); eq(st.roads.length, 0);
+      // появилась дорога — телефон узнаёт о ней со следующим ответом, один раз; при входе — всегда
+      const t = Date.now(); Ev.roads = [{ n: 0, road: 'greek', from: t + 600000, to: t + 600000 + 72 * 3600000 }];
+      let q = await call(A, 'alatyr'); const ev = q.events.find(e => e[0] === 'roads');
+      ok(ev && ev[1].length === 1 && ev[1][0].road === 'greek' && ev[1][0].from === t + 600000, 'дорога ушла телефону'); eq(q.results[0].roads.length, 1);
+      q = await call(A, 'alatyr'); ok(!q.events.some(e => e[0] === 'roads'), 'второй раз — не шлём');
+      q = await call(A, 'load'); ok(q.events.some(e => e[0] === 'roads'), 'при входе — всегда');
+    } finally { delete H.__alaTest; Ev.roads = r0; }
   });
   /* ---------- вывод ---------- */
   (async () => {

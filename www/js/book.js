@@ -69,6 +69,8 @@ const Book = {
         U.$$('.bk-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === t.dataset.tab));
         return;
       }
+      if (e.target.closest('.bk-ala')) { Alatyr.screen(); return; } // 4.28: экран общего Алатыря
+      if (e.target.closest('.bk-intro')) { Intro.open({ again: true }); return; } // 4.28: книга-вступление (intro.js)
       const g = e.target.closest('[data-go]');
       if (g) { UI.closeScreen(scr); this.page(g.dataset.go); }
     });
@@ -84,12 +86,14 @@ const Book = {
   h(t) { return `<h3 class="prof-h">${t}</h3>`; },
   PAGES: {
     world() {
-      return [[ru`Легенда`, LORE.map(x => this.p(x)).join('')],
+      return [[ru`Легенда`, UI.glass(ru`Читать с начала`, 'bk-intro', UI.I.book) + LORE.map(x => this.p(x)).join('')],
         [ru`Орден`, this.p(ru`Орден Оберега — союз Ловчих всех земель, от Москвы до Мехико. Мы не загоняем духов обратно — дорог домой пока нет, — а помогаем им прижиться рядом с людьми. Клятва Ордена проста: <b>беречь духов, беречь людей, беречь друг друга</b>.`) +
           this.cards([[Art.item('alatyr'), ru`Алатырь-камень`, ru`Бел-горюч камень в середине всех миров: он держал каждые врата в своей земле. В Перепутицу Алатырь раскололся, и его осколки застряли в разломах. Соберётся ли он снова — не знает никто.`],
             [Art.spirit('koschey'), ru`Кощей Бессмертный`, ru`Царь Нави. Прятал в Алатыре иглу со своей смертью — и расколол камень. Игла потерялась в Перепутице, и прислужники Кощея ищут её по всему свету.`],
             [Art.spirit('gr_zeus'), ru`Духи семи мифологий`, ru`Славянские, греческие, скандинавские, кельтские, египетские, китайские и ацтекские духи и боги перепутали дороги домой и живут теперь где придётся. Любого можно встретить в любом городе мира.`],
-            [Art.spirit('vayfayka'), ru`Новые духи`, ru`Город рождает своих духов: из Wi‑Fi, фонарей, трамваев и пакетов. В старых книгах о таких не писали — пишем мы.`]])]];
+            [Art.spirit('vayfayka'), ru`Новые духи`, ru`Город рождает своих духов: из Wi‑Fi, фонарей, трамваев и пакетов. В старых книгах о таких не писали — пишем мы.`]]) +
+          // 4.28: общий Алатырь — камень, который Орден собирает всем миром
+          (typeof Alatyr !== 'undefined' ? `<button class="btn wide bk-ala">${Art.item('alatyr')}<span>${ru`Сколько камня собрал Орден`}</span></button>` : '')]];
     },
     spirits() {
       const el = ELEMENT_KEYS.map(k => [Art.elIcon(k, 40), ELEMENTS[k].name, ru`Сильнее против: ${ELEMENTS[k].beats.map(b => ELEMENTS[b].name).join(` ${ru`и`} `)}. Приёмы: «${ELEMENTS[k].fast}», «${ELEMENTS[k].charge}».`]);

@@ -1496,6 +1496,27 @@ const Ev = {
   get cur() { return WEEK_EVENTS[this.week() % WEEK_EVENTS.length]; },
   get next() { return WEEK_EVENTS[(this.week() + 1) % WEEK_EVENTS.length]; },
   endsAt() { return ((this.week() + 1) * 7 - 3) * 86400000; },
+  // 4.28: неделя мифологии — по кругу все семь (параллельно с событием недели): её духи встречаются в MYTH_MUL раз чаще
+  get myth() { return MYTH_KEYS[this.week() % MYTH_KEYS.length]; },
+  get nextMyth() { return MYTH_KEYS[(this.week() + 1) % MYTH_KEYS.length]; },
+  MYTH_MUL: 3,
+  // 4.28: × событие дороги Алатыря (Rules.ALATYR_WORLD): пока дорога в мир мифологии m распутана, её духи в MUL раз чаще
+  mythMul(m, t = U.now()) { return (m === this.myth ? this.MYTH_MUL : 1) * this.roadMul(m, t); },
+  /* 4.28: распутанные дороги Алатыря — [{ n, road, from, to }] (n — номер грани, road — мифология, from/to — мс).
+     Сервер берёт их из базы (serve.js, World), телефон — из ответов сервера (событие roads, alatyr.js): у обоих одни и те же */
+  roads: [],
+  road(m, t = U.now()) { return (this.roads || []).find(r => r && r.road === m && t >= r.from && t < r.to) || null; },
+  roadMul(m, t = U.now()) { return this.road(m, t) ? Rules.ALATYR_WORLD.MUL : 1; }, // две дороги одного мира разом — всё равно ×MUL
+  roadsNow(t = U.now()) { return (this.roads || []).filter(r => r && t >= r.from && t < r.to); },
+  // подпись набора дорог (сервер помнит, какой набор уже отдал телефону)
+  roadsKey() { return (this.roads || []).map(r => `${r.n}:${r.from}`).join(','); },
+  // только нужное для отбора духов и значка на карте: дороги, что ещё идут или скоро начнутся
+  roadsLive(t = U.now()) { return (this.roads || []).filter(r => r && r.to > t).map(r => ({ n: r.n, road: r.road, from: r.from, to: r.to })); },
+  // проверка присланного сервером (телефон): только известные мифологии и числа
+  roadsClean(list) {
+    return (Array.isArray(list) ? list : []).filter(r => r && MYTH_KEYS.includes(r.road) && Number.isFinite(+r.from) && Number.isFinite(+r.to) && Number.isFinite(+r.n))
+      .slice(0, 30).map(r => ({ n: +r.n | 0, road: r.road, from: +r.from, to: +r.to }));
+  },
 
   // Православная Пасха (юлианский расчёт + 13 дней, верно для 1900–2099); дата в UTC
   easter(y) {
@@ -1688,8 +1709,16 @@ const W = {
      встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
   // Разлом и святилище у места — одной из семи мифологий, поровну (постоянно, по id места)
   placeMyth(p) { return MYTH_KEYS[Math.floor(U.h('pm', p.id) * MYTH_KEYS.length)]; },
-  // из списка — виды одной мифологии, выбранной поровну из тех, что в списке есть (x — случайное число 0…1)
-  evenMyth(list, x) { const ms = MYTH_KEYS.filter(m => list.some(s => s.myth === m)); if (ms.length < 2) return list; const m = ms[Math.floor(x * ms.length)]; return list.filter(s => s.myth === m); },
+  // из списка — виды одной мифологии, выбранной из тех, что в списке есть (x — случайное число 0…1): поровну, но с весом
+  // Ev.mythMul — 4.28: мифология недели втрое чаще
+  evenMyth(list, x) {
+    const ms = MYTH_KEYS.filter(m => list.some(s => s.myth === m));
+    if (ms.length < 2) return list;
+    const w = ms.map(m => Ev.mythMul(m));
+    let t = x * w.reduce((a, b) => a + b, 0), i = 0;
+    for (; i < ms.length - 1; i++) { t -= w[i]; if (t < 0) break; }
+    return list.filter(s => s.myth === ms[i]);
+  },
   // из списка — виды мифологии m (если их нет — весь список)
   ofMyth(list, m) { const h = list.filter(s => s.myth === m); return h.length ? h : list; },
   // 4.28: все духи водятся везде — и духи родных земель, и вещие птицы частей света (их край — родина по легенде)
@@ -2161,6 +2190,7 @@ const S = {
     if (!p || (this.d.alaDay && this.d.alaDay.n >= this.ALATYR_DAY) || Math.random() >= p) return [];
     this.d.alaDay = { day, n: (this.d.alaDay ? this.d.alaDay.n : 0) + 1 };
     this.d.alatyr = (this.d.alatyr || 0) + 1;
+    this.d.alaGiven = (this.d.alaGiven || 0) + 1; // 4.28: и в общий счёт Ордена (осколок остаётся у Ловчего) — вклад за всё время
     return [{ k: 'alatyr', n: 1, label: ru`Осколки Алатыря` }];
   },
   resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
@@ -4349,6 +4379,38 @@ const Rules = {
       + d('hatched') * (ev.km ? 6 : 3)
       + km * (ev.km ? 2 : 1);
   },
+  /* 4.28: общий Алатырь. Каждый осколок Алатыря, найденный любым Ловчим (S.alatyrDrop), идёт ещё и в общий счёт Ордена
+     (осколок остаётся у Ловчего). Камень — семь граней, по одной на дорогу-мифологию (ORDER — порядок граней). Грань n
+     (с нуля, по всем виткам) стоит alatyrGoal(n) осколков: на витке FIRST, FIRST + STEP, … (по грани на мифологию),
+     каждый следующий виток — в RING раз дороже. Собрана грань — дорога в её мир распутана: HOURS часов духи этой мифологии
+     встречаются в MUL раз чаще (Ev.mythMul). Начало — с полного часа, не раньше чем через LEAD минут после вехи: телефоны
+     и сервер успевают узнать о ней заранее и отбирают духов одинаково.
+     Калибровка: десятки–сотни Ловчих по 0,3–1 осколку в день — ~15–50 осколков в день на весь Орден: первая грань за 1–3 дня,
+     весь первый виток (490) — за 10–30 дней */
+  ALATYR_WORLD: { ORDER: ['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec'], FIRST: 40, STEP: 10, RING: 1.5, MUL: 2, HOURS: 72, LEAD: 10 },
+  // сколько осколков стоит грань n (0 — первая грань первого витка)
+  alatyrGoal(n) {
+    const A = this.ALATYR_WORLD, k = A.ORDER.length, ring = Math.floor(n / k);
+    return Math.max(1, Math.round((A.FIRST + A.STEP * (n % k)) * Math.pow(A.RING, ring)));
+  },
+  // мифология грани n
+  alatyrRoad(n) { const O = this.ALATYR_WORLD.ORDER; return O[((n % O.length) + O.length) % O.length]; },
+  // где общий счёт total: n — сколько граней собрано за всё время, ring/face — виток и грань, что собирается сейчас,
+  // road — её мифология, from/at — счёт в начале и в конце этой грани, have/need — собрано и нужно на ней
+  alatyrStage(total) {
+    const t = Math.max(0, Math.floor(+total || 0)), k = this.ALATYR_WORLD.ORDER.length;
+    let n = 0, from = 0;
+    while (n < 100000 && t >= from + this.alatyrGoal(n)) { from += this.alatyrGoal(n); n++; }
+    const need = this.alatyrGoal(n);
+    return { total: t, n, ring: Math.floor(n / k), face: n % k, road: this.alatyrRoad(n), from, at: from + need, have: t - from, need, pct: (t - from) / need };
+  },
+  // счёт, на котором собрана грань n (сумма граней 0…n)
+  alatyrAt(n) { let s = 0; for (let i = 0; i <= n; i++) s += this.alatyrGoal(i); return s; },
+  // когда начнётся и кончится событие дороги, если веха взята в момент t (мс): с полного часа, не раньше LEAD минут
+  alatyrOpen(t) {
+    const A = this.ALATYR_WORLD, from = Math.ceil((t + A.LEAD * 60000) / 3600000) * 3600000;
+    return { from, to: from + A.HOURS * 3600000 };
+  },
   /* ---------- 3.12: златники, Лавка Ордена, Сезонная тропа ---------- */
   // Златники — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
   // 4.16: бесплатных златников было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
@@ -4817,6 +4879,7 @@ const GameCore = {
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
       this.need(actions.length, ru`Пустой запрос`);
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
+      const ala0 = S.d ? S.d.alaGiven || 0 : 0; // 4.28: осколки Алатыря, отданные в общий счёт Ордена
       for (const a of actions) {
         const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
         this.need(h, ru`Неизвестное действие`);
@@ -4824,6 +4887,7 @@ const GameCore = {
         ctx.results.push(await h.call(this, a.args || {}, ctx));
       }
       if (S.d && stats0) { const pts = Rules.orderPoints(stats0, S.d.stats, Ev.cur); this.orderAdd(ctx, pts); this.passAdd(ctx, pts); }
+      if (S.d) this.alatyrSync(ctx, (S.d.alaGiven || 0) - ala0, actions.some(a => a && a.type === 'load'));
       if (S.d) { S.checkMedals(); S.ensureQuests(); }
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now };
     } catch (e) {
@@ -4984,6 +5048,15 @@ const GameCore = {
     Object.keys(O).forEach(k => { if (+k < w - 1) delete O[k]; }); // храним эту и прошлую неделю
     const row = { week: w, pid: S.d.pid, name: S.d.name, n: o.n };
     ctx.after.push(() => ctx.env.orderPut(row));
+  },
+  /* 4.28: общий Алатырь. n осколков, выпавших за запрос, — в общий счёт Ордена после сохранения прогресса (serve.js →
+     alatyr_add; веху и событие дороги сервер отмечает там же). Дороги (Ev.roads — сервер держит их из базы) телефон
+     получает событием roads: при входе и когда набор дорог изменился с прошлого раза (ctx.srv.alaV) */
+  alatyrSync(ctx, n, load) {
+    if (n > 0 && typeof ctx.env.alatyrAdd === 'function') { const k = Math.min(n, 10); ctx.after.push(() => ctx.env.alatyrAdd(k)); }
+    const key = Ev.roadsKey();
+    if ((load && key) || (ctx.srv.alaV || '') !== key) Bus.emit('roads', Ev.roadsLive(ctx.now));
+    if (key || ctx.srv.alaV) ctx.srv.alaV = key;
   },
   // Сезонная тропа: сезон — календарный месяц по часам игрока
   passSeason(ctx) { const d = U.local(ctx.now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`; },
@@ -5366,6 +5439,15 @@ const GameCore = {
       }
       J.add('order', { i });
       return { got };
+    },
+    // 4.28: общий Алатырь — счёт Ордена, распутанные дороги (последние, для истории) и вклад Ловчего. Грани и вехи
+    // телефон считает сам по Rules.alatyrStage (счёт — из кэша сервера, не старше ~15 с)
+    async alatyr(a, ctx) {
+      this.limit(ctx, 'alatyr', 30, 60000);
+      const w = typeof ctx.env.alatyrState === 'function' ? await ctx.env.alatyrState() : null;
+      const total = Math.max(0, Math.floor(+(w && w.total) || 0));
+      const roads = Ev.roadsClean(w && w.roads).sort((x, y) => y.n - x.n);
+      return { total, roads, mine: S.d.alaGiven || 0, now: ctx.now };
     },
 
     // Пройденный путь: точки GPS с отметками времени. Быстрее 9 м/с (транспорт) не считается.
@@ -6994,9 +7076,59 @@ async function realWeather(lat, lng) {
   } catch (e) { return c ? c.keys : null; } finally { clearTimeout(t); }
 }
 
+/* ---------- 4.28: общий Алатырь (029_alatyr_world.sql) ----------
+   alatyr_world — общий счёт осколков Ордена (одна строка), alatyr_roads — распутанные дороги (грань n, мифология, начало
+   и конец события в мс). Счёт прибавляет alatyr_add атомарно и возвращает счёт до и после — вехи между ними (Rules.alatyrStage)
+   отмечает только тот запрос, что их перешагнул; дорогу записывает alatyr_open (повтор той же грани ничего не меняет).
+   Состояние кэшируется в экземпляре на TTL и кладётся в Ev.roads — по нему сервер отбирает духов (Ev.mythMul), а телефон
+   получает те же дороги событием roads (core.js, alatyrSync). Событие начинается не раньше чем через Rules.ALATYR_WORLD.LEAD
+   минут после вехи — за это время о нём узнают все экземпляры сервера и телефоны */
+const World = {
+  st: null, at: 0, p: null, TTL: 60000,
+  async load() {
+    const w = must(await db.from('alatyr_world').select('total').eq('id', 1).maybeSingle());
+    const rows = must(await db.from('alatyr_roads').select('n, road, from_ms, to_ms').order('n', { ascending: false }).limit(30)) || [];
+    const st = { total: +(w && w.total) || 0, roads: rows.map(r => ({ n: r.n, road: r.road, from: +r.from_ms, to: +r.to_ms })) };
+    // запрос, перешагнувший веху, упал до записи дороги — дорога последней собранной грани записывается сейчас
+    const n = Rules.alatyrStage(st.total).n - 1;
+    if (n >= 0 && !st.roads.some(r => r.n === n) && !(st.roads.length && st.roads[0].n > n)) {
+      if (await this.open(n, Date.now())) return this.load();
+    }
+    return st;
+  },
+  apply(st) {
+    this.st = st; this.at = Date.now();
+    const cut = Date.now() - 86400000;
+    Ev.roads = st.roads.filter(r => r.to > cut).sort((a, b) => a.n - b.n);
+    return st;
+  },
+  // состояние не старше ttl мс; база не ответила — прежнее (дороги не пропадают из-за сбоя)
+  async get(ttl = this.TTL) {
+    if (this.st && Date.now() - this.at < ttl) return this.st;
+    if (!this.p) this.p = this.load().then(st => this.apply(st)).catch(e => { console.error('Алатырь:', String(e)); return this.st; }).finally(() => { this.p = null; });
+    return this.p;
+  },
+  async open(n, now) {
+    const t = Rules.alatyrOpen(now);
+    return !!must(await db.rpc('alatyr_open', { p_n: n, p_road: Rules.alatyrRoad(n), p_goal: Rules.alatyrAt(n), p_from: t.from, p_to: t.to }));
+  },
+  // +n осколков в общий счёт; перешагнули веху — записать дорогу (и сразу обновить кэш этого экземпляра)
+  async add(n) {
+    const r = must(await db.rpc('alatyr_add', { p_n: n }));
+    if (!r) return;
+    const a = Rules.alatyrStage(+r.prev || 0).n, b = Rules.alatyrStage(+r.total || 0).n;
+    let opened = false;
+    for (let k = Math.max(a, b - 3); k < b; k++) { if (await this.open(k, Date.now())) { opened = true; console.warn(`Алатырь: грань ${k} собрана — ${Rules.alatyrRoad(k)}`); } }
+    if (opened) { this.at = 0; await this.get(); } else if (this.st) this.st.total = Math.max(this.st.total, +r.total || 0);
+  },
+};
+
 function makeEnv(uid) {
   return {
     weather: (lat, lng) => realWeather(lat, lng),
+    // 4.28: общий Алатырь — осколки в общий счёт (после сохранения прогресса) и состояние для экрана (не старше 15 с)
+    async alatyrAdd(n) { await World.add(Math.max(1, Math.min(10, n | 0))); },
+    async alatyrState() { return World.get(15000); },
     async poi(id) { return must(await db.from('pois').select('id, kind, lat, lng, name, photo, active').eq('id', id).maybeSingle()); },
     // Есть ли в округе (~1 км) места, загруженные импортом OpenStreetMap
     async poiCovered(lat, lng) {
@@ -7334,6 +7466,7 @@ async function play(uid, body, env) {
     if (error) console.error('Замок:', error.message);
   };
   try {
+    await World.get(); // 4.28: дороги Алатыря (Ev.roads) — до отбора духов; из кэша экземпляра, база — не чаще раза в минуту
     let got = null;
     for (let i = 0; i < LOCK_TRIES; i++) {
       got = must(await db.rpc('game_begin', { p_uid: uid, p_token: tok, p_ms: LOCK_MS }));

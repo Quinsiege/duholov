@@ -91,7 +91,17 @@ const Order = {
     const ev = Ev.cur, x2 = ev.el ? ru`поимка духа стихии «${ELEMENTS[ev.el].name}» — 3 очка` : ev.loot ? ru`родник — 2 очка` : ev.rifts ? ru`разлом — 10 очков` : ev.duel ? ru`победа в капище — 6 очков` : ev.km ? ru`путь и коконы — вдвое` : '';
     box.innerHTML = (I.prev ? this.weekCard(I.prev, ru`Прошлая неделя — награды ещё ждут`) : '') + this.weekCard(I.cur) +
       `<div class="q-note">${ru`Все Ловчие вместе копят очки: ${Rules.ORDER_RULES.map(([t, n]) => `${I18N.low(t)} — ${n}`).join(', ')}.`}${x2 ? ru` На этой неделе ${x2}.` : ''}
-       ${ru`Цель растёт с числом участников. Награду ступени получает каждый, кто внёс нужное число очков.`}</div>`;
+       ${ru`Цель растёт с числом участников. Награду ступени получает каждый, кто внёс нужное число очков.`}</div>` + this.alatyrRow();
+    const a = box.querySelector('.o-ala');
+    if (a) a.onclick = () => Alatyr.screen();
+  },
+  // 4.28: вход на экран общего Алатыря — камень Ордена за всё время (не за неделю)
+  alatyrRow() {
+    if (typeof Alatyr === 'undefined') return '';
+    const rd = Ev.roadsNow()[0], A = Alatyr.info, st = A ? Rules.alatyrStage(A.total) : null;
+    const sub = rd ? ru`${Alatyr.roadName(rd.road)} распутана — ещё ${U.fmtTime(rd.to - U.now())}`
+      : st ? ru`Орден собрал ${U.fmtNum(st.total)} осколков · до вехи ${U.fmtNum(st.need - st.have)}` : ru`Общий камень Ордена: каждая грань распутывает дорогу в один из миров`;
+    return `<button class="o-ala"><span class="o-ala-ico">${Art.item('alatyr')}</span><span class="o-ala-t"><b>${ru`Алатырь-камень`}</b><small>${sub}</small></span><span class="o-ala-go">›</span></button>`;
   },
   async claim(week, i) {
     const r = await Game.try('orderClaim', { week, i });

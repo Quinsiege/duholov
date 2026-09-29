@@ -246,6 +246,7 @@ const S = {
     if (!p || (this.d.alaDay && this.d.alaDay.n >= this.ALATYR_DAY) || Math.random() >= p) return [];
     this.d.alaDay = { day, n: (this.d.alaDay ? this.d.alaDay.n : 0) + 1 };
     this.d.alatyr = (this.d.alatyr || 0) + 1;
+    this.d.alaGiven = (this.d.alaGiven || 0) + 1; // 4.28: и в общий счёт Ордена (осколок остаётся у Ловчего) — вклад за всё время
     return [{ k: 'alatyr', n: 1, label: ru`Осколки Алатыря` }];
   },
   resName(k) { return k === 'alatyr' ? ru`Осколки Алатыря` : k === 'rod' ? ru`Эссенция Рода` : k === 'sparks' ? ru`Искры` : k === 'zlat' ? ru`Златники` : k === 'xp' ? ru`Опыт` : ITEMS[k] ? ITEMS[k].name : k; },
