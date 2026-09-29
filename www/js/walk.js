@@ -13,7 +13,7 @@ const Walk = {
   joy: { x: 0, y: 0 }, keys: {}, el: null,
   _raf: 0, _last: 0, _ptT: 0, _syncT: 0, _saveT: 0,
 
-  // rules.js подключается позже (Walk.load — при загрузке файла), отсюда запасное 85
+  // rules.js подключается позже walk.js — если Rules ещё нет, запасное 85
   ok(p) { return !!p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng) && Math.abs(p.lat) <= (typeof Rules !== 'undefined' ? Rules.MOVE.LAT : 85) && Math.abs(p.lng) <= 180; },
   // место при запуске: сохранённое на телефоне, а если прогресс знает другое (играл на другом устройстве) — из прогресса
   load() {
@@ -209,4 +209,5 @@ const Walk = {
     this._stopT = setTimeout(() => { if (!this.mode) { this._syncT = Date.now(); Game.flushMove(); } }, 1200);
   },
 };
-Walk.load();
+// 5.1.1: место загружается при запуске игры (main.js), а не при загрузке файла: на сайте все скрипты склеены в один
+// (tools/web/build.mjs), и Rules/S, объявленные ниже по склейке, в этот момент ещё недоступны (ReferenceError)
