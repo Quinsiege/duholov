@@ -5066,6 +5066,8 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .at-myth::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
 .at-foot { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin-top: 8px; }
 .at-foot .rune { height: 54px; }
+/* 5.1.10: все кнопки Атласа и его окон — с одинаковым скруглением (стеклянные были 12 px, золотые — 20 px) */
+.atlas .rune, .atlas .rune.glass, .at-cd .rune, .at-cd .rune.glass, .at-pick .rune { border-radius: 20px; }
 .at-foot .rune .rn-t svg { width: 20px; height: 20px; }
 .at-gates { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #5eead4; min-height: 22px; }
 .at-gates.rest { color: #fde68a; }
