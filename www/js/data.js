@@ -417,7 +417,7 @@ const TASK_LIMIT = 5;
    obj — цели шага, выполняются в любом порядке: t — что считается (как в S.progress: catch, hatch, evolve, spring, walk (км),
    catchRar (r — редкость), spLvl — духи уровня l и выше (5.1.16: было «до предела уровня»), campRift — победа в Разломе кампании, leagueWin — победа
    в Лиге, clan — выбран клан, exchange — обмен в Обменнике, buyIncense — куплен ладан, gateLand — шаг через Врата в другую
-   часть света), n — сколько. start — что Орден выдаёт, когда шаг открылся (starterEss — эссенция стартового духа).
+   часть света), n — сколько. start — что Орден выдаёт, когда шаг открылся (evoEss — эссенция ровно на эволюцию, не меньше evoEss: S.campEvoTarget).
    reward: pick — редкий дух уровня Ловчего на выбор из трёх (сперва — стихий, которых у Ловчего нет), ess — эссенция
    выбранного духа, cocoon — кокон (км), lvl + xp — опыт до lvl уровня Ловчего, но не меньше xp, skin — случайный облик
    (CAMP_SKIN), прочее — как в S.giveRewards. Считает и выдаёт сервер (S.campProgress; core.js: campClaim, campPick, campRift) */
@@ -428,7 +428,7 @@ const CAMPAIGN = [
     { id: 'c1s2', name: ru`Тепло кокона`, obj: [{ t: 'hatch', n: 1 }], reward: { lvl: 5, xp: 2500 } },
     { id: 'c1s3', name: ru`Вызов Лиги`, obj: [{ t: 'leagueWin', n: 3 }], reward: { pick: 1, lvl: 6, xp: 5000 } },
     { id: 'c1s4', name: ru`Знамя клана`, obj: [{ t: 'clan', n: 1 }], reward: { lvl: 7, xp: 2500 } },
-    { id: 'c1s5', name: ru`Превращение`, obj: [{ t: 'evolve', n: 1 }], start: { starterEss: 25 }, reward: { xp: 5000, sparks: 10000 } },
+    { id: 'c1s5', name: ru`Эволюция`, obj: [{ t: 'evolve', n: 1 }], start: { evoEss: 25 }, reward: { xp: 5000, sparks: 10000 } },
     { id: 'c1s6', name: ru`Искры и монеты`, obj: [{ t: 'exchange', n: 5 }], reward: { lvl: 8, xp: 5000, sparks: 10000 } },
     { id: 'c1s7', name: ru`Дымок ладана`, obj: [{ t: 'buyIncense', n: 1 }, { t: 'catch', n: 15 }], reward: { pick: 1, lvl: 9, xp: 10000, gate: 1 } },
     { id: 'c1s8', name: ru`Врата Перепутицы`, obj: [{ t: 'gateLand', n: 1 }], reward: { gate: 1, xp: 2500 } },
@@ -444,7 +444,7 @@ const CAMP_OBJ = {
   hatch: () => ru`Нагрей любой кокон и выведи из него духа`,
   leagueWin: o => ru`Победи в боях Лиги: ${o.n}`,
   clan: () => ru`Выбери клан`,
-  evolve: () => ru`Преврати духа`,
+  evolve: () => ru`Эволюционировать духа`,
   exchange: o => ru`Обменяй искры в Обменнике Лавки: ${o.n}`,
   buyIncense: () => ru`Купи ладан в Лавке`,
   gateLand: () => ru`Шагни через Врата в другую часть света`,
@@ -454,7 +454,7 @@ const CAMP_OBJ = {
 };
 // коротко — для строки Кампании на карте (цель на несколько раз — с «сделано/нужно»)
 const CAMP_SHORT = {
-  campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Преврати духа`,
+  campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Эволюционировать духа`,
   buyIncense: () => ru`Купи ладан в Лавке`, gateLand: () => ru`Врата в другую часть света`,
   catch: () => ru`Поймай духов`, spLvl: o => ru`Духи ${o.l} уровня`, leagueWin: () => ru`Победы в Лиге`, exchange: () => ru`Обмены в Обменнике`,
   walk: () => ru`Путь, км`, spring: () => ru`Источники`, catchRar: o => o.r === 3 ? ru`Редкие духи` : o.r === 2 ? ru`Необычные духи` : ru`Обычные духи`,

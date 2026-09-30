@@ -1191,7 +1191,7 @@ const TASK_LIMIT = 5;
    obj — цели шага, выполняются в любом порядке: t — что считается (как в S.progress: catch, hatch, evolve, spring, walk (км),
    catchRar (r — редкость), spLvl — духи уровня l и выше (5.1.16: было «до предела уровня»), campRift — победа в Разломе кампании, leagueWin — победа
    в Лиге, clan — выбран клан, exchange — обмен в Обменнике, buyIncense — куплен ладан, gateLand — шаг через Врата в другую
-   часть света), n — сколько. start — что Орден выдаёт, когда шаг открылся (starterEss — эссенция стартового духа).
+   часть света), n — сколько. start — что Орден выдаёт, когда шаг открылся (evoEss — эссенция ровно на эволюцию, не меньше evoEss: S.campEvoTarget).
    reward: pick — редкий дух уровня Ловчего на выбор из трёх (сперва — стихий, которых у Ловчего нет), ess — эссенция
    выбранного духа, cocoon — кокон (км), lvl + xp — опыт до lvl уровня Ловчего, но не меньше xp, skin — случайный облик
    (CAMP_SKIN), прочее — как в S.giveRewards. Считает и выдаёт сервер (S.campProgress; core.js: campClaim, campPick, campRift) */
@@ -1202,7 +1202,7 @@ const CAMPAIGN = [
     { id: 'c1s2', name: ru`Тепло кокона`, obj: [{ t: 'hatch', n: 1 }], reward: { lvl: 5, xp: 2500 } },
     { id: 'c1s3', name: ru`Вызов Лиги`, obj: [{ t: 'leagueWin', n: 3 }], reward: { pick: 1, lvl: 6, xp: 5000 } },
     { id: 'c1s4', name: ru`Знамя клана`, obj: [{ t: 'clan', n: 1 }], reward: { lvl: 7, xp: 2500 } },
-    { id: 'c1s5', name: ru`Превращение`, obj: [{ t: 'evolve', n: 1 }], start: { starterEss: 25 }, reward: { xp: 5000, sparks: 10000 } },
+    { id: 'c1s5', name: ru`Эволюция`, obj: [{ t: 'evolve', n: 1 }], start: { evoEss: 25 }, reward: { xp: 5000, sparks: 10000 } },
     { id: 'c1s6', name: ru`Искры и монеты`, obj: [{ t: 'exchange', n: 5 }], reward: { lvl: 8, xp: 5000, sparks: 10000 } },
     { id: 'c1s7', name: ru`Дымок ладана`, obj: [{ t: 'buyIncense', n: 1 }, { t: 'catch', n: 15 }], reward: { pick: 1, lvl: 9, xp: 10000, gate: 1 } },
     { id: 'c1s8', name: ru`Врата Перепутицы`, obj: [{ t: 'gateLand', n: 1 }], reward: { gate: 1, xp: 2500 } },
@@ -1218,7 +1218,7 @@ const CAMP_OBJ = {
   hatch: () => ru`Нагрей любой кокон и выведи из него духа`,
   leagueWin: o => ru`Победи в боях Лиги: ${o.n}`,
   clan: () => ru`Выбери клан`,
-  evolve: () => ru`Преврати духа`,
+  evolve: () => ru`Эволюционировать духа`,
   exchange: o => ru`Обменяй искры в Обменнике Лавки: ${o.n}`,
   buyIncense: () => ru`Купи ладан в Лавке`,
   gateLand: () => ru`Шагни через Врата в другую часть света`,
@@ -1228,7 +1228,7 @@ const CAMP_OBJ = {
 };
 // коротко — для строки Кампании на карте (цель на несколько раз — с «сделано/нужно»)
 const CAMP_SHORT = {
-  campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Преврати духа`,
+  campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Эволюционировать духа`,
   buyIncense: () => ru`Купи ладан в Лавке`, gateLand: () => ru`Врата в другую часть света`,
   catch: () => ru`Поймай духов`, spLvl: o => ru`Духи ${o.l} уровня`, leagueWin: () => ru`Победы в Лиге`, exchange: () => ru`Обмены в Обменнике`,
   walk: () => ru`Путь, км`, spring: () => ru`Источники`, catchRar: o => o.r === 3 ? ru`Редкие духи` : o.r === 2 ? ru`Необычные духи` : ru`Обычные духи`,
@@ -3029,10 +3029,9 @@ const S = {
     c.p = []; c.u = []; c.t = Date.now(); c.rift = null; delete c.gift;
     if (!st) return;
     c.p = st.obj.map(() => 0);
-    if (st.start && st.start.starterEss) {
-      const fam = this.starterFam();
-      if (fam) { this.addEssence(fam, st.start.starterEss); c.gift = { fam, n: st.start.starterEss }; }
-    }
+    // 5.1.18: Орден присылает эссенции ровно на эволюцию (не меньше evoEss): стартового духа, а если он уже не эволюционирует —
+    // самого дешёвого в эволюции из духов Ловчего; эволюционировать некого — цель «Эволюционировать духа» засчитана сразу
+    if (st.start && st.start.evoEss) this.campEvoGift(st, c);
     st.obj.forEach((o, i) => {
       if (o.t === 'clan' && this.d.clan) c.p[i] = 1;
       if (o.t === 'spLvl') c.p[i] = this.campLvlN(o);
@@ -3057,13 +3056,32 @@ const S = {
   },
   // 5.1.16: цели шага сменились (шаг 1: «до предела уровня» → «до 7 уровня») — у тех, кто уже на шаге, считаемые по коллекции
   // цели пересчитываются по ней (раньше засчитанное не пропадает, если осталось верным)
-  CAMP_V: 2,
+  // 5.1.18 (v3): шаг «Эволюция» — у тех, кто уже на нём и не эволюционировал, Орден доплачивает эссенцию до цены эволюции
+  CAMP_V: 3,
   campMigrate() {
     const c = this.d && this.d.camp;
     if (!c || c.v === this.CAMP_V) return;
     const st = this.campStep();
-    if (st) st.obj.forEach((o, i) => { if (o.t === 'spLvl') c.p[i] = this.campLvlN(o); });
+    if (st && (c.v || 0) < 2) st.obj.forEach((o, i) => { if (o.t === 'spLvl') c.p[i] = this.campLvlN(o); });
+    if (st && st.start && st.start.evoEss && st.obj.some((o, i) => o.t === 'evolve' && (c.p[i] || 0) < o.n)) this.campEvoGift(st, c);
     c.v = this.CAMP_V;
+  },
+  // дух, которого Орден помогает эволюционировать: сам первый дух Ловчего (самый давний дух стартового семейства, в любой
+  // нынешней форме), а если он не эволюционирует (последняя форма, редкий и выше) — самый дешёвый в эволюции из духов Ловчего;
+  // эволюционировать некого — null
+  campEvoTarget() {
+    const can = sp => SP[sp.sid] && SP[sp.sid].evo && SP[SP[sp.sid].evo], cost = sp => SP[sp.sid].cost || 0, fam = this.starterFam();
+    const first = this.d.spirits.filter(sp => SP[sp.sid] && SP[sp.sid].fam === fam).sort((a, b) => (a.t || 0) - (b.t || 0))[0];
+    if (first && can(first)) return first;
+    return this.d.spirits.filter(can).sort((a, b) => cost(a) - cost(b))[0] || null;
+  },
+  // эссенция на эволюцию (с доплатой, если часть уже прислана тому же семейству: c.gift); эволюционировать некого — цель засчитана
+  campEvoGift(st, c) {
+    const sp = this.campEvoTarget(), ev = st.obj.findIndex(o => o.t === 'evolve');
+    if (!sp) { if (ev >= 0) c.p[ev] = st.obj[ev].n; delete c.gift; return; }
+    const s = SP[sp.sid], need = Math.max(st.start.evoEss, s.cost || 0), had = c.gift && c.gift.fam === s.fam ? c.gift.n || 0 : 0;
+    if (need > had) this.addEssence(s.fam, need - had);
+    c.gift = { fam: s.fam, n: Math.max(need, had), sid: sp.sid };
   },
   // ход цели шага (из S.progress): spLvl — по коллекции (духов нужного уровня, счёт только растёт), buyIncense — покупка с ладаном, catchRar — своя редкость
   campProgress(type, amount = 1, meta = {}) {
