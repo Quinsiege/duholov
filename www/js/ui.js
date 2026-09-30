@@ -1002,7 +1002,9 @@ const UI = {
       Sfx.play('levelup'); U.vibrate([60, 60, 120]);
       // 4.16: что открылось на этом уровне — из «Пути Ловчего» (те же пороги, что проверяет сервер)
       const opened = (Path.unlocks()[l] || []).filter(x => !x.ic.startsWith('look:') && !x.ic.startsWith('eyes:') && x.ic !== 'emb').map(x => `<b>${x.t}</b>`);
-      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${ru`Открыто: ${'<br>' + opened.join(', ')}`}</p>` : ''); // 4.25: список — с новой строки (в названиях бывает своё двоеточие)
+      // 5.2: во время обучения разделы меню под замком до его конца — так и пишем, а не «Открыто»
+      const list = '<br>' + opened.join(', '), inTut = Tut.step() > 0;
+      const unlock = (Path.RANKS[l] ? `<p class="unlock">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class="unlock">${inTut ? ru`Откроется после обучения: ${list}` : ru`Открыто: ${list}`}</p>` : ''); // 4.25: список — с новой строки (в названиях бывает своё двоеточие)
       this.modal({
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,
