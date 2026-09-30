@@ -3040,12 +3040,19 @@
     try {
       S.d = { camp: { ch: 0, s: 0, p: [2, 3, 0], u: [], pick: null }, spirits: [], xp: 0 };
       const h = UI.campLineHtml();
-      ok(/Первая охота/.test(h) && /Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h) && !/Духи 7 уровня/.test(h), 'только невыполненные цели, с «сделано/нужно»');
+      ok(/Первая охота/.test(h) && /<span class="">Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h), 'цели с «сделано/нужно»');
+      ok(/<span class="cl-ok">✓ Духи 7 уровня <i>3\/3<\/i>/.test(h), '5.1.17: выполненная цель остаётся в списке — с галочкой');
       S.d.camp.p = [2, 1, 0]; ok(/Духи 7 уровня <i>1\/3<\/i>/.test(UI.campLineHtml()), '5.1.16: «духи 7 уровня»');
-      S.d.camp.p = [5, 3, 1]; ok(/забери награду/.test(UI.campLineHtml()), 'шаг выполнен');
+      S.d.camp.p = [5, 3, 1]; const hr = UI.campLineHtml(); ok(/забери награду/.test(hr) && (hr.match(/cl-ok/g) || []).length === 3, 'шаг выполнен — все цели с галочкой');
+      // 5.1.17: «выведи духа из кокона» — путь кокона, которому до вылупления осталось меньше всех (сперва — те, что греются)
+      S.d.camp = { ch: 0, s: 1, p: [0], u: [], pick: null };
+      S.d.cocoons = [{ km: 5, walked: 1.26, inc: true }, { km: 10, walked: 9.55, inc: true }, { km: 2, walked: 0, inc: false }];
+      ok(/Выведи духа из кокона <i>9.5 \/ 10 км<\/i>/.test(UI.campLineHtml()), 'ближе всех к вылуплению — 10 км, пройдено 9,5');
+      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; ok(/<i>0 \/ 2 км<\/i>/.test(UI.campLineHtml()), 'никто не греется — самый короткий');
+      S.d.cocoons = []; ok(/Выведи духа из кокона<\/span>/.test(UI.campLineHtml()), 'коконов нет — без пути');
       S.d.camp.pick = { opts: ['ugolek', 'kapelka', 'mshonok'], lvl: 5, ess: 15 }; ok(/Выбери духа/.test(UI.campLineHtml()), 'ждёт выбор духа');
       S.d.camp = { ch: 0, s: 8, p: [12.34, 1, 0, 0, 0], u: [], pick: null };
-      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && /и ещё целей: 2/.test(h9), 'не больше трёх строк целей');
+      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && (h9.match(/<span/g) || []).length === 5, '5.1.17: все цели шага — без «и ещё»');
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
   });

@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.16';
+const APP_VERSION = '5.1.17';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -3040,6 +3040,11 @@ const S = {
   },
   // сколько духов уровня o.l и выше (не больше нужного)
   campLvlN(o) { return Math.min(o.n, this.d.spirits.filter(sp => sp.lvl >= o.l).length); },
+  // 5.1.17: для цели «выведи духа из кокона» — кокон, которому до вылупления осталось меньше всех (сперва — те, что греются)
+  campCocoon() {
+    const list = (this.d.cocoons || []).slice().sort((a, b) => (b.inc ? 1 : 0) - (a.inc ? 1 : 0) || (a.km - a.walked) - (b.km - b.walked));
+    return list[0] || null;
+  },
   // 5.1.16: цели шага сменились (шаг 1: «до предела уровня» → «до 7 уровня») — у тех, кто уже на шаге, считаемые по коллекции
   // цели пересчитываются по ней (раньше засчитанное не пропадает, если осталось верным)
   CAMP_V: 2,

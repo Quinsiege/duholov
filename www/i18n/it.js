@@ -2778,7 +2778,6 @@ I18N.dict = {
 "Выбери духа — награда шага":"Scegli uno spirito: ricompensa della tappa",
 "Кампания · {0}":"Campagna · {0}",
 "Шаг выполнен — забери награду":"Tappa completata: ritira la ricompensa",
-"и ещё целей: {0}":"e ancora {0}",
 "Лимиты дня":"Limiti giornalieri",
 "обновятся в полночь":"si azzerano a mezzanotte",
 "Встреча: {0}":"Incontro: {0}",

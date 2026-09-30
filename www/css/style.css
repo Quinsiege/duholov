@@ -5478,17 +5478,20 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes tutNudgeCalm { 0% { box-shadow: 0 0 0 3px rgba(253, 224, 71, .9), 0 10px 30px rgba(0, 0, 0, .5); } 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
 
 /* ---------- 5.1.15: Кампания ---------- */
-/* шаг Кампании на карте — строкой под Ловчим и бафами: мелкий текст прямо на карте, без подложки и рамок */
-#hud .camp-line { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; margin: 8px 0 0; padding: 0; max-width: 100%; /* 5.1.16: от левого края, под аватаром */
+/* шаг Кампании на карте: мелкий текст прямо на карте, без подложки и рамок. 5.1.17: всегда на одном месте — под стрелкой
+   Следопыта (#tracker: left 12px, top 96px + зона выреза, высота до ~56px с подписью в две строки), есть она или нет */
+#hud .camp-line { position: absolute; left: 12px; top: calc(146px + var(--st)); display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  margin: 0; padding: 0; max-width: calc(100vw - 150px);
   background: none; border: 0; box-shadow: none; border-radius: 0; pointer-events: auto; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
   font-family: var(--f-head); font-size: 10.5px; font-weight: 600; line-height: 1.28; color: rgba(255, 255, 255, .86);
   text-shadow: 0 1px 3px rgba(8, 4, 24, .95), 0 0 8px rgba(8, 4, 24, .7); }
 #hud .camp-line.hidden { display: none; }
-#hud .camp-line b { font-weight: 700; font-size: 11px; color: var(--gold2); }
+#hud .camp-line b { font-weight: 700; font-size: 13px; color: var(--gold2); margin-bottom: 1px; }
 #hud .camp-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #hud .camp-line i { font-style: normal; color: #99f6e4; }
+#hud .camp-line .cl-ok { color: rgba(255, 255, 255, .55); }
+#hud .camp-line .cl-ok i { color: rgba(153, 246, 228, .6); }
 #hud .camp-line .cl-go { color: #86efac; }
-#hud .camp-line .cl-more { color: rgba(255, 255, 255, .6); }
 /* вкладка «Кампания» в «Заданиях» */
 .cp-head { display: block; }
 .cp-head .row-main b { font-size: 16px; }
