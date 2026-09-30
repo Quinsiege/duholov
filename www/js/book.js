@@ -99,7 +99,7 @@ const Book = {
         // 5.1: Врата Перепутицы и Атлас мира (atlas.js)
         [ru`Врата`, this.p(ru`Перепутица спутала не только дороги духов, но и дороги Ловчих. Поэтому Орден Оберега открыл <b>Врата Перепутицы</b>: шагни в них — и окажешься в любом уголке Земли, хоть на Красной площади, хоть на перекрёстке Сибуя. Куда шагнуть, подскажет <b>Атлас мира</b> — старинная карта Ордена.`) +
           this.p(ru`Врата устают: после шага им нужно ${Math.round(Rules.MOVE.TP_CD / 60000)} минут, чтобы открыться снова. Ждать не хочешь — возьми в Лавке <b>Врата Перепутицы</b>: они открываются сразу. А дальше — пешком, шагом или бегом.`) +
-          (typeof Atlas !== 'undefined' ? `<button class="btn wide bk-atlas">${Atlas.icon()}<span>${ru`Открыть Атлас мира`}</span></button>` : '')]];
+          (typeof Atlas !== 'undefined' ? `<button class="btn wide bk-atlas">${Atlas.hudIcon()}<span>${ru`Открыть Атлас мира`}</span></button>` : '')]];
     },
     spirits() {
       const el = ELEMENT_KEYS.map(k => [Art.elIcon(k, 40), ELEMENTS[k].name, ru`Сильнее против: ${ELEMENTS[k].beats.map(b => ELEMENTS[b].name).join(` ${ru`и`} `)}. Приёмы: «${ELEMENTS[k].fast}», «${ELEMENTS[k].charge}».`]);

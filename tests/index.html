@@ -418,10 +418,10 @@
       let x0 = S.d.xp; S.evolve(a); eq(S.d.xp - x0, 1000 * mul, 'новый вид');
       x0 = S.d.xp; S.evolve(b); eq(S.d.xp - x0, 200 * mul, 'повторное превращение');
     } finally { S.d = keep; }
-    // лестница открытий: Капища → вторжения → Лига → дружины → Аукцион, всё — в «Пути Ловчего»
-    ok(DUEL_LEVEL < INVASION_LEVEL && INVASION_LEVEL < League.LEVEL && League.LEVEL < CLAN_LEVEL && CLAN_LEVEL < Rules.AUCTION.LEVEL, 'по порядку');
+    // лестница открытий: Капища, Лига, кланы и Аукцион — с 5 уровня (5.1.11), вторжения — позже; всё — в «Пути Ловчего»
+    ok(DUEL_LEVEL === 5 && League.LEVEL === 5 && CLAN_LEVEL === 5 && Rules.AUCTION.LEVEL === 5 && INVASION_LEVEL > 5, 'уровни открытия');
     const un = Path.unlocks();
-    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Дружина'], [Rules.AUCTION.LEVEL, 'Аукцион']]
+    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Клан'], [Rules.AUCTION.LEVEL, 'Аукцион']]
       .forEach(([l, t]) => ok((un[l] || []).some(x => I18N.back(x.t) === t), `${t} — на ${l} уровне пути`));
     const d0 = S.d.level; S.d.level = INVASION_LEVEL - 1;
     try { ok(!Array.from({ length: 300 }, (_, i) => W.springFor({ id: 'osm:n' + (70000 + i), lat: 55.75, lng: 37.62, name: 'Р' }, 0)).some(e => e.invaded), 'до INVASION_LEVEL вторжений нет'); }
@@ -688,14 +688,12 @@
   });
   // 4.16: Лига — живые Ловчие: круг поиска, рейтинг как у Эло, сезонный сундук
   test('Лига 4.16: круг поиска — своя лига, у границы — соседняя, ожидание расширяет', () => {
-    let w = League.window(100); eq(w.a, 0); eq(w.b, 0); eq(w.hi, 299, 'Новик ищет только Новиков');
-    w = League.window(280); eq(w.b, 1, 'до «Отрока» 20 — ищет и там'); eq(w.hi, 599);
-    w = League.window(1020); eq(w.a, 2, 'только что поднялся в «Кметь» — ищет и в «Гридне»'); eq(w.b, 3);
-    w = League.window(1200); eq(w.a, 3); eq(w.b, 3, 'середина лиги — только своя');
-    w = League.window(1200, 20); eq(w.a, 2); eq(w.b, 4, 'ждёт 20 с — ±1 лига');
-    w = League.window(1200, 40); eq(w.a, 1); eq(w.b, 5, 'ждёт 40 с — ±2 лиги');
-    w = League.window(1200, 65); eq(w.lo, 0); eq(w.hi, League.MAXPTS, 'ждёт минуту — все, но только живые Ловчие');
-    w = League.window(6000); eq(w.a, 9); eq(w.b, 9); eq(w.hi, League.MAXPTS);
+    // 5.1.11: соперник — в пределах ±League.RANGE (150) очков рейтинга, без лиг и расширения со временем
+    let w = League.window(1200); eq(w.lo, 1050); eq(w.hi, 1350, '±150 от рейтинга');
+    w = League.window(100); eq(w.lo, 0, 'не ниже нуля'); eq(w.hi, 250);
+    w = League.window(1200, 65); eq(w.lo, 1050); eq(w.hi, 1350, 'ожидание не расширяет круг');
+    w = League.window(League.MAXPTS); eq(w.hi, League.MAXPTS, 'не выше предела');
+    eq(League.RANGE, 150);
   });
   test('Лига 4.16: рейтинг — по разнице рейтингов, наверху медленнее', () => {
     eq(League.delta(0, 0, 1).d, 30, 'Новик: победа над равным +30'); eq(League.delta(100, 100, 0).d, -10, 'поражение −10');
@@ -2194,7 +2192,7 @@
     for (const P of [S2, B2]) { P.data.tut = 0; P.data.sparks = 100000; P.data.zlat = 100; }
     S2.data.level = 30; B2.data.level = Rules.AUCTION.LEVEL;
     const mk = (lvl, sid) => ({ uid: U.uid(), sid, lvl, iv: [10, 10, 10], t: Date.now(), fav: false });
-    const hi = mk(30, 'kapelka'), lo = mk(10, 'mshonok'), z = mk(5, 'ugolek');
+    const hi = mk(30, 'kapelka'), lo = mk(Rules.AUCTION.LEVEL, 'mshonok'), z = mk(5, 'ugolek'); // lo — не выше уровня покупателя (Аукцион с 5 уровня)
     S2.data.spirits.push(hi, lo, z);
     // залог: списывается при выставлении, не меньше минимума
     const s0 = S2.data.sparks;
@@ -2644,15 +2642,19 @@
   atest('Сервер: Лига 4.16 — круг поиска, граница лиг, отмена, повторный соперник, KO и сдача', async () => {
     Object.values(DB.pvpQ).forEach(q => { q.seen = 0; }); // прошлые заявки устарели
     const K = await leaguer('pv-k', 'Кметь', 1200), N = await leaguer('pv-n', 'Новик', 100);
-    ok((await must(K, 'pvpFind', {})).wait != null && (await must(N, 'pvpFind', {})).wait != null, 'разные лиги — не пара');
-    ago(N, 65); ok((await must(N, 'pvpFind', {})).wait != null, 'Новик ждёт минуту — но Кметь его ещё не принимает (пара — взаимная)');
-    ago(K, 65); const m = await must(K, 'pvpFind', {});
-    ok(m.match, 'оба долго ждут — пара через лиги');
+    ok((await must(K, 'pvpFind', {})).wait != null && (await must(N, 'pvpFind', {})).wait != null, 'разница рейтингов больше 150 — не пара');
+    ago(N, 65); ago(K, 65);
+    ok((await must(N, 'pvpFind', {})).wait != null && (await must(K, 'pvpFind', {})).wait != null, '5.1.11: и после минуты ожидания круг не расширяется (±150)');
+    await must(K, 'pvpCancel', {}); // заново: сначала встаёт в очередь близкий по рейтингу, потом ищет Кметь
+    const N2 = await leaguer('pv-n2', 'Близкий', 1100); ok((await must(N2, 'pvpFind', {})).wait != null, 'в очереди никого близкого');
+    const m = await must(K, 'pvpFind', {});
+    ok(m.match, 'рейтинг в пределах ±150 — пара');
     // брошенный с обеих сторон бой заканчивается при следующем входе: кто пропал раньше — проиграл
     const s = DB.pvpM[m.match].state;
     DB.pvpM[m.match].state = { ...s, at: s.at - 120000 };
-    await must(N, 'leagueState', {});
+    await must(N2, 'leagueState', {});
     ok(DB.pvpM[m.match].status === 'done', 'брошенный бой закончен');
+    await must(N, 'pvpCancel', {});
     // у самой границы — и соседняя лига
     const H = await leaguer('pv-h', 'Отрок-1', 290), I = await leaguer('pv-i', 'Отрок-2', 320);
     await must(H, 'pvpFind', {}); const hi = await must(I, 'pvpFind', {});
@@ -3078,6 +3080,64 @@
       document.querySelectorAll('.at-gate').forEach(e => e.remove());
       Object.assign(Walk, { teleport: sv.tp, placed: sv.placed, cooldownLeft: sv.cd, gates: sv.gates }); UI.toast = sv.toast; Atlas.GATE_MS = sv.ms;
     }
+  });
+  // 5.1.12: «Своё место» — в списке 10 крупнейших городов в видимой части карты: из слоя places плиток Protomaps (здесь — подменных)
+  atest('Атлас 5.1.12: «Своё место» — 10 крупнейших городов в рамке карты', async () => {
+    const B = { s: -10, w: 0, n: 10, e: 20 };
+    const c = (i, lat, lng, pop, x = {}) => ({ key: 'k' + i, name: 'Г' + i, lat, lng, pop, rank: 0, minz: 5, ...x });
+    const all = [];
+    for (let i = 0; i < 14; i++) all.push(c(i, i - 5, 1 + i, (i + 1) * 1e5));
+    all.push(c(100, 30, 5, 9e9), c(101, 0, 25, 8e9), c(102, -10.5, 10, 7e9)); // крупнее всех, но вне рамки
+    all.push(c(13, 2, 2, 1)); // тот же город ещё раз (из соседней плитки) — не повторяется
+    const top = Atlas.topCities(all, B, 10);
+    eq(top.map(q => q.key).join(), 'k13,k12,k11,k10,k9,k8,k7,k6,k5,k4', 'по населению, только в рамке, без повторов');
+    eq(Atlas.topCities(all, B, 3).length, 3, 'не больше заданного');
+    eq(Atlas.topCities([c(1, 0, 1, 0, { rank: 3 }), c(2, 0, 1, 0, { rank: 5 }), c(3, 0, 1, 0, { rank: 5, minz: 2 })], B, 2).map(q => q.key).join(), 'k3,k2', 'без населения — по рангу и масштабу');
+    // плитки: настоящие MVT (кодируются здесь), слой places разбирает Atlas.mvtPlaces; прочие слои пропускаются;
+    // в списке — имя на языке игрока; запас по краям плитки и не города — мимо
+    const V = n => { const o = []; do { let c = n % 128; n = Math.floor(n / 128); if (n) c += 128; o.push(c); } while (n); return o; };
+    const ZZ = n => (n < 0 ? -2 * n - 1 : 2 * n), FLD = (f, w) => V(f * 8 + w), LEN = (f, a) => [...FLD(f, 2), ...V(a.length), ...a], STR = s => [...new TextEncoder().encode(s)];
+    const DBL = x => { const d = new DataView(new ArrayBuffer(8)); d.setFloat64(0, x, true); return [...new Uint8Array(d.buffer)]; };
+    const layer = (name, feats, geomType) => {
+      const keys = [], vals = [], vkey = [], idx = (arr, k) => { let i = arr.indexOf(k); if (i < 0) { arr.push(k); i = arr.length - 1; } return i; };
+      const fb = feats.map(f => {
+        const tags = [];
+        for (const [k, v] of Object.entries(f.props)) { const vk = typeof v + ':' + v; let vi = vkey.indexOf(vk);
+          if (vi < 0) { vkey.push(vk); vals.push(typeof v === 'string' ? LEN(1, STR(v)) : typeof v === 'boolean' ? [...FLD(7, 0), v ? 1 : 0]
+            : Number.isInteger(v) ? (v < 0 ? [...FLD(6, 0), ...V(ZZ(v))] : [...FLD(4, 0), ...V(v)]) : [...FLD(3, 1), ...DBL(v)]); vi = vals.length - 1; }
+          tags.push(...V(idx(keys, k)), ...V(vi)); }
+        const geom = geomType === 3 ? [...V(9), ...V(ZZ(10)), ...V(ZZ(10)), ...V(18), ...V(ZZ(50)), ...V(0), ...V(0), ...V(ZZ(50)), 15] : [...V(9), ...V(ZZ(Math.round(f.g.x))), ...V(ZZ(Math.round(f.g.y)))];
+        return LEN(2, [...LEN(2, tags), ...FLD(3, 0), geomType, ...LEN(4, geom)]);
+      });
+      return LEN(3, [...FLD(15, 0), 2, ...LEN(1, STR(name)), ...fb.flat(), ...keys.flatMap(k => LEN(3, STR(k))), ...vals.flatMap(v => LEN(4, v)), ...FLD(5, 0), ...V(4096)]);
+    };
+    const EXT = 4096, px = (lat, lng, z) => { const n = 1 << z, X = (lng + 180) / 360 * n, r = lat * Math.PI / 180, Y = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n;
+      return { t: `${z}/${Math.floor(X)}/${Math.floor(Y)}`, g: { x: (X - Math.floor(X)) * EXT, y: (Y - Math.floor(Y)) * EXT } }; };
+    const T = {}, put = (lat, lng, props, g) => { const p = px(lat, lng, 3); (T[p.t] = T[p.t] || []).push({ props, g: g || p.g }); };
+    put(4.3, 15.3, { kind: 'locality', name: 'Kinshasa X', 'name:ru': 'Киншаса', population: 17032322, capital: 'yes', wikidata: 'Q1', min_zoom: 3, big: true, share: 0.25, dx: -7 });
+    put(-4.3, 5.3, { kind: 'locality', name: 'Small', population: 250000, wikidata: 'Q2' });
+    put(1, 12, { kind: 'locality', name: 'Local only', population: 3500000, wikidata: 'Q3' });
+    put(3, 10, { kind: 'country', name: 'Страна', population: 9e9 });
+    put(1, 1, { kind: 'locality', name: 'Из запаса', population: 9e9 }, { x: -20, y: 800 });
+    put(2, 30, { kind: 'locality', name: 'Восточнее рамки', population: 8e9 });
+    const mvt = key => new Uint8Array([...layer('water', [{ props: { kind: 'ocean' } }], 3), ...layer('places', T[key] || [], 1)]).buffer;
+    const one = Atlas.mvtPlaces(mvt(px(4.3, 15.3, 3).t)).find(f => f.props.wikidata === 'Q1');
+    ok(one && one.props['name:ru'] === 'Киншаса' && one.props.population === 17032322 && one.props.big === true && one.props.share === 0.25 && one.props.dx === -7 && one.props.min_zoom === 3, 'MVT: строки, целые, дробные, логические и отрицательные значения');
+    near(one.x, px(4.3, 15.3, 3).g.x / EXT, 1 / EXT); near(one.y, px(4.3, 15.3, 3).g.y / EXT, 1 / EXT);
+    eq(Atlas.mvtPlaces(new Uint8Array(layer('water', [{ props: { kind: 'ocean' } }], 3)).buffer).length, 0, 'другие слои — не места');
+    const asked = [];
+    const get = async q => { asked.push(`${q.z}/${q.x}/${q.y}`); return Atlas.mvtPlaces(mvt(`${q.z}/${q.x}/${q.y}`)); };
+    const got = await Atlas.tileCities(get, B, 2.4);
+    ok(asked.length && asked.every(k => k.startsWith('3/')), 'на мелком масштабе — плитки на уровень подробнее карты (z3)');
+    const tt = Atlas.topCities(got, B, 10);
+    eq(tt.map(q => q.name).join(), 'Киншаса,Local only,Small', 'имя на языке игрока, иначе местное; страны, запас плитки и города вне рамки — мимо');
+    near(tt[0].lat, 4.3, .01); near(tt[0].lng, 15.3, .01); // точность плитки z3 (4096 точек)
+    eq(tt[0].note, 'Столица · 17 млн жителей'); eq(tt[1].note, '3,5 млн жителей'); eq(tt[2].note, '250 тыс. жителей');
+    let failed = false; try { await Atlas.tileCities(async () => { throw new Error('нет связи'); }, B, 2.4); } catch (e) { failed = true; }
+    ok(failed, 'плитки не читаются — ошибка (тогда в списке места Атласа)');
+    const fb = Atlas.topCities(Atlas.atlasCities({ s: 20, w: 25, n: 35, e: 40 }), { s: 20, w: 25, n: 35, e: 40 }, 10).map(q => q.key);
+    ok(fb.includes('at:cairo') && fb.includes('at:luxor') && !fb.includes('at:lagos'), 'запасной список — места Атласа в рамке');
+    eq(Atlas.atlasCities({ s: -40, w: 170, n: -30, e: 200 }).find(q => q.key === 'at:auckland').lng, 174.7633, 'рамка через 180° — Окленд в ней');
   });
   // 5.2: сервер считает сон мест так же, как телефон, и отклоняет действия у спящих мест; новичку Источник — рядом
   atest('Сервер 5.2: спящее место — ничего нельзя, у новичка Источник рядом', () => withSleepA(async () => {

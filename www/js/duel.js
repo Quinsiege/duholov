@@ -581,7 +581,7 @@ const Duel = {
     const st = this.st; if (!st) return;
     // сдался или вышел до конца боя — это поражение
     if (!st.over) {
-      Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }).catch(() => {});
+      Game.act(this.endType(st.e.kind), { win: false, board: true, hp: S.hpReport(st.me.team) }).catch(() => {});
     }
     st.over = true;
     st.root.remove();

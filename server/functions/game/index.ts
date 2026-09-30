@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.10';
+const APP_VERSION = '5.1.11';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1349,7 +1349,7 @@ function clanOf(k) {
 function clanOpen(k) { return clanOf(k) === k && MYTH_KEYS.includes(k); }
 // все id клана в базе: сам ключ и прежние, что к нему ведут (до миграции 032_myth_clans_data)
 function clanIds(k) { return [k, ...Object.keys(CLAN_OLD).filter(o => CLAN_OLD[o] === k)]; }
-const CLAN_LEVEL = 12;     // с какого уровня выбирается клан (4.16: было 5; см. DUEL_LEVEL)
+const CLAN_LEVEL = 5;      // с какого уровня выбирается клан (4.16: было 12, 5.1.11: снова 5; см. DUEL_LEVEL)
 const HOLD_MAX = 6;       // защитников на одном Капище
 const HOLD_MY_MAX = 3;    // Капищ с моими защитниками одновременно (4.16: было 10 — дружины держали почти все Капища)
 const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Капище с моим защитником
@@ -3326,7 +3326,7 @@ const League = {
   KL: [20, 28, 34, 40, 42, 42, 40, 36, 32, 28],
   SOFT: 1500,        // 4.16: в новом сезоне рейтинг сверх этого (лига «Серебро») срезается наполовину
   MAXPTS: 20000,
-  LEVEL: 10,   // с какого уровня Ловчего открыта Лига (проверяет сервер; 4.16: было 5)
+  LEVEL: 5,    // с какого уровня Ловчего открыта Лига (проверяет сервер; 4.16: было 10, 5.1.11: снова 5)
   tab: 'play',
   TABS: ['play', 'table', 'ranks'],
 
@@ -3382,15 +3382,12 @@ const League = {
     return { d: pts - me, pts, rank: this.rank(pts) };
   },
   // 4.16: кого ищем. Своя лига; у границы (ближе NEAR) — и соседняя; после 15 с — ±1 лига, после 30 с — ±2, после 60 с — все
-  near(r) { const x = LEAGUE_RANKS[r], nx = LEAGUE_RANKS[r + 1]; return Math.max(40, Math.round((nx ? nx.pts - x.pts : 1000) * 0.15)); },
-  window(pts, waited = 0) {
-    const r = this.rank(pts), n = LEAGUE_RANKS.length, lo = LEAGUE_RANKS[r].pts, up = LEAGUE_RANKS[r + 1];
-    let a = r, b = r;
-    if (r > 0 && pts - lo < this.near(r)) a = r - 1;
-    if (up && up.pts - pts <= this.near(r)) b = r + 1;
-    const w = waited >= 60 ? n : waited >= 30 ? 2 : waited >= 15 ? 1 : 0;
-    a = Math.max(0, Math.min(a, r - w)); b = Math.min(n - 1, Math.max(b, r + w));
-    return { a, b, w, lo: LEAGUE_RANKS[a].pts, hi: LEAGUE_RANKS[b + 1] ? LEAGUE_RANKS[b + 1].pts - 1 : this.MAXPTS };
+  // 5.1.11: соперник — в пределах ±RANGE очков рейтинга от Ловчего (независимо от лиг и времени ожидания); пара — взаимная
+  RANGE: 150,
+  window(pts) {
+    pts = Math.max(0, Math.round(+pts || 0));
+    const lo = Math.max(0, pts - this.RANGE), hi = Math.min(this.MAXPTS, pts + this.RANGE);
+    return { a: this.rank(lo), b: this.rank(hi), w: 0, lo, hi };
   },
   // сундук за высшую лигу прошлого сезона
   prize(r) { return r > 0 ? { sparks: 400 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
@@ -3410,7 +3407,7 @@ const League = {
 
   // Таблица сезона — только с сервера игры (текущие уровни и имена, коды для карточки)
   async top() {
-    return Game.act('leagueTop', { board: Cfg.s.cloud !== false }); // таблицу напрямую не читает никто (3.23): только через сервер игры
+    return Game.act('leagueTop', { board: true }); // таблицу напрямую не читает никто (3.23): только через сервер игры
   },
 
   // 4.16: итоги боёв, которые сервер засчитал без экрана (телефон закрылся посреди боя), и сундук за прошлый сезон
@@ -3451,7 +3448,6 @@ const League = {
       const cards = UI.teamCards(team); // 5.1.5: три карточки в ряд, пустые места — «+ Выбрать духа»
       const ko = team.some(x => !S.alive(x));
       const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;
-      const w = this.window(L.pts), ranks = w.a === w.b ? ru`в лиге «${LEAGUE_RANKS[r].name}»` : ru`в лигах «${LEAGUE_RANKS[w.a].name}» — «${LEAGUE_RANKS[w.b].name}»`;
       pane.innerHTML = `
         ${locked ? `<div class="lgx-card lgx-lock"><b>${ru`Лига откроется на ${this.LEVEL} уровне Ловчего`}</b><small>${ru`Сейчас у тебя ${S.d.level}-й. Лови духов, проходи источники и разломы — опыт придёт быстро.`}</small></div>` : ''}
         ${live ? `<div class="lgx-card lgx-livebout"><div class="row-main"><b>${ru`Бой ещё идёт!`}</b><small>${ru`Соперник ждёт. Не вернёшься — через ${PvP.IDLE / 1000} с тебе засчитают поражение.`}</small></div><button class="btn primary small lg-back">${ru`В бой`}</button></div>` : ''}
@@ -3459,7 +3455,7 @@ const League = {
         <div class="lg2-tix-s">${ru`жетоны обновятся через ${'<b class="lgx-mid"></b>'}`}</div>
         <div class="pf-mh lg2-th"><span>${ru`Команда на бой`}</span>${power ? `<b>${ru`сила ${U.fmtNum(power)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${cards}</div>
-        <div class="lg2-rule">${ru`Соперник — живой Ловчий: ищу ${ranks}. Рейтинг зависит от силы соперника · опыт — за первые ${this.XP_RUNS} боёв дня`}</div>
+        <div class="lg2-rule">${ru`Соперник — живой Ловчий с рейтингом ±${this.RANGE} от твоего. Рейтинг зависит от силы соперника · опыт — за первые ${this.XP_RUNS} боёв дня`}</div>
         <button class="btn primary wide lg-go" ${!locked && !ko && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 
@@ -3488,7 +3484,7 @@ const League = {
       const mine = !rows.some(x => x.me) && data.me ? `<div class="lgx-row me lgx-mine"><b class="lgx-pos">${data.me.place}</b><div class="row-main"><b>${ru`Ты`}</b><small>${LEAGUE_RANKS[r].name} · ${ru`ур. ${S.d.level}`}</small></div><span class="lgx-stars">${cup}${U.fmtNum(data.me.pts)}</span></div>` : '';
       pane.innerHTML = head + (pod ? `<div class="lgx-sub"><span class="lg-badge sm">${this.badge(tier.rank)}</span>${ru`Лучшие в лиге «${LEAGUE_RANKS[tier.rank].name}»`}</div><div class="lgx-podium">${pod}</div>` : '')
         + (list ? `<div class="lgx-sub">${ru`Топ-50 сезона`}</div><div class="list lgx-list">${list}</div>` : '') + mine
-        + (Cfg.s.cloud === false ? `<div class="q-note">${ru`Тебя нет в таблице: так выбрано в Настройках.`}</div>` : `<div class="q-note">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`);
+        + `<div class="q-note">${ru`Нажми на Ловчего, чтобы открыть его карточку.`}</div>`;
     };
 
     const renderRanks = () => {
@@ -3505,7 +3501,7 @@ const League = {
       const el = scr.querySelector('.lgx-place'); if (!el || !data || data.error) return;
       const i = data.rows.findIndex(x => x.me);
       el.innerHTML = i >= 0 ? ru`<b>${i + 1}-е место</b> из ${data.total} в сезоне` : data.me ? ru`<b>${data.me.place}-е место</b> из ${data.total} в сезоне`
-        : Cfg.s.cloud === false ? ru`Тебя нет в таблице (Настройки)` : ru`Сыграй бой, чтобы попасть в таблицу`;
+        : ru`Сыграй бой, чтобы попасть в таблицу`;
     };
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.tab));
@@ -3537,7 +3533,7 @@ const League = {
     // 4.16: при входе — засчитать бои, закончившиеся без экрана, сундук сезона и идущий бой
     const state = async () => {
       if (!Game.on() || S.d.level < this.LEVEL) return;
-      const st = await Game.act('leagueState', { board: Cfg.s.cloud !== false }).catch(() => null);
+      const st = await Game.act('leagueState', { board: true }).catch(() => null);
       if (!st || !scr.isConnected) return;
       this.showDone(st);
       live = st.live;
@@ -4864,7 +4860,7 @@ const Duel = {
     const st = this.st; if (!st) return;
     // сдался или вышел до конца боя — это поражение
     if (!st.over) {
-      Game.act(this.endType(st.e.kind), { win: false, board: Cfg.s.cloud !== false, hp: S.hpReport(st.me.team) }).catch(() => {});
+      Game.act(this.endType(st.e.kind), { win: false, board: true, hp: S.hpReport(st.me.team) }).catch(() => {});
     }
     st.over = true;
     st.root.remove();
@@ -5136,7 +5132,7 @@ const Rules = {
   MOVE: { WALK: 5 / 3.6, RUN: 15 / 3.6, RUN_AT: 0.8, DEAD: 0.12, SYNC_MS: 10000, PT_MS: 1000, TP_CD: 30 * 60000, TP_ITEM: 'gate', LAT: 85 },
   // сколько ещё ждать до телепорта даром (мс): tpAt — время прошлого телепорта (S.d.tpAt)
   tpWait(tpAt, now) { return Number.isFinite(+tpAt) && +tpAt > 0 ? Math.max(0, +tpAt + this.MOVE.TP_CD - now) : 0; },
-  AUCTION: { LEVEL: 15, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
+  AUCTION: { LEVEL: 5, FEE: 0.1, HOURS: 48, MAX_OPEN: 3, PER_DAY: 10, DEPOSIT: 0.05, DEP_MIN: { sparks: 50, zlat: 1 }, RECENT: 14,
     MIN: { sparks: 100, zlat: 1 }, MAX: { sparks: 10000000, zlat: 100000 } },
   auctionFee(price) { return Math.max(1, Math.ceil(price * this.AUCTION.FEE)); },
   auctionDeposit(cur, price) { const A = this.AUCTION; return Math.max(A.DEP_MIN[cur === 'zlat' ? 'zlat' : 'sparks'], Math.ceil((price || 0) * A.DEPOSIT)); },

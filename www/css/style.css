@@ -2840,6 +2840,7 @@ body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-sh
 #tutRing .c1 { left: -10px; top: -10px; background: var(--tl) 0 0 / 100% 100%; } #tutRing .c2 { right: -10px; top: -10px; background: var(--tr) 0 0 / 100% 100%; }
 #tutRing .c3 { left: -10px; bottom: -10px; background: var(--bl) 0 0 / 100% 100%; } #tutRing .c4 { right: -10px; bottom: -10px; background: var(--br) 0 0 / 100% 100%; }
 #tutRing.round .tr-c { display: none; }
+#tutRing .tr-c { display: none; } /* 5.1.11: без узоров в углах рамки подсветки */
 #tutRing i.tr-p { position: absolute; left: 50%; top: -52px; width: 32px; height: 42px; margin-left: -16px; border: 0; animation: trPoint 1s ease-in-out infinite;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 42'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fffbe0'/%3E%3Cstop offset='.45' stop-color='%23f3cf6b'/%3E%3Cstop offset='1' stop-color='%23c2711a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 1.5l5 5-5 5-5-5z' fill='url(%23g)' stroke='%235a2a06' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M3 16l13 24 13-24-8 3.5L16 13l-5 6.5z' fill='url(%23g)' stroke='%235a2a06' stroke-width='1.3' stroke-linejoin='round'/%3E%3Cpath d='M16 17.5v17' stroke='%23fffbe0' stroke-width='1.4' stroke-linecap='round' opacity='.8'/%3E%3C/svg%3E") center / contain no-repeat;
   filter: drop-shadow(0 0 6px rgba(251, 191, 36, .8)) drop-shadow(0 3px 4px rgba(0, 0, 0, .5)); }
@@ -5034,7 +5035,7 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .at-panel { position: relative; flex: none; display: flex; flex-direction: column; height: 336px; margin: 0 10px calc(10px + var(--sb)); padding: 12px 12px 10px; border-radius: 26px;
   background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; /* 5.1.6: без подложки — описание и список прямо на небе */
   text-shadow: 0 1px 3px rgba(8, 4, 24, .85), 0 0 12px rgba(8, 4, 24, .55); transition: height .7s cubic-bezier(.65, 0, .35, 1); }
-.at-cdb::after, .at-pbar::after, .at-pmap::after {
+.at-cdb::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none; background: var(--g-rim);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 .atlas.s2 .at-panel { height: 52%; min-height: 300px; }
@@ -5067,7 +5068,7 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 .at-foot { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin-top: 8px; }
 .at-foot .rune { height: 54px; }
 /* 5.1.10: все кнопки Атласа и его окон — с одинаковым скруглением (стеклянные были 12 px, золотые — 20 px) */
-.atlas .rune, .atlas .rune.glass, .at-cd .rune, .at-cd .rune.glass, .at-pick .rune { border-radius: 20px; }
+.atlas .rune, .atlas .rune.glass, .at-cd .rune, .at-cd .rune.glass { border-radius: 20px; }
 .at-foot .rune .rn-t svg { width: 20px; height: 20px; }
 .at-gates { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #5eead4; min-height: 22px; }
 .at-gates.rest { color: #fde68a; }
@@ -5099,21 +5100,23 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 /* шаг 2: «Врата открыты» / сколько ждать — маленькой подписью над списком */
 .atlas.s2 .at-gates { flex: none; justify-content: flex-start; margin: -4px 4px 4px; font-size: 12px; min-height: 18px; }
 .atlas.s2 .at-gates svg, .atlas.s2 .at-gates .art { width: 16px; height: 16px; }
-/* «Своё место» — настоящая карта; то же небо, карта в стеклянной кромке, внизу — стеклянная панель */
-.at-pick { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; padding-top: var(--st); background: inherit;
-  transform: translateY(100%); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
-.atlas:has(> .at-pick.in) > .at-head { visibility: hidden; } /* фон «Своего места» — то же полупрозрачное стекло: заголовок Атласа не просвечивает сквозь его заголовок */
-.at-pick.in { transform: none; }
-.at-pick .at-head::after { content: ''; flex: none; width: 40px; } /* заголовок — по центру, как у Атласа */
-.at-pmap { position: relative; flex: 1; min-height: 0; margin: 8px 10px 0; border-radius: 22px; overflow: hidden; background: #aad3df; box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
-.at-pmap::after { z-index: 1000; }
-.at-pmap .leaflet-tile-pane { filter: saturate(.8) brightness(.95); }
+/* 5.1.12: «Своё место» — настоящая карта (Карта Нави) в окне глобуса шага 2, на том же виде: ровный прямоугольник от края до края,
+   от шапки до панели, без скруглений и кромки; проявляется, когда плитки нарисованы, — глобус под ней гаснет.
+   Панель — та же, что на шаге 2 (без подложки): материк, Врата, подсказка строкой и список — выбранная точка и крупнейшие города на карте */
+.at-pmap { position: absolute; inset: 0; z-index: 2; overflow: hidden; background: #120b25; opacity: 0; transition: opacity .45s; }
+.at-pmap.in { opacity: 1; }
+.at-pmap:not(.vec) .leaflet-tile-pane { filter: saturate(.8) brightness(.95); } /* запасная карта OSM */
 .at-pmap .leaflet-control-attribution { font-size: 9px; background: rgba(255, 255, 255, .7); }
-.at-pbar { position: relative; flex: none; margin: 10px 10px calc(10px + var(--sb)); padding: 10px 12px 12px; border-radius: 24px;
-  background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(40, 28, 86, .5), rgba(12, 7, 32, .62));
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur); box-shadow: var(--g-edge), 0 18px 50px rgba(0, 0, 0, .45); }
-.at-pbar .rune { height: 54px; }
-.at-phint { margin: 0 0 8px; min-height: 20px; text-align: center; font-size: 13.5px; color: #ece6fb; text-shadow: 0 1px 2px rgba(12, 6, 32, .5); }
+.at-svg { transition: opacity .45s; }
+.atlas.own .at-svg { pointer-events: none; }
+.atlas.own-in .at-svg { opacity: 0; }
+.atlas.own .at-phint { flex: none; margin: -2px 4px 4px; font-size: 12px; line-height: 1.3; color: #efe9ff; }
+.at-pl.own[data-pin] b { white-space: normal; } /* «Своё место — выбранная точка» — в две строки, если рядом расстояние */
+.at-pnone { margin: 10px 6px; font-size: 13px; font-style: italic; color: #efe9ff; }
+/* города списка на карте — золотые точки, как места на глобусе */
+.at-mpt i { position: absolute; left: 4px; top: 4px; width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; background: #fde68a; border: 1.5px solid #7c2d12;
+  box-shadow: 0 0 0 4px rgba(253, 224, 71, .28), 0 0 10px rgba(253, 224, 71, .75); }
+.at-mpt.on i { background: #fff; box-shadow: 0 0 0 6px rgba(253, 224, 71, .5), 0 0 14px rgba(253, 224, 71, .95); }
 .at-pin i { display: block; width: 26px; height: 26px; margin: 3px auto 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #7c4a0b;
   background: radial-gradient(circle at 50% 50%, #5eead4 0 26%, #fde68a 30% 100%); box-shadow: 0 4px 10px rgba(0, 0, 0, .45), 0 0 14px rgba(251, 191, 36, .6); }
 /* 5.2: подтверждение шага во Врата и «Врата отдыхают» — на весь экран: матовое полупрозрачное стекло, как у экранов игры
@@ -5213,14 +5216,11 @@ body.joy-left #hud .recenter { bottom: calc(100px + var(--sb)); }
 #hud #atlasBtn.rest > svg.mi { opacity: .9; }
 /* Книга Ордена → «Мир Духолова» → «Врата»: кнопка Атласа — как у Алатыря */
 .bk-atlas { display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
-.bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; }
+.bk-atlas .art { width: 32px; height: 32px; flex: none; margin: 0 !important; } .bk-atlas .ab-g { width: 26px; height: 26px; flex: none; filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .6)); } /* 5.1.11: значок как на карте */
 /* меньше движения и экономия батареи */
 .calm .atlas *, .eco .atlas *, .calm .at-gate *, .eco .at-gate * { animation: none !important; }
-.calm .atlas, .calm .at-panel, .calm .at-pick, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
+.calm .atlas, .calm .at-panel, .calm .at-pmap, .calm .at-svg, .calm .at-gate, .calm .ag-portal, .calm .ag-flash { transition: none !important; }
 .eco .ag-ring .o, .eco .at-cdr .fg, .eco .at-cities.on { filter: none; }
-/* экономия батареи: стекло без живого размытия — плотнее, чтобы текст читался */
-.eco .at-pbar { -webkit-backdrop-filter: none; backdrop-filter: none;
-  background: var(--g-sheen), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .2), transparent 70%), linear-gradient(180deg, rgba(46, 30, 100, .92), rgba(20, 12, 48, .95)); }
 .eco .at-cd, .eco .ag-veil { -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { .atlas *, .at-gate * { animation: none !important; } }
 /* 5.1.6: в Атласе всё чётко — без растворяющихся краёв (масок) и расплывчатых ореолов у текста; подписи контрастнее,
@@ -5401,10 +5401,16 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 
 /* ===== 5.1.6: меню разделами ===== */
 /* одна панель без вкладок: заголовок раздела (как подписи-разделители в игре) и под ним ряд круглых значков.
-   Значки по-прежнему вылетают из центральной кнопки (UI.menu), заголовки проявляются вслед за первым значком своего ряда */
-.sheet-wrap.rm-wrap { padding-top: calc(52px + var(--st)); }
-.rm-grid.rm-secs { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; max-width: 360px; }
-.rm-h { display: flex; align-items: center; gap: 10px; margin: 0 8px 7px; font-family: var(--f-head); font-weight: 700; font-size: 11px; line-height: 14px; letter-spacing: .16em; text-transform: uppercase;
+   Значки по-прежнему вылетают из центральной кнопки (UI.menu), заголовки проявляются вслед за значками своего ряда.
+   5.2: панель — на всю высоту экрана, от верхнего края до кнопки закрытия, без пустот: разделы разнесены по высоте поровну,
+   размер кружков (--rmc) — по высоте экрана (панель — контейнер размера: 1cqh — сотая её высоты без отступов).
+   С обучением и без — одно и то же место: подсказка обучения при открытом меню — пузырь у подсвеченного пункта (Tut.track) */
+.sheet-wrap.rm-wrap { --rmc: 58px; padding-top: calc(48px + var(--st)); padding-bottom: calc(144px + var(--sb)); } /* 5.1.10: от краёв — 48 px сверху и над кнопкой закрытия */
+/* 6 разделов: заголовок с отступом 20px, кружок, подпись 20px (у «Книги Ордена» — ещё строка 15px), между разделами — не меньше 6px */
+@supports (height: 1cqh) { .sheet-wrap.rm-wrap { container-type: size; --rmc: clamp(44px, calc((100cqh - 265px) / 6), 58px); } }
+.rm-grid.rm-secs { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: space-between; gap: 2px; max-width: 360px;
+  flex: 1 0 auto; max-height: 860px; margin: auto 0 0; }
+.rm-h { display: flex; align-items: center; gap: 10px; margin: 0 8px 6px; font-family: var(--f-head); font-weight: 700; font-size: 11px; line-height: 14px; letter-spacing: .16em; text-transform: uppercase;
   color: #fde68a; text-shadow: 0 1px 3px rgba(8, 4, 24, .85), 0 0 8px rgba(8, 4, 24, .5); white-space: nowrap;
   opacity: 0; transform: translateY(6px); }
 .rm-h::before, .rm-h::after { content: ''; flex: 1; min-width: 12px; height: 1px; background: linear-gradient(90deg, transparent, rgba(253, 230, 138, .55)); }
@@ -5415,38 +5421,29 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .rm-row { display: flex; gap: 0 8px; }
 .rm-row > .rm-it { flex: 0 0 80px; }
 .rm-secs .rm-it { gap: 5px; }
-.rm-secs .rm-c { width: 58px; height: 58px; }
-.rm-secs .rm-c .mi { width: 40px !important; height: 40px !important; }
-.rm-secs .rm-it .rm-l { max-width: 86px; font-size: 12.5px; letter-spacing: 0; } /* сильнее старого .menu-grid .tile span */
+.rm-secs .rm-c { width: var(--rmc); height: var(--rmc); }
+.rm-secs .rm-c .mi { width: calc(var(--rmc) * .69) !important; height: calc(var(--rmc) * .69) !important; }
+.rm-secs .rm-it .rm-l { max-width: 86px; font-size: clamp(11px, calc(var(--rmc) * .2), 12.5px); line-height: 15px; letter-spacing: 0; } /* сильнее старого .menu-grid .tile span */
 html.big-text .rm-secs .rm-it .rm-l { font-size: 13px; }
 .sheet-wrap.rm-wrap { scrollbar-width: none; } .sheet-wrap.rm-wrap::-webkit-scrollbar { display: none; }
 /* «с N ур.» — плашкой на нижнем краю кружка, а не лишней строкой: ряды с замками не выше остальных */
-.rm-secs .rm-it .tile-lvl { position: absolute; top: 47px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); margin: 0; padding: 0 6px; border-radius: 8px; white-space: nowrap;
+.rm-secs .rm-it .tile-lvl { position: absolute; top: calc(var(--rmc) - 11px); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); margin: 0; padding: 0 6px; border-radius: 8px; white-space: nowrap;
   font-size: 10px; line-height: 14px; color: #fde68a; background: rgba(12, 7, 32, .88); border: 1px solid rgba(253, 230, 138, .45); text-shadow: none; }
-/* 5.2: обучение — меню стоит там же, где без него; подсказка при открытом меню компактная (без значка книги, мельче текст)
-   и встаёт над разделами, указатель над подсвеченным разделом — короче. Только на совсем низком экране, где сверху
-   места нет (360×640), панель начинается под подсказкой, как раньше (UI.menu: .rm-tut, высота подсказки — в --rm-co) */
-.sheet-wrap.rm-wrap.rm-tut { padding-top: calc(var(--st) + var(--rm-co, 110px) + 52px); }
-body.rm-open #coach.tut-coach { padding: 7px 12px 8px; gap: 0; }
-body.rm-open #coach.tut-coach.pos-top { top: calc(6px + var(--st)); }
+@media (max-width: 370px) { .rm-row { gap: 0 2px; } .rm-row > .rm-it { flex-basis: 82px; } .rm-secs .rm-it .rm-l { font-size: 11.5px; } .rm-h { margin-left: 4px; margin-right: 4px; } }
+/* 5.2: обучение при открытом меню — подсказка пузырём у подсвеченного пункта (над ним или под ним, со стрелочкой к нему),
+   поверх меню, компактно: текст и полоска хода обучения. Место и стрелку считает Tut.track (--ax — где стрелка) */
+body.rm-open #coach.tut-coach { padding: 8px 12px 9px; gap: 0; }
 body.rm-open #coach.tut-coach :is(.coach-ava, .coach-top) { display: none; } /* ход обучения виден по полоске */
 body.rm-open #coach.tut-coach .coach-text { font-size: 13px; line-height: 1.32; }
 body.rm-open #coach.tut-coach .coach-bar { height: 3px; margin-top: 5px; }
 body.rm-open #coach.tut-coach .coach-ok { display: inline-flex; float: right; margin: 0 0 0 10px; padding: 1px 0 0; font-size: 13.5px; } /* «Понятно» — в конце текста, а не отдельной строкой */
+#coach.tut-coach.bubble { right: auto; bottom: auto; margin: 0; max-width: none; overflow: visible; box-shadow: 0 10px 30px rgba(0, 0, 0, .5), 0 0 0 1px rgba(243, 207, 107, .35); }
+#coach.tut-coach.bubble::after { content: ''; position: absolute; left: var(--ax, 50%); width: 0; height: 0; margin-left: -9px; border: 9px solid transparent; pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(251, 191, 36, .6)); }
+#coach.tut-coach.bubble.b-up::after { bottom: 100%; border-bottom: 10px solid #f3cf6b; border-top-width: 0; }   /* пузырь под пунктом — стрелка вверх */
+#coach.tut-coach.bubble.b-down::after { top: 100%; border-top: 10px solid #f3cf6b; border-bottom-width: 0; }   /* пузырь над пунктом — стрелка вниз */
 #tutRing.in-menu i.tr-p { top: -40px; width: 24px; height: 32px; margin-left: -12px; }
 #tutRing.in-menu.below i.tr-p { top: auto; bottom: -40px; }
-@media (max-width: 370px) { .rm-row { gap: 0 2px; } .rm-row > .rm-it { flex-basis: 82px; } .rm-secs .rm-it .rm-l { font-size: 11.5px; } .rm-h { margin-left: 4px; margin-right: 4px; } }
-/* 5.2: плотнее и на телефонах средней высоты (до 870: 390×844, 412×~800 в приложении) — меню целиком помещается над кнопкой,
-   а сверху остаётся место для подсказки обучения и всплывашек; с обучением и без — одно и то же место */
-@media (max-height: 870px) {
-  .sheet-wrap.rm-wrap { padding-top: calc(40px + var(--st)); padding-bottom: calc(114px + var(--sb)); }
-  .rm-grid.rm-secs { gap: 6px; }
-  .rm-h { margin-bottom: 5px; }
-  .rm-secs .rm-c { width: 52px; height: 52px; }
-  .rm-secs .rm-c .mi { width: 36px !important; height: 36px !important; }
-  .rm-secs .rm-it .rm-l { font-size: 11.5px; }
-  .rm-secs .rm-it .tile-lvl { top: 41px; }
-}
 
 /* 5.x: промокод — окно ввода (Настройки, Лавка → Казна) и окно награды */
 .promo-modal .modal-body { text-align: center; }

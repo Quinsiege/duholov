@@ -53,7 +53,7 @@ const LeagueBattle = {
       <div class="lgs">
         <div class="lgs-radar"><i></i><i></i><div class="lgs-ava">${Art.avatar(S.d.look)}</div></div>
         <div class="lgs-time">0:00</div>
-        <div class="lgs-where">${ru`Ищу живого Ловчего…`}</div>
+        <div class="lgs-where">${ru`Ищем соперника`}</div>
         <div class="lgs-n"></div>
         <button class="btn wide lgs-cancel">${ru`Отменить поиск`}</button>
       </div>`, 'league-search', () => this.stopSearch(true));
@@ -64,14 +64,14 @@ const LeagueBattle = {
       if (sr.done || sr.busy) return;
       sr.busy = true; sr.last = Date.now();
       let r = null;
-      try { r = await Game.act('pvpFind', { board: Cfg.s.cloud !== false }); }
+      try { r = await Game.act('pvpFind', { board: true }); }
       catch (e) { sr.busy = false; if (sr.done) return; UI.toast(U.esc(e.message)); sr.done = true; UI.closeScreen(scr); return; }
       sr.busy = false;
       if (sr.done) return;
       if (r.done && r.done.length) League.showDone({ done: r.done });
       if (r.match) { this.found(r.match); return; }
       const where = scr.querySelector('.lgs-where'), n = scr.querySelector('.lgs-n');
-      if (where) where.innerHTML = r.a === r.b ? ru`Ищу в лиге «${LEAGUE_RANKS[r.a].name}»` : r.b - r.a >= LEAGUE_RANKS.length - 1 ? ru`Ищу во всех лигах` : ru`Ищу в лигах «${LEAGUE_RANKS[r.a].name}» — «${LEAGUE_RANKS[r.b].name}»`;
+      if (where) where.textContent = ru`Ищем соперника`; // 5.1.11: соперник — ±League.RANGE очков, без лиг
       if (n) n.textContent = r.n > 1 ? ru`Сейчас ищут соперника: ${r.n}` : ru`Пока ищешь только ты — позови друзей в Лигу`;
     };
     sr.timer = setInterval(() => {
@@ -463,7 +463,7 @@ const LeagueBattle = {
     res.querySelector('.lg-again').onclick = () => { this.close(); setTimeout(() => this.search(), 150); };
     res.querySelector('.lg-done').onclick = () => { this.close(); setTimeout(() => League.screen(), 150); };
     let r = null;
-    try { r = await Game.act('pvpResult', { board: Cfg.s.cloud !== false }); } catch (e) { UI.toast(U.esc(e.message)); }
+    try { r = await Game.act('pvpResult', { board: true }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;
     const x = r && r.done ? r.done.find(y => y.id === st.id) : null, more = res.querySelector('.lg-res-more');
     if (x) res.querySelector('.lg-res-league').innerHTML = ` · ${ru`Лига: <b>${LEAGUE_RANKS[x.rNew].name}</b> · рейтинг ${U.fmtNum(x.pts)}`}`;
