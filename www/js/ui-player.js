@@ -6,12 +6,20 @@ Object.assign(UI, {
   /* ---------------- ЗАДАНИЯ ---------------- */
   quests(tab) {
     Tut.ui('quests'); // 4.0: шаг обучения
-    this.qTab = tab || (this.qTab === 'order' ? 'order' : 'day');
+    // 5.1.15: «Кампания» — первая вкладка (после обучения); пока в ней есть шаг или выбор награды — открывается она
+    const camp = !!S.d.camp, tabs = camp ? ['camp', 'day', 'order'] : ['day', 'order'];
+    this.qTab = tab && tabs.includes(tab) ? tab : this.qTab === 'order' ? 'order' : camp && (S.campStep() || S.d.camp.pick) ? 'camp' : 'day';
     const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и источника — есть что забрать → зелёная точка
-    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs"><button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
+    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs">${camp ? `<button data-tab="camp">${ru`Кампания`}${S.campClaimable() ? dot : ''}</button>` : ''}<button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const BONUS = Rules.QUEST_BONUS;
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.qTab));
+      if (this.qTab === 'camp') {
+        scr.querySelector('.quests').innerHTML = this.campHtml();
+        const cd = scr.querySelector('[data-tab="camp"] .dt-dot'), want = S.campClaimable();
+        if (!want && cd) cd.remove(); else if (want && !cd) scr.querySelector('[data-tab="camp"]').insertAdjacentHTML('beforeend', dot);
+        return;
+      }
       if (this.qTab === 'order') {
         Order.render(scr.querySelector('.quests'));
         if (!this._orderAsked) { this._orderAsked = true; Order.refresh(true).then(() => { this._orderAsked = false; if (scr.isConnected && this.qTab === 'order') Order.render(scr.querySelector('.quests')); }); }
@@ -40,9 +48,21 @@ Object.assign(UI, {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
       const tab = e.target.closest('[data-tab]');
       if (tab) {
-        const order = ['day', 'order'], dir = Math.sign(order.indexOf(tab.dataset.tab) - order.indexOf(this.qTab));
+        const dir = Math.sign(tabs.indexOf(tab.dataset.tab) - tabs.indexOf(this.qTab));
         this.qTab = tab.dataset.tab; Sfx.play('tap'); render(); this.slideIn(scr.querySelector('.quests'), dir); return;
       }
+      // 5.1.15: Кампания — забрать награду шага, выбрать духа, показать Разлом кампании на карте
+      const cc = e.target.closest('.cp-claim'), cpk = e.target.closest('.cp-choose'), cr = e.target.closest('.cp-rift');
+      if (cc) {
+        cc.disabled = true;
+        Game.try('campClaim').then(r => {
+          if (r) { Sfx.play('levelup'); this.toast(ru`Кампания: ${r.got.map(x => `${I18N.back(x.label)} +${U.fmtNum(x.n)}`).join(', ')}`, 'good'); if (r.pick) this.campPick(render); }
+          render(); this.refreshHud();
+        });
+        return;
+      }
+      if (cpk) { this.campPick(render); return; }
+      if (cr) { this.closeScreen(scr); this.campShowRift(); return; }
       const oc = e.target.closest('.o-claim');
       if (oc) { oc.disabled = true; Order.claim(+oc.dataset.w, +oc.dataset.i).then(() => { render(); this.refreshHud(); }); return; }
       const tc = e.target.closest('.t-claim'), td = e.target.closest('.t-drop'), tm = e.target.closest('.t-meet');
@@ -71,12 +91,103 @@ Object.assign(UI, {
       if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'spin');
       else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'levelup');
     });
-    this.swipeTabs(scr, ['day', 'order'], () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
+    this.swipeTabs(scr, tabs, () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
     // таймер до новых заданий — каждую секунду, пока экран открыт
     const tm = setInterval(() => { if (!scr.isConnected) { clearInterval(tm); return; } const el = scr.querySelector('.qd-left'); if (el) el.textContent = U.fmtTime(this.toMidnight()); }, 1000);
   },
   toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
+
+  /* ---------------- 5.1.15: КАМПАНИЯ ---------------- */
+  // вкладка «Кампания»: глава, нынешний шаг — цели с полосками и награда, «Забрать»; выбор духа — окном; список шагов главы
+  campHtml() {
+    const c = S.d.camp, ch = c && CAMPAIGN[c.ch], st = S.campStep();
+    if (!ch) return `<div class="q-note">${ru`Кампания откроется после обучения`}</div>`;
+    const n = ch.steps.length, done = Math.min(c.s, n);
+    let html = `<div class="qd-head cp-head"><div class="row-main"><b>${ch.title}</b><small>${st ? ru`Шаг ${done + 1} из ${n}` : ru`Глава пройдена`}</small><div class="pbar"><i style="width:${done / n * 100}%"></i></div></div></div>`;
+    if (c.pick) html += `<div class="quest done cp-pickrow"><div class="qd-ico">${this.I.spirits}</div><div class="q-main"><b>${ru`Награда шага: выбери духа`}</b><small>${ru`Один из трёх редких духов — твой навсегда`}</small></div><button class="btn small primary cp-choose">${ru`Выбрать`}</button></div>`;
+    if (st) {
+      const ready = S.campReady();
+      const objs = st.obj.map((o, i) => {
+        const v = Math.min(c.p[i] || 0, o.n), ok = v >= o.n, num = o.t === 'walk' ? ru`${Math.floor(v * 10) / 10} / ${o.n} км` : `${Math.floor(v)} / ${o.n}`;
+        return `<div class="cp-obj ${ok ? 'done' : ''}"><div class="cp-ot"><span>${CAMP_OBJ[o.t](o)}</span><b>${ok ? '✓' : num}</b></div>${o.n > 1 && !ok ? `<div class="pbar"><i style="width:${v / o.n * 100}%"></i></div>` : ''}</div>`;
+      }).join('');
+      const gift = c.gift && SP[c.gift.fam] ? `<small class="cp-gift">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на превращение`}</small>` : '';
+      html += `<div class="quest cp-step ${ready ? 'done' : ''}"><div class="q-main"><b class="cp-name">${st.name}</b>${objs}${gift}
+        ${S.campRiftOn() ? `<button class="btn small ghost cp-rift">${ru`Где Разлом кампании?`}</button>` : ''}
+        <small class="cp-rwh">${ru`Награда`}</small><div class="qd-rws">${this.campRwHtml(st.reward)}</div></div></div>
+        ${ready && !c.pick ? `<button class="btn primary wide cp-claim">${ru`Забрать награду`}</button>` : ''}`;
+    } else html += `<div class="q-note">${ru`Глава пройдена! Новая глава Кампании — скоро.`}</div>`;
+    html += `<h3 class="q-h">${ru`Шаги главы`}</h3><div class="cp-list">${ch.steps.map((x, i) => `<div class="cp-row ${i < c.s ? 'done' : i === c.s ? 'cur' : 'lock'}"><i>${i < c.s ? '✓' : i + 1}</i><span>${x.name}</span></div>`).join('')}</div>`;
+    return html;
+  },
+  // награда шага — плашками: дух на выбор, эссенция, кокон, опыт (или «до N уровня»), искры, монеты, Врата, облик
+  campRwHtml(R) {
+    const chips = [];
+    if (R.pick) chips.push(`<span class="qd-rw">${ru`Редкий дух на выбор`}</span>`);
+    if (R.ess) chips.push(`<span class="qd-rw">${ru`+${R.ess} эссенции духа`}</span>`);
+    if (R.cocoon && COCOON_TIERS[R.cocoon]) chips.push(`<span class="qd-rw"><span class="cur">${Art.cocoon(R.cocoon)}</span> ${COCOON_TIERS[R.cocoon].name}</span>`);
+    const xp = S.campXp(R);
+    if (xp) chips.push(`<span class="qd-rw xp">${R.lvl && levelXP(R.lvl) - S.d.xp > (R.xp || 0) ? ru`опыт до ${R.lvl} уровня` : ru`+${U.fmtNum(xp)} опыта`}</span>`);
+    const items = {};
+    ['sparks', 'zlat', 'gate'].forEach(k => { if (R[k]) items[k] = R[k]; });
+    return chips.join('') + this.rwChips(items, false) + (R.skin ? `<span class="qd-rw">${ru`Случайный облик`}</span>` : '');
+  },
+  // выбор духа — награда шага: три карточки (дух, стихия, редкость, уровень, сила), касание — выбрать (с подтверждением)
+  campPick(after) {
+    const P = S.d.camp && S.d.camp.pick;
+    if (!P) return;
+    const cards = P.opts.map((sid, i) => {
+      const s = SP[sid], pw = S.power({ sid, lvl: P.lvl, iv: [12, 12, 12] });
+      return `<button class="cp-card el-${s.el}" data-i="${i}"><span class="cp-art">${Art.spirit(sid)}</span><b>${s.name}</b>
+        <small>${Art.elIcon(s.el, 14)} ${ELEMENTS[s.el].name}</small><small style="color:${RARITY[s.rar].color}">${RARITY[s.rar].name} · ${ru`ур. ${P.lvl}`}</small><small>${ru`сила ~${U.fmtNum(pw)}`}</small></button>`;
+    }).join('');
+    const m = this.modal({ title: ru`Выбери духа`, cls: 'cp-modal', buttons: [{ label: ru`Позже` }],
+      html: `<p class="small">${ru`Награда Кампании: один из трёх редких духов — твой.`}${P.ess ? ' ' + ru`И ${P.ess} эссенции его семейства.` : ''}</p><div class="cp-cards">${cards}</div>` });
+    m.querySelector('.cp-cards').addEventListener('click', e => {
+      const b = e.target.closest('.cp-card'); if (!b) return;
+      Sfx.play('tap');
+      const i = +b.dataset.i, sid = P.opts[i];
+      this.confirm(ru`Выбрать: ${SP[sid].name}?`, ru`Выбор — один раз: двое других вернутся в Навь.`, ru`Выбрать`, () => Game.try('campPick', { i }).then(r => {
+        if (!r) return;
+        m.close(); Sfx.play('hatch');
+        this.toast(ru`${SP[r.sid].name} — теперь твой дух!` + (r.isNew ? ' ' + ru`Новая запись в Бестиарии!` : ''), 'good');
+        if (after) after();
+        this.refreshHud();
+      }));
+    });
+  },
+  // показать Разлом кампании на карте: нет его или он далеко — сервер поставит рядом; дальше — Следопыт к нему
+  async campShowRift() {
+    let e = MapView.campEnt();
+    if (!e || e.d > Rules.CAMP_RIFT.KEEP) { if (await Game.try('campRift')) e = MapView.campEnt(); MapView.refresh(); }
+    if (!e) return;
+    MapView.track(e); MapView.flyTo(e);
+  },
+  // 5.1.15: шаг Кампании на карте — строкой под Ловчим и бафами: мелко, без рамки и подложки, без всплывашек.
+  // Касание — «Задания» → «Кампания». Раз в секунду вместе с HUD; здесь же: Разлом кампании нужен, а рядом его нет —
+  // сервер ставит его рядом с Ловчим (не чаще раза в 20 с)
+  campLineHtml() {
+    const c = S.d.camp, st = S.campStep();
+    if (c.pick) return `<b>${ru`Кампания`}</b><span class="cl-go">${ru`Выбери духа — награда шага`}</span>`;
+    if (!st) return '';
+    if (S.campReady()) return `<b>${ru`Кампания · ${st.name}`}</b><span class="cl-go">${ru`Шаг выполнен — забери награду`}</span>`;
+    const left = st.obj.map((o, i) => [o, Math.min(c.p[i] || 0, o.n)]).filter(([o, v]) => v < o.n);
+    const row = ([o, v]) => `<span>${!CAMP_SHORT[o.t] ? CAMP_OBJ[o.t](o) : o.n > 1 ? `${CAMP_SHORT[o.t](o)} <i>${o.t === 'walk' ? Math.floor(v * 10) / 10 : Math.floor(v)}/${o.n}</i>` : CAMP_SHORT[o.t](o)}</span>`;
+    return `<b>${ru`Кампания · ${st.name}`}</b>${left.slice(0, 3).map(row).join('')}${left.length > 3 ? `<span class="cl-more">${ru`и ещё целей: ${left.length - 3}`}</span>` : ''}`;
+  },
+  refreshCampLine() {
+    const el = U.$('#campLine');
+    if (!el || !S.d) return;
+    const h = S.d.camp ? this.campLineHtml() : '';
+    if (h !== this._campH) { this._campH = h; el.innerHTML = h; el.classList.toggle('hidden', !h); }
+    const now = Date.now(), r = S.d.camp && S.d.camp.rift;
+    const wet = !!r && S.campRiftOn() && typeof Hazard !== 'undefined' && Hazard.bad(r.lat, r.lng) === true; // в воде, на путях, на стройке — переставить
+    if (MapView.pos && (S.campRiftWanted(MapView.pos) || wet) && now - (this._campAsk || 0) > 20000) {
+      this._campAsk = now;
+      Game.act('campRift', wet ? { again: true } : {}).then(() => MapView.refresh()).catch(() => {});
+    }
+  },
   // Награды «картинками»: предметы с иконкой, искры, опыт; extra — дополнительные плашки (кокон, встреча с легендой)
   rwChips(rw, wrap = true, extra = '') {
     const chips = Object.entries(rw || {}).map(([k, n]) => {

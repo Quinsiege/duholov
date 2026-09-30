@@ -46,6 +46,9 @@ const J = {
       case 'guardBack': return { ico: icon(e.sid), title: ru`Защитник вернулся с Капища`, sub: `${e.name || ''} · ${ru`стоял ${e.hours} ч`}` };
       case 'defend': return { ico: icon(e.sid), title: ru`Защитник на Капище`, sub: e.name || '' };
       case 'shop': return { ico: glyph('☉', 'gold'), title: ru`Покупка в Лавке: ${I18N.back(e.name || '')}`, sub: '' };
+      // 5.1.15: Кампания — шаг пройден (e.id — шаг из CAMPAIGN), дух на выбор получен
+      case 'camp': { const st = CAMPAIGN.flatMap(c => c.steps).find(x => x.id === e.id); return { ico: glyph('✦', 'gold'), title: ru`Кампания: шаг пройден`, sub: st ? st.name : '' }; }
+      case 'campPick': return { ico: icon(e.sid), title: ru`Награда Кампании: ${sp(e.sid)}`, sub: '' };
       case 'passGold': return { ico: glyph('★', 'gold'), title: ru`Открыта Золотая тропа`, sub: e.season || '' };
       case 'exchange': return { ico: glyph('⇄', 'gold'), title: ru`Обмен в Лавке`, sub: `✦ ${U.fmtNum(e.sparks || 0)} → ${ru`${e.zlat || 0} монет`}` };
       case 'pay': return { ico: glyph('☉', 'gold'), title: ru`Казна Ордена`, sub: ru`+${e.zlat || 0} монет` };

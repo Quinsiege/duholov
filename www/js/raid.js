@@ -23,6 +23,7 @@ const Raid = {
   grow(rl) { const x = S.cpm(this.bossLvl(rl)) / S.cpm(20); return { hp: Math.pow(x, 1.2), pw: x }; },
   bossLvl(rl) { return rl <= 30 ? rl : 30 + (rl - 30) / 2; },
   bossStats(r) {
+    if (r.cs) return { ...r.cs }; // 5.1.15: хранитель Разлома кампании — по команде Ловчего (S.campBoss; в бою — от сервера, raidStart)
     const T = this.TIER[r.tier], b = SP[r.boss].base, rl = U.clamp(Math.round(+r.rl || S.catchLvl()), 1, 40), c = S.cpm(this.bossLvl(rl)) * T.k, g = this.grow(rl);
     return { atk: (b[0] + 15) * c, def: (b[1] + 15) * c, hp: Math.round(T.hp * g.hp), pw: T.pw * g.pw, rl };
   },
@@ -33,14 +34,18 @@ const Raid = {
   },
 
   open(r) {
-    if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
+    // 5.1.15: Разлом кампании (r.camp) — личный, с любого уровня, без Дальнего пропуска, друзей и дневного лимита; хранитель — по команде
+    const camp = !!r.camp;
+    if (!camp && S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
     const s = SP[r.boss], T = this.TIER[r.tier];
     let team = this.team();
+    if (camp) r.cs = S.campBoss(team, r.boss);
     const counters = SPECIES.filter(x => ELEMENTS[x.el].beats.includes(s.el)).map(x => x.el).filter((v, i, a) => a.indexOf(v) === i);
     // до Разлома дальше 100 м — бой по Дальнему пропуску (совместный бой — только рядом)
     const d = MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, r.lat, r.lng) : 0;
     const far = d > W.BATTLE_R, passes = S.d.items.farpass || 0;
-    const goBtn = !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>`
+    const goBtn = camp && far ? `<button class="btn primary wide" disabled>${ru`Подойди к Разлому ближе`}</button>`
+      : !far ? `<button class="btn primary wide rift-go" ${team.length ? '' : 'disabled'}>${ru`Сразиться`}</button>`
       : passes ? `<button class="btn primary wide rift-go far" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} ${ru`Дальний бой · пропусков: ${passes}`}</button>`
       : `<button class="btn primary wide rift-shop">${Art.item('farpass')} ${ru`Нужен Дальний пропуск — в Лавку`}</button>`;
     // 4.22.2: в композиции карточки духа и Лиги: сверху портал с боссом, справа ступень, босс, сила и таймер;
@@ -59,9 +64,9 @@ const Raid = {
             <div class="det-hp">${T.name} <span class="stars">${'★'.repeat(T2)}</span></div>
             <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
             <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
-            <div class="rift2-left">${ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
+            <div class="rift2-left">${camp ? ru`не закроется, пока не победишь` : ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
             ${r.place ? `<div class="rift2-place">${UI.I.pin}${U.esc(r.place)}</div>` : ''}
-            <div class="rift2-place place-kind">${MYTH_PLACES[r.myth || 'slavic'].rift}</div>
+            ${camp ? '' : `<div class="rift2-place place-kind">${MYTH_PLACES[r.myth || 'slavic'].rift}</div>`}
           </div>
         </div>
         <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="boss">${ru`Босс`}</button><button data-tab="loot">${ru`Награда`}</button></div>
@@ -71,10 +76,10 @@ const Raid = {
             <div class="dt-scroll rift2-fight">
               <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
               <div class="lg2-team rift-team">${teamHtml(team)}</div>
-              ${far ? `<div class="rift-tip rift-far">${ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>` : ''}
-              ${Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
+              ${far ? `<div class="rift-tip rift-far">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>` : ''}
+              ${camp ? `<div class="rift-tip">${ru`Хранитель — по силе твоей команды: тапай без остановки, и он падёт.`}</div>` : Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
             </div>
-            <div class="rift2-acts">${goBtn}${far ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
+            <div class="rift2-acts">${goBtn}${far || camp ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
           </div>
           <div class="dt-pane" data-pane="boss">
             <p class="det-desc place-desc">${MYTH_PLACES[r.myth || 'slavic'].riftDesc}</p>
@@ -82,13 +87,14 @@ const Raid = {
               ${row(ru`Стихия`, `${Art.elIcon(el, 16)} ${ELEMENTS[el].name}`)}
               ${row(ru`Слабость`, counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' '))}
               ${w ? row(`${Art.wxIcon(Sky.w.key, 16)} ${w.name}`, ru`урон +20% у ${w.boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`) : ''}
-              ${row(ru`Уровень босса`, ru`растёт с уровнем Ловчего`)}
+              ${row(ru`Уровень босса`, camp ? ru`по силе твоей команды` : ru`растёт с уровнем Ловчего`)}
               <p class="rift2-note">${T2 === 3 ? ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.` : ru`Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону — уклон от удара босса.`}</p>
             </div>
           </div>
           <div class="dt-pane" data-pane="loot">
             <div class="dt-scroll dt-rows">
-              ${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far ? '' : ru` · с друзьями +25%`))}
+              ${camp ? row(ru`Кампания`, ru`цель шага`) : ''}
+              ${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far || camp ? '' : ru` · с друзьями +25%`))}
               ${row(ru`Искры`, it('sparks', U.fmtNum(350 * T2)))}
               ${row(ru`Обереги`, it('charm', 5) + (T2 >= 2 ? ' · ' + it('charm2', 3) : ''))}
               ${row(ru`Припасы`, it('honey', T2) + ' · ' + (T2 === 1 ? it('herb', 1) : it('water', 1)))}
@@ -101,7 +107,7 @@ const Raid = {
           </div>
         </div>
       </div>`;
-    const scr = UI.screen(MYTH_PLACES[r.myth || 'slavic'].rift, html, 'rift-screen det-screen'); // 4.28: свой у каждой мифологии
+    const scr = UI.screen(camp ? ru`Разлом кампании` : MYTH_PLACES[r.myth || 'slavic'].rift, html, 'rift-screen det-screen'); // 4.28: свой у каждой мифологии
     scr._ended = !!r.done; // уже закрытый — сообщение есть в разметке
     scr.querySelector('.dt-tabs').addEventListener('click', e => {
       const b = e.target.closest('[data-tab]'); if (!b) return;
@@ -120,16 +126,17 @@ const Raid = {
       const box = scr.querySelector('.rift-team'); if (box) box.innerHTML = teamHtml(team);
       const pw = scr.querySelector('.rift2-pw'); if (pw) pw.textContent = team.length ? ru`сила ${U.fmtNum(power(team))}` : '';
       const g = scr.querySelector('.rift-go'); if (g) g.disabled = !team.length;
+      if (camp) { r.cs = S.campBoss(team, r.boss); const bp = scr.querySelector('.det-power b'); if (bp) bp.textContent = U.fmtNum(this.bossStats(r).hp * 1.5); } // хранитель — по новой команде
     });
     scr.querySelector('.dt-panel').addEventListener('click', e => { if (e.target.closest('.team-edit')) edit(); });
     // каждую секунду: таймер; разлом закрыт (победа) или его час прошёл — вместо команды и кнопок сообщение
     const timer = setInterval(() => {
       if (!scr.isConnected) { clearInterval(timer); return; }
       const t = scr.querySelector('.rift-left'); if (t) t.textContent = U.fmtTime(Math.max(0, r.endsAt - U.now()));
-      const done = !!S.d.rifts[r.id], gone = U.now() >= r.endsAt;
+      const done = camp ? !S.campRiftOn() : !!S.d.rifts[r.id], gone = !camp && U.now() >= r.endsAt;
       if ((done || gone) && !scr._ended) {
         scr._ended = true;
-        scr.querySelector('[data-pane="fight"]').innerHTML = `<div class="rift-done">${done ? ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.` : ru`Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.`}</div>`;
+        scr.querySelector('[data-pane="fight"]').innerHTML = `<div class="rift-done">${done ? (camp ? ru`Разлом кампании закрыт!` : ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`) : ru`Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.`}</div>`;
       }
     }, 1000);
   },
@@ -188,9 +195,10 @@ const Raid = {
   async battle(r, team, coop, far) {
     if (this.st || this._starting) return false;
     this._starting = true;
-    const ok = await Game.try('raidStart', { rift: { id: r.poi, lat: r.lat, lng: r.lng, name: r.place }, coop: coop ? { code: coop.code } : null, far: !!far });
+    const ok = await Game.try('raidStart', r.camp ? { camp: true } : { rift: { id: r.poi, lat: r.lat, lng: r.lng, name: r.place }, coop: coop ? { code: coop.code } : null, far: !!far });
     this._starting = false;
     if (!ok) return false;
+    if (r.camp && ok.cs) r.cs = ok.cs; // 5.1.15: хранитель Разлома кампании — как посчитал сервер по команде на старте боя
     this.start(r, team, coop);
     return true;
   },

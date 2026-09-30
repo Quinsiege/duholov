@@ -88,7 +88,7 @@ const GameCore = {
       S.save = () => {};
       S.d = save.data ? JSON.parse(JSON.stringify(save.data)) : null;
       Ev.alaSync(ctx.now); // 4.28: мифологии, открытые в этом сезоне Алатыря (сезон — из базы, serve.js)
-      if (S.d) { S.migrate(); S.ensureQuests(); W.prune(); this.alaTurn(ctx); }
+      if (S.d) { S.migrate(); S.ensureQuests(); S.campEnsure(); W.prune(); this.alaTurn(ctx); }
       this.track(ctx);
 
       const actions = Array.isArray(req.a) ? req.a.slice(0, 5) : [];
@@ -103,7 +103,7 @@ const GameCore = {
       }
       if (S.d && stats0) { const pts = Rules.orderPoints(stats0, S.d.stats, Ev.cur); this.orderAdd(ctx, pts); this.passAdd(ctx, pts); }
       if (S.d) this.alatyrSync(ctx, (S.d.alaGiven || 0) - ala0, actions.some(a => a && a.type === 'load'));
-      if (S.d) { S.checkMedals(); S.ensureQuests(); }
+      if (S.d) { S.checkMedals(); S.ensureQuests(); S.campEnsure(); } // 5.1.15: обучение пройдено в этом запросе — Кампания открывается сразу
       // 5.2: Ловчий перенёсся в другую клетку (телепорт) — телефону погода уже нового места
       if (ctx.pos && this.wxCell(ctx.pos) !== ctx.wxCell) Sky.w = await this.weather(ctx.pos, env, ctx.now);
       return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now, wx: this.wxOut(Sky.w) };
@@ -228,6 +228,21 @@ const GameCore = {
   // здоровье бойцов на входе в бой: { uid: доля } — по нему сервер судит, могла ли команда победить (Rules.duelWinnable)
   hpMap(team) { const o = {}; team.forEach(sp => { o[sp.uid] = S.hpNow(sp); }); return o; },
   readyTeam(team) { this.need(team.every(sp => S.alive(sp)), ru`В команде дух без сил — вылечи его или замени`); },
+  // 5.1.15: бой в личном Разломе кампании — с любого уровня, рядом с ним (W.BATTLE_R), без пропусков, друзей и дневного
+  // лимита; хранитель — по нынешней команде Ловчего (S.campBoss): его показатели сервер присылает телефону и по ним же
+  // проверяет итог (Raid.bossStats берёт b.cs)
+  campRaidStart(ctx) {
+    this.need(S.campRiftOn() && S.d.camp.rift, ru`Разлома кампании сейчас нет`);
+    const rf = S.d.camp.rift;
+    this.near(ctx, rf.lat, rf.lng, W.BATTLE_R);
+    const team = S.team();
+    this.need(team.length, ru`Нужна команда`);
+    this.readyTeam(team);
+    this.limit(ctx, 'raid', 30, 3600000);
+    const cs = S.campBoss(team, rf.boss);
+    ctx.srv.battle = { type: 'raid', camp: true, rid: rf.id, poi: null, tier: 1, boss: rf.boss, rl: cs.rl, cs, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), coop: null, waters: 0, far: false, tire: true, fin: 0 };
+    return { rid: rf.id, tier: 1, boss: rf.boss, rl: cs.rl, far: false, fin: 0, camp: true, cs };
+  },
   // Одна встреча с духом за раз: вид, уровень и особенности — только с сервера
   openEnc(ctx, o) {
     o = { ...o, lvl: U.clamp(o.lvl | 0, 1, S.catchLvl()) }; // 4.15: пойманный дух — не выше уровня Ловчего, откуда бы ни пришёл
@@ -578,12 +593,14 @@ const GameCore = {
         this.need(m && m.seat && m.state, ru`Бой не найден`);
         const me = m.seat, st = PvP.ensure(m.state), n0 = st.n, res = [];
         let dirty = st !== m.state;
+        if (st.bot && !peek && !st.over) { st.s[st.bot].seen = now; dirty = true; } // 5.1.15: Ловчий Ордена на связи, пока Ловчий в бою
         PvP.advance(st, now);
         if (!st.over && !peek) {
           const x = st.s[me];
           if (ins.length || now - x.seen >= PvP.SEEN_EVERY) { x.seen = now; dirty = true; }
           for (const i of ins) { const r = PvP.act(st, me, i, now); this.need(!r.bad, r.bad); res.push(r.ok ? { ok: 1, got: r.got } : { ign: r.ign }); }
         } else ins.forEach(() => res.push({ ign: 'over' }));
+        if (st.bot && !peek) PvP.bot(st, now); // 5.1.15: ходы соперника-бота к этому моменту
         if (st.n !== n0) dirty = true;
         let ver = m.ver;
         if (dirty) { ver = await env.pvpPut(m.id, m.ver, st, !!st.over); if (ver == null) continue; }
@@ -636,6 +653,7 @@ const GameCore = {
       const fled = score === 0 && (o.why === 'quit' || o.why === 'idle');
       // шаг Летописи «Сразись в поединках Лиги» — за каждый честно сыгранный бой (не только за победу: соперники живые)
       if (!fled) S.progress('league', 1);
+      if (score === 1) S.progress('leagueWin', 1); // 5.1.15: победа в Лиге (с живым или с Ловчим Ордена) — шаг Кампании
       const xp = L.n <= League.XP_RUNS && !fled ? (score === 1 ? League.XP.win : score ? League.XP.draw : League.XP.loss) : 0;
       if (xp) S.addXP(xp);
       // раны: здоровье бойцов после боя посчитал сервер — выше того, что у духа сейчас, оно не станет
@@ -750,6 +768,7 @@ const GameCore = {
       this.need(typeof a.lat === 'number' && typeof a.lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= M.LAT && Math.abs(lng) <= 180, ru`Такого места нет на карте`);
       this.limit(ctx, 'tp', 30, 3600000);
       const first = a.first === true && !S.d.atlasV;
+      const from = ctx.srv.pos || ctx.pos || S.d.wpos; // 5.1.15: откуда шагнул — для «другой части света» (Кампания)
       let used = null;
       if (!first) {
         const wait = Rules.tpWait(S.d.tpAt, ctx.now);
@@ -760,6 +779,7 @@ const GameCore = {
         } else S.d.tpAt = ctx.now;
       }
       S.d.atlasV = 1;
+      if (!first && from) { const l0 = Rules.land(from.lat, from.lng), l1 = Rules.land(lat, lng); if (l0 && l1 && l0 !== l1) S.progress('gateLand', 1); }
       ctx.srv.enc = null; // встреча с духом не переезжает вместе с Ловчим
       const p = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
       ctx.srv.pos = { ...p, t: ctx.now, acc: 5 };
@@ -895,7 +915,7 @@ const GameCore = {
       S.d.sparks += rw.sparks;
       S.d.stats.caught++;
       const xp = S.addXP(rw.xp);
-      S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el });
+      S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el }); S.progress('catchRar', 1, { rar: s.rar }); // 5.1.15: редкость — для Кампании
       if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
@@ -1069,6 +1089,58 @@ const GameCore = {
       return { uid: r.sp.uid, sid: r.sp.sid, isNew: r.isNew, essence: r.essence, sparks: r.sparks, km: c.km };
     },
 
+    /* ----- 5.1.15: Кампания (CAMPAIGN в data.js, S.camp… в state.js) ----- */
+    // Забрать награду шага: предметы, опыт (до уровня, но не меньше — без дневного потолка), кокон, облик; «дух на выбор» —
+    // три варианта ждут выбора (campPick). Следом открывается следующий шаг (его выдача «на старт» — сразу)
+    campClaim() {
+      const c = S.d.camp, st = S.campStep();
+      this.need(st, ru`Глава пройдена — новая скоро`);
+      this.need(!c.pick, ru`Сначала выбери духа — награду прошлого шага`);
+      this.need(S.campReady(), ru`Шаг кампании ещё не выполнен`);
+      const R = st.reward, seed = 'camp:' + st.id + ':' + S.d.created, got = [];
+      const xp = S.campXp(R);
+      if (xp > 0) got.push({ k: 'xp', n: S.addXP(xp, true), label: ru`Опыт` });
+      const items = {};
+      ['sparks', 'zlat', 'gate'].forEach(k => { if (R[k]) items[k] = R[k]; });
+      got.push(...this.grant(items));
+      if (R.cocoon) {
+        if (S.d.cocoons.length >= 9) got.push(...S.giveRewards({ zlat: 10 })); // коконов некуда класть — монетами (как на Тропе)
+        else got.push(...this.grant({ cocoon: R.cocoon }));
+      }
+      if (R.skin) {
+        const k = S.campSkin(seed);
+        if (k) got.push(...this.grant({ look: 'skin:' + k }));
+        else got.push(...S.giveRewards({ zlat: 300 })); // все облики уже у Ловчего — монетами
+      }
+      if (R.pick) c.pick = { opts: S.campPickOpts(seed), lvl: S.catchLvl(), ess: R.ess || 0, seed };
+      J.add('camp', { id: st.id });
+      c.s++;
+      S.campOpen();
+      return { got, pick: c.pick ? { opts: c.pick.opts, lvl: c.pick.lvl, ess: c.pick.ess } : null, next: S.campStep() ? S.campStep().id : null };
+    },
+    // Выбрать духа из трёх (награда шага): дух уровня Ловчего на момент награды и эссенция его семейства
+    campPick(a) {
+      const c = S.d.camp, P = c && c.pick, i = a.i | 0;
+      this.need(P, ru`Выбирать сейчас нечего`);
+      this.need(i >= 0 && i < P.opts.length && SP[P.opts[i]], ru`Такого духа нет`);
+      const sid = P.opts[i], sp = S.makeSpirit(sid, P.lvl, P.seed + ':' + sid, { ivMin: 10 });
+      const isNew = S.addSpirit(sp);
+      if (P.ess) S.addEssence(SP[sid].fam, P.ess);
+      J.add('campPick', { sid });
+      c.pick = null;
+      Bus.emit('camp');
+      return { uid: sp.uid, sid, isNew, ess: P.ess || 0 };
+    },
+    // Поставить Разлом кампании рядом с Ловчим (или перенести к нему: ушёл дальше Rules.CAMP_RIFT.KEEP, шагнул через Врата).
+    // again — переставить рядом, хоть он и близко: телефон видит по карте, что место опасное (вода, пути, стройка — Hazard)
+    campRift(a, ctx) {
+      this.need(S.campRiftOn(), ru`Разлома кампании сейчас нет`);
+      const me = this.here(ctx);
+      if (!a.again && !S.campRiftWanted(me)) return { rift: S.d.camp.rift };
+      this.limit(ctx, 'campRift', 30, 3600000);
+      return { rift: S.campRiftPlace(me) };
+    },
+
     /* ----- задания и Летопись ----- */
     questClaim(a) {
       const q = S.d.quests.list[a.i | 0];
@@ -1121,6 +1193,7 @@ const GameCore = {
 
     /* ----- бои: разлом ----- */
     async raidStart(a, ctx) {
+      if (a.camp) return this.campRaidStart(ctx); // 5.1.15: личный Разлом кампании
       this.need(S.d.level >= RAID_LEVEL, ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); // 4.18
       // совместный бой: число союзников и место разлома — из комнаты на сервере, а не со слов телефона
       let coop = null, rift = a.rift;
@@ -1240,7 +1313,8 @@ const GameCore = {
       const tier = b.tier;
       J.add('raid', { sid: b.boss, tier, coop: allies });
       S.d.stats.raids++;
-      this.dayAdd(ctx, 'raids');
+      if (b.camp) S.progress('campRift', 1); // 5.1.15: Разлом кампании — цель шага, дневной лимит не тратит
+      else this.dayAdd(ctx, 'raids');
       S.progress('raid', 1);
       if (allies > 0) S.progress('coop', 1);
       // 4.16: меньше лечебного, мёда и амулетов (было ✦ 400 × ступень, мёда 2 + ступень, Живой воды 2 за каждую победу,
@@ -1359,6 +1433,7 @@ const GameCore = {
       if (it.day) this.dayAdd(ctx, 'shop:' + it.id);
       if (it.week) this.weekAdd(ctx, 'shop:' + it.id);
       J.add('shop', { name: it.name });
+      S.progress('buy', 1, { items: Object.keys(it.give || {}) }); // 5.1.15: «Купи ладан» — шаг Кампании
       return { got, price: it.price, cur: key };
     },
 
@@ -1434,6 +1509,7 @@ const GameCore = {
       S.d.zlat = (S.d.zlat || 0) + E.ZLAT * n;
       ex.n += n;
       J.add('exchange', { sparks: E.SPARKS * n, zlat: E.ZLAT * n });
+      S.progress('exchange', n); // 5.1.15: шаг Кампании
       return { sparks: E.SPARKS * n, zlat: E.ZLAT * n, left: E.DAY - ex.n };
     },
 
@@ -1466,6 +1542,7 @@ const GameCore = {
       this.clanCheck(a.clan);
       S.d.clan = a.clan;
       J.add('clan', { clan: a.clan });
+      S.progress('clan', 1); // 5.1.15: шаг Кампании
       return { clan: a.clan };
     },
     // 4.28: один бесплатный переход в другой открытый клан — у тех, кто был в дружине до кланов мифологий (S.migrate,
@@ -1625,6 +1702,12 @@ const GameCore = {
         power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)) };
       const r = await ctx.env.pvpFind({ season: L.season, pts: L.pts, lo: w.lo, hi: w.hi, info, avoid: L.last || null, wide: waited >= 30 });
       if (r && r.match) { ctx.srv.lq = null; return { match: r.match, done: [] }; }
+      // 5.1.15: живого соперника нет League.BOT_WAIT секунд — соперником станет Ловчий Ордена (бот). Живые — всегда первыми:
+      // бот — только если пара за это время не составилась (env.pvpBot сперва снимает заявку: успел живой — бой с ним)
+      if (waited >= League.BOT_WAIT && typeof ctx.env.pvpBot === 'function') {
+        const bm = await ctx.env.pvpBot({ season: L.season, info, bot: PvP.botSide(info, ctx.now) });
+        if (bm && bm.match) { ctx.srv.lq = null; return { match: bm.match, done: [] }; }
+      }
       return { wait: Math.round(waited), n: r ? r.n | 0 : 0, a: w.a, b: w.b, done: [] };
     },
     async pvpCancel(a, ctx) {

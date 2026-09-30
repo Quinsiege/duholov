@@ -760,6 +760,18 @@ function makeEnv(uid) {
         p_info: t.info, p_avoid: t.avoid || null, p_wide: !!t.wide, p_now: Date.now() }));
     },
     async pvpCancel() { return must(await db.rpc('league_cancel', { p_uid: uid })); },
+    // 5.1.15: бой с Ловчим Ордена (ботом). Заявка из очереди снимается (league_cancel): успел составиться бой с живым — он;
+    // иначе — новая строка league_matches, где обе стороны — сам Ловчий (он — сторона a), а бот — сторона b (state.bot).
+    // Без миграции базы: рассылка Realtime и итог — те же (у бота в итоге нет рейтинга — league_put его пропускает)
+    async pvpBot(t) {
+      const c = must(await db.rpc('league_cancel', { p_uid: uid }));
+      if (c && c.match) return { match: c.match };
+      const live = must(await db.from('league_matches').select('id').eq('status', 'live').or(`a_uid.eq.${uid},b_uid.eq.${uid}`).limit(1)) || [];
+      if (live[0]) return { match: live[0].id };
+      const row = must(await db.from('league_matches').insert({ season: t.season, a_uid: uid, b_uid: uid,
+        state: { init: true, season: t.season, at: Date.now(), a: t.info, b: t.bot, bot: 'b' } }).select('id').single());
+      return row ? { match: row.id } : null;
+    },
     async pvpLive() {
       const rows = must(await db.from('league_matches').select('id').eq('status', 'live').or(`a_uid.eq.${uid},b_uid.eq.${uid}`).order('created_at', { ascending: false }).limit(1)) || [];
       return rows[0] ? { id: rows[0].id } : null;

@@ -69,6 +69,8 @@ const UI = {
     if (typeof Atlas !== 'undefined') Atlas.mountHud(); // 5.1: глобус «Атлас мира» на карте — под погодой и неделей (atlas.js)
     U.$('#incenseChip').onclick = () => this.toast(ru`Ладан курится ещё ${U.fmtTime(S.d.incenseUntil - Date.now())}`);
     const xc = U.$('#xpChip'); if (xc) xc.onclick = () => this.toast(ru`Настой опыта действует ещё ${U.fmtTime(S.d.xpUntil - U.now())}`);
+    const cl = U.$('#campLine'); if (cl) cl.onclick = () => { Sfx.play('tap'); this.quests('camp'); }; // 5.1.15: строка Кампании → «Задания» → «Кампания»
+    Bus.on('camp', () => this.refreshCampLine());
     Bus.on('xp', () => this.refreshHud());
     Bus.on('levelup', l => this.levelUp(l));
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
@@ -263,6 +265,7 @@ const UI = {
       put(xc.querySelector('span'), left(d.xpUntil - U.now()));
     }
     else if (xc) xc.classList.add('hidden');
+    this.refreshCampLine(); // 5.1.15: шаг Кампании — строкой под Ловчим и бафами
   },
   // 4.25: круглая кнопка «Рядом» — до трёх ближайших духов и их число; дух не из Бестиария — знак вопроса, как на карте
   updateNearby(list) {

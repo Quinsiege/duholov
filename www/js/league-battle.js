@@ -158,7 +158,7 @@ const LeagueBattle = {
           <button class="raid-special"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="bg"/><circle cx="50" cy="50" r="44" class="fill"/></svg><span>${ru`Приём`}</span></button>
           <div class="duel-energy"></div>
         </div>
-        <div class="raid-hint">${ru`Соперник — живой Ловчий. Тапай — быстрая атака, она копит энергию; полная шкала — «Приём». Щиты берегут от его приёмов.`}</div>
+        <div class="raid-hint">${ru`Тапай — быстрая атака, она копит энергию; полная шкала — «Приём». Щиты берегут от приёмов соперника.`}</div>
         <div class="pvp-wait hidden"></div>
         <div class="pvp-net hidden">${ru`Нет связи с сервером — переподключаюсь…`}</div>
         <div class="duel-ov hidden"></div>

@@ -5476,3 +5476,51 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes tutNudge { 0%, 100% { transform: none; } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
 .calm #coach.tut-coach.nudge { animation: tutNudgeCalm .6s ease-out; }
 @keyframes tutNudgeCalm { 0% { box-shadow: 0 0 0 3px rgba(253, 224, 71, .9), 0 10px 30px rgba(0, 0, 0, .5); } 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
+
+/* ---------- 5.1.15: Кампания ---------- */
+/* шаг Кампании на карте — строкой под Ловчим и бафами: мелкий текст прямо на карте, без подложки и рамок */
+#hud .camp-line { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; margin: 6px 0 0 75px; padding: 0; max-width: calc(100% - 75px);
+  background: none; border: 0; box-shadow: none; border-radius: 0; pointer-events: auto; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
+  font-family: var(--f-head); font-size: 10.5px; font-weight: 600; line-height: 1.28; color: rgba(255, 255, 255, .86);
+  text-shadow: 0 1px 3px rgba(8, 4, 24, .95), 0 0 8px rgba(8, 4, 24, .7); }
+#hud .camp-line.hidden { display: none; }
+#hud .camp-line b { font-weight: 700; font-size: 11px; color: var(--gold2); }
+#hud .camp-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+#hud .camp-line i { font-style: normal; color: #99f6e4; }
+#hud .camp-line .cl-go { color: #86efac; }
+#hud .camp-line .cl-more { color: rgba(255, 255, 255, .6); }
+@media (max-width: 399px) { #hud .camp-line { margin-left: 63px; max-width: calc(100% - 63px); } }
+/* вкладка «Кампания» в «Заданиях» */
+.cp-head { display: block; }
+.cp-head .row-main b { font-size: 16px; }
+.cp-head .pbar { margin: 8px 0 0; }
+.cp-step { align-items: stretch; }
+.cp-step .cp-name { font-size: 16px; margin-bottom: 8px; color: var(--gold2); }
+.cp-obj { margin: 6px 0 8px; }
+.cp-obj .cp-ot { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.cp-obj .cp-ot b { display: inline; margin: 0; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.cp-obj.done .cp-ot span { color: var(--muted); }
+.cp-obj.done .cp-ot b { color: var(--good); }
+.cp-obj .pbar { margin: 5px 0 0; height: 6px; }
+.cp-gift { display: block; margin: 4px 0 6px; color: #86efac; font-size: 12px; }
+.cp-rift { margin: 6px 0 2px; }
+.cp-rwh { display: block; margin: 10px 0 6px; color: var(--muted); font-size: 12px; }
+.cp-claim { margin: -2px 0 10px; }
+.cp-list { display: flex; flex-direction: column; gap: 6px; }
+.cp-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.cp-row i { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; font-style: normal; font-size: 12px; font-weight: 700; background: rgba(255, 255, 255, .08); color: var(--muted); }
+.cp-row.done i { background: rgba(74, 222, 128, .18); color: var(--good); }
+.cp-row.done span { color: var(--muted); }
+.cp-row.cur i { background: var(--gold2); color: #3b1a02; }
+.cp-row.cur span { font-weight: 700; }
+.cp-row.lock { opacity: .55; }
+/* выбор духа — награда шага */
+.cp-modal .cp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.cp-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); color: inherit; font: inherit; cursor: pointer; text-align: center; }
+.cp-card:active { transform: scale(.97); }
+.cp-card .cp-art { width: 64px; height: 64px; display: block; }
+.cp-card .cp-art .art, .cp-card .cp-art svg, .cp-card .cp-art img { width: 100%; height: 100%; }
+.cp-card b { font-size: 13px; line-height: 1.15; margin-top: 2px; }
+.cp-card small { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 3px; }
+/* личный Разлом кампании на карте — золотое сияние портала */
+.mk-rift.camp > .art { filter: drop-shadow(0 0 10px rgba(251, 191, 36, .75)); }
