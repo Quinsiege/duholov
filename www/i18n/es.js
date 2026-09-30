@@ -3147,6 +3147,7 @@ I18N.dict = {
 "Рядом нет готовых источников":"No hay fuentes listas cerca",
 "Рядом нет свободных капищ":"No hay Kapishches libres cerca",
 "Следопыт: {0}, {1}":"Rastreador: {0}, {1}",
+"Откроется после обучения: {0}":"Se abrirá tras el tutorial: {0}",
 "Открыто: {0}":"Desbloqueado: {0}",
 "Новый уровень!":"¡Nuevo nivel!",
 "Вперёд":"Adelante",

@@ -12064,7 +12064,7 @@
   "k": "В путь!",
   "at": [
    "www/js/intro.js:191",
-   "www/js/tutorial.js:231"
+   "www/js/tutorial.js:243"
   ],
   "ctx": "t.textContent = last ? (this.opts.again ? ru`Закрыть книгу` : ru`В путь!`) : ru`Далее`;"
  },
@@ -13290,7 +13290,7 @@
   "k": "Лови духов Нави по всему свету",
   "at": [
    "www/js/loader.js:51",
-   "www/js/ui.js:1027",
+   "www/js/ui.js:1029",
    "www/index.html:129"
   ],
   "ctx": "<div class=\"ld-logo\"><img class=\"logo-img\" src=\"img/logo.webp\" width=\"883\" height=\"391\" alt=\"${ru`Духолов`}\" decoding=\"async\" fetchpriority=\"high\"><p>${ru`Лови духов Нави по всему свету`}</p></div>"
@@ -13675,7 +13675,7 @@
   "k": "Возрастная категория",
   "at": [
    "www/js/login.js:313",
-   "www/js/ui.js:1027"
+   "www/js/ui.js:1029"
   ],
   "ctx": "root.querySelector('.lg-body').innerHTML = `<div class=\"lg-wrap\"><span class=\"age-chip\" title=\"${ru`Возрастная категория`}\">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}"
  },
@@ -16766,7 +16766,7 @@
   "k": "Звание «{0}»",
   "at": [
    "www/js/path.js:65",
-   "www/js/ui.js:1005"
+   "www/js/ui.js:1007"
   ],
   "ctx": "<div class=\"pth-card\">${rank ? `<div class=\"pth-rank\">${ru`Звание «${rank}»`}</div>` : ''}${st === 'cur' ? `<div class=\"pth-here\">${ru`Ты здесь`}</div>` : ''}"
  },
@@ -19501,56 +19501,56 @@
  {
   "k": "Обучение: «{0}» — готово! {1}",
   "at": [
-   "www/js/tutorial.js:223"
+   "www/js/tutorial.js:233"
   ],
   "ctx": "UI.toast(ru`Обучение: «${TUT_CHAPTERS[ch].title}» — готово! ${got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');"
  },
  {
   "k": "Обучение",
   "at": [
-   "www/js/tutorial.js:230"
+   "www/js/tutorial.js:242"
   ],
   "ctx": "<small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Духи ждут по всему свету.`}</p>"
  },
  {
   "k": "Обучение пройдено!",
   "at": [
-   "www/js/tutorial.js:230"
+   "www/js/tutorial.js:242"
   ],
   "ctx": "<small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Духи ждут по всему свету.`}</p>"
  },
  {
   "k": "Теперь ты знаешь главное. Духи ждут по всему свету.",
   "at": [
-   "www/js/tutorial.js:230"
+   "www/js/tutorial.js:242"
   ],
   "ctx": "<small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Духи ждут по всему свету.`}</p>"
  },
  {
   "k": "Сначала закончи шаг обучения",
   "at": [
-   "www/js/tutorial.js:329"
+   "www/js/tutorial.js:343"
   ],
   "ctx": "UI.toast(ru`Сначала закончи шаг обучения`);"
  },
  {
   "k": "Сначала поймай духов: меню откроется чуть позже.",
   "at": [
-   "www/js/tutorial.js:344"
+   "www/js/tutorial.js:358"
   ],
   "ctx": "return n && n < this.idx('menu') ? ru`Сначала поймай духов: меню откроется чуть позже.` : null;"
  },
  {
   "k": "Откроется по ходу обучения — подсказка покажет",
   "at": [
-   "www/js/tutorial.js:352"
+   "www/js/tutorial.js:366"
   ],
   "ctx": "return need ? ru`Откроется по ходу обучения — подсказка покажет` : ru`Откроется после обучения`;"
  },
  {
   "k": "Откроется после обучения",
   "at": [
-   "www/js/tutorial.js:352"
+   "www/js/tutorial.js:366"
   ],
   "ctx": "return need ? ru`Откроется по ходу обучения — подсказка покажет` : ru`Откроется после обучения`;"
  },
@@ -20693,7 +20693,7 @@
   "k": "Имя",
   "at": [
    "www/js/ui-spirits.js:11",
-   "www/js/ui.js:1034"
+   "www/js/ui.js:1036"
   ],
   "ctx": "<div class=\"seg\">${[['power', ru`Сила`], ['new', ru`Новые`], ['num', ru`Номер`], ['name', ru`Имя`]].map(([k, t]) => `<button data-sort=\"${k}\">${t}</button>`).join('')}</div>"
  },
@@ -20701,7 +20701,7 @@
   "k": "Выбрать",
   "at": [
    "www/js/ui-spirits.js:12",
-   "www/js/ui.js:1037"
+   "www/js/ui.js:1039"
   ],
   "ctx": "<div class=\"chips\"><button data-el=\"all\">${ru`Все`}</button>${ELEMENT_KEYS.map(e => `<button data-el=\"${e}\">${Art.elIcon(e, 18)}</button>`).join('')}<button class=\"sel-toggle\">${ru`Выбрать`}</button></div>"
  },
@@ -22786,93 +22786,100 @@
   "ctx": "this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);"
  },
  {
+  "k": "Откроется после обучения: {0}",
+  "at": [
+   "www/js/ui.js:1007"
+  ],
+  "ctx": "const unlock = (Path.RANKS[l] ? `<p class=\"unlock\">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class=\"unlock\">${inTut ? ru`Откроется после обучения: ${list}` : ru`Открыто: ${list}`}</p>` : ''); // "
+ },
+ {
   "k": "Открыто: {0}",
   "at": [
-   "www/js/ui.js:1005"
+   "www/js/ui.js:1007"
   ],
-  "ctx": "const unlock = (Path.RANKS[l] ? `<p class=\"unlock\">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class=\"unlock\">${ru`Открыто: ${'<br>' + opened.join(', ')}`}</p>` : ''); // 4.25: список — с новой стр"
+  "ctx": "const unlock = (Path.RANKS[l] ? `<p class=\"unlock\">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class=\"unlock\">${inTut ? ru`Откроется после обучения: ${list}` : ru`Открыто: ${list}`}</p>` : ''); // "
  },
  {
   "k": "Новый уровень!",
   "at": [
-   "www/js/ui.js:1008"
+   "www/js/ui.js:1010"
   ],
   "ctx": "html: `<div class=\"lvl-num\">${l}</div><div class=\"lvl-t\">${ru`Новый уровень!`}</div>${unlock}<div class=\"lvl-rw\">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,"
  },
  {
   "k": "Вперёд",
   "at": [
-   "www/js/ui.js:1009"
+   "www/js/ui.js:1011"
   ],
   "ctx": "buttons: [{ label: ru`Вперёд`, cls: 'primary', fn: () => { this._lvOpen = false; this.flushLevelUps(); } }],"
  },
  {
   "k": "Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок",
   "at": [
-   "www/js/ui.js:1029"
+   "www/js/ui.js:1031"
   ],
   "ctx": "${Invite.ref() ? `<div class=\"lg-invite\">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}"
  },
  {
   "k": "Начать игру",
   "at": [
-   "www/js/ui.js:1030"
+   "www/js/ui.js:1032"
   ],
   "ctx": "${this.rune(ru`Начать игру`, 'next')}"
  },
  {
   "k": "Уже играю — войти",
   "at": [
-   "www/js/ui.js:1031"
+   "www/js/ui.js:1033"
   ],
   "ctx": "${Game.on() ? this.glass(ru`Уже играю — войти`, 'lg-have', this.I.key) : ''}"
  },
  {
   "k": "Соглашение",
   "at": [
-   "www/js/ui.js:1032"
+   "www/js/ui.js:1034"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Политику",
   "at": [
-   "www/js/ui.js:1032"
+   "www/js/ui.js:1034"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Оферту",
   "at": [
-   "www/js/ui.js:1032"
+   "www/js/ui.js:1034"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Без регистрации. Продолжая, ты принимаешь {0}, {1} и {2}",
   "at": [
-   "www/js/ui.js:1032"
+   "www/js/ui.js:1034"
   ],
   "ctx": "<p class=\"lg-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Как тебя зовут, Ловчий?",
   "at": [
-   "www/js/ui.js:1034"
+   "www/js/ui.js:1036"
   ],
   "ctx": "if (n === 2) html = `<div class=\"onb-q\"><div class=\"onb-ava\">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class=\"input big\" maxlength=\"16\" placeholder=\"${ru`Имя`}\" value=\"${U.esc(name)}\"></div>${th"
  },
  {
   "k": "Дальше",
   "at": [
-   "www/js/ui.js:1034"
+   "www/js/ui.js:1036"
   ],
   "ctx": "if (n === 2) html = `<div class=\"onb-q\"><div class=\"onb-ava\">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class=\"input big\" maxlength=\"16\" placeholder=\"${ru`Имя`}\" value=\"${U.esc(name)}\"></div>${th"
  },
  {
   "k": "Выбери первого духа",
   "at": [
-   "www/js/ui.js:1035",
+   "www/js/ui.js:1037",
    "server/game/core.js:674"
   ],
   "ctx": "if (n === 3) html = `<div class=\"onb-q\"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>"
@@ -22880,49 +22887,49 @@
  {
   "k": "Он будет с тобой с первого дня.",
   "at": [
-   "www/js/ui.js:1035"
+   "www/js/ui.js:1037"
   ],
   "ctx": "if (n === 3) html = `<div class=\"onb-q\"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>"
  },
  {
   "k": "Весь мир — твой",
   "at": [
-   "www/js/ui.js:1039"
+   "www/js/ui.js:1041"
   ],
   "ctx": "if (n === 4) html = `<div class=\"onb-q\"><div class=\"onb-pin\">${this.I.pin}</div><h2>${ru`Весь мир — твой`}</h2>"
  },
  {
   "k": "Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).",
   "at": [
-   "www/js/ui.js:1040"
+   "www/js/ui.js:1042"
   ],
   "ctx": "<p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местополож"
  },
  {
   "k": "В путь",
   "at": [
-   "www/js/ui.js:1041"
+   "www/js/ui.js:1043"
   ],
   "ctx": "${this.rune(ru`В путь`, 'go', this.I.pin)}`;"
  },
  {
   "k": "Уже играешь?",
   "at": [
-   "www/js/ui.js:1048"
+   "www/js/ui.js:1050"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Войди — и твой прогресс откроется на этом устройстве",
   "at": [
-   "www/js/ui.js:1048"
+   "www/js/ui.js:1050"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Назови себя",
   "at": [
-   "www/js/ui.js:1052",
+   "www/js/ui.js:1054",
    "server/game/core.js:673"
   ],
   "ctx": "nx.onclick = () => { name = inp.value.trim(); if (!name) { this.toast(ru`Назови себя`); return; } Sfx.play('tap'); step(3); };"

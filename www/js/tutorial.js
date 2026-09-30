@@ -164,9 +164,25 @@ const Tut = {
       const ph = inMenu ? 48 : 60;
       keep.push([{ left: tr.left + tr.width / 2 - 18, right: tr.left + tr.width / 2 + 18, top: below ? tr.bottom : tr.top - ph, bottom: below ? tr.bottom + ph : tr.top }, 2]);
     }
-    this.el.style.removeProperty('bottom'); // подъём над джойстиком (ниже) — заново на каждом замере
+    // 5.2: снизу подсказка закрыла бы нужную шагу кнопку карты (джойстик на шаге «источник») — встаёт над ней.
+    // Поднятая подсказка не закрывает и саму цель (подсвеченный источник прямо над джойстиком) — тогда встаёт над целью
+    // вместе с указателем. Подъём входит и в оценку места (cost)
+    const lift = pos => {
+      this.el.style.removeProperty('bottom');
+      if (pos !== 'bottom' || layer) return;
+      const c = this.el.getBoundingClientRect();
+      const under = ((this.FOCUS[st.id] || {}).hud || []).map(s => U.$(s)).filter(e => e && this.vis(e)).map(e => e.getBoundingClientRect())
+        .filter(r => r.top < c.bottom && r.bottom > c.top && r.left < c.right && r.right > c.left);
+      if (!under.length) return;
+      let bot = Math.min(...under.map(r => r.top)) - 10; // нижний край подсказки
+      if (tr) {
+        const tTop = tr.top - (this.ring.classList.contains('below') ? 0 : 60); // цель с указателем над ней
+        if (tTop < bot && tr.bottom > bot - c.height) bot = Math.min(bot, tTop - 10);
+      }
+      this.el.style.bottom = Math.round(innerHeight - bot) + 'px';
+    };
     const cost = pos => {
-      this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
+      this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos); lift(pos);
       const c = this.el.getBoundingClientRect();
       return keep.reduce((a, [r, w]) => a + w * Math.max(0, Math.min(c.right, r.right) - Math.max(c.left, r.left)) * Math.max(0, Math.min(c.bottom, r.bottom) - Math.max(c.top, r.top)), 0);
     };
@@ -174,13 +190,7 @@ const Tut = {
     const a = cost(cur), b = cost(other), pos = b + 500 < a ? other : cur; // без дёрганья: меняем место, только если заметно лучше
     this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
     this.el.classList.toggle('in-screen', !!U.$$('.screen').find(s => !s.classList.contains('out')));
-    // 5.2: снизу подсказка закрыла бы нужную шагу кнопку карты (джойстик на шаге «источник») — встаёт над ней
-    if (pos === 'bottom' && !layer) {
-      const c = this.el.getBoundingClientRect();
-      const under = ((this.FOCUS[st.id] || {}).hud || []).map(s => U.$(s)).filter(e => e && this.vis(e)).map(e => e.getBoundingClientRect())
-        .filter(r => r.top < c.bottom && r.bottom > c.top && r.left < c.right && r.right > c.left);
-      if (under.length) this.el.style.bottom = Math.round(innerHeight - Math.min(...under.map(r => r.top)) + 10) + 'px';
-    }
+    lift(pos);
     this._pos = pos;
   },
   // 5.2: при открытом меню подсказка — пузырь у подсвеченного пункта: со стороны указателя за ним (или с другой стороны,
@@ -223,7 +233,9 @@ const Tut = {
       UI.toast(ru`Обучение: «${TUT_CHAPTERS[ch].title}» — готово! ${got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');
       return;
     }
-    // Финал: обучение пройдено
+    // Финал: обучение пройдено. 5.2: экраны последнего шага закрываются — после «В путь!» игрок на карте,
+    // а не в «Пути Ловчего», нарисованном до награды за обучение (там был прежний уровень)
+    U.$$('.screen').filter(s => !s.classList.contains('out') && s._close).forEach(s => s._close());
     Sfx.play('levelup');
     const root = U.el(`<div class="tut-final"><div class="tf-rays"></div>
       <div class="tf-me"><div class="tf-ring"></div><div class="ts-me-ring">${Art.avatar(S.d.look)}</div></div>
@@ -248,7 +260,9 @@ const Tut = {
   // и «Обучение пройдено» — работает как обычно: в чужие окна без разрешённого действия всё равно не попасть.
   ZONES: '#hud, .rm-wrap, .screen',
   FREE_SCR: '.set-screen, .offer-screen', // экраны, где можно всё: настройки (язык, звук, учётная запись) и документы
-  ALWAYS: ['#recenterBtn', '.screen-head .back', '.spr2.taken .spring-go'], // «К себе», «Назад» и «В сумку» после источника
+  // «К себе», «Назад» и «В сумку» после источника; читать — всегда: вкладки карточки духа («О духе», «Где искать»…),
+  // виды и мифологии в Бестиарии (шаг «Бестиарий» сам предлагает «коснись вида, чтобы прочитать о нём»)
+  ALWAYS: ['#recenterBtn', '.screen-head .back', '.spr2.taken .spring-go', '.dt-tabs button', '.dex-screen .dex-cell', '.dex-screen [data-myth]'],
   NEVER: ['#tracker .tr-x'],               // стрелку Следопыта на шаге «источник» не снять
   // что можно на шаге: hud — кнопки карты, tile — раздел меню, scr — кнопки внутри экранов
   FOCUS: {

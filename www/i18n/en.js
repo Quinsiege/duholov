@@ -3147,6 +3147,7 @@ I18N.dict = {
 "Рядом нет готовых источников":"No ready wellsprings nearby",
 "Рядом нет свободных капищ":"No free Kapishches nearby",
 "Следопыт: {0}, {1}":"Tracker: {0}, {1}",
+"Откроется после обучения: {0}":"Unlocks after the tutorial: {0}",
 "Открыто: {0}":"Unlocked: {0}",
 "Новый уровень!":"Level up!",
 "Вперёд":"Onward",
