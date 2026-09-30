@@ -496,7 +496,10 @@ const MapView = {
       }
       m._ent = e;
       const el = m.getElement();
-      if (el) el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
+      if (el) {
+        el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
+        el.classList.toggle('tut-off', typeof Tut !== 'undefined' && !Tut.entOk(e)); // 5.2: фокус обучения — чужое приглушено
+      }
     });
     for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
     this.syncZones(ents);
@@ -524,7 +527,9 @@ const MapView = {
   },
   tap(e) {
     if (!e || UI.blocking()) return;
-    Sfx.init(); Sfx.play('tap');
+    Sfx.init();
+    if (typeof Tut !== 'undefined' && !Tut.entOk(e)) { Tut.nudge(); return; } // 5.2: на обучении — только объект текущего шага
+    Sfx.play('tap');
     const d = U.dist(this.pos.lat, this.pos.lng, e.lat, e.lng);
     const range = e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT;
     if (d > range && e.type === 'rift' && d <= Rules.FAR.R) { Raid.open(e); return; } // дальний бой по пропуску
