@@ -689,12 +689,15 @@ const GameCore = {
       this.need(!S.d, ru`Прогресс уже есть`);
       const name = this.cleanText(a.name, 16);
       this.need(name.length >= 1, ru`Назови себя`);
-      this.need(this.STARTERS.includes(a.starter), ru`Выбери первого духа`);
-      S.newGame(name, a.starter);
+      // 5.1.17: первый дух вылупляется из кокона — вид решает сервер (S.rollStarter). Прежний выбор из трёх обычных ещё
+      // принимается от старых версий (и в автотестах): он не выгоднее случайного; чужой вид — отказ, как раньше
+      if (a.starter != null && a.starter !== '') this.need(this.STARTERS.includes(a.starter), ru`Выбери первого духа`);
+      const starter = this.STARTERS.includes(a.starter) ? a.starter : S.rollStarter();
+      S.newGame(name, starter);
       await ctx.env.registerPid(S.d.pid);
       ctx.full = true;
       const invitedBy = await this.invite(ctx, String(a.ref || ''));
-      return { ok: true, invitedBy };
+      return { ok: true, invitedBy, starter };
     },
     async reset(a, ctx) {
       await ctx.env.deleteSave();

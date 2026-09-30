@@ -1019,12 +1019,15 @@ const UI = {
   },
 
   /* ---------------- ЗНАКОМСТВО ---------------- */
+  HATCH_MS: 2600, // 5.1.17: кокон первого духа покачивается не меньше стольких мс
   onboarding(done, from = 0) { // from: 2 — сразу к имени (новичок только что вошёл через сервис или по почте)
     // 4.4: сцена экрана входа остаётся на всех шагах знакомства, шаги рисуются поверх неё
     const root = Login.screenRoot(), body = root.querySelector('.lg-body');
-    let name = '', starter = null;
+    let name = '', book = false;
     const step = n => {
-      if (n === 2 && Intro.need()) { Intro.open({ done: () => step(2) }); return; } // 4.28: сперва книга-вступление (сюжет), потом имя Ловчего
+      // 4.28: сперва книга-вступление (сюжет), потом имя Ловчего. 5.1.17: всегда при знакомстве — и там, где книгу уже видели
+      // (отметка Intro.need — на устройстве, а Ловчий — новый)
+      if (n === 2 && !book) { book = true; Intro.open({ done: () => step(2) }); return; }
       body.innerHTML = '';
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
@@ -1037,9 +1040,10 @@ const UI = {
           <p class="lg-legal">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href="terms.html">${ru`Соглашение`}</a>`}, ${`<a href="privacy.html">${ru`Политику`}</a>`} и ${`<a href="offer.html">${ru`Оферту`}</a>`}`}</p>
         </div>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class="input big" maxlength="16" placeholder="${ru`Имя`}" value="${U.esc(name)}"></div>${this.rune(ru`Дальше`, 'next')}`;
-      if (n === 3) html = `<div class="onb-q"><h2>${ru`Выбери первого духа`}</h2><p>${ru`Он будет с тобой с первого дня.`}</p></div>
-        <div class="onb-starters">${['ugolek', 'kapelka', 'mshonok'].map(id => `<button class="starter el-${SP[id].el}" data-id="${id}">${Art.spirit(id)}<b>${SP[id].name}</b><span>${Art.elIcon(SP[id].el, 16)} ${ELEMENTS[SP[id].el].name}</span></button>`).join('')}</div>
-        <div class="onb-desc"></div>${this.rune(ru`Выбрать`, 'next').replace('<button ', '<button disabled ')}`;
+      // 5.1.17: первый дух не выбирается — вылупляется из кокона (кого — решает сервер: S.rollStarter), игрок смотрит вылупление
+      if (n === 3) html = `<div class="onb-q"><h2>${ru`Твой первый дух`}</h2><p class="onb-ht">${ru`Орден вручает тебе кокон. Он уже теплеет…`}</p></div>
+        <div class="onb-hatch"><i class="oh-glow"></i><div class="oh-coc">${Art.cocoon(10)}</div><div class="oh-sp"></div></div>
+        <div class="onb-desc"></div>${this.rune(ru`Дальше`, 'next').replace('<button ', '<button disabled ')}`;
       // 5.1: GPS не нужен — Ловчий сам выбирает место в Атласе мира (откроется на карте: Walk.ensurePlaced) и ходит джойстиком
       if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>${ru`Весь мир — твой`}</h2>
         <p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).`}</p></div>
@@ -1057,19 +1061,25 @@ const UI = {
         nx.onclick = () => { name = inp.value.trim(); if (!name) { this.toast(ru`Назови себя`); return; } Sfx.play('tap'); step(3); };
         inp.onkeydown = ev => { if (ev.key === 'Enter') nx.click(); };
       } else if (n === 3) {
-        root.querySelectorAll('.starter').forEach(b => b.onclick = () => {
-          starter = b.dataset.id; Sfx.play('tap');
-          root.querySelectorAll('.starter').forEach(x => x.classList.toggle('on', x === b));
-          root.querySelector('.onb-desc').textContent = SP[starter].desc;
-          nx.disabled = false;
-        });
-        nx.onclick = async () => {
-          nx.disabled = true;
-          const r = await Game.try('newGame', { name, starter, ref: Invite.ref() });
-          if (!r) { nx.disabled = false; return; }
+        // кокон покачивается, пока сервер создаёт Ловчего (не меньше HATCH_MS), трескается — вспышка цвета редкости — и дух
+        const box = body.querySelector('.onb-hatch'), t0 = Date.now(), wait = ms => new Promise(res => setTimeout(res, ms));
+        const hatch = async () => {
+          const r = await Game.try('newGame', { name, ref: Invite.ref() });
+          if (!r) { nx.querySelector('.rn-t').textContent = ru`Ещё раз`; nx.disabled = false; nx.onclick = () => { nx.disabled = true; hatch(); }; return; }
           Invite.done(r.invitedBy);
-          Sfx.play('catch'); step(4);
+          const sid = r.starter && SP[r.starter] ? r.starter : S.d && S.d.spirits[0] ? S.d.spirits[0].sid : 'ugolek', s = SP[sid], rr = RARITY[s.rar];
+          await wait(Math.max(0, this.HATCH_MS - (Date.now() - t0)));
+          if (!box.isConnected) return;
+          box.classList.add('crack'); Sfx.play('warn'); U.vibrate([30, 40, 30]);
+          await wait(750);
+          box.style.setProperty('--rc', rr.color); box.classList.add('open', 'r' + s.rar);
+          box.querySelector('.oh-sp').innerHTML = Art.spirit(sid);
+          Sfx.play(s.rar >= 4 ? 'levelup' : 'hatch'); U.vibrate(s.rar >= 4 ? [60, 60, 120] : 60);
+          const ht = root.querySelector('.onb-ht'); if (ht) ht.innerHTML = ru`Из кокона появился <b>${s.name}</b>!`;
+          root.querySelector('.onb-desc').innerHTML = `<b class="onb-rar" style="color:${rr.color}">${rr.name}</b> · ${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}<br>${s.desc}`;
+          nx.disabled = false; nx.onclick = () => { Sfx.play('tap'); step(4); };
         };
+        hatch();
       } else if (n === 4) {
         body.querySelector('.go').onclick = () => { Sfx.play('tap'); Login.close(root, done); };
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n ? n + 1 : 2); }; // 4.24: истории перед игрой больше нет

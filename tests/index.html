@@ -3056,6 +3056,28 @@
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
   });
+  test('5.1.17: первый дух — из кокона: редкость 50 / 35 / 13 / 1,5 / 0,5%, только первая стадия, без сезонных и Кощея', () => {
+    const n = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, N = 20000;
+    let r = 12345; const rnd = () => (r = (r * 1103515245 + 12345) % 2147483648) / 2147483648; // повторяемый ряд случайных чисел
+    for (let i = 0; i < N; i++) {
+      const s = SP[S.rollStarter(rnd)];
+      ok(s && s.stage === 1 && !s.season && s.id !== 'koschey' && MYTH_KEYS.includes(s.myth || 'slavic'), 'вид — из кокона: ' + (s && s.id));
+      n[s.rar]++;
+    }
+    const pc = k => n[k] / N * 100;
+    ok(Math.abs(pc(1) - 50) < 2 && Math.abs(pc(2) - 35) < 2 && Math.abs(pc(3) - 13) < 1.5 && Math.abs(pc(4) - 1.5) < 0.6 && Math.abs(pc(5) - 0.5) < 0.35,
+      `доли: ${[1, 2, 3, 4, 5].map(k => pc(k).toFixed(1)).join(' / ')}`);
+  });
+  atest('5.1.17: новая игра без выбора — первый дух решает сервер; прежний выбор из трёх ещё принимается, чужой вид — отказ', async () => {
+    const A = { uid: 'st-a', lat: 55.75, lng: 37.62, data: null, srv: {} };
+    await refuse(A, 'newGame', { name: 'Хитрец', starter: 'zharptica' }, /первого духа/);
+    const r = await must(A, 'newGame', { name: 'Новичок' });
+    ok(r.starter && SP[r.starter] && SP[r.starter].stage === 1, 'вид первого духа — в ответе');
+    eq(A.data.spirits.length, 1); eq(A.data.spirits[0].sid, r.starter); eq(A.data.starter, r.starter, 'запомнен для Кампании');
+    eq(A.data.essence[SP[r.starter].fam], 10, '10 эссенции его семейства');
+    const B = { uid: 'st-b', lat: 55.75, lng: 37.62, data: null, srv: {} };
+    eq((await must(B, 'newGame', { name: 'Старый', starter: 'mshonok' })).starter, 'mshonok', 'старая версия — выбор из трёх');
+  });
   test('5.1.16: шаг 1 — «усиль духов до 7 уровня»: у тех, кто уже на шаге, цель пересчитана по коллекции; награда за обучение — ✦ 10 000', () => {
     const d0 = S.d, st = CAMPAIGN[0].steps[0].obj[1];
     try {

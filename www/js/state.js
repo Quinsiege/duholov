@@ -78,6 +78,16 @@ const S = {
     if (d.clan && clanOf(d.clan) !== d.clan) d.clan = clanOf(d.clan);
   },
 
+  // 5.1.17: первый дух — из кокона: редкость по STARTER_RAR (обычный 50%, необычный 35%, редкий 13%, эпический 1,5%,
+  // легендарный 0,5%), вид — любой первой стадии открытых мифологий, как из кокона (без сезонных; Кощея нет — он враг Ордена)
+  STARTER_RAR: [[1, 500], [2, 350], [3, 130], [4, 15], [5, 5]],
+  rollStarter(r = Math.random) {
+    const ok = s => s.stage === 1 && !s.season && s.id !== 'koschey' && MYTH_KEYS.includes(s.myth || 'slavic');
+    const rar = U.weighted(this.STARTER_RAR, r());
+    let pool = SPECIES.filter(s => s.rar === rar && ok(s));
+    if (!pool.length) pool = SPECIES.filter(s => s.rar === 1 && ok(s));
+    return pool[Math.floor(r() * pool.length)].id;
+  },
   newGame(name, starter) {
     this.d = {
       v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),

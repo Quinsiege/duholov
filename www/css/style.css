@@ -5526,3 +5526,24 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 .cp-card small { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 3px; }
 /* личный Разлом кампании на карте — золотое сияние портала */
 .mk-rift.camp > .art { filter: drop-shadow(0 0 10px rgba(251, 191, 36, .75)); }
+
+/* ---------- 5.1.17: первый дух — из кокона (знакомство, шаг 3) ---------- */
+/* кокон покачивается, пока сервер создаёт Ловчего; трескается — вспышка цвета редкости (--rc) — и дух */
+.onb-hatch { position: relative; width: 210px; height: 210px; margin: 6px auto 4px; display: grid; place-items: center; }
+.onb-hatch .oh-glow { position: absolute; inset: 8%; border-radius: 50%; background: radial-gradient(circle, rgba(253, 230, 138, .5), rgba(253, 230, 138, 0) 70%); animation: ohGlow 1.6s ease-in-out infinite; }
+.onb-hatch .oh-coc { position: relative; width: 128px; height: 128px; transform-origin: 50% 88%; animation: ohWobble 1.1s ease-in-out infinite; }
+.onb-hatch .oh-coc svg, .onb-hatch .oh-coc .art, .onb-hatch .oh-coc img { width: 100%; height: 100%; }
+.onb-hatch.crack .oh-coc { animation: ohShake .12s linear infinite; filter: brightness(1.35) drop-shadow(0 0 16px rgba(253, 230, 138, .9)); }
+.onb-hatch.open .oh-coc { animation: ohPop .5s ease-out forwards; }
+.onb-hatch .oh-sp { position: absolute; width: 164px; height: 164px; opacity: 0; transform: scale(.35); transition: opacity .45s ease, transform .7s cubic-bezier(.2, 1.6, .4, 1); pointer-events: none; }
+.onb-hatch .oh-sp .art, .onb-hatch .oh-sp svg, .onb-hatch .oh-sp img { width: 100%; height: 100%; }
+.onb-hatch.open .oh-sp { opacity: 1; transform: scale(1); }
+.onb-hatch.open .oh-glow { background: radial-gradient(circle, var(--rc, #fde68a), transparent 68%); opacity: .75; animation: ohBurst .9s ease-out, ohGlow 2.2s .9s ease-in-out infinite; }
+.onb-hatch.open.r4 .oh-glow, .onb-hatch.open.r5 .oh-glow { inset: -12%; opacity: .95; }
+.onb-rar { font-family: var(--f-head); letter-spacing: .3px; }
+@keyframes ohWobble { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-9deg); } 40% { transform: rotate(7deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
+@keyframes ohShake { 0% { transform: translate(-3px, 0) rotate(-4deg); } 50% { transform: translate(3px, 0) rotate(4deg); } 100% { transform: translate(-3px, 0) rotate(-4deg); } }
+@keyframes ohPop { to { transform: scale(1.7); opacity: 0; } }
+@keyframes ohGlow { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
+@keyframes ohBurst { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(1.25); opacity: .75; } }
+.calm .onb-hatch .oh-coc, .calm .onb-hatch .oh-glow { animation: none !important; }
