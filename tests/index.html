@@ -2943,12 +2943,19 @@
       // шаг «Усилить»: в карточке — только «Усилить» и «Назад»; в коллекции — карточки, не сортировка
       S.d.tut = Tut.idx('power'); reset();
       const col = UI.screen('Духи', '<div class="seg"><button data-sort="name"></button></div><div class="grid cards"><button class="card"></button></div>', 'col-screen'); screens.push(col);
-      const det = UI.screen('', '<button class="btn-round favbtn"></button><button data-tab="info"></button><button class="btn act-power"></button><button class="btn act-release"></button>', 'det-screen'); screens.push(det);
+      const det = UI.screen('', '<button class="btn-round favbtn"></button><div class="seg dt-tabs"><button class="tab-about" data-tab="about"></button></div><button class="btn act-power"></button><button class="btn act-release"></button>', 'det-screen'); screens.push(det);
       [col, det].forEach(s => s.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.classList.contains('back')) hit(b.className.split(' ').pop() || b.dataset.sort)(); }));
       reset();
       ['.favbtn', '[data-tab]', '.act-release', '.act-power'].forEach(s => click(det.querySelector(s)));
       click(col.querySelector('[data-sort]')); click(col.querySelector('.card'));
-      eq(Object.keys(hits).sort().join(','), 'act-power,card', 'в экранах — только действие шага');
+      eq(Object.keys(hits).sort().join(','), 'act-power,card,tab-about', 'в экранах — только действие шага и чтение (вкладки карточки)');
+      // читать можно на любом шаге: виды и мифологии Бестиария
+      const dexS = UI.screen('Бестиарий', '<div class="chips dex-myths"><button class="myth" data-myth="slavic"></button></div><div class="grid dex"><button class="dex-cell seen"></button></div><button class="btn dex-other"></button>', 'dex-screen'); screens.push(dexS);
+      dexS.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.classList.contains('back')) hit(b.className.split(' ').pop())(); });
+      S.d.tut = Tut.idx('dex'); reset();
+      ['.myth', '.dex-cell', '.dex-other'].forEach(s => click(dexS.querySelector(s)));
+      eq(Object.keys(hits).sort().join(','), 'myth,seen', 'шаг «Бестиарий»: коснуться вида и мифологии — можно, прочее — нет');
+      S.d.tut = Tut.idx('power');
       const backs = [det, col].map(s => { let n = 0; const b = s.querySelector('.back'); b.onclick = () => n++; click(b); return n; });
       eq(backs.join(','), '1,1', '«Назад» — всегда');
       // настройки и всё, что открыто из них, — без ограничений (язык, звук, учётная запись)
