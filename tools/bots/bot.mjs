@@ -537,7 +537,7 @@ class Bot {
     this.setState('думает');
     let ans, raw = '', llmMs = 0;
     try {
-      const r = await this.llm.json(messages, SCHEMA_ACT, { kind: 'act', mockCtx: { obs, nick: this.persona.nick } });
+      const r = await this.llm.json(messages, SCHEMA_ACT, { kind: 'act', mockCtx: { obs, nick: this.persona.nick, persona: this.persona } });
       ans = r.data; raw = r.raw; llmMs = r.ms;
     } catch (e) {
       say('модель не ответила:', e.message);
@@ -656,4 +656,5 @@ process.on('SIGINT', () => stop('SIGINT'));
 process.on('SIGTERM', () => stop('SIGTERM'));
 process.on('unhandledRejection', e => say('unhandledRejection:', scrub(String(e && e.message || e))));
 say(`старт: ${CFG.url}${CFG.offline ? ' (OFFLINE)' : ''}, модель ${bot.llm.mock ? 'mock' : bot.llm.url}, папка ${BD}${KEY ? ', ключ контура задан' : CFG.offline ? '' : ', КЛЮЧ КОНТУРА НЕ ЗАДАН (DUHOLOV_TEST_KEY)'}`);
-process.exitCode = await bot.run();
+// подключение к чужому браузеру (CDP_URL) держит процесс живым — выходим явно
+process.exit(await bot.run());

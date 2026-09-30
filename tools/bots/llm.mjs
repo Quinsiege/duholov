@@ -129,6 +129,32 @@ function mockAnswer(kind, ctx) {
   // действие: простая эвристика по наблюдению (ctx.obs — объект observe)
   const o = ctx.obs || {}, btn = o.buttons || [], p = o.player, near = o.nearby || [];
   const say = (thought, goal, action) => ({ thought, goal, action });
+  // спидраннер-хардкорщик (заглушка): ни секунды зря — обучение и книги пропускает, бежит к ближайшей добыче,
+  // никаких заметок и прогулок «посмотреть», меню — только за заданиями и наградами
+  const speed = ctx.persona && (ctx.persona.mix || []).some(m => /спидран|хардкор/i.test(m.taste));
+  if (speed) {
+    const byL = re => btn.find(b => !b.disabled && re.test(b.label));
+    if (o.enc) {
+      if (o.enc.phase === 'aim' || o.enc.phase === 'intro') return say('Кидаю сразу, без раздумий.', 'Спидран: 10 уровень как можно быстрее', { type: 'throw' });
+      const ok = byL(/Отлично|Готово|Дальше|Вперёд/i); if (ok) return say('Дальше, дальше!', 'Спидран: 10 уровень как можно быстрее', { type: 'tap', ref: ok.ref });
+      return say('Жду бросок.', 'Спидран', { type: 'wait', sec: 1 });
+    }
+    const inp2 = btn.find(b => b.input === 'text' && !b.value);
+    if (inp2 && /Имя|имя/.test(inp2.label)) return say('Имя — первое попавшееся, время идёт.', 'Спидран', { type: 'type', ref: inp2.ref, text: ctx.nick || 'Speed' });
+    const skip = byL(/^(Пропустить|Закрыть книгу)/i); if (skip) return say('Сюжет — потом. Скип.', 'Спидран', { type: 'tap', ref: skip.ref });
+    const grab = byL(/^(Зачерпнуть|Забрать|Получить|Вылупить|Забрать всё|В сумку)/i); if (grab) return say('Хватаю награду.', 'Спидран: максимум опыта в минуту', { type: 'tap', ref: grab.ref });
+    const go2 = byL(/^(Начать игру|Дальше|Выбрать$|Выбрать место|Шагнуть|В путь|Продолжить|Вперёд|Понятно|Хорошо|OK|Отлично)/i); if (go2) return say('Жму «' + go2.label + '», не читая.', 'Спидран', { type: 'tap', ref: go2.ref });
+    const st2 = btn.find(b => /Уголёк|Капелька|Мшонок/.test(b.label)); if (st2) return say('Стартовый — любой, лишь бы быстрее.', 'Спидран', { type: 'tap', ref: st2.ref });
+    if (o.screen && o.screen.kind === 'Атлас мира' && !o.placed) return say('Москва — плотнее всего точки. Туда.', 'Спидран', { type: 'teleport', to: 'Москва' });
+    if (o.screen && o.screen.kind !== 'Карта' && o.layers > 0) return say('Лишний экран — назад.', 'Спидран', { type: 'back' });
+    const targets = near.filter(x => (x.type === 'spirit') || (x.type === 'spring' && x.state === 'готов')).sort((a, b) => a.d - b.d);
+    const t = targets[0];
+    if (t && t.near) return say((t.type === 'spirit' ? t.name + ' — ловлю' : 'Источник — черпаю') + ', не сбавляя темп.', 'Спидран: максимум опыта в минуту', { type: 'tap', ref: t.ref });
+    if (t) return say('Бегу к ' + (t.name || 'цели') + ' (' + t.d + ' м) на полной.', 'Спидран: максимум опыта в минуту', { type: 'walk', to: t.ref });
+    if (p && p.level >= 3 && Math.random() < 0.15) return say('Гляну задания — вдруг быстрый опыт.', 'Спидран', { type: 'open', to: 'Задания' });
+    if (Math.random() < 0.08) return say('Скорость ходьбы — узкое место. Хочу скип.', 'Спидран', { type: 'wish', text: 'Хочу автопобег к ближайшему духу и кнопку «поймать всех рядом» — ходьба съедает весь темп.' });
+    return say('Пусто вокруг — рывок в новую сторону.', 'Спидран: найти плотную зону', { type: 'walk', to: pick(['север', 'юг', 'восток', 'запад', 'северо-восток', 'юго-запад']), m: 400 });
+  }
   const byLabel = re => btn.find(b => !b.disabled && re.test(b.label));
   const inp = btn.find(b => b.input === 'text' && !b.value);
   if (o.enc) {
