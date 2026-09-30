@@ -12064,7 +12064,7 @@
   "k": "В путь!",
   "at": [
    "www/js/intro.js:191",
-   "www/js/tutorial.js:233"
+   "www/js/tutorial.js:243"
   ],
   "ctx": "t.textContent = last ? (this.opts.again ? ru`Закрыть книгу` : ru`В путь!`) : ru`Далее`;"
  },
@@ -19501,56 +19501,56 @@
  {
   "k": "Обучение: «{0}» — готово! {1}",
   "at": [
-   "www/js/tutorial.js:223"
+   "www/js/tutorial.js:233"
   ],
   "ctx": "UI.toast(ru`Обучение: «${TUT_CHAPTERS[ch].title}» — готово! ${got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');"
  },
  {
   "k": "Обучение",
   "at": [
-   "www/js/tutorial.js:232"
+   "www/js/tutorial.js:242"
   ],
   "ctx": "<small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Духи ждут по всему свету.`}</p>"
  },
  {
   "k": "Обучение пройдено!",
   "at": [
-   "www/js/tutorial.js:232"
+   "www/js/tutorial.js:242"
   ],
   "ctx": "<small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Духи ждут по всему свету.`}</p>"
  },
  {
   "k": "Теперь ты знаешь главное. Духи ждут по всему свету.",
   "at": [
-   "www/js/tutorial.js:232"
+   "www/js/tutorial.js:242"
   ],
   "ctx": "<small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Духи ждут по всему свету.`}</p>"
  },
  {
   "k": "Сначала закончи шаг обучения",
   "at": [
-   "www/js/tutorial.js:333"
+   "www/js/tutorial.js:343"
   ],
   "ctx": "UI.toast(ru`Сначала закончи шаг обучения`);"
  },
  {
   "k": "Сначала поймай духов: меню откроется чуть позже.",
   "at": [
-   "www/js/tutorial.js:348"
+   "www/js/tutorial.js:358"
   ],
   "ctx": "return n && n < this.idx('menu') ? ru`Сначала поймай духов: меню откроется чуть позже.` : null;"
  },
  {
   "k": "Откроется по ходу обучения — подсказка покажет",
   "at": [
-   "www/js/tutorial.js:356"
+   "www/js/tutorial.js:366"
   ],
   "ctx": "return need ? ru`Откроется по ходу обучения — подсказка покажет` : ru`Откроется после обучения`;"
  },
  {
   "k": "Откроется после обучения",
   "at": [
-   "www/js/tutorial.js:356"
+   "www/js/tutorial.js:366"
   ],
   "ctx": "return need ? ru`Откроется по ходу обучения — подсказка покажет` : ru`Откроется после обучения`;"
  },
