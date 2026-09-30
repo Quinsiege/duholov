@@ -12,6 +12,8 @@ const LeagueBattle = {
   SEND_GAP: 330,     // мс между пачками ударов
   BEAT: 2000,        // мс — «я на связи» (и досчитать бой: автоходы, время)
   POLL_NO_RT: 700,   // мс — опрос, если Realtime не подключился
+  COUNT_GO: 600,     // 5.1.18: «Бой!» — за столько мс до начала боя; с началом боя надписи уже нет
+  TICK_MS: 100,      // мс — шаг экрана боя (отсчёт, подсказки, отправка ударов)
   ch: null, rt: false,
   sr: null,          // поиск
   st: null,          // бой
@@ -183,7 +185,7 @@ const LeagueBattle = {
     st.$('.pvp-foe').textContent = v.foe.name;
     st.$('.pvp-rank').innerHTML = League.badge(v.foe.rank);
     this.onState();
-    st.timer = setInterval(() => this.tick(), 100);
+    st.timer = setInterval(() => this.tick(), this.TICK_MS);
   },
   // бой глазами игрока: сервер + ещё не подтверждённые свои удары
   view() {
@@ -305,14 +307,14 @@ const LeagueBattle = {
     st.$('.raid-fx').appendChild(fl);
     setTimeout(() => fl.remove(), 900);
   },
+  // 5.1.18: надпись отсчёта за ms мс до начала боя (его назначил сервер): секунды, «Бой!» — в последние COUNT_GO мс, с началом
+  // боя — null (надпись убрать). Раньше «Бой!» висела ещё секунду поверх идущего боя: закрывала экран и касания, а соперник уже бил
+  countText(ms) { return ms <= 0 ? null : ms <= this.COUNT_GO ? ru`Бой!` : Math.ceil((ms - this.COUNT_GO) / 1000); },
   render() {
     const st = this.st; if (!st) return;
     const v = this.view(), now = U.now(), m = v.me.team[v.me.idx], f = v.foe.team[v.foe.idx];
     const cnt = st.$('.raid-count');
-    if (cnt) {
-      const s = Math.ceil((v.t0 - now) / 1000);
-      if (s > 0) cnt.textContent = s; else if (s > -1) cnt.textContent = ru`Бой!`; else cnt.remove();
-    }
+    if (cnt) { const t = this.countText(v.t0 - now - this.TICK_MS); if (t == null) cnt.remove(); else cnt.textContent = t; } // на шаг раньше: к началу боя надписи уже нет
     st.$('.raid-timer').textContent = Math.ceil(v.left);
     if (f) st.$('.bar.boss i').style.width = Math.max(0, f.cur / f.max * 100) + '%';
     if (m) st.$('.bar.hp i').style.width = Math.max(0, m.cur / m.max * 100) + '%';
