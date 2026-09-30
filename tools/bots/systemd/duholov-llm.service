@@ -1,0 +1,20 @@
+# Мозг ИИ-игроков: llama.cpp llama-server с Qwen2.5-7B-Instruct (GGUF, CPU). Ставит setup-server.sh (@…@ заменяются).
+[Unit]
+Description=Duholov AI players: llama-server (Qwen2.5-7B-Instruct, CPU)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=duholov-bot
+Group=duholov-bot
+EnvironmentFile=-/etc/duholov-bots.env
+# $$ — чтобы $ дошёл до sh, а не подставлялся systemd. -t — все ядра; -c 8192 на --parallel 2 = по 4096 токенов на бота (промпт ≈ 3 тыс. + ответ ≤ 260)
+ExecStart=/bin/sh -c 'exec @LLAMA@ -m @MODEL@ -t $$(nproc) -c 8192 --parallel 2 --host 127.0.0.1 --port $${LLM_PORT:-8080} --jinja -ngl 0'
+Restart=always
+RestartSec=10
+Nice=2
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

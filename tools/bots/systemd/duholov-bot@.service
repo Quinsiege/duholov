@@ -1,0 +1,23 @@
+# Один ИИ-игрок: systemctl start duholov-bot@bot1 (имя после @ — папка bots/<имя>). Ставит setup-server.sh.
+[Unit]
+Description=Duholov AI player %i
+After=network-online.target duholov-llm.service
+Wants=network-online.target duholov-llm.service
+
+[Service]
+Type=simple
+User=duholov-bot
+Group=duholov-bot
+WorkingDirectory=@APP@
+# DUHOLOV_TEST_KEY, LLM_URL, BOTS_DIR, PLAYWRIGHT_BROWSERS_PATH — в /etc/duholov-bots.env (только root, 600)
+EnvironmentFile=/etc/duholov-bots.env
+ExecStart=/usr/bin/node @APP@/bot.mjs %i
+# бот сам бросил игру — выход с кодом 0, и systemd его не поднимает (Restart=on-failure)
+Restart=on-failure
+RestartSec=60
+Nice=5
+MemoryMax=2G
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

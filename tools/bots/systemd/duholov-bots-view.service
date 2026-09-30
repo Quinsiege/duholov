@@ -1,0 +1,17 @@
+# Зритель ИИ-игроков: http://127.0.0.1:8090/ (снаружи не виден; смотреть через ssh -L 8090:127.0.0.1:8090 root@<ip>)
+[Unit]
+Description=Duholov AI players: live viewer
+After=network-online.target
+
+[Service]
+Type=simple
+User=duholov-bot
+Group=duholov-bot
+WorkingDirectory=@APP@
+EnvironmentFile=-/etc/duholov-bots.env
+ExecStart=/usr/bin/node @APP@/viewer.mjs
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

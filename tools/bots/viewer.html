@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Духолов · ИИ-игроки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0a1e; --bg2: #1c1438; --text: #f4f1ff; --muted: #b3aacb; --dim: #8a80a8;
+  --gold: #fbbf24; --gold2: #fde047; --teal: #5eead4; --violet: #a78bfa; --danger: #f87171; --good: #4ade80;
+  --glass: rgba(255, 255, 255, .06); --glass2: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .14); --hi: rgba(255, 255, 255, .22);
+  --r: 22px; --blur: 22px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: radial-gradient(1200px 700px at 12% -10%, #2a1b5c 0%, transparent 60%), radial-gradient(900px 600px at 110% 10%, #0f3b46 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg2), var(--bg) 70%);
+  background-attachment: fixed; color: var(--text); font: 14px/1.45 'Rubik', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; overflow-x: hidden;
+}
+/* сияние Нави за стеклом */
+.sky { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.sky i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .5; animation: drift 26s ease-in-out infinite alternate; }
+.sky i:nth-child(1) { width: 520px; height: 380px; left: -120px; top: 30%; background: #6d28d9; }
+.sky i:nth-child(2) { width: 460px; height: 340px; right: -100px; top: -80px; background: #0d9488; animation-duration: 32s; }
+.sky i:nth-child(3) { width: 380px; height: 300px; left: 45%; bottom: -160px; background: #b45309; opacity: .32; animation-duration: 38s; }
+.sky b { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: .5; animation: tw 4s ease-in-out infinite; }
+@keyframes drift { to { transform: translate(60px, -40px) scale(1.12); } }
+@keyframes tw { 50% { opacity: .1; } }
+.glass {
+  position: relative; background: linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.035) 45%, rgba(255,255,255,.05));
+  border: 1px solid var(--line); border-radius: var(--r);
+  backdrop-filter: blur(var(--blur)) saturate(150%); -webkit-backdrop-filter: blur(var(--blur)) saturate(150%);
+  box-shadow: inset 0 1px 0 var(--hi), inset 0 -1px 0 rgba(0,0,0,.25), 0 18px 50px -20px rgba(0,0,0,.7);
+}
+.app { position: relative; z-index: 1; display: grid; grid-template-columns: 236px minmax(300px, 380px) minmax(0, 1fr); gap: 18px; padding: 18px; max-width: 1600px; margin: 0 auto; min-height: 100vh; }
+/* ----- список ботов ----- */
+.side { padding: 16px 12px; align-self: start; position: sticky; top: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px; }
+.brand .orb { width: 34px; height: 34px; border-radius: 50%; flex: none; background: radial-gradient(circle at 35% 30%, var(--gold2), var(--gold) 45%, #b45309); box-shadow: 0 0 18px rgba(251,191,36,.45); display: grid; place-items: center; color: #3b2400; font-weight: 800; }
+.brand b { display: block; font-size: 15px; letter-spacing: .2px; }
+.brand small { color: var(--muted); font-size: 11.5px; }
+.bots { display: flex; flex-direction: column; gap: 6px; }
+.bot { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 16px; border: 1px solid transparent; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .2s, border-color .2s; }
+.bot:hover { background: rgba(255,255,255,.05); }
+.bot.on { background: rgba(255,255,255,.1); border-color: var(--line); box-shadow: inset 0 1px 0 var(--hi); }
+.ava { position: relative; width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; background: linear-gradient(145deg, #7c3aed, #2dd4bf); }
+.ava::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #1c1438; background: var(--dim); }
+.ava.live::after { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.ava.think::after { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.ava.gone::after { background: var(--danger); }
+.bot .who { min-width: 0; }
+.bot .who b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bot .who small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.empty { color: var(--muted); padding: 8px 6px; font-size: 13px; }
+/* ----- телефон ----- */
+.phone-col { display: flex; flex-direction: column; align-items: center; gap: 12px; align-self: start; position: sticky; top: 18px; }
+.phone { width: 100%; max-width: 380px; padding: 10px; border-radius: 44px; }
+.screen { position: relative; aspect-ratio: 1 / 2; border-radius: 34px; overflow: hidden; background: #07050f; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.screen .none { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); text-align: center; padding: 30px; font-size: 13px; }
+.pill { display: flex; flex: none; font-style: normal; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: .6px;
+  background: rgba(10,6,24,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.14); }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 8px var(--danger); animation: pulse 1.4s ease-in-out infinite; }
+.pill.stale i { background: var(--dim); box-shadow: none; animation: none; }
+@keyframes pulse { 50% { opacity: .35; } }
+.status { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 380px; padding: 11px 16px; border-radius: 18px; font-size: 13px; }
+.status .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); flex: none; }
+.status.think .dot { background: var(--gold); animation: pulse 1s infinite; box-shadow: 0 0 10px var(--gold); }
+.status.act .dot { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+.status.gone .dot { background: var(--danger); }
+.status b { font-weight: 600; }
+.status span { color: var(--muted); margin-left: auto; font-size: 12px; white-space: nowrap; }
+/* ----- правая часть ----- */
+.info { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.card { padding: 16px 18px; }
+.h { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--gold); font-weight: 700; margin: 0 0 8px; opacity: .9; }
+.top { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; }
+.persona .nm { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.persona .nm b { font-size: 20px; font-weight: 700; }
+.persona .nm small { color: var(--muted); }
+.persona p { margin: 6px 0 0; color: #ddd6f3; }
+.persona p.m { color: var(--muted); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { padding: 3px 10px; border-radius: 99px; font-size: 12px; background: rgba(167,139,250,.14); border: 1px solid rgba(167,139,250,.3); color: #ddd0ff; }
+.chip.g { background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.32); color: #fde68a; }
+.chip.t { background: rgba(94,234,212,.1); border-color: rgba(94,234,212,.3); color: #b5f5ea; }
+.goal .g { font-size: 19px; font-weight: 700; color: var(--gold2); line-height: 1.3; text-shadow: 0 0 22px rgba(251,191,36,.25); }
+.goal q { display: block; margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(0,0,0,.18); border: 1px solid rgba(255,255,255,.07); font-style: italic; color: #e9e4ff; quotes: '«' '»'; }
+.goal .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.stat { padding: 12px 14px; border-radius: 18px; }
+.stat small { display: block; color: var(--muted); font-size: 11.5px; }
+.stat b { display: block; font-size: 22px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stat em { display: block; font-style: normal; color: var(--dim); font-size: 11.5px; margin-top: 2px; line-height: 1.3; }
+.bar { height: 5px; border-radius: 99px; background: rgba(255,255,255,.1); margin-top: 7px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--teal)); }
+.tabs { display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.07); width: max-content; max-width: 100%; overflow-x: auto; }
+.tabs button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap; }
+.tabs button.on { background: rgba(255,255,255,.12); color: var(--text); box-shadow: inset 0 1px 0 var(--hi); }
+.tabs button i { font-style: normal; color: var(--gold); margin-left: 4px; font-size: 11.5px; }
+.feedwrap { padding: 12px 12px 6px; }
+.feedhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 4px 10px; flex-wrap: wrap; }
+.feed { display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 470px); min-height: 280px; overflow-y: auto; padding: 2px 4px 8px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+.it { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.06); animation: in .35s ease-out; }
+@keyframes in { from { opacity: 0; transform: translateY(-6px); } }
+.it time { color: var(--dim); font-size: 11.5px; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.it time b { display: block; color: var(--muted); font-weight: 600; font-size: 12px; }
+.it .th { color: #efeaff; }
+.it .ac { display: inline-flex; align-items: center; gap: 6px; margin-top: 5px; padding: 2px 9px; border-radius: 9px; font-size: 12px; background: rgba(94,234,212,.1); border: 1px solid rgba(94,234,212,.22); color: #b5f5ea; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.it .ac.bad { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.28); color: #fecaca; }
+.it .ac.q { background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.35); color: #fde68a; }
+.it .rs { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.it .rs.bad { color: #fca5a5; }
+.it .sh { width: 40px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid rgba(255,255,255,.12); cursor: zoom-in; opacity: .85; }
+.it .sh:hover { opacity: 1; }
+.it.mem { grid-template-columns: 52px minmax(0, 1fr); background: rgba(167,139,250,.07); border-color: rgba(167,139,250,.18); }
+.it.mem ul, .memcard ul { margin: 4px 0 0; padding-left: 18px; color: #ddd6f3; font-size: 13px; }
+.it.wish { grid-template-columns: 52px minmax(0, 1fr); background: rgba(251,191,36,.06); border-color: rgba(251,191,36,.2); }
+.it.note { grid-template-columns: 52px minmax(0, 1fr); }
+.it.err { grid-template-columns: 52px minmax(0, 1fr); background: rgba(248,113,113,.06); border-color: rgba(248,113,113,.2); }
+.muted { color: var(--muted); }
+.quit { padding: 16px 18px; border-color: rgba(248,113,113,.35); background: linear-gradient(160deg, rgba(248,113,113,.14), rgba(255,255,255,.03)); }
+.quit b { color: #fecaca; }
+.lb { position: fixed; inset: 0; z-index: 10; background: rgba(5,3,12,.8); display: none; place-items: center; backdrop-filter: blur(6px); cursor: zoom-out; }
+.lb.on { display: grid; }
+.lb img { max-height: 92vh; max-width: 92vw; border-radius: 20px; border: 1px solid rgba(255,255,255,.2); }
+.memcard .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+@media (max-width: 1280px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1080px) {
+  .app { grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); }
+  .side { grid-column: 1 / -1; position: static; }
+  .bots { flex-direction: row; overflow-x: auto; }
+  .bot { width: auto; flex: none; }
+  .top { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; padding: 12px 16px; gap: 14px; }
+  .phone-col { position: static; }
+  .phone { max-width: 320px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feed { max-height: none; }
+  .memcard .row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="app">
+  <aside class="side glass">
+    <div class="brand"><div class="orb">Д</div><div><b>ИИ-игроки</b><small>Духолов · живое наблюдение</small></div></div>
+    <div class="bots" id="bots"><div class="empty">Ищу ботов…</div></div>
+  </aside>
+  <section class="phone-col">
+    <div class="phone glass"><div class="screen"><img id="live" alt=""><div class="none" id="nolive">Экран появится, когда бот откроет игру</div></div></div>
+    <div class="status glass" id="status"><i class="dot"></i><b id="stTxt">—</b><span id="stAgo"></span><em class="pill" id="pill"><i></i>LIVE</em></div>
+  </section>
+  <main class="info">
+    <div id="quit"></div>
+    <div class="top">
+      <div class="card glass persona" id="persona"><p class="h">Персона</p><p class="muted">Выбери бота слева</p></div>
+      <div class="card glass goal"><p class="h">Цель и мысль</p><div class="g" id="goal">—</div><q id="thought">…</q><div class="row" id="goalChips"></div></div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="card glass feedwrap">
+      <div class="feedhead">
+        <div class="tabs" id="tabs">
+          <button data-t="feed" class="on">Мысли и действия</button><button data-t="wish">Желания<i id="nWish"></i></button><button data-t="note">Заметки<i id="nNote"></i></button><button data-t="mem">Память</button>
+        </div>
+        <small class="muted" id="feedInfo"></small>
+      </div>
+      <div class="feed" id="feed"></div>
+    </div>
+  </main>
+</div>
+<div class="lb" id="lb"><img alt=""></div>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const hm = t => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const dur = ms => { const m = Math.floor((ms || 0) / 60000); return m < 60 ? `${m} мин` : `${Math.floor(m / 60)} ч ${m % 60} мин`; };
+const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? `${s} с назад` : s < 3600 ? `${Math.floor(s / 60)} мин назад` : `${Math.floor(s / 3600)} ч назад`; };
+const S = { id: null, es: null, persona: null, state: {}, feed: [], wishes: [], notes: [], memory: null, exit: null, tab: 'feed', frameT: 0, loading: false };
+try { S.tab = localStorage.getItem('botview.tab') || 'feed'; } catch (e) { /* нет */ }
+
+/* ----- звёзды ----- */
+(() => { const sky = $('.sky'); for (let i = 0; i < 70; i++) { const b = document.createElement('b'); b.style.left = Math.random() * 100 + '%'; b.style.top = Math.random() * 100 + '%'; b.style.animationDelay = (Math.random() * 4) + 's'; if (Math.random() < .2) { b.style.width = b.style.height = '3px'; } sky.appendChild(b); } })();
+
+const stClass = st => /думает|смотрит|придумывает/.test(st) ? 'think' : /действует/.test(st) ? 'act' : /бросил|остановлен|перезапуск|нет ответа/.test(st) ? 'gone' : 'live';
+
+/* ----- список ботов ----- */
+async function loadBots() {
+  let list = [];
+  try { list = await (await fetch('/api/bots', { cache: 'no-store' })).json(); } catch (e) { /* зритель перезапускается */ }
+  const box = $('#bots');
+  if (!list.length) { box.innerHTML = '<div class="empty">Ботов пока нет. Запусти: <br><code>./run.sh bot bot1</code></div>'; return; }
+  box.innerHTML = list.map(b => {
+    const st = b.state || {}, cls = st.status ? stClass(st.status) : '', fresh = st.updated && Date.now() - st.updated < 5 * 60000;
+    return `<button class="bot${b.id === S.id ? ' on' : ''}" data-id="${esc(b.id)}"><span class="ava ${fresh || cls === 'gone' ? cls : ''}">${esc((b.persona.name || b.id)[0])}</span>
+      <span class="who"><b>${esc(b.persona.name || b.id)} <small>· ${esc(b.persona.nick || '')}</small></b><small>${st.stats ? `ур. ${st.stats.level} · ` : ''}${esc(st.status || '—')}</small></span></button>`;
+  }).join('');
+  box.querySelectorAll('.bot').forEach(el => el.onclick = () => pick(el.dataset.id));
+  if (!S.id) { let want = null; try { want = localStorage.getItem('botview.id'); } catch (e) { /* нет */ } pick(list.some(b => b.id === want) ? want : list[0].id); }
+}
+
+function pick(id) {
+  if (S.id === id && S.es) return;
+  if (S.es) S.es.close();
+  Object.assign(S, { id, feed: [], wishes: [], notes: [], memory: null, exit: null, persona: null, state: {}, frameT: 0 });
+  try { localStorage.setItem('botview.id', id); } catch (e) { /* нет */ }
+  document.querySelectorAll('.bot').forEach(b => b.classList.toggle('on', b.dataset.id === id));
+  $('#live').removeAttribute('src'); $('#nolive').style.display = '';
+  const es = S.es = new EventSource(`/api/bot/${encodeURIComponent(id)}/events`);
+  es.addEventListener('init', e => { const d = JSON.parse(e.data); Object.assign(S, { persona: d.persona, state: d.state || {}, memory: d.memory, exit: d.exit, feed: d.feed || [], wishes: d.wishes || [], notes: d.diary || [] }); renderAll(); });
+  es.addEventListener('state', e => { S.state = JSON.parse(e.data); renderTop(); });
+  es.addEventListener('log', e => { const x = JSON.parse(e.data); S.feed.push(x); if (S.feed.length > 200) S.feed.shift(); if (x.kind === 'memory') S.memory = { ...(S.memory || {}), summary: x.memory, likes: x.likes, dislikes: x.dislikes, mood: x.mood }; if (x.kind === 'quit') loadExit(); renderFeed(true); });
+  es.addEventListener('wish', e => { S.wishes.push(JSON.parse(e.data)); renderCounts(); if (S.tab === 'wish') renderFeed(true); });
+  es.addEventListener('note', e => { S.notes.push(JSON.parse(e.data)); renderCounts(); if (S.tab === 'note') renderFeed(true); });
+  es.addEventListener('frame', e => frame(JSON.parse(e.data).t));
+}
+async function loadExit() { try { S.exit = await (await fetch(`/api/bot/${S.id}/exit`, { cache: 'no-store' })).json(); } catch (e) { /* ещё нет */ } renderTop(); }
+
+/* ----- живой экран: новый кадр грузится в фоне и подменяет старый без мигания ----- */
+function frame(t) {
+  S.frameT = t;
+  if (S.loading) return;
+  S.loading = true;
+  const img = new Image();
+  img.onload = () => { $('#live').src = img.src; $('#nolive').style.display = 'none'; S.loading = false; if (S.frameT > t) frame(S.frameT); };
+  img.onerror = () => { S.loading = false; };
+  img.src = `/api/bot/${encodeURIComponent(S.id)}/live.jpg?t=${t}`;
+}
+setInterval(() => { const stale = !S.frameT || Date.now() - S.frameT > 6000; $('#pill').classList.toggle('stale', stale); $('#pill').lastChild.textContent = stale ? 'ПАУЗА' : 'LIVE'; if (S.state.updated) $('#stAgo').textContent = ago(S.state.updated); }, 1000);
+
+/* ----- отрисовка ----- */
+function renderAll() { renderTop(); renderFeed(); }
+function renderTop() {
+  const p = S.persona, st = S.state || {}, s = st.stats;
+  if (p) $('#persona').innerHTML = `<p class="h">Персона</p><div class="nm"><b>${esc(p.name)}</b><small>${esc(p.age)} лет · ник «${esc(p.nick)}» · рука ${Math.round((p.skill || 0) * 100)}%</small></div>
+    <p>${esc(p.character)}</p>${p.about ? `<p class="m">${esc(p.about)}</p>` : ''}
+    <div class="chips">${(p.mix || []).map(m => `<span class="chip g">${esc(m.taste)} ${m.share}%</span>`).join('')}${(p.likes || []).slice(0, 3).map(l => `<span class="chip">${esc(l)}</span>`).join('')}<span class="chip t">терпение: ${esc(p.patience)}</span></div>`;
+  $('#goal').textContent = st.goal || '—';
+  $('#thought').textContent = st.thought || '…';
+  const mood = st.mood || (S.memory && S.memory.mood);
+  $('#goalChips').innerHTML = [mood ? `<span class="chip">настроение: ${esc(mood)}</span>` : '', st.action ? `<span class="chip t">${esc(st.action)}</span>` : '', st.where ? `<span class="chip">📍 ${esc(st.where)}</span>` : ''].join('');
+  const cls = stClass(st.status || '');
+  $('#status').className = 'status glass ' + cls;
+  $('#stTxt').textContent = (st.status || '—') + (st.step ? ` · шаг ${st.step}` : '');
+  const xp = s && s.xpNeed ? Math.min(100, Math.round(s.xpIn / s.xpNeed * 100)) : 0;
+  const stat = (label, val, sub, bar) => `<div class="stat glass"><small>${label}</small><b>${val}</b>${sub ? `<em>${sub}</em>` : ''}${bar != null ? `<div class="bar"><i style="width:${bar}%"></i></div>` : ''}</div>`;
+  $('#stats').innerHTML = [
+    stat('Уровень', s ? s.level : '—', s && s.xpNeed ? `опыт ${s.xpIn} / ${s.xpNeed}` : 'Ловчий не создан', s ? xp : null),
+    stat('Духов', s ? s.spirits : '—', s ? `всего поймано ${s.caught}` : ''),
+    stat('Видов', s ? s.species : '—', 'в Бестиарии'),
+    stat('В игре', dur(st.playMs), st.since ? `запущен ${ago(st.since)}` : ''),
+    stat('Шагов', st.step || 0, st.llmStats && st.llmStats.calls ? `ответ модели ≈ ${Math.round(st.llmStats.ms / st.llmStats.calls / 100) / 10} с` : esc(st.llm || '')),
+    stat('Искры', s ? s.sparks : '—', s ? `монеты: ${s.zlat}${s.km ? ` · ${s.km} км` : ''}` : ''),
+  ].join('');
+  const ex = S.exit;
+  $('#quit').innerHTML = ex ? `<div class="card glass quit"><p class="h" style="color:var(--danger)">Бросил игру · шаг ${ex.step}</p><b>${esc(ex.reason)}</b>
+    ${ex.review ? `<p>${esc(ex.review.verdict)}</p><p class="muted">Понравилось: ${esc((ex.review.liked || []).join('; ') || '—')} · Не понравилось: ${esc((ex.review.disliked || []).join('; ') || '—')} · Вернётся: ${esc(ex.review.would_return)} · Оценка: <b>${esc(ex.review.score)}/10</b></p>` : ''}</div>` : '';
+  renderCounts();
+}
+function renderCounts() { $('#nWish').textContent = S.wishes.length || ''; $('#nNote').textContent = S.notes.length || ''; }
+function item(x) {
+  if (x.kind === 'step') {
+    const q = x.type === 'quit' || x.type === 'wish' || x.type === 'note';
+    return `<div class="it"><time><b>#${x.step}</b>${hm(x.t)}</time><div><div class="th">${esc(x.thought || '')}</div>
+      <span class="ac${x.ok ? '' : ' bad'}${q ? ' q' : ''}" title="${esc(x.act)}">${esc(x.act)}</span><div class="rs${x.ok ? '' : ' bad'}">${esc(x.result || '')}</div></div>
+      ${x.shot ? `<img class="sh" loading="lazy" src="/api/bot/${encodeURIComponent(S.id)}/shot/${esc(x.shot)}" data-full="/api/bot/${encodeURIComponent(S.id)}/shot/${esc(x.shot)}" alt="">` : '<span></span>'}</div>`;
+  }
+  if (x.kind === 'memory') return `<div class="it mem"><time><b>#${x.step}</b>${hm(x.t)}</time><div><b>Память сжата</b>${x.mood ? ` · настроение: ${esc(x.mood)}` : ''}<ul>${(x.memory || []).map(m => `<li>${esc(m)}</li>`).join('')}</ul></div></div>`;
+  if (x.kind === 'quit') return `<div class="it err"><time><b>#${x.step}</b>${hm(x.t)}</time><div><b>Бросил игру:</b> ${esc(x.reason)}${x.review ? `<div class="rs">${esc(x.review.verdict)}</div>` : ''}</div></div>`;
+  if (x.kind === 'llm-error') return `<div class="it err"><time><b>#${x.step}</b>${hm(x.t)}</time><div><b>Модель не ответила</b><div class="rs bad">${esc(x.error)}</div></div></div>`;
+  return '';
+}
+function renderFeed(live) {
+  const box = $('#feed'), atTop = box.scrollTop < 40;
+  let html = '', info = '';
+  if (S.tab === 'feed') { const l = S.feed.slice(-50).reverse(); html = l.map(item).join(''); info = `последние ${l.length}`; }
+  else if (S.tab === 'wish') { html = S.wishes.slice().reverse().map(w => `<div class="it wish"><time><b>#${w.step}</b>${hm(w.t)}</time><div><div class="th">${esc(w.text)}</div><div class="rs">${esc(w.screen || '')}${w.level ? ` · ур. ${w.level}` : ''}</div></div></div>`).join(''); info = 'чего не хватает в игре'; }
+  else if (S.tab === 'note') { html = S.notes.slice().reverse().map(n => `<div class="it note"><time><b>#${n.step}</b>${hm(n.t)}</time><div class="th">${esc(n.text)}</div></div>`).join(''); info = 'личный дневник'; }
+  else {
+    const m = S.memory || {};
+    html = `<div class="it mem memcard" style="grid-template-columns:1fr"><div><b>Что помнит</b><ul>${(m.summary || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li class="muted">пока пусто</li>'}</ul>
+      <div class="row"><div><b style="color:var(--good)">Нравится</b><ul>${(m.likes || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li class="muted">—</li>'}</ul></div>
+      <div><b style="color:var(--danger)">Бесит</b><ul>${(m.dislikes || []).map(x => `<li>${esc(x)}</li>`).join('') || '<li class="muted">—</li>'}</ul></div></div></div></div>`;
+    info = m.mood ? `настроение: ${m.mood}` : '';
+  }
+  box.innerHTML = html || '<div class="empty">Пока ничего</div>';
+  $('#feedInfo').textContent = info;
+  if (!live || atTop) box.scrollTop = 0;
+}
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.tab = b.dataset.t; try { localStorage.setItem('botview.tab', S.tab); } catch (x) { /* нет */ } document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b)); renderFeed(); };
+document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.t === S.tab));
+$('#feed').onclick = e => { const i = e.target.closest('.sh'); if (!i) return; $('#lb img').src = i.dataset.full; $('#lb').classList.add('on'); };
+$('#lb').onclick = () => $('#lb').classList.remove('on');
+loadBots(); setInterval(loadBots, 4000);
+</script>
+</body>
+</html>

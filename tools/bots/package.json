@@ -1,0 +1,15 @@
+{
+  "name": "duholov-bots",
+  "private": true,
+  "type": "module",
+  "description": "ИИ-игроки «Духолова»: боты со своей волей под управлением локальной модели (llama.cpp)",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "bot": "node bot.mjs",
+    "view": "node viewer.mjs",
+    "check": "node --check bot.mjs && node --check llm.mjs && node --check viewer.mjs && node --check page-agent.js && node --check offline.js"
+  },
+  "dependencies": {
+    "playwright": "1.47.2"
+  }
+}
