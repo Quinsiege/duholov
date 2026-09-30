@@ -410,7 +410,7 @@ const S = {
     this.d.sparks -= c.sparks; this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.lvl++;
     this.progress('power', 1);
-    if (sp.lvl >= this.maxLvl(sp)) this.progress('maxed', 1, { uid: sp.uid }); // 5.1.15: дух дошёл до предела (Кампания)
+    this.progress('spLvl', 1); // 5.1.16: уровень духа вырос — Кампания пересчитает «духов N уровня»
     this.tutAdvance('power'); // 4.0: шаг обучения «Усиль духа»
     this.save();
     return true;
@@ -686,8 +686,9 @@ const S = {
      gift — что Орден выдал на старте шага }. Начинается после обучения; считает и выдаёт сервер — телефон только показывает */
   campEnsure() {
     const d = this.d;
+    if (d && d.camp) this.campMigrate();
     if (!d || d.tut || d.camp) return;
-    d.camp = { ch: 0, s: 0, p: [], u: [], t: Date.now(), pick: null, rift: null, rn: 0 };
+    d.camp = { ch: 0, s: 0, p: [], u: [], t: Date.now(), pick: null, rift: null, rn: 0, v: this.CAMP_V };
     this.campOpen();
   },
   campStep() {
@@ -696,7 +697,7 @@ const S = {
   },
   campReady() { const c = this.d && this.d.camp, st = this.campStep(); return !!st && st.obj.every((o, i) => (c.p[i] || 0) >= o.n); },
   campClaimable() { const c = this.d && this.d.camp; return !!c && (!!c.pick || this.campReady()); },
-  // шаг открылся: счёт с нуля и выдача «на старт»; что уже сделано раньше (выбран клан, духи на пределе) — засчитано сразу
+  // шаг открылся: счёт с нуля и выдача «на старт»; что уже сделано раньше (выбран клан, духи нужного уровня) — засчитано сразу
   campOpen() {
     const c = this.d.camp, st = this.campStep();
     c.p = []; c.u = []; c.t = Date.now(); c.rift = null; delete c.gift;
@@ -708,7 +709,7 @@ const S = {
     }
     st.obj.forEach((o, i) => {
       if (o.t === 'clan' && this.d.clan) c.p[i] = 1;
-      if (o.t === 'maxed') { this.d.spirits.filter(sp => sp.lvl >= this.maxLvl(sp)).slice(0, o.n).forEach(sp => c.u.push(sp.uid)); c.p[i] = c.u.length; }
+      if (o.t === 'spLvl') c.p[i] = this.campLvlN(o);
     });
     Bus.emit('camp');
     this.save();
@@ -721,7 +722,19 @@ const S = {
     const sp = d.spirits.filter(x => SP[x.sid] && fams.includes(SP[x.sid].fam)).sort((a, b) => (a.t || 0) - (b.t || 0))[0];
     return sp ? SP[sp.sid].fam : null;
   },
-  // ход цели шага (из S.progress): maxed — один дух засчитывается один раз, buyIncense — покупка с ладаном, catchRar — своя редкость
+  // сколько духов уровня o.l и выше (не больше нужного)
+  campLvlN(o) { return Math.min(o.n, this.d.spirits.filter(sp => sp.lvl >= o.l).length); },
+  // 5.1.16: цели шага сменились (шаг 1: «до предела уровня» → «до 7 уровня») — у тех, кто уже на шаге, считаемые по коллекции
+  // цели пересчитываются по ней (раньше засчитанное не пропадает, если осталось верным)
+  CAMP_V: 2,
+  campMigrate() {
+    const c = this.d && this.d.camp;
+    if (!c || c.v === this.CAMP_V) return;
+    const st = this.campStep();
+    if (st) st.obj.forEach((o, i) => { if (o.t === 'spLvl') c.p[i] = this.campLvlN(o); });
+    c.v = this.CAMP_V;
+  },
+  // ход цели шага (из S.progress): spLvl — по коллекции (духов нужного уровня, счёт только растёт), buyIncense — покупка с ладаном, catchRar — своя редкость
   campProgress(type, amount = 1, meta = {}) {
     const c = this.d.camp, st = this.campStep();
     if (!st) return false;
@@ -729,7 +742,7 @@ const S = {
     st.obj.forEach((o, i) => {
       if ((c.p[i] || 0) >= o.n) return;
       let add = 0;
-      if (o.t === 'maxed') { if (type === 'maxed' && meta.uid && !c.u.includes(meta.uid)) { c.u.push(meta.uid); add = 1; } }
+      if (o.t === 'spLvl') { if (['spLvl', 'catch', 'hatch', 'evolve'].includes(type)) add = this.campLvlN(o) - (c.p[i] || 0); }
       else if (o.t === 'buyIncense') { if (type === 'buy' && Array.isArray(meta.items) && meta.items.includes('incense')) add = 1; }
       else if (o.t === 'catchRar') { if (type === 'catchRar' && meta.rar === o.r) add = amount; }
       else if (o.t === type) add = amount;

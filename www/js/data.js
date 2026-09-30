@@ -415,7 +415,7 @@ const TASK_LIMIT = 5;
 /* ---------- 5.1.15: Кампания (раздел «Кампания» в «Заданиях» и строка на карте под Ловчим) ----------
    Главы из шагов. Шаги идут по порядку: следующий открывается, когда забрана награда прошлого (глава II — позже).
    obj — цели шага, выполняются в любом порядке: t — что считается (как в S.progress: catch, hatch, evolve, spring, walk (км),
-   catchRar (r — редкость), maxed — дух усилен до предела уровня, campRift — победа в Разломе кампании, leagueWin — победа
+   catchRar (r — редкость), spLvl — духи уровня l и выше (5.1.16: было «до предела уровня»), campRift — победа в Разломе кампании, leagueWin — победа
    в Лиге, clan — выбран клан, exchange — обмен в Обменнике, buyIncense — куплен ладан, gateLand — шаг через Врата в другую
    часть света), n — сколько. start — что Орден выдаёт, когда шаг открылся (starterEss — эссенция стартового духа).
    reward: pick — редкий дух уровня Ловчего на выбор из трёх (сперва — стихий, которых у Ловчего нет), ess — эссенция
@@ -423,7 +423,7 @@ const TASK_LIMIT = 5;
    (CAMP_SKIN), прочее — как в S.giveRewards. Считает и выдаёт сервер (S.campProgress; core.js: campClaim, campPick, campRift) */
 const CAMPAIGN = [
   { title: ru`Глава I. Путь Ловчего`, steps: [
-    { id: 'c1s1', name: ru`Первая охота`, obj: [{ t: 'catch', n: 5 }, { t: 'maxed', n: 3 }, { t: 'campRift', n: 1 }],
+    { id: 'c1s1', name: ru`Первая охота`, obj: [{ t: 'catch', n: 5 }, { t: 'spLvl', l: 7, n: 3 }, { t: 'campRift', n: 1 }],
       reward: { pick: 1, ess: 15, cocoon: 5, lvl: 4, xp: 2500 } },
     { id: 'c1s2', name: ru`Тепло кокона`, obj: [{ t: 'hatch', n: 1 }], reward: { lvl: 5, xp: 2500 } },
     { id: 'c1s3', name: ru`Вызов Лиги`, obj: [{ t: 'leagueWin', n: 3 }], reward: { pick: 1, lvl: 6, xp: 5000 } },
@@ -439,7 +439,7 @@ const CAMPAIGN = [
 // текст цели (на телефоне — на языке игрока)
 const CAMP_OBJ = {
   catch: o => ru`Поймай духов: ${o.n}`,
-  maxed: o => ru`Усиль духов до предела уровня: ${o.n}`,
+  spLvl: o => ru`Усиль духов до ${o.l} уровня: ${o.n}`,
   campRift: () => ru`Победи духа из Разлома кампании`,
   hatch: () => ru`Нагрей любой кокон и выведи из него духа`,
   leagueWin: o => ru`Победи в боях Лиги: ${o.n}`,
@@ -456,7 +456,7 @@ const CAMP_OBJ = {
 const CAMP_SHORT = {
   campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Преврати духа`,
   buyIncense: () => ru`Купи ладан в Лавке`, gateLand: () => ru`Врата в другую часть света`,
-  catch: () => ru`Поймай духов`, maxed: () => ru`Духи до предела уровня`, leagueWin: () => ru`Победы в Лиге`, exchange: () => ru`Обмены в Обменнике`,
+  catch: () => ru`Поймай духов`, spLvl: o => ru`Духи ${o.l} уровня`, leagueWin: () => ru`Победы в Лиге`, exchange: () => ru`Обмены в Обменнике`,
   walk: () => ru`Путь, км`, spring: () => ru`Источники`, catchRar: o => o.r === 3 ? ru`Редкие духи` : o.r === 2 ? ru`Необычные духи` : ru`Обычные духи`,
 };
 // случайный облик за Кампанию: [редкость облика (LOOK.skin rar), вес] — редкий 95%, эпический 4,9%, легендарный 0,1%
@@ -814,7 +814,7 @@ const TUT_CHAPTERS = [
   { title: ru`Первый дух`,  reward: { charm: 15, honey: 3, sparks: 500, xp: 400 } },
   { title: ru`Твои духи`,   reward: { sparks: 500, xp: 300 } },
   { title: ru`Источники`,     reward: { charm: 15, water: 3, xp: 400 } },
-  { title: ru`Прогулки`,    reward: { charm: 20, honey: 5, water: 3, incense: 1, sparks: 1500, zlat: 20, xp: 1400 } },
+  { title: ru`Прогулки`,    reward: { charm: 20, honey: 5, water: 3, incense: 1, sparks: 10000, zlat: 20, xp: 1400 } }, // 5.1.16: ✦ 10 000 (было 1 500) — хватит усилить первых духов
 ];
 const TUT = [
   { ch: 0, kind: 'catch', id: 'catch1', sid: 'vayfayka', hint: ru`Рядом появился дух — видишь светящийся круг на карте? <b>Коснись духа</b>, а потом <b>смахни оберег вверх</b>, прямо в него.` },
