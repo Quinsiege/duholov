@@ -445,6 +445,14 @@ const MapView = {
       ${lt}</svg>`;
   },
 
+  // 5.1.15: личный Разлом кампании (S.d.camp.rift) — как Разлом на карте, но свой: без часа, уровня и Дальнего пропуска (Raid.open — r.camp)
+  campEnt() {
+    const r = S.d && S.d.camp && S.d.camp.rift;
+    if (!r || !SP[r.boss] || !S.campRiftOn()) return null;
+    const d = this.pos ? U.dist(this.pos.lat, this.pos.lng, r.lat, r.lng) : 0;
+    return { type: 'rift', camp: true, id: r.id, poi: null, lat: r.lat, lng: r.lng, tier: 1, boss: r.boss, myth: r.myth, d, done: false, endsAt: Infinity, place: null, name: ru`Разлом кампании` };
+  },
+
   /* ---------------- МАРКЕРЫ ---------------- */
   // 4.24: дух уже в Бестиарии — встречался или пойман; иначе на карте он знак вопроса
   known(sid) { const x = S.d.dex[sid]; return !!(x && (x.seen || x.caught)); },
@@ -463,7 +471,7 @@ const MapView = {
         html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
     }
     return L.divIcon({ className: 'mk', iconSize: [84, 96], iconAnchor: [42, 86],
-      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL ? 'locked' : ''}">${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
   },
   refresh(rebuild) {
     if (!this.map) return;
@@ -478,12 +486,13 @@ const MapView = {
     // 5.2: Источники, Капища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
     // PLACE_HOLD м, чтобы значок на границе не мигал); Следопыт, «Рядом» и дальние Разломы по-прежнему берут места из данных
     const R = Rules.PLACES.VIEW, inView = e => e.d <= R || (e.d <= R + this.PLACE_HOLD && this.markers.has(e.id));
-    const places = [...W.riftsAround(lat, lng, R + this.PLACE_HOLD), ...W.shrinesAround(lat, lng, R + this.PLACE_HOLD), ...W.springsAround(lat, lng, R + this.PLACE_HOLD)].filter(inView);
+    const ce = this.campEnt(); // 5.1.15: личный Разлом кампании
+    const places = [...(ce ? [ce] : []), ...W.riftsAround(lat, lng, R + this.PLACE_HOLD), ...W.shrinesAround(lat, lng, R + this.PLACE_HOLD), ...W.springsAround(lat, lng, R + this.PLACE_HOLD)].filter(inView);
     const ents = [...places, ...spirits];
     const seen = new Set();
     ents.forEach(e => {
       seen.add(e.id);
-      const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? `${e.done}${S.d.level < RAID_LEVEL}` : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : e.type === 'spirit' ? this.known(e.sid) : 0;
+      const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? `${e.done}${S.d.level < RAID_LEVEL && !e.camp}` : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : e.type === 'spirit' ? this.known(e.sid) : 0;
       let m = this.markers.get(e.id);
       const fresh = !m; // появился впервые (а не сменил вид)
       if (m && m._key !== key) { m.remove(); m = null; }
@@ -532,6 +541,7 @@ const MapView = {
     Sfx.play('tap');
     const d = U.dist(this.pos.lat, this.pos.lng, e.lat, e.lng);
     const range = e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT;
+    if (d > range && e.camp) { UI.toast(ru`Разлом кампании: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`); return; } // 5.1.15: личный — только рядом
     if (d > range && e.type === 'rift' && d <= Rules.FAR.R) { Raid.open(e); return; } // дальний бой по пропуску
     if (d > range) {
       const what = e.type === 'spirit' ? SP[e.sid].name : e.type === 'spring' || e.type === 'shrine' ? e.name : ru`Разлом`;

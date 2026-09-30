@@ -1310,6 +1310,20 @@
       return { match: id };
     },
     pvpCancel: async () => { const q = DB.pvpQ[who.uid]; if (q && q.match && DB.pvpM[q.match] && DB.pvpM[q.match].status === 'live') return { match: q.match }; delete DB.pvpQ[who.uid]; return {}; },
+    // 5.1.15: бой с Ловчим Ордена — как serve.js (pvpBot): заявка снимается (успел живой — бой с ним), иначе бой, где обе
+    // стороны — сам Ловчий, бот — сторона b. who.bots — только в новых сценариях (в прежних круг поиска проверяется без ботов)
+    pvpBot: async t => {
+      if (!who.bots) return null;
+      const q = DB.pvpQ[who.uid];
+      if (q && q.match && DB.pvpM[q.match] && DB.pvpM[q.match].status === 'live') return { match: q.match };
+      delete DB.pvpQ[who.uid];
+      const live = Object.values(DB.pvpM).find(m => m.status === 'live' && (m.a === who.uid || m.b === who.uid));
+      if (live) return { match: live.id };
+      const id = crypto.randomUUID();
+      DB.pvpM[id] = { id, season: t.season, a: who.uid, b: who.uid, ver: 0, status: 'live', aS: false, bS: false,
+        state: { init: true, season: t.season, at: Date.now(), a: JSON.parse(JSON.stringify(t.info)), b: JSON.parse(JSON.stringify(t.bot)), bot: 'b' } };
+      return { match: id };
+    },
     pvpLive: async () => { const m = Object.values(DB.pvpM).find(x => x.status === 'live' && (x.a === who.uid || x.b === who.uid)); return m ? { id: m.id } : null; },
     pvpLoad: async id => { const m = DB.pvpM[id]; return m ? { id, ver: m.ver, state: JSON.parse(JSON.stringify(m.state)), season: m.season, seat: m.a === who.uid ? 'a' : m.b === who.uid ? 'b' : null } : null; },
     pvpPut: async (id, ver, state, done) => {
@@ -2875,6 +2889,161 @@
       if (had) R.grant = g0; else delete globalThis.SeasonRewards;
     }
   });
+  /* ---------- 5.1.15: Кампания, Ловчий Ордена в Лиге, части света ---------- */
+  test('5.1.15: части света — Rules.land по очертаниям Атласа мира; места Атласа — в своих частях света', () => {
+    eq(Rules.land(55.75, 37.62), 'europe'); eq(Rules.land(55.03, 82.92), 'asia'); eq(Rules.land(40.71, -74.0), 'namerica');
+    eq(Rules.land(-22.9, -43.2), 'samerica'); eq(Rules.land(-33.87, 151.21), 'oceania'); eq(Rules.land(30.04, 31.24), 'africa');
+    eq(Rules.land(43.0, -30.0) !== null, true, 'в открытом море — ближайшая часть света');
+    ok(Atlas.LANDS === WORLD_LANDS, 'Атлас рисует те же материки');
+    const bad = [];
+    Object.entries(Atlas.PLACES).forEach(([land, list]) => list.forEach(p => { if (Rules.land(p[3], p[4]) !== land) bad.push(p[1] + '→' + Rules.land(p[3], p[4])); }));
+    eq(bad.join(', '), '', 'все места Атласа — в своих частях света');
+    eq(Rules.EXCHANGE.SPARKS, 1000); eq(Rules.EXCHANGE.ZLAT, 10, '5.1.15: ✦ 1 000 → 10 монет');
+  });
+  atest('5.1.15: Кампания, глава I — девять шагов по порядку: цели, награды, дух на выбор, Разлом кампании, Врата', async () => {
+    const P = await newPlayer('cp-a', 55.7539, 37.6208, 'Кампанец', 'kapelka');
+    ok(!P.data.camp, 'во время обучения Кампании нет'); eq(P.data.starter, 'kapelka', 'стартовый дух запомнен');
+    P.data.tut = 0; await must(P, 'tick', {});
+    ok(P.data.camp && P.data.camp.s === 0 && P.data.camp.p.join() === '0,0,0', 'после обучения — шаг 1, счёт с нуля');
+    const step = () => asPlayer(P, () => S.campStep()), prog = (t, n = 1, m) => asPlayer(P, () => S.progress(t, n, m));
+    const rich = () => { P.data.sparks = 1e6; Object.keys(SP).forEach(k => { P.data.essence[SP[k].fam] = 200; }); };
+    await refuse(P, 'campClaim', {}, /не выполнен/);
+    // 1 · «Первая охота»: 5 поимок, 3 духа до предела, Разлом кампании
+    for (let i = 0; i < 5; i++) prog('catch'); prog('catch'); eq(P.data.camp.p[0], 5, 'поимки — не больше нужного');
+    rich();
+    const sp0 = P.data.spirits[0];
+    asPlayer(P, () => { sp0.lvl = S.maxLvl(sp0) - 1; S.powerUp(sp0); });
+    eq(P.data.camp.p[1], 1, 'дух на пределе засчитан'); prog('maxed', 1, { uid: sp0.uid }); eq(P.data.camp.p[1], 1, 'тот же дух — один раз');
+    ['mshonok', 'ugolek'].forEach(sid => { const x = asPlayer(P, () => S.makeSpirit(sid, 3, sid + 'cp')); P.data.spirits.push(x); asPlayer(P, () => { x.lvl = S.maxLvl(x) - 1; S.powerUp(x); }); });
+    eq(P.data.camp.p[1], 3, 'три духа до предела');
+    await refuse(P, 'raidStart', { camp: true }, /Разлома кампании сейчас нет/);
+    const r1 = (await must(P, 'campRift', {})).rift, d1 = U.dist(P.lat, P.lng, r1.lat, r1.lng);
+    ok(r1 && d1 >= Rules.CAMP_RIFT.DIST[0] - 1 && d1 <= Rules.CAMP_RIFT.DIST[1] + 1 && SP[r1.boss], 'Разлом кампании — рядом с Ловчим');
+    eq((await must(P, 'campRift', {})).rift.id, r1.id, 'рядом — тот же, не переставляется');
+    ok(asPlayer(P, () => S.campRiftWanted({ lat: P.lat + 0.02, lng: P.lng })), 'ушёл дальше 600 м — Разлом переедет к Ловчему');
+    P.data.camp.rift.lat += 0.003; await refuse(P, 'raidStart', { camp: true }, /далеко/); P.data.camp.rift.lat = r1.lat;
+    P.lat = r1.lat; P.lng = r1.lng; P.data.level = 1; // Разлом кампании — с любого уровня (обычные — с RAID_LEVEL)
+    const s = await must(P, 'raidStart', { camp: true });
+    ok(s.camp && s.cs && s.cs.hp > 0 && s.boss === r1.boss, 'хранитель — от сервера, по команде');
+    // по силам: первый боец быстрыми ударами (без приёмов и погоды) — за 20–45 с по 2 удара в секунду, и успевает за 90 с даже по 1,3;
+    // выдерживает больше дюжины ударов хранителя без уклонов
+    const team = asPlayer(P, () => S.team()), f = team[0], x = asPlayer(P, () => S.battle(f)), fe = SP[f.sid].el, be = SP[s.boss].el, cs = s.cs;
+    const hit = Math.floor(0.5 * 12 * (x.atk / cs.def) * 1.2 * Raid.eff(fe, be)) + 1, sec = cs.hp / (hit * 2);
+    ok(sec >= 20 && sec <= 45, `быстрыми ударами — ${Math.round(sec)} с`); ok(hit * 1.3 * 90 >= cs.hp, 'и медленно — успеть за 90 с');
+    const bh = Math.floor(0.5 * cs.pw * (cs.atk / x.def) * 1.2 * Raid.eff(be, fe)) + 1;
+    ok(x.hp * 5 / bh >= 12, `первый боец выдерживает ${Math.floor(x.hp * 5 / bh)} ударов`);
+    eq(JSON.stringify(asPlayer(P, () => Raid.bossStats({ cs, boss: s.boss, tier: 1 }))), JSON.stringify(cs), 'бой считается по хранителю кампании');
+    P.srv.battle.start -= (30 + Rules.COUNTDOWN) * 1000;
+    ok((await must(P, 'raidEnd', { win: true, hp: {} })).win, 'победа засчитана');
+    eq(P.data.camp.p[2], 1); ok(!P.data.camp.rift, 'закрытый Разлом — с карты'); eq(Rules.dayUsed(P.data, 'raids'), 0, 'дневной лимит Разломов не потрачен');
+    ok(asPlayer(P, () => S.campReady() && S.campClaimable()), 'шаг выполнен');
+    const have = new Set(P.data.spirits.map(q => SP[q.sid].el)), coc = P.data.cocoons.length, xp0 = P.data.xp;
+    const c1 = await must(P, 'campClaim', {});
+    ok(P.data.level >= 4 && P.data.xp - xp0 >= 2500, 'опыт — до 4 уровня, но не меньше 2 500');
+    ok(P.data.cocoons.length === coc + 1 && P.data.cocoons.some(c => c.km === 5), 'синий кокон 5 км');
+    ok(c1.pick && c1.pick.opts.length === 3 && c1.pick.opts.every(id => SP[id].rar === 3 && SP[id].stage === 1 && !SP[id].legend), 'три редких духа на выбор');
+    eq(new Set(c1.pick.opts.map(id => SP[id].el)).size, 3, 'разных стихий');
+    ok(c1.pick.opts.every(id => !have.has(SP[id].el)), 'сперва — стихии, которых у Ловчего нет');
+    eq(step().id, 'c1s2', 'открыт шаг 2'); await refuse(P, 'campClaim', {}, /выбери духа/);
+    const n0 = P.data.spirits.length, pk = await must(P, 'campPick', { i: 1 }), got = P.data.spirits.find(q => q.uid === pk.uid);
+    ok(pk.sid === c1.pick.opts[1] && P.data.spirits.length === n0 + 1 && got.lvl === c1.pick.lvl, 'дух уровня Ловчего — в коллекции');
+    eq(pk.ess, 15); await refuse(P, 'campPick', { i: 0 }, /нечего/);
+    // 2 · кокон
+    prog('hatch'); await must(P, 'campClaim', {}); ok(P.data.level >= 5, 'до 5 уровня');
+    // 3 · три победы в Лиге (с живым или с Ловчим Ордена)
+    prog('leagueWin'); prog('leagueWin'); await refuse(P, 'campClaim', {}, /не выполнен/); prog('leagueWin');
+    const c3 = await must(P, 'campClaim', {}); ok(c3.pick && P.data.level >= 6, 'дух на выбор и 6 уровень'); await must(P, 'campPick', { i: 0 });
+    // 4 · клан
+    await must(P, 'clanJoin', { clan: 'slavic' }); eq(P.data.camp.p[0], 1); await must(P, 'campClaim', {}); ok(P.data.level >= 7, 'до 7 уровня');
+    // 5 · превращение: на старте шага — 25 эссенции стартового духа
+    eq(step().id, 'c1s5'); ok(P.data.camp.gift && P.data.camp.gift.fam === SP.kapelka.fam && P.data.camp.gift.n === 25, 'Орден прислал 25 эссенции стартового духа');
+    const kap = P.data.spirits.find(q => q.sid === 'kapelka'); P.data.essence[SP.kapelka.fam] = 25;
+    await must(P, 'evolve', { uid: kap.uid }); eq(P.data.camp.p[0], 1, 'превращение засчитано');
+    let sp5 = P.data.sparks; await must(P, 'campClaim', {}); eq(P.data.sparks - sp5, 10000, '10 000 искр');
+    // 6 · Обменник 5 раз — ✦ 1 000 → 10 монет
+    const z0 = P.data.zlat || 0; await must(P, 'exchange', { n: 5 }); eq((P.data.zlat || 0) - z0, 50, 'пять обменов — 50 монет'); eq(P.data.camp.p[0], 5);
+    await must(P, 'campClaim', {}); ok(P.data.level >= 8, 'до 8 уровня');
+    // 7 · ладан из Лавки + 15 поимок
+    await must(P, 'shopBuy', { id: 'incense' }); eq(P.data.camp.p[0], 1, 'ладан куплен');
+    for (let i = 0; i < 15; i++) prog('catch');
+    const g7 = P.data.items.gate || 0, c7 = await must(P, 'campClaim', {});
+    ok(c7.pick && P.data.level >= 9 && (P.data.items.gate || 0) === g7 + 1, 'дух на выбор, 9 уровень, Врата'); await must(P, 'campPick', { i: 2 });
+    // 8 · Врата в другую часть света: по своей части света — не в счёт
+    P.data.items.gate = 3; delete P.data.tpAt;
+    await must(P, 'teleport', { lat: 59.939, lng: 30.3158 }); P.lat = 59.939; P.lng = 30.3158;
+    eq(P.data.camp.p[0], 0, 'Москва → Петербург — та же часть света');
+    await must(P, 'teleport', { lat: 40.758, lng: -73.9855, item: true }); P.lat = 40.758; P.lng = -73.9855;
+    eq(P.data.camp.p[0], 1, 'Петербург → Нью-Йорк — другая'); const g8 = P.data.items.gate;
+    await must(P, 'campClaim', {}); eq(P.data.items.gate, g8 + 1);
+    // 9 · дальний путь
+    prog('walk', 60); prog('spring', 10); [[3, 5], [2, 10], [1, 20]].forEach(([r, n]) => { for (let i = 0; i < n; i++) prog('catchRar', 1, { rar: r }); });
+    prog('catchRar', 1, { rar: 4 }); eq(P.data.camp.p.join(), '60,5,10,20,10', 'все цели шага 9');
+    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0;
+    await must(P, 'campClaim', {});
+    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50, '30 000 искр и 50 монет');
+    ok(!step() && P.data.camp.s === 9, 'глава I пройдена'); await refuse(P, 'campClaim', {}, /Глава пройдена/);
+    ok(P.data.journal.some(j => j.type === 'camp'), 'шаги — в дневнике');
+  });
+  test('5.1.15: Кампания — облик и духи на выбор: редкости, стихии, повтор без перебора', () => {
+    const d0 = S.d;
+    try {
+      S.d = { spirits: [{ sid: 'ugolek' }, { sid: 'kapelka' }], owned: {}, created: 1 };
+      const a = S.campPickOpts('x'), b = S.campPickOpts('x');
+      eq(a.join(), b.join(), 'тот же шаг — те же три духа'); ok(a.every(id => !['fire', 'water'].includes(SP[id].el)), 'нет у Ловчего огня и воды — их не предлагают первыми');
+      const n = { 1: 0, 2: 0, 3: 0 };
+      for (let i = 0; i < 3000; i++) { const k = S.campSkin('s' + i); n[LOOK.skin.find(x => x.id === k).rar]++; }
+      ok(n[1] > 2700 && n[2] > 60 && n[2] < 260 && n[3] < 20, `облики: редких ${n[1]}, эпических ${n[2]}, легендарных ${n[3]}`);
+      LOOK.skin.filter(x => x.shop).forEach(x => { S.d.owned['skin:' + x.id] = true; }); eq(S.campSkin('z'), null, 'все облики уже есть — облика нет (монетами)');
+    } finally { S.d = d0; }
+  });
+  atest('5.1.15: Лига — живого соперника нет 10 с: бой с Ловчим Ордена (ботом); живой — всегда первым', async () => {
+    Object.values(DB.pvpQ).forEach(q => { q.seen = 0; });
+    const A = await leaguer('bt-a', 'Одиночка', 500); A.bots = true;
+    const w = await must(A, 'pvpFind', {}); ok(w.wait != null && !w.match, 'сперва — ждём живого');
+    ago(A, League.BOT_WAIT + 1);
+    const m = await must(A, 'pvpFind', {}), M = DB.pvpM[m.match];
+    ok(m.match && M.a === 'bt-a' && M.b === 'bt-a' && M.state.bot === 'b', 'через 10 с — бой с Ловчим Ордена: обе стороны — Ловчий, бот — сторона b');
+    const r0 = await pvp(A, 'state', { id: m.match }), foe = r0.st.s.b;
+    ok(r0.ok && r0.seat === 'a' && !('bot' in r0.st) && !('bm' in r0.st), 'по ответам сервера бота не отличить');
+    ok(foe.team.length === 3 && Math.abs(foe.pts - 500) <= League.RANGE && foe.lvl >= League.LEVEL && foe.name, 'рейтинг — в окне поиска, имя и уровень');
+    ok(foe.power < r0.st.s.a.power && foe.power > r0.st.s.a.power * 0.6, `команда бота чуть слабее: ${foe.power} против ${r0.st.s.a.power}`);
+    const t0 = r0.st.t0;
+    for (let t = t0 + 400; t < t0 + 16000; t += 600) await pvp(A, 'move', { id: m.match, in: [{ t: 'hit', n: 1 }] }, t);
+    const st = DB.pvpM[m.match].state;
+    ok(st.s.b.hits >= 10 && st.s.b.hits <= 30, `бот бьёт по часам: ${st.s.b.hits} ударов`); ok(st.log.length && st.bm, 'память бота — в бою');
+    const idle = st.s.a.seen + PvP.IDLE + 1000, end = await pvp(A, 'state', { id: m.match }, idle);
+    ok(end.st.over && end.st.over.win === 'b' && end.st.over.why === 'idle', 'Ловчий пропал — поражение (бот всегда на связи)');
+    ok(DB.pvpM[m.match].state.over.d.a && !DB.pvpM[m.match].state.over.d.b, 'в итоге — только сторона Ловчего');
+    const res = (await must(A, 'pvpResult', {})).done; ok(res.length === 1 && !res[0].win, 'поражение засчитано');
+    // победа над ботом — шаг Кампании «Победи в Лиге»
+    A.data.camp = { ch: 0, s: 2, p: [0], u: [], t: Date.now(), pick: null, rift: null, rn: 0 };
+    await must(A, 'pvpFind', {}); ago(A, League.BOT_WAIT + 1);
+    const m2 = (await must(A, 'pvpFind', {})).match; ok(m2 && DB.pvpM[m2].state.bot === 'b');
+    const q = await pvp(A, 'state', { id: m2 }); DB.pvpM[m2].state = PvP.ensure(DB.pvpM[m2].state); DB.pvpM[m2].state.s.b.team.forEach(f => { f.cur = 1; });
+    for (let t = q.st.t0 + 300, i = 0; i < 12 && !DB.pvpM[m2].state.over; t += 7000, i++) await pvp(A, 'move', { id: m2, in: [{ t: 'hit', n: 1 }, { t: 'switch', i: 0 }] }, t);
+    ok(DB.pvpM[m2].state.over && DB.pvpM[m2].state.over.win === 'a', 'Ловчий победил');
+    await must(A, 'pvpResult', {}); eq(A.data.camp.p[0], 1, 'победа над Ловчим Ордена — в шаг Кампании');
+    // живой — первым: второй Ловчий в окне — пара с ним, а не с ботом
+    const B = await leaguer('bt-b', 'Живой-1', 1700), C = await leaguer('bt-c', 'Живой-2', 1710); B.bots = C.bots = true;
+    await must(B, 'pvpFind', {}); ago(B, League.BOT_WAIT + 5);
+    const mc = await must(C, 'pvpFind', {});
+    ok(mc.match && !DB.pvpM[mc.match].state.bot, 'пара с живым');
+    eq((await must(B, 'pvpFind', {})).match, mc.match, 'и первый — в бою с живым, а не с ботом');
+  });
+  test('5.1.15: строка Кампании на карте — мелко, без всплывашек: цели шага, «забери награду», «выбери духа»', () => {
+    const d0 = S.d;
+    try {
+      S.d = { camp: { ch: 0, s: 0, p: [2, 3, 0], u: [], pick: null }, spirits: [], xp: 0 };
+      const h = UI.campLineHtml();
+      ok(/Первая охота/.test(h) && /Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h) && !/предела/.test(h), 'только невыполненные цели, с «сделано/нужно»');
+      S.d.camp.p = [5, 3, 1]; ok(/забери награду/.test(UI.campLineHtml()), 'шаг выполнен');
+      S.d.camp.pick = { opts: ['ugolek', 'kapelka', 'mshonok'], lvl: 5, ess: 15 }; ok(/Выбери духа/.test(UI.campLineHtml()), 'ждёт выбор духа');
+      S.d.camp = { ch: 0, s: 8, p: [12.34, 1, 0, 0, 0], u: [], pick: null };
+      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && /и ещё целей: 2/.test(h9), 'не больше трёх строк целей');
+      S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
+    } finally { S.d = d0; }
+  });
+
   /* ---------- 5.2: фокус обучения — доступно только действие текущего шага ---------- */
   test('5.2: фокус обучения — HUD, маркеры, меню и экраны: только шаг обучения; после обучения — всё', () => {
     const was = { tut: S.d.tut, started: Tut.started, toast: UI.toast, spring: UI.spring, duel: Duel.open, raid: Raid.open, enc: Encounter.start, pos: MapView.pos, map: MapView.map, sfx: Sfx.play };

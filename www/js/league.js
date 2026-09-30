@@ -266,6 +266,7 @@ const League = {
   // 4.16: кого ищем. Своя лига; у границы (ближе NEAR) — и соседняя; после 15 с — ±1 лига, после 30 с — ±2, после 60 с — все
   // 5.1.11: соперник — в пределах ±RANGE очков рейтинга от Ловчего (независимо от лиг и времени ожидания); пара — взаимная
   RANGE: 150,
+  BOT_WAIT: 10, // 5.1.15: живого соперника в окне нет столько секунд — соперником станет Ловчий Ордена (бот, PvP.botSide)
   window(pts) {
     pts = Math.max(0, Math.round(+pts || 0));
     const lo = Math.max(0, pts - this.RANGE), hi = Math.min(this.MAXPTS, pts + this.RANGE);
@@ -337,7 +338,7 @@ const League = {
         <div class="lg2-tix-s">${ru`жетоны обновятся через ${'<b class="lgx-mid"></b>'}`}</div>
         <div class="pf-mh lg2-th"><span>${ru`Команда на бой`}</span>${power ? `<b>${ru`сила ${U.fmtNum(power)}`}</b>` : ''}<button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
         <div class="lg2-team">${cards}</div>
-        <div class="lg2-rule">${ru`Соперник — живой Ловчий с рейтингом ±${this.RANGE} от твоего. Рейтинг зависит от силы соперника · опыт — за первые ${this.XP_RUNS} боёв дня`}</div>
+        <div class="lg2-rule">${ru`Соперник — Ловчий с рейтингом ±${this.RANGE} от твоего, а если такого нет — Ловчий Ордена. Рейтинг зависит от силы соперника · опыт — за первые ${this.XP_RUNS} боёв дня`}</div>
         <button class="btn primary wide lg-go" ${!locked && !ko && L.tickets > 0 && team.length === 3 ? '' : 'disabled'}>${btn}</button>`;
     };
 
@@ -488,7 +489,9 @@ const PvP = {
     const t0 = x.at + this.COUNT;
     const side = i => ({ pid: i.pid, name: i.name, look: i.look || null, lvl: i.lvl, pts: i.pts, rank: i.rank, clan: i.clan || null, power: i.power,
       team: i.team.map(f => ({ ...f, cur: Math.min(f.cur, f.max), en: 0 })), idx: 0, sh: 2, cd: 0, tok: this.BURST, tokAt: t0, seen: x.at, hits: 0, rej: 0 });
-    return { v: 1, season: x.season, t0, at: t0, clock: 0, pause: null, over: null, n: 0, log: [], s: { a: side(x.a), b: side(x.b) } };
+    const st = { v: 1, season: x.season, t0, at: t0, clock: 0, pause: null, over: null, n: 0, log: [], s: { a: side(x.a), b: side(x.b) } };
+    if (x.bot === 'a' || x.bot === 'b') st.bot = x.bot; // 5.1.15: бой с ботом — его сторона
+    return st;
   },
   cur(st, side) { const x = st.s[side]; return x.team[x.idx]; },
   log(st, e) { st.n++; st.log.push({ n: st.n, ...e }); if (st.log.length > this.LOG) st.log.splice(0, st.log.length - this.LOG); },
@@ -522,6 +525,7 @@ const PvP = {
     st.pause = null;
     // рейтинг обоим — в той же записи, что и итог (атомарно): от рейтингов на момент подбора
     st.over = { win, why, t: now, d: { a: League.delta(a.pts, b.pts, sc('a')), b: League.delta(b.pts, a.pts, sc('b')) } };
+    if (st.bot) delete st.over.d[st.bot]; // 5.1.15: у бота рейтинга нет — в таблицу сезона пишется только сторона Ловчего (league_put)
     this.log(st, { t: now, e: 'end', s: win, why });
   },
   refill(x, now) { x.tok = Math.min(this.BURST, x.tok + Math.max(0, now - x.tokAt) / 1000 * this.RATE); x.tokAt = now; },
@@ -636,7 +640,71 @@ const PvP = {
       Object.assign(foe, { cd: 0, tok: 0, tokAt: 0, hits: 0, rej: 0 });
     }
     if (p && p.k === 'charge') { if (p.by === seat) p.sh = null; else p.taps = null; }
+    delete x.bot; delete x.bm; // 5.1.15: соперник Ордена по ответам не отличается от живого
     return x;
+  },
+
+  /* ---------- 5.1.15: Ловчий Ордена — соперник-бот, если живого в окне поиска нет League.BOT_WAIT секунд ----------
+     Бой тот же, что с живым: строка league_matches (обе стороны — сам Ловчий, бот — сторона st.bot), время ленивое, а ходы
+     за бота делает сервер при каждом запросе Ловчего (bot): быстрые удары по часам (RATE в секунду, ведро ударов — общее
+     правило), приём — когда хватает энергии (через CHARGE_WAIT мс), щит — с вероятностью SHIELD (решает через REACT мс),
+     мини-игра приёма — TAPS тапов, после поражения бойца — дух, который лучше всего бьёт нынешнего духа Ловчего.
+     У бота нет рейтинга и прогресса: в итоге (over.d) — только сторона Ловчего. Служебное (bot, bm) скрывает mask */
+  BOT: { RATE: [1.3, 1.8], SHIELD: 0.55, TAPS: [6, 11], REACT: 700, CHARGE_WAIT: [600, 1800] },
+  BOT_NAMES: ['Ведана', 'Мирослав', 'Ярослава', 'Ратибор', 'Лада', 'Светозар', 'Дарёна', 'Велимир', 'Забава', 'Всеслав', 'Любава', 'Остромир',
+    'Снежана', 'Добрыня', 'Милана', 'Радим', 'Lumi', 'Nightowl', 'Skadi', 'Kitsune', 'Wren', 'Ember', 'Morrow', 'Aiko', 'Лисий_хвост',
+    'Совушка', 'Кот_Баюн', 'Гроза', 'Полуночник', 'Береста'],
+  // сторона бота для новой записи боя: рейтинг — в окне Ловчего, уровень — около его уровня, команда — три духа разных
+  // стихий, чуть слабее команды Ловчего (82–98% её силы). me — заявка Ловчего (как в league_find: pid, lvl, pts, power)
+  botSide(me, now = Date.now()) {
+    const r = U.rng('pvpbot:' + me.pid + ':' + now), pick = a => a[Math.floor(r() * a.length)];
+    const pts = U.clamp(Math.round((+me.pts || 0) + (r() * 2 - 1) * League.RANGE * 0.6), 0, League.MAXPTS);
+    const lvl = U.clamp((me.lvl | 0) + Math.round(r() * 4 - 2), League.LEVEL, MAX_LEVEL);
+    const pool = SPECIES.filter(s => !s.legend && !s.season && s.rar <= 3 && MYTH_KEYS.includes(s.myth || 'slavic'));
+    const want = Math.max(30, (+me.power || 300) * (0.82 + r() * 0.16)) / 3, team = [], els = [];
+    for (let i = 0; i < 3; i++) {
+      const free = pool.filter(s => !els.includes(s.el)), s = pick(free.length ? free : pool);
+      els.push(s.el);
+      const iv = [0, 0, 0].map(() => 6 + Math.floor(r() * 10));
+      let lv = 1;
+      for (let l = 1; l <= MAX_LEVEL; l++) { if (S.power({ sid: s.id, lvl: l, iv }) > want) break; lv = l; }
+      team.push(this.fighter({ uid: 'b' + i + Math.floor(r() * 1e9).toString(36), sid: s.id, lvl: lv, iv }));
+    }
+    const lk = list => { const ok = list.filter(y => (y.lvl || 1) <= lvl && !y.shop && !y.pass && !y.league); return pick(ok.length ? ok : list); };
+    const clans = MYTH_KEYS.filter(k => CLANS[k]);
+    return { pid: 'orden' + Math.floor(r() * 1e12).toString(36), name: pick(this.BOT_NAMES), look: { cloak: lk(LOOK.cloak).c, eyes: lk(LOOK.eyes).c, emblem: lk(LOOK.emblem).id },
+      lvl, pts, rank: League.rank(pts), clan: clans.length && r() < 0.6 ? pick(clans) : null, power: team.reduce((a, f) => a + f.power, 0), team };
+  },
+  // ходы бота к моменту now (сервер: GameCore.pvp, после ходов Ловчего). Память бота — st.bm (когда бил, темп, когда приём)
+  bot(st, now) {
+    const me = st.bot;
+    if (!me || st.over || now < st.t0) return;
+    const B = this.BOT, foe = this.other(me), my = st.s[me], p = st.pause;
+    const m = st.bm || (st.bm = { at: st.t0, rate: B.RATE[0] + Math.random() * (B.RATE[1] - B.RATE[0]), ch: 0 });
+    my.seen = now;
+    if (p && p.k === 'switch') {
+      if (p.who.includes(me)) {
+        const f = this.cur(st, foe);
+        let bi = -1, bv = -1;
+        my.team.forEach((x, i) => { if (x.cur <= 0) return; const v = Raid.eff(x.el, f.el) * x.power * (0.5 + x.cur / x.max); if (v > bv) { bv = v; bi = i; } });
+        if (bi >= 0) this.act(st, me, { t: 'switch', i: bi }, now);
+      }
+      m.at = now; return;
+    }
+    if (p && p.k === 'charge') {
+      if (p.by === foe && p.sh == null && now - p.t >= B.REACT) this.act(st, me, { t: 'shield', on: my.sh > 0 && Math.random() < B.SHIELD }, now);
+      else if (p.by === me && p.taps == null && now - p.t >= 1200) this.act(st, me, { t: 'taps', n: B.TAPS[0] + Math.floor(Math.random() * (B.TAPS[1] - B.TAPS[0] + 1)) }, now);
+      m.at = now; return; // во время приёма удары не копятся
+    }
+    const n = Math.floor((now - m.at) / 1000 * m.rate);
+    if (n > 0) {
+      m.at += n / m.rate * 1000;
+      for (let k = n; k > 0 && !st.pause && !st.over; k -= this.MAX_TAPS) this.act(st, me, { t: 'hit', n: Math.min(k, this.MAX_TAPS) }, now);
+    }
+    const x = this.cur(st, me);
+    if (st.pause || st.over || !x || x.en < MOVES.charge.cost) { m.ch = 0; return; }
+    if (!m.ch) m.ch = now + B.CHARGE_WAIT[0] + Math.random() * (B.CHARGE_WAIT[1] - B.CHARGE_WAIT[0]);
+    else if (now >= m.ch) { m.ch = 0; this.act(st, me, { t: 'charge', kind: 'charge' }, now); }
   },
   // Бой глазами Ловчего seat: «я» и «соперник»; энергию и показатели духов соперника не показываем
   view(st, seat, now) {

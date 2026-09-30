@@ -89,6 +89,7 @@ const S = {
     const sp = this.makeSpirit(starter, Math.min(5, this.catchLvl()), 'starter' + Date.now(), { ivMin: 10 });
     this.addSpirit(sp, true);
     this.d.essence[SP[starter].fam] = 10;
+    this.d.starter = starter; // 5.1.15: стартовый дух — для Кампании (эссенция стартового духа)
     this.d.buddy = { uid: sp.uid, km: 0, finds: 0 };
     this.d.tut = 1; this.d.tutV = TUT_V; // обучение новичка (4.0; 4.24 — подсказками)
     this.ensureQuests();
@@ -409,6 +410,7 @@ const S = {
     this.d.sparks -= c.sparks; this.d.essence[SP[sp.sid].fam] -= c.essence;
     sp.lvl++;
     this.progress('power', 1);
+    if (sp.lvl >= this.maxLvl(sp)) this.progress('maxed', 1, { uid: sp.uid }); // 5.1.15: дух дошёл до предела (Кампания)
     this.tutAdvance('power'); // 4.0: шаг обучения «Усиль духа»
     this.save();
     return true;
@@ -668,11 +670,134 @@ const S = {
       changed = true;
       if (q.p >= q.n) Bus.emit('toast', { text: ru`Поручение выполнено: ${I18N.back(q.text)}`, cls: 'good' });
     });
+    // 5.1.15: Кампания — без всплывашек: её шаг виден строкой на карте под Ловчим
+    if (this.d.camp && this.campProgress(type, amount, meta)) changed = true;
     if (changed) { Bus.emit('quests'); this.save(); }
   },
   questsClaimable() {
     const daily = this.d.quests ? this.d.quests.list.filter(q => q.p >= q.n && !q.claimed).length : 0;
-    return daily + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length;
+    return daily + this.d.tasks.filter(q => q.p >= q.n).length + this.d.taskMeet.length + (this.campClaimable() ? 1 : 0);
+  },
+
+  /* ---------- 5.1.15: Кампания (CAMPAIGN в data.js) ----------
+     d.camp = { ch — глава, s — шаг (за последним шагом — глава пройдена), p — сколько сделано по каждой цели шага,
+     u — духи, уже засчитанные «до предела», t — когда шаг открылся, pick — награда «дух на выбор» ждёт выбора
+     { opts, lvl, ess, seed }, rift — личный Разлом кампании { id, lat, lng, boss, myth }, rn — сколько раз он ставился,
+     gift — что Орден выдал на старте шага }. Начинается после обучения; считает и выдаёт сервер — телефон только показывает */
+  campEnsure() {
+    const d = this.d;
+    if (!d || d.tut || d.camp) return;
+    d.camp = { ch: 0, s: 0, p: [], u: [], t: Date.now(), pick: null, rift: null, rn: 0 };
+    this.campOpen();
+  },
+  campStep() {
+    const c = this.d && this.d.camp, ch = c && CAMPAIGN[c.ch];
+    return (ch && ch.steps[c.s]) || null;
+  },
+  campReady() { const c = this.d && this.d.camp, st = this.campStep(); return !!st && st.obj.every((o, i) => (c.p[i] || 0) >= o.n); },
+  campClaimable() { const c = this.d && this.d.camp; return !!c && (!!c.pick || this.campReady()); },
+  // шаг открылся: счёт с нуля и выдача «на старт»; что уже сделано раньше (выбран клан, духи на пределе) — засчитано сразу
+  campOpen() {
+    const c = this.d.camp, st = this.campStep();
+    c.p = []; c.u = []; c.t = Date.now(); c.rift = null; delete c.gift;
+    if (!st) return;
+    c.p = st.obj.map(() => 0);
+    if (st.start && st.start.starterEss) {
+      const fam = this.starterFam();
+      if (fam) { this.addEssence(fam, st.start.starterEss); c.gift = { fam, n: st.start.starterEss }; }
+    }
+    st.obj.forEach((o, i) => {
+      if (o.t === 'clan' && this.d.clan) c.p[i] = 1;
+      if (o.t === 'maxed') { this.d.spirits.filter(sp => sp.lvl >= this.maxLvl(sp)).slice(0, o.n).forEach(sp => c.u.push(sp.uid)); c.p[i] = c.u.length; }
+    });
+    Bus.emit('camp');
+    this.save();
+  },
+  // семейство стартового духа: запомнено с 5.1.15 (d.starter), у прежних Ловчих — самый давний дух стартовых семейств
+  starterFam() {
+    const d = this.d, st = d.starter && SP[d.starter];
+    if (st) return st.fam;
+    const fams = ['ugolek', 'kapelka', 'mshonok'].map(k => SP[k] && SP[k].fam).filter(Boolean);
+    const sp = d.spirits.filter(x => SP[x.sid] && fams.includes(SP[x.sid].fam)).sort((a, b) => (a.t || 0) - (b.t || 0))[0];
+    return sp ? SP[sp.sid].fam : null;
+  },
+  // ход цели шага (из S.progress): maxed — один дух засчитывается один раз, buyIncense — покупка с ладаном, catchRar — своя редкость
+  campProgress(type, amount = 1, meta = {}) {
+    const c = this.d.camp, st = this.campStep();
+    if (!st) return false;
+    let changed = false;
+    st.obj.forEach((o, i) => {
+      if ((c.p[i] || 0) >= o.n) return;
+      let add = 0;
+      if (o.t === 'maxed') { if (type === 'maxed' && meta.uid && !c.u.includes(meta.uid)) { c.u.push(meta.uid); add = 1; } }
+      else if (o.t === 'buyIncense') { if (type === 'buy' && Array.isArray(meta.items) && meta.items.includes('incense')) add = 1; }
+      else if (o.t === 'catchRar') { if (type === 'catchRar' && meta.rar === o.r) add = amount; }
+      else if (o.t === type) add = amount;
+      if (!(add > 0)) return;
+      c.p[i] = Math.min(o.n, (c.p[i] || 0) + add);
+      if (o.t === 'campRift' && c.p[i] >= o.n) c.rift = null; // Разлом закрыт — с карты
+      changed = true;
+    });
+    if (changed) Bus.emit('camp');
+    return changed;
+  },
+  // опыт награды: до lvl уровня Ловчего, но не меньше xp (разовая награда — без дневного потолка)
+  campXp(rw) { return Math.max(rw.xp || 0, rw.lvl ? Math.max(0, levelXP(rw.lvl) - this.d.xp) : 0); },
+  // награда «дух на выбор»: три редких духа первой стадии открытых мифологий, разных стихий; сперва — стихий, которых
+  // у Ловчего ещё нет. seed у шага один: повторный запрос варианты не перебирает
+  campPickOpts(seed) {
+    const r = U.rng(seed), have = new Set(this.d.spirits.map(sp => SP[sp.sid] && SP[sp.sid].el));
+    const pool = SPECIES.filter(s => s.rar === 3 && s.stage === 1 && !s.legend && !s.season && MYTH_KEYS.includes(s.myth || 'slavic'));
+    const mix = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const out = [], has = s => out.includes(s.id), elOut = s => out.some(id => SP[id].el === s.el);
+    for (const el of mix(ELEMENT_KEYS.filter(e => !have.has(e)))) { if (out.length >= 3) break; const c = mix(pool.filter(s => s.el === el)); if (c.length) out.push(c[0].id); }
+    for (const s of mix(pool)) { if (out.length >= 3) break; if (!has(s) && !elOut(s)) out.push(s.id); }
+    for (const s of mix(pool)) { if (out.length >= 3) break; if (!has(s)) out.push(s.id); }
+    return out;
+  },
+  // случайный облик (CAMP_SKIN): такой редкости у Ловчего уже все — любой другой, которого ещё нет; нет таких — null
+  campSkin(seed) {
+    const r = U.rng(seed), rar = U.weighted(CAMP_SKIN, r());
+    const free = k => LOOK.skin.filter(x => x.rar === k && x.shop && !this.d.owned[`skin:${x.id}`]);
+    let list = free(rar);
+    for (const k of [1, 2, 3]) if (!list.length) list = free(k);
+    return list.length ? list[Math.floor(r() * list.length)].id : null;
+  },
+  // Разлом кампании: цель шага ещё не выполнена
+  campRiftOn() { const c = this.d && this.d.camp, st = this.campStep(); return !!st && st.obj.some((o, i) => o.t === 'campRift' && (c.p[i] || 0) < o.n); },
+  // Разлом нужно поставить или перенести к Ловчему (ушёл дальше KEEP м, шагнул через Врата)
+  campRiftWanted(pos) {
+    if (!this.campRiftOn()) return false;
+    const r = this.d.camp.rift;
+    return !r || (!!pos && U.dist(pos.lat, pos.lng, r.lat, r.lng) > Rules.CAMP_RIFT.KEEP);
+  },
+  // поставить Разлом рядом с точкой pos (сервер): случайное направление, DIST м; хранитель — один на шаг
+  campRiftPlace(pos) {
+    const c = this.d.camp, R = Rules.CAMP_RIFT;
+    c.rn = (c.rn || 0) + 1;
+    const r = U.rng('campRift:' + this.d.created + ':' + c.t + ':' + c.rn), ang = r() * 2 * Math.PI, m = R.DIST[0] + r() * (R.DIST[1] - R.DIST[0]);
+    const lat = pos.lat + m * Math.cos(ang) / 111320, lng = pos.lng + m * Math.sin(ang) / (111320 * Math.cos(pos.lat * Math.PI / 180));
+    let boss = c.rift && SP[c.rift.boss] ? c.rift.boss : null;
+    if (!boss) {
+      const pool = SPECIES.filter(s => !s.legend && !s.season && s.stage >= 2 && s.rar <= 3 && MYTH_KEYS.includes(s.myth || 'slavic'));
+      boss = pool.length ? pool[Math.floor(r() * pool.length)].id : 'kostrovik';
+    }
+    c.rift = { id: 'camp:' + c.t + ':' + c.rn, lat: +lat.toFixed(6), lng: +lng.toFixed(6), boss, myth: SP[boss].myth || 'slavic' };
+    Bus.emit('camp');
+    return c.rift;
+  },
+  // Хранитель Разлома кампании — по команде Ловчего (Rules.CAMP_RIFT): побеждается наверняка, но не за пару ударов.
+  // Защита — как атака первого бойца (его быстрый удар выходит ~×1, со слабостью стихии — сильнее), здоровье — T секунд
+  // его быстрых ударов по TAPS в секунду; атака — как защита первого бойца, сила удара — чтобы он выдержал HITS ударов
+  // без уклонов (с тем здоровьем, что у него сейчас). Погода не в счёт — считают одинаково телефон и сервер
+  campBoss(team, bossSid) {
+    const R = Rules.CAMP_RIFT, s = SP[bossSid], f = team && team[0];
+    if (!s || !f) return null;
+    const x = this.battle(f), el = SP[f.sid].el, def = x.atk, atk = x.def;
+    const hit = Math.floor(0.5 * 12 * (x.atk / def) * 1.2 * Raid.eff(el, s.el)) + 1;
+    const hp0 = Math.max(1, Math.round(x.hp * 5 * this.hpNow(f)));
+    const want = Math.max(2, hp0 / R.HITS), pw = Math.max(0.5, (want - 1) / (0.5 * 1.2 * (atk / x.def) * Raid.eff(s.el, el)));
+    return { atk, def, hp: Math.round(R.T * R.TAPS * hit), pw: Math.round(pw * 100) / 100, rl: this.catchLvl() };
   },
   // Новое поручение (выдаёт сервер у источника): задание и дух, который встретится в награду
   // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests)
