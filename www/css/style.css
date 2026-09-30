@@ -5488,7 +5488,7 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 #hud .camp-line.hidden { display: none; }
 #hud .camp-line b { font-weight: 700; font-size: 13px; color: var(--gold2); margin-bottom: 1px; }
 #hud .camp-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-#hud .camp-line i { font-style: normal; color: #99f6e4; }
+#hud .camp-line i { font-style: normal; color: #99f6e4; margin-left: 6px; } /* 5.1.18: счётчик — с отступом от названия цели */
 #hud .camp-line .cl-ok { color: rgba(255, 255, 255, .55); }
 #hud .camp-line .cl-ok i { color: rgba(153, 246, 228, .6); }
 #hud .camp-line .cl-go { color: #86efac; }

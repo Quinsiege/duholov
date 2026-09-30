@@ -115,7 +115,7 @@ Object.assign(UI, {
         const bar = cc ? cc.walked / cc.km : o.n > 1 ? v / o.n : -1;
         return `<div class="cp-obj ${ok ? 'done' : ''}"><div class="cp-ot"><span>${CAMP_OBJ[o.t](o)}</span><b>${ok ? '✓' : num}</b></div>${bar >= 0 && !ok ? `<div class="pbar"><i style="width:${Math.min(100, bar * 100)}%"></i></div>` : ''}</div>`;
       }).join('');
-      const gift = c.gift && SP[c.gift.fam] ? `<small class="cp-gift">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на превращение`}</small>` : '';
+      const gift = c.gift && SP[c.gift.fam] ? `<small class="cp-gift">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на эволюцию`}</small>` : '';
       html += `<div class="quest cp-step ${ready ? 'done' : ''}"><div class="q-main"><b class="cp-name">${st.name}</b>${objs}${gift}
         ${S.campRiftOn() ? `<button class="btn small ghost cp-rift">${ru`Где Разлом кампании?`}</button>` : ''}
         <small class="cp-rwh">${ru`Награда`}</small><div class="qd-rws">${this.campRwHtml(st.reward)}</div></div></div>

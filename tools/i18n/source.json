@@ -7251,9 +7251,7 @@
  {
   "k": "Преврати духа",
   "at": [
-   "www/js/data.js:402",
-   "www/js/data.js:447",
-   "www/js/data.js:457"
+   "www/js/data.js:402"
   ],
   "ctx": "{ t: 'evolve',   tier: 2, min: 1, max: 1, text: () => ru.k`Преврати духа` },"
  },
@@ -7315,14 +7313,12 @@
   "ctx": "{ id: 'c1s4', name: ru`Знамя клана`, obj: [{ t: 'clan', n: 1 }], reward: { lvl: 7, xp: 2500 } },"
  },
  {
-  "k": "Превращение",
+  "k": "Эволюция",
   "at": [
    "www/js/data.js:431",
-   "www/js/ui-spirits.js:228",
-   "www/js/ui-spirits.js:230",
-   "www/js/ui-spirits.js:329"
+   "www/js/ui-spirits.js:566"
   ],
-  "ctx": "{ id: 'c1s5', name: ru`Превращение`, obj: [{ t: 'evolve', n: 1 }], start: { starterEss: 25 }, reward: { xp: 5000, sparks: 10000 } },"
+  "ctx": "{ id: 'c1s5', name: ru`Эволюция`, obj: [{ t: 'evolve', n: 1 }], start: { evoEss: 25 }, reward: { xp: 5000, sparks: 10000 } },"
  },
  {
   "k": "Искры и монеты",
@@ -7381,6 +7377,14 @@
   "ctx": "leagueWin: o => ru`Победи в боях Лиги: ${o.n}`,"
  },
  {
+  "k": "Эволюционировать духа",
+  "at": [
+   "www/js/data.js:447",
+   "www/js/data.js:457"
+  ],
+  "ctx": "evolve: () => ru`Эволюционировать духа`,"
+ },
+ {
   "k": "Обменяй искры в Обменнике Лавки: {0}",
   "at": [
    "www/js/data.js:448"
@@ -7437,7 +7441,7 @@
    "www/js/map.js:453",
    "www/js/raid.js:110"
   ],
-  "ctx": "campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Преврати духа`,"
+  "ctx": "campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Эволюционировать духа`,"
  },
  {
   "k": "Врата в другую часть света",
@@ -10517,7 +10521,7 @@
   "k": "Смена",
   "at": [
    "www/js/duel.js:203",
-   "www/js/league-battle.js:156"
+   "www/js/league-battle.js:158"
   ],
   "ctx": "<button class=\"duel-switch\"><span>${ru`Смена`}</span><em></em></button>"
  },
@@ -10525,7 +10529,7 @@
   "k": "Приём",
   "at": [
    "www/js/duel.js:205",
-   "www/js/league-battle.js:158",
+   "www/js/league-battle.js:160",
    "www/js/raid.js:227"
   ],
   "ctx": "<button class=\"raid-special\"><svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"44\" class=\"bg\"/><circle cx=\"50\" cy=\"50\" r=\"44\" class=\"fill\"/></svg><span>${ru`Приём`}</span></button>"
@@ -10541,7 +10545,7 @@
   "k": "Бой!",
   "at": [
    "www/js/duel.js:240",
-   "www/js/league-battle.js:314"
+   "www/js/league-battle.js:312"
   ],
   "ctx": "$('.raid-count').textContent = ru`Бой!`;"
  },
@@ -10549,8 +10553,8 @@
   "k": "Мало энергии — атакуй тапами",
   "at": [
    "www/js/duel.js:320",
-   "www/js/league-battle.js:231",
-   "www/js/league-battle.js:369"
+   "www/js/league-battle.js:233",
+   "www/js/league-battle.js:371"
   ],
   "ctx": "if (m.energy < mv.cost) { UI.toast(ru`Мало энергии — атакуй тапами`); return; }"
  },
@@ -10558,7 +10562,7 @@
   "k": "Тапай!",
   "at": [
    "www/js/duel.js:325",
-   "www/js/league-battle.js:375"
+   "www/js/league-battle.js:377"
   ],
   "ctx": "const ov = this.overlay(`<div class=\"charge-mini\"><div class=\"charge-title\">${ELEMENTS[m.el][kind]}</div><button class=\"charge-orb\" style=\"--c:${col}\"><span>${ru`Тапай!`}</span></button><div class=\"pbar\"><i></i></div></d"
  },
@@ -10567,7 +10571,7 @@
   "at": [
    "www/js/duel.js:342",
    "www/js/duel.js:378",
-   "www/js/league-battle.js:269"
+   "www/js/league-battle.js:271"
   ],
   "ctx": "this.hit('foe', ru`Щит!`, 'dodged');"
  },
@@ -10575,7 +10579,7 @@
   "k": "Щит ({0})",
   "at": [
    "www/js/duel.js:368",
-   "www/js/league-battle.js:398"
+   "www/js/league-battle.js:400"
   ],
   "ctx": "<button class=\"btn primary sh-yes\" ${has ? '' : 'disabled'}>${this.shieldSvg} ${ru`Щит (${st.me.shields})`}</button>"
  },
@@ -10583,7 +10587,7 @@
   "k": "Принять удар",
   "at": [
    "www/js/duel.js:369",
-   "www/js/league-battle.js:399"
+   "www/js/league-battle.js:401"
   ],
   "ctx": "<button class=\"btn sh-no\">${ru`Принять удар`}</button>"
  },
@@ -10598,7 +10602,7 @@
   "k": "Смена будет доступна через {0} с",
   "at": [
    "www/js/duel.js:420",
-   "www/js/league-battle.js:417"
+   "www/js/league-battle.js:419"
   ],
   "ctx": "if (!forced && st.me.cd > 0) { UI.toast(ru`Смена будет доступна через ${Math.ceil(st.me.cd)} с`); return; }"
  },
@@ -10606,7 +10610,7 @@
   "k": "Некого выпустить",
   "at": [
    "www/js/duel.js:422",
-   "www/js/league-battle.js:420"
+   "www/js/league-battle.js:422"
   ],
   "ctx": "if (!opts.length) { if (!forced) UI.toast(ru`Некого выпустить`); return; }"
  },
@@ -10614,7 +10618,7 @@
   "k": "Дух без сил! Кого выпустить?",
   "at": [
    "www/js/duel.js:424",
-   "www/js/league-battle.js:423"
+   "www/js/league-battle.js:425"
   ],
   "ctx": "const ov = this.overlay(`<div class=\"switch-q\"><div class=\"charge-title\">${forced ? ru`Дух без сил! Кого выпустить?` : ru`Сменить духа`}</div>"
  },
@@ -10622,7 +10626,7 @@
   "k": "Сменить духа",
   "at": [
    "www/js/duel.js:424",
-   "www/js/league-battle.js:423"
+   "www/js/league-battle.js:425"
   ],
   "ctx": "const ov = this.overlay(`<div class=\"switch-q\"><div class=\"charge-title\">${forced ? ru`Дух без сил! Кого выпустить?` : ru`Сменить духа`}</div>"
  },
@@ -10677,7 +10681,7 @@
   "at": [
    "www/js/duel.js:507",
    "www/js/duel.js:531",
-   "www/js/league-battle.js:456"
+   "www/js/league-battle.js:458"
   ],
   "ctx": "html = `<div class=\"res-title\">${ru`Победа!`}</div>"
  },
@@ -10693,7 +10697,7 @@
   "at": [
    "www/js/duel.js:515",
    "www/js/duel.js:537",
-   "www/js/league-battle.js:456"
+   "www/js/league-battle.js:458"
   ],
   "ctx": "html = `<div class=\"res-title lose\">${ru`Поражение`}</div>"
  },
@@ -10771,7 +10775,7 @@
   "k": "Сдаться?",
   "at": [
    "www/js/duel.js:578",
-   "www/js/league-battle.js:435"
+   "www/js/league-battle.js:437"
   ],
   "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой"
  },
@@ -10786,7 +10790,7 @@
   "k": "Сдаться",
   "at": [
    "www/js/duel.js:578",
-   "www/js/league-battle.js:435"
+   "www/js/league-battle.js:437"
   ],
   "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой"
  },
@@ -10794,7 +10798,7 @@
   "k": "Продолжить",
   "at": [
    "www/js/duel.js:578",
-   "www/js/league-battle.js:435",
+   "www/js/league-battle.js:437",
    "www/js/login.js:322"
   ],
   "ctx": "UI.confirm(ru`Сдаться?`, ru`Поединок будет проигран.`, ru`Сдаться`, () => this.close(), ru`Продолжить`, true); // 4.25: сдаться — красной кнопкой"
@@ -11907,7 +11911,7 @@
   "at": [
    "www/js/game.js:94",
    "www/js/game.js:130",
-   "www/js/league-battle.js:28"
+   "www/js/league-battle.js:30"
   ],
   "ctx": "throw new PlayError((res && res.error) || ru`Ошибка сервера`);"
  },
@@ -12748,253 +12752,253 @@
  {
   "k": "Поиск соперника",
   "at": [
-   "www/js/league-battle.js:52"
+   "www/js/league-battle.js:54"
   ],
   "ctx": "const scr = UI.screen(ru`Поиск соперника`, `"
  },
  {
   "k": "Ищем соперника",
   "at": [
-   "www/js/league-battle.js:56",
-   "www/js/league-battle.js:74"
+   "www/js/league-battle.js:58",
+   "www/js/league-battle.js:76"
   ],
   "ctx": "<div class=\"lgs-where\">${ru`Ищем соперника`}</div>"
  },
  {
   "k": "Отменить поиск",
   "at": [
-   "www/js/league-battle.js:58"
+   "www/js/league-battle.js:60"
   ],
   "ctx": "<button class=\"btn wide lgs-cancel\">${ru`Отменить поиск`}</button>"
  },
  {
   "k": "Сейчас ищут соперника: {0}",
   "at": [
-   "www/js/league-battle.js:75"
+   "www/js/league-battle.js:77"
   ],
   "ctx": "if (n) n.textContent = r.n > 1 ? ru`Сейчас ищут соперника: ${r.n}` : ru`Пока ищешь только ты — позови друзей в Лигу`;"
  },
  {
   "k": "Пока ищешь только ты — позови друзей в Лигу",
   "at": [
-   "www/js/league-battle.js:75"
+   "www/js/league-battle.js:77"
   ],
   "ctx": "if (n) n.textContent = r.n > 1 ? ru`Сейчас ищут соперника: ${r.n}` : ru`Пока ищешь только ты — позови друзей в Лигу`;"
  },
  {
   "k": "Сейчас в Лиге мало Ловчих — попробуй позже",
   "at": [
-   "www/js/league-battle.js:81"
+   "www/js/league-battle.js:83"
   ],
   "ctx": "if (s >= this.GIVE_UP) { UI.toast(ru`Сейчас в Лиге мало Ловчих — попробуй позже`); UI.closeScreen(scr); return; }"
  },
  {
   "k": "Соперник найден!",
   "at": [
-   "www/js/league-battle.js:105"
+   "www/js/league-battle.js:107"
   ],
   "ctx": "<div class=\"lgs-title\">${ru`Соперник найден!`}</div>"
  },
  {
   "k": "ур. {0} · сила команды {1}",
   "at": [
-   "www/js/league-battle.js:110"
+   "www/js/league-battle.js:112"
   ],
   "ctx": "<small>${ru`ур. ${f.lvl} · сила команды ${U.fmtNum(f.power)}`}</small>"
  },
  {
   "k": "Бой через",
   "at": [
-   "www/js/league-battle.js:113"
+   "www/js/league-battle.js:115"
   ],
   "ctx": "<div class=\"lgs-go\">${ru`Бой через`} <b class=\"lgs-cd\"></b></div>`;"
  },
  {
   "k": "Тапай — быстрая атака, она копит энергию; полная шкала — «Приём». Щиты берегут от приёмов соперника.",
   "at": [
-   "www/js/league-battle.js:161"
+   "www/js/league-battle.js:163"
   ],
   "ctx": "<div class=\"raid-hint\">${ru`Тапай — быстрая атака, она копит энергию; полная шкала — «Приём». Щиты берегут от приёмов соперника.`}</div>"
  },
  {
   "k": "Нет связи с сервером — переподключаюсь…",
   "at": [
-   "www/js/league-battle.js:163"
+   "www/js/league-battle.js:165"
   ],
   "ctx": "<div class=\"pvp-net hidden\">${ru`Нет связи с сервером — переподключаюсь…`}</div>"
  },
  {
   "k": "Приём сейчас не выйдет",
   "at": [
-   "www/js/league-battle.js:231"
+   "www/js/league-battle.js:233"
   ],
   "ctx": "if (ins[i].t === 'charge') { st.charging = false; this.closeDlg(); UI.toast(x.ign === 'energy' ? ru`Мало энергии — атакуй тапами` : ru`Приём сейчас не выйдет`); }"
  },
  {
   "k": "Смена ещё не готова",
   "at": [
-   "www/js/league-battle.js:232"
+   "www/js/league-battle.js:234"
   ],
   "ctx": "if (ins[i].t === 'switch' && x.ign === 'cd') UI.toast(ru`Смена ещё не готова`);"
  },
  {
   "k": "{0} выпускает: {1}",
   "at": [
-   "www/js/league-battle.js:277"
+   "www/js/league-battle.js:279"
   ],
   "ctx": "} else if (e.e === 'switch' && e.s === 'foe') UI.toast(ru`${U.esc(v.foe.name)} выпускает: ${SP[v.foe.team[e.i].sid].name}`);"
  },
  {
   "k": "{0} выбирает духа…",
   "at": [
-   "www/js/league-battle.js:288"
+   "www/js/league-battle.js:290"
   ],
   "ctx": "const txt = p && p.k === 'switch' && !p.who.includes('me') ? ru`${U.esc(v.foe.name)} выбирает духа…` : p && p.k === 'charge' && p.by === 'foe' && p.done ? ru`Приём соперника…` : '';"
  },
  {
   "k": "Приём соперника…",
   "at": [
-   "www/js/league-battle.js:288"
+   "www/js/league-battle.js:290"
   ],
   "ctx": "const txt = p && p.k === 'switch' && !p.who.includes('me') ? ru`${U.esc(v.foe.name)} выбирает духа…` : p && p.k === 'charge' && p.by === 'foe' && p.done ? ru`Приём соперника…` : '';"
  },
  {
   "k": "Бой будет проигран, рейтинг уменьшится, опыта не будет.",
   "at": [
-   "www/js/league-battle.js:435"
+   "www/js/league-battle.js:437"
   ],
   "ctx": "UI.confirm(ru`Сдаться?`, ru`Бой будет проигран, рейтинг уменьшится, опыта не будет.`, ru`Сдаться`, () => { if (this.st === st && !st.over) { st.out.push({ t: 'quit' }); this.pump(); } }, ru`Продолжить`, true); // 4.25: с"
  },
  {
   "k": "Все духи {0} без сил.",
   "at": [
-   "www/js/league-battle.js:449"
+   "www/js/league-battle.js:451"
   ],
   "ctx": "ko: win ? ru`Все духи ${foe} без сил.` : ru`Все твои духи без сил.`,"
  },
  {
   "k": "Все твои духи без сил.",
   "at": [
-   "www/js/league-battle.js:449"
+   "www/js/league-battle.js:451"
   ],
   "ctx": "ko: win ? ru`Все духи ${foe} без сил.` : ru`Все твои духи без сил.`,"
  },
  {
   "k": "Время вышло — силы равны.",
   "at": [
-   "www/js/league-battle.js:450"
+   "www/js/league-battle.js:452"
   ],
   "ctx": "time: draw ? ru`Время вышло — силы равны.` : win ? ru`Время вышло — у твоих духов осталось больше сил.` : ru`Время вышло — у духов ${foe} осталось больше сил.`,"
  },
  {
   "k": "Время вышло — у твоих духов осталось больше сил.",
   "at": [
-   "www/js/league-battle.js:450"
+   "www/js/league-battle.js:452"
   ],
   "ctx": "time: draw ? ru`Время вышло — силы равны.` : win ? ru`Время вышло — у твоих духов осталось больше сил.` : ru`Время вышло — у духов ${foe} осталось больше сил.`,"
  },
  {
   "k": "Время вышло — у духов {0} осталось больше сил.",
   "at": [
-   "www/js/league-battle.js:450"
+   "www/js/league-battle.js:452"
   ],
   "ctx": "time: draw ? ru`Время вышло — силы равны.` : win ? ru`Время вышло — у твоих духов осталось больше сил.` : ru`Время вышло — у духов ${foe} осталось больше сил.`,"
  },
  {
   "k": "{0} пропал со связи — победа твоя.",
   "at": [
-   "www/js/league-battle.js:451"
+   "www/js/league-battle.js:453"
   ],
   "ctx": "idle: win ? ru`${foe} пропал со связи — победа твоя.` : ru`Ты слишком долго не был на связи — поражение.`,"
  },
  {
   "k": "Ты слишком долго не был на связи — поражение.",
   "at": [
-   "www/js/league-battle.js:451"
+   "www/js/league-battle.js:453"
   ],
   "ctx": "idle: win ? ru`${foe} пропал со связи — победа твоя.` : ru`Ты слишком долго не был на связи — поражение.`,"
  },
  {
   "k": "{0} сдался.",
   "at": [
-   "www/js/league-battle.js:452"
+   "www/js/league-battle.js:454"
   ],
   "ctx": "quit: win ? ru`${foe} сдался.` : ru`Ты сдался.`,"
  },
  {
   "k": "Ты сдался.",
   "at": [
-   "www/js/league-battle.js:452"
+   "www/js/league-battle.js:454"
   ],
   "ctx": "quit: win ? ru`${foe} сдался.` : ru`Ты сдался.`,"
  },
  {
   "k": "Ничья",
   "at": [
-   "www/js/league-battle.js:456"
+   "www/js/league-battle.js:458"
   ],
   "ctx": "<div class=\"res-title ${win ? '' : 'lose'}\">${win ? ru`Победа!` : draw ? ru`Ничья` : ru`Поражение`}</div>"
  },
  {
   "k": "Рейтинг {0}{1}",
   "at": [
-   "www/js/league-battle.js:458"
+   "www/js/league-battle.js:460"
   ],
   "ctx": "<div class=\"res-note\">${why}<br>${ru`Рейтинг ${d >= 0 ? '+' : '−'}${Math.abs(d)}`}<span class=\"lg-res-league\"></span></div>"
  },
  {
   "k": "Засчитываю итог…",
   "at": [
-   "www/js/league-battle.js:459"
+   "www/js/league-battle.js:461"
   ],
   "ctx": "<div class=\"lg-res-more\"><div class=\"res-note\">${ru`Засчитываю итог…`}</div></div>"
  },
  {
   "k": "Ещё бой",
   "at": [
-   "www/js/league-battle.js:460"
+   "www/js/league-battle.js:462"
   ],
   "ctx": "<button class=\"btn primary wide lg-again\">${ru`Ещё бой`}</button>"
  },
  {
   "k": "К Лиге",
   "at": [
-   "www/js/league-battle.js:461"
+   "www/js/league-battle.js:463"
   ],
   "ctx": "<button class=\"btn wide lg-done\">${ru`К Лиге`}</button></div></div>`);"
  },
  {
   "k": "Лига: <b>{0}</b> · рейтинг {1}",
   "at": [
-   "www/js/league-battle.js:469"
+   "www/js/league-battle.js:471"
   ],
   "ctx": "if (x) res.querySelector('.lg-res-league').innerHTML = ` · ${ru`Лига: <b>${LEAGUE_RANKS[x.rNew].name}</b> · рейтинг ${U.fmtNum(x.pts)}`}`;"
  },
  {
   "k": "Итог засчитается, когда появится связь.",
   "at": [
-   "www/js/league-battle.js:470"
+   "www/js/league-battle.js:472"
   ],
   "ctx": "more.innerHTML = !r ? `<div class=\"res-note\">${ru`Итог засчитается, когда появится связь.`}</div>` : x ? `"
  },
  {
   "k": "Новая лига — {0}!",
   "at": [
-   "www/js/league-battle.js:471"
+   "www/js/league-battle.js:473"
   ],
   "ctx": "${x.rNew > x.rank0 ? `<div class=\"badge-new\">${ru`Новая лига — ${LEAGUE_RANKS[x.rNew].name}!`}</div>` : x.rNew < x.rank0 ? `<div class=\"badge-new down\">${ru`Выпал в лигу «${LEAGUE_RANKS[x.rNew].name}»`}</div>` : ''}"
  },
  {
   "k": "Выпал в лигу «{0}»",
   "at": [
-   "www/js/league-battle.js:471"
+   "www/js/league-battle.js:473"
   ],
   "ctx": "${x.rNew > x.rank0 ? `<div class=\"badge-new\">${ru`Новая лига — ${LEAGUE_RANKS[x.rNew].name}!`}</div>` : x.rNew < x.rank0 ? `<div class=\"badge-new down\">${ru`Выпал в лигу «${LEAGUE_RANKS[x.rNew].name}»`}</div>` : ''}"
  },
  {
   "k": "опыта",
   "at": [
-   "www/js/league-battle.js:472"
+   "www/js/league-battle.js:474"
   ],
   "ctx": "${x.xp || x.rewards.length ? `<div class=\"res-rw\">${x.xp ? `<div><b>+${U.fmtNum(x.xp)}</b> ${ru`опыта`}</div>` : ''}${x.rewards.map(y => `<div><b>+${U.fmtNum(y.n)}</b> ${I18N.back(y.label)}</div>`).join('')}</div>` : ''}"
  },
@@ -20030,11 +20034,11 @@
   "ctx": "if (c.pick) html += `<div class=\"quest done cp-pickrow\"><div class=\"qd-ico\">${this.I.spirits}</div><div class=\"q-main\"><b>${ru`Награда шага: выбери духа`}</b><small>${ru`Один из трёх редких духов — твой навсегда`}</small"
  },
  {
-  "k": "Орден прислал {0} эссенции «{1}» — хватит на превращение",
+  "k": "Орден прислал {0} эссенции «{1}» — хватит на эволюцию",
   "at": [
    "www/js/ui-player.js:118"
   ],
-  "ctx": "const gift = c.gift && SP[c.gift.fam] ? `<small class=\"cp-gift\">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на превращение`}</small>` : '';"
+  "ctx": "const gift = c.gift && SP[c.gift.fam] ? `<small class=\"cp-gift\">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на эволюцию`}</small>` : '';"
  },
  {
   "k": "Где Разлом кампании?",
@@ -21642,6 +21646,16 @@
   "ctx": "${row(ru`ОЗ после усиления`, `${st.hp} → ${nx.hp}`)}"
  },
  {
+  "k": "Превращение",
+  "at": [
+   "www/js/ui-spirits.js:228",
+   "www/js/ui-spirits.js:230",
+   "www/js/ui-spirits.js:329",
+   "www/js/ui-spirits.js:592"
+  ],
+  "ctx": "${s.evo ? `<div class=\"dt-row dt-evo-row\"><span>${ru`Превращение`}</span><b>${S.d.dex[s.evo] && S.d.dex[s.evo].seen ? `<span class=\"dt-evo-a\">${Art.img(s.evo)}</span>${SP[s.evo].name}` : '<span class=\"dt-evo-a\"><span cla"
+ },
+ {
   "k": "{0} / {1} эсс.",
   "at": [
    "www/js/ui-spirits.js:229"
@@ -22343,13 +22357,6 @@
  },
  {
   "k": "Где искать",
-  "at": [
-   "www/js/ui-spirits.js:566"
-  ],
-  "ctx": "<div class=\"seg dt-tabs\">${[['about', ru`О духе`], ['where', ru`Где искать`], ['family', ru`Эволюция`], ['mine', ru`Мои`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</d"
- },
- {
-  "k": "Эволюция",
   "at": [
    "www/js/ui-spirits.js:566"
   ],
