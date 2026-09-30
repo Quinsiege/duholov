@@ -17,6 +17,7 @@ const Tut = {
   init() {
     this.started = true;
     Bus.on('tutChapter', e => this.chapterDone(e));
+    this.guard();
     this.shown = -1;
     this.sync(true);
   },
@@ -30,6 +31,7 @@ const Tut = {
     if (s === this.shown) return;
     this.shown = s; this.opened = null;
     if (!s) { this.close(); this.refreshTiles(); return; }
+    document.body.classList.add('tut-focus'); // 5.2: фокус обучения — недоступное приглушено (mark)
     this.refreshTiles();
     const st = this.at();
     const go = () => {
@@ -88,7 +90,7 @@ const Tut = {
     this._hint = info ? `${st.info}<span class="coach-ok"><span>${ru`Понятно`}</span><i class="tn-a"></i></span>` : st.hint; this._back = null;
     this.el.querySelector('.coach-text').innerHTML = this._hint;
     this.el.classList.toggle('info', info);
-    this.el.classList.remove('bump'); void this.el.offsetWidth; this.el.classList.add('bump');
+    this.el.classList.remove('bump', 'nudge'); void this.el.offsetWidth; this.el.classList.add('bump');
     this.track();
   },
   vis(e) { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth; },
@@ -115,6 +117,7 @@ const Tut = {
   // Раз в 300 мс: где цель, куда поставить наставника, чтобы не закрыть ни её, ни важное
   track() {
     if (!this.el) return;
+    this.mark();
     const st = this.at(), busy = !st || this._pending || Encounter.st || (typeof Raid !== 'undefined' && Raid.st) || (typeof Duel !== 'undefined' && Duel.st)
       || U.$$('.modal-wrap').some(m => !m.classList.contains('out') && !m.classList.contains('sheet-wrap')) || document.querySelector('.onb, .tut-final');
     this.el.classList.toggle('hidden', !!busy);
@@ -154,14 +157,14 @@ const Tut = {
     // место: сверху или снизу — где меньше перекрытий с целью (втройне важна) и важными элементами
     // учитываем только видимое сверху: открытый экран или меню закрывают всё, что под ними
     const layer = U.$$('.sheet-wrap').filter(s => !s.classList.contains('out')).pop() || U.$$('.screen').filter(s => !s.classList.contains('out')).pop();
-    const keep = this.KEEP.flatMap(s => U.$$(s)).filter(e => this.vis(e) && (!layer || layer.contains(e)) && (!t || !t.el || !e.contains(t.el))).map(e => [e.getBoundingClientRect(), 1]);
-    if (tr) {
+    const keep = this.KEEP.flatMap(s => U.$$(s)).filter(e => this.vis(e) && (!layer || layer.contains(e)) && (!t || !t.el || !e.contains(t.el))).map(e => [e.getBoundingClientRect(), 1]);    if (tr) {
       keep.push([tr, 3]);
       // указатель над целью (или под ней у верхнего края) тоже не закрываем
       const below = this.ring.classList.contains('below');
       const ph = inMenu ? 48 : 60;
       keep.push([{ left: tr.left + tr.width / 2 - 18, right: tr.left + tr.width / 2 + 18, top: below ? tr.bottom : tr.top - ph, bottom: below ? tr.bottom + ph : tr.top }, 2]);
     }
+    this.el.style.removeProperty('bottom'); // подъём над джойстиком (ниже) — заново на каждом замере
     const cost = pos => {
       this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
       const c = this.el.getBoundingClientRect();
@@ -171,6 +174,13 @@ const Tut = {
     const a = cost(cur), b = cost(other), pos = b + 500 < a ? other : cur; // без дёрганья: меняем место, только если заметно лучше
     this.el.classList.remove('pos-top', 'pos-bottom'); this.el.classList.add('pos-' + pos);
     this.el.classList.toggle('in-screen', !!U.$$('.screen').find(s => !s.classList.contains('out')));
+    // 5.2: снизу подсказка закрыла бы нужную шагу кнопку карты (джойстик на шаге «источник») — встаёт над ней
+    if (pos === 'bottom' && !layer) {
+      const c = this.el.getBoundingClientRect();
+      const under = ((this.FOCUS[st.id] || {}).hud || []).map(s => U.$(s)).filter(e => e && this.vis(e)).map(e => e.getBoundingClientRect())
+        .filter(r => r.top < c.bottom && r.bottom > c.top && r.left < c.right && r.right > c.left);
+      if (under.length) this.el.style.bottom = Math.round(innerHeight - Math.min(...under.map(r => r.top)) + 10) + 'px';
+    }
     this._pos = pos;
   },
   // 5.2: при открытом меню подсказка — пузырь у подсвеченного пункта: со стороны указателя за ним (или с другой стороны,
@@ -227,7 +237,104 @@ const Tut = {
     U.$('#menuBtn').classList.remove('tut-pulse');
     if (this.el) { this.el.remove(); this.el = null; clearInterval(this.loop); removeEventListener('resize', this._rs); }
     if (this.ring) { this.ring.remove(); this.ring = null; }
+    document.body.classList.remove('tut-focus'); // 5.2: фокус снят — всё снова доступно, без следов
+    U.$$('.tut-off').forEach(e => e.classList.remove('tut-off'));
     MapView.refresh(true);
+  },
+
+  /* ---------- 5.2: фокус обучения — пока идёт обучение, доступно только действие текущего шага ---------- */
+  // Фокус действует в «зонах игры»: HUD карты (с джойстиком и Следопытом), меню и экраны; маркеры карты — через MapView.tap
+  // (entOk). Всё прочее — окна, поимка, знакомство, книга-вступление, Атлас первого места, ошибки, обновление, сама подсказка
+  // и «Обучение пройдено» — работает как обычно: в чужие окна без разрешённого действия всё равно не попасть.
+  ZONES: '#hud, .rm-wrap, .screen',
+  FREE_SCR: '.set-screen, .offer-screen', // экраны, где можно всё: настройки (язык, звук, учётная запись) и документы
+  ALWAYS: ['#recenterBtn', '.screen-head .back', '.spr2.taken .spring-go'], // «К себе», «Назад» и «В сумку» после источника
+  NEVER: ['#tracker .tr-x'],               // стрелку Следопыта на шаге «источник» не снять
+  // что можно на шаге: hud — кнопки карты, tile — раздел меню, scr — кнопки внутри экранов
+  FOCUS: {
+    menu: { hud: ['#menuBtn'] },
+    spirits: { hud: ['#menuBtn'], tile: 'spirits' },
+    card: { hud: ['#menuBtn'], tile: 'spirits', scr: ['.col-screen .grid.cards .card'] },
+    power: { hud: ['#menuBtn'], tile: 'spirits', scr: ['.col-screen .grid.cards .card', '.det-screen .act-power'] },
+    dex: { hud: ['#menuBtn'], tile: 'book' },
+    spring: { hud: ['#joystick', '#tracker'], scr: ['.spring-screen .spring-go', '.spring-screen .spr2-well'] },
+    bag: { hud: ['#menuBtn'], tile: 'bag' },
+    cocoons: { hud: ['#menuBtn'], tile: 'egg' },
+    quests: { hud: ['#menuBtn'], tile: 'scroll' },
+    path: { hud: ['#menuBtn'], tile: 'path' },
+  },
+  focusOn() { return !!this.started && !!this.at(); },
+  // можно ли нажать элемент t сейчас
+  allows(t) {
+    const st = this.focusOn() && this.at();
+    if (!st || !t || !t.closest) return true;
+    const zone = t.closest(this.ZONES);
+    if (!zone) return true;
+    const f = this.FOCUS[st.id] || {}, hit = list => list.some(s => { const m = t.closest(s); return !!m && zone.contains(m); });
+    if (hit(this.NEVER)) return false;
+    if (hit(this.ALWAYS)) return true;
+    if (zone.matches('.rm-wrap')) { // меню: касание мимо разделов закрывает его; закрытый раздел сам скажет, когда откроется
+      const tile = t.closest('.tile[data-k]');
+      return !tile || tile.classList.contains('locked') || tile.dataset.k === 'gear' || tile.dataset.k === f.tile;
+    }
+    if (zone.matches('.screen')) {
+      const open = U.$$('.screen').filter(s => !s.classList.contains('out')), i = open.indexOf(zone);
+      if (open.slice(0, i + 1).some(s => s.matches(this.FREE_SCR))) return true; // настройки и всё, что открыто из них
+      return hit(f.scr || []);
+    }
+    // HUD карты
+    if (t.closest('#menuBtn') && UI._rm) return true; // открытое меню кнопка закрывает
+    // шаг «источник», а готового источника рядом нет — можно шагнуть через Атлас мира
+    if (st.id === 'spring' && t.closest('#atlasBtn') && typeof MapView !== 'undefined' && MapView.map && !MapView.nearest('spring')) return true;
+    return hit(f.hud || []);
+  },
+  // объект карты (дух, источник, капище, разлом): на шаге «поймай» — только учебный дух, на шаге «источник» — источники
+  entOk(e) {
+    const st = this.focusOn() && this.at();
+    if (!st || !e) return true;
+    if (st.kind === 'catch') return e.type === 'spirit' && !!e.tut;
+    if (st.kind === 'spring') return e.type === 'spring';
+    return false;
+  },
+  canWalk() { const st = this.focusOn() && this.at(); return !st || st.kind === 'spring'; },
+  // перехват нажатий: на фазе захвата, до обработчиков самих кнопок (один раз за игру; без обучения — пропускает всё)
+  guard() {
+    if (this._guarded) return;
+    this._guarded = true;
+    const no = e => this.focusOn() && e.target && e.target.nodeType === 1 && !this.allows(e.target);
+    document.addEventListener('click', e => {
+      if (!no(e)) return;
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      if (e.target.closest(this.TAPPABLE)) this.nudge(); // касание пустого места экрана — молча
+    }, true);
+    // нажатие недоступного не доходит и до его pointerdown/touchstart (джойстик, смахивание вкладок); толчок — по click
+    ['pointerdown', 'mousedown', 'touchstart'].forEach(type => document.addEventListener(type, e => {
+      if (!no(e)) return;
+      e.stopPropagation(); e.stopImmediatePropagation();
+      if (type === 'pointerdown' && e.target.closest('#joystick')) e.preventDefault();
+    }, type === 'touchstart' ? { capture: true, passive: true } : true));
+  },
+  TAPPABLE: 'button, a, input, select, textarea, label, [role="button"], .chip, .card, .tile, [data-tab], #joystick, #tracker',
+  // толчок: подсказка вздрагивает, и (не чаще раза в 2 с) всплывашка — что сначала шаг обучения
+  nudge() {
+    if (typeof Sfx !== 'undefined') Sfx.play('miss');
+    if (this.el && !this.el.classList.contains('hidden')) {
+      const c = this.el;
+      c.classList.remove('nudge'); void c.offsetWidth; c.classList.add('nudge');
+      clearTimeout(this._nudgeC); this._nudgeC = setTimeout(() => c.classList.remove('nudge'), 700);
+    }
+    const now = Date.now();
+    if (now - (this._nudgeT || 0) < 2000) return;
+    this._nudgeT = now;
+    UI.toast(ru`Сначала закончи шаг обучения`);
+  },
+  // недоступное сейчас — приглушено (раз в 300 мс из track): кнопки HUD, разделы меню, кнопки открытых экранов
+  mark() {
+    const on = this.focusOn();
+    U.$$('#hud button, #hud .chip, #joystick, #tracker, .rm-wrap .tile, .screen:not(.out) button').forEach(e => {
+      const off = on && !this.allows(e);
+      if (e.classList.contains('tut-off') !== off) e.classList.toggle('tut-off', off);
+    });
   },
 
   /* ---------- разделы меню по ходу обучения ---------- */
@@ -236,10 +343,10 @@ const Tut = {
     const n = this.step();
     return n && n < this.idx('menu') ? ru`Сначала поймай духов: меню откроется чуть позже.` : null;
   },
-  // Раздел меню: замок до своего шага обучения (настройки и Ловчий — всегда)
+  // Раздел меню: замок до своего шага обучения (настройки — всегда; 5.2: Ловчий — после обучения, как и профиль на карте)
   tileLock(key) {
     const n = this.step();
-    if (!n || key === 'gear' || key === 'user') return null;
+    if (!n || key === 'gear') return null;
     const need = this.TILE_STEP[key];
     if (need && n >= this.idx(need)) return null;
     return need ? ru`Откроется по ходу обучения — подсказка покажет` : ru`Откроется после обучения`;

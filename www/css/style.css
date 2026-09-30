@@ -5458,3 +5458,21 @@ body.rm-open #coach.tut-coach .coach-ok { display: inline-flex; float: right; ma
 .promo-ok .lvl-rw div { width: 96px; font-size: 13px; color: #fff; }
 .promo-ok .lvl-rw .art, .promo-ok .lvl-rw svg, .promo-ok .lvl-rw img { width: 52px; height: 52px; }
 .promo-q { margin-top: -12px; }
+
+/* 5.2: главное меню — одна сцена (Stage, стеклянная): под ним только размытая неподвижная подложка карты (значки не рисуются —
+   body.stage-glass); HUD, джойстик, «Рядом», погода и Следопыт гаснут и не рисуются и не нажимаются (раньше дети .hud-top
+   оставались нажимаемыми под прозрачностью). Видна только центральная кнопка — она закрывает меню */
+body.rm-open #hud > :not(#menuBtn) { visibility: hidden; transition: opacity .2s, visibility 0s linear .2s; }
+body.stage-cover.rm-open #hud { visibility: visible !important; content-visibility: visible; }
+
+/* 5.2: фокус обучения (Tut.guard/mark): пока идёт обучение, недоступное сейчас приглушено, нужное — ярко; нажатие недоступного —
+   подсказка вздрагивает. Только filter/opacity вложенного: прозрачность самих кнопок HUD занята меню (body.rm-open) */
+body.tut-focus #hud .tut-off, body.tut-focus #tracker.tut-off { filter: grayscale(.9) brightness(.55); }
+body.tut-focus .rm-it.tut-off .rm-c { filter: grayscale(.85); opacity: .5; }
+body.tut-focus .rm-it.tut-off .rm-l { opacity: .6; }
+body.tut-focus .screen .tut-off { filter: grayscale(.85) brightness(.75); opacity: .5; }
+body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity: .4; }
+#coach.tut-coach.nudge { animation: tutNudge .45s ease-in-out; }
+@keyframes tutNudge { 0%, 100% { transform: none; } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+.calm #coach.tut-coach.nudge { animation: tutNudgeCalm .6s ease-out; }
+@keyframes tutNudgeCalm { 0% { box-shadow: 0 0 0 3px rgba(253, 224, 71, .9), 0 10px 30px rgba(0, 0, 0, .5); } 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }

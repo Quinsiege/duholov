@@ -316,6 +316,63 @@
     eq(JSON.stringify(Osm.pick(els)), JSON.stringify(p), 'детерминированно');
     ok(/historic.*bbox|\(55\.75,37\.62,55\.76,37\.63\)/.test(Osm.query(55.75, 37.62, 55.76, 37.63)), 'запрос с рамкой');
   });
+  // 5.2: места вне России — из слоя pois карты мира (Protomaps): id = (тип << 44) | id OSM, координаты — в плитке z15 (512 точек)
+  const fakeMapView = (feats, delay = () => 0) => {
+    const Z = 15, N = 2 ** Z, byTile = new Map();
+    feats.forEach(f => {
+      const X = (f.lng + 180) / 360 * N, r = f.lat * Math.PI / 180, Y = (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * N;
+      const k = Math.floor(X) + ':' + Math.floor(Y);
+      if (!byTile.has(k)) byTile.set(k, []);
+      byTile.get(k).push({ id: f.id, geomType: 1, geom: [[{ x: (X - Math.floor(X)) * 512, y: (Y - Math.floor(Y)) * 512 }]], props: f.props });
+    });
+    return { tileCache: { get: ({ x, y }) => new Promise(res => setTimeout(() => res(new Map([['pois', byTile.get(x + ':' + y) || []]])), delay(x, y))) } };
+  };
+  const T44 = 2 ** 44;
+  const kremlin = [
+    { id: T44 + 1994968044, lat: 55.75251, lng: 37.62136, props: { kind: 'attraction', name: 'Кремлёвские куранты' } },
+    { id: 3 * T44 + 1360656, lat: 55.7535, lng: 37.6243, props: { kind: 'museum', name: 'Tower', 'name:ru': 'Башня' } },
+    { id: 2 * T44 + 777, lat: 55.7545, lng: 37.6255, props: { kind: 'park' } },                         // безымянный парк
+    { id: T44 + 5, lat: 55.7555, lng: 37.6266, props: { kind: 'bench' } },                             // не наша категория
+    { id: T44 + 6, lat: 55.7612, lng: 37.6250, props: { kind: 'fountain', name: 'Фонтан' } },          // соседний квадрат (севернее)
+    { lat: 55.7565, lng: 37.6277, props: { kind: 'monument', name: 'Без id' } },                         // без id — не из OSM
+  ];
+  atest('5.2: места из карты мира — те же id OSM, координаты, отбор по квадрату', async () => {
+    const v = fakeMapView(kremlin), p = await Poi.fromMap(v, 3762, 5575);
+    eq(p.map(x => x.id).sort().join(), 'osm:n1994968044,osm:r1360656', 'отобранные');
+    const c = p.find(x => x.id === 'osm:n1994968044');
+    near(c.lat, 55.75251, 1e-6, 'широта'); near(c.lng, 37.62136, 1e-6, 'долгота');
+    eq(c.name, 'Кремлёвские куранты'); eq(c.cat, 'attraction');
+    eq(p.find(x => x.id === 'osm:r1360656').name, 'Башня', 'русское название');
+    eq(JSON.stringify(await Poi.fromMap(v, 3762, 5575)), JSON.stringify(p), 'детерминированно');
+    ok(p.every(x => GameCore.POI_ID.test(x.id)), 'id — как у Overpass, их принимает сервер (core.js POI_ID)');
+  });
+  atest('5.2: загрузка мест — телепорт не ждёт прошлую загрузку, места нового города приходят сразу', async () => {
+    const sv = { list: Poi.list, osm: Poi.osm, srv: Poi.srv, busy: Poi.busy, gen: Poi._gen, here: Poi._here, hinted: Poi._hinted, persist: Poi.persist, supply: Poi.checkSupply, mv: Poi.mapView, cfg: Cloud.configured, pos: MapView.pos, map: MapView.map };
+    try {
+      Poi.osm = {}; Poi.srv = {}; Poi.busy = false; Poi._hinted = true; Poi.persist = () => {}; Poi.checkSupply = () => {}; Cloud.configured = () => false; MapView.map = null;
+      const london = { id: T44 + 42, lat: 51.5009, lng: -0.1244, props: { kind: 'monument', name: 'Big Ben' } };
+      // плитки Москвы отвечают медленно (300 мс), Лондона — сразу
+      const v = fakeMapView([...kremlin, london], x => x > 18000 ? 300 : 5); // x плитки z15: Москва ≈ 19808, Лондон ≈ 16372
+      Poi.mapView = () => v;
+      MapView.pos = { lat: 55.7525, lng: 37.6214 };
+      const a = Poi.ensure();
+      ok(Poi.busy, 'грузим Москву');
+      await stageWait(30);
+      MapView.pos = { lat: 51.5007, lng: -0.1246 }; // телепорт
+      const b = Poi.ensure();
+      await stageWait(80);
+      ok(Poi.list.has('osm:n42'), 'места Лондона — сразу, не дожидаясь Москвы');
+      await Promise.all([a, b]);
+      ok(!Poi.busy, 'загрузка закончилась');
+      ok(Object.keys(Poi.osm).length > 0 && Object.values(Poi.osm).every(t => !t.fail), 'квадраты записаны без ошибок');
+      // то же место, пока идёт загрузка, — повтор сразу после неё, а не по таймеру
+      Poi.osm = {}; const c = Poi.ensure(); Poi.ensure(); ok(Poi._again, 'повтор запомнен'); await c; await stageWait(30);
+      ok(!Poi.busy && !Poi._again, 'повтор выполнен');
+    } finally {
+      Object.assign(Poi, { list: sv.list, osm: sv.osm, srv: sv.srv, busy: sv.busy, _gen: sv.gen, _here: sv.here, _hinted: sv.hinted, persist: sv.persist, checkSupply: sv.supply, mapView: sv.mv });
+      Cloud.configured = sv.cfg; MapView.pos = sv.pos; MapView.map = sv.map;
+    }
+  });
   test('Геометка снимка: запись и чтение EXIF', () => {
     // минимальный JPEG-заголовок с JFIF — Exif.embed заменяет его на APP1
     const jfif = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0, 16, 0x4A, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xFF, 0xDA, 0, 2, 0xFF, 0xD9]);
@@ -2818,6 +2875,113 @@
       if (had) R.grant = g0; else delete globalThis.SeasonRewards;
     }
   });
+  /* ---------- 5.2: фокус обучения — доступно только действие текущего шага ---------- */
+  test('5.2: фокус обучения — HUD, маркеры, меню и экраны: только шаг обучения; после обучения — всё', () => {
+    const was = { tut: S.d.tut, started: Tut.started, toast: UI.toast, spring: UI.spring, duel: Duel.open, raid: Raid.open, enc: Encounter.start, pos: MapView.pos, map: MapView.map, sfx: Sfx.play };
+    const hits = {}, toasts = [], box = document.createElement('div');
+    const hit = k => () => { hits[k] = (hits[k] || 0) + 1; };
+    const btn = (parent, id, cls = '', tag = 'button') => { const b = document.createElement(tag); if (id) b.id = id; if (cls) b.className = cls; b.onclick = hit(id || cls); parent.appendChild(b); return b; };
+    const screens = [];
+    try {
+      UI.toast = t => toasts.push(t); Sfx.play = () => {};
+      // HUD карты — как в index.html (кнопки с обработчиками click; джойстик — pointerdown)
+      box.id = 'hud'; document.body.appendChild(box);
+      const top = document.createElement('div'); top.className = 'hud-top'; box.appendChild(top);
+      ['profileBtn', 'wxPill', 'atlasBtn'].forEach(id => btn(top, id));
+      const ev = btn(top, 'eventChip', 'chip', 'div');
+      const tracker = btn(box, 'tracker'), trx = btn(tracker, '', 'tr-x');
+      ['recenterBtn', 'compassBtn', 'menuBtn', 'nearbyBtn'].forEach(id => btn(box, id));
+      const joy = document.createElement('div'); joy.id = 'joystick'; box.appendChild(joy);
+      joy.addEventListener('pointerdown', hit('joy'));
+      const click = el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      const press = el => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      const $ = id => document.getElementById(id);
+      Tut.started = true; Tut.guard(); Tut.guard(); // один перехватчик на всю игру
+      const reset = () => { for (const k in hits) delete hits[k]; toasts.length = 0; Tut._nudgeT = 0; };
+
+      // шаг «поймай духа»: HUD недоступен (кроме «К себе»), толчок — всплывашкой не чаще раза в 2 с
+      S.d.tut = Tut.idx('catch1'); reset();
+      ['profileBtn', 'wxPill', 'atlasBtn', 'compassBtn', 'menuBtn', 'nearbyBtn', 'tracker'].forEach(id => click($(id)));
+      click(ev); press(joy); click($('recenterBtn'));
+      eq(Object.keys(hits).join(','), 'recenterBtn', 'на шаге «поймай» открывается только «К себе»');
+      eq(toasts.length, 1, 'одна всплывашка на серию нажатий'); eq(toasts[0], 'Сначала закончи шаг обучения');
+      ok(!Tut.canWalk(), 'ходить нельзя');
+      // маркеры: только учебный дух
+      const spirit = { type: 'spirit', sid: 'vayfayka', tut: true }, wild = { type: 'spirit', sid: 'ugolek' }, spring = { type: 'spring' }, shrine = { type: 'shrine' }, rift = { type: 'rift' };
+      ok(Tut.entOk(spirit) && !Tut.entOk(wild) && !Tut.entOk(spring) && !Tut.entOk(shrine) && !Tut.entOk(rift), 'на карте — только учебный дух');
+      MapView.map = null; MapView.pos = { lat: 55.75, lng: 37.62 };
+      UI.spring = hit('spring'); Duel.open = hit('duel'); Raid.open = hit('raid'); Encounter.start = hit('enc');
+      const here = e => ({ ...e, id: 'x' + e.type, lat: 55.75, lng: 37.62, expires: Date.now() + 60000, name: 'Место' });
+      reset(); [wild, spring, shrine, rift].forEach(e => MapView.tap(here(e)));
+      eq(Object.keys(hits).length, 0, 'чужие маркеры ничего не открывают'); eq(toasts.length, 1, 'толчок');
+      MapView.tap(here(spirit)); eq(hits.enc, 1, 'учебный дух — поимка');
+
+      // шаг «источник»: джойстик, стрелка Следопыта и источники; снять стрелку и прочий HUD — нельзя
+      S.d.tut = Tut.idx('spring'); reset();
+      press(joy); click(tracker); click(trx); click($('menuBtn')); click($('profileBtn'));
+      eq(Object.keys(hits).sort().join(','), 'joy,tracker', 'на шаге «источник» — джойстик и Следопыт');
+      ok(Tut.canWalk(), 'ходить можно');
+      reset(); MapView.tap(here(spring)); MapView.tap(here(shrine)); MapView.tap(here(wild));
+      eq(Object.keys(hits).join(','), 'spring', 'касание источника открывает его, остальное — нет');
+
+      // шаг «Бестиарий»: меню открывается; в меню — только свой раздел, закрытые (замок) и настройки; Ловчий — под замком
+      S.d.tut = Tut.idx('dex'); reset();
+      click($('menuBtn')); click($('profileBtn')); click($('nearbyBtn'));
+      eq(Object.keys(hits).join(','), 'menuBtn', 'кнопка меню доступна');
+      ok(Tut.tileLock('user') && !Tut.tileLock('gear') && !Tut.tileLock('book') && !Tut.tileLock('spirits') && Tut.tileLock('shop'), 'замки разделов');
+      const wrap = document.createElement('div'); wrap.className = 'sheet-wrap rm-wrap';
+      wrap.innerHTML = ['spirits', 'book', 'bag', 'user', 'shop', 'gear'].map(k => `<button class="tile${Tut.tileLock(k) ? ' locked' : ''}" data-k="${k}"></button>`).join('') + '<div class="rm-h"></div>';
+      wrap.addEventListener('click', e => { const t = e.target.closest('.tile'); hit(t ? 'tile:' + t.dataset.k : 'close')(); });
+      document.body.appendChild(wrap); screens.push(wrap);
+      reset(); ['spirits', 'book', 'bag', 'user', 'shop', 'gear'].forEach(k => click(wrap.querySelector(`[data-k="${k}"]`))); click(wrap.querySelector('.rm-h'));
+      eq(Object.keys(hits).sort().join(','), 'close,tile:bag,tile:book,tile:gear,tile:shop,tile:user', 'уже открытый, но не нужный раздел «Духи» — недоступен; закрытые скажут про замок');
+      Tut.mark();
+      ok(wrap.querySelector('[data-k="spirits"]').classList.contains('tut-off') && !wrap.querySelector('[data-k="book"]').classList.contains('tut-off'), 'ненужный раздел приглушён, нужный — нет');
+      ok($('profileBtn').classList.contains('tut-off') && !$('menuBtn').classList.contains('tut-off') && !$('recenterBtn').classList.contains('tut-off'), 'HUD: профиль приглушён, меню — ярко');
+      wrap.remove();
+
+      // шаг «Усилить»: в карточке — только «Усилить» и «Назад»; в коллекции — карточки, не сортировка
+      S.d.tut = Tut.idx('power'); reset();
+      const col = UI.screen('Духи', '<div class="seg"><button data-sort="name"></button></div><div class="grid cards"><button class="card"></button></div>', 'col-screen'); screens.push(col);
+      const det = UI.screen('', '<button class="btn-round favbtn"></button><button data-tab="info"></button><button class="btn act-power"></button><button class="btn act-release"></button>', 'det-screen'); screens.push(det);
+      [col, det].forEach(s => s.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.classList.contains('back')) hit(b.className.split(' ').pop() || b.dataset.sort)(); }));
+      reset();
+      ['.favbtn', '[data-tab]', '.act-release', '.act-power'].forEach(s => click(det.querySelector(s)));
+      click(col.querySelector('[data-sort]')); click(col.querySelector('.card'));
+      eq(Object.keys(hits).sort().join(','), 'act-power,card', 'в экранах — только действие шага');
+      const backs = [det, col].map(s => { let n = 0; const b = s.querySelector('.back'); b.onclick = () => n++; click(b); return n; });
+      eq(backs.join(','), '1,1', '«Назад» — всегда');
+      // настройки и всё, что открыто из них, — без ограничений (язык, звук, учётная запись)
+      const set = UI.screen('Настройки', '<button class="lang-pick"></button>', 'set-screen'); screens.push(set);
+      const sub = UI.screen('Язык', '<button class="pick"></button>'); screens.push(sub);
+      reset(); set.querySelector('.lang-pick').onclick = hit('lang'); sub.querySelector('.pick').onclick = hit('pick');
+      click(set.querySelector('.lang-pick')); click(sub.querySelector('.pick'));
+      eq(Object.keys(hits).sort().join(','), 'lang,pick', 'настройки доступны');
+      // окна (UI.modal) и прочие слои вне зон игры — не трогаются
+      const m = UI.modal({ title: 'Окно', buttons: [{ label: 'OK', fn: hit('modal') }] }); screens.push(m);
+      reset(); click(m.querySelector('.modal-btns button')); eq(hits.modal, 1, 'окна работают');
+
+      // обучение пройдено: доступно всё, ничего не приглушено
+      screens.splice(0).forEach(s => { if (s._close) s._close(); s.remove(); });
+      S.d.tut = 0; reset();
+      MapView.tap(here(shrine)); MapView.tap(here(spring)); ok(hits.spring === 1 && (hits.duel === 1 || toasts.length === 1), 'места открываются');
+      reset();
+      const col2 = UI.screen('Духи', '<div class="seg"><button data-sort="name"></button></div>', 'col-screen'); screens.push(col2);
+      col2.querySelector('[data-sort]').onclick = hit('sort');
+      ['profileBtn', 'wxPill', 'atlasBtn', 'compassBtn', 'menuBtn', 'nearbyBtn', 'tracker'].forEach(id => click($(id)));
+      click(ev); press(joy); click(col2.querySelector('[data-sort]'));
+      eq(Object.keys(hits).length, 10, 'после обучения доступно всё: ' + Object.keys(hits).join(','));
+      eq(toasts.length, 0, 'без толчков');
+      ok(Tut.canWalk() && Tut.entOk(wild) && Tut.entOk(shrine), 'карта — как обычно');
+      Tut.mark(); eq(U.$$('.tut-off').length, 0, 'ничего не приглушено');
+    } finally {
+      screens.forEach(s => { if (s.close) s.close(); else if (s._close) s._close(); s.remove(); });
+      box.remove();
+      S.d.tut = was.tut; Tut.started = was.started; UI.toast = was.toast; UI.spring = was.spring; Duel.open = was.duel; Raid.open = was.raid; Encounter.start = was.enc;
+      MapView.pos = was.pos; MapView.map = was.map; Sfx.play = was.sfx;
+    }
+  });
+
   /* ---------- 5.2: одна активная сцена (stage.js) ---------- */
   const stageWait = ms => new Promise(r => setTimeout(r, ms));
   atest('5.2: одна сцена — открыл экран: карта на паузе, вложенная сцена, закрыл: карта проснулась один раз', async () => {
@@ -2860,11 +3024,20 @@
       eq(JSON.stringify(log), '[true]', 'проснуться — чуть позже (вдруг откроется следующая сцена)');
       await stageWait(50);
       eq(JSON.stringify(log), '[true,false]', 'карта проснулась один раз');
-      // сцены: поимка, бои, Атлас, книга, итог обучения, камера, вход, ошибка
-      ['enc', 'raid', 'raid duel', 'raid duel pvp', 'atlas', 'intro', 'tut-final', 'cam-screen', 'onb lg', 'fatal'].forEach(k => {
+      // сцены: поимка, бои, Атлас, книга, итог обучения, камера, вход, ошибка; 5.2 — и главное меню (стеклянное)
+      ['enc', 'raid', 'raid duel', 'raid duel pvp', 'atlas', 'intro', 'tut-final', 'cam-screen', 'onb lg', 'fatal', 'sheet-wrap rm-wrap'].forEach(k => {
         const e = el(k); ok(St.busy, k + ' — сцена'); e.remove(); ok(!St.busy, k + ' закрыта');
       });
-      ['sheet-wrap rm-wrap', 'toast', 'at-gate', 'loader'].forEach(k => { const e = el(k); ok(!St.busy, k + ' — не сцена'); e.remove(); });
+      ['sheet-wrap', 'modal-wrap', 'toast', 'at-gate', 'loader'].forEach(k => { const e = el(k); ok(!St.busy, k + ' — не сцена'); e.remove(); });
+      // 5.2: меню — стеклянная сцена: проявилось — HUD не рисуется, под стеклом неподвижная подложка карты; закрывается — карта просыпается
+      await stageWait(40);
+      const rm = el('sheet-wrap rm-wrap');
+      ok(St.busy && St.top() === rm, 'меню открыто — одна сцена');
+      await stageWait(90);
+      ok(has('stage-cover') && has('stage-glass'), 'под меню — только размытая подложка карты');
+      log.length = 0; rm.classList.add('closing');
+      ok(!St.busy && !has('stage-cover'), 'меню закрывается — карта снова видна сразу');
+      await stageWait(50); eq(JSON.stringify(log), '[false]', 'и просыпается один раз'); rm.remove();
     } finally { if (St._mo) { St._mo.disconnect(); St._co.disconnect(); } clearTimeout(St._t); clearTimeout(St._rt); box.remove(); }
   });
   atest('5.2: одна сцена — под поимкой карта не пересчитывается, Ловчий стоит; после — догоняет один раз', async () => {

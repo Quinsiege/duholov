@@ -3,16 +3,20 @@
    1) Сервер игры (таблица pois): объекты OpenStreetMap по всей России (раз в неделю их загружает импорт,
       tools/osm-import), места, предложенные игроками и одобренные модерацией, и правки модераторов.
       Телефон читает их квадратами 0.01° × 0.01° (≈ 1 км).
-   2) Там, куда импорт не дотягивается (за пределами России), телефон сам спрашивает Overpass API
-      и хранит ответ неделю (см. osm.js). */
+   2) Там, куда импорт не дотягивается (за пределами России), — 5.2: из слоя pois карты мира (Protomaps, те же данные
+      OpenStreetMap; плитки z15 карта всё равно грузит): за доли секунды, без Overpass. Без векторной карты — как раньше,
+      Overpass API (osm.js). Ответ хранится неделю.
+   5.2: места появляются сразу: загрузка при запуске и после телепорта не ждёт прошлую (она прерывается и начинается от новой
+   точки), ближние квадраты — первыми, сервер не держит дольше SRV_WAIT, значки перерисовываются по приходу каждой части. */
 
 const Poi = {
   TILE: 0.01,
-  KEY: 'duholov.pois.v3',
+  KEY: 'duholov.pois.v4',   // 5.2: v4 — места вне России из карты мира (прежний кэш OSM из Overpass не берём, места с сервера — берём)
   LOAD_R: 1200,             // вокруг игрока держим объекты в этом радиусе, м
   OSM_TTL: 7 * 86400000,    // данные OSM обновляются раз в неделю
   SRV_TTL: 5 * 60000,       // места игроков и правки модераторов — каждые 5 минут и при каждом запуске
-  RETRY: 2 * 60000,         // повтор, если сервер не ответил
+  RETRY: 30000,             // повтор, если сервер или OSM не ответили (5.2: было 2 мин)
+  SRV_WAIT: 8000,           // 5.2: дольше сервер мест не ждём — дальше места из карты, сервер дозагрузится следующим разом
   CACHE_R: 6000,            // что хранить в кэше на телефоне, м
   osm: {},                  // «x:y» → { t, items }
   srv: {},                  // «x:y» → { t, items }
@@ -23,7 +27,12 @@ const Poi = {
     try {
       ['duholov.pois.v1', 'duholov.pois.v2'].forEach(k => localStorage.removeItem(k));
       const c = JSON.parse(localStorage.getItem(this.KEY));
-      if (c && c.v === 3) { this.osm = c.osm || {}; this.srv = c.srv || {}; }
+      if (c && c.v === 4) { this.osm = c.osm || {}; this.srv = c.srv || {}; }
+      else { // 5.2: с v3 — только места сервера (их всё равно перечитаем), места Overpass заменит карта мира
+        const o = JSON.parse(localStorage.getItem('duholov.pois.v3'));
+        if (o && o.v === 3) this.srv = o.srv || {};
+        localStorage.removeItem('duholov.pois.v3');
+      }
     } catch (e) {}
     this.expireServer(); // кэш с сервера показываем сразу, но при запуске перечитываем
     this.rebuild();
@@ -46,7 +55,7 @@ const Poi = {
       return out;
     };
     this.osm = keep(this.osm); this.srv = keep(this.srv);
-    try { localStorage.setItem(this.KEY, JSON.stringify({ v: 3, osm: this.osm, srv: this.srv })); } catch (e) {}
+    try { localStorage.setItem(this.KEY, JSON.stringify({ v: 4, osm: this.osm, srv: this.srv })); } catch (e) {}
   },
   // Места вокруг загружены импортом — телефону не нужно спрашивать OpenStreetMap самому
   covered() {
@@ -118,43 +127,103 @@ const Poi = {
 
   stale(store, id, ttl) { const t = store[id]; return !t || Date.now() - t.t > (t.fail ? this.RETRY : ttl); },
 
-  // Подгрузить недостающие квадраты вокруг игрока
+  // Подгрузить недостающие квадраты вокруг игрока.
+  // 5.2: раньше, пока шла загрузка, новый вызов пропускался — а следующий был только по таймеру (15 с; после неудачи — 2 мин).
+  // Теперь: то же место — повтор сразу после текущей загрузки; новое место (телепорт, перешёл в другой квадрат) — загрузка
+  // от новой точки начинается сразу, прежняя бросается на следующей своей проверке (_gen)
+  _gen: 0,
   async ensure() {
-    if (this.busy || !MapView.pos) return;
-    const { lat, lng } = MapView.pos, [cx, cy] = this.tileXY(lat, lng);
+    if (!MapView.pos) return;
+    const { lat, lng } = MapView.pos, [cx, cy] = this.tileXY(lat, lng), here = `${cx}:${cy}`;
+    if (this.busy && this._here === here) { this._again = true; return; }
+    this._again = false;
+    const gen = ++this._gen;
+    const moved = () => gen !== this._gen || !MapView.pos || this.tileId(MapView.pos.lat, MapView.pos.lng) !== here;
     const around = this.tilesAround(lat, lng, this.LOAD_R)
       .sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
     const needSrv = Cloud.configured() ? around.filter(t => this.stale(this.srv, t.join(':'), this.SRV_TTL)) : [];
     const needOsm = () => this.covered() ? [] : around.filter(t => this.stale(this.osm, t.join(':'), this.OSM_TTL));
-    if (!needSrv.length && !needOsm().length) return;
-    this.busy = true;
+    if (!needSrv.length && !needOsm().length) { this.busy = false; return; } // всё уже есть (прежняя загрузка, если шла, бросится)
+    this.busy = true; this._here = here;
     if (!this.near(lat, lng, this.LOAD_R).length && !this._hinted) {
       this._hinted = true;
       UI.toast(ru`Ищу настоящие места вокруг — Источники и Капища появятся через несколько секунд`);
     }
-    // 1) сервер игры: одним запросом на все квадраты
-    if (needSrv.length) {
-      try { await this.pullServer(needSrv); }
-      catch (e) { console.warn('Места:', e.message); needSrv.forEach(t => { this.srv[t.join(':')] = { t: Date.now(), fail: true, items: (this.srv[t.join(':')] || {}).items || [] }; }); }
-      this.rebuild(); MapView.refresh();
-    }
-    // 2) OpenStreetMap напрямую — только там, где мест из импорта нет: по одному квадрату, начиная с ближнего
-    for (const [x, y] of needOsm()) {
-      const id = `${x}:${y}`;
-      try {
-        const items = await Osm.fetch(y * this.TILE, x * this.TILE, (y + 1) * this.TILE, (x + 1) * this.TILE);
-        this.osm[id] = { t: Date.now(), items };
-      } catch (e) {
-        console.warn('OpenStreetMap:', e.message);
-        this.osm[id] = { t: Date.now(), fail: true, items: (this.osm[id] || {}).items || [] };
-        break; // серверы OSM перегружены — попробуем позже
+    const show = () => { this.rebuild(); MapView.refresh(); }; // значки — сразу по приходу каждой части
+    const v = this.mapView(), isNear = t => Math.abs(t[0] - cx) <= 1 && Math.abs(t[1] - cy) <= 1;
+    // плитки карты для ближних квадратов — сразу, пока отвечает сервер (карта их всё равно рисует; общий кэш)
+    if (v && !this.covered()) around.filter(isNear).forEach(t => this.fromMap(v, t[0], t[1]).catch(() => {}));
+    try {
+      // 5.2: сначала квадрат игрока и соседние (3×3), потом остальные: в каждом круге — сервер игры одним запросом,
+      // затем OpenStreetMap там, где мест из импорта нет (из карты мира — все квадраты круга разом, без векторной карты — Overpass по одному)
+      for (const near of [true, false]) {
+        const srvPart = needSrv.filter(t => isNear(t) === near);
+        if (srvPart.length && !moved()) {
+          const pull = this.pullServer(srvPart);
+          try { await this.withTimeout(pull, this.SRV_WAIT); }
+          catch (e) {
+            console.warn('Места:', e.message); srvPart.forEach(t => { this.srv[t.join(':')] = { t: Date.now(), fail: true, items: (this.srv[t.join(':')] || {}).items || [] }; });
+            pull.then(() => { this.rebuild(); MapView.refresh(); }, () => {}); // сервер ответил позже предела — места всё равно на карту
+          }
+          show();
+        }
+        const list = moved() ? [] : needOsm().filter(t => isNear(t) === near);
+        const put = ([x, y], items, e) => {
+          const id = `${x}:${y}`;
+          if (e) console.warn('OpenStreetMap:', e.message);
+          this.osm[id] = e ? { t: Date.now(), fail: true, items: (this.osm[id] || {}).items || [] } : { t: Date.now(), items };
+        };
+        if (v) {
+          // из карты мира — все квадраты круга разом, каждый показывается, как только пришёл
+          await Promise.all(list.map(t => this.fromMap(v, t[0], t[1]).then(items => put(t, items), e => put(t, null, e)).then(() => { if (!moved()) show(); })));
+        } else {
+          for (const t of list) { // Overpass — по одному; перегружен — попробуем позже (через RETRY)
+            let e = null;
+            try { put(t, await Osm.fetch(t[1] * this.TILE, t[0] * this.TILE, (t[1] + 1) * this.TILE, (t[0] + 1) * this.TILE)); } catch (x) { put(t, null, e = x); }
+            show();
+            if (e || moved()) break;
+          }
+        }
+        if (moved()) break; // ушли — начнём от новой точки
       }
-      this.rebuild(); MapView.refresh();
-      if (MapView.pos && this.tileId(MapView.pos.lat, MapView.pos.lng) !== `${cx}:${cy}`) break; // ушли — начнём от новой точки
+    } finally {
+      this.persist();
+      if (gen === this._gen) this.busy = false; // иначе уже идёт загрузка от новой точки — она и снимет «занято»
     }
-    this.persist();
-    this.busy = false;
+    if (gen !== this._gen) return;
+    if (this._again || moved()) { setTimeout(() => this.ensure(), 0); return; }
     this.checkSupply();
+  },
+  // обещание с пределом по времени: сервер не ответил за ms — дальше без него
+  withTimeout(p, ms) {
+    let t;
+    return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(new Error(ru`Сервер мест не ответил`)), ms); })]).finally(() => clearTimeout(t));
+  },
+  /* 5.2: места из карты мира. Слой pois векторной карты (Protomaps) — те же объекты OpenStreetMap, что отдаёт Overpass;
+     id объекта в плитке — (тип << 44) | id в OSM (1 — точка, 2 — линия, 3 — отношение), то есть те же osm:n…/w…/r…,
+     что у сервера и у Overpass. Отбор и названия — те же (Osm.pick), по квадрату 0.01°: у всех игроков одинаковые места. */
+  MAP_Z: 15, MAP_EXT: 512, // уровень плиток и размер плитки в координатах объектов (как у Hazard)
+  mapView() { const t = typeof MapView !== 'undefined' && MapView.tiles; return (t && t.views && t.views.get('')) || null; },
+  async fromMap(v, x, y) {
+    const s = y * this.TILE, w = x * this.TILE, n = s + this.TILE, e = w + this.TILE, Z = this.MAP_Z, N = 2 ** Z;
+    const tx = g => (g + 180) / 360 * N, ty = a => { const r = a * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * N; };
+    const jobs = [];
+    for (let yy = Math.floor(ty(n)); yy <= Math.floor(ty(s)); yy++) for (let xx = Math.floor(tx(w)); xx <= Math.floor(tx(e)); xx++) {
+      jobs.push(v.tileCache.get({ z: Z, x: xx, y: yy }).then(d => [xx, yy, d]));
+    }
+    const T44 = 2 ** 44, TYPE = { 1: 'node', 2: 'way', 3: 'relation' }, els = new Map();
+    for (const [xx, yy, d] of await Promise.all(jobs)) {
+      for (const f of d.get('pois') || []) {
+        const k = f.props.kind, type = TYPE[Math.floor(f.id / T44)], p = f.geom && f.geom[0] && f.geom[0][0];
+        if (!type || !p || !Osm.CATS[k] || els.has(f.id)) continue;
+        const name = f.props['name:ru'] || f.props.name;
+        if (!name && (k === 'park' || k === 'garden')) continue; // как в запросе Overpass: парки и сады — только с названием
+        const lng = (xx + p.x / this.MAP_EXT) / N * 360 - 180, lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (yy + p.y / this.MAP_EXT) / N))) * 180 / Math.PI;
+        if (lat < s || lat >= n || lng < w || lng >= e) continue; // объект другого квадрата (запас плитки)
+        els.set(f.id, { type, id: f.id - Math.floor(f.id / T44) * T44, lat: +lat.toFixed(7), lon: +lng.toFixed(7), tags: { tourism: k, name: f.props.name, 'name:ru': f.props['name:ru'] } });
+      }
+    }
+    return Osm.pick([...els.values()]);
   },
   async pullServer(tiles) {
     const sb = await Cloud.client();

@@ -61,6 +61,8 @@ const UI = {
   init() {
     window.addEventListener('popstate', () => this.onPop());
     history.pushState({ g: 1 }, ''); this.guard = true;
+    // 5.2: когда игрок последний раз касался экрана — всплывашка при открытом меню показывается, только если она в ответ на касание
+    ['pointerdown', 'keydown'].forEach(t => document.addEventListener(t, () => { this._tapAt = performance.now(); }, { capture: true, passive: true }));
     U.$('#profileBtn').onclick = () => this.profile();
     U.$('#menuBtn').onclick = () => this.menu();
     U.$('#nearbyBtn').onclick = () => this.nearbyList();
@@ -154,6 +156,9 @@ const UI = {
 
   /* ---------------- ТОСТЫ И МОДАЛКИ ---------------- */
   toast(text, cls = '') {
+    // 5.2: главное меню — одна сцена: всплывашка не о меню (не в ответ на касание в нём — задание, находка спутника, погода…)
+    // ждёт, пока меню закроется (toastFlush)
+    if (this._rm && performance.now() - (this._tapAt || -1e9) > 1500) { (this._toastQ = this._toastQ || []).push([text, cls]); return; }
     const box = U.$('#toasts');
     const t = U.el(`<div class="toast ${cls}">${text}</div>`);
     box.appendChild(t);
@@ -161,6 +166,7 @@ const UI = {
     setTimeout(() => t.classList.add('out'), 2600);
     setTimeout(() => t.remove(), 3000);
   },
+  toastFlush() { const q = this._toastQ; if (!q || this._rm) return; this._toastQ = null; q.slice(-3).forEach(([t, c]) => this.toast(t, c)); },
   modal({ title = '', html = '', buttons = [{ label: 'OK' }], cls = '', dismiss = true }) {
     const wrap = U.el(`<div class="modal-wrap"><div class="modal ${cls}">${title ? `<div class="modal-title">${title}</div>` : ''}<div class="modal-body">${html}</div><div class="modal-btns"></div></div></div>`);
     const close = () => { if (!wrap.isConnected) return; this.popLayer(close); wrap.classList.add('out'); setTimeout(() => wrap.remove(), 200); };
@@ -654,12 +660,13 @@ const UI = {
     const close = (then) => {
       if (closing) return; closing = true;
       this.popLayer(close); this._rm = null;
+      wrap.classList.add('closing'); // 5.2: сцена меню (Stage) закрывается — карта проснётся, если следом не открылся раздел
       document.body.classList.remove('rm-open');
       // 4.25: HUD возвращается, когда значки уже почти долетели в кнопку, — без «призраков» подписей поверх карты (style.css)
       document.body.classList.add('rm-closing'); clearTimeout(this._rmT);
       this._rmT = setTimeout(() => document.body.classList.remove('rm-closing'), 240);
       wrap.classList.remove('rm-in'); wrap.classList.add('rm-back');
-      setTimeout(() => { wrap.remove(); if (typeof then === 'function') then(); }, 300);
+      setTimeout(() => { wrap.remove(); if (typeof then === 'function') then(); this.toastFlush(); }, 300);
     };
     wrap.addEventListener('click', e => {
       const t = e.target.closest('.tile');

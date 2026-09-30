@@ -125,6 +125,7 @@ const Walk = {
       this.keys.shift = e.shiftKey;
       if (!k || typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key.startsWith('Arrow') && UI.blocking()) return; // стрелки в окнах — их прокрутка
+      if (typeof Tut !== 'undefined' && !Tut.canWalk()) return; // 5.2: на обучении ходить — только на шаге «источник»
       this.keys[k] = true;
       this.run();
     });
