@@ -2989,6 +2989,27 @@
     }
   });
 
+  atest('5.2: конец обучения — экраны шага закрыты (на карту, без «Пути» со старым уровнем); окно уровня в обучении — «откроется после обучения»', async () => {
+    const was = { tut: S.d.tut, sfx: Sfx.play, modal: UI.modal, lv: UI._lv, open: UI._lvOpen, hud: UI.refreshHud }, made = [];
+    try {
+      Sfx.play = () => {}; UI.refreshHud = () => {};
+      const pth = UI.screen('Путь Ловчего', '', 'pth-screen'); made.push(pth);
+      Tut.chapterDone({ ch: TUT_CHAPTERS.length - 1, got: [], done: true });
+      const fin = document.querySelector('.tut-final'); if (fin) made.push(fin);
+      ok(!!fin, 'финал показан'); ok(pth.classList.contains('out'), 'экран последнего шага закрыт — после «В путь!» игрок на карте');
+      // окно нового уровня: в обучении разделы ещё под замком
+      const html = [];
+      UI.modal = o => { html.push(o.html); const m = document.createElement('div'); m.close = () => {}; return m; };
+      UI._lv = []; UI._lvOpen = false;
+      S.d.tut = Tut.idx('dex'); UI.levelUp({ l: 2, got: [] }); await new Promise(r => setTimeout(r, 420)); UI._lvOpen = false;
+      S.d.tut = 0; UI.levelUp({ l: 2, got: [] }); await new Promise(r => setTimeout(r, 420)); UI._lvOpen = false;
+      ok(/Откроется после обучения/.test(html[0]) && !/Открыто:/.test(html[0]), 'в обучении: «Откроется после обучения»');
+      ok(/Открыто:/.test(html[1]), 'после обучения: «Открыто»');
+    } finally {
+      made.forEach(e => e.remove()); S.d.tut = was.tut; Sfx.play = was.sfx; UI.modal = was.modal; UI._lv = was.lv; UI._lvOpen = was.open; UI.refreshHud = was.hud;
+    }
+  });
+
   /* ---------- 5.2: одна активная сцена (stage.js) ---------- */
   const stageWait = ms => new Promise(r => setTimeout(r, ms));
   atest('5.2: одна сцена — открыл экран: карта на паузе, вложенная сцена, закрыл: карта проснулась один раз', async () => {

@@ -223,7 +223,9 @@ const Tut = {
       UI.toast(ru`Обучение: «${TUT_CHAPTERS[ch].title}» — готово! ${got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');
       return;
     }
-    // Финал: обучение пройдено
+    // Финал: обучение пройдено. 5.2: экраны последнего шага закрываются — после «В путь!» игрок на карте,
+    // а не в «Пути Ловчего», нарисованном до награды за обучение (там был прежний уровень)
+    U.$$('.screen').filter(s => !s.classList.contains('out') && s._close).forEach(s => s._close());
     Sfx.play('levelup');
     const root = U.el(`<div class="tut-final"><div class="tf-rays"></div>
       <div class="tf-me"><div class="tf-ring"></div><div class="ts-me-ring">${Art.avatar(S.d.look)}</div></div>
