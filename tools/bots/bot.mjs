@@ -272,7 +272,7 @@ class Bot {
     catch (e) { pw = await import(pathToFileURL(env.PLAYWRIGHT_PATH || path.join(REPO, 'tests', 'node_modules', 'playwright', 'index.mjs')).href); }
     const { chromium } = pw;
     this.browser = CFG.cdp ? await chromium.connectOverCDP(CFG.cdp)
-      : await chromium.launch({ headless: CFG.headless, args: ['--disable-blink-features=AutomationControlled', '--mute-audio', '--autoplay-policy=user-gesture-required', '--disable-dev-shm-usage'] });
+      : await chromium.launch({ channel: env.PW_CHANNEL || undefined, headless: CFG.headless, args: ['--disable-blink-features=AutomationControlled', '--mute-audio', '--autoplay-policy=user-gesture-required', '--disable-dev-shm-usage'] });
     const storageState = fs.existsSync(F.storage) ? readJSON(F.storage, undefined) : undefined;
     this.ctx = await this.browser.newContext({
       viewport: CFG.viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true, locale: 'ru-RU', timezoneId: CFG.tz,
@@ -320,18 +320,38 @@ class Bot {
   note_sys(m) { say(scrub(m)); append(F.errors, { t: now(), step: this.mem.steps, kind: 'guard', m: scrub(m) }); }
 
   async offlineRoutes() {
-    // карта: любой .pmtiles — локальный файл (как в скриптах съёмки), сеть наружу — отбой
+    // сеть наружу — отбой. Регистрируется ПЕРВЫМ: у Playwright последний зарегистрированный маршрут срабатывает первым,
+    // а карта игры (MapView.tilesUrl) вне duholov.ru — это https://duholov.ru/tiles/….pmtiles, её обслуживает маршрут ниже
+    await this.ctx.route(u => !LOCAL.includes(u.hostname), route => route.abort());
+    // карта: TILES_REMOTE=1 — настоящая карта мира с duholov.ru (кэш в памяти, не больше 3 запросов сразу),
+    // иначе — локальный .pmtiles (www/tiles или OFFLINE_TILES; обычно это небольшой кусок, вне его карта пустая)
     const tdir = path.join(REPO, 'www', 'tiles');
     const pmFile = env.OFFLINE_TILES || (fs.existsSync(tdir) ? fs.readdirSync(tdir).filter(f => f.endsWith('.pmtiles')).map(f => path.join(tdir, f))[0] : null);
-    const pm = pmFile && fs.existsSync(pmFile) ? fs.readFileSync(pmFile) : null;
+    const pm = env.TILES_REMOTE !== '1' && pmFile && fs.existsSync(pmFile) ? fs.readFileSync(pmFile) : null;
+    const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Expose-Headers': '*' };
+    const cache = new Map();
+    let busy = 0;
     await this.ctx.route(/\.pmtiles(\?|$)/, async route => {
+      const req = route.request();
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { ...CORS, 'Access-Control-Allow-Methods': 'GET, HEAD' } });
+      if (env.TILES_REMOTE === '1') {
+        const key = req.url() + '|' + (req.headers().range || '');
+        let hit = cache.get(key);
+        if (!hit) {
+          while (busy >= 3) await sleep(60);
+          busy++;
+          try { const r = await route.fetch({ timeout: 30000 }); hit = { status: r.status(), headers: r.headers(), body: await r.body() }; if (r.ok()) cache.set(key, hit); }
+          catch (e) { return route.abort().catch(() => {}); }
+          finally { busy--; }
+        }
+        return route.fulfill({ status: hit.status, body: hit.body, headers: { ...hit.headers, ...CORS } });
+      }
       if (!pm) return route.abort();
-      const h = route.request().headers(), m = /bytes=(\d+)-(\d*)/.exec(h.range || '');
-      if (!m) return route.fulfill({ status: 200, body: pm, headers: { 'Content-Type': 'application/octet-stream', 'Accept-Ranges': 'bytes' } });
+      const h = req.headers(), m = /bytes=(\d+)-(\d*)/.exec(h.range || '');
+      if (!m) return route.fulfill({ status: 200, body: pm, headers: { ...CORS, 'Content-Type': 'application/octet-stream', 'Accept-Ranges': 'bytes' } });
       const a = +m[1], b = m[2] ? Math.min(+m[2], pm.length - 1) : pm.length - 1;
-      return route.fulfill({ status: 206, body: pm.subarray(a, b + 1), headers: { 'Content-Type': 'application/octet-stream', 'Content-Range': `bytes ${a}-${b}/${pm.length}`, 'Accept-Ranges': 'bytes' } });
+      return route.fulfill({ status: 206, body: pm.subarray(a, b + 1), headers: { ...CORS, 'Content-Type': 'application/octet-stream', 'Content-Range': `bytes ${a}-${b}/${pm.length}`, 'Accept-Ranges': 'bytes' } });
     });
-    await this.ctx.route(u => !LOCAL.includes(u.hostname), route => route.abort());
   }
 
   // живой экран для зрителя: кадры CDP Page.startScreencast → live.jpg (не чаще BOT_FPS)

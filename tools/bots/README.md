@@ -96,7 +96,8 @@ BOT_FORCE=1 ./run.sh bot bot1 # запустить бота, который уж
 `LLM_TIMEOUT_MS` (180000), `LLM_MAX_TOKENS` (260), `LLM_TEMP` (0.8), `BOTS_DIR`, `BOT_VIEW_PORT` (8090),
 `ACT_GAP_MIN_MS`/`ACT_GAP_MAX_MS` (3000/5000), `API_PER_MIN` (4), `MEM_EVERY` (10), `CHAT_EVERY` (4),
 `MAX_STEPS` (0 — без конца), `SHOTS_KEEP` (3000), `BOT_FPS` (3), `OBS_MAX_CHARS` (5200), `BOT_TZ`, `HEADLESS` (0 — окно),
-`CDP_URL` (подключиться к уже запущенному Chromium), `PLAYWRIGHT_PATH`.
+`CDP_URL` (подключиться к уже запущенному Chromium), `PLAYWRIGHT_PATH`, `PW_CHANNEL` (`msedge`/`chrome` — установленный браузер вместо Chromium Playwright).
+Карта в `OFFLINE=1`: `TILES_REMOTE=1` — настоящая карта мира с duholov.ru (кэш в памяти, не больше 3 запросов сразу), иначе — локальный `.pmtiles` (`OFFLINE_TILES` или `www/tiles/`; вне него карта пустая, а с 5.1.13 без карты нет и мест).
 
 ## Проверка без сети и модели (локально)
 
