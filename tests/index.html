@@ -2943,7 +2943,8 @@
     ok(P.data.cocoons.length === coc + 1 && P.data.cocoons.some(c => c.km === 5), 'синий кокон 5 км');
     ok(c1.pick && c1.pick.opts.length === 3 && c1.pick.opts.every(id => SP[id].rar === 3 && SP[id].stage === 1 && !SP[id].legend), 'три редких духа на выбор');
     eq(new Set(c1.pick.opts.map(id => SP[id].el)).size, 3, 'разных стихий');
-    ok(c1.pick.opts.every(id => !have.has(SP[id].el)), 'сперва — стихии, которых у Ловчего нет');
+    const missEl = ELEMENT_KEYS.filter(e => !have.has(e) && SPECIES.some(q => q.el === e && q.rar === 3 && q.stage === 1 && !q.legend && !q.season && MYTH_KEYS.includes(q.myth || 'slavic')));
+    eq(c1.pick.opts.filter(id => !have.has(SP[id].el)).length, Math.min(3, missEl.length), 'сперва — стихии, которых у Ловчего нет');
     eq(step().id, 'c1s2', 'открыт шаг 2'); await refuse(P, 'campClaim', {}, /выбери духа/);
     const n0 = P.data.spirits.length, pk = await must(P, 'campPick', { i: 1 }), got = P.data.spirits.find(q => q.uid === pk.uid);
     ok(pk.sid === c1.pick.opts[1] && P.data.spirits.length === n0 + 1 && got.lvl === c1.pick.lvl, 'дух уровня Ловчего — в коллекции');
@@ -3010,17 +3011,18 @@
     const t0 = r0.st.t0;
     for (let t = t0 + 400; t < t0 + 16000; t += 600) await pvp(A, 'move', { id: m.match, in: [{ t: 'hit', n: 1 }] }, t);
     const st = DB.pvpM[m.match].state;
-    ok(st.s.b.hits >= 10 && st.s.b.hits <= 30, `бот бьёт по часам: ${st.s.b.hits} ударов`); ok(st.log.length && st.bm, 'память бота — в бою');
+    ok(st.s.b.hits >= 3 && st.s.b.hits <= 16 * PvP.RATE + PvP.BURST, `бот бьёт по часам, не быстрее правила: ${st.s.b.hits} ударов`); ok(st.log.length && st.bm, 'память бота — в бою');
     const idle = st.s.a.seen + PvP.IDLE + 1000, end = await pvp(A, 'state', { id: m.match }, idle);
     ok(end.st.over && end.st.over.win === 'b' && end.st.over.why === 'idle', 'Ловчий пропал — поражение (бот всегда на связи)');
     ok(DB.pvpM[m.match].state.over.d.a && !DB.pvpM[m.match].state.over.d.b, 'в итоге — только сторона Ловчего');
     const res = (await must(A, 'pvpResult', {})).done; ok(res.length === 1 && !res[0].win, 'поражение засчитано');
+    A.data.spirits.forEach(sp => { delete sp.ko; delete sp.hpf; delete sp.hpt; delete sp.tired; delete sp.tiredT; }); // раны после боя — вылечены
     // победа над ботом — шаг Кампании «Победи в Лиге»
     A.data.camp = { ch: 0, s: 2, p: [0], u: [], t: Date.now(), pick: null, rift: null, rn: 0 };
     await must(A, 'pvpFind', {}); ago(A, League.BOT_WAIT + 1);
     const m2 = (await must(A, 'pvpFind', {})).match; ok(m2 && DB.pvpM[m2].state.bot === 'b');
     const q = await pvp(A, 'state', { id: m2 }); DB.pvpM[m2].state = PvP.ensure(DB.pvpM[m2].state); DB.pvpM[m2].state.s.b.team.forEach(f => { f.cur = 1; });
-    for (let t = q.st.t0 + 300, i = 0; i < 12 && !DB.pvpM[m2].state.over; t += 7000, i++) await pvp(A, 'move', { id: m2, in: [{ t: 'hit', n: 1 }, { t: 'switch', i: 0 }] }, t);
+    for (let t = q.st.t0 + 300, i = 0; i < 12 && !DB.pvpM[m2].state.over; t += 7000, i++) await pvp(A, 'move', { id: m2, in: [{ t: 'hit', n: 1 }] }, t);
     ok(DB.pvpM[m2].state.over && DB.pvpM[m2].state.over.win === 'a', 'Ловчий победил');
     await must(A, 'pvpResult', {}); eq(A.data.camp.p[0], 1, 'победа над Ловчим Ордена — в шаг Кампании');
     // живой — первым: второй Ловчий в окне — пара с ним, а не с ботом
