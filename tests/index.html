@@ -985,10 +985,10 @@
   test('Скорость (4.24.1): после поездки остановился — пауза снимается; дрожь GPS и бег — не скорость', () => {
     const t0 = 1e12, P = (sec, lat) => ({ lat, lng: 37.6, t: t0 + sec * 1000 });
     const st = {};
-    for (let sec = 0; sec <= 60; sec += 2) Rules.paceStep(st, P(sec, 55.7 + sec * 0.0001)); // ≈ 40 км/ч
+    for (let sec = 0; sec <= 60; sec += 2) Rules.paceStep(st, P(sec, 55.7 + sec * 0.0003)); // ≈ 120 км/ч (5.1.12: предел 65 км/ч)
     ok(st.until > t0 + 60000 && st.kmh > 30, 'едет: ' + st.kmh);
     let at = 0;
-    for (let sec = 62; sec <= 180; sec += 2) { Rules.paceStep(st, P(sec, 55.706)); if (!at && !(st.until > t0 + sec * 1000)) at = sec; }
+    for (let sec = 62; sec <= 180; sec += 2) { Rules.paceStep(st, P(sec, 55.718)); if (!at && !(st.until > t0 + sec * 1000)) at = sec; }
     ok(at > 60 && at <= 72, 'пауза снята через ' + (at - 60) + ' с после остановки (раньше — до двух минут)');
     const st2 = {};
     for (let sec = 0; sec <= 120; sec += 2) Rules.paceStep(st2, { lat: 55.7 + (sec % 4 ? 0.00018 : 0), lng: 37.6, t: t0 + sec * 1000 });
@@ -1693,7 +1693,7 @@
     const sp = freeSpring(A, 96000);
     await must(A, 'spring', { poi: sp }); // бегом — можно
     const km0 = A.data.stats.km, car = [], t1 = Date.now() - 62000;
-    for (let i = 0; i <= 12; i++) car.push([55.67 + i * 0.00075, 37.55, t1 + i * 5000, 10]); // ≈ 60 км/ч
+    for (let i = 0; i <= 12; i++) car.push([55.67 + i * 0.00225, 37.55, t1 + i * 5000, 10]); // ≈ 180 км/ч (5.1.12: предел 65 км/ч)
     const r = await must(A, 'move', { pts: car });
     eq(A.data.stats.km, km0, 'на машине путь не считается'); ok(r.fast > 16, 'сервер заметил скорость: ' + r.fast);
     await refuse(A, 'spring', { poi: freeSpring(A, 96500) }, /Слишком быстро/);
@@ -1701,7 +1701,7 @@
   atest('Сервер: после машины остановился — через несколько секунд снова можно действовать (4.24.1)', async () => {
     const A = await newPlayer('us2', 55.64, 37.53, 'Стоп');
     const car = [], t1 = Date.now() - 72000;
-    for (let i = 0; i <= 12; i++) car.push([55.64 - 0.009 + i * 0.00075, 37.53, t1 + i * 5000, 10]); // ≈ 60 км/ч, стоп 12 с назад
+    for (let i = 0; i <= 12; i++) car.push([55.64 - 0.027 + i * 0.00225, 37.53, t1 + i * 5000, 10]); // ≈ 180 км/ч, стоп 12 с назад (5.1.12: предел 65 км/ч)
     await must(A, 'move', { pts: car });
     ok(A.srv.spd.kmh > 16, 'сервер заметил поездку: ' + A.srv.spd.kmh);
     const stay = [];
@@ -2976,7 +2976,7 @@
       near(w.m, 60 * Rules.MOVE.WALK, 4, 'шаг засчитан: ' + w.m);
       w = await walk({ x: 0.9, y: 0 }, 30);
       near(w.m, 30 * Rules.MOVE.RUN, 6, 'бег засчитан: ' + w.m);
-      Rules.MOVE.RUN = 12; // подделка: «джойстик» быстрее предела сервера (9 м/с)
+      Rules.MOVE.RUN = 25; // подделка: «джойстик» быстрее предела сервера (18 м/с)
       w = await walk({ x: 0.9, y: 0 }, 30);
       eq(w.m, 0, 'быстрее бега — не засчитано');
     } finally {
