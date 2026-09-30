@@ -75,6 +75,8 @@ jobs:
         with:
           gradle-version: '8.13'
       - run: gradle -p android assembleDebug --no-daemon
+      # 15: релиз с R8 (без подписи) — проверить, что сжатие кода собирается, ещё до слияния
+      - run: gradle -p android assembleSiteRelease bundlePlayRelease --no-daemon
 
   # Сборка Pull Request на test.duholov.ru и его функция game — в тестовый контур (api-test.duholov.ru): проверить с телефона до слияния
   test-site:
