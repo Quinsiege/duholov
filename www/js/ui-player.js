@@ -109,8 +109,11 @@ Object.assign(UI, {
     if (st) {
       const ready = S.campReady();
       const objs = st.obj.map((o, i) => {
-        const v = Math.min(c.p[i] || 0, o.n), ok = v >= o.n, num = o.t === 'walk' ? ru`${Math.floor(v * 10) / 10} / ${o.n} км` : `${Math.floor(v)} / ${o.n}`;
-        return `<div class="cp-obj ${ok ? 'done' : ''}"><div class="cp-ot"><span>${CAMP_OBJ[o.t](o)}</span><b>${ok ? '✓' : num}</b></div>${o.n > 1 && !ok ? `<div class="pbar"><i style="width:${v / o.n * 100}%"></i></div>` : ''}</div>`;
+        // 5.1.17: «выведи духа из кокона» — путь кокона, которому до вылупления осталось меньше всех
+        const v = Math.min(c.p[i] || 0, o.n), ok = v >= o.n, cc = o.t === 'hatch' && !ok ? S.campCocoon() : null;
+        const num = cc ? ru`${Math.floor(cc.walked * 10) / 10} / ${cc.km} км` : o.t === 'walk' ? ru`${Math.floor(v * 10) / 10} / ${o.n} км` : `${Math.floor(v)} / ${o.n}`;
+        const bar = cc ? cc.walked / cc.km : o.n > 1 ? v / o.n : -1;
+        return `<div class="cp-obj ${ok ? 'done' : ''}"><div class="cp-ot"><span>${CAMP_OBJ[o.t](o)}</span><b>${ok ? '✓' : num}</b></div>${bar >= 0 && !ok ? `<div class="pbar"><i style="width:${Math.min(100, bar * 100)}%"></i></div>` : ''}</div>`;
       }).join('');
       const gift = c.gift && SP[c.gift.fam] ? `<small class="cp-gift">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на превращение`}</small>` : '';
       html += `<div class="quest cp-step ${ready ? 'done' : ''}"><div class="q-main"><b class="cp-name">${st.name}</b>${objs}${gift}
@@ -164,17 +167,21 @@ Object.assign(UI, {
     if (!e) return;
     MapView.track(e); MapView.flyTo(e);
   },
-  // 5.1.15: шаг Кампании на карте — строкой под Ловчим и бафами: мелко, без рамки и подложки, без всплывашек.
+  // 5.1.15: шаг Кампании на карте — мелко, без рамки и подложки, без всплывашек. 5.1.17: всегда на одном месте — под стрелкой
+  // Следопыта; все цели шага, выполненные — с галочкой; у «выведи духа из кокона» — путь кокона, которому осталось меньше всех.
   // Касание — «Задания» → «Кампания». Раз в секунду вместе с HUD; здесь же: Разлом кампании нужен, а рядом его нет —
   // сервер ставит его рядом с Ловчим (не чаще раза в 20 с)
   campLineHtml() {
     const c = S.d.camp, st = S.campStep();
     if (c.pick) return `<b>${ru`Кампания`}</b><span class="cl-go">${ru`Выбери духа — награда шага`}</span>`;
     if (!st) return '';
-    if (S.campReady()) return `<b>${ru`Кампания · ${st.name}`}</b><span class="cl-go">${ru`Шаг выполнен — забери награду`}</span>`;
-    const left = st.obj.map((o, i) => [o, Math.min(c.p[i] || 0, o.n)]).filter(([o, v]) => v < o.n);
-    const row = ([o, v]) => `<span>${!CAMP_SHORT[o.t] ? CAMP_OBJ[o.t](o) : o.n > 1 ? `${CAMP_SHORT[o.t](o)} <i>${o.t === 'walk' ? Math.floor(v * 10) / 10 : Math.floor(v)}/${o.n}</i>` : CAMP_SHORT[o.t](o)}</span>`;
-    return `<b>${ru`Кампания · ${st.name}`}</b>${left.slice(0, 3).map(row).join('')}${left.length > 3 ? `<span class="cl-more">${ru`и ещё целей: ${left.length - 3}`}</span>` : ''}`;
+    const km = x => Math.floor(x * 10) / 10;
+    const row = (o, i) => {
+      const v = Math.min(c.p[i] || 0, o.n), ok = v >= o.n, cc = o.t === 'hatch' && !ok ? S.campCocoon() : null;
+      const num = cc ? ru`${km(cc.walked)} / ${cc.km} км` : o.n > 1 ? `${o.t === 'walk' ? km(v) : Math.floor(v)}/${o.n}` : '';
+      return `<span class="${ok ? 'cl-ok' : ''}">${ok ? '✓ ' : ''}${(CAMP_SHORT[o.t] || CAMP_OBJ[o.t])(o)}${num ? ` <i>${num}</i>` : ''}</span>`;
+    };
+    return `<b>${ru`Кампания · ${st.name}`}</b>${st.obj.map(row).join('')}${S.campReady() ? `<span class="cl-go">${ru`Шаг выполнен — забери награду`}</span>` : ''}`;
   },
   refreshCampLine() {
     const el = U.$('#campLine');

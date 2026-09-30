@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.16';
+const APP_VERSION = '5.1.17';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -2394,6 +2394,16 @@ const S = {
     if (d.clan && clanOf(d.clan) !== d.clan) d.clan = clanOf(d.clan);
   },
 
+  // 5.1.17: первый дух — из кокона: редкость по STARTER_RAR (обычный 50%, необычный 35%, редкий 13%, эпический 1,5%,
+  // легендарный 0,5%), вид — любой этой редкости из Бестиария (открытые мифологии, и превращённые, и сезонные; Кощея нет — он враг Ордена)
+  STARTER_RAR: [[1, 500], [2, 350], [3, 130], [4, 15], [5, 5]],
+  rollStarter(r = Math.random) {
+    const ok = s => s.id !== 'koschey' && MYTH_KEYS.includes(s.myth || 'slavic');
+    const rar = U.weighted(this.STARTER_RAR, r());
+    let pool = SPECIES.filter(s => s.rar === rar && ok(s));
+    if (!pool.length) pool = SPECIES.filter(ok);
+    return pool[Math.floor(r() * pool.length)].id;
+  },
   newGame(name, starter) {
     this.d = {
       v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),
@@ -3040,6 +3050,11 @@ const S = {
   },
   // сколько духов уровня o.l и выше (не больше нужного)
   campLvlN(o) { return Math.min(o.n, this.d.spirits.filter(sp => sp.lvl >= o.l).length); },
+  // 5.1.17: для цели «выведи духа из кокона» — кокон, которому до вылупления осталось меньше всех (сперва — те, что греются)
+  campCocoon() {
+    const list = (this.d.cocoons || []).slice().sort((a, b) => (b.inc ? 1 : 0) - (a.inc ? 1 : 0) || (a.km - a.walked) - (b.km - b.walked));
+    return list[0] || null;
+  },
   // 5.1.16: цели шага сменились (шаг 1: «до предела уровня» → «до 7 уровня») — у тех, кто уже на шаге, считаемые по коллекции
   // цели пересчитываются по ней (раньше засчитанное не пропадает, если осталось верным)
   CAMP_V: 2,
@@ -6497,12 +6512,15 @@ const GameCore = {
       this.need(!S.d, ru`Прогресс уже есть`);
       const name = this.cleanText(a.name, 16);
       this.need(name.length >= 1, ru`Назови себя`);
-      this.need(this.STARTERS.includes(a.starter), ru`Выбери первого духа`);
-      S.newGame(name, a.starter);
+      // 5.1.17: первый дух вылупляется из кокона — вид решает сервер (S.rollStarter). Прежний выбор из трёх обычных ещё
+      // принимается от старых версий (и в автотестах): он не выгоднее случайного; чужой вид — отказ, как раньше
+      if (a.starter != null && a.starter !== '') this.need(this.STARTERS.includes(a.starter), ru`Выбери первого духа`);
+      const starter = this.STARTERS.includes(a.starter) ? a.starter : S.rollStarter();
+      S.newGame(name, starter);
       await ctx.env.registerPid(S.d.pid);
       ctx.full = true;
       const invitedBy = await this.invite(ctx, String(a.ref || ''));
-      return { ok: true, invitedBy };
+      return { ok: true, invitedBy, starter };
     },
     async reset(a, ctx) {
       await ctx.env.deleteSave();

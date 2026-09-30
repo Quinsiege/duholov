@@ -26,6 +26,9 @@ window.addEventListener('load', () => {
     Poi.init();
     MapView.init();
     Poi.ensure();
+    // 5.1.17: у Ловчего ещё нет места в мире игры (новичок после знакомства) — Атлас сразу, поверх экрана загрузки: глобусу
+    // карта не нужна. Раньше он открывался через секунду после загрузки карты — и мелькали карта и HUD
+    if (S.d && typeof Atlas !== 'undefined' && !Walk.placed()) { Atlas.open({ first: true }); Loader.hide(); }
     // 4.28: уже играющим — книга-вступление один раз, когда нет других окон; 5.1: у кого нет места в мире игры — Атлас (один раз)
     Loader.waitMap().then(() => { Loader.hide(); Intro.later(); Walk.ensurePlaced(); });
     setTimeout(() => Propose.checkResults(), 6000);

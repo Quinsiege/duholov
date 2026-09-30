@@ -3040,14 +3040,46 @@
     try {
       S.d = { camp: { ch: 0, s: 0, p: [2, 3, 0], u: [], pick: null }, spirits: [], xp: 0 };
       const h = UI.campLineHtml();
-      ok(/Первая охота/.test(h) && /Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h) && !/Духи 7 уровня/.test(h), 'только невыполненные цели, с «сделано/нужно»');
+      ok(/Первая охота/.test(h) && /<span class="">Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h), 'цели с «сделано/нужно»');
+      ok(/<span class="cl-ok">✓ Духи 7 уровня <i>3\/3<\/i>/.test(h), '5.1.17: выполненная цель остаётся в списке — с галочкой');
       S.d.camp.p = [2, 1, 0]; ok(/Духи 7 уровня <i>1\/3<\/i>/.test(UI.campLineHtml()), '5.1.16: «духи 7 уровня»');
-      S.d.camp.p = [5, 3, 1]; ok(/забери награду/.test(UI.campLineHtml()), 'шаг выполнен');
+      S.d.camp.p = [5, 3, 1]; const hr = UI.campLineHtml(); ok(/забери награду/.test(hr) && (hr.match(/cl-ok/g) || []).length === 3, 'шаг выполнен — все цели с галочкой');
+      // 5.1.17: «выведи духа из кокона» — путь кокона, которому до вылупления осталось меньше всех (сперва — те, что греются)
+      S.d.camp = { ch: 0, s: 1, p: [0], u: [], pick: null };
+      S.d.cocoons = [{ km: 5, walked: 1.26, inc: true }, { km: 10, walked: 9.55, inc: true }, { km: 2, walked: 0, inc: false }];
+      ok(/Выведи духа из кокона <i>9.5 \/ 10 км<\/i>/.test(UI.campLineHtml()), 'ближе всех к вылуплению — 10 км, пройдено 9,5');
+      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; ok(/<i>0 \/ 2 км<\/i>/.test(UI.campLineHtml()), 'никто не греется — самый короткий');
+      S.d.cocoons = []; ok(/Выведи духа из кокона<\/span>/.test(UI.campLineHtml()), 'коконов нет — без пути');
       S.d.camp.pick = { opts: ['ugolek', 'kapelka', 'mshonok'], lvl: 5, ess: 15 }; ok(/Выбери духа/.test(UI.campLineHtml()), 'ждёт выбор духа');
       S.d.camp = { ch: 0, s: 8, p: [12.34, 1, 0, 0, 0], u: [], pick: null };
-      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && /и ещё целей: 2/.test(h9), 'не больше трёх строк целей');
+      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && (h9.match(/<span/g) || []).length === 5, '5.1.17: все цели шага — без «и ещё»');
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
+  });
+  test('5.1.17: первый дух — из кокона: редкость 50 / 35 / 13 / 1,5 / 0,5%, любой вид Бестиария (и превращённые), без Кощея', () => {
+    const n = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, N = 20000, seen = new Set(), stages = new Set();
+    let r = 12345; const rnd = () => (r = (r * 1103515245 + 12345) % 2147483648) / 2147483648; // повторяемый ряд случайных чисел
+    for (let i = 0; i < N; i++) {
+      const s = SP[S.rollStarter(rnd)];
+      ok(s && s.id !== 'koschey' && MYTH_KEYS.includes(s.myth || 'slavic'), 'вид — из Бестиария: ' + (s && s.id));
+      n[s.rar]++; seen.add(s.id); stages.add(s.stage);
+    }
+    const pc = k => n[k] / N * 100;
+    ok(Math.abs(pc(1) - 50) < 2 && Math.abs(pc(2) - 35) < 2 && Math.abs(pc(3) - 13) < 1.5 && Math.abs(pc(4) - 1.5) < 0.6 && Math.abs(pc(5) - 0.5) < 0.35,
+      `доли: ${[1, 2, 3, 4, 5].map(k => pc(k).toFixed(1)).join(' / ')}`);
+    const all = SPECIES.filter(s => s.id !== 'koschey' && MYTH_KEYS.includes(s.myth || 'slavic'));
+    ok(stages.has(2) && stages.has(3), 'выпадают и превращённые (2-я и 3-я стадия)');
+    ok(seen.size > all.length * 0.8, `за 20 000 бросков выпало видов: ${seen.size} из ${all.length}`);
+  });
+  atest('5.1.17: новая игра без выбора — первый дух решает сервер; прежний выбор из трёх ещё принимается, чужой вид — отказ', async () => {
+    const A = { uid: 'st-a', lat: 55.75, lng: 37.62, data: null, srv: {} };
+    await refuse(A, 'newGame', { name: 'Хитрец', starter: 'zharptica' }, /первого духа/);
+    const r = await must(A, 'newGame', { name: 'Новичок' });
+    ok(r.starter && SP[r.starter], 'вид первого духа — в ответе');
+    eq(A.data.spirits.length, 1); eq(A.data.spirits[0].sid, r.starter); eq(A.data.starter, r.starter, 'запомнен для Кампании');
+    eq(A.data.essence[SP[r.starter].fam], 10, '10 эссенции его семейства');
+    const B = { uid: 'st-b', lat: 55.75, lng: 37.62, data: null, srv: {} };
+    eq((await must(B, 'newGame', { name: 'Старый', starter: 'mshonok' })).starter, 'mshonok', 'старая версия — выбор из трёх');
   });
   test('5.1.16: шаг 1 — «усиль духов до 7 уровня»: у тех, кто уже на шаге, цель пересчитана по коллекции; награда за обучение — ✦ 10 000', () => {
     const d0 = S.d, st = CAMPAIGN[0].steps[0].obj[1];

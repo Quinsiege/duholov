@@ -78,6 +78,16 @@ const S = {
     if (d.clan && clanOf(d.clan) !== d.clan) d.clan = clanOf(d.clan);
   },
 
+  // 5.1.17: первый дух — из кокона: редкость по STARTER_RAR (обычный 50%, необычный 35%, редкий 13%, эпический 1,5%,
+  // легендарный 0,5%), вид — любой этой редкости из Бестиария (открытые мифологии, и превращённые, и сезонные; Кощея нет — он враг Ордена)
+  STARTER_RAR: [[1, 500], [2, 350], [3, 130], [4, 15], [5, 5]],
+  rollStarter(r = Math.random) {
+    const ok = s => s.id !== 'koschey' && MYTH_KEYS.includes(s.myth || 'slavic');
+    const rar = U.weighted(this.STARTER_RAR, r());
+    let pool = SPECIES.filter(s => s.rar === rar && ok(s));
+    if (!pool.length) pool = SPECIES.filter(ok);
+    return pool[Math.floor(r() * pool.length)].id;
+  },
   newGame(name, starter) {
     this.d = {
       v: 1, name, level: 1, xp: 0, sparks: 500, created: Date.now(),
@@ -724,6 +734,11 @@ const S = {
   },
   // сколько духов уровня o.l и выше (не больше нужного)
   campLvlN(o) { return Math.min(o.n, this.d.spirits.filter(sp => sp.lvl >= o.l).length); },
+  // 5.1.17: для цели «выведи духа из кокона» — кокон, которому до вылупления осталось меньше всех (сперва — те, что греются)
+  campCocoon() {
+    const list = (this.d.cocoons || []).slice().sort((a, b) => (b.inc ? 1 : 0) - (a.inc ? 1 : 0) || (a.km - a.walked) - (b.km - b.walked));
+    return list[0] || null;
+  },
   // 5.1.16: цели шага сменились (шаг 1: «до предела уровня» → «до 7 уровня») — у тех, кто уже на шаге, считаемые по коллекции
   // цели пересчитываются по ней (раньше засчитанное не пропадает, если осталось верным)
   CAMP_V: 2,

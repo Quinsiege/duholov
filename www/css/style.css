@@ -5478,17 +5478,20 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes tutNudgeCalm { 0% { box-shadow: 0 0 0 3px rgba(253, 224, 71, .9), 0 10px 30px rgba(0, 0, 0, .5); } 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
 
 /* ---------- 5.1.15: Кампания ---------- */
-/* шаг Кампании на карте — строкой под Ловчим и бафами: мелкий текст прямо на карте, без подложки и рамок */
-#hud .camp-line { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; margin: 8px 0 0; padding: 0; max-width: 100%; /* 5.1.16: от левого края, под аватаром */
+/* шаг Кампании на карте: мелкий текст прямо на карте, без подложки и рамок. 5.1.17: всегда на одном месте — под стрелкой
+   Следопыта (#tracker: left 12px, top 96px + зона выреза, высота до ~56px с подписью в две строки), есть она или нет */
+#hud .camp-line { position: absolute; left: 12px; top: calc(146px + var(--st)); display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  margin: 0; padding: 0; max-width: calc(100vw - 150px);
   background: none; border: 0; box-shadow: none; border-radius: 0; pointer-events: auto; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
   font-family: var(--f-head); font-size: 10.5px; font-weight: 600; line-height: 1.28; color: rgba(255, 255, 255, .86);
   text-shadow: 0 1px 3px rgba(8, 4, 24, .95), 0 0 8px rgba(8, 4, 24, .7); }
 #hud .camp-line.hidden { display: none; }
-#hud .camp-line b { font-weight: 700; font-size: 11px; color: var(--gold2); }
+#hud .camp-line b { font-weight: 700; font-size: 13px; color: var(--gold2); margin-bottom: 1px; }
 #hud .camp-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #hud .camp-line i { font-style: normal; color: #99f6e4; }
+#hud .camp-line .cl-ok { color: rgba(255, 255, 255, .55); }
+#hud .camp-line .cl-ok i { color: rgba(153, 246, 228, .6); }
 #hud .camp-line .cl-go { color: #86efac; }
-#hud .camp-line .cl-more { color: rgba(255, 255, 255, .6); }
 /* вкладка «Кампания» в «Заданиях» */
 .cp-head { display: block; }
 .cp-head .row-main b { font-size: 16px; }
@@ -5523,3 +5526,24 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 .cp-card small { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 3px; }
 /* личный Разлом кампании на карте — золотое сияние портала */
 .mk-rift.camp > .art { filter: drop-shadow(0 0 10px rgba(251, 191, 36, .75)); }
+
+/* ---------- 5.1.17: первый дух — из кокона (знакомство, шаг 3) ---------- */
+/* кокон покачивается, пока сервер создаёт Ловчего; трескается — вспышка цвета редкости (--rc) — и дух */
+.onb-hatch { position: relative; width: 210px; height: 210px; margin: 6px auto 4px; display: grid; place-items: center; }
+.onb-hatch .oh-glow { position: absolute; inset: 8%; border-radius: 50%; background: radial-gradient(circle, rgba(253, 230, 138, .5), rgba(253, 230, 138, 0) 70%); animation: ohGlow 1.6s ease-in-out infinite; }
+.onb-hatch .oh-coc { position: relative; width: 128px; height: 128px; transform-origin: 50% 88%; animation: ohWobble 1.1s ease-in-out infinite; }
+.onb-hatch .oh-coc svg, .onb-hatch .oh-coc .art, .onb-hatch .oh-coc img { width: 100%; height: 100%; }
+.onb-hatch.crack .oh-coc { animation: ohShake .12s linear infinite; filter: brightness(1.35) drop-shadow(0 0 16px rgba(253, 230, 138, .9)); }
+.onb-hatch.open .oh-coc { animation: ohPop .5s ease-out forwards; }
+.onb-hatch .oh-sp { position: absolute; width: 164px; height: 164px; opacity: 0; transform: scale(.35); transition: opacity .45s ease, transform .7s cubic-bezier(.2, 1.6, .4, 1); pointer-events: none; }
+.onb-hatch .oh-sp .art, .onb-hatch .oh-sp svg, .onb-hatch .oh-sp img { width: 100%; height: 100%; }
+.onb-hatch.open .oh-sp { opacity: 1; transform: scale(1); }
+.onb-hatch.open .oh-glow { background: radial-gradient(circle, var(--rc, #fde68a), transparent 68%); opacity: .75; animation: ohBurst .9s ease-out, ohGlow 2.2s .9s ease-in-out infinite; }
+.onb-hatch.open.r4 .oh-glow, .onb-hatch.open.r5 .oh-glow { inset: -12%; opacity: .95; }
+.onb-rar { font-family: var(--f-head); letter-spacing: .3px; }
+@keyframes ohWobble { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-9deg); } 40% { transform: rotate(7deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
+@keyframes ohShake { 0% { transform: translate(-3px, 0) rotate(-4deg); } 50% { transform: translate(3px, 0) rotate(4deg); } 100% { transform: translate(-3px, 0) rotate(-4deg); } }
+@keyframes ohPop { to { transform: scale(1.7); opacity: 0; } }
+@keyframes ohGlow { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
+@keyframes ohBurst { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(1.25); opacity: .75; } }
+.calm .onb-hatch .oh-coc, .calm .onb-hatch .oh-glow { animation: none !important; }
