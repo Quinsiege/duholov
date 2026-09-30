@@ -462,6 +462,9 @@ const S = {
     const s = SP[sp.sid];
     this.d.essence[s.fam] -= s.cost;
     sp.sid = s.evo;
+    // 5.1.18: после эволюции дух жив и с полным здоровьем — раны, «без сил» и усталость не переходят к новой форме
+    // (раньше переходили, а срок «без сил» ещё и вырастал: он зависит от редкости, Rules.koMs)
+    this.setHp(sp, 1); delete sp.tired; delete sp.tiredT;
     const dx = this.d.dex[sp.sid] = this.d.dex[sp.sid] || { seen: 0, caught: 0 };
     const isNew = !dx.caught;
     dx.seen++; dx.caught++;

@@ -3056,6 +3056,22 @@
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
   });
+  atest('5.1.18: эволюция — дух жив и с полным здоровьем: «без сил», раны и усталость к новой форме не переходят', async () => {
+    const P = await newPlayer('ev-hp', 55.75, 37.62, 'Лекарь', 'ugolek');
+    const sp = P.data.spirits[0], fam = SP.ugolek.fam, now = Date.now();
+    // без сил (только что) и уставший после боёв
+    sp.ko = now - 60000; sp.tired = 6; sp.tiredT = now; P.data.essence[fam] = SP.ugolek.cost;
+    ok(!asPlayer(P, () => S.alive(sp)), 'до эволюции — без сил');
+    await must(P, 'evolve', { uid: sp.uid });
+    const ev = P.data.spirits.find(x => x.uid === sp.uid);
+    eq(ev.sid, SP.ugolek.evo, 'эволюционировал');
+    ok(asPlayer(P, () => S.alive(ev) && S.hpNow(ev) === 1 && S.hpCap(ev) === 1 && S.koLeft(ev) === 0), 'жив, полное здоровье, без усталости');
+    ok(!('ko' in ev) && !('hpf' in ev) && !('tired' in ev), 'следов ран нет');
+    // раненый (не без сил) — тоже полностью здоров
+    const x = asPlayer(P, () => S.makeSpirit('mshonok', 5, 'evhp')); P.data.spirits.push(x); x.hpf = 0.2; x.hpt = now; P.data.essence[SP.mshonok.fam] = SP.mshonok.cost;
+    await must(P, 'evolve', { uid: x.uid });
+    ok(asPlayer(P, () => S.hpNow(P.data.spirits.find(y => y.uid === x.uid))) === 1, 'раненый — после эволюции здоров');
+  });
   test('5.1.18: шаг «Эволюция» — эссенции ровно на эволюцию: стартового духа, иначе самого дешёвого; доплата прежним; эволюционировать некого — засчитан', () => {
     const d0 = S.d, st = CAMPAIGN[0].steps[4];
     const mk = (sid, t) => ({ uid: sid + t, sid, lvl: 5, iv: [10, 10, 10], t });
