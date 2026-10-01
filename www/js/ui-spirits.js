@@ -9,10 +9,16 @@ Object.assign(UI, {
     const scr = this.screen(ru`Духи`, `
       <div class="toolbar">
         <div class="seg">${[['power', ru`Сила`], ['new', ru`Новые`], ['num', ru`Номер`], ['name', ru`Имя`]].map(([k, t]) => `<button data-sort="${k}">${t}</button>`).join('')}</div>
-        <div class="chips"><button data-el="all">${ru`Все`}</button>${ELEMENT_KEYS.map(e => `<button data-el="${e}">${Art.elIcon(e, 18)}</button>`).join('')}<button class="sel-toggle">${ru`Выбрать`}</button></div>
+        <div class="col-filter"><div class="chips col-els"><button data-el="all">${ru`Все`}</button>${ELEMENT_KEYS.map(e => `<button data-el="${e}">${Art.elIcon(e, 18)}</button>`).join('')}</div><div class="chips col-sel"><button class="sel-toggle">${ru`Выбрать`}</button></div></div>
       </div>
       <div class="grid cards"></div>
       <div class="sel-bar hidden"><span></span><button class="btn small ghost sel-dupes">${ru`Лишние`}</button><button class="btn small danger sel-release">${ru`Отпустить`}</button></div>`, 'col-screen');
+    // если стихии всё же не влезли (узкий экран, длинное «Выбрать» в переводе) — край ленты тает, пока есть что листать
+    const els = scr.querySelector('.col-els'), elsFade = () => els.classList.toggle('more', els.scrollLeft + els.clientWidth < els.scrollWidth - 2);
+    els.addEventListener('scroll', elsFade, { passive: true });
+    requestAnimationFrame(elsFade);
+    const elsResize = () => (els.isConnected ? elsFade() : removeEventListener('resize', elsResize));
+    addEventListener('resize', elsResize);
     let selecting = false;
     const sel = new Set();
     const protectedUid = uid => { const x = S.findSpirit(uid); return !x || x.fav || x.shiny || (S.d.buddy && S.d.buddy.uid === uid) || S.d.team.includes(uid); };
