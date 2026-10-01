@@ -26832,7 +26832,7 @@
   "at": [
    "www/js/ui.js:79"
   ],
-  "ctx": "Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });"
+  "ctx": "Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${U.fmtNum(MEDAL_TIERS[tier - 1].xp)} опыта`, 'good'); });"
  },
  {
   "k": "Погода: {0}. Сильнее духи: {1}",
