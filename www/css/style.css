@@ -4483,6 +4483,11 @@ body:has(> .screen:not(.out)) .upd-bar, body:has(> .modal-wrap:not(.out)) .upd-b
 .col-screen .col-sel { flex: none; overflow: visible; }
 .col-screen .col-sel .sel-toggle { height: 32px; }
 .col-screen .sel-toggle:not(.on) { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .06)), #2a1d5c; }
+/* 5.1.21: сортировки «Редкие» и «Лучшие» — вверху карточки вместо силы камни цвета редкости (1–5) и звёзды оценки Ордена с процентом */
+.card-pw.card-rar i { display: inline-block; vertical-align: middle; width: 7px; height: 7px; margin: 0 2.5px; border-radius: 1.5px; transform: rotate(45deg); background: var(--rc); box-shadow: 0 0 6px var(--rc), inset 0 0 0 1px rgba(255, 255, 255, .35); }
+.card-pw.card-iv { white-space: nowrap; }
+.card-pw.card-iv i { font-style: normal; font-size: 10px; letter-spacing: .5px; color: #fde68a; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.card-pw.card-iv i s { text-decoration: none; opacity: .4; }
 @media (max-width: 380px) {
   .col-screen .col-els { gap: 3px; }
   .col-screen .col-els button { min-width: 29px; height: 30px; }

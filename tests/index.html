@@ -2933,6 +2933,19 @@
     eq(MEDAL_TIERS.map(t => t.xp).join(','), '5000,15000,50000', 'бронза, серебро, золото');
     MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
   });
+  test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
+    const sp = (r, iv, lvl) => ({ ...S.makeSpirit(SPECIES.find(s => s.rar === r).id, lvl, 1), iv });
+    const L = [sp(1, [15, 15, 15], 30), sp(5, [0, 0, 0], 5), sp(4, [10, 10, 10], 20), sp(5, [15, 15, 14], 25)];
+    const ord = k => [...L].sort(UI.colCmp(k)).map(x => L.indexOf(x)).join('');
+    eq(ord('rare'), '3120', 'легендарные первыми, внутри редкости — по силе');
+    eq(ord('best'), '0321', 'по оценке Ордена: 100%, 98%, 67%, 0%');
+    eq(ord('num'), ord('power'), 'неизвестная сортировка — по силе');
+    eq([0, 49, 50, 66, 67, 81, 82, 99, 100].map(v => UI.ivStars(v)).join(''), '001122334', 'звёзды оценки — как в карточке духа');
+    eq((UI.colTop(L[1], 'rare').match(/<i><\/i>/g) || []).length, 5, 'у легендарного — пять камней');
+    ok(UI.colTop(L[1], 'rare').includes(`--rc:${RARITY[5].color}`), 'камни — цвета редкости');
+    ok(/★★★★<s><\/s><\/i> <b>100%<\/b>/.test(UI.colTop(L[0], 'best')), 'оценка: четыре звезды и 100%');
+    ok(UI.colTop(L[0], 'power').includes(`<b>${S.power(L[0])}</b>`) && UI.colTop(L[0], 'new') === UI.colTop(L[0], 'power'), 'в «Силе» и «Новых» — сила');
+  });
   test('5.1.21: Сезонная тропа — таблица наград 30 ступеней', () => {
     const P = Rules.PASS, j = (t, l) => JSON.stringify(Rules.passReward(t, l));
     eq(Rules.PASS_FREE.length, P.LEVELS); eq(Rules.PASS_GOLD.length, P.LEVELS);
