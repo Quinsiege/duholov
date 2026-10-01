@@ -815,17 +815,30 @@ const Art = (() => {
     hatch: () => cocoon(5),
     evolve: () => item('xpbrew'),
     alatyr: () => item('alatyr'),
-    // Странник — сапог-скороход на бегу: высокий кожаный сапог с каблуком, приподнятым носком и строчкой; позади — ветер и пыль
-    walker: () => { const k = 'mw' + (++seq); return msvg(`<defs>${mgrad(k + 'a', ['#d89558', '#a3561f', '#4a220b'], 1, 0.35)}${mgrad(k + 't', ['#7a3b14', '#3f1b07'])}${mgrad(k + 's', ['#4a2a14', '#1f0f05'])}</defs>` +
-      `<path d="M3 32 H19 M0 46 H16 M5 60 H20" stroke="#e0f2fe" stroke-width="3.6" stroke-linecap="round" opacity=".85"/>` +
-      `<g transform="rotate(-8 54 52)">` +
-      `<circle cx="21" cy="86" r="4.4" fill="#e7e5e4" stroke="#78716c" stroke-width="1.5"/><circle cx="12" cy="81" r="3.2" fill="#e7e5e4" stroke="#78716c" stroke-width="1.4"/><circle cx="11" cy="90" r="2.4" fill="#e7e5e4" stroke="#78716c" stroke-width="1.2"/>` +
-      `<path d="M30 76 H45 L43.6 90 H32 C30.8 90 30.2 89.2 30.3 88Z" fill="url(#${k}s)" stroke="#120802" stroke-width="2.4" stroke-linejoin="round"/>` +
-      `<path d="M52 77 L90 75 C92.5 75 94 76.5 93.6 78.6 C93.2 80.4 91.8 81.2 89.8 81.2 L54 82.4 C52.6 82.4 52 81.4 52 80.2Z" fill="url(#${k}s)" stroke="#120802" stroke-width="2.2" stroke-linejoin="round"/>` +
-      `<path d="M33 10 C42 7.5 52 7.5 60 10.5 L59 51 C59 56.5 63 59.5 69 61.5 C78.5 64 87 67 91.5 70.5 C94 72.5 93 76 89.5 76.2 C80 77 64 78 52 78 L33 78 C31.2 78 30 77 30 75 L31 14 C31 12 31.8 10.6 33 10Z" fill="url(#${k}a)" stroke="#2a1205" stroke-width="3.2" stroke-linejoin="round"/>` +
-      `<path d="M31.6 10.6 C42 7.5 52 7.5 60 10.5 L59.7 17.5 C51 14.8 42 14.8 31.4 17.6Z" fill="url(#${k}t)" stroke="#2a1205" stroke-width="2.4" stroke-linejoin="round"/>` +
-      `<path d="M54.5 21 L54 51 C54 57.5 58.5 62.5 65.5 65 C73.5 67.5 81.5 69.5 86.5 72.5" stroke="#fde68a" stroke-width="1.8" stroke-dasharray="3 2.6" fill="none" stroke-linecap="round" opacity=".85"/>` +
-      `<path d="M37 22 C36.5 36 36.5 52 37.5 66" stroke="#fff" stroke-width="3.4" stroke-linecap="round" opacity=".28" fill="none"/><ellipse cx="78" cy="67.5" rx="6.5" ry="2.6" transform="rotate(14 78 67.5)" fill="#fff" opacity=".3"/></g>`); },
+    // Странник — бегущий Ловчий в профиле: наклон вперёд, переднее колено вверх, задняя нога отталкивается; синяя рубаха с поясом,
+    // за спиной развевается красный шарф; позади — ветер и пыль
+    walker: () => { const k = 'mw' + (++seq), INK = '#1b1030';
+      // конечность: контур, затем цвет; d — ломаная по суставам
+      const limb = (d, c, w) => `<path d="${d}" stroke="${INK}" stroke-width="${w + 4.2}" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="${d}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`;
+      const hand = (x, y) => `<circle cx="${x}" cy="${y}" r="4.6" fill="url(#${k}k)" stroke="${INK}" stroke-width="2.2"/>`;
+      return msvg(`<defs>${mrad(k + 'k', ['#ffe4c7', '#f2b07c', '#c87a45'])}${mgrad(k + 'c', ['#93c5fd', '#2563eb', '#1e3a8a'], 1, 1)}${mgrad(k + 'f', ['#fca5a5', '#dc2626', '#991b1b'], 1, 0)}</defs>` +
+        `<path d="M3 31 H20 M0 45 H17 M5 59 H19" stroke="#e0f2fe" stroke-width="3.6" stroke-linecap="round" opacity=".85"/>` +
+        `<circle cx="13" cy="88" r="4" fill="#e7e5e4" stroke="#78716c" stroke-width="1.5"/><circle cx="6" cy="83" r="2.8" fill="#e7e5e4" stroke="#78716c" stroke-width="1.3"/><circle cx="22" cy="91" r="2.6" fill="#e7e5e4" stroke="#78716c" stroke-width="1.2"/>` +
+        // шарф — за спиной
+        `<path d="M55 30 C46 25 37 30 24 23 C27 31 34 35 43 36 C47 36.5 51 35.5 54 34Z" fill="url(#${k}f)" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>` +
+        // дальние рука и нога — темнее
+        limb('M55 34 L43 43 L33 39', '#1e3a8a', 7.5) + hand(33, 39) +
+        limb('M47 56 L37 70 L25 80', '#5b3416', 9.5) + limb('M25 80 L17 77', '#2a1508', 9.5) +
+        // туловище и пояс
+        limb('M56 33 L47 55', `url(#${k}c)`, 17.5) + `<path d="M40 52 L55 57" stroke="#fbbf24" stroke-width="4.2" stroke-linecap="round"/><path d="M40 52 L55 57" stroke="${INK}" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>` +
+        // голова: волосы, глаз, улыбка
+        `<circle cx="62" cy="19.5" r="9.6" fill="url(#${k}k)" stroke="${INK}" stroke-width="2.6"/>` +
+        `<path d="M52.6 19 C52 10 61 6.5 68 9.5 C71 11 72.5 13.5 72 15.5 C66 13 60 14 57 21 C55.5 22 53 21.5 52.6 19Z" fill="#6b3a17" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>` +
+        `<ellipse cx="66.5" cy="19" rx="1.5" ry="2" fill="${INK}"/><path d="M65.5 24.5 Q68.5 26 70.5 23.5" stroke="${INK}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
+        // ближние нога и рука — поверх
+        limb('M47 56 L64 62 L58 79', '#7c4a1e', 9.5) + limb('M58 79 L67 82', '#3f1d0b', 9.5) +
+        limb('M56 34 L68 43 L77 35', `url(#${k}c)`, 7.5) + hand(77, 35) +
+        `<path d="M50 38 L46 48" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".3"/>`); },
     // Странник миров — глобус Атласа
     myths: () => { const k = 'mm' + (++seq); return msvg(`<defs>${mrad(k + 'o', ['#bae6fd', '#0ea5e9', '#0c4a6e'])}${mgrad(k + 'l', ['#bbf7d0', '#22c55e', '#166534'])}<clipPath id="${k}c"><circle cx="50" cy="50" r="36"/></clipPath></defs>` +
       `<circle cx="50" cy="50" r="36" fill="url(#${k}o)"/>` +
