@@ -567,10 +567,11 @@ const MOON_EVENTS = {
 };
 
 /* ---------- Знаки Ордена (медали) ---------- */
+// xp — разовая награда за ступень знака (без дневного потолка); 5.1.21: ×10 (было 500 / 1 500 / 5 000)
 const MEDAL_TIERS = [
-  { name: ru`Бронза`, color: '#d97706', xp: 500 },
-  { name: ru`Серебро`, color: '#cbd5e1', xp: 1500 },
-  { name: ru`Золото`, color: '#fbbf24', xp: 5000 },
+  { name: ru`Бронза`, color: '#d97706', xp: 5000 },
+  { name: ru`Серебро`, color: '#cbd5e1', xp: 15000 },
+  { name: ru`Золото`, color: '#fbbf24', xp: 50000 },
 ];
 const MEDALS = [
   { id: 'catcher', name: ru`Ловчий`,        desc: ru`Поймай духов`,                 stat: 'caught',      tiers: [10, 100, 1000] },

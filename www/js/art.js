@@ -793,13 +793,63 @@ const Art = (() => {
       ? `<svg class="wx-ico" width="${size}" height="${size}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#fef9c3" stroke="#fde68a"/><circle cx="9" cy="10" r="1.8" fill="#e7e0b0"/><circle cx="14.5" cy="14" r="2.3" fill="#e7e0b0"/></svg>`
       : `<svg class="wx-ico" width="${size}" height="${size}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#1e1b3a" stroke="#a78bfa" stroke-width="1.5"/></svg>`;
   }
+  // 5.1.21: пиктограммы Знаков Ордена — вместо первой буквы названия (в переводах буква была другой и не говорила, за что знак).
+  // Как у камня Алатыря: тёмный контур и полупрозрачная белая заливка поверх металла; центр (50, 46), всё — в круге r≈23
+  const MEDAL_GLYPH = (() => {
+    const L = 'fill="#fff" fill-opacity=".35" stroke="#1b1030" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"';
+    const S = (w = 3.2) => `fill="none" stroke="#1b1030" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+    const D = 'fill="#1b1030"';
+    // четырёхлучевая искра с вогнутыми гранями: центр, радиус
+    const spark = (x, y, r, a) => `<path d="M${x} ${y - r} C${x + r * 0.08} ${y - r * 0.3} ${x + r * 0.3} ${y - r * 0.08} ${x + r} ${y} C${x + r * 0.3} ${y + r * 0.08} ${x + r * 0.08} ${y + r * 0.3} ${x} ${y + r} C${x - r * 0.08} ${y + r * 0.3} ${x - r * 0.3} ${y + r * 0.08} ${x - r} ${y} C${x - r * 0.3} ${y - r * 0.08} ${x - r * 0.08} ${y - r * 0.3} ${x} ${y - r}Z" ${a}/>`;
+    // след ступни: подошва и три пальца, (x, y) — центр подошвы, a — поворот
+    const foot = (x, y, a) => `<g transform="rotate(${a} ${x} ${y})"><path d="M${x - 6} ${y} C${x - 6} ${y - 8} ${x + 6} ${y - 8} ${x + 6} ${y} C${x + 6} ${y + 8} ${x + 3} ${y + 13} ${x} ${y + 13} C${x - 3} ${y + 13} ${x - 6} ${y + 8} ${x - 6} ${y}Z" ${L}/>` +
+      `<circle cx="${x - 4}" cy="${y - 10.5}" r="2.2" ${D}/><circle cx="${x}" cy="${y - 12.2}" r="2.4" ${D}/><circle cx="${x + 4}" cy="${y - 10.5}" r="2.2" ${D}/></g>`;
+    // меч остриём вверх, по центру знака (для скрещённых мечей — поворот)
+    const sword = `<path d="M50 21 L53.5 26 V51.5 H46.5 V26Z" ${L}/><rect x="40.5" y="51" width="19" height="5.5" rx="2.4" ${D}/><path d="M50 56.5 V63.5" ${S(4)}/><circle cx="50" cy="66.5" r="3.1" ${D}/>`;
+    return {
+      // Поединщик — скрещённые мечи: бои с хранителями Капищ
+      duels: `<g transform="rotate(-38 50 46)">${sword}</g><g transform="rotate(38 50 46)">${sword}</g>`,
+      // Ловчий — брошенный оберег-узелок со знаком солнца, позади — след броска
+      catcher: `<path d="M27 37 H37 M24 45.5 H35 M27 54 H37" ${S(2.6)}/><circle cx="55" cy="46" r="13" ${L}/>` + spark(55, 46, 8.5, D),
+      // Странник — два следа шагов
+      walker: foot(41, 51, -16) + foot(59, 34, 14),
+      // Водонос — ковш, над ним капля из источника
+      springs: `<path d="M50 23 C50 23 42.5 31.5 42.5 37 A7.5 7.5 0 0 0 57.5 37 C57.5 31.5 50 23 50 23Z" ${L}/><path d="M31 49 H63 C63 59.5 56 66 47 66 C38 66 31 59.5 31 49Z" ${L}/><path d="M63 51 L72 45" ${S(3.6)}/>`,
+      // Затворник — трещина разлома, запертая засовом
+      raids: `<path d="M50 23 C61.5 33 61.5 59 50 69 C38.5 59 38.5 33 50 23Z" ${L}/><path d="M50 29 L46 38 L53 44.5 L47 52 L52.5 58 L50 64" ${S(2.4)}/><path d="M31 46 H69" ${S(5.5)}/><circle cx="50" cy="46" r="5" ${D}/>`,
+      // Летописец — раскрытая книга
+      dex: `<path d="M50 31 C44 27 35 27 28.5 30.5 V62 C35 58.5 44 58.5 50 62.5Z" ${L}/><path d="M50 31 C56 27 65 27 71.5 30.5 V62 C65 58.5 56 58.5 50 62.5Z" ${L}/><path d="M50 31 V62.5" ${S()}/>` +
+        `<path d="M34 38.5 C38 37 42 37 45 38.5 M34 46 C38 44.5 42 44.5 45 46 M55 38.5 C58 37 62 37 66 38.5 M55 46 C58 44.5 62 44.5 66 46" ${S(2)}/>`,
+      // Странник миров — глобус
+      myths: `<circle cx="50" cy="46" r="19" ${L}/><ellipse cx="50" cy="46" rx="8.5" ry="19" ${S(2.4)}/><path d="M31 46 H69 M34 36.5 H66 M34 55.5 H66" ${S(2.2)}/>`,
+      // Очиститель — щит Ордена со звездой
+      purify: `<path d="M50 23 L68 29.5 V43.5 C68 56 60 64 50 68.5 C40 64 32 56 32 43.5 V29.5Z" ${L}/><path d="M50 33 L53.2 41.8 L62.5 42.3 L55.2 48.1 L57.8 57 L50 51.8 L42.2 57 L44.8 48.1 L37.5 42.3 L46.8 41.8Z" ${D}/>`,
+      // Щедрая душа — молоток аукциониста и подставка
+      trade: `<g transform="rotate(-38 48 40)"><rect x="35" y="29" width="26" height="12" rx="3.5" ${L}/><path d="M48 41 V63" ${S(4.2)}/></g><path d="M50 65.5 H70 V60 H50Z" ${L}/>`,
+      // Меткий глаз — мишень и стрела в яблочке
+      throws: `<circle cx="47" cy="49" r="18" ${L}/><circle cx="47" cy="49" r="10.5" ${S(2.6)}/><circle cx="47" cy="49" r="4.2" ${D}/><path d="M47 49 L67 29" ${S(3)}/><path d="M61.5 26.5 H69.5 V34.5" ${S(3)}/>`,
+      // Наседка — кокон с трещиной: вот-вот вылупится
+      hatch: `<path d="M50 23 C61 23 67.5 39 67.5 50 C67.5 61 59.5 68 50 68 C40.5 68 32.5 61 32.5 50 C32.5 39 39 23 50 23Z" ${L}/><path d="M34 46 L40.5 51 L45.5 44 L50.5 51 L55.5 44 L60.5 51 L66 46" ${S(2.6)}/>`,
+      // Алхимик — колба с пузырьками превращения
+      evolve: `<path d="M46.5 25 V38.5 L35 58 C33 62 36 66.5 40.5 66.5 H59.5 C64 66.5 67 62 65 58 L53.5 38.5 V25Z" ${L}/><path d="M43.5 25 H56.5" ${S(3.6)}/><path d="M39 53.5 H61" ${S(2.4)}/>` +
+        `<circle cx="46" cy="59.5" r="2.4" ${D}/><circle cx="54" cy="60.5" r="1.7" ${D}/><circle cx="51" cy="47.5" r="1.9" ${D}/>`,
+      // Искатель сияния — большая искра и малая
+      shiny: spark(46, 47, 20, L) + spark(64.5, 29.5, 7, D),
+      // Верность — листок календаря с отметкой
+      streak: `<rect x="31" y="29.5" width="38" height="35" rx="5" ${L}/><path d="M31 40 H69" ${S(2.6)}/><path d="M40 24.5 V33.5 M60 24.5 V33.5" ${S(3.4)}/><path d="M39.5 52 L46.5 58.5 L60.5 45.5" ${S(3.8)}/>`,
+      // Соратник — знамя Ордена
+      order: `<path d="M36 25 V68" ${S(3.6)}/><circle cx="36" cy="23.5" r="2.8" ${D}/><path d="M38.5 27 H67 L60 37 L67 47 H38.5Z" ${L}/><circle cx="49.5" cy="37" r="4" ${D}/>`,
+      // Землепроходец — горы родной земли и флажок на вершине
+      lands: `<path d="M27 65 L43.5 38 L51.5 50 L57.5 42 L73 65Z" ${L}/><path d="M43.5 38 V23.5" ${S(2.6)}/><path d="M43.5 23.5 L54 27.5 L43.5 31.5Z" ${D}/>`,
+    };
+  })();
   function medal(m, tier) {
     const col = tier ? MEDAL_TIERS[tier - 1].color : '#4b5563';
     const inner = m.stat.startsWith('el:') ? `<g transform="translate(34 30) scale(1.35)">${elIcon(m.stat.slice(3), 24).replace(/<svg[^>]*>|<\/svg>/g, '')}</g>`
       // 4.28: «Хранитель Алатыря» — гранёный камень (буква «Х» читалась как римская десятка)
       : m.stat === 'alaSeasons' ? `<path d="M50 27 L64 35 L68 50 L60 63 L40 63 L32 50 L36 35Z" fill="#fff" fill-opacity=".35" stroke="#1b1030" stroke-width="3.2" stroke-linejoin="round"/>` +
         `<path d="M42 40 L58 40 L61 50 L55 57 L45 57 L39 50Z" fill="#1b1030" fill-opacity=".85"/><path d="M50 27 V40 M64 35 L58 40 M36 35 L42 40 M68 50 H61 M32 50 H39" stroke="#1b1030" stroke-width="2" stroke-linecap="round"/>`
-      : `<text x="50" y="60" text-anchor="middle" font-size="30" font-weight="900" fill="#1b1030" font-family="Rubik, sans-serif">${m.name[0]}</text>`;
+      : MEDAL_GLYPH[m.id] || `<text x="50" y="60" text-anchor="middle" font-size="30" font-weight="900" fill="#1b1030" font-family="Rubik, sans-serif">${m.name[0]}</text>`;
     return `<svg class="art" viewBox="0 0 100 100"><path d="M32 60 L22 96 L38 88 L46 100 L50 64Z M68 60 L78 96 L62 88 L54 100 L50 64Z" fill="${tier ? '#7c3aed' : '#374151'}"/>` +
       `<circle cx="50" cy="46" r="36" fill="${col}" stroke="${shade(col, -0.4)}" stroke-width="4"/><circle cx="50" cy="46" r="27" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2" stroke-dasharray="4 4"/>` +
       `<g opacity="${tier ? 1 : 0.5}">${inner}</g></svg>`;
