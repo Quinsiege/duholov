@@ -912,23 +912,26 @@ const Art = (() => {
       mrad(k + 'e', [shade(enamel, 0.3), enamel, shade(enamel, -0.55)], 0.42, 0.36, 0.72) +
       mgrad(k + 's', ['#fef9c3', '#fbbf24', '#b45309']) +
       (tier ? '' : `<filter id="${k}g"><feColorMatrix type="saturate" values=".08"/></filter>`) + `</defs>`;
+    // медальон — крупный (обод r 41, эмаль r 33), рисунок в нём — прежнего размера (48), центр (50, 47); лучи золота и камень
+    // чуть выходят за рамку 100×100 — у .art overflow: visible
+    const cy = 47, ring = (r, n, a0, f) => { for (let i = 0; i < n; i++) { const a = (i * 360 / n + a0) * Math.PI / 180; f((50 + r * Math.sin(a)).toFixed(2), (cy - r * Math.cos(a)).toFixed(2)); } };
     // лента Ордена: два хвоста с полосой цвета металла
-    const tail = `<path d="M39 60 L30 95 L37.5 89.5 L44 97 L50.5 64Z" fill="url(#${k}r)" stroke="#1e1033" stroke-width="2" stroke-linejoin="round"/><path d="M41.5 63.5 L34.2 92" stroke="${M.mid}" stroke-width="2.6" stroke-linecap="round" opacity=".95"/>`;
+    const tail = `<path d="M38.5 70 L30 99 L37 93.5 L43 99.5 L50.5 74Z" fill="url(#${k}r)" stroke="#1e1033" stroke-width="2" stroke-linejoin="round"/><path d="M41 73.5 L34 96" stroke="${M.mid}" stroke-width="2.6" stroke-linecap="round" opacity=".95"/>`;
     s += tail + `<g transform="translate(100 0) scale(-1 1)">${tail}</g>`;
     // серебро — бусины вокруг обода, золото — лучи
-    if (tier === 2) for (let i = 0; i < 12; i++) { const a = (i * 30 + 15) * Math.PI / 180; s += `<circle cx="${(50 + 36.4 * Math.sin(a)).toFixed(2)}" cy="${(44 - 36.4 * Math.cos(a)).toFixed(2)}" r="2.8" fill="url(#${k}m)" stroke="${M.line}" stroke-width="1.2"/>`; }
-    if (tier === 3) for (let i = 0; i < 16; i++) s += `<path d="M50 2.5 L54 12.5 L46 12.5Z" transform="rotate(${i * 22.5} 50 44)" fill="url(#${k}m)" stroke="${M.line}" stroke-width="1.3" stroke-linejoin="round"/>`;
+    if (tier === 2) ring(44, 12, 15, (x, y) => { s += `<circle cx="${x}" cy="${y}" r="2.8" fill="url(#${k}m)" stroke="${M.line}" stroke-width="1.2"/>`; });
+    if (tier === 3) for (let i = 0; i < 16; i++) s += `<path d="M50 -0.5 L54.3 10 L45.7 10Z" transform="rotate(${i * 22.5} 50 ${cy})" fill="url(#${k}m)" stroke="${M.line}" stroke-width="1.3" stroke-linejoin="round"/>`;
     // обод с бусинами
-    s += `<circle cx="50" cy="44" r="34" fill="url(#${k}m)" stroke="${M.line}" stroke-width="2.6"/><circle cx="50" cy="44" r="29.2" fill="url(#${k}n)" stroke="${M.line}" stroke-width="1.6"/>`;
-    for (let i = 0; i < 20; i++) { const a = i * 18 * Math.PI / 180; s += `<circle cx="${(50 + 31.6 * Math.sin(a)).toFixed(2)}" cy="${(44 - 31.6 * Math.cos(a)).toFixed(2)}" r="1.2" fill="${M.bead}" opacity="${tier ? 0.95 : 0.55}"/>`; }
+    s += `<circle cx="50" cy="${cy}" r="41" fill="url(#${k}m)" stroke="${M.line}" stroke-width="2.6"/><circle cx="50" cy="${cy}" r="35.4" fill="url(#${k}n)" stroke="${M.line}" stroke-width="1.6"/>`;
+    ring(38.2, 20, 0, (x, y) => { s += `<circle cx="${x}" cy="${y}" r="1.3" fill="${M.bead}" opacity="${tier ? 0.95 : 0.55}"/>`; });
     // эмаль и рисунок
-    s += `<g${tier ? '' : ` filter="url(#${k}g)"`}><circle cx="50" cy="44" r="27.2" fill="url(#${k}e)"/><circle cx="50" cy="44" r="26" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2.4"/>` +
-      `<g${tier ? '' : ' opacity=".5"'}>${mnest(art, 26, 20, 48)}</g></g>` +
-      `<path d="M27.5 36 A23.5 23.5 0 0 1 64 23" stroke="#fff" stroke-opacity=".22" stroke-width="3.4" fill="none" stroke-linecap="round"/>`;
+    s += `<g${tier ? '' : ` filter="url(#${k}g)"`}><circle cx="50" cy="${cy}" r="33.2" fill="url(#${k}e)"/><circle cx="50" cy="${cy}" r="32" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2.6"/>` +
+      `<g${tier ? '' : ' opacity=".5"'}>${mnest(art, 26, cy - 24, 48)}</g></g>` +
+      `<path d="M22 39.5 A29 29 0 0 1 64.5 21.9" stroke="#fff" stroke-opacity=".22" stroke-width="3.6" fill="none" stroke-linecap="round"/>`;
     // золото — камень наверху
-    if (tier === 3) s += `<path d="M50 3 L56 9.5 L50 16 L44 9.5Z" fill="#c084fc" stroke="${M.line}" stroke-width="1.5" stroke-linejoin="round"/><path d="M50 5.5 L53 9.5 L50 12" fill="#f5d0fe" opacity=".85"/>`;
+    if (tier === 3) s += `<path d="M50 -1 L56 5.5 L50 12 L44 5.5Z" fill="#c084fc" stroke="${M.line}" stroke-width="1.5" stroke-linejoin="round"/><path d="M50 1.5 L53 5.5 L50 8.5" fill="#f5d0fe" opacity=".85"/>`;
     // звёзды ступени — на ободе снизу
-    (tier === 1 ? [[50, 77.5]] : tier === 2 ? [[44, 77], [56, 77]] : tier === 3 ? [[38.5, 75], [50, 78.5], [61.5, 75]] : [])
+    (tier === 1 ? [[50, 85.2]] : tier === 2 ? [[44, 84.8], [56, 84.8]] : tier === 3 ? [[38, 82.6], [50, 85.6], [62, 82.6]] : [])
       .forEach(([x, y]) => { s += `<path d="${mstarD(x, y, 5.2)}" fill="url(#${k}s)" stroke="${M.line === '#0b0f17' ? '#111' : '#3f1d03'}" stroke-width="1.4" stroke-linejoin="round"/>`; });
     return s + '</svg>';
   }
