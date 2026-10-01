@@ -815,67 +815,111 @@ const Art = (() => {
     hatch: () => cocoon(5),
     evolve: () => item('xpbrew'),
     alatyr: () => item('alatyr'),
-    // Странник — бегущий Ловчий в профиле: наклон вперёд, переднее колено вверх, задняя нога отталкивается. Рубаха с вышитым
-    // воротом и подолом, красный кушак с кистями, сумка на ремне, сапоги с каблуками; за спиной развеваются шарф и волосы;
-    // позади — ветер и пыль, под ногами — тень
-    walker: () => { const k = 'mw' + (++seq), INK = '#1b1030';
-      // конечность по суставам: сперва контур всех частей, затем цвет, затем блик сверху слева; ws — толщина каждой части
-      const lim = (pts, ws, c) => { let o = '', f = '', h = '';
-        for (let i = 0; i < pts.length - 1; i++) {
-          const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], w = ws[i], d = `M${x1} ${y1} L${x2} ${y2}`;
-          o += `<path d="${d}" stroke="${INK}" stroke-width="${w + 4.4}" stroke-linecap="round"/>`;
-          f += `<path d="${d}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
-          h += `<path d="M${x1 - 1.1} ${y1 - 1.3} L${x2 - 1.1} ${y2 - 1.3}" stroke="#fff" stroke-width="${(w * 0.26).toFixed(2)}" stroke-linecap="round" opacity=".32"/>`;
-        }
-        return o + f + h; };
-      // кулак: ладонь, большой палец и костяшки
-      const fist = (x, y, r, a) => `<g transform="rotate(${a} ${x} ${y})"><circle cx="${x}" cy="${y}" r="${r}" fill="url(#${k}k)" stroke="${INK}" stroke-width="2.2"/>` +
-        `<path d="M${x - r * 0.15} ${y - r * 0.55} Q${x + r * 0.55} ${y - r * 0.6} ${x + r * 0.5} ${y}" stroke="${INK}" stroke-width="1.4" fill="none" stroke-linecap="round"/>` +
-        `<path d="M${x + r * 0.2} ${y + r * 0.15} H${x + r * 0.85} M${x + r * 0.1} ${y + r * 0.5} H${x + r * 0.7}" stroke="#a65a2a" stroke-width="1.1" stroke-linecap="round"/></g>`;
-      return msvg(`<defs>${mrad(k + 'k', ['#ffe4c7', '#f2b07c', '#c87a45'])}${mgrad(k + 'c', ['#a5c8ff', '#2f6fe0', '#1e3a8a'], 1, 1)}${mgrad(k + 'f', ['#fca5a5', '#dc2626', '#991b1b'], 1, 0)}` +
-          `${mgrad(k + 'b', ['#c47a35', '#92551f', '#5c3412'])}${mgrad(k + 'o', ['#6b4126', '#3b1f0d', '#1c0f06'])}</defs>` +
-        `<ellipse cx="46" cy="91.5" rx="27" ry="3.2" fill="#000" opacity=".3"/>` +
-        `<path d="M3 30 H20 M0 44 H17 M5 58 H19" stroke="#e0f2fe" stroke-width="3.6" stroke-linecap="round" opacity=".85"/>` +
-        `<circle cx="12" cy="88" r="4" fill="#e7e5e4" stroke="#78716c" stroke-width="1.5"/><circle cx="5" cy="83.5" r="2.8" fill="#e7e5e4" stroke="#78716c" stroke-width="1.3"/><circle cx="20" cy="91" r="2.4" fill="#e7e5e4" stroke="#78716c" stroke-width="1.2"/>` +
-        // шарф — за спиной, с бахромой
-        `<path d="M56 29 C47 23.5 38 28.5 25 21 C28 30 35 34.5 44 35.5 C48.5 36 52.5 35 55.5 33Z" fill="url(#${k}f)" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>` +
-        `<path d="M26 22 L21.5 19.5 M26.8 25 L22 24.5 M28.5 28 L24 29.5" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/><path d="M33 28 C38 30 44 30.5 50 29" stroke="#fde68a" stroke-width="1.6" fill="none" stroke-dasharray="2 2" opacity=".85"/>` +
+    // Странник — бегущий Ловчий в профиле, подробно: каждая часть тела — объёмная форма со своей тенью и бликом (как у духов);
+    // лицо (глаз с радужкой и бликом, ресницы, бровь, нос, открытый рот, ухо, румянец), волосы прядями назад; рубаха со складками,
+    // вышитыми воротом, планкой и подолом, кушак узлом с кистями; кожаная сумка со строчкой и пряжкой на ремне через грудь;
+    // сапоги с отворотом, ремешком и прошитой подошвой; шарф с полосами и бахромой; тропинка с травой, тень, ветер и пыль
+    walker: () => {
+      const k = 'mw' + (++seq), INK = '#1b1030', f2 = n => (+n).toFixed(2);
+      let cid = 0;
+      // капсула от (x1, y1) до (x2, y2): толщина w1 → w2, концы скруглены
+      const cap = (x1, y1, x2, y2, w1, w2) => {
+        const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, r1 = w1 / 2, r2 = w2 / 2;
+        const p = (x, y, r, s) => `${f2(x + nx * r * s)} ${f2(y + ny * r * s)}`;
+        return `M${p(x1, y1, r1, 1)} L${p(x2, y2, r2, 1)} A${f2(r2)} ${f2(r2)} 0 0 0 ${p(x2, y2, r2, -1)} L${p(x1, y1, r1, -1)} A${f2(r1)} ${f2(r1)} 0 0 0 ${p(x1, y1, r1, 1)}Z`;
+      };
+      // объём части: заливка, тень снизу справа и блик сверху слева — масками по самой форме (как K.vol)
+      const vol = (d, c, dk, lt) => {
+        const id = `${k}v${++cid}`, M = (n, t) => `<mask id="${id}${n}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140"><path d="${d}" fill="#fff"/><path d="${d}" fill="#000" transform="${t}"/></mask>`;
+        return `<defs>${M('s', 'translate(-2.4 -2.6)')}${M('h', 'translate(1.5 1.9)')}</defs><path d="${d}" fill="${c}"/>` +
+          `<rect x="-20" y="-20" width="140" height="140" fill="${dk}" mask="url(#${id}s)"/><rect x="-20" y="-20" width="140" height="140" fill="${lt}" opacity=".5" mask="url(#${id}h)"/>`;
+      };
+      // слой: общий контур всех частей (без швов на суставах), затем объём каждой части
+      const layer = parts => `<path d="${parts.map(q => q[0]).join(' ')}" fill="${INK}" stroke="${INK}" stroke-width="4.4" stroke-linejoin="round"/>` + parts.map(q => vol(...q)).join('');
+      const SK = ['#f3b483', '#c8794a', '#ffe1c4'], SHN = ['#2f6fe0', '#1e3a8a', '#a5c8ff'], SHF = ['#1e40af', '#14215c', '#5b8def'];
+      const PN = ['#8a5426', '#57301a', '#c99060'], PF = ['#6b3f1d', '#3b1f0d', '#a8743f'], BT = ['#4a2a14', '#24120a', '#8b5a2b'], RD = ['#dc2626', '#8f1414', '#fca5a5'];
+      const line = (d, c, w, o = '') => `<path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"${o}/>`;
+      // кулак: ладонь, четыре согнутых пальца, большой палец
+      const fist = (x, y, a) => `<g transform="rotate(${a} ${x} ${y})">` + layer([[`M${x - 4.6} ${y - 1.5} C${x - 4.6} ${y - 4.6} ${x - 1} ${y - 5.2} ${x + 2.2} ${y - 4.6} C${x + 5} ${y - 4} ${x + 5.6} ${y - 1} ${x + 5.2} ${y + 1.6} C${x + 4.8} ${y + 4.4} ${x + 1.6} ${y + 5} ${x - 1.4} ${y + 4.6} C${x - 4} ${y + 4.2} ${x - 4.6} ${y + 1.6} ${x - 4.6} ${y - 1.5}Z`, ...SK]]) +
+        line(`M${x + 1.4} ${y - 3.4} C${x + 3.6} ${y - 3} ${x + 4.2} ${y - 1.4} ${x + 4} ${y - 0.2} M${x + 1.2} ${y - 0.6} C${x + 3.4} ${y - 0.2} ${x + 4} ${y + 1.2} ${x + 3.8} ${y + 2.4} M${x + 0.8} ${y + 2.2} C${x + 2.8} ${y + 2.6} ${x + 3.2} ${y + 3.6} ${x + 3} ${y + 4.2}`, '#9a4d22', 1.05) +
+        line(`M${x - 2.6} ${y - 3.6} C${x - 0.6} ${y - 5.6} ${x + 2.2} ${y - 5} ${x + 2.6} ${y - 3}`, INK, 1.4) + `</g>`;
+      // клуб пыли: светлый шар с тенью
+      const puff = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#${k}d)" stroke="#78716c" stroke-width="1.3"/>`;
+      return msvg(`<defs>${mrad(k + 'd', ['#ffffff', '#e7e5e4', '#a8a29e'], 0.35, 0.3, 0.75)}${mgrad(k + 'f', ['#fca5a5', '#dc2626', '#991b1b'], 1, 0)}` +
+          `${mgrad(k + 'h', ['#a8703c', '#6b3a17', '#3b1f0d'], 1, 1)}${mgrad(k + 'b', ['#c47a35', '#92551f', '#5c3412'], 1, 1)}${mgrad(k + 'g', ['#d6b072', '#a8823e', '#7a5a22'], 0, 1)}</defs>` +
+        // тропинка с травой и тень
+        `<ellipse cx="47" cy="90.6" rx="40" ry="5.6" fill="url(#${k}g)" stroke="#5c4415" stroke-width="1.6"/><path d="M14 89.5 C24 88 36 87.6 48 88 C60 88.4 72 89.2 82 90.4" stroke="#e8cf98" stroke-width="1.3" fill="none" opacity=".7"/>` +
+        line('M9.5 88.8 l1.4 -4.6 1.2 4.6 M12.6 88.6 l1.8 -3.6 0.6 3.6 M80.4 90.2 l1.6 -4.4 1 4.4 M83.6 90.6 l1.2 -3.2 0.8 3.2', '#4d7c0f', 1.6) +
+        `<ellipse cx="48" cy="89.8" rx="22" ry="2.8" fill="#000" opacity=".32"/>` +
+        // ветер позади
+        line('M2 29 H19 M0 39.5 H13 M4 50 H20 M1 61 H12', '#e0f2fe', 3.4, ' opacity=".85"') + line('M6 34 H14 M6 56 H15', '#e0f2fe', 2, ' opacity=".5"') +
+        // пыль и камешки из-под задней ноги
+        puff(9, 83.5, 3.2) + puff(15.6, 87.2, 4.4) + puff(7, 89.4, 2.6) + puff(22.4, 89.8, 2.8) +
+        `<circle cx="20.6" cy="81.4" r="1" fill="#57534e"/><circle cx="25" cy="83.6" r=".8" fill="#57534e"/><circle cx="12.4" cy="78.6" r=".9" fill="#57534e"/>` +
+        // шарф: два конца по ветру, полосы и бахрома
+        layer([['M56.6 28.6 C47 22.4 37.4 27.6 23.4 20 C26.4 29.6 34 34.6 43.6 35.6 C48.4 36.1 52.6 35 55.8 32.6Z', '#dc2626', '#8f1414', '#fca5a5'],
+          ['M54.6 33 C47.6 33.6 41.6 37.8 32.4 37.4 C36.6 41 43.6 41.4 49.6 39 C52.2 37.9 54 36.2 54.6 33Z', '#b91c1c', '#7f1d1d', '#f87171']]) +
+        line('M30.4 22.6 C31.2 26.4 33.4 29.6 36.6 31.6 M35.6 23.8 C36.2 27 37.8 29.8 40.4 31.8', '#fde68a', 1.7) + line('M38.2 37.6 C39.6 38.8 41.6 39.4 43.4 39.4', '#fde68a', 1.5) +
+        line('M24.6 20.8 L20.6 18.4 M25.2 23.4 L20.8 22.6 M26.2 26 L21.8 26.6 M27.8 28.4 L23.8 30.2 M33 37.6 L29.8 38.8 M34.6 39.4 L31.8 41.4', '#dc2626', 1.5) +
         // дальняя рука — назад
-        lim([[52, 33], [42.5, 42.5], [34, 37.5]], [7.6, 6.8], '#1e3a8a') + `<path d="M37.5 39.5 L35.5 36" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>` + fist(31.5, 36, 4.4, 20) +
-        // дальняя нога — отталкивается, сапог носком назад
-        lim([[45, 54], [37, 69], [27, 77.5]], [10.5, 8.6], '#5b3416') +
-        `<path d="M22.5 73 L30.8 76.4 L28.6 83 C24.4 84.6 18.4 84.2 14.6 82.2 C13.4 81.5 13.6 80 14.8 79.6 C18 79 20.8 77.3 22.5 73Z" fill="url(#${k}o)" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/><path d="M14.6 82.2 C18.4 84.2 24.4 84.6 28.6 83" stroke="#0d0603" stroke-width="2.4" fill="none"/>` +
-        // сумка на бедре (сзади)
-        `<path d="M30.5 48.5 C30.5 46.6 32 45.5 34 45.5 H40.5 C42.2 45.5 43.2 46.6 43.2 48.2 V55.4 C43.2 57.2 42 58.3 40.2 58.3 H33.6 C31.8 58.3 30.5 57.2 30.5 55.4Z" fill="url(#${k}b)" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>` +
-        `<path d="M30.5 48.5 C30.5 46.6 32 45.5 34 45.5 H40.5 C42.2 45.5 43.2 46.6 43.2 48.2 V51.5 C39 53.6 34.8 53.6 30.5 51.5Z" fill="#6b3a14" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><rect x="35.4" y="50.6" width="3.4" height="3" rx=".8" fill="#fbbf24" stroke="${INK}" stroke-width="1"/>` +
-        // туловище — рубаха
-        `<path d="M52 29 C58 27 64 29 64.2 34 L60.4 50 C58.4 57 52 60.2 45 58.2 C40 56.8 39 52.2 40.5 47.2 L46 33.2 C47 30.2 49 29.4 52 29Z" fill="url(#${k}c)" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>` +
-        `<path d="M47.5 36 C46 41 44.5 46 43.5 51" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".3" fill="none"/>` +
-        // вышивка: ворот, планка, подол
-        `<path d="M51.5 30.2 C55 29 59 29.4 62.4 31.2" stroke="#dc2626" stroke-width="3.2" fill="none" stroke-linecap="round"/><path d="M53 30 l1 1.6 M56 29.5 l1 1.6 M59 29.8 l1 1.6" stroke="#fde68a" stroke-width="1.1" stroke-linecap="round"/>` +
-        `<path d="M59.6 31.2 L57.4 39" stroke="#dc2626" stroke-width="2.6" stroke-linecap="round"/>` +
-        `<path d="M41 54.6 C46 57.6 53 58.6 58.4 56" stroke="#dc2626" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M42.5 55.2 C47 57.6 52.5 58.2 57 56.2" stroke="#fde68a" stroke-width="1.1" fill="none" stroke-dasharray="1.6 1.6"/>` +
-        // ремень сумки через грудь и красный кушак с кистями
-        `<path d="M61.4 31.4 L41.8 49.8" stroke="${INK}" stroke-width="4.6" stroke-linecap="round"/><path d="M61.4 31.4 L41.8 49.8" stroke="#8a4f1c" stroke-width="2.6" stroke-linecap="round"/>` +
-        `<path d="M41.6 49 C46 51.2 52 52.6 58.6 51.6" stroke="${INK}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M41.6 49 C46 51.2 52 52.6 58.6 51.6" stroke="#dc2626" stroke-width="3.8" fill="none" stroke-linecap="round"/>` +
-        `<path d="M43.4 51 L38.4 57.8 M45.4 52 L41.4 59.2" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/><path d="M43.4 51 L38.4 57.8 M45.4 52 L41.4 59.2" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/><circle cx="38.2" cy="58.2" r="1.5" fill="#fbbf24"/><circle cx="41.2" cy="59.6" r="1.5" fill="#fbbf24"/>` +
-        // шея и голова: волосы, ухо, глаз с бликом, бровь, нос, открытый рот, румянец
-        `<path d="M59.8 25.5 L58.2 30.5" stroke="${INK}" stroke-width="8.2" stroke-linecap="round"/><path d="M59.8 25.5 L58.2 30.5" stroke="#eba274" stroke-width="5" stroke-linecap="round"/>` +
-        `<circle cx="63" cy="18" r="9.2" fill="url(#${k}k)" stroke="${INK}" stroke-width="2.6"/>` +
-        `<path d="M71.6 16.4 Q75 18.8 72 20.6" fill="#f2b07c" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>` +
-        `<path d="M54.6 16.8 C54 8.8 60.4 5 67.2 6.4 C71.6 7.4 73.8 10.4 73.2 13.4 C69.4 11.2 64 11.8 61.6 15.6 C60.4 18 59 20.6 56.6 21.2 C55.4 20.8 54.7 19.2 54.6 16.8Z" fill="#6b3a17" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>` +
-        `<path d="M56 11 C51.5 9 48.5 10.5 45 8.4 M55.4 14.6 C51 14 48.6 15.6 45.6 14.4" stroke="#6b3a17" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M60 8.8 C63 7.6 66.4 7.8 69 9.4" stroke="#a0612c" stroke-width="1.4" fill="none" stroke-linecap="round"/>` +
-        `<ellipse cx="60.4" cy="19.2" rx="2" ry="2.8" fill="#eba274" stroke="${INK}" stroke-width="1.6"/><path d="M60.4 18 Q61.3 19.2 60.4 20.4" stroke="#a65a2a" stroke-width="1" fill="none"/>` +
-        `<ellipse cx="67.6" cy="16.6" rx="2" ry="2.4" fill="#fff" stroke="${INK}" stroke-width="1.2"/><circle cx="68.3" cy="17" r="1.3" fill="${INK}"/><circle cx="68.8" cy="16.3" r=".5" fill="#fff"/>` +
-        `<path d="M65.6 12.8 Q68.2 11.6 70.4 13" stroke="#4a2810" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
-        `<path d="M67.6 22.4 Q70.2 25.2 72.4 22.2 Q70 23.2 67.6 22.4Z" fill="#7f1d1d" stroke="${INK}" stroke-width="1.3" stroke-linejoin="round"/><ellipse cx="65.4" cy="20.8" rx="2.2" ry="1.3" fill="#ff7aa8" opacity=".45"/>` +
-        // ближняя нога — колено вверх, сапог носком вперёд
-        lim([[48, 55], [64, 61.2], [59.2, 77.6]], [11, 9], '#8a5426') +
-        `<path d="M54 72.6 L63.6 74 C64.6 77 67 78.4 71 79.4 C74.6 80.4 75.6 83 73.6 85 H56 C54.2 85 53.4 84 53.6 82.4Z" fill="url(#${k}o)" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>` +
-        `<path d="M54.2 73.4 L63.4 74.8" stroke="#7a4a22" stroke-width="2.6" stroke-linecap="round"/><path d="M53.8 84.6 H73.4" stroke="#0d0603" stroke-width="2.4" stroke-linecap="round"/><path d="M53.6 82.6 V87 H58.6 V85" fill="#2a1508" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/>` +
-        `<ellipse cx="67" cy="79.6" rx="3.4" ry="1.4" fill="#fff" opacity=".28"/>` +
-        // ближняя рука — вперёд и вверх
-        lim([[59, 33], [69, 43], [77, 35.4]], [8, 7], '#2f6fe0') + `<path d="M74.4 37.8 L76.6 35.4" stroke="#dc2626" stroke-width="3.2" stroke-linecap="round"/>` + fist(79.2, 33, 4.8, -35)); },
+        layer([[cap(54.5, 34, 43, 43, 8.6, 7.4), ...SHF], [cap(43, 43, 35.6, 38.6, 7.4, 6.6), ...SHF], [cap(38.2, 40, 35.8, 38.6, 7.2, 7), ...RD]]) +
+        line('M45.4 40.4 C46.6 42.6 46.4 44.4 45 45.6', '#14215c', 1.3) + fist(32.6, 36.6, 20) +
+        // дальняя нога — отталкивается; сапог носком назад
+        layer([[cap(46, 54, 37, 69.5, 12.4, 10), ...PF], [cap(37, 69.5, 30.6, 74.6, 10, 9), ...PF]]) +
+        line('M42.6 60.4 C41 62.6 40.6 64.6 41 66.6', '#3b1f0d', 1.3) +
+        layer([[cap(32.4, 72.6, 27, 77.6, 9.8, 9.4), ...BT], ['M30.4 74 C29 77 27.4 79.6 25.4 81.6 C21.8 82.8 17.4 83.4 14 82.6 C12 82.1 12.1 79.9 14 79.3 C17.6 78.2 20.4 76.6 22.4 73.4Z', ...BT]]) +
+        line('M12.4 81.8 C16.4 84 22.6 84.2 27.2 82.6', '#0d0603', 2.6) + line('M14.8 81.4 C18 82.4 22 82.6 25.4 81.6', '#d6a85c', 0.8, ' stroke-dasharray="1.4 1.2"') +
+        line('M33.6 71.2 L29.4 75.6', '#7a4a22', 2.6) +
+        // сумка на бедре (сзади): клапан, строчка, пряжка
+        layer([['M30 48.4 C30 46.4 31.6 45.2 33.6 45.2 H40.8 C42.6 45.2 43.6 46.4 43.6 48 V55.6 C43.6 57.4 42.4 58.6 40.6 58.6 H33.2 C31.3 58.6 30 57.4 30 55.6Z', '#a8632a', '#5c3412', '#d99a5b']]) +
+        line('M31.6 56.6 H42', '#f3d9a6', 0.8, ' stroke-dasharray="1.3 1.1"') +
+        layer([['M30 48.4 C30 46.4 31.6 45.2 33.6 45.2 H40.8 C42.6 45.2 43.6 46.4 43.6 48 V51.4 C39.2 53.8 34.6 53.8 30 51.4Z', '#7a4116', '#4a2409', '#b8743a']]) +
+        line('M31.4 49.6 C35 51.4 38.8 51.4 42.2 49.6', '#f3d9a6', 0.8, ' stroke-dasharray="1.3 1.1"') +
+        `<rect x="35.2" y="50.4" width="3.8" height="3.4" rx=".9" fill="#fbbf24" stroke="${INK}" stroke-width="1.1"/><rect x="36.4" y="51.4" width="1.4" height="1.4" fill="#78350f"/>` +
+        // рубаха: складки, вышитые ворот, планка и подол
+        layer([['M52 28.6 C58.5 26.6 64.8 28.8 64.6 34.2 L61 50.4 C59 57.6 52.6 60.6 45.4 58.6 C40.2 57.2 39 52.4 40.6 47.4 L46 33 C47 30.2 49.2 29.2 52 28.6Z', ...SHN]]) +
+        line('M45.6 39.6 C47.4 42.2 48.2 45.2 47.8 48.2 M55.4 41 C54.6 44 54.8 47 56 49.4 M50.6 36.4 C51.6 38.6 51.8 40.6 51.2 42.6', '#1e3a8a', 1.3) +
+        line('M51.4 30 C55 28.8 59.2 29.2 62.6 31.2', '#dc2626', 3.2) + line('M52.6 29.8 l1 1.5 M55.2 29.2 l1 1.5 M57.8 29.3 l1 1.5 M60.4 29.9 l.9 1.5', '#fde68a', 1) +
+        line('M60 31.6 L57.8 39.4', '#dc2626', 3) + line('M59.6 33.2 l-1.4 .4 M59.2 35 l-1.4 .4 M58.7 36.8 l-1.4 .4', '#fde68a', 1) +
+        line('M40.8 54.4 C45.8 57.6 53 58.8 58.6 56', '#dc2626', 3.2) + line('M42.4 55.4 C47 57.8 52.6 58.4 57 56.6', '#fde68a', 1.1, ' stroke-dasharray="1.4 1.4"') +
+        // ремень сумки через грудь (со строчкой)
+        line('M61.8 31 L41.6 49.6', INK, 4.8) + line('M61.8 31 L41.6 49.6', '#8a4f1c', 3) + line('M61.2 31.6 L42.2 49.1', '#f3d9a6', 0.7, ' stroke-dasharray="1.2 1.1"') +
+        // кушак: узел сзади, концы с кистями
+        line('M41.4 48.8 C46 51 52.2 52.4 58.8 51.4', INK, 6.2) + line('M41.4 48.8 C46 51 52.2 52.4 58.8 51.4', '#dc2626', 4.2) + line('M42.4 48.6 C46.6 50.6 52.4 51.8 58 51', '#fca5a5', 1, ' opacity=".7"') +
+        line('M42.4 50.4 C39.6 53.4 37.6 56.4 35.6 59.6 M43.6 51.4 C41.6 55 40.6 58 39.8 61', INK, 3.6) + line('M42.4 50.4 C39.6 53.4 37.6 56.4 35.6 59.6 M43.6 51.4 C41.6 55 40.6 58 39.8 61', '#ef4444', 2) +
+        `<circle cx="42.2" cy="50.4" r="2.6" fill="#dc2626" stroke="${INK}" stroke-width="1.5"/>` +
+        line('M35.6 59.6 l-1 2.6 M35.6 59.6 l.2 2.8 M35.6 59.6 l1.2 2.4 M39.8 61 l-.8 2.6 M39.8 61 l.4 2.6 M39.8 61 l1.4 2.2', '#fbbf24', 1) +
+        // шея; пряди волос — за головой
+        layer([[cap(59.8, 25.6, 58.2, 30.4, 6.4, 6.8), ...SK]]) +
+        layer([['M56.4 9.2 C52.4 7 48.4 7.8 44.4 5.4 C47.4 9.6 51.4 11.2 55.4 11.8Z', '#6b3a17', '#3b1f0d', '#a8703c'], ['M55 13 C50.6 12.2 47 13.8 43.4 12.4 C46.4 16 50.6 16.8 54.6 16.4Z', '#6b3a17', '#3b1f0d', '#a8703c'],
+          ['M55.4 17.2 C51.8 17.6 49.2 19.8 46.2 19.4 C48.6 22.2 52.6 22.2 55.8 20.4Z', '#6b3a17', '#3b1f0d', '#a8703c']]) +
+        // голова: лицо, нос, ухо, волосы
+        layer([['M52 19 A10 10 0 1 0 72 19 A10 10 0 1 0 52 19Z', ...SK], ['M71.6 16.8 C74.8 18.8 74.6 21.2 71.8 21.8Z', ...SK], ['M64.8 26.4 C67.6 28 70.6 27.2 72 24.2 L70 23 Z', ...SK]]) +
+        layer([['M53.6 17.6 C52.8 9 59.4 4.6 66.8 5.8 C72 6.6 74.4 10.2 73.6 13.6 C70 11.4 64.8 11.6 62.2 15 C60.8 17.6 59.4 20.4 56.8 21.4 C55.2 21.2 53.8 19.6 53.6 17.6Z', '#6b3a17', '#3b1f0d', '#a8703c']]) +
+        line('M59.6 8.6 C62.8 7.2 66.4 7.4 69.2 9.2 M56.4 12.6 C57.6 10.8 59.2 9.6 61.2 9', '#c08046', 1.4) + line('M64 12.6 C66 11.8 68.2 11.9 70 12.8', '#4a2810', 1.2) +
+        `<ellipse cx="59.6" cy="19.8" rx="2.3" ry="3.1" fill="#f3b483" stroke="${INK}" stroke-width="1.6"/>` + line('M59.6 18.4 C60.6 19.4 60.6 20.6 59.6 21.4', '#a65a2a', 1) +
+        // глаз: белок, радужка, зрачок, блик, ресницы; бровь
+        `<path d="M65.4 17 C66.4 15.2 69 14.8 70.4 16.7 C69.4 18.6 66.8 18.9 65.4 17Z" fill="#fff" stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"/>` +
+        `<circle cx="68.1" cy="16.9" r="1.55" fill="#5b3a1a"/><circle cx="68.3" cy="17" r=".8" fill="${INK}"/><circle cx="68.7" cy="16.3" r=".45" fill="#fff"/>` +
+        line('M65.2 16.8 C66.4 14.8 69.4 14.4 70.9 16.4', INK, 1.7) + line('M70.6 15.9 l1.3 -.8', INK, 1) +
+        line('M64.8 13.2 C66.8 11.9 69.6 11.9 71.3 13.1', '#4a2810', 1.9) +
+        // открытый рот с зубами и языком, румянец, щека
+        `<path d="M67.6 23.4 C69.4 25.8 72.2 25.6 73.2 22.8 C71.2 23.7 69.4 23.8 67.6 23.4Z" fill="#7f1d1d" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>` +
+        line('M68.6 23.8 L72.4 23.3', '#fff', 1) + `<ellipse cx="70.4" cy="24.8" rx="1.2" ry=".6" fill="#f472b6"/>` +
+        `<ellipse cx="66.4" cy="21.2" rx="2.4" ry="1.4" fill="#ff7aa8" opacity=".45"/>` +
+        // ближняя нога — колено вверх; сапог носком вперёд: отворот, ремешок с пряжкой, прошитая подошва, каблук
+        layer([[cap(48.5, 55, 64.5, 61.5, 13, 10.4), ...PN], [cap(64.5, 61.5, 61.6, 70.6, 10.2, 9.4), ...PN]]) +
+        line('M59.6 57.6 C61.6 59.4 62.4 61.4 62.2 63.6 M53.6 56.4 C55.2 58 56.4 59.6 56.8 61.4', '#57301a', 1.3) +
+        layer([[cap(61.8, 70, 59.8, 77.4, 9.8, 9.6), ...BT], ['M55.2 73.6 L64.4 75 C65.4 77.8 67.8 79.2 71.6 80.2 C75.2 81.2 76.2 83.8 74.2 85.6 H56.6 C54.8 85.6 54 84.6 54.2 83Z', ...BT]]) +
+        layer([[cap(56.6, 71.4, 66, 72.6, 3.6, 3.6), '#7a4a22', '#4a2a14', '#b07a45']]) +
+        `<rect x="57.4" y="77.2" width="7.6" height="2.2" rx=".8" fill="#2a1508" stroke="${INK}" stroke-width=".9"/><rect x="60.2" y="76.8" width="2.6" height="3" rx=".5" fill="#fbbf24" stroke="${INK}" stroke-width=".9"/>` +
+        line('M54.4 85.2 H74.2', '#0d0603', 2.8) + line('M56.4 84 H72.4', '#d6a85c', 0.8, ' stroke-dasharray="1.4 1.2"') +
+        `<path d="M54.2 83.2 V88.2 H59.6 V85.6" fill="#24120a" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/><ellipse cx="68.6" cy="80" rx="3.6" ry="1.4" fill="#fff" opacity=".3"/>` +
+        // ближняя рука — вперёд и вверх: складки у локтя, вышитый обшлаг, кулак
+        layer([[cap(59.4, 33.4, 70, 43.6, 9, 7.8), ...SHN], [cap(70, 43.6, 76.4, 36.2, 7.8, 7), ...SHN], [cap(74.4, 38.6, 76.8, 35.8, 7.6, 7.4), ...RD]]) +
+        line('M66.6 42 C68 44.2 70.4 45.2 72.6 44.6 M63.4 37.4 C64.6 39 65 40.6 64.6 42', '#1e3a8a', 1.3) + line('M74.2 36.4 l1.6 1.6', '#fde68a', 1) +
+        fist(79.2, 33.4, -35));
+    },
     // Странник миров — глобус Атласа
     myths: () => { const k = 'mm' + (++seq); return msvg(`<defs>${mrad(k + 'o', ['#bae6fd', '#0ea5e9', '#0c4a6e'])}${mgrad(k + 'l', ['#bbf7d0', '#22c55e', '#166534'])}<clipPath id="${k}c"><circle cx="50" cy="50" r="36"/></clipPath></defs>` +
       `<circle cx="50" cy="50" r="36" fill="url(#${k}o)"/>` +
