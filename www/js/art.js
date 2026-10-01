@@ -861,13 +861,17 @@ const Art = (() => {
       `<path d="M30 16 H86 L73 39 L86 62 H30Z" fill="url(#${k}f)" stroke="#2e1065" stroke-width="3.2" stroke-linejoin="round"/><path d="M31 22.5 H77 M31 55.5 H77" stroke="#fde68a" stroke-width="2.2" opacity=".75"/>` +
       `<circle cx="53" cy="39" r="12" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.6"/><path d="${mstarD(53, 39.5, 7.5)}" fill="#7c2d12"/>` +
       `<circle cx="26" cy="10" r="5.5" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.2"/>`); },
-    // Землепроходец — холмы родной земли, берёза и солнце
-    lands: () => { const k = 'ml' + (++seq); return msvg(`<defs>${mrad(k + 's', ['#fff7c2', '#fbbf24', '#d97706'])}${mgrad(k + 'b', ['#bbf7d0', '#4ade80', '#15803d'])}${mgrad(k + 'f', ['#86efac', '#22c55e', '#14532d'])}${mrad(k + 'c', ['#d9f99d', '#65a30d', '#365314'])}</defs>` +
-      `<circle cx="27" cy="29" r="12" fill="url(#${k}s)" stroke="#92400e" stroke-width="2.6"/>` +
-      `<path d="M4 72 C20 48 40 45 56 59 C66 49 83 47 96 64 V90 H4Z" fill="url(#${k}b)" stroke="#14532d" stroke-width="3.2" stroke-linejoin="round"/>` +
-      `<path d="M66 70 V34" stroke="#1f2937" stroke-width="8" stroke-linecap="round"/><path d="M66 70 V34" stroke="#f8fafc" stroke-width="4.5" stroke-linecap="round"/><path d="M64 44 h3.5 M65 53 h3.5 M64 62 h3.5" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/>` +
-      `<path d="M66 12 C79 12 86 22 82 31 C89 35 85 46 76 44 C72 51 61 49 59 42 C50 42 48 31 55 27 C53 18 59 12 66 12Z" fill="url(#${k}c)" stroke="#1a2e05" stroke-width="2.8" stroke-linejoin="round"/>` +
-      `<path d="M1 88 C22 66 46 68 60 78 C72 70 88 70 99 82 V98 H1Z" fill="url(#${k}f)" stroke="#14532d" stroke-width="3.2" stroke-linejoin="round"/>`); },
+    // Землепроходец — сложенная карта землепроходца: земля, река, горы, пройденный путь пунктиром и булавка там, куда дошёл
+    lands: () => { const k = 'ml' + (++seq), map = 'M12 23 L37 16 L63 23 L88 16 V78 L63 85 L37 78 L12 85Z';
+      return msvg(`<defs>${mgrad(k + 'p', ['#fffbeb', '#fde68a', '#d6a85c'], 1, 1)}${mgrad(k + 'l', ['#bbf7d0', '#4ade80', '#15803d'], 1, 1)}${mrad(k + 'r', ['#fca5a5', '#ef4444', '#991b1b'])}<clipPath id="${k}c"><path d="${map}"/></clipPath></defs>` +
+      `<path d="${map}" fill="url(#${k}p)"/><path d="M37 16 L63 23 V85 L37 78Z" fill="#92400e" opacity=".16"/>` +
+      `<g clip-path="url(#${k}c)"><path d="M8 50 C16 40 28 38 34 44 C40 50 50 46 56 38 C62 30 76 30 84 38 C92 46 92 60 84 66 C76 72 66 66 58 70 C50 74 40 80 30 76 C20 72 6 66 8 50Z" fill="url(#${k}l)" stroke="#166534" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<path d="M20 88 C26 76 17 67 25 59 C31 53 29 45 37 39" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round"/>` +
+      `<path d="M65 63 L71 53 L77 63Z M73 63 L79 55 L85 63Z" fill="#d6d3d1" stroke="#44403c" stroke-width="1.6" stroke-linejoin="round"/>` +
+      `<path d="M20 72 C28 66 34 66 40 60 C46 54 52 54 60 51" stroke="#b91c1c" stroke-width="3" stroke-dasharray="4.5 3.5" fill="none" stroke-linecap="round"/></g>` +
+      `<path d="${map}" fill="none" stroke="#78350f" stroke-width="3" stroke-linejoin="round"/><path d="M37 16 V78 M63 23 V85" stroke="#78350f" stroke-width="1.8" opacity=".7"/>` +
+      `<ellipse cx="60" cy="53" rx="4.5" ry="1.8" fill="#78350f" opacity=".4"/>` +
+      `<path d="M60 52 C55 44 49 39 49 33 A11 11 0 0 1 71 33 C71 39 65 44 60 52Z" fill="url(#${k}r)" stroke="#7f1d1d" stroke-width="2.6" stroke-linejoin="round"/><circle cx="60" cy="33" r="4.2" fill="#fff"/>`); },
   };
   // знаки стихий: крупный знак стихии
   const MEDAL_EL = {
