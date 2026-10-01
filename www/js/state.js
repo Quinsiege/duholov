@@ -250,12 +250,13 @@ const S = {
     this.save();
     return true;
   },
-  // Трофеи разлома сверх обычной награды: эссенция семейства босса (легенды — из великих разломов) и осколки Алатыря
+  // Трофеи разлома сверх обычной награды: эссенция Рода (5.1.20; было — эссенция семейства босса) и осколки Алатыря.
+  // Эссенция Рода вливается в любое семейство (в легенды — ESS.LEGEND → 1), см. S.pour
   RIFT_ESS: { 1: 2, 2: 4, 3: 6 },
   ALATYR_DROP: { rift: { 2: 0.2, 3: 1 }, duel: { 3: 0.1 } }, ALATYR_DAY: 2, // в бою — не больше двух осколков в день (дальние великие разломы не фармятся)
   riftSpoils(boss, tier) {
-    const out = [], fam = SP[boss].fam, n = this.RIFT_ESS[tier] || 0;
-    if (n) { this.addEssence(fam, n); out.push({ k: 'ess', n, label: ru`Эссенция «${SP[fam].name}»` }); }
+    const out = [], n = this.RIFT_ESS[tier] || 0;
+    if (n) { this.d.rod = (this.d.rod || 0) + n; out.push({ k: 'rod', n, label: this.resName('rod') }); }
     return out.concat(this.alatyrDrop('rift', tier));
   },
   alatyrDrop(kind, tier) {
@@ -812,6 +813,14 @@ const S = {
     for (const k of [1, 2, 3]) if (!list.length) list = free(k);
     return list.length ? list[Math.floor(r() * list.length)].id : null;
   },
+  // 5.1.20: обменов по курсу Кампании (Rules.EXCHANGE.CAMP монет) осталось — пока у шага есть невыполненная цель «обмены»
+  // (не больше её n раз); дальше — обычный курс Rules.EXCHANGE.ZLAT
+  campExLeft() {
+    const c = this.d && this.d.camp, st = this.campStep();
+    return st ? st.obj.reduce((a, o, i) => a + (o.t === 'exchange' ? Math.max(0, o.n - (c.p[i] || 0)) : 0), 0) : 0;
+  },
+  // монеты за n обменов подряд: сперва — по курсу Кампании, сколько осталось, остальные — по обычному
+  exchangeZlat(n) { const E = Rules.EXCHANGE, k = Math.min(n, this.campExLeft()); return k * E.CAMP + (n - k) * E.ZLAT; },
   // Разлом кампании: цель шага ещё не выполнена
   campRiftOn() { const c = this.d && this.d.camp, st = this.campStep(); return !!st && st.obj.some((o, i) => o.t === 'campRift' && (c.p[i] || 0) < o.n); },
   // Разлом нужно поставить или перенести к Ловчему (ушёл дальше KEEP м, шагнул через Врата)

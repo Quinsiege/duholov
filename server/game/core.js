@@ -1502,18 +1502,20 @@ const GameCore = {
       Bus.emit('promo', { code, got });
       return { code, got };
     },
-    // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день
+    // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день.
+    // 5.1.20: на шаге Кампании «обмены» — по курсу Кампании (S.exchangeZlat), считается до того, как обмены засчитаны в шаг
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
       const ex = S.d.shop.ex && S.d.shop.ex.day === today ? S.d.shop.ex : (S.d.shop.ex = { day: today, n: 0 });
       this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? ru`Обменник на сегодня закрыт — приходи завтра` : ru`Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);
       this.need(S.d.sparks >= E.SPARKS * n, ru`Не хватает искр`);
+      const zlat = S.exchangeZlat(n);
       S.d.sparks -= E.SPARKS * n;
-      S.d.zlat = (S.d.zlat || 0) + E.ZLAT * n;
+      S.d.zlat = (S.d.zlat || 0) + zlat;
       ex.n += n;
-      J.add('exchange', { sparks: E.SPARKS * n, zlat: E.ZLAT * n });
+      J.add('exchange', { sparks: E.SPARKS * n, zlat });
       S.progress('exchange', n); // 5.1.15: шаг Кампании
-      return { sparks: E.SPARKS * n, zlat: E.ZLAT * n, left: E.DAY - ex.n };
+      return { sparks: E.SPARKS * n, zlat, left: E.DAY - ex.n };
     },
 
     /* ----- Сезонная тропа ----- */

@@ -12,18 +12,18 @@
    Экран (3.21): герб ранга и место в таблице, вкладки «Бой», «Таблица» (живая, с текущими уровнями — leagueTop)
    и «Лиги»; строка таблицы открывает карточку Ловчего. Поиск и сам бой — league-battle.js. */
 
-// pts — с какого рейтинга начинается лига
+// pts — с какого рейтинга начинается лига. 5.1.20: искры в наградах за лиги — ×10
 const LEAGUE_RANKS = [
   { name: ru`Дерево`, pts: 0 },
-  { name: ru`Медь`, pts: 300, reward: { charm: 10, sparks: 500 } },
-  { name: ru`Бронза`, pts: 600, reward: { honey: 5, sparks: 800 } },
+  { name: ru`Медь`, pts: 300, reward: { charm: 10, sparks: 5000 } },
+  { name: ru`Бронза`, pts: 600, reward: { honey: 5, sparks: 8000 } },
   { name: ru`Железо`, pts: 1000, reward: { charm2: 5, water: 5 } },
-  { name: ru`Серебро`, pts: 1500, reward: { charm2: 8, sparks: 1500 } },
+  { name: ru`Серебро`, pts: 1500, reward: { charm2: 8, sparks: 15000 } },
   { name: ru`Золото`, pts: 2100, reward: { charm3: 3, incense: 1 } },
-  { name: ru`Платина`, pts: 2800, reward: { charm2: 10, sparks: 3000 } },
+  { name: ru`Платина`, pts: 2800, reward: { charm2: 10, sparks: 30000 } },
   { name: ru`Изумруд`, pts: 3600, reward: { charm3: 5, water: 10 } },
-  { name: ru`Алмаз`, pts: 4500, reward: { incense: 3, sparks: 5000 } },
-  { name: ru`Легенда`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
+  { name: ru`Алмаз`, pts: 4500, reward: { incense: 3, sparks: 50000 } },
+  { name: ru`Легенда`, pts: 5500, reward: { charm3: 10, sparks: 80000 } },
 ];
 
 /* 5.0: значок лиги — медальон: кольцо-оправа из материала лиги, в центре огранённый кристалл Алатыря (общий для всех
@@ -272,8 +272,8 @@ const League = {
     const lo = Math.max(0, pts - this.RANGE), hi = Math.min(this.MAXPTS, pts + this.RANGE);
     return { a: this.rank(lo), b: this.rank(hi), w: 0, lo, hi };
   },
-  // сундук за высшую лигу прошлого сезона
-  prize(r) { return r > 0 ? { sparks: 400 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
+  // сундук за высшую лигу прошлого сезона (5.1.20: искры ×10 — было ✦ 400 за лигу)
+  prize(r) { return r > 0 ? { sparks: 4000 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
 
   // 5.0: значок лиги — медальон из материала лиги с кристаллом Алатыря в центре (инлайн-SVG 340×400, LeagueBadge)
   badge(i) { return LeagueBadge(U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1)); },

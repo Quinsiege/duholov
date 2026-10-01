@@ -98,7 +98,7 @@ const Raid = {
               ${row(ru`Искры`, it('sparks', U.fmtNum(350 * T2)))}
               ${row(ru`Обереги`, it('charm', 5) + (T2 >= 2 ? ' · ' + it('charm2', 3) : ''))}
               ${row(ru`Припасы`, it('honey', T2) + ' · ' + (T2 === 1 ? it('herb', 1) : it('water', 1)))}
-              ${row(ru`Эссенция «${SP[s.fam].name}»`, S.RIFT_ESS[T2] || 0)}
+              ${row(ru`Эссенция Рода`, it('rod', S.RIFT_ESS[T2] || 0))}
               ${S.ALATYR_DROP.rift[T2] ? row(ru`Осколок Алатыря`, S.ALATYR_DROP.rift[T2] >= 1 ? ru`точно` : ru`шанс ${Math.round(S.ALATYR_DROP.rift[T2] * 100)}%`) : ''}
               ${row(ru`Амулет`, ru`шанс ${[5, 12, 30][T2 - 1]}%`)}
               ${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}
