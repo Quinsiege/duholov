@@ -22,6 +22,11 @@ const ArtKit = (() => {
     return '#' + ((1 << 24) + (c[0] << 16) + (c[1] << 8) + c[2]).toString(16).slice(1);
   };
   const INK = '#1b1030';
+  // 5.1.19: группа со сдвигом и классом анимации. Анимации духов (style.css: floaty, sway, flap…) задают CSS transform —
+  // на одном элементе он заменяет атрибут transform, и деталь во время анимации съезжала к началу координат.
+  // Поэтому сдвиг — у внешней группы, анимация — у внутренней
+  const wrap = (t, cls) => t && cls ? `<g transform="${t}"><g class="${cls}">` : `<g${cls ? ` class="${cls}"` : ''}${t ? ` transform="${t}"` : ''}>`;
+  const unwrap = (t, cls) => t && cls ? '</g></g>' : '</g>';
   // стихии: цвет ободка (лунный свет с оттенком стихии) и фактура тела
   const EL = {
     fire: { rim: '#ffe29a', glow: '#ff9a3d' },
@@ -71,7 +76,7 @@ const ArtKit = (() => {
           `<clipPath id="${k}c"><path d="${d}"/></clipPath>` +
           `<mask id="${k}r" maskUnits="userSpaceOnUse" x="-20" y="-20" width="240" height="240"><path d="${d}" fill="#fff"/><path d="${d}" fill="#000" transform="translate(-6 -5)"/></mask>` +
           `<mask id="${k}l" maskUnits="userSpaceOnUse" x="-20" y="-20" width="240" height="240"><path d="${d}" fill="#fff"/><path d="${d}" fill="#000" transform="translate(5 7)"/></mask>`);
-        let s = `<g${o.cls ? ` class="${o.cls}"` : ''}${o.t ? ` transform="${o.t}"` : ''}><path d="${d}" fill="url(#${k}f)"/>`;
+        let s = `${wrap(o.t, o.cls)}<path d="${d}" fill="url(#${k}f)"/>`;
         if (o.tex !== false && TEX[el]) {
           if (!texId) { texId = id('t'); defs.push(`<pattern id="${texId}" width="${TEX[el][0]}" height="${TEX[el][0]}" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)">${TEX[el][1]}</pattern>`); }
           s += `<rect clip-path="url(#${k}c)" x="-20" y="-20" width="240" height="240" fill="url(#${texId})" opacity="${o.texK == null ? TEX[el][2] : o.texK}"/>`;
@@ -80,7 +85,7 @@ const ArtKit = (() => {
           `<rect mask="url(#${k}r)" x="-20" y="-20" width="240" height="240" fill="${rim}" opacity="${o.rimK == null ? 0.6 : o.rimK}"/>` +
           `<rect mask="url(#${k}l)" x="-20" y="-20" width="240" height="240" fill="#fff" opacity="${o.hiK == null ? 0.22 : o.hiK}"/>`;
         if (lw) s += `<path d="${d}" fill="none" stroke="${line}" stroke-width="${lw}" stroke-linejoin="round" stroke-linecap="round"/>`;
-        return s + '</g>';
+        return s + unwrap(o.t, o.cls);
       },
       // плоская деталь с лёгким объёмом (градиент сверху вниз) и обводкой
       part(d, c, o = {}) {
@@ -176,7 +181,7 @@ const ArtKit = (() => {
         return rot ? { d, t: `rotate(${rot} ${cx} ${cy})` } : d;
       },
       // группа с поворотом/сдвигом
-      g(s, t, cls) { return `<g${t ? ` transform="${t}"` : ''}${cls ? ` class="${cls}"` : ''}>${s}</g>`; },
+      g(s, t, cls) { return `${wrap(t, cls)}${s}${unwrap(t, cls)}`; },
       // симметрия: копия относительно x=100
       mirror(s) { return `${s}<g transform="translate(200 0) scale(-1 1)">${s}</g>`; },
     };

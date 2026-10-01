@@ -3056,6 +3056,61 @@
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
   });
+  atest('5.1.18: эволюция — дух жив и с полным здоровьем: «без сил», раны и усталость к новой форме не переходят', async () => {
+    const P = await newPlayer('ev-hp', 55.75, 37.62, 'Лекарь', 'ugolek');
+    const sp = P.data.spirits[0], fam = SP.ugolek.fam, now = Date.now();
+    // без сил (только что) и уставший после боёв
+    sp.ko = now - 60000; sp.tired = 6; sp.tiredT = now; P.data.essence[fam] = SP.ugolek.cost;
+    ok(!asPlayer(P, () => S.alive(sp)), 'до эволюции — без сил');
+    await must(P, 'evolve', { uid: sp.uid });
+    const ev = P.data.spirits.find(x => x.uid === sp.uid);
+    eq(ev.sid, SP.ugolek.evo, 'эволюционировал');
+    ok(asPlayer(P, () => S.alive(ev) && S.hpNow(ev) === 1 && S.hpCap(ev) === 1 && S.koLeft(ev) === 0), 'жив, полное здоровье, без усталости');
+    ok(!('ko' in ev) && !('hpf' in ev) && !('tired' in ev), 'следов ран нет');
+    // раненый (не без сил) — тоже полностью здоров
+    const x = asPlayer(P, () => S.makeSpirit('mshonok', 5, 'evhp')); P.data.spirits.push(x); x.hpf = 0.2; x.hpt = now; P.data.essence[SP.mshonok.fam] = SP.mshonok.cost;
+    await must(P, 'evolve', { uid: x.uid });
+    ok(asPlayer(P, () => S.hpNow(P.data.spirits.find(y => y.uid === x.uid))) === 1, 'раненый — после эволюции здоров');
+  });
+  test('5.1.18: шаг «Эволюция» — эссенции ровно на эволюцию: стартового духа, иначе самого дешёвого; доплата прежним; эволюционировать некого — засчитан', () => {
+    const d0 = S.d, st = CAMPAIGN[0].steps[4];
+    const mk = (sid, t) => ({ uid: sid + t, sid, lvl: 5, iv: [10, 10, 10], t });
+    const camp = (x = {}) => ({ ch: 0, s: 4, p: [0], u: [], pick: null, rift: null, rn: 0, v: S.CAMP_V, ...x });
+    try {
+      eq(st.name, 'Эволюция', 'шаг называется «Эволюция»'); eq(CAMP_OBJ.evolve({ n: 1 }), 'Эволюционировать духа');
+      // необычный стартовый — эволюция за 100 эссенции
+      const unc = SPECIES.find(s => s.rar === 2 && s.evo && s.cost === 100), fam = unc.fam;
+      S.d = { starter: unc.id, spirits: [mk(unc.id, 1), mk('ugolek', 2)], essence: {}, camp: camp() };
+      S.campOpen();
+      ok(S.d.camp.gift.fam === fam && S.d.camp.gift.n === 100 && S.d.essence[fam] === 100, 'необычному — 100 эссенции его семейства');
+      eq(S.canEvolve(S.d.spirits[0]), null, 'хватает на эволюцию');
+      // обычный стартовый — как раньше, 25
+      S.d = { starter: 'kapelka', spirits: [mk('kapelka', 1)], essence: {}, camp: camp() }; S.campOpen(); eq(S.d.camp.gift.n, 25);
+      // стартовый не эволюционирует (редкий, последняя форма) — эссенция на самого дешёвого в эволюции
+      const fin = SPECIES.find(s => s.rar === 3 && !s.evo);
+      S.d = { starter: fin.id, spirits: [mk(fin.id, 1), mk(unc.id, 2), mk('ugolek', 3)], essence: {}, camp: camp() };
+      S.campOpen(); ok(S.d.camp.gift.fam === SP.ugolek.fam && S.d.essence[SP.ugolek.fam] === 25, 'самая дешёвая эволюция — Уголёк за 25');
+      // эволюционировать некого — цель засчитана сразу
+      S.d = { starter: fin.id, spirits: [mk(fin.id, 1)], essence: {}, camp: camp() };
+      S.campOpen(); ok(S.d.camp.p[0] === 1 && !S.d.camp.gift, 'некого эволюционировать — цель засчитана');
+      // сохранение 5.1.17: на шаге «Эволюция» прислали 25 необычному — доплата 75, один раз
+      S.d = { starter: unc.id, spirits: [mk(unc.id, 1)], essence: { [fam]: 25 }, camp: camp({ v: 2, gift: { fam, n: 25 } }) };
+      S.campEnsure(); ok(S.d.essence[fam] === 100 && S.d.camp.gift.n === 100 && S.d.camp.v === S.CAMP_V, 'доплата до 100');
+      S.campEnsure(); eq(S.d.essence[fam], 100, 'и только один раз');
+      // уже эволюционировал на этом шаге — доплаты нет
+      S.d = { starter: unc.id, spirits: [mk(unc.id, 1)], essence: {}, camp: camp({ v: 2, p: [1], gift: { fam, n: 25 } }) };
+      S.campEnsure(); ok(!S.d.essence[fam], 'цель выполнена — без доплаты');
+    } finally { S.d = d0; }
+  });
+  test('5.1.18: Лига — надпись «Бой!» уходит к началу боя, а не через секунду после', () => {
+    const c = ms => LeagueBattle.countText(ms);
+    eq([3000, 2601, 2600, 1601, 1600, 601].map(c).join(','), '3,3,2,2,1,1', 'секунды до «Боя!»');
+    eq(c(LeagueBattle.COUNT_GO), 'Бой!'); eq(c(1), 'Бой!', '«Бой!» — в последние мгновения отсчёта');
+    eq(c(0), null, 'бой начался — надписи нет'); eq(c(-400), null, 'и потом тоже');
+    // сервер начинает бой в t0 = подбор + PvP.COUNT; отсчёт экрана боя заканчивается ровно там же
+    const st = PvP.ensure({ init: true, season: '2026-10', at: 1000, a: { pid: 'a', team: [] }, b: { pid: 'b', team: [] } });
+    eq(st.t0, 1000 + PvP.COUNT); eq(c(st.t0 - st.t0), null);
+  });
   test('5.1.17: первый дух — из кокона: редкость 50 / 35 / 13 / 1,5 / 0,5%, любой вид Бестиария (и превращённые), без Кощея', () => {
     const n = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, N = 20000, seen = new Set(), stages = new Set();
     let r = 12345; const rnd = () => (r = (r * 1103515245 + 12345) % 2147483648) / 2147483648; // повторяемый ряд случайных чисел

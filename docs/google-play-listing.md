@@ -36,7 +36,7 @@ EXPLORE THE WHOLE WORLD
 • Wellsprings, shrines and Rifts stand at real landmarks around the globe
 
 CATCH SPIRITS OF 7 MYTHOLOGIES
-• 195 spirits and gods — Slavic, Greek, Norse, Celtic, Egyptian, Chinese and Aztec
+• 441 spirits and gods — Slavic, Greek, Norse, Celtic, Egyptian, Chinese and Aztec
 • Meet any of them anywhere: a Greek nymph in Tokyo, an Aztec spirit in Paris
 • Six elements: Fire, Water, Forest, Wind, Current and Shadow
 • Throw a charm into the shrinking ring — or catch spirits in AR with your camera
@@ -94,7 +94,7 @@ Available in 13 languages. Play as a guest or sign in with Google, Yandex, VK or
 • Источники, Капища и Разломы стоят у настоящих достопримечательностей по всему свету
 
 ЛОВИ ДУХОВ 7 МИФОЛОГИЙ
-• 195 духов и богов — славянских, греческих, скандинавских, кельтских, египетских, китайских и ацтекских
+• 441 дух и бог — славянских, греческих, скандинавских, кельтских, египетских, китайских и ацтекских
 • Любого можно встретить где угодно: греческую нимфу в Токио, ацтекского духа в Париже
 • Шесть стихий: Огонь, Вода, Лес, Ветер, Ток и Тень
 • Брось оберег в сжимающееся кольцо — или лови в дополненной реальности через камеру

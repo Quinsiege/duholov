@@ -984,3 +984,1643 @@ function azLinA(K, stops, y1, y2) {
   K.def(`<linearGradient id="${i}" gradientUnits="userSpaceOnUse" x1="0" y1="${y1}" x2="0" y2="${y2}">${stops.map(([o, c, a]) => `<stop offset="${o}" stop-color="${c}" stop-opacity="${a}"/>`).join('')}</linearGradient>`);
   return `url(#${i})`;
 }
+// пятно-розетка ягуара: прерывистое кольцо с точкой внутри
+function azRosette(K, x, y, r, c = '#1c1917') {
+  const f = K.f;
+  return `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="none" stroke="${c}" stroke-width="${f(r * 0.5)}" stroke-dasharray="${f(r * 1.15)} ${f(r * 0.6)}"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(r * 0.34)}" fill="${c}"/>`;
+}
+// дуга окружности для путей: центр (x, y), радиус r, от угла a1 до a2 (градусы, по часовой)
+function azArc(K, x, y, r, a1, a2) {
+  const f = K.f, t1 = a1 * Math.PI / 180, t2 = a2 * Math.PI / 180;
+  return `M${f(x + r * Math.cos(t1))} ${f(y + r * Math.sin(t1))}A${r} ${r} 0 0 1 ${f(x + r * Math.cos(t2))} ${f(y + r * Math.sin(t2))}`;
+}
+// хвост ягуара по пути d: рыжий, в чёрных кольцах, чёрный кончик в (x, y)
+function azJagTail(K, d, x, y, w = 8.4) {
+  const f = K.f;
+  return K.line(d, '#2a1406', w + 4.6) + K.line(d, '#f59e0b', w) +
+    `<path d="${d}" fill="none" stroke="#1c1917" stroke-width="${w}" stroke-dasharray="${f(w * 0.4)} ${f(w * 0.95)}"/><circle cx="${x}" cy="${y}" r="${f(w * 0.62)}" fill="#1c1917"/>`;
+}
+
+// лист агавы: основание (x, y), длина L, ширина w, наклон rot (0 — вверх); o.soft — мягкие зубчики-кисточки
+function azAgave(K, x, y, L, w, rot, o = {}) {
+  const f = K.f, t = rot * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t);
+  const P = (u, v) => [x + u * c - v * sn, y + u * sn + v * c], S = (u, v) => P(u, v).map(f).join(' ');
+  const d = `M${S(-w / 2, 0)}C${S(-w * 0.62, -L * 0.45)} ${S(-w * 0.3, -L * 0.85)} ${S(0, -L)}C${S(w * 0.3, -L * 0.85)} ${S(w * 0.62, -L * 0.45)} ${S(w / 2, 0)}Z`;
+  let s = o.flat ? K.part(d, o.c1 || '#86efac', { line: o.line || '#14532d', lw: o.lw || 2 })
+    : K.vol(d, { c1: o.c1 || '#86efac', c2: o.c2 || '#166534', tex: false, lw: o.lw || 2.2, line: o.line || '#14532d', rim: o.rim, rimK: 0.5 });
+  s += K.line(`M${S(0, -L * 0.12)}L${S(0, -L * 0.82)}`, o.line || '#14532d', 1.2, { op: 0.35 });
+  const bz = (a, b, e, g, k) => a * (1 - k) ** 3 + 3 * b * k * (1 - k) ** 2 + 3 * e * k * k * (1 - k) + g * k ** 3;
+  let teeth = '';
+  for (const side of [-1, 1]) for (const k of [0.22, 0.42, 0.62]) {
+    const u = bz(side * w / 2, side * w * 0.62, side * w * 0.3, 0, k), v = bz(0, -L * 0.45, -L * 0.85, -L, k);
+    if (o.soft) { const [px, py] = P(u + side * 1.4, v); teeth += `<circle cx="${f(px)}" cy="${f(py)}" r="1.9"/>`; }
+    else teeth += `M${S(u, v + 2.2)}L${S(u + side * 3.6, v - 1.8)}L${S(u, v - 2.4)}Z`;
+  }
+  const [tx, ty] = P(0, -L - 1);
+  s += o.soft ? `<g fill="#fde68a" stroke="#a16207" stroke-width=".8">${teeth}<circle cx="${f(tx)}" cy="${f(ty)}" r="2.6"/></g>`
+    : `<path d="${teeth}" fill="${o.spine || '#3f2a14'}"/>` + K.line(`M${S(0, -L + 2)}L${S(0, -L - 6)}`, o.spine || '#3f2a14', 2.2);
+  return s;
+}
+// крыло бабочки-витража: контур d, стёкла — [[путь, цвет], …], переплёт — путь жилок; o — цвета основы и рамы
+function azGlassWing(K, d, panes, veins, o = {}) {
+  const ln = o.line || '#3b0764';
+  return K.vol(d, { c1: o.c1 || '#ede9fe', c2: o.c2 || '#7c3aed', tex: false, lw: o.lw || 2.6, line: ln, rim: o.rim || '#fff6b0', rimK: 0.5 }) +
+    azClip(K, d, panes.map(([p, c, a = 0.7]) => `<path d="${p}" fill="${c}" opacity="${a}"/>`).join('') + (o.sheen ? `<path d="${d}" fill="${o.sheen}" opacity="${o.sheenK || 0.3}"/>` : '') + K.line(veins, ln, o.vw || 2.4));
+}
+
+/* ---------- 5.2: новые духи и боги ацтекской мифологии ---------- */
+Object.assign(SPIRIT_ART, {
+  // Ягуарёнок: пухлый котёнок ягуара сидит под месяцем — золотая шубка в чёрных розетках, круглые ушки, огромные
+  // зелёные глаза; поднял лапку к светящемуся блику, хвостик в колечках
+  az_yaguarenok(K) {
+    const J = { c1: '#fcd34d', c2: '#c2410c', rim: '#e9d5ff', rimK: 0.55, tex: false, line: '#3b1d0c' };
+    const spots = pts => pts.map(([x, y, r]) => azRosette(K, x, y, r)).join('');
+    let s = K.aura('#c084fc', 88, 116, 0.35);
+    s += azMoon(K, 164, 34, 12);
+    // блик, за которым он охотится
+    s += `<circle class="art-aura" cx="32" cy="88" r="17" fill="${K.rad([[0, '#fffbe6', 0.95], [0.4, '#fde68a', 0.55], [1, '#fbbf24', 0]])}"/>` + K.spark(32, 88, 7.5, '#fffbe6');
+    // хвостик
+    s += azJagTail(K, 'M134 168C162 172 178 152 174 128C172 116 162 112 158 120', 158, 120);
+    // задние лапки и тельце
+    s += K.mirror(K.vol(K.ell(68, 168, 17, 11), J));
+    const body = 'M100 118C128 118 144 138 144 156C144 172 128 179 100 179C72 179 56 172 56 156C56 138 72 118 100 118Z';
+    s += K.vol(body, J);
+    s += `<ellipse cx="100" cy="160" rx="24" ry="16" fill="#fff7e6" opacity=".85"/>`;
+    s += azClip(K, body, spots([[68, 142, 6], [132, 140, 6], [62, 162, 5.5], [140, 160, 5.5]]));
+    // правая лапка на земле
+    s += K.vol(K.ell(116, 173, 11, 7.5), { ...J, lw: 2.4 }) + K.line('M111 177v-3M116 178v-3M121 177v-3', '#3b1d0c', 1.4);
+    // ушки
+    s += K.mirror(K.vol(K.ell(59, 64, 13, 13), J) + `<ellipse cx="60.5" cy="65.5" rx="6.5" ry="7" fill="#fde7c8" stroke="#b45309" stroke-width="1.2"/>` + K.line('M47 59Q50 51 61 51', '#1c1917', 3.6));
+    // голова
+    const head = K.ell(100, 94, 50, 40);
+    s += K.vol(head, J);
+    s += azClip(K, head, spots([[56, 98, 6.5], [144, 98, 6.5], [70, 68, 5], [130, 68, 5], [60, 120, 5], [140, 120, 5]]) +
+      `<g fill="#1c1917"><circle cx="92" cy="61" r="2.4"/><circle cx="100" cy="58" r="2.6"/><circle cx="108" cy="61" r="2.4"/><circle cx="96" cy="67" r="2"/><circle cx="104" cy="67" r="2"/></g>`);
+    s += K.gloss(74, 72, 9, 5, -30, 0.35);
+    // мордочка
+    s += `<path d="M78 116C78 105 122 105 122 116C122 129 112 134 100 134C88 134 78 129 78 116Z" fill="#fff7e6" stroke="#c2410c" stroke-width="1.3"/>`;
+    s += `<path d="M93 109h14l-7 8z" fill="#7c2d12" stroke="#3b1d0c" stroke-width="1.2" stroke-linejoin="round"/><ellipse cx="97.4" cy="110.4" rx="2" ry="1" fill="#fff" opacity=".6"/>`;
+    s += K.line('M100 117v4', '#3b1d0c', 1.6) + K.mouth('cat', 100, 121, 14);
+    s += K.mirror(K.line('M80 118l-18-3M80 124l-18 2', '#fffbeb', 1.3, { op: 0.9 }));
+    s += K.eyes(100, 90, 22, 12.5, { iris: '#84cc16', look: [-0.4, 0.1] });
+    s += K.blush(66, 114, 7) + K.blush(134, 114, 7);
+    // левая лапка тянется к блику
+    const arm = K.ell(54, 128, 9, 16, -50);
+    s += K.vol(arm.d, { ...J, lw: 2.4, t: arm.t });
+    s += `<g fill="#f9a8d4" stroke="#9d174d" stroke-width=".8"><ellipse cx="44" cy="119" rx="3.6" ry="3"/><circle cx="39" cy="115" r="1.6"/><circle cx="42" cy="112" r="1.6"/><circle cx="46.5" cy="112.5" r="1.6"/></g>`;
+    s += K.spark(178, 92, 3, '#e9d5ff', 'art-float') + K.spark(138, 18, 2.6, '#fde68a') + K.spark(20, 140, 2.6, '#e9d5ff') + K.spark(184, 150, 2.2, '#fde68a', 'art-float');
+    return s;
+  },
+
+  // Оцелотль: взрослый ягуар гордо сидит на каменном уступе со ступенчатым узором на фоне огромной луны — золотая
+  // шкура в розетках, светлая грудь, прищуренные светящиеся глаза и клычки; хвост в кольцах вьётся вверх
+  az_ocelotl(K) {
+    const J = { c1: '#fbbf24', c2: '#9a3412', rim: '#e9d5ff', rimK: 0.6, tex: false, line: '#2a1406' };
+    const spots = pts => pts.map(([x, y, r]) => azRosette(K, x, y, r)).join('');
+    let s = K.aura('#a855f7', 96, 100, 0.4);
+    // луна
+    s += `<circle cx="100" cy="70" r="64" fill="${K.rad([[0, '#ffffff', 0.95], [0.75, '#e0e7ff', 0.85], [1, '#a5b4fc', 0.5]], 0.4, 0.35)}"/>`;
+    s += `<g fill="#a5b4fc" opacity=".35"><circle cx="62" cy="44" r="9"/><circle cx="144" cy="94" r="7"/><circle cx="140" cy="36" r="5"/><circle cx="52" cy="100" r="6"/></g>`;
+    // каменный уступ
+    s += K.vol('M20 164H180L186 186H14Z', { c1: '#a8a29e', c2: '#44403c', tex: false, lw: 2.4, line: '#1c1917' });
+    s += K.line(azGreca(26, 174, 179, 5), '#e7e5e4', 1.8, { op: 0.7 });
+    // хвост
+    s += azJagTail(K, 'M134 158C166 164 186 140 180 112C176 96 164 90 158 98', 158, 98);
+    // задние лапы и тело
+    s += K.mirror(K.vol(K.ell(66, 150, 20, 15), J));
+    const body = 'M100 88C124 88 136 108 138 128C140 146 138 158 132 166H68C62 158 60 146 62 128C64 108 76 88 100 88Z';
+    s += K.vol(body, J);
+    s += azClip(K, body, spots([[72, 110, 6.5], [128, 110, 6.5], [70, 136, 6], [130, 136, 6], [76, 156, 5], [124, 156, 5]]));
+    s += `<path d="M100 104C112 104 118 118 118 134C118 150 110 162 100 162C90 162 82 150 82 134C82 118 88 104 100 104Z" fill="#fff7e6" opacity=".9"/>`;
+    s += `<g fill="#1c1917" opacity=".8"><circle cx="95" cy="120" r="2"/><circle cx="105" cy="124" r="2"/><circle cx="99" cy="138" r="2.2"/></g>`;
+    // передние лапы
+    s += K.mirror(K.vol('M82 124C80 140 80 154 80 162C80 170 95 170 95 162C95 154 95 140 95 126Z', { ...J, lw: 2.4 }) + K.line('M84 168v-4M88 169v-4M92 168v-4', '#2a1406', 1.3));
+    // уши и голова
+    s += K.mirror(K.vol(K.ell(73, 50, 12, 12), J) + `<ellipse cx="74" cy="51" rx="6" ry="6.4" fill="#fde7c8"/>` + K.line('M63 46Q67 38 77 39', '#1c1917', 3.4));
+    const head = K.ell(100, 72, 33, 28);
+    s += K.vol(head, J);
+    s += azClip(K, head, spots([[71, 74, 5], [129, 74, 5]]) + `<g fill="#1c1917"><circle cx="93" cy="50" r="2"/><circle cx="100" cy="48" r="2.2"/><circle cx="107" cy="50" r="2"/><circle cx="96" cy="56" r="1.7"/><circle cx="104" cy="56" r="1.7"/></g>`);
+    s += `<path d="M82 82C82 74 118 74 118 82C118 94 110 100 100 100C90 100 82 94 82 82Z" fill="#fff7e6" stroke="#9a3412" stroke-width="1.3"/>`;
+    s += `<path d="M94 77h12l-6 7z" fill="#7c2d12" stroke="#2a1406" stroke-width="1.2" stroke-linejoin="round"/>`;
+    s += K.line('M100 84v3', '#2a1406', 1.4) + K.mouth('fang', 100, 88, 15);
+    s += K.mirror(K.line('M84 85l-18-3M84 90l-18 1', '#fffbeb', 1.2, { op: 0.85 }));
+    // светящиеся прищуренные глаза
+    s += `<circle class="art-blink" cx="87" cy="66" r="11" fill="${K.rad([[0, '#d9f99d', 0.55], [1, '#a3e635', 0]])}"/><circle class="art-blink" cx="113" cy="66" r="11" fill="${K.rad([[0, '#d9f99d', 0.55], [1, '#a3e635', 0]])}"/>`;
+    s += K.eyes(100, 66, 13, 7.6, { iris: '#a3e635', lid: 'angry', skin: '#e3a72f', look: [0.25, 0.2] });
+    s += K.gloss(80, 54, 6, 3.4, -30, 0.35);
+    s += K.spark(24, 30, 3.4, '#fef9c3', 'art-float') + K.spark(178, 28, 3, '#e9d5ff') + K.spark(188, 72, 2.6, '#fef9c3') + K.spark(14, 120, 2.6, '#e9d5ff', 'art-float');
+    return s;
+  },
+
+  // Тепейоллотль: «Сердце Горы» — бог-ягуар выходит из священной горы-тепетль: лапы легли на склоны, за головой —
+  // веер перьев кецаля, на лбу золотой обруч с нефритом. В пещере у подножия сияет нефритовое сердце горы, от рыка
+  // расходится эхо, по склонам бегут светящиеся трещины и подпрыгивают камешки
+  az_tepeyollotl(K) {
+    const J = { c1: '#fbbf24', c2: '#7c2d12', rim: '#e9d5ff', rimK: 0.6, tex: false, line: '#2a1406' };
+    const spots = pts => pts.map(([x, y, r]) => azRosette(K, x, y, r)).join('');
+    let s = K.aura('#7c3aed', 100, 100, 0.45) + K.aura('#fbbf24', 56, 70, 0.2);
+    // эхо рыка
+    for (let i = 0; i < 3; i++) {
+      const r = 66 + i * 13;
+      s += `<path class="art-blink" style="animation-delay:${-i * 0.45}s" d="${azArc(K, 100, 86, r, 150, 206) + azArc(K, 100, 86, r, -26, 30)}" fill="none" stroke="#e9d5ff" stroke-width="${3 - i * 0.6}" stroke-linecap="round" opacity="${0.8 - i * 0.2}"/>`;
+    }
+    // перья кецаля веером
+    for (const [r, L, c1, c2, d] of [[-80, 46, '#6ee7b7', '#047857', -0.2], [-56, 52, '#5eead4', '#0f766e', -0.8], [-30, 56, '#6ee7b7', '#047857', -1.3], [0, 56, '#fde68a', '#d97706', -0.5], [30, 56, '#6ee7b7', '#047857', -1], [56, 52, '#5eead4', '#0f766e', -0.4], [80, 46, '#6ee7b7', '#047857', -1.1]]) s += azPlume(K, 100, 62, L, r, c1, c2, d);
+    // плечи позади горы
+    const sh = 'M52 132C52 104 74 90 100 90C126 90 148 104 148 132Z';
+    s += K.vol(sh, J) + azClip(K, sh, spots([[66, 112, 6.5], [134, 112, 6.5], [84, 100, 5], [116, 100, 5]]));
+    // гора-тепетль с полосами у подножия
+    const mount = 'M14 180C16 152 28 130 48 120C60 114 68 110 74 104H126C132 110 140 114 152 120C172 130 184 152 186 180Z';
+    s += K.vol(mount, { c1: '#9d8ec4', c2: '#2e1065', rim: '#e9d5ff', texK: 0.35 });
+    s += azClip(K, mount, `<rect x="0" y="162" width="200" height="7" fill="#dc2626"/><rect x="0" y="169" width="200" height="12" fill="#facc15"/>` + K.line(azGreca(0, 200, 178, 4), '#b45309', 1.4));
+    const cr = 'M38 150l8-6 2 7 9-5M162 146l-8-5-2 7-9-4M66 130l6 6 6-3M134 130l-6 6-6-3';
+    s += K.line(cr, '#c084fc', 5, { op: 0.35 }) + `<path class="art-blink" d="${cr}" fill="none" stroke="#f5d0fe" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
+    // пещера с нефритовым сердцем
+    s += `<path d="M78 162C78 144 88 134 100 134C112 134 122 144 122 162Z" fill="#14072b" stroke="#0b0418" stroke-width="2.4"/>`;
+    s += `<circle class="art-aura" cx="100" cy="150" r="20" fill="${K.rad([[0, '#a7f3d0', 0.9], [0.5, '#34d399', 0.4], [1, '#34d399', 0]])}"/>`;
+    s += `<path d="M100 161C90 154 85 148 87 142C89 136 96 136 100 141C104 136 111 136 113 142C115 148 110 154 100 161Z" fill="${K.rad([[0, '#d1fae5'], [0.6, '#34d399'], [1, '#047857']], 0.4, 0.35)}" stroke="#064e3b" stroke-width="1.8"/>` + K.gloss(94, 143, 2.6, 1.6, -30, 0.7);
+    // лапы на склонах
+    s += K.mirror(K.vol(K.ell(64, 112, 16, 11), { ...J, lw: 2.4 }) + K.line('M58 122v-5M64 123v-5M70 122v-5', '#2a1406', 1.6));
+    // уши и голова
+    s += K.mirror(K.vol(K.ell(72, 44, 11, 11), J) + `<ellipse cx="73" cy="45" rx="5.5" ry="6" fill="#fde7c8"/>`);
+    const head = K.ell(100, 68, 34, 30);
+    s += K.vol(head, J);
+    s += azClip(K, head, spots([[70, 80, 5.2], [130, 80, 5.2]]) + `<g fill="#1c1917"><circle cx="94" cy="60" r="1.8"/><circle cx="106" cy="60" r="1.8"/></g>`);
+    // обруч с нефритом и серьги
+    s += K.part('M68 52Q100 36 132 52L131 60Q100 45 69 60Z', '#facc15', { line: '#854d0e', lw: 1.6 }) + K.rhomb(100, 46, 5, '#34d399', '#064e3b');
+    s += K.mirror(`<circle cx="68" cy="76" r="5" fill="${K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35)}" stroke="#064e3b" stroke-width="1.5"/>`);
+    // морда: ревёт
+    s += `<path d="M80 78C80 70 120 70 120 78C120 94 110 102 100 102C90 102 80 94 80 78Z" fill="#fff7e6" stroke="#9a3412" stroke-width="1.3"/>`;
+    s += `<path d="M94 73h12l-6 6.4z" fill="#7c2d12" stroke="#2a1406" stroke-width="1.2" stroke-linejoin="round"/>`;
+    s += `<path d="M88 84Q100 80 112 84Q110 99 100 99Q90 99 88 84Z" fill="#3a0f1a" stroke="${K.INK}" stroke-width="2" stroke-linejoin="round"/><path d="M94 95Q100 91 106 95Q103 98 100 98Q97 98 94 95Z" fill="#f47a8f"/>`;
+    s += `<path d="M90 84.4l2 5.4 2.2-5.8zM110 84.4l-2 5.4-2.2-5.8z" fill="#fff"/>`;
+    s += K.mirror(K.line('M82 84l-18-4M82 89l-18 0', '#fffbeb', 1.2, { op: 0.8 }));
+    s += K.glow(86, 63, 5.4, 5.6, '#fde047') + K.glow(114, 63, 5.4, 5.6, '#fde047');
+    s += K.line('M76 55l15 4M124 55l-15 4', K.INK, 3);
+    // камешки и искры
+    s += `<g class="art-float"><path d="M22 98l6-4 5 4-4 5zM176 102l6-2 3 5-5 3zM30 62l4-3 4 3-4 3z" fill="#78716c" stroke="#1c1917" stroke-width="1.3" stroke-linejoin="round"/></g>`;
+    s += K.spark(24, 30, 3.4, '#fef9c3', 'art-float') + K.spark(178, 30, 3, '#e9d5ff') + K.spark(186, 150, 2.6, '#fef9c3') + K.spark(12, 140, 2.4, '#e9d5ff', 'art-float');
+    return s;
+  },
+
+  // Пайналь: быстроногий гонец Уицилопочтли — колибри-бегун в полный рост мчится вправо: бирюзовые крылья за
+  // спиной, рубиновое горлышко, фиолетовый хохолок развевается, в руке — свёрнутая весть с красной лентой,
+  // золотые сандалии; позади полосы скорости и пыль
+  az_painal(K) {
+    const T = { c1: '#5eead4', c2: '#0f766e', rim: '#eef0ff', texK: 0.2 }, Ts = { ...T, tex: false, lw: 2.2 };
+    const wingG = K.lin(['#a5f3fc', '#14b8a6', '#1e40af'], 0, 0, 0.6, 1);
+    let s = K.aura('#a5b4fc', 98, 102, 0.4) + K.aura('#fbbf24', 60, 66, 0.25);
+    // полосы скорости и вихрь
+    s += K.line('M4 96h26M10 112h30M6 128h20M18 80h16', '#e0e7ff', 2.6, { op: 0.6, cls: 'art-float' });
+    s += `<g class="art-float" style="animation-delay:-1s">${K.line('M22 176C12 164 26 154 36 162C42 168 34 174 30 170', '#eef0ff', 2.4, { op: 0.6 })}</g>`;
+    // дальнее крыло
+    const wing = 'M100 96C82 88 60 72 32 46C40 46 46 48 50 50C44 42 42 34 42 24C52 34 58 40 64 44C62 34 64 26 68 18C74 30 78 40 82 48C84 40 88 34 94 28C98 48 102 72 106 92Z';
+    s += `<g transform="translate(18 4)"><g class="art-wing" style="animation-delay:-.4s"><path d="${wing}" fill="${wingG}" stroke="#134e4a" stroke-width="2" stroke-linejoin="round" opacity=".5"/></g></g>`;
+    // хвост-ленты
+    s += K.part('M86 130C68 138 46 140 20 134C30 142 42 146 56 148C44 154 32 156 20 156C40 162 66 158 90 142Z', '#0f766e', { line: '#134e4a' });
+    s += `<ellipse cx="22" cy="135" rx="5" ry="3.2" fill="#8b5cf6"/><ellipse cx="22" cy="156" rx="5" ry="3.2" fill="#8b5cf6"/>`;
+    // дальняя нога — толкается
+    const legB = 'M96 132L80 150L60 158';
+    s += K.line(legB, '#134e4a', 15) + K.line(legB, '#14b8a6', 10) + K.line('M86 140l-8-6', '#facc15', 4.4) + K.line('M80 136l-4-8M84 134l-1-9', '#a5f3fc', 2);
+    s += K.part('M46 156C50 148 64 150 68 158C64 166 50 166 46 156Z', '#facc15', { line: '#854d0e', lw: 1.8 });
+    // дальняя рука — назад
+    s += K.line('M98 98L80 112L68 110', '#134e4a', 13) + K.line('M98 98L80 112L68 110', '#2dd4bf', 8.4) + K.vol(K.ell(66, 109, 7.5, 7), Ts);
+    // тело
+    const torso = K.ell(105, 108, 30, 33, 14);
+    s += K.vol(torso.d, { ...T, t: torso.t });
+    s += K.line('M98 128q4 3 8 0q4 3 8 0', '#ccfbf1', 1.4, { op: 0.6 });
+    // ближняя нога — вперёд
+    const legF = 'M116 132L138 144L136 166';
+    s += K.line(legF, '#134e4a', 15) + K.line(legF, '#14b8a6', 10) + K.line('M132 140l7 6', '#facc15', 4.4) + K.line('M136 138l4-8M140 141l6-6', '#a5f3fc', 2);
+    s += K.part('M124 168C128 160 144 160 148 168C146 176 128 178 124 168Z', '#facc15', { line: '#854d0e', lw: 1.8 });
+    // пояс и развевающаяся набедренная повязка
+    s += K.part('M84 130C68 138 56 138 46 132C54 142 68 146 86 140Z', '#e11d48', { line: '#881337', lw: 1.6 });
+    s += K.part('M82 124Q106 136 130 126L132 134Q106 144 82 132Z', '#facc15', { line: '#854d0e', lw: 1.6 });
+    // ближнее крыло
+    s += `<g class="art-wing"><path d="${wing}" fill="${wingG}" stroke="#134e4a" stroke-width="2" stroke-linejoin="round"/>` +
+      K.line('M40 52C60 68 80 82 98 94M54 44C66 62 82 78 100 92M70 40C78 60 88 76 102 90', '#ecfeff', 1.3, { op: 0.7 }) + '</g>';
+    // рубиновое горлышко
+    s += K.part('M114 82C122 78 134 80 138 88C134 100 124 106 114 104C110 98 110 88 114 82Z', '#e11d48', { line: '#881337', lw: 1.6 });
+    s += `<path d="M118 88C124 86 130 88 132 92C128 98 122 100 118 98Z" fill="#fda4af" opacity=".7"/>`;
+    // рука вперёд со свитком-вестью
+    s += K.line('M124 98L142 108L156 100', '#134e4a', 13) + K.line('M124 98L142 108L156 100', '#2dd4bf', 8.4);
+    s += `<g transform="rotate(-24 162 92)"><rect x="151" y="85" width="24" height="13" rx="6.5" fill="#fefce8" stroke="#78350f" stroke-width="1.6"/><path d="M163 85v13" stroke="#dc2626" stroke-width="2.8"/><path d="M163 98l-4 8M163 98l4 8" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/></g>`;
+    s += K.vol(K.ell(157, 98, 7.5, 7), Ts);
+    // хохолок
+    s += K.part('M116 48L88 30L106 46L90 16L114 40L116 18L124 42Z', '#8b5cf6', { line: '#4c1d95', lw: 1.6 });
+    // голова и клюв
+    s += K.vol(K.ell(130, 62, 23, 21), { c1: '#6ee7b7', c2: '#047857', rim: '#eef0ff', texK: 0.2 });
+    s += K.part('M150 64L194 78L148 72Z', '#1f2937', { line: '#0b1120', lw: 1.4 });
+    s += K.rhomb(126, 45, 3.6, '#2dd4bf', '#134e4a');
+    s += K.gloss(118, 52, 5, 2.8, -35, 0.5);
+    s += K.eyes(132, 60, 9.5, 6.6, { iris: '#1e1b4b', lid: 'angry', skin: '#14b8a6', look: [0.6, 0.1] });
+    s += K.blush(122, 72, 3.6) + K.blush(143, 71, 3.4);
+    // пыль из-под ног
+    s += `<g class="art-float" fill="#e7e5e4" stroke="#a8a29e" stroke-width="1" opacity=".85"><circle cx="44" cy="170" r="5"/><circle cx="36" cy="166" r="3.6"/><circle cx="52" cy="174" r="3"/></g>`;
+    s += K.spark(176, 30, 3.4, '#fde68a', 'art-float') + K.spark(180, 128, 3, '#a5f3fc') + K.spark(160, 150, 2.6, '#fde68a') + K.spark(150, 20, 2.4, '#a5f3fc', 'art-float');
+    return s;
+  },
+
+  // Чаак: майяский бог дождя, старший в семье тлалоке — синий великан с длинным загнутым носом стоит на грозовой
+  // туче и обеими руками поднял над головой каменный топор, из которого бьют молнии. Очки-кольца и губа-завиток
+  // с клычками, как у младших; убор из белых перьев, нефритовые серьги, у пояса — кувшин с дождём
+  az_chaac(K) {
+    const B = { c1: '#7fb6ff', c2: '#1e3a8a', rim: '#fff6b0', texK: 0.24 }, Bh = { ...B, tex: false, lw: 2.4 };
+    let s = K.aura('#facc15', 98, 92, 0.35) + K.aura('#60a5fa', 76, 120, 0.3);
+    // косой дождь
+    s += K.line('M14 74l-6 12M26 104l-6 12M182 112l-6 12M190 78l-6 12M172 146l-6 12M12 134l-6 12', '#93c5fd', 2.2, { op: 0.7, cls: 'art-float' });
+    // убор из перьев
+    for (const [r, L, c1, c2, d] of [[-62, 40, '#ffffff', '#94a3b8', -0.3], [-40, 46, '#6ee7b7', '#047857', -0.9], [-18, 48, '#ffffff', '#94a3b8', -0.5], [18, 48, '#ffffff', '#94a3b8', -1.1], [40, 46, '#6ee7b7', '#047857', -0.2], [62, 40, '#ffffff', '#94a3b8', -0.7]]) s += azPlume(K, 100, 50, L, r, c1, c2, d);
+    // руки подняты, держат топор
+    const arm = 'M72 104C50 100 38 82 44 62C48 48 54 38 60 32C68 32 72 38 70 44C62 58 62 80 82 92Z';
+    s += K.mirror(K.vol(arm, B));
+    // топорище и каменный топор
+    s += K.line('M36 34L166 26', '#3b1a0c', 8) + K.line('M36 34L166 26', '#b7791f', 4.2) + K.line('M60 32.6l0 0M90 30.8l0 0', '#3b1a0c', 1);
+    s += K.line('M184 18l8-9M190 34l9 1M184 46l6 8', '#fde047', 3, { cls: 'art-blink' });
+    s += K.vol('M154 28C158 14 174 8 186 14C192 22 192 36 186 44C176 50 160 46 154 28Z', { c1: '#6ee7b7', c2: '#065f46', tex: false, lw: 2.4, rim: '#fff6b0' });
+    s += K.line('M162 24l8 4-6 4 9 4', '#fde047', 2.4, { cls: 'art-blink' });
+    s += K.mirror(K.vol(K.ell(62, 32, 9, 8), Bh));
+    // тело
+    const body = 'M100 84C130 84 148 104 150 130C152 150 148 164 140 172H60C52 164 48 150 50 130C52 104 70 84 100 84Z';
+    s += K.vol(body, B);
+    s += `<path d="M100 112C118 112 128 126 128 142C128 156 118 166 100 166C82 166 72 156 72 142C72 126 82 112 100 112Z" fill="#dbeafe" opacity=".4"/>`;
+    // пояс из нефритовых бусин и набедренная повязка
+    s += K.line('M52 124Q100 140 148 124', '#134e4a', 8) + K.line('M52 124Q100 140 148 124', '#34d399', 5);
+    s += K.part('M86 132H114L112 158Q100 164 88 158Z', '#facc15', { line: '#854d0e', lw: 1.6 }) + K.line(azGreca(88, 112, 150, 3), '#1e3a8a', 1.4);
+    // кувшин у пояса, из трещины сыплются искры
+    s += azJar(K, 150, 148, 13);
+    s += K.line('M145 128l4 4-3 2 4 4', '#3b1a0c', 1.4) + K.line('M163 124l6-5M165 132l7 0', '#fde047', 2, { cls: 'art-blink' });
+    // голова
+    s += K.vol(K.ell(100, 64, 32, 29), Bh);
+    s += K.gloss(80, 46, 7, 3.6, -35, 0.4);
+    s += K.part('M68 48Q100 32 132 48L131 56Q100 42 69 56Z', '#facc15', { line: '#854d0e', lw: 1.6 });
+    s += [80, 100, 120].map(x => K.rhomb(x, x === 100 ? 42 : 47, 3, '#2dd4bf', '#134e4a')).join('');
+    s += K.mirror(`<circle cx="69" cy="74" r="5.4" fill="${K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.6"/><path d="M69 79v7" stroke="#34d399" stroke-width="2.4" stroke-linecap="round"/>`);
+    // очки-кольца, сердитые глаза
+    s += K.mirror(`<circle cx="86" cy="62" r="12" fill="none" stroke="#0e7490" stroke-width="6"/><circle cx="86" cy="62" r="12" fill="none" stroke="#5eead4" stroke-width="3.4"/>`);
+    s += K.eyes(100, 62, 14, 8, { iris: '#1d4ed8', lid: 'angry', skin: '#3b82f6', look: [0, 0.2] });
+    // губа-завиток с клычками
+    const lip = 'M100 86C94 82 86 82 82 88C79 93 83 98 88 96C90 94 89 91 87 91';
+    s += K.mirror(K.line(lip, '#0c1f4a', 6) + K.line(lip, '#93c5fd', 3));
+    s += `<path d="M94 87l2.6 6.4 2.4-5.8zM106 87l-2.6 6.4-2.4-5.8z" fill="#fff" stroke="#0c1f4a" stroke-width="1"/>`;
+    // длинный загнутый нос
+    const nose = 'M100 66C101 74 101 80 98 86C95 92 99 98 105 96C110 94 110 88 105 87';
+    s += K.line(nose, '#0c1f4a', 10) + K.line(nose, '#93c5fd', 6) + K.line('M99 70C100 76 99 82 97 86', '#e0f2fe', 1.6, { op: 0.8 });
+    // грозовая туча под ногами
+    const cl = 'M24 180C14 180 10 172 16 166C14 156 28 150 38 156C42 148 58 146 66 152C74 146 92 146 98 152C106 146 124 146 130 152C138 148 154 150 156 158C166 156 178 164 174 172C178 180 170 186 162 184C148 190 38 190 24 180Z';
+    s += `<g class="art-float">${K.vol(cl, { c1: '#e2e8f0', c2: '#475569', tex: false, lw: 2.2, line: '#1e293b', rim: '#fff6b0', shadeK: 0.5 })}` + K.line('M60 170l-4 7 5-1-3 7M132 171l4 6-5 0 4 7', '#fde047', 2.4, { cls: 'art-blink' }) + '</g>';
+    s += K.spark(22, 30, 3.4, '#fde047', 'art-float') + K.spark(14, 160, 2.6, '#fff6b0') + K.spark(190, 150, 2.6, '#fde047', 'art-float');
+    return s;
+  },
+
+  // Папалотик: бабочка-малыш — пушистое жёлтое тельце с белым воротничком, четыре крылышка-витража (сиреневые,
+  // жёлтые и голубые стёклышки в тёмном переплёте) светятся, как ночник; усики-завитки искрят на кончиках
+  az_papalotik(K) {
+    const B = { c1: '#fff7c2', c2: '#e0a106', rim: '#fff6b0', texK: 0.14, line: '#4c1d95' };
+    let s = K.aura('#facc15', 92, 112, 0.35) + K.aura('#22d3ee', 70, 112, 0.25);
+    // крылышки-витражи
+    const up = 'M82 112C70 90 50 70 30 62C18 58 10 70 14 86C18 102 32 118 52 124C64 128 76 124 82 112Z';
+    const lo = 'M86 134C72 134 56 140 46 154C40 164 48 175 60 172C72 169 84 157 90 142Z';
+    const wing = azGlassWing(K, up, [['M8 56L52 96L26 128Z', '#fde047'], ['M52 96L92 110L62 134Z', '#22d3ee', 0.55]], 'M82 112L52 96L20 64M52 96L32 120M52 96L66 70') +
+      `<circle cx="38" cy="84" r="7.5" fill="${K.rad([[0, '#fffbe6'], [0.5, '#fde047'], [1, '#f59e0b']])}" stroke="#3b0764" stroke-width="1.8"/>` +
+      azGlassWing(K, lo, [['M40 150L88 138L80 176Z', '#c4b5fd']], 'M88 140L60 160M74 148L50 166', { c1: '#cffafe', c2: '#0891b2' });
+    s += K.mirror(`<g class="art-wing">${wing}</g>`);
+    // тельце и лапки
+    s += K.line('M88 172l-5 7M100 175v6M112 172l5 7', '#4c1d95', 2.6);
+    s += K.vol('M100 126C116 126 124 140 122 154C120 168 112 177 100 177C88 177 80 168 78 154C76 140 84 126 100 126Z', B);
+    s += K.line('M83 148q17 6 34 0M85 160q15 5 30 0', '#b45309', 1.8, { op: 0.55 });
+    // усики
+    const ant = 'M88 64C84 50 76 40 66 38C59 37 56 44 61 47';
+    s += K.mirror(K.line(ant, '#4c1d95', 3.4) + `<circle cx="61" cy="45" r="5" fill="${K.rad([[0, '#ecfeff'], [0.5, '#22d3ee'], [1, '#0e7490']])}" stroke="#164e63" stroke-width="1.2"/>`);
+    s += K.spark(52, 36, 4, '#fde047') + K.spark(150, 34, 3.4, '#a5f3fc', 'art-blink');
+    // голова и пушистый воротничок
+    s += K.vol(K.ell(100, 92, 38, 33), B);
+    s += K.part('M64 124Q69 116 75 122Q80 114 86 120Q91 112 97 118Q101 110 105 118Q111 112 115 120Q121 114 126 122Q131 116 136 124Q128 136 100 138Q72 136 64 124Z', '#ffffff', { line: '#a78bfa', lw: 1.6 });
+    s += K.gloss(80, 72, 8, 4.4, -30, 0.45);
+    s += K.eyes(100, 92, 17, 11, { iris: '#7c3aed', look: [0, 0.15] });
+    s += K.blush(72, 106, 6.5) + K.blush(128, 106, 6.5);
+    s += K.mouth('smile', 100, 108, 13);
+    s += K.spark(22, 140, 3, '#fde047', 'art-float') + K.spark(178, 136, 3, '#a5f3fc', 'art-float') + K.spark(178, 52, 2.4, '#fde047') + K.spark(24, 40, 2.4, '#a5f3fc');
+    return s;
+  },
+
+  // Папалотль: большая бабочка сидит на городском проводе — крылья-витражи стали огненно-оранжевыми в чёрном
+  // переплёте с белыми точками по кромке и бирюзовым отблеском обсидиана; где лапки касаются провода, сыплются искры
+  az_papalotl(K) {
+    const f = K.f;
+    let s = K.aura('#facc15', 98, 100, 0.35) + K.aura('#22d3ee', 74, 100, 0.25);
+    // провод
+    s += K.line('M0 150Q100 166 200 150', '#0f172a', 4.4) + K.line('M0 150Q100 166 200 150', '#64748b', 1.6, { op: 0.8 });
+    // крылья
+    const up = 'M92 96C76 70 52 46 26 34C14 28 4 36 6 50C8 72 22 94 44 106C62 116 82 112 92 96Z';
+    const lo = 'M92 110C76 112 56 120 42 136C34 146 38 160 50 160C66 160 82 146 94 124Z';
+    const sheen = K.lin(['#a78bfa', '#22d3ee', '#fde68a'], 0, 0, 1, 1);
+    let dots = '';
+    for (const [x, y] of [[14, 40], [10, 52], [12, 64], [18, 78], [26, 90], [24, 36], [36, 40], [42, 152], [52, 156], [40, 142]]) dots += `<circle cx="${x}" cy="${y}" r="2.2"/>`;
+    const wing = azGlassWing(K, up, [['M20 46L52 58L56 88L28 82Z', '#f97316', 1], ['M56 58L84 84L60 96L56 88Z', '#fb923c', 1], ['M28 82L56 88L60 96L44 104Z', '#ea580c', 1], ['M36 40L52 58L20 46Z', '#fde047', 1]],
+      'M92 98L56 88L28 82M56 88L52 58L24 42M52 58L84 84M56 88L60 98', { c1: '#3f3f46', c2: '#09090b', line: '#09090b', sheen, sheenK: 0.14, vw: 3 }) +
+      azGlassWing(K, lo, [['M48 146L60 124L86 116L84 136Z', '#f97316', 1], ['M48 146L84 136L70 152Z', '#fde047', 1]], 'M92 116L60 124L48 146M86 116L84 136L58 152', { c1: '#3f3f46', c2: '#09090b', line: '#09090b', sheen, sheenK: 0.14, vw: 2.6 }) +
+      `<g fill="#f8fafc">${dots}</g>` + K.line('M10 48C12 70 24 90 42 102', '#a5f3fc', 1.4, { op: 0.6 });
+    s += K.mirror(`<g class="art-wing">${wing}</g>`);
+    // лапки на проводе и искры
+    s += K.line('M95 120L88 158M105 120L112 158M98 112L80 154M102 112L120 154', '#1e1b4b', 2.4);
+    s += K.line('M84 150l-6-8M86 156l-9 2M116 150l6-8M114 156l9 2', '#fde047', 2.2, { cls: 'art-blink' });
+    s += K.spark(78, 164, 3.4, '#fffbe6') + K.spark(122, 164, 3, '#a5f3fc', 'art-blink');
+    // брюшко, грудка и голова
+    const fur = { c1: '#7c3aed', c2: '#1e1b4b', rim: '#fff6b0', texK: 0.2 };
+    s += K.vol(K.ell(100, 128, 10, 22), fur) + K.line('M91 124h18M91 134h18M93 144h14', '#fde047', 2, { op: 0.7 });
+    s += K.vol(K.ell(100, 98, 15, 17), fur);
+    s += K.part('M86 90Q93 84 100 88Q107 84 114 90Q110 98 100 98Q90 98 86 90Z', '#fde68a', { line: '#a16207', lw: 1.2 });
+    const ant = 'M93 58C88 42 80 30 68 24';
+    s += K.mirror(K.line(ant, '#1e1b4b', 3) + `<circle cx="67" cy="23" r="5" fill="${K.rad([[0, '#ecfeff'], [0.5, '#22d3ee'], [1, '#0e7490']])}" stroke="#164e63" stroke-width="1.2"/>`);
+    s += K.vol(K.ell(100, 70, 19, 17), fur);
+    s += K.gloss(91, 61, 4.6, 2.6, -30, 0.5);
+    s += K.eyes(100, 70, 9, 7, { iris: '#0e7490', look: [0, 0.2], lash: true });
+    s += K.blush(87, 80, 3.6) + K.blush(113, 80, 3.6);
+    s += K.mouth('smile', 100, 79, 8);
+    s += K.spark(22, 112, 3, '#fde047', 'art-float') + K.spark(180, 112, 3, '#a5f3fc', 'art-float') + K.spark(100, 18, 2.8, '#fde047') + K.spark(186, 22, 2.4, '#a5f3fc');
+    return s;
+  },
+
+  // Ицпапалотль: Обсидиановая Бабочка, звёздная царица сада Тамоанчан. За спиной — огромные крылья из чёрного
+  // вулканического стекла: гранёная кромка, радужный отлив, золотой переплёт и звёзды внутри. Тёмное платье
+  // с золотой каймой, на носу — золотое украшение-бабочка, в короне — усики со светящимися кончиками,
+  // в ладонях — звёздный цветок
+  az_itzpapalotl(K) {
+    const f = K.f, skin = '#d9a06b';
+    let s = K.aura('#fde68a', 100, 92, 0.4) + K.aura('#8b5cf6', 80, 110, 0.35);
+    // крылья
+    const up = 'M90 92C70 62 44 36 14 24C6 22 2 30 4 40C8 62 22 86 44 100C60 110 80 108 90 92Z';
+    const lo = 'M88 112C70 116 50 128 36 146C28 156 34 170 46 170C64 170 80 152 92 130Z';
+    const sheen = K.lin(['#a78bfa', '#2dd4bf', '#fde68a', '#e879f9'], 0, 0, 1, 1);
+    let facets = '';
+    for (const [x, y, a] of [[8, 34, 20], [12, 50, 30], [18, 66, 40], [28, 82, 52], [24, 28, 10], [40, 30, 0], [36, 160, 120], [46, 166, 140]]) facets += `<path d="M${x} ${y}l7 -3 1 8z" transform="rotate(${a} ${x} ${y})"/>`;
+    const wing = azGlassWing(K, up, [['M20 40L56 66L40 92Z', '#1e1b4b', 0.5], ['M56 66L86 92L60 102Z', '#facc15', 0.85]], 'M90 94L56 66L16 32M56 66L40 92M56 66L50 34M56 66L62 102', { c1: '#1e293b', c2: '#020617', line: '#a16207', sheen, sheenK: 0.24, vw: 2.2, rim: '#fef3c7' }) +
+      azGlassWing(K, lo, [['M46 160L64 134L86 122Z', '#facc15', 0.8]], 'M90 120L62 136L44 160M62 136L56 120', { c1: '#1e293b', c2: '#020617', line: '#a16207', sheen, sheenK: 0.24, vw: 2, rim: '#fef3c7' }) +
+      `<g fill="#e2e8f0" opacity=".55">${facets}</g>` + K.spark(30, 52, 3.6, '#fef9c3', '') + K.spark(46, 74, 2.6, '#fef9c3', '') + K.spark(26, 40, 2, '#e9d5ff', '') + K.spark(52, 150, 2.6, '#fef9c3', '');
+    s += K.mirror(`<g class="art-wing" style="animation-delay:-.3s">${wing}</g>`);
+    // платье
+    const robe = 'M100 98C120 98 132 112 136 130C140 148 142 164 140 176C122 182 78 182 60 176C58 164 60 148 64 130C68 112 80 98 100 98Z';
+    s += K.vol(robe, { c1: '#4c4ba8', c2: '#120e2e', rim: '#fef3c7', rimK: 0.5, texK: 0.6 });
+    s += azClip(K, robe, `<rect x="40" y="162" width="120" height="30" fill="#facc15"/>` + K.line(azGreca(40, 160, 172, 4), '#7c2d12', 1.8) + K.line('M40 162H160', '#7c2d12', 1.6));
+    s += K.line('M84 116C80 134 76 152 74 168M116 116C120 134 124 152 126 168', '#0b0820', 1.8, { op: 0.4 });
+    // золотой нагрудник-бабочка
+    s += K.part('M100 118L84 108L82 124L100 122L118 124L116 108Z', '#facc15', { line: '#854d0e', lw: 1.6 }) + `<circle cx="100" cy="117" r="3.4" fill="#34d399" stroke="#064e3b" stroke-width="1.2"/>`;
+    // руки со звёздным цветком
+    s += K.vol('M68 110C60 120 58 134 66 144C72 148 80 146 84 140C80 132 78 124 78 116Z', { c1: '#4c4ba8', c2: '#120e2e', rim: '#fef3c7', tex: false });
+    s += K.vol('M132 110C140 120 142 134 134 144C128 148 120 146 116 140C120 132 122 124 122 116Z', { c1: '#4c4ba8', c2: '#120e2e', rim: '#fef3c7', tex: false });
+    s += `<circle class="art-aura" cx="100" cy="146" r="22" fill="${K.rad([[0, '#fffbe6', 0.95], [0.4, '#fde68a', 0.6], [1, '#facc15', 0]])}"/>`;
+    for (let i = 0; i < 5; i++) { const a = (i * 72 - 90) * Math.PI / 180; s += `<ellipse cx="${f(100 + 7 * Math.cos(a))}" cy="${f(146 + 7 * Math.sin(a))}" rx="6" ry="3.4" transform="rotate(${i * 72 - 90} ${f(100 + 7 * Math.cos(a))} ${f(146 + 7 * Math.sin(a))})" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.2"/>`; }
+    s += K.spark(100, 146, 6, '#fffbe6', '');
+    s += K.mirror(K.part(K.ell(86, 146, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 }));
+    // волосы, голова, корона с усиками
+    s += K.part('M76 72C74 54 86 44 100 44C114 44 126 54 124 72C128 82 128 90 122 96C116 98 112 94 112 88H88C88 94 84 98 78 96C72 90 72 82 76 72Z', '#1c1917', { line: '#0c0a09', lw: 1.6 });
+    const ant = 'M90 48C84 34 76 24 64 22C58 22 56 28 60 30';
+    s += K.mirror(K.line(ant, '#854d0e', 3.4) + K.line(ant, '#facc15', 1.6) + `<circle class="art-blink" cx="60" cy="27" r="5" fill="${K.rad([[0, '#fffbe6'], [0.5, '#fde047'], [1, '#d97706']])}" stroke="#854d0e" stroke-width="1.2"/>`);
+    s += K.vol(K.ell(100, 72, 21, 22), { c1: skin, c2: '#a8683a', rim: '#fef3c7', tex: false, hiK: 0.18, line: '#5b2e12' });
+    s += K.part('M80 62C82 52 90 48 100 48C110 48 118 52 120 62C112 58 106 58 100 60C94 58 88 58 80 62Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += K.part('M78 54Q100 42 122 54L121 60Q100 49 79 60Z', '#facc15', { line: '#854d0e', lw: 1.6 }) + K.spark(100, 47, 5, '#fffbe6', '') + `<circle cx="100" cy="47" r="2" fill="#fde047"/>`;
+    s += K.mirror(`<circle cx="79" cy="80" r="4" fill="${K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.4"/>`);
+    // золотые глаза, украшение-бабочка на носу
+    s += `<circle class="art-blink" cx="91" cy="71" r="8" fill="${K.rad([[0, '#fde68a', 0.5], [1, '#facc15', 0]])}"/><circle class="art-blink" cx="109" cy="71" r="8" fill="${K.rad([[0, '#fde68a', 0.5], [1, '#facc15', 0]])}"/>`;
+    s += K.eyes(100, 71, 9, 6.4, { iris: '#f59e0b', look: [0, 0.2], lash: true });
+    s += K.part('M100 82L93 78L92 86L100 84L108 86L107 78Z', '#facc15', { line: '#854d0e', lw: 1.2 });
+    s += K.line('M94 88Q100 93 106 88', '#5b2e12', 2.2) + K.blush(88, 82, 3.4) + K.blush(112, 82, 3.4);
+    s += K.spark(100, 14, 3.6, '#fef9c3', 'art-float') + K.spark(186, 110, 3, '#e9d5ff') + K.spark(14, 112, 3, '#fef9c3', 'art-float') + K.spark(160, 186, 2.4, '#fde68a');
+    return s;
+  },
+
+  // Агавчик: малыш агавы в глиняном горшочке со ступенчатым узором — пухлая сердцевинка с личиком, вокруг —
+  // мясистые сизо-зелёные листья с мягкими жёлтыми кисточками вместо колючек; на макушке — капля сладкого сока
+  az_agavchik(K) {
+    let s = K.aura('#84cc16', 88, 112, 0.35);
+    const back = s.length; // малыш рисуется чуть крупнее — горшочек не должен его заслонять
+    // листья-розетка позади
+    for (const [r, L, w] of [[-74, 66, 24], [-48, 80, 26], [-20, 88, 26], [20, 88, 26], [48, 80, 26], [74, 66, 24]]) s += azAgave(K, 100, 146, L, w, r, { c1: '#9ee6c0', c2: '#2f7d5b', line: '#14532d', soft: true });
+    // капля сладкого сока
+    s += `<path d="M100 60C106 70 108 76 104 80C102 82 98 82 96 80C92 76 94 70 100 60Z" fill="${K.rad([[0, '#fffbe6'], [0.5, '#fde047'], [1, '#d97706']], 0.4, 0.6)}" stroke="#a16207" stroke-width="1.4"/>`;
+    // сердцевинка
+    const heart = K.ell(100, 118, 32, 30);
+    s += K.vol(heart, { c1: '#d9f99d', c2: '#4d9a52', rim: '#e4ffb0', texK: 0.14, line: '#14532d' });
+    s += K.gloss(84, 102, 7, 4, -30, 0.45);
+    s += K.eyes(100, 116, 13, 9, { iris: '#166534', look: [0, 0.15] });
+    s += K.blush(78, 130, 6) + K.blush(122, 130, 6);
+    s += K.mouth('smile', 100, 130, 11);
+    // ручки-листики
+    s += azAgave(K, 72, 138, 30, 14, -110, { c1: '#9ee6c0', c2: '#2f7d5b', soft: true }) + azAgave(K, 128, 138, 30, 14, 110, { c1: '#9ee6c0', c2: '#2f7d5b', soft: true });
+    // горшочек
+    const pot = 'M60 146H140L134 172Q100 182 66 172Z';
+    s += K.vol(pot, { c1: '#f4a261', c2: '#9a3e1c', tex: false, lw: 2.4, line: '#5a1e0a', rim: '#ffe0b0' });
+    s += azClip(K, pot, K.line(azGreca(56, 144, 164, 4), '#fef3c7', 1.8) + K.line('M56 156H144', '#7c2d12', 1.4));
+    s += K.part('M56 140H144V150H56Z', '#e07a3a', { line: '#5a1e0a', lw: 2.2 });
+    s = s.slice(0, back) + `<g transform="translate(100 176) scale(1.14) translate(-100 -176)">${s.slice(back)}</g>`;
+    s += K.spark(20, 76, 3, '#fef08a', 'art-float') + K.spark(182, 70, 3, '#d9f99d') + K.spark(14, 150, 2.4, '#d9f99d') + K.spark(186, 150, 2.4, '#fef08a', 'art-float');
+    return s;
+  },
+
+  // Магей: подросший Агавчик — большая агава в человеческий рост: розетка мясистых листьев с колючими краями,
+  // из сердцевины поднимается высокий цветонос с жёлтыми соцветиями. В одной руке-листе — моток верёвки из волокон
+  // магея, в другой — игла-шип с ниткой
+  az_magey(K) {
+    let s = K.aura('#84cc16', 96, 108, 0.35);
+    // цветонос
+    s += K.line('M100 98C98 70 102 44 100 20', '#365314', 9) + K.line('M100 98C98 70 102 44 100 20', '#a3a33a', 5);
+    s += K.line('M100 40L84 30M100 32L116 22M100 26L88 16M100 50L118 42', '#365314', 3.4);
+    for (const [x, y, r, d] of [[84, 28, 8, 0], [116, 20, 8, -0.6], [88, 14, 7, -1.1], [118, 40, 7, -0.3], [100, 16, 7.5, -0.8]]) {
+      s += `<g class="art-sway" style="animation-delay:${d}s"><circle cx="${x}" cy="${y}" r="${r}" fill="${K.rad([[0, '#fef9c3'], [0.6, '#facc15'], [1, '#ca8a04']], 0.4, 0.4)}" stroke="#854d0e" stroke-width="1.4"/>` +
+        `<g fill="#fff7c2"><circle cx="${x - r * 0.35}" cy="${y - r * 0.3}" r="${r * 0.28}"/><circle cx="${x + r * 0.3}" cy="${y + r * 0.2}" r="${r * 0.22}"/></g></g>`;
+    }
+    // розетка листьев
+    for (const [r, L, w] of [[-84, 70, 26], [-62, 84, 28], [-38, 90, 28], [-14, 86, 26], [14, 86, 26], [38, 90, 28], [62, 84, 28], [84, 70, 26]]) s += azAgave(K, 100, 172, L, w, r, { c1: '#8fdcc0', c2: '#1f6b52', line: '#0f3d2e' });
+    // сердцевина с мордочкой
+    const heart = K.ell(100, 128, 34, 34);
+    s += K.vol(heart, { c1: '#d9f99d', c2: '#3f8a52', rim: '#e4ffb0', texK: 0.14, line: '#0f3d2e' });
+    s += K.line('M74 116Q100 108 126 116M70 140Q100 150 130 140', '#14532d', 1.4, { op: 0.3 });
+    s += K.gloss(84, 108, 8, 4.4, -30, 0.4);
+    s += K.eyes(100, 124, 15, 10, { iris: '#166534', look: [-0.2, 0.15] });
+    s += K.blush(76, 140, 6.5) + K.blush(124, 140, 6.5);
+    s += K.mouth('grin', 100, 140, 14);
+    // руки-листья: моток верёвки и игла с ниткой
+    s += azAgave(K, 70, 150, 34, 16, -120, { c1: '#8fdcc0', c2: '#1f6b52', line: '#0f3d2e' });
+    s += `<g transform="rotate(-12 38 150)"><ellipse cx="38" cy="150" rx="16" ry="11" fill="#d6a26c" stroke="#6b3f1d" stroke-width="2"/><ellipse cx="38" cy="150" rx="11" ry="7" fill="none" stroke="#8b5a2b" stroke-width="1.6"/><ellipse cx="38" cy="150" rx="6" ry="3.6" fill="#6b3f1d"/></g>` + K.line('M24 156C18 166 26 172 20 180', '#d6a26c', 2.4);
+    s += azAgave(K, 130, 150, 34, 16, 120, { c1: '#8fdcc0', c2: '#1f6b52', line: '#0f3d2e' });
+    s += K.line('M160 120L176 160', '#3f2a14', 3) + `<ellipse cx="161.5" cy="124" rx="1.6" ry="3" fill="#fef3c7" transform="rotate(-22 161.5 124)"/>` + K.line('M162 124C176 116 186 126 180 136C174 146 186 152 192 146', '#f472b6', 1.8);
+    s += K.spark(30, 60, 3.4, '#fef08a', 'art-float') + K.spark(170, 64, 3, '#d9f99d') + K.spark(60, 18, 2.6, '#fef08a') + K.spark(140, 10, 2.4, '#d9f99d', 'art-float');
+    return s;
+  },
+
+  // Майяуэль: богиня агавы поднимается из огромной розетки магея, как из пышной юбки. Платье цвета листьев агавы,
+  // длинные чёрные волосы, венец из колючих листиков с нефритом; в ладонях — глиняная чаша со сладким сиропом.
+  // Позади цветут два высоких цветоноса, у подножия — детки-агавы
+  az_mayahuel(K) {
+    const skin = '#d9a06b', D = { c1: '#5eead4', c2: '#115e59', rim: '#e4ffb0', texK: 0.16 };
+    let s = K.aura('#facc15', 96, 90, 0.35) + K.aura('#2dd4bf', 80, 130, 0.3);
+    // цветоносы позади
+    for (const [x, sw] of [[34, -1], [166, 1]]) {
+      s += K.line(`M${x} 150C${x - sw * 2} 110 ${x + sw * 2} 60 ${x} 30`, '#365314', 7) + K.line(`M${x} 150C${x - sw * 2} 110 ${x + sw * 2} 60 ${x} 30`, '#a3a33a', 3.6);
+      for (const [dx, dy, r] of [[0, 26, 7], [-9, 36, 6], [9, 40, 6], [-6, 50, 5]]) s += `<circle cx="${x + dx}" cy="${dy}" r="${r}" fill="${K.rad([[0, '#fef9c3'], [0.6, '#facc15'], [1, '#ca8a04']], 0.4, 0.4)}" stroke="#854d0e" stroke-width="1.2"/>`;
+    }
+    // длинные волосы позади
+    s += K.part('M74 66C70 44 84 34 100 34C116 34 130 44 126 66L134 116C122 122 112 114 110 104H90C88 114 78 122 66 116Z', '#1c1917', { line: '#0c0a09', lw: 1.6 });
+    // задние листья розетки-юбки
+    for (const [r, L, w] of [[-88, 78, 28], [-66, 86, 30], [-42, 80, 30], [42, 80, 30], [66, 86, 30], [88, 78, 28]]) s += azAgave(K, 100, 178, L, w, r, { c1: '#8fdcc0', c2: '#1f6b52', line: '#0f3d2e' });
+    // платье и руки с чашей
+    const dress = 'M100 88C118 88 128 100 130 116C132 130 132 144 128 156H72C68 144 68 130 70 116C72 100 82 88 100 88Z';
+    s += K.vol(dress, D);
+    s += K.line('M72 100Q100 116 128 100', '#134e4a', 7) + K.line('M72 100Q100 116 128 100', '#34d399', 4);
+    s += `<circle cx="100" cy="110" r="5" fill="${K.rad([[0, '#a7f3d0'], [1, '#047857']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.6"/>`;
+    s += K.mirror(K.vol('M74 108C64 116 62 128 68 136C74 138 80 136 82 132C78 126 78 120 82 114Z', D));
+    s += `<circle class="art-aura" cx="100" cy="128" r="20" fill="${K.rad([[0, '#fef9c3', 0.9], [0.5, '#fde047', 0.4], [1, '#facc15', 0]])}"/>`;
+    s += K.part('M78 126H122C122 141 113 148 100 148C87 148 78 141 78 126Z', '#c2672e', { line: '#5a1e0a', lw: 2 }) + K.line(azGreca(82, 118, 139, 3), '#fef3c7', 1.3);
+    s += `<ellipse cx="100" cy="126" rx="22" ry="5" fill="${K.rad([[0, '#fffbe6'], [0.6, '#fcd34d'], [1, '#d97706']])}" stroke="#5a1e0a" stroke-width="1.6"/>`;
+    s += K.mirror(K.part(K.ell(78, 132, 6.5, 6), skin, { line: '#7c4a24', lw: 1.6 }));
+    // передние листья розетки
+    for (const [r, L, w] of [[-78, 38, 24], [-52, 44, 26], [-26, 38, 24], [0, 34, 24], [26, 38, 24], [52, 44, 26], [78, 38, 24]]) s += azAgave(K, 100, 184, L, w, r, { c1: '#a7ebd0', line: '#0f3d2e', flat: true });
+    // голова, венец из листиков агавы
+    for (const r of [-50, -25, 0, 25, 50]) s += azAgave(K, 100, 50, r ? 18 : 22, 9, r, { c1: '#8fdcc0', line: '#0f3d2e', lw: 1.6, flat: true });
+    s += K.vol(K.ell(100, 66, 21, 22), { c1: skin, c2: '#a8683a', rim: '#fef3c7', tex: false, hiK: 0.18, line: '#5b2e12' });
+    s += K.part('M79 60C81 48 89 44 100 44C111 44 119 48 121 60C113 54 106 54 100 56C94 54 87 54 79 60Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += K.part('M79 52Q100 42 121 52L120 57Q100 48 80 57Z', '#facc15', { line: '#854d0e', lw: 1.4 }) + K.rhomb(100, 48, 3.4, '#34d399', '#064e3b');
+    s += K.mirror(`<circle cx="79" cy="74" r="4" fill="${K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.4"/>`);
+    s += K.eyes(100, 67, 8.4, 5.8, { iris: '#065f46', lid: 'half', skin, look: [0, 0.3], lash: true });
+    s += K.blush(87, 77, 3.8) + K.blush(113, 77, 3.8);
+    s += K.mouth('smile', 100, 79, 8);
+    s += K.spark(18, 90, 3, '#fef08a', 'art-float') + K.spark(184, 92, 3, '#d9f99d') + K.spark(100, 12, 3.4, '#fef08a', 'art-float') + K.spark(16, 170, 2.4, '#d9f99d');
+    return s;
+  },
+
+  // Чанеке: крошечный хранитель рощ — тело ребёнка и личико старичка: морщинки, мохнатые белые брови, нос
+  // картошкой, острые уши, хитрая улыбка и седая бородка; на голове шляпа из большого листа, рубашка из листьев.
+  // Стоит на корнях сейбы: в одной руке болтается кроссовок за развязанный шнурок, в другой — бархатец
+  az_chaneque(K) {
+    const skin = '#c68a52', SK = { c1: '#e2a774', c2: '#8a4f24', rim: '#e4ffb0', tex: false, line: '#4a2408', lw: 2.2 };
+    const L = { c1: '#86efac', c2: '#166534', rim: '#e4ffb0', texK: 0.2, line: '#14532d' };
+    let s = K.aura('#84cc16', 90, 112, 0.35);
+    // корни сейбы
+    s += K.vol('M8 184C28 168 50 162 70 164C84 166 92 172 100 172C108 172 116 166 130 164C150 162 172 168 192 184Z', { c1: '#a1795c', c2: '#4a2f1c', tex: false, lw: 2.2, line: '#2a1a0e', rim: '#e4ffb0' });
+    s += K.line('M28 178C44 172 58 170 70 172M172 178C156 172 142 170 130 172', '#2a1a0e', 1.4, { op: 0.5 });
+    // ножки
+    s += K.mirror(K.line('M92 150L88 166', '#4a2408', 9) + K.line('M92 150L88 166', skin, 5.4) + K.vol(K.ell(85, 168, 9, 5), SK));
+    // рубашка из листьев
+    const body = 'M100 112C118 112 128 126 128 142C128 152 120 158 100 158C80 158 72 152 72 142C72 126 82 112 100 112Z';
+    s += K.vol(body, L);
+    s += K.part('M72 146L78 160L86 150L93 162L100 150L107 162L114 150L122 160L128 146Q100 156 72 146Z', '#4ade80', { line: '#14532d', lw: 1.6 });
+    s += K.line('M100 118V150M88 124L100 132L112 124', '#14532d', 1.4, { op: 0.45 });
+    // рука с кроссовком на шнурке
+    s += K.line('M76 126L56 132', '#4a2408', 9) + K.line('M76 126L56 132', skin, 5.4) + K.vol(K.ell(52, 133, 6.5, 6), SK);
+    s += `<g class="art-sway" style="transform-origin:50% 0">` + K.line('M50 136C46 144 40 146 38 152M54 137C56 146 50 148 46 152', '#fefce8', 1.6) +
+      K.vol('M22 160C22 152 28 150 34 150H44L52 156C58 158 60 162 58 166H22Z', { c1: '#ffffff', c2: '#cbd5e1', tex: false, lw: 2, line: '#334155', rim: '#e4ffb0' }) +
+      K.line('M26 162H56', '#334155', 1.4) + K.line('M30 156Q40 160 50 156', '#ef4444', 2.4) + '</g>';
+    // рука с бархатцем
+    s += K.line('M124 126L146 120', '#4a2408', 9) + K.line('M124 126L146 120', skin, 5.4);
+    s += K.line('M150 120L158 100', '#3f6212', 2.4) + K.leaf(154, 110, 9, -30, '#65a30d') + azMari(K, 159, 98, 8.5);
+    s += K.vol(K.ell(149, 119, 6.5, 6), SK);
+    // острые уши и голова
+    s += K.mirror(K.vol('M70 84C60 80 50 72 44 64C52 64 62 70 72 76Z', SK));
+    s += K.vol(K.ell(100, 86, 32, 29), { c1: '#e2a774', c2: '#8a4f24', rim: '#e4ffb0', tex: false, line: '#4a2408' });
+    s += K.line('M88 70q6-3 12 0M96 66q6-3 12 0', '#7c4a24', 1.4, { op: 0.6 });
+    // седая бородка
+    s += K.part('M84 106Q100 128 116 106Q112 116 100 118Q88 116 84 106Z', '#f5f5f4', { line: '#a8a29e', lw: 1.4 });
+    // шляпа из листа
+    s += K.part('M74 66C74 46 126 46 126 66Z', '#4d7c0f', { line: '#1a2e05', lw: 2 });
+    s += K.vol('M34 66C56 52 144 52 166 66C144 76 56 76 34 66Z', { c1: '#a3e635', c2: '#3f6212', rim: '#e4ffb0', tex: false, lw: 2.2, line: '#1a2e05' });
+    s += K.line('M38 66H162M60 62l8 6M80 60l8 8M120 60l-8 8M140 62l-8 6', '#365314', 1.4, { op: 0.6 }) + K.line('M100 48C100 40 106 36 112 38', '#365314', 3);
+    // лицо: мохнатые брови, нос картошкой, хитрая улыбка
+    s += K.eyes(100, 86, 12, 7, { iris: '#78350f', lid: 'half', skin: '#d4955e', look: [-0.3, 0.2] });
+    s += K.part('M80 78Q86 72 94 77Q88 76 82 80Z', '#ffffff', { line: '#a8a29e', lw: 1.2 }) + K.part('M120 78Q114 72 106 77Q112 76 118 80Z', '#ffffff', { line: '#a8a29e', lw: 1.2 });
+    s += `<ellipse cx="100" cy="96" rx="7" ry="5.6" fill="${K.rad([[0, '#f0b98a'], [1, '#a8683a']], 0.4, 0.35)}" stroke="#4a2408" stroke-width="1.4"/>`;
+    s += K.mouth('grin', 100, 103, 14) + K.blush(80, 98, 5) + K.blush(120, 98, 5);
+    s += K.spark(178, 60, 3, '#d9f99d', 'art-float') + K.spark(20, 98, 2.6, '#fef08a') + K.spark(184, 150, 2.4, '#d9f99d') + K.spark(30, 40, 2.4, '#fef08a', 'art-float');
+    return s;
+  },
+
+  // Теколотль: сова — ночная вестница владыки Миктлана — сидит под месяцем на коньке черепичной крыши у антенны.
+  // Круглая, ушастая, глаза-фонари в светлых кругах, грудка в пёстрых «галочках», за ушком — бархатец, под крылом — письмо
+  az_tecolotl(K) {
+    const O = { c1: '#b8aea6', c2: '#3f3a36', rim: '#e9d5ff', texK: 0.3, line: '#1c1917' };
+    let s = K.aura('#c084fc', 90, 106, 0.35);
+    s += azMoon(K, 36, 38, 13);
+    // крыша с черепицей и антенна-рожки
+    const roof = 'M10 188L100 140L190 188Z';
+    s += K.vol(roof, { c1: '#c2410c', c2: '#431407', tex: false, lw: 2.4, line: '#1c0a04', rim: '#e9d5ff' });
+    s += azClip(K, roof, K.line('M10 160H190M10 172H190M10 184H190', '#1c0a04', 1.4, { op: 0.5 }) + K.line('M60 160v12M84 160v12M116 160v12M140 160v12M48 172v12M72 172v12M96 172v12M120 172v12M144 172v12M168 172v12', '#1c0a04', 1.2, { op: 0.4 }));
+    s += K.line('M156 160L140 116M156 160L176 118', '#0f172a', 3.6) + K.line('M156 160L140 116M156 160L176 118', '#94a3b8', 1.4) + `<circle cx="140" cy="116" r="3" fill="#94a3b8" stroke="#0f172a" stroke-width="1.2"/><circle cx="176" cy="118" r="3" fill="#94a3b8" stroke="#0f172a" stroke-width="1.2"/>` + K.part('M148 158H164L162 166H150Z', '#475569', { line: '#0f172a', lw: 1.4 });
+    // крылья
+    s += K.mirror(K.vol('M64 84C50 100 50 128 66 146C74 136 78 116 74 94Z', { ...O, c1: '#8f857d', texK: 0.2 }) + K.line('M60 112l8 4M60 124l8 3M62 134l7 2', '#1c1917', 1.4, { op: 0.5 }));
+    // письмо под крылом
+    s += `<g transform="rotate(14 140 128)"><rect x="126" y="118" width="30" height="20" rx="2" fill="#fefce8" stroke="#78350f" stroke-width="1.6"/><path d="M126 118l15 11 15-11" fill="none" stroke="#78350f" stroke-width="1.4"/><path d="M141 118v20" stroke="#fb923c" stroke-width="3"/></g>`;
+    // ушки-перья и тело
+    s += K.mirror(K.part('M72 62L60 34L86 54Z', '#57534e', { line: '#1c1917', lw: 1.8 }));
+    const body = K.ell(100, 100, 38, 44);
+    s += K.vol(body, O);
+    s += azClip(K, body, `<ellipse cx="100" cy="122" rx="24" ry="24" fill="#efe8de" opacity=".75"/>` + K.line('M86 108l4 4 4-4M106 108l4 4 4-4M92 120l4 4 4-4M100 132l4 4 4-4M82 130l4 4 4-4M112 124l4 4 4-4M90 142l4 4 4-4M108 140l4 4 4-4', '#57534e', 1.6));
+    // лицевые диски и глаза-фонари
+    s += K.mirror(`<circle cx="84" cy="80" r="17" fill="#efe8de" stroke="#57534e" stroke-width="2"/>`);
+    s += `<circle class="art-blink" cx="84" cy="80" r="15" fill="${K.rad([[0, '#fde68a', 0.5], [1, '#fbbf24', 0]])}"/><circle class="art-blink" cx="116" cy="80" r="15" fill="${K.rad([[0, '#fde68a', 0.5], [1, '#fbbf24', 0]])}"/>`;
+    s += K.eyes(100, 80, 16, 11, { iris: '#f59e0b', look: [0, 0.1] });
+    s += K.part('M94 92L106 92L100 104Z', '#fb923c', { line: '#7c2d12', lw: 1.4 });
+    s += K.gloss(78, 64, 6, 3.4, -30, 0.35);
+    // бархатец за ушком
+    s += azMari(K, 68, 54, 7.5);
+    // лапки на коньке
+    s += K.line('M88 140v6M92 140v6M96 140v6M104 140v6M108 140v6M112 140v6', '#f59e0b', 2.4);
+    s += K.spark(170, 40, 3, '#fef9c3', 'art-float') + K.spark(160, 80, 2.4, '#e9d5ff') + K.spark(22, 120, 2.6, '#fef9c3') + K.spark(180, 160, 2.4, '#e9d5ff', 'art-float');
+    return s;
+  },
+
+  // Кецаль: священная птица сидит на цветущей ветке — изумрудная спинка с золотым отливом, алая грудка,
+  // пушистый гребешок, а два длинных хвостовых пера струятся вниз почти до земли
+  az_quetzal(K) {
+    const G = { c1: '#6ee7b7', c2: '#047857', rim: '#eef0ff', texK: 0.2, line: '#064e3b' };
+    let s = K.aura('#a5b4fc', 90, 100, 0.35) + K.aura('#34d399', 60, 96, 0.2);
+    // хвостовые перья
+    s += K.part('M102 118C110 138 104 156 114 168C124 182 150 182 176 174C152 176 132 176 122 164C112 152 116 134 108 116Z', '#10b981', { line: '#064e3b', lw: 1.8 });
+    s += K.part('M96 118C100 142 90 160 98 172C106 184 124 186 142 184C124 182 112 178 106 168C98 154 106 138 102 116Z', '#34d399', { line: '#064e3b', lw: 1.8 });
+    s += K.line('M106 124C112 146 110 160 122 168M100 124C102 146 98 162 106 172', '#a7f3d0', 1.2, { op: 0.7 });
+    // ветка с цветами
+    const br = 'M6 114C36 108 70 112 100 116C122 118 144 114 172 104';
+    s += K.line(br, '#3f2a14', 9) + K.line(br, '#8b5a2b', 5);
+    s += K.leaf(30, 110, 16, 200, '#16a34a') + K.leaf(150, 110, 16, -30, '#16a34a') + K.leaf(58, 112, 14, 150, '#16a34a');
+    s += azDahlia(K, 168, 102, 9, '#f472b6') + azDahlia(K, 18, 112, 7, '#facc15');
+    // тело: изумрудное сверху, алое снизу
+    const body = K.ell(100, 86, 27, 32);
+    s += K.vol(body, G);
+    s += azClip(K, body, `<path d="M70 92Q100 82 130 92V130H70Z" fill="#ef4444"/><path d="M70 92Q100 82 130 92" fill="none" stroke="#7f1d1d" stroke-width="1.6"/>` + K.line('M88 104q4 3 8 0M100 110q4 3 8 0M90 118q4 3 8 0', '#fecaca', 1.3, { op: 0.8 }));
+    // крыло
+    s += K.vol('M76 70C66 86 66 104 76 118C84 110 88 92 86 76Z', { ...G, c1: '#34d399', texK: 0.15 }) + K.line('M74 84l8 2M72 96l9 1M74 108l8-1', '#064e3b', 1.3, { op: 0.6 });
+    // лапки на ветке
+    s += K.line('M94 116v4M106 116v4', '#57534e', 3);
+    // гребешок и голова
+    s += K.part('M84 46C84 30 96 24 104 26C110 20 120 24 120 32C126 34 126 44 118 48Z', '#10b981', { line: '#064e3b', lw: 1.8 });
+    s += K.vol(K.ell(102, 56, 19, 18), G);
+    s += K.gloss(92, 48, 5, 2.6, -30, 0.5);
+    s += K.part('M114 58L128 62L114 66Z', '#facc15', { line: '#854d0e', lw: 1.2 });
+    s += K.eyes(102, 56, 7.5, 6, { iris: '#1e1b4b', look: [0.4, 0.1] });
+    s += K.blush(92, 65, 3.4) + K.blush(112, 65, 3.4);
+    s += `<g class="art-float" style="animation-delay:-.7s">${K.part('M40 150C44 140 52 136 58 138C52 142 48 148 40 150Z', '#34d399', { line: '#064e3b', lw: 1.2 })}</g>`;
+    s += K.spark(148, 40, 3.4, '#fde68a') + K.spark(36, 64, 2.6, '#e0e7ff', 'art-float') + K.spark(180, 140, 2.6, '#fde68a', 'art-float') + K.spark(24, 168, 2.2, '#e0e7ff');
+    return s;
+  },
+
+  // Куэятль: лягушка-певунья из свиты Тлалока сидит на кувшинке в фонтане, раздула горловой пузырь и квакает;
+  // над ней — песенные завитки, как на ацтекских рисунках, и тучка, из которой уже закапал дождь
+  az_cueyatl(K) {
+    const F = { c1: '#a7f3c0', c2: '#15803d', rim: '#c8f3ff', texK: 0.16, line: '#14532d' };
+    let s = K.aura('#38bdf8', 90, 112, 0.35);
+    // вода и кувшинка
+    s += `<ellipse cx="100" cy="174" rx="92" ry="13" fill="${K.rad([[0, '#38bdf8', 0.55], [1, '#0e7490', 0]])}"/>` + K.line('M14 176q9-5 18 0t18 0M150 178q9-5 18 0t18 0', '#bae6fd', 1.8, { op: 0.8 });
+    s += K.part('M40 168C40 156 70 150 100 150C130 150 160 156 160 168C160 178 130 182 100 182C70 182 40 178 40 168ZM100 166L118 152L126 154Z', '#4ade80', { line: '#14532d', lw: 2 });
+    s += azDahlia(K, 150, 160, 7, '#f9a8d4');
+    // тучка с дождём
+    s += `<g class="art-float">${K.vol('M30 46C22 46 18 38 24 33C22 24 32 20 39 24C42 16 56 14 61 22C68 18 78 24 75 32C80 36 76 44 70 44C64 48 36 48 30 46Z', { c1: '#ffffff', c2: '#94a3b8', tex: false, lw: 2, line: '#475569', rim: '#c8f3ff', shadeK: 0.4 })}</g>`;
+    s += `<g class="art-float" style="animation-delay:-.6s" fill="#7dd3fc" stroke="#0369a1" stroke-width="1">` + [[34, 60], [50, 66], [64, 58], [44, 80]].map(([x, y]) => `<path d="M${x} ${y - 5}q4 6 0 8q-4-2 0-8z"/>`).join('') + '</g>';
+    // задние лапы
+    s += K.mirror(K.vol(K.ell(66, 156, 22, 14), F) + K.line('M48 166l-6 6M54 168l-4 8M60 168l-1 8', '#14532d', 2.2));
+    // тело
+    const body = 'M100 92C132 92 146 116 146 138C146 158 128 166 100 166C72 166 54 158 54 138C54 116 68 92 100 92Z';
+    s += K.vol(body, F);
+    s += `<g fill="#15803d" opacity=".35"><circle cx="70" cy="126" r="4"/><circle cx="132" cy="122" r="3.4"/><circle cx="124" cy="148" r="3"/><circle cx="66" cy="148" r="3"/></g>`;
+    // горловой пузырь
+    s += `<circle cx="100" cy="138" r="19" fill="${K.rad([[0, '#fff1f2', 0.95], [0.7, '#fecdd3', 0.9], [1, '#fda4af', 0.9]], 0.4, 0.35)}" stroke="#be123c" stroke-width="1.6"/>` + K.gloss(92, 130, 5, 3, -30, 0.7);
+    // передние лапки
+    s += K.mirror(K.vol(K.ell(78, 164, 10, 6.5), F) + K.line('M71 168v4M77 169v4M83 168v4', '#14532d', 1.6));
+    // глаза-бугорки
+    s += K.mirror(K.vol(K.ell(78, 96, 17, 16), F));
+    s += K.eyes(100, 96, 22, 11, { iris: '#ca8a04', look: [0.1, 0.1] });
+    s += K.line('M72 118Q100 126 128 118', K.INK, 3) + K.blush(66, 114, 6) + K.blush(134, 114, 6);
+    // песенные завитки
+    s += `<g class="art-float">${K.line('M128 108C140 98 156 102 154 114C152 124 140 122 142 114', '#e0f2fe', 3.4)}${K.line('M150 82C160 72 176 76 174 88C172 96 162 94 164 88', '#bae6fd', 2.8)}</g>`;
+    s += K.spark(176, 120, 3, '#e0f2fe', 'art-float') + K.spark(120, 26, 2.8, '#bae6fd') + K.spark(16, 120, 2.4, '#e0f2fe');
+    return s;
+  },
+
+  // Копалли: капелька душистой смолы копал устроилась в глиняной курильнице на длинной ручке — янтарная,
+  // светится изнутри, жмурится от удовольствия; из макушки вьётся голубой ароматный дымок завитками
+  az_copalli(K) {
+    const clay = { c1: '#f4a261', c2: '#8a3414', tex: false, lw: 2.4, line: '#4a1505', rim: '#ffe0b0' };
+    let s = K.aura('#ff9a3d', 88, 112, 0.35) + K.aura('#a5b4fc', 54, 50, 0.25);
+    // ароматный дымок
+    s += `<g class="art-float">${K.line('M100 52C90 42 106 34 96 22C90 14 98 6 108 8', '#a5b4fc', 7, { op: 0.45 })}${K.line('M100 52C90 42 106 34 96 22C90 14 98 6 108 8', '#eef2ff', 2.6)}</g>`;
+    s += `<g class="art-float" style="animation-delay:-1.1s">${K.line('M112 60C124 54 120 42 130 36C138 32 140 24 134 20', '#c7d2fe', 4.4, { op: 0.45 })}${K.line('M112 60C124 54 120 42 130 36C138 32 140 24 134 20', '#eef2ff', 1.8)}</g>`;
+    // ручка курильницы
+    s += K.line('M66 146L18 156', '#4a1505', 11) + K.line('M66 146L18 156', '#d97745', 7) + K.line(azGreca(24, 60, 152, 3), '#fef3c7', 1, { op: 0.6 });
+    s += K.vol(K.ell(16, 156, 9, 9), clay);
+    // ножка
+    s += K.vol('M82 160H118L124 178H76Z', clay) + K.line('M80 170H120', '#fef3c7', 1.6, { op: 0.7 });
+    // чаша с угольками
+    s += `<ellipse cx="100" cy="134" rx="38" ry="9" fill="${K.rad([[0, '#fff6c2'], [0.4, '#ff9a1a'], [1, '#9a2a0c']])}" stroke="#4a1505" stroke-width="2"/>`;
+    // капля смолы
+    const drop = 'M100 50C114 70 130 90 130 108C130 126 116 138 100 138C84 138 70 126 70 108C70 90 86 70 100 50Z';
+    s += K.vol(drop, { c1: '#fff3b0', c2: '#d97706', rim: '#ffe29a', texK: 0.2, line: '#7c2d12' });
+    s += `<ellipse cx="100" cy="114" rx="20" ry="16" fill="${K.rad([[0, '#fffbe6', 0.8], [1, '#fde68a', 0]])}"/>`;
+    s += `<g fill="none" stroke="#fff7d6" stroke-width="1.2" opacity=".8"><circle cx="116" cy="94" r="3"/><circle cx="84" cy="122" r="2.2"/><circle cx="112" cy="124" r="1.8"/></g>`;
+    s += K.gloss(86, 80, 6, 3.4, -50, 0.55);
+    s += K.closed(100, 104, 12, 6.4, true) + K.blush(80, 114, 6) + K.blush(120, 114, 6) + K.mouth('smile', 100, 116, 12);
+    // чаша спереди
+    s += K.vol('M60 134H140C138 152 124 162 100 162C76 162 62 152 60 134Z', clay);
+    s += K.line('M66 144Q100 154 134 144', '#fef3c7', 2.2) + K.stitch('M66 144Q100 154 134 144', '#7c2d12', 1.2);
+    s += [76, 100, 124].map(x => `<circle cx="${x}" cy="${x === 100 ? 156 : 152}" r="2.4" fill="#fde68a" stroke="#7c2d12" stroke-width="1"/>`).join('');
+    s += K.spark(150, 112, 3.4, '#ffd23f', 'art-float') + K.spark(46, 104, 3, '#ffe08a') + K.spark(160, 160, 2.6, '#fff3b0') + K.spark(36, 68, 2.4, '#c7d2fe', 'art-float');
+    return s;
+  },
+
+  // Олли: живой каучуковый мяч священной игры — тёмный, упругий, с бликом во весь бок — скачет у каменного кольца
+  // на стене площадки; за ним тянется пунктир полёта, у земли — искры удара
+  az_olli(K) {
+    const f = K.f;
+    let s = K.aura('#facc15', 92, 108, 0.35);
+    // стена площадки с каменным кольцом
+    s += K.vol('M150 18H196V124H150Z', { c1: '#d6d3d1', c2: '#78716c', tex: false, lw: 2.2, line: '#292524', rim: '#fff6b0' });
+    s += K.line(azGreca(150, 196, 116, 4), '#57534e', 1.6, { op: 0.7 }) + K.line('M150 34H196M150 92H196', '#57534e', 1.2, { op: 0.4 });
+    s += `<circle cx="173" cy="62" r="20" fill="${K.rad([[0, '#e7e5e4'], [1, '#78716c']], 0.35, 0.3)}" stroke="#292524" stroke-width="2.4"/><circle cx="173" cy="62" r="8.6" fill="#1c1917" stroke="#292524" stroke-width="2"/>`;
+    for (let i = 0; i < 8; i++) { const a = i * 45 * Math.PI / 180; s += `<circle cx="${f(173 + 14.4 * Math.cos(a))}" cy="${f(62 + 14.4 * Math.sin(a))}" r="2" fill="#a8a29e" stroke="#44403c" stroke-width=".8"/>`; }
+    // площадка и пунктир полёта
+    s += K.line('M4 178H196', '#fef3c7', 2, { op: 0.6 });
+    s += `<path d="M12 170Q28 66 56 80" fill="none" stroke="#fef9c3" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round" opacity=".8"/>`;
+    // искры удара
+    s += K.line('M62 176l-10-6M74 172l-4-10M112 172l6-10M124 176l10-6', '#fde047', 2.6, { cls: 'art-blink' });
+    // мяч
+    const ball = K.ell(94, 118, 48, 46);
+    s += K.vol(ball, { c1: '#8a817c', c2: '#1c1917', rim: '#fff6b0', rimK: 0.7, texK: 0.25, line: '#0c0a09' });
+    s += `<path d="M58 100C64 82 82 74 100 76" fill="none" stroke="#fff" stroke-width="5.4" stroke-linecap="round" opacity=".45"/>` + K.gloss(72, 94, 8, 4.4, -40, 0.5);
+    s += K.eyes(94, 116, 18, 12, { iris: '#f59e0b', look: [0.4, -0.1] });
+    s += K.blush(66, 136, 7) + K.blush(122, 136, 7) + K.mouth('grin', 94, 136, 18);
+    // треск энергии
+    s += K.line('M40 88l-8-4 2-6-8-4M146 132l8 2-2 6 9 2', '#fde047', 2.4, { cls: 'art-blink' });
+    s += K.spark(30, 40, 3.4, '#fde047', 'art-float') + K.spark(110, 30, 2.8, '#fff6b0') + K.spark(184, 170, 2.6, '#fde047', 'art-float') + K.spark(18, 140, 2.4, '#fff6b0');
+    return s;
+  },
+
+  // Тлакуаче: опоссум, укравший огонь у богов: в сумке на животе светится уголёк, хвост голый и розовый —
+  // обжёгся, кончик ещё дымится; белая мордочка с розовым носом, круглые чёрные ушки, хитрый прищур
+  az_tlacuache(K) {
+    const G = { c1: '#e7e5e4', c2: '#57534e', rim: '#ffe29a', texK: 0.18, line: '#292524' };
+    const pink = { c1: '#fbcfe8', c2: '#db2777', tex: false, lw: 2, line: '#831843', rim: '#ffe29a' };
+    let s = K.aura('#ff9a3d', 90, 112, 0.4);
+    // голый хвост, кончик дымится
+    const tail = 'M130 164C158 168 176 150 172 126C170 112 158 106 152 116';
+    s += K.line(tail, '#831843', 10) + K.line(tail, '#f9a8d4', 6.4) + K.line('M146 164l2-6M160 157l4-5M170 142l6-2', '#be185d', 1.4, { op: 0.6 });
+    s += `<g class="art-float">${K.line('M152 112C146 102 156 96 150 86C146 80 152 74 158 74', '#a8a29e', 5, { op: 0.6 }) + K.line('M152 112C146 102 156 96 150 86', '#f5f5f4', 2)}</g>` + K.spark(156, 112, 3, '#ffd23f');
+    // задние лапки
+    s += K.mirror(K.vol(K.ell(72, 170, 14, 8), pink) + K.line('M64 174v3M70 175v3M76 175v3', '#831843', 1.4));
+    // тело
+    const body = 'M100 110C128 110 142 130 142 150C142 168 126 178 100 178C74 178 58 168 58 150C58 130 72 110 100 110Z';
+    s += K.vol(body, G);
+    s += `<path d="M100 124C116 124 126 138 126 152C126 166 114 174 100 174C86 174 74 166 74 152C74 138 84 124 100 124Z" fill="#fafaf9" opacity=".75"/>`;
+    // сумка с угольком
+    s += `<circle class="art-aura" cx="100" cy="146" r="22" fill="${K.rad([[0, '#fff6c2', 0.9], [0.4, '#ffb020', 0.5], [1, '#ff7a1a', 0]])}"/>`;
+    s += `<ellipse cx="100" cy="150" rx="18" ry="7" fill="#3b1a0c" stroke="#292524" stroke-width="2"/>`;
+    s += K.flame(92, 151, 18, 12, '#ffd23f', '#e8431a', { style: 'animation-delay:-.4s' }) + K.flame(108, 151, 16, 11, '#ffd23f', '#e8431a', { style: 'animation-delay:-.8s' }) + K.flame(100, 152, 26, 16, '#fff0a0', '#ff7a1a');
+    s += K.part('M80 152Q100 166 120 152Q118 166 100 168Q82 166 80 152Z', '#d6d3d1', { line: '#292524', lw: 2 });
+    s += K.mirror(K.vol(K.ell(80, 152, 8, 6.5), pink));
+    // ушки
+    const ear = { c1: '#44403c', c2: '#0c0a09', tex: false, lw: 2.2, line: '#0c0a09', rim: '#ffe29a' };
+    s += K.vol(K.ell(68, 58, 12, 13), ear) + `<ellipse cx="69" cy="60" rx="5.6" ry="6.4" fill="#f9a8d4"/>` + K.vol(K.ell(118, 52, 12, 13), ear) + `<ellipse cx="119" cy="54" rx="5.6" ry="6.4" fill="#f9a8d4"/>`;
+    // голова вполоборота с длинным носиком
+    s += K.vol(K.ell(96, 82, 31, 28), { ...G, c1: '#ffffff', c2: '#8a817c' });
+    s += K.vol('M110 74C124 80 138 88 144 96C142 104 130 106 112 102C106 94 106 82 110 74Z', { c1: '#ffffff', c2: '#c4b5ad', tex: false, lw: 2.2, line: '#292524', rim: '#ffe29a' });
+    s += `<ellipse cx="144" cy="98" rx="6" ry="5" fill="#f472b6" stroke="#831843" stroke-width="1.4"/><ellipse cx="142.6" cy="96.4" rx="2" ry="1.2" fill="#fff" opacity=".7"/>`;
+    s += K.line('M126 102Q130 106 136 104', K.INK, 2) + K.line('M128 92l14-6M130 96l15-1M128 100l13 4', '#57534e', 1.1, { op: 0.7 });
+    s += `<ellipse cx="86" cy="78" rx="10" ry="9" fill="#57534e" opacity=".4"/><ellipse cx="110" cy="78" rx="9" ry="8.4" fill="#57534e" opacity=".4"/>`;
+    s += K.eyes(98, 78, 12, 7.4, { iris: '#1c1917', lid: 'half', skin: '#b5aca6', look: [0.5, 0.2] });
+    s += K.blush(78, 94, 5.4) + K.blush(116, 92, 4.6);
+    s += K.spark(26, 70, 3.4, '#ffd23f', 'art-float') + K.spark(36, 130, 2.6, '#ffe08a') + K.spark(178, 60, 2.6, '#fff3b0', 'art-float') + K.spark(186, 170, 2.4, '#ffd23f');
+    return s;
+  },
+
+  // Кинич-Какмо: огненный ара с солнечным ликом из преданий майя — спускается с неба, раскинув крылья в алых,
+  // золотых и синих перьях; за головой сияет солнечный диск с лучами, на концах крыльев пляшет пламя,
+  // длинный хвост — алые перья с синими кончиками
+  az_kinichkakmo(K) {
+    const f = K.f, R = { c1: '#f87171', c2: '#991b1b', rim: '#ffe29a', texK: 0.25, line: '#450a0a' };
+    let s = K.aura('#ff9a3d', 98, 92, 0.45);
+    // солнечный диск
+    let rays = '';
+    for (let i = 0; i < 16; i++) { const a = i * 22.5 * Math.PI / 180, r2 = i % 2 ? 50 : 58; rays += `M${f(100 + 38 * Math.cos(a - 0.11))} ${f(58 + 38 * Math.sin(a - 0.11))}L${f(100 + r2 * Math.cos(a))} ${f(58 + r2 * Math.sin(a))}L${f(100 + 38 * Math.cos(a + 0.11))} ${f(58 + 38 * Math.sin(a + 0.11))}Z`; }
+    s += `<g class="art-spin-soft"><path d="${rays}" fill="${K.rad([[0.6, '#fff3b0'], [1, '#f59e0b']])}" stroke="#d97706" stroke-width="1.2" stroke-linejoin="round"/></g>`;
+    s += `<circle cx="100" cy="58" r="39" fill="${K.rad([[0, '#fffbe6', 0.95], [0.7, '#fde68a', 0.9], [1, '#fbbf24', 0.9]])}" stroke="#d97706" stroke-width="2"/>`;
+    // хвост веером: алые перья с синими кончиками
+    for (const [r, L, c] of [[-26, 48, '#dc2626'], [26, 48, '#dc2626'], [-12, 56, '#ef4444'], [12, 56, '#ef4444'], [0, 62, '#f87171']]) {
+      s += `<g transform="rotate(${r} 100 124)">` + K.part(`M94 126C92 150 96 ${124 + L - 8} 100 ${124 + L}C104 ${124 + L - 8} 108 150 106 126Z`, c, { line: '#450a0a', lw: 1.6 }) +
+        `<path d="M96 ${124 + L - 16}C97 ${124 + L - 6} 99 ${124 + L - 2} 100 ${124 + L}C101 ${124 + L - 2} 103 ${124 + L - 6} 104 ${124 + L - 16}Z" fill="#2563eb"/></g>`;
+    }
+    // крылья: алые, золотые, синие перья; пламя на концах
+    const wing = 'M88 92C70 82 46 74 14 70C8 70 4 76 8 80C16 86 22 88 30 90C22 94 16 98 12 104C18 108 28 106 36 102C32 110 30 116 30 122C38 120 46 112 50 106C52 114 54 120 58 124C64 118 66 108 66 100C72 106 78 110 86 110Z';
+    const wl = K.g(K.flame(10, 76, 22, 14, '#fff0a0', '#f97316', { style: 'animation-delay:-.5s' }), 'rotate(-75 10 76)') +
+      K.vol(wing, { ...R, tex: false, lw: 2.2 }) + azClip(K, wing, `<rect x="0" y="84" width="100" height="12" fill="#facc15"/><rect x="0" y="96" width="100" height="40" fill="#2563eb"/>` + K.line('M24 92L40 120M40 90L50 112M56 88L60 120M72 92L70 110', '#172554', 1.4, { op: 0.5 }));
+    s += K.mirror(`<g class="art-wing">${wl}</g>`);
+    // тело и лапки
+    s += K.vol(K.ell(100, 108, 22, 28), R);
+    s += K.line('M92 136v6M96 137v6M104 137v6M108 136v6', '#57534e', 2.6);
+    // голова: белые щёчки, большой крючковатый клюв
+    s += K.vol(K.ell(100, 64, 22, 21), R);
+    s += K.mirror(`<ellipse cx="88" cy="64" rx="10" ry="9" fill="#fff7ed" stroke="#7f1d1d" stroke-width="1.2"/>` + K.line('M82 66h6M83 70h6', '#dc2626', 1, { op: 0.7 }));
+    s += K.part('M90 72C90 66 110 66 110 72C110 82 106 90 100 96C94 90 90 82 90 72Z', '#fef3c7', { line: '#44403c', lw: 1.8 }) + K.part('M94 82Q100 88 106 82L104 90Q100 94 96 90Z', '#1c1917', { lw: 0 });
+    s += K.eyes(100, 62, 12, 5.8, { iris: '#facc15', look: [0, 0.2] });
+    s += K.gloss(88, 50, 5, 2.8, -30, 0.5);
+    s += K.spark(24, 30, 3.4, '#fff3b0', 'art-float') + K.spark(176, 30, 3.2, '#ffd23f') + K.spark(160, 160, 2.6, '#fff3b0', 'art-float') + K.spark(34, 150, 2.6, '#ffd23f');
+    return s;
+  },
+
+  // Уиштосиуатль: богиня соли, старшая сестра тлалоке. Белое платье с бирюзовыми волнами по подолу, жёлтая
+  // раскраска на щеках, бумажный венец с перьями кецаля; в руке — тростниковый посох с бумажными флажками,
+  // другой рукой сыплет искристую соль в глиняную солонку. За спиной плещут морские волны
+  az_huixtocihuatl(K) {
+    const skin = '#e8b27a', W = { c1: '#ffffff', c2: '#7dd3fc', rim: '#c8f3ff', texK: 0.18, line: '#0e4a5e' };
+    let s = K.aura('#38bdf8', 96, 100, 0.4) + K.aura('#f0f9ff', 60, 120, 0.25);
+    // морские волны
+    s += `<path d="M4 150Q20 132 36 150T68 150T100 150T132 150T164 150T196 150V178H4Z" fill="${K.lin(['#7dd3fc', '#0369a1'])}" opacity=".85"/>` + K.line('M4 150Q20 132 36 150T68 150T100 150T132 150T164 150T196 150', '#e0f2fe', 2.4);
+    // тростниковый посох с флажками
+    s += K.line('M42 178L48 34', '#1a2e05', 6.4) + K.line('M42 178L48 34', '#84cc16', 3.4) + K.line('M43.6 140l5 1M45 100l5 1M46.6 60l5 1', '#1a2e05', 1.4);
+    s += K.part('M48 38L72 42L70 56L47 52Z', '#ffffff', { line: '#64748b', lw: 1.4 }) + K.part('M47 58L68 62L66 74L46 71Z', '#ffffff', { line: '#64748b', lw: 1.4 });
+    s += `<g fill="#0ea5e9"><circle cx="56" cy="45" r="1.8"/><circle cx="64" cy="48" r="1.8"/><circle cx="55" cy="64" r="1.6"/><circle cx="62" cy="67" r="1.6"/></g>`;
+    // платье
+    const robe = 'M100 96C122 96 136 110 140 130C144 150 146 164 144 176C124 182 76 182 56 176C54 164 56 150 60 130C64 110 78 96 100 96Z';
+    s += K.vol(robe, W);
+    s += azClip(K, robe, `<rect x="40" y="158" width="120" height="30" fill="#0e7490"/>` + K.line('M40 166q6-8 12 0t12 0t12 0t12 0t12 0t12 0t12 0t12 0t12 0t12 0', '#a5f3fc', 2.2) + K.line('M40 158H160', '#fde047', 2));
+    s += K.line('M84 114C80 132 76 150 74 166M116 114C120 132 124 150 126 166', '#0e4a5e', 1.6, { op: 0.3 });
+    s += K.line('M70 106Q100 122 130 106', '#0e4a5e', 7) + K.line('M70 106Q100 122 130 106', '#2dd4bf', 4);
+    // руки: посох и щепоть соли
+    s += K.vol('M66 108C56 104 50 96 48 86C52 80 58 80 60 86C62 92 66 96 74 98Z', W) + K.part(K.ell(50, 84, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    s += K.vol('M132 108C144 110 152 116 156 124C152 130 146 130 144 126C140 120 136 118 128 118Z', W) + K.part(K.ell(154, 124, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    s += `<g class="art-float" fill="#ffffff" stroke="#7dd3fc" stroke-width=".8"><rect x="152" y="134" width="4" height="4" transform="rotate(20 154 136)"/><rect x="158" y="142" width="3.4" height="3.4" transform="rotate(40 160 144)"/><rect x="150" y="148" width="3" height="3"/><rect x="156" y="154" width="3.4" height="3.4" transform="rotate(15 158 156)"/></g>`;
+    s += K.spark(162, 138, 2.4, '#ffffff') + K.spark(148, 150, 2, '#e0f2fe', 'art-blink');
+    // глиняная солонка с горкой соли
+    s += `<path d="M146 164C150 156 172 156 176 164Z" fill="#ffffff" stroke="#94a3b8" stroke-width="1.4"/>` + K.vol('M142 164H180C178 174 170 180 161 180C152 180 144 174 142 164Z', { c1: '#f4a261', c2: '#9a3e1c', tex: false, lw: 2, line: '#5a1e0a', rim: '#ffe0b0' });
+    // голова
+    s += K.vol(K.ell(100, 72, 22, 23), { c1: skin, c2: '#b8784a', rim: '#fff0c0', tex: false, hiK: 0.18, line: '#6b3a1a' });
+    s += K.part('M78 68C78 54 88 48 100 48C112 48 122 54 122 68C116 60 108 58 100 60C92 58 84 60 78 68Z', '#1c1917', { line: '#0c0a09', lw: 1.6 });
+    s += K.mirror(K.line('M82 80h9M83 85h8', '#facc15', 2.6));
+    // бумажный венец с перьями кецаля
+    for (const [r, L, d] of [[-30, 34, -0.3], [0, 38, -0.9], [30, 34, -0.6]]) s += azPlume(K, 100, 48, L, r, '#6ee7b7', '#047857', d);
+    s += K.part('M78 56Q100 42 122 56L121 62Q100 50 79 62Z', '#ffffff', { line: '#64748b', lw: 1.6 }) + [86, 100, 114].map(x => `<circle cx="${x}" cy="${x === 100 ? 51 : 54}" r="2.4" fill="#0ea5e9"/>`).join('');
+    s += K.mirror(`<circle cx="78" cy="80" r="4" fill="#2dd4bf" stroke="#134e4a" stroke-width="1.4"/>`);
+    s += K.eyes(100, 73, 9, 6.2, { iris: '#0e7490', look: [0.3, 0.2], lash: true });
+    s += K.mouth('smile', 100, 86, 9);
+    s += K.spark(176, 40, 3.2, '#e0f2fe', 'art-float') + K.spark(26, 112, 2.6, '#ffffff') + K.spark(186, 100, 2.4, '#bae6fd');
+    return s;
+  },
+
+  // Опочтли: покровитель рыбаков из свиты тлалоке стоит в лодке-долблёнке: через левую руку перекинута рыболовная
+  // сеть с поплавками, правой он отпускает малька обратно в воду. Венец из белых перьев цапли, синие полосы на лице,
+  // у борта — красный щит с белым цветком; из воды выпрыгивает рыбка
+  az_opochtli(K) {
+    const skin = '#d9a06b', C = { c1: '#60a5fa', c2: '#1e3a8a', rim: '#c8f3ff', texK: 0.2, line: '#0b1a40' };
+    let s = K.aura('#38bdf8', 96, 100, 0.4);
+    // вода
+    s += `<ellipse cx="100" cy="174" rx="98" ry="16" fill="${K.rad([[0, '#38bdf8', 0.6], [1, '#0e7490', 0]])}"/>`;
+    // сеть с поплавками
+    const net = 'M60 86C46 104 30 128 16 162C30 168 50 170 64 166C66 140 66 112 66 92Z';
+    s += azClip(K, net, `<path d="${net}" fill="#e7e5e4" opacity=".2"/>` + K.line('M10 100L80 170M10 120L70 180M10 140L60 190M20 90L80 150M30 80L80 130M10 170L80 100M10 150L80 80M20 180L80 120M40 180L80 140', '#e7e5e4', 1.4, { op: 0.85 }));
+    s += K.line(net, '#d6d3d1', 1.8);
+    s += [[18, 160], [30, 165], [42, 167], [54, 167]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.4" fill="#fef3c7" stroke="#78350f" stroke-width="1.2"/>`).join('');
+    // плащ и руки
+    const body = 'M100 92C122 92 136 106 140 126C144 142 144 152 142 160H58C56 152 56 142 60 126C64 106 78 92 100 92Z';
+    s += K.vol(body, C);
+    s += K.line('M60 140Q100 152 140 140', '#f8fafc', 4) + K.stitch('M60 140Q100 152 140 140', '#0ea5e9', 1.4);
+    s += K.vol('M68 104C58 100 52 94 50 86C54 80 60 80 62 86C64 90 68 94 76 96Z', C) + K.part(K.ell(56, 84, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    s += K.vol('M132 104C144 104 152 110 156 118C152 124 146 124 144 120C140 114 136 112 128 112Z', C) + K.part(K.ell(154, 118, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    // малёк в воздухе
+    s += `<g class="art-float">` + K.part('M160 132C166 126 176 126 180 132C176 138 166 138 160 132ZM180 132L188 126L188 138Z', '#fb923c', { line: '#7c2d12', lw: 1.4 }) + `<circle cx="166" cy="131" r="1.4" fill="${K.INK}"/></g>`;
+    // лодка
+    const boat = 'M14 156H186C182 168 166 178 100 178C34 178 18 168 14 156Z';
+    s += K.vol(boat, { c1: '#c08a5a', c2: '#5b3214', tex: false, lw: 2.4, line: '#2a1406', rim: '#c8f3ff' });
+    s += K.line('M22 164H178', '#3b1d0c', 1.4, { op: 0.6 }) + K.line(azGreca(30, 170, 172, 3.6), '#fde68a', 1.4, { op: 0.8 });
+    // щит с белым цветком
+    s += `<circle cx="158" cy="150" r="15" fill="${K.rad([[0, '#f87171'], [1, '#991b1b']], 0.4, 0.35)}" stroke="#450a0a" stroke-width="2"/>`;
+    s += [0, 90, 180, 270].map(a => `<ellipse cx="158" cy="143.5" rx="3.6" ry="6" fill="#ffffff" stroke="#94a3b8" stroke-width=".8" transform="rotate(${a} 158 150)"/>`).join('') + `<circle cx="158" cy="150" r="2.6" fill="#facc15"/>`;
+    // голова: синие полосы на лице, венец из перьев цапли
+    for (const [r, L, d] of [[-44, 34, -0.2], [-22, 40, -0.8], [0, 42, -0.4], [22, 40, -1.1], [44, 34, -0.6]]) s += azPlume(K, 100, 56, L, r, '#ffffff', '#94a3b8', d);
+    s += K.vol(K.ell(100, 72, 22, 22), { c1: skin, c2: '#a8683a', rim: '#c8f3ff', tex: false, hiK: 0.18, line: '#5b2e12' });
+    s += K.part('M78 60Q100 46 122 60L121 66Q100 53 79 66Z', '#2dd4bf', { line: '#134e4a', lw: 1.6 });
+    s += K.mirror(K.line('M82 80h10M83 85h9', '#2563eb', 2.6));
+    s += K.eyes(100, 74, 9, 6.4, { iris: '#1e3a8a', look: [0.5, 0.2] });
+    s += K.mouth('smile', 100, 86, 10) + K.mirror(`<circle cx="78" cy="78" r="3.6" fill="#2dd4bf" stroke="#134e4a" stroke-width="1.3"/>`);
+    // рыбка выпрыгивает из воды
+    s += `<g class="art-float" style="animation-delay:-1s">` + K.part('M26 186C30 176 40 172 46 176C42 184 34 188 26 186ZM46 176L54 168L52 180Z', '#facc15', { line: '#854d0e', lw: 1.4 }) + '</g>';
+    s += K.line('M120 186q8-5 16 0t16 0', '#bae6fd', 1.8, { op: 0.8 });
+    s += K.spark(184, 60, 3.2, '#e0f2fe', 'art-float') + K.spark(130, 22, 2.6, '#bae6fd') + K.spark(14, 70, 2.6, '#e0f2fe');
+    return s;
+  },
+
+  // Ауэуэтль: «старец воды» — древний болотный кипарис вроде дерева Туле. Необъятный узловатый ствол с мудрым
+  // дремлющим лицом, нос-сучок и седая борода из испанского мха; в коре угадывается слоник. Крона — пушистое
+  // тёмно-зелёное облако, с веток свисают пряди мха, у корней — пруд
+  az_ahuehuete(K) {
+    const B = { c1: '#b07c45', c2: '#3f2a14', rim: '#e4ffb0', texK: 0.12, line: '#24160a' };
+    let s = K.aura('#84cc16', 96, 100, 0.35);
+    // пруд
+    s += `<ellipse cx="100" cy="174" rx="94" ry="12" fill="${K.rad([[0, '#38bdf8', 0.55], [1, '#0e7490', 0]])}"/>`;
+    // крона
+    const crown = 'M20 84C8 72 14 52 30 50C30 32 50 22 66 30C72 14 96 10 108 22C120 10 146 16 150 32C166 28 186 40 182 58C194 66 190 86 176 88C170 98 150 100 140 92C128 100 110 100 100 92C90 100 72 100 60 92C50 100 28 98 20 84Z';
+    s += K.vol(crown, { c1: '#65a30d', c2: '#14532d', rim: '#e4ffb0', texK: 0.3, line: '#0f2d17' });
+    s += K.line('M36 70q6-6 12 0M66 52q6-6 12 0M118 46q6-6 12 0M150 66q6-6 12 0M92 74q6-6 12 0', '#a3e635', 1.6, { op: 0.6 });
+    // мох свисает с веток
+    s += `<g class="art-sway" style="animation-delay:-.4s">${K.line('M30 92C28 102 32 108 28 116M38 94C38 104 42 110 38 118', '#a8b8a0', 2, { op: 0.85 })}</g><g class="art-sway" style="animation-delay:-1.2s">${K.line('M164 94C166 104 162 110 166 118M172 92C172 102 176 108 172 114', '#a8b8a0', 2, { op: 0.85 })}</g>`;
+    // ствол
+    const trunk = 'M66 86C70 100 68 116 62 132C56 146 44 158 28 168C46 170 60 166 70 160C74 170 72 176 66 180H134C128 176 126 170 130 160C140 166 154 170 172 168C156 158 144 146 138 132C132 116 130 100 134 86Z';
+    s += K.vol(trunk, B);
+    s += azClip(K, trunk, K.line('M76 90C80 110 72 130 66 150M90 92C94 112 88 140 90 176M110 92C106 112 112 140 110 176M124 90C120 110 128 130 134 150', '#24160a', 1.6, { op: 0.45 }) +
+      `<path d="M70 158c0-6 5-9 10-9s9 3 9 8v8h-3v-5h-3v5h-3v-5h-3v5h-3v-6c-3 1-5 4-4 7" fill="#d6a26c" opacity=".35"/>`);
+    // лицо: дремлет
+    s += K.closed(100, 112, 14, 7.4, false) + K.line('M80 102q8-4 16 0M104 102q8-4 16 0', '#24160a', 2.2);
+    s += `<ellipse cx="100" cy="124" rx="7" ry="5.6" fill="${K.rad([[0, '#d6a26c'], [1, '#6b4320']], 0.4, 0.35)}" stroke="#24160a" stroke-width="1.6"/>`;
+    s += K.blush(80, 120, 5.4) + K.blush(120, 120, 5.4);
+    s += `<g class="art-float">${K.line('M128 86h6l-6 7h6M140 72h5l-5 6h5', '#d9f99d', 1.8)}</g>`;
+    // борода из мха
+    s += `<g class="art-sway" style="transform-origin:50% 0">${K.line('M86 132C84 140 90 146 86 154C84 160 88 164 86 168M93 134C92 142 97 148 94 156C92 162 96 166 94 172M100 134C100 144 104 150 100 158C98 164 102 168 100 174M107 134C108 142 103 148 106 156C108 162 104 166 106 172M114 132C116 140 110 146 114 154C116 160 112 164 114 168', '#6b7a63', 4.4)}${K.line('M86 132C84 140 90 146 86 154C84 160 88 164 86 168M93 134C92 142 97 148 94 156C92 162 96 166 94 172M100 134C100 144 104 150 100 158C98 164 102 168 100 174M107 134C108 142 103 148 106 156C108 162 104 166 106 172M114 132C116 140 110 146 114 154C116 160 112 164 114 168', '#c7d2c0', 2.4)}</g>`;
+    s += K.spark(190, 120, 2.8, '#d9f99d', 'art-float') + K.spark(12, 120, 2.6, '#fef08a') + K.spark(100, 8, 2.6, '#d9f99d');
+    return s;
+  },
+
+  // Уэуэкойотль: Старый Койот, бог музыки, танцев и проделок — пляшет на одной лапе и трясёт погремушкой из
+  // тыквы, хитро подмигивает и хохочет во всю пасть. Пушистый хвост, перья в повязке, нефритовые серьги, пёстрый
+  // пояс; рядом — высокий барабан-уэуэтль, вокруг летают цветочные завитки песни
+  az_huehuecoyotl(K) {
+    const C = { c1: '#e9b77f', c2: '#7c4a1d', rim: '#e4ffb0', texK: 0.12, line: '#3b1d0c' }, Cs = { ...C, tex: false, lw: 2.2 };
+    let s = K.aura('#f472b6', 90, 104, 0.3) + K.aura('#84cc16', 70, 120, 0.25);
+    // барабан-уэуэтль
+    s += K.vol('M150 112H190V170L184 162L178 176L170 164L162 176L156 162L150 170Z', { c1: '#c08a5a', c2: '#5b3214', tex: false, lw: 2.2, line: '#2a1406', rim: '#e4ffb0' });
+    s += K.line(azGreca(150, 190, 140, 4), '#fde68a', 1.6) + `<circle cx="170" cy="128" r="5" fill="#f472b6" stroke="#2a1406" stroke-width="1.2"/>`;
+    s += `<ellipse cx="170" cy="112" rx="20" ry="5" fill="#f5e6c8" stroke="#2a1406" stroke-width="2"/>`;
+    // пушистый хвост
+    s += K.vol('M70 150C50 152 34 140 30 122C28 110 36 104 42 112C48 126 58 134 74 136Z', Cs) + K.part('M30 122C28 112 34 106 40 110C36 114 34 118 30 122Z', '#fef3c7', { line: '#3b1d0c', lw: 1.4 });
+    // ноги: опорная и поднятая в танце
+    s += K.line('M92 148L90 174', '#3b1d0c', 13) + K.line('M92 148L90 174', '#d6a26c', 8.6) + K.vol(K.ell(88, 176, 11, 5.6), Cs);
+    s += K.line('M110 146L128 156L122 168', '#3b1d0c', 13) + K.line('M110 146L128 156L122 168', '#d6a26c', 8.6) + K.vol(K.ell(122, 170, 9, 5.2), Cs);
+    // тело и пояс
+    const body = 'M100 92C120 92 130 108 130 126C130 142 122 154 100 154C78 154 70 142 70 126C70 108 80 92 100 92Z';
+    s += K.vol(body, C);
+    s += `<path d="M100 104C110 104 116 114 116 126C116 138 110 146 100 146C90 146 84 138 84 126C84 114 90 104 100 104Z" fill="#fef3c7" opacity=".7"/>`;
+    s += K.part('M70 132Q100 144 130 132L131 142Q100 154 69 142Z', '#f472b6', { line: '#831843', lw: 1.6 }) + K.line(azGreca(72, 128, 142, 3), '#fef3c7', 1.2);
+    s += K.part('M98 142L92 160L100 156L106 162L104 142Z', '#2dd4bf', { line: '#134e4a', lw: 1.4 });
+    // рука бьёт в барабан
+    s += K.line('M124 108L146 104L156 110', '#3b1d0c', 11) + K.line('M124 108L146 104L156 110', '#d6a26c', 7) + K.vol(K.ell(158, 110, 6.5, 6), Cs);
+    s += K.line('M162 96l4-6M170 98l6-4M150 96l-2-6', '#fde68a', 2, { cls: 'art-blink' });
+    // рука с погремушкой
+    s += K.line('M76 110L58 92L54 72', '#3b1d0c', 11) + K.line('M76 110L58 92L54 72', '#d6a26c', 7);
+    s += `<g class="art-sway" style="transform-origin:50% 100%">` + K.line('M54 72L50 52', '#5b3214', 3.4) + K.vol(K.ell(48, 42, 11, 13), { c1: '#fde047', c2: '#b45309', tex: false, lw: 2, line: '#713f12', rim: '#e4ffb0' }) +
+      K.line('M42 36q6 4 12 0M41 44q7 4 14 0', '#713f12', 1.4, { op: 0.7 }) + '</g>' + K.vol(K.ell(54, 72, 6.5, 6), Cs);
+    s += K.line('M32 30l-6-4M30 44h-8M36 22l-2-7', '#fde68a', 2, { cls: 'art-blink' });
+    // уши, повязка с перьями
+    s += K.mirror(K.vol('M78 66L66 26L94 52Z', Cs) + K.part('M78 58L72 38L88 52Z', '#fef3c7', { line: '#3b1d0c', lw: 1.2 }));
+    s += azPlume(K, 92, 48, 26, -16, '#f472b6', '#9d174d', -0.3) + azPlume(K, 108, 48, 26, 16, '#5eead4', '#0f766e', -0.8);
+    // голова и морда
+    s += K.vol(K.ell(100, 70, 27, 24), C);
+    s += K.part('M74 60Q100 48 126 60L125 66Q100 55 75 66Z', '#f472b6', { line: '#831843', lw: 1.4 }) + K.rhomb(100, 56, 3.4, '#5eead4', '#134e4a');
+    s += K.part('M84 78C84 72 116 72 116 78C116 92 108 100 100 100C92 100 84 92 84 78Z', '#fef3c7', { line: '#3b1d0c', lw: 1.6 });
+    s += `<ellipse cx="100" cy="80" rx="6" ry="4.4" fill="#1c1917"/><ellipse cx="98" cy="78.8" rx="2" ry="1.2" fill="#fff" opacity=".6"/>`;
+    s += K.mouth('grin', 100, 88, 16);
+    // подмигивает
+    s += `<g class="art-eyes">${K.eye(89, 66, 6.4, { iris: '#a16207', look: [0.2, 0.2] })}</g>` + K.closed(111, 66, 0, 6, true);
+    s += K.mirror(`<circle cx="74" cy="76" r="4" fill="#34d399" stroke="#134e4a" stroke-width="1.3"/>`) + K.blush(82, 88, 4.4) + K.blush(118, 88, 4.4);
+    // цветочные завитки песни
+    s += `<g class="art-float">${K.line('M126 52C136 40 152 44 150 56C148 64 138 62 140 56', '#fbcfe8', 3)}${azDahlia(K, 152, 36, 6, '#f472b6')}</g>`;
+    s += `<g class="art-float" style="animation-delay:-1.2s">${K.line('M130 30C138 20 150 24 148 32', '#bbf7d0', 2.4)}${azMari(K, 152, 22, 5)}</g>`;
+    s += K.spark(20, 100, 2.6, '#fbcfe8', 'art-float') + K.spark(30, 170, 2.4, '#d9f99d') + K.spark(184, 60, 2.4, '#fbcfe8');
+    return s;
+  },
+
+  // Куаутли: орёл из предания об основании Теночтитлана сидит на кактусе-нопале, что растёт из скалы посреди
+  // озера, и гордо поднял крылья веером. Тёмно-бурые перья со светлой полосой, золотая голова, крючковатый клюв,
+  // жёлтые лапы держат лепёшку кактуса с алыми плодами-тунами; внизу — ацтекские волны с завитками
+  az_cuauhtli(K) {
+    const E = { c1: '#b7793f', c2: '#3b1d0c', rim: '#eef0ff', texK: 0.2, line: '#1f0e04' };
+    const N = { c1: '#86efac', c2: '#166534', rim: '#eef0ff', tex: false, lw: 2, line: '#14532d' };
+    let s = K.aura('#a5b4fc', 98, 96, 0.4) + K.aura('#fbbf24', 54, 64, 0.25);
+    const big = 'translate(100 106) scale(1.1) translate(-100 -106)';
+    // крылья, поднятые и раскрытые веером
+    const wing = 'M92 80C80 70 66 56 56 40C46 38 34 36 24 36C30 32 36 30 42 30C34 26 28 20 24 12C32 14 40 18 46 22C44 16 44 10 46 4C52 12 56 18 60 24C62 18 66 12 70 8C72 18 74 26 78 34C84 44 92 58 98 72Z';
+    const wl = K.vol(wing, { ...E, texK: 0.15 }) + azClip(K, wing, K.line('M58 42C70 58 82 68 94 76', '#e2a86a', 12, { op: 0.55 }) + K.line('M56 40L28 34M58 37L30 16M62 33L48 8M68 32L70 12', '#1f0e04', 1.4, { op: 0.6 }) + `<path d="M20 0H80V24H20Z" fill="#fbbf24" opacity=".22"/>`);
+    s += `<g transform="${big}">${K.mirror(`<g class="art-wing" style="animation-delay:-.2s">${wl}</g>`)}</g>`;
+    // хвост
+    s += K.part('M90 108L84 130L94 126L100 136L106 126L116 130L110 108Z', '#f5f5f4', { line: '#44403c', lw: 1.6 });
+    // озеро с завитками
+    s += `<path d="M4 168Q18 158 32 168T60 168T88 168T116 168T144 168T172 168T200 168V186H4Z" fill="${K.lin(['#38bdf8', '#1d4ed8'])}" stroke="#1e3a8a" stroke-width="2"/>`;
+    s += [[22, 176], [62, 178], [102, 176], [142, 178], [182, 176]].map(([x, y]) => K.line(`M${x - 6} ${y}C${x - 6} ${y - 6} ${x + 4} ${y - 6} ${x + 3} ${y}C${x + 2} ${y + 3} ${x - 2} ${y + 2} ${x - 1} ${y}`, '#e0f2fe', 1.6)).join('');
+    // скала
+    s += K.vol('M64 170C62 154 74 146 86 148C92 140 110 140 116 148C128 146 140 154 136 170Z', { c1: '#a8a29e', c2: '#44403c', tex: false, lw: 2.2, line: '#1c1917', rim: '#eef0ff' });
+    s += K.line('M84 160C86 154 94 154 94 160M108 158C110 152 118 152 118 158', '#1c1917', 1.4, { op: 0.6 });
+    // нопаль
+    s += K.vol(K.ell(100, 128, 16, 20), N);
+    const padL = K.ell(76, 116, 13, 17, -38), padR = K.ell(124, 114, 13, 17, 38);
+    s += K.vol(padL.d, { ...N, t: padL.t }) + K.vol(padR.d, { ...N, t: padR.t });
+    s += `<g fill="#14532d">` + [[96, 122], [104, 132], [92, 136], [72, 112], [80, 120], [120, 110], [128, 118], [106, 118]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.2"/>`).join('') + '</g>';
+    s += [[64, 104], [136, 102], [88, 112]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="4.6" ry="5.6" fill="${K.rad([[0, '#fda4af'], [1, '#be123c']], 0.4, 0.35)}" stroke="#4c0519" stroke-width="1.3"/>`).join('');
+    // тело, лапы держат кактус, золотая голова с крючковатым клювом
+    let e = K.vol(K.ell(100, 82, 20, 26), E);
+    e += K.line('M92 76q4 3 8 0M100 84q4 3 8 0M92 92q4 3 8 0', '#fde68a', 1.2, { op: 0.6 });
+    e += K.line('M92 104v6M96 104v7M104 104v7M108 104v6', '#facc15', 3) + K.line('M90 110l-2 3M110 110l2 3', '#1c1917', 1.6);
+    e += K.vol(K.ell(100, 52, 18, 17), { c1: '#fde68a', c2: '#b45309', rim: '#eef0ff', texK: 0.15, line: '#451a03' });
+    e += K.part('M92 58C92 52 108 52 108 58C108 66 104 72 99 76C100 70 96 66 92 64Z', '#facc15', { line: '#713f12', lw: 1.6 });
+    e += K.eyes(100, 50, 9, 5.6, { iris: '#b45309', lid: 'angry', skin: '#e3a72f', look: [0, 0.2] });
+    e += K.gloss(90, 42, 4.6, 2.6, -30, 0.5);
+    s += `<g transform="${big}">${e}</g>`;
+    s += K.spark(20, 60, 3, '#fde68a', 'art-float') + K.spark(180, 64, 3, '#e0e7ff') + K.spark(14, 140, 2.4, '#e0e7ff', 'art-float') + K.spark(188, 140, 2.4, '#fde68a');
+    return s;
+  },
+
+  // Нагуаль: колдун-оборотень в полосатом плаще с острым капюшоном: из темноты капюшона светятся глаза, ладонь
+  // разбрасывает колдовские искры. За спиной — его тень-двойник в облике пса, вокруг кружат маски совы и индюка
+  az_nahual(K) {
+    let s = K.aura('#7c3aed', 96, 104, 0.45);
+    s += azMoon(K, 168, 30, 11);
+    // тень-двойник: пёс
+    s += `<path d="M64 60L72 18L90 44C96 42 104 42 110 44L128 18L136 60C146 74 148 96 140 116C150 130 154 150 152 176H48C46 150 50 130 60 116C52 96 54 74 64 60Z" fill="${K.lin(['#4c1d95', '#1e1b4b'])}" opacity=".75"/>`;
+    s += `<circle class="art-blink" cx="86" cy="66" r="4" fill="#fbbf24"/><circle class="art-blink" cx="114" cy="66" r="4" fill="#fbbf24"/>`;
+    // плащ
+    const cloak = 'M100 70C124 70 136 90 140 116C144 140 146 160 144 178C124 184 76 184 56 178C54 160 56 140 60 116C64 90 76 70 100 70Z';
+    s += K.vol(cloak, { c1: '#7c3aed', c2: '#1e1b4b', rim: '#e9d5ff', texK: 0.5, line: '#0f0a24' });
+    s += azClip(K, cloak, K.line('M40 136l10-8 10 8 10-8 10 8 10-8 10 8 10-8 10 8 10-8 10 8 10-8 10 8', '#fbbf24', 3) + K.line('M40 150H160', '#f472b6', 3) + K.line('M40 164l10-8 10 8 10-8 10 8 10-8 10 8 10-8 10 8 10-8 10 8 10-8 10 8', '#2dd4bf', 3));
+    // капюшон с острым кончиком и тёмным лицом
+    s += K.vol('M100 50C110 62 128 74 130 96C132 112 120 122 100 122C80 122 68 112 70 96C72 74 90 62 100 50Z', { c1: '#8b5cf6', c2: '#2e1065', rim: '#e9d5ff', tex: false, lw: 2.4, line: '#0f0a24' });
+    s += `<ellipse cx="100" cy="100" rx="20" ry="18" fill="${K.rad([[0, '#1e1b4b'], [1, '#05030f']], 0.5, 0.4)}"/>`;
+    s += K.glow(92, 98, 4, 4.6, '#fbbf24') + K.glow(108, 98, 4, 4.6, '#fbbf24');
+    // рука с искрами
+    s += K.vol('M132 120C142 118 150 112 154 104C150 98 144 98 142 102C140 108 136 110 128 110Z', { c1: '#8b5cf6', c2: '#2e1065', rim: '#e9d5ff', tex: false, lw: 2.2, line: '#0f0a24' });
+    s += K.part(K.ell(152, 102, 6, 5.6), '#a78bfa', { line: '#2e1065', lw: 1.6 });
+    s += K.spark(160, 88, 4, '#fde68a') + K.spark(170, 100, 3, '#e9d5ff', 'art-float') + K.spark(164, 112, 2.6, '#fbbf24');
+    // маски совы и индюка
+    s += `<g class="art-float">${K.vol(K.ell(36, 70, 15, 14), { c1: '#d6d3d1', c2: '#57534e', tex: false, lw: 2, line: '#1c1917', rim: '#e9d5ff' })}` +
+      K.part('M24 60L22 48L32 56Z', '#78716c', { line: '#1c1917', lw: 1.4 }) + K.part('M48 60L50 48L40 56Z', '#78716c', { line: '#1c1917', lw: 1.4 }) +
+      `<circle cx="30" cy="68" r="4.6" fill="#1c1917"/><circle cx="42" cy="68" r="4.6" fill="#1c1917"/>` + K.part('M33 74L39 74L36 80Z', '#fb923c', { line: '#7c2d12', lw: 1 }) + '</g>';
+    s += `<g class="art-float" style="animation-delay:-1.3s">${K.vol(K.ell(30, 132, 13, 14), { c1: '#93c5fd', c2: '#1d4ed8', tex: false, lw: 2, line: '#172554', rim: '#e9d5ff' })}` +
+      `<circle cx="25" cy="128" r="3.4" fill="#172554"/><circle cx="35" cy="128" r="3.4" fill="#172554"/>` + K.part('M27 134L33 134L30 140Z', '#fde68a', { line: '#713f12', lw: 1 }) +
+      K.part('M31 136C34 140 34 148 30 152C28 146 28 140 31 136Z', '#ef4444', { line: '#7f1d1d', lw: 1.2 }) + K.part('M24 118C26 112 34 112 36 118Z', '#ef4444', { line: '#7f1d1d', lw: 1.2 }) + '</g>';
+    s += K.spark(20, 30, 3, '#fef9c3', 'art-float') + K.spark(184, 150, 2.6, '#e9d5ff') + K.spark(60, 20, 2.2, '#fef9c3');
+    return s;
+  },
+
+  // Шиутекутли: Бирюзовый Владыка огня и года. Бирюзовая мозаичная накидка, на голове — мозаичная диадема
+  // правителей с бирюзовой птичкой, на лице жёлтая полоса раскраски. За спиной дугой выгнулся огненный змей,
+  // у ног — очаг из трёх камней с Новым огнём; одной рукой он поднял палочку-огниво, другой держит связку
+  // из 52 тростинок — «узел лет»
+  az_xiuhtecuhtli(K) {
+    const skin = '#e8b27a', T = { c1: '#5eead4', c2: '#0f5e56', rim: '#ffe29a', rimK: 0.6, texK: 0.2, line: '#062a26' };
+    let s = K.aura('#ff9a3d', 100, 100, 0.45) + K.aura('#2dd4bf', 66, 100, 0.25);
+    // огненный змей дугой за спиной
+    const ser = 'M40 170C20 140 22 90 50 62C76 36 124 34 150 52';
+    s += K.g(K.flame(40, 172, 30, 20, '#fff0a0', '#f97316', { style: 'animation-delay:-.3s' }), 'rotate(200 40 172)');
+    s += K.line(ser, '#062a26', 18) + K.line(ser, K.lin(['#99f6e4', '#14b8a6', '#0f766e'], 0, 0, 0.3, 1), 13) + `<path d="${ser}" fill="none" stroke="#fde047" stroke-width="3" stroke-dasharray="0.1 9" stroke-linecap="round"/>`;
+    s += K.vol('M146 44C156 36 172 38 178 48C182 56 176 64 166 64C160 64 154 60 150 56Z', { c1: '#5eead4', c2: '#0f766e', tex: false, lw: 2.2, line: '#062a26', rim: '#ffe29a' });
+    s += K.part('M176 46C180 38 186 36 190 38C186 42 182 46 178 50Z', '#f97316', { line: '#7c2d12', lw: 1.2 }) + `<circle cx="166" cy="50" r="2.6" fill="#fde047" stroke="#062a26" stroke-width="1"/>`;
+    // накидка из бирюзовой мозаики
+    const robe = 'M100 96C122 96 136 110 140 130C144 150 146 164 144 176C124 182 76 182 56 176C54 164 56 150 60 130C64 110 78 96 100 96Z';
+    s += K.vol(robe, T);
+    let mosaic = '';
+    for (let r = 0, y = 104; y < 170; y += 9, r++) for (let x = 54 + (r % 2) * 4.5; x < 148; x += 9) mosaic += `<rect x="${x}" y="${y}" width="7" height="7" rx="1.4"/>`;
+    s += azClip(K, robe, `<g fill="#99f6e4" opacity=".35">${mosaic}</g><rect x="40" y="164" width="120" height="30" fill="#f97316"/>` + K.line(azGreca(40, 160, 174, 4), '#fde047', 1.8));
+    // связка из 52 тростинок
+    s += K.vol('M30 124H48L50 176H28Z', { c1: '#e9d8a6', c2: '#8a6d2f', tex: false, lw: 2, line: '#3f2a14', rim: '#ffe29a' }) + K.line('M33 126V174M37 126V174M41 126V174M45 126V174', '#8a6d2f', 1, { op: 0.6 });
+    s += K.part('M27 140H51V148H27Z', '#ef4444', { line: '#7f1d1d', lw: 1.4 }) + K.part('M27 158H51V164H27Z', '#ef4444', { line: '#7f1d1d', lw: 1.4 });
+    s += K.vol('M66 108C56 112 50 120 48 130C52 136 58 136 60 130C62 124 66 120 72 118Z', T) + K.part(K.ell(52, 132, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    // рука с огнивом
+    s += K.vol('M132 108C144 104 150 94 152 82C148 76 142 78 140 82C138 90 134 96 126 100Z', T) + K.line('M150 92L158 44', '#5b3214', 4.4) + K.line('M150 92L158 44', '#c08a5a', 2);
+    s += K.part(K.ell(148, 80, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 }) + K.spark(159, 40, 5, '#fff3b0') + K.spark(166, 30, 2.6, '#ffd23f', 'art-float');
+    // очаг из трёх камней с Новым огнём
+    s += `<circle class="art-aura" cx="100" cy="158" r="26" fill="${K.rad([[0, '#fff6c2', 0.9], [0.4, '#ffb020', 0.5], [1, '#ff7a1a', 0]])}"/>`;
+    s += K.flame(90, 168, 26, 16, '#ffd23f', '#e8431a', { style: 'animation-delay:-.6s' }) + K.flame(110, 168, 24, 15, '#ffd23f', '#e8431a', { style: 'animation-delay:-.2s' }) + K.flame(100, 170, 40, 24, '#fff0a0', '#ff7a1a');
+    s += [[78, 172], [100, 176], [122, 172]].map(([x, y]) => K.vol(K.ell(x, y, 10, 7), { c1: '#a8a29e', c2: '#44403c', tex: false, lw: 2, line: '#1c1917', rim: '#ffe29a' })).join('');
+    // голова в раскраске
+    s += K.vol(K.ell(100, 72, 23, 23), { c1: skin, c2: '#b8784a', rim: '#fff0c0', tex: false, hiK: 0.18, line: '#6b3a1a' });
+    s += azClip(K, K.ell(100, 72, 23, 23), `<rect x="70" y="64" width="60" height="11" fill="#facc15" opacity=".7"/><rect x="70" y="77" width="60" height="2.4" fill="#dc2626" opacity=".7"/>`);
+    // бирюзовый венец-диадема правителей с птичкой
+    s += K.part('M76 60Q100 48 124 60L122 66Q100 56 78 66Z', '#14b8a6', { line: '#062a26', lw: 1.6 });
+    s += K.vol('M84 58L88 36H112L116 58Q100 52 84 58Z', { c1: '#5eead4', c2: '#0f766e', tex: false, lw: 2, line: '#062a26', rim: '#ffe29a' });
+    s += `<g fill="#99f6e4" opacity=".55">` + [[90, 40], [96, 40], [102, 40], [108, 40], [93, 46], [99, 46], [105, 46], [90, 52], [96, 51], [102, 51], [108, 52]].map(([x, y]) => `<rect x="${x}" y="${y}" width="4" height="4" rx=".8"/>`).join('') + '</g>';
+    s += K.vol(K.ell(100, 28, 9, 7), { c1: '#67e8f9', c2: '#0e7490', tex: false, lw: 1.8, line: '#062a26' }) + K.part('M107 26L116 24L108 30Z', '#facc15', { lw: 0 }) + K.part('M92 26L82 20L89 31Z', '#0e7490', { line: '#062a26', lw: 1 }) + `<circle cx="103" cy="26.4" r="1.4" fill="${K.INK}"/>`;
+    s += K.mirror(`<circle cx="77" cy="80" r="4.6" fill="#2dd4bf" stroke="#062a26" stroke-width="1.4"/>`);
+    s += K.eyes(100, 70, 9, 6.4, { iris: '#b45309', lid: 'angry', skin: '#e0a106', look: [0.2, 0.2] });
+    s += K.line('M93 86Q100 90 107 86', K.INK, 2.2);
+    s += K.spark(20, 40, 3.4, '#fff3b0', 'art-float') + K.spark(184, 110, 3, '#ffd23f') + K.spark(184, 160, 2.6, '#99f6e4', 'art-float');
+    return s;
+  },
+
+  // Чантико: хозяйка домашнего очага и вулканов. Огненно-красное платье с золотой каймой, волосы уложены в два
+  // «рожка» надо лбом, как у ацтекских хозяек, на лбу — венец-пламя. В одной руке — красный перчик, над другой
+  // ладонью пляшет огонёк очага; позади дымит вулкан, у ног — рыжая собачка с огоньком на хвосте, в которую её
+  // однажды превратили боги
+  az_chantico(K) {
+    const skin = '#e3a774', R = { c1: '#f87171', c2: '#7f1d1d', rim: '#ffe29a', texK: 0.25, line: '#3b0a0a' };
+    let s = K.aura('#ff6a1a', 100, 100, 0.45);
+    // вулкан позади
+    s += K.vol('M120 112L146 60H166L192 112Z', { c1: '#a8735a', c2: '#3b2219', tex: false, lw: 2, line: '#1c0a04', rim: '#ffb347' }) + `<ellipse cx="156" cy="60" rx="10" ry="2.8" fill="#ffb020" stroke="#1c0a04" stroke-width="1.4"/>`;
+    s += azRing(160, 44, 5, -0.4) + azRing(170, 26, 4, -1.2);
+    // платье
+    const robe = 'M100 96C122 96 134 110 138 130C142 150 144 164 142 176C122 182 78 182 58 176C56 164 58 150 62 130C66 110 78 96 100 96Z';
+    s += K.vol(robe, R);
+    s += azClip(K, robe, `<rect x="40" y="160" width="120" height="30" fill="#facc15"/>` + K.line(azGreca(40, 160, 170, 4), '#b91c1c', 1.8) + K.line('M40 160H160', '#7f1d1d', 1.6) +
+      [[78, 128], [120, 132], [92, 146], [112, 116]].map(([x, y]) => K.flame(x, y, 10, 7, '#fde047', '#f97316', { cls: '' })).join(''));
+    s += K.line('M72 104Q100 120 128 104', '#7f1d1d', 7) + K.line('M72 104Q100 120 128 104', '#fbbf24', 4);
+    // рука с перчиком
+    s += K.vol('M66 108C56 104 50 96 48 86C52 80 58 80 60 86C62 92 66 96 74 98Z', R) + K.part('M46 84C40 72 42 60 50 56C54 62 54 74 50 84Z', '#dc2626', { line: '#7f1d1d', lw: 1.6 }) + K.line('M50 56C50 50 54 48 58 50', '#15803d', 2.4);
+    s += K.part(K.ell(50, 84, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    // ладонь с огоньком очага
+    s += K.vol('M132 108C144 110 150 118 152 128C148 134 142 134 140 128C138 122 134 120 128 118Z', R) + K.part(K.ell(148, 130, 8, 6), skin, { line: '#7c4a24', lw: 1.8 });
+    s += `<circle class="art-aura" cx="148" cy="112" r="14" fill="${K.rad([[0, '#fff6c2', 0.9], [1, '#ff7a1a', 0]])}"/>` + K.flame(148, 126, 24, 14, '#fff0a0', '#ff7a1a');
+    // рыжая собачка с огоньком на хвосте
+    const dog = { c1: '#fdba74', c2: '#c2410c', rim: '#ffe29a', tex: false, lw: 2, line: '#431407' };
+    s += K.line('M48 168C38 166 34 158 36 150', '#431407', 6) + K.line('M48 168C38 166 34 158 36 150', '#fb923c', 3.4) + K.flame(36, 152, 14, 9, '#fff0a0', '#ff7a1a', { style: 'animation-delay:-.7s' });
+    s += K.vol(K.ell(56, 168, 14, 10), dog) + K.vol(K.ell(64, 152, 11, 10), dog);
+    s += K.part('M56 146L54 134L62 142Z', '#c2410c', { line: '#431407', lw: 1.4 }) + K.part('M70 144L74 132L66 140Z', '#c2410c', { line: '#431407', lw: 1.4 });
+    s += K.eyes(65, 151, 4.4, 3.2, { iris: '#431407', look: [0.4, -0.3] }) + `<ellipse cx="72" cy="156" rx="2.4" ry="1.8" fill="#431407"/>` + K.line('M68 160q3 2 6 0', K.INK, 1.4);
+    // волосы с «рожками», голова и венец-пламя
+    s += K.part('M78 68C76 52 88 44 100 44C112 44 124 52 122 68L124 90C116 92 112 86 112 80H88C88 86 84 92 76 90Z', '#1c1917', { line: '#0c0a09', lw: 1.6 });
+    s += K.mirror(K.part('M88 50C84 42 86 34 92 32C94 38 94 44 94 48Z', '#1c1917', { line: '#0c0a09', lw: 1.4 }));
+    s += K.flame(100, 46, 22, 14, '#fff0a0', '#ff7a1a', { style: 'animation-delay:-.4s' });
+    s += K.vol(K.ell(100, 72, 21, 22), { c1: skin, c2: '#b8784a', rim: '#fff0c0', tex: false, hiK: 0.18, line: '#6b3a1a' });
+    s += K.part('M80 66C82 54 90 50 100 50C110 50 118 54 120 66C112 60 106 60 100 62C94 60 88 60 80 66Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += K.part('M80 56Q100 46 120 56L119 61Q100 52 81 61Z', '#facc15', { line: '#854d0e', lw: 1.4 }) + K.rhomb(100, 52, 3.2, '#ef4444', '#7f1d1d');
+    s += K.mirror(`<circle cx="79" cy="80" r="4" fill="#fbbf24" stroke="#854d0e" stroke-width="1.3"/>`);
+    s += K.eyes(100, 73, 8.6, 6, { iris: '#9a3412', look: [-0.2, 0.2], lash: true });
+    s += K.blush(88, 82, 3.8) + K.blush(112, 82, 3.8) + K.mouth('smile', 100, 84, 9);
+    s += K.spark(22, 40, 3.2, '#ffd23f', 'art-float') + K.spark(186, 150, 2.8, '#fff3b0') + K.spark(28, 120, 2.4, '#ffe08a');
+    return s;
+  },
+
+  // Чальчиуитликуэ: Нефритовая Юбка, богиня рек и родников. Пышная юбка из нефрита в кружках-бусинах внизу
+  // превращается в реку с кувшинками и рыбками; из ладоней льются струйки воды. Синий убор с большими белыми
+  // кисточками по бокам и перьями кецаля, нефритовые серьги и ожерелье
+  az_chalchiuhtlicue(K) {
+    const skin = '#e3a774', J = { c1: '#6ee7b7', c2: '#065f46', rim: '#c8f3ff', texK: 0.2, line: '#022c22' };
+    let s = K.aura('#38bdf8', 100, 104, 0.45) + K.aura('#34d399', 60, 120, 0.25);
+    // река, текущая из-под юбки
+    s += `<path d="M2 160C30 150 60 156 80 150H120C140 156 170 150 198 160V182H2Z" fill="${K.lin(['#38bdf8', '#0369a1'])}" stroke="#0c4a6e" stroke-width="2"/>`;
+    s += K.line('M10 168q8-5 16 0t16 0M60 174q8-5 16 0t16 0M130 172q8-5 16 0t16 0M164 166q8-5 16 0', '#e0f2fe', 1.8, { op: 0.85 });
+    s += K.part('M14 162C14 156 28 154 34 158C34 164 22 166 14 162Z', '#4ade80', { line: '#14532d', lw: 1.4 }) + azDahlia(K, 26, 158, 5, '#f9a8d4');
+    s += `<g class="art-float">` + K.part('M168 172C172 166 180 166 184 170C180 176 172 176 168 172ZM184 170L190 166L190 176Z', '#fb923c', { line: '#7c2d12', lw: 1.2 }) + '</g>';
+    // нефритовая юбка
+    const skirt = 'M100 104C126 104 140 120 144 138C148 152 148 160 146 166C124 172 76 172 54 166C52 160 52 152 56 138C60 120 74 104 100 104Z';
+    s += K.vol(skirt, J);
+    s += azClip(K, skirt, [[66, 134], [84, 128], [100, 126], [116, 128], [134, 134], [72, 152], [92, 148], [108, 148], [128, 152]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="none" stroke="#a7f3d0" stroke-width="2"/><circle cx="${x}" cy="${y}" r="1.6" fill="#a7f3d0"/>`).join('') + K.line('M40 160q6-6 12 0t12 0t12 0t12 0t12 0t12 0t12 0t12 0t12 0t12 0', '#c8f3ff', 2.6));
+    // накидка-кечкемитль с бахромой
+    s += K.part('M66 104L100 130L134 104Q100 92 66 104Z', '#7dd3fc', { line: '#0c4a6e', lw: 1.8 }) + K.line('M70 108L100 132L130 108', '#ffffff', 1.4, { op: 0.7 });
+    s += K.line('M72 112l-2 6M80 118l-2 6M88 124l-1 6M112 124l1 6M120 118l2 6M128 112l2 6', '#ffffff', 1.4);
+    s += K.line('M74 100Q100 116 126 100', '#022c22', 6) + K.line('M74 100Q100 116 126 100', '#34d399', 3.6) + `<circle cx="100" cy="110" r="5" fill="${K.rad([[0, '#a7f3d0'], [1, '#047857']], 0.4, 0.35)}" stroke="#022c22" stroke-width="1.4"/>`;
+    // руки, из ладоней льётся вода
+    s += K.mirror(K.vol('M68 108C56 114 50 124 48 134C52 140 58 140 60 134C62 126 66 122 74 118Z', { c1: '#7dd3fc', c2: '#0c4a6e', rim: '#c8f3ff', tex: false }) + K.part(K.ell(52, 136, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 }) +
+      `<path class="art-flicker" d="M50 142C46 150 46 160 50 168" fill="none" stroke="#7dd3fc" stroke-width="4.4" stroke-linecap="round" opacity=".85"/>` + K.line('M50 142C46 150 46 160 50 168', '#e0f2fe', 1.4));
+    // голова: синий убор с кисточками и перьями
+    for (const [r, L, d] of [[-34, 36, -0.4], [-12, 42, -1], [12, 42, -0.2], [34, 36, -0.8]]) s += azPlume(K, 100, 52, L, r, '#6ee7b7', '#047857', d);
+    s += K.vol(K.ell(100, 72, 21, 22), { c1: skin, c2: '#b8784a', rim: '#c8f3ff', tex: false, hiK: 0.18, line: '#6b3a1a' });
+    s += K.part('M80 66C82 54 90 50 100 50C110 50 118 54 120 66C112 60 106 60 100 62C94 60 88 60 80 66Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += K.part('M76 58Q100 44 124 58L123 66Q100 52 77 66Z', '#2563eb', { line: '#172554', lw: 1.6 }) + [86, 100, 114].map(x => `<circle cx="${x}" cy="${x === 100 ? 52 : 56}" r="2.6" fill="#a7f3d0" stroke="#022c22" stroke-width="1"/>`).join('');
+    s += K.mirror(`<circle cx="74" cy="76" r="9" fill="${K.rad([[0, '#ffffff'], [1, '#cbd5e1']], 0.4, 0.35)}" stroke="#64748b" stroke-width="1.4"/>` + K.line('M70 72l8 8M78 72l-8 8', '#cbd5e1', 1, { op: 0.8 }));
+    s += K.eyes(100, 73, 8.6, 6, { iris: '#0e7490', lid: 'half', skin, look: [0, 0.3], lash: true });
+    s += K.blush(88, 82, 3.8) + K.blush(112, 82, 3.8) + K.mouth('smile', 100, 84, 9);
+    s += K.spark(30, 30, 3.2, '#e0f2fe', 'art-float') + K.spark(172, 40, 3, '#a7f3d0') + K.spark(186, 120, 2.6, '#e0f2fe', 'art-float');
+    return s;
+  },
+
+  // Истаксиуатль: Спящая Женщина — снежный вулкан. Белоснежная дева спит на облаке под звёздами: снежное одеяло
+  // повторяет очертания горы — грудь, колени, ступни, — белые волосы стекают склонами, на голове — венчик из
+  // ледяных кристаллов. Справа в небе плывёт дымное колечко-сердечко: это Попокатепетль стережёт её сон
+  az_iztaccihuatl(K) {
+    const S = { c1: '#ffffff', c2: '#a5b4fc', rim: '#c8f3ff', rimK: 0.7, texK: 0.25, line: '#3b4a7a' };
+    let s = K.aura('#a5b4fc', 98, 110, 0.4) + K.aura('#38bdf8', 60, 60, 0.2);
+    s += azMoon(K, 150, 34, 12);
+    // облако-постель
+    s += `<g class="art-float" style="animation-delay:-.8s">${K.vol('M14 168C6 160 12 150 22 152C24 142 38 140 44 148C50 140 66 140 70 150C78 142 94 144 96 152C104 144 122 146 124 154C132 146 150 148 150 158C160 154 174 158 172 166C182 168 182 178 172 180H22C12 180 8 172 14 168Z', { c1: '#ffffff', c2: '#c7d2fe', tex: false, lw: 2, line: '#64748b', rim: '#e0f2fe', shadeK: 0.4 })}</g>`;
+    // белые волосы стекают склоном
+    s += K.vol('M22 120C10 128 8 146 16 156C28 160 40 154 46 146C38 142 30 134 30 124Z', { c1: '#ffffff', c2: '#c7d2fe', tex: false, lw: 2, line: '#475569', rim: '#e0f2fe' });
+    // одеяло-гора: грудь, колени, ступни
+    const blanket = 'M52 150C58 132 68 114 80 100C88 90 98 86 108 96C118 106 124 112 132 106C140 100 150 104 156 112C164 120 172 124 178 136C182 146 180 154 174 156H52Z';
+    s += K.vol(blanket, S);
+    s += azClip(K, blanket, `<path d="M40 150L76 138L100 150L128 136L160 148L190 140V170H40Z" fill="#94a3b8" opacity=".45"/>` + K.line('M80 106l-6 10M108 104l6 12M140 110l-4 8M160 118l4 8', '#c7d2fe', 2, { op: 0.8 }));
+    s += K.line('M58 148C64 140 72 136 80 136', '#ffffff', 2, { op: 0.7 });
+    // голова на облаке-подушке
+    s += K.vol(K.ell(40, 122, 22, 20), { c1: '#fff7ed', c2: '#d8b4a8', rim: '#c8f3ff', tex: false, line: '#475569', hiK: 0.2 });
+    s += K.part('M20 118C22 104 32 98 42 98C52 98 60 104 62 114C54 108 46 108 40 112C34 108 26 110 20 118Z', '#ffffff', { line: '#64748b', lw: 1.4 });
+    // венчик из ледяных кристаллов
+    s += [[28, 102, -30], [38, 98, -10], [48, 98, 10], [57, 102, 30]].map(([x, y, r]) => `<path d="M${x} ${y - 9}L${x + 3} ${y}L${x} ${y + 2}L${x - 3} ${y}Z" fill="#e0f2fe" stroke="#64748b" stroke-width="1" transform="rotate(${r} ${x} ${y})"/>`).join('');
+    s += K.closed(40, 124, 8, 4.6, false) + K.blush(30, 132, 4) + K.blush(50, 132, 4) + K.mouth('smile', 40, 134, 7);
+    s += `<g class="art-float">${K.line('M64 96h5l-5 6h5M72 84h4l-4 5h4', '#c7d2fe', 1.6)}</g>`;
+    // снежинки
+    s += [[90, 40], [120, 70], [60, 60], [180, 90], [24, 70]].map(([x, y], i) => K.spark(x, y, i % 2 ? 2.6 : 3.4, '#e0f2fe', i % 2 ? 'art-float' : 'art-blink')).join('');
+    // дымное сердечко от Попокатепетля
+    s += `<g class="art-float" style="animation-delay:-1.4s"><path d="M178 56C170 48 160 54 164 62C166 66 172 70 178 74C184 70 190 66 192 62C196 54 186 48 178 56Z" fill="none" stroke="#57534e" stroke-width="6" opacity=".45"/><path d="M178 56C170 48 160 54 164 62C166 66 172 70 178 74C184 70 190 66 192 62C196 54 186 48 178 56Z" fill="none" stroke="#f5f5f4" stroke-width="3.4"/></g>`;
+    return s;
+  },
+
+  // Шочикецаль: богиня цветов, красоты и рукоделия. Два пышных султана из перьев кецаля и венок из георгинов
+  // и бархатцев, розовое платье, расшитое цветами; в одной руке — веретено с пёстрой нитью, в другой — георгин.
+  // Вокруг порхают бабочки, у подола цветут цветы
+  az_xochiquetzal(K) {
+    const skin = '#e8b27a', P = { c1: '#fbcfe8', c2: '#be185d', rim: '#e4ffb0', texK: 0.15, line: '#500724' };
+    let s = K.aura('#f472b6', 100, 100, 0.4) + K.aura('#84cc16', 64, 150, 0.25);
+    // султаны из перьев кецаля
+    for (const [x, r, d] of [[86, -26, -0.3], [80, -44, -0.9], [114, 26, -0.6], [120, 44, -1.2]]) s += azPlume(K, x, 54, 50, r, '#6ee7b7', '#047857', d);
+    // платье, расшитое цветами
+    const robe = 'M100 96C122 96 136 110 140 130C144 150 146 164 144 176C124 182 76 182 56 176C54 164 56 150 60 130C64 110 78 96 100 96Z';
+    s += K.vol(robe, P);
+    s += azClip(K, robe, [[72, 132], [128, 130], [100, 150], [80, 166], [122, 166]].map(([x, y], i) => azDahlia(K, x, y, 6, i % 2 ? '#facc15' : '#f43f5e')).join('') + `<rect x="40" y="170" width="120" height="20" fill="#16a34a"/>` + K.line('M40 170H160', '#facc15', 2));
+    s += K.line('M70 106Q100 122 130 106', '#500724', 7) + K.line('M70 106Q100 122 130 106', '#34d399', 4) + `<circle cx="100" cy="116" r="5" fill="${K.rad([[0, '#a7f3d0'], [1, '#047857']], 0.4, 0.35)}" stroke="#022c22" stroke-width="1.4"/>`;
+    // рука с веретеном
+    s += K.vol('M66 108C56 104 50 96 48 86C52 80 58 80 60 86C62 92 66 96 74 98Z', P) + K.line('M50 100L50 56', '#78350f', 2.6);
+    s += `<ellipse cx="50" cy="74" rx="8" ry="10" fill="${K.lin(['#f472b6', '#facc15', '#22d3ee'])}" stroke="#500724" stroke-width="1.6"/>` + K.line('M43 70q7 3 14 0M43 76q7 3 14 0M44 82q6 3 12 0', '#ffffff', 1.1, { op: 0.7 });
+    s += `<circle cx="50" cy="96" r="4" fill="#c08a5a" stroke="#78350f" stroke-width="1.2"/>` + K.line('M50 56C56 46 46 40 52 32', '#f472b6', 1.6) + K.part(K.ell(50, 86, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    // рука с георгином
+    s += K.vol('M132 108C144 104 150 96 152 86C148 80 142 80 140 86C138 92 134 96 126 98Z', P) + K.line('M150 86L156 60', '#166534', 2.4) + K.leaf(153, 72, 10, -40, '#16a34a') + azDahlia(K, 157, 54, 11, '#f43f5e');
+    s += K.part(K.ell(150, 86, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    // голова и венок
+    s += K.vol(K.ell(100, 72, 21, 22), { c1: skin, c2: '#b8784a', rim: '#fff0c0', tex: false, hiK: 0.18, line: '#6b3a1a' });
+    s += K.part('M80 68C80 54 90 48 100 48C110 48 120 54 120 68C114 60 108 58 100 60C92 58 86 60 80 68Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += azMari(K, 80, 56, 6.4) + azDahlia(K, 92, 50, 6.4, '#f472b6') + azMari(K, 100, 47, 6) + azDahlia(K, 108, 50, 6.4, '#a855f7') + azMari(K, 120, 56, 6.4);
+    s += K.mirror(`<circle cx="79" cy="80" r="4" fill="${K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.4"/>`);
+    s += K.eyes(100, 73, 8.8, 6.2, { iris: '#9d174d', look: [0.2, 0.2], lash: true });
+    s += K.blush(87, 82, 4) + K.blush(113, 82, 4) + K.mouth('smile', 100, 84, 9);
+    // бабочки
+    const bf = (x, y, c, d) => `<g class="art-float" style="animation-delay:${d}s">` + K.part(`M${x} ${y}C${x - 10} ${y - 12} ${x - 14} ${y - 2} ${x - 8} ${y + 4}C${x - 12} ${y + 10} ${x - 4} ${y + 12} ${x} ${y + 4}C${x + 4} ${y + 12} ${x + 12} ${y + 10} ${x + 8} ${y + 4}C${x + 14} ${y - 2} ${x + 10} ${y - 12} ${x} ${y}Z`, c, { line: '#500724', lw: 1.2 }) + K.line(`M${x} ${y - 2}v8`, '#500724', 1.6) + '</g>';
+    s += bf(26, 120, '#facc15', -0.4) + bf(178, 112, '#f9a8d4', -1.1) + bf(168, 22, '#a7f3d0', -0.7) + bf(30, 30, '#f9a8d4', -1.6);
+    s += K.spark(186, 160, 2.6, '#fbcfe8') + K.spark(14, 160, 2.6, '#d9f99d', 'art-float');
+    return s;
+  },
+
+  // Шочипилли: Цветочный Принц, бог песен, танцев и игр. Сидит, скрестив ноги, на каменном помосте с резными
+  // цветами, запрокинул голову и поёт, зажмурившись от счастья; изо рта вьются ацтекские завитки «цветочной
+  // песни», и ветер уносит их вверх вместе с бабочками. В руке — погремушка, на голове — веер из перьев с цветами
+  az_xochipilli(K) {
+    const skin = '#e8b27a', Y = { c1: '#fde68a', c2: '#b45309', rim: '#eef0ff', texK: 0.2, line: '#451a03' };
+    let s = K.aura('#fbbf24', 98, 100, 0.4) + K.aura('#f472b6', 64, 70, 0.25);
+    // ветер
+    s += `<g class="art-float">${K.line('M10 132C4 114 18 104 30 110C38 116 34 126 26 124', '#eef0ff', 2.6, { op: 0.6 })}</g>` + K.line('M150 150h34M8 160h26', '#eef0ff', 2, { op: 0.5, cls: 'art-float' });
+    // помост с резными цветами
+    s += K.vol('M30 152H170L176 180H24Z', { c1: '#d6d3d1', c2: '#78716c', tex: false, lw: 2.4, line: '#292524', rim: '#eef0ff' });
+    s += [[52, 166], [80, 166], [120, 166], [148, 166]].map(([x, y], i) => azDahlia(K, x, y, 6.4, i % 2 ? '#f472b6' : '#facc15')).join('') + K.line('M30 156H170', '#57534e', 1.4, { op: 0.6 });
+    // перья с цветами
+    for (const [r, L, c1, c2, d] of [[-62, 40, '#fde68a', '#d97706', -0.2], [-38, 46, '#f9a8d4', '#be185d', -0.9], [-14, 50, '#6ee7b7', '#047857', -0.4], [14, 50, '#6ee7b7', '#047857', -1.2], [38, 46, '#f9a8d4', '#be185d', -0.6], [62, 40, '#fde68a', '#d97706', -1]]) s += azPlume(K, 96, 52, L, r, c1, c2, d);
+    // скрещённые ноги и тело
+    s += K.vol('M56 150C52 138 64 130 82 132H118C136 130 148 138 144 150C140 158 120 158 100 156C80 158 60 158 56 150Z', { ...Y, c1: '#e8b27a', c2: '#a8683a', tex: false, lw: 2.4, rim: '#eef0ff' });
+    s += K.line('M100 140V154M78 142q10 6 22 2M122 142q-10 6-22 2', '#7c4a24', 1.4, { op: 0.6 });
+    const body = 'M100 92C116 92 126 104 128 118C130 130 128 138 124 142H76C72 138 70 130 72 118C74 104 84 92 100 92Z';
+    s += K.vol(body, Y);
+    s += azClip(K, body, [[86, 116], [114, 120], [100, 132]].map(([x, y], i) => azMari(K, x, y, 5)).join(''));
+    s += K.line('M74 102Q100 116 126 102', '#451a03', 6) + K.line('M74 102Q100 116 126 102', '#34d399', 3.6);
+    s += K.part('M80 136Q100 146 120 136L121 144Q100 152 79 144Z', '#f472b6', { line: '#831843', lw: 1.4 });
+    // рука с погремушкой и рука на колене
+    s += K.vol('M76 108C64 112 58 120 56 130C60 136 66 136 68 130C70 124 74 120 80 118Z', Y) + K.part(K.ell(60, 132, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    s += K.vol('M124 108C136 104 142 96 144 86C140 80 134 80 132 86C130 92 126 96 118 98Z', Y) + K.part(K.ell(142, 84, 7, 6.5), skin, { line: '#7c4a24', lw: 1.8 });
+    s += `<g class="art-sway" style="transform-origin:50% 100%">` + K.line('M142 80L146 60', '#5b3214', 3) + K.vol(K.ell(147, 52, 9, 10), { c1: '#fde047', c2: '#b45309', tex: false, lw: 2, line: '#713f12' }) + K.line('M140 50q7 3 14 0M141 56q6 3 12 0', '#713f12', 1.2, { op: 0.6 }) + '</g>';
+    s += K.line('M156 44l6-4M158 54h8M138 40l-2-6', '#fde68a', 2, { cls: 'art-blink' });
+    // голова запрокинута — поёт
+    s += K.vol(K.ell(96, 70, 21, 21), { c1: skin, c2: '#b8784a', rim: '#fff0c0', tex: false, hiK: 0.18, line: '#6b3a1a' });
+    s += K.part('M76 64C78 52 88 48 98 48C108 48 116 52 118 62C110 58 104 58 98 60C90 58 82 60 76 64Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += K.part('M76 56Q98 44 120 56L119 62Q98 51 77 62Z', '#facc15', { line: '#854d0e', lw: 1.4 }) + azMari(K, 98, 52, 4.6);
+    s += K.closed(96, 70, 8, 5.4, true) + K.blush(84, 78, 4) + K.blush(108, 78, 4);
+    s += `<ellipse cx="98" cy="83" rx="4.4" ry="5" fill="#6b1d2a" stroke="${K.INK}" stroke-width="2"/>`;
+    s += K.mirror(`<circle cx="76" cy="76" r="4" fill="#34d399" stroke="#134e4a" stroke-width="1.3"/>`);
+    // завитки цветочной песни
+    s += `<g class="art-float">${K.line('M106 80C122 70 120 54 132 46C142 40 152 46 148 56C146 62 138 60 140 54', '#fbcfe8', 3.4)}${azDahlia(K, 128, 50, 5.4, '#f472b6')}</g>`;
+    s += `<g class="art-float" style="animation-delay:-1.2s">${K.line('M120 34C126 22 140 18 148 26C152 32 146 38 142 34', '#fde68a', 2.8)}${azMari(K, 152, 24, 5)}</g>`;
+    s += `<g class="art-float" style="animation-delay:-.6s">${K.line('M164 70C172 62 184 66 182 76C180 82 172 80 174 74', '#bbf7d0', 2.6)}</g>`;
+    s += K.spark(26, 40, 3, '#fde68a', 'art-float') + K.spark(184, 110, 2.8, '#fbcfe8') + K.spark(60, 20, 2.4, '#eef0ff');
+    return s;
+  },
+
+  // Шипе-Тотек: бог весеннего обновления и покровитель ювелиров — весь в золоте. Плащ из золотых листьев-обёрток
+  // раскрывается, как початок, сбрасывающий шелуху; в ладони — молодой початок с зелёным ростком. Венец из золотых
+  // листьев на красной повязке, позади — раздвоенные красные ленты, золотые серьги, светящиеся глаза, в другой
+  // руке — посох-погремушка; вокруг сыплются искры, как в мастерской золотых дел мастера
+  az_xipetotec(K) {
+    const G = { c1: '#fde68a', c2: '#a16207', rim: '#fff6b0', rimK: 0.6, texK: 0.25, line: '#422006' };
+    let s = K.aura('#facc15', 100, 100, 0.5) + K.aura('#dc2626', 60, 70, 0.2);
+    // ленты колпака позади
+    s += K.part('M118 44C134 52 142 66 140 84L132 76L128 88C126 72 122 60 112 52Z', '#dc2626', { line: '#7f1d1d', lw: 1.6 });
+    // посох-погремушка
+    s += K.line('M150 178L160 40', '#422006', 6) + K.line('M150 178L160 40', '#ca8a04', 3);
+    s += K.vol('M160 22C168 32 168 46 160 56C152 46 152 32 160 22Z', { c1: '#fef08a', c2: '#a16207', tex: false, lw: 2, line: '#422006' }) + K.line('M154 36h12M154 44h12', '#422006', 1.4) + K.line('M168 26l6-4M170 40h7M166 52l5 4', '#fde047', 2, { cls: 'art-blink' });
+    // плащ из золотых обёрток
+    for (const [r, L] of [[-58, 70], [-34, 82], [-12, 88], [12, 88], [34, 82], [58, 70]]) {
+      const t = r * Math.PI / 180, P = (u, v) => `${K.f(100 + u * Math.cos(t) - v * Math.sin(t))} ${K.f(178 + u * Math.sin(t) + v * Math.cos(t))}`;
+      s += K.vol(`M${P(-15, 0)}C${P(-19, -L * 0.5)} ${P(-10, -L * 0.85)} ${P(0, -L)}C${P(10, -L * 0.85)} ${P(19, -L * 0.5)} ${P(15, 0)}Z`, { ...G, tex: false, lw: 2 });
+    }
+    const robe = 'M100 98C118 98 130 112 132 128C134 144 134 160 130 176H70C66 160 66 144 68 128C70 112 82 98 100 98Z';
+    s += K.vol(robe, { c1: '#fef08a', c2: '#b45309', rim: '#fff6b0', texK: 0.3, line: '#422006' });
+    s += azClip(K, robe, K.line('M80 100C78 130 76 150 76 178M120 100C122 130 124 150 124 178M100 104V178', '#a16207', 1.4, { op: 0.5 }) + `<rect x="60" y="164" width="80" height="20" fill="#dc2626"/>` + K.line(azGreca(60, 140, 174, 4), '#fde047', 1.6));
+    s += K.line('M74 106Q100 120 126 106', '#422006', 7) + K.line('M74 106Q100 120 126 106', '#facc15', 4) + `<circle cx="100" cy="116" r="6" fill="${K.rad([[0, '#fecaca'], [1, '#b91c1c']], 0.4, 0.35)}" stroke="#7f1d1d" stroke-width="1.6"/>`;
+    // руки: початок с ростком и посох
+    s += K.vol('M70 110C60 116 54 126 52 136C56 142 62 142 64 136C66 128 70 124 76 120Z', G) + K.part(K.ell(56, 138, 7, 6.5), '#e0a96d', { line: '#7c4a24', lw: 1.8 });
+    s += K.g(azCob(K, K.ell(56, 118, 8, 15), 56, 118, 8, 15, 5) + K.part('M56 136C48 132 44 124 46 114C50 122 52 128 56 132C60 128 62 122 66 114C68 124 64 132 56 136Z', '#fde68a', { line: '#a16207', lw: 1.4 }), 'rotate(-10 56 130)');
+    s += K.line('M54 104C52 96 56 90 62 88', '#15803d', 2.6) + K.leaf(60, 92, 10, -40, '#22c55e');
+    s += K.vol('M130 110C142 114 150 122 152 132C148 138 142 138 140 132C138 126 134 122 126 120Z', G) + K.part(K.ell(152, 132, 7, 6.5), '#e0a96d', { line: '#7c4a24', lw: 1.8 });
+    // голова: золотое лицо, красный колпак
+    s += K.vol(K.ell(100, 74, 22, 23), { c1: '#fde68a', c2: '#ca8a04', rim: '#fff6b0', tex: false, hiK: 0.25, line: '#422006' });
+    s += K.mirror(K.line('M89 62V86', '#dc2626', 3.4, { op: 0.75 }));
+    // венец из золотых листьев-обёрток
+    for (const r of [-56, -28, 0, 28, 56]) {
+      const t = r * Math.PI / 180, L = r ? 26 : 32, P = (u, v) => `${K.f(100 + u * Math.cos(t) - v * Math.sin(t))} ${K.f(66 + u * Math.sin(t) + v * Math.cos(t))}`;
+      s += K.part(`M${P(-6, -8)}C${P(-8, -L * 0.6)} ${P(-3, -L * 0.9)} ${P(0, -L - 8)}C${P(3, -L * 0.9)} ${P(8, -L * 0.6)} ${P(6, -8)}Z`, r % 56 ? '#fde047' : '#facc15', { line: '#854d0e', lw: 1.6 });
+    }
+    s += K.part('M76 60Q100 50 124 60L123 66Q100 57 77 66Z', '#dc2626', { line: '#7f1d1d', lw: 1.4 }) + [88, 100, 112].map(x => K.rhomb(x, x === 100 ? 56 : 59, 2.8, '#fde047', '#7f1d1d')).join('');
+    s += K.mirror(`<circle cx="77" cy="80" r="5.4" fill="${K.rad([[0, '#fef08a'], [1, '#ca8a04']], 0.4, 0.35)}" stroke="#422006" stroke-width="1.4"/>`);
+    s += K.glow(89, 74, 4, 4.6, '#fff7c2') + K.glow(111, 74, 4, 4.6, '#fff7c2');
+    s += K.line('M93 88Q100 92 107 88', '#422006', 2.2);
+    // искры мастерской
+    s += K.spark(24, 60, 4, '#fde047') + K.spark(36, 90, 2.6, '#fff6b0', 'art-float') + K.spark(178, 92, 3, '#fde047', 'art-float') + K.spark(186, 150, 2.6, '#fff6b0') + K.spark(18, 150, 2.6, '#fde047', 'art-float');
+    return s;
+  },
+
+  // Миктлантекутли: владыка Миктлана, подземного мира, где отдыхают души предков. Большой добродушный череп
+  // с огоньками в глазницах и узорами-цветами, как на праздничных калаверах; убор из перьев совы и бумажных
+  // розеток, тёмный плащ с гирляндой бархатцев. В руке — посох с фонарём, что освещает душам дорогу, на посохе
+  // сидит совушка; под ногами — дорожка из лепестков
+  az_mictlantecuhtli(K) {
+    const f = K.f, R = { c1: '#6d5bd0', c2: '#160f33', rim: '#e9d5ff', texK: 0.55, line: '#0b0820' };
+    let s = K.aura('#c084fc', 100, 100, 0.45) + K.aura('#fb923c', 50, 60, 0.15);
+    // убор: перья совы и бумажные розетки
+    for (const [r, L, d] of [[-60, 44, -0.2], [-36, 52, -0.8], [-12, 56, -1.3], [12, 56, -0.5], [36, 52, -1], [60, 44, -0.4]]) s += azPlume(K, 100, 54, L, r, '#a8a29e', '#292524', d);
+    s += K.mirror(`<circle cx="62" cy="50" r="13" fill="#ffffff" stroke="#57534e" stroke-width="1.6"/>` + K.line('M62 37V63M49 50H75M53 41L71 59M71 41L53 59', '#a8a29e', 1.2) + `<circle cx="62" cy="50" r="4" fill="#f97316" stroke="#7c2d12" stroke-width="1"/>`);
+    // плащ
+    const robe = 'M100 98C124 98 138 112 142 132C146 150 148 164 146 176C124 182 76 182 54 176C52 164 54 150 58 132C62 112 76 98 100 98Z';
+    s += K.vol(robe, R);
+    s += azClip(K, robe, `<rect x="40" y="164" width="120" height="30" fill="#f5f5f4"/>` + K.line('M40 172l6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6 6 6 6-6', '#7c3aed', 1.8));
+    s += K.line('M84 114C80 132 76 150 74 166M116 114C120 132 124 150 126 166', '#0b0820', 1.8, { op: 0.4 });
+    // гирлянда бархатцев
+    for (let i = 0; i <= 8; i++) { const t = i / 8, x = 66 * (1 - t) * (1 - t) + 200 * t * (1 - t) + 134 * t * t, y = 108 * (1 - t) * (1 - t) + 268 * t * (1 - t) + 108 * t * t; s += azMari(K, +f(x), +f(y), 5.4); }
+    // рука с посохом-фонарём и совушкой
+    s += K.line('M152 178L156 58', '#1c1917', 6) + K.line('M152 178L156 58', '#78716c', 3);
+    s += `<circle class="art-aura" cx="156" cy="70" r="18" fill="${K.rad([[0, '#fff7cc', 0.9], [0.4, '#fb923c', 0.4], [1, '#fb923c', 0]])}"/>`;
+    s += K.part('M146 62H166L162 56H150Z', '#44403c', { line: '#0c0a09', lw: 1.4 }) + `<path d="M148 62H164V80H148Z" fill="${K.rad([[0, '#fffbeb'], [0.6, '#fcd34d'], [1, '#d97706']])}" stroke="#0c0a09" stroke-width="1.6"/>` + K.flame(156, 78, 12, 7, '#fff7cc', '#f59e0b') + K.part('M146 80H166L162 86H150Z', '#44403c', { line: '#0c0a09', lw: 1.4 });
+    s += K.vol(K.ell(156, 44, 9, 10), { c1: '#d6d3d1', c2: '#57534e', tex: false, lw: 1.8, line: '#1c1917' }) + K.part('M149 36L147 28L153 33Z', '#57534e', { lw: 0 }) + K.part('M163 36L165 28L159 33Z', '#57534e', { lw: 0 });
+    s += K.eyes(156, 43, 3.6, 3, { iris: '#f59e0b', look: [-0.4, 0.2] }) + K.part('M154 47L158 47L156 50Z', '#fb923c', { lw: 0 });
+    s += K.vol('M134 110C146 112 152 118 154 128C150 134 144 134 142 128C140 122 136 120 128 118Z', R) + K.part(K.ell(153, 128, 7, 6.5), '#e7e5e4', { line: '#44403c', lw: 1.8 });
+    s += K.vol('M66 110C54 116 48 126 46 138C50 144 56 144 58 138C60 128 64 124 72 120Z', R) + K.part(K.ell(50, 140, 7, 6.5), '#e7e5e4', { line: '#44403c', lw: 1.8 });
+    // череп-калавера
+    const skull = 'M100 44C122 44 132 58 132 74C132 88 126 94 120 98V106H80V98C74 94 68 88 68 74C68 58 78 44 100 44Z';
+    s += K.vol(skull, { c1: '#ffffff', c2: '#a8a29e', rim: '#e9d5ff', tex: false, hiK: 0.2, line: '#292524' });
+    s += K.mirror(`<ellipse cx="88" cy="74" rx="10" ry="11" fill="#1c1917"/>` + K.line('M76 64q4-6 10-6M78 90q-4 2-4 6', '#c084fc', 1.6, { op: 0.8 }));
+    s += K.glow(88, 75, 3.6, 4.2, '#fb923c') + K.glow(112, 75, 3.6, 4.2, '#fb923c');
+    s += `<path d="M100 82L96 90H104Z" fill="#1c1917"/>`;
+    s += K.part('M84 98H116V108Q100 112 84 108Z', '#f5f5f4', { line: '#292524', lw: 1.6 }) + K.line('M90 98V108M95 98V109M100 98V110M105 98V109M110 98V108', '#292524', 1.2);
+    s += azMari(K, 100, 54, 5.6) + K.mirror(K.rhomb(88, 58, 2.4, '#c084fc', '#4c1d95'));
+    s += K.gloss(84, 54, 5, 2.6, -30, 0.5);
+    // дорожка из лепестков
+    s += `<g fill="#f97316" stroke="#9a3412" stroke-width=".8">` + [[22, 178], [36, 182], [176, 178], [188, 182], [164, 184]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="4" ry="2.4" transform="rotate(${i * 50} ${x} ${y})"/>`).join('') + '</g>';
+    s += K.spark(24, 40, 3.2, '#e9d5ff', 'art-float') + K.spark(184, 120, 2.6, '#fde68a') + K.spark(18, 120, 2.6, '#e9d5ff');
+    return s;
+  },
+
+  // Койольшауки: Луна с золотыми колокольчиками на щеках, старшая сестра Уицилопочтли. Парит в ночном небе на фоне
+  // огромного лунного диска, раскинув руки: светлое лунное лицо, в тёмных волосах — пушистые белые шарики из перьев,
+  // серьги и браслеты-колокольчики, по краю платья — звёзды; вокруг расходится тихий звон
+  az_coyolxauhqui(K) {
+    const f = K.f, M = { c1: '#eef2ff', c2: '#6366f1', rim: '#fde68a', rimK: 0.5, texK: 0.5, line: '#1e1b4b' };
+    const bell = (x, y, r) => `<path d="M${f(x - r)} ${f(y + r * 0.6)}C${f(x - r)} ${f(y - r * 0.6)} ${f(x - r * 0.5)} ${f(y - r)} ${x} ${f(y - r)}C${f(x + r * 0.5)} ${f(y - r)} ${f(x + r)} ${f(y - r * 0.6)} ${f(x + r)} ${f(y + r * 0.6)}Z" fill="${K.rad([[0, '#fef9c3'], [0.6, '#fbbf24'], [1, '#b45309']], 0.4, 0.35)}" stroke="#713f12" stroke-width="1.2"/><circle cx="${x}" cy="${f(y + r * 0.75)}" r="${f(r * 0.3)}" fill="#713f12"/>`;
+    let s = K.aura('#6366f1', 100, 100, 0.5);
+    // лунный диск
+    s += `<circle cx="100" cy="92" r="74" fill="${K.rad([[0, '#ffffff', 0.95], [0.7, '#e0e7ff', 0.8], [1, '#a5b4fc', 0.5]], 0.42, 0.38)}"/>`;
+    s += `<g fill="#a5b4fc" opacity=".3"><circle cx="54" cy="58" r="10"/><circle cx="150" cy="120" r="8"/><circle cx="146" cy="50" r="6"/><circle cx="44" cy="128" r="7"/></g>`;
+    // звон
+    s += `<g class="art-blink">${K.line(azArc(K, 100, 92, 84, 200, 230) + azArc(K, 100, 92, 84, -50, -20), '#fde68a', 2.4, { op: 0.7 })}</g>`;
+    // волосы позади
+    s += K.part('M74 74C70 50 84 38 100 38C116 38 130 50 126 74L134 112C122 118 114 110 112 100H88C86 110 78 118 66 112Z', '#1e1b4b', { line: '#0b0820', lw: 1.6 });
+    // платье
+    const robe = 'M100 98C120 98 132 112 136 130C140 148 142 160 140 170C120 176 80 176 60 170C58 160 60 148 64 130C68 112 80 98 100 98Z';
+    s += K.vol(robe, M);
+    s += azClip(K, robe, `<rect x="40" y="156" width="120" height="30" fill="#4338ca"/>` + [52, 68, 84, 100, 116, 132, 148].map(x => K.spark(x, 164, 3.4, '#fef9c3', '')).join(''));
+    s += K.line('M72 106Q100 122 128 106', '#1e1b4b', 6) + K.line('M72 106Q100 122 128 106', '#fbbf24', 3.6);
+    // руки раскинуты, браслеты-колокольчики
+    s += K.mirror(K.vol('M68 108C54 104 42 96 34 84C36 78 42 76 46 80C52 88 60 94 74 98Z', M) + K.part(K.ell(36, 80, 7, 6.5), '#f5e7d8', { line: '#6b5a4a', lw: 1.8 }) + bell(44, 92, 4.4));
+    // голова
+    s += K.vol(K.ell(100, 70, 21, 22), { c1: '#ffffff', c2: '#c7d2fe', rim: '#fde68a', tex: false, hiK: 0.2, line: '#3b3a6b' });
+    s += K.part('M80 64C82 52 90 48 100 48C110 48 118 52 120 64C112 58 106 58 100 60C94 58 88 58 80 64Z', '#1e1b4b', { line: '#0b0820', lw: 1.4 });
+    s += [[76, 52, 6], [124, 52, 6], [100, 38, 5]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2"/>` + K.line(`M${x - r * 0.6} ${y - r * 0.2}l-3 -4M${x + r * 0.6} ${y - r * 0.2}l3 -4M${x} ${y - r}v-4`, '#e0e7ff', 1.2)).join('');
+    // колокольчики на щеках и в ушах
+    s += bell(84, 80, 4.4) + bell(116, 80, 4.4) + bell(76, 88, 5.4) + bell(124, 88, 5.4);
+    s += K.eyes(100, 70, 8.6, 6, { iris: '#4338ca', lid: 'half', skin: '#e0e7ff', look: [0, 0.3], lash: true });
+    s += K.mouth('smile', 100, 84, 8);
+    s += K.spark(20, 30, 3.4, '#fef9c3', 'art-float') + K.spark(180, 30, 3, '#fde68a') + K.spark(186, 170, 2.6, '#fef9c3', 'art-float') + K.spark(14, 170, 2.6, '#e0e7ff');
+    return s;
+  },
+
+  // Эекатль: бог ветра — тело расписано чёрной краской и внизу переходит в смерч, на лице — красная маска с
+  // клювом, на голове — остроконечная шапка в пятнах ягуара с пучком перьев, на груди — «украшение ветра»
+  // из спила морской раковины. Надув щёки, он дует на маленькое Солнце — и оно трогается с места
+  az_ehecatl(K) {
+    const f = K.f, D = { c1: '#64748b', c2: '#0f172a', rim: '#eef0ff', rimK: 0.7, texK: 0.3, line: '#020617' };
+    let s = K.aura('#a5b4fc', 96, 104, 0.45) + K.aura('#fbbf24', 40, 156, 0.25);
+    // солнышко, которое он сдвигает
+    let rays = '';
+    for (let i = 0; i < 12; i++) { const a = i * 30 * Math.PI / 180; rays += `M${f(160 + 20 * Math.cos(a))} ${f(56 + 20 * Math.sin(a))}L${f(160 + 28 * Math.cos(a + 0.13))} ${f(56 + 28 * Math.sin(a + 0.13))}L${f(160 + 20 * Math.cos(a + 0.26))} ${f(56 + 20 * Math.sin(a + 0.26))}Z`; }
+    s += `<g class="art-spin"><path d="${rays}" fill="#fbbf24" stroke="#b45309" stroke-width="1" stroke-linejoin="round"/></g>`;
+    s += `<circle cx="160" cy="56" r="19" fill="${K.rad([[0, '#fffbe6'], [0.6, '#fde047'], [1, '#f59e0b']], 0.4, 0.35)}" stroke="#b45309" stroke-width="2"/>` + K.closed(160, 56, 6, 3.6, true) + K.mouth('smile', 160, 62, 7);
+    // смерч вместо ног
+    const tw = 'M74 140C72 156 88 160 100 158C116 156 126 162 120 170C114 176 98 174 92 178C86 182 96 188 104 186';
+    s += K.line(tw, '#c7d2fe', 16, { op: 0.35 }) + K.line(tw, '#eef0ff', 6) + K.line('M80 150C90 154 104 152 112 150M90 166C98 168 106 166 112 166', '#a5b4fc', 2.4, { op: 0.8 });
+    // тело
+    const body = 'M100 80C126 80 140 98 140 118C140 136 128 148 100 150C72 148 60 136 60 118C60 98 74 80 100 80Z';
+    s += K.vol(body, D);
+    // украшение ветра — спил раковины
+    s += `<circle cx="100" cy="122" r="15" fill="${K.rad([[0, '#ffffff'], [1, '#e7e5e4']], 0.4, 0.35)}" stroke="#57534e" stroke-width="2"/>`;
+    for (let i = 0; i < 5; i++) { const a = (i * 72 - 90) * Math.PI / 180; s += `<path d="M100 122L${f(100 + 14 * Math.cos(a))} ${f(122 + 14 * Math.sin(a))}Q${f(100 + 10 * Math.cos(a + 0.7))} ${f(122 + 10 * Math.sin(a + 0.7))} 100 122Z" fill="#fecaca" stroke="#a8a29e" stroke-width=".8"/>`; }
+    s += `<circle cx="100" cy="122" r="3" fill="#f59e0b"/>`;
+    // руки
+    s += K.vol('M66 110C54 106 46 98 44 88C48 82 54 82 56 88C58 94 62 98 70 100Z', D) + K.vol(K.ell(48, 86, 7, 6.5), { ...D, tex: false, lw: 2 });
+    s += K.vol('M134 106C144 100 148 92 150 82C146 76 140 76 138 82C136 88 132 92 126 96Z', D) + K.vol(K.ell(148, 80, 7, 6.5), { ...D, tex: false, lw: 2 });
+    // голова: надутые щёки, красная маска-клюв
+    s += K.vol(K.ell(96, 62, 24, 22), D);
+    s += K.mirror(`<circle cx="80" cy="70" r="7" fill="#fca5a5" opacity=".5"/>`);
+    s += K.vol('M104 60C114 54 132 56 140 62C142 68 132 74 116 76C108 76 102 70 104 60Z', { c1: '#fca5a5', c2: '#b91c1c', tex: false, lw: 2.2, line: '#450a0a', rim: '#eef0ff' });
+    s += K.line('M110 66H138', '#450a0a', 1.6) + `<circle cx="140" cy="66" r="2.4" fill="#fde68a"/>`;
+    s += K.eyes(92, 58, 9, 6, { iris: '#1e1b4b', look: [0.6, 0.1] });
+    // шапка в пятнах ягуара
+    const hat = 'M72 50C74 40 84 24 98 10C108 24 120 40 120 50Q96 42 72 50Z';
+    s += K.vol(hat, { c1: '#fde68a', c2: '#b45309', tex: false, lw: 2.2, line: '#451a03', rim: '#eef0ff' });
+    s += azClip(K, hat, [[86, 40], [100, 34], [108, 44], [96, 22], [80, 48]].map(([x, y]) => azRosette(K, x, y, 3)).join(''));
+    s += K.part('M70 48Q96 40 122 48L121 54Q96 46 71 54Z', '#ef4444', { line: '#450a0a', lw: 1.4 });
+    s += azPlume(K, 98, 12, 18, 30, '#ffffff', '#94a3b8', -0.4) + azPlume(K, 98, 12, 16, -20, '#f87171', '#991b1b', -1);
+    s += `<path d="M72 64C66 64 64 70 68 74C70 76 74 74 72 70" fill="none" stroke="#f5f5f4" stroke-width="3" stroke-linecap="round"/>`;
+    // струи ветра к солнцу
+    s += `<g class="art-float">${K.line('M142 64C150 66 156 70 150 76C146 80 140 76 144 72', '#eef0ff', 2.6)}${K.line('M142 60H136', '#eef0ff', 2)}</g>`;
+    s += K.line('M144 58l6-4M146 70l8 2', '#eef0ff', 2, { op: 0.8, cls: 'art-float' });
+    s += `<g class="art-float" style="animation-delay:-1s">${K.line('M14 70C8 56 22 46 32 54C38 60 32 68 26 64', '#eef0ff', 2.6, { op: 0.7 })}</g>` + K.line('M10 110h22M16 124h18', '#eef0ff', 2, { op: 0.5, cls: 'art-float' });
+    s += K.spark(30, 30, 3, '#fde68a', 'art-float') + K.spark(184, 140, 2.8, '#eef0ff') + K.spark(176, 100, 2.4, '#fde68a', 'art-float');
+    return s;
+  },
+
+  // Мишкоатль: Облачный Змей, бог охоты и Млечного Пути. Пушистое тело из облачных клубов в красно-белых полосах,
+  // как звёздная раскраска охотника, извивается по ночному небу вдоль Млечного Пути; на морде — чёрная маска со
+  // звёздочками, на голове — хохолок из орлиного пуха, хвост рассыпается облачком
+  az_mixcoatl(K) {
+    const f = K.f;
+    let s = K.aura('#6366f1', 100, 100, 0.45) + K.aura('#e0e7ff', 60, 120, 0.2);
+    // Млечный Путь
+    s += K.line('M-6 176C50 130 120 104 206 34', '#e0e7ff', 46, { op: 0.1 }) + K.line('M-6 176C50 130 120 104 206 34', '#e0e7ff', 20, { op: 0.1 });
+    s += [[30, 150], [62, 124], [96, 110], [128, 84], [160, 60], [186, 40], [48, 160], [140, 96]].map(([x, y], i) => K.spark(x, y, i % 3 ? 2 : 3, '#fef9c3', i % 2 ? 'art-blink' : '')).join('');
+    // облачное тело: клубы вдоль S-образного пути, каждый третий — красный
+    const segs = [[[180, 174], [120, 188], [16, 176], [36, 132]], [[36, 132], [56, 94], [158, 128], [146, 90]], [[146, 90], [138, 62], [104, 52], [86, 60]]];
+    const pts = [];
+    segs.forEach((g, k) => { for (let i = k ? 1 : 0; i <= 15; i++) { const t = i / 15, u = 1 - t; pts.push([0, 1].map(j => u * u * u * g[0][j] + 3 * u * u * t * g[1][j] + 3 * u * t * t * g[2][j] + t * t * t * g[3][j])); } });
+    let outl = '', puffs = '', hl = '';
+    const wf = K.rad([[0, '#ffffff'], [0.7, '#eef2ff'], [1, '#a5b4fc']], 0.4, 0.35), rf = K.rad([[0, '#fca5a5'], [0.7, '#ef4444'], [1, '#991b1b']], 0.4, 0.35);
+    pts.forEach(([x, y], i) => {
+      const r = 8 + 10 * Math.min(1, i / (pts.length * 0.7)), red = i % 6 < 2;
+      outl += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r + 2.4)}"/>`;
+      puffs += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="${red ? rf : wf}"/>`;
+      if (!red && i % 2) hl += `<circle cx="${f(x - r * 0.3)}" cy="${f(y - r * 0.35)}" r="${f(r * 0.3)}"/>`;
+    });
+    s += `<g fill="#1e1b4b">${outl}</g>${puffs}<g fill="#ffffff" opacity=".7">${hl}</g>`;
+    s += `<g class="art-float">${K.vol('M182 176C176 170 182 162 190 166C194 160 202 166 198 172C200 178 192 182 186 180Z', { c1: '#ffffff', c2: '#a5b4fc', tex: false, lw: 1.6, line: '#1e1b4b' })}</g>`;
+    // голова с хохолком из орлиного пуха
+    s += azPlume(K, 64, 42, 30, -34, '#ffffff', '#94a3b8', -0.3) + azPlume(K, 72, 38, 34, -4, '#fecaca', '#dc2626', -0.9) + azPlume(K, 82, 42, 30, 26, '#ffffff', '#94a3b8', -0.6);
+    s += K.vol('M66 40C88 38 104 52 104 68C104 84 88 94 68 92C50 90 34 82 30 68C28 54 46 40 66 40Z', { c1: '#ffffff', c2: '#a5b4fc', rim: '#fef9c3', tex: false, line: '#1e1b4b', lw: 2.6 });
+    s += K.part('M31 60Q66 50 104 60L104 74Q66 64 30 74Z', '#0f0a24', { line: '#0f0a24', lw: 1 }) + K.spark(40, 67, 2.2, '#fef9c3', '') + K.spark(98, 66, 2.2, '#fef9c3', '');
+    s += K.eyes(68, 66, 13, 6.4, { iris: '#facc15', lid: 'angry', skin: '#0f0a24', look: [-0.4, 0.1] });
+    s += `<path d="M34 80Q54 90 76 84Q58 96 34 80Z" fill="#3a0f1a" stroke="#1e1b4b" stroke-width="1.6"/><path d="M44 83l2 4.6 2-4zM60 86l2 4.6 2-4z" fill="#fff"/>`;
+    s += K.gloss(56, 48, 5, 2.6, -20, 0.6);
+    s += K.spark(150, 140, 3, '#fef9c3', 'art-float') + K.spark(24, 30, 3.4, '#fef9c3') + K.spark(110, 30, 2.6, '#e0e7ff', 'art-float');
+    return s;
+  },
+
+  // Якатекутли: бог купцов и путников шагает по дороге, отмеченной ацтекскими следами-стопами. За плечами —
+  // рама-носилки с товаром: тюк ткани, мешочек какао, нефритовые бусы и перья кецаля; в одной руке —
+  // бамбуковый посох с узлами, в другой — опахало из перьев. Длинный нос «Владыки-Носа», добрая улыбка
+  az_yacatecuhtli(K) {
+    const f = K.f, skin = '#d9a06b', O = { c1: '#fdba74', c2: '#9a3412', rim: '#eef0ff', texK: 0.2, line: '#431407' };
+    let s = K.aura('#a5b4fc', 96, 100, 0.4) + K.aura('#fb923c', 60, 120, 0.2);
+    // дорога со следами
+    s += K.part('M0 168H200V184H0Z', '#d6c3a5', { line: '#78614a', lw: 1.6 });
+    s += [[14, 172], [40, 177], [66, 172], [130, 177], [156, 172], [182, 177]].map(([x, y]) => `<path d="M${x} ${y}c0-3 3-5 6-4s4 4 2 6-8 2-8-2z" fill="#3f2a14"/><g fill="#3f2a14"><circle cx="${x + 8}" cy="${y - 4}" r="1"/><circle cx="${x + 9}" cy="${y - 1}" r="1"/></g>`).join('');
+    // рама с товаром за спиной
+    s += K.line('M66 34L62 140M134 34L138 140M64 42H136M63 100H137', '#5b3214', 5) + K.line('M66 34L62 140M134 34L138 140M64 42H136M63 100H137', '#c08a5a', 2.4);
+    for (const [r, L, d] of [[-18, 26, -0.4], [4, 30, -1], [24, 26, -0.7]]) s += azPlume(K, 124, 30, L, r, '#6ee7b7', '#047857', d);
+    s += K.vol('M68 16H106V40H68Z', { c1: '#93c5fd', c2: '#1e40af', tex: false, lw: 2, line: '#172554', rim: '#eef0ff' }) + K.line('M68 24H106M68 32H106', '#fde68a', 1.8) + K.line('M87 16V40', '#dc2626', 2.4);
+    s += K.vol(K.ell(124, 32, 13, 10), { c1: '#d6a26c', c2: '#7c4a1d', tex: false, lw: 2, line: '#3b1d0c' }) + K.line('M117 24l14 0', '#3b1d0c', 2.2);
+    s += [[120, 30], [127, 33], [123, 37]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2.8" ry="1.9" fill="#7c2d12" stroke="#3b1d0c" stroke-width=".8"/>`).join('');
+    s += K.line('M72 40Q100 48 128 40', '#14532d', 4) + [78, 90, 102, 114].map(x => `<circle cx="${x}" cy="${x < 96 ? 42.6 : 43.4}" r="2.6" fill="#34d399" stroke="#064e3b" stroke-width=".8"/>`).join('');
+    // ноги: шаг
+    s += K.line('M90 146L80 168', '#431407', 12) + K.line('M90 146L80 168', skin, 7.6) + K.part('M70 168C72 162 84 162 88 168C86 172 72 174 70 168Z', '#a16207', { line: '#422006', lw: 1.6 });
+    s += K.line('M110 146L118 168', '#431407', 12) + K.line('M110 146L118 168', skin, 7.6) + K.part('M110 168C112 162 124 162 128 168C126 172 112 174 110 168Z', '#a16207', { line: '#422006', lw: 1.6 });
+    // плащ путника
+    const robe = 'M100 84C120 84 132 100 134 118C136 132 134 144 130 152H70C66 144 64 132 66 118C68 100 80 84 100 84Z';
+    s += K.vol(robe, O);
+    s += azClip(K, robe, `<rect x="60" y="140" width="80" height="20" fill="#16a34a"/>` + K.line(azGreca(60, 140, 150, 3.6), '#fde68a', 1.4) + K.line('M60 140H140', '#fde68a', 1.6));
+    s += K.line('M72 96Q100 110 128 96', '#431407', 6) + K.line('M72 96Q100 110 128 96', '#34d399', 3.6);
+    s += K.vol(K.ell(124, 130, 7, 8), { c1: '#d6a26c', c2: '#7c4a1d', tex: false, lw: 1.8, line: '#3b1d0c' }) + K.line('M120 124h8', '#3b1d0c', 1.6);
+    // посох и опахало
+    s += K.line('M48 180L56 50', '#365314', 6) + K.line('M48 180L56 50', '#a3e635', 3) + K.line('M49.4 156l5 0M51 124l5 0M53 92l5 0M54.6 66l5 0', '#365314', 1.6);
+    s += K.vol('M68 102C58 100 54 94 54 86C58 80 64 82 64 88C66 92 68 94 74 96Z', O) + K.part(K.ell(56, 86, 6.5, 6), skin, { line: '#7c4a24', lw: 1.6 });
+    s += K.vol('M132 100C142 104 148 112 150 122C146 128 140 128 138 122C136 116 134 112 128 110Z', O) + K.part(K.ell(148, 122, 6.5, 6), skin, { line: '#7c4a24', lw: 1.6 });
+    s += K.line('M150 120L160 106', '#5b3214', 2.6);
+    s += `<g class="art-sway" style="transform-origin:0% 100%">` + [-40, -20, 0, 20, 40].map(a => `<path d="M160 106L${f(160 + 20 * Math.sin(a * Math.PI / 180))} ${f(106 - 20 * Math.cos(a * Math.PI / 180))}" stroke="${a % 40 ? '#2dd4bf' : '#f59e0b'}" stroke-width="7" stroke-linecap="round"/>`).join('') + `<circle cx="160" cy="106" r="4" fill="#facc15" stroke="#713f12" stroke-width="1.2"/></g>`;
+    // голова с длинным носом
+    s += K.vol(K.ell(100, 64, 22, 22), { c1: skin, c2: '#a8683a', rim: '#eef0ff', tex: false, hiK: 0.18, line: '#5b2e12' });
+    s += K.part('M78 58C80 46 90 42 100 42C110 42 120 46 122 58C114 52 106 52 100 54C94 52 86 52 78 58Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += K.part('M78 50Q100 40 122 50L121 56Q100 46 79 56Z', '#16a34a', { line: '#14532d', lw: 1.4 }) + K.rhomb(100, 46, 3, '#fde047', '#14532d');
+    s += K.part('M100 62C106 64 114 72 116 80C112 84 104 84 100 80Z', '#e0a96d', { line: '#5b2e12', lw: 1.6 });
+    s += K.eyes(96, 62, 9, 5.8, { iris: '#78350f', look: [0.5, 0.2] });
+    s += K.line('M92 84Q98 88 106 85', K.INK, 2.2) + K.blush(84, 76, 4) + K.blush(112, 74, 3.4);
+    s += K.mirror(`<circle cx="78" cy="70" r="3.6" fill="#facc15" stroke="#713f12" stroke-width="1.2"/>`);
+    s += K.spark(24, 30, 3, '#fde68a', 'art-float') + K.spark(180, 40, 2.8, '#eef0ff') + K.spark(186, 140, 2.4, '#fde68a');
+    return s;
+  },
+
+  // Ситлалинкуэ: Звёздная Юбка — богиня, рассыпавшая по небу звёзды. Огромная колоколом юбка — ночное небо
+  // с Млечным Путём, по подолу — силуэт города, в окнах которого загорается свет. Одной рукой она бросает звёзды
+  // вверх, с другой ладони они сыплются вниз; в тёмных волосах — звёздные заколки, на лбу — золотая звезда
+  az_citlalicue(K) {
+    const skin = '#e3a774', N = { c1: '#6366f1', c2: '#0b0a2a', rim: '#fde68a', rimK: 0.5, texK: 0.7, line: '#05041a' };
+    let s = K.aura('#6366f1', 100, 104, 0.5) + K.aura('#fde68a', 50, 70, 0.2);
+    // юбка — ночное небо
+    const skirt = 'M100 104C124 104 136 118 144 136C156 156 180 166 192 176C150 184 50 184 8 176C20 166 44 156 56 136C64 118 76 104 100 104Z';
+    s += K.vol(skirt, N);
+    s += azClip(K, skirt, `<path d="M0 170C40 150 90 130 200 120L200 140C100 150 50 166 0 186Z" fill="#e0e7ff" opacity=".2"/>` +
+      [[40, 168], [64, 150], [86, 140], [114, 132], [136, 146], [158, 160], [176, 170], [100, 158], [72, 166], [124, 162], [94, 122], [110, 112]].map(([x, y], i) => K.spark(x, y, i % 3 ? 2.2 : 3.4, '#fef9c3', i % 2 ? 'art-blink' : '')).join('') +
+      `<path d="M8 186V170H20V160H30V168H40V156H52V170H62V162H72V172H84V164H96V172H108V158H120V170H130V162H142V170H152V156H164V168H176V160H186V172H196V186Z" fill="#05041a"/>` +
+      `<g fill="#fde68a">` + [[13, 174], [24, 164], [44, 160], [47, 168], [66, 166], [88, 168], [112, 162], [114, 170], [134, 166], [156, 160], [158, 168], [180, 164]].map(([x, y]) => `<rect x="${x}" y="${y}" width="3" height="3"/>`).join('') + '</g>');
+    // лиф и руки
+    const top = 'M100 88C114 88 122 98 124 110H76C78 98 86 88 100 88Z';
+    s += K.vol(top, { c1: '#818cf8', c2: '#1e1b4b', rim: '#fde68a', tex: false, line: '#05041a' });
+    s += K.line('M78 104Q100 114 122 104', '#fbbf24', 3.4);
+    s += K.vol('M80 96C70 88 64 76 62 62C66 56 72 58 74 64C76 74 80 82 88 88Z', { c1: '#818cf8', c2: '#1e1b4b', rim: '#fde68a', tex: false, line: '#05041a' }) + K.part(K.ell(66, 58, 6.5, 6), skin, { line: '#7c4a24', lw: 1.6 });
+    s += K.vol('M120 98C132 100 140 106 144 116C140 122 134 122 132 116C130 112 126 110 118 108Z', { c1: '#818cf8', c2: '#1e1b4b', rim: '#fde68a', tex: false, line: '#05041a' }) + K.part(K.ell(143, 118, 6.5, 6), skin, { line: '#7c4a24', lw: 1.6 });
+    s += `<g class="art-float">${K.spark(56, 40, 5, '#fef9c3')}${K.spark(72, 30, 3.4, '#fde68a')}${K.spark(46, 54, 2.6, '#fef9c3')}</g>`;
+    s += `<g class="art-float" style="animation-delay:-1s">${K.spark(150, 130, 3.4, '#fef9c3')}${K.spark(156, 144, 2.6, '#fde68a')}${K.spark(146, 152, 2.2, '#fef9c3')}</g>`;
+    // волосы, голова, звезда на лбу
+    s += K.part('M80 66C78 48 88 40 100 40C112 40 122 48 120 66L124 88C116 92 110 86 110 80H90C90 86 84 92 76 88Z', '#0b0a2a', { line: '#05041a', lw: 1.6 });
+    s += K.vol(K.ell(100, 66, 19, 20), { c1: skin, c2: '#b8784a', rim: '#fde68a', tex: false, hiK: 0.18, line: '#6b3a1a' });
+    s += K.part('M82 60C84 50 92 46 100 46C108 46 116 50 118 60C112 56 106 56 100 58C94 56 88 56 82 60Z', '#0b0a2a', { line: '#05041a', lw: 1.4 });
+    s += K.part('M82 52Q100 42 118 52L117 57Q100 48 83 57Z', '#facc15', { line: '#854d0e', lw: 1.4 }) + K.spark(100, 44, 6, '#fef9c3', '') + `<circle cx="100" cy="44" r="2" fill="#facc15"/>`;
+    s += K.spark(80, 74, 2.4, '#fef9c3', '') + K.spark(120, 74, 2.4, '#fef9c3', '');
+    s += K.eyes(100, 67, 8, 5.6, { iris: '#f59e0b', look: [-0.2, 0.2], lash: true });
+    s += K.blush(89, 76, 3.4) + K.blush(111, 76, 3.4) + K.mouth('smile', 100, 78, 8);
+    s += K.spark(22, 100, 2.6, '#fef9c3', 'art-float') + K.spark(184, 40, 3, '#fde68a') + K.spark(176, 92, 2.4, '#e0e7ff', 'art-float');
+    return s;
+  },
+
+  // Тонатиу (легенда): бог Пятого Солнца, как на знаменитом Камне Солнца. Огромный солнечный диск: лучи-клинья
+  // с язычками пламени, кольцо нефритовых бусин, кольцо из двадцати знаков дней, четыре лепестка знака Ольин —
+  // четыре прежних Солнца; в центре — золотой лик с нефритовыми серьгами, диадемой и украшением в носу
+  az_tonatiuh(K) {
+    const f = K.f, cx = 100, cy = 92;
+    const P = (r, a) => `${f(cx + r * Math.cos(a))} ${f(cy + r * Math.sin(a))}`;
+    let s = K.aura('#fbbf24', 100, 92, 0.55) + K.aura('#ff7a1a', 74, 92, 0.3);
+    // лучи
+    let big = '', small = '';
+    for (let i = 0; i < 8; i++) {
+      const a = (i * 45 - 90) * Math.PI / 180, b = a + Math.PI / 8;
+      big += `M${P(64, a - 0.2)}L${P(88, a)}L${P(64, a + 0.2)}Z`;
+      small += `M${P(64, b - 0.12)}L${P(80, b)}L${P(64, b + 0.12)}Z`;
+    }
+    s += `<g class="art-spin-soft"><path d="${small}" fill="${K.rad([[0.7, '#fde68a'], [1, '#f59e0b']], 0.5, 0.5, 0.5)}" stroke="#b45309" stroke-width="1.4" stroke-linejoin="round"/>` +
+      `<path d="${big}" fill="${K.rad([[0.7, '#fff3b0'], [1, '#f97316']], 0.5, 0.5, 0.5)}" stroke="#9a3412" stroke-width="1.8" stroke-linejoin="round"/></g>`;
+    // язычки пламени между лучами и кольцо нефритовых бусин
+    s += [0, 90, 180, 270].map((a, i) => K.g(K.flame(cx, cy - 66, 16, 11, '#fff0a0', '#f97316', { style: `animation-delay:${-i * 0.3}s` }), `rotate(${a + 22.5} ${cx} ${cy})`)).join('');
+    s += `<circle cx="${cx}" cy="${cy}" r="70" fill="#7c2d12"/>`;
+    const jade = K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35);
+    for (let i = 0; i < 28; i++) { const a = i * Math.PI * 2 / 28; s += `<circle cx="${f(cx + 70 * Math.cos(a))}" cy="${f(cy + 70 * Math.sin(a))}" r="3.4" fill="${jade}" stroke="#134e4a" stroke-width=".9"/>`; }
+    // каменный диск с кольцами
+    s += `<circle cx="${cx}" cy="${cy}" r="66" fill="${K.rad([[0, '#fde68a'], [0.75, '#f59e0b'], [1, '#c2410c']], 0.42, 0.38)}" stroke="#7c2d12" stroke-width="2.6"/>`;
+    s += `<circle cx="${cx}" cy="${cy}" r="60" fill="none" stroke="#7c2d12" stroke-width="1.4"/><circle cx="${cx}" cy="${cy}" r="48" fill="none" stroke="#7c2d12" stroke-width="1.4"/>`;
+    let days = '';
+    for (let i = 0; i < 20; i++) {
+      const a = (i * 18 - 90) * Math.PI / 180, x = cx + 54 * Math.cos(a), y = cy + 54 * Math.sin(a);
+      days += `<rect x="${f(x - 4)}" y="${f(y - 4)}" width="8" height="8" rx="2" transform="rotate(${i * 18} ${f(x)} ${f(y)})" fill="${i % 2 ? '#2dd4bf' : '#fef3c7'}" stroke="#7c2d12" stroke-width="1"/>`;
+    }
+    s += days;
+    // четыре лепестка Ольин
+    s += [45, 135, 225, 315].map(a => `<g transform="rotate(${a} ${cx} ${cy})"><rect x="${cx - 9}" y="${cy - 46}" width="18" height="16" rx="4" fill="${K.lin(['#fef3c7', '#fbbf24'])}" stroke="#7c2d12" stroke-width="1.6"/><circle cx="${cx}" cy="${cy - 38}" r="3" fill="#dc2626"/></g>`).join('');
+    // лик
+    s += K.vol(K.ell(cx, cy, 30, 30), { c1: '#fff7c2', c2: '#f59e0b', rim: '#ffffff', tex: false, line: '#7c2d12', lw: 2.6, hiK: 0.25 });
+    s += K.part('M74 76Q100 62 126 76L124 84Q100 72 76 84Z', '#2dd4bf', { line: '#134e4a', lw: 1.6 }) + K.rhomb(100, 72, 4.4, '#fde047', '#134e4a');
+    s += K.mirror(`<circle cx="70" cy="96" r="7" fill="${K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.6"/><circle cx="70" cy="96" r="2.6" fill="#fde047"/>`);
+    s += K.eyes(100, 92, 11, 7, { iris: '#c2410c', look: [0, 0.2] });
+    s += K.part('M92 104H108L106 108H94Z', '#2dd4bf', { line: '#134e4a', lw: 1.2 });
+    s += K.blush(84, 104, 5) + K.blush(116, 104, 5) + K.mouth('smile', 100, 110, 12);
+    s += K.gloss(84, 76, 6, 3.4, -30, 0.5);
+    s += K.spark(18, 20, 3.6, '#fff3b0', 'art-float') + K.spark(184, 24, 3.2, '#ffd23f') + K.spark(14, 166, 3, '#fff3b0') + K.spark(186, 168, 3, '#ffd23f', 'art-float');
+    return s;
+  },
+
+  // Ометеотль (легенда): двуединый бог-творец с тринадцатого неба — левая половина дневная, золотая, правая —
+  // ночная, синяя со звёздами. На облачном троне, над головой — тринадцать звёзд-небес; венец из солнечных
+  // лучей и лунного серпа, в сомкнутых ладонях сияет искра новой жизни
+  az_ometeotl(K) {
+    const f = K.f, skin = '#e8b27a', night = '#c7d2fe';
+    let s = K.aura('#fde68a', 100, 92, 0.5) + K.aura('#6366f1', 80, 120, 0.35);
+    const back = s.length; // всё, что дальше, рисуется чуть крупнее
+    // тринадцать небес
+    for (let i = 0; i < 13; i++) { const a = (200 + i * 140 / 12) * Math.PI / 180; s += K.spark(+f(100 + 78 * Math.cos(a)), +f(96 + 78 * Math.sin(a)), i % 2 ? 2.6 : 3.6, i < 6 ? '#fde68a' : i > 6 ? '#e0e7ff' : '#ffffff', i % 3 ? 'art-blink' : ''); }
+    // облачный трон
+    s += K.vol('M20 176C10 168 16 156 28 158C30 146 46 144 52 152C58 144 76 144 80 152H120C124 144 142 144 148 152C154 144 170 146 172 158C184 156 190 168 180 176Z', { c1: '#ffffff', c2: '#c7d2fe', tex: false, lw: 2, line: '#475569', rim: '#fde68a', shadeK: 0.4 });
+    // одеяние: левая половина — день, правая — ночь
+    const robe = 'M100 94C122 94 136 108 140 128C144 146 146 158 144 168C124 174 76 174 56 168C54 158 56 146 60 128C64 108 78 94 100 94Z';
+    s += azClip(K, 'M0 0H100V200H0Z', K.vol(robe, { c1: '#fde68a', c2: '#c2410c', rim: '#ffffff', texK: 0.3, line: '#431407' }));
+    s += azClip(K, 'M100 0H200V200H100Z', K.vol(robe, { c1: '#818cf8', c2: '#1e1b4b', rim: '#fde68a', texK: 0.7, line: '#05041a' }));
+    s += K.line('M100 96V170', '#fde68a', 2.4) + K.line('M66 104Q100 120 134 104', '#05041a', 6) + K.line('M66 104Q100 120 134 104', '#facc15', 3.4);
+    s += azClip(K, robe, K.line(azGreca(40, 160, 162, 4), '#fff7c2', 1.8));
+    // руки, искра жизни
+    s += K.vol('M66 108C58 118 56 132 64 142C70 146 78 144 82 138C78 130 76 122 76 114Z', { c1: '#fde68a', c2: '#c2410c', rim: '#ffffff', tex: false, line: '#431407' });
+    s += K.vol('M134 108C142 118 144 132 136 142C130 146 122 144 118 138C122 130 124 122 124 114Z', { c1: '#818cf8', c2: '#1e1b4b', rim: '#fde68a', tex: false, line: '#05041a' });
+    s += `<circle class="art-aura" cx="100" cy="140" r="22" fill="${K.rad([[0, '#ffffff', 1], [0.35, '#fde68a', 0.7], [1, '#a5b4fc', 0]])}"/>` + K.spark(100, 140, 9, '#ffffff') + K.spark(100, 140, 4, '#fde047', '');
+    s += K.part(K.ell(86, 142, 7, 6.5), skin, { line: '#7c4a24', lw: 1.6 }) + K.part(K.ell(114, 142, 7, 6.5), night, { line: '#3b3a6b', lw: 1.6 });
+    // венец: солнечные лучи и лунный серп
+    for (let i = 0; i < 5; i++) { const a = (-170 + i * 20) * Math.PI / 180; s += `<path d="M${f(100 + 24 * Math.cos(a - 0.12))} ${f(70 + 24 * Math.sin(a - 0.12))}L${f(100 + 42 * Math.cos(a))} ${f(70 + 42 * Math.sin(a))}L${f(100 + 24 * Math.cos(a + 0.12))} ${f(70 + 24 * Math.sin(a + 0.12))}Z" fill="#fbbf24" stroke="#9a3412" stroke-width="1.4" stroke-linejoin="round"/>`; }
+    s += azMoon(K, 124, 36, 11) + K.spark(140, 50, 3, '#e0e7ff', '') + K.spark(132, 26, 2.4, '#e0e7ff', '');
+    // лицо из двух половин
+    const face = K.ell(100, 72, 23, 23);
+    s += azClip(K, 'M0 0H100V200H0Z', K.vol(face, { c1: skin, c2: '#b8784a', rim: '#ffffff', tex: false, hiK: 0.2, line: '#6b3a1a' }));
+    s += azClip(K, 'M100 0H200V200H100Z', K.vol(face, { c1: '#e0e7ff', c2: '#818cf8', rim: '#fde68a', tex: false, hiK: 0.2, line: '#3b3a6b' }));
+    s += K.part('M78 64Q100 50 122 64L121 70Q100 57 79 70Z', '#facc15', { line: '#854d0e', lw: 1.6 }) + K.rhomb(100, 58, 4, '#34d399', '#064e3b');
+    s += `<g class="art-eyes">${K.eye(90, 74, 6.4, { iris: '#c2410c', look: [0, 0.2] })}${K.eye(110, 74, 6.4, { iris: '#4338ca', look: [0, 0.2] })}</g>`;
+    s += `<circle cx="78" cy="82" r="4" fill="#facc15" stroke="#854d0e" stroke-width="1.2"/><circle cx="122" cy="82" r="4" fill="#e0e7ff" stroke="#3b3a6b" stroke-width="1.2"/>`;
+    s += K.line('M93 86Q100 90 107 86', '#6b3a1a', 2.2) + K.blush(86, 84, 3.6) + K.blush(114, 84, 3.6);
+    s = s.slice(0, back) + `<g transform="translate(100 178) scale(1.12) translate(-100 -178)">${s.slice(back)}</g>`;
+    s += K.spark(14, 150, 2.6, '#fde68a', 'art-float') + K.spark(186, 150, 2.6, '#e0e7ff', 'art-float') + K.spark(188, 100, 2.2, '#ffffff');
+    return s;
+  },
+
+  // Коатликуэ (легенда): Мать-Земля в юбке из змей. Юбка сплетена из зелёных змей, из-под подола выглядывают
+  // две змейки, пояс — змея с пряжкой-головой. В одной руке — метёлка (она подметала храм на горе Коатепек),
+  // над другой ладонью сияет клубок перьев колибри, из которого родился Уицилопочтли. Убор из перьев, нефритовые
+  // серьги, гирлянда цветов; под ногами — гора-тепетль, вокруг прорастают цветы
+  az_coatlicue(K) {
+    const f = K.f, skin = '#d9a06b', S = { c1: '#86efac', c2: '#14532d', rim: '#fef3c7', texK: 0.22, line: '#052e16' };
+    let s = K.aura('#facc15', 100, 96, 0.5) + K.aura('#22c55e', 76, 130, 0.35);
+    // убор из перьев
+    for (const [r, L, c1, c2, d] of [[-64, 44, '#6ee7b7', '#047857', -0.2], [-40, 52, '#fde68a', '#d97706', -0.8], [-16, 56, '#6ee7b7', '#047857', -1.3], [16, 56, '#6ee7b7', '#047857', -0.5], [40, 52, '#fde68a', '#d97706', -1], [64, 44, '#6ee7b7', '#047857', -0.4]]) s += azPlume(K, 100, 56, L, r, c1, c2, d);
+    // гора Коатепек
+    const hill = 'M8 184C12 168 24 160 40 158H160C176 160 188 168 192 184Z';
+    s += K.vol(hill, { c1: '#a3e635', c2: '#365314', rim: '#fef3c7', texK: 0.25, line: '#1a2e05' });
+    s += azClip(K, hill, `<rect x="0" y="174" width="200" height="12" fill="#facc15"/>` + K.line(azGreca(0, 200, 182, 4), '#b45309', 1.4));
+    s += azDahlia(K, 26, 168, 6.4, '#f472b6') + azMari(K, 174, 168, 6);
+    // юбка из змей
+    const skirt = 'M100 108C124 108 138 122 142 140C146 156 148 166 146 172C124 178 76 178 54 172C52 166 54 156 58 140C62 122 76 108 100 108Z';
+    s += K.vol(skirt, S);
+    let weave = '';
+    for (let i = -3; i <= 3; i++) weave += `M${40 + i * 20} 110L${100 + i * 20} 180M${160 + i * 20} 110L${100 + i * 20} 180`;
+    s += azClip(K, skirt, K.line(weave, '#052e16', 8) + K.line(weave, '#4ade80', 5));
+    // две змейки выглядывают из-под подола
+    const snake = (x, dir, d) => `<g class="art-sway" style="animation-delay:${d}s;transform-origin:50% 0">` +
+      K.vol(`M${x} 166C${x + dir * 8} 164 ${x + dir * 20} 166 ${x + dir * 24} 172C${x + dir * 26} 178 ${x + dir * 18} 182 ${x + dir * 8} 180C${x + dir * 2} 178 ${x - dir * 2} 172 ${x} 166Z`, { ...S, tex: false, lw: 2 }) +
+      `<circle cx="${x + dir * 14}" cy="170" r="2.4" fill="#fff"/><circle cx="${x + dir * 14.6}" cy="170.4" r="1.4" fill="${K.INK}"/>` + K.line(`M${x + dir * 24} 176l${dir * 6} 1M${x + dir * 30} 177l${dir * 3} -2M${x + dir * 30} 177l${dir * 3} 2`, '#dc2626', 1.4) + '</g>';
+    s += snake(60, -1, -0.3) + snake(140, 1, -0.9);
+    // пояс-змея
+    s += K.line('M58 134Q100 148 142 134', '#052e16', 9) + K.line('M58 134Q100 148 142 134', '#22c55e', 6) + `<path d="M58 134Q100 148 142 134" fill="none" stroke="#fde047" stroke-width="2.2" stroke-dasharray="0.1 7" stroke-linecap="round"/>`;
+    s += K.vol(K.ell(100, 142, 9, 7.4), { ...S, tex: false, lw: 2 }) + `<circle cx="97" cy="140" r="1.6" fill="${K.INK}"/><circle cx="103" cy="140" r="1.6" fill="${K.INK}"/>`;
+    // рубашка с гирляндой цветов
+    const top = 'M100 92C116 92 126 102 130 116L132 132Q100 142 68 132L70 116C74 102 84 92 100 92Z';
+    s += K.vol(top, { c1: '#fef3c7', c2: '#ca8a04', rim: '#fef3c7', tex: false, line: '#422006' });
+    for (let i = 0; i <= 4; i++) { const t = i / 4, x = 72 * (1 - t) * (1 - t) + 200 * t * (1 - t) + 128 * t * t, y = 104 * (1 - t) * (1 - t) + 252 * t * (1 - t) + 104 * t * t; s += i % 2 ? azDahlia(K, +f(x), +f(y), 5.6, '#f472b6') : azMari(K, +f(x), +f(y), 5.6); }
+    // рука с метёлкой
+    s += K.vol('M70 106C58 110 52 118 50 128C54 134 60 134 62 128C64 122 68 118 76 116Z', { c1: '#fef3c7', c2: '#ca8a04', tex: false, line: '#422006' });
+    s += K.line('M40 54L56 160', '#5b3214', 4) + K.line('M40 54L56 160', '#c08a5a', 2);
+    s += K.part('M50 140C44 148 42 162 44 176H64C64 162 62 150 58 140Z', '#e9d8a6', { line: '#78614a', lw: 1.6 }) + K.line('M48 150L46 176M52 148V176M57 148L60 176', '#a18a5c', 1.2) + K.line('M49 142H59', '#dc2626', 2.6);
+    s += K.part(K.ell(53, 128, 7, 6.5), skin, { line: '#7c4a24', lw: 1.6 });
+    // ладонь с клубком перьев колибри
+    s += K.vol('M130 106C142 110 148 118 150 128C146 134 140 134 138 128C136 122 132 118 124 116Z', { c1: '#fef3c7', c2: '#ca8a04', tex: false, line: '#422006' }) + K.part(K.ell(148, 130, 7, 6), skin, { line: '#7c4a24', lw: 1.6 });
+    s += `<circle class="art-aura" cx="150" cy="108" r="22" fill="${K.rad([[0, '#ecfeff', 0.9], [0.5, '#5eead4', 0.45], [1, '#5eead4', 0]])}"/>`;
+    s += `<g class="art-float"><circle cx="150" cy="108" r="13" fill="${K.rad([[0, '#a7f3d0'], [0.5, '#2dd4bf'], [1, '#0e7490']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.8"/>` +
+      [0, 60, 120, 180, 240, 300].map(a => { const t = a * Math.PI / 180; return `<ellipse cx="${f(150 + 9 * Math.cos(t))}" cy="${f(108 + 9 * Math.sin(t))}" rx="5.4" ry="2.4" transform="rotate(${a} ${f(150 + 9 * Math.cos(t))} ${f(108 + 9 * Math.sin(t))})" fill="${a % 120 ? '#a78bfa' : '#f472b6'}" opacity=".85"/>`; }).join('') + K.gloss(146, 102, 3, 1.8, -30, 0.7) + '</g>';
+    // голова
+    s += K.vol(K.ell(100, 70, 22, 23), { c1: skin, c2: '#a8683a', rim: '#fef3c7', tex: false, hiK: 0.18, line: '#5b2e12' });
+    s += K.part('M78 64C80 52 90 46 100 46C110 46 120 52 122 64C114 58 106 58 100 60C94 58 86 58 78 64Z', '#1c1917', { line: '#0c0a09', lw: 1.4 });
+    s += K.part('M76 56Q100 42 124 56L123 63Q100 50 77 63Z', '#22c55e', { line: '#052e16', lw: 1.6 }) + `<path d="M76 56Q100 42 124 56" fill="none" stroke="#fde047" stroke-width="1.8" stroke-dasharray="0.1 6" stroke-linecap="round"/>`;
+    s += K.vol(K.ell(100, 48, 7, 5.6), { ...S, tex: false, lw: 1.6 }) + `<circle cx="97.6" cy="47" r="1.3" fill="${K.INK}"/><circle cx="102.4" cy="47" r="1.3" fill="${K.INK}"/>`;
+    s += K.mirror(`<circle cx="77" cy="78" r="5.4" fill="${K.rad([[0, '#a7f3d0'], [1, '#059669']], 0.4, 0.35)}" stroke="#134e4a" stroke-width="1.6"/>`);
+    s += K.eyes(100, 71, 8.8, 6, { iris: '#14532d', lid: 'half', skin, look: [0.3, 0.3], lash: true });
+    s += K.blush(87, 80, 4) + K.blush(113, 80, 4) + K.mouth('smile', 100, 82, 10);
+    s += K.spark(18, 40, 3.4, '#fde68a', 'art-float') + K.spark(182, 40, 3, '#a7f3d0') + K.spark(184, 150, 2.6, '#fde68a', 'art-float') + K.spark(16, 120, 2.6, '#a7f3d0');
+    return s;
+  },
+});

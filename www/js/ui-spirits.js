@@ -521,8 +521,19 @@ Object.assign(UI, {
       <div class="grid dex">${SPECIES.map(s => {
         const d = S.d.dex[s.id] || {};
         const cls = d.caught ? 'caught' : d.seen ? 'seen' : 'unknown';
-        return `<button class="dex-cell ${cls} el-${s.el}${mf !== 'all' && s.myth !== mf ? ' hidden' : ''}" data-sid="${s.id}" data-m="${s.myth}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${d.seen ? Art.img(s.id) : '<span class="dx-q">?</span>'}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
+        return `<button class="dex-cell ${cls} el-${s.el}${mf !== 'all' && s.myth !== mf ? ' hidden' : ''}" data-sid="${s.id}" data-m="${s.myth}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${d.seen ? `<i class="art" data-art="${s.id}"></i>` : '<span class="dx-q">?</span>'}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
       }).join('')}</div>`, 'dex-screen');
+    // 5.1.19: рисунки ячеек — по мере прокрутки: видов стало 441, и все разом рисовались до полутора секунд на слабом телефоне.
+    // Ячейки скрытых мифологий не пересекаются с экраном — их рисунки появятся, когда мифологию выберут
+    const pics = [...scr.querySelectorAll('[data-art]')], draw = el => { if (el.isConnected) el.outerHTML = Art.img(el.dataset.art); };
+    if (typeof IntersectionObserver !== 'function') pics.forEach(draw);
+    else {
+      const io = new IntersectionObserver(es => {
+        for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); draw(e.target); }
+      }, { root: scr.querySelector('.screen-body'), rootMargin: '300px 0px' });
+      pics.forEach(el => io.observe(el));
+      scr._onClose = () => io.disconnect();
+    }
     scr.addEventListener('click', e => {
       const mb = e.target.closest('[data-myth]');
       if (mb) {
