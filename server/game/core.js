@@ -1525,10 +1525,15 @@ const GameCore = {
       this.need(Rules.passLevel(P.pts) >= lvl, ru`Ступень ещё не пройдена`);
       this.need(track === 'free' || P.gold, ru`Сначала открой Золотую тропу`);
       this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
+      let { amuletPick, ...rw } = Rules.passReward(track, lvl);
+      // 5.1.21: амулет на выбор — какой, присылает телефон (a.am); без выбора ступень не забрать
+      const am = String(a.am || '');
+      this.need(!amuletPick || AMULET_KEYS.includes(am), ru`Выбери амулет`);
       P.got[track].push(lvl);
-      let rw = Rules.passReward(track, lvl, S.d.level);
       if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — монетами (4.16: было 40)
-      return { got: this.grant(rw) };
+      const got = this.grant(rw);
+      if (amuletPick) { S.addAmulet(am); got.push({ k: 'amulet', n: 1, id: am, label: AMULETS[am].name }); }
+      return { got };
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
