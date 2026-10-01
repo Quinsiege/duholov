@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.19';
+const APP_VERSION = '5.1.20';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -3484,12 +3484,13 @@ const S = {
     this.save();
     return true;
   },
-  // Трофеи разлома сверх обычной награды: эссенция семейства босса (легенды — из великих разломов) и осколки Алатыря
+  // Трофеи разлома сверх обычной награды: эссенция Рода (5.1.20; было — эссенция семейства босса) и осколки Алатыря.
+  // Эссенция Рода вливается в любое семейство (в легенды — ESS.LEGEND → 1), см. S.pour
   RIFT_ESS: { 1: 2, 2: 4, 3: 6 },
   ALATYR_DROP: { rift: { 2: 0.2, 3: 1 }, duel: { 3: 0.1 } }, ALATYR_DAY: 2, // в бою — не больше двух осколков в день (дальние великие разломы не фармятся)
   riftSpoils(boss, tier) {
-    const out = [], fam = SP[boss].fam, n = this.RIFT_ESS[tier] || 0;
-    if (n) { this.addEssence(fam, n); out.push({ k: 'ess', n, label: ru`Эссенция «${SP[fam].name}»` }); }
+    const out = [], n = this.RIFT_ESS[tier] || 0;
+    if (n) { this.d.rod = (this.d.rod || 0) + n; out.push({ k: 'rod', n, label: this.resName('rod') }); }
     return out.concat(this.alatyrDrop('rift', tier));
   },
   alatyrDrop(kind, tier) {
@@ -4046,6 +4047,14 @@ const S = {
     for (const k of [1, 2, 3]) if (!list.length) list = free(k);
     return list.length ? list[Math.floor(r() * list.length)].id : null;
   },
+  // 5.1.20: обменов по курсу Кампании (Rules.EXCHANGE.CAMP монет) осталось — пока у шага есть невыполненная цель «обмены»
+  // (не больше её n раз); дальше — обычный курс Rules.EXCHANGE.ZLAT
+  campExLeft() {
+    const c = this.d && this.d.camp, st = this.campStep();
+    return st ? st.obj.reduce((a, o, i) => a + (o.t === 'exchange' ? Math.max(0, o.n - (c.p[i] || 0)) : 0), 0) : 0;
+  },
+  // монеты за n обменов подряд: сперва — по курсу Кампании, сколько осталось, остальные — по обычному
+  exchangeZlat(n) { const E = Rules.EXCHANGE, k = Math.min(n, this.campExLeft()); return k * E.CAMP + (n - k) * E.ZLAT; },
   // Разлом кампании: цель шага ещё не выполнена
   campRiftOn() { const c = this.d && this.d.camp, st = this.campStep(); return !!st && st.obj.some((o, i) => o.t === 'campRift' && (c.p[i] || 0) < o.n); },
   // Разлом нужно поставить или перенести к Ловчему (ушёл дальше KEEP м, шагнул через Врата)
@@ -4355,18 +4364,18 @@ const J = {
    Экран (3.21): герб ранга и место в таблице, вкладки «Бой», «Таблица» (живая, с текущими уровнями — leagueTop)
    и «Лиги»; строка таблицы открывает карточку Ловчего. Поиск и сам бой — league-battle.js. */
 
-// pts — с какого рейтинга начинается лига
+// pts — с какого рейтинга начинается лига. 5.1.20: искры в наградах за лиги — ×10
 const LEAGUE_RANKS = [
   { name: ru`Дерево`, pts: 0 },
-  { name: ru`Медь`, pts: 300, reward: { charm: 10, sparks: 500 } },
-  { name: ru`Бронза`, pts: 600, reward: { honey: 5, sparks: 800 } },
+  { name: ru`Медь`, pts: 300, reward: { charm: 10, sparks: 5000 } },
+  { name: ru`Бронза`, pts: 600, reward: { honey: 5, sparks: 8000 } },
   { name: ru`Железо`, pts: 1000, reward: { charm2: 5, water: 5 } },
-  { name: ru`Серебро`, pts: 1500, reward: { charm2: 8, sparks: 1500 } },
+  { name: ru`Серебро`, pts: 1500, reward: { charm2: 8, sparks: 15000 } },
   { name: ru`Золото`, pts: 2100, reward: { charm3: 3, incense: 1 } },
-  { name: ru`Платина`, pts: 2800, reward: { charm2: 10, sparks: 3000 } },
+  { name: ru`Платина`, pts: 2800, reward: { charm2: 10, sparks: 30000 } },
   { name: ru`Изумруд`, pts: 3600, reward: { charm3: 5, water: 10 } },
-  { name: ru`Алмаз`, pts: 4500, reward: { incense: 3, sparks: 5000 } },
-  { name: ru`Легенда`, pts: 5500, reward: { charm3: 10, sparks: 8000 } },
+  { name: ru`Алмаз`, pts: 4500, reward: { incense: 3, sparks: 50000 } },
+  { name: ru`Легенда`, pts: 5500, reward: { charm3: 10, sparks: 80000 } },
 ];
 
 /* 5.0: значок лиги — медальон: кольцо-оправа из материала лиги, в центре огранённый кристалл Алатыря (общий для всех
@@ -4615,8 +4624,8 @@ const League = {
     const lo = Math.max(0, pts - this.RANGE), hi = Math.min(this.MAXPTS, pts + this.RANGE);
     return { a: this.rank(lo), b: this.rank(hi), w: 0, lo, hi };
   },
-  // сундук за высшую лигу прошлого сезона
-  prize(r) { return r > 0 ? { sparks: 400 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
+  // сундук за высшую лигу прошлого сезона (5.1.20: искры ×10 — было ✦ 400 за лигу)
+  prize(r) { return r > 0 ? { sparks: 4000 * r, charm2: 2 * r, charm3: Math.floor(r / 2) } : null; },
 
   // 5.0: значок лиги — медальон из материала лиги с кристаллом Алатыря в центре (инлайн-SVG 340×400, LeagueBadge)
   badge(i) { return LeagueBadge(U.clamp(i | 0, 0, LEAGUE_RANKS.length - 1)); },
@@ -5166,7 +5175,7 @@ const Raid = {
               ${row(ru`Искры`, it('sparks', U.fmtNum(350 * T2)))}
               ${row(ru`Обереги`, it('charm', 5) + (T2 >= 2 ? ' · ' + it('charm2', 3) : ''))}
               ${row(ru`Припасы`, it('honey', T2) + ' · ' + (T2 === 1 ? it('herb', 1) : it('water', 1)))}
-              ${row(ru`Эссенция «${SP[s.fam].name}»`, S.RIFT_ESS[T2] || 0)}
+              ${row(ru`Эссенция Рода`, it('rod', S.RIFT_ESS[T2] || 0))}
               ${S.ALATYR_DROP.rift[T2] ? row(ru`Осколок Алатыря`, S.ALATYR_DROP.rift[T2] >= 1 ? ru`точно` : ru`шанс ${Math.round(S.ALATYR_DROP.rift[T2] * 100)}%`) : ''}
               ${row(ru`Амулет`, ru`шанс ${[5, 12, 30][T2 - 1]}%`)}
               ${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}
@@ -6453,8 +6462,9 @@ const Rules = {
   },
   // 3.14: обменник — SPARKS искр → ZLAT монет за один обмен, не больше DAY обменов в день
   // 4.16: был ✦ 500 → 10 монет трижды в день (30 монет в день почти даром) — теперь трата лишних искр:
-  // ✦ 1 000 → 1 монета, до 5 обменов в день. 5.1.15: ✦ 1 000 → 10 монет (пять обменов дня — ладан из Лавки)
-  EXCHANGE: { SPARKS: 1000, ZLAT: 10, DAY: 5 },
+  // ✦ 1 000 → 1 монета, до 5 обменов в день. 5.1.15: ✦ 1 000 → 10 монет (пять обменов дня — ладан из Лавки).
+  // 5.1.20: снова ✦ 1 000 → 1 монета; ✦ 1 000 → CAMP монет — только на шаге Кампании «обмены», не больше его цели (S.campExLeft)
+  EXCHANGE: { SPARKS: 1000, ZLAT: 1, CAMP: 10, DAY: 5 },
   // 5.1.15: Разлом кампании — личный, в DIST м от Ловчего (в пределах видимости на карте); ушёл дальше KEEP м
   // (или шагнул через Врата) — Разлом переносится к нему. Хранитель — по команде Ловчего (S.campBoss): здоровье — на T секунд
   // быстрых ударов первого бойца со скоростью TAPS в секунду (без приёмов), удар — такой, что первый боец выдерживает HITS ударов
@@ -6532,6 +6542,7 @@ const Rules = {
   // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
   // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
   // 4.16: на бесплатной тропе 55 монет за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
+  // 5.1.20: искры на Тропе (и на Золотой) — ×10
   passReward(track, lvl, plvl) {
     if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
     if (track === 'free') {
@@ -6539,24 +6550,24 @@ const Rules = {
       if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
       if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
       if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
-      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 300 };
+      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 3000 };
     }
     if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
     if (lvl === 15) return { look: '#065f46', zlat: 50 };
     if (lvl % 10 === 0) return { cocoon: 10, zlat: 40 };
     if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
     if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
-    return lvl % 2 ? { charm2: 5, sparks: 500 } : { water: 3, sparks: 800 };
+    return lvl % 2 ? { charm2: 5, sparks: 5000 } : { water: 3, sparks: 8000 };
   },
   // 4.16: Золотая тропа с LATE уровня: вместо серебряных оберегов и мелочи — то, что нужно на поздних уровнях:
   // искры на усиление (втрое больше), золотые обереги, целебный отвар, настои опыта; облик и Знак Тропы — как раньше
   passGoldLate(lvl) {
     if (lvl === 30) return { look: 'trail', charm3: 10, xpbrew: 1 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 3000 };
-    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 3000 };
+    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 30000 };
+    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 30000 };
     if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
     if (lvl % 3 === 0) return { charm3: 5, zlat: 15 };
-    return lvl % 2 ? { charm3: 3, sparks: 1500 } : { brew: 2, sparks: 2500 };
+    return lvl % 2 ? { charm3: 3, sparks: 15000 } : { brew: 2, sparks: 25000 };
   },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
@@ -8264,18 +8275,20 @@ const GameCore = {
       Bus.emit('promo', { code, got });
       return { code, got };
     },
-    // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день
+    // Обменник: искры → монеты, по курсу Rules.EXCHANGE и не больше DAY обменов в день.
+    // 5.1.20: на шаге Кампании «обмены» — по курсу Кампании (S.exchangeZlat), считается до того, как обмены засчитаны в шаг
     exchange(a, ctx) {
       const E = Rules.EXCHANGE, today = U.today(ctx.now), n = Math.floor(+a.n);
       const ex = S.d.shop.ex && S.d.shop.ex.day === today ? S.d.shop.ex : (S.d.shop.ex = { day: today, n: 0 });
       this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? ru`Обменник на сегодня закрыт — приходи завтра` : ru`Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);
       this.need(S.d.sparks >= E.SPARKS * n, ru`Не хватает искр`);
+      const zlat = S.exchangeZlat(n);
       S.d.sparks -= E.SPARKS * n;
-      S.d.zlat = (S.d.zlat || 0) + E.ZLAT * n;
+      S.d.zlat = (S.d.zlat || 0) + zlat;
       ex.n += n;
-      J.add('exchange', { sparks: E.SPARKS * n, zlat: E.ZLAT * n });
+      J.add('exchange', { sparks: E.SPARKS * n, zlat });
       S.progress('exchange', n); // 5.1.15: шаг Кампании
-      return { sparks: E.SPARKS * n, zlat: E.ZLAT * n, left: E.DAY - ex.n };
+      return { sparks: E.SPARKS * n, zlat, left: E.DAY - ex.n };
     },
 
     /* ----- Сезонная тропа ----- */

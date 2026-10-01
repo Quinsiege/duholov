@@ -278,8 +278,9 @@ const Rules = {
   },
   // 3.14: обменник — SPARKS искр → ZLAT монет за один обмен, не больше DAY обменов в день
   // 4.16: был ✦ 500 → 10 монет трижды в день (30 монет в день почти даром) — теперь трата лишних искр:
-  // ✦ 1 000 → 1 монета, до 5 обменов в день. 5.1.15: ✦ 1 000 → 10 монет (пять обменов дня — ладан из Лавки)
-  EXCHANGE: { SPARKS: 1000, ZLAT: 10, DAY: 5 },
+  // ✦ 1 000 → 1 монета, до 5 обменов в день. 5.1.15: ✦ 1 000 → 10 монет (пять обменов дня — ладан из Лавки).
+  // 5.1.20: снова ✦ 1 000 → 1 монета; ✦ 1 000 → CAMP монет — только на шаге Кампании «обмены», не больше его цели (S.campExLeft)
+  EXCHANGE: { SPARKS: 1000, ZLAT: 1, CAMP: 10, DAY: 5 },
   // 5.1.15: Разлом кампании — личный, в DIST м от Ловчего (в пределах видимости на карте); ушёл дальше KEEP м
   // (или шагнул через Врата) — Разлом переносится к нему. Хранитель — по команде Ловчего (S.campBoss): здоровье — на T секунд
   // быстрых ударов первого бойца со скоростью TAPS в секунду (без приёмов), удар — такой, что первый боец выдерживает HITS ударов
@@ -357,6 +358,7 @@ const Rules = {
   // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
   // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
   // 4.16: на бесплатной тропе 55 монет за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
+  // 5.1.20: искры на Тропе (и на Золотой) — ×10
   passReward(track, lvl, plvl) {
     if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
     if (track === 'free') {
@@ -364,24 +366,24 @@ const Rules = {
       if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
       if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
       if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
-      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 300 };
+      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 3000 };
     }
     if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
     if (lvl === 15) return { look: '#065f46', zlat: 50 };
     if (lvl % 10 === 0) return { cocoon: 10, zlat: 40 };
     if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
     if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
-    return lvl % 2 ? { charm2: 5, sparks: 500 } : { water: 3, sparks: 800 };
+    return lvl % 2 ? { charm2: 5, sparks: 5000 } : { water: 3, sparks: 8000 };
   },
   // 4.16: Золотая тропа с LATE уровня: вместо серебряных оберегов и мелочи — то, что нужно на поздних уровнях:
   // искры на усиление (втрое больше), золотые обереги, целебный отвар, настои опыта; облик и Знак Тропы — как раньше
   passGoldLate(lvl) {
     if (lvl === 30) return { look: 'trail', charm3: 10, xpbrew: 1 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 3000 };
-    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 3000 };
+    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 30000 };
+    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 30000 };
     if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
     if (lvl % 3 === 0) return { charm3: 5, zlat: 15 };
-    return lvl % 2 ? { charm3: 3, sparks: 1500 } : { brew: 2, sparks: 2500 };
+    return lvl % 2 ? { charm3: 3, sparks: 15000 } : { brew: 2, sparks: 25000 };
   },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },

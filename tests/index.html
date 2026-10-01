@@ -856,13 +856,14 @@
     ok(/Рода: 3/.test(S.canPour('svyatogor', 1)));
     const k0 = S.d.essence.kikimora || 0; ok(S.pour('kikimora', 1)); eq(S.d.rod, 0); eq(S.d.essence.kikimora, k0 + 1);
   });
-  test('Трофеи разлома (4.16): эссенция семейства босса и осколки Алатыря', () => {
+  test('Трофеи разлома (5.1.20): эссенция Рода (не семейства босса) и осколки Алатыря', () => {
     const m = Math.random;
     try {
       Math.random = () => 0.5;
-      S.d.alatyr = 0; S.d.essence.koschey = 0; const u0 = S.d.essence.ugolek || 0;
-      const r3 = S.riftSpoils('koschey', 3); eq(S.d.essence.koschey, S.RIFT_ESS[3], 'эссенция легенды'); eq(S.d.alatyr, 1, 'великий разлом — всегда осколок'); ok(r3.some(x => x.k === 'alatyr'));
-      const r2 = S.riftSpoils('kostrovik', 2); eq(S.d.essence.ugolek, u0 + S.RIFT_ESS[2], 'эссенция семейства босса'); eq(S.d.alatyr, 1); eq(r2.length, 1);
+      S.d.alatyr = 0; S.d.rod = 0; S.d.essence.koschey = 0; const u0 = S.d.essence.ugolek || 0;
+      const r3 = S.riftSpoils('koschey', 3); eq(S.d.rod, S.RIFT_ESS[3], 'эссенция Рода'); eq(S.d.essence.koschey, 0, 'эссенции семейства босса нет');
+      eq(S.d.alatyr, 1, 'великий разлом — всегда осколок'); ok(r3.some(x => x.k === 'alatyr') && r3.some(x => x.k === 'rod' && x.n === S.RIFT_ESS[3]));
+      const r2 = S.riftSpoils('kostrovik', 2); eq(S.d.rod, S.RIFT_ESS[3] + S.RIFT_ESS[2], 'Рода прибавилось'); eq(S.d.essence.ugolek || 0, u0, 'эссенция семейства босса — та же'); eq(S.d.alatyr, 1); eq(r2.length, 1);
       Math.random = () => 0.1; S.riftSpoils('kostrovik', 2); eq(S.d.alatyr, 2, 'разлом — иногда');
       S.riftSpoils('koschey', 3); eq(S.d.alatyr, 2, `в бою — не больше ${S.ALATYR_DAY} осколков в день`);
       S.d.alaDay = { day: 'вчера', n: 9 };
@@ -2033,17 +2034,18 @@
     await refuse(A, 'essPour', { fam: '__proto__', n: 1 }, /семейства/);
     await refuse(A, 'essPour', { fam: 'kikimora', n: 'много' }, /Сколько/);
     await must(A, 'essPour', { fam: 'kikimora', n: 2 }); eq(A.data.rod, 0); eq(A.data.essence.kikimora, 2);
-    // трофеи разлома: эссенция семейства босса
+    // трофеи разлома: эссенция Рода (5.1.20; было — эссенция семейства босса)
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => asPlayer(A, () => { const x = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return x && x.tier === 1; }), 30000);
     const rift = { id, lat: A.lat, lng: A.lng, name: 'Памятник' };
     // команда из трёх сильных духов разных стихий — босс растёт с уровнем Ловчего, а его стихия зависит от часа (4.16)
     ['leshiy', 'vodyanoy', 'gromovik'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 25, sid + 'aw'))));
     A.data.team = A.data.spirits.slice(-3).map(x => x.uid);
-    const st = await must(A, 'raidStart', { rift }), fam = SP[st.boss].fam, e0 = A.data.essence[fam] || 0;
+    const st = await must(A, 'raidStart', { rift }), fam = SP[st.boss].fam, e0 = A.data.essence[fam] || 0, rod0 = A.data.rod || 0;
     A.srv.battle.start -= 85000;
     const w = await must(A, 'raidEnd', { win: true });
-    ok(w.win && w.rw.some(x => x.k === 'ess' && x.n === S.RIFT_ESS[1]), 'эссенция босса в награде'); eq(A.data.essence[fam], e0 + S.RIFT_ESS[1]);
+    ok(w.win && w.rw.some(x => x.k === 'rod' && x.n === S.RIFT_ESS[1]), 'эссенция Рода в награде'); eq(A.data.rod, rod0 + S.RIFT_ESS[1]);
+    eq(A.data.essence[fam] || 0, e0, 'эссенции семейства босса за разлом нет'); ok(!w.rw.some(x => x.k === 'ess'));
   });
   atest('Сервер: приглашение по ссылке — сразу друзья и подарки обоим, без накрутки', async () => {
     const A = await newPlayer('vd', 55.55, 37.43, 'Зазывала');
@@ -2898,7 +2900,28 @@
     const bad = [];
     Object.entries(Atlas.PLACES).forEach(([land, list]) => list.forEach(p => { if (Rules.land(p[3], p[4]) !== land) bad.push(p[1] + '→' + Rules.land(p[3], p[4])); }));
     eq(bad.join(', '), '', 'все места Атласа — в своих частях света');
-    eq(Rules.EXCHANGE.SPARKS, 1000); eq(Rules.EXCHANGE.ZLAT, 10, '5.1.15: ✦ 1 000 → 10 монет');
+  });
+  test('5.1.20: обменник — ✦ 1 000 → 1 монета; на шаге Кампании «обмены» — 10 монет, не больше цели шага', () => {
+    const E = Rules.EXCHANGE, c0 = S.d.camp;
+    eq(E.SPARKS, 1000); eq(E.ZLAT, 1, 'обычный курс — 1 монета'); eq(E.CAMP, 10, 'курс Кампании — 10 монет');
+    try {
+      const i = CAMPAIGN[0].steps.findIndex(s => s.obj.some(o => o.t === 'exchange')), o = CAMPAIGN[0].steps[i].obj.find(x => x.t === 'exchange');
+      ok(i >= 0 && o.n === 5, 'шаг «обмены» — 5 обменов');
+      S.d.camp = { ch: 0, s: i, p: [0], u: [], t: Date.now(), pick: null, rift: null, rn: 0, v: S.CAMP_V };
+      eq(S.campExLeft(), 5); eq(S.exchangeZlat(1), 10); eq(S.exchangeZlat(5), 50, 'пять обменов шага — 50 монет');
+      S.d.camp.p = [3]; eq(S.campExLeft(), 2); eq(S.exchangeZlat(5), 2 * 10 + 3 * 1, 'сверх цели шага — по обычному курсу');
+      S.d.camp.p = [5]; eq(S.campExLeft(), 0); eq(S.exchangeZlat(5), 5, 'цель выполнена — обычный курс');
+      S.d.camp.s = i + 1; S.d.camp.p = [0, 0]; eq(S.exchangeZlat(1), 1, 'следующий шаг — обычный курс');
+      S.d.camp.s = 0; S.d.camp.p = [0, 0, 0]; eq(S.exchangeZlat(1), 1, 'другой шаг — обычный курс');
+      S.d.camp = null; eq(S.campExLeft(), 0); eq(S.exchangeZlat(2), 2, 'без Кампании — обычный курс');
+    } finally { S.d.camp = c0; }
+  });
+  test('5.1.20: искры Лиги и Сезонной тропы — ×10', () => {
+    eq(LEAGUE_RANKS.filter(r => r.reward && r.reward.sparks).map(r => r.reward.sparks).join(','), '5000,8000,15000,30000,50000,80000', 'награды за лиги');
+    eq(League.prize(3).sparks, 12000, 'сундук сезона — ✦ 4 000 за лигу');
+    eq(Rules.passReward('free', 2, 10).sparks, 3000); eq(Rules.passReward('gold', 1, 10).sparks, 5000); eq(Rules.passReward('gold', 2, 10).sparks, 8000);
+    eq(Rules.passReward('gold', 1, 30).sparks, 15000); eq(Rules.passReward('gold', 2, 30).sparks, 25000); eq(Rules.passReward('gold', 10, 30).sparks, 30000); eq(Rules.passReward('gold', 15, 30).sparks, 30000);
+    eq(Rules.passReward('free', 3, 10).sparks, undefined, 'где искр не было — их и нет');
   });
   atest('5.1.15: Кампания, глава I — девять шагов по порядку: цели, награды, дух на выбор, Разлом кампании, Врата', async () => {
     const P = await newPlayer('cp-a', 55.7539, 37.6208, 'Кампанец', 'kapelka');
@@ -2964,7 +2987,7 @@
     const kap = P.data.spirits.find(q => q.sid === 'kapelka'); P.data.essence[SP.kapelka.fam] = 25;
     await must(P, 'evolve', { uid: kap.uid }); eq(P.data.camp.p[0], 1, 'превращение засчитано');
     let sp5 = P.data.sparks; await must(P, 'campClaim', {}); eq(P.data.sparks - sp5, 10000, '10 000 искр');
-    // 6 · Обменник 5 раз — ✦ 1 000 → 10 монет
+    // 6 · Обменник 5 раз — ✦ 1 000 → 10 монет (курс Кампании, 5.1.20; иначе — 1 монета)
     const z0 = P.data.zlat || 0; await must(P, 'exchange', { n: 5 }); eq((P.data.zlat || 0) - z0, 50, 'пять обменов — 50 монет'); eq(P.data.camp.p[0], 5);
     await must(P, 'campClaim', {}); ok(P.data.level >= 8, 'до 8 уровня');
     // 7 · ладан из Лавки + 15 поимок

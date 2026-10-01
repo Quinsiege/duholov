@@ -273,10 +273,11 @@ const Shop = {
   exLeft() { const ex = S.d.shop.ex; return Rules.EXCHANGE.DAY - (ex && ex.day === U.today() ? ex.n : 0); },
   exchangeHtml() {
     const E = Rules.EXCHANGE, left = this.exLeft(), can = Math.min(left, Math.floor(S.d.sparks / E.SPARKS));
+    const camp = S.campExLeft(); // 5.1.20: на шаге Кампании «обмены» — курс Кампании
     const btn = n => `<button class="btn small ${n === 1 ? 'primary' : ''}" data-ex="${n}" ${can >= n ? '' : 'disabled'}>×${n}</button>`;
     return `<div class="shop-ex">
-      <div class="ex-rate"><span class="spark"><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(E.SPARKS)}</span><b>→</b><span class="zlat">${Art.item('zlat')} ${E.ZLAT}</span></div>
-      <div class="row-main"><b>${ru`Обменник`}</b><small>${left ? ru`Сегодня ещё ${left} ${U.plural(left, ru`обмен`, ru`обмена`, ru`обменов`)}` : ru`На сегодня всё — приходи завтра`}</small></div>
+      <div class="ex-rate"><span class="spark"><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(E.SPARKS)}</span><b>→</b><span class="zlat">${Art.item('zlat')} ${camp ? E.CAMP : E.ZLAT}</span></div>
+      <div class="row-main"><b>${ru`Обменник`}</b><small>${left ? ru`Сегодня ещё ${left} ${U.plural(left, ru`обмен`, ru`обмена`, ru`обменов`)}` : ru`На сегодня всё — приходи завтра`}</small>${camp ? `<small>${ru`Курс Кампании: ещё ${camp} ${U.plural(camp, ru`обмен`, ru`обмена`, ru`обменов`)}`}</small>` : ''}</div>
       <div class="ex-btns">${btn(1)}${[5, left].filter((v, i, a) => v > 1 && a.indexOf(v) === i).map(btn).join('')}</div>
     </div>`;
   },
@@ -323,6 +324,7 @@ const Shop = {
           ${pane('ex', `${this.exchangeHtml()}
             <div class="dt-rows">
               <div class="dt-row"><span>${ru`Курс`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.ZLAT}</b></div>
+              ${S.campExLeft() ? `<div class="dt-row"><span>${ru`Курс Кампании`}</span><b><span class="cur">${Art.item('sparks')}</span> ${U.fmtNum(Rules.EXCHANGE.SPARKS)} → <span class="cur">${Art.item('zlat')}</span> ${Rules.EXCHANGE.CAMP}</b></div>` : ''}
               <div class="dt-row"><span>${ru`Обменов в день`}</span><b>${Rules.EXCHANGE.DAY}</b></div>
             </div>
             <div class="q-note">${ru`Монеты дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань с Капищ и Сезонную тропу. Искры — за поимки, источники и бои.`}</div>`)}
@@ -347,7 +349,8 @@ const Shop = {
         const r = await Game.try('exchange', { n });
         if (!r) return;
         Sfx.play('spin'); U.vibrate(20);
-        UI.toast(ru`Обмен: ✦ ${U.fmtNum(E.SPARKS * n)} → ${E.ZLAT * n} ${U.plural(E.ZLAT * n, ru`монета`, ru`монеты`, ru`монет`)}`, 'good');
+        const z = r.zlat != null ? r.zlat : E.ZLAT * n; // 5.1.20: курс считает сервер (на шаге Кампании — свой)
+        UI.toast(ru`Обмен: ✦ ${U.fmtNum(E.SPARKS * n)} → ${z} ${U.plural(z, ru`монета`, ru`монеты`, ru`монет`)}`, 'good');
         render(); UI.refreshHud();
         return;
       }
