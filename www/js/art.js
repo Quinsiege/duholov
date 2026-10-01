@@ -815,13 +815,18 @@ const Art = (() => {
     hatch: () => cocoon(5),
     evolve: () => item('xpbrew'),
     alatyr: () => item('alatyr'),
-    // Странник — посох странника, на его конце висит узелок, завязанный ушками
-    walker: () => { const k = 'mw' + (++seq); return msvg(`<defs>${mrad(k + 'a', ['#ff9a8a', '#dc2626', '#7f1d1d'])}${mgrad(k + 'w', ['#f0c896', '#a8692e', '#5c3412'], 1, 0)}</defs>` +
-      `<path d="M14 92 L70 25" stroke="#2a1508" stroke-width="10" stroke-linecap="round"/><path d="M14 92 L70 25" stroke="url(#${k}w)" stroke-width="6" stroke-linecap="round"/>` +
-      `<path d="M54 38 C43 48 43 73 62 78 C81 78 88 55 77 40 C72 33 60 32 54 38Z" fill="url(#${k}a)" stroke="#3b0a0a" stroke-width="3.2" stroke-linejoin="round"/>` +
-      `<path d="M55 52 l3.2 3.2 -3.2 3.2 -3.2 -3.2Z M69 47 l3.2 3.2 -3.2 3.2 -3.2 -3.2Z M63 63 l3.2 3.2 -3.2 3.2 -3.2 -3.2Z M76 60 l2.8 2.8 -2.8 2.8 -2.8 -2.8Z" fill="#fde68a"/>` +
-      `<path d="M64 34 C59 26 53 23 51 27 C54 31 58 34 64 34Z M68 34 C71 25 77 22 80 26 C78 31 73 34 68 34Z" fill="#b91c1c" stroke="#3b0a0a" stroke-width="2.6" stroke-linejoin="round"/>` +
-      `<circle cx="66" cy="35" r="4.6" fill="#ef4444" stroke="#3b0a0a" stroke-width="2.4"/><ellipse cx="55" cy="47" rx="6" ry="3.4" transform="rotate(-50 55 47)" fill="#fff" opacity=".35"/>`); },
+    // Странник — сапог-скороход на бегу: красная кожа, золотой отворот с узором, позади — ветер и пыль
+    walker: () => { const k = 'mw' + (++seq); return msvg(`<defs>${mrad(k + 'a', ['#fca5a5', '#dc2626', '#7f1d1d'])}${mgrad(k + 'g', ['#fff7c2', '#fbbf24', '#b45309'])}${mgrad(k + 's', ['#8b5a2b', '#57301a', '#2a1508'])}</defs>` +
+      `<path d="M4 38 H20 M1 52 H18 M7 66 H22" stroke="#e0f2fe" stroke-width="3.8" stroke-linecap="round" opacity=".85"/>` +
+      `<g transform="rotate(-10 52 54)">` +
+      `<circle cx="22" cy="88" r="4.2" fill="#e7e5e4" stroke="#78716c" stroke-width="1.5"/><circle cx="13" cy="84" r="3.2" fill="#e7e5e4" stroke="#78716c" stroke-width="1.4"/><circle cx="12" cy="92" r="2.4" fill="#e7e5e4" stroke="#78716c" stroke-width="1.2"/>` +
+      `<path d="M30 84 H46 V92 H32 C30.6 92 30 91.2 30 90Z" fill="url(#${k}s)" stroke="#1c0f06" stroke-width="2.4" stroke-linejoin="round"/>` +
+      `<path d="M29 80 H85 C87.5 80 89 82 89 84 C89 86.5 87.5 88 85 88 H29Z" fill="url(#${k}s)" stroke="#1c0f06" stroke-width="2.6" stroke-linejoin="round"/>` +
+      `<path d="M36 16 H60 C62 16 63 17 63 19 V54 C63 58 66 61 71 62 C81 64 88 68 88 75 C88 79.5 85.5 82 80.5 82 H36 C33 82 31 80 31 77 V21 C31 18 33 16 36 16Z" fill="url(#${k}a)" stroke="#3b0a0a" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="M34 46 L39 41.5 L44 46 L49 41.5 L54 46 L59 41.5" stroke="#fde68a" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<path d="M29 13 H65 V26 C65 28.5 63.5 30 61 30 H33 C30.5 30 29 28.5 29 26Z" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.6" stroke-linejoin="round"/>` +
+      `<path d="M37 18.5 l3.2 3.2 -3.2 3.2 -3.2 -3.2Z M47 18.5 l3.2 3.2 -3.2 3.2 -3.2 -3.2Z M57 18.5 l3.2 3.2 -3.2 3.2 -3.2 -3.2Z" fill="#b91c1c"/>` +
+      `<ellipse cx="77" cy="70" rx="6" ry="3" transform="rotate(15 77 70)" fill="#fff" opacity=".35"/><path d="M38 36 V72" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".22"/></g>`); },
     // Странник миров — глобус Атласа
     myths: () => { const k = 'mm' + (++seq); return msvg(`<defs>${mrad(k + 'o', ['#bae6fd', '#0ea5e9', '#0c4a6e'])}${mgrad(k + 'l', ['#bbf7d0', '#22c55e', '#166534'])}<clipPath id="${k}c"><circle cx="50" cy="50" r="36"/></clipPath></defs>` +
       `<circle cx="50" cy="50" r="36" fill="url(#${k}o)"/>` +
@@ -855,12 +860,22 @@ const Art = (() => {
       `<rect x="28" y="10" width="8" height="18" rx="4" fill="#64748b" stroke="#1e293b" stroke-width="2.6"/><rect x="64" y="10" width="8" height="18" rx="4" fill="#64748b" stroke="#1e293b" stroke-width="2.6"/>` +
       `<path d="M50 44 C61 54 67 62 65 73 C63 81 57 85 50 85 C42 85 36 80 35 72 C34 64 39 58 44 54 C44 60 46 63 49 64 C48 57 48 50 50 44Z" fill="url(#${k}f)" stroke="#7c2d12" stroke-width="2.6" stroke-linejoin="round"/>` +
       `<path d="M50 62 C55 67 57 72 55 77 C53 81 47 81 45 77 C43 73 46 68 50 62Z" fill="#fff7c2"/>`); },
-    // Соратник — знамя Ордена
-    order: () => { const k = 'mo' + (++seq); return msvg(`<defs>${mgrad(k + 'w', ['#f0c896', '#a8692e', '#5c3412'], 1, 0)}${mgrad(k + 'f', ['#c4b5fd', '#7c3aed', '#3b0764'], 1, 1)}${mrad(k + 'g', ['#fff7c2', '#fbbf24', '#b45309'])}</defs>` +
-      `<path d="M26 13 V93" stroke="#2a1508" stroke-width="9" stroke-linecap="round"/><path d="M26 13 V93" stroke="url(#${k}w)" stroke-width="5" stroke-linecap="round"/>` +
-      `<path d="M30 16 H86 L73 39 L86 62 H30Z" fill="url(#${k}f)" stroke="#2e1065" stroke-width="3.2" stroke-linejoin="round"/><path d="M31 22.5 H77 M31 55.5 H77" stroke="#fde68a" stroke-width="2.2" opacity=".75"/>` +
-      `<circle cx="53" cy="39" r="12" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.6"/><path d="${mstarD(53, 39.5, 7.5)}" fill="#7c2d12"/>` +
-      `<circle cx="26" cy="10" r="5.5" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.2"/>`); },
+    // Соратник — рукопожатие соратников: рукава разного цвета с золотыми обшлагами, над руками — искры общего дела
+    order: () => { const k = 'mo' + (++seq), sk = `fill="url(#${k}h)" stroke="#7c2d12" stroke-width="2.6" stroke-linejoin="round"`;
+      return msvg(`<defs>${mgrad(k + 'b', ['#93c5fd', '#2563eb', '#1e3a8a'], 1, 1)}${mgrad(k + 'r', ['#fca5a5', '#dc2626', '#7f1d1d'], 1, 1)}${mgrad(k + 'g', ['#fff7c2', '#fbbf24', '#b45309'])}${mrad(k + 'h', ['#ffe4c7', '#f6b483', '#c2703a'])}</defs>` +
+      `<path d="${msparkD(50, 15, 9)}" fill="url(#${k}g)" stroke="#78350f" stroke-width="1.8" stroke-linejoin="round"/><path d="${msparkD(30, 21, 5)}" fill="#fde68a" stroke="#78350f" stroke-width="1.4"/><path d="${msparkD(70, 21, 5)}" fill="#fde68a" stroke="#78350f" stroke-width="1.4"/>` +
+      // руки — крупно (×1,25 от центра рукопожатия); рукава и обшлага
+      `<g transform="translate(50 56) scale(1.25) translate(-50 -56)">` +
+      `<path d="M11 53 L23 47 L33 68 L19 75Z" fill="url(#${k}b)" stroke="#172554" stroke-width="2.4" stroke-linejoin="round"/><path d="M23 47 L31 43.5 L41 64.5 L33 68Z" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<path d="M89 53 L77 47 L67 68 L81 75Z" fill="url(#${k}r)" stroke="#450a0a" stroke-width="2.4" stroke-linejoin="round"/><path d="M77 47 L69 43.5 L59 64.5 L67 68Z" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.2" stroke-linejoin="round"/>` +
+      // левая ладонь — снизу, пальцы уходят под правую
+      `<path d="M31 43.5 C39 39 49 38 57 41 L67 48 C70 52 68 57 63 58 L52 60 C47 63 43 65 41 64.5Z" ${sk}/>` +
+      // правая ладонь — сверху, пальцы обнимают левую
+      `<path d="M69 43.5 C61 40 51 41 45 45 C39 49 37 55 39 59 C41 63 47 64 53 63 L59 64.5Z" ${sk}/>` +
+      `<path d="M45.5 49.5 C47.5 51.5 51 52.5 55 51.5 M43.5 54.5 C46.5 56.5 50 57.5 54 56.5 M45 59.5 C48 60.8 51 61.5 54 61" stroke="#7c2d12" stroke-width="2" fill="none" stroke-linecap="round"/>` +
+      // большой палец левой руки — поверх
+      `<path d="M41 45 C44 37 52 34.5 57 38.5 C54 40.5 50 43 47 47Z" ${sk}/>` +
+      `<ellipse cx="60" cy="47" rx="4.5" ry="2.2" transform="rotate(-20 60 47)" fill="#fff" opacity=".35"/></g>`); },
     // Землепроходец — сложенная карта землепроходца: земля, река, горы, пройденный путь пунктиром и булавка там, куда дошёл
     lands: () => { const k = 'ml' + (++seq), map = 'M12 23 L37 16 L63 23 L88 16 V78 L63 85 L37 78 L12 85Z';
       return msvg(`<defs>${mgrad(k + 'p', ['#fffbeb', '#fde68a', '#d6a85c'], 1, 1)}${mgrad(k + 'l', ['#bbf7d0', '#4ade80', '#15803d'], 1, 1)}${mrad(k + 'r', ['#fca5a5', '#ef4444', '#991b1b'])}<clipPath id="${k}c"><path d="${map}"/></clipPath></defs>` +
