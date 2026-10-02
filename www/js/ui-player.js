@@ -277,13 +277,13 @@ Object.assign(UI, {
     if (t === 'catchEl' && el) return Art.elIcon(el, 22);
     return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin', awaken: 'star' }[t] || 'scroll'];
   },
-  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня. 5.1.24 — столбиком, без плиток; в шапке — сколько
-  // осталось до обновления (тикает раз в секунду вместе с таймером заданий, .dl-left)
+  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня. 5.1.24 — заголовок как «Шаги главы», справа — сколько
+  // осталось до обновления (тикает раз в секунду вместе с таймером заданий, .dl-left); строки — название, полоска, как у заданий дня, и счётчик
   dayLimitsHtml() {
-    return `<div class="day-limits"><div class="dl-head"><span class="dl-h">${ru`Лимиты дня`}</span><small>${ru`Обновятся через ${`<span class="dl-left">${U.fmtHms(this.toMidnight())}</span>`}`}</small></div>` +
+    return `<h3 class="q-h dl-h">${ru`Лимиты дня`}<small>${ru`Обновятся через ${`<span class="dl-left">${U.fmtHms(this.toMidnight())}</span>`}`}</small></h3><div class="day-limits">` +
       Object.keys(Rules.DAILY).map(k => {
         const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
-        return `<div class="dl-row${u >= m ? ' out' : ''}"><span>${Rules.DAILY_NAMES[k]}</span><b>${u}/${m}</b></div>`;
+        return `<div class="dl-row${u >= m ? ' out' : ''}"><span>${Rules.DAILY_NAMES[k]}</span><div class="pbar"><i style="width:${Math.min(100, u / m * 100)}%"></i></div><b>${u} / ${m}</b></div>`;
       }).join('') + `</div>`;
   },
   // 5.1.24: все задания дня сделаны — на месте кружка «3/3» Сундук дня в жёлтом круге. Не открыт — «дышит» и ждёт касания

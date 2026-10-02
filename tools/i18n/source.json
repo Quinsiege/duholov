@@ -24158,14 +24158,14 @@
   "at": [
    "www/js/ui-player.js:283"
   ],
-  "ctx": "return `<div class=\"day-limits\"><div class=\"dl-head\"><span class=\"dl-h\">${ru`Лимиты дня`}</span><small>${ru`Обновятся через ${`<span class=\"dl-left\">${U.fmtHms(this.toMidnight())}</span>`}`}</small></div>` +"
+  "ctx": "return `<h3 class=\"q-h dl-h\">${ru`Лимиты дня`}<small>${ru`Обновятся через ${`<span class=\"dl-left\">${U.fmtHms(this.toMidnight())}</span>`}`}</small></h3><div class=\"day-limits\">` +"
  },
  {
   "k": "Обновятся через {0}",
   "at": [
    "www/js/ui-player.js:283"
   ],
-  "ctx": "return `<div class=\"day-limits\"><div class=\"dl-head\"><span class=\"dl-h\">${ru`Лимиты дня`}</span><small>${ru`Обновятся через ${`<span class=\"dl-left\">${U.fmtHms(this.toMidnight())}</span>`}`}</small></div>` +"
+  "ctx": "return `<h3 class=\"q-h dl-h\">${ru`Лимиты дня`}<small>${ru`Обновятся через ${`<span class=\"dl-left\">${U.fmtHms(this.toMidnight())}</span>`}`}</small></h3><div class=\"day-limits\">` +"
  },
  {
   "k": "Новое поручение!",
