@@ -76,7 +76,7 @@ const UI = {
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
     Bus.on('quests', () => this.refreshHud());
     Bus.on('buddyFind', text => this.toast(text, 'good'));
-    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });
+    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${U.fmtNum(MEDAL_TIERS[tier - 1].xp)} опыта`, 'good'); });
     Bus.on('weather', ({ w, changed }) => {
       this.refreshSky();
       if (changed && this._skyShown) this.toast(ru`Погода: ${WEATHER[w.key].name}. Сильнее духи: ${WEATHER[w.key].boost.map(e => ELEMENTS[e].name).join(', ')}`);

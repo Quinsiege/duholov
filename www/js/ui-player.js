@@ -328,7 +328,7 @@ Object.assign(UI, {
       this.modal({
         cls: 'medal-modal', title: m.name,
         html: `<div class="medal-big">${Art.medal(m, tier)}</div><p>${m.desc}: <b>${m.stat === 'km' ? v.toFixed(1) : v}</b></p>
-          <div class="medal-tiers">${m.tiers.map((t, i) => `<div class="${tier > i ? 'got' : ''}"><i style="background:${MEDAL_TIERS[i].color}"></i>${MEDAL_TIERS[i].name}: ${t}<small>${ru`+${MEDAL_TIERS[i].xp} опыта`}</small></div>`).join('')}</div>`,
+          <div class="medal-tiers">${m.tiers.map((t, i) => `<div class="${tier > i ? 'got' : ''}"><i style="background:${MEDAL_TIERS[i].color}"></i>${MEDAL_TIERS[i].name}: ${t}<small>${ru`+${U.fmtNum(MEDAL_TIERS[i].xp)} опыта`}</small></div>`).join('')}</div>`,
         buttons: [{ label: ru`Закрыть` }],
       });
     });

@@ -21,6 +21,8 @@ const Loot = {
       else if (k === 'zlat') out.push({ k, n, label: ru`${n} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}` });
       else if (k === 'cocoon') out.push({ k, n: 1, label: ru`Кокон ${n} км`, cocoon: n });
       else if (k === 'amulet') out.push({ k, n: 1, label: ru`Амулет` });
+      else if (k === 'amuletPick') out.push({ k: 'amulet', n: 1, label: ru`Амулет на выбор` }); // 5.1.21: Тропа — выбирает Ловчий
+      else if (k === 'alatyr' || k === 'rod') out.push({ k, n, label: n > 1 ? `${S.resName(k)} ×${n}` : S.resName(k) }); // 5.1.21: осколки на Тропе
       else if (k === 'look') { const x = LOOK.cloak.find(c => c.c === n) || LOOK.emblem.find(m => m.id === n) || LOOK.skin.find(k => `skin:${k.id}` === n) || LOOK.bg.find(k => `bg:${k.id}` === n) || LOOK.frame.find(k => `frame:${k.id}` === n); out.push({ k, n: 1, label: x ? x.name : ru`Облик`, look: n }); }
       else if (ITEMS[k]) out.push({ k, n, label: n > 1 ? `${ITEMS[k].name} ×${n}` : ITEMS[k].name });
     }
@@ -406,7 +408,7 @@ const Pass = {
       const month = this.MONTHS[+P.season.split('-')[1] - 1];
       const inLvl = L >= max ? per : P.pts - L * per;
       const cell = (track, l) => {
-        const rw = Loot.parts(Rules.passReward(track, l, S.d.level)), got = P.got[track].includes(l), open = L >= l, can = open && !got && (track === 'free' || P.gold);
+        const rw = Loot.parts(Rules.passReward(track, l)), got = P.got[track].includes(l), open = L >= l, can = open && !got && (track === 'free' || P.gold);
         const lock = track === 'gold' && !P.gold;
         return `<button class="pass-cell ${track} ${got ? 'got' : can ? 'can' : ''} ${lock ? 'lock' : ''}" data-t="${track}" data-l="${l}" ${can ? '' : 'disabled'}>
           <div class="pc-art">${Loot.art(rw[0].k, rw[0])}</div><small>${rw.map(x => x.label).join(' · ')}</small>${got ? '<i>✓</i>' : ''}</button>`;
@@ -418,7 +420,7 @@ const Pass = {
           <div class="pbar big"><i style="width:${inLvl / per * 100}%"></i></div>
           <small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, источники, прогулки, коконы и бои`}</small>
           ${P.gold ? `<div class="pass-gold on">★ ${ru`Золотая тропа открыта`}</div>`
-            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, монеты, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`монета`, ru`монеты`, ru`монет`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
+            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: серебряные и золотые обереги, Живая вода, искры, коконы 10 км, амулеты на выбор, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`монета`, ru`монеты`, ru`монет`)}.`}</small>`}
         </div>
         <div class="pass-cols"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>
         ${Array.from({ length: max }, (_, i) => i + 1).map(l => `<div class="pass-row ${L >= l ? 'open' : ''}"><div class="pass-l">${l}</div>${cell('free', l)}${cell('gold', l)}</div>`).join('')}`;
@@ -434,16 +436,39 @@ const Pass = {
         return;
       }
       const c = e.target.closest('.pass-cell'); if (!c || c.disabled || this._busy) return;
-      this._busy = true;
-      const r = await Game.try('passClaim', { lvl: +c.dataset.l, track: c.dataset.t });
-      this._busy = false;
-      if (!r) return;
-      Sfx.play('spin');
-      UI.modal({ title: ru`Ступень ${c.dataset.l}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
-      render(); UI.refreshHud();
+      const lvl = +c.dataset.l, track = c.dataset.t;
+      const claim = async am => {
+        this._busy = true;
+        const r = await Game.try('passClaim', { lvl, track, am });
+        this._busy = false;
+        if (!r) return false;
+        Sfx.play('spin');
+        UI.modal({ title: ru`Ступень ${lvl}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+        render(); UI.refreshHud();
+        return true;
+      };
+      // 5.1.21: на ступени амулет на выбор — сперва выбрать амулет
+      if (Rules.passReward(track, lvl).amuletPick) this.pickAmulet(lvl, claim);
+      else claim();
     });
     render();
     // прокрутить к первой незабранной ступени
     setTimeout(() => { const f = box.querySelector('.pass-cell.can') || box.querySelectorAll('.pass-row.open')[Math.max(0, Rules.passLevel(this.state().pts) - 1)]; if (f) f.scrollIntoView({ block: 'center' }); }, 100);
+  },
+  // 5.1.21: амулет на выбор за ступень — список амулетов, как при переплавке; выбрал — награда забирается (claim(id) → удалось ли)
+  pickAmulet(lvl, claim) {
+    const m = UI.modal({
+      title: ru`Выбери амулет`, cls: 'melt-modal',
+      html: `<p>${ru`Награда ступени ${lvl}: один амулет на выбор.`}</p>
+        <div class="list">${AMULET_KEYS.map(k => `<button class="row melt-to" data-k="${k}"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}</small></div><div class="row-side"><span class="cnt">×${S.d.amulets[k] || 0}</span></div></button>`).join('')}</div>`,
+      buttons: [{ label: ru`Отмена` }],
+    });
+    m.addEventListener('click', async e => {
+      const b = e.target.closest('.melt-to'); if (!b || m._busy) return;
+      m._busy = true;
+      const ok = await claim(b.dataset.k);
+      m._busy = false;
+      if (ok) m.close();
+    });
   },
 };

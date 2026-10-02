@@ -1082,7 +1082,9 @@
     ok(all.every(x => x.k === 'medal' || ['sparks', 'zlat', 'rod'].includes(x.k) || ITEMS[x.k]), 'только валюта, предметы и знак — без обликов');
     eq(R.roman(14), 'XIV'); eq(R.roman(49), 'XLIX'); eq(R.title(2), 'Итоги сезона Алатыря II', 'номер не отрывается');
     // выдача: один раз на сезон; знак — за сезоны с вкладом от MEDAL_MIN
-    const keep = S.d; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    const keep = S.d, addXP0 = S.addXP; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    // 5.1.21: опыт за знаки (×10) поднимал уровень, и монеты нового уровня путали счёт — здесь проверяется только выдача сезона
+    S.addXP = () => 0;
     try {
       S.d.medals = {}; S.d.stats.alaSeasons = 0; S.d.sparks = 0; S.d.zlat = 0;
       const got = R.grant(S, 5, 31), z30 = T.filter(t => t.n <= 31).reduce((a, t) => a + (t.rw.zlat || 0), 0);
@@ -1093,7 +1095,7 @@
       eq(R.grant(S, 7, 0).length, 0); ok('7' in S.d.alaRw, 'пустой сезон тоже отмечен');
       R.grant(S, 8, 5); eq(S.d.stats.alaSeasons, 2);
       eq(R.grant(S, 0, 50).length, 0, 'сезона 0 нет'); eq(R.grant(S, 'x', 50).length, 0);
-    } finally { S.d = keep; }
+    } finally { S.d = keep; S.addXP = addXP0; }
   });
 
   test('Настройки и позиция на карте не входят в прогресс', () => {
@@ -1131,10 +1133,9 @@
     ok(Rules.holdFresh({ t: now - 3600000 }, now) && !Rules.holdFresh({ t: now - H.MAX_H * 3600000 - 1 }, now), 'срок на посту');
     let free = 0; for (let i = 0; i < 4000; i++) if (Rules.shrineFree('osm:n' + i)) free++;
     near(free / 4000, H.FREE, 0.03, 'доля вольных Капищ');
-    const late = Rules.passReward('gold', 1, Rules.PASS.LATE), early = Rules.passReward('gold', 1, 10);
-    ok(early.charm2 && !late.charm2 && late.charm3, 'на поздних уровнях — золото вместо серебра'); ok(late.sparks > early.sparks, 'и больше искр');
-    ok(Rules.passReward('gold', 10, 30).xpbrew, 'настой опыта'); eq(Rules.passReward('gold', 30, 30).look, 'trail', 'Знак Тропы остаётся');
-    eq(JSON.stringify(Rules.passReward('free', 5, 30)), JSON.stringify(Rules.passReward('free', 5, 10)), 'бесплатная тропа — как была');
+    // 5.1.21: Тропа — одна таблица для всех уровней Ловчего (поздней Золотой тропы нет)
+    eq(JSON.stringify(Rules.passReward('gold', 1, 40)), JSON.stringify(Rules.passReward('gold', 1, 5)), 'Золотая — одна для всех уровней');
+    eq(Rules.passReward('gold', 30).look, 'trail', 'Знак Тропы — на вершине Золотой'); eq(Rules.passReward('gold', 15).look, '#065f46', 'плащ — на 15-й');
     ok(!Rules.SHOP.filter(x => x.day).some(x => x.id === Rules.shopDeal(U.today()).id), 'товары «раз в день» не бывают товаром дня');
   });
 
@@ -2584,9 +2585,17 @@
     A.data.zlat = Rules.PASS.GOLD;
     await must(A, 'passGold'); eq(A.data.zlat, 0); ok(A.data.pass.gold);
     await must(A, 'passClaim', { lvl: 1, track: 'gold' });
-    // вершина Золотой тропы — Знак Тропы
+    // вершина Золотой тропы — Знак Тропы и амулет на выбор (5.1.21): без выбора — нельзя, выбор — только из известных
     A.data.pass.pts = Rules.PASS.PER * Rules.PASS.LEVELS;
-    await must(A, 'passClaim', { lvl: 30, track: 'gold' }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold' }, /амулет/);
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am: 'constructor' }, /амулет/);
+    ok(!A.data.pass.got.gold.includes(30) && !A.data.owned.trail, 'без выбора ступень не засчитана');
+    const am = AMULET_KEYS[2], am0 = A.data.amulets[am] || 0;
+    const top = await must(A, 'passClaim', { lvl: 30, track: 'gold', am }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    eq(A.data.amulets[am], am0 + 1, 'выбранный амулет — в сумке'); ok(top.got.some(x => x.k === 'amulet' && x.id === am));
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am }, /уже получена/);
+    // бесплатная 20-я — тоже амулет на выбор
+    await must(A, 'passClaim', { lvl: 20, track: 'free', am: AMULET_KEYS[0] }); eq(A.data.amulets[AMULET_KEYS[0]] >= 1, true);
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'trail' } });
     // новый сезон — тропа с нуля
     A.data.pass.season = '1999-1';
@@ -2916,12 +2925,49 @@
       S.d.camp = null; eq(S.campExLeft(), 0); eq(S.exchangeZlat(2), 2, 'без Кампании — обычный курс');
     } finally { S.d.camp = c0; }
   });
-  test('5.1.20: искры Лиги и Сезонной тропы — ×10', () => {
+  test('5.1.20: искры Лиги — ×10', () => {
     eq(LEAGUE_RANKS.filter(r => r.reward && r.reward.sparks).map(r => r.reward.sparks).join(','), '5000,8000,15000,30000,50000,80000', 'награды за лиги');
     eq(League.prize(3).sparks, 12000, 'сундук сезона — ✦ 4 000 за лигу');
-    eq(Rules.passReward('free', 2, 10).sparks, 3000); eq(Rules.passReward('gold', 1, 10).sparks, 5000); eq(Rules.passReward('gold', 2, 10).sparks, 8000);
-    eq(Rules.passReward('gold', 1, 30).sparks, 15000); eq(Rules.passReward('gold', 2, 30).sparks, 25000); eq(Rules.passReward('gold', 10, 30).sparks, 30000); eq(Rules.passReward('gold', 15, 30).sparks, 30000);
-    eq(Rules.passReward('free', 3, 10).sparks, undefined, 'где искр не было — их и нет');
+  });
+  test('5.1.21: Знаки Ордена — опыт за ступени ×10, у каждого знака картинка, а не буква', () => {
+    eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,10000,20000', 'бронза, серебро, золото');
+    MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
+  });
+  test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
+    const sp = (r, iv, lvl) => ({ ...S.makeSpirit(SPECIES.find(s => s.rar === r).id, lvl, 1), iv });
+    const L = [sp(1, [15, 15, 15], 30), sp(5, [0, 0, 0], 5), sp(4, [10, 10, 10], 20), sp(5, [15, 15, 14], 25)];
+    const ord = k => [...L].sort(UI.colCmp(k)).map(x => L.indexOf(x)).join('');
+    eq(ord('rare'), '3120', 'легендарные первыми, внутри редкости — по силе');
+    eq(ord('best'), '0321', 'по оценке Ордена: 100%, 98%, 67%, 0%');
+    eq(ord('num'), ord('power'), 'неизвестная сортировка — по силе');
+    eq([0, 49, 50, 66, 67, 81, 82, 99, 100].map(v => UI.ivStars(v)).join(''), '001122334', 'звёзды оценки — как в карточке духа');
+    eq((UI.colTop(L[1], 'rare').match(/<i><\/i>/g) || []).length, 5, 'у легендарного — пять камней');
+    ok(UI.colTop(L[1], 'rare').includes(`--rc:${RARITY[5].color}`), 'камни — цвета редкости');
+    ok(/★★★★<s><\/s><\/i> <b>100%<\/b>/.test(UI.colTop(L[0], 'best')), 'оценка: четыре звезды и 100%');
+    ok(UI.colTop(L[0], 'power').includes(`<b>${S.power(L[0])}</b>`) && UI.colTop(L[0], 'new') === UI.colTop(L[0], 'power'), 'в «Силе» и «Новых» — сила');
+  });
+  test('5.1.21: Сезонная тропа — таблица наград 30 ступеней', () => {
+    const P = Rules.PASS, j = (t, l) => JSON.stringify(Rules.passReward(t, l));
+    eq(Rules.PASS_FREE.length, P.LEVELS); eq(Rules.PASS_GOLD.length, P.LEVELS);
+    // ступени из примера (по модели экономики: бесплатная — искры ÷3, обереги ÷3, мёд ÷4; Золотая — искры ÷2, Живая вода ÷3)
+    eq(j('free', 1), JSON.stringify({ charm: 7, sparks: 800 })); eq(j('free', 5), JSON.stringify({ incense: 5, sparks: 1300 }));
+    eq(j('free', 9), JSON.stringify({ water: 10, sparks: 1700 })); eq(j('free', 10), JSON.stringify({ zlat: 50, sparks: 1700, alatyr: 1 }));
+    eq(j('free', 20), JSON.stringify({ amuletPick: 1, sparks: 2300, alatyr: 1 })); eq(Rules.passReward('free', 30).deadwater, 1);
+    eq(j('gold', 1), JSON.stringify({ charm2: 20 })); eq(j('gold', 5), JSON.stringify({ amuletPick: 1 })); eq(j('gold', 6), JSON.stringify({ charm3: 10 }));
+    eq(j('gold', 9), JSON.stringify({ cocoon: 10, sparks: 2500 })); eq(j('gold', 10), JSON.stringify({ amuletPick: 1 }));
+    eq(JSON.stringify(Rules.passReward('free', 31)), '{}', 'за пределами — ничего');
+    // за сезон: бесплатная — ✦ 58 900, 100 монет, 150 оберегов, 49 мёда и 3 осколка Алатыря; Золотая — ✦ 58 600, 50 Живой воды,
+    // 2 осколка и 6 амулетов на выбор
+    const sum = (t, k) => Array.from({ length: P.LEVELS }, (_, i) => Rules.passReward(t, i + 1)[k] || 0).reduce((a, b) => a + b, 0);
+    eq(sum('free', 'sparks'), 58900); eq(sum('free', 'zlat'), 100); eq(sum('free', 'charm'), 150); eq(sum('free', 'honey'), 49); eq(sum('free', 'alatyr'), 3);
+    eq(sum('gold', 'sparks'), 58600); eq(sum('gold', 'water'), 50); eq(sum('gold', 'alatyr'), 2); eq(sum('gold', 'amuletPick'), 6); eq(sum('gold', 'zlat'), 0);
+    // осколки Алатыря на экране Тропы видны (Loot.parts) и начисляются (S.giveRewards)
+    eq(Loot.parts({ alatyr: 1 }).length, 1, 'осколок — в награде ступени');
+    { const a0 = S.d.alatyr || 0; S.giveRewards({ alatyr: 1 }); eq(S.d.alatyr, a0 + 1, 'осколок начислен'); S.d.alatyr = a0; }
+    // всё, что выдаётся, — известные награды (предметы, валюта, осколки, кокон, облик, амулет на выбор)
+    const known = k => ITEMS[k] || ['sparks', 'zlat', 'alatyr', 'cocoon', 'look', 'amuletPick'].includes(k);
+    ['free', 'gold'].forEach(t => { for (let l = 1; l <= P.LEVELS; l++) Object.keys(Rules.passReward(t, l)).forEach(k => ok(known(k), `${t} ${l}: ${k}`)); });
+    const r = Rules.passReward('free', 1); r.charm = 999; eq(Rules.passReward('free', 1).charm, 7, 'награда — копия, таблица не меняется');
   });
   atest('5.1.15: Кампания, глава I — девять шагов по порядку: цели, награды, дух на выбор, Разлом кампании, Врата', async () => {
     const P = await newPlayer('cp-a', 55.7539, 37.6208, 'Кампанец', 'kapelka');
@@ -3005,9 +3051,11 @@
     // 9 · дальний путь
     prog('walk', 60); prog('spring', 10); [[3, 5], [2, 10], [1, 20]].forEach(([r, n]) => { for (let i = 0; i < n; i++) prog('catchRar', 1, { rar: r }); });
     prog('catchRar', 1, { rar: 4 }); eq(P.data.camp.p.join(), '60,5,10,20,10', 'все цели шага 9');
-    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0;
+    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0, l9 = P.data.level;
     await must(P, 'campClaim', {});
-    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50, '30 000 искр и 50 монет');
+    // монеты новых уровней (опыт шага и знаков) — сверх награды шага
+    const zl = asPlayer(P, () => { let z = 0; for (let l = l9 + 1; l <= P.data.level; l++) z += S.levelRewards(l).zlat; return z; });
+    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50 + zl, '30 000 искр и 50 монет (и монеты новых уровней)');
     ok(!step() && P.data.camp.s === 9, 'глава I пройдена'); await refuse(P, 'campClaim', {}, /Глава пройдена/);
     ok(P.data.journal.some(j => j.type === 'camp'), 'шаги — в дневнике');
   });
