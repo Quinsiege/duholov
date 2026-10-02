@@ -118,7 +118,7 @@
   "k": "{0} мин",
   "at": [
    "www/js/alatyr.js:27",
-   "www/js/atlas.js:1049",
+   "www/js/atlas.js:1047",
    "www/js/ui.js:255",
    "www/js/util.js:100"
   ],
@@ -1870,8 +1870,8 @@
   "at": [
    "www/js/atlas.js:410",
    "www/js/atlas.js:414",
-   "www/js/atlas.js:1038",
-   "www/js/atlas.js:1040"
+   "www/js/atlas.js:1036",
+   "www/js/atlas.js:1038"
   ],
   "ctx": "const el = this.el = U.el(`<div class=\"atlas${opts.first ? ' first' : ''}\" role=\"dialog\" aria-modal=\"true\" aria-label=\"${ru`Атлас мира`}\">"
  },
@@ -1919,7 +1919,7 @@
   "k": "Врата откроются через {0} мин",
   "at": [
    "www/js/atlas.js:474",
-   "www/js/atlas.js:962"
+   "www/js/atlas.js:960"
   ],
   "ctx": "s.innerHTML = cd > 0 ? `${this.gateIcon()}<span>${ru`Врата откроются через ${this.cdMin()} мин`}${n ? ` · ${ru`у тебя ${n}`}` : ''}</span>` : `${this.gateIcon()}<span>${ru`Врата открыты`}</span>`;"
  },
@@ -1942,7 +1942,7 @@
   "at": [
    "www/js/atlas.js:484",
    "www/js/atlas.js:511",
-   "www/js/atlas.js:868"
+   "www/js/atlas.js:866"
   ],
   "ctx": "P.innerHTML = `<div class=\"at-lh\"><b>${U.esc(L.name)}</b><small>${ru`Своё место`}</small></div>${gates}"
  },
@@ -2013,80 +2013,80 @@
  {
   "k": "{0} млн жителей",
   "at": [
-   "www/js/atlas.js:848"
+   "www/js/atlas.js:846"
   ],
   "ctx": "const people = p >= 1e6 ? ru`${f(p / 1e6, p >= 1e7 ? 0 : 1)} млн жителей` : p >= 1000 ? ru`${f(Math.round(p / 1000), 0)} тыс. жителей` : '';"
  },
  {
   "k": "{0} тыс. жителей",
   "at": [
-   "www/js/atlas.js:848"
+   "www/js/atlas.js:846"
   ],
   "ctx": "const people = p >= 1e6 ? ru`${f(p / 1e6, p >= 1e7 ? 0 : 1)} млн жителей` : p >= 1000 ? ru`${f(Math.round(p / 1000), 0)} тыс. жителей` : '';"
  },
  {
   "k": "Столица",
   "at": [
-   "www/js/atlas.js:849"
+   "www/js/atlas.js:847"
   ],
   "ctx": "return [c.cap ? ru`Столица` : '', people].filter(Boolean).join(' · ');"
  },
  {
   "k": "выбранная точка",
   "at": [
-   "www/js/atlas.js:868"
+   "www/js/atlas.js:866"
   ],
   "ctx": "h += `<button class=\"at-pl own\" data-pin=\"1\"><i class=\"at-dot\">${UI.I.pin}</i><span><b>${ru`Своё место`} — ${ru`выбранная точка`}</b>"
  },
  {
   "k": "рядом: {0}",
   "at": [
-   "www/js/atlas.js:869",
-   "www/js/atlas.js:946"
+   "www/js/atlas.js:867",
+   "www/js/atlas.js:944"
   ],
   "ctx": "<small>${ll.lat.toFixed(4)}, ${ll.lng.toFixed(4)}${near ? ` · ${ru`рядом: ${U.esc(near)}`}` : ''}</small></span>${km(ll.lat, ll.lng)}${chev}</button>`;"
  },
  {
   "k": "Ищу города на карте…",
   "at": [
-   "www/js/atlas.js:872"
+   "www/js/atlas.js:870"
   ],
   "ctx": "if (!pk.cities.length) h += `<p class=\"at-pnone\">${pk.busy ? ru`Ищу города на карте…` : ru`Здесь на карте нет городов — сдвинь карту или коснись её.`}</p>`;"
  },
  {
   "k": "Здесь на карте нет городов — сдвинь карту или коснись её.",
   "at": [
-   "www/js/atlas.js:872"
+   "www/js/atlas.js:870"
   ],
   "ctx": "if (!pk.cities.length) h += `<p class=\"at-pnone\">${pk.busy ? ru`Ищу города на карте…` : ru`Здесь на карте нет городов — сдвинь карту или коснись её.`}</p>`;"
  },
  {
   "k": "Теперь коснись улицы, где хочешь появиться.",
   "at": [
-   "www/js/atlas.js:907"
+   "www/js/atlas.js:905"
   ],
   "ctx": "if (hint) hint.textContent = z + 4 >= this.NEED ? ru`Теперь коснись улицы, где хочешь появиться.` : ru`Ещё ближе — выбери улицу.`;"
  },
  {
   "k": "Ещё ближе — выбери улицу.",
   "at": [
-   "www/js/atlas.js:907"
+   "www/js/atlas.js:905"
   ],
   "ctx": "if (hint) hint.textContent = z + 4 >= this.NEED ? ru`Теперь коснись улицы, где хочешь появиться.` : ru`Ещё ближе — выбери улицу.`;"
  },
  {
   "k": "Выбранная точка на карте",
   "at": [
-   "www/js/atlas.js:945"
+   "www/js/atlas.js:943"
   ],
   "ctx": "return `<div class=\"at-okw own\"><span class=\"at-okc\">${ru`Выбранная точка на карте`}</span>"
  },
  {
   "k": "Врата Перепутицы",
   "at": [
-   "www/js/atlas.js:951",
-   "www/js/atlas.js:961",
-   "www/js/atlas.js:1008",
+   "www/js/atlas.js:949",
+   "www/js/atlas.js:959",
+   "www/js/atlas.js:1006",
    "www/js/data.js:465"
   ],
   "ctx": "return this.askBox(`${this.gateRing(1)}<small class=\"at-cdt\">${ru`Врата Перепутицы`}</small><b>${first ? ru`Начать путь здесь?` : ru`Шагнуть во Врата?`}</b>${where}`,"
@@ -2094,28 +2094,28 @@
  {
   "k": "Начать путь здесь?",
   "at": [
-   "www/js/atlas.js:951"
+   "www/js/atlas.js:949"
   ],
   "ctx": "return this.askBox(`${this.gateRing(1)}<small class=\"at-cdt\">${ru`Врата Перепутицы`}</small><b>${first ? ru`Начать путь здесь?` : ru`Шагнуть во Врата?`}</b>${where}`,"
  },
  {
   "k": "Шагнуть во Врата?",
   "at": [
-   "www/js/atlas.js:951"
+   "www/js/atlas.js:949"
   ],
   "ctx": "return this.askBox(`${this.gateRing(1)}<small class=\"at-cdt\">${ru`Врата Перепутицы`}</small><b>${first ? ru`Начать путь здесь?` : ru`Шагнуть во Врата?`}</b>${where}`,"
  },
  {
   "k": "Шагнуть",
   "at": [
-   "www/js/atlas.js:952"
+   "www/js/atlas.js:950"
   ],
   "ctx": "`${UI.rune(ru`Шагнуть`, 'at-ok')}${UI.glass(ru`Отмена`, 'at-no')}`,"
  },
  {
   "k": "Отмена",
   "at": [
-   "www/js/atlas.js:952",
+   "www/js/atlas.js:950",
    "www/js/auction.js:106",
    "www/js/auction.js:163",
    "www/js/auction.js:197"
@@ -2125,70 +2125,70 @@
  {
   "k": "Следующий переход — через {0} мин",
   "at": [
-   "www/js/atlas.js:953"
+   "www/js/atlas.js:951"
   ],
   "ctx": "first ? '' : `<p class=\"at-okn\">${ru`Следующий переход — через ${this.tpMin()} мин`}</p>`, (box, end) => {"
  },
  {
   "k": "Врата отдыхают",
   "at": [
-   "www/js/atlas.js:961"
+   "www/js/atlas.js:959"
   ],
   "ctx": "return this.askBox(`${this.gateRing(frac)}<small class=\"at-cdt\">${ru`Врата Перепутицы`}</small><b>${ru`Врата отдыхают`}</b>${where}"
  },
  {
   "k": "Использовать Врата Перепутицы (у тебя {0})",
   "at": [
-   "www/js/atlas.js:963"
+   "www/js/atlas.js:961"
   ],
   "ctx": "`${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, 'at-shop') : ''}${UI.glass(ru`Подождать`, 'at-wait')}`,"
  },
  {
   "k": "В Лавку",
   "at": [
-   "www/js/atlas.js:963"
+   "www/js/atlas.js:961"
   ],
   "ctx": "`${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, 'at-shop') : ''}${UI.glass(ru`Подождать`, 'at-wait')}`,"
  },
  {
   "k": "Подождать",
   "at": [
-   "www/js/atlas.js:963"
+   "www/js/atlas.js:961"
   ],
   "ctx": "`${n ? UI.rune(ru`Использовать Врата Перепутицы (у тебя ${n})`, 'at-use') : typeof Shop !== 'undefined' ? UI.glass(ru`В Лавку`, 'at-shop') : ''}${UI.glass(ru`Подождать`, 'at-wait')}`,"
  },
  {
   "k": "Врата Перепутицы открываются сразу — их можно купить в Лавке.",
   "at": [
-   "www/js/atlas.js:964"
+   "www/js/atlas.js:962"
   ],
   "ctx": "n ? '' : `<p class=\"small at-oks\">${ru`Врата Перепутицы открываются сразу — их можно купить в Лавке.`}</p>`, (box, end) => {"
  },
  {
   "k": "Врата Перепутицы пока закрыты — обнови игру",
   "at": [
-   "www/js/atlas.js:976"
+   "www/js/atlas.js:974"
   ],
   "ctx": "if (!w || !w.teleport) { UI.toast(ru`Врата Перепутицы пока закрыты — обнови игру`, 'at-t'); return; }"
  },
  {
   "k": "Врата не открылись. Попробуй ещё раз.",
   "at": [
-   "www/js/atlas.js:993"
+   "www/js/atlas.js:991"
   ],
   "ctx": "const msg = r && r.error ? (typeof I18N !== 'undefined' && I18N.back ? I18N.back(r.error) : r.error) : ru`Врата не открылись. Попробуй ещё раз.`;"
  },
  {
   "k": "Шаг — и перед тобой {0}",
   "at": [
-   "www/js/atlas.js:1008"
+   "www/js/atlas.js:1006"
   ],
   "ctx": "<div class=\"ag-txt\"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class=\"ag-flash\"></i></div>`);"
  },
  {
   "k": "Шаг — и ты на месте",
   "at": [
-   "www/js/atlas.js:1008"
+   "www/js/atlas.js:1006"
   ],
   "ctx": "<div class=\"ag-txt\"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class=\"ag-flash\"></i></div>`);"
  },
@@ -3790,9 +3790,9 @@
   "k": "Источник",
   "at": [
    "www/js/book.js:144",
+   "www/js/map.js:621",
    "www/js/propose.js:43",
-   "www/js/propose.js:133",
-   "www/js/rules.js:425"
+   "www/js/propose.js:133"
   ],
   "ctx": "return [[ru`Источник`, this.p(ru`Источники бьют у настоящих мест — памятников, фонтанов, храмов, арт-объектов: там, где Алатырь дал трещину. Подойди и коснись — выпадут припасы, иногда кокон. Потом источник набирает силу"
  },
@@ -4120,7 +4120,7 @@
    "www/js/book.js:181",
    "www/js/book.js:181",
    "www/js/data.js:761",
-   "www/js/map.js:558"
+   "www/js/map.js:719"
   ],
   "ctx": "return [[ru`Разлом`, this.cards([[Art.riftIcon(3), ru`Разлом`, ru`Портал со звёздами у святилища, открыт час. Внутри — босс из иного мира. Собери команду из трёх духов.`],"
  },
@@ -7484,7 +7484,8 @@
   "k": "Разлом кампании",
   "at": [
    "www/js/data.js:588",
-   "www/js/map.js:459",
+   "www/js/map.js:608",
+   "www/js/map.js:621",
    "www/js/raid.js:110"
   ],
   "ctx": "campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Эволюционировать духа`,"
@@ -14285,49 +14286,49 @@
  {
   "k": "С",
   "at": [
-   "www/js/map.js:439"
+   "www/js/map.js:588"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "В",
   "at": [
-   "www/js/map.js:439"
+   "www/js/map.js:588"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Ю",
   "at": [
-   "www/js/map.js:439"
+   "www/js/map.js:588"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "З",
   "at": [
-   "www/js/map.js:439"
+   "www/js/map.js:588"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Разлом кампании: {0}. Подойди ближе — нужно {1} м",
   "at": [
-   "www/js/map.js:555"
+   "www/js/map.js:716"
   ],
   "ctx": "if (d > range && e.camp) { UI.toast(ru`Разлом кампании: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`); return; } // 5.1.15: личный — только рядом"
  },
  {
   "k": "{0}: {1}. Подойди ближе — нужно {2} м",
   "at": [
-   "www/js/map.js:559"
+   "www/js/map.js:720"
   ],
   "ctx": "UI.toast(ru`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);"
  },
  {
   "k": "Дух уже растворился в воздухе…",
   "at": [
-   "www/js/map.js:564",
+   "www/js/map.js:725",
    "server/game/core.js:894"
   ],
   "ctx": "if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }"
@@ -14335,7 +14336,7 @@
  {
   "k": "Святилища открываются с {0} уровня Ловчего",
   "at": [
-   "www/js/map.js:568",
+   "www/js/map.js:729",
    "server/game/core.js:1409"
   ],
   "ctx": "if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Святилища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }"
@@ -14343,21 +14344,21 @@
  {
   "k": "Цель",
   "at": [
-   "www/js/map.js:611"
+   "www/js/map.js:772"
   ],
   "ctx": "this.tracking = { id: e.id, type: e.type, lat: e.lat, lng: e.lng, sid: e.sid, name: e.type === 'spirit' ? SP[e.sid].name : e.name || ru`Цель` };"
  },
  {
   "k": "{0} растворился — след потерян",
   "at": [
-   "www/js/map.js:626"
+   "www/js/map.js:787"
   ],
   "ctx": "UI.toast(ru`${t.name} растворился — след потерян`);"
  },
  {
   "k": "Ты на месте — коснись цели!",
   "at": [
-   "www/js/map.js:640"
+   "www/js/map.js:801"
   ],
   "ctx": "box.querySelector('.tr-dist').textContent = near ? ru`Ты на месте — коснись цели!` : U.fmtDist(d);"
  },

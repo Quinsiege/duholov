@@ -87,6 +87,16 @@ body.night .range-circle { fill-opacity: .1; }
 .m3d > .mk-boss { top: calc(var(--m3d-top) - 42px); }
 .m3d > .mk-tier { top: calc(var(--m3d-bot) - 7px); bottom: auto; }
 .m3d > .mk-flag { top: calc(var(--m3d-top) - 2px); }
+/* 5.1.30: подпись места (MapView.label) — что это и где, под моделью: золотые прописные с тёмной обводкой, без подложки
+   (видны и на светлой, и на тёмной карте); у дальнего места — одно «что» */
+.mk .mk-lbl { position: absolute; left: 50%; top: calc(var(--m3d-bot, 100%) + 13px); transform: translateX(-50%); z-index: 3; pointer-events: none;
+  text-align: center; white-space: nowrap; --ol: #2e1500; }
+.mk .mk-lbl b { display: block; font: 700 12.5px/1.2 var(--f-head); text-transform: uppercase; color: #ffd772;
+  text-shadow: -1px -1px 0 var(--ol), 1px -1px 0 var(--ol), -1px 1px 0 var(--ol), 1px 1px 0 var(--ol), 0 2px 5px rgba(0, 0, 0, .55); }
+.mk .mk-lbl b span { display: inline-block; vertical-align: bottom; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.mk .mk-lbl i { display: block; max-width: 180px; margin: 1px auto 0; overflow: hidden; text-overflow: ellipsis; font: 500 10.5px/1.25 var(--f-head);
+  font-style: normal; color: #fff8e6; text-shadow: -1px -1px 0 #22120a, 1px -1px 0 #22120a, -1px 1px 0 #22120a, 1px 1px 0 #22120a, 0 1px 4px rgba(0, 0, 0, .5); }
+.far .mk-lbl i { display: none; }
 /* 3D-Ловчий (js/m3d.js) — вместо точки со стрелкой и кольца: куда он идёт, видно по нему самому */
 .mk-player.m3d .dot, .mk-player.m3d .arrow, .mk-player.m3d .pulse { display: none; }
 .mk-player.m3d::before { content: none; }

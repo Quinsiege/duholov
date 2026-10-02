@@ -185,10 +185,11 @@ const MapView = {
     light: { earth: '#e2dfda', roof: '#d7d3cd', wall: '#a8a39b', wall2: '#d3cec6', light: 0.7 },
     dark: { earth: '#1f1f1f', roof: '#2c2c31', wall: '#17171a', wall2: '#34343b', light: 0.6 },
   },
-  // правила рисования и подписей стандартного стиля (Protomaps считает их сам по имени стиля)
+  // правила рисования и подписей стандартного стиля (Protomaps считает их сам по имени стиля); подписей мест на карте (pois) нет —
+  // у мест игры свои подписи (MapView.label), у остальных точек — не нужны
   flavorRules(name, url) {
     const ref = protomapsL.leafletLayer({ url, flavor: name, lang: I18N.lang });
-    return { paint: ref.paintRules, label: ref.labelRules, bg: ref.backgroundColor };
+    return { paint: ref.paintRules, label: ref.labelRules.filter(r => r.dataLayer !== 'pois'), bg: ref.backgroundColor };
   },
   setTiles() {
     if (this.tiles && Stage.busy) return; // 5.2: под сценой плитки не перерисовываются — облик сверится, когда она закроется (wake)
@@ -613,6 +614,14 @@ const MapView = {
   // 5.1.28: холст 3D-модели места (js/m3d.js) — первым в значке (звёзды, хранитель и флаг клана — поверх); центр основания
   // модели встаёт в точку привязки значка (ax, ay = iconAnchor). Пока модель не нарисована (или WebGL нет) — прежний рисунок
   m3d(e, ax, ay, hide) { return typeof M3D !== 'undefined' ? M3D.html(M3D.kindOf(e), ax, ay, hide) : ''; },
+  // 5.1.30: подпись места — что это (Источник, святилище своей мифологии, Разлом) и где (имя точки карты); под моделью (style.css),
+  // у дальних мест — одно «что»
+  label(e) {
+    const P = MYTH_PLACES[e.myth] || MYTH_PLACES.slavic;
+    const what = e.type === 'spring' ? ru`Источник` : e.type === 'shrine' ? (e.god ? P.shrineOf(e.god) : P.shrine) : e.camp ? ru`Разлом кампании` : P.rift;
+    const where = e.type === 'rift' ? e.place : e.name;
+    return `<div class="mk-lbl"><b><span>${U.esc(what)}</span></b>${where && where !== what ? `<i>${U.esc(where)}</i>` : ''}</div>`;
+  },
   icon(e) {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
@@ -621,14 +630,14 @@ const MapView = {
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
-        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${this.m3d(e, 23, 60, !e.ready && !e.invaded ? 'jet' : '')}${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}</div>` });
+        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${this.m3d(e, 23, 60, !e.ready && !e.invaded ? 'jet' : '')}${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}${this.label(e)}</div>` });
     }
     if (e.type === 'shrine') {
       return L.divIcon({ className: 'mk', iconSize: [54, 76], iconAnchor: [27, 72],
-        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${this.m3d(e, 27, 72)}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${this.m3d(e, 27, 72)}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div>${this.label(e)}</div>` });
     }
     return L.divIcon({ className: 'mk', iconSize: [84, 96], iconAnchor: [42, 86],
-      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${this.m3d(e, 42, 86)}${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${this.m3d(e, 42, 86)}${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div>${this.label(e)}</div>` });
   },
   refresh(rebuild) {
     if (!this.map) return;

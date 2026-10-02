@@ -4532,6 +4532,21 @@
       eq(MapView.tilt, 0, 'объём выключен в настройках — наклон пальцем не включается:');
     } finally { Object.assign(MapView, keep); box.remove(); }
   });
+  test('5.1.30: подпись места — что это (по мифологии) и где; имя точки — как текст', () => {
+    const lab = e => {
+      const d = document.createElement('div');
+      d.innerHTML = MapView.label(e);
+      const i = d.querySelector('.mk-lbl i');
+      return [d.querySelector('.mk-lbl b').textContent, i ? i.textContent : null];
+    };
+    const G = MYTH_PLACES.greek, god = G.gods[6];
+    eq(lab({ type: 'spring', name: 'Фонтан у ГУМа' }).join('|'), ru`Источник` + '|Фонтан у ГУМа', 'Источник:');
+    eq(lab({ type: 'shrine', myth: 'greek', god, name: 'Сквер у фонтана' }).join('|'), G.shrineOf(god) + '|Сквер у фонтана', 'святилище своей мифологии:');
+    eq(lab({ type: 'rift', myth: 'greek', place: 'Исторический музей' }).join('|'), G.rift + '|Исторический музей', 'Разлом своей мифологии:');
+    eq(lab({ type: 'shrine', myth: 'nope', name: 'X' })[0], MYTH_PLACES.slavic.shrine, 'неизвестная мифология — славянское:');
+    eq(lab({ type: 'rift', camp: true, myth: 'slavic', place: null })[1], null, 'без имени точки — одна строка');
+    ok(!MapView.label({ type: 'spring', name: '<img src=x onerror=alert(1)>' }).includes('<img'), 'имя точки — без разметки');
+  });
   test('5.1.30: объёмные дома — крыши разбиты на треугольники без пропусков и лишнего (невыпуклые, с дворами)', () => {
     const area = (d, t) => {
       let s = 0;
