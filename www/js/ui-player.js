@@ -56,6 +56,14 @@ Object.assign(UI, {
         const dir = Math.sign(tabs.indexOf(tab.dataset.tab) - tabs.indexOf(this.qTab));
         this.qTab = tab.dataset.tab; Sfx.play('tap'); render(); this.slideIn(scr.querySelector('.quests'), dir); return;
       }
+      // 5.1.24: шаг главы — раскрыть или свернуть его цели (без перерисовки экрана)
+      const sh = e.target.closest('.cp-row-h');
+      if (sh) {
+        const set = this.campOpen || (this.campOpen = new Set()), k = sh.dataset.step;
+        if (set.has(k)) set.delete(k); else set.add(k);
+        sh.parentElement.classList.toggle('open', set.has(k)); sh.setAttribute('aria-expanded', String(set.has(k))); Sfx.play('tap');
+        return;
+      }
       // 5.1.15: Кампания — забрать награду шага, выбрать духа, показать Разлом кампании на карте
       const cc = e.target.closest('.cp-claim'), cpk = e.target.closest('.cp-choose'), cr = e.target.closest('.cp-rift');
       if (cc) {
@@ -124,7 +132,13 @@ Object.assign(UI, {
     this.swipeTabs(scr, tabs, () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
     // таймер до новых заданий — каждую секунду, пока экран открыт
-    const tm = setInterval(() => { if (!scr.isConnected) { clearInterval(tm); return; } const el = scr.querySelector('.qd-left'); if (el) el.textContent = U.fmtTime(this.toMidnight()); }, 1000);
+    // 5.1.24: и до обновления лимитов дня — с секундами
+    const tm = setInterval(() => {
+      if (!scr.isConnected) { clearInterval(tm); return; }
+      const el = scr.querySelector('.qd-left'), dl = scr.querySelector('.dl-left'), left = this.toMidnight();
+      if (el) el.textContent = U.fmtTime(left);
+      if (dl) dl.textContent = U.fmtHms(left);
+    }, 1000);
   },
   toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
 
@@ -151,7 +165,21 @@ Object.assign(UI, {
         <small class="cp-rwh">${ru`Награда`}</small><div class="qd-rws">${this.campRwHtml(st.reward)}</div></div></div>
         ${ready && !c.pick ? `<button class="btn primary wide cp-claim">${ru`Забрать награду`}</button>` : ''}`;
     } else html += `<div class="q-note">${ru`Глава пройдена! Новая глава Кампании — скоро.`}</div>`;
-    html += `<h3 class="q-h">${ru`Шаги главы`}</h3><div class="cp-list">${ch.steps.map((x, i) => `<div class="cp-row ${i < c.s ? 'done' : i === c.s ? 'cur' : 'lock'}"><i>${i < c.s ? '✓' : i + 1}</i><span>${x.name}</span></div>`).join('')}</div>`;
+    // 5.1.24: у пройденных шагов и текущего — стрелка справа у края: касание раскрывает цели шага (у текущего — с прогрессом,
+    // у пройденных — с галочками); у будущих стрелки нет. Раскрытое помнится, пока игра открыта (UI.campOpen)
+    const open = this.campOpen || (this.campOpen = new Set());
+    const chev = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+    const goals = (x, i) => x.obj.map((o, j) => {
+      const v = i < c.s ? o.n : Math.min(c.p[j] || 0, o.n), ok = v >= o.n;
+      const num = ok ? '✓' : o.t === 'walk' ? ru`${Math.floor(v * 10) / 10} / ${o.n} км` : `${Math.floor(v)} / ${o.n}`;
+      return `<div class="cp-goal${ok ? ' ok' : ''}"><span>${CAMP_OBJ[o.t](o)}</span><b>${num}</b></div>`;
+    }).join('');
+    html += `<h3 class="q-h">${ru`Шаги главы`}</h3><div class="cp-list">${ch.steps.map((x, i) => {
+      const lbl = `<i>${i < c.s ? '✓' : i + 1}</i><span>${x.name}</span>`;
+      if (i > c.s) return `<div class="cp-row lock">${lbl}</div>`;
+      const k = `${c.ch}:${i}`, on = open.has(k);
+      return `<div class="cp-row ${i < c.s ? 'done' : 'cur'} cp-x${on ? ' open' : ''}"><button class="cp-row-h" data-step="${k}" aria-expanded="${on}">${lbl}<span class="cp-chev">${chev}</span></button><div class="cp-goals">${goals(x, i)}</div></div>`;
+    }).join('')}</div>`;
     return html;
   },
   // награда шага — плашками: дух на выбор, эссенция, кокон, опыт (или «до N уровня»), искры, монеты, Врата, облик
@@ -249,12 +277,14 @@ Object.assign(UI, {
     if (t === 'catchEl' && el) return Art.elIcon(el, 22);
     return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin', awaken: 'star' }[t] || 'scroll'];
   },
-  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня; 5.1.24 — одной строкой, без плиток
+  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня. 5.1.24 — столбиком, без плиток; в шапке — сколько
+  // осталось до обновления (тикает раз в секунду вместе с таймером заданий, .dl-left)
   dayLimitsHtml() {
-    return `<p class="day-limits"><span class="dl-h">${ru`Лимиты дня`}</span>${Object.keys(Rules.DAILY).map(k => {
-      const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
-      return `<span class="${u >= m ? 'out' : ''}">${Rules.DAILY_NAMES[k]} <b>${u}/${m}</b></span>`;
-    }).join('')}<small>${ru`обновятся в полночь`}</small></p>`;
+    return `<div class="day-limits"><div class="dl-head"><span class="dl-h">${ru`Лимиты дня`}</span><small>${ru`Обновятся через ${`<span class="dl-left">${U.fmtHms(this.toMidnight())}</span>`}`}</small></div>` +
+      Object.keys(Rules.DAILY).map(k => {
+        const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
+        return `<div class="dl-row${u >= m ? ' out' : ''}"><span>${Rules.DAILY_NAMES[k]}</span><b>${u}/${m}</b></div>`;
+      }).join('') + `</div>`;
   },
   // 5.1.24: все задания дня сделаны — на месте кружка «3/3» Сундук дня в жёлтом круге. Не открыт — «дышит» и ждёт касания
   // (награда случайная, Rules.CHEST: опыт и искры всегда, плюс призы); открыт — открытый сундук, без движения
