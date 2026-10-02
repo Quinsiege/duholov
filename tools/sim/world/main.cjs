@@ -1,6 +1,6 @@
 'use strict';
 /* Мир из N Ловчих, играющих одновременно: node tools/sim/world/main.cjs [N] [дней] [потоков]
-   Главный поток — «база» (аукцион, подарки, друзья, Капища дружин, таблица Лиги, платежи Казны),
+   Главный поток — «база» (аукцион, подарки, друзья, Святилища дружин, таблица Лиги, платежи Казны),
    рабочие потоки ведут игроков через настоящий сервер игры. Итог — tools/sim/world/out/result.json */
 const { Worker } = require('worker_threads');
 const realNow = Date.now; // 4.16: движок игры (для боёв Лиги) подменяет Date.now временем симуляции
@@ -14,13 +14,13 @@ const pickW = arr => { let x = rnd() * arr.reduce((a, [, w]) => a + w, 0); for (
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const gauss = () => { let u = 0; for (let i = 0; i < 6; i++) u += rnd(); return u / 6 - 0.5; };
 
-// ---------- город: источники и Капища — общие для всех ----------
+// ---------- город: источники и Святилища — общие для всех ----------
 const C = { lat: 55.7558, lng: 37.6173 };
 const pois = [], shrines = []; let pn = 500000;
 for (let i = -37; i <= 37; i++) for (let j = -37; j <= 37; j++) {
   const shrine = i % 3 === 0 && j % 3 === 0;
   const p = { id: 'osm:n' + (++pn), lat: +(C.lat + i * 0.00135 + (rnd() - 0.5) * 0.0008).toFixed(6), lng: +(C.lng + j * 0.0024 + (rnd() - 0.5) * 0.0014).toFixed(6), kind: shrine ? 'shrine' : 'spring', active: true, imported: true };
-  p.name = (shrine ? 'Капище ' : 'Источник ') + pn;
+  p.name = (shrine ? 'Святилище ' : 'Источник ') + pn;
   pois.push(p); if (shrine) shrines.push(p);
 }
 
@@ -79,7 +79,7 @@ for (const p of players) {
 // ---------- база ----------
 const DB = { players: {}, brief: {}, links: [], gifts: [], giftsById: new Map(), league: {}, order: {}, holds: {}, payments: [], lots: [], lotsById: new Map(), stats: { lotsSold: 0, lotsZlat: 0, lotsSparks: 0, payRub: 0 } };
 let lotN = 0, giftN = 0, payN = 0;
-// правила Капищ — присылают рабочие потоки (Rules.HOLD, HOLD_MAX из игры) вместе с «готов»
+// правила Святилищ — присылают рабочие потоки (Rules.HOLD, HOLD_MAX из игры) вместе с «готов»
 const K = { MAX_H: 72, HOLD_MAX: 6 };
 const fresh = (x, now) => +x.t >= now - K.MAX_H * 3600000;
 const soldBySid = {}; // 4.16: проданные лоты по виду — для подсказки цены (lotsRecent)
@@ -112,7 +112,7 @@ const H = {
   myHolds(uid, now, pid) { let n = 0; for (const k in DB.holds) if (DB.holds[k].holders.some(x => x.pid === pid && fresh(x, now))) n++; return n; },
   myHoldsList(uid, now, pid) {
     const out = [];
-    for (const k in DB.holds) { const h = DB.holds[k], x = h.holders.find(y => y.pid === pid && fresh(y, now)); if (x) out.push({ id: k, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }); }
+    for (const k in DB.holds) { const h = DB.holds[k], x = h.holders.find(y => y.pid === pid && fresh(y, now)); if (x) out.push({ id: k, name: 'Святилище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }); }
     return out;
   },
   clanCounts(uid, now) { const o = { sokol: 0, medved: 0, volk: 0 }; for (const k in DB.holds) if (DB.holds[k].holders.some(x => fresh(x, now))) o[DB.holds[k].clan]++; return o; },
@@ -260,7 +260,7 @@ workers.forEach(w => { w.on('message', m => { if (m.t === 'rpc') onRpc(w, m); })
 
 (async () => {
   await Promise.all(workers.map(w => new Promise(r => { const h = m => { if (m.t === 'ready') { w.off('message', h); if (m.k) Object.assign(K, m.k); r(); } }; w.on('message', h); })));
-  console.log(`мир: ${N} игроков, ${pois.length} мест (${shrines.length} Капищ), ${THREADS} потоков`);
+  console.log(`мир: ${N} игроков, ${pois.length} мест (${shrines.length} Святилищ), ${THREADS} потоков`);
   const base = Date.UTC(2026, 9, 1) - 3 * 3600000, t0 = realNow(), daily = [];
   const reach = {}; // uid → момент 40 уровня
   for (let day = 1; day <= MAX_DAYS; day++) {
@@ -286,7 +286,7 @@ workers.forEach(w => { w.on('message', m => { if (m.t === 'rpc') onRpc(w, m); })
     row.topPow = {}; row.story = {};
     for (const a of Object.keys(ARCH)) { const g = all.filter(x => x.arch === a); if (g.length) { row.topPow[a] = medOf(g.map(x => x.topPow)); row.story[a] = medOf(g.map(x => x.story)); } }
     daily.push(row);
-    console.log(`день ${day}: медиана ${row.median}, 90% ${row.p90}, макс ${row.max}, на 40-м ${n40}, я ${row.meLvl} · ${Object.entries(row.byArch).map(([a, l]) => `${a} ${l}`).join(', ')} · лотов ${row.lotsOpen} (живых ${row.lotsLive})/${row.lotsSold} продано · донат ${row.rub} ₽ · Капищ у дружин ${row.holds} из ${shrines.length} · ${Math.round((Date.now() - t0) / 1000)} с`);
+    console.log(`день ${day}: медиана ${row.median}, 90% ${row.p90}, макс ${row.max}, на 40-м ${n40}, я ${row.meLvl} · ${Object.entries(row.byArch).map(([a, l]) => `${a} ${l}`).join(', ')} · лотов ${row.lotsOpen} (живых ${row.lotsLive})/${row.lotsSold} продано · донат ${row.rub} ₽ · Святилищ у дружин ${row.holds} из ${shrines.length} · ${Math.round((Date.now() - t0) / 1000)} с`);
     fs.writeFileSync(path.join(OUT, 'progress.json'), JSON.stringify({ daily, reach }, null, 0));
     if (n40 >= N) break;
   }

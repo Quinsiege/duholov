@@ -32,7 +32,7 @@ const Order = {
     try {
       const r = await Game.act('daily');
       if (r && !r.already) this.streakModal(r);
-      await Clans.tribute(); // дань с Капищ — тоже раз в день
+      await Clans.tribute(); // дань со Святилищ — тоже раз в день
     } catch (e) { /* без связи — при следующей проверке */ }
     this._daily = false;
   },
@@ -53,7 +53,7 @@ const Order = {
       const ico = i === L - 1 ? Art.cocoon(10) : Art.item(k) || '<b class="big-n">✦</b>';
       return `<div class="st-day ${i < day ? 'past' : i === day ? 'now' : ''}"><small>${i + 1}</small>${ico}</div>`;
     }).join('');
-    Sfx.play('levelup'); U.vibrate([40, 40, 90]);
+    Sfx.play('reward_big'); U.vibrate([40, 40, 90]);
     UI.modal({
       cls: 'streak-modal', title: r.n === 1 ? ru`Добро пожаловать!` : ru`${r.n} ${U.plural(r.n, ru`день`, ru`дня`, ru`дней`)} подряд!`,
       html: `<div class="st-row">${cells}</div>
@@ -77,36 +77,25 @@ const Order = {
         ${got ? `<span class="q-ok" aria-label="${ru`Получено`}">✓</span>` : can ? `<button class="btn small primary o-claim" data-w="${w.week}" data-i="${i}">${ru`Забрать`}</button>` : ''}</div>`;
     }).join('');
     const marks = Rules.ORDER.STEPS.map(s => `<em style="left:${s.at * 100}%"></em>`).join('');
-    const top = w.top.length ? `<div class="o-top"><div class="o-sub">${ru`Лучшие Ловчие недели`}</div>${w.top.map((r, i) => `<div class="o-row ${r.me ? 'me' : ''}"><span>${i + 1}</span><b>${U.esc(r.name)}</b><i>${U.fmtNum(r.n)}</i></div>`).join('')}</div>` : '';
     return `<div class="story-card o-card">
         <div class="story-num">${title || ru`${ev.name} · до конца ${U.fmtTime(Math.max(0, w.endsAt - U.now()))}`}</div>
         <h3>${ru`${U.fmtNum(w.total)} из ${U.fmtNum(w.goal)}`}</h3>
         <div class="pbar big o-bar"><i style="width:${pct}%"></i>${marks}</div>
         <p class="o-me">${ru`Участников: <b>${w.players}</b> · Твой вклад: <b>${U.fmtNum(w.n)}</b>`}</p>
-      </div>${steps}${top}`;
+      </div>${steps}`; // 5.1.27: без «Лучших Ловчих недели» — общее дело, а не гонка
   },
   render(box) {
     const I = this.info;
     if (!I) { box.innerHTML = `<div class="empty">${ru`Узнаём, как идут дела у Ордена…`}</div>`; return; }
-    const ev = Ev.cur, x2 = ev.el ? ru`поимка духа стихии «${ELEMENTS[ev.el].name}» — 3 очка` : ev.loot ? ru`источник — 2 очка` : ev.rifts ? ru`разлом — 10 очков` : ev.duel ? ru`победа в капище — 6 очков` : ev.km ? ru`путь и коконы — вдвое` : '';
+    const ev = Ev.cur, x2 = ev.el ? ru`поимка духа стихии «${ELEMENTS[ev.el].name}» — 3 очка` : ev.loot ? ru`источник — 2 очка` : ev.rifts ? ru`разлом — 10 очков` : ev.duel ? ru`победа в святилище — 6 очков` : ev.km ? ru`путь и коконы — вдвое` : '';
     box.innerHTML = (I.prev ? this.weekCard(I.prev, ru`Прошлая неделя — награды ещё ждут`) : '') + this.weekCard(I.cur) +
       `<div class="q-note">${ru`Все Ловчие вместе копят очки: ${Rules.ORDER_RULES.map(([t, n]) => `${I18N.low(t)} — ${n}`).join(', ')}.`}${x2 ? ru` На этой неделе ${x2}.` : ''}
-       ${ru`Цель растёт с числом участников. Награду ступени получает каждый, кто внёс нужное число очков.`}</div>` + this.alatyrRow();
-    const a = box.querySelector('.o-ala');
-    if (a) a.onclick = () => Alatyr.screen();
-  },
-  // 4.28: вход на экран общего Алатыря — камень Ордена за всё время (не за неделю)
-  alatyrRow() {
-    if (typeof Alatyr === 'undefined') return '';
-    const rd = Ev.roadsNow()[0], A = Alatyr.info, st = A ? Ev.alaStage(A.total) : null; // 4.28: грань сезона Алатыря
-    const sub = Ev.finale() ? ru`Финал сезона: во всех Разломах Кощей` : rd ? ru`${Alatyr.roadName(rd.road)} распутана — ещё ${U.fmtTime(rd.to - U.now())}`
-      : st && !st.done ? ru`Орден собрал ${U.fmtNum(A.total)} осколков · до вехи ${U.fmtNum(st.need - st.have)}` : ru`Общий камень Ордена: каждая грань распутывает дорогу в один из миров`;
-    return `<button class="o-ala"><span class="o-ala-ico">${Art.item('alatyr')}</span><span class="o-ala-t"><b>${ru`Алатырь-камень`}</b><small>${sub}</small></span><span class="o-ala-go">›</span></button>`;
+       ${ru`Цель растёт с числом участников. Награду ступени получает каждый, кто внёс нужное число очков.`}</div>`; // 5.1.27: Алатырь — из меню, не отсюда
   },
   async claim(week, i) {
     const r = await Game.try('orderClaim', { week, i });
     if (!r) return false;
-    Sfx.play('levelup');
+    Sfx.play('reward_big');
     UI.modal({ title: ru`Общее дело: ступень ${i + 1}`, html: `<p>${ru`Орден благодарит тебя за помощь!`}</p><div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     await this.refresh(true);
     return true;

@@ -102,7 +102,7 @@ const LeagueBattle = {
     let r;
     try { r = await this.req('state', { id }); } catch (e) { UI.toast(U.esc(e.message)); this.sr = null; UI.closeScreen(sr.scr); return; }
     const v = PvP.view(r.st, r.seat, U.now()), f = v.foe, box = sr.scr.querySelector('.lgs');
-    Sfx.play('warn'); U.vibrate([40, 40, 80]);
+    Sfx.play('match'); U.vibrate([40, 40, 80]);
     if (box) box.innerHTML = `
       <div class="lgs-title">${ru`Соперник найден!`}</div>
       <div class="lgs-foe">
@@ -268,7 +268,7 @@ const LeagueBattle = {
       else if (e.e === 'charge' && e.s === 'foe') { Sfx.play('warn'); U.vibrate([30, 40, 30]); }
       else if (e.e === 'charged') {
         const to = e.s === 'me' ? 'foe' : 'me';
-        if (e.sh) { this.hit(to, ru`Щит!`, 'dodged'); Sfx.play('hit'); }
+        if (e.sh) { this.hit(to, ru`Щит!`, 'dodged'); Sfx.play('shield'); }
         else {
           this.hit(to, to === 'me' ? `−${e.d}` : e.d, to === 'me' ? 'hurt' : 'big');
           const f = to === 'me' ? v.foe.team[v.foe.idx] : v.me.team[v.me.idx];
@@ -277,7 +277,7 @@ const LeagueBattle = {
           U.vibrate(to === 'me' ? 90 : 60);
         }
       } else if (e.e === 'switch' && e.s === 'foe') UI.toast(ru`${U.esc(v.foe.name)} выпускает: ${SP[v.foe.team[e.i].sid].name}`);
-      else if (e.e === 'ko') Sfx.play(e.s === 'me' ? 'hurt' : 'hit');
+      else if (e.e === 'ko') Sfx.play(e.s === 'me' ? 'hurt' : 'ko');
     }
     st.lastN = raw.n;
     // окна: щит от приёма соперника, выбор духа после поражения бойца
@@ -378,7 +378,7 @@ const LeagueBattle = {
     let taps = 0;
     const orb = ov.querySelector('.charge-orb'), bar = ov.querySelector('.pbar i');
     orb.addEventListener('pointerdown', () => {
-      taps++; Sfx.play('tap'); U.vibrate(8);
+      taps++; Sfx.play('charge', { rate: 1 + Math.min(taps, 20) * 0.03 }); U.vibrate(8);
       orb.style.transform = `scale(${1 + Math.min(taps, 14) * 0.035})`;
       bar.style.width = Math.min(100, taps / PvP.TAPS_MAX * 100) + '%';
     });

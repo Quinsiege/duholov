@@ -1,11 +1,11 @@
 'use strict';
-/* Кланы: Капища под знаменем. Кто и где держит Капища — сводка с сервера (shrines_in_box),
+/* Кланы: Святилища под знаменем. Кто и где держит Святилища — сводка с сервера (shrines_in_box),
    бои, защитников и дань ведёт сервер игры.
    3.5: три дружины. 4.28: клан — мифология (data.js, CLANS): открыт клан открытой мифологии, клан следующего сезона — «?».
    Прежние дружины перешли в кланы (CLAN_OLD), у их Ловчих — один бесплатный переход (S.d.clanFree, clanMove). */
 
 const Clans = {
-  map: {},      // id Капища → { clan, since, holders: [{ name, sp, t }] }
+  map: {},      // id Святилища → { clan, since, holders: [{ name, sp, t }] }
   box: null,    // прямоугольник, для которого загружена сводка
   t: 0,
   TTL: 3 * 60000,
@@ -18,10 +18,10 @@ const Clans = {
   },
   // «×1,5» — дань со святилищ мифологии своего клана (Rules.HOLD.MYTH)
   mythX() { return '×' + Rules.HOLD.MYTH.toLocaleString(I18N.locale); },
-  // Капище — святилище мифологии моего клана (дань там ×1,5)
-  mine(id) { return !!(S.d && S.d.clan && W.placeMyth({ id }) === S.d.clan); },
+  // Святилище — святилище мифологии моего клана (дань там ×1,5)
+  mine(p) { return !!(S.d && S.d.clan && W.placeMyth(p) === S.d.clan); }, // p — { id, lat, lng }: 5.1.26 мифология места — по его родине
 
-  // Сводка занятых Капищ вокруг игрока (раз в 3 минуты и после боёв)
+  // Сводка занятых Святилищ вокруг игрока (раз в 3 минуты и после боёв)
   async refresh(force) {
     const pos = MapView.pos;
     if (!pos || !Game.on() || this._busy) return;
@@ -65,7 +65,7 @@ const Clans = {
     if (S.d.level < CLAN_LEVEL) { UI.toast(ru`Клан можно выбрать с ${CLAN_LEVEL} уровня`); return; }
     const m = UI.modal({
       title: ru`Выбери клан`, cls: 'clan-modal',
-      html: `<p class="small">${ru`У каждой мифологии Перепутицы — свой клан Ордена. Кланы держат Капища: поставь своего духа защитником — и Капище окрасится цветом твоего клана, а тебе каждый день будет приходить дань. Выбор — навсегда.`}</p>
+      html: `<p class="small">${ru`У каждой мифологии Перепутицы — свой клан Ордена. Кланы держат Святилища: поставь своего духа защитником — и Святилище окрасится цветом твоего клана, а тебе каждый день будет приходить дань. Выбор — навсегда.`}</p>
         ${this.pickHtml()}`,
       buttons: [{ label: ru`Позже` }],
     });
@@ -76,7 +76,7 @@ const Clans = {
   cardHtml(k, mode) {
     const c = CLANS[k];
     const note = mode === 'join' ? ru`Выбор — навсегда: сменить клан потом нельзя.`
-      : mode === 'move' ? ru`Переход бесплатный и единственный. Защитники достоят свой срок на Капищах прежнего клана, чат — уже нового.` : '';
+      : mode === 'move' ? ru`Переход бесплатный и единственный. Защитники достоят свой срок в Святилищах прежнего клана, чат — уже нового.` : '';
     return `<div class="clan-card" style="--cc:${c.color}">
         <span class="clan-crest">${Art.clanCrest(k)}</span>
         <b class="cc-name">${c.name}</b>
@@ -99,8 +99,8 @@ const Clans = {
   async join(k, done) {
     const c = CLANS[k], r = await Game.try('clanJoin', { clan: k });
     if (!r) return;
-    Sfx.play('levelup');
-    UI.toast(ru`Ты в «${c.name}»! Побеждай на Капищах и ставь защитников.`, 'good');
+    Sfx.play('notice');
+    UI.toast(ru`Ты в «${c.name}»! Побеждай в Святилищах и ставь защитников.`, 'good');
     UI.refreshHud();
     this.refresh(true);
     done && done();
@@ -108,7 +108,7 @@ const Clans = {
   async move(k, done) {
     const c = CLANS[k], r = await Game.try('clanMove', { clan: k });
     if (!r) return;
-    Sfx.play('levelup');
+    Sfx.play('notice');
     UI.toast(ru`Теперь ты в «${c.name}». Добро пожаловать, ${c.member}!`, 'good');
     UI.refreshHud();
     this.refresh(true);
@@ -131,7 +131,7 @@ const Clans = {
       title: ru`Дружины стали кланами`, cls: 'clan-modal clan-move-modal',
       html: `<p class="small">${ru`Орден собрал Ловчих всех земель: теперь у каждой мифологии свой клан, а с каждым новым сезоном Алатыря приходит ещё один.`}</p>
         <div class="clan-now" style="--cc:${c.color}"><span class="clan-crest">${Art.clanCrest(cur)}</span>
-          <div><small>${ru`Твоя дружина теперь —`}</small><b>${c.name}</b><small>${ru`Защитники на Капищах и чат клана остались с тобой.`}</small></div></div>
+          <div><small>${ru`Твоя дружина теперь —`}</small><b>${c.name}</b><small>${ru`Защитники в Святилищах и чат клана остались с тобой.`}</small></div></div>
         <p class="small">${ru`Один раз можно бесплатно перейти в любой открытый клан. Выбери его — или останься. Перейти можно и позже, на экране клана.`}</p>
         ${this.pickHtml(cur)}`,
       buttons: [{ label: ru`Остаться`, cls: 'primary' }],
@@ -139,14 +139,14 @@ const Clans = {
     this.bindPick(m, k => (k === cur ? this.card(k) : this.card(k, 'move', () => { m.close && m.close(); done && done(); })));
   },
 
-  // Выбор духа-защитника и отправка на Капище
+  // Выбор духа-защитника и отправка в Святилище
   defend(e, done) {
     const list = [...S.d.spirits].sort((a, b) => S.power(b) - S.power(a)).slice(0, 40);
     const own = (e.myth || W.placeMyth(e)) === S.d.clan;
     const m = UI.modal({
       title: ru`Кого поставить защитником?`, cls: 'defend-modal',
-      html: `<p class="small">${ru`Дух останется у тебя: на Капище встанет его отражение. Пока он стоит, раз в день приходит дань — ✦ ${TRIBUTE.sparks} и оберег.`}
-        ${ru`Отражение стоит до ${Rules.HOLD.MAX_H / 24} суток: первые ${Rules.HOLD.FRESH_H} ч в полной силе, потом устаёт и слабеет, а затем возвращается домой. Защитники — не больше чем на ${HOLD_MY_MAX} Капищах.`}
+      html: `<p class="small">${ru`Дух останется у тебя: в Святилище встанет его отражение. Пока он стоит, раз в день приходит дань — ✦ ${TRIBUTE.sparks} и оберег.`}
+        ${ru`Отражение стоит до ${Rules.HOLD.MAX_H / 24} суток: первые ${Rules.HOLD.FRESH_H} ч в полной силе, потом устаёт и слабеет, а затем возвращается домой. Защитники — не больше чем на ${HOLD_MY_MAX} Святилищах.`}
         ${own ? `<b>${ru`Это святилище мифологии твоего клана — дань здесь ${this.mythX()}.`}</b>` : ''}</p>
         <div class="defend-list">${list.map(sp => `<button class="mini defend-sp" data-uid="${sp.uid}">${Art.imgOf(sp)}<b>${S.power(sp)}</b><small>${U.esc(sp.nick || SP[sp.sid].name)}</small></button>`).join('')}</div>`,
       buttons: [{ label: ru`Отмена` }],
@@ -158,8 +158,8 @@ const Clans = {
       this._defending = false;
       if (!r) return;
       m.close && m.close();
-      Sfx.play('levelup');
-      UI.toast(ru`Защитник встал на Капище «${U.esc(e.name)}» — оно под знаменем «${CLANS[r.clan].name}»`, 'good');
+      Sfx.play('success');
+      UI.toast(ru`Защитник встал в Святилище «${U.esc(e.name)}» — оно под знаменем «${CLANS[r.clan].name}»`, 'good');
       await this.refresh(true);
       done && done();
     });
@@ -173,7 +173,7 @@ const Clans = {
       const r = await Game.act('myGuards');
       this.guards = r.list;
       if (r.back.length) {
-        Sfx.play('miss');
+        Sfx.play('sad');
         const names = r.back.map(g => `«${U.esc(g.name)}»`).join(', ');
         const got = r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ');
         UI.toast(r.back.every(g => g.tired) ? ru`Срок на посту вышел — защитники вернулись с ${names}. За службу: ${got}`
@@ -185,7 +185,7 @@ const Clans = {
     return this.guards;
   },
 
-  // Экран клана: кто мы, мои защитники и сколько Капищ у каждого клана
+  // Экран клана: кто мы, мои защитники и сколько Святилищ у каждого клана
   async screen() {
     if (!S.d.clan) { this.choose(() => this.screen()); return; }
     const k0 = S.d.clan, c = CLANS[k0];
@@ -202,7 +202,7 @@ const Clans = {
     const [guards] = await Promise.all([this.checkGuards(true), Game.act('clanStats').then(r => { stats = r; }).catch(() => {})]);
     if (!scr.isConnected) return;
     const pos = MapView.pos, list = guards || [];
-    // 4.28: кланов 7+ — строки по числу Капищ (мой клан всегда виден), имя — короткое
+    // 4.28: кланов 7+ — строки по числу Святилищ (мой клан всегда виден), имя — короткое
     const bars = (counts, title) => {
       if (!counts) return '';
       const keys = this.open().sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
@@ -216,15 +216,15 @@ const Clans = {
       return `<div class="row guard-row" data-id="${U.esc(g.id)}"><div class="row-ico">${g.sp && SP[g.sp.sid] ? Art.imgOf(g.sp) : ''}</div>
         <div class="row-main"><b>${U.esc(g.name)}</b><small>${ru`на посту ${h < 1 ? ru`меньше часа` : ru`${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}`}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small>
           <small>${h >= Rules.HOLD.FRESH_H ? ru`устал: уровень −${Math.round((1 - Rules.holdK(g.t, U.now())) * 100)}% · домой через ${Math.max(1, Math.ceil(Rules.HOLD.MAX_H - h))} ч` : ru`в полной силе ещё ${Math.max(1, Math.ceil(Rules.HOLD.FRESH_H - h))} ч`}</small>
-          ${this.mine(g.id) ? `<small class="gr-own">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>
+          ${this.mine(g) ? `<small class="gr-own">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>
         <button class="btn small ghost show-guard">${ru`Показать`}</button></div>`;
     };
     scr.querySelector('.clan-body').innerHTML = `
-      ${bars(stats && stats.near, ru`Капища рядом (≈5 км)`)}
-      ${bars(stats && stats.all, ru`Капища по всему свету`)}
+      ${bars(stats && stats.near, ru`Святилища рядом (≈5 км)`)}
+      ${bars(stats && stats.all, ru`Святилища по всему свету`)}
       <h3 class="prof-h">${ru`Мои защитники`} <small>${ru`${list.length} из ${HOLD_MY_MAX}`}</small></h3>
-      <div class="list">${list.map(guardRow).join('') || `<div class="row"><div class="row-main"><small>${ru`Пока нигде. Победи на Капище и поставь защитника — каждый день будет приходить дань.`}</small></div></div>`}</div>
-      <div class="q-note">${ru`Дань — ✦ ${TRIBUTE.sparks}, оберег и ${Rules.ZLAT.tribute} ${U.plural(Rules.ZLAT.tribute, ru`монета`, ru`монеты`, ru`монет`)} в день за каждое Капище, где твой защитник отстоял хотя бы ${Rules.HOLD.TRIBUTE_H} ч. Защитник стоит до ${Rules.HOLD.MAX_H / 24} суток и понемногу устаёт; если соперники его победят или срок выйдет, он вернётся с искрами за время на посту. Часть Капищ — вольные: их не держит ни один клан.`}
+      <div class="list">${list.map(guardRow).join('') || `<div class="row"><div class="row-main"><small>${ru`Пока нигде. Победи в Святилище и поставь защитника — каждый день будет приходить дань.`}</small></div></div>`}</div>
+      <div class="q-note">${ru`Дань — ✦ ${TRIBUTE.sparks}, оберег и ${Rules.ZLAT.tribute} ${U.plural(Rules.ZLAT.tribute, ru`монета`, ru`монеты`, ru`монет`)} в день за каждое Святилище, где твой защитник отстоял хотя бы ${Rules.HOLD.TRIBUTE_H} ч. Защитник стоит до ${Rules.HOLD.MAX_H / 24} суток и понемногу устаёт; если соперники его победят или срок выйдет, он вернётся с искрами за время на посту. Часть Святилищ — вольные: их не держит ни один клан.`}
         ${ru`На святилищах мифологии твоего клана искры и обереги дани — ${this.mythX()}.`}</div>`;
     scr.querySelector('.clan-body').addEventListener('click', e => {
       const row = e.target.closest('.guard-row');
@@ -234,17 +234,17 @@ const Clans = {
       UI.closeScreen(scr);
       for (let i = 0; i < 5 && UI.blocking(); i++) UI.back(); // закрыть профиль и меню — к карте
       MapView.track({ id: g.id, type: 'shrine', lat: g.lat, lng: g.lng, name: g.name });
-      UI.toast(ru`Следопыт ведёт к Капищу «${U.esc(g.name)}»`);
+      UI.toast(ru`Следопыт ведёт к Святилищу «${U.esc(g.name)}»`);
     });
   },
 
-  // Дань с Капищ — раз в день, вместе с наградой за серию дней
+  // Дань со Святилищ — раз в день, вместе с наградой за серию дней
   async tribute() {
     if (!S.d || !S.d.clan || S.d.tributeDay === U.today() || S.d.tributeNext > U.now() || this._tribute) return;
     this._tribute = true;
     try {
       const r = await Game.act('tribute');
-      if (r && r.n) UI.toast(ru`Дань с ${r.n} ${U.plural(r.n, ru`Капища`, ru`Капищ`, ru`Капищ`)}: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');
+      if (r && r.n) UI.toast(ru`Дань со Святилищ (${r.n}): ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good'); // 5.1.29: без форм числа — «Святилища» в словарях только множественное
     } catch (e) { /* позже */ }
     this._tribute = false;
   },
