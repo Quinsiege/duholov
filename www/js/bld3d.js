@@ -220,7 +220,7 @@ const Bld3D = {
       map.on('zoomend', () => this.dirty());
       // видеокарта сбросила контекст — программы заново, дома — заново из плиток
       cv.addEventListener('webglcontextlost', e => { e.preventDefault(); this.lost = true; });
-      cv.addEventListener('webglcontextrestored', () => { this.lost = false; this.tiles.clear(); this.programs(); this.dirty(); });
+      cv.addEventListener('webglcontextrestored', () => { this.lost = false; this.tiles.clear(); this.queue = []; this.programs(); this.dirty(); });
       this.on = true;
       return true;
     } catch (e) { return false; }
@@ -281,7 +281,10 @@ const Bld3D = {
   },
 
   /* ---------- кадр ---------- */
-  dirty() { if (this.on && !this.raf) this.raf = requestAnimationFrame(() => { this.raf = 0; this.draw(); }); },
+  /* 5.1.31: перерисовать — в конце текущей задачи (одна отрисовка на все вызовы), а не в следующем кадре браузера: поворот, наклон и
+     шаг приходят в кадре (requestAnimationFrame), и дома, нарисованные кадром позже, на каждом кадре поворота отставали от карты —
+     углы экрана на миг оставались без домов, верхушки дёргались */
+  dirty() { if (this.on && !this.raf) { this.raf = 1; queueMicrotask(() => { this.raf = 0; this.draw(); }); } },
   // масштаб с анимацией (колесо, двойное касание): до конца анимации холст тянется вместе с плитками — точка слоя p
   // уезжает в p·sc + (старое начало пикселей)·sc − новое начало (как у Leaflet), сам кадр — прежний
   animZoom(e) {
@@ -366,12 +369,28 @@ const Bld3D = {
     for (const p of t.parts) { if (p.vb) gl.deleteBuffer(p.vb); if (p.ib) gl.deleteBuffer(p.ib); }
     t.parts = [];
   },
-  // дома плитки → куски (по клеткам CELL×CELL, у каждого — не больше 65 000 вершин): вершины и треугольники стен и крыш
+  /* 5.1.31: плитки домов строятся по одной, ближняя к игроку — первой: раньше все пришедшие плитки строились разом вперемешку,
+     и дома рядом с игроком появлялись последними */
+  queue: [],
   build(t, fs) {
+    this.queue.push({ t, fs });
+    if (!this.busy) this.next();
+  },
+  next() {
+    this.queue = this.queue.filter(q => !q.t.dead);
+    if (!this.queue.length || !this.map) { this.busy = false; return; }
+    this.busy = true;
+    const c = this.map.project(this.map.getCenter(), this.Z).divideBy(256), d = q => (q.t.x + 0.5 - c.x) ** 2 + (q.t.y + 0.5 - c.y) ** 2;
+    this.queue.sort((a, b) => d(a) - d(b));
+    const { t, fs } = this.queue.shift();
+    this.buildOne(t, fs, () => this.next());
+  },
+  // дома плитки → куски (по клеткам CELL×CELL, у каждого — не больше 65 000 вершин): вершины и треугольники стен и крыш
+  buildOne(t, fs, done) {
     const cells = new Map(), lo = -1, hi = this.EXT + 1, cw = this.EXT / this.CELL, E = this.edges(fs);
     let i = 0;
     const step = () => {
-      if (t.dead) return;
+      if (t.dead) { done(); return; }
       const t0 = performance.now();
       for (; i < fs.length && performance.now() - t0 < this.BUDGET; i++) {
         const f = fs[i];
@@ -388,6 +407,7 @@ const Bld3D = {
       for (const c of cells.values()) if (c.idx.length) t.parts.push(this.pack(c));
       t.st = 'ok';
       this.dirty();
+      setTimeout(done, 0); // следующая плитка — отдельной задачей (между ними — кадр)
     };
     step();
   },

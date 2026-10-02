@@ -4671,6 +4671,57 @@
       });
     } finally { host.remove(); M3D.prune(); M3D.BASE = base; }
   });
+  test('5.1.31: плитки карты — только под видимой землёй (с запасом), рамка — с серединой у игрока; проявление пишет прозрачность лишь при изменении', () => {
+    const keep = { seenPoly: MapView.seenPoly, TILE_PAD: MapView.TILE_PAD, TILE_KEEP: MapView.TILE_KEEP }, keepL = window.L;
+    try {
+      // видимая земля — ромб (повёрнутая карта): рамка ромба шире него самого
+      MapView.seenPoly = () => [[200, 0], [400, 200], [200, 400], [0, 200]];
+      const lay = { _map: { latLngToLayerPoint: p => p }, _tileCoordsToNwSe: co => [{ x: co.x * 80, y: co.y * 80 }, { x: co.x * 80 + 80, y: co.y * 80 + 80 }] };
+      ok(MapView.tileSeen(lay, { x: 2, y: 2 }, 0), 'плитка посередине — нужна');
+      ok(!MapView.tileSeen(lay, { x: 0, y: 0 }, 0), 'угол рамки мимо ромба — не нужна');
+      ok(MapView.tileSeen(lay, { x: 0, y: 0 }, 1), 'с запасом в плитку — нужна (подгрузится заранее)');
+      ok(!MapView.tileSeen(lay, { x: 9, y: 9 }, 2), 'далеко — не нужна и с запасом');
+      // рамка плиток — с серединой у игрока (Leaflet и Protomaps рисуют от середины), не шире слоя карты
+      const pts = [], writes = [];
+      window.L = {
+        bounds: (a, b) => ({ min: { x: a[0], y: a[1] }, max: { x: b[0], y: b[1] } }),
+        DomUtil: { setOpacity: (el, v) => { writes.push(v); el.style.opacity = v; } },
+        Util: { requestAnimFrame: () => 1, cancelAnimFrame() {} },
+      };
+      MapView.seenPoly = () => [[500, 300], [700, 300], [650, 600], [550, 600]]; // трапеция впереди игрока (он — в (600, 700))
+      const map = { getZoom: () => 18, getZoomScale: () => 1, project: () => ({ floor: () => ({ x: 600, y: 700 }) }), containerPointToLayerPoint: () => ({ x: 600, y: 700 }), getSize: () => ({ divideBy: () => ({}) }) };
+      const fake = { _map: map, _tileZoom: 18, _tiles: {}, options: { opacity: 1 }, _container: document.createElement('div'),
+        _getTiledPixelBounds: () => ({ min: { x: -5000, y: -5000 }, max: { x: 5000, y: 5000 } }), _isValidTile: () => true, _update() {}, _pruneTiles() {}, _onOpaqueTile() {} };
+      MapView.TILE_PAD = 1;
+      MapView.cull(fake);
+      const b = fake._getTiledPixelBounds({});
+      eq((b.min.x + b.max.x) / 2, 600, 'середина рамки по ширине — у игрока:'); eq((b.min.y + b.max.y) / 2, 700, 'и по высоте:');
+      ok(b.min.y <= 300 - 256 && b.max.x >= 700 + 256, 'рамка покрывает видимую землю с запасом');
+      // проявление: прозрачность — только тем, у кого она изменилась
+      const el1 = document.createElement('canvas'), el2 = document.createElement('canvas'), now = +new Date();
+      fake._tiles = { a: { current: true, loaded: now - 1000, el: el1, active: true }, b: { current: true, loaded: now, el: el2 } };
+      fake._updateOpacity(); const n1 = writes.length;
+      fake._updateOpacity(); const n2 = writes.length - n1;
+      ok(n1 >= 2, 'первый раз — слою и плиткам: ' + n1);
+      ok(n2 <= 1, 'дальше — только той, что проявляется: ' + n2);
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
+  });
+  test('5.1.31: объёмные дома — плитки строятся по одной, ближняя к игроку — первой', () => {
+    const keep = { map: Bld3D.map, buildOne: Bld3D.buildOne, queue: Bld3D.queue, busy: Bld3D.busy }, order = [];
+    try {
+      Bld3D.map = { getCenter: () => ({}), project: () => ({ divideBy: () => ({ x: 10.5, y: 20.5 }) }) };
+      let finish = null;
+      Bld3D.buildOne = (t, fs, done) => { order.push(t.x + ':' + t.y); finish = done; };
+      Bld3D.queue = []; Bld3D.busy = false;
+      Bld3D.build({ x: 14, y: 20 }, []); // строится сразу (очередь пуста)
+      Bld3D.build({ x: 13, y: 24 }, []); Bld3D.build({ x: 10, y: 21 }, []); Bld3D.build({ x: 11, y: 20 }, []);
+      eq(order.join(), '14:20', 'пока строится одна — остальные ждут:');
+      finish(); finish(); finish();
+      eq(order.join(), '14:20,10:21,11:20,13:24', 'дальше — от ближней к игроку:');
+      finish();
+      eq(Bld3D.busy, false, 'очередь пуста — свободен:');
+    } finally { Object.assign(Bld3D, keep); }
+  });
   test('5.1.31: крыши и повороты моделей — одним кадром; пустые плитки подписей скрыты; значок далеко за экраном не переставляется', () => {
     const keep = { markers: MapView.markers, upright: MapView.upright, reAim: MapView.reAim, bldTiles: MapView.bldTiles, map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py };
     const keepAim = M3D.aim, keepRaf = window.requestAnimationFrame, keepL = window.L;

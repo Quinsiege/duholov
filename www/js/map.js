@@ -235,11 +235,11 @@ const MapView = {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
         const url = this.tilesUrl(), st = this.flavorRules(F);
-        this.tiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
-          paintRules: st.paint, labelRules: [], backgroundColor: st.bg }).addTo(this.map);
+        this.tiles = this.cull(protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
+          paintRules: st.paint, labelRules: [], backgroundColor: st.bg })).addTo(this.map);
         U.$('#map').classList.add('vecmap');
         // 4.13: подписи — вторым слоем над зоной Ловчего и объёмными домами; плитки читаются один раз (общий кэш)
-        this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: [], labelRules: st.label });
+        this.bldTiles = this.cull(protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: [], labelRules: st.label }));
         this.bldTiles.views = this.tiles.views;
         // 5.1.31: плитка подписей, на которую не попала ни одна подпись (каждая третья в городе), — скрыта: пустой холст — всё равно
         // свой слой видеокарты, а их число — главное в цене каждого кадра, пока карта движется
@@ -261,6 +261,98 @@ const MapView = {
     document.body.style.setProperty('--haze', F.earth); // 4.11: дымка горизонта у наклонённой карты — цвета земли
     U.$('#map').style.background = F.earth; // и фон под ещё не нарисованными плитками
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
+  },
+
+  /* 5.1.31: плитки карты — только под видимой землёй (с запасом TILE_PAD плиток), а не во весь слой карты. Слой больше экрана:
+     у наклонённой карты его нижняя треть — под экраном, у повёрнутой это квадрат на любой поворот (в окне ПК — до 3700 точек), и
+     видна из него от силы пятая часть. Лишние плитки рисовались (каждая перебирает все дома и дороги своего куска данных) и держали
+     память видеокарты: местность долго прогружалась, при повороте камеры экран мерцал. Пока камера поворачивается — подгружаются
+     на ходу (tilesSoon); ушедшая из виду плитка выбрасывается дальше TILE_KEEP плиток (поворот туда-обратно её не перерисовывает) */
+  TILE_PAD: 1, TILE_KEEP: 2,
+  cull(lay) {
+    const self = this, bounds = lay._getTiledPixelBounds, valid = lay._isValidTile, upd = lay._update;
+    // диапазон плиток — рамка видимой земли с запасом (в точках масштаба плиток), не шире слоя карты. Рамка — с серединой у игрока:
+    // Leaflet заводит, а Protomaps рисует плитки от середины рамки — первой прогружается земля под ногами, даль — следом (лишние
+    // клетки рамки отсеивает _isValidTile)
+    lay._getTiledPixelBounds = function (center) {
+      const b = bounds.call(this, center), m = this._map, P = self.seenPoly();
+      if (!P || !m) return b;
+      const z = m._animatingZoom ? Math.max(m._animateToZoom, m.getZoom()) : m.getZoom(), k = m.getZoomScale(z, this._tileZoom);
+      const c = m.project(center, this._tileZoom).floor(), o = m.containerPointToLayerPoint(m.getSize().divideBy(2)), pad = 256 * self.TILE_PAD;
+      let hx = 0, hy = 0;
+      for (const [x, y] of P) { hx = Math.max(hx, Math.abs((x - o.x) / k)); hy = Math.max(hy, Math.abs((y - o.y) / k)); }
+      hx += pad; hy += pad;
+      return L.bounds([Math.max(b.min.x, c.x - hx), Math.max(b.min.y, c.y - hy)], [Math.min(b.max.x, c.x + hx), Math.min(b.max.y, c.y + hy)]);
+    };
+    // в рамке — только плитки, которые задевают саму видимую землю (у повёрнутой карты углы рамки — мимо)
+    lay._isValidTile = function (co) { return valid.call(this, co) && self.tileSeen(this, co, self.TILE_PAD); };
+    // ушедшие из виду дальше TILE_KEEP плиток — выбросить
+    lay._update = function (center) {
+      upd.call(this, center);
+      if (!this._map || this._tileZoom == null) return;
+      let drop = false;
+      for (const key in this._tiles) {
+        const t = this._tiles[key];
+        if (t.current && t.coords.z === this._tileZoom && !self.tileSeen(this, t.coords, self.TILE_KEEP)) { t.current = false; drop = true; }
+      }
+      if (drop) this._pruneTiles();
+    };
+    // проявление новых плиток (как в Leaflet 1.9.4): прозрачность пишется, только если изменилась — Leaflet переписывал её всем
+    // плиткам на каждом кадре, пока проявляется хоть одна, и браузер на каждом кадре пересчитывал стили сотен плиток
+    lay._updateOpacity = function () {
+      if (!this._map) return;
+      const op = (el, v) => { if (el._op !== v) { el._op = v; L.DomUtil.setOpacity(el, v); } };
+      op(this._container, this.options.opacity);
+      const now = +new Date();
+      let next = false, prune = false;
+      for (const key in this._tiles) {
+        const t = this._tiles[key];
+        if (!t.current || !t.loaded) continue;
+        const f = Math.min(1, (now - t.loaded) / 200);
+        op(t.el, f);
+        if (f < 1) next = true;
+        else { if (t.active) prune = true; else this._onOpaqueTile(t); t.active = true; }
+      }
+      if (prune && !this._noPrune) this._pruneTiles();
+      if (next) { L.Util.cancelAnimFrame(this._fadeFrame); this._fadeFrame = L.Util.requestAnimFrame(this._updateOpacity, this); }
+    };
+    return lay;
+  },
+  // видимая земля — углы экрана на плоскости карты, в точках слоя; null — не посчитать (линия горизонта на экране)
+  seenPoly() {
+    const m = this.map;
+    if (!m || !this.vw || !this.vh) return null;
+    // один раз на положение карты (плиток в рамке — десятки, а карта между ними не двигается)
+    const pp = m._getMapPanePos(), key = `${pp.x},${pp.y},${this.rot},${this.tilt},${m.getZoom()},${this.vw},${this.vh},${this._py}`;
+    if (this._spKey === key) return this._sp;
+    this._spKey = key;
+    if (this.tilt) {
+      const t = this.tilt * Math.PI / 180, py = this._py || this.vh / 2;
+      if (this.PD * Math.cos(t) - py * Math.sin(t) < 40) return (this._sp = null); // верх экрана — у самого горизонта: без отсева
+    }
+    const c = m.containerPointToLayerPoint(m.getSize().divideBy(2)), W = this.vw, H = this.vh;
+    return (this._sp = [[0, 0], [W, 0], [W, H], [0, H]].map(([x, y]) => { const q = this.plane(x, y); return [c.x + q.x, c.y + q.y]; }));
+  },
+  // плитка co слоя lay задевает видимую землю с запасом pad плиток? (разделяющие оси: оси плитки и стороны четырёхугольника земли)
+  tileSeen(lay, co, pad) {
+    const m = lay._map, P = this.seenPoly();
+    if (!P || !m) return true;
+    const b = lay._tileCoordsToNwSe(co), nw = m.latLngToLayerPoint(b[0]), se = m.latLngToLayerPoint(b[1]), M = (se.x - nw.x) * pad;
+    const R = [[nw.x - M, nw.y - M], [se.x + M, nw.y - M], [se.x + M, se.y + M], [nw.x - M, se.y + M]];
+    const axes = [[1, 0], [0, 1]];
+    for (let i = 0; i < 4; i++) { const a = P[i], q = P[(i + 1) % 4]; axes.push([q[1] - a[1], a[0] - q[0]]); }
+    for (const [nx, ny] of axes) {
+      let p0 = Infinity, p1 = -Infinity, r0 = Infinity, r1 = -Infinity;
+      for (const [x, y] of P) { const d = x * nx + y * ny; if (d < p0) p0 = d; if (d > p1) p1 = d; }
+      for (const [x, y] of R) { const d = x * nx + y * ny; if (d < r0) r0 = d; if (d > r1) r1 = d; }
+      if (p1 < r0 || r1 < p0) return false;
+    }
+    return true;
+  },
+  // камера повернулась или наклонилась — плитки под новую видимую землю (на жесте — не чаще раза в 90 мс)
+  tilesSoon() {
+    if (this._tilesT) return;
+    this._tilesT = setTimeout(() => { this._tilesT = 0; for (const l of [this.tiles, this.bldTiles]) if (l && l._map && l._update) l._update(); }, 90);
   },
 
   lblTileVis(c, el) {
@@ -480,7 +572,13 @@ const MapView = {
     addEventListener('pointermove', e => {
       if (!g || e.pointerId !== g.id || g.multi) return;
       const dx = e.clientX - g.x, dy = e.clientY - g.y;
-      if (!g.on) { if (Math.hypot(dx, dy) < 8) return; g.on = true; }
+      if (!g.on) {
+        if (Math.hypot(dx, dy) < 8) return;
+        g.on = true;
+        // 5.1.31: мышь ведёт камеру — курсор «держится» за карту: браузеру не нужно на каждом движении искать, над каким значком
+        // или плиткой он теперь, и пересчитывать наведение (у пальца так и есть само по себе)
+        if (e.pointerType !== 'touch') try { box.setPointerCapture(g.id); } catch (x) { /* не поддерживается */ }
+      }
       want = { rot: g.rot + g.sg * dx * this.ORBIT.yaw, tilt: this.tilt ? g.tilt - dy * this.ORBIT.pitch : null };
       if (!raf) raf = requestAnimationFrame(apply);
     });
@@ -502,6 +600,7 @@ const MapView = {
     if (t > (this._tiltFor || 0)) return this.layout(); // слою карты мало запаса для такого наклона — шире
     U.$('#map').style.setProperty('--tilt', t + 'deg');
     this.reAim();
+    this.tilesSoon();
   },
   // жест кончился, а наклон стал заметно меньше того, под который считан слой карты, — слой снова по размеру (меньше плиток)
   fitPitch() { if (this.tilt && (this._tiltFor || 0) - this.tilt > 9) this.layout(); },
@@ -549,6 +648,8 @@ const MapView = {
     if (c) { c.firstElementChild.style.transform = `rotate(${r}deg)`; c.classList.toggle('turned', !!r); }
     if (this.tracking) this.updateTracker();
     if (typeof Bld3D !== 'undefined') Bld3D.dirty(); // 5.1.30: объёмные дома поворачиваются вместе с картой — в этом же кадре
+    this.placeLabels(); // 5.1.31: подписи — тоже в этом кадре (раньше догоняли значки кадром позже — дёргались)
+    this.tilesSoon();
   },
   // значок на повёрнутой/наклонённой карте стоит прямо (см. initRotate)
   LIFT_Z: 36, // насколько значок наклонённой карты выдвинут к игроку, CSS-пиксели: иначе нижняя половина ушла бы «под» плитки
