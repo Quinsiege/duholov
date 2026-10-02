@@ -1349,7 +1349,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 /* ---------- 3.25: задания дня ---------- */
 .qd-head { display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 10px; border-radius: 18px;
   background: linear-gradient(135deg, rgba(167, 139, 250, .16), rgba(94, 234, 212, .06)); border: 1px solid rgba(167, 139, 250, .3); }
-.qd-head.full { background: linear-gradient(135deg, rgba(74, 222, 128, .14), rgba(251, 191, 36, .08)); border-color: rgba(74, 222, 128, .35); }
+.qd-head.full { background: linear-gradient(135deg, rgba(253, 224, 71, .16), rgba(251, 191, 36, .06)); border-color: rgba(253, 224, 71, .4); } /* 5.1.24: жёлтым, как сундук (было зелёным) */
 .qd-head .row-main small { color: var(--muted); font-size: 12px; }
 .qd-left { color: var(--text); font-variant-numeric: tabular-nums; }
 .qd-ring { position: relative; width: 52px; height: 52px; flex: none; display: grid; place-items: center; }
@@ -1373,29 +1373,27 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .qd-rw .art { width: 18px; height: 18px; }
 .qd-rw.spark { padding-left: 8px; color: var(--gold2); }
 .quest.qd .btn { align-self: center; }
-.quest.qd .q-ok, .qd-chest .q-ok { align-self: center; }
-.qd-chest { align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.quest.qd .q-ok { align-self: center; }
 .qd-ico.chest { background: rgba(251, 191, 36, .12); }
 .qd-pips { display: flex; align-items: center; gap: 5px; margin: 6px 0; }
 .qd-pips i { width: 22px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .14); }
 .qd-pips i.half { background: rgba(251, 191, 36, .5); } .qd-pips i.on { background: var(--gold); }
-/* 5.1.24: Сундук дня — большой, внизу «Заданий дня»: рисунок, отметки трёх заданий, что внутри, «Открыть».
-   Готов — мягко «дышит» золотым светом; открывается — подпрыгивает (в спокойном режиме и при «меньше движения» — без этого) */
-.q-chest { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; margin: 18px 0 8px; padding: 4px 12px; }
-.q-chest .qc-art { width: 150px; height: 130px; filter: drop-shadow(0 8px 14px rgba(8, 4, 24, .45)); }
-.q-chest .qc-art .art { width: 100%; height: 100%; }
-.q-chest .qc-title { font-family: var(--f-head); font-size: 18px; color: var(--gold2); }
-.q-chest .qd-pips { margin: 2px 0; }
-.q-chest .qc-state { font-size: 12.5px; color: var(--text); }
-.q-chest .qc-what { font-size: 12px; color: var(--muted); }
-.q-chest .claim-bonus { margin-top: 8px; min-width: 180px; }
-.q-chest.opened .qc-state { color: #86efac; }
-.q-chest.ready .qc-art { animation: qcGlow 1.8s ease-in-out infinite; }
-.q-chest.opening .qc-art { animation: qcOpen .65s ease-out both; }
-@keyframes qcGlow { 0%, 100% { transform: scale(1); filter: drop-shadow(0 8px 14px rgba(8, 4, 24, .45)); } 50% { transform: scale(1.04); filter: drop-shadow(0 8px 14px rgba(8, 4, 24, .45)) drop-shadow(0 0 16px rgba(253, 224, 71, .55)); } }
-@keyframes qcOpen { 0% { transform: none; } 20% { transform: translateY(-10px) rotate(-4deg); } 40% { transform: rotate(3deg); } 60% { transform: translateY(-6px) rotate(-2deg); } 100% { transform: scale(1.06); } }
-.calm .q-chest .qc-art { animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .q-chest .qc-art { animation: none !important; } }
+/* 5.1.24: все задания дня сделаны — на месте кружка «3/3» Сундук дня в жёлтом круге. Не открыт — плавно уменьшается и
+   увеличивается, чтобы на него нажали; открывается — подпрыгивает; открыт — спокойно стоит открытым
+   (в спокойном режиме и при «меньше движения» — без анимации) */
+.day-chest { position: relative; width: 58px; height: 58px; flex: none; display: grid; place-items: center; margin: -3px; padding: 7px 6px 8px;
+  border-radius: 50%; border: 2.5px solid #fde047; background: radial-gradient(circle at 40% 32%, #fef9c3, #fde047 45%, #f59e0b 80%, #b45309);
+  box-shadow: 0 0 0 3px rgba(253, 224, 71, .22), 0 0 16px rgba(251, 191, 36, .5); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.day-chest .art { width: 100%; height: 100%; filter: drop-shadow(0 2px 2px rgba(59, 26, 10, .45)); }
+.day-chest.ready { animation: qdChest 1.6s ease-in-out infinite; }
+.day-chest.opening { animation: qcOpen .65s ease-out both; }
+.day-chest.opened { cursor: default; box-shadow: 0 0 0 3px rgba(253, 224, 71, .15), 0 0 10px rgba(251, 191, 36, .35); }
+.day-chest:disabled { opacity: 1; }
+@keyframes qdChest { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(253, 224, 71, .22), 0 0 16px rgba(251, 191, 36, .5); }
+  50% { transform: scale(.86); box-shadow: 0 0 0 6px rgba(253, 224, 71, .12), 0 0 24px rgba(251, 191, 36, .65); } }
+@keyframes qcOpen { 0% { transform: none; } 20% { transform: translateY(-8px) rotate(-6deg); } 40% { transform: rotate(5deg); } 60% { transform: translateY(-4px) rotate(-3deg); } 100% { transform: scale(1.08); } }
+.calm .day-chest { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .day-chest { animation: none !important; } }
 .chest-modal .lvl-rw { margin: 6px 0 4px; }
 .qd-pips small { margin-left: 4px; color: var(--muted); font-size: 11px; }
 
@@ -4157,7 +4155,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .q-screen .q-tabs { margin-bottom: 10px; }
 .q-screen .quest, .q-screen .quest.bonus { background: none; border: 0; border-radius: 0; padding: 7px 2px; margin-bottom: 2px; }
 .q-screen .quest.done > .q-main > b { color: var(--gold2); }
-.q-screen .qd-chest { margin-top: 4px; }
 /* 4.21: закрытое по уровню видно с начала — с замком */
 .mk-rift.locked { filter: grayscale(.85) brightness(.8); opacity: .75; }
 .mk-rift.locked .mk-boss { animation: none; }
