@@ -4389,6 +4389,10 @@
       ok(h.prims.length > 3, kind + ': частей ' + h.prims.length);
       ok(h.groups.some(g => g.t === need[kind.split('_')[0]]), kind + ': нет движения ' + need[kind.split('_')[0]]);
       ok(h.r > 0.3 && h.r < 3.5 && h.h > 1.5 && h.h < 4.5, `${kind}: рамка ${h.r} × ${h.h}`);
+      if (kind.startsWith('catcher')) {
+        ok(h.mats.some(m => m.n === 'catcher_eyes'), kind + ': глаза — в цвет облика');
+        eq(h.mats.some(m => m.n === 'catcher_cloak'), kind === 'catcher', kind + ': цвет плаща из облика — только у обычного наряда:');
+      }
       if (kind === 'catcher') {
         const t = h.groups.map(g => g.t + (g.s > 0 ? '+' : g.s < 0 ? '-' : '')).sort().join();
         eq(t, 'arm+,arm-,body,leg+,leg-,static', 'Ловчий: шарниры');
@@ -4415,7 +4419,12 @@
     near3(tn.catcher_cloak.c, M3D.lin('#1d4ed8'), 'плащ:');
     near3(tn.catcher_cloak_dark.c, M3D.lin('#1d4ed8').map(x => x * 0.27), 'тень плаща:');
     near3(tn.catcher_eyes.e, M3D.lin('#fde047').map(x => x * 1.6), 'глаза светятся своим цветом:');
-    near3(M3D.tintOf({ skin: 'bogatyr', cloak: '#1d4ed8' }).catcher_cloak.c, M3D.lin('#b91c1c'), 'у скина — его цвет:');
+    // 5.1.29: у облика-скина — свой наряд (своя модель); неизвестный или обычный — капюшон
+    eq(M3D.kindOfLook({ skin: 'bogatyr' }), 'catcher_bogatyr', 'скин — свой наряд:');
+    eq(M3D.kindOfLook({ skin: 'hood' }), 'catcher', 'обычный облик:');
+    eq(M3D.kindOfLook({ skin: 'constructor' }), 'catcher', 'неизвестный скин:');
+    eq(M3D.kindOfLook(null), 'catcher', 'без облика:');
+    ok(LOOK.skin.filter(s => s.id !== 'hood').every(s => M3D.SKINS.includes(s.id)), 'у каждого скина из Гардероба есть 3D-наряд');
     near3(M3D.tintOf({ cloak: 'red', eyes: 'url(x)' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'чужое значение — обычный плащ:');
     near3(M3D.tintOf({ skin: 'constructor' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'неизвестный скин — обычный плащ:');
     const keepRot = M3D.rot, v = { gait: 2, yaw: 1 };

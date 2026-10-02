@@ -9,25 +9,24 @@
    В «Экономии батареи» и «Меньше движения» модели неподвижны. Нет WebGL или файл не загрузился — остаётся
    прежний рисунок (SVG). */
 const M3D = {
-  VER: 1,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками)
+  VER: 2,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками); 2 — 5.1.29: оберег Ловчего на груди, облики
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
   PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40 }, // CSS-пикселей на метр модели — по виду (значки разного размера)
   OUTLINE_PX: 1.25,  // толщина обводки на экране, CSS-пиксели (у модели — 0,03 м)
   OUTLINE: [0x1c / 255, 0x10 / 255, 0x30 / 255], // тёмно-фиолетовая, как у рисунков игры
-  KINDS: ['spring', 'catcher', ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])],
+  // 5.1.29: у каждого облика-скина (LOOK.skin) — свой наряд Ловчего (catcher_<скин>), у обычного — капюшон (catcher)
+  SKINS: ['kupala', 'leshiy', 'moroz', 'volhv', 'bogatyr', 'voron', 'navstrazh', 'zharpero', 'knyaz'],
+  get KINDS() { return ['spring', 'catcher', ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
   LIGHTS: [[[-3, -4, 6], '#fff4e0', 3.2], [[5, -2, 3], '#c7d2fe', 1.1], [[1, 6, 4], '#f0abfc', 2.0]],
   AMBIENT: '#2a2340',
   // походка Ловчего: шагов (циклов) в секунду, размах ног и рук (радианы), подскок (м) и наклон вперёд — шаг / бег
   WALK: { hz: [1.6, 2.5], leg: [0.42, 0.8], arm: [0.35, 0.75], bob: [0.025, 0.065], lean: [0.06, 0.24] },
-  // облики-скины (LOOK.skin) — у модели Ловчего пока один наряд: плащ — в главный цвет облика
-  SKIN_CLOAK: { kupala: '#15803d', leshiy: '#3f6212', moroz: '#7dd3fc', volhv: '#1e3a8a', bogatyr: '#b91c1c', voron: '#1f2937',
-    navstrazh: '#4a044e', zharpero: '#ea580c', knyaz: '#7f1d1d' },
   on: false, gl: null, cv: null, P: null, O: null, gen: 0,
   models: {}, views: new Set(), rot: 0, raf: 0, last: 0, io: null, fps: 20, cost: 0,
-  me: { heading: 0, gait: 0, tint: null }, // Ловчий: куда смотрит (градусы от севера), походка (0 — стоит, 1 — идёт, 2 — бежит), цвета
+  me: { heading: 0, gait: 0, tint: null, kind: 'catcher' }, // Ловчий: куда смотрит (градусы от севера), походка (0 — стоит, 1 — идёт, 2 — бежит), цвета, наряд
 
   init() {
     if (this.gl || this.on === null) return this.on;
@@ -183,12 +182,12 @@ const M3D = {
     const v = { c, ctx: c.getContext('2d'), kind, pxm: this.PXM[type] || 20, ax: +c.dataset.ax || 0, ay: +c.dataset.ay || 0,
       hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me' };
     if (!v.ctx) return;
-    if (v.player) this.applyMe(v);
     c._m3d = v;
     this.views.add(v);
     if (this.io) this.io.observe(c);
+    if (v.player) { this.applyMe(v); if (v.kind !== kind) return; } // наряд другого облика — грузит swap
     this.need(kind).then(ok => {
-      if (!ok || !c.isConnected) return;
+      if (!ok || !c.isConnected || v.kind !== kind) return;
       this.layout(v);
       v.ready = true;
       if (this.draw(v)) { c.classList.add('on'); if (c.parentElement) c.parentElement.classList.add('m3d'); }
@@ -216,7 +215,7 @@ const M3D = {
   /* ---------- Ловчий ---------- */
   // поворот (heading — градусы от севера по часовой), походка (gait) и облик (look) Ловчего игрока; карта зовёт на каждом шаге
   setMe(o) {
-    if ('look' in o) this.me.tint = this.tintOf(o.look);
+    if ('look' in o) { this.me.tint = this.tintOf(o.look); this.me.kind = this.kindOfLook(o.look); }
     if (Number.isFinite(o.heading)) this.me.heading = o.heading;
     if ('gait' in o) this.me.gait = o.gait | 0;
     for (const v of this.views) if (v.player) this.applyMe(v);
@@ -228,13 +227,27 @@ const M3D = {
     this.kick();
   },
   still() { const b = document.body.classList; return b.contains('calm') || b.contains('eco'); },
-  applyMe(v) { v.yaw = Math.PI - this.me.heading * Math.PI / 180; v.gait = this.me.gait; v.tint = this.me.tint; },
-  // цвета облика → материалы модели: плащ (и его тень), глаза; у облика-скина плащ — в главный цвет скина
+  applyMe(v) {
+    v.yaw = Math.PI - this.me.heading * Math.PI / 180; v.gait = this.me.gait; v.tint = this.me.tint;
+    if (v.kind !== this.me.kind && this.has(this.me.kind)) this.swap(v, this.me.kind);
+  },
+  // наряд Ловчего по облику: у скина — свой (если такой модели нет — обычный капюшон)
+  kindOfLook(look) { const s = look && look.skin; return typeof s === 'string' && this.SKINS.includes(s) ? 'catcher_' + s : 'catcher'; },
+  // сменился облик — другая модель в том же холсте: пока она грузится, стоит прежний кадр
+  swap(v, kind) {
+    v.kind = kind; v.ready = false; v.c.dataset.m3d = kind;
+    this.need(kind).then(ok => {
+      if (!ok || !v.c.isConnected || v.kind !== kind) return;
+      this.layout(v); v.ready = true; v.walk = null;
+      if (this.draw(v)) { v.c.classList.add('on'); if (v.c.parentElement) v.c.parentElement.classList.add('m3d'); }
+      this.kick();
+    });
+  },
+  // цвета облика → материалы модели: плащ и его тень (только у обычного наряда — у скинов свои цвета), глаза — у всех
   tintOf(look) {
     look = look || {};
     const hex = x => typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x);
-    const sk = look.skin && look.skin !== 'hood' && Object.prototype.hasOwnProperty.call(this.SKIN_CLOAK, look.skin) ? this.SKIN_CLOAK[look.skin] : null;
-    const c = this.lin(sk || (hex(look.cloak) ? look.cloak : '#6d28d9')), e = this.lin(hex(look.eyes) ? look.eyes : '#5eead4');
+    const c = this.lin(hex(look.cloak) ? look.cloak : '#6d28d9'), e = this.lin(hex(look.eyes) ? look.eyes : '#5eead4');
     return { catcher_cloak: { c, e: [0, 0, 0] }, catcher_cloak_dark: { c: c.map(x => x * 0.27), e: [0, 0, 0] }, catcher_eyes: { c: e, e: e.map(x => x * 1.6) } };
   },
   // шаг походки к моменту now: фаза шага идёт со скоростью походки, размах плавно растёт и гаснет (остановился — руки и ноги

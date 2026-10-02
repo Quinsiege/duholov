@@ -28,6 +28,7 @@
   <label><input id="dot" type="checkbox"> точка привязки</label>
   <label>Ловчий <select id="gait"><option value="0">стоит</option><option value="1">идёт</option><option value="2">бежит</option></select></label>
   <label>смотрит <input id="hd" type="range" min="-180" max="180" value="0"></label>
+  <label>облик <select id="skin"><option value="hood">обычный</option><option>kupala</option><option>leshiy</option><option>moroz</option><option>volhv</option><option>bogatyr</option><option>voron</option><option>navstrazh</option><option>zharpero</option><option>knyaz</option></select></label>
   <label>плащ <input id="cloak" type="color" value="#6d28d9"></label> <label>глаза <input id="eyes" type="color" value="#5eead4"></label>
   <span id="info"></span>
 </header>
@@ -56,7 +57,7 @@
   // Ловчий: походка, куда смотрит (градусы от севера), цвета облика — как их передаёт карта (MapView → M3D.setMe)
   $('#gait').onchange = e => M3D.setMe({ gait: +e.target.value });
   $('#hd').oninput = e => M3D.setMe({ heading: +e.target.value });
-  $('#cloak').oninput = $('#eyes').oninput = () => M3D.setMe({ look: { cloak: $('#cloak').value, eyes: $('#eyes').value } });
+  $('#cloak').oninput = $('#eyes').oninput = $('#skin').onchange = () => M3D.setMe({ look: { skin: $('#skin').value, cloak: $('#cloak').value, eyes: $('#eyes').value } });
   </script>
 </body>
 </html>
