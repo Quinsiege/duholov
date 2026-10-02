@@ -76,7 +76,7 @@ const UI = {
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
     Bus.on('quests', () => this.refreshHud());
     Bus.on('buddyFind', text => this.toast(text, 'good'));
-    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });
+    Bus.on('medal', ({ m, tier }) => { Sfx.play('reward_big'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${U.fmtNum(MEDAL_TIERS[tier - 1].xp)} опыта`, 'good'); });
     Bus.on('weather', ({ w, changed }) => {
       this.refreshSky();
       if (changed && this._skyShown) this.toast(ru`Погода: ${WEATHER[w.key].name}. Сильнее духи: ${WEATHER[w.key].boost.map(e => ELEMENTS[e].name).join(', ')}`);
@@ -239,6 +239,7 @@ const UI = {
       this._lk = lk;
       U.$('#profileBtn .ava-art').innerHTML = Art.avatar(d.look);
       document.documentElement.style.setProperty('--pc', d.look.cloak);
+      if (typeof M3D !== 'undefined') M3D.setMe({ look: d.look }); // 5.1.28: 3D-Ловчий на карте — в цветах облика
     }
     put(U.$('#hudName'), d.name);
     put(U.$('#hudRank'), ru`${this.rank(d.level)} · ур. ${d.level}`);
@@ -675,7 +676,7 @@ const UI = {
       const t = e.target.closest('.tile');
       if (t) {
         const k = tiles[+t.dataset.i][0], lk = Tut.tileLock(k) || (far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '');
-        if (lk) { this.toast(lk); Sfx.play('miss'); t.classList.remove('rm-no'); void t.offsetWidth; t.classList.add('rm-no'); return; }
+        if (lk) { this.toast(lk); Sfx.play('locked'); t.classList.remove('rm-no'); void t.offsetWidth; t.classList.add('rm-no'); return; }
         this.markOpened(k); Sfx.play('tap'); t.classList.add('rm-pick');
         close(); tiles[+t.dataset.i][2]();
       } else close();
@@ -808,13 +809,13 @@ const UI = {
       if (!ready() || scr._done) return;
       scr._done = true;
       setArc(1); view.classList.add('spin');
-      Sfx.play('spin'); U.vibrate([20, 40, 20]);
+      Sfx.play('spring'); U.vibrate([20, 40, 20]);
       const r = await Game.try('spring', { poi: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } });
       if (!scr.isConnected) return;
       if (!r) { scr._done = false; view.classList.remove('spin'); setArc(0); update(); return; }
       view.classList.remove('spin'); void view.offsetWidth; view.classList.add('burst'); // всплеск
       setTimeout(() => view.classList.add('taken'), 350); // 5.1.5: чаша гаснет и уходит на фон, «В сумку» — внизу экрана
-      U.vibrate([30, 50, 80]);
+      Sfx.play('reward'); U.vibrate([30, 50, 80]); // награда пришла — теперь и звуком, не только вибрацией
       const got = r.got, xp = got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50;
       const items = got.filter(x => x.k !== 'xp');
       const cocoonHtml = r.cocoon ? `<div class="loot-item spr2-cocoon" style="--k:${items.length}">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
@@ -828,7 +829,7 @@ const UI = {
         items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
         `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>`;
       rw.querySelector('.spr2-after').innerHTML = (r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +
-        (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
+        (r.task ? this.taskNewHtml() : '');
       // каждая вещь вылетает из середины воды на своё место в сетке (--fx/--fy — путь от центра чаши)
       const lb = disc.getBoundingClientRect(), lcx = lb.left + lb.width / 2, lcy = lb.top + lb.height / 2;
       U.$$('.loot-item', loot).forEach(it => {
@@ -907,7 +908,7 @@ const UI = {
     bag.animate([{ transform: 'translateY(26px) scale(.3)', opacity: 0 }, { transform: 'translateY(-6px) scale(1.07)', opacity: 1, offset: .65 }, { transform: 'none', opacity: 1 }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'both' });
     const bump = () => { inner.animate([{ transform: 'none' }, { transform: 'scale(1.09, .88)', offset: .3 }, { transform: 'scale(.96, 1.05)', offset: .65 }, { transform: 'none' }], { duration: 280, easing: 'ease-out' }); };
     const OPEN = 400, START = 700, FLY = 480, gap = Math.min(150, 900 / n);
-    setTimeout(() => { bag.classList.add('open'); Sfx.play('tap'); }, OPEN);
+    setTimeout(() => { bag.classList.add('open'); Sfx.play('bag'); }, OPEN);
     setTimeout(() => {
       if (!scr.isConnected) return;
       const b = bag.getBoundingClientRect(), tx = b.left + b.width / 2, ty = b.top + b.height * .4; // горловина
@@ -917,7 +918,7 @@ const UI = {
         it.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${dx * .45}px, ${Math.min(0, dy) * .45 - lift}px) scale(.8)`, opacity: 1, offset: .45 },
           { transform: `translate(${dx}px, ${dy}px) scale(.2)`, opacity: .9, offset: .92 }, { transform: `translate(${dx}px, ${dy + 6}px) scale(.12)`, opacity: 0 }], { ...o, easing: 'cubic-bezier(.45,.05,.55,.95)' });
         const lb = it.querySelector('span'); if (lb) lb.animate([{ opacity: 1 }, { opacity: 0 }], { delay: k * gap, duration: 140, fill: 'both' });
-        setTimeout(() => { if (!scr.isConnected) return; bump(); Sfx.play('tap'); U.vibrate(8); }, k * gap + FLY * .92);
+        setTimeout(() => { if (!scr.isConnected) return; bump(); Sfx.play('loot'); U.vibrate(8); }, k * gap + FLY * .92);
       });
       const T = (n - 1) * gap + FLY;
       setTimeout(() => bag.classList.remove('open'), T + 160); // клапан закрывается
@@ -973,7 +974,7 @@ const UI = {
       }).join('')}</div><p class="small nb-hint">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,
       buttons: [
         { label: ru`К источнику`, fn: () => this.trackNearest('spring') },
-        { label: ru`К капищу`, fn: () => this.trackNearest('shrine') },
+        { label: ru`К святилищу`, fn: () => this.trackNearest('shrine') },
       ],
     });
     m.addEventListener('click', ev => {
@@ -984,7 +985,7 @@ const UI = {
   },
   trackNearest(type) {
     const e = MapView.nearest(type);
-    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных капищ`); return; }
+    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных святилищ`); return; }
     MapView.track(e); MapView.flyTo(e);
     this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);
   },
@@ -1027,7 +1028,8 @@ const UI = {
     const step = n => {
       // 4.28: сперва книга-вступление (сюжет), потом имя Ловчего. 5.1.17: всегда при знакомстве — и там, где книгу уже видели
       // (отметка Intro.need — на устройстве, а Ловчий — новый)
-      if (n === 2 && !book) { book = true; Intro.open({ done: () => step(2) }); return; }
+      if (n === 2 && !book) { book = true; Metrics.ev('onb', { k: 'book' }); Intro.open({ done: () => step(2) }); return; }
+      Metrics.ev('onb', { k: n }); // 5.1.22: аналитика — докуда новички доходят в знакомстве (0 — стартовый экран, 2 — имя, 3 — кокон, 4 — мир)
       body.innerHTML = '';
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
@@ -1070,7 +1072,7 @@ const UI = {
           const sid = r.starter && SP[r.starter] ? r.starter : S.d && S.d.spirits[0] ? S.d.spirits[0].sid : 'ugolek', s = SP[sid], rr = RARITY[s.rar];
           await wait(Math.max(0, this.HATCH_MS - (Date.now() - t0)));
           if (!box.isConnected) return;
-          box.classList.add('crack'); Sfx.play('warn'); U.vibrate([30, 40, 30]);
+          box.classList.add('crack'); Sfx.play('crack'); U.vibrate([30, 40, 30]);
           await wait(750);
           box.style.setProperty('--rc', rr.color); box.classList.add('open', 'r' + s.rar);
           box.querySelector('.oh-sp').innerHTML = Art.spirit(sid);
@@ -1081,7 +1083,7 @@ const UI = {
         };
         hatch();
       } else if (n === 4) {
-        body.querySelector('.go').onclick = () => { Sfx.play('tap'); Login.close(root, done); };
+        body.querySelector('.go').onclick = () => { Sfx.play('tap'); Metrics.ev('onb', { k: 'go' }); Login.close(root, done); };
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n ? n + 1 : 2); }; // 4.24: истории перед игрой больше нет
     };
     step(from);

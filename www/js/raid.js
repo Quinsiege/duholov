@@ -76,7 +76,7 @@ const Raid = {
             <div class="dt-scroll rift2-fight">
               <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
               <div class="lg2-team rift-team">${teamHtml(team)}</div>
-              ${far ? `<div class="rift-tip rift-far">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>` : ''}
+              ${far ? `<div class="rift-tip rift-far">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Святилищу.`}</div>` : ''}
               ${camp ? `<div class="rift-tip">${ru`Хранитель — по силе твоей команды: тапай без остановки, и он падёт.`}</div>` : Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
             </div>
             <div class="rift2-acts">${goBtn}${far || camp ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
@@ -145,7 +145,7 @@ const Raid = {
   async list() {
     Sfx.init(); Sfx.play('tap');
     if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
-    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');
+    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Святилищ вокруг…`}</div></div>`, 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
     if (!pos) { box.innerHTML = `<div class="q-note">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }
     const shrines = await Poi.shrinesFar(pos.lat, pos.lng, Rules.FAR.R);
@@ -169,7 +169,7 @@ const Raid = {
           <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
           : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
         ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}
-        <div class="q-note">${ru`Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
+        <div class="q-note">${ru`Разломы открываются у Святилищ каждый час. Подойди к Святилищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
     };
     box.addEventListener('click', e => {
       const c = e.target.closest('.chip'); if (c) { tier = +c.dataset.t; render(); return; }
@@ -259,7 +259,7 @@ const Raid = {
 
     // обратный отсчёт
     (async () => {
-      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
+      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('count'); await U.wait(650); if (this.st !== st) return; }
       $('.raid-count').textContent = ru`В бой!`;
       await U.wait(500);
       $('.raid-count').remove();
@@ -382,7 +382,7 @@ const Raid = {
     if (!ok || this.st !== st || st.over) return;
     st.waters++;
     m.cur = Math.min(m.lim, m.cur + m.max / 2);
-    Sfx.play('hatch');
+    Sfx.play('heal');
     st.$('.raid-water span').textContent = S.d.items.water || 0;
     this.render();
   },

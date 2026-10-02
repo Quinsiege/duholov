@@ -1,6 +1,6 @@
 'use strict';
 /* Рабочий поток мира: ведёт своих игроков день за днём через настоящий сервер игры (GameCore).
-   Общие данные мира (аукцион, подарки, друзья, Капища дружин, таблица Лиги, платежи) — в главном потоке,
+   Общие данные мира (аукцион, подарки, друзья, Святилища дружин, таблица Лиги, платежи) — в главном потоке,
    сюда приходят ответами на запросы env (как база у настоящего сервера). */
 const { parentPort, workerData } = require('worker_threads');
 const G = require('./engine.cjs').load();
@@ -209,8 +209,8 @@ async function duelAt(p) {
   if (P.data.level < DUEL_LEVEL || P.today.duels >= P.pr.duels) return;
   const e = me(() => W.shrineFor(p, 0));
   if (e.won || W.riftAt(p.id, Math.floor(SIM_T / 3600000)) || me(() => Rules.dayUsed(S.d, 'duels')) >= 8) return;
-  const hold = GameCore.liveHold(await rpc('holdGet', P.uid, [p.id]), SIM_T, p.id); // 4.16: ушедшие по сроку и вольные Капища — без защитников
-  if (hold && P.data.clan && hold.clan === P.data.clan) { // своё Капище — поставить защитника
+  const hold = GameCore.liveHold(await rpc('holdGet', P.uid, [p.id]), SIM_T, p.id); // 4.16: ушедшие по сроку и вольные Святилища — без защитников
+  if (hold && P.data.clan && hold.clan === P.data.clan) { // своё Святилище — поставить защитника
     if (hold.holders.length < 6 && !hold.holders.some(h => h.pid === P.data.pid)) await defendAt(p);
     return;
   }
@@ -225,7 +225,7 @@ async function duelAt(p) {
   const xp0 = P.data.xp, r = await act('duelEnd', { win: o.win, hp: o.hp });
   D.ko += koCount(o.hp);
   if (!hold) D.bt.duel[e.tier][r && r.win ? 0 : 1]++;
-  if (r && r.win) { xpAdd('Капище', xp0); D.duels[0]++; P.today.duels++; if (r.freed) D.freed++; if (P.data.clan && !Rules.shrineFree(p.id)) await defendAt(p); }
+  if (r && r.win) { xpAdd('Святилище', xp0); D.duels[0]++; P.today.duels++; if (r.freed) D.freed++; if (P.data.clan && !Rules.shrineFree(p.id)) await defendAt(p); }
   else D.duels[1]++;
 }
 async function defendAt(p) {
@@ -290,7 +290,7 @@ async function walk(km) {
   }
   if (pts.length) await act('move', { pts });
 }
-// дальние разломы (Дальний пропуск): у Капищ в 5 км; ступень — самая высокая, какую сегодня ещё не проигрывал (легенды — изредка)
+// дальние разломы (Дальний пропуск): у Святилищ в 5 км; ступень — самая высокая, какую сегодня ещё не проигрывал (легенды — изредка)
 async function farRaids() {
   const want = P.pr.raids - P.today.raids;
   if (want <= 0) return;

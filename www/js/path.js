@@ -14,7 +14,7 @@ const Path = {
     add(2, 'swap', ru`Друзья`, ru`Коды дружбы и ежедневные подарки`);
     add(3, 'trail', ru`Сезонная тропа`, ru`Награды за обычную игру`);
     add(RAID_LEVEL, 'rift', ru`Разломы`, ru`Бой командой из трёх духов с хранителем Разлома`);
-    add(DUEL_LEVEL, 'shield', ru`Капища предков`, ru`Поединки 3 на 3 с хранителями`);
+    add(DUEL_LEVEL, 'shield', ru`Святилища предков`, ru`Поединки 3 на 3 с хранителями`);
     add(Rules.CHAT.LEVEL, 'chat', ru`Чат Ордена`, ru`Можно писать сообщения`);
     add(INVASION_LEVEL, 'rift', ru`Вторжения Нави`, ru`Освобождай захваченные источники`);
     add(League.LEVEL, 'trophy', ru`Лига Ордена`, ru`Бои в реальном времени, рейтинг и лиги`);
@@ -73,7 +73,7 @@ const Path = {
           <div class="pbar"><i style="width:${d.level >= MAX_LEVEL ? 100 : (d.xp - cur) / (next - cur) * 100}%"></i></div>
           <small>${d.level >= MAX_LEVEL ? ru`Ты прошёл весь путь!` : ru`До ${d.level + 1} уровня — ${U.fmtNum(next - d.xp)} опыта`}${nextUnlock ? ` · ${ru`дальше: ${un[nextUnlock][0].t} на ${nextUnlock}`}` : ''}</small></div>
       </div>
-      <p class="pth-note">${ru`Опыт дают поимки, источники, разломы, капища и задания. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`} ${ru`С ${S.AWAKE.LVL[0]} уровня духов можно пробуждать: каждая звезда поднимает предел уровня духа ещё на ${S.AWAKE.STEP}, до ${SPIRIT_MAX}.`}</p>
+      <p class="pth-note">${ru`Опыт дают поимки, источники, разломы, святилища и задания. С уровнем растут и твои духи: их можно усиливать до уровня Ловчего +5.`} ${ru`С ${S.AWAKE.LVL[0]} уровня духов можно пробуждать: каждая звезда поднимает предел уровня духа ещё на ${S.AWAKE.STEP}, до ${SPIRIT_MAX}.`}</p>
       ${this.dayNote()}
       <div class="pth-road">${rows.join('')}</div>`, 'pth-screen');
     setTimeout(() => { const c = scr.querySelector('#pthCur'); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
