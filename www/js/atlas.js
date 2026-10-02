@@ -687,24 +687,22 @@ const Atlas = {
     const z = Math.log2(s / 256), lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * Yc))) * 180 / Math.PI, lng = Xc * 360 - 180;
     return isFinite(z) && isFinite(lat) && isFinite(lng) ? { c: [lat, lng], z: Math.max(1.5, Math.min(18, z)) } : null;
   },
-  // карта игры: те же плитки Protomaps и облик (Карта Нави, время суток и сезон — как сейчас на карте), подписи на языке игрока;
-  // без неё или если плитки не читаются — OSM (подписи — местные)
+  // карта игры: те же плитки Protomaps, стандартный стиль (5.1.30: днём светлый, ночью тёмный — как сейчас на карте), подписи
+  // на языке игрока; если плитки не читаются — OSM (подписи — местные)
   pickTiles(m, box) {
     const pk = this.pick;
     pk.showT = setTimeout(() => this.pickShow(), 6000); // плитки так и не нарисовались — всё равно показать (касаться можно)
-    if (typeof protomapsL !== 'undefined' && typeof NavMap !== 'undefined' && typeof MapView !== 'undefined' && MapView.tilesUrl) {
+    if (typeof protomapsL !== 'undefined' && typeof MapView !== 'undefined' && MapView.tilesUrl) {
       try {
-        const lk = MapView.look(), th = NavMap.far(lk.phase, lk.season, lk.snow);
-        const lay = pk.lay = protomapsL.leafletLayer({ url: MapView.tilesUrl(), attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>', ...th });
+        const lk = MapView.look();
+        const lay = pk.lay = protomapsL.leafletLayer({ url: MapView.tilesUrl(), attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>', flavor: lk.flavor, lang: I18N.lang });
         lay.once('load', () => this.pickShow());
         lay.addTo(m);
         // города для списка — из того же файла карты, но своим чтением (источник карты отменяет чтение плиток другого масштаба —
         // её плитки рисовались бы пустыми) и только слой places
         const src = lay.views && lay.views.get('') && lay.views.get('').tileCache.source;
         pk.get = src && src.p ? this.placesGetter(src.p, MapView.tilesUrl()) : null;
-        box.classList.add('vec'); box.style.background = th.backgroundColor;
-        if (document.fonts) Promise.all(["500 12px 'Rubik'", "700 12px 'Rubik'"].map(f => document.fonts.load(f).catch(() => {})))
-          .then(() => { if (this.pick === pk && pk.lay === lay) { lay.clearLayout(); lay.rerenderTiles(); } });
+        box.classList.add('vec'); box.style.background = lay.backgroundColor;
         return;
       } catch (e) { pk.get = null; pk.lay = null; }
     }
@@ -813,7 +811,7 @@ const Atlas = {
     const res = await Promise.allSettled(jobs), ok = res.filter(r => r.status === 'fulfilled').map(r => r.value);
     if (!ok.length && jobs.length) throw new Error('tiles');
     const lg = (typeof I18N !== 'undefined' && I18N.lang) || 'ru';
-    const keys = [`name:${lg}`, lg === 'ru' ? '' : 'name:en', 'name'].filter(Boolean); // как подписи карты (NavMap.theme)
+    const keys = [`name:${lg}`, lg === 'ru' ? '' : 'name:en', 'name'].filter(Boolean); // свой язык, затем английский, затем местное имя
     const out = [];
     for (const { d, x, y } of ok) for (const f of d || []) {
       const pr = f.props || {};

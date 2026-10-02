@@ -1,12 +1,12 @@
 'use strict';
-/* 5.1.30: дома карты — объёмные, в WebGL, в реальном времени: камеру крутят, наклоняют, карта движется и меняет масштаб —
-   стены и крыши сразу в верной перспективе (раньше дома рисовались в плитках сдвигом крыши к одной стороне и при повороте
-   перерисовывались только после жеста). Один холст WebGL в своём слое карты (между зоной Ловчего и подписями) лежит на земле,
-   как плитки; дом рисуется на нём «тенью на землю» из точки зрения игрока — после наклона карты (CSS) каждая точка крыши
-   оказывается ровно там, где была бы настоящая (MapView.camLayer). Дома — из тех же плиток z15 (Protomaps), что у Hazard:
-   крыши разбиты на треугольники (earcut), стены — по рёбрам; на видеокарту — один раз на кусок плитки, дальше кадр — только
-   новые числа камеры. Рисуются лишь куски в кадре; дома строятся порциями (не дольше BUDGET мс подряд) — без рывков.
-   Нет WebGL — дома, как раньше, рисуют плитки (NavMap.extrude). */
+/* 5.1.30: дома карты — объёмные, в настоящую высоту, в WebGL и в реальном времени: камеру крутят, наклоняют, карта движется
+   и меняет масштаб — стены и крыши сразу в верной перспективе. Один холст WebGL в своём слое карты (между зоной Ловчего
+   и подписями) лежит на земле, как плитки; дом рисуется на нём «тенью на землю» из точки зрения игрока — после наклона карты
+   (CSS) каждая точка крыши оказывается ровно там, где была бы настоящая (MapView.camLayer). Высота — из данных карты
+   (height, min_height), в масштабе самой карты. Дома — из тех же плиток z15 (Protomaps), что у Hazard: крыши разбиты на
+   треугольники (earcut), стены — по рёбрам; на видеокарту — один раз на кусок плитки, дальше кадр — только новые числа
+   камеры. Рисуются лишь куски в кадре; дома строятся порциями (не дольше BUDGET мс подряд) — без рывков.
+   Нет WebGL — дома плоские, как их рисует сама карта. */
 
 // многоугольник с дырами → треугольники; алгоритм earcut (© Mapbox, лицензия ISC), без z-порядка — у домов вершин немного
 const Earcut = {
@@ -189,17 +189,20 @@ const Earcut = {
   },
 };
 
+
 const Bld3D = {
   Z: 15, EXT: 512, CELL: 4,  // плитки данных z15 (как у Hazard, единиц на плитку); каждая — CELL×CELL кусков: рисуются только куски в кадре
   DPR: 1.5,                  // разрешение холста домов (заливки на телефоне дорогие, а у домов — простые цвета)
   MAXPX: 2.2e6,              // и не больше стольких точек холста (у наклона к горизонту видимая земля большая)
   BUDGET: 6,                 // мс подряд на постройку домов — дальше доделается в следующей порции
   NEAR: 2,                   // плитки дальше стольких от кадра — выбрасываются (видеопамять)
-  FLOAT: 7,                  // чисел на вершину: x, y (плитка), верх (0/1), высота дома (м), нормаль стены x, y, вдоль стены
+  FLOAT: 7,                  // чисел на вершину: x, y (плитка), верх (0 — низ стены, 1 — верх), высота дома и низ (м), нормаль стены x, y
+  PAD: 220,                  // запас вокруг видимой земли, точки: высокий дом за краем экрана своим верхом заходит в кадр
+  TOP: 0.8,                  // выше стольких высот точки зрения дом не рисуется выше (у самой точки зрения перспектива уходит в бесконечность)
   on: false, gl: null, cv: null, map: null, P: null, pal: null, tiles: new Map(), raf: 0, lost: false,
 
   init(map) {
-    if (this.map || typeof NavMap === 'undefined' || typeof protomapsL === 'undefined') return false;
+    if (this.map || typeof protomapsL === 'undefined') return false;
     try {
       const cv = document.createElement('canvas');
       const gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, depth: true, stencil: false, preserveDrawingBuffer: false });
@@ -223,42 +226,36 @@ const Bld3D = {
     } catch (e) { return false; }
   },
 
+  /* ---------- высота ---------- */
+  height(f) { return f.props.height > 0 ? f.props.height : 8; }, // м; без данных — трёхэтажный
+  // точек слоя на метр — на этом масштабе и этой широте (как у самой карты)
+  mpx(m = this.map) { return 256 * 2 ** m.getZoom() / (40075016.686 * Math.cos(m.getCenter().lat * Math.PI / 180)); },
+  // дом высотой H (м) — в точках слоя, как его рисует слой домов (выше TOP высоты точки зрения — не выше)
+  hpx(H) { const m = this.map || (typeof MapView !== 'undefined' && MapView.map); return m ? Math.min(H * this.mpx(m), this.TOP * MapView.camLayer().w) : 0; },
+
   /* ---------- шейдеры ---------- */
-  // вершина: точка плитки → точка слоя карты → «тень на землю» из точки зрения (у плоской карты — косой взгляд к верху экрана) →
-  // в оси экрана на плоскости карты (холст повёрнут вместе с экраном: только видимая земля); глубина — расстояние до точки зрения
-  VS: `attribute vec2 aPos; attribute vec4 aB; attribute float aS;
-    uniform vec2 uOrig, uLean, uShadow, uPiv, uRot; uniform float uSc, uZd, uBias; uniform vec3 uCam; uniform vec4 uView;
-    varying vec4 vB; varying float vS, vHp;
-    vec2 uv(vec2 g) { vec2 r = g - uPiv; return vec2(r.x * uRot.x - r.y * uRot.y, r.x * uRot.y + r.y * uRot.x); }
+  // вершина: точка плитки → точка слоя карты → «тень на землю» из точки зрения на высоте настоящего дома → в оси экрана на
+  // плоскости карты (холст повёрнут вместе с экраном: только видимая земля); глубина — расстояние до точки зрения
+  VS: `attribute vec2 aPos; attribute vec4 aB; attribute float aMin;
+    uniform vec2 uOrig, uPiv, uRot; uniform float uSc, uMpx, uTop; uniform vec3 uCam; uniform vec4 uView;
+    varying vec4 vB;
     void main() {
-      vec2 p = uOrig + aPos * uSc;
-      float hp = min(15.0, 2.1 * sqrt(aB.y) * exp2((uZd - 17.0) * 0.85)), h = hp * aB.x, d;
-      vec2 g;
-      if (uShadow.x != 0.0) { g = p + uShadow * hp; d = 0.999; }
-      else if (uCam.z > 0.0) { g = uCam.xy + (p - uCam.xy) * uCam.z / (uCam.z - h); d = length(vec3(p - uCam.xy, uCam.z - h)) / (uCam.z * 12.0); }
-      else { g = p + uLean * h; d = 0.5 - (uv(p).y + 2.0 * h) / (4.0 * (uView.z + uView.w)); }
-      vec2 c = (uv(g) - uView.xy) / uView.zw * 2.0 - 1.0;
-      gl_Position = vec4(c.x, -c.y, (d - uBias) * 2.0 - 1.0, 1.0);
-      vB = aB; vS = aS * uSc; vHp = hp;
+      vec2 p = uOrig + aPos * uSc, r;
+      float h = min(mix(aMin, aB.y, aB.x) * uMpx, uTop * uCam.z);
+      vec2 g = uCam.xy + (p - uCam.xy) * uCam.z / (uCam.z - h);
+      r = g - uPiv;
+      vec2 c = (vec2(r.x * uRot.x - r.y * uRot.y, r.x * uRot.y + r.y * uRot.x) - uView.xy) / uView.zw * 2.0 - 1.0;
+      gl_Position = vec4(c.x, -c.y, length(vec3(p - uCam.xy, uCam.z - h)) / (uCam.z * 12.0) * 2.0 - 1.0, 1.0);
+      vB = aB;
     }`,
-  // цвет: крыша (у высоких — своя), стена — светлее со стороны солнца, ночью — окна; тень и кромка крыш — одним цветом
+  // цвет: крыша; стена — светлее со стороны солнца и темнее у земли
   FS: `precision mediump float;
-    uniform vec3 uRoof, uRoofHi, uWall, uWall2; uniform vec4 uWin, uFlat; uniform float uLight, uMode;
-    varying vec4 vB; varying float vS, vHp;
+    uniform vec3 uRoof, uWall, uWall2; uniform vec2 uSun; uniform float uLight;
+    varying vec4 vB;
     void main() {
-      if (uMode > 0.5) { gl_FragColor = vec4(uFlat.rgb * uFlat.a, uFlat.a); return; }
-      vec3 c;
-      if (vB.z == 0.0 && vB.w == 0.0) c = vB.y > 24.0 ? uRoofHi : uRoof;
-      else {
-        c = mix(uWall, uWall2, clamp(0.5 + 0.5 * vB.z * uLight, 0.0, 1.0));
-        if (uWin.a > 0.0 && vB.y >= 9.0) {
-          vec2 f = fract(vec2(vS / 3.2, vB.x * vHp / 4.0));
-          float k = step(0.35, f.x) * step(f.x, 0.82) * step(0.3, f.y) * step(f.y, 0.8) * step(0.1, vB.x) * step(vB.x, 0.94);
-          k *= step(0.45, fract(sin(dot(floor(vec2(vS / 3.2, vB.x * vHp / 4.0)) + vB.yy, vec2(12.9898, 78.233))) * 43758.5453));
-          c = mix(c, uWin.rgb, uWin.a * k);
-        }
-      }
-      gl_FragColor = vec4(c, 1.0);
+      if (vB.z == 0.0 && vB.w == 0.0) { gl_FragColor = vec4(uRoof, 1.0); return; }
+      vec3 c = mix(uWall, uWall2, clamp(0.5 + 0.5 * dot(vB.zw, uSun) * uLight, 0.0, 1.0));
+      gl_FragColor = vec4(c * mix(0.8, 1.0, vB.x), 1.0);
     }`,
   programs() {
     const gl = this.gl;
@@ -267,7 +264,7 @@ const Bld3D = {
     if (!a || !b) return false;
     const p = gl.createProgram();
     gl.attachShader(p, a); gl.attachShader(p, b);
-    ['aPos', 'aB', 'aS'].forEach((n, i) => gl.bindAttribLocation(p, i, n));
+    ['aPos', 'aB', 'aMin'].forEach((n, i) => gl.bindAttribLocation(p, i, n));
     gl.linkProgram(p);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) return false;
     const u = {};
@@ -276,16 +273,10 @@ const Bld3D = {
     return true;
   },
 
-  /* ---------- цвета часа (NavMap.palette) ---------- */
-  rgba(s, k = 1) {
-    if (!s) return [0, 0, 0, 0];
-    if (s[0] === '#') return [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16) / 255).concat(1);
-    const m = s.match(/[\d.]+/g) || [];
-    return [+m[0] / 255 || 0, +m[1] / 255 || 0, +m[2] / 255 || 0, m.length > 3 ? +m[3] * k : 1];
-  },
-  theme(p) {
-    this.pal = { roof: this.rgba(p.bld), roofHi: this.rgba(p.bldHi), wall: this.rgba(p.wall), wall2: this.rgba(p.wall2), light: p.light,
-      win: this.rgba(p.windows), shade: this.rgba(p.shade), edge: this.rgba(p.bldEdge) };
+  /* ---------- цвета (MapView.FLAVOR: днём — светлая карта, ночью — тёмная) ---------- */
+  rgb(s) { return [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16) / 255); },
+  theme(F) {
+    this.pal = { roof: this.rgb(F.roof), wall: this.rgb(F.wall), wall2: this.rgb(F.wall2), light: F.light };
     this.dirty();
   },
 
@@ -313,31 +304,22 @@ const Bld3D = {
     gl.clearColor(0, 0, 0, 0); gl.depthMask(true);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (!this.pal) return;
-    const k = 256 * 2 ** (z - this.Z), sc = k / this.EXT, po = m.getPixelOrigin(), cam = MapView.camLayer(), box = MapView.viewBox(48);
+    const k = 256 * 2 ** (z - this.Z), sc = k / this.EXT, po = m.getPixelOrigin(), cam = MapView.camLayer(), box = MapView.viewBox(this.PAD);
     const tiles = this.need(box, k, po);
     if (!tiles.length) return;
     const P = this.P, u = P.u, pal = this.pal;
     gl.useProgram(P.p);
-    gl.uniform1f(u.uSc, sc); gl.uniform1f(u.uZd, z);
-    gl.uniform3f(u.uCam, cam.x, cam.y, cam.w); gl.uniform2f(u.uLean, cam.lx, cam.ly);
+    gl.uniform1f(u.uSc, sc); gl.uniform1f(u.uMpx, this.mpx(m)); gl.uniform1f(u.uTop, this.TOP);
+    gl.uniform3f(u.uCam, cam.x, cam.y, cam.w);
     gl.uniform4f(u.uView, uv.u0, uv.v0, cw, ch); gl.uniform2f(u.uPiv, piv.x, piv.y); gl.uniform2f(u.uRot, Math.cos(r), Math.sin(r));
-    gl.uniform3fv(u.uRoof, pal.roof.slice(0, 3)); gl.uniform3fv(u.uRoofHi, pal.roofHi.slice(0, 3));
-    gl.uniform3fv(u.uWall, pal.wall.slice(0, 3)); gl.uniform3fv(u.uWall2, pal.wall2.slice(0, 3));
-    gl.uniform4fv(u.uWin, pal.win); gl.uniform1f(u.uLight, pal.light);
-    // куски в кадре: рамка куска (в точках плитки) → точки слоя
-    const parts = [];
+    gl.uniform3fv(u.uRoof, pal.roof); gl.uniform3fv(u.uWall, pal.wall); gl.uniform3fv(u.uWall2, pal.wall2);
+    gl.uniform1f(u.uLight, pal.light); gl.uniform2f(u.uSun, 0.6, 0.8); // солнце — с юго-востока
+    gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE);
     for (const t of tiles) {
       const ox = t.x * k - po.x, oy = t.y * k - po.y;
       for (const p of t.parts) {
+        // кусок в кадре? рамка куска (в точках плитки) → точки слоя
         if (ox + p.bb[2] * sc < box.x0 || ox + p.bb[0] * sc > box.x1 || oy + p.bb[3] * sc < box.y0 || oy + p.bb[1] * sc > box.y1) continue;
-        parts.push([p, ox, oy]);
-      }
-    }
-    const walls = z >= 16; // на мелком масштабе — одни крыши: стены там в точку-две, а вершин у них вчетверо больше
-    const run = (mode, what) => {
-      for (const [p, ox, oy] of parts) {
-        const n = what === 'roof' ? p.nRoof : what === 'wall' ? p.nWall : p.nEdge;
-        if (!n) continue;
         if (!p.vb) this.upload(p);
         gl.uniform2f(u.uOrig, ox, oy);
         gl.bindBuffer(gl.ARRAY_BUFFER, p.vb);
@@ -345,29 +327,9 @@ const Bld3D = {
         gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, this.FLOAT * 4, 8);
         gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 1, gl.FLOAT, false, this.FLOAT * 4, 24);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, p.ib);
-        const off = what === 'roof' ? 0 : what === 'wall' ? p.nRoof : p.nRoof + p.nWall;
-        gl.drawElements(mode, n, gl.UNSIGNED_SHORT, off * 2);
+        gl.drawElements(gl.TRIANGLES, p.n, gl.UNSIGNED_SHORT, 0); // стены и крыши — одним вызовом
       }
-    };
-    // 1) тени у основания (днём): сдвиг от солнца, поверх земли, под домами
-    if (walls && pal.shade[3] > 0) {
-      gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.uniform1f(u.uMode, 1); gl.uniform4fv(u.uFlat, pal.shade); gl.uniform2f(u.uShadow, 0.45, 0.2); gl.uniform1f(u.uBias, 0);
-      run(gl.TRIANGLES, 'roof');
     }
-    // 2) стены и крыши — с глубиной: ближние закрывают дальние
-    gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.depthMask(true); gl.disable(gl.BLEND);
-    gl.uniform1f(u.uMode, 0); gl.uniform2f(u.uShadow, 0, 0); gl.uniform1f(u.uBias, 0);
-    if (walls) run(gl.TRIANGLES, 'wall');
-    run(gl.TRIANGLES, 'roof');
-    // 3) кромка крыш — на крупном масштабе
-    if (z >= 15.5 && pal.edge[3] > 0) {
-      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthFunc(gl.LEQUAL); gl.depthMask(false);
-      gl.uniform1f(u.uMode, 1); gl.uniform4f(u.uFlat, pal.edge[0], pal.edge[1], pal.edge[2], pal.edge[3] * 0.6); gl.uniform1f(u.uBias, 0.0004); // тоньше, чем у плиток, не бывает — бледнее
-      run(gl.LINES, 'edge');
-      gl.depthMask(true);
-    }
-    gl.disable(gl.BLEND);
     this.cost = performance.now() - t0;
   },
 
@@ -375,12 +337,10 @@ const Bld3D = {
   // плитки z15 под видимой землёй (box — точки слоя): готовые — в кадр, нет — в очередь; дальние — выбросить
   need(box, k, po) {
     const x0 = Math.floor((box.x0 + po.x) / k), x1 = Math.floor((box.x1 + po.x) / k), y0 = Math.floor((box.y0 + po.y) / k), y1 = Math.floor((box.y1 + po.y) / k);
-    const out = [], now = performance.now();
+    const out = [];
     for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
-      const key = x + ':' + y;
-      let t = this.tiles.get(key);
+      let t = this.tiles.get(x + ':' + y);
       if (!t) { t = this.load(x, y); if (!t) continue; }
-      t.used = now;
       if (t.st === 'ok') out.push(t);
     }
     for (const [key, t] of this.tiles) {
@@ -402,10 +362,9 @@ const Bld3D = {
     for (const p of t.parts) { if (p.vb) gl.deleteBuffer(p.vb); if (p.ib) gl.deleteBuffer(p.ib); }
     t.parts = [];
   },
-  // дома плитки → куски (по клеткам CELL×CELL, у каждого — не больше 65 000 вершин): вершины, а индексы — крыши, стены, кромки
+  // дома плитки → куски (по клеткам CELL×CELL, у каждого — не больше 65 000 вершин): вершины и треугольники стен и крыш
   build(t, fs) {
-    const cells = new Map(), lo = -1, hi = this.EXT + 1, cw = this.EXT / this.CELL;
-    const E = this.edges(fs);
+    const cells = new Map(), lo = -1, hi = this.EXT + 1, cw = this.EXT / this.CELL, E = this.edges(fs);
     let i = 0;
     const step = () => {
       if (t.dead) return;
@@ -418,23 +377,22 @@ const Bld3D = {
         const ci = Math.max(0, Math.min(this.CELL - 1, Math.floor(r0[0].x / cw))) + this.CELL * Math.max(0, Math.min(this.CELL - 1, Math.floor(r0[0].y / cw)));
         let c = cells.get(ci);
         if (c && c.v.length / this.FLOAT > 55000) { t.parts.push(this.pack(c)); c = null; } // кусок полон (индексы — 16 бит) — следующий
-        if (!c) { c = { v: [], roof: [], wall: [], edge: [], bb: [Infinity, Infinity, -Infinity, -Infinity] }; cells.set(ci, c); }
+        if (!c) { c = { v: [], idx: [], bb: [Infinity, Infinity, -Infinity, -Infinity] }; cells.set(ci, c); }
         this.house(c, f, lo, hi, E);
       }
       if (i < fs.length) { setTimeout(step, 0); return; }
-      for (const c of cells.values()) if (c.roof.length) t.parts.push(this.pack(c));
+      for (const c of cells.values()) if (c.idx.length) t.parts.push(this.pack(c));
       t.st = 'ok';
       this.dirty();
     };
     step();
   },
-  // рёбра всех домов плитки и самый высокий дом у каждого: общая стена соседних частей дома, если сосед не ниже, не видна —
-  // её нет (и кромки на ней)
+  // рёбра всех домов плитки и самый высокий дом у каждого: общая стена соседних частей дома, если сосед не ниже, не видна — её нет
   edges(fs) {
     const E = new Map();
     for (const f of fs) {
       if (f.geomType !== 3 || f.props.is_underground) continue;
-      const H = f.props.height > 0 ? f.props.height : 8;
+      const H = this.height(f);
       for (const r of f.geom) for (let j = 0, n = r.length; j < n; j++) {
         const a = r[j], b = r[(j + 1) % n], k = a.x + ',' + a.y + ',' + b.x + ',' + b.y;
         if (!(E.get(k) >= H)) E.set(k, H);
@@ -442,12 +400,13 @@ const Bld3D = {
     }
     return E;
   },
-  // один дом: кольца (внешние — по часовой на экране, дыры — против), крыша — earcut, стены — по рёбрам (кроме среза плитки)
+  // один дом: кольца (внешние — по часовой на экране, дыры — против), крыша — earcut, стены — по рёбрам от низа дома
+  // (min_height: арки, навесы) до крыши; кроме среза плитки и общих стен с соседом не ниже
   house(c, f, lo, hi, E) {
-    const H = f.props.height > 0 ? f.props.height : 8, F = this.FLOAT, v = c.v;
-    let A0 = 0;
+    const H = this.height(f), M = Math.min(H, Math.max(0, f.props.min_height || 0)), F = this.FLOAT, v = c.v;
     const ringA = r => { let A = 0; for (let i = 0, n = r.length; i < n; i++) { const a = r[i], b = r[(i + 1) % n]; A += a.x * b.y - b.x * a.y; } return A; };
     const polys = [];
+    let A0 = 0;
     for (const r of f.geom) {
       if (r.length < 3) continue;
       const A = ringA(r);
@@ -455,7 +414,7 @@ const Bld3D = {
       if (!polys.length || Math.sign(A) === Math.sign(A0)) polys.push([r]); else polys[polys.length - 1].push(r);
     }
     const sg = A0 >= 0 ? 1 : -1;
-    const add = (x, y, top, nx, ny, s) => { const n = v.length / F; v.push(x, y, top, H, nx, ny, s); return n; };
+    const add = (x, y, top, nx, ny) => { const n = v.length / F; v.push(x, y, top, H, nx, ny, M); return n; };
     for (const rings of polys) {
       const flat = [], holes = [], base = v.length / F;
       for (const r of rings) {
@@ -464,34 +423,28 @@ const Bld3D = {
         if (flat.length) holes.push(flat.length / 2);
         for (let j = 0; j < n; j++) {
           const p = r[j];
-          flat.push(p.x, p.y); add(p.x, p.y, 1, 0, 0, 0);
+          flat.push(p.x, p.y); add(p.x, p.y, 1, 0, 0);
           if (p.x < c.bb[0]) c.bb[0] = p.x; if (p.y < c.bb[1]) c.bb[1] = p.y; if (p.x > c.bb[2]) c.bb[2] = p.x; if (p.y > c.bb[3]) c.bb[3] = p.y;
         }
       }
-      for (const j of Earcut.run(flat, holes)) c.roof.push(base + j);
+      for (const j of Earcut.run(flat, holes)) c.idx.push(base + j);
       for (const r of rings) {
-        let n = r.length, s = 0;
+        let n = r.length;
         if (n > 1 && r[0].x === r[n - 1].x && r[0].y === r[n - 1].y) n--;
         for (let j = 0; j < n; j++) {
           const a = r[j], b = r[(j + 1) % n], ex = b.x - a.x, ey = b.y - a.y, len = Math.hypot(ex, ey);
           if (len < 0.05) continue;
           // срез плитки (ребро по её краю или за ним) — не стена: соседняя плитка рисует этот дом дальше
-          if ((a.x <= lo && b.x <= lo) || (a.x >= hi && b.x >= hi) || (a.y <= lo && b.y <= lo) || (a.y >= hi && b.y >= hi)) { s += len; continue; }
-          if (E && E.get(b.x + ',' + b.y + ',' + a.x + ',' + a.y) >= H) { s += len; continue; } // за стеной — соседняя часть не ниже
+          if ((a.x <= lo && b.x <= lo) || (a.x >= hi && b.x >= hi) || (a.y <= lo && b.y <= lo) || (a.y >= hi && b.y >= hi)) continue;
+          if (E && E.get(b.x + ',' + b.y + ',' + a.x + ',' + a.y) >= H) continue; // за стеной — соседняя часть не ниже
           const nx = sg * ey / len, ny = -sg * ex / len;
-          const i0 = add(a.x, a.y, 0, nx, ny, s), i1 = add(b.x, b.y, 0, nx, ny, s + len), i2 = add(b.x, b.y, 1, nx, ny, s + len), i3 = add(a.x, a.y, 1, nx, ny, s);
-          c.wall.push(i0, i1, i2, i0, i2, i3);
-          c.edge.push(i3, i2);
-          s += len;
+          const i0 = add(a.x, a.y, 0, nx, ny), i1 = add(b.x, b.y, 0, nx, ny), i2 = add(b.x, b.y, 1, nx, ny), i3 = add(a.x, a.y, 1, nx, ny);
+          c.idx.push(i0, i1, i2, i0, i2, i3);
         }
       }
     }
   },
-  pack(c) {
-    const idx = new Uint16Array(c.roof.length + c.wall.length + c.edge.length);
-    idx.set(c.roof, 0); idx.set(c.wall, c.roof.length); idx.set(c.edge, c.roof.length + c.wall.length);
-    return { verts: new Float32Array(c.v), idx, nRoof: c.roof.length, nWall: c.wall.length, nEdge: c.edge.length, bb: c.bb, vb: null, ib: null };
-  },
+  pack(c) { return { verts: new Float32Array(c.v), idx: new Uint16Array(c.idx), n: c.idx.length, bb: c.bb, vb: null, ib: null }; },
   // на видеокарту — при первом показе; копия в памяти больше не нужна
   upload(p) {
     const gl = this.gl;

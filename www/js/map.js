@@ -99,7 +99,7 @@ const Roofs = {
         if (f.geomType !== 3 || f.props.is_underground) continue;
         let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
         for (const r of f.geom) for (const p of r) { if (p.x < a) a = p.x; if (p.y < b) b = p.y; if (p.x > c) c = p.x; if (p.y > d) d = p.y; }
-        if (px >= a && px <= c && py >= b && py <= d && Hazard.inside(f.geom, px, py)) h = Math.max(h, typeof NavMap !== 'undefined' ? NavMap.height(f) : 8);
+        if (px >= a && px <= c && py >= b && py <= d && Hazard.inside(f.geom, px, py)) h = Math.max(h, f.props.height > 0 ? f.props.height : 8);
       }
       this.at.set(key, h);
       if (h) MapView.refresh();
@@ -174,61 +174,54 @@ const MapView = {
   // 5.1.12: адрес карты мира — на duholov.ru рядом с игрой (APK открывает её же), с других адресов (тестовый контур, GitHub Pages,
   // локальный сервер разработки — файла карты мира у него нет) — с duholov.ru (CORS разрешён)
   tilesUrl() { return location.hostname === 'duholov.ru' ? this.TILES : 'https://duholov.ru/' + this.TILES; },
-  // 4.10: облик карты — время суток по настоящему солнцу над игроком, время года и снег (зимой и в снегопад);
-  // 5.1.26: только по солнцу над местом — закрепить день или ночь в настройках больше нельзя; телепорт меняет и время суток
+  // 4.10: облик карты — время суток по настоящему солнцу над местом Ловчего (5.1.26: закрепить день или ночь нельзя);
+  // 5.1.30: карта — в стандартном стиле Protomaps (днём — светлом, ночью — тёмном), без своей отрисовки улиц, фонарей и цветов
   look() {
-    const p = this.pos || { lat: 55.75, lng: 37.62 }, nav = typeof NavMap !== 'undefined';
-    const phase = U.phase(p.lat, p.lng);
-    const season = nav ? NavMap.season() : 'summer', snow = season === 'winter' || !!(Sky.w && Sky.w.key === 'snow');
-    return { phase, season, snow, night: phase === 'night' || phase === 'dusk', key: [phase, season, snow].join(':') };
+    const p = this.pos || { lat: 55.75, lng: 37.62 }, phase = U.phase(p.lat, p.lng), night = phase === 'night' || phase === 'dusk';
+    return { phase, night, flavor: night ? 'dark' : 'light', key: night ? 'dark' : 'light' };
+  },
+  // цвета к стилю карты: земля (фон и дымка горизонта) и объёмные дома (Bld3D) — крыша, стены (в тени и на солнце), контраст
+  FLAVOR: {
+    light: { earth: '#e2dfda', roof: '#d7d3cd', wall: '#a8a39b', wall2: '#d3cec6', light: 0.7 },
+    dark: { earth: '#1f1f1f', roof: '#2c2c31', wall: '#17171a', wall2: '#34343b', light: 0.6 },
+  },
+  // правила рисования и подписей стандартного стиля (Protomaps считает их сам по имени стиля)
+  flavorRules(name, url) {
+    const ref = protomapsL.leafletLayer({ url, flavor: name, lang: I18N.lang });
+    return { paint: ref.paintRules, label: ref.labelRules, bg: ref.backgroundColor };
   },
   setTiles() {
     if (this.tiles && Stage.busy) return; // 5.2: под сценой плитки не перерисовываются — облик сверится, когда она закроется (wake)
     const lk = this.look();
     if (lk.key === this._look) return;
     this._look = lk.key;
-    const night = this.night = lk.night;
-    const nav = typeof NavMap !== 'undefined';
+    const night = this.night = lk.night, F = this.FLAVOR[lk.flavor];
     if (!this.tiles) {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
-        // 4.9: «Карта Нави» — своя отрисовка (js/navmap.js); без неё — стандартная светлая с CSS-фильтром тонов Нави
-        const url = this.tilesUrl();
-        const th = nav ? NavMap.theme(lk.phase, lk.season, lk.snow) : null;
-        this.tiles = protomapsL.leafletLayer({
-          url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
-          ...(nav ? { paintRules: th.paintRules, labelRules: [], backgroundColor: th.backgroundColor } : { flavor: 'light' }),
-        }).addTo(this.map);
-        if (nav) {
-          U.$('#map').classList.add('navmap');
-          // 4.13: дома и подписи — вторым слоем над зоной Ловчего; плитки читаются один раз (общий кэш)
-          this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: this.bldPaint(th), labelRules: th.labelRules });
-          this.bldTiles.views = this.tiles.views;
-          this.bldTiles.addTo(this.map);
-          // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
-          if (document.fonts) Promise.all(["400 12px 'Rubik'", "700 12px 'Rubik'"].map(f => document.fonts.load(f).catch(() => {})))
-            .then(() => { this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); });
-        }
+        const url = this.tilesUrl(), st = this.flavorRules(lk.flavor, url);
+        this.tiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
+          paintRules: st.paint, labelRules: [], backgroundColor: st.bg }).addTo(this.map);
+        U.$('#map').classList.add('vecmap');
+        // 4.13: подписи — вторым слоем над зоной Ловчего и объёмными домами; плитки читаются один раз (общий кэш)
+        this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: [], labelRules: st.label });
+        this.bldTiles.views = this.tiles.views;
+        this.bldTiles.addTo(this.map);
       } else {
         this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
       }
-    } else if (nav && this.tiles.rerenderTiles) {
-      // сменилось время суток, сезон или пошёл снег — другая палитра: перерисовать плитки и подписи
-      const th = NavMap.theme(lk.phase, lk.season, lk.snow);
-      Object.assign(this.tiles, { paintRules: th.paintRules, backgroundColor: th.backgroundColor });
+    } else if (this.tiles.rerenderTiles) {
+      // день сменился ночью (или наоборот) — другой стиль: перерисовать плитки и подписи
+      const st = this.flavorRules(lk.flavor, this.tilesUrl());
+      Object.assign(this.tiles, { paintRules: st.paint, backgroundColor: st.bg });
       this.tiles.rerenderTiles();
-      if (this.bldTiles) { Object.assign(this.bldTiles, { paintRules: this.bldPaint(th), labelRules: th.labelRules }); this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
+      if (this.bldTiles) { this.bldTiles.labelRules = st.label; this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
     }
-    if (nav && typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(NavMap.palette(lk.phase, lk.season, lk.snow)); // дома — в цветах часа
+    if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(F); // объёмные дома — в тон карте
     document.body.classList.toggle('night', night);
-    // 4.11: дымка горизонта у наклонённой карты — цвета земли этого часа
-    const hz = nav ? (lk.snow && NavMap.SEASON.snow[night ? 'dark' : 'light'].bg) || NavMap.P[lk.phase].bg : night ? '#1b1b1f' : '#d9d3c7';
-    document.body.style.setProperty('--haze', hz);
+    document.body.style.setProperty('--haze', F.earth); // 4.11: дымка горизонта у наклонённой карты — цвета земли
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
-
-  // слой подписей над зоной Ловчего: дома в нём — только если их не рисует WebGL (Bld3D), иначе одни подписи
-  bldPaint(th) { return typeof Bld3D !== 'undefined' && Bld3D.on ? [] : th.bldRules; },
 
   setWeatherFx() {
     const box = U.$('#wxfx'), w = Sky.w;
@@ -504,19 +497,7 @@ const MapView = {
     const c = U.$('#compassBtn');
     if (c) { c.firstElementChild.style.transform = `rotate(${r}deg)`; c.classList.toggle('turned', !!r); }
     if (this.tracking) this.updateTracker();
-    if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.dirty(); // 5.1.30: объёмные дома поворачиваются вместе с картой — в этом же кадре
-    else this.relean();
-  },
-  // 5.1.30: без WebGL дома рисуют плитки: поворот кончился (палец отпустил, компас довернул) — дома встают к верху экрана заново,
-  // плитки домов перерисовываются под новый угол (пока карту крутят — нет: это дорого), места на крышах — следом за крышами
-  relean() {
-    clearTimeout(this._leanT);
-    this._leanT = setTimeout(() => {
-      if (typeof NavMap === 'undefined' || !this.bldTiles || Math.abs((((this.rot - NavMap.lean) % 360) + 540) % 360 - 180) < 3) return;
-      NavMap.lean = this.rot;
-      this.bldTiles.rerenderTiles();
-      this.reAim();
-    }, 250);
+    if (typeof Bld3D !== 'undefined') Bld3D.dirty(); // 5.1.30: объёмные дома поворачиваются вместе с картой — в этом же кадре
   },
   // значок на повёрнутой/наклонённой карте стоит прямо (см. initRotate)
   LIFT_Z: 36, // насколько значок наклонённой карты выдвинут к игроку, CSS-пиксели: иначе нижняя половина ушла бы «под» плитки
@@ -524,10 +505,10 @@ const MapView = {
     const el = mk._icon, p = el && el._leaflet_pos;
     if (!p || mk._map !== this.map || (!this.rot && !this.tilt)) return;
     el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
-    // 5.1.30: место в доме стоит на его крыше — там, где её рисует карта: объёмные дома (Bld3D) — из точки зрения (roofShift),
-    // дома в плитках — сдвигом к верху экрана (NavMap.extrude, lean)
-    const h = this.tilt && mk._roofH && typeof NavMap !== 'undefined' ? NavMap.lift(mk._roofH, this.map.getZoom()) : 0;
-    const lift = el._lift = !h ? { x: 0, y: 0 } : typeof Bld3D !== 'undefined' && Bld3D.on ? this.roofShift(p, h) : (lv => ({ x: lv.x * h, y: lv.y * h }))(NavMap.leanVec());
+    // 5.1.30: место в доме стоит на его крыше — там, где её видно из точки зрения (так рисует объёмные дома Bld3D; без WebGL
+    // дома плоские — и место на земле)
+    const h = this.tilt && mk._roofH && typeof Bld3D !== 'undefined' && Bld3D.on ? Bld3D.hpx(mk._roofH) : 0;
+    const lift = el._lift = h ? this.roofShift(p, h) : { x: 0, y: 0 };
     let t = `translate3d(${p.x + lift.x}px, ${p.y + lift.y}px, 0px)`;
     if (this.rot) t += ` rotate(${-this.rot}deg)`;
     // встаёт с земли лицом к игроку и выдвинут к нему; 5.1.30: — по лучу взгляда, с уменьшением на ту же долю: на экране
@@ -564,18 +545,15 @@ const MapView = {
     if (typeof Bld3D !== 'undefined') Bld3D.dirty();
   },
   // 5.1.30: точка зрения в точках слоя карты: (x, y) — над какой точкой земли (у наклонённой карты — ниже экрана: игрок смотрит
-  // наискосок), w — высота над землёй; у плоской карты w = 0, а (lx, ly) — куда «встаёт» высота (к верху экрана)
+  // наискосок; у плоской — над серединой экрана), w — высота над землёй
   camLayer() {
     const m = this.map, c = m.containerPointToLayerPoint(m.getSize().divideBy(2)), r = this.rot * Math.PI / 180;
-    if (!this.tilt) return { x: c.x, y: c.y, w: 0, lx: -Math.sin(r), ly: -Math.cos(r) };
     const a = this.tilt * Math.PI / 180, d = this.PD * Math.sin(a);
-    return { x: c.x + d * Math.sin(r), y: c.y + d * Math.cos(r), w: this.PD * Math.cos(a), lx: 0, ly: 0 };
+    return { x: c.x + d * Math.sin(r), y: c.y + d * Math.cos(r), w: this.PD * Math.cos(a) };
   },
   // куда на земле ложится точка на высоте hp (точек) над точкой слоя p — там игрок видит крышу дома над p (так рисует Bld3D)
   roofShift(p, hp) {
-    const c = this.camLayer();
-    if (!c.w) return { x: c.lx * hp, y: c.ly * hp };
-    const k = hp / (c.w - hp);
+    const c = this.camLayer(), k = hp / (c.w - hp);
     return { x: (p.x - c.x) * k, y: (p.y - c.y) * k };
   },
   // видимая земля — рамка в точках слоя: углы экрана, перенесённые на плоскость карты (с наклоном и поворотом), и запас pad

@@ -53,13 +53,9 @@ small, .small { color: var(--muted); font-size: 12px; }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
 /* ---------- карта ---------- */
-#map { position: fixed; inset: 0; background: #d9d3c7; z-index: 0; touch-action: none; } /* 5.1.30: палец ведёт камеру (MapView.initOrbit), а не страницу */
-body.night #map { background: #1b1b1f; }
-#map { --tile-f: grayscale(1) sepia(.45) hue-rotate(218deg) saturate(1.5) brightness(.88) contrast(.9); } #map .leaflet-tile-pane { filter: var(--tile-f); } /* 3.24: подложка в тонах Нави — духи и объекты на первом плане */
-body.night #map { --tile-f: invert(1) hue-rotate(195deg) saturate(.55) brightness(.8) contrast(.95); }
-/* 4.9: «Карта Нави» рисуется сразу в своих цветах (js/navmap.js) — фильтр только у запасной карты OSM */
-#map.navmap .leaflet-tile-pane { filter: none; }
-#map.navmap { background: #ece5f5; } body.night #map.navmap { background: #120b25; }
+/* 5.1.30: карта — в стандартном стиле (Protomaps: днём светлом, ночью тёмном), без своих цветов и фильтров; фон — цвет её земли */
+#map { position: fixed; inset: 0; background: #e2dfda; z-index: 0; touch-action: none; } /* палец ведёт камеру (MapView.initOrbit), а не страницу */
+body.night #map { background: #1f1f1f; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(18, 12, 36, .55) !important; color: #cfc8e6 !important; border-radius: 6px 0 0 0; }
 .leaflet-control-attribution a { color: #e9e3ff !important; }
 .leaflet-bottom.leaflet-right { bottom: calc(var(--sb)); }

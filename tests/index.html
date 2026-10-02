@@ -55,7 +55,6 @@
   <script src="../www/js/sky.js"></script>
   <script src="../www/js/music.js"></script>
   <script src="../www/js/world.js"></script>
-  <script src="../www/js/navmap.js"></script>
   <script src="../www/js/stage.js"></script>
   <script src="../www/js/walk.js"></script>
   <script src="../www/js/m3d.js"></script>
@@ -4472,7 +4471,8 @@
     try {
       window.L = { point: (x, y) => ({ x, y }) }; // в тестах Leaflet нет
       // карта-заглушка: точка слоя = точка контейнера; контейнер 400×600 — его середина и есть точка зрения
-      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }), getZoom: () => 17.5 };
+      MapView.map = { layerPointToContainerPoint: p => p, containerPointToLayerPoint: p => p, getSize: () => ({ x: 400, y: 600, divideBy: k => ({ x: 400 / k, y: 600 / k }) }),
+        getZoom: () => 17.5, getCenter: () => ({ lat: 55.75 }) };
       MapView.tilt = MapView.TILT; MapView.rot = 0;
       const icon = (x, y) => { const d = document.createElement('div'); d.className = 'leaflet-marker-icon'; d._leaflet_pos = { x, y }; d.appendChild(document.createElement('canvas')); return d; };
       const cam = (x, y) => MapView.camOf(icon(x, y).firstChild);
@@ -4495,12 +4495,20 @@
       near((q.x + +m[1]) * d / (d - q.z - z), q.x * d / (d - q.z), 0.02, 'по горизонтали — на своей точке:');
       near((q.y + +m[2]) * d / (d - q.z - z), q.y * d / (d - q.z), 0.02, 'по вертикали — на своей точке:');
       near(+m[4] * d / (d - q.z - z), d / (d - q.z), 1e-3, 'и того же размера, что на земле:');
-      // место в доме — на его крыше: сдвинуто на север на высоту крыши (как крыши домов карты)
-      mk._roofH = 21; MapView.upright(mk);
-      const lift = typeof NavMap !== 'undefined' ? NavMap.lift(21, 17.5) : 0;
-      const at = ic.style.transform.match(/^translate3d\(([-\d.]+)px, ([-\d.]+)px/);
-      ok(at && +at[1] === 320 && Math.abs(+at[2] - (120 - lift)) < 0.01, 'на крыше: ' + ic.style.transform.slice(0, 40));
-      ok(!lift || cam(320, 120 - 0).e !== MapView.camOf(ic.firstChild).e, 'камера — на крышу, а не к земле под ней');
+      // место в доме — на его крыше: там, где её рисуют объёмные дома (точка на высоте дома — из точки зрения)
+      const keepOn = Bld3D.on;
+      try {
+        Bld3D.on = true;
+        mk._roofH = 21; MapView.upright(mk);
+        const h = Bld3D.hpx(21), sh = MapView.roofShift({ x: 320, y: 120 }, h);
+        near(h, 21 * Bld3D.mpx(MapView.map), 1e-9, 'дом — в настоящую высоту (в масштабе карты):');
+        ok(h > 40, 'двадцатиметровый дом — выше 40 точек: ' + h.toFixed(1));
+        const at = ic.style.transform.match(/^translate3d\(([-\d.]+)px, ([-\d.]+)px/);
+        ok(at && Math.abs(+at[1] - (320 + sh.x)) < 0.01 && Math.abs(+at[2] - (120 + sh.y)) < 0.01, 'на крыше: ' + ic.style.transform.slice(0, 40));
+        ok(cam(320, 120).e !== MapView.camOf(ic.firstChild).e, 'камера — на крышу, а не к земле под ней');
+        Bld3D.on = false; MapView.upright(mk);
+        ok(/^translate3d\(320px, 120px/.test(ic.style.transform), 'без объёмных домов (нет WebGL) — на земле: ' + ic.style.transform.slice(0, 30));
+      } finally { Bld3D.on = keepOn; }
       MapView.tilt = 0;
       eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
     } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
@@ -4551,17 +4559,18 @@
       { geomType: 3, props: { height: 30 }, geom: sq(140, 100, 20) }, // вплотную, выше — его стена над соседом видна
       { geomType: 3, props: {}, geom: [[{ x: -30, y: 300 }, { x: 10, y: 300 }, { x: 10, y: 330 }, { x: -30, y: 330 }]] }, // срезан краем плитки
     ];
-    const E = Bld3D.edges(fs), walls = f => { const c = { v: [], roof: [], wall: [], edge: [], bb: [Infinity, Infinity, -Infinity, -Infinity] }; Bld3D.house(c, f, -1, Bld3D.EXT + 1, E); return c; };
-    const [a, b, hi, cut] = fs.map(walls);
-    eq(a.wall.length / 6, 3, 'у первого — три стены (общая с соседом той же высоты не видна):');
-    eq(b.wall.length / 6, 2, 'у среднего — две (с обеих сторон соседи не ниже):');
-    eq(hi.wall.length / 6, 4, 'у высокого — все четыре (над низким соседом стена видна):');
-    eq(cut.wall.length / 6, 3, 'у срезанного краем плитки — без стены по срезу:');
-    eq(a.roof.length, 6, 'крыша — два треугольника');
-    eq(a.edge.length, a.wall.length / 3, 'кромка крыши — над каждой стеной');
-    eq(cut.v[3], 8, 'нет высоты — восемь метров (как у домов в плитках)');
+    fs.push({ geomType: 3, props: { height: 20, min_height: 6 }, geom: sq(300, 300, 10) }); // навес: стены — от шести метров
+    const E = Bld3D.edges(fs), make = f => { const c = { v: [], idx: [], bb: [Infinity, Infinity, -Infinity, -Infinity] }; Bld3D.house(c, f, -1, Bld3D.EXT + 1, E); return c; };
+    const walls = c => (c.idx.length - 6) / 6; // у прямоугольника крыша — два треугольника, стена — тоже два
+    const [a, b, hi, cut, arch] = fs.map(make);
+    eq(walls(a), 3, 'у первого — три стены (общая с соседом той же высоты не видна):');
+    eq(walls(b), 2, 'у среднего — две (с обеих сторон соседи не ниже):');
+    eq(walls(hi), 4, 'у высокого — все четыре (над низким соседом стена видна):');
+    eq(walls(cut), 3, 'у срезанного краем плитки — без стены по срезу:');
+    eq(cut.v[3], 8, 'нет высоты — восемь метров');
+    eq(arch.v[3], 20, 'высота дома — из данных карты'); eq(arch.v[6], 6, 'низ стен навеса — над землёй');
   });
-  test('5.1.30: объёмные дома и места на крышах — одна и та же точка зрения (перспектива; у плоской карты — к верху экрана)', () => {
+  test('5.1.30: объёмные дома и места на крышах — одна и та же точка зрения (перспектива; у плоской карты — сверху)', () => {
     const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot }, keepL = window.L;
     try {
       window.L = { point: (x, y) => ({ x, y }) };
@@ -4577,8 +4586,9 @@
       const c2 = MapView.camLayer();
       near(c2.x, 200 + MapView.PD * Math.sin(a), 1e-9, 'повёрнутая карта — точка зрения поворачивается с ней:');
       MapView.tilt = 0; MapView.rot = 30;
-      const s0 = MapView.roofShift(p, 10);
-      near(s0.x, -10 * Math.sin(Math.PI / 6), 1e-9); near(s0.y, -10 * Math.cos(Math.PI / 6), 1e-9, 'плоская карта — к верху экрана:');
+      const c0 = MapView.camLayer(), s0 = MapView.roofShift(p, 10);
+      near(c0.x, 200, 1e-9); near(c0.y, 300, 1e-9); near(c0.w, MapView.PD, 1e-9, 'плоская карта — точка зрения над серединой экрана:');
+      near(s0.x, (p.x - 200) * 10 / (MapView.PD - 10), 1e-9); near(s0.y, (p.y - 300) * 10 / (MapView.PD - 10), 1e-9, 'дома «встают» от середины:');
     } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
   });
   atest('5.1.30: крыши — высота дома, в котором стоит место (по плитке карты), без хранения домов', async () => {
