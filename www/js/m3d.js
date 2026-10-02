@@ -231,6 +231,7 @@ const M3D = {
     // значку — где у модели верх и низ (CSS-пиксели от верха значка): туда встают хранитель, флаг клана и звёзды (style.css)
     const ext = this.extent(m, v.e), box = v.c.parentElement;
     if (box) { box.style.setProperty('--m3d-top', (v.ay - ext.top * S).toFixed(1) + 'px'); box.style.setProperty('--m3d-bot', (v.ay - ext.low * S).toFixed(1) + 'px'); }
+    if (!v.player && typeof MapView !== 'undefined' && MapView.lblSoon) MapView.lblSoon(); // подпись места — под низ модели
   },
   /* 5.1.30: откуда игрок смотрит на место. Наклонённая карта видна в перспективе (MapView.camOf): место у нижнего края экрана —
      почти сверху, у горизонта — сбоку, левее и правее середины — чуть сбоку; модель рисуется с той же стороны — стоит на земле

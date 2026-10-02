@@ -273,7 +273,7 @@ const Bld3D = {
     return true;
   },
 
-  /* ---------- цвета (MapView.FLAVOR: днём — светлая карта, ночью — тёмная) ---------- */
+  /* ---------- цвета (палитра карты MapView.pal: днём — дневные, ночью — ночные) ---------- */
   rgb(s) { return [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16) / 255); },
   theme(F) {
     this.pal = { roof: this.rgb(F.roof), wall: this.rgb(F.wall), wall2: this.rgb(F.wall2), light: F.light };

@@ -119,6 +119,8 @@ const MapView = {
     this.map = L.map('map', { zoomControl: false, minZoom: 15, maxZoom: 19, zoomSnap: 0.25, tap: true })
       .setView([this.pos.lat, this.pos.lng], 17.5);
     this.map.attributionControl.setPrefix(false);
+    // 5.1.30: подписи мест — своим плоским слоем поверх карты (их не закрывают ни модели, ни дома): placeLabels
+    this._lblBox = document.createElement('div'); this._lblBox.id = 'mapLbl'; U.$('#map').after(this._lblBox);
     // 4.13: свои слои между плитками земли и значками (порядок — по z-index, см. orderPanes)
     [['zone', 380], ['bld', 390]].forEach(([n, z]) => { const p = this.map.createPane(n); p.style.zIndex = z; p.style.pointerEvents = 'none'; });
     if (typeof Bld3D !== 'undefined') Bld3D.init(this.map); // 5.1.30: дома — объёмные, в WebGL (свой слой между зоной и подписями)
@@ -175,32 +177,59 @@ const MapView = {
   // локальный сервер разработки — файла карты мира у него нет) — с duholov.ru (CORS разрешён)
   tilesUrl() { return location.hostname === 'duholov.ru' ? this.TILES : 'https://duholov.ru/' + this.TILES; },
   // 4.10: облик карты — время суток по настоящему солнцу над местом Ловчего (5.1.26: закрепить день или ночь нельзя);
-  // 5.1.30: карта — в стандартном стиле Protomaps (днём — светлом, ночью — тёмном), без своей отрисовки улиц, фонарей и цветов
+  // 5.1.30: карта — по правилам стиля Protomaps в своей палитре (PALETTE), без своей отрисовки улиц, фонарей и цветов
   look() {
     const p = this.pos || { lat: 55.75, lng: 37.62 }, phase = U.phase(p.lat, p.lng), night = phase === 'night' || phase === 'dusk';
-    return { phase, night, flavor: night ? 'dark' : 'light', key: night ? 'dark' : 'light' };
+    return { phase, night, key: night ? 'night' : 'day' };
   },
-  // цвета к стилю карты: земля (фон и дымка горизонта) и объёмные дома (Bld3D) — крыша, стены (в тени и на солнце), контраст
-  FLAVOR: {
-    light: { earth: '#e2dfda', roof: '#d7d3cd', wall: '#a8a39b', wall2: '#d3cec6', light: 0.7 },
-    dark: { earth: '#1f1f1f', roof: '#2c2c31', wall: '#17171a', wall2: '#34343b', light: 0.6 },
+  /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави): днём — бело-зелёная с голубой водой и кремовыми улицами,
+     ночью — тёмно-синяя. Цвета стиля — c (flavorOf; улицы у Protomaps для Leaflet — одного цвета, road); к ним — земля (фон карты
+     и дымка горизонта) и объёмные дома (Bld3D): крыша, стены в тени и на солнце, контраст стен */
+  PALETTE: {
+    day: { earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
+      park: '#cfe8c4', park2: '#b3dda3', wood: '#c7e1bb', wood2: '#a7d595', scrub: '#d8e8cc', water: '#9fd0f0', sand: '#f2ead2', ped: '#eceee8',
+      urban: '#e8eae6', runway: '#f7f8fa', road: '#fdf2c6', rail: '#a8b1b7', bound: '#a7afa7', bld: '#e2e5df',
+      lbl: '#5e6a65', halo: '#ffffff', city: '#2e3935', sub: '#7c8983', state: '#99a49e', ocean: '#4e8ec0',
+      lc: ['#d6eccd', '#f5eeda', '#e8eae5', '#deeed2', '#ffffff', '#e2eed6', '#c4e2be'] } },
+    night: { earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
+      park: '#13261f', park2: '#163024', wood: '#12221c', wood2: '#152a21', scrub: '#17231f', water: '#0a1626', sand: '#1c2228', ped: '#171f2b',
+      urban: '#161e2a', runway: '#222c3a', road: '#3a4f73', rail: '#37435a', bound: '#46526a', bld: '#1a2332',
+      lbl: '#9fb0cc', halo: '#0e1520', city: '#dbe5f5', sub: '#8a9ab4', state: '#6f7f99', ocean: '#6b8fc4',
+      lc: ['#162620', '#1e2228', '#181f2b', '#162621', '#28303c', '#182420', '#13221c'] } },
   },
-  // правила рисования и подписей стандартного стиля (Protomaps считает их сам по имени стиля); подписей мест на карте (pois) нет —
-  // у мест игры свои подписи (MapView.label), у остальных точек — не нужны
-  flavorRules(name, url) {
-    const ref = protomapsL.leafletLayer({ url, flavor: name, lang: I18N.lang });
-    return { paint: ref.paintRules, label: ref.labelRules.filter(r => r.dataLayer !== 'pois'), bg: ref.backgroundColor };
+  pal(night) { return night ? this.PALETTE.night : this.PALETTE.day; },
+  // цвета палитры → полный набор цветов стиля Protomaps (те же ключи, что у его light/dark; улицы, мосты и тоннели — цвета road)
+  flavorOf(c) {
+    const r = c.road, k = c.bg, u = c.urban;
+    return { background: c.bg, earth: c.earth, park_a: c.park, park_b: c.park2, hospital: u, industrial: u, school: u, wood_a: c.wood, wood_b: c.wood2,
+      pedestrian: c.ped, scrub_a: c.scrub, scrub_b: c.park2, glacier: c.lc[4], sand: c.sand, beach: c.sand, aerodrome: u, runway: c.runway, water: c.water,
+      zoo: c.park, military: u, tunnel_other_casing: k, tunnel_minor_casing: k, tunnel_link_casing: k, tunnel_major_casing: k, tunnel_highway_casing: k,
+      tunnel_other: r, tunnel_minor: r, tunnel_link: r, tunnel_major: r, tunnel_highway: r, pier: c.ped, buildings: c.bld,
+      minor_service_casing: k, minor_casing: k, link_casing: k, major_casing_late: k, highway_casing_late: k, other: r, minor_service: r,
+      minor_a: r, minor_b: r, link: r, major_casing_early: k, major: r, highway_casing_early: k, highway: r, railway: c.rail,
+      boundaries: c.bound, bridges_other_casing: k, bridges_minor_casing: k, bridges_link_casing: k, bridges_major_casing: k, bridges_highway_casing: k,
+      bridges_other: r, bridges_minor: r, bridges_link: r, bridges_major: r, bridges_highway: r,
+      roads_label_minor: c.lbl, roads_label_minor_halo: c.halo, roads_label_major: c.lbl, roads_label_major_halo: c.halo, ocean_label: c.ocean,
+      subplace_label: c.sub, subplace_label_halo: c.halo, city_label: c.city, city_label_halo: c.halo, state_label: c.state, state_label_halo: c.halo,
+      country_label: c.state, address_label: c.lbl, address_label_halo: c.halo,
+      pois: { blue: '#1A8CBD', green: '#20834D', lapis: '#315BCF', pink: '#EF56BA', red: '#F2567A', slategray: '#6A5B8F', tangerine: '#CB6704', turquoise: '#00C3D4' },
+      landcover: { grassland: c.lc[0], barren: c.lc[1], urban_area: c.lc[2], farmland: c.lc[3], glacier: c.lc[4], scrub: c.lc[5], forest: c.lc[6] } };
+  },
+  // правила рисования и подписей для цветов палитры P; подписей точек (pois) нет — у мест игры свои подписи (MapView.label)
+  flavorRules(P) {
+    const f = this.flavorOf(P.c), noPois = rules => rules.filter(r => r.dataLayer !== 'pois');
+    return { paint: protomapsL.paintRules(f), label: noPois(protomapsL.labelRules(f, I18N.lang)), bg: f.background };
   },
   setTiles() {
     if (this.tiles && Stage.busy) return; // 5.2: под сценой плитки не перерисовываются — облик сверится, когда она закроется (wake)
     const lk = this.look();
     if (lk.key === this._look) return;
     this._look = lk.key;
-    const night = this.night = lk.night, F = this.FLAVOR[lk.flavor];
+    const night = this.night = lk.night, F = this.pal(night);
     if (!this.tiles) {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
-        const url = this.tilesUrl(), st = this.flavorRules(lk.flavor, url);
+        const url = this.tilesUrl(), st = this.flavorRules(F);
         this.tiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
           paintRules: st.paint, labelRules: [], backgroundColor: st.bg }).addTo(this.map);
         U.$('#map').classList.add('vecmap');
@@ -213,7 +242,7 @@ const MapView = {
       }
     } else if (this.tiles.rerenderTiles) {
       // день сменился ночью (или наоборот) — другой стиль: перерисовать плитки и подписи
-      const st = this.flavorRules(lk.flavor, this.tilesUrl());
+      const st = this.flavorRules(F);
       Object.assign(this.tiles, { paintRules: st.paint, backgroundColor: st.bg });
       this.tiles.rerenderTiles();
       if (this.bldTiles) { this.bldTiles.labelRules = st.label; this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
@@ -221,6 +250,7 @@ const MapView = {
     if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(F); // объёмные дома — в тон карте
     document.body.classList.toggle('night', night);
     document.body.style.setProperty('--haze', F.earth); // 4.11: дымка горизонта у наклонённой карты — цвета земли
+    U.$('#map').style.background = F.earth; // и фон под ещё не нарисованными плитками
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
 
@@ -544,6 +574,7 @@ const MapView = {
     if (this.tilt) for (const m of [...this.markers.values(), this.player, this.range]) if (m) this.upright(m);
     if (typeof M3D !== 'undefined') M3D.aim();
     if (typeof Bld3D !== 'undefined') Bld3D.dirty();
+    this.placeLabels();
   },
   // 5.1.30: точка зрения в точках слоя карты: (x, y) — над какой точкой земли (у наклонённой карты — ниже экрана: игрок смотрит
   // наискосок; у плоской — над серединой экрана), w — высота над землёй
@@ -622,6 +653,34 @@ const MapView = {
     const where = e.type === 'rift' ? e.place : e.name;
     return `<div class="mk-lbl"><b><span>${U.esc(what)}</span></b>${where && where !== what ? `<i>${U.esc(where)}</i>` : ''}</div>`;
   },
+  // подпись значка места — в слое подписей (создать или обновить текст)
+  lblFor(m, e) {
+    const h = this.label(e);
+    if (!m._lbl) { const t = document.createElement('div'); t.innerHTML = h; m._lbl = t.firstChild; this._lblBox.appendChild(m._lbl); m._lblH = h; }
+    else if (m._lblH !== h) { const t = document.createElement('div'); t.innerHTML = h; m._lbl.innerHTML = t.firstChild.innerHTML; m._lblH = h; }
+  },
+  dropLbl(m) { if (m && m._lbl) { m._lbl.remove(); m._lbl = null; } },
+  // подписи — под моделью своего места: точка опоры значка (с крышей) → на экран той же перспективой, что у карты; масштаб —
+  // как у значка (дальше — мельче); ближние — поверх дальних. Зовётся на каждом сдвиге карты (reAim) и когда модель встала (lblSoon)
+  placeLabels() {
+    if (!this.map || !this._lblBox) return;
+    const cx = innerWidth / 2, cy = this._py || innerHeight / 2, d = this.PD;
+    for (const m of this.markers.values()) {
+      const lb = m._lbl, ic = m._icon, p = ic && ic._leaflet_pos;
+      if (!lb) continue;
+      if (!p) { lb.style.display = 'none'; continue; }
+      const lf = ic._lift || { x: 0, y: 0 }, q = this.screen3d(L.point(p.x + lf.x, p.y + lf.y)), f = this.tilt ? d / (d - q.z) : 1;
+      const box = ic.firstElementChild, ay = m.options.icon.options.iconAnchor[1];
+      const bot = box && parseFloat(box.style.getPropertyValue('--m3d-bot')); // низ модели в значке (js/m3d.js), иначе — низ рисунка
+      const off = (Number.isFinite(bot) ? bot - ay + 13 : m.options.icon.options.iconSize[1] - ay + 4) * f;
+      const x = cx + q.x * f, y = cy + q.y * f + off;
+      if (x < -200 || x > innerWidth + 200 || y < -60 || y > innerHeight + 60) { lb.style.display = 'none'; continue; }
+      lb.style.display = '';
+      lb.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%) scale(${f.toFixed(3)})`;
+      lb.style.zIndex = Math.round(1000 + q.z);
+    }
+  },
+  lblSoon() { if (!this._lblRaf) this._lblRaf = requestAnimationFrame(() => { this._lblRaf = 0; this.placeLabels(); }); },
   icon(e) {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
@@ -630,21 +689,21 @@ const MapView = {
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
-        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${this.m3d(e, 23, 60, !e.ready && !e.invaded ? 'jet' : '')}${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}${this.label(e)}</div>` });
+        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${this.m3d(e, 23, 60, !e.ready && !e.invaded ? 'jet' : '')}${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}</div>` });
     }
     if (e.type === 'shrine') {
       return L.divIcon({ className: 'mk', iconSize: [54, 76], iconAnchor: [27, 72],
-        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${this.m3d(e, 27, 72)}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div>${this.label(e)}</div>` });
+        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${this.m3d(e, 27, 72)}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
     }
     return L.divIcon({ className: 'mk', iconSize: [84, 96], iconAnchor: [42, 86],
-      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${this.m3d(e, 42, 86)}${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div>${this.label(e)}</div>` });
+      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${this.m3d(e, 42, 86)}${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
   },
   refresh(rebuild) {
     if (!this.map) return;
     // 5.2: под полноэкранной сценой духи и места не пересчитываются — один раз, когда она закроется (wake)
     if (Stage.busy) { this._miss = Math.max(this._miss || 0, rebuild ? 2 : 1); return; }
     if (rebuild || this._miss !== 2) this._miss = 0; // пропущенное догнали (сцена, закрываясь, сама позвала пересчёт)
-    if (rebuild) { for (const m of this.markers.values()) m.remove(); this.markers.clear(); }
+    if (rebuild) { for (const m of this.markers.values()) { this.dropLbl(m); m.remove(); } this.markers.clear(); }
     const { lat, lng } = this.pos;
     // 4.21: Разломы видны с начала; до RAID_LEVEL — серые, с замком (нажатие скажет, с какого уровня)
     // 4.19: дух виден, только если он вне тумана Нави и не в опасном месте (вода, пути, трассы, стройки — см. Hazard)
@@ -661,7 +720,7 @@ const MapView = {
       const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? `${e.done}${S.d.level < RAID_LEVEL && !e.camp}` : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : e.type === 'spirit' ? this.known(e.sid) : 0;
       let m = this.markers.get(e.id);
       const fresh = !m; // появился впервые (а не сменил вид)
-      if (m && m._key !== key) { m.remove(); m = null; }
+      if (m && m._key !== key) { this.dropLbl(m); m.remove(); m = null; }
       if (!m) {
         m = L.marker([e.lat, e.lng], { icon: this.icon(e), zIndexOffset: e.type === 'spirit' ? 500 : 0 }).addTo(this.map);
         m.on('click', () => this.tap(m._ent));
@@ -680,9 +739,15 @@ const MapView = {
         el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
         el.classList.toggle('tut-off', typeof Tut !== 'undefined' && !Tut.entOk(e)); // 5.2: фокус обучения — чужое приглушено
       }
+      if (e.type !== 'spirit') {
+        this.lblFor(m, e);
+        m._lbl.classList.toggle('far', !!(el && el.classList.contains('far')));
+        m._lbl.classList.toggle('tut-off', !!(el && el.classList.contains('tut-off')));
+      }
     });
-    for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
+    for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.dropLbl(m); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
     if (typeof M3D !== 'undefined') { M3D.aim(); M3D.kick(); } // 5.1.28: место стало досягаемым — его модель снова движется; 5.1.30: и видна с нужной стороны
+    this.placeLabels();
     this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     const ids = new Set(this.nearby.map(e => e.id));

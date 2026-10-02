@@ -4547,6 +4547,69 @@
     eq(lab({ type: 'rift', camp: true, myth: 'slavic', place: null })[1], null, 'без имени точки — одна строка');
     ok(!MapView.label({ type: 'spring', name: '<img src=x onerror=alert(1)>' }).includes('<img'), 'имя точки — без разметки');
   });
+  test('5.1.30: подписи мест — своим слоем поверх карты и моделей, под низом значка; уходят вместе со значком', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, markers: MapView.markers, _lblBox: MapView._lblBox, _py: MapView._py }, keepL = window.L;
+    const box = document.createElement('div');
+    try {
+      window.L = { point: (x, y) => ({ x, y }) }; // в тестах Leaflet нет
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
+      MapView.tilt = 0; MapView.rot = 0; MapView._py = 300;
+      box.id = 'mapLbl'; document.body.appendChild(box); MapView._lblBox = box;
+      const icon = (x, y) => { const d = document.createElement('div'); d._leaflet_pos = { x, y }; d.appendChild(document.createElement('div')); return d; };
+      const mk = ic => ({ _icon: ic, options: { icon: { options: { iconAnchor: [27, 72], iconSize: [54, 80] } } } });
+      const a = mk(icon(150, 200)), b = mk(icon(5000, 200));
+      MapView.markers = new Map([['a', a], ['b', b]]);
+      MapView.lblFor(a, { type: 'spring', name: 'Фонтан у ГУМа' }); MapView.lblFor(b, { type: 'spring', name: 'Далеко' });
+      ok(a._lbl && a._lbl.parentNode === box, 'подпись — в своём слое, не в значке');
+      eq(a._lbl.querySelector('i').textContent, 'Фонтан у ГУМа');
+      const el = a._lbl;
+      MapView.lblFor(a, { type: 'spring', name: 'Сквер' });
+      ok(a._lbl === el && el.querySelector('i').textContent === 'Сквер', 'новое имя — в той же подписи');
+      MapView.placeLabels();
+      const at = s => s.match(/translate3d\(([-\d.]+)px, ([-\d.]+)px, 0(?:px)?\) translateX\(-50%\) scale\(([\d.]+)\)/);
+      let m = at(a._lbl.style.transform);
+      ok(m, 'подпись стоит: ' + a._lbl.style.transform);
+      // плоская карта: точка значка на экране — середина + сдвиг от середины контейнера; подпись — под низом рисунка
+      near(+m[1], innerWidth / 2 - 50, 0.06, 'по горизонтали — под значком:');
+      near(+m[2], 300 - 100 + (80 - 72 + 4), 0.06, 'по вертикали — под низом рисунка:');
+      eq(+m[3], 1, 'плоская карта — без уменьшения:');
+      a._icon.firstChild.style.setProperty('--m3d-bot', '90px'); // у 3D-модели — под низом модели
+      MapView.placeLabels();
+      near(+at(a._lbl.style.transform)[2], 300 - 100 + (90 - 72 + 13), 0.06, 'под низом модели:');
+      eq(b._lbl.style.display, 'none', 'значок далеко за краем экрана — подпись не видна');
+      a._icon._leaflet_pos = null; MapView.placeLabels();
+      eq(a._lbl.style.display, 'none', 'значок ещё не на карте — подпись не видна');
+      MapView.dropLbl(a);
+      ok(!el.parentNode && !a._lbl, 'значок ушёл — и подпись');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; box.remove(); }
+  });
+  atest('5.1.30: палитра карты — день и ночь; её цвета дают все цвета, которые читает стиль карты', async () => {
+    if (typeof protomapsL === 'undefined') await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '../www/vendor/protomaps/protomaps-leaflet.min.js'; s.onload = res; s.onerror = () => rej(new Error('нет protomaps-leaflet.min.js')); document.head.appendChild(s); });
+    const hex = /^#[0-9a-f]{6}$/i;
+    for (const ph of ['day', 'night']) {
+      const F = MapView.PALETTE[ph];
+      ok(F, ph);
+      for (const k of ['earth', 'roof', 'wall', 'wall2']) ok(hex.test(F[k]), `${ph}.${k} = ${F[k]}`);
+      ok(F.light > 0 && F.light <= 1, `${ph}: контраст стен ${F.light}`);
+      // правила стиля читают цвета и сразу, и позже (на каждом масштабе) — прогнать их и проверить, что все цвета есть
+      const miss = new Set(), wrap = (o, pre) => new Proxy(o, { get: (t, k) => {
+        if (typeof k === 'string' && !(k in t)) miss.add(pre + k);
+        const v = t[k]; return v && typeof v === 'object' ? wrap(v, pre + k + '.') : v; } });
+      const f = MapView.flavorOf(F.c), w = wrap(f, '');
+      const feat = { props: { kind: 'park', kind_detail: 'park', 'pmap:kind': 'park', 'pmap:min_zoom': 0, name: 'x' }, geomType: 2, numVertices: 4, bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 }, geom: [] };
+      for (const r of [...protomapsL.paintRules(w), ...protomapsL.labelRules(w, 'ru')]) for (const z of [8, 13, 16, 18]) {
+        const walk = s => { if (!s || typeof s !== 'object') return; for (const v of Object.values(s)) { if (v && typeof v.get === 'function') { try { v.get(z, feat); } catch (e) {} } else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object' && v.constructor !== Object) walk(v); } };
+        walk(r.symbolizer);
+        if (typeof r.filter === 'function') { try { r.filter(z, feat); } catch (e) {} }
+      }
+      eq([...miss].join(','), '', `${ph}: все цвета стиля есть:`);
+      const bad = Object.entries({ ...f, ...f.landcover }).filter(([, v]) => typeof v === 'string' && !hex.test(v)).map(([k, v]) => k + '=' + v);
+      eq(bad.join(','), '', `${ph}: цвета — #rrggbb:`);
+      eq(MapView.flavorRules(F).bg, F.c.bg, `${ph}: фон стиля — из палитры:`);
+    }
+    eq(MapView.pal(false), MapView.PALETTE.day, 'днём — дневные цвета');
+    eq(MapView.pal(true), MapView.PALETTE.night, 'ночью — ночные');
+  });
   test('5.1.30: объёмные дома — крыши разбиты на треугольники без пропусков и лишнего (невыпуклые, с дворами)', () => {
     const area = (d, t) => {
       let s = 0;

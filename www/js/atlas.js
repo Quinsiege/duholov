@@ -694,8 +694,9 @@ const Atlas = {
     pk.showT = setTimeout(() => this.pickShow(), 6000); // плитки так и не нарисовались — всё равно показать (касаться можно)
     if (typeof protomapsL !== 'undefined' && typeof MapView !== 'undefined' && MapView.tilesUrl) {
       try {
-        const lk = MapView.look();
-        const lay = pk.lay = protomapsL.leafletLayer({ url: MapView.tilesUrl(), attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>', flavor: lk.flavor, lang: I18N.lang });
+        const lk = MapView.look(), st = MapView.flavorRules(MapView.pal(lk.night));
+        const lay = pk.lay = protomapsL.leafletLayer({ url: MapView.tilesUrl(), attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>',
+          lang: I18N.lang, paintRules: st.paint, labelRules: st.label, backgroundColor: st.bg });
         lay.once('load', () => this.pickShow());
         lay.addTo(m);
         // города для списка — из того же файла карты, но своим чтением (источник карты отменяет чтение плиток другого масштаба —
