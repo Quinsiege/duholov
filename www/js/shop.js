@@ -22,6 +22,7 @@ const Loot = {
       else if (k === 'cocoon') out.push({ k, n: 1, label: ru`Кокон ${n} км`, cocoon: n });
       else if (k === 'amulet') out.push({ k, n: 1, label: ru`Амулет` });
       else if (k === 'amuletPick') out.push({ k: 'amulet', n: 1, label: ru`Амулет на выбор` }); // 5.1.21: Тропа — выбирает Ловчий
+      else if (k === 'alatyr' || k === 'rod') out.push({ k, n, label: n > 1 ? `${S.resName(k)} ×${n}` : S.resName(k) }); // 5.1.21: осколки на Тропе
       else if (k === 'look') { const x = LOOK.cloak.find(c => c.c === n) || LOOK.emblem.find(m => m.id === n) || LOOK.skin.find(k => `skin:${k.id}` === n) || LOOK.bg.find(k => `bg:${k.id}` === n) || LOOK.frame.find(k => `frame:${k.id}` === n); out.push({ k, n: 1, label: x ? x.name : ru`Облик`, look: n }); }
       else if (ITEMS[k]) out.push({ k, n, label: n > 1 ? `${ITEMS[k].name} ×${n}` : ITEMS[k].name });
     }

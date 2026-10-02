@@ -359,22 +359,25 @@ const Rules = {
   // Три круга по десять ступеней, в каждом награды растут: бесплатная — обереги и мёд по очереди, на 5-й ступени круга ладан,
   // на 9-й Живая вода, на 10-й, 20-й и 30-й — большая награда; Золотая — серебряные обереги и Живая вода, на 6-й — золотые
   // обереги, на 9-й — кокон 10 км, на каждой пятой — амулет на выбор (amuletPick: выбирает Ловчий, когда забирает),
-  // на 15-й — плащ «Сезонная тропа», на 30-й — Знак Тропы. cocoon — кокон на столько км, look — облик
+  // на 15-й — плащ «Сезонная тропа», на 30-й — Знак Тропы. cocoon — кокон на столько км, look — облик.
+  // По модели экономики (tools/economy: искры копились миллионами, сумка переполнялась, не хватало только осколков Алатыря):
+  // бесплатная — искры ÷3, обереги ÷3, мёд ÷4 и осколок Алатыря на 10-й, 20-й и 30-й; Золотая — искры ÷2, Живая вода ÷3 и
+  // осколок на 15-й и 25-й. За сезон: бесплатная — ✦ 58 900, Золотая — ✦ 58 600 (было 177 000 и 116 500)
   PASS_FREE: [
-    { charm: 20, sparks: 2500 }, { honey: 15, sparks: 2500 }, { charm: 20, sparks: 3500 }, { honey: 15, sparks: 3500 }, { incense: 5, sparks: 4000 },
-    { charm: 30, sparks: 4000 }, { honey: 20, sparks: 4000 }, { charm: 40, sparks: 4000 }, { water: 10, sparks: 5000 }, { zlat: 50, sparks: 5000 },
-    { charm: 30, sparks: 5000 }, { honey: 20, sparks: 5000 }, { charm: 30, sparks: 5500 }, { honey: 20, sparks: 5500 }, { incense: 5, sparks: 6000 },
-    { charm: 40, sparks: 6000 }, { honey: 25, sparks: 6000 }, { charm: 50, sparks: 6000 }, { water: 15, sparks: 7000 }, { amuletPick: 1, sparks: 7000 },
-    { charm: 40, sparks: 7000 }, { honey: 25, sparks: 7000 }, { charm: 40, sparks: 7500 }, { honey: 25, sparks: 7500 }, { incense: 5, sparks: 8000 },
-    { charm: 50, sparks: 8000 }, { honey: 30, sparks: 8000 }, { charm: 60, sparks: 8000 }, { water: 20, sparks: 9000 }, { deadwater: 1, zlat: 50, sparks: 10000 },
+    { charm: 7, sparks: 800 }, { honey: 4, sparks: 800 }, { charm: 7, sparks: 1200 }, { honey: 4, sparks: 1200 }, { incense: 5, sparks: 1300 },
+    { charm: 10, sparks: 1300 }, { honey: 5, sparks: 1300 }, { charm: 13, sparks: 1300 }, { water: 10, sparks: 1700 }, { zlat: 50, sparks: 1700, alatyr: 1 },
+    { charm: 10, sparks: 1700 }, { honey: 5, sparks: 1700 }, { charm: 10, sparks: 1800 }, { honey: 5, sparks: 1800 }, { incense: 5, sparks: 2000 },
+    { charm: 13, sparks: 2000 }, { honey: 6, sparks: 2000 }, { charm: 17, sparks: 2000 }, { water: 15, sparks: 2300 }, { amuletPick: 1, sparks: 2300, alatyr: 1 },
+    { charm: 13, sparks: 2300 }, { honey: 6, sparks: 2300 }, { charm: 13, sparks: 2500 }, { honey: 6, sparks: 2500 }, { incense: 5, sparks: 2700 },
+    { charm: 17, sparks: 2700 }, { honey: 8, sparks: 2700 }, { charm: 20, sparks: 2700 }, { water: 20, sparks: 3000 }, { deadwater: 1, zlat: 50, sparks: 3300, alatyr: 1 },
   ],
   PASS_GOLD: [
-    { charm2: 20 }, { water: 10, sparks: 2500 }, { charm2: 20, sparks: 3500 }, { water: 10, sparks: 3500 }, { amuletPick: 1 },
-    { charm3: 10 }, { water: 15, sparks: 4000 }, { charm2: 20, sparks: 4000 }, { cocoon: 10, sparks: 5000 }, { amuletPick: 1 },
-    { charm2: 25, sparks: 5000 }, { water: 15, sparks: 5000 }, { charm2: 25, sparks: 5500 }, { water: 15, sparks: 5500 }, { look: '#065f46', amuletPick: 1 },
-    { charm3: 15 }, { water: 20, sparks: 6000 }, { charm2: 30, sparks: 6000 }, { cocoon: 10, sparks: 7000 }, { amuletPick: 1, charm3: 10 },
-    { charm2: 30, sparks: 7000 }, { water: 20, sparks: 7000 }, { charm2: 30, sparks: 7500 }, { water: 20, sparks: 7500 }, { amuletPick: 1 },
-    { charm3: 20 }, { water: 25, sparks: 8000 }, { charm2: 40, sparks: 8000 }, { cocoon: 10, sparks: 9000 }, { look: 'trail', amuletPick: 1, charm3: 20 },
+    { charm2: 20 }, { water: 3, sparks: 1300 }, { charm2: 20, sparks: 1800 }, { water: 3, sparks: 1800 }, { amuletPick: 1 },
+    { charm3: 10 }, { water: 5, sparks: 2000 }, { charm2: 20, sparks: 2000 }, { cocoon: 10, sparks: 2500 }, { amuletPick: 1 },
+    { charm2: 25, sparks: 2500 }, { water: 5, sparks: 2500 }, { charm2: 25, sparks: 2800 }, { water: 5, sparks: 2800 }, { look: '#065f46', amuletPick: 1, alatyr: 1 },
+    { charm3: 15 }, { water: 7, sparks: 3000 }, { charm2: 30, sparks: 3000 }, { cocoon: 10, sparks: 3500 }, { amuletPick: 1, charm3: 10 },
+    { charm2: 30, sparks: 3500 }, { water: 7, sparks: 3500 }, { charm2: 30, sparks: 3800 }, { water: 7, sparks: 3800 }, { amuletPick: 1, alatyr: 1 },
+    { charm3: 20 }, { water: 8, sparks: 4000 }, { charm2: 40, sparks: 4000 }, { cocoon: 10, sparks: 4500 }, { look: 'trail', amuletPick: 1, charm3: 20 },
   ],
   // награда ступени lvl (1…30): free — всем, gold — на Золотой тропе; копия — её можно менять
   passReward(track, lvl) { return { ...((track === 'gold' ? this.PASS_GOLD : this.PASS_FREE)[lvl - 1] || {}) }; },

@@ -2930,7 +2930,7 @@
     eq(League.prize(3).sparks, 12000, 'сундук сезона — ✦ 4 000 за лигу');
   });
   test('5.1.21: Знаки Ордена — опыт за ступени ×10, у каждого знака картинка, а не буква', () => {
-    eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,15000,50000', 'бронза ×2, серебро и золото ×10');
+    eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,10000,20000', 'бронза, серебро, золото');
     MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
   });
   test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
@@ -2949,20 +2949,25 @@
   test('5.1.21: Сезонная тропа — таблица наград 30 ступеней', () => {
     const P = Rules.PASS, j = (t, l) => JSON.stringify(Rules.passReward(t, l));
     eq(Rules.PASS_FREE.length, P.LEVELS); eq(Rules.PASS_GOLD.length, P.LEVELS);
-    // ступени из примера
-    eq(j('free', 1), JSON.stringify({ charm: 20, sparks: 2500 })); eq(j('free', 5), JSON.stringify({ incense: 5, sparks: 4000 }));
-    eq(j('free', 9), JSON.stringify({ water: 10, sparks: 5000 })); eq(j('free', 10), JSON.stringify({ zlat: 50, sparks: 5000 }));
-    eq(j('free', 20), JSON.stringify({ amuletPick: 1, sparks: 7000 })); eq(Rules.passReward('free', 30).deadwater, 1);
+    // ступени из примера (по модели экономики: бесплатная — искры ÷3, обереги ÷3, мёд ÷4; Золотая — искры ÷2, Живая вода ÷3)
+    eq(j('free', 1), JSON.stringify({ charm: 7, sparks: 800 })); eq(j('free', 5), JSON.stringify({ incense: 5, sparks: 1300 }));
+    eq(j('free', 9), JSON.stringify({ water: 10, sparks: 1700 })); eq(j('free', 10), JSON.stringify({ zlat: 50, sparks: 1700, alatyr: 1 }));
+    eq(j('free', 20), JSON.stringify({ amuletPick: 1, sparks: 2300, alatyr: 1 })); eq(Rules.passReward('free', 30).deadwater, 1);
     eq(j('gold', 1), JSON.stringify({ charm2: 20 })); eq(j('gold', 5), JSON.stringify({ amuletPick: 1 })); eq(j('gold', 6), JSON.stringify({ charm3: 10 }));
-    eq(j('gold', 9), JSON.stringify({ cocoon: 10, sparks: 5000 })); eq(j('gold', 10), JSON.stringify({ amuletPick: 1 }));
+    eq(j('gold', 9), JSON.stringify({ cocoon: 10, sparks: 2500 })); eq(j('gold', 10), JSON.stringify({ amuletPick: 1 }));
     eq(JSON.stringify(Rules.passReward('free', 31)), '{}', 'за пределами — ничего');
-    // за сезон: бесплатная — ✦ 177 000 и 100 монет; Золотая — ✦ 116 500 и 6 амулетов на выбор
+    // за сезон: бесплатная — ✦ 58 900, 100 монет, 150 оберегов, 49 мёда и 3 осколка Алатыря; Золотая — ✦ 58 600, 50 Живой воды,
+    // 2 осколка и 6 амулетов на выбор
     const sum = (t, k) => Array.from({ length: P.LEVELS }, (_, i) => Rules.passReward(t, i + 1)[k] || 0).reduce((a, b) => a + b, 0);
-    eq(sum('free', 'sparks'), 177000); eq(sum('free', 'zlat'), 100); eq(sum('gold', 'sparks'), 116500); eq(sum('gold', 'amuletPick'), 6); eq(sum('gold', 'zlat'), 0);
-    // всё, что выдаётся, — известные награды (предметы, валюта, кокон, облик, амулет на выбор)
-    const known = k => ITEMS[k] || ['sparks', 'zlat', 'cocoon', 'look', 'amuletPick'].includes(k);
+    eq(sum('free', 'sparks'), 58900); eq(sum('free', 'zlat'), 100); eq(sum('free', 'charm'), 150); eq(sum('free', 'honey'), 49); eq(sum('free', 'alatyr'), 3);
+    eq(sum('gold', 'sparks'), 58600); eq(sum('gold', 'water'), 50); eq(sum('gold', 'alatyr'), 2); eq(sum('gold', 'amuletPick'), 6); eq(sum('gold', 'zlat'), 0);
+    // осколки Алатыря на экране Тропы видны (Loot.parts) и начисляются (S.giveRewards)
+    eq(Loot.parts({ alatyr: 1 }).length, 1, 'осколок — в награде ступени');
+    { const a0 = S.d.alatyr || 0; S.giveRewards({ alatyr: 1 }); eq(S.d.alatyr, a0 + 1, 'осколок начислен'); S.d.alatyr = a0; }
+    // всё, что выдаётся, — известные награды (предметы, валюта, осколки, кокон, облик, амулет на выбор)
+    const known = k => ITEMS[k] || ['sparks', 'zlat', 'alatyr', 'cocoon', 'look', 'amuletPick'].includes(k);
     ['free', 'gold'].forEach(t => { for (let l = 1; l <= P.LEVELS; l++) Object.keys(Rules.passReward(t, l)).forEach(k => ok(known(k), `${t} ${l}: ${k}`)); });
-    const r = Rules.passReward('free', 1); r.charm = 999; eq(Rules.passReward('free', 1).charm, 20, 'награда — копия, таблица не меняется');
+    const r = Rules.passReward('free', 1); r.charm = 999; eq(Rules.passReward('free', 1).charm, 7, 'награда — копия, таблица не меняется');
   });
   atest('5.1.15: Кампания, глава I — девять шагов по порядку: цели, награды, дух на выбор, Разлом кампании, Врата', async () => {
     const P = await newPlayer('cp-a', 55.7539, 37.6208, 'Кампанец', 'kapelka');
