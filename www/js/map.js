@@ -141,10 +141,10 @@ const MapView = {
   // локальный сервер разработки — файла карты мира у него нет) — с duholov.ru (CORS разрешён)
   tilesUrl() { return location.hostname === 'duholov.ru' ? this.TILES : 'https://duholov.ru/' + this.TILES; },
   // 4.10: облик карты — время суток по настоящему солнцу над игроком, время года и снег (зимой и в снегопад);
-  // в настройках можно закрепить день или ночь
+  // 5.1.26: только по солнцу над местом — закрепить день или ночь в настройках больше нельзя; телепорт меняет и время суток
   look() {
-    const theme = Cfg.s.mapTheme || 'auto', p = this.pos || { lat: 55.75, lng: 37.62 }, nav = typeof NavMap !== 'undefined';
-    const phase = theme === 'light' ? 'day' : theme === 'dark' ? 'night' : nav ? NavMap.phase(p.lat, p.lng) : U.isNight() ? 'night' : 'day';
+    const p = this.pos || { lat: 55.75, lng: 37.62 }, nav = typeof NavMap !== 'undefined';
+    const phase = U.phase(p.lat, p.lng);
     const season = nav ? NavMap.season() : 'summer', snow = season === 'winter' || !!(Sky.w && Sky.w.key === 'snow');
     return { phase, season, snow, night: phase === 'night' || phase === 'dusk', key: [phase, season, snow].join(':') };
   },

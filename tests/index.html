@@ -218,11 +218,11 @@
     ok(Rules.koMs({ sid: 'koschey' }) === 24 * 3600000 && Rules.koMs({ sid: 'ugolek' }) === 2 * 3600000, 'от 2 до 24 часов');
     S.setHp(sp, 1, t0); ok(!('hpf' in sp) && !('ko' in sp), 'здоровый — без лишних полей');
   });
-  test('Регионы (4.28): вещие птицы — по всему миру (часть света — их родина по легенде)', () => {
+  test('Регионы (4.28): вещие птицы — славянские духи, водятся на славянской родине (5.1.26)', () => {
     eq(W.region(37), 'west'); eq(W.region(60), 'center'); eq(W.region(130), 'east');
-    ok(W.local(SP.sirin, 37) && W.local(SP.sirin, 100) && W.local(SP.sirin, -74), 'Сирин');
-    ok(W.local(SP.gamayun, 130) && W.local(SP.gamayun, 37), 'Гамаюн');
-    ok(W.local(SP.ugolek, 130), 'обычные духи везде');
+    ok(W.home(SP.sirin, 55.75, 37.62) && W.home(SP.sirin, 55.03, 82.92) && !W.home(SP.sirin, 40.71, -74), 'Сирин — в Москве и Новосибирске, не в Нью-Йорке');
+    ok(W.home(SP.gamayun, 43.12, 131.89) && !W.home(SP.gamayun, 35.68, 139.69), 'Гамаюн — во Владивостоке, не в Токио');
+    ok(W.home(SP.ugolek, 55.75, 37.62) && !W.home(SP.ugolek, 37.98, 23.73), 'Уголёк — дома, не в Афинах');
   });
   // Реальные объекты: подкладываем набор «с сервера»
   const fakePois = [];
@@ -878,15 +878,15 @@
     const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35],
       [37.98, 23.73], [59.91, 10.75], [30.04, 31.24], [39.9, 116.4], [19.43, -99.13]];
     SPECIES.forEach(s => {
-      const wild = !s.legend && PTS.some(([la, ln]) => W.local(s, ln, la)), evo = SPECIES.some(x => x.evo === s.id);
+      const wild = !s.legend && PTS.some(([la, ln]) => W.home(s, la, ln)), evo = SPECIES.some(x => x.evo === s.id); // 5.1.26: на родине
       const rift = s.legend; // 4.24: легенды бывшей Летописи — тоже в разломах
       ok(wild || evo || rift, 'недостижим: ' + s.id);
     });
-    // где бы ни был Ловчий, духа чужих краёв (и не своего сезона) приведёт поручение: он либо здешний, либо гость
+    // сезонного духа не в свой сезон приведёт поручение на его родине (5.1.26: только там — гости тоже здешние)
     PTS.forEach(([la, ln]) => {
       const g = new Set(S.guests(la, ln).map(s => s.id));
-      SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season)).forEach(s =>
-        ok(g.has(s.id) !== (W.local(s, ln, la) && Ev.seasonal(s) > 0), `${s.id} в ${la},${ln}`));
+      SPECIES.filter(s => s.stage === 1 && !s.legend).forEach(s =>
+        ok(g.has(s.id) === (!!s.season && W.home(s, la, ln) && !(Ev.seasonal(s) > 0)), `${s.id} в ${la},${ln}`));
     });
   });
   test('Поручения (4.16): трудное поручение может привести гостя издалека', () => {
@@ -896,7 +896,7 @@
       const seq = [0.99, 0.5, 0.5, 0.1, 0.5]; let i = 0; Math.random = () => seq[i++ % seq.length];
       const t = S.makeTask({ lat: 55.75, lng: 37.62 }); eq(t.tier, 3); ok(t.guest, 'гость');
       ok(S.guests(55.75, 37.62).some(s => s.id === t.sid), 'гость — не здешний дух');
-      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].region && !SP[t2.sid].land && !SP[t2.sid].season, 'обычно — обычный дух');
+      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].season && SP[t2.sid].myth === 'slavic', 'обычно — здешний дух, не гость (5.1.26: с родины источника)');
       i = 0; seq[3] = 0.1; ok(!S.makeTask().guest, 'без места — без гостей');
     } finally { Math.random = m; S.d.level = lv; }
   });
@@ -1007,15 +1007,16 @@
     near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
     ok(!Cloud.configured() || typeof CLOUD_CONFIG.url === 'string', 'конфиг облака');
   });
-  test('Духи родных земель (4.28): у каждого края свой, а встречаются везде', () => {
+  test('Духи родных земель (4.28): у каждого края свой, водятся по всей славянской родине (5.1.26)', () => {
     const cities = [['Москва', 55.75, 37.62, 'center'], ['Калининград', 54.71, 20.51, 'center'], ['Мурманск', 68.97, 33.07, 'north'], ['Казань', 55.79, 49.12, 'volga'],
       ['Сочи', 43.59, 39.72, 'caucasus'], ['Екатеринбург', 56.84, 60.61, 'ural'], ['Новосибирск', 55.03, 82.92, 'siberia'], ['Владивосток', 43.12, 131.89, 'fareast']];
     cities.forEach(([n, lat, lng, land]) => eq(W.land(lat, lng), land, n));
     const lands = SPECIES.filter(s => s.land);
     eq(lands.length, Object.keys(LANDS).length, 'по духу на каждую землю');
     ok(lands.every(s => LANDS[s.land] && s.rar === 4 && Art.svgOf({ sid: s.id }).startsWith('<svg')), 'данные и рисунки');
-    // дух родной земли встречается в любом краю и за границей
-    cities.concat([['Нью-Йорк', 40.71, -74.0], ['Токио', 35.68, 139.69]]).forEach(([n, lat, lng]) => lands.forEach(s => eq(W.local(s, lng, lat), true, `${s.name} в ${n}`)));
+    // дух родной земли встречается в любом краю России, но не за границей славянской родины
+    cities.forEach(([n, lat, lng]) => lands.forEach(s => eq(W.home(s, lat, lng), true, `${s.name} в ${n}`)));
+    [['Нью-Йорк', 40.71, -74.0], ['Токио', 35.68, 139.69]].forEach(([n, lat, lng]) => lands.forEach(s => eq(W.home(s, lat, lng), false, `${s.name} в ${n}`)));
   });
   test('Советы (4.24 — без наставника): подсказки по делу и в нужном порядке', () => {
     const keep = S.d;
@@ -1104,11 +1105,71 @@
     S.d = d; S.migrate(); S.d = keep;
     ok(!('settings' in d) && !('lastPos' in d) && !('tutPos' in d));
   });
-  test('Время игры: «сегодня», час и ночь — в часовом поясе игрока', () => {
-    const t = Date.UTC(2026, 8, 23, 22, 30), saved = U.tz;
-    U.tz = 180; eq(U.today(t), '2026-9-24'); eq(U.hour(t), 1); ok(U.isNight(t), 'ночь в Москве');
-    U.tz = -300; eq(U.today(t), '2026-9-23'); eq(U.hour(t), 17); ok(!U.isNight(t), 'вечер в Нью-Йорке');
-    U.tz = saved;
+  test('Время игры (5.1.26): «сегодня» — в поясе игрока, час и ночь — по солнцу там, где Ловчий', () => {
+    const t = Date.UTC(2026, 8, 23, 22, 30), saved = U.tz, pos = MapView.pos;
+    try {
+      U.tz = 180; eq(U.today(t), '2026-9-24'); U.tz = -300; eq(U.today(t), '2026-9-23'); // календарь — по поясу игрока, где бы он ни стоял
+      eq(U.hour(t, 37.62), 1, 'в Москве — час ночи'); eq(U.hour(t, -74), 17, 'в Нью-Йорке — пять вечера'); eq(U.hour(t, 139.7), 7, 'в Токио — семь утра');
+      ok(U.isNight(t, 55.75, 37.62), 'ночь в Москве'); ok(!U.isNight(t, 35.68, 139.69), 'утро в Токио');
+      ok(U.isNight(t, 40.71, -74), 'в Нью-Йорке вечерние сумерки — для духов уже ночь (карта тёмная)');
+      ok(!U.isNight(Date.UTC(2026, 8, 23, 20, 45), 35.68, 139.69), 'в Токио рассвет — уже день');
+      // без места — там, где Ловчий на карте: шаг во Врата меняет и время суток
+      MapView.pos = { lat: 55.75, lng: 37.62 }; ok(U.isNight(t)); eq(U.hour(t), 1);
+      MapView.pos = { lat: 35.68, lng: 139.69 }; ok(!U.isNight(t)); eq(U.hour(t), 7);
+      eq(U.phase(35.68, 139.69, t), 'day'); eq(U.phase(55.75, 37.62, t), 'night');
+    } finally { U.tz = saved; MapView.pos = pos; }
+  });
+  test('Родина (5.1.26): дух водится только у себя на родине', () => {
+    const at = (la, ln) => W.homes(la, ln).join('+');
+    [['Москва', 55.75, 37.62, 'slavic'], ['Прага', 50.09, 14.42, 'slavic'], ['Тбилиси', 41.72, 44.79, 'slavic'], ['Ташкент', 41.31, 69.28, 'slavic'],
+      ['Афины', 37.98, 23.73, 'greek'], ['Рим', 41.89, 12.49, 'greek'], ['Мадрид', 40.42, -3.7, 'greek'], ['Лиссабон', 38.72, -9.14, 'greek'], ['Анкара', 39.93, 32.86, 'greek'],
+      ['Осло', 59.91, 10.74, 'norse'], ['Берлин', 52.52, 13.4, 'norse'], ['Вена', 48.21, 16.37, 'norse'], ['Рига', 56.95, 24.11, 'norse'], ['Рейкьявик', 64.14, -21.93, 'norse'],
+      ['Дублин', 53.35, -6.26, 'celtic'], ['Лондон', 51.51, -0.13, 'celtic'], ['Париж', 48.86, 2.35, 'celtic'], ['Брюссель', 50.85, 4.35, 'celtic'], ['Амстердам', 52.37, 4.9, 'celtic'],
+      ['Каир', 30.04, 31.24, 'egypt'], ['Кейптаун', -33.92, 18.42, 'egypt'], ['Дубай', 25.2, 55.27, 'egypt'], ['Тегеран', 35.69, 51.39, 'egypt'],
+      ['Пекин', 39.9, 116.4, 'china'], ['Сеул', 37.57, 126.98, 'china'], ['Токио', 35.68, 139.69, 'china'], ['Дели', 28.61, 77.21, 'china'], ['Сидней', -33.87, 151.21, 'china'],
+      ['Мехико', 19.43, -99.13, 'aztec'], ['Нью-Йорк', 40.71, -74.0, 'aztec'], ['Буэнос-Айрес', -34.6, -58.38, 'aztec']].forEach(([n, la, ln, m]) => eq(at(la, ln), m, n));
+    // у городов Атласа родина — из мифологий их части света, и у каждой мифологии есть город Атласа на родине
+    const seen = new Set();
+    for (const L of WORLD_LANDS) for (const p of Atlas.PLACES[L.id] || []) {
+      const h = W.homes(p[3], p[4]); h.forEach(m => seen.add(m));
+      ok(h.length && h.every(m => L.myths.includes(m)), `${p[1]}: ${h.join('+')} — не из ${L.id}`);
+    }
+    MYTH_KEYS.forEach(m => ok(seen.has(m), 'нет города Атласа на родине: ' + m));
+    ok(Object.keys(MYTH_HOME).every(m => MYTHS[m]), 'точки — только у мифологий игры');
+    // японская мифология ещё закрыта — в Японии китайские духи; откроется — будут и те и другие
+    const keys = MYTH_KEYS.slice();
+    try { MYTH_KEYS.push('japan'); eq(at(35.68, 139.69), 'china+japan', 'Токио с японской'); eq(at(39.9, 116.4), 'china', 'Пекин с японской'); }
+    finally { MYTH_KEYS.length = 0; MYTH_KEYS.push(...keys); }
+    // духи на карте — только здешние
+    [[37.98, 23.73, 'greek'], [19.43, -99.13, 'aztec'], [-33.87, 151.21, 'china']].forEach(([la, ln, m]) => {
+      const a = W.spawnsAround(la, ln, 1500).filter(x => !x.tut); ok(a.length > 20, 'духов мало: ' + a.length);
+      ok(a.every(x => SP[x.sid].myth === m), `не только ${m}: ` + a.filter(x => SP[x.sid].myth !== m).map(x => x.sid).join(','));
+    });
+    // поручение у источника и отряд Нави — тоже здешние
+    const m = Math.random, lv = S.d.level;
+    try {
+      S.d.level = 30;
+      for (let k = 0; k < 40; k++) { const t = S.makeTask({ lat: 37.98, lng: 23.73 }); ok(SP[t.sid].myth === 'greek' && !SP[t.sid].time, 'поручение в Афинах: ' + t.sid); }
+    } finally { Math.random = m; S.d.level = lv; }
+    for (let k = 0; k < 20; k++) ok(W.grunt({ invId: 'g' + k, lat: 59.91, lng: 10.74 }).team.every(x => SP[x.sid].myth === 'norse'), 'прислужник в Осло');
+  });
+  test('Ночные духи — только ночью, дневные — только днём (5.1.26)', () => {
+    const skew = U.skew, at = t => { U.skew = t - Date.now(); return W.spawnsAround(55.75, 37.62, 2500).filter(x => !x.tut); };
+    try {
+      const night = at(Date.UTC(2026, 9, 1, 21, 0)), day = at(Date.UTC(2026, 9, 1, 9, 30)); // в Москве 23:30 и полдень по солнцу
+      ok(night.length > 300 && day.length > 300, 'духов мало');
+      ok(!night.some(x => SP[x.sid].time === 'day'), 'ночью дневных нет');
+      ok(night.some(x => SP[x.sid].time === 'night'), 'ночью выходят ночные');
+      ok(!day.some(x => SP[x.sid].time === 'night'), 'днём ночных нет');
+      // дух не меняется, пока живёт на карте: через 5 минут те же клетки — те же духи
+      const a = at(Date.UTC(2026, 9, 1, 21, 0)), b = new Map(at(Date.UTC(2026, 9, 1, 21, 5)).map(x => [x.id, x.sid]));
+      ok(a.filter(x => b.has(x.id)).every(x => b.get(x.id) === x.sid), 'дух сменился за время жизни');
+      // рассвело — ночной уходит сразу, не дожидаясь конца своих 15 минут
+      const t0 = Date.UTC(2026, 9, 1, 2, 0); let dawn = t0;
+      while (U.isNight(dawn, 55.75, 37.62)) dawn += 60000; // первая минута дня в Москве
+      const before = at(dawn - 60000).filter(x => SP[x.sid].time === 'night'), after = new Set(at(dawn + 60000).map(x => x.id));
+      ok(before.length, 'перед рассветом есть ночные'); ok(before.every(x => !after.has(x.id)), 'на рассвете ночные ушли');
+    } finally { U.skew = skew; }
   });
   test('Разница прогресса: запись, удаление, добавление в начало и в конец', () => {
     const a = { x: 1, o: { y: 2, z: [1, 2, 3] }, j: [{ t: 1 }, { t: 2 }], s: [1, 2], del: 5, sp: [{ uid: 'a', lvl: 1 }, { uid: 'b', lvl: 2 }] };

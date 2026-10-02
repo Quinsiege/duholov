@@ -1716,13 +1716,13 @@ const GameCore = {
       this.readyTeam(team);
       this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
-      ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true };
+      ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, lat: e.lat, lng: e.lng, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true };
       return { invId: e.invId };
     },
     invEnd(a, ctx) {
       const b = this.endBattle(ctx, 'inv');
       if (!a.win) { this.woundTeam(b, a.hp); return { win: false }; }
-      const g = W.grunt({ invId: b.invId });
+      const g = W.grunt({ invId: b.invId, lat: b.lat, lng: b.lng }); // 5.1.26: отряд — из духов родины источника
       this.woundTeam(b, a.hp, Rules.duelMinLoss(this.team(b.team), g.team, g.speed), Duel.HPX); // 4.26: как на Капище
       this.plausibleDuel(ctx, b, g.team, g.speed);
       S.d.freed[b.invId] = true;

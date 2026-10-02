@@ -1460,8 +1460,6 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .set-ico.warn { background: rgba(251, 191, 36, .16); color: var(--gold2); }
 .set-chev { color: var(--muted); font-size: 22px; line-height: 1; margin-left: 4px; }
 .set-row .row-main { min-width: 0; }
-.set-row:has(.map-theme) { flex-wrap: wrap; }
-.set-row .seg.map-theme { flex: 1 0 calc(100% - 46px); margin-left: 46px; }
 .acc-linked .lg-ic { width: 34px; height: 34px; border-radius: 10px; background: #fff; }
 .acc-linked .lg-ic svg { width: 20px; height: 20px; }
 .acc-guest { background: rgba(251, 191, 36, .07); }

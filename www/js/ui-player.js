@@ -578,8 +578,6 @@ Object.assign(UI, {
       </div>
       ${sec(ru`Вид`)}
       <div class="list">
-        <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>
-          <div class="seg map-theme">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('tilt3d', 'map', ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`)}
         ${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}
         ${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}
@@ -624,12 +622,6 @@ Object.assign(UI, {
       Sfx.play('tap'); s.joySide = b.dataset.side; Cfg.save();
       U.$$('[data-side]', scr).forEach(x => x.classList.toggle('on', x === b));
       Walk.side();
-    });
-    scr.querySelector('.map-theme').addEventListener('click', e => {
-      const b = e.target.closest('[data-theme]'); if (!b) return;
-      s.mapTheme = b.dataset.theme; Cfg.save();
-      U.$$('[data-theme]', scr).forEach(x => x.classList.toggle('on', x === b));
-      MapView._look = null; MapView.setTiles();
     });
     // установка: кнопка PWA (если браузер предложил) и APK (если он собран и лежит рядом с сайтом)
     const pwa = scr.querySelector('.inst-pwa'), apk = scr.querySelector('.inst-apk');

@@ -532,7 +532,7 @@ const Atlas = {
     P.querySelectorAll('.at-tabs [data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === this.land));
     const myths = L ? L.myths.filter(m => MYTH_KEYS.includes(m) && MYTHS[m]).map(m => `<span class="at-myth" style="--c:${MYTHS[m].color}">${MYTHS[m].name}</span>`).join('') : '';
     box.className = 'at-info' + (L ? '' : ' hint');
-    box.innerHTML = L ? `<h3>${U.esc(L.name)}</h3>${myths ? `<div class="at-myths">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`После Перепутицы духи любых мифологий встречаются везде.`}</small>`}`
+    box.innerHTML = L ? `<h3>${U.esc(L.name)}</h3>${myths ? `<div class="at-myths">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`Каждый дух водится только у себя на родине — здесь встретишь духов этих мифологий.`}</small>`}`
       : `<p>${first ? ru`Поверни глобус пальцем и коснись материка — там и начнётся твой путь Ловчего.` : ru`Поверни глобус пальцем и коснись материка, чтобы выбрать, куда шагнуть.`}</p>`;
     box.scrollTop = 0; this.more(box);
     P.querySelector('.at-go').disabled = !L || !!L.cold;

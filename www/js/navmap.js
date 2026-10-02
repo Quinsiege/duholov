@@ -61,22 +61,7 @@ const NavMap = {
   },
 
   /* ---------- время суток и сезон ---------- */
-  // высота солнца над горизонтом, градусы (приближённая формула — точности в пару градусов хватает)
-  sun(lat, lng, t = Date.now()) {
-    const r = Math.PI / 180, n = t / 86400000 - 10957.5;
-    const L = (280.46 + 0.9856474 * n) % 360, g = (357.528 + 0.9856003 * n) % 360;
-    const lam = (L + 1.915 * Math.sin(g * r) + 0.02 * Math.sin(2 * g * r)) * r, eps = (23.439 - 4e-7 * n) * r;
-    const dec = Math.asin(Math.sin(eps) * Math.sin(lam)), ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam));
-    let ha = (((18.697374558 + 24.06570982441908 * n) % 24) * 15 + lng) * r - ra;
-    ha = Math.atan2(Math.sin(ha), Math.cos(ha));
-    const alt = Math.asin(Math.sin(lat * r) * Math.sin(dec) + Math.cos(lat * r) * Math.cos(dec) * Math.cos(ha)) / r;
-    return { alt, morning: ha < 0 };
-  },
-  // 'dawn' | 'day' | 'dusk' | 'night'
-  phase(lat, lng, t) {
-    const s = this.sun(lat, lng, t);
-    return s.alt >= 6 ? 'day' : s.alt < -6 ? 'night' : s.morning ? 'dawn' : 'dusk';
-  },
+  // 5.1.26: солнце и время суток — U.sun / U.phase (util.js): по ним же живут ночные духи, и на сервере тоже
   season(t = Date.now()) {
     const m = new Date(t).getMonth();
     return m === 11 || m <= 1 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn';

@@ -858,12 +858,15 @@ const S = {
     return { atk, def, hp: Math.round(R.T * R.TAPS * hit), pw: Math.round(pw * 100) / 100, rl: this.catchLvl() };
   },
   // Новое поручение (выдаёт сервер у источника): задание и дух, который встретится в награду
-  // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests)
+  // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests).
+  // 5.1.26: дух — здешний (родина источника) и без своего времени суток: ночные и дневные за поручение не приходят — встречу
+  // можно позвать когда угодно
   makeTask(pos) {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
     const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
     const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.season && T.rar.includes(s.rar)), guest = false;
+    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.season && !s.time && T.rar.includes(s.rar)), guest = false;
+    if (pos) { const here = sps.filter(s => W.home(s, pos.lat, pos.lng)); if (here.length) sps = here; }
     if (q.tier === 3 && pos && r() < this.GUEST) {
       const far = this.guests(pos.lat, pos.lng), fresh = far.filter(s => !(this.d.dex[s.id] && this.d.dex[s.id].caught));
       if (far.length) { sps = fresh.length ? fresh : far; guest = true; }
@@ -873,10 +876,10 @@ const S = {
     if (guest) t.guest = true;
     return t;
   },
-  /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
-     земель и сезонные не в свой сезон. Их приводят трудные поручения источников (шанс GUEST), так что поймать можно всех */
+  /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить. 5.1.26: сезонные духи этой родины не в свой сезон.
+     Их приводят трудные поручения источников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
-  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0)); },
+  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0) && W.home(s, lat, lng)); },
 
 
   /* ---------- 4.0: обучение новичка ---------- */

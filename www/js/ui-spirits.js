@@ -620,8 +620,8 @@ Object.assign(UI, {
             </div>`, true)}
           ${pane('where', `
             <div class="dt-rows">
-              ${row(ru`Время`, s.time === 'night' ? ru`чаще ночью` : s.time === 'day' ? ru`только днём` : ru`днём и ночью`)}
-              ${row(ru`Где`, s.legend ? ru`только в разломах` : ru`на карте, рядом с Ловчим`)}
+              ${row(ru`Время`, s.time === 'night' ? ru`только ночью` : s.time === 'day' ? ru`только днём` : ru`днём и ночью`)}
+              ${row(ru`Где`, s.legend ? ru`только в разломах` : ru`на карте — только на родине`)}
               ${s.region ? row(ru`Регион`, REGIONS[s.region].name, 'wrap') : ''}
               ${s.land ? row(ru`Земля`, `${LANDS[s.land].name}`, 'wrap') : ''}
               ${s.season ? row(ru`Сезон`, SEASON[s.season] || s.season, 'wrap') : row(ru`Сезон`, ru`круглый год`)}
@@ -640,7 +640,7 @@ Object.assign(UI, {
           ${pane('mine', mine.length ? `
             <div class="dt-rows">${mine.slice(0, 6).map(x => `<button class="dt-row dx-mine" data-uid="${x.uid}"><span>${x.shiny ? '<i class="dx-sh">✦</i> ' : ''}${U.esc(x.nick || s.name)} <small>${ru`ур. ${x.lvl}`}</small></span><b>${ru`СИЛА`} ${S.power(x)}</b></button>`).join('')}</div>
             ${mine.length > 6 ? `<div class="det-why">${ru`и ещё ${mine.length - 6} — в «Духах»`}</div>` : ''}`
-            : `<div class="dx-none"><b>${ru`Пока не пойман`}</b><small>${s.legend ? ru`Ищи его в разломах.` : (s.time === 'night' ? ru`Ищи его на карте — чаще ночью.` : s.time === 'day' ? ru`Ищи его на карте — только днём.` : ru`Ищи его на карте — днём и ночью.`)}</small></div>`)}
+            : `<div class="dx-none"><b>${ru`Пока не пойман`}</b><small>${s.legend ? ru`Ищи его в разломах.` : (s.time === 'night' ? ru`Ищи его на родине — только ночью.` : s.time === 'day' ? ru`Ищи его на родине — только днём.` : ru`Ищи его на родине — днём и ночью.`)}</small></div>`)}
         </div>
       </div>`;
     scr.addEventListener('click', e => {

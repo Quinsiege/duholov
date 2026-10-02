@@ -36,14 +36,48 @@ const U = {
   code(n, alpha = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789') { const b = new Uint8Array(n); crypto.getRandomValues(b); return Array.from(b, x => alpha[x % alpha.length]).join(''); },
 
   /* Время игры. Сервер и телефон должны считать одинаково: «сейчас» — по часам сервера
-     (U.skew — поправка телефона), «сегодня» и «ночь» — в часовом поясе игрока (U.tz, минуты к UTC). */
+     (U.skew — поправка телефона), «сегодня» — в часовом поясе игрока (U.tz, минуты к UTC).
+     5.1.26: время суток (ночь, час) — по солнцу там, где стоит Ловчий на карте, а не по часам телефона: телепорт меняет и его.
+     Календарь (сегодня, полночь, месяц) остаётся в поясе игрока — шаг во Врата не начинает новый день */
   skew: 0,
   tz: null,
   now() { return Date.now() + this.skew; },
   tzMin() { return this.tz != null ? this.tz : -new Date().getTimezoneOffset(); },
   // Дата, у которой getUTC*() — это местные дата и время игрока
   local(t = this.now()) { return new Date(t + this.tzMin() * 60000); },
-  hour(t) { return this.local(t).getUTCHours(); },
+  // где Ловчий: на телефоне — позиция на карте, на сервере — из запроса (MapView.pos у каждого запроса своя)
+  here() { const p = typeof MapView !== 'undefined' && MapView.pos; return p && Number.isFinite(+p.lat) && Number.isFinite(+p.lng) ? p : null; },
+  // местный солнечный час (0–23) на долготе lng (без места — по часам игрока)
+  hour(t = this.now(), lng) {
+    if (lng == null) { const p = this.here(); if (!p) return this.local(t).getUTCHours(); lng = +p.lng; }
+    return Math.floor((((t / 3600000 + lng / 15) % 24) + 24) % 24);
+  },
+  // высота солнца над горизонтом, градусы (приближённая формула — точности в пару градусов хватает); morning — до полудня
+  sun(lat, lng, t = this.now()) {
+    const r = Math.PI / 180, n = t / 86400000 - 10957.5;
+    const L = (280.46 + 0.9856474 * n) % 360, g = (357.528 + 0.9856003 * n) % 360;
+    const lam = (L + 1.915 * Math.sin(g * r) + 0.02 * Math.sin(2 * g * r)) * r, eps = (23.439 - 4e-7 * n) * r;
+    const dec = Math.asin(Math.sin(eps) * Math.sin(lam)), ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam));
+    let ha = (((18.697374558 + 24.06570982441908 * n) % 24) * 15 + lng) * r - ra;
+    ha = Math.atan2(Math.sin(ha), Math.cos(ha));
+    const alt = Math.asin(Math.sin(lat * r) * Math.sin(dec) + Math.cos(lat * r) * Math.cos(dec) * Math.cos(ha)) / r;
+    return { alt, morning: ha < 0 };
+  },
+  // 'dawn' | 'day' | 'dusk' | 'night' — по нему рисуется карта (MapView.look)
+  phase(lat, lng, t) {
+    const s = this.sun(lat, lng, t);
+    return s.alt >= 6 ? 'day' : s.alt < -6 ? 'night' : s.morning ? 'dawn' : 'dusk';
+  },
+  // ночь игры — когда карта тёмная: вечерние сумерки и ночь. Тогда выходят ночные духи, а дневные прячутся
+  isNight(t = this.now(), lat, lng) {
+    if (lat == null) {
+      const p = this.here();
+      if (!p) { const h = this.local(t).getUTCHours(); return h >= 20 || h < 6; }
+      lat = +p.lat; lng = +p.lng;
+    }
+    const ph = this.phase(lat, lng, t);
+    return ph === 'night' || ph === 'dusk';
+  },
   clamp: (v, a, b) => Math.max(a, Math.min(b, v)),
   lerp: (a, b, t) => a + (b - a) * t,
 
@@ -76,7 +110,6 @@ const U = {
   },
   fmtNum(n) { return Math.round(n).toLocaleString(I18N.locale); },
   today(t) { const d = this.local(t); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; },
-  isNight(t) { const h = this.hour(t); return h >= 20 || h < 6; },
 
   $(sel, root = document) { return root.querySelector(sel); },
   $$(sel, root = document) { return [...root.querySelectorAll(sel)]; },
