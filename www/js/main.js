@@ -68,22 +68,26 @@ window.addEventListener('load', () => {
     // 3.31: экран загрузки с прогрессом и подсказками — вместо заставки «Связь с Навью…»
     // 4.0.2: сначала — есть ли обновление: новая версия ставится прямо с экрана загрузки, до входа в игру
     Loader.show(ru`Проверяю обновления…`); Loader.set(6);
+    Cloud.warm(); // 5.1.24: библиотека облака и сохранённый вход готовятся, пока проверяется версия (раньше — только после неё)
     const upd = await Updater.boot();
     if (upd === 'apk') { Loader.hide(); Updater.promptApk(); return; }
     if (upd) { Loader.set(30, ru`Загружаю обновление ${upd.version}…`); await Updater.apply(upd.version); return; }
     Loader.show(ru`Связь с Навью…`); Loader.set(12);
+    // 5.1.24: подключённые сервисы входа и привязки спрашиваем вместе с прогрессом, а не следом за ним — на круг до сервера
+    // быстрее. Login.load не падает (без ответа — пустой список); не было связи — спросим заново после повтора
+    let auth = Game.on() ? Login.load() : null;
     if (Game.on()) {
       for (;;) {
         try { await Game.load(); break; }
-        catch (e) { Loader.hide(); await offline(e.message); Loader.show(ru`Связь с Навью…`); }
+        catch (e) { auth = null; Loader.hide(); await offline(e.message); Loader.show(ru`Связь с Навью…`); }
       }
       Metrics.tick(); // 5.1.22: вход уже есть — первая пачка аналитики сразу (короткий визит тоже будет виден)
     }
     Loader.set(45, ru`Прогресс загружен`);
     // вернулись со страницы сервиса входа — довести вход до конца (учётная запись могла смениться — тогда заново)
     if (Game.on() && !Game.moved) {
+      await (auth || Login.load()); // экрану входа нужны подключённые сервисы и привязки
       if (await Login.resume()) { location.reload(); return; }
-      await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
     Loader.set(58);
     Music.play('map'); // вход и знакомство — мелодия карты (зазвучит с первым касанием)

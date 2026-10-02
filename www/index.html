@@ -2,6 +2,28 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
+  <!-- 5.1.24: логотип, шрифты и их таблицы стилей (экран загрузки ждёт их) — первыми, раньше предзагрузки кода: на HTTP/1.1
+       у них общие 6 соединений с большими файлами, и экран загрузки появлялся позже -->
+  <link rel="preload" href="img/logo.webp" as="image" fetchpriority="high"><!-- 4.22: логотип экрана загрузки -->
+  <link rel="preload" href="vendor/fonts/ruslan-display-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="vendor/fonts/rubik.css?v=dev">
+  <link rel="stylesheet" href="vendor/fonts/display.css?v=dev">
+  <link rel="preload" href="vendor/fonts/rubik-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/fonts/rubik-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/fonts/rubik-cyrillic-900-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- 5.1.24: файлы, без которых игра не запустится, — качать сразу и одновременно. Таблицы стилей и скрипты стоят в <body>,
+       а дальше <meta> с CSP сканер предзагрузки Chrome не заглядывает: браузер узнавал о каждом следующем файле, только дочитав
+       предыдущий, и качал их по одному (на медленной сети — на 3–4 с дольше). Поэтому эти строки — до <meta> с CSP.
+       integrity и crossorigin — как у самих тегов (иначе файл скачается второй раз); js/app.min.js добавляет сборка (tools/web/build.mjs) -->
+  <link rel="preload" href="css/style.css?v=dev" as="style">
+  <link rel="preload" href="vendor/leaflet/leaflet.min.css?v=dev" as="style" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb">
+  <link rel="preload" href="vendor/leaflet/leaflet.min.js?v=dev" as="script" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO">
+  <link rel="preload" href="vendor/protomaps/protomaps-leaflet.min.js?v=dev" as="script" integrity="sha384-MGpcKoFpwlsD3g0mRTGa+mUiNM83M9BA3V3rpilRBZLPIpKO2qLuFODZbQGxvyXS">
+  <link rel="preload" href="js/version.js?v=dev" as="script">
+  <link rel="preload" href="js/i18n.js?v=dev" as="script">
+  <link rel="preload" href="vendor/supabase.min.js" as="script" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"><!-- подключает cloud.js (Cloud.LIB_SRI) -->
+  <!-- 5.1.24: соединение с сервером игры (DNS, TCP, TLS) — заранее, пока качается код: первый запрос к нему не ждёт рукопожатий -->
+  <link rel="preconnect" href="https://api.duholov.ru" crossorigin>
   <!-- CSP: чужие скрипты (в том числе внедрённые через данные игроков) не выполнятся; список адресов — все, к которым ходит игра -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://tile.openstreetmap.org https://api.duholov.ru https://api-test.duholov.ru; connect-src 'self' https://duholov.ru https://api.duholov.ru wss://api.duholov.ru https://api-test.duholov.ru wss://api-test.duholov.ru https://overpass-api.de https://overpass.private.coffee https://maps.mail.ru; media-src 'self' blob: data: https://duholov.ru; frame-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -12,18 +34,7 @@
   <title>Духолов</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/icon-192.png">
-  <link rel="preload" href="img/logo.webp" as="image" fetchpriority="high"><!-- 4.22: логотип экрана загрузки -->
-  <link rel="preload" href="vendor/fonts/ruslan-display-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="vendor/fonts/rubik.css?v=dev">
-  <link rel="stylesheet" href="vendor/fonts/display.css?v=dev">
-  <link rel="preload" href="vendor/fonts/rubik-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="vendor/fonts/rubik-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="vendor/fonts/rubik-cyrillic-900-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
-  <link rel="dns-prefetch" href="https://oauth.yandex.ru">
-  <link rel="dns-prefetch" href="https://passport.yandex.ru">
-  <link rel="dns-prefetch" href="https://accounts.google.com">
-  <link rel="dns-prefetch" href="https://oauth.telegram.org">
   <!-- 3.31.1: экран загрузки рисуется сразу — его стили здесь, а таблицы стилей игры подключаются в body после него -->
   <style>
     /* 4.4: экран загрузки — ночная сцена (как на экране входа, js/scene.js), знак Ордена, стеклянная панель с советом и прогрессом.
@@ -180,7 +191,7 @@
   <div id="toasts"></div>
 
   <script src="vendor/leaflet/leaflet.min.js?v=dev" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO"></script>
-  <script src="vendor/protomaps/protomaps-leaflet.min.js?v=dev" integrity="sha384-pAKrddYWxjFAIJwatOtmmtq9ebz3ZwluHCEg3pqOMpOporUofLqz/l5hs+0LAWaH"></script>
+  <script src="vendor/protomaps/protomaps-leaflet.min.js?v=dev" integrity="sha384-MGpcKoFpwlsD3g0mRTGa+mUiNM83M9BA3V3rpilRBZLPIpKO2qLuFODZbQGxvyXS"></script>
   <script src="js/version.js?v=dev"></script>
   <script src="js/i18n.js?v=dev"></script>
   <script src="js/config.js?v=dev"></script>

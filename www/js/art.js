@@ -354,13 +354,17 @@ const Art = (() => {
   }
   const of = sp => spirit(sp.sid, sp.shiny, sp.dark);
 
-  // Лёгкая версия для карты и списков: SVG один раз кодируется в data-URL и дальше
-  // рисуется как обычная картинка — вместо сотен DOM-узлов на каждого духа
+  // Лёгкая версия для карты и списков: SVG один раз превращается в картинку и дальше
+  // рисуется как обычная картинка — вместо сотен DOM-узлов на каждого духа.
+  // 5.1.24: адрес картинки — blob: (несколько десятков символов), а не data: — закодированный SVG на 20–60 КБ попадал
+  // в разметку каждой карточки и каждого значка: «Духи» на 200 духов — мегабайты текста в innerHTML. Без Blob — как раньше
   const imgCache = {};
+  const svgUrl = svg => typeof Blob === 'function' && typeof URL !== 'undefined' && URL.createObjectURL
+    ? URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })) : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   function img(sid, shiny, dark) {
     if (PICS[sid]) return picImg(sid, shiny, dark, 'art');
     const k = sid + (shiny ? ':s' : '') + (dark ? ':d' : '');
-    if (!imgCache[k]) imgCache[k] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(spirit(sid, shiny, dark));
+    if (!imgCache[k]) imgCache[k] = svgUrl(spirit(sid, shiny, dark)); // кэш на всю жизнь страницы: адрес не отзывается
     return `<img class="art" src="${imgCache[k]}" alt="" draggable="false">`;
   }
   const imgOf = sp => img(sp.sid, sp.shiny, sp.dark);

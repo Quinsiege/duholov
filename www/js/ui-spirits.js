@@ -22,6 +22,21 @@ Object.assign(UI, {
     if (k === 'best') { const iv = S.ivPct(x), st = this.ivStars(iv); return `<div class="card-pw card-iv"><i>${'★'.repeat(st)}<s>${'☆'.repeat(4 - st)}</s></i> <b>${iv}%</b></div>`; }
     return `<div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>`;
   },
+  // 5.1.19 (Бестиарий), 5.1.24 («Духи», команда, лечение): рисунки длинных списков — по мере прокрутки. В разметке вместо картинки —
+  // заглушка того же размера: lazyPic(вид, сияющий, омрачённый); рисунок появляется, когда клетка подходит к экрану (запас 300 px).
+  // Раньше «Духи» на 200 духов рисовали все рисунки разом — на слабом телефоне экран замирал на несколько секунд.
+  // lazyArt(коробка со списком, прокручиваемый корень) → наблюдатель (отключить, когда список перерисован или закрыт) или null
+  lazyPic(sid, shiny, dark) { return `<i class="art" data-art="${sid}"${shiny ? ' data-sh="1"' : ''}${dark ? ' data-dk="1"' : ''}></i>`; },
+  lazyArt(box, root) {
+    const pics = [...box.querySelectorAll('[data-art]')];
+    const draw = el => { if (el.isConnected) el.outerHTML = Art.img(el.dataset.art, !!el.dataset.sh, !!el.dataset.dk); };
+    if (typeof IntersectionObserver !== 'function') { pics.forEach(draw); return null; }
+    const io = new IntersectionObserver(es => {
+      for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); draw(e.target); }
+    }, { root, rootMargin: '300px 0px' });
+    pics.forEach(el => io.observe(el));
+    return io;
+  },
   collection() {
     Tut.ui('spirits'); // 4.0: шаг обучения
     const scr = this.screen(ru`Духи`, `
@@ -47,6 +62,8 @@ Object.assign(UI, {
       scr.querySelector('.sel-toggle').classList.toggle('on', selecting);
       U.$$('.card', scr).forEach(c => c.classList.toggle('selected', sel.has(c.dataset.uid)));
     };
+    let io = null; // 5.1.24: рисунки карточек — по мере прокрутки (UI.lazyArt)
+    scr._onClose = () => io && io.disconnect();
     const render = () => {
       let list = [...S.d.spirits];
       if (this.colEl !== 'all') list = list.filter(x => SP[x.sid].el === this.colEl);
@@ -55,16 +72,19 @@ Object.assign(UI, {
       scr.querySelector('.head-extra').textContent = `${S.d.spirits.length} ${U.plural(S.d.spirits.length, ru`дух`, ru`духа`, ru`духов`)}`;
       U.$$('[data-sort]', scr).forEach(b => b.classList.toggle('on', b.dataset.sort === this.colSort));
       U.$$('[data-el]', scr).forEach(b => b.classList.toggle('on', b.dataset.el === this.colEl));
-      scr.querySelector('.grid').innerHTML = list.map(x => `
+      const grid = scr.querySelector('.grid');
+      grid.innerHTML = list.map(x => `
         <button class="card el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'}" data-uid="${x.uid}">
           ${x.fav ? `<span class="fav">${this.I.star}</span>` : ''}
           ${S.d.buddy && S.d.buddy.uid === x.uid ? '<span class="buddy-mark">♥</span>' : ''}
           ${x.amulet ? `<span class="am-mark" style="background:${AMULETS[x.amulet].color}"></span>` : ''}
           ${x.stars ? `<span class="aw-mark">★${x.stars}</span>` : ''}
           ${this.colTop(x, this.colSort)}
-          <div class="card-art">${Art.imgOf(x)}</div>
+          <div class="card-art">${this.lazyPic(x.sid, x.shiny, x.dark)}</div>
           <div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}
         </button>`).join('') || `<div class="empty">${ru`Пока никого. Пройдись по карте — духи ждут!`}</div>`;
+      if (io) io.disconnect();
+      io = this.lazyArt(grid, scr.querySelector('.screen-body'));
       updateBar();
     };
     scr.addEventListener('click', e => {
@@ -163,9 +183,11 @@ Object.assign(UI, {
     if (!list.length) { this.toast(rev ? ru`Духов без сил нет` : ru`Все духи здоровы`); return; }
     const m = this.modal({ title: ru`${ITEMS[k].name}: кого лечить?`, cls: 'team-modal',
       html: `<div class="grid cards team-grid">${list.map(x => `<button class="card el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'}" data-uid="${x.uid}"><div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
-        <div class="card-art">${Art.imgOf(x)}</div><div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
+        <div class="card-art">${this.lazyPic(x.sid, x.shiny, x.dark)}</div><div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
       buttons: [{ label: ru`Закрыть` }] });
-    m.querySelector('.team-grid').addEventListener('click', async e => {
+    const grid = m.querySelector('.team-grid');
+    this.lazyArt(grid, grid); // 5.1.24: рисунки — по мере прокрутки (список прокручивается сам)
+    grid.addEventListener('click', async e => {
       const c = e.target.closest('.card'); if (!c) return;
       const sp = S.findSpirit(c.dataset.uid), err = S.canHeal(sp, k);
       if (err) { this.toast(err); return; }
@@ -182,10 +204,11 @@ Object.assign(UI, {
       title: ru`Команда из трёх духов`, cls: 'team-modal',
       html: `<p class="small">${ru`Выбери до трёх духов. Совет: бери стихии, которые сильнее противника.`}</p><div class="grid cards team-grid">${list.map(x => `
         <button class="card el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'}" data-uid="${x.uid}"><div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
-        <div class="card-art">${Art.imgOf(x)}</div><div class="card-name">${Art.elIcon(SP[x.sid].el, 14)} ${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
+        <div class="card-art">${this.lazyPic(x.sid, x.shiny, x.dark)}</div><div class="card-name">${Art.elIcon(SP[x.sid].el, 14)} ${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
       buttons: [{ label: ru`Сильнейшие`, fn: async () => { if (await Game.try('team', { uids: [] })) done(); } },
         { label: ru`Готово`, cls: 'primary', fn: async () => { if (await Game.try('team', { uids: chosen })) done(); } }],
     });
+    this.lazyArt(m.querySelector('.team-grid'), m.querySelector('.team-grid')); // 5.1.24: рисунки — по мере прокрутки (все духи — как на экране «Духи»)
     const mark = () => U.$$('.card', m).forEach(c => { const i = chosen.indexOf(c.dataset.uid); c.classList.toggle('selected', i >= 0); c.dataset.n = i >= 0 ? i + 1 : ''; });
     m.querySelector('.team-grid').addEventListener('click', e => {
       const c = e.target.closest('.card'); if (!c) return;
@@ -543,16 +566,9 @@ Object.assign(UI, {
         return `<button class="dex-cell ${cls} el-${s.el}${mf !== 'all' && s.myth !== mf ? ' hidden' : ''}" data-sid="${s.id}" data-m="${s.myth}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${d.seen ? `<i class="art" data-art="${s.id}"></i>` : '<span class="dx-q">?</span>'}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
       }).join('')}</div>`, 'dex-screen');
     // 5.1.19: рисунки ячеек — по мере прокрутки: видов стало 441, и все разом рисовались до полутора секунд на слабом телефоне.
-    // Ячейки скрытых мифологий не пересекаются с экраном — их рисунки появятся, когда мифологию выберут
-    const pics = [...scr.querySelectorAll('[data-art]')], draw = el => { if (el.isConnected) el.outerHTML = Art.img(el.dataset.art); };
-    if (typeof IntersectionObserver !== 'function') pics.forEach(draw);
-    else {
-      const io = new IntersectionObserver(es => {
-        for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); draw(e.target); }
-      }, { root: scr.querySelector('.screen-body'), rootMargin: '300px 0px' });
-      pics.forEach(el => io.observe(el));
-      scr._onClose = () => io.disconnect();
-    }
+    // Ячейки скрытых мифологий не пересекаются с экраном — их рисунки появятся, когда мифологию выберут. 5.1.24: общий UI.lazyArt
+    const io = this.lazyArt(scr, scr.querySelector('.screen-body'));
+    if (io) scr._onClose = () => io.disconnect();
     scr.addEventListener('click', e => {
       const mb = e.target.closest('[data-myth]');
       if (mb) {

@@ -4011,7 +4011,7 @@
     const sw = await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text());
     ok(sw.includes('k !== SFX_CACHE'), 'sw.js: кэш звуков не удаляется при обновлении');
     const at = sw.indexOf("includes('/sfx/')");
-    ok(at > 0 && at < sw.indexOf('[?&]v=\\d'), 'sw.js: правило для звуков — раньше правила «?v=цифра»');
+    ok(at > 0 && at < sw.indexOf('[?&]v=\\d/.test(url.search)'), 'sw.js: правило для звуков — раньше правила «?v=цифра»'); // 5.1.24: то же выражение есть и у установки (installMode)
   });
   test('Звук: Sfx.play и Sfx.element не падают без AudioContext', () => {
     const was = { ctx: Sfx.ctx, A: window.AudioContext, W: window.webkitAudioContext };
@@ -4092,6 +4092,133 @@
       Music.duck(1);
       eq(calls.length, 0, 'музыка на паузе — не трогаем');
     } finally { Sfx.ctx = was.ctx; Music.cur = was.cur; }
+  });
+
+  /* ---------- 5.1.24: быстрый запуск на слабых телефонах ---------- */
+  const frames = (n = 2) => new Promise(r => { const f = () => (--n > 0 ? requestAnimationFrame(f) : setTimeout(r, 30)); requestAnimationFrame(f); });
+  const waitFor = async (cond, ms = 2000) => { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > ms) return false; await frames(1); } return true; };
+  atest('5.1.24: «Духи» — рисунки карточек по мере прокрутки, адрес картинки — blob:', async () => {
+    const keep = { spirits: S.d.spirits, tut: S.d.tut, colSort: UI.colSort, colEl: UI.colEl };
+    const css = document.createElement('style'); // своя разметка экрана: прокручиваемое тело, карточки по 120 px
+    css.textContent = '.col-screen{position:fixed;left:0;top:0;width:360px;height:400px;display:flex;flex-direction:column;background:#120c24}'
+      + '.col-screen .screen-body{flex:1;overflow:auto}.col-screen .card{display:block;width:100%;height:120px}.col-screen .art{display:block;width:78px;height:78px}';
+    document.head.appendChild(css);
+    let scr = null;
+    try {
+      S.d.tut = 0; UI.colSort = 'power'; UI.colEl = 'all';
+      S.d.spirits = SPECIES.slice(0, 40).map((s, i) => Object.assign(S.makeSpirit(s.id, 10, 'lazy' + i), { shiny: i === 1 }));
+      UI.collection();
+      scr = [...document.querySelectorAll('.col-screen')].pop();
+      eq(scr.querySelectorAll('.card').length, 40, 'карточек:');
+      eq(scr.querySelectorAll('.card-art img').length, 0, 'сразу — ни одной картинки, только заглушки:');
+      eq(scr.querySelectorAll('.card-art i.art[data-art]').length, 40, 'заглушек:');
+      ok(scr.querySelector('.card-art i.art[data-sh="1"]'), 'сияющий дух помечен в заглушке');
+      ok(await waitFor(() => scr.querySelector('.card-art img')), 'видимые карточки получили рисунки');
+      const drawn = scr.querySelectorAll('.card-art img').length;
+      ok(drawn > 0 && drawn < 40, `рисунки — только у карточек у экрана: ${drawn} из 40`);
+      ok([...scr.querySelectorAll('.card-art img')].every(im => im.src.startsWith('blob:')), 'адрес картинки — blob:, не data:');
+      const body = scr.querySelector('.screen-body'), last = () => [...scr.querySelectorAll('.card')].pop();
+      ok(!last().querySelector('img'), 'последняя карточка ещё без рисунка');
+      body.scrollTop = body.scrollHeight;
+      ok(await waitFor(() => last().querySelector('img')), 'прокрутили вниз — последняя карточка с рисунком');
+      // другая сортировка — список заново, рисунки снова по мере прокрутки
+      scr.querySelector('[data-sort="new"]').click();
+      eq(scr.querySelectorAll('.card-art i.art[data-art]').length, 40, 'после сортировки — снова заглушки');
+      ok(await waitFor(() => scr.querySelector('.card-art img')), 'и снова рисунки у экрана');
+    } finally {
+      if (scr) { scr._close(); scr.remove(); }
+      css.remove();
+      Object.assign(S.d, { spirits: keep.spirits, tut: keep.tut }); UI.colSort = keep.colSort; UI.colEl = keep.colEl;
+    }
+  });
+  test('5.1.24: Art.img — адрес blob: один на вид (кэш), сияющий — свой', () => {
+    const a = Art.img('kapelka'), b = Art.img('kapelka'), c = Art.img('kapelka', true);
+    const src = h => (/src="([^"]+)"/.exec(h) || [])[1] || '';
+    ok(src(a).startsWith('blob:'), 'blob: — ' + src(a).slice(0, 30));
+    eq(src(a), src(b), 'тот же вид — тот же адрес:');
+    ok(src(c) !== src(a), 'сияющий — другой рисунок');
+    ok(a.length < 200, `разметка картинки короткая: ${a.length} символов`);
+  });
+  atest('5.1.24: карта — у каждого куска pmtiles свой адрес (?r=начало-длина), заголовок Range прежний', async () => {
+    if (typeof protomapsL === 'undefined') await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '../www/vendor/protomaps/protomaps-leaflet.min.js'; s.onload = res; s.onerror = () => rej(new Error('нет protomaps-leaflet.min.js')); document.head.appendChild(s); });
+    const was = window.fetch, calls = [];
+    window.fetch = async (url, opt) => { calls.push({ url: String(url), range: opt && opt.headers && opt.headers.get('range') }); return new Response(new Uint8Array(50), { status: 206, headers: { 'Content-Length': '50', 'ETag': '"t1"' } }); };
+    try {
+      const src = new protomapsL.PmtilesSource('https://duholov.ru/tiles/world-test.pmtiles', false).p.source;
+      const r = await src.getBytes(1000, 50);
+      eq(calls.length, 1, 'запросов:');
+      eq(calls[0].url, 'https://duholov.ru/tiles/world-test.pmtiles?r=1000-50', 'адрес куска:');
+      eq(calls[0].range, 'bytes=1000-1049', 'Range:');
+      eq(r.data.byteLength, 50, 'данные куска:');
+      await new protomapsL.PmtilesSource('https://x.test/a.pmtiles?k=1', false).p.source.getBytes(0, 16384);
+      eq(calls[1].url, 'https://x.test/a.pmtiles?k=1&r=0-16384', 'адрес уже с параметром — через &:');
+    } finally { window.fetch = was; }
+  });
+  atest('5.1.24: SRI — хэши библиотек верны, предзагрузка в head до CSP и с теми же integrity, preconnect к серверу игры', async () => {
+    const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
+    const sha = async p => 'sha384-' + btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-384', await fetch('../www/' + p + '?t=' + Date.now()).then(r => r.arrayBuffer())))));
+    const tags = [...html.matchAll(/<(?:script|link)\b[^>]*?(?:src|href)="([^"?]+)[^"]*"[^>]*?integrity="([^"]+)"[^>]*>/g)].map(m => ({ path: m[1], sri: m[2], tag: m[0] }));
+    ok(tags.length >= 7, 'тегов с integrity: ' + tags.length); // 4 предзагрузки + стили и два скрипта карты
+    for (const t of tags) eq(t.sri, await sha(t.path), t.path + ':');
+    eq(Cloud.LIB_SRI, await sha('vendor/supabase.min.js'), 'cloud.js LIB_SRI:');
+    const pre = p => tags.find(t => t.path === p && t.tag.includes('rel="preload"'));
+    ['css/style.css', 'vendor/leaflet/leaflet.min.css', 'vendor/leaflet/leaflet.min.js', 'vendor/protomaps/protomaps-leaflet.min.js', 'js/version.js', 'js/i18n.js', 'vendor/supabase.min.js']
+      .forEach(p => ok(html.includes(`<link rel="preload" href="${p}`), 'нет предзагрузки ' + p));
+    ok(pre('vendor/supabase.min.js').tag.includes('crossorigin="anonymous"'), 'библиотека облака: crossorigin="anonymous", как у тега из cloud.js');
+    if (html.includes('<script src="js/app.min.js')) ok(html.includes('<link rel="preload" href="js/app.min.js'), 'сборка: предзагрузка app.min.js');
+    const csp = html.indexOf('http-equiv="Content-Security-Policy"');
+    ok(csp > 0 && [...html.matchAll(/<link rel="preload" href="(?:css|js|vendor\/(?:leaflet|protomaps|supabase))/g)].every(m => m.index < csp), 'предзагрузка — до <meta> с CSP');
+    ok(/<link rel="preconnect" href="https:\/\/api\.duholov\.ru" crossorigin>/.test(html), 'preconnect к серверу игры');
+    ok(!html.includes('dns-prefetch'), 'без dns-prefetch к сервисам входа');
+  });
+  atest('5.1.24: service worker — установка не перекачивает файлы с меткой версии, без icon-512; кэши звуков и плиток живут', async () => {
+    // sw.js — в песочнице: свои self, caches и importScripts; метки версии — как после tools/stamp-version.sh
+    const src = (await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text())).split('?v=dev').join('?v=9.9.9-test');
+    const on = {}, put = [], deleted = [];
+    const fakeSelf = { addEventListener: (n, f) => { on[n] = f; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
+    const fakeCaches = { open: async () => ({ addAll: async reqs => { put.push(...reqs); } }), keys: async () => ['duholov-v9.9.8-old', 'duholov-v9.9.9-dev', 'duholov-tiles', 'duholov-sfx'], delete: async k => { deleted.push(k); return true; } };
+    new Function('self', 'importScripts', 'caches', 'APP_VERSION', src)(fakeSelf, () => {}, fakeCaches, '9.9.9');
+    let wait;
+    on.install({ waitUntil: p => { wait = p; } }); await wait;
+    ok(put.length > 8, 'установка кладёт в кэш основные файлы: ' + put.length);
+    const mode = end => { const r = put.find(q => q.url.endsWith(end)); ok(r, 'нет в кэше: ' + end); return r.cache; };
+    eq(mode('js/version.js?v=9.9.9-test'), 'default', 'файл с меткой версии — из HTTP-кэша:');
+    eq(mode('css/style.css?v=9.9.9-test'), 'default', 'стили с меткой версии:');
+    eq(mode('vendor/supabase.min.js'), 'no-cache', 'файл без метки — сверка с сервером:');
+    eq(mode('/index.html'), 'no-cache', 'страница — сверка с сервером:');
+    ok(!put.some(r => r.url.includes('icon-512')), 'icon-512.png игре не нужен — его нет в кэше');
+    ok(!put.some(r => r.cache === 'reload'), 'ничего не качается мимо HTTP-кэша');
+    on.activate({ waitUntil: p => { wait = p; } }); await wait;
+    eq(deleted.join(), 'duholov-v9.9.8-old', 'при обновлении удаляется только кэш прошлой версии (звуки и плитки — нет):');
+  });
+  test('5.1.24: обновление — удаляются кэши кода прошлых версий; кэш новой (его заполняет новый service worker), звуки и плитки остаются', () => {
+    eq(Updater.oldCaches(['duholov-v5.1.23-abc', 'duholov-v5.1.24-def', 'duholov-tiles', 'duholov-sfx', 'duholov-v5.1.2-x'], '5.1.24').join(), 'duholov-v5.1.23-abc,duholov-v5.1.2-x');
+    eq(Updater.oldCaches([], '5.1.24').length, 0);
+  });
+  atest('5.1.24: облако — один общий запуск клиента на параллельные запросы; ранний запуск без регистрации новичка', async () => {
+    const keep = { sb: Cloud.sb, cp: Cloud._cp, lib: Cloud._lib, sup: window.supabase, configured: Cloud.configured, client: Cloud.client, libF: Cloud.lib };
+    let made = 0;
+    const fakeSb = { auth: { getSession: async () => ({ data: { session: { user: { id: 'u' } } } }) } };
+    try {
+      window.supabase = { createClient: () => { made++; return fakeSb; } };
+      Cloud.sb = null; Cloud._cp = null;
+      const [a, b] = await Promise.all([Cloud.client(), Cloud.client()]);
+      eq(made, 1, 'клиент создан один раз:');
+      ok(a === fakeSb && b === fakeSb, 'оба запроса получили один и тот же клиент');
+      eq(await Cloud.client(), fakeSb, 'готовый клиент — сразу');
+      eq(made, 1, 'и больше не создаётся:');
+      // ранний запуск: есть сохранённый вход — готовим клиент; нет — только библиотеку (гостя не регистрируем до проверки версии)
+      const calls = [];
+      Cloud.configured = () => true;
+      Cloud.client = () => { calls.push('client'); return Promise.resolve(); };
+      Cloud.lib = () => { calls.push('lib'); return Promise.resolve(); };
+      const key = CLOUD_CONFIG.auth, saved = localStorage.getItem(key);
+      try {
+        localStorage.removeItem(key); Cloud.warm();
+        localStorage.setItem(key, '{}'); Cloud.warm();
+      } finally { if (saved == null) localStorage.removeItem(key); else localStorage.setItem(key, saved); }
+      eq(calls.join(), 'lib,client', 'без входа — библиотека, со входом — клиент:');
+    } finally { Object.assign(Cloud, { sb: keep.sb, _cp: keep.cp, _lib: keep.lib, configured: keep.configured, client: keep.client, lib: keep.libF }); window.supabase = keep.sup; }
   });
   /* ---------- вывод ---------- */
   (async () => {
