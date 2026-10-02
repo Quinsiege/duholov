@@ -236,7 +236,7 @@ const Duel = {
     this.showSide('me'); this.showSide('foe');
     this.render();
     (async () => {
-      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
+      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('count'); await U.wait(650); if (this.st !== st) return; }
       $('.raid-count').textContent = ru`Бой!`;
       await U.wait(450);
       $('.raid-count').remove();
@@ -326,7 +326,7 @@ const Duel = {
     let taps = 0;
     const orb = ov.querySelector('.charge-orb'), bar = ov.querySelector('.pbar i');
     orb.addEventListener('pointerdown', () => {
-      taps++; Sfx.play('tap'); U.vibrate(8);
+      taps++; Sfx.play('charge', { rate: 1 + Math.min(taps, 20) * 0.03 }); U.vibrate(8);
       orb.style.transform = `scale(${1 + Math.min(taps, 14) * 0.035})`;
       bar.style.width = Math.min(100, taps / 12 * 100) + '%';
     });
@@ -375,7 +375,7 @@ const Duel = {
       this.closeOverlay();
       const m = this.cur('me');
       let n;
-      if (useShield && st.me.shields > 0) { st.me.shields--; n = 1; this.hit('me', ru`Щит!`, 'dodged'); Sfx.play('hit'); }
+      if (useShield && st.me.shields > 0) { st.me.shields--; n = 1; this.hit('me', ru`Щит!`, 'dodged'); Sfx.play('shield'); }
       else {
         n = Raid.dmg(f.atk, m.def, this.CHARGE, f.el, m.el);
         this.hit('me', `−${n}`, 'hurt');

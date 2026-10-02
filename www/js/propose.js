@@ -95,7 +95,7 @@ const Propose = {
     el.querySelector('.cam-shot').onclick = async () => {
       if (!stream || !video.videoWidth) { UI.toast(ru`Камера ещё включается`); return; }
       if (!Walk.pos) { UI.toast(ru`Сначала выбери место в Атласе мира`); return; }
-      Sfx.play('hit'); U.vibrate(30);
+      Sfx.play('photo'); U.vibrate(30);
       const shot = { lat: Walk.pos.lat, lng: Walk.pos.lng, acc: 5, t: Date.now() };
       try {
         const blob = await this.capture(video, shot);
@@ -187,7 +187,7 @@ const Propose = {
         await this.submit({ blob, fix, pt, name, descr, kind });
         UI.closeScreen(scr);
         UI.toast(ru`Заявка отправлена! Модератор проверит её в ближайшее время.`, 'good');
-        Sfx.play('spin');
+        Sfx.play('send');
         this.screen();
       } catch (e) {
         UI.toast(ru`Не удалось отправить: ${U.esc(e.message)}`);

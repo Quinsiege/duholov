@@ -12,6 +12,7 @@ if (/[?&](u|ref)=/.test(location.search)) history.replaceState(null, '', locatio
 window.addEventListener('load', () => {
   Walk.load(); // 5.1.1: место Ловчего — когда все скрипты уже загружены
   if (Move.moving) return; // 4.1: старый адрес — браузер уже уходит на duholov.ru
+  Metrics.init(); // 5.1.22: своя аналитика — сессия и запуск (игроку не видна, сбои — молча)
   if (typeof L === 'undefined') {
     const bl = document.getElementById('bootLoader'); if (bl) bl.remove(); // экран загрузки из index.html не должен закрыть ошибку
     const f = U.el(`<div class="fatal"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class="btn primary">${ru`Повторить`}</button></div>`);
@@ -30,7 +31,7 @@ window.addEventListener('load', () => {
     // карта не нужна. Раньше он открывался через секунду после загрузки карты — и мелькали карта и HUD
     if (S.d && typeof Atlas !== 'undefined' && !Walk.placed()) { Atlas.open({ first: true }); Loader.hide(); }
     // 4.28: уже играющим — книга-вступление один раз, когда нет других окон; 5.1: у кого нет места в мире игры — Атлас (один раз)
-    Loader.waitMap().then(() => { Loader.hide(); Intro.later(); Walk.ensurePlaced(); });
+    Loader.waitMap().then(() => { Loader.hide(); Metrics.ev('ready', { ms: performance.now() }); Intro.later(); Walk.ensurePlaced(); });
     setTimeout(() => Propose.checkResults(), 6000);
     setInterval(() => { if (!document.hidden) Propose.checkResults(); }, 3 * 60000);
     setTimeout(() => Friends.sync(), 4000); // взаимная дружба и подарки
@@ -76,6 +77,7 @@ window.addEventListener('load', () => {
         try { await Game.load(); break; }
         catch (e) { Loader.hide(); await offline(e.message); Loader.show(ru`Связь с Навью…`); }
       }
+      Metrics.tick(); // 5.1.22: вход уже есть — первая пачка аналитики сразу (короткий визит тоже будет виден)
     }
     Loader.set(45, ru`Прогресс загружен`);
     // вернулись со страницы сервиса входа — довести вход до конца (учётная запись могла смениться — тогда заново)
