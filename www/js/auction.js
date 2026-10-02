@@ -109,7 +109,7 @@ const Auction = {
         const r = await Game.try('auctionBuy', { id: l.id });
         w._busy = false;
         if (!r) return;
-        w.close(); Sfx.play('catch'); U.vibrate([30, 40, 80]);
+        w.close(); Sfx.play('coins'); U.vibrate([30, 40, 80]);
         UI.toast(r.isNew ? ru`${U.esc(s.name)} теперь твой — новый вид в Бестиарии!` : ru`${U.esc(s.name)} теперь твой!`, 'good');
         UI.refreshHud(); done && done();
       } }],
@@ -183,7 +183,7 @@ const Auction = {
     const rows = got.map(g => g.type === 'sold'
       ? `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} продан${g.buyer ? ` (${U.esc(g.buyer)})` : ''}: +${this.priceHtml(g.cur, g.net)}`}${g.dep ? ' ' + ru`и залог ${this.priceHtml(g.cur, g.dep)}` : ''}</span></div>`
       : `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} вернулся: ${g.type === 'expired' ? ru`срок лота истёк` : ru`лот снят`}`}${g.lost ? ' · ' + ru`залог ${this.priceHtml(g.cur, g.lost)} не вернулся` : ''}</span></div>`).join('');
-    Sfx.play('spin');
+    Sfx.play('reward');
     UI.modal({ title: ru`Итоги аукциона`, html: `<div class="au-got">${rows}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
   },
   // выбор духа для продажи: сильнейшие сверху, избранных продать нельзя
@@ -223,7 +223,7 @@ const Auction = {
         const r = await Game.try('auctionSell', { uid: sp.uid, cur, price });
         w._busy = false;
         if (!r) return;
-        w.close(); Sfx.play('spin');
+        w.close(); Sfx.play('coins');
         UI.toast(ru`Дух выставлен на аукцион`, 'good'); done && done();
       } }],
     });

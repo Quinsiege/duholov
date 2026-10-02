@@ -47,7 +47,7 @@ const Book = {
   // порядок глав для «соседних» (кроме «Пути Ловчего» — у него свой экран)
   order() { return this.GROUPS.flatMap(g => g[1]).filter(id => id !== 'path'); },
   page(id, prev) {
-    Sfx.play('tap');
+    Sfx.play('page');
     const c = this.CH.find(x => x.id === id), ord = this.order(), i = ord.indexOf(id);
     let tabs = this.PAGES[id].call(this);
     if (!Array.isArray(tabs)) tabs = [['', tabs]];
@@ -64,7 +64,7 @@ const Book = {
     scr.addEventListener('click', e => {
       const t = e.target.closest('.bk-tabs [data-tab]');
       if (t) {
-        Sfx.play('tap');
+        Sfx.play('page');
         U.$$('.bk-tabs button', scr).forEach(x => x.classList.toggle('on', x === t));
         U.$$('.bk-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === t.dataset.tab));
         return;
@@ -233,7 +233,7 @@ const Book = {
           this.kv(Rules.PAY.map(p => [this.it('zlat', U.fmtNum(p.zlat)) + (p.bonus ? ` · +${p.bonus}%` : ''), `${U.fmtNum(p.rub)} ₽`])) +
           this.p(ru`Все покупки и чеки об оплате — в Казне → «Мои покупки и чеки». Условия покупки — в Публичной оферте.`)],
         [ru`Тропа`, this.p(ru`Сезон — календарный месяц: ${P.LEVELS} ступеней по ${P.PER} очков. Очки — за поимки, источники, прогулки, коконы и бои (как в общем деле Ордена). На каждой ступени — награда для всех.`) +
-          this.p(ru`<b>Золотая тропа</b> за ${U.fmtNum(P.GOLD)} монет открывает вторую награду на каждой ступени: золотые обереги, коконы, амулеты, монеты, плащ «Сезонная тропа» и Знак Тропы. С ${P.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`)]];
+          this.p(ru`<b>Золотая тропа</b> за ${U.fmtNum(P.GOLD)} монет открывает вторую награду на каждой ступени: серебряные и золотые обереги, Живую воду, искры, коконы, амулеты на выбор, плащ «Сезонная тропа» и Знак Тропы.`)]];
     },
     hunter() {
       const L = ['shop', 'swap', 'journal', 'trail', 'chat', 'rift', 'trophy', 'shield', 'gavel'].map(k => [k, UI.openLvl(k)]).sort((a, b) => a[1] - b[1]);

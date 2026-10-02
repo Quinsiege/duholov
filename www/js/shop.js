@@ -21,6 +21,8 @@ const Loot = {
       else if (k === 'zlat') out.push({ k, n, label: ru`${n} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}` });
       else if (k === 'cocoon') out.push({ k, n: 1, label: ru`Кокон ${n} км`, cocoon: n });
       else if (k === 'amulet') out.push({ k, n: 1, label: ru`Амулет` });
+      else if (k === 'amuletPick') out.push({ k: 'amulet', n: 1, label: ru`Амулет на выбор` }); // 5.1.21: Тропа — выбирает Ловчий
+      else if (k === 'alatyr' || k === 'rod') out.push({ k, n, label: n > 1 ? `${S.resName(k)} ×${n}` : S.resName(k) }); // 5.1.21: осколки на Тропе
       else if (k === 'look') { const x = LOOK.cloak.find(c => c.c === n) || LOOK.emblem.find(m => m.id === n) || LOOK.skin.find(k => `skin:${k.id}` === n) || LOOK.bg.find(k => `bg:${k.id}` === n) || LOOK.frame.find(k => `frame:${k.id}` === n); out.push({ k, n: 1, label: x ? x.name : ru`Облик`, look: n }); }
       else if (ITEMS[k]) out.push({ k, n, label: n > 1 ? `${ITEMS[k].name} ×${n}` : ITEMS[k].name });
     }
@@ -169,7 +171,7 @@ const Treasury = {
     const n = S.d && S.d.payNew;
     if (!n || this._noticed === n || document.querySelector('.onb, .loader:not(.out)')) return; // не поверх загрузки и входа
     this._noticed = n;
-    Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+    Sfx.play('pay'); U.vibrate([40, 60, 120]);
     UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}`}</span></div></div><p>${ru`Оплата прошла — монеты уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${this.info && this.info.play ? ru`Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.` : ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     UI.refreshHud();
     Game.act('payAck').then(() => { this._noticed = 0; }).catch(() => { this._noticed = 0; });
@@ -237,7 +239,7 @@ const Promo = {
         onDone && onDone();
       } catch (e) {
         err.textContent = e.message; err.hidden = false;
-        Sfx.play('miss'); U.vibrate(30);
+        Sfx.play('error'); U.vibrate(30);
         inp.select();
       } finally { busy = false; btn.disabled = false; }
     };
@@ -250,7 +252,7 @@ const Promo = {
   show(r) {
     const got = ((r && r.got) || []).map(x => x.k === 'zlat' ? { ...x, label: U.plural(x.n, ru`монета`, ru`монеты`, ru`монет`) }
       : x.k === 'sparks' ? { ...x, label: U.plural(x.n, ru`искра`, ru`искры`, ru`искр`) } : x);
-    Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+    Sfx.play('reward_big'); U.vibrate([40, 60, 120]);
     UI.modal({
       title: ru`Промокод активирован!`, cls: 'promo-modal promo-ok',
       html: `<div class="promo-code">${U.esc((r && r.code) || '')}</div>${got.length ? Loot.cells(got) : ''}
@@ -348,7 +350,7 @@ const Shop = {
         const n = +x.dataset.ex, E = Rules.EXCHANGE;
         const r = await Game.try('exchange', { n });
         if (!r) return;
-        Sfx.play('spin'); U.vibrate(20);
+        Sfx.play('coins'); U.vibrate(20);
         const z = r.zlat != null ? r.zlat : E.ZLAT * n; // 5.1.20: курс считает сервер (на шаге Кампании — свой)
         UI.toast(ru`Обмен: ✦ ${U.fmtNum(E.SPARKS * n)} → ${z} ${U.plural(z, ru`монета`, ru`монеты`, ru`монет`)}`, 'good');
         render(); UI.refreshHud();
@@ -369,7 +371,7 @@ const Shop = {
       UI.confirm(it.name, ru`Купить за ${this.price(it)}? После покупки останется ${this.price({ cur: it.cur, price: left })}.`, ru`Купить`, async () => {
         const r = await Game.try('shopBuy', deal ? { deal: true } : { id });
         if (!r) return;
-        Sfx.play('spin'); U.vibrate(20);
+        Sfx.play('coins'); U.vibrate(20);
         UI.modal({ title: ru`Покупка`, html: `<p>${ru`${U.esc(it.name)} — твоё!`}</p>${Loot.cells(r.got)}`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
         render(); UI.refreshHud();
       });
@@ -406,7 +408,7 @@ const Pass = {
       const month = this.MONTHS[+P.season.split('-')[1] - 1];
       const inLvl = L >= max ? per : P.pts - L * per;
       const cell = (track, l) => {
-        const rw = Loot.parts(Rules.passReward(track, l, S.d.level)), got = P.got[track].includes(l), open = L >= l, can = open && !got && (track === 'free' || P.gold);
+        const rw = Loot.parts(Rules.passReward(track, l)), got = P.got[track].includes(l), open = L >= l, can = open && !got && (track === 'free' || P.gold);
         const lock = track === 'gold' && !P.gold;
         return `<button class="pass-cell ${track} ${got ? 'got' : can ? 'can' : ''} ${lock ? 'lock' : ''}" data-t="${track}" data-l="${l}" ${can ? '' : 'disabled'}>
           <div class="pc-art">${Loot.art(rw[0].k, rw[0])}</div><small>${rw.map(x => x.label).join(' · ')}</small>${got ? '<i>✓</i>' : ''}</button>`;
@@ -418,7 +420,7 @@ const Pass = {
           <div class="pbar big"><i style="width:${inLvl / per * 100}%"></i></div>
           <small>${L >= max ? ru`Тропа пройдена!` : ru`${inLvl} / ${per} очков до ступени ${L + 1}`} · ${ru`очки — за поимки, источники, прогулки, коконы и бои`}</small>
           ${P.gold ? `<div class="pass-gold on">★ ${ru`Золотая тропа открыта`}</div>`
-            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: золотые обереги, коконы 10 км, амулеты, монеты, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`монета`, ru`монеты`, ru`монет`)}.`} ${S.d.level >= Rules.PASS.LATE ? ru`На твоём уровне вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.` : ru`С ${Rules.PASS.LATE} уровня вместо серебра — искры на усиление, золотые обереги, отвар и настои опыта.`}</small>`}
+            : `<button class="btn primary wide pass-buy">${ru`Открыть Золотую тропу`}<small><span class="cur">${Art.item('zlat')}</span> ${Rules.PASS.GOLD}</small></button><small class="pass-note">${ru`Золотые ступени: серебряные и золотые обереги, Живая вода, искры, коконы 10 км, амулеты на выбор, плащ «Сезонная тропа» и Знак Тропы. У тебя ${U.fmtNum(S.d.zlat || 0)} ${U.plural(S.d.zlat || 0, ru`монета`, ru`монеты`, ru`монет`)}.`}</small>`}
         </div>
         <div class="pass-cols"><span>${ru`Ступень`}</span><span>${ru`Для всех`}</span><span>★ ${ru`Золотая`}</span></div>
         ${Array.from({ length: max }, (_, i) => i + 1).map(l => `<div class="pass-row ${L >= l ? 'open' : ''}"><div class="pass-l">${l}</div>${cell('free', l)}${cell('gold', l)}</div>`).join('')}`;
@@ -427,23 +429,46 @@ const Pass = {
       if (e.target.closest('.pass-buy')) {
         UI.confirm(ru`Золотая тропа`, ru`Открыть Золотую тропу этого сезона за ${Rules.PASS.GOLD} монет? Золотые награды уже пройденных ступеней можно будет забрать сразу.`, ru`Открыть`, async () => {
           if (!await Game.try('passGold')) return;
-          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+          Sfx.play('pay'); U.vibrate([40, 60, 120]);
           UI.toast(ru`Золотая тропа открыта!`, 'good');
           render(); UI.refreshHud();
         });
         return;
       }
       const c = e.target.closest('.pass-cell'); if (!c || c.disabled || this._busy) return;
-      this._busy = true;
-      const r = await Game.try('passClaim', { lvl: +c.dataset.l, track: c.dataset.t });
-      this._busy = false;
-      if (!r) return;
-      Sfx.play('spin');
-      UI.modal({ title: ru`Ступень ${c.dataset.l}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
-      render(); UI.refreshHud();
+      const lvl = +c.dataset.l, track = c.dataset.t;
+      const claim = async am => {
+        this._busy = true;
+        const r = await Game.try('passClaim', { lvl, track, am });
+        this._busy = false;
+        if (!r) return false;
+        Sfx.play('reward');
+        UI.modal({ title: ru`Ступень ${lvl}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+        render(); UI.refreshHud();
+        return true;
+      };
+      // 5.1.21: на ступени амулет на выбор — сперва выбрать амулет
+      if (Rules.passReward(track, lvl).amuletPick) this.pickAmulet(lvl, claim);
+      else claim();
     });
     render();
     // прокрутить к первой незабранной ступени
     setTimeout(() => { const f = box.querySelector('.pass-cell.can') || box.querySelectorAll('.pass-row.open')[Math.max(0, Rules.passLevel(this.state().pts) - 1)]; if (f) f.scrollIntoView({ block: 'center' }); }, 100);
+  },
+  // 5.1.21: амулет на выбор за ступень — список амулетов, как при переплавке; выбрал — награда забирается (claim(id) → удалось ли)
+  pickAmulet(lvl, claim) {
+    const m = UI.modal({
+      title: ru`Выбери амулет`, cls: 'melt-modal',
+      html: `<p>${ru`Награда ступени ${lvl}: один амулет на выбор.`}</p>
+        <div class="list">${AMULET_KEYS.map(k => `<button class="row melt-to" data-k="${k}"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}</small></div><div class="row-side"><span class="cnt">×${S.d.amulets[k] || 0}</span></div></button>`).join('')}</div>`,
+      buttons: [{ label: ru`Отмена` }],
+    });
+    m.addEventListener('click', async e => {
+      const b = e.target.closest('.melt-to'); if (!b || m._busy) return;
+      m._busy = true;
+      const ok = await claim(b.dataset.k);
+      m._busy = false;
+      if (ok) m.close();
+    });
   },
 };

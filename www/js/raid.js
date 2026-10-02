@@ -259,7 +259,7 @@ const Raid = {
 
     // обратный отсчёт
     (async () => {
-      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
+      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('count'); await U.wait(650); if (this.st !== st) return; }
       $('.raid-count').textContent = ru`В бой!`;
       await U.wait(500);
       $('.raid-count').remove();
@@ -382,7 +382,7 @@ const Raid = {
     if (!ok || this.st !== st || st.over) return;
     st.waters++;
     m.cur = Math.min(m.lim, m.cur + m.max / 2);
-    Sfx.play('hatch');
+    Sfx.play('heal');
     st.$('.raid-water span').textContent = S.d.items.water || 0;
     this.render();
   },
