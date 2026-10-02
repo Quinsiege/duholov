@@ -24,6 +24,7 @@
   <script src="../www/js/version.js"></script>
   <script src="../www/js/i18n.js" data-lang="ru"></script>
   <script src="../www/js/config.js"></script>
+  <script src="../www/js/metrics.js"></script>
   <script src="../www/js/settings.js"></script>
   <script src="../www/js/myth-greek.js"></script>
   <script src="../www/js/myth-norse.js"></script>
@@ -217,11 +218,11 @@
     ok(Rules.koMs({ sid: 'koschey' }) === 24 * 3600000 && Rules.koMs({ sid: 'ugolek' }) === 2 * 3600000, 'от 2 до 24 часов');
     S.setHp(sp, 1, t0); ok(!('hpf' in sp) && !('ko' in sp), 'здоровый — без лишних полей');
   });
-  test('Регионы (4.28): вещие птицы — по всему миру (часть света — их родина по легенде)', () => {
+  test('Регионы (4.28): вещие птицы — славянские духи, водятся на славянской родине (5.1.26)', () => {
     eq(W.region(37), 'west'); eq(W.region(60), 'center'); eq(W.region(130), 'east');
-    ok(W.local(SP.sirin, 37) && W.local(SP.sirin, 100) && W.local(SP.sirin, -74), 'Сирин');
-    ok(W.local(SP.gamayun, 130) && W.local(SP.gamayun, 37), 'Гамаюн');
-    ok(W.local(SP.ugolek, 130), 'обычные духи везде');
+    ok(W.home(SP.sirin, 55.75, 37.62) && W.home(SP.sirin, 55.03, 82.92) && !W.home(SP.sirin, 40.71, -74), 'Сирин — в Москве и Новосибирске, не в Нью-Йорке');
+    ok(W.home(SP.gamayun, 43.12, 131.89) && !W.home(SP.gamayun, 35.68, 139.69), 'Гамаюн — во Владивостоке, не в Токио');
+    ok(W.home(SP.ugolek, 55.75, 37.62) && !W.home(SP.ugolek, 37.98, 23.73), 'Уголёк — дома, не в Афинах');
   });
   // Реальные объекты: подкладываем набор «с сервера»
   const fakePois = [];
@@ -877,15 +878,15 @@
     const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35],
       [37.98, 23.73], [59.91, 10.75], [30.04, 31.24], [39.9, 116.4], [19.43, -99.13]];
     SPECIES.forEach(s => {
-      const wild = !s.legend && PTS.some(([la, ln]) => W.local(s, ln, la)), evo = SPECIES.some(x => x.evo === s.id);
+      const wild = !s.legend && PTS.some(([la, ln]) => W.home(s, la, ln)), evo = SPECIES.some(x => x.evo === s.id); // 5.1.26: на родине
       const rift = s.legend; // 4.24: легенды бывшей Летописи — тоже в разломах
       ok(wild || evo || rift, 'недостижим: ' + s.id);
     });
-    // где бы ни был Ловчий, духа чужих краёв (и не своего сезона) приведёт поручение: он либо здешний, либо гость
+    // сезонного духа не в свой сезон приведёт поручение на его родине (5.1.26: только там — гости тоже здешние)
     PTS.forEach(([la, ln]) => {
       const g = new Set(S.guests(la, ln).map(s => s.id));
-      SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season)).forEach(s =>
-        ok(g.has(s.id) !== (W.local(s, ln, la) && Ev.seasonal(s) > 0), `${s.id} в ${la},${ln}`));
+      SPECIES.filter(s => s.stage === 1 && !s.legend).forEach(s =>
+        ok(g.has(s.id) === (!!s.season && W.home(s, la, ln) && !(Ev.seasonal(s) > 0)), `${s.id} в ${la},${ln}`));
     });
   });
   test('Поручения (4.16): трудное поручение может привести гостя издалека', () => {
@@ -895,7 +896,7 @@
       const seq = [0.99, 0.5, 0.5, 0.1, 0.5]; let i = 0; Math.random = () => seq[i++ % seq.length];
       const t = S.makeTask({ lat: 55.75, lng: 37.62 }); eq(t.tier, 3); ok(t.guest, 'гость');
       ok(S.guests(55.75, 37.62).some(s => s.id === t.sid), 'гость — не здешний дух');
-      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].region && !SP[t2.sid].land && !SP[t2.sid].season, 'обычно — обычный дух');
+      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].season && SP[t2.sid].myth === 'slavic', 'обычно — здешний дух, не гость (5.1.26: с родины источника)');
       i = 0; seq[3] = 0.1; ok(!S.makeTask().guest, 'без места — без гостей');
     } finally { Math.random = m; S.d.level = lv; }
   });
@@ -1006,15 +1007,16 @@
     near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
     ok(!Cloud.configured() || typeof CLOUD_CONFIG.url === 'string', 'конфиг облака');
   });
-  test('Духи родных земель (4.28): у каждого края свой, а встречаются везде', () => {
+  test('Духи родных земель (4.28): у каждого края свой, водятся по всей славянской родине (5.1.26)', () => {
     const cities = [['Москва', 55.75, 37.62, 'center'], ['Калининград', 54.71, 20.51, 'center'], ['Мурманск', 68.97, 33.07, 'north'], ['Казань', 55.79, 49.12, 'volga'],
       ['Сочи', 43.59, 39.72, 'caucasus'], ['Екатеринбург', 56.84, 60.61, 'ural'], ['Новосибирск', 55.03, 82.92, 'siberia'], ['Владивосток', 43.12, 131.89, 'fareast']];
     cities.forEach(([n, lat, lng, land]) => eq(W.land(lat, lng), land, n));
     const lands = SPECIES.filter(s => s.land);
     eq(lands.length, Object.keys(LANDS).length, 'по духу на каждую землю');
     ok(lands.every(s => LANDS[s.land] && s.rar === 4 && Art.svgOf({ sid: s.id }).startsWith('<svg')), 'данные и рисунки');
-    // дух родной земли встречается в любом краю и за границей
-    cities.concat([['Нью-Йорк', 40.71, -74.0], ['Токио', 35.68, 139.69]]).forEach(([n, lat, lng]) => lands.forEach(s => eq(W.local(s, lng, lat), true, `${s.name} в ${n}`)));
+    // дух родной земли встречается в любом краю России, но не за границей славянской родины
+    cities.forEach(([n, lat, lng]) => lands.forEach(s => eq(W.home(s, lat, lng), true, `${s.name} в ${n}`)));
+    [['Нью-Йорк', 40.71, -74.0], ['Токио', 35.68, 139.69]].forEach(([n, lat, lng]) => lands.forEach(s => eq(W.home(s, lat, lng), false, `${s.name} в ${n}`)));
   });
   test('Советы (4.24 — без наставника): подсказки по делу и в нужном порядке', () => {
     const keep = S.d;
@@ -1082,7 +1084,9 @@
     ok(all.every(x => x.k === 'medal' || ['sparks', 'zlat', 'rod'].includes(x.k) || ITEMS[x.k]), 'только валюта, предметы и знак — без обликов');
     eq(R.roman(14), 'XIV'); eq(R.roman(49), 'XLIX'); eq(R.title(2), 'Итоги сезона Алатыря II', 'номер не отрывается');
     // выдача: один раз на сезон; знак — за сезоны с вкладом от MEDAL_MIN
-    const keep = S.d; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    const keep = S.d, addXP0 = S.addXP; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    // 5.1.21: опыт за знаки (×10) поднимал уровень, и монеты нового уровня путали счёт — здесь проверяется только выдача сезона
+    S.addXP = () => 0;
     try {
       S.d.medals = {}; S.d.stats.alaSeasons = 0; S.d.sparks = 0; S.d.zlat = 0;
       const got = R.grant(S, 5, 31), z30 = T.filter(t => t.n <= 31).reduce((a, t) => a + (t.rw.zlat || 0), 0);
@@ -1093,7 +1097,7 @@
       eq(R.grant(S, 7, 0).length, 0); ok('7' in S.d.alaRw, 'пустой сезон тоже отмечен');
       R.grant(S, 8, 5); eq(S.d.stats.alaSeasons, 2);
       eq(R.grant(S, 0, 50).length, 0, 'сезона 0 нет'); eq(R.grant(S, 'x', 50).length, 0);
-    } finally { S.d = keep; }
+    } finally { S.d = keep; S.addXP = addXP0; }
   });
 
   test('Настройки и позиция на карте не входят в прогресс', () => {
@@ -1101,11 +1105,113 @@
     S.d = d; S.migrate(); S.d = keep;
     ok(!('settings' in d) && !('lastPos' in d) && !('tutPos' in d));
   });
-  test('Время игры: «сегодня», час и ночь — в часовом поясе игрока', () => {
-    const t = Date.UTC(2026, 8, 23, 22, 30), saved = U.tz;
-    U.tz = 180; eq(U.today(t), '2026-9-24'); eq(U.hour(t), 1); ok(U.isNight(t), 'ночь в Москве');
-    U.tz = -300; eq(U.today(t), '2026-9-23'); eq(U.hour(t), 17); ok(!U.isNight(t), 'вечер в Нью-Йорке');
-    U.tz = saved;
+  test('Время игры (5.1.26): «сегодня» — в поясе игрока, час и ночь — по солнцу там, где Ловчий', () => {
+    const t = Date.UTC(2026, 8, 23, 22, 30), saved = U.tz, pos = MapView.pos;
+    try {
+      U.tz = 180; eq(U.today(t), '2026-9-24'); U.tz = -300; eq(U.today(t), '2026-9-23'); // календарь — по поясу игрока, где бы он ни стоял
+      eq(U.hour(t, 37.62), 1, 'в Москве — час ночи'); eq(U.hour(t, -74), 17, 'в Нью-Йорке — пять вечера'); eq(U.hour(t, 139.7), 7, 'в Токио — семь утра');
+      ok(U.isNight(t, 55.75, 37.62), 'ночь в Москве'); ok(!U.isNight(t, 35.68, 139.69), 'утро в Токио');
+      ok(U.isNight(t, 40.71, -74), 'в Нью-Йорке вечерние сумерки — для духов уже ночь (карта тёмная)');
+      ok(!U.isNight(Date.UTC(2026, 8, 23, 20, 45), 35.68, 139.69), 'в Токио рассвет — уже день');
+      // без места — там, где Ловчий на карте: шаг во Врата меняет и время суток
+      MapView.pos = { lat: 55.75, lng: 37.62 }; ok(U.isNight(t)); eq(U.hour(t), 1);
+      MapView.pos = { lat: 35.68, lng: 139.69 }; ok(!U.isNight(t)); eq(U.hour(t), 7);
+      eq(U.phase(35.68, 139.69, t), 'day'); eq(U.phase(55.75, 37.62, t), 'night');
+    } finally { U.tz = saved; MapView.pos = pos; }
+  });
+  test('Родина (5.1.26): дух водится только у себя на родине', () => {
+    const at = (la, ln) => W.homes(la, ln).join('+');
+    [['Москва', 55.75, 37.62, 'slavic'], ['Прага', 50.09, 14.42, 'slavic'], ['Тбилиси', 41.72, 44.79, 'slavic'], ['Ташкент', 41.31, 69.28, 'slavic'],
+      ['Афины', 37.98, 23.73, 'greek'], ['Рим', 41.89, 12.49, 'greek'], ['Мадрид', 40.42, -3.7, 'greek'], ['Лиссабон', 38.72, -9.14, 'greek'], ['Анкара', 39.93, 32.86, 'greek'],
+      ['Осло', 59.91, 10.74, 'norse'], ['Берлин', 52.52, 13.4, 'norse'], ['Вена', 48.21, 16.37, 'norse'], ['Рига', 56.95, 24.11, 'norse'], ['Рейкьявик', 64.14, -21.93, 'norse'],
+      ['Дублин', 53.35, -6.26, 'celtic'], ['Лондон', 51.51, -0.13, 'celtic'], ['Париж', 48.86, 2.35, 'celtic'], ['Брюссель', 50.85, 4.35, 'celtic'], ['Амстердам', 52.37, 4.9, 'celtic'],
+      ['Каир', 30.04, 31.24, 'egypt'], ['Кейптаун', -33.92, 18.42, 'egypt'], ['Дубай', 25.2, 55.27, 'egypt'], ['Тегеран', 35.69, 51.39, 'egypt'],
+      ['Пекин', 39.9, 116.4, 'china'], ['Сеул', 37.57, 126.98, 'china'], ['Токио', 35.68, 139.69, 'china'], ['Дели', 28.61, 77.21, 'china'], ['Сидней', -33.87, 151.21, 'china'],
+      ['Мехико', 19.43, -99.13, 'aztec'], ['Нью-Йорк', 40.71, -74.0, 'aztec'], ['Буэнос-Айрес', -34.6, -58.38, 'aztec']].forEach(([n, la, ln, m]) => eq(at(la, ln), m, n));
+    // у городов Атласа родина — из мифологий их части света, и у каждой мифологии есть город Атласа на родине
+    const seen = new Set();
+    for (const L of WORLD_LANDS) for (const p of Atlas.PLACES[L.id] || []) {
+      const h = W.homes(p[3], p[4]); h.forEach(m => seen.add(m));
+      ok(h.length && h.every(m => L.myths.includes(m)), `${p[1]}: ${h.join('+')} — не из ${L.id}`);
+    }
+    MYTH_KEYS.forEach(m => ok(seen.has(m), 'нет города Атласа на родине: ' + m));
+    ok(Object.keys(MYTH_HOME).every(m => MYTHS[m]), 'точки — только у мифологий игры');
+    // японская мифология ещё закрыта — в Японии китайские духи; откроется — будут и те и другие
+    const keys = MYTH_KEYS.slice();
+    try { MYTH_KEYS.push('japan'); eq(at(35.68, 139.69), 'china+japan', 'Токио с японской'); eq(at(39.9, 116.4), 'china', 'Пекин с японской'); }
+    finally { MYTH_KEYS.length = 0; MYTH_KEYS.push(...keys); }
+    // духи на карте — только здешние
+    [[37.98, 23.73, 'greek'], [19.43, -99.13, 'aztec'], [-33.87, 151.21, 'china']].forEach(([la, ln, m]) => {
+      const a = W.spawnsAround(la, ln, 1500).filter(x => !x.tut); ok(a.length > 20, 'духов мало: ' + a.length);
+      ok(a.every(x => SP[x.sid].myth === m), `не только ${m}: ` + a.filter(x => SP[x.sid].myth !== m).map(x => x.sid).join(','));
+    });
+    // поручение у источника и отряд Нави — тоже здешние
+    const m = Math.random, lv = S.d.level;
+    try {
+      S.d.level = 30;
+      for (let k = 0; k < 40; k++) { const t = S.makeTask({ lat: 37.98, lng: 23.73 }); ok(SP[t.sid].myth === 'greek' && !SP[t.sid].time, 'поручение в Афинах: ' + t.sid); }
+    } finally { Math.random = m; S.d.level = lv; }
+    for (let k = 0; k < 20; k++) ok(W.grunt({ invId: 'g' + k, lat: 59.91, lng: 10.74 }).team.every(x => SP[x.sid].myth === 'norse'), 'прислужник в Осло');
+  });
+  test('Ночные духи — только ночью, дневные — только днём (5.1.26)', () => {
+    const skew = U.skew, at = t => { U.skew = t - Date.now(); return W.spawnsAround(55.75, 37.62, 2500).filter(x => !x.tut); };
+    try {
+      const night = at(Date.UTC(2026, 9, 1, 21, 0)), day = at(Date.UTC(2026, 9, 1, 9, 30)); // в Москве 23:30 и полдень по солнцу
+      ok(night.length > 300 && day.length > 300, 'духов мало');
+      ok(!night.some(x => SP[x.sid].time === 'day'), 'ночью дневных нет');
+      ok(night.some(x => SP[x.sid].time === 'night'), 'ночью выходят ночные');
+      ok(!day.some(x => SP[x.sid].time === 'night'), 'днём ночных нет');
+      // дух не меняется, пока живёт на карте: через 5 минут те же клетки — те же духи
+      const a = at(Date.UTC(2026, 9, 1, 21, 0)), b = new Map(at(Date.UTC(2026, 9, 1, 21, 5)).map(x => [x.id, x.sid]));
+      ok(a.filter(x => b.has(x.id)).every(x => b.get(x.id) === x.sid), 'дух сменился за время жизни');
+      // рассвело — ночной уходит сразу, не дожидаясь конца своих 15 минут
+      const t0 = Date.UTC(2026, 9, 1, 2, 0); let dawn = t0;
+      while (U.isNight(dawn, 55.75, 37.62)) dawn += 60000; // первая минута дня в Москве
+      const before = at(dawn - 60000).filter(x => SP[x.sid].time === 'night'), after = new Set(at(dawn + 60000).map(x => x.id));
+      ok(before.length, 'перед рассветом есть ночные'); ok(before.every(x => !after.has(x.id)), 'на рассвете ночные ушли');
+    } finally { U.skew = skew; }
+  });
+  test('Святилища и Разломы (5.1.26): в своих краях; учебный дух и хранитель Разлома Кампании — здешние', () => {
+    const at = (la, ln) => ({ id: 'osm:n' + Math.round(la * 1000) + ':' + Math.round(ln * 1000), lat: la, lng: ln, name: 'Место' });
+    [[55.75, 37.62, 'slavic'], [37.98, 23.73, 'greek'], [59.91, 10.74, 'norse'], [48.86, 2.35, 'celtic'], [30.04, 31.24, 'egypt'], [39.9, 116.4, 'china'], [19.43, -99.13, 'aztec']]
+      .forEach(([la, ln, m]) => {
+        for (let k = 0; k < 15; k++) {
+          const p = { ...at(la, ln), id: `osm:n${k}:${la}` };
+          eq(W.placeMyth(p), m, `место у ${la},${ln}`);
+          const s = W.shrineFor(p, 0); eq(s.myth, m); ok(MYTH_PLACES[m].gods.includes(s.god), 'бог святилища — этой мифологии');
+          const r = W.riftFor(p, 0, 500000 + k);
+          if (r && !r.fin) { eq(r.myth, m); ok(SP[r.boss].myth === m || r.boss === 'koschey', `босс Разлома у ${la},${ln}: ${r.boss}`); }
+        }
+      });
+    // без координат (удержания до 5.1.26) — как раньше, по id
+    ok(MYTH_KEYS.includes(W.placeMyth({ id: 'osm:n1' })), 'без координат — одна из мифологий');
+    // японская откроется — места Японии поделят китайская и японская
+    const keys = MYTH_KEYS.slice();
+    try {
+      MYTH_KEYS.push('japan');
+      const jp = [...Array(200)].map((_, k) => W.placeMyth({ id: 'osm:j' + k, lat: 35.68, lng: 139.69 })), nj = jp.filter(m => m === 'japan').length;
+      ok(jp.every(m => m === 'japan' || m === 'china') && nj > 60 && nj < 140, 'Япония — пополам: ' + nj);
+    } finally { MYTH_KEYS.length = 0; MYTH_KEYS.push(...keys); }
+    // дань клана: удержание с координатами — по родине места
+    const keep = S.d.clan;
+    try { S.d.clan = 'aztec'; ok(Clans.mine({ id: 'osm:x1', lat: 19.43, lng: -99.13 }) && !Clans.mine({ id: 'osm:x1', lat: 55.75, lng: 37.62 }), 'своё святилище — на родине клана'); }
+    finally { S.d.clan = keep; }
+    // учебный дух: в Москве — как в шаге, в Мехико — ацтекский малыш той же стихии; выбор постоянный
+    TUT.filter(s => s.kind === 'catch').forEach(st => {
+      eq(S.tutSid(st, 55.75, 37.62), st.sid, 'в Москве — ' + st.sid);
+      const a = SP[S.tutSid(st, 19.43, -99.13)];
+      ok(a.myth === 'aztec' && a.el === SP[st.sid].el && a.rar === 1 && a.stage === 1 && !a.time, 'в Мехико: ' + a.id);
+      eq(S.tutSid(st, 19.43, -99.13), a.id, 'тот же');
+      eq(SP[S.tutSid(st, 37.98, 23.73)].myth, 'greek', 'в Афинах');
+    });
+    // хранитель Разлома Кампании — из мифологии места; ушёл в другой край — хранитель новый
+    const d0 = S.d;
+    try {
+      S.d = JSON.parse(JSON.stringify(d0)); S.d.camp = { ch: 0, s: 0, p: [0], u: [], pick: null, t: 1, rn: 0 };
+      const r1 = S.campRiftPlace({ lat: 37.98, lng: 23.73 }); eq(SP[r1.boss].myth, 'greek', 'хранитель в Афинах');
+      const r2 = S.campRiftPlace({ lat: 37.99, lng: 23.74 }); eq(r2.boss, r1.boss, 'рядом — тот же');
+      const r3 = S.campRiftPlace({ lat: 19.43, lng: -99.13 }); eq(SP[r3.boss].myth, 'aztec', 'в Мехико — свой');
+    } finally { S.d = d0; }
   });
   test('Разница прогресса: запись, удаление, добавление в начало и в конец', () => {
     const a = { x: 1, o: { y: 2, z: [1, 2, 3] }, j: [{ t: 1 }, { t: 2 }], s: [1, 2], del: 5, sp: [{ uid: 'a', lvl: 1 }, { uid: 'b', lvl: 2 }] };
@@ -1131,10 +1237,9 @@
     ok(Rules.holdFresh({ t: now - 3600000 }, now) && !Rules.holdFresh({ t: now - H.MAX_H * 3600000 - 1 }, now), 'срок на посту');
     let free = 0; for (let i = 0; i < 4000; i++) if (Rules.shrineFree('osm:n' + i)) free++;
     near(free / 4000, H.FREE, 0.03, 'доля вольных Капищ');
-    const late = Rules.passReward('gold', 1, Rules.PASS.LATE), early = Rules.passReward('gold', 1, 10);
-    ok(early.charm2 && !late.charm2 && late.charm3, 'на поздних уровнях — золото вместо серебра'); ok(late.sparks > early.sparks, 'и больше искр');
-    ok(Rules.passReward('gold', 10, 30).xpbrew, 'настой опыта'); eq(Rules.passReward('gold', 30, 30).look, 'trail', 'Знак Тропы остаётся');
-    eq(JSON.stringify(Rules.passReward('free', 5, 30)), JSON.stringify(Rules.passReward('free', 5, 10)), 'бесплатная тропа — как была');
+    // 5.1.21: Тропа — одна таблица для всех уровней Ловчего (поздней Золотой тропы нет)
+    eq(JSON.stringify(Rules.passReward('gold', 1, 40)), JSON.stringify(Rules.passReward('gold', 1, 5)), 'Золотая — одна для всех уровней');
+    eq(Rules.passReward('gold', 30).look, 'trail', 'Знак Тропы — на вершине Золотой'); eq(Rules.passReward('gold', 15).look, '#065f46', 'плащ — на 15-й');
     ok(!Rules.SHOP.filter(x => x.day).some(x => x.id === Rules.shopDeal(U.today()).id), 'товары «раз в день» не бывают товаром дня');
   });
 
@@ -1229,7 +1334,7 @@
     holdGet: async poi => { const h = DB.holds[poi]; return h && h.holders.length ? JSON.parse(JSON.stringify(h)) : null; },
     // как shrine_defend (023): защитники, чей срок вышел (Rules.HOLD.MAX_H), убираются перед проверками
     holdDefend: async (poi, lat, lng, clan, holder) => {
-      const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000;
+      const h = DB.holds[poi] = DB.holds[poi] || { clan, lat, lng, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000; // как shrine_holds: и место
       h.holders = h.holders.filter(x => +x.t >= cut);
       if (h.holders.length && clanOf(h.clan) !== clanOf(clan)) return false; // 4.28: как clan_key в 031 — прежняя дружина и её клан — одно знамя
       if (h.holders.length >= HOLD_MAX || h.holders.some(x => x.pid === holder.pid)) return false;
@@ -1249,7 +1354,7 @@
     },
     roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
-    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: h.lat, lng: h.lng, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = {}; MYTH_KEYS.forEach(k => { o[k] = 0; }); Object.values(DB.holds).forEach(h => { const k = clanOf(h.clan); if (h.holders.length && k in o) o[k]++; }); return o; },
     // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
     lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
@@ -1455,6 +1560,17 @@
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /растворился/);
     A.data.items.charm = 0; A.data.items.charm2 = 0; A.data.items.charm3 = 0;
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /Обереги закончились/);
+  });
+  atest('Сервер (5.1.26): учебные духи — с родины места, где начал Ловчий', async () => {
+    const A = await newPlayer('utm', 19.43, -99.13, 'Мехико');
+    for (const id of ['catch1', 'catch2']) {
+      const st = TUT[A.data.tut - 1]; eq(st.id, id);
+      await must(A, 'encStart', { kind: 'tut' });
+      const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+      const s = SP[A.data.spirits[A.data.spirits.length - 1].sid];
+      ok(r.caught && s.myth === 'aztec' && s.el === SP[st.sid].el, `${id}: ${s.id}`);
+      eq(s.id, S.tutSid(st, 19.43, -99.13), 'тот же, что рисует телефон');
+    }
   });
   atest('Сервер: обучение подсказками (4.24) — пропустить нельзя, шаги строго по порядку, награды за этапы', async () => {
     const A = await newPlayer('ud', 55.73, 37.61, 'Дельта');
@@ -2331,9 +2447,10 @@
       // дань: святилище мифологии своего клана — ×1,5
       delete DB.holds[id];
       Ev.alaSync();
-      const own = poiId(i => W.placeMyth({ id: i }) === 'greek', 64000), other = poiId(i => W.placeMyth({ id: i }) !== 'greek', 64000);
+      // 5.1.26: мифология святилища — по родине места: храм в Афинах — свой, капище в Москве — нет
+      const own = 'osm:n64001', other = 'osm:n64002';
       made.push(own, other);
-      [own, other].forEach(x => { DB.holds[x] = { clan: 'greek', holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
+      [[own, 37.98, 23.73], [other, 55.75, 37.62]].forEach(([x, lat, lng]) => { DB.holds[x] = { clan: 'greek', lat, lng, holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
       B.data.tributeDay = ''; B.data.tributeNext = 0;
       const s0 = B.data.sparks, tr = await must(B, 'tribute');
       eq(tr.n, 2); eq(tr.own, 1, 'одно святилище своей мифологии'); eq(B.data.sparks - s0, Rules.tributeFor(2, 1).sparks, 'искры дани ×1,5 с храма');
@@ -2584,9 +2701,17 @@
     A.data.zlat = Rules.PASS.GOLD;
     await must(A, 'passGold'); eq(A.data.zlat, 0); ok(A.data.pass.gold);
     await must(A, 'passClaim', { lvl: 1, track: 'gold' });
-    // вершина Золотой тропы — Знак Тропы
+    // вершина Золотой тропы — Знак Тропы и амулет на выбор (5.1.21): без выбора — нельзя, выбор — только из известных
     A.data.pass.pts = Rules.PASS.PER * Rules.PASS.LEVELS;
-    await must(A, 'passClaim', { lvl: 30, track: 'gold' }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold' }, /амулет/);
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am: 'constructor' }, /амулет/);
+    ok(!A.data.pass.got.gold.includes(30) && !A.data.owned.trail, 'без выбора ступень не засчитана');
+    const am = AMULET_KEYS[2], am0 = A.data.amulets[am] || 0;
+    const top = await must(A, 'passClaim', { lvl: 30, track: 'gold', am }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    eq(A.data.amulets[am], am0 + 1, 'выбранный амулет — в сумке'); ok(top.got.some(x => x.k === 'amulet' && x.id === am));
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am }, /уже получена/);
+    // бесплатная 20-я — тоже амулет на выбор
+    await must(A, 'passClaim', { lvl: 20, track: 'free', am: AMULET_KEYS[0] }); eq(A.data.amulets[AMULET_KEYS[0]] >= 1, true);
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'trail' } });
     // новый сезон — тропа с нуля
     A.data.pass.season = '1999-1';
@@ -2916,12 +3041,115 @@
       S.d.camp = null; eq(S.campExLeft(), 0); eq(S.exchangeZlat(2), 2, 'без Кампании — обычный курс');
     } finally { S.d.camp = c0; }
   });
-  test('5.1.20: искры Лиги и Сезонной тропы — ×10', () => {
+  test('5.1.20: искры Лиги — ×10', () => {
     eq(LEAGUE_RANKS.filter(r => r.reward && r.reward.sparks).map(r => r.reward.sparks).join(','), '5000,8000,15000,30000,50000,80000', 'награды за лиги');
     eq(League.prize(3).sparks, 12000, 'сундук сезона — ✦ 4 000 за лигу');
-    eq(Rules.passReward('free', 2, 10).sparks, 3000); eq(Rules.passReward('gold', 1, 10).sparks, 5000); eq(Rules.passReward('gold', 2, 10).sparks, 8000);
-    eq(Rules.passReward('gold', 1, 30).sparks, 15000); eq(Rules.passReward('gold', 2, 30).sparks, 25000); eq(Rules.passReward('gold', 10, 30).sparks, 30000); eq(Rules.passReward('gold', 15, 30).sparks, 30000);
-    eq(Rules.passReward('free', 3, 10).sparks, undefined, 'где искр не было — их и нет');
+  });
+  test('5.1.21: Знаки Ордена — опыт за ступени ×10, у каждого знака картинка, а не буква', () => {
+    eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,10000,20000', 'бронза, серебро, золото');
+    MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
+  });
+  test('5.1.24: лимиты дня — столбиком с таймером «До сброса»; поручение Источника — надписью со значком', () => {
+    const lim = document.createElement('div'); lim.innerHTML = UI.dayLimitsHtml();
+    ok(lim.firstElementChild.matches('h3.q-h') && lim.querySelector('h3 .dl-left'), 'заголовок как «Шаги главы», в нём — таймер до сброса');
+    ok(/^До сброса\s\d+\s(ч\s\d+\s)?мин$/.test(lim.querySelector('h3 small').textContent), '«До сброса … ч … мин», без секунд: ' + lim.querySelector('h3 small').textContent);
+    const rows = [...lim.querySelectorAll('.day-limits .dl-row')];
+    eq(rows.length, Object.keys(Rules.DAILY).length);
+    Object.keys(Rules.DAILY).forEach((k, i) => {
+      const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k], r = rows[i];
+      ok(r.querySelector('span').textContent === Rules.DAILY_NAMES[k] && r.querySelector('b').textContent === `${u} / ${m}`, `строка: ${k}`);
+      eq(r.querySelector('.pbar i').style.width, `${Math.min(100, u / m * 100)}%`, `полоска: ${k}`);
+    });
+    eq(U.fmtHm((5 * 3600 + 12 * 60 + 33) * 1000), '5 ч 12 мин'); eq(U.fmtHm(754500), '12 мин'); eq(U.fmtHm(-5), '0 мин');
+    // новое поручение у Источника: значок «Задания» слева и «Новое поручение!» — без кнопок
+    const box = document.createElement('div'); box.innerHTML = UI.taskNewHtml();
+    const lt = box.firstElementChild;
+    ok(lt.classList.contains('loot-task') && lt.firstElementChild.matches('.lt-ico') && lt.querySelector('.lt-ico svg.mi'), 'значок «Задания» слева');
+    eq(lt.querySelector('b').textContent, 'Новое поручение!');
+    ok(!lt.querySelector('button'), 'принимать и отказываться не нужно');
+  });
+  test('5.1.27: Кампания — полоски у целей, без шагов главы; задания дня без «Пройди км»; «Летописец»; «Орден» без топа и Алатыря; «Дух сбежал»', () => {
+    const d0 = S.d;
+    try {
+      S.d = { ...d0, camp: { ch: 0, s: 0, p: [5, 1, 0], u: [], pick: null, t: 1 } };
+      const box = document.createElement('div'); box.innerHTML = UI.campHtml();
+      ok(!box.querySelector('.cp-list, .cp-row'), 'шагов главы внизу нет');
+      const objs = [...box.querySelectorAll('.cp-obj')], st = CAMPAIGN[0].steps[0];
+      eq(objs.length, st.obj.length);
+      ok(objs.every(o => o.querySelector('.qd-bar .pbar i')), 'у каждой цели — полоска');
+      ok(objs[0].classList.contains('done') && objs[0].querySelector('.cp-ok') && objs[0].querySelector('.pbar i').style.width === '100%', 'сделано — полная, с галочкой');
+      near(parseFloat(objs[1].querySelector('.pbar i').style.width), 100 / 3, 0.01, 'треть пути');
+      eq(objs[1].querySelector('.qd-bar span').textContent, `1 / ${st.obj[1].n}`); ok(!objs[1].querySelector('.cp-ok'));
+    } finally { S.d = d0; }
+    // задания дня: GPS нет — вместо «Пройди N км» Врата, ночной дух, хранитель капища; в поручениях тоже без километров
+    ok(!QUEST_TEMPLATES.some(q => q.t === 'walk') && !TASK_TEMPLATES.some(q => q.t === 'walk'), 'без «Пройди N км»');
+    ['gate', 'catchNight', 'duel'].forEach(t => eq(QUEST_TEMPLATES.filter(q => q.t === t).length, 1, 'задание дня: ' + t));
+    near(QUEST_TEMPLATES.reduce((a, q) => a + (q.reward.sparks || 0), 0) / QUEST_TEMPLATES.length, 400, 0.01, 'искр за задание в среднем — как раньше');
+    const q0 = S.d.quests;
+    try {
+      S.d.quests = { day: U.today(), bonus: false, list: ['gate', 'catchNight'].map(t => ({ t, n: 1, p: 0, claimed: false, text: t, reward: {} })) };
+      S.progress('gate', 1); S.progress('catchNight', 1);
+      ok(S.d.quests.list.every(q => q.p === 1), 'шаг во Врата и ночной дух засчитываются');
+    } finally { S.d.quests = q0; }
+    // знак «Летописец» — до всего бестиария (было 63 славянских)
+    eq(MEDALS.find(m => m.id === 'dex').tiers.join(), [30, 150, SPECIES.length].join());
+    ok(SPECIES.length > 300, 'золото — весь бестиарий');
+    // «Орден» в заданиях — без «Лучших Ловчих недели» и Алатыря
+    const I0 = Order.info;
+    try {
+      Order.info = { prev: null, cur: { total: 500, goal: 1000, got: [], week: 'w', n: 10, players: 3, endsAt: U.now() + 3600000, top: [{ name: 'Первый', n: 99, me: false }] } };
+      const b = document.createElement('div'); Order.render(b);
+      ok(b.querySelector('.o-card') && !b.querySelector('.o-top, .o-ala') && !/Лучшие Ловчие|Алатырь|Первый/.test(b.textContent), 'без топа и Алатыря');
+    } finally { Order.info = I0; }
+    // дух сбежал — без Нави
+    const v = J.view({ type: 'flee', sid: 'ugolek' }); eq(v.title, 'Дух сбежал'); eq(v.sub, SP.ugolek.name);
+  });
+  atest('5.1.27: выбранный в Кампании дух — сценой, а не всплывашкой', async () => {
+    const sp = S.makeSpirit('ugolek', 5, 'got-test', { ivMin: 10 });
+    UI.gotSpiritAnim(sp, { isNew: true, ess: 30 });
+    await U.wait(700);
+    const m = [...document.querySelectorAll('.modal.got-modal')].pop();
+    ok(m && m.querySelector('.hatch-stage.open .hatch-sp'), 'сцена с духом');
+    ok(/теперь твой дух/.test(m.querySelector('.evo-text').textContent) && /Новая запись/.test(m.textContent) && /\+30/.test(m.textContent), 'кто он, эссенция, новая запись');
+    const b = [...m.querySelectorAll('.modal-btns .btn')].find(x => /Привет/.test(x.textContent)); ok(b, 'кнопка «Привет!»');
+    b.click(); await U.wait(400);
+    ok(!m.isConnected, 'закрылась');
+  });
+  test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
+    const sp = (r, iv, lvl) => ({ ...S.makeSpirit(SPECIES.find(s => s.rar === r).id, lvl, 1), iv });
+    const L = [sp(1, [15, 15, 15], 30), sp(5, [0, 0, 0], 5), sp(4, [10, 10, 10], 20), sp(5, [15, 15, 14], 25)];
+    const ord = k => [...L].sort(UI.colCmp(k)).map(x => L.indexOf(x)).join('');
+    eq(ord('rare'), '3120', 'легендарные первыми, внутри редкости — по силе');
+    eq(ord('best'), '0321', 'по оценке Ордена: 100%, 98%, 67%, 0%');
+    eq(ord('num'), ord('power'), 'неизвестная сортировка — по силе');
+    eq([0, 49, 50, 66, 67, 81, 82, 99, 100].map(v => UI.ivStars(v)).join(''), '001122334', 'звёзды оценки — как в карточке духа');
+    eq((UI.colTop(L[1], 'rare').match(/<i><\/i>/g) || []).length, 5, 'у легендарного — пять камней');
+    ok(UI.colTop(L[1], 'rare').includes(`--rc:${RARITY[5].color}`), 'камни — цвета редкости');
+    ok(/★★★★<s><\/s><\/i> <b>100%<\/b>/.test(UI.colTop(L[0], 'best')), 'оценка: четыре звезды и 100%');
+    ok(UI.colTop(L[0], 'power').includes(`<b>${S.power(L[0])}</b>`) && UI.colTop(L[0], 'new') === UI.colTop(L[0], 'power'), 'в «Силе» и «Новых» — сила');
+  });
+  test('5.1.21: Сезонная тропа — таблица наград 30 ступеней', () => {
+    const P = Rules.PASS, j = (t, l) => JSON.stringify(Rules.passReward(t, l));
+    eq(Rules.PASS_FREE.length, P.LEVELS); eq(Rules.PASS_GOLD.length, P.LEVELS);
+    // ступени из примера (по модели экономики: бесплатная — искры ÷3, обереги ÷3, мёд ÷4; Золотая — искры ÷2, Живая вода ÷3)
+    eq(j('free', 1), JSON.stringify({ charm: 7, sparks: 800 })); eq(j('free', 5), JSON.stringify({ incense: 5, sparks: 1300 }));
+    eq(j('free', 9), JSON.stringify({ water: 10, sparks: 1700 })); eq(j('free', 10), JSON.stringify({ zlat: 50, sparks: 1700, alatyr: 1 }));
+    eq(j('free', 20), JSON.stringify({ amuletPick: 1, sparks: 2300, alatyr: 1 })); eq(Rules.passReward('free', 30).deadwater, 1);
+    eq(j('gold', 1), JSON.stringify({ charm2: 20 })); eq(j('gold', 5), JSON.stringify({ amuletPick: 1 })); eq(j('gold', 6), JSON.stringify({ charm3: 10 }));
+    eq(j('gold', 9), JSON.stringify({ cocoon: 10, sparks: 2500 })); eq(j('gold', 10), JSON.stringify({ amuletPick: 1 }));
+    eq(JSON.stringify(Rules.passReward('free', 31)), '{}', 'за пределами — ничего');
+    // за сезон: бесплатная — ✦ 58 900, 100 монет, 150 оберегов, 49 мёда и 3 осколка Алатыря; Золотая — ✦ 58 600, 50 Живой воды,
+    // 2 осколка и 6 амулетов на выбор
+    const sum = (t, k) => Array.from({ length: P.LEVELS }, (_, i) => Rules.passReward(t, i + 1)[k] || 0).reduce((a, b) => a + b, 0);
+    eq(sum('free', 'sparks'), 58900); eq(sum('free', 'zlat'), 100); eq(sum('free', 'charm'), 150); eq(sum('free', 'honey'), 49); eq(sum('free', 'alatyr'), 3);
+    eq(sum('gold', 'sparks'), 58600); eq(sum('gold', 'water'), 50); eq(sum('gold', 'alatyr'), 2); eq(sum('gold', 'amuletPick'), 6); eq(sum('gold', 'zlat'), 0);
+    // осколки Алатыря на экране Тропы видны (Loot.parts) и начисляются (S.giveRewards)
+    eq(Loot.parts({ alatyr: 1 }).length, 1, 'осколок — в награде ступени');
+    { const a0 = S.d.alatyr || 0; S.giveRewards({ alatyr: 1 }); eq(S.d.alatyr, a0 + 1, 'осколок начислен'); S.d.alatyr = a0; }
+    // всё, что выдаётся, — известные награды (предметы, валюта, осколки, кокон, облик, амулет на выбор)
+    const known = k => ITEMS[k] || ['sparks', 'zlat', 'alatyr', 'cocoon', 'look', 'amuletPick'].includes(k);
+    ['free', 'gold'].forEach(t => { for (let l = 1; l <= P.LEVELS; l++) Object.keys(Rules.passReward(t, l)).forEach(k => ok(known(k), `${t} ${l}: ${k}`)); });
+    const r = Rules.passReward('free', 1); r.charm = 999; eq(Rules.passReward('free', 1).charm, 7, 'награда — копия, таблица не меняется');
   });
   atest('5.1.15: Кампания, глава I — девять шагов по порядку: цели, награды, дух на выбор, Разлом кампании, Врата', async () => {
     const P = await newPlayer('cp-a', 55.7539, 37.6208, 'Кампанец', 'kapelka');
@@ -3005,9 +3233,11 @@
     // 9 · дальний путь
     prog('walk', 60); prog('spring', 10); [[3, 5], [2, 10], [1, 20]].forEach(([r, n]) => { for (let i = 0; i < n; i++) prog('catchRar', 1, { rar: r }); });
     prog('catchRar', 1, { rar: 4 }); eq(P.data.camp.p.join(), '60,5,10,20,10', 'все цели шага 9');
-    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0;
+    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0, l9 = P.data.level;
     await must(P, 'campClaim', {});
-    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50, '30 000 искр и 50 монет');
+    // монеты новых уровней (опыт шага и знаков) — сверх награды шага
+    const zl = asPlayer(P, () => { let z = 0; for (let l = l9 + 1; l <= P.data.level; l++) z += S.levelRewards(l).zlat; return z; });
+    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50 + zl, '30 000 искр и 50 монет (и монеты новых уровней)');
     ok(!step() && P.data.camp.s === 9, 'глава I пройдена'); await refuse(P, 'campClaim', {}, /Глава пройдена/);
     ok(P.data.journal.some(j => j.type === 'camp'), 'шаги — в дневнике');
   });
@@ -3058,26 +3288,55 @@
     ok(mc.match && !DB.pvpM[mc.match].state.bot, 'пара с живым');
     eq((await must(B, 'pvpFind', {})).match, mc.match, 'и первый — в бою с живым, а не с ботом');
   });
-  test('5.1.15: строка Кампании на карте — мелко, без всплывашек: цели шага, «забери награду», «выбери духа»', () => {
+  test('5.1.15: строка Кампании на карте — без всплывашек: цели шага, «забери награду», «выбери духа» (5.1.24: значки и счётчики, без подложки)', () => {
     const d0 = S.d;
+    // разметка → строки: название, счётчик, сделано ли, значок
+    const rows = h => { const b = document.createElement('div'); b.innerHTML = h; return [...b.querySelectorAll('.cl-row')].map(r => ({ t: r.querySelector('.cl-t').textContent, n: (r.querySelector('i') || { textContent: '' }).textContent, ok: r.classList.contains('cl-ok'), go: r.classList.contains('cl-go'), ico: !!r.querySelector('.cl-ico svg') })); };
     try {
       S.d = { camp: { ch: 0, s: 0, p: [2, 3, 0], u: [], pick: null }, spirits: [], xp: 0 };
-      const h = UI.campLineHtml();
-      ok(/Первая охота/.test(h) && /<span class="">Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h), 'цели с «сделано/нужно»');
-      ok(/<span class="cl-ok">✓ Духи 7 уровня <i>3\/3<\/i>/.test(h), '5.1.17: выполненная цель остаётся в списке — с галочкой');
-      S.d.camp.p = [2, 1, 0]; ok(/Духи 7 уровня <i>1\/3<\/i>/.test(UI.campLineHtml()), '5.1.16: «духи 7 уровня»');
-      S.d.camp.p = [5, 3, 1]; const hr = UI.campLineHtml(); ok(/забери награду/.test(hr) && (hr.match(/cl-ok/g) || []).length === 3, 'шаг выполнен — все цели с галочкой');
+      const h = UI.campLineHtml(), R = rows(h);
+      ok(/Первая охота/.test(h) && /class="cl-head"/.test(h), 'шапка «Кампания · шаг»');
+      ok(R[0].t === 'Поймай духов' && R[0].n === '2/5' && !R[0].ok, 'цели с «сделано/нужно»');
+      ok(R[1].t === 'Духи 7 уровня' && R[1].n === '3/3' && R[1].ok, '5.1.17: выполненная цель остаётся в списке — с галочкой');
+      ok(R.some(r => r.t === 'Разлом кампании') && R.every(r => r.ico), 'у каждой цели — значок');
+      S.d.camp.p = [2, 1, 0]; ok(rows(UI.campLineHtml())[1].n === '1/3', '5.1.16: «духи 7 уровня»');
+      S.d.camp.p = [5, 3, 1]; const R2 = rows(UI.campLineHtml());
+      ok(R2.filter(r => r.ok).length === 3 && R2.some(r => r.go && /забери награду/.test(r.t)), 'шаг выполнен — все цели с галочкой, «забери награду»');
       // 5.1.17: «выведи духа из кокона» — путь кокона, которому до вылупления осталось меньше всех (сперва — те, что греются)
       S.d.camp = { ch: 0, s: 1, p: [0], u: [], pick: null };
       S.d.cocoons = [{ km: 5, walked: 1.26, inc: true }, { km: 10, walked: 9.55, inc: true }, { km: 2, walked: 0, inc: false }];
-      ok(/Выведи духа из кокона <i>9.5 \/ 10 км<\/i>/.test(UI.campLineHtml()), 'ближе всех к вылуплению — 10 км, пройдено 9,5');
-      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; ok(/<i>0 \/ 2 км<\/i>/.test(UI.campLineHtml()), 'никто не греется — самый короткий');
-      S.d.cocoons = []; ok(/Выведи духа из кокона<\/span>/.test(UI.campLineHtml()), 'коконов нет — без пути');
+      ok(rows(UI.campLineHtml())[0].t === 'Выведи духа из кокона' && rows(UI.campLineHtml())[0].n === '9.5 / 10 км', 'ближе всех к вылуплению — 10 км, пройдено 9,5');
+      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; eq(rows(UI.campLineHtml())[0].n, '0 / 2 км', 'никто не греется — самый короткий');
+      S.d.cocoons = []; eq(rows(UI.campLineHtml())[0].n, '', 'коконов нет — без пути');
       S.d.camp.pick = { opts: ['ugolek', 'kapelka', 'mshonok'], lvl: 5, ess: 15 }; ok(/Выбери духа/.test(UI.campLineHtml()), 'ждёт выбор духа');
       S.d.camp = { ch: 0, s: 8, p: [12.34, 1, 0, 0, 0], u: [], pick: null };
-      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && (h9.match(/<span/g) || []).length === 5, '5.1.17: все цели шага — без «и ещё»');
+      const R9 = rows(UI.campLineHtml()); ok(R9[0].t === 'Путь, км' && R9[0].n === '12.3/60' && R9.length === 5, '5.1.17: все цели шага — без «и ещё»');
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
+  });
+  test('5.1.24: Сундук дня — награда случайная: опыт и искры всегда, два разных приза из набора', () => {
+    const C = Rules.CHEST, r = U.rng(7), seen = {};
+    let good = true, coins = 0;
+    for (let i = 0; i < 3000; i++) {
+      const rw = Rules.chestRoll(r), extra = Object.keys(rw).filter(k => k !== 'xp' && k !== 'sparks');
+      if (!(rw.xp >= C.XP[0] && rw.xp <= C.XP[1] && rw.xp % 50 === 0 && rw.sparks >= C.SPARKS[0] && rw.sparks <= C.SPARKS[1])) good = false;
+      if (extra.length !== C.PICKS) good = false;
+      extra.forEach(k => { const p = C.POOL.find(x => x[0] === k); if (!p || rw[k] < p[2] || rw[k] > p[3]) good = false; seen[k] = (seen[k] || 0) + 1; });
+      coins += rw.zlat || 0;
+    }
+    ok(good, 'опыт и искры — всегда и в пределах; призов ровно два, разных, в своих пределах');
+    C.POOL.forEach(p => ok(seen[p[0]] > 0, `выпадает: ${p[0]}`));
+    ok(coins / 3000 > 1.5 && coins / 3000 < 2.5, `монет в среднем — как прежние 2 в день (${(coins / 3000).toFixed(2)})`);
+    ok(C.POOL.every(p => p[0] === 'zlat' || p[0] === 'alatyr' || p[0] === 'cocoon' || p[0] === 'amulet' || ITEMS[p[0]]), 'призы — известные игре');
+  });
+  atest('5.1.24: Сундук дня на сервере — опыт, искры и призы; второй раз не открыть', async () => {
+    const P = await newPlayer('chest-a', 55.75, 37.62, 'Сундучник');
+    await refuse(P, 'questBonus', {}, /Сундук ещё закрыт/);
+    P.data.quests.list.forEach(q => { q.p = q.n; q.claimed = true; });
+    const r = await withRandom(0.5, () => must(P, 'questBonus', {}));
+    ok(r.got.some(x => x.k === 'xp') && r.got.some(x => x.k === 'sparks'), 'опыт и искры — всегда');
+    ok(r.got.length >= 4, `и два приза (${r.got.map(x => x.k).join(', ')})`);
+    await refuse(P, 'questBonus', {}, /Сундук ещё закрыт/);
   });
   atest('5.1.18: эволюция — дух жив и с полным здоровьем: «без сил», раны и усталость к новой форме не переходят', async () => {
     const P = await newPlayer('ev-hp', 55.75, 37.62, 'Лекарь', 'ugolek');
@@ -3456,6 +3715,22 @@
     r = await must(A, 'teleport', { lat: 51.5007, lng: -0.1246 }); eq(r.used, null);
     eq(A.data.stats.km, km0, 'телепорт не засчитывает километры');
   });
+  atest('Сервер 5.1.27: задания дня — шаг во Врата и пойманный ночной дух засчитываются', async () => {
+    const A = await newPlayer('qd527', 55.30, 37.10, 'Ночник'); A.data.tut = 0;
+    const day = (tz => { const t0 = U.tz; U.tz = tz; try { return U.today(); } finally { U.tz = t0; } })(180); // как сервер в тестах (tz 180)
+    const quests = () => { A.data.quests = { day, bonus: false, list: ['gate', 'catchNight'].map(t => ({ t, n: 1, p: 0, claimed: false, text: t, reward: { sparks: 1 } })) }; };
+    await must(A, 'teleport', { lat: 48.8584, lng: 2.2945, first: true }); A.lat = 48.8584; A.lng = 2.2945;
+    quests();
+    A.data.tpAt = 0; // перезарядка прошла — шаг даром
+    await must(A, 'teleport', { lat: 41.89, lng: 12.49 }); A.lat = 41.89; A.lng = 12.49;
+    eq(A.data.quests.list[0].p, 1, 'шаг во Врата засчитан'); eq(A.data.quests.list[1].p, 0);
+    // ночной дух — встречей за поручение (её можно позвать когда угодно)
+    const night = SPECIES.find(s => s.time === 'night' && !s.legend);
+    A.data.taskMeet = [{ id: 'tm527', sid: night.id, lvl: 3 }];
+    await must(A, 'encStart', { kind: 'task', id: 'tm527' });
+    const r = await withRandom(0, () => must(A, 'encThrow', { item: 'charm', hit: true })); // дух за поручение не сбегает — при 0 ловится
+    ok(r.caught, 'пойман'); eq(A.data.quests.list[1].p, 1, 'ночной дух засчитан');
+  });
   atest('Сервер 5.1: джойстик — шаг и бег засчитываются, быстрее бега (подделка) — нет', async () => {
     const A = await newPlayer('jw51', 55.28, 37.08, 'Ходок');
     const sv = { add: Game.addPoint, flush: Game.flushMove, save: Walk.save, pos: Walk.pos, joy: Walk.joy, keys: Walk.keys, run: Rules.MOVE.RUN };
@@ -3684,6 +3959,454 @@
     } finally { Poi.list = list0; }
     await must(N, 'spring', { poi: { id: sleepSp, ...at, name: 'Источник' } });
   }));
+
+  /* ---------- 5.1.22: своя аналитика (www/js/metrics.js, GameCore.anTrack, serve.js → an_put) ---------- */
+  // сервер проверяет пачку телефона этим же кодом (Metrics.clean): чужие имена, лишние поля, текст, время и размеры — долой
+  test('Аналитика 5.1.22: проверка пачки телефона — имена, поля, время, сессия', () => {
+    const now = Date.UTC(2026, 9, 2, 12), sid = 'AbCdEfGh1234';
+    [null, undefined, 5, 'x', [], {}, { ev: 'boot' }, { ev: [{ e: 'hack' }] }, { s: { id: 'коротко' } }].forEach(b => eq(Metrics.clean(b, now), null, 'нечего записать: ' + JSON.stringify(b)));
+    const c = Metrics.clean({ tok: 'T', v: APP_VERSION, sa: 1, s: { id: sid, t0: now - 60000, d: 59.6 }, ev: [
+      { e: 'boot', t: now - 5000, s: sid, p: { f: 1 } },
+      { e: 'reg', t: now }, { e: 'tut', t: now }, { e: '__proto__' }, { e: 'BOOT' }, // серверные и чужие имена — не от телефона
+      { e: 'onb', t: now + 3600000, p: { k: 'book', x: 'с пробелом', y: 'кириллица', Z: 1, ['a'.repeat(17)]: 1, n: 2.7, b: true, o: { a: 1 }, l: [1], big: 1e15 } },
+      { e: 'ready', t: now - 4 * 86400000, s: 'bad sid', p: { ms: 1234.4 } },
+      { e: 'onb', t: 'вчера', p: [1, 2] },
+    ] }, now);
+    eq(c.v, APP_VERSION); eq(c.sa, true); eq(c.ev.length, 4, 'только события телефона');
+    eq(JSON.stringify(c.s), JSON.stringify({ id: sid, t0: now - 60000, d: 60 }), 'сессия: секунды округлены');
+    eq(JSON.stringify(c.ev[0]), JSON.stringify({ e: 'boot', t: now - 5000, p: { f: 1 }, s: sid }));
+    eq(JSON.stringify(c.ev[1].p), JSON.stringify({ k: 'book', n: 3, b: 1, big: 1e9 }), 'только числа, да/нет и латиница; числа — целые и в пределах');
+    eq(c.ev[1].t, now, 'время из будущего — время приёма');
+    eq(c.ev[2].t, now, 'старше трёх суток — время приёма'); eq(c.ev[2].s, undefined, 'неверный номер сессии — без него');
+    eq(JSON.stringify(c.ev[2].p), JSON.stringify({ ms: 1234 }));
+    eq(c.ev[3].t, now, 'время не числом — время приёма'); eq(c.ev[3].p, undefined, 'параметры не объектом — без них');
+    // пределы: событий в пачке, полей в событии, длина строки; версия и сессия — только правильного вида
+    const many = Metrics.clean({ v: 'хак', ev: Array.from({ length: 100 }, () => ({ e: 'boot', t: now })), s: { id: sid, t0: 0, d: 1e9 } }, now);
+    eq(many.ev.length, Metrics.MAX_EV); eq(many.v, ''); eq(many.s.d, 86400, 'сессия не длиннее суток'); eq(many.s.t0, now);
+    eq(Object.keys(Metrics.params({ a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8 })).length, Metrics.MAX_P);
+    eq(Metrics.params({ s: 'x'.repeat(33) }), null, 'длинная строка не проходит'); eq(Metrics.params({ s: '<b>' }), null, 'разметка не проходит');
+    eq(Metrics.clean({ s: { id: sid, d: -5 } }, now).s.d, 0);
+    eq(Metrics.clean({ s: { id: sid, d: 'много' } }, now).s.d, 0);
+  });
+  test('Аналитика 5.1.22: платформа по User-Agent — грубо, без самого UA', () => {
+    const and = 'Mozilla/5.0 (Linux; Android 14; SM-A546B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36';
+    eq(Metrics.pf(and), 'web-android'); eq(Metrics.pf(and, true), 'pwa-android');
+    eq(Metrics.pf(and + ' DuholovApp/15'), 'apk-android'); eq(Metrics.pf(and + ' DuholovApp/15 (store=play)'), 'play-android');
+    eq(Metrics.pf(and + ' DuholovApp/15 (store=rustore)', true), 'rustore-android', 'приложение — не PWA');
+    eq(Metrics.pf('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'), 'web-ios');
+    eq(Metrics.pf('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0 Safari/537.36'), 'web-desktop');
+    eq(Metrics.pf(''), 'web-other'); eq(Metrics.pf(null), 'web-other');
+    ok(/^[a-z]+-[a-z]+$/.test(Metrics.pf('<script>')) && Metrics.pf('x'.repeat(5000)).length <= 20, 'в базу — только из известного набора');
+  });
+  // телефон: очередь, пачки по таймеру и при сворачивании (keepalive), сессии, тишина без входа, без связи и при сбоях
+  atest('Аналитика 5.1.22: очередь телефона — пачки, сессии, keepalive, тишина при сбоях', async () => {
+    const M = Metrics, keep = {};
+    ['on', 'clock', 'wall', 'now', 'send', 'standalone'].forEach(k => { keep[k] = M[k]; });
+    const fetch0 = window.fetch;
+    let clk = 1000, wall = Date.UTC(2026, 9, 2, 12), sent = [];
+    M.on = () => !M.off; M.clock = () => clk; M.wall = () => wall; M.now = () => wall + clk; M.standalone = () => false;
+    M.send = (body, final, ev) => sent.push({ b: JSON.parse(body), final, n: ev.length });
+    try {
+      M.start();
+      ok(M.SID.test(M.sid), 'номер сессии');
+      M.ev('boot', { f: 1 }); M.ev('hack', { a: 1 }); M.ev('reg');
+      eq(M.q.length, 1, 'только события телефона');
+      eq(M.flush(false), false, 'без ключа входа — ждём'); eq(M.q.length, 1, 'событие осталось в очереди');
+      M.tok = 'T1';
+      eq(M.flush(false), true); eq(sent.length, 1); eq(M.q.length, 0);
+      const b = sent[0].b;
+      eq(b.tok, 'T1'); eq(b.v, APP_VERSION); eq(b.sa, 0); eq(b.s.id, M.sid); eq(b.s.d, 0); eq(b.ev.length, 1); eq(b.ev[0].e, 'boot'); eq(b.ev[0].s, M.sid);
+      ok(Metrics.clean(b, M.now()), 'пачка телефона проходит проверку сервера');
+      eq(M.flush(false), false, 'нечего слать — не шлём'); eq(sent.length, 1);
+      clk += 45000;
+      ok(M.due(), 'сессия выросла — пора'); M.flush(false); eq(sent[1].b.s.d, 45);
+      clk += 10000; eq(M.due(), false, 'через 10 с — ещё рано (в начале сессии — раз в 30 с)');
+      // свернули: время на экране — в копилку, пачка — сразу и keepalive (final)
+      M.hide(); eq(sent.length, 3); eq(sent[2].final, true); eq(sent[2].b.s.d, 55);
+      clk += 100000; wall += 100000;
+      eq(M.dur(), 55, 'свёрнутое время не считается'); eq(M.flush(false), false);
+      M.hide(); eq(sent.length, 3, 'повторное сворачивание (pagehide следом) ничего не шлёт');
+      const sid1 = M.sid;
+      M.show(); clk += 5000; eq(M.sid, sid1, 'короткая пауза — та же сессия'); eq(M.dur(), 60);
+      M.hide(); clk += 1000; wall += M.SPLIT + 1000; M.show();
+      ok(M.sid !== sid1, 'пауза дольше 30 минут — новая сессия'); eq(M.dur(), 0); eq(M.sent, -1);
+      // очередь: не больше MAX_Q, пачка — не больше MAX_EV, остальное — следующей
+      for (let i = 0; i < 250; i++) M.ev('onb', { k: i });
+      eq(M.q.length, M.MAX_Q, 'старые выпали'); eq(M.q[0].p.k, 50);
+      M.flush(false); eq(sent[sent.length - 1].n, M.MAX_EV); eq(M.q.length, M.MAX_Q - M.MAX_EV);
+      M.q = [];
+      // сбои — молча: события с неудобными параметрами, отправка с ошибкой
+      M.ev('onb', { get k() { throw new Error('сломано'); } });
+      M.send = () => { throw new Error('нет сети'); };
+      M.ev('ready', { ms: 5 }); clk += 40000;
+      eq(M.flush(false), false, 'сбой отправки не выходит наружу');
+      // настоящая отправка: «простой» POST text/plain с keepalive; без связи — события обратно в очередь; off — молчать
+      M.send = keep.send;
+      const calls = [];
+      let mode = 'ok';
+      window.fetch = (url, o) => { calls.push({ url, o }); return mode === 'down' ? Promise.reject(new TypeError('Failed to fetch')) : Promise.resolve({ ok: true, json: async () => (mode === 'off' ? { ok: true, off: true } : { ok: true }) }); };
+      const wait = () => new Promise(r => setTimeout(r, 0));
+      M.ev('ready', { ms: 7 }); M.flush(false); await wait();
+      eq(calls.length, 1); ok(calls[0].url.endsWith('/functions/v1/game/an'), calls[0].url);
+      eq(calls[0].o.method, 'POST'); eq(calls[0].o.keepalive, true); eq(calls[0].o.headers['Content-Type'], 'text/plain'); eq(typeof calls[0].o.body, 'string');
+      ok(!('Authorization' in calls[0].o.headers), 'без своих заголовков — без предварительного запроса CORS');
+      mode = 'down'; M.ev('ready', { ms: 8 }); M.flush(false); await wait(); await wait();
+      eq(M.q.length, 1, 'без связи — событие вернулось в очередь'); eq(M.sent, -1);
+      M.q = []; M.ev('ready', { ms: 9 }); M.hide(); await wait(); await wait();
+      eq(M.q.length, 0, 'при закрытии — без повторов (ответа не будет)');
+      mode = 'off'; M.show(); M.ev('ready', { ms: 10 }); M.flush(false); await wait(); await wait();
+      eq(M.off, true, 'сервер без аналитики — телефон замолкает');
+      const n = calls.length; M.ev('ready', { ms: 11 }); clk += 60000;
+      eq(M.flush(false), false); eq(calls.length, n);
+      // вне игры (автотесты, нет облака) — не запускается вовсе
+      M.on = keep.on; M.started = false; M.off = false;
+      const cc = Cloud.configured;
+      Cloud.configured = () => false;
+      try { M.init(); } finally { Cloud.configured = cc; }
+      eq(M.started, false, 'Cloud.configured() ложно — аналитики нет');
+    } finally {
+      Object.assign(M, keep); window.fetch = fetch0;
+      Object.assign(M, { started: false, off: false, q: [], tok: '', sid: '', sent: -1, vis: 0, act: 0, hidAt: 0 });
+    }
+  });
+  // сервер: события из разницы прогресса, день активности — раз в день; запросы от имени сервера — не активность
+  atest('Аналитика 5.1.22: события сервера — новый Ловчий, обучение, место, первые успехи, день активности', async () => {
+    const A = { uid: 'uan1', lat: 55.7, lng: 37.6, data: null, srv: {} };
+    const evs = r => (r.an && r.an.ev || []).map(e => e.e + (e.p ? ':' + JSON.stringify(e.p) : ''));
+    let r = await call(A, 'load');
+    eq(r.an, null, 'гость без Ловчего — ни событий, ни дня');
+    r = await call(A, 'newGame', { name: 'Аналитик', starter: 'ugolek' });
+    eq(evs(r).join(' '), `reg:{"r":${SP.ugolek.rar},"inv":0}`);
+    eq(JSON.stringify(r.an.day), JSON.stringify({ t: r.now, reg: A.data.created, lvl: 1, tut: 1 }), 'день активности с днём создания');
+    eq(A.srv.an, GameCore.anDay(r.now), 'отметка дня — в служебных данных');
+    r = await call(A, 'tick'); eq(r.an, null, 'тот же день, ничего не изменилось — в базу ничего');
+    // обучение: шаги засчитывает сервер — событие с числом пройденных шагов
+    await must(A, 'encStart', { kind: 'tut' });
+    r = await withRandom(0.9999, () => call(A, 'encThrow', { item: 'charm', hit: true }));
+    ok(r.ok && r.results[0].caught, 'учебный дух пойман');
+    let e = evs(r).filter(x => !/^lvl:/.test(x)); // уровень мог и вырасти — его проверяет тест ниже
+    eq(e.join(' '), `tut:{"s":1,"n":${TUT.length},"id":"catch1"} first:{"k":"caught"}`);
+    eq(r.an.day, null);
+    await must(A, 'encStart', { kind: 'tut' });
+    r = await withRandom(0.9999, () => call(A, 'encThrow', { item: 'charm', hit: true }));
+    e = evs(r).filter(x => !/^lvl:/.test(x));
+    eq(e.join(' '), `tut:{"s":2,"n":${TUT.length},"id":"catch2"}`, 'первая поимка — один раз');
+    // первое место в Атласе
+    r = await call(A, 'teleport', { lat: 55.71, lng: 37.61, first: true });
+    ok(r.ok, r.error); ok(evs(r).includes('place'), evs(r).join(' '));
+    A.lat = 55.71; A.lng = 37.61;
+    // новый день — новая строка дня (с нынешним шагом обучения); от имени сервера (начисление оплаты) — ничего
+    A.srv.an = '2000-01-01';
+    const sys = await GameCore.run({ a: [{ type: 'tick' }], sys: true, tz: 180, pos: null, v: APP_VERSION }, { data: A.data, srv: A.srv }, envFor(A));
+    ok(sys.ok); eq(sys.an, null); eq(sys.srv.an, '2000-01-01', 'запрос сервера не отмечает день');
+    r = await call(A, 'tick');
+    eq(r.an.day.tut, A.data.tut); eq(r.an.day.reg, A.data.created); eq(A.srv.an, GameCore.anDay(r.now));
+    // все серверные события годятся для базы: имя — как в an_events, параметры — как у пачек телефона (Metrics.params)
+    const all = [];
+    for (const k of ['menu', 'spirits']) { r = await call(A, 'tutNext', { id: k }); all.push(...(r.an ? r.an.ev : [])); }
+    eq(all.filter(x => x.e === 'tut').map(x => x.p.id).join(), 'menu,spirits');
+    all.forEach(x => { ok(/^[a-z][a-z0-9_]{1,23}$/.test(x.e), x.e); eq(JSON.stringify(Metrics.params(x.p)), JSON.stringify(x.p), 'параметры ' + x.e); });
+    // отказ — без аналитики
+    r = await call(A, 'tutNext', { id: 'power' }); ok(!r.ok); eq(r.an, undefined);
+    // «начать заново»
+    const lvl = A.data.level;
+    r = await call(A, 'reset'); ok(r.ok && r.reset);
+    eq(evs(r).join(' '), `reset:{"l":${lvl}}`); eq(r.an.day, null);
+  });
+  test('Аналитика 5.1.22: уровень, Кампания, первые успехи, день по Москве; сбой аналитики не мешает', () => {
+    const d0 = S.d;
+    try {
+      eq(GameCore.anDay(Date.UTC(2026, 9, 1, 20, 59)), '2026-10-01'); eq(GameCore.anDay(Date.UTC(2026, 9, 1, 21, 0)), '2026-10-02', 'полночь по Москве');
+      const L = CAMPAIGN[0].steps.length;
+      eq(GameCore.anCamp(null), 0); eq(GameCore.anCamp({ ch: 0, s: 3 }), 3); eq(GameCore.anCamp({ ch: 1, s: 0 }), L);
+      eq(GameCore.anCampId(1), CAMPAIGN[0].steps[0].id); eq(GameCore.anCampId(0), ''); eq(GameCore.anCampId(L), CAMPAIGN[0].steps[L - 1].id);
+      S.d = JSON.parse(JSON.stringify(d0)); S.d.tut = 0; S.d.atlasV = 1; S.d.camp = { ch: 0, s: 1 }; S.d.level = 4;
+      const a0 = GameCore.anSnap();
+      S.d.level = 6; S.d.camp.s = 2; S.d.stats.raids = 0; S.d.stats.springs = (S.d.stats.springs || 0) + 1;
+      const was = a0.stats.springs; a0.stats.raids = 0; S.d.stats.raids = 1;
+      const ctx = { now: Date.now(), srv: { an: GameCore.anDay(Date.now()) } };
+      const r = GameCore.anTrack(ctx, a0), names = r.ev.map(e => e.e + ':' + JSON.stringify(e.p || {}));
+      ok(names.includes('lvl:{"l":6}'), names.join(' '));
+      ok(names.includes(`camp:{"k":2,"id":"${CAMPAIGN[0].steps[1].id}"}`), names.join(' '));
+      ok(names.includes('first:{"k":"raids"}'), 'первый Разлом');
+      eq(names.some(n => n === 'first:{"k":"springs"}'), !(was > 0), 'Источник — первый только если раньше не было');
+      eq(r.day, null, 'день уже отмечен');
+      eq(GameCore.anTrack(ctx, null), null);
+      eq(GameCore.anTrack(ctx, { ...a0, stats: null }), null, 'сломанный снимок — без аналитики, без ошибки');
+    } finally { S.d = d0; }
+  });
+
+  /* ---------- звук: сэмплы www/sfx и запасной синтез (util.js — SFX, Sfx) ---------- */
+  // имена звуков в исходнике: первый аргумент Sfx.play(…) — строки (и выбор «a ? 'x' : 'y'»); без строки — имя в переменной
+  const sfxCalls = src => {
+    const names = [], dyn = [];
+    for (let i = src.indexOf('Sfx.play('); i >= 0; i = src.indexOf('Sfx.play(', i + 1)) {
+      let depth = 1, q = null, end = -1;
+      for (let j = i + 9; j < src.length && end < 0; j++) {
+        const c = src[j];
+        if (q) { if (c === '\\') j++; else if (c === q) q = null; continue; }
+        if (c === "'" || c === '"' || c === '`') q = c;
+        else if ('([{'.includes(c)) depth++;
+        else if (')]}'.includes(c)) { if (--depth === 0) end = j; }
+        else if (c === ',' && depth === 1) end = j; // второй аргумент — параметры, не имя
+      }
+      const arg = src.slice(i + 9, end), alt = arg.includes('?') ? arg.slice(arg.indexOf('?') + 1) : arg; // условие — не имя
+      const lits = [...alt.matchAll(/'([^']+)'/g)].map(m => m[1]);
+      if (lits.length) names.push(...lits); else dyn.push(arg.trim());
+    }
+    return { names, dyn };
+  };
+  atest('Звук: у каждого звука, который вызывает игра, есть файл в www/sfx или осознанный синтез', async () => {
+    // скрипты игры: из www/index.html и из этой страницы (после tools/web/build.mjs в index.html остаётся один app.min.js,
+    // а исходники js/*.js на месте — этот же тест в CI идёт и по собранной версии)
+    const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
+    const own = [...document.querySelectorAll('script[src^="../www/js/"]')].map(s => s.getAttribute('src').slice(10).split('?')[0]);
+    const files = [...new Set([...html.matchAll(/<script src="js\/([\w.-]+\.js)/g)].map(m => m[1]).concat(own))].filter(f => f !== 'app.min.js');
+    ok(files.length > 40, 'скрипты игры: ' + files.length);
+    const used = new Map(); // имя звука → файл, где вызывается
+    const add = (n, f) => { if (!used.has(n)) used.set(n, f); };
+    for (const f of files) {
+      const src = await fetch(`../www/js/${f}?t=${Date.now()}`).then(r => r.text());
+      const { names, dyn } = sfxCalls(src);
+      names.forEach(n => add(n, f));
+      if (src.includes('Sfx.element(')) ELEMENT_KEYS.forEach(k => add('el:' + k, f));
+      for (const d of dyn) { // имя в переменной — только у наград заданий: claim(…, 'имя звука')
+        eq(f + ':' + d, 'ui-player.js:sound', 'имя звука в переменной');
+        [...src.matchAll(/claim\('\w+', [^\n]*?, '([a-z_]+)'\);/g)].forEach(m => add(m[1], f));
+      }
+    }
+    ok(used.size > 30, 'найдено имён звуков: ' + used.size);
+    eq([...used].filter(([n]) => !SFX[n]).map(([n, f]) => `${n} (${f})`).join(', '), '', 'имена без строки в SFX (util.js):');
+    // у каждой строки — файл и запасной синтез на случай, если файл не загрузится, или осознанный синтез
+    for (const [n, d] of Object.entries(SFX)) {
+      const el = n.startsWith('el:') ? n.slice(3) : null;
+      ok(el ? Sfx.voices[el] : Sfx.recipes[d.fb || n], `${n}: нет синтеза «${el || d.fb || n}»`);
+      if (d.synth) { ok(!d.f, `${n}: осознанный синтез — без файла`); continue; }
+      ok(d.f && d.vol > 0 && d.vol <= 1, `${n}: файл и громкость 0…1`);
+    }
+    const bad = [];
+    let total = 0;
+    for (const f of new Set(Object.values(SFX).map(d => d.f).filter(Boolean))) {
+      const r = await fetch(`../www/sfx/${f}.mp3?v=${SFX_VER}`);
+      const n = r.ok ? (await r.arrayBuffer()).byteLength : 0;
+      if (n < 500) bad.push(f);
+      total += n;
+    }
+    eq(bad.join(', '), '', 'нет файлов www/sfx/*.mp3:');
+    ok(total < 600 * 1024, `звуки занимают ${Math.round(total / 1024)} КБ — больше бюджета`);
+    // service worker: звуки — в своём постоянном кэше, правило для них — раньше «?v=цифра»
+    const sw = await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text());
+    ok(sw.includes('k !== SFX_CACHE'), 'sw.js: кэш звуков не удаляется при обновлении');
+    const at = sw.indexOf("includes('/sfx/')");
+    ok(at > 0 && at < sw.indexOf('[?&]v=\\d/.test(url.search)'), 'sw.js: правило для звуков — раньше правила «?v=цифра»'); // 5.1.24: то же выражение есть и у установки (installMode)
+  });
+  test('Звук: Sfx.play и Sfx.element не падают без AudioContext', () => {
+    const was = { ctx: Sfx.ctx, A: window.AudioContext, W: window.webkitAudioContext };
+    try {
+      Sfx.ctx = null;
+      [...Object.keys(SFX), 'нет-такого', undefined].forEach(n => Sfx.play(n));
+      ELEMENT_KEYS.forEach(k => { Sfx.element(k); Sfx.element(k, true); });
+      window.AudioContext = undefined; window.webkitAudioContext = undefined;
+      Sfx.init();
+      eq(Sfx.ctx, null, 'нет AudioContext — нет и звука');
+      Sfx.play('catch'); Sfx.element('fire'); Sfx.preload();
+    } finally { Sfx.ctx = was.ctx; window.AudioContext = was.A; window.webkitAudioContext = was.W; }
+  });
+  test('Звук: сэмпл, если загружен, иначе синтез; не больше 8 сразу; повтор не чаще gap; звук выключен — тишина', () => {
+    const log = [];
+    const param = () => ({ value: 1, setValueAtTime() {}, exponentialRampToValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} });
+    const node = (kind, extra) => Object.assign({ connect: n => n, disconnect() {}, start: () => log.push('start:' + kind), stop: () => log.push('stop:' + kind) }, extra);
+    const fake = {
+      currentTime: 10, state: 'running', sampleRate: 44100, destination: node('dest', {}),
+      createGain: () => node('gain', { gain: param() }),
+      createOscillator: () => { log.push('osc'); return node('osc', { frequency: param() }); },
+      createBufferSource: () => node('src', { playbackRate: param() }),
+      createBiquadFilter: () => node('filter', { frequency: param(), Q: param() }),
+      createBuffer: (c, n) => ({ getChannelData: () => new Float32Array(n) }),
+      resume: () => Promise.resolve(),
+    };
+    const keep = ['ctx', 'out', 'buf', 'bad', 'wait', 'last', 'live', 'load', 'nbuf', 'synth', 'synthElement'].reduce((o, k) => (o[k] = Sfx[k], o), {});
+    const was = { sound: Cfg.s.sound, duck: Music.duck }, ducks = [], synths = [], loads = [];
+    try {
+      Object.assign(Sfx, { ctx: fake, out: fake.destination, buf: {}, bad: {}, wait: {}, last: {}, live: [], nbuf: null });
+      Sfx.load = f => { loads.push(f); return Promise.resolve(null); };
+      Sfx.synth = function (n) { synths.push(n); return keep.synth.call(this, n); };
+      Sfx.synthElement = function (el, soft) { synths.push('el:' + el + (soft ? ':тихо' : '')); return keep.synthElement.call(this, el, soft); };
+      Music.duck = s => ducks.push(s);
+      Cfg.s.sound = true;
+      // файла ещё нет — прежний синтез (у нового имени — запасной), а файл попросили загрузить
+      Sfx.play('catch'); Sfx.play('error'); Sfx.element('fire', true); Sfx.element('shadow');
+      eq(synths.join(' '), 'catch miss el:fire:тихо el:shadow', 'синтез вместо сэмпла:');
+      ok(['catch', 'error', 'el-fire'].every(f => loads.includes(f)), 'файлы попросили загрузить: ' + loads);
+      ok(!loads.some(f => f.includes('shadow')), 'тень — осознанный синтез, файл не грузится');
+      ok(log.includes('osc'), 'синтез создал осцилляторы');
+      // файл загружен — сэмпл, мелодия приглушает музыку
+      fake.currentTime = 20; log.length = 0; synths.length = 0;
+      Sfx.buf.catch = { duration: 0.55 };
+      Sfx.play('catch');
+      eq(synths.length, 0, 'с файлом синтеза нет');
+      eq(log.filter(x => x === 'start:src').length, 1, 'сэмпл запущен');
+      eq(ducks.length, 1, 'музыка приглушена на время мелодии');
+      Sfx.play('catch');
+      eq(log.filter(x => x === 'start:src').length, 1, 'повтор в тот же миг пропущен');
+      // 10 разных звуков в один миг: звучат 8, два самых старых оборваны
+      fake.currentTime = 30; log.length = 0; Sfx.live = [];
+      ['tap', 'throw', 'hit', 'wobble', 'escape', 'flee', 'shiny', 'photo', 'heal', 'coins'].forEach(n => { Sfx.buf[SFX[n].f] = { duration: 1 }; Sfx.play(n); });
+      eq(log.filter(x => x === 'start:src').length, 10, 'запущены все 10');
+      eq(log.filter(x => x === 'stop:src').length, 2, 'оборваны два самых старых');
+      eq(Sfx.live.length, 8, 'звучат 8');
+      // неизвестное имя или без имени — тишина, без ошибок (как раньше)
+      fake.currentTime = 35; Sfx.play(undefined); Sfx.play('нет-такого');
+      // звук выключен в настройках — тишина
+      Cfg.s.sound = false; log.length = 0; fake.currentTime = 40;
+      Sfx.play('catch'); Sfx.element('water');
+      eq(log.length, 0, 'без звука в настройках ничего не создано');
+    } finally { Object.assign(Sfx, keep); Music.duck = was.duck; Cfg.s.sound = was.sound; }
+  });
+  test('Звук: короткая мелодия приглушает музыку и возвращает громкость', () => {
+    const calls = [], was = { ctx: Sfx.ctx, cur: Music.cur };
+    const gain = { value: 0.2, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime: (v, t) => calls.push([v, t]) };
+    try {
+      Sfx.ctx = { currentTime: 5 };
+      Music.cur = { a: { paused: false }, g: { gain } };
+      const v = Music.level();
+      Music.duck(1);
+      eq(calls.length, 2, 'вниз и обратно');
+      near(calls[0][0], v * 0.45, 1e-6, 'тише на ~7 дБ:');
+      near(calls[1][0], v, 1e-6, 'потом прежняя громкость:');
+      ok(calls[1][1] > 6, 'громкость возвращается после мелодии');
+      Music.cur = { a: { paused: true }, g: { gain } }; calls.length = 0;
+      Music.duck(1);
+      eq(calls.length, 0, 'музыка на паузе — не трогаем');
+    } finally { Sfx.ctx = was.ctx; Music.cur = was.cur; }
+  });
+
+  /* ---------- 5.1.24: быстрый запуск на слабых телефонах ---------- */
+  const frames = (n = 2) => new Promise(r => { const f = () => (--n > 0 ? requestAnimationFrame(f) : setTimeout(r, 30)); requestAnimationFrame(f); });
+  const waitFor = async (cond, ms = 2000) => { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > ms) return false; await frames(1); } return true; };
+  atest('5.1.24: «Духи» — рисунки карточек по мере прокрутки, адрес картинки — blob:', async () => {
+    const keep = { spirits: S.d.spirits, tut: S.d.tut, colSort: UI.colSort, colEl: UI.colEl };
+    const css = document.createElement('style'); // своя разметка экрана: прокручиваемое тело, карточки по 120 px
+    css.textContent = '.col-screen{position:fixed;left:0;top:0;width:360px;height:400px;display:flex;flex-direction:column;background:#120c24}'
+      + '.col-screen .screen-body{flex:1;overflow:auto}.col-screen .card{display:block;width:100%;height:120px}.col-screen .art{display:block;width:78px;height:78px}';
+    document.head.appendChild(css);
+    let scr = null;
+    try {
+      S.d.tut = 0; UI.colSort = 'power'; UI.colEl = 'all';
+      S.d.spirits = SPECIES.slice(0, 40).map((s, i) => Object.assign(S.makeSpirit(s.id, 10, 'lazy' + i), { shiny: i === 1 }));
+      UI.collection();
+      scr = [...document.querySelectorAll('.col-screen')].pop();
+      eq(scr.querySelectorAll('.card').length, 40, 'карточек:');
+      eq(scr.querySelectorAll('.card-art img').length, 0, 'сразу — ни одной картинки, только заглушки:');
+      eq(scr.querySelectorAll('.card-art i.art[data-art]').length, 40, 'заглушек:');
+      ok(scr.querySelector('.card-art i.art[data-sh="1"]'), 'сияющий дух помечен в заглушке');
+      ok(await waitFor(() => scr.querySelector('.card-art img')), 'видимые карточки получили рисунки');
+      const drawn = scr.querySelectorAll('.card-art img').length;
+      ok(drawn > 0 && drawn < 40, `рисунки — только у карточек у экрана: ${drawn} из 40`);
+      ok([...scr.querySelectorAll('.card-art img')].every(im => im.src.startsWith('blob:')), 'адрес картинки — blob:, не data:');
+      const body = scr.querySelector('.screen-body'), last = () => [...scr.querySelectorAll('.card')].pop();
+      ok(!last().querySelector('img'), 'последняя карточка ещё без рисунка');
+      body.scrollTop = body.scrollHeight;
+      ok(await waitFor(() => last().querySelector('img')), 'прокрутили вниз — последняя карточка с рисунком');
+      // другая сортировка — список заново, рисунки снова по мере прокрутки
+      scr.querySelector('[data-sort="new"]').click();
+      eq(scr.querySelectorAll('.card-art i.art[data-art]').length, 40, 'после сортировки — снова заглушки');
+      ok(await waitFor(() => scr.querySelector('.card-art img')), 'и снова рисунки у экрана');
+    } finally {
+      if (scr) { scr._close(); scr.remove(); }
+      css.remove();
+      Object.assign(S.d, { spirits: keep.spirits, tut: keep.tut }); UI.colSort = keep.colSort; UI.colEl = keep.colEl;
+    }
+  });
+  test('5.1.24: Art.img — адрес blob: один на вид (кэш), сияющий — свой', () => {
+    const a = Art.img('kapelka'), b = Art.img('kapelka'), c = Art.img('kapelka', true);
+    const src = h => (/src="([^"]+)"/.exec(h) || [])[1] || '';
+    ok(src(a).startsWith('blob:'), 'blob: — ' + src(a).slice(0, 30));
+    eq(src(a), src(b), 'тот же вид — тот же адрес:');
+    ok(src(c) !== src(a), 'сияющий — другой рисунок');
+    ok(a.length < 200, `разметка картинки короткая: ${a.length} символов`);
+  });
+  atest('5.1.24: карта — у каждого куска pmtiles свой адрес (?r=начало-длина), заголовок Range прежний', async () => {
+    if (typeof protomapsL === 'undefined') await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '../www/vendor/protomaps/protomaps-leaflet.min.js'; s.onload = res; s.onerror = () => rej(new Error('нет protomaps-leaflet.min.js')); document.head.appendChild(s); });
+    const was = window.fetch, calls = [];
+    window.fetch = async (url, opt) => { calls.push({ url: String(url), range: opt && opt.headers && opt.headers.get('range') }); return new Response(new Uint8Array(50), { status: 206, headers: { 'Content-Length': '50', 'ETag': '"t1"' } }); };
+    try {
+      const src = new protomapsL.PmtilesSource('https://duholov.ru/tiles/world-test.pmtiles', false).p.source;
+      const r = await src.getBytes(1000, 50);
+      eq(calls.length, 1, 'запросов:');
+      eq(calls[0].url, 'https://duholov.ru/tiles/world-test.pmtiles?r=1000-50', 'адрес куска:');
+      eq(calls[0].range, 'bytes=1000-1049', 'Range:');
+      eq(r.data.byteLength, 50, 'данные куска:');
+      await new protomapsL.PmtilesSource('https://x.test/a.pmtiles?k=1', false).p.source.getBytes(0, 16384);
+      eq(calls[1].url, 'https://x.test/a.pmtiles?k=1&r=0-16384', 'адрес уже с параметром — через &:');
+    } finally { window.fetch = was; }
+  });
+  atest('5.1.24: SRI — хэши библиотек верны, предзагрузка в head до CSP и с теми же integrity, preconnect к серверу игры', async () => {
+    const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
+    const sha = async p => 'sha384-' + btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-384', await fetch('../www/' + p + '?t=' + Date.now()).then(r => r.arrayBuffer())))));
+    const tags = [...html.matchAll(/<(?:script|link)\b[^>]*?(?:src|href)="([^"?]+)[^"]*"[^>]*?integrity="([^"]+)"[^>]*>/g)].map(m => ({ path: m[1], sri: m[2], tag: m[0] }));
+    ok(tags.length >= 7, 'тегов с integrity: ' + tags.length); // 4 предзагрузки + стили и два скрипта карты
+    for (const t of tags) eq(t.sri, await sha(t.path), t.path + ':');
+    eq(Cloud.LIB_SRI, await sha('vendor/supabase.min.js'), 'cloud.js LIB_SRI:');
+    const pre = p => tags.find(t => t.path === p && t.tag.includes('rel="preload"'));
+    ['css/style.css', 'vendor/leaflet/leaflet.min.css', 'vendor/leaflet/leaflet.min.js', 'vendor/protomaps/protomaps-leaflet.min.js', 'js/version.js', 'js/i18n.js', 'vendor/supabase.min.js']
+      .forEach(p => ok(html.includes(`<link rel="preload" href="${p}`), 'нет предзагрузки ' + p));
+    ok(pre('vendor/supabase.min.js').tag.includes('crossorigin="anonymous"'), 'библиотека облака: crossorigin="anonymous", как у тега из cloud.js');
+    if (html.includes('<script src="js/app.min.js')) ok(html.includes('<link rel="preload" href="js/app.min.js'), 'сборка: предзагрузка app.min.js');
+    const csp = html.indexOf('http-equiv="Content-Security-Policy"');
+    ok(csp > 0 && [...html.matchAll(/<link rel="preload" href="(?:css|js|vendor\/(?:leaflet|protomaps|supabase))/g)].every(m => m.index < csp), 'предзагрузка — до <meta> с CSP');
+    ok(/<link rel="preconnect" href="https:\/\/api\.duholov\.ru" crossorigin>/.test(html), 'preconnect к серверу игры');
+    ok(!html.includes('dns-prefetch'), 'без dns-prefetch к сервисам входа');
+  });
+  atest('5.1.24: service worker — установка не перекачивает файлы с меткой версии, без icon-512; кэши звуков и плиток живут', async () => {
+    // sw.js — в песочнице: свои self, caches и importScripts; метки версии — как после tools/stamp-version.sh
+    const src = (await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text())).split('?v=dev').join('?v=9.9.9-test');
+    const on = {}, put = [], deleted = [];
+    const fakeSelf = { addEventListener: (n, f) => { on[n] = f; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
+    const fakeCaches = { open: async () => ({ addAll: async reqs => { put.push(...reqs); } }), keys: async () => ['duholov-v9.9.8-old', 'duholov-v9.9.9-dev', 'duholov-tiles', 'duholov-sfx'], delete: async k => { deleted.push(k); return true; } };
+    new Function('self', 'importScripts', 'caches', 'APP_VERSION', src)(fakeSelf, () => {}, fakeCaches, '9.9.9');
+    let wait;
+    on.install({ waitUntil: p => { wait = p; } }); await wait;
+    ok(put.length > 8, 'установка кладёт в кэш основные файлы: ' + put.length);
+    const mode = end => { const r = put.find(q => q.url.endsWith(end)); ok(r, 'нет в кэше: ' + end); return r.cache; };
+    eq(mode('js/version.js?v=9.9.9-test'), 'default', 'файл с меткой версии — из HTTP-кэша:');
+    eq(mode('css/style.css?v=9.9.9-test'), 'default', 'стили с меткой версии:');
+    eq(mode('vendor/supabase.min.js'), 'no-cache', 'файл без метки — сверка с сервером:');
+    eq(mode('/index.html'), 'no-cache', 'страница — сверка с сервером:');
+    ok(!put.some(r => r.url.includes('icon-512')), 'icon-512.png игре не нужен — его нет в кэше');
+    ok(!put.some(r => r.cache === 'reload'), 'ничего не качается мимо HTTP-кэша');
+    on.activate({ waitUntil: p => { wait = p; } }); await wait;
+    eq(deleted.join(), 'duholov-v9.9.8-old', 'при обновлении удаляется только кэш прошлой версии (звуки и плитки — нет):');
+  });
+  test('5.1.24: обновление — удаляются кэши кода прошлых версий; кэш новой (его заполняет новый service worker), звуки и плитки остаются', () => {
+    eq(Updater.oldCaches(['duholov-v5.1.23-abc', 'duholov-v5.1.24-def', 'duholov-tiles', 'duholov-sfx', 'duholov-v5.1.2-x'], '5.1.24').join(), 'duholov-v5.1.23-abc,duholov-v5.1.2-x');
+    eq(Updater.oldCaches([], '5.1.24').length, 0);
+  });
+  atest('5.1.24: облако — один общий запуск клиента на параллельные запросы; ранний запуск без регистрации новичка', async () => {
+    const keep = { sb: Cloud.sb, cp: Cloud._cp, lib: Cloud._lib, sup: window.supabase, configured: Cloud.configured, client: Cloud.client, libF: Cloud.lib };
+    let made = 0;
+    const fakeSb = { auth: { getSession: async () => ({ data: { session: { user: { id: 'u' } } } }) } };
+    try {
+      window.supabase = { createClient: () => { made++; return fakeSb; } };
+      Cloud.sb = null; Cloud._cp = null;
+      const [a, b] = await Promise.all([Cloud.client(), Cloud.client()]);
+      eq(made, 1, 'клиент создан один раз:');
+      ok(a === fakeSb && b === fakeSb, 'оба запроса получили один и тот же клиент');
+      eq(await Cloud.client(), fakeSb, 'готовый клиент — сразу');
+      eq(made, 1, 'и больше не создаётся:');
+      // ранний запуск: есть сохранённый вход — готовим клиент; нет — только библиотеку (гостя не регистрируем до проверки версии)
+      const calls = [];
+      Cloud.configured = () => true;
+      Cloud.client = () => { calls.push('client'); return Promise.resolve(); };
+      Cloud.lib = () => { calls.push('lib'); return Promise.resolve(); };
+      const key = CLOUD_CONFIG.auth, saved = localStorage.getItem(key);
+      try {
+        localStorage.removeItem(key); Cloud.warm();
+        localStorage.setItem(key, '{}'); Cloud.warm();
+      } finally { if (saved == null) localStorage.removeItem(key); else localStorage.setItem(key, saved); }
+      eq(calls.join(), 'lib,client', 'без входа — библиотека, со входом — клиент:');
+    } finally { Object.assign(Cloud, { sb: keep.sb, _cp: keep.cp, _lib: keep.lib, configured: keep.configured, client: keep.client, lib: keep.libF }); window.supabase = keep.sup; }
+  });
   /* ---------- вывод ---------- */
   (async () => {
     for (const t of pending) {
