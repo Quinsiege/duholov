@@ -58,6 +58,7 @@
   <script src="../www/js/navmap.js"></script>
   <script src="../www/js/stage.js"></script>
   <script src="../www/js/walk.js"></script>
+  <script src="../www/js/m3d.js"></script>
   <script src="../www/js/map.js"></script>
   <script src="../www/js/encounter.js"></script>
   <script src="../www/js/raid.js"></script>
@@ -4363,7 +4364,7 @@
     const src = (await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text())).split('?v=dev').join('?v=9.9.9-test');
     const on = {}, put = [], deleted = [];
     const fakeSelf = { addEventListener: (n, f) => { on[n] = f; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
-    const fakeCaches = { open: async () => ({ addAll: async reqs => { put.push(...reqs); } }), keys: async () => ['duholov-v9.9.8-old', 'duholov-v9.9.9-dev', 'duholov-tiles', 'duholov-sfx'], delete: async k => { deleted.push(k); return true; } };
+    const fakeCaches = { open: async () => ({ addAll: async reqs => { put.push(...reqs); } }), keys: async () => ['duholov-v9.9.8-old', 'duholov-v9.9.9-dev', 'duholov-tiles', 'duholov-sfx', 'duholov-models'], delete: async k => { deleted.push(k); return true; } };
     new Function('self', 'importScripts', 'caches', 'APP_VERSION', src)(fakeSelf, () => {}, fakeCaches, '9.9.9');
     let wait;
     on.install({ waitUntil: p => { wait = p; } }); await wait;
@@ -4376,7 +4377,51 @@
     ok(!put.some(r => r.url.includes('icon-512')), 'icon-512.png игре не нужен — его нет в кэше');
     ok(!put.some(r => r.cache === 'reload'), 'ничего не качается мимо HTTP-кэша');
     on.activate({ waitUntil: p => { wait = p; } }); await wait;
-    eq(deleted.join(), 'duholov-v9.9.8-old', 'при обновлении удаляется только кэш прошлой версии (звуки и плитки — нет):');
+    eq(deleted.join(), 'duholov-v9.9.8-old', 'при обновлении удаляется только кэш прошлой версии (звуки, плитки и модели мест — нет):');
+  });
+  // 5.1.28: 3D-модели мест (www/models/*.m3d, js/m3d.js) — каждый файл читается, части ссылаются на свои вершины и материалы,
+  // у Разлома — вихрь портала (вращается), у святилища — пламя, у Источника — парящий осколок; рамка модели — правдоподобная
+  atest('5.1.28: 3D-модели мест — все файлы читаются, части целы, у Разломов вихрь, у святилищ пламя', async () => {
+    const need = { spring: 'float', shrine: 'flicker', rift: 'spin' };
+    for (const kind of M3D.KINDS) {
+      const buf = await fetch('../www/models/' + kind + '.m3d?t=' + Date.now()).then(r => { ok(r.ok, kind + ': нет файла'); return r.arrayBuffer(); });
+      const m = M3D.parse(buf), h = m.head;
+      ok(h.prims.length > 3, kind + ': частей ' + h.prims.length);
+      ok(h.groups.some(g => g.t === need[kind.split('_')[0]]), kind + ': нет движения ' + need[kind.split('_')[0]]);
+      ok(h.r > 0.5 && h.r < 3.5 && h.h > 1.5 && h.h < 4.5, `${kind}: рамка ${h.r} × ${h.h}`);
+      ok(h.top > 1 && h.low < 0, `${kind}: верх ${h.top}, низ ${h.low}`);
+      for (const p of h.prims) {
+        ok(h.mats[p.m] && h.groups[p.g], kind + ': часть без материала или группы');
+        eq(p.i[1] % 3, 0, kind + ': индексы не тройками —');
+        let mx = 0;
+        for (let i = p.i[0]; i < p.i[0] + p.i[1]; i++) mx = Math.max(mx, m.idx[i]);
+        ok(mx < p.v[1] && p.v[0] + p.v[1] <= m.pos.length / 4, kind + ': индекс за пределами вершин части');
+        if (p.c != null) ok((p.c + p.v[1]) * 4 <= m.col.length, kind + ': цвета вершин за пределами');
+        if (p.ol) ok(m.onr[p.v[0] * 4] || m.onr[p.v[0] * 4 + 1] || m.onr[p.v[0] * 4 + 2], kind + ': у обводки нет нормали');
+      }
+    }
+  });
+  test('5.1.28: значки мест — холст 3D-модели в точке привязки значка; у исчерпанного Источника — без струи', () => {
+    const keep = M3D.on, keepL = window.L;
+    try {
+      M3D.on = true;
+      window.L = { divIcon: o => ({ options: o }) }; // в тестах Leaflet нет — значку хватит его настроек
+      const at = (e, kind, ax, ay) => {
+        const ic = MapView.icon(e), h = ic.options.html;
+        ok(h.includes(`data-m3d="${kind}"`), 'модель ' + kind);
+        eq(ic.options.iconAnchor.join(), ax + ',' + ay, kind + ': точка привязки значка');
+        ok(h.includes(`data-ax="${ax}" data-ay="${ay}"`), kind + ': модель — в точке привязки');
+        ok(h.indexOf('mk3d') < h.indexOf('class="art'), kind + ': холст — первым, рисунок — следом (запасной)');
+        return h;
+      };
+      ok(at({ type: 'spring', ready: false, invaded: false }, 'spring', 23, 60).includes('data-hide="jet"'), 'исчерпанный Источник — без струи');
+      ok(!at({ type: 'spring', ready: true, invaded: false }, 'spring', 23, 60).includes('data-hide'), 'полный — со струёй');
+      at({ type: 'shrine', tier: 2, myth: 'japan' }, 'shrine_japan', 27, 72);
+      at({ type: 'shrine', tier: 1 }, 'shrine_slavic', 27, 72);
+      at({ type: 'rift', tier: 3, myth: 'aztec', boss: Object.keys(SP)[0] }, 'rift_aztec', 42, 86);
+      M3D.on = null; // нет WebGL — прежний рисунок, без холста
+      ok(!MapView.icon({ type: 'rift', tier: 1, myth: 'greek', boss: Object.keys(SP)[0] }).options.html.includes('mk3d'), 'без WebGL — без холста');
+    } finally { M3D.on = keep; if (keepL) window.L = keepL; else delete window.L; }
   });
   test('5.1.24: обновление — удаляются кэши кода прошлых версий; кэш новой (его заполняет новый service worker), звуки и плитки остаются', () => {
     eq(Updater.oldCaches(['duholov-v5.1.23-abc', 'duholov-v5.1.24-def', 'duholov-tiles', 'duholov-sfx', 'duholov-v5.1.2-x'], '5.1.24').join(), 'duholov-v5.1.23-abc,duholov-v5.1.2-x');

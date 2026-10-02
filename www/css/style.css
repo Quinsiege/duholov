@@ -81,6 +81,16 @@ body.night .range-circle { fill-opacity: .1; }
 .mk-rift .mk-tier { position: absolute; left: 0; right: 0; bottom: -2px; text-align: center; color: var(--gold2); font-size: 12px; font-weight: 900; text-shadow: 0 1px 2px #000, 0 0 4px #000; letter-spacing: 1px; }
 .mk-rift.done { filter: grayscale(.8) opacity(.7); }
 .mk-rift.done .mk-boss { display: none; }
+/* 5.1.28: 3D-модель места (js/m3d.js) — холст в точке привязки значка; как только модель нарисована, прежний рисунок прячется */
+.mk3d { position: absolute; pointer-events: none; }
+.mk canvas.mk3d { z-index: auto; } /* у Leaflet любой canvas в слое карты — z-index: 100: модель легла бы поверх хранителя и звёзд */
+.mk3d:not(.on) { display: none; }
+.m3d > .art { display: none; }
+.mk-rift.camp > .mk3d { filter: drop-shadow(0 0 10px rgba(251, 191, 36, .75)); }
+/* хранитель Разлома — над моделью, звёзды — под ней, флаг клана — у верха (--m3d-top / --m3d-bot ставит js/m3d.js) */
+.m3d > .mk-boss { top: calc(var(--m3d-top) - 42px); }
+.m3d > .mk-tier { top: calc(var(--m3d-bot) - 7px); bottom: auto; }
+.m3d > .mk-flag { top: calc(var(--m3d-top) - 2px); }
 
 .mk-player-wrap { background: none; border: 0; }
 .mk-player { position: relative; width: 64px; height: 64px; }
