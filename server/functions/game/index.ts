@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.26';
+const APP_VERSION = '5.1.27';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -2203,10 +2203,13 @@ const QUEST_TEMPLATES = [
   { t: 'catchEl', min: 2, max: 3,  text: (n, el) => ru.k`Поймай ${n} духов стихии «${ELEMENTS[el].name}»`, reward: { honey: 3, sparks: 400 } },
   { t: 'spring',  min: 3, max: 5,  text: n => ru.k`Зачерпни силы из ${n} источников`,     reward: { charm: 5, herb: 2 } },
   { t: 'throw',   min: 2, max: 4,  text: n => ru.k`Сделай ${n} отличных бросков`,       reward: { honey: 2, sparks: 300 } },
-  { t: 'walk',    min: 1, max: 2,  text: n => ru.k`Пройди ${n} км`,                     reward: { charm: 10, sparks: 500 } },
   { t: 'power',   min: 2, max: 4,  text: n => ru.k`Усиль духов ${n} ${U.plural(n, ru.k`раз`, ru.k`раза`, ru.k`раз`)}`,            reward: { herb: 2, sparks: 300 } },
   { t: 'evolve',  min: 1, max: 1,  text: () => ru.k`Преврати одного духа`,              reward: { honey: 2, sparks: 400 } }, // 4.16: ладан — реже
   { t: 'raid',    min: 1, max: 1,  text: () => ru.k`Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
+  // 5.1.27: GPS нет — вместо «Пройди N км» то, что делают джойстиком и Вратами: шаг во Врата и ночной дух (ночь — по месту:
+  // дома или за Вратами). Хранитель капища — ниже (QUEST_TEMPLATES.push). В среднем за задание — как раньше: 400 искр
+  { t: 'gate',    min: 1, max: 1,  text: () => ru.k`Шагни во Врата Перепутицы`,         reward: { charm: 10, sparks: 500 } },
+  { t: 'catchNight', min: 1, max: 1, text: () => ru.k`Поймай ночного духа`,             reward: { charm: 3, honey: 1, sparks: 400 } },
 ];
 
 /* ---------- Поручения из источников (3.2): задание → встреча с духом ---------- */
@@ -2218,7 +2221,7 @@ const TASK_TEMPLATES = [
   { t: 'photo',    tier: 1, min: 1, max: 1, text: () => ru.k`Сфотографируй духа во время встречи` },
   { t: 'catchEl',  tier: 2, min: 3, max: 5, text: (n, el) => ru.k`Поймай ${n} духов стихии «${ELEMENTS[el].name}»` },
   { t: 'throw',    tier: 2, min: 3, max: 5, text: n => ru.k`Сделай ${n} отличных бросков` },
-  { t: 'walk',     tier: 2, min: 1, max: 2, text: n => ru.k`Пройди ${n} км` },
+  { t: 'gate',     tier: 2, min: 1, max: 1, text: () => ru.k`Шагни во Врата Перепутицы` }, // 5.1.27: было «Пройди N км»
   { t: 'evolve',   tier: 2, min: 1, max: 1, text: () => ru.k`Преврати духа` },
   { t: 'duel',     tier: 2, min: 1, max: 1, lvl: DUEL_LEVEL, text: () => ru.k`Победи хранителя капища` },
   { t: 'hatch',    tier: 3, min: 1, max: 1, text: () => ru.k`Выведи духа из кокона` },
@@ -2401,7 +2404,7 @@ const MEDALS = [
   { id: 'walker',  name: ru`Странник`,      desc: ru`Пройди километров`,            stat: 'km',          tiers: [10, 100, 1000] },
   { id: 'springs', name: ru`Водонос`,       desc: ru`Зачерпни силы из источников`,    stat: 'springs',     tiers: [30, 300, 2000] },
   { id: 'raids',   name: ru`Затворник`,     desc: ru`Закрой разломов`,              stat: 'raids',       tiers: [3, 30, 200] },
-  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         tiers: [5, 20, SPECIES.filter(s => s.myth === 'slavic').length] },
+  { id: 'dex',     name: ru`Летописец`,     desc: ru`Видов духов в бестиарии`,      stat: 'dex',         get tiers() { return [30, 150, SPECIES.length]; } }, // 5.1.27: золото — весь бестиарий открытых мифологий (было 63 славянских)
   { id: 'myths',   name: ru`Странник миров`, desc: ru`Видов духов других мифологий`, stat: 'myths',       tiers: [3, 25, 80] }, // 4.28
   { id: 'purify',  name: ru`Очиститель`,    desc: ru`Победи прислужников Нави`,     stat: 'invasions',   tiers: [3, 30, 200] },
   { id: 'trade',   name: ru`Щедрая душа`,   desc: ru`Купи или продай духов на Аукционе`,     stat: 'traded',      tiers: [1, 10, 50] },
@@ -2752,10 +2755,10 @@ const U = {
     if (m >= 48 * 60) return ru`${Math.floor(m / 1440)} дн ${Math.floor(m / 60) % 24} ч`;
     return m >= 60 ? ru`${Math.floor(m / 60)} ч ${m % 60} мин` : `${m}:${String(ss).padStart(2, '0')}`;
   },
-  // 5.1.24: сколько осталось — с секундами, для тикающих таймеров: «5 ч 12 мин 33 с», меньше часа — «12 мин 33 с»
-  fmtHms(ms) {
-    const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
-    return h ? ru`${h} ч ${m} мин ${x} с` : ru`${m} мин ${x} с`;
+  // 5.1.27: сколько осталось — часы и минуты, без секунд: «5 ч 12 мин», меньше часа — «12 мин»
+  fmtHm(ms) {
+    const m = Math.max(0, Math.floor(ms / 60000)), h = Math.floor(m / 60);
+    return h ? ru`${h} ч ${m % 60} мин` : ru`${m} мин`;
   },
   // 4.15: формы слова по правилам языка игры: one — «1 оберег», few — «2 оберега», many — «5 оберегов»
   // (в других языках few не бывает: в переводе few и many — обычно одна и та же форма множественного числа)
@@ -4663,7 +4666,7 @@ const J = {
       // целые фразы на каждый вариант (сияющий/омрачённый) — чтобы перевод не собирался из кусков
       case 'catch': { const n = sp(e.sid);
         return { ico: icon(e.sid), title: e.shiny && e.dark ? ru`Пойман сияющий омрачённый ${n}` : e.shiny ? ru`Пойман сияющий ${n}` : e.dark ? ru`Пойман омрачённый ${n}` : ru`Пойман ${n}`, sub: e.power ? ru`СИЛА ${e.power}` : '' }; }
-      case 'flee': return { ico: icon(e.sid), title: ru`${sp(e.sid)} ускользнул`, sub: ru`Дух вернулся в Навь`, cls: 'dim' };
+      case 'flee': return { ico: icon(e.sid), title: ru`Дух сбежал`, sub: sp(e.sid), cls: 'dim' }; // 5.1.27: без Нави, имя — строкой ниже
       case 'hatch': return { ico: icon(e.sid), title: ru`Из кокона появился ${sp(e.sid)}`, sub: e.km ? ru`Кокон ${e.km} км` : '' };
       case 'evolve': return { ico: icon(e.to), title: ru`${sp(e.from)} превратился в ${sp(e.to)}`, sub: '' };
       case 'awaken': return { ico: icon(e.sid), title: ru`${sp(e.sid)} пробуждён`, sub: '★'.repeat(e.stars || 1) };
@@ -8174,6 +8177,7 @@ const GameCore = {
       }
       S.d.atlasV = 1;
       if (!first && from) { const l0 = Rules.land(from.lat, from.lng), l1 = Rules.land(lat, lng); if (l0 && l1 && l0 !== l1) S.progress('gateLand', 1); }
+      if (!first) S.progress('gate', 1); // 5.1.27: задание «Шагни во Врата Перепутицы»
       ctx.srv.enc = null; // встреча с духом не переезжает вместе с Ловчим
       const p = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
       ctx.srv.pos = { ...p, t: ctx.now, acc: 5 };
@@ -8278,7 +8282,7 @@ const GameCore = {
       e.throws++;
       const left = () => raid ? e.charms : Rules.THROWABLE.reduce((n, k) => n + (S.d.items[k] || 0), 0);
       if (!a.hit) {
-        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { miss: true });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух сбежал` : null, { miss: true });
         return { miss: true, left: left() };
       }
       // точность броска присылает телефон: если «отличные» броски подозрительно часты (больше 70% из 20+ последних) — без бонуса
@@ -8295,8 +8299,8 @@ const GameCore = {
       while (wobbles < 3 && Math.random() < q) wobbles++;
       if (wobbles < 3) {
         const flee = e.mode !== 'wild' ? 0 : RARITY[SP[e.sid].rar].flee * (e.throws > 3 ? 1.5 : 1);
-        if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух ускользнул в Навь…`, { wobbles, label: bonus.label });
-        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { wobbles, label: bonus.label });
+        if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух сбежал`, { wobbles, label: bonus.label });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух сбежал` : null, { wobbles, label: bonus.label });
         return { wobbles, label: bonus.label, left: left() };
       }
       // пойман
@@ -8311,6 +8315,7 @@ const GameCore = {
       S.d.stats.caught++;
       const xp = S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el }); S.progress('catchRar', 1, { rar: s.rar }); // 5.1.15: редкость — для Кампании
+      if (s.time === 'night') S.progress('catchNight', 1); // 5.1.27: задание дня «Поймай ночного духа»
       if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;

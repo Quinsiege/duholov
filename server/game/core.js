@@ -840,6 +840,7 @@ const GameCore = {
       }
       S.d.atlasV = 1;
       if (!first && from) { const l0 = Rules.land(from.lat, from.lng), l1 = Rules.land(lat, lng); if (l0 && l1 && l0 !== l1) S.progress('gateLand', 1); }
+      if (!first) S.progress('gate', 1); // 5.1.27: задание «Шагни во Врата Перепутицы»
       ctx.srv.enc = null; // встреча с духом не переезжает вместе с Ловчим
       const p = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
       ctx.srv.pos = { ...p, t: ctx.now, acc: 5 };
@@ -944,7 +945,7 @@ const GameCore = {
       e.throws++;
       const left = () => raid ? e.charms : Rules.THROWABLE.reduce((n, k) => n + (S.d.items[k] || 0), 0);
       if (!a.hit) {
-        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { miss: true });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух сбежал` : null, { miss: true });
         return { miss: true, left: left() };
       }
       // точность броска присылает телефон: если «отличные» броски подозрительно часты (больше 70% из 20+ последних) — без бонуса
@@ -961,8 +962,8 @@ const GameCore = {
       while (wobbles < 3 && Math.random() < q) wobbles++;
       if (wobbles < 3) {
         const flee = e.mode !== 'wild' ? 0 : RARITY[SP[e.sid].rar].flee * (e.throws > 3 ? 1.5 : 1);
-        if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух ускользнул в Навь…`, { wobbles, label: bonus.label });
-        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { wobbles, label: bonus.label });
+        if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух сбежал`, { wobbles, label: bonus.label });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух сбежал` : null, { wobbles, label: bonus.label });
         return { wobbles, label: bonus.label, left: left() };
       }
       // пойман
@@ -977,6 +978,7 @@ const GameCore = {
       S.d.stats.caught++;
       const xp = S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el }); S.progress('catchRar', 1, { rar: s.rar }); // 5.1.15: редкость — для Кампании
+      if (s.time === 'night') S.progress('catchNight', 1); // 5.1.27: задание дня «Поймай ночного духа»
       if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;

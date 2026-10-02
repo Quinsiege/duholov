@@ -809,4 +809,21 @@ Object.assign(UI, {
       m.querySelector('.modal-btns').appendChild(b);
     }, 2200);
   },
+  // 5.1.27: новый дух без кокона (выбор в Кампании) — та же сцена: вспышка, дух появляется, кто он и «Привет!»
+  gotSpiritAnim(sp, o, done) {
+    const s = SP[sp.sid];
+    const m = this.modal({
+      cls: 'hatch-modal got-modal', dismiss: false, buttons: [],
+      html: `<div class="hatch-stage"><div class="hatch-sp">${Art.of(sp)}</div><div class="evo-glow"></div></div><div class="evo-text"></div>`,
+    });
+    setTimeout(() => {
+      Sfx.play('hatch'); U.vibrate([40, 60, 100]);
+      m.querySelector('.hatch-stage').classList.add('open');
+      m.querySelector('.evo-text').innerHTML = `${sp.shiny ? ru`<b>✦ Сияющий ${s.name}</b> — теперь твой дух!` : ru`<b>${s.name}</b> — теперь твой дух!`}` +
+        `<div class="small">${ru`СИЛА ${S.power(sp)}`}${o.ess ? ` · ${ru`+${o.ess} эссенции`}` : ''}</div>${o.isNew ? `<div class="badge-new">${ru`Новая запись в Бестиарии!`}</div>` : ''}`;
+      const b = U.el(`<button class="btn primary">${ru`Привет!`}</button>`);
+      b.onclick = () => { m.close(); if (done) done(); };
+      m.querySelector('.modal-btns').appendChild(b);
+    }, 350);
+  },
 });

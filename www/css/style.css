@@ -358,11 +358,7 @@ body.night .range-circle { fill-opacity: .1; }
 .o-bar em { position: absolute; top: -3px; width: 2px; height: 18px; margin-left: -1px; background: var(--gold2); border-radius: 1px; }
 .o-bar em:last-child { margin-left: -2px; }
 .o-me { margin: 8px 0 0; font-size: 13px; color: var(--muted); } .o-me b { color: var(--text); }
-.o-top { margin: 4px 0 10px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
 .o-sub { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-.o-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 14px; }
-.o-row span { width: 18px; color: var(--muted); text-align: right; } .o-row b { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .o-row i { font-style: normal; color: var(--gold2); font-weight: 700; }
-.o-row.me b { color: var(--gold2); font-weight: 700; }
 .q-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 10px; }
 
 /* профиль */
@@ -4519,7 +4515,7 @@ body:has(> .screen:not(.out)) .upd-bar, body:has(> .modal-wrap:not(.out)) .upd-b
 /* З8: закрытые ступени Золотой тропы читаются (было 45% прозрачности) */
 .screen .pass-cell.lock { opacity: .74; filter: saturate(.3); }
 /* З9: без второй подложки: шапка Тропы, неделя Ордена, «Лучшие Ловчие недели», строки Дневника */
-.screen .story-card, .screen .o-top { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 4px 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.screen .story-card { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 4px 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
 .screen .j-row { background: none; border-radius: 0; margin-bottom: 0; padding: 8px 2px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
 /* З10: невысокий экран — верх карточки (дух, Лавка, Лига, профиль) компактнее, вкладкам больше места */
 @media (max-height: 700px) {
@@ -4721,13 +4717,6 @@ body:not(.night) .toast, body:not(.night) .upd-bar, body:not(.night) #coach, bod
 .ala-modal .ala-mstone { display: grid; place-items: center; margin: -2px 0 8px; }
 .ala-modal .ala-ev { margin-top: 10px; }
 .ev-road b { color: var(--road, var(--gold2)); }
-.o-ala { display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0 0; padding: 12px; border-radius: 14px; font: inherit; color: inherit; text-align: left; cursor: pointer;
-  border: 1px solid rgba(253, 230, 138, .35); background: linear-gradient(135deg, rgba(253, 230, 138, .14), rgba(255, 255, 255, .04)); }
-.o-ala-ico, .o-ala-ico > .art { width: 42px; height: 42px; flex: none; }
-.o-ala-t { flex: 1; min-width: 0; }
-.o-ala-t b, .o-ala-t small { display: block; }
-.o-ala-t small { color: rgba(255, 255, 255, .7); }
-.o-ala-go { font-size: 24px; opacity: .6; }
 .bk-ala { display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
 .bk-ala .art { width: 30px; height: 30px; flex: none; margin: 0 !important; }
 
@@ -5554,40 +5543,17 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 .cp-head .pbar { margin: 8px 0 0; }
 .cp-step { align-items: stretch; }
 .cp-step .cp-name { font-size: 16px; margin-bottom: 8px; color: var(--gold2); }
-.cp-obj { margin: 6px 0 8px; }
-.cp-obj .cp-ot { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13.5px; }
-.cp-obj .cp-ot b { display: inline; margin: 0; font-size: 13px; color: var(--muted); white-space: nowrap; }
-.cp-obj.done .cp-ot span { color: var(--muted); }
-.cp-obj.done .cp-ot b { color: var(--good); }
-.cp-obj .pbar { margin: 5px 0 0; height: 6px; }
+/* 5.1.27: цель — название, под ним полоска со счётчиком, как у заданий дня; сделано — полная, с зелёной галочкой */
+.cp-obj { margin: 6px 0 10px; }
+.cp-obj .cp-on { display: block; font-size: 13.5px; }
+.cp-obj.done .cp-on { color: var(--muted); }
+.cp-obj .qd-bar { margin: 5px 0 0; }
+.cp-obj .cp-ok { flex: none; margin: 0; color: var(--good); font-size: 15px; line-height: 1; }
+.cp-obj.done .qd-bar span { color: var(--good); }
 .cp-gift { display: block; margin: 4px 0 6px; color: #86efac; font-size: 12px; }
 .cp-rift { margin: 6px 0 2px; }
 .cp-rwh { display: block; margin: 10px 0 6px; color: var(--muted); font-size: 12px; }
 .cp-claim { margin: -2px 0 10px; }
-.cp-list { display: flex; flex-direction: column; gap: 6px; }
-.cp-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.cp-row i { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; font-style: normal; font-size: 12px; font-weight: 700; background: rgba(255, 255, 255, .08); color: var(--muted); }
-.cp-row.done i { background: rgba(74, 222, 128, .18); color: var(--good); }
-.cp-row.done span { color: var(--muted); }
-.cp-row.cur i { background: var(--gold2); color: #3b1a02; }
-.cp-row.cur span { font-weight: 700; }
-.cp-row.lock { opacity: .55; }
-/* 5.1.24: пройденный шаг и текущий — строка-кнопка со стрелкой справа у края; раскрытый — стрелка вниз, под ним цели шага */
-.cp-row.cp-x { display: block; }
-.cp-row-h { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit;
-  text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.cp-row-h > span:not(.cp-chev) { flex: 1; min-width: 0; }
-.cp-row-h .cp-chev { flex: none; display: grid; place-items: center; width: 28px; height: 24px; margin-right: -4px; color: var(--muted); transition: transform .2s; }
-.cp-row-h .cp-chev .ico { width: 16px; height: 16px; }
-.cp-row.cur .cp-chev { color: var(--gold2); }
-.cp-row.open .cp-chev { transform: rotate(90deg); }
-.cp-goals { display: none; gap: 4px; margin: 6px 4px 4px 34px; }
-.cp-row.open .cp-goals { display: grid; }
-.cp-goal { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12.5px; color: var(--muted); }
-.cp-row .cp-goal span { font-weight: 400; color: var(--muted); } /* жирным — только название текущего шага, не его цели */
-.cp-goal b { flex: none; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-.cp-goal.ok b { color: var(--good); }
-@media (prefers-reduced-motion: reduce) { .cp-row-h .cp-chev { transition: none; } }
 /* выбор духа — награда шага */
 .cp-modal .cp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .cp-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); color: inherit; font: inherit; cursor: pointer; text-align: center; }

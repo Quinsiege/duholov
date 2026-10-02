@@ -322,7 +322,7 @@ const Encounter = {
   afterThrow() {
     const st = this.st; if (!st) return;
     if (!this.charmsLeft()) {
-      if (st.o.mode === 'raid') return this.fleeOut(ru`Обереги кончились — дух вернулся в Навь…`);
+      if (st.o.mode === 'raid') return this.fleeOut(ru`Обереги кончились — дух сбежал`);
       UI.toast(ru`Обереги закончились!`);
       return this.end('noCharms');
     }
