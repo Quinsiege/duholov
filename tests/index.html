@@ -59,6 +59,7 @@
   <script src="../www/js/stage.js"></script>
   <script src="../www/js/walk.js"></script>
   <script src="../www/js/m3d.js"></script>
+  <script src="../www/js/bld3d.js"></script>
   <script src="../www/js/map.js"></script>
   <script src="../www/js/encounter.js"></script>
   <script src="../www/js/raid.js"></script>
@@ -4522,6 +4523,63 @@
       MapView.setPitch(40);
       eq(MapView.tilt, 0, 'объём выключен в настройках — наклон пальцем не включается:');
     } finally { Object.assign(MapView, keep); box.remove(); }
+  });
+  test('5.1.30: объёмные дома — крыши разбиты на треугольники без пропусков и лишнего (невыпуклые, с дворами)', () => {
+    const area = (d, t) => {
+      let s = 0;
+      for (let i = 0; i < t.length; i += 3) {
+        const [a, b, c] = [t[i], t[i + 1], t[i + 2]].map(j => [d[2 * j], d[2 * j + 1]]);
+        s += Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;
+      }
+      return s;
+    };
+    const sq = [0, 0, 10, 0, 10, 10, 0, 10];
+    eq(Earcut.run(sq).length, 6, 'квадрат — два треугольника');
+    near(area(sq, Earcut.run(sq)), 100, 1e-9, 'квадрат:');
+    const gl = [0, 0, 10, 0, 10, 4, 4, 4, 4, 10, 0, 10]; // буква Г — невыпуклый
+    near(area(gl, Earcut.run(gl)), 64, 1e-9, 'невыпуклый — без лишней площади:');
+    const yard = [0, 0, 10, 0, 10, 10, 0, 10, 3, 3, 3, 7, 7, 7, 7, 3]; // дом с двором
+    near(area(yard, Earcut.run(yard, [4])), 84, 1e-9, 'двор — пустой:');
+    const rev = [0, 10, 10, 10, 10, 0, 0, 0]; // обход в другую сторону
+    near(area(rev, Earcut.run(rev)), 100, 1e-9, 'обход в любую сторону:');
+  });
+  test('5.1.30: объёмные дома — стены по рёбрам; общей стены соседей одной высоты и среза плитки нет', () => {
+    const sq = (x, y, s) => [[{ x, y }, { x: x + s, y }, { x: x + s, y: y + s }, { x, y: y + s }]];
+    const fs = [
+      { geomType: 3, props: { height: 20 }, geom: sq(100, 100, 20) },
+      { geomType: 3, props: { height: 20 }, geom: sq(120, 100, 20) }, // вплотную, той же высоты
+      { geomType: 3, props: { height: 30 }, geom: sq(140, 100, 20) }, // вплотную, выше — его стена над соседом видна
+      { geomType: 3, props: {}, geom: [[{ x: -30, y: 300 }, { x: 10, y: 300 }, { x: 10, y: 330 }, { x: -30, y: 330 }]] }, // срезан краем плитки
+    ];
+    const E = Bld3D.edges(fs), walls = f => { const c = { v: [], roof: [], wall: [], edge: [], bb: [Infinity, Infinity, -Infinity, -Infinity] }; Bld3D.house(c, f, -1, Bld3D.EXT + 1, E); return c; };
+    const [a, b, hi, cut] = fs.map(walls);
+    eq(a.wall.length / 6, 3, 'у первого — три стены (общая с соседом той же высоты не видна):');
+    eq(b.wall.length / 6, 2, 'у среднего — две (с обеих сторон соседи не ниже):');
+    eq(hi.wall.length / 6, 4, 'у высокого — все четыре (над низким соседом стена видна):');
+    eq(cut.wall.length / 6, 3, 'у срезанного краем плитки — без стены по срезу:');
+    eq(a.roof.length, 6, 'крыша — два треугольника');
+    eq(a.edge.length, a.wall.length / 3, 'кромка крыши — над каждой стеной');
+    eq(cut.v[3], 8, 'нет высоты — восемь метров (как у домов в плитках)');
+  });
+  test('5.1.30: объёмные дома и места на крышах — одна и та же точка зрения (перспектива; у плоской карты — к верху экрана)', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot }, keepL = window.L;
+    try {
+      window.L = { point: (x, y) => ({ x, y }) };
+      MapView.map = { getSize: () => ({ x: 400, y: 600, divideBy: k => ({ x: 400 / k, y: 600 / k }) }), containerPointToLayerPoint: p => p };
+      MapView.tilt = 32; MapView.rot = 0;
+      const c = MapView.camLayer(), a = 32 * Math.PI / 180;
+      near(c.x, 200, 1e-9); near(c.y, 300 + MapView.PD * Math.sin(a), 1e-9, 'точка зрения — ниже экрана:'); near(c.w, MapView.PD * Math.cos(a), 1e-9, 'на высоте:');
+      const p = { x: 260, y: 100 }, h = 12, s = MapView.roofShift(p, h);
+      // крыша — на луче из точки зрения через точку на высоте h: «тень» на земле дальше от точки зрения в w/(w−h) раз
+      near(s.x, (p.x - c.x) * h / (c.w - h), 1e-9); near(s.y, (p.y - c.y) * h / (c.w - h), 1e-9);
+      ok(s.y < 0 && s.x > 0, 'дальний дом правее середины «встаёт» вверх и вправо');
+      MapView.rot = 90;
+      const c2 = MapView.camLayer();
+      near(c2.x, 200 + MapView.PD * Math.sin(a), 1e-9, 'повёрнутая карта — точка зрения поворачивается с ней:');
+      MapView.tilt = 0; MapView.rot = 30;
+      const s0 = MapView.roofShift(p, 10);
+      near(s0.x, -10 * Math.sin(Math.PI / 6), 1e-9); near(s0.y, -10 * Math.cos(Math.PI / 6), 1e-9, 'плоская карта — к верху экрана:');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
   });
   atest('5.1.30: крыши — высота дома, в котором стоит место (по плитке карты), без хранения домов', async () => {
     const keepV = Hazard._view, keepR = MapView.refresh;

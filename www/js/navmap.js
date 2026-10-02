@@ -198,10 +198,15 @@ const NavMap = {
   },
 
   // тема карты: phase — время суток, season — время года, snow — снежный покров (зимой и в снегопад)
-  theme(phase = 'night', season = 'summer', snow = false) {
+  // палитра часа: время суток, время года, снег (её же берут объёмные дома — js/bld3d.js)
+  palette(phase = 'night', season = 'summer', snow = false) {
     const dark = phase === 'night' || phase === 'dusk';
     const p = Object.assign({}, this.P[phase] || this.P.night, (this.SEASON[season] || {})[dark ? 'dark' : 'light']);
     if (snow) Object.assign(p, this.SEASON.snow[dark ? 'dark' : 'light']);
+    return p;
+  },
+  theme(phase = 'night', season = 'summer', snow = false) {
+    const p = this.palette(phase, season, snow);
     const S = protomapsL, w = st => S.exp(1.6, st), kind = f => f.props.kind || '', det = f => f.props.kind_detail || '';
     const PARK = ['park', 'garden', 'playground', 'village_green', 'recreation_ground', 'cemetery', 'pitch', 'golf_course', 'dog_park', 'protected_area', 'nature_reserve', 'national_park'];
     const WOOD = ['wood', 'forest'], GRASS = ['grass', 'grassland', 'meadow', 'scrub', 'allotments', 'farmland'];

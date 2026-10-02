@@ -121,6 +121,7 @@ const MapView = {
     this.map.attributionControl.setPrefix(false);
     // 4.13: свои слои между плитками земли и значками (порядок — по z-index, см. orderPanes)
     [['zone', 380], ['bld', 390]].forEach(([n, z]) => { const p = this.map.createPane(n); p.style.zIndex = z; p.style.pointerEvents = 'none'; });
+    if (typeof Bld3D !== 'undefined') Bld3D.init(this.map); // 5.1.30: дома — объёмные, в WebGL (свой слой между зоной и подписями)
     this.setTiles();
     setInterval(() => this.setTiles(), 60000);
 
@@ -201,7 +202,7 @@ const MapView = {
         if (nav) {
           U.$('#map').classList.add('navmap');
           // 4.13: дома и подписи — вторым слоем над зоной Ловчего; плитки читаются один раз (общий кэш)
-          this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: th.bldRules, labelRules: th.labelRules });
+          this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: this.bldPaint(th), labelRules: th.labelRules });
           this.bldTiles.views = this.tiles.views;
           this.bldTiles.addTo(this.map);
           // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
@@ -216,14 +217,18 @@ const MapView = {
       const th = NavMap.theme(lk.phase, lk.season, lk.snow);
       Object.assign(this.tiles, { paintRules: th.paintRules, backgroundColor: th.backgroundColor });
       this.tiles.rerenderTiles();
-      if (this.bldTiles) { Object.assign(this.bldTiles, { paintRules: th.bldRules, labelRules: th.labelRules }); this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
+      if (this.bldTiles) { Object.assign(this.bldTiles, { paintRules: this.bldPaint(th), labelRules: th.labelRules }); this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
     }
+    if (nav && typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(NavMap.palette(lk.phase, lk.season, lk.snow)); // дома — в цветах часа
     document.body.classList.toggle('night', night);
     // 4.11: дымка горизонта у наклонённой карты — цвета земли этого часа
     const hz = nav ? (lk.snow && NavMap.SEASON.snow[night ? 'dark' : 'light'].bg) || NavMap.P[lk.phase].bg : night ? '#1b1b1f' : '#d9d3c7';
     document.body.style.setProperty('--haze', hz);
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
+
+  // слой подписей над зоной Ловчего: дома в нём — только если их не рисует WebGL (Bld3D), иначе одни подписи
+  bldPaint(th) { return typeof Bld3D !== 'undefined' && Bld3D.on ? [] : th.bldRules; },
 
   setWeatherFx() {
     const box = U.$('#wxfx'), w = Sky.w;
@@ -422,7 +427,9 @@ const MapView = {
   initOrbit() {
     const box = U.$('#map');
     if (this.map.dragging) this.map.dragging.disable();
-    let g = null, ate = 0;
+    let g = null, ate = 0, want = null, raf = 0;
+    // палец двигается чаще, чем меняются кадры (на экранах 120 Гц — вдвое): поворот и наклон — один раз за кадр, по последней точке
+    const apply = () => { raf = 0; const w = want; want = null; if (!w) return; this.setRot(w.rot); if (w.tilt != null) this.setPitch(w.tilt); };
     box.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (g) { g.multi = true; return; } // второй палец — жест двумя пальцами (масштаб, поворот)
@@ -432,11 +439,12 @@ const MapView = {
       if (!g || e.pointerId !== g.id || g.multi) return;
       const dx = e.clientX - g.x, dy = e.clientY - g.y;
       if (!g.on) { if (Math.hypot(dx, dy) < 8) return; g.on = true; }
-      this.setRot(g.rot + g.sg * dx * this.ORBIT.yaw);
-      if (this.tilt) this.setPitch(g.tilt - dy * this.ORBIT.pitch);
+      want = { rot: g.rot + g.sg * dx * this.ORBIT.yaw, tilt: this.tilt ? g.tilt - dy * this.ORBIT.pitch : null };
+      if (!raf) raf = requestAnimationFrame(apply);
     });
     const end = e => {
       if (!g || e.pointerId !== g.id) return;
+      if (raf) { cancelAnimationFrame(raf); apply(); } // последняя точка пальца — сразу
       if (g.on && !g.multi) { ate = performance.now(); if (Math.abs(this.rot) < 4) this.northUp(); this.fitPitch(); }
       g = null;
     };
@@ -459,13 +467,27 @@ const MapView = {
   zoomMode() { const o = this.map.options, c = this.rot || this.tilt; o.touchZoom = o.scrollWheelZoom = o.doubleClickZoom = c ? 'center' : true; },
   // точка экрана → точка на плоскости карты (относительно игрока, в осях ненаклонённой и неповёрнутой карты)
   plane(x, y) {
+    let { x: X, y: Y } = this.planeUV(x, y);
+    if (this.rot) { const a = -this.rot * Math.PI / 180; [X, Y] = [X * Math.cos(a) - Y * Math.sin(a), X * Math.sin(a) + Y * Math.cos(a)]; }
+    return { x: X, y: Y };
+  },
+  // то же, но в осях экрана (без поворота карты): x — вправо, y — вниз по плоскости
+  planeUV(x, y) {
     let X = x - innerWidth / 2, Y = y - (this._py || innerHeight / 2);
     if (this.tilt) {
       const t = this.tilt * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD;
       Y = Y * d / (cs * d + Y * sn); X = X * (d - Y * sn) / d;
     }
-    if (this.rot) { const a = -this.rot * Math.PI / 180; [X, Y] = [X * Math.cos(a) - Y * Math.sin(a), X * Math.sin(a) + Y * Math.cos(a)]; }
     return { x: X, y: Y };
+  },
+  // 5.1.30: видимая земля в осях экрана на плоскости карты (от точки зрения), с запасом pad — холст объёмных домов (Bld3D)
+  viewUV(pad = 0) {
+    let u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
+    for (const [x, y] of [[0, 0], [innerWidth, 0], [0, innerHeight], [innerWidth, innerHeight]]) {
+      const q = this.planeUV(x, y);
+      u0 = Math.min(u0, q.x); v0 = Math.min(v0, q.y); u1 = Math.max(u1, q.x); v1 = Math.max(v1, q.y);
+    }
+    return { u0: u0 - pad, v0: v0 - pad, u1: u1 + pad, v1: v1 + pad };
   },
   setRot(r) {
     r = ((r % 360) + 540) % 360 - 180;
@@ -482,10 +504,11 @@ const MapView = {
     const c = U.$('#compassBtn');
     if (c) { c.firstElementChild.style.transform = `rotate(${r}deg)`; c.classList.toggle('turned', !!r); }
     if (this.tracking) this.updateTracker();
-    this.relean();
+    if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.dirty(); // 5.1.30: объёмные дома поворачиваются вместе с картой — в этом же кадре
+    else this.relean();
   },
-  // 5.1.30: поворот кончился (палец отпустил, компас довернул) — дома встают к верху экрана заново: плитки домов перерисовываются
-  // под новый угол (пока карту крутят — нет: это дорого), места на крышах — следом за крышами
+  // 5.1.30: без WebGL дома рисуют плитки: поворот кончился (палец отпустил, компас довернул) — дома встают к верху экрана заново,
+  // плитки домов перерисовываются под новый угол (пока карту крутят — нет: это дорого), места на крышах — следом за крышами
   relean() {
     clearTimeout(this._leanT);
     this._leanT = setTimeout(() => {
@@ -501,9 +524,10 @@ const MapView = {
     const el = mk._icon, p = el && el._leaflet_pos;
     if (!p || mk._map !== this.map || (!this.rot && !this.tilt)) return;
     el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
-    // 5.1.30: место в доме стоит на его крыше — у домов карты она сдвинута к верху экрана на высоту дома (NavMap.extrude, lean)
-    const h = this.tilt && mk._roofH && typeof NavMap !== 'undefined' ? NavMap.lift(mk._roofH, this.map.getZoom()) : 0, lv = h ? NavMap.leanVec() : null;
-    const lift = el._lift = { x: h ? lv.x * h : 0, y: h ? lv.y * h : 0 };
+    // 5.1.30: место в доме стоит на его крыше — там, где её рисует карта: объёмные дома (Bld3D) — из точки зрения (roofShift),
+    // дома в плитках — сдвигом к верху экрана (NavMap.extrude, lean)
+    const h = this.tilt && mk._roofH && typeof NavMap !== 'undefined' ? NavMap.lift(mk._roofH, this.map.getZoom()) : 0;
+    const lift = el._lift = !h ? { x: 0, y: 0 } : typeof Bld3D !== 'undefined' && Bld3D.on ? this.roofShift(p, h) : (lv => ({ x: lv.x * h, y: lv.y * h }))(NavMap.leanVec());
     let t = `translate3d(${p.x + lift.x}px, ${p.y + lift.y}px, 0px)`;
     if (this.rot) t += ` rotate(${-this.rot}deg)`;
     // встаёт с земли лицом к игроку и выдвинут к нему; 5.1.30: — по лучу взгляда, с уменьшением на ту же долю: на экране
@@ -531,12 +555,38 @@ const MapView = {
     const lf = ic._lift || { x: 0, y: 0 }, q = this.screen3d(L.point(p.x + lf.x, p.y + lf.y)), a = this.tilt * Math.PI / 180, d = this.PD;
     return { e: Math.asin(Math.min(1, d * Math.cos(a) / Math.hypot(q.x, q.y, d - q.z))) * 180 / Math.PI, az: Math.atan2(q.u, d * Math.sin(a) - q.v) };
   },
-  // 5.1.30: карта сдвинулась (игрок идёт, палец тянет карту, масштаб, наклон) — значки встают на свои точки земли заново,
-  // 3D-модели мест поворачиваются к игроку той стороной, с которой он теперь на них смотрит
+  // 5.1.30: карта сдвинулась (игрок идёт, масштаб, наклон, поворот) — значки встают на свои точки земли заново,
+  // 3D-модели мест поворачиваются к игроку той стороной, с которой он теперь на них смотрит, дома — в новой перспективе
   reAim() {
     if (!this.map) return;
     if (this.tilt) for (const m of [...this.markers.values(), this.player, this.range]) if (m) this.upright(m);
     if (typeof M3D !== 'undefined') M3D.aim();
+    if (typeof Bld3D !== 'undefined') Bld3D.dirty();
+  },
+  // 5.1.30: точка зрения в точках слоя карты: (x, y) — над какой точкой земли (у наклонённой карты — ниже экрана: игрок смотрит
+  // наискосок), w — высота над землёй; у плоской карты w = 0, а (lx, ly) — куда «встаёт» высота (к верху экрана)
+  camLayer() {
+    const m = this.map, c = m.containerPointToLayerPoint(m.getSize().divideBy(2)), r = this.rot * Math.PI / 180;
+    if (!this.tilt) return { x: c.x, y: c.y, w: 0, lx: -Math.sin(r), ly: -Math.cos(r) };
+    const a = this.tilt * Math.PI / 180, d = this.PD * Math.sin(a);
+    return { x: c.x + d * Math.sin(r), y: c.y + d * Math.cos(r), w: this.PD * Math.cos(a), lx: 0, ly: 0 };
+  },
+  // куда на земле ложится точка на высоте hp (точек) над точкой слоя p — там игрок видит крышу дома над p (так рисует Bld3D)
+  roofShift(p, hp) {
+    const c = this.camLayer();
+    if (!c.w) return { x: c.lx * hp, y: c.ly * hp };
+    const k = hp / (c.w - hp);
+    return { x: (p.x - c.x) * k, y: (p.y - c.y) * k };
+  },
+  // видимая земля — рамка в точках слоя: углы экрана, перенесённые на плоскость карты (с наклоном и поворотом), и запас pad
+  viewBox(pad = 0) {
+    const m = this.map, c = m.containerPointToLayerPoint(m.getSize().divideBy(2));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of [[0, 0], [innerWidth, 0], [0, innerHeight], [innerWidth, innerHeight]]) {
+      const q = this.plane(x, y);
+      x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y);
+    }
+    return { x0: c.x + x0 - pad, y0: c.y + y0 - pad, x1: c.x + x1 + pad, y1: c.y + y1 + pad };
   },
   northUp() {
     const from = this.rot, t0 = performance.now();
