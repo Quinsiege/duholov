@@ -339,12 +339,10 @@ body.night .range-circle { fill-opacity: .1; }
 .t-sp img, .t-sp .art { width: 48px; height: 48px; }
 .t-sp i { position: absolute; left: 0; right: 0; bottom: -6px; text-align: center; font-style: normal; font-size: 10px; color: var(--gold2); text-shadow: 0 1px 2px #000; letter-spacing: 1px; }
 .t-drop { width: 32px; height: 32px; flex: none; opacity: .6; } .t-drop .ico { width: 16px; height: 16px; }
-.loot-task { margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(251, 191, 36, .12); border: 1px solid rgba(251, 191, 36, .45); text-align: center; font-size: 14px; animation: popIn .4s .5s both; }
-.loot-task small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-/* 5.1.24: поручение у Источника — «Принять» / «Отказаться» */
-.loot-task .lt-btns { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
-.loot-task .lt-btns .btn { flex: 1 1 0; max-width: 150px; }
-.loot-task.declined { opacity: .75; }
+/* 5.1.24: новое поручение у Источника — под наградой, без подложки: значок «Задания» из меню слева и «Новое поручение!» */
+.loot-task { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font-size: 15px; animation: popIn .4s .5s both; }
+.loot-task .lt-ico { flex: none; width: 34px; height: 34px; }
+.loot-task b { font-weight: 700; }
 
 /* серия дней и общее дело Ордена (3.1) */
 .st-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px; }
@@ -4125,7 +4123,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .spr2.taken .spr2-loot .loot-item { width: 78px; gap: 3px; font-size: 11.5px; line-height: 1.2; } .spr2.taken .spr2-loot .loot-item .art { width: 48px; height: 48px; }
 .spr2.taken .spring-title { font-size: 22px; }
 .spr2.taken .spr2-head { margin-bottom: 4px; }
-.spr2.taken .loot-task { margin-top: 6px; padding: 8px 12px; font-size: 13px; }
 .spr2-loot .loot-full { width: 100%; margin-top: -6px; font-size: 13px; font-weight: 600; color: #fcd34d; animation: lootIn .4s 1.2s backwards; }
 .spr2-loot .loot-item { animation: sprLoot .7s cubic-bezier(.2, 1.5, .4, 1) calc(.95s + var(--k, 0) * .14s) both; }
 .spr2-loot .loot-item .art { filter: drop-shadow(0 0 10px rgba(94, 234, 212, .6)); }
@@ -5353,7 +5350,7 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .spr2-after:empty { display: none; }
 .spr2-after > * { animation: lootIn .45s 1.4s backwards; }
 .spr2-after .loot-full { font-size: 13px; font-weight: 600; color: #fcd34d; }
-.spr2-after .loot-task { margin: 0; padding: 8px 12px; font-size: 13px; }
+.spr2-after .loot-task { margin: 0; }
 /* «В сумку»: слетаются к кнопке */
 .spr2.stow .spr2-well .spr2-loot .loot-item, .spr2.stow .spr2-well .spr2-loot .loot-xp { animation: srcStow .45s cubic-bezier(.55, 0, .75, .35) calc(var(--k, 0) * .06s) both; }
 @keyframes srcStow { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(var(--bx, 0), var(--by, 0)) scale(.2); } }
@@ -5412,7 +5409,7 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .spr2-reward .spr2-loot.fly .loot-xp { animation: srcXp .5s cubic-bezier(.2, 1.5, .4, 1) 1.05s both; }
 .spr2-reward .spr2-after { grid-row: 3; align-self: start; width: min(100%, 380px); margin: 0; }
 .spr2-reward .spr2-after .loot-full { text-align: center; text-shadow: 0 1px 3px rgba(8, 4, 24, .9); }
-.spr2-reward .spr2-after .loot-task { background: rgba(40, 24, 8, .72); }
+.spr2-reward .spr2-after .loot-task { text-shadow: 0 1px 3px rgba(8, 4, 24, .9); }
 .spr2.taken .spr2-head { opacity: .25; transition: opacity .5s ease; }
 @media (max-height: 760px) { .spr2.taken .spr2-head { opacity: 0; } } /* на низком экране сетка доходит до названия */
 .spr2.taken .spr2-well { opacity: .4; transition: opacity .6s ease .2s; }

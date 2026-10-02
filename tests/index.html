@@ -2934,7 +2934,7 @@
     eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,10000,20000', 'бронза, серебро, золото');
     MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
   });
-  test('5.1.24: лимиты дня — столбиком с таймером; шаги главы раскрываются; поручение Источника — принять или отказаться', () => {
+  test('5.1.24: лимиты дня — столбиком с таймером; шаги главы раскрываются; поручение Источника — надписью со значком', () => {
     const h = UI.dayLimitsHtml();
     ok(/^<div class="day-limits">/.test(h) && /class="dl-left"/.test(h), 'столбиком, с таймером до обновления');
     Object.keys(Rules.DAILY).forEach(k => ok(h.includes(`<span>${Rules.DAILY_NAMES[k]}</span><b>${Rules.dayUsed(S.d, k)}/${Rules.DAILY[k]}</b>`), `строка: ${k}`));
@@ -2949,11 +2949,12 @@
       ok(rows[1].querySelector('.cp-row-h .cp-chev') && rows[1].querySelectorAll('.cp-goal').length === st[1].obj.length, 'текущий — стрелка и цели');
       ok(rows.length === st.length && rows.slice(2).every(r => !r.querySelector('.cp-row-h, .cp-goals')), 'у будущих стрелки нет');
     } finally { S.d = d0; }
-    const t = { id: 'tk"1', tier: 2, text: 'Поймай 3 духов' }, o = UI.taskOfferHtml(t);
-    ok(o.includes('data-id="tk&quot;1"'), 'id поручения — в разметке, экранирован');
-    ok(/class="btn small primary lt-ok"/.test(o) && /class="btn small ghost lt-no"/.test(o), 'кнопки «Принять» и «Отказаться»');
-    ok(o.includes('★★ Поймай 3 духов'), 'звёзды трудности и текст поручения');
-    ok(typeof GameCore.H.taskDrop === 'function', 'отказ — то же действие, что в «Заданиях» (taskDrop)');
+    // новое поручение у Источника: значок «Задания» слева и «Новое поручение!» — без кнопок
+    const box = document.createElement('div'); box.innerHTML = UI.taskNewHtml();
+    const lt = box.firstElementChild;
+    ok(lt.classList.contains('loot-task') && lt.firstElementChild.matches('.lt-ico') && lt.querySelector('.lt-ico svg.mi'), 'значок «Задания» слева');
+    eq(lt.querySelector('b').textContent, 'Новое поручение!');
+    ok(!lt.querySelector('button'), 'принимать и отказываться не нужно');
   });
   test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
     const sp = (r, iv, lvl) => ({ ...S.makeSpirit(SPECIES.find(s => s.rar === r).id, lvl, 1), iv });

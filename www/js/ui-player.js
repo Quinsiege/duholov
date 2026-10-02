@@ -291,12 +291,10 @@ Object.assign(UI, {
   dayChestHtml(Q) {
     return `<button class="day-chest ${Q.bonus ? 'opened' : 'ready'}"${Q.bonus ? ' disabled' : ''} aria-label="${ru`Сундук дня`}">${Art.chest(!!Q.bonus)}</button>`;
   },
-  // 5.1.24: новое поручение у Источника — принять или отказаться (отказ — то же действие taskDrop, что в «Заданиях»;
-  // не выбрал — поручение остаётся, как раньше)
-  taskOfferHtml(t) {
-    return `<div class="loot-task" data-id="${U.esc(t.id)}"><div>${ru`Новое поручение: <b>${`${'★'.repeat(t.tier || 1)} ${I18N.back(t.text)}`}</b>`}` +
-      `<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` +
-      `<div class="lt-btns"><button class="btn small primary lt-ok">${ru`Принять`}</button><button class="btn small ghost lt-no">${ru`Отказаться`}</button></div></div>`;
+  // 5.1.24: новое поручение у Источника — под наградой одной надписью без подложки, слева значок «Задания» из меню.
+  // Поручение уже в «Заданиях → Поручения»: принимать не нужно, отказаться можно там
+  taskNewHtml() {
+    return `<div class="loot-task"><span class="lt-ico">${this.menuIcon('scroll')}</span><b>${ru`Новое поручение!`}</b></div>`;
   },
   // Поручения из источников: задание → предметы и встреча с духом
   tasksHtml() {
