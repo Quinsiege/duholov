@@ -38,7 +38,7 @@ Object.assign(UI, {
       const rwChips = rw => this.rwChips(rw, false), ico = q => this.qIcon(q.t, q.el);
       const ring = (n, of) => { const L = 2 * Math.PI * 22; return `<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" class="qd-bg"/><circle cx="26" cy="26" r="22" class="qd-fg" style="stroke-dasharray:${L};stroke-dashoffset:${L * (1 - n / of)}"/></svg><b>${n}<small>/${of}</small></b>`; };
       scr.querySelector('.quests').innerHTML = `
-        <div class="qd-head ${doneN >= Q.list.length ? 'full' : ''}"><div class="qd-ring">${ring(doneN, Q.list.length)}</div>
+        <div class="qd-head ${doneN >= Q.list.length ? 'full' : ''}">${doneN >= Q.list.length ? this.dayChestHtml(Q) : `<div class="qd-ring">${ring(doneN, Q.list.length)}</div>`}
           <div class="row-main"><b>${doneN >= Q.list.length ? (Q.bonus ? ru`Все задания дня выполнены` : ru`Все задания выполнены — забери награды`) : ru`Выполнено ${doneN} из ${Q.list.length}`}</b>
           <small>${ru`Новые задания через ${`<span class="qd-left">${U.fmtTime(this.toMidnight())}</span>`}`}</small></div></div>`
         + Q.list.map((q, i) => {
@@ -47,10 +47,10 @@ Object.assign(UI, {
             <div class="q-main"><b>${I18N.back(q.text)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><span>${pv}</span></div><div class="qd-rws">${rwChips(q.reward)}</div></div>
             ${q.claimed ? `<span class="q-ok" aria-label="${ru`Получено`}">✓</span>` : done ? `<button class="btn small primary claim" data-i="${i}">${ru`Забрать`}</button>` : ''}</div>`;
         }).join('')
-        + this.dayLimitsHtml() + this.dayChestHtml(Q, all);
+        + this.dayLimitsHtml();
     };
     scr.addEventListener('click', e => {
-      const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
+      const c = e.target.closest('.claim'), b = e.target.closest('.day-chest.ready');
       const tab = e.target.closest('[data-tab]');
       if (tab) {
         const dir = Math.sign(tabs.indexOf(tab.dataset.tab) - tabs.indexOf(this.qTab));
@@ -94,19 +94,31 @@ Object.assign(UI, {
         render(); this.refreshHud();
       });
       if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'reward');
-      else if (b) {
-        // 5.1.24: сундук подпрыгивает и открывается, выпавшее — окном (награда каждый раз разная)
+      else if (b && !b.disabled) {
+        // 5.1.24: сундук на месте кружка «3/3». Касание: незабранные награды заданий — сразу, затем сундук открывается
+        // (подпрыгивает), всё выпавшее — одним окном (награда сундука каждый раз разная)
         b.disabled = true;
-        Game.try('questBonus').then(r => {
-          if (!r) { b.disabled = false; return; }
+        (async () => {
+          const got = [];
+          for (const [i, q] of S.d.quests.list.entries()) {
+            if (q.p < q.n || q.claimed) continue;
+            const r = await Game.try('questClaim', { i });
+            if (!r) { b.disabled = false; render(); return; }
+            got.push(...r.got);
+          }
+          const r = await Game.try('questBonus');
+          if (!r) { b.disabled = false; render(); return; }
+          got.push(...r.got);
           Sfx.play('reward_big'); U.vibrate([30, 50, 80]);
-          const ch = scr.querySelector('.q-chest');
-          if (ch) ch.classList.add('opening');
+          b.classList.remove('ready'); b.classList.add('opening');
+          // одинаковое — одной плиткой (обереги из задания и из сундука)
+          const sum = new Map();
+          for (const x of got) { const k = x.k === 'amulet' ? 'amulet:' + x.id : x.k === 'cocoon' ? 'cocoon:' + x.km : x.k, o = sum.get(k); if (o) o.n += x.n; else sum.set(k, { ...x }); }
           setTimeout(() => {
             render(); this.refreshHud();
-            this.modal({ title: ru`Сундук дня`, html: Loot.cells(r.got), cls: 'chest-modal', buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+            this.modal({ title: ru`Сундук дня`, html: Loot.cells([...sum.values()]), cls: 'chest-modal', buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
           }, document.body.classList.contains('calm') ? 0 : 650);
-        });
+        })();
       }
     });
     this.swipeTabs(scr, tabs, () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
@@ -244,14 +256,10 @@ Object.assign(UI, {
       return `<span class="${u >= m ? 'out' : ''}">${Rules.DAILY_NAMES[k]} <b>${u}/${m}</b></span>`;
     }).join('')}<small>${ru`обновятся в полночь`}</small></p>`;
   },
-  // 5.1.24: Сундук дня — большой, внизу «Заданий дня». Награда случайная (Rules.CHEST): опыт и искры всегда, плюс призы
-  dayChestHtml(Q, all) {
-    const st = Q.bonus ? 'opened' : all ? 'ready' : '';
-    return `<div class="q-chest ${st}"><div class="qc-art">${Art.chest(!!Q.bonus)}</div><b class="qc-title">${ru`Сундук дня`}</b>` +
-      `<div class="qd-pips">${Q.list.map(q => `<i class="${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}"></i>`).join('')}</div>` +
-      `<small class="qc-state">${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small>` +
-      `<small class="qc-what">${ru`Внутри — опыт, искры и случайные награды`}</small>` +
-      (!Q.bonus && all ? `<button class="btn primary claim-bonus">${ru`Открыть`}</button>` : '') + `</div>`;
+  // 5.1.24: все задания дня сделаны — на месте кружка «3/3» Сундук дня в жёлтом круге. Не открыт — «дышит» и ждёт касания
+  // (награда случайная, Rules.CHEST: опыт и искры всегда, плюс призы); открыт — открытый сундук, без движения
+  dayChestHtml(Q) {
+    return `<button class="day-chest ${Q.bonus ? 'opened' : 'ready'}"${Q.bonus ? ' disabled' : ''} aria-label="${ru`Сундук дня`}">${Art.chest(!!Q.bonus)}</button>`;
   },
   // 5.1.24: новое поручение у Источника — принять или отказаться (отказ — то же действие taskDrop, что в «Заданиях»;
   // не выбрал — поручение остаётся, как раньше)
