@@ -91,6 +91,9 @@ body.night .range-circle { fill-opacity: .1; }
 .m3d > .mk-boss { top: calc(var(--m3d-top) - 42px); }
 .m3d > .mk-tier { top: calc(var(--m3d-bot) - 7px); bottom: auto; }
 .m3d > .mk-flag { top: calc(var(--m3d-top) - 2px); }
+/* 3D-Ловчий (js/m3d.js) — вместо точки со стрелкой и кольца: куда он идёт, видно по нему самому */
+.mk-player.m3d .dot, .mk-player.m3d .arrow, .mk-player.m3d .pulse { display: none; }
+.mk-player.m3d::before { content: none; }
 
 .mk-player-wrap { background: none; border: 0; }
 .mk-player { position: relative; width: 64px; height: 64px; }

@@ -26,6 +26,9 @@
   <label><input id="calm" type="checkbox"> без движения</label>
   <label><input id="day" type="checkbox"> светлый фон</label>
   <label><input id="dot" type="checkbox"> точка привязки</label>
+  <label>Ловчий <select id="gait"><option value="0">стоит</option><option value="1">идёт</option><option value="2">бежит</option></select></label>
+  <label>смотрит <input id="hd" type="range" min="-180" max="180" value="0"></label>
+  <label>плащ <input id="cloak" type="color" value="#6d28d9"></label> <label>глаза <input id="eyes" type="color" value="#5eead4"></label>
   <span id="info"></span>
 </header>
 <main id="grid"></main>
@@ -38,7 +41,7 @@
     const k = +$('#k').value, grid = $('#grid');
     for (const t in base) M3D.PXM[t] = base[t] * k;
     grid.style.setProperty('--cell', 170 * k + 'px'); grid.style.setProperty('--ch', 190 * k + 'px');
-    grid.innerHTML = M3D.KINDS.map(kind => `<div class="cell"><b>${kind}</b>${M3D.html(kind, 85 * k, 165 * k)}<i class="dot" style="left:${85 * k}px;top:${165 * k}px"></i></div>`).join('');
+    grid.innerHTML = M3D.KINDS.map(kind => `<div class="cell"><b>${kind}</b>${M3D.html(kind, 85 * k, 165 * k, '', kind === 'catcher' ? 'me' : '')}<i class="dot" style="left:${85 * k}px;top:${165 * k}px"></i></div>`).join('');
     M3D.bind(grid);
     grid.querySelectorAll('.dot').forEach(d => d.style.display = $('#dot').checked ? '' : 'none');
     $('#info').textContent = M3D.on ? '' : 'WebGL недоступен';
@@ -50,6 +53,10 @@
   $('#calm').onchange = e => { document.body.classList.toggle('calm', e.target.checked); M3D.kick(); };
   $('#day').onchange = e => document.body.classList.toggle('day', e.target.checked);
   $('#dot').onchange = e => document.querySelectorAll('.dot').forEach(d => d.style.display = e.target.checked ? '' : 'none');
+  // Ловчий: походка, куда смотрит (градусы от севера), цвета облика — как их передаёт карта (MapView → M3D.setMe)
+  $('#gait').onchange = e => M3D.setMe({ gait: +e.target.value });
+  $('#hd').oninput = e => M3D.setMe({ heading: +e.target.value });
+  $('#cloak').oninput = $('#eyes').oninput = () => M3D.setMe({ look: { cloak: $('#cloak').value, eyes: $('#eyes').value } });
   </script>
 </body>
 </html>

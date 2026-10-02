@@ -1,26 +1,33 @@
-/* 5.1.28: 3D-модели мест на карте — Источник, святилища и Разломы всех мифологий (www/models/*.m3d).
+/* 5.1.28: 3D-модели на карте — Источник, святилища и Разломы всех мифологий и сам Ловчий (www/models/*.m3d).
    Модели сделаны в Blender по рисункам игры (tools/models3d — скрипты моделей и выгрузка в этот формат).
    Рисует их свой маленький WebGL-рисователь, без библиотек: один общий холст WebGL, готовый кадр модели копируется
    в холст значка (canvas.mk3d) — касания, слои и порядок перекрытия значков остаются как были.
    Камера смотрит на модель сверху под ELEV°; модель повёрнута вместе с картой (MapView.rot) — у повёрнутой карты
    видна другая сторона места. Обводка — «вывернутой оболочкой» в шейдере (в файле модели её нет: вдвое меньше).
    Движется вихрь портала, пламя, огоньки и искры — до FPS кадров в секунду и только у видимых значков;
-   в «Экономии батареи» и «Меньше движения» модель неподвижна. Нет WebGL или файл не загрузился — остаётся
-   прежний рисунок места (SVG). */
+   Ловчий шагает и бежит (ноги, руки, туловище — по шарнирам модели), смотрит туда, куда идёт, одет в цвета облика.
+   В «Экономии батареи» и «Меньше движения» модели неподвижны. Нет WebGL или файл не загрузился — остаётся
+   прежний рисунок (SVG). */
 const M3D = {
   VER: 1,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками)
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
-  FPS: 20,           // до стольких кадров в секунду движется модель; дорого (слабый телефон) — реже, до 8
-  PXM: { spring: 30, shrine: 20, rift: 19 }, // CSS-пикселей на метр модели — по виду места (значки разного размера)
+  FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
+  PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40 }, // CSS-пикселей на метр модели — по виду (значки разного размера)
   OUTLINE_PX: 1.25,  // толщина обводки на экране, CSS-пиксели (у модели — 0,03 м)
   OUTLINE: [0x1c / 255, 0x10 / 255, 0x30 / 255], // тёмно-фиолетовая, как у рисунков игры
-  KINDS: ['spring', ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])],
+  KINDS: ['spring', 'catcher', ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])],
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
   LIGHTS: [[[-3, -4, 6], '#fff4e0', 3.2], [[5, -2, 3], '#c7d2fe', 1.1], [[1, 6, 4], '#f0abfc', 2.0]],
   AMBIENT: '#2a2340',
+  // походка Ловчего: шагов (циклов) в секунду, размах ног и рук (радианы), подскок (м) и наклон вперёд — шаг / бег
+  WALK: { hz: [1.6, 2.5], leg: [0.42, 0.8], arm: [0.35, 0.75], bob: [0.025, 0.065], lean: [0.06, 0.24] },
+  // облики-скины (LOOK.skin) — у модели Ловчего пока один наряд: плащ — в главный цвет облика
+  SKIN_CLOAK: { kupala: '#15803d', leshiy: '#3f6212', moroz: '#7dd3fc', volhv: '#1e3a8a', bogatyr: '#b91c1c', voron: '#1f2937',
+    navstrazh: '#4a044e', zharpero: '#ea580c', knyaz: '#7f1d1d' },
   on: false, gl: null, cv: null, P: null, O: null, gen: 0,
   models: {}, views: new Set(), rot: 0, raf: 0, last: 0, io: null, fps: 20, cost: 0,
+  me: { heading: 0, gait: 0, tint: null }, // Ловчий: куда смотрит (градусы от севера), походка (0 — стоит, 1 — идёт, 2 — бежит), цвета
 
   init() {
     if (this.gl || this.on === null) return this.on;
@@ -137,6 +144,7 @@ const M3D = {
     }
     head.top = top; head.low = low;
     head.moving = head.groups.some(g => g.t !== 'static');
+    head.walk = head.groups.some(g => g.t === 'body' || g.t === 'leg'); // у модели есть шарниры походки (Ловчий)
     return { head, pos, nrm, col, idx, onr, gen: -1 };
   },
   need(kind) {
@@ -160,9 +168,10 @@ const M3D = {
   /* ---------- значки ---------- */
   has(kind) { return this.on === true && this.KINDS.includes(kind); },
   kindOf(e) { return e.type === 'spring' ? 'spring' : (e.type === 'shrine' ? 'shrine_' : 'rift_') + (e.myth || 'slavic'); },
-  // холст модели в значке; (ax, ay) — точка привязки значка (iconAnchor): туда встаёт центр основания модели
-  html(kind, ax, ay, hide) {
-    return this.has(kind) ? `<canvas class="mk3d" data-m3d="${kind}" data-ax="${ax}" data-ay="${ay}"${hide ? ` data-hide="${hide}"` : ''}></canvas>` : '';
+  // холст модели в значке; (ax, ay) — точка привязки значка (iconAnchor): туда встаёт центр основания модели;
+  // who = 'me' — это Ловчий игрока (поворот, походка и цвета — из setMe)
+  html(kind, ax, ay, hide, who) {
+    return this.has(kind) ? `<canvas class="mk3d" data-m3d="${kind}" data-ax="${ax}" data-ay="${ay}"${hide ? ` data-hide="${hide}"` : ''}${who ? ` data-who="${who}"` : ''}></canvas>` : '';
   },
   bind(root) {
     if (!this.on || !root) return;
@@ -172,8 +181,9 @@ const M3D = {
     if (c._m3d) return;
     const kind = c.dataset.m3d, type = kind.split('_')[0];
     const v = { c, ctx: c.getContext('2d'), kind, pxm: this.PXM[type] || 20, ax: +c.dataset.ax || 0, ay: +c.dataset.ay || 0,
-      hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false };
+      hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me' };
     if (!v.ctx) return;
+    if (v.player) this.applyMe(v);
     c._m3d = v;
     this.views.add(v);
     if (this.io) this.io.observe(c);
@@ -188,7 +198,7 @@ const M3D = {
   // размер холста — чтобы модель помещалась при любом повороте карты: ширина — по самой дальней от центра точке
   layout(v) {
     const h0 = this.models[v.kind].head, e = this.ELEV * Math.PI / 180, S = v.pxm, sn = Math.sin(e), cs = Math.cos(e);
-    const pad = this.OUTLINE_PX / S + 0.02, r = h0.r + pad, h = h0.h + pad;
+    const pad = this.OUTLINE_PX / S + (h0.walk ? 0.12 : 0.02), r = h0.r + pad, h = h0.h + pad; // Ловчему — запас на шаг и наклон
     const w = Math.ceil(2 * r * S) + 2, hh = Math.ceil((h * cs + 2 * r * sn) * S) + 2, oy = hh - 1 - r * sn * S;
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     v.pw = Math.round(w * dpr); v.ph = Math.round(hh * dpr);
@@ -201,6 +211,70 @@ const M3D = {
     // значку — где у модели верх и низ (CSS-пиксели от верха значка): туда встают хранитель, флаг клана и звёзды (style.css)
     const box = v.c.parentElement;
     if (box) { box.style.setProperty('--m3d-top', (v.ay - h0.top * S).toFixed(1) + 'px'); box.style.setProperty('--m3d-bot', (v.ay - h0.low * S).toFixed(1) + 'px'); }
+  },
+
+  /* ---------- Ловчий ---------- */
+  // поворот (heading — градусы от севера по часовой), походка (gait) и облик (look) Ловчего игрока; карта зовёт на каждом шаге
+  setMe(o) {
+    if ('look' in o) this.me.tint = this.tintOf(o.look);
+    if (Number.isFinite(o.heading)) this.me.heading = o.heading;
+    if ('gait' in o) this.me.gait = o.gait | 0;
+    for (const v of this.views) if (v.player) this.applyMe(v);
+    // «Экономия батареи» и «Меньше движения»: Ловчий не шагает, но поворачивается и меняет цвета — кадр не чаще 5 раз в секунду
+    if (this.on && this.still() && !document.hidden && !(typeof Stage !== 'undefined' && Stage.busy)) {
+      const now = performance.now();
+      for (const v of this.views) if (v.player && v.ready && v.vis && now - (v.t || 0) > 200) this.draw(v, now);
+    }
+    this.kick();
+  },
+  still() { const b = document.body.classList; return b.contains('calm') || b.contains('eco'); },
+  applyMe(v) { v.yaw = Math.PI - this.me.heading * Math.PI / 180; v.gait = this.me.gait; v.tint = this.me.tint; },
+  // цвета облика → материалы модели: плащ (и его тень), глаза; у облика-скина плащ — в главный цвет скина
+  tintOf(look) {
+    look = look || {};
+    const hex = x => typeof x === 'string' && /^#[0-9a-f]{6}$/i.test(x);
+    const sk = look.skin && look.skin !== 'hood' && Object.prototype.hasOwnProperty.call(this.SKIN_CLOAK, look.skin) ? this.SKIN_CLOAK[look.skin] : null;
+    const c = this.lin(sk || (hex(look.cloak) ? look.cloak : '#6d28d9')), e = this.lin(hex(look.eyes) ? look.eyes : '#5eead4');
+    return { catcher_cloak: { c, e: [0, 0, 0] }, catcher_cloak_dark: { c: c.map(x => x * 0.27), e: [0, 0, 0] }, catcher_eyes: { c: e, e: e.map(x => x * 1.6) } };
+  },
+  // шаг походки к моменту now: фаза шага идёт со скоростью походки, размах плавно растёт и гаснет (остановился — руки и ноги
+  // возвращаются, а не замирают на полушаге), бег — плавно из ходьбы. Куда смотрит: идёт — по ходу (разворачивается быстро);
+  // постоял 3 с — не спеша поворачивается лицом к игроку (к низу экрана; при повороте карты — тоже)
+  step(v, now) {
+    const w = v.walk || (v.walk = { ph: 0, amp: 0, run: 0, t: 0, last: now, idle: 99, yaw: null });
+    const dt = Math.min(0.1, Math.max(0, (now - w.last) / 1000)), k = Math.min(1, dt * 7), W = this.WALK;
+    w.last = now; w.t += dt;
+    w.amp += ((v.gait > 0 ? 1 : 0) - w.amp) * k;
+    w.run += ((v.gait === 2 ? 1 : 0) - w.run) * k;
+    if (w.amp > 0.01) w.ph = (w.ph + dt * 2 * Math.PI * (W.hz[0] + (W.hz[1] - W.hz[0]) * w.run)) % (2 * Math.PI * 64);
+    w.idle = v.gait > 0 ? 0 : (w.idle || 0) + dt;
+    const want = v.gait > 0 || w.idle < 3 ? (v.yaw || 0) : this.rot * Math.PI / 180;
+    if (w.yaw == null) w.yaw = want;
+    let d = (want - w.yaw) % (2 * Math.PI);
+    if (d > Math.PI) d -= 2 * Math.PI; else if (d < -Math.PI) d += 2 * Math.PI;
+    w.yaw += d * Math.min(1, dt * (v.gait > 0 ? 14 : 4));
+    w.turn = Math.abs(d) > 0.02;
+    if (this.still()) Object.assign(w, { amp: 0, run: 0, yaw: want, turn: false }); // без шага и плавного разворота
+    return w;
+  },
+  rot3(ax, a) { // поворот вокруг оси x или y, 4×4 по столбцам
+    const c = Math.cos(a), s = Math.sin(a);
+    return ax === 'x' ? new Float32Array([1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1]) : new Float32Array([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]);
+  },
+  at(M, x, y, z) { M[12] = x; M[13] = y; M[14] = z; return M; },
+  // шарниры походки: туловище подскакивает дважды за шаг, наклоняется вперёд (сильнее на бегу) и покачивается с ноги на ногу;
+  // ноги — от бёдер, левая и правая в противофазе; руки — от плеч, вместе с туловищем, против своей ноги
+  walkMat(g, gs, G, w) {
+    const W = this.WALK, A = w.amp, R = w.run, mix = a => a[0] + (a[1] - a[0]) * R, sp = Math.sin(w.ph);
+    if (g.t === 'leg') return this.at(this.rot3('x', g.s * sp * mix(W.leg) * A), g.o[0], g.o[1], g.o[2]);
+    if (g.t === 'body') {
+      const breath = (1 - A) * 0.006 * Math.sin(w.t * 2.2);
+      const dz = A * mix(W.bob) * (1 - Math.cos(2 * w.ph)) / 2 + breath;
+      return this.at(this.mul(this.rot3('x', A * mix(W.lean)), this.rot3('y', A * 0.05 * sp)), g.o[0], g.o[1], g.o[2] + dz);
+    }
+    const ob = gs[g.pb].o, sway = (1 - A) * 0.03 * Math.sin(w.t * 2.2 + g.s);
+    const arm = this.at(this.rot3('x', -g.s * sp * mix(W.arm) * A + sway), g.o[0] - ob[0], g.o[1] - ob[1], g.o[2] - ob[2]);
+    return this.mul(G[g.pb], arm);
   },
 
   /* ---------- кадр ---------- */
@@ -230,16 +304,20 @@ const M3D = {
     const gl = this.gl, m = this.models[v.kind];
     if (!m || !m.ready || this.lost || !v.c.isConnected) return false;
     if (m.gen !== this.gen) this.upload(m);
-    const t = (now || performance.now()) / 1000, W = v.pw, H = v.ph, cv = this.cv;
+    now = now || performance.now();
+    const t = now / 1000, W = v.pw, H = v.ph, cv = this.cv;
     if (cv.width < W || cv.height < H) { cv.width = Math.max(cv.width, W); cv.height = Math.max(cv.height, H); }
     gl.viewport(0, 0, W, H);
     gl.enable(gl.SCISSOR_TEST); gl.scissor(0, 0, W, H);
     gl.clearColor(0, 0, 0, 0); gl.depthMask(true);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
-    const h0 = m.head, a = -this.rot * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
-    const Y = new Float32Array([ca, sa, 0, 0, -sa, ca, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]); // поворот вместе с картой
-    const Ms = h0.groups.map((g, i) => g.t === 'static' ? Y : this.mul(Y, this.groupMat(g, i, t)));
+    // поворот вместе с картой (и у Ловчего — туда, куда он смотрит)
+    const h0 = m.head, w = h0.walk ? this.step(v, now) : null, G = [];
+    const a = -this.rot * Math.PI / 180 + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
+    const Y = new Float32Array([ca, sa, 0, 0, -sa, ca, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    h0.groups.forEach((g, i) => G.push(g.t === 'static' ? null : w && (g.t === 'body' || g.t === 'leg' || g.t === 'arm') ? this.walkMat(g, h0.groups, G, w) : this.groupMat(g, i, t)));
+    const Ms = G.map(M => M ? this.mul(Y, M) : Y);
     const Ns = Ms.map(M => new Float32Array([M[0], M[1], M[2], M[4], M[5], M[6], M[8], M[9], M[10]]));
     const q = h0.q, vis = p => !(v.hide && p.tag && v.hide.has(p.tag));
     const bindAttr = (loc, b, type, norm, off) => { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 4, type, norm, 0, off); };
@@ -256,7 +334,7 @@ const M3D = {
       bindAttr(0, m.bp, gl.SHORT, false, p.v[0] * 8); bindAttr(1, m.bo, gl.BYTE, true, p.v[0] * 4);
       gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, p.i[0] * 2);
     }
-    // 2) сама модель: сначала непрозрачное, потом полупрозрачное (вода, пламя, туман) — без записи глубины
+    // 2) сама модель: сначала непрозрачное, потом полупрозрачное (вода, пламя, туман, тень) — без записи глубины
     u = this.P.u;
     gl.useProgram(this.P.p);
     gl.cullFace(gl.BACK);
@@ -269,10 +347,10 @@ const M3D = {
       if (pass) { gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); }
       for (const p of h0.prims) {
         if (p.blend !== pass || !vis(p)) continue;
-        const mt = h0.mats[p.m];
+        const mt = h0.mats[p.m], tn = v.tint && v.tint[mt.n]; // цвета облика Ловчего — поверх цветов модели
         if (mt.ds) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
         gl.uniformMatrix4fv(u.uM, false, Ms[p.g]); gl.uniformMatrix3fv(u.uN, false, Ns[p.g]);
-        gl.uniform3fv(u.uBase, mt.c); gl.uniform3fv(u.uEmit, mt.e);
+        gl.uniform3fv(u.uBase, tn ? tn.c : mt.c); gl.uniform3fv(u.uEmit, tn ? tn.e : mt.e);
         gl.uniform1f(u.uAlpha, mt.a); gl.uniform1f(u.uRough, mt.ro); gl.uniform1f(u.uMetal, mt.mt);
         bindAttr(0, m.bp, gl.SHORT, false, p.v[0] * 8); bindAttr(1, m.bn, gl.BYTE, true, p.v[0] * 4);
         if (p.c != null && m.bc) bindAttr(2, m.bc, gl.UNSIGNED_BYTE, true, p.c * 4);
@@ -284,6 +362,7 @@ const M3D = {
     // кадр — в холст значка (WebGL рисует снизу вверх: нужная область — в нижнем левом углу общего холста)
     v.ctx.clearRect(0, 0, W, H);
     v.ctx.drawImage(cv, 0, cv.height - H, W, H, 0, 0, W, H);
+    v.t = now;
     return true;
   },
 
@@ -304,27 +383,32 @@ const M3D = {
     for (const v of this.views) if (v.ready && v.vis) this.draw(v, now);
   },
   moving() {
-    if (document.hidden || (typeof Stage !== 'undefined' && Stage.busy)) return false;
-    const b = document.body.classList;
-    if (b.contains('calm') || b.contains('eco')) return false;
+    if (document.hidden || (typeof Stage !== 'undefined' && Stage.busy) || this.still()) return false;
     for (const v of this.views) if (this.live(v)) return true;
     return false;
   },
-  // движется только видимая модель места, до которого можно дотянуться (у дальних значков — класс far): остальные — неподвижный кадр
-  live(v) { return v.ready && v.vis && this.models[v.kind].head.moving && !v.c.closest('.far'); },
+  // движется Ловчий (всегда: идёт — шагает, стоит — дышит) и видимая модель места, до которого можно дотянуться
+  // (у дальних значков — класс far): остальные — неподвижный кадр
+  live(v) { return v.ready && v.vis && (v.player || (this.models[v.kind].head.moving && !v.c.closest('.far'))); },
+  going(v) { return v.gait > 0 || !!(v.walk && (v.walk.amp > 0.02 || v.walk.turn)); },
   kick() { if (this.on && !this.raf && this.moving()) this.raf = requestAnimationFrame(this.tick); },
   tick(now) {
     this.raf = 0;
     this.prune();
     if (!this.moving()) return;
+    // Ловчий — 30 кадров в секунду на ходу, 10 — когда стоит
+    for (const v of this.views) if (v.player && this.live(v) && now - (v.t || 0) >= (this.going(v) ? 33 : 100) - 2) this.draw(v, now);
     if (now - this.last >= 1000 / this.fps - 2) {
       this.last = now;
       const t0 = performance.now();
-      for (const v of this.views) if (this.live(v)) this.draw(v, now);
-      // кадр всех моделей дороже 8 мс (слабый телефон) — реже, до 8 кадров в секунду; дешевле 4 мс — снова чаще
-      const dt = performance.now() - t0;
-      this.cost = this.cost ? this.cost * 0.9 + dt * 0.1 : dt;
-      this.fps = this.cost > 8 ? Math.max(8, this.fps - 1) : this.cost < 4 ? Math.min(this.FPS, this.fps + 1) : this.fps;
+      let n = 0;
+      for (const v of this.views) if (!v.player && this.live(v)) { this.draw(v, now); n++; }
+      // кадр всех мест дороже 8 мс (слабый телефон) — реже, до 8 кадров в секунду; дешевле 4 мс — снова чаще
+      if (n) {
+        const dt = performance.now() - t0;
+        this.cost = this.cost ? this.cost * 0.9 + dt * 0.1 : dt;
+        this.fps = this.cost > 8 ? Math.max(8, this.fps - 1) : this.cost < 4 ? Math.min(this.FPS, this.fps + 1) : this.fps;
+      }
     }
     this.raf = requestAnimationFrame(this.tick);
   },

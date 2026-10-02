@@ -596,6 +596,18 @@ def export_m3d(path):
             g = group(s.name, 'spin', s, ax=[0, -1, 0])
             for c in s.children_recursive:
                 obj_group[c.name] = g
+    # шарниры Ловчего: body — туловище (покачивание, наклон), arm_p/arm_n — руки от плеч (дети туловища, pb — его группа),
+    # leg_p/leg_n — ноги от бёдер; s — сторона (+X / −X): шаг левой и правой — в противофазе
+    joints = sorted([s for s in sc.objects if s.type == 'EMPTY' and _base(s.name) in ('body', 'arm_p', 'arm_n', 'leg_p', 'leg_n')],
+                    key=lambda s: _base(s.name) != 'body')
+    for s in joints:
+        b = _base(s.name)
+        kw = {} if b == 'body' else {'s': 1 if b.endswith('_p') else -1}
+        if b.startswith('arm') and s.parent:
+            kw['pb'] = gid[s.parent.name]
+        g = group(s.name, b if b == 'body' else b[:3], s, **kw)
+        for c in s.children_recursive:
+            obj_group[c.name] = g
     meshes = [o for o in sc.objects if o.type == 'MESH']
     for o in meshes:
         if o.name in obj_group:

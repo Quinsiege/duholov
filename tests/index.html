@@ -4382,13 +4382,19 @@
   // 5.1.28: 3D-модели мест (www/models/*.m3d, js/m3d.js) — каждый файл читается, части ссылаются на свои вершины и материалы,
   // у Разлома — вихрь портала (вращается), у святилища — пламя, у Источника — парящий осколок; рамка модели — правдоподобная
   atest('5.1.28: 3D-модели мест — все файлы читаются, части целы, у Разломов вихрь, у святилищ пламя', async () => {
-    const need = { spring: 'float', shrine: 'flicker', rift: 'spin' };
+    const need = { spring: 'float', shrine: 'flicker', rift: 'spin', catcher: 'leg' };
     for (const kind of M3D.KINDS) {
       const buf = await fetch('../www/models/' + kind + '.m3d?t=' + Date.now()).then(r => { ok(r.ok, kind + ': нет файла'); return r.arrayBuffer(); });
       const m = M3D.parse(buf), h = m.head;
       ok(h.prims.length > 3, kind + ': частей ' + h.prims.length);
       ok(h.groups.some(g => g.t === need[kind.split('_')[0]]), kind + ': нет движения ' + need[kind.split('_')[0]]);
-      ok(h.r > 0.5 && h.r < 3.5 && h.h > 1.5 && h.h < 4.5, `${kind}: рамка ${h.r} × ${h.h}`);
+      ok(h.r > 0.3 && h.r < 3.5 && h.h > 1.5 && h.h < 4.5, `${kind}: рамка ${h.r} × ${h.h}`);
+      if (kind === 'catcher') {
+        const t = h.groups.map(g => g.t + (g.s > 0 ? '+' : g.s < 0 ? '-' : '')).sort().join();
+        eq(t, 'arm+,arm-,body,leg+,leg-,static', 'Ловчий: шарниры');
+        ok(h.groups.filter(g => g.t === 'arm').every(g => h.groups[g.pb] && h.groups[g.pb].t === 'body'), 'руки — от туловища');
+        ok(['catcher_cloak', 'catcher_cloak_dark', 'catcher_eyes'].every(n => h.mats.some(m => m.n === n)), 'материалы под цвета облика');
+      }
       ok(h.top > 1 && h.low < 0, `${kind}: верх ${h.top}, низ ${h.low}`);
       for (const p of h.prims) {
         ok(h.mats[p.m] && h.groups[p.g], kind + ': часть без материала или группы');
@@ -4400,6 +4406,34 @@
         if (p.ol) ok(m.onr[p.v[0] * 4] || m.onr[p.v[0] * 4 + 1] || m.onr[p.v[0] * 4 + 2], kind + ': у обводки нет нормали');
       }
     }
+  });
+  // 5.1.28: 3D-Ловчий — цвета облика (плащ, его тень, глаза; у облика-скина — его цвет), походка плавно набирает и гасит размах,
+  // бег — из ходьбы; идёт — смотрит по ходу, постоял 3 с — лицом к игроку (к низу экрана, и при повёрнутой карте)
+  test('5.1.28: 3D-Ловчий — цвета облика, походка и поворот', () => {
+    const near3 = (a, b, m) => a.forEach((x, i) => near(x, b[i], 1e-6, m));
+    let tn = M3D.tintOf({ cloak: '#1d4ed8', eyes: '#fde047' });
+    near3(tn.catcher_cloak.c, M3D.lin('#1d4ed8'), 'плащ:');
+    near3(tn.catcher_cloak_dark.c, M3D.lin('#1d4ed8').map(x => x * 0.27), 'тень плаща:');
+    near3(tn.catcher_eyes.e, M3D.lin('#fde047').map(x => x * 1.6), 'глаза светятся своим цветом:');
+    near3(M3D.tintOf({ skin: 'bogatyr', cloak: '#1d4ed8' }).catcher_cloak.c, M3D.lin('#b91c1c'), 'у скина — его цвет:');
+    near3(M3D.tintOf({ cloak: 'red', eyes: 'url(x)' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'чужое значение — обычный плащ:');
+    near3(M3D.tintOf({ skin: 'constructor' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'неизвестный скин — обычный плащ:');
+    const keepRot = M3D.rot, v = { gait: 2, yaw: 1 };
+    try {
+      M3D.rot = 30;
+      let t = 0;
+      M3D.step(v, t);
+      for (let i = 0; i < 20; i++) M3D.step(v, t += 100);
+      ok(v.walk.amp > 0.99 && v.walk.run > 0.99, 'бег набрал размах: ' + v.walk.amp.toFixed(3) + ' / ' + v.walk.run.toFixed(3));
+      near(v.walk.yaw, 1, 1e-3, 'бежит — смотрит по ходу:');
+      v.gait = 0;
+      for (let i = 0; i < 10; i++) M3D.step(v, t += 100);
+      ok(v.walk.amp < 0.01, 'остановился — руки и ноги вернулись: ' + v.walk.amp.toFixed(3));
+      near(v.walk.yaw, 1, 1e-3, 'постоял секунду — смотрит, куда шёл:');
+      for (let i = 0; i < 40; i++) M3D.step(v, t += 100);
+      near(v.walk.yaw, 30 * Math.PI / 180, 0.02, 'постоял 5 с — лицом к игроку (с поворотом карты):');
+    } finally { M3D.rot = keepRot; }
+    ok(M3D.html('catcher', 32, 32, '', 'me').includes('data-who="me"') || M3D.on !== true, 'холст Ловчего помечен как свой');
   });
   test('5.1.28: значки мест — холст 3D-модели в точке привязки значка; у исчерпанного Источника — без струи', () => {
     const keep = M3D.on, keepL = window.L;

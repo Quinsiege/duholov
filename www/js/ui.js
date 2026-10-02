@@ -239,6 +239,7 @@ const UI = {
       this._lk = lk;
       U.$('#profileBtn .ava-art').innerHTML = Art.avatar(d.look);
       document.documentElement.style.setProperty('--pc', d.look.cloak);
+      if (typeof M3D !== 'undefined') M3D.setMe({ look: d.look }); // 5.1.28: 3D-Ловчий на карте — в цветах облика
     }
     put(U.$('#hudName'), d.name);
     put(U.$('#hudRank'), ru`${this.rank(d.level)} · ур. ${d.level}`);
