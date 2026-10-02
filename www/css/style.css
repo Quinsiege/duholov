@@ -67,6 +67,12 @@ body.night .range-circle { fill-opacity: .1; }
 .mk-spirit .mk-glow { position: absolute; left: 50%; bottom: 2px; width: 44px; height: 14px; margin-left: -22px; border-radius: 50%; background: var(--c); opacity: .45; filter: blur(4px); }
 .mk-spirit.r3 .mk-glow, .mk-spirit.r4 .mk-glow { opacity: .9; width: 60px; margin-left: -30px; height: 18px; animation: auraPulse 1.6s infinite; }
 .mk-spirit.r4::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; background: radial-gradient(circle, rgba(192, 132, 252, .35), transparent 65%); animation: auraPulse 1.4s infinite; z-index: -1; }
+/* 5.1.31: у значка с тенью (filter) внутри пульсирует свечение (r3, r4) или кольцо обучения — их границы меняются каждый кадр, и
+   браузер на каждом кадре заново раскладывал всю карту по слоям (самая дорогая часть кадра). Неподвижная прозрачная рамка —
+   с запасом на самый большой размах пульса (размытие свечения — до 18 точек за значок, кольцо — до 52): общие границы не
+   меняются, на экране — ничего */
+.mk-spirit.r3::before, .mk-spirit.r4::before, .mk-spirit.sp-tut::before { content: ''; position: absolute; inset: -20px; border: 1px solid transparent; pointer-events: none; }
+.mk-spirit.sp-tut::before { inset: -56px; }
 .mk.far .mk-spirit { opacity: .82; }
 .mk-spring { width: 100%; height: 100%; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .35)); }
 .mk-spring .beam { animation: blink 2.2s ease-in-out infinite; }
@@ -2730,8 +2736,10 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 @keyframes vmBreath2 { 50% { transform: scale(1.012, 1.018); } }
 /* пока открыто окно или меню, духи на карте под размытой подложкой не двигаются — размытие не пересчитывается каждый кадр */
 /* 5.2: и погода, и «хвосты» значков (::before, ::after) — иначе стекло окна пересчитывает размытие каждый кадр */
-body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) :is(#map *, #wxfx, #wxfx *),
-body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map *::before, body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map *::after,
+/* 5.1.31: окна, меню и выбор сервера — прямые дети body (ui.js, realms.js): «>» в :has() — браузеру не нужно перепроверять
+   правило при каждой вставке значка или смене класса где-то в глубине карты (раньше так каждый раз пересчитывались стили всего документа) */
+body:has(> .modal-wrap:not(.out), > .sheet-wrap:not(.out), > .rl-wrap) :is(#map *, #wxfx, #wxfx *),
+body:has(> .modal-wrap:not(.out), > .sheet-wrap:not(.out), > .rl-wrap) #map *::before, body:has(> .modal-wrap:not(.out), > .sheet-wrap:not(.out), > .rl-wrap) #map *::after,
 body:has(> .modal-wrap:not(.out)) #hud *, body:has(> .modal-wrap:not(.out)) #hud *::before, body:has(> .modal-wrap:not(.out)) #hud *::after { animation-play-state: paused !important; }
 
 /* ================= 4.6.3: плавнее и холоднее — вид тот же ================= */
@@ -2910,6 +2918,14 @@ body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-sh
 /* ================= 4.7: поворот карты и компас ================= */
 /* пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют), повёрнутый вокруг центра экрана */
 /* 4.11: повёрнутая и/или наклонённая карта — слой больше экрана, игрок в точке опоры (см. MapView.layout) */
+/* 5.1.31: наклон и поворот меняются на каждом кадре жеста — это свойства только самого слоя карты (не наследуются): иначе на каждом
+   кадре заново считались бы стили всех плиток, значков и подписей внутри него */
+@property --tilt { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --mrot { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --mw { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --mh { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --py { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --pd { syntax: '<length>'; inherits: false; initial-value: 1100px; }
 #map.rot { inset: auto; left: calc(50% - var(--mw) / 2); top: calc(var(--py) - var(--mh) / 2); width: var(--mw); height: var(--mh); margin: 0;
   transform: perspective(var(--pd, 1100px)) rotateX(var(--tilt, 0deg)) rotate(var(--mrot, 0deg)); }
 /* наклон: значки встают с земли — им нужно общее 3D-пространство с картой (overflow:hidden его бы сплющил) */

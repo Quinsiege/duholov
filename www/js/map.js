@@ -102,7 +102,7 @@ const Roofs = {
         if (px >= a && px <= c && py >= b && py <= d && Hazard.inside(f.geom, px, py)) h = Math.max(h, f.props.height > 0 ? f.props.height : 8);
       }
       this.at.set(key, h);
-      if (h) MapView.refresh();
+      if (h) MapView.roofSoon(); // 5.1.31: место встаёт на крышу — одним кадром на все пришедшие крыши, без полного обновления значков
     }).catch(() => this.at.set(key, 0));
     return null;
   },
@@ -110,8 +110,13 @@ const Roofs = {
 
 const MapView = {
   map: null, pos: null, follow: true, heading: 0, markers: new Map(), nearby: [], tiles: null, night: null,
+  // 5.1.31: размер окна — из запаса (vp): чтение innerWidth/innerHeight после записи стилей заставляет браузер тут же пересчитать
+  // раскладку всей страницы — на каждом кадре жеста это фриз; обновляется по resize
+  vw: typeof innerWidth !== 'undefined' ? innerWidth : 0, vh: typeof innerHeight !== 'undefined' ? innerHeight : 0,
+  vp() { this.vw = innerWidth; this.vh = innerHeight; },
 
   init() {
+    this.vp(); addEventListener('resize', () => this.vp()); // раньше всех, кто на resize пересчитывает слой карты (initRotate)
     if (typeof M3D !== 'undefined') M3D.init(); // 5.1.28: 3D-модели мест (js/m3d.js) — до первых значков; нет WebGL — места остаются рисунками
     // 5.1: место Ловчего — Walk (телефон или прогресс); ещё нет (новичок до Атласа) — карта ждёт на Красной площади
     const start = Walk.load() || { lat: 55.7539, lng: 37.6208 };
@@ -236,6 +241,10 @@ const MapView = {
         // 4.13: подписи — вторым слоем над зоной Ловчего и объёмными домами; плитки читаются один раз (общий кэш)
         this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: [], labelRules: st.label });
         this.bldTiles.views = this.tiles.views;
+        // 5.1.31: плитка подписей, на которую не попала ни одна подпись (каждая третья в городе), — скрыта: пустой холст — всё равно
+        // свой слой видеокарты, а их число — главное в цене каждого кадра, пока карта движется
+        const lr = this.bldTiles.renderTile.bind(this.bldTiles);
+        this.bldTiles.renderTile = (c, el, key, done) => { const p = lr(c, el, key, done); if (p && p.then) p.then(() => this.lblTileVis(c, el)); return p; };
         this.bldTiles.addTo(this.map);
       } else {
         this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
@@ -252,6 +261,13 @@ const MapView = {
     document.body.style.setProperty('--haze', F.earth); // 4.11: дымка горизонта у наклонённой карты — цвета земли
     U.$('#map').style.background = F.earth; // и фон под ещё не нарисованными плитками
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
+  },
+
+  lblTileVis(c, el) {
+    const idx = this.bldTiles && this.bldTiles.labelers && this.bldTiles.labelers.getIndex(c.z);
+    if (!idx || !el) return;
+    const g = 16, n = idx.searchBbox({ minX: 256 * c.x - g, minY: 256 * c.y - g, maxX: 256 * (c.x + 1) + g, maxY: 256 * (c.y + 1) + g }, Infinity).size;
+    el.style.display = n ? '' : 'none';
   },
 
   setWeatherFx() {
@@ -395,9 +411,11 @@ const MapView = {
       if (!g || e.touches.length !== 2) return;
       let da = norm(ang(e.touches) - g.a);
       if (!g.on) { if (Math.abs(da) < 14) return; g.on = true; g.a += Math.sign(da) * 14; da = norm(ang(e.touches) - g.a); }
-      this.setRot(g.r + da);
+      // 5.1.31: касания приходят чаще кадров (экраны 90–120 Гц) — поворот раз за кадр, по последнему положению пальцев
+      g.want = g.r + da;
+      if (!g.raf) g.raf = requestAnimationFrame(() => { if (!g) return; g.raf = 0; this.setRot(g.want); });
     }, { passive: true });
-    const end = e => { if (g && e.touches.length < 2) { const was = g.on; g = null; if (was && Math.abs(this.rot) < 6) this.northUp(); } };
+    const end = e => { if (g && e.touches.length < 2) { const was = g.on; if (g.raf) { cancelAnimationFrame(g.raf); this.setRot(g.want); } g = null; if (was && Math.abs(this.rot) < 6) this.northUp(); } };
     box.addEventListener('touchend', end, { passive: true });
     box.addEventListener('touchcancel', end, { passive: true });
     // компас
@@ -412,7 +430,7 @@ const MapView = {
      трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат). */
   TILT: 32, PD: 1100, tilt: 0, _py: 0,
   layout() {
-    const box = U.$('#map'), on = !!(this.tilt || this.rot), W = innerWidth, H = innerHeight;
+    const box = U.$('#map'), on = !!(this.tilt || this.rot), W = this.vw || innerWidth, H = this.vh || innerHeight;
     this._sq = on;
     this._py = this.tilt ? Math.round(H * .6) : H / 2;
     if (on) {
@@ -457,7 +475,7 @@ const MapView = {
     box.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (g) { g.multi = true; return; } // второй палец — жест двумя пальцами (масштаб, поворот)
-      g = { id: e.pointerId, x: e.clientX, y: e.clientY, rot: this.rot, tilt: this.tilt, on: false, multi: false, sg: e.clientY < (this._py || innerHeight / 2) ? 1 : -1 };
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, rot: this.rot, tilt: this.tilt, on: false, multi: false, sg: e.clientY < (this._py || this.vh / 2) ? 1 : -1 };
     });
     addEventListener('pointermove', e => {
       if (!g || e.pointerId !== g.id || g.multi) return;
@@ -497,7 +515,7 @@ const MapView = {
   },
   // то же, но в осях экрана (без поворота карты): x — вправо, y — вниз по плоскости
   planeUV(x, y) {
-    let X = x - innerWidth / 2, Y = y - (this._py || innerHeight / 2);
+    let X = x - this.vw / 2, Y = y - (this._py || this.vh / 2);
     if (this.tilt) {
       const t = this.tilt * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD;
       Y = Y * d / (cs * d + Y * sn); X = X * (d - Y * sn) / d;
@@ -507,7 +525,8 @@ const MapView = {
   // 5.1.30: видимая земля в осях экрана на плоскости карты (от точки зрения), с запасом pad — холст объёмных домов (Bld3D)
   viewUV(pad = 0) {
     let u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
-    for (const [x, y] of [[0, 0], [innerWidth, 0], [0, innerHeight], [innerWidth, innerHeight]]) {
+    const W = this.vw, H = this.vh;
+    for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) {
       const q = this.planeUV(x, y);
       u0 = Math.min(u0, q.x); v0 = Math.min(v0, q.y); u1 = Math.max(u1, q.x); v1 = Math.max(v1, q.y);
     }
@@ -522,7 +541,8 @@ const MapView = {
     if (turned) this.layout();
     U.$('#map').style.setProperty('--mrot', r + 'deg');
     this.zoomMode();
-    if (!turned) this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
+    // значки стоят прямо: им — только новый поворот (место на слое карты от поворота не меняется — без пересчёта Leaflet)
+    if (!turned) this.map.eachLayer(l => { if (l instanceof L.Marker) this.upright(l); });
     const el = this.player && this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + r}deg)`;
     const c = U.$('#compassBtn');
@@ -535,7 +555,8 @@ const MapView = {
   upright(mk) {
     const el = mk._icon, p = el && el._leaflet_pos;
     if (!p || mk._map !== this.map || (!this.rot && !this.tilt)) return;
-    el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
+    const to = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
+    if (el._to !== to) { el.style.transformOrigin = to; el._to = to; }
     // 5.1.30: место в доме стоит на его крыше — там, где её видно из точки зрения (так рисует объёмные дома Bld3D; без WebGL
     // дома плоские — и место на земле)
     const h = this.tilt && mk._roofH && typeof Bld3D !== 'undefined' && Bld3D.on ? Bld3D.hpx(mk._roofH) : 0;
@@ -546,6 +567,10 @@ const MapView = {
     // значок стоит ровно на своей точке земли и не «плывёт» над ней, пока карта движется (раньше — сдвиг до 10–15 точек)
     if (this.tilt && !mk.options.flat) {
       const q = this.screen3d(L.point(p.x + lift.x, p.y + lift.y)), k = this.LIFT_Z / (this.PD - q.z);
+      // 5.1.31: значок далеко за краем экрана (с запасом на высоту модели) — уже стоит, где стоял: переставим, когда подойдёт к экрану
+      const f = this.PD / (this.PD - q.z), sx = this.vw / 2 + q.x * f, sy = (this._py || this.vh / 2) + q.y * f;
+      if (el._up === p && (sx < -320 || sx > this.vw + 320 || sy < -420 || sy > this.vh + 320)) return;
+      el._up = p;
       t += ` rotateX(${-this.tilt}deg) translate3d(${(-q.x * k).toFixed(2)}px, ${(-q.y * k).toFixed(2)}px, ${this.LIFT_Z}px) scale(${(1 - k).toFixed(4)})`;
     }
     el.style.transform = t;
@@ -592,7 +617,8 @@ const MapView = {
   viewBox(pad = 0) {
     const m = this.map, c = m.containerPointToLayerPoint(m.getSize().divideBy(2));
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const [x, y] of [[0, 0], [innerWidth, 0], [0, innerHeight], [innerWidth, innerHeight]]) {
+    const W = this.vw, H = this.vh;
+    for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) {
       const q = this.plane(x, y);
       x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y);
     }
@@ -664,20 +690,22 @@ const MapView = {
   // как у значка (дальше — мельче); ближние — поверх дальних. Зовётся на каждом сдвиге карты (reAim) и когда модель встала (lblSoon)
   placeLabels() {
     if (!this.map || !this._lblBox) return;
-    const cx = innerWidth / 2, cy = this._py || innerHeight / 2, d = this.PD;
+    const W = this.vw, H = this.vh, cx = W / 2, cy = this._py || H / 2, d = this.PD;
+    const hide = lb => { if (!lb._hid) { lb.style.display = 'none'; lb._hid = true; } };
     for (const m of this.markers.values()) {
       const lb = m._lbl, ic = m._icon, p = ic && ic._leaflet_pos;
       if (!lb) continue;
-      if (!p) { lb.style.display = 'none'; continue; }
+      if (!p) { hide(lb); continue; }
       const lf = ic._lift || { x: 0, y: 0 }, q = this.screen3d(L.point(p.x + lf.x, p.y + lf.y)), f = this.tilt ? d / (d - q.z) : 1;
       const box = ic.firstElementChild, ay = m.options.icon.options.iconAnchor[1];
-      const bot = box && parseFloat(box.style.getPropertyValue('--m3d-bot')); // низ модели в значке (js/m3d.js), иначе — низ рисунка
+      const bot = box && (box._m3dBot != null ? box._m3dBot : parseFloat(box.style.getPropertyValue('--m3d-bot'))); // низ модели в значке (js/m3d.js), иначе — низ рисунка
       const off = (Number.isFinite(bot) ? bot - ay + 13 : m.options.icon.options.iconSize[1] - ay + 4) * f;
       const x = cx + q.x * f, y = cy + q.y * f + off;
-      if (x < -200 || x > innerWidth + 200 || y < -60 || y > innerHeight + 60) { lb.style.display = 'none'; continue; }
-      lb.style.display = '';
-      lb.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%) scale(${f.toFixed(3)})`;
-      lb.style.zIndex = Math.round(1000 + q.z);
+      if (x < -200 || x > W + 200 || y < -60 || y > H + 60) { hide(lb); continue; }
+      if (lb._hid !== false) { lb.style.display = ''; lb._hid = false; }
+      const tf = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%) scale(${f.toFixed(3)})`, zi = Math.round(1000 + q.z);
+      if (lb._tf !== tf) { lb.style.transform = tf; lb._tf = tf; }
+      if (lb._zi !== zi) { lb.style.zIndex = zi; lb._zi = zi; }
     }
   },
   lblSoon() { if (!this._lblRaf) this._lblRaf = requestAnimationFrame(() => { this._lblRaf = 0; this.placeLabels(); }); },
@@ -685,7 +713,7 @@ const MapView = {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
       return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62],
-        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
+        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}${e.tut ? ' sp-tut' : ''}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
@@ -746,7 +774,7 @@ const MapView = {
       }
     });
     for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.dropLbl(m); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
-    if (typeof M3D !== 'undefined') { M3D.aim(); M3D.kick(); } // 5.1.28: место стало досягаемым — его модель снова движется; 5.1.30: и видна с нужной стороны
+    this.aimSoon(); // 5.1.28: место стало досягаемым — его модель снова движется; 5.1.30: и видна с нужной стороны
     this.placeLabels();
     this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
@@ -755,6 +783,26 @@ const MapView = {
     this._spIds = ids;
     UI.updateNearby(this.nearby);
     if (this.tracking) this.updateTracker();
+  },
+  /* 5.1.31: модели мест — к игроку в ближайшем кадре браузера, а не в задаче, где только что менялись значки: отрисовка модели
+     в холст значка заставляет браузер тут же досчитать стили страницы (в кадре этот расчёт и так нужен — без лишнего прохода) */
+  aimSoon() {
+    if (typeof M3D === 'undefined' || this._aimRaf) return;
+    this._aimRaf = requestAnimationFrame(() => { this._aimRaf = 0; M3D.aim(); M3D.kick(); });
+  },
+  // высоты крыш пришли (Roofs): места в домах — на крыши, одним кадром на все
+  roofSoon() {
+    if (this._roofRaf) return;
+    this._roofRaf = requestAnimationFrame(() => {
+      this._roofRaf = 0;
+      for (const m of this.markers.values()) {
+        const e = m._ent;
+        if (!e || e.type === 'spirit') continue;
+        const h = Roofs.height(e.lat, e.lng) || 0;
+        if (h !== (m._roofH || 0)) { m._roofH = h; this.upright(m); }
+      }
+      this.reAim();
+    });
   },
   // 5.2: место появляется и исчезает плавно (style.css: .pl-in, .pl-out); fade — false: сразу
   PLACE_HOLD: 20, FADE_MS: 450,

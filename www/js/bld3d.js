@@ -296,11 +296,15 @@ const Bld3D = {
     const piv = m.containerPointToLayerPoint(m.getSize().divideBy(2)), rot = MapView.rot || 0, r = rot * Math.PI / 180;
     const dpr = Math.min(window.devicePixelRatio || 1, this.DPR, Math.sqrt(this.MAXPX / (cw * ch)));
     const W = Math.max(1, Math.round(cw * dpr)), H = Math.max(1, Math.round(ch * dpr)), cv = this.cv;
-    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
-    cv.style.width = cw.toFixed(2) + 'px'; cv.style.height = ch.toFixed(2) + 'px';
+    // 5.1.31: буфер холста не пересоздаётся на каждом кадре жеста (наклон меняет видимую землю, а с ней — нужный размер): он
+    // растёт с запасом и уменьшается, только когда стал намного больше нужного. Кадр — в левом верхнем углу буфера (остальное
+    // прозрачно), точка буфера — та же доля CSS-пикселя, что и без запаса: картинка та же
+    if (cv.width < W || cv.height < H || cv.width * cv.height > 2.2 * W * H) { cv.width = Math.ceil(W * 1.1); cv.height = Math.ceil(H * 1.1); }
+    const css = (cv.width * cw / W).toFixed(2) + 'px ' + (cv.height * ch / H).toFixed(2) + 'px';
+    if (this._css !== css) { const [a, b] = css.split(' '); cv.style.width = a; cv.style.height = b; this._css = css; }
     this.own = `translate3d(${piv.x}px, ${piv.y}px, 0px) rotate(${-rot}deg) translate(${uv.u0}px, ${uv.v0}px)`;
     cv.style.transform = 'translate3d(0px, 0px, 0px) scale(1) ' + this.own;
-    gl.viewport(0, 0, W, H);
+    gl.viewport(0, cv.height - H, W, H); // WebGL считает снизу: верх буфера
     gl.clearColor(0, 0, 0, 0); gl.depthMask(true);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (!this.pal) return;

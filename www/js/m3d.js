@@ -25,7 +25,7 @@ const M3D = {
   // походка Ловчего: шагов (циклов) в секунду, размах ног и рук (радианы), подскок (м) и наклон вперёд — шаг / бег
   WALK: { hz: [1.6, 2.5], leg: [0.42, 0.8], arm: [0.35, 0.75], bob: [0.025, 0.065], lean: [0.06, 0.24] },
   on: false, gl: null, cv: null, P: null, O: null, gen: 0,
-  models: {}, views: new Set(), rot: 0, raf: 0, last: 0, io: null, fps: 20, cost: 0,
+  models: {}, views: new Set(), rot: 0, raf: 0, tmo: 0, last: 0, io: null, fps: 20, cost: 0,
   me: { heading: 0, gait: 0, tint: null, kind: 'catcher' }, // Ловчий: куда смотрит (градусы от севера), походка (0 — стоит, 1 — идёт, 2 — бежит), цвета, наряд
 
   init() {
@@ -43,7 +43,9 @@ const M3D = {
       this.tick = this.tick.bind(this);
       if ('IntersectionObserver' in window) {
         this.io = new IntersectionObserver(es => {
-          for (const en of es) { const v = en.target._m3d; if (!v) continue; v.vis = en.isIntersecting; if (v.vis && v.ready) this.draw(v); }
+          const show = [];
+          for (const en of es) { const v = en.target._m3d; if (!v) continue; v.vis = en.isIntersecting; if (v.vis && v.ready) show.push(v); }
+          if (show.length) this.drawSet(show);
           this.kick();
         });
       }
@@ -202,7 +204,23 @@ const M3D = {
       this.aimView(v);
       this.layout(v);
       v.ready = true;
-      if (this.draw(v)) { c.classList.add('on'); if (c.parentElement) c.parentElement.classList.add('m3d'); }
+      this.first(v);
+    });
+  },
+  /* 5.1.31: первый кадр новой модели — в ближайшем кадре браузера, пачкой со всеми новыми: первая отрисовка в только что
+     вставленный холст заставляет браузер тут же досчитать стили всей страницы — в задаче, где только что появились значки
+     (MapView.refresh), это был отдельный рывок; в кадре браузера этот расчёт и так нужен. Кадр — до отрисовки страницы:
+     модель видна в том же кадре, что и значок */
+  fresh: [],
+  first(v) {
+    this.fresh.push(v);
+    if (this.freshRaf) return;
+    this.freshRaf = requestAnimationFrame(() => {
+      this.freshRaf = 0;
+      const vs = this.fresh.filter(v => v.ready && v.c.isConnected);
+      this.fresh = [];
+      this.drawSet(vs);
+      for (const v of vs) if (v.t) { v.c.classList.add('on'); if (v.c.parentElement) v.c.parentElement.classList.add('m3d'); }
       this.kick();
     });
   },
@@ -230,21 +248,31 @@ const M3D = {
     v.vp = new Float32Array([sx, 0, 0, 0, 0, sy * sn, cs / D, 0, 0, sy * cs, -sn / D, 0, 0, y0, 0, 1]);
     // значку — где у модели верх и низ (CSS-пиксели от верха значка): туда встают хранитель, флаг клана и звёзды (style.css)
     const ext = this.extent(m, v.e), box = v.c.parentElement;
-    if (box) { box.style.setProperty('--m3d-top', (v.ay - ext.top * S).toFixed(1) + 'px'); box.style.setProperty('--m3d-bot', (v.ay - ext.low * S).toFixed(1) + 'px'); }
+    if (box) { box.style.setProperty('--m3d-top', (v.ay - ext.top * S).toFixed(1) + 'px'); box.style.setProperty('--m3d-bot', (v.ay - ext.low * S).toFixed(1) + 'px'); box._m3dBot = +(v.ay - ext.low * S).toFixed(1); }
     if (!v.player && typeof MapView !== 'undefined' && MapView.lblSoon) MapView.lblSoon(); // подпись места — под низ модели
   },
   /* 5.1.30: откуда игрок смотрит на место. Наклонённая карта видна в перспективе (MapView.camOf): место у нижнего края экрана —
      почти сверху, у горизонта — сбоку, левее и правее середины — чуть сбоку; модель рисуется с той же стороны — стоит на земле
      так же, как дома вокруг; и сам Ловчий. Плоская карта — как раньше, под ELEV°. Пересчёт — при каждом сдвиге карты (aim) */
+  // 5.1.31: модели, которые и так рисуются кадрами движения (вихрь, пламя — до FPS в секунду), поворачиваются к игроку с ближайшим
+  // своим кадром (не позже 1000/FPS мс) — новый угол и сдвиг в значке вместе с ним; остальные — сразу, одной пачкой
   aim() {
     if (!this.on) return;
-    for (const v of this.views) if (v.ready && this.aimView(v) && v.vis) this.draw(v);
+    const busy = !!(this.raf || this.tmo), now = [];
+    for (const v of this.views) {
+      if (!v.ready) continue;
+      const later = busy && v.vis && !v.player && this.live(v);
+      if (this.aimView(v, later) && v.vis && !later) now.push(v);
+    }
+    if (now.length) this.drawSet(now);
   },
-  aimView(v) {
+  // later — новый угол отложить до следующего кадра модели (render)
+  aimView(v, later) {
     const c = typeof MapView !== 'undefined' && MapView.camOf ? MapView.camOf(v.c) : null;
     const e = c ? c.e : this.ELEV, az = c ? c.az : 0;
-    if (Math.abs(e - v.e) < 0.5 && Math.abs(az - v.az) < 0.009) return false; // меньше полуградуса — на экране не видно
-    v.e = e; v.az = az;
+    if (Math.abs(e - v.e) < 0.5 && Math.abs(az - v.az) < 0.009) { v.pe = null; return false; } // меньше полуградуса — на экране не видно
+    if (later) { v.pe = e; v.pa = az; return true; }
+    v.e = e; v.az = az; v.pe = null;
     if (v.ready) this.place(v);
     return true;
   },
@@ -350,21 +378,50 @@ const M3D = {
     }
     return r;
   },
-  draw(v, now) {
-    const gl = this.gl, m = this.models[v.kind];
-    if (!m || !m.ready || this.lost || !v.c.isConnected) return false;
-    if (m.gen !== this.gen) this.upload(m);
+  draw(v, now) { return this.drawSet([v], now) > 0; },
+  /* 5.1.31: модели — пачкой: каждая в своей клетке общего холста (CELLS), копии в холсты значков — после всех. Копия ждёт, пока
+     видеокарта дорисует кадр; раньше так ждала каждая модель отдельно (на ходу — больше сотни раз в секунду), теперь — один раз
+     на пачку. Каждая модель рисуется так же, как раньше, только в другом месте общего холста */
+  CELLS: [3, 2],
+  drawSet(list, now) {
+    if (this.lost) return 0;
+    const vs = list.filter(v => { const m = this.models[v.kind]; return m && m.ready && v.c.isConnected; });
+    if (!vs.length) return 0;
     now = now || performance.now();
-    const t = now / 1000, W = v.pw, H = v.ph, cv = this.cv;
-    if (cv.width < W || cv.height < H) { cv.width = Math.max(cv.width, W); cv.height = Math.max(cv.height, H); }
-    gl.viewport(0, 0, W, H);
-    gl.enable(gl.SCISSOR_TEST); gl.scissor(0, 0, W, H);
+    const [C, R] = this.CELLS, N = C * R, cv = this.cv;
+    let cw = 0, ch = 0;
+    for (const v of vs) { cw = Math.max(cw, v.pw); ch = Math.max(ch, v.ph); }
+    const cols = Math.min(C, vs.length), rows = Math.min(R, Math.ceil(vs.length / C));
+    if (cv.width < cols * cw || cv.height < rows * ch) { cv.width = Math.max(cv.width, cols * cw); cv.height = Math.max(cv.height, rows * ch); }
+    for (let i = 0; i < vs.length; i += N) {
+      const pass = vs.slice(i, i + N);
+      pass.forEach((v, j) => this.render(v, now, (j % C) * cw, Math.floor(j / C) * ch));
+      // кадры — в холсты значков (WebGL считает снизу вверх: клетка (x, y) — от нижнего левого угла общего холста)
+      for (const v of pass) {
+        const W = v.pw, H = v.ph;
+        v.ctx.clearRect(0, 0, W, H);
+        v.ctx.drawImage(cv, v.slot[0], cv.height - v.slot[1] - H, W, H, 0, 0, W, H);
+        v.t = now;
+      }
+    }
+    return vs.length;
+  },
+  // кадр модели — в клетку (x, y) общего холста
+  render(v, now, x, y) {
+    const gl = this.gl, m = this.models[v.kind];
+    if (m.gen !== this.gen) this.upload(m);
+    if (v.pe != null) { v.e = v.pe; v.az = v.pa; v.pe = null; this.place(v); } // отложенный поворот к игроку (aim) — с этим кадром
+    const t = now / 1000, W = v.pw, H = v.ph;
+    v.slot = [x, y];
+    gl.viewport(x, y, W, H);
+    gl.enable(gl.SCISSOR_TEST); gl.scissor(x, y, W, H);
     gl.clearColor(0, 0, 0, 0); gl.depthMask(true);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
     // поворот вместе с картой (и у Ловчего — туда, куда он смотрит)
     const h0 = m.head, w = h0.walk ? this.step(v, now) : null, G = [];
-    const a = -this.rot * Math.PI / 180 + (v.az || 0) + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
+    v.ya = -this.rot * Math.PI / 180 + (v.az || 0); // поворот модели на экране (без шага Ловчего) — для setRot
+    const a = v.ya + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
     const Y = new Float32Array([ca, sa, 0, 0, -sa, ca, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     h0.groups.forEach((g, i) => G.push(g.t === 'static' ? null : w && (g.t === 'body' || g.t === 'leg' || g.t === 'arm') ? this.walkMat(g, h0.groups, G, w) : this.groupMat(g, i, t)));
     const Ms = G.map(M => M ? this.mul(Y, M) : Y);
@@ -409,11 +466,6 @@ const M3D = {
       }
     }
     gl.depthMask(true); gl.disable(gl.BLEND);
-    // кадр — в холст значка (WebGL рисует снизу вверх: нужная область — в нижнем левом углу общего холста)
-    v.ctx.clearRect(0, 0, W, H);
-    v.ctx.drawImage(cv, 0, cv.height - H, W, H, 0, 0, W, H);
-    v.t = now;
-    return true;
   },
 
   /* ---------- когда перерисовывать ---------- */
@@ -424,14 +476,20 @@ const M3D = {
   setRot(r) {
     if (!this.on || r === this.rot) return;
     this.rot = r;
-    for (const v of this.views) if (v.ready) this.aimView(v); // места левее и правее — видны с другой стороны
-    this.redraw();
+    this.prune();
+    const due = [];
+    for (const v of this.views) {
+      if (!v.ready) continue;
+      const moved = this.aimView(v); // места левее и правее — видны с другой стороны
+      // 5.1.31: модель места — заново, только если её поворот на экране изменился хотя бы на полградуса (тот же порог, что у aim)
+      if (v.vis && (moved || v.player || v.ya == null || Math.abs(-r * Math.PI / 180 + (v.az || 0) - v.ya) >= 0.009)) due.push(v);
+    }
+    this.drawSet(due);
   },
   redraw() {
     if (!this.on) return;
     this.prune();
-    const now = performance.now();
-    for (const v of this.views) if (v.ready && v.vis) this.draw(v, now);
+    this.drawSet([...this.views].filter(v => v.ready && v.vis));
   },
   moving() {
     if (document.hidden || (typeof Stage !== 'undefined' && Stage.busy) || this.still()) return false;
@@ -442,18 +500,33 @@ const M3D = {
   // (у дальних значков — класс far): остальные — неподвижный кадр
   live(v) { return v.ready && v.vis && (v.player || (this.models[v.kind].head.moving && !v.c.closest('.far'))); },
   going(v) { return v.gait > 0 || !!(v.walk && (v.walk.amp > 0.02 || v.walk.turn)); },
-  kick() { if (this.on && !this.raf && this.moving()) this.raf = requestAnimationFrame(this.tick); },
+  kick() {
+    if (!this.on || this.raf || !this.moving()) return;
+    if (this.tmo) { clearTimeout(this.tmo); this.tmo = 0; } // ждали следующего кадра моделей — что-то изменилось: кадр сразу
+    this.raf = requestAnimationFrame(this.tick);
+  },
   tick(now) {
     this.raf = 0;
     this.prune();
     if (!this.moving()) return;
     // Ловчий — 30 кадров в секунду на ходу, 10 — когда стоит
-    for (const v of this.views) if (v.player && this.live(v) && now - (v.t || 0) >= (this.going(v) ? 33 : 100) - 2) this.draw(v, now);
-    if (now - this.last >= 1000 / this.fps - 2) {
+    let next = Infinity, places = false;
+    const due = [], gaps = new Map();
+    for (const v of this.views) {
+      if (!this.live(v)) continue;
+      if (!v.player) { places = true; continue; }
+      const gap = (this.going(v) ? 33 : 100) - 2;
+      if (now - (v.t || 0) >= gap) due.push(v);
+      gaps.set(v, gap);
+    }
+    let n = 0;
+    if (places && now - this.last >= 1000 / this.fps - 2) {
       this.last = now;
+      for (const v of this.views) if (!v.player && this.live(v)) { due.push(v); n++; }
+    }
+    if (due.length) {
       const t0 = performance.now();
-      let n = 0;
-      for (const v of this.views) if (!v.player && this.live(v)) { this.draw(v, now); n++; }
+      this.drawSet(due, now);
       // кадр всех мест дороже 8 мс (слабый телефон) — реже, до 8 кадров в секунду; дешевле 4 мс — снова чаще
       if (n) {
         const dt = performance.now() - t0;
@@ -461,6 +534,12 @@ const M3D = {
         this.fps = this.cost > 8 ? Math.max(8, this.fps - 1) : this.cost < 4 ? Math.min(this.FPS, this.fps + 1) : this.fps;
       }
     }
-    this.raf = requestAnimationFrame(this.tick);
+    for (const [v, gap] of gaps) next = Math.min(next, (v.t || 0) + gap);
+    if (places) next = Math.min(next, this.last + 1000 / this.fps - 2);
+    // 5.1.31: следующий кадр браузера — к следующей отрисовке моделей, а не на каждом обновлении экрана: каждый кадр браузера
+    // (даже пустой) — работа главному потоку (пересчёт CSS-анимаций значков, слои), а модели рисуются 10–30 раз в секунду
+    const wait = next - performance.now();
+    if (wait > 12) this.tmo = setTimeout(() => { this.tmo = 0; if (!this.raf) this.raf = requestAnimationFrame(this.tick); }, wait - 6);
+    else this.raf = requestAnimationFrame(this.tick);
   },
 };

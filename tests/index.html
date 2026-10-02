@@ -4610,6 +4610,119 @@
     eq(MapView.pal(false), MapView.PALETTE.day, 'днём — дневные цвета');
     eq(MapView.pal(true), MapView.PALETTE.night, 'ночью — ночные');
   });
+  // 5.1.31: без фризов — стили игры (временно на всю страницу тестов): наклон и поворот слоя карты не наследуются внутрь (иначе на
+  // каждом кадре жеста пересчитывались бы стили всей карты); под окном анимации карты на паузе, как раньше (правило :has() — с «>»);
+  // у значка духа с пульсом под тенью — неподвижная прозрачная рамка (иначе на каждом кадре заново раскладка карты по слоям)
+  atest('5.1.31: стили карты без фризов — наклон не наследуется, окно приостанавливает анимации, рамка у пульсирующих духов', async () => {
+    const css = await fetch('../www/css/style.css?t=' + Date.now()).then(r => r.text());
+    const sh = new CSSStyleSheet();
+    sh.replaceSync(css.replace(/@import[^;]+;/g, ''));
+    const keep = document.adoptedStyleSheets, box = document.createElement('div'), wrap = document.createElement('div');
+    document.adoptedStyleSheets = [...keep, sh];
+    try {
+      box.innerHTML = '<div id="map" class="rot tilt" style="--tilt: 31deg; --mrot: 12deg"><i class="rz-wave"></i><div class="mk-spirit r3"></div><div class="mk-spirit r1"></div><div class="mk-spirit r2 sp-tut"></div></div>';
+      document.body.appendChild(box);
+      const map = box.firstChild, wave = map.querySelector('.rz-wave'), [r3, r1, tut] = map.querySelectorAll('.mk-spirit');
+      eq(getComputedStyle(map).getPropertyValue('--tilt').trim(), '31deg', 'у самого слоя — свой наклон:');
+      eq(getComputedStyle(wave).getPropertyValue('--tilt').trim(), '0deg', 'внутрь слоя наклон не наследуется:');
+      eq(getComputedStyle(wave).getPropertyValue('--mrot').trim(), '0deg', 'и поворот:');
+      ok(/matrix3d/.test(getComputedStyle(map).transform), 'слой карты по-прежнему наклонён: ' + getComputedStyle(map).transform.slice(0, 40));
+      eq(getComputedStyle(wave).animationPlayState, 'running', 'без окна волна идёт:');
+      wrap.className = 'modal-wrap';
+      document.body.appendChild(wrap); // окна — прямые дети body (UI.modal)
+      eq(getComputedStyle(wave).animationPlayState, 'paused', 'под окном — на паузе:');
+      wrap.classList.add('out');
+      eq(getComputedStyle(wave).animationPlayState, 'running', 'окно закрывается — снова идёт:');
+      wrap.remove();
+      const b = el => getComputedStyle(el, '::before');
+      eq(b(r3).content, '""', 'у духа с пульсирующим свечением (r3) — рамка');
+      eq(b(r3).top, '-20px', 'с запасом на пульс:');
+      eq(b(r3).borderTopColor, 'rgba(0, 0, 0, 0)', 'рамка прозрачная:');
+      eq(b(r3).pointerEvents, 'none', 'и не ловит касаний:');
+      eq(b(tut).top, '-56px', 'у духа обучения — с запасом на кольцо:');
+      eq(b(r1).content, 'none', 'у обычного духа рамки нет');
+    } finally { document.adoptedStyleSheets = keep; box.remove(); wrap.remove(); }
+  });
+  atest('5.1.31: 3D-модели — пачкой в клетках общего холста; картинка каждой та же, что по одной', async () => {
+    if (!M3D.init()) { ok(true, 'нет WebGL — проверять нечего'); return; }
+    const host = document.createElement('div'), base = M3D.BASE, kinds = ['spring', 'shrine_greek', 'rift_norse', 'shrine_china'];
+    host.style.cssText = 'position: fixed; left: 0; top: 0; width: 320px; height: 320px; pointer-events: none';
+    document.body.appendChild(host);
+    try {
+      M3D.BASE = '../www/models/'; // файлы моделей — от страницы тестов
+      kinds.forEach(k => { if (M3D.models[k] && !M3D.models[k].ready) delete M3D.models[k]; });
+      host.innerHTML = ['spring', 'shrine_greek', 'rift_norse', 'shrine_china'].map(k => `<div style="position: relative; width: 80px; height: 80px">${M3D.html(k, 40, 70)}</div>`).join('');
+      M3D.bind(host);
+      const vs = [...host.querySelectorAll('canvas.mk3d')].map(c => c._m3d);
+      for (let i = 0; i < 200 && !vs.every(v => v.ready && v.t); i++) await new Promise(r => setTimeout(r, 25));
+      ok(vs.every(v => v.ready && v.t), 'модели загружены, первый кадр — в ближайшем кадре браузера');
+      ok(vs.every(v => v.c.classList.contains('on')), 'холсты видны');
+      const T = 4321.5, px = v => Array.from(v.ctx.getImageData(0, 0, v.pw, v.ph).data);
+      eq(M3D.drawSet(vs, T), vs.length, 'нарисованы все:');
+      eq(new Set(vs.map(v => v.slot.join())).size, vs.length, 'у каждой модели — своя клетка:');
+      const batch = vs.map(px);
+      vs.forEach(v => M3D.drawSet([v], T));
+      vs.forEach((v, i) => {
+        const a = batch[i], b = px(v);
+        let diff = 0;
+        for (let j = 0; j < a.length; j++) if (a[j] !== b[j]) diff++;
+        eq(diff, 0, v.kind + ': пачкой и по одной — одна и та же картинка, отличий:');
+        ok(a.some((x, j) => j % 4 === 3 && x > 0), v.kind + ': нарисована');
+      });
+    } finally { host.remove(); M3D.prune(); M3D.BASE = base; }
+  });
+  test('5.1.31: крыши и повороты моделей — одним кадром; пустые плитки подписей скрыты; значок далеко за экраном не переставляется', () => {
+    const keep = { markers: MapView.markers, upright: MapView.upright, reAim: MapView.reAim, bldTiles: MapView.bldTiles, map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py };
+    const keepAim = M3D.aim, keepRaf = window.requestAnimationFrame, keepL = window.L;
+    const raf = [];
+    try {
+      window.requestAnimationFrame = f => { raf.push(f); return raf.length; };
+      // крыши: пришли высоты — места встают на крыши одним кадром, без полного обновления значков
+      let up = 0, re = 0, aims = 0;
+      const e = { type: 'shrine', lat: 55.75, lng: 37.62 }, m = { _ent: e };
+      MapView.markers = new Map([['a', m]]);
+      MapView.upright = () => { up++; }; MapView.reAim = () => { re++; };
+      Roofs.at.set(e.lat.toFixed(6) + ',' + e.lng.toFixed(6), 21);
+      MapView.roofSoon(); MapView.roofSoon();
+      eq(raf.length, 1, 'две крыши подряд — один кадр:');
+      raf.shift()();
+      eq(m._roofH, 21, 'место — на крыше:'); eq(up, 1, 'значок переставлен:'); eq(re, 1, 'модели и подписи — под новую высоту:');
+      // модели — к игроку в ближайшем кадре, не в задаче обновления значков
+      M3D.aim = () => { aims++; };
+      MapView.aimSoon(); MapView.aimSoon();
+      eq(aims, 0, 'сразу не поворачивает'); eq(raf.length, 1, 'один кадр на два вызова:');
+      raf.shift()();
+      eq(aims, 1, 'повернул в кадре:');
+      // пустая плитка подписей — скрыта (у пустого холста всё равно свой слой видеокарты)
+      let labels = 0;
+      MapView.bldTiles = { labelers: { getIndex: () => ({ searchBbox: () => ({ size: labels }) }) } };
+      const tile = document.createElement('canvas');
+      MapView.lblTileVis({ x: 1, y: 2, z: 18 }, tile);
+      eq(tile.style.display, 'none', 'без подписей — скрыта:');
+      labels = 2; MapView.lblTileVis({ x: 1, y: 2, z: 18 }, tile);
+      eq(tile.style.display, '', 'появились подписи — видна:');
+      // значок далеко за краем экрана: первый раз ставится, дальше — до нового места на слое карты не переставляется
+      MapView.upright = keep.upright;
+      window.L = { point: (x, y) => ({ x, y }) };
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
+      MapView.tilt = MapView.TILT; MapView.rot = 0; MapView._py = 300;
+      const ic = document.createElement('div'), mk = { _icon: ic, _map: MapView.map, options: {} };
+      ic._leaflet_pos = { x: 200 + 5000, y: 300 };
+      MapView.upright(mk);
+      const t1 = ic.style.transform;
+      ok(/rotateX/.test(t1), 'первый раз — поставлен: ' + t1.slice(0, 40));
+      MapView.tilt = MapView.TILT + 5; MapView.upright(mk);
+      eq(ic.style.transform, t1, 'далеко за экраном, то же место — не переставлен:');
+      ic._leaflet_pos = { x: 200 + 5000, y: 300 }; MapView.upright(mk);
+      ok(ic.style.transform !== t1, 'новое место на слое карты — переставлен');
+      ic._leaflet_pos = { x: 220, y: 300 }; MapView.upright(mk);
+      ok(/rotateX\(-37deg\)/.test(ic.style.transform), 'на экране — всегда по нынешнему наклону: ' + ic.style.transform.slice(0, 60));
+    } finally {
+      Object.assign(MapView, keep); M3D.aim = keepAim; window.requestAnimationFrame = keepRaf;
+      if (keepL) window.L = keepL; else delete window.L;
+      Roofs.at.clear();
+    }
+  });
   test('5.1.30: объёмные дома — крыши разбиты на треугольники без пропусков и лишнего (невыпуклые, с дворами)', () => {
     const area = (d, t) => {
       let s = 0;
@@ -4670,7 +4783,7 @@
     } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
   });
   atest('5.1.30: крыши — высота дома, в котором стоит место (по плитке карты), без хранения домов', async () => {
-    const keepV = Hazard._view, keepR = MapView.refresh;
+    const keepV = Hazard._view, keepR = MapView.roofSoon;
     try {
       const lat = 55.7547, lng = 37.6215, { px, py } = Hazard.tileOf(lat, lng);
       const sq = (x, y, r) => [[{ x: x - r, y: y - r }, { x: x + r, y: y - r }, { x: x + r, y: y + r }, { x: x - r, y: y + r }]];
@@ -4680,18 +4793,18 @@
         { geomType: 3, props: { height: 40 }, geom: sq(px + 40, py, 6) }, // соседний — выше, но не тот
       ]]]); } } };
       let redraw = 0;
-      MapView.refresh = () => { redraw++; };
+      MapView.roofSoon = () => { redraw++; }; // 5.1.31: места — на крыши одним кадром, без полного обновления значков
       Roofs.at.clear();
       eq(Roofs.height(lat, lng), null, 'плитка читается — пока не знаем');
       await new Promise(r => setTimeout(r, 0));
       eq(Roofs.height(lat, lng), 21, 'на крыше своего дома');
       eq(asked, 1, 'плитку спросили один раз');
-      ok(redraw > 0, 'значки перерисованы с крышей');
+      ok(redraw > 0, 'места встают на крыши');
       Hazard._view = { tileCache: { get: async () => new Map([['buildings', []]]) } };
       eq(Roofs.height(lat + 0.01, lng), null);
       await new Promise(r => setTimeout(r, 0));
       eq(Roofs.height(lat + 0.01, lng), 0, 'не в доме — на земле');
-    } finally { Hazard._view = keepV; MapView.refresh = keepR; Roofs.at.clear(); }
+    } finally { Hazard._view = keepV; MapView.roofSoon = keepR; Roofs.at.clear(); }
   });
   test('5.1.24: обновление — удаляются кэши кода прошлых версий; кэш новой (его заполняет новый service worker), звуки и плитки остаются', () => {
     eq(Updater.oldCaches(['duholov-v5.1.23-abc', 'duholov-v5.1.24-def', 'duholov-tiles', 'duholov-sfx', 'duholov-v5.1.2-x'], '5.1.24').join(), 'duholov-v5.1.23-abc,duholov-v5.1.2-x');
