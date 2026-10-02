@@ -3,3 +3,5 @@ www/vendor/** -text
 # Скрипты сервера запускаются в Linux
 *.sh text eol=lf
 tools/server/* text eol=lf
+# 5.1.28: модели мест (www/models/*.m3d) — двоичные: никаких переводов строк
+*.m3d binary

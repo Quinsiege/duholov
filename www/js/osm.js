@@ -1,7 +1,7 @@
 'use strict';
 /* Настоящие места из OpenStreetMap: запрос к Overpass API и отбор заметных объектов.
    Используется игрой (pois.js) и панелью модерации. Отбор детерминирован: у всех игроков
-   из одних и тех же данных OSM получаются одни и те же Источники и Капища. */
+   из одних и тех же данных OSM получаются одни и те же Источники и Святилища. */
 
 const Osm = {
   OVERPASS: [
@@ -11,7 +11,7 @@ const Osm = {
   ],
   MIN_GAP: 35, // минимум метров между объектами
 
-  // категория → название по умолчанию и может ли объект стать Капищем
+  // категория → название по умолчанию и может ли объект стать Святилищем
   CATS: {
     monument: ['Памятник', 1], memorial: ['Памятный знак', 0], castle: ['Крепость', 1], ruins: ['Руины', 1],
     archaeological_site: ['Древнее место', 1], manor: ['Усадьба', 1], city_gate: ['Городские ворота', 1],
@@ -98,7 +98,7 @@ nwr["man_made"~"^(water_tower|lighthouse|windmill|watermill)$"]${bb};
       if (!named && (cat === 'garden' || cat === 'boundary_stone')) continue; // почти не видны на местности
       const id = `osm:${el.type[0]}${el.id}`;
       const kind = this.CATS[cat][1] && this.hash(id) < 0.45 ? 'shrine' : 'spring';
-      // заметнее — важнее: именованные, будущие Капища, крупные объекты (линии и отношения)
+      // заметнее — важнее: именованные, будущие Святилища, крупные объекты (линии и отношения)
       const score = (named ? 2 : 0) + (kind === 'shrine' ? 1 : 0) + (el.type !== 'node' ? 0.5 : 0) + this.hash(id + 's') * 0.1;
       cand.push({ id, name: this.title(cat, t, named).slice(0, 80), kind, cat, lat, lng, score });
     }

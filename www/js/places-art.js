@@ -1,5 +1,5 @@
 'use strict';
-/* 4.28: Разломы и Капища других мифологий — значки (интерфейс тот же, что у славянских: art.js riftIcon / shrineIcon) */
+/* 4.28: Разломы и Святилища других мифологий — значки (интерфейс тот же, что у славянских: art.js riftIcon / shrineIcon) */
 const PLACE_ART = (() => {
   // затемнение / осветление цвета: amt < 0 — темнее, > 0 — светлее
   const sh = (hex, amt) => {
@@ -33,7 +33,7 @@ const PLACE_ART = (() => {
   const triskele = (cx, cy, k, col, w) => [0, 120, 240].map(a =>
     `<path d="${spiral(cx, cy - 2.2 * k, k)}" transform="rotate(${a} ${cx} ${cy})" stroke="${col}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`).join('');
 
-  /* ---------- общее для Капищ ---------- */
+  /* ---------- общее для Святилищ ---------- */
   const shrineDefs = (id, fire, won) =>
     `<radialGradient id="${id}g"><stop offset="0" stop-color="${fire}" stop-opacity="${won ? 0.65 : 0.5}"/><stop offset="1" stop-color="${fire}" stop-opacity="0"/></radialGradient>` +
     `<linearGradient id="${id}f" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${fire}"/><stop offset=".7" stop-color="${sh(fire, 0.55)}"/><stop offset="1" stop-color="#fff"/></linearGradient>`;

@@ -130,7 +130,7 @@ const Alatyr = {
     if (!fresh.length) { if (gone > seen) this.setSeen(gone); return false; }
     const r = fresh.reduce((a, x) => (x.n > a.n ? x : a));
     this.setSeen(Math.max(gone, ...fresh.map(x => x.n)));
-    Sfx.play('levelup'); U.vibrate([40, 40, 90]);
+    Sfx.play('notice'); U.vibrate([40, 40, 90]);
     const f = Rules.alaFace(r.n), st = Rules.alaStage(f.s, 0); // камень сезона этой грани: она и все до неё собраны
     Object.assign(st, { n: f.k + 1, pct: 0, done: f.k + 1 >= st.K });
     UI.modal({
@@ -148,7 +148,7 @@ const Alatyr = {
     const now = U.now(), f = Ev.finale(now), s = Ev.ala.s;
     if (!f || this.seen(this.SEEN_FIN) >= s) return false;
     this.setSeen(s, this.SEEN_FIN);
-    Sfx.play('levelup'); U.vibrate([60, 40, 60, 40, 120]);
+    Sfx.play('notice'); U.vibrate([60, 40, 60, 40, 120]);
     UI.modal({
       title: ru`Кощей пришёл за камнем!`, cls: 'ala-modal ala-kos-modal',
       html: `<div class="ala-kos-art">${Art.img('koschey')}</div>
@@ -167,7 +167,7 @@ const Alatyr = {
     const at = s === Ev.ala.s ? Ev.ala.from : Ev.alaEnd();
     if (s < 2 || !at || now - at > 3 * 86400000) { this.setSeen(s, this.SEEN_BRK); return false; } // давно — поздно объявлять
     this.setSeen(s, this.SEEN_BRK);
-    Sfx.play('levelup'); U.vibrate([90, 50, 90, 50, 200]);
+    Sfx.play('notice'); U.vibrate([90, 50, 90, 50, 200]);
     const m = mythOfSeason(s), st = Rules.alaStage(s, 0);
     const kids = m ? SPECIES_ALL.filter(x => x.myth === m && x.stage === 1 && !x.legend).slice(0, 3) : [];
     UI.modal({
@@ -188,7 +188,7 @@ const Alatyr = {
     const sm = S.d && S.d.alaSum;
     if (!sm || !(sm.s >= 1) || this.seen(this.SEEN_SUM) >= sm.s) return false;
     this.setSeen(sm.s, this.SEEN_SUM);
-    Sfx.play('levelup');
+    Sfx.play('reward_big');
     const got = Array.isArray(sm.got) ? sm.got : [], R = this.rewards();
     const line = `<p class="ala-sum-l">${ru`Осколков в общий камень: ${U.fmtNum(sm.n || 0)}. Побед над Кощеем в финале: ${U.fmtNum(sm.k || 0)}.`}</p>`;
     UI.modal(R && typeof R.html === 'function' ? { title: R.title(sm.s), html: R.html(sm.s, sm.pts || 0) + line, cls: 'ala-modal', buttons: [{ label: ru`Забрать`, cls: 'primary' }] } : {
@@ -418,7 +418,7 @@ const Alatyr = {
   },
   note() {
     const A = Rules.ALATYR_WORLD;
-    return `<div class="q-note">${ru`Каждый осколок Алатыря, найденный любым Ловчим, — в разломах и у хранителей-старейшин Капищ, — ложится в общий камень Ордена. Собрана грань — дорога в её мир распутана: ${A.HOURS / 24} дня духи этой мифологии встречаются в ${A.MUL} раза чаще, у всех Ловчих разом. Собраны все грани сезона — приходит Кощей: ${A.FINALE.DAYS} дней он ждёт во всех Разломах мира, а потом раскалывает камень. Из трещины выходит новая мифология, начинается новый сезон — и в Лиге тоже. В новом сезоне у камня на одну грань больше.`}</div>`;
+    return `<div class="q-note">${ru`Каждый осколок Алатыря, найденный любым Ловчим, — в разломах и у хранителей-старейшин Святилищ, — ложится в общий камень Ордена. Собрана грань — дорога в её мир распутана: ${A.HOURS / 24} дня духи этой мифологии встречаются в ${A.MUL} раза чаще, у всех Ловчих разом. Собраны все грани сезона — приходит Кощей: ${A.FINALE.DAYS} дней он ждёт во всех Разломах мира, а потом раскалывает камень. Из трещины выходит новая мифология, начинается новый сезон — и в Лиге тоже. В новом сезоне у камня на одну грань больше.`}</div>`;
   },
 };
 
