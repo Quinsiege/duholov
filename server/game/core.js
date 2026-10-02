@@ -897,7 +897,8 @@ const GameCore = {
       if (kind === 'tut') {
         const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
         this.need(st && st.kind === 'catch', ru`Учебный дух сейчас не нужен`);
-        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
+        const p = ctx.pos; // 5.1.26: дух — с родины места, где Ловчий (как Tut.spawn на телефоне)
+        return this.openEnc(ctx, { mode: 'tut', sid: p ? S.tutSid(st, p.lat, p.lng) : st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -1700,7 +1701,7 @@ const GameCore = {
       if (!n) return { n: 0, got: [] };
       // 4.16: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 монеты с каждого, до 30 в день)
       // 4.28: с святилищ мифологии своего клана — искры и обереги ×Rules.HOLD.MYTH (Rules.tributeFor); сначала — они
-      const mine = list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H && W.placeMyth({ id: x.id }) === S.d.clan).length;
+      const mine = list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H && W.placeMyth({ id: x.id, lat: x.lat, lng: x.lng }) === S.d.clan).length; // 5.1.26: по родине места
       const T = Rules.tributeFor(n, mine);
       return { n, own: Math.min(n, mine), got: S.giveRewards({ sparks: T.sparks, charm: T.charm, zlat: Rules.ZLAT.tribute * Math.min(n, Rules.ZLAT.tributeMax) }) };
     },

@@ -1171,6 +1171,48 @@
       ok(before.length, 'перед рассветом есть ночные'); ok(before.every(x => !after.has(x.id)), 'на рассвете ночные ушли');
     } finally { U.skew = skew; }
   });
+  test('Святилища и Разломы (5.1.26): в своих краях; учебный дух и хранитель Разлома Кампании — здешние', () => {
+    const at = (la, ln) => ({ id: 'osm:n' + Math.round(la * 1000) + ':' + Math.round(ln * 1000), lat: la, lng: ln, name: 'Место' });
+    [[55.75, 37.62, 'slavic'], [37.98, 23.73, 'greek'], [59.91, 10.74, 'norse'], [48.86, 2.35, 'celtic'], [30.04, 31.24, 'egypt'], [39.9, 116.4, 'china'], [19.43, -99.13, 'aztec']]
+      .forEach(([la, ln, m]) => {
+        for (let k = 0; k < 15; k++) {
+          const p = { ...at(la, ln), id: `osm:n${k}:${la}` };
+          eq(W.placeMyth(p), m, `место у ${la},${ln}`);
+          const s = W.shrineFor(p, 0); eq(s.myth, m); ok(MYTH_PLACES[m].gods.includes(s.god), 'бог святилища — этой мифологии');
+          const r = W.riftFor(p, 0, 500000 + k);
+          if (r && !r.fin) { eq(r.myth, m); ok(SP[r.boss].myth === m || r.boss === 'koschey', `босс Разлома у ${la},${ln}: ${r.boss}`); }
+        }
+      });
+    // без координат (удержания до 5.1.26) — как раньше, по id
+    ok(MYTH_KEYS.includes(W.placeMyth({ id: 'osm:n1' })), 'без координат — одна из мифологий');
+    // японская откроется — места Японии поделят китайская и японская
+    const keys = MYTH_KEYS.slice();
+    try {
+      MYTH_KEYS.push('japan');
+      const jp = [...Array(200)].map((_, k) => W.placeMyth({ id: 'osm:j' + k, lat: 35.68, lng: 139.69 })), nj = jp.filter(m => m === 'japan').length;
+      ok(jp.every(m => m === 'japan' || m === 'china') && nj > 60 && nj < 140, 'Япония — пополам: ' + nj);
+    } finally { MYTH_KEYS.length = 0; MYTH_KEYS.push(...keys); }
+    // дань клана: удержание с координатами — по родине места
+    const keep = S.d.clan;
+    try { S.d.clan = 'aztec'; ok(Clans.mine({ id: 'osm:x1', lat: 19.43, lng: -99.13 }) && !Clans.mine({ id: 'osm:x1', lat: 55.75, lng: 37.62 }), 'своё святилище — на родине клана'); }
+    finally { S.d.clan = keep; }
+    // учебный дух: в Москве — как в шаге, в Мехико — ацтекский малыш той же стихии; выбор постоянный
+    TUT.filter(s => s.kind === 'catch').forEach(st => {
+      eq(S.tutSid(st, 55.75, 37.62), st.sid, 'в Москве — ' + st.sid);
+      const a = SP[S.tutSid(st, 19.43, -99.13)];
+      ok(a.myth === 'aztec' && a.el === SP[st.sid].el && a.rar === 1 && a.stage === 1 && !a.time, 'в Мехико: ' + a.id);
+      eq(S.tutSid(st, 19.43, -99.13), a.id, 'тот же');
+      eq(SP[S.tutSid(st, 37.98, 23.73)].myth, 'greek', 'в Афинах');
+    });
+    // хранитель Разлома Кампании — из мифологии места; ушёл в другой край — хранитель новый
+    const d0 = S.d;
+    try {
+      S.d = JSON.parse(JSON.stringify(d0)); S.d.camp = { ch: 0, s: 0, p: [0], u: [], pick: null, t: 1, rn: 0 };
+      const r1 = S.campRiftPlace({ lat: 37.98, lng: 23.73 }); eq(SP[r1.boss].myth, 'greek', 'хранитель в Афинах');
+      const r2 = S.campRiftPlace({ lat: 37.99, lng: 23.74 }); eq(r2.boss, r1.boss, 'рядом — тот же');
+      const r3 = S.campRiftPlace({ lat: 19.43, lng: -99.13 }); eq(SP[r3.boss].myth, 'aztec', 'в Мехико — свой');
+    } finally { S.d = d0; }
+  });
   test('Разница прогресса: запись, удаление, добавление в начало и в конец', () => {
     const a = { x: 1, o: { y: 2, z: [1, 2, 3] }, j: [{ t: 1 }, { t: 2 }], s: [1, 2], del: 5, sp: [{ uid: 'a', lvl: 1 }, { uid: 'b', lvl: 2 }] };
     const b = JSON.parse(JSON.stringify(a));
@@ -1292,7 +1334,7 @@
     holdGet: async poi => { const h = DB.holds[poi]; return h && h.holders.length ? JSON.parse(JSON.stringify(h)) : null; },
     // как shrine_defend (023): защитники, чей срок вышел (Rules.HOLD.MAX_H), убираются перед проверками
     holdDefend: async (poi, lat, lng, clan, holder) => {
-      const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000;
+      const h = DB.holds[poi] = DB.holds[poi] || { clan, lat, lng, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000; // как shrine_holds: и место
       h.holders = h.holders.filter(x => +x.t >= cut);
       if (h.holders.length && clanOf(h.clan) !== clanOf(clan)) return false; // 4.28: как clan_key в 031 — прежняя дружина и её клан — одно знамя
       if (h.holders.length >= HOLD_MAX || h.holders.some(x => x.pid === holder.pid)) return false;
@@ -1312,7 +1354,7 @@
     },
     roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
-    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: h.lat, lng: h.lng, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = {}; MYTH_KEYS.forEach(k => { o[k] = 0; }); Object.values(DB.holds).forEach(h => { const k = clanOf(h.clan); if (h.holders.length && k in o) o[k]++; }); return o; },
     // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
     lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
@@ -1518,6 +1560,17 @@
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /растворился/);
     A.data.items.charm = 0; A.data.items.charm2 = 0; A.data.items.charm3 = 0;
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /Обереги закончились/);
+  });
+  atest('Сервер (5.1.26): учебные духи — с родины места, где начал Ловчий', async () => {
+    const A = await newPlayer('utm', 19.43, -99.13, 'Мехико');
+    for (const id of ['catch1', 'catch2']) {
+      const st = TUT[A.data.tut - 1]; eq(st.id, id);
+      await must(A, 'encStart', { kind: 'tut' });
+      const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+      const s = SP[A.data.spirits[A.data.spirits.length - 1].sid];
+      ok(r.caught && s.myth === 'aztec' && s.el === SP[st.sid].el, `${id}: ${s.id}`);
+      eq(s.id, S.tutSid(st, 19.43, -99.13), 'тот же, что рисует телефон');
+    }
   });
   atest('Сервер: обучение подсказками (4.24) — пропустить нельзя, шаги строго по порядку, награды за этапы', async () => {
     const A = await newPlayer('ud', 55.73, 37.61, 'Дельта');
@@ -2394,9 +2447,10 @@
       // дань: святилище мифологии своего клана — ×1,5
       delete DB.holds[id];
       Ev.alaSync();
-      const own = poiId(i => W.placeMyth({ id: i }) === 'greek', 64000), other = poiId(i => W.placeMyth({ id: i }) !== 'greek', 64000);
+      // 5.1.26: мифология святилища — по родине места: храм в Афинах — свой, капище в Москве — нет
+      const own = 'osm:n64001', other = 'osm:n64002';
       made.push(own, other);
-      [own, other].forEach(x => { DB.holds[x] = { clan: 'greek', holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
+      [[own, 37.98, 23.73], [other, 55.75, 37.62]].forEach(([x, lat, lng]) => { DB.holds[x] = { clan: 'greek', lat, lng, holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
       B.data.tributeDay = ''; B.data.tributeNext = 0;
       const s0 = B.data.sparks, tr = await must(B, 'tribute');
       eq(tr.n, 2); eq(tr.own, 1, 'одно святилище своей мифологии'); eq(B.data.sparks - s0, Rules.tributeFor(2, 1).sparks, 'искры дани ×1,5 с храма');

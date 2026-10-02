@@ -19,7 +19,7 @@ const Clans = {
   // «×1,5» — дань со святилищ мифологии своего клана (Rules.HOLD.MYTH)
   mythX() { return '×' + Rules.HOLD.MYTH.toLocaleString(I18N.locale); },
   // Капище — святилище мифологии моего клана (дань там ×1,5)
-  mine(id) { return !!(S.d && S.d.clan && W.placeMyth({ id }) === S.d.clan); },
+  mine(p) { return !!(S.d && S.d.clan && W.placeMyth(p) === S.d.clan); }, // p — { id, lat, lng }: 5.1.26 мифология места — по его родине
 
   // Сводка занятых Капищ вокруг игрока (раз в 3 минуты и после боёв)
   async refresh(force) {
@@ -216,7 +216,7 @@ const Clans = {
       return `<div class="row guard-row" data-id="${U.esc(g.id)}"><div class="row-ico">${g.sp && SP[g.sp.sid] ? Art.imgOf(g.sp) : ''}</div>
         <div class="row-main"><b>${U.esc(g.name)}</b><small>${ru`на посту ${h < 1 ? ru`меньше часа` : ru`${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}`}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small>
           <small>${h >= Rules.HOLD.FRESH_H ? ru`устал: уровень −${Math.round((1 - Rules.holdK(g.t, U.now())) * 100)}% · домой через ${Math.max(1, Math.ceil(Rules.HOLD.MAX_H - h))} ч` : ru`в полной силе ещё ${Math.max(1, Math.ceil(Rules.HOLD.FRESH_H - h))} ч`}</small>
-          ${this.mine(g.id) ? `<small class="gr-own">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>
+          ${this.mine(g) ? `<small class="gr-own">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>
         <button class="btn small ghost show-guard">${ru`Показать`}</button></div>`;
     };
     scr.querySelector('.clan-body').innerHTML = `

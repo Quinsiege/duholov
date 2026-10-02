@@ -1983,11 +1983,11 @@
   "ctx": "kmHtml(me, lat, lng) { if (!me) return ''; const d = U.dist(me.lat, me.lng, lat, lng); return `<em>${d < 1000 ? ru`ты здесь` : U.fmtDist(d)}</em>`; },"
  },
  {
-  "k": "Каждый дух водится только у себя на родине — здесь встретишь духов этих мифологий.",
+  "k": "Каждая мифология живёт у себя на родине: здесь — духи, святилища и Разломы этих мифологий.",
   "at": [
    "www/js/atlas.js:535"
   ],
-  "ctx": "box.innerHTML = L ? `<h3>${U.esc(L.name)}</h3>${myths ? `<div class=\"at-myths\">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`Каждый дух водится только у себя на родине — здесь встретишь духов этих м"
+  "ctx": "box.innerHTML = L ? `<h3>${U.esc(L.name)}</h3>${myths ? `<div class=\"at-myths\">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`Каждая мифология живёт у себя на родине: здесь — духи, святилища и Разлом"
  },
  {
   "k": "Поверни глобус пальцем и коснись материка — там и начнётся твой путь Ловчего.",
@@ -2315,9 +2315,9 @@
   "k": "Аукцион открывается с {0} уровня Ловчего",
   "at": [
    "www/js/auction.js:35",
-   "server/game/core.js:1818",
-   "server/game/core.js:1839",
-   "server/game/core.js:1847"
+   "server/game/core.js:1819",
+   "server/game/core.js:1840",
+   "server/game/core.js:1848"
   ],
   "ctx": "if (S.d.level < Rules.AUCTION.LEVEL) { UI.toast(ru`Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`); return; }"
  },
@@ -2569,8 +2569,8 @@
   "at": [
    "www/js/auction.js:107",
    "www/js/state.js:414",
-   "server/game/core.js:1489",
-   "server/game/core.js:1571"
+   "server/game/core.js:1490",
+   "server/game/core.js:1572"
   ],
   "ctx": "if ((S.d[l.cur] || 0) < l.price) { UI.toast(l.cur === 'zlat' ? ru`Не хватает монет — обменяй искры в Лавке или загляни в Казну` : ru`Не хватает искр`); return; }"
  },
@@ -2917,7 +2917,7 @@
   "k": "Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя",
   "at": [
    "www/js/auction.js:203",
-   "server/game/core.js:1857"
+   "server/game/core.js:1858"
   ],
   "ctx": "if (sp.bound) { UI.toast(ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`); return; }"
  },
@@ -2925,7 +2925,7 @@
   "k": "Нельзя продать последнего духа",
   "at": [
    "www/js/auction.js:204",
-   "server/game/core.js:1855"
+   "server/game/core.js:1856"
   ],
   "ctx": "if (S.d.spirits.length <= 1) { UI.toast(ru`Нельзя продать последнего духа`); return; }"
  },
@@ -4223,11 +4223,11 @@
   "ctx": "return [[ru`Капища`, this.p(ru`Капища — резные идолы у памятных мест. С ${DUEL_LEVEL} уровня можно сразиться с хранителем: бой 3 на 3, тап — атака, «Приём» — особый удар, два щита спасают от приёмов хранителя. Каждое кап"
  },
  {
-  "k": "У святилищ тоже семь обликов — по мифологиям: Капище, Храм, Рунный камень, Каменный круг, Обелиск, Пагода и Пирамида. Любое может встать в любом городе, а бои, хранители и дань у всех одинаковые.",
+  "k": "У святилищ тоже семь обликов — по мифологиям: Капище, Храм, Рунный камень, Каменный круг, Обелиск, Пагода и Пирамида. Каждое стоит на родине своей мифологии, там же, где водятся её духи, а бои, хранители и дань у всех одинаковые.",
   "at": [
    "www/js/book.js:195"
   ],
-  "ctx": "this.p(ru`У святилищ тоже семь обликов — по мифологиям: Капище, Храм, Рунный камень, Каменный круг, Обелиск, Пагода и Пирамида. Любое может встать в любом городе, а бои, хранители и дань у всех одинаковые.`) +"
+  "ctx": "this.p(ru`У святилищ тоже семь обликов — по мифологиям: Капище, Храм, Рунный камень, Каменный круг, Обелиск, Пагода и Пирамида. Каждое стоит на родине своей мифологии, там же, где водятся её духи, а бои, хранители и дань"
  },
  {
   "k": "Хранитель-{0}",
@@ -4272,11 +4272,11 @@
   "ctx": "this.p(ru`Поставь защитника на Капище своего клана — он приносит дань: ${TRIBUTE.sparks} искр и оберег в день за каждое Капище (до ${HOLD_MY_MAX} Капищ).`) +"
  },
  {
-  "k": "Святилища мифологии своего клана (у Дружины Перуна — Капища, у Фаланги Олимпа — Храмы и так далее) приносят защитникам дань {0}: больше искр и оберегов.",
+  "k": "Святилища мифологии своего клана (у Дружины Перуна — Капища, у Фаланги Олимпа — Храмы и так далее) приносят защитникам дань {0}: больше искр и оберегов. Стоят они на родине мифологии — туда и шагай через Врата.",
   "at": [
    "www/js/book.js:200"
   ],
-  "ctx": "this.p(ru`Святилища мифологии своего клана (у Дружины Перуна — Капища, у Фаланги Олимпа — Храмы и так далее) приносят защитникам дань ${mx}: больше искр и оберегов.`) +"
+  "ctx": "this.p(ru`Святилища мифологии своего клана (у Дружины Перуна — Капища, у Фаланги Олимпа — Храмы и так далее) приносят защитникам дань ${mx}: больше искр и оберегов. Стоят они на родине мифологии — туда и шагай через Врат"
  },
  {
   "k": "Дань приходит за защитников, которые отстояли на посту хотя бы {0} ч. Защитник стоит до {1} суток: первые {2} ч в полной силе, потом устаёт (уровень падает до половины), а затем возвращается домой с искрами за службу. Каждое четвёртое Капище — вольное: его не держит ни один клан.",
@@ -5039,7 +5039,7 @@
   "k": "Клан можно выбрать с {0} уровня",
   "at": [
    "www/js/clans.js:65",
-   "server/game/core.js:1610"
+   "server/game/core.js:1611"
   ],
   "ctx": "if (S.d.level < CLAN_LEVEL) { UI.toast(ru`Клан можно выбрать с ${CLAN_LEVEL} уровня`); return; }"
  },
@@ -5303,7 +5303,7 @@
   "at": [
    "www/js/clans.js:219"
   ],
-  "ctx": "${this.mine(g.id) ? `<small class=\"gr-own\">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>"
+  "ctx": "${this.mine(g) ? `<small class=\"gr-own\">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>"
  },
  {
   "k": "Капища рядом (≈5 км)",
@@ -5439,7 +5439,7 @@
   "k": "Код разлома — 5 символов",
   "at": [
    "www/js/coop.js:50",
-   "server/game/core.js:1327"
+   "server/game/core.js:1328"
   ],
   "ctx": "if (code.length !== 5) { UI.toast(ru`Код разлома — 5 символов`); return; }"
  },
@@ -7680,7 +7680,7 @@
   "ctx": "ru`Однажды осенней ночью Кощей Бессмертный решил спрятать свою смерть понадёжнее — прямо в сердце Алатыря. Камень треснул и раскололся. Все врата распахнулись разом, дороги между мирами спутались в клубок, и духи и боги "
  },
  {
-  "k": "Теперь Гиппокамп плещется в фонтанах Рима, Леший гуляет по подмосковным паркам, а Ниссе греет котов в подъездах Осло: каждый дух живёт у себя на родине, и за чужими приходится шагать через Врата. Разломы — трещины от расколотого камня — открываются в каждом городе, а боги ставят святилища там, где осели: Капище по соседству с Пагодой, Храм через улицу от Пирамиды. Город рождает и своих, новых духов: Вайфайку, Трамвайника, Фонарника.",
+  "k": "Теперь Гиппокамп плещется в фонтанах Рима, Леший гуляет по подмосковным паркам, а Ниссе греет котов в подъездах Осло: каждый дух живёт у себя на родине, и за чужими приходится шагать через Врата. Разломы — трещины от расколотого камня — открываются в каждом городе, а боги ставят святилища у себя на родине: Капища — на Руси, Храмы — в Греции, Пагоды — в Китае, Пирамиды — в Америке. Город рождает и своих, новых духов: Вайфайку, Трамвайника, Фонарника.",
   "at": [
    "www/js/data.js:677"
   ],
@@ -10525,8 +10525,8 @@
   "at": [
    "www/js/duel.js:118",
    "server/game/core.js:296",
-   "server/game/core.js:1287",
-   "server/game/core.js:1414"
+   "server/game/core.js:1288",
+   "server/game/core.js:1415"
   ],
   "ctx": "<button class=\"btn primary wide duel-go\" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;"
  },
@@ -10948,7 +10948,7 @@
   "k": "Дух уже лакомится мёдом",
   "at": [
    "www/js/encounter.js:200",
-   "server/game/core.js:924"
+   "server/game/core.js:925"
   ],
   "ctx": "if (st.honey) { this.flash(ru`Дух уже лакомится мёдом`); return; }"
  },
@@ -10956,7 +10956,7 @@
   "k": "Мёда нет. Его можно найти у источников.",
   "at": [
    "www/js/encounter.js:201",
-   "server/game/core.js:925"
+   "server/game/core.js:926"
   ],
   "ctx": "if (!(S.d.items.honey > 0)) { UI.toast(ru`Мёда нет. Его можно найти у источников.`); return; }"
  },
@@ -10971,7 +10971,7 @@
   "k": "Обереги этого вида закончились",
   "at": [
    "www/js/encounter.js:262",
-   "server/game/core.js:941"
+   "server/game/core.js:942"
   ],
   "ctx": "else if (!((S.d.items[st.charmType] || 0) - (st.spent || 0) > 0)) { UI.toast(ru`Обереги этого вида закончились`); return; }"
  },
@@ -10994,8 +10994,8 @@
   "k": "Обереги кончились — дух вернулся в Навь…",
   "at": [
    "www/js/encounter.js:325",
-   "server/game/core.js:946",
-   "server/game/core.js:964"
+   "server/game/core.js:947",
+   "server/game/core.js:965"
   ],
   "ctx": "if (st.o.mode === 'raid') return this.fleeOut(ru`Обереги кончились — дух вернулся в Навь…`);"
  },
@@ -11168,7 +11168,7 @@
   "k": "В коде ошибка",
   "at": [
    "www/js/friends.js:70",
-   "server/game/core.js:1999"
+   "server/game/core.js:2000"
   ],
   "ctx": "if (!p || !p.i) throw new Error(ru`В коде ошибка`);"
  },
@@ -11197,7 +11197,7 @@
   "k": "Передача духов по коду закрыта — продавай и покупай духов на Аукционе",
   "at": [
    "www/js/friends.js:77",
-   "server/game/core.js:1797"
+   "server/game/core.js:1798"
   ],
   "ctx": "throw new Error(ru`Передача духов по коду закрыта — продавай и покупай духов на Аукционе`);"
  },
@@ -12306,11 +12306,11 @@
   "ctx": "{ k: ru`Глава ${'V'}`, t: ru`Разломы и святилища`,"
  },
  {
-  "k": "Трещины от камня — <b>Разломы</b> — открываются в каждом городе, в них застряли осколки Алатыря. А боги ставят святилища, где осели: Капище по соседству с Пагодой, Храм — через улицу от Пирамиды.",
+  "k": "Трещины от камня — <b>Разломы</b> — открываются в каждом городе, в них застряли осколки Алатыря. А боги ставят святилища у себя на родине: Капища — на Руси, Храмы — в Греции, Пагоды — в Китае, Пирамиды — в Америке.",
   "at": [
    "www/js/intro.js:133"
   ],
-  "ctx": "x: ru`Трещины от камня — <b>Разломы</b> — открываются в каждом городе, в них застряли осколки Алатыря. А боги ставят святилища, где осели: Капище по соседству с Пагодой, Храм — через улицу от Пирамиды.`,"
+  "ctx": "x: ru`Трещины от камня — <b>Разломы</b> — открываются в каждом городе, в них застряли осколки Алатыря. А боги ставят святилища у себя на родине: Капища — на Руси, Храмы — в Греции, Пагоды — в Китае, Пирамиды — в Америке."
  },
  {
   "k": "Твоя глава",
@@ -13231,7 +13231,7 @@
   "k": "Нужно три духа",
   "at": [
    "www/js/league.js:333",
-   "server/game/core.js:1764"
+   "server/game/core.js:1765"
   ],
   "ctx": "const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;"
  },
@@ -13246,7 +13246,7 @@
   "k": "Жетоны кончились — приходи завтра",
   "at": [
    "www/js/league.js:333",
-   "server/game/core.js:1766"
+   "server/game/core.js:1767"
   ],
   "ctx": "const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;"
  },
@@ -14276,7 +14276,7 @@
   "k": "Капища открываются с {0} уровня Ловчего",
   "at": [
    "www/js/map.js:557",
-   "server/game/core.js:1406"
+   "server/game/core.js:1407"
   ],
   "ctx": "if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }"
  },
@@ -20992,7 +20992,7 @@
   "at": [
    "www/js/path.js:26",
    "www/js/shop.js:369",
-   "server/game/core.js:1471"
+   "server/game/core.js:1472"
   ],
   "ctx": "LOOK.cloak.filter(c => c.lvl > 1 && !c.shop && !c.pass).forEach(c => add(c.lvl, 'look:' + c.c, ru`Плащ «${c.name}»`, ru`Для облика Ловчего`));"
  },
@@ -21461,8 +21461,8 @@
   "at": [
    "www/js/raid.js:39",
    "www/js/raid.js:147",
-   "server/game/core.js:1260",
-   "server/game/core.js:1305"
+   "server/game/core.js:1261",
+   "server/game/core.js:1306"
   ],
   "ctx": "if (!camp && S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18"
  },
@@ -21613,7 +21613,7 @@
    "www/js/raid.js:97",
    "www/js/state.js:279",
    "www/js/state.js:533",
-   "server/game/core.js:1162"
+   "server/game/core.js:1163"
   ],
   "ctx": "${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far || camp ? '' : ru` · с друзьями +25%`))}"
  },
@@ -21808,7 +21808,7 @@
   "k": "За бой можно выпить не больше 3 флаконов",
   "at": [
    "www/js/raid.js:376",
-   "server/game/core.js:1358"
+   "server/game/core.js:1359"
   ],
   "ctx": "if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }"
  },
@@ -21830,7 +21830,7 @@
   "k": "Живой воды нет",
   "at": [
    "www/js/raid.js:378",
-   "server/game/core.js:1359"
+   "server/game/core.js:1360"
   ],
   "ctx": "if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }"
  },
@@ -23515,7 +23515,7 @@
   "at": [
    "www/js/shop.js:461",
    "www/js/ui-spirits.js:388",
-   "server/game/core.js:1591"
+   "server/game/core.js:1592"
   ],
   "ctx": "title: ru`Выбери амулет`, cls: 'melt-modal',"
  },
@@ -23530,7 +23530,7 @@
   "k": "Такого амулета нет",
   "at": [
    "www/js/state.js:152",
-   "server/game/core.js:1106"
+   "server/game/core.js:1107"
   ],
   "ctx": "if (!AMULET_KEYS.includes(from) || !AMULET_KEYS.includes(to)) return ru`Такого амулета нет`;"
  },
@@ -23645,7 +23645,7 @@
   "at": [
    "www/js/state.js:311",
    "server/game/core.js:245",
-   "server/game/core.js:1021"
+   "server/game/core.js:1022"
   ],
   "ctx": "if (!sp) return ru`Дух не найден`;"
  },
@@ -24523,7 +24523,7 @@
   "at": [
    "www/js/ui-player.js:491",
    "www/js/ui-player.js:500",
-   "server/game/core.js:1480"
+   "server/game/core.js:1481"
   ],
   "ctx": "if (c.dataset.lv) return this.toast(ru`Откроется на ${c.dataset.lv} уровне`);"
  },
@@ -24531,7 +24531,7 @@
   "k": "Венец Лиги — награда за ранг «Хранитель Лиги»",
   "at": [
    "www/js/ui-player.js:497",
-   "server/game/core.js:1127"
+   "server/game/core.js:1128"
   ],
   "ctx": "if (l === 'league') return this.toast(ru`Венец Лиги — награда за ранг «Хранитель Лиги»`);"
  },
@@ -25255,7 +25255,7 @@
   "k": "Нельзя отпустить всех духов",
   "at": [
    "www/js/ui-spirits.js:104",
-   "server/game/core.js:1088"
+   "server/game/core.js:1089"
   ],
   "ctx": "if (sel.size >= S.d.spirits.length) { this.toast(ru`Нельзя отпустить всех духов`); return; }"
  },
@@ -26901,7 +26901,7 @@
   "k": "Лига открывается с {0} уровня Ловчего",
   "at": [
    "www/js/ui.js:625",
-   "server/game/core.js:1755"
+   "server/game/core.js:1756"
   ],
   "ctx": "['trophy', ru`Лига`, () => { if (S.d.level < League.LEVEL) { this.toast(ru`Лига открывается с ${League.LEVEL} уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],"
  },
@@ -27056,7 +27056,7 @@
   "k": "Источник захвачен Навью",
   "at": [
    "www/js/ui.js:791",
-   "server/game/core.js:994"
+   "server/game/core.js:995"
   ],
   "ctx": "if (e.invaded) { hint.textContent = ru`Источник захвачен Навью`; go.disabled = true; view.classList.add('used'); return; }"
  },
@@ -27521,14 +27521,14 @@
  {
   "k": "Прислужник Нави",
   "at": [
-   "www/js/world.js:319"
+   "www/js/world.js:325"
   ],
   "ctx": "return { name: ru`Прислужник Нави`, color: '#3b0764', title: ru`Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)],"
  },
  {
   "k": "Отряд стихии «{0}»",
   "at": [
-   "www/js/world.js:319"
+   "www/js/world.js:325"
   ],
   "ctx": "return { name: ru`Прислужник Нави`, color: '#3b0764', title: ru`Отряд стихии «${ELEMENTS[el].name}»`, team, el, quote: GRUNT_QUOTES[Math.floor(r() * GRUNT_QUOTES.length)],"
  },
@@ -27663,7 +27663,7 @@
   "k": "Разлома кампании сейчас нет",
   "at": [
    "server/game/core.js:292",
-   "server/game/core.js:1197"
+   "server/game/core.js:1198"
   ],
   "ctx": "this.need(S.campRiftOn() && S.d.camp.rift, ru`Разлома кампании сейчас нет`);"
  },
@@ -27672,7 +27672,7 @@
   "at": [
    "server/game/core.js:324",
    "server/game/core.js:327",
-   "server/game/core.js:1372"
+   "server/game/core.js:1373"
   ],
   "ctx": "this.need(t >= 5, ru`Бой не засчитан: слишком быстрая победа`);"
  },
@@ -27680,7 +27680,7 @@
   "k": "Бой не засчитан: эта команда не могла победить такого соперника",
   "at": [
    "server/game/core.js:325",
-   "server/game/core.js:1374"
+   "server/game/core.js:1375"
   ],
   "ctx": "this.need(Rules.duelWinnable(this.team(b.team), foe, speed, b.hp0), ru`Бой не засчитан: эта команда не могла победить такого соперника`);"
  },
@@ -27702,8 +27702,8 @@
   "k": "Такого друга нет",
   "at": [
    "server/game/core.js:418",
-   "server/game/core.js:2058",
-   "server/game/core.js:2095"
+   "server/game/core.js:2059",
+   "server/game/core.js:2096"
   ],
   "ctx": "this.need(f, ru`Такого друга нет`);"
  },
@@ -27711,7 +27711,7 @@
   "k": "Ловчий не найден",
   "at": [
    "server/game/core.js:420",
-   "server/game/core.js:1952"
+   "server/game/core.js:1953"
   ],
   "ctx": "this.need(s && s.data, ru`Ловчий не найден`);"
  },
@@ -27768,7 +27768,7 @@
   "k": "Такого промокода нет",
   "at": [
    "server/game/core.js:495",
-   "server/game/core.js:1546"
+   "server/game/core.js:1547"
   ],
   "ctx": "not_found: ru`Такого промокода нет`,"
  },
@@ -27896,7 +27896,7 @@
   "k": "Награда уже получена",
   "at": [
    "server/game/core.js:796",
-   "server/game/core.js:1587"
+   "server/game/core.js:1588"
   ],
   "ctx": "this.need(!mine.got.includes(i), ru`Награда уже получена`);"
  },
@@ -27931,912 +27931,912 @@
  {
   "k": "Разлом уже закрылся",
   "at": [
-   "server/game/core.js:904",
-   "server/game/core.js:1275",
-   "server/game/core.js:1309"
+   "server/game/core.js:905",
+   "server/game/core.js:1276",
+   "server/game/core.js:1310"
   ],
   "ctx": "this.need(r, ru`Разлом уже закрылся`);"
  },
  {
   "k": "Омрачённый дух уже ушёл",
   "at": [
-   "server/game/core.js:910"
+   "server/game/core.js:911"
   ],
   "ctx": "this.need(r, ru`Омрачённый дух уже ушёл`);"
  },
  {
   "k": "Встреча за поручение не найдена",
   "at": [
-   "server/game/core.js:916"
+   "server/game/core.js:917"
   ],
   "ctx": "this.need(m, ru`Встреча за поручение не найдена`);"
  },
  {
   "k": "Неизвестная встреча",
   "at": [
-   "server/game/core.js:919"
+   "server/game/core.js:920"
   ],
   "ctx": "this.fail(ru`Неизвестная встреча`);"
  },
  {
   "k": "Встреча закончилась",
   "at": [
-   "server/game/core.js:923",
-   "server/game/core.js:932"
+   "server/game/core.js:924",
+   "server/game/core.js:933"
   ],
   "ctx": "this.need(e, ru`Встреча закончилась`);"
  },
  {
   "k": "Слишком быстро — дух ещё не опомнился",
   "at": [
-   "server/game/core.js:934"
+   "server/game/core.js:935"
   ],
   "ctx": "this.need(!e.lastThrow || ctx.now - e.lastThrow >= 400, ru`Слишком быстро — дух ещё не опомнился`);"
  },
  {
   "k": "Обереги разлома кончились",
   "at": [
-   "server/game/core.js:938"
+   "server/game/core.js:939"
   ],
   "ctx": "if (raid) { this.need(e.charms > 0, ru`Обереги разлома кончились`); e.charms--; }"
  },
  {
   "k": "Дух ускользнул в Навь…",
   "at": [
-   "server/game/core.js:963"
+   "server/game/core.js:964"
   ],
   "ctx": "if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух ускользнул в Навь…`, { wobbles, label: bonus.label });"
  },
  {
   "k": "Источник ещё набирает силу",
   "at": [
-   "server/game/core.js:995"
+   "server/game/core.js:996"
   ],
   "ctx": "this.need(e.ready, ru`Источник ещё набирает силу`);"
  },
  {
   "k": "Ладан ещё горит",
   "at": [
-   "server/game/core.js:1027"
+   "server/game/core.js:1028"
   ],
   "ctx": "this.need(!S.incenseActive(), ru`Ладан ещё горит`);"
  },
  {
   "k": "Ладана нет",
   "at": [
-   "server/game/core.js:1028"
+   "server/game/core.js:1029"
   ],
   "ctx": "this.need(S.useItem('incense'), ru`Ладана нет`);"
  },
  {
   "k": "Настой опыта ещё действует",
   "at": [
-   "server/game/core.js:1034"
+   "server/game/core.js:1035"
   ],
   "ctx": "this.need(!(S.d.xpUntil > ctx.now), ru`Настой опыта ещё действует`);"
  },
  {
   "k": "Настоя опыта нет",
   "at": [
-   "server/game/core.js:1035"
+   "server/game/core.js:1036"
   ],
   "ctx": "this.need(S.useItem('xpbrew'), ru`Настоя опыта нет`);"
  },
  {
   "k": "Такого предмета в сумке нет",
   "at": [
-   "server/game/core.js:1042"
+   "server/game/core.js:1043"
   ],
   "ctx": "this.need(have > 0, ru`Такого предмета в сумке нет`);"
  },
  {
   "k": "Можно выбросить от 1 до {0}",
   "at": [
-   "server/game/core.js:1043"
+   "server/game/core.js:1044"
   ],
   "ctx": "this.need(n >= 1 && n <= have, ru`Можно выбросить от 1 до ${have}`);"
  },
  {
   "k": "Посылка Ордена пуста",
   "at": [
-   "server/game/core.js:1049"
+   "server/game/core.js:1050"
   ],
   "ctx": "this.need(S.parcelCount() > 0, ru`Посылка Ордена пуста`);"
  },
  {
   "k": "Сумка полна — освободи место, чтобы забрать посылку",
   "at": [
-   "server/game/core.js:1051"
+   "server/game/core.js:1052"
   ],
   "ctx": "this.need(S.bagCount() < S.bagLimit(), ru`Сумка полна — освободи место, чтобы забрать посылку`);"
  },
  {
   "k": "Посылка сегодня уже была",
   "at": [
-   "server/game/core.js:1064"
+   "server/game/core.js:1065"
   ],
   "ctx": "this.need(S.d.supplyDay !== U.today(), ru`Посылка сегодня уже была`);"
  },
  {
   "k": "Плёнка уже содрана — дух и так привязан к тебе",
   "at": [
-   "server/game/core.js:1075"
+   "server/game/core.js:1076"
   ],
   "ctx": "this.need(!sp.bound, ru`Плёнка уже содрана — дух и так привязан к тебе`);"
  },
  {
   "k": "Такого облика нет",
   "at": [
-   "server/game/core.js:1121",
-   "server/game/core.js:1464"
+   "server/game/core.js:1122",
+   "server/game/core.js:1465"
   ],
   "ctx": "this.need(c && e && m && k && g && fr, ru`Такого облика нет`);"
  },
  {
   "k": "Этот облик продаётся в Гардеробе",
   "at": [
-   "server/game/core.js:1122"
+   "server/game/core.js:1123"
   ],
   "ctx": "this.need(!k.shop || S.d.owned[`skin:${k.id}`], ru`Этот облик продаётся в Гардеробе`);"
  },
  {
   "k": "Этот фон продаётся в Гардеробе",
   "at": [
-   "server/game/core.js:1123"
+   "server/game/core.js:1124"
   ],
   "ctx": "this.need(!g.shop || S.d.owned[`bg:${g.id}`], ru`Этот фон продаётся в Гардеробе`);"
  },
  {
   "k": "Эта рамка продаётся в Гардеробе",
   "at": [
-   "server/game/core.js:1124"
+   "server/game/core.js:1125"
   ],
   "ctx": "this.need(!fr.shop || S.d.owned[`frame:${fr.id}`], ru`Эта рамка продаётся в Гардеробе`);"
  },
  {
   "k": "Этот облик ещё не открыт",
   "at": [
-   "server/game/core.js:1125",
-   "server/game/core.js:1126"
+   "server/game/core.js:1126",
+   "server/game/core.js:1127"
   ],
   "ctx": "this.need((g.lvl || 1) <= lvl && (fr.lvl || 1) <= lvl, ru`Этот облик ещё не открыт`);"
  },
  {
   "k": "Этот плащ продаётся в Лавке Ордена",
   "at": [
-   "server/game/core.js:1128"
+   "server/game/core.js:1129"
   ],
   "ctx": "this.need((!c.shop && !c.pass) || S.d.owned[c.c], c.shop ? ru`Этот плащ продаётся в Лавке Ордена` : ru`Этот плащ — награда Золотой тропы`);"
  },
  {
   "k": "Этот плащ — награда Золотой тропы",
   "at": [
-   "server/game/core.js:1128"
+   "server/game/core.js:1129"
   ],
   "ctx": "this.need((!c.shop && !c.pass) || S.d.owned[c.c], c.shop ? ru`Этот плащ продаётся в Лавке Ордена` : ru`Этот плащ — награда Золотой тропы`);"
  },
  {
   "k": "Знак Тропы — награда Золотой тропы",
   "at": [
-   "server/game/core.js:1129"
+   "server/game/core.js:1130"
   ],
   "ctx": "this.need(!m.pass || S.d.owned[m.id], ru`Знак Тропы — награда Золотой тропы`);"
  },
  {
   "k": "Кокон не найден",
   "at": [
-   "server/game/core.js:1140"
+   "server/game/core.js:1141"
   ],
   "ctx": "this.need(c && !c.inc, ru`Кокон не найден`);"
  },
  {
   "k": "Греть можно три кокона одновременно",
   "at": [
-   "server/game/core.js:1141"
+   "server/game/core.js:1142"
   ],
   "ctx": "this.need(S.incubating() < 3, ru`Греть можно три кокона одновременно`);"
  },
  {
   "k": "Кокон ещё не готов",
   "at": [
-   "server/game/core.js:1147"
+   "server/game/core.js:1148"
   ],
   "ctx": "this.need(c && c.inc && c.walked >= c.km, ru`Кокон ещё не готов`);"
  },
  {
   "k": "Глава пройдена — новая скоро",
   "at": [
-   "server/game/core.js:1157"
+   "server/game/core.js:1158"
   ],
   "ctx": "this.need(st, ru`Глава пройдена — новая скоро`);"
  },
  {
   "k": "Сначала выбери духа — награду прошлого шага",
   "at": [
-   "server/game/core.js:1158"
+   "server/game/core.js:1159"
   ],
   "ctx": "this.need(!c.pick, ru`Сначала выбери духа — награду прошлого шага`);"
  },
  {
   "k": "Шаг кампании ещё не выполнен",
   "at": [
-   "server/game/core.js:1159"
+   "server/game/core.js:1160"
   ],
   "ctx": "this.need(S.campReady(), ru`Шаг кампании ещё не выполнен`);"
  },
  {
   "k": "Выбирать сейчас нечего",
   "at": [
-   "server/game/core.js:1184"
+   "server/game/core.js:1185"
   ],
   "ctx": "this.need(P, ru`Выбирать сейчас нечего`);"
  },
  {
   "k": "Такого духа нет",
   "at": [
-   "server/game/core.js:1185",
-   "server/game/core.js:1840"
+   "server/game/core.js:1186",
+   "server/game/core.js:1841"
   ],
   "ctx": "this.need(i >= 0 && i < P.opts.length && SP[P.opts[i]], ru`Такого духа нет`);"
  },
  {
   "k": "Задание ещё не выполнено",
   "at": [
-   "server/game/core.js:1207"
+   "server/game/core.js:1208"
   ],
   "ctx": "this.need(q && q.p >= q.n && !q.claimed, ru`Задание ещё не выполнено`);"
  },
  {
   "k": "Сундук ещё закрыт",
   "at": [
-   "server/game/core.js:1214"
+   "server/game/core.js:1215"
   ],
   "ctx": "this.need(Q.list.every(q => q.claimed) && !Q.bonus, ru`Сундук ещё закрыт`);"
  },
  {
   "k": "Обучение уже пройдено",
   "at": [
-   "server/game/core.js:1223"
+   "server/game/core.js:1224"
   ],
   "ctx": "this.need(st, ru`Обучение уже пройдено`);"
  },
  {
   "k": "Сначала выполни текущий шаг обучения",
   "at": [
-   "server/game/core.js:1224"
+   "server/game/core.js:1225"
   ],
   "ctx": "this.need(st.kind === 'ui' && st.id === a.id, ru`Сначала выполни текущий шаг обучения`);"
  },
  {
   "k": "Обучение нельзя пропустить",
   "at": [
-   "server/game/core.js:1227"
+   "server/game/core.js:1228"
   ],
   "ctx": "tutFinish() { this.need(false, ru`Обучение нельзя пропустить`); },"
  },
  {
   "k": "Поручение ещё не выполнено",
   "at": [
-   "server/game/core.js:1231"
+   "server/game/core.js:1232"
   ],
   "ctx": "this.need(q && q.p >= q.n, ru`Поручение ещё не выполнено`);"
  },
  {
   "k": "Сначала встреть духов за прошлые поручения",
   "at": [
-   "server/game/core.js:1232"
+   "server/game/core.js:1233"
   ],
   "ctx": "this.need(S.d.taskMeet.length < TASK_LIMIT, ru`Сначала встреть духов за прошлые поручения`);"
  },
  {
   "k": "Поручение не найдено",
   "at": [
-   "server/game/core.js:1244"
+   "server/game/core.js:1245"
   ],
   "ctx": "this.need(S.d.tasks.length < n, ru`Поручение не найдено`);"
  },
  {
   "k": "Совместный бой не найден — начните заново",
   "at": [
-   "server/game/core.js:1265"
+   "server/game/core.js:1266"
   ],
   "ctx": "this.need(room && room.status === 'started' && ctx.now - Date.parse(room.started_at) < 10 * 60000, ru`Совместный бой не найден — начните заново`);"
  },
  {
   "k": "Ты не в этом разломе",
   "at": [
-   "server/game/core.js:1266"
+   "server/game/core.js:1267"
   ],
   "ctx": "this.need(room.members.some(m => m.pid === S.d.pid), ru`Ты не в этом разломе`);"
  },
  {
   "k": "Легендарные разломы открываются только у мест, известных Ордену",
   "at": [
-   "server/game/core.js:1276",
-   "server/game/core.js:1310"
+   "server/game/core.js:1277",
+   "server/game/core.js:1311"
   ],
   "ctx": "this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);"
  },
  {
   "k": "Этот разлом ты уже закрыл",
   "at": [
-   "server/game/core.js:1277",
-   "server/game/core.js:1311"
+   "server/game/core.js:1278",
+   "server/game/core.js:1312"
   ],
   "ctx": "this.need(!S.d.rifts[r.id], ru`Этот разлом ты уже закрыл`);"
  },
  {
   "k": "Нужен Дальний пропуск — его можно купить в Лавке",
   "at": [
-   "server/game/core.js:1284"
+   "server/game/core.js:1285"
   ],
   "ctx": "this.need((S.d.items.farpass || 0) > 0, ru`Нужен Дальний пропуск — его можно купить в Лавке`);"
  },
  {
   "k": "Здесь только малые бои — место неизвестно Ордену",
   "at": [
-   "server/game/core.js:1291",
-   "server/game/core.js:1313",
-   "server/game/core.js:1421"
+   "server/game/core.js:1292",
+   "server/game/core.js:1314",
+   "server/game/core.js:1422"
   ],
   "ctx": "this.need(p.verified || r.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`);"
  },
  {
   "k": "Не получилось создать разлом — попробуй ещё раз",
   "at": [
-   "server/game/core.js:1322"
+   "server/game/core.js:1323"
   ],
   "ctx": "this.fail(ru`Не получилось создать разлом — попробуй ещё раз`);"
  },
  {
   "k": "Разлом с таким кодом не найден",
   "at": [
-   "server/game/core.js:1331"
+   "server/game/core.js:1332"
   ],
   "ctx": "this.need(r && !r.error, (r && r.error) || ru`Разлом с таким кодом не найден`);"
  },
  {
   "k": "Хозяин закрыл разлом",
   "at": [
-   "server/game/core.js:1336"
+   "server/game/core.js:1337"
   ],
   "ctx": "this.need(r && r.status !== 'closed', ru`Хозяин закрыл разлом`);"
  },
  {
   "k": "Ты больше не в этом разломе",
   "at": [
-   "server/game/core.js:1337"
+   "server/game/core.js:1338"
   ],
   "ctx": "this.need(r.members.some(m => m.pid === S.d.pid), ru`Ты больше не в этом разломе`);"
  },
  {
   "k": "Начать бой может только хозяин разлома",
   "at": [
-   "server/game/core.js:1342"
+   "server/game/core.js:1343"
   ],
   "ctx": "this.need(r && r.host_pid === S.d.pid, ru`Начать бой может только хозяин разлома`);"
  },
  {
   "k": "Ждём хотя бы одного друга",
   "at": [
-   "server/game/core.js:1343"
+   "server/game/core.js:1344"
   ],
   "ctx": "this.need(r.members.length >= 2, ru`Ждём хотя бы одного друга`);"
  },
  {
   "k": "Бой уже начался",
   "at": [
-   "server/game/core.js:1346"
+   "server/game/core.js:1347"
   ],
   "ctx": "this.need(s, ru`Бой уже начался`);"
  },
  {
   "k": "Живая вода — только в бою",
   "at": [
-   "server/game/core.js:1357"
+   "server/game/core.js:1358"
   ],
   "ctx": "this.need(b && b.type === 'raid', ru`Живая вода — только в бою`);"
  },
  {
   "k": "Сейчас здесь открыт Разлом",
   "at": [
-   "server/game/core.js:1409"
+   "server/game/core.js:1410"
   ],
   "ctx": "this.need(!W.riftAt(p.id, Math.floor(ctx.now / 3600000)), ru`Сейчас здесь открыт Разлом`);"
  },
  {
   "k": "Сегодня ты уже победил здесь",
   "at": [
-   "server/game/core.js:1411"
+   "server/game/core.js:1412"
   ],
   "ctx": "this.need(!e.won, ru`Сегодня ты уже победил здесь`);"
  },
  {
   "k": "Капище держит твой клан — здесь можно поставить защитника",
   "at": [
-   "server/game/core.js:1418"
+   "server/game/core.js:1419"
   ],
   "ctx": "this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твой клан — здесь можно поставить защитника`);"
  },
  {
   "k": "Товар дня уже куплен — завтра будет новый",
   "at": [
-   "server/game/core.js:1461"
+   "server/game/core.js:1462"
   ],
   "ctx": "this.need(S.d.shop.deal !== today, ru`Товар дня уже куплен — завтра будет новый`);"
  },
  {
   "k": "Это уже твоё",
   "at": [
-   "server/game/core.js:1465"
+   "server/game/core.js:1466"
   ],
   "ctx": "this.need(!S.d.owned[id], ru`Это уже твоё`);"
  },
  {
   "k": "Облик «{0}»",
   "at": [
-   "server/game/core.js:1466"
+   "server/game/core.js:1467"
   ],
   "ctx": "it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };"
  },
  {
   "k": "Фон «{0}»",
   "at": [
-   "server/game/core.js:1466"
+   "server/game/core.js:1467"
   ],
   "ctx": "it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };"
  },
  {
   "k": "Рамка «{0}»",
   "at": [
-   "server/game/core.js:1466"
+   "server/game/core.js:1467"
   ],
   "ctx": "it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };"
  },
  {
   "k": "Такого товара нет",
   "at": [
-   "server/game/core.js:1469",
-   "server/game/core.js:1474"
+   "server/game/core.js:1470",
+   "server/game/core.js:1475"
   ],
   "ctx": "this.need(x, ru`Такого товара нет`);"
  },
  {
   "k": "Этот плащ уже твой",
   "at": [
-   "server/game/core.js:1470"
+   "server/game/core.js:1471"
   ],
   "ctx": "this.need(!S.d.owned[key], ru`Этот плащ уже твой`);"
  },
  {
   "k": "Сумка уже расширена до предела",
   "at": [
-   "server/game/core.js:1477"
+   "server/game/core.js:1478"
   ],
   "ctx": "this.need(S.d.bagExtra < Rules.BAG_MAX_UP, ru`Сумка уже расширена до предела`);"
  },
  {
   "k": "Сегодня уже куплено — приходи завтра",
   "at": [
-   "server/game/core.js:1481"
+   "server/game/core.js:1482"
   ],
   "ctx": "if (it.day) this.need((this.dayc(ctx)['shop:' + it.id] || 0) < it.day, ru`Сегодня уже куплено — приходи завтра`); // 4.15.1: редкий товар — сколько-то раз в день"
  },
  {
   "k": "На этой неделе уже куплено — приходи в понедельник",
   "at": [
-   "server/game/core.js:1482"
+   "server/game/core.js:1483"
   ],
   "ctx": "if (it.week) this.need(this.weekUsed(ctx, 'shop:' + it.id) < it.week, ru`На этой неделе уже куплено — приходи в понедельник`); // 4.16: и сколько-то раз в неделю"
  },
  {
   "k": "Коконов уже девять — выведи кого-нибудь",
   "at": [
-   "server/game/core.js:1483"
+   "server/game/core.js:1484"
   ],
   "ctx": "if (it.cocoon) this.need(S.d.cocoons.length < 9, ru`Коконов уже девять — выведи кого-нибудь`);"
  },
  {
   "k": "Сумка полна — освободи место или расширь её",
   "at": [
-   "server/game/core.js:1486"
+   "server/game/core.js:1487"
   ],
   "ctx": "this.need(S.bagCount() + n <= S.bagLimit(), ru`Сумка полна — освободи место или расширь её`);"
  },
  {
   "k": "Не хватает монет",
   "at": [
-   "server/game/core.js:1489",
-   "server/game/core.js:1886"
+   "server/game/core.js:1490",
+   "server/game/core.js:1887"
   ],
   "ctx": "this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? ru`Не хватает искр` : ru`Не хватает монет`);"
  },
  {
   "k": "Мест в сумке",
   "at": [
-   "server/game/core.js:1493"
+   "server/game/core.js:1494"
   ],
   "ctx": "if (it.bag) { S.d.bagExtra++; got = [{ k: 'bag', n: Rules.BAG_STEP, label: ru`Мест в сумке` }]; }"
  },
  {
   "k": "Слишком много попыток — попробуй через час",
   "at": [
-   "server/game/core.js:1547"
+   "server/game/core.js:1548"
   ],
   "ctx": "this.limit(ctx, 'promo', 10, 3600000, ru`Слишком много попыток — попробуй через час`);"
  },
  {
   "k": "Обменник на сегодня закрыт — приходи завтра",
   "at": [
-   "server/game/core.js:1570"
+   "server/game/core.js:1571"
   ],
   "ctx": "this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? ru`Обменник на сегодня закрыт — приходи завтра` : ru`Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);"
  },
  {
   "k": "Сегодня можно обменять ещё {0} раз",
   "at": [
-   "server/game/core.js:1570"
+   "server/game/core.js:1571"
   ],
   "ctx": "this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? ru`Обменник на сегодня закрыт — приходи завтра` : ru`Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);"
  },
  {
   "k": "Такой ступени нет",
   "at": [
-   "server/game/core.js:1584"
+   "server/game/core.js:1585"
   ],
   "ctx": "this.need(lvl >= 1 && lvl <= Rules.PASS.LEVELS, ru`Такой ступени нет`);"
  },
  {
   "k": "Ступень ещё не пройдена",
   "at": [
-   "server/game/core.js:1585"
+   "server/game/core.js:1586"
   ],
   "ctx": "this.need(Rules.passLevel(P.pts) >= lvl, ru`Ступень ещё не пройдена`);"
  },
  {
   "k": "Сначала открой Золотую тропу",
   "at": [
-   "server/game/core.js:1586"
+   "server/game/core.js:1587"
   ],
   "ctx": "this.need(track === 'free' || P.gold, ru`Сначала открой Золотую тропу`);"
  },
  {
   "k": "Золотая тропа уже открыта",
   "at": [
-   "server/game/core.js:1600"
+   "server/game/core.js:1601"
   ],
   "ctx": "this.need(!P.gold, ru`Золотая тропа уже открыта`);"
  },
  {
   "k": "Нужно {0} монет",
   "at": [
-   "server/game/core.js:1601"
+   "server/game/core.js:1602"
   ],
   "ctx": "this.need(S.d.zlat >= Rules.PASS.GOLD, ru`Нужно ${Rules.PASS.GOLD} монет`);"
  },
  {
   "k": "Клан уже выбран",
   "at": [
-   "server/game/core.js:1611"
+   "server/game/core.js:1612"
   ],
   "ctx": "this.need(!S.d.clan, ru`Клан уже выбран`);"
  },
  {
   "k": "Сначала выбери клан",
   "at": [
-   "server/game/core.js:1622",
-   "server/game/core.js:1633",
-   "server/game/core.js:1690"
+   "server/game/core.js:1623",
+   "server/game/core.js:1634",
+   "server/game/core.js:1691"
   ],
   "ctx": "this.need(S.d.clan, ru`Сначала выбери клан`);"
  },
  {
   "k": "Бесплатный переход уже использован",
   "at": [
-   "server/game/core.js:1623"
+   "server/game/core.js:1624"
   ],
   "ctx": "this.need(S.d.clanFree > 0, ru`Бесплатный переход уже использован`);"
  },
  {
   "k": "Ты уже в этом клане",
   "at": [
-   "server/game/core.js:1625"
+   "server/game/core.js:1626"
   ],
   "ctx": "this.need(a.clan !== S.d.clan, ru`Ты уже в этом клане`);"
  },
  {
   "k": "Защищать можно только Капища, известные Ордену",
   "at": [
-   "server/game/core.js:1635"
+   "server/game/core.js:1636"
   ],
   "ctx": "this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);"
  },
  {
   "k": "Это вольное Капище — его не держит ни один клан",
   "at": [
-   "server/game/core.js:1638"
+   "server/game/core.js:1639"
   ],
   "ctx": "this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни один клан`);"
  },
  {
   "k": "Сначала победи на этом Капище",
   "at": [
-   "server/game/core.js:1642"
+   "server/game/core.js:1643"
   ],
   "ctx": "if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Капище`);"
  },
  {
   "k": "Капище держит другой клан — сначала победи его защитников",
   "at": [
-   "server/game/core.js:1644"
+   "server/game/core.js:1645"
   ],
   "ctx": "this.need(hold.clan === S.d.clan, ru`Капище держит другой клан — сначала победи его защитников`);"
  },
  {
   "k": "На Капище уже {0} защитников",
   "at": [
-   "server/game/core.js:1645"
+   "server/game/core.js:1646"
   ],
   "ctx": "this.need(hold.holders.length < HOLD_MAX, ru`На Капище уже ${HOLD_MAX} защитников`);"
  },
  {
   "k": "Твой защитник уже стоит здесь",
   "at": [
-   "server/game/core.js:1646"
+   "server/game/core.js:1647"
   ],
   "ctx": "this.need(!hold.holders.some(h => h.pid === S.d.pid), ru`Твой защитник уже стоит здесь`);"
  },
  {
   "k": "Твои защитники уже стоят на {0} Капищах",
   "at": [
-   "server/game/core.js:1648"
+   "server/game/core.js:1649"
   ],
   "ctx": "this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, ru`Твои защитники уже стоят на ${HOLD_MY_MAX} Капищах`);"
  },
  {
   "k": "Капище только что изменилось — открой его заново",
   "at": [
-   "server/game/core.js:1652"
+   "server/game/core.js:1653"
   ],
   "ctx": "this.need(ok, ru`Капище только что изменилось — открой его заново`);"
  },
  {
   "k": "Источник свободен",
   "at": [
-   "server/game/core.js:1712"
+   "server/game/core.js:1713"
   ],
   "ctx": "this.need(e.invaded, ru`Источник свободен`);"
  },
  {
   "k": "Лига теперь — бои с живыми Ловчими. Обнови игру",
   "at": [
-   "server/game/core.js:1743",
-   "server/game/core.js:1744"
+   "server/game/core.js:1744",
+   "server/game/core.js:1745"
   ],
   "ctx": "leagueStart() { this.fail(ru`Лига теперь — бои с живыми Ловчими. Обнови игру`); },"
  },
  {
   "k": "Передача духов по коду закрыта — выставь духа на Аукцион",
   "at": [
-   "server/game/core.js:1796"
+   "server/game/core.js:1797"
   ],
   "ctx": "async tradeGive() { this.need(false, ru`Передача духов по коду закрыта — выставь духа на Аукцион`); },"
  },
  {
   "k": "Неоткрытые посылки вернулись: духов — {0}. Передача духов закрыта, теперь есть Аукцион.",
   "at": [
-   "server/game/core.js:1811"
+   "server/game/core.js:1812"
   ],
   "ctx": "if (n) Bus.emit('toast', { text: ru`Неоткрытые посылки вернулись: духов — ${n}. Передача духов закрыта, теперь есть Аукцион.`, cls: 'good' });"
  },
  {
   "k": "Сними с духа отметку «избранный», чтобы продать его",
   "at": [
-   "server/game/core.js:1856"
+   "server/game/core.js:1857"
   ],
   "ctx": "this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);"
  },
  {
   "k": "Цена — от {0} до {1} монет",
   "at": [
-   "server/game/core.js:1859"
+   "server/game/core.js:1860"
   ],
   "ctx": "this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} монет` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);"
  },
  {
   "k": "Цена — от {0} до {1} искр",
   "at": [
-   "server/game/core.js:1859"
+   "server/game/core.js:1860"
   ],
   "ctx": "this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} монет` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);"
  },
  {
   "k": "Одновременно можно выставить не больше {0} духов",
   "at": [
-   "server/game/core.js:1860"
+   "server/game/core.js:1861"
   ],
   "ctx": "this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);"
  },
  {
   "k": "Залог — {0} {1}: не хватает",
   "at": [
-   "server/game/core.js:1863"
+   "server/game/core.js:1864"
   ],
   "ctx": "this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`монета`, ru`монеты`, ru`монет`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);"
  },
  {
   "k": "Залог — ✦ {0}: не хватает искр",
   "at": [
-   "server/game/core.js:1863"
+   "server/game/core.js:1864"
   ],
   "ctx": "this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`монета`, ru`монеты`, ru`монет`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);"
  },
  {
   "k": "Лот не найден",
   "at": [
-   "server/game/core.js:1879"
+   "server/game/core.js:1880"
   ],
   "ctx": "this.need(pre, ru`Лот не найден`);"
  },
  {
   "k": "Это твой собственный лот",
   "at": [
-   "server/game/core.js:1880"
+   "server/game/core.js:1881"
   ],
   "ctx": "this.need(pre.seller_pid !== S.d.pid, ru`Это твой собственный лот`);"
  },
  {
   "k": "Этот лот уже у тебя",
   "at": [
-   "server/game/core.js:1882"
+   "server/game/core.js:1883"
   ],
   "ctx": "this.need(!S.d.auc.got[id], ru`Этот лот уже у тебя`);"
  },
  {
   "k": "Лот уже купили или сняли с продажи",
   "at": [
-   "server/game/core.js:1890"
+   "server/game/core.js:1891"
   ],
   "ctx": "this.need(lot && lot.price === pre.price && lot.cur === pre.cur, ru`Лот уже купили или сняли с продажи`);"
  },
  {
   "k": "Лот уже продан или снят",
   "at": [
-   "server/game/core.js:1903"
+   "server/game/core.js:1904"
   ],
   "ctx": "this.need(lot, ru`Лот уже продан или снят`);"
  },
  {
   "k": "Писать в чат можно с {0} уровня Ловчего — читать можно уже сейчас",
   "at": [
-   "server/game/core.js:1923"
+   "server/game/core.js:1924"
   ],
   "ctx": "this.need(S.d.level >= C.LEVEL, ru`Писать в чат можно с ${C.LEVEL} уровня Ловчего — читать можно уже сейчас`);"
  },
  {
   "k": "Напиши сообщение",
   "at": [
-   "server/game/core.js:1925"
+   "server/game/core.js:1926"
   ],
   "ctx": "this.need(text.length >= 1, ru`Напиши сообщение`);"
  },
  {
   "k": "Ссылки в чате запрещены — так безопаснее для всех",
   "at": [
-   "server/game/core.js:1926"
+   "server/game/core.js:1927"
   ],
   "ctx": "this.need(!/(https?:\\/\\/|www\\.|t\\.me\\/|\\b[a-z0-9-]{2,}\\.(ru|com|net|org|me|io|su|xyz|рф)\\b)/i.test(text), ru`Ссылки в чате запрещены — так безопаснее для всех`);"
  },
  {
   "k": "Не так быстро — подожди пару секунд",
   "at": [
-   "server/game/core.js:1928"
+   "server/game/core.js:1929"
   ],
   "ctx": "this.need(ctx.now - c.t >= C.GAP, ru`Не так быстро — подожди пару секунд`);"
  },
  {
   "k": "Это сообщение уже отправлено",
   "at": [
-   "server/game/core.js:1929"
+   "server/game/core.js:1930"
   ],
   "ctx": "this.need(!(text === c.last && ctx.now - c.t < 60000), ru`Это сообщение уже отправлено`);"
  },
  {
   "k": "Сообщение не найдено",
   "at": [
-   "server/game/core.js:1938"
+   "server/game/core.js:1939"
   ],
   "ctx": "this.need(id > 0, ru`Сообщение не найдено`);"
  },
  {
   "k": "Жаловаться можно с {0} уровня и после 3 дней в игре",
   "at": [
-   "server/game/core.js:1941"
+   "server/game/core.js:1942"
   ],
   "ctx": "this.need(S.d.level >= Rules.CHAT.LEVEL && age >= 3 * 86400000, ru`Жаловаться можно с ${Rules.CHAT.LEVEL} уровня и после 3 дней в игре`);"
  },
  {
   "k": "Ловчий не найден — возможно, он давно не заходил в игру",
   "at": [
-   "server/game/core.js:1955"
+   "server/game/core.js:1956"
   ],
   "ctx": "this.need(s && s.data, ru`Ловчий не найден — возможно, он давно не заходил в игру`);"
  },
  {
   "k": "Это твой собственный код дружбы",
   "at": [
-   "server/game/core.js:2000"
+   "server/game/core.js:2001"
   ],
   "ctx": "this.need(pid !== S.d.pid, ru`Это твой собственный код дружбы`);"
  },
  {
   "k": "Ловчий с таким кодом не найден — пусть он обновит игру",
   "at": [
-   "server/game/core.js:2003"
+   "server/game/core.js:2004"
   ],
   "ctx": "this.need(who, ru`Ловчий с таким кодом не найден — пусть он обновит игру`);"
  },
  {
   "k": "Друзей уже 50 — это максимум",
   "at": [
-   "server/game/core.js:2006"
+   "server/game/core.js:2007"
   ],
   "ctx": "this.need(S.d.friends.length < 50, ru`Друзей уже 50 — это максимум`);"
  },
  {
   "k": "У {0} пока нет духов",
   "at": [
-   "server/game/core.js:2047"
+   "server/game/core.js:2048"
   ],
   "ctx": "this.need(foe.length, ru`У ${f.name} пока нет духов`);"
  },
  {
   "k": "Сегодня этому другу подарок уже отправлен",
   "at": [
-   "server/game/core.js:2096"
+   "server/game/core.js:2097"
   ],
   "ctx": "this.need(f.sent !== U.today(), ru`Сегодня этому другу подарок уже отправлен`);"
  },
  {
   "k": "Подарков нет — они попадаются в источниках",
   "at": [
-   "server/game/core.js:2097"
+   "server/game/core.js:2098"
   ],
   "ctx": "this.need(S.useItem('gift'), ru`Подарков нет — они попадаются в источниках`);"
  },
  {
   "k": "Подарок не найден",
   "at": [
-   "server/game/core.js:2115"
+   "server/game/core.js:2116"
   ],
   "ctx": "this.need(g && g.to_pid === S.d.pid, ru`Подарок не найден`);"
  },
  {
   "k": "Подарок уже открыт",
   "at": [
-   "server/game/core.js:2116",
-   "server/game/core.js:2121"
+   "server/game/core.js:2117",
+   "server/game/core.js:2122"
   ],
   "ctx": "this.need(!g.opened_at, ru`Подарок уже открыт`);"
  },
  {
   "k": "Сначала добавь {0} в друзья",
   "at": [
-   "server/game/core.js:2118"
+   "server/game/core.js:2119"
   ],
   "ctx": "this.need(f, g.from_name ? ru`Сначала добавь ${g.from_name} в друзья` : ru`Сначала добавь отправителя в друзья`);"
  },
  {
   "k": "Сначала добавь отправителя в друзья",
   "at": [
-   "server/game/core.js:2118"
+   "server/game/core.js:2119"
   ],
   "ctx": "this.need(f, g.from_name ? ru`Сначала добавь ${g.from_name} в друзья` : ru`Сначала добавь отправителя в друзья`);"
  },
  {
   "k": "Сегодня ты уже открывал подарок от этого друга — попробуй завтра",
   "at": [
-   "server/game/core.js:2119"
+   "server/game/core.js:2120"
   ],
   "ctx": "this.need(f.recv !== U.today(), ru`Сегодня ты уже открывал подарок от этого друга — попробуй завтра`);"
  },
