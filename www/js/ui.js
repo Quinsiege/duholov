@@ -828,7 +828,19 @@ const UI = {
         items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
         `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>`;
       rw.querySelector('.spr2-after').innerHTML = (r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +
-        (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
+        (r.task ? this.taskOfferHtml(r.task) : '');
+      // 5.1.24: поручение можно принять или сразу отказаться (отказ — taskDrop, как в «Заданиях»)
+      const lt = r.task && rw.querySelector('.loot-task');
+      if (lt) {
+        lt.querySelector('.lt-ok').onclick = () => { Sfx.play('tap'); lt.querySelector('.lt-btns').remove(); lt.classList.add('taken'); };
+        lt.querySelector('.lt-no').onclick = async ev => {
+          const b = ev.currentTarget; b.disabled = true;
+          if (!(await Game.try('taskDrop', { id: r.task.id }))) { b.disabled = false; return; }
+          Sfx.play('tap');
+          lt.classList.add('declined');
+          lt.innerHTML = `<div>${ru`Поручение отклонено`}</div>`;
+        };
+      }
       // каждая вещь вылетает из середины воды на своё место в сетке (--fx/--fy — путь от центра чаши)
       const lb = disc.getBoundingClientRect(), lcx = lb.left + lb.width / 2, lcy = lb.top + lb.height / 2;
       U.$$('.loot-item', loot).forEach(it => {

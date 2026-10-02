@@ -341,6 +341,10 @@ body.night .range-circle { fill-opacity: .1; }
 .t-drop { width: 32px; height: 32px; flex: none; opacity: .6; } .t-drop .ico { width: 16px; height: 16px; }
 .loot-task { margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(251, 191, 36, .12); border: 1px solid rgba(251, 191, 36, .45); text-align: center; font-size: 14px; animation: popIn .4s .5s both; }
 .loot-task small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+/* 5.1.24: поручение у Источника — «Принять» / «Отказаться» */
+.loot-task .lt-btns { display: flex; justify-content: center; gap: 8px; margin-top: 8px; }
+.loot-task .lt-btns .btn { flex: 1 1 0; max-width: 150px; }
+.loot-task.declined { opacity: .75; }
 
 /* серия дней и общее дело Ордена (3.1) */
 .st-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px; }
@@ -1133,9 +1137,11 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .chat-bar .chat-in { flex: 1; min-width: 0; height: 44px; }
 .chat-bar .chat-send { flex: none; width: 48px; min-height: 44px; padding: 0; font-size: 18px; }
 .day-left { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; } .day-left b { color: var(--text); } .day-left.out { color: #fb7185; } .day-left.out b { color: #fb7185; }
-.day-limits { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 12px; }
-.day-limits div { padding: 6px 2px; border-radius: 12px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); text-align: center; }
-.day-limits b { display: block; font-size: 14px; } .day-limits small { font-size: 10px; color: var(--muted); } .day-limits .out b { color: #fb7185; }
+/* 5.1.24: лимиты дня — одной строкой без плиток: «Лимиты дня · Источники 12/30 · …», на узком экране переносится */
+.day-limits { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 12px 2px 14px; font-size: 13px; color: var(--muted); }
+.day-limits .dl-h { font-weight: 600; color: var(--text); }
+.day-limits b { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; } .day-limits .out b { color: #fb7185; }
+.day-limits small { font-size: 11px; color: var(--muted); }
 .chat-hint .chat-unhide { display: inline; margin-left: 4px; font-size: 12px; }
 
 /* ---------- 3.21: ранги Лиги — цвет по ступеням ---------- */

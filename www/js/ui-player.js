@@ -210,12 +210,19 @@ Object.assign(UI, {
     if (t === 'catchEl' && el) return Art.elIcon(el, 22);
     return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin', awaken: 'star' }[t] || 'scroll'];
   },
-  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня
+  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня; 5.1.24 — одной строкой, без плиток
   dayLimitsHtml() {
-    return `<h3 class="prof-h">${ru`Лимиты дня`} <small>${ru`обновятся в полночь`}</small></h3><div class="day-limits">${Object.keys(Rules.DAILY).map(k => {
+    return `<p class="day-limits"><span class="dl-h">${ru`Лимиты дня`}</span>${Object.keys(Rules.DAILY).map(k => {
       const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
-      return `<div class="${u >= m ? 'out' : ''}"><b>${u}/${m}</b><small>${Rules.DAILY_NAMES[k]}</small></div>`;
-    }).join('')}</div>`;
+      return `<span class="${u >= m ? 'out' : ''}">${Rules.DAILY_NAMES[k]} <b>${u}/${m}</b></span>`;
+    }).join('')}<small>${ru`обновятся в полночь`}</small></p>`;
+  },
+  // 5.1.24: новое поручение у Источника — принять или отказаться (отказ — то же действие taskDrop, что в «Заданиях»;
+  // не выбрал — поручение остаётся, как раньше)
+  taskOfferHtml(t) {
+    return `<div class="loot-task" data-id="${U.esc(t.id)}"><div>${ru`Новое поручение: <b>${`${'★'.repeat(t.tier || 1)} ${I18N.back(t.text)}`}</b>`}` +
+      `<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` +
+      `<div class="lt-btns"><button class="btn small primary lt-ok">${ru`Принять`}</button><button class="btn small ghost lt-no">${ru`Отказаться`}</button></div></div>`;
   },
   // Поручения из источников: задание → предметы и встреча с духом
   tasksHtml() {
