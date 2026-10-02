@@ -4473,9 +4473,26 @@ body:has(> .screen:not(.out)) .upd-bar, body:has(> .modal-wrap:not(.out)) .upd-b
 /* З2: «Слишком быстро» — под второй строкой HUD, не закрывает баффы, неделю и Следопыта */
 /* З3: силуэт незнакомого духа на тёмном стекле — со светлым контуром, иначе его не видно */
 .screen .unknown .art, .modal-wrap .unknown .art { filter: brightness(0) drop-shadow(0 0 1px rgba(226, 232, 240, .9)) drop-shadow(0 0 6px rgba(167, 139, 250, .6)); }
-/* З5: «Выбрать» (режим выбора духов) не уезжает за край ленты стихий — прилипает к правому краю */
-.col-screen .chips .sel-toggle { position: sticky; right: 0; z-index: 1; box-shadow: -12px 0 12px -2px rgba(22, 14, 50, .9); }
-.col-screen .chips .sel-toggle:not(.on) { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .06)), #2a1d5c; }
+/* З5 (5.1.21): «Выбрать» (режим выбора духов) стоит отдельно справа от ленты стихий и ничего не закрывает;
+   стихии ужимаются в кружки и помещаются целиком, а не влезли — лента листается, край тает (.more) */
+.col-screen .col-filter { display: flex; align-items: center; gap: 6px; }
+.col-screen .col-els { flex: 1; min-width: 0; gap: 4px; }
+.col-screen .col-els button { flex: 1 1 0; min-width: 30px; max-width: 46px; height: 32px; padding: 0; }
+.col-screen .col-els button[data-el="all"] { flex: none; max-width: none; padding: 0 9px; }
+.col-screen .col-els.more { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+.col-screen .col-sel { flex: none; overflow: visible; }
+.col-screen .col-sel .sel-toggle { height: 32px; }
+.col-screen .sel-toggle:not(.on) { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .06)), #2a1d5c; }
+/* 5.1.21: сортировки «Редкие» и «Лучшие» — вверху карточки вместо силы камни цвета редкости (1–5) и звёзды оценки Ордена с процентом */
+.card-pw.card-rar i { display: inline-block; vertical-align: middle; width: 7px; height: 7px; margin: 0 2.5px; border-radius: 1.5px; transform: rotate(45deg); background: var(--rc); box-shadow: 0 0 6px var(--rc), inset 0 0 0 1px rgba(255, 255, 255, .35); }
+.card-pw.card-iv { white-space: nowrap; }
+.card-pw.card-iv i { font-style: normal; font-size: 10px; letter-spacing: .5px; color: #fde68a; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.card-pw.card-iv i s { text-decoration: none; opacity: .4; }
+@media (max-width: 380px) {
+  .col-screen .col-els { gap: 3px; }
+  .col-screen .col-els button { min-width: 29px; height: 30px; }
+  .col-screen .col-sel .sel-toggle { height: 30px; padding: 0 7px; font-size: 12px; }
+}
 /* З7: подсказка боя не просвечивает через карточку итога */
 .raid:has(.raid-result) .raid-hint { visibility: hidden; }
 /* З8: закрытые ступени Золотой тропы читаются (было 45% прозрачности) */

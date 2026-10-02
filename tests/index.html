@@ -24,6 +24,7 @@
   <script src="../www/js/version.js"></script>
   <script src="../www/js/i18n.js" data-lang="ru"></script>
   <script src="../www/js/config.js"></script>
+  <script src="../www/js/metrics.js"></script>
   <script src="../www/js/settings.js"></script>
   <script src="../www/js/myth-greek.js"></script>
   <script src="../www/js/myth-norse.js"></script>
@@ -1082,7 +1083,9 @@
     ok(all.every(x => x.k === 'medal' || ['sparks', 'zlat', 'rod'].includes(x.k) || ITEMS[x.k]), 'только валюта, предметы и знак — без обликов');
     eq(R.roman(14), 'XIV'); eq(R.roman(49), 'XLIX'); eq(R.title(2), 'Итоги сезона Алатыря II', 'номер не отрывается');
     // выдача: один раз на сезон; знак — за сезоны с вкладом от MEDAL_MIN
-    const keep = S.d; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    const keep = S.d, addXP0 = S.addXP; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    // 5.1.21: опыт за знаки (×10) поднимал уровень, и монеты нового уровня путали счёт — здесь проверяется только выдача сезона
+    S.addXP = () => 0;
     try {
       S.d.medals = {}; S.d.stats.alaSeasons = 0; S.d.sparks = 0; S.d.zlat = 0;
       const got = R.grant(S, 5, 31), z30 = T.filter(t => t.n <= 31).reduce((a, t) => a + (t.rw.zlat || 0), 0);
@@ -1093,7 +1096,7 @@
       eq(R.grant(S, 7, 0).length, 0); ok('7' in S.d.alaRw, 'пустой сезон тоже отмечен');
       R.grant(S, 8, 5); eq(S.d.stats.alaSeasons, 2);
       eq(R.grant(S, 0, 50).length, 0, 'сезона 0 нет'); eq(R.grant(S, 'x', 50).length, 0);
-    } finally { S.d = keep; }
+    } finally { S.d = keep; S.addXP = addXP0; }
   });
 
   test('Настройки и позиция на карте не входят в прогресс', () => {
@@ -1131,10 +1134,9 @@
     ok(Rules.holdFresh({ t: now - 3600000 }, now) && !Rules.holdFresh({ t: now - H.MAX_H * 3600000 - 1 }, now), 'срок на посту');
     let free = 0; for (let i = 0; i < 4000; i++) if (Rules.shrineFree('osm:n' + i)) free++;
     near(free / 4000, H.FREE, 0.03, 'доля вольных Капищ');
-    const late = Rules.passReward('gold', 1, Rules.PASS.LATE), early = Rules.passReward('gold', 1, 10);
-    ok(early.charm2 && !late.charm2 && late.charm3, 'на поздних уровнях — золото вместо серебра'); ok(late.sparks > early.sparks, 'и больше искр');
-    ok(Rules.passReward('gold', 10, 30).xpbrew, 'настой опыта'); eq(Rules.passReward('gold', 30, 30).look, 'trail', 'Знак Тропы остаётся');
-    eq(JSON.stringify(Rules.passReward('free', 5, 30)), JSON.stringify(Rules.passReward('free', 5, 10)), 'бесплатная тропа — как была');
+    // 5.1.21: Тропа — одна таблица для всех уровней Ловчего (поздней Золотой тропы нет)
+    eq(JSON.stringify(Rules.passReward('gold', 1, 40)), JSON.stringify(Rules.passReward('gold', 1, 5)), 'Золотая — одна для всех уровней');
+    eq(Rules.passReward('gold', 30).look, 'trail', 'Знак Тропы — на вершине Золотой'); eq(Rules.passReward('gold', 15).look, '#065f46', 'плащ — на 15-й');
     ok(!Rules.SHOP.filter(x => x.day).some(x => x.id === Rules.shopDeal(U.today()).id), 'товары «раз в день» не бывают товаром дня');
   });
 
@@ -2584,9 +2586,17 @@
     A.data.zlat = Rules.PASS.GOLD;
     await must(A, 'passGold'); eq(A.data.zlat, 0); ok(A.data.pass.gold);
     await must(A, 'passClaim', { lvl: 1, track: 'gold' });
-    // вершина Золотой тропы — Знак Тропы
+    // вершина Золотой тропы — Знак Тропы и амулет на выбор (5.1.21): без выбора — нельзя, выбор — только из известных
     A.data.pass.pts = Rules.PASS.PER * Rules.PASS.LEVELS;
-    await must(A, 'passClaim', { lvl: 30, track: 'gold' }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold' }, /амулет/);
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am: 'constructor' }, /амулет/);
+    ok(!A.data.pass.got.gold.includes(30) && !A.data.owned.trail, 'без выбора ступень не засчитана');
+    const am = AMULET_KEYS[2], am0 = A.data.amulets[am] || 0;
+    const top = await must(A, 'passClaim', { lvl: 30, track: 'gold', am }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    eq(A.data.amulets[am], am0 + 1, 'выбранный амулет — в сумке'); ok(top.got.some(x => x.k === 'amulet' && x.id === am));
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am }, /уже получена/);
+    // бесплатная 20-я — тоже амулет на выбор
+    await must(A, 'passClaim', { lvl: 20, track: 'free', am: AMULET_KEYS[0] }); eq(A.data.amulets[AMULET_KEYS[0]] >= 1, true);
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'trail' } });
     // новый сезон — тропа с нуля
     A.data.pass.season = '1999-1';
@@ -2916,12 +2926,49 @@
       S.d.camp = null; eq(S.campExLeft(), 0); eq(S.exchangeZlat(2), 2, 'без Кампании — обычный курс');
     } finally { S.d.camp = c0; }
   });
-  test('5.1.20: искры Лиги и Сезонной тропы — ×10', () => {
+  test('5.1.20: искры Лиги — ×10', () => {
     eq(LEAGUE_RANKS.filter(r => r.reward && r.reward.sparks).map(r => r.reward.sparks).join(','), '5000,8000,15000,30000,50000,80000', 'награды за лиги');
     eq(League.prize(3).sparks, 12000, 'сундук сезона — ✦ 4 000 за лигу');
-    eq(Rules.passReward('free', 2, 10).sparks, 3000); eq(Rules.passReward('gold', 1, 10).sparks, 5000); eq(Rules.passReward('gold', 2, 10).sparks, 8000);
-    eq(Rules.passReward('gold', 1, 30).sparks, 15000); eq(Rules.passReward('gold', 2, 30).sparks, 25000); eq(Rules.passReward('gold', 10, 30).sparks, 30000); eq(Rules.passReward('gold', 15, 30).sparks, 30000);
-    eq(Rules.passReward('free', 3, 10).sparks, undefined, 'где искр не было — их и нет');
+  });
+  test('5.1.21: Знаки Ордена — опыт за ступени ×10, у каждого знака картинка, а не буква', () => {
+    eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,10000,20000', 'бронза, серебро, золото');
+    MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
+  });
+  test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
+    const sp = (r, iv, lvl) => ({ ...S.makeSpirit(SPECIES.find(s => s.rar === r).id, lvl, 1), iv });
+    const L = [sp(1, [15, 15, 15], 30), sp(5, [0, 0, 0], 5), sp(4, [10, 10, 10], 20), sp(5, [15, 15, 14], 25)];
+    const ord = k => [...L].sort(UI.colCmp(k)).map(x => L.indexOf(x)).join('');
+    eq(ord('rare'), '3120', 'легендарные первыми, внутри редкости — по силе');
+    eq(ord('best'), '0321', 'по оценке Ордена: 100%, 98%, 67%, 0%');
+    eq(ord('num'), ord('power'), 'неизвестная сортировка — по силе');
+    eq([0, 49, 50, 66, 67, 81, 82, 99, 100].map(v => UI.ivStars(v)).join(''), '001122334', 'звёзды оценки — как в карточке духа');
+    eq((UI.colTop(L[1], 'rare').match(/<i><\/i>/g) || []).length, 5, 'у легендарного — пять камней');
+    ok(UI.colTop(L[1], 'rare').includes(`--rc:${RARITY[5].color}`), 'камни — цвета редкости');
+    ok(/★★★★<s><\/s><\/i> <b>100%<\/b>/.test(UI.colTop(L[0], 'best')), 'оценка: четыре звезды и 100%');
+    ok(UI.colTop(L[0], 'power').includes(`<b>${S.power(L[0])}</b>`) && UI.colTop(L[0], 'new') === UI.colTop(L[0], 'power'), 'в «Силе» и «Новых» — сила');
+  });
+  test('5.1.21: Сезонная тропа — таблица наград 30 ступеней', () => {
+    const P = Rules.PASS, j = (t, l) => JSON.stringify(Rules.passReward(t, l));
+    eq(Rules.PASS_FREE.length, P.LEVELS); eq(Rules.PASS_GOLD.length, P.LEVELS);
+    // ступени из примера (по модели экономики: бесплатная — искры ÷3, обереги ÷3, мёд ÷4; Золотая — искры ÷2, Живая вода ÷3)
+    eq(j('free', 1), JSON.stringify({ charm: 7, sparks: 800 })); eq(j('free', 5), JSON.stringify({ incense: 5, sparks: 1300 }));
+    eq(j('free', 9), JSON.stringify({ water: 10, sparks: 1700 })); eq(j('free', 10), JSON.stringify({ zlat: 50, sparks: 1700, alatyr: 1 }));
+    eq(j('free', 20), JSON.stringify({ amuletPick: 1, sparks: 2300, alatyr: 1 })); eq(Rules.passReward('free', 30).deadwater, 1);
+    eq(j('gold', 1), JSON.stringify({ charm2: 20 })); eq(j('gold', 5), JSON.stringify({ amuletPick: 1 })); eq(j('gold', 6), JSON.stringify({ charm3: 10 }));
+    eq(j('gold', 9), JSON.stringify({ cocoon: 10, sparks: 2500 })); eq(j('gold', 10), JSON.stringify({ amuletPick: 1 }));
+    eq(JSON.stringify(Rules.passReward('free', 31)), '{}', 'за пределами — ничего');
+    // за сезон: бесплатная — ✦ 58 900, 100 монет, 150 оберегов, 49 мёда и 3 осколка Алатыря; Золотая — ✦ 58 600, 50 Живой воды,
+    // 2 осколка и 6 амулетов на выбор
+    const sum = (t, k) => Array.from({ length: P.LEVELS }, (_, i) => Rules.passReward(t, i + 1)[k] || 0).reduce((a, b) => a + b, 0);
+    eq(sum('free', 'sparks'), 58900); eq(sum('free', 'zlat'), 100); eq(sum('free', 'charm'), 150); eq(sum('free', 'honey'), 49); eq(sum('free', 'alatyr'), 3);
+    eq(sum('gold', 'sparks'), 58600); eq(sum('gold', 'water'), 50); eq(sum('gold', 'alatyr'), 2); eq(sum('gold', 'amuletPick'), 6); eq(sum('gold', 'zlat'), 0);
+    // осколки Алатыря на экране Тропы видны (Loot.parts) и начисляются (S.giveRewards)
+    eq(Loot.parts({ alatyr: 1 }).length, 1, 'осколок — в награде ступени');
+    { const a0 = S.d.alatyr || 0; S.giveRewards({ alatyr: 1 }); eq(S.d.alatyr, a0 + 1, 'осколок начислен'); S.d.alatyr = a0; }
+    // всё, что выдаётся, — известные награды (предметы, валюта, осколки, кокон, облик, амулет на выбор)
+    const known = k => ITEMS[k] || ['sparks', 'zlat', 'alatyr', 'cocoon', 'look', 'amuletPick'].includes(k);
+    ['free', 'gold'].forEach(t => { for (let l = 1; l <= P.LEVELS; l++) Object.keys(Rules.passReward(t, l)).forEach(k => ok(known(k), `${t} ${l}: ${k}`)); });
+    const r = Rules.passReward('free', 1); r.charm = 999; eq(Rules.passReward('free', 1).charm, 7, 'награда — копия, таблица не меняется');
   });
   atest('5.1.15: Кампания, глава I — девять шагов по порядку: цели, награды, дух на выбор, Разлом кампании, Врата', async () => {
     const P = await newPlayer('cp-a', 55.7539, 37.6208, 'Кампанец', 'kapelka');
@@ -3005,9 +3052,11 @@
     // 9 · дальний путь
     prog('walk', 60); prog('spring', 10); [[3, 5], [2, 10], [1, 20]].forEach(([r, n]) => { for (let i = 0; i < n; i++) prog('catchRar', 1, { rar: r }); });
     prog('catchRar', 1, { rar: 4 }); eq(P.data.camp.p.join(), '60,5,10,20,10', 'все цели шага 9');
-    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0;
+    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0, l9 = P.data.level;
     await must(P, 'campClaim', {});
-    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50, '30 000 искр и 50 монет');
+    // монеты новых уровней (опыт шага и знаков) — сверх награды шага
+    const zl = asPlayer(P, () => { let z = 0; for (let l = l9 + 1; l <= P.data.level; l++) z += S.levelRewards(l).zlat; return z; });
+    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50 + zl, '30 000 искр и 50 монет (и монеты новых уровней)');
     ok(!step() && P.data.camp.s === 9, 'глава I пройдена'); await refuse(P, 'campClaim', {}, /Глава пройдена/);
     ok(P.data.journal.some(j => j.type === 'camp'), 'шаги — в дневнике');
   });
@@ -3684,6 +3733,182 @@
     } finally { Poi.list = list0; }
     await must(N, 'spring', { poi: { id: sleepSp, ...at, name: 'Источник' } });
   }));
+
+  /* ---------- 5.1.22: своя аналитика (www/js/metrics.js, GameCore.anTrack, serve.js → an_put) ---------- */
+  // сервер проверяет пачку телефона этим же кодом (Metrics.clean): чужие имена, лишние поля, текст, время и размеры — долой
+  test('Аналитика 5.1.22: проверка пачки телефона — имена, поля, время, сессия', () => {
+    const now = Date.UTC(2026, 9, 2, 12), sid = 'AbCdEfGh1234';
+    [null, undefined, 5, 'x', [], {}, { ev: 'boot' }, { ev: [{ e: 'hack' }] }, { s: { id: 'коротко' } }].forEach(b => eq(Metrics.clean(b, now), null, 'нечего записать: ' + JSON.stringify(b)));
+    const c = Metrics.clean({ tok: 'T', v: APP_VERSION, sa: 1, s: { id: sid, t0: now - 60000, d: 59.6 }, ev: [
+      { e: 'boot', t: now - 5000, s: sid, p: { f: 1 } },
+      { e: 'reg', t: now }, { e: 'tut', t: now }, { e: '__proto__' }, { e: 'BOOT' }, // серверные и чужие имена — не от телефона
+      { e: 'onb', t: now + 3600000, p: { k: 'book', x: 'с пробелом', y: 'кириллица', Z: 1, ['a'.repeat(17)]: 1, n: 2.7, b: true, o: { a: 1 }, l: [1], big: 1e15 } },
+      { e: 'ready', t: now - 4 * 86400000, s: 'bad sid', p: { ms: 1234.4 } },
+      { e: 'onb', t: 'вчера', p: [1, 2] },
+    ] }, now);
+    eq(c.v, APP_VERSION); eq(c.sa, true); eq(c.ev.length, 4, 'только события телефона');
+    eq(JSON.stringify(c.s), JSON.stringify({ id: sid, t0: now - 60000, d: 60 }), 'сессия: секунды округлены');
+    eq(JSON.stringify(c.ev[0]), JSON.stringify({ e: 'boot', t: now - 5000, p: { f: 1 }, s: sid }));
+    eq(JSON.stringify(c.ev[1].p), JSON.stringify({ k: 'book', n: 3, b: 1, big: 1e9 }), 'только числа, да/нет и латиница; числа — целые и в пределах');
+    eq(c.ev[1].t, now, 'время из будущего — время приёма');
+    eq(c.ev[2].t, now, 'старше трёх суток — время приёма'); eq(c.ev[2].s, undefined, 'неверный номер сессии — без него');
+    eq(JSON.stringify(c.ev[2].p), JSON.stringify({ ms: 1234 }));
+    eq(c.ev[3].t, now, 'время не числом — время приёма'); eq(c.ev[3].p, undefined, 'параметры не объектом — без них');
+    // пределы: событий в пачке, полей в событии, длина строки; версия и сессия — только правильного вида
+    const many = Metrics.clean({ v: 'хак', ev: Array.from({ length: 100 }, () => ({ e: 'boot', t: now })), s: { id: sid, t0: 0, d: 1e9 } }, now);
+    eq(many.ev.length, Metrics.MAX_EV); eq(many.v, ''); eq(many.s.d, 86400, 'сессия не длиннее суток'); eq(many.s.t0, now);
+    eq(Object.keys(Metrics.params({ a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8 })).length, Metrics.MAX_P);
+    eq(Metrics.params({ s: 'x'.repeat(33) }), null, 'длинная строка не проходит'); eq(Metrics.params({ s: '<b>' }), null, 'разметка не проходит');
+    eq(Metrics.clean({ s: { id: sid, d: -5 } }, now).s.d, 0);
+    eq(Metrics.clean({ s: { id: sid, d: 'много' } }, now).s.d, 0);
+  });
+  test('Аналитика 5.1.22: платформа по User-Agent — грубо, без самого UA', () => {
+    const and = 'Mozilla/5.0 (Linux; Android 14; SM-A546B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36';
+    eq(Metrics.pf(and), 'web-android'); eq(Metrics.pf(and, true), 'pwa-android');
+    eq(Metrics.pf(and + ' DuholovApp/15'), 'apk-android'); eq(Metrics.pf(and + ' DuholovApp/15 (store=play)'), 'play-android');
+    eq(Metrics.pf(and + ' DuholovApp/15 (store=rustore)', true), 'rustore-android', 'приложение — не PWA');
+    eq(Metrics.pf('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'), 'web-ios');
+    eq(Metrics.pf('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0 Safari/537.36'), 'web-desktop');
+    eq(Metrics.pf(''), 'web-other'); eq(Metrics.pf(null), 'web-other');
+    ok(/^[a-z]+-[a-z]+$/.test(Metrics.pf('<script>')) && Metrics.pf('x'.repeat(5000)).length <= 20, 'в базу — только из известного набора');
+  });
+  // телефон: очередь, пачки по таймеру и при сворачивании (keepalive), сессии, тишина без входа, без связи и при сбоях
+  atest('Аналитика 5.1.22: очередь телефона — пачки, сессии, keepalive, тишина при сбоях', async () => {
+    const M = Metrics, keep = {};
+    ['on', 'clock', 'wall', 'now', 'send', 'standalone'].forEach(k => { keep[k] = M[k]; });
+    const fetch0 = window.fetch;
+    let clk = 1000, wall = Date.UTC(2026, 9, 2, 12), sent = [];
+    M.on = () => !M.off; M.clock = () => clk; M.wall = () => wall; M.now = () => wall + clk; M.standalone = () => false;
+    M.send = (body, final, ev) => sent.push({ b: JSON.parse(body), final, n: ev.length });
+    try {
+      M.start();
+      ok(M.SID.test(M.sid), 'номер сессии');
+      M.ev('boot', { f: 1 }); M.ev('hack', { a: 1 }); M.ev('reg');
+      eq(M.q.length, 1, 'только события телефона');
+      eq(M.flush(false), false, 'без ключа входа — ждём'); eq(M.q.length, 1, 'событие осталось в очереди');
+      M.tok = 'T1';
+      eq(M.flush(false), true); eq(sent.length, 1); eq(M.q.length, 0);
+      const b = sent[0].b;
+      eq(b.tok, 'T1'); eq(b.v, APP_VERSION); eq(b.sa, 0); eq(b.s.id, M.sid); eq(b.s.d, 0); eq(b.ev.length, 1); eq(b.ev[0].e, 'boot'); eq(b.ev[0].s, M.sid);
+      ok(Metrics.clean(b, M.now()), 'пачка телефона проходит проверку сервера');
+      eq(M.flush(false), false, 'нечего слать — не шлём'); eq(sent.length, 1);
+      clk += 45000;
+      ok(M.due(), 'сессия выросла — пора'); M.flush(false); eq(sent[1].b.s.d, 45);
+      clk += 10000; eq(M.due(), false, 'через 10 с — ещё рано (в начале сессии — раз в 30 с)');
+      // свернули: время на экране — в копилку, пачка — сразу и keepalive (final)
+      M.hide(); eq(sent.length, 3); eq(sent[2].final, true); eq(sent[2].b.s.d, 55);
+      clk += 100000; wall += 100000;
+      eq(M.dur(), 55, 'свёрнутое время не считается'); eq(M.flush(false), false);
+      M.hide(); eq(sent.length, 3, 'повторное сворачивание (pagehide следом) ничего не шлёт');
+      const sid1 = M.sid;
+      M.show(); clk += 5000; eq(M.sid, sid1, 'короткая пауза — та же сессия'); eq(M.dur(), 60);
+      M.hide(); clk += 1000; wall += M.SPLIT + 1000; M.show();
+      ok(M.sid !== sid1, 'пауза дольше 30 минут — новая сессия'); eq(M.dur(), 0); eq(M.sent, -1);
+      // очередь: не больше MAX_Q, пачка — не больше MAX_EV, остальное — следующей
+      for (let i = 0; i < 250; i++) M.ev('onb', { k: i });
+      eq(M.q.length, M.MAX_Q, 'старые выпали'); eq(M.q[0].p.k, 50);
+      M.flush(false); eq(sent[sent.length - 1].n, M.MAX_EV); eq(M.q.length, M.MAX_Q - M.MAX_EV);
+      M.q = [];
+      // сбои — молча: события с неудобными параметрами, отправка с ошибкой
+      M.ev('onb', { get k() { throw new Error('сломано'); } });
+      M.send = () => { throw new Error('нет сети'); };
+      M.ev('ready', { ms: 5 }); clk += 40000;
+      eq(M.flush(false), false, 'сбой отправки не выходит наружу');
+      // настоящая отправка: «простой» POST text/plain с keepalive; без связи — события обратно в очередь; off — молчать
+      M.send = keep.send;
+      const calls = [];
+      let mode = 'ok';
+      window.fetch = (url, o) => { calls.push({ url, o }); return mode === 'down' ? Promise.reject(new TypeError('Failed to fetch')) : Promise.resolve({ ok: true, json: async () => (mode === 'off' ? { ok: true, off: true } : { ok: true }) }); };
+      const wait = () => new Promise(r => setTimeout(r, 0));
+      M.ev('ready', { ms: 7 }); M.flush(false); await wait();
+      eq(calls.length, 1); ok(calls[0].url.endsWith('/functions/v1/game/an'), calls[0].url);
+      eq(calls[0].o.method, 'POST'); eq(calls[0].o.keepalive, true); eq(calls[0].o.headers['Content-Type'], 'text/plain'); eq(typeof calls[0].o.body, 'string');
+      ok(!('Authorization' in calls[0].o.headers), 'без своих заголовков — без предварительного запроса CORS');
+      mode = 'down'; M.ev('ready', { ms: 8 }); M.flush(false); await wait(); await wait();
+      eq(M.q.length, 1, 'без связи — событие вернулось в очередь'); eq(M.sent, -1);
+      M.q = []; M.ev('ready', { ms: 9 }); M.hide(); await wait(); await wait();
+      eq(M.q.length, 0, 'при закрытии — без повторов (ответа не будет)');
+      mode = 'off'; M.show(); M.ev('ready', { ms: 10 }); M.flush(false); await wait(); await wait();
+      eq(M.off, true, 'сервер без аналитики — телефон замолкает');
+      const n = calls.length; M.ev('ready', { ms: 11 }); clk += 60000;
+      eq(M.flush(false), false); eq(calls.length, n);
+      // вне игры (автотесты, нет облака) — не запускается вовсе
+      M.on = keep.on; M.started = false; M.off = false;
+      const cc = Cloud.configured;
+      Cloud.configured = () => false;
+      try { M.init(); } finally { Cloud.configured = cc; }
+      eq(M.started, false, 'Cloud.configured() ложно — аналитики нет');
+    } finally {
+      Object.assign(M, keep); window.fetch = fetch0;
+      Object.assign(M, { started: false, off: false, q: [], tok: '', sid: '', sent: -1, vis: 0, act: 0, hidAt: 0 });
+    }
+  });
+  // сервер: события из разницы прогресса, день активности — раз в день; запросы от имени сервера — не активность
+  atest('Аналитика 5.1.22: события сервера — новый Ловчий, обучение, место, первые успехи, день активности', async () => {
+    const A = { uid: 'uan1', lat: 55.7, lng: 37.6, data: null, srv: {} };
+    const evs = r => (r.an && r.an.ev || []).map(e => e.e + (e.p ? ':' + JSON.stringify(e.p) : ''));
+    let r = await call(A, 'load');
+    eq(r.an, null, 'гость без Ловчего — ни событий, ни дня');
+    r = await call(A, 'newGame', { name: 'Аналитик', starter: 'ugolek' });
+    eq(evs(r).join(' '), `reg:{"r":${SP.ugolek.rar},"inv":0}`);
+    eq(JSON.stringify(r.an.day), JSON.stringify({ t: r.now, reg: A.data.created, lvl: 1, tut: 1 }), 'день активности с днём создания');
+    eq(A.srv.an, GameCore.anDay(r.now), 'отметка дня — в служебных данных');
+    r = await call(A, 'tick'); eq(r.an, null, 'тот же день, ничего не изменилось — в базу ничего');
+    // обучение: шаги засчитывает сервер — событие с числом пройденных шагов
+    await must(A, 'encStart', { kind: 'tut' });
+    r = await withRandom(0.9999, () => call(A, 'encThrow', { item: 'charm', hit: true }));
+    ok(r.ok && r.results[0].caught, 'учебный дух пойман');
+    let e = evs(r).filter(x => !/^lvl:/.test(x)); // уровень мог и вырасти — его проверяет тест ниже
+    eq(e.join(' '), `tut:{"s":1,"n":${TUT.length},"id":"catch1"} first:{"k":"caught"}`);
+    eq(r.an.day, null);
+    await must(A, 'encStart', { kind: 'tut' });
+    r = await withRandom(0.9999, () => call(A, 'encThrow', { item: 'charm', hit: true }));
+    e = evs(r).filter(x => !/^lvl:/.test(x));
+    eq(e.join(' '), `tut:{"s":2,"n":${TUT.length},"id":"catch2"}`, 'первая поимка — один раз');
+    // первое место в Атласе
+    r = await call(A, 'teleport', { lat: 55.71, lng: 37.61, first: true });
+    ok(r.ok, r.error); ok(evs(r).includes('place'), evs(r).join(' '));
+    A.lat = 55.71; A.lng = 37.61;
+    // новый день — новая строка дня (с нынешним шагом обучения); от имени сервера (начисление оплаты) — ничего
+    A.srv.an = '2000-01-01';
+    const sys = await GameCore.run({ a: [{ type: 'tick' }], sys: true, tz: 180, pos: null, v: APP_VERSION }, { data: A.data, srv: A.srv }, envFor(A));
+    ok(sys.ok); eq(sys.an, null); eq(sys.srv.an, '2000-01-01', 'запрос сервера не отмечает день');
+    r = await call(A, 'tick');
+    eq(r.an.day.tut, A.data.tut); eq(r.an.day.reg, A.data.created); eq(A.srv.an, GameCore.anDay(r.now));
+    // все серверные события годятся для базы: имя — как в an_events, параметры — как у пачек телефона (Metrics.params)
+    const all = [];
+    for (const k of ['menu', 'spirits']) { r = await call(A, 'tutNext', { id: k }); all.push(...(r.an ? r.an.ev : [])); }
+    eq(all.filter(x => x.e === 'tut').map(x => x.p.id).join(), 'menu,spirits');
+    all.forEach(x => { ok(/^[a-z][a-z0-9_]{1,23}$/.test(x.e), x.e); eq(JSON.stringify(Metrics.params(x.p)), JSON.stringify(x.p), 'параметры ' + x.e); });
+    // отказ — без аналитики
+    r = await call(A, 'tutNext', { id: 'power' }); ok(!r.ok); eq(r.an, undefined);
+    // «начать заново»
+    const lvl = A.data.level;
+    r = await call(A, 'reset'); ok(r.ok && r.reset);
+    eq(evs(r).join(' '), `reset:{"l":${lvl}}`); eq(r.an.day, null);
+  });
+  test('Аналитика 5.1.22: уровень, Кампания, первые успехи, день по Москве; сбой аналитики не мешает', () => {
+    const d0 = S.d;
+    try {
+      eq(GameCore.anDay(Date.UTC(2026, 9, 1, 20, 59)), '2026-10-01'); eq(GameCore.anDay(Date.UTC(2026, 9, 1, 21, 0)), '2026-10-02', 'полночь по Москве');
+      const L = CAMPAIGN[0].steps.length;
+      eq(GameCore.anCamp(null), 0); eq(GameCore.anCamp({ ch: 0, s: 3 }), 3); eq(GameCore.anCamp({ ch: 1, s: 0 }), L);
+      eq(GameCore.anCampId(1), CAMPAIGN[0].steps[0].id); eq(GameCore.anCampId(0), ''); eq(GameCore.anCampId(L), CAMPAIGN[0].steps[L - 1].id);
+      S.d = JSON.parse(JSON.stringify(d0)); S.d.tut = 0; S.d.atlasV = 1; S.d.camp = { ch: 0, s: 1 }; S.d.level = 4;
+      const a0 = GameCore.anSnap();
+      S.d.level = 6; S.d.camp.s = 2; S.d.stats.raids = 0; S.d.stats.springs = (S.d.stats.springs || 0) + 1;
+      const was = a0.stats.springs; a0.stats.raids = 0; S.d.stats.raids = 1;
+      const ctx = { now: Date.now(), srv: { an: GameCore.anDay(Date.now()) } };
+      const r = GameCore.anTrack(ctx, a0), names = r.ev.map(e => e.e + ':' + JSON.stringify(e.p || {}));
+      ok(names.includes('lvl:{"l":6}'), names.join(' '));
+      ok(names.includes(`camp:{"k":2,"id":"${CAMPAIGN[0].steps[1].id}"}`), names.join(' '));
+      ok(names.includes('first:{"k":"raids"}'), 'первый Разлом');
+      eq(names.some(n => n === 'first:{"k":"springs"}'), !(was > 0), 'Источник — первый только если раньше не было');
+      eq(r.day, null, 'день уже отмечен');
+      eq(GameCore.anTrack(ctx, null), null);
+      eq(GameCore.anTrack(ctx, { ...a0, stats: null }), null, 'сломанный снимок — без аналитики, без ошибки');
+    } finally { S.d = d0; }
+  });
   /* ---------- вывод ---------- */
   (async () => {
     for (const t of pending) {

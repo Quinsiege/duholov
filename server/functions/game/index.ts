@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.20';
+const APP_VERSION = '5.1.22';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -2259,10 +2259,14 @@ const MOON_EVENTS = {
 };
 
 /* ---------- Знаки Ордена (медали) ---------- */
+// xp — разовая награда за ступень знака (без дневного потолка); 5.1.21: 1 000 / 10 000 / 20 000 (было 500 / 1 500 / 5 000).
+// Бронза — только ×2: лёгкие бронзы (5 видов в бестиарии, 3 духа других мифологий, 10 поимок) по 5 000 поднимали новичка
+// до 9-го уровня за 10 минут. Серебро и золото не ×10: по модели экономики (tools/economy) они давали четверть опыта до 40-го
+// уровня и обычный Ловчий доходил до него за 113 дней вместо задуманных 5–6 месяцев
 const MEDAL_TIERS = [
-  { name: ru`Бронза`, color: '#d97706', xp: 500 },
-  { name: ru`Серебро`, color: '#cbd5e1', xp: 1500 },
-  { name: ru`Золото`, color: '#fbbf24', xp: 5000 },
+  { name: ru`Бронза`, color: '#d97706', xp: 1000 },
+  { name: ru`Серебро`, color: '#cbd5e1', xp: 10000 },
+  { name: ru`Золото`, color: '#fbbf24', xp: 20000 },
 ];
 const MEDALS = [
   { id: 'catcher', name: ru`Ловчий`,        desc: ru`Поймай духов`,                 stat: 'caught',      tiers: [10, 100, 1000] },
@@ -6537,38 +6541,34 @@ const Rules = {
     return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
   },
   // Сезонная тропа: сезон — календарный месяц, 30 ступеней по 40 очков (очки — как в общем деле Ордена)
-  PASS: { LEVELS: 30, PER: 40, GOLD: 600, LATE: 25 },
+  PASS: { LEVELS: 30, PER: 40, GOLD: 600 },
   passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
-  // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
-  // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
-  // 4.16: на бесплатной тропе 55 монет за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
-  // 5.1.20: искры на Тропе (и на Золотой) — ×10
-  passReward(track, lvl, plvl) {
-    if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
-    if (track === 'free') {
-      // 4.16.0: бесплатная тропа — 29 монет за сезон (было 55)
-      if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
-      if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
-      if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
-      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 3000 };
-    }
-    if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50 };
-    if (lvl % 10 === 0) return { cocoon: 10, zlat: 40 };
-    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
-    if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
-    return lvl % 2 ? { charm2: 5, sparks: 5000 } : { water: 3, sparks: 8000 };
-  },
-  // 4.16: Золотая тропа с LATE уровня: вместо серебряных оберегов и мелочи — то, что нужно на поздних уровнях:
-  // искры на усиление (втрое больше), золотые обереги, целебный отвар, настои опыта; облик и Знак Тропы — как раньше
-  passGoldLate(lvl) {
-    if (lvl === 30) return { look: 'trail', charm3: 10, xpbrew: 1 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 30000 };
-    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 30000 };
-    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
-    if (lvl % 3 === 0) return { charm3: 5, zlat: 15 };
-    return lvl % 2 ? { charm3: 3, sparks: 15000 } : { brew: 2, sparks: 25000 };
-  },
+  // 5.1.21: награды ступеней — таблицей, одна для всех уровней Ловчего (прежней «поздней» Золотой тропы с 25 уровня нет).
+  // Три круга по десять ступеней, в каждом награды растут: бесплатная — обереги и мёд по очереди, на 5-й ступени круга ладан,
+  // на 9-й Живая вода, на 10-й, 20-й и 30-й — большая награда; Золотая — серебряные обереги и Живая вода, на 6-й — золотые
+  // обереги, на 9-й — кокон 10 км, на каждой пятой — амулет на выбор (amuletPick: выбирает Ловчий, когда забирает),
+  // на 15-й — плащ «Сезонная тропа», на 30-й — Знак Тропы. cocoon — кокон на столько км, look — облик.
+  // По модели экономики (tools/economy: искры копились миллионами, сумка переполнялась, не хватало только осколков Алатыря):
+  // бесплатная — искры ÷3, обереги ÷3, мёд ÷4 и осколок Алатыря на 10-й, 20-й и 30-й; Золотая — искры ÷2, Живая вода ÷3 и
+  // осколок на 15-й и 25-й. За сезон: бесплатная — ✦ 58 900, Золотая — ✦ 58 600 (было 177 000 и 116 500)
+  PASS_FREE: [
+    { charm: 7, sparks: 800 }, { honey: 4, sparks: 800 }, { charm: 7, sparks: 1200 }, { honey: 4, sparks: 1200 }, { incense: 5, sparks: 1300 },
+    { charm: 10, sparks: 1300 }, { honey: 5, sparks: 1300 }, { charm: 13, sparks: 1300 }, { water: 10, sparks: 1700 }, { zlat: 50, sparks: 1700, alatyr: 1 },
+    { charm: 10, sparks: 1700 }, { honey: 5, sparks: 1700 }, { charm: 10, sparks: 1800 }, { honey: 5, sparks: 1800 }, { incense: 5, sparks: 2000 },
+    { charm: 13, sparks: 2000 }, { honey: 6, sparks: 2000 }, { charm: 17, sparks: 2000 }, { water: 15, sparks: 2300 }, { amuletPick: 1, sparks: 2300, alatyr: 1 },
+    { charm: 13, sparks: 2300 }, { honey: 6, sparks: 2300 }, { charm: 13, sparks: 2500 }, { honey: 6, sparks: 2500 }, { incense: 5, sparks: 2700 },
+    { charm: 17, sparks: 2700 }, { honey: 8, sparks: 2700 }, { charm: 20, sparks: 2700 }, { water: 20, sparks: 3000 }, { deadwater: 1, zlat: 50, sparks: 3300, alatyr: 1 },
+  ],
+  PASS_GOLD: [
+    { charm2: 20 }, { water: 3, sparks: 1300 }, { charm2: 20, sparks: 1800 }, { water: 3, sparks: 1800 }, { amuletPick: 1 },
+    { charm3: 10 }, { water: 5, sparks: 2000 }, { charm2: 20, sparks: 2000 }, { cocoon: 10, sparks: 2500 }, { amuletPick: 1 },
+    { charm2: 25, sparks: 2500 }, { water: 5, sparks: 2500 }, { charm2: 25, sparks: 2800 }, { water: 5, sparks: 2800 }, { look: '#065f46', amuletPick: 1, alatyr: 1 },
+    { charm3: 15 }, { water: 7, sparks: 3000 }, { charm2: 30, sparks: 3000 }, { cocoon: 10, sparks: 3500 }, { amuletPick: 1, charm3: 10 },
+    { charm2: 30, sparks: 3500 }, { water: 7, sparks: 3500 }, { charm2: 30, sparks: 3800 }, { water: 7, sparks: 3800 }, { amuletPick: 1, alatyr: 1 },
+    { charm3: 20 }, { water: 8, sparks: 4000 }, { charm2: 40, sparks: 4000 }, { cocoon: 10, sparks: 4500 }, { look: 'trail', amuletPick: 1, charm3: 20 },
+  ],
+  // награда ступени lvl (1…30): free — всем, gold — на Золотой тропе; копия — её можно менять
+  passReward(track, lvl) { return { ...((track === 'gold' ? this.PASS_GOLD : this.PASS_FREE)[lvl - 1] || {}) }; },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
   /* 4.16: Капища не должны навсегда оставаться за кланами.
@@ -6771,6 +6771,169 @@ const Diff = {
   },
 };
 
+// ===== www/js/metrics.js =====
+/* 5.1.22: своя аналитика игры (server/035_analytics.sql) — без сторонних сервисов: события остаются на сервере игры.
+   Игрок её не видит: ни строки на экране, ни ожидания; без сети и при любой ошибке — тишина (событие теряется, игра — нет).
+   Телефон шлёт только своё (остальное пишет сам сервер игры — GameCore.anTrack): запуск (boot, f — первый на устройстве),
+   карта готова (ready, ms — с начала загрузки страницы), шаги знакомства новичка (onb, k — шаг UI.onboarding) и сессию:
+   номер, начало и сколько секунд игра была на экране (свёрнута дольше SPLIT — новая сессия). Ни имени, ни места, ни IP,
+   ни User-Agent: платформу (сайт, PWA, приложение, магазин; Android, iOS, компьютер) грубо выводит сам сервер (pf).
+   Отправка — пачкой (POST …/functions/v1/game/an) по таймеру и при сворачивании и закрытии игры: запрос «простой»
+   (text/plain, без своих заголовков — без предварительного запроса CORS) с fetch keepalive уходит и из закрывающейся
+   вкладки; вход — ключ входа игрока в теле (его проверяет сервер). Сервер ответил off (миграции ещё нет или аналитика
+   выключена) — до перезапуска игры телефон молчит.
+   Общая часть (имена, пределы, params, clean, pf) работает и на сервере игры (build-server.ps1): пачке он не верит. */
+const Metrics = {
+  /* ---------- общее: телефон и сервер ---------- */
+  NAMES: ['boot', 'ready', 'onb'], // события телефона — другие сервер не примет
+  MAX_EV: 40,         // событий в пачке (остальные — следующей)
+  MAX_Q: 200,         // очередь без связи: старые выпадают
+  MAX_BODY: 16384,    // байт в запросе
+  MAX_P: 6,           // полей у события
+  AGE: 3 * 86400000,  // время события — не старше трёх суток (иначе — время приёма)
+  SID: /^[A-Za-z0-9_-]{8,24}$/,
+  KEY: /^[a-z][a-z0-9_]{0,15}$/,
+  STR: /^[\w.:-]{1,32}$/,
+  VER: /^\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+  // параметры события: только числа, да/нет и короткие строки из латиницы, цифр и _.:- — никакого текста игрока
+  params(p) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+    const out = {};
+    let n = 0;
+    for (const k of Object.keys(p)) {
+      if (n >= this.MAX_P) break;
+      const v = p[k];
+      if (!this.KEY.test(k)) continue;
+      if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.max(-1e9, Math.min(1e9, Math.round(v)));
+      else if (typeof v === 'boolean') out[k] = v ? 1 : 0;
+      else if (typeof v === 'string' && this.STR.test(v)) out[k] = v;
+      else continue;
+      n++;
+    }
+    return n ? out : null;
+  },
+  // пачка телефона → { v, sa, s, ev } или null (записывать нечего). Время — от телефона, но не старше AGE и не из будущего
+  clean(b, now = Date.now()) {
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return null;
+    const t = x => (typeof x === 'number' && x > now - this.AGE && x < now + 300000 ? Math.round(Math.min(x, now)) : now);
+    const ev = [];
+    for (const e of Array.isArray(b.ev) ? b.ev.slice(0, this.MAX_EV) : []) {
+      if (!e || typeof e !== 'object' || !this.NAMES.includes(e.e)) continue;
+      const row = { e: e.e, t: t(e.t) }, p = this.params(e.p);
+      if (p) row.p = p;
+      if (typeof e.s === 'string' && this.SID.test(e.s)) row.s = e.s;
+      ev.push(row);
+    }
+    const s = b.s && typeof b.s === 'object' && typeof b.s.id === 'string' && this.SID.test(b.s.id)
+      ? { id: b.s.id, t0: t(b.s.t0), d: Math.max(0, Math.min(86400, Math.round(+b.s.d) || 0)) } : null;
+    if (!ev.length && !s) return null;
+    return { v: typeof b.v === 'string' && this.VER.test(b.v) ? b.v : '', sa: b.sa === 1 || b.sa === true, s, ev };
+  },
+  // платформа по User-Agent — грубо (сам UA не хранится): канал (сайт, PWA, приложение с сайта, Google Play, RuStore) и система
+  pf(ua, sa) {
+    ua = String(ua || '');
+    const ch = /store=play\b/.test(ua) ? 'play' : /store=rustore\b/.test(ua) ? 'rustore' : /DuholovApp\//.test(ua) ? 'apk' : sa ? 'pwa' : 'web';
+    const os = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? 'ios' : /Windows|Macintosh|Mac OS X|Linux|CrOS/i.test(ua) ? 'desktop' : 'other';
+    return ch + '-' + os;
+  },
+
+  /* ---------- телефон ---------- */
+  URL: '/functions/v1/game/an',
+  EVERY: 30000,         // раз в 30 с — не пора ли отправить (пока игра на экране)
+  SPLIT: 30 * 60000,    // свёрнута дольше — новая сессия
+  FIRST: 'duholov.an1', // отметка «игру на этом устройстве уже запускали»
+  q: [], sid: '', t0: 0, act: 0, vis: 0, hidAt: 0, sent: -1, tok: '', off: false, started: false,
+  on() { return !this.off && typeof Cloud !== 'undefined' && Cloud.configured(); }, // автотесты (webdriver) — без аналитики
+  clock() { return performance.now(); },                                        // время на экране — монотонные часы
+  wall() { return Date.now(); },                                                // пауза — по настенным (монотонные во сне стоят)
+  now() { return typeof U !== 'undefined' ? U.now() : Date.now(); },            // время событий — по серверу (U.skew)
+  rid() { const a = new Uint8Array(9); crypto.getRandomValues(a); return btoa(String.fromCharCode(...a)).replace(/\+/g, '-').replace(/\//g, '_'); },
+  standalone() { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } },
+  // запуск игры (main.js): сессия, событие boot, сворачивание и закрытие, проверка очереди по таймеру
+  init() {
+    try {
+      if (this.started || !this.on()) return;
+      this.start();
+      let f = 0;
+      try { if (!localStorage.getItem(this.FIRST)) { localStorage.setItem(this.FIRST, '1'); f = 1; } } catch (e) { /* без хранилища — не знаем */ }
+      this.ev('boot', f ? { f } : null);
+      document.addEventListener('visibilitychange', () => (document.hidden ? this.hide() : this.show()));
+      addEventListener('pagehide', () => this.hide());
+      addEventListener('pageshow', () => this.show());
+      setInterval(() => { if (!document.hidden) this.tick(); }, this.EVERY);
+    } catch (e) { /* аналитика не мешает игре */ }
+  },
+  start() { this.started = true; this.off = false; this.q = []; this.tok = ''; this.session(); },
+  session() { this.sid = this.rid(); this.t0 = Math.round(this.now()); this.act = 0; this.vis = this.clock(); this.hidAt = 0; this.sent = -1; },
+  // секунд на экране в этой сессии
+  dur() { return Math.max(0, Math.min(86400, Math.round((this.act + (this.vis ? this.clock() - this.vis : 0)) / 1000))); },
+  ev(e, p) {
+    try {
+      if (!this.started || !this.NAMES.includes(e)) return;
+      if (this.q.length >= this.MAX_Q) this.q.shift();
+      const row = { e, t: Math.round(this.now()), s: this.sid }, pp = this.params(p);
+      if (pp) row.p = pp;
+      this.q.push(row);
+    } catch (x) { /* аналитика не мешает игре */ }
+  },
+  // игру свернули или закрывают: время на экране — в копилку сессии, пачка — сейчас же (keepalive)
+  hide() {
+    try {
+      if (!this.started) return;
+      if (this.vis) { this.act += this.clock() - this.vis; this.vis = 0; this.hidAt = this.wall(); }
+      this.flush(true);
+    } catch (e) { /* молча */ }
+  },
+  // вернулись: после паузы дольше SPLIT — новая сессия
+  show() {
+    try {
+      if (!this.started || this.vis) return;
+      if (this.hidAt && this.wall() - this.hidAt > this.SPLIT) this.session(); else this.vis = this.clock();
+      this.token();
+    } catch (e) { /* молча */ }
+  },
+  // пора ли отправить: события ждут дольше 10 с (или их много) либо сессия заметно выросла — в начале чаще: короткие
+  // сессии новичков видны точнее, долгие — реже нагружают сервер
+  due() {
+    const d = this.dur(), step = d < 300 ? 30 : d < 1800 ? 120 : 300;
+    return this.q.length >= this.MAX_EV || (this.q.length > 0 && this.now() - this.q[0].t >= 10000) || this.sent < 0 || d - this.sent >= step;
+  },
+  async tick() { try { await this.token(); if (this.due()) this.flush(false); } catch (e) { /* молча */ } },
+  // ключ входа — из облачной библиотеки, если игра уже вошла (Cloud.client); сама аналитика вход не начинает
+  async token() {
+    try {
+      const sb = typeof Cloud !== 'undefined' ? Cloud.sb : null;
+      if (!sb) return;
+      const { data } = await sb.auth.getSession();
+      this.tok = (data && data.session && data.session.access_token) || '';
+    } catch (e) { /* молча */ }
+  },
+  // отправить пачку: final — игру сворачивают или закрывают (ответа можно не дождаться)
+  flush(final) {
+    try {
+      if (!this.started || !this.on() || !this.tok) return false;
+      const d = this.dur();
+      if (!this.q.length && d === this.sent) return false;
+      const n = Math.min(this.q.length, this.MAX_EV);
+      const pack = ev => JSON.stringify({ tok: this.tok, v: APP_VERSION, sa: this.standalone() ? 1 : 0, s: { id: this.sid, t0: this.t0, d }, ev });
+      let ev = this.q.slice(0, n), body = pack(ev);
+      if (body.length > this.MAX_BODY) { ev = []; body = pack(ev); } // не влезло — события пропадают, сессия — нет
+      this.q.splice(0, n);
+      this.sent = d;
+      this.send(body, final, ev);
+      return true;
+    } catch (e) { return false; }
+  },
+  send(body, final, ev) {
+    fetch(CLOUD_CONFIG.url + this.URL, { method: 'POST', keepalive: true, credentials: 'omit', headers: { 'Content-Type': 'text/plain' }, body })
+      .then(r => (r.ok ? r.json() : null), () => { if (!final) this.back(ev); return null; })
+      .then(j => { if (j && j.off) this.off = true; })
+      .catch(() => {});
+  },
+  // запрос не ушёл (нет связи) — события обратно в очередь (не больше MAX_Q), сессия обновится следующей пачкой
+  back(ev) { this.q.unshift(...(ev || []).slice(0, Math.max(0, this.MAX_Q - this.q.length))); this.sent = -1; },
+};
+
 // ===== server/game/core.js =====
 /* Сервер игры «Духолов»: все действия игрока выполняются здесь, а не на телефоне.
    Телефон присылает намерение («бросил оберег», «зачерпнул источник», «усилил духа»), сервер проверяет его
@@ -6868,6 +7031,7 @@ const GameCore = {
       this.need(actions.length, ru`Пустой запрос`);
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
       const ala0 = S.d ? S.d.alaGiven || 0 : 0; // 4.28: осколки Алатыря, отданные в общий счёт Ордена
+      const an0 = this.anSnap(); // 5.1.22: аналитика — прогресс до действий (anTrack сравнит с тем, что стало)
       for (const a of actions) {
         const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
         this.need(h, ru`Неизвестное действие`);
@@ -6879,7 +7043,8 @@ const GameCore = {
       if (S.d) { S.checkMedals(); S.ensureQuests(); S.campEnsure(); } // 5.1.15: обучение пройдено в этом запросе — Кампания открывается сразу
       // 5.2: Ловчий перенёсся в другую клетку (телепорт) — телефону погода уже нового места
       if (ctx.pos && this.wxCell(ctx.pos) !== ctx.wxCell) Sky.w = await this.weather(ctx.pos, env, ctx.now);
-      return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now, wx: this.wxOut(Sky.w) };
+      const an = req.sys ? null : this.anTrack(ctx, an0); // 5.1.22: запрос от имени сервера (начисление оплаты) — не активность игрока
+      return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now, wx: this.wxOut(Sky.w), an };
     } catch (e) {
       // при отказе сохраняются только счётчики частоты (rl): иначе неудачные попытки перебора не считались бы
       if (e instanceof GameError) return { ok: false, error: e.message, rl: ctx.srv.rl || null };
@@ -6892,6 +7057,61 @@ const GameCore = {
   ser(ev, data) {
     if (ev === 'medal') return { m: data.m.id, tier: data.tier };
     return data === undefined ? null : JSON.parse(JSON.stringify(data));
+  },
+
+  /* ---------- 5.1.22: аналитика (035_analytics.sql) ----------
+     Серверные события — из разницы прогресса до и после запроса, без запросов к базе: новый Ловчий (reg: r — редкость
+     первого духа, inv — пришёл по приглашению), первое место в Атласе (place), обучение (tut: s — пройдено шагов из n,
+     id — последний пройденный), уровень (lvl: l), первые успехи по счётчикам (first: k — из AN_FIRST), Кампания (camp:
+     k — пройдено шагов, id — последний пройденный), «начать заново» (reset: l — уровень). День активности — первый удачный
+     запрос дня по Москве (отметка srv.an): в базу (an_days) — одна строка в день, с днём создания Ловчего (когорта),
+     уровнем и шагом обучения. Записывает serve.js после сохранения прогресса, в фоне. Сбой здесь действию не мешает —
+     пропадает только аналитика */
+  AN_FIRST: ['caught', 'springs', 'raids', 'duels', 'invasions', 'hatched', 'evolved', 'traded', 'purified', 'awakened'],
+  anDay(t) { return new Date(t + 3 * 3600000).toISOString().slice(0, 10); }, // день по Москве (UTC+3, без летнего времени)
+  // пройдено шагов Кампании — по всем главам (CAMPAIGN), и id k-го шага
+  anCamp(c) {
+    if (!c || typeof c !== 'object') return 0;
+    let k = 0;
+    for (let i = 0; i < CAMPAIGN.length && i < (c.ch | 0); i++) k += CAMPAIGN[i].steps.length;
+    return k + Math.max(0, c.s | 0);
+  },
+  anCampId(k) {
+    let i = k - 1;
+    for (const ch of CAMPAIGN) { if (i < ch.steps.length) return i >= 0 ? ch.steps[i].id : ''; i -= ch.steps.length; }
+    return '';
+  },
+  anSnap() {
+    try {
+      const d = S.d;
+      if (!d) return { d: false };
+      return { d: true, tut: d.tut || 0, lvl: d.level || 1, camp: this.anCamp(d.camp), atlas: !!d.atlasV, stats: { ...d.stats } };
+    } catch (e) { return null; }
+  },
+  anTrack(ctx, a0) {
+    try {
+      if (!a0) return null;
+      const d = S.d, t = ctx.now, ev = [], add = (e, p) => ev.push(p ? { e, t, p } : { e, t });
+      if (!a0.d && d) add('reg', { r: (SP[d.starter] && SP[d.starter].rar) || 0, inv: (d.friends || []).some(f => f && f.invitedBy) ? 1 : 0 });
+      if (a0.d && !d && ctx.reset) add('reset', { l: a0.lvl });
+      if (a0.d && d) {
+        const n = TUT.length, done = x => (x ? x - 1 : n); // tut — номер текущего шага (с 1), 0 — обучение пройдено
+        const s = done(d.tut || 0);
+        if (s > done(a0.tut)) add('tut', { s, n, id: (TUT[s - 1] && TUT[s - 1].id) || '' });
+        if ((d.level || 1) > a0.lvl) add('lvl', { l: d.level });
+        if (!a0.atlas && d.atlasV) add('place');
+        const k = this.anCamp(d.camp);
+        if (k > a0.camp) add('camp', { k, id: this.anCampId(k) });
+        const st = d.stats || {};
+        for (const key of this.AN_FIRST) if (!(a0.stats[key] > 0) && st[key] > 0) add('first', { k: key });
+      }
+      let day = null;
+      if (d) {
+        const k = this.anDay(t);
+        if (ctx.srv.an !== k) { ctx.srv.an = k; day = { t, reg: +d.created || null, lvl: d.level || 1, tut: d.tut || 0 }; }
+      }
+      return ev.length || day ? { ev, day } : null;
+    } catch (e) { return null; }
   },
 
   /* ---------- проверки ---------- */
@@ -8298,10 +8518,15 @@ const GameCore = {
       this.need(Rules.passLevel(P.pts) >= lvl, ru`Ступень ещё не пройдена`);
       this.need(track === 'free' || P.gold, ru`Сначала открой Золотую тропу`);
       this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
+      let { amuletPick, ...rw } = Rules.passReward(track, lvl);
+      // 5.1.21: амулет на выбор — какой, присылает телефон (a.am); без выбора ступень не забрать
+      const am = String(a.am || '');
+      this.need(!amuletPick || AMULET_KEYS.includes(am), ru`Выбери амулет`);
       P.got[track].push(lvl);
-      let rw = Rules.passReward(track, lvl, S.d.level);
       if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — монетами (4.16: было 40)
-      return { got: this.grant(rw) };
+      const got = this.grant(rw);
+      if (amuletPick) { S.addAmulet(am); got.push({ k: 'amulet', n: 1, id: am, label: AMULETS[am].name }); }
+      return { got };
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
@@ -8870,6 +9095,39 @@ const verCmp = (a, b) => {
   const pa = String(a || '0').split('.').map(Number), pb = String(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return Math.sign(d); }
   return 0;
+};
+
+/* ---------- 5.1.22: своя аналитика (035_analytics.sql) ----------
+   Всё пишет одна функция базы an_put: серверные события и день активности (GameCore.anTrack — после сохранения прогресса)
+   и пачки телефона (POST …/game/an, Metrics.clean). Запись — в фоне: ответ игроку её не ждёт, сбой не мешает игре.
+   Миграции ещё нет (функции an_put нет в базе) — одно предупреждение в журнал и пауза OFF_MS: сервер не стучится в базу на
+   каждый запрос, телефонам отвечает off. Секрет ANALYTICS=off выключает аналитику совсем */
+const An = {
+  OFF_MS: 10 * 60000,
+  killed: Deno.env.get('ANALYTICS') === 'off',
+  off: 0, warned: false, errAt: 0,
+  live() { return !this.killed && Date.now() >= this.off; },
+  // x: { ev: [{ e, t, p, s }], s: сессия телефона, day: день активности } — что есть
+  put(uid, src, v, pf, x) {
+    if (!x || !this.live()) return;
+    try {
+      const p = db.rpc('an_put', { p_uid: uid, p_src: src, p_v: Metrics.VER.test(String(v || '')) ? String(v) : null, p_pf: pf || null, // версию присылает телефон
+        p_ev: x.ev && x.ev.length ? x.ev : null, p_sess: x.s || null, p_day: x.day || null })
+        .then(({ error }) => { if (error) this.fail(error); }, e => this.fail(e));
+      try { globalThis.EdgeRuntime?.waitUntil?.(p); } catch { /* в этой версии среды нет — запись и так закончится */ }
+    } catch (e) { this.fail(e); }
+  },
+  fail(e) {
+    const msg = String((e && e.message) || e);
+    // нет функции (PostgREST: PGRST202, «Could not find the function») или таблицы — миграция не применена. Прочие ошибки
+    // (например, учётную запись только что удалили) паузы не включают
+    if ((e && (e.code === 'PGRST202' || e.code === '42883' || e.code === '42P01')) || /Could not find the function/i.test(msg)) {
+      this.off = Date.now() + this.OFF_MS;
+      if (!this.warned) { this.warned = true; console.warn('Аналитика: в базе нет an_put — миграция 035_analytics.sql не применена; события не пишутся'); }
+      return;
+    }
+    if (Date.now() - this.errAt > this.OFF_MS) { this.errAt = Date.now(); console.error('Аналитика:', msg); } // не чаще раза в 10 минут
+  },
 };
 
 /* ---------- Казна: покупка монет через ЮKassa ----------
@@ -9783,6 +10041,9 @@ const pvpHits = new Map();
 // Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
 const LOCK_MS = 30000, LOCK_TRIES = 25;
 const hits = new Map(), badTokens = new Map(), errHits = new Map(), pingHits = new Map(), ykHits = new Map();
+// 5.1.22: аналитика — пачек телефона в минуту: от игрока (обычно 1–2) и с одного адреса (мобильные сети — много игроков за одним)
+const AN_FLOOD = 20, AN_IP = 600;
+const anHits = new Map(), anIpHits = new Map();
 // 4.26: тело запроса — не больше MAX_BODY байт (перед сервером — ещё и Caddy, 256 КБ)
 const MAX_BODY = 128 * 1024;
 let dbCheck = { at: 0, p: null };
@@ -9843,13 +10104,17 @@ async function play(uid, body, env) {
       if (res.rl) await release({ ...srv, rl: res.rl });
       return R({ ok: false, error: res.error, rev: row ? row.rev : 0 });
     }
-    if (res.reset) return R({ ok: true, reset: true, results: res.results, events: [], now: res.now, wx: res.wx || null });
+    if (res.reset) {
+      An.put(uid, 's', body.v, env.pf, res.an); // 5.1.22: «начать заново» — в аналитику (в фоне)
+      return R({ ok: true, reset: true, results: res.results, events: [], now: res.now, wx: res.wx || null });
+    }
     // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
     const ops = row && res.data ? Diff.make(row.data, res.data) : null;
     const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
       p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
     if (rev == null) return R({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });
     locked = false; // замок снят вместе с сохранением
+    An.put(uid, 's', body.v, env.pf, res.an); // 5.1.22: события и день активности — в аналитику (в фоне, прогресс уже сохранён)
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
     const patch = !res.full && row && body.rev === row.rev ? ops : null;
@@ -9896,6 +10161,28 @@ Deno.serve(async req => {
     }
     return reply({ ok: true });
   }
+  // 5.1.22: аналитика (www/js/metrics.js) — пачка событий и сессия телефона. Запрос «простой» (text/plain, ключ входа — в теле):
+  // его шлют и из закрывающейся игры, поэтому он до проверки ключа доступа закрытого контура; пишет только вошедший игрок
+  // (uid — из ключа входа). Пределы: тело Metrics.MAX_BODY, AN_FLOOD пачек в минуту от игрока, AN_IP с адреса (за одним
+  // адресом бывает много телефонов). Без IP и User-Agent в базе: платформа — грубо (Metrics.pf). Ответ короткий, сбой — молча
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/an')) {
+    if (!An.live()) return reply({ ok: true, off: true }); // миграции нет или аналитика выключена — телефон замолчит
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+    const bad = badTokens.get(ip);
+    if (tooMany(anIpHits, ip, AN_IP) || (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS)) return reply({ ok: false }, 429);
+    const text = await req.text().catch(() => '');
+    let b = null;
+    if (text.length <= Metrics.MAX_BODY) { try { b = JSON.parse(text); } catch { /* не JSON */ } }
+    const tok = b && typeof b.tok === 'string' && b.tok.length <= 4096 ? b.tok : '';
+    if (!tok) return reply({ ok: false }, 400);
+    let who = null;
+    try { who = (await db.auth.getUser(tok)).data; } catch { /* вход не проверить — как неверный */ }
+    if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, auth: true }, 401); }
+    if (tooMany(anHits, who.user.id, AN_FLOOD)) return reply({ ok: false }, 429);
+    const c = Metrics.clean(b, Date.now());
+    if (c) An.put(who.user.id, 'c', c.v, Metrics.pf(req.headers.get('user-agent'), c.sa), { ev: c.ev, s: c.s });
+    return reply({ ok: true });
+  }
   // 4.21: состояние сервера для экрана входа — отвечает сразу; база проверяется не чаще раза в 5 с (db: мс ответа, -1 — не ответила за 3 с)
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/ping')) {
     const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
@@ -9926,6 +10213,8 @@ Deno.serve(async req => {
   if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));
   // Вход через сервисы: список, привязка и переключение учётной записи — тоже вне очереди игровых действий
   if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 500); } }
-  const out = await play(uid, body, makeEnv(uid));
+  const env = makeEnv(uid);
+  env.pf = Metrics.pf(req.headers.get('user-agent')); // 5.1.22: платформа для аналитики (сам User-Agent не хранится)
+  const out = await play(uid, body, env);
   return reply(out.body, out.status);
 });

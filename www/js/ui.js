@@ -76,7 +76,7 @@ const UI = {
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
     Bus.on('quests', () => this.refreshHud());
     Bus.on('buddyFind', text => this.toast(text, 'good'));
-    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });
+    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${U.fmtNum(MEDAL_TIERS[tier - 1].xp)} опыта`, 'good'); });
     Bus.on('weather', ({ w, changed }) => {
       this.refreshSky();
       if (changed && this._skyShown) this.toast(ru`Погода: ${WEATHER[w.key].name}. Сильнее духи: ${WEATHER[w.key].boost.map(e => ELEMENTS[e].name).join(', ')}`);
@@ -1027,7 +1027,8 @@ const UI = {
     const step = n => {
       // 4.28: сперва книга-вступление (сюжет), потом имя Ловчего. 5.1.17: всегда при знакомстве — и там, где книгу уже видели
       // (отметка Intro.need — на устройстве, а Ловчий — новый)
-      if (n === 2 && !book) { book = true; Intro.open({ done: () => step(2) }); return; }
+      if (n === 2 && !book) { book = true; Metrics.ev('onb', { k: 'book' }); Intro.open({ done: () => step(2) }); return; }
+      Metrics.ev('onb', { k: n }); // 5.1.22: аналитика — докуда новички доходят в знакомстве (0 — стартовый экран, 2 — имя, 3 — кокон, 4 — мир)
       body.innerHTML = '';
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
@@ -1081,7 +1082,7 @@ const UI = {
         };
         hatch();
       } else if (n === 4) {
-        body.querySelector('.go').onclick = () => { Sfx.play('tap'); Login.close(root, done); };
+        body.querySelector('.go').onclick = () => { Sfx.play('tap'); Metrics.ev('onb', { k: 'go' }); Login.close(root, done); };
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n ? n + 1 : 2); }; // 4.24: истории перед игрой больше нет
     };
     step(from);
