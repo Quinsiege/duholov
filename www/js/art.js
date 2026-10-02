@@ -354,13 +354,17 @@ const Art = (() => {
   }
   const of = sp => spirit(sp.sid, sp.shiny, sp.dark);
 
-  // Лёгкая версия для карты и списков: SVG один раз кодируется в data-URL и дальше
-  // рисуется как обычная картинка — вместо сотен DOM-узлов на каждого духа
+  // Лёгкая версия для карты и списков: SVG один раз превращается в картинку и дальше
+  // рисуется как обычная картинка — вместо сотен DOM-узлов на каждого духа.
+  // 5.1.24: адрес картинки — blob: (несколько десятков символов), а не data: — закодированный SVG на 20–60 КБ попадал
+  // в разметку каждой карточки и каждого значка: «Духи» на 200 духов — мегабайты текста в innerHTML. Без Blob — как раньше
   const imgCache = {};
+  const svgUrl = svg => typeof Blob === 'function' && typeof URL !== 'undefined' && URL.createObjectURL
+    ? URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })) : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   function img(sid, shiny, dark) {
     if (PICS[sid]) return picImg(sid, shiny, dark, 'art');
     const k = sid + (shiny ? ':s' : '') + (dark ? ':d' : '');
-    if (!imgCache[k]) imgCache[k] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(spirit(sid, shiny, dark));
+    if (!imgCache[k]) imgCache[k] = svgUrl(spirit(sid, shiny, dark)); // кэш на всю жизнь страницы: адрес не отзывается
     return `<img class="art" src="${imgCache[k]}" alt="" draggable="false">`;
   }
   const imgOf = sp => img(sp.sid, sp.shiny, sp.dark);
@@ -793,16 +797,216 @@ const Art = (() => {
       ? `<svg class="wx-ico" width="${size}" height="${size}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#fef9c3" stroke="#fde68a"/><circle cx="9" cy="10" r="1.8" fill="#e7e0b0"/><circle cx="14.5" cy="14" r="2.3" fill="#e7e0b0"/></svg>`
       : `<svg class="wx-ico" width="${size}" height="${size}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#1e1b3a" stroke="#a78bfa" stroke-width="1.5"/></svg>`;
   }
+  /* 5.1.21: Знаки Ордена — медальон на ленте Ордена: металлический обод с бусинами (не получен — тёмное железо, затем бронза,
+     серебро, золото), в нём эмаль цвета знака и цветной рисунок того, за что знак — где можно, те же рисунки, что в сумке
+     и на карте (оберег, источник, разлом, капище, кокон…). Чем выше ступень, тем богаче: серебро — зубцы вокруг обода,
+     золото — лучи и камень наверху; звёзды ступени — на ободе снизу. Не полученный знак — серый и приглушённый */
+  const mgrad = (id, stops, x2 = 0, y2 = 1) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2}" y2="${y2}">${stops.map((c, i) => `<stop offset="${(i / (stops.length - 1)).toFixed(2)}" stop-color="${c}"/>`).join('')}</linearGradient>`;
+  const mrad = (id, stops, cx = 0.36, cy = 0.3, r = 0.8) => `<radialGradient id="${id}" cx="${cx}" cy="${cy}" r="${r}">${stops.map((c, i) => `<stop offset="${(i / (stops.length - 1)).toFixed(2)}" stop-color="${c}"/>`).join('')}</radialGradient>`;
+  // четырёхлучевая искра с вогнутыми гранями
+  const msparkD = (x, y, r) => `M${x} ${y - r}C${x + r * 0.12} ${y - r * 0.3} ${x + r * 0.3} ${y - r * 0.12} ${x + r} ${y}C${x + r * 0.3} ${y + r * 0.12} ${x + r * 0.12} ${y + r * 0.3} ${x} ${y + r}` +
+    `C${x - r * 0.12} ${y + r * 0.3} ${x - r * 0.3} ${y + r * 0.12} ${x - r} ${y}C${x - r * 0.3} ${y - r * 0.12} ${x - r * 0.12} ${y - r * 0.3} ${x} ${y - r}Z`;
+  // пятиконечная звезда
+  const mstarD = (x, y, R, r = R * 0.45) => Array.from({ length: 10 }, (_, i) => { const a = (i * 36 - 90) * Math.PI / 180, q = i % 2 ? r : R; return `${i ? 'L' : 'M'}${(x + q * Math.cos(a)).toFixed(2)} ${(y + q * Math.sin(a)).toFixed(2)}`; }).join('') + 'Z';
+  const msvg = s => `<svg viewBox="0 0 100 100">${s}</svg>`;
+  const MEDAL_ART = {
+    catcher: () => item('charm'),
+    springs: () => springIcon(false, false),
+    raids: () => riftIcon(2),
+    duels: () => shrineIcon(2, false),
+    dex: () => item('farpass'),
+    trade: () => item('zlat'),
+    hatch: () => cocoon(5),
+    evolve: () => item('xpbrew'),
+    alatyr: () => item('alatyr'),
+    // Странник — Ловчий как на аватаре (фиолетовый плащ с капюшоном, светящиеся глаза, золотой оберег, стрелы за плечом),
+    // а за ним извилистая тропа с пунктиром пройденного пути: сужается вдаль и уходит за кусты
+    walker: () => {
+      const k = 'mw' + (++seq), f2 = n => n.toFixed(2), c = '#6d28d9', ol = shade(c, -0.6), eye = '#5eead4';
+      // тропа — гладко сшитые кубические кривые; ширина растёт от кустов к Ловчему, ближний конец скрыт за плащом
+      const C = [[22, 20], [24, 32], [40, 32], [32, 42], [24, 52], [14, 66], [30, 72], [46, 78], [54, 81], [58, 82]];
+      const bez = (a, b, e, d, t) => [0, 1].map(j => (1 - t) ** 3 * a[j] + 3 * (1 - t) ** 2 * t * b[j] + 3 * (1 - t) * t * t * e[j] + t ** 3 * d[j]);
+      const pts = [];
+      for (let s = 0; s < 3; s++) for (let i = s ? 1 : 0; i <= 12; i++) pts.push(bez(C[s * 3], C[s * 3 + 1], C[s * 3 + 2], C[s * 3 + 3], i / 12));
+      const L = [], R = [];
+      pts.forEach((p, i) => {
+        const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1;
+        const w = 1.2 + 7.4 * (i / (pts.length - 1)) ** 1.2;
+        L.push(`${f2(p[0] - dy / n * w)} ${f2(p[1] + dx / n * w)}`); R.unshift(`${f2(p[0] + dy / n * w)} ${f2(p[1] - dx / n * w)}`);
+      });
+      const road = `M${L.join(' L')} L${R.join(' L')}Z`, mid = `M${pts.map(p => `${f2(p[0])} ${f2(p[1])}`).join(' L')}`;
+      // куст — пышная шапка листвы на земле (x, y — середина низа): тёмные пучки спереди, блики сверху, ягоды;
+      // травинка — пучок из трёх листиков
+      const bush = (x, y, s, berries) => `<g transform="translate(${x} ${y}) scale(${s})">` +
+        `<path d="M-14.5 -.5 C-18.5 -1.5 -18.5 -8.5 -13.5 -9.5 C-14.5 -15.5 -8.5 -18.5 -4.5 -16.5 C-3.5 -22.5 5.5 -23.5 7.5 -18.5 C11.5 -20.5 17.5 -17.5 15.5 -11.5 C19.5 -9.5 18.5 -2.5 14.5 -.5 C5.5 1.5 -6.5 1.5 -14.5 -.5Z" fill="url(#${k}b)" stroke="#14532d" stroke-width="${f2(2.2 / s)}" stroke-linejoin="round"/>` +
+        `<path d="M-10.5 -1.6 C-9.5 -6.5 -5.5 -8.5 -1.5 -6.5 M.5 -1.6 C2.5 -7.5 8.5 -8.5 11.5 -5.5" stroke="#166534" stroke-width="${f2(1.6 / s)}" fill="none" stroke-linecap="round"/>` +
+        `<path d="M-11 -10.5 C-10 -13.5 -7.5 -15 -5 -15 M-1.5 -18 C.5 -20 3.5 -20.4 5.5 -19.6" stroke="#dcfce7" stroke-width="${f2(1.5 / s)}" fill="none" stroke-linecap="round" opacity=".75"/>` +
+        `<g fill="#ef4444" stroke="#7f1d1d" stroke-width="${f2(0.8 / s)}">${berries.map(([bx, by]) => `<circle cx="${bx}" cy="${by}" r="${f2(1.3 / s)}"/>`).join('')}</g></g>`;
+      const tuft = (x, y, s) => `<path transform="translate(${x} ${y}) scale(${s})" d="M-3.2 0 C-3 -2 -3.6 -3.4 -5.4 -4.4 C-2.6 -3.8 -1.6 -2.2 -1.2 0Z M-1.2 0 C-1 -3 -.6 -5 0 -6.6 C.6 -5 1 -3 1.2 0Z M1.2 0 C1.6 -2.2 2.6 -3.8 5.4 -4.4 C3.6 -3.4 3 -2 3.2 0Z"/>`;
+      return msvg(`<defs><linearGradient id="${k}r" gradientUnits="userSpaceOnUse" x1="22" y1="20" x2="58" y2="83"><stop offset="0" stop-color="#f3dca8"/><stop offset=".6" stop-color="#dcb878"/><stop offset="1" stop-color="#b98a45"/></linearGradient>` +
+          `${mgrad(k + 'b', ['#86efac', '#22c55e', '#166534'])}` +
+          `<linearGradient id="${k}c" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="${shade(c, 0.35)}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${shade(c, -0.4)}"/></linearGradient>` +
+          `<radialGradient id="${k}f" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#2a1f4a"/><stop offset="1" stop-color="#07040f"/></radialGradient>` +
+          `<radialGradient id="${k}e" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${eye}" stop-opacity=".7"/><stop offset="1" stop-color="${eye}" stop-opacity="0"/></radialGradient></defs>` +
+        // тропа с пунктиром; камешки на обочине
+        `<path d="${road}" fill="url(#${k}r)" stroke="#6b4a1c" stroke-width="2.4" stroke-linejoin="round"/>` +
+        `<path d="${mid}" stroke="#fffbeb" stroke-width="1.7" stroke-dasharray="3.2 2.8" fill="none" stroke-linecap="round" opacity=".9"/>` +
+        `<ellipse cx="29" cy="61.4" rx="2.3" ry="1.5" fill="#a8a29e" stroke="#44403c" stroke-width="1.1"/><ellipse cx="37.4" cy="88.2" rx="2.8" ry="1.7" fill="#a8a29e" stroke="#44403c" stroke-width="1.1"/>` +
+        // кусты, за которые уходит тропа, с ягодами
+        bush(17, 28.5, 0.8, [[-8.5, -7.5], [1.5, -15], [10.5, -11.5]]) + bush(31, 33.4, 0.5, [[-4, -9], [7, -5.5]]) +
+        // травинки
+        `<g fill="#84cc16" stroke="#365314" stroke-width=".9" stroke-linejoin="round">${tuft(41, 47, 1)}${tuft(8, 45, 0.9)}${tuft(42, 62, 0.85)}${tuft(12, 75, 1)}${tuft(31, 91, 1.05)}</g>` +
+        // Ловчий (в координатах аватара): тень, стрелы за плечом, сапоги, плащ до земли
+        `<g transform="translate(35.5 11.2) scale(.57)">` +
+        `<ellipse cx="50" cy="137.5" rx="33" ry="5" fill="#000" opacity=".35"/>` +
+        `<path d="M70 62 L86 24 M76 64 L92 32" stroke="#2a1405" stroke-width="7.4" stroke-linecap="round"/><path d="M70 62 L86 24 M76 64 L92 32" stroke="#c98a4a" stroke-width="3.4" stroke-linecap="round"/>` +
+        `<g fill="#ef4444" stroke="#4c0808" stroke-width="2.4" stroke-linejoin="round"><path transform="translate(86 24) rotate(22.8)" d="M0 1 L-4.5 -3 V8 L0 12Z M0 1 L4.5 -3 V8 L0 12Z"/><path transform="translate(92 32) rotate(26.6)" d="M0 1 L-4.5 -3 V8 L0 12Z M0 1 L4.5 -3 V8 L0 12Z"/></g>` +
+        `<g fill="#3b1f0d" stroke="#1c0f06" stroke-width="3.6"><rect x="34" y="126" width="14" height="13" rx="5"/><rect x="53" y="124" width="13" height="12.5" rx="5"/></g>` +
+        `<path d="M36 60 C27 80 19 106 14 130 C30 136.5 70 136.5 86 130 C81 106 73 80 64 60Z" fill="url(#${k}c)" stroke="${ol}" stroke-width="5.4" stroke-linejoin="round"/>` +
+        `<path d="M64 60 C73 80 81 106 86 130 C81 132 76 133.4 70 134 C70 108 67 82 58 62Z" fill="#000" opacity=".2"/>` +
+        `<path d="M22 124 C25 104 30 86 37 72" stroke="#fff" stroke-width="3.6" fill="none" stroke-linecap="round" opacity=".3"/>` +
+        `<path d="M40.2 111 C39.4 118 38.6 125 37.8 132.6 M61 113 C61.8 119 62.6 126 63.2 132.6" stroke="${shade(c, -0.45)}" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".6"/>` +
+        `<path d="M47 83 L44 97 M53 83 L56 97" stroke="#f7d77e" stroke-width="3.2" stroke-linecap="round"/>` +
+        // капюшон, тёмное лицо и светящиеся глаза — как на аватаре
+        `<path d="M50 5 C31 9 21 26 21 44 C21 57 28 65 38 67 H62 C72 65 79 57 79 44 C79 26 69 9 50 5Z" fill="url(#${k}c)" stroke="${ol}" stroke-width="5.4" stroke-linejoin="round"/>` +
+        `<path d="M58 10 C70 18 79 30 79 44 C79 56 72 64 62 66 C68 56 70 34 58 10Z" fill="#000" opacity=".2"/>` +
+        `<path d="M50 23 C62 23 67 36 67 46 C67 56 59 63 50 63 C41 63 33 56 33 46 C33 36 38 23 50 23Z" fill="url(#${k}f)" stroke="${ol}" stroke-width="4"/>` +
+        `<path d="M36 38 C38 29 43 25 50 25" stroke="${shade(c, 0.3)}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>` +
+        `<ellipse cx="50" cy="46" rx="16" ry="9" fill="url(#${k}e)"/><ellipse cx="43" cy="46" rx="4.4" ry="3" fill="${eye}"/><ellipse cx="57" cy="46" rx="4.4" ry="3" fill="${eye}"/>` +
+        `<circle cx="44.2" cy="45.2" r="1.4" fill="#fff"/><circle cx="58.2" cy="45.2" r="1.4" fill="#fff"/>` +
+        `<ellipse cx="33" cy="21" rx="7" ry="3.5" transform="rotate(-50 33 21)" fill="#fff" opacity=".5"/>` +
+        // золотой оберег на груди
+        `<circle cx="50" cy="76" r="7.6" fill="#fbbf24" stroke="#92400e" stroke-width="2.8"/><path d="M50 70.6v10.8M45.3 73.3l9.4 5.4M54.7 73.3l-9.4 5.4" stroke="#92400e" stroke-width="2.2" stroke-linecap="round"/></g>`);
+    },
+    // Странник миров — глобус Атласа
+    myths: () => { const k = 'mm' + (++seq); return msvg(`<defs>${mrad(k + 'o', ['#bae6fd', '#0ea5e9', '#0c4a6e'])}${mgrad(k + 'l', ['#bbf7d0', '#22c55e', '#166534'])}<clipPath id="${k}c"><circle cx="50" cy="50" r="36"/></clipPath></defs>` +
+      `<circle cx="50" cy="50" r="36" fill="url(#${k}o)"/>` +
+      `<g clip-path="url(#${k}c)" fill="url(#${k}l)" stroke="#14532d" stroke-width="2.2" stroke-linejoin="round"><path d="M20 33 C29 22 44 24 46 33 C48 42 37 46 35 54 C33 63 22 61 17 52 C14 44 15 39 20 33Z"/>` +
+      `<path d="M56 22 C67 18 80 27 80 38 C80 47 69 45 65 51 C61 57 67 65 74 67 C67 78 54 76 54 65 C54 56 58 50 56 42 C54 34 49 27 56 22Z"/><path d="M33 71 C40 68 47 72 45 79 C41 84 31 81 33 71Z"/></g>` +
+      `<g clip-path="url(#${k}c)" fill="none" stroke="#e0f2fe" stroke-opacity=".55" stroke-width="1.7"><ellipse cx="50" cy="50" rx="16" ry="36"/><path d="M14 50 H86 M18 33 H82 M18 67 H82"/></g>` +
+      `<circle cx="50" cy="50" r="36" fill="none" stroke="#082f49" stroke-width="3.2"/><ellipse cx="37" cy="31" rx="11" ry="6" transform="rotate(-30 37 31)" fill="#fff" opacity=".35"/>`); },
+    // Очиститель — светлый щит Ордена с солнцем
+    purify: () => { const k = 'mp' + (++seq); let rays = '', sr = '';
+      for (let i = 0; i < 12; i++) rays += `<path d="M50 3 L54.5 17 L45.5 17Z" transform="rotate(${i * 30} 50 50)"/>`;
+      for (let i = 0; i < 8; i++) sr += `<path d="M50 32 V27" transform="rotate(${i * 45} 50 47)"/>`;
+      return msvg(`<defs>${mgrad(k + 's', ['#ffffff', '#e2e8f0', '#94a3b8'], 1, 1)}${mgrad(k + 'f', ['#60a5fa', '#2563eb', '#1e3a8a'])}${mrad(k + 'g', ['#fff7c2', '#fbbf24', '#b45309'])}</defs>` +
+      `<g fill="#fde68a" opacity=".6">${rays}</g>` +
+      `<path d="M50 11 L83 21 V45 C83 68 67 82 50 91 C33 82 17 68 17 45 V21Z" fill="url(#${k}s)" stroke="#1e293b" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="M50 20 L75 28 V45 C75 63 63 74 50 81 C37 74 25 63 25 45 V28Z" fill="url(#${k}f)" stroke="#1e3a8a" stroke-width="1.8" stroke-linejoin="round"/>` +
+      `<g stroke="#fde047" stroke-width="3.4" stroke-linecap="round">${sr}</g><circle cx="50" cy="47" r="11" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.4"/>` +
+      `<ellipse cx="38" cy="31" rx="8" ry="4" transform="rotate(-30 38 31)" fill="#fff" opacity=".35"/>`); },
+    // Меткий глаз — мишень, в яблочко
+    throws: () => { const k = 'mt' + (++seq); return msvg(`<defs>${mrad(k + 'r', ['#fca5a5', '#dc2626', '#7f1d1d'])}${mrad(k + 'w', ['#ffffff', '#f8fafc', '#cbd5e1'])}${mrad(k + 'g', ['#fff7c2', '#facc15', '#a16207'])}</defs>` +
+      `<circle cx="50" cy="52" r="37" fill="url(#${k}r)" stroke="#450a0a" stroke-width="3.2"/><circle cx="50" cy="52" r="27.5" fill="url(#${k}w)" stroke="#450a0a" stroke-width="2"/>` +
+      `<circle cx="50" cy="52" r="18" fill="url(#${k}r)" stroke="#450a0a" stroke-width="2"/><circle cx="50" cy="52" r="8.5" fill="url(#${k}g)" stroke="#450a0a" stroke-width="2.2"/>` +
+      `<path d="${msparkD(64, 38, 10)}" fill="#fff7c2" stroke="#a16207" stroke-width="1.6"/><ellipse cx="36" cy="34" rx="10" ry="5" transform="rotate(-30 36 34)" fill="#fff" opacity=".3"/>`); },
+    // Искатель сияния — переливчатая искра сияющего духа
+    shiny: () => { const k = 'ms' + (++seq); return msvg(`<defs>${mgrad(k + 'a', ['#f0abfc', '#a5f3fc', '#fde68a', '#f9a8d4'], 1, 1)}</defs>` +
+      `<path d="${msparkD(47, 53, 38)}" fill="url(#${k}a)" stroke="#4c1d95" stroke-width="3" stroke-linejoin="round"/><path d="${msparkD(47, 53, 15)}" fill="#fff" opacity=".8"/>` +
+      `<path d="${msparkD(80, 19, 12)}" fill="#a5f3fc" stroke="#4c1d95" stroke-width="2.2" stroke-linejoin="round"/><path d="${msparkD(19, 21, 8)}" fill="#f9a8d4" stroke="#4c1d95" stroke-width="2" stroke-linejoin="round"/>`); },
+    // Верность — листок календаря с огоньком серии
+    streak: () => { const k = 'mk' + (++seq); return msvg(`<defs>${mgrad(k + 'p', ['#ffffff', '#f1f5f9', '#cbd5e1'])}${mgrad(k + 'h', ['#fca5a5', '#dc2626', '#991b1b'])}${mgrad(k + 'f', ['#fef08a', '#f97316', '#dc2626'])}</defs>` +
+      `<rect x="15" y="19" width="70" height="70" rx="10" fill="url(#${k}p)" stroke="#1e293b" stroke-width="3.2"/>` +
+      `<path d="M15 39 V29 A10 10 0 0 1 25 19 H75 A10 10 0 0 1 85 29 V39Z" fill="url(#${k}h)" stroke="#1e293b" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<rect x="28" y="10" width="8" height="18" rx="4" fill="#64748b" stroke="#1e293b" stroke-width="2.6"/><rect x="64" y="10" width="8" height="18" rx="4" fill="#64748b" stroke="#1e293b" stroke-width="2.6"/>` +
+      `<path d="M50 44 C61 54 67 62 65 73 C63 81 57 85 50 85 C42 85 36 80 35 72 C34 64 39 58 44 54 C44 60 46 63 49 64 C48 57 48 50 50 44Z" fill="url(#${k}f)" stroke="#7c2d12" stroke-width="2.6" stroke-linejoin="round"/>` +
+      `<path d="M50 62 C55 67 57 72 55 77 C53 81 47 81 45 77 C43 73 46 68 50 62Z" fill="#fff7c2"/>`); },
+    // Соратник — рукопожатие соратников: синий и красный рукава с золотыми обшлагами; пальцы ближней руки обхватывают ладонь
+    // соратника, сверху лежит его большой палец; над руками — искры общего дела
+    order: () => { const k = 'mo' + (++seq), ln = 'stroke="#6b2a0e" stroke-width="2.4" stroke-linejoin="round"';
+      const fing = (y, h, x2) => `<path d="M50 ${y} H${x2} A${h / 2} ${h / 2} 0 0 1 ${x2} ${y + h} H50Z" fill="url(#${k}l)" ${ln}/>`;
+      return msvg(`<defs>${mgrad(k + 'b', ['#93c5fd', '#2563eb', '#1e3a8a'], 1, 1)}${mgrad(k + 'r', ['#fca5a5', '#dc2626', '#7f1d1d'], 1, 1)}${mgrad(k + 'g', ['#fff7c2', '#fbbf24', '#b45309'])}` +
+        `${mrad(k + 'l', ['#ffeedd', '#f7c393', '#d48a52'])}${mrad(k + 'd', ['#f0c193', '#d68e55', '#9e5524'])}</defs>` +
+      `<path d="${msparkD(50, 12, 8.5)}" fill="url(#${k}g)" stroke="#78350f" stroke-width="1.8" stroke-linejoin="round"/><path d="${msparkD(31, 17, 5)}" fill="#fde68a" stroke="#78350f" stroke-width="1.4"/><path d="${msparkD(69, 17, 5)}" fill="#fde68a" stroke="#78350f" stroke-width="1.4"/>` +
+      // дальняя рука (справа): рукав, обшлаг, ладонь
+      `<g transform="translate(50 54) scale(1.25) translate(-50 -54)"><path d="M86 43.5 L80 40 L74 62 L82.5 65.5Z" fill="url(#${k}r)" stroke="#450a0a" stroke-width="2.4" stroke-linejoin="round"/>` +
+      `<path d="M80 40 L72 38.5 L66 60.5 L74 62Z" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<path d="M72 38.5 C64 36 54 36.5 46 40 L41 46 L45 60 C52 63 60 62.5 66 60.5Z" fill="url(#${k}d)" ${ln}/>` +
+      // ближняя рука (слева): рукав, обшлаг, ладонь и четыре пальца, обхватившие ладонь соратника
+      `<path d="M14 50 L20 46.5 L26 68 L17.5 71.5Z" fill="url(#${k}b)" stroke="#172554" stroke-width="2.4" stroke-linejoin="round"/>` +
+      `<path d="M20 46.5 L28 44.5 L34 66.5 L26 68Z" fill="url(#${k}g)" stroke="#78350f" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<path d="M28 44.5 C36 42 46 42 53 44.5 L57 66.5 C50 69 40 69 34 66.5Z" fill="url(#${k}l)" ${ln}/>` +
+      fing(44.5, 6, 64) + fing(50.5, 6, 66.5) + fing(56.5, 6, 65.5) + fing(62.5, 5.2, 62) +
+      // большой палец соратника — поверх ближней руки
+      `<path d="M70 41 C62 33.5 48 32 40 37 C39 39.2 40.6 41.2 43.2 41 C50 40.5 58 42 64 46.5Z" fill="url(#${k}d)" ${ln}/>` +
+      `<ellipse cx="40" cy="52" rx="4" ry="6" transform="rotate(-12 40 52)" fill="#fff" opacity=".28"/></g>`); },
+    // Землепроходец — сложенная карта землепроходца: земля, река, горы, пройденный путь пунктиром и булавка там, куда дошёл
+    lands: () => { const k = 'ml' + (++seq), map = 'M12 23 L37 16 L63 23 L88 16 V78 L63 85 L37 78 L12 85Z';
+      return msvg(`<defs>${mgrad(k + 'p', ['#fffbeb', '#fde68a', '#d6a85c'], 1, 1)}${mgrad(k + 'l', ['#bbf7d0', '#4ade80', '#15803d'], 1, 1)}${mrad(k + 'r', ['#fca5a5', '#ef4444', '#991b1b'])}<clipPath id="${k}c"><path d="${map}"/></clipPath></defs>` +
+      `<path d="${map}" fill="url(#${k}p)"/><path d="M37 16 L63 23 V85 L37 78Z" fill="#92400e" opacity=".16"/>` +
+      `<g clip-path="url(#${k}c)"><path d="M8 50 C16 40 28 38 34 44 C40 50 50 46 56 38 C62 30 76 30 84 38 C92 46 92 60 84 66 C76 72 66 66 58 70 C50 74 40 80 30 76 C20 72 6 66 8 50Z" fill="url(#${k}l)" stroke="#166534" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<path d="M20 88 C26 76 17 67 25 59 C31 53 29 45 37 39" stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round"/>` +
+      `<path d="M65 63 L71 53 L77 63Z M73 63 L79 55 L85 63Z" fill="#d6d3d1" stroke="#44403c" stroke-width="1.6" stroke-linejoin="round"/>` +
+      `<path d="M20 72 C28 66 34 66 40 60 C46 54 52 54 60 51" stroke="#b91c1c" stroke-width="3" stroke-dasharray="4.5 3.5" fill="none" stroke-linecap="round"/></g>` +
+      `<path d="${map}" fill="none" stroke="#78350f" stroke-width="3" stroke-linejoin="round"/><path d="M37 16 V78 M63 23 V85" stroke="#78350f" stroke-width="1.8" opacity=".7"/>` +
+      `<ellipse cx="60" cy="53" rx="4.5" ry="1.8" fill="#78350f" opacity=".4"/>` +
+      `<path d="M60 52 C55 44 49 39 49 33 A11 11 0 0 1 71 33 C71 39 65 44 60 52Z" fill="url(#${k}r)" stroke="#7f1d1d" stroke-width="2.6" stroke-linejoin="round"/><circle cx="60" cy="33" r="4.2" fill="#fff"/>`); },
+  };
+  // знаки стихий: крупный знак стихии
+  const MEDAL_EL = {
+    fire: () => { const k = 'me' + (++seq); return msvg(`<defs>${mgrad(k + 'a', ['#fef08a', '#fb923c', '#dc2626'])}</defs>` +
+      `<path d="M50 7 C62 23 81 38 81 61 C81 79 67 93 50 93 C33 93 19 79 19 61 C19 45 29 36 34 25 C38 35 40 41 46 45 C44 31 44 19 50 7Z" fill="url(#${k}a)" stroke="#7c2d12" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="M50 45 C60 55 66 64 64 74 C62 82 56 87 50 87 C43 87 37 82 37 74 C37 65 44 61 46 55 C48 59 49 61 50 45Z" fill="#fff7c2"/>`); },
+    water: () => { const k = 'me' + (++seq); return msvg(`<defs>${mrad(k + 'a', ['#e0f2fe', '#38bdf8', '#075985'])}</defs>` +
+      `<path d="M50 7 C50 7 81 44 81 62 A31 31 0 0 1 19 62 C19 44 50 7 50 7Z" fill="url(#${k}a)" stroke="#0c4a6e" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="M33 62 C33 52 40 44 44 40" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".7"/><circle cx="62" cy="74" r="5" fill="#fff" opacity=".45"/>`); },
+    forest: () => { const k = 'me' + (++seq); return msvg(`<defs>${mgrad(k + 'a', ['#d9f99d', '#65a30d', '#365314'], 1, 1)}</defs>` +
+      `<path d="M15 85 C15 41 45 13 87 13 C87 55 59 85 15 85Z" fill="url(#${k}a)" stroke="#1a2e05" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="M19 81 C38 62 58 42 82 18 M41 60 L39 43 M53 48 L54 32 M47 54 L63 55 M35 66 L50 69" stroke="#1a2e05" stroke-width="2.6" stroke-linecap="round" fill="none"/>`); },
+    wind: () => { const k = 'me' + (++seq), sw = d => `<path d="${d}" stroke="#312e81" stroke-width="11" stroke-linecap="round" fill="none"/><path d="${d}" stroke="url(#${k}a)" stroke-width="6.5" stroke-linecap="round" fill="none"/>`;
+      return msvg(`<defs>${mgrad(k + 'a', ['#ffffff', '#c7d2fe', '#818cf8'], 1, 0)}</defs>` + sw('M12 36 H58 A12 12 0 1 0 46 24') + sw('M12 54 H74 A13 13 0 1 1 61 67') + sw('M22 72 H42')); },
+    current: () => { const k = 'me' + (++seq); return msvg(`<defs>${mgrad(k + 'a', ['#fef9c3', '#facc15', '#ca8a04'], 1, 1)}</defs>` +
+      `<path d="M58 5 L21 56 H46 L37 95 L81 39 H55 L67 5Z" fill="url(#${k}a)" stroke="#713f12" stroke-width="3.2" stroke-linejoin="round"/><path d="M58 12 L33 49" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>`); },
+    shadow: () => { const k = 'me' + (++seq); return msvg(`<defs>${mrad(k + 'a', ['#f5d0fe', '#c084fc', '#6b21a8'])}</defs>` +
+      `<path d="M62 9 A41 41 0 1 0 90 66 A33 33 0 1 1 62 9Z" fill="url(#${k}a)" stroke="#2e1065" stroke-width="3.2" stroke-linejoin="round"/>` +
+      `<path d="${mstarD(73, 30, 8)}" fill="#fde68a" stroke="#2e1065" stroke-width="1.8" stroke-linejoin="round"/><path d="${mstarD(84, 50, 5)}" fill="#fde68a" stroke="#2e1065" stroke-width="1.5" stroke-linejoin="round"/>`); },
+  };
+  const MEDAL_ENAMEL = { catcher: '#0f766e', walker: '#3f6212', springs: '#0e7490', raids: '#4c1d95', duels: '#7f1d1d', dex: '#78350f', myths: '#1e3a8a',
+    purify: '#a16207', trade: '#9a3412', throws: '#1e3a8a', hatch: '#6b21a8', evolve: '#86198f', shiny: '#312e81', streak: '#155e75', order: '#3b0764', alatyr: '#1e1b4b', lands: '#0c4a6e',
+    'el:fire': '#7c2d12', 'el:water': '#0c4a6e', 'el:forest': '#14532d', 'el:wind': '#312e81', 'el:current': '#713f12', 'el:shadow': '#2e1065' };
+  // металл ступени: 0 — не получен (железо), 1 — бронза, 2 — серебро, 3 — золото
+  const MEDAL_METAL = [
+    { hi: '#9ca3af', mid: '#4b5563', lo: '#1f2937', line: '#0b0f17', bead: '#6b7280' },
+    { hi: '#fde0bf', mid: '#d97706', lo: '#7c2d12', line: '#3a1405', bead: '#fcd9a8' },
+    { hi: '#ffffff', mid: '#cbd5e1', lo: '#475569', line: '#1e293b', bead: '#f8fafc' },
+    { hi: '#fff7c2', mid: '#fbbf24', lo: '#92400e', line: '#3f1d03', bead: '#fef3c7' },
+  ];
+  // рисунок (свой svg со своим viewBox) — в поле (x, y) размером s
+  const mnest = (svg, x, y, s) => { const vb = (svg.match(/^<svg[^>]*\bviewBox="([^"]*)"/) || [])[1] || '0 0 100 100'; return svg.replace(/^<svg[^>]*>/, `<svg x="${x}" y="${y}" width="${s}" height="${s}" viewBox="${vb}">`); };
   function medal(m, tier) {
-    const col = tier ? MEDAL_TIERS[tier - 1].color : '#4b5563';
-    const inner = m.stat.startsWith('el:') ? `<g transform="translate(34 30) scale(1.35)">${elIcon(m.stat.slice(3), 24).replace(/<svg[^>]*>|<\/svg>/g, '')}</g>`
-      // 4.28: «Хранитель Алатыря» — гранёный камень (буква «Х» читалась как римская десятка)
-      : m.stat === 'alaSeasons' ? `<path d="M50 27 L64 35 L68 50 L60 63 L40 63 L32 50 L36 35Z" fill="#fff" fill-opacity=".35" stroke="#1b1030" stroke-width="3.2" stroke-linejoin="round"/>` +
-        `<path d="M42 40 L58 40 L61 50 L55 57 L45 57 L39 50Z" fill="#1b1030" fill-opacity=".85"/><path d="M50 27 V40 M64 35 L58 40 M36 35 L42 40 M68 50 H61 M32 50 H39" stroke="#1b1030" stroke-width="2" stroke-linecap="round"/>`
-      : `<text x="50" y="60" text-anchor="middle" font-size="30" font-weight="900" fill="#1b1030" font-family="Rubik, sans-serif">${m.name[0]}</text>`;
-    return `<svg class="art" viewBox="0 0 100 100"><path d="M32 60 L22 96 L38 88 L46 100 L50 64Z M68 60 L78 96 L62 88 L54 100 L50 64Z" fill="${tier ? '#7c3aed' : '#374151'}"/>` +
-      `<circle cx="50" cy="46" r="36" fill="${col}" stroke="${shade(col, -0.4)}" stroke-width="4"/><circle cx="50" cy="46" r="27" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2" stroke-dasharray="4 4"/>` +
-      `<g opacity="${tier ? 1 : 0.5}">${inner}</g></svg>`;
+    tier = Math.max(0, Math.min(3, tier | 0));
+    const M = MEDAL_METAL[tier], k = 'md' + (++seq), el = m.stat.startsWith('el:') ? m.stat.slice(3) : null;
+    const enamel = MEDAL_ENAMEL[el ? m.stat : m.id] || '#312e81';
+    const art = el && MEDAL_EL[el] ? MEDAL_EL[el]() : MEDAL_ART[m.id] ? MEDAL_ART[m.id]()
+      : msvg(`<text x="50" y="66" text-anchor="middle" font-size="48" font-weight="900" fill="#fff" font-family="Rubik, sans-serif">${m.name[0]}</text>`);
+    let s = `<svg class="art" viewBox="0 0 100 100"><defs>` +
+      mgrad(k + 'r', tier ? ['#a78bfa', '#6d28d9', '#3b0764'] : ['#64748b', '#334155', '#0f172a'], 1, 1) +
+      mgrad(k + 'm', [M.hi, M.mid, M.lo], 1, 1) + mgrad(k + 'n', [M.lo, M.mid, M.hi], 1, 1) +
+      mrad(k + 'e', [shade(enamel, 0.3), enamel, shade(enamel, -0.55)], 0.42, 0.36, 0.72) +
+      mgrad(k + 's', ['#fef9c3', '#fbbf24', '#b45309']) +
+      (tier ? '' : `<filter id="${k}g"><feColorMatrix type="saturate" values=".08"/></filter>`) + `</defs>`;
+    // медальон — крупный (обод r 41, эмаль r 33), рисунок в нём — прежнего размера (48), центр (50, 47); лучи золота и камень
+    // чуть выходят за рамку 100×100 — у .art overflow: visible
+    const cy = 47, ring = (r, n, a0, f) => { for (let i = 0; i < n; i++) { const a = (i * 360 / n + a0) * Math.PI / 180; f((50 + r * Math.sin(a)).toFixed(2), (cy - r * Math.cos(a)).toFixed(2)); } };
+    // лента Ордена: два хвоста с полосой цвета металла
+    const tail = `<path d="M38.5 70 L30 99 L37 93.5 L43 99.5 L50.5 74Z" fill="url(#${k}r)" stroke="#1e1033" stroke-width="2" stroke-linejoin="round"/><path d="M41 73.5 L34 96" stroke="${M.mid}" stroke-width="2.6" stroke-linecap="round" opacity=".95"/>`;
+    s += tail + `<g transform="translate(100 0) scale(-1 1)">${tail}</g>`;
+    // серебро — бусины вокруг обода, золото — лучи
+    if (tier === 2) ring(44, 12, 15, (x, y) => { s += `<circle cx="${x}" cy="${y}" r="2.8" fill="url(#${k}m)" stroke="${M.line}" stroke-width="1.2"/>`; });
+    if (tier === 3) for (let i = 0; i < 16; i++) s += `<path d="M50 -0.5 L54.3 10 L45.7 10Z" transform="rotate(${i * 22.5} 50 ${cy})" fill="url(#${k}m)" stroke="${M.line}" stroke-width="1.3" stroke-linejoin="round"/>`;
+    // обод с бусинами
+    s += `<circle cx="50" cy="${cy}" r="41" fill="url(#${k}m)" stroke="${M.line}" stroke-width="2.6"/><circle cx="50" cy="${cy}" r="35.4" fill="url(#${k}n)" stroke="${M.line}" stroke-width="1.6"/>`;
+    ring(38.2, 20, 0, (x, y) => { s += `<circle cx="${x}" cy="${y}" r="1.3" fill="${M.bead}" opacity="${tier ? 0.95 : 0.55}"/>`; });
+    // эмаль и рисунок
+    s += `<g${tier ? '' : ` filter="url(#${k}g)"`}><circle cx="50" cy="${cy}" r="33.2" fill="url(#${k}e)"/><circle cx="50" cy="${cy}" r="32" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2.6"/>` +
+      `<g${tier ? '' : ' opacity=".5"'}>${mnest(art, 26, cy - 24, 48)}</g></g>` +
+      `<path d="M22 39.5 A29 29 0 0 1 64.5 21.9" stroke="#fff" stroke-opacity=".22" stroke-width="3.6" fill="none" stroke-linecap="round"/>`;
+    // золото — камень наверху
+    if (tier === 3) s += `<path d="M50 -1 L56 5.5 L50 12 L44 5.5Z" fill="#c084fc" stroke="${M.line}" stroke-width="1.5" stroke-linejoin="round"/><path d="M50 1.5 L53 5.5 L50 8.5" fill="#f5d0fe" opacity=".85"/>`;
+    // звёзды ступени — на ободе снизу
+    (tier === 1 ? [[50, 85.2]] : tier === 2 ? [[44, 84.8], [56, 84.8]] : tier === 3 ? [[38, 82.6], [50, 85.6], [62, 82.6]] : [])
+      .forEach(([x, y]) => { s += `<path d="${mstarD(x, y, 5.2)}" fill="url(#${k}s)" stroke="${M.line === '#0b0f17' ? '#111' : '#3f1d03'}" stroke-width="1.4" stroke-linejoin="round"/>`; });
+    return s + '</svg>';
   }
 
   /* ---------------- КАПИЩЕ И ХРАНИТЕЛЬ ---------------- */
@@ -1504,5 +1708,38 @@ const Art = (() => {
     // клик после вращения не должен открывать/выбирать (кнопки со стикером внутри)
     document.addEventListener('click', e => { const st = e.target.closest && e.target.closest('.sp-sticker.spin'); if (st) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
-  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark, sp), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
+  /* 5.1.24: большой Сундук дня («Задания дня»): дерево, золотые полосы и замок; открытый — крышка откинута назад,
+     изнутри свет, лучи и искры */
+  let chestN = 0;
+  function chest(open) {
+    const k = 'ch' + (++chestN), u = id => `url(#${k}${id})`, OL = '#3b1a0a', GL = '#7c4a03';
+    const spark = (x, y, r) => `<path d="M${x} ${y - r} L${x + r * 0.28} ${y - r * 0.28} L${x + r} ${y} L${x + r * 0.28} ${y + r * 0.28} L${x} ${y + r} L${x - r * 0.28} ${y + r * 0.28} L${x - r} ${y} L${x - r * 0.28} ${y - r * 0.28}Z" fill="#fff7d6"/>`;
+    const body = `<path d="M14 54 H106 V86 Q106 92 100 92 H20 Q14 92 14 86 Z" fill="${u('w')}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>` +
+      `<path d="M16 66 H104 M16 79 H104" stroke="#4a2410" stroke-width="1.6" opacity=".55"/>` +
+      `<path d="M24 54 H33 V92 H24Z M87 54 H96 V92 H87Z" fill="${u('g')}" stroke="${GL}" stroke-width="2" stroke-linejoin="round"/>` +
+      `<rect x="11" y="51" width="98" height="7" rx="3.5" fill="${u('g')}" stroke="${GL}" stroke-width="2"/>` +
+      `<path d="M51 55 H69 V69 Q60 76 51 69 Z" fill="${u('g')}" stroke="${GL}" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<circle cx="60" cy="61" r="2.7" fill="${OL}"/><path d="M60 62 V67" stroke="${OL}" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<path d="M18 88 Q16 72 18 60" stroke="#fff" stroke-width="2" opacity=".18" fill="none" stroke-linecap="round"/>`;
+    const lid = open
+      ? `<path d="M16 52 L21 14 Q60 2 99 14 L104 52 Z" fill="#6b3a1c" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M23 49 L27 19 Q60 9 93 19 L97 49 Z" fill="#2a1206" opacity=".55"/>` +
+        `<path d="M25.5 51 L30 14.6 L38.6 12.2 L34.5 51Z M85.5 51 L81.4 12.2 L90 14.6 L94.5 51Z" fill="${u('g')}" stroke="${GL}" stroke-width="2" stroke-linejoin="round"/>` +
+        `<path d="M18 54 Q60 40 102 54 Z" fill="#fde68a"/>` +
+        `<path d="M40 50 L28 12 M60 47 L60 0 M80 50 L92 12" stroke="#fef3c7" stroke-width="5" opacity=".45" stroke-linecap="round"/>` +
+        spark(44, 30, 5) + spark(76, 24, 4) + spark(60, 16, 3.4) + spark(90, 40, 3)
+      : `<path d="M12 54 V41 Q12 22 60 20 Q108 22 108 41 V54 Z" fill="${u('l')}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M15 45 Q60 37 105 45" stroke="#4a2410" stroke-width="1.6" fill="none" opacity=".5"/>` +
+        `<path d="M24 54 V26.6 Q28.4 24.3 33 23.2 V54 Z M87 23.2 Q91.6 24.3 96 26.6 V54 H87 Z" fill="${u('g')}" stroke="${GL}" stroke-width="2" stroke-linejoin="round"/>` +
+        `<path d="M19 33 Q36 25 58 23.6" stroke="#fff" stroke-width="2.6" opacity=".35" fill="none" stroke-linecap="round"/>`;
+    return `<svg viewBox="0 0 120 104" class="art"><defs>` +
+      `<linearGradient id="${k}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8693a"/><stop offset=".55" stop-color="#8a4a24"/><stop offset="1" stop-color="#5c2e14"/></linearGradient>` +
+      `<linearGradient id="${k}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d08049"/><stop offset="1" stop-color="#8a4a24"/></linearGradient>` +
+      `<linearGradient id="${k}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b3"/><stop offset=".5" stop-color="#f5b041"/><stop offset="1" stop-color="#b7791f"/></linearGradient>` +
+      `<radialGradient id="${k}o" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fde68a" stop-opacity=".85"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient></defs>` +
+      `<ellipse cx="60" cy="96" rx="46" ry="6" fill="#000" opacity=".3"/>` +
+      (open ? `<ellipse cx="60" cy="44" rx="56" ry="40" fill="${u('o')}"/>` : '') + lid + body + `</svg>`;
+  }
+
+  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark, sp), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin, chest };
 })();

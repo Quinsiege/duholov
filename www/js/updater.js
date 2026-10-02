@@ -118,6 +118,9 @@ const Updater = {
     });
   },
 
+  // 5.1.24: какие кэши кода удалить перед перезагрузкой — всех версий, кроме новой: кэш новой версии в этот миг заполняет
+  // новый service worker (reg.update()), и его удаление заставляло качать всё второй раз. Кэши звуков и плиток — не кода, их не трогаем
+  oldCaches(keys, version) { return keys.filter(k => k.startsWith('duholov-v') && !k.startsWith(`duholov-v${version}-`)); },
   async apply(version) {
     try { sessionStorage.setItem(this.TRIED, JSON.stringify({ v: version, t: Date.now() })); } catch (e) {}
     try { await Promise.race([Game.flushMove(), U.wait(3000)]); } catch (e) {} // прогресс и так на сервере
@@ -128,7 +131,7 @@ const Updater = {
       }
       if (window.caches) {
         const keys = await caches.keys();
-        await Promise.all(keys.filter(k => k.startsWith('duholov-v')).map(k => caches.delete(k)));
+        await Promise.all(this.oldCaches(keys, version).map(k => caches.delete(k)));
       }
     } catch (e) {}
     // новый адрес страницы: CDN не отдаст закэшированную старую index.html (метка убирается при загрузке, см. main.js)
