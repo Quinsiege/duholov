@@ -131,8 +131,15 @@ const M3D = {
       for (let j = 0; j < 3; j++) onr[i * 4 + j] = Math.round(a[j] / l * 127);
     }
     for (const p of head.prims) p.blend = head.mats[p.m].a < 0.999; // цвета материалов в файле — уже линейные (как в Blender)
-    // верх и низ модели на экране (без поворота карты), метры: над верхом встаёт хранитель Разлома, под низом — звёзды
-    const e = this.ELEV * Math.PI / 180, sn = Math.sin(e), cs = Math.cos(e), q = head.q;
+    Object.assign(head, this.span(head, pos, this.ELEV));
+    head.moving = head.groups.some(g => g.t !== 'static');
+    head.walk = head.groups.some(g => g.t === 'body' || g.t === 'leg'); // у модели есть шарниры походки (Ловчий)
+    return { head, pos, nrm, col, idx, onr, gen: -1 };
+  },
+  // верх и низ модели на экране под камерой с наклоном e° (без поворота карты), метры: над верхом встаёт хранитель Разлома,
+  // под низом — звёзды
+  span(head, pos, e) {
+    const a = e * Math.PI / 180, sn = Math.sin(a), cs = Math.cos(a), q = head.q;
     let top = 0, low = 0;
     for (const p of head.prims) {
       const o = p.g ? head.groups[p.g].o : [0, 0, 0];
@@ -141,10 +148,14 @@ const M3D = {
         if (yv > top) top = yv; else if (yv < low) low = yv;
       }
     }
-    head.top = top; head.low = low;
-    head.moving = head.groups.some(g => g.t !== 'static');
-    head.walk = head.groups.some(g => g.t === 'body' || g.t === 'leg'); // у модели есть шарниры походки (Ловчий)
-    return { head, pos, nrm, col, idx, onr, gen: -1 };
+    return { top, low };
+  },
+  // то же для наклона камеры конкретного значка — по градусам, один раз на каждый
+  extent(m, e) {
+    const c = m.ext || (m.ext = new Map()), k = Math.round(e);
+    let r = c.get(k);
+    if (!r) c.set(k, r = this.span(m.head, m.pos, k));
+    return r;
   },
   need(kind) {
     const m = this.models[kind];
@@ -180,7 +191,7 @@ const M3D = {
     if (c._m3d) return;
     const kind = c.dataset.m3d, type = kind.split('_')[0];
     const v = { c, ctx: c.getContext('2d'), kind, pxm: this.PXM[type] || 20, ax: +c.dataset.ax || 0, ay: +c.dataset.ay || 0,
-      hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me' };
+      hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me', e: this.ELEV, az: 0 };
     if (!v.ctx) return;
     c._m3d = v;
     this.views.add(v);
@@ -188,28 +199,53 @@ const M3D = {
     if (v.player) { this.applyMe(v); if (v.kind !== kind) return; } // наряд другого облика — грузит swap
     this.need(kind).then(ok => {
       if (!ok || !c.isConnected || v.kind !== kind) return;
+      this.aimView(v);
       this.layout(v);
       v.ready = true;
       if (this.draw(v)) { c.classList.add('on'); if (c.parentElement) c.parentElement.classList.add('m3d'); }
       this.kick();
     });
   },
-  // размер холста — чтобы модель помещалась при любом повороте карты: ширина — по самой дальней от центра точке
+  // размер холста — чтобы модель помещалась при любом повороте карты и любом наклоне камеры: ширина — по самой дальней
+  // от центра точке, высота — по самому высокому виду (5.1.30: у наклонённой карты наклон камеры свой у каждого места и меняется,
+  // пока карта движется, — холст при этом не пересоздаётся, сдвигается только сама модель в нём)
   layout(v) {
-    const h0 = this.models[v.kind].head, e = this.ELEV * Math.PI / 180, S = v.pxm, sn = Math.sin(e), cs = Math.cos(e);
+    const h0 = this.models[v.kind].head, S = v.pxm;
     const pad = this.OUTLINE_PX / S + (h0.walk ? 0.12 : 0.02), r = h0.r + pad, h = h0.h + pad; // Ловчему — запас на шаг и наклон
-    const w = Math.ceil(2 * r * S) + 2, hh = Math.ceil((h * cs + 2 * r * sn) * S) + 2, oy = hh - 1 - r * sn * S;
+    const w = Math.ceil(2 * r * S) + 2, hh = Math.ceil(Math.hypot(h, 2 * r) * S) + 2;
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    v.pw = Math.round(w * dpr); v.ph = Math.round(hh * dpr);
+    Object.assign(v, { pw: Math.round(w * dpr), ph: Math.round(hh * dpr), w, hh, r });
     Object.assign(v.c, { width: v.pw, height: v.ph });
-    Object.assign(v.c.style, { width: w + 'px', height: hh + 'px', left: (v.ax - w / 2).toFixed(1) + 'px', top: (v.ay - oy).toFixed(1) + 'px' });
+    Object.assign(v.c.style, { width: w + 'px', height: hh + 'px', left: (v.ax - w / 2).toFixed(1) + 'px' });
+    v.ol = this.OUTLINE_PX / S / 0.03; // множитель толщины обводки модели (0,03 м → OUTLINE_PX на экране)
+    this.place(v);
+  },
+  // камера под наклоном v.e°: где в холсте основание модели (точка привязки значка), проекция
+  place(v) {
+    const m = this.models[v.kind], S = v.pxm, a = v.e * Math.PI / 180, sn = Math.sin(a), cs = Math.cos(a);
+    const w = v.w, hh = v.hh, oy = hh - 1 - v.r * sn * S;
+    v.c.style.top = (v.ay - oy).toFixed(1) + 'px';
     // экран: x — вправо, y — вверх (модель наклонена к камере), z — глубина; ортографическая проекция
     const sx = 2 * S / w, sy = 2 * S / hh, y0 = 1 - 2 * oy / hh, D = 12;
     v.vp = new Float32Array([sx, 0, 0, 0, 0, sy * sn, cs / D, 0, 0, sy * cs, -sn / D, 0, 0, y0, 0, 1]);
-    v.ol = this.OUTLINE_PX / S / 0.03; // множитель толщины обводки модели (0,03 м → OUTLINE_PX на экране)
     // значку — где у модели верх и низ (CSS-пиксели от верха значка): туда встают хранитель, флаг клана и звёзды (style.css)
-    const box = v.c.parentElement;
-    if (box) { box.style.setProperty('--m3d-top', (v.ay - h0.top * S).toFixed(1) + 'px'); box.style.setProperty('--m3d-bot', (v.ay - h0.low * S).toFixed(1) + 'px'); }
+    const ext = this.extent(m, v.e), box = v.c.parentElement;
+    if (box) { box.style.setProperty('--m3d-top', (v.ay - ext.top * S).toFixed(1) + 'px'); box.style.setProperty('--m3d-bot', (v.ay - ext.low * S).toFixed(1) + 'px'); }
+  },
+  /* 5.1.30: откуда игрок смотрит на место. Наклонённая карта видна в перспективе (MapView.camOf): место у нижнего края экрана —
+     почти сверху, у горизонта — сбоку, левее и правее середины — чуть сбоку; модель рисуется с той же стороны — стоит на земле
+     так же, как дома вокруг; и сам Ловчий. Плоская карта — как раньше, под ELEV°. Пересчёт — при каждом сдвиге карты (aim) */
+  aim() {
+    if (!this.on) return;
+    for (const v of this.views) if (v.ready && this.aimView(v) && v.vis) this.draw(v);
+  },
+  aimView(v) {
+    const c = typeof MapView !== 'undefined' && MapView.camOf ? MapView.camOf(v.c) : null;
+    const e = c ? c.e : this.ELEV, az = c ? c.az : 0;
+    if (Math.abs(e - v.e) < 0.5 && Math.abs(az - v.az) < 0.009) return false; // меньше полуградуса — на экране не видно
+    v.e = e; v.az = az;
+    if (v.ready) this.place(v);
+    return true;
   },
 
   /* ---------- Ловчий ---------- */
@@ -327,7 +363,7 @@ const M3D = {
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
     // поворот вместе с картой (и у Ловчего — туда, куда он смотрит)
     const h0 = m.head, w = h0.walk ? this.step(v, now) : null, G = [];
-    const a = -this.rot * Math.PI / 180 + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
+    const a = -this.rot * Math.PI / 180 + (v.az || 0) + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
     const Y = new Float32Array([ca, sa, 0, 0, -sa, ca, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     h0.groups.forEach((g, i) => G.push(g.t === 'static' ? null : w && (g.t === 'body' || g.t === 'leg' || g.t === 'arm') ? this.walkMat(g, h0.groups, G, w) : this.groupMat(g, i, t)));
     const Ms = G.map(M => M ? this.mul(Y, M) : Y);
@@ -352,7 +388,7 @@ const M3D = {
     gl.useProgram(this.P.p);
     gl.cullFace(gl.BACK);
     gl.uniformMatrix4fv(u.uVP, false, v.vp); gl.uniform3f(u.uQ0, q[0], q[1], q[2]); gl.uniform3f(u.uQs, q[3], q[4], q[5]);
-    const L = this.lights, e = this.ELEV * Math.PI / 180;
+    const L = this.lights, e = v.e * Math.PI / 180;
     gl.uniform3fv(u.uL0, L[0].d); gl.uniform3fv(u.uL1, L[1].d); gl.uniform3fv(u.uL2, L[2].d);
     gl.uniform3fv(u.uC0, L[0].c); gl.uniform3fv(u.uC1, L[1].c); gl.uniform3fv(u.uC2, L[2].c);
     gl.uniform3fv(u.uAmb, this.amb); gl.uniform3f(u.uV, 0, -Math.cos(e), Math.sin(e));
@@ -387,6 +423,7 @@ const M3D = {
   setRot(r) {
     if (!this.on || r === this.rot) return;
     this.rot = r;
+    for (const v of this.views) if (v.ready) this.aimView(v); // места левее и правее — видны с другой стороны
     this.redraw();
   },
   redraw() {

@@ -4466,6 +4466,87 @@
       ok(!MapView.icon({ type: 'rift', tier: 1, myth: 'greek', boss: Object.keys(SP)[0] }).options.html.includes('mk3d'), 'без WebGL — без холста');
     } finally { M3D.on = keep; if (keepL) window.L = keepL; else delete window.L; }
   });
+  test('5.1.30: наклонённая карта — 3D-место видно с той стороны, откуда на него смотрит игрок; значок стоит на своей точке земли', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot }, keepL = window.L;
+    try {
+      window.L = { point: (x, y) => ({ x, y }) }; // в тестах Leaflet нет
+      // карта-заглушка: точка слоя = точка контейнера; контейнер 400×600 — его середина и есть точка зрения
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }), getZoom: () => 17.5 };
+      MapView.tilt = MapView.TILT; MapView.rot = 0;
+      const icon = (x, y) => { const d = document.createElement('div'); d.className = 'leaflet-marker-icon'; d._leaflet_pos = { x, y }; d.appendChild(document.createElement('canvas')); return d; };
+      const cam = (x, y) => MapView.camOf(icon(x, y).firstChild);
+      const mid = cam(200, 300);
+      near(mid.e, 90 - MapView.TILT, 1e-6, 'в точке зрения — сверху, под углом наклона карты:');
+      near(mid.az, 0, 1e-9, 'посередине — прямо:');
+      const far = cam(200, 40), close = cam(200, 560);
+      ok(far.e < mid.e && mid.e < close.e && far.e > 20, `у горизонта — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
+      ok(cam(360, 300).az > 0.05 && cam(40, 300).az < -0.05, 'правее середины — виден чуть слева, левее — чуть справа');
+      MapView.rot = 90; // повёрнутая карта: правее на экране — это «ниже» на её плоскости
+      ok(cam(360, 300).e > mid.e, 'с поворотом карты — тоже по месту на экране');
+      MapView.rot = 0;
+      // значок выдвинут к игроку по лучу взгляда: на экране точка опоры — ровно там, где точка земли
+      const ic = icon(320, 120), mk = { _icon: ic, _map: MapView.map, options: {} };
+      ic.style.marginLeft = '-27px'; ic.style.marginTop = '-72px';
+      MapView.upright(mk);
+      const m = ic.style.transform.match(/translate3d\(([-\d.]+)px, ([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/);
+      ok(m, 'выдвинут и уменьшен: ' + ic.style.transform);
+      const q = MapView.screen3d({ x: 320, y: 120 }), d = MapView.PD, z = +m[3];
+      near((q.x + +m[1]) * d / (d - q.z - z), q.x * d / (d - q.z), 0.02, 'по горизонтали — на своей точке:');
+      near((q.y + +m[2]) * d / (d - q.z - z), q.y * d / (d - q.z), 0.02, 'по вертикали — на своей точке:');
+      near(+m[4] * d / (d - q.z - z), d / (d - q.z), 1e-3, 'и того же размера, что на земле:');
+      // место в доме — на его крыше: сдвинуто на север на высоту крыши (как крыши домов карты)
+      mk._roofH = 21; MapView.upright(mk);
+      const lift = typeof NavMap !== 'undefined' ? NavMap.lift(21, 17.5) : 0;
+      const at = ic.style.transform.match(/^translate3d\(([-\d.]+)px, ([-\d.]+)px/);
+      ok(at && +at[1] === 320 && Math.abs(+at[2] - (120 - lift)) < 0.01, 'на крыше: ' + ic.style.transform.slice(0, 40));
+      ok(!lift || cam(320, 120 - 0).e !== MapView.camOf(ic.firstChild).e, 'камера — на крышу, а не к земле под ней');
+      MapView.tilt = 0;
+      eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
+  });
+  test('5.1.30: камера одним пальцем — наклон в своих пределах, слой карты пересчитывается только без запаса; объём выключен — только облёт', () => {
+    const keep = { tilt: MapView.tilt, _tiltFor: MapView._tiltFor, layout: MapView.layout, reAim: MapView.reAim }, box = document.createElement('div');
+    let lay = 0, aim = 0;
+    try {
+      box.id = 'map'; document.body.appendChild(box);
+      MapView.layout = () => { lay++; MapView._tiltFor = Math.min(MapView.ORBIT.max, MapView.tilt + 6); };
+      MapView.reAim = () => { aim++; };
+      MapView.tilt = 32; MapView._tiltFor = 38;
+      MapView.setPitch(35);
+      eq(MapView.tilt, 35); eq(lay, 0, 'в запасе слоя — без пересчёта слоя:'); eq(box.style.getPropertyValue('--tilt'), '35deg'); ok(aim > 0, 'значки и модели — под новым углом');
+      MapView.setPitch(90);
+      eq(MapView.tilt, MapView.ORBIT.max, 'не выше предела:'); eq(lay, 1, 'вышел из запаса — слой шире:');
+      MapView.setPitch(-10);
+      eq(MapView.tilt, MapView.ORBIT.min, 'не ниже предела:');
+      MapView.tilt = 0;
+      MapView.setPitch(40);
+      eq(MapView.tilt, 0, 'объём выключен в настройках — наклон пальцем не включается:');
+    } finally { Object.assign(MapView, keep); box.remove(); }
+  });
+  atest('5.1.30: крыши — высота дома, в котором стоит место (по плитке карты), без хранения домов', async () => {
+    const keepV = Hazard._view, keepR = MapView.refresh;
+    try {
+      const lat = 55.7547, lng = 37.6215, { px, py } = Hazard.tileOf(lat, lng);
+      const sq = (x, y, r) => [[{ x: x - r, y: y - r }, { x: x + r, y: y - r }, { x: x + r, y: y + r }, { x: x - r, y: y + r }]];
+      let asked = 0;
+      Hazard._view = { tileCache: { get: async () => { asked++; return new Map([['buildings', [
+        { geomType: 3, props: { height: 21 }, geom: sq(px, py, 6) },     // дом над точкой
+        { geomType: 3, props: { height: 40 }, geom: sq(px + 40, py, 6) }, // соседний — выше, но не тот
+      ]]]); } } };
+      let redraw = 0;
+      MapView.refresh = () => { redraw++; };
+      Roofs.at.clear();
+      eq(Roofs.height(lat, lng), null, 'плитка читается — пока не знаем');
+      await new Promise(r => setTimeout(r, 0));
+      eq(Roofs.height(lat, lng), 21, 'на крыше своего дома');
+      eq(asked, 1, 'плитку спросили один раз');
+      ok(redraw > 0, 'значки перерисованы с крышей');
+      Hazard._view = { tileCache: { get: async () => new Map([['buildings', []]]) } };
+      eq(Roofs.height(lat + 0.01, lng), null);
+      await new Promise(r => setTimeout(r, 0));
+      eq(Roofs.height(lat + 0.01, lng), 0, 'не в доме — на земле');
+    } finally { Hazard._view = keepV; MapView.refresh = keepR; Roofs.at.clear(); }
+  });
   test('5.1.24: обновление — удаляются кэши кода прошлых версий; кэш новой (его заполняет новый service worker), звуки и плитки остаются', () => {
     eq(Updater.oldCaches(['duholov-v5.1.23-abc', 'duholov-v5.1.24-def', 'duholov-tiles', 'duholov-sfx', 'duholov-v5.1.2-x'], '5.1.24').join(), 'duholov-v5.1.23-abc,duholov-v5.1.2-x');
     eq(Updater.oldCaches([], '5.1.24').length, 0);

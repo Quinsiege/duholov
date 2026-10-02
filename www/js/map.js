@@ -80,6 +80,34 @@ const Hazard = {
   },
 };
 
+/* 5.1.30: крыши — высота дома (м), в котором стоит место: модель места встаёт на его крышу (MapView.upright). Дома — из тех же
+   плиток z15, что у Hazard; хранится только ответ на точку (сами дома плитки — у кэша Protomaps). 0 — не в доме (или карты домов
+   нет), null — плитка ещё читается (карта перерисует значки, когда прочтёт) */
+const Roofs = {
+  at: new Map(), // 'lat,lng' → высота
+  height(lat, lng) {
+    const key = lat.toFixed(6) + ',' + lng.toFixed(6);
+    if (this.at.has(key)) return this.at.get(key);
+    const v = Hazard.view();
+    if (!v) return 0;
+    if (this.at.size > 2000) this.at.clear();
+    this.at.set(key, null);
+    const { tx, ty, px, py } = Hazard.tileOf(lat, lng);
+    v.tileCache.get({ z: Hazard.Z, x: tx, y: ty }).then(data => {
+      let h = 0;
+      for (const f of data.get('buildings') || []) {
+        if (f.geomType !== 3 || f.props.is_underground) continue;
+        let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+        for (const r of f.geom) for (const p of r) { if (p.x < a) a = p.x; if (p.y < b) b = p.y; if (p.x > c) c = p.x; if (p.y > d) d = p.y; }
+        if (px >= a && px <= c && py >= b && py <= d && Hazard.inside(f.geom, px, py)) h = Math.max(h, typeof NavMap !== 'undefined' ? NavMap.height(f) : 8);
+      }
+      this.at.set(key, h);
+      if (h) MapView.refresh();
+    }).catch(() => this.at.set(key, 0));
+    return null;
+  },
+};
+
 const MapView = {
   map: null, pos: null, follow: true, heading: 0, markers: new Map(), nearby: [], tiles: null, night: null,
 
@@ -102,6 +130,7 @@ const MapView = {
       icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
     this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
     this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); });
+    this.map.on('move zoomend viewreset resize', () => this.reAim());
     this.fitRange();
     this.orderPanes();
     this.player = L.marker([this.pos.lat, this.pos.lng], {
@@ -117,6 +146,7 @@ const MapView = {
     this.map.on('dragstart', () => { this.follow = false; U.$('#recenterBtn').classList.add('show'); });
     U.$('#recenterBtn').onclick = () => this.recenter();
     this.initRotate();
+    this.initOrbit();
 
     Walk.init(); // 5.1: мини-джойстик вместо GPS
     this.refresh();
@@ -300,7 +330,7 @@ const MapView = {
   updateBuddy() {}, // 4.23.2: спутник на карте не показывается (ui-spirits.js зовёт после выбора спутника)
 
   /* ---------------- 4.7: ПОВОРОТ КАРТЫ И КОМПАС ---------------- */
-  // Карту крутят двумя пальцами; компас слева внизу показывает север, касание — вернуть север вверх.
+  // Карту крутят двумя пальцами (5.1.30: и одним — initOrbit); компас слева внизу показывает север, касание — вернуть север вверх.
   // Leaflet поворот не умеет: пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют),
   // повёрнутый CSS; значки на ней стоят прямо, а сдвиг пальца пересчитывается в оси повёрнутой карты.
   rot: 0,
@@ -357,9 +387,11 @@ const MapView = {
     this._sq = on;
     this._py = this.tilt ? Math.round(H * .6) : H / 2;
     if (on) {
-      const t = this.tilt * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD, py = this._py;
-      const top = this.tilt ? py * d / (d * cs - py * sn) : py, bot = this.tilt ? (H - py) * d / (d * cs + (H - py) * sn) : H - py;
-      const half = Math.max(top, bot), xw = this.tilt ? (W / 2) * (d + top * sn) / d : W / 2;
+      // 5.1.30: наклон меняют пальцем — слой карты — с запасом в 6° (до ORBIT.max): не пересчитывать его на каждом кадре жеста
+      const tf = this._tiltFor = this.tilt ? Math.min(this.ORBIT.max, this.tilt + 6) : 0;
+      const t = tf * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD, py = this._py;
+      const top = tf ? py * d / (d * cs - py * sn) : py, bot = tf ? (H - py) * d / (d * cs + (H - py) * sn) : H - py;
+      const half = Math.max(top, bot), xw = tf ? (W / 2) * (d + top * sn) / d : W / 2;
       const mw = this.rot ? 2 * Math.hypot(xw, half) : 2 * xw, mh = this.rot ? mw : 2 * half;
       box.style.setProperty('--mw', Math.ceil(mw) + 4 + 'px');
       box.style.setProperty('--mh', Math.ceil(mh) + 4 + 'px');
@@ -372,6 +404,7 @@ const MapView = {
     document.body.classList.toggle('tilt', !!this.tilt);
     this.map.invalidateSize({ animate: false });
     this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
+    this.reAim(); // 5.1.30: наклон включили или выключили — 3D-модели мест под новым углом
     // подпись OpenStreetMap остаётся видна: у повёрнутой карты — копия в углу экрана
     const at = U.$('#mapAttr');
     if (at) { at.classList.toggle('hidden', !on); if (on) at.innerHTML = this.map.attributionControl.getContainer().innerHTML; }
@@ -381,6 +414,47 @@ const MapView = {
     this.layout();
     this.zoomMode();
   },
+  /* 5.1.30: камера одним пальцем (и мышью) — по всем осям, как в Pokémon GO: влево-вправо — облёт вокруг Ловчего (земля под
+     пальцем идёт за ним: над Ловчим и под ним — в разные стороны), вверх-вниз — наклон (ORBIT.min…max°; у плоской карты, если
+     объём выключен в настройках, — только облёт). Карта всегда за Ловчим: ходят джойстиком и Атласом, сдвигать её пальцем не нужно.
+     Два пальца — масштаб и поворот, как раньше; лёгкое касание — нажатие на значок. */
+  ORBIT: { yaw: 0.35, pitch: 0.18, min: 14, max: 50 }, // градусов на CSS-пиксель пальца; пределы наклона
+  initOrbit() {
+    const box = U.$('#map');
+    if (this.map.dragging) this.map.dragging.disable();
+    let g = null, ate = 0;
+    box.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (g) { g.multi = true; return; } // второй палец — жест двумя пальцами (масштаб, поворот)
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, rot: this.rot, tilt: this.tilt, on: false, multi: false, sg: e.clientY < (this._py || innerHeight / 2) ? 1 : -1 };
+    });
+    addEventListener('pointermove', e => {
+      if (!g || e.pointerId !== g.id || g.multi) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.on) { if (Math.hypot(dx, dy) < 8) return; g.on = true; }
+      this.setRot(g.rot + g.sg * dx * this.ORBIT.yaw);
+      if (this.tilt) this.setPitch(g.tilt - dy * this.ORBIT.pitch);
+    });
+    const end = e => {
+      if (!g || e.pointerId !== g.id) return;
+      if (g.on && !g.multi) { ate = performance.now(); if (Math.abs(this.rot) < 4) this.northUp(); this.fitPitch(); }
+      g = null;
+    };
+    addEventListener('pointerup', end);
+    addEventListener('pointercancel', end);
+    // палец вёл камеру — значок под ним не нажимается
+    box.addEventListener('click', e => { if (performance.now() - ate < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
+  },
+  setPitch(t) {
+    t = Math.max(this.ORBIT.min, Math.min(this.ORBIT.max, t));
+    if (!this.tilt || Math.abs(t - this.tilt) < 0.05) return;
+    this.tilt = t;
+    if (t > (this._tiltFor || 0)) return this.layout(); // слою карты мало запаса для такого наклона — шире
+    U.$('#map').style.setProperty('--tilt', t + 'deg');
+    this.reAim();
+  },
+  // жест кончился, а наклон стал заметно меньше того, под который считан слой карты, — слой снова по размеру (меньше плиток)
+  fitPitch() { if (this.tilt && (this._tiltFor || 0) - this.tilt > 9) this.layout(); },
   // при повороте и наклоне масштаб — вокруг игрока (точку между пальцами Leaflet у такого слоя считает неверно)
   zoomMode() { const o = this.map.options, c = this.rot || this.tilt; o.touchZoom = o.scrollWheelZoom = o.doubleClickZoom = c ? 'center' : true; },
   // точка экрана → точка на плоскости карты (относительно игрока, в осях ненаклонённой и неповёрнутой карты)
@@ -408,15 +482,61 @@ const MapView = {
     const c = U.$('#compassBtn');
     if (c) { c.firstElementChild.style.transform = `rotate(${r}deg)`; c.classList.toggle('turned', !!r); }
     if (this.tracking) this.updateTracker();
+    this.relean();
+  },
+  // 5.1.30: поворот кончился (палец отпустил, компас довернул) — дома встают к верху экрана заново: плитки домов перерисовываются
+  // под новый угол (пока карту крутят — нет: это дорого), места на крышах — следом за крышами
+  relean() {
+    clearTimeout(this._leanT);
+    this._leanT = setTimeout(() => {
+      if (typeof NavMap === 'undefined' || !this.bldTiles || Math.abs((((this.rot - NavMap.lean) % 360) + 540) % 360 - 180) < 3) return;
+      NavMap.lean = this.rot;
+      this.bldTiles.rerenderTiles();
+      this.reAim();
+    }, 250);
   },
   // значок на повёрнутой/наклонённой карте стоит прямо (см. initRotate)
+  LIFT_Z: 36, // насколько значок наклонённой карты выдвинут к игроку, CSS-пиксели: иначе нижняя половина ушла бы «под» плитки
   upright(mk) {
-    const el = mk._icon;
-    if (!el || mk._map !== this.map || (!this.rot && !this.tilt)) return;
+    const el = mk._icon, p = el && el._leaflet_pos;
+    if (!p || mk._map !== this.map || (!this.rot && !this.tilt)) return;
     el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
-    if (this.rot) el.style.transform += ` rotate(${-this.rot}deg)`;
-    // и чуть приподняты над землёй: иначе нижняя половина значка ушла бы «под» плитки карты
-    if (this.tilt && !mk.options.flat) el.style.transform += ` rotateX(${-this.tilt}deg) translateZ(36px)`;
+    // 5.1.30: место в доме стоит на его крыше — у домов карты она сдвинута к верху экрана на высоту дома (NavMap.extrude, lean)
+    const h = this.tilt && mk._roofH && typeof NavMap !== 'undefined' ? NavMap.lift(mk._roofH, this.map.getZoom()) : 0, lv = h ? NavMap.leanVec() : null;
+    const lift = el._lift = { x: h ? lv.x * h : 0, y: h ? lv.y * h : 0 };
+    let t = `translate3d(${p.x + lift.x}px, ${p.y + lift.y}px, 0px)`;
+    if (this.rot) t += ` rotate(${-this.rot}deg)`;
+    // встаёт с земли лицом к игроку и выдвинут к нему; 5.1.30: — по лучу взгляда, с уменьшением на ту же долю: на экране
+    // значок стоит ровно на своей точке земли и не «плывёт» над ней, пока карта движется (раньше — сдвиг до 10–15 точек)
+    if (this.tilt && !mk.options.flat) {
+      const q = this.screen3d(L.point(p.x + lift.x, p.y + lift.y)), k = this.LIFT_Z / (this.PD - q.z);
+      t += ` rotateX(${-this.tilt}deg) translate3d(${(-q.x * k).toFixed(2)}px, ${(-q.y * k).toFixed(2)}px, ${this.LIFT_Z}px) scale(${(1 - k).toFixed(4)})`;
+    }
+    el.style.transform = t;
+  },
+  // точка слоя карты → где её рисует наклонённая карта: в пространстве экрана от точки зрения (середина по ширине, высота
+  // игрока; x — вправо, y — вниз, z — к игроку, CSS-пиксели) и на плоскости повёрнутой карты (u, v)
+  screen3d(lp) {
+    const cp = this.map.layerPointToContainerPoint(lp), s = this.map.getSize();
+    const r = this.rot * Math.PI / 180, a = this.tilt * Math.PI / 180, u0 = cp.x - s.x / 2, v0 = cp.y - s.y / 2;
+    const u = u0 * Math.cos(r) - v0 * Math.sin(r), v = u0 * Math.sin(r) + v0 * Math.cos(r);
+    return { x: u, y: v * Math.cos(a), z: v * Math.sin(a), u, v };
+  },
+  // 5.1.30: откуда игрок смотрит на значок (для 3D-модели места, js/m3d.js): высота взгляда над землёй e (градусы: у нижнего
+  // края экрана — почти сверху, у горизонта — сбоку) и поворот az (радианы: место правее середины видно чуть слева);
+  // у плоской карты — null (модель — под своим наклоном, как значки)
+  camOf(el) {
+    const ic = this.tilt && el ? el.closest('.leaflet-marker-icon') : null, p = ic && ic._leaflet_pos;
+    if (!p) return null;
+    const lf = ic._lift || { x: 0, y: 0 }, q = this.screen3d(L.point(p.x + lf.x, p.y + lf.y)), a = this.tilt * Math.PI / 180, d = this.PD;
+    return { e: Math.asin(Math.min(1, d * Math.cos(a) / Math.hypot(q.x, q.y, d - q.z))) * 180 / Math.PI, az: Math.atan2(q.u, d * Math.sin(a) - q.v) };
+  },
+  // 5.1.30: карта сдвинулась (игрок идёт, палец тянет карту, масштаб, наклон) — значки встают на свои точки земли заново,
+  // 3D-модели мест поворачиваются к игроку той стороной, с которой он теперь на них смотрит
+  reAim() {
+    if (!this.map) return;
+    if (this.tilt) for (const m of [...this.markers.values(), this.player, this.range]) if (m) this.upright(m);
+    if (typeof M3D !== 'undefined') M3D.aim();
   },
   northUp() {
     const from = this.rot, t0 = performance.now();
@@ -514,6 +634,10 @@ const MapView = {
         if (fresh && !rebuild && e.type !== 'spirit') this.fadeIn(m);
       }
       m._ent = e;
+      if (e.type !== 'spirit') { // 5.1.30: место внутри дома — на его крыше (upright)
+        const h = Roofs.height(e.lat, e.lng) || 0;
+        if (h !== (m._roofH || 0)) { m._roofH = h; this.upright(m); }
+      }
       const el = m.getElement();
       if (el) {
         el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
@@ -521,7 +645,7 @@ const MapView = {
       }
     });
     for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
-    if (typeof M3D !== 'undefined') M3D.kick(); // 5.1.28: место стало досягаемым — его модель снова движется
+    if (typeof M3D !== 'undefined') { M3D.aim(); M3D.kick(); } // 5.1.28: место стало досягаемым — его модель снова движется; 5.1.30: и видна с нужной стороны
     this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     const ids = new Set(this.nearby.map(e => e.id));

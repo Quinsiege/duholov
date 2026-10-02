@@ -112,6 +112,10 @@ const NavMap = {
   // высота дома, м (без данных — трёхэтажный) и насколько поднимается его крыша в точках плитки на масштабе zd
   height(f) { return f.props.height > 0 ? f.props.height : 8; },
   lift(H, zd) { return Math.min(15, 2.1 * Math.sqrt(H) * Math.pow(2, (zd - 17) * .85)); },
+  // 5.1.30: дома встают к верху экрана: у повёрнутой карты (MapView.rot) это не север. lean — поворот карты, под который нарисованы
+  // плитки домов (их перерисовывает MapView.relean, когда поворот кончился); сдвиг крыши на точку высоты — в осях плитки
+  lean: 0,
+  leanVec() { const a = this.lean * Math.PI / 180; return { x: -Math.sin(a), y: -Math.cos(a) }; },
 
   /* 4.11: объёмные дома. Стены, обращённые к зрителю (на юг экрана), поднимаются от основания, крыша сдвинута вверх
      на высоту дома (чем выше дом и крупнее масштаб — тем выше, но не больше запаса плитки в 16 точек — иначе шов).
@@ -129,12 +133,13 @@ const NavMap = {
         if (!b.T) b.T = ctx.getTransform();
         // масштаб отображения: геометрия уже увеличена под плитку, bbox — ещё нет
         const bw = f.bbox.maxX - f.bbox.minX;
-        let gx0 = Infinity, gx1 = -Infinity, gy1 = -Infinity;
-        for (const r of geom) for (const pt of r) { if (pt.x < gx0) gx0 = pt.x; if (pt.x > gx1) gx1 = pt.x; if (pt.y > gy1) gy1 = pt.y; }
+        const L = NavMap.leanVec(); // дальние (по взгляду) — раньше ближних: порядок — по самой ближней к зрителю точке дома
+        let gx0 = Infinity, gx1 = -Infinity, gk = -Infinity;
+        for (const r of geom) for (const pt of r) { if (pt.x < gx0) gx0 = pt.x; if (pt.x > gx1) gx1 = pt.x; const k = -(pt.x * L.x + pt.y * L.y); if (k > gk) gk = k; }
         const zd = z + (bw > 0 ? Math.log2((gx1 - gx0) / bw) : 0);
         const H = NavMap.height(f);
         const dy = NavMap.lift(H, zd);
-        b.items.push({ geom, f, H, dy, zd, key: gy1 + b.T.f / b.T.d });
+        b.items.push({ geom, f, H, dy, zd, key: gk - (b.T.e / b.T.a) * L.x - (b.T.f / b.T.d) * L.y });
       },
     };
     const paint = {
@@ -144,10 +149,12 @@ const NavMap = {
         for (const b of batches) for (const it of b.items) { it.T = b.T; all.push(it); }
         batches = [];
         all.sort((a, b) => a.key - b.key);
+        const L = NavMap.leanVec();
         ctx.save();
         for (const { geom, f, H, dy, zd, T } of all) {
           ctx.setTransform(T);
-          const roofPath = () => { ctx.beginPath(); for (const r of geom) { r.forEach((pt, i) => (i ? ctx.lineTo(pt.x, pt.y - dy) : ctx.moveTo(pt.x, pt.y - dy))); ctx.closePath(); } };
+          const ox = L.x * dy, oy = L.y * dy; // крыша — на высоту дома к верху экрана
+          const roofPath = () => { ctx.beginPath(); for (const r of geom) { r.forEach((pt, i) => (i ? ctx.lineTo(pt.x + ox, pt.y + oy) : ctx.moveTo(pt.x + ox, pt.y + oy))); ctx.closePath(); } };
           if (dy >= 1) {
             // тень у основания — дом стоит на земле
             if (p.shade !== 'rgba(0, 0, 0, 0)') {
@@ -165,14 +172,14 @@ const NavMap = {
               const a = r[i], b = r[(i + 1) % r.length], ex = b.x - a.x, ey = b.y - a.y, len = Math.hypot(ex, ey);
               if (len < .05) continue;
               const nx = sg * ey / len, ny = -sg * ex / len;
-              if (ny <= .02) continue;
+              if (-(nx * L.x + ny * L.y) <= .02) continue; // видны стены, обращённые к зрителю (низ экрана)
               walls[Math.max(0, Math.min(4, Math.round((.5 + .5 * nx * p.light) * 4)))].push(a, b);
-              if (lit) { all2.moveTo(a.x, a.y); all2.lineTo(b.x, b.y); all2.lineTo(b.x, b.y - dy); all2.lineTo(a.x, a.y - dy); all2.closePath(); }
+              if (lit) { all2.moveTo(a.x, a.y); all2.lineTo(b.x, b.y); all2.lineTo(b.x + ox, b.y + oy); all2.lineTo(a.x + ox, a.y + oy); all2.closePath(); }
             }
             walls.forEach((w, k) => {
               if (!w.length) return;
               ctx.fillStyle = shades[k]; ctx.beginPath();
-              for (let i = 0; i < w.length; i += 2) { const a = w[i], b = w[i + 1]; ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x, b.y - dy); ctx.lineTo(a.x, a.y - dy); ctx.closePath(); }
+              for (let i = 0; i < w.length; i += 2) { const a = w[i], b = w[i + 1]; ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x + ox, b.y + oy); ctx.lineTo(a.x + ox, a.y + oy); ctx.closePath(); }
               ctx.fill(); ctx.strokeStyle = shades[k]; ctx.lineWidth = .4; ctx.stroke(); // без щелей между гранями
             });
             if (lit) { ctx.fillStyle = facade; ctx.fill(all2); }
