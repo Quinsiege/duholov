@@ -995,7 +995,7 @@ const Atlas = {
       this.status();
       return;
     }
-    try { Sfx.play('levelup'); U.vibrate([40, 40, 90]); } catch (e) { /* без звука */ }
+    try { Sfx.play('reward'); U.vibrate([40, 40, 90]); } catch (e) { /* без звука */ }
     gate.flash(() => { this._busy = false; this.close(); });
   },
   // портал поверх всего: руны кружатся, вихрь втягивает свет; flash — вспышка и растворение, fail — врата схлопываются
@@ -1007,7 +1007,7 @@ const Atlas = {
         <svg class="ag-ring r2" viewBox="-100 -100 200 200" aria-hidden="true"><circle r="66" class="d"/></svg></div>
       <div class="ag-txt"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class="ag-flash"></i></div>`);
     document.body.appendChild(g);
-    try { Sfx.play('spin'); } catch (e) { /* без звука */ }
+    try { Sfx.play('portal'); } catch (e) { /* без звука */ }
     requestAnimationFrame(() => requestAnimationFrame(() => g.classList.add('open')));
     const calm = document.body.classList.contains('calm');
     return {

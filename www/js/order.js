@@ -53,7 +53,7 @@ const Order = {
       const ico = i === L - 1 ? Art.cocoon(10) : Art.item(k) || '<b class="big-n">✦</b>';
       return `<div class="st-day ${i < day ? 'past' : i === day ? 'now' : ''}"><small>${i + 1}</small>${ico}</div>`;
     }).join('');
-    Sfx.play('levelup'); U.vibrate([40, 40, 90]);
+    Sfx.play('reward_big'); U.vibrate([40, 40, 90]);
     UI.modal({
       cls: 'streak-modal', title: r.n === 1 ? ru`Добро пожаловать!` : ru`${r.n} ${U.plural(r.n, ru`день`, ru`дня`, ru`дней`)} подряд!`,
       html: `<div class="st-row">${cells}</div>
@@ -106,7 +106,7 @@ const Order = {
   async claim(week, i) {
     const r = await Game.try('orderClaim', { week, i });
     if (!r) return false;
-    Sfx.play('levelup');
+    Sfx.play('reward_big');
     UI.modal({ title: ru`Общее дело: ступень ${i + 1}`, html: `<p>${ru`Орден благодарит тебя за помощь!`}</p><div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     await this.refresh(true);
     return true;

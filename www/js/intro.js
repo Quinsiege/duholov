@@ -169,7 +169,7 @@ const Intro = {
     this.sync();
     el.querySelector('.in-skip').onclick = () => { Sfx.play('tap'); this.close(); };
     el.querySelector('.in-prev').onclick = () => this.go(this.i - 1);
-    el.querySelector('.in-nextw').onclick = () => { if (this.i >= N - 1) { Sfx.play('catch'); this.close(); } else this.go(this.i + 1); };
+    el.querySelector('.in-nextw').onclick = () => { if (this.i >= N - 1) { Sfx.play('success'); this.close(); } else this.go(this.i + 1); };
     el.querySelector('.in-dots').onclick = e => { const d = e.target.closest('[data-k]'); if (d) this.go(+d.dataset.k); };
     this.key = e => {
       if (e.key === 'ArrowRight') this.go(this.i + 1);
@@ -236,7 +236,7 @@ const Intro = {
   },
   go(n) {
     if (!this.el || this.flip || n === this.i || n < 0 || n >= this.P.length) return;
-    Sfx.play('tap');
+    Sfx.play('page');
     if (Math.abs(n - this.i) > 1) { // точка далеко — без листания всех страниц
       const np = this.pageEl(n); this.cur.replaceWith(np); this.cur = np; this.i = n; this.sync();
       np.classList.add('in-fade'); return;
@@ -271,7 +271,7 @@ const Intro = {
       if (!s.on || !this.flip) return;
       const dx = e.clientX - s.x, w = b.clientWidth || 360, v = Math.abs(dx) / Math.max(1, Date.now() - s.t);
       const done = !cancel && ((s.dir > 0 ? -dx : dx) > w * 0.3 || (v > 0.5 && (s.dir > 0 ? dx < 0 : dx > 0)));
-      if (done) Sfx.play('tap');
+      if (done) Sfx.play('page');
       this.end(done);
     };
     b.addEventListener('pointerup', e => up(e));

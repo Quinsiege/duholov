@@ -3,9 +3,29 @@
    телефон — показывает (цвет кольца, награды, подсказки). */
 
 const Rules = {
-  QUEST_BONUS: { charm: 10, honey: 2, sparks: 500 }, // 4.16: без ладана (был каждый день — копился десятками) и меньше искр
-  // 4.16: опыт за задание дня и за сундук дня (было 300 и 1000) — ежедневные цели заметнее для тех, кто играет понемногу
-  QUEST_XP: 500, QUEST_BONUS_XP: 2500,
+  // 4.16: опыт за задание дня (было 300) — ежедневные цели заметнее для тех, кто играет понемногу
+  QUEST_XP: 500,
+  // 5.1.24: Сундук дня — награда каждый раз разная: опыт и искры всегда (в пределах XP и SPARKS), плюс PICKS разных призов
+  // из POOL по весам: [что, вес, от, до]. В среднем — как прежняя (2 500 опыта, ✦ 500, 10 оберегов, 2 мёда, 2 монеты), но
+  // меньше расходников и иногда редкое: осколок Алатыря, кокон, амулет. Тянет сервер (Rules.chestRoll в questBonus)
+  CHEST: {
+    XP: [2000, 3000], SPARKS: [400, 700], PICKS: 2,
+    POOL: [['charm', 24, 8, 14], ['zlat', 18, 4, 7], ['charm2', 15, 3, 6], ['honey', 13, 2, 4], ['charm3', 6, 1, 2], ['water', 6, 1, 2],
+      ['incense', 4, 1, 1], ['gate', 3.5, 1, 1], ['xpbrew', 3.5, 1, 1], ['cocoon', 3, 5, 5], ['alatyr', 2.5, 1, 1], ['amulet', 1.5, 1, 1]],
+  },
+  // r — случайное 0…1 (сервер — Math.random; тесты — с зерном). Опыт кратен 50, искры — 10; призы не повторяются
+  chestRoll(r = Math.random) {
+    const C = this.CHEST, num = (a, b) => a + Math.floor(r() * (b - a + 1));
+    const rw = { xp: Math.round(num(C.XP[0], C.XP[1]) / 50) * 50, sparks: Math.round(num(C.SPARKS[0], C.SPARKS[1]) / 10) * 10 };
+    const pool = C.POOL.slice();
+    for (let k = 0; k < C.PICKS && pool.length; k++) {
+      let x = r() * pool.reduce((s, p) => s + p[1], 0), i = 0;
+      while (i < pool.length - 1 && (x -= pool[i][1]) >= 0) i++;
+      const [key, , a, b] = pool.splice(i, 1)[0];
+      rw[key] = num(a, b);
+    }
+    return rw;
+  },
   PLACE_REWARD: { xp: 1000, sparks: 500, charm: 10 },
   SUPPLY: { charm: 15, honey: 2, water: 1 },
   THROWABLE: ['charm', 'charm2', 'charm3'],
@@ -161,7 +181,7 @@ const Rules = {
   // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
   // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
   // 4.16.0: бесплатных монет у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
-  ZLAT: { streak: 1, streak7: 5, questBonus: 2, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 },
+  ZLAT: { streak: 1, streak7: 5, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 }, // 5.1.24: монеты сундука дня — в CHEST.POOL
   BAG_STEP: 50, BAG_MAX_UP: 10,
   // 3.15: Казна — монеты за рубли (оплата через ЮKassa; цену и число монет сервер берёт отсюда, а не с телефона)
   PAY: [
@@ -353,38 +373,34 @@ const Rules = {
     return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
   },
   // Сезонная тропа: сезон — календарный месяц, 30 ступеней по 40 очков (очки — как в общем деле Ордена)
-  PASS: { LEVELS: 30, PER: 40, GOLD: 600, LATE: 25 },
+  PASS: { LEVELS: 30, PER: 40, GOLD: 600 },
   passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
-  // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
-  // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
-  // 4.16: на бесплатной тропе 55 монет за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
-  // 5.1.20: искры на Тропе (и на Золотой) — ×10
-  passReward(track, lvl, plvl) {
-    if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
-    if (track === 'free') {
-      // 4.16.0: бесплатная тропа — 29 монет за сезон (было 55)
-      if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
-      if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
-      if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
-      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 3000 };
-    }
-    if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50 };
-    if (lvl % 10 === 0) return { cocoon: 10, zlat: 40 };
-    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
-    if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
-    return lvl % 2 ? { charm2: 5, sparks: 5000 } : { water: 3, sparks: 8000 };
-  },
-  // 4.16: Золотая тропа с LATE уровня: вместо серебряных оберегов и мелочи — то, что нужно на поздних уровнях:
-  // искры на усиление (втрое больше), золотые обереги, целебный отвар, настои опыта; облик и Знак Тропы — как раньше
-  passGoldLate(lvl) {
-    if (lvl === 30) return { look: 'trail', charm3: 10, xpbrew: 1 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 30000 };
-    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 30000 };
-    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
-    if (lvl % 3 === 0) return { charm3: 5, zlat: 15 };
-    return lvl % 2 ? { charm3: 3, sparks: 15000 } : { brew: 2, sparks: 25000 };
-  },
+  // 5.1.21: награды ступеней — таблицей, одна для всех уровней Ловчего (прежней «поздней» Золотой тропы с 25 уровня нет).
+  // Три круга по десять ступеней, в каждом награды растут: бесплатная — обереги и мёд по очереди, на 5-й ступени круга ладан,
+  // на 9-й Живая вода, на 10-й, 20-й и 30-й — большая награда; Золотая — серебряные обереги и Живая вода, на 6-й — золотые
+  // обереги, на 9-й — кокон 10 км, на каждой пятой — амулет на выбор (amuletPick: выбирает Ловчий, когда забирает),
+  // на 15-й — плащ «Сезонная тропа», на 30-й — Знак Тропы. cocoon — кокон на столько км, look — облик.
+  // По модели экономики (tools/economy: искры копились миллионами, сумка переполнялась, не хватало только осколков Алатыря):
+  // бесплатная — искры ÷3, обереги ÷3, мёд ÷4 и осколок Алатыря на 10-й, 20-й и 30-й; Золотая — искры ÷2, Живая вода ÷3 и
+  // осколок на 15-й и 25-й. За сезон: бесплатная — ✦ 58 900, Золотая — ✦ 58 600 (было 177 000 и 116 500)
+  PASS_FREE: [
+    { charm: 7, sparks: 800 }, { honey: 4, sparks: 800 }, { charm: 7, sparks: 1200 }, { honey: 4, sparks: 1200 }, { incense: 5, sparks: 1300 },
+    { charm: 10, sparks: 1300 }, { honey: 5, sparks: 1300 }, { charm: 13, sparks: 1300 }, { water: 10, sparks: 1700 }, { zlat: 50, sparks: 1700, alatyr: 1 },
+    { charm: 10, sparks: 1700 }, { honey: 5, sparks: 1700 }, { charm: 10, sparks: 1800 }, { honey: 5, sparks: 1800 }, { incense: 5, sparks: 2000 },
+    { charm: 13, sparks: 2000 }, { honey: 6, sparks: 2000 }, { charm: 17, sparks: 2000 }, { water: 15, sparks: 2300 }, { amuletPick: 1, sparks: 2300, alatyr: 1 },
+    { charm: 13, sparks: 2300 }, { honey: 6, sparks: 2300 }, { charm: 13, sparks: 2500 }, { honey: 6, sparks: 2500 }, { incense: 5, sparks: 2700 },
+    { charm: 17, sparks: 2700 }, { honey: 8, sparks: 2700 }, { charm: 20, sparks: 2700 }, { water: 20, sparks: 3000 }, { deadwater: 1, zlat: 50, sparks: 3300, alatyr: 1 },
+  ],
+  PASS_GOLD: [
+    { charm2: 20 }, { water: 3, sparks: 1300 }, { charm2: 20, sparks: 1800 }, { water: 3, sparks: 1800 }, { amuletPick: 1 },
+    { charm3: 10 }, { water: 5, sparks: 2000 }, { charm2: 20, sparks: 2000 }, { cocoon: 10, sparks: 2500 }, { amuletPick: 1 },
+    { charm2: 25, sparks: 2500 }, { water: 5, sparks: 2500 }, { charm2: 25, sparks: 2800 }, { water: 5, sparks: 2800 }, { look: '#065f46', amuletPick: 1, alatyr: 1 },
+    { charm3: 15 }, { water: 7, sparks: 3000 }, { charm2: 30, sparks: 3000 }, { cocoon: 10, sparks: 3500 }, { amuletPick: 1, charm3: 10 },
+    { charm2: 30, sparks: 3500 }, { water: 7, sparks: 3500 }, { charm2: 30, sparks: 3800 }, { water: 7, sparks: 3800 }, { amuletPick: 1, alatyr: 1 },
+    { charm3: 20 }, { water: 8, sparks: 4000 }, { charm2: 40, sparks: 4000 }, { cocoon: 10, sparks: 4500 }, { look: 'trail', amuletPick: 1, charm3: 20 },
+  ],
+  // награда ступени lvl (1…30): free — всем, gold — на Золотой тропе; копия — её можно менять
+  passReward(track, lvl) { return { ...((track === 'gold' ? this.PASS_GOLD : this.PASS_FREE)[lvl - 1] || {}) }; },
   // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
   /* 4.16: Капища не должны навсегда оставаться за кланами.

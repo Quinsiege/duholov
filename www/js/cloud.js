@@ -11,15 +11,33 @@ const Cloud = {
   configured() { return !!(CLOUD_CONFIG.url && CLOUD_CONFIG.anonKey) && !navigator.webdriver; },
   enabled() { return this.configured(); }, // таблицу Лиги видят все, в ней — все Ловчие (5.1.11)
 
-  async client() {
-    if (this.sb) return this.sb;
-    if (!window.supabase) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = this.LIB; s.integrity = this.LIB_SRI; s.crossOrigin = 'anonymous'; s.onload = res; s.onerror = () => rej(new Error(ru`Не удалось загрузить облачную библиотеку`));
-        document.head.appendChild(s);
-      });
-    }
+  // 5.1.24: запуск без цепочки — пока проверяется версия игры, библиотека облака уже грузится, а у вернувшегося Ловчего
+  // готов и вход (сохранённый в браузере). Раньше всё это начиналось только после ответа version.json. Новичка заранее
+  // не регистрируем: если выйдет обновление, страница перезагрузится — гость создастся уже после неё
+  warm() {
+    if (!this.configured()) return;
+    let saved = false;
+    try { saved = !!localStorage.getItem(CLOUD_CONFIG.auth); } catch (e) { /* нет хранилища */ }
+    (saved ? this.client() : this.lib()).catch(() => {}); // не вышло — client() попробует снова, когда понадобится
+  },
+  // библиотека Supabase — один раз на страницу (её же заранее качает <link rel="preload"> в index.html)
+  lib() {
+    if (window.supabase) return Promise.resolve();
+    return this._lib || (this._lib = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = this.LIB; s.integrity = this.LIB_SRI; s.crossOrigin = 'anonymous'; s.onload = res;
+      s.onerror = () => { this._lib = null; s.remove(); rej(new Error(ru`Не удалось загрузить облачную библиотеку`)); };
+      document.head.appendChild(s);
+    }));
+  },
+  // 5.1.24: один общий запуск на всех: запросы, пришедшие, пока клиент готовится (прогресс, сервисы входа, ранний запуск),
+  // ждут его, а не грузят библиотеку и не входят каждый заново. Сбой — следующий вызов начнёт сначала
+  client() {
+    if (this.sb) return Promise.resolve(this.sb);
+    return this._cp || (this._cp = this.connect().finally(() => { this._cp = null; }));
+  },
+  async connect() {
+    await this.lib();
     const sb = window.supabase.createClient(CLOUD_CONFIG.url, CLOUD_CONFIG.anonKey, { auth: { persistSession: true, storageKey: CLOUD_CONFIG.auth } });
     let { data } = await sb.auth.getSession();
     // 4.1: вход, принесённый со старого адреса игры (move.js), — меняем его ключ на свой, прежний перестаёт действовать
