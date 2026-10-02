@@ -117,6 +117,7 @@ const MapView = {
 
   init() {
     this.vp(); addEventListener('resize', () => this.vp()); // раньше всех, кто на resize пересчитывает слой карты (initRotate)
+    if (!U.$('#mapBg')) { const b = document.createElement('div'); b.id = 'mapBg'; U.$('#map').before(b); } // 5.1.31: земля — позади карты (style.css)
     if (typeof M3D !== 'undefined') M3D.init(); // 5.1.28: 3D-модели мест (js/m3d.js) — до первых значков; нет WebGL — места остаются рисунками
     // 5.1: место Ловчего — Walk (телефон или прогресс); ещё нет (новичок до Атласа) — карта ждёт на Красной площади
     const start = Walk.load() || { lat: 55.7539, lng: 37.6208 };
@@ -259,7 +260,7 @@ const MapView = {
     if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(F); // объёмные дома — в тон карте
     document.body.classList.toggle('night', night);
     document.body.style.setProperty('--haze', F.earth); // 4.11: дымка горизонта у наклонённой карты — цвета земли
-    U.$('#map').style.background = F.earth; // и фон под ещё не нарисованными плитками
+    const bg = U.$('#mapBg'); if (bg) bg.style.background = F.earth; // и земля под ещё не нарисованными плитками (5.1.31: слоем позади карты)
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
 

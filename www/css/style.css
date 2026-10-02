@@ -54,8 +54,12 @@ small, .small { color: var(--muted); font-size: 12px; }
 
 /* ---------- карта ---------- */
 /* 5.1.30: карта — в стандартном стиле (Protomaps: днём светлом, ночью тёмном), без своих цветов и фильтров; фон — цвет её земли */
-#map { position: fixed; inset: 0; background: #f1f3ee; z-index: 0; touch-action: none; } /* палец ведёт камеру (MapView.initOrbit), а не страницу */
-body.night #map { background: #131b27; } /* земля палитры карты (MapView.PALETTE) — до первых плиток */
+#map { position: fixed; inset: 0; background: transparent; z-index: 0; touch-action: none; } /* палец ведёт камеру (MapView.initOrbit), а не страницу */
+/* 5.1.31: земля палитры карты (MapView.PALETTE) под ещё не нарисованными плитками — отдельным неподвижным слоем позади карты, а не
+   фоном самой наклонённой карты: фон корня 3D-пространства лежит в одной плоскости с плитками, и при сильном наклоне (его край уходит
+   за камеру) браузер на отдельных кадрах ставил его поверх плиток — карта под ногами пропадала (z-fighting) */
+#mapBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #f1f3ee; }
+body.night #mapBg { background: #131b27; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(18, 12, 36, .55) !important; color: #cfc8e6 !important; border-radius: 6px 0 0 0; }
 .leaflet-control-attribution a { color: #e9e3ff !important; }
 .leaflet-bottom.leaflet-right { bottom: calc(var(--sb)); }
@@ -2754,8 +2758,8 @@ body:has(> .modal-wrap:not(.out)) #hud *, body:has(> .modal-wrap:not(.out)) #hud
 body.stage :is(#map *, #hud *, #wxfx, #wxfx *, #mapHaze), .stage-under, .stage-under *,
 body.stage :is(#map *, #hud *, #wxfx *)::before, body.stage :is(#map *, #hud *, #wxfx *)::after, .stage-under *::before, .stage-under *::after { animation-play-state: paused !important; }
 body.stage-cover :is(#hud, #wxfx, #mapAttr),
-body.stage-cover:not(.stage-glass) :is(#map, #mapShade, #mapHaze),
-body.stage-cover.eco :is(#map, #mapShade, #mapHaze) { visibility: hidden !important; content-visibility: hidden; }
+body.stage-cover:not(.stage-glass) :is(#map, #mapBg, #mapShade, #mapHaze),
+body.stage-cover.eco :is(#map, #mapBg, #mapShade, #mapHaze) { visibility: hidden !important; content-visibility: hidden; }
 .stage-under.stage-hid { visibility: hidden !important; }
 /* 5.2: под стеклом (экраны меню, Источник, Атлас) — только подложка карты: плитки земли, дома и подписи улиц.
    Значки духов и мест, Ловчий, его круг и зоны духов, всплывающие подписи не рисуются (гаснут под уже проявившимся стеклом,
@@ -2931,6 +2935,12 @@ body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-sh
 /* наклон: значки встают с земли — им нужно общее 3D-пространство с картой (overflow:hidden его бы сплющил) */
 #map.tilt { overflow: visible; transform-style: preserve-3d; }
 #map.tilt .leaflet-map-pane, #map.tilt .leaflet-marker-pane { transform-style: preserve-3d; }
+/* 5.1.31: слои земли лежат в одной плоскости — их порядок браузер решает сортировкой по глубине, и на совпадающей глубине она
+   могла на отдельных кадрах поставить плитки поверх кругов, домов и подписей; на четверть точки выше одна другой — порядок
+   однозначный (сдвиг на экране — меньше полуточки) */
+#map.tilt .leaflet-zone-pane { transform: translateZ(.25px); }
+#map.tilt .leaflet-bld3d-pane { transform: translateZ(.5px); }
+#map.tilt .leaflet-bld-pane { transform: translateZ(.75px); }
 /* дымка горизонта: даль растворяется в цвете земли этого часа */
 #mapHaze { position: fixed; left: 0; right: 0; top: 0; height: 30%; z-index: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: linear-gradient(var(--haze, #120b25) 0%, color-mix(in srgb, var(--haze, #120b25) 70%, transparent) 30%, color-mix(in srgb, var(--haze, #120b25) 25%, transparent) 65%, transparent 100%); }
