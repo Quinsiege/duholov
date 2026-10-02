@@ -2934,10 +2934,21 @@
     eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,10000,20000', 'бронза, серебро, золото');
     MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
   });
-  test('5.1.24: лимиты дня — одной строкой; поручение Источника — принять или отказаться', () => {
+  test('5.1.24: лимиты дня — столбиком с таймером; шаги главы раскрываются; поручение Источника — принять или отказаться', () => {
     const h = UI.dayLimitsHtml();
-    ok(/^<p class="day-limits">/.test(h) && !/<div/.test(h), 'строка без плиток');
-    Object.keys(Rules.DAILY).forEach(k => ok(h.includes(`${Rules.DAILY_NAMES[k]} <b>${Rules.dayUsed(S.d, k)}/${Rules.DAILY[k]}</b>`), `в строке: ${k}`));
+    ok(/^<div class="day-limits">/.test(h) && /class="dl-left"/.test(h), 'столбиком, с таймером до обновления');
+    Object.keys(Rules.DAILY).forEach(k => ok(h.includes(`<span>${Rules.DAILY_NAMES[k]}</span><b>${Rules.dayUsed(S.d, k)}/${Rules.DAILY[k]}</b>`), `строка: ${k}`));
+    eq(U.fmtHms((5 * 3600 + 12 * 60 + 33) * 1000), '5 ч 12 мин 33 с'); eq(U.fmtHms(754500), '12 мин 34 с');
+    // шаги главы: у пройденного и текущего — стрелка и цели (пройденный — все с галочкой), у будущих — нет
+    const d0 = S.d;
+    try {
+      S.d = { ...d0, camp: { ch: 0, s: 1, p: [0], u: [], pick: null } };
+      const box = document.createElement('div'); box.innerHTML = UI.campHtml();
+      const rows = [...box.querySelectorAll('.cp-row')], st = CAMPAIGN[0].steps;
+      ok(rows[0].querySelector('.cp-row-h .cp-chev') && rows[0].querySelectorAll('.cp-goal.ok').length === st[0].obj.length, 'пройденный шаг — стрелка, все цели с галочкой');
+      ok(rows[1].querySelector('.cp-row-h .cp-chev') && rows[1].querySelectorAll('.cp-goal').length === st[1].obj.length, 'текущий — стрелка и цели');
+      ok(rows.length === st.length && rows.slice(2).every(r => !r.querySelector('.cp-row-h, .cp-goals')), 'у будущих стрелки нет');
+    } finally { S.d = d0; }
     const t = { id: 'tk"1', tier: 2, text: 'Поймай 3 духов' }, o = UI.taskOfferHtml(t);
     ok(o.includes('data-id="tk&quot;1"'), 'id поручения — в разметке, экранирован');
     ok(/class="btn small primary lt-ok"/.test(o) && /class="btn small ghost lt-no"/.test(o), 'кнопки «Принять» и «Отказаться»');

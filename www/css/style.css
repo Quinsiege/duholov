@@ -1137,11 +1137,14 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .chat-bar .chat-in { flex: 1; min-width: 0; height: 44px; }
 .chat-bar .chat-send { flex: none; width: 48px; min-height: 44px; padding: 0; font-size: 18px; }
 .day-left { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; } .day-left b { color: var(--text); } .day-left.out { color: #fb7185; } .day-left.out b { color: #fb7185; }
-/* 5.1.24: лимиты дня — одной строкой без плиток: «Лимиты дня · Источники 12/30 · …», на узком экране переносится */
-.day-limits { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 12px 2px 14px; font-size: 13px; color: var(--muted); }
-.day-limits .dl-h { font-weight: 600; color: var(--text); }
+/* 5.1.24: лимиты дня — столбиком, без плиток: название слева, «сколько из скольких» справа; в шапке — сколько осталось
+   до обновления (тикает) */
+.day-limits { display: grid; gap: 3px; margin: 14px 2px 12px; max-width: 340px; font-size: 13px; color: var(--muted); }
+.day-limits .dl-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 3px; }
+.day-limits .dl-h { font-size: 14px; font-weight: 700; color: var(--text); }
+.day-limits .dl-head small { font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.day-limits .dl-row { display: flex; justify-content: space-between; gap: 12px; padding-left: 2px; }
 .day-limits b { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; } .day-limits .out b { color: #fb7185; }
-.day-limits small { font-size: 11px; color: var(--muted); }
 .chat-hint .chat-unhide { display: inline; margin-left: 4px; font-size: 12px; }
 
 /* ---------- 3.21: ранги Лиги — цвет по ступеням ---------- */
@@ -5573,6 +5576,22 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 .cp-row.cur i { background: var(--gold2); color: #3b1a02; }
 .cp-row.cur span { font-weight: 700; }
 .cp-row.lock { opacity: .55; }
+/* 5.1.24: пройденный шаг и текущий — строка-кнопка со стрелкой справа у края; раскрытый — стрелка вниз, под ним цели шага */
+.cp-row.cp-x { display: block; }
+.cp-row-h { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit;
+  text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cp-row-h > span:not(.cp-chev) { flex: 1; min-width: 0; }
+.cp-row-h .cp-chev { flex: none; display: grid; place-items: center; width: 28px; height: 24px; margin-right: -4px; color: var(--muted); transition: transform .2s; }
+.cp-row-h .cp-chev .ico { width: 16px; height: 16px; }
+.cp-row.cur .cp-chev { color: var(--gold2); }
+.cp-row.open .cp-chev { transform: rotate(90deg); }
+.cp-goals { display: none; gap: 4px; margin: 6px 4px 4px 34px; }
+.cp-row.open .cp-goals { display: grid; }
+.cp-goal { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 12.5px; color: var(--muted); }
+.cp-row .cp-goal span { font-weight: 400; color: var(--muted); } /* жирным — только название текущего шага, не его цели */
+.cp-goal b { flex: none; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.cp-goal.ok b { color: var(--good); }
+@media (prefers-reduced-motion: reduce) { .cp-row-h .cp-chev { transition: none; } }
 /* выбор духа — награда шага */
 .cp-modal .cp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .cp-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); color: inherit; font: inherit; cursor: pointer; text-align: center; }
