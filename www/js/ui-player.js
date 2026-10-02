@@ -303,10 +303,10 @@ Object.assign(UI, {
     const cc = d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24', maxed = d.level >= MAX_LEVEL;
     const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
     const ach = [
-      [ru`Пробуждений`, d.stats.awakened || 0], [ru`Источников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
+      [ru`Пробуждений`, d.stats.awakened || 0], [ru`Источников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед в Святилищах`, d.stats.duels],
       [ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],
       [ru`Очищено духов`, d.stats.purified], [ru`Отличных бросков`, d.stats.throwsGreat],
-      ...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Капищ освобождено`, d.stats.freed || 0]] : []),
+      ...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Святилищ освобождено`, d.stats.freed || 0]] : []),
     ];
     const medalsHtml = MEDALS.map(m => {
       const tier = d.medals[m.id] || 0, v = S.medalValue(m), nx = m.tiers[tier];

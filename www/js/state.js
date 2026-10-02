@@ -33,7 +33,7 @@ const S = {
     d.stats.orderPts = d.stats.orderPts || 0;
     d.tasks = d.tasks || []; // поручения из источников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
-    d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
+    d.guards = d.guards || []; // мои защитники в Святилищах: { id, name, sid, t }
     // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
@@ -357,7 +357,7 @@ const S = {
     this.save();
   },
 
-  /* ---------- команда для разломов и капищ ---------- */
+  /* ---------- команда для разломов и святилищ ---------- */
   team() {
     const chosen = this.d.team.map(u => this.findSpirit(u)).filter(Boolean);
     if (chosen.length) return chosen.slice(0, 3);
@@ -649,7 +649,7 @@ const S = {
     const day = U.today();
     if (this.d.quests && this.d.quests.day === day) return;
     const r = U.rng('quests' + day + this.d.name);
-    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Капища были с 3-го, а открываются с 5-го)
+    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Святилища были с 3-го, а открываются с 5-го)
     const picked = [];
     while (picked.length < 3) {
       const q = pool[Math.floor(r() * pool.length)];

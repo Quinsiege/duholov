@@ -974,7 +974,7 @@ const UI = {
       }).join('')}</div><p class="small nb-hint">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,
       buttons: [
         { label: ru`К источнику`, fn: () => this.trackNearest('spring') },
-        { label: ru`К капищу`, fn: () => this.trackNearest('shrine') },
+        { label: ru`К святилищу`, fn: () => this.trackNearest('shrine') },
       ],
     });
     m.addEventListener('click', ev => {
@@ -985,7 +985,7 @@ const UI = {
   },
   trackNearest(type) {
     const e = MapView.nearest(type);
-    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных капищ`); return; }
+    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных святилищ`); return; }
     MapView.track(e); MapView.flyTo(e);
     this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);
   },

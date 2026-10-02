@@ -47,11 +47,11 @@ export function sources(G) {
   add('sparks', 'Сундук дня (все 3 задания)', `${Rules.CHEST.SPARKS.join('–')} (в среднем ${n(chestEV(Rules).sparks)})`, 'в день', ref(RU, 'CHEST: {'));
   add('sparks', 'Серия дней', streak('sparks'), 'на 7-й день серии', ref(RU, '{ charm3: 3, sparks: 1000, gate: 1, xp: 1500 }'));
   add('sparks', 'Разлом (победа)', '350 × ступень (350 / 700 / 1 050)', 'до 6 побед в день', ref(CO, 'sparks: 350 * tier'));
-  add('sparks', 'Капище (победа над хранителем)', Object.values(SHRINE_TIERS).map(t => n(t.sparks)).join(' / ') + ' (×2 в Неделю поединков)', 'до 8 побед в день', ref(D, "1: { title: ru`Ученик`"));
+  add('sparks', 'Святилище (победа над хранителем)', Object.values(SHRINE_TIERS).map(t => n(t.sparks)).join(' / ') + ' (×2 в Неделю поединков)', 'до 8 побед в день', ref(D, "1: { title: ru`Ученик`"));
   add('sparks', 'Вторжение Нави (победа)', 400, 'до 6 в день', ref(CO, '{ xp: 1000, sparks: 400, charm: 6, honey: 1, herb: 1 }'));
   add('sparks', 'Поединок с другом', 300, 'до 3 в день', ref(CO, '{ xp: 800, sparks: 300, charm: 3, honey: 1 }'));
-  add('sparks', 'Дань Капищ клана', `${TRIBUTE.sparks} за Капище (×${Rules.HOLD.MYTH} — святилище своей мифологии)`, `в день, до ${G.HOLD_MY_MAX} Капищ`, ref(D, 'const TRIBUTE'));
-  add('sparks', 'Защитник вернулся с Капища', '25 в час на посту (до 1 500)', 'за смену ≤ 72 ч', ref(RU, 'guardPay(hours)'));
+  add('sparks', 'Дань Святилищ клана', `${TRIBUTE.sparks} за Святилище (×${Rules.HOLD.MYTH} — святилище своей мифологии)`, `в день, до ${G.HOLD_MY_MAX} Святилищ`, ref(D, 'const TRIBUTE'));
+  add('sparks', 'Защитник вернулся со Святилища', '25 в час на посту (до 1 500)', 'за смену ≤ 72 ч', ref(RU, 'guardPay(hours)'));
   add('sparks', 'Общее дело Ордена', order('sparks'), 'в неделю (Орден дошёл до ступени, свой вклад ≥ 15 / 80)', ref(RU, '{ at: 1 / 3, need: 15'));
   add('sparks', 'Сезонная тропа (бесплатная)', `${n(Rules.PASS_FREE[0].sparks)}…${n(Rules.PASS_FREE[29].sparks)} за ступень; ${n(free.sparks)} за 30 ступеней`, 'в календарный месяц', ref(RU, 'PASS_FREE: ['));
   add('sparks', 'Золотая тропа', `${n(gold.sparks)} за 30 ступеней`, 'в месяц (за 600 монет)', ref(RU, 'PASS_GOLD: ['));
@@ -70,7 +70,7 @@ export function sources(G) {
   add('zlat', 'Серия дней', `${Rules.ZLAT.streak} в день, ${Rules.ZLAT.streak7} на 7-й (11 за неделю)`, 'в день', ref(RU, 'ZLAT: {'));
   add('zlat', 'Сундук дня', `случайный приз, в среднем ${chestEV(Rules).zlat.toFixed(2)}`, 'в день', ref(RU, "['zlat', 18"));
   add('zlat', 'Новый уровень', `${Rules.ZLAT.level}, каждый 5-й — ${Rules.ZLAT.level5} (до 40-го: ${[...Array(39)].reduce((a, _, i) => a + (lvl(i + 2).zlat || 0), 0)})`, 'за уровень', ref(ST, 'zlat: l % 5 ? Rules.ZLAT.level : Rules.ZLAT.level5'));
-  add('zlat', 'Дань Капищ', `${Rules.ZLAT.tribute} за Капище, не больше ${Rules.ZLAT.tributeMax}`, 'в день', ref(RU, 'ZLAT: {'));
+  add('zlat', 'Дань Святилищ', `${Rules.ZLAT.tribute} за Святилище, не больше ${Rules.ZLAT.tributeMax}`, 'в день', ref(RU, 'ZLAT: {'));
   add('zlat', 'Сезонная тропа (бесплатная)', `${free.zlat} (ступени 10 и 30)`, 'в месяц', ref(RU, 'PASS_FREE: ['));
   add('zlat', 'Золотая тропа', `${gold.zlat || 0} (с 5.1.21 монет нет)`, 'в месяц', ref(RU, 'PASS_GOLD: ['));
   add('zlat', 'Кокон Тропы / Кампании, когда коконов 9', 10, 'вместо кокона', ref(CO, 'zlat: (rw.zlat || 0) + 10'));
@@ -85,7 +85,7 @@ export function sources(G) {
   add('xp', 'Поимка босса / духа поручения / омрачённого', '300 (+500 новый вид)', 'за поимку', ref(RU, 'xp: (special ? 300 : 100) + (o.isNew ? 500 : 0)'));
   add('xp', 'Источник', 50, 'до 30 в день', ref(CO, '{ ...loot, xp: 50 }'));
   add('xp', 'Разлом', '1 000 × ступень (×1,25 совместный)', 'до 6 в день', ref(CO, 'xp: Math.round(1000 * tier'));
-  add('xp', 'Капище', Object.values(SHRINE_TIERS).map(t => n(t.xp)).join(' / ') + ' (×2 в Неделю поединков)', 'до 8 в день', ref(D, "1: { title: ru`Ученик`"));
+  add('xp', 'Святилище', Object.values(SHRINE_TIERS).map(t => n(t.xp)).join(' / ') + ' (×2 в Неделю поединков)', 'до 8 в день', ref(D, "1: { title: ru`Ученик`"));
   add('xp', 'Вторжение / очищение', '1 000 / 1 000', 'до 6 в день', ref(CO, '{ xp: 1000, sparks: 400, charm: 6, honey: 1, herb: 1 }'));
   add('xp', 'Эволюция', '1 000 новый вид, 200 повтор', 'за эволюцию', ref(ST, 'this.addXP(isNew ? 1000 : 200)'));
   add('xp', 'Кокон', '100 × км (+500 новый вид)', 'за кокон', ref(ST, 'this.addXP(c.km * 100'));
@@ -110,7 +110,7 @@ export function sources(G) {
   add('charm', 'Сундук дня', `случайный приз, в среднем ${chestEV(Rules).charm.toFixed(1)}; серебр. ${chestEV(Rules).charm2.toFixed(1)}; золот. ${chestEV(Rules).charm3.toFixed(2)}`, 'в день', ref(RU, "['charm', 24"));
   add('charm', 'Серия дней', `обычн. ${streak('charm')}; серебр. ${streak('charm2')}; золот. ${streak('charm3')}`, 'в день', ref(RU, 'STREAK: ['));
   add('charm', 'Новый уровень', `10 + уровень; серебр. 4 (на 8-м — 10); золот. 3 (на 16-м — 10)`, 'за уровень', ref(ST, 'const r = { charm: 10 + l'));
-  add('charm', 'Разлом / Капище / вторжение', '5 (+3 серебр. со 2-й ступени) / 5 (+3 серебр., +2 золот. на 3-й) / 6', 'за победу', ref(CO, 'sparks: 350 * tier, charm: 5'));
+  add('charm', 'Разлом / Святилище / вторжение', '5 (+3 серебр. со 2-й ступени) / 5 (+3 серебр., +2 золот. на 3-й) / 6', 'за победу', ref(CO, 'sparks: 350 * tier, charm: 5'));
   add('charm', 'Подарок друга', '3–6 (+2 серебр. с «Друга», +1 золот. с «Лучшего друга»)', 'в день от каждого друга', ref(CO, 'c = { charm: 3 + Math.floor(r() * 4) }'));
   add('charm', 'Спутник', '3 обереги в 5 из 8 «третьих» находок', 'по пути', ref(ST, "U.weighted([['charm', 5], ['honey', 2], ['water', 1]]"));
   add('charm', 'Поручение', Object.entries(TASK_TIERS).map(([t, x]) => `${t}-я: ${rw(x.reward)}`).join('; '), 'за поручение', ref(D, 'const TASK_TIERS'));
@@ -125,7 +125,7 @@ export function sources(G) {
   add('honey', 'Источник', `~${n(springW(20, 'honey'))} (на Масленицу вес ×8)`, 'за источник', ref(WO, "['honey', Ev.hol && Ev.hol.honey ? 8 : 1]"));
   add('honey', 'Задания дня / сундук', `${q('honey')} / в среднем ${chestEV(Rules).honey.toFixed(2)}`, 'в день', ref(D, 'const QUEST_TEMPLATES'));
   add('honey', 'Серия дней / уровень', `${streak('honey')} / 2 за уровень`, '', ref(RU, 'STREAK: ['));
-  add('honey', 'Бои', 'разлом — ступень; Капище — (ступень − 1); вторжение — 1; поединок — 1', 'за победу', ref(CO, 'honey: tier'));
+  add('honey', 'Бои', 'разлом — ступень; Святилище — (ступень − 1); вторжение — 1; поединок — 1', 'за победу', ref(CO, 'honey: tier'));
   add('honey', 'Сезонная тропа', `бесплатная: ${free.honey}`, 'в месяц', ref(RU, 'PASS_FREE: ['));
   add('honey', 'Прочее', `Орден (ступень 1): 3; Лига «Бронза»: 5; Алатырь 5+: 5; подарки 60% × 1–2; спутник; Лавка: 5 за ✦ ${n(shop('honey5').price)}`, '', ref(RU, "{ id: 'honey5'"));
 
@@ -137,12 +137,12 @@ export function sources(G) {
   add('incense', 'Лавка', `1 за ${shop('incense').price} монет; 5 за ${shop('incense5').price} (раз в день)`, '', ref(RU, "{ id: 'incense',"));
 
   // ---------- вода, лечение ----------
-  add('water', 'Источник / уровень / разлом 2–3 ст. / Капище 3 ст.', `~${n(springW(20, 'water'))} / 1 / 1 / 1`, '', ref(WO, "['water', 0.6]"));
+  add('water', 'Источник / уровень / разлом 2–3 ст. / Святилище 3 ст.', `~${n(springW(20, 'water'))} / 1 / 1 / 1`, '', ref(WO, "['water', 0.6]"));
   add('water', 'Сезонная тропа', `бесплатная: ${free.water}; Золотая: ${gold.water}`, 'в месяц', ref(RU, '{ water: 10, sparks: 1700 }'));
   add('water', 'Прочее', `Орден (ступень 2): 2; Лига «Железо» 5, «Изумруд» 10; Алатырь 15+: 5; подарок 40%; Лавка: 5 за ✦ ${n(shop('water5').price)}`, '', ref(RU, "{ id: 'water5'"));
   add('deadwater', 'Источник', `вес 0,009 — ~1 на ${Math.round(1 / springW(20, 'deadwater'))} источников`, '', ref(WO, "['deadwater', 0.009]"));
   add('deadwater', 'Тропа (30-я ступень) / Алатырь 30+ и 60+ / Лавка', `${free.deadwater} в месяц / по 1 / 1 за ${shop('dead1').price} монет раз в неделю`, '', ref(RU, "{ id: 'dead1'"));
-  add('herb', 'Подорожник: источник / задания / уровень / бои', `~${n(springW(20, 'herb'))} / 2 / 3 / 1 за разлом 1 ст., Капище 1–2 ст., вторжение`, '', ref(WO, "['herb', 2]"));
+  add('herb', 'Подорожник: источник / задания / уровень / бои', `~${n(springW(20, 'herb'))} / 2 / 3 / 1 за разлом 1 ст., Святилище 1–2 ст., вторжение`, '', ref(WO, "['herb', 2]"));
   add('herb', 'Отвар: источник / серия 6-й день / уровень / Алатырь 5+', `~${n(springW(20, 'brew'))} / 1 / 1 / 3`, '', ref(WO, "['brew', 0.8]"));
 
   // ---------- Врата, пропуски, настой, подарки ----------
@@ -154,7 +154,7 @@ export function sources(G) {
   add('gift', 'Источник (пока подарков меньше 25) / серия 4-й день', `${G.W.SPRING_GIFT} / 1`, '', ref(WO, 'SPRING_GIFT: 0.6'));
 
   // ---------- амулеты, коконы ----------
-  add('amulet', 'Разлом / Капище / вторжение', '5 / 12 / 30% по ступени; 4% × ступень; 4%', 'за победу', ref(CO, 'S.rollAmulet([0.05, 0.12, 0.3]'));
+  add('amulet', 'Разлом / Святилище / вторжение', '5 / 12 / 30% по ступени; 4% × ступень; 4%', 'за победу', ref(CO, 'S.rollAmulet([0.05, 0.12, 0.3]'));
   add('amulet', 'Лига: ранги 3, 6, 9', '1 случайный', 'раз в сезон', ref(CO, 'if (i % 3 === 0)'));
   add('amulet', 'Сезонная тропа', `на выбор: бесплатная — ${free.amuletPick} (20-я), Золотая — ${gold.amuletPick} (каждая пятая)`, 'в месяц', ref(RU, '{ amuletPick: 1, sparks: 2300, alatyr: 1 }'));
   add('amulet', 'Лавка / переплавка', `случайный за ${shop('amulet').price} монет / 3 одинаковых + ✦ ${n(Rules.MELT.SPARKS)} → на выбор`, '', ref(RU, "{ id: 'amulet'"));
@@ -174,7 +174,7 @@ export function sources(G) {
   add('rod', 'Переплавка эссенции семейства', `${S.ESS.MELT} → 1 (легенды — нельзя)`, 'без ограничений', ref(ST, 'ESS: { MELT: 5, LEGEND: 3 }'));
   add('rod', 'Итоги сезона Алатыря', ala('rod'), 'раз в сезон', ref(SR, '{ n: 30, name'));
   add('alatyr', 'Разлом 2-й / 3-й ступени', `${S.ALATYR_DROP.rift[2] * 100}% / ${S.ALATYR_DROP.rift[3] * 100}%`, `за победу; в боях не больше ${S.ALATYR_DAY} в день`, ref(ST, 'ALATYR_DROP: { rift: { 2: 0.2, 3: 1 }'));
-  add('alatyr', 'Хранитель-старейшина Капища', `${S.ALATYR_DROP.duel[3] * 100}%`, 'за победу (в тот же предел 2 в день)', ref(ST, 'ALATYR_DROP: { rift: { 2: 0.2, 3: 1 }'));
+  add('alatyr', 'Хранитель-старейшина Святилища', `${S.ALATYR_DROP.duel[3] * 100}%`, 'за победу (в тот же предел 2 в день)', ref(ST, 'ALATYR_DROP: { rift: { 2: 0.2, 3: 1 }'));
 
   // ---------- облики, сумка, жетоны ----------
   add('look', 'Уровни Ловчего', 'плащи, глаза, эмблемы, фоны, рамки с 1–31 уровня', 'за уровень', ref(D, 'const LOOK = {'));

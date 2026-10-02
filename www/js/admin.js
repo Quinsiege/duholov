@@ -7,7 +7,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const dist = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
 // путь снимка — только «<id игрока>/<id>.jpg» (заявку игрок пишет сам; иначе строка вырвалась бы из атрибута разметки)
 const photoUrl = p => /^[0-9a-f-]{36}\/[A-Za-z0-9-]{6,64}\.jpg$/.test(p || '') ? `${CLOUD_CONFIG.url}/storage/v1/object/public/poi-photos/${p}` : 'icons/icon-192.png';
-const KIND = { spring: 'Источник', shrine: 'Капище' };
+const KIND = { spring: 'Источник', shrine: 'Святилище' };
 const REASONS = ['Объекта нет на фото или его не видно', 'Геометка не совпадает с местом объекта', 'Такой объект уже есть на карте',
   'Частная территория, школа или детский сад', 'Опасное место (дорога, стройка)', 'Неприемлемое содержание', 'Неинтересный объект'];
 const tiles = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
@@ -140,7 +140,7 @@ async function detail(s, done) {
       <p class="small muted">Синяя точка — где стоял игрок при съёмке, жёлтая — предложенный объект, бирюзовые — уже есть на карте.</p>
       <label class="f">Название</label><input class="input nm" maxlength="60" value="${esc(s.name)}">
       <label class="f">Тип</label>
-      <select class="input kd"><option value="spring" ${s.kind === 'spring' ? 'selected' : ''}>Источник</option><option value="shrine" ${s.kind === 'shrine' ? 'selected' : ''}>Капище</option></select>
+      <select class="input kd"><option value="spring" ${s.kind === 'spring' ? 'selected' : ''}>Источник</option><option value="shrine" ${s.kind === 'shrine' ? 'selected' : ''}>Святилище</option></select>
       <div class="row"><button class="btn ok yes">Одобрить</button></div>
       <label class="f">Причина отказа</label>
       <select class="input rs">${REASONS.map(r => `<option>${esc(r)}</option>`).join('')}<option value="">Другое…</option></select>
@@ -205,7 +205,7 @@ async function placesIn(s, w, n, e) {
 }
 
 function poiMap() {
-  app.innerHTML = '<div class="bigmap"></div><p class="small muted"><b class="st"></b> Места загружаются при масштабе от 16. Бирюзовые — Источники, оранжевые — Капища, серые — скрытые, с белой обводкой — от игроков. Клик — изменить.</p>';
+  app.innerHTML = '<div class="bigmap"></div><p class="small muted"><b class="st"></b> Места загружаются при масштабе от 16. Бирюзовые — Источники, оранжевые — Святилища, серые — скрытые, с белой обводкой — от игроков. Клик — изменить.</p>';
   const m = L.map($('.bigmap')).setView([55.7539, 37.6208], 16);
   maps.push(m);
   tiles().addTo(m);
@@ -237,7 +237,7 @@ function editor(p, reload) {
   el.innerHTML = `${p.photo ? `<img src="${photoUrl(p.photo)}" style="width:100%;border-radius:8px">` : ''}
     <div class="small muted">${esc(p.id)} · ${esc(p.cat || '')} · ${p.source === 'osm' ? 'OpenStreetMap' : 'заявка игрока'}${p.source === 'osm' && p.srv ? ' · есть правка' : ''}</div>
     <input class="input nm" maxlength="80" value="${esc(p.name)}">
-    <select class="input kd"><option value="spring" ${p.kind === 'spring' ? 'selected' : ''}>Источник</option><option value="shrine" ${p.kind === 'shrine' ? 'selected' : ''}>Капище</option></select>
+    <select class="input kd"><option value="spring" ${p.kind === 'spring' ? 'selected' : ''}>Источник</option><option value="shrine" ${p.kind === 'shrine' ? 'selected' : ''}>Святилище</option></select>
     <label class="small"><input type="checkbox" class="ac" ${p.active ? 'checked' : ''}> показывать на карте</label>
     <div class="row"><button class="btn primary sv">Сохранить</button><span class="small msg"></span></div>`;
   $('.sv', el).onclick = async () => {

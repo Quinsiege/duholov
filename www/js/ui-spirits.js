@@ -128,7 +128,7 @@ Object.assign(UI, {
   rwText(rw) { return Object.entries(rw).filter(([k]) => k !== 'xp').map(([k, n]) => k === 'sparks' ? `✦ ${U.fmtNum(n)}` : `${S.resName(k)} ×${n}`).join(', '); },
 
   /* ---------------- КОМАНДА ---------------- */
-  // 5.1.5: команда перед боем — три карточки в один ряд (Лига, Разлом, Капище, Вторжение, совместный Разлом, поединок):
+  // 5.1.5: команда перед боем — три карточки в один ряд (Лига, Разлом, Святилище, Вторжение, совместный Разлом, поединок):
   // арт, знак стихии, имя, сила и уровень, здоровье; пустое место — такая же карточка с «+» (.team-slot/.team-edit — выбор команды).
   // foe — духи соперника: не кнопки, без здоровья и пустых мест (строка — ещё класс карточки)
   teamCards(team, foe) {
@@ -383,7 +383,7 @@ Object.assign(UI, {
   },
   pickAmulet(sp, done) {
     const have = AMULET_KEYS.filter(k => S.d.amulets[k] > 0);
-    if (!have.length) { this.toast(ru`Амулетов нет. Они выпадают в разломах, капищах, вторжениях и за ранги Лиги.`); return; }
+    if (!have.length) { this.toast(ru`Амулетов нет. Они выпадают в разломах, святилищах, вторжениях и за ранги Лиги.`); return; }
     const m = this.modal({
       title: ru`Выбери амулет`, cls: 'amulet-modal',
       html: `<div class="list">${have.map(k => `<button class="row am-pick" data-k="${k}"><div class="row-ico">${Art.amulet(k)}</div><div class="row-main"><b>${AMULETS[k].name}</b><small>${AMULETS[k].desc}</small></div><span class="cnt">×${S.d.amulets[k]}</span></button>`).join('')}</div>`,
@@ -443,7 +443,7 @@ Object.assign(UI, {
               <div class="det-actions top"><button class="btn primary act-pour" ${S.canPour(s.fam, 1) ? `data-err="${U.esc(S.canPour(s.fam, 1))}"` : ''}>${ru`Влить Рода`}<small>${ru`в «${fam.name}»`}</small></button><button class="btn act-melt">${ru`Переплавить`}<small>${ru`лишнюю эссенцию`}</small></button></div>`)}
             ${pane('how', `
               <div class="dt-rows">
-                ${row(ru`Осколки Алатыря`, ru`великие разломы — всегда, разломы — иногда, Капища Старейшин — редко (в боях — до ${S.ALATYR_DAY} в день)`, 'wrap')}
+                ${row(ru`Осколки Алатыря`, ru`великие разломы — всегда, разломы — иногда, Святилища Старейшин — редко (в боях — до ${S.ALATYR_DAY} в день)`, 'wrap')}
                 ${row(ru`Эссенция Рода`, ru`переплавка лишней эссенции`, 'wrap')}
                 ${row(ru`Эссенция легенд`, ru`победы в разломах, где легенда — босс, спутник-легенда и эссенция Рода`, 'wrap')}
                 ${row(ru`Звёзды`, A.LVL.map((l, i) => ru`★${i + 1} — с ${l} ур.`).join(', '), 'wrap')}

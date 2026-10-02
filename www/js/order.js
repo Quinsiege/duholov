@@ -32,7 +32,7 @@ const Order = {
     try {
       const r = await Game.act('daily');
       if (r && !r.already) this.streakModal(r);
-      await Clans.tribute(); // дань с Капищ — тоже раз в день
+      await Clans.tribute(); // дань со Святилищ — тоже раз в день
     } catch (e) { /* без связи — при следующей проверке */ }
     this._daily = false;
   },
@@ -87,7 +87,7 @@ const Order = {
   render(box) {
     const I = this.info;
     if (!I) { box.innerHTML = `<div class="empty">${ru`Узнаём, как идут дела у Ордена…`}</div>`; return; }
-    const ev = Ev.cur, x2 = ev.el ? ru`поимка духа стихии «${ELEMENTS[ev.el].name}» — 3 очка` : ev.loot ? ru`источник — 2 очка` : ev.rifts ? ru`разлом — 10 очков` : ev.duel ? ru`победа в капище — 6 очков` : ev.km ? ru`путь и коконы — вдвое` : '';
+    const ev = Ev.cur, x2 = ev.el ? ru`поимка духа стихии «${ELEMENTS[ev.el].name}» — 3 очка` : ev.loot ? ru`источник — 2 очка` : ev.rifts ? ru`разлом — 10 очков` : ev.duel ? ru`победа в святилище — 6 очков` : ev.km ? ru`путь и коконы — вдвое` : '';
     box.innerHTML = (I.prev ? this.weekCard(I.prev, ru`Прошлая неделя — награды ещё ждут`) : '') + this.weekCard(I.cur) +
       `<div class="q-note">${ru`Все Ловчие вместе копят очки: ${Rules.ORDER_RULES.map(([t, n]) => `${I18N.low(t)} — ${n}`).join(', ')}.`}${x2 ? ru` На этой неделе ${x2}.` : ''}
        ${ru`Цель растёт с числом участников. Награду ступени получает каждый, кто внёс нужное число очков.`}</div>`; // 5.1.27: Алатырь — из меню, не отсюда

@@ -20,7 +20,7 @@ const UUID = /^[0-9a-f-]{36}$/;
 // 4.3: запросы разных игроков выполняются одновременно — у каждого свои поля игрового кода (GameCore.isolate)
 GameCore.isolate(new AsyncLocalStorage());
 const must = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
-// 4.16: защитник Капища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
+// 4.16: защитник Святилища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
 const holdCutoff = () => Date.now() - Rules.HOLD.MAX_H * 3600000;
 const verCmp = (a, b) => {
   const pa = String(a || '0').split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -829,7 +829,7 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
-    // Кланы: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    // Кланы: кто держит Святилище, поставить защитника, освободить после победы, сколько Святилищ держит игрок
     async holdGet(poi) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
@@ -845,7 +845,7 @@ function makeEnv(uid) {
       const cut = holdCutoff();
       return rows.filter(r => (r.holders || []).some(h => h.pid === pid && +h.t >= cut)).length;
     },
-    // Капища, где стоят защитники игрока: название — из таблицы мест
+    // Святилища, где стоят защитники игрока: название — из таблицы мест
     async myHoldsList(pid) {
       const cut = holdCutoff();
       const rows = (must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(200)) || [])
@@ -855,10 +855,10 @@ function makeEnv(uid) {
       return rows.map(r => {
         const h = (r.holders || []).find(x => x.pid === pid) || {};
         const p = names.find(x => x.id === r.poi_id);
-        return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
+        return { id: r.poi_id, name: p ? p.name : 'Святилище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
       });
     },
-    // Сколько Капищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
+    // Сколько Святилищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
     // 4.28: кланы — мифологии (MYTH_KEYS), считаются параллельно; до миграции 032 — вместе с прежними дружинами (clanIds)
     async clanCounts(box) {
       const out = {};

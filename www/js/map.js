@@ -295,7 +295,7 @@ const MapView = {
     this.refresh(true);
     if (typeof Poi !== 'undefined') Poi.ensure();
     if (typeof Sky !== 'undefined' && Sky.update) Sky.update(true); // погода — нового места
-    if (typeof Clans !== 'undefined' && Clans.refresh) setTimeout(() => Clans.refresh(true), 1500); // чьи Капища вокруг
+    if (typeof Clans !== 'undefined' && Clans.refresh) setTimeout(() => Clans.refresh(true), 1500); // чьи Святилища вокруг
   },
   updateBuddy() {}, // 4.23.2: спутник на карте не показывается (ui-spirits.js зовёт после выбора спутника)
 
@@ -492,7 +492,7 @@ const MapView = {
     // 4.21: Разломы видны с начала; до RAID_LEVEL — серые, с замком (нажатие скажет, с какого уровня)
     // 4.19: дух виден, только если он вне тумана Нави и не в опасном месте (вода, пути, трассы, стройки — см. Hazard)
     const spirits = W.spawnsAround(lat, lng).filter(e => e.tut || Hazard.bad(e.lat, e.lng) === false);
-    // 5.2: Источники, Капища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
+    // 5.2: Источники, Святилища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
     // PLACE_HOLD м, чтобы значок на границе не мигал); Следопыт, «Рядом» и дальние Разломы по-прежнему берут места из данных
     const R = Rules.PLACES.VIEW, inView = e => e.d <= R || (e.d <= R + this.PLACE_HOLD && this.markers.has(e.id));
     const ce = this.campEnt(); // 5.1.15: личный Разлом кампании
@@ -565,7 +565,7 @@ const MapView = {
       Encounter.start({ mode: 'wild', sid: e.sid, lvl: e.lvl, seed: e.id, spawnId: e.id, shiny: e.shiny, boost: e.boost, tut: e.tut });
     } else if (e.type === 'spring') UI.spring(e); // 4.19: захваченный — откроется на вкладке «Вторжение»
     else if (e.type === 'shrine') {
-      if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }
+      if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Святилища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }
       Duel.open(e);
     } else Raid.open(e);
   },
@@ -574,7 +574,7 @@ const MapView = {
   pxR(ll, meters, z) {
     return Math.abs(this.map.project(ll, z).y - this.map.project(L.latLng(ll.lat + meters / 111320, ll.lng), z).y);
   },
-  // земли кланов (сияние цвета клана вокруг Капища) и марево Нави вокруг открытых разломов;
+  // земли кланов (сияние цвета клана вокруг Святилища) и марево Нави вокруг открытых разломов;
   // 4.24.1: под каждым духом — еле заметная волна, как от Ловчего, только в разы меньше (SPIRIT_R м); у каждого духа — свой такт
   SPIRIT_R: 25,
   zones: new Map(),
@@ -592,7 +592,7 @@ const MapView = {
         icon: L.divIcon({ className: 'mk-zone', iconSize: [0, 0], iconAnchor: [0, 0], html: `<div class="zn ${w.cls}" style="${w.css}">${w.inner}</div>` }) }).addTo(this.map);
       this.zones.set(id, { m, r: w.r, css: w.css, cls: w.cls });
       this.fitZone(m, w.r);
-      if (w.cls === 'clan') this.fadeIn(m); // 5.2: земли клана — вместе со своим Капищем
+      if (w.cls === 'clan') this.fadeIn(m); // 5.2: земли клана — вместе со своим Святилищем
     }
   },
   fitZone(m, r, z, anim) {

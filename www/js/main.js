@@ -48,7 +48,7 @@ window.addEventListener('load', () => {
     setInterval(() => { if (!document.hidden) Game.act('tick').then(() => { UI.refreshHud(); Order.daily(); Order.refresh(); }).catch(() => {}); }, 5 * 60000);
     setTimeout(() => Order.daily(), 2500); // серия дней: награда за первый вход за день
     setTimeout(() => Order.refresh(), 8000); // общее дело Ордена — для значка меню
-    // кто держит Капища вокруг — это нужно только карте: под полноэкранной сценой (stage.js) не спрашиваем, догоняем один раз после
+    // кто держит Святилища вокруг — это нужно только карте: под полноэкранной сценой (stage.js) не спрашиваем, догоняем один раз после
     let clansMiss = false;
     const clans = () => { if (Stage.busy) clansMiss = true; else Clans.refresh(); };
     Stage.on(busy => { if (!busy && clansMiss) { clansMiss = false; setTimeout(clans, 700); } });

@@ -1,6 +1,6 @@
 // Модель экономики «Духолова»: ожидаемый доход и траты по действиям (из настоящих формул игры), три типа игрока
 // день за днём, сроки до целей. Числа игры берутся из загруженных модулей (load.mjs); то, что в коде сервера записано
-// прямо в обработчике (награда разлома, Капища, вторжения…), повторено здесь — и сверяется с исходником (expectSrc):
+// прямо в обработчике (награда разлома, Святилища, вторжения…), повторено здесь — и сверяется с исходником (expectSrc):
 // поменяли число в core.js — модель скажет, что разошлась с игрой.
 import { loadGame, source, chestEV } from './load.mjs';
 
@@ -257,10 +257,10 @@ export function taskEV(G, L) {
    Числа «в день» — на день, когда Ловчий играет; week — в какие дни недели играет (пн…вс).
    catches — пойманных диких духов (не встреч), springs — источников, km — засчитанного пути (джойстик: шаг 20 км/ч,
    бег 60 км/ч, Rules.MOVE; в зачёт не больше Rules.TRACK.DAY = 60 км в день). raids / duels — ПОБЕД по ступеням
-   (разломы с 4 уровня, Капища с 5-го), invasions — побед над прислужниками (с 7-го), league — боёв Лиги (с 5-го),
+   (разломы с 4 уровня, Святилища с 5-го), invasions — побед над прислужниками (с 7-го), league — боёв Лиги (с 5-го),
    leagueP — доля побед (соперник — живой ±150 рейтинга или Ловчий Ордена). quests — забранных заданий дня из 3, chest —
    доля дней с сундуком, tasks — выполненных поручений, friends — друзей, с кем каждый день обмен подарками, spar —
-   поединков с друзьями с наградой (до 3), holds — Капищ, где в среднем стоит защитник (дань и плата за службу),
+   поединков с друзьями с наградой (до 3), holds — Святилищ, где в среднем стоит защитник (дань и плата за службу),
    incense / gates / farpass — сколько ладана, Врат и Дальних пропусков тратит (если есть), heal — лечебных предметов
    на победу в бою, raidWater — Живой воды в бою на победу в разломе 2–3-й ступени, dead — Мёртвой воды в день, evolve / melt — доля дневной эссенции семейств, что идёт на эволюции / переплавку в эссенцию Рода,
    exchange — обменов искр на монеты в день (если искр с запасом), trades — сделок на аукционе в день */
@@ -271,7 +271,7 @@ export const PROFILES = {
     raids: { 1: 0.35, 2: 0.1, 3: 0.03 }, duels: { 1: 0.3, 2: 0.15, 3: 0.05 }, invasions: 0.1,
     league: 1, leagueP: 0.5, quests: 2, chest: 0.25, tasks: 0.6, friends: 1, spar: 0.2, holds: 0,
     incense: 0.3, gates: 0.05, farpass: 0.3, heal: 0.3, raidWater: 0.3, dead: 0.02, evolve: 0.3, melt: 0, exchange: 0, trades: 0,
-    time: 'поимки 12 × 30 с = 6 мин, источники 6 × 20 с = 2, путь 4 км ≈ 4, Лига 1 бой ≈ 3, разлом и Капище ≈ 2, задания и меню ≈ 3',
+    time: 'поимки 12 × 30 с = 6 мин, источники 6 × 20 с = 2, путь 4 км ≈ 4, Лига 1 бой ≈ 3, разлом и Святилище ≈ 2, задания и меню ≈ 3',
   },
   regular: {
     name: 'Обычный', minutes: 60, week: [1, 1, 1, 1, 1, 1, 1],
@@ -279,7 +279,7 @@ export const PROFILES = {
     raids: { 1: 0.9, 2: 0.5, 3: 0.1 }, duels: { 1: 0.8, 2: 0.5, 3: 0.2 }, invasions: 0.5,
     league: 3, leagueP: 0.55, quests: 3, chest: 0.85, tasks: 2, friends: 4, spar: 1, holds: 1,
     incense: 1, gates: 0.3, farpass: 0.5, heal: 0.5, raidWater: 0.5, dead: 0.05, evolve: 0.5, melt: 0.5, exchange: 5, trades: 0.1,
-    time: 'поимки 35 × 30 с ≈ 17 мин, источники 15 × 20 с = 5, путь 15 км ≈ 12, разломы и Капища 3 × 3 ≈ 10, Лига 3 боя ≈ 9, меню ≈ 7',
+    time: 'поимки 35 × 30 с ≈ 17 мин, источники 15 × 20 с = 5, путь 15 км ≈ 12, разломы и Святилища 3 × 3 ≈ 10, Лига 3 боя ≈ 9, меню ≈ 7',
   },
   hardcore: {
     name: 'Хардкорный', minutes: 180, week: [1, 1, 1, 1, 1, 1, 1],
@@ -287,7 +287,7 @@ export const PROFILES = {
     raids: { 1: 3, 2: 2, 3: 1 }, duels: { 1: 3, 2: 2, 3: 1 }, invasions: 3,
     league: 10, leagueP: 0.6, quests: 3, chest: 1, tasks: 4, friends: 12, spar: 3, holds: 3,
     incense: 2, gates: 1, farpass: 1, heal: 0.7, raidWater: 0.8, dead: 0.15, evolve: 0.6, melt: 1, exchange: 5, trades: 0.3,
-    time: 'поимки 120 × 30 с = 60 мин, источники 30 × 20 с = 10, путь 60 км ≈ 45, разломы и Капища 12 × 3 ≈ 36, Лига 10 боёв ≈ 30, меню ≈ 10',
+    time: 'поимки 120 × 30 с = 60 мин, источники 30 × 20 с = 10, путь 60 км ≈ 45, разломы и Святилища 12 × 3 ≈ 36, Лига 10 боёв ≈ 30, меню ≈ 10',
   },
 };
 // общие допущения (не зависят от типа)
@@ -540,7 +540,7 @@ export function simulate(Lg, P, opts = {}) {
         give({ charm: finds / 3 * 5 / 8 * 3, honey: finds / 3 * 2 / 8, water: finds / 3 / 8 }, 'спутник');
       }
 
-      // ---------- бои: разломы, Капища, вторжения ----------
+      // ---------- бои: разломы, Святилища, вторжения ----------
       let battles = 0, shards = 0, essBattle = 0, bigRaids = 0;
       if (L >= G.RAID_LEVEL) {
         const raids = { ...P.raids };
@@ -569,14 +569,14 @@ export function simulate(Lg, P, opts = {}) {
           if (dt > Rules.DAILY.duels) { const f = Rules.DAILY.duels / dt; for (const t of [1, 2, 3]) duels[t] *= f; dt = Rules.DAILY.duels; }
           for (const t of [1, 2, 3]) {
             const n = duels[t], T = G.SHRINE_TIERS[t], mul = evo.duel; if (!n) continue;
-            give({ xp: T.xp * mul * n, sparks: T.sparks * mul * n, charm: 5 * mul * n, honey: (t - 1) * mul * n, herb: t < 3 ? n : 0, water: t === 3 ? n : 0, charm2: t >= 2 ? 3 * mul * n : 0, charm3: t === 3 ? 2 * mul * n : 0 }, 'Капища');
-            give({ amulet: 0.04 * t * n }, 'Капища');
+            give({ xp: T.xp * mul * n, sparks: T.sparks * mul * n, charm: 5 * mul * n, honey: (t - 1) * mul * n, herb: t < 3 ? n : 0, water: t === 3 ? n : 0, charm2: t >= 2 ? 3 * mul * n : 0, charm3: t === 3 ? 2 * mul * n : 0 }, 'Святилища');
+            give({ amulet: 0.04 * t * n }, 'Святилища');
             shards += ((S.ALATYR_DROP.duel || {})[t] || 0) * n;
           }
           st.stats.duels += dt; battles += dt;
         }
         shards = Math.min(S.ALATYR_DAY, shards);
-        give({ alatyr: shards }, 'разломы и Капища'); st.seasonShards += shards;
+        give({ alatyr: shards }, 'разломы и Святилища'); st.seasonShards += shards;
       }
       if (L >= G.INVASION_LEVEL && P.invasions) {
         const n = Math.min(P.invasions, Rules.DAILY.invasions);
@@ -634,10 +634,10 @@ export function simulate(Lg, P, opts = {}) {
         give({ xp: fx * f }, 'ступени дружбы');
       }
 
-      // ---------- Капища клана: дань (Rules.tributeFor, монеты — Rules.ZLAT.tribute) и плата за службу (Rules.guardPay) ----------
+      // ---------- Святилища клана: дань (Rules.tributeFor, монеты — Rules.ZLAT.tribute) и плата за службу (Rules.guardPay) ----------
       if (L >= G.CLAN_LEVEL && P.holds) {
         const h = Math.min(P.holds, G.HOLD_MY_MAX), T = Rules.tributeFor(h, h / 7);
-        give({ sparks: T.sparks, charm: T.charm, zlat: Rules.ZLAT.tribute * Math.min(h, Rules.ZLAT.tributeMax) }, 'дань Капищ');
+        give({ sparks: T.sparks, charm: T.charm, zlat: Rules.ZLAT.tribute * Math.min(h, Rules.ZLAT.tributeMax) }, 'дань Святилищ');
         give({ sparks: h * Rules.guardPay(24) }, 'служба защитников');
       }
 

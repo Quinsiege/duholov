@@ -131,7 +131,7 @@
     eq(ru`Сила ${5}`, 'Сила 5');
     const was = { dict: I18N.dict, lang: I18N.lang, pats: I18N._pats };
     try {
-      I18N.dict = { 'Сила {0}': 'Power {0}', 'Нужна команда': 'Team needed', '{0} ускользнул': '{0} got away', 'Уголёк': 'Ugolyok', 'Дань с {0} Капищ': '{0} tribute' };
+      I18N.dict = { 'Сила {0}': 'Power {0}', 'Нужна команда': 'Team needed', '{0} ускользнул': '{0} got away', 'Уголёк': 'Ugolyok', 'Дань с {0} Святилищ': '{0} tribute' };
       I18N._pats = null; I18N.lang = 'en';
       eq(ru`Сила ${7}`, 'Power 7');
       eq(ru('Нужна команда'), 'Team needed');
@@ -232,16 +232,16 @@
     fakePois.push({ id, name: 'Объект ' + i, kind: i % 3 ? 'spring' : 'shrine', lat: 55.75 + (U.h('la', i) - 0.5) * 0.02, lng: 37.62 + (U.h('ln', i) - 0.5) * 0.03, photo: i === 1 ? 'u/p.jpg' : null });
   }
   fakePois.forEach(p => { p.t = Poi.tileId(p.lat, p.lng); Poi.list.set(p.id, p); });
-  test('Источники, разломы и капища стоят у реальных объектов', () => {
+  test('Источники, разломы и святилища стоят у реальных объектов', () => {
     const sp = W.springsAround(55.75, 37.62, 2000);
     ok(sp.length > 0, 'источники');
     ok(sp.every(s => Poi.list.get(s.id) && Poi.list.get(s.id).kind === 'spring'), 'источник = объект типа «источник»');
     const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
     ok(rf.every(r => SP[r.boss] && r.tier >= 1 && r.tier <= 3 && r.place), 'разломы');
-    ok(sh.length > 0, 'капища');
+    ok(sh.length > 0, 'святилища');
     const shrines = fakePois.filter(p => p.kind === 'shrine' && U.dist(55.75, 37.62, p.lat, p.lng) <= 3000).length;
-    eq(rf.length + sh.length, shrines, 'разлом открывается вместо капища');
-    ok(!sh.some(s => rf.some(r => r.id.startsWith(s.id + ':'))), 'капище с разломом скрыто');
+    eq(rf.length + sh.length, shrines, 'разлом открывается вместо святилища');
+    ok(!sh.some(s => rf.some(r => r.id.startsWith(s.id + ':'))), 'святилище с разломом скрыто');
     const g = W.guardian(sh[0]);
     eq(g.team.length, 3, 'команда хранителя');
     ok(g.team.every(x => !SP[x.sid].legend && !SP[x.sid].region), 'без легенд и региональных');
@@ -260,20 +260,20 @@
       // граница недели — как у событий недели (Ev.week: понедельник 00:00 UTC)
       const edge = (w0 + 1) * 7 - 3, p = ids.find(x => on[0].has(x.id));
       ok(W.awake(p, 'shrine', edge * 86400000 - 1) && !W.awake(p, 'shrine', edge * 86400000), 'засыпает ровно в понедельник 00:00 UTC');
-      ok(ids.slice(0, 50).every(x => W.awake(x, 'spring', t(0)) === W.awake(x, 'shrine', t(0))), 'правило одно для Источника и Капища');
+      ok(ids.slice(0, 50).every(x => W.awake(x, 'spring', t(0)) === W.awake(x, 'shrine', t(0))), 'правило одно для Источника и Святилища');
       ok([0, 1, 2, 3, 4].every(k => W.awake({ id: 'usr:00000000-0000-0000-0000-000000000001' }, 'shrine', t(k))), 'место игрока не спит');
       const sleeping = ids.find(x => !on[0].has(x.id));
       S.d.tut = 3;
       ok(W.awake(sleeping, 'spring', t(0)), 'новичку на обучении — все Источники');
-      ok(!W.awake(sleeping, 'shrine', t(0)), 'Капища у новичка — как у всех');
+      ok(!W.awake(sleeping, 'shrine', t(0)), 'Святилища у новичка — как у всех');
       S.d.tut = 0;
-      // на карте и в списках — только бодрствующие; у спящего Капища нет ни Капища, ни Разлома (и Великого — тоже)
+      // на карте и в списках — только бодрствующие; у спящего Святилища нет ни Святилища, ни Разлома (и Великого — тоже)
       const hour = Math.floor(U.now() / 3600000), aw = x => W.awake(x, x.kind);
       const sp = W.springsAround(55.75, 37.62, 3000), in3 = x => U.dist(55.75, 37.62, x.lat, x.lng) <= 3000;
       eq(sp.length, fakePois.filter(x => x.kind === 'spring' && in3(x) && aw(x)).length, 'Источники — только бодрствующие');
       ok(sp.length < fakePois.filter(x => x.kind === 'spring' && in3(x)).length, 'часть Источников спит');
       const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
-      eq(rf.length + sh.length, fakePois.filter(x => x.kind === 'shrine' && in3(x) && aw(x)).length, 'Капища и Разломы — только у бодрствующих');
+      eq(rf.length + sh.length, fakePois.filter(x => x.kind === 'shrine' && in3(x) && aw(x)).length, 'Святилища и Разломы — только у бодрствующих');
       const zz = fakePois.find(x => x.kind === 'shrine' && !aw(x)), rr = W.riftAt;
       W.riftAt = () => true;
       try { eq(W.riftFor(zz, 0, hour), null, 'у спящего места Разлома нет'); ok(W.riftFor(fakePois.find(x => x.kind === 'shrine' && aw(x)), 0, hour), 'у бодрствующего — есть'); }
@@ -477,10 +477,10 @@
       let x0 = S.d.xp; S.evolve(a); eq(S.d.xp - x0, 1000 * mul, 'новый вид');
       x0 = S.d.xp; S.evolve(b); eq(S.d.xp - x0, 200 * mul, 'повторное превращение');
     } finally { S.d = keep; }
-    // лестница открытий: Капища, Лига, кланы и Аукцион — с 5 уровня (5.1.11), вторжения — позже; всё — в «Пути Ловчего»
+    // лестница открытий: Святилища, Лига, кланы и Аукцион — с 5 уровня (5.1.11), вторжения — позже; всё — в «Пути Ловчего»
     ok(DUEL_LEVEL === 5 && League.LEVEL === 5 && CLAN_LEVEL === 5 && Rules.AUCTION.LEVEL === 5 && INVASION_LEVEL > 5, 'уровни открытия');
     const un = Path.unlocks();
-    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Клан'], [Rules.AUCTION.LEVEL, 'Аукцион']]
+    [[DUEL_LEVEL, 'Святилища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Клан'], [Rules.AUCTION.LEVEL, 'Аукцион']]
       .forEach(([l, t]) => ok((un[l] || []).some(x => I18N.back(x.t) === t), `${t} — на ${l} уровне пути`));
     const d0 = S.d.level; S.d.level = INVASION_LEVEL - 1;
     try { ok(!Array.from({ length: 300 }, (_, i) => W.springFor({ id: 'osm:n' + (70000 + i), lat: 55.75, lng: 37.62, name: 'Р' }, 0)).some(e => e.invaded), 'до INVASION_LEVEL вторжений нет'); }
@@ -869,7 +869,7 @@
       Math.random = () => 0.1; S.riftSpoils('kostrovik', 2); eq(S.d.alatyr, 2, 'разлом — иногда');
       S.riftSpoils('koschey', 3); eq(S.d.alatyr, 2, `в бою — не больше ${S.ALATYR_DAY} осколков в день`);
       S.d.alaDay = { day: 'вчера', n: 9 };
-      eq(S.alatyrDrop('duel', 2).length, 0, 'Капище мастера — без осколков'); Math.random = () => 0.05; eq(S.alatyrDrop('duel', 3).length, 1, 'старейшина — изредка; новый день — новый счёт');
+      eq(S.alatyrDrop('duel', 2).length, 0, 'Святилище мастера — без осколков'); Math.random = () => 0.05; eq(S.alatyrDrop('duel', 3).length, 1, 'старейшина — изредка; новый день — новый счёт');
       S.d.alatyr = 3;
       const b0 = S.bagCount(), got = S.giveRewards({ alatyr: 2, rod: 5 }); eq(S.d.alatyr, 5); eq(got.length, 2); eq(S.bagCount(), b0, 'в сумку не идут');
     } finally { Math.random = m; }
@@ -915,7 +915,7 @@
     try {
       const team = lvl => ['ugolek', 'kapelka', 'mshonok'].map((sid, i) => S.makeSpirit(sid, lvl, 'bt' + sid + lvl + i));
       S.d.spirits.push(...team(15)); // 4.16: хранитель — по силе сильнейших духов игрока
-      const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Капище' });
+      const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Святилище' });
       ok(!Rules.duelWinnable(team(1), g.team, SHRINE_TIERS[3].speed), 'команда 1-го уровня против Старейшины — нет');
       ok(Rules.duelWinnable(team(15), g.team, SHRINE_TIERS[3].speed), 'сильная команда — да');
       // 4.16: здоровье на входе в бой — израненная команда не «побеждает» того, кого здоровая одолела бы
@@ -925,7 +925,7 @@
     } finally { S.d = saved; }
   });
   // 4.16: хранитель и прислужник — по силе духов игрока, а не по его уровню
-  test('Капища и вторжения: сила соперника — от силы духов игрока (4.16)', () => {
+  test('Святилища и вторжения: сила соперника — от силы духов игрока (4.16)', () => {
     const saved = S.d; S.newGame('Сила', 'ugolek'); S.d.level = 30;
     try {
       const pw = t => t.reduce((a, x) => a + S.power(x), 0);
@@ -1224,7 +1224,7 @@
     eq(Diff.make(b, b).length, 0, 'без изменений — пусто');
   });
 
-  test('Правила 4.16: подсказка цены, залог, усталость защитников, вольные Капища, Золотая тропа на поздних уровнях', () => {
+  test('Правила 4.16: подсказка цены, залог, усталость защитников, вольные Святилища, Золотая тропа на поздних уровнях', () => {
     const h = Rules.auctionHint([{ cur: 'sparks', price: 100, lvl: 10 }, { cur: 'sparks', price: 300, lvl: 10 }, { cur: 'sparks', price: 200, lvl: 12 },
       { cur: 'zlat', price: 5, lvl: 30 }, { cur: 'sparks', price: 9000, lvl: 35 }], 10);
     eq(h.sparks.n, 3, 'только близкие по уровню'); eq(h.sparks.med, 200); eq(h.sparks.lo, 100); eq(h.sparks.hi, 300); eq(h.zlat.n, 1);
@@ -1237,7 +1237,7 @@
     eq(Rules.holdSpirit({ sid: 'kapelka', lvl: 30 }, now - H.MAX_H * 3600000 + 1000, now).lvl, Math.round(30 * (1 - H.WEAK)), 'к концу срока');
     ok(Rules.holdFresh({ t: now - 3600000 }, now) && !Rules.holdFresh({ t: now - H.MAX_H * 3600000 - 1 }, now), 'срок на посту');
     let free = 0; for (let i = 0; i < 4000; i++) if (Rules.shrineFree('osm:n' + i)) free++;
-    near(free / 4000, H.FREE, 0.03, 'доля вольных Капищ');
+    near(free / 4000, H.FREE, 0.03, 'доля вольных Святилищ');
     // 5.1.21: Тропа — одна таблица для всех уровней Ловчего (поздней Золотой тропы нет)
     eq(JSON.stringify(Rules.passReward('gold', 1, 40)), JSON.stringify(Rules.passReward('gold', 1, 5)), 'Золотая — одна для всех уровней');
     eq(Rules.passReward('gold', 30).look, 'trail', 'Знак Тропы — на вершине Золотой'); eq(Rules.passReward('gold', 15).look, '#065f46', 'плащ — на 15-й');
@@ -1274,8 +1274,8 @@
       ok(!Rules.raidWinnable([S.makeSpirit('mshonok', 1, 'r26w')], b3, Raid.bossStats(b3).hp), 'дух 1-го уровня против великого разлома — нет');
       ok(Rules.raidMinLoss(t10, b1, need) > 0, 'после победы раны есть наверняка'); eq(Rules.raidMinLoss(t10, b1, 0), 0);
       S.d.spirits.push(...t10); // хранитель — по силе духов игрока
-      const g = W.guardian({ id: 'osm:n7775', tier: 1, name: 'Капище' });
-      ok(Rules.duelMinLoss(t10, g.team, g.speed) > 0, 'на Капище — тоже');
+      const g = W.guardian({ id: 'osm:n7775', tier: 1, name: 'Святилище' });
+      ok(Rules.duelMinLoss(t10, g.team, g.speed) > 0, 'в Святилище — тоже');
     } finally { S.d = saved; }
     // Лига: в ответе сервера — бой без скрытого от соперника (4.26)
     const side = pid => ({ pid, name: pid, team: [{ uid: pid + '1', sid: 'ugolek', el: 'fire', atk: 120, def: 100, max: 90, cur: 90, emul: 1.3, move2: true, power: 500 }] });
@@ -1355,7 +1355,7 @@
     },
     roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
-    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: h.lat, lng: h.lng, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Святилище', lat: h.lat, lng: h.lng, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = {}; MYTH_KEYS.forEach(k => { o[k] = 0; }); Object.values(DB.holds).forEach(h => { const k = clanOf(h.clan); if (h.holders.length && k in o) o[k]++; }); return o; },
     // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
     lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
@@ -1659,7 +1659,7 @@
     A.data.tut = 0;
     const hour = Math.floor(Date.now() / 3600000);
     const riftId = from => poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), from);
-    const rift = { id: riftId(94000), lat: A.lat + 0.02, lng: A.lng, name: 'Дальнее Капище' }; // ≈ 2,2 км
+    const rift = { id: riftId(94000), lat: A.lat + 0.02, lng: A.lng, name: 'Дальнее Святилище' }; // ≈ 2,2 км
     const tooFar = { id: riftId(95000), lat: A.lat + 0.06, lng: A.lng, name: 'Совсем далеко' }; // ≈ 6,7 км
     await refuse(A, 'raidStart', { rift }, /далеко/);
     A.data.items.farpass = 0;
@@ -1678,13 +1678,13 @@
     // в Лавке — за искры
     A.data.sparks = 1000; await must(A, 'shopBuy', { id: 'farpass' }); eq(A.data.items.farpass, Rules.FAR.KEEP + 1);
   });
-  atest('Сервер: капище — с 3 уровня, раз в день, без мгновенных побед', async () => {
+  atest('Сервер: святилище — с 3 уровня, раз в день, без мгновенных побед', async () => {
     const A = await newPlayer('ug', 55.71, 37.59, 'Зоря'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
     const hour = Math.floor(Date.now() / 3600000);
-    // Капище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
+    // Святилище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
     const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 50000);
     const shrine = { id, lat: A.lat, lng: A.lng, name: 'Старый дуб' };
-    await refuse(A, 'duelStart', { shrine }, new RegExp(DUEL_LEVEL + ' уровня')); // 4.16: Капища — с DUEL_LEVEL (было с 3)
+    await refuse(A, 'duelStart', { shrine }, new RegExp(DUEL_LEVEL + ' уровня')); // 4.16: Святилища — с DUEL_LEVEL (было с 3)
     A.data.level = DUEL_LEVEL;
     await must(A, 'duelStart', { shrine });
     await refuse(A, 'duelEnd', { win: true }, /слишком быстрая/);
@@ -2021,7 +2021,7 @@
     B.data.tut = 0;
     ok((await must(B, 'spring', { poi: { id: 'osm:n7003', lat: B.lat, lng: B.lng, name: 'Фонтан' } })).got.length > 0);
   });
-  atest('Сервер: кланы — защитник на Капище, бой с защитниками, дань', async () => {
+  atest('Сервер: кланы — защитник в Святилище, бой с защитниками, дань', async () => {
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), 61000); // 4.16: не вольное
     const [lat, lng] = [55.58, 37.46];
@@ -2041,10 +2041,10 @@
     await must(A, 'clanJoin', { clan: 'slavic' }); eq(A.data.clan, 'slavic');
     await refuse(A, 'clanJoin', { clan: 'norse' }, /уже выбран/);
     await must(B, 'clanJoin', { clan: 'celtic' }); await must(C, 'clanJoin', { clan: 'slavic' });
-    // 4.1: Капище, которого нет в базе мест (id и координаты — от телефона), защищать нельзя
+    // 4.1: Святилище, которого нет в базе мест (id и координаты — от телефона), защищать нельзя
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /известные Ордену/);
     DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Старый вяз', active: true };
-    // свободное Капище: сначала победа над хранителем, потом защитник
+    // свободное Святилище: сначала победа над хранителем, потом защитник
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /Сначала победи/);
     await must(A, 'duelStart', { shrine });
     A.srv.battle.start -= 200000;
@@ -2062,10 +2062,10 @@
     await must(B, 'duelStart', { shrine });
     B.srv.battle.start -= 200000;
     const r = await must(B, 'duelEnd', { win: true });
-    ok(r.win && r.freed, 'Капище освобождено'); eq(DB.holds[id].holders.length, 0);
+    ok(r.win && r.freed, 'Святилище освобождено'); eq(DB.holds[id].holders.length, 0);
     await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid });
     eq(DB.holds[id].clan, 'celtic');
-    // дань — раз в день за каждое Капище с моим защитником
+    // дань — раз в день за каждое Святилище с моим защитником
     // 4.16: только что поставленный защитник дань не приносит — нужно отстоять Rules.HOLD.TRIBUTE_H часов
     const t0 = await must(B, 'tribute'); eq(t0.n, 0); ok(t0.next > Date.now(), 'дань — позже'); ok(!B.data.tributeDay, 'день не закрыт');
     DB.holds[id].holders[0].t -= Rules.HOLD.TRIBUTE_H * 3600000; B.data.tributeNext = 0;
@@ -2429,15 +2429,15 @@
       ['kapelka', 'mshonok'].forEach(sid => B.data.spirits.push(asPlayer(B, () => S.makeSpirit(sid, 12, sid + 'mb'))));
       await must(B, 'team', { uids: B.data.spirits.map(x => x.uid) });
       eq(B.data.clan, 'slavic', 'сокол — Дружина Перуна'); eq(B.data.clanFree, 1, 'один бесплатный переход');
-      // Капище прежней дружины (до миграции 032) — своё: без боя, защитник встаёт рядом, счёт — клану
+      // Святилище прежней дружины (до миграции 032) — своё: без боя, защитник встаёт рядом, счёт — клану
       const hour = Math.floor(Date.now() / 3600000), id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), 63000); made.push(id);
       DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Сокольня', active: true };
       DB.holds[id] = { clan: 'sokol', holders: [{ pid: 'oldfalcon0', name: 'Сокольник', sp: { sid: 'ugolek', lvl: 10, iv: [5, 5, 5] }, t: Date.now() - 3600000 }], ver: 1 };
       const shrine = { id, lat, lng, name: 'Сокольня' };
       await refuse(B, 'duelStart', { shrine }, /твой клан/);
       await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid }); eq(DB.holds[id].holders.length, 2, 'рядом с защитником прежней дружины');
-      eq((await must(B, 'clanStats')).all.slavic, 1, 'Капище прежней дружины — в счёте клана');
-      const eg = await must(A, 'duelStart', { shrine }); eq(eg.clan, 'slavic', 'для чужого клана — Капище Дружины Перуна'); A.srv.battle = null;
+      eq((await must(B, 'clanStats')).all.slavic, 1, 'Святилище прежней дружины — в счёте клана');
+      const eg = await must(A, 'duelStart', { shrine }); eq(eg.clan, 'slavic', 'для чужого клана — Святилище Дружины Перуна'); A.srv.battle = null;
       // переход — один раз и только в открытый клан
       await refuse(B, 'clanMove', { clan: 'slavic' }, /уже в этом клане/);
       await refuse(B, 'clanMove', { clan: 'japan' }, /закрыт/);
@@ -2448,7 +2448,7 @@
       // дань: святилище мифологии своего клана — ×1,5
       delete DB.holds[id];
       Ev.alaSync();
-      // 5.1.26: мифология святилища — по родине места: храм в Афинах — свой, капище в Москве — нет
+      // 5.1.26: мифология святилища — по родине места: храм в Афинах — свой, святилище в Москве — нет
       const own = 'osm:n64001', other = 'osm:n64002';
       made.push(own, other);
       [[own, 37.98, 23.73], [other, 55.75, 37.62]].forEach(([x, lat, lng]) => { DB.holds[x] = { clan: 'greek', lat, lng, holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
@@ -2462,13 +2462,13 @@
       ok(Object.keys((await must(D, 'clanStats')).all).includes('japan'), 'японский клан — в счёте');
     } finally { made.forEach(x => delete DB.holds[x]); Ev.ala = a0; Ev.alaSync(); mythOpen(Ev.alaSeason(), true); }
   });
-  atest('Сервер: Капища 4.16 — защитники устают и уходят, вольные Капища, 3 на игрока, дань за активную защиту', async () => {
+  atest('Сервер: Святилища 4.16 — защитники устают и уходят, вольные Святилища, 3 на игрока, дань за активную защиту', async () => {
     const hour = Math.floor(Date.now() / 3600000), [lat, lng] = [55.57, 37.45], ids = [];
     let from = 62000;
     while (ids.length < 4) { const id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), from); ids.push(id); from = +id.slice(5) + 1; }
     const freeId = poiId(i => !W.riftAt(i, hour) && Rules.shrineFree(i), 62000);
-    [...ids, freeId].forEach((id, k) => { DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Капище ' + k, active: true }; });
-    const shrine = id => ({ id, lat, lng, name: 'Капище' });
+    [...ids, freeId].forEach((id, k) => { DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Святилище ' + k, active: true }; });
+    const shrine = id => ({ id, lat, lng, name: 'Святилище' });
     const mk = async (uid, name, clan) => {
       const P = await newPlayer(uid, lat, lng, name);
       P.data.level = CLAN_LEVEL; P.data.tut = 0;
@@ -2482,19 +2482,19 @@
     const heal = P => P.data.spirits.forEach(x => { delete x.ko; delete x.hpf; delete x.hpt; });
     const win = async (P, id) => { P.srv.rl = {}; heal(P); const st = await must(P, 'duelStart', { shrine: shrine(id) }); P.srv.battle.start -= 200000; const r = await must(P, 'duelEnd', { win: true }); return { st, r }; };
     const guard = A.data.spirits.find(x => x.sid === 'kapelka' && x.lvl === 20).uid;
-    // вольное Капище: бой с хранителем есть, защитника не поставить
+    // вольное Святилище: бой с хранителем есть, защитника не поставить
     await win(A, freeId);
     await refuse(A, 'shrineDefend', { shrine: shrine(freeId), uid: guard }, /вольное/);
-    // не больше HOLD_MY_MAX Капищ с моими защитниками
+    // не больше HOLD_MY_MAX Святилищ с моими защитниками
     for (let k = 0; k < 4; k++) await win(A, ids[k]);
     for (let k = 0; k < HOLD_MY_MAX; k++) await must(A, 'shrineDefend', { shrine: shrine(ids[k]), uid: guard });
-    await refuse(A, 'shrineDefend', { shrine: shrine(ids[3]), uid: guard }, new RegExp(`на ${HOLD_MY_MAX} Капищах`));
+    await refuse(A, 'shrineDefend', { shrine: shrine(ids[3]), uid: guard }, new RegExp(`на ${HOLD_MY_MAX} Святилищах`));
     // усталость: через 48 ч на посту защитник слабее
     const aged = (id, h) => { DB.holds[id].holders[0].t = Date.now() - h * 3600000; const g = A.data.guards.find(x => x.id === id); if (g) g.t = DB.holds[id].holders[0].t; };
     aged(ids[0], 48);
     const b1 = await win(B, ids[0]);
     eq(b1.st.clan, 'slavic'); eq(b1.st.foe[0].lvl, Math.round(20 * Rules.holdK(Date.now() - 48 * 3600000)), 'уставший защитник');
-    ok(b1.r.freed, 'Капище освобождено');
+    ok(b1.r.freed, 'Святилище освобождено');
     // срок вышел — защитник ушёл: бьётся хранитель, место у игрока освободилось
     aged(ids[1], Rules.HOLD.MAX_H + 1);
     const b2 = await win(B, ids[1]);
@@ -2504,7 +2504,7 @@
     const t0 = await must(A, 'tribute'); eq(t0.n, 0); ok(t0.next, 'дань позже');
     aged(ids[2], Rules.HOLD.TRIBUTE_H + 1); A.data.tributeNext = 0;
     const z0 = A.data.zlat, t1 = await must(A, 'tribute');
-    eq(t1.n, 1, 'одно Капище с активной защитой'); eq(A.data.zlat - z0, Rules.ZLAT.tribute);
+    eq(t1.n, 1, 'одно Святилище с активной защитой'); eq(A.data.zlat - z0, Rules.ZLAT.tribute);
     ok((await must(A, 'tribute')).already, 'второй раз за день — нет');
     // домой: побеждённый — за время на посту, ушедший по сроку — за весь срок
     const g = await must(A, 'myGuards');
@@ -2534,7 +2534,7 @@
     A.data.xpUntil = Date.now() - 1;
     eq(gain(), base, 'настой кончился');
   });
-  atest('Сервер: дневные лимиты объектов — источники, разломы, капища, вторжения, поимки', async () => {
+  atest('Сервер: дневные лимиты объектов — источники, разломы, святилища, вторжения, поимки', async () => {
     const A = await newPlayer('da', 55.46, 37.34, 'Фармер');
     A.data.tut = 0; A.data.level = 10;
     // 30 источников в день: каждый — отдельный объект, откат не мешает
@@ -2554,7 +2554,7 @@
     await refuse(A, 'raidStart', { rift: { id: rid, lat: A.lat + 0.01, lng: A.lng, name: 'Разлом' }, far: true }, /Разломов/);
     eq(A.data.items.farpass, 2, 'пропуск не списан');
     const sid = poiId(i => asPlayer(A, () => !W.riftAt(i, hour)), 98000);
-    await refuse(A, 'duelStart', { shrine: { id: sid, lat: A.lat, lng: A.lng, name: 'Капище' } }, /Капищах/);
+    await refuse(A, 'duelStart', { shrine: { id: sid, lat: A.lat, lng: A.lng, name: 'Святилище' } }, /Святилищах/);
     const sp = asPlayer(A, () => W.spawnsAround(A.lat, A.lng, W.INTERACT).find(x => !x.tut));
     if (sp) await refuse(A, 'encStart', { kind: 'wild', id: sp.id }, /120 духов/);
     // новый день — счёт с нуля
@@ -2581,7 +2581,7 @@
     ok(/\*{3}/.test(GameCore.chatClean('ну ты и мудак')) && !/мудак/.test(GameCore.chatClean('ну ты и мудак')), 'грубое слово скрыто');
     // канал клана видят только свои
     A.data.clan = 'celtic'; B.data.clan = 'norse';
-    A.srv.chat.t -= 5000; await must(A, 'chatSend', { ch: 'clan', text: 'Братство, на Капище!' });
+    A.srv.chat.t -= 5000; await must(A, 'chatSend', { ch: 'clan', text: 'Братство, в Святилище!' });
     eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 0, 'чужой клан не видит');
     B.data.clan = 'celtic'; eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 1, 'свой видит');
     // 4.28: до миграции 032 — и сообщения прежней дружины (clan:medved → Братство Дуба)
@@ -2764,13 +2764,13 @@
     A.data.sparks = 1e6; A.data.zlat = 0;
     await must(A, 'exchange', { n: Rules.EXCHANGE.DAY }); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * Rules.EXCHANGE.DAY); eq(A.data.sparks, 1e6 - Rules.EXCHANGE.SPARKS * Rules.EXCHANGE.DAY);
     await refuse(A, 'exchange', { n: 1 }, /закрыт/);
-    // дань: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ
+    // дань: монеты — не больше чем с Rules.ZLAT.tributeMax Святилищ
     A.data.clan = 'norse'; A.data.tributeDay = ''; A.data.zlat = 0;
     const ids = [1, 2, 3, 4, 5].map(i => 'osm:n9' + i + '0000');
     ids.forEach(id => { DB.holds[id] = { clan: 'volk', holders: [{ pid: A.data.pid, name: 'Хозяйка', sp: { sid: 'ugolek', lvl: 5, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; }); // на посту дольше TRIBUTE_H
     try {
-      const tr = await must(A, 'tribute'); eq(tr.n, Math.min(5, HOLD_MY_MAX), 'дань — не больше чем с HOLD_MY_MAX Капищ');
-      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'монеты дани — с трёх Капищ');
+      const tr = await must(A, 'tribute'); eq(tr.n, Math.min(5, HOLD_MY_MAX), 'дань — не больше чем с HOLD_MY_MAX Святилищ');
+      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'монеты дани — с трёх Святилищ');
     } finally { ids.forEach(id => delete DB.holds[id]); }
   });
 
@@ -3082,7 +3082,7 @@
       near(parseFloat(objs[1].querySelector('.pbar i').style.width), 100 / 3, 0.01, 'треть пути');
       eq(objs[1].querySelector('.qd-bar span').textContent, `1 / ${st.obj[1].n}`); ok(!objs[1].querySelector('.cp-ok'));
     } finally { S.d = d0; }
-    // задания дня: GPS нет — вместо «Пройди N км» Врата, ночной дух, хранитель капища; в поручениях тоже без километров
+    // задания дня: GPS нет — вместо «Пройди N км» Врата, ночной дух, хранитель святилища; в поручениях тоже без километров
     ok(!QUEST_TEMPLATES.some(q => q.t === 'walk') && !TASK_TEMPLATES.some(q => q.t === 'walk'), 'без «Пройди N км»');
     ['gate', 'catchNight', 'duel'].forEach(t => eq(QUEST_TEMPLATES.filter(q => q.t === t).length, 1, 'задание дня: ' + t));
     near(QUEST_TEMPLATES.reduce((a, q) => a + (q.reward.sparks || 0), 0) / QUEST_TEMPLATES.length, 400, 0.01, 'искр за задание в среднем — как раньше');
@@ -3929,20 +3929,20 @@
     await must(A, 'spring', { poi: { id: awakeSp, ...at, name: 'Источник' } });
     const invSp = poiId(i => !aw(i, 'spring') && !free(i), 96000);
     if (invSp) await refuse(A, 'invStart', { spring: { id: invSp, ...at, name: 'Источник' } }, /спит/);
-    // Капище и Разлом у спящего места: ни боя, ни защитника, ни Разлома (и совместного)
+    // Святилище и Разлом у спящего места: ни боя, ни защитника, ни Разлома (и совместного)
     const sleepSh = poiId(i => !aw(i, 'shrine'), 97000);
-    const shrine = { id: sleepSh, ...at, name: 'Капище' };
+    const shrine = { id: sleepSh, ...at, name: 'Святилище' };
     await refuse(A, 'duelStart', { shrine }, /спит/);
     await refuse(A, 'raidStart', { rift: shrine }, /спит/);
     await refuse(A, 'roomCreate', { rift: shrine }, /спит/);
     const known = poiId(i => !aw(i, 'shrine') && !Rules.shrineFree(i), 97500);
-    DB.pois[known] = { id: known, kind: 'shrine', ...at, name: 'Спящее Капище', active: true };
+    DB.pois[known] = { id: known, kind: 'shrine', ...at, name: 'Спящее Святилище', active: true };
     A.data.shrines[known] = U.today(); // «победил здесь сегодня» — защитника всё равно не поставить
     await refuse(A, 'shrineDefend', { shrine: { id: known, ...at }, uid: A.data.spirits[0].uid }, /спит/);
-    // бодрствующее Капище — как раньше (дальше проверки боя)
+    // бодрствующее Святилище — как раньше (дальше проверки боя)
     const awakeSh = poiId(i => aw(i, 'shrine') && !asPlayer(A, () => W.riftAt(i, hour)), 97000);
-    const r = await call(A, 'duelStart', { shrine: { id: awakeSh, ...at, name: 'Капище' } });
-    ok(r.ok || !/спит/.test(r.error), 'бодрствующее Капище не спит: ' + r.error);
+    const r = await call(A, 'duelStart', { shrine: { id: awakeSh, ...at, name: 'Святилище' } });
+    ok(r.ok || !/спит/.test(r.error), 'бодрствующее Святилище не спит: ' + r.error);
     // место игрока (usr:) не спит никогда
     const usr = 'usr:00000000-0000-0000-0000-0000000005a2';
     DB.pois[usr] = { id: usr, kind: 'spring', ...at, name: 'Источник игрока', active: true };

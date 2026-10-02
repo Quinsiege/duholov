@@ -140,7 +140,7 @@
     },
     roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
-    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Святилище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = { sokol: 0, medved: 0, volk: 0 }; Object.values(DB.holds).forEach(h => { if (h.holders.length) o[h.clan]++; }); return o; },
     // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
     lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },

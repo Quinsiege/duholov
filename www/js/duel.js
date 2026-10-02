@@ -1,12 +1,12 @@
 'use strict';
-/* Капища Ордена: поединок 3 на 3 с хранителем.
+/* Святилища Ордена: поединок 3 на 3 с хранителем.
    Тап — быстрая атака (копит энергию), «Приём» — особая атака с мини-игрой,
    у каждой стороны 2 щита, духа можно сменить (перезарядка 25 с). */
 
 const Duel = {
   st: null,
   FAST: 6, CHARGE: 65, COST: 50, TIME: 180, HPX: 3, SWITCH_CD: 25,
-  // соперники без уровня Капища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
+  // соперники без уровня Святилища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
   // 4.16: прислужник Нави — pow: сила его омрачённых духов от силы духов игрока (W.grunt), темп ударов 0,52 (был 0,75,
   // вторжения выигрывались 99 из 100); ориентир — ~70% побед
   FOE: { invasion: { speed: 0.52, shield: 0.5, pow: 1.2 }, spar: { speed: 0.72, shield: 0.6 } },
@@ -14,43 +14,91 @@ const Duel = {
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
   open(e) {
-    // 4.16: вольное Капище кланы не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
+    // 4.16: вольное Святилище кланы не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
     const free = Rules.shrineFree(e.id), now = U.now();
     const holders0 = !free && Clans.info(e.id) ? Clans.info(e.id).holders.filter(h => h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)) : [];
     const hold = holders0.length ? Clans.info(e.id) : null, mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
-    const g = W.guardian(e), T = SHRINE_TIERS[e.tier], mul = Ev.duelMul();
+    const g = W.guardian(e), T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier, myth = e.myth || 'slavic';
     let team = S.team();
     const holders = holders0.map(h => ({ ...h, sp: Rules.holdSpirit(h.sp, h.t, now) }));
-    const who = hold
-      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${hold.since && !isNaN(new Date(hold.since)) ? ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}` : ru`держит Капище · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
-         <div class="rift-team-title">${ru`Защитники`}</div>
-         <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
-      : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
-         <div class="rift-team-title">${ru`Духи хранителя`}</div>
-         <div class="lg2-team tm-row">${UI.teamCards(g.team, true)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
-    let action;
-    if (mine) action = `<div class="rift-tip">${ru`Капище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
-        <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
-    else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
-        ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
-    else action = `
-        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
-        <div class="rift-tip">${hold ? `${ru`Победа освободит Капище от защитников.`} ` : ''}${ru`Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
+    // 5.1.29: в композиции Разлома (Raid.open): сверху святилище с медальоном хранителя (у занятого — клана), справа ступень,
+    // хранитель, сила его духов, звание и место; вкладки «Бой» (команда, кнопки — закреплены внизу), «Хранитель», «Награда»
+    const power = list => list.reduce((a, x) => a + S.power(x), 0);
+    const foeTeam = hold ? holders.map(h => h.sp) : g.team;
+    const row = (k, v) => `<div class="dt-row"><span>${k}</span><b>${v}</b></div>`;
+    const it = (k, n) => `<span class="cur">${Art.item(k)}</span> ${n}`;
+    const photo = Poi.photoUrl(e.photo);
+    const since = hold && hold.since && !isNaN(new Date(hold.since)) ? new Date(hold.since).toLocaleDateString(I18N.locale) : '';
+    const held = hold ? (since ? ru`держит Святилище с ${since} · защитников: ${holders.length} из ${HOLD_MAX}` : ru`держит Святилище · защитников: ${holders.length} из ${HOLD_MAX}`) : '';
+    const ownMyth = !free && S.d.clan && myth === S.d.clan ? `<div class="rift-tip own-myth" style="--cc:${CLANS[S.d.clan].color}">${ru`Святилище мифологии твоего клана: защитник здесь приносит дань ${Clans.mythX()}.`}</div>` : '';
+    let fight, acts = '';
+    if (mine) {
+      fight = `<div class="rift-tip">${ru`Святилище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>${ownMyth}`;
+      acts = `<button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
+    } else if (e.won) {
+      fight = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>`;
+      if (S.d.clan && !hold && !free) acts = `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>`;
+    } else {
+      fight = `
+        <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
+        <div class="lg2-team rift-team tm-my">${UI.teamCards(team)}</div>
+        ${hold ? `<div class="rift-tip">${ru`Победа освободит Святилище от защитников.`}</div>` : ''}${ownMyth}
+        ${Rules.dayLine(S.d, 'duels', ru`Побед в Святилищах`)}`;
+      acts = `<button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>`;
+    }
+    if (canClan) acts += `<button class="btn ghost wide clan-go">${ru`Выбрать клан`}</button>`;
     const html = `
-      <div class="shrine-view t${e.tier}">
-        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won, e.myth)}</div>`}
-        <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${MYTH_PLACES[e.myth || 'slavic'].shrineOf(e.god)}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: кланы его не держат` : ''}</div>
-        <div class="q-note place-desc">${MYTH_PLACES[e.myth || 'slavic'].shrineDesc}</div>
-        ${!free && S.d.clan && (e.myth || 'slavic') === S.d.clan ? `<div class="rift-tip own-myth" style="--cc:${CLANS[S.d.clan].color}">${ru`Святилище мифологии твоего клана: защитник здесь приносит дань ${Clans.mythX()}.`}</div>` : ''}
-        ${who}
-        ${action}
-        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать клан`}</button>` : ''}
+      <div class="det det2 rift2 shrine2 t${t}">
+        <div class="dt-hero">
+          <div class="det-art rift2-art shrine2-art">
+            ${photo ? `<div class="shrine2-photo" style="background-image:url('${photo}')"></div>` : `<div class="rift-portal">${Art.shrineIcon(t, e.won, e.myth)}</div>`}
+            <div class="shrine2-guard${hold ? ' clan' : ''}"${hold ? ` style="--cc:${CLANS[hold.clan].color}"` : ''}>${Art.guardian(hold ? CLANS[hold.clan].color : g.color)}</div>
+          </div>
+          <div class="dt-info">
+            <div class="det-hp">${ru`Святилище`} <span class="stars">${'★'.repeat(t)}</span></div>
+            <div class="rift2-name">${hold ? CLANS[hold.clan].name : g.name}</div>
+            <div class="det-power"><small>${hold ? ru`СИЛА ЗАЩИТНИКОВ` : ru`СИЛА ХРАНИТЕЛЯ`}</small><b>${U.fmtNum(power(foeTeam))}</b></div>
+            <div class="rift2-left">${hold ? held : ru`Хранитель · ${g.title}`}</div>
+            <div class="rift2-place">${UI.I.pin}${U.esc(e.name)}</div>
+            <div class="rift2-place place-kind">${MYTH_PLACES[myth].shrineOf(e.god)}${free ? ' · ' + ru`вольное: кланы его не держат` : ''}</div>
+          </div>
+        </div>
+        <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="guard">${ru`Хранитель`}</button><button data-tab="loot">${ru`Награда`}</button></div>
+        <div class="dt-panel">
+          <div class="dt-pane on" data-pane="fight">
+            <div class="dt-scroll rift2-fight">${fight}</div>
+            ${acts ? `<div class="rift2-acts">${acts}</div>` : ''}
+          </div>
+          <div class="dt-pane" data-pane="guard">
+            <p class="det-desc place-desc">${MYTH_PLACES[myth].shrineDesc}</p>
+            <div class="dt-scroll rift2-fight">
+              <div class="pf-mh lg2-th"><span>${hold ? ru`Защитники` : ru`Духи хранителя`}</span><b class="rift2-pw">${ru`сила ${U.fmtNum(power(foeTeam))}`}</b></div>
+              ${hold ? `<div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
+                : `<div class="lg2-team">${UI.teamCards(g.team, true)}</div>`}
+              ${hold ? `<p class="rift2-note">${Clans.badge(hold.clan, true)} ${held}</p>` : ''}
+            </div>
+          </div>
+          <div class="dt-pane" data-pane="loot">
+            <div class="dt-scroll dt-rows">
+              ${row(ru`Опыт`, U.fmtNum(T.xp * mul))}
+              ${row(ru`Искры`, it('sparks', U.fmtNum(T.sparks * mul)))}
+              ${row(ru`Обереги`, [it('charm', 5 * mul), t >= 2 ? it('charm2', 3 * mul) : '', t === 3 ? it('charm3', 2 * mul) : ''].filter(Boolean).join(' · '))}
+              ${row(ru`Припасы`, [t > 1 ? it('honey', (t - 1) * mul) : '', t < 3 ? it('herb', 1) : it('water', 1)].filter(Boolean).join(' · '))}
+              ${S.ALATYR_DROP.duel[t] ? row(ru`Осколок Алатыря`, ru`шанс ${Math.round(S.ALATYR_DROP.duel[t] * 100)}%`) : ''}
+              ${row(ru`Амулет`, ru`шанс ${4 * t}%`)}
+              <p class="rift2-note">${ru`Победить хранителя здесь можно раз в день.`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</p>
+            </div>
+          </div>
+        </div>
       </div>`;
-    const scr = UI.screen(MYTH_PLACES[e.myth || 'slavic'].shrine, html, 'shrine-screen'); // 4.28: своё у каждой мифологии
+    const scr = UI.screen(MYTH_PLACES[myth].shrine, html, 'shrine-screen det-screen'); // 4.28: своё у каждой мифологии
+    scr.querySelector('.dt-tabs').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-tab]'); if (!b) return;
+      Sfx.play('tap');
+      U.$$('.dt-tabs button', scr).forEach(x => x.classList.toggle('on', x === b));
+      U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+    });
     const go = scr.querySelector('.duel-go');
     if (go) go.onclick = async () => {
       if (this.st || this._starting) return;
@@ -60,7 +108,7 @@ const Duel = {
       if (!r) return;
       UI.closeScreen(scr);
       // защитники клана — вместо хранителя
-      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
+      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Святилища`, team: r.foe } : g;
       // 4.16: темп хранителя — свой (W.foeSpeed), у защитников клана — обычный для ступени
       this.start({ ...e, kind: 'shrine', held: r.clan || null, T: r.foe ? T : { ...T, speed: g.speed } }, foe, S.team());
     };
@@ -74,6 +122,7 @@ const Duel = {
       UI.pickTeam(() => {
         team = S.team();
         const box = scr.querySelector('.tm-my'); if (box) box.innerHTML = UI.teamCards(team);
+        const pw = scr.querySelector('[data-pane="fight"] .rift2-pw'); if (pw) pw.textContent = team.length ? ru`сила ${U.fmtNum(power(team))}` : '';
         const b = scr.querySelector('.duel-go'); if (b) b.disabled = !team.length;
       });
     });
@@ -501,12 +550,12 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       const note = r.clan
-        ? (r.freed ? ru`Защитники «${CLANS[r.clan].name}» отступили — Капище «${U.esc(st.e.name)}» свободно!` : ru`Победа засчитана, но пока шёл бой, на Капище сменились защитники.`)
-        : ru`«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
+        ? (r.freed ? ru`Защитники «${CLANS[r.clan].name}» отступили — Святилище «${U.esc(st.e.name)}» свободно!` : ru`Победа засчитана, но пока шёл бой, в Святилище сменились защитники.`)
+        : ru`«Достойно, Ловчий», — ${st.g.name} склоняет голову. Святилище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
       const canDefend = S.d.clan && (!r.clan || r.freed);
       html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоему клану.`}` : ''}</div>
+        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Святилище перейдёт твоему клану.`}` : ''}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
         ${canDefend ? `<button class="btn primary wide defend-now">${ru`Поставить защитника`}</button>` : ''}`;
       if (r.clan) Clans.refresh(true);

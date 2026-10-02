@@ -302,7 +302,7 @@ const Tut = {
     if (st.id === 'spring' && t.closest('#atlasBtn') && typeof MapView !== 'undefined' && MapView.map && !MapView.nearest('spring')) return true;
     return hit(f.hud || []);
   },
-  // объект карты (дух, источник, капище, разлом): на шаге «поймай» — только учебный дух, на шаге «источник» — источники
+  // объект карты (дух, источник, святилище, разлом): на шаге «поймай» — только учебный дух, на шаге «источник» — источники
   entOk(e) {
     const st = this.focusOn() && this.at();
     if (!st || !e) return true;

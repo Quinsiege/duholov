@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.28';
+const APP_VERSION = '5.1.29';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -1681,7 +1681,7 @@ I18N.init();
   name: ru`Японская`, where: ru`Япония — острова восходящего солнца`, color: '#f43f5e', season: 2,
   world: ru`Такамагахара`, road: ru`Дорога в Такамагахару`, // мир мифологии для экрана Алатыря — Равнина Высокого Неба, где живут ками
   rift: ru`Врата Ёми`, riftDesc: ru`Врата в Ёми, подземную страну мрака, приоткрылись в тумане: оттуда вышел сильный дух. Закрой врата, пока не прошёл час.`,
-  shrine: ru`Святилище`, shrineOf: g => ru`Святилище ${g}`,
+  shrine: ru`Святилище ками`, shrineOf: g => ru`Святилище ками ${g}`, // 5.1.29: «Святилище» теперь общее имя (бывшее «Капище») — у Японии своё
   shrineDesc: ru`Святилище ками за алыми воротами-тории. Победи хранителя — и твой клан сможет держать святилище.`,
   gods: [ru`Аматэрасу`, ru`Сусаноо`, ru`Цукуёми`, ru`Инари`, ru`Хатимана`, ru`Идзанаги`, ru`Идзанами`, ru`Эбису`, ru`Рюдзина`, ru`Тэндзина`],
   guards: [ru`Харуто`, ru`Сакура`, ru`Рэн`, ru`Аой`, ru`Кэйта`, ru`Хина`],
@@ -1970,7 +1970,7 @@ const REGIONS = {
    globalThis.MYTH_SP[ключ] = [...виды]) и файлу рисунков (js/sp-<ключ>.js). Номера в Бестиарии — после славянских,
    в порядке MYTHS. 5.1.26: дух водится только у себя на родине — where (её края, MYTH_HOME ниже — точки на карте мира);
    где родина у нескольких мифологий, они выпадают поровну (W.evenMyth). Разломы и святилища — тоже мифологии родины места
-   (W.placeMyth): Капища — на Руси, Храмы — в Средиземноморье и так далее.
+   (W.placeMyth): Святилища — на Руси, Храмы — в Средиземноморье и так далее.
    4.28: сезоны Алатыря — season: с какого сезона мифология открыта (у первых семи — 1). Мифология следующих сезонов приходит
    своим файлом js/myth-<ключ>.js: globalThis.MYTH_SP[ключ] = [...виды] и globalThis.MYTH_META[ключ] = { name, where, color,
    season, rift, riftDesc, shrine, shrineOf, shrineDesc, gods, guards } (и по желанию world — куда ведёт её дорога, road —
@@ -2191,9 +2191,9 @@ const MAX_LEVEL = 40;
 // день не уводит далеко вперёд; разовые награды — главы Летописи, обучение, знаки — без потолка). Опыт отдыха: за каждый день
 // без игры копится REST (не больше, чем за REST_DAYS дней); пока он есть, опыт вдвое — казуальный Ловчий не отстаёт навсегда
 const XP_DAY = { FULL: 35000, HALF: 70000, REST: 15000, REST_DAYS: 7 };
-// 4.16: разделы открываются постепенно — лестница открытий (раньше Капища — с 3, вторжения — с 4, Лига, дружины и Аукцион — с 5:
+// 4.16: разделы открываются постепенно — лестница открытий (раньше Святилища — с 3, вторжения — с 4, Лига, дружины и Аукцион — с 5:
 // всё открывалось в первые часы). Дружины — CLAN_LEVEL, Лига — League.LEVEL, Аукцион — Rules.AUCTION.LEVEL
-const DUEL_LEVEL = 5;      // с какого уровня бои на Капищах
+const DUEL_LEVEL = 5;      // с какого уровня бои в Святилищах
 const INVASION_LEVEL = 7;  // с какого уровня Навь захватывает источники (вторжения)
 const RAID_LEVEL = 4;      // 4.18: с какого уровня Разломы (раньше — с начала; первая глава Летописи с Разломом — на 5-м)
 const MOVE2_LEVEL = 6;     // 4.18: с какого уровня в карточке духа показывается второй приём
@@ -2207,7 +2207,7 @@ const QUEST_TEMPLATES = [
   { t: 'evolve',  min: 1, max: 1,  text: () => ru.k`Преврати одного духа`,              reward: { honey: 2, sparks: 400 } }, // 4.16: ладан — реже
   { t: 'raid',    min: 1, max: 1,  text: () => ru.k`Закрой разлом`,                     reward: { charm2: 5, sparks: 800 } },
   // 5.1.27: GPS нет — вместо «Пройди N км» то, что делают джойстиком и Вратами: шаг во Врата и ночной дух (ночь — по месту:
-  // дома или за Вратами). Хранитель капища — ниже (QUEST_TEMPLATES.push). В среднем за задание — как раньше: 400 искр
+  // дома или за Вратами). Хранитель святилища — ниже (QUEST_TEMPLATES.push). В среднем за задание — как раньше: 400 искр
   { t: 'gate',    min: 1, max: 1,  text: () => ru.k`Шагни во Врата Перепутицы`,         reward: { charm: 10, sparks: 500 } },
   { t: 'catchNight', min: 1, max: 1, text: () => ru.k`Поймай ночного духа`,             reward: { charm: 3, honey: 1, sparks: 400 } },
 ];
@@ -2223,7 +2223,7 @@ const TASK_TEMPLATES = [
   { t: 'throw',    tier: 2, min: 3, max: 5, text: n => ru.k`Сделай ${n} отличных бросков` },
   { t: 'gate',     tier: 2, min: 1, max: 1, text: () => ru.k`Шагни во Врата Перепутицы` }, // 5.1.27: было «Пройди N км»
   { t: 'evolve',   tier: 2, min: 1, max: 1, text: () => ru.k`Преврати духа` },
-  { t: 'duel',     tier: 2, min: 1, max: 1, lvl: DUEL_LEVEL, text: () => ru.k`Победи хранителя капища` },
+  { t: 'duel',     tier: 2, min: 1, max: 1, lvl: DUEL_LEVEL, text: () => ru.k`Победи хранителя святилища` },
   { t: 'hatch',    tier: 3, min: 1, max: 1, text: () => ru.k`Выведи духа из кокона` },
   { t: 'invasion', tier: 3, min: 1, max: 1, lvl: INVASION_LEVEL, text: () => ru.k`Освободи источник от прислужников Нави` },
   { t: 'raid',     tier: 3, min: 1, max: 1, lvl: 5, text: () => ru.k`Закрой разлом` },
@@ -2369,7 +2369,7 @@ const WORLD_LANDS = [
 const LORE = [
   ru`Миров духов всегда было много — у каждого народа свой: Навь у славян, царство Аида у греков, Асгард у скандинавов, холмы сидов у кельтов, Дуат у египтян, Небеса у китайцев, Миктлан у ацтеков. На местах их держал <b>Алатырь</b> — бел-горюч камень в середине всех миров. Каждые врата вели в свою землю, и духи не путали дорог.`,
   ru`Однажды осенней ночью Кощей Бессмертный решил спрятать свою смерть понадёжнее — прямо в сердце Алатыря. Камень треснул и раскололся. Все врата распахнулись разом, дороги между мирами спутались в клубок, и духи и боги семи мифологий высыпали в наш мир — каждый в своих краях. Эту ночь назвали <b>Перепутицей</b>. Кощей уверяет, что камень треснул сам, но Локи и Сунь Укун при этих словах почему-то хихикают.`,
-  ru`Теперь Гиппокамп плещется в фонтанах Рима, Леший гуляет по подмосковным паркам, а Ниссе греет котов в подъездах Осло: каждый дух живёт у себя на родине, и за чужими приходится шагать через Врата. Разломы — трещины от расколотого камня — открываются в каждом городе, а боги ставят святилища у себя на родине: Капища — на Руси, Храмы — в Греции, Пагоды — в Китае, Пирамиды — в Америке. Город рождает и своих, новых духов: Вайфайку, Трамвайника, Фонарника.`,
+  ru`Теперь Гиппокамп плещется в фонтанах Рима, Леший гуляет по подмосковным паркам, а Ниссе греет котов в подъездах Осло: каждый дух живёт у себя на родине, и за чужими приходится шагать через Врата. Разломы — трещины от расколотого камня — открываются в каждом городе, а боги ставят святилища у себя на родине: Святилища — на Руси, Храмы — в Греции, Пагоды — в Китае, Пирамиды — в Америке. Город рождает и своих, новых духов: Вайфайку, Трамвайника, Фонарника.`,
   ru`Первыми с гостями поладили не учёные, а бабушки со своими оберегами: оказалось, оберег, сделанный с заботой, успокаивает любого духа, откуда бы тот ни был. Так появился <b>Орден Оберега</b> — союз Ловчих всех земель. Твоя задача — находить духов, ловить их оберегами, черпать силу из источников, закрывать разломы и собирать осколки Алатыря. Кто знает — может, однажды их хватит, чтобы распутать дороги домой.`,
 ];
 
@@ -2436,7 +2436,7 @@ const WEEK_EVENTS = [
   { id: 'springs', name: ru`Неделя источников`, loot: 2, cooldown: 3, desc: ru`Источники дают вдвое больше предметов и восстанавливаются за 3 минуты.` },
   { id: 'forest',  name: ru`Неделя Леса`,       el: 'forest' },
   { id: 'nav',     name: ru`Навья неделя`,      el: 'shadow', shiny: 2, desc: ru`Духи Тени повсюду, а сияющие встречаются вдвое чаще.` },
-  { id: 'duels',   name: ru`Неделя поединков`,  duel: 2, desc: ru`Хранители капищ дают двойную награду.` },
+  { id: 'duels',   name: ru`Неделя поединков`,  duel: 2, desc: ru`Хранители святилищ дают двойную награду.` },
   { id: 'wind',    name: ru`Неделя Ветра`,      el: 'wind' },
   { id: 'cocoons', name: ru`Неделя коконов`,    km: 2, desc: ru`Шаги для коконов и спутника считаются вдвое, коконы в источниках попадаются вдвое чаще.` },
   { id: 'current', name: ru`Неделя Тока`,       el: 'current' },
@@ -2444,14 +2444,14 @@ const WEEK_EVENTS = [
 ];
 WEEK_EVENTS.forEach(e => { if (e.el && !e.desc) e.desc = ru`Духи стихии «${ELEMENTS[e.el].name}» встречаются в 2,5 раза чаще и чаще охраняют разломы.`; });
 
-/* ---------- Капища и хранители ---------- */
+/* ---------- Святилища и хранители ---------- */
 const SHRINE_GODS = [ru`Перуна`, ru`Велеса`, ru`Мокоши`, ru`Сварога`, ru`Даждьбога`, ru`Стрибога`, ru`Ярилы`, ru`Лады`, ru`Хорса`, ru`Рода`];
 const GUARDIANS = [ru`Ярослава`, ru`Мирон`, ru`Всеслав`, ru`Любава`, ru`Добрыня`, ru`Злата`, ru`Ратибор`, ru`Василиса`, ru`Святогор`, ru`Забава`, ru`Остромир`, ru`Милена`];
-/* 4.28: Разломы и Капища других мифологий — интерфейс тот же, свои значок (js/places-art.js), название, описание и боги святилищ
+/* 4.28: Разломы и Святилища других мифологий — интерфейс тот же, свои значок (js/places-art.js), название, описание и боги святилищ
    (имена богов — в родительном падеже: «Храм Зевса»). Мифология места — W.placeMyth */
 const MYTH_PLACES = {
   slavic: { rift: ru`Разлом`, riftDesc: ru`Портал в Навь: из него вышел сильный дух. Закрой разлом, пока не прошёл час.`,
-    shrine: ru`Капище`, shrineOf: g => ru`Капище ${g}`, shrineDesc: ru`Святилище древних богов. Победи хранителя — и твой клан сможет держать капище.`, gods: SHRINE_GODS, guards: GUARDIANS },
+    shrine: ru`Святилище`, shrineOf: g => ru`Святилище ${g}`, shrineDesc: ru`Святилище древних богов. Победи хранителя — и твой клан сможет держать святилище.`, gods: SHRINE_GODS, guards: GUARDIANS },
   greek: { rift: ru`Врата Аида`, riftDesc: ru`Трещина в подземное царство Аида: оттуда вырвался сильный дух. Закрой врата, пока не прошёл час.`,
     shrine: ru`Храм`, shrineOf: g => ru`Храм ${g}`, shrineDesc: ru`Мраморный храм богов Олимпа. Победи хранителя — и твой клан сможет держать храм.`,
     gods: [ru`Зевса`, ru`Геры`, ru`Афины`, ru`Аполлона`, ru`Артемиды`, ru`Гермеса`, ru`Посейдона`, ru`Деметры`, ru`Гефеста`, ru`Афродиты`],
@@ -2486,7 +2486,7 @@ for (const [k, m] of Object.entries(globalThis.MYTH_META || {})) {
     gods: list(m.gods, S0.gods), guards: list(m.guards, S0.guards) };
 }
 const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0891b2', '#ca8a04', '#db2777'];
-/* ---------- Кланы: Капища под знаменем ----------
+/* ---------- Кланы: Святилища под знаменем ----------
    3.5: три дружины (сокол, медведь, волк). 4.28: клан — это мифология: ключ клана = ключ мифологии (MYTHS), открыт клан
    только открытой мифологии (MYTH_KEYS — mythOpen), клан следующего сезона показывается как «?». name — название,
    short — коротко (знак на карте, в списках; у прежних трёх — тот же зверь), member — звание участника, motto — девиз,
@@ -2495,7 +2495,7 @@ const GUARD_COLORS = ['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ea580c', '#0
    motto, desc, crest, color } — чего нет, берётся по умолчанию. */
 const CLAN_META = {
   slavic: { name: ru`Дружина Перуна`,   short: ru`Сокол`,    member: ru`дружинник`,  motto: ru`Быстрота и отвага`, crest: 'falcon', color: '#f97316',
-    desc: ru`Наследники княжеских дружин под знаком сокола-Рарога. Когда Кощей расколол Алатырь, они первыми встали у Капищ и держат Навь громом Перуна.` },
+    desc: ru`Наследники княжеских дружин под знаком сокола-Рарога. Когда Кощей расколол Алатырь, они первыми встали у Святилищ и держат Навь громом Перуна.` },
   greek:  { name: ru`Фаланга Олимпа`,   short: ru`Сова`,     member: ru`гоплит`,     motto: ru`Щит к щиту`, crest: 'owl', color: '#3b82f6',
     desc: ru`Ловчие, что сомкнули щиты под знаком совы Афины. В Перепутицу они стерегут храмы, чтобы тени Аида не вышли к живым.` },
   norse:  { name: ru`Хирд Асгарда`,     short: ru`Волк`,     member: ru`хирдман`,    motto: ru`Верность и чутьё`, crest: 'wolf', color: '#a78bfa',
@@ -2517,7 +2517,7 @@ for (const k of MYTH_ALL) {
     motto: s(x.motto) || ru`Вместе — за Алатырь`, desc: s(x.desc) || ru`Ловчие мифологии «${m.name}»: они держат её святилища, пока Алатырь расколот.`,
     crest: /^[a-z]{2,16}$/.test(x.crest || '') ? x.crest : 'star', color: /^#[0-9a-f]{6}$/i.test(x.color || '') ? x.color : m.color };
 }
-// 4.28: прежние дружины (до 4.28 в сохранениях, на Капищах и в чате) — к кланам мифологий. Сокол — славянский (сокол-Рарог,
+// 4.28: прежние дружины (до 4.28 в сохранениях, в Святилищах и в чате) — к кланам мифологий. Сокол — славянский (сокол-Рарог,
 // знак Рюриковичей), волк — скандинавский (волки Одина, ульфхеднары), медведь — кельтский (медведица Артио; имя Артура —
 // «медведь»). Под старыми ключами — те же кланы, но не перечисляются (Object.keys / entries их не видят)
 const CLAN_OLD = { sokol: 'slavic', medved: 'celtic', volk: 'norse' };
@@ -2533,9 +2533,9 @@ function clanOpen(k) { return clanOf(k) === k && MYTH_KEYS.includes(k); }
 // все id клана в базе: сам ключ и прежние, что к нему ведут (до миграции 032_myth_clans_data)
 function clanIds(k) { return [k, ...Object.keys(CLAN_OLD).filter(o => CLAN_OLD[o] === k)]; }
 const CLAN_LEVEL = 5;      // с какого уровня выбирается клан (4.16: было 12, 5.1.11: снова 5; см. DUEL_LEVEL)
-const HOLD_MAX = 6;       // защитников на одном Капище
-const HOLD_MY_MAX = 3;    // Капищ с моими защитниками одновременно (4.16: было 10 — дружины держали почти все Капища)
-const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Капище с моим защитником
+const HOLD_MAX = 6;       // защитников на одном Святилище
+const HOLD_MY_MAX = 3;    // Святилищ с моими защитниками одновременно (4.16: было 10 — дружины держали почти все Святилища)
+const TRIBUTE = { sparks: 100, charm: 1 }; // дань в день за каждое Святилище с моим защитником
 
 // 4.16: pow — сила каждого духа хранителя от средней силы трёх сильнейших духов игрока (W.guardian); speed — темп его
 // ударов (был 0,85 / 0,7 / 0,58). Раньше хранитель брал уровень духов игрока, но виды у него были слабее, а бил он вдвое
@@ -2629,8 +2629,8 @@ const LOOK = {
 };
 const SKIN_RAR = [{ name: ru`Обычный`, c: '#c4b5fd' }, { name: ru`Редкий`, c: '#38bdf8' }, { name: ru`Эпический`, c: '#c084fc' }, { name: ru`Легендарный`, c: '#fbbf24' }];
 
-MEDALS.splice(4, 0, { id: 'duels', name: ru`Поединщик`, desc: ru`Победи хранителей капищ`, stat: 'duels', tiers: [5, 50, 300] });
-QUEST_TEMPLATES.push({ t: 'duel', min: 1, max: 2, text: n => ru.k`Победи хранителей капищ: ${n}`, reward: { charm2: 4, sparks: 600 } });
+MEDALS.splice(4, 0, { id: 'duels', name: ru`Поединщик`, desc: ru`Победи хранителей святилищ`, stat: 'duels', tiers: [5, 50, 300] });
+QUEST_TEMPLATES.push({ t: 'duel', min: 1, max: 2, text: n => ru.k`Победи хранителей святилищ: ${n}`, reward: { charm2: 4, sparks: 600 } });
 
 /* ---------- 4.0: обучение новичка ----------
    Пропустить нельзя: шаги ведёт сервер (S.d.tut — номер текущего шага, 0 — пройдено), после перезахода игра
@@ -3239,7 +3239,7 @@ const Sky = {
 
 // ===== www/js/world.js =====
 /* Мир: духи появляются детерминированно по реальным координатам (одна точка в одно время — одно и то же),
-   а Источники, Капища и Разломы стоят у настоящих объектов (pois.js).
+   а Источники, Святилища и Разломы стоят у настоящих объектов (pois.js).
    Этот же код работает на сервере игры: он пересчитывает, был ли дух, источник или разлом там, где его нашёл игрок. */
 
 const W = {
@@ -3248,7 +3248,7 @@ const W = {
   SLOT: 15 * 60 * 1000,  // дух живёт на карте 15 минут
   get SPRING_COOLDOWN() { return Ev.springCooldown(); },
   INTERACT: 70,          // радиус взаимодействия, м
-  BATTLE_R: 100,         // радиус для капищ и разломов, м
+  BATTLE_R: 100,         // радиус для святилищ и разломов, м
   VIEW: 320,             // радиус видимости, м
 
   // Перебор клеток сетки в радиусе. Шаг по долготе подгоняется под широту, чтобы клетки были «квадратными».
@@ -3411,7 +3411,7 @@ const W = {
   },
 
   /* ---------- 5.2: места спят и просыпаются по неделям (Rules.PLACES) ---------- */
-  /* Источник, Капище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
+  /* Источник, Святилище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
      недели) бодрствует доля SHARE мест, остальные пустые. У каждого места своя фаза (хэш id), окно бодрствования каждую
      неделю сдвигается на SHARE: место бодрствует, если (фаза + неделя × SHARE) mod 1 < SHARE. При SHARE = 0,4 — две недели
      из пяти, и никогда две недели подряд: на следующей неделе просыпаются другие места. Места игроков (usr:) не спят;
@@ -3437,9 +3437,9 @@ const W = {
     return Poi.near(lat, lng, radius, 'spring').filter(p => this.awake(p, 'spring')).map(p => this.springFor(p, p.d)); // 5.2: спящих нет
   },
 
-  /* ---------- Разломы: каждый час открываются у части Капищ ---------- */
+  /* ---------- Разломы: каждый час открываются у части Святилищ ---------- */
   riftAt(id, hour) { return U.h('rr', id, hour) < 0.35; },
-  // Разлом у капища p в этот час (или null); 5.2: у спящего места Разломов нет — и Великих (Кощей) тоже
+  // Разлом у святилища p в этот час (или null); 5.2: у спящего места Разломов нет — и Великих (Кощей) тоже
   riftFor(p, d, hour = Math.floor(U.now() / 3600000)) {
     if (!this.riftAt(p.id, hour) || !this.awake(p, 'shrine', hour * 3600000)) return null;
     const id = `${p.id}:${hour}`;
@@ -3491,7 +3491,7 @@ const W = {
     return { loot, cocoon };
   },
 
-  /* ---------- Капища ---------- */
+  /* ---------- Святилища ---------- */
   shrineFor(p, d) {
     const id = p.id;
     const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
@@ -3500,13 +3500,13 @@ const W = {
     const hold = typeof Clans !== 'undefined' ? Clans.info(id) : null; // на сервере сводки нет — он спрашивает базу сам
     return { type: 'shrine', id, tier, name: p.name, god, myth, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
   },
-  // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
+  // Святилище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
     Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').filter(p => this.awake(p, 'shrine') && !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
-  /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
+  /* 4.16: соперники в Святилищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
      раньше уровень хранителя равнялся уровню духов игрока, но виды у хранителя слабее — и сильный Ловчий не проигрывал.
      Ориентир — треть суммы сил трёх сильнейших духов игрока, которые могут биться (не выбранной команды: слабой командой
      соперника не ослабить; у новичка с одним-двумя духами пустые места считаются нулём — и хранитель ему по силам).
@@ -3636,7 +3636,7 @@ const S = {
     d.stats.orderPts = d.stats.orderPts || 0;
     d.tasks = d.tasks || []; // поручения из источников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
-    d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
+    d.guards = d.guards || []; // мои защитники в Святилищах: { id, name, sid, t }
     // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
@@ -3960,7 +3960,7 @@ const S = {
     this.save();
   },
 
-  /* ---------- команда для разломов и капищ ---------- */
+  /* ---------- команда для разломов и святилищ ---------- */
   team() {
     const chosen = this.d.team.map(u => this.findSpirit(u)).filter(Boolean);
     if (chosen.length) return chosen.slice(0, 3);
@@ -4252,7 +4252,7 @@ const S = {
     const day = U.today();
     if (this.d.quests && this.d.quests.day === day) return;
     const r = U.rng('quests' + day + this.d.name);
-    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Капища были с 3-го, а открываются с 5-го)
+    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Святилища были с 3-го, а открываются с 5-го)
     const picked = [];
     while (picked.length < 3) {
       const q = pool[Math.floor(r() * pool.length)];
@@ -4541,7 +4541,7 @@ const S = {
 /* 4.28: награды сезонов Алатыря. Все Ловчие вместе собирают Алатырь-камень (js/alatyr.js); камень собран — Кощей раскалывает
    его, и начинается новый сезон. По итогам сезона Ловчий получает награды по вкладу n — сколько осколков он принёс в общий
    счёт за этот сезон. Ступени TIERS суммируются: принёс 30 — награды ступеней 1+, 5+, 15+ и 30+.
-   Калибровка: у Ловчего ~0,3–1 осколка в день (Rules: разломы и старейшины Капищ, не больше двух в день), сезон — недели:
+   Калибровка: у Ловчего ~0,3–1 осколка в день (Rules: разломы и старейшины Святилищ, не больше двух в день), сезон — недели:
    1+ — заглянул в сезон, 5+ — играл, 15+ — играл регулярно, 30+ — почти каждый день, 60+ — весь сезон без перерыва.
    Награды — валюта и предметы (обликов у сезонов нет). Знак «Хранитель Алатыря» (MEDALS, stat alaSeasons) —
    число сезонов, где принесено не меньше MEDAL_MIN осколков: он про постоянство, а общий вклад и так виден на экране Алатыря.
@@ -4621,7 +4621,7 @@ const SeasonRewards = {
     const word = U.plural(n, ru`осколок`, ru`осколка`, ru`осколков`);
     const lead = n > 0
       ? ru`Орден собрал Алатырь-камень — и Кощей снова расколол его. Твой вклад за сезон: <b>${U.fmtNum(n)} ${word}</b>.`
-      : ru`Орден собрал Алатырь-камень — и Кощей снова расколол его. В этом сезоне ты не принёс осколков: они выпадают в разломах и у старейшин Капищ.`;
+      : ru`Орден собрал Алатырь-камень — и Кощей снова расколол его. В этом сезоне ты не принёс осколков: они выпадают в разломах и у старейшин Святилищ.`;
     const ladder = T.map((x, i) => `<i class="sr-step ${i <= t ? 'on' : ''} ${i === t ? 'cur' : ''}">${x.n}+</i>`).join('');
     // знак — строкой во всю ширину, валюта и предметы — плитками в две колонки
     const row = x => `<div class="sr-rw sr-k-${x.k}"><span class="sr-ic">${x.icon}</span><span class="sr-t"><b>${U.esc(x.label)}</b>${x.k === 'medal' ? '' : `<em>+${U.fmtNum(x.n)}</em>`}</span></div>`;
@@ -4671,7 +4671,7 @@ const J = {
       case 'evolve': return { ico: icon(e.to), title: ru`${sp(e.from)} превратился в ${sp(e.to)}`, sub: '' };
       case 'awaken': return { ico: icon(e.sid), title: ru`${sp(e.sid)} пробуждён`, sub: '★'.repeat(e.stars || 1) };
       case 'raid': return { ico: icon(e.sid), title: ru`Разлом закрыт: ${sp(e.sid)}`, sub: '★'.repeat(e.tier || 1) };
-      // e.name — название Капища с карты; e.guard / e.rank / e.name знака, лавки, e.title главы — русские названия из данных (сохранены сервером), переводим при показе
+      // e.name — название Святилища с карты; e.guard / e.rank / e.name знака, лавки, e.title главы — русские названия из данных (сохранены сервером), переводим при показе
       case 'duel': return { ico: glyph('⛩'), title: ru`Победа: ${e.name}`, sub: ru`Хранитель ${I18N.back(e.guard || '')}` };
       case 'invasion': return { ico: glyph('☾', 'dark'), title: ru`Источник освобождён`, sub: e.name || '' };
       case 'league': return { ico: glyph('★', 'gold'), title: ru`Турнир Лиги: побед ${e.won} из 3`, sub: ru`Ранг: ${I18N.back(e.rank)}` };
@@ -4684,8 +4684,8 @@ const J = {
       case 'friend': return { ico: glyph('♥', 'pink'), title: ru`Новый друг: ${e.name}`, sub: '' };
       case 'spar': return { ico: glyph('⚔'), title: ru`Победа в поединке с другом`, sub: e.name || '' };
       case 'clan': return { ico: glyph('⚑', 'gold'), title: e.move ? ru`Переход в клан: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`клан`}` : ru`Вступление: ${CLANS[e.clan] ? CLANS[e.clan].name : ru`клан`}`, sub: '' };
-      case 'guardBack': return { ico: icon(e.sid), title: ru`Защитник вернулся с Капища`, sub: `${e.name || ''} · ${ru`стоял ${e.hours} ч`}` };
-      case 'defend': return { ico: icon(e.sid), title: ru`Защитник на Капище`, sub: e.name || '' };
+      case 'guardBack': return { ico: icon(e.sid), title: ru`Защитник вернулся со Святилища`, sub: `${e.name || ''} · ${ru`стоял ${e.hours} ч`}` };
+      case 'defend': return { ico: icon(e.sid), title: ru`Защитник в Святилище`, sub: e.name || '' };
       case 'shop': return { ico: glyph('☉', 'gold'), title: ru`Покупка в Лавке: ${I18N.back(e.name || '')}`, sub: '' };
       // 5.1.15: Кампания — шаг пройден (e.id — шаг из CAMPAIGN), дух на выбор получен
       case 'camp': { const st = CAMPAIGN.flatMap(c => c.steps).find(x => x.id === e.id); return { ico: glyph('✦', 'gold'), title: ru`Кампания: шаг пройден`, sub: st ? st.name : '' }; }
@@ -5538,7 +5538,7 @@ const Raid = {
             <div class="dt-scroll rift2-fight">
               <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
               <div class="lg2-team rift-team">${teamHtml(team)}</div>
-              ${far ? `<div class="rift-tip rift-far">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>` : ''}
+              ${far ? `<div class="rift-tip rift-far">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Святилищу.`}</div>` : ''}
               ${camp ? `<div class="rift-tip">${ru`Хранитель — по силе твоей команды: тапай без остановки, и он падёт.`}</div>` : Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
             </div>
             <div class="rift2-acts">${goBtn}${far || camp ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
@@ -5607,7 +5607,7 @@ const Raid = {
   async list() {
     Sfx.init(); Sfx.play('tap');
     if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
-    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');
+    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Святилищ вокруг…`}</div></div>`, 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
     if (!pos) { box.innerHTML = `<div class="q-note">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }
     const shrines = await Poi.shrinesFar(pos.lat, pos.lng, Rules.FAR.R);
@@ -5631,7 +5631,7 @@ const Raid = {
           <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
           : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
         ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}
-        <div class="q-note">${ru`Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
+        <div class="q-note">${ru`Разломы открываются у Святилищ каждый час. Подойди к Святилищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
     };
     box.addEventListener('click', e => {
       const c = e.target.closest('.chip'); if (c) { tier = +c.dataset.t; render(); return; }
@@ -5973,14 +5973,14 @@ const Raid = {
 };
 
 // ===== www/js/duel.js =====
-/* Капища Ордена: поединок 3 на 3 с хранителем.
+/* Святилища Ордена: поединок 3 на 3 с хранителем.
    Тап — быстрая атака (копит энергию), «Приём» — особая атака с мини-игрой,
    у каждой стороны 2 щита, духа можно сменить (перезарядка 25 с). */
 
 const Duel = {
   st: null,
   FAST: 6, CHARGE: 65, COST: 50, TIME: 180, HPX: 3, SWITCH_CD: 25,
-  // соперники без уровня Капища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
+  // соперники без уровня Святилища: скорость ударов и щиты (4.3: те же числа проверяет сервер — Rules.duelTimeoutOk)
   // 4.16: прислужник Нави — pow: сила его омрачённых духов от силы духов игрока (W.grunt), темп ударов 0,52 (был 0,75,
   // вторжения выигрывались 99 из 100); ориентир — ~70% побед
   FOE: { invasion: { speed: 0.52, shield: 0.5, pow: 1.2 }, spar: { speed: 0.72, shield: 0.6 } },
@@ -5988,43 +5988,91 @@ const Duel = {
   shieldSvg: '<svg viewBox="0 0 24 24" class="shd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#5eead4" stroke="#0f766e" stroke-width="1.5"/></svg>',
 
   open(e) {
-    // 4.16: вольное Капище кланы не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
+    // 4.16: вольное Святилище кланы не держат; защитники, чей срок вышел, ушли; уставшие — слабее (Rules.HOLD)
     const free = Rules.shrineFree(e.id), now = U.now();
     const holders0 = !free && Clans.info(e.id) ? Clans.info(e.id).holders.filter(h => h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)) : [];
     const hold = holders0.length ? Clans.info(e.id) : null, mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
-    const g = W.guardian(e), T = SHRINE_TIERS[e.tier], mul = Ev.duelMul();
+    const g = W.guardian(e), T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier, myth = e.myth || 'slavic';
     let team = S.team();
     const holders = holders0.map(h => ({ ...h, sp: Rules.holdSpirit(h.sp, h.t, now) }));
-    const who = hold
-      ? `<div class="guard"><div class="guard-ava clan" style="--cc:${CLANS[hold.clan].color}">${Art.guardian(CLANS[hold.clan].color)}</div><div><b>${CLANS[hold.clan].name}</b><small>${hold.since && !isNaN(new Date(hold.since)) ? ru`держит Капище с ${new Date(hold.since).toLocaleDateString(I18N.locale)} · защитников: ${holders.length} из ${HOLD_MAX}` : ru`держит Капище · защитников: ${holders.length} из ${HOLD_MAX}`}</small></div></div>
-         <div class="rift-team-title">${ru`Защитники`}</div>
-         <div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
-      : `<div class="guard"><div class="guard-ava">${Art.guardian(g.color)}</div><div><b>${g.name}</b><small>${ru`Хранитель · ${g.title}`}</small></div></div>
-         <div class="rift-team-title">${ru`Духи хранителя`}</div>
-         <div class="lg2-team tm-row">${UI.teamCards(g.team, true)}</div>`;
     const canClan = !S.d.clan && S.d.level >= CLAN_LEVEL;
-    let action;
-    if (mine) action = `<div class="rift-tip">${ru`Капище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>
-        <button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
-    else if (e.won) action = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>
-        ${S.d.clan && !hold && !free ? `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>` : ''}`;
-    else action = `
-        <div class="rift-team-title">${ru`Твоя команда`} <button class="btn small ghost team-edit">${ru`Изменить`}</button></div>
-        <div class="lg2-team tm-row tm-my">${UI.teamCards(team)}</div>
-        <div class="rift-tip">${hold ? `${ru`Победа освободит Капище от защитников.`} ` : ''}${ru`Награда: ${U.fmtNum(T.xp * mul)} опыта, ✦ ${U.fmtNum(T.sparks * mul)} и предметы`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</div>
-        <button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;
+    // 5.1.29: в композиции Разлома (Raid.open): сверху святилище с медальоном хранителя (у занятого — клана), справа ступень,
+    // хранитель, сила его духов, звание и место; вкладки «Бой» (команда, кнопки — закреплены внизу), «Хранитель», «Награда»
+    const power = list => list.reduce((a, x) => a + S.power(x), 0);
+    const foeTeam = hold ? holders.map(h => h.sp) : g.team;
+    const row = (k, v) => `<div class="dt-row"><span>${k}</span><b>${v}</b></div>`;
+    const it = (k, n) => `<span class="cur">${Art.item(k)}</span> ${n}`;
+    const photo = Poi.photoUrl(e.photo);
+    const since = hold && hold.since && !isNaN(new Date(hold.since)) ? new Date(hold.since).toLocaleDateString(I18N.locale) : '';
+    const held = hold ? (since ? ru`держит Святилище с ${since} · защитников: ${holders.length} из ${HOLD_MAX}` : ru`держит Святилище · защитников: ${holders.length} из ${HOLD_MAX}`) : '';
+    const ownMyth = !free && S.d.clan && myth === S.d.clan ? `<div class="rift-tip own-myth" style="--cc:${CLANS[S.d.clan].color}">${ru`Святилище мифологии твоего клана: защитник здесь приносит дань ${Clans.mythX()}.`}</div>` : '';
+    let fight, acts = '';
+    if (mine) {
+      fight = `<div class="rift-tip">${ru`Святилище держит твой клан. Поставь сюда своего защитника — и получай дань каждый день.`}</div>${ownMyth}`;
+      acts = `<button class="btn primary wide defend-go" ${holders.length >= HOLD_MAX ? 'disabled' : ''}>${ru`Поставить защитника`}</button>`;
+    } else if (e.won) {
+      fight = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>`;
+      if (S.d.clan && !hold && !free) acts = `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>`;
+    } else {
+      fight = `
+        <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
+        <div class="lg2-team rift-team tm-my">${UI.teamCards(team)}</div>
+        ${hold ? `<div class="rift-tip">${ru`Победа освободит Святилище от защитников.`}</div>` : ''}${ownMyth}
+        ${Rules.dayLine(S.d, 'duels', ru`Побед в Святилищах`)}`;
+      acts = `<button class="btn primary wide duel-go" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>`;
+    }
+    if (canClan) acts += `<button class="btn ghost wide clan-go">${ru`Выбрать клан`}</button>`;
     const html = `
-      <div class="shrine-view t${e.tier}">
-        ${Poi.photoUrl(e.photo) ? `<div class="place-photo" style="background-image:url('${Poi.photoUrl(e.photo)}')"></div>` : `<div class="shrine-idol">${Art.shrineIcon(e.tier, e.won, e.myth)}</div>`}
-        <div class="rift-title">${U.esc(e.name)} <span class="stars">${'★'.repeat(e.tier)}</span></div>
-        <div class="rift-meta">${MYTH_PLACES[e.myth || 'slavic'].shrineOf(e.god)}${hold ? ' · ' + Clans.badge(hold.clan, true) : ''}${free ? ' · ' + ru`вольное: кланы его не держат` : ''}</div>
-        <div class="q-note place-desc">${MYTH_PLACES[e.myth || 'slavic'].shrineDesc}</div>
-        ${!free && S.d.clan && (e.myth || 'slavic') === S.d.clan ? `<div class="rift-tip own-myth" style="--cc:${CLANS[S.d.clan].color}">${ru`Святилище мифологии твоего клана: защитник здесь приносит дань ${Clans.mythX()}.`}</div>` : ''}
-        ${who}
-        ${action}
-        ${canClan ? `<button class="btn ghost wide clan-go">${ru`Выбрать клан`}</button>` : ''}
+      <div class="det det2 rift2 shrine2 t${t}">
+        <div class="dt-hero">
+          <div class="det-art rift2-art shrine2-art">
+            ${photo ? `<div class="shrine2-photo" style="background-image:url('${photo}')"></div>` : `<div class="rift-portal">${Art.shrineIcon(t, e.won, e.myth)}</div>`}
+            <div class="shrine2-guard${hold ? ' clan' : ''}"${hold ? ` style="--cc:${CLANS[hold.clan].color}"` : ''}>${Art.guardian(hold ? CLANS[hold.clan].color : g.color)}</div>
+          </div>
+          <div class="dt-info">
+            <div class="det-hp">${ru`Святилище`} <span class="stars">${'★'.repeat(t)}</span></div>
+            <div class="rift2-name">${hold ? CLANS[hold.clan].name : g.name}</div>
+            <div class="det-power"><small>${hold ? ru`СИЛА ЗАЩИТНИКОВ` : ru`СИЛА ХРАНИТЕЛЯ`}</small><b>${U.fmtNum(power(foeTeam))}</b></div>
+            <div class="rift2-left">${hold ? held : ru`Хранитель · ${g.title}`}</div>
+            <div class="rift2-place">${UI.I.pin}${U.esc(e.name)}</div>
+            <div class="rift2-place place-kind">${MYTH_PLACES[myth].shrineOf(e.god)}${free ? ' · ' + ru`вольное: кланы его не держат` : ''}</div>
+          </div>
+        </div>
+        <div class="seg dt-tabs"><button data-tab="fight" class="on">${ru`Бой`}</button><button data-tab="guard">${ru`Хранитель`}</button><button data-tab="loot">${ru`Награда`}</button></div>
+        <div class="dt-panel">
+          <div class="dt-pane on" data-pane="fight">
+            <div class="dt-scroll rift2-fight">${fight}</div>
+            ${acts ? `<div class="rift2-acts">${acts}</div>` : ''}
+          </div>
+          <div class="dt-pane" data-pane="guard">
+            <p class="det-desc place-desc">${MYTH_PLACES[myth].shrineDesc}</p>
+            <div class="dt-scroll rift2-fight">
+              <div class="pf-mh lg2-th"><span>${hold ? ru`Защитники` : ru`Духи хранителя`}</span><b class="rift2-pw">${ru`сила ${U.fmtNum(power(foeTeam))}`}</b></div>
+              ${hold ? `<div class="holders">${holders.map(h => `<div class="mini">${Art.imgOf(h.sp)}<b>${S.power(h.sp)}</b><small>${U.esc(h.name || ru`Ловчий`)}</small></div>`).join('')}</div>`
+                : `<div class="lg2-team">${UI.teamCards(g.team, true)}</div>`}
+              ${hold ? `<p class="rift2-note">${Clans.badge(hold.clan, true)} ${held}</p>` : ''}
+            </div>
+          </div>
+          <div class="dt-pane" data-pane="loot">
+            <div class="dt-scroll dt-rows">
+              ${row(ru`Опыт`, U.fmtNum(T.xp * mul))}
+              ${row(ru`Искры`, it('sparks', U.fmtNum(T.sparks * mul)))}
+              ${row(ru`Обереги`, [it('charm', 5 * mul), t >= 2 ? it('charm2', 3 * mul) : '', t === 3 ? it('charm3', 2 * mul) : ''].filter(Boolean).join(' · '))}
+              ${row(ru`Припасы`, [t > 1 ? it('honey', (t - 1) * mul) : '', t < 3 ? it('herb', 1) : it('water', 1)].filter(Boolean).join(' · '))}
+              ${S.ALATYR_DROP.duel[t] ? row(ru`Осколок Алатыря`, ru`шанс ${Math.round(S.ALATYR_DROP.duel[t] * 100)}%`) : ''}
+              ${row(ru`Амулет`, ru`шанс ${4 * t}%`)}
+              <p class="rift2-note">${ru`Победить хранителя здесь можно раз в день.`}${mul > 1 ? ` ${ru`(Неделя поединков ×2)`}` : ''}</p>
+            </div>
+          </div>
+        </div>
       </div>`;
-    const scr = UI.screen(MYTH_PLACES[e.myth || 'slavic'].shrine, html, 'shrine-screen'); // 4.28: своё у каждой мифологии
+    const scr = UI.screen(MYTH_PLACES[myth].shrine, html, 'shrine-screen det-screen'); // 4.28: своё у каждой мифологии
+    scr.querySelector('.dt-tabs').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-tab]'); if (!b) return;
+      Sfx.play('tap');
+      U.$$('.dt-tabs button', scr).forEach(x => x.classList.toggle('on', x === b));
+      U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+    });
     const go = scr.querySelector('.duel-go');
     if (go) go.onclick = async () => {
       if (this.st || this._starting) return;
@@ -6034,7 +6082,7 @@ const Duel = {
       if (!r) return;
       UI.closeScreen(scr);
       // защитники клана — вместо хранителя
-      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Капища`, team: r.foe } : g;
+      const foe = r.foe ? { name: CLANS[r.clan].name, color: CLANS[r.clan].color, title: ru`Защитники Святилища`, team: r.foe } : g;
       // 4.16: темп хранителя — свой (W.foeSpeed), у защитников клана — обычный для ступени
       this.start({ ...e, kind: 'shrine', held: r.clan || null, T: r.foe ? T : { ...T, speed: g.speed } }, foe, S.team());
     };
@@ -6048,6 +6096,7 @@ const Duel = {
       UI.pickTeam(() => {
         team = S.team();
         const box = scr.querySelector('.tm-my'); if (box) box.innerHTML = UI.teamCards(team);
+        const pw = scr.querySelector('[data-pane="fight"] .rift2-pw'); if (pw) pw.textContent = team.length ? ru`сила ${U.fmtNum(power(team))}` : '';
         const b = scr.querySelector('.duel-go'); if (b) b.disabled = !team.length;
       });
     });
@@ -6475,12 +6524,12 @@ const Duel = {
       Sfx.play('win'); U.vibrate([50, 50, 50, 50, 120]);
       const rw = r.rw;
       const note = r.clan
-        ? (r.freed ? ru`Защитники «${CLANS[r.clan].name}» отступили — Капище «${U.esc(st.e.name)}» свободно!` : ru`Победа засчитана, но пока шёл бой, на Капище сменились защитники.`)
-        : ru`«Достойно, Ловчий», — ${st.g.name} склоняет голову. Капище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
+        ? (r.freed ? ru`Защитники «${CLANS[r.clan].name}» отступили — Святилище «${U.esc(st.e.name)}» свободно!` : ru`Победа засчитана, но пока шёл бой, в Святилище сменились защитники.`)
+        : ru`«Достойно, Ловчий», — ${st.g.name} склоняет голову. Святилище «${U.esc(st.e.name)}» освящено тобой до конца дня.`;
       const canDefend = S.d.clan && (!r.clan || r.freed);
       html = `<div class="res-title">${ru`Победа!`}</div>
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
-        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Капище перейдёт твоему клану.`}` : ''}</div>
+        <div class="res-note">${note}${canDefend ? ` ${ru`Поставь своего защитника — и Святилище перейдёт твоему клану.`}` : ''}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
         ${canDefend ? `<button class="btn primary wide defend-now">${ru`Поставить защитника`}</button>` : ''}`;
       if (r.clan) Clans.refresh(true);
@@ -6748,7 +6797,7 @@ const Rules = {
   // Монеты — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
   // 4.16: бесплатных монет было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
   // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
-  // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
+  // глава Летописи 15 (50), дань 1 за Святилище, но не больше чем с tributeMax Святилищ (было 3 за каждое, до 30 в день)
   // 4.16.0: бесплатных монет у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
   ZLAT: { streak: 1, streak7: 5, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 }, // 5.1.24: монеты сундука дня — в CHEST.POOL
   BAG_STEP: 50, BAG_MAX_UP: 10,
@@ -6761,10 +6810,10 @@ const Rules = {
     { id: 'z2600', zlat: 2600, rub: 1990, bonus: 30 },
   ],
   // 3.20: дневные лимиты объектов карты (сутки — по часам игрока). Считаются только успехи: зачерпнутый источник,
-  // победа в Разломе, на Капище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
+  // победа в Разломе, в Святилище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
   // 10–20 источников в день), а бесконечный фарм и боты упираются в потолок
   DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
-  DAILY_NAMES: { springs: ru`Источники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
+  DAILY_NAMES: { springs: ru`Источники`, raids: ru`Разломы`, duels: ru`Святилища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
   // 4.16: сколько раз товар Лавки с недельным пределом (week) куплен на этой неделе (неделя — как у событий, Ev.week)
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
   weekUsed(d, key) { return d && d.weekc && d.weekc.w === Ev.week() ? (d.weekc[key] || 0) : 0; }, // 4.16: за неделю (с понедельника)
@@ -6894,7 +6943,7 @@ const Rules = {
   MELT: { N: 3, SPARKS: 3000 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
-  // 5.2: места (Источники, Капища и Разломы у них): каждую неделю бодрствует доля SHARE, остальные спят (W.awake);
+  // 5.2: места (Источники, Святилища и Разломы у них): каждую неделю бодрствует доля SHARE, остальные спят (W.awake);
   // на карте места видны в радиусе VIEW м от Ловчего (подойти, чтобы открыть, — как раньше: W.INTERACT, W.BATTLE_R)
   PLACES: { SHARE: 0.4, VIEW: 200 },
   // cur — валюта: sparks (искры) или zlat (монеты). give — предметы; cocoon — кокон; amulet — случайный амулет
@@ -6930,7 +6979,7 @@ const Rules = {
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
   // без сил (здоровье 0) — в бой не идёт и поднимается сам на BACK через KO_H часов (по редкости духа: от 2 до 24);
   // 4.15.1: Мёртвая вода сокращает ожидание на ITEMS.deadwater.revive часов, Живая вода духа без сил не поднимает
-  // 4.16: усталость — каждый бой (разлом, Капище, вторжение) даёт духам команды очко; очко уходит за REST часов отдыха.
+  // 4.16: усталость — каждый бой (разлом, Святилище, вторжение) даёт духам команды очко; очко уходит за REST часов отдыха.
   // Первые FREE боёв подряд даются даром, дальше каждое очко срезает STEP от предела здоровья (не ниже MIN) — ни лечение,
   // ни время выше предела не поднимут: одной командой весь день не провоевать, нужны сменщики
   HP: { REGEN: 0.1, KO_H: { 1: 2, 2: 5, 3: 9, 4: 15, 5: 24 }, BACK: 0.1, TIRED: { FREE: 3, STEP: 0.15, MIN: 0.4, REST: 1 } },
@@ -6970,16 +7019,16 @@ const Rules = {
   ],
   // награда ступени lvl (1…30): free — всем, gold — на Золотой тропе; копия — её можно менять
   passReward(track, lvl) { return { ...((track === 'gold' ? this.PASS_GOLD : this.PASS_FREE)[lvl - 1] || {}) }; },
-  // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
+  // Защитник вернулся со Святилища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
-  /* 4.16: Капища не должны навсегда оставаться за кланами.
+  /* 4.16: Святилища не должны навсегда оставаться за кланами.
      Защитник первые FRESH_H часов на посту в полной силе, потом устаёт: к MAX_H часам его уровень падает до (1 − WEAK)
      от своего, а в MAX_H часов он уходит домой (с искрами за службу, как побеждённый). Дань (Rules.ZLAT.tribute и TRIBUTE) —
      только за защитников, которые простояли не меньше TRIBUTE_H часов и ещё на посту («активная защита»), и не больше чем
-     за HOLD_MY_MAX Капищ. Доля FREE Капищ — вольные: их не держит ни один клан, там всегда бьётся хранитель.
+     за HOLD_MY_MAX Святилищ. Доля FREE Святилищ — вольные: их не держит ни один клан, там всегда бьётся хранитель.
      4.28: кланы — мифологии; защитник на святилище мифологии своего клана (W.placeMyth) приносит дань ×MYTH (искры и обереги;
-     монеты — как с любого Капища). Кланов стало 7+ при тех же Ловчих — на удержание Капищ это не влияет: защитников на
-     Капище и Капищ у Ловчего столько же, вольных — та же доля. */
+     монеты — как с любого Святилища). Кланов стало 7+ при тех же Ловчих — на удержание Святилищ это не влияет: защитников в
+     Святилище и Святилищ у Ловчего столько же, вольных — та же доля. */
   HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25, MYTH: 1.5 },
   holdHours(t, now) { return Math.max(0, ((now == null ? Date.now() : now) - (+t || 0)) / 3600000); },
   holdFresh(h, now) { return !!h && this.holdHours(h.t, now) < this.HOLD.MAX_H; },
@@ -6988,10 +7037,10 @@ const Rules = {
   // отражение духа на посту: уровень — с учётом усталости
   holdSpirit(sp, t, now) { return { ...sp, lvl: Math.max(1, Math.round((sp.lvl || 1) * this.holdK(t, now))) }; },
   shrineFree(id) { return U.h('freeShrine', String(id)) < this.HOLD.FREE; },
-  // 4.28: дань за n Капищ, из них own — святилища мифологии своего клана (там ×HOLD.MYTH; обереги — с округлением вверх)
+  // 4.28: дань за n Святилищ, из них own — святилища мифологии своего клана (там ×HOLD.MYTH; обереги — с округлением вверх)
   tributeFor(n, own) { const k = n + Math.min(own, n) * (this.HOLD.MYTH - 1); return { sparks: Math.round(TRIBUTE.sparks * k), charm: Math.ceil(TRIBUTE.charm * k - 1e-9) }; },
   ORDER_RULES: [
-    [ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
+    [ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в святилище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],
 
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
@@ -7041,7 +7090,7 @@ const Rules = {
     const n = Math.floor(0.5 * bs.pw * (bs.atk / S.battle(sp).def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
     return Math.max(1, Math.floor(n * this.RAID_SIM.DODGE));
   },
-  // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Капищ). Каждый дух живёт
+  // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Святилищ). Каждый дух живёт
   // не дольше, чем выдерживает уклонённые удары (здоровье на входе — hp0, { uid: доля }; нет — здоров), и бьёт с наибольшим
   // уроном; выпитая Живая вода (waters) — полфлакона здоровья тому, кому она выгоднее всего. В совместном бою need — своя доля
   raidWinnable(team, boss, need, hp0, waters = 0) {
@@ -7063,7 +7112,7 @@ const Rules = {
     const t = Math.min(90, need / Math.max(1e-9, dps)), strikes = t < R.FIRST ? 0 : Math.floor((t - R.FIRST) / R.GAP) + 1;
     return strikes * Math.min(...team.map(sp => this.raidHit(bs, bel, sp))) * R.LOSS;
   },
-  // 4.26: то же на Капище и во вторжении (здоровье духа × Duel.HPX): быстрее, чем за duelFoeHp / наибольший урон, соперника не
+  // 4.26: то же в Святилище и во вторжении (здоровье духа × Duel.HPX): быстрее, чем за duelFoeHp / наибольший урон, соперника не
   // победить; он бьёт раз в speed…speed+0,25 с игрового времени (первый удар — на 1,5 с, пауза после каждого побеждённого
   // бойца — 1,2 с); два удара могут уйти в щиты, остальные — не слабее быстрого удара без погоды
   duelMinLoss(team, foe, speed) {
@@ -7569,7 +7618,7 @@ const GameCore = {
   },
   // 4.26: ключ из запроса или чужих данных — только собственный ключ таблицы (не __proto__, constructor и т. п.)
   own(o, k) { return (typeof k === 'string' || typeof k === 'number') && Object.prototype.hasOwnProperty.call(o, k); },
-  // 4.26: общие таблицы (аукцион, подарки, друзья, Капища, комнаты, чат) обработчики пишут до сохранения прогресса — только
+  // 4.26: общие таблицы (аукцион, подарки, друзья, Святилища, комнаты, чат) обработчики пишут до сохранения прогресса — только
   // пока замок игрока точно держится (serve.js: env.lockAt — когда взят, env.LOCK_MS — на сколько; LOCK_SPARE — запас на
   // сохранение). Иначе другой запрос того же игрока мог уже взять замок — и запись разошлась бы с прогрессом.
   // Нет данных о замке (автотесты) — не проверяем
@@ -7593,10 +7642,10 @@ const GameCore = {
     this.need(p.id.startsWith('osm:'), ru`Место не найдено`);
     // там, где места загружены из OpenStreetMap в базу (вся Россия), других объектов нет
     this.need(!(await ctx.env.poiCovered(+p.lat, +p.lng)), ru`Этого места нет на карте — обнови игру`);
-    // 4.1: такое место сервер проверить не может (id и координаты — от телефона): на нём нет легендарных разломов и удержания Капищ
+    // 4.1: такое место сервер проверить не может (id и координаты — от телефона): на нём нет легендарных разломов и удержания Святилищ
     return { id: p.id, lat: +p.lat, lng: +p.lng, name: String(p.name || 'Место').slice(0, 80), photo: null, verified: false };
   },
-  // 5.2: место спит на этой неделе (W.awake, Rules.PLACES) — ни Источника, ни Капища, ни Разлома здесь нет
+  // 5.2: место спит на этой неделе (W.awake, Rules.PLACES) — ни Источника, ни Святилища, ни Разлома здесь нет
   placeAwake(p, kind, t) { this.need(W.awake(p, kind, t), ru`Это место сейчас спит — на этой неделе здесь ничего нет`); },
   team(uids) { return (uids || []).map(u => S.findSpirit(u)).filter(Boolean); },
   battleTime(ctx, b) { return (ctx.now - b.start) / 1000 - Rules.COUNTDOWN; },
@@ -7608,9 +7657,9 @@ const GameCore = {
   },
   // 4.15: раны после боя — общие на всю игру. Телефон присылает долю здоровья каждого бойца (hp: { uid: 0..1 });
   // выше той, с какой дух вошёл в бой, она не станет (в разломе — плюс выпитая Живая вода). Нет данных — здоровье не меняется
-  // 4.16: и усталость — каждый бой (разлом, Капище, вторжение) прибавляет духам команды по очку (см. Rules.HP.TIRED)
+  // 4.16: и усталость — каждый бой (разлом, Святилище, вторжение) прибавляет духам команды по очку (см. Rules.HP.TIRED)
   // 4.26: после победы — и не ниже, чем посчитал сервер: команда потеряла не меньше loss единиц здоровья (Rules.raidMinLoss,
-  // duelMinLoss; mul — здоровье духа в единицах боя: 5 в разломе, Duel.HPX на Капище) — даже если телефон ран не прислал
+  // duelMinLoss; mul — здоровье духа в единицах боя: 5 в разломе, Duel.HPX в Святилище) — даже если телефон ран не прислал
   woundTeam(b, hp, loss = 0, mul = 5) {
     const now = U.now(), team = this.team(b.team), rep = hp && typeof hp === 'object' ? hp : {};
     const up = sp => Math.min(S.hpCap(sp, now), S.hpNow(sp, now) + (b.waters || 0) * ITEMS.water.heal);
@@ -7823,7 +7872,7 @@ const GameCore = {
   DAY_MSG: {
     springs: ru`Сегодня ты уже зачерпнул силу из 30 источников — они снова откроются завтра`,
     raids: ru`Сегодня закрыто уже 6 Разломов — Навь затихла до завтра`,
-    duels: ru`Сегодня уже 8 побед на Капищах — хранители ждут тебя завтра`,
+    duels: ru`Сегодня уже 8 побед в Святилищах — хранители ждут тебя завтра`,
     invasions: ru`Сегодня отбито уже 6 вторжений — Навь вернётся завтра`,
     catches: ru`Сегодня поймано уже 120 духов — обереги отдохнут до завтра`,
   },
@@ -7952,14 +8001,14 @@ const GameCore = {
     if (!room || !Array.isArray(room.members)) return c.allies;
     return U.clamp(room.members.filter(m => m && m.pid !== S.d.pid && +m.f > 0).length, 0, c.allies);
   },
-  // Защитники Капища в бою — три сильнейших (4.16: только те, кто ещё на посту, и с учётом усталости — Rules.HOLD)
+  // Защитники Святилища в бою — три сильнейших (4.16: только те, кто ещё на посту, и с учётом усталости — Rules.HOLD)
   holdTeam(hold, now = Date.now()) {
     return hold.holders.filter(h => h && h.sp && this.own(SP, h.sp.sid) && Rules.holdFresh(h, now)).map((h, i) => Rules.holdSpirit(this.cleanSpirit(h.sp, i), h.t, now))
       .map(x => ({ x, p: S.power(x) })).sort((a, b) => b.p - a.p).slice(0, 3).map(o => o.x);
   },
-  // 4.16: Капище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Капище кланов нет.
-  // null — Капище свободно (бьётся хранитель). 4.28: clan — ключ клана мифологии (до миграции 032 в базе бывают прежние
-  // sokol / medved / volk — clanOf); неизвестный клан — Капище как свободное
+  // 4.16: Святилище «сейчас»: защитники, чей срок вышел (Rules.HOLD.MAX_H), уже ушли; на вольном Святилище кланов нет.
+  // null — Святилище свободно (бьётся хранитель). 4.28: clan — ключ клана мифологии (до миграции 032 в базе бывают прежние
+  // sokol / medved / volk — clanOf); неизвестный клан — Святилище как свободное
   liveHold(hold, now, id) {
     if (!hold || Rules.shrineFree(id) || !clanOf(hold.clan)) return null;
     const holders = (hold.holders || []).filter(h => Rules.holdFresh(h, now));
@@ -8113,7 +8162,7 @@ const GameCore = {
         S.d.cocoons.push({ id: U.uid(), km: 10, walked: 0, inc: S.incubating() < 3 });
         got.push({ k: 'cocoon', n: 1, label: ru`Кокон ${10} км` });
       }
-      // Дальний пропуск дня — чтобы Разломы были доступны и тем, кому до Капища далеко
+      // Дальний пропуск дня — чтобы Разломы были доступны и тем, кому до Святилища далеко
       if ((S.d.items.farpass || 0) < Rules.FAR.KEEP) got.push(...S.giveRewards({ farpass: 1 }));
       return { n: st.n, got };
     },
@@ -8710,7 +8759,7 @@ const GameCore = {
       const need = Raid.bossStats(b).hp * hpMul / n * (n > 1 ? 0.5 : 1);
       this.woundTeam(b, a.hp, Rules.raidMinLoss(team, b, need), 5); // 4.26: раны после победы — не меньше, чем наверняка нанёс босс
       this.need(t >= 2 && Rules.raidMaxDamage(team, b, t) >= need, ru`Бой не засчитан: слишком быстрая победа`);
-      // 4.26: и команда могла выстоять, пока наносила этот урон (как Rules.duelWinnable на Капищах)
+      // 4.26: и команда могла выстоять, пока наносила этот урон (как Rules.duelWinnable в Святилищах)
       this.need(Rules.raidWinnable(team, b, need, b.hp0, b.waters), ru`Бой не засчитан: эта команда не могла победить такого соперника`);
       S.d.rifts[b.rid] = true;
       const tier = b.tier;
@@ -8741,9 +8790,9 @@ const GameCore = {
       return { win: true, rw, charms, bonus, allies, fin };
     },
 
-    /* ----- бои: капище и вторжение ----- */
+    /* ----- бои: святилище и вторжение ----- */
     async duelStart(a, ctx) {
-      this.need(S.d.level >= DUEL_LEVEL, ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`);
+      this.need(S.d.level >= DUEL_LEVEL, ru`Святилища открываются с ${DUEL_LEVEL} уровня Ловчего`);
       const p = await this.place(a.shrine, ctx, 'shrine');
       this.placeAwake(p, 'shrine', ctx.now);
       this.need(!W.riftAt(p.id, Math.floor(ctx.now / 3600000)), ru`Сейчас здесь открыт Разлом`);
@@ -8753,12 +8802,12 @@ const GameCore = {
       const team = S.team();
       this.need(team.length, ru`Нужна команда`);
       this.readyTeam(team);
-      // Капище держит клан — сражаться придётся с его защитниками (тремя сильнейшими)
+      // Святилище держит клан — сражаться придётся с его защитниками (тремя сильнейшими)
       const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
-      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твой клан — здесь можно поставить защитника`);
+      this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Святилище держит твой клан — здесь можно поставить защитника`);
       const ht = hold ? this.holdTeam(hold, ctx.now) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
-      this.need(p.verified || e.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`); // 4.26: у места не из базы — только Капища «Ученика»
+      this.need(p.verified || e.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`); // 4.26: у места не из базы — только Святилища «Ученика»
       this.limit(ctx, 'duel', 40, 3600000);
       ctx.srv.battle = { type: 'duel', id: e.id, tier: e.tier, name: e.name, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true,
         foe, hold: hold ? { clan: hold.clan, ver: hold.ver } : null };
@@ -8777,7 +8826,7 @@ const GameCore = {
       let freed = false;
       if (b.hold) {
         this.shared(ctx);
-        freed = await ctx.env.holdDefeat(e.id, b.hold.ver); // защитники могли смениться за время боя — тогда Капище не освобождается
+        freed = await ctx.env.holdDefeat(e.id, b.hold.ver); // защитники могли смениться за время боя — тогда Святилище не освобождается
         if (freed) S.d.stats.freed = (S.d.stats.freed || 0) + 1;
       }
       J.add('duel', { name: e.name, guard: b.hold ? CLANS[b.hold.clan].name : W.guardian(e).name, tier: t });
@@ -8956,7 +9005,7 @@ const GameCore = {
       return { clan: a.clan };
     },
     // 4.28: один бесплатный переход в другой открытый клан — у тех, кто был в дружине до кланов мифологий (S.migrate,
-    // clanFree; предложение не сгорает, пока не использовано). Защитники достаивают свой срок на Капищах прежнего клана,
+    // clanFree; предложение не сгорает, пока не использовано). Защитники достаивают свой срок в Святилищах прежнего клана,
     // чат — уже нового
     clanMove(a) {
       this.need(S.d.clan, ru`Сначала выбери клан`);
@@ -8968,30 +9017,30 @@ const GameCore = {
       J.add('clan', { clan: a.clan, from, move: 1 });
       return { clan: a.clan };
     },
-    // Поставить духа защищать Капище: свободное — после своей победы здесь сегодня, своего клана — если есть место
+    // Поставить духа защищать Святилище: свободное — после своей победы здесь сегодня, своего клана — если есть место
     async shrineDefend(a, ctx) {
       this.need(S.d.clan, ru`Сначала выбери клан`);
       const p = await this.place(a.shrine, ctx, 'shrine');
-      this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);
-      // 5.2: на уснувшее Капище новых защитников не ставят; стоящие достаивают свой срок (Rules.HOLD) и возвращаются, как обычно
+      this.need(p.verified, ru`Защищать можно только Святилища, известные Ордену`);
+      // 5.2: на уснувшее Святилище новых защитников не ставят; стоящие достаивают свой срок (Rules.HOLD) и возвращаются, как обычно
       this.placeAwake(p, 'shrine', ctx.now);
-      this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни один клан`);
+      this.need(!Rules.shrineFree(p.id), ru`Это вольное Святилище — его не держит ни один клан`);
       this.near(ctx, p.lat, p.lng, W.BATTLE_R);
       const sp = this.spirit(a.uid);
       const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
-      if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Капище`);
+      if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Святилище`);
       else {
-        this.need(hold.clan === S.d.clan, ru`Капище держит другой клан — сначала победи его защитников`);
-        this.need(hold.holders.length < HOLD_MAX, ru`На Капище уже ${HOLD_MAX} защитников`);
+        this.need(hold.clan === S.d.clan, ru`Святилище держит другой клан — сначала победи его защитников`);
+        this.need(hold.holders.length < HOLD_MAX, ru`В Святилище уже ${HOLD_MAX} защитников`);
         this.need(!hold.holders.some(h => h.pid === S.d.pid), ru`Твой защитник уже стоит здесь`);
       }
-      this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, ru`Твои защитники уже стоят на ${HOLD_MY_MAX} Капищах`);
+      this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, ru`Твои защитники уже стоят на ${HOLD_MY_MAX} Святилищах`);
       this.limit(ctx, 'defend', 30, 3600000);
       this.shared(ctx);
       const ok = await ctx.env.holdDefend(p.id, p.lat, p.lng, S.d.clan, { pid: S.d.pid, name: S.d.name, sp: this.cleanSpirit(sp, 0), t: ctx.now });
-      this.need(ok, ru`Капище только что изменилось — открой его заново`);
+      this.need(ok, ru`Святилище только что изменилось — открой его заново`);
       S.d.stats.defends = (S.d.stats.defends || 0) + 1;
-      S.d.guards.push({ id: p.id, name: String(p.name || 'Капище').slice(0, 80), sid: sp.sid, t: ctx.now });
+      S.d.guards.push({ id: p.id, name: String(p.name || 'Святилище').slice(0, 80), sid: sp.sid, t: ctx.now });
       S.progress('defend', 1);
       J.add('defend', { name: p.name, sid: sp.sid });
       return { ok: true, clan: S.d.clan };
@@ -9017,14 +9066,14 @@ const GameCore = {
       }
       return { list, back, got };
     },
-    // Сколько Капищ держит каждый открытый клан: по всему свету и в округе ~5 км
+    // Сколько Святилищ держит каждый открытый клан: по всему свету и в округе ~5 км
     async clanStats(a, ctx) {
       const p = ctx.pos;
       const box = p ? [p.lat - 0.045, p.lng - 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)), p.lat + 0.045, p.lng + 0.045 / Math.max(0.2, Math.cos(p.lat * Math.PI / 180))] : null;
       return { all: await ctx.env.clanCounts(null), near: box ? await ctx.env.clanCounts(box) : null };
     },
-    // Дань: раз в день — за каждое Капище, где мой защитник на посту (4.16: «активная защита» — стоит не меньше
-    // Rules.HOLD.TRIBUTE_H часов и срок ещё не вышел; не больше HOLD_MY_MAX Капищ). Если защитники есть, но ещё не
+    // Дань: раз в день — за каждое Святилище, где мой защитник на посту (4.16: «активная защита» — стоит не меньше
+    // Rules.HOLD.TRIBUTE_H часов и срок ещё не вышел; не больше HOLD_MY_MAX Святилищ). Если защитники есть, но ещё не
     // отстояли своё, день не закрывается — дань можно забрать позже (next — когда)
     async tribute(a, ctx) {
       this.need(S.d.clan, ru`Сначала выбери клан`);
@@ -9038,7 +9087,7 @@ const GameCore = {
       }
       S.d.tributeDay = U.today(ctx.now);
       if (!n) return { n: 0, got: [] };
-      // 4.16: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 монеты с каждого, до 30 в день)
+      // 4.16: монеты — не больше чем с Rules.ZLAT.tributeMax Святилищ (было 3 монеты с каждого, до 30 в день)
       // 4.28: с святилищ мифологии своего клана — искры и обереги ×Rules.HOLD.MYTH (Rules.tributeFor); сначала — они
       const mine = list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H && W.placeMyth({ id: x.id, lat: x.lat, lng: x.lng }) === S.d.clan).length; // 5.1.26: по родине места
       const T = Rules.tributeFor(n, mine);
@@ -9063,7 +9112,7 @@ const GameCore = {
       const b = this.endBattle(ctx, 'inv');
       if (!a.win) { this.woundTeam(b, a.hp); return { win: false }; }
       const g = W.grunt({ invId: b.invId, lat: b.lat, lng: b.lng }); // 5.1.26: отряд — из духов родины источника
-      this.woundTeam(b, a.hp, Rules.duelMinLoss(this.team(b.team), g.team, g.speed), Duel.HPX); // 4.26: как на Капище
+      this.woundTeam(b, a.hp, Rules.duelMinLoss(this.team(b.team), g.team, g.speed), Duel.HPX); // 4.26: как в Святилище
       this.plausibleDuel(ctx, b, g.team, g.speed);
       S.d.freed[b.invId] = true;
       S.d.stats.invasions++;
@@ -9496,7 +9545,7 @@ const UUID = /^[0-9a-f-]{36}$/;
 // 4.3: запросы разных игроков выполняются одновременно — у каждого свои поля игрового кода (GameCore.isolate)
 GameCore.isolate(new AsyncLocalStorage());
 const must = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
-// 4.16: защитник Капища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
+// 4.16: защитник Святилища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
 const holdCutoff = () => Date.now() - Rules.HOLD.MAX_H * 3600000;
 const verCmp = (a, b) => {
   const pa = String(a || '0').split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -10305,7 +10354,7 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
-    // Кланы: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    // Кланы: кто держит Святилище, поставить защитника, освободить после победы, сколько Святилищ держит игрок
     async holdGet(poi) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
@@ -10321,7 +10370,7 @@ function makeEnv(uid) {
       const cut = holdCutoff();
       return rows.filter(r => (r.holders || []).some(h => h.pid === pid && +h.t >= cut)).length;
     },
-    // Капища, где стоят защитники игрока: название — из таблицы мест
+    // Святилища, где стоят защитники игрока: название — из таблицы мест
     async myHoldsList(pid) {
       const cut = holdCutoff();
       const rows = (must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(200)) || [])
@@ -10331,10 +10380,10 @@ function makeEnv(uid) {
       return rows.map(r => {
         const h = (r.holders || []).find(x => x.pid === pid) || {};
         const p = names.find(x => x.id === r.poi_id);
-        return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
+        return { id: r.poi_id, name: p ? p.name : 'Святилище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
       });
     },
-    // Сколько Капищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
+    // Сколько Святилищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
     // 4.28: кланы — мифологии (MYTH_KEYS), считаются параллельно; до миграции 032 — вместе с прежними дружинами (clanIds)
     async clanCounts(box) {
       const out = {};
