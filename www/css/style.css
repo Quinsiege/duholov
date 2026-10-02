@@ -1379,6 +1379,24 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .qd-pips { display: flex; align-items: center; gap: 5px; margin: 6px 0; }
 .qd-pips i { width: 22px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .14); }
 .qd-pips i.half { background: rgba(251, 191, 36, .5); } .qd-pips i.on { background: var(--gold); }
+/* 5.1.24: Сундук дня — большой, внизу «Заданий дня»: рисунок, отметки трёх заданий, что внутри, «Открыть».
+   Готов — мягко «дышит» золотым светом; открывается — подпрыгивает (в спокойном режиме и при «меньше движения» — без этого) */
+.q-chest { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; margin: 18px 0 8px; padding: 4px 12px; }
+.q-chest .qc-art { width: 150px; height: 130px; filter: drop-shadow(0 8px 14px rgba(8, 4, 24, .45)); }
+.q-chest .qc-art .art { width: 100%; height: 100%; }
+.q-chest .qc-title { font-family: var(--f-head); font-size: 18px; color: var(--gold2); }
+.q-chest .qd-pips { margin: 2px 0; }
+.q-chest .qc-state { font-size: 12.5px; color: var(--text); }
+.q-chest .qc-what { font-size: 12px; color: var(--muted); }
+.q-chest .claim-bonus { margin-top: 8px; min-width: 180px; }
+.q-chest.opened .qc-state { color: #86efac; }
+.q-chest.ready .qc-art { animation: qcGlow 1.8s ease-in-out infinite; }
+.q-chest.opening .qc-art { animation: qcOpen .65s ease-out both; }
+@keyframes qcGlow { 0%, 100% { transform: scale(1); filter: drop-shadow(0 8px 14px rgba(8, 4, 24, .45)); } 50% { transform: scale(1.04); filter: drop-shadow(0 8px 14px rgba(8, 4, 24, .45)) drop-shadow(0 0 16px rgba(253, 224, 71, .55)); } }
+@keyframes qcOpen { 0% { transform: none; } 20% { transform: translateY(-10px) rotate(-4deg); } 40% { transform: rotate(3deg); } 60% { transform: translateY(-6px) rotate(-2deg); } 100% { transform: scale(1.06); } }
+.calm .q-chest .qc-art { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .q-chest .qc-art { animation: none !important; } }
+.chest-modal .lvl-rw { margin: 6px 0 4px; }
 .qd-pips small { margin-left: 4px; color: var(--muted); font-size: 11px; }
 
 /* ---------- 3.25: чат ---------- */
@@ -5501,20 +5519,39 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes tutNudgeCalm { 0% { box-shadow: 0 0 0 3px rgba(253, 224, 71, .9), 0 10px 30px rgba(0, 0, 0, .5); } 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
 
 /* ---------- 5.1.15: Кампания ---------- */
-/* шаг Кампании на карте: мелкий текст прямо на карте, без подложки и рамок. 5.1.17: всегда на одном месте — под стрелкой
-   Следопыта (#tracker: left 12px, top 96px + зона выреза, высота до ~56px с подписью в две строки), есть она или нет */
-#hud .camp-line { position: absolute; left: 12px; top: calc(146px + var(--st)); display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  margin: 0; padding: 0; max-width: calc(100vw - 150px);
-  background: none; border: 0; box-shadow: none; border-radius: 0; pointer-events: auto; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
-  font-family: var(--f-head); font-size: 10.5px; font-weight: 600; line-height: 1.28; color: rgba(255, 255, 255, .86);
+/* шаг Кампании на карте. 5.1.17: всегда на одном месте — под стрелкой Следопыта (#tracker: left 12px, top 96px + зона выреза,
+   высота до ~56px с подписью в две строки), есть она или нет. 5.1.24: как остальной главный экран — прямо на карте, без подложки
+   и рамок, текст с тенью; шапка — золотая звезда в круге, цели строками: значок в фиолетовом круге (как кружки «Атласа мира» и
+   события), название и счётчик под ним, справа галочка (сделано) или стрелка */
+#hud .camp-line { position: absolute; left: 12px; top: calc(146px + var(--st)); display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+  margin: 0; padding: 0; width: max-content; max-width: min(280px, calc(100vw - 150px));
+  background: none; border: 0; box-shadow: none; border-radius: 0;
+  pointer-events: auto; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
+  font-family: var(--f-head); font-size: 12px; font-weight: 600; line-height: 1.22; color: #fff;
   text-shadow: 0 1px 3px rgba(8, 4, 24, .95), 0 0 8px rgba(8, 4, 24, .7); }
+#hud .camp-line:active { transform: scale(.98); }
 #hud .camp-line.hidden { display: none; }
-#hud .camp-line b { font-weight: 700; font-size: 13px; color: var(--gold2); margin-bottom: 1px; }
-#hud .camp-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-#hud .camp-line i { font-style: normal; color: #99f6e4; margin-left: 6px; } /* 5.1.18: счётчик — с отступом от названия цели */
-#hud .camp-line .cl-ok { color: rgba(255, 255, 255, .55); }
-#hud .camp-line .cl-ok i { color: rgba(153, 246, 228, .6); }
-#hud .camp-line .cl-go { color: #86efac; }
+#hud .camp-line .ico { width: 13px; height: 13px; }
+#hud .camp-line .cl-head { display: flex; align-items: center; gap: 7px; margin-bottom: 1px; }
+#hud .camp-line .cl-badge { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #3b1a02;
+  background: radial-gradient(circle at 35% 30%, #fff1b3, #f5b041 62%, #b7791f); box-shadow: 0 1px 4px rgba(8, 4, 24, .6), 0 0 8px rgba(251, 191, 36, .45); }
+#hud .camp-line .cl-head b { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--gold2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud .camp-line .cl-chev, #hud .camp-line .cl-end { flex: none; display: grid; place-items: center; color: rgba(255, 255, 255, .75); filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .9)); }
+#hud .camp-line .cl-chev { color: var(--gold2); }
+#hud .camp-line .cl-row { display: flex; align-items: center; gap: 8px; }
+#hud .camp-line .cl-ico { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #efe9ff;
+  background: radial-gradient(circle at 35% 30%, #8b5cf6, #5b21b6 70%, #3b0f78); box-shadow: inset 0 0 0 1px rgba(196, 181, 253, .45), 0 1px 4px rgba(8, 4, 24, .6); }
+#hud .camp-line .cl-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#hud .camp-line .cl-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud .camp-line i { font-style: normal; font-size: 11px; color: #99f6e4; } /* счётчик — под названием цели */
+#hud .camp-line .cl-ok .cl-t { color: rgba(255, 255, 255, .62); }
+#hud .camp-line .cl-ok i, #hud .camp-line .cl-ok .cl-end { color: #4ade80; }
+/* целей больше трёх (4-я строка — пятый ребёнок после шапки) — плотнее: счётчик справа в строке, значки меньше */
+#hud .camp-line:has(> .cl-row:nth-child(5)) .cl-txt { flex-direction: row; align-items: baseline; gap: 8px; }
+#hud .camp-line:has(> .cl-row:nth-child(5)) .cl-txt i { margin-left: auto; }
+#hud .camp-line:has(> .cl-row:nth-child(5)) .cl-ico { width: 20px; height: 20px; }
+#hud .camp-line .cl-go .cl-t { color: #86efac; white-space: normal; }
+#hud .camp-line .cl-go .cl-ico { color: #052e16; background: radial-gradient(circle at 35% 30%, #bbf7d0, #22c55e 70%, #14532d); box-shadow: 0 0 8px rgba(74, 222, 128, .45); }
 /* вкладка «Кампания» в «Заданиях» */
 .cp-head { display: block; }
 .cp-head .row-main b { font-size: 16px; }

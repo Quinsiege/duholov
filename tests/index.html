@@ -3117,26 +3117,55 @@
     ok(mc.match && !DB.pvpM[mc.match].state.bot, 'пара с живым');
     eq((await must(B, 'pvpFind', {})).match, mc.match, 'и первый — в бою с живым, а не с ботом');
   });
-  test('5.1.15: строка Кампании на карте — мелко, без всплывашек: цели шага, «забери награду», «выбери духа»', () => {
+  test('5.1.15: строка Кампании на карте — без всплывашек: цели шага, «забери награду», «выбери духа» (5.1.24: значки и счётчики, без подложки)', () => {
     const d0 = S.d;
+    // разметка → строки: название, счётчик, сделано ли, значок
+    const rows = h => { const b = document.createElement('div'); b.innerHTML = h; return [...b.querySelectorAll('.cl-row')].map(r => ({ t: r.querySelector('.cl-t').textContent, n: (r.querySelector('i') || { textContent: '' }).textContent, ok: r.classList.contains('cl-ok'), go: r.classList.contains('cl-go'), ico: !!r.querySelector('.cl-ico svg') })); };
     try {
       S.d = { camp: { ch: 0, s: 0, p: [2, 3, 0], u: [], pick: null }, spirits: [], xp: 0 };
-      const h = UI.campLineHtml();
-      ok(/Первая охота/.test(h) && /<span class="">Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h), 'цели с «сделано/нужно»');
-      ok(/<span class="cl-ok">✓ Духи 7 уровня <i>3\/3<\/i>/.test(h), '5.1.17: выполненная цель остаётся в списке — с галочкой');
-      S.d.camp.p = [2, 1, 0]; ok(/Духи 7 уровня <i>1\/3<\/i>/.test(UI.campLineHtml()), '5.1.16: «духи 7 уровня»');
-      S.d.camp.p = [5, 3, 1]; const hr = UI.campLineHtml(); ok(/забери награду/.test(hr) && (hr.match(/cl-ok/g) || []).length === 3, 'шаг выполнен — все цели с галочкой');
+      const h = UI.campLineHtml(), R = rows(h);
+      ok(/Первая охота/.test(h) && /class="cl-head"/.test(h), 'шапка «Кампания · шаг»');
+      ok(R[0].t === 'Поймай духов' && R[0].n === '2/5' && !R[0].ok, 'цели с «сделано/нужно»');
+      ok(R[1].t === 'Духи 7 уровня' && R[1].n === '3/3' && R[1].ok, '5.1.17: выполненная цель остаётся в списке — с галочкой');
+      ok(R.some(r => r.t === 'Разлом кампании') && R.every(r => r.ico), 'у каждой цели — значок');
+      S.d.camp.p = [2, 1, 0]; ok(rows(UI.campLineHtml())[1].n === '1/3', '5.1.16: «духи 7 уровня»');
+      S.d.camp.p = [5, 3, 1]; const R2 = rows(UI.campLineHtml());
+      ok(R2.filter(r => r.ok).length === 3 && R2.some(r => r.go && /забери награду/.test(r.t)), 'шаг выполнен — все цели с галочкой, «забери награду»');
       // 5.1.17: «выведи духа из кокона» — путь кокона, которому до вылупления осталось меньше всех (сперва — те, что греются)
       S.d.camp = { ch: 0, s: 1, p: [0], u: [], pick: null };
       S.d.cocoons = [{ km: 5, walked: 1.26, inc: true }, { km: 10, walked: 9.55, inc: true }, { km: 2, walked: 0, inc: false }];
-      ok(/Выведи духа из кокона <i>9.5 \/ 10 км<\/i>/.test(UI.campLineHtml()), 'ближе всех к вылуплению — 10 км, пройдено 9,5');
-      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; ok(/<i>0 \/ 2 км<\/i>/.test(UI.campLineHtml()), 'никто не греется — самый короткий');
-      S.d.cocoons = []; ok(/Выведи духа из кокона<\/span>/.test(UI.campLineHtml()), 'коконов нет — без пути');
+      ok(rows(UI.campLineHtml())[0].t === 'Выведи духа из кокона' && rows(UI.campLineHtml())[0].n === '9.5 / 10 км', 'ближе всех к вылуплению — 10 км, пройдено 9,5');
+      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; eq(rows(UI.campLineHtml())[0].n, '0 / 2 км', 'никто не греется — самый короткий');
+      S.d.cocoons = []; eq(rows(UI.campLineHtml())[0].n, '', 'коконов нет — без пути');
       S.d.camp.pick = { opts: ['ugolek', 'kapelka', 'mshonok'], lvl: 5, ess: 15 }; ok(/Выбери духа/.test(UI.campLineHtml()), 'ждёт выбор духа');
       S.d.camp = { ch: 0, s: 8, p: [12.34, 1, 0, 0, 0], u: [], pick: null };
-      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && (h9.match(/<span/g) || []).length === 5, '5.1.17: все цели шага — без «и ещё»');
+      const R9 = rows(UI.campLineHtml()); ok(R9[0].t === 'Путь, км' && R9[0].n === '12.3/60' && R9.length === 5, '5.1.17: все цели шага — без «и ещё»');
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
+  });
+  test('5.1.24: Сундук дня — награда случайная: опыт и искры всегда, два разных приза из набора', () => {
+    const C = Rules.CHEST, r = U.rng(7), seen = {};
+    let good = true, coins = 0;
+    for (let i = 0; i < 3000; i++) {
+      const rw = Rules.chestRoll(r), extra = Object.keys(rw).filter(k => k !== 'xp' && k !== 'sparks');
+      if (!(rw.xp >= C.XP[0] && rw.xp <= C.XP[1] && rw.xp % 50 === 0 && rw.sparks >= C.SPARKS[0] && rw.sparks <= C.SPARKS[1])) good = false;
+      if (extra.length !== C.PICKS) good = false;
+      extra.forEach(k => { const p = C.POOL.find(x => x[0] === k); if (!p || rw[k] < p[2] || rw[k] > p[3]) good = false; seen[k] = (seen[k] || 0) + 1; });
+      coins += rw.zlat || 0;
+    }
+    ok(good, 'опыт и искры — всегда и в пределах; призов ровно два, разных, в своих пределах');
+    C.POOL.forEach(p => ok(seen[p[0]] > 0, `выпадает: ${p[0]}`));
+    ok(coins / 3000 > 1.5 && coins / 3000 < 2.5, `монет в среднем — как прежние 2 в день (${(coins / 3000).toFixed(2)})`);
+    ok(C.POOL.every(p => p[0] === 'zlat' || p[0] === 'alatyr' || p[0] === 'cocoon' || p[0] === 'amulet' || ITEMS[p[0]]), 'призы — известные игре');
+  });
+  atest('5.1.24: Сундук дня на сервере — опыт, искры и призы; второй раз не открыть', async () => {
+    const P = await newPlayer('chest-a', 55.75, 37.62, 'Сундучник');
+    await refuse(P, 'questBonus', {}, /Сундук ещё закрыт/);
+    P.data.quests.list.forEach(q => { q.p = q.n; q.claimed = true; });
+    const r = await withRandom(0.5, () => must(P, 'questBonus', {}));
+    ok(r.got.some(x => x.k === 'xp') && r.got.some(x => x.k === 'sparks'), 'опыт и искры — всегда');
+    ok(r.got.length >= 4, `и два приза (${r.got.map(x => x.k).join(', ')})`);
+    await refuse(P, 'questBonus', {}, /Сундук ещё закрыт/);
   });
   atest('5.1.18: эволюция — дух жив и с полным здоровьем: «без сил», раны и усталость к новой форме не переходят', async () => {
     const P = await newPlayer('ev-hp', 55.75, 37.62, 'Лекарь', 'ugolek');

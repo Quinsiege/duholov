@@ -77,3 +77,21 @@ export function ref(file, pattern, after) {
   }
   throw new Error(`ref: «${pattern}» не найдено в ${file}`);
 }
+
+/* ---------- 5.1.24: Сундук дня — средняя награда по Rules.CHEST ----------
+   Опыт и искры — середина пределов; призы — точно, перебором порядков вытягивания без возврата (PICKS из POOL по весам).
+   Кокон — вероятностью (штук в день, кокон на POOL[…][2] км), остальное — средним количеством */
+export function chestEV(Rules) {
+  const C = Rules.CHEST, ev = { xp: (C.XP[0] + C.XP[1]) / 2, sparks: (C.SPARKS[0] + C.SPARKS[1]) / 2 };
+  const walk = (pool, left, p) => {
+    if (!left || !pool.length) return;
+    const W = pool.reduce((s, x) => s + x[1], 0);
+    pool.forEach((x, i) => {
+      const q = p * x[1] / W;
+      ev[x[0]] = (ev[x[0]] || 0) + q * (x[0] === 'cocoon' ? 1 : (x[2] + x[3]) / 2);
+      walk(pool.filter((_, j) => j !== i), left - 1, q);
+    });
+  };
+  walk(C.POOL, C.PICKS, 1);
+  return ev;
+}

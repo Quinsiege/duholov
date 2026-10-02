@@ -1704,5 +1704,38 @@ const Art = (() => {
     // клик после вращения не должен открывать/выбирать (кнопки со стикером внутри)
     document.addEventListener('click', e => { const st = e.target.closest && e.target.closest('.sp-sticker.spin'); if (st) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
-  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark, sp), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin };
+  /* 5.1.24: большой Сундук дня («Задания дня»): дерево, золотые полосы и замок; открытый — крышка откинута назад,
+     изнутри свет, лучи и искры */
+  let chestN = 0;
+  function chest(open) {
+    const k = 'ch' + (++chestN), u = id => `url(#${k}${id})`, OL = '#3b1a0a', GL = '#7c4a03';
+    const spark = (x, y, r) => `<path d="M${x} ${y - r} L${x + r * 0.28} ${y - r * 0.28} L${x + r} ${y} L${x + r * 0.28} ${y + r * 0.28} L${x} ${y + r} L${x - r * 0.28} ${y + r * 0.28} L${x - r} ${y} L${x - r * 0.28} ${y - r * 0.28}Z" fill="#fff7d6"/>`;
+    const body = `<path d="M14 54 H106 V86 Q106 92 100 92 H20 Q14 92 14 86 Z" fill="${u('w')}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>` +
+      `<path d="M16 66 H104 M16 79 H104" stroke="#4a2410" stroke-width="1.6" opacity=".55"/>` +
+      `<path d="M24 54 H33 V92 H24Z M87 54 H96 V92 H87Z" fill="${u('g')}" stroke="${GL}" stroke-width="2" stroke-linejoin="round"/>` +
+      `<rect x="11" y="51" width="98" height="7" rx="3.5" fill="${u('g')}" stroke="${GL}" stroke-width="2"/>` +
+      `<path d="M51 55 H69 V69 Q60 76 51 69 Z" fill="${u('g')}" stroke="${GL}" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<circle cx="60" cy="61" r="2.7" fill="${OL}"/><path d="M60 62 V67" stroke="${OL}" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<path d="M18 88 Q16 72 18 60" stroke="#fff" stroke-width="2" opacity=".18" fill="none" stroke-linecap="round"/>`;
+    const lid = open
+      ? `<path d="M16 52 L21 14 Q60 2 99 14 L104 52 Z" fill="#6b3a1c" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M23 49 L27 19 Q60 9 93 19 L97 49 Z" fill="#2a1206" opacity=".55"/>` +
+        `<path d="M25.5 51 L30 14.6 L38.6 12.2 L34.5 51Z M85.5 51 L81.4 12.2 L90 14.6 L94.5 51Z" fill="${u('g')}" stroke="${GL}" stroke-width="2" stroke-linejoin="round"/>` +
+        `<path d="M18 54 Q60 40 102 54 Z" fill="#fde68a"/>` +
+        `<path d="M40 50 L28 12 M60 47 L60 0 M80 50 L92 12" stroke="#fef3c7" stroke-width="5" opacity=".45" stroke-linecap="round"/>` +
+        spark(44, 30, 5) + spark(76, 24, 4) + spark(60, 16, 3.4) + spark(90, 40, 3)
+      : `<path d="M12 54 V41 Q12 22 60 20 Q108 22 108 41 V54 Z" fill="${u('l')}" stroke="${OL}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M15 45 Q60 37 105 45" stroke="#4a2410" stroke-width="1.6" fill="none" opacity=".5"/>` +
+        `<path d="M24 54 V26.6 Q28.4 24.3 33 23.2 V54 Z M87 23.2 Q91.6 24.3 96 26.6 V54 H87 Z" fill="${u('g')}" stroke="${GL}" stroke-width="2" stroke-linejoin="round"/>` +
+        `<path d="M19 33 Q36 25 58 23.6" stroke="#fff" stroke-width="2.6" opacity=".35" fill="none" stroke-linecap="round"/>`;
+    return `<svg viewBox="0 0 120 104" class="art"><defs>` +
+      `<linearGradient id="${k}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8693a"/><stop offset=".55" stop-color="#8a4a24"/><stop offset="1" stop-color="#5c2e14"/></linearGradient>` +
+      `<linearGradient id="${k}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d08049"/><stop offset="1" stop-color="#8a4a24"/></linearGradient>` +
+      `<linearGradient id="${k}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b3"/><stop offset=".5" stop-color="#f5b041"/><stop offset="1" stop-color="#b7791f"/></linearGradient>` +
+      `<radialGradient id="${k}o" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fde68a" stop-opacity=".85"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient></defs>` +
+      `<ellipse cx="60" cy="96" rx="46" ry="6" fill="#000" opacity=".3"/>` +
+      (open ? `<ellipse cx="60" cy="44" rx="56" ry="40" fill="${u('o')}"/>` : '') + lid + body + `</svg>`;
+  }
+
+  return { spirit: spiritK, of: sp => spiritK(sp.sid, sp.shiny, sp.dark, sp), svgOf, picUrl, picFilter, asImg, stack, img, imgOf, amulet, charm, item, cocoon, elIcon, springIcon, riftIcon, shade, wxIcon, moonIcon, medal, shrineIcon, clanCrest, guardian, avatar, emblem, cardSkin, chest };
 })();

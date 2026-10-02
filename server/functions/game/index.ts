@@ -6336,9 +6336,29 @@ const Duel = {
    телефон — показывает (цвет кольца, награды, подсказки). */
 
 const Rules = {
-  QUEST_BONUS: { charm: 10, honey: 2, sparks: 500 }, // 4.16: без ладана (был каждый день — копился десятками) и меньше искр
-  // 4.16: опыт за задание дня и за сундук дня (было 300 и 1000) — ежедневные цели заметнее для тех, кто играет понемногу
-  QUEST_XP: 500, QUEST_BONUS_XP: 2500,
+  // 4.16: опыт за задание дня (было 300) — ежедневные цели заметнее для тех, кто играет понемногу
+  QUEST_XP: 500,
+  // 5.1.24: Сундук дня — награда каждый раз разная: опыт и искры всегда (в пределах XP и SPARKS), плюс PICKS разных призов
+  // из POOL по весам: [что, вес, от, до]. В среднем — как прежняя (2 500 опыта, ✦ 500, 10 оберегов, 2 мёда, 2 монеты), но
+  // меньше расходников и иногда редкое: осколок Алатыря, кокон, амулет. Тянет сервер (Rules.chestRoll в questBonus)
+  CHEST: {
+    XP: [2000, 3000], SPARKS: [400, 700], PICKS: 2,
+    POOL: [['charm', 24, 8, 14], ['zlat', 18, 4, 7], ['charm2', 15, 3, 6], ['honey', 13, 2, 4], ['charm3', 6, 1, 2], ['water', 6, 1, 2],
+      ['incense', 4, 1, 1], ['gate', 3.5, 1, 1], ['xpbrew', 3.5, 1, 1], ['cocoon', 3, 5, 5], ['alatyr', 2.5, 1, 1], ['amulet', 1.5, 1, 1]],
+  },
+  // r — случайное 0…1 (сервер — Math.random; тесты — с зерном). Опыт кратен 50, искры — 10; призы не повторяются
+  chestRoll(r = Math.random) {
+    const C = this.CHEST, num = (a, b) => a + Math.floor(r() * (b - a + 1));
+    const rw = { xp: Math.round(num(C.XP[0], C.XP[1]) / 50) * 50, sparks: Math.round(num(C.SPARKS[0], C.SPARKS[1]) / 10) * 10 };
+    const pool = C.POOL.slice();
+    for (let k = 0; k < C.PICKS && pool.length; k++) {
+      let x = r() * pool.reduce((s, p) => s + p[1], 0), i = 0;
+      while (i < pool.length - 1 && (x -= pool[i][1]) >= 0) i++;
+      const [key, , a, b] = pool.splice(i, 1)[0];
+      rw[key] = num(a, b);
+    }
+    return rw;
+  },
   PLACE_REWARD: { xp: 1000, sparks: 500, charm: 10 },
   SUPPLY: { charm: 15, honey: 2, water: 1 },
   THROWABLE: ['charm', 'charm2', 'charm3'],
@@ -6494,7 +6514,7 @@ const Rules = {
   // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
   // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
   // 4.16.0: бесплатных монет у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
-  ZLAT: { streak: 1, streak7: 5, questBonus: 2, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 },
+  ZLAT: { streak: 1, streak7: 5, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 }, // 5.1.24: монеты сундука дня — в CHEST.POOL
   BAG_STEP: 50, BAG_MAX_UP: 10,
   // 3.15: Казна — монеты за рубли (оплата через ЮKassa; цену и число монет сервер берёт отсюда, а не с телефона)
   PAY: [
@@ -8289,11 +8309,14 @@ const GameCore = {
       q.claimed = true;
       return { got: S.giveRewards({ ...q.reward, xp: Rules.QUEST_XP }) };
     },
+    // 5.1.24: Сундук дня — награда случайная (Rules.chestRoll): опыт и искры всегда, плюс два разных приза
     questBonus() {
       const Q = S.d.quests;
       this.need(Q.list.every(q => q.claimed) && !Q.bonus, ru`Сундук ещё закрыт`);
       Q.bonus = true;
-      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: Rules.QUEST_BONUS_XP, zlat: Rules.ZLAT.questBonus }) };
+      const rw = Rules.chestRoll(Math.random);
+      if (rw.cocoon && S.d.cocoons.length >= 9) { delete rw.cocoon; rw.zlat = (rw.zlat || 0) + 5; } // коконов некуда класть — монетами
+      return { got: this.grant(rw) };
     },
     // 4.0: разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
     tutNext(a) {

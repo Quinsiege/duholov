@@ -7,13 +7,21 @@ Object.assign(UI, {
   quests(tab) {
     Tut.ui('quests'); // 4.0: шаг обучения
     // 5.1.15: «Кампания» — первая вкладка (после обучения); пока в ней есть шаг или выбор награды — открывается она
-    const camp = !!S.d.camp, tabs = camp ? ['camp', 'day', 'order'] : ['day', 'order'];
-    this.qTab = tab && tabs.includes(tab) ? tab : this.qTab === 'order' ? 'order' : camp && (S.campStep() || S.d.camp.pick) ? 'camp' : 'day';
+    // 5.1.24: поручения источников — своей вкладкой
+    const camp = !!S.d.camp, tabs = camp ? ['camp', 'day', 'tasks', 'order'] : ['day', 'tasks', 'order'];
+    this.qTab = tab && tabs.includes(tab) ? tab : ['order', 'tasks'].includes(this.qTab) ? this.qTab : camp && (S.campStep() || S.d.camp.pick) ? 'camp' : 'day';
     const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и источника — есть что забрать → зелёная точка
-    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs">${camp ? `<button data-tab="camp">${ru`Кампания`}${S.campClaimable() ? dot : ''}</button>` : ''}<button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
-    const BONUS = Rules.QUEST_BONUS;
+    const want = { day: () => { const Q = S.d.quests; return Q.list.some(q => q.p >= q.n && !q.claimed) || (Q.list.every(q => q.claimed) && !Q.bonus); },
+      tasks: () => S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length > 0 };
+    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs">${camp ? `<button data-tab="camp">${ru`Кампания`}${S.campClaimable() ? dot : ''}</button>` : ''}<button data-tab="day">${ru`Сегодня`}${want.day() ? dot : ''}</button><button data-tab="tasks">${ru`Поручения`}${want.tasks() ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.qTab));
+      // точки «есть что забрать» у «Заданий дня» и «Поручений» — по текущему состоянию
+      for (const k of ['day', 'tasks']) {
+        const b = scr.querySelector(`[data-tab="${k}"]`), d = b && b.querySelector('.dt-dot'), w = want[k]();
+        if (b && !w && d) d.remove(); else if (b && w && !d) b.insertAdjacentHTML('beforeend', dot);
+      }
+      if (this.qTab === 'tasks') { scr.querySelector('.quests').innerHTML = this.tasksHtml(); return; }
       if (this.qTab === 'camp') {
         scr.querySelector('.quests').innerHTML = this.campHtml();
         const cd = scr.querySelector('[data-tab="camp"] .dt-dot'), want = S.campClaimable();
@@ -39,10 +47,7 @@ Object.assign(UI, {
             <div class="q-main"><b>${I18N.back(q.text)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><span>${pv}</span></div><div class="qd-rws">${rwChips(q.reward)}</div></div>
             ${q.claimed ? `<span class="q-ok" aria-label="${ru`Получено`}">✓</span>` : done ? `<button class="btn small primary claim" data-i="${i}">${ru`Забрать`}</button>` : ''}</div>`;
         }).join('')
-        + `<div class="quest bonus qd-chest ${Q.bonus ? 'claimed' : all ? 'done' : ''}"><div class="qd-ico chest">${Art.item('gift')}</div>
-          <div class="q-main"><b>${ru`Сундук дня`}</b><div class="qd-pips">${Q.list.map(q => `<i class="${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}"></i>`).join('')}<small>${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small></div><div class="qd-rws">${rwChips(BONUS)}</div></div>
-          ${Q.bonus ? `<span class="q-ok" aria-label="${ru`Открыт`}">✓</span>` : all ? `<button class="btn small primary claim-bonus">${ru`Открыть`}</button>` : ''}</div>`
-        + this.dayLimitsHtml() + this.tasksHtml();
+        + this.dayLimitsHtml() + this.dayChestHtml(Q, all);
     };
     scr.addEventListener('click', e => {
       const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
@@ -89,7 +94,20 @@ Object.assign(UI, {
         render(); this.refreshHud();
       });
       if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'reward');
-      else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'reward_big');
+      else if (b) {
+        // 5.1.24: сундук подпрыгивает и открывается, выпавшее — окном (награда каждый раз разная)
+        b.disabled = true;
+        Game.try('questBonus').then(r => {
+          if (!r) { b.disabled = false; return; }
+          Sfx.play('reward_big'); U.vibrate([30, 50, 80]);
+          const ch = scr.querySelector('.q-chest');
+          if (ch) ch.classList.add('opening');
+          setTimeout(() => {
+            render(); this.refreshHud();
+            this.modal({ title: ru`Сундук дня`, html: Loot.cells(r.got), cls: 'chest-modal', buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+          }, document.body.classList.contains('calm') ? 0 : 650);
+        });
+      }
     });
     this.swipeTabs(scr, tabs, () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
@@ -171,17 +189,26 @@ Object.assign(UI, {
   // Следопыта; все цели шага, выполненные — с галочкой; у «выведи духа из кокона» — путь кокона, которому осталось меньше всех.
   // Касание — «Задания» → «Кампания». Раз в секунду вместе с HUD; здесь же: Разлом кампании нужен, а рядом его нет —
   // сервер ставит его рядом с Ловчим (не чаще раза в 20 с)
+  // 5.1.24: карточкой, как задания — шапка «Кампания · шаг» со звездой, цели строками: значок в круге, название, счётчик под ним,
+  // справа галочка (сделано) или стрелка. Значок цели — по её типу
+  CAMP_ICO: { catch: 'spirits', catchRar: 'spirits', spLvl: 'star', campRift: 'rift', hatch: 'egg', leagueWin: 'trophy', clan: 'shield', evolve: 'swap',
+    exchange: 'shop', buyIncense: 'shop', gateLand: 'map', walk: 'trail', spring: 'target' },
   campLineHtml() {
     const c = S.d.camp, st = S.campStep();
-    if (c.pick) return `<b>${ru`Кампания`}</b><span class="cl-go">${ru`Выбери духа — награда шага`}</span>`;
+    const svg = d => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const chev = svg('<path d="M9 6l6 6-6 6"/>'), check = svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
+    const head = t => `<span class="cl-head"><span class="cl-badge">${this.I.star}</span><b>${t}</b><span class="cl-chev">${chev}</span></span>`;
+    const line = (ico, title, num, cls, end) => `<span class="cl-row${cls ? ' ' + cls : ''}"><span class="cl-ico">${this.I[ico] || this.I.scroll}</span>` +
+      `<span class="cl-txt"><span class="cl-t">${title}</span>${num ? `<i>${num}</i>` : ''}</span><span class="cl-end">${end}</span></span>`;
+    if (c.pick) return head(ru`Кампания`) + line('spirits', ru`Выбери духа — награда шага`, '', 'cl-go', chev);
     if (!st) return '';
     const km = x => Math.floor(x * 10) / 10;
     const row = (o, i) => {
       const v = Math.min(c.p[i] || 0, o.n), ok = v >= o.n, cc = o.t === 'hatch' && !ok ? S.campCocoon() : null;
       const num = cc ? ru`${km(cc.walked)} / ${cc.km} км` : o.n > 1 ? `${o.t === 'walk' ? km(v) : Math.floor(v)}/${o.n}` : '';
-      return `<span class="${ok ? 'cl-ok' : ''}">${ok ? '✓ ' : ''}${(CAMP_SHORT[o.t] || CAMP_OBJ[o.t])(o)}${num ? ` <i>${num}</i>` : ''}</span>`;
+      return line(this.CAMP_ICO[o.t] || 'scroll', (CAMP_SHORT[o.t] || CAMP_OBJ[o.t])(o), num, ok ? 'cl-ok' : '', ok ? check : chev);
     };
-    return `<b>${ru`Кампания · ${st.name}`}</b>${st.obj.map(row).join('')}${S.campReady() ? `<span class="cl-go">${ru`Шаг выполнен — забери награду`}</span>` : ''}`;
+    return head(ru`Кампания · ${st.name}`) + st.obj.map(row).join('') + (S.campReady() ? line('gift', ru`Шаг выполнен — забери награду`, '', 'cl-go', chev) : '');
   },
   refreshCampLine() {
     const el = U.$('#campLine');
@@ -216,6 +243,15 @@ Object.assign(UI, {
       const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
       return `<span class="${u >= m ? 'out' : ''}">${Rules.DAILY_NAMES[k]} <b>${u}/${m}</b></span>`;
     }).join('')}<small>${ru`обновятся в полночь`}</small></p>`;
+  },
+  // 5.1.24: Сундук дня — большой, внизу «Заданий дня». Награда случайная (Rules.CHEST): опыт и искры всегда, плюс призы
+  dayChestHtml(Q, all) {
+    const st = Q.bonus ? 'opened' : all ? 'ready' : '';
+    return `<div class="q-chest ${st}"><div class="qc-art">${Art.chest(!!Q.bonus)}</div><b class="qc-title">${ru`Сундук дня`}</b>` +
+      `<div class="qd-pips">${Q.list.map(q => `<i class="${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}"></i>`).join('')}</div>` +
+      `<small class="qc-state">${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small>` +
+      `<small class="qc-what">${ru`Внутри — опыт, искры и случайные награды`}</small>` +
+      (!Q.bonus && all ? `<button class="btn primary claim-bonus">${ru`Открыть`}</button>` : '') + `</div>`;
   },
   // 5.1.24: новое поручение у Источника — принять или отказаться (отказ — то же действие taskDrop, что в «Заданиях»;
   // не выбрал — поручение остаётся, как раньше)

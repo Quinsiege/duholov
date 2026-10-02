@@ -1,6 +1,6 @@
 // Справочник экономики: откуда приходит и куда уходит каждая валюта и ресурс — с числами из загруженной игры и ссылкой
 // «файл:строка» (ref находит строку по тексту: правки кода ссылку не сломают, а пропавший текст — ошибка при запуске).
-import { ref } from './load.mjs';
+import { ref, chestEV } from './load.mjs';
 
 const D = 'www/js/data.js', RU = 'www/js/rules.js', ST = 'www/js/state.js', CO = 'server/game/core.js', LG = 'www/js/league.js',
   SR = 'www/js/season-rewards.js', WO = 'www/js/world.js', EV = 'www/js/events.js', RA = 'www/js/raid.js';
@@ -44,7 +44,7 @@ export function sources(G) {
   add('sparks', 'Поимка босса разлома, духа поручения, омрачённого', 300, 'за поимку', ref(RU, 'sparks: Math.round((special ? 300 : 100)'));
   add('sparks', 'Кокон', '150 × км (2 км — 300, 10 км — 1 500)', 'за кокон', ref(ST, 'this.d.sparks += c.km * 150'));
   add('sparks', 'Задания дня', q('sparks'), '3 задания в день', ref(D, 'const QUEST_TEMPLATES'));
-  add('sparks', 'Сундук дня (все 3 задания)', Rules.QUEST_BONUS.sparks, 'в день', ref(RU, 'QUEST_BONUS:'));
+  add('sparks', 'Сундук дня (все 3 задания)', `${Rules.CHEST.SPARKS.join('–')} (в среднем ${n(chestEV(Rules).sparks)})`, 'в день', ref(RU, 'CHEST: {'));
   add('sparks', 'Серия дней', streak('sparks'), 'на 7-й день серии', ref(RU, '{ charm3: 3, sparks: 1000, gate: 1, xp: 1500 }'));
   add('sparks', 'Разлом (победа)', '350 × ступень (350 / 700 / 1 050)', 'до 6 побед в день', ref(CO, 'sparks: 350 * tier'));
   add('sparks', 'Капище (победа над хранителем)', Object.values(SHRINE_TIERS).map(t => n(t.sparks)).join(' / ') + ' (×2 в Неделю поединков)', 'до 8 побед в день', ref(D, "1: { title: ru`Ученик`"));
@@ -68,7 +68,7 @@ export function sources(G) {
   add('zlat', 'Обменник по курсу Кампании (шаг 6)', `✦ 1 000 → ${Rules.EXCHANGE.CAMP}, 5 обменов (50 монет)`, 'разово', ref(RU, 'EXCHANGE:'));
   add('zlat', 'Обменник', `✦ ${n(Rules.EXCHANGE.SPARKS)} → ${Rules.EXCHANGE.ZLAT}`, `до ${Rules.EXCHANGE.DAY} обменов в день`, ref(RU, 'EXCHANGE:'));
   add('zlat', 'Серия дней', `${Rules.ZLAT.streak} в день, ${Rules.ZLAT.streak7} на 7-й (11 за неделю)`, 'в день', ref(RU, 'ZLAT: {'));
-  add('zlat', 'Сундук дня', Rules.ZLAT.questBonus, 'в день', ref(RU, 'ZLAT: {'));
+  add('zlat', 'Сундук дня', `случайный приз, в среднем ${chestEV(Rules).zlat.toFixed(2)}`, 'в день', ref(RU, "['zlat', 18"));
   add('zlat', 'Новый уровень', `${Rules.ZLAT.level}, каждый 5-й — ${Rules.ZLAT.level5} (до 40-го: ${[...Array(39)].reduce((a, _, i) => a + (lvl(i + 2).zlat || 0), 0)})`, 'за уровень', ref(ST, 'zlat: l % 5 ? Rules.ZLAT.level : Rules.ZLAT.level5'));
   add('zlat', 'Дань Капищ', `${Rules.ZLAT.tribute} за Капище, не больше ${Rules.ZLAT.tributeMax}`, 'в день', ref(RU, 'ZLAT: {'));
   add('zlat', 'Сезонная тропа (бесплатная)', `${free.zlat} (ступени 10 и 30)`, 'в месяц', ref(RU, 'PASS_FREE: ['));
@@ -89,7 +89,7 @@ export function sources(G) {
   add('xp', 'Вторжение / очищение', '1 000 / 1 000', 'до 6 в день', ref(CO, '{ xp: 1000, sparks: 400, charm: 6, honey: 1, herb: 1 }'));
   add('xp', 'Эволюция', '1 000 новый вид, 200 повтор', 'за эволюцию', ref(ST, 'this.addXP(isNew ? 1000 : 200)'));
   add('xp', 'Кокон', '100 × км (+500 новый вид)', 'за кокон', ref(ST, 'this.addXP(c.km * 100'));
-  add('xp', 'Задание дня / сундук дня', `${Rules.QUEST_XP} / ${n(Rules.QUEST_BONUS_XP)}`, 'в день', ref(RU, 'QUEST_XP: 500'));
+  add('xp', 'Задание дня / сундук дня', `${Rules.QUEST_XP} / ${Rules.CHEST.XP.join('–')}`, 'в день', ref(RU, 'QUEST_XP: 500'));
   add('xp', 'Поручение источника', '250 × ступень + дух встречи (300)', 'до 5 открытых', ref(CO, 'xp: 250 * q.tier'));
   add('xp', 'Серия дней', Rules.STREAK.map(x => x.xp).join(' / '), 'в день', ref(RU, 'STREAK: ['));
   add('xp', 'Лига', `победа ${League.XP.win}, ничья ${League.XP.draw}, поражение ${League.XP.loss}`, `первые ${League.XP_RUNS} боёв дня`, ref(LG, 'XP: { win: 500'));
@@ -107,7 +107,7 @@ export function sources(G) {
   add('charm', 'Старт / обучение', `30 / ${TUT_CHAPTERS.map(c => c.reward.charm || 0).join(' + ')}`, 'разово', ref(ST, 'items: { charm: 30'));
   add('charm', 'Источник', `~${n(springW(20, 'charm'))} обычных, ${n(springW(20, 'charm2'))} серебр. (с 8 ур.), ${n(springW(20, 'charm3'))} золот. (с 16 ур.) из 4–6 предметов`, 'до 30 в день', ref(WO, 'springOpts(lvl)'));
   add('charm', 'Задания дня', q('charm') + '; серебр.: ' + q('charm2'), '3 в день', ref(D, 'const QUEST_TEMPLATES'));
-  add('charm', 'Сундук дня', Rules.QUEST_BONUS.charm, 'в день', ref(RU, 'QUEST_BONUS:'));
+  add('charm', 'Сундук дня', `случайный приз, в среднем ${chestEV(Rules).charm.toFixed(1)}; серебр. ${chestEV(Rules).charm2.toFixed(1)}; золот. ${chestEV(Rules).charm3.toFixed(2)}`, 'в день', ref(RU, "['charm', 24"));
   add('charm', 'Серия дней', `обычн. ${streak('charm')}; серебр. ${streak('charm2')}; золот. ${streak('charm3')}`, 'в день', ref(RU, 'STREAK: ['));
   add('charm', 'Новый уровень', `10 + уровень; серебр. 4 (на 8-м — 10); золот. 3 (на 16-м — 10)`, 'за уровень', ref(ST, 'const r = { charm: 10 + l'));
   add('charm', 'Разлом / Капище / вторжение', '5 (+3 серебр. со 2-й ступени) / 5 (+3 серебр., +2 золот. на 3-й) / 6', 'за победу', ref(CO, 'sparks: 350 * tier, charm: 5'));
@@ -123,7 +123,7 @@ export function sources(G) {
 
   // ---------- мёд ----------
   add('honey', 'Источник', `~${n(springW(20, 'honey'))} (на Масленицу вес ×8)`, 'за источник', ref(WO, "['honey', Ev.hol && Ev.hol.honey ? 8 : 1]"));
-  add('honey', 'Задания дня / сундук', `${q('honey')} / ${Rules.QUEST_BONUS.honey}`, 'в день', ref(D, 'const QUEST_TEMPLATES'));
+  add('honey', 'Задания дня / сундук', `${q('honey')} / в среднем ${chestEV(Rules).honey.toFixed(2)}`, 'в день', ref(D, 'const QUEST_TEMPLATES'));
   add('honey', 'Серия дней / уровень', `${streak('honey')} / 2 за уровень`, '', ref(RU, 'STREAK: ['));
   add('honey', 'Бои', 'разлом — ступень; Капище — (ступень − 1); вторжение — 1; поединок — 1', 'за победу', ref(CO, 'honey: tier'));
   add('honey', 'Сезонная тропа', `бесплатная: ${free.honey}`, 'в месяц', ref(RU, 'PASS_FREE: ['));

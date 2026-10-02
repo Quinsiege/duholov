@@ -2,7 +2,7 @@
 // день за днём, сроки до целей. Числа игры берутся из загруженных модулей (load.mjs); то, что в коде сервера записано
 // прямо в обработчике (награда разлома, Капища, вторжения…), повторено здесь — и сверяется с исходником (expectSrc):
 // поменяли число в core.js — модель скажет, что разошлась с игрой.
-import { loadGame, source } from './load.mjs';
+import { loadGame, source, chestEV } from './load.mjs';
 
 export const DAY = 86400000;
 
@@ -610,7 +610,11 @@ export function simulate(Lg, P, opts = {}) {
       // ---------- задания дня, сундук, поручения ----------
       const qe = questEV(G, L), mulRw = (rw, m) => Object.fromEntries(Object.entries(rw).map(([k2, v]) => [k2, v * m]));
       give({ ...mulRw(qe, P.quests), xp: Rules.QUEST_XP * P.quests }, 'задания дня');
-      give({ ...mulRw(Rules.QUEST_BONUS, P.chest), xp: Rules.QUEST_BONUS_XP * P.chest, zlat: Rules.ZLAT.questBonus * P.chest }, 'сундук дня');
+      { // 5.1.24: награда сундука случайная — средняя по Rules.CHEST (chestEV); кокон — вероятностью
+        const { cocoon: ccP = 0, ...ce } = chestEV(Rules);
+        give(mulRw(ce, P.chest), 'сундук дня');
+        if (ccP) giveCocoon(5, ccP * P.chest, 'сундук дня');
+      }
       const te = taskEV(G, L);
       give(mulRw(te.rw, P.tasks), 'поручения');
       give({ xp: P.tasks * 300, sparks: P.tasks * 300 }, 'поручения: дух встречи'); // дух встречи без побега — ловится наверняка

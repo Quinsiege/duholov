@@ -1208,11 +1208,14 @@ const GameCore = {
       q.claimed = true;
       return { got: S.giveRewards({ ...q.reward, xp: Rules.QUEST_XP }) };
     },
+    // 5.1.24: Сундук дня — награда случайная (Rules.chestRoll): опыт и искры всегда, плюс два разных приза
     questBonus() {
       const Q = S.d.quests;
       this.need(Q.list.every(q => q.claimed) && !Q.bonus, ru`Сундук ещё закрыт`);
       Q.bonus = true;
-      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: Rules.QUEST_BONUS_XP, zlat: Rules.ZLAT.questBonus }) };
+      const rw = Rules.chestRoll(Math.random);
+      if (rw.cocoon && S.d.cocoons.length >= 9) { delete rw.cocoon; rw.zlat = (rw.zlat || 0) + 5; } // коконов некуда класть — монетами
+      return { got: this.grant(rw) };
     },
     // 4.0: разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
     tutNext(a) {

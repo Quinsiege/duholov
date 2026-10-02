@@ -776,7 +776,7 @@
   "at": [
    "www/js/album.js:51",
    "www/js/friends.js:301",
-   "www/js/ui-player.js:603"
+   "www/js/ui-player.js:639"
   ],
   "ctx": "{ label: ru`Удалить`, cls: 'danger', fn: () => { this.remove(i); UI.toast(ru`Снимок удалён`); } },"
  },
@@ -2315,9 +2315,9 @@
   "k": "Аукцион открывается с {0} уровня Ловчего",
   "at": [
    "www/js/auction.js:35",
-   "server/game/core.js:1815",
-   "server/game/core.js:1836",
-   "server/game/core.js:1844"
+   "server/game/core.js:1818",
+   "server/game/core.js:1839",
+   "server/game/core.js:1847"
   ],
   "ctx": "if (S.d.level < Rules.AUCTION.LEVEL) { UI.toast(ru`Аукцион открывается с ${Rules.AUCTION.LEVEL} уровня Ловчего`); return; }"
  },
@@ -2337,7 +2337,7 @@
    "www/js/auction.js:37",
    "www/js/auction.js:106",
    "www/js/shop.js:371",
-   "www/js/ui-player.js:434"
+   "www/js/ui-player.js:470"
   ],
   "ctx": "const scr = UI.screen(ru`Аукцион`, `<div class=\"seg au-tabs\"><button data-tab=\"buy\">${ru`Купить`}</button><button data-tab=\"mine\">${ru`Мои лоты`}</button></div><div class=\"au-body\"></div>`, 'au-screen');"
  },
@@ -2455,7 +2455,7 @@
   "at": [
    "www/js/auction.js:89",
    "www/js/auction.js:196",
-   "www/js/ui-player.js:297"
+   "www/js/ui-player.js:333"
   ],
   "ctx": "<small>${l.myLvl < l.lvl ? ru`СИЛА ${U.fmtNum(l.power)} → у тебя ${U.fmtNum(l.myPower)} (ур. ${l.myLvl})` : ru`СИЛА ${U.fmtNum(l.power)} · ур. ${l.lvl}`} · ${U.esc(l.seller_name)}</small>"
  },
@@ -2569,8 +2569,8 @@
   "at": [
    "www/js/auction.js:107",
    "www/js/state.js:414",
-   "server/game/core.js:1486",
-   "server/game/core.js:1568"
+   "server/game/core.js:1489",
+   "server/game/core.js:1571"
   ],
   "ctx": "if ((S.d[l.cur] || 0) < l.price) { UI.toast(l.cur === 'zlat' ? ru`Не хватает монет — обменяй искры в Лавке или загляни в Казну` : ru`Не хватает искр`); return; }"
  },
@@ -2701,7 +2701,7 @@
   "k": "Сбросить",
   "at": [
    "www/js/auction.js:133",
-   "www/js/ui-player.js:610"
+   "www/js/ui-player.js:646"
   ],
   "ctx": "buttons: [{ label: ru`Сбросить`, fn: () => { this.f = { sort: this.f.sort, mine: this.f.mine }; this.q = ''; done(); } },"
  },
@@ -2917,7 +2917,7 @@
   "k": "Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя",
   "at": [
    "www/js/auction.js:203",
-   "server/game/core.js:1854"
+   "server/game/core.js:1857"
   ],
   "ctx": "if (sp.bound) { UI.toast(ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`); return; }"
  },
@@ -2925,7 +2925,7 @@
   "k": "Нельзя продать последнего духа",
   "at": [
    "www/js/auction.js:204",
-   "server/game/core.js:1852"
+   "server/game/core.js:1855"
   ],
   "ctx": "if (S.d.spirits.length <= 1) { UI.toast(ru`Нельзя продать последнего духа`); return; }"
  },
@@ -3088,7 +3088,7 @@
   "at": [
    "www/js/book.js:15",
    "www/js/path.js:12",
-   "www/js/ui-player.js:13",
+   "www/js/ui-player.js:16",
    "www/js/ui.js:622"
   ],
   "ctx": "{ id: 'tasks', ico: 'scroll', t: ru`Задания`, s: ru`Кампания, задания дня, поручения, серия, общее дело` },"
@@ -3120,7 +3120,7 @@
    "www/js/book.js:17",
    "www/js/book.js:240",
    "www/js/path.js:16",
-   "www/js/rules.js:178"
+   "www/js/rules.js:198"
   ],
   "ctx": "{ id: 'rifts', ico: 'rift', t: ru`Разломы`, s: ru`Боссы иных миров и команда из трёх` },"
  },
@@ -3304,7 +3304,7 @@
    "www/js/book.js:41",
    "www/js/intro.js:160",
    "www/js/intro.js:161",
-   "www/js/ui-player.js:523"
+   "www/js/ui-player.js:559"
   ],
   "ctx": "const scr = UI.screen(ru`Книга Ордена`, `"
  },
@@ -3349,7 +3349,7 @@
   "k": "Орден",
   "at": [
    "www/js/book.js:91",
-   "www/js/ui-player.js:13"
+   "www/js/ui-player.js:16"
   ],
   "ctx": "[ru`Орден`, this.p(ru`Орден Оберега — союз Ловчих всех земель, от Москвы до Мехико. Мы не загоняем духов обратно — дорог домой пока нет, — а помогаем им прижиться рядом с людьми. Клятва Ордена проста: <b>беречь духов, бе"
  },
@@ -3669,7 +3669,7 @@
   "k": "Экономия батареи",
   "at": [
    "www/js/book.js:129",
-   "www/js/ui-player.js:514"
+   "www/js/ui-player.js:550"
   ],
   "ctx": "[ru`Батарея`, this.cards([[UI.menuIcon('gear'), ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`],"
  },
@@ -3677,7 +3677,7 @@
   "k": "Меньше анимаций на карте и реже её обновление.",
   "at": [
    "www/js/book.js:129",
-   "www/js/ui-player.js:514"
+   "www/js/ui-player.js:550"
   ],
   "ctx": "[ru`Батарея`, this.cards([[UI.menuIcon('gear'), ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`],"
  },
@@ -3685,7 +3685,7 @@
   "k": "Не гасить экран",
   "at": [
    "www/js/book.js:130",
-   "www/js/ui-player.js:515"
+   "www/js/ui-player.js:551"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`],"
  },
@@ -3693,7 +3693,7 @@
   "k": "Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.",
   "at": [
    "www/js/book.js:130",
-   "www/js/ui-player.js:515"
+   "www/js/ui-player.js:551"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`],"
  },
@@ -3701,7 +3701,7 @@
   "k": "Объёмная карта",
   "at": [
    "www/js/book.js:131",
-   "www/js/ui-player.js:511"
+   "www/js/ui-player.js:547"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`]])]];"
  },
@@ -3709,7 +3709,7 @@
   "k": "Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.",
   "at": [
    "www/js/book.js:131",
-   "www/js/ui-player.js:511"
+   "www/js/ui-player.js:547"
   ],
   "ctx": "[UI.menuIcon('gear'), ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`]])]];"
  },
@@ -3791,7 +3791,7 @@
    "www/js/book.js:144",
    "www/js/propose.js:43",
    "www/js/propose.js:133",
-   "www/js/rules.js:405"
+   "www/js/rules.js:425"
   ],
   "ctx": "return [[ru`Источник`, this.p(ru`Источники бьют у настоящих мест — памятников, фонтанов, храмов, арт-объектов: там, где Алатырь дал трещину. Подойди и коснись — выпадут припасы, иногда кокон. Потом источник набирает силу"
  },
@@ -3868,7 +3868,7 @@
   "at": [
    "www/js/book.js:153",
    "www/js/friends.js:265",
-   "www/js/ui-player.js:285",
+   "www/js/ui-player.js:321",
    "www/js/ui-spirits.js:236"
   ],
   "ctx": "[ru`Спутник`, this.p(ru`Выбери спутника на карточке духа — он будет идти рядом и приносить эссенцию своего семейства. Амулет Лады делает находки вдвое чаще.`)]];"
@@ -3885,8 +3885,8 @@
   "at": [
    "www/js/book.js:158",
    "www/js/raid.js:96",
-   "www/js/ui-player.js:13",
-   "www/js/ui-player.js:176"
+   "www/js/ui-player.js:16",
+   "www/js/ui-player.js:203"
   ],
   "ctx": "return [[ru`Кампания`, this.p(ru`После обучения открывается Кампания: главы из шагов. У шага — одна или несколько целей, их можно выполнять в любом порядке; выполнил все — забери награду в «Заданиях», и откроется следующ"
  },
@@ -3900,8 +3900,7 @@
  {
   "k": "Задания дня",
   "at": [
-   "www/js/book.js:159",
-   "www/js/ui-player.js:13"
+   "www/js/book.js:159"
   ],
   "ctx": "[ru`Задания дня`, this.p(ru`Каждый день — три задания: поймать, пройти, зачерпнуть силу источников, закрыть разлом. Выполнил — забери награду, а за все три — <b>сундук дня</b>. Новые задания приходят в полночь.`) +"
  },
@@ -3916,14 +3915,24 @@
   "k": "Сундук дня",
   "at": [
    "www/js/book.js:160",
-   "www/js/ui-player.js:43"
+   "www/js/ui-player.js:107",
+   "www/js/ui-player.js:250"
   ],
-  "ctx": "this.kv([[ru`Сундук дня`, this.rw(Rules.QUEST_BONUS) + ' · ' + this.it('zlat', Rules.ZLAT.questBonus)]])],"
+  "ctx": "this.kv([[ru`Сундук дня`, ru`Внутри — опыт, искры и случайные награды`]])], // 5.1.24: награда сундука — случайная (Rules.CHEST)"
+ },
+ {
+  "k": "Внутри — опыт, искры и случайные награды",
+  "at": [
+   "www/js/book.js:160",
+   "www/js/ui-player.js:253"
+  ],
+  "ctx": "this.kv([[ru`Сундук дня`, ru`Внутри — опыт, искры и случайные награды`]])], // 5.1.24: награда сундука — случайная (Rules.CHEST)"
  },
  {
   "k": "Поручения",
   "at": [
-   "www/js/book.js:161"
+   "www/js/book.js:161",
+   "www/js/ui-player.js:16"
   ],
   "ctx": "[ru`Поручения`, this.p(ru`Источники дают поручения (до ${TASK_LIMIT} сразу): ★ — простые, ★★★ — трудные. Выполнил — сдай поручение: предметы и встреча с духом, которого на улице не найти так просто — иногда и гостем изда"
  },
@@ -4166,7 +4175,7 @@
    "www/js/book.js:186",
    "www/js/path.js:61",
    "www/js/raid.js:72",
-   "www/js/ui-player.js:121"
+   "www/js/ui-player.js:139"
   ],
   "ctx": "[ru`Награда`, this.p(ru`В окне разлома — вкладки «Бой», «Босс» и «Награда». За победу:`) +"
  },
@@ -4198,7 +4207,7 @@
    "www/js/book.js:194",
    "www/js/book.js:242",
    "www/js/clans.js:247",
-   "www/js/rules.js:178"
+   "www/js/rules.js:198"
   ],
   "ctx": "return [[ru`Капища`, this.p(ru`Капища — резные идолы у памятных мест. С ${DUEL_LEVEL} уровня можно сразиться с хранителем: бой 3 на 3, тап — атака, «Приём» — особый удар, два щита спасают от приёмов хранителя. Каждое кап",
   "forms": [
@@ -4419,9 +4428,9 @@
   "k": "+{0} опыта",
   "at": [
    "www/js/book.js:217",
-   "www/js/ui-player.js:134",
-   "www/js/ui-player.js:201",
-   "www/js/ui-player.js:338"
+   "www/js/ui-player.js:152",
+   "www/js/ui-player.js:228",
+   "www/js/ui-player.js:374"
   ],
   "ctx": "this.cards(FRIEND_LEVELS.map(f => [UI.menuIcon('swap'), f.name, f.pts ? `${ru`${f.pts} очков дружбы`}${f.xp ? ` · ${ru`+${U.fmtNum(f.xp)} опыта`}` : ''}` : ru`Начало дружбы`]))],"
  },
@@ -4615,7 +4624,7 @@
   "k": "Дневник",
   "at": [
    "www/js/book.js:240",
-   "www/js/ui-player.js:280",
+   "www/js/ui-player.js:316",
    "www/js/ui.js:636"
   ],
   "ctx": "const NAMES = { shop: ru`Лавка`, swap: ru`Друзья`, journal: ru`Дневник`, trail: ru`Тропа`, chat: ru`Чат`, rift: ru`Разломы`, trophy: ru`Лига`, shield: ru`Дружины`, gavel: ru`Аукцион` };"
@@ -4661,7 +4670,7 @@
   "k": "Вторжения",
   "at": [
    "www/js/book.js:242",
-   "www/js/rules.js:178"
+   "www/js/rules.js:198"
   ],
   "ctx": "this.kv([...L.map(([k, l]) => [NAMES[k], ru`с ${l} ур.`]), [ru`Капища`, ru`с ${DUEL_LEVEL} ур.`], [ru`Второй приём`, ru`с ${MOVE2_LEVEL} ур.`], [ru`Вторжения`, ru`с ${INVASION_LEVEL} ур.`]].sort((a, b) => parseInt(a[1].r"
  },
@@ -4676,8 +4685,8 @@
   "k": "Гардероб",
   "at": [
    "www/js/book.js:244",
-   "www/js/ui-player.js:279",
-   "www/js/ui-player.js:353"
+   "www/js/ui-player.js:315",
+   "www/js/ui-player.js:389"
   ],
   "ctx": "[ru`Гардероб`, this.p(ru`В Гардеробе (Меню → Ловчий) — облик Ловчего: цвет плаща, глаза и эмблема на груди, а ещё особые облики — за монеты или с уровнем. Облик видят друзья, соперники в Лиге и союзники в разломах.`)],"
  },
@@ -4870,7 +4879,8 @@
  {
   "k": "Сегодня",
   "at": [
-   "www/js/chat.js:77"
+   "www/js/chat.js:77",
+   "www/js/ui-player.js:16"
   ],
   "ctx": "return `<div class=\"chat-day\"><span>${k === new Date().toDateString() ? ru`Сегодня` : k === y.toDateString() ? ru`Вчера` : d.toLocaleDateString(I18N.locale, { day: 'numeric', month: 'long' })}</span></div>`;"
  },
@@ -5030,7 +5040,7 @@
   "k": "Клан можно выбрать с {0} уровня",
   "at": [
    "www/js/clans.js:65",
-   "server/game/core.js:1607"
+   "server/game/core.js:1610"
   ],
   "ctx": "if (S.d.level < CLAN_LEVEL) { UI.toast(ru`Клан можно выбрать с ${CLAN_LEVEL} уровня`); return; }"
  },
@@ -5055,7 +5065,7 @@
   "at": [
    "www/js/clans.js:70",
    "www/js/hints.js:87",
-   "www/js/ui-player.js:148",
+   "www/js/ui-player.js:166",
    "www/js/updater.js:30"
   ],
   "ctx": "buttons: [{ label: ru`Позже` }],"
@@ -5228,8 +5238,8 @@
   "at": [
    "www/js/clans.js:192",
    "www/js/path.js:21",
-   "www/js/rules.js:186",
-   "www/js/ui-player.js:281"
+   "www/js/rules.js:206",
+   "www/js/ui-player.js:317"
   ],
   "ctx": "const scr = UI.screen(ru`Клан`, `<div class=\"clan-view\" style=\"--cc:${c.color}\">"
  },
@@ -5430,7 +5440,7 @@
   "k": "Код разлома — 5 символов",
   "at": [
    "www/js/coop.js:50",
-   "server/game/core.js:1324"
+   "server/game/core.js:1327"
   ],
   "ctx": "if (code.length !== 5) { UI.toast(ru`Код разлома — 5 символов`); return; }"
  },
@@ -7026,7 +7036,7 @@
   "k": "Целебный отвар",
   "at": [
    "www/js/data.js:330",
-   "www/js/rules.js:320"
+   "www/js/rules.js:340"
   ],
   "ctx": "brew:    { name: ru`Целебный отвар`,     desc: ru`Травы Велеса, сваренные в воде из источника. Возвращает духу 60% здоровья.`, heal: 0.6 },"
  },
@@ -7041,7 +7051,7 @@
   "k": "Мёртвая вода",
   "at": [
    "www/js/data.js:332",
-   "www/js/rules.js:323"
+   "www/js/rules.js:343"
   ],
   "ctx": "deadwater: { name: ru`Мёртвая вода`,     desc: ru`Редкая сказочная вода, что сращивает самые тяжкие раны. Дух без сил поднимется на 4 часа раньше. Живых не лечит.`, revive: 4 },"
  },
@@ -7056,7 +7066,7 @@
   "k": "Живая вода",
   "at": [
    "www/js/data.js:333",
-   "www/js/rules.js:318"
+   "www/js/rules.js:338"
   ],
   "ctx": "water:   { name: ru`Живая вода`,         desc: ru`Возвращает духу половину здоровья, а в разломе — лечит прямо в бою. Духа без сил не поднимет.`, heal: 0.5 },"
  },
@@ -7071,7 +7081,7 @@
   "k": "Ладан",
   "at": [
    "www/js/data.js:334",
-   "www/js/rules.js:329"
+   "www/js/rules.js:349"
   ],
   "ctx": "incense: { name: ru`Ладан`,              desc: ru`Дымок приманивает духов: 30 минут их вокруг вдвое больше.` },"
  },
@@ -7086,7 +7096,7 @@
   "k": "Дальний пропуск",
   "at": [
    "www/js/data.js:335",
-   "www/js/rules.js:314"
+   "www/js/rules.js:334"
   ],
   "ctx": "farpass: { name: ru`Дальний пропуск`,    desc: ru`Грамота Ордена: закрыть Разлом до 5 км от тебя, не подходя к нему. Один Орден дарит каждый день.` },"
  },
@@ -7108,7 +7118,7 @@
   "k": "Настой опыта",
   "at": [
    "www/js/data.js:339",
-   "www/js/rules.js:335"
+   "www/js/rules.js:355"
   ],
   "ctx": "xpbrew:  { name: ru`Настой опыта`,       desc: ru`Медовый настой на травах Велеса: сутки опыта на четверть больше.` },"
  },
@@ -7533,7 +7543,7 @@
   "at": [
    "www/js/data.js:460",
    "www/js/data.js:820",
-   "www/js/rules.js:178"
+   "www/js/rules.js:198"
   ],
   "ctx": "walk: () => ru`Путь, км`, spring: () => ru`Источники`, catchRar: o => o.r === 3 ? ru`Редкие духи` : o.r === 2 ? ru`Необычные духи` : ru`Обычные духи`,"
  },
@@ -7901,7 +7911,7 @@
   "k": "Отличных бросков",
   "at": [
    "www/js/data.js:588",
-   "www/js/ui-player.js:256"
+   "www/js/ui-player.js:292"
   ],
   "ctx": "{ id: 'throws',  name: ru`Меткий глаз`,   desc: ru`Отличных бросков`,             stat: 'throwsGreat', tiers: [20, 200, 1000] },"
  },
@@ -10000,7 +10010,7 @@
   "k": "Ночь",
   "at": [
    "www/js/data.js:783",
-   "www/js/ui-player.js:510"
+   "www/js/ui-player.js:546"
   ],
   "ctx": "{ id: 'night', name: ru`Ночь`, rar: 0, lvl: 1 },"
  },
@@ -10381,7 +10391,7 @@
   "k": "Побед на Капищах",
   "at": [
    "www/js/duel.js:41",
-   "www/js/ui-player.js:254"
+   "www/js/ui-player.js:290"
   ],
   "ctx": "<button class=\"btn primary wide duel-go\" ${team.length ? '' : 'disabled'}>${ru`Бросить вызов`}</button>${Rules.dayLine(S.d, 'duels', ru`Побед на Капищах`)}`;"
  },
@@ -10491,7 +10501,7 @@
   "k": "Вторжений отбито",
   "at": [
    "www/js/duel.js:117",
-   "www/js/ui-player.js:255"
+   "www/js/ui-player.js:291"
   ],
   "ctx": "${Rules.dayLine(S.d, 'invasions', ru`Вторжений отбито`)}"
  },
@@ -10517,8 +10527,8 @@
   "at": [
    "www/js/duel.js:118",
    "server/game/core.js:296",
-   "server/game/core.js:1284",
-   "server/game/core.js:1411"
+   "server/game/core.js:1287",
+   "server/game/core.js:1414"
   ],
   "ctx": "<button class=\"btn primary wide duel-go\" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;"
  },
@@ -11023,7 +11033,7 @@
   "k": "Новая запись в Бестиарии!",
   "at": [
    "www/js/encounter.js:400",
-   "www/js/ui-player.js:157",
+   "www/js/ui-player.js:175",
    "www/js/ui-spirits.js:515",
    "www/js/ui-spirits.js:790"
   ],
@@ -11160,7 +11170,7 @@
   "k": "В коде ошибка",
   "at": [
    "www/js/friends.js:70",
-   "server/game/core.js:1996"
+   "server/game/core.js:1999"
   ],
   "ctx": "if (!p || !p.i) throw new Error(ru`В коде ошибка`);"
  },
@@ -11189,7 +11199,7 @@
   "k": "Передача духов по коду закрыта — продавай и покупай духов на Аукционе",
   "at": [
    "www/js/friends.js:77",
-   "server/game/core.js:1794"
+   "server/game/core.js:1797"
   ],
   "ctx": "throw new Error(ru`Передача духов по коду закрыта — продавай и покупай духов на Аукционе`);"
  },
@@ -11376,7 +11386,7 @@
   "at": [
    "www/js/friends.js:144",
    "www/js/shop.js:430",
-   "www/js/ui-player.js:44"
+   "www/js/ui-player.js:254"
   ],
   "ctx": "<button class=\"btn small primary open-gift\">${ru`Открыть`}</button></div>`).join('')}</div>` : '';"
  },
@@ -11669,8 +11679,8 @@
   "k": "{0} Ордена Оберега",
   "at": [
    "www/js/friends.js:244",
-   "www/js/ui-player.js:270",
-   "www/js/ui-player.js:355"
+   "www/js/ui-player.js:306",
+   "www/js/ui-player.js:391"
   ],
   "ctx": "<div class=\"det-hp\">${ru`${UI.rank(p.lvl)} Ордена Оберега`}</div>"
  },
@@ -11678,7 +11688,7 @@
   "k": "УРОВЕНЬ",
   "at": [
    "www/js/friends.js:245",
-   "www/js/ui-player.js:271"
+   "www/js/ui-player.js:307"
   ],
   "ctx": "<div class=\"det-power\"><small>${ru`УРОВЕНЬ`}</small><b>${p.lvl}</b></div>"
  },
@@ -11700,7 +11710,7 @@
   "k": "Достижения",
   "at": [
    "www/js/friends.js:249",
-   "www/js/ui-player.js:285"
+   "www/js/ui-player.js:321"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['ach', ru`Достижения`], ['spirits', ru`Духи`], ['friend', p.me ? ru`Это ты` : ru`Дружба`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</div>"
  },
@@ -11718,7 +11728,7 @@
   "k": "поймано духов",
   "at": [
    "www/js/friends.js:253",
-   "www/js/ui-player.js:289"
+   "www/js/ui-player.js:325"
   ],
   "ctx": "<div><b>${U.fmtNum(p.caught)}</b><small>${ru`поймано духов`}</small></div>"
  },
@@ -11727,7 +11737,7 @@
   "at": [
    "www/js/friends.js:254",
    "www/js/login.js:319",
-   "www/js/ui-player.js:290"
+   "www/js/ui-player.js:326"
   ],
   "ctx": "<div><b>${p.dex}<em>/${SPECIES.length}</em></b><small>${ru`бестиарий`}</small></div>"
  },
@@ -11735,7 +11745,7 @@
   "k": "пройдено",
   "at": [
    "www/js/friends.js:255",
-   "www/js/ui-player.js:291"
+   "www/js/ui-player.js:327"
   ],
   "ctx": "<div><b>${U.fmtDist(p.km * 1000)}</b><small>${ru`пройдено`}</small></div>"
  },
@@ -11743,7 +11753,7 @@
   "k": "Закрыто разломов",
   "at": [
    "www/js/friends.js:258",
-   "www/js/ui-player.js:254"
+   "www/js/ui-player.js:290"
   ],
   "ctx": "${row(ru`Закрыто разломов`, U.fmtNum(p.raids))}"
  },
@@ -11781,7 +11791,7 @@
    "www/js/friends.js:262",
    "www/js/order.js:58",
    "www/js/path.js:46",
-   "www/js/ui-player.js:273"
+   "www/js/ui-player.js:309"
   ],
   "ctx": "${p.days ? row(ru`В Ордене`, ru`${p.days} ${U.plural(p.days, ru`день`, ru`дня`, ru`дней`)}`) : ''}",
   "forms": [
@@ -11796,7 +11806,7 @@
    "www/js/friends.js:262",
    "www/js/order.js:58",
    "www/js/path.js:46",
-   "www/js/ui-player.js:273"
+   "www/js/ui-player.js:309"
   ],
   "ctx": "${p.days ? row(ru`В Ордене`, ru`${p.days} ${U.plural(p.days, ru`день`, ru`дня`, ru`дней`)}`) : ''}",
   "forms": [
@@ -11811,7 +11821,7 @@
    "www/js/friends.js:262",
    "www/js/order.js:58",
    "www/js/path.js:46",
-   "www/js/ui-player.js:273"
+   "www/js/ui-player.js:309"
   ],
   "ctx": "${p.days ? row(ru`В Ордене`, ru`${p.days} ${U.plural(p.days, ru`день`, ru`дня`, ru`дней`)}`) : ''}",
   "forms": [
@@ -11887,7 +11897,7 @@
   "k": "Оставить",
   "at": [
    "www/js/friends.js:303",
-   "www/js/ui-player.js:78",
+   "www/js/ui-player.js:83",
    "www/js/ui-spirits.js:311"
   ],
   "ctx": "}, ru`Оставить`, true);"
@@ -12367,7 +12377,7 @@
   "k": "Поимки",
   "at": [
    "www/js/journal.js:6",
-   "www/js/rules.js:178"
+   "www/js/rules.js:198"
   ],
   "ctx": "FILTERS: [['all', ru`Всё`], ['catch', ru`Поимки`], ['battle', ru`Битвы`], ['other', ru`Прочее`]],"
  },
@@ -13223,7 +13233,7 @@
   "k": "Нужно три духа",
   "at": [
    "www/js/league.js:333",
-   "server/game/core.js:1761"
+   "server/game/core.js:1764"
   ],
   "ctx": "const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;"
  },
@@ -13238,7 +13248,7 @@
   "k": "Жетоны кончились — приходи завтра",
   "at": [
    "www/js/league.js:333",
-   "server/game/core.js:1763"
+   "server/game/core.js:1766"
   ],
   "ctx": "const btn = locked ? ru`Лига откроется на ${this.LEVEL} уровне` : team.length < 3 ? ru`Нужно три духа` : ko ? ru`В команде дух без сил` : L.tickets > 0 ? ru`Найти соперника` : ru`Жетоны кончились — приходи завтра`;"
  },
@@ -13868,7 +13878,7 @@
   "k": "Почта",
   "at": [
    "www/js/login.js:229",
-   "www/js/ui-player.js:589"
+   "www/js/ui-player.js:625"
   ],
   "ctx": "<label class=\"fld\"><span class=\"fld-ic\">${UI.I.mail}</span><input name=\"email\" type=\"email\" inputmode=\"email\" autocomplete=\"username\" placeholder=\"${ru`Почта`}\" required></label>"
  },
@@ -14000,7 +14010,7 @@
   "k": "Выйти из учётной записи",
   "at": [
    "www/js/login.js:318",
-   "www/js/ui-player.js:592"
+   "www/js/ui-player.js:628"
   ],
   "ctx": "${Game.on() ? `<button class=\"hero-exit\" aria-label=\"${ru`Выйти из учётной записи`}\">${UI.I.logout}</button>` : ''}"
  },
@@ -14268,7 +14278,7 @@
   "k": "Капища открываются с {0} уровня Ловчего",
   "at": [
    "www/js/map.js:557",
-   "server/game/core.js:1403"
+   "server/game/core.js:1406"
   ],
   "ctx": "if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }"
  },
@@ -20683,7 +20693,7 @@
   "k": "Получено",
   "at": [
    "www/js/order.js:77",
-   "www/js/ui-player.js:40"
+   "www/js/ui-player.js:48"
   ],
   "ctx": "${got ? `<span class=\"q-ok\" aria-label=\"${ru`Получено`}\">✓</span>` : can ? `<button class=\"btn small primary o-claim\" data-w=\"${w.week}\" data-i=\"${i}\">${ru`Забрать`}</button>` : ''}</div>`;"
  },
@@ -20817,7 +20827,7 @@
   "k": "Послушник",
   "at": [
    "www/js/path.js:6",
-   "www/js/ui-player.js:242"
+   "www/js/ui-player.js:278"
   ],
   "ctx": "RANKS: { 1: ru`Послушник`, 5: ru`Ловчий`, 10: ru`Следопыт`, 20: ru`Ведун`, 30: ru`Хранитель` },"
  },
@@ -20825,7 +20835,7 @@
   "k": "Следопыт",
   "at": [
    "www/js/path.js:6",
-   "www/js/ui-player.js:242"
+   "www/js/ui-player.js:278"
   ],
   "ctx": "RANKS: { 1: ru`Послушник`, 5: ru`Ловчий`, 10: ru`Следопыт`, 20: ru`Ведун`, 30: ru`Хранитель` },"
  },
@@ -20833,7 +20843,7 @@
   "k": "Ведун",
   "at": [
    "www/js/path.js:6",
-   "www/js/ui-player.js:242"
+   "www/js/ui-player.js:278"
   ],
   "ctx": "RANKS: { 1: ru`Послушник`, 5: ru`Ловчий`, 10: ru`Следопыт`, 20: ru`Ведун`, 30: ru`Хранитель` },"
  },
@@ -20841,7 +20851,7 @@
   "k": "Хранитель",
   "at": [
    "www/js/path.js:6",
-   "www/js/ui-player.js:242"
+   "www/js/ui-player.js:278"
   ],
   "ctx": "RANKS: { 1: ru`Послушник`, 5: ru`Ловчий`, 10: ru`Следопыт`, 20: ru`Ведун`, 30: ru`Хранитель` },"
  },
@@ -20984,7 +20994,7 @@
   "at": [
    "www/js/path.js:26",
    "www/js/shop.js:369",
-   "server/game/core.js:1468"
+   "server/game/core.js:1471"
   ],
   "ctx": "LOOK.cloak.filter(c => c.lvl > 1 && !c.shop && !c.pass).forEach(c => add(c.lvl, 'look:' + c.c, ru`Плащ «${c.name}»`, ru`Для облика Ловчего`));"
  },
@@ -21453,8 +21463,8 @@
   "at": [
    "www/js/raid.js:39",
    "www/js/raid.js:147",
-   "server/game/core.js:1257",
-   "server/game/core.js:1302"
+   "server/game/core.js:1260",
+   "server/game/core.js:1305"
   ],
   "ctx": "if (!camp && S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18"
  },
@@ -21800,7 +21810,7 @@
   "k": "За бой можно выпить не больше 3 флаконов",
   "at": [
    "www/js/raid.js:376",
-   "server/game/core.js:1355"
+   "server/game/core.js:1358"
   ],
   "ctx": "if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }"
  },
@@ -21822,7 +21832,7 @@
   "k": "Живой воды нет",
   "at": [
    "www/js/raid.js:378",
-   "server/game/core.js:1356"
+   "server/game/core.js:1359"
   ],
   "ctx": "if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }"
  },
@@ -22338,28 +22348,28 @@
  {
   "k": "{0} сегодня: <b>{1}</b> из {2} — завтра снова",
   "at": [
-   "www/js/rules.js:183"
+   "www/js/rules.js:203"
   ],
   "ctx": "dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class=\"day-left ${u >= m ? 'out' : ''}\">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <"
  },
  {
   "k": "{0} сегодня: <b>{1}</b> из {2}",
   "at": [
-   "www/js/rules.js:183"
+   "www/js/rules.js:203"
   ],
   "ctx": "dayLine(d, key, what) { const u = this.dayUsed(d, key), m = this.DAILY[key]; return `<div class=\"day-left ${u >= m ? 'out' : ''}\">${u >= m ? ru`${what} сегодня: <b>${u}</b> из ${m} — завтра снова` : ru`${what} сегодня: <"
  },
  {
   "k": "Общий",
   "at": [
-   "www/js/rules.js:186"
+   "www/js/rules.js:206"
   ],
   "ctx": "CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Клан`]],"
  },
  {
   "k": "Торговля",
   "at": [
-   "www/js/rules.js:186",
+   "www/js/rules.js:206",
    "www/js/ui.js:655"
   ],
   "ctx": "CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Клан`]],"
@@ -22367,245 +22377,245 @@
  {
   "k": "Помощь",
   "at": [
-   "www/js/rules.js:186"
+   "www/js/rules.js:206"
   ],
   "ctx": "CHAT_CHANNELS: [['all', ru`Общий`], ['trade', ru`Торговля`], ['raid', ru`Разломы`], ['help', ru`Помощь`], ['clan', ru`Клан`]],"
  },
  {
   "k": "Расширение сумки",
   "at": [
-   "www/js/rules.js:313"
+   "www/js/rules.js:333"
   ],
   "ctx": "{ id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },"
  },
  {
   "k": "+50 мест в сумке навсегда",
   "at": [
-   "www/js/rules.js:313"
+   "www/js/rules.js:333"
   ],
   "ctx": "{ id: 'bag',      name: ru`Расширение сумки`,    desc: ru`+50 мест в сумке навсегда`,                cur: 'zlat', bag: true },"
  },
  {
   "k": "Закрыть Разлом до 5 км, не подходя к нему",
   "at": [
-   "www/js/rules.js:314"
+   "www/js/rules.js:334"
   ],
   "ctx": "{ id: 'farpass',  name: ru`Дальний пропуск`,     desc: ru`Закрыть Разлом до 5 км, не подходя к нему`, cur: 'sparks', price: 1000, give: { farpass: 1 } },"
  },
  {
   "k": "Три дальних пропуска",
   "at": [
-   "www/js/rules.js:315"
+   "www/js/rules.js:335"
   ],
   "ctx": "{ id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)"
  },
  {
   "k": "Три грамоты на дальние Разломы",
   "at": [
-   "www/js/rules.js:315"
+   "www/js/rules.js:335"
   ],
   "ctx": "{ id: 'farpass3', name: ru`Три дальних пропуска`, desc: ru`Три грамоты на дальние Разломы`,          cur: 'zlat', price: 45,  give: { farpass: 3 } }, // выгоднее трёх за искры (по курсу обменника 45 зл ≈ ✦ 2250)"
  },
  {
   "k": "Связка оберегов",
   "at": [
-   "www/js/rules.js:316"
+   "www/js/rules.js:336"
   ],
   "ctx": "{ id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },"
  },
  {
   "k": "20 оберегов",
   "at": [
-   "www/js/rules.js:316"
+   "www/js/rules.js:336"
   ],
   "ctx": "{ id: 'charm20', name: ru`Связка оберегов`,     desc: ru`20 оберегов`,                              cur: 'sparks', price: 1500, give: { charm: 20 } },"
  },
  {
   "k": "Горшок мёда",
   "at": [
-   "www/js/rules.js:317"
+   "www/js/rules.js:337"
   ],
   "ctx": "{ id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },"
  },
  {
   "k": "5 мёда",
   "at": [
-   "www/js/rules.js:317"
+   "www/js/rules.js:337"
   ],
   "ctx": "{ id: 'honey5',   name: ru`Горшок мёда`,         desc: ru`5 мёда`,                                   cur: 'sparks', price: 1200, give: { honey: 5 } },"
  },
  {
   "k": "5 флаконов: половина здоровья, в разломе — прямо в бою",
   "at": [
-   "www/js/rules.js:318"
+   "www/js/rules.js:338"
   ],
   "ctx": "{ id: 'water5',   name: ru`Живая вода`,          desc: ru`5 флаконов: половина здоровья, в разломе — прямо в бою`, cur: 'sparks', price: 2000, give: { water: 5 } },"
  },
  {
   "k": "Пучок подорожника",
   "at": [
-   "www/js/rules.js:319"
+   "www/js/rules.js:339"
   ],
   "ctx": "{ id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },"
  },
  {
   "k": "10 листьев: четверть здоровья каждый",
   "at": [
-   "www/js/rules.js:319"
+   "www/js/rules.js:339"
   ],
   "ctx": "{ id: 'herb10',   name: ru`Пучок подорожника`,   desc: ru`10 листьев: четверть здоровья каждый`,     cur: 'sparks', price: 600,  give: { herb: 10 } },"
  },
  {
   "k": "5 горшочков: 60% здоровья каждый",
   "at": [
-   "www/js/rules.js:320"
+   "www/js/rules.js:340"
   ],
   "ctx": "{ id: 'brew5',    name: ru`Целебный отвар`,      desc: ru`5 горшочков: 60% здоровья каждый`,         cur: 'sparks', price: 1200, give: { brew: 5 } },"
  },
  {
   "k": "Один флакон в неделю: дух без сил поднимется на 4 часа раньше",
   "at": [
-   "www/js/rules.js:323"
+   "www/js/rules.js:343"
   ],
   "ctx": "{ id: 'dead1',    name: ru`Мёртвая вода`,        desc: ru`Один флакон в неделю: дух без сил поднимется на 4 часа раньше`, cur: 'zlat', price: 80, give: { deadwater: 1 }, week: 1 },"
  },
  {
   "k": "Серебряные обереги",
   "at": [
-   "www/js/rules.js:324"
+   "www/js/rules.js:344"
   ],
   "ctx": "{ id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },"
  },
  {
   "k": "10 серебряных оберегов",
   "at": [
-   "www/js/rules.js:324"
+   "www/js/rules.js:344"
   ],
   "ctx": "{ id: 'charm2x',  name: ru`Серебряные обереги`,  desc: ru`10 серебряных оберегов`,                   cur: 'zlat', price: 60,  give: { charm2: 10 }, lvl: 8 },"
  },
  {
   "k": "Золотые обереги",
   "at": [
-   "www/js/rules.js:325"
+   "www/js/rules.js:345"
   ],
   "ctx": "{ id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },"
  },
  {
   "k": "10 золотых оберегов",
   "at": [
-   "www/js/rules.js:325"
+   "www/js/rules.js:345"
   ],
   "ctx": "{ id: 'charm3x',  name: ru`Золотые обереги`,     desc: ru`10 золотых оберегов`,                      cur: 'zlat', price: 120, give: { charm3: 10 }, lvl: 16 },"
  },
  {
   "k": "Шагнуть в любое место Атласа сразу, без ожидания. Одни в день",
   "at": [
-   "www/js/rules.js:327"
+   "www/js/rules.js:347"
   ],
   "ctx": "{ id: 'gate',     name: ru`Врата Перепутицы`,    desc: ru`Шагнуть в любое место Атласа сразу, без ожидания. Одни в день`, cur: 'sparks', price: 3000, give: { gate: 1 }, day: 1 },"
  },
  {
   "k": "Трое Врат Перепутицы",
   "at": [
-   "www/js/rules.js:328"
+   "www/js/rules.js:348"
   ],
   "ctx": "{ id: 'gate3',    name: ru`Трое Врат Перепутицы`, desc: ru`Три мгновенных перехода через Атлас`,     cur: 'zlat', price: 75,  give: { gate: 3 } },"
  },
  {
   "k": "Три мгновенных перехода через Атлас",
   "at": [
-   "www/js/rules.js:328"
+   "www/js/rules.js:348"
   ],
   "ctx": "{ id: 'gate3',    name: ru`Трое Врат Перепутицы`, desc: ru`Три мгновенных перехода через Атлас`,     cur: 'zlat', price: 75,  give: { gate: 3 } },"
  },
  {
   "k": "30 минут духов вокруг вдвое больше",
   "at": [
-   "www/js/rules.js:329"
+   "www/js/rules.js:349"
   ],
   "ctx": "{ id: 'incense',  name: ru`Ладан`,              desc: ru`30 минут духов вокруг вдвое больше`,       cur: 'zlat', price: 50,  give: { incense: 1 } },"
  },
  {
   "k": "Кокон 5 км",
   "at": [
-   "www/js/rules.js:330"
+   "www/js/rules.js:350"
   ],
   "ctx": "{ id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },"
  },
  {
   "k": "Необычные и редкие духи",
   "at": [
-   "www/js/rules.js:330"
+   "www/js/rules.js:350"
   ],
   "ctx": "{ id: 'cocoon5',  name: ru`Кокон 5 км`,          desc: ru`Необычные и редкие духи`,                  cur: 'zlat', price: 80,  cocoon: 5 },"
  },
  {
   "k": "Кокон 10 км",
   "at": [
-   "www/js/rules.js:331"
+   "www/js/rules.js:351"
   ],
   "ctx": "{ id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },"
  },
  {
   "k": "Редкие и эпические духи",
   "at": [
-   "www/js/rules.js:331"
+   "www/js/rules.js:351"
   ],
   "ctx": "{ id: 'cocoon10', name: ru`Кокон 10 км`,         desc: ru`Редкие и эпические духи`,                  cur: 'zlat', price: 150, cocoon: 10 },"
  },
  {
   "k": "Случайный амулет",
   "at": [
-   "www/js/rules.js:332"
+   "www/js/rules.js:352"
   ],
   "ctx": "{ id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },"
  },
  {
   "k": "Перуна, Мокоши, Велеса, Сварога или Лады",
   "at": [
-   "www/js/rules.js:332"
+   "www/js/rules.js:352"
   ],
   "ctx": "{ id: 'amulet',   name: ru`Случайный амулет`,    desc: ru`Перуна, Мокоши, Велеса, Сварога или Лады`, cur: 'zlat', price: 200, amulet: true },"
  },
  {
   "k": "Сутки опыта на четверть больше. До двух в неделю",
   "at": [
-   "www/js/rules.js:335"
+   "www/js/rules.js:355"
   ],
   "ctx": "{ id: 'xpbrew',   name: ru`Настой опыта`,        desc: ru`Сутки опыта на четверть больше. До двух в неделю`, cur: 'zlat', price: 60, give: { xpbrew: 1 }, day: 1, week: 2 },"
  },
  {
   "k": "Связка ладана",
   "at": [
-   "www/js/rules.js:336"
+   "www/js/rules.js:356"
   ],
   "ctx": "{ id: 'incense5', name: ru`Связка ладана`,       desc: ru`5 ладана дешевле, чем по одному. Одна в день`, cur: 'zlat', price: 200, give: { incense: 5 }, day: 1 },"
  },
  {
   "k": "5 ладана дешевле, чем по одному. Одна в день",
   "at": [
-   "www/js/rules.js:336"
+   "www/js/rules.js:356"
   ],
   "ctx": "{ id: 'incense5', name: ru`Связка ладана`,       desc: ru`5 ладана дешевле, чем по одному. Одна в день`, cur: 'zlat', price: 200, give: { incense: 5 }, day: 1 },"
  },
  {
   "k": "Поимка духа",
   "at": [
-   "www/js/rules.js:405"
+   "www/js/rules.js:425"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
  {
   "k": "500 м пути",
   "at": [
-   "www/js/rules.js:405"
+   "www/js/rules.js:425"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
  {
   "k": "Кокон",
   "at": [
-   "www/js/rules.js:405",
+   "www/js/rules.js:425",
    "www/js/ui.js:953"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
@@ -22613,14 +22623,14 @@
  {
   "k": "Победа в капище",
   "at": [
-   "www/js/rules.js:405"
+   "www/js/rules.js:425"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
  {
   "k": "Вторжение",
   "at": [
-   "www/js/rules.js:405",
+   "www/js/rules.js:425",
    "www/js/ui.js:747"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
@@ -22628,21 +22638,21 @@
  {
   "k": "Хорошо!",
   "at": [
-   "www/js/rules.js:422"
+   "www/js/rules.js:442"
   ],
   "ctx": "return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };"
  },
  {
   "k": "Отлично!",
   "at": [
-   "www/js/rules.js:422"
+   "www/js/rules.js:442"
   ],
   "ctx": "return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };"
  },
  {
   "k": "Превосходно!",
   "at": [
-   "www/js/rules.js:422"
+   "www/js/rules.js:442"
   ],
   "ctx": "return r > 0.7 ? { mul: 1.2, xp: 10, label: ru`Хорошо!`, great: false } : r > 0.4 ? { mul: 1.5, xp: 50, label: ru`Отлично!`, great: true } : { mul: 1.8, xp: 100, label: ru`Превосходно!`, great: true };"
  },
@@ -22778,7 +22788,7 @@
   "at": [
    "www/js/shop.js:26",
    "www/js/shop.js:317",
-   "www/js/ui-player.js:351",
+   "www/js/ui-player.js:387",
    "server/game/core.js:401"
   ],
   "ctx": "else if (k === 'look') { const x = LOOK.cloak.find(c => c.c === n) || LOOK.emblem.find(m => m.id === n) || LOOK.skin.find(k => `skin:${k.id}` === n) || LOOK.bg.find(k => `bg:${k.id}` === n) || LOOK.frame.find(k => `frame"
@@ -23050,7 +23060,7 @@
   "at": [
    "www/js/shop.js:222",
    "www/js/shop.js:225",
-   "www/js/ui-player.js:490"
+   "www/js/ui-player.js:526"
   ],
   "ctx": "title: ru`Промокод`, cls: 'promo-modal',"
  },
@@ -23507,7 +23517,7 @@
   "at": [
    "www/js/shop.js:461",
    "www/js/ui-spirits.js:365",
-   "server/game/core.js:1588"
+   "server/game/core.js:1591"
   ],
   "ctx": "title: ru`Выбери амулет`, cls: 'melt-modal',"
  },
@@ -23889,160 +23899,125 @@
  {
   "k": "Все задания дня выполнены",
   "at": [
-   "www/js/ui-player.js:34"
+   "www/js/ui-player.js:42"
   ],
   "ctx": "<div class=\"row-main\"><b>${doneN >= Q.list.length ? (Q.bonus ? ru`Все задания дня выполнены` : ru`Все задания выполнены — забери награды`) : ru`Выполнено ${doneN} из ${Q.list.length}`}</b>"
  },
  {
   "k": "Все задания выполнены — забери награды",
   "at": [
-   "www/js/ui-player.js:34"
+   "www/js/ui-player.js:42"
   ],
   "ctx": "<div class=\"row-main\"><b>${doneN >= Q.list.length ? (Q.bonus ? ru`Все задания дня выполнены` : ru`Все задания выполнены — забери награды`) : ru`Выполнено ${doneN} из ${Q.list.length}`}</b>"
  },
  {
   "k": "Выполнено {0} из {1}",
   "at": [
-   "www/js/ui-player.js:34"
+   "www/js/ui-player.js:42"
   ],
   "ctx": "<div class=\"row-main\"><b>${doneN >= Q.list.length ? (Q.bonus ? ru`Все задания дня выполнены` : ru`Все задания выполнены — забери награды`) : ru`Выполнено ${doneN} из ${Q.list.length}`}</b>"
  },
  {
   "k": "Новые задания через {0}",
   "at": [
-   "www/js/ui-player.js:35"
+   "www/js/ui-player.js:43"
   ],
   "ctx": "<small>${ru`Новые задания через ${`<span class=\"qd-left\">${U.fmtTime(this.toMidnight())}</span>`}`}</small></div></div>`"
  },
  {
   "k": "{0} / {1} км",
   "at": [
-   "www/js/ui-player.js:37",
-   "www/js/ui-player.js:114",
-   "www/js/ui-player.js:114",
-   "www/js/ui-player.js:181"
+   "www/js/ui-player.js:45",
+   "www/js/ui-player.js:132",
+   "www/js/ui-player.js:132",
+   "www/js/ui-player.js:208"
   ],
   "ctx": "const done = q.p >= q.n, pv = q.t === 'walk' ? ru`${Math.min(q.p, q.n).toFixed(2)} / ${q.n} км` : `${Math.min(Math.floor(q.p), q.n)} / ${q.n}`;"
  },
  {
-  "k": "открыт",
-  "at": [
-   "www/js/ui-player.js:43"
-  ],
-  "ctx": "<div class=\"q-main\"><b>${ru`Сундук дня`}</b><div class=\"qd-pips\">${Q.list.map(q => `<i class=\"${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}\"></i>`).join('')}<small>${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`з"
- },
- {
-  "k": "можно открыть",
-  "at": [
-   "www/js/ui-player.js:43"
-  ],
-  "ctx": "<div class=\"q-main\"><b>${ru`Сундук дня`}</b><div class=\"qd-pips\">${Q.list.map(q => `<i class=\"${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}\"></i>`).join('')}<small>${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`з"
- },
- {
-  "k": "забери награды всех трёх заданий",
-  "at": [
-   "www/js/ui-player.js:43"
-  ],
-  "ctx": "<div class=\"q-main\"><b>${ru`Сундук дня`}</b><div class=\"qd-pips\">${Q.list.map(q => `<i class=\"${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}\"></i>`).join('')}<small>${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`з"
- },
- {
-  "k": "Открыт",
-  "at": [
-   "www/js/ui-player.js:44"
-  ],
-  "ctx": "${Q.bonus ? `<span class=\"q-ok\" aria-label=\"${ru`Открыт`}\">✓</span>` : all ? `<button class=\"btn small primary claim-bonus\">${ru`Открыть`}</button>` : ''}</div>`"
- },
- {
   "k": "Кампания: {0}",
   "at": [
-   "www/js/ui-player.js:59"
+   "www/js/ui-player.js:64"
   ],
   "ctx": "if (r) { Sfx.play('reward_big'); this.toast(ru`Кампания: ${r.got.map(x => `${I18N.back(x.label)} +${U.fmtNum(x.n)}`).join(', ')}`, 'good'); if (r.pick) this.campPick(render); }"
  },
  {
   "k": "Поручение сдано: {0}. Тебя ждёт {1}!",
   "at": [
-   "www/js/ui-player.js:72"
+   "www/js/ui-player.js:77"
   ],
   "ctx": "if (r) { Sfx.play('reward'); this.toast(ru`Поручение сдано: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }"
  },
  {
   "k": "Отказаться от поручения?",
   "at": [
-   "www/js/ui-player.js:78"
+   "www/js/ui-player.js:83"
   ],
   "ctx": "this.confirm(ru`Отказаться от поручения?`, ru`Поручение исчезнет, новое можно получить у источника.`, ru`Отказаться`, () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), ru`Ост"
  },
  {
   "k": "Поручение исчезнет, новое можно получить у источника.",
   "at": [
-   "www/js/ui-player.js:78"
+   "www/js/ui-player.js:83"
   ],
   "ctx": "this.confirm(ru`Отказаться от поручения?`, ru`Поручение исчезнет, новое можно получить у источника.`, ru`Отказаться`, () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), ru`Ост"
  },
  {
   "k": "Отказаться",
   "at": [
-   "www/js/ui-player.js:78",
-   "www/js/ui-player.js:225",
-   "www/js/ui-player.js:235"
+   "www/js/ui-player.js:83",
+   "www/js/ui-player.js:261",
+   "www/js/ui-player.js:271"
   ],
   "ctx": "this.confirm(ru`Отказаться от поручения?`, ru`Поручение исчезнет, новое можно получить у источника.`, ru`Отказаться`, () => Game.try('taskDrop', { id: td.dataset.id }).then(() => { render(); this.refreshHud(); }), ru`Ост"
  },
  {
   "k": "Получено: {0}",
   "at": [
-   "www/js/ui-player.js:91"
+   "www/js/ui-player.js:96"
   ],
   "ctx": "if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'reward');"
  },
  {
-  "k": "Сундук: {0}",
-  "at": [
-   "www/js/ui-player.js:92"
-  ],
-  "ctx": "else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'reward_big');"
- },
- {
   "k": "Кампания откроется после обучения",
   "at": [
-   "www/js/ui-player.js:105"
+   "www/js/ui-player.js:123"
   ],
   "ctx": "if (!ch) return `<div class=\"q-note\">${ru`Кампания откроется после обучения`}</div>`;"
  },
  {
   "k": "Шаг {0} из {1}",
   "at": [
-   "www/js/ui-player.js:107"
+   "www/js/ui-player.js:125"
   ],
   "ctx": "let html = `<div class=\"qd-head cp-head\"><div class=\"row-main\"><b>${ch.title}</b><small>${st ? ru`Шаг ${done + 1} из ${n}` : ru`Глава пройдена`}</small><div class=\"pbar\"><i style=\"width:${done / n * 100}%\"></i></div></di"
  },
  {
   "k": "Глава пройдена",
   "at": [
-   "www/js/ui-player.js:107"
+   "www/js/ui-player.js:125"
   ],
   "ctx": "let html = `<div class=\"qd-head cp-head\"><div class=\"row-main\"><b>${ch.title}</b><small>${st ? ru`Шаг ${done + 1} из ${n}` : ru`Глава пройдена`}</small><div class=\"pbar\"><i style=\"width:${done / n * 100}%\"></i></div></di"
  },
  {
   "k": "Награда шага: выбери духа",
   "at": [
-   "www/js/ui-player.js:108"
+   "www/js/ui-player.js:126"
   ],
   "ctx": "if (c.pick) html += `<div class=\"quest done cp-pickrow\"><div class=\"qd-ico\">${this.I.spirits}</div><div class=\"q-main\"><b>${ru`Награда шага: выбери духа`}</b><small>${ru`Один из трёх редких духов — твой навсегда`}</small"
  },
  {
   "k": "Один из трёх редких духов — твой навсегда",
   "at": [
-   "www/js/ui-player.js:108"
+   "www/js/ui-player.js:126"
   ],
   "ctx": "if (c.pick) html += `<div class=\"quest done cp-pickrow\"><div class=\"qd-ico\">${this.I.spirits}</div><div class=\"q-main\"><b>${ru`Награда шага: выбери духа`}</b><small>${ru`Один из трёх редких духов — твой навсегда`}</small"
  },
  {
   "k": "Выбрать",
   "at": [
-   "www/js/ui-player.js:108",
-   "www/js/ui-player.js:154",
+   "www/js/ui-player.js:126",
+   "www/js/ui-player.js:172",
    "www/js/ui-spirits.js:30"
   ],
   "ctx": "if (c.pick) html += `<div class=\"quest done cp-pickrow\"><div class=\"qd-ico\">${this.I.spirits}</div><div class=\"q-main\"><b>${ru`Награда шага: выбери духа`}</b><small>${ru`Один из трёх редких духов — твой навсегда`}</small"
@@ -24050,238 +24025,259 @@
  {
   "k": "Орден прислал {0} эссенции «{1}» — хватит на эволюцию",
   "at": [
-   "www/js/ui-player.js:118"
+   "www/js/ui-player.js:136"
   ],
   "ctx": "const gift = c.gift && SP[c.gift.fam] ? `<small class=\"cp-gift\">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на эволюцию`}</small>` : '';"
  },
  {
   "k": "Где Разлом кампании?",
   "at": [
-   "www/js/ui-player.js:120"
+   "www/js/ui-player.js:138"
   ],
   "ctx": "${S.campRiftOn() ? `<button class=\"btn small ghost cp-rift\">${ru`Где Разлом кампании?`}</button>` : ''}"
  },
  {
   "k": "Забрать награду",
   "at": [
-   "www/js/ui-player.js:122"
+   "www/js/ui-player.js:140"
   ],
   "ctx": "${ready && !c.pick ? `<button class=\"btn primary wide cp-claim\">${ru`Забрать награду`}</button>` : ''}`;"
  },
  {
   "k": "Глава пройдена! Новая глава Кампании — скоро.",
   "at": [
-   "www/js/ui-player.js:123"
+   "www/js/ui-player.js:141"
   ],
   "ctx": "} else html += `<div class=\"q-note\">${ru`Глава пройдена! Новая глава Кампании — скоро.`}</div>`;"
  },
  {
   "k": "Шаги главы",
   "at": [
-   "www/js/ui-player.js:124"
+   "www/js/ui-player.js:142"
   ],
   "ctx": "html += `<h3 class=\"q-h\">${ru`Шаги главы`}</h3><div class=\"cp-list\">${ch.steps.map((x, i) => `<div class=\"cp-row ${i < c.s ? 'done' : i === c.s ? 'cur' : 'lock'}\"><i>${i < c.s ? '✓' : i + 1}</i><span>${x.name}</span></di"
  },
  {
   "k": "Редкий дух на выбор",
   "at": [
-   "www/js/ui-player.js:130"
+   "www/js/ui-player.js:148"
   ],
   "ctx": "if (R.pick) chips.push(`<span class=\"qd-rw\">${ru`Редкий дух на выбор`}</span>`);"
  },
  {
   "k": "+{0} эссенции духа",
   "at": [
-   "www/js/ui-player.js:131"
+   "www/js/ui-player.js:149"
   ],
   "ctx": "if (R.ess) chips.push(`<span class=\"qd-rw\">${ru`+${R.ess} эссенции духа`}</span>`);"
  },
  {
   "k": "опыт до {0} уровня",
   "at": [
-   "www/js/ui-player.js:134"
+   "www/js/ui-player.js:152"
   ],
   "ctx": "if (xp) chips.push(`<span class=\"qd-rw xp\">${R.lvl && levelXP(R.lvl) - S.d.xp > (R.xp || 0) ? ru`опыт до ${R.lvl} уровня` : ru`+${U.fmtNum(xp)} опыта`}</span>`);"
  },
  {
   "k": "Случайный облик",
   "at": [
-   "www/js/ui-player.js:137"
+   "www/js/ui-player.js:155"
   ],
   "ctx": "return chips.join('') + this.rwChips(items, false) + (R.skin ? `<span class=\"qd-rw\">${ru`Случайный облик`}</span>` : '');"
  },
  {
   "k": "сила ~{0}",
   "at": [
-   "www/js/ui-player.js:146"
+   "www/js/ui-player.js:164"
   ],
   "ctx": "<small>${Art.elIcon(s.el, 14)} ${ELEMENTS[s.el].name}</small><small style=\"color:${RARITY[s.rar].color}\">${RARITY[s.rar].name} · ${ru`ур. ${P.lvl}`}</small><small>${ru`сила ~${U.fmtNum(pw)}`}</small></button>`;"
  },
  {
   "k": "Выбери духа",
   "at": [
-   "www/js/ui-player.js:148"
+   "www/js/ui-player.js:166"
   ],
   "ctx": "const m = this.modal({ title: ru`Выбери духа`, cls: 'cp-modal', buttons: [{ label: ru`Позже` }],"
  },
  {
   "k": "Награда Кампании: один из трёх редких духов — твой.",
   "at": [
-   "www/js/ui-player.js:149"
+   "www/js/ui-player.js:167"
   ],
   "ctx": "html: `<p class=\"small\">${ru`Награда Кампании: один из трёх редких духов — твой.`}${P.ess ? ' ' + ru`И ${P.ess} эссенции его семейства.` : ''}</p><div class=\"cp-cards\">${cards}</div>` });"
  },
  {
   "k": "И {0} эссенции его семейства.",
   "at": [
-   "www/js/ui-player.js:149"
+   "www/js/ui-player.js:167"
   ],
   "ctx": "html: `<p class=\"small\">${ru`Награда Кампании: один из трёх редких духов — твой.`}${P.ess ? ' ' + ru`И ${P.ess} эссенции его семейства.` : ''}</p><div class=\"cp-cards\">${cards}</div>` });"
  },
  {
   "k": "Выбрать: {0}?",
   "at": [
-   "www/js/ui-player.js:154"
+   "www/js/ui-player.js:172"
   ],
   "ctx": "this.confirm(ru`Выбрать: ${SP[sid].name}?`, ru`Выбор — один раз: двое других вернутся в Навь.`, ru`Выбрать`, () => Game.try('campPick', { i }).then(r => {"
  },
  {
   "k": "Выбор — один раз: двое других вернутся в Навь.",
   "at": [
-   "www/js/ui-player.js:154"
+   "www/js/ui-player.js:172"
   ],
   "ctx": "this.confirm(ru`Выбрать: ${SP[sid].name}?`, ru`Выбор — один раз: двое других вернутся в Навь.`, ru`Выбрать`, () => Game.try('campPick', { i }).then(r => {"
  },
  {
   "k": "{0} — теперь твой дух!",
   "at": [
-   "www/js/ui-player.js:157"
+   "www/js/ui-player.js:175"
   ],
   "ctx": "this.toast(ru`${SP[r.sid].name} — теперь твой дух!` + (r.isNew ? ' ' + ru`Новая запись в Бестиарии!` : ''), 'good');"
  },
  {
   "k": "Выбери духа — награда шага",
   "at": [
-   "www/js/ui-player.js:176"
+   "www/js/ui-player.js:203"
   ],
-  "ctx": "if (c.pick) return `<b>${ru`Кампания`}</b><span class=\"cl-go\">${ru`Выбери духа — награда шага`}</span>`;"
+  "ctx": "if (c.pick) return head(ru`Кампания`) + line('spirits', ru`Выбери духа — награда шага`, '', 'cl-go', chev);"
  },
  {
   "k": "Кампания · {0}",
   "at": [
-   "www/js/ui-player.js:184"
+   "www/js/ui-player.js:211"
   ],
-  "ctx": "return `<b>${ru`Кампания · ${st.name}`}</b>${st.obj.map(row).join('')}${S.campReady() ? `<span class=\"cl-go\">${ru`Шаг выполнен — забери награду`}</span>` : ''}`;"
+  "ctx": "return head(ru`Кампания · ${st.name}`) + st.obj.map(row).join('') + (S.campReady() ? line('gift', ru`Шаг выполнен — забери награду`, '', 'cl-go', chev) : '');"
  },
  {
   "k": "Шаг выполнен — забери награду",
   "at": [
-   "www/js/ui-player.js:184"
+   "www/js/ui-player.js:211"
   ],
-  "ctx": "return `<b>${ru`Кампания · ${st.name}`}</b>${st.obj.map(row).join('')}${S.campReady() ? `<span class=\"cl-go\">${ru`Шаг выполнен — забери награду`}</span>` : ''}`;"
+  "ctx": "return head(ru`Кампания · ${st.name}`) + st.obj.map(row).join('') + (S.campReady() ? line('gift', ru`Шаг выполнен — забери награду`, '', 'cl-go', chev) : '');"
  },
  {
   "k": "Лимиты дня",
   "at": [
-   "www/js/ui-player.js:215"
+   "www/js/ui-player.js:242"
   ],
   "ctx": "return `<p class=\"day-limits\"><span class=\"dl-h\">${ru`Лимиты дня`}</span>${Object.keys(Rules.DAILY).map(k => {"
  },
  {
   "k": "обновятся в полночь",
   "at": [
-   "www/js/ui-player.js:218"
+   "www/js/ui-player.js:245"
   ],
   "ctx": "}).join('')}<small>${ru`обновятся в полночь`}</small></p>`;"
  },
  {
+  "k": "открыт",
+  "at": [
+   "www/js/ui-player.js:252"
+  ],
+  "ctx": "`<small class=\"qc-state\">${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small>` +"
+ },
+ {
+  "k": "можно открыть",
+  "at": [
+   "www/js/ui-player.js:252"
+  ],
+  "ctx": "`<small class=\"qc-state\">${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small>` +"
+ },
+ {
+  "k": "забери награды всех трёх заданий",
+  "at": [
+   "www/js/ui-player.js:252"
+  ],
+  "ctx": "`<small class=\"qc-state\">${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small>` +"
+ },
+ {
   "k": "Новое поручение: <b>{0}</b>",
   "at": [
-   "www/js/ui-player.js:223"
+   "www/js/ui-player.js:259"
   ],
   "ctx": "return `<div class=\"loot-task\" data-id=\"${U.esc(t.id)}\"><div>${ru`Новое поручение: <b>${`${'★'.repeat(t.tier || 1)} ${I18N.back(t.text)}`}</b>`}` +"
  },
  {
   "k": "Награда — встреча с духом. Смотри «Меню → Задания».",
   "at": [
-   "www/js/ui-player.js:224"
+   "www/js/ui-player.js:260"
   ],
   "ctx": "`<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` +"
  },
  {
   "k": "Принять",
   "at": [
-   "www/js/ui-player.js:225"
+   "www/js/ui-player.js:261"
   ],
   "ctx": "`<div class=\"lt-btns\"><button class=\"btn small primary lt-ok\">${ru`Принять`}</button><button class=\"btn small ghost lt-no\">${ru`Отказаться`}</button></div></div>`;"
  },
  {
   "k": "Встреча: {0}",
   "at": [
-   "www/js/ui-player.js:230"
+   "www/js/ui-player.js:266"
   ],
   "ctx": "const meets = d.taskMeet.map(m => `<div class=\"quest done t-row\"><div class=\"t-sp\">${Art.img(m.sid)}</div><div class=\"q-main\"><b>${ru`Встреча: ${SP[m.sid].name}`}</b><small>${ru`${RARITY[SP[m.sid].rar].name} · ур. ${m.lv"
  },
  {
   "k": "{0} · ур. {1}. Не сбежит, пока не поймаешь.",
   "at": [
-   "www/js/ui-player.js:230"
+   "www/js/ui-player.js:266"
   ],
   "ctx": "const meets = d.taskMeet.map(m => `<div class=\"quest done t-row\"><div class=\"t-sp\">${Art.img(m.sid)}</div><div class=\"q-main\"><b>${ru`Встреча: ${SP[m.sid].name}`}</b><small>${ru`${RARITY[SP[m.sid].rar].name} · ур. ${m.lv"
  },
  {
   "k": "Встретить",
   "at": [
-   "www/js/ui-player.js:231"
+   "www/js/ui-player.js:267"
   ],
   "ctx": "<button class=\"btn small primary t-meet\" data-id=\"${m.id}\">${ru`Встретить`}</button></div>`).join('');"
  },
  {
   "k": "{0} · Награда: гость издалека",
   "at": [
-   "www/js/ui-player.js:234"
+   "www/js/ui-player.js:270"
   ],
   "ctx": "return `<div class=\"quest t-row ${done ? 'done' : ''}\"><div class=\"t-sp mystery\">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class=\"q-main\"><b>${I18N.back(q.text)}</b><div class=\"pbar\"><i style=\"width:${Math."
  },
  {
   "k": "{0} · Награда: встреча с духом",
   "at": [
-   "www/js/ui-player.js:234"
+   "www/js/ui-player.js:270"
   ],
   "ctx": "return `<div class=\"quest t-row ${done ? 'done' : ''}\"><div class=\"t-sp mystery\">${Art.img(q.sid)}<i>${'★'.repeat(q.tier)}</i></div><div class=\"q-main\"><b>${I18N.back(q.text)}</b><div class=\"pbar\"><i style=\"width:${Math."
  },
  {
   "k": "Сдать",
   "at": [
-   "www/js/ui-player.js:235"
+   "www/js/ui-player.js:271"
   ],
   "ctx": "${done ? `<button class=\"btn small primary t-claim\" data-id=\"${q.id}\">${ru`Сдать`}</button>` : `<button class=\"btn-round small t-drop\" data-id=\"${q.id}\" aria-label=\"${ru`Отказаться`}\">${this.I.close}</button>`}</div>`;"
  },
  {
   "k": "Поручения источников",
   "at": [
-   "www/js/ui-player.js:237"
+   "www/js/ui-player.js:273"
   ],
   "ctx": "return `<h3 class=\"q-h\">${ru`Поручения источников`} <small>${d.tasks.length} / ${TASK_LIMIT}</small></h3>${meets}${tasks ||"
  },
  {
   "k": "Источники иногда дают поручения: первое за день — всегда. За выполненное — предметы и встреча с духом, которого на улице не найти так просто.",
   "at": [
-   "www/js/ui-player.js:238"
+   "www/js/ui-player.js:274"
   ],
   "ctx": "(meets ? '' : `<div class=\"q-note\">${ru`Источники иногда дают поручения: первое за день — всегда. За выполненное — предметы и встреча с духом, которого на улице не найти так просто.`}</div>`)}`;"
  },
  {
   "k": "Пробуждений",
   "at": [
-   "www/js/ui-player.js:254"
+   "www/js/ui-player.js:290"
   ],
   "ctx": "[ru`Пробуждений`, d.stats.awakened || 0], [ru`Источников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],"
  },
  {
   "k": "Источников",
   "at": [
-   "www/js/ui-player.js:254",
+   "www/js/ui-player.js:290",
    "www/js/ui.js:770",
    "www/js/ui.js:970"
   ],
@@ -24290,289 +24286,289 @@
  {
   "k": "Превращений",
   "at": [
-   "www/js/ui-player.js:255"
+   "www/js/ui-player.js:291"
   ],
   "ctx": "[ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],"
  },
  {
   "k": "Из коконов",
   "at": [
-   "www/js/ui-player.js:255"
+   "www/js/ui-player.js:291"
   ],
   "ctx": "[ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],"
  },
  {
   "k": "Сияющих",
   "at": [
-   "www/js/ui-player.js:255"
+   "www/js/ui-player.js:291"
   ],
   "ctx": "[ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],"
  },
  {
   "k": "Очищено духов",
   "at": [
-   "www/js/ui-player.js:256"
+   "www/js/ui-player.js:292"
   ],
   "ctx": "[ru`Очищено духов`, d.stats.purified], [ru`Отличных бросков`, d.stats.throwsGreat],"
  },
  {
   "k": "Защитников поставлено",
   "at": [
-   "www/js/ui-player.js:257"
+   "www/js/ui-player.js:293"
   ],
   "ctx": "...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Капищ освобождено`, d.stats.freed || 0]] : []),"
  },
  {
   "k": "Капищ освобождено",
   "at": [
-   "www/js/ui-player.js:257"
+   "www/js/ui-player.js:293"
   ],
   "ctx": "...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Капищ освобождено`, d.stats.freed || 0]] : []),"
  },
  {
   "k": "Максимальный уровень",
   "at": [
-   "www/js/ui-player.js:272"
+   "www/js/ui-player.js:308"
   ],
   "ctx": "<div class=\"det-lvl\"><span>${maxed ? ru`Максимальный уровень` : ru`Опыт <b>${U.fmtNum(d.xp - cur)}</b> из ${U.fmtNum(next - cur)} до ${d.level + 1}`}</span><div class=\"arc\"><i style=\"width:${maxed ? 100 : (d.xp - cur) / "
  },
  {
   "k": "Опыт <b>{0}</b> из {1} до {2}",
   "at": [
-   "www/js/ui-player.js:272"
+   "www/js/ui-player.js:308"
   ],
   "ctx": "<div class=\"det-lvl\"><span>${maxed ? ru`Максимальный уровень` : ru`Опыт <b>${U.fmtNum(d.xp - cur)}</b> из ${U.fmtNum(next - cur)} до ${d.level + 1}`}</span><div class=\"arc\"><i style=\"width:${maxed ? 100 : (d.xp - cur) / "
  },
  {
   "k": "в Ордене {0} {1}",
   "at": [
-   "www/js/ui-player.js:273"
+   "www/js/ui-player.js:309"
   ],
   "ctx": "<div class=\"det-tags\">${d.clan && CLANS[d.clan] ? `<span class=\"tag-crest\" style=\"color:${cc}\"><i>${Art.clanCrest(d.clan)}</i>${CLANS[d.clan].short}</span>` : ''}<span>${ru`в Ордене ${days} ${U.plural(days, ru`день`, ru`"
  },
  {
   "k": "Привяжи вход — прогресс откроется на любом устройстве:",
   "at": [
-   "www/js/ui-player.js:277"
+   "www/js/ui-player.js:313"
   ],
   "ctx": "${Game.on() && Login.isGuest() && Login.available().length ? `<div class=\"prof-acc guest\"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве:`}</small><div class=\"login-row\">${Login.buttons('link')}</div><"
  },
  {
   "k": "Клан откроется на {0} уровне",
   "at": [
-   "www/js/ui-player.js:283"
+   "www/js/ui-player.js:319"
   ],
   "ctx": ": `<button class=\"btn ghost small disabled\" data-err=\"${ru`Клан откроется на ${CLAN_LEVEL} уровне`}\">${this.I.shield} ${ru`Клан`}</button>`}"
  },
  {
   "k": "Знаки",
   "at": [
-   "www/js/ui-player.js:285"
+   "www/js/ui-player.js:321"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['ach', ru`Достижения`], ['buddy', ru`Спутник`], ['medals', ru`Знаки`], ['album', ru`Альбом`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</d"
  },
  {
   "k": "Альбом",
   "at": [
-   "www/js/ui-player.js:285"
+   "www/js/ui-player.js:321"
   ],
   "ctx": "<div class=\"seg dt-tabs\">${[['ach', ru`Достижения`], ['buddy', ru`Спутник`], ['medals', ru`Знаки`], ['album', ru`Альбом`]].map(([k, t], i) => `<button data-tab=\"${k}\" class=\"${i ? '' : 'on'}\">${t}</button>`).join('')}</d"
  },
  {
   "k": "Находок",
   "at": [
-   "www/js/ui-player.js:300"
+   "www/js/ui-player.js:336"
   ],
   "ctx": "${row(ru`Находок`, d.buddy.finds)}"
  },
  {
   "k": "До находки",
   "at": [
-   "www/js/ui-player.js:301"
+   "www/js/ui-player.js:337"
   ],
   "ctx": "<div class=\"dt-row dt-evo-row\"><span>${ru`До находки`}</span><b>${ru`${d.buddy.km.toFixed(2)} / ${S.buddyDist(bsp)} км`}</b>"
  },
  {
   "k": "Находит",
   "at": [
-   "www/js/ui-player.js:303"
+   "www/js/ui-player.js:339"
   ],
   "ctx": "${row(ru`Находит`, ru`эссенцию «${SP[SP[bsp.sid].fam].name}»`)}"
  },
  {
   "k": "эссенцию «{0}»",
   "at": [
-   "www/js/ui-player.js:303"
+   "www/js/ui-player.js:339"
   ],
   "ctx": "${row(ru`Находит`, ru`эссенцию «${SP[SP[bsp.sid].fam].name}»`)}"
  },
  {
   "k": "Спутника нет",
   "at": [
-   "www/js/ui-player.js:305"
+   "www/js/ui-player.js:341"
   ],
   "ctx": ": `<div class=\"dx-none\"><b>${ru`Спутника нет`}</b><small>${ru`Выбери его в карточке духа: вкладка «О духе» → «Сделать спутником». Спутник ходит с тобой и находит эссенцию.`}</small></div>`)}"
  },
  {
   "k": "Выбери его в карточке духа: вкладка «О духе» → «Сделать спутником». Спутник ходит с тобой и находит эссенцию.",
   "at": [
-   "www/js/ui-player.js:305"
+   "www/js/ui-player.js:341"
   ],
   "ctx": ": `<div class=\"dx-none\"><b>${ru`Спутника нет`}</b><small>${ru`Выбери его в карточке духа: вкладка «О духе» → «Сделать спутником». Спутник ходит с тобой и находит эссенцию.`}</small></div>`)}"
  },
  {
   "k": "Знаки Ордена",
   "at": [
-   "www/js/ui-player.js:307"
+   "www/js/ui-player.js:343"
   ],
   "ctx": "<div class=\"pf-mh\"><span>${ru`Знаки Ордена`}</span><b>${Object.values(d.medals).reduce((a, b) => a + b, 0)} / ${MEDALS.length * 3}</b></div>"
  },
  {
   "k": "Снимки встреч",
   "at": [
-   "www/js/ui-player.js:310"
+   "www/js/ui-player.js:346"
   ],
   "ctx": "<div class=\"pf-mh\"><span>${ru`Снимки встреч`}</span><b>${Album.list().length} / ${Album.MAX}</b></div>"
  },
  {
   "k": "Фон",
   "at": [
-   "www/js/ui-player.js:351"
+   "www/js/ui-player.js:387"
   ],
   "ctx": "const KIND = { skin: ru`Облик`, bg: ru`Фон`, frame: ru`Рамка` };"
  },
  {
   "k": "Рамка",
   "at": [
-   "www/js/ui-player.js:351"
+   "www/js/ui-player.js:387"
   ],
   "ctx": "const KIND = { skin: ru`Облик`, bg: ru`Фон`, frame: ru`Рамка` };"
  },
  {
   "k": "Облики",
   "at": [
-   "www/js/ui-player.js:357"
+   "www/js/ui-player.js:393"
   ],
   "ctx": "<div class=\"seg wd-tabs\"><button data-t=\"skin\" class=\"on\">${ru`Облики`}</button><button data-t=\"more\">${ru`Детали`}</button></div>"
  },
  {
   "k": "Детали",
   "at": [
-   "www/js/ui-player.js:357"
+   "www/js/ui-player.js:393"
   ],
   "ctx": "<div class=\"seg wd-tabs\"><button data-t=\"skin\" class=\"on\">${ru`Облики`}</button><button data-t=\"more\">${ru`Детали`}</button></div>"
  },
  {
   "k": "Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.",
   "at": [
-   "www/js/ui-player.js:378"
+   "www/js/ui-player.js:414"
   ],
   "ctx": "$('.wd-desc').textContent = x.desc || (k === 'bg' ? ru`Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.` : k === 'frame' ? ru`Рамка твоей карточки Ловчего — её видят все, кто отк"
  },
  {
   "k": "Рамка твоей карточки Ловчего — её видят все, кто откроет карточку.",
   "at": [
-   "www/js/ui-player.js:378"
+   "www/js/ui-player.js:414"
   ],
   "ctx": "$('.wd-desc').textContent = x.desc || (k === 'bg' ? ru`Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.` : k === 'frame' ? ru`Рамка твоей карточки Ловчего — её видят все, кто отк"
  },
  {
   "k": "✓ Надет",
   "at": [
-   "www/js/ui-player.js:383"
+   "www/js/ui-player.js:419"
   ],
   "ctx": "const tag = own ? (worn(kind, x.id) ? ru`✓ Надет` : on ? ru`Примеряешь` : ru`Твой`) : lvLock ? ru`с ${x.lvl} ур.` : `<span class=\"cur\">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;"
  },
  {
   "k": "Примеряешь",
   "at": [
-   "www/js/ui-player.js:383"
+   "www/js/ui-player.js:419"
   ],
   "ctx": "const tag = own ? (worn(kind, x.id) ? ru`✓ Надет` : on ? ru`Примеряешь` : ru`Твой`) : lvLock ? ru`с ${x.lvl} ур.` : `<span class=\"cur\">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;"
  },
  {
   "k": "Твой",
   "at": [
-   "www/js/ui-player.js:383"
+   "www/js/ui-player.js:419"
   ],
   "ctx": "const tag = own ? (worn(kind, x.id) ? ru`✓ Надет` : on ? ru`Примеряешь` : ru`Твой`) : lvLock ? ru`с ${x.lvl} ур.` : `<span class=\"cur\">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;"
  },
  {
   "k": "Цвет плаща виден у облика «Ловчий». У особых обликов — свой наряд, а глаза и эмблема — твои.",
   "at": [
-   "www/js/ui-player.js:399"
+   "www/js/ui-player.js:435"
   ],
   "ctx": "? (look.skin !== 'hood' ? `<p class=\"wd-note\">${ru`Цвет плаща виден у облика «Ловчий». У особых обликов — свой наряд, а глаза и эмблема — твои.`}</p>` : '') +"
  },
  {
   "k": "Плащ",
   "at": [
-   "www/js/ui-player.js:400"
+   "www/js/ui-player.js:436"
   ],
   "ctx": "swatches('cloak', ru`Плащ`) + swatches('eyes', ru`Глаза`) + swatches('emblem', ru`Эмблема`)"
  },
  {
   "k": "Глаза",
   "at": [
-   "www/js/ui-player.js:400"
+   "www/js/ui-player.js:436"
   ],
   "ctx": "swatches('cloak', ru`Плащ`) + swatches('eyes', ru`Глаза`) + swatches('emblem', ru`Эмблема`)"
  },
  {
   "k": "Эмблема",
   "at": [
-   "www/js/ui-player.js:400"
+   "www/js/ui-player.js:436"
   ],
   "ctx": "swatches('cloak', ru`Плащ`) + swatches('eyes', ru`Глаза`) + swatches('emblem', ru`Эмблема`)"
  },
  {
   "k": "Купить {0}",
   "at": [
-   "www/js/ui-player.js:410"
+   "www/js/ui-player.js:446"
   ],
   "ctx": "$('.wd-foot').innerHTML = `<button class=\"btn primary wd-bb wd-buy ${poor ? 'disabled' : ''}\">${ru`Купить ${I18N.low(KIND[k])}`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${ru`${U.fmtNum(x.shop)} · у тебя ${U.fm"
  },
  {
   "k": "{0} · у тебя {1}",
   "at": [
-   "www/js/ui-player.js:410"
+   "www/js/ui-player.js:446"
   ],
   "ctx": "$('.wd-foot').innerHTML = `<button class=\"btn primary wd-bb wd-buy ${poor ? 'disabled' : ''}\">${ru`Купить ${I18N.low(KIND[k])}`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${ru`${U.fmtNum(x.shop)} · у тебя ${U.fm"
  },
  {
   "k": "не хватает",
   "at": [
-   "www/js/ui-player.js:410"
+   "www/js/ui-player.js:446"
   ],
   "ctx": "$('.wd-foot').innerHTML = `<button class=\"btn primary wd-bb wd-buy ${poor ? 'disabled' : ''}\">${ru`Купить ${I18N.low(KIND[k])}`}<small><span class=\"cur\">${Art.item('zlat')}</span> ${ru`${U.fmtNum(x.shop)} · у тебя ${U.fm"
  },
  {
   "k": "✓ Облик надет",
   "at": [
-   "www/js/ui-player.js:411"
+   "www/js/ui-player.js:447"
   ],
   "ctx": "} else $('.wd-foot').innerHTML = saved() ? `<button class=\"btn ghost wd-bb wd-save wd-done\">${ru`✓ Облик надет`}</button>` : `<button class=\"btn primary wd-bb wd-save\">${ru`Надеть облик`}</button>`;"
  },
  {
   "k": "Надеть облик",
   "at": [
-   "www/js/ui-player.js:411"
+   "www/js/ui-player.js:447"
   ],
   "ctx": "} else $('.wd-foot').innerHTML = saved() ? `<button class=\"btn ghost wd-bb wd-save wd-done\">${ru`✓ Облик надет`}</button>` : `<button class=\"btn primary wd-bb wd-save\">${ru`Надеть облик`}</button>`;"
  },
  {
   "k": "Откроется на {0} уровне",
   "at": [
-   "www/js/ui-player.js:419",
-   "www/js/ui-player.js:428",
-   "server/game/core.js:1477"
+   "www/js/ui-player.js:455",
+   "www/js/ui-player.js:464",
+   "server/game/core.js:1480"
   ],
   "ctx": "if (c.dataset.lv) return this.toast(ru`Откроется на ${c.dataset.lv} уровне`);"
  },
  {
   "k": "Венец Лиги — награда за ранг «Хранитель Лиги»",
   "at": [
-   "www/js/ui-player.js:425",
+   "www/js/ui-player.js:461",
    "server/game/core.js:1127"
   ],
   "ctx": "if (l === 'league') return this.toast(ru`Венец Лиги — награда за ранг «Хранитель Лиги»`);"
@@ -24580,99 +24576,99 @@
  {
   "k": "Этот плащ продаётся в Лавке Ордена за монеты",
   "at": [
-   "www/js/ui-player.js:426"
+   "www/js/ui-player.js:462"
   ],
   "ctx": "if (l === 'shop') return this.toast(ru`Этот плащ продаётся в Лавке Ордена за монеты`);"
  },
  {
   "k": "Награда Золотой сезонной тропы",
   "at": [
-   "www/js/ui-player.js:427"
+   "www/js/ui-player.js:463"
   ],
   "ctx": "if (l === 'pass') return this.toast(ru`Награда Золотой сезонной тропы`);"
  },
  {
   "k": "Не хватает монет — их можно добыть в Казне Ордена",
   "at": [
-   "www/js/ui-player.js:433"
+   "www/js/ui-player.js:469"
   ],
   "ctx": "if ((S.d.zlat || 0) < x.shop) { this.toast(ru`Не хватает монет — их можно добыть в Казне Ордена`); return; }"
  },
  {
   "k": "Цена: <b>{0}</b> монет.",
   "at": [
-   "www/js/ui-player.js:434"
+   "www/js/ui-player.js:470"
   ],
   "ctx": "this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}${ru`Цена: <b>${U.fmtNum(x.shop)}</b> монет.`}`, ru`Купить`, async () => {"
  },
  {
   "k": "{0} «{1}» — теперь твой!",
   "at": [
-   "www/js/ui-player.js:437"
+   "www/js/ui-player.js:473"
   ],
   "ctx": "Sfx.play('coins'); this.toast(ru`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();"
  },
  {
   "k": "Облик надет",
   "at": [
-   "www/js/ui-player.js:443"
+   "www/js/ui-player.js:479"
   ],
   "ctx": "if (await Game.try('look', { look: send })) { Sfx.play('equip'); this.toast(ru`Облик надет`, 'good'); render(); done && done(); }"
  },
  {
   "k": "Язык игры",
   "at": [
-   "www/js/ui-player.js:453",
-   "www/js/ui-player.js:492"
+   "www/js/ui-player.js:489",
+   "www/js/ui-player.js:528"
   ],
   "ctx": "title: ru`Язык игры`, cls: 'lang-modal',"
  },
  {
   "k": "Опиши, что случилось или что хочешь предложить:",
   "at": [
-   "www/js/ui-player.js:468"
+   "www/js/ui-player.js:504"
   ],
   "ctx": "const body = [ru`Опиши, что случилось или что хочешь предложить:`, '', '', '—', ru`Ловчий: ${d.name || '—'}`, ru`Номер: ${(d.pid || '—').slice(0, 12)}`,"
  },
  {
   "k": "Ловчий: {0}",
   "at": [
-   "www/js/ui-player.js:468"
+   "www/js/ui-player.js:504"
   ],
   "ctx": "const body = [ru`Опиши, что случилось или что хочешь предложить:`, '', '', '—', ru`Ловчий: ${d.name || '—'}`, ru`Номер: ${(d.pid || '—').slice(0, 12)}`,"
  },
  {
   "k": "Номер: {0}",
   "at": [
-   "www/js/ui-player.js:468"
+   "www/js/ui-player.js:504"
   ],
   "ctx": "const body = [ru`Опиши, что случилось или что хочешь предложить:`, '', '', '—', ru`Ловчий: ${d.name || '—'}`, ru`Номер: ${(d.pid || '—').slice(0, 12)}`,"
  },
  {
   "k": "Версия игры: {0}",
   "at": [
-   "www/js/ui-player.js:469"
+   "www/js/ui-player.js:505"
   ],
   "ctx": "ru`Версия игры: ${APP_VERSION}`, ru`Устройство: ${navigator.userAgent.slice(0, 160)}`].join('\\n');"
  },
  {
   "k": "Устройство: {0}",
   "at": [
-   "www/js/ui-player.js:469"
+   "www/js/ui-player.js:505"
   ],
   "ctx": "ru`Версия игры: ${APP_VERSION}`, ru`Устройство: ${navigator.userAgent.slice(0, 160)}`].join('\\n');"
  },
  {
   "k": "Духолов — поддержка",
   "at": [
-   "www/js/ui-player.js:470"
+   "www/js/ui-player.js:506"
   ],
   "ctx": "const href = `mailto:${mail}?subject=${encodeURIComponent(ru`Духолов — поддержка`)}&body=${encodeURIComponent(body)}`;"
  },
  {
   "k": "Поддержка",
   "at": [
-   "www/js/ui-player.js:472",
+   "www/js/ui-player.js:508",
    "www/js/ui.js:637"
   ],
   "ctx": "title: ru`Поддержка`, cls: 'support-modal',"
@@ -24680,42 +24676,42 @@
  {
   "k": "Нашёл ошибку, есть вопрос по игре или оплате, хочешь что-то предложить — напиши нам на почту, ответим.",
   "at": [
-   "www/js/ui-player.js:473"
+   "www/js/ui-player.js:509"
   ],
   "ctx": "html: `<p>${ru`Нашёл ошибку, есть вопрос по игре или оплате, хочешь что-то предложить — напиши нам на почту, ответим.`}</p>"
  },
  {
   "k": "В письмо сразу добавятся имя Ловчего, версия игры и устройство — так мы быстрее разберёмся.",
   "at": [
-   "www/js/ui-player.js:475"
+   "www/js/ui-player.js:511"
   ],
   "ctx": "<p class=\"small\">${ru`В письмо сразу добавятся имя Ловчего, версия игры и устройство — так мы быстрее разберёмся.`}</p>`,"
  },
  {
   "k": "Скопировать адрес",
   "at": [
-   "www/js/ui-player.js:477"
+   "www/js/ui-player.js:513"
   ],
   "ctx": "{ label: ru`Скопировать адрес`, keep: true, fn: () => { const ok = () => this.toast(ru`Адрес скопирован`, 'good'); try { navigator.clipboard.writeText(mail).then(ok, () => this.toast(mail)); } catch (e) { this.toast(mail"
  },
  {
   "k": "Адрес скопирован",
   "at": [
-   "www/js/ui-player.js:477"
+   "www/js/ui-player.js:513"
   ],
   "ctx": "{ label: ru`Скопировать адрес`, keep: true, fn: () => { const ok = () => this.toast(ru`Адрес скопирован`, 'good'); try { navigator.clipboard.writeText(mail).then(ok, () => this.toast(mail)); } catch (e) { this.toast(mail"
  },
  {
   "k": "Написать письмо",
   "at": [
-   "www/js/ui-player.js:478"
+   "www/js/ui-player.js:514"
   ],
   "ctx": "{ label: ru`Написать письмо`, cls: 'primary', fn: () => { location.href = href; } },"
  },
  {
   "k": "Настройки",
   "at": [
-   "www/js/ui-player.js:488",
+   "www/js/ui-player.js:524",
    "www/js/ui.js:638"
   ],
   "ctx": "const scr = this.screen(ru`Настройки`, `"
@@ -24723,501 +24719,501 @@
  {
   "k": "Учётная запись",
   "at": [
-   "www/js/ui-player.js:489"
+   "www/js/ui-player.js:525"
   ],
   "ctx": "${Game.on() ? `${sec(ru`Учётная запись`)}<div class=\"list acc-box\"></div>"
  },
  {
   "k": "Введи код — получи монеты и награды",
   "at": [
-   "www/js/ui-player.js:490"
+   "www/js/ui-player.js:526"
   ],
   "ctx": "<div class=\"list\">${link('promo-open', 'gift', ru`Промокод`, ru`Введи код — получи монеты и награды`)}</div>` : ''}"
  },
  {
   "k": "Язык",
   "at": [
-   "www/js/ui-player.js:491"
+   "www/js/ui-player.js:527"
   ],
   "ctx": "${sec(ru`Язык`)}"
  },
  {
   "k": "Звук и отклик",
   "at": [
-   "www/js/ui-player.js:493"
+   "www/js/ui-player.js:529"
   ],
   "ctx": "${sec(ru`Звук и отклик`)}"
  },
  {
   "k": "Музыка",
   "at": [
-   "www/js/ui-player.js:495"
+   "www/js/ui-player.js:531"
   ],
   "ctx": "${row('music', 'music', ru`Музыка`, ru`Тихие мелодии Нави: на карте днём и ночью своя, у наставника — своя.`)}"
  },
  {
   "k": "Тихие мелодии Нави: на карте днём и ночью своя, у наставника — своя.",
   "at": [
-   "www/js/ui-player.js:495"
+   "www/js/ui-player.js:531"
   ],
   "ctx": "${row('music', 'music', ru`Музыка`, ru`Тихие мелодии Нави: на карте днём и ночью своя, у наставника — своя.`)}"
  },
  {
   "k": "Громкость музыки",
   "at": [
-   "www/js/ui-player.js:496",
-   "www/js/ui-player.js:496"
+   "www/js/ui-player.js:532",
+   "www/js/ui-player.js:532"
   ],
   "ctx": "<div class=\"row set-row vol-row\"><span class=\"set-ico\">${this.I.sound}</span><div class=\"row-main\"><b>${ru`Громкость музыки`}</b><div class=\"vol-line\"><input type=\"range\" class=\"vol\" min=\"0\" max=\"100\" step=\"5\" value=\"${M"
  },
  {
   "k": "Звук",
   "at": [
-   "www/js/ui-player.js:497"
+   "www/js/ui-player.js:533"
   ],
   "ctx": "${row('sound', 'sound', ru`Звук`, ru`Звуковые эффекты.`)}"
  },
  {
   "k": "Звуковые эффекты.",
   "at": [
-   "www/js/ui-player.js:497"
+   "www/js/ui-player.js:533"
   ],
   "ctx": "${row('sound', 'sound', ru`Звук`, ru`Звуковые эффекты.`)}"
  },
  {
   "k": "Вибрация",
   "at": [
-   "www/js/ui-player.js:498"
+   "www/js/ui-player.js:534"
   ],
   "ctx": "${row('vibro', 'vibro', ru`Вибрация`, ru`Отклик при бросках и попаданиях.`)}"
  },
  {
   "k": "Отклик при бросках и попаданиях.",
   "at": [
-   "www/js/ui-player.js:498"
+   "www/js/ui-player.js:534"
   ],
   "ctx": "${row('vibro', 'vibro', ru`Вибрация`, ru`Отклик при бросках и попаданиях.`)}"
  },
  {
   "k": "Игра",
   "at": [
-   "www/js/ui-player.js:500"
+   "www/js/ui-player.js:536"
   ],
   "ctx": "${sec(ru`Игра`)}"
  },
  {
   "k": "Джойстик",
   "at": [
-   "www/js/ui-player.js:502"
+   "www/js/ui-player.js:538"
   ],
   "ctx": "<div class=\"row set-row\"><span class=\"set-ico\">${this.I.hand}</span><div class=\"row-main\"><b>${ru`Джойстик`}</b><small>${ru`Наклон — шаг, до упора — бег`}</small></div>"
  },
  {
   "k": "Наклон — шаг, до упора — бег",
   "at": [
-   "www/js/ui-player.js:502"
+   "www/js/ui-player.js:538"
   ],
   "ctx": "<div class=\"row set-row\"><span class=\"set-ico\">${this.I.hand}</span><div class=\"row-main\"><b>${ru`Джойстик`}</b><small>${ru`Наклон — шаг, до упора — бег`}</small></div>"
  },
  {
   "k": "Слева",
   "at": [
-   "www/js/ui-player.js:503"
+   "www/js/ui-player.js:539"
   ],
   "ctx": "<div class=\"seg joy-side\">${[['left', ru`Слева`], ['right', ru`Справа`]].map(([k, t]) => `<button data-side=\"${k}\" class=\"${(s.joySide || 'right') === k ? 'on' : ''}\">${t}</button>`).join('')}</div></div>"
  },
  {
   "k": "Справа",
   "at": [
-   "www/js/ui-player.js:503"
+   "www/js/ui-player.js:539"
   ],
   "ctx": "<div class=\"seg joy-side\">${[['left', ru`Слева`], ['right', ru`Справа`]].map(([k, t]) => `<button data-side=\"${k}\" class=\"${(s.joySide || 'right') === k ? 'on' : ''}\">${t}</button>`).join('')}</div></div>"
  },
  {
   "k": "AR-камера",
   "at": [
-   "www/js/ui-player.js:504"
+   "www/js/ui-player.js:540"
   ],
   "ctx": "${row('ar', 'camera', ru`AR-камера`, ru`Духи появляются поверх изображения с камеры.`)}"
  },
  {
   "k": "Духи появляются поверх изображения с камеры.",
   "at": [
-   "www/js/ui-player.js:504"
+   "www/js/ui-player.js:540"
   ],
   "ctx": "${row('ar', 'camera', ru`AR-камера`, ru`Духи появляются поверх изображения с камеры.`)}"
  },
  {
   "k": "Бросок одним касанием",
   "at": [
-   "www/js/ui-player.js:505"
+   "www/js/ui-player.js:541"
   ],
   "ctx": "${row('tapThrow', 'hand', ru`Бросок одним касанием`, ru`Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.`)}"
  },
  {
   "k": "Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.",
   "at": [
-   "www/js/ui-player.js:505"
+   "www/js/ui-player.js:541"
   ],
   "ctx": "${row('tapThrow', 'hand', ru`Бросок одним касанием`, ru`Коснись оберега — он сам полетит в духа. Бонус кольца по-прежнему зависит от момента.`)}"
  },
  {
   "k": "Вид",
   "at": [
-   "www/js/ui-player.js:507"
+   "www/js/ui-player.js:543"
   ],
   "ctx": "${sec(ru`Вид`)}"
  },
  {
   "k": "Тема карты",
   "at": [
-   "www/js/ui-player.js:509"
+   "www/js/ui-player.js:545"
   ],
   "ctx": "<div class=\"row set-row\"><span class=\"set-ico\">${this.I.map}</span><div class=\"row-main\"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>"
  },
  {
   "k": "Авто — по солнцу: рассвет, день, закат и ночь",
   "at": [
-   "www/js/ui-player.js:509"
+   "www/js/ui-player.js:545"
   ],
   "ctx": "<div class=\"row set-row\"><span class=\"set-ico\">${this.I.map}</span><div class=\"row-main\"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>"
  },
  {
   "k": "Авто",
   "at": [
-   "www/js/ui-player.js:510"
+   "www/js/ui-player.js:546"
   ],
   "ctx": "<div class=\"seg map-theme\">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme=\"${k}\" class=\"${(s.mapTheme || 'auto') === k ? 'on' : ''}\">${t}</button>`).join('')}</div></d"
  },
  {
   "k": "День",
   "at": [
-   "www/js/ui-player.js:510"
+   "www/js/ui-player.js:546"
   ],
   "ctx": "<div class=\"seg map-theme\">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme=\"${k}\" class=\"${(s.mapTheme || 'auto') === k ? 'on' : ''}\">${t}</button>`).join('')}</div></d"
  },
  {
   "k": "Крупный текст",
   "at": [
-   "www/js/ui-player.js:512"
+   "www/js/ui-player.js:548"
   ],
   "ctx": "${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}"
  },
  {
   "k": "Увеличенный шрифт в меню, карточках и подсказках.",
   "at": [
-   "www/js/ui-player.js:512"
+   "www/js/ui-player.js:548"
   ],
   "ctx": "${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}"
  },
  {
   "k": "Меньше движения",
   "at": [
-   "www/js/ui-player.js:513"
+   "www/js/ui-player.js:549"
   ],
   "ctx": "${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}"
  },
  {
   "k": "Без покачиваний, мерцания и погодных эффектов.",
   "at": [
-   "www/js/ui-player.js:513"
+   "www/js/ui-player.js:549"
   ],
   "ctx": "${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}"
  },
  {
   "k": "Установить на главный экран",
   "at": [
-   "www/js/ui-player.js:518"
+   "www/js/ui-player.js:554"
   ],
   "ctx": "<button class=\"row link set-row inst-pwa hidden\"><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное прил"
  },
  {
   "k": "Духолов откроется на весь экран, как обычное приложение",
   "at": [
-   "www/js/ui-player.js:518"
+   "www/js/ui-player.js:554"
   ],
   "ctx": "<button class=\"row link set-row inst-pwa hidden\"><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное прил"
  },
  {
   "k": "Скачать APK для Android",
   "at": [
-   "www/js/ui-player.js:519"
+   "www/js/ui-player.js:555"
   ],
   "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"duholov.apk\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши ус"
  },
  {
   "k": "Приложение-обёртка: разреши установку из этого источника",
   "at": [
-   "www/js/ui-player.js:519"
+   "www/js/ui-player.js:555"
   ],
   "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"duholov.apk\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши ус"
  },
  {
   "k": "Об игре",
   "at": [
-   "www/js/ui-player.js:521"
+   "www/js/ui-player.js:557"
   ],
   "ctx": "${sec(ru`Об игре`)}"
  },
  {
   "k": "Мир, духи и все правила игры",
   "at": [
-   "www/js/ui-player.js:523"
+   "www/js/ui-player.js:559"
   ],
   "ctx": "${link('about', 'info', ru`Книга Ордена`, ru`Мир, духи и все правила игры`)}"
  },
  {
   "k": "Правила игры",
   "at": [
-   "www/js/ui-player.js:524",
-   "www/js/ui-player.js:599"
+   "www/js/ui-player.js:560",
+   "www/js/ui-player.js:635"
   ],
   "ctx": "${link('terms', 'info', ru`Правила игры`, ru`Соглашение, безопасность на улице, чат · 12+`)}"
  },
  {
   "k": "Соглашение, безопасность на улице, чат · 12+",
   "at": [
-   "www/js/ui-player.js:524"
+   "www/js/ui-player.js:560"
   ],
   "ctx": "${link('terms', 'info', ru`Правила игры`, ru`Соглашение, безопасность на улице, чат · 12+`)}"
  },
  {
   "k": "Персональные данные",
   "at": [
-   "www/js/ui-player.js:525",
-   "www/js/ui-player.js:600"
+   "www/js/ui-player.js:561",
+   "www/js/ui-player.js:636"
   ],
   "ctx": "${link('privacy', 'info', ru`Персональные данные`, ru`Какие данные хранит игра и как их удалить`)}"
  },
  {
   "k": "Какие данные хранит игра и как их удалить",
   "at": [
-   "www/js/ui-player.js:525"
+   "www/js/ui-player.js:561"
   ],
   "ctx": "${link('privacy', 'info', ru`Персональные данные`, ru`Какие данные хранит игра и как их удалить`)}"
  },
  {
   "k": "Сбросить прогресс",
   "at": [
-   "www/js/ui-player.js:526"
+   "www/js/ui-player.js:562"
   ],
   "ctx": "<button class=\"row link set-row reset\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Сбросить прогресс`}</b><small>${ru`Удалить всех духов и начать заново`}</small></di"
  },
  {
   "k": "Удалить всех духов и начать заново",
   "at": [
-   "www/js/ui-player.js:526"
+   "www/js/ui-player.js:562"
   ],
   "ctx": "<button class=\"row link set-row reset\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Сбросить прогресс`}</b><small>${ru`Удалить всех духов и начать заново`}</small></di"
  },
  {
   "k": "Удалить учётную запись",
   "at": [
-   "www/js/ui-player.js:527"
+   "www/js/ui-player.js:563"
   ],
   "ctx": "${Game.on() ? `<button class=\"row link set-row del-acc\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Удалить учётную запись`}</b><small>${ru`Прогресс, способы входа и "
  },
  {
   "k": "Прогресс, способы входа и все данные — навсегда",
   "at": [
-   "www/js/ui-player.js:527"
+   "www/js/ui-player.js:563"
   ],
   "ctx": "${Game.on() ? `<button class=\"row link set-row del-acc\"><span class=\"set-ico danger\">${this.I.trash}</span><div class=\"row-main\"><b class=\"danger-t\">${ru`Удалить учётную запись`}</b><small>${ru`Прогресс, способы входа и "
  },
  {
   "k": "приложение {0}",
   "at": [
-   "www/js/ui-player.js:529"
+   "www/js/ui-player.js:565"
   ],
   "ctx": "<div class=\"ver\">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class=\"link-btn check-upd\">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStre"
  },
  {
   "k": "Проверить обновления",
   "at": [
-   "www/js/ui-player.js:529"
+   "www/js/ui-player.js:565"
   ],
   "ctx": "<div class=\"ver\">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class=\"link-btn check-upd\">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStre"
  },
  {
   "k": "Карта © участники OpenStreetMap",
   "at": [
-   "www/js/ui-player.js:529"
+   "www/js/ui-player.js:565"
   ],
   "ctx": "<div class=\"ver\">${ru`Духолов`} · v${APP_VERSION}${Updater.IN_APP ? ` · ${ru`приложение ${Updater.APK}`}` : ''} · <button class=\"link-btn check-upd\">${ru`Проверить обновления`}</button><br>${ru`Карта © участники OpenStre"
  },
  {
   "k": "У тебя последняя версия — {0}",
   "at": [
-   "www/js/ui-player.js:567"
+   "www/js/ui-player.js:603"
   ],
   "ctx": "if (!Updater.shown) this.toast(ru`У тебя последняя версия — ${APP_VERSION}`, 'good');"
  },
  {
   "k": "ещё один способ входа",
   "at": [
-   "www/js/ui-player.js:582"
+   "www/js/ui-player.js:618"
   ],
   "ctx": "const addRows = guest ? '' : avail.map(k => way(Login.icon(k), Login.NAMES[k], ru`ещё один способ входа`,"
  },
  {
   "k": "Привязать",
   "at": [
-   "www/js/ui-player.js:583"
+   "www/js/ui-player.js:619"
   ],
   "ctx": "`<button class=\"btn acc-link\" data-login=\"${k}\" data-mode=\"link\">${ru`Привязать`}</button>`)).join('');"
  },
  {
   "k": "{0} · {1} уровень",
   "at": [
-   "www/js/ui-player.js:586"
+   "www/js/ui-player.js:622"
   ],
   "ctx": "<div class=\"acc-main\"><b>${U.esc(d.name)}</b><small>${ru`${this.rank(d.level)} · ${d.level} уровень`}</small>"
  },
  {
   "k": "Гость · только на этом устройстве",
   "at": [
-   "www/js/ui-player.js:587"
+   "www/js/ui-player.js:623"
   ],
   "ctx": "<span class=\"acc-status ${guest ? 'warn' : 'ok'}\">${guest ? `${this.I.user}${ru`Гость · только на этом устройстве`}` : `${this.I.cloud}${ru`Прогресс в облаке`}`}</span></div>"
  },
  {
   "k": "Прогресс в облаке",
   "at": [
-   "www/js/ui-player.js:587"
+   "www/js/ui-player.js:623"
   ],
   "ctx": "<span class=\"acc-status ${guest ? 'warn' : 'ok'}\">${guest ? `${this.I.user}${ru`Гость · только на этом устройстве`}` : `${this.I.cloud}${ru`Прогресс в облаке`}`}</span></div>"
  },
  {
   "k": "Способы входа",
   "at": [
-   "www/js/ui-player.js:589"
+   "www/js/ui-player.js:625"
   ],
   "ctx": "+ (links.length || Login.email ? `<div class=\"acc-ways\"><div class=\"acc-cap\">${ru`Способы входа`}</div>${Login.email ? way(`<span class=\"lg-ic mail\">${this.I.mail}</span>`, ru`Почта`, U.esc(Login.email)) : ''}${links.map"
  },
  {
   "k": "вход привязан",
   "at": [
-   "www/js/ui-player.js:589"
+   "www/js/ui-player.js:625"
   ],
   "ctx": "+ (links.length || Login.email ? `<div class=\"acc-ways\"><div class=\"acc-cap\">${ru`Способы входа`}</div>${Login.email ? way(`<span class=\"lg-ic mail\">${this.I.mail}</span>`, ru`Почта`, U.esc(Login.email)) : ''}${links.map"
  },
  {
   "k": "Привяжи вход — прогресс откроется на любом устройстве",
   "at": [
-   "www/js/ui-player.js:590"
+   "www/js/ui-player.js:626"
   ],
   "ctx": "+ (guest && avail.length ? `<div class=\"acc-add\"><small>${ru`Привяжи вход — прогресс откроется на любом устройстве`}</small><div class=\"login-row\">${Login.buttons('link', avail)}</div></div>` : '')"
  },
  {
   "k": "<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пропадёт), потом удали это приложение и установи новое.",
   "at": [
-   "www/js/ui-player.js:591"
+   "www/js/ui-player.js:627"
   ],
   "ctx": "+ (Updater.oldApp() ? `<div class=\"acc-add\"><small>${guest ? ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пр"
  },
  {
   "k": "<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: удали это приложение и установи новое.",
   "at": [
-   "www/js/ui-player.js:591"
+   "www/js/ui-player.js:627"
   ],
   "ctx": "+ (Updater.oldApp() ? `<div class=\"acc-add\"><small>${guest ? ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пр"
  },
  {
   "k": "Скачать новое приложение",
   "at": [
-   "www/js/ui-player.js:591"
+   "www/js/ui-player.js:627"
   ],
   "ctx": "+ (Updater.oldApp() ? `<div class=\"acc-add\"><small>${guest ? ru`<b>Новое приложение Духолов.</b> Игра переехала на duholov.ru — приложение нужно поставить заново: <b>сначала привяжи вход выше</b> (иначе прогресс гостя пр"
  },
  {
   "k": "Прогресс гостя будет потерян",
   "at": [
-   "www/js/ui-player.js:592"
+   "www/js/ui-player.js:628"
   ],
   "ctx": "+ `<button class=\"row link set-row acc-out\"><span class=\"set-ico out\">${this.I.logout}</span><div class=\"row-main\"><b>${ru`Выйти из учётной записи`}</b><small>${guest ? ru`Прогресс гостя будет потерян` : ru`Вернуться мож"
  },
  {
   "k": "Вернуться можно тем же входом",
   "at": [
-   "www/js/ui-player.js:592"
+   "www/js/ui-player.js:628"
   ],
   "ctx": "+ `<button class=\"row link set-row acc-out\"><span class=\"set-ico out\">${this.I.logout}</span><div class=\"row-main\"><b>${ru`Выйти из учётной записи`}</b><small>${guest ? ru`Прогресс гостя будет потерян` : ru`Вернуться мож"
  },
  {
   "k": "Удалить учётную запись?",
   "at": [
-   "www/js/ui-player.js:603"
+   "www/js/ui-player.js:639"
   ],
   "ctx": "if (del) del.onclick = () => this.confirm(ru`Удалить учётную запись?`, ru`Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные монеты не вернутся.`, ru`Удалить`, () => {"
  },
  {
   "k": "Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные монеты не вернутся.",
   "at": [
-   "www/js/ui-player.js:603"
+   "www/js/ui-player.js:639"
   ],
   "ctx": "if (del) del.onclick = () => this.confirm(ru`Удалить учётную запись?`, ru`Прогресс, духи, способы входа, место в Лиге и лоты аукциона будут удалены навсегда. Купленные монеты не вернутся.`, ru`Удалить`, () => {"
  },
  {
   "k": "Точно удалить?",
   "at": [
-   "www/js/ui-player.js:604"
+   "www/js/ui-player.js:640"
   ],
   "ctx": "this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {"
  },
  {
   "k": "Восстановить учётную запись будет нельзя.",
   "at": [
-   "www/js/ui-player.js:604"
+   "www/js/ui-player.js:640"
   ],
   "ctx": "this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {"
  },
  {
   "k": "Да, удалить навсегда",
   "at": [
-   "www/js/ui-player.js:604"
+   "www/js/ui-player.js:640"
   ],
   "ctx": "this.confirm(ru`Точно удалить?`, ru`Восстановить учётную запись будет нельзя.`, ru`Да, удалить навсегда`, async () => {"
  },
  {
   "k": "Нет",
   "at": [
-   "www/js/ui-player.js:608",
-   "www/js/ui-player.js:613"
+   "www/js/ui-player.js:644",
+   "www/js/ui-player.js:649"
   ],
   "ctx": "}, ru`Нет`, true);"
  },
  {
   "k": "Сбросить прогресс?",
   "at": [
-   "www/js/ui-player.js:610"
+   "www/js/ui-player.js:646"
   ],
   "ctx": "scr.querySelector('.reset').onclick = () => this.confirm(ru`Сбросить прогресс?`, ru`Все духи, предметы и уровень будут удалены с сервера навсегда.`, ru`Сбросить`, () => {"
  },
  {
   "k": "Все духи, предметы и уровень будут удалены с сервера навсегда.",
   "at": [
-   "www/js/ui-player.js:610"
+   "www/js/ui-player.js:646"
   ],
   "ctx": "scr.querySelector('.reset').onclick = () => this.confirm(ru`Сбросить прогресс?`, ru`Все духи, предметы и уровень будут удалены с сервера навсегда.`, ru`Сбросить`, () => {"
  },
  {
   "k": "Точно?",
   "at": [
-   "www/js/ui-player.js:611"
+   "www/js/ui-player.js:647"
   ],
   "ctx": "this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {"
  },
  {
   "k": "Это действие нельзя отменить.",
   "at": [
-   "www/js/ui-player.js:611"
+   "www/js/ui-player.js:647"
   ],
   "ctx": "this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {"
  },
  {
   "k": "Да, сбросить",
   "at": [
-   "www/js/ui-player.js:611"
+   "www/js/ui-player.js:647"
   ],
   "ctx": "this.confirm(ru`Точно?`, ru`Это действие нельзя отменить.`, ru`Да, сбросить`, async () => {"
  },
@@ -26971,7 +26967,7 @@
   "k": "Лига открывается с {0} уровня Ловчего",
   "at": [
    "www/js/ui.js:625",
-   "server/game/core.js:1752"
+   "server/game/core.js:1755"
   ],
   "ctx": "['trophy', ru`Лига`, () => { if (S.d.level < League.LEVEL) { this.toast(ru`Лига открывается с ${League.LEVEL} уровня Ловчего`); return; } League.screen(); }, League.view().tickets || ''],"
  },
@@ -27742,7 +27738,7 @@
   "at": [
    "server/game/core.js:324",
    "server/game/core.js:327",
-   "server/game/core.js:1369"
+   "server/game/core.js:1372"
   ],
   "ctx": "this.need(t >= 5, ru`Бой не засчитан: слишком быстрая победа`);"
  },
@@ -27750,7 +27746,7 @@
   "k": "Бой не засчитан: эта команда не могла победить такого соперника",
   "at": [
    "server/game/core.js:325",
-   "server/game/core.js:1371"
+   "server/game/core.js:1374"
   ],
   "ctx": "this.need(Rules.duelWinnable(this.team(b.team), foe, speed, b.hp0), ru`Бой не засчитан: эта команда не могла победить такого соперника`);"
  },
@@ -27772,8 +27768,8 @@
   "k": "Такого друга нет",
   "at": [
    "server/game/core.js:418",
-   "server/game/core.js:2055",
-   "server/game/core.js:2092"
+   "server/game/core.js:2058",
+   "server/game/core.js:2095"
   ],
   "ctx": "this.need(f, ru`Такого друга нет`);"
  },
@@ -27781,7 +27777,7 @@
   "k": "Ловчий не найден",
   "at": [
    "server/game/core.js:420",
-   "server/game/core.js:1949"
+   "server/game/core.js:1952"
   ],
   "ctx": "this.need(s && s.data, ru`Ловчий не найден`);"
  },
@@ -27838,7 +27834,7 @@
   "k": "Такого промокода нет",
   "at": [
    "server/game/core.js:495",
-   "server/game/core.js:1543"
+   "server/game/core.js:1546"
   ],
   "ctx": "not_found: ru`Такого промокода нет`,"
  },
@@ -27966,7 +27962,7 @@
   "k": "Награда уже получена",
   "at": [
    "server/game/core.js:796",
-   "server/game/core.js:1584"
+   "server/game/core.js:1587"
   ],
   "ctx": "this.need(!mine.got.includes(i), ru`Награда уже получена`);"
  },
@@ -28002,8 +27998,8 @@
   "k": "Разлом уже закрылся",
   "at": [
    "server/game/core.js:904",
-   "server/game/core.js:1272",
-   "server/game/core.js:1306"
+   "server/game/core.js:1275",
+   "server/game/core.js:1309"
   ],
   "ctx": "this.need(r, ru`Разлом уже закрылся`);"
  },
@@ -28138,7 +28134,7 @@
   "k": "Такого облика нет",
   "at": [
    "server/game/core.js:1121",
-   "server/game/core.js:1461"
+   "server/game/core.js:1464"
   ],
   "ctx": "this.need(c && e && m && k && g && fr, ru`Такого облика нет`);"
  },
@@ -28245,7 +28241,7 @@
   "k": "Такого духа нет",
   "at": [
    "server/game/core.js:1185",
-   "server/game/core.js:1837"
+   "server/game/core.js:1840"
   ],
   "ctx": "this.need(i >= 0 && i < P.opts.length && SP[P.opts[i]], ru`Такого духа нет`);"
  },
@@ -28259,654 +28255,654 @@
  {
   "k": "Сундук ещё закрыт",
   "at": [
-   "server/game/core.js:1213"
+   "server/game/core.js:1214"
   ],
   "ctx": "this.need(Q.list.every(q => q.claimed) && !Q.bonus, ru`Сундук ещё закрыт`);"
  },
  {
   "k": "Обучение уже пройдено",
   "at": [
-   "server/game/core.js:1220"
+   "server/game/core.js:1223"
   ],
   "ctx": "this.need(st, ru`Обучение уже пройдено`);"
  },
  {
   "k": "Сначала выполни текущий шаг обучения",
   "at": [
-   "server/game/core.js:1221"
+   "server/game/core.js:1224"
   ],
   "ctx": "this.need(st.kind === 'ui' && st.id === a.id, ru`Сначала выполни текущий шаг обучения`);"
  },
  {
   "k": "Обучение нельзя пропустить",
   "at": [
-   "server/game/core.js:1224"
+   "server/game/core.js:1227"
   ],
   "ctx": "tutFinish() { this.need(false, ru`Обучение нельзя пропустить`); },"
  },
  {
   "k": "Поручение ещё не выполнено",
   "at": [
-   "server/game/core.js:1228"
+   "server/game/core.js:1231"
   ],
   "ctx": "this.need(q && q.p >= q.n, ru`Поручение ещё не выполнено`);"
  },
  {
   "k": "Сначала встреть духов за прошлые поручения",
   "at": [
-   "server/game/core.js:1229"
+   "server/game/core.js:1232"
   ],
   "ctx": "this.need(S.d.taskMeet.length < TASK_LIMIT, ru`Сначала встреть духов за прошлые поручения`);"
  },
  {
   "k": "Поручение не найдено",
   "at": [
-   "server/game/core.js:1241"
+   "server/game/core.js:1244"
   ],
   "ctx": "this.need(S.d.tasks.length < n, ru`Поручение не найдено`);"
  },
  {
   "k": "Совместный бой не найден — начните заново",
   "at": [
-   "server/game/core.js:1262"
+   "server/game/core.js:1265"
   ],
   "ctx": "this.need(room && room.status === 'started' && ctx.now - Date.parse(room.started_at) < 10 * 60000, ru`Совместный бой не найден — начните заново`);"
  },
  {
   "k": "Ты не в этом разломе",
   "at": [
-   "server/game/core.js:1263"
+   "server/game/core.js:1266"
   ],
   "ctx": "this.need(room.members.some(m => m.pid === S.d.pid), ru`Ты не в этом разломе`);"
  },
  {
   "k": "Легендарные разломы открываются только у мест, известных Ордену",
   "at": [
-   "server/game/core.js:1273",
-   "server/game/core.js:1307"
+   "server/game/core.js:1276",
+   "server/game/core.js:1310"
   ],
   "ctx": "this.need(p.verified || r.tier < 3, ru`Легендарные разломы открываются только у мест, известных Ордену`);"
  },
  {
   "k": "Этот разлом ты уже закрыл",
   "at": [
-   "server/game/core.js:1274",
-   "server/game/core.js:1308"
+   "server/game/core.js:1277",
+   "server/game/core.js:1311"
   ],
   "ctx": "this.need(!S.d.rifts[r.id], ru`Этот разлом ты уже закрыл`);"
  },
  {
   "k": "Нужен Дальний пропуск — его можно купить в Лавке",
   "at": [
-   "server/game/core.js:1281"
+   "server/game/core.js:1284"
   ],
   "ctx": "this.need((S.d.items.farpass || 0) > 0, ru`Нужен Дальний пропуск — его можно купить в Лавке`);"
  },
  {
   "k": "Здесь только малые бои — место неизвестно Ордену",
   "at": [
-   "server/game/core.js:1288",
-   "server/game/core.js:1310",
-   "server/game/core.js:1418"
+   "server/game/core.js:1291",
+   "server/game/core.js:1313",
+   "server/game/core.js:1421"
   ],
   "ctx": "this.need(p.verified || r.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`);"
  },
  {
   "k": "Не получилось создать разлом — попробуй ещё раз",
   "at": [
-   "server/game/core.js:1319"
+   "server/game/core.js:1322"
   ],
   "ctx": "this.fail(ru`Не получилось создать разлом — попробуй ещё раз`);"
  },
  {
   "k": "Разлом с таким кодом не найден",
   "at": [
-   "server/game/core.js:1328"
+   "server/game/core.js:1331"
   ],
   "ctx": "this.need(r && !r.error, (r && r.error) || ru`Разлом с таким кодом не найден`);"
  },
  {
   "k": "Хозяин закрыл разлом",
   "at": [
-   "server/game/core.js:1333"
+   "server/game/core.js:1336"
   ],
   "ctx": "this.need(r && r.status !== 'closed', ru`Хозяин закрыл разлом`);"
  },
  {
   "k": "Ты больше не в этом разломе",
   "at": [
-   "server/game/core.js:1334"
+   "server/game/core.js:1337"
   ],
   "ctx": "this.need(r.members.some(m => m.pid === S.d.pid), ru`Ты больше не в этом разломе`);"
  },
  {
   "k": "Начать бой может только хозяин разлома",
   "at": [
-   "server/game/core.js:1339"
+   "server/game/core.js:1342"
   ],
   "ctx": "this.need(r && r.host_pid === S.d.pid, ru`Начать бой может только хозяин разлома`);"
  },
  {
   "k": "Ждём хотя бы одного друга",
   "at": [
-   "server/game/core.js:1340"
+   "server/game/core.js:1343"
   ],
   "ctx": "this.need(r.members.length >= 2, ru`Ждём хотя бы одного друга`);"
  },
  {
   "k": "Бой уже начался",
   "at": [
-   "server/game/core.js:1343"
+   "server/game/core.js:1346"
   ],
   "ctx": "this.need(s, ru`Бой уже начался`);"
  },
  {
   "k": "Живая вода — только в бою",
   "at": [
-   "server/game/core.js:1354"
+   "server/game/core.js:1357"
   ],
   "ctx": "this.need(b && b.type === 'raid', ru`Живая вода — только в бою`);"
  },
  {
   "k": "Сейчас здесь открыт Разлом",
   "at": [
-   "server/game/core.js:1406"
+   "server/game/core.js:1409"
   ],
   "ctx": "this.need(!W.riftAt(p.id, Math.floor(ctx.now / 3600000)), ru`Сейчас здесь открыт Разлом`);"
  },
  {
   "k": "Сегодня ты уже победил здесь",
   "at": [
-   "server/game/core.js:1408"
+   "server/game/core.js:1411"
   ],
   "ctx": "this.need(!e.won, ru`Сегодня ты уже победил здесь`);"
  },
  {
   "k": "Капище держит твой клан — здесь можно поставить защитника",
   "at": [
-   "server/game/core.js:1415"
+   "server/game/core.js:1418"
   ],
   "ctx": "this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Капище держит твой клан — здесь можно поставить защитника`);"
  },
  {
   "k": "Товар дня уже куплен — завтра будет новый",
   "at": [
-   "server/game/core.js:1458"
+   "server/game/core.js:1461"
   ],
   "ctx": "this.need(S.d.shop.deal !== today, ru`Товар дня уже куплен — завтра будет новый`);"
  },
  {
   "k": "Это уже твоё",
   "at": [
-   "server/game/core.js:1462"
+   "server/game/core.js:1465"
   ],
   "ctx": "this.need(!S.d.owned[id], ru`Это уже твоё`);"
  },
  {
   "k": "Облик «{0}»",
   "at": [
-   "server/game/core.js:1463"
+   "server/game/core.js:1466"
   ],
   "ctx": "it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };"
  },
  {
   "k": "Фон «{0}»",
   "at": [
-   "server/game/core.js:1463"
+   "server/game/core.js:1466"
   ],
   "ctx": "it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };"
  },
  {
   "k": "Рамка «{0}»",
   "at": [
-   "server/game/core.js:1463"
+   "server/game/core.js:1466"
   ],
   "ctx": "it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };"
  },
  {
   "k": "Такого товара нет",
   "at": [
-   "server/game/core.js:1466",
-   "server/game/core.js:1471"
+   "server/game/core.js:1469",
+   "server/game/core.js:1474"
   ],
   "ctx": "this.need(x, ru`Такого товара нет`);"
  },
  {
   "k": "Этот плащ уже твой",
   "at": [
-   "server/game/core.js:1467"
+   "server/game/core.js:1470"
   ],
   "ctx": "this.need(!S.d.owned[key], ru`Этот плащ уже твой`);"
  },
  {
   "k": "Сумка уже расширена до предела",
   "at": [
-   "server/game/core.js:1474"
+   "server/game/core.js:1477"
   ],
   "ctx": "this.need(S.d.bagExtra < Rules.BAG_MAX_UP, ru`Сумка уже расширена до предела`);"
  },
  {
   "k": "Сегодня уже куплено — приходи завтра",
   "at": [
-   "server/game/core.js:1478"
+   "server/game/core.js:1481"
   ],
   "ctx": "if (it.day) this.need((this.dayc(ctx)['shop:' + it.id] || 0) < it.day, ru`Сегодня уже куплено — приходи завтра`); // 4.15.1: редкий товар — сколько-то раз в день"
  },
  {
   "k": "На этой неделе уже куплено — приходи в понедельник",
   "at": [
-   "server/game/core.js:1479"
+   "server/game/core.js:1482"
   ],
   "ctx": "if (it.week) this.need(this.weekUsed(ctx, 'shop:' + it.id) < it.week, ru`На этой неделе уже куплено — приходи в понедельник`); // 4.16: и сколько-то раз в неделю"
  },
  {
   "k": "Коконов уже девять — выведи кого-нибудь",
   "at": [
-   "server/game/core.js:1480"
+   "server/game/core.js:1483"
   ],
   "ctx": "if (it.cocoon) this.need(S.d.cocoons.length < 9, ru`Коконов уже девять — выведи кого-нибудь`);"
  },
  {
   "k": "Сумка полна — освободи место или расширь её",
   "at": [
-   "server/game/core.js:1483"
+   "server/game/core.js:1486"
   ],
   "ctx": "this.need(S.bagCount() + n <= S.bagLimit(), ru`Сумка полна — освободи место или расширь её`);"
  },
  {
   "k": "Не хватает монет",
   "at": [
-   "server/game/core.js:1486",
-   "server/game/core.js:1883"
+   "server/game/core.js:1489",
+   "server/game/core.js:1886"
   ],
   "ctx": "this.need((S.d[key] || 0) >= it.price, key === 'sparks' ? ru`Не хватает искр` : ru`Не хватает монет`);"
  },
  {
   "k": "Мест в сумке",
   "at": [
-   "server/game/core.js:1490"
+   "server/game/core.js:1493"
   ],
   "ctx": "if (it.bag) { S.d.bagExtra++; got = [{ k: 'bag', n: Rules.BAG_STEP, label: ru`Мест в сумке` }]; }"
  },
  {
   "k": "Слишком много попыток — попробуй через час",
   "at": [
-   "server/game/core.js:1544"
+   "server/game/core.js:1547"
   ],
   "ctx": "this.limit(ctx, 'promo', 10, 3600000, ru`Слишком много попыток — попробуй через час`);"
  },
  {
   "k": "Обменник на сегодня закрыт — приходи завтра",
   "at": [
-   "server/game/core.js:1567"
+   "server/game/core.js:1570"
   ],
   "ctx": "this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? ru`Обменник на сегодня закрыт — приходи завтра` : ru`Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);"
  },
  {
   "k": "Сегодня можно обменять ещё {0} раз",
   "at": [
-   "server/game/core.js:1567"
+   "server/game/core.js:1570"
   ],
   "ctx": "this.need(n >= 1 && ex.n + n <= E.DAY, ex.n >= E.DAY ? ru`Обменник на сегодня закрыт — приходи завтра` : ru`Сегодня можно обменять ещё ${E.DAY - ex.n} раз`);"
  },
  {
   "k": "Такой ступени нет",
   "at": [
-   "server/game/core.js:1581"
+   "server/game/core.js:1584"
   ],
   "ctx": "this.need(lvl >= 1 && lvl <= Rules.PASS.LEVELS, ru`Такой ступени нет`);"
  },
  {
   "k": "Ступень ещё не пройдена",
   "at": [
-   "server/game/core.js:1582"
+   "server/game/core.js:1585"
   ],
   "ctx": "this.need(Rules.passLevel(P.pts) >= lvl, ru`Ступень ещё не пройдена`);"
  },
  {
   "k": "Сначала открой Золотую тропу",
   "at": [
-   "server/game/core.js:1583"
+   "server/game/core.js:1586"
   ],
   "ctx": "this.need(track === 'free' || P.gold, ru`Сначала открой Золотую тропу`);"
  },
  {
   "k": "Золотая тропа уже открыта",
   "at": [
-   "server/game/core.js:1597"
+   "server/game/core.js:1600"
   ],
   "ctx": "this.need(!P.gold, ru`Золотая тропа уже открыта`);"
  },
  {
   "k": "Нужно {0} монет",
   "at": [
-   "server/game/core.js:1598"
+   "server/game/core.js:1601"
   ],
   "ctx": "this.need(S.d.zlat >= Rules.PASS.GOLD, ru`Нужно ${Rules.PASS.GOLD} монет`);"
  },
  {
   "k": "Клан уже выбран",
   "at": [
-   "server/game/core.js:1608"
+   "server/game/core.js:1611"
   ],
   "ctx": "this.need(!S.d.clan, ru`Клан уже выбран`);"
  },
  {
   "k": "Сначала выбери клан",
   "at": [
-   "server/game/core.js:1619",
-   "server/game/core.js:1630",
-   "server/game/core.js:1687"
+   "server/game/core.js:1622",
+   "server/game/core.js:1633",
+   "server/game/core.js:1690"
   ],
   "ctx": "this.need(S.d.clan, ru`Сначала выбери клан`);"
  },
  {
   "k": "Бесплатный переход уже использован",
   "at": [
-   "server/game/core.js:1620"
+   "server/game/core.js:1623"
   ],
   "ctx": "this.need(S.d.clanFree > 0, ru`Бесплатный переход уже использован`);"
  },
  {
   "k": "Ты уже в этом клане",
   "at": [
-   "server/game/core.js:1622"
+   "server/game/core.js:1625"
   ],
   "ctx": "this.need(a.clan !== S.d.clan, ru`Ты уже в этом клане`);"
  },
  {
   "k": "Защищать можно только Капища, известные Ордену",
   "at": [
-   "server/game/core.js:1632"
+   "server/game/core.js:1635"
   ],
   "ctx": "this.need(p.verified, ru`Защищать можно только Капища, известные Ордену`);"
  },
  {
   "k": "Это вольное Капище — его не держит ни один клан",
   "at": [
-   "server/game/core.js:1635"
+   "server/game/core.js:1638"
   ],
   "ctx": "this.need(!Rules.shrineFree(p.id), ru`Это вольное Капище — его не держит ни один клан`);"
  },
  {
   "k": "Сначала победи на этом Капище",
   "at": [
-   "server/game/core.js:1639"
+   "server/game/core.js:1642"
   ],
   "ctx": "if (!hold) this.need(S.d.shrines[p.id] === U.today(ctx.now), ru`Сначала победи на этом Капище`);"
  },
  {
   "k": "Капище держит другой клан — сначала победи его защитников",
   "at": [
-   "server/game/core.js:1641"
+   "server/game/core.js:1644"
   ],
   "ctx": "this.need(hold.clan === S.d.clan, ru`Капище держит другой клан — сначала победи его защитников`);"
  },
  {
   "k": "На Капище уже {0} защитников",
   "at": [
-   "server/game/core.js:1642"
+   "server/game/core.js:1645"
   ],
   "ctx": "this.need(hold.holders.length < HOLD_MAX, ru`На Капище уже ${HOLD_MAX} защитников`);"
  },
  {
   "k": "Твой защитник уже стоит здесь",
   "at": [
-   "server/game/core.js:1643"
+   "server/game/core.js:1646"
   ],
   "ctx": "this.need(!hold.holders.some(h => h.pid === S.d.pid), ru`Твой защитник уже стоит здесь`);"
  },
  {
   "k": "Твои защитники уже стоят на {0} Капищах",
   "at": [
-   "server/game/core.js:1645"
+   "server/game/core.js:1648"
   ],
   "ctx": "this.need((await ctx.env.myHolds(S.d.pid)) < HOLD_MY_MAX, ru`Твои защитники уже стоят на ${HOLD_MY_MAX} Капищах`);"
  },
  {
   "k": "Капище только что изменилось — открой его заново",
   "at": [
-   "server/game/core.js:1649"
+   "server/game/core.js:1652"
   ],
   "ctx": "this.need(ok, ru`Капище только что изменилось — открой его заново`);"
  },
  {
   "k": "Источник свободен",
   "at": [
-   "server/game/core.js:1709"
+   "server/game/core.js:1712"
   ],
   "ctx": "this.need(e.invaded, ru`Источник свободен`);"
  },
  {
   "k": "Лига теперь — бои с живыми Ловчими. Обнови игру",
   "at": [
-   "server/game/core.js:1740",
-   "server/game/core.js:1741"
+   "server/game/core.js:1743",
+   "server/game/core.js:1744"
   ],
   "ctx": "leagueStart() { this.fail(ru`Лига теперь — бои с живыми Ловчими. Обнови игру`); },"
  },
  {
   "k": "Передача духов по коду закрыта — выставь духа на Аукцион",
   "at": [
-   "server/game/core.js:1793"
+   "server/game/core.js:1796"
   ],
   "ctx": "async tradeGive() { this.need(false, ru`Передача духов по коду закрыта — выставь духа на Аукцион`); },"
  },
  {
   "k": "Неоткрытые посылки вернулись: духов — {0}. Передача духов закрыта, теперь есть Аукцион.",
   "at": [
-   "server/game/core.js:1808"
+   "server/game/core.js:1811"
   ],
   "ctx": "if (n) Bus.emit('toast', { text: ru`Неоткрытые посылки вернулись: духов — ${n}. Передача духов закрыта, теперь есть Аукцион.`, cls: 'good' });"
  },
  {
   "k": "Сними с духа отметку «избранный», чтобы продать его",
   "at": [
-   "server/game/core.js:1853"
+   "server/game/core.js:1856"
   ],
   "ctx": "this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);"
  },
  {
   "k": "Цена — от {0} до {1} монет",
   "at": [
-   "server/game/core.js:1856"
+   "server/game/core.js:1859"
   ],
   "ctx": "this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} монет` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);"
  },
  {
   "k": "Цена — от {0} до {1} искр",
   "at": [
-   "server/game/core.js:1856"
+   "server/game/core.js:1859"
   ],
   "ctx": "this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} монет` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);"
  },
  {
   "k": "Одновременно можно выставить не больше {0} духов",
   "at": [
-   "server/game/core.js:1857"
+   "server/game/core.js:1860"
   ],
   "ctx": "this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);"
  },
  {
   "k": "Залог — {0} {1}: не хватает",
   "at": [
-   "server/game/core.js:1860"
+   "server/game/core.js:1863"
   ],
   "ctx": "this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`монета`, ru`монеты`, ru`монет`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);"
  },
  {
   "k": "Залог — ✦ {0}: не хватает искр",
   "at": [
-   "server/game/core.js:1860"
+   "server/game/core.js:1863"
   ],
   "ctx": "this.need((S.d[cur] || 0) >= deposit, cur === 'zlat' ? ru`Залог — ${deposit} ${U.plural(deposit, ru`монета`, ru`монеты`, ru`монет`)}: не хватает` : ru`Залог — ✦ ${U.fmtNum(deposit)}: не хватает искр`);"
  },
  {
   "k": "Лот не найден",
   "at": [
-   "server/game/core.js:1876"
+   "server/game/core.js:1879"
   ],
   "ctx": "this.need(pre, ru`Лот не найден`);"
  },
  {
   "k": "Это твой собственный лот",
   "at": [
-   "server/game/core.js:1877"
+   "server/game/core.js:1880"
   ],
   "ctx": "this.need(pre.seller_pid !== S.d.pid, ru`Это твой собственный лот`);"
  },
  {
   "k": "Этот лот уже у тебя",
   "at": [
-   "server/game/core.js:1879"
+   "server/game/core.js:1882"
   ],
   "ctx": "this.need(!S.d.auc.got[id], ru`Этот лот уже у тебя`);"
  },
  {
   "k": "Лот уже купили или сняли с продажи",
   "at": [
-   "server/game/core.js:1887"
+   "server/game/core.js:1890"
   ],
   "ctx": "this.need(lot && lot.price === pre.price && lot.cur === pre.cur, ru`Лот уже купили или сняли с продажи`);"
  },
  {
   "k": "Лот уже продан или снят",
   "at": [
-   "server/game/core.js:1900"
+   "server/game/core.js:1903"
   ],
   "ctx": "this.need(lot, ru`Лот уже продан или снят`);"
  },
  {
   "k": "Писать в чат можно с {0} уровня Ловчего — читать можно уже сейчас",
   "at": [
-   "server/game/core.js:1920"
+   "server/game/core.js:1923"
   ],
   "ctx": "this.need(S.d.level >= C.LEVEL, ru`Писать в чат можно с ${C.LEVEL} уровня Ловчего — читать можно уже сейчас`);"
  },
  {
   "k": "Напиши сообщение",
   "at": [
-   "server/game/core.js:1922"
+   "server/game/core.js:1925"
   ],
   "ctx": "this.need(text.length >= 1, ru`Напиши сообщение`);"
  },
  {
   "k": "Ссылки в чате запрещены — так безопаснее для всех",
   "at": [
-   "server/game/core.js:1923"
+   "server/game/core.js:1926"
   ],
   "ctx": "this.need(!/(https?:\\/\\/|www\\.|t\\.me\\/|\\b[a-z0-9-]{2,}\\.(ru|com|net|org|me|io|su|xyz|рф)\\b)/i.test(text), ru`Ссылки в чате запрещены — так безопаснее для всех`);"
  },
  {
   "k": "Не так быстро — подожди пару секунд",
   "at": [
-   "server/game/core.js:1925"
+   "server/game/core.js:1928"
   ],
   "ctx": "this.need(ctx.now - c.t >= C.GAP, ru`Не так быстро — подожди пару секунд`);"
  },
  {
   "k": "Это сообщение уже отправлено",
   "at": [
-   "server/game/core.js:1926"
+   "server/game/core.js:1929"
   ],
   "ctx": "this.need(!(text === c.last && ctx.now - c.t < 60000), ru`Это сообщение уже отправлено`);"
  },
  {
   "k": "Сообщение не найдено",
   "at": [
-   "server/game/core.js:1935"
+   "server/game/core.js:1938"
   ],
   "ctx": "this.need(id > 0, ru`Сообщение не найдено`);"
  },
  {
   "k": "Жаловаться можно с {0} уровня и после 3 дней в игре",
   "at": [
-   "server/game/core.js:1938"
+   "server/game/core.js:1941"
   ],
   "ctx": "this.need(S.d.level >= Rules.CHAT.LEVEL && age >= 3 * 86400000, ru`Жаловаться можно с ${Rules.CHAT.LEVEL} уровня и после 3 дней в игре`);"
  },
  {
   "k": "Ловчий не найден — возможно, он давно не заходил в игру",
   "at": [
-   "server/game/core.js:1952"
+   "server/game/core.js:1955"
   ],
   "ctx": "this.need(s && s.data, ru`Ловчий не найден — возможно, он давно не заходил в игру`);"
  },
  {
   "k": "Это твой собственный код дружбы",
   "at": [
-   "server/game/core.js:1997"
+   "server/game/core.js:2000"
   ],
   "ctx": "this.need(pid !== S.d.pid, ru`Это твой собственный код дружбы`);"
  },
  {
   "k": "Ловчий с таким кодом не найден — пусть он обновит игру",
   "at": [
-   "server/game/core.js:2000"
+   "server/game/core.js:2003"
   ],
   "ctx": "this.need(who, ru`Ловчий с таким кодом не найден — пусть он обновит игру`);"
  },
  {
   "k": "Друзей уже 50 — это максимум",
   "at": [
-   "server/game/core.js:2003"
+   "server/game/core.js:2006"
   ],
   "ctx": "this.need(S.d.friends.length < 50, ru`Друзей уже 50 — это максимум`);"
  },
  {
   "k": "У {0} пока нет духов",
   "at": [
-   "server/game/core.js:2044"
+   "server/game/core.js:2047"
   ],
   "ctx": "this.need(foe.length, ru`У ${f.name} пока нет духов`);"
  },
  {
   "k": "Сегодня этому другу подарок уже отправлен",
   "at": [
-   "server/game/core.js:2093"
+   "server/game/core.js:2096"
   ],
   "ctx": "this.need(f.sent !== U.today(), ru`Сегодня этому другу подарок уже отправлен`);"
  },
  {
   "k": "Подарков нет — они попадаются в источниках",
   "at": [
-   "server/game/core.js:2094"
+   "server/game/core.js:2097"
   ],
   "ctx": "this.need(S.useItem('gift'), ru`Подарков нет — они попадаются в источниках`);"
  },
  {
   "k": "Подарок не найден",
   "at": [
-   "server/game/core.js:2112"
+   "server/game/core.js:2115"
   ],
   "ctx": "this.need(g && g.to_pid === S.d.pid, ru`Подарок не найден`);"
  },
  {
   "k": "Подарок уже открыт",
   "at": [
-   "server/game/core.js:2113",
-   "server/game/core.js:2118"
+   "server/game/core.js:2116",
+   "server/game/core.js:2121"
   ],
   "ctx": "this.need(!g.opened_at, ru`Подарок уже открыт`);"
  },
  {
   "k": "Сначала добавь {0} в друзья",
   "at": [
-   "server/game/core.js:2115"
+   "server/game/core.js:2118"
   ],
   "ctx": "this.need(f, g.from_name ? ru`Сначала добавь ${g.from_name} в друзья` : ru`Сначала добавь отправителя в друзья`);"
  },
  {
   "k": "Сначала добавь отправителя в друзья",
   "at": [
-   "server/game/core.js:2115"
+   "server/game/core.js:2118"
   ],
   "ctx": "this.need(f, g.from_name ? ru`Сначала добавь ${g.from_name} в друзья` : ru`Сначала добавь отправителя в друзья`);"
  },
  {
   "k": "Сегодня ты уже открывал подарок от этого друга — попробуй завтра",
   "at": [
-   "server/game/core.js:2116"
+   "server/game/core.js:2119"
   ],
   "ctx": "this.need(f.recv !== U.today(), ru`Сегодня ты уже открывал подарок от этого друга — попробуй завтра`);"
  },
