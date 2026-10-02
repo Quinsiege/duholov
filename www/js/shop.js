@@ -171,7 +171,7 @@ const Treasury = {
     const n = S.d && S.d.payNew;
     if (!n || this._noticed === n || document.querySelector('.onb, .loader:not(.out)')) return; // не поверх загрузки и входа
     this._noticed = n;
-    Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+    Sfx.play('pay'); U.vibrate([40, 60, 120]);
     UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}`}</span></div></div><p>${ru`Оплата прошла — монеты уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${this.info && this.info.play ? ru`Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.` : ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
     UI.refreshHud();
     Game.act('payAck').then(() => { this._noticed = 0; }).catch(() => { this._noticed = 0; });
@@ -239,7 +239,7 @@ const Promo = {
         onDone && onDone();
       } catch (e) {
         err.textContent = e.message; err.hidden = false;
-        Sfx.play('miss'); U.vibrate(30);
+        Sfx.play('error'); U.vibrate(30);
         inp.select();
       } finally { busy = false; btn.disabled = false; }
     };
@@ -252,7 +252,7 @@ const Promo = {
   show(r) {
     const got = ((r && r.got) || []).map(x => x.k === 'zlat' ? { ...x, label: U.plural(x.n, ru`монета`, ru`монеты`, ru`монет`) }
       : x.k === 'sparks' ? { ...x, label: U.plural(x.n, ru`искра`, ru`искры`, ru`искр`) } : x);
-    Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+    Sfx.play('reward_big'); U.vibrate([40, 60, 120]);
     UI.modal({
       title: ru`Промокод активирован!`, cls: 'promo-modal promo-ok',
       html: `<div class="promo-code">${U.esc((r && r.code) || '')}</div>${got.length ? Loot.cells(got) : ''}
@@ -350,7 +350,7 @@ const Shop = {
         const n = +x.dataset.ex, E = Rules.EXCHANGE;
         const r = await Game.try('exchange', { n });
         if (!r) return;
-        Sfx.play('spin'); U.vibrate(20);
+        Sfx.play('coins'); U.vibrate(20);
         const z = r.zlat != null ? r.zlat : E.ZLAT * n; // 5.1.20: курс считает сервер (на шаге Кампании — свой)
         UI.toast(ru`Обмен: ✦ ${U.fmtNum(E.SPARKS * n)} → ${z} ${U.plural(z, ru`монета`, ru`монеты`, ru`монет`)}`, 'good');
         render(); UI.refreshHud();
@@ -371,7 +371,7 @@ const Shop = {
       UI.confirm(it.name, ru`Купить за ${this.price(it)}? После покупки останется ${this.price({ cur: it.cur, price: left })}.`, ru`Купить`, async () => {
         const r = await Game.try('shopBuy', deal ? { deal: true } : { id });
         if (!r) return;
-        Sfx.play('spin'); U.vibrate(20);
+        Sfx.play('coins'); U.vibrate(20);
         UI.modal({ title: ru`Покупка`, html: `<p>${ru`${U.esc(it.name)} — твоё!`}</p>${Loot.cells(r.got)}`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
         render(); UI.refreshHud();
       });
@@ -429,7 +429,7 @@ const Pass = {
       if (e.target.closest('.pass-buy')) {
         UI.confirm(ru`Золотая тропа`, ru`Открыть Золотую тропу этого сезона за ${Rules.PASS.GOLD} монет? Золотые награды уже пройденных ступеней можно будет забрать сразу.`, ru`Открыть`, async () => {
           if (!await Game.try('passGold')) return;
-          Sfx.play('levelup'); U.vibrate([40, 60, 120]);
+          Sfx.play('pay'); U.vibrate([40, 60, 120]);
           UI.toast(ru`Золотая тропа открыта!`, 'good');
           render(); UI.refreshHud();
         });
@@ -442,7 +442,7 @@ const Pass = {
         const r = await Game.try('passClaim', { lvl, track, am });
         this._busy = false;
         if (!r) return false;
-        Sfx.play('spin');
+        Sfx.play('reward');
         UI.modal({ title: ru`Ступень ${lvl}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
         render(); UI.refreshHud();
         return true;

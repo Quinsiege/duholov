@@ -147,7 +147,7 @@ Object.assign(UI, {
       if (b.dataset.err) { this.toast(b.dataset.err); return; }
       const r = await Game.try('heal', { uid: sp.uid, k: b.dataset.k });
       if (!r) return;
-      Sfx.play('hatch'); this.healDone(sp, r);
+      Sfx.play('heal'); this.healDone(sp, r);
       m.close(); done && done();
     });
   },
@@ -171,7 +171,7 @@ Object.assign(UI, {
       if (err) { this.toast(err); return; }
       const r = await Game.try('heal', { uid: sp.uid, k });
       if (!r) return;
-      Sfx.play('hatch'); this.healDone(sp, r);
+      Sfx.play('heal'); this.healDone(sp, r);
       m.close(); done && done();
     });
   },
@@ -312,7 +312,7 @@ Object.assign(UI, {
           const r = await Game.try('spiritBind', { uid: sp.uid });
           done(!!r);
           if (!r) return;
-          Sfx.play('catch'); U.vibrate([20, 40, 60]);
+          Sfx.play('success'); U.vibrate([20, 40, 60]);
           setTimeout(() => { if (scr.isConnected) { render(); this.toast(ru`Дух привязан к тебе`, 'good'); } }, 650);
         } }] });
     });
@@ -328,21 +328,21 @@ Object.assign(UI, {
       else if (t.classList.contains('det-name')) this.rename(sp, render);
       else if (t.classList.contains('act-move2')) {
         this.confirm(ru`Второй приём`, ru`Научить «${U.esc(sp.nick || SP[sp.sid].name)}» приёму «${ELEMENTS[SP[sp.sid].el].charge2}» за ✦ ${MOVE2_COST.sparks} и ${MOVE2_COST.essence} эссенции?`, ru`Научить`,
-          () => act('move2', {}, () => { Sfx.play('levelup'); this.toast(ru`Новый приём выучен!`, 'good'); }));
+          () => act('move2', {}, () => { Sfx.play('powerup'); this.toast(ru`Новый приём выучен!`, 'good'); }));
       } else if (t.classList.contains('act-unequip')) act('unequip', {}, () => Sfx.play('tap'));
       else if (t.classList.contains('act-equip')) this.pickAmulet(sp, render);
       else if (t.classList.contains('act-purify')) {
         this.confirm(ru`Очистить духа?`, ru`Тьма Нави покинет «${U.esc(sp.nick || SP[sp.sid].name)}». Стоимость: ✦ ${U.fmtNum(S.purifyCost(sp).sparks)} и ${S.purifyCost(sp).essence} эссенции.`, ru`Очистить`,
-          () => act('purify', {}, () => { Sfx.play('levelup'); U.vibrate([40, 60, 120]); this.toast(ru`Дух очищен! Оценка выросла`, 'good'); pulse(); }));
+          () => act('purify', {}, () => { Sfx.play('powerup'); U.vibrate([40, 60, 120]); this.toast(ru`Дух очищен! Оценка выросла`, 'good'); pulse(); }));
       }
       else if (t.classList.contains('act-buddy')) {
-        act('buddy', {}, () => { Sfx.play('catch'); U.vibrate(30); this.toast(ru`${U.esc(sp.nick || SP[sp.sid].name)} теперь твой спутник!`, 'good'); MapView.updateBuddy(); });
+        act('buddy', {}, () => { Sfx.play('success'); U.vibrate(30); this.toast(ru`${U.esc(sp.nick || SP[sp.sid].name)} теперь твой спутник!`, 'good'); MapView.updateBuddy(); });
       }
       else if (t.classList.contains('act-heal')) this.healPick(sp, render);
       else if (t.classList.contains('act-power')) {
         if (t._busy) return;
         t._busy = true;
-        act('powerUp', {}, () => { Sfx.play('spin'); U.vibrate(20); pulse(); }).finally(() => { t._busy = false; });
+        act('powerUp', {}, () => { Sfx.play('powerup'); U.vibrate(20); pulse(); }).finally(() => { t._busy = false; });
       } else if (t.classList.contains('act-evo')) {
         const s = SP[sp.sid];
         this.confirm(ru`Превращение`, S.d.dex[s.evo] && S.d.dex[s.evo].seen ? ru`Превратить «${U.esc(sp.nick || s.name)}» в ${SP[s.evo].name}? Потратится ${s.cost} эссенции.` : ru`Превратить «${U.esc(sp.nick || s.name)}» в неизвестную форму? Потратится ${s.cost} эссенции.`, ru`Превратить`, async () => {
@@ -369,7 +369,7 @@ Object.assign(UI, {
     m.addEventListener('click', async e => {
       const b = e.target.closest('.am-pick'); if (!b) return;
       m.close();
-      if (await Game.try('equip', { uid: sp.uid, k: b.dataset.k })) { Sfx.play('spin'); done(); }
+      if (await Game.try('equip', { uid: sp.uid, k: b.dataset.k })) { Sfx.play('equip'); done(); }
     });
   },
   /* ---------------- 4.16: ПРОБУЖДЕНИЕ ---------------- */
@@ -474,7 +474,7 @@ Object.assign(UI, {
     if (!max) { this.toast(rate > 1 ? ru`Нужно эссенции Рода: ${rate}. Её даёт переплавка лишней эссенции.` : ru`Эссенции Рода нет. Её даёт переплавка лишней эссенции.`); return; }
     this.amount({ title: ru`Влить эссенцию Рода`, art: Art.item('rod'), name: ru`Эссенция «${SP[fam].name}»`, max, ok: ru`Влить`,
       sum: k => ru`+${k} эссенции · потратится Рода: ${k * rate} из ${S.d.rod}`,
-      fn: k => Game.try('essPour', { fam, n: k }), after: r => { done && done(); Sfx.play('spin'); this.toast(ru`Эссенция «${SP[fam].name}»: ${r.ess}`, 'good'); } });
+      fn: k => Game.try('essPour', { fam, n: k }), after: r => { done && done(); Sfx.play('reward'); this.toast(ru`Эссенция «${SP[fam].name}»: ${r.ess}`, 'good'); } });
   },
   // Переплавка: лишняя эссенция любого семейства (кроме легенд) → эссенция Рода
   meltPick(done) {
@@ -491,7 +491,7 @@ Object.assign(UI, {
       m.close();
       this.amount({ title: ru`Переплавить`, art: Art.img(f), name: ru`Эссенция «${SP[f].name}»`, max: Math.floor(have / M), ok: ru`Переплавить`,
         sum: k => ru`−${k * M} эссенции (останется ${have - k * M}) → +${k} Рода`,
-        fn: k => Game.try('essMelt', { fam: f, n: k }), after: r => { done && done(); Sfx.play('spin'); this.toast(ru`Эссенция Рода: ${r.rod}`, 'good'); } });
+        fn: k => Game.try('essMelt', { fam: f, n: k }), after: r => { done && done(); Sfx.play('reward'); this.toast(ru`Эссенция Рода: ${r.rod}`, 'good'); } });
     });
   },
   rename(sp, done) {
@@ -666,7 +666,7 @@ Object.assign(UI, {
       if (e.target.closest('.parcel-take')) {
         const r = await Game.try('parcelTake');
         if (!r) return;
-        Sfx.play('spin');
+        Sfx.play('reward');
         this.toast(r.left ? ru`Из посылки взято: ${r.got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}. В посылке осталось: ${r.left}` : ru`Посылка разобрана: ${r.got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}`, 'good');
         render(); this.refreshHud(); return;
       }
@@ -678,13 +678,13 @@ Object.assign(UI, {
       if (e.target.closest('.use-melt')) { this.meltPick(render); return; }
       if (e.target.closest('.use-xp')) { // 4.16: Настой опыта
         if (S.d.xpUntil > U.now()) { this.toast(ru`Настой опыта действует ещё ${U.fmtTime(S.d.xpUntil - U.now())}`); return; }
-        if (await Game.try('xpBrew')) { Sfx.play('levelup'); this.toast(ru`Настой выпит: сутки опыта на ${Math.round((Rules.XP_BREW.MUL - 1) * 100)}% больше`, 'good'); this.refreshHud(); render(); }
+        if (await Game.try('xpBrew')) { Sfx.play('use_item'); this.toast(ru`Настой выпит: сутки опыта на ${Math.round((Rules.XP_BREW.MUL - 1) * 100)}% больше`, 'good'); this.refreshHud(); render(); }
         return;
       }
       if (!e.target.closest('.use-inc')) return;
       if (S.incenseActive()) { this.toast(ru`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - U.now())}`); return; }
       if (await Game.try('incense')) {
-        Sfx.play('spin'); this.toast(ru`Ладан зажжён — духи потянулись к тебе`, 'good');
+        Sfx.play('use_item'); this.toast(ru`Ладан зажжён — духи потянулись к тебе`, 'good');
         MapView.refresh(); this.refreshHud(); render();
       }
     });
@@ -707,7 +707,7 @@ Object.assign(UI, {
       const r = await Game.try('amuletMelt', { from, to: b.dataset.k });
       m._busy = false;
       if (!r) return;
-      m.close(); Sfx.play('spin'); U.vibrate(20);
+      m.close(); Sfx.play('reward'); U.vibrate(20);
       this.toast(ru`Переплавлено: ${AMULETS[r.to].name}`, 'good');
       done && done(); this.refreshHud();
     });

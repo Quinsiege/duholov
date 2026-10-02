@@ -3909,6 +3909,151 @@
       eq(GameCore.anTrack(ctx, { ...a0, stats: null }), null, 'сломанный снимок — без аналитики, без ошибки');
     } finally { S.d = d0; }
   });
+
+  /* ---------- звук: сэмплы www/sfx и запасной синтез (util.js — SFX, Sfx) ---------- */
+  // имена звуков в исходнике: первый аргумент Sfx.play(…) — строки (и выбор «a ? 'x' : 'y'»); без строки — имя в переменной
+  const sfxCalls = src => {
+    const names = [], dyn = [];
+    for (let i = src.indexOf('Sfx.play('); i >= 0; i = src.indexOf('Sfx.play(', i + 1)) {
+      let depth = 1, q = null, end = -1;
+      for (let j = i + 9; j < src.length && end < 0; j++) {
+        const c = src[j];
+        if (q) { if (c === '\\') j++; else if (c === q) q = null; continue; }
+        if (c === "'" || c === '"' || c === '`') q = c;
+        else if ('([{'.includes(c)) depth++;
+        else if (')]}'.includes(c)) { if (--depth === 0) end = j; }
+        else if (c === ',' && depth === 1) end = j; // второй аргумент — параметры, не имя
+      }
+      const arg = src.slice(i + 9, end), alt = arg.includes('?') ? arg.slice(arg.indexOf('?') + 1) : arg; // условие — не имя
+      const lits = [...alt.matchAll(/'([^']+)'/g)].map(m => m[1]);
+      if (lits.length) names.push(...lits); else dyn.push(arg.trim());
+    }
+    return { names, dyn };
+  };
+  atest('Звук: у каждого звука, который вызывает игра, есть файл в www/sfx или осознанный синтез', async () => {
+    // скрипты игры: из www/index.html и из этой страницы (после tools/web/build.mjs в index.html остаётся один app.min.js,
+    // а исходники js/*.js на месте — этот же тест в CI идёт и по собранной версии)
+    const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
+    const own = [...document.querySelectorAll('script[src^="../www/js/"]')].map(s => s.getAttribute('src').slice(10).split('?')[0]);
+    const files = [...new Set([...html.matchAll(/<script src="js\/([\w.-]+\.js)/g)].map(m => m[1]).concat(own))].filter(f => f !== 'app.min.js');
+    ok(files.length > 40, 'скрипты игры: ' + files.length);
+    const used = new Map(); // имя звука → файл, где вызывается
+    const add = (n, f) => { if (!used.has(n)) used.set(n, f); };
+    for (const f of files) {
+      const src = await fetch(`../www/js/${f}?t=${Date.now()}`).then(r => r.text());
+      const { names, dyn } = sfxCalls(src);
+      names.forEach(n => add(n, f));
+      if (src.includes('Sfx.element(')) ELEMENT_KEYS.forEach(k => add('el:' + k, f));
+      for (const d of dyn) { // имя в переменной — только у наград заданий: claim(…, 'имя звука')
+        eq(f + ':' + d, 'ui-player.js:sound', 'имя звука в переменной');
+        [...src.matchAll(/claim\('\w+', [^\n]*?, '([a-z_]+)'\);/g)].forEach(m => add(m[1], f));
+      }
+    }
+    ok(used.size > 30, 'найдено имён звуков: ' + used.size);
+    eq([...used].filter(([n]) => !SFX[n]).map(([n, f]) => `${n} (${f})`).join(', '), '', 'имена без строки в SFX (util.js):');
+    // у каждой строки — файл и запасной синтез на случай, если файл не загрузится, или осознанный синтез
+    for (const [n, d] of Object.entries(SFX)) {
+      const el = n.startsWith('el:') ? n.slice(3) : null;
+      ok(el ? Sfx.voices[el] : Sfx.recipes[d.fb || n], `${n}: нет синтеза «${el || d.fb || n}»`);
+      if (d.synth) { ok(!d.f, `${n}: осознанный синтез — без файла`); continue; }
+      ok(d.f && d.vol > 0 && d.vol <= 1, `${n}: файл и громкость 0…1`);
+    }
+    const bad = [];
+    let total = 0;
+    for (const f of new Set(Object.values(SFX).map(d => d.f).filter(Boolean))) {
+      const r = await fetch(`../www/sfx/${f}.mp3?v=${SFX_VER}`);
+      const n = r.ok ? (await r.arrayBuffer()).byteLength : 0;
+      if (n < 500) bad.push(f);
+      total += n;
+    }
+    eq(bad.join(', '), '', 'нет файлов www/sfx/*.mp3:');
+    ok(total < 600 * 1024, `звуки занимают ${Math.round(total / 1024)} КБ — больше бюджета`);
+    // service worker: звуки — в своём постоянном кэше, правило для них — раньше «?v=цифра»
+    const sw = await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text());
+    ok(sw.includes('k !== SFX_CACHE'), 'sw.js: кэш звуков не удаляется при обновлении');
+    const at = sw.indexOf("includes('/sfx/')");
+    ok(at > 0 && at < sw.indexOf('[?&]v=\\d'), 'sw.js: правило для звуков — раньше правила «?v=цифра»');
+  });
+  test('Звук: Sfx.play и Sfx.element не падают без AudioContext', () => {
+    const was = { ctx: Sfx.ctx, A: window.AudioContext, W: window.webkitAudioContext };
+    try {
+      Sfx.ctx = null;
+      [...Object.keys(SFX), 'нет-такого', undefined].forEach(n => Sfx.play(n));
+      ELEMENT_KEYS.forEach(k => { Sfx.element(k); Sfx.element(k, true); });
+      window.AudioContext = undefined; window.webkitAudioContext = undefined;
+      Sfx.init();
+      eq(Sfx.ctx, null, 'нет AudioContext — нет и звука');
+      Sfx.play('catch'); Sfx.element('fire'); Sfx.preload();
+    } finally { Sfx.ctx = was.ctx; window.AudioContext = was.A; window.webkitAudioContext = was.W; }
+  });
+  test('Звук: сэмпл, если загружен, иначе синтез; не больше 8 сразу; повтор не чаще gap; звук выключен — тишина', () => {
+    const log = [];
+    const param = () => ({ value: 1, setValueAtTime() {}, exponentialRampToValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} });
+    const node = (kind, extra) => Object.assign({ connect: n => n, disconnect() {}, start: () => log.push('start:' + kind), stop: () => log.push('stop:' + kind) }, extra);
+    const fake = {
+      currentTime: 10, state: 'running', sampleRate: 44100, destination: node('dest', {}),
+      createGain: () => node('gain', { gain: param() }),
+      createOscillator: () => { log.push('osc'); return node('osc', { frequency: param() }); },
+      createBufferSource: () => node('src', { playbackRate: param() }),
+      createBiquadFilter: () => node('filter', { frequency: param(), Q: param() }),
+      createBuffer: (c, n) => ({ getChannelData: () => new Float32Array(n) }),
+      resume: () => Promise.resolve(),
+    };
+    const keep = ['ctx', 'out', 'buf', 'bad', 'wait', 'last', 'live', 'load', 'nbuf', 'synth', 'synthElement'].reduce((o, k) => (o[k] = Sfx[k], o), {});
+    const was = { sound: Cfg.s.sound, duck: Music.duck }, ducks = [], synths = [], loads = [];
+    try {
+      Object.assign(Sfx, { ctx: fake, out: fake.destination, buf: {}, bad: {}, wait: {}, last: {}, live: [], nbuf: null });
+      Sfx.load = f => { loads.push(f); return Promise.resolve(null); };
+      Sfx.synth = function (n) { synths.push(n); return keep.synth.call(this, n); };
+      Sfx.synthElement = function (el, soft) { synths.push('el:' + el + (soft ? ':тихо' : '')); return keep.synthElement.call(this, el, soft); };
+      Music.duck = s => ducks.push(s);
+      Cfg.s.sound = true;
+      // файла ещё нет — прежний синтез (у нового имени — запасной), а файл попросили загрузить
+      Sfx.play('catch'); Sfx.play('error'); Sfx.element('fire', true); Sfx.element('shadow');
+      eq(synths.join(' '), 'catch miss el:fire:тихо el:shadow', 'синтез вместо сэмпла:');
+      ok(['catch', 'error', 'el-fire'].every(f => loads.includes(f)), 'файлы попросили загрузить: ' + loads);
+      ok(!loads.some(f => f.includes('shadow')), 'тень — осознанный синтез, файл не грузится');
+      ok(log.includes('osc'), 'синтез создал осцилляторы');
+      // файл загружен — сэмпл, мелодия приглушает музыку
+      fake.currentTime = 20; log.length = 0; synths.length = 0;
+      Sfx.buf.catch = { duration: 0.55 };
+      Sfx.play('catch');
+      eq(synths.length, 0, 'с файлом синтеза нет');
+      eq(log.filter(x => x === 'start:src').length, 1, 'сэмпл запущен');
+      eq(ducks.length, 1, 'музыка приглушена на время мелодии');
+      Sfx.play('catch');
+      eq(log.filter(x => x === 'start:src').length, 1, 'повтор в тот же миг пропущен');
+      // 10 разных звуков в один миг: звучат 8, два самых старых оборваны
+      fake.currentTime = 30; log.length = 0; Sfx.live = [];
+      ['tap', 'throw', 'hit', 'wobble', 'escape', 'flee', 'shiny', 'photo', 'heal', 'coins'].forEach(n => { Sfx.buf[SFX[n].f] = { duration: 1 }; Sfx.play(n); });
+      eq(log.filter(x => x === 'start:src').length, 10, 'запущены все 10');
+      eq(log.filter(x => x === 'stop:src').length, 2, 'оборваны два самых старых');
+      eq(Sfx.live.length, 8, 'звучат 8');
+      // неизвестное имя или без имени — тишина, без ошибок (как раньше)
+      fake.currentTime = 35; Sfx.play(undefined); Sfx.play('нет-такого');
+      // звук выключен в настройках — тишина
+      Cfg.s.sound = false; log.length = 0; fake.currentTime = 40;
+      Sfx.play('catch'); Sfx.element('water');
+      eq(log.length, 0, 'без звука в настройках ничего не создано');
+    } finally { Object.assign(Sfx, keep); Music.duck = was.duck; Cfg.s.sound = was.sound; }
+  });
+  test('Звук: короткая мелодия приглушает музыку и возвращает громкость', () => {
+    const calls = [], was = { ctx: Sfx.ctx, cur: Music.cur };
+    const gain = { value: 0.2, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime: (v, t) => calls.push([v, t]) };
+    try {
+      Sfx.ctx = { currentTime: 5 };
+      Music.cur = { a: { paused: false }, g: { gain } };
+      const v = Music.level();
+      Music.duck(1);
+      eq(calls.length, 2, 'вниз и обратно');
+      near(calls[0][0], v * 0.45, 1e-6, 'тише на ~7 дБ:');
+      near(calls[1][0], v, 1e-6, 'потом прежняя громкость:');
+      ok(calls[1][1] > 6, 'громкость возвращается после мелодии');
+      Music.cur = { a: { paused: true }, g: { gain } }; calls.length = 0;
+      Music.duck(1);
+      eq(calls.length, 0, 'музыка на паузе — не трогаем');
+    } finally { Sfx.ctx = was.ctx; Music.cur = was.cur; }
+  });
   /* ---------- вывод ---------- */
   (async () => {
     for (const t of pending) {

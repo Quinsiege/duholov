@@ -56,7 +56,7 @@ Object.assign(UI, {
       if (cc) {
         cc.disabled = true;
         Game.try('campClaim').then(r => {
-          if (r) { Sfx.play('levelup'); this.toast(ru`Кампания: ${r.got.map(x => `${I18N.back(x.label)} +${U.fmtNum(x.n)}`).join(', ')}`, 'good'); if (r.pick) this.campPick(render); }
+          if (r) { Sfx.play('reward_big'); this.toast(ru`Кампания: ${r.got.map(x => `${I18N.back(x.label)} +${U.fmtNum(x.n)}`).join(', ')}`, 'good'); if (r.pick) this.campPick(render); }
           render(); this.refreshHud();
         });
         return;
@@ -69,7 +69,7 @@ Object.assign(UI, {
       if (tc) {
         tc.disabled = true;
         Game.try('taskClaim', { id: tc.dataset.id }).then(r => {
-          if (r) { Sfx.play('spin'); this.toast(ru`Поручение сдано: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }
+          if (r) { Sfx.play('reward'); this.toast(ru`Поручение сдано: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }
           render(); this.refreshHud();
         });
         return;
@@ -88,8 +88,8 @@ Object.assign(UI, {
         Sfx.play(sound); this.toast(title(r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')), 'good');
         render(); this.refreshHud();
       });
-      if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'spin');
-      else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'levelup');
+      if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'reward');
+      else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'reward_big');
     });
     this.swipeTabs(scr, tabs, () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
@@ -427,13 +427,13 @@ Object.assign(UI, {
         this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}${ru`Цена: <b>${U.fmtNum(x.shop)}</b> монет.`}`, ru`Купить`, async () => {
           const r = await Game.try('shopBuy', { id: `${k}:${x.id}` });
           if (!r) return;
-          Sfx.play('catch'); this.toast(ru`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
+          Sfx.play('coins'); this.toast(ru`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
         });
         return;
       }
       if (e.target.closest('.wd-save') && !saved()) {
         const send = { cloak: look.cloak, eyes: look.eyes, emblem: look.emblem, skin: look.skin, bg: look.bg, frame: look.frame };
-        if (await Game.try('look', { look: send })) { Sfx.play('levelup'); this.toast(ru`Облик надет`, 'good'); render(); done && done(); }
+        if (await Game.try('look', { look: send })) { Sfx.play('equip'); this.toast(ru`Облик надет`, 'good'); render(); done && done(); }
       }
     });
     render();

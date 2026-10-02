@@ -47,7 +47,7 @@ const Book = {
   // порядок глав для «соседних» (кроме «Пути Ловчего» — у него свой экран)
   order() { return this.GROUPS.flatMap(g => g[1]).filter(id => id !== 'path'); },
   page(id, prev) {
-    Sfx.play('tap');
+    Sfx.play('page');
     const c = this.CH.find(x => x.id === id), ord = this.order(), i = ord.indexOf(id);
     let tabs = this.PAGES[id].call(this);
     if (!Array.isArray(tabs)) tabs = [['', tabs]];
@@ -64,7 +64,7 @@ const Book = {
     scr.addEventListener('click', e => {
       const t = e.target.closest('.bk-tabs [data-tab]');
       if (t) {
-        Sfx.play('tap');
+        Sfx.play('page');
         U.$$('.bk-tabs button', scr).forEach(x => x.classList.toggle('on', x === t));
         U.$$('.bk-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === t.dataset.tab));
         return;

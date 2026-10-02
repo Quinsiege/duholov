@@ -16,12 +16,15 @@ const CORE = [
 ];
 const TILE_CACHE = 'duholov-tiles';
 const TILE_LIMIT = 1500;
+// звуки (www/sfx) — свой кэш, он переживает выпуски: файлы не перекачиваются при каждой выкладке.
+// Адрес с меткой ?v=N (SFX_VER в util.js): сменилась метка — старые записи удаляются при первой загрузке новой
+const SFX_CACHE = 'duholov-sfx';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== TILE_CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== TILE_CACHE && k !== SFX_CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
@@ -51,6 +54,18 @@ self.addEventListener('fetch', e => {
   if (url.pathname.includes('/tiles/')) return;
   // 4.8: музыка (audio/*.mp3) тоже читается кусками — её кэширует браузер
   if (url.pathname.includes('/audio/')) return;
+  // звуки (sfx/*.mp3) — целиком (Sfx.load), сначала из своего кэша; новая метка ?v= — старые записи удаляются
+  if (url.pathname.includes('/sfx/') && url.pathname.endsWith('.mp3')) {
+    const v = url.searchParams.get('v');
+    e.respondWith(caches.open(SFX_CACHE).then(c => c.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+      if (res.ok) {
+        c.put(e.request, res.clone());
+        c.keys().then(ks => ks.forEach(r => { if (new URL(r.url).searchParams.get('v') !== v) c.delete(r); }));
+      }
+      return res;
+    }))));
+    return;
+  }
   // файлы с меткой версии (?v=4.1.0) и vendor/ не меняются — сразу из кэша: быстрый запуск и меньше трафика
   if (/[?&]v=\d/.test(url.search) || url.pathname.includes('/vendor/')) {
     e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
