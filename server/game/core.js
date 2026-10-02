@@ -95,6 +95,7 @@ const GameCore = {
       this.need(actions.length, ru`Пустой запрос`);
       const stats0 = S.d ? JSON.parse(JSON.stringify(S.d.stats)) : null;
       const ala0 = S.d ? S.d.alaGiven || 0 : 0; // 4.28: осколки Алатыря, отданные в общий счёт Ордена
+      const an0 = this.anSnap(); // 5.1.22: аналитика — прогресс до действий (anTrack сравнит с тем, что стало)
       for (const a of actions) {
         const h = a && typeof a.type === 'string' && Object.prototype.hasOwnProperty.call(this.H, a.type) ? this.H[a.type] : null; // только свои действия, без служебных полей объекта
         this.need(h, ru`Неизвестное действие`);
@@ -106,7 +107,8 @@ const GameCore = {
       if (S.d) { S.checkMedals(); S.ensureQuests(); S.campEnsure(); } // 5.1.15: обучение пройдено в этом запросе — Кампания открывается сразу
       // 5.2: Ловчий перенёсся в другую клетку (телепорт) — телефону погода уже нового места
       if (ctx.pos && this.wxCell(ctx.pos) !== ctx.wxCell) Sky.w = await this.weather(ctx.pos, env, ctx.now);
-      return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now, wx: this.wxOut(Sky.w) };
+      const an = req.sys ? null : this.anTrack(ctx, an0); // 5.1.22: запрос от имени сервера (начисление оплаты) — не активность игрока
+      return { ok: true, data: S.d, srv: ctx.srv, results: ctx.results, events: ctx.events, after: ctx.after, full: ctx.full, reset: ctx.reset, now: ctx.now, wx: this.wxOut(Sky.w), an };
     } catch (e) {
       // при отказе сохраняются только счётчики частоты (rl): иначе неудачные попытки перебора не считались бы
       if (e instanceof GameError) return { ok: false, error: e.message, rl: ctx.srv.rl || null };
@@ -119,6 +121,61 @@ const GameCore = {
   ser(ev, data) {
     if (ev === 'medal') return { m: data.m.id, tier: data.tier };
     return data === undefined ? null : JSON.parse(JSON.stringify(data));
+  },
+
+  /* ---------- 5.1.22: аналитика (035_analytics.sql) ----------
+     Серверные события — из разницы прогресса до и после запроса, без запросов к базе: новый Ловчий (reg: r — редкость
+     первого духа, inv — пришёл по приглашению), первое место в Атласе (place), обучение (tut: s — пройдено шагов из n,
+     id — последний пройденный), уровень (lvl: l), первые успехи по счётчикам (first: k — из AN_FIRST), Кампания (camp:
+     k — пройдено шагов, id — последний пройденный), «начать заново» (reset: l — уровень). День активности — первый удачный
+     запрос дня по Москве (отметка srv.an): в базу (an_days) — одна строка в день, с днём создания Ловчего (когорта),
+     уровнем и шагом обучения. Записывает serve.js после сохранения прогресса, в фоне. Сбой здесь действию не мешает —
+     пропадает только аналитика */
+  AN_FIRST: ['caught', 'springs', 'raids', 'duels', 'invasions', 'hatched', 'evolved', 'traded', 'purified', 'awakened'],
+  anDay(t) { return new Date(t + 3 * 3600000).toISOString().slice(0, 10); }, // день по Москве (UTC+3, без летнего времени)
+  // пройдено шагов Кампании — по всем главам (CAMPAIGN), и id k-го шага
+  anCamp(c) {
+    if (!c || typeof c !== 'object') return 0;
+    let k = 0;
+    for (let i = 0; i < CAMPAIGN.length && i < (c.ch | 0); i++) k += CAMPAIGN[i].steps.length;
+    return k + Math.max(0, c.s | 0);
+  },
+  anCampId(k) {
+    let i = k - 1;
+    for (const ch of CAMPAIGN) { if (i < ch.steps.length) return i >= 0 ? ch.steps[i].id : ''; i -= ch.steps.length; }
+    return '';
+  },
+  anSnap() {
+    try {
+      const d = S.d;
+      if (!d) return { d: false };
+      return { d: true, tut: d.tut || 0, lvl: d.level || 1, camp: this.anCamp(d.camp), atlas: !!d.atlasV, stats: { ...d.stats } };
+    } catch (e) { return null; }
+  },
+  anTrack(ctx, a0) {
+    try {
+      if (!a0) return null;
+      const d = S.d, t = ctx.now, ev = [], add = (e, p) => ev.push(p ? { e, t, p } : { e, t });
+      if (!a0.d && d) add('reg', { r: (SP[d.starter] && SP[d.starter].rar) || 0, inv: (d.friends || []).some(f => f && f.invitedBy) ? 1 : 0 });
+      if (a0.d && !d && ctx.reset) add('reset', { l: a0.lvl });
+      if (a0.d && d) {
+        const n = TUT.length, done = x => (x ? x - 1 : n); // tut — номер текущего шага (с 1), 0 — обучение пройдено
+        const s = done(d.tut || 0);
+        if (s > done(a0.tut)) add('tut', { s, n, id: (TUT[s - 1] && TUT[s - 1].id) || '' });
+        if ((d.level || 1) > a0.lvl) add('lvl', { l: d.level });
+        if (!a0.atlas && d.atlasV) add('place');
+        const k = this.anCamp(d.camp);
+        if (k > a0.camp) add('camp', { k, id: this.anCampId(k) });
+        const st = d.stats || {};
+        for (const key of this.AN_FIRST) if (!(a0.stats[key] > 0) && st[key] > 0) add('first', { k: key });
+      }
+      let day = null;
+      if (d) {
+        const k = this.anDay(t);
+        if (ctx.srv.an !== k) { ctx.srv.an = k; day = { t, reg: +d.created || null, lvl: d.level || 1, tut: d.tut || 0 }; }
+      }
+      return ev.length || day ? { ev, day } : null;
+    } catch (e) { return null; }
   },
 
   /* ---------- проверки ---------- */
@@ -783,6 +840,7 @@ const GameCore = {
       }
       S.d.atlasV = 1;
       if (!first && from) { const l0 = Rules.land(from.lat, from.lng), l1 = Rules.land(lat, lng); if (l0 && l1 && l0 !== l1) S.progress('gateLand', 1); }
+      if (!first) S.progress('gate', 1); // 5.1.27: задание «Шагни во Врата Перепутицы»
       ctx.srv.enc = null; // встреча с духом не переезжает вместе с Ловчим
       const p = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
       ctx.srv.pos = { ...p, t: ctx.now, acc: 5 };
@@ -840,7 +898,8 @@ const GameCore = {
       if (kind === 'tut') {
         const st = S.tutAt(); // 4.0: учебный дух — тот, что нужен на текущем шаге обучения
         this.need(st && st.kind === 'catch', ru`Учебный дух сейчас не нужен`);
-        return this.openEnc(ctx, { mode: 'tut', sid: st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
+        const p = ctx.pos; // 5.1.26: дух — с родины места, где Ловчий (как Tut.spawn на телефоне)
+        return this.openEnc(ctx, { mode: 'tut', sid: p ? S.tutSid(st, p.lat, p.lng) : st.sid, lvl: Math.min(2, S.catchLvl()), seed: 'tut' + S.d.tut });
       }
       if (kind === 'raid') {
         const r = ctx.srv.raidWin;
@@ -886,7 +945,7 @@ const GameCore = {
       e.throws++;
       const left = () => raid ? e.charms : Rules.THROWABLE.reduce((n, k) => n + (S.d.items[k] || 0), 0);
       if (!a.hit) {
-        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { miss: true });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух сбежал` : null, { miss: true });
         return { miss: true, left: left() };
       }
       // точность броска присылает телефон: если «отличные» броски подозрительно часты (больше 70% из 20+ последних) — без бонуса
@@ -903,8 +962,8 @@ const GameCore = {
       while (wobbles < 3 && Math.random() < q) wobbles++;
       if (wobbles < 3) {
         const flee = e.mode !== 'wild' ? 0 : RARITY[SP[e.sid].rar].flee * (e.throws > 3 ? 1.5 : 1);
-        if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух ускользнул в Навь…`, { wobbles, label: bonus.label });
-        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух вернулся в Навь…` : null, { wobbles, label: bonus.label });
+        if (Math.random() < flee) return this.encLost(ctx, e, ru`Дух сбежал`, { wobbles, label: bonus.label });
+        if (!left()) return this.encLost(ctx, e, raid ? ru`Обереги кончились — дух сбежал` : null, { wobbles, label: bonus.label });
         return { wobbles, label: bonus.label, left: left() };
       }
       // пойман
@@ -919,6 +978,7 @@ const GameCore = {
       S.d.stats.caught++;
       const xp = S.addXP(rw.xp);
       S.progress('catch', 1); S.progress('catchEl', 1, { el: s.el }); S.progress('catchRar', 1, { rar: s.rar }); // 5.1.15: редкость — для Кампании
+      if (s.time === 'night') S.progress('catchNight', 1); // 5.1.27: задание дня «Поймай ночного духа»
       if (e.mode === 'tut') S.tutAdvance('catch');
       if (e.mode === 'task') S.d.taskMeet = S.d.taskMeet.filter(x => x.id !== e.taskId); // сбежать не может — встреча ждёт, пока дух не пойман
       ctx.srv.enc = null;
@@ -1151,11 +1211,14 @@ const GameCore = {
       q.claimed = true;
       return { got: S.giveRewards({ ...q.reward, xp: Rules.QUEST_XP }) };
     },
+    // 5.1.24: Сундук дня — награда случайная (Rules.chestRoll): опыт и искры всегда, плюс два разных приза
     questBonus() {
       const Q = S.d.quests;
       this.need(Q.list.every(q => q.claimed) && !Q.bonus, ru`Сундук ещё закрыт`);
       Q.bonus = true;
-      return { got: S.giveRewards({ ...Rules.QUEST_BONUS, xp: Rules.QUEST_BONUS_XP, zlat: Rules.ZLAT.questBonus }) };
+      const rw = Rules.chestRoll(Math.random);
+      if (rw.cocoon && S.d.cocoons.length >= 9) { delete rw.cocoon; rw.zlat = (rw.zlat || 0) + 5; } // коконов некуда класть — монетами
+      return { got: this.grant(rw) };
     },
     // 4.0: разделы обучения засчитываются строго по порядку; пропустить обучение нельзя
     tutNext(a) {
@@ -1525,10 +1588,15 @@ const GameCore = {
       this.need(Rules.passLevel(P.pts) >= lvl, ru`Ступень ещё не пройдена`);
       this.need(track === 'free' || P.gold, ru`Сначала открой Золотую тропу`);
       this.need(!P.got[track].includes(lvl), ru`Награда уже получена`);
+      let { amuletPick, ...rw } = Rules.passReward(track, lvl);
+      // 5.1.21: амулет на выбор — какой, присылает телефон (a.am); без выбора ступень не забрать
+      const am = String(a.am || '');
+      this.need(!amuletPick || AMULET_KEYS.includes(am), ru`Выбери амулет`);
       P.got[track].push(lvl);
-      let rw = Rules.passReward(track, lvl, S.d.level);
       if (rw.cocoon && S.d.cocoons.length >= 9) rw = { ...rw, cocoon: 0, zlat: (rw.zlat || 0) + 10 }; // коконов некуда класть — монетами (4.16: было 40)
-      return { got: this.grant(rw) };
+      const got = this.grant(rw);
+      if (amuletPick) { S.addAmulet(am); got.push({ k: 'amulet', n: 1, id: am, label: AMULETS[am].name }); }
+      return { got };
     },
     passGold(a, ctx) {
       const P = this.passState(ctx);
@@ -1635,7 +1703,7 @@ const GameCore = {
       if (!n) return { n: 0, got: [] };
       // 4.16: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ (было 3 монеты с каждого, до 30 в день)
       // 4.28: с святилищ мифологии своего клана — искры и обереги ×Rules.HOLD.MYTH (Rules.tributeFor); сначала — они
-      const mine = list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H && W.placeMyth({ id: x.id }) === S.d.clan).length;
+      const mine = list.filter(x => Rules.holdHours(x.t, ctx.now) >= H.TRIBUTE_H && W.placeMyth({ id: x.id, lat: x.lat, lng: x.lng }) === S.d.clan).length; // 5.1.26: по родине места
       const T = Rules.tributeFor(n, mine);
       return { n, own: Math.min(n, mine), got: S.giveRewards({ sparks: T.sparks, charm: T.charm, zlat: Rules.ZLAT.tribute * Math.min(n, Rules.ZLAT.tributeMax) }) };
     },
@@ -1651,13 +1719,13 @@ const GameCore = {
       this.readyTeam(team);
       this.dayNeed(ctx, 'invasions');
       this.limit(ctx, 'inv', 40, 3600000);
-      ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true };
+      ctx.srv.battle = { type: 'inv', invId: e.invId, name: e.name, lat: e.lat, lng: e.lng, start: ctx.now, team: team.map(x => x.uid), hp0: this.hpMap(team), tire: true };
       return { invId: e.invId };
     },
     invEnd(a, ctx) {
       const b = this.endBattle(ctx, 'inv');
       if (!a.win) { this.woundTeam(b, a.hp); return { win: false }; }
-      const g = W.grunt({ invId: b.invId });
+      const g = W.grunt({ invId: b.invId, lat: b.lat, lng: b.lng }); // 5.1.26: отряд — из духов родины источника
       this.woundTeam(b, a.hp, Rules.duelMinLoss(this.team(b.team), g.team, g.speed), Duel.HPX); // 4.26: как на Капище
       this.plausibleDuel(ctx, b, g.team, g.speed);
       S.d.freed[b.invId] = true;

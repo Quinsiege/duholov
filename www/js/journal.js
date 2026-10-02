@@ -25,7 +25,7 @@ const J = {
       // целые фразы на каждый вариант (сияющий/омрачённый) — чтобы перевод не собирался из кусков
       case 'catch': { const n = sp(e.sid);
         return { ico: icon(e.sid), title: e.shiny && e.dark ? ru`Пойман сияющий омрачённый ${n}` : e.shiny ? ru`Пойман сияющий ${n}` : e.dark ? ru`Пойман омрачённый ${n}` : ru`Пойман ${n}`, sub: e.power ? ru`СИЛА ${e.power}` : '' }; }
-      case 'flee': return { ico: icon(e.sid), title: ru`${sp(e.sid)} ускользнул`, sub: ru`Дух вернулся в Навь`, cls: 'dim' };
+      case 'flee': return { ico: icon(e.sid), title: ru`Дух сбежал`, sub: sp(e.sid), cls: 'dim' }; // 5.1.27: без Нави, имя — строкой ниже
       case 'hatch': return { ico: icon(e.sid), title: ru`Из кокона появился ${sp(e.sid)}`, sub: e.km ? ru`Кокон ${e.km} км` : '' };
       case 'evolve': return { ico: icon(e.to), title: ru`${sp(e.from)} превратился в ${sp(e.to)}`, sub: '' };
       case 'awaken': return { ico: icon(e.sid), title: ru`${sp(e.sid)} пробуждён`, sub: '★'.repeat(e.stars || 1) };

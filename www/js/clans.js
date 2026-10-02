@@ -19,7 +19,7 @@ const Clans = {
   // «×1,5» — дань со святилищ мифологии своего клана (Rules.HOLD.MYTH)
   mythX() { return '×' + Rules.HOLD.MYTH.toLocaleString(I18N.locale); },
   // Капище — святилище мифологии моего клана (дань там ×1,5)
-  mine(id) { return !!(S.d && S.d.clan && W.placeMyth({ id }) === S.d.clan); },
+  mine(p) { return !!(S.d && S.d.clan && W.placeMyth(p) === S.d.clan); }, // p — { id, lat, lng }: 5.1.26 мифология места — по его родине
 
   // Сводка занятых Капищ вокруг игрока (раз в 3 минуты и после боёв)
   async refresh(force) {
@@ -99,7 +99,7 @@ const Clans = {
   async join(k, done) {
     const c = CLANS[k], r = await Game.try('clanJoin', { clan: k });
     if (!r) return;
-    Sfx.play('levelup');
+    Sfx.play('notice');
     UI.toast(ru`Ты в «${c.name}»! Побеждай на Капищах и ставь защитников.`, 'good');
     UI.refreshHud();
     this.refresh(true);
@@ -108,7 +108,7 @@ const Clans = {
   async move(k, done) {
     const c = CLANS[k], r = await Game.try('clanMove', { clan: k });
     if (!r) return;
-    Sfx.play('levelup');
+    Sfx.play('notice');
     UI.toast(ru`Теперь ты в «${c.name}». Добро пожаловать, ${c.member}!`, 'good');
     UI.refreshHud();
     this.refresh(true);
@@ -158,7 +158,7 @@ const Clans = {
       this._defending = false;
       if (!r) return;
       m.close && m.close();
-      Sfx.play('levelup');
+      Sfx.play('success');
       UI.toast(ru`Защитник встал на Капище «${U.esc(e.name)}» — оно под знаменем «${CLANS[r.clan].name}»`, 'good');
       await this.refresh(true);
       done && done();
@@ -173,7 +173,7 @@ const Clans = {
       const r = await Game.act('myGuards');
       this.guards = r.list;
       if (r.back.length) {
-        Sfx.play('miss');
+        Sfx.play('sad');
         const names = r.back.map(g => `«${U.esc(g.name)}»`).join(', ');
         const got = r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ');
         UI.toast(r.back.every(g => g.tired) ? ru`Срок на посту вышел — защитники вернулись с ${names}. За службу: ${got}`
@@ -216,7 +216,7 @@ const Clans = {
       return `<div class="row guard-row" data-id="${U.esc(g.id)}"><div class="row-ico">${g.sp && SP[g.sp.sid] ? Art.imgOf(g.sp) : ''}</div>
         <div class="row-main"><b>${U.esc(g.name)}</b><small>${ru`на посту ${h < 1 ? ru`меньше часа` : ru`${Math.floor(h)} ч`} · защитников ${g.n} из ${HOLD_MAX}`}${d != null ? ` · ${U.fmtDist(d)}` : ''}</small>
           <small>${h >= Rules.HOLD.FRESH_H ? ru`устал: уровень −${Math.round((1 - Rules.holdK(g.t, U.now())) * 100)}% · домой через ${Math.max(1, Math.ceil(Rules.HOLD.MAX_H - h))} ч` : ru`в полной силе ещё ${Math.max(1, Math.ceil(Rules.HOLD.FRESH_H - h))} ч`}</small>
-          ${this.mine(g.id) ? `<small class="gr-own">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>
+          ${this.mine(g) ? `<small class="gr-own">${ru`святилище твоей мифологии · дань ${this.mythX()}`}</small>` : ''}</div>
         <button class="btn small ghost show-guard">${ru`Показать`}</button></div>`;
     };
     scr.querySelector('.clan-body').innerHTML = `

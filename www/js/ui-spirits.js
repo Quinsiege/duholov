@@ -4,15 +4,54 @@
 
 Object.assign(UI, {
   /* ---------------- КОЛЛЕКЦИЯ ---------------- */
+  // звёзды оценки Ордена (0–4) по проценту качества духа
+  ivStars(iv) { return iv >= 100 ? 4 : iv >= 82 ? 3 : iv >= 67 ? 2 : iv >= 50 ? 1 : 0; },
+  // сортировки коллекции; 5.1.21: вместо «Номер» и «Имя» — «Редкие» (легендарные первыми) и «Лучшие» (по оценке Ордена)
+  colCmp(k) {
+    const pw = (a, b) => S.power(b) - S.power(a);
+    return {
+      power: pw,
+      new: (a, b) => b.t - a.t,
+      rare: (a, b) => SP[b.sid].rar - SP[a.sid].rar || pw(a, b),
+      best: (a, b) => S.ivPct(b) - S.ivPct(a) || pw(a, b),
+    }[k] || pw;
+  },
+  // верх карточки: сила, а в «Редких» — камни цвета редкости (1–5), в «Лучших» — звёзды оценки и процент
+  colTop(x, k) {
+    if (k === 'rare') { const n = SP[x.sid].rar, r = RARITY[n]; return `<div class="card-pw card-rar" style="--rc:${r.color}" title="${r.name}">${'<i></i>'.repeat(n)}<b>&#8203;</b></div>`; } // пустой <b> держит высоту строки, как у силы
+    if (k === 'best') { const iv = S.ivPct(x), st = this.ivStars(iv); return `<div class="card-pw card-iv"><i>${'★'.repeat(st)}<s>${'☆'.repeat(4 - st)}</s></i> <b>${iv}%</b></div>`; }
+    return `<div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>`;
+  },
+  // 5.1.19 (Бестиарий), 5.1.24 («Духи», команда, лечение): рисунки длинных списков — по мере прокрутки. В разметке вместо картинки —
+  // заглушка того же размера: lazyPic(вид, сияющий, омрачённый); рисунок появляется, когда клетка подходит к экрану (запас 300 px).
+  // Раньше «Духи» на 200 духов рисовали все рисунки разом — на слабом телефоне экран замирал на несколько секунд.
+  // lazyArt(коробка со списком, прокручиваемый корень) → наблюдатель (отключить, когда список перерисован или закрыт) или null
+  lazyPic(sid, shiny, dark) { return `<i class="art" data-art="${sid}"${shiny ? ' data-sh="1"' : ''}${dark ? ' data-dk="1"' : ''}></i>`; },
+  lazyArt(box, root) {
+    const pics = [...box.querySelectorAll('[data-art]')];
+    const draw = el => { if (el.isConnected) el.outerHTML = Art.img(el.dataset.art, !!el.dataset.sh, !!el.dataset.dk); };
+    if (typeof IntersectionObserver !== 'function') { pics.forEach(draw); return null; }
+    const io = new IntersectionObserver(es => {
+      for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); draw(e.target); }
+    }, { root, rootMargin: '300px 0px' });
+    pics.forEach(el => io.observe(el));
+    return io;
+  },
   collection() {
     Tut.ui('spirits'); // 4.0: шаг обучения
     const scr = this.screen(ru`Духи`, `
       <div class="toolbar">
-        <div class="seg">${[['power', ru`Сила`], ['new', ru`Новые`], ['num', ru`Номер`], ['name', ru`Имя`]].map(([k, t]) => `<button data-sort="${k}">${t}</button>`).join('')}</div>
-        <div class="chips"><button data-el="all">${ru`Все`}</button>${ELEMENT_KEYS.map(e => `<button data-el="${e}">${Art.elIcon(e, 18)}</button>`).join('')}<button class="sel-toggle">${ru`Выбрать`}</button></div>
+        <div class="seg">${[['power', ru`Сила`], ['new', ru`Новые`], ['rare', ru`Редкие`], ['best', ru`Лучшие`]].map(([k, t]) => `<button data-sort="${k}">${t}</button>`).join('')}</div>
+        <div class="col-filter"><div class="chips col-els"><button data-el="all">${ru`Все`}</button>${ELEMENT_KEYS.map(e => `<button data-el="${e}">${Art.elIcon(e, 18)}</button>`).join('')}</div><div class="chips col-sel"><button class="sel-toggle">${ru`Выбрать`}</button></div></div>
       </div>
       <div class="grid cards"></div>
       <div class="sel-bar hidden"><span></span><button class="btn small ghost sel-dupes">${ru`Лишние`}</button><button class="btn small danger sel-release">${ru`Отпустить`}</button></div>`, 'col-screen');
+    // если стихии всё же не влезли (узкий экран, длинное «Выбрать» в переводе) — край ленты тает, пока есть что листать
+    const els = scr.querySelector('.col-els'), elsFade = () => els.classList.toggle('more', els.scrollLeft + els.clientWidth < els.scrollWidth - 2);
+    els.addEventListener('scroll', elsFade, { passive: true });
+    requestAnimationFrame(elsFade);
+    const elsResize = () => (els.isConnected ? elsFade() : removeEventListener('resize', elsResize));
+    addEventListener('resize', elsResize);
     let selecting = false;
     const sel = new Set();
     const protectedUid = uid => { const x = S.findSpirit(uid); return !x || x.fav || x.shiny || (S.d.buddy && S.d.buddy.uid === uid) || S.d.team.includes(uid); };
@@ -23,29 +62,29 @@ Object.assign(UI, {
       scr.querySelector('.sel-toggle').classList.toggle('on', selecting);
       U.$$('.card', scr).forEach(c => c.classList.toggle('selected', sel.has(c.dataset.uid)));
     };
+    let io = null; // 5.1.24: рисунки карточек — по мере прокрутки (UI.lazyArt)
+    scr._onClose = () => io && io.disconnect();
     const render = () => {
       let list = [...S.d.spirits];
       if (this.colEl !== 'all') list = list.filter(x => SP[x.sid].el === this.colEl);
-      const cmp = {
-        power: (a, b) => S.power(b) - S.power(a),
-        new: (a, b) => b.t - a.t,
-        num: (a, b) => SP[a.sid].num - SP[b.sid].num || S.power(b) - S.power(a),
-        name: (a, b) => (a.nick || SP[a.sid].name).localeCompare(b.nick || SP[b.sid].name, I18N.locale),
-      }[this.colSort];
+      const cmp = this.colCmp(this.colSort);
       list.sort((a, b) => (b.fav - a.fav) || cmp(a, b));
       scr.querySelector('.head-extra').textContent = `${S.d.spirits.length} ${U.plural(S.d.spirits.length, ru`дух`, ru`духа`, ru`духов`)}`;
       U.$$('[data-sort]', scr).forEach(b => b.classList.toggle('on', b.dataset.sort === this.colSort));
       U.$$('[data-el]', scr).forEach(b => b.classList.toggle('on', b.dataset.el === this.colEl));
-      scr.querySelector('.grid').innerHTML = list.map(x => `
+      const grid = scr.querySelector('.grid');
+      grid.innerHTML = list.map(x => `
         <button class="card el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'}" data-uid="${x.uid}">
           ${x.fav ? `<span class="fav">${this.I.star}</span>` : ''}
           ${S.d.buddy && S.d.buddy.uid === x.uid ? '<span class="buddy-mark">♥</span>' : ''}
           ${x.amulet ? `<span class="am-mark" style="background:${AMULETS[x.amulet].color}"></span>` : ''}
           ${x.stars ? `<span class="aw-mark">★${x.stars}</span>` : ''}
-          <div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
-          <div class="card-art">${Art.imgOf(x)}</div>
+          ${this.colTop(x, this.colSort)}
+          <div class="card-art">${this.lazyPic(x.sid, x.shiny, x.dark)}</div>
           <div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}
         </button>`).join('') || `<div class="empty">${ru`Пока никого. Пройдись по карте — духи ждут!`}</div>`;
+      if (io) io.disconnect();
+      io = this.lazyArt(grid, scr.querySelector('.screen-body'));
       updateBar();
     };
     scr.addEventListener('click', e => {
@@ -128,7 +167,7 @@ Object.assign(UI, {
       if (b.dataset.err) { this.toast(b.dataset.err); return; }
       const r = await Game.try('heal', { uid: sp.uid, k: b.dataset.k });
       if (!r) return;
-      Sfx.play('hatch'); this.healDone(sp, r);
+      Sfx.play('heal'); this.healDone(sp, r);
       m.close(); done && done();
     });
   },
@@ -144,15 +183,17 @@ Object.assign(UI, {
     if (!list.length) { this.toast(rev ? ru`Духов без сил нет` : ru`Все духи здоровы`); return; }
     const m = this.modal({ title: ru`${ITEMS[k].name}: кого лечить?`, cls: 'team-modal',
       html: `<div class="grid cards team-grid">${list.map(x => `<button class="card el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'}" data-uid="${x.uid}"><div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
-        <div class="card-art">${Art.imgOf(x)}</div><div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
+        <div class="card-art">${this.lazyPic(x.sid, x.shiny, x.dark)}</div><div class="card-name">${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
       buttons: [{ label: ru`Закрыть` }] });
-    m.querySelector('.team-grid').addEventListener('click', async e => {
+    const grid = m.querySelector('.team-grid');
+    this.lazyArt(grid, grid); // 5.1.24: рисунки — по мере прокрутки (список прокручивается сам)
+    grid.addEventListener('click', async e => {
       const c = e.target.closest('.card'); if (!c) return;
       const sp = S.findSpirit(c.dataset.uid), err = S.canHeal(sp, k);
       if (err) { this.toast(err); return; }
       const r = await Game.try('heal', { uid: sp.uid, k });
       if (!r) return;
-      Sfx.play('hatch'); this.healDone(sp, r);
+      Sfx.play('heal'); this.healDone(sp, r);
       m.close(); done && done();
     });
   },
@@ -163,10 +204,11 @@ Object.assign(UI, {
       title: ru`Команда из трёх духов`, cls: 'team-modal',
       html: `<p class="small">${ru`Выбери до трёх духов. Совет: бери стихии, которые сильнее противника.`}</p><div class="grid cards team-grid">${list.map(x => `
         <button class="card el-${SP[x.sid].el} ${S.alive(x) ? '' : 'ko'}" data-uid="${x.uid}"><div class="card-pw">${ru`СИЛА`} <b>${S.power(x)}</b></div>
-        <div class="card-art">${Art.imgOf(x)}</div><div class="card-name">${Art.elIcon(SP[x.sid].el, 14)} ${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
+        <div class="card-art">${this.lazyPic(x.sid, x.shiny, x.dark)}</div><div class="card-name">${Art.elIcon(SP[x.sid].el, 14)} ${U.esc(x.nick || SP[x.sid].name)}</div>${this.hpBar(x)}</button>`).join('')}</div>`,
       buttons: [{ label: ru`Сильнейшие`, fn: async () => { if (await Game.try('team', { uids: [] })) done(); } },
         { label: ru`Готово`, cls: 'primary', fn: async () => { if (await Game.try('team', { uids: chosen })) done(); } }],
     });
+    this.lazyArt(m.querySelector('.team-grid'), m.querySelector('.team-grid')); // 5.1.24: рисунки — по мере прокрутки (все духи — как на экране «Духи»)
     const mark = () => U.$$('.card', m).forEach(c => { const i = chosen.indexOf(c.dataset.uid); c.classList.toggle('selected', i >= 0); c.dataset.n = i >= 0 ? i + 1 : ''; });
     m.querySelector('.team-grid').addEventListener('click', e => {
       const c = e.target.closest('.card'); if (!c) return;
@@ -190,7 +232,7 @@ Object.assign(UI, {
       if (!sp) { this.closeScreen(scr); return; }
       const s = SP[sp.sid], st = S.stats(sp), fam = SP[s.fam], ess = S.d.essence[s.fam] || 0;
       const pc = S.powerUpCost(sp), pErr = S.canPowerUp(sp), eErr = S.canEvolve(sp);
-      const iv = S.ivPct(sp), stars = iv >= 100 ? 4 : iv >= 82 ? 3 : iv >= 67 ? 2 : iv >= 50 ? 1 : 0;
+      const iv = S.ivPct(sp), stars = this.ivStars(iv);
       const isBuddy = S.d.buddy && S.d.buddy.uid === sp.uid;
       const bar = (label, v) => `<div class="stat"><span>${label}</span><div class="sbar"><b class="${v === 15 ? 'max' : ''}" style="width:${Math.max(4, v / 15 * 100)}%"></b></div><em>${v}/15</em></div>`;
       scr.querySelector('.screen-head h2').innerHTML = `<button class="det-name dt-hname">${U.esc(sp.nick || s.name)} ${this.I.edit}</button>`; // 4.14.1: имя — рядом со стрелкой назад
@@ -293,7 +335,7 @@ Object.assign(UI, {
           const r = await Game.try('spiritBind', { uid: sp.uid });
           done(!!r);
           if (!r) return;
-          Sfx.play('catch'); U.vibrate([20, 40, 60]);
+          Sfx.play('success'); U.vibrate([20, 40, 60]);
           setTimeout(() => { if (scr.isConnected) { render(); this.toast(ru`Дух привязан к тебе`, 'good'); } }, 650);
         } }] });
     });
@@ -309,21 +351,21 @@ Object.assign(UI, {
       else if (t.classList.contains('det-name')) this.rename(sp, render);
       else if (t.classList.contains('act-move2')) {
         this.confirm(ru`Второй приём`, ru`Научить «${U.esc(sp.nick || SP[sp.sid].name)}» приёму «${ELEMENTS[SP[sp.sid].el].charge2}» за ✦ ${MOVE2_COST.sparks} и ${MOVE2_COST.essence} эссенции?`, ru`Научить`,
-          () => act('move2', {}, () => { Sfx.play('levelup'); this.toast(ru`Новый приём выучен!`, 'good'); }));
+          () => act('move2', {}, () => { Sfx.play('powerup'); this.toast(ru`Новый приём выучен!`, 'good'); }));
       } else if (t.classList.contains('act-unequip')) act('unequip', {}, () => Sfx.play('tap'));
       else if (t.classList.contains('act-equip')) this.pickAmulet(sp, render);
       else if (t.classList.contains('act-purify')) {
         this.confirm(ru`Очистить духа?`, ru`Тьма Нави покинет «${U.esc(sp.nick || SP[sp.sid].name)}». Стоимость: ✦ ${U.fmtNum(S.purifyCost(sp).sparks)} и ${S.purifyCost(sp).essence} эссенции.`, ru`Очистить`,
-          () => act('purify', {}, () => { Sfx.play('levelup'); U.vibrate([40, 60, 120]); this.toast(ru`Дух очищен! Оценка выросла`, 'good'); pulse(); }));
+          () => act('purify', {}, () => { Sfx.play('powerup'); U.vibrate([40, 60, 120]); this.toast(ru`Дух очищен! Оценка выросла`, 'good'); pulse(); }));
       }
       else if (t.classList.contains('act-buddy')) {
-        act('buddy', {}, () => { Sfx.play('catch'); U.vibrate(30); this.toast(ru`${U.esc(sp.nick || SP[sp.sid].name)} теперь твой спутник!`, 'good'); MapView.updateBuddy(); });
+        act('buddy', {}, () => { Sfx.play('success'); U.vibrate(30); this.toast(ru`${U.esc(sp.nick || SP[sp.sid].name)} теперь твой спутник!`, 'good'); MapView.updateBuddy(); });
       }
       else if (t.classList.contains('act-heal')) this.healPick(sp, render);
       else if (t.classList.contains('act-power')) {
         if (t._busy) return;
         t._busy = true;
-        act('powerUp', {}, () => { Sfx.play('spin'); U.vibrate(20); pulse(); }).finally(() => { t._busy = false; });
+        act('powerUp', {}, () => { Sfx.play('powerup'); U.vibrate(20); pulse(); }).finally(() => { t._busy = false; });
       } else if (t.classList.contains('act-evo')) {
         const s = SP[sp.sid];
         this.confirm(ru`Превращение`, S.d.dex[s.evo] && S.d.dex[s.evo].seen ? ru`Превратить «${U.esc(sp.nick || s.name)}» в ${SP[s.evo].name}? Потратится ${s.cost} эссенции.` : ru`Превратить «${U.esc(sp.nick || s.name)}» в неизвестную форму? Потратится ${s.cost} эссенции.`, ru`Превратить`, async () => {
@@ -350,7 +392,7 @@ Object.assign(UI, {
     m.addEventListener('click', async e => {
       const b = e.target.closest('.am-pick'); if (!b) return;
       m.close();
-      if (await Game.try('equip', { uid: sp.uid, k: b.dataset.k })) { Sfx.play('spin'); done(); }
+      if (await Game.try('equip', { uid: sp.uid, k: b.dataset.k })) { Sfx.play('equip'); done(); }
     });
   },
   /* ---------------- 4.16: ПРОБУЖДЕНИЕ ---------------- */
@@ -455,7 +497,7 @@ Object.assign(UI, {
     if (!max) { this.toast(rate > 1 ? ru`Нужно эссенции Рода: ${rate}. Её даёт переплавка лишней эссенции.` : ru`Эссенции Рода нет. Её даёт переплавка лишней эссенции.`); return; }
     this.amount({ title: ru`Влить эссенцию Рода`, art: Art.item('rod'), name: ru`Эссенция «${SP[fam].name}»`, max, ok: ru`Влить`,
       sum: k => ru`+${k} эссенции · потратится Рода: ${k * rate} из ${S.d.rod}`,
-      fn: k => Game.try('essPour', { fam, n: k }), after: r => { done && done(); Sfx.play('spin'); this.toast(ru`Эссенция «${SP[fam].name}»: ${r.ess}`, 'good'); } });
+      fn: k => Game.try('essPour', { fam, n: k }), after: r => { done && done(); Sfx.play('reward'); this.toast(ru`Эссенция «${SP[fam].name}»: ${r.ess}`, 'good'); } });
   },
   // Переплавка: лишняя эссенция любого семейства (кроме легенд) → эссенция Рода
   meltPick(done) {
@@ -472,7 +514,7 @@ Object.assign(UI, {
       m.close();
       this.amount({ title: ru`Переплавить`, art: Art.img(f), name: ru`Эссенция «${SP[f].name}»`, max: Math.floor(have / M), ok: ru`Переплавить`,
         sum: k => ru`−${k * M} эссенции (останется ${have - k * M}) → +${k} Рода`,
-        fn: k => Game.try('essMelt', { fam: f, n: k }), after: r => { done && done(); Sfx.play('spin'); this.toast(ru`Эссенция Рода: ${r.rod}`, 'good'); } });
+        fn: k => Game.try('essMelt', { fam: f, n: k }), after: r => { done && done(); Sfx.play('reward'); this.toast(ru`Эссенция Рода: ${r.rod}`, 'good'); } });
     });
   },
   rename(sp, done) {
@@ -524,16 +566,9 @@ Object.assign(UI, {
         return `<button class="dex-cell ${cls} el-${s.el}${mf !== 'all' && s.myth !== mf ? ' hidden' : ''}" data-sid="${s.id}" data-m="${s.myth}"><span class="num">${String(s.num).padStart(2, '0')}</span>${d.shiny ? '<span class="dex-shiny">✦</span>' : ''}${d.seen ? `<i class="art" data-art="${s.id}"></i>` : '<span class="dx-q">?</span>'}<span class="nm">${d.seen ? s.name : '???'}</span></button>`;
       }).join('')}</div>`, 'dex-screen');
     // 5.1.19: рисунки ячеек — по мере прокрутки: видов стало 441, и все разом рисовались до полутора секунд на слабом телефоне.
-    // Ячейки скрытых мифологий не пересекаются с экраном — их рисунки появятся, когда мифологию выберут
-    const pics = [...scr.querySelectorAll('[data-art]')], draw = el => { if (el.isConnected) el.outerHTML = Art.img(el.dataset.art); };
-    if (typeof IntersectionObserver !== 'function') pics.forEach(draw);
-    else {
-      const io = new IntersectionObserver(es => {
-        for (const e of es) if (e.isIntersecting) { io.unobserve(e.target); draw(e.target); }
-      }, { root: scr.querySelector('.screen-body'), rootMargin: '300px 0px' });
-      pics.forEach(el => io.observe(el));
-      scr._onClose = () => io.disconnect();
-    }
+    // Ячейки скрытых мифологий не пересекаются с экраном — их рисунки появятся, когда мифологию выберут. 5.1.24: общий UI.lazyArt
+    const io = this.lazyArt(scr, scr.querySelector('.screen-body'));
+    if (io) scr._onClose = () => io.disconnect();
     scr.addEventListener('click', e => {
       const mb = e.target.closest('[data-myth]');
       if (mb) {
@@ -585,8 +620,8 @@ Object.assign(UI, {
             </div>`, true)}
           ${pane('where', `
             <div class="dt-rows">
-              ${row(ru`Время`, s.time === 'night' ? ru`чаще ночью` : s.time === 'day' ? ru`только днём` : ru`днём и ночью`)}
-              ${row(ru`Где`, s.legend ? ru`только в разломах` : ru`на карте, рядом с Ловчим`)}
+              ${row(ru`Время`, s.time === 'night' ? ru`только ночью` : s.time === 'day' ? ru`только днём` : ru`днём и ночью`)}
+              ${row(ru`Где`, s.legend ? ru`только в разломах` : ru`на карте — только на родине`)}
               ${s.region ? row(ru`Регион`, REGIONS[s.region].name, 'wrap') : ''}
               ${s.land ? row(ru`Земля`, `${LANDS[s.land].name}`, 'wrap') : ''}
               ${s.season ? row(ru`Сезон`, SEASON[s.season] || s.season, 'wrap') : row(ru`Сезон`, ru`круглый год`)}
@@ -605,7 +640,7 @@ Object.assign(UI, {
           ${pane('mine', mine.length ? `
             <div class="dt-rows">${mine.slice(0, 6).map(x => `<button class="dt-row dx-mine" data-uid="${x.uid}"><span>${x.shiny ? '<i class="dx-sh">✦</i> ' : ''}${U.esc(x.nick || s.name)} <small>${ru`ур. ${x.lvl}`}</small></span><b>${ru`СИЛА`} ${S.power(x)}</b></button>`).join('')}</div>
             ${mine.length > 6 ? `<div class="det-why">${ru`и ещё ${mine.length - 6} — в «Духах»`}</div>` : ''}`
-            : `<div class="dx-none"><b>${ru`Пока не пойман`}</b><small>${s.legend ? ru`Ищи его в разломах.` : (s.time === 'night' ? ru`Ищи его на карте — чаще ночью.` : s.time === 'day' ? ru`Ищи его на карте — только днём.` : ru`Ищи его на карте — днём и ночью.`)}</small></div>`)}
+            : `<div class="dx-none"><b>${ru`Пока не пойман`}</b><small>${s.legend ? ru`Ищи его в разломах.` : (s.time === 'night' ? ru`Ищи его на родине — только ночью.` : s.time === 'day' ? ru`Ищи его на родине — только днём.` : ru`Ищи его на родине — днём и ночью.`)}</small></div>`)}
         </div>
       </div>`;
     scr.addEventListener('click', e => {
@@ -647,7 +682,7 @@ Object.assign(UI, {
       if (e.target.closest('.parcel-take')) {
         const r = await Game.try('parcelTake');
         if (!r) return;
-        Sfx.play('spin');
+        Sfx.play('reward');
         this.toast(r.left ? ru`Из посылки взято: ${r.got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}. В посылке осталось: ${r.left}` : ru`Посылка разобрана: ${r.got.map(x => `${I18N.back(x.label)} ×${x.n}`).join(', ')}`, 'good');
         render(); this.refreshHud(); return;
       }
@@ -659,13 +694,13 @@ Object.assign(UI, {
       if (e.target.closest('.use-melt')) { this.meltPick(render); return; }
       if (e.target.closest('.use-xp')) { // 4.16: Настой опыта
         if (S.d.xpUntil > U.now()) { this.toast(ru`Настой опыта действует ещё ${U.fmtTime(S.d.xpUntil - U.now())}`); return; }
-        if (await Game.try('xpBrew')) { Sfx.play('levelup'); this.toast(ru`Настой выпит: сутки опыта на ${Math.round((Rules.XP_BREW.MUL - 1) * 100)}% больше`, 'good'); this.refreshHud(); render(); }
+        if (await Game.try('xpBrew')) { Sfx.play('use_item'); this.toast(ru`Настой выпит: сутки опыта на ${Math.round((Rules.XP_BREW.MUL - 1) * 100)}% больше`, 'good'); this.refreshHud(); render(); }
         return;
       }
       if (!e.target.closest('.use-inc')) return;
       if (S.incenseActive()) { this.toast(ru`Ладан ещё горит: ${U.fmtTime(S.d.incenseUntil - U.now())}`); return; }
       if (await Game.try('incense')) {
-        Sfx.play('spin'); this.toast(ru`Ладан зажжён — духи потянулись к тебе`, 'good');
+        Sfx.play('use_item'); this.toast(ru`Ладан зажжён — духи потянулись к тебе`, 'good');
         MapView.refresh(); this.refreshHud(); render();
       }
     });
@@ -688,7 +723,7 @@ Object.assign(UI, {
       const r = await Game.try('amuletMelt', { from, to: b.dataset.k });
       m._busy = false;
       if (!r) return;
-      m.close(); Sfx.play('spin'); U.vibrate(20);
+      m.close(); Sfx.play('reward'); U.vibrate(20);
       this.toast(ru`Переплавлено: ${AMULETS[r.to].name}`, 'good');
       done && done(); this.refreshHud();
     });
@@ -773,5 +808,22 @@ Object.assign(UI, {
       b.onclick = () => { m.close(); done(); };
       m.querySelector('.modal-btns').appendChild(b);
     }, 2200);
+  },
+  // 5.1.27: новый дух без кокона (выбор в Кампании) — та же сцена: вспышка, дух появляется, кто он и «Привет!»
+  gotSpiritAnim(sp, o, done) {
+    const s = SP[sp.sid];
+    const m = this.modal({
+      cls: 'hatch-modal got-modal', dismiss: false, buttons: [],
+      html: `<div class="hatch-stage"><div class="hatch-sp">${Art.of(sp)}</div><div class="evo-glow"></div></div><div class="evo-text"></div>`,
+    });
+    setTimeout(() => {
+      Sfx.play('hatch'); U.vibrate([40, 60, 100]);
+      m.querySelector('.hatch-stage').classList.add('open');
+      m.querySelector('.evo-text').innerHTML = `${sp.shiny ? ru`<b>✦ Сияющий ${s.name}</b> — теперь твой дух!` : ru`<b>${s.name}</b> — теперь твой дух!`}` +
+        `<div class="small">${ru`СИЛА ${S.power(sp)}`}${o.ess ? ` · ${ru`+${o.ess} эссенции`}` : ''}</div>${o.isNew ? `<div class="badge-new">${ru`Новая запись в Бестиарии!`}</div>` : ''}`;
+      const b = U.el(`<button class="btn primary">${ru`Привет!`}</button>`);
+      b.onclick = () => { m.close(); if (done) done(); };
+      m.querySelector('.modal-btns').appendChild(b);
+    }, 350);
   },
 });

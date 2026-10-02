@@ -351,6 +351,7 @@ www/                 игра (HTML/CSS/JS; при выкладке — сбор
   index.html         игра · admin.html — модерация · auth.html — возврат со входа через сервис
   offer.html · privacy.html · terms.html · paid.html   оферта, политика ПД, соглашение, возврат после оплаты
   vendor/            свои копии библиотек и шрифта: Leaflet, protomaps-leaflet, supabase-js, qrcode, Rubik
+  sfx/               звуки игры (MP3); откуда каждый и лицензии — sfx/LICENSES.md, без файла звучит прежний синтез
   js/version.js      версия клиента и признак режима разработки (localhost, test.duholov.ru)
   js/config.js       адреса серверов: боевой api.duholov.ru, тестовый api-test.duholov.ru
   js/move.js         переезд со старого адреса на duholov.ru вместе со входом
@@ -382,6 +383,7 @@ server/*.sql         схема базы и правила доступа (вы�
 server/game/         сервер игры: core.js (все действия), serve.js (Edge Function), prelude.js
 server/functions/game/index.ts  собранный сервер (tools/build-server.ps1)
 tools/web/           сборка сайта для выкладки (esbuild)
+tools/sfx/           звуки: наборы Kenney и Leohpaz → www/sfx (ffmpeg; исходники наборов в репозиторий не кладём)
 tools/server/        скрипты и настройки своего сервера (Caddy, копии, мониторинг, секреты, ключ теста)
 tools/migrate/       перенос из Supabase Cloud на свой сервер (выполнен в 4.1)
 tools/osm-import/    места России из OpenStreetMap (workflow «Места России»)
