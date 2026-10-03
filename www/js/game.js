@@ -99,7 +99,7 @@ const Game = {
   // То же, но ошибка показывается подсказкой, а результат — null
   async try(type, args) {
     try { return await this.act(type, args); }
-    catch (e) { UI.toast(U.esc(e.message), 'bad'); Sfx.play('miss'); return null; } // 4.25: ошибка — красная метка у всплывашки
+    catch (e) { UI.toast(U.esc(e.message), 'bad'); Sfx.play('error'); return null; } // 4.25: ошибка — красная метка у всплывашки
   },
 
   apply(res) {

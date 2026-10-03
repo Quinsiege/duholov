@@ -532,7 +532,7 @@ const Atlas = {
     P.querySelectorAll('.at-tabs [data-l]').forEach(b => b.classList.toggle('on', b.dataset.l === this.land));
     const myths = L ? L.myths.filter(m => MYTH_KEYS.includes(m) && MYTHS[m]).map(m => `<span class="at-myth" style="--c:${MYTHS[m].color}">${MYTHS[m].name}</span>`).join('') : '';
     box.className = 'at-info' + (L ? '' : ' hint');
-    box.innerHTML = L ? `<h3>${U.esc(L.name)}</h3>${myths ? `<div class="at-myths">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`После Перепутицы духи любых мифологий встречаются везде.`}</small>`}`
+    box.innerHTML = L ? `<h3>${U.esc(L.name)}</h3>${myths ? `<div class="at-myths">${myths}</div>` : ''}<p>${L.text}</p>${L.cold ? '' : `<small>✦ ${ru`Каждая мифология живёт у себя на родине: здесь — духи, святилища и Разломы этих мифологий.`}</small>`}`
       : `<p>${first ? ru`Поверни глобус пальцем и коснись материка — там и начнётся твой путь Ловчего.` : ru`Поверни глобус пальцем и коснись материка, чтобы выбрать, куда шагнуть.`}</p>`;
     box.scrollTop = 0; this.more(box);
     P.querySelector('.at-go').disabled = !L || !!L.cold;
@@ -687,24 +687,23 @@ const Atlas = {
     const z = Math.log2(s / 256), lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * Yc))) * 180 / Math.PI, lng = Xc * 360 - 180;
     return isFinite(z) && isFinite(lat) && isFinite(lng) ? { c: [lat, lng], z: Math.max(1.5, Math.min(18, z)) } : null;
   },
-  // карта игры: те же плитки Protomaps и облик (Карта Нави, время суток и сезон — как сейчас на карте), подписи на языке игрока;
-  // без неё или если плитки не читаются — OSM (подписи — местные)
+  // карта игры: те же плитки Protomaps, стандартный стиль (5.1.30: днём светлый, ночью тёмный — как сейчас на карте), подписи
+  // на языке игрока; если плитки не читаются — OSM (подписи — местные)
   pickTiles(m, box) {
     const pk = this.pick;
     pk.showT = setTimeout(() => this.pickShow(), 6000); // плитки так и не нарисовались — всё равно показать (касаться можно)
-    if (typeof protomapsL !== 'undefined' && typeof NavMap !== 'undefined' && typeof MapView !== 'undefined' && MapView.tilesUrl) {
+    if (typeof protomapsL !== 'undefined' && typeof MapView !== 'undefined' && MapView.tilesUrl) {
       try {
-        const lk = MapView.look(), th = NavMap.far(lk.phase, lk.season, lk.snow);
-        const lay = pk.lay = protomapsL.leafletLayer({ url: MapView.tilesUrl(), attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>', ...th });
+        const lk = MapView.look(), st = MapView.flavorRules(MapView.pal(lk.night));
+        const lay = pk.lay = protomapsL.leafletLayer({ url: MapView.tilesUrl(), attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>',
+          lang: I18N.lang, paintRules: st.paint, labelRules: st.label, backgroundColor: st.bg });
         lay.once('load', () => this.pickShow());
         lay.addTo(m);
         // города для списка — из того же файла карты, но своим чтением (источник карты отменяет чтение плиток другого масштаба —
         // её плитки рисовались бы пустыми) и только слой places
         const src = lay.views && lay.views.get('') && lay.views.get('').tileCache.source;
         pk.get = src && src.p ? this.placesGetter(src.p, MapView.tilesUrl()) : null;
-        box.classList.add('vec'); box.style.background = th.backgroundColor;
-        if (document.fonts) Promise.all(["500 12px 'Rubik'", "700 12px 'Rubik'"].map(f => document.fonts.load(f).catch(() => {})))
-          .then(() => { if (this.pick === pk && pk.lay === lay) { lay.clearLayout(); lay.rerenderTiles(); } });
+        box.classList.add('vec'); box.style.background = lay.backgroundColor;
         return;
       } catch (e) { pk.get = null; pk.lay = null; }
     }
@@ -813,7 +812,7 @@ const Atlas = {
     const res = await Promise.allSettled(jobs), ok = res.filter(r => r.status === 'fulfilled').map(r => r.value);
     if (!ok.length && jobs.length) throw new Error('tiles');
     const lg = (typeof I18N !== 'undefined' && I18N.lang) || 'ru';
-    const keys = [`name:${lg}`, lg === 'ru' ? '' : 'name:en', 'name'].filter(Boolean); // как подписи карты (NavMap.theme)
+    const keys = [`name:${lg}`, lg === 'ru' ? '' : 'name:en', 'name'].filter(Boolean); // свой язык, затем английский, затем местное имя
     const out = [];
     for (const { d, x, y } of ok) for (const f of d || []) {
       const pr = f.props || {};
@@ -995,7 +994,7 @@ const Atlas = {
       this.status();
       return;
     }
-    try { Sfx.play('levelup'); U.vibrate([40, 40, 90]); } catch (e) { /* без звука */ }
+    try { Sfx.play('reward'); U.vibrate([40, 40, 90]); } catch (e) { /* без звука */ }
     gate.flash(() => { this._busy = false; this.close(); });
   },
   // портал поверх всего: руны кружатся, вихрь втягивает свет; flash — вспышка и растворение, fail — врата схлопываются
@@ -1007,7 +1006,7 @@ const Atlas = {
         <svg class="ag-ring r2" viewBox="-100 -100 200 200" aria-hidden="true"><circle r="66" class="d"/></svg></div>
       <div class="ag-txt"><small>${ru`Врата Перепутицы`}</small><b>${name ? ru`Шаг — и перед тобой ${U.esc(name)}` : ru`Шаг — и ты на месте`}</b></div><i class="ag-flash"></i></div>`);
     document.body.appendChild(g);
-    try { Sfx.play('spin'); } catch (e) { /* без звука */ }
+    try { Sfx.play('portal'); } catch (e) { /* без звука */ }
     requestAnimationFrame(() => requestAnimationFrame(() => g.classList.add('open')));
     const calm = document.body.classList.contains('calm');
     return {
