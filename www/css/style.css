@@ -4486,7 +4486,7 @@ body.rm-closing #hud > :not(#menuBtn) { opacity: 0; pointer-events: none; }
 .onb .input.big { border-color: rgba(253, 230, 138, .35); background: rgba(255, 255, 255, .09); }
 .rune:disabled { opacity: .75; filter: grayscale(1) brightness(.8); }
 .fatal { background: radial-gradient(120% 60% at 50% 0%, rgba(124, 58, 237, .35), transparent 60%), linear-gradient(180deg, #1c1240, #0b0628); }
-.fatal::before { content: 'Духолов'; margin-bottom: 18px; padding-left: .05em; font: 900 48px/1.05 'Rubik', system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #fbbf24; } /* 5.1.35: название текстом (как на экране загрузки) — картинки-логотипа нет */
+.fatal::before { content: 'Духолов'; margin-bottom: 18px; padding-left: .05em; font: 900 48px/1.05 'Rubik', system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #ebe4ff; } /* 5.1.35: название текстом (как на экране загрузки) — картинки-логотипа нет */
 .res-card .res-title + .res-art { margin-top: 12px; }
 .nv-moon { background: radial-gradient(circle at 42% 40%, #4a3d80 0, #2a2058 30%, #15103a 55%, #fff4ff 58.5%, #e9d5ff 60.5%, rgba(192, 132, 252, .5) 65%, rgba(192, 132, 252, 0) 74%); }
 .wd-body { padding-bottom: 10px; }
@@ -5356,6 +5356,9 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .spr2.taken .spr2-well { opacity: .4; transition: opacity .6s ease .2s; }
 .spr2.taken .day-left { visibility: hidden; }
 .spr2.taken .spring-go { position: fixed; z-index: 6; left: 16px; right: 16px; bottom: calc(var(--sb) + 22px); width: auto; max-width: 388px; margin: 0 auto; }
+/* 5.1.35: после награды кнопки нет — «Коснись, чтобы продолжить» (UI.tapGo); невидимая кнопка — только мерка, где встанет Сумка */
+.spr2.taken .spring-go.gone { visibility: hidden; pointer-events: none; }
+.spring-screen > .tap-hint { z-index: 7; }
 /* «В сумку»: вещи и опыт слетаются к кнопке, лучи и поручение гаснут */
 .spr2-reward.stow .spr2-loot .loot-item, .spr2-reward.stow .spr2-loot .loot-xp { animation: srcStow .45s cubic-bezier(.55, 0, .75, .35) calc(var(--k, 0) * .06s) both; }
 .spr2-reward.stow .spr2-loot.fly .spr2-rays { opacity: 1; animation: srcRaysOut .4s ease-in forwards; }

@@ -13641,7 +13641,7 @@
   "k": "Лови духов Нави по всему свету",
   "at": [
    "www/js/loader.js:61",
-   "www/js/ui.js:1060",
+   "www/js/ui.js:1063",
    "www/index.html:113"
   ],
   "ctx": "<div class=\"ld-mid\">${this.mark(ru`Лови духов Нави по всему свету`)}</div>"
@@ -21038,7 +21038,7 @@
   "k": "Звание «{0}»",
   "at": [
    "www/js/path.js:65",
-   "www/js/ui.js:1034"
+   "www/js/ui.js:1037"
   ],
   "ctx": "<div class=\"pth-card\">${rank ? `<div class=\"pth-rank\">${ru`Звание «${rank}»`}</div>` : ''}${st === 'cur' ? `<div class=\"pth-here\">${ru`Ты здесь`}</div>` : ''}"
  },
@@ -22507,7 +22507,7 @@
   "k": "Кокон",
   "at": [
    "www/js/rules.js:425",
-   "www/js/ui.js:965"
+   "www/js/ui.js:968"
   ],
   "ctx": "[ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в святилище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],"
  },
@@ -24120,7 +24120,7 @@
   "at": [
    "www/js/ui-player.js:306",
    "www/js/ui.js:794",
-   "www/js/ui.js:982"
+   "www/js/ui.js:985"
   ],
   "ctx": "[ru`Пробуждений`, d.stats.awakened || 0], [ru`Источников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед в Святилищах`, d.stats.duels],"
  },
@@ -26618,7 +26618,7 @@
   "k": "Из кокона появился <b>{0}</b>!",
   "at": [
    "www/js/ui-spirits.js:804",
-   "www/js/ui.js:1106"
+   "www/js/ui.js:1109"
   ],
   "ctx": "m.querySelector('.evo-text').innerHTML = `${res.sp.shiny ? ru`Из кокона появился <b>✦ сияющий ${SP[res.sp.sid].name}</b>!` : ru`Из кокона появился <b>${SP[res.sp.sid].name}</b>!`}<div class=\"small\">${ru`СИЛА ${S.power(re"
  },
@@ -26975,296 +26975,289 @@
   "ctx": "rw.querySelector('.spr2-after').innerHTML = (r.full ? `<div class=\"loot-full\">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +"
  },
  {
-  "k": "В сумку",
-  "at": [
-   "www/js/ui.js:869"
-  ],
-  "ctx": "go.textContent = ru`В сумку`;"
- },
- {
   "k": "почти всегда",
   "at": [
-   "www/js/ui.js:956"
+   "www/js/ui.js:959"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "часто",
   "at": [
-   "www/js/ui.js:956"
+   "www/js/ui.js:959"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "иногда",
   "at": [
-   "www/js/ui.js:956"
+   "www/js/ui.js:959"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "редко",
   "at": [
-   "www/js/ui.js:956"
+   "www/js/ui.js:959"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "очень редко",
   "at": [
-   "www/js/ui.js:956"
+   "www/js/ui.js:959"
   ],
   "ctx": "const word = p => p >= .9 ? ru`почти всегда` : p >= .4 ? ru`часто` : p >= .1 ? ru`иногда` : p >= .02 ? ru`редко` : ru`очень редко`;"
  },
  {
   "k": "За один раз источник даёт {0}–{1} вещей и {2} опыта. Чем выше уровень Ловчего, тем больше видов добычи.",
   "at": [
-   "www/js/ui.js:962"
+   "www/js/ui.js:965"
   ],
   "ctx": "<p class=\"spr2-note\">${ru`За один раз источник даёт ${4}–${6} вещей и ${50} опыта. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>"
  },
  {
   "k": "Там, где Алатырь дал трещину, из-под земли бьёт вода Перепутицы. У Источников Ловчие всех земель черпают обереги и припасы.",
   "at": [
-   "www/js/ui.js:976"
+   "www/js/ui.js:979"
   ],
   "ctx": "<p class=\"spr2-lore\">${ru`Там, где Алатырь дал трещину, из-под земли бьёт вода Перепутицы. У Источников Ловчие всех земель черпают обереги и припасы.`}</p>"
  },
  {
   "k": "Место",
   "at": [
-   "www/js/ui.js:978"
+   "www/js/ui.js:981"
   ],
   "ctx": "${cat ? row(ru`Место`, U.esc(cat)) : ''}"
  },
  {
   "k": "Расстояние",
   "at": [
-   "www/js/ui.js:979"
+   "www/js/ui.js:982"
   ],
   "ctx": "${row(ru`Расстояние`, U.fmtDist(MapView.pos ? U.dist(MapView.pos.lat, MapView.pos.lng, e.lat, e.lng) : e.d))}"
  },
  {
   "k": "захвачен Навью",
   "at": [
-   "www/js/ui.js:980"
+   "www/js/ui.js:983"
   ],
   "ctx": "${row(ru`Источник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}"
  },
  {
   "k": "наберёт силу через {0}",
   "at": [
-   "www/js/ui.js:980"
+   "www/js/ui.js:983"
   ],
   "ctx": "${row(ru`Источник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}"
  },
  {
   "k": "полон силы",
   "at": [
-   "www/js/ui.js:980"
+   "www/js/ui.js:983"
   ],
   "ctx": "${row(ru`Источник`, e.invaded ? ru`захвачен Навью` : left > 0 ? ru`наберёт силу через ${U.fmtTime(left)}` : ru`полон силы`)}"
  },
  {
   "k": "Духи рядом",
   "at": [
-   "www/js/ui.js:991"
+   "www/js/ui.js:994"
   ],
   "ctx": "title: ru`Духи рядом`, cls: 'nearby-modal',"
  },
  {
   "k": "Коснись духа — Следопыт покажет к нему дорогу.",
   "at": [
-   "www/js/ui.js:997"
+   "www/js/ui.js:1000"
   ],
   "ctx": "}).join('')}</div><p class=\"small nb-hint\">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,"
  },
  {
   "k": "Поблизости тихо. Прогуляйся или зажги ладан.",
   "at": [
-   "www/js/ui.js:997"
+   "www/js/ui.js:1000"
   ],
   "ctx": "}).join('')}</div><p class=\"small nb-hint\">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,"
  },
  {
   "k": "К источнику",
   "at": [
-   "www/js/ui.js:999"
+   "www/js/ui.js:1002"
   ],
   "ctx": "{ label: ru`К источнику`, fn: () => this.trackNearest('spring') },"
  },
  {
   "k": "К святилищу",
   "at": [
-   "www/js/ui.js:1000"
+   "www/js/ui.js:1003"
   ],
   "ctx": "{ label: ru`К святилищу`, fn: () => this.trackNearest('shrine') },"
  },
  {
   "k": "Рядом нет готовых источников",
   "at": [
-   "www/js/ui.js:1011"
+   "www/js/ui.js:1014"
   ],
   "ctx": "if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных святилищ`); return; }"
  },
  {
   "k": "Рядом нет свободных святилищ",
   "at": [
-   "www/js/ui.js:1011"
+   "www/js/ui.js:1014"
   ],
   "ctx": "if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных святилищ`); return; }"
  },
  {
   "k": "Следопыт: {0}, {1}",
   "at": [
-   "www/js/ui.js:1013"
+   "www/js/ui.js:1016"
   ],
   "ctx": "this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);"
  },
  {
   "k": "Откроется после обучения: {0}",
   "at": [
-   "www/js/ui.js:1034"
+   "www/js/ui.js:1037"
   ],
   "ctx": "const unlock = (Path.RANKS[l] ? `<p class=\"unlock\">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class=\"unlock\">${inTut ? ru`Откроется после обучения: ${list}` : ru`Открыто: ${list}`}</p>` : ''); // "
  },
  {
   "k": "Открыто: {0}",
   "at": [
-   "www/js/ui.js:1034"
+   "www/js/ui.js:1037"
   ],
   "ctx": "const unlock = (Path.RANKS[l] ? `<p class=\"unlock\">${ru`Звание «${Path.RANKS[l]}»`}</p>` : '') + (opened.length ? `<p class=\"unlock\">${inTut ? ru`Откроется после обучения: ${list}` : ru`Открыто: ${list}`}</p>` : ''); // "
  },
  {
   "k": "Новый уровень!",
   "at": [
-   "www/js/ui.js:1037"
+   "www/js/ui.js:1040"
   ],
   "ctx": "html: `<div class=\"lvl-num\">${l}</div><div class=\"lvl-t\">${ru`Новый уровень!`}</div>${unlock}<div class=\"lvl-rw\">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,"
  },
  {
   "k": "Вперёд",
   "at": [
-   "www/js/ui.js:1038"
+   "www/js/ui.js:1041"
   ],
   "ctx": "buttons: [{ label: ru`Вперёд`, cls: 'primary', fn: () => { this._lvOpen = false; this.flushLevelUps(); } }],"
  },
  {
   "k": "Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок",
   "at": [
-   "www/js/ui.js:1062"
+   "www/js/ui.js:1065"
   ],
   "ctx": "${Invite.ref() ? `<div class=\"ent-invite\">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}"
  },
  {
   "k": "Начать игру",
   "at": [
-   "www/js/ui.js:1063"
+   "www/js/ui.js:1066"
   ],
   "ctx": "${this.rune(ru`Начать игру`, 'next')}"
  },
  {
   "k": "Уже играю — войти",
   "at": [
-   "www/js/ui.js:1064"
+   "www/js/ui.js:1067"
   ],
   "ctx": "${Game.on() ? this.glass(ru`Уже играю — войти`, 'lg-have', this.I.key) : ''}"
  },
  {
   "k": "Соглашение",
   "at": [
-   "www/js/ui.js:1065"
+   "www/js/ui.js:1068"
   ],
   "ctx": "<p class=\"ent-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Политику",
   "at": [
-   "www/js/ui.js:1065"
+   "www/js/ui.js:1068"
   ],
   "ctx": "<p class=\"ent-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Оферту",
   "at": [
-   "www/js/ui.js:1065"
+   "www/js/ui.js:1068"
   ],
   "ctx": "<p class=\"ent-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Без регистрации. Продолжая, ты принимаешь {0}, {1} и {2}",
   "at": [
-   "www/js/ui.js:1065"
+   "www/js/ui.js:1068"
   ],
   "ctx": "<p class=\"ent-legal\">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href=\"terms.html\">${ru`Соглашение`}</a>`}, ${`<a href=\"privacy.html\">${ru`Политику`}</a>`} и ${`<a href=\"offer.html\">${ru`Оферту`}</a>`}`}</p>"
  },
  {
   "k": "Как тебя зовут, Ловчий?",
   "at": [
-   "www/js/ui.js:1067"
+   "www/js/ui.js:1070"
   ],
   "ctx": "if (n === 2) html = `<div class=\"onb-q\"><div class=\"onb-ava\">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class=\"input big\" maxlength=\"16\" placeholder=\"${ru`Имя`}\" value=\"${U.esc(name)}\"></div>${th"
  },
  {
   "k": "Имя",
   "at": [
-   "www/js/ui.js:1067"
+   "www/js/ui.js:1070"
   ],
   "ctx": "if (n === 2) html = `<div class=\"onb-q\"><div class=\"onb-ava\">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class=\"input big\" maxlength=\"16\" placeholder=\"${ru`Имя`}\" value=\"${U.esc(name)}\"></div>${th"
  },
  {
   "k": "Дальше",
   "at": [
-   "www/js/ui.js:1067"
+   "www/js/ui.js:1070"
   ],
   "ctx": "if (n === 2) html = `<div class=\"onb-q\"><div class=\"onb-ava\">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class=\"input big\" maxlength=\"16\" placeholder=\"${ru`Имя`}\" value=\"${U.esc(name)}\"></div>${th"
  },
  {
   "k": "Твой первый дух",
   "at": [
-   "www/js/ui.js:1070"
+   "www/js/ui.js:1073"
   ],
   "ctx": "if (n === 3) html = `<div class=\"onb-q\"><h2>${ru`Твой первый дух`}</h2><p class=\"onb-ht\">${ru`Орден вручает тебе кокон. Он уже теплеет…`}</p></div>"
  },
  {
   "k": "Орден вручает тебе кокон. Он уже теплеет…",
   "at": [
-   "www/js/ui.js:1070"
+   "www/js/ui.js:1073"
   ],
   "ctx": "if (n === 3) html = `<div class=\"onb-q\"><h2>${ru`Твой первый дух`}</h2><p class=\"onb-ht\">${ru`Орден вручает тебе кокон. Он уже теплеет…`}</p></div>"
  },
  {
   "k": "Весь мир — твой",
   "at": [
-   "www/js/ui.js:1075"
+   "www/js/ui.js:1078"
   ],
   "ctx": "if (n === 4) html = `<div class=\"onb-q\"><div class=\"onb-pin\">${this.I.pin}</div><h2>${ru`Весь мир — твой`}</h2>"
  },
  {
   "k": "Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).",
   "at": [
-   "www/js/ui.js:1076"
+   "www/js/ui.js:1079"
   ],
   "ctx": "<p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местополож"
  },
  {
   "k": "Уже играешь?",
   "at": [
-   "www/js/ui.js:1083"
+   "www/js/ui.js:1086"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Войди — и твой прогресс откроется на этом устройстве",
   "at": [
-   "www/js/ui.js:1083"
+   "www/js/ui.js:1086"
   ],
   "ctx": "if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));"
  },
  {
   "k": "Назови себя",
   "at": [
-   "www/js/ui.js:1087",
+   "www/js/ui.js:1090",
    "server/game/core.js:748"
   ],
   "ctx": "nx.onclick = () => { name = inp.value.trim(); if (!name) { this.toast(ru`Назови себя`); return; } Sfx.play('tap'); step(3); };"
@@ -27272,7 +27265,7 @@
  {
   "k": "Коснись, чтобы попробовать ещё раз",
   "at": [
-   "www/js/ui.js:1096"
+   "www/js/ui.js:1099"
   ],
   "ctx": "if (!r) { this.tapGo(root, () => { const h = st.querySelector('.tap-hint'); if (h) h.remove(); hatch(); }, st, ru`Коснись, чтобы попробовать ещё раз`); return; }"
  },

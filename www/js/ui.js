@@ -866,17 +866,20 @@ const UI = {
       const tick = t => { const p = Math.min(1, (t - t0) / T); if (xb) xb.textContent = Math.round(xp * (1 - Math.pow(1 - p, 3))); if (p < 1 && scr.isConnected) requestAnimationFrame(tick); };
       setTimeout(() => requestAnimationFrame(tick), 1000 + n * 110); // когда вся награда вылетела
       hint.textContent = '';
-      go.textContent = ru`В сумку`;
-      go.disabled = false;
-      // «В сумку» (5.2): опыт и поручение гаснут, под наградой появляется Сумка (значок «Сумка» из меню) и открывается,
+      // 5.1.35: дальше — касанием, как после поимки духа: кнопки «В сумку» нет (она остаётся невидимой — по ней встаёт Сумка),
+      // внизу «Коснись, чтобы продолжить» (UI.tapGo) — когда награда вылетела из воды.
+      // Касание (5.2): опыт и поручение гаснут, под наградой появляется Сумка (значок «Сумка» из меню) и открывается,
       // вещи по очереди летят дугой ей в горловину — сумка подпрыгивает от каждой; клапан закрывается, сумка чуть сжимается —
       // и только потом экран закрывается. «Меньше движения» — сразу
-      go.onclick = () => {
-        if (view.classList.contains('stow')) return;
-        if (document.body.classList.contains('calm')) return this.closeScreen(scr);
-        view.classList.add('stow'); rw.classList.add('bagging'); Sfx.play('tap'); U.vibrate(15);
-        this.springBag(scr, rw, loot, go);
-      };
+      go.disabled = true; go.classList.add('gone');
+      setTimeout(() => {
+        if (!scr.isConnected || scr._closing) return;
+        this.tapGo(scr, () => {
+          if (document.body.classList.contains('calm')) return this.closeScreen(scr);
+          view.classList.add('stow'); rw.classList.add('bagging'); U.vibrate(15);
+          this.springBag(scr, rw, loot, go);
+        });
+      }, 900 + n * 110);
       MapView.refresh();
     };
     go.onclick = take;
@@ -921,7 +924,7 @@ const UI = {
     const its = U.$$('.loot-item', loot), n = its.length;
     if (!n || typeof Element === 'undefined' || !Element.prototype.animate) { setTimeout(done, 300); return; }
     const fade = el => el && el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 240, fill: 'forwards' });
-    U.$$('.loot-xp, .spr2-after, .spr2-rays', rw).forEach(fade); fade(go);
+    U.$$('.loot-xp, .spr2-after, .spr2-rays', rw).forEach(fade); fade(go); fade(U.$('.tap-hint', scr));
     // сумка — под сеткой наград, на месте погасших опыта и поручения (кнопка «В сумку» тоже гаснет); у нижнего края — не ниже экрана
     const R = rw.getBoundingClientRect(), gb = U.$('.spr2-grid', loot).getBoundingClientRect(), S = Math.round(Math.min(150, Math.max(120, R.width * .34)));
     const y = Math.min(gb.bottom - R.top + 18, go.getBoundingClientRect().bottom - R.top - S);

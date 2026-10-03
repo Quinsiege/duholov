@@ -3178,7 +3178,7 @@
       const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
       const wm = (html.match(/\.wordmark \{[^}]*\}/) || [''])[0];
       ok(/font-family: 'Rubik'/.test(wm) && /font-weight: 900/.test(wm), 'название игры — Rubik Black');
-      ok(/color: #fbbf24/.test(wm) && !/gradient|shadow/.test(wm), 'одним цветом, без теней');
+      ok(/color: #ebe4ff/.test(wm) && !/gradient|shadow/.test(wm), 'одним цветом (#ebe4ff), без теней');
       ok(!/ruslan-display-|'Ruslan Display'|logo\.webp/.test(html), 'ни Ruslan Display, ни картинки-логотипа');
       ok(!/ns-land|ns-fog/.test(html + Loader.sky()), 'фон — только небо со звёздами, без земли и тумана');
       Game.on = () => true;
@@ -3201,6 +3201,33 @@
       h.querySelector('.eh-name').click();
       eq(done, 1, 'касание — в игру:');
     } finally { Game.on = keep.on; S.d = keep.d; Realms.watch = keep.watch; Login.askSignOut = keep.out; Sfx.play = keep.sfx; UI.TAP_MS = keep.ms; if (root) root.remove(); }
+  });
+  atest('5.1.35: награда Источника — дальше касанием, как после поимки духа («Коснись, чтобы продолжить» вместо «В сумку»)', async () => {
+    const keep = { tr: Game.try, sfx: Sfx.play, ms: UI.TAP_MS, ref: MapView.refresh, d: S.d, calm: document.body.classList.contains('calm') };
+    let scr = null;
+    try {
+      Sfx.play = () => {}; UI.TAP_MS = 60; MapView.refresh = () => {};
+      S.d = null; S.newGame('Илья', 'ugolek');
+      const e = { id: 'tst-spring-tap', name: 'Родник', lat: 55.75, lng: 37.62, ready: true };
+      S.d.springs[e.id] = 0;
+      Game.try = async t => (t === 'spring' ? { got: [{ k: 'charm', n: 5, label: 'Обереги' }, { k: 'xp', n: 50 }] } : null);
+      UI.spring(e);
+      scr = [...document.querySelectorAll('.spring-screen')].pop();
+      scr.querySelector('.spring-go').click();
+      await U.wait(60);
+      const go = scr.querySelector('.spring-go');
+      ok(scr.querySelector('.spr2-reward') && go.classList.contains('gone') && go.disabled, 'награда пришла — кнопки «В сумку» нет');
+      ok(!scr.querySelector('.tap-hint'), 'пока награда вылетает из воды — надписи нет');
+      for (let i = 0; i < 40 && !scr.querySelector('.tap-hint'); i++) await U.wait(50);
+      eq((scr.querySelector('.tap-hint') || {}).textContent, 'Коснись, чтобы продолжить', 'вылетела — надпись:');
+      ok(scr.classList.contains('tap-go') && Tut.ALWAYS.includes('.spring-screen.tap-go'), 'касание экрана разрешено и в обучении');
+      document.body.classList.add('calm'); // «меньше движения» — без полёта в Сумку, экран закрывается сразу
+      await U.wait(UI.TAP_MS + 20); scr.querySelector('.spr2-reward').click(); await U.wait(300);
+      ok(!scr.isConnected, 'касание в любом месте — дальше');
+    } finally {
+      Game.try = keep.tr; Sfx.play = keep.sfx; UI.TAP_MS = keep.ms; MapView.refresh = keep.ref; S.d = keep.d;
+      document.body.classList.toggle('calm', keep.calm); if (scr && scr.isConnected) UI.closeScreen(scr);
+    }
   });
   atest('5.1.35: выбор сервера — во весь экран на матовом стекле, без подложки; сервера — плитками, как вкладки игры', async () => {
     const keep = { on: Realms.on, probe: Realms.probe, sfx: Sfx.play };
