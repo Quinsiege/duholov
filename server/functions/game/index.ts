@@ -4460,9 +4460,9 @@ const S = {
     const R = Rules.CAMP_RIFT, s = SP[bossSid], f = team && team[0];
     if (!s || !f) return null;
     const x = this.battle(f), el = SP[f.sid].el, def = x.atk, atk = x.def;
-    const hit = Math.floor(0.5 * 12 * (x.atk / def) * 1.2 * Raid.eff(el, s.el, Raid.EL)) + 1; // 5.1.39: стихии в разломе — Raid.EL
+    const hit = Math.floor(0.5 * 12 * (x.atk / def) * 1.2 * Raid.eff(el, s.el)) + 1;
     const hp0 = Math.max(1, Math.round(x.hp * 5 * this.hpNow(f)));
-    const want = Math.max(2, hp0 / R.HITS), pw = Math.max(0.5, (want - 1) / (0.5 * 1.2 * (atk / x.def) * Raid.eff(s.el, el, Raid.EL)));
+    const want = Math.max(2, hp0 / R.HITS), pw = Math.max(0.5, (want - 1) / (0.5 * 1.2 * (atk / x.def) * Raid.eff(s.el, el)));
     return { atk, def, hp: Math.round(R.T * R.TAPS * hit), pw: Math.round(pw * 100) / 100, rl: this.catchLvl() };
   },
   // Новое поручение (выдаёт сервер у источника): задание и дух, который встретится в награду
@@ -5484,8 +5484,7 @@ const Raid = {
      (стихии без преимущества): Ловчий, что уклоняется от 3 ударов из 4, тапает на 90% темпа и пьёт Живую воду, побеждает
      команду с силой как у босса примерно в 2 боях из 3, на 10% слабее — редко, на 20% слабее — никогда; уклоняясь от всех
      ударов и тапая без пропусков — от ~0,85 силы босса, уклоняясь от 2 ударов из 5 и тапая на 75% — от ~1,3. Духи-противники
-     (их стихия бьёт босса) наносят в 1,5 раза больше урона и получают в 1,5 раза меньше (Raid.EL; в других боях — 1,6) —
-     стоят примерно 1,4 силы.
+     (их стихия бьёт босса) наносят в 1,5 раза больше урона и получают в 1,5 раза меньше (Raid.EL) — стоят примерно 1,4 силы.
      Атака и защита босса — как у духа его вида уровня rl (× k): от них только числа урона, трудность боя — от опорной
      команды. lvl — уровень пойманного босса */
   // 5.1.36: sparks — искры за победу (было 350 × ступень); те же у Святилищ (SHRINE_TIERS)
@@ -5520,12 +5519,12 @@ const Raid = {
   // духа), от ×0,25 до ×4. Сила решает больше: команда на 20% слабее босса не выстоит, а сильной — меньше ран после победы.
   // Хранитель кампании (без power) — как прежде
   press(bs, power) { return bs.power && power > 0 ? U.clamp(bs.power / 3 / power, 0.25, 4) : 1; },
-  // стихии: бьющая наносит ×k, битая — ×1/k. В Святилищах, вторжениях и Лиге k = 1,6; 5.1.39: в разломах — EL (1,5),
-  // иначе команда духов-противников стоила почти полуторной силы и проходила босса заметно сильнее себя
+  // стихии во всех боях (разломы, Святилища, вторжения, поединки, Лига): бьющая наносит ×EL, битая — ×1/EL.
+  // 5.1.39: 1,5 (было 1,6 и 0,625) — команда духов-противников стоила почти полуторной силы и проходила босса заметно сильнее себя
   EL: 1.5,
-  eff(att, def, k = 1.6) {
-    if (ELEMENTS[att].beats.includes(def)) return k;
-    if (ELEMENTS[def].beats.includes(att)) return 1 / k; // 1 / 1,6 = 0,625
+  eff(att, def) {
+    if (ELEMENTS[att].beats.includes(def)) return this.EL;
+    if (ELEMENTS[def].beats.includes(att)) return 1 / this.EL;
     return 1;
   },
 
@@ -5775,10 +5774,9 @@ const Raid = {
     st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>${ru`СИЛА ${m.power}`}</small>`;
     st.$('.raid-team').innerHTML = st.team.map((x, i) => `<i class="${x.cur <= 0 ? 'dead' : i === st.idx ? 'on' : ''}"></i>`).join('');
   },
-  // k — множитель стихий (Raid.eff): в бою с боссом разлома — Raid.EL
-  dmg(att, def, power, attEl, defEl, k) {
+  dmg(att, def, power, attEl, defEl) {
     const wx = Sky.boosted(attEl) ? 1.2 : 1;
-    return Math.floor(0.5 * power * (att / def) * 1.2 * wx * this.eff(attEl, defEl, k)) + 1;
+    return Math.floor(0.5 * power * (att / def) * 1.2 * wx * this.eff(attEl, defEl)) + 1;
   },
   float(text, x, y, cls = '') {
     const f = U.el(`<div class="dmg ${cls}" style="left:${x}px;top:${y}px">${text}</div>`);
@@ -5843,7 +5841,7 @@ const Raid = {
     st.energy = Math.min(100, st.energy + 6 * (m.energy || 1));
     Sfx.play('attack');
     const me = st.$('.raid-me'); me.classList.remove('atk'); void me.offsetWidth; me.classList.add('atk');
-    this.hitBoss(this.dmg(m.atk, st.bs.def, 12, SP[m.sp.sid].el, st.s.el, this.EL));
+    this.hitBoss(this.dmg(m.atk, st.bs.def, 12, SP[m.sp.sid].el, st.s.el));
     this.render();
   },
   special() {
@@ -5855,7 +5853,7 @@ const Raid = {
     st.root.classList.remove('flash'); void st.root.offsetWidth; st.root.classList.add('flash');
     st.root.style.setProperty('--fx', ELEMENTS[el].color);
     this.float(ELEMENTS[el].charge, window.innerWidth / 2, window.innerHeight * 0.52, 'move');
-    this.hitBoss(this.dmg(m.atk, st.bs.def, 75, el, st.s.el, this.EL), true);
+    this.hitBoss(this.dmg(m.atk, st.bs.def, 75, el, st.s.el), true);
     this.render();
   },
   dodge(dir) {
@@ -5906,7 +5904,7 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-boss').classList.remove('charging');
     st.nextAtk = 2.2 + Math.random() * 1.4;
-    let n = this.dmg(st.bs.atk, m.def, st.bs.pw * this.press(st.bs, m.power), st.s.el, SP[m.sp.sid].el, this.EL);
+    let n = this.dmg(st.bs.atk, m.def, st.bs.pw * this.press(st.bs, m.power), st.s.el, SP[m.sp.sid].el);
     const dodged = st.dodgeT > 0;
     if (dodged) n = Math.max(1, Math.floor(n * Rules.RAID_SIM.DODGE)); // 5.1.39: уклон срезает удар до 40% (было до 20%)
     m.cur = Math.max(0, m.cur - n);
@@ -7117,8 +7115,8 @@ const Rules = {
     const bs = Raid.bossStats(boss), bel = SP[boss.boss].el;
     const dps = team.map(sp => {
       const x = S.battle(sp), el = SP[sp.sid].el;
-      const fast = Raid.dmg(x.atk, bs.def, 12, el, bel, Raid.EL) / 0.32;
-      const special = Raid.dmg(x.atk, bs.def, 75, el, bel, Raid.EL) / (50 / (6 * (x.energy || 1) / 0.32));
+      const fast = Raid.dmg(x.atk, bs.def, 12, el, bel) / 0.32;
+      const special = Raid.dmg(x.atk, bs.def, 75, el, bel) / (50 / (6 * (x.energy || 1) / 0.32));
       return fast + special;
     });
     return Math.max(0, ...dps) * Math.max(0, t) * 1.3;
@@ -7130,7 +7128,7 @@ const Rules = {
   RAID_SIM: { FIRST: 4.1, GAP: 4.5, DODGE: 0.4, SLACK: 1.5, LOSS: 0.5 },
   // удар босса по духу sp с уклоном, без погоды; bs — Raid.bossStats, bel — стихия босса
   raidHit(bs, bel, sp) {
-    const x = S.battle(sp), n = Math.floor(0.5 * bs.pw * Raid.press(bs, x.power) * (bs.atk / x.def) * 1.2 * Raid.eff(bel, SP[sp.sid].el, Raid.EL)) + 1;
+    const x = S.battle(sp), n = Math.floor(0.5 * bs.pw * Raid.press(bs, x.power) * (bs.atk / x.def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
     return Math.max(1, Math.floor(n * this.RAID_SIM.DODGE));
   },
   // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Святилищ). Каждый дух живёт

@@ -461,8 +461,8 @@ const Rules = {
     const bs = Raid.bossStats(boss), bel = SP[boss.boss].el;
     const dps = team.map(sp => {
       const x = S.battle(sp), el = SP[sp.sid].el;
-      const fast = Raid.dmg(x.atk, bs.def, 12, el, bel, Raid.EL) / 0.32;
-      const special = Raid.dmg(x.atk, bs.def, 75, el, bel, Raid.EL) / (50 / (6 * (x.energy || 1) / 0.32));
+      const fast = Raid.dmg(x.atk, bs.def, 12, el, bel) / 0.32;
+      const special = Raid.dmg(x.atk, bs.def, 75, el, bel) / (50 / (6 * (x.energy || 1) / 0.32));
       return fast + special;
     });
     return Math.max(0, ...dps) * Math.max(0, t) * 1.3;
@@ -474,7 +474,7 @@ const Rules = {
   RAID_SIM: { FIRST: 4.1, GAP: 4.5, DODGE: 0.4, SLACK: 1.5, LOSS: 0.5 },
   // удар босса по духу sp с уклоном, без погоды; bs — Raid.bossStats, bel — стихия босса
   raidHit(bs, bel, sp) {
-    const x = S.battle(sp), n = Math.floor(0.5 * bs.pw * Raid.press(bs, x.power) * (bs.atk / x.def) * 1.2 * Raid.eff(bel, SP[sp.sid].el, Raid.EL)) + 1;
+    const x = S.battle(sp), n = Math.floor(0.5 * bs.pw * Raid.press(bs, x.power) * (bs.atk / x.def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
     return Math.max(1, Math.floor(n * this.RAID_SIM.DODGE));
   },
   // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Святилищ). Каждый дух живёт

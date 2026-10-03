@@ -263,7 +263,7 @@
   "k": "В бой!",
   "at": [
    "www/js/alatyr.js:159",
-   "www/js/raid.js:286"
+   "www/js/raid.js:285"
   ],
   "ctx": "buttons: [{ label: ru`Алатырь`, fn: () => this.screen() }, { label: ru`В бой!`, cls: 'primary' }], tap: true,"
  },
@@ -2610,7 +2610,7 @@
   "k": "Стихия",
   "at": [
    "www/js/auction.js:125",
-   "www/js/raid.js:110",
+   "www/js/raid.js:109",
    "www/js/ui-spirits.js:305",
    "www/js/ui-spirits.js:628"
   ],
@@ -2621,7 +2621,7 @@
   "at": [
    "www/js/auction.js:125",
    "www/js/auction.js:126",
-   "www/js/raid.js:188",
+   "www/js/raid.js:187",
    "www/js/realms.js:189"
   ],
   "ctx": "html: `<div class=\"au-fl\">${ru`Стихия`}</div><div class=\"chips au-wrap\">${chip('el', '', ru`Все`, f.el || '')}${ELEMENT_KEYS.map(e => chip('el', e, `${Art.elIcon(e, 14)} ${ELEMENTS[e].name}`, f.el)).join('')}</div>"
@@ -3422,7 +3422,7 @@
   "at": [
    "www/js/book.js:105",
    "www/js/book.js:119",
-   "www/js/raid.js:112"
+   "www/js/raid.js:111"
   ],
   "ctx": "const el = ELEMENT_KEYS.map(k => [Art.elIcon(k, 40), ELEMENTS[k].name, ru`Сильнее против: ${ELEMENTS[k].beats.map(b => ELEMENTS[b].name).join(` ${ru`и`} `)}. Приёмы: «${ELEMENTS[k].fast}», «${ELEMENTS[k].charge}».`]);"
  },
@@ -3727,7 +3727,7 @@
   "at": [
    "www/js/book.js:138",
    "www/js/duel.js:90",
-   "www/js/raid.js:122"
+   "www/js/raid.js:121"
   ],
   "ctx": "[Art.item('charm3'), ru`Обереги`, ru`Обычный, серебряный (×1,5, с ${ITEMS.charm2.unlock} ур.) и золотой (×2, с ${ITEMS.charm3.unlock} ур.).`]]) +"
  },
@@ -3851,7 +3851,7 @@
   "k": "Кампания",
   "at": [
    "www/js/book.js:158",
-   "www/js/raid.js:119",
+   "www/js/raid.js:118",
    "www/js/ui-player.js:16",
    "www/js/ui-player.js:222"
   ],
@@ -4016,7 +4016,7 @@
   "k": "Эссенция Рода",
   "at": [
    "www/js/book.js:174",
-   "www/js/raid.js:124",
+   "www/js/raid.js:123",
    "www/js/state.js:279",
    "www/js/ui-spirits.js:438"
   ],
@@ -4141,7 +4141,7 @@
    "www/js/book.js:186",
    "www/js/duel.js:71",
    "www/js/path.js:61",
-   "www/js/raid.js:95"
+   "www/js/raid.js:94"
   ],
   "ctx": "[ru`Награда`, this.p(ru`В окне разлома — вкладки «Бой», «Босс» и «Награда». За победу:`) +"
  },
@@ -4163,7 +4163,7 @@
   "k": "После победы босса можно поймать. Оберегов на поимку больше за быструю победу (+1 за каждые 15 с быстрее 90 с) и за друзей (+2 за каждого). Уровень пойманного духа — не выше твоего, сияющий — примерно 1 из 20.",
   "at": [
    "www/js/book.js:188",
-   "www/js/raid.js:128"
+   "www/js/raid.js:127"
   ],
   "ctx": "this.p(ru`После победы босса можно поймать. Оберегов на поимку больше за быструю победу (+1 за каждые 15 с быстрее 90 с) и за друзей (+2 за каждого). Уровень пойманного духа — не выше твоего, сияющий — примерно 1 из 20.`"
  },
@@ -5146,7 +5146,7 @@
   "at": [
    "www/js/clans.js:137",
    "www/js/encounter.js:488",
-   "www/js/raid.js:520"
+   "www/js/raid.js:518"
   ],
   "ctx": "buttons: [{ label: ru`Остаться`, cls: 'primary' }],"
  },
@@ -5438,7 +5438,7 @@
   "k": "Позвать друзей",
   "at": [
    "www/js/coop.js:118",
-   "www/js/raid.js:105"
+   "www/js/raid.js:104"
   ],
   "ctx": "${this.host ? `<div class=\"fr-btns\"><button class=\"btn small coop-qr\">${ru`QR-код`}</button><button class=\"btn small primary coop-share\">${ru`Позвать друзей`}</button></div>` : ''}"
  },
@@ -7465,7 +7465,7 @@
    "www/js/data.js:588",
    "www/js/map.js:794",
    "www/js/map.js:807",
-   "www/js/raid.js:133"
+   "www/js/raid.js:132"
   ],
   "ctx": "campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Эволюционировать духа`,"
  },
@@ -10422,7 +10422,7 @@
   "k": "Опыт",
   "at": [
    "www/js/duel.js:88",
-   "www/js/raid.js:120",
+   "www/js/raid.js:119",
    "www/js/state.js:279",
    "www/js/state.js:533"
   ],
@@ -10432,7 +10432,7 @@
   "k": "Искры",
   "at": [
    "www/js/duel.js:89",
-   "www/js/raid.js:121",
+   "www/js/raid.js:120",
    "www/js/state.js:279",
    "www/js/state.js:531"
   ],
@@ -10442,7 +10442,7 @@
   "k": "Припасы",
   "at": [
    "www/js/duel.js:91",
-   "www/js/raid.js:123",
+   "www/js/raid.js:122",
    "www/js/shop.js:323"
   ],
   "ctx": "${row(ru`Припасы`, [t > 1 ? it('honey', (t - 1) * mul) : '', t < 3 ? it('herb', 1) : it('water', 1)].filter(Boolean).join(' · '))}"
@@ -10451,7 +10451,7 @@
   "k": "Осколок Алатыря",
   "at": [
    "www/js/duel.js:92",
-   "www/js/raid.js:125"
+   "www/js/raid.js:124"
   ],
   "ctx": "${S.ALATYR_DROP.duel[t] ? row(ru`Осколок Алатыря`, ru`шанс ${Math.round(S.ALATYR_DROP.duel[t] * 100)}%`) : ''}"
  },
@@ -10460,8 +10460,8 @@
   "at": [
    "www/js/duel.js:92",
    "www/js/duel.js:93",
-   "www/js/raid.js:125",
-   "www/js/raid.js:126"
+   "www/js/raid.js:124",
+   "www/js/raid.js:125"
   ],
   "ctx": "${S.ALATYR_DROP.duel[t] ? row(ru`Осколок Алатыря`, ru`шанс ${Math.round(S.ALATYR_DROP.duel[t] * 100)}%`) : ''}"
  },
@@ -10469,7 +10469,7 @@
   "k": "Амулет",
   "at": [
    "www/js/duel.js:93",
-   "www/js/raid.js:126",
+   "www/js/raid.js:125",
    "www/js/shop.js:23",
    "www/js/ui-spirits.js:250"
   ],
@@ -10580,7 +10580,7 @@
   "at": [
    "www/js/duel.js:171",
    "www/js/duel.js:195",
-   "www/js/raid.js:71"
+   "www/js/raid.js:70"
   ],
   "ctx": "<button class=\"btn primary wide duel-go\" ${team.length && !ko ? '' : 'disabled'}>${ko ? ru`В команде дух без сил` : team.length ? ru`Сразиться` : ru`Нужна команда`}</button>`;"
  },
@@ -10642,7 +10642,7 @@
   "at": [
    "www/js/duel.js:258",
    "www/js/league-battle.js:160",
-   "www/js/raid.js:250"
+   "www/js/raid.js:249"
   ],
   "ctx": "<button class=\"raid-special\"><svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"44\" class=\"bg\"/><circle cx=\"50\" cy=\"50\" r=\"44\" class=\"fill\"/></svg><span>${ru`Приём`}</span></button>"
  },
@@ -10746,7 +10746,7 @@
   "k": "Победа не засчитана",
   "at": [
    "www/js/duel.js:544",
-   "www/js/raid.js:502"
+   "www/js/raid.js:500"
   ],
   "ctx": "html = `<div class=\"res-title lose\">${ru`Победа не засчитана`}</div>"
  },
@@ -21402,22 +21402,22 @@
  {
   "k": "Малый разлом",
   "at": [
-   "www/js/raid.js:20"
+   "www/js/raid.js:19"
   ],
   "ctx": "1: { pow: 0.45, k: 1.35, lvl: 15, charms: 6, sparks: 750, name: ru`Малый разлом` },"
  },
  {
   "k": "Великий разлом",
   "at": [
-   "www/js/raid.js:22"
+   "www/js/raid.js:21"
   ],
   "ctx": "3: { pow: 2.5,  k: 0.72, lvl: 30, charms: 9, sparks: 3000, name: ru`Великий разлом` },"
  },
  {
   "k": "Разломы открываются с {0} уровня Ловчего",
   "at": [
-   "www/js/raid.js:62",
-   "www/js/raid.js:170",
+   "www/js/raid.js:61",
+   "www/js/raid.js:169",
    "server/game/core.js:1265",
    "server/game/core.js:1310"
   ],
@@ -21426,169 +21426,169 @@
  {
   "k": "Подойди к Разлому ближе",
   "at": [
-   "www/js/raid.js:70"
+   "www/js/raid.js:69"
   ],
   "ctx": "const goBtn = camp && far ? `<button class=\"btn primary wide\" disabled>${ru`Подойди к Разлому ближе`}</button>`"
  },
  {
   "k": "Дальний бой · пропусков: {0}",
   "at": [
-   "www/js/raid.js:72"
+   "www/js/raid.js:71"
   ],
   "ctx": ": passes ? `<button class=\"btn primary wide rift-go far\" ${team.length ? '' : 'disabled'}>${Art.item('farpass')} ${ru`Дальний бой · пропусков: ${passes}`}</button>`"
  },
  {
   "k": "Нужен Дальний пропуск — в Лавку",
   "at": [
-   "www/js/raid.js:73"
+   "www/js/raid.js:72"
   ],
   "ctx": ": `<button class=\"btn primary wide rift-shop\">${Art.item('farpass')} ${ru`Нужен Дальний пропуск — в Лавку`}</button>`;"
  },
  {
   "k": "СИЛА БОССА",
   "at": [
-   "www/js/raid.js:89"
+   "www/js/raid.js:88"
   ],
   "ctx": "<div class=\"det-power\"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.power || st.hp * 1.5)}</b></div>"
  },
  {
   "k": "не закроется, пока не победишь",
   "at": [
-   "www/js/raid.js:90"
+   "www/js/raid.js:89"
   ],
   "ctx": "<div class=\"rift2-left\">${camp ? ru`не закроется, пока не победишь` : ru`закроется через ${`<b class=\"rift-left\">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>"
  },
  {
   "k": "закроется через {0}",
   "at": [
-   "www/js/raid.js:90"
+   "www/js/raid.js:89"
   ],
   "ctx": "<div class=\"rift2-left\">${camp ? ru`не закроется, пока не победишь` : ru`закроется через ${`<b class=\"rift-left\">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>"
  },
  {
   "k": "Босс",
   "at": [
-   "www/js/raid.js:95"
+   "www/js/raid.js:94"
   ],
   "ctx": "<div class=\"seg dt-tabs\"><button data-tab=\"fight\" class=\"on\">${ru`Бой`}</button><button data-tab=\"boss\">${ru`Босс`}</button><button data-tab=\"loot\">${ru`Награда`}</button></div>"
  },
  {
   "k": "Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.",
   "at": [
-   "www/js/raid.js:98",
-   "www/js/raid.js:162"
+   "www/js/raid.js:97",
+   "www/js/raid.js:161"
   ],
   "ctx": "${r.done ? `<div class=\"rift-done\">${ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`}</div>` : `"
  },
  {
   "k": "До Разлома {0}. Подойди ближе — нужно {1} м.",
   "at": [
-   "www/js/raid.js:102"
+   "www/js/raid.js:101"
   ],
   "ctx": "${far ? `<div class=\"rift-tip rift-far\">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позва"
  },
  {
   "k": "До Разлома {0}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Святилищу.",
   "at": [
-   "www/js/raid.js:102"
+   "www/js/raid.js:101"
   ],
   "ctx": "${far ? `<div class=\"rift-tip rift-far\">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позва"
  },
  {
   "k": "Хранитель — по силе твоей команды: тапай без остановки, и он падёт.",
   "at": [
-   "www/js/raid.js:103"
+   "www/js/raid.js:102"
   ],
   "ctx": "${camp ? `<div class=\"rift-tip\">${ru`Хранитель — по силе твоей команды: тапай без остановки, и он падёт.`}</div>` : Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}"
  },
  {
   "k": "Разломов закрыто",
   "at": [
-   "www/js/raid.js:103"
+   "www/js/raid.js:102"
   ],
   "ctx": "${camp ? `<div class=\"rift-tip\">${ru`Хранитель — по силе твоей команды: тапай без остановки, и он падёт.`}</div>` : Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}"
  },
  {
   "k": "Слабость",
   "at": [
-   "www/js/raid.js:111"
+   "www/js/raid.js:110"
   ],
   "ctx": "${row(ru`Слабость`, counters.map(e => `${Art.elIcon(e, 16)} ${ELEMENTS[e].name}`).join(' '))}"
  },
  {
   "k": "урон +20% у {0}",
   "at": [
-   "www/js/raid.js:112"
+   "www/js/raid.js:111"
   ],
   "ctx": "${w ? row(`${Art.wxIcon(Sky.w.key, 16)} ${w.name}`, ru`урон +20% у ${w.boost.map(e => ELEMENTS[e].name).join(` ${ru`и`} `)}`) : ''}"
  },
  {
   "k": "Уровень босса",
   "at": [
-   "www/js/raid.js:113"
+   "www/js/raid.js:112"
   ],
   "ctx": "${row(ru`Уровень босса`, camp ? ru`по силе твоей команды` : ru`растёт с уровнем Ловчего`)}"
  },
  {
   "k": "по силе твоей команды",
   "at": [
-   "www/js/raid.js:113"
+   "www/js/raid.js:112"
   ],
   "ctx": "${row(ru`Уровень босса`, camp ? ru`по силе твоей команды` : ru`растёт с уровнем Ловчего`)}"
  },
  {
   "k": "растёт с уровнем Ловчего",
   "at": [
-   "www/js/raid.js:113"
+   "www/js/raid.js:112"
   ],
   "ctx": "${row(ru`Уровень босса`, camp ? ru`по силе твоей команды` : ru`растёт с уровнем Ловчего`)}"
  },
  {
   "k": "Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.",
   "at": [
-   "www/js/raid.js:114"
+   "www/js/raid.js:113"
   ],
   "ctx": "<p class=\"rift2-note\">${T2 === 3 ? ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.` : ru`Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону"
  },
  {
   "k": "Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону — уклон от удара босса.",
   "at": [
-   "www/js/raid.js:114"
+   "www/js/raid.js:113"
   ],
   "ctx": "<p class=\"rift2-note\">${T2 === 3 ? ru`Великий разлом в одиночку по силам немногим — позови друзей: втроём его закрыть куда легче.` : ru`Бей в слабость: духи этих стихий наносят больше урона. Тап — атака, смахни в сторону"
  },
  {
   "k": "цель шага",
   "at": [
-   "www/js/raid.js:119"
+   "www/js/raid.js:118"
   ],
   "ctx": "${camp ? row(ru`Кампания`, ru`цель шага`) : ''}"
  },
  {
   "k": " · с друзьями +25%",
   "at": [
-   "www/js/raid.js:120"
+   "www/js/raid.js:119"
   ],
   "ctx": "${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far || camp ? '' : ru` · с друзьями +25%`))}"
  },
  {
   "k": "точно",
   "at": [
-   "www/js/raid.js:125"
+   "www/js/raid.js:124"
   ],
   "ctx": "${S.ALATYR_DROP.rift[T2] ? row(ru`Осколок Алатыря`, S.ALATYR_DROP.rift[T2] >= 1 ? ru`точно` : ru`шанс ${Math.round(S.ALATYR_DROP.rift[T2] * 100)}%`) : ''}"
  },
  {
   "k": "Поимка босса",
   "at": [
-   "www/js/raid.js:127"
+   "www/js/raid.js:126"
   ],
   "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}"
  },
  {
   "k": "оберег",
   "at": [
-   "www/js/raid.js:127"
+   "www/js/raid.js:126"
   ],
   "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}",
   "forms": [
@@ -21600,7 +21600,7 @@
  {
   "k": "оберега",
   "at": [
-   "www/js/raid.js:127"
+   "www/js/raid.js:126"
   ],
   "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}",
   "forms": [
@@ -21612,7 +21612,7 @@
  {
   "k": "оберегов",
   "at": [
-   "www/js/raid.js:127"
+   "www/js/raid.js:126"
   ],
   "ctx": "${row(ru`Поимка босса`, ru`${T.charms} ${U.plural(T.charms, ru`оберег`, ru`оберега`, ru`оберегов`)}`)}",
   "forms": [
@@ -21624,105 +21624,105 @@
  {
   "k": "Разлом кампании закрыт!",
   "at": [
-   "www/js/raid.js:162"
+   "www/js/raid.js:161"
   ],
   "ctx": "scr.querySelector('[data-pane=\"fight\"]').innerHTML = `<div class=\"rift-done\">${done ? (camp ? ru`Разлом кампании закрыт!` : ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`) : ru`Разлом схлопнулся — "
  },
  {
   "k": "Разлом схлопнулся — его час прошёл. Новые открываются в начале каждого часа.",
   "at": [
-   "www/js/raid.js:162"
+   "www/js/raid.js:161"
   ],
   "ctx": "scr.querySelector('[data-pane=\"fight\"]').innerHTML = `<div class=\"rift-done\">${done ? (camp ? ru`Разлом кампании закрыт!` : ru`Этот разлом ты уже закрыл. Новый босс — в начале следующего часа.`) : ru`Разлом схлопнулся — "
  },
  {
   "k": "Разломы вокруг",
   "at": [
-   "www/js/raid.js:171"
+   "www/js/raid.js:170"
   ],
   "ctx": "const scr = UI.screen(ru`Разломы вокруг`, `<div class=\"rift-list\"><div class=\"q-note\">${ru`Ищу Разломы у Святилищ вокруг…`}</div></div>`, 'rifts-screen');"
  },
  {
   "k": "Ищу Разломы у Святилищ вокруг…",
   "at": [
-   "www/js/raid.js:171"
+   "www/js/raid.js:170"
   ],
   "ctx": "const scr = UI.screen(ru`Разломы вокруг`, `<div class=\"rift-list\"><div class=\"q-note\">${ru`Ищу Разломы у Святилищ вокруг…`}</div></div>`, 'rifts-screen');"
  },
  {
   "k": "Жду, когда найдётся твоё место на карте…",
   "at": [
-   "www/js/raid.js:173"
+   "www/js/raid.js:172"
   ],
   "ctx": "if (!pos) { box.innerHTML = `<div class=\"q-note\">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }"
  },
  {
   "k": "Пропусков: {0}",
   "at": [
-   "www/js/raid.js:187"
+   "www/js/raid.js:186"
   ],
   "ctx": "box.innerHTML = `<div class=\"shop-wallet\"><span class=\"zlat\">${Art.item('farpass')} ${ru`Пропусков: ${passes}`}</span><span>${ru`новые через ${`<b class=\"rl-left\">${left()}</b>`}`}</span></div>"
  },
  {
   "k": "новые через {0}",
   "at": [
-   "www/js/raid.js:187"
+   "www/js/raid.js:186"
   ],
   "ctx": "box.innerHTML = `<div class=\"shop-wallet\"><span class=\"zlat\">${Art.item('farpass')} ${ru`Пропусков: ${passes}`}</span><span>${ru`новые через ${`<b class=\"rl-left\">${left()}</b>`}`}</span></div>"
  },
  {
   "k": "закрыт",
   "at": [
-   "www/js/raid.js:192"
+   "www/js/raid.js:191"
   ],
   "ctx": "<div class=\"rr-d\">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')"
  },
  {
   "k": "рядом",
   "at": [
-   "www/js/raid.js:192"
+   "www/js/raid.js:191"
   ],
   "ctx": "<div class=\"rr-d\">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')"
  },
  {
   "k": "Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.",
   "at": [
-   "www/js/raid.js:193"
+   "www/js/raid.js:192"
   ],
   "ctx": ": `<div class=\"q-note\">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}"
  },
  {
   "k": "…и ещё {0} дальше",
   "at": [
-   "www/js/raid.js:194"
+   "www/js/raid.js:193"
   ],
   "ctx": "${more ? `<div class=\"q-note\">${ru`…и ещё ${more} дальше`}</div>` : ''}"
  },
  {
   "k": "Разломы открываются у Святилищ каждый час. Подойди к Святилищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.",
   "at": [
-   "www/js/raid.js:195"
+   "www/js/raid.js:194"
   ],
   "ctx": "<div class=\"q-note\">${ru`Разломы открываются у Святилищ каждый час. Подойди к Святилищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;"
  },
  {
   "k": "Уклон",
   "at": [
-   "www/js/raid.js:251"
+   "www/js/raid.js:250"
   ],
   "ctx": "<button class=\"raid-dodge\">${ru`Уклон`}</button>"
  },
  {
   "k": "Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.",
   "at": [
-   "www/js/raid.js:253"
+   "www/js/raid.js:252"
   ],
   "ctx": "<div class=\"raid-hint\">${ru`Тапай по экрану — атака.<br>Когда босс замахивается (!) — жми «Уклон» или смахни в сторону.`}</div>"
  },
  {
   "k": "Каждому духу — не больше одного флакона за бой",
   "at": [
-   "www/js/raid.js:401",
+   "www/js/raid.js:399",
    "server/game/core.js:1363"
   ],
   "ctx": "if (m.drank) { UI.toast(ru`Каждому духу — не больше одного флакона за бой`); return; }"
@@ -21730,21 +21730,21 @@
  {
   "k": "Дух устал — выше не поднять, нужен отдых",
   "at": [
-   "www/js/raid.js:402"
+   "www/js/raid.js:400"
   ],
   "ctx": "if (m.cur >= m.lim) { UI.toast(m.lim < m.max ? ru`Дух устал — выше не поднять, нужен отдых` : ru`Дух и так полон сил`); return; }"
  },
  {
   "k": "Дух и так полон сил",
   "at": [
-   "www/js/raid.js:402"
+   "www/js/raid.js:400"
   ],
   "ctx": "if (m.cur >= m.lim) { UI.toast(m.lim < m.max ? ru`Дух устал — выше не поднять, нужен отдых` : ru`Дух и так полон сил`); return; }"
  },
  {
   "k": "Живой воды нет",
   "at": [
-   "www/js/raid.js:403",
+   "www/js/raid.js:401",
    "server/game/core.js:1364"
   ],
   "ctx": "if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }"
@@ -21752,84 +21752,84 @@
  {
   "k": "Уклон! −{0}",
   "at": [
-   "www/js/raid.js:441"
+   "www/js/raid.js:439"
   ],
   "ctx": "this.float(dodged ? ru`Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');"
  },
  {
   "k": "Твои духи без сил.<br>Союзники ещё сражаются!",
   "at": [
-   "www/js/raid.js:453"
+   "www/js/raid.js:451"
   ],
   "ctx": "st.root.appendChild(U.el(`<div class=\"raid-ko\">${ru`Твои духи без сил.<br>Союзники ещё сражаются!`}</div>`));"
  },
  {
   "k": "Разлом закрыт!",
   "at": [
-   "www/js/raid.js:490"
+   "www/js/raid.js:488"
   ],
   "ctx": "<div class=\"res-title\">${ru`Разлом закрыт!`}</div>"
  },
  {
   "k": " (+{0} за скорость)",
   "at": [
-   "www/js/raid.js:493"
+   "www/js/raid.js:491"
   ],
   "ctx": "<div class=\"res-note\">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div></"
  },
  {
   "k": " (+{0} за союзников)",
   "at": [
-   "www/js/raid.js:493"
+   "www/js/raid.js:491"
   ],
   "ctx": "<div class=\"res-note\">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div></"
  },
  {
   "k": "Ослабленный {0} остался в нашем мире. У тебя <b>{1}</b> оберегов разлома{2}{3}.",
   "at": [
-   "www/js/raid.js:493"
+   "www/js/raid.js:491"
   ],
   "ctx": "<div class=\"res-note\">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div></"
  },
  {
   "k": "Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.",
   "at": [
-   "www/js/raid.js:503"
+   "www/js/raid.js:501"
   ],
   "ctx": "<div class=\"res-note\">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);"
  },
  {
   "k": "Разлом устоял",
   "at": [
-   "www/js/raid.js:509"
+   "www/js/raid.js:507"
   ],
   "ctx": "<div class=\"res-title lose\">${ru`Разлом устоял`}</div>"
  },
  {
   "k": "Осталось сил у босса: {0}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.",
   "at": [
-   "www/js/raid.js:511"
+   "www/js/raid.js:509"
   ],
   "ctx": "<div class=\"res-note\">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);"
  },
  {
   "k": "Покинуть битву?",
   "at": [
-   "www/js/raid.js:520"
+   "www/js/raid.js:518"
   ],
   "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой"
  },
  {
   "k": "Прогресс боя будет потерян.",
   "at": [
-   "www/js/raid.js:520"
+   "www/js/raid.js:518"
   ],
   "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой"
  },
  {
   "k": "Покинуть",
   "at": [
-   "www/js/raid.js:520"
+   "www/js/raid.js:518"
   ],
   "ctx": "UI.confirm(ru`Покинуть битву?`, ru`Прогресс боя будет потерян.`, ru`Покинуть`, () => this.close(), ru`Остаться`, true); // 4.25: потеря боя — красной кнопкой"
  },

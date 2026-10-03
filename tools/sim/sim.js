@@ -138,8 +138,8 @@ function raidOutcome(tm, rift) {
   let t = 0, dealt = 0; const hp = {};
   for (const sp of tm) {
     const x = bat(sp), max = x.hp * 5, cur0 = max * me(() => S.hpNow(sp));
-    // средний удар с учётом уворотов; 5.1.39: с натиском по силе духа, стихиями разлома и уклоном до Rules.RAID_SIM.DODGE
-    const hit = Raid.dmg(bs.atk, x.def, bs.pw * Raid.press(bs, x.power), bel, SP[sp.sid].el, Raid.EL) * (CFG.DODGE * Rules.RAID_SIM.DODGE + (1 - CFG.DODGE));
+    // средний удар с учётом уворотов; 5.1.39: с натиском по силе духа и уклоном до Rules.RAID_SIM.DODGE
+    const hit = Raid.dmg(bs.atk, x.def, bs.pw * Raid.press(bs, x.power), bel, SP[sp.sid].el) * (CFG.DODGE * Rules.RAID_SIM.DODGE + (1 - CFG.DODGE));
     const life = cur0 / (hit / 3.8); // секунд до падения
     const need = (bs.hp - dealt) / dps, use = Math.min(life, need, 90 - t);
     t += use; dealt += dps * use;
