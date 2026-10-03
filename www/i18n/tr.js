@@ -580,6 +580,7 @@ I18N.dict = {
 "Бьёт сильнее, но хуже держит удар. На карточке его можно очистить — он станет обычным.":"Daha sert vurur ama darbeye daha zor dayanır. Kartında onu arındırabilirsin — normal ruha döner.",
 "Отряд прислужника под стать твоим сильнейшим духам, но все трое — одной стихии: возьми духов, сильных против неё.":"Hizmetkârın bölüğü en güçlü ruhlarına denktir ama üçü de aynı elementtendir: ona karşı güçlü ruhlar al.",
 "С {0} уровня — Лига Ордена: бои в реальном времени. Соперник — Ловчий с рейтингом ±{1} от твоего; если такого сейчас нет, через несколько секунд выйдет Ловчий Ордена. В бою тапай — быстрые атаки копят энергию для приёма, щиты берегут от приёмов соперника, духа можно сменить. Бой считает сервер Ордена: он же засчитывает итог обоим.":"{0}. seviyeden itibaren Tarikat Ligi: gerçek zamanlı savaşlar. Rakibin, puanı seninkinden en fazla ±{1} farklı bir Avcı; şu an böyle biri yoksa birkaç saniye içinde bir Tarikat Avcısı çıkar. Savaşta dokun — hızlı saldırılar hamle için enerji biriktirir, kalkanlar rakibin hamlelerinden korur, ruhu değiştirebilirsin. Savaşı Tarikat sunucusu hesaplar ve sonucu ikisine de işler.",
+"Первые секунды поиска соперник подбирается с похожей долей побед за сегодня: кто сегодня чаще выигрывает, встречается с такими же.":"Aramanın ilk saniyelerinde rakip, bugünkü galibiyet oranı seninkine benzeyenler arasından seçilir: bugün sık kazananlar birbirleriyle karşılaşır.",
 "Рейтинг":"Puan",
 "жетон":"jeton",
 "жетона":"jeton",

@@ -580,6 +580,7 @@ I18N.dict = {
 "Бьёт сильнее, но хуже держит удар. На карточке его можно очистить — он станет обычным.":"Bate mais forte, mas aguenta menos. No cartão dele dá para purificá-lo — e ele vira comum.",
 "Отряд прислужника под стать твоим сильнейшим духам, но все трое — одной стихии: возьми духов, сильных против неё.":"O esquadrão do servo está à altura dos seus espíritos mais fortes, mas os três são do mesmo elemento: leve espíritos fortes contra ele.",
 "С {0} уровня — Лига Ордена: бои в реальном времени. Соперник — Ловчий с рейтингом ±{1} от твоего; если такого сейчас нет, через несколько секунд выйдет Ловчий Ордена. В бою тапай — быстрые атаки копят энергию для приёма, щиты берегут от приёмов соперника, духа можно сменить. Бой считает сервер Ордена: он же засчитывает итог обоим.":"A partir do nível {0} — Liga da Ordem: batalhas em tempo real. O rival é um Caçador com rating ±{1} do seu; se agora não houver nenhum, em alguns segundos entra um Caçador da Ordem. Na batalha, toque — ataques rápidos acumulam energia para o golpe, escudos protegem dos golpes do rival, e dá para trocar de espírito. Quem calcula a batalha é o servidor da Ordem: ele também registra o resultado para os dois.",
+"Первые секунды поиска соперник подбирается с похожей долей побед за сегодня: кто сегодня чаще выигрывает, встречается с такими же.":"Nos primeiros segundos da busca, o adversário é escolhido com uma proporção de vitórias de hoje parecida: quem vence mais hoje enfrenta quem também vence.",
 "Рейтинг":"Ranking",
 "жетон":"ficha",
 "жетона":"fichas",

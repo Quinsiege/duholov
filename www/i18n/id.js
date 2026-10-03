@@ -580,6 +580,7 @@ I18N.dict = {
 "Бьёт сильнее, но хуже держит удар. На карточке его можно очистить — он станет обычным.":"Serangannya lebih kuat, tapi lebih rapuh. Di kartunya dia bisa dimurnikan — jadi roh biasa.",
 "Отряд прислужника под стать твоим сильнейшим духам, но все трое — одной стихии: возьми духов, сильных против неё.":"Pasukan antek setara roh terkuatmu, tapi ketiganya satu elemen: bawa roh yang kuat melawannya.",
 "С {0} уровня — Лига Ордена: бои в реальном времени. Соперник — Ловчий с рейтингом ±{1} от твоего; если такого сейчас нет, через несколько секунд выйдет Ловчий Ордена. В бою тапай — быстрые атаки копят энергию для приёма, щиты берегут от приёмов соперника, духа можно сменить. Бой считает сервер Ордена: он же засчитывает итог обоим.":"Mulai level {0} — Liga Ordo: tarung secara langsung. Lawanmu Pemburu dengan peringkat ±{1} dari peringkatmu; kalau saat ini tidak ada, dalam beberapa detik akan muncul Pemburu Ordo. Saat tarung, tap — serangan cepat mengisi energi untuk jurus, perisai melindungi dari jurus lawan, roh bisa diganti. Pertarungan dihitung server Ordo, yang juga mencatat hasilnya untuk kalian berdua.",
+"Первые секунды поиска соперник подбирается с похожей долей побед за сегодня: кто сегодня чаще выигрывает, встречается с такими же.":"Pada detik-detik pertama pencarian, lawan dipilih dengan porsi kemenangan hari ini yang mirip: yang hari ini lebih sering menang bertemu dengan yang serupa.",
 "Рейтинг":"Rating",
 "жетон":"token",
 "жетона":"token",

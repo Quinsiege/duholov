@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.36';
+const APP_VERSION = '5.1.37';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -4976,11 +4976,13 @@ const League = {
     if ('run' in L) delete L.run;
     if (L.peak == null) L.peak = this.rank(L.pts);
     if (L.n == null) L.n = Math.max(0, this.TICKETS - (+L.tickets || 0));
+    if (L.w == null) L.w = 0; // 5.1.37: побед и поражений сегодня — форма дня для подбора соперника
+    if (L.l == null) L.l = 0;
     if (L.season !== this.season()) {
       if (L.peak > 0) L.prize = { season: L.season, rank: L.peak }; // сундук за прошлый сезон забирает сервер (leaguePrize)
       L.season = this.season(); L.pts = this.reset(L.pts); L.got = {}; L.peak = this.rank(L.pts);
     }
-    if (L.day !== U.today()) { L.day = U.today(); L.tickets = this.TICKETS; L.n = 0; }
+    if (L.day !== U.today()) { L.day = U.today(); L.tickets = this.TICKETS; L.n = 0; L.w = 0; L.l = 0; }
     return L;
   },
   st() { return (S.d.league = this.norm(S.d.league)); },                                      // сервер
@@ -5006,6 +5008,13 @@ const League = {
   // 5.1.11: соперник — в пределах ±RANGE очков рейтинга от Ловчего (независимо от лиг и времени ожидания); пара — взаимная
   RANGE: 150,
   BOT_WAIT: 10, // 5.1.15: живого соперника в окне нет столько секунд — соперником станет Ловчий Ордена (бот, PvP.botSide)
+  /* 5.1.37: форма дня — доля побед в сегодняшних боях Лиги (L.w / L.l; боёв в день — не больше жетонов), сглаженная:
+     без боёв — 0,5; 2 победы из 5 — 0,43; 5 из 5 — 0,86. Соперника подбирают с похожей формой: первые секунды поиска —
+     в допуске FORM_TOL (сек ожидания → допуск), потом — с любой (живой успевает найтись раньше Ловчего Ордена);
+     среди подходящих — ближе по форме, потом по рейтингу (база: league_find, 036_league_form.sql) */
+  FORM_TOL: [[3, 0.15], [6, 0.3]],
+  form(w, l) { w = Math.max(0, +w || 0); l = Math.max(0, +l || 0); return (w + 1) / (w + l + 2); },
+  formTol(waited) { const s = this.FORM_TOL.find(([t]) => waited < t); return s ? s[1] : 1; },
   window(pts) {
     pts = Math.max(0, Math.round(+pts || 0));
     const lo = Math.max(0, pts - this.RANGE), hi = Math.min(this.MAXPTS, pts + this.RANGE);
@@ -8086,6 +8095,7 @@ const GameCore = {
       L.done[m.id] = ctx.now;
       const o = st.over, my = st.s[me], foe = st.s[PvP.other(me)], score = o.win === me ? 1 : o.win ? 0 : 0.5;
       L.tickets = Math.max(0, L.tickets - 1); L.n++;
+      if (score === 1) L.w = (L.w | 0) + 1; else if (score === 0) L.l = (L.l | 0) + 1; // 5.1.37: форма дня (ничья — ни то, ни другое)
       // с одним и тем же соперником рейтинг меняют первые League.SAME боёв за день; бой прошлого сезона рейтинг не меняет
       const vs = L.vs = L.vs && L.vs.day === today ? L.vs : { day: today, m: {} };
       vs.m[foe.pid] = (vs.m[foe.pid] || 0) + 1;
@@ -9172,7 +9182,9 @@ const GameCore = {
       q.t = ctx.now; ctx.srv.lq = q;
       const waited = (ctx.now - q.since) / 1000, w = League.window(L.pts, waited);
       const info = { pid: S.d.pid, name: S.d.name, look: this.safeLook(S.d.look), lvl: S.d.level, pts: L.pts, rank: League.rank(L.pts), clan: clanOf(S.d.clan),
-        power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)) };
+        power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)),
+        // 5.1.37: форма дня и допуск по ней — база ставит в пару Ловчих с похожей долей побед за сегодня (036_league_form.sql)
+        day: { w: L.w | 0, l: L.l | 0, f: +League.form(L.w, L.l).toFixed(3), t: League.formTol(waited) } };
       const r = await ctx.env.pvpFind({ season: L.season, pts: L.pts, lo: w.lo, hi: w.hi, info, avoid: L.last || null, wide: waited >= 30 });
       if (r && r.match) { ctx.srv.lq = null; return { match: r.match, done: [] }; }
       // 5.1.15: живого соперника нет League.BOT_WAIT секунд — соперником станет Ловчий Ордена (бот). Живые — всегда первыми:

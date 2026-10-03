@@ -690,6 +690,7 @@ const GameCore = {
       L.done[m.id] = ctx.now;
       const o = st.over, my = st.s[me], foe = st.s[PvP.other(me)], score = o.win === me ? 1 : o.win ? 0 : 0.5;
       L.tickets = Math.max(0, L.tickets - 1); L.n++;
+      if (score === 1) L.w = (L.w | 0) + 1; else if (score === 0) L.l = (L.l | 0) + 1; // 5.1.37: форма дня (ничья — ни то, ни другое)
       // с одним и тем же соперником рейтинг меняют первые League.SAME боёв за день; бой прошлого сезона рейтинг не меняет
       const vs = L.vs = L.vs && L.vs.day === today ? L.vs : { day: today, m: {} };
       vs.m[foe.pid] = (vs.m[foe.pid] || 0) + 1;
@@ -1776,7 +1777,9 @@ const GameCore = {
       q.t = ctx.now; ctx.srv.lq = q;
       const waited = (ctx.now - q.since) / 1000, w = League.window(L.pts, waited);
       const info = { pid: S.d.pid, name: S.d.name, look: this.safeLook(S.d.look), lvl: S.d.level, pts: L.pts, rank: League.rank(L.pts), clan: clanOf(S.d.clan),
-        power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)) };
+        power: team.reduce((s, x) => s + S.power(x), 0), team: team.map(sp => PvP.fighter(sp)),
+        // 5.1.37: форма дня и допуск по ней — база ставит в пару Ловчих с похожей долей побед за сегодня (036_league_form.sql)
+        day: { w: L.w | 0, l: L.l | 0, f: +League.form(L.w, L.l).toFixed(3), t: League.formTol(waited) } };
       const r = await ctx.env.pvpFind({ season: L.season, pts: L.pts, lo: w.lo, hi: w.hi, info, avoid: L.last || null, wide: waited >= 30 });
       if (r && r.match) { ctx.srv.lq = null; return { match: r.match, done: [] }; }
       // 5.1.15: живого соперника нет League.BOT_WAIT секунд — соперником станет Ловчий Ордена (бот). Живые — всегда первыми:

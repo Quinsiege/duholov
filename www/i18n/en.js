@@ -580,6 +580,7 @@ I18N.dict = {
 "Бьёт сильнее, но хуже держит удар. На карточке его можно очистить — он станет обычным.":"Hits harder but takes hits worse. On its card you can purify it — it will become normal.",
 "Отряд прислужника под стать твоим сильнейшим духам, но все трое — одной стихии: возьми духов, сильных против неё.":"The minion's squad matches your strongest spirits, but all three share one element: bring spirits strong against it.",
 "С {0} уровня — Лига Ордена: бои в реальном времени. Соперник — Ловчий с рейтингом ±{1} от твоего; если такого сейчас нет, через несколько секунд выйдет Ловчий Ордена. В бою тапай — быстрые атаки копят энергию для приёма, щиты берегут от приёмов соперника, духа можно сменить. Бой считает сервер Ордена: он же засчитывает итог обоим.":"From level {0} — the Order League: real-time battles. Your opponent is a Catcher rated within ±{1} of you; if there's no one like that right now, a Catcher of the Order steps in within a few seconds. In battle, tap — quick attacks build energy for a move, shields guard against your opponent's moves, and you can switch spirits. The Order's server runs the battle and records the result for both.",
+"Первые секунды поиска соперник подбирается с похожей долей побед за сегодня: кто сегодня чаще выигрывает, встречается с такими же.":"For the first seconds of the search, your opponent is picked with a similar share of wins today: those who win more often today meet each other.",
 "Рейтинг":"Rating",
 "жетон":"token",
 "жетона":"tokens",

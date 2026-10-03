@@ -1410,8 +1410,10 @@
       const now = Date.now(), q0 = DB.pvpQ[who.uid];
       const me = DB.pvpQ[who.uid] = { uid: who.uid, pid: t.info.pid, season: t.season, rating: t.pts, lo: t.lo, hi: t.hi, info: JSON.parse(JSON.stringify(t.info)), avoid: t.avoid,
         since: q0 && !q0.match && now - q0.seen <= 15000 ? q0.since : now, seen: now, match: null };
+      const fm = q => (q.day && q.day.f != null ? +q.day.f : 0.5), tm = q => (q.day && q.day.t != null ? +q.day.t : 1), mf = fm(t.info); // 5.1.37: форма дня (036_league_form.sql)
       const o = Object.values(DB.pvpQ).filter(q => q.uid !== who.uid && !q.match && q.season === t.season && now - q.seen <= 8000 && q.rating >= t.lo && q.rating <= t.hi && t.pts >= q.lo && t.pts <= q.hi
-        && (t.wide || ((!t.avoid || q.pid !== t.avoid) && (!q.avoid || q.avoid !== t.info.pid)))).sort((x, y) => Math.abs(x.rating - t.pts) - Math.abs(y.rating - t.pts) || x.since - y.since)[0];
+        && (t.wide || ((!t.avoid || q.pid !== t.avoid) && (!q.avoid || q.avoid !== t.info.pid))) && Math.abs(fm(q.info) - mf) <= Math.min(tm(q.info), tm(t.info)) + 1e-4)
+        .sort((x, y) => Math.round(Math.abs(fm(x.info) - mf) * 10) - Math.round(Math.abs(fm(y.info) - mf) * 10) || Math.abs(x.rating - t.pts) - Math.abs(y.rating - t.pts) || x.since - y.since)[0];
       if (!o) return { wait: true, n: Object.values(DB.pvpQ).filter(q => !q.match && q.season === t.season && now - q.seen <= 8000).length };
       const id = crypto.randomUUID();
       DB.pvpM[id] = { id, season: t.season, a: o.uid, b: who.uid, ver: 0, status: 'live', aS: false, bS: false, state: { init: true, season: t.season, at: now, a: o.info, b: me.info } };
@@ -2902,10 +2904,13 @@
     const ko = await pvp(E, 'move', { id: ef, in: [{ t: 'hit', n: 1 }] }, t0 + 500);
     ok(ko.st.over && ko.st.over.why === 'ko' && ko.st.over.win === me, 'все духи соперника без сил — победа');
     const re = (await must(E, 'pvpResult', {})).done[0]; ok(re.win && re.d > 0);
+    eq(E.data.league.w, 1, '5.1.37: победа — в форму дня:'); eq(E.data.league.l, 0);
     const rf0 = (await must(F, 'pvpResult', {})).done[0]; ok(!rf0.win && F.data.spirits.some(x => x.ko), 'проигравшему — раны: духи без сил');
+    eq(F.data.league.l, 1, '5.1.37: поражение — в форму дня:');
     F.data.spirits.forEach(x => { delete x.ko; delete x.hpf; delete x.hpt; }); // вылечился
     // повторный соперник: сразу снова в пару не ставим (кроме долгого ожидания)
     await must(E, 'pvpFind', {}); ok(!(await must(F, 'pvpFind', {})).match, 'тот же соперник сразу — нет');
+    ago(E, 31); await must(E, 'pvpFind', {}); // 5.1.37: формы дня разошлись (у E победа, у F поражение) — допуск обоих растёт с ожиданием
     ago(F, 31); const again = (await must(F, 'pvpFind', {})).match; ok(again, 'после 30 с ожидания — можно');
     const q = await pvp(F, 'move', { id: again, in: [{ t: 'quit' }] }, Date.now() + 100);
     ok(q.st.over.why === 'quit' && q.st.over.win !== q.seat, 'сдался — поражение');
@@ -3469,6 +3474,28 @@
     const mc = await must(C, 'pvpFind', {});
     ok(mc.match && !DB.pvpM[mc.match].state.bot, 'пара с живым');
     eq((await must(B, 'pvpFind', {})).match, mc.match, 'и первый — в бою с живым, а не с ботом');
+  });
+  atest('5.1.37: Лига — соперник с похожей формой дня (доля побед за сегодня): сперва схожие, потом любые', async () => {
+    near(League.form(0, 0), 0.5, 1e-9, 'без боёв'); near(League.form(2, 3), 3 / 7, 1e-9, '2 из 5'); near(League.form(5, 0), 6 / 7, 1e-9, '5 из 5');
+    eq([0, 2.9, 3, 5.9, 6, 30].map(s => League.formTol(s)).join(), '0.15,0.15,0.3,0.3,1,1', 'допуск растёт с ожиданием:');
+    const day = (P, w, l) => { P.data.league.w = w; P.data.league.l = l; };
+    // Игрок 1: 2 победы, 3 поражения; Игрок 2: 5 побед; Игрок 3: 2 победы, 2 поражения — все рядом по рейтингу
+    const A = await leaguer('fm-a', 'Двойка', 1300), B = await leaguer('fm-b', 'Пятёрка', 1305), C = await leaguer('fm-c', 'Ровня', 1320);
+    day(A, 2, 3); day(B, 5, 0); day(C, 2, 2);
+    ok((await must(B, 'pvpFind', {})).wait != null, 'Игрок 2 ждёт');
+    ok((await must(A, 'pvpFind', {})).wait != null, 'форма 0,43 и 0,86 — в первые секунды не пара');
+    eq(DB.pvpQ['fm-a'].info.day.f, 0.429, 'форма дня — в заявке:'); eq(DB.pvpQ['fm-a'].info.day.w, 2);
+    const m = (await must(C, 'pvpFind', {})).match;
+    ok(m && [DB.pvpM[m].a, DB.pvpM[m].b].sort().join() === 'fm-a,fm-c', 'похожая форма (0,43 и 0,5) — сразу пара, хотя Игрок 2 ждал дольше');
+    // Игрок 2 и новый Игрок 4 с проигрышами: сперва ждут, когда оба подождали — пара (живой раньше Ловчего Ордена)
+    const D = await leaguer('fm-d', 'Неудачник', 1310); day(D, 0, 4);
+    ok((await must(D, 'pvpFind', {})).wait != null, 'форма 0,17 и 0,86 — ждём');
+    ago(B, 6); ago(D, 6); await must(B, 'pvpFind', {});
+    const m2 = (await must(D, 'pvpFind', {})).match;
+    ok(m2 && [DB.pvpM[m2].a, DB.pvpM[m2].b].sort().join() === 'fm-b,fm-d', 'через 6 с — пара с любой формой');
+    // итог боя — в форму дня; новый день — с нуля
+    asPlayer(A, () => { S.d.league.day = '2000-1-1'; S.d.league.w = 7; S.d.league.l = 3; League.st(); });
+    eq(A.data.league.w + A.data.league.l, 0, 'новый день — форма с нуля:');
   });
   test('5.1.15: строка Кампании на карте — без всплывашек: цели шага, «забери награду», «выбери духа» (5.1.24: значки и счётчики, без подложки)', () => {
     const d0 = S.d;
