@@ -11,7 +11,8 @@ const Raid = {
      (стихии без преимущества): Ловчий, что уклоняется от 3 ударов из 4, тапает на 90% темпа и пьёт Живую воду, побеждает
      команду с силой как у босса примерно в 2 боях из 3, на 10% слабее — редко, на 20% слабее — никогда; уклоняясь от всех
      ударов и тапая без пропусков — от ~0,85 силы босса, уклоняясь от 2 ударов из 5 и тапая на 75% — от ~1,3. Духи-противники
-     (их стихия бьёт босса) наносят в 1,6 раза больше урона и получают в 1,6 раза меньше — стоят примерно полуторной силы.
+     (их стихия бьёт босса) наносят в 1,5 раза больше урона и получают в 1,5 раза меньше (Raid.EL; в других боях — 1,6) —
+     стоят примерно 1,4 силы.
      Атака и защита босса — как у духа его вида уровня rl (× k): от них только числа урона, трудность боя — от опорной
      команды. lvl — уровень пойманного босса */
   // 5.1.36: sparks — искры за победу (было 350 × ступень); те же у Святилищ (SHRINE_TIERS)
@@ -46,9 +47,12 @@ const Raid = {
   // духа), от ×0,25 до ×4. Сила решает больше: команда на 20% слабее босса не выстоит, а сильной — меньше ран после победы.
   // Хранитель кампании (без power) — как прежде
   press(bs, power) { return bs.power && power > 0 ? U.clamp(bs.power / 3 / power, 0.25, 4) : 1; },
-  eff(att, def) {
-    if (ELEMENTS[att].beats.includes(def)) return 1.6;
-    if (ELEMENTS[def].beats.includes(att)) return 0.625;
+  // стихии: бьющая наносит ×k, битая — ×1/k. В Святилищах, вторжениях и Лиге k = 1,6; 5.1.39: в разломах — EL (1,5),
+  // иначе команда духов-противников стоила почти полуторной силы и проходила босса заметно сильнее себя
+  EL: 1.5,
+  eff(att, def, k = 1.6) {
+    if (ELEMENTS[att].beats.includes(def)) return k;
+    if (ELEMENTS[def].beats.includes(att)) return 1 / k; // 1 / 1,6 = 0,625
     return 1;
   },
 
@@ -298,9 +302,10 @@ const Raid = {
     st.$('.raid-mname').innerHTML = `${Art.elIcon(SP[m.sp.sid].el, 16)} ${U.esc(m.sp.nick || SP[m.sp.sid].name)} <small>${ru`СИЛА ${m.power}`}</small>`;
     st.$('.raid-team').innerHTML = st.team.map((x, i) => `<i class="${x.cur <= 0 ? 'dead' : i === st.idx ? 'on' : ''}"></i>`).join('');
   },
-  dmg(att, def, power, attEl, defEl) {
+  // k — множитель стихий (Raid.eff): в бою с боссом разлома — Raid.EL
+  dmg(att, def, power, attEl, defEl, k) {
     const wx = Sky.boosted(attEl) ? 1.2 : 1;
-    return Math.floor(0.5 * power * (att / def) * 1.2 * wx * this.eff(attEl, defEl)) + 1;
+    return Math.floor(0.5 * power * (att / def) * 1.2 * wx * this.eff(attEl, defEl, k)) + 1;
   },
   float(text, x, y, cls = '') {
     const f = U.el(`<div class="dmg ${cls}" style="left:${x}px;top:${y}px">${text}</div>`);
@@ -365,7 +370,7 @@ const Raid = {
     st.energy = Math.min(100, st.energy + 6 * (m.energy || 1));
     Sfx.play('attack');
     const me = st.$('.raid-me'); me.classList.remove('atk'); void me.offsetWidth; me.classList.add('atk');
-    this.hitBoss(this.dmg(m.atk, st.bs.def, 12, SP[m.sp.sid].el, st.s.el));
+    this.hitBoss(this.dmg(m.atk, st.bs.def, 12, SP[m.sp.sid].el, st.s.el, this.EL));
     this.render();
   },
   special() {
@@ -377,7 +382,7 @@ const Raid = {
     st.root.classList.remove('flash'); void st.root.offsetWidth; st.root.classList.add('flash');
     st.root.style.setProperty('--fx', ELEMENTS[el].color);
     this.float(ELEMENTS[el].charge, window.innerWidth / 2, window.innerHeight * 0.52, 'move');
-    this.hitBoss(this.dmg(m.atk, st.bs.def, 75, el, st.s.el), true);
+    this.hitBoss(this.dmg(m.atk, st.bs.def, 75, el, st.s.el, this.EL), true);
     this.render();
   },
   dodge(dir) {
@@ -428,7 +433,7 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-boss').classList.remove('charging');
     st.nextAtk = 2.2 + Math.random() * 1.4;
-    let n = this.dmg(st.bs.atk, m.def, st.bs.pw * this.press(st.bs, m.power), st.s.el, SP[m.sp.sid].el);
+    let n = this.dmg(st.bs.atk, m.def, st.bs.pw * this.press(st.bs, m.power), st.s.el, SP[m.sp.sid].el, this.EL);
     const dodged = st.dodgeT > 0;
     if (dodged) n = Math.max(1, Math.floor(n * Rules.RAID_SIM.DODGE)); // 5.1.39: уклон срезает удар до 40% (было до 20%)
     m.cur = Math.max(0, m.cur - n);

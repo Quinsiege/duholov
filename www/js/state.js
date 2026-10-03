@@ -855,9 +855,9 @@ const S = {
     const R = Rules.CAMP_RIFT, s = SP[bossSid], f = team && team[0];
     if (!s || !f) return null;
     const x = this.battle(f), el = SP[f.sid].el, def = x.atk, atk = x.def;
-    const hit = Math.floor(0.5 * 12 * (x.atk / def) * 1.2 * Raid.eff(el, s.el)) + 1;
+    const hit = Math.floor(0.5 * 12 * (x.atk / def) * 1.2 * Raid.eff(el, s.el, Raid.EL)) + 1; // 5.1.39: стихии в разломе — Raid.EL
     const hp0 = Math.max(1, Math.round(x.hp * 5 * this.hpNow(f)));
-    const want = Math.max(2, hp0 / R.HITS), pw = Math.max(0.5, (want - 1) / (0.5 * 1.2 * (atk / x.def) * Raid.eff(s.el, el)));
+    const want = Math.max(2, hp0 / R.HITS), pw = Math.max(0.5, (want - 1) / (0.5 * 1.2 * (atk / x.def) * Raid.eff(s.el, el, Raid.EL)));
     return { atk, def, hp: Math.round(R.T * R.TAPS * hit), pw: Math.round(pw * 100) / 100, rl: this.catchLvl() };
   },
   // Новое поручение (выдаёт сервер у источника): задание и дух, который встретится в награду
