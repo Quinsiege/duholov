@@ -5389,9 +5389,10 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .sheet-wrap.rm-wrap { --rmc: 62px; padding-top: calc(48px + var(--st)); padding-bottom: calc(144px + var(--sb)); } /* 5.1.10: от краёв — 48 px сверху и над кнопкой закрытия */
 /* 5 рядов: кружок, подпись 15px (у «Книги Ордена» — ещё строка), между рядами — не меньше 8px; кружок — до 66 px (было 58) */
 @supports (height: 1cqh) { .sheet-wrap.rm-wrap { container-type: size; --rmc: clamp(48px, calc((100cqh - 215px) / 5), 66px); } }
-.rm-grid.rm-secs { display: grid; grid-template-columns: repeat(4, minmax(0, 86px)); justify-content: center; justify-items: center; align-content: space-evenly; gap: 8px 4px;
-  flex: 1 0 auto; width: 100%; max-width: 360px; max-height: 780px; margin: auto 0; }
-.rm-secs .rm-it { gap: 6px; width: 100%; }
+/* по 4 в ряд (ширина значка — четверть ряда), ряды переносятся и стоят по центру: появится 21-й значок — неполный ряд тоже по центру */
+.rm-grid.rm-secs { display: flex; flex-wrap: wrap; justify-content: center; align-content: space-evenly; gap: 8px 4px;
+  flex: 1 0 auto; width: 100%; max-width: 356px; max-height: 780px; margin: auto 0; }
+.rm-grid.rm-secs > .rm-it { flex: 0 0 calc((100% - 12px) / 4); gap: 6px; }
 .rm-secs .rm-c { width: var(--rmc); height: var(--rmc); }
 .rm-secs .rm-c .mi { width: calc(var(--rmc) * .7) !important; height: calc(var(--rmc) * .7) !important; }
 .rm-secs .rm-it .rm-l { max-width: 88px; font-size: clamp(11.5px, calc(var(--rmc) * .2), 13px); line-height: 15px; letter-spacing: 0; } /* сильнее старого .menu-grid .tile span */
