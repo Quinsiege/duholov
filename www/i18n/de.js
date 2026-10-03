@@ -3139,7 +3139,6 @@ I18N.dict = {
 "Твоя ступень — «{0}»":"Deine Stufe: „{0}“",
 "Авто":"Auto",
 "Макс.":"Max.",
-"Телефон нагрелся — графика снижена, пока он не остынет":"Das Telefon ist heiß – Grafik reduziert, bis es abkühlt",
 "Амулет на выбор":"Amulett nach Wahl",
 "Облик":"Look",
 "+{0} мест в сумке":"+{0} Taschenplätze",

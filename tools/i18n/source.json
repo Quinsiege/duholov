@@ -22647,13 +22647,6 @@
   "ctx": "label(k) { return k === 'auto' ? ru`Авто` : k === 'max' ? ru`Макс.` : k + 'p'; },"
  },
  {
-  "k": "Телефон нагрелся — графика снижена, пока он не остынет",
-  "at": [
-   "www/js/settings.js:143"
-  ],
-  "ctx": "if (!was && this.step() && typeof UI !== 'undefined' && UI.toast) UI.toast(ru`Телефон нагрелся — графика снижена, пока он не остынет`);"
- },
- {
   "k": "Амулет на выбор",
   "at": [
    "www/js/shop.js:24"
