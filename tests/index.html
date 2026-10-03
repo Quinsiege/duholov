@@ -83,6 +83,7 @@
   <script src="../www/js/cloud.js"></script>
   <script src="../www/js/game.js"></script>
   <script src="../www/js/realms.js"></script>
+  <script src="../www/js/loader.js"></script>
   <script src="../www/js/login.js"></script>
   <script src="../www/js/exif.js"></script>
   <script src="../www/js/osm.js"></script>
@@ -3137,6 +3138,69 @@
       eq(fn, 1, 'касание — действие последней кнопки:'); eq(side, 0); ok(!m.isConnected, 'окно закрылось');
       ok(Stage.GLASS.includes('.tut-final'), '«Обучение пройдено» — тоже на стекле, карта под ним видна размытой');
     } finally { Sfx.play = keepSfx; UI.TAP_MS = keepMs; box.remove(); }
+  });
+  atest('5.1.35: знакомство — у кокона и «Весь мир — твой» нет кнопок, дальше касанием; у кокона надпись — когда дух появился', async () => {
+    const keep = { sfx: Sfx.play, ms: UI.TAP_MS, hatch: UI.HATCH_MS, tr: Game.try, ev: Metrics.ev };
+    let root = null;
+    try {
+      Sfx.play = () => {}; Metrics.ev = () => {}; UI.TAP_MS = 60; UI.HATCH_MS = 0;
+      let n = 0, done = 0;
+      Game.try = async () => (++n === 1 ? null : {}); // в первый раз сервер не ответил
+      UI.onboarding(() => { done++; }, 3);
+      root = [...document.querySelectorAll('.onb.lg')].pop();
+      const st = () => root.querySelector('.onb-step'), hint = () => { const h = st().querySelector('.tap-hint'); return h ? h.textContent : ''; };
+      ok(st().classList.contains('s3') && !st().querySelector('button'), 'у кокона кнопки нет');
+      await U.wait(30);
+      eq(hint(), 'Коснись, чтобы попробовать ещё раз', 'сервер не ответил:');
+      await U.wait(UI.TAP_MS + 20); root.click(); await U.wait(30);
+      eq(n, 2, 'касание — ещё попытка:');
+      eq(hint(), '', 'пока дух не появился — надписи нет:');
+      root.click(); await U.wait(20);
+      ok(st().classList.contains('s3'), 'касание до духа — не дальше');
+      for (let i = 0; i < 60 && !root.querySelector('.onb-hatch.open'); i++) await U.wait(50); // трещина — 750 мс, потом дух
+      ok(root.querySelector('.onb-hatch.open .oh-sp').innerHTML, 'дух появился');
+      eq(hint(), 'Коснись, чтобы продолжить', 'и тогда — надпись:');
+      await U.wait(UI.TAP_MS + 20); root.querySelector('.onb-desc').click(); await U.wait(30);
+      ok(st().classList.contains('s4'), 'касание — к «Весь мир — твой»');
+      ok(!st().querySelector('button'), 'кнопки «В путь» нет');
+      eq(hint(), 'Коснись, чтобы продолжить', 'надпись:');
+      st().querySelector('h2').click(); await U.wait(20);
+      eq(done, 0, 'касание сразу после появления шага — не считается:');
+      await U.wait(UI.TAP_MS + 20); st().querySelector('h2').click(); await U.wait(30);
+      eq(done, 1, 'касание — в игру:');
+    } finally { Sfx.play = keep.sfx; Metrics.ev = keep.ev; UI.TAP_MS = keep.ms; UI.HATCH_MS = keep.hatch; Game.try = keep.tr; if (root) root.remove(); }
+  });
+  atest('5.1.35: экран входа — небо со звёздами, название текстом (Rubik Black, одним цветом), Ловчий без подложки, в игру — касанием', async () => {
+    const keep = { on: Game.on, d: S.d, watch: Realms.watch, out: Login.askSignOut, sfx: Sfx.play, ms: UI.TAP_MS };
+    let root = null;
+    try {
+      Realms.watch = () => {}; Sfx.play = () => {}; UI.TAP_MS = 60; // без замера отклика сервера и звука
+      const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
+      const wm = (html.match(/\.wordmark \{[^}]*\}/) || [''])[0];
+      ok(/font-family: 'Rubik'/.test(wm) && /font-weight: 900/.test(wm), 'название игры — Rubik Black');
+      ok(/color: #fbbf24/.test(wm) && !/gradient|shadow/.test(wm), 'одним цветом, без теней');
+      ok(!/ruslan-display-|'Ruslan Display'|logo\.webp/.test(html), 'ни Ruslan Display, ни картинки-логотипа');
+      ok(!/ns-land|ns-fog/.test(html + Loader.sky()), 'фон — только небо со звёздами, без земли и тумана');
+      Game.on = () => true;
+      S.d = null; S.newGame('Илья', 'kapelka'); S.d.level = 20;
+      let done = 0, out = 0;
+      Login.askSignOut = () => { out++; };
+      Login.gate(() => { done++; });
+      root = [...document.querySelectorAll('.onb.lg')].pop();
+      ok(root.querySelector('.nav-sky .ns-stars') && /Духолов/.test(root.querySelector('.wordmark').textContent), 'небо и название');
+      const h = root.querySelector('.ent-mid .ent-hero');
+      ok(h && !root.querySelector('.ent-card'), 'Ловчий — под названием, без карточки-подложки');
+      eq(h.querySelector('.eh-name').textContent, 'Илья'); eq(h.querySelector('.eh-lvl').textContent, '20');
+      eq(h.querySelectorAll('.eh-stats > div').length, 3, 'три числа:');
+      eq([...root.querySelectorAll('.lg-body button')].map(b => b.className).join(), 'realm-chip,eh-exit', 'кнопок «Продолжить» и «Сохрани прогресс» нет — только сервер и «Выйти»:');
+      eq(root.querySelector('.ent .tap-hint').textContent, 'Коснись, чтобы продолжить', 'надпись:');
+      ok(/Гость играет только на этом устройстве/.test(root.querySelector('.ent-legal').textContent), 'гостю — напоминание привязать вход');
+      await U.wait(UI.TAP_MS + 20);
+      h.querySelector('.eh-exit').click();
+      eq(out, 1, '«Выйти» — своё действие:'); eq(done, 0, 'а не в игру:');
+      h.querySelector('.eh-name').click();
+      eq(done, 1, 'касание — в игру:');
+    } finally { Game.on = keep.on; S.d = keep.d; Realms.watch = keep.watch; Login.askSignOut = keep.out; Sfx.play = keep.sfx; UI.TAP_MS = keep.ms; if (root) root.remove(); }
   });
   atest('5.1.27: выбранный в Кампании дух — сценой, а не всплывашкой', async () => {
     const sp = S.makeSpirit('ugolek', 5, 'got-test', { ivMin: 10 });

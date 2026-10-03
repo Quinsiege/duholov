@@ -2,10 +2,9 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <!-- 5.1.24: логотип, шрифты и их таблицы стилей (экран загрузки ждёт их) — первыми, раньше предзагрузки кода: на HTTP/1.1
-       у них общие 6 соединений с большими файлами, и экран загрузки появлялся позже -->
-  <link rel="preload" href="img/logo.webp" as="image" fetchpriority="high"><!-- 4.22: логотип экрана загрузки -->
-  <link rel="preload" href="vendor/fonts/ruslan-display-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- 5.1.24: шрифты и их таблицы стилей (экран загрузки ждёт их) — первыми, раньше предзагрузки кода: на HTTP/1.1
+       у них общие 6 соединений с большими файлами, и экран загрузки появлялся позже. 5.1.35: картинки-логотипа больше нет —
+       название игры текстом шрифтом Rubik Black (900 — ниже); Ruslan Display не нужен -->
   <link rel="stylesheet" href="vendor/fonts/rubik.css?v=dev">
   <link rel="stylesheet" href="vendor/fonts/display.css?v=dev">
   <link rel="preload" href="vendor/fonts/rubik-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -37,114 +36,83 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
   <!-- 3.31.1: экран загрузки рисуется сразу — его стили здесь, а таблицы стилей игры подключаются в body после него -->
   <style>
-    /* 4.4: экран загрузки — ночная сцена (как на экране входа, js/scene.js), знак Ордена, стеклянная панель с советом и прогрессом.
-       Картинка из scenes/scenes.json (loading.images) плавно ложится поверх нарисованной сцены (Scene.loading) */
+    /* 5.1.35: экран загрузки (и фон экрана входа, js/login.js) переработан: ночь Нави — только небо до низа экрана: звёзды, северное
+       сияние, блуждающие огоньки (только CSS: движение — transform и opacity, без картинок); название игры — текстом шрифтом
+       Rubik Black (картинки-логотипа больше нет); совет Ордена одной строкой (касание — следующий), тонкая золотая полоса загрузки */
     :root { --bg: #0b0620; --text: #f4f1ff; --muted: #b3aacb; --line: rgba(255, 255, 255, .12); --gold: #fbbf24; --gold2: #fde047; --teal: #5eead4;
       --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px); color-scheme: dark; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 15px; }
-    .loader { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: space-between; box-sizing: border-box; overflow: hidden;
-      padding: calc(24px + var(--st)) 18px calc(22px + var(--sb)); background: #0b0620; text-align: center; transition: opacity .45s; user-select: none; -webkit-user-select: none; }
+    /* ночь Нави: небо, звёзды, сияние, огоньки — ни земли, ни тумана: небо со звёздами до низа экрана */
+    .nav-sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+      background: linear-gradient(180deg, #07061a 0%, #120c33 34%, #22135a 72%, #2a1868 100%); }
+    .nav-sky i { position: absolute; display: block; }
+    .ns-stars { inset: 0; opacity: .8; will-change: opacity;
+      background-image: radial-gradient(1px 1px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 68% 32%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 38% 72%, #dfe7ff 50%, transparent 51%), radial-gradient(1.2px 1.2px at 86% 64%, #fff 50%, transparent 51%),
+        radial-gradient(1px 1px at 54% 8%, #fff 50%, transparent 51%), radial-gradient(1.6px 1.6px at 22% 52%, #fde68a 50%, transparent 51%),
+        radial-gradient(1px 1px at 93% 12%, #fff 50%, transparent 51%), radial-gradient(1.3px 1.3px at 4% 88%, #c7d2fe 50%, transparent 51%);
+      background-size: 230px 230px;
+      animation: nsTwinkle 4.5s ease-in-out infinite alternate; }
+    .ns-stars.s2 { background-size: 370px 370px; background-position: 70px 110px; opacity: .55; animation-duration: 6.5s; animation-delay: -3s; }
+    @keyframes nsTwinkle { from { opacity: .35; } to { opacity: .9; } }
+    .ns-aur { left: -30%; width: 160%; height: 40%; border-radius: 50%; filter: blur(44px); opacity: .5; will-change: transform; }
+    .ns-aur.a1 { top: 6%; background: radial-gradient(closest-side, rgba(45, 212, 191, .55), transparent); animation: nsAur1 24s ease-in-out infinite alternate; }
+    .ns-aur.a2 { top: 20%; background: radial-gradient(closest-side, rgba(167, 139, 250, .6), transparent); animation: nsAur2 31s ease-in-out infinite alternate; }
+    @keyframes nsAur1 { to { transform: translate(14%, 5%) scale(1.15, .9); } }
+    @keyframes nsAur2 { to { transform: translate(-12%, -6%) scale(.9, 1.2); } }
+    .ns-wisp { bottom: 14%; width: 7px; height: 7px; border-radius: 50%; opacity: 0; will-change: transform, opacity;
+      background: radial-gradient(circle, #fff 0 25%, rgba(165, 243, 252, .95) 40%, rgba(165, 243, 252, 0) 70%); box-shadow: 0 0 14px 2px rgba(103, 232, 249, .55);
+      animation: nsRise 15s linear infinite; }
+    .ns-wisp.w1 { left: 9%; animation-duration: 16s; } .ns-wisp.w2 { left: 24%; animation-duration: 13s; animation-delay: -5s; --dx: -26px; }
+    .ns-wisp.w3 { left: 41%; animation-duration: 18s; animation-delay: -11s; } .ns-wisp.w4 { left: 58%; animation-duration: 14s; animation-delay: -2s; --dx: -18px; }
+    .ns-wisp.w5 { left: 73%; animation-duration: 17s; animation-delay: -8s; } .ns-wisp.w6 { left: 88%; animation-duration: 12s; animation-delay: -6s; --dx: -30px; }
+    .ns-wisp.w7 { left: 33%; animation-duration: 20s; animation-delay: -15s; } .ns-wisp.w8 { left: 66%; animation-duration: 19s; animation-delay: -13s; --dx: 12px; }
+    .ns-wisp.w2, .ns-wisp.w5, .ns-wisp.w8 { background: radial-gradient(circle, #fff 0 25%, rgba(253, 230, 138, .95) 40%, rgba(253, 230, 138, 0) 70%); box-shadow: 0 0 14px 2px rgba(251, 191, 36, .55); }
+    @keyframes nsRise { 0% { transform: translate3d(0, 0, 0) scale(.6); opacity: 0; } 12% { opacity: .95; } 50% { transform: translate3d(var(--dx, 22px), -38vh, 0) scale(1); }
+      85% { opacity: .6; } 100% { transform: translate3d(0, -76vh, 0) scale(.5); opacity: 0; } }
+    /* название игры — текстом (5.1.35: без картинки-логотипа) */
+    .wordmark { margin: 0; padding-left: .05em; font-family: 'Rubik', system-ui, sans-serif; font-weight: 900; font-size: clamp(42px, 13vw, 62px); line-height: 1.05;
+      letter-spacing: .05em; text-transform: uppercase; color: #fbbf24; } /* одним цветом, без теней */
+    .wm-orn { display: block; width: 190px; height: 12px; margin: 10px auto 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 12'%3E%3Cpath d='M8 6H80M110 6H182' stroke='%23f3cf6b' stroke-width='1' stroke-linecap='round' opacity='.7'/%3E%3Cpath d='M95 1l5 5-5 5-5-5z' fill='%23f3cf6b'/%3E%3Cpath d='M95 3.6l2.4 2.4-2.4 2.4-2.4-2.4z' fill='%23140b33'/%3E%3Ccircle cx='86' cy='6' r='1.4' fill='%23f3cf6b'/%3E%3Ccircle cx='104' cy='6' r='1.4' fill='%23f3cf6b'/%3E%3C/svg%3E") center / contain no-repeat; }
+    .tagline { margin: 12px 0 0; font: 500 16.5px/1.35 'Rubik', system-ui, sans-serif; letter-spacing: .02em; color: #ebe4ff; text-shadow: 0 1px 10px rgba(0, 0, 0, .55); }
+    /* экран загрузки */
+    .loader { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; overflow: hidden;
+      padding: calc(24px + var(--st)) 22px calc(26px + var(--sb)); background: var(--bg); text-align: center; transition: opacity .45s; user-select: none; -webkit-user-select: none; }
     .loader.out { opacity: 0; pointer-events: none; }
-    .ld-scene, .ld-bg, .ld-shade { position: absolute; inset: 0; pointer-events: none; }
-    .ld-scene { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 3l7 7-7 7-7-7z M0 21l7 7-7 7 M36 21l-7 7 7 7' fill='none' stroke='%23fff' stroke-opacity='.035' stroke-width='1'/%3E%3C/svg%3E"), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .32), transparent 70%), linear-gradient(180deg, #261a4f, #0c0720); } /* 4.6: фон как во вкладках игры */
-    .ld-bg { background: center / cover no-repeat; opacity: 0; transform: scale(1.06); transition: opacity 1s, transform 12s ease-out; }
-    .ld-bg.on { opacity: 1; transform: scale(1); }
-    .ld-shade { background: linear-gradient(180deg, rgba(6, 3, 18, .45) 0%, rgba(6, 3, 18, 0) 28%, rgba(6, 3, 18, 0) 46%, rgba(6, 3, 18, calc(.6 + var(--ld-shade, .25) * .4)) 100%); }
-    .ld-logo { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
-    /* 4.22: логотип — картинка (надпись в дымке Нави) */
-    .logo-img { display: block; width: min(88vw, 400px); height: auto; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, .45)); }
-    .ld-logo .logo-img { animation: ldFloat 3.6s ease-in-out infinite; }
-    @keyframes ldFloat { 50% { transform: translateY(-6px); } }
-    .ld-logo h1 { margin: 0; padding: 4px 8px 0; font-family: 'Duholov Display', 'Rubik', system-ui, sans-serif; font-size: 56px; line-height: 1; font-weight: 700; letter-spacing: 1px; color: transparent;
-      background: linear-gradient(100deg, #fde047 0%, #fbbf24 38%, #fffbeb 48%, #fbbf24 58%, #f59e0b 100%); background-size: 250% 100%;
-      -webkit-background-clip: text; background-clip: text; animation: ldGlint 4.5s ease-in-out infinite;
-      filter: drop-shadow(0 3px 0 rgba(80, 28, 4, .9)) drop-shadow(0 6px 22px rgba(251, 191, 36, .45)); }
-    @keyframes ldGlint { 0%, 30% { background-position: 100% 0; } 70%, 100% { background-position: 0 0; } }
-    .ld-logo p { margin: 0; font-family: 'Rubik', system-ui, sans-serif; font-size: 17px; color: #eee6ff; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
-    .ld-foot { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 14px; padding: 16px; box-sizing: border-box; border-radius: 26px;
-      background: linear-gradient(180deg, rgba(34, 20, 68, .55), rgba(14, 8, 32, .8)); border: 1px solid rgba(255, 255, 255, .13);
-      -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: 0 24px 60px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .09); }
-    .ld-hint { position: relative; }
-    .ld-tip { min-height: 92px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 4px 38px; }
-    .ld-tip small { font-family: 'Rubik', system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gold2); }
-    .ld-tip p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #efeaff; }
-    .ld-tip p.in { animation: ldIn .35s ease-out; }
-    /* высота подсказки — по самой длинной (loader.js кладёт их все невидимыми в одну клетку) */
-    .ld-tw { display: grid; } .ld-tw > p { grid-area: 1 / 1; align-self: center; } .ld-tw > .ld-ghost { visibility: hidden; }
-    @keyframes ldIn { from { opacity: 0; transform: translateY(6px); } }
-    .ld-arrow { position: absolute; top: 50%; margin-top: -18px; width: 34px; height: 36px; padding: 0; border: 0; background: none; font: inherit; font-size: 28px; line-height: 1;
-      color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-    .ld-arrow.prev { left: -4px; } .ld-arrow.next { right: -4px; }
-    .ld-arrow:active { transform: scale(.88); color: var(--text); }
-    .ld-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 6px; }
-    .ld-dots i { width: 6px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .2); cursor: pointer; transition: width .2s, background .2s; }
-    .ld-dots i.on { width: 16px; background: var(--gold); }
-    .ld-prog { display: flex; flex-direction: column; gap: 8px; }
+    .ld-mid { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 8vh; animation: ldUp 1s cubic-bezier(.2, .8, .2, 1) both; }
+    .ld-foot { position: relative; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 20px; }
+    .ld-tip { min-height: 86px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .ld-tip small { font: 700 11.5px/1 'Rubik', system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #fde68a; opacity: .92; }
+    .ld-tip p { margin: 0; font: 400 15px/1.45 'Rubik', system-ui, sans-serif; color: #f1ecff; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+    .ld-tip p.in { animation: ldIn .45s ease-out; }
+    /* высота совета — по самому длинному (loader.js кладёт их все невидимыми в одну клетку): строка прогресса не прыгает */
+    .ld-tw { display: grid; } .ld-tw > p { grid-area: 1 / 1; align-self: end; } .ld-tw > .ld-ghost { visibility: hidden; }
+    .ld-prog { display: flex; flex-direction: column; gap: 9px; padding: 0 4px; }
     .ld-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-    .ld-text { font-size: 13px; color: var(--muted); text-align: left; }
-    .ld-pct { font-size: 13px; font-weight: 700; color: var(--gold2); font-variant-numeric: tabular-nums; }
-    .ld-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45); }
-    .ld-bar i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .35s ease-out; position: relative;
-      background: linear-gradient(90deg, var(--teal), var(--gold2)); box-shadow: 0 0 12px rgba(253, 224, 71, .55); }
+    .ld-text { font: 400 13px/1.2 'Rubik', system-ui, sans-serif; color: #d6cdf2; text-align: left; }
+    .ld-pct { min-width: 40px; text-align: right; font: 700 13px/1.2 'Rubik', system-ui, sans-serif; color: #fde68a; font-variant-numeric: tabular-nums; }
+    .ld-bar { position: relative; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .13); overflow: hidden; }
+    .ld-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 2px; overflow: hidden; transition: width .35s ease-out;
+      background: linear-gradient(90deg, #5eead4, #fde68a 70%, #fffbe6); box-shadow: 0 0 10px rgba(253, 224, 71, .7); }
+    .ld-bar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent); transform: translateX(-100%); animation: ldShine 1.8s ease-in-out infinite; }
     .ld-bar i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards; } /* пока грузится код игры — ползёт сам */
     @keyframes ldBoot { from { width: 3%; } to { width: 11%; } }
-    .ld-bar i::after { content: ""; position: absolute; right: -5px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%;
-      background: radial-gradient(circle, #fffbeb 0%, #fde047 45%, rgba(253, 224, 71, 0) 70%); animation: ldSpark 1.2s ease-in-out infinite; }
-    @keyframes ldSpark { 50% { transform: scale(1.5); opacity: .7; } }
-    /* 4.6: панель совета и прогресса — лаковая шкатулка с золотыми уголками, прогресс — золотая нить */
-    .ld-foot { border-radius: 22px; border: 1px solid rgba(243, 207, 107, .42); outline: 1px solid rgba(243, 207, 107, .16); outline-offset: -7px;
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform=''%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") left 0 top 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(-1 0 0 1 30 0)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") right 0 top 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(1 0 0 -1 0 30)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") left 0 bottom 0 / 26px 26px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cg transform='matrix(-1 0 0 -1 30 30)'%3E%3Cg fill='none' stroke='%23f3cf6b' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M12.5 6.5h5.5c3 0 4.6-1.7 7.2-1.7 2.1 0 2.9 1.9 1.6 3'/%3E%3Cpath d='M6.5 12.5v5.5c0 3-1.7 4.6-1.7 7.2 0 2.1 1.9 2.9 3 1.6'/%3E%3C/g%3E%3Cpath d='M6.5 1.2l5.3 5.3-5.3 5.3-5.3-5.3z' fill='%23f3cf6b'/%3E%3Cpath d='M6.5 4.2l2.3 2.3-2.3 2.3-2.3-2.3z' fill='%232a1a4e'/%3E%3Ccircle cx='14' cy='10.6' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3Ccircle cx='10.6' cy='14' r='1.1' fill='%23f3cf6b' opacity='.75'/%3E%3C/g%3E%3C/svg%3E") right 0 bottom 0 / 26px 26px no-repeat, radial-gradient(90% 50% at 50% 0%, rgba(139, 92, 246, .28), transparent 70%), linear-gradient(180deg, rgba(38, 26, 79, .88), rgba(14, 8, 32, .93));
-      box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 40px rgba(139, 92, 246, .15); }
-    .ld-tip small { font-size: 14px; letter-spacing: .1em; color: #fde68a; padding-bottom: 12px; text-shadow: 0 0 12px rgba(251, 191, 36, .35);
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 14'%3E%3Cpath d='M32 1l6 6-6 6-6-6z' fill='%23f3cf6b'/%3E%3Cpath d='M32 4.4l2.6 2.6-2.6 2.6-2.6-2.6z' fill='%231d1238'/%3E%3Ccircle cx='20.5' cy='7' r='1.6' fill='%23f3cf6b'/%3E%3Ccircle cx='43.5' cy='7' r='1.6' fill='%23f3cf6b'/%3E%3Ccircle cx='13' cy='7' r='1' fill='%23f3cf6b' opacity='.7'/%3E%3Ccircle cx='51' cy='7' r='1' fill='%23f3cf6b' opacity='.7'/%3E%3C/svg%3E") center bottom / 56px 12px no-repeat; }
-    .ld-tip p { font-family: 'Rubik', system-ui, sans-serif; font-size: 16px; line-height: 1.4; }
-    .ld-arrow { color: #f3cf6b; font-family: 'Rubik', system-ui, sans-serif; }
-    .ld-dots i { background: rgba(243, 207, 107, .22); } .ld-dots i.on { background: linear-gradient(90deg, #fde68a, #f59e0b); box-shadow: 0 0 8px rgba(251, 191, 36, .5); }
-    .ld-text { font-family: 'Rubik', system-ui, sans-serif; font-size: 14px; color: #d9cff2; }
-    .ld-pct { font-family: 'Rubik', system-ui, sans-serif; font-size: 15px; color: #fde68a; }
-    .ld-bar { height: 10px; border-radius: 5px; background: rgba(8, 4, 22, .75); border: 1px solid rgba(243, 207, 107, .45); box-shadow: 0 0 0 2px rgba(8, 4, 22, .5), inset 0 1px 3px rgba(0, 0, 0, .6); }
-    .ld-bar i { background: linear-gradient(90deg, #2dd4bf, #a3e635 45%, #fde047 80%, #fff7c7); }
-    @media (max-height: 640px) { .logo-img { width: min(80vw, 320px); } .ld-tip { min-height: 80px; } }
-    /* 4.6: руническая полоса — чтение заклинания: желобок пуст, огонь идёт по нему, и руны проступают по одной, когда огонь дошёл до них целиком */
-    .ld-bar { position: relative; height: 18px; margin: 0 14px; border-radius: 9px; border: 1px solid rgba(243, 207, 107, .5);
-      background: linear-gradient(180deg, #07031a, #1a0f3a 60%, #0c0722);
-      box-shadow: 0 0 0 2px rgba(8, 4, 22, .6), 0 0 0 3px rgba(243, 207, 107, .18), inset 0 2px 5px rgba(0, 0, 0, .75); }
-    .ld-bar::before, .ld-bar::after { content: ""; position: absolute; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M7 .5L13.5 7 7 13.5.5 7z' fill='%23f3cf6b' stroke='%235b210a' stroke-width='1'/%3E%3Cpath d='M7 4L10 7 7 10 4 7z' fill='%231d1238'/%3E%3C/svg%3E") center / contain no-repeat;
-      filter: drop-shadow(0 0 4px rgba(251, 191, 36, .6)); }
-    .ld-bar::before { left: -16px; } .ld-bar::after { right: -16px; }
-    .ld-bar > i { border-radius: 8px;
-      background: linear-gradient(90deg, transparent 0 40%, rgba(255, 255, 255, .45) 50%, transparent 60%) 0 0 / 200% 100% no-repeat,
-        linear-gradient(180deg, #fff3b0 0%, #fbbf24 45%, #d97706 80%, #92400e 100%);
-      box-shadow: 0 0 14px rgba(251, 191, 36, .75), inset 0 1px 0 rgba(255, 255, 255, .7); animation: ldShine 2.4s linear infinite; }
-    .ld-bar > i.boot { animation: ldBoot 12s cubic-bezier(.1, .7, .3, 1) forwards, ldShine 2.4s linear infinite; }
-    @keyframes ldShine { from { background-position: 150% 0, 0 0; } to { background-position: -50% 0, 0 0; } }
-    .ld-bar > i::after { right: -9px; width: 20px; height: 20px; margin-top: -10px; background: radial-gradient(circle, #fff 0%, #fde047 30%, rgba(251, 191, 36, .5) 50%, rgba(251, 191, 36, 0) 70%); }
-    .ld-row { padding: 0 2px; }
-    .ld-pct { min-width: 44px; text-align: right; }
-    .calm .ld-logo .logo-img, .calm .ld-bar i::after, .calm .ld-bar > i:not(.boot) { animation: none; }
-    @media (prefers-reduced-motion: reduce) { .ld-logo .logo-img, .ld-bar i::after, .ld-bar > i:not(.boot) { animation: none; } }
-    /* 4.19: без подложки — совет и полоса прямо на фоне; фон — как у экранов игры (style.css: .screen) */
-    .ld-foot { background: none; border: 0; outline: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .loader { background: radial-gradient(90% 45% at 50% -8%, rgba(167, 139, 250, .3), transparent 70%),
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%3E%3Cpath%20d%3D%22M0%200L18%2018M18%200L0%2018%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.035%22%20stroke-width%3D%22.8%22%2F%3E%3Cpath%20d%3D%22M9%20-1.6l1.6%201.6-1.6%201.6-1.6-1.6zM9%2016.4l1.6%201.6-1.6%201.6-1.6-1.6zM-0%207.4l1.6%201.6-1.6%201.6-1.6-1.6zM18%207.4l1.6%201.6-1.6%201.6-1.6-1.6z%22%20fill%3D%22%23fff%22%20fill-opacity%3D%22.045%22%2F%3E%3C%2Fsvg%3E") center top / 18px 18px,
-    linear-gradient(180deg, #2a1a5c 0%, #1d1146 45%, #140b33 100%); }
-    .ld-scene, .ld-bg, .ld-shade { display: none; }
+    @keyframes ldShine { to { transform: translateX(100%); } }
+    @keyframes ldIn { from { opacity: 0; transform: translateY(6px); } }
+    @keyframes ldUp { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+    @media (max-height: 640px) { .ld-tip { min-height: 70px; } .ld-mid { padding-bottom: 2vh; } }
+    .calm .nav-sky i, .calm .ld-bar i::after, .calm .ld-mid { animation: none !important; }
+    @media (prefers-reduced-motion: reduce) { .nav-sky i, .ld-bar i::after, .ld-mid { animation: none !important; } }
   </style>
 </head>
 <body>
-  <!-- 4.4: экран загрузки — первое, что видит игрок (его подхватывает js/loader.js); нарисованная ночь, поверх — картинка из scenes.json -->
+  <!-- 5.1.35: экран загрузки — первое, что видит игрок (его подхватывает js/loader.js): ночь Нави, название текстом, совет и полоса -->
   <div class="loader" id="bootLoader" role="status" aria-live="polite">
-    <div class="ld-scene" aria-hidden="true">
-    </div>
-    <div class="ld-bg"></div><div class="ld-shade"></div>
-    <div class="ld-logo"><img class="logo-img" src="img/logo.webp" width="883" height="391" alt="Духолов" decoding="async" fetchpriority="high"><p>Лови духов Нави по всему свету</p></div>
+    <div class="nav-sky" aria-hidden="true"><i class="ns-stars"></i><i class="ns-stars s2"></i><i class="ns-aur a1"></i><i class="ns-aur a2"></i><i class="ns-wisp w1"></i><i class="ns-wisp w2"></i><i class="ns-wisp w3"></i><i class="ns-wisp w4"></i><i class="ns-wisp w5"></i><i class="ns-wisp w6"></i><i class="ns-wisp w7"></i><i class="ns-wisp w8"></i></div>
+    <div class="ld-mid"><h1 class="wordmark">Духолов</h1><i class="wm-orn" aria-hidden="true"></i><p class="tagline">Лови духов Нави по всему свету</p></div>
     <div class="ld-foot">
-      <div class="ld-hint">
-        <div class="ld-tip"><small>✦ Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>
-        <button class="ld-arrow prev" aria-label="Предыдущая подсказка">‹</button>
-        <button class="ld-arrow next" aria-label="Следующая подсказка">›</button>
-      </div>
-      <div class="ld-dots"></div>
+      <div class="ld-tip"><small>✦ Совет Ордена</small><p>Бросай оберег, когда кольцо сжимается: «Отлично!» даёт больше опыта и шанс поимки.</p></div>
       <div class="ld-prog"><div class="ld-row"><span class="ld-text">Загрузка…</span><b class="ld-pct"></b></div><div class="ld-bar"><i class="boot"></i></div></div>
     </div>
   </div>

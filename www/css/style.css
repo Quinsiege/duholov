@@ -1807,12 +1807,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .onb-agree a { color: inherit; text-decoration: underline; }
 .age-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 4px; border: 1.5px solid currentColor; border-radius: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .2px; opacity: .9; }
 
-/* ================= 4.4: экран входа — сцена «3D» (js/scene.js), знак Ордена, стеклянная панель ================= */
-.onb.lg { overflow: hidden; background: radial-gradient(90% 45% at 50% -8%, rgba(167, 139, 250, .3), transparent 70%),
-    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%3E%3Cpath%20d%3D%22M0%200L18%2018M18%200L0%2018%22%20stroke%3D%22%23fff%22%20stroke-opacity%3D%22.035%22%20stroke-width%3D%22.8%22%2F%3E%3Cpath%20d%3D%22M9%20-1.6l1.6%201.6-1.6%201.6-1.6-1.6zM9%2016.4l1.6%201.6-1.6%201.6-1.6-1.6zM-0%207.4l1.6%201.6-1.6%201.6-1.6-1.6zM18%207.4l1.6%201.6-1.6%201.6-1.6-1.6z%22%20fill%3D%22%23fff%22%20fill-opacity%3D%22.045%22%2F%3E%3C%2Fsvg%3E") center top / 18px 18px,
-    linear-gradient(180deg, #2a1a5c 0%, #1d1146 45%, #140b33 100%); } /* 4.19: фон — как у экранов игры */
-.onb.lg .lg-scene { display: none; }
-.lg-scene { position: absolute; inset: 0; overflow: hidden; }
+/* ================= экран входа: выезжающая панель входа (сам экран — блок «5.1.35: экран входа» в конце файла) ================= */
 .lg-body { position: absolute; inset: 0; overflow-y: auto; z-index: 1; }
 .scene .sc-cam { position: absolute; inset: 0; }
 .scene .sc-l { position: absolute; inset: 0; }
@@ -1821,7 +1816,6 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .scene .sc-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .scene .sc-shade { position: absolute; inset: 0; pointer-events: none; transition: background .6s;
   background: linear-gradient(180deg, rgba(6, 3, 18, .5) 0%, rgba(6, 3, 18, 0) 26%, rgba(6, 3, 18, 0) 48%, rgba(6, 3, 18, calc(.55 + var(--sc-shade, .25) * .45)) 100%); }
-.onb.lg.deep .sc-shade { background: rgba(6, 3, 18, .62); }
 /* анимации слоёв-картинок из scenes.json */
 .scene .sc-a-sway { transform-origin: 50% 100%; animation: scSway 9s ease-in-out infinite; }
 .scene .sc-a-drift { animation: scDrift 60s linear infinite alternate; }
@@ -1832,16 +1826,8 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 @keyframes scPulse { 50% { opacity: .55; } }
 .calm .scene * { animation: none !important; }
 
-.lg-wrap { position: relative; min-height: 100%; max-width: 460px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 20px;
-  padding: calc(34px + var(--st)) 16px calc(16px + var(--sb)); }
-.lg-top { text-align: center; animation: lgIn .9s cubic-bezier(.2, .8, .2, 1) both; }
-.lg-title { margin: 0; font-size: 50px; line-height: 1.05; font-weight: 900; letter-spacing: 4px; color: transparent;
-  background: linear-gradient(180deg, #fffbeb 10%, var(--gold2) 55%, #f59e0b 95%); -webkit-background-clip: text; background-clip: text;
-  filter: drop-shadow(0 4px 18px rgba(251, 191, 36, .45)) drop-shadow(0 2px 0 rgba(0, 0, 0, .35)); }
-.lg-top p { margin: 6px 0 0; color: #ddd4f5; font-size: 14.5px; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
-@keyframes lgIn { from { opacity: 0; transform: translateY(-16px) scale(.96); } }
-@keyframes lgUp { from { opacity: 0; transform: translateY(26px); } }
 .onb.lg .onb-step { position: relative; }
+.onb.lg .onb-step:is(.s3, .s4) { padding-bottom: calc(76px + var(--sb)); } /* 5.1.35: кокон и «Весь мир — твой» — дальше касанием (UI.tapGo), внизу надпись */
 /* выезжающая панель входа */
 .lg-sheet { position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-end; background: rgba(4, 2, 12, .6); animation: lgFade .25s both; }
 .lg-sheet.out { animation: lgFade .25s reverse both; }
@@ -1856,8 +1842,6 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .lg-sheet .auth-panel { max-width: none; padding: 6px 0 0; background: none; border: 0; box-shadow: none; }
 @keyframes lgFade { from { opacity: 0; } }
 @keyframes lgSheet { from { transform: translateY(100%); } }
-@media (max-height: 680px) { .lg-title { font-size: 40px; } .lg-wrap { padding-top: calc(20px + var(--st)); } }
-@media (max-width: 360px) { .lg-wrap { padding-left: 10px; padding-right: 10px; } .lg-panel { padding: 12px; } .lg-panel .acc-card { padding: 12px; } .lg-title { font-size: 42px; letter-spacing: 3px; } }
 
 /* ================= 4.5: дизайн-система «сказочная Навь» — шрифты, кнопки-обереги, экран входа ================= */
 :root { --f-display: 'Duholov Display', 'Rubik', system-ui, sans-serif; --f-head: 'Rubik', system-ui, sans-serif; } /* 4.18: весь текст — Rubik (как в «Заданиях»); заголовки — Rubik Bold */
@@ -1879,44 +1863,9 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .rune.glass:active { transform: scale(.97); background: none; }
 .calm .rune .rn-shine { animation: none; }
 
-/* экран входа 4.5: без коробки — сцена во весь экран, кнопки прямо на ней */
-.lg-title { font-family: var(--f-display); font-weight: 700; /* 4.19: знак игры — тоже Rubik */ font-size: 60px; letter-spacing: 1px; line-height: 1; padding: 4px 8px 0;
-  filter: drop-shadow(0 3px 0 rgba(80, 28, 4, .9)) drop-shadow(0 6px 22px rgba(251, 191, 36, .45)); }
-.lg-top p { font-family: var(--f-head); font-size: 17px; color: #eee6ff; margin-top: 8px; }
-.lg-cta { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 380px; margin: 0 auto; animation: lgUp .8s .15s cubic-bezier(.2, .8, .2, 1) both; }
-.lg-legal { margin: 2px 6px 0; text-align: center; font-size: 11.5px; line-height: 1.5; color: rgba(226, 218, 248, .62); text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
-.lg-legal a { color: rgba(240, 234, 255, .88); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
-.lg-invite { padding: 9px 14px; border-radius: 14px; text-align: center; font-size: 13.5px; color: #d9f99d; background: rgba(132, 204, 22, .12); border: 1px solid rgba(132, 204, 22, .4);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.age-chip { position: absolute; top: calc(12px + var(--st)); left: 12px; z-index: 2; padding: 2px 6px; border-radius: 6px; border: 1.5px solid rgba(255, 255, 255, .45);
-  font-size: 11px; font-weight: 700; letter-spacing: .3px; color: rgba(255, 255, 255, .75); background: rgba(6, 3, 18, .3); }
-/* карточка-медальон вернувшегося Ловчего */
-.hero { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 14px; align-items: center; padding: 14px 14px 12px; border-radius: 22px;
-  background: linear-gradient(180deg, rgba(44, 26, 88, .74), rgba(16, 9, 36, .86)); border: 1px solid rgba(253, 224, 71, .22);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); box-shadow: 0 18px 44px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08); }
-.hero-ava { position: relative; width: 64px; height: 64px; border-radius: 50%; padding: 3px; background: conic-gradient(from 200deg, #fde047, #f59e0b, var(--cc), #fde047);
-  box-shadow: 0 0 18px rgba(253, 224, 71, .35); }
-.hero-ava .acc-ava { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #1a0f36; }
-.hero-lvl { position: absolute; right: -4px; bottom: -4px; min-width: 24px; height: 24px; padding: 0 5px; box-sizing: border-box; display: grid; place-items: center; border-radius: 12px;
-  font-size: 12px; font-weight: 900; color: #3b1a02; background: linear-gradient(180deg, #fff3b0, #f59e0b); border: 2px solid #1a0f36; }
-.hero-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.hero-main b { font-family: var(--f-head); font-size: 22px; font-weight: 700; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hero-main small { color: var(--muted); font-size: 12.5px; }
-.hero-main .acc-tags { margin-top: 3px; }
-.hero-exit { align-self: start; width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%; cursor: pointer;
-  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); color: var(--muted); }
-.hero-exit .ico { width: 17px; height: 17px; }
-.hero-stats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .08); }
-.hero-stats div { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.hero-stats div + div { border-left: 1px solid rgba(255, 255, 255, .08); }
-.hero-stats b { font-family: var(--f-head); font-size: 20px; font-weight: 700; color: #fff; }
-.hero-stats b small { font-size: 13px; color: var(--muted); font-weight: 400; }
-.hero-stats span { font-size: 11.5px; color: var(--muted); }
-.hero.is-guest { border-color: rgba(251, 191, 36, .4); }
 /* выезжающая панель входа — заголовок тем же шрифтом */
 .lg-sheet .auth-head b { font-family: var(--f-head); font-size: 20px; }
-@media (max-width: 360px) { .lg-title { font-size: 50px; } .rune { font-size: 19px; } }
-@media (max-height: 680px) { .lg-title { font-size: 48px; } }
+@media (max-width: 360px) { .rune { font-size: 19px; } }
 
 /* ================= 4.6: «сказочная Навь» на всю игру — лаковые панели с золотой рамкой, ночные фоны, кнопки-самоцветы ================= */
 :root {
@@ -2106,11 +2055,6 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .calm .det-art::after { animation: none; }
 
 
-/* 4.6: карточка вернувшегося Ловчего — та же лаковая шкатулка */
-.hero { border: 1px solid var(--au-line); outline: 1px solid var(--au-soft); outline-offset: -6px;
-  background: var(--orn-sm), var(--lacq), radial-gradient(90% 60% at 50% 0%, rgba(139, 92, 246, .28), transparent 70%), linear-gradient(180deg, rgba(38, 26, 79, .88), rgba(14, 8, 32, .92)); }
-.hero.is-guest { border-color: rgba(251, 191, 36, .55); }
-.hero-stats b { color: #fde68a; }
 
 /* 4.6: заголовки разделов — золотая вязь с ромбом */
 .prof-h, .q-h { font-family: var(--f-head); font-weight: 700; font-size: 19px; color: #fde68a; text-shadow: 0 1px 0 rgba(60, 20, 4, .6), 0 0 14px rgba(251, 191, 36, .2); }
@@ -2306,8 +2250,7 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 /* 4.6: фон всех экранов — как у главного меню: лак с тонким узором, мягкое сияние сверху */
 .screen, .screen.spring-screen, .screen.rift-screen { background: var(--lacq), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .32), transparent 70%), linear-gradient(180deg, var(--lk1), var(--lk3)); }
 
-/* 4.6: экран входа — фон как во вкладках игры */
-.onb.lg, .scene .sc-lacq { background: var(--lacq), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .32), transparent 70%), linear-gradient(180deg, var(--lk1), var(--lk3)); }
+.scene .sc-lacq { background: var(--lacq), radial-gradient(80% 40% at 50% 0%, rgba(139, 92, 246, .32), transparent 70%), linear-gradient(180deg, var(--lk1), var(--lk3)); }
 
 /* ================= 4.6: выбор сервера (пока только интерфейс) ================= */
 /* кнопка на экране входа — справа вверху, напротив «12+» */
@@ -2398,31 +2341,6 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .rl-foot { padding: 12px 4px calc(12px + var(--sb)); border-top: 1px solid var(--au-soft); background: linear-gradient(180deg, rgba(12, 7, 32, 0), rgba(12, 7, 32, .6)); }
 .rl-note { margin: 8px 0 0; text-align: center; font-size: 12px; color: #b9aedb; }
 .calm .rl-card { animation: none; }
-/* витрина сервера в середине экрана входа (4.21: строкой — герб слева, сведения справа; ниже «Сменить сервер») */
-.realm-hero { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #f3edff; animation: lgUp .8s .1s cubic-bezier(.2, .8, .2, 1) both; }
-.rh-row { display: flex; align-items: center; gap: 12px; text-align: left; }
-.rh-crest { position: relative; flex: none; width: 78px; height: 78px; display: grid; place-items: center; }
-.rh-crest::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--rc) 45%, transparent), transparent 68%); animation: auraPulse 3.2s ease-in-out infinite; }
-.rh-ring { position: absolute; inset: 0; background: var(--ring) center / contain no-repeat; opacity: .75; animation: spin 50s linear infinite; }
-.rh-crest .rl-crest { position: relative; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .5)) drop-shadow(0 0 10px color-mix(in srgb, var(--rc) 60%, transparent)); }
-.rh-info { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; }
-.rh-info small { font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: #cbbde9; }
-.rh-info b { font-family: var(--f-display); font-weight: 400; font-size: 26px; line-height: 1.1; letter-spacing: .5px;
-  background: linear-gradient(180deg, #fffbeb 10%, #fde68a 55%, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 rgba(60, 20, 4, .8)); }
-.rh-meta { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; color: #d0c5ee; }
-.rh-meta > span:not(.srv-live)::after { content: "·"; margin-left: 6px; opacity: .6; }
-.rh-meta .rc-dot { width: 7px; height: 7px; }
-.rh-meta .rl-sig { height: 12px; }
-.rh-change { display: inline-flex; align-items: center; gap: 2px; padding: 6px 12px 6px 16px; border-radius: 999px; font-family: var(--f-head); font-size: 14px; font-weight: 700;
-  color: #fde68a; border: 1px solid var(--au-line); background: rgba(12, 7, 32, .45); -webkit-tap-highlight-color: transparent; }
-.rh-change:active { transform: scale(.96); }
-.rh-change svg { width: 16px; height: 16px; }
-.calm .rh-ring, .calm .rh-crest::before { animation: none; }
-.realm-hero.small { gap: 6px; }
-.realm-hero.small .rh-crest { width: 66px; height: 66px; }
-.realm-hero.small .rh-info b { font-size: 22px; }
-.realm-hero.small .rh-change { padding: 4px 10px 4px 14px; font-size: 13px; }
-@media (max-height: 700px) { .realm-hero.small .rh-crest { width: 56px; height: 56px; } .realm-hero.small .rh-crest .rl-crest { width: 40px; height: 40px; } .realm-hero.small .rh-info b { font-size: 20px; } }
 /* карточка настоящего сервера в шторке — живое состояние вместо образца */
 .rl-stats .srv-live { font-size: 12.5px; color: #d0c5ee; }
 
@@ -2486,7 +2404,6 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 .calm .eg-ring, .calm .eg-f, .calm .eg-sp, .calm .eg-glow, .calm .nv-aur, .calm .nv-fog, .calm .nv-moon, .calm .enc-scene .enc-ground::before { animation: none; }
 .calm .eg-sp { display: none; }
 .enc-hint { margin-bottom: 150px; }
-.lg-top { padding-top: 16px; } /* 4.6: без оберега над названием — немного воздуха сверху */
 
 /* ================= 4.6: кат-сцены обучения — кинокадр: ночной двор, сияние Нави, Велимир, реплики в лаковой шкатулке ================= */
 @keyframes tsIn { from { opacity: 0; filter: brightness(2) blur(6px); } }
@@ -3327,13 +3244,12 @@ body.night .rz-fill { background: radial-gradient(circle, rgba(139, 92, 246, 0) 
 .sheet-grip { width: 44px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .35); }
 .sheet-foot { border-top-color: rgba(255, 255, 255, .1); }
 /* плитки меню, панели, списки, карточки */
-.tile, .panel, .list, .hero, .prof-hero, .card, .det-tags span, .det-moves div {
+.tile, .panel, .list, .prof-hero, .card, .det-tags span, .det-moves div {
   border: 1px solid rgba(255, 255, 255, .1); outline: 0; background: var(--g-sheen), var(--g-fill); box-shadow: var(--g-edge), var(--g-drop); }
 .tile { background: radial-gradient(60% 50% at 50% 38%, rgba(255, 255, 255, .08), transparent 70%), var(--g-sheen), var(--g-fill); }
 .tile:active, .card:active { background: var(--g-sheen), linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .08)); border-color: rgba(255, 255, 255, .22); }
 .tile i { background: rgba(255, 255, 255, .16); color: #fff; border-color: rgba(255, 255, 255, .3); }
 .row { border-bottom-color: rgba(255, 255, 255, .07); }
-.hero.is-guest { border-color: rgba(253, 224, 71, .35); }
 /* кнопки — капли стекла; главные — тонированное стекло */
 .btn { border: 1px solid rgba(255, 255, 255, .14); color: #fff;
   background: var(--g-sheen), var(--g-fill), rgba(20, 12, 44, .3); box-shadow: var(--g-edge), 0 4px 12px rgba(0, 0, 0, .22); }
@@ -4218,11 +4134,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .dt-have .dt-plus { margin-left: 0; width: 22px; height: 22px; }
 .dt-pane[data-pane=fight] .dt-have + .dt-bottom { margin-top: 0; }
 .dt-pane[data-pane=fight] .dt-scroll + .dt-have { margin-top: auto; }
-/* 4.22: логотип-картинка на экране входа (надпись в дымке Нави); размеры — как у экрана загрузки */
-.lg-title .logo-img { display: block; width: min(86vw, 380px); height: auto; margin: 0 auto; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, .45)); }
-.lg-title:has(.logo-img) { padding: 0; background: none; filter: none; animation: none; letter-spacing: 0; font-size: 0; line-height: 0; }
-.lg-top:has(.logo-img) { padding-top: 22px; } /* ниже значка «12+» */
-@media (max-height: 700px) { .lg-title .logo-img { width: min(70vw, 268px); } .lg-top:has(.logo-img) { padding-top: 14px; } }
 /* 4.22.1: Казна — мои покупки и чеки */
 .pl-rows { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 8px; text-align: left; }
 .pl-row { display: flex; align-items: center; gap: 10px; padding: 6px 2px; }
@@ -4520,8 +4431,8 @@ body:has(> .screen:not(.out)) #hud { opacity: 0; pointer-events: none; transitio
 /* ===== 4.25: правки по ночному обзору UI ===== */
 /* К1: надписи с градиентом (прозрачные буквы, background-clip: text) — без тени текста стекла: тень просвечивала сквозь буквы
    и делала их мутно-бурыми («Новик», «Захвачен Навью», «20» уровня, «Леший ★★», «Ловчий» в Гардеробе, «Дружина Сокола») */
-.lvl-num, .lg2-rank, .inv2-title, .rift-name, .wd-name, .clan-head b, .clan-opt b, .lgx-rank, .rh-info b, .pc .pc-name,
-.spring-title, .res-title, .charge-title, .tut-final h2, .rl-title h3, .onb-q h2, .lg-title, .onb-logo h1 { text-shadow: none !important; }
+.lvl-num, .lg2-rank, .inv2-title, .rift-name, .wd-name, .clan-head b, .clan-opt b, .lgx-rank, .pc .pc-name,
+.spring-title, .res-title, .charge-title, .tut-final h2, .rl-title h3, .onb-q h2, .onb-logo h1 { text-shadow: none !important; }
 .clan-head b, .clan-opt b { filter: drop-shadow(0 1px 2px rgba(12, 6, 32, .6)); }
 /* К2: цель Следопыта не заезжает на правую колонку значков (луна, неделя, праздник): имя — с многоточием, подпись переносится */
 #hud:has(#holChip:not(.hidden)) #tracker, #hud:has(#moonChip:not(.hidden)) #tracker { max-width: calc(100vw - 176px) !important; }
@@ -4584,11 +4495,10 @@ body:has(> .screen:not(.out)) .upd-bar, body:has(> .modal-wrap:not(.out)) .upd-b
 body.rm-closing #hud > :not(#menuBtn) { opacity: 0; pointer-events: none; }
 .rm-back .rm-l, .rm-back .tile-lvl { opacity: 0; transition: opacity .1s; } /* подписи гаснут сразу, значки улетают в кнопку */
 .rl-sheet { min-height: min(78vh, 680px); }
-@media (min-height: 760px) { .lg-wrap > .realm-hero { margin-bottom: 11vh; } }
 .onb .input.big { border-color: rgba(253, 230, 138, .35); background: rgba(255, 255, 255, .09); }
 .rune:disabled { opacity: .75; filter: grayscale(1) brightness(.8); }
 .fatal { background: radial-gradient(120% 60% at 50% 0%, rgba(124, 58, 237, .35), transparent 60%), linear-gradient(180deg, #1c1240, #0b0628); }
-.fatal::before { content: ''; width: min(70vw, 280px); aspect-ratio: 883 / 391; margin-bottom: 18px; background: url(../img/logo.webp) center / contain no-repeat; }
+.fatal::before { content: 'Духолов'; margin-bottom: 18px; padding-left: .05em; font: 900 48px/1.05 'Rubik', system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase; color: #fbbf24; } /* 5.1.35: название текстом (как на экране загрузки) — картинки-логотипа нет */
 .res-card .res-title + .res-art { margin-top: 12px; }
 .nv-moon { background: radial-gradient(circle at 42% 40%, #4a3d80 0, #2a2058 30%, #15103a 55%, #fff4ff 58.5%, #e9d5ff 60.5%, rgba(192, 132, 252, .5) 65%, rgba(192, 132, 252, 0) 74%); }
 .wd-body { padding-bottom: 10px; }
@@ -4656,8 +4566,8 @@ body:not(.night) .spr2-tabs button.inv { color: #f5d0fe; }
 .raid:has(.duel-ov:not(.hidden)) .raid-hint { visibility: hidden; }
 /* Д16: «Бросить вызов» на Капище — закреплена внизу, как «Сразиться» у Разлома и Вторжения */
 .shrine-screen .duel-go { position: sticky; bottom: calc(8px + var(--sb)); z-index: 2; }
-/* Д19: загрузка уходит — знак и подсказка гаснут сразу, не накладываются на экран входа */
-.loader.out .ld-logo, .loader.out .ld-foot { opacity: 0; transition: opacity .12s; }
+/* Д19: загрузка уходит — название и подсказка гаснут сразу, не накладываются на экран входа */
+.loader.out .ld-mid, .loader.out .ld-foot { opacity: 0; transition: opacity .12s; }
 /* документы (соглашение, политика, оферта) — поверх экрана входа */
 .onb ~ .screen { z-index: 2600; }
 /* Д20: невысокий экран — шаг «Духи живут рядом с тобой» помещается */
@@ -5665,3 +5575,59 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes tapPulse { 50% { opacity: .5; } }
 .calm .tap-hint { animation: tapIn .35s ease-out .6s forwards; }
 .eco :is(.enc-result, .raid-result, .tut-final).tap-go { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(12, 7, 30, .82); }
+
+/* ===== 5.1.35: экран входа — переработан. Фон — ночь Нави (Loader.sky: только небо — звёзды, северное сияние, блуждающие огоньки;
+   стили — в index.html, общие с экраном загрузки), название игры текстом (Loader.mark) — картинки-логотипа нет. Сверху —
+   «12+» и сервер, посередине название, внизу кнопки; вернувшийся Ловчий — под названием, без подложки, прямо на небе, в игру —
+   касанием («Коснись, чтобы продолжить» внизу, UI.tapGo) ===== */
+.onb.lg { overflow: hidden; background: var(--bg); }
+.onb.lg.deep .nav-sky::after { content: ''; position: absolute; inset: 0; background: rgba(6, 3, 18, .55); } /* шаги знакомства с текстом — небо темнее */
+.ent { position: relative; min-height: 100%; max-width: 460px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column;
+  padding: calc(12px + var(--st)) 18px calc(18px + var(--sb)); }
+.ent-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; animation: entFade .6s .2s both; }
+.ent-top .realm-chip { position: static; }
+.age-chip { padding: 2px 7px; border-radius: 7px; border: 1.5px solid rgba(255, 255, 255, .42); font: 700 11px/1.4 var(--f-head); letter-spacing: .3px;
+  color: rgba(255, 255, 255, .8); background: rgba(6, 3, 18, .3); }
+.ent-mid { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px 0 28px;
+  animation: entIn 1s cubic-bezier(.2, .8, .2, 1) both; }
+.ent.ent-tap { padding-bottom: calc(76px + var(--sb)); } /* место под «Коснись, чтобы продолжить» */
+.ent-cta { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: 380px; margin: 0 auto;
+  animation: entUp .8s .15s cubic-bezier(.2, .8, .2, 1) both; }
+.ent-invite { padding: 9px 14px; border-radius: 14px; text-align: center; font-size: 13.5px; color: #d9f99d; background: rgba(132, 204, 22, .14);
+  border: 1px solid rgba(132, 204, 22, .4); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.ent-legal { margin: 2px 6px 0; text-align: center; font-size: 11.5px; line-height: 1.5; color: rgba(226, 218, 248, .66); text-shadow: 0 1px 6px rgba(0, 0, 0, .6); }
+.ent-legal a { color: rgba(240, 234, 255, .9); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+/* вернувшийся Ловчий — без подложки: аватар в золотом кольце с сиянием, уровень на кольце, имя, звание, вход и «Выйти», три числа */
+.ent-hero { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; max-width: 360px; margin-top: clamp(22px, 5vh, 48px); text-shadow: 0 1px 10px rgba(6, 3, 18, .7); }
+.eh-ava { position: relative; width: 104px; height: 104px; margin-bottom: 16px; border-radius: 50%; padding: 3px; box-sizing: border-box;
+  background: conic-gradient(from 200deg, #fde047, #f59e0b, var(--cc), #fde047);
+  box-shadow: 0 0 0 6px rgba(253, 224, 71, .08), 0 0 36px 4px rgba(253, 224, 71, .3), 0 0 90px 24px rgba(139, 92, 246, .22); }
+.eh-ava .acc-ava { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #1a0f36; }
+.eh-lvl { position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%); min-width: 32px; height: 24px; padding: 0 8px; box-sizing: border-box;
+  display: grid; place-items: center; border-radius: 12px; font: 900 13px/1 var(--f-head); color: #3b1a02; text-shadow: none;
+  background: linear-gradient(180deg, #fff3b0, #f59e0b); border: 2px solid #1a0f36; box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+.eh-name { max-width: 100%; font: 700 27px/1.15 var(--f-head); color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eh-rank { font: 500 13.5px/1.3 var(--f-head); color: #d6cdf2; }
+.eh-acc { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 7px; }
+.eh-acc .acc-tags { justify-content: center; text-shadow: none; }
+.eh-exit { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px 0 8px; box-sizing: border-box; border-radius: 12px; cursor: pointer;
+  font: 600 12px/1 var(--f-head); color: #d6cdf2; background: none; border: 1px solid rgba(255, 255, 255, .24); -webkit-tap-highlight-color: transparent; }
+.eh-exit .ico { width: 14px; height: 14px; }
+.eh-stats { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; margin-top: 18px; }
+.eh-stats div { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.eh-stats div + div { border-left: 1px solid rgba(255, 255, 255, .14); }
+.eh-stats b { font: 700 23px/1.2 var(--f-head); color: #fde68a; text-shadow: 0 0 14px rgba(251, 191, 36, .35), 0 1px 6px rgba(6, 3, 18, .7); }
+.eh-stats b small { font-size: 13px; font-weight: 400; color: #cfc6ea; text-shadow: none; }
+.eh-stats span { font-size: 11.5px; letter-spacing: .02em; color: #cfc6ea; }
+@media (max-height: 760px) { .ent-hero { margin-top: 16px; } .eh-ava { width: 84px; height: 84px; margin-bottom: 14px; } .eh-name { font-size: 23px; } .eh-stats { margin-top: 12px; } }
+@media (max-height: 640px) { .ent-mid .tagline { display: none; } .eh-ava { width: 72px; height: 72px; } }
+/* выезжающая панель входа — тоже матовое стекло */
+.lg-sheet { background: rgba(4, 2, 12, .35); }
+.lg-sheet-card { border-color: rgba(255, 255, 255, .14); background: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .04)), rgba(24, 14, 56, .62);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4); }
+@keyframes entIn { from { opacity: 0; transform: translateY(-14px) scale(.97); } }
+@keyframes entUp { from { opacity: 0; transform: translateY(24px); } }
+@keyframes entFade { from { opacity: 0; } }
+@media (max-height: 680px) { .ent-mid { padding: 8px 0 16px; } .ent .wordmark { font-size: 40px; } }
+.calm :is(.ent-top, .ent-mid, .ent-cta) { animation: none; }
+.eco .lg-sheet-card { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(24, 14, 56, .92); }

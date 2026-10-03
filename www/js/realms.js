@@ -142,32 +142,20 @@ const Realms = {
   },
 
   // кнопка в углу (образец, тестовый контур); с 4.21 экраны входа показывают витрину banner()
+  // 5.1.35: значок сервера — вверху экрана входа (и на боевом: там — настоящий сервер, его состояние и пинг)
   chip() {
-    if (!this.on) return '';
     const c = this.COLOR[this.live.st], r = this.current();
     return `<button class="realm-chip" data-lbl="${ru`Сервер: ${U.esc(r.name)}. Сменить`}" aria-label="${ru`Сервер: ${U.esc(r.name)}. Сменить`}">${this.crest(r, 30)}` +
       `<span class="rc-main"><small>${ru`Сервер`}</small><b>${U.esc(r.name)}</b></span><span class="srv-live" data-srv style="--c:${c}"><i class="rc-dot srv-dot"></i><em class="srv-ms"></em></span><svg class="rc-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
   },
-  // крупная витрина сервера — в середине экрана входа (4.21: и у вернувшегося Ловчего — компактнее, small)
-  // на боевом сайте — наш сервер: где стоит, настоящее состояние и пинг; нажатие перемеряет связь
-  banner(small = false) {
-    const r = this.current(), c = this.COLOR[this.live.st];
-    return `<div class="realm-hero${small ? ' small' : ''}" style="--rc:${r.color}">
-      <div class="rh-row"><span class="rh-crest"><i class="rh-ring"></i>${this.crest(r, small ? 46 : 54)}</span>
-        <span class="rh-info"><small>${r.real ? ru`Сервер игры` : ru`Твой сервер`}</small><b>${U.esc(r.name)}</b>
-          <span class="rh-meta">${r.real ? '' : `<span>${U.esc(r.region)}</span>`}<span class="srv-live" data-srv style="--c:${c}"><i class="rc-dot srv-dot"></i><span class="srv-t">${this.stateText(this.live.st)}</span>${this.sig()}<em class="srv-ms"></em></span></span></span></div>
-      <button class="rh-change" data-lbl="${ru`Сервер: ${U.esc(r.name)}. Сменить`}" aria-label="${ru`Сервер: ${U.esc(r.name)}. Сменить`}">${ru`Сменить сервер`} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    </div>`;
-  },
   // герб нашего сервера (по городу, где он стоит)
   HOME: { msk: { color: '#fbbf24', glyph: 'domes', tz: 'UTC+3' }, spb: { color: '#38bdf8', glyph: 'bridge', tz: 'UTC+3' } },
   bind(root) {
-    const chip = root.querySelector('.realm-chip'), hero = root.querySelector('.realm-hero');
-    if (!chip && !hero) return;
+    const chip = root.querySelector('.realm-chip');
+    if (!chip) return;
     this.watch(root);
-    const redraw = () => { if (hero) hero.outerHTML = this.banner(hero.classList.contains('small')); else chip.outerHTML = this.chip(); this.bind(root); };
-    const b = hero ? hero.querySelector('.rh-change') : chip;
-    b.onclick = () => { Sfx.init(); Sfx.play('tap'); this.open(redraw); };
+    const redraw = () => { chip.outerHTML = this.chip(); this.bind(root); };
+    chip.onclick = () => { Sfx.init(); Sfx.play('tap'); this.open(redraw); };
   },
 
   card(r, sel, i = 0) {

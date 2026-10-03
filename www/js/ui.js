@@ -189,17 +189,19 @@ const UI = {
   /* 5.1.33: окно итога (пойман, победа, новый уровень, награда, подарок…) — во весь экран, без подложки, на полупрозрачном матовом
      стекле, и вместо кнопки — «Коснись, чтобы продолжить»: касание в любом месте окна (кроме его собственных кнопок — «Поставить
      защитника», «Ещё бой», «Алатырь»…) — go. Касания раньше TAP_MS после появления окна не считаются: палец ещё бросал оберег или
-     жал кнопку боя — окно не должно закрыться, не успев показаться (надпись появляется тогда же, style.css) */
+     жал кнопку боя — окно не должно закрыться, не успев показаться (надпись появляется тогда же, style.css).
+     5.1.35: at — куда положить надпись (касание — по всему el), hint — своя надпись (знакомство: «Коснись, чтобы попробовать ещё раз»);
+     звук включается тем же касанием (Sfx.init): на экране входа оно — первое */
   TAP_MS: 600,
-  tapGo(el, go) {
+  tapGo(el, go, at = el, hint = ru`Коснись, чтобы продолжить`) {
     const t0 = performance.now();
     let done = false;
     el.classList.add('tap-go');
-    el.appendChild(U.el(`<div class="tap-hint">${ru`Коснись, чтобы продолжить`}</div>`));
+    at.appendChild(U.el(`<div class="tap-hint">${hint}</div>`));
     el.addEventListener('click', e => {
       if (done || performance.now() - t0 < this.TAP_MS || e.target.closest('button, a, input, select, textarea, label')) return;
       done = true;
-      Sfx.play('tap');
+      Sfx.init(); Sfx.play('tap');
       go();
     });
     return el;
@@ -1054,28 +1056,29 @@ const UI = {
       body.innerHTML = '';
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
-      // 4.5: без коробки — сцена во весь экран, «оберег» и стеклянная кнопка прямо на ней; 12+ — значок в углу
-      if (n === 0) html = `<span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Login.logo(ru`Лови духов Нави по всему свету`)}${Realms.banner()}
-        <div class="lg-cta">
-          ${Invite.ref() ? `<div class="lg-invite">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}
+      // 5.1.35: экран входа переработан (Login.top, Loader.mark): сверху «12+» и сервер, посередине название, внизу кнопки
+      if (n === 0) html = `${Login.top()}<div class="ent-mid">${Loader.mark(ru`Лови духов Нави по всему свету`)}</div>
+        <div class="ent-cta">
+          ${Invite.ref() ? `<div class="ent-invite">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}
           ${this.rune(ru`Начать игру`, 'next')}
           ${Game.on() ? this.glass(ru`Уже играю — войти`, 'lg-have', this.I.key) : ''}
-          <p class="lg-legal">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href="terms.html">${ru`Соглашение`}</a>`}, ${`<a href="privacy.html">${ru`Политику`}</a>`} и ${`<a href="offer.html">${ru`Оферту`}</a>`}`}</p>
+          <p class="ent-legal">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href="terms.html">${ru`Соглашение`}</a>`}, ${`<a href="privacy.html">${ru`Политику`}</a>`} и ${`<a href="offer.html">${ru`Оферту`}</a>`}`}</p>
         </div>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class="input big" maxlength="16" placeholder="${ru`Имя`}" value="${U.esc(name)}"></div>${this.rune(ru`Дальше`, 'next')}`;
-      // 5.1.17: первый дух не выбирается — вылупляется из кокона (кого — решает сервер: S.rollStarter), игрок смотрит вылупление
+      // 5.1.17: первый дух не выбирается — вылупляется из кокона (кого — решает сервер: S.rollStarter), игрок смотрит вылупление.
+      // 5.1.35: кнопки нет — когда дух появился, внизу «Коснись, чтобы продолжить» (UI.tapGo)
       if (n === 3) html = `<div class="onb-q"><h2>${ru`Твой первый дух`}</h2><p class="onb-ht">${ru`Орден вручает тебе кокон. Он уже теплеет…`}</p></div>
         <div class="onb-hatch"><i class="oh-glow"></i><div class="oh-coc">${Art.cocoon(10)}</div><div class="oh-sp"></div></div>
-        <div class="onb-desc"></div>${this.rune(ru`Дальше`, 'next').replace('<button ', '<button disabled ')}`;
-      // 5.1: GPS не нужен — Ловчий сам выбирает место в Атласе мира (откроется на карте: Walk.ensurePlaced) и ходит джойстиком
+        <div class="onb-desc"></div>`;
+      // 5.1: GPS не нужен — Ловчий сам выбирает место в Атласе мира (откроется на карте: Walk.ensurePlaced) и ходит джойстиком.
+      // 5.1.35: кнопки «В путь» нет — дальше касанием
       if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>${ru`Весь мир — твой`}</h2>
-        <p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).`}</p></div>
-        ${this.rune(ru`В путь`, 'go', this.I.pin)}`;
-      body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
-      const nx = body.querySelector('.next');
-      Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
+        <p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).`}</p></div>`;
+      body.appendChild(U.el(n === 0 ? `<div class="ent">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
+      const nx = body.querySelector('.next'), st = body.querySelector('.onb-step');
+      Realms.bind(root); // 4.6: выбор сервера (на боевом — состояние настоящего сервера)
       // 4.25: соглашение, политика и оферта — внутри игры (как в Настройках), а не уходом со страницы
-      body.querySelectorAll('.lg-legal a[href]').forEach(a => { a.onclick = ev => { ev.preventDefault(); Sfx.play('tap'); this.doc(a.textContent, a.getAttribute('href')); }; });
+      body.querySelectorAll('.ent-legal a[href]').forEach(a => { a.onclick = ev => { ev.preventDefault(); Sfx.play('tap'); this.doc(a.textContent, a.getAttribute('href')); }; });
       const have = body.querySelector('.lg-have');
       if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));
       if (n === 2) {
@@ -1088,7 +1091,9 @@ const UI = {
         const box = body.querySelector('.onb-hatch'), t0 = Date.now(), wait = ms => new Promise(res => setTimeout(res, ms));
         const hatch = async () => {
           const r = await Game.try('newGame', { name, ref: Invite.ref() });
-          if (!r) { nx.querySelector('.rn-t').textContent = ru`Ещё раз`; nx.disabled = false; nx.onclick = () => { nx.disabled = true; hatch(); }; return; }
+          if (!box.isConnected) return;
+          // не вышло (ошибку уже показала всплывашка) — кокон качается дальше, касание — ещё попытка
+          if (!r) { this.tapGo(root, () => { const h = st.querySelector('.tap-hint'); if (h) h.remove(); hatch(); }, st, ru`Коснись, чтобы попробовать ещё раз`); return; }
           Invite.done(r.invitedBy);
           const sid = r.starter && SP[r.starter] ? r.starter : S.d && S.d.spirits[0] ? S.d.spirits[0].sid : 'ugolek', s = SP[sid], rr = RARITY[s.rar];
           await wait(Math.max(0, this.HATCH_MS - (Date.now() - t0)));
@@ -1100,11 +1105,11 @@ const UI = {
           Sfx.play(s.rar >= 4 ? 'levelup' : 'hatch'); U.vibrate(s.rar >= 4 ? [60, 60, 120] : 60);
           const ht = root.querySelector('.onb-ht'); if (ht) ht.innerHTML = ru`Из кокона появился <b>${s.name}</b>!`;
           root.querySelector('.onb-desc').innerHTML = `<b class="onb-rar" style="color:${rr.color}">${rr.name}</b> · ${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}<br>${s.desc}`;
-          nx.disabled = false; nx.onclick = () => { Sfx.play('tap'); step(4); };
+          this.tapGo(root, () => step(4), st); // надпись — только когда дух появился
         };
         hatch();
       } else if (n === 4) {
-        body.querySelector('.go').onclick = () => { Sfx.play('tap'); Metrics.ev('onb', { k: 'go' }); Login.close(root, done); };
+        this.tapGo(root, () => { Metrics.ev('onb', { k: 'go' }); Login.close(root, done); }, st);
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n ? n + 1 : 2); }; // 4.24: истории перед игрой больше нет
     };
     step(from);
