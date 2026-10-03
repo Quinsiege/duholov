@@ -76,7 +76,7 @@ const UI = {
     Bus.on('questDone', q => this.toast(ru`Задание выполнено: ${I18N.back(q.text)}`, 'good'));
     Bus.on('quests', () => this.refreshHud());
     Bus.on('buddyFind', text => this.toast(text, 'good'));
-    Bus.on('medal', ({ m, tier }) => { Sfx.play('levelup'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${MEDAL_TIERS[tier - 1].xp} опыта`, 'good'); });
+    Bus.on('medal', ({ m, tier }) => { Sfx.play('reward_big'); this.toast(ru`Знак «${m.name}»: ${MEDAL_TIERS[tier - 1].name}! +${U.fmtNum(MEDAL_TIERS[tier - 1].xp)} опыта`, 'good'); });
     Bus.on('weather', ({ w, changed }) => {
       this.refreshSky();
       if (changed && this._skyShown) this.toast(ru`Погода: ${WEATHER[w.key].name}. Сильнее духи: ${WEATHER[w.key].boost.map(e => ELEMENTS[e].name).join(', ')}`);
@@ -169,19 +169,42 @@ const UI = {
     setTimeout(() => t.remove(), 3000);
   },
   toastFlush() { const q = this._toastQ; if (!q || this._rm) return; this._toastQ = null; q.slice(-3).forEach(([t, c]) => this.toast(t, c)); },
-  modal({ title = '', html = '', buttons = [{ label: 'OK' }], cls = '', dismiss = true }) {
+  // tap — окно итога (5.1.33, tapGo): последняя кнопка не рисуется, её действие — касанием в любом месте окна; остальные — как были
+  modal({ title = '', html = '', buttons = [{ label: 'OK' }], cls = '', dismiss = true, tap = false }) {
     const wrap = U.el(`<div class="modal-wrap"><div class="modal ${cls}">${title ? `<div class="modal-title">${title}</div>` : ''}<div class="modal-body">${html}</div><div class="modal-btns"></div></div></div>`);
     const close = () => { if (!wrap.isConnected) return; this.popLayer(close); wrap.classList.add('out'); setTimeout(() => wrap.remove(), 200); };
-    buttons.forEach(b => {
+    const go = tap ? buttons[buttons.length - 1] || {} : null;
+    (go ? buttons.slice(0, -1) : buttons).forEach(b => {
       const btn = U.el(`<button class="btn ${b.cls || ''}">${b.label}</button>`);
       btn.onclick = () => { Sfx.play('tap'); if (b.keep) { b.fn && b.fn(wrap); return; } close(); b.fn && b.fn(wrap); };
       wrap.querySelector('.modal-btns').appendChild(btn);
     });
-    if (dismiss) wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+    if (go) this.tapGo(wrap, () => { close(); if (go.fn) go.fn(wrap); });
+    else if (dismiss) wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
     document.body.appendChild(wrap);
     this.pushLayer(close);
     wrap.close = close;
     return wrap;
+  },
+  /* 5.1.33: окно итога (пойман, победа, новый уровень, награда, подарок…) — во весь экран, без подложки, на полупрозрачном матовом
+     стекле, и вместо кнопки — «Коснись, чтобы продолжить»: касание в любом месте окна (кроме его собственных кнопок — «Поставить
+     защитника», «Ещё бой», «Алатырь»…) — go. Касания раньше TAP_MS после появления окна не считаются: палец ещё бросал оберег или
+     жал кнопку боя — окно не должно закрыться, не успев показаться (надпись появляется тогда же, style.css).
+     5.1.35: at — куда положить надпись (касание — по всему el), hint — своя надпись (знакомство: «Коснись, чтобы попробовать ещё раз»);
+     звук включается тем же касанием (Sfx.init): на экране входа оно — первое */
+  TAP_MS: 600,
+  tapGo(el, go, at = el, hint = ru`Коснись, чтобы продолжить`) {
+    const t0 = performance.now();
+    let done = false;
+    el.classList.add('tap-go');
+    at.appendChild(U.el(`<div class="tap-hint">${hint}</div>`));
+    el.addEventListener('click', e => {
+      if (done || performance.now() - t0 < this.TAP_MS || e.target.closest('button, a, input, select, textarea, label')) return;
+      done = true;
+      Sfx.init(); Sfx.play('tap');
+      go();
+    });
+    return el;
   },
   confirm(title, text, okLabel, onOk, cancelLabel = ru`Отмена`, danger = false) {
     return this.modal({ title, html: `<p>${text}</p>`, buttons: [{ label: cancelLabel }, { label: okLabel, cls: danger ? 'danger' : 'primary', fn: onOk }] });
@@ -239,6 +262,7 @@ const UI = {
       this._lk = lk;
       U.$('#profileBtn .ava-art').innerHTML = Art.avatar(d.look);
       document.documentElement.style.setProperty('--pc', d.look.cloak);
+      if (typeof M3D !== 'undefined') M3D.setMe({ look: d.look }); // 5.1.28: 3D-Ловчий на карте — в цветах облика
     }
     put(U.$('#hudName'), d.name);
     put(U.$('#hudRank'), ru`${this.rank(d.level)} · ур. ${d.level}`);
@@ -646,18 +670,12 @@ const UI = {
     const tile = (t, i) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
       const badge = lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : '';
       return `<button class="tile rm-it${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}"><span class="rm-c">${this.menuIcon(t[0])}${badge}</span><span class="rm-l">${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}</button>`; };
-    // 5.1.6: не сплошной плиткой, а разделами с общими заголовками — сразу видно, куда идти (без вкладок: всё на одной панели)
-    const SECS = [
-      [ru`Духи`, ['spirits', 'book', 'egg', 'bag']],
-      [ru`Приключения`, ['scroll', 'rift', 'path']],
-      [ru`Сезон и соперничество`, ['alatyr', 'trail', 'trophy', 'shield']],
-      [ru`Орден и друзья`, ['swap', 'chat', 'orderbook']],
-      [ru`Торговля`, ['shop', 'gavel']],
-      [ru`Ловчий`, ['user', 'journal', 'gear', 'support']],
-    ];
+    // 5.1.6: разделы с общими заголовками; 5.1.35: заголовков нет (просьба владельца) — значки ровной сеткой по 4 в ряд, по центру,
+    // в прежнем порядке разделов: духи, приключения, сезон и соперничество, Орден и друзья, торговля, Ловчий
+    const ORDER = ['spirits', 'book', 'egg', 'bag', 'scroll', 'rift', 'path', 'alatyr', 'trail', 'trophy', 'shield', 'swap', 'chat', 'orderbook', 'shop', 'gavel',
+      'user', 'journal', 'gear', 'support'];
     const at = Object.fromEntries(tiles.map((t, i) => [t[0], i]));
-    const secs = SECS.map(([h, ks]) => `<section class="rm-sec"><div class="rm-h" role="heading" aria-level="2"><span>${h}</span></div><div class="rm-row">${ks.map(k => tile(tiles[at[k]], at[k])).join('')}</div></section>`);
-    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid rm-secs">${secs.join('')}</div></div>`);
+    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid rm-secs">${ORDER.map(k => tile(tiles[at[k]], at[k])).join('')}</div></div>`);
     const orb = U.$('#menuBtn');
     let closing = false;
     const close = (then) => {
@@ -675,7 +693,7 @@ const UI = {
       const t = e.target.closest('.tile');
       if (t) {
         const k = tiles[+t.dataset.i][0], lk = Tut.tileLock(k) || (far(k) ? ru`Откроется на ${this.openLvl(k)} уровне Ловчего` : '');
-        if (lk) { this.toast(lk); Sfx.play('miss'); t.classList.remove('rm-no'); void t.offsetWidth; t.classList.add('rm-no'); return; }
+        if (lk) { this.toast(lk); Sfx.play('locked'); t.classList.remove('rm-no'); void t.offsetWidth; t.classList.add('rm-no'); return; }
         this.markOpened(k); Sfx.play('tap'); t.classList.add('rm-pick');
         close(); tiles[+t.dataset.i][2]();
       } else close();
@@ -693,10 +711,7 @@ const UI = {
       const [x, y] = pos[i], d = Math.hypot(x - ox, y - oy) / far2;
       it.style.setProperty('--dx', (ox - x).toFixed(1) + 'px'); it.style.setProperty('--dy', (oy - y).toFixed(1) + 'px');
       it.style.setProperty('--d', Math.round(d * 260) + 'ms'); it.style.setProperty('--db', Math.round((1 - d) * 120) + 'ms');
-      it._d = d;
     });
-    // заголовок раздела проявляется, когда долетает первый значок его ряда
-    wrap.querySelectorAll('.rm-sec').forEach(s => s.style.setProperty('--hd', Math.round(Math.max(...[...s.querySelectorAll('.rm-it')].map(it => it._d)) * 260 + 360) + 'ms')); // заголовок раздела — после того, как долетели его значки
     void wrap.offsetWidth; // стартовые положения применены — дальше переход к местам
     wrap.classList.add('rm-in'); document.body.classList.add('rm-open');
     this._rm = close;
@@ -808,15 +823,15 @@ const UI = {
       if (!ready() || scr._done) return;
       scr._done = true;
       setArc(1); view.classList.add('spin');
-      Sfx.play('spin'); U.vibrate([20, 40, 20]);
+      Sfx.play('spring'); U.vibrate([20, 40, 20]);
       const r = await Game.try('spring', { poi: { id: e.id, lat: e.lat, lng: e.lng, name: e.name } });
       if (!scr.isConnected) return;
       if (!r) { scr._done = false; view.classList.remove('spin'); setArc(0); update(); return; }
       view.classList.remove('spin'); void view.offsetWidth; view.classList.add('burst'); // всплеск
       setTimeout(() => view.classList.add('taken'), 350); // 5.1.5: чаша гаснет и уходит на фон, «В сумку» — внизу экрана
-      U.vibrate([30, 50, 80]);
+      Sfx.play('reward'); U.vibrate([30, 50, 80]); // награда пришла — теперь и звуком, не только вибрацией
       const got = r.got, xp = got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50;
-      const items = got.filter(x => x.k !== 'xp');
+      const items = got.filter(x => x.k !== 'xp' && x.k !== 'sparks'), spk = got.find(x => x.k === 'sparks'); // 5.1.36: искры — строкой рядом с опытом
       const cocoonHtml = r.cocoon ? `<div class="loot-item spr2-cocoon" style="--k:${items.length}">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
       // 5.1.5: награда — отдельным слоем поверх окна, посередине видимой части экрана (между шапкой и «В сумку»);
       // под сеткой — «Сумка полна» и новое поручение
@@ -826,9 +841,9 @@ const UI = {
       loot.classList.toggle('many', n > 6);
       loot.innerHTML = `<div class="spr2-rays" aria-hidden="true"></div><div class="spr2-grid">` +
         items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>`;
+        `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}${spk ? ` <span class="spr2-spk">${Art.item('sparks')}${ru`<b>+${U.fmtNum(spk.n)}</b> искр`}</span>` : ''}</div>`;
       rw.querySelector('.spr2-after').innerHTML = (r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +
-        (r.task ? `<div class="loot-task">${ru`Новое поручение: <b>${I18N.back(r.task.text)}</b>`}<small>${ru`Награда — встреча с духом. Смотри «Меню → Задания».`}</small></div>` : '');
+        (r.task ? this.taskNewHtml() : '');
       // каждая вещь вылетает из середины воды на своё место в сетке (--fx/--fy — путь от центра чаши)
       const lb = disc.getBoundingClientRect(), lcx = lb.left + lb.width / 2, lcy = lb.top + lb.height / 2;
       U.$$('.loot-item', loot).forEach(it => {
@@ -842,17 +857,20 @@ const UI = {
       const tick = t => { const p = Math.min(1, (t - t0) / T); if (xb) xb.textContent = Math.round(xp * (1 - Math.pow(1 - p, 3))); if (p < 1 && scr.isConnected) requestAnimationFrame(tick); };
       setTimeout(() => requestAnimationFrame(tick), 1000 + n * 110); // когда вся награда вылетела
       hint.textContent = '';
-      go.textContent = ru`В сумку`;
-      go.disabled = false;
-      // «В сумку» (5.2): опыт и поручение гаснут, под наградой появляется Сумка (значок «Сумка» из меню) и открывается,
+      // 5.1.35: дальше — касанием, как после поимки духа: кнопки «В сумку» нет (она остаётся невидимой — по ней встаёт Сумка),
+      // внизу «Коснись, чтобы продолжить» (UI.tapGo) — когда награда вылетела из воды.
+      // Касание (5.2): опыт и поручение гаснут, под наградой появляется Сумка (значок «Сумка» из меню) и открывается,
       // вещи по очереди летят дугой ей в горловину — сумка подпрыгивает от каждой; клапан закрывается, сумка чуть сжимается —
       // и только потом экран закрывается. «Меньше движения» — сразу
-      go.onclick = () => {
-        if (view.classList.contains('stow')) return;
-        if (document.body.classList.contains('calm')) return this.closeScreen(scr);
-        view.classList.add('stow'); rw.classList.add('bagging'); Sfx.play('tap'); U.vibrate(15);
-        this.springBag(scr, rw, loot, go);
-      };
+      go.disabled = true; go.classList.add('gone');
+      setTimeout(() => {
+        if (!scr.isConnected || scr._closing) return;
+        this.tapGo(scr, () => {
+          if (document.body.classList.contains('calm')) return this.closeScreen(scr);
+          view.classList.add('stow'); rw.classList.add('bagging'); U.vibrate(15);
+          this.springBag(scr, rw, loot, go);
+        });
+      }, 900 + n * 110);
       MapView.refresh();
     };
     go.onclick = take;
@@ -897,7 +915,7 @@ const UI = {
     const its = U.$$('.loot-item', loot), n = its.length;
     if (!n || typeof Element === 'undefined' || !Element.prototype.animate) { setTimeout(done, 300); return; }
     const fade = el => el && el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 240, fill: 'forwards' });
-    U.$$('.loot-xp, .spr2-after, .spr2-rays', rw).forEach(fade); fade(go);
+    U.$$('.loot-xp, .spr2-after, .spr2-rays', rw).forEach(fade); fade(go); fade(U.$('.tap-hint', scr));
     // сумка — под сеткой наград, на месте погасших опыта и поручения (кнопка «В сумку» тоже гаснет); у нижнего края — не ниже экрана
     const R = rw.getBoundingClientRect(), gb = U.$('.spr2-grid', loot).getBoundingClientRect(), S = Math.round(Math.min(150, Math.max(120, R.width * .34)));
     const y = Math.min(gb.bottom - R.top + 18, go.getBoundingClientRect().bottom - R.top - S);
@@ -907,7 +925,7 @@ const UI = {
     bag.animate([{ transform: 'translateY(26px) scale(.3)', opacity: 0 }, { transform: 'translateY(-6px) scale(1.07)', opacity: 1, offset: .65 }, { transform: 'none', opacity: 1 }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'both' });
     const bump = () => { inner.animate([{ transform: 'none' }, { transform: 'scale(1.09, .88)', offset: .3 }, { transform: 'scale(.96, 1.05)', offset: .65 }, { transform: 'none' }], { duration: 280, easing: 'ease-out' }); };
     const OPEN = 400, START = 700, FLY = 480, gap = Math.min(150, 900 / n);
-    setTimeout(() => { bag.classList.add('open'); Sfx.play('tap'); }, OPEN);
+    setTimeout(() => { bag.classList.add('open'); Sfx.play('bag'); }, OPEN);
     setTimeout(() => {
       if (!scr.isConnected) return;
       const b = bag.getBoundingClientRect(), tx = b.left + b.width / 2, ty = b.top + b.height * .4; // горловина
@@ -917,7 +935,7 @@ const UI = {
         it.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${dx * .45}px, ${Math.min(0, dy) * .45 - lift}px) scale(.8)`, opacity: 1, offset: .45 },
           { transform: `translate(${dx}px, ${dy}px) scale(.2)`, opacity: .9, offset: .92 }, { transform: `translate(${dx}px, ${dy + 6}px) scale(.12)`, opacity: 0 }], { ...o, easing: 'cubic-bezier(.45,.05,.55,.95)' });
         const lb = it.querySelector('span'); if (lb) lb.animate([{ opacity: 1 }, { opacity: 0 }], { delay: k * gap, duration: 140, fill: 'both' });
-        setTimeout(() => { if (!scr.isConnected) return; bump(); Sfx.play('tap'); U.vibrate(8); }, k * gap + FLY * .92);
+        setTimeout(() => { if (!scr.isConnected) return; bump(); Sfx.play('loot'); U.vibrate(8); }, k * gap + FLY * .92);
       });
       const T = (n - 1) * gap + FLY;
       setTimeout(() => bag.classList.remove('open'), T + 160); // клапан закрывается
@@ -935,7 +953,7 @@ const UI = {
     const items = opts.map(([k, w]) => [k, 1 - Math.pow(1 - w / sum, draws)]).sort((a, b) => b[1] - a[1]);
     const locked = [['charm2', 8], ['charm3', 16], ['incense', 3]].filter(([, l]) => lvl < l);
     return `<div class="spr2-loot-tab">
-      <p class="spr2-note">${ru`За один раз источник даёт ${4}–${6} вещей и ${50} опыта. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>
+      <p class="spr2-note">${ru`За один раз источник даёт ${4}–${6} вещей, ${50} опыта и ${W.SPRING_SPARKS} искр. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>
       ${items.map(([k, p]) => row(Art.item(k), ITEMS[k].name, p)).join('')}
       ${(S.d.items.gift || 0) < GIFT_LIMIT ? row(Art.item('gift'), ITEMS.gift.name, W.SPRING_GIFT) : ''}
       ${row(Art.cocoon(5), ru`Кокон`, W.SPRING_COCOON * Ev.kmMul())}
@@ -973,7 +991,7 @@ const UI = {
       }).join('')}</div><p class="small nb-hint">${ru`Коснись духа — Следопыт покажет к нему дорогу.`}</p>` : `<p>${ru`Поблизости тихо. Прогуляйся или зажги ладан.`}</p>`,
       buttons: [
         { label: ru`К источнику`, fn: () => this.trackNearest('spring') },
-        { label: ru`К капищу`, fn: () => this.trackNearest('shrine') },
+        { label: ru`К святилищу`, fn: () => this.trackNearest('shrine') },
       ],
     });
     m.addEventListener('click', ev => {
@@ -984,7 +1002,7 @@ const UI = {
   },
   trackNearest(type) {
     const e = MapView.nearest(type);
-    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных капищ`); return; }
+    if (!e) { this.toast(type === 'spring' ? ru`Рядом нет готовых источников` : ru`Рядом нет свободных святилищ`); return; }
     MapView.track(e); MapView.flyTo(e);
     this.toast(ru`Следопыт: ${U.esc(e.name)}, ${U.fmtDist(e.d)}`);
   },
@@ -1012,7 +1030,7 @@ const UI = {
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,
         buttons: [{ label: ru`Вперёд`, cls: 'primary', fn: () => { this._lvOpen = false; this.flushLevelUps(); } }],
-        dismiss: false,
+        dismiss: false, tap: true, // 5.1.33: окно итога — касанием
       });
       this.refreshHud();
     }, 350);
@@ -1027,32 +1045,34 @@ const UI = {
     const step = n => {
       // 4.28: сперва книга-вступление (сюжет), потом имя Ловчего. 5.1.17: всегда при знакомстве — и там, где книгу уже видели
       // (отметка Intro.need — на устройстве, а Ловчий — новый)
-      if (n === 2 && !book) { book = true; Intro.open({ done: () => step(2) }); return; }
+      if (n === 2 && !book) { book = true; Metrics.ev('onb', { k: 'book' }); Intro.open({ done: () => step(2) }); return; }
+      Metrics.ev('onb', { k: n }); // 5.1.22: аналитика — докуда новички доходят в знакомстве (0 — стартовый экран, 2 — имя, 3 — кокон, 4 — мир)
       body.innerHTML = '';
       root.classList.toggle('deep', n > 0); // на шагах с текстом сцена темнее — читать легче
       let html = '';
-      // 4.5: без коробки — сцена во весь экран, «оберег» и стеклянная кнопка прямо на ней; 12+ — значок в углу
-      if (n === 0) html = `<span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Login.logo(ru`Лови духов Нави по всему свету`)}${Realms.banner()}
-        <div class="lg-cta">
-          ${Invite.ref() ? `<div class="lg-invite">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}
+      // 5.1.35: экран входа переработан (Login.top, Loader.mark): сверху «12+» и сервер, посередине название, внизу кнопки
+      if (n === 0) html = `${Login.top()}<div class="ent-mid">${Loader.mark(ru`Лови духов Нави по всему свету`)}</div>
+        <div class="ent-cta">
+          ${Invite.ref() ? `<div class="ent-invite">✦ ${ru`Тебя пригласил друг — вы сразу станете друзьями, а тебя ждёт подарок`}</div>` : ''}
           ${this.rune(ru`Начать игру`, 'next')}
           ${Game.on() ? this.glass(ru`Уже играю — войти`, 'lg-have', this.I.key) : ''}
-          <p class="lg-legal">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href="terms.html">${ru`Соглашение`}</a>`}, ${`<a href="privacy.html">${ru`Политику`}</a>`} и ${`<a href="offer.html">${ru`Оферту`}</a>`}`}</p>
+          <p class="ent-legal">${ru`Без регистрации. Продолжая, ты принимаешь ${`<a href="terms.html">${ru`Соглашение`}</a>`}, ${`<a href="privacy.html">${ru`Политику`}</a>`} и ${`<a href="offer.html">${ru`Оферту`}</a>`}`}</p>
         </div>`;
       if (n === 2) html = `<div class="onb-q"><div class="onb-ava">${this.avatar()}</div><h2>${ru`Как тебя зовут, Ловчий?`}</h2><input class="input big" maxlength="16" placeholder="${ru`Имя`}" value="${U.esc(name)}"></div>${this.rune(ru`Дальше`, 'next')}`;
-      // 5.1.17: первый дух не выбирается — вылупляется из кокона (кого — решает сервер: S.rollStarter), игрок смотрит вылупление
+      // 5.1.17: первый дух не выбирается — вылупляется из кокона (кого — решает сервер: S.rollStarter), игрок смотрит вылупление.
+      // 5.1.35: кнопки нет — когда дух появился, внизу «Коснись, чтобы продолжить» (UI.tapGo)
       if (n === 3) html = `<div class="onb-q"><h2>${ru`Твой первый дух`}</h2><p class="onb-ht">${ru`Орден вручает тебе кокон. Он уже теплеет…`}</p></div>
         <div class="onb-hatch"><i class="oh-glow"></i><div class="oh-coc">${Art.cocoon(10)}</div><div class="oh-sp"></div></div>
-        <div class="onb-desc"></div>${this.rune(ru`Дальше`, 'next').replace('<button ', '<button disabled ')}`;
-      // 5.1: GPS не нужен — Ловчий сам выбирает место в Атласе мира (откроется на карте: Walk.ensurePlaced) и ходит джойстиком
+        <div class="onb-desc"></div>`;
+      // 5.1: GPS не нужен — Ловчий сам выбирает место в Атласе мира (откроется на карте: Walk.ensurePlaced) и ходит джойстиком.
+      // 5.1.35: кнопки «В путь» нет — дальше касанием
       if (n === 4) html = `<div class="onb-q"><div class="onb-pin">${this.I.pin}</div><h2>${ru`Весь мир — твой`}</h2>
-        <p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).`}</p></div>
-        ${this.rune(ru`В путь`, 'go', this.I.pin)}`;
-      body.appendChild(U.el(n === 0 ? `<div class="lg-wrap">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
-      const nx = body.querySelector('.next');
-      Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
+        <p>${ru`Перепутица спутала дороги мира, и Орден Оберега открыл Ловчим Врата: выбери в Атласе мира любой уголок Земли — там и начнёшь охоту. По карте ходи джойстиком, а в новые края шагай через Атлас. Настоящее местоположение телефона игре не нужно. Прогресс хранится на сервере игры и доступен только тебе; сервер проверяет каждое действие, поэтому нужен интернет. Места на карте и погода загружаются для выбранного района у OpenStreetMap и Open-Meteo (погоду можно выключить в настройках).`}</p></div>`;
+      body.appendChild(U.el(n === 0 ? `<div class="ent">${html}</div>` : `<div class="onb-step s${n}">${html}</div>`));
+      const nx = body.querySelector('.next'), st = body.querySelector('.onb-step');
+      Realms.bind(root); // 4.6: выбор сервера (на боевом — состояние настоящего сервера)
       // 4.25: соглашение, политика и оферта — внутри игры (как в Настройках), а не уходом со страницы
-      body.querySelectorAll('.lg-legal a[href]').forEach(a => { a.onclick = ev => { ev.preventDefault(); Sfx.play('tap'); this.doc(a.textContent, a.getAttribute('href')); }; });
+      body.querySelectorAll('.ent-legal a[href]').forEach(a => { a.onclick = ev => { ev.preventDefault(); Sfx.play('tap'); this.doc(a.textContent, a.getAttribute('href')); }; });
       const have = body.querySelector('.lg-have');
       if (have) have.onclick = () => Login.sheet(root, `<b>${ru`Уже играешь?`}</b><small>${ru`Войди — и твой прогресс откроется на этом устройстве`}</small>`, Login.buttons('start'));
       if (n === 2) {
@@ -1065,23 +1085,25 @@ const UI = {
         const box = body.querySelector('.onb-hatch'), t0 = Date.now(), wait = ms => new Promise(res => setTimeout(res, ms));
         const hatch = async () => {
           const r = await Game.try('newGame', { name, ref: Invite.ref() });
-          if (!r) { nx.querySelector('.rn-t').textContent = ru`Ещё раз`; nx.disabled = false; nx.onclick = () => { nx.disabled = true; hatch(); }; return; }
+          if (!box.isConnected) return;
+          // не вышло (ошибку уже показала всплывашка) — кокон качается дальше, касание — ещё попытка
+          if (!r) { this.tapGo(root, () => { const h = st.querySelector('.tap-hint'); if (h) h.remove(); hatch(); }, st, ru`Коснись, чтобы попробовать ещё раз`); return; }
           Invite.done(r.invitedBy);
           const sid = r.starter && SP[r.starter] ? r.starter : S.d && S.d.spirits[0] ? S.d.spirits[0].sid : 'ugolek', s = SP[sid], rr = RARITY[s.rar];
           await wait(Math.max(0, this.HATCH_MS - (Date.now() - t0)));
           if (!box.isConnected) return;
-          box.classList.add('crack'); Sfx.play('warn'); U.vibrate([30, 40, 30]);
+          box.classList.add('crack'); Sfx.play('crack'); U.vibrate([30, 40, 30]);
           await wait(750);
           box.style.setProperty('--rc', rr.color); box.classList.add('open', 'r' + s.rar);
           box.querySelector('.oh-sp').innerHTML = Art.spirit(sid);
           Sfx.play(s.rar >= 4 ? 'levelup' : 'hatch'); U.vibrate(s.rar >= 4 ? [60, 60, 120] : 60);
           const ht = root.querySelector('.onb-ht'); if (ht) ht.innerHTML = ru`Из кокона появился <b>${s.name}</b>!`;
           root.querySelector('.onb-desc').innerHTML = `<b class="onb-rar" style="color:${rr.color}">${rr.name}</b> · ${Art.elIcon(s.el, 16)} ${ELEMENTS[s.el].name}<br>${s.desc}`;
-          nx.disabled = false; nx.onclick = () => { Sfx.play('tap'); step(4); };
+          this.tapGo(root, () => step(4), st); // надпись — только когда дух появился
         };
         hatch();
       } else if (n === 4) {
-        body.querySelector('.go').onclick = () => { Sfx.play('tap'); Login.close(root, done); };
+        this.tapGo(root, () => { Metrics.ev('onb', { k: 'go' }); Login.close(root, done); }, st);
       } else if (nx) nx.onclick = () => { Sfx.init(); Sfx.play('tap'); step(n ? n + 1 : 2); }; // 4.24: истории перед игрой больше нет
     };
     step(from);

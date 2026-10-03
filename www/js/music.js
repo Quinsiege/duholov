@@ -56,6 +56,16 @@ const Music = {
     const now = Sfx.ctx.currentTime, g = t.g.gain;
     g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(v, now + sec);
   },
+  // короткая мелодия (поимка, уровень, победа — Sfx, duck): на её время музыка тише на ~7 дБ и плавно возвращается
+  duck(sec) {
+    const t = this.cur, ctx = Sfx.ctx;
+    if (!t || !ctx || t.a.paused) return;
+    const g = t.g.gain, now = ctx.currentTime, v = this.level();
+    g.cancelScheduledValues(now); g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(v * 0.45, now + 0.08);
+    g.setValueAtTime(v * 0.45, now + Math.max(0.3, sec - 0.2));
+    g.linearRampToValueAtTime(v, now + sec + 0.8);
+  },
   fadeIn(t) {
     this.cur = t;
     const p = t.a.play();

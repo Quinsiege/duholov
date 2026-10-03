@@ -1,6 +1,6 @@
 'use strict';
 /* Мир: духи появляются детерминированно по реальным координатам (одна точка в одно время — одно и то же),
-   а Источники, Капища и Разломы стоят у настоящих объектов (pois.js).
+   а Источники, Святилища и Разломы стоят у настоящих объектов (pois.js).
    Этот же код работает на сервере игры: он пересчитывает, был ли дух, источник или разлом там, где его нашёл игрок. */
 
 const W = {
@@ -9,7 +9,7 @@ const W = {
   SLOT: 15 * 60 * 1000,  // дух живёт на карте 15 минут
   get SPRING_COOLDOWN() { return Ev.springCooldown(); },
   INTERACT: 70,          // радиус взаимодействия, м
-  BATTLE_R: 100,         // радиус для капищ и разломов, м
+  BATTLE_R: 100,         // радиус для святилищ и разломов, м
   VIEW: 320,             // радиус видимости, м
 
   // Перебор клеток сетки в радиусе. Шаг по долготе подгоняется под широту, чтобы клетки были «квадратными».
@@ -29,8 +29,9 @@ const W = {
     const i = Math.floor(lat / this.BIOME_CELL), j = Math.floor(lng / this.BIOME_CELL);
     return ELEMENT_KEYS[Math.floor(U.h('biome', i, j) * ELEMENT_KEYS.length)];
   },
-  timeBonus(el, t) {
-    const h = U.hour(t);
+  // t и lng — когда и где (5.1.26: час — местный, по солнцу над этим местом)
+  timeBonus(el, t, lng) {
+    const h = U.hour(t, lng);
     if (h >= 21 || h < 5) return el === 'shadow' || el === 'wind' ? 2 : 1;
     if (h >= 17) return el === 'current' || el === 'fire' ? 2 : 1;
     if (h < 10) return el === 'water' || el === 'forest' ? 2 : 1;
@@ -48,12 +49,17 @@ const W = {
     if (lng >= 44) return 'volga';
     return 'center';
   },
-  /* 4.28: духи всех семи мифологий разлетелись по свету (сюжет — LORE): мифология к месту не привязана. Чтобы мифологии
-     встречались поровну (у славянской видов втрое больше), сначала выбирается мифология, потом вид */
-  // Разлом и святилище у места — одной из открытых мифологий, поровну (постоянно, по id места).
-  // 4.28: сезоны — каждая новая мифология забирает себе места поровну у прежних: место переходит к ней с вероятностью
-  // 1 / (сколько мифологий стало), остальные места своей мифологии не меняют (закрытые мифологии мест не получают)
+  /* 5.1.26: дух водится только у себя на родине (MYTH_HOME, data.js). Где родина у нескольких мифологий, они встречаются
+     поровну (у славянской видов втрое больше): сначала выбирается мифология, потом вид */
+  /* Мифология места — его Разлома и святилища. 5.1.26: в своих краях, как и духи, — мифология родины места (W.homes); где
+     родина у нескольких (Япония, когда откроется японская), место достаётся одной из них поровну и постоянно, по id места.
+     Без координат (удержания, записанные до 5.1.26) — по-старому: одна из открытых мифологий поровну по id; 4.28: каждая
+     новая мифология забирает себе места поровну у прежних — место переходит к ней с вероятностью 1 / (сколько мифологий стало) */
   placeMyth(p) {
+    if (p && p.lat != null && p.lng != null && Number.isFinite(+p.lat) && Number.isFinite(+p.lng)) {
+      const h = this.homes(+p.lat, +p.lng);
+      return h.length > 1 ? h[Math.floor(U.h('pm', p.id) * h.length)] : h[0];
+    }
     const base = Rules.ALATYR_WORLD.ORDER;
     let m = base[Math.floor(U.h('pm', p.id) * base.length)], n = base.length;
     for (const x of MYTH_KEYS) if (!base.includes(x)) { n++; if (U.h('pm', x, p.id) < 1 / n) m = x; }
@@ -71,28 +77,68 @@ const W = {
   },
   // из списка — виды мифологии m (если их нет — весь список)
   ofMyth(list, m) { const h = list.filter(s => s.myth === m); return h.length ? h : list; },
-  // 4.28: все духи водятся везде — и духи родных земель, и вещие птицы частей света (их край — родина по легенде)
+  // 4.28: духи родных земель и вещие птицы — без своего края. Нужен коконам (дух из кокона — любой мифологии: кокон приносят
+  // издалека) и Разлому (босс — мифологии места, W.placeMyth)
   local() { return true; },
 
-  pickSpecies(r, biome, night, lng, lat) {
-    const fullMoon = night && Sky.moonEvent() === 'full';
-    const el = U.weighted(ELEMENT_KEYS.map(e => {
-      let w = (e === biome ? 3 : 1) * this.timeBonus(e);
+  /* 5.1.26: родина места — мифологии ближайшей точки MYTH_HOME из открытых сезоном (MYTH_KEYS). Считается для клетки «района»
+     (BIOME_CELL ≈ 650 м) по её середине — одинаково на телефоне и на сервере; точки — единичные векторы, ближайшая — с наибольшим
+     скалярным произведением. Где у ближайшей точки две мифологии (одни координаты в двух списках), водятся обе */
+  HOME_N: 4000,
+  homes(lat, lng) {
+    const i = Math.floor(lat / this.BIOME_CELL), j = Math.floor(lng / this.BIOME_CELL), key = MYTH_KEYS.length + ':' + i + ':' + j;
+    const C = this._homes || (this._homes = new Map());
+    let h = C.get(key);
+    if (h) return h;
+    const r = Math.PI / 180, vec = (la, ln) => [Math.cos(la * r) * Math.cos(ln * r), Math.cos(la * r) * Math.sin(ln * r), Math.sin(la * r)];
+    if (!this._pts) {
+      this._pts = [];
+      for (const [m, list] of Object.entries(MYTH_HOME)) for (const p of list.split(',')) {
+        const [la, ln] = p.trim().split(/\s+/).map(Number);
+        if (Number.isFinite(la) && Number.isFinite(ln)) this._pts.push({ m, v: vec(la, ln) });
+      }
+    }
+    const v = vec((i + 0.5) * this.BIOME_CELL, (j + 0.5) * this.BIOME_CELL);
+    let best = -2;
+    h = [];
+    for (const p of this._pts) {
+      if (!MYTH_KEYS.includes(p.m)) continue;
+      const d = p.v[0] * v[0] + p.v[1] * v[1] + p.v[2] * v[2];
+      if (d > best + 1e-12) { best = d; h = [p.m]; } else if (d >= best - 1e-12 && !h.includes(p.m)) h.push(p.m);
+    }
+    if (!h.length) h = MYTH_KEYS.slice(); // точек нет (данных не завезли) — как раньше, все
+    if (C.size >= this.HOME_N) C.clear();
+    C.set(key, h);
+    return h;
+  },
+  home(s, lat, lng) { return this.homes(lat, lng).includes(s.myth || 'slavic'); },
+  // 5.1.26: своё время суток: ночные — только ночью, дневные — только днём (ночь — по солнцу там, где дух, U.isNight)
+  timeOk(s, t, lat, lng) { return !s.time || (s.time === 'night') === U.isNight(t, lat, lng); },
+
+  // Вид духа в точке lat, lng; t — начало его жизни на карте: день или ночь, час — в этот момент и в этом месте, так что
+  // дух не меняется, пока живёт. 5.1.26: только здешние (родина) и только своего времени суток; некого — null
+  pickSpecies(r, biome, t, lat, lng) {
+    const night = U.isNight(t, lat, lng), h = U.hour(t, lng), fullMoon = night && Sky.moonEvent() === 'full', home = this.homes(lat, lng);
+    const RW = { 1: 60, 2: 24, 3: 8, 4: 2 };
+    const wOf = s => {
+      if (s.time === 'night' ? !night : s.time === 'day' && night) return 0;
+      let w = RW[s.rar] || 0;
+      if (s.stage === 3) w *= 0.3;
+      if (s.time === 'night') w *= fullMoon ? 4 : 1.5;
+      if (s.time === 'day') w *= h >= 11 && h < 15 ? 3 : 0.8;
+      return w * Ev.seasonal(s);
+    };
+    const all = SPECIES.filter(s => !s.legend && home.includes(s.myth) && wOf(s) > 0);
+    if (!all.length) return null;
+    const els = ELEMENT_KEYS.filter(e => all.some(s => s.el === e));
+    const el = U.weighted(els.map(e => {
+      let w = (e === biome ? 3 : 1) * this.timeBonus(e, t, lng);
       if (Sky.boosted(e)) w *= 1.7;
       w *= Ev.elMul(e);
       if (fullMoon && (e === 'shadow' || e === 'water')) w *= 1.5;
       return [e, w];
     }), r());
-    const RW = { 1: 60, 2: 24, 3: 8, 4: 2 };
-    const h = U.hour();
-    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && this.local(s, lng, lat)), r()).map(s => { // 4.28: мифология — поровну
-      let w = RW[s.rar] || 0;
-      if (s.stage === 3) w *= 0.3;
-      if (s.time === 'night') w *= night ? (fullMoon ? 4 : 1.5) : 0.35;
-      if (s.time === 'day') w *= night ? 0.05 : h >= 11 && h < 15 ? 3 : 0.8;
-      w *= Ev.seasonal(s);
-      return [s.id, w];
-    });
+    const pool = this.evenMyth(all.filter(s => s.el === el), r()).map(s => [s.id, wOf(s)]); // мифологии родины — поровну
     return U.weighted(pool, r());
   },
 
@@ -100,7 +146,6 @@ const W = {
     const now = U.now(), out = [];
     Ev.alaSync(now); // 4.28: духи — только открытых в этом сезоне мифологий
     const P = S.incenseActive() ? 0.3 : 0.14;
-    const night = U.isNight();
     this.cells(lat, lng, this.SPAWN_CELL, radius, (i, j, la, ln, sz, lsz) => {
       const phase = U.h('ph', i, j) * this.SLOT;
       const slot = Math.floor((now + phase) / this.SLOT);
@@ -111,7 +156,9 @@ const W = {
       const pLat = la + (0.15 + r() * 0.7) * sz, pLng = ln + (0.15 + r() * 0.7) * lsz;
       const d = U.dist(lat, lng, pLat, pLng);
       if (d > radius) return;
-      const sid = this.pickSpecies(r, this.biome(pLat, pLng), night, pLng, pLat);
+      // 5.1.26: каким будет дух, решают место и начало его жизни (t0); рассвело — ночной ушёл, стемнело — дневной спрятался
+      const t0 = slot * this.SLOT - phase, sid = this.pickSpecies(r, this.biome(pLat, pLng), t0, pLat, pLng);
+      if (!sid || !this.timeOk(SP[sid], now, pLat, pLng)) return;
       const boost = Sky.boosted(SP[sid].el);
       // 4.15: дух на карте — не выше уровня Ловчего; погода делает его сильнее (ближе к потолку), но не выше
       const maxL = Math.min(30 + (boost ? 5 : 0), S.catchLvl());
@@ -125,7 +172,7 @@ const W = {
   },
 
   /* ---------- 5.2: места спят и просыпаются по неделям (Rules.PLACES) ---------- */
-  /* Источник, Капище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
+  /* Источник, Святилище и Разлом у места есть, только пока место «не спит»: каждую неделю (Ev.week — с понедельника, как события
      недели) бодрствует доля SHARE мест, остальные пустые. У каждого места своя фаза (хэш id), окно бодрствования каждую
      неделю сдвигается на SHARE: место бодрствует, если (фаза + неделя × SHARE) mod 1 < SHARE. При SHARE = 0,4 — две недели
      из пяти, и никогда две недели подряд: на следующей неделе просыпаются другие места. Места игроков (usr:) не спят;
@@ -151,9 +198,9 @@ const W = {
     return Poi.near(lat, lng, radius, 'spring').filter(p => this.awake(p, 'spring')).map(p => this.springFor(p, p.d)); // 5.2: спящих нет
   },
 
-  /* ---------- Разломы: каждый час открываются у части Капищ ---------- */
+  /* ---------- Разломы: каждый час открываются у части Святилищ ---------- */
   riftAt(id, hour) { return U.h('rr', id, hour) < 0.35; },
-  // Разлом у капища p в этот час (или null); 5.2: у спящего места Разломов нет — и Великих (Кощей) тоже
+  // Разлом у святилища p в этот час (или null); 5.2: у спящего места Разломов нет — и Великих (Кощей) тоже
   riftFor(p, d, hour = Math.floor(U.now() / 3600000)) {
     if (!this.riftAt(p.id, hour) || !this.awake(p, 'shrine', hour * 3600000)) return null;
     const id = `${p.id}:${hour}`;
@@ -180,6 +227,7 @@ const W = {
 
   // 4.19: что и с каким весом кладёт источник (на каждый из 4–6 бросков) — общее для добычи и вкладки «Добыча»
   SPRING_GIFT: 0.6, SPRING_COCOON: 0.12,
+  SPRING_SPARKS: 200, // 5.1.36: искры за каждый источник (у места не из базы — вполовину, как и вещи)
   springOpts(lvl) {
     // 4.15: лечебное; 4.16: мёда, Живой воды и ладана меньше (к 40 уровню копились сотнями и десятками),
     // Мёртвая вода — ~1 источник из 500 (раньше из 300, но при полной сумке источник не давал ничего)
@@ -205,7 +253,7 @@ const W = {
     return { loot, cocoon };
   },
 
-  /* ---------- Капища ---------- */
+  /* ---------- Святилища ---------- */
   shrineFor(p, d) {
     const id = p.id;
     const tier = U.weighted([[1, 50], [2, 35], [3, 15]], U.h('kt', id));
@@ -214,13 +262,13 @@ const W = {
     const hold = typeof Clans !== 'undefined' ? Clans.info(id) : null; // на сервере сводки нет — он спрашивает базу сам
     return { type: 'shrine', id, tier, name: p.name, god, myth, photo: p.photo, lat: p.lat, lng: p.lng, d, won: S.d.shrines[id] === U.today(), clan: hold ? hold.clan : null };
   },
-  // Капище у реального объекта; пока в нём открыт Разлом, поединок недоступен
+  // Святилище у реального объекта; пока в нём открыт Разлом, поединок недоступен
   shrinesAround(lat, lng, radius = this.VIEW + 400) {
     const hour = Math.floor(U.now() / 3600000);
     Ev.alaSync();
     return Poi.near(lat, lng, radius, 'shrine').filter(p => this.awake(p, 'shrine') && !this.riftAt(p.id, hour)).map(p => this.shrineFor(p, p.d));
   },
-  /* 4.16: соперники в Капищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
+  /* 4.16: соперники в Святилищах и вторжениях подстраиваются под СИЛУ духов игрока, а не только под его уровень:
      раньше уровень хранителя равнялся уровню духов игрока, но виды у хранителя слабее — и сильный Ловчий не проигрывал.
      Ориентир — треть суммы сил трёх сильнейших духов игрока, которые могут биться (не выбранной команды: слабой командой
      соперника не ослабить; у новичка с одним-двумя духами пустые места считаются нулём — и хранитель ему по силам).
@@ -258,10 +306,14 @@ const W = {
   },
 
   // Прислужник Нави на захваченном источнике: трое омрачённых духов одной стихии (4.16: сила отряда — от силы духов игрока)
+  // 5.1.26: e.lat, e.lng — где источник: отряд из духов его родины, без ночных и дневных (спасённого ловят сразу, в любое время)
   grunt(e) {
     const r = U.rng('grunt' + e.invId);
     const el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    const pool = this.evenMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && s.rar <= 3), r()); // 4.28: мифология — поровну
+    const base = SPECIES.filter(s => s.el === el && !s.legend && !s.season && s.rar <= 3);
+    const home = e.lat != null && e.lng != null ? this.homes(+e.lat, +e.lng) : null; // бой начат до 5.1.26 — места нет, как раньше
+    const here = home ? base.filter(s => home.includes(s.myth)) : base, calm = here.filter(s => !s.time);
+    const pool = this.evenMyth(calm.length ? calm : here.length ? here : base, r()); // 4.28: мифология — поровну
     const strong = this.ofMyth(SPECIES.filter(s => s.el === el && !s.legend && !s.season && !s.evo), pool[0].myth);
     const pw = this.topPower() * Duel.FOE.invasion.pow;
     const team = [];

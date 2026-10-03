@@ -1,5 +1,5 @@
 'use strict';
-/* Реальные объекты на карте: Источники и Капища стоят у настоящих мест (5.2: не каждую неделю — см. W.awake).
+/* Реальные объекты на карте: Источники и Святилища стоят у настоящих мест (5.2: не каждую неделю — см. W.awake).
    1) Сервер игры (таблица pois): объекты OpenStreetMap по всей России (раз в неделю их загружает импорт,
       tools/osm-import), места, предложенные игроками и одобренные модерацией, и правки модераторов.
       Телефон читает их квадратами 0.01° × 0.01° (≈ 1 км).
@@ -96,7 +96,7 @@ const Poi = {
     }
     return out;
   },
-  // Капища в радиусе r (для дальних Разломов): с сервера одним запросом, кэш на 10 минут; вне России — что загружено
+  // Святилища в радиусе r (для дальних Разломов): с сервера одним запросом, кэш на 10 минут; вне России — что загружено
   far: null,
   async shrinesFar(lat, lng, r) {
     if (this._farBusy) await this._farBusy; // один запрос за раз
@@ -119,7 +119,7 @@ const Poi = {
           data.forEach(p => { if (p.active === false) items.delete(p.id); else items.set(p.id, p); });
           if (data.length < 1000) break;
         }
-      } catch (e) { console.warn('Дальние Капища:', e.message); fail = true; }
+      } catch (e) { console.warn('Дальние Святилища:', e.message); fail = true; }
     }
     this.far = { key, t: Date.now() - (fail ? 540000 : 0), items: [...items.values()] }; // сервер не ответил — повторим через минуту
   },
@@ -147,7 +147,7 @@ const Poi = {
     this.busy = true; this._here = here;
     if (!this.near(lat, lng, this.LOAD_R).length && !this._hinted) {
       this._hinted = true;
-      UI.toast(ru`Ищу настоящие места вокруг — Источники и Капища появятся через несколько секунд`);
+      UI.toast(ru`Ищу настоящие места вокруг — Источники и Святилища появятся через несколько секунд`);
     }
     const show = () => { this.rebuild(); MapView.refresh(); }; // значки — сразу по приходу каждой части
     const v = this.mapView(), isNear = t => Math.abs(t[0] - cx) <= 1 && Math.abs(t[1] - cy) <= 1;

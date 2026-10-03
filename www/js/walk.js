@@ -89,10 +89,14 @@ const Walk = {
     j.classList.remove('hidden');
     this.side();
     const stick = j.querySelector('.stick');
-    let id = null;
+    let id = null, geo = null;
+    // 5.1.31: середина джойстика и ход ручки — один раз при касании: замер на каждом движении пальца заставлял браузер
+    // тут же пересчитывать раскладку страницы (карта под пальцем меняется каждый кадр)
+    const measure = () => { const r = j.getBoundingClientRect(); geo = { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2 - stick.offsetWidth / 4 }; };
     const set = e => {
-      const r = j.getBoundingClientRect(), R = r.width / 2 - stick.offsetWidth / 4;
-      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      if (!geo) measure();
+      const R = geo.R;
+      let dx = e.clientX - geo.x, dy = e.clientY - geo.y;
       const m = Math.hypot(dx, dy);
       if (m > R) { dx *= R / m; dy *= R / m; }
       stick.style.transform = `translate(${dx}px, ${dy}px)`;
@@ -105,12 +109,13 @@ const Walk = {
       id = e.pointerId;
       try { j.setPointerCapture(id); } catch (x) { /* не поддерживается */ }
       j.classList.add('on');
+      measure();
       set(e);
     });
     j.addEventListener('pointermove', e => { if (e.pointerId === id) { e.preventDefault(); set(e); } });
     const end = e => {
       if (e.pointerId !== id) return;
-      id = null; stick.style.transform = ''; j.classList.remove('on');
+      id = null; geo = null; stick.style.transform = ''; j.classList.remove('on');
       this.joy = { x: 0, y: 0 };
     };
     j.addEventListener('pointerup', end);
@@ -134,7 +139,7 @@ const Walk = {
       const k = KEYS[(e.key || '').toLowerCase()];
       if (k) this.keys[k] = false;
     });
-    const release = () => { this.keys = {}; this.joy = { x: 0, y: 0 }; stick.style.transform = ''; j.classList.remove('on'); id = null; };
+    const release = () => { this.keys = {}; this.joy = { x: 0, y: 0 }; stick.style.transform = ''; j.classList.remove('on'); id = null; geo = null; };
     addEventListener('blur', release);
     // свёрнутая игра стоит на месте: путь — серверу, место — на телефон
     document.addEventListener('visibilitychange', () => { if (document.hidden) { release(); this.stop(); } });
