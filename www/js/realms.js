@@ -11,7 +11,7 @@ const REALMS = [
   { id: 'buyan', name: ru`Буян`, region: ru`Юг и Кавказ`, tz: 'UTC+3', color: '#38bdf8', glyph: 'island', load: 0.31, online: 6230, ping: 46,
     about: ru`Тёплые моря и водные духи круглый год.` },
   { id: 'belovodye', name: ru`Беловодье`, region: ru`Урал и Сибирь`, tz: 'UTC+5…+7', color: '#e2e8f0', glyph: 'peaks', load: 0.56, online: 7810, ping: 62,
-    about: ru`Горные Капища и Хозяйка Медной горы.` },
+    about: ru`Горные Святилища и Хозяйка Медной горы.` },
   { id: 'iriy', name: ru`Ирий`, region: ru`Дальний Восток`, tz: 'UTC+10', color: '#f472b6', glyph: 'bird', load: 0.22, online: 2940, ping: 118,
     about: ru`Первым встречает рассвет: ежедневные задания обновляются раньше всех.` },
   { id: 'tridevyatoe', name: ru`Тридевятое царство`, region: ru`Вся Россия`, tz: 'UTC+3', color: '#a78bfa', glyph: 'crown', load: 0.08, online: 640, ping: 38, tags: ['new'],
@@ -28,7 +28,7 @@ const Realms = {
   home() {
     const h = this.HOME[CLOUD_CONFIG.where] || this.HOME.msk;
     return { id: 'home', real: true, name: this.where() || ru`Духолов`, region: ru`Сервер игры`, tz: h.tz, color: h.color, glyph: h.glyph,
-      about: ru`Пока это единственный сервер: здесь вся Лига, Ордена и Капища. Новые серверы появятся позже.` };
+      about: ru`Пока это единственный сервер: здесь вся Лига, Ордена и Святилища. Новые серверы появятся позже.` };
   },
   list() { return this.on ? REALMS : [this.home()]; },
   current() {

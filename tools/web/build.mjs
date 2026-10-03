@@ -34,6 +34,10 @@ html = html.replace(TAG, (m, f) => {
 // ни один свой скрипт не должен остаться отдельным (иначе он не попал в сборку — например, из-за имени файла)
 const left = [...html.matchAll(/<script src="(js\/[^"?]+)/g)].map(m => m[1]).filter(f => f !== 'js/app.min.js' && !KEEP.has(f));
 if (left.length) throw new Error(`не попали в сборку: ${left.join(', ')}`);
+// 5.1.24: склеенный скрипт — в предзагрузку в <head>, следом за библиотеками карты (почему — в комментарии там)
+const PRE = /^([ \t]*)<link rel="preload" href="vendor\/protomaps\/[^\r\n]*(\r?\n)/m;
+if (!PRE.test(html)) throw new Error('index.html: нет предзагрузки protomaps в <head> — некуда поставить предзагрузку app.min.js');
+html = html.replace(PRE, (m, ind, nl) => `${m}${ind}<link rel="preload" href="js/app.min.js?v=dev" as="script">${nl}`);
 await writeFile(new URL('index.html', www), html);
 
 // service worker: в кэш — склеенный файл вместо отдельных

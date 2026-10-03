@@ -7,7 +7,7 @@ $files = @(
   'server/game/prelude.js', 'www/js/i18n.js',
   'www/js/myth-greek.js', 'www/js/myth-norse.js', 'www/js/myth-celtic.js', 'www/js/myth-egypt.js', 'www/js/myth-china.js', 'www/js/myth-aztec.js', 'www/js/myth-japan.js', 'www/js/data.js', 'www/js/util.js', 'www/js/events.js', 'www/js/sky.js', 'www/js/world.js',
   'www/js/state.js', 'www/js/season-rewards.js', 'www/js/journal.js', 'www/js/league.js', 'www/js/raid.js', 'www/js/duel.js',
-  'www/js/rules.js', 'www/js/diff.js', 'server/game/core.js', 'server/game/serve.js'
+  'www/js/rules.js', 'www/js/diff.js', 'www/js/metrics.js', 'server/game/core.js', 'server/game/serve.js'
 )
 $ver = [regex]::Match([IO.File]::ReadAllText((Join-Path $root 'www/js/version.js')), "APP_VERSION = '([\d.]+)'").Groups[1].Value
 $sb = New-Object System.Text.StringBuilder

@@ -53,13 +53,13 @@ small, .small { color: var(--muted); font-size: 12px; }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
 /* ---------- карта ---------- */
-#map { position: fixed; inset: 0; background: #d9d3c7; z-index: 0; }
-body.night #map { background: #1b1b1f; }
-#map { --tile-f: grayscale(1) sepia(.45) hue-rotate(218deg) saturate(1.5) brightness(.88) contrast(.9); } #map .leaflet-tile-pane { filter: var(--tile-f); } /* 3.24: подложка в тонах Нави — духи и объекты на первом плане */
-body.night #map { --tile-f: invert(1) hue-rotate(195deg) saturate(.55) brightness(.8) contrast(.95); }
-/* 4.9: «Карта Нави» рисуется сразу в своих цветах (js/navmap.js) — фильтр только у запасной карты OSM */
-#map.navmap .leaflet-tile-pane { filter: none; }
-#map.navmap { background: #ece5f5; } body.night #map.navmap { background: #120b25; }
+/* 5.1.30: карта — в стандартном стиле (Protomaps: днём светлом, ночью тёмном), без своих цветов и фильтров; фон — цвет её земли */
+#map { position: fixed; inset: 0; background: transparent; z-index: 0; touch-action: none; } /* палец ведёт камеру (MapView.initOrbit), а не страницу */
+/* 5.1.31: земля палитры карты (MapView.PALETTE) под ещё не нарисованными плитками — отдельным неподвижным слоем позади карты, а не
+   фоном самой наклонённой карты: фон корня 3D-пространства лежит в одной плоскости с плитками, и при сильном наклоне (его край уходит
+   за камеру) браузер на отдельных кадрах ставил его поверх плиток — карта под ногами пропадала (z-fighting) */
+#mapBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #f1f3ee; }
+body.night #mapBg { background: #131b27; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(18, 12, 36, .55) !important; color: #cfc8e6 !important; border-radius: 6px 0 0 0; }
 .leaflet-control-attribution a { color: #e9e3ff !important; }
 .leaflet-bottom.leaflet-right { bottom: calc(var(--sb)); }
@@ -71,6 +71,12 @@ body.night .range-circle { fill-opacity: .1; }
 .mk-spirit .mk-glow { position: absolute; left: 50%; bottom: 2px; width: 44px; height: 14px; margin-left: -22px; border-radius: 50%; background: var(--c); opacity: .45; filter: blur(4px); }
 .mk-spirit.r3 .mk-glow, .mk-spirit.r4 .mk-glow { opacity: .9; width: 60px; margin-left: -30px; height: 18px; animation: auraPulse 1.6s infinite; }
 .mk-spirit.r4::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; background: radial-gradient(circle, rgba(192, 132, 252, .35), transparent 65%); animation: auraPulse 1.4s infinite; z-index: -1; }
+/* 5.1.31: у значка с тенью (filter) внутри пульсирует свечение (r3, r4) или кольцо обучения — их границы меняются каждый кадр, и
+   браузер на каждом кадре заново раскладывал всю карту по слоям (самая дорогая часть кадра). Неподвижная прозрачная рамка —
+   с запасом на самый большой размах пульса (размытие свечения — до 18 точек за значок, кольцо — до 52): общие границы не
+   меняются, на экране — ничего */
+.mk-spirit.r3::before, .mk-spirit.r4::before, .mk-spirit.sp-tut::before { content: ''; position: absolute; inset: -20px; border: 1px solid transparent; pointer-events: none; }
+.mk-spirit.sp-tut::before { inset: -56px; }
 .mk.far .mk-spirit { opacity: .82; }
 .mk-spring { width: 100%; height: 100%; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .35)); }
 .mk-spring .beam { animation: blink 2.2s ease-in-out infinite; }
@@ -81,6 +87,32 @@ body.night .range-circle { fill-opacity: .1; }
 .mk-rift .mk-tier { position: absolute; left: 0; right: 0; bottom: -2px; text-align: center; color: var(--gold2); font-size: 12px; font-weight: 900; text-shadow: 0 1px 2px #000, 0 0 4px #000; letter-spacing: 1px; }
 .mk-rift.done { filter: grayscale(.8) opacity(.7); }
 .mk-rift.done .mk-boss { display: none; }
+/* 5.1.28: 3D-модель места (js/m3d.js) — холст в точке привязки значка; как только модель нарисована, прежний рисунок прячется */
+.mk3d { position: absolute; pointer-events: none; }
+.mk canvas.mk3d { z-index: auto; } /* у Leaflet любой canvas в слое карты — z-index: 100: модель легла бы поверх хранителя и звёзд */
+.mk3d:not(.on) { display: none; }
+.m3d > .art { display: none; }
+.mk-rift.camp > .mk3d { filter: drop-shadow(0 0 10px rgba(251, 191, 36, .75)); }
+/* хранитель Разлома — над моделью, звёзды — под ней, флаг клана — у верха (--m3d-top / --m3d-bot ставит js/m3d.js) */
+.m3d > .mk-boss { top: calc(var(--m3d-top) - 42px); }
+.m3d > .mk-tier { top: calc(var(--m3d-bot) - 7px); bottom: auto; }
+.m3d > .mk-flag { top: calc(var(--m3d-top) - 2px); }
+/* 5.1.30: подпись места (MapView.label) — что это и где, под моделью: золотые прописные с тёмной обводкой, без подложки
+   (видны и на светлой, и на тёмной карте); у дальнего места — одно «что». Свой плоский слой поверх карты (MapView.placeLabels):
+   подписи не закрывают ни модели соседних мест, ни дома */
+#mapLbl { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+body.stage-glass #mapLbl, body.stage-cover #mapLbl { opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; }
+#mapLbl .mk-lbl { position: absolute; left: 0; top: 0; transform-origin: 50% 0; pointer-events: none; text-align: center; white-space: nowrap; --ol: #2e1500; }
+#mapLbl .mk-lbl.tut-off { opacity: .35; }
+#mapLbl .mk-lbl b { display: block; font: 700 12.5px/1.2 var(--f-head); text-transform: uppercase; color: #ffd772;
+  text-shadow: -1px -1px 0 var(--ol), 1px -1px 0 var(--ol), -1px 1px 0 var(--ol), 1px 1px 0 var(--ol), 0 2px 5px rgba(0, 0, 0, .55); }
+#mapLbl .mk-lbl b span { display: inline-block; vertical-align: bottom; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+#mapLbl .mk-lbl i { display: block; max-width: 180px; margin: 1px auto 0; overflow: hidden; text-overflow: ellipsis; font: 500 10.5px/1.25 var(--f-head);
+  font-style: normal; color: #fff8e6; text-shadow: -1px -1px 0 #22120a, 1px -1px 0 #22120a, -1px 1px 0 #22120a, 1px 1px 0 #22120a, 0 1px 4px rgba(0, 0, 0, .5); }
+#mapLbl .mk-lbl.far i { display: none; }
+/* 3D-Ловчий (js/m3d.js) — вместо точки со стрелкой и кольца: куда он идёт, видно по нему самому */
+.mk-player.m3d .dot, .mk-player.m3d .arrow, .mk-player.m3d .pulse { display: none; }
+.mk-player.m3d::before { content: none; }
 
 .mk-player-wrap { background: none; border: 0; }
 .mk-player { position: relative; width: 64px; height: 64px; }
@@ -339,8 +371,10 @@ body.night .range-circle { fill-opacity: .1; }
 .t-sp img, .t-sp .art { width: 48px; height: 48px; }
 .t-sp i { position: absolute; left: 0; right: 0; bottom: -6px; text-align: center; font-style: normal; font-size: 10px; color: var(--gold2); text-shadow: 0 1px 2px #000; letter-spacing: 1px; }
 .t-drop { width: 32px; height: 32px; flex: none; opacity: .6; } .t-drop .ico { width: 16px; height: 16px; }
-.loot-task { margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(251, 191, 36, .12); border: 1px solid rgba(251, 191, 36, .45); text-align: center; font-size: 14px; animation: popIn .4s .5s both; }
-.loot-task small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+/* 5.1.24: новое поручение у Источника — под наградой, без подложки: значок «Задания» из меню слева и «Новое поручение!» */
+.loot-task { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font-size: 15px; animation: popIn .4s .5s both; }
+.loot-task .lt-ico { flex: none; width: 34px; height: 34px; }
+.loot-task b { font-weight: 700; }
 
 /* серия дней и общее дело Ордена (3.1) */
 .st-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 10px; }
@@ -356,11 +390,7 @@ body.night .range-circle { fill-opacity: .1; }
 .o-bar em { position: absolute; top: -3px; width: 2px; height: 18px; margin-left: -1px; background: var(--gold2); border-radius: 1px; }
 .o-bar em:last-child { margin-left: -2px; }
 .o-me { margin: 8px 0 0; font-size: 13px; color: var(--muted); } .o-me b { color: var(--text); }
-.o-top { margin: 4px 0 10px; padding: 10px 12px; border-radius: 16px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
 .o-sub { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-.o-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 14px; }
-.o-row span { width: 18px; color: var(--muted); text-align: right; } .o-row b { flex: 1; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .o-row i { font-style: normal; color: var(--gold2); font-weight: 700; }
-.o-row.me b { color: var(--gold2); font-weight: 700; }
 .q-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 10px; }
 
 /* профиль */
@@ -1133,9 +1163,16 @@ body.net-busy::after { content: ''; position: fixed; top: 0; left: 0; right: 0; 
 .chat-bar .chat-in { flex: 1; min-width: 0; height: 44px; }
 .chat-bar .chat-send { flex: none; width: 48px; min-height: 44px; padding: 0; font-size: 18px; }
 .day-left { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; } .day-left b { color: var(--text); } .day-left.out { color: #fb7185; } .day-left.out b { color: #fb7185; }
-.day-limits { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 12px; }
-.day-limits div { padding: 6px 2px; border-radius: 12px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); text-align: center; }
-.day-limits b { display: block; font-size: 14px; } .day-limits small { font-size: 10px; color: var(--muted); } .day-limits .out b { color: #fb7185; }
+/* 5.1.24: лимиты дня — заголовок как «Шаги главы» (справа — сколько осталось до обновления, тикает); строки сеткой на всю ширину:
+   название, полоска — как у заданий дня (.pbar), счётчик. Лимит исчерпан — полоска и счётчик розовые */
+.q-h.dl-h { flex-wrap: wrap; row-gap: 2px; }
+.q-h.dl-h small { margin-left: auto; font-family: 'Rubik', system-ui, sans-serif; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.day-limits { display: grid; grid-template-columns: max-content 1fr auto; align-items: center; gap: 12px; margin: 0 0 14px; font-size: 13.5px; }
+.day-limits .dl-row { display: contents; }
+.day-limits .dl-row > span { color: var(--text); }
+.day-limits .pbar { margin: 0; }
+.day-limits b { min-width: 52px; text-align: right; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.day-limits .out b { color: #fb7185; } .day-limits .out .pbar i { background: linear-gradient(90deg, #f472b6, #fb7185); }
 .chat-hint .chat-unhide { display: inline; margin-left: 4px; font-size: 12px; }
 
 /* ---------- 3.21: ранги Лиги — цвет по ступеням ---------- */
@@ -1343,7 +1380,7 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 /* ---------- 3.25: задания дня ---------- */
 .qd-head { display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 10px; border-radius: 18px;
   background: linear-gradient(135deg, rgba(167, 139, 250, .16), rgba(94, 234, 212, .06)); border: 1px solid rgba(167, 139, 250, .3); }
-.qd-head.full { background: linear-gradient(135deg, rgba(74, 222, 128, .14), rgba(251, 191, 36, .08)); border-color: rgba(74, 222, 128, .35); }
+.qd-head.full { background: linear-gradient(135deg, rgba(253, 224, 71, .16), rgba(251, 191, 36, .06)); border-color: rgba(253, 224, 71, .4); } /* 5.1.24: жёлтым, как сундук (было зелёным) */
 .qd-head .row-main small { color: var(--muted); font-size: 12px; }
 .qd-left { color: var(--text); font-variant-numeric: tabular-nums; }
 .qd-ring { position: relative; width: 52px; height: 52px; flex: none; display: grid; place-items: center; }
@@ -1367,12 +1404,28 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .qd-rw .art { width: 18px; height: 18px; }
 .qd-rw.spark { padding-left: 8px; color: var(--gold2); }
 .quest.qd .btn { align-self: center; }
-.quest.qd .q-ok, .qd-chest .q-ok { align-self: center; }
-.qd-chest { align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+.quest.qd .q-ok { align-self: center; }
 .qd-ico.chest { background: rgba(251, 191, 36, .12); }
 .qd-pips { display: flex; align-items: center; gap: 5px; margin: 6px 0; }
 .qd-pips i { width: 22px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .14); }
 .qd-pips i.half { background: rgba(251, 191, 36, .5); } .qd-pips i.on { background: var(--gold); }
+/* 5.1.24: все задания дня сделаны — на месте кружка «3/3» Сундук дня в жёлтом круге. Не открыт — плавно уменьшается и
+   увеличивается, чтобы на него нажали; открывается — подпрыгивает; открыт — спокойно стоит открытым
+   (в спокойном режиме и при «меньше движения» — без анимации) */
+.day-chest { position: relative; width: 58px; height: 58px; flex: none; display: grid; place-items: center; margin: -3px; padding: 7px 6px 8px;
+  border-radius: 50%; border: 2.5px solid #fde047; background: radial-gradient(circle at 40% 32%, #fef9c3, #fde047 45%, #f59e0b 80%, #b45309);
+  box-shadow: 0 0 0 3px rgba(253, 224, 71, .22), 0 0 16px rgba(251, 191, 36, .5); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.day-chest .art { width: 100%; height: 100%; filter: drop-shadow(0 2px 2px rgba(59, 26, 10, .45)); }
+.day-chest.ready { animation: qdChest 1.6s ease-in-out infinite; }
+.day-chest.opening { animation: qcOpen .65s ease-out both; }
+.day-chest.opened { cursor: default; box-shadow: 0 0 0 3px rgba(253, 224, 71, .15), 0 0 10px rgba(251, 191, 36, .35); }
+.day-chest:disabled { opacity: 1; }
+@keyframes qdChest { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(253, 224, 71, .22), 0 0 16px rgba(251, 191, 36, .5); }
+  50% { transform: scale(.86); box-shadow: 0 0 0 6px rgba(253, 224, 71, .12), 0 0 24px rgba(251, 191, 36, .65); } }
+@keyframes qcOpen { 0% { transform: none; } 20% { transform: translateY(-8px) rotate(-6deg); } 40% { transform: rotate(5deg); } 60% { transform: translateY(-4px) rotate(-3deg); } 100% { transform: scale(1.08); } }
+.calm .day-chest { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .day-chest { animation: none !important; } }
+.chest-modal .lvl-rw { margin: 6px 0 4px; }
 .qd-pips small { margin-left: 4px; color: var(--muted); font-size: 11px; }
 
 /* ---------- 3.25: чат ---------- */
@@ -1435,8 +1488,6 @@ body.night #mapShade { background: linear-gradient(180deg, rgba(8, 5, 18, .55), 
 .set-ico.warn { background: rgba(251, 191, 36, .16); color: var(--gold2); }
 .set-chev { color: var(--muted); font-size: 22px; line-height: 1; margin-left: 4px; }
 .set-row .row-main { min-width: 0; }
-.set-row:has(.map-theme) { flex-wrap: wrap; }
-.set-row .seg.map-theme { flex: 1 0 calc(100% - 46px); margin-left: 46px; }
 .acc-linked .lg-ic { width: 34px; height: 34px; border-radius: 10px; background: #fff; }
 .acc-linked .lg-ic svg { width: 20px; height: 20px; }
 .acc-guest { background: rgba(251, 191, 36, .07); }
@@ -2689,8 +2740,10 @@ body.night .enc-sky::after { background: radial-gradient(80% 60% at 50% 0%, rgba
 @keyframes vmBreath2 { 50% { transform: scale(1.012, 1.018); } }
 /* пока открыто окно или меню, духи на карте под размытой подложкой не двигаются — размытие не пересчитывается каждый кадр */
 /* 5.2: и погода, и «хвосты» значков (::before, ::after) — иначе стекло окна пересчитывает размытие каждый кадр */
-body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) :is(#map *, #wxfx, #wxfx *),
-body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map *::before, body:has(.modal-wrap:not(.out), .sheet-wrap:not(.out), .rl-wrap) #map *::after,
+/* 5.1.31: окна, меню и выбор сервера — прямые дети body (ui.js, realms.js): «>» в :has() — браузеру не нужно перепроверять
+   правило при каждой вставке значка или смене класса где-то в глубине карты (раньше так каждый раз пересчитывались стили всего документа) */
+body:has(> .modal-wrap:not(.out), > .sheet-wrap:not(.out), > .rl-wrap) :is(#map *, #wxfx, #wxfx *),
+body:has(> .modal-wrap:not(.out), > .sheet-wrap:not(.out), > .rl-wrap) #map *::before, body:has(> .modal-wrap:not(.out), > .sheet-wrap:not(.out), > .rl-wrap) #map *::after,
 body:has(> .modal-wrap:not(.out)) #hud *, body:has(> .modal-wrap:not(.out)) #hud *::before, body:has(> .modal-wrap:not(.out)) #hud *::after { animation-play-state: paused !important; }
 
 /* ================= 4.6.3: плавнее и холоднее — вид тот же ================= */
@@ -2705,8 +2758,8 @@ body:has(> .modal-wrap:not(.out)) #hud *, body:has(> .modal-wrap:not(.out)) #hud
 body.stage :is(#map *, #hud *, #wxfx, #wxfx *, #mapHaze), .stage-under, .stage-under *,
 body.stage :is(#map *, #hud *, #wxfx *)::before, body.stage :is(#map *, #hud *, #wxfx *)::after, .stage-under *::before, .stage-under *::after { animation-play-state: paused !important; }
 body.stage-cover :is(#hud, #wxfx, #mapAttr),
-body.stage-cover:not(.stage-glass) :is(#map, #mapShade, #mapHaze),
-body.stage-cover.eco :is(#map, #mapShade, #mapHaze) { visibility: hidden !important; content-visibility: hidden; }
+body.stage-cover:not(.stage-glass) :is(#map, #mapBg, #mapShade, #mapHaze),
+body.stage-cover.eco :is(#map, #mapBg, #mapShade, #mapHaze) { visibility: hidden !important; content-visibility: hidden; }
 .stage-under.stage-hid { visibility: hidden !important; }
 /* 5.2: под стеклом (экраны меню, Источник, Атлас) — только подложка карты: плитки земли, дома и подписи улиц.
    Значки духов и мест, Ловчий, его круг и зоны духов, всплывающие подписи не рисуются (гаснут под уже проявившимся стеклом,
@@ -2869,11 +2922,28 @@ body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-sh
 /* ================= 4.7: поворот карты и компас ================= */
 /* пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют), повёрнутый вокруг центра экрана */
 /* 4.11: повёрнутая и/или наклонённая карта — слой больше экрана, игрок в точке опоры (см. MapView.layout) */
+/* 5.1.31: наклон и поворот меняются на каждом кадре жеста — это свойства только самого слоя карты (не наследуются): иначе на каждом
+   кадре заново считались бы стили всех плиток, значков и подписей внутри него */
+@property --tilt { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --mrot { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --mw { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --mh { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --py { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --pd { syntax: '<length>'; inherits: false; initial-value: 1100px; }
 #map.rot { inset: auto; left: calc(50% - var(--mw) / 2); top: calc(var(--py) - var(--mh) / 2); width: var(--mw); height: var(--mh); margin: 0;
   transform: perspective(var(--pd, 1100px)) rotateX(var(--tilt, 0deg)) rotate(var(--mrot, 0deg)); }
 /* наклон: значки встают с земли — им нужно общее 3D-пространство с картой (overflow:hidden его бы сплющил) */
 #map.tilt { overflow: visible; transform-style: preserve-3d; }
 #map.tilt .leaflet-map-pane, #map.tilt .leaflet-marker-pane { transform-style: preserve-3d; }
+/* 5.1.31: слои земли лежат в одной плоскости — их порядок браузер решает сортировкой по глубине, и на совпадающей глубине она
+   могла на отдельных кадрах поставить плитки поверх кругов, домов и подписей; на четверть точки выше одна другой — порядок
+   однозначный (сдвиг на экране — меньше полуточки) */
+#map.tilt .leaflet-zone-pane { transform: translateZ(.25px); }
+#map.tilt .leaflet-bld3d-pane { transform: translateZ(.5px); }
+#map.tilt .leaflet-bld-pane { transform: translateZ(.75px); }
+/* 5.1.32: фигура за домом (место, дух, сам Ловчий — MapView.seeThrough) — тусклее, а сам дом — прозрачнее (Bld3D.setFade) */
+:is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift, .mk-player) { transition: opacity .25s; }
+.mk.behind > :is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift), .mk-player-wrap.behind > .mk-player { opacity: .5; }
 /* дымка горизонта: даль растворяется в цвете земли этого часа */
 #mapHaze { position: fixed; left: 0; right: 0; top: 0; height: 30%; z-index: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: linear-gradient(var(--haze, #120b25) 0%, color-mix(in srgb, var(--haze, #120b25) 70%, transparent) 30%, color-mix(in srgb, var(--haze, #120b25) 25%, transparent) 65%, transparent 100%); }
@@ -4100,7 +4170,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .spr2.taken .spr2-loot .loot-item { width: 78px; gap: 3px; font-size: 11.5px; line-height: 1.2; } .spr2.taken .spr2-loot .loot-item .art { width: 48px; height: 48px; }
 .spr2.taken .spring-title { font-size: 22px; }
 .spr2.taken .spr2-head { margin-bottom: 4px; }
-.spr2.taken .loot-task { margin-top: 6px; padding: 8px 12px; font-size: 13px; }
 .spr2-loot .loot-full { width: 100%; margin-top: -6px; font-size: 13px; font-weight: 600; color: #fcd34d; animation: lootIn .4s 1.2s backwards; }
 .spr2-loot .loot-item { animation: sprLoot .7s cubic-bezier(.2, 1.5, .4, 1) calc(.95s + var(--k, 0) * .14s) both; }
 .spr2-loot .loot-item .art { filter: drop-shadow(0 0 10px rgba(94, 234, 212, .6)); }
@@ -4133,7 +4202,6 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .q-screen .q-tabs { margin-bottom: 10px; }
 .q-screen .quest, .q-screen .quest.bonus { background: none; border: 0; border-radius: 0; padding: 7px 2px; margin-bottom: 2px; }
 .q-screen .quest.done > .q-main > b { color: var(--gold2); }
-.q-screen .qd-chest { margin-top: 4px; }
 /* 4.21: закрытое по уровню видно с начала — с замком */
 .mk-rift.locked { filter: grayscale(.85) brightness(.8); opacity: .75; }
 .mk-rift.locked .mk-boss { animation: none; }
@@ -4195,6 +4263,13 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 .rift2-note { margin: 6px 2px 0; font-size: 12.5px; line-height: 1.4; color: rgba(255, 255, 255, .62); text-align: left; }
 .rift2 .dt-row > b { white-space: normal; text-align: right; }
 .rift2 .dt-row > b .art { width: 16px; height: 16px; }
+/* 5.1.29: экран святилища — в композиции Разлома: святилище (или фото места), на нём медальон хранителя (у занятого — в цвете клана) */
+.shrine2-art .rift-portal { opacity: 1; }
+.shrine2-photo { position: absolute; inset: 4% 8% 8% 4%; border-radius: 22px; background: center / cover no-repeat; border: 3px solid var(--gold); box-shadow: 0 0 24px rgba(251, 191, 36, .35); }
+.shrine2-guard { position: absolute; right: 0; bottom: 2%; width: 40%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; border: 3px solid var(--gold); background: #241a45; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
+.shrine2-guard.clan { border-color: var(--cc); box-shadow: 0 0 14px var(--cc); }
+.shrine2-guard > svg, .shrine2-guard > .art { display: block; width: 100%; height: 100%; }
+.shrine2 .holders { margin: 0; }
 /* 4.22.3: Книга Ордена — оглавление разделами, списком без подложек; глава — шапка, вкладки, строки без подложек, соседние главы внизу */
 .bk-gh { margin: 14px 2px 4px; }
 .bk-list { display: flex; flex-direction: column; gap: 2px; }
@@ -4473,15 +4548,32 @@ body:has(> .screen:not(.out)) .upd-bar, body:has(> .modal-wrap:not(.out)) .upd-b
 /* З2: «Слишком быстро» — под второй строкой HUD, не закрывает баффы, неделю и Следопыта */
 /* З3: силуэт незнакомого духа на тёмном стекле — со светлым контуром, иначе его не видно */
 .screen .unknown .art, .modal-wrap .unknown .art { filter: brightness(0) drop-shadow(0 0 1px rgba(226, 232, 240, .9)) drop-shadow(0 0 6px rgba(167, 139, 250, .6)); }
-/* З5: «Выбрать» (режим выбора духов) не уезжает за край ленты стихий — прилипает к правому краю */
-.col-screen .chips .sel-toggle { position: sticky; right: 0; z-index: 1; box-shadow: -12px 0 12px -2px rgba(22, 14, 50, .9); }
-.col-screen .chips .sel-toggle:not(.on) { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .06)), #2a1d5c; }
+/* З5 (5.1.21): «Выбрать» (режим выбора духов) стоит отдельно справа от ленты стихий и ничего не закрывает;
+   стихии ужимаются в кружки и помещаются целиком, а не влезли — лента листается, край тает (.more) */
+.col-screen .col-filter { display: flex; align-items: center; gap: 6px; }
+.col-screen .col-els { flex: 1; min-width: 0; gap: 4px; }
+.col-screen .col-els button { flex: 1 1 0; min-width: 30px; max-width: 46px; height: 32px; padding: 0; }
+.col-screen .col-els button[data-el="all"] { flex: none; max-width: none; padding: 0 9px; }
+.col-screen .col-els.more { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+.col-screen .col-sel { flex: none; overflow: visible; }
+.col-screen .col-sel .sel-toggle { height: 32px; }
+.col-screen .sel-toggle:not(.on) { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .06)), #2a1d5c; }
+/* 5.1.21: сортировки «Редкие» и «Лучшие» — вверху карточки вместо силы камни цвета редкости (1–5) и звёзды оценки Ордена с процентом */
+.card-pw.card-rar i { display: inline-block; vertical-align: middle; width: 7px; height: 7px; margin: 0 2.5px; border-radius: 1.5px; transform: rotate(45deg); background: var(--rc); box-shadow: 0 0 6px var(--rc), inset 0 0 0 1px rgba(255, 255, 255, .35); }
+.card-pw.card-iv { white-space: nowrap; }
+.card-pw.card-iv i { font-style: normal; font-size: 10px; letter-spacing: .5px; color: #fde68a; text-shadow: 0 0 8px rgba(251, 191, 36, .45); }
+.card-pw.card-iv i s { text-decoration: none; opacity: .4; }
+@media (max-width: 380px) {
+  .col-screen .col-els { gap: 3px; }
+  .col-screen .col-els button { min-width: 29px; height: 30px; }
+  .col-screen .col-sel .sel-toggle { height: 30px; padding: 0 7px; font-size: 12px; }
+}
 /* З7: подсказка боя не просвечивает через карточку итога */
 .raid:has(.raid-result) .raid-hint { visibility: hidden; }
 /* З8: закрытые ступени Золотой тропы читаются (было 45% прозрачности) */
 .screen .pass-cell.lock { opacity: .74; filter: saturate(.3); }
 /* З9: без второй подложки: шапка Тропы, неделя Ордена, «Лучшие Ловчие недели», строки Дневника */
-.screen .story-card, .screen .o-top { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 4px 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.screen .story-card { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 4px 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
 .screen .j-row { background: none; border-radius: 0; margin-bottom: 0; padding: 8px 2px; border-bottom: 1px solid rgba(255, 255, 255, .07); }
 /* З10: невысокий экран — верх карточки (дух, Лавка, Лига, профиль) компактнее, вкладкам больше места */
 @media (max-height: 700px) {
@@ -4584,7 +4676,6 @@ body:not(.night) .spr2-tabs button.inv { color: #f5d0fe; }
 .hint-modal .modal-btns .btn { white-space: nowrap; font-size: 14px; padding-left: 12px; padding-right: 12px; }
 body:has(> .screen:not(.out)) #toasts { top: auto; bottom: calc(104px + var(--sb)); }
 /* Д25: самые мелкие подписи — не меньше 11 px */
-.day-limits small { font-size: 11px; }
 .rm-it .tile-lvl { font-size: 11px; }
 body.rm-open #toasts { top: calc(12px + var(--st)); } /* при открытом меню — над значками, а не на верхнем ряду */
 body.rm-open:has(#coach:not(.hidden)) #toasts { top: auto; bottom: calc(112px + var(--sb)); } /* вверху подсказка обучения — всплывашка над кнопкой меню */
@@ -4684,13 +4775,6 @@ body:not(.night) .toast, body:not(.night) .upd-bar, body:not(.night) #coach, bod
 .ala-modal .ala-mstone { display: grid; place-items: center; margin: -2px 0 8px; }
 .ala-modal .ala-ev { margin-top: 10px; }
 .ev-road b { color: var(--road, var(--gold2)); }
-.o-ala { display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0 0; padding: 12px; border-radius: 14px; font: inherit; color: inherit; text-align: left; cursor: pointer;
-  border: 1px solid rgba(253, 230, 138, .35); background: linear-gradient(135deg, rgba(253, 230, 138, .14), rgba(255, 255, 255, .04)); }
-.o-ala-ico, .o-ala-ico > .art { width: 42px; height: 42px; flex: none; }
-.o-ala-t { flex: 1; min-width: 0; }
-.o-ala-t b, .o-ala-t small { display: block; }
-.o-ala-t small { color: rgba(255, 255, 255, .7); }
-.o-ala-go { font-size: 24px; opacity: .6; }
 .bk-ala { display: flex !important; flex-direction: row !important; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 12px; }
 .bk-ala .art { width: 30px; height: 30px; flex: none; margin: 0 !important; }
 
@@ -5312,7 +5396,7 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .spr2-after:empty { display: none; }
 .spr2-after > * { animation: lootIn .45s 1.4s backwards; }
 .spr2-after .loot-full { font-size: 13px; font-weight: 600; color: #fcd34d; }
-.spr2-after .loot-task { margin: 0; padding: 8px 12px; font-size: 13px; }
+.spr2-after .loot-task { margin: 0; }
 /* «В сумку»: слетаются к кнопке */
 .spr2.stow .spr2-well .spr2-loot .loot-item, .spr2.stow .spr2-well .spr2-loot .loot-xp { animation: srcStow .45s cubic-bezier(.55, 0, .75, .35) calc(var(--k, 0) * .06s) both; }
 @keyframes srcStow { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(var(--bx, 0), var(--by, 0)) scale(.2); } }
@@ -5371,7 +5455,7 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .spr2-reward .spr2-loot.fly .loot-xp { animation: srcXp .5s cubic-bezier(.2, 1.5, .4, 1) 1.05s both; }
 .spr2-reward .spr2-after { grid-row: 3; align-self: start; width: min(100%, 380px); margin: 0; }
 .spr2-reward .spr2-after .loot-full { text-align: center; text-shadow: 0 1px 3px rgba(8, 4, 24, .9); }
-.spr2-reward .spr2-after .loot-task { background: rgba(40, 24, 8, .72); }
+.spr2-reward .spr2-after .loot-task { text-shadow: 0 1px 3px rgba(8, 4, 24, .9); }
 .spr2.taken .spr2-head { opacity: .25; transition: opacity .5s ease; }
 @media (max-height: 760px) { .spr2.taken .spr2-head { opacity: 0; } } /* на низком экране сетка доходит до названия */
 .spr2.taken .spr2-well { opacity: .4; transition: opacity .6s ease .2s; }
@@ -5478,44 +5562,56 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes tutNudgeCalm { 0% { box-shadow: 0 0 0 3px rgba(253, 224, 71, .9), 0 10px 30px rgba(0, 0, 0, .5); } 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, .5); } }
 
 /* ---------- 5.1.15: Кампания ---------- */
-/* шаг Кампании на карте: мелкий текст прямо на карте, без подложки и рамок. 5.1.17: всегда на одном месте — под стрелкой
-   Следопыта (#tracker: left 12px, top 96px + зона выреза, высота до ~56px с подписью в две строки), есть она или нет */
-#hud .camp-line { position: absolute; left: 12px; top: calc(146px + var(--st)); display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  margin: 0; padding: 0; max-width: calc(100vw - 150px);
-  background: none; border: 0; box-shadow: none; border-radius: 0; pointer-events: auto; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
-  font-family: var(--f-head); font-size: 10.5px; font-weight: 600; line-height: 1.28; color: rgba(255, 255, 255, .86);
+/* шаг Кампании на карте. 5.1.17: всегда на одном месте — под стрелкой Следопыта (#tracker: left 12px, top 96px + зона выреза,
+   высота до ~56px с подписью в две строки), есть она или нет. 5.1.24: как остальной главный экран — прямо на карте, без подложки
+   и рамок, текст с тенью; шапка — золотая звезда в круге, цели строками: значок в фиолетовом круге (как кружки «Атласа мира» и
+   события), название и счётчик под ним, справа галочка (сделано) или стрелка */
+#hud .camp-line { position: absolute; left: 12px; top: calc(146px + var(--st)); display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+  margin: 0; padding: 0; width: max-content; max-width: min(280px, calc(100vw - 150px));
+  background: none; border: 0; box-shadow: none; border-radius: 0;
+  pointer-events: auto; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent;
+  font-family: var(--f-head); font-size: 12px; font-weight: 600; line-height: 1.22; color: #fff;
   text-shadow: 0 1px 3px rgba(8, 4, 24, .95), 0 0 8px rgba(8, 4, 24, .7); }
+#hud .camp-line:active { transform: scale(.98); }
 #hud .camp-line.hidden { display: none; }
-#hud .camp-line b { font-weight: 700; font-size: 13px; color: var(--gold2); margin-bottom: 1px; }
-#hud .camp-line span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-#hud .camp-line i { font-style: normal; color: #99f6e4; margin-left: 6px; } /* 5.1.18: счётчик — с отступом от названия цели */
-#hud .camp-line .cl-ok { color: rgba(255, 255, 255, .55); }
-#hud .camp-line .cl-ok i { color: rgba(153, 246, 228, .6); }
-#hud .camp-line .cl-go { color: #86efac; }
+#hud .camp-line .ico { width: 13px; height: 13px; }
+#hud .camp-line .cl-head { display: flex; align-items: center; gap: 7px; margin-bottom: 1px; }
+#hud .camp-line .cl-badge { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #3b1a02;
+  background: radial-gradient(circle at 35% 30%, #fff1b3, #f5b041 62%, #b7791f); box-shadow: 0 1px 4px rgba(8, 4, 24, .6), 0 0 8px rgba(251, 191, 36, .45); }
+#hud .camp-line .cl-head b { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--gold2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud .camp-line .cl-chev, #hud .camp-line .cl-end { flex: none; display: grid; place-items: center; color: rgba(255, 255, 255, .75); filter: drop-shadow(0 1px 2px rgba(8, 4, 24, .9)); }
+#hud .camp-line .cl-chev { color: var(--gold2); }
+#hud .camp-line .cl-row { display: flex; align-items: center; gap: 8px; }
+#hud .camp-line .cl-ico { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #efe9ff;
+  background: radial-gradient(circle at 35% 30%, #8b5cf6, #5b21b6 70%, #3b0f78); box-shadow: inset 0 0 0 1px rgba(196, 181, 253, .45), 0 1px 4px rgba(8, 4, 24, .6); }
+#hud .camp-line .cl-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#hud .camp-line .cl-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hud .camp-line i { font-style: normal; font-size: 11px; color: #99f6e4; } /* счётчик — под названием цели */
+#hud .camp-line .cl-ok .cl-t { color: rgba(255, 255, 255, .62); }
+#hud .camp-line .cl-ok i, #hud .camp-line .cl-ok .cl-end { color: #4ade80; }
+/* целей больше трёх (4-я строка — пятый ребёнок после шапки) — плотнее: счётчик справа в строке, значки меньше */
+#hud .camp-line:has(> .cl-row:nth-child(5)) .cl-txt { flex-direction: row; align-items: baseline; gap: 8px; }
+#hud .camp-line:has(> .cl-row:nth-child(5)) .cl-txt i { margin-left: auto; }
+#hud .camp-line:has(> .cl-row:nth-child(5)) .cl-ico { width: 20px; height: 20px; }
+#hud .camp-line .cl-go .cl-t { color: #86efac; white-space: normal; }
+#hud .camp-line .cl-go .cl-ico { color: #052e16; background: radial-gradient(circle at 35% 30%, #bbf7d0, #22c55e 70%, #14532d); box-shadow: 0 0 8px rgba(74, 222, 128, .45); }
 /* вкладка «Кампания» в «Заданиях» */
 .cp-head { display: block; }
 .cp-head .row-main b { font-size: 16px; }
 .cp-head .pbar { margin: 8px 0 0; }
 .cp-step { align-items: stretch; }
 .cp-step .cp-name { font-size: 16px; margin-bottom: 8px; color: var(--gold2); }
-.cp-obj { margin: 6px 0 8px; }
-.cp-obj .cp-ot { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13.5px; }
-.cp-obj .cp-ot b { display: inline; margin: 0; font-size: 13px; color: var(--muted); white-space: nowrap; }
-.cp-obj.done .cp-ot span { color: var(--muted); }
-.cp-obj.done .cp-ot b { color: var(--good); }
-.cp-obj .pbar { margin: 5px 0 0; height: 6px; }
+/* 5.1.27: цель — название, под ним полоска со счётчиком, как у заданий дня; сделано — полная, с зелёной галочкой */
+.cp-obj { margin: 6px 0 10px; }
+.cp-obj .cp-on { display: block; font-size: 13.5px; }
+.cp-obj.done .cp-on { color: var(--muted); }
+.cp-obj .qd-bar { margin: 5px 0 0; }
+.cp-obj .cp-ok { flex: none; margin: 0; color: var(--good); font-size: 15px; line-height: 1; }
+.cp-obj.done .qd-bar span { color: var(--good); }
 .cp-gift { display: block; margin: 4px 0 6px; color: #86efac; font-size: 12px; }
 .cp-rift { margin: 6px 0 2px; }
 .cp-rwh { display: block; margin: 10px 0 6px; color: var(--muted); font-size: 12px; }
 .cp-claim { margin: -2px 0 10px; }
-.cp-list { display: flex; flex-direction: column; gap: 6px; }
-.cp-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.cp-row i { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; font-style: normal; font-size: 12px; font-weight: 700; background: rgba(255, 255, 255, .08); color: var(--muted); }
-.cp-row.done i { background: rgba(74, 222, 128, .18); color: var(--good); }
-.cp-row.done span { color: var(--muted); }
-.cp-row.cur i { background: var(--gold2); color: #3b1a02; }
-.cp-row.cur span { font-weight: 700; }
-.cp-row.lock { opacity: .55; }
 /* выбор духа — награда шага */
 .cp-modal .cp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .cp-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); color: inherit; font: inherit; cursor: pointer; text-align: center; }
@@ -5547,3 +5643,28 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes ohGlow { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
 @keyframes ohBurst { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(1.25); opacity: .75; } }
 .calm .onb-hatch .oh-coc, .calm .onb-hatch .oh-glow { animation: none !important; }
+
+/* ===== 5.1.33: окна итога (пойман, победа, новый уровень, превращение, кокон, награда, подарок, обучение пройдено…) — во весь
+   экран, без подложки, на полупрозрачном матовом стекле (как окна игры); вместо кнопки — «Коснись, чтобы продолжить» внизу экрана:
+   касание в любом месте — дальше (UI.tapGo). Свои действия окна («Поставить защитника», «Спасти духа», «Ещё бой», «Алатырь») —
+   по-прежнему кнопками ===== */
+.tap-go { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:is(.enc-result, .raid-result, .tut-final).tap-go {
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(24, 14, 56, .36);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+  --muted: #e4dcf7; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25); }
+:is(.enc-result, .raid-result, .modal-wrap).tap-go { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+.tap-go > .res-card { max-width: 400px; padding: 0 6px; background: none; border-color: transparent; outline: none; box-shadow: none; }
+.tap-go > .res-card .res-art { width: 190px; height: 190px; }
+.tap-go > .res-card .res-rw { margin-bottom: 4px; }
+.tap-go > .res-card .btn { margin-top: 10px; }
+/* свечение превращения и кокона выходит за окно — без полос прокрутки на стекле */
+.modal-wrap.tap-go .modal, .modal:is(.evo-modal, .hatch-modal) { overflow-x: hidden; scrollbar-width: none; }
+:is(.modal-wrap.tap-go .modal, .modal.evo-modal, .modal.hatch-modal)::-webkit-scrollbar { display: none; }
+.tap-hint { position: absolute; left: 16px; right: 16px; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); z-index: 2; pointer-events: none; text-align: center;
+  font: 600 15px/1.3 var(--f-head); letter-spacing: .06em; color: #fff8e6; text-shadow: 0 1px 3px rgba(12, 6, 32, .85), 0 0 12px rgba(12, 6, 32, .45);
+  opacity: 0; animation: tapIn .35s ease-out .6s forwards, tapPulse 1.8s ease-in-out .95s infinite; }
+@keyframes tapIn { to { opacity: .95; } }
+@keyframes tapPulse { 50% { opacity: .5; } }
+.calm .tap-hint { animation: tapIn .35s ease-out .6s forwards; }
+.eco :is(.enc-result, .raid-result, .tut-final).tap-go { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(12, 7, 30, .82); }
