@@ -158,35 +158,39 @@ const Realms = {
     chip.onclick = () => { Sfx.init(); Sfx.play('tap'); this.open(redraw); };
   },
 
+  /* 5.1.35: сервер — плиткой жидкого стекла, как вкладки игры (.seg.dt-tabs): герб, название и метки, край и пояс, ниже мелко —
+     о сервере, твой Ловчий, заполненность, отклик, Ловчие; выбранный — светлая линза с золотой чертой снизу, как выбранная вкладка */
   card(r, sel, i = 0) {
     const L = r.real ? { c: this.COLOR[this.live.st], k: 'free' } : this.load(r), bars = r.real ? 0 : this.bars(r.ping), me = this.hero(r), fr = r.real ? 0 : this.friends(r);
     const tags = (r.tags || []).map(t => t === 'rec' ? `<span class="rl-tag rec">✦ ${ru`Рекомендуем`}</span>` : t === 'new' ? `<span class="rl-tag new">${ru`Новый`}</span>` : '').join('') +
       (L.k === 'full' ? `<span class="rl-tag full">${ru`Заполнен`}</span>` : '');
     const seg = Array.from({ length: 5 }, (_, i) => `<i class="${i < Math.ceil(r.load * 5) ? 'on' : ''}"></i>`).join('');
-    return `<button class="rl-card ${sel ? 'on' : ''} ${L.k === 'full' && !me ? 'closed' : ''}" data-id="${r.id}" style="--rc:${r.color};--lc:${L.c};animation-delay:${i * 0.045}s" role="radio" aria-checked="${sel}">
-      <div class="rl-top">${this.crest(r)}
-        <div class="rl-head"><b>${U.esc(r.name)}</b><small>${U.esc(r.region)} · ${r.tz}</small>${tags ? `<div class="rl-tags">${tags}</div>` : ''}</div>
-        <span class="rl-radio" aria-hidden="true"></span></div>
-      <p class="rl-about">${U.esc(r.about)}</p>
-      ${me ? `<div class="rl-me"><span class="rl-ava">${Art.avatar ? Art.avatar(S.d.look) : ''}</span><span>${ru`Твой Ловчий: <b>${U.esc(me.name)}</b> · ${me.lvl} ур.`}</span></div>` : ''}
-      <div class="rl-stats">${r.real ? `<span class="srv-live" data-srv style="--c:${L.c}"><i class="rc-dot srv-dot"></i><span class="srv-t">${this.stateText(this.live.st)}</span>${this.sig()}<em class="srv-ms"></em></span></div></button>` : `
-        <span class="rl-load" title="${ru`Заполненность`}"><span class="rl-seg">${seg}</span><em>${L.t}</em></span>
-        <span class="rl-ping" title="${ru`Отклик`}"><span class="rl-sig">${[1, 2, 3, 4].map(i => `<i class="${i <= bars ? 'on' : ''}" style="height:${3 + i * 3}px"></i>`).join('')}</span>${ru`${r.ping} мс`}</span>
-        <span class="rl-online">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>
-      </div></button>`}`;
+    const stats = r.real ? `<span class="srv-live" data-srv style="--c:${L.c}"><i class="rc-dot srv-dot"></i><span class="srv-t">${this.stateText(this.live.st)}</span>${this.sig()}<em class="srv-ms"></em></span>` : `
+          <span class="rl-load" title="${ru`Заполненность`}"><span class="rl-seg">${seg}</span><em>${L.t}</em></span>
+          <span class="rl-ping" title="${ru`Отклик`}"><span class="rl-sig">${[1, 2, 3, 4].map(i => `<i class="${i <= bars ? 'on' : ''}" style="height:${3 + i * 3}px"></i>`).join('')}</span>${ru`${r.ping} мс`}</span>
+          <span class="rl-online">${ru`${this.fmtOnline(r.online)} Ловчих`}${fr ? ` · <b>${ru`${fr} ${U.plural(fr, ru`друг`, ru`друга`, ru`друзей`)}`}</b>` : ''}</span>`;
+    return `<button class="rl-card ${sel ? 'on' : ''} ${L.k === 'full' && !me ? 'closed' : ''}" data-id="${r.id}" style="--rc:${r.color};--lc:${L.c};animation-delay:${i * 0.04}s" role="radio" aria-checked="${sel}">
+      <span class="rl-ic">${this.crest(r, 46)}</span>
+      <span class="row-main"><b>${U.esc(r.name)}${tags}</b><small>${U.esc(r.region)} · ${r.tz}</small>
+        <span class="rl-about">${U.esc(r.about)}</span>
+        ${me ? `<span class="rl-me"><span class="rl-ava">${Art.avatar ? Art.avatar(S.d.look) : ''}</span><span>${ru`Твой Ловчий: <b>${U.esc(me.name)}</b> · ${me.lvl} ур.`}</span></span>` : ''}
+        <span class="rl-stats">${stats}</span></span></button>`;
   },
 
   // шторка выбора сервера
+  // 5.1.35: выбор сервера — во весь экран на полупрозрачном матовом стекле, без подложки, как вкладки игры (UI.screen):
+  // заголовок с кнопкой «назад», переключатель, сервера — строками-плитками списка, внизу — «Остаться здесь» / «Перейти в …»
   open(onPick) {
     let sel = this.current().id, filter = 'all';
-    const wrap = U.el(`<div class="rl-wrap" role="dialog" aria-label="${ru`Выбор сервера`}"><div class="rl-sheet">
-      <div class="rl-grip"></div>
-      <div class="rl-title"><h3>${ru`Выбор сервера`}</h3><button class="rl-x" aria-label="${ru`Закрыть`}">${UI.I.close}</button></div>
-      <p class="rl-sub">${ru`Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.`}</p>
-      <div class="seg rl-filter"><button data-f="all" class="on">${ru`Все`}</button><button data-f="rec">${ru`Советуем`}</button><button data-f="mine">${ru`Мои`}</button><button data-f="near">${ru`Ближе`}</button></div>
-      <div class="rl-list" role="radiogroup"></div>
+    const wrap = U.el(`<div class="rl-wrap" role="dialog" aria-label="${ru`Выбор сервера`}">
+      <div class="screen-head"><button class="btn-round back rl-x" aria-label="${ru`Закрыть`}">${UI.I.back}</button><h2>${ru`Выбор сервера`}</h2></div>
+      <div class="rl-body">
+        <p class="rl-sub">${ru`Каждый сервер — своё княжество Нави: свои Ловчие, Лига и Ордена. Прогресс на каждом сервере свой.`}</p>
+        <div class="seg dt-tabs rl-filter"><button data-f="all" class="on">${ru`Все`}</button><button data-f="rec">${ru`Советуем`}</button><button data-f="mine">${ru`Мои`}</button><button data-f="near">${ru`Ближе`}</button></div>
+        <div class="rl-list" role="radiogroup"></div>
+      </div>
       <div class="rl-foot"></div>
-    </div></div>`);
+    </div>`);
     const list = wrap.querySelector('.rl-list'), foot = wrap.querySelector('.rl-foot');
     const render = () => {
       let rs = this.list().slice();
@@ -201,7 +205,7 @@ const Realms = {
     };
     const close = () => { if (!wrap.isConnected) return; UI.popLayer(close); wrap.classList.add('out'); setTimeout(() => wrap.remove(), 220); };
     wrap.onclick = e => {
-      if (e.target === wrap || e.target.closest('.rl-x')) return close();
+      if (e.target.closest('.rl-x')) { Sfx.play && Sfx.play('tap'); return close(); }
       const f = e.target.closest('.rl-filter button');
       if (f) { filter = f.dataset.f; wrap.querySelectorAll('.rl-filter button').forEach(x => x.classList.toggle('on', x === f)); render(); return; }
       const c = e.target.closest('.rl-card');

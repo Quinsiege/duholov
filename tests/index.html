@@ -3202,6 +3202,31 @@
       eq(done, 1, 'касание — в игру:');
     } finally { Game.on = keep.on; S.d = keep.d; Realms.watch = keep.watch; Login.askSignOut = keep.out; Sfx.play = keep.sfx; UI.TAP_MS = keep.ms; if (root) root.remove(); }
   });
+  atest('5.1.35: выбор сервера — во весь экран на матовом стекле, без подложки; сервера — плитками, как вкладки игры', async () => {
+    const keep = { on: Realms.on, probe: Realms.probe, sfx: Sfx.play };
+    let wrap = null;
+    try {
+      Realms.on = true; Realms.probe = async () => {}; Sfx.play = () => {}; // образец списка серверов, без замера отклика
+      let picked = null;
+      Realms.open(r => { picked = r; });
+      wrap = [...document.querySelectorAll('.rl-wrap')].pop();
+      ok(wrap && !wrap.querySelector('.rl-sheet, .rl-grip'), 'во весь экран, без шторки-подложки');
+      ok(wrap.querySelector('.screen-head .btn-round.back.rl-x') && /Выбор сервера/.test(wrap.querySelector('.screen-head h2').textContent), 'заголовок как у вкладок игры: «назад» и название');
+      ok(wrap.querySelector('.rl-body .seg.dt-tabs.rl-filter'), 'переключатель — как вкладки игры');
+      const cards = [...wrap.querySelectorAll('.rl-list .rl-card')];
+      eq(cards.length, Realms.list().length, 'все сервера — плитками:');
+      eq(cards.filter(c => c.classList.contains('on')).length, 1, 'выбран один:');
+      ok(!wrap.querySelector('.rl-radio'), 'без кружков-отметок: выбранный — светлой линзой, как вкладка');
+      const other = cards.find(c => !c.classList.contains('on') && !c.classList.contains('closed'));
+      other.click();
+      ok(wrap.querySelector(`.rl-card[data-id="${other.dataset.id}"]`).classList.contains('on'), 'касание плитки — выбор');
+      ok(/Перейти в/.test(wrap.querySelector('.rl-go').textContent), 'внизу — «Перейти в …»');
+      wrap.querySelector('.rl-body').click(); wrap.click();
+      ok(wrap.isConnected, 'касание мимо плиток не закрывает');
+      wrap.querySelector('.rl-x').click(); await U.wait(260);
+      ok(!wrap.isConnected, '«назад» — закрыть'); eq(picked, null, 'без «Перейти» сервер не меняется:');
+    } finally { Realms.on = keep.on; Realms.probe = keep.probe; Sfx.play = keep.sfx; if (wrap) wrap.remove(); }
+  });
   atest('5.1.27: выбранный в Кампании дух — сценой, а не всплывашкой', async () => {
     const sp = S.makeSpirit('ugolek', 5, 'got-test', { ivMin: 10 });
     UI.gotSpiritAnim(sp, { isNew: true, ess: 30 });
