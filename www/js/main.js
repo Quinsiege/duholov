@@ -13,7 +13,7 @@ window.addEventListener('load', () => {
   Walk.load(); // 5.1.1: место Ловчего — когда все скрипты уже загружены
   if (Move.moving) return; // 4.1: старый адрес — браузер уже уходит на duholov.ru
   Metrics.init(); // 5.1.22: своя аналитика — сессия и запуск (игроку не видна, сбои — молча)
-  if (typeof L === 'undefined') {
+  if (typeof L === 'undefined' || typeof maplibregl === 'undefined') { // 5.1.40: главная карта — MapLibre, Атлас — Leaflet
     const bl = document.getElementById('bootLoader'); if (bl) bl.remove(); // экран загрузки из index.html не должен закрыть ошибку
     const f = U.el(`<div class="fatal"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class="btn primary">${ru`Повторить`}</button></div>`);
     f.querySelector("button").onclick = () => location.reload();

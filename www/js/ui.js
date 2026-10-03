@@ -308,7 +308,7 @@ const UI = {
   // ползунках, лентах с прокруткой вбок и карте.
   noSwipe(t) {
     for (let p = t; p && p !== document.body; p = p.parentElement) {
-      if (p.matches && p.matches('input, textarea, select, .chips, .leaflet-container, .menu-pages, [data-noswipe]')) return true;
+      if (p.matches && p.matches('input, textarea, select, .chips, .leaflet-container, .maplibregl-map, .menu-pages, [data-noswipe]')) return true;
       if (p.matches && p.matches('.screen-body, .modal-body')) continue; // вертикальная прокрутка экрана — не лента вбок
       const o = getComputedStyle(p).overflowX;
       if ((o === 'auto' || o === 'scroll') && p.scrollWidth > p.clientWidth + 2) return true;

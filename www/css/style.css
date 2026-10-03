@@ -55,6 +55,14 @@ small, .small { color: var(--muted); font-size: 12px; }
 /* ---------- карта ---------- */
 /* 5.1.30: карта — в стандартном стиле (Protomaps: днём светлом, ночью тёмном), без своих цветов и фильтров; фон — цвет её земли */
 #map { position: fixed; inset: 0; background: transparent; z-index: 0; touch-action: none; } /* палец ведёт камеру (MapView.initOrbit), а не страницу */
+/* 5.1.40: карта — MapLibre GL; значок: .mk-box (ставит MapLibre) → .mk-sc (размер фигуры и подъём на крышу — MapView.place) → сам значок */
+#map .maplibregl-canvas { outline: none; }
+.mk-box { width: 0; height: 0; }
+.mk-sc { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+#map .maplibregl-ctrl-bottom-right { bottom: var(--sb); }
+#map .maplibregl-ctrl-attrib { font-size: 9px; background: rgba(18, 12, 36, .55); color: #cfc8e6; }
+#map .maplibregl-ctrl-attrib a { color: #e9e3ff; }
+#map .maplibregl-ctrl-attrib.maplibregl-compact { min-height: 20px; }
 /* 5.1.31: земля палитры карты (MapView.PALETTE) под ещё не нарисованными плитками — отдельным неподвижным слоем позади карты, а не
    фоном самой наклонённой карты: фон корня 3D-пространства лежит в одной плоскости с плитками, и при сильном наклоне (его край уходит
    за камеру) браузер на отдельных кадрах ставил его поверх плиток — карта под ногами пропадала (z-fighting) */

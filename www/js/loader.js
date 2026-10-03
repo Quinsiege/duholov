@@ -117,11 +117,10 @@ const Loader = {
     return new Promise(res => {
       const t0 = Date.now();
       const tick = () => {
-        const tl = MapView.tiles, tiles = tl && tl._tiles ? Object.values(tl._tiles) : [];
-        const frac = tiles.length ? tiles.filter(t => t.loaded).length / tiles.length : 0;
-        const waited = Date.now() - t0;
-        this.set(72 + frac * 26, ru`Загружаю карту…`); // 5.1: место Ловчего известно сразу (walk.js) — ждём только подложку
-        if ((tiles.length && frac >= 1) || waited > 15000) { res(); return; }
+        // 5.1.40: карта MapLibre готова — стиль и плитки на экране загружены (loaded); карты нет (без WebGL) — не ждём
+        const m = MapView.map, done = !m || m.loaded(), waited = Date.now() - t0;
+        this.set(72 + (done ? 26 : Math.min(24, waited / 500)), ru`Загружаю карту…`); // 5.1: место Ловчего известно сразу (walk.js) — ждём только подложку
+        if (done || waited > 15000) { res(); return; }
         setTimeout(tick, 200);
       };
       tick();

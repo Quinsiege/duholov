@@ -272,7 +272,7 @@ const M3D = {
   /* 5.1.32: фигура у камеры крупнее (MapView.figScale — до FIG_MAX раз): холсту модели — больше точек, чтобы крупная модель
      не расплывалась (и меньше, когда снова мелкая; с запасом — без перескоков туда-обратно). true — холст новый: рисовать сразу */
   sharp(v) {
-    const ic = v.ic || (v.ic = v.c.closest('.leaflet-marker-icon'));
+    const ic = v.ic || (v.ic = v.c.closest('.maplibregl-marker'));
     const S = ic && typeof MapView !== 'undefined' && MapView.tilt ? (ic._g || 1) * (ic._f || 1) : 1, r = v.res || 1;
     const up = S > 1.75 ? 2 : S > 1.2 ? 1.5 : 1, down = S < 1.05 ? 1 : S < 1.55 ? 1.5 : 2, want = up > r ? up : down < r ? down : r;
     if (want === r) return false;

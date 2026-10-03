@@ -3928,7 +3928,7 @@
     try {
       Stage.init(box); Stage.RESUME_MS = 10; Stage.fns = [];
       Stage.on(b => { if (!b) MapView.wake(); });
-      MapView.map = { invalidateSize: () => calls.push('size') }; MapView._miss = 0;
+      MapView.map = { resize: () => calls.push('size') }; MapView._miss = 0;
       const enc = document.createElement('div'); enc.className = 'enc'; box.appendChild(enc);
       ok(Stage.busy && !Stage.idle(), 'поимка открыта — карта не работает');
       MapView.refresh(); MapView.refresh(true); MapView.refresh();
@@ -4642,7 +4642,7 @@
     for (const t of tags) eq(t.sri, await sha(t.path), t.path + ':');
     eq(Cloud.LIB_SRI, await sha('vendor/supabase.min.js'), 'cloud.js LIB_SRI:');
     const pre = p => tags.find(t => t.path === p && t.tag.includes('rel="preload"'));
-    ['css/style.css', 'vendor/leaflet/leaflet.min.css', 'vendor/leaflet/leaflet.min.js', 'vendor/protomaps/protomaps-leaflet.min.js', 'js/version.js', 'js/i18n.js', 'vendor/supabase.min.js']
+    ['css/style.css', 'vendor/maplibre/maplibre-gl.css', 'vendor/maplibre/maplibre-gl-csp.js', 'vendor/maplibre/pmtiles.js', 'vendor/maplibre/basemaps.js', 'vendor/leaflet/leaflet.min.css', 'vendor/leaflet/leaflet.min.js', 'vendor/protomaps/protomaps-leaflet.min.js', 'js/version.js', 'js/i18n.js', 'vendor/supabase.min.js']
       .forEach(p => ok(html.includes(`<link rel="preload" href="${p}`), 'нет предзагрузки ' + p));
     ok(pre('vendor/supabase.min.js').tag.includes('crossorigin="anonymous"'), 'библиотека облака: crossorigin="anonymous", как у тега из cloud.js');
     if (html.includes('<script src="js/app.min.js')) ok(html.includes('<link rel="preload" href="js/app.min.js'), 'сборка: предзагрузка app.min.js');
