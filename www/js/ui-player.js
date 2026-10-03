@@ -572,6 +572,7 @@ Object.assign(UI, {
         <div class="row set-row gfx-row"><span class="set-ico">${this.I.battery}</span><div class="row-main"><b>${ru`Частота кадров`}</b>
           <small>${ru`Кадров в секунду. Меньше — телефон меньше греется и дольше держит заряд.`}</small>
           <div class="seg gfx-fps">${Gfx.FPS.map(f => `<button data-fps="${f}" class="${+s.fps === f ? 'on' : ''}">${f}</button>`).join('')}</div></div></div>
+        ${row('cool', 'battery', ru`Охлаждение`, ru`Чтобы телефон не грелся выше ${Heat.MAX}°, игра сама снижает частоту кадров и разрешение — вплоть до ${Heat.LOW}p, а когда он остынет, возвращает.` + `<span class="heat-now">${Heat.line()}</span>`)}
       </div>
       <div class="list install-list">
         <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное приложение`}</small></div><span class="set-chev">›</span></button>
@@ -600,7 +601,8 @@ Object.assign(UI, {
       s[k] = e.target.checked; Cfg.save();
       if (k === 'sound' && s.sound) { Sfx.init(); Sfx.play('tap'); }
       if (k === 'music') { Sfx.init(); Music.apply(); }
-      if (k === 'eco') document.body.classList.toggle('eco', s.eco);
+      if (k === 'eco') document.body.classList.toggle('eco', Gfx.eco());
+      if (k === 'cool') Heat.toggle(); // 5.1.40
       if (k === 'bigText' || k === 'calm') this.applyA11y();
       if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
       if (k === 'awake') Awake.apply();
@@ -619,6 +621,9 @@ Object.assign(UI, {
       Sfx.play('tap'); s.fps = +b.dataset.fps; Cfg.save();
       U.$$('[data-fps]', scr).forEach(x => x.classList.toggle('on', x === b));
     });
+    // 5.1.40: охлаждение — температура и ступень, пока открыты настройки
+    const heatNow = () => { const el = scr.querySelector('.heat-now'); if (!el || !scr.isConnected) { clearInterval(heatIv); return; } Heat.read(); el.textContent = Heat.line(); };
+    const heatIv = setInterval(heatNow, 2000);
     // 5.1: джойстик слева или справа
     scr.querySelector('.joy-side').addEventListener('click', e => {
       const b = e.target.closest('[data-side]'); if (!b) return;

@@ -110,6 +110,8 @@
 
   // Игра в памяти: ничего не пишем в localStorage
   S.save = () => {};
+  // 5.1.40: охлаждение (Heat) в тестах выключено — «давление» процессора под нагрузкой прогона меняло бы разрешение и кадры
+  Cfg.s.cool = false;
   Bus.emit = () => {};
   UI.toast = () => {};
   Friends.sync = () => {}; // без обращений к серверу
@@ -3580,6 +3582,43 @@
       ok(avg >= 28, `30 к/с — в среднем ${avg.toFixed(1)} мс между кадрами`);
       let ran = 0; const id = requestAnimationFrame(() => { ran++; }); cancelAnimationFrame(id); await U.wait(120); eq(ran, 0, 'отменённый кадр не приходит:');
     } finally { Gfx.short = keep.short; Gfx.nat = keep.nat; Cfg.s.res = keep.res; Cfg.s.fps = keep.fps; }
+  });
+  test('5.1.40: охлаждение — с 39° ступенями ниже кадры и разрешение (до 360p), остыл — назад; без датчиков — ничего', () => {
+    const H = ['level', 'at', 't', 's', 'h', 'p', '_d'], keepH = Object.fromEntries(H.map(k => [k, Heat[k]]));
+    const keep = { cool: Cfg.s.cool, res: Cfg.s.res, fps: Cfg.s.fps, eco: Cfg.s.eco, short: Gfx.short, nat: Gfx.nat, apply: Gfx.apply, N: window.DuholovNative, toast: UI.toast, ecoCls: document.body.classList.contains('eco') };
+    let applied = 0, toasts = 0, temp = 41, st = 1, now = 1e12;
+    const busyD = Object.getOwnPropertyDescriptor(Stage, 'busy'); Object.defineProperty(Stage, 'busy', { get: () => false, configurable: true }); // сцен нет — разрешение сразу
+    try {
+      Gfx.short = () => 393; Gfx.nat = () => 2.75; Gfx.apply = () => { applied++; Heat._d = Gfx.dpr(); }; UI.toast = () => { toasts++; };
+      Cfg.s.cool = true; Cfg.s.res = 'auto'; Cfg.s.fps = 60; Cfg.s.eco = false;
+      Object.assign(Heat, { level: 0, at: 0, t: null, s: -1, h: NaN, p: '' }); Heat._d = Gfx.dpr();
+      window.DuholovNative = { thermal: () => JSON.stringify({ t: temp, s: st }) };
+      const tick = dt => { now += dt; Heat.tick(now); return Heat.level; };
+      eq(tick(0), 1, '41° — первая ступень сразу:'); eq(Gfx.fps(), 40); eq(applied, 0, 'у экрана 1080p потолок 1080p — карта не перерисовывается:'); eq(toasts, 1, 'игроку сказали:');
+      eq(tick(10000), 1, 'в сильный нагрев — следующая ступень не раньше чем через 30 с:');
+      eq(tick(30000), 2); eq(Gfx.fps(), 30); near(Gfx.dpr(), 720 / 393, 1e-9, '720p'); eq(applied, 1); ok(!Gfx.eco());
+      eq(tick(30000), 3); near(Gfx.dpr(), 540 / 393, 1e-9, '540p — ниже 720p'); ok(Gfx.eco() && document.body.classList.contains('eco'), 'с 3-й ступени — экономия батареи');
+      eq(Heat.line(), 'Сейчас 41° · снижено до 540p и 30 к/с');
+      tick(30000); eq(tick(30000), 5); near(Gfx.dpr(), 360 / 393, 1e-9, '360p'); eq(Gfx.fps(), 20); near(Gfx.px(1000), 1000 * (360 / 1080) ** 2, 1, 'и у домов — меньше точек');
+      eq(tick(60000), 5, 'ниже пятой ступени — нет:'); eq(toasts, 1, 'и сказали один раз:');
+      temp = 38; eq(tick(600000), 5, '38° — ни туда ни сюда:');
+      temp = 36; st = 0; eq(tick(180000), 4, 'остыл — назад по ступени'); eq(tick(60000), 4, 'не чаще раза в 3 минуты:');
+      tick(180000); tick(180000); tick(180000); eq(tick(180000), 0, 'вернулось всё:');
+      eq(Gfx.fps(), 60); eq(Gfx.dpr(), 2.75); ok(!Gfx.eco() && !document.body.classList.contains('eco'), 'экономия выключилась');
+      eq(Heat.line(), 'Сейчас 36° · графика как в настройках');
+      temp = 34; st = 2; eq(tick(60000), 1, 'оценка Android «умеренный нагрев» — тоже горячо:');
+      Cfg.s.fps = 30; eq(Gfx.fps(), 30, 'своя настройка ниже ступени — своя:'); Cfg.s.fps = 60;
+      Cfg.s.cool = false; Heat.toggle(); eq(Heat.level, 0); eq(Gfx.fps(), 60, 'охлаждение выключили — как в настройках:');
+      temp = 45; st = 4; tick(60000); eq(Heat.level, 0); eq(Gfx.fps(), 60, 'и греется — не трогаем:'); Cfg.s.cool = true;
+      // без датчиков (сайт без Compute Pressure, старое приложение) — ничего не меняется
+      window.DuholovNative = undefined; Object.assign(Heat, { level: 0, at: 0, t: null, s: -1, h: NaN, p: '' });
+      eq(tick(600000), 0); eq(Heat.line(), 'Температура телефона видна игре только в приложении для Android.');
+      Heat.p = 'critical'; eq(tick(0), 1, 'давление процессора «критическое» — горячо:'); Heat.p = 'nominal';
+    } finally {
+      Object.assign(Heat, keepH); Object.assign(Cfg.s, { cool: keep.cool, res: keep.res, fps: keep.fps, eco: keep.eco });
+      Gfx.short = keep.short; Gfx.nat = keep.nat; Gfx.apply = keep.apply; window.DuholovNative = keep.N; UI.toast = keep.toast;
+      document.body.classList.toggle('eco', keep.ecoCls); Object.defineProperty(Stage, 'busy', busyD);
+    }
   });
   test('5.1.15: строка Кампании на карте — без всплывашек: цели шага, «забери награду», «выбери духа» (5.1.24: значки и счётчики, без подложки)', () => {
     const d0 = S.d;

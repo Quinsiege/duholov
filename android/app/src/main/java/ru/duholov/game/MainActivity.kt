@@ -4,9 +4,13 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.BatteryManager
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.core.view.ViewCompat
@@ -53,7 +57,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
-        const val WRAPPER_VERSION = 15 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
+        const val WRAPPER_VERSION = 16 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
         private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
         // камеру получает только сама игра, не страницы сервисов входа (5.1: геолокации больше нет — игра без GPS)
         private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
@@ -249,6 +253,24 @@ class MainActivity : ComponentActivity() {
             @JavascriptInterface
             fun billingPending() {
                 runOnUiThread { if (onGame()) billing.pending() }
+            }
+
+            // 16: нагрев для «Охлаждения» в игре (Heat) — JSON: t — температура батареи, °C; s — оценка нагрева Android 10+
+            // (0 — нет … 6 — отключение); h — запас до троттлинга через 10 с, Android 11+ (1 — порог). Чего нет — того нет в ответе
+            @JavascriptInterface
+            fun thermal(): String {
+                val o = JSONObject()
+                try {
+                    val b = ContextCompat.registerReceiver(this@MainActivity, null, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
+                    val t = b?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE) ?: Int.MIN_VALUE
+                    if (t != Int.MIN_VALUE) o.put("t", t / 10.0)
+                } catch (e: Exception) { }
+                try {
+                    val pm: PowerManager? = getSystemService(PowerManager::class.java)
+                    if (pm != null && Build.VERSION.SDK_INT >= 29) o.put("s", pm.currentThermalStatus)
+                    if (pm != null && Build.VERSION.SDK_INT >= 30) { val h = pm.getThermalHeadroom(10); if (!h.isNaN()) o.put("h", h.toDouble()) }
+                } catch (e: Exception) { }
+                return o.toString()
             }
         }, "DuholovNative")
 

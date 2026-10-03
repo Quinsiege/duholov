@@ -59,7 +59,7 @@ const Scene = {
     const imgs = Array.isArray(s.layers) ? s.layers.filter(l => l && l.src) : [];
     el.classList.add('scene');
     el.innerHTML = `<div class="sc-cam">${imgs.length ? imgs.map(l => this.imgLayer(l)).join('') : this.builtin()}</div>
-      ${(s.particles || 'none') !== 'none' && !Cfg.s.eco ? '<canvas class="sc-fx"></canvas>' : ''}<div class="sc-shade"></div>`;
+      ${(s.particles || 'none') !== 'none' && !Gfx.eco() ? '<canvas class="sc-fx"></canvas>' : ''}<div class="sc-shade"></div>`;
     if (s.shade != null) el.style.setProperty('--sc-shade', U.clamp(+s.shade, 0, 1));
     return this.animate(el, s.particles || 'none');
   },

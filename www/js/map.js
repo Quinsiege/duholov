@@ -162,9 +162,9 @@ const MapView = {
     Walk.init(); // 5.1: мини-джойстик вместо GPS
     this.refresh();
     // в режиме экономии батареи карта обновляется вдвое реже
-    document.body.classList.toggle('eco', !!Cfg.s.eco);
+    document.body.classList.toggle('eco', Gfx.eco()); // 5.1.40: и при нагреве (Heat)
     let tickN = 0;
-    setInterval(() => { if (Stage.idle() && (!Cfg.s.eco || ++tickN % 2 === 0)) this.refresh(); }, 1500);
+    setInterval(() => { if (Stage.idle() && (!Gfx.eco() || ++tickN % 2 === 0)) this.refresh(); }, 1500);
     // 5.2: одна активная сцена (stage.js) — пока открыта поимка, бой или экран, карта не пересчитывается и не перерисовывается;
     // сцена закрылась — облик карты, духи и места обновляются один раз
     Stage.on(busy => { if (!busy) this.wake(); });
