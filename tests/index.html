@@ -3642,10 +3642,10 @@
       eq(Object.keys(hits).join(','), 'menuBtn', 'кнопка меню доступна');
       ok(Tut.tileLock('user') && !Tut.tileLock('gear') && !Tut.tileLock('book') && !Tut.tileLock('spirits') && Tut.tileLock('shop'), 'замки разделов');
       const wrap = document.createElement('div'); wrap.className = 'sheet-wrap rm-wrap';
-      wrap.innerHTML = ['spirits', 'book', 'bag', 'user', 'shop', 'gear'].map(k => `<button class="tile${Tut.tileLock(k) ? ' locked' : ''}" data-k="${k}"></button>`).join('') + '<div class="rm-h"></div>';
+      wrap.innerHTML = ['spirits', 'book', 'bag', 'user', 'shop', 'gear'].map(k => `<button class="tile${Tut.tileLock(k) ? ' locked' : ''}" data-k="${k}"></button>`).join('');
       wrap.addEventListener('click', e => { const t = e.target.closest('.tile'); hit(t ? 'tile:' + t.dataset.k : 'close')(); });
       document.body.appendChild(wrap); screens.push(wrap);
-      reset(); ['spirits', 'book', 'bag', 'user', 'shop', 'gear'].forEach(k => click(wrap.querySelector(`[data-k="${k}"]`))); click(wrap.querySelector('.rm-h'));
+      reset(); ['spirits', 'book', 'bag', 'user', 'shop', 'gear'].forEach(k => click(wrap.querySelector(`[data-k="${k}"]`))); click(wrap); // касание мимо значков — закрыть
       eq(Object.keys(hits).sort().join(','), 'close,tile:bag,tile:book,tile:gear,tile:shop,tile:user', 'уже открытый, но не нужный раздел «Духи» — недоступен; закрытые скажут про замок');
       Tut.mark();
       ok(wrap.querySelector('[data-k="spirits"]').classList.contains('tut-off') && !wrap.querySelector('[data-k="book"]').classList.contains('tut-off'), 'ненужный раздел приглушён, нужный — нет');

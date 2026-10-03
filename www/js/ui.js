@@ -670,18 +670,12 @@ const UI = {
     const tile = (t, i) => { const lock = Tut.tileLock(t[0]) || far(t[0]), fresh = !lock && this.isNew(t[0]);
       const badge = lock ? '<i class="lock">🔒</i>' : fresh ? `<i class="new">${ru`Новое`}</i>` : t[3] ? `<i class="${t[3] === '!' ? 'alert' : ''}">${t[3]}</i>` : '';
       return `<button class="tile rm-it${lock ? ' locked' : ''}${Tut.tileTarget(t[0]) ? ' tut-target' : ''}" data-i="${i}" data-k="${t[0]}"><span class="rm-c">${this.menuIcon(t[0])}${badge}</span><span class="rm-l">${t[1]}</span>${far(t[0]) ? `<small class="tile-lvl">${ru`с ${this.openLvl(t[0])} ур.`}</small>` : ''}</button>`; };
-    // 5.1.6: не сплошной плиткой, а разделами с общими заголовками — сразу видно, куда идти (без вкладок: всё на одной панели)
-    const SECS = [
-      [ru`Духи`, ['spirits', 'book', 'egg', 'bag']],
-      [ru`Приключения`, ['scroll', 'rift', 'path']],
-      [ru`Сезон и соперничество`, ['alatyr', 'trail', 'trophy', 'shield']],
-      [ru`Орден и друзья`, ['swap', 'chat', 'orderbook']],
-      [ru`Торговля`, ['shop', 'gavel']],
-      [ru`Ловчий`, ['user', 'journal', 'gear', 'support']],
-    ];
+    // 5.1.6: разделы с общими заголовками; 5.1.35: заголовков нет (просьба владельца) — значки ровной сеткой по 4 в ряд, по центру,
+    // в прежнем порядке разделов: духи, приключения, сезон и соперничество, Орден и друзья, торговля, Ловчий
+    const ORDER = ['spirits', 'book', 'egg', 'bag', 'scroll', 'rift', 'path', 'alatyr', 'trail', 'trophy', 'shield', 'swap', 'chat', 'orderbook', 'shop', 'gavel',
+      'user', 'journal', 'gear', 'support'];
     const at = Object.fromEntries(tiles.map((t, i) => [t[0], i]));
-    const secs = SECS.map(([h, ks]) => `<section class="rm-sec"><div class="rm-h" role="heading" aria-level="2"><span>${h}</span></div><div class="rm-row">${ks.map(k => tile(tiles[at[k]], at[k])).join('')}</div></section>`);
-    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid rm-secs">${secs.join('')}</div></div>`);
+    const wrap = U.el(`<div class="sheet-wrap rm-wrap"><div class="rm-glass"></div><div class="menu-grid rm-grid rm-secs">${ORDER.map(k => tile(tiles[at[k]], at[k])).join('')}</div></div>`);
     const orb = U.$('#menuBtn');
     let closing = false;
     const close = (then) => {
@@ -717,10 +711,7 @@ const UI = {
       const [x, y] = pos[i], d = Math.hypot(x - ox, y - oy) / far2;
       it.style.setProperty('--dx', (ox - x).toFixed(1) + 'px'); it.style.setProperty('--dy', (oy - y).toFixed(1) + 'px');
       it.style.setProperty('--d', Math.round(d * 260) + 'ms'); it.style.setProperty('--db', Math.round((1 - d) * 120) + 'ms');
-      it._d = d;
     });
-    // заголовок раздела проявляется, когда долетает первый значок его ряда
-    wrap.querySelectorAll('.rm-sec').forEach(s => s.style.setProperty('--hd', Math.round(Math.max(...[...s.querySelectorAll('.rm-it')].map(it => it._d)) * 260 + 360) + 'ms')); // заголовок раздела — после того, как долетели его значки
     void wrap.offsetWidth; // стартовые положения применены — дальше переход к местам
     wrap.classList.add('rm-in'); document.body.classList.add('rm-open');
     this._rm = close;

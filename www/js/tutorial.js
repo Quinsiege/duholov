@@ -69,7 +69,7 @@ const Tut = {
     path: ['.tile[data-k="path"]', '#menuBtn'],
   },
   // важное, что наставник не должен закрывать (кроме самой цели)
-  KEEP: ['.hud-top', '#tracker', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.rm-h > span', '.menu-dots', '.screen .spring-disc'],
+  KEEP: ['.hud-top', '#tracker', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots', '.screen .spring-disc'],
   coach(st) {
     if (!this.el) {
       this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${UI.menuIcon('orderbook')}</div>

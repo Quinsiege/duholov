@@ -5381,37 +5381,26 @@ body.atlas-on :is(#coach, #tutRing, .upd-bar) * { animation-play-state: paused !
 .spr2.stow .spring-go { animation: none; }
 .spr2-reward.stow .spr2-after { opacity: 0; transition: opacity .3s ease; }
 
-/* ===== 5.1.6: меню разделами ===== */
-/* одна панель без вкладок: заголовок раздела (как подписи-разделители в игре) и под ним ряд круглых значков.
-   Значки по-прежнему вылетают из центральной кнопки (UI.menu), заголовки проявляются вслед за значками своего ряда.
-   5.2: панель — на всю высоту экрана, от верхнего края до кнопки закрытия, без пустот: разделы разнесены по высоте поровну,
-   размер кружков (--rmc) — по высоте экрана (панель — контейнер размера: 1cqh — сотая её высоты без отступов).
-   С обучением и без — одно и то же место: подсказка обучения при открытом меню — пузырь у подсвеченного пункта (Tut.track) */
-.sheet-wrap.rm-wrap { --rmc: 58px; padding-top: calc(48px + var(--st)); padding-bottom: calc(144px + var(--sb)); } /* 5.1.10: от краёв — 48 px сверху и над кнопкой закрытия */
-/* 6 разделов: заголовок с отступом 20px, кружок, подпись 20px (у «Книги Ордена» — ещё строка 15px), между разделами — не меньше 6px */
-@supports (height: 1cqh) { .sheet-wrap.rm-wrap { container-type: size; --rmc: clamp(44px, calc((100cqh - 265px) / 6), 58px); } }
-.rm-grid.rm-secs { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: space-between; gap: 2px; max-width: 360px;
-  flex: 1 0 auto; max-height: 860px; margin: auto 0 0; }
-.rm-h { display: flex; align-items: center; gap: 10px; margin: 0 8px 6px; font-family: var(--f-head); font-weight: 700; font-size: 11px; line-height: 14px; letter-spacing: .16em; text-transform: uppercase;
-  color: #fde68a; text-shadow: 0 1px 3px rgba(8, 4, 24, .85), 0 0 8px rgba(8, 4, 24, .5); white-space: nowrap;
-  opacity: 0; transform: translateY(6px); }
-.rm-h::before, .rm-h::after { content: ''; flex: 1; min-width: 12px; height: 1px; background: linear-gradient(90deg, transparent, rgba(253, 230, 138, .55)); }
-.rm-h::after { background: linear-gradient(90deg, rgba(253, 230, 138, .55), transparent); }
-.rm-h > span { overflow: hidden; text-overflow: ellipsis; }
-.rm-in .rm-h { opacity: 1; transform: none; transition: opacity .3s ease var(--hd, 0ms), transform .3s ease var(--hd, 0ms); }
-.rm-back .rm-h { opacity: 0; transition: opacity .1s; }
-.rm-row { display: flex; gap: 0 8px; }
-.rm-row > .rm-it { flex: 0 0 80px; }
-.rm-secs .rm-it { gap: 5px; }
+/* ===== 5.1.6: меню разделами; 5.1.35: без заголовков — ровной сеткой ===== */
+/* одна панель без вкладок: 20 круглых значков сеткой 4 × 5 по центру, в порядке прежних разделов (заголовки разделов владелец убрал).
+   Значки по-прежнему вылетают из центральной кнопки (UI.menu). Панель — на всю высоту экрана, от верхнего края до кнопки закрытия:
+   ряды разнесены по высоте поровну, размер кружков (--rmc) — по высоте экрана (панель — контейнер размера: 1cqh — сотая её высоты
+   без отступов). С обучением и без — одно и то же место: подсказка обучения при открытом меню — пузырь у подсвеченного пункта (Tut.track) */
+.sheet-wrap.rm-wrap { --rmc: 62px; padding-top: calc(48px + var(--st)); padding-bottom: calc(144px + var(--sb)); } /* 5.1.10: от краёв — 48 px сверху и над кнопкой закрытия */
+/* 5 рядов: кружок, подпись 15px (у «Книги Ордена» — ещё строка), между рядами — не меньше 8px; кружок — до 66 px (было 58) */
+@supports (height: 1cqh) { .sheet-wrap.rm-wrap { container-type: size; --rmc: clamp(48px, calc((100cqh - 215px) / 5), 66px); } }
+.rm-grid.rm-secs { display: grid; grid-template-columns: repeat(4, minmax(0, 86px)); justify-content: center; justify-items: center; align-content: space-evenly; gap: 8px 4px;
+  flex: 1 0 auto; width: 100%; max-width: 360px; max-height: 780px; margin: auto 0; }
+.rm-secs .rm-it { gap: 6px; width: 100%; }
 .rm-secs .rm-c { width: var(--rmc); height: var(--rmc); }
-.rm-secs .rm-c .mi { width: calc(var(--rmc) * .69) !important; height: calc(var(--rmc) * .69) !important; }
-.rm-secs .rm-it .rm-l { max-width: 86px; font-size: clamp(11px, calc(var(--rmc) * .2), 12.5px); line-height: 15px; letter-spacing: 0; } /* сильнее старого .menu-grid .tile span */
-html.big-text .rm-secs .rm-it .rm-l { font-size: 13px; }
+.rm-secs .rm-c .mi { width: calc(var(--rmc) * .7) !important; height: calc(var(--rmc) * .7) !important; }
+.rm-secs .rm-it .rm-l { max-width: 88px; font-size: clamp(11.5px, calc(var(--rmc) * .2), 13px); line-height: 15px; letter-spacing: 0; } /* сильнее старого .menu-grid .tile span */
+html.big-text .rm-secs .rm-it .rm-l { font-size: 13.5px; }
 .sheet-wrap.rm-wrap { scrollbar-width: none; } .sheet-wrap.rm-wrap::-webkit-scrollbar { display: none; }
 /* «с N ур.» — плашкой на нижнем краю кружка, а не лишней строкой: ряды с замками не выше остальных */
 .rm-secs .rm-it .tile-lvl { position: absolute; top: calc(var(--rmc) - 11px); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); margin: 0; padding: 0 6px; border-radius: 8px; white-space: nowrap;
   font-size: 10px; line-height: 14px; color: #fde68a; background: rgba(12, 7, 32, .88); border: 1px solid rgba(253, 230, 138, .45); text-shadow: none; }
-@media (max-width: 370px) { .rm-row { gap: 0 2px; } .rm-row > .rm-it { flex-basis: 82px; } .rm-secs .rm-it .rm-l { font-size: 11.5px; } .rm-h { margin-left: 4px; margin-right: 4px; } }
+@media (max-width: 370px) { .rm-secs .rm-it .rm-l { font-size: 11.5px; } }
 /* 5.2: обучение при открытом меню — подсказка пузырём у подсвеченного пункта (над ним или под ним, со стрелочкой к нему),
    поверх меню, компактно: текст и полоска хода обучения. Место и стрелку считает Tut.track (--ax — где стрелка) */
 body.rm-open #coach.tut-coach { padding: 8px 12px 9px; gap: 0; }
