@@ -89,7 +89,7 @@ const Scene = {
     return { stop };
   },
   particles(cv, kind) {
-    const ctx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), N = kind === 'snow' ? 60 : 28;
+    const ctx = cv.getContext('2d'), dpr = Gfx.dpr(2), N = kind === 'snow' ? 60 : 28; // 5.1.38: разрешение — Gfx
     const col = kind === 'snow' ? '255,255,255' : kind === 'embers' ? '251,146,60' : '217,249,157';
     let w = 0, h = 0;
     const size = () => { w = cv.clientWidth; h = cv.clientHeight; cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
