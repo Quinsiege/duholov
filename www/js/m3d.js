@@ -9,7 +9,7 @@
    В «Экономии батареи» и «Меньше движения» модели неподвижны. Нет WebGL или файл не загрузился — остаётся
    прежний рисунок (SVG). */
 const M3D = {
-  VER: 2,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками); 2 — 5.1.29: оберег Ловчего на груди, облики
+  VER: 3,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками); 2 — 5.1.29: оберег Ловчего на груди, облики; 3 — 5.1.40: Ловчий со скелетом и текстурой
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
@@ -89,6 +89,36 @@ const M3D = {
     uniform mat4 uM, uVP; uniform vec3 uQ0, uQs; uniform float uOl;
     void main() { vec3 p = uQ0 + (aPos.xyz + 32768.0) * uQs; gl_Position = uVP * uM * vec4(p + aONrm.xyz * uOl, 1.0); }`,
   OFS: `precision mediump float; uniform vec3 uOC; void main() { gl_FragColor = vec4(uOC, 1.0); }`,
+  /* 5.1.40: модель со скелетом (Ловчий из генератора): вершина — сумма до 4 костей с весами, кость — матрица 3×4 (три строки vec4
+     в uB), цвет — из текстуры; обводка — та же «вывернутая оболочка», но по коже после костей */
+  MAXB: 32,
+  get SKIN() {
+    return `attribute vec4 aPos; attribute vec4 aJ; attribute vec4 aW;
+    uniform vec4 uB[${this.MAXB * 3}]; uniform vec3 uQ0, uQs;
+    vec3 xf(float j, vec4 p) { int k = int(j + 0.5) * 3; return vec3(dot(uB[k], p), dot(uB[k + 1], p), dot(uB[k + 2], p)); }
+    vec3 sk(vec4 p) { return xf(aJ.x, p) * aW.x + xf(aJ.y, p) * aW.y + xf(aJ.z, p) * aW.z + xf(aJ.w, p) * aW.w; }`;
+  },
+  get SVS() {
+    return this.SKIN + `
+    attribute vec4 aNrm; attribute vec2 aUV; uniform mat4 uM, uVP; uniform mat3 uN; varying vec3 vN; varying vec2 vUV; varying vec3 vC;
+    void main() {
+      vec3 p = sk(vec4(uQ0 + (aPos.xyz + 32768.0) * uQs, 1.0));
+      vN = uN * sk(vec4(aNrm.xyz, 0.0)); vUV = aUV; vC = vec3(1.0);
+      gl_Position = uVP * uM * vec4(p, 1.0);
+    }`;
+  },
+  get SOVS() {
+    return this.SKIN + `
+    attribute vec4 aONrm; uniform mat4 uM, uVP; uniform float uOl;
+    void main() {
+      vec3 p = sk(vec4(uQ0 + (aPos.xyz + 32768.0) * uQs, 1.0)), n = sk(vec4(aONrm.xyz, 0.0));
+      gl_Position = uVP * uM * vec4(p + normalize(n) * uOl, 1.0);
+    }`;
+  },
+  get SFS() {
+    return this.FS.replace('varying vec3 vN; varying vec3 vC;', 'varying vec3 vN; varying vec3 vC; varying vec2 vUV; uniform sampler2D uTex;')
+      .replace('vec3 base = uBase * vC;', 'vec3 base = uBase * pow(texture2D(uTex, vUV).rgb, vec3(2.2));');
+  },
   programs() {
     const gl = this.gl;
     const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null; };
@@ -106,6 +136,9 @@ const M3D = {
     };
     this.P = prog(this.VS, this.FS, ['aPos', 'aNrm', 'aCol']);
     this.O = prog(this.OVS, this.OFS, ['aPos', 'aONrm']);
+    // со скелетом: не собрались (старый телефон — мало uniform) — Ловчий остаётся рисунком, места — 3D
+    this.SP = prog(this.SVS, this.SFS, ['aPos', 'aNrm', 'aUV', 'aJ', 'aW']);
+    this.SO = prog(this.SOVS, this.OFS, ['aPos', 'aONrm', 'aJ', 'aW']);
     return !!(this.P && this.O);
   },
 
@@ -117,6 +150,7 @@ const M3D = {
     if (dv.getUint32(0, true) !== 0x3144334d) throw new Error('m3d: не тот файл');
     const jl = dv.getUint32(4, true), head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, jl)));
     const b0 = 8 + jl, B = head.buf;
+    if (head.skin) return this.parseSkin(buf, head, b0);
     const pos = new Int16Array(buf, b0 + B.pos, (B.nrm - B.pos) / 2), nrm = new Int8Array(buf, b0 + B.nrm, B.col - B.nrm);
     const col = new Uint8Array(buf, b0 + B.col, B.idx - B.col), idx = new Uint16Array(buf, b0 + B.idx, (B.len - B.idx) / 2);
     // нормали обводки — средние по всем вершинам в той же точке группы: у плоских граней у каждой грани свои нормали,
@@ -138,11 +172,59 @@ const M3D = {
     head.walk = head.groups.some(g => g.t === 'body' || g.t === 'leg'); // у модели есть шарниры походки (Ловчий)
     return { head, pos, nrm, col, idx, onr, gen: -1 };
   },
+  /* 5.1.40: модель со скелетом: позиции int16×4, нормали int8×4, UV u16×2, кости и веса u8×4 + u8×4, индексы u16, клипы — матрицы
+     костей f32 (кадр за кадром, кость за костью, 3×4 по строкам), текстура цвета (WebP). Для рамки на экране (span) — поза «стоит» */
+  parseSkin(buf, head, b0) {
+    const B = head.buf, K = head.skin, nv = head.prims[0].v[1];
+    const pos = new Int16Array(buf, b0 + B.pos, nv * 4), nrm = new Int8Array(buf, b0 + B.nrm, nv * 4);
+    const uv = new Uint16Array(buf, b0 + K.uv, nv * 2), jw = new Uint8Array(buf, b0 + K.jw, nv * 8), idx = new Uint16Array(buf, b0 + B.idx, (B.len - B.idx) / 2);
+    const clips = {};
+    for (const [k, c] of Object.entries(K.clips)) clips[k] = { n: c.n, fps: c.fps, dur: c.n / c.fps, m: new Float32Array(buf, b0 + c.off, c.n * K.nb * 12) };
+    // обводка: нормали, общие для вершин в одной точке (на швах развёртки вершины раздвоены)
+    const onr = new Int8Array(nrm.length), acc = new Map(), key = i => pos[i * 4] + ',' + pos[i * 4 + 1] + ',' + pos[i * 4 + 2];
+    for (let i = 0; i < nv; i++) { const k = key(i); let a = acc.get(k); if (!a) acc.set(k, a = [0, 0, 0]); a[0] += nrm[i * 4]; a[1] += nrm[i * 4 + 1]; a[2] += nrm[i * 4 + 2]; }
+    for (let i = 0; i < nv; i++) { const a = acc.get(key(i)), l = Math.hypot(a[0], a[1], a[2]) || 1; for (let j = 0; j < 3; j++) onr[i * 4 + j] = Math.round(a[j] / l * 127); }
+    // поза «стоит» (первый кадр) — в осях игры: по ней верх и низ модели на экране
+    const q = head.q, M = clips.idle.m, rest = new Float32Array(nv * 3);
+    for (let i = 0; i < nv; i++) {
+      const x = q[0] + (pos[i * 4] + 32768) * q[3], y = q[1] + (pos[i * 4 + 1] + 32768) * q[4], z = q[2] + (pos[i * 4 + 2] + 32768) * q[5];
+      for (let c = 0; c < 4; c++) {
+        const w = jw[i * 8 + 4 + c] / 255;
+        if (!w) continue;
+        const o = jw[i * 8 + c] * 12;
+        rest[i * 3] += w * (M[o] * x + M[o + 1] * y + M[o + 2] * z + M[o + 3]);
+        rest[i * 3 + 1] += w * (M[o + 4] * x + M[o + 5] * y + M[o + 6] * z + M[o + 7]);
+        rest[i * 3 + 2] += w * (M[o + 8] * x + M[o + 9] * y + M[o + 10] * z + M[o + 11]);
+      }
+    }
+    for (const p of head.prims) p.blend = false;
+    head.walk = true; head.moving = false;
+    const m = { head, pos, nrm, uv, jw, idx, onr, col: new Uint8Array(0), clips, rest, gen: -1 };
+    Object.assign(head, this.span(head, pos, this.ELEV, rest));
+    m.img = new Blob([new Uint8Array(buf, b0 + K.tex.off, K.tex.len)], { type: K.tex.type });
+    return m;
+  },
+  // текстура — картинкой (createImageBitmap, иначе <img>): до первой отрисовки
+  decode(m) {
+    if (!(m.img instanceof Blob)) return Promise.resolve();
+    const b = m.img;
+    const p = typeof createImageBitmap === 'function' ? createImageBitmap(b) : new Promise((res, rej) => {
+      const u = URL.createObjectURL(b), im = new Image();
+      im.onload = () => { URL.revokeObjectURL(u); res(im); };
+      im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('текстура')); };
+      im.src = u;
+    });
+    return p.then(im => { m.img = im; });
+  },
   // верх и низ модели на экране под камерой с наклоном e° (без поворота карты), метры: над верхом встаёт хранитель Разлома,
-  // под низом — звёзды
-  span(head, pos, e) {
+  // под низом — звёзды; rest — у модели со скелетом: поза «стоит»
+  span(head, pos, e, rest) {
     const a = e * Math.PI / 180, sn = Math.sin(a), cs = Math.cos(a), q = head.q;
     let top = 0, low = 0;
+    if (rest) {
+      for (let i = 0; i < rest.length; i += 3) { const yv = rest[i + 1] * sn + rest[i + 2] * cs; if (yv > top) top = yv; else if (yv < low) low = yv; }
+      return { top, low };
+    }
     for (const p of head.prims) {
       const o = p.g ? head.groups[p.g].o : [0, 0, 0];
       for (let i = p.v[0]; i < p.v[0] + p.v[1]; i++) {
@@ -156,7 +238,7 @@ const M3D = {
   extent(m, e) {
     const c = m.ext || (m.ext = new Map()), k = Math.round(e);
     let r = c.get(k);
-    if (!r) c.set(k, r = this.span(m.head, m.pos, k));
+    if (!r) c.set(k, r = this.span(m.head, m.pos, k, m.rest));
     return r;
   },
   need(kind) {
@@ -164,7 +246,11 @@ const M3D = {
     if (m) return m.wait;
     const it = this.models[kind] = { ready: false };
     it.wait = fetch(`${this.BASE}${kind}.m3d?v=${this.VER}`).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-      .then(buf => { Object.assign(it, this.parse(buf), { ready: true }); return true; })
+      .then(buf => {
+        const m = this.parse(buf);
+        if (m.head.skin && !(this.SP && this.SO)) throw new Error('нет шейдера со скелетом');
+        return this.decode(m).then(() => { Object.assign(it, m, { ready: true }); return true; });
+      })
       .catch(e => { it.fail = true; if (typeof Errors !== 'undefined') Errors.report('m3d ' + kind + ': ' + e.message, 'm3d.js', 0); return false; });
     return it.wait;
   },
@@ -174,6 +260,16 @@ const M3D = {
     m.bp = buf(gl.ARRAY_BUFFER, m.pos); m.bn = buf(gl.ARRAY_BUFFER, m.nrm); m.bo = buf(gl.ARRAY_BUFFER, m.onr);
     m.bc = m.col.length ? buf(gl.ARRAY_BUFFER, m.col) : null;
     m.bi = buf(gl.ELEMENT_ARRAY_BUFFER, m.idx);
+    if (m.head.skin) {
+      m.bu = buf(gl.ARRAY_BUFFER, m.uv); m.bj = buf(gl.ARRAY_BUFFER, m.jw);
+      m.tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, m.tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, m.img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
     m.gen = this.gen;
   },
 
@@ -438,6 +534,7 @@ const M3D = {
     v.ya = -this.rot * Math.PI / 180 + (v.az || 0); // поворот модели на экране (без шага Ловчего) — для setRot
     const a = v.ya + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
     const Y = new Float32Array([ca, sa, 0, 0, -sa, ca, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    if (h0.skin) { this.renderSkin(v, m, w, Y); return; }
     h0.groups.forEach((g, i) => G.push(g.t === 'static' ? null : w && (g.t === 'body' || g.t === 'leg' || g.t === 'arm') ? this.walkMat(g, h0.groups, G, w) : this.groupMat(g, i, t)));
     const Ms = G.map(M => M ? this.mul(Y, M) : Y);
     const Ns = Ms.map(M => new Float32Array([M[0], M[1], M[2], M[4], M[5], M[6], M[8], M[9], M[10]]));
@@ -481,6 +578,56 @@ const M3D = {
       }
     }
     gl.depthMask(true); gl.disable(gl.BLEND);
+  },
+
+  /* 5.1.40: позы клипов к этому кадру: стоит — своим временем; шаг и бег — общей фазой шага (переход из шага в бег — без рывка,
+     ноги на той же фазе); веса — по плавным размаху (amp) и бегу (run) походки (step) */
+  pose(v, m, w) {
+    const nb = m.head.skin.nb, C = m.clips, n = nb * 12, out = v.bones || (v.bones = new Float32Array(this.MAXB * 12));
+    const st = v.anim || (v.anim = { u: 0, t: w.t });
+    const dur = C.walk.dur + (C.run.dur - C.walk.dur) * w.run, dt = Math.max(0, w.t - st.t);
+    st.t = w.t;
+    if (w.amp > 0.01) st.u = (st.u + dt / dur) % 1;
+    out.fill(0, 0, n);
+    const add = (c, u, k) => {
+      if (k < 0.001) return;
+      const f = u * c.n, f0 = Math.floor(f) % c.n, f1 = (f0 + 1) % c.n, s = f - Math.floor(f), A = c.m;
+      for (let i = 0; i < n; i++) out[i] += k * (A[f0 * n + i] * (1 - s) + A[f1 * n + i] * s);
+    };
+    add(C.idle, (w.t / C.idle.dur) % 1, 1 - w.amp); add(C.walk, st.u, w.amp * (1 - w.run)); add(C.run, st.u, w.amp * w.run);
+    return out;
+  },
+  renderSkin(v, m, w, Y) {
+    const gl = this.gl, h0 = m.head, q = h0.q, p = h0.prims[0], mt = h0.mats[p.m], B = this.pose(v, m, w);
+    const N = new Float32Array([Y[0], Y[1], Y[2], Y[4], Y[5], Y[6], Y[8], Y[9], Y[10]]);
+    const attr = (loc, b, size, type, norm, stride, off) => { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, type, norm, stride, off); };
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.bi);
+    // 1) обводка: задние грани раздутой по нормалям оболочки — после костей
+    let u = this.SO.u;
+    gl.useProgram(this.SO.p);
+    gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT);
+    gl.uniformMatrix4fv(u.uVP, false, v.vp); gl.uniformMatrix4fv(u.uM, false, Y); gl.uniform3f(u.uQ0, q[0], q[1], q[2]); gl.uniform3f(u.uQs, q[3], q[4], q[5]);
+    gl.uniform3fv(u.uOC, this.OUTLINE); gl.uniform4fv(u['uB[0]'], B); gl.uniform1f(u.uOl, p.ol * v.ol);
+    attr(0, m.bp, 4, gl.SHORT, false, 0, 0); attr(1, m.bo, 4, gl.BYTE, true, 0, 0);
+    attr(2, m.bj, 4, gl.UNSIGNED_BYTE, false, 8, 0); attr(3, m.bj, 4, gl.UNSIGNED_BYTE, true, 8, 4);
+    gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, 0);
+    // 2) сама модель: цвет — из текстуры, свет — как у остальных моделей
+    u = this.SP.u;
+    gl.useProgram(this.SP.p);
+    gl.cullFace(gl.BACK);
+    if (mt.ds) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
+    gl.uniformMatrix4fv(u.uVP, false, v.vp); gl.uniformMatrix4fv(u.uM, false, Y); gl.uniformMatrix3fv(u.uN, false, N);
+    gl.uniform3f(u.uQ0, q[0], q[1], q[2]); gl.uniform3f(u.uQs, q[3], q[4], q[5]); gl.uniform4fv(u['uB[0]'], B);
+    const L = this.lights, e = v.e * Math.PI / 180;
+    gl.uniform3fv(u.uL0, L[0].d); gl.uniform3fv(u.uL1, L[1].d); gl.uniform3fv(u.uL2, L[2].d);
+    gl.uniform3fv(u.uC0, L[0].c); gl.uniform3fv(u.uC1, L[1].c); gl.uniform3fv(u.uC2, L[2].c);
+    gl.uniform3fv(u.uAmb, this.amb); gl.uniform3f(u.uV, 0, -Math.cos(e), Math.sin(e));
+    gl.uniform3fv(u.uBase, mt.c); gl.uniform3fv(u.uEmit, mt.e); gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uRough, mt.ro); gl.uniform1f(u.uMetal, mt.mt);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, m.tex); gl.uniform1i(u.uTex, 0);
+    attr(0, m.bp, 4, gl.SHORT, false, 0, 0); attr(1, m.bn, 4, gl.BYTE, true, 0, 0); attr(2, m.bu, 2, gl.UNSIGNED_SHORT, true, 0, 0);
+    attr(3, m.bj, 4, gl.UNSIGNED_BYTE, false, 8, 0); attr(4, m.bj, 4, gl.UNSIGNED_BYTE, true, 8, 4);
+    gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, 0);
+    for (let i = 2; i <= 4; i++) gl.disableVertexAttribArray(i);
   },
 
   /* ---------- когда перерисовывать ---------- */
