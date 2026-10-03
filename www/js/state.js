@@ -33,7 +33,7 @@ const S = {
     d.stats.orderPts = d.stats.orderPts || 0;
     d.tasks = d.tasks || []; // поручения из источников
     d.taskMeet = d.taskMeet || []; // встречи за выполненные поручения: { id, sid, lvl }
-    d.guards = d.guards || []; // мои защитники на Капищах: { id, name, sid, t }
+    d.guards = d.guards || []; // мои защитники в Святилищах: { id, name, sid, t }
     // монеты — вторая валюта (с 3.14; в 3.12–3.13 назывались гривнами — переносим один к одному)
     d.zlat = (d.zlat || 0) + (d.grivna || 0); delete d.grivna;
     // 3.19 и 4.16: новая кривая опыта — опыт переносится в то же место внутри текущего уровня (уровень не понижается).
@@ -357,7 +357,7 @@ const S = {
     this.save();
   },
 
-  /* ---------- команда для разломов и капищ ---------- */
+  /* ---------- команда для разломов и святилищ ---------- */
   team() {
     const chosen = this.d.team.map(u => this.findSpirit(u)).filter(Boolean);
     if (chosen.length) return chosen.slice(0, 3);
@@ -649,7 +649,7 @@ const S = {
     const day = U.today();
     if (this.d.quests && this.d.quests.day === day) return;
     const r = U.rng('quests' + day + this.d.name);
-    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Капища были с 3-го, а открываются с 5-го)
+    const pool = QUEST_TEMPLATES.filter(q => (q.t !== 'raid' || this.d.level >= RAID_LEVEL) && (q.t !== 'duel' || this.d.level >= DUEL_LEVEL)); // 4.18: только открытое (Святилища были с 3-го, а открываются с 5-го)
     const picked = [];
     while (picked.length < 3) {
       const q = pool[Math.floor(r() * pool.length)];
@@ -835,9 +835,12 @@ const S = {
     c.rn = (c.rn || 0) + 1;
     const r = U.rng('campRift:' + this.d.created + ':' + c.t + ':' + c.rn), ang = r() * 2 * Math.PI, m = R.DIST[0] + r() * (R.DIST[1] - R.DIST[0]);
     const lat = pos.lat + m * Math.cos(ang) / 111320, lng = pos.lng + m * Math.sin(ang) / (111320 * Math.cos(pos.lat * Math.PI / 180));
-    let boss = c.rift && SP[c.rift.boss] ? c.rift.boss : null;
+    // 5.1.26: хранитель — из мифологии родины этого места; Ловчий ушёл в другой край — там и хранитель свой
+    const home = W.homes(lat, lng);
+    let boss = c.rift && SP[c.rift.boss] && home.includes(SP[c.rift.boss].myth || 'slavic') ? c.rift.boss : null;
     if (!boss) {
-      const pool = SPECIES.filter(s => !s.legend && !s.season && s.stage >= 2 && s.rar <= 3 && MYTH_KEYS.includes(s.myth || 'slavic'));
+      const all = SPECIES.filter(s => !s.legend && !s.season && s.stage >= 2 && s.rar <= 3 && MYTH_KEYS.includes(s.myth || 'slavic'));
+      const here = all.filter(s => home.includes(s.myth || 'slavic')), pool = here.length ? here : all;
       boss = pool.length ? pool[Math.floor(r() * pool.length)].id : 'kostrovik';
     }
     c.rift = { id: 'camp:' + c.t + ':' + c.rn, lat: +lat.toFixed(6), lng: +lng.toFixed(6), boss, myth: SP[boss].myth || 'slavic' };
@@ -858,12 +861,15 @@ const S = {
     return { atk, def, hp: Math.round(R.T * R.TAPS * hit), pw: Math.round(pw * 100) / 100, rl: this.catchLvl() };
   },
   // Новое поручение (выдаёт сервер у источника): задание и дух, который встретится в награду
-  // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests)
+  // pos — где выдано поручение: 4.16 — трудное поручение иногда зовёт «гостя издалека» (см. guests).
+  // 5.1.26: дух — здешний (родина источника) и без своего времени суток: ночные и дневные за поручение не приходят — встречу
+  // можно позвать когда угодно
   makeTask(pos) {
     const r = Math.random, pool = TASK_TEMPLATES.filter(q => !q.lvl || this.d.level >= q.lvl);
     const q = pool[Math.floor(r() * pool.length)], T = TASK_TIERS[q.tier];
     const n = q.min + Math.floor(r() * (q.max - q.min + 1)), el = ELEMENT_KEYS[Math.floor(r() * ELEMENT_KEYS.length)];
-    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.season && T.rar.includes(s.rar)), guest = false;
+    let sps = SPECIES.filter(s => s.stage === 1 && !s.legend && !s.season && !s.time && T.rar.includes(s.rar)), guest = false;
+    if (pos) { const here = sps.filter(s => W.home(s, pos.lat, pos.lng)); if (here.length) sps = here; }
     if (q.tier === 3 && pos && r() < this.GUEST) {
       const far = this.guests(pos.lat, pos.lng), fresh = far.filter(s => !(this.d.dex[s.id] && this.d.dex[s.id].caught));
       if (far.length) { sps = fresh.length ? fresh : far; guest = true; }
@@ -873,14 +879,24 @@ const S = {
     if (guest) t.guest = true;
     return t;
   },
-  /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить: вещие птицы других частей света, духи чужих
-     земель и сезонные не в свой сезон. Их приводят трудные поручения источников (шанс GUEST), так что поймать можно всех */
+  /* 4.16: «гости издалека» — духи, которых здесь и сейчас не встретить. 5.1.26: сезонные духи этой родины не в свой сезон.
+     Их приводят трудные поручения источников (шанс GUEST), так что поймать можно всех */
   GUEST: 0.3,
-  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0)); },
+  guests(lat, lng) { return SPECIES.filter(s => s.stage === 1 && !s.legend && s.season && !(Ev.seasonal(s) > 0) && W.home(s, lat, lng)); },
 
 
   /* ---------- 4.0: обучение новичка ---------- */
   tutAt() { return (this.d && this.d.tut && TUT[this.d.tut - 1]) || null; },
+  // 5.1.26: учебный дух — здешний: вид шага (st.sid), если он с родины места, иначе обычный малыш той же стихии из мифологии
+  // родины (без своего времени суток — ловится когда угодно). Выбор постоянный — телефон (Tut.spawn) и сервер видят одного
+  tutSid(st, lat, lng) {
+    const s0 = st && SP[st.sid];
+    if (!s0 || lat == null || lng == null) return st && st.sid;
+    const home = W.homes(lat, lng);
+    if (home.includes(s0.myth || 'slavic')) return st.sid;
+    const c = SPECIES.filter(s => home.includes(s.myth) && s.el === s0.el && s.rar === 1 && s.stage === 1 && !s.legend && !s.season && !s.time && !s.land && !s.region);
+    return c.length ? c[Math.floor(U.h('tut', st.id, home.join()) * c.length)].id : st.sid;
+  },
   // Шаг выполнен: kind — что сделал игрок, id — для разделов. В конце этапа — его награда.
   tutAdvance(kind, id) {
     const st = this.tutAt();
