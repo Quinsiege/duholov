@@ -58,8 +58,8 @@ small, .small { color: var(--muted); font-size: 12px; }
 /* 5.1.31: земля палитры карты (MapView.PALETTE) под ещё не нарисованными плитками — отдельным неподвижным слоем позади карты, а не
    фоном самой наклонённой карты: фон корня 3D-пространства лежит в одной плоскости с плитками, и при сильном наклоне (его край уходит
    за камеру) браузер на отдельных кадрах ставил его поверх плиток — карта под ногами пропадала (z-fighting) */
-#mapBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #f1f3ee; }
-body.night #mapBg { background: #131b27; }
+#mapBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #e6e1f1; } /* 5.1.42: земля палитры «Навья» (MapView.PALETTE) */
+body.night #mapBg { background: #1b1730; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(18, 12, 36, .55) !important; color: #cfc8e6 !important; border-radius: 6px 0 0 0; }
 .leaflet-control-attribution a { color: #e9e3ff !important; }
 .leaflet-bottom.leaflet-right { bottom: calc(var(--sb)); }

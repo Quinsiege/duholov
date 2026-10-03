@@ -192,20 +192,22 @@ const MapView = {
     const p = this.pos || { lat: 55.75, lng: 37.62 }, phase = U.phase(p.lat, p.lng), night = phase === 'night' || phase === 'dusk';
     return { phase, night, key: night ? 'night' : 'day' };
   },
-  /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави): днём — бело-зелёная с голубой водой и кремовыми улицами,
-     ночью — тёмно-синяя. Цвета стиля — c (flavorOf; улицы у Protomaps для Leaflet — одного цвета, road); к ним — земля (фон карты
-     под ещё не нарисованными плитками) и объёмные дома (Bld3D): крыша, стены в тени и на солнце, контраст стен */
+  /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави). 5.1.42: палитра «Навья» (выбор владельца из четырёх:
+     «Сказочная», «Яркие луга», «Навья», «Бирюзовая»): днём — лавандовая земля в тон игре, шалфейные парки, сиреневая вода, белые
+     улицы и лиловые дома; ночью — тёмно-фиолетовая, улицы и дома светлее земли. Цвета стиля — c (flavorOf; улицы у Protomaps
+     для Leaflet — одного цвета, road); к ним — земля (фон карты под ещё не нарисованными плитками; тот же — #mapBg в style.css) и
+     объёмные дома (Bld3D, сейчас выключены — дома плоские, цвет bld): крыша, стены в тени и на солнце, контраст стен */
   PALETTE: {
-    day: { earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
-      park: '#cfe8c4', park2: '#b3dda3', wood: '#c7e1bb', wood2: '#a7d595', scrub: '#d8e8cc', water: '#9fd0f0', sand: '#f2ead2', ped: '#eceee8',
-      urban: '#e8eae6', runway: '#f7f8fa', road: '#fdf2c6', rail: '#a8b1b7', bound: '#a7afa7', bld: '#e2e5df',
-      lbl: '#5e6a65', halo: '#ffffff', city: '#2e3935', sub: '#7c8983', state: '#99a49e', ocean: '#4e8ec0',
-      lc: ['#d6eccd', '#f5eeda', '#e8eae5', '#deeed2', '#ffffff', '#e2eed6', '#c4e2be'] } },
-    night: { earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
-      park: '#13261f', park2: '#163024', wood: '#12221c', wood2: '#152a21', scrub: '#17231f', water: '#0a1626', sand: '#1c2228', ped: '#171f2b',
-      urban: '#161e2a', runway: '#222c3a', road: '#3a4f73', rail: '#37435a', bound: '#46526a', bld: '#1a2332',
-      lbl: '#9fb0cc', halo: '#0e1520', city: '#dbe5f5', sub: '#8a9ab4', state: '#6f7f99', ocean: '#6b8fc4',
-      lc: ['#162620', '#1e2228', '#181f2b', '#162621', '#28303c', '#182420', '#13221c'] } },
+    day: { earth: '#e6e1f1', roof: '#e3ddf0', wall: '#a59cc0', wall2: '#d6cfe8', light: 0.7, c: { bg: '#e6e1f1', earth: '#e6e1f1',
+      park: '#cfe5d3', park2: '#b9dbc0', wood: '#c1dcc8', wood2: '#a7cfb2', scrub: '#d6e6dc', water: '#a6c3f0', sand: '#efe6d6', ped: '#ece8f5',
+      urban: '#e1dbee', runway: '#f4f2fa', road: '#ffffff', rail: '#a59cbf', bound: '#a79fc0', bld: '#d0c7e6',
+      lbl: '#564f73', halo: '#faf8ff', city: '#2d2647', sub: '#7a7299', state: '#9a92b6', ocean: '#4f6fb8',
+      lc: ['#d7e8db', '#ebe4ef', '#e1dbee', '#dce9dd', '#ffffff', '#d9e7dc', '#bcd9c5'] } },
+    night: { earth: '#1b1730', roof: '#2c2546', wall: '#15112a', wall2: '#3a3260', light: 0.55, c: { bg: '#1b1730', earth: '#1b1730',
+      park: '#172a2b', park2: '#1a3030', wood: '#16262a', wood2: '#193131', scrub: '#1c2b2d', water: '#151f42', sand: '#272238', ped: '#221d3a',
+      urban: '#1f1a36', runway: '#2b2642', road: '#463e72', rail: '#403a60', bound: '#4f4874', bld: '#2a2444',
+      lbl: '#b6acd9', halo: '#16122a', city: '#e7e1fb', sub: '#9b91c0', state: '#7f76a6', ocean: '#8fa6e0',
+      lc: ['#1a2b2b', '#242036', '#1f1a36', '#1b2c2a', '#2f2b44', '#1c2b2c', '#162728'] } },
   },
   pal(night) { return night ? this.PALETTE.night : this.PALETTE.day; },
   // цвета палитры → полный набор цветов стиля Protomaps (те же ключи, что у его light/dark; улицы, мосты и тоннели — цвета road)
