@@ -576,7 +576,7 @@ Object.assign(UI, {
       </div>
       <div class="list install-list">
         <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное приложение`}</small></div><span class="set-chev">›</span></button>
-        <a class="row link set-row inst-apk hidden" href="duholov.apk" download><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши установку из этого источника`}</small></div><span class="set-chev">›</span></a>
+        <a class="row link set-row inst-apk hidden" href="${Updater.apkUrl()}" download><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши установку из этого источника`}</small></div><span class="set-chev">›</span></a>
       </div>
       ${sec(ru`Об игре`)}
       <div class="list">
@@ -640,7 +640,7 @@ Object.assign(UI, {
     };
     pwa.onclick = async () => { const p = window.__installPrompt; if (!p) return; p.prompt(); await p.userChoice; window.__installPrompt = null; pwa.classList.add('hidden'); };
     if (!Updater.IN_APP && /Android/i.test(navigator.userAgent)) {
-      fetch('duholov.apk', { method: 'HEAD' }).then(r => { if (r.ok) { apk.classList.remove('hidden'); il.classList.remove('empty-list'); } }).catch(() => {});
+      fetch(Updater.apkUrl(), { method: 'HEAD' }).then(r => { if (r.ok) { apk.classList.remove('hidden'); il.classList.remove('empty-list'); } }).catch(() => {}); // 5.1.41: на тестовом сайте — тестовое приложение
     }
     const il = scr.querySelector('.install-list');
     if (!il.querySelector('.row:not(.hidden)')) il.classList.add('empty-list');

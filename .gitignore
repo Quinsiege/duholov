@@ -6,6 +6,7 @@ android/local.properties
 *.iml
 .claude/
 www/duholov.apk
+www/duholov-test.apk
 tests/node_modules/
 www/tiles/
 /video/

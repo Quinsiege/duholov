@@ -18,5 +18,9 @@
     <p>Для первого запуска и карты нужен интернет. Проверь подключение и попробуй ещё раз.</p>
     <a href="https://duholov.ru/">Повторить</a>
   </div>
+  <script>
+    // 16: сайт игры — от приложения (?home=): у тестового приложения это test.duholov.ru; только сайты duholov.ru
+    try { var h = new URLSearchParams(location.search).get('home'); if (/^https:\/\/([a-z0-9-]+\.)?duholov\.ru\/$/.test(h || '')) document.querySelector('a').href = h; } catch (e) {}
+  </script>
 </body>
 </html>

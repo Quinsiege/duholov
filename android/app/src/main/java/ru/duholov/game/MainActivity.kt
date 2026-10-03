@@ -55,12 +55,14 @@ import androidx.webkit.WebViewAssetLoader
 class MainActivity : ComponentActivity() {
 
     companion object {
-        const val HOME = "https://duholov.ru/" // 4.1: игра переехала с quinsiege.github.io/duholov
+        // 4.1: игра переехала с quinsiege.github.io/duholov. 16: сайт игры — из сборки (BuildConfig.HOST): duholov.ru, а у тестового
+        // приложения «Духолов (тест)» (debug) — тестовый контур test.duholov.ru
+        val HOME = "https://${BuildConfig.HOST}/"
         const val OFFLINE = "https://appassets.androidplatform.net/assets/offline.html"
         const val WRAPPER_VERSION = 16 // вместе с versionCode; minApk в www/version.json поднимать, только если старое приложение работать не должно
-        private val OWN_HOSTS = setOf("duholov.ru", "appassets.androidplatform.net")
+        private val OWN_HOSTS = setOf(BuildConfig.HOST, "appassets.androidplatform.net")
         // камеру получает только сама игра, не страницы сервисов входа (5.1: геолокации больше нет — игра без GPS)
-        private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == "duholov.ru"
+        private fun isOwnOrigin(origin: String?) = origin != null && Uri.parse(origin).host == BuildConfig.HOST
         // 3: вход через Яндекс, VK и Telegram — внутри приложения, чтобы сервис вернул игрока прямо в игру
         // (Google во встроенные окна не пускает — эту кнопку игра в приложении не показывает)
         // 10: только страницы входа (раньше — любые *.yandex.ru и *.vk.com, то есть и чужой контент без адресной строки)
@@ -98,7 +100,7 @@ class MainActivity : ComponentActivity() {
 
     // 7: вход через Google — системное окно выбора аккаунта. Токен (id_token для веб-клиента игры, с nonce игры)
     // отдаётся только странице игры (duholov.ru): в приложении открываются и страницы ЮKassa, банков и сервисов входа
-    private fun onGame() = Uri.parse(web.url ?: "").host == "duholov.ru"
+    private fun onGame() = Uri.parse(web.url ?: "").host == BuildConfig.HOST
     private fun signInGoogle(clientId: String, nonce: String) {
         if (!onGame()) return
         val option = GetSignInWithGoogleOption.Builder(clientId).setNonce(nonce).build()
@@ -211,7 +213,7 @@ class MainActivity : ComponentActivity() {
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame && request.url.host == Uri.parse(HOME).host) view.loadUrl(OFFLINE)
+                if (request.isForMainFrame && request.url.host == Uri.parse(HOME).host) view.loadUrl(OFFLINE + "?home=" + Uri.encode(HOME)) // 16: «Повторить» — на свой сайт
             }
         }
 

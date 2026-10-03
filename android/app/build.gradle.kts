@@ -13,7 +13,7 @@ android {
         targetSdk = 36 // 11: Google Play — новые приложения и обновления с 31.08.2026 — API 36
         // versionCode = MainActivity.WRAPPER_VERSION; minApk в www/version.json — не выше
         versionCode = 16
-        versionName = "5.1.40"
+        versionName = "5.1.41"
         // 11: версия для Google Play (flavor play): Android 16, оплата через Google Play, обновления — через Play
         // 10: запасная ссылка intent: — только https во внешнем браузере; вход — только страницы входа; без переноса данных
         // 9: положение по сетям для защиты от подмены GPS (DuholovNative.netLocation)
@@ -37,6 +37,15 @@ android {
     // и передаёт путь в ANDROID_KEYSTORE_FILE. Без них (проверки Pull Request) собирается только debug.
     val keystore = System.getenv("ANDROID_KEYSTORE_FILE")
     signingConfigs {
+        // 16: тестовое приложение (debug) — общим тестовым ключом test.keystore: он не секрет (пароль «android», как у ключа
+        // отладки Android) и одинаков в каждой сборке CI — новая тестовая сборка ставится поверх прежней, без удаления
+        getByName("debug") {
+            storeFile = file("test.keystore")
+            storeType = "pkcs12"
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (keystore != null) {
             create("release") {
                 storeFile = file(keystore)
@@ -48,7 +57,15 @@ android {
     }
 
     buildTypes {
+        // 16: тестовая сборка — отдельное приложение «Духолов (тест)» (ru.duholov.game.test, ставится рядом с основным):
+        // открывает тестовый контур test.duholov.ru — сборку Pull Request. CI кладёт её на test.duholov.ru/duholov-test.apk
+        debug {
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            buildConfigField("String", "HOST", "\"test.duholov.ru\"")
+        }
         release {
+            buildConfigField("String", "HOST", "\"duholov.ru\"")
             // 15: R8 — сжатие и оптимизация кода (Play: «Оптимизация DEX», «Обфускация»); карта деобфускации уходит в AAB сама.
             // Мост JS (@JavascriptInterface) и библиотеки входа — в proguard-rules.pro
             isMinifyEnabled = true

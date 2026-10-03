@@ -104,7 +104,8 @@ const Updater = {
   STORE: (navigator.userAgent.match(/store=([a-z]+)/) || [])[1] || '',
   STORES: { rustore: { name: 'RuStore', url: 'https://www.rustore.ru/catalog/app/ru.duholov.game' },
     play: { name: 'Google Play', url: 'https://play.google.com/store/apps/details?id=ru.duholov.game' } }, // 4.27: версия для Google Play обновляется только через Play
-  apkUrl() { return this.STORES[this.STORE] ? this.STORES[this.STORE].url : 'duholov.apk'; },
+  // 5.1.41: на тестовом сайте — тестовое приложение «Духолов (тест)»: CI кладёт его рядом с сайтом
+  apkUrl() { return this.STORES[this.STORE] ? this.STORES[this.STORE].url : location.hostname === 'test.duholov.ru' ? 'duholov-test.apk' : 'duholov.apk'; },
 
   // Устаревшее приложение-обёртка: новую версию нужно скачать и установить (или обновить в магазине)
   promptApk(v) {

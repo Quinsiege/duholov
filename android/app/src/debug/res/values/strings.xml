@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 16: тестовое приложение (debug) — рядом с основным, открывает тестовый контур test.duholov.ru -->
+<resources>
+    <string name="app_name">Духолов (тест)</string>
+</resources>

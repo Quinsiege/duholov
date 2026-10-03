@@ -24855,14 +24855,14 @@
   "at": [
    "www/js/ui-player.js:579"
   ],
-  "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"duholov.apk\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши ус"
+  "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"${Updater.apkUrl()}\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: ра"
  },
  {
   "k": "Приложение-обёртка: разреши установку из этого источника",
   "at": [
    "www/js/ui-player.js:579"
   ],
-  "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"duholov.apk\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши ус"
+  "ctx": "<a class=\"row link set-row inst-apk hidden\" href=\"${Updater.apkUrl()}\" download><span class=\"set-ico\">${this.I.download}</span><div class=\"row-main\"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: ра"
  },
  {
   "k": "Об игре",
@@ -27417,35 +27417,35 @@
  {
   "k": "Обновите приложение",
   "at": [
-   "www/js/updater.js:114"
+   "www/js/updater.js:115"
   ],
   "ctx": "title: ru`Обновите приложение`, cls: 'update-modal', dismiss: false,"
  },
  {
   "k": "Вышла новая версия приложения Духолов. Обновите его в {0} — прогресс сохранится.",
   "at": [
-   "www/js/updater.js:115"
+   "www/js/updater.js:116"
   ],
   "ctx": "html: st ? `<p>${ru`Вышла новая версия приложения Духолов. Обновите его в ${st.name} — прогресс сохранится.`}</p>`"
  },
  {
   "k": "Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.",
   "at": [
-   "www/js/updater.js:116"
+   "www/js/updater.js:117"
   ],
   "ctx": ": `<p>${ru`Вышла новая версия приложения Духолов для Android. Скачайте её и установите поверх текущей — прогресс сохранится.`}</p>`,"
  },
  {
   "k": "Открыть {0}",
   "at": [
-   "www/js/updater.js:117"
+   "www/js/updater.js:118"
   ],
   "ctx": "buttons: [{ label: st ? ru`Открыть ${st.name}` : ru`Скачать обновление`, cls: 'primary', keep: true, fn: () => { location.href = this.apkUrl(); } }],"
  },
  {
   "k": "Скачать обновление",
   "at": [
-   "www/js/updater.js:117"
+   "www/js/updater.js:118"
   ],
   "ctx": "buttons: [{ label: st ? ru`Открыть ${st.name}` : ru`Скачать обновление`, cls: 'primary', keep: true, fn: () => { location.href = this.apkUrl(); } }],"
  },

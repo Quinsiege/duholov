@@ -75,13 +75,20 @@ jobs:
         with:
           gradle-version: '8.13'
       - run: gradle -p android assembleDebug --no-daemon
+      # 16: тестовое приложение «Духолов (тест)» (site, debug: открывает test.duholov.ru) — его выложит job «Тестовый сайт»
+      # на test.duholov.ru/duholov-test.apk; ещё — в Artifacts этого запуска
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duholov-test-apk
+          path: android/app/build/outputs/apk/site/debug/app-site-debug.apk
+          retention-days: 14
       # 15: релиз с R8 (без подписи) — проверить, что сжатие кода собирается, ещё до слияния
       - run: gradle -p android assembleSiteRelease bundlePlayRelease --no-daemon
 
   # Сборка Pull Request на test.duholov.ru и его функция game — в тестовый контур (api-test.duholov.ru): проверить с телефона до слияния
   test-site:
     name: Тестовый сайт
-    needs: [tests]
+    needs: [tests, apk]
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
@@ -99,6 +106,13 @@ jobs:
         run: npm ci --prefix tools/web --no-audit --no-fund && node tools/web/build.mjs
       - name: Метка версии в адресах файлов
         run: sh tools/stamp-version.sh
+      # 16: тестовое приложение «Духолов (тест)» — рядом с тестовым сайтом (test.duholov.ru/duholov-test.apk)
+      - uses: actions/download-artifact@v4
+        with:
+          name: duholov-test-apk
+          path: test-apk
+      - name: Тестовое приложение — к сайту
+        run: mv test-apk/app-site-debug.apk www/duholov-test.apk
       # 4.26: свой ключ и пользователь deploy-test — пишет только в тестовый контур (сайт test.duholov.ru и функцию dt-functions).
       # Боевой ключ DEPLOY_SSH_KEY проверкам PR не нужен (его держит окружение production у pages.yml); пока секрета
       # DEPLOY_TEST_SSH_KEY нет — по-старому
