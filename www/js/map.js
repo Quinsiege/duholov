@@ -862,12 +862,14 @@ const MapView = {
   hiders(mk, ctx) {
     const ic = mk._icon, p = ic._leaflet_pos, W = p && !ic._off ? this.figW(mk) : 0; // далеко за экраном — не считать
     if (!W) { mk._xk = null; return (mk._hid = []); }
-    /* фигура почти не сдвинулась относительно точки зрения (меньше ¾ точки; камера, масштаб и дома — те же) — дома те же: на ходу
-       Ловчий проходит за кадр десятую долю точки, и фигуры пересчитываются раз в несколько кадров, а не на каждом */
+    /* фигура почти не сдвинулась ни по карте, ни относительно точки зрения (меньше ¾ точки; камера, масштаб и дома — те же) — дома те же:
+       на ходу Ловчий проходит за кадр десятую долю точки, и фигуры пересчитываются раз в несколько кадров, а не на каждом. Проверять
+       нужно оба сдвига: камера идёт за Ловчим, и относительно неё он стоит на месте, а по карте — идёт (5.1.32: без сдвига по карте
+       дом, за который он зашёл, становился прозрачным только после поворота камеры) */
     const cam = ctx.cam, kx = cam.x - p.x, ky = cam.y - p.y, g = ic._g || 1, o = mk._xk;
-    if (o && o.gen === ctx.gen && o.z === ctx.z && o.W === W && o.roof === mk._roofH && Math.abs(o.kx - kx) < 0.75 && Math.abs(o.ky - ky) < 0.75 &&
-      Math.abs(o.w - cam.w) < 0.5 && Math.abs(o.g - g) < 0.004 * g && Math.abs(o.r - this.rot) < 0.2) return mk._hid;
-    mk._xk = { gen: ctx.gen, z: ctx.z, W, roof: mk._roofH, kx, ky, w: cam.w, g, r: this.rot };
+    if (o && o.gen === ctx.gen && o.z === ctx.z && o.W === W && o.roof === mk._roofH && Math.abs(o.px - p.x) < 0.75 && Math.abs(o.py - p.y) < 0.75 &&
+      Math.abs(o.kx - kx) < 0.75 && Math.abs(o.ky - ky) < 0.75 && Math.abs(o.w - cam.w) < 0.5 && Math.abs(o.g - g) < 0.004 * g && Math.abs(o.r - this.rot) < 0.2) return mk._hid;
+    mk._xk = { gen: ctx.gen, z: ctx.z, W, roof: mk._roofH, px: p.x, py: p.y, kx, ky, w: cam.w, g, r: this.rot };
     const out = mk._hid = [], base = mk._roofH ? Bld3D.hpx(mk._roofH) : 0; // место на крыше: низ фигуры — на высоте крыши
     if (ctx.hi <= base) return out;
     // вертикали фигуры — середина и по краям (0,3 ширины от середины), «вправо по экрану» на плоскости карты; дома — у лучей взгляда

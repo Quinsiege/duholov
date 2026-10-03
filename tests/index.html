@@ -4900,6 +4900,25 @@
       eq(Bld3D.fades.get(bld).to, 1, 'и дома — непрозрачные:');
     } finally { Object.assign(MapView, keep); Object.assign(Bld3D, keepB); }
   });
+  test('5.1.32: Ловчий идёт (камера — за ним) — за какими домами он, считается на ходу, без поворота камеры', () => {
+    const keep = { rot: MapView.rot, figW: MapView.figW }, keepN = Bld3D.occNear;
+    try {
+      MapView.rot = 0; MapView.figW = () => 56;
+      let asked = 0;
+      Bld3D.occNear = () => { asked++; return []; };
+      const ctx = p => ({ cam: { x: p.x, y: p.y + 600, w: 900 }, mpx: 2, z: 17.5, gen: 1, hi: 100 }); // точка зрения — за Ловчим
+      const ic = { _leaflet_pos: { x: 500, y: 500 }, _g: 1 }, me = { _icon: ic };
+      MapView.hiders(me, ctx(ic._leaflet_pos)); MapView.hiders(me, ctx(ic._leaflet_pos));
+      eq(asked, 1, 'стоит — без пересчёта:');
+      ic._leaflet_pos = { x: 500, y: 499.5 }; MapView.hiders(me, ctx(ic._leaflet_pos));
+      eq(asked, 1, 'сдвинулся меньше чем на ¾ точки — тоже:');
+      ic._leaflet_pos = { x: 500, y: 498 }; MapView.hiders(me, ctx(ic._leaflet_pos));
+      eq(asked, 2, 'прошёл дальше — заново (относительно камеры он на месте, а по карте — идёт):');
+      const pl = { _icon: { _leaflet_pos: { x: 300, y: 300 }, _g: 1 } }; // место стоит, камера уехала за Ловчим
+      MapView.hiders(pl, ctx({ x: 500, y: 500 })); MapView.hiders(pl, ctx({ x: 500, y: 497 }));
+      eq(asked, 4, 'место — заново, когда камера сдвинулась:');
+    } finally { Object.assign(MapView, keep); Bld3D.occNear = keepN; }
+  });
   test('5.1.32: шейдер объёмных домов собирается (прозрачные дома — своим проходом)', () => {
     const cv = document.createElement('canvas'), gl = cv.getContext('webgl');
     if (!gl) { ok(true, 'нет WebGL — проверять нечего'); return; }
