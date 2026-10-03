@@ -80,6 +80,68 @@ const Hazard = {
   },
 };
 
+/* 5.1.42: погода на карте — дождь, снег и ветер на одном холсте во весь экран (#wxfx), FPS кадров в секунду, а не CSS-анимацией
+   десятков капель: та заставляла браузер 60 раз в секунду заново собирать весь кадр вместе с наклонённой картой — телефон грелся.
+   Холст — в CSS-пикселях (капли тонкие, лишние точки не нужны). Игра в фоне, под сценой и при «уменьшить движение» — не рисуем */
+const WxFx = {
+  FPS: 12, N: { rain: 70, snow: 55, wind: 7 },
+  cv: null, fx: null, ps: [], t: 0, tmo: 0, W: 0, H: 0,
+  start(cv, fx) {
+    clearTimeout(this.tmo); this.tmo = 0;
+    this.cv = cv && cv.getContext ? cv : null; this.fx = fx; this.ps = [];
+    if (!this.cv) return;
+    this.size();
+    for (let i = 0; i < (this.N[fx] || 0); i++) this.ps.push(this.spawn(true));
+    this.t = performance.now();
+    this.tick();
+  },
+  size() {
+    const W = Math.round(MapView.vw || innerWidth), H = Math.round(MapView.vh || innerHeight);
+    if (this.cv.width !== W || this.cv.height !== H) { this.cv.width = W; this.cv.height = H; }
+    this.W = W; this.H = H;
+  },
+  // новая капля (снежинка, порыв); any — где угодно на экране (в начале), иначе — из-за края
+  spawn(any) {
+    const W = this.W, H = this.H, r = Math.random;
+    if (this.fx === 'rain') return { x: r() * W * 1.1, y: any ? r() * H : -20 - r() * 40, v: 900 + r() * 400, l: 12 + r() * 8 };
+    if (this.fx === 'snow') return { x: r() * W, y: any ? r() * H : -6 - r() * 20, v: 30 + r() * 40, s: 1.4 + r() * 1.6, ph: r() * 6.283 };
+    return { x: any ? r() * W : -120 - r() * 200, y: r() * H, v: 500 + r() * 300, l: 60 + r() * 50 };
+  },
+  tick() {
+    if (!this.cv || !this.cv.isConnected) { this.tmo = 0; return; }
+    this.tmo = setTimeout(() => this.tick(), 1000 / this.FPS);
+    const now = performance.now(), dt = Math.min(0.25, (now - this.t) / 1000);
+    this.t = now;
+    if (document.hidden || (typeof Stage !== 'undefined' && Stage.busy) || Cfg.calm()) return;
+    this.size();
+    const g = this.cv.getContext('2d'), W = this.W, H = this.H, fx = this.fx;
+    g.clearRect(0, 0, W, H);
+    if (fx === 'rain') { g.strokeStyle = 'rgba(186, 230, 253, .6)'; g.lineWidth = 1.2; g.beginPath(); }
+    if (fx === 'snow') { g.fillStyle = 'rgba(255, 255, 255, .85)'; g.beginPath(); }
+    for (let i = 0; i < this.ps.length; i++) {
+      let p = this.ps[i];
+      if (fx === 'rain') {
+        p.y += p.v * dt; p.x -= p.v * dt * 0.08;
+        if (p.y > H + 20) p = this.ps[i] = this.spawn();
+        g.moveTo(p.x, p.y); g.lineTo(p.x + p.l * 0.08, p.y - p.l);
+      } else if (fx === 'snow') {
+        p.y += p.v * dt; p.ph += dt;
+        if (p.y > H + 6) p = this.ps[i] = this.spawn();
+        const x = p.x + Math.sin(p.ph) * 12;
+        g.moveTo(x + p.s, p.y); g.arc(x, p.y, p.s, 0, 6.283);
+      } else {
+        p.x += p.v * dt;
+        if (p.x > W + 120) p = this.ps[i] = this.spawn();
+        const gr = g.createLinearGradient(p.x - p.l, 0, p.x, 0);
+        gr.addColorStop(0, 'rgba(255, 255, 255, 0)'); gr.addColorStop(0.5, 'rgba(255, 255, 255, .5)'); gr.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        g.fillStyle = gr; g.fillRect(p.x - p.l, p.y, p.l, 2);
+      }
+    }
+    if (fx === 'rain') g.stroke();
+    if (fx === 'snow') g.fill();
+  },
+};
+
 /* 5.1.30: крыши — высота дома (м), в котором стоит место: модель места встаёт на его крышу (MapView.upright). Дома — из тех же
    плиток z15, что у Hazard; хранится только ответ на точку (сами дома плитки — у кэша Protomaps). 0 — не в доме (или карты домов
    нет), null — плитка ещё читается (карта перерисует значки, когда прочтёт) */
@@ -192,7 +254,8 @@ const MapView = {
   },
   /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави). 5.1.42: палитра «Навья» (выбор владельца из четырёх:
      «Сказочная», «Яркие луга», «Навья», «Бирюзовая»): днём — лавандовая земля в тон игре, шалфейные парки, сиреневая вода, белые
-     улицы и лиловые дома; ночью — тёмно-фиолетовая, улицы и дома светлее земли. Цвета стиля — c (flavorOf; улицы у Protomaps
+     улицы и лиловые дома; ночью — «Лунная» (выбор владельца из четырёх: «Лунная», «Сумеречная», «Звёздная», «Аметистовая»):
+     серебристо-синяя, улицы светлые, как в лунном свете. Цвета стиля — c (flavorOf; улицы у Protomaps
      для Leaflet — одного цвета, road); к ним — земля (фон карты под ещё не нарисованными плитками; тот же — #mapBg в style.css) и
      объёмные дома (Bld3D, сейчас выключены — дома плоские, цвет bld): крыша, стены в тени и на солнце, контраст стен */
   PALETTE: {
@@ -201,11 +264,11 @@ const MapView = {
       urban: '#e1dbee', runway: '#f4f2fa', road: '#ffffff', rail: '#a59cbf', bound: '#a79fc0', bld: '#d0c7e6',
       lbl: '#564f73', halo: '#faf8ff', city: '#2d2647', sub: '#7a7299', state: '#9a92b6', ocean: '#4f6fb8',
       lc: ['#d7e8db', '#ebe4ef', '#e1dbee', '#dce9dd', '#ffffff', '#d9e7dc', '#bcd9c5'] } },
-    night: { earth: '#1b1730', roof: '#2c2546', wall: '#15112a', wall2: '#3a3260', light: 0.55, c: { bg: '#1b1730', earth: '#1b1730',
-      park: '#172a2b', park2: '#1a3030', wood: '#16262a', wood2: '#193131', scrub: '#1c2b2d', water: '#151f42', sand: '#272238', ped: '#221d3a',
-      urban: '#1f1a36', runway: '#2b2642', road: '#463e72', rail: '#403a60', bound: '#4f4874', bld: '#2a2444',
-      lbl: '#b6acd9', halo: '#16122a', city: '#e7e1fb', sub: '#9b91c0', state: '#7f76a6', ocean: '#8fa6e0',
-      lc: ['#1a2b2b', '#242036', '#1f1a36', '#1b2c2a', '#2f2b44', '#1c2b2c', '#162728'] } },
+    night: { earth: '#232a45', roof: '#3a4368', wall: '#1a2038', wall2: '#465079', light: 0.55, c: { bg: '#232a45', earth: '#232a45',
+      park: '#1f3a3c', park2: '#234242', wood: '#1d3438', wood2: '#214040', scrub: '#25393d', water: '#101b3a', sand: '#2f3349', ped: '#2a3150',
+      urban: '#273050', runway: '#353d5e', road: '#7d89b6', rail: '#59628a', bound: '#6a74a0', bld: '#343d62',
+      lbl: '#d3daf3', halo: '#1a2038', city: '#f0f3ff', sub: '#aab3d6', state: '#8a94bb', ocean: '#9fb4ea',
+      lc: ['#21393a', '#2c3048', '#273050', '#223b39', '#3a4160', '#24393b', '#1c3436'] } },
   },
   pal(night) { return night ? this.PALETTE.night : this.PALETTE.day; },
   // цвета палитры → полный набор цветов стиля Protomaps (те же ключи, что у его light/dark; улицы, мосты и тоннели — цвета road)
@@ -274,6 +337,7 @@ const MapView = {
     }
     if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(F); // объёмные дома — в тон карте
     document.body.classList.toggle('night', night);
+    this.setSky(lk); // 5.1.42: небо над горизонтом — по погоде и времени суток
     const bg = U.$('#mapBg'); if (bg) bg.style.background = F.earth; // и земля под ещё не нарисованными плитками (5.1.31: слоем позади карты)
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
@@ -373,19 +437,16 @@ const MapView = {
     el.style.display = n ? '' : 'none';
   },
 
+  // 5.1.42: дождь, снег и ветер — холст WxFx (было 40–60 капель CSS-анимацией: кадр целиком 60 раз в секунду — телефон грелся);
+  // туман — неподвижная дымка (style.css)
   setWeatherFx() {
     const box = U.$('#wxfx'), w = Sky.w;
     const fx = w && WEATHER[w.key].fx;
     if (box._fx === fx) return;
     box._fx = fx;
     box.className = fx ? 'wx-' + fx : '';
-    box.innerHTML = fx === 'rain' || fx === 'snow' ? '<i></i>'.repeat(fx === 'rain' ? 60 : 40) : fx === 'wind' ? '<i></i>'.repeat(8) : '';
-    [...box.children].forEach(i => {
-      i.style.left = Math.random() * 100 + '%';
-      i.style.animationDelay = -Math.random() * 3 + 's';
-      i.style.animationDuration = (fx === 'rain' ? 0.6 + Math.random() * 0.4 : fx === 'snow' ? 5 + Math.random() * 5 : 3 + Math.random() * 3) + 's';
-      if (fx === 'wind') i.style.top = Math.random() * 100 + '%';
-    });
+    box.innerHTML = fx === 'rain' || fx === 'snow' || fx === 'wind' ? '<canvas></canvas>' : '';
+    WxFx.start(box.firstChild, fx);
   },
 
   recenter(quick) {
@@ -525,14 +586,65 @@ const MapView = {
     const c = U.$('#compassBtn');
     if (c) { c.innerHTML = this.compassSvg(); c.onclick = () => { Sfx.play('tap'); this.northUp(); }; }
     addEventListener('resize', () => { if (this._sq) this.layout(); });
-    this.setTilt(true); // 5.1.42: наклон 50° всегда — настройки «Объёмная карта» больше нет
+    // 5.1.42: небо и дымка горизонта — над картой (горизонт на экране при сильном приближении)
+    if (!U.$('#mapHaze')) { const h = document.createElement('div'); h.id = 'mapHaze'; box.after(h); this.setSky(this.look()); }
+    // наклон — за масштабом: пальцы двигают масштаб — наклон за ними (не мельче 0,5°); анимация масштаба — за те же 250 мс; в конце — точно
+    this.map.on('zoom', () => { if (!this.map._animatingZoom) this.tiltSoon(this.map.getZoom(), 0, 0.5); });
+    this.map.on('zoomanim', e => this.tiltSoon(e.zoom, 250, 0.5));
+    this.map.on('zoomend', () => this.tiltSoon(this.map.getZoom()));
+    this.setTilt(true); // 5.1.42: наклон всегда — настройки «Объёмная карта» больше нет; 50…70° по масштабу
   },
   /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
      трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат).
      5.1.34: наклон постоянный — TILT (50°, выбор владельца; было 14–50° пальцем), пальцем камеру только поворачивают; дымки у верха
      экрана нет. Карта — не дальше FAR точек слоя впереди Ловчего: у наклона 50° это за верхом экрана (там ~1900), а у большего
-     наклона горизонт пришёл бы на экран — слой карты и плитки ушли бы в бесконечность */
-  TILT: 50, PD: 1100, FAR: 2400, tilt: 0, _py: 0,
+     наклона горизонт пришёл бы на экран — слой карты и плитки ушли бы в бесконечность.
+     5.1.42: наклон — за масштабом (выбор владельца): отдалили камеру до ZMIN — TILT (50°), приблизили до наибольшего масштаба —
+     TILT_MAX (70°), между ними — плавно (tiltAt, tiltSoon). Пальцем камеру по-прежнему только поворачивают. С ~65° горизонт на
+     экране: выше него — небо по погоде и времени суток (ночью — звёзды), у горизонта — едва заметная дымка, она же растворяет
+     дальний край карты (#mapHaze: setSky, layout) */
+  // PD — нынешнее расстояние до точки зрения (перспектива): PD0 у наклона TILT, PD1 у TILT_MAX (между ними — плавно, pdAt). Ближе —
+  // перспектива сильнее и горизонт ниже: у 70° небо — около пятой части экрана, а не полоска под шапкой (у 50° — как было)
+  TILT: 50, TILT_MAX: 70, PD: 1100, PD0: 1100, PD1: 880, FAR: 2400, tilt: 0, _py: 0,
+  pdAt(t) { return t ? this.PD0 + (this.PD1 - this.PD0) * U.clamp((t - this.TILT) / (this.TILT_MAX - this.TILT), 0, 1) : this.PD0; },
+  // наклон для масштаба z: TILT у самого дальнего (ZMIN), TILT_MAX у самого ближнего (наибольший масштаб карты)
+  tiltAt(z) {
+    const zmax = this.map && this.map.getMaxZoom ? this.map.getMaxZoom() : 19, k = U.clamp((z - this.ZMIN) / Math.max(0.01, zmax - this.ZMIN), 0, 1);
+    return this.TILT + (this.TILT_MAX - this.TILT) * k;
+  },
+  // наклон — к масштабу z: сразу, в ближайшем кадре (пальцы двигают масштаб; не мельче min градуса — раскладка карты не на каждом
+  // шаге пальцев) или плавно за ms (анимация масштаба Leaflet — у неё 250 мс)
+  tiltSoon(z, ms = 0, min = 0.02) {
+    const want = this.tiltAt(z), from = this.tilt, t0 = performance.now();
+    if (!this.tilt) return; // плоская карта (тесты, старт) — наклона нет
+    cancelAnimationFrame(this._tiltRaf);
+    const step = t => {
+      const k = ms ? U.clamp((t - t0) / ms, 0, 1) : 1, v = from + (want - from) * (1 - (1 - k) * (1 - k));
+      this._tiltRaf = 0;
+      if (Math.abs(v - this.tilt) >= (k < 1 ? min : 0.02)) { this.tilt = v; this.layout(); }
+      if (k < 1) this._tiltRaf = requestAnimationFrame(step);
+    };
+    this._tiltRaf = requestAnimationFrame(step);
+  },
+  /* 5.1.42: небо над горизонтом — по погоде и времени суток ([вверху, у горизонта]); чего нет у рассвета или сумерек — как днём или
+     ночью; ночью и в сумерки в ясную погоду — звёзды, днём с облачками — облака. Земля — цвет дымки у горизонта (style.css: #mapHaze) */
+  SKY: {
+    day: { clear: ['#6f97e3', '#dfe3f7'], partly: ['#7c9fe0', '#e4e6f6'], cloud: ['#9ba3ba', '#dcdfe8'], rain: ['#6f7689', '#babecb'],
+      storm: ['#4f5568', '#9ea3b2'], snow: ['#b8bfd0', '#eef0f5'], fog: ['#c8cbd7', '#e7e8ef'] },
+    dawn: { clear: ['#7b8fd6', '#f4cdb6'], partly: ['#8496d4', '#f2d2c0'] },
+    dusk: { clear: ['#262a5e', '#d4918f'], partly: ['#2c3060', '#c99594'] },
+    night: { clear: ['#05091c', '#1d2650'], cloud: ['#121628', '#2a3049'], rain: ['#0e1222', '#242a3c'], storm: ['#0b0e1b', '#1f2434'],
+      snow: ['#191e31', '#3a4058'], fog: ['#1b1f31', '#3a3e54'] },
+  },
+  setSky(lk) {
+    const hz = U.$('#mapHaze'); if (!hz) return;
+    const w = typeof Sky !== 'undefined' && Sky.w ? Sky.w.key : 'clear';
+    const kind = { partly: 'partly', overcast: 'cloud', fog: 'fog', rain: 'rain', storm: 'storm', snow: 'snow' }[w] || 'clear';
+    const base = this.SKY[lk.night ? 'night' : 'day'], set = (this.SKY[lk.phase] || {})[kind] || base[kind] || base.clear;
+    hz.style.setProperty('--sky1', set[0]); hz.style.setProperty('--sky2', set[1]); hz.style.setProperty('--haze', this.pal(lk.night).earth);
+    hz.classList.toggle('stars', lk.night && (kind === 'clear' || kind === 'partly'));
+    hz.classList.toggle('clouds', !lk.night && kind === 'partly');
+  },
   // дальний край карты на экране (y, CSS-пиксели; −∞ — у плоской карты): точка земли в FAR точках слоя впереди Ловчего
   farY() {
     if (!this.tilt) return -Infinity;
@@ -544,6 +656,7 @@ const MapView = {
   layout() {
     const box = U.$('#map'), on = !!(this.tilt || this.rot), W = this.vw || innerWidth, H = this.vh || innerHeight;
     this._sq = on;
+    this.PD = this.pdAt(this.tilt); // 5.1.42: перспектива — по наклону
     this._py = this.tilt ? Math.round(H * .6) : H / 2;
     if (on) {
       // слой карты — до дальнего края земли (не дальше FAR) и до нижнего края экрана, при повороте — квадрат вокруг этого
@@ -558,6 +671,16 @@ const MapView = {
       box.style.setProperty('--tilt', this.tilt + 'deg');
       box.style.setProperty('--pd', this.PD + 'px');
     }
+    // 5.1.42: небо и дымка горизонта (style.css: #mapHaze) — когда дальний край карты на экране (наклон от ~60°)
+    const hz = U.$('#mapHaze');
+    if (hz) {
+      const fy = this.farY(), vis = !!this.tilt && fy > -60;
+      hz.classList.toggle('on', vis);
+      if (vis) {
+        hz.style.setProperty('--hz-y', Math.round(this._py - this.PD / Math.tan(this.tilt * Math.PI / 180)) + 'px');
+        hz.style.setProperty('--far-y', Math.round(fy) + 'px');
+      }
+    }
     box.classList.toggle('rot', on);
     box.classList.toggle('tilt', !!this.tilt);
     document.body.classList.toggle('tilt', !!this.tilt);
@@ -568,8 +691,8 @@ const MapView = {
     const at = U.$('#mapAttr');
     if (at) { at.classList.toggle('hidden', !on); if (on) at.innerHTML = this.map.attributionControl.getContainer().innerHTML; }
   },
-  setTilt(on) {
-    this.tilt = on ? this.TILT : 0;
+  setTilt(on = true) {
+    this.tilt = on ? this.tiltAt(this.map ? this.map.getZoom() : this.Z0) : 0; // 5.1.42: по масштабу (было — всегда TILT)
     this.layout();
     this.zoomMode();
   },

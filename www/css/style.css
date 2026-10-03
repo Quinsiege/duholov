@@ -59,7 +59,7 @@ small, .small { color: var(--muted); font-size: 12px; }
    фоном самой наклонённой карты: фон корня 3D-пространства лежит в одной плоскости с плитками, и при сильном наклоне (его край уходит
    за камеру) браузер на отдельных кадрах ставил его поверх плиток — карта под ногами пропадала (z-fighting) */
 #mapBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #e6e1f1; } /* 5.1.42: земля палитры «Навья» (MapView.PALETTE) */
-body.night #mapBg { background: #1b1730; }
+body.night #mapBg { background: #232a45; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(18, 12, 36, .55) !important; color: #cfc8e6 !important; border-radius: 6px 0 0 0; }
 .leaflet-control-attribution a { color: #e9e3ff !important; }
 .leaflet-bottom.leaflet-right { bottom: calc(var(--sb)); }
@@ -2665,11 +2665,11 @@ body:has(> .modal-wrap:not(.out)) #hud *, body:has(> .modal-wrap:not(.out)) #hud
    body.stage-glass — сверху стеклянный экран меню (4.25): карта под ним остаётся видна размытой, но неподвижной
    (в режиме экономии стекла нет — карта прячется, как под остальными сценами). Сцена под верхней — .stage-under (замирает),
    под непрозрачной верхней — ещё и .stage-hid (не рисуется). */
-body.stage :is(#map *, #hud *, #wxfx, #wxfx *), .stage-under, .stage-under *,
-body.stage :is(#map *, #hud *, #wxfx *)::before, body.stage :is(#map *, #hud *, #wxfx *)::after, .stage-under *::before, .stage-under *::after { animation-play-state: paused !important; }
+body.stage :is(#map *, #hud *, #wxfx, #wxfx *, #mapHaze), .stage-under, .stage-under *,
+body.stage :is(#map *, #hud *, #wxfx *, #mapHaze)::before, body.stage :is(#map *, #hud *, #wxfx *)::after, .stage-under *::before, .stage-under *::after { animation-play-state: paused !important; }
 body.stage-cover :is(#hud, #wxfx, #mapAttr),
-body.stage-cover:not(.stage-glass) :is(#map, #mapBg, #mapShade),
-body.stage-cover.eco :is(#map, #mapBg, #mapShade) { visibility: hidden !important; content-visibility: hidden; }
+body.stage-cover:not(.stage-glass) :is(#map, #mapBg, #mapShade, #mapHaze),
+body.stage-cover.eco :is(#map, #mapBg, #mapShade, #mapHaze) { visibility: hidden !important; content-visibility: hidden; }
 .stage-under.stage-hid { visibility: hidden !important; }
 /* 5.2: под стеклом (экраны меню, Источник, Атлас) — только подложка карты: плитки земли, дома и подписи улиц.
    Значки духов и мест, Ловчий, его круг и зоны духов, всплывающие подписи не рисуются (гаснут под уже проявившимся стеклом,
@@ -2854,7 +2854,24 @@ body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-sh
 /* 5.1.32: фигура за домом (место, дух, сам Ловчий — MapView.seeThrough) — тусклее, а сам дом — прозрачнее (Bld3D.setFade) */
 :is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift, .mk-player) { transition: opacity .25s; }
 .mk.behind > :is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift), .mk-player-wrap.behind > .mk-player { opacity: .5; }
-/* дымка горизонта: даль растворяется в цвете земли этого часа */
+/* 5.1.42: горизонт на экране (приближение — наклон до 70°): выше него — небо по погоде и времени суток (--sky1 вверху, --sky2 у
+   горизонта), у горизонта — едва заметная дымка, ниже — земля в дымке (--haze, цвет земли палитры) до дальнего края карты (--far-y;
+   дальше FAR карта не рисуется) и тает над картой. --hz-y и --far-y ставит MapView.layout, цвета и классы — MapView.setSky */
+#mapHaze { position: fixed; left: 0; right: 0; top: 0; height: calc(var(--far-y, 0px) + 46px); z-index: 0; pointer-events: none; display: none;
+  background: linear-gradient(var(--sky1, #6f97e3) 0, var(--sky2, #dfe3f7) calc(var(--hz-y, 0px) - 10px),
+    color-mix(in srgb, var(--sky2, #dfe3f7) 70%, var(--haze, #e6e1f1)) var(--hz-y, 0px), color-mix(in srgb, var(--sky2, #dfe3f7) 35%, var(--haze, #e6e1f1)) calc(var(--hz-y, 0px) + 10px),
+    var(--haze, #e6e1f1) var(--far-y, 0px), color-mix(in srgb, var(--haze, #e6e1f1) 45%, transparent) calc(var(--far-y, 0px) + 16px), transparent 100%); }
+body.tilt #mapHaze.on { display: block; }
+/* ночью в ясную погоду — звёзды (у горизонта гаснут в дымке, не мерцают — без бесконечной анимации); днём с облачками — облака */
+#mapHaze.stars::before, #mapHaze.clouds::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: max(0px, calc(var(--hz-y, 0px) - 6px));
+  -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+#mapHaze.stars::before { background-size: 173px 109px;
+  background-image: radial-gradient(1.3px 1.3px at 9% 14%, #fff, transparent), radial-gradient(1px 1px at 27% 51%, #dfe6ff, transparent),
+    radial-gradient(1.5px 1.5px at 44% 21%, #fff, transparent), radial-gradient(1px 1px at 61% 70%, #cfd8ff, transparent),
+    radial-gradient(1.2px 1.2px at 78% 33%, #fff, transparent), radial-gradient(1px 1px at 91% 82%, #e8ecff, transparent),
+    radial-gradient(.9px .9px at 18% 86%, #fff, transparent), radial-gradient(1.1px 1.1px at 52% 92%, #dfe6ff, transparent); opacity: .9; }
+#mapHaze.clouds::before { background: radial-gradient(ellipse 34% 22% at 18% 78%, rgba(255, 255, 255, .7), transparent 70%),
+  radial-gradient(ellipse 28% 16% at 62% 70%, rgba(255, 255, 255, .55), transparent 70%), radial-gradient(ellipse 22% 14% at 90% 86%, rgba(255, 255, 255, .6), transparent 70%); }
 #map.rot .leaflet-control-container { display: none; }
 #mapAttr { position: fixed; right: 0; bottom: var(--sb); z-index: 1; padding: 0 5px; font-size: 9px; line-height: 1.5; border-radius: 6px 0 0 0; background: rgba(18, 12, 36, .55); color: #cfc8e6; }
 #mapAttr a { color: #e9e3ff; }
@@ -5619,3 +5636,13 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @media (max-height: 680px) { .ent-mid { padding: 8px 0 16px; } .ent .wordmark { font-size: 40px; } }
 .calm :is(.ent-top, .ent-mid, .ent-cta) { animation: none; }
 .eco .lg-sheet-card { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(24, 14, 56, .92); }
+
+/* 5.1.42: телефон грелся и без объёмных домов. Бесконечные анимации на карте, в шапке и у кнопки меню (качание духов и боссов, волны
+   зон, кольца рун у Ловчего, огоньки кнопки меню, туман) заставляли браузер 60 раз в секунду заново собирать весь кадр вместе с
+   наклонённой картой — даже когда игрок ничего не делает. Теперь на карте и в шапке любая анимация играет один раз (появление
+   значков остаётся), у кнопки меню, колец рун, волн зон и тумана её нет. Живут на карте 3D-модели (M3D.FPS кадров в секунду) и
+   погода (холст WxFx). Свойства — по отдельности (animation-name, -iteration-count): пауза под окнами и сценами работает как раньше */
+:is(#map, #hud, #tracker) *, :is(#map, #hud, #tracker) *::before, :is(#map, #hud, #tracker) *::after { animation-iteration-count: 1 !important; }
+#menuBtn, #menuBtn *, #menuBtn *::before, #menuBtn *::after, .rz > .rz-runes, .rz > .rz-ring, .rz-wave, #wxfx.wx-fog { animation-name: none !important; }
+/* погода — один холст на весь экран (WxFx), без CSS-капель */
+#wxfx canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
