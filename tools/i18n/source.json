@@ -3790,7 +3790,7 @@
   "k": "Источник",
   "at": [
    "www/js/book.js:144",
-   "www/js/map.js:808",
+   "www/js/map.js:796",
    "www/js/propose.js:43",
    "www/js/propose.js:133"
   ],
@@ -4120,7 +4120,7 @@
    "www/js/book.js:181",
    "www/js/book.js:181",
    "www/js/data.js:761",
-   "www/js/map.js:1017"
+   "www/js/map.js:1005"
   ],
   "ctx": "return [[ru`Разлом`, this.cards([[Art.riftIcon(3), ru`Разлом`, ru`Портал со звёздами у святилища, открыт час. Внутри — босс из иного мира. Собери команду из трёх духов.`],"
  },
@@ -7483,8 +7483,8 @@
   "k": "Разлом кампании",
   "at": [
    "www/js/data.js:588",
-   "www/js/map.js:795",
-   "www/js/map.js:808",
+   "www/js/map.js:783",
+   "www/js/map.js:796",
    "www/js/raid.js:110"
   ],
   "ctx": "campRift: () => ru`Разлом кампании`, hatch: () => ru`Выведи духа из кокона`, clan: () => ru`Выбери клан`, evolve: () => ru`Эволюционировать духа`,"
@@ -14267,49 +14267,49 @@
  {
   "k": "С",
   "at": [
-   "www/js/map.js:775"
+   "www/js/map.js:763"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "В",
   "at": [
-   "www/js/map.js:775"
+   "www/js/map.js:763"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Ю",
   "at": [
-   "www/js/map.js:775"
+   "www/js/map.js:763"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "З",
   "at": [
-   "www/js/map.js:775"
+   "www/js/map.js:763"
   ],
   "ctx": "const lt = [[ru`С`, 0, 'n'], [ru`В`, 90, ''], [ru`Ю`, 180, ''], [ru`З`, 270, '']].map(([t, a, c]) => {"
  },
  {
   "k": "Разлом кампании: {0}. Подойди ближе — нужно {1} м",
   "at": [
-   "www/js/map.js:1014"
+   "www/js/map.js:1002"
   ],
   "ctx": "if (d > range && e.camp) { UI.toast(ru`Разлом кампании: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`); return; } // 5.1.15: личный — только рядом"
  },
  {
   "k": "{0}: {1}. Подойди ближе — нужно {2} м",
   "at": [
-   "www/js/map.js:1018"
+   "www/js/map.js:1006"
   ],
   "ctx": "UI.toast(ru`${U.esc(what)}: ${U.fmtDist(d)}. Подойди ближе — нужно ${range} м`);"
  },
  {
   "k": "Дух уже растворился в воздухе…",
   "at": [
-   "www/js/map.js:1023",
+   "www/js/map.js:1011",
    "server/game/core.js:894"
   ],
   "ctx": "if (Date.now() > e.expires) { UI.toast(ru`Дух уже растворился в воздухе…`); this.refresh(); return; }"
@@ -14317,7 +14317,7 @@
  {
   "k": "Святилища открываются с {0} уровня Ловчего",
   "at": [
-   "www/js/map.js:1027",
+   "www/js/map.js:1015",
    "server/game/core.js:1409"
   ],
   "ctx": "if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Святилища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }"
@@ -14325,21 +14325,21 @@
  {
   "k": "Цель",
   "at": [
-   "www/js/map.js:1070"
+   "www/js/map.js:1058"
   ],
   "ctx": "this.tracking = { id: e.id, type: e.type, lat: e.lat, lng: e.lng, sid: e.sid, name: e.type === 'spirit' ? SP[e.sid].name : e.name || ru`Цель` };"
  },
  {
   "k": "{0} растворился — след потерян",
   "at": [
-   "www/js/map.js:1085"
+   "www/js/map.js:1073"
   ],
   "ctx": "UI.toast(ru`${t.name} растворился — след потерян`);"
  },
  {
   "k": "Ты на месте — коснись цели!",
   "at": [
-   "www/js/map.js:1099"
+   "www/js/map.js:1087"
   ],
   "ctx": "box.querySelector('.tr-dist').textContent = near ? ru`Ты на месте — коснись цели!` : U.fmtDist(d);"
  },

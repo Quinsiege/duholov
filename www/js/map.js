@@ -192,15 +192,14 @@ const MapView = {
   },
   /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави): днём — бело-зелёная с голубой водой и кремовыми улицами,
      ночью — тёмно-синяя. Цвета стиля — c (flavorOf; улицы у Protomaps для Leaflet — одного цвета, road); к ним — земля (фон карты
-     и дымка горизонта), небо над горизонтом (5.1.34: sky — вверху и у горизонта) и объёмные дома (Bld3D): крыша, стены в тени и на
-     солнце, контраст стен */
+     под ещё не нарисованными плитками) и объёмные дома (Bld3D): крыша, стены в тени и на солнце, контраст стен */
   PALETTE: {
-    day: { earth: '#f1f3ee', sky: ['#5ea8e4', '#cde5f5'], roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
+    day: { earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
       park: '#cfe8c4', park2: '#b3dda3', wood: '#c7e1bb', wood2: '#a7d595', scrub: '#d8e8cc', water: '#9fd0f0', sand: '#f2ead2', ped: '#eceee8',
       urban: '#e8eae6', runway: '#f7f8fa', road: '#fdf2c6', rail: '#a8b1b7', bound: '#a7afa7', bld: '#e2e5df',
       lbl: '#5e6a65', halo: '#ffffff', city: '#2e3935', sub: '#7c8983', state: '#99a49e', ocean: '#4e8ec0',
       lc: ['#d6eccd', '#f5eeda', '#e8eae5', '#deeed2', '#ffffff', '#e2eed6', '#c4e2be'] } },
-    night: { earth: '#131b27', sky: ['#050a15', '#1d2c47'], roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
+    night: { earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
       park: '#13261f', park2: '#163024', wood: '#12221c', wood2: '#152a21', scrub: '#17231f', water: '#0a1626', sand: '#1c2228', ped: '#171f2b',
       urban: '#161e2a', runway: '#222c3a', road: '#3a4f73', rail: '#37435a', bound: '#46526a', bld: '#1a2332',
       lbl: '#9fb0cc', halo: '#0e1520', city: '#dbe5f5', sub: '#8a9ab4', state: '#6f7f99', ocean: '#6b8fc4',
@@ -262,8 +261,6 @@ const MapView = {
     }
     if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(F); // объёмные дома — в тон карте
     document.body.classList.toggle('night', night);
-    document.body.style.setProperty('--haze', F.earth); // 4.11: дымка горизонта у наклонённой карты — цвета земли
-    document.body.style.setProperty('--sky1', F.sky[0]); document.body.style.setProperty('--sky2', F.sky[1]); // 5.1.34: небо над горизонтом
     const bg = U.$('#mapBg'); if (bg) bg.style.background = F.earth; // и земля под ещё не нарисованными плитками (5.1.31: слоем позади карты)
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
@@ -515,16 +512,14 @@ const MapView = {
     const c = U.$('#compassBtn');
     if (c) { c.innerHTML = this.compassSvg(); c.onclick = () => { Sfx.play('tap'); this.northUp(); }; }
     addEventListener('resize', () => { if (this._sq) this.layout(); });
-    if (!U.$('#mapHaze')) { const h = document.createElement('div'); h.id = 'mapHaze'; box.after(h); }
     this.setTilt(Cfg.s.tilt3d !== false);
   },
-  /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана,
-     вдали — дымка горизонта. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
+  /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
      трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат).
-     5.1.34: наклон постоянный — TILT (75°, выбор владельца), пальцем камеру только поворачивают. Горизонт — на экране (у наклона 75°
-     — на четверти высоты сверху): выше него небо, у горизонта — туман; карта рисуется до FAR точек слоя впереди Ловчего (дальше —
-     туман), иначе слой карты и плитки уходили бы в бесконечность */
-  TILT: 75, PD: 1100, FAR: 1800, tilt: 0, _py: 0,
+     5.1.34: наклон постоянный — TILT (50°, выбор владельца; было 14–50° пальцем), пальцем камеру только поворачивают; дымки у верха
+     экрана нет. Карта — не дальше FAR точек слоя впереди Ловчего: у наклона 50° это за верхом экрана (там ~1900), а у большего
+     наклона горизонт пришёл бы на экран — слой карты и плитки ушли бы в бесконечность */
+  TILT: 50, PD: 1100, FAR: 2400, tilt: 0, _py: 0,
   // дальний край карты на экране (y, CSS-пиксели; −∞ — у плоской карты): точка земли в FAR точках слоя впереди Ловчего
   farY() {
     if (!this.tilt) return -Infinity;
@@ -549,13 +544,6 @@ const MapView = {
       box.style.setProperty('--py', this._py + 'px');
       box.style.setProperty('--tilt', this.tilt + 'deg');
       box.style.setProperty('--pd', this.PD + 'px');
-    }
-    // 5.1.34: небо и туман горизонта (style.css: #mapHaze) — горизонт и дальний край карты на экране
-    const hz = U.$('#mapHaze');
-    if (hz && this.tilt) {
-      const t = this.tilt * Math.PI / 180;
-      hz.style.setProperty('--hz-y', Math.round(this._py - this.PD / Math.tan(t)) + 'px');
-      hz.style.setProperty('--far-y', Math.round(this.farY()) + 'px');
     }
     box.classList.toggle('rot', on);
     box.classList.toggle('tilt', !!this.tilt);
@@ -668,8 +656,8 @@ const MapView = {
      и так был в размер своей точки земли (f), но камера карты «длиннофокусная» (PD): у нижнего края экрана фигура была всего в 1,2 раза
      крупнее, чем у Ловчего, у верхнего — 0,7 его; теперь у фигур перспектива сильнее (FIG: размер f^(1+FIG)) — 1,4 и 0,5 (наклон 32°).
      Размер на экране — не меньше FIG_MIN и не больше FIG_MAX от исходного.
-     5.1.34: у постоянного наклона 75° перспектива своя сильная (у нижнего края экрана — 2,2, у дальнего края карты — 0,4) — добавки
-     фигурам нет (FIG 0), а у самого низа экрана — не больше FIG_MAX: иначе ближние фигуры закрывали полэкрана */
+     5.1.34: у постоянного наклона 50° перспектива своя сильная (у нижнего края экрана — 1,4, у верхнего — 0,4) — добавки фигурам
+     нет (FIG 0); с приближением камеры — не больше FIG_MAX */
   ZMIN: 16.75, Z0: 17.5, ZK: 0.7, FIG: 0, FIG_MIN: 0.45, FIG_MAX: 1.8,
   // во сколько раз фигура на точке земли с перспективой f крупнее, чем её рисует сама перспектива карты
   figScale(f) {
@@ -833,7 +821,7 @@ const MapView = {
       const x = cx + q.x * f, y = cy + q.y * f + off;
       if (x < -200 || x > W + 200 || y < -60 || y > H + 60) { hide(lb); continue; }
       if (lb._hid !== false) { lb.style.display = ''; lb._hid = false; }
-      // 5.1.34: у нижнего края экрана (наклон 75°) подпись не крупнее LBL_MAX — иначе она шириной в экран
+      // 5.1.34: у нижнего края экрана подпись не крупнее LBL_MAX — иначе она шириной в экран
       const tf = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%) scale(${Math.min(f, this.LBL_MAX).toFixed(3)})`, zi = Math.round(1000 + q.z);
       if (lb._tf !== tf) { lb.style.transform = tf; lb._tf = tf; }
       if (lb._zi !== zi) { lb.style.zIndex = zi; lb._zi = zi; }

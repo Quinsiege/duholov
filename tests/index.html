@@ -4551,11 +4551,11 @@
       eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
     } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
   });
-  test('5.1.34: камера — наклон постоянный (75°), палец её только поворачивает; карта — до дальнего края, выше горизонта небо', () => {
+  test('5.1.34: камера — наклон постоянный (50°), палец её только поворачивает; карта — на весь экран, без горизонта и дымки', () => {
     const keep = { map: MapView.map, setRot: MapView.setRot, northUp: MapView.northUp, rot: MapView.rot, tilt: MapView.tilt, _py: MapView._py, vw: MapView.vw, vh: MapView.vh };
     const keepRaf = window.requestAnimationFrame, box = document.createElement('div');
     try {
-      eq(MapView.TILT, 75, 'наклон — выбор владельца:');
+      eq(MapView.TILT, 50, 'наклон — выбор владельца:');
       ok(typeof MapView.setPitch === 'undefined' && !('pitch' in MapView.ORBIT), 'наклонять пальцем нечем');
       // палец: вверх-вниз — ничего, влево-вправо — облёт
       box.id = 'map'; document.body.appendChild(box);
@@ -4572,13 +4572,15 @@
       ev('pointerdown', 200, 300); ev('pointermove', 260, 300); ev('pointerup', 260, 300);
       near(rots[rots.length - 1], 60 * MapView.ORBIT.yaw, 1e-9, 'палец вправо (над Ловчим) — облёт:');
       eq(MapView.tilt, MapView.TILT, 'наклон всё тот же:');
-      // дальний край карты — FAR точек слоя впереди, ниже горизонта; плоскость там — ровно FAR
+      // дальний край карты (FAR точек слоя впереди) — за верхом экрана: земля — на весь экран, горизонта нет
       MapView.vw = 400; MapView.tilt = MapView.TILT;
       const t = MapView.TILT * Math.PI / 180, hz = MapView._py - MapView.PD / Math.tan(t), fy = MapView.farY();
-      ok(fy > hz && fy < MapView._py, `край карты — между горизонтом и Ловчим: ${hz.toFixed(0)} < ${fy.toFixed(0)} < ${MapView._py}`);
+      ok(hz < 0, 'горизонт — выше экрана: ' + hz.toFixed(0));
+      ok(fy < 0, 'дальний край карты — за верхом экрана: ' + fy.toFixed(0));
       near(MapView.planeUV(200, fy).y, -MapView.FAR, 1e-6, 'на краю — FAR точек слоя впереди:');
-      eq(MapView.topY(), fy, 'видимая земля — от края карты:');
-      near(MapView.viewUV(0).v0, -MapView.FAR, 1e-6, 'холст домов — до края карты, а не в бесконечность:');
+      eq(MapView.topY(), 0, 'видимая земля — от верха экрана:');
+      ok(Number.isFinite(MapView.viewUV(0).v0) && MapView.viewUV(0).v0 > -MapView.FAR, 'холст домов — до верха экрана');
+      ok(!document.getElementById('mapHaze'), 'дымки у верха экрана нет');
       MapView.tilt = 0;
       eq(MapView.farY(), -Infinity, 'плоская карта — без горизонта:'); eq(MapView.topY(), 0);
     } finally { Object.assign(MapView, keep); window.requestAnimationFrame = keepRaf; box.remove(); }
