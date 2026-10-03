@@ -808,7 +808,7 @@ const S = {
   // случайный облик (CAMP_SKIN): такой редкости у Ловчего уже все — любой другой, которого ещё нет; нет таких — null
   campSkin(seed) {
     const r = U.rng(seed), rar = U.weighted(CAMP_SKIN, r());
-    const free = k => LOOK.skin.filter(x => x.rar === k && x.shop && !this.d.owned[`skin:${x.id}`]);
+    const free = k => LOOK.skin.filter(x => x.rar === k && x.shop && !x.off && !x.paid && !this.d.owned[`skin:${x.id}`]); // 5.1.41: снятые и только платные — нет
     let list = free(rar);
     for (const k of [1, 2, 3]) if (!list.length) list = free(k);
     return list.length ? list[Math.floor(r() * list.length)].id : null;

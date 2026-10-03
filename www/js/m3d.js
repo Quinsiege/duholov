@@ -291,7 +291,9 @@ const M3D = {
     if (c._m3d) return;
     const kind = c.dataset.m3d, type = kind.split('_')[0];
     const v = { c, ctx: c.getContext('2d'), kind, pxm: this.PXM[type] || 20, ax: +c.dataset.ax || 0, ay: +c.dataset.ay || 0,
-      hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me', e: this.ELEV, az: 0 };
+      hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me', e: this.ELEV, az: 0,
+      ui: !!c.dataset.ui, fitH: +c.dataset.fit || 0 }; // 5.1.41: ui — модель в окне (stage): своя камера и поворот, не с картой
+    if (v.ui) { v.e = +c.dataset.e || 8; v.yaw = +c.dataset.yaw || 0; }
     if (!v.ctx) return;
     c._m3d = v;
     this.views.add(v);
@@ -329,7 +331,9 @@ const M3D = {
   // от центра точке, высота — по самому высокому виду (5.1.30: у наклонённой карты наклон камеры свой у каждого места и меняется,
   // пока карта движется, — холст при этом не пересоздаётся, сдвигается только сама модель в нём)
   layout(v) {
-    const h0 = this.models[v.kind].head, S = v.pxm;
+    const h0 = this.models[v.kind].head;
+    if (v.fitH) v.pxm = v.fitH / Math.max(h0.h, 0.5); // модель окна — во всю высоту места под неё
+    const S = v.pxm;
     const pad = this.OUTLINE_PX / S + (h0.walk ? 0.12 : 0.02), r = h0.r + pad, h = h0.h + pad; // Ловчему — запас на шаг и наклон
     const w = Math.ceil(2 * r * S) + 2, hh = Math.ceil(Math.hypot(h, 2 * r) * S) + 2;
     const dpr = Gfx.dpr(2.5) * (v.res || 1); // 5.1.32: крупная у камеры фигура — больше точек (sharp); 5.1.38: разрешение — Gfx
@@ -350,7 +354,7 @@ const M3D = {
     // значку — где у модели верх и низ (CSS-пиксели от верха значка): туда встают хранитель, флаг клана и звёзды (style.css)
     const ext = this.extent(m, v.e), box = v.c.parentElement;
     if (box) { box.style.setProperty('--m3d-top', (v.ay - ext.top * S).toFixed(1) + 'px'); box.style.setProperty('--m3d-bot', (v.ay - ext.low * S).toFixed(1) + 'px'); box._m3dBot = +(v.ay - ext.low * S).toFixed(1); }
-    if (!v.player && typeof MapView !== 'undefined' && MapView.lblSoon) MapView.lblSoon(); // подпись места — под низ модели
+    if (!v.player && !v.ui && typeof MapView !== 'undefined' && MapView.lblSoon) MapView.lblSoon(); // подпись места — под низ модели
   },
   /* 5.1.30: откуда игрок смотрит на место. Наклонённая карта видна в перспективе (MapView.camOf): место у нижнего края экрана —
      почти сверху, у горизонта — сбоку, левее и правее середины — чуть сбоку; модель рисуется с той же стороны — стоит на земле
@@ -380,6 +384,7 @@ const M3D = {
   },
   // later — новый угол отложить до следующего кадра модели (render)
   aimView(v, later) {
+    if (v.ui) return false; // модель окна — своя камера
     const c = typeof MapView !== 'undefined' && MapView.camOf ? MapView.camOf(v.c) : null;
     const e = c ? c.e : this.ELEV, az = c ? c.az : 0;
     if (Math.abs(e - v.e) < 0.5 && Math.abs(az - v.az) < 0.009) { v.pe = null; return false; } // меньше полуградуса — на экране не видно
@@ -409,7 +414,39 @@ const M3D = {
     if (v.kind !== this.me.kind && this.has(this.me.kind)) this.swap(v, this.me.kind);
   },
   // наряд Ловчего по облику: у скина — свой (если такой модели нет — обычный капюшон)
-  kindOfLook(look) { const s = look && look.skin; return typeof s === 'string' && this.SKINS.includes(s) ? 'catcher_' + s : 'catcher'; },
+  // 5.1.41: облик снят с продажи (LOOK.skin off) — обычный; у облика-модели (m3d) — своя модель (Синий дух — spirit_blue)
+  kindOfLook(look) {
+    const s = look && look.skin;
+    if (typeof s !== 'string' || s === 'hood') return 'catcher';
+    const x = typeof LOOK !== 'undefined' ? LOOK.skin.find(k => k.id === s) : null;
+    if (x && x.off) return 'catcher';
+    if (x && x.m3d) return x.m3d;
+    return this.SKINS.includes(s) ? 'catcher_' + s : s.startsWith('spirit_') && this.SPIRITS.includes(s.slice(7)) ? s : 'catcher';
+  },
+  /* 5.1.41: облик Ловчего моделью в окне (профиль, Гардероб, карточка друга): стоит и дышит, вполоборота к игроку, поворачивается
+     пальцем; анимация — и под открытым окном (карта в это время стоит). Нет WebGL или модели — прежний рисунок (Art.avatar).
+     o: { yaw — поворот (рад, 0 — лицом к игроку), e — наклон камеры (°), cls } */
+  stage(look, o = {}) {
+    const kind = this.kindOfLook(look), flat = typeof Art !== 'undefined' ? `<div class="m3d-flat">${Art.avatar(look)}</div>` : '';
+    const cv = this.on && this.has(kind) ? `<canvas class="mk3d" data-m3d="${kind}" data-ui="1" data-yaw="${o.yaw == null ? -0.35 : o.yaw}" data-e="${o.e == null ? 8 : o.e}"></canvas>` : '';
+    return `<div class="m3d-stage${o.cls ? ' ' + o.cls : ''}" data-kind="${kind}">${flat}${cv}</div>`;
+  },
+  // модели окон — когда окно уже на странице: размер берётся у места под модель (модель — во всю его высоту, ступни — у низа)
+  mount(root, tries = 0) {
+    if (!this.on || !root) return;
+    requestAnimationFrame(() => root.querySelectorAll('.m3d-stage').forEach(st => {
+      const c = st.querySelector('canvas.mk3d'), w = st.clientWidth, h = st.clientHeight;
+      if (!c || c._m3d || !st.isConnected) return;
+      if (!w || !h) { if (tries < 20) setTimeout(() => this.mount(root, tries + 1), 120); return; } // окно ещё раскладывается — позже
+      Object.assign(c.dataset, { ax: (w / 2).toFixed(1), ay: (h * 0.97).toFixed(1), fit: (h * 0.88).toFixed(1) });
+      this.add(c);
+      let x0 = null, y0 = 0; // поворот пальцем (или мышью): влево-вправо — вокруг себя
+      st.addEventListener('pointerdown', e => { const v = c._m3d; if (!v) return; x0 = e.clientX; y0 = v.yaw; try { st.setPointerCapture(e.pointerId); } catch (x) { /* нет — и ладно */ } });
+      st.addEventListener('pointermove', e => { const v = c._m3d; if (x0 == null || !v) return; v.yaw = y0 + (e.clientX - x0) * 0.014; this.kick(); });
+      const up = () => { x0 = null; };
+      st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+    }));
+  },
   // сменился облик — другая модель в том же холсте: пока она грузится, стоит прежний кадр
   swap(v, kind) {
     v.kind = kind; v.ready = false; v.c.dataset.m3d = kind;
@@ -439,8 +476,8 @@ const M3D = {
     w.run += ((v.gait === 2 ? 1 : 0) - w.run) * k;
     if (w.amp > 0.01) w.ph = (w.ph + dt * 2 * Math.PI * (W.hz[0] + (W.hz[1] - W.hz[0]) * w.run)) % (2 * Math.PI * 64);
     w.idle = v.gait > 0 ? 0 : (w.idle || 0) + dt;
-    const want = v.gait > 0 || w.idle < 3 ? (v.yaw || 0) : this.rot * Math.PI / 180;
-    if (w.yaw == null) w.yaw = want;
+    const want = v.ui || v.gait > 0 || w.idle < 3 ? (v.yaw || 0) : this.rot * Math.PI / 180;
+    if (w.yaw == null || v.ui) w.yaw = want; // в окне — сразу за пальцем
     let d = (want - w.yaw) % (2 * Math.PI);
     if (d > Math.PI) d -= 2 * Math.PI; else if (d < -Math.PI) d += 2 * Math.PI;
     w.yaw += d * Math.min(1, dt * (v.gait > 0 ? 14 : 4));
@@ -533,7 +570,7 @@ const M3D = {
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
     // поворот вместе с картой (и у Ловчего — туда, куда он смотрит)
     const h0 = m.head, w = h0.walk ? this.step(v, now) : null, G = [];
-    v.ya = -this.rot * Math.PI / 180 + (v.az || 0); // поворот модели на экране (без шага Ловчего) — для setRot
+    v.ya = v.ui ? 0 : -this.rot * Math.PI / 180 + (v.az || 0); // поворот модели на экране (без шага Ловчего) — для setRot; в окне — без карты
     const a = v.ya + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
     const Y = new Float32Array([ca, sa, 0, 0, -sa, ca, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     if (h0.skin) { this.renderSkin(v, m, w, Y); return; }
@@ -650,7 +687,7 @@ const M3D = {
     this.prune();
     const due = [];
     for (const v of this.views) {
-      if (!v.ready) continue;
+      if (!v.ready || v.ui) continue;
       const big = this.sharp(v), moved = this.aimView(v); // места левее и правее — видны с другой стороны (и ближе или дальше от камеры)
       // 5.1.31: модель места — заново, только если её поворот на экране изменился хотя бы на полградуса (тот же порог, что у aim)
       if (v.vis && (big || moved || v.player || v.ya == null || Math.abs(-r * Math.PI / 180 + (v.az || 0) - v.ya) >= 0.009)) due.push(v);
@@ -663,13 +700,19 @@ const M3D = {
     this.drawSet([...this.views].filter(v => v.ready && v.vis));
   },
   moving() {
-    if (document.hidden || (typeof Stage !== 'undefined' && Stage.busy) || this.still()) return false;
+    if (document.hidden || this.still()) return false;
     for (const v of this.views) if (this.live(v)) return true;
     return false;
   },
   // движется Ловчий (всегда: идёт — шагает, стоит — дышит) и видимая модель места, до которого можно дотянуться
   // (у дальних значков — класс far): остальные — неподвижный кадр
-  live(v) { return v.ready && v.vis && (v.player || (this.models[v.kind].head.moving && !v.c.closest('.far'))); },
+  // 5.1.41: под окном (Stage.busy) карта стоит — живы только модели окон
+  live(v) {
+    if (!v.ready || !v.vis) return false;
+    if (v.ui) return true;
+    if (typeof Stage !== 'undefined' && Stage.busy) return false;
+    return v.player || (this.models[v.kind].head.moving && !v.c.closest('.far'));
+  },
   going(v) { return v.gait > 0 || !!(v.walk && (v.walk.amp > 0.02 || v.walk.turn)); },
   kick() {
     if (!this.on || this.raf || !this.moving()) return;
@@ -685,8 +728,8 @@ const M3D = {
     const due = [], gaps = new Map();
     for (const v of this.views) {
       if (!this.live(v)) continue;
-      if (!v.player) { places = true; continue; }
-      const gap = (this.going(v) ? 33 : 100) - 2;
+      if (!v.player && !v.ui) { places = true; continue; }
+      const gap = (this.going(v) || v.ui ? 33 : 100) - 2; // модель в окне — плавно, 30 кадров
       if (now - (v.t || 0) >= gap) due.push(v);
       gaps.set(v, gap);
     }

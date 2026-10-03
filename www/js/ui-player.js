@@ -317,7 +317,7 @@ Object.assign(UI, {
     const scr = this.screen(U.esc(d.name), `
       <div class="det det2 prof2" style="--c:${cc}">
         <div class="dt-hero">
-          <div class="det-art pf-ava"><div class="prof-ava">${this.avatar()}</div></div>
+          <div class="det-art pf-ava"><div class="prof-ava p3d">${M3D.stage(d.look)}</div></div>
           <div class="dt-info">
             <div class="det-hp">${ru`${this.rank(d.level)} Ордена Оберега`}</div>
             <div class="det-power"><small>${ru`УРОВЕНЬ`}</small><b>${d.level}</b></div>
@@ -363,6 +363,7 @@ Object.assign(UI, {
             <div class="album-box">${Album.html()}</div>`)}
         </div>
       </div>`, 'prof-screen det-screen');
+    M3D.mount(scr); // 5.1.41: облик Ловчего — 3D-моделью (стоит, поворот пальцем)
     scr.addEventListener('click', e => {
       const tb = e.target.closest('[data-tab]');
       if (tb) { Sfx.play('tap'); U.$$('[data-tab]', scr).forEach(x => x.classList.toggle('on', x === tb)); U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === tb.dataset.tab)); return; }
@@ -372,7 +373,7 @@ Object.assign(UI, {
       if (e.target.closest('.clan-btn')) { Clans.choose(() => { this.closeScreen(scr); this.profile(); }); return; }
       if (e.target.closest('.clan-open')) { Clans.screen(); return; }
       if (e.target.closest('.look-btn')) {
-        this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); this.refreshHud(); });
+        this.editLook(() => { const pa = scr.querySelector('.prof-ava'); pa.innerHTML = M3D.stage(S.d.look); M3D.mount(pa); this.refreshHud(); });
         return;
       }
       const ai = e.target.closest('.album-item');
@@ -399,12 +400,13 @@ Object.assign(UI, {
     const look = { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', ...S.d.look };
     const DEF = { skin: 'hood', bg: 'night', frame: 'none' };
     for (const k in DEF) look[k] = look[k] || DEF[k];
+    if (LOOK.skin.some(x => x.id === look.skin && x.off)) look.skin = 'hood'; // 5.1.41: снятый с продажи облик — не примерить
     const lvl = S.d.level;
     const KIND = { skin: ru`Облик`, bg: ru`Фон`, frame: ru`Рамка` };
     let tab = 'skin';
-    const scr = this.screen(ru`Гардероб`, `<div class="wd">
-      <div class="wd-hero"><div class="wd-stage"><i class="wd-ring"></i><div class="wd-ava"></div></div>
-        <div class="wd-cardprev pc-hero"><div class="pc-ava"><div class="wd-cp-ava"></div><span class="pc-lvl">${S.d.level}</span></div><div class="pc-id"><b class="pc-name">${U.esc(S.d.name)}</b><small>${ru`${this.rank(S.d.level)} Ордена Оберега`}</small></div></div>
+    // 5.1.41: витрина — облик 3D-моделью во весь рост (стоит, поворот пальцем): подсветка — цвет редкости, под ногами — рунный круг
+    const scr = this.screen(ru`Гардероб`, `<div class="wd wd3">
+      <div class="wd-hero"><div class="wd-show"><i class="wd-glow"></i><i class="wd-floor"></i><div class="wd-model"></div><span class="wd-hint">${ru`Поверни пальцем`}</span></div>
         <div class="wd-title"><b class="wd-name"></b><span class="wd-rar"></span></div><p class="wd-desc"></p></div>
       <div class="seg wd-tabs"><button data-t="skin" class="on">${ru`Облики`}</button><button data-t="more">${ru`Детали`}</button></div>
       <div class="wd-body"></div>
@@ -417,20 +419,18 @@ Object.assign(UI, {
     // что ещё не куплено из примеряемого — сначала облик, потом фон, потом рамка
     const pending = () => Object.keys(DEF).map(k => [k, item(k, look[k])]).find(([k, x]) => x.shop && !has(k, x));
     const hero = () => {
-      // на вкладках фона и рамки — всегда превью карточки; на остальных — облик (или то, что ждёт покупки)
-      const [k, x] = tab === 'bg' || tab === 'frame' ? [tab, item(tab, look[tab])] : pending() || ['skin', item('skin', look.skin)];
-      const R = SKIN_RAR[x.rar || 0];
-      const cardMode = k === 'bg' || k === 'frame';
-      $('.wd-hero').classList.toggle('card-mode', cardMode);
-      $('.wd-ava').innerHTML = Art.avatar(look);
-      $('.wd-cp-ava').innerHTML = Art.avatar(look); Art.cardSkin($('.wd-cardprev'), look);
-      $('.wd-stage').style.setProperty('--rc', R.c);
+      // облик (или то, что ждёт покупки); модель — заново, только если сменилась (цвета плаща и глаз модель не меняют)
+      const [k, x] = pending() || ['skin', item('skin', look.skin)];
+      const R = SKIN_RAR[x.rar || 0], show = $('.wd-show'), mdl = $('.wd-model'), st = mdl.firstElementChild;
+      show.style.setProperty('--rc', R.c); show.classList.toggle('leg', (x.rar || 0) >= 3);
+      if (!st || st.dataset.kind !== M3D.kindOfLook(look)) { mdl.innerHTML = M3D.stage(look, { yaw: -0.45, e: 6 }); M3D.mount(mdl); }
+      else { const f = st.querySelector('.m3d-flat'); if (f) f.innerHTML = Art.avatar(look); }
       $('.wd-name').textContent = x.name;
       $('.wd-rar').textContent = `${KIND[k]} · ${R.name}`; $('.wd-rar').style.color = R.c;
       $('.wd-desc').textContent = x.desc || (k === 'bg' ? ru`Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.` : k === 'frame' ? ru`Рамка твоей карточки Ловчего — её видят все, кто откроет карточку.` : '');
     };
     const wide = kind => kind === 'bg' || kind === 'frame';
-    const cards = kind => `<div class="wd-grid ${wide(kind) ? 'wide' : ''}">${LOOK[kind].map(x => {
+    const cards = kind => `<div class="wd-grid ${wide(kind) ? 'wide' : ''}">${LOOK[kind].filter(x => !x.off).map(x => {
       const R = SKIN_RAR[x.rar || 0], own = has(kind, x), on = look[kind] === x.id, lvLock = !x.shop && !own;
       const tag = own ? (worn(kind, x.id) ? ru`✓ Надет` : on ? ru`Примеряешь` : ru`Твой`) : lvLock ? ru`с ${x.lvl} ур.` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;
       return `<button class="wd-card ${on ? 'on' : ''} ${own ? 'own' : ''} ${lvLock ? 'lv' : ''} r${x.rar || 0}" data-kind="${kind}" data-id="${x.id}" data-lv="${lvLock ? x.lvl : ''}" style="--rc:${R.c}">

@@ -197,16 +197,17 @@ const Friends = {
   // звание, «УРОВЕНЬ ··· N», Лига отдельным блоком, метки; ниже главные действия и вкладки «Достижения · Духи · Дружба»
   async card(pid, o = {}) {
     Sfx.init(); Sfx.play('tap');
-    const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava"><div class="prof-ava">${Art.avatar(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
+    const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava"><div class="prof-ava p3d">${M3D.stage(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
     const scr = UI.screen(U.esc(o.name || ru`Ловчий`), `<div class="det det2 prof2 pcard" style="--c:#a78bfa">
       ${hero(o.look, `<div class="det-hp">${ru`Загружаю карточку…`}</div>`)}<div class="pcard-load"><div class="pc-skel"></div><div class="pc-skel"></div></div></div>`, 'det-screen pcard-screen');
+    M3D.mount(scr); // 5.1.41: облик Ловчего — 3D-моделью (стоит)
     const close = () => UI.closeScreen(scr), changed = () => { if (o.render) o.render(); };
     const chatBtns = () => o.chat ? `<div class="dt-about-acts"><button class="btn ghost small pc-report">${ru`Пожаловаться`}</button><button class="btn ghost danger small pc-hide">${ru`Скрыть сообщения`}</button></div>` : '';
     let p;
     try { p = await Game.act('playerCard', { pid }); } catch (e) { p = { error: e.message }; }
     if (!scr.isConnected) return;
     const root = scr.querySelector('.pcard');
-    if (p.error) { root.innerHTML = hero(o.look, `<div class="det-hp">${U.esc(p.error)}</div>`) + `<div class="dt-panel"><div class="dt-pane on">${chatBtns()}</div></div>`; return; }
+    if (p.error) { root.innerHTML = hero(o.look, `<div class="det-hp">${U.esc(p.error)}</div>`) + `<div class="dt-panel"><div class="dt-pane on">${chatBtns()}</div></div>`; M3D.mount(root); return; }
     const cl = CLANS[p.clan], lg = p.league, rk = LEAGUE_RANKS[lg.rank], f = this.find(pid), today = U.today();
     const seen = { now: ru`в игре сейчас`, today: ru`заходил сегодня`, week: ru`заходил на неделе`, long: ru`давно не заходил` }[p.seen];
     if (f) { f.name = p.name; f.lvl = p.lvl; if (p.look) f.look = p.look; }
@@ -266,6 +267,7 @@ const Friends = {
           <div class="pcs-top"></div>` : `<div class="dx-none"><b>${ru`Духи скрыты`}</b><small>${ru`Ловчий ещё не выбрал спутника.`}</small></div>`)}
         ${pane('friend', friendPane())}
       </div>`;
+    M3D.mount(root);
     const redrawActs = () => { const a = root.querySelector('.pcard-acts'); if (a) a.innerHTML = actsHtml(); };
     // у взаимного друга — три сильнейших духа (для поединка)
     if (p.friend === 'mutual' && f) {

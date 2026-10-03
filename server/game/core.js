@@ -581,7 +581,7 @@ const GameCore = {
     lk = lk && typeof lk === 'object' ? lk : {}; // 4.26: только объект
     if (!(LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem))) return null;
     const out = { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem };
-    if (lk.skin !== 'hood' && LOOK.skin.some(x => x.id === lk.skin)) out.skin = lk.skin; // 4.6: облик-скин, фон, рамка
+    if (lk.skin !== 'hood' && LOOK.skin.some(x => x.id === lk.skin && !x.off)) out.skin = lk.skin; // 4.6: облик-скин, фон, рамка (5.1.41: снятый с продажи — обычный)
     if (lk.bg !== 'night' && LOOK.bg.some(x => x.id === lk.bg)) out.bg = lk.bg;
     if (lk.frame !== 'none' && LOOK.frame.some(x => x.id === lk.frame)) out.frame = lk.frame;
     return out;
@@ -1124,6 +1124,7 @@ const GameCore = {
       const c = LOOK.cloak.find(x => x.c === L.cloak), e = LOOK.eyes.find(x => x.c === L.eyes), m = LOOK.emblem.find(x => x.id === L.emblem);
       const k = LOOK.skin.find(x => x.id === (L.skin || 'hood')), g = LOOK.bg.find(x => x.id === (L.bg || 'night')), fr = LOOK.frame.find(x => x.id === (L.frame || 'none'));
       this.need(c && e && m && k && g && fr, ru`Такого облика нет`);
+      this.need(!k.off, ru`Этот облик сейчас недоступен`); // 5.1.41: снят с продажи
       this.need(!k.shop || S.d.owned[`skin:${k.id}`], ru`Этот облик продаётся в Гардеробе`);
       this.need(!g.shop || S.d.owned[`bg:${g.id}`], ru`Этот фон продаётся в Гардеробе`);
       this.need(!fr.shop || S.d.owned[`frame:${fr.id}`], ru`Эта рамка продаётся в Гардеробе`);
@@ -1468,7 +1469,7 @@ const GameCore = {
         it = Rules.shopDeal(today);
         this.need(S.d.shop.deal !== today, ru`Товар дня уже куплен — завтра будет новый`);
       } else if (/^(skin|bg|frame):/.test(id)) { // 4.6: облик-скин, фон или рамка из Гардероба
-        const [kind, key] = id.split(':'), x = LOOK[kind].find(k => k.id === key && k.shop);
+        const [kind, key] = id.split(':'), x = LOOK[kind].find(k => k.id === key && k.shop && !k.off); // 5.1.41: снятые с продажи — нет
         this.need(x, ru`Такого облика нет`);
         this.need(!S.d.owned[id], ru`Это уже твоё`);
         it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };

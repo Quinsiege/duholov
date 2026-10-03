@@ -303,6 +303,7 @@ const Shop = {
       };
       const bag = { ...Rules.SHOP.find(x => x.bag), price: Rules.bagPrice(S.d.bagExtra) };
       const cloaks = LOOK.cloak.filter(c => c.shop), zl = S.d.zlat || 0, exLeft = this.exLeft();
+      const wd = LOOK.skin.filter(k => k.shop && !k.off); // 5.1.41: облики, что сейчас продаются
       const pane = (k, html) => `<div class="dt-pane ${tab === k ? 'on' : ''}" data-pane="${k}">${html}</div>`;
       box.innerHTML = `
         <div class="dt-hero">
@@ -331,7 +332,7 @@ const Shop = {
             </div>
             <div class="q-note">${ru`Монеты дают за серию дней (на 7-й день — ${Rules.ZLAT.streak7}), сундук дня, новые уровни, дань со Святилищ и Сезонную тропу. Искры — за поимки, источники и бои.`}</div>`)}
           ${pane('look', `
-            <button class="shop-wd"><span class="sw-avas">${['volhv', 'zharpero', 'navstrazh'].map(id => `<i>${Art.avatar({ ...S.d.look, skin: id })}</i>`).join('')}</span><span class="sw-t"><b>${ru`Гардероб Ловчего`}</b><small>${ru`${LOOK.skin.length - 1} особых обликов · от ${Math.min(...LOOK.skin.filter(k => k.shop).map(k => k.shop))} монет`}</small></span><span class="sw-go">›</span></button>
+            <button class="shop-wd"><span class="sw-avas">${wd.slice(0, 3).map(k => `<i>${Art.avatar({ ...S.d.look, skin: k.id })}</i>`).join('')}</span><span class="sw-t"><b>${ru`Гардероб Ловчего`}</b><small>${wd.length === 1 ? ru`Новый облик «${wd[0].name}» · ${U.fmtNum(wd[0].shop)} монет` : ru`${wd.length} особых обликов · от ${Math.min(...wd.map(k => k.shop))} монет`}</small></span><span class="sw-go">›</span></button>
             <div class="pf-mh"><span>${ru`Плащи`}</span></div>
             <div class="shop-cloaks">${cloaks.map(c => `<button class="shop-cloak ${S.d.owned[c.c] ? 'owned' : this.poor({ cur: 'zlat', price: c.shop }) ? 'poor' : ''}" data-id="look:${c.c}" ${S.d.owned[c.c] ? 'disabled' : ''}>
               <div class="shop-ava">${Art.avatar({ cloak: c.c, eyes: S.d.look.eyes, emblem: S.d.look.emblem })}</div><b>${c.name}</b><small>${S.d.owned[c.c] ? ru`Уже твой` : this.price({ cur: 'zlat', price: c.shop })}</small></button>`).join('')}</div>`)}

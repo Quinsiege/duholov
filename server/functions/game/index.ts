@@ -2590,17 +2590,20 @@ const LOOK = {
   ],
   // 4.6: облики-скины — полный наряд Ловчего (рисунки — js/skins-art.js); покупаются в Гардеробе за монеты.
   // rar: 0 — обычный, 1 — редкий, 2 — эпический, 3 — легендарный. Глаза и эмблема видны у всех обликов, цвет плаща — только у обычного
+  // 5.1.41: облик — 3D-модель (js/m3d.js; m3d — её имя, у обычного — catcher). off — снят с продажи и не надевается (выбор владельца:
+  // пока в Гардеробе только Синий дух), купленное остаётся в owned; paid — только за монеты, не награда Кампании
   skin: [
     { id: 'hood', name: ru`Ловчий`, rar: 0, desc: ru`Плащ Ордена Оберега — с него начинает каждый Ловчий.` },
-    { id: 'kupala', name: ru`Купальский`, rar: 1, shop: 300, desc: ru`Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.` },
-    { id: 'leshiy', name: ru`Лесной`, rar: 1, shop: 300, desc: ru`Капюшон из мха и оленьи рога — леса признают тебя своим.` },
-    { id: 'moroz', name: ru`Морозный`, rar: 1, shop: 400, desc: ru`Ледяной венец и иней на плаще. Подарок самого Морозко.` },
-    { id: 'volhv', name: ru`Волхв`, rar: 2, shop: 450, desc: ru`Шапка с рунами и посох с огоньком: мудрость старых волхвов.` },
-    { id: 'bogatyr', name: ru`Богатырь`, rar: 2, shop: 500, desc: ru`Шелом, кольчуга и алое корзно — хоть сейчас на заставу.` },
-    { id: 'voron', name: ru`Вороний`, rar: 2, shop: 550, desc: ru`Маска-клюв и плащ из чёрных перьев. Вороны Нави шепчут тебе вести.` },
-    { id: 'navstrazh', name: ru`Навий страж`, rar: 2, shop: 650, desc: ru`Рогатая личина и пламя Нави. Духи расступаются перед тобой.` },
-    { id: 'zharpero', name: ru`Жар-перо`, rar: 3, shop: 900, desc: ru`Убор из огненных перьев Жар-птицы. Светится даже в самую тёмную ночь.` },
-    { id: 'knyaz', name: ru`Княжий`, rar: 3, shop: 1000, desc: ru`Княжья шапка с соболем и самоцветами — наряд первых Ловчих Ордена.` },
+    { id: 'spirit_blue', name: ru`Синий дух`, rar: 3, shop: 1500, paid: true, m3d: 'spirit_blue', desc: ru`Ловчий сам становится духом: синее пламя вместо плаща, полёт вместо шагов.` },
+    { id: 'kupala', off: true, name: ru`Купальский`, rar: 1, shop: 300, desc: ru`Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.` },
+    { id: 'leshiy', off: true, name: ru`Лесной`, rar: 1, shop: 300, desc: ru`Капюшон из мха и оленьи рога — леса признают тебя своим.` },
+    { id: 'moroz', off: true, name: ru`Морозный`, rar: 1, shop: 400, desc: ru`Ледяной венец и иней на плаще. Подарок самого Морозко.` },
+    { id: 'volhv', off: true, name: ru`Волхв`, rar: 2, shop: 450, desc: ru`Шапка с рунами и посох с огоньком: мудрость старых волхвов.` },
+    { id: 'bogatyr', off: true, name: ru`Богатырь`, rar: 2, shop: 500, desc: ru`Шелом, кольчуга и алое корзно — хоть сейчас на заставу.` },
+    { id: 'voron', off: true, name: ru`Вороний`, rar: 2, shop: 550, desc: ru`Маска-клюв и плащ из чёрных перьев. Вороны Нави шепчут тебе вести.` },
+    { id: 'navstrazh', off: true, name: ru`Навий страж`, rar: 2, shop: 650, desc: ru`Рогатая личина и пламя Нави. Духи расступаются перед тобой.` },
+    { id: 'zharpero', off: true, name: ru`Жар-перо`, rar: 3, shop: 900, desc: ru`Убор из огненных перьев Жар-птицы. Светится даже в самую тёмную ночь.` },
+    { id: 'knyaz', off: true, name: ru`Княжий`, rar: 3, shop: 1000, desc: ru`Княжья шапка с соболем и самоцветами — наряд первых Ловчих Ордена.` },
   ],
   // 4.6: фон и рамка карточки Ловчего (её видят все) — тоже в Гардеробе (рисунки — js/looks-art.js). lvl — открывается уровнем, shop — цена в монетах
   bg: [
@@ -4413,7 +4416,7 @@ const S = {
   // случайный облик (CAMP_SKIN): такой редкости у Ловчего уже все — любой другой, которого ещё нет; нет таких — null
   campSkin(seed) {
     const r = U.rng(seed), rar = U.weighted(CAMP_SKIN, r());
-    const free = k => LOOK.skin.filter(x => x.rar === k && x.shop && !this.d.owned[`skin:${x.id}`]);
+    const free = k => LOOK.skin.filter(x => x.rar === k && x.shop && !x.off && !x.paid && !this.d.owned[`skin:${x.id}`]); // 5.1.41: снятые и только платные — нет
     let list = free(rar);
     for (const k of [1, 2, 3]) if (!list.length) list = free(k);
     return list.length ? list[Math.floor(r() * list.length)].id : null;
@@ -8009,7 +8012,7 @@ const GameCore = {
     lk = lk && typeof lk === 'object' ? lk : {}; // 4.26: только объект
     if (!(LOOK.cloak.some(x => x.c === lk.cloak) && LOOK.eyes.some(x => x.c === lk.eyes) && LOOK.emblem.some(x => x.id === lk.emblem))) return null;
     const out = { cloak: lk.cloak, eyes: lk.eyes, emblem: lk.emblem };
-    if (lk.skin !== 'hood' && LOOK.skin.some(x => x.id === lk.skin)) out.skin = lk.skin; // 4.6: облик-скин, фон, рамка
+    if (lk.skin !== 'hood' && LOOK.skin.some(x => x.id === lk.skin && !x.off)) out.skin = lk.skin; // 4.6: облик-скин, фон, рамка (5.1.41: снятый с продажи — обычный)
     if (lk.bg !== 'night' && LOOK.bg.some(x => x.id === lk.bg)) out.bg = lk.bg;
     if (lk.frame !== 'none' && LOOK.frame.some(x => x.id === lk.frame)) out.frame = lk.frame;
     return out;
@@ -8552,6 +8555,7 @@ const GameCore = {
       const c = LOOK.cloak.find(x => x.c === L.cloak), e = LOOK.eyes.find(x => x.c === L.eyes), m = LOOK.emblem.find(x => x.id === L.emblem);
       const k = LOOK.skin.find(x => x.id === (L.skin || 'hood')), g = LOOK.bg.find(x => x.id === (L.bg || 'night')), fr = LOOK.frame.find(x => x.id === (L.frame || 'none'));
       this.need(c && e && m && k && g && fr, ru`Такого облика нет`);
+      this.need(!k.off, ru`Этот облик сейчас недоступен`); // 5.1.41: снят с продажи
       this.need(!k.shop || S.d.owned[`skin:${k.id}`], ru`Этот облик продаётся в Гардеробе`);
       this.need(!g.shop || S.d.owned[`bg:${g.id}`], ru`Этот фон продаётся в Гардеробе`);
       this.need(!fr.shop || S.d.owned[`frame:${fr.id}`], ru`Эта рамка продаётся в Гардеробе`);
@@ -8896,7 +8900,7 @@ const GameCore = {
         it = Rules.shopDeal(today);
         this.need(S.d.shop.deal !== today, ru`Товар дня уже куплен — завтра будет новый`);
       } else if (/^(skin|bg|frame):/.test(id)) { // 4.6: облик-скин, фон или рамка из Гардероба
-        const [kind, key] = id.split(':'), x = LOOK[kind].find(k => k.id === key && k.shop);
+        const [kind, key] = id.split(':'), x = LOOK[kind].find(k => k.id === key && k.shop && !k.off); // 5.1.41: снятые с продажи — нет
         this.need(x, ru`Такого облика нет`);
         this.need(!S.d.owned[id], ru`Это уже твоё`);
         it = { id, name: kind === 'skin' ? ru.k`Облик «${x.name}»` : kind === 'bg' ? ru.k`Фон «${x.name}»` : ru.k`Рамка «${x.name}»`, cur: 'zlat', price: x.shop, look: id };

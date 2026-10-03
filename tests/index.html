@@ -2264,12 +2264,19 @@
     await must(A, 'look', { look: { cloak: '#7c2d12', eyes: '#5eead4', emblem: 'charm' } }); eq(A.data.look.cloak, '#7c2d12');
     await refuse(A, 'shopBuy', { id: 'look:#7c2d12' }, /уже твой/);
     // 4.6: облики-скины из Гардероба — за монеты, надеть можно только купленный
-    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'volhv' } }, /Гардеробе/);
+    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'spirit_blue' } }, /Гардеробе/);
     await refuse(A, 'shopBuy', { id: 'skin:nichego' }, /нет/);
-    A.data.zlat = 450;
-    await must(A, 'shopBuy', { id: 'skin:volhv' }); eq(A.data.zlat, 0, 'облик за 450'); eq(A.data.owned['skin:volhv'], true);
-    await refuse(A, 'shopBuy', { id: 'skin:volhv' }, /уже твоё/);
-    await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'volhv' } }); eq(A.data.look.skin, 'volhv');
+    // 5.1.41: облики, снятые с продажи (off), не купить и не надеть — даже купленные раньше; у других они — обычный Ловчий
+    A.data.zlat = 5000;
+    await refuse(A, 'shopBuy', { id: 'skin:volhv' }, /нет/); eq(A.data.zlat, 5000, 'снятый облик — не продаётся');
+    A.data.owned['skin:volhv'] = true;
+    await refuse(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'volhv' } }, /недоступен/);
+    eq(GameCore.safeLook({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'volhv' }).skin, undefined, 'снятый облик у других — обычный');
+    delete A.data.owned['skin:volhv'];
+    A.data.zlat = 1500;
+    await must(A, 'shopBuy', { id: 'skin:spirit_blue' }); eq(A.data.zlat, 0, 'Синий дух за 1500'); eq(A.data.owned['skin:spirit_blue'], true);
+    await refuse(A, 'shopBuy', { id: 'skin:spirit_blue' }, /уже твоё/);
+    await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: 'spirit_blue' } }); eq(A.data.look.skin, 'spirit_blue');
     eq(GameCore.safeLook({ cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', skin: '<b>' }).skin, undefined, 'чужой облик — только известные скины');
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm' } }); eq(A.data.look.skin, undefined, 'обычный облик — без скина');
     // фон и рамка: платные — только после покупки, уровневые — с уровня
@@ -3488,7 +3495,8 @@
     await must(P, 'campClaim', {});
     // монеты новых уровней (опыт шага и знаков) — сверх награды шага
     const zl = asPlayer(P, () => { let z = 0; for (let l = l9 + 1; l <= P.data.level; l++) z += S.levelRewards(l).zlat; return z; });
-    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50 + zl, '30 000 искр и 50 монет (и монеты новых уровней)');
+    // 5.1.41: облики для Кампании сняты с продажи (а Синий дух — только за монеты): вместо облика — 300 монет
+    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0, 'облика нет — нечего дарить'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50 + 300 + zl, '30 000 искр и 50 монет, 300 монет вместо облика (и монеты новых уровней)');
     ok(!step() && P.data.camp.s === 9, 'глава I пройдена'); await refuse(P, 'campClaim', {}, /Глава пройдена/);
     ok(P.data.journal.some(j => j.type === 'camp'), 'шаги — в дневнике');
   });
@@ -3498,8 +3506,10 @@
       S.d = { spirits: [{ sid: 'ugolek' }, { sid: 'kapelka' }], owned: {}, created: 1 };
       const a = S.campPickOpts('x'), b = S.campPickOpts('x');
       eq(a.join(), b.join(), 'тот же шаг — те же три духа'); ok(a.every(id => !['fire', 'water'].includes(SP[id].el)), 'нет у Ловчего огня и воды — их не предлагают первыми');
+      eq(S.campSkin('s1'), null, '5.1.41: снятые с продажи и только платные облики Кампания не дарит');
+      const skins = LOOK.skin; LOOK.skin = skins.map(x => ({ ...x, off: false })); // как было до 5.1.41 — проверить доли редкостей
       const n = { 1: 0, 2: 0, 3: 0 };
-      for (let i = 0; i < 3000; i++) { const k = S.campSkin('s' + i); n[LOOK.skin.find(x => x.id === k).rar]++; }
+      try { for (let i = 0; i < 3000; i++) { const k = S.campSkin('s' + i); ok(k !== 'spirit_blue', 'Синий дух — только за монеты'); n[LOOK.skin.find(x => x.id === k).rar]++; } } finally { LOOK.skin = skins; }
       ok(n[1] > 2700 && n[2] > 60 && n[2] < 260 && n[3] < 20, `облики: редких ${n[1]}, эпических ${n[2]}, легендарных ${n[3]}`);
       LOOK.skin.filter(x => x.shop).forEach(x => { S.d.owned['skin:' + x.id] = true; }); eq(S.campSkin('z'), null, 'все облики уже есть — облика нет (монетами)');
     } finally { S.d = d0; }
@@ -4730,11 +4740,12 @@
     near3(tn.catcher_cloak_dark.c, M3D.lin('#1d4ed8').map(x => x * 0.27), 'тень плаща:');
     near3(tn.catcher_eyes.e, M3D.lin('#fde047').map(x => x * 1.6), 'глаза светятся своим цветом:');
     // 5.1.29: у облика-скина — свой наряд (своя модель); неизвестный или обычный — капюшон
-    eq(M3D.kindOfLook({ skin: 'bogatyr' }), 'catcher_bogatyr', 'скин — свой наряд:');
+    eq(M3D.kindOfLook({ skin: 'spirit_blue' }), 'spirit_blue', '5.1.41: облик-модель — своя модель:');
+    eq(M3D.kindOfLook({ skin: 'bogatyr' }), 'catcher', '5.1.41: снятый с продажи облик — обычный Ловчий:');
     eq(M3D.kindOfLook({ skin: 'hood' }), 'catcher', 'обычный облик:');
     eq(M3D.kindOfLook({ skin: 'constructor' }), 'catcher', 'неизвестный скин:');
     eq(M3D.kindOfLook(null), 'catcher', 'без облика:');
-    ok(LOOK.skin.filter(s => s.id !== 'hood').every(s => M3D.SKINS.includes(s.id)), 'у каждого скина из Гардероба есть 3D-наряд');
+    ok(LOOK.skin.filter(s => s.id !== 'hood' && !s.off).every(s => M3D.KINDS.includes(M3D.kindOfLook({ skin: s.id })) && M3D.kindOfLook({ skin: s.id }) !== 'catcher'), 'у каждого облика из Гардероба есть 3D-модель');
     near3(M3D.tintOf({ cloak: 'red', eyes: 'url(x)' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'чужое значение — обычный плащ:');
     near3(M3D.tintOf({ skin: 'constructor' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'неизвестный скин — обычный плащ:');
     const keepRot = M3D.rot, v = { gait: 2, yaw: 1 };

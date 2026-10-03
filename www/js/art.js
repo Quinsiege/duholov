@@ -1322,7 +1322,10 @@ const Art = (() => {
     look = look || {};
     // 4.6: облик-скин (js/skins-art.js) — поверх него те же глаза и эмблема
     // только облики из списка LOOK.skin: облик приходит и от других игроков ('constructor', 'draw' и т. п. — мимо)
-    if (look.skin && look.skin !== 'hood' && typeof SkinArt !== 'undefined' && LOOK.skin.some(k => k.id === look.skin)) return SkinArt.draw(look.skin, look);
+    // 5.1.41: снятые с продажи (off) — обычный Ловчий; облик-3D-модель — портрет (снимок модели, img/skins/<облик>.webp)
+    const sk = look.skin && look.skin !== 'hood' ? LOOK.skin.find(k => k.id === look.skin && !k.off) : null;
+    if (sk && sk.m3d) return `<svg viewBox="0 0 100 100" class="art ava-pic"><image href="img/skins/${sk.id}.webp" x="0" y="0" width="100" height="100"/></svg>`;
+    if (sk && typeof SkinArt !== 'undefined') return SkinArt.draw(look.skin, look);
     const cloak = HEX.test(look.cloak) ? look.cloak : '#6d28d9', eyes = HEX.test(look.eyes) ? look.eyes : '#5eead4';
     return hood(cloak, eyes, look.emblem);
   }
