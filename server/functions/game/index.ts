@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 // Заглушки браузерного окружения: на сервере нет карты, звука и окон
 const DEV = false;
-const APP_VERSION = '5.1.32';
+const APP_VERSION = '5.1.33';
 const window = globalThis;
 const location = { hostname: 'server', search: '' };
 const MapView = { pos: null, refresh() {}, updateBuddy() {} };
@@ -5033,7 +5033,7 @@ const League = {
   // 4.16: итоги боёв, которые сервер засчитал без экрана (телефон закрылся посреди боя), и сундук за прошлый сезон
   showDone(r) {
     if (!r) return;
-    if (r.prize) UI.modal({ title: ru`Итоги сезона`, html: `<div class="lg-prize"><span class="lg-badge">${this.badge(r.prize.rank)}</span><p>${ru`В прошлом сезоне ты дошёл до лиги «${LEAGUE_RANKS[r.prize.rank].name}». Награда Ордена:`}</p><div class="res-rw">${r.prize.got.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div></div>`, buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+    if (r.prize) UI.modal({ title: ru`Итоги сезона`, html: `<div class="lg-prize"><span class="lg-badge">${this.badge(r.prize.rank)}</span><p>${ru`В прошлом сезоне ты дошёл до лиги «${LEAGUE_RANKS[r.prize.rank].name}». Награда Ордена:`}</p><div class="res-rw">${r.prize.got.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div></div>`, buttons: [{ label: ru`Забрать`, cls: 'primary' }], tap: true });
     (r.done || []).forEach(x => UI.toast(x.win ? ru`Бой с ${U.esc(x.foe.name)} засчитан: победа, рейтинг +${x.d}` : x.draw ? ru`Бой с ${U.esc(x.foe.name)} засчитан: ничья` : ru`Бой с ${U.esc(x.foe.name)} засчитан: поражение, рейтинг −${Math.abs(x.d)}`, x.win ? 'good' : ''));
   },
 
@@ -5927,29 +5927,27 @@ const Raid = {
         <div class="res-title">${ru`Разлом закрыт!`}</div>
         <div class="res-art">${Art.spirit(st.s.id)}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
-        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>
-        <button class="btn primary wide">${ru`Ловить!`}</button></div></div>`);
-      res.querySelector('button').onclick = () => {
+        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div></div></div>`);
+      st.root.appendChild(res);
+      // 5.1.33: окна итога — во весь экран на матовом стекле, дальше — касанием (после победы — ловить ослабленного босса)
+      UI.tapGo(res, () => {
         this.close();
         Encounter.start({ mode: 'raid', seed: st.r.id });
-      };
-      st.root.appendChild(res);
+      });
     } else if (win) {
       // сервер не засчитал победу (нет связи или неправдоподобный бой)
       const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">${ru`Победа не засчитана`}</div>
-        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div>
-        <button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close());
     } else {
       Sfx.play('lose');
       const res = U.el(`<div class="raid-result"><div class="res-card">
         <div class="res-title lose">${ru`Разлом устоял`}</div>
         <div class="res-art dim">${Art.spirit(st.s.id)}</div>
-        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div>
-        <button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close());
     }
     UI.refreshHud();
   },
@@ -6513,9 +6511,9 @@ const Duel = {
     if (win && !(r && r.win)) {
       html = `<div class="res-title lose">${ru`Победа не засчитана`}</div>
         <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова.`}</div>`;
-      const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+      const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close()); // 5.1.33: окно итога — во весь экран на матовом стекле, дальше — касанием
       return;
     }
     if (st.e.kind === 'invasion') return this.finishInvasion(win, r);
@@ -6539,11 +6537,11 @@ const Duel = {
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
         <div class="res-note">${ru`«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn ${html.includes('defend-now') ? 'ghost' : 'primary'} wide to-map">${ru`На карту`}</button></div></div>`);
-    res.querySelector('.to-map').onclick = () => this.close();
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
     const dn = res.querySelector('.defend-now');
     if (dn) dn.onclick = () => { const e = st.e; this.close(); Clans.defend(e); };
     st.root.appendChild(res);
+    UI.tapGo(res, () => this.close()); // 5.1.33: на карту — касанием; «Поставить защитника» — своей кнопкой
     UI.refreshHud();
   },
   finishSpar(win, r) {
@@ -6561,9 +6559,9 @@ const Duel = {
         <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
         <div class="res-note">${ru`Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">${ru`Готово`}</button></div></div>`);
-    res.querySelector('button').onclick = () => this.close();
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
     st.root.appendChild(res);
+    UI.tapGo(res, () => this.close()); // 5.1.33: окно итога — касанием
     UI.refreshHud();
   },
   finishInvasion(win, r) {
@@ -6584,14 +6582,14 @@ const Duel = {
         <div class="res-art"><div class="guard-ava big dark">${Art.guardian(g.color)}</div></div>
         <div class="res-note">${ru`«${GRUNT_QUOTES[0]}» — смеётся прислужник. Возьми духов, сильных против стихии «${ELEMENTS[g.el].name}», и возвращайся.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide to-map">${ru`На карту`}</button></div></div>`);
-    res.querySelector('.to-map').onclick = () => this.close();
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
     const rb = res.querySelector('.rescue');
     if (rb) rb.onclick = () => {
       this.close();
       Encounter.start({ mode: 'rescue', seed: e.invId + ':rescue' });
     };
     st.root.appendChild(res);
+    UI.tapGo(res, () => this.close()); // 5.1.33: на карту — касанием; «Спасти духа» — своей кнопкой
     UI.refreshHud();
   },
 

@@ -465,29 +465,27 @@ const Raid = {
         <div class="res-title">${ru`Разлом закрыт!`}</div>
         <div class="res-art">${Art.spirit(st.s.id)}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
-        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>
-        <button class="btn primary wide">${ru`Ловить!`}</button></div></div>`);
-      res.querySelector('button').onclick = () => {
+        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div></div></div>`);
+      st.root.appendChild(res);
+      // 5.1.33: окна итога — во весь экран на матовом стекле, дальше — касанием (после победы — ловить ослабленного босса)
+      UI.tapGo(res, () => {
         this.close();
         Encounter.start({ mode: 'raid', seed: st.r.id });
-      };
-      st.root.appendChild(res);
+      });
     } else if (win) {
       // сервер не засчитал победу (нет связи или неправдоподобный бой)
       const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">${ru`Победа не засчитана`}</div>
-        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div>
-        <button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close());
     } else {
       Sfx.play('lose');
       const res = U.el(`<div class="raid-result"><div class="res-card">
         <div class="res-title lose">${ru`Разлом устоял`}</div>
         <div class="res-art dim">${Art.spirit(st.s.id)}</div>
-        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div>
-        <button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close());
     }
     UI.refreshHud();
   },

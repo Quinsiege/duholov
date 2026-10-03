@@ -116,7 +116,7 @@ Object.assign(UI, {
           for (const x of got) { const k = x.k === 'amulet' ? 'amulet:' + x.id : x.k === 'cocoon' ? 'cocoon:' + x.km : x.k, o = sum.get(k); if (o) o.n += x.n; else sum.set(k, { ...x }); }
           setTimeout(() => {
             render(); this.refreshHud();
-            this.modal({ title: ru`Сундук дня`, html: Loot.cells([...sum.values()]), cls: 'chest-modal', buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+            this.modal({ title: ru`Сундук дня`, html: Loot.cells([...sum.values()]), cls: 'chest-modal', buttons: [{ label: ru`Забрать`, cls: 'primary' }], tap: true });
           }, document.body.classList.contains('calm') ? 0 : 650);
         })();
       }

@@ -402,10 +402,9 @@ const Encounter = {
         <div class="res-rw">
           <div>${ru`<b>+${U.fmtNum(r.xp)}</b> опыта`}${Ev.evXpMul() > 1 ? ` ${ru`(Звездопад ×2)`}` : ''}</div><div>${ru`<b>+${r.sparks}</b> искр`}</div><div>${ru`<b>+${r.ess}</b> эссенции «${SP[s.fam].name}»`}</div>
         </div>
-        <button class="btn primary wide">${ru`Отлично`}</button>
       </div></div>`);
-    card.querySelector('button').onclick = () => { Sfx.play('tap'); this.end('caught'); };
     st.root.appendChild(card);
+    UI.tapGo(card, () => this.end('caught')); // 5.1.33: во весь экран на матовом стекле, дальше — касанием
     if (st.o.tut) Tut.sync();
   },
   /* ---------------- ФОТО ---------------- */

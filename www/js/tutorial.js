@@ -240,9 +240,9 @@ const Tut = {
     const root = U.el(`<div class="tut-final"><div class="tf-rays"></div>
       <div class="tf-me"><div class="tf-ring"></div><div class="ts-me-ring">${Art.avatar(S.d.look)}</div></div>
       <small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Дальше — Кампания: её шаг виден на карте под твоим именем.`}</p>
-      <div class="tf-got">${list}</div>${UI.rune(ru`В путь!`, 'tf-go')}</div>`);
+      <div class="tf-got">${list}</div></div>`);
     document.body.appendChild(root);
-    root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
+    UI.tapGo(root, () => { root.classList.add('out'); setTimeout(() => root.remove(), 400); }); // 5.1.33: окно итога — дальше касанием
   },
 
   close() {

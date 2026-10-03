@@ -539,9 +539,9 @@ const Duel = {
     if (win && !(r && r.win)) {
       html = `<div class="res-title lose">${ru`Победа не засчитана`}</div>
         <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова.`}</div>`;
-      const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+      const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close()); // 5.1.33: окно итога — во весь экран на матовом стекле, дальше — касанием
       return;
     }
     if (st.e.kind === 'invasion') return this.finishInvasion(win, r);
@@ -565,11 +565,11 @@ const Duel = {
         <div class="res-art"><div class="guard-ava big">${Art.guardian(st.g.color)}</div></div>
         <div class="res-note">${ru`«Приходи, когда окрепнешь», — говорит ${st.g.name}. Попробуй другую команду: смотри на стихии хранителя и береги щиты для его приёмов.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn ${html.includes('defend-now') ? 'ghost' : 'primary'} wide to-map">${ru`На карту`}</button></div></div>`);
-    res.querySelector('.to-map').onclick = () => this.close();
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
     const dn = res.querySelector('.defend-now');
     if (dn) dn.onclick = () => { const e = st.e; this.close(); Clans.defend(e); };
     st.root.appendChild(res);
+    UI.tapGo(res, () => this.close()); // 5.1.33: на карту — касанием; «Поставить защитника» — своей кнопкой
     UI.refreshHud();
   },
   finishSpar(win, r) {
@@ -587,9 +587,9 @@ const Duel = {
         <div class="res-art"><div class="guard-ava big">${Art.guardian(g.color)}</div></div>
         <div class="res-note">${ru`Духи ${g.name} оказались сильнее. Подбери команду против их стихий и попробуй снова — поединки с другом не ограничены.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn primary wide">${ru`Готово`}</button></div></div>`);
-    res.querySelector('button').onclick = () => this.close();
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
     st.root.appendChild(res);
+    UI.tapGo(res, () => this.close()); // 5.1.33: окно итога — касанием
     UI.refreshHud();
   },
   finishInvasion(win, r) {
@@ -610,14 +610,14 @@ const Duel = {
         <div class="res-art"><div class="guard-ava big dark">${Art.guardian(g.color)}</div></div>
         <div class="res-note">${ru`«${GRUNT_QUOTES[0]}» — смеётся прислужник. Возьми духов, сильных против стихии «${ELEMENTS[g.el].name}», и возвращайся.`}</div>`;
     }
-    const res = U.el(`<div class="raid-result"><div class="res-card">${html}<button class="btn wide to-map">${ru`На карту`}</button></div></div>`);
-    res.querySelector('.to-map').onclick = () => this.close();
+    const res = U.el(`<div class="raid-result"><div class="res-card">${html}</div></div>`);
     const rb = res.querySelector('.rescue');
     if (rb) rb.onclick = () => {
       this.close();
       Encounter.start({ mode: 'rescue', seed: e.invId + ':rescue' });
     };
     st.root.appendChild(res);
+    UI.tapGo(res, () => this.close()); // 5.1.33: на карту — касанием; «Спасти духа» — своей кнопкой
     UI.refreshHud();
   },
 

@@ -3105,6 +3105,39 @@
     // дух сбежал — без Нави
     const v = J.view({ type: 'flee', sid: 'ugolek' }); eq(v.title, 'Дух сбежал'); eq(v.sub, SP.ugolek.name);
   });
+  atest('5.1.33: окно итога — во весь экран без кнопки, «Коснись, чтобы продолжить»; касание сразу не считается, свои кнопки окна работают', async () => {
+    const keepSfx = Sfx.play, keepMs = UI.TAP_MS;
+    const box = document.createElement('div');
+    try {
+      Sfx.play = () => {}; UI.TAP_MS = 120;
+      // tapGo: любой элемент-оверлей
+      let went = 0, own = 0;
+      box.innerHTML = '<div class="raid-result"><div class="res-card"><div class="res-title">Победа!</div><button class="btn defend-now">Поставить защитника</button></div></div>';
+      document.body.appendChild(box);
+      const res = box.firstChild;
+      res.querySelector('.defend-now').onclick = () => { own++; };
+      UI.tapGo(res, () => { went++; });
+      ok(res.classList.contains('tap-go'), 'оформление окна итога');
+      eq(res.querySelector('.tap-hint').textContent, 'Коснись, чтобы продолжить', 'надпись вместо кнопки:');
+      res.querySelector('.res-title').click();
+      eq(went, 0, 'касание сразу после появления — не считается (палец ещё бросал оберег):');
+      await U.wait(150);
+      res.querySelector('.defend-now').click();
+      eq(own, 1, 'своя кнопка окна — своё действие:'); eq(went, 0, 'а не «дальше»:');
+      res.querySelector('.res-title').click(); res.click();
+      eq(went, 1, 'касание в любом месте — дальше, один раз:');
+      // UI.modal({ tap }): последняя кнопка — касанием, остальные — кнопками
+      let fn = 0, side = 0;
+      const m = UI.modal({ title: 'Сундук дня', html: '<p>Награда</p>', buttons: [{ label: 'Алатырь', fn: () => { side++; } }, { label: 'Забрать', cls: 'primary', fn: () => { fn++; } }], tap: true });
+      const btns = [...m.querySelectorAll('.modal-btns .btn')].map(b => b.textContent);
+      eq(btns.join(), 'Алатырь', 'кнопка «дальше» не рисуется, своя — остаётся:');
+      ok(m.classList.contains('tap-go') && m.querySelector('.tap-hint'), 'окно — во весь экран, с надписью');
+      await U.wait(150);
+      m.querySelector('.modal-body p').click(); await U.wait(250);
+      eq(fn, 1, 'касание — действие последней кнопки:'); eq(side, 0); ok(!m.isConnected, 'окно закрылось');
+      ok(Stage.GLASS.includes('.tut-final'), '«Обучение пройдено» — тоже на стекле, карта под ним видна размытой');
+    } finally { Sfx.play = keepSfx; UI.TAP_MS = keepMs; box.remove(); }
+  });
   atest('5.1.27: выбранный в Кампании дух — сценой, а не всплывашкой', async () => {
     const sp = S.makeSpirit('ugolek', 5, 'got-test', { ivMin: 10 });
     UI.gotSpiritAnim(sp, { isNew: true, ess: 30 });
@@ -3112,9 +3145,12 @@
     const m = [...document.querySelectorAll('.modal.got-modal')].pop();
     ok(m && m.querySelector('.hatch-stage.open .hatch-sp'), 'сцена с духом');
     ok(/теперь твой дух/.test(m.querySelector('.evo-text').textContent) && /Новая запись/.test(m.textContent) && /\+30/.test(m.textContent), 'кто он, эссенция, новая запись');
-    const b = [...m.querySelectorAll('.modal-btns .btn')].find(x => /Привет/.test(x.textContent)); ok(b, 'кнопка «Привет!»');
-    b.click(); await U.wait(400);
-    ok(!m.isConnected, 'закрылась');
+    // 5.1.33: окно итога — без кнопки, «Коснись, чтобы продолжить», дальше — касанием в любом месте
+    const wrap = m.closest('.modal-wrap'), hint = wrap.querySelector('.tap-hint');
+    ok(wrap.classList.contains('tap-go') && hint && /Коснись, чтобы продолжить/.test(hint.textContent), 'вместо кнопки — «Коснись, чтобы продолжить»');
+    ok(!m.querySelector('.modal-btns .btn'), 'кнопки нет');
+    await U.wait(UI.TAP_MS); wrap.click(); await U.wait(400);
+    ok(!m.isConnected, 'закрылась касанием');
   });
   test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
     const sp = (r, iv, lvl) => ({ ...S.makeSpirit(SPECIES.find(s => s.rar === r).id, lvl, 1), iv });

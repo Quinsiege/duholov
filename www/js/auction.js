@@ -184,7 +184,7 @@ const Auction = {
       ? `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} продан${g.buyer ? ` (${U.esc(g.buyer)})` : ''}: +${this.priceHtml(g.cur, g.net)}`}${g.dep ? ' ' + ru`и залог ${this.priceHtml(g.cur, g.dep)}` : ''}</span></div>`
       : `<div>${Art.img(g.sid)}<span>${ru`${SP[g.sid].name} вернулся: ${g.type === 'expired' ? ru`срок лота истёк` : ru`лот снят`}`}${g.lost ? ' · ' + ru`залог ${this.priceHtml(g.cur, g.lost)} не вернулся` : ''}</span></div>`).join('');
     Sfx.play('reward');
-    UI.modal({ title: ru`Итоги аукциона`, html: `<div class="au-got">${rows}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+    UI.modal({ title: ru`Итоги аукциона`, html: `<div class="au-got">${rows}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }], tap: true });
   },
   // выбор духа для продажи: сильнейшие сверху, избранных продать нельзя
   pickSpirit(then) {

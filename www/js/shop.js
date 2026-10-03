@@ -172,7 +172,7 @@ const Treasury = {
     if (!n || this._noticed === n || document.querySelector('.onb, .loader:not(.out)')) return; // не поверх загрузки и входа
     this._noticed = n;
     Sfx.play('pay'); U.vibrate([40, 60, 120]);
-    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}`}</span></div></div><p>${ru`Оплата прошла — монеты уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${this.info && this.info.play ? ru`Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.` : ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+    UI.modal({ title: ru`Казна Ордена`, html: `<div class="lvl-rw"><div>${Art.item('zlat')}<span>${ru`+${U.fmtNum(n)} ${U.plural(n, ru`монета`, ru`монеты`, ru`монет`)}`}</span></div></div><p>${ru`Оплата прошла — монеты уже в твоей Казне. Спасибо, что поддерживаешь Орден!`}</p><p class="pay-note">${this.info && this.info.play ? ru`Чек об оплате пришлёт Google Play на почту твоего аккаунта Google.` : ru`Чек об оплате появится через пару минут: Казна → «Мои покупки и чеки».`}</p>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }], tap: true });
     UI.refreshHud();
     Game.act('payAck').then(() => { this._noticed = 0; }).catch(() => { this._noticed = 0; });
   },
@@ -257,7 +257,7 @@ const Promo = {
       title: ru`Промокод активирован!`, cls: 'promo-modal promo-ok',
       html: `<div class="promo-code">${U.esc((r && r.code) || '')}</div>${got.length ? Loot.cells(got) : ''}
         <p>${ru`Награда уже у тебя — монеты в Казне, вещи в Сумке.`}</p>`,
-      buttons: [{ label: ru`Отлично`, cls: 'primary' }],
+      buttons: [{ label: ru`Отлично`, cls: 'primary' }], tap: true,
     });
     UI.refreshHud();
   },
@@ -372,7 +372,7 @@ const Shop = {
         const r = await Game.try('shopBuy', deal ? { deal: true } : { id });
         if (!r) return;
         Sfx.play('coins'); U.vibrate(20);
-        UI.modal({ title: ru`Покупка`, html: `<p>${ru`${U.esc(it.name)} — твоё!`}</p>${Loot.cells(r.got)}`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+        UI.modal({ title: ru`Покупка`, html: `<p>${ru`${U.esc(it.name)} — твоё!`}</p>${Loot.cells(r.got)}`, buttons: [{ label: ru`Отлично`, cls: 'primary' }], tap: true });
         render(); UI.refreshHud();
       });
     });
@@ -443,7 +443,7 @@ const Pass = {
         this._busy = false;
         if (!r) return false;
         Sfx.play('reward');
-        UI.modal({ title: ru`Ступень ${lvl}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+        UI.modal({ title: ru`Ступень ${lvl}`, html: Loot.cells(r.got), buttons: [{ label: ru`Забрать`, cls: 'primary' }], tap: true });
         render(); UI.refreshHud();
         return true;
       };

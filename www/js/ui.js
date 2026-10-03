@@ -169,19 +169,40 @@ const UI = {
     setTimeout(() => t.remove(), 3000);
   },
   toastFlush() { const q = this._toastQ; if (!q || this._rm) return; this._toastQ = null; q.slice(-3).forEach(([t, c]) => this.toast(t, c)); },
-  modal({ title = '', html = '', buttons = [{ label: 'OK' }], cls = '', dismiss = true }) {
+  // tap — окно итога (5.1.33, tapGo): последняя кнопка не рисуется, её действие — касанием в любом месте окна; остальные — как были
+  modal({ title = '', html = '', buttons = [{ label: 'OK' }], cls = '', dismiss = true, tap = false }) {
     const wrap = U.el(`<div class="modal-wrap"><div class="modal ${cls}">${title ? `<div class="modal-title">${title}</div>` : ''}<div class="modal-body">${html}</div><div class="modal-btns"></div></div></div>`);
     const close = () => { if (!wrap.isConnected) return; this.popLayer(close); wrap.classList.add('out'); setTimeout(() => wrap.remove(), 200); };
-    buttons.forEach(b => {
+    const go = tap ? buttons[buttons.length - 1] || {} : null;
+    (go ? buttons.slice(0, -1) : buttons).forEach(b => {
       const btn = U.el(`<button class="btn ${b.cls || ''}">${b.label}</button>`);
       btn.onclick = () => { Sfx.play('tap'); if (b.keep) { b.fn && b.fn(wrap); return; } close(); b.fn && b.fn(wrap); };
       wrap.querySelector('.modal-btns').appendChild(btn);
     });
-    if (dismiss) wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+    if (go) this.tapGo(wrap, () => { close(); if (go.fn) go.fn(wrap); });
+    else if (dismiss) wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
     document.body.appendChild(wrap);
     this.pushLayer(close);
     wrap.close = close;
     return wrap;
+  },
+  /* 5.1.33: окно итога (пойман, победа, новый уровень, награда, подарок…) — во весь экран, без подложки, на полупрозрачном матовом
+     стекле, и вместо кнопки — «Коснись, чтобы продолжить»: касание в любом месте окна (кроме его собственных кнопок — «Поставить
+     защитника», «Ещё бой», «Алатырь»…) — go. Касания раньше TAP_MS после появления окна не считаются: палец ещё бросал оберег или
+     жал кнопку боя — окно не должно закрыться, не успев показаться (надпись появляется тогда же, style.css) */
+  TAP_MS: 600,
+  tapGo(el, go) {
+    const t0 = performance.now();
+    let done = false;
+    el.classList.add('tap-go');
+    el.appendChild(U.el(`<div class="tap-hint">${ru`Коснись, чтобы продолжить`}</div>`));
+    el.addEventListener('click', e => {
+      if (done || performance.now() - t0 < this.TAP_MS || e.target.closest('button, a, input, select, textarea, label')) return;
+      done = true;
+      Sfx.play('tap');
+      go();
+    });
+    return el;
   },
   confirm(title, text, okLabel, onOk, cancelLabel = ru`Отмена`, danger = false) {
     return this.modal({ title, html: `<p>${text}</p>`, buttons: [{ label: cancelLabel }, { label: okLabel, cls: danger ? 'danger' : 'primary', fn: onOk }] });
@@ -1013,7 +1034,7 @@ const UI = {
         cls: 'lvl-modal', title: '',
         html: `<div class="lvl-num">${l}</div><div class="lvl-t">${ru`Новый уровень!`}</div>${unlock}<div class="lvl-rw">${got.map(x => `<div>${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('')}</div>`,
         buttons: [{ label: ru`Вперёд`, cls: 'primary', fn: () => { this._lvOpen = false; this.flushLevelUps(); } }],
-        dismiss: false,
+        dismiss: false, tap: true, // 5.1.33: окно итога — касанием
       });
       this.refreshHud();
     }, 350);

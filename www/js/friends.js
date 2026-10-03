@@ -91,7 +91,7 @@ const Friends = {
       title: g.invite ? ru`Подарок за приглашение: ${U.esc(r.name)}` : ru`Подарок от ${U.esc(r.name)}`, cls: 'gift-modal',
       html: `<div class="trade-sp">${Art.item('gift')}</div><div class="lvl-rw">${r.got.map(x => `<div>${x.k === 'xp' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : x.k === 'cocoon' ? Art.cocoon(5) : Art.item(x.k)}<span>${I18N.back(x.label)}${x.k === 'xp' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>
         ${f ? `<p class="small">${ru`Дружба: ${FRIEND_LEVELS[this.level(f)].name} (${f.pts} ★)`}</p>` : ''}`,
-      buttons: [{ label: ru`Спасибо!`, cls: 'primary' }],
+      buttons: [{ label: ru`Спасибо!`, cls: 'primary' }], tap: true,
     });
     done && done();
     UI.refreshHud();

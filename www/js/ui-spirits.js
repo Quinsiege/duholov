@@ -536,9 +536,7 @@ Object.assign(UI, {
     });
     setTimeout(() => {
       m.querySelector('.evo-text').innerHTML = `${ru`Это <b>${SP[to].name}</b>!`}${isNew ? `<div class="badge-new">${ru`Новая запись в Бестиарии!`}</div>` : ''}`;
-      const b = U.el(`<button class="btn primary">${ru`Чудесно`}</button>`);
-      b.onclick = () => { m.close(); done(); };
-      m.querySelector('.modal-btns').appendChild(b);
+      this.tapGo(m, () => { m.close(); done(); }); // 5.1.33: окно итога — дальше касанием
     }, 2600);
   },
 
@@ -804,9 +802,7 @@ Object.assign(UI, {
       Sfx.play('hatch'); U.vibrate([40, 60, 100]);
       m.querySelector('.hatch-stage').classList.add('open');
       m.querySelector('.evo-text').innerHTML = `${res.sp.shiny ? ru`Из кокона появился <b>✦ сияющий ${SP[res.sp.sid].name}</b>!` : ru`Из кокона появился <b>${SP[res.sp.sid].name}</b>!`}<div class="small">${ru`СИЛА ${S.power(res.sp)} · +${res.essence} эссенции · +${res.sparks} искр`}</div>${res.isNew ? `<div class="badge-new">${ru`Новая запись в Бестиарии!`}</div>` : ''}`;
-      const b = U.el(`<button class="btn primary">${ru`Привет!`}</button>`);
-      b.onclick = () => { m.close(); done(); };
-      m.querySelector('.modal-btns').appendChild(b);
+      this.tapGo(m, () => { m.close(); done(); }); // 5.1.33: окно итога — дальше касанием
     }, 2200);
   },
   // 5.1.27: новый дух без кокона (выбор в Кампании) — та же сцена: вспышка, дух появляется, кто он и «Привет!»
@@ -821,9 +817,7 @@ Object.assign(UI, {
       m.querySelector('.hatch-stage').classList.add('open');
       m.querySelector('.evo-text').innerHTML = `${sp.shiny ? ru`<b>✦ Сияющий ${s.name}</b> — теперь твой дух!` : ru`<b>${s.name}</b> — теперь твой дух!`}` +
         `<div class="small">${ru`СИЛА ${S.power(sp)}`}${o.ess ? ` · ${ru`+${o.ess} эссенции`}` : ''}</div>${o.isNew ? `<div class="badge-new">${ru`Новая запись в Бестиарии!`}</div>` : ''}`;
-      const b = U.el(`<button class="btn primary">${ru`Привет!`}</button>`);
-      b.onclick = () => { m.close(); if (done) done(); };
-      m.querySelector('.modal-btns').appendChild(b);
+      this.tapGo(m, () => { m.close(); if (done) done(); }); // 5.1.33: окно итога — дальше касанием
     }, 350);
   },
 });

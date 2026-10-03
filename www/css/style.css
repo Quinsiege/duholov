@@ -5643,3 +5643,28 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 @keyframes ohGlow { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.06); } }
 @keyframes ohBurst { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(1.25); opacity: .75; } }
 .calm .onb-hatch .oh-coc, .calm .onb-hatch .oh-glow { animation: none !important; }
+
+/* ===== 5.1.33: окна итога (пойман, победа, новый уровень, превращение, кокон, награда, подарок, обучение пройдено…) — во весь
+   экран, без подложки, на полупрозрачном матовом стекле (как окна игры); вместо кнопки — «Коснись, чтобы продолжить» внизу экрана:
+   касание в любом месте — дальше (UI.tapGo). Свои действия окна («Поставить защитника», «Спасти духа», «Ещё бой», «Алатырь») —
+   по-прежнему кнопками ===== */
+.tap-go { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:is(.enc-result, .raid-result, .tut-final).tap-go {
+  background: radial-gradient(90% 55% at 50% 100%, rgba(253, 224, 71, .1), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .02) 60%), rgba(24, 14, 56, .36);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+  --muted: #e4dcf7; text-shadow: 0 1px 2px rgba(12, 6, 32, .55), 0 0 6px rgba(12, 6, 32, .25); }
+:is(.enc-result, .raid-result, .modal-wrap).tap-go { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+.tap-go > .res-card { max-width: 400px; padding: 0 6px; background: none; border-color: transparent; outline: none; box-shadow: none; }
+.tap-go > .res-card .res-art { width: 190px; height: 190px; }
+.tap-go > .res-card .res-rw { margin-bottom: 4px; }
+.tap-go > .res-card .btn { margin-top: 10px; }
+/* свечение превращения и кокона выходит за окно — без полос прокрутки на стекле */
+.modal-wrap.tap-go .modal, .modal:is(.evo-modal, .hatch-modal) { overflow-x: hidden; scrollbar-width: none; }
+:is(.modal-wrap.tap-go .modal, .modal.evo-modal, .modal.hatch-modal)::-webkit-scrollbar { display: none; }
+.tap-hint { position: absolute; left: 16px; right: 16px; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); z-index: 2; pointer-events: none; text-align: center;
+  font: 600 15px/1.3 var(--f-head); letter-spacing: .06em; color: #fff8e6; text-shadow: 0 1px 3px rgba(12, 6, 32, .85), 0 0 12px rgba(12, 6, 32, .45);
+  opacity: 0; animation: tapIn .35s ease-out .6s forwards, tapPulse 1.8s ease-in-out .95s infinite; }
+@keyframes tapIn { to { opacity: .95; } }
+@keyframes tapPulse { 50% { opacity: .5; } }
+.calm .tap-hint { animation: tapIn .35s ease-out .6s forwards; }
+.eco :is(.enc-result, .raid-result, .tut-final).tap-go { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(12, 7, 30, .82); }

@@ -459,11 +459,10 @@ const LeagueBattle = {
       <div class="guard"><div class="guard-ava">${Art.avatar(v.foe.look || undefined)}</div><div><b>${foe}</b><small>${LEAGUE_RANKS[v.foe.rank].name} · ${U.fmtNum(v.foe.pts)}</small></div></div>
       <div class="res-note">${why}<br>${ru`Рейтинг ${d >= 0 ? '+' : '−'}${Math.abs(d)}`}<span class="lg-res-league"></span></div>
       <div class="lg-res-more"><div class="res-note">${ru`Засчитываю итог…`}</div></div>
-      <button class="btn primary wide lg-again">${ru`Ещё бой`}</button>
-      <button class="btn wide lg-done">${ru`К Лиге`}</button></div></div>`);
+      <button class="btn primary wide lg-again">${ru`Ещё бой`}</button></div></div>`);
     st.root.appendChild(res);
     res.querySelector('.lg-again').onclick = () => { this.close(); setTimeout(() => this.search(), 150); };
-    res.querySelector('.lg-done').onclick = () => { this.close(); setTimeout(() => League.screen(), 150); };
+    UI.tapGo(res, () => { this.close(); setTimeout(() => League.screen(), 150); }); // 5.1.33: к Лиге — касанием; «Ещё бой» — своей кнопкой
     let r = null;
     try { r = await Game.act('pvpResult', { board: true }); } catch (e) { UI.toast(U.esc(e.message)); }
     if (this.st !== st) return;

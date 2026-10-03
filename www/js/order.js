@@ -59,7 +59,7 @@ const Order = {
       html: `<div class="st-row">${cells}</div>
         <p class="st-hint">${r.n === 1 ? ru`Заходи каждый день — награды растут, а на 7-й день ждёт кокон 10 км.` : day === L - 1 ? ru`Седьмой день! Завтра круг начнётся снова — серия продолжается.` : ru`Не пропускай день — иначе серия начнётся сначала.`}</p>
         <div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`,
-      buttons: [{ label: ru`Забрать`, cls: 'primary', fn: () => UI.refreshHud() }],
+      buttons: [{ label: ru`Забрать`, cls: 'primary', fn: () => UI.refreshHud() }], tap: true,
       dismiss: false,
     });
   },
@@ -96,7 +96,7 @@ const Order = {
     const r = await Game.try('orderClaim', { week, i });
     if (!r) return false;
     Sfx.play('reward_big');
-    UI.modal({ title: ru`Общее дело: ступень ${i + 1}`, html: `<p>${ru`Орден благодарит тебя за помощь!`}</p><div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }] });
+    UI.modal({ title: ru`Общее дело: ступень ${i + 1}`, html: `<p>${ru`Орден благодарит тебя за помощь!`}</p><div class="lvl-rw">${r.got.map(x => this.rwCell(x)).join('')}</div>`, buttons: [{ label: ru`Отлично`, cls: 'primary' }], tap: true });
     await this.refresh(true);
     return true;
   },
