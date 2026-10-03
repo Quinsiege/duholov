@@ -86,6 +86,7 @@ const Hazard = {
 const Roofs = {
   at: new Map(), // 'lat,lng' → высота
   height(lat, lng) {
+    if (typeof Bld3D === 'undefined' || !Bld3D.on) return 0; // 5.1.42: дома плоские — места стоят на земле, крыши не нужны
     const key = lat.toFixed(6) + ',' + lng.toFixed(6);
     if (this.at.has(key)) return this.at.get(key);
     const v = Hazard.view();
@@ -131,7 +132,8 @@ const MapView = {
     this._lblBox = document.createElement('div'); this._lblBox.id = 'mapLbl'; U.$('#map').after(this._lblBox);
     // 4.13: свои слои между плитками земли и значками (порядок — по z-index, см. orderPanes)
     [['zone', 380], ['bld', 390]].forEach(([n, z]) => { const p = this.map.createPane(n); p.style.zIndex = z; p.style.pointerEvents = 'none'; });
-    if (typeof Bld3D !== 'undefined') Bld3D.init(this.map); // 5.1.30: дома — объёмные, в WebGL (свой слой между зоной и подписями)
+    // 5.1.30: дома были объёмными (Bld3D, WebGL). 5.1.42: на карте всё плоское, кроме мест игры, Ловчего и духов (выбор владельца) —
+    // объёмные дома не заводятся (Bld3D.on — нет), плоские дома рисует сама карта (слой buildings палитры)
     this.setTiles();
     setInterval(() => this.setTiles(), 60000);
 
@@ -523,7 +525,7 @@ const MapView = {
     const c = U.$('#compassBtn');
     if (c) { c.innerHTML = this.compassSvg(); c.onclick = () => { Sfx.play('tap'); this.northUp(); }; }
     addEventListener('resize', () => { if (this._sq) this.layout(); });
-    this.setTilt(Cfg.s.tilt3d !== false);
+    this.setTilt(true); // 5.1.42: наклон 50° всегда — настройки «Объёмная карта» больше нет
   },
   /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
      трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат).

@@ -111,7 +111,7 @@
   // Игра в памяти: ничего не пишем в localStorage
   S.save = () => {};
   // 5.1.40: охлаждение (Heat) в тестах выключено — «давление» процессора под нагрузкой прогона меняло бы разрешение и кадры
-  Cfg.s.cool = false;
+  Heat.off = true;
   Bus.emit = () => {};
   UI.toast = () => {};
   Friends.sync = () => {}; // без обращений к серверу
@@ -3583,39 +3583,35 @@
       let ran = 0; const id = requestAnimationFrame(() => { ran++; }); cancelAnimationFrame(id); await U.wait(120); eq(ran, 0, 'отменённый кадр не приходит:');
     } finally { Gfx.short = keep.short; Gfx.nat = keep.nat; Cfg.s.res = keep.res; Cfg.s.fps = keep.fps; }
   });
-  test('5.1.40: охлаждение — с 39° ступенями ниже кадры и разрешение (до 360p), остыл — назад; без датчиков — ничего', () => {
-    const H = ['level', 'at', 't', 's', 'h', 'p', '_d'], keepH = Object.fromEntries(H.map(k => [k, Heat[k]]));
-    const keep = { cool: Cfg.s.cool, res: Cfg.s.res, fps: Cfg.s.fps, eco: Cfg.s.eco, short: Gfx.short, nat: Gfx.nat, apply: Gfx.apply, N: window.DuholovNative, toast: UI.toast, ecoCls: document.body.classList.contains('eco') };
+  test('5.1.40: охлаждение (5.1.42: всегда) — с 39° ступенями ниже кадры и разрешение (до 360p), остыл — назад; без датчиков — ничего', () => {
+    const H = ['level', 'at', 't', 's', 'h', 'p', '_d', 'off'], keepH = Object.fromEntries(H.map(k => [k, Heat[k]]));
+    const keep = { res: Cfg.s.res, fps: Cfg.s.fps, short: Gfx.short, nat: Gfx.nat, apply: Gfx.apply, N: window.DuholovNative, toast: UI.toast, ecoCls: document.body.classList.contains('eco') };
     let applied = 0, toasts = 0, temp = 41, st = 1, now = 1e12;
     const busyD = Object.getOwnPropertyDescriptor(Stage, 'busy'); Object.defineProperty(Stage, 'busy', { get: () => false, configurable: true }); // сцен нет — разрешение сразу
     try {
       Gfx.short = () => 393; Gfx.nat = () => 2.75; Gfx.apply = () => { applied++; Heat._d = Gfx.dpr(); }; UI.toast = () => { toasts++; };
-      Cfg.s.cool = true; Cfg.s.res = 'auto'; Cfg.s.fps = 60; Cfg.s.eco = false;
-      Object.assign(Heat, { level: 0, at: 0, t: null, s: -1, h: NaN, p: '' }); Heat._d = Gfx.dpr();
+      Cfg.s.res = 'auto'; Cfg.s.fps = 60;
+      Object.assign(Heat, { level: 0, at: 0, t: null, s: -1, h: NaN, p: '', off: false }); Heat._d = Gfx.dpr();
       window.DuholovNative = { thermal: () => JSON.stringify({ t: temp, s: st }) };
       const tick = dt => { now += dt; Heat.tick(now); return Heat.level; };
       eq(tick(0), 1, '41° — первая ступень сразу:'); eq(Gfx.fps(), 40); eq(applied, 0, 'у экрана 1080p потолок 1080p — карта не перерисовывается:'); eq(toasts, 1, 'игроку сказали:');
       eq(tick(10000), 1, 'в сильный нагрев — следующая ступень не раньше чем через 30 с:');
       eq(tick(30000), 2); eq(Gfx.fps(), 30); near(Gfx.dpr(), 720 / 393, 1e-9, '720p'); eq(applied, 1); ok(!Gfx.eco());
       eq(tick(30000), 3); near(Gfx.dpr(), 540 / 393, 1e-9, '540p — ниже 720p'); ok(Gfx.eco() && document.body.classList.contains('eco'), 'с 3-й ступени — экономия батареи');
-      eq(Heat.line(), 'Сейчас 41° · снижено до 540p и 30 к/с');
       tick(30000); eq(tick(30000), 5); near(Gfx.dpr(), 360 / 393, 1e-9, '360p'); eq(Gfx.fps(), 20); near(Gfx.px(1000), 1000 * (360 / 1080) ** 2, 1, 'и у домов — меньше точек');
       eq(tick(60000), 5, 'ниже пятой ступени — нет:'); eq(toasts, 1, 'и сказали один раз:');
       temp = 38; eq(tick(600000), 5, '38° — ни туда ни сюда:');
       temp = 36; st = 0; eq(tick(180000), 4, 'остыл — назад по ступени'); eq(tick(60000), 4, 'не чаще раза в 3 минуты:');
       tick(180000); tick(180000); tick(180000); eq(tick(180000), 0, 'вернулось всё:');
       eq(Gfx.fps(), 60); eq(Gfx.dpr(), 2.75); ok(!Gfx.eco() && !document.body.classList.contains('eco'), 'экономия выключилась');
-      eq(Heat.line(), 'Сейчас 36° · графика как в настройках');
       temp = 34; st = 2; eq(tick(60000), 1, 'оценка Android «умеренный нагрев» — тоже горячо:');
       Cfg.s.fps = 30; eq(Gfx.fps(), 30, 'своя настройка ниже ступени — своя:'); Cfg.s.fps = 60;
-      Cfg.s.cool = false; Heat.toggle(); eq(Heat.level, 0); eq(Gfx.fps(), 60, 'охлаждение выключили — как в настройках:');
-      temp = 45; st = 4; tick(60000); eq(Heat.level, 0); eq(Gfx.fps(), 60, 'и греется — не трогаем:'); Cfg.s.cool = true;
       // без датчиков (сайт без Compute Pressure, старое приложение) — ничего не меняется
       window.DuholovNative = undefined; Object.assign(Heat, { level: 0, at: 0, t: null, s: -1, h: NaN, p: '' });
-      eq(tick(600000), 0); eq(Heat.line(), 'Температура телефона видна игре только в приложении для Android.');
+      eq(tick(600000), 0, 'без датчиков — ничего:');
       Heat.p = 'critical'; eq(tick(0), 1, 'давление процессора «критическое» — горячо:'); Heat.p = 'nominal';
     } finally {
-      Object.assign(Heat, keepH); Object.assign(Cfg.s, { cool: keep.cool, res: keep.res, fps: keep.fps, eco: keep.eco });
+      Object.assign(Heat, keepH); Object.assign(Cfg.s, { res: keep.res, fps: keep.fps });
       Gfx.short = keep.short; Gfx.nat = keep.nat; Gfx.apply = keep.apply; window.DuholovNative = keep.N; UI.toast = keep.toast;
       document.body.classList.toggle('eco', keep.ecoCls); Object.defineProperty(Stage, 'busy', busyD);
     }
@@ -5072,10 +5068,11 @@
   });
   test('5.1.31: крыши и повороты моделей — одним кадром; пустые плитки подписей скрыты; значок далеко за экраном не переставляется', () => {
     const keep = { markers: MapView.markers, upright: MapView.upright, reAim: MapView.reAim, bldTiles: MapView.bldTiles, map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py };
-    const keepAim = M3D.aim, keepRaf = window.requestAnimationFrame, keepL = window.L;
+    const keepAim = M3D.aim, keepRaf = window.requestAnimationFrame, keepL = window.L, keepOn = Bld3D.on;
     const raf = [];
     try {
       window.requestAnimationFrame = f => { raf.push(f); return raf.length; };
+      Bld3D.on = true; // крыши — у объёмных домов (5.1.42 их нет, механизм остаётся)
       // крыши: пришли высоты — места встают на крыши одним кадром, без полного обновления значков
       let up = 0, re = 0, aims = 0;
       const e = { type: 'shrine', lat: 55.75, lng: 37.62 }, m = { _ent: e };
@@ -5117,7 +5114,7 @@
       ic._leaflet_pos = { x: 220, y: 300 }; MapView.upright(mk);
       ok(ic.style.transform.includes(`rotateX(-${MapView.TILT + 5}deg)`), 'на экране — всегда по нынешнему наклону: ' + ic.style.transform.slice(0, 60));
     } finally {
-      Object.assign(MapView, keep); M3D.aim = keepAim; window.requestAnimationFrame = keepRaf;
+      Object.assign(MapView, keep); M3D.aim = keepAim; window.requestAnimationFrame = keepRaf; Bld3D.on = keepOn;
       if (keepL) window.L = keepL; else delete window.L;
       Roofs.at.clear();
     }
@@ -5314,9 +5311,10 @@
       await new Promise(res => Bld3D.buildOne(t, fs, res));
       eq(t.bs.length, 4, 'в плитке — купол, неф, дом и сарай:'); ok(!t.bs.some(b => b.H === 67), 'коробки в 67 м нет');
     } finally { Object.assign(Bld3D, keepQ); }
-    // крыша места внутри собора — по частям (купол), а не по коробке контура
-    const keepV = Hazard._view, keepR = MapView.roofSoon;
+    // крыша места внутри собора — по частям (купол), а не по коробке контура (крыши — у объёмных домов: 5.1.42 их нет, механизм остаётся)
+    const keepV = Hazard._view, keepR = MapView.roofSoon, keepOn = Bld3D.on;
     try {
+      Bld3D.on = true;
       const lat = 55.7525, lng = 37.6231, { px, py } = Hazard.tileOf(lat, lng);
       const at = (dx, dy, f) => ({ ...f, geom: f.geom.map(r => r.map(p => ({ x: p.x - 150 + px + dx, y: p.y - 150 + py + dy }))) });
       Hazard._view = { tileCache: { get: async () => new Map([['buildings', [at(0, 0, cathedral), at(0, 0, dome), at(0, 0, nave)]]]) } };
@@ -5324,7 +5322,7 @@
       Roofs.at.clear();
       Roofs.height(lat, lng); await new Promise(r => setTimeout(r, 0));
       eq(Roofs.height(lat, lng), 54.6, 'место — на куполе, а не на невидимой коробке в 67 м:');
-    } finally { Hazard._view = keepV; MapView.roofSoon = keepR; Roofs.at.clear(); }
+    } finally { Hazard._view = keepV; MapView.roofSoon = keepR; Roofs.at.clear(); Bld3D.on = keepOn; }
   });
   test('5.1.30: объёмные дома — крыши разбиты на треугольники без пропусков и лишнего (невыпуклые, с дворами)', () => {
     const area = (d, t) => {
@@ -5386,7 +5384,7 @@
     } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
   });
   atest('5.1.30: крыши — высота дома, в котором стоит место (по плитке карты), без хранения домов', async () => {
-    const keepV = Hazard._view, keepR = MapView.roofSoon;
+    const keepV = Hazard._view, keepR = MapView.roofSoon, keepOn = Bld3D.on;
     try {
       const lat = 55.7547, lng = 37.6215, { px, py } = Hazard.tileOf(lat, lng);
       const sq = (x, y, r) => [[{ x: x - r, y: y - r }, { x: x + r, y: y - r }, { x: x + r, y: y + r }, { x: x - r, y: y + r }]];
@@ -5398,6 +5396,8 @@
       let redraw = 0;
       MapView.roofSoon = () => { redraw++; }; // 5.1.31: места — на крыши одним кадром, без полного обновления значков
       Roofs.at.clear();
+      Bld3D.on = false; eq(Roofs.height(lat, lng), 0, '5.1.42: дома плоские — место на земле:'); eq(asked, 0, 'и плитку не спрашивают:');
+      Bld3D.on = true; // крыши — у объёмных домов (сейчас их нет, но механизм остаётся)
       eq(Roofs.height(lat, lng), null, 'плитка читается — пока не знаем');
       await new Promise(r => setTimeout(r, 0));
       eq(Roofs.height(lat, lng), 21, 'на крыше своего дома');
@@ -5407,7 +5407,7 @@
       eq(Roofs.height(lat + 0.01, lng), null);
       await new Promise(r => setTimeout(r, 0));
       eq(Roofs.height(lat + 0.01, lng), 0, 'не в доме — на земле');
-    } finally { Hazard._view = keepV; MapView.roofSoon = keepR; Roofs.at.clear(); }
+    } finally { Hazard._view = keepV; MapView.roofSoon = keepR; Roofs.at.clear(); Bld3D.on = keepOn; }
   });
   test('5.1.24: обновление — удаляются кэши кода прошлых версий; кэш новой (его заполняет новый service worker), звуки и плитки остаются', () => {
     eq(Updater.oldCaches(['duholov-v5.1.23-abc', 'duholov-v5.1.24-def', 'duholov-tiles', 'duholov-sfx', 'duholov-v5.1.2-x'], '5.1.24').join(), 'duholov-v5.1.23-abc,duholov-v5.1.2-x');

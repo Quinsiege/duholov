@@ -33,7 +33,7 @@ const Scene = {
     } catch (e) { return false; }
     return true;
   },
-  calm() { return !!(Cfg.s.calm || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)); },
+  calm() { return Cfg.calm(); }, // 5.1.42: по настройке телефона
 
   /* ---------- экран загрузки: картинка из настроек поверх встроенного фона ---------- */
   async loading(el) {

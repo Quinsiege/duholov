@@ -1,13 +1,14 @@
 'use strict';
-/* Настройки этого устройства: звук, музыка, AR, экономия батареи, вид карты, сторона джойстика (5.1) и доступность.
+/* Настройки этого устройства: звук, музыка, AR, сторона джойстика (5.1), графика и доступность.
    Хранятся на телефоне (это не игровой прогресс), прогресс — на сервере. */
 
 const Cfg = {
   KEY: 'duholov.settings',
-  DEFAULTS: { joySide: 'right', ar: false, sound: true, vibro: true, music: true, musicVol: 0.6, eco: false,
-    bigText: false, tapThrow: false, calm: null, tilt3d: true, awake: false, res: 'auto', fps: 60, // 5.1.38: графика (Gfx)
-    cool: true }, // 5.1.40: охлаждение (Heat)
+  DEFAULTS: { joySide: 'right', ar: false, sound: true, vibro: true, music: true, musicVol: 0.6,
+    bigText: false, tapThrow: false, awake: false, res: 'auto', fps: 60 }, // 5.1.38: графика (Gfx)
   s: null,
+  // «Меньше движения» — по настройке телефона (уменьшить движение); 5.1.42: своей настройки в игре больше нет
+  calm() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); },
 
   load() {
     let s = null;
@@ -16,7 +17,9 @@ const Cfg = {
       try { const old = JSON.parse(localStorage.getItem('duholov.save.v1')); s = old && old.settings; } catch (e) {}
     }
     this.s = Object.assign({}, this.DEFAULTS, s || {});
-    if (this.s.calm == null) this.s.calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    // 5.1.42: настроек «Объёмная карта» (наклон 50° — всегда), «Меньше движения» (по телефону — Cfg.calm), «Экономия батареи»
+    // и «Охлаждение» (всегда включено, экономию включает оно же — Heat) больше нет
+    for (const k of ['tilt3d', 'calm', 'eco', 'cool']) delete this.s[k];
     delete this.s.demo; // 5.1: демо-режима больше нет — джойстик у всех (walk.js)
     delete this.s.fog; // 5.1.6: тумана Нави больше нет
     delete this.s.cloud; // 5.1.11: в таблице Лиги — все Ловчие (настройки «Общая таблица Лиги» больше нет)
@@ -25,7 +28,6 @@ const Cfg = {
     if (this.s.joySide !== 'left') this.s.joySide = 'right'; // 5.1: сторона джойстика на карте
     if (!['auto', 'max', 720, 1080, 1440].includes(this.s.res)) this.s.res = 'auto'; // 5.1.38: разрешение графики
     if (![30, 40, 60].includes(this.s.fps)) this.s.fps = 60; // 5.1.38: частота кадров
-    if (typeof this.s.cool !== 'boolean') this.s.cool = true; // 5.1.40: охлаждение
     return this.s;
   },
   save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.s)); } catch (e) {} },
@@ -70,8 +72,9 @@ const Gfx = {
   },
   // кадров в секунду: из настройки, а при нагреве — не больше ступени охлаждения (5.1.40)
   fps() { return Math.min(Cfg.s.fps || 60, Heat.fps() || 60); },
-  // «Экономия батареи»: включена игроком или охлаждением (5.1.40)
-  eco() { return !!Cfg.s.eco || Heat.eco(); },
+  // «Экономия батареи» (меньше анимаций и размытий, реже обновление карты): 5.1.40 — включена игроком или охлаждением,
+  // 5.1.42 — только охлаждением (своей настройки больше нет)
+  eco() { return Heat.eco(); },
   // разрешение сменилось — карта, дома и модели перерисовываются в новом (Heat._d — в каком разрешении нарисованы)
   apply() { Heat._d = this.dpr(); if (typeof MapView !== 'undefined' && MapView.applyRes) MapView.applyRes(); },
   // ограничитель кадров: не чаще Cfg.s.fps кадров в секунду; шаг — ровный в среднем (40 к/с на экране 60 Гц — кадр через раз
@@ -96,18 +99,18 @@ const Gfx = {
 };
 Gfx.installFps();
 
-/* 5.1.40: Охлаждение (Настройки → Графика, Cfg.s.cool; по умолчанию включено). Чтобы телефон не грелся выше MAX (40°), с START
-   (39°) игра ступенями (STEPS) снижает частоту кадров и разрешение — до LOW (360p), с 3-й ступени включает «Экономию батареи»;
+/* 5.1.40: Охлаждение (5.1.42: всегда включено — настройки больше нет). Чтобы телефон не грелся выше MAX (40°), с START
+   (39°) игра ступенями (STEPS) снижает частоту кадров и разрешение — до 360p, с 3-й ступени включает «Экономию батареи»;
    следующая ступень — не раньше чем через UP мс (в сильный нагрев — URGENT), а остыв до BACK, игра возвращает по ступени раз в DOWN мс.
    Температура — у приложения (DuholovNative.thermal, обёртка 16+): батарея, °C; оценка нагрева Android 10+ (0 — нет … 6 —
    отключение, «умеренная» 2 и выше — горячо) и запас до троттлинга через 10 с Android 11+ (1 — порог). На сайте температуры нет —
    только «давление» процессора (Compute Pressure API), где браузер его даёт: serious и critical — горячо */
 const Heat = {
-  MAX: 40, START: 39, BACK: 37, LOW: 360,
+  MAX: 40, START: 39, BACK: 37,
   STEPS: [null, { fps: 40, res: 1080 }, { fps: 30, res: 720 }, { fps: 30, res: 540, eco: true }, { fps: 24, res: 432, eco: true }, { fps: 20, res: 360, eco: true }],
   POLL: 10000, UP: 60000, URGENT: 30000, DOWN: 180000,
-  level: 0, at: 0, t: null, s: -1, h: NaN, p: '', onChange: null,
-  step() { return Cfg.s.cool ? this.STEPS[this.level] : null; },
+  level: 0, at: 0, t: null, s: -1, h: NaN, p: '', onChange: null, off: false, // off — в тестах: графику не трогать
+  step() { return this.STEPS[this.level]; },
   fps() { const s = this.step(); return s ? s.fps : 0; },
   res() { const s = this.step(); return s ? s.res : 0; },
   eco() { const s = this.step(); return !!(s && s.eco); },
@@ -122,23 +125,9 @@ const Heat = {
       this.h = Number.isFinite(+o.h) ? +o.h : NaN;
     } catch (e) { /* старая обёртка */ }
   },
-  // игре известен нагрев: температура, оценка Android или давление процессора
-  known() { return this.t != null || this.s >= 0 || !!this.p; },
-  // строка в настройках: температура и что сейчас с графикой
-  line() {
-    const g = this.step() ? ru`снижено до ${Math.round(Gfx.dpr() * Gfx.short())}p и ${Gfx.fps()} к/с` : ru`графика как в настройках`;
-    if (this.t != null) return ru`Сейчас ${Math.round(this.t)}°` + ' · ' + g;
-    return this.known() ? g : ru`Температура телефона видна игре только в приложении для Android.`;
-  },
-  // игрок включил или выключил охлаждение: выключил — графика как в настройках, ступени — заново с нуля
-  toggle() {
-    const was = Cfg.s.cool ? null : this.STEPS[this.level];
-    if (!Cfg.s.cool) this.level = 0;
-    this.changed(was);
-  },
-  // раз в POLL, пока игра на экране и охлаждение включено: горячо — ступень ниже по графике, остыл — назад
+  // раз в POLL, пока игра на экране: горячо — ступень ниже по графике, остыл — назад
   tick(now = Date.now()) {
-    if (document.hidden || !Cfg.s.cool) return;
+    if (document.hidden || this.off) return;
     this.read();
     const hot = this.t >= this.START || this.s >= 2 || this.h >= 0.95 || this.p === 'serious' || this.p === 'critical';
     const urgent = this.t >= this.MAX + 1 || this.s >= 3 || this.p === 'critical';

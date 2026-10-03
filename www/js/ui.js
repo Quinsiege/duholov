@@ -103,7 +103,7 @@ const UI = {
 
   applyA11y() {
     document.documentElement.classList.toggle('big-text', !!Cfg.s.bigText);
-    document.body.classList.toggle('calm', !!Cfg.s.calm);
+    document.body.classList.toggle('calm', Cfg.calm()); // 5.1.42: по настройке телефона (своей в игре больше нет)
   },
 
   refreshSky() {
