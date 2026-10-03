@@ -104,10 +104,10 @@ body.night .range-circle { fill-opacity: .1; }
 body.stage-glass #mapLbl, body.stage-cover #mapLbl { opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; }
 #mapLbl .mk-lbl { position: absolute; left: 0; top: 0; transform-origin: 50% 0; pointer-events: none; text-align: center; white-space: nowrap; --ol: #2e1500; }
 #mapLbl .mk-lbl.tut-off { opacity: .35; }
-#mapLbl .mk-lbl b { display: block; font: 700 12.5px/1.2 var(--f-head); text-transform: uppercase; color: #ffd772;
+#mapLbl .mk-lbl b { display: block; font: 700 10px/1.2 var(--f-head); text-transform: uppercase; color: #ffd772;
   text-shadow: -1px -1px 0 var(--ol), 1px -1px 0 var(--ol), -1px 1px 0 var(--ol), 1px 1px 0 var(--ol), 0 2px 5px rgba(0, 0, 0, .55); }
 #mapLbl .mk-lbl b span { display: inline-block; vertical-align: bottom; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
-#mapLbl .mk-lbl i { display: block; max-width: 180px; margin: 1px auto 0; overflow: hidden; text-overflow: ellipsis; font: 500 10.5px/1.25 var(--f-head);
+#mapLbl .mk-lbl i { display: block; max-width: 180px; margin: 1px auto 0; overflow: hidden; text-overflow: ellipsis; font: 500 9px/1.25 var(--f-head);
   font-style: normal; color: #fff8e6; text-shadow: -1px -1px 0 #22120a, 1px -1px 0 #22120a, -1px 1px 0 #22120a, 1px 1px 0 #22120a, 0 1px 4px rgba(0, 0, 0, .5); }
 #mapLbl .mk-lbl.far i { display: none; }
 /* 3D-Ловчий (js/m3d.js) — вместо точки со стрелкой и кольца: куда он идёт, видно по нему самому */
@@ -4163,9 +4163,12 @@ html:lang(de) .btn, html:lang(fr) .btn, html:lang(es) .btn, html:lang(pt) .btn, 
 /* 5.1.29: экран святилища — в композиции Разлома: святилище (или фото места), на нём медальон хранителя (у занятого — в цвете клана) */
 .shrine2-art .rift-portal { opacity: 1; }
 .shrine2-photo { position: absolute; inset: 4% 8% 8% 4%; border-radius: 22px; background: center / cover no-repeat; border: 3px solid var(--gold); box-shadow: 0 0 24px rgba(251, 191, 36, .35); }
-.shrine2-guard { position: absolute; right: 0; bottom: 2%; width: 40%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; border: 3px solid var(--gold); background: #241a45; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
-.shrine2-guard.clan { border-color: var(--cc); box-shadow: 0 0 14px var(--cc); }
-.shrine2-guard > svg, .shrine2-guard > .art { display: block; width: 100%; height: 100%; }
+/* 5.1.36: на картинке Святилища вместо хранителя-«человечка» — знак клана, который его держит; у свободного — ничего */
+.shrine2-crest { position: absolute; right: -2%; bottom: 0; width: 40%; aspect-ratio: 120 / 132;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--cc) 70%, transparent)) drop-shadow(0 4px 6px rgba(0, 0, 0, .45)); }
+.shrine2-crest > .crest { display: block; width: 100%; height: 100%; }
+.spr2-spk { margin-left: 10px; white-space: nowrap; } /* 5.1.36: искры Источника — рядом с опытом, по одной строке */
+.spr2-spk .art, .spr2-spk svg { display: inline-block; width: 22px; height: 22px; margin-right: 4px; vertical-align: -4px; }
 .shrine2 .holders { margin: 0; }
 /* 4.22.3: Книга Ордена — оглавление разделами, списком без подложек; глава — шапка, вкладки, строки без подложек, соседние главы внизу */
 .bk-gh { margin: 14px 2px 4px; }

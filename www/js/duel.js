@@ -18,6 +18,8 @@ const Duel = {
     const free = Rules.shrineFree(e.id), now = U.now();
     const holders0 = !free && Clans.info(e.id) ? Clans.info(e.id).holders.filter(h => h.sp && SP[h.sp.sid] && Rules.holdFresh(h, now)) : [];
     const hold = holders0.length ? Clans.info(e.id) : null, mine = !!(hold && S.d.clan && hold.clan === S.d.clan);
+    // 5.1.36: занятое кланом Святилище первые сутки не отбить (сводка карты — с точностью до часа; точно проверяет сервер)
+    const safe = hold && !mine ? Rules.holdSafeLeft(hold.since, now) : 0;
     const g = W.guardian(e), T = SHRINE_TIERS[e.tier], mul = Ev.duelMul(), t = e.tier, myth = e.myth || 'slavic';
     let team = S.team();
     const holders = holders0.map(h => ({ ...h, sp: Rules.holdSpirit(h.sp, h.t, now) }));
@@ -39,6 +41,8 @@ const Duel = {
     } else if (e.won) {
       fight = `<div class="rift-done">${ru`Сегодня ты уже победил здесь.`}${S.d.clan ? '' : ` ${ru`Завтра будет новый бой.`}`}</div>`;
       if (S.d.clan && !hold && !free) acts = `<button class="btn primary wide defend-go">${ru`Поставить защитника`}</button>`;
+    } else if (safe) {
+      fight = `<div class="rift-tip">${ru`Клан занял это Святилище недавно — отбить его можно через ${U.fmtHm(safe)}`}</div>${ownMyth}`;
     } else {
       fight = `
         <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
@@ -53,7 +57,7 @@ const Duel = {
         <div class="dt-hero">
           <div class="det-art rift2-art shrine2-art">
             ${photo ? `<div class="shrine2-photo" style="background-image:url('${photo}')"></div>` : `<div class="rift-portal">${Art.shrineIcon(t, e.won, e.myth)}</div>`}
-            <div class="shrine2-guard${hold ? ' clan' : ''}"${hold ? ` style="--cc:${CLANS[hold.clan].color}"` : ''}>${Art.guardian(hold ? CLANS[hold.clan].color : g.color)}</div>
+            ${hold ? `<div class="shrine2-crest" style="--cc:${CLANS[hold.clan].color}">${Art.clanCrest(hold.clan)}</div>` : ''}
           </div>
           <div class="dt-info">
             <div class="det-hp">${ru`Святилище`} <span class="stars">${'★'.repeat(t)}</span></div>

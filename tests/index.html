@@ -1340,6 +1340,7 @@
       h.holders = h.holders.filter(x => +x.t >= cut);
       if (h.holders.length && clanOf(h.clan) !== clanOf(clan)) return false; // 4.28: как clan_key в 031 — прежняя дружина и её клан — одно знамя
       if (h.holders.length >= HOLD_MAX || h.holders.some(x => x.pid === holder.pid)) return false;
+      if (!h.holders.length) h.since = new Date().toISOString(); // 5.1.36: как shrine_defend — с захвата идут сутки защиты
       h.clan = clan; h.holders.push(holder); h.ver++; return true;
     },
     holdDefeat: async (poi, ver) => { const h = DB.holds[poi]; if (!h || h.ver !== ver) return false; h.holders = []; h.ver++; return true; },
@@ -1508,6 +1509,7 @@
     const poi = { id: 'osm:n777', lat: 55.7601, lng: 37.6301, name: 'Фонтан' };
     const r = await must(A, 'spring', { poi });
     ok(r.got.length > 0, 'добыча'); ok(A.data.springs['osm:n777'] > 0, 'отметка перезарядки');
+    eq((r.got.find(x => x.k === 'sparks') || {}).n, Math.ceil(W.SPRING_SPARKS / 2), '5.1.36: искры — у места не из базы вполовину:');
     await refuse(A, 'spring', { poi }, /набирает силу/);
     await refuse(A, 'spring', { poi: { ...poi, id: 'osm:n778', lat: 55.77 } }, /далеко/);
     await refuse(A, 'spring', { poi: { id: 'usr:00000000-0000-0000-0000-000000000000', lat: 55.76, lng: 37.63 } }, /не найдено/);
@@ -1649,6 +1651,7 @@
     A.srv.battle.start -= 85000; // бой длился 85 секунд
     const r = await must(A, 'raidEnd', { win: true });
     ok(r.win && r.charms >= Raid.TIER[1].charms, 'обереги разлома'); ok(A.data.rifts[st.rid], 'разлом закрыт');
+    eq((r.rw.find(x => x.k === 'sparks') || {}).n, Raid.TIER[1].sparks, '5.1.36: искры малого разлома:');
     ok(A.srv.raidWin.lvl <= A.data.level + 5 && A.srv.raidWin.lvl < Raid.TIER[1].lvl, 'босс новичку — не выше его доступного уровня (3.19)');
     const enc = await must(A, 'encStart', { kind: 'raid' }); eq(enc.sid, st.boss); eq(enc.charms, r.charms);
     await refuse(A, 'raidStart', { rift }, /уже закрыл/);
@@ -1693,6 +1696,7 @@
     A.srv.battle.start -= 200000; // бой дошёл до таймера
     const r = await must(A, 'duelEnd', { win: true });
     ok(r.win && r.rw.length > 0, 'награда'); eq(A.data.shrines[id], asPlayer(A, () => U.today()));
+    eq((r.rw.find(x => x.k === 'sparks') || {}).n, SHRINE_TIERS[1].sparks * asPlayer(A, () => Ev.duelMul()), '5.1.36: искры Святилища — как у разлома той же ступени:');
     await refuse(A, 'duelStart', { shrine }, /уже победил/);
   });
   atest('Сервер: раны после боя, без сил не пускают в бой, лечение (4.15)', async () => {
@@ -2014,6 +2018,7 @@
     await refuse(A, 'spring', { poi: { id: 'osm:n7002', lat: A.lat, lng: A.lng, name: 'Выдуманный источник' } }, /нет на карте/);
     const r = await must(A, 'spring', { poi: { id: 'osm:n7001', lat: 0, lng: 0, name: 'подмена' } });
     ok(r.got.length > 0, 'источник из базы работает, координаты — из базы');
+    eq((r.got.find(x => x.k === 'sparks') || {}).n, W.SPRING_SPARKS, '5.1.36: искры за источник из базы:');
     await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /уровня|нет такого объекта/);
     A.data.level = DUEL_LEVEL;
     await refuse(A, 'duelStart', { shrine: { id: 'osm:n7001', lat: A.lat, lng: A.lng } }, /нет такого объекта/);
@@ -2055,6 +2060,10 @@
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[1].uid }, /уже стоит/);
     await must(C, 'shrineDefend', { shrine, uid: C.data.spirits[0].uid }); // свой клан — без боя
     await refuse(C, 'duelStart', { shrine }, /твой клан/);
+    // 5.1.36: чужой клан — первые сутки после захвата Святилище не отбить
+    ok(DB.holds[id].since, 'время захвата записано');
+    await refuse(B, 'duelStart', { shrine }, /отбить его можно через/);
+    DB.holds[id].since = new Date(Date.now() - Rules.HOLD.SAFE_H * 3600000 - 60000).toISOString();
     // чужой клан: бой с защитниками
     const st = await must(B, 'duelStart', { shrine });
     eq(st.clan, 'slavic'); eq(st.foe.length, 2); eq(st.holders.join(), 'Сокольник,Второй сокол');
@@ -2315,7 +2324,7 @@
     await must(P, 'spiritBind', { uid: a.uid });
     ok(find(a.uid).bound > 0, 'плёнка содрана — дух привязан');
     await refuse(P, 'spiritBind', { uid: a.uid }, /уже содрана/);
-    await refuse(P, 'auctionSell', { uid: a.uid, cur: 'sparks', price: 1000 }, /привязан/);
+    await refuse(P, 'auctionSell', { uid: a.uid, cur: 'zlat', price: 100 }, /привязан/);
     // код: у нового духа — 8 цифр; у старого (без кода) — из uid, всегда один и тот же; через аукцион — тот же код
     ok(/^[1-9]\d{7}$/.test(S.makeSpirit('kapelka', 1, 'x').code), 'новый дух с кодом');
     const old = { uid: 'olduid1', sid: 'kapelka' };
@@ -2331,20 +2340,22 @@
     const mk = (iv, sid) => ({ uid: U.uid(), sid, lvl: 20, iv, t: Date.now(), fav: false });
     const good = mk([15, 14, 15], 'kapelka'), weak = mk([2, 3, 1], 'mshonok'), fav = { ...mk([10, 10, 10], 'ugolek'), fav: true };
     S1.data.spirits.push(good, weak, fav);
-    await refuse(S1, 'auctionSell', { uid: fav.uid, cur: 'sparks', price: 500 }, /избранный/);
+    await refuse(S1, 'auctionSell', { uid: fav.uid, cur: 'zlat', price: 50 }, /избранный/);
     await refuse(S1, 'auctionSell', { uid: good.uid, cur: 'zlat', price: 0 }, /Цена/);
-    await refuse(S1, 'auctionSell', { uid: good.uid, cur: 'sparks', price: 50 }, /Цена/);
+    await refuse(S1, 'auctionSell', { uid: good.uid, cur: 'zlat', price: Rules.AUCTION.MAX.zlat + 1 }, /Цена/);
+    await refuse(S1, 'auctionSell', { uid: good.uid, cur: 'sparks', price: 1000 }, /только за монеты/); // 5.1.36
+    await refuse(S1, 'auctionSell', { uid: good.uid, price: 1000 }, /только за монеты/);
     S1.data.team = [good.uid]; S1.data.buddy = { uid: good.uid, km: 0, finds: 0 };
     const sold = await must(S1, 'auctionSell', { uid: good.uid, cur: 'zlat', price: 200 });
     eq(sold.fee, 20, 'комиссия 10%'); ok(!S1.data.spirits.some(s => s.uid === good.uid), 'дух ушёл в лот');
     ok(!S1.data.team.includes(good.uid) && !S1.data.buddy, 'и из команды, и из спутников');
-    await must(S1, 'auctionSell', { uid: weak.uid, cur: 'sparks', price: 1000 });
+    await must(S1, 'auctionSell', { uid: weak.uid, cur: 'zlat', price: 100 });
     // фильтры: оценка Ордена, показатели, валюта; свои лоты в поиске не видны
     eq((await must(S1, 'auctionFind', {})).lots.length, 0, 'своих лотов в поиске нет');
     eq((await must(B1, 'auctionFind', {})).lots.length, 2);
     eq((await must(B1, 'auctionFind', { f: { minIv: 90 } })).lots.length, 1, 'по оценке Ордена');
     eq((await must(B1, 'auctionFind', { f: { minA: 15, minS: 15 } })).lots[0].sid, 'kapelka', 'по показателям');
-    eq((await must(B1, 'auctionFind', { f: { cur: 'sparks' } })).lots[0].price, 1000, 'по валюте');
+    eq((await must(B1, 'auctionFind', { f: { cur: 'zlat' } })).lots.length, 2, 'по валюте');
     eq((await must(B1, 'auctionFind', { f: { sids: ['mshonok'] } })).lots.length, 1, 'по виду');
     eq((await must(B1, 'auctionFind', { f: { el: SP.kapelka.el } })).lots.length, 1, 'по стихии');
     // покупка: денег не хватает — лот остаётся открытым
@@ -2369,28 +2380,38 @@
     const c0 = S1.data.spirits.length; await must(S1, 'auctionCancel', { id: weakLot.id }); eq(S1.data.spirits.length, c0 + 1, 'снятый дух вернулся');
     await refuse(S1, 'auctionCancel', { id: weakLot.id }, /продан или снят/);
     const back = S1.data.spirits.find(s => s.sid === 'mshonok' && s.iv.join() === '2,3,1');
-    const exp = await must(S1, 'auctionSell', { uid: back.uid, cur: 'sparks', price: 777 });
+    const exp = await must(S1, 'auctionSell', { uid: back.uid, cur: 'zlat', price: 77 });
     DB.lots.find(l => l.id === exp.id).expires_at = new Date(Date.now() - 1000).toISOString();
     await refuse(B1, 'auctionBuy', { id: exp.id }, /купили|снял/);
     const r = await must(S1, 'auctionMine'); eq(r.got[0].type, 'expired'); ok(S1.data.spirits.some(s => s.sid === 'mshonok'), 'истёкший дух вернулся');
     // 4.16: не больше 3 открытых лотов (было 5)
-    for (let i = 0; i < Rules.AUCTION.MAX_OPEN; i++) { const x = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(x); await must(S1, 'auctionSell', { uid: x.uid, cur: 'sparks', price: 100 + i }); }
+    for (let i = 0; i < Rules.AUCTION.MAX_OPEN; i++) { const x = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(x); await must(S1, 'auctionSell', { uid: x.uid, cur: 'zlat', price: 10 + i }); }
     const extra = mk([5, 5, 5], 'ugolek'); S1.data.spirits.push(extra);
-    await refuse(S1, 'auctionSell', { uid: extra.uid, cur: 'sparks', price: 100 }, /не больше 3/);
+    await refuse(S1, 'auctionSell', { uid: extra.uid, cur: 'zlat', price: 10 }, /не больше 3/);
+  });
+  test('5.1.36: баланс — искры за Источник, Разломы и Святилища, по 10 Разломов и Святилищ в день, сутки защиты Святилища', () => {
+    eq(W.SPRING_SPARKS, 200, 'искры за источник:');
+    eq([1, 2, 3].map(t => Raid.TIER[t].sparks).join(), '750,1500,3000', 'искры за разломы:');
+    eq([1, 2, 3].map(t => SHRINE_TIERS[t].sparks).join(), '750,1500,3000', 'искры за святилища — как за разломы:');
+    eq(Rules.DAILY.raids, 10, 'разломов в день:'); eq(Rules.DAILY.duels, 10, 'святилищ в день:');
+    const now = Date.UTC(2026, 9, 3, 12), H = 3600000;
+    eq(Rules.holdSafeLeft(new Date(now - H).toISOString(), now), 23 * H, 'захвачено час назад — ещё 23 ч защиты:');
+    eq(Rules.holdSafeLeft(now - 25 * H, now), 0, 'через сутки — можно отбить:');
+    eq(Rules.holdSafeLeft(undefined, now), 0, 'без времени захвата — без защиты:'); eq(Rules.holdSafeLeft('мусор', now), 0);
   });
   atest('Сервер: аукцион 4.16 — залог, подсказка цены, «не выше моего уровня» и сила после урезания', async () => {
     const S2 = await newPlayer('wc', 55.47, 37.35, 'Торговка'), B2 = await newPlayer('wd', 55.47, 37.35, 'Новичок');
-    for (const P of [S2, B2]) { P.data.tut = 0; P.data.sparks = 100000; P.data.zlat = 100; }
+    for (const P of [S2, B2]) { P.data.tut = 0; P.data.sparks = 100000; P.data.zlat = 5000; }
     S2.data.level = 30; B2.data.level = Rules.AUCTION.LEVEL;
     const mk = (lvl, sid) => ({ uid: U.uid(), sid, lvl, iv: [10, 10, 10], t: Date.now(), fav: false });
     const hi = mk(30, 'kapelka'), lo = mk(Rules.AUCTION.LEVEL, 'mshonok'), z = mk(5, 'ugolek'); // lo — не выше уровня покупателя (Аукцион с 5 уровня)
     S2.data.spirits.push(hi, lo, z);
     // залог: списывается при выставлении, не меньше минимума
-    const s0 = S2.data.sparks;
-    const L1 = await must(S2, 'auctionSell', { uid: hi.uid, cur: 'sparks', price: 20000 });
-    eq(L1.deposit, 1000); eq(S2.data.sparks, s0 - 1000, 'залог 5%');
-    const L2 = await must(S2, 'auctionSell', { uid: lo.uid, cur: 'sparks', price: 500 });
-    eq(L2.deposit, Rules.AUCTION.DEP_MIN.sparks, 'залог не меньше минимума');
+    const s0 = S2.data.zlat;
+    const L1 = await must(S2, 'auctionSell', { uid: hi.uid, cur: 'zlat', price: 2000 });
+    eq(L1.deposit, 100); eq(S2.data.zlat, s0 - 100, 'залог 5%');
+    const L2 = await must(S2, 'auctionSell', { uid: lo.uid, cur: 'zlat', price: 10 });
+    eq(L2.deposit, Rules.AUCTION.DEP_MIN.zlat, 'залог не меньше минимума');
     S2.data.zlat = 0;
     await refuse(S2, 'auctionSell', { uid: z.uid, cur: 'zlat', price: 50 }, /Залог/);
     ok(S2.data.spirits.some(s => s.uid === z.uid), 'дух остался у продавца');
@@ -2406,12 +2427,20 @@
     await refuse(B2, 'auctionPrice', { sid: 'nichego' }, /нет/);
     await must(B2, 'auctionBuy', { id: L2.id });
     const hint = (await must(S2, 'auctionPrice', { sid: 'mshonok', lvl: 10 })).hint;
-    eq(hint.sparks.n, 1); eq(hint.sparks.med, 500);
+    eq(hint.zlat.n, 1); eq(hint.zlat.med, 10);
     // продан — выручка и залог обратно; снят — залог пропал
-    const s1 = S2.data.sparks; await must(S2, 'auctionMine');
-    eq(S2.data.sparks, s1 + 500 - Rules.auctionFee(500) + L2.deposit, 'выручка и залог');
-    const s2 = S2.data.sparks; await must(S2, 'auctionCancel', { id: L1.id });
-    eq(S2.data.sparks, s2, 'залог за снятый лот не вернулся'); ok(S2.data.spirits.some(s => s.sid === 'kapelka'), 'дух вернулся');
+    const s1 = S2.data.zlat; await must(S2, 'auctionMine');
+    eq(S2.data.zlat, s1 + 10 - Rules.auctionFee(10) + L2.deposit, 'выручка и залог');
+    const s2 = S2.data.zlat; await must(S2, 'auctionCancel', { id: L1.id });
+    eq(S2.data.zlat, s2, 'залог за снятый лот не вернулся'); ok(S2.data.spirits.some(s => s.sid === 'kapelka'), 'дух вернулся');
+    // 5.1.36: лот за искры, выставленный до 5.1.36, можно купить до конца его срока — за искры, выручка продавцу — искрами
+    const old = { ...mk(Rules.AUCTION.LEVEL, 'mshonok'), uid: U.uid() }, oldLot = { id: crypto.randomUUID(), seller_pid: S2.data.pid, seller_name: 'Торговка', spirit: GameCore.packSpirit(old),
+      sid: old.sid, el: SP[old.sid].el, rar: SP[old.sid].rar, lvl: old.lvl, power: 10, iv_pct: 67, iv_a: 10, iv_d: 10, iv_s: 10, shiny: false, cur: 'sparks', price: 300, deposit: 50,
+      status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 3600000).toISOString() };
+    DB.lots.push(oldLot);
+    const bs0 = B2.data.sparks; await must(B2, 'auctionBuy', { id: oldLot.id });
+    eq(B2.data.sparks, bs0 - 300, 'старый лот за искры купили искрами');
+    const ss0 = S2.data.sparks; await must(S2, 'auctionMine'); eq(S2.data.sparks, ss0 + 300 - Rules.auctionFee(300) + 50, 'выручка и залог — искрами');
   });
   atest('Сервер: кланы мифологий (4.28) — закрытый клан, прежние дружины, бесплатный переход один раз, дань ×1,5', async () => {
     const a0 = Ev.ala, made = [];
@@ -2491,7 +2520,7 @@
     for (let k = 0; k < HOLD_MY_MAX; k++) await must(A, 'shrineDefend', { shrine: shrine(ids[k]), uid: guard });
     await refuse(A, 'shrineDefend', { shrine: shrine(ids[3]), uid: guard }, new RegExp(`на ${HOLD_MY_MAX} Святилищах`));
     // усталость: через 48 ч на посту защитник слабее
-    const aged = (id, h) => { DB.holds[id].holders[0].t = Date.now() - h * 3600000; const g = A.data.guards.find(x => x.id === id); if (g) g.t = DB.holds[id].holders[0].t; };
+    const aged = (id, h) => { DB.holds[id].holders[0].t = Date.now() - h * 3600000; DB.holds[id].since = new Date(DB.holds[id].holders[0].t).toISOString(); const g = A.data.guards.find(x => x.id === id); if (g) g.t = DB.holds[id].holders[0].t; }; // 5.1.36: и захват — тогда же
     aged(ids[0], 48);
     const b1 = await win(B, ids[0]);
     eq(b1.st.clan, 'slavic'); eq(b1.st.foe[0].lvl, Math.round(20 * Rules.holdK(Date.now() - 48 * 3600000)), 'уставший защитник');
@@ -2547,7 +2576,7 @@
     A.srv.rl = {}; await refuse(A, 'spring', { poi: freeSpring(A, 99000) }, /30 источников/);
     // исчерпанные лимиты остальных объектов
     const today = asPlayer(A, () => U.today());
-    A.data.dayc = { day: today, springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 };
+    A.data.dayc = { day: today, ...Rules.DAILY }; // 5.1.36: Разломов и Святилищ — по 10
     A.data.items.farpass = 2;
     const hour = Math.floor(Date.now() / 3600000);
     // обычный разлом (не легендарный: тот открывается только у мест, известных Ордену) — иначе тест зависит от часа

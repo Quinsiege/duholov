@@ -831,7 +831,7 @@ const UI = {
       setTimeout(() => view.classList.add('taken'), 350); // 5.1.5: чаша гаснет и уходит на фон, «В сумку» — внизу экрана
       Sfx.play('reward'); U.vibrate([30, 50, 80]); // награда пришла — теперь и звуком, не только вибрацией
       const got = r.got, xp = got.find(x => x.k === 'xp') ? got.find(x => x.k === 'xp').n : 50;
-      const items = got.filter(x => x.k !== 'xp');
+      const items = got.filter(x => x.k !== 'xp' && x.k !== 'sparks'), spk = got.find(x => x.k === 'sparks'); // 5.1.36: искры — строкой рядом с опытом
       const cocoonHtml = r.cocoon ? `<div class="loot-item spr2-cocoon" style="--k:${items.length}">${Art.cocoon(r.cocoon.km)}<span>${ru`Кокон ${r.cocoon.km} км`}</span></div>` : '';
       // 5.1.5: награда — отдельным слоем поверх окна, посередине видимой части экрана (между шапкой и «В сумку»);
       // под сеткой — «Сумка полна» и новое поручение
@@ -841,7 +841,7 @@ const UI = {
       loot.classList.toggle('many', n > 6);
       loot.innerHTML = `<div class="spr2-rays" aria-hidden="true"></div><div class="spr2-grid">` +
         items.map((x, k) => `<div class="loot-item" style="--k:${k}">${Art.item(x.k)}<span>${I18N.back(x.label)} ×${x.n}</span></div>`).join('') + cocoonHtml +
-        `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}</div>`;
+        `</div><div class="loot-xp">${ru`+${'<b class="spr2-xp">0</b>'} опыта`}${spk ? ` <span class="spr2-spk">${Art.item('sparks')}${ru`<b>+${U.fmtNum(spk.n)}</b> искр`}</span>` : ''}</div>`;
       rw.querySelector('.spr2-after').innerHTML = (r.full ? `<div class="loot-full">${ru`Сумка полна! Расширь её в Лавке Ордена`}</div>` : '') +
         (r.task ? this.taskNewHtml() : '');
       // каждая вещь вылетает из середины воды на своё место в сетке (--fx/--fy — путь от центра чаши)
@@ -953,7 +953,7 @@ const UI = {
     const items = opts.map(([k, w]) => [k, 1 - Math.pow(1 - w / sum, draws)]).sort((a, b) => b[1] - a[1]);
     const locked = [['charm2', 8], ['charm3', 16], ['incense', 3]].filter(([, l]) => lvl < l);
     return `<div class="spr2-loot-tab">
-      <p class="spr2-note">${ru`За один раз источник даёт ${4}–${6} вещей и ${50} опыта. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>
+      <p class="spr2-note">${ru`За один раз источник даёт ${4}–${6} вещей, ${50} опыта и ${W.SPRING_SPARKS} искр. Чем выше уровень Ловчего, тем больше видов добычи.`}</p>
       ${items.map(([k, p]) => row(Art.item(k), ITEMS[k].name, p)).join('')}
       ${(S.d.items.gift || 0) < GIFT_LIMIT ? row(Art.item('gift'), ITEMS.gift.name, W.SPRING_GIFT) : ''}
       ${row(Art.cocoon(5), ru`Кокон`, W.SPRING_COCOON * Ev.kmMul())}

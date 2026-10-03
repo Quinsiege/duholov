@@ -831,7 +831,7 @@ function makeEnv(uid) {
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
     // Кланы: кто держит Святилище, поставить защитника, освободить после победы, сколько Святилищ держит игрок
     async holdGet(poi) {
-      const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
+      const r = must(await db.from('shrine_holds').select('clan, holders, ver, since').eq('poi_id', poi).maybeSingle()); // since — когда клан занял (5.1.36: сутки защиты)
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
     },
     // 4.16: защитники старше Rules.HOLD.MAX_H часов уже ушли — shrine_defend (023) убирает их перед проверками

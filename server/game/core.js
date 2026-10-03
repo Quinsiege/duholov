@@ -1003,7 +1003,8 @@ const GameCore = {
       if (!p.verified) Object.keys(loot).forEach(k => { loot[k] = Math.ceil(loot[k] / 2); });
       const cocoon = p.verified ? sl.cocoon : 0;
       // 4.16: источник открывается и при полной сумке — опыт, кокон и поручение сразу, а вещи, которым нет места, ждут в посылке Ордена
-      const got = S.giveRewards({ ...loot, xp: 50 }); // не поместилось — в посылку Ордена
+      const sparks = p.verified ? W.SPRING_SPARKS : Math.ceil(W.SPRING_SPARKS / 2); // 5.1.36: и искры; у места не из базы — вполовину
+      const got = S.giveRewards({ ...loot, sparks, xp: 50 }); // не поместилось — в посылку Ордена
       S.d.stats.springs++;
       S.progress('spring', 1);
       let coc = null;
@@ -1385,7 +1386,7 @@ const GameCore = {
       if (allies > 0) S.progress('coop', 1);
       // 4.16: меньше лечебного, мёда и амулетов (было ✦ 400 × ступень, мёда 2 + ступень, Живой воды 2 за каждую победу,
       // амулет с шансом 25/40/70%) — к 40 уровню копились сотни флаконов и амулетов
-      const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: 350 * tier, charm: 5, honey: tier, herb: tier === 1 ? 1 : 0, water: tier >= 2 ? 1 : 0, charm2: tier >= 2 ? 3 : 0 });
+      const rw = S.giveRewards({ xp: Math.round(1000 * tier * (allies ? 1.25 : 1)), sparks: Raid.TIER[tier].sparks, charm: 5, honey: tier, herb: tier === 1 ? 1 : 0, water: tier >= 2 ? 1 : 0, charm2: tier >= 2 ? 3 : 0 });
       const am = S.rollAmulet([0.05, 0.12, 0.3][tier - 1], b.rid);
       rw.push(...S.riftSpoils(b.boss, tier)); // 4.16: эссенция семейства босса (и легенд) и осколки Алатыря
       if (am) rw.push({ k: 'amulet', n: 1, label: AMULETS[am].name });
@@ -1419,6 +1420,9 @@ const GameCore = {
       // Святилище держит клан — сражаться придётся с его защитниками (тремя сильнейшими)
       const hold = this.liveHold(await ctx.env.holdGet(p.id), ctx.now, p.id);
       this.need(!hold || !S.d.clan || hold.clan !== S.d.clan, ru`Святилище держит твой клан — здесь можно поставить защитника`);
+      // 5.1.36: занятое кланом Святилище первые сутки (Rules.HOLD.SAFE_H) не отбить — считается от захвата (shrine_holds.since)
+      const safe = hold ? Rules.holdSafeLeft(hold.since, ctx.now) : 0;
+      this.need(!safe, ru`Клан занял это Святилище недавно — отбить его можно через ${U.fmtHm(safe)}`);
       const ht = hold ? this.holdTeam(hold, ctx.now) : [], foe = ht.length ? ht : null;
       this.dayNeed(ctx, 'duels');
       this.need(p.verified || e.tier < 2, ru`Здесь только малые бои — место неизвестно Ордену`); // 4.26: у места не из базы — только Святилища «Ученика»
@@ -1859,6 +1863,7 @@ const GameCore = {
       this.need(!sp.fav, ru`Сними с духа отметку «избранный», чтобы продать его`);
       this.need(!sp.bound, ru`Дух привязан к тебе: плёнка на обороте содрана — продать его нельзя`);
       const cur = a.cur === 'zlat' ? 'zlat' : 'sparks', price = Math.floor(+a.price);
+      this.need(cur === 'zlat', ru`На Аукционе торгуют только за монеты`); // 5.1.36: новых лотов за искры нет; выставленные раньше — до конца срока
       this.need(price >= A.MIN[cur] && price <= A.MAX[cur], cur === 'zlat' ? ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} монет` : ru`Цена — от ${U.fmtNum(A.MIN[cur])} до ${U.fmtNum(A.MAX[cur])} искр`);
       this.need(await ctx.env.lotsOpenCount(S.d.pid) < A.MAX_OPEN, ru`Одновременно можно выставить не больше ${A.MAX_OPEN} духов`);
       // 4.16: залог — списывается сразу, возвращается вместе с выручкой, если духа купят

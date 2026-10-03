@@ -194,7 +194,7 @@ const Rules = {
   // 3.20: дневные лимиты объектов карты (сутки — по часам игрока). Считаются только успехи: зачерпнутый источник,
   // победа в Разломе, в Святилище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
   // 10–20 источников в день), а бесконечный фарм и боты упираются в потолок
-  DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
+  DAILY: { springs: 30, raids: 10, duels: 10, invasions: 6, catches: 120 }, // 5.1.36: Разломов и Святилищ — по 10 (было 6 и 8)
   DAILY_NAMES: { springs: ru`Источники`, raids: ru`Разломы`, duels: ru`Святилища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
   // 4.16: сколько раз товар Лавки с недельным пределом (week) куплен на этой неделе (неделя — как у событий, Ev.week)
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
@@ -411,9 +411,14 @@ const Rules = {
      4.28: кланы — мифологии; защитник на святилище мифологии своего клана (W.placeMyth) приносит дань ×MYTH (искры и обереги;
      монеты — как с любого Святилища). Кланов стало 7+ при тех же Ловчих — на удержание Святилищ это не влияет: защитников в
      Святилище и Святилищ у Ловчего столько же, вольных — та же доля. */
-  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25, MYTH: 1.5 },
+  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25, MYTH: 1.5, SAFE_H: 24 },
   holdHours(t, now) { return Math.max(0, ((now == null ? Date.now() : now) - (+t || 0)) / 3600000); },
   holdFresh(h, now) { return !!h && this.holdHours(h.t, now) < this.HOLD.MAX_H; },
+  // 5.1.36: занятое кланом Святилище первые HOLD.SAFE_H часов не отбить — сколько мс ещё (0 — можно); since — когда клан его занял
+  holdSafeLeft(since, now) {
+    const t = typeof since === 'number' ? since : Date.parse(since);
+    return Number.isFinite(t) ? Math.max(0, t + this.HOLD.SAFE_H * 3600000 - (now == null ? Date.now() : now)) : 0;
+  },
   // во сколько раз уменьшен уровень защитника (1 — в полной силе)
   holdK(t, now) { const H = this.HOLD, h = this.holdHours(t, now); return 1 - H.WEAK * U.clamp((h - H.FRESH_H) / (H.MAX_H - H.FRESH_H), 0, 1); },
   // отражение духа на посту: уровень — с учётом усталости
