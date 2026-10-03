@@ -95,8 +95,10 @@ const Roofs = {
     const { tx, ty, px, py } = Hazard.tileOf(lat, lng);
     v.tileCache.get({ z: Hazard.Z, x: tx, y: ty }).then(data => {
       let h = 0;
-      for (const f of data.get('buildings') || []) {
-        if (f.geomType !== 3 || f.props.is_underground) continue;
+      // 5.1.34: контур здания из частей не рисуется (Bld3D.outlines) — и крыша у места не его, а частей
+      const fs = data.get('buildings') || [], skip = typeof Bld3D !== 'undefined' ? Bld3D.outlines(fs) : null;
+      for (const f of fs) {
+        if (f.geomType !== 3 || f.props.is_underground || (skip && skip.has(f))) continue;
         let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
         for (const r of f.geom) for (const p of r) { if (p.x < a) a = p.x; if (p.y < b) b = p.y; if (p.x > c) c = p.x; if (p.y > d) d = p.y; }
         if (px >= a && px <= c && py >= b && py <= d && Hazard.inside(f.geom, px, py)) h = Math.max(h, f.props.height > 0 ? f.props.height : 8);

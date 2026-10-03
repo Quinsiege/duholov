@@ -403,7 +403,7 @@ const Bld3D = {
   },
   // дома плитки → куски (по клеткам CELL×CELL, у каждого — не больше 65 000 вершин): вершины и треугольники стен и крыш
   buildOne(t, fs, done) {
-    const cells = new Map(), lo = -1, hi = this.EXT + 1, cw = this.EXT / this.CELL, E = this.edges(fs);
+    const skip = this.outlines(fs), cells = new Map(), lo = -1, hi = this.EXT + 1, cw = this.EXT / this.CELL, E = this.edges(fs, skip);
     let i = 0;
     Object.assign(t, { bs: [], ix: new Array(this.OG * this.OG), hi: 0 }); // 5.1.32: дома — и чтобы знать, за каким из них фигура (hides)
     const step = () => {
@@ -411,7 +411,7 @@ const Bld3D = {
       const t0 = performance.now();
       for (; i < fs.length && performance.now() - t0 < this.BUDGET; i++) {
         const f = fs[i];
-        if (f.geomType !== 3 || f.props.is_underground) continue;
+        if (f.geomType !== 3 || f.props.is_underground || skip.has(f)) continue; // 5.1.34: контур здания из частей — не рисуется
         const r0 = f.geom[0];
         if (!r0 || r0.length < 3) continue;
         const ci = Math.max(0, Math.min(this.CELL - 1, Math.floor(r0[0].x / cw))) + this.CELL * Math.max(0, Math.min(this.CELL - 1, Math.floor(r0[0].y / cw)));
@@ -434,11 +434,53 @@ const Bld3D = {
     };
     step();
   },
+  /* 5.1.34: здание из частей (OSM building:part — купола, башни, крылья, у каждой своя высота и низ) — его общий контур только след
+     на земле, рисуются части. Раньше контур рисовался коробкой в свою высоту и закрывал их: Собор Василия Блаженного — коробка в 67 м
+     вместо 63 куполов и башен. Контур с частями — тот, внутри которого середина хотя бы одной части (части — по x, отбор — двоичным
+     поиском: в плитке их до тысяч). Ответ — на плитку данных один раз (WeakMap) */
+  _skip: new WeakMap(),
+  outlines(fs) {
+    let out = this._skip.get(fs);
+    if (out) return out;
+    out = new Set();
+    this._skip.set(fs, out);
+    const P = [];
+    for (const f of fs) {
+      const r = f.geomType === 3 && f.props.kind === 'building_part' && f.geom[0];
+      if (!r || !r.length) continue;
+      let x = 0, y = 0;
+      for (const p of r) { x += p.x; y += p.y; }
+      P.push([x / r.length, y / r.length]);
+    }
+    if (!P.length) return out;
+    P.sort((a, b) => a[0] - b[0]);
+    for (const f of fs) {
+      if (f.geomType !== 3 || f.props.kind === 'building_part') continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const r of f.geom) for (const p of r) { if (p.x < x0) x0 = p.x; if (p.y < y0) y0 = p.y; if (p.x > x1) x1 = p.x; if (p.y > y1) y1 = p.y; }
+      let lo = 0, hi = P.length;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (P[m][0] < x0) lo = m + 1; else hi = m; }
+      for (let k = lo; k < P.length && P[k][0] <= x1; k++) {
+        const [x, y] = P[k];
+        if (y >= y0 && y <= y1 && this.inside(f.geom, x, y)) { out.add(f); break; }
+      }
+    }
+    return out;
+  },
+  // точка внутри многоугольника (все кольца вместе — дыры по правилу чёт-нечет)
+  inside(rings, x, y) {
+    let c = false;
+    for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const a = r[i], b = r[j];
+      if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+  },
   // рёбра всех домов плитки и самый высокий дом у каждого: общая стена соседних частей дома, если сосед не ниже, не видна — её нет
-  edges(fs) {
+  edges(fs, skip) {
     const E = new Map();
     for (const f of fs) {
-      if (f.geomType !== 3 || f.props.is_underground) continue;
+      if (f.geomType !== 3 || f.props.is_underground || (skip && skip.has(f))) continue;
       const H = this.height(f);
       for (const r of f.geom) for (let j = 0, n = r.length; j < n; j++) {
         const a = r[j], b = r[(j + 1) % n], k = a.x + ',' + a.y + ',' + b.x + ',' + b.y;
