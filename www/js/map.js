@@ -122,8 +122,8 @@ const MapView = {
     // 5.1: место Ловчего — Walk (телефон или прогресс); ещё нет (новичок до Атласа) — карта ждёт на Красной площади
     const start = Walk.load() || { lat: 55.7539, lng: 37.6208 };
     this.pos = { lat: start.lat, lng: start.lng };
-    this.map = L.map('map', { zoomControl: false, minZoom: 15, maxZoom: 19, zoomSnap: 0.25, tap: true })
-      .setView([this.pos.lat, this.pos.lng], 17.5);
+    this.map = L.map('map', { zoomControl: false, minZoom: this.ZMIN, maxZoom: 19, zoomSnap: 0.25, tap: true })
+      .setView([this.pos.lat, this.pos.lng], this.Z0);
     this.map.attributionControl.setPrefix(false);
     // 5.1.30: подписи мест — своим плоским слоем поверх карты (их не закрывают ни модели, ни дома): placeLabels
     this._lblBox = document.createElement('div'); this._lblBox.id = 'mapLbl'; U.$('#map').after(this._lblBox);
@@ -418,7 +418,7 @@ const MapView = {
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
     if (this.follow) {
-      if (jump) this.map.setView(ll, 17.5, { animate: false });
+      if (jump) this.map.setView(ll, this.Z0, { animate: false });
       else this.camTo(ll);
     }
   },
@@ -650,10 +650,24 @@ const MapView = {
     if (this.tracking) this.updateTracker();
     if (typeof Bld3D !== 'undefined') Bld3D.dirty(); // 5.1.30: объёмные дома поворачиваются вместе с картой — в этом же кадре
     this.placeLabels(); // 5.1.31: подписи — тоже в этом кадре (раньше догоняли значки кадром позже — дёргались)
+    this.seeThrough(); // 5.1.32: дома, за которыми фигуры, — прозрачнее (с другой стороны — другие)
     this.tilesSoon();
   },
   // значок на повёрнутой/наклонённой карте стоит прямо (см. initRotate)
   LIFT_Z: 36, // насколько значок наклонённой карты выдвинут к игроку, CSS-пиксели: иначе нижняя половина ушла бы «под» плитки
+  /* 5.1.32: камера — как в Pokémon GO. Отдалить её можно до ZMIN (раньше — до 15: полрайона, фигуры терялись), исходный масштаб — Z0.
+     Фигуры (места, духи, Ловчий) — в размер расстояния до камеры: приблизили камеру — крупнее, отдалили — мельче (ZK: размер ×2^(ZK·Δz));
+     у нижнего края экрана (ближе к камере) — крупнее, к горизонту — мельче. Земля наклонённой карты видна в перспективе, и значок на ней
+     и так был в размер своей точки земли (f), но камера карты «длиннофокусная» (PD): у нижнего края экрана фигура была всего в 1,2 раза
+     крупнее, чем у Ловчего, у верхнего — 0,7 его; теперь у фигур перспектива сильнее (FIG: размер f^(1+FIG)) — 1,4 и 0,5 (наклон 32°).
+     Размер на экране — не меньше FIG_MIN и не больше FIG_MAX от исходного */
+  ZMIN: 16.75, Z0: 17.5, ZK: 0.7, FIG: 0.8, FIG_MIN: 0.45, FIG_MAX: 2.4,
+  // во сколько раз фигура на точке земли с перспективой f крупнее, чем её рисует сама перспектива карты
+  figScale(f) {
+    const m = this.map, z = m._animatingZoom ? m._animateToZoom : m.getZoom(); // масштаб анимируется — сразу к новому (значок — плавно, style.css)
+    const s = Math.pow(f, this.FIG) * Math.pow(2, (z - this.Z0) * this.ZK);
+    return Math.max(this.FIG_MIN / f, Math.min(this.FIG_MAX / f, s));
+  },
   upright(mk) {
     const el = mk._icon, p = el && el._leaflet_pos;
     if (!p || mk._map !== this.map || (!this.rot && !this.tilt)) return;
@@ -671,10 +685,14 @@ const MapView = {
       const q = this.screen3d(L.point(p.x + lift.x, p.y + lift.y)), k = this.LIFT_Z / (this.PD - q.z);
       // 5.1.31: значок далеко за краем экрана (с запасом на высоту модели) — уже стоит, где стоял: переставим, когда подойдёт к экрану
       const f = this.PD / (this.PD - q.z), sx = this.vw / 2 + q.x * f, sy = (this._py || this.vh / 2) + q.y * f;
-      if (el._up === p && (sx < -320 || sx > this.vw + 320 || sy < -420 || sy > this.vh + 320)) return;
-      el._up = p;
-      t += ` rotateX(${-this.tilt}deg) translate3d(${(-q.x * k).toFixed(2)}px, ${(-q.y * k).toFixed(2)}px, ${this.LIFT_Z}px) scale(${(1 - k).toFixed(4)})`;
-    }
+      const off = sx < -320 || sx > this.vw + 320 || sy < -420 || sy > this.vh + 320;
+      if (el._up === p && off) return;
+      el._up = p; el._off = off;
+      // 5.1.32: и в размер расстояния до камеры (figScale); _f, _g — перспектива точки земли и добавка фигуре (подписи, прозрачные дома, M3D)
+      const g = el._g = this.figScale(f);
+      el._f = f;
+      t += ` rotateX(${-this.tilt}deg) translate3d(${(-q.x * k).toFixed(2)}px, ${(-q.y * k).toFixed(2)}px, ${this.LIFT_Z}px) scale(${((1 - k) * g).toFixed(4)})`;
+    } else el._g = el._f = 1;
     el.style.transform = t;
   },
   // точка слоя карты → где её рисует наклонённая карта: в пространстве экрана от точки зрения (середина по ширине, высота
@@ -702,6 +720,7 @@ const MapView = {
     if (typeof M3D !== 'undefined') M3D.aim();
     if (typeof Bld3D !== 'undefined') Bld3D.dirty();
     this.placeLabels();
+    this.seeThrough(); // 5.1.32: и какие дома теперь заслоняют фигуры (они — прозрачнее)
   },
   // 5.1.30: точка зрения в точках слоя карты: (x, y) — над какой точкой земли (у наклонённой карты — ниже экрана: игрок смотрит
   // наискосок; у плоской — над серединой экрана), w — высота над землёй
@@ -799,9 +818,9 @@ const MapView = {
       if (!lb) continue;
       if (!p) { hide(lb); continue; }
       const lf = ic._lift || { x: 0, y: 0 }, q = this.screen3d(L.point(p.x + lf.x, p.y + lf.y)), f = this.tilt ? d / (d - q.z) : 1;
-      const box = ic.firstElementChild, ay = m.options.icon.options.iconAnchor[1];
+      const box = ic.firstElementChild, ay = m.options.icon.options.iconAnchor[1], g = this.tilt ? ic._g || 1 : 1; // 5.1.32: фигура — в размер расстояния до камеры (upright), подпись — под её низом
       const bot = box && (box._m3dBot != null ? box._m3dBot : parseFloat(box.style.getPropertyValue('--m3d-bot'))); // низ модели в значке (js/m3d.js), иначе — низ рисунка
-      const off = (Number.isFinite(bot) ? bot - ay + 13 : m.options.icon.options.iconSize[1] - ay + 4) * f;
+      const off = (Number.isFinite(bot) ? (bot - ay) * g + 13 : (m.options.icon.options.iconSize[1] - ay) * g + 4) * f;
       const x = cx + q.x * f, y = cy + q.y * f + off;
       if (x < -200 || x > W + 200 || y < -60 || y > H + 60) { hide(lb); continue; }
       if (lb._hid !== false) { lb.style.display = ''; lb._hid = false; }
@@ -811,6 +830,56 @@ const MapView = {
     }
   },
   lblSoon() { if (!this._lblRaf) this._lblRaf = requestAnimationFrame(() => { this._lblRaf = 0; this.placeLabels(); }); },
+  /* 5.1.32: дом, за которым стоит фигура (место, дух, сам Ловчий), становится прозрачнее, а сама фигура — тусклее: её видно сквозь дом.
+     Объёмные дома лежат на земле одним холстом (Bld3D), а значки стоят над ним: фигура за домом рисовалась поверх его стены, будто
+     стоит перед ним. За домом ли фигура — по лучам взгляда, так же, как дома рисует Bld3D: из точки зрения к XR_N вертикалям по ширине
+     фигуры — проходит ли луч сквозь дом ниже его крыши (Bld3D.hides); такие дома — полупрозрачные (Bld3D.setFade), фигура — с классом
+     behind (style.css) */
+  XR_N: 3,
+  seeThrough() {
+    if (typeof Bld3D === 'undefined' || !Bld3D.on) return;
+    const ctx = this.map && this.tilt ? { cam: this.camLayer(), mpx: Bld3D.mpx(this.map), z: this.map.getZoom(), gen: Bld3D.gen } : null, set = new Set();
+    if (ctx) ctx.hi = Bld3D.hiPx(ctx.mpx, ctx.cam);
+    for (const m of [...this.markers.values(), this.player]) {
+      if (!m || !m._icon) continue;
+      const hid = ctx ? this.hiders(m, ctx) : []; // плоская карта — дома не заслоняют ничего
+      for (const b of hid) set.add(b);
+      const dim = hid.length > 0;
+      if (m._dim !== dim || m._dimIc !== m._icon) { m._dim = dim; m._dimIc = m._icon; m._icon.classList.toggle('behind', dim); }
+    }
+    Bld3D.setFade(set);
+  },
+  seeSoon() { if (!this._seeRaf) this._seeRaf = requestAnimationFrame(() => { this._seeRaf = 0; this.seeThrough(); }); },
+  // ширина фигуры значка (её точки): холст 3D-модели (место, Ловчий) — пока модели нет, 0; дух — значок
+  figW(mk) {
+    const ic = mk._icon;
+    if (mk._figIc !== ic) { mk._figIc = ic; mk._xk = null; mk._fc = ic.querySelector('canvas.mk3d'); } // значок новый — где его фигура
+    if (mk._fc) { const v = mk._fc._m3d; return v && v.ready ? v.w : 0; }
+    const s = ic.firstElementChild;
+    return s && s.classList.contains('mk-spirit') ? mk.options.icon.options.iconSize[0] : 0;
+  },
+  // дома, которые заслоняют от игрока хотя бы низ фигуры значка mk
+  hiders(mk, ctx) {
+    const ic = mk._icon, p = ic._leaflet_pos, W = p && !ic._off ? this.figW(mk) : 0; // далеко за экраном — не считать
+    if (!W) { mk._xk = null; return (mk._hid = []); }
+    /* фигура почти не сдвинулась относительно точки зрения (меньше ¾ точки; камера, масштаб и дома — те же) — дома те же: на ходу
+       Ловчий проходит за кадр десятую долю точки, и фигуры пересчитываются раз в несколько кадров, а не на каждом */
+    const cam = ctx.cam, kx = cam.x - p.x, ky = cam.y - p.y, g = ic._g || 1, o = mk._xk;
+    if (o && o.gen === ctx.gen && o.z === ctx.z && o.W === W && o.roof === mk._roofH && Math.abs(o.kx - kx) < 0.75 && Math.abs(o.ky - ky) < 0.75 &&
+      Math.abs(o.w - cam.w) < 0.5 && Math.abs(o.g - g) < 0.004 * g && Math.abs(o.r - this.rot) < 0.2) return mk._hid;
+    mk._xk = { gen: ctx.gen, z: ctx.z, W, roof: mk._roofH, kx, ky, w: cam.w, g, r: this.rot };
+    const out = mk._hid = [], base = mk._roofH ? Bld3D.hpx(mk._roofH) : 0; // место на крыше: низ фигуры — на высоте крыши
+    if (ctx.hi <= base) return out;
+    // вертикали фигуры — середина и по краям (0,3 ширины от середины), «вправо по экрану» на плоскости карты; дома — у лучей взгляда
+    // на них: рамка отрезков от крайних вертикалей к точке зрения — до доли пути, где луч уже выше самого высокого дома
+    const r = this.rot * Math.PI / 180, ux = Math.cos(r), uy = -Math.sin(r), half = 0.3 * W * g, N = this.XR_N, s = Math.min(1, ctx.hi / cam.w), xs = [], ys = [];
+    for (let i = 0; i < N; i++) { const d = (2 * i / (N - 1) - 1) * half; xs.push(p.x + ux * d); ys.push(p.y + uy * d); }
+    const ex = [xs[0], xs[N - 1]].flatMap(x => [x, x + (cam.x - x) * s]), ey = [ys[0], ys[N - 1]].flatMap(y => [y, y + (cam.y - y) * s]);
+    for (const c of Bld3D.occNear(Math.min(...ex), Math.min(...ey), Math.max(...ex), Math.max(...ey))) {
+      for (let i = 0; i < N; i++) if (Bld3D.hides(c, xs[i], ys[i], cam, ctx.mpx, base)) { out.push(c.b); break; }
+    }
+    return out;
+  },
   icon(e) {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
@@ -878,6 +947,7 @@ const MapView = {
     for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.dropLbl(m); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
     this.aimSoon(); // 5.1.28: место стало досягаемым — его модель снова движется; 5.1.30: и видна с нужной стороны
     this.placeLabels();
+    this.seeSoon(); // 5.1.32: новые духи и места — за домами ли они
     this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     const ids = new Set(this.nearby.map(e => e.id));

@@ -222,6 +222,7 @@ const M3D = {
       this.drawSet(vs);
       for (const v of vs) if (v.t) { v.c.classList.add('on'); if (v.c.parentElement) v.c.parentElement.classList.add('m3d'); }
       this.kick();
+      if (vs.length && typeof MapView !== 'undefined' && MapView.seeSoon) MapView.seeSoon(); // 5.1.32: не за домом ли новая модель (тот — прозрачнее)
     });
   },
   // размер холста — чтобы модель помещалась при любом повороте карты и любом наклоне камеры: ширина — по самой дальней
@@ -231,7 +232,7 @@ const M3D = {
     const h0 = this.models[v.kind].head, S = v.pxm;
     const pad = this.OUTLINE_PX / S + (h0.walk ? 0.12 : 0.02), r = h0.r + pad, h = h0.h + pad; // Ловчему — запас на шаг и наклон
     const w = Math.ceil(2 * r * S) + 2, hh = Math.ceil(Math.hypot(h, 2 * r) * S) + 2;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5) * (v.res || 1); // 5.1.32: крупная у камеры фигура — больше точек (sharp)
     Object.assign(v, { pw: Math.round(w * dpr), ph: Math.round(hh * dpr), w, hh, r });
     Object.assign(v.c, { width: v.pw, height: v.ph });
     Object.assign(v.c.style, { width: w + 'px', height: hh + 'px', left: (v.ax - w / 2).toFixed(1) + 'px' });
@@ -261,10 +262,21 @@ const M3D = {
     const busy = !!(this.raf || this.tmo), now = [];
     for (const v of this.views) {
       if (!v.ready) continue;
-      const later = busy && v.vis && !v.player && this.live(v);
-      if (this.aimView(v, later) && v.vis && !later) now.push(v);
+      const big = this.sharp(v), later = !big && busy && v.vis && !v.player && this.live(v); // холст новый (пустой) — кадр сразу
+      if ((this.aimView(v, later) || big) && v.vis && !later) now.push(v);
     }
     if (now.length) this.drawSet(now);
+  },
+  /* 5.1.32: фигура у камеры крупнее (MapView.figScale — до FIG_MAX раз): холсту модели — больше точек, чтобы крупная модель
+     не расплывалась (и меньше, когда снова мелкая; с запасом — без перескоков туда-обратно). true — холст новый: рисовать сразу */
+  sharp(v) {
+    const ic = v.ic || (v.ic = v.c.closest('.leaflet-marker-icon'));
+    const S = ic && typeof MapView !== 'undefined' && MapView.tilt ? (ic._g || 1) * (ic._f || 1) : 1, r = v.res || 1;
+    const up = S > 1.75 ? 2 : S > 1.2 ? 1.5 : 1, down = S < 1.05 ? 1 : S < 1.55 ? 1.5 : 2, want = up > r ? up : down < r ? down : r;
+    if (want === r) return false;
+    v.res = want;
+    this.layout(v);
+    return true;
   },
   // later — новый угол отложить до следующего кадра модели (render)
   aimView(v, later) {
@@ -306,6 +318,7 @@ const M3D = {
       this.layout(v); v.ready = true; v.walk = null;
       if (this.draw(v)) { v.c.classList.add('on'); if (v.c.parentElement) v.c.parentElement.classList.add('m3d'); }
       this.kick();
+      if (typeof MapView !== 'undefined' && MapView.seeSoon) MapView.seeSoon(); // другой наряд — другой размер: за домом ли он
     });
   },
   // цвета облика → материалы модели: плащ и его тень (только у обычного наряда — у скинов свои цвета), глаза — у всех
@@ -480,9 +493,9 @@ const M3D = {
     const due = [];
     for (const v of this.views) {
       if (!v.ready) continue;
-      const moved = this.aimView(v); // места левее и правее — видны с другой стороны
+      const big = this.sharp(v), moved = this.aimView(v); // места левее и правее — видны с другой стороны (и ближе или дальше от камеры)
       // 5.1.31: модель места — заново, только если её поворот на экране изменился хотя бы на полградуса (тот же порог, что у aim)
-      if (v.vis && (moved || v.player || v.ya == null || Math.abs(-r * Math.PI / 180 + (v.az || 0) - v.ya) >= 0.009)) due.push(v);
+      if (v.vis && (big || moved || v.player || v.ya == null || Math.abs(-r * Math.PI / 180 + (v.az || 0) - v.ya) >= 0.009)) due.push(v);
     }
     this.drawSet(due);
   },

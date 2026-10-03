@@ -2941,6 +2941,9 @@ body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-sh
 #map.tilt .leaflet-zone-pane { transform: translateZ(.25px); }
 #map.tilt .leaflet-bld3d-pane { transform: translateZ(.5px); }
 #map.tilt .leaflet-bld-pane { transform: translateZ(.75px); }
+/* 5.1.32: фигура за домом (место, дух, сам Ловчий — MapView.seeThrough) — тусклее, а сам дом — прозрачнее (Bld3D.setFade) */
+:is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift, .mk-player) { transition: opacity .25s; }
+.mk.behind > :is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift), .mk-player-wrap.behind > .mk-player { opacity: .5; }
 /* дымка горизонта: даль растворяется в цвете земли этого часа */
 #mapHaze { position: fixed; left: 0; right: 0; top: 0; height: 30%; z-index: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: linear-gradient(var(--haze, #120b25) 0%, color-mix(in srgb, var(--haze, #120b25) 70%, transparent) 30%, color-mix(in srgb, var(--haze, #120b25) 25%, transparent) 65%, transparent 100%); }

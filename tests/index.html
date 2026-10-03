@@ -4491,10 +4491,12 @@
       MapView.upright(mk);
       const m = ic.style.transform.match(/translate3d\(([-\d.]+)px, ([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/);
       ok(m, 'выдвинут и уменьшен: ' + ic.style.transform);
-      const q = MapView.screen3d({ x: 320, y: 120 }), d = MapView.PD, z = +m[3];
+      const q = MapView.screen3d({ x: 320, y: 120 }), d = MapView.PD, z = +m[3], f = d / (d - q.z);
       near((q.x + +m[1]) * d / (d - q.z - z), q.x * d / (d - q.z), 0.02, 'по горизонтали — на своей точке:');
       near((q.y + +m[2]) * d / (d - q.z - z), q.y * d / (d - q.z), 0.02, 'по вертикали — на своей точке:');
-      near(+m[4] * d / (d - q.z - z), d / (d - q.z), 1e-3, 'и того же размера, что на земле:');
+      // 5.1.32: размер — по расстоянию до камеры, перспектива у фигур сильнее, чем у земли (MapView.figScale)
+      near(+m[4] * d / (d - q.z - z), f * MapView.figScale(f), 1e-3, 'и в размер расстояния до камеры:');
+      ok(f < 1 && MapView.figScale(f) < 1, 'дальняя фигура — мельче, чем её точка земли');
       // место в доме — на его крыше: там, где её рисуют объёмные дома (точка на высоте дома — из точки зрения)
       const keepOn = Bld3D.on;
       try {
@@ -4755,7 +4757,7 @@
       // значок далеко за краем экрана: первый раз ставится, дальше — до нового места на слое карты не переставляется
       MapView.upright = keep.upright;
       window.L = { point: (x, y) => ({ x, y }) };
-      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }), getZoom: () => 17.5 };
       MapView.tilt = MapView.TILT; MapView.rot = 0; MapView._py = 300;
       const ic = document.createElement('div'), mk = { _icon: ic, _map: MapView.map, options: {} };
       ic._leaflet_pos = { x: 200 + 5000, y: 300 };
@@ -4773,6 +4775,156 @@
       if (keepL) window.L = keepL; else delete window.L;
       Roofs.at.clear();
     }
+  });
+  test('5.1.32: камера как в Pokémon GO — отдалить можно до ZMIN; фигуры у камеры крупнее, к горизонту мельче; приблизили — крупнее', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py, markers: MapView.markers, _lblBox: MapView._lblBox }, keepL = window.L;
+    const box = document.createElement('div');
+    try {
+      let z = MapView.Z0;
+      MapView.map = { getZoom: () => z };
+      ok(MapView.ZMIN >= 16.5 && MapView.ZMIN < MapView.Z0, 'отдалить — не дальше ' + MapView.ZMIN + ' (было 15)');
+      near(MapView.figScale(1), 1, 1e-9, 'у Ловчего на исходном масштабе — прежний размер:');
+      const lo = 1.2 * MapView.figScale(1.2), hi = 0.7 * MapView.figScale(0.7);
+      ok(lo > 1.3 && hi < 0.6, `у нижнего края экрана — крупнее, у верхнего — мельче, чем у перспективы земли (1,2 и 0,7): ${lo.toFixed(2)}, ${hi.toFixed(2)}`);
+      near(0.3 * MapView.figScale(0.3), MapView.FIG_MIN, 1e-9, 'у горизонта — не меньше FIG_MIN:');
+      z = 19; const zin = MapView.figScale(1);
+      z = MapView.ZMIN; const zout = MapView.figScale(1);
+      ok(zin > 1.5 && zout < 0.8, `приблизили камеру — крупнее, отдалили — мельче: ${zin.toFixed(2)}, ${zout.toFixed(2)}`);
+      z = 19; near(1.4 * MapView.figScale(1.4), MapView.FIG_MAX, 1e-9, 'не больше FIG_MAX:');
+      MapView.map = { getZoom: () => 17.5, _animatingZoom: true, _animateToZoom: 18.5 };
+      near(MapView.figScale(1), Math.pow(2, MapView.ZK), 1e-9, 'масштаб анимируется — сразу к новому (значок догонит плавно):');
+      // подпись места — под низом крупной модели
+      window.L = { point: (x, y) => ({ x, y }) };
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
+      MapView.tilt = MapView.TILT; MapView.rot = 0; MapView._py = 300;
+      box.id = 'mapLbl'; document.body.appendChild(box); MapView._lblBox = box;
+      const ic = document.createElement('div'), m = { _icon: ic, options: { icon: { options: { iconAnchor: [27, 72], iconSize: [54, 80] } } } };
+      ic._leaflet_pos = { x: 200, y: 300 }; ic.appendChild(document.createElement('div'));
+      ic.firstChild._m3dBot = 90;
+      MapView.markers = new Map([['a', m]]);
+      MapView.lblFor(m, { type: 'spring', name: 'Фонтан' });
+      const y = g => { ic._g = g; MapView.placeLabels(); return +m._lbl.style.transform.match(/translate3d\([-\d.]+px, ([-\d.]+)px/)[1]; };
+      near(y(2) - y(1), 90 - 72, 0.11, 'модель вдвое крупнее — подпись ниже на её высоту под точкой опоры:');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; box.remove(); }
+  });
+  test('5.1.32: крупная у камеры 3D-модель — холст с запасом точек (без перескоков туда-обратно)', () => {
+    const keepT = MapView.tilt, keepLayout = M3D.layout;
+    try {
+      MapView.tilt = MapView.TILT;
+      const ic = document.createElement('div'), c = document.createElement('canvas');
+      ic.className = 'leaflet-marker-icon'; ic.appendChild(c);
+      let lays = 0;
+      M3D.layout = () => { lays++; };
+      const v = { c, res: 1 }, at = S => { ic._g = S; ic._f = 1; return M3D.sharp(v); };
+      eq(at(1.1), false, 'почти прежний размер — холст тот же:');
+      eq(at(1.3), true, 'крупнее — больше точек:'); eq(v.res, 1.5);
+      eq(at(1.15), false, 'чуть мельче — без перескока назад:'); eq(v.res, 1.5);
+      eq(at(1.9), true); eq(v.res, 2, 'ещё крупнее — вдвое:');
+      eq(at(1), true); eq(v.res, 1, 'снова прежний размер — как было:');
+      eq(lays, 3, 'холст пересчитан только при смене:');
+      MapView.tilt = 0;
+      eq(at(2.2), false, 'плоская карта — фигуры без увеличения:');
+    } finally { MapView.tilt = keepT; M3D.layout = keepLayout; }
+  });
+  test('5.1.32: дом между фигурой и игроком заслоняет её (позади, сбоку, низкий или далеко впереди — нет); у края плитки — обе его части', () => {
+    // точка зрения — над точкой (0, 1000) на высоте 900 (точки слоя); единицы плитки = точки слоя
+    const cam = { x: 0, y: 1000, w: 900 };
+    const sq = (x0, y0, x1, y1, H) => ({ b: { g: [[{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]], H, b: [x0, y0, x1, y1] }, ox: 0, oy: 0, s: 1 });
+    const hides = (c, base) => Bld3D.hides(c, 0, 0, cam, 1, base || 0); // фигура — в точке (0, 0)
+    ok(hides(sq(-20, 20, 20, 60, 40)), 'дом в 20 точках перед фигурой — заслоняет');
+    ok(!hides(sq(-20, -60, 20, -20, 40)), 'дом позади фигуры — нет');
+    ok(!hides(sq(200, 20, 240, 60, 40)), 'сбоку — нет');
+    ok(!hides(sq(-20, 20, 20, 60, 2)), 'низкий забор — нет');
+    ok(!hides(sq(-20, 400, 20, 440, 40)), 'невысокий дом далеко впереди — луч проходит над ним');
+    ok(hides(sq(-20, 400, 20, 440, 500)), 'а высокий — заслоняет');
+    ok(hides(sq(-10, -10, 10, 10, 30)), 'фигура в самом доме — заслоняет');
+    ok(!hides(sq(-10, -10, 10, 10, 30), 30), 'место на крыше этого дома — нет');
+    const ring = { b: { g: [[{ x: -30, y: -30 }, { x: 30, y: -30 }, { x: 30, y: 30 }, { x: -30, y: 30 }], [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }]], H: 40, b: [-30, -30, 30, 30] }, ox: 0, oy: 0, s: 1 };
+    ok(hides(ring), 'во дворе дома — заслоняет ближняя к игроку его часть');
+    // дом у края плитки — в обеих плитках (у каждой — своя часть): прозрачными — обе
+    const keepT = Bld3D.tiles, keepG = Bld3D.gen;
+    try {
+      Bld3D.tiles = new Map();
+      const tile = (x, y) => { const t = { x, y, st: 'ok', bs: [], ix: new Array(Bld3D.OG * Bld3D.OG), hi: 0 }; Bld3D.tiles.set(x + ':' + y, t); return t; };
+      const a = tile(5, 7), b = tile(6, 7), E = Bld3D.EXT, ch = { bl: [] };
+      const f = (x0, x1, H) => ({ geom: sq(x0, 100, x1, 140, 0).b.g, props: { height: H } });
+      Bld3D.keep(a, f(E - 30, E + 20, 25), ch, 0, 8); // доходит до края плитки a (с запасом за ним)
+      Bld3D.keep(a, f(100, 140, 25), ch, 8, 8);       // посередине той же плитки
+      Bld3D.keep(b, f(-20, 30, 25), ch, 0, 8);        // его часть в соседней плитке
+      Bld3D.keep(b, f(-20, 30, 12), ch, 8, 8);        // другой дом там же, ниже
+      Bld3D.gen++;
+      const tw = Bld3D.twins(a.bs[0]);
+      eq(tw.length, 1, 'у дома на краю — одна часть в соседней плитке:'); ok(tw[0] === b.bs[0], 'та же высота, рамки пересекаются');
+      eq(Bld3D.twins(a.bs[1]).length, 0, 'у дома посередине плитки — нет');
+      eq(a.hi, 25, 'самый высокий дом плитки:');
+    } finally { Bld3D.tiles = keepT; Bld3D.gen = keepG; }
+  });
+  test('5.1.32: фигура за домом — дом плавно прозрачнее, фигура тусклее; ушла — всё как было', () => {
+    const keep = { markers: MapView.markers, player: MapView.player, hiders: MapView.hiders, camLayer: MapView.camLayer, map: MapView.map, tilt: MapView.tilt };
+    const keepB = { on: Bld3D.on, tiles: Bld3D.tiles, mpx: Bld3D.mpx, hiPx: Bld3D.hiPx, dirty: Bld3D.dirty, fades: Bld3D.fades, fadeOn: Bld3D.fadeOn, fadeT: Bld3D.fadeT };
+    try {
+      Bld3D.on = true; Bld3D.tiles = new Map(); Bld3D.fades = new Map(); Bld3D.fadeOn = false;
+      Bld3D.mpx = () => 1; Bld3D.hiPx = () => 100; Bld3D.dirty = () => {};
+      MapView.map = { getZoom: () => 17.5 }; MapView.tilt = MapView.TILT; MapView.camLayer = () => ({ x: 0, y: 0, w: 900 });
+      const t = { x: 1, y: 2 }, p = { nf: 0, upd: null }, bld = { t, p, vs: 0, vn: 4, H: 30, b: [100, 100, 140, 140], g: [] };
+      Bld3D.tiles.set('1:2', t);
+      const icon = () => { const d = document.createElement('div'); d.className = 'mk'; return d; };
+      const a = { _icon: icon() }, b = { _icon: icon() };
+      MapView.markers = new Map([['a', a]]); MapView.player = b;
+      let behind = true;
+      MapView.hiders = m => (m === a && behind ? [bld] : []);
+      MapView.seeThrough();
+      ok(a._icon.classList.contains('behind'), 'фигура за домом — тусклее');
+      ok(!b._icon.classList.contains('behind'), 'Ловчий не за домом — как был');
+      const f = Bld3D.fades.get(bld);
+      ok(f && f.to === Bld3D.FADE, 'дом — к прозрачности FADE');
+      const T0 = Bld3D.fadeT;
+      Bld3D.fadeStep(T0 + 100);
+      near(f.a, 1 - (1 - Bld3D.FADE) * 100 / Bld3D.FADE_MS, 1e-9, 'плавно — за FADE_MS:');
+      ok(p.upd && p.upd.has(bld), 'новая прозрачность — в буфер куска');
+      eq(p.nf, 1, 'у куска — один прозрачный дом:');
+      ok(Bld3D.fadeOn, 'ещё меняется — нужен следующий кадр');
+      Bld3D.fadeStep(T0 + 200); Bld3D.fadeStep(T0 + 300);
+      eq(f.a, Bld3D.FADE, 'дошла до FADE:'); ok(!Bld3D.fadeOn, 'и больше не меняется');
+      behind = false;
+      MapView.seeThrough();
+      ok(!a._icon.classList.contains('behind'), 'фигура ушла из-за дома — снова яркая');
+      eq(f.to, 1, 'дом — обратно к непрозрачному:');
+      const T1 = Bld3D.fadeT;
+      for (let i = 1; i <= 3; i++) Bld3D.fadeStep(T1 + i * 100);
+      ok(!Bld3D.fades.has(bld), 'непрозрачный — больше не в списке');
+      eq(p.nf, 0, 'у куска прозрачных нет:');
+      behind = true; MapView.seeThrough(); ok(a._icon.classList.contains('behind'));
+      MapView.tilt = 0; MapView.seeThrough();
+      ok(!a._icon.classList.contains('behind'), 'плоская карта — дома не заслоняют');
+      eq(Bld3D.fades.get(bld).to, 1, 'и дома — непрозрачные:');
+    } finally { Object.assign(MapView, keep); Object.assign(Bld3D, keepB); }
+  });
+  test('5.1.32: шейдер объёмных домов собирается (прозрачные дома — своим проходом)', () => {
+    const cv = document.createElement('canvas'), gl = cv.getContext('webgl');
+    if (!gl) { ok(true, 'нет WebGL — проверять нечего'); return; }
+    const keep = { gl: Bld3D.gl, P: Bld3D.P };
+    try {
+      Bld3D.gl = gl;
+      ok(Bld3D.programs(), 'шейдеры собраны');
+      ok(Bld3D.P.u.uMode, 'есть проход прозрачных домов');
+      eq(gl.getAttribLocation(Bld3D.P.p, 'aA'), 3, 'прозрачность — своим буфером вершин (место 3):');
+    } finally { Object.assign(Bld3D, keep); }
+  });
+  atest('5.1.32: фигура за домом — тусклее (стили); дальняя — тоже, обучение — ещё тусклее', async () => {
+    const css = await fetch('../www/css/style.css?t=' + Date.now()).then(r => r.text());
+    const sh = new CSSStyleSheet();
+    sh.replaceSync(css.replace(/@import[^;]+;/g, ''));
+    const keep = document.adoptedStyleSheets, box = document.createElement('div');
+    document.adoptedStyleSheets = [...keep, sh];
+    try {
+      box.innerHTML = '<div class="mk behind"><div class="mk-spirit r1"></div></div><div class="mk"><div class="mk-spirit r1"></div></div>' +
+        '<div class="mk far behind"><div class="mk-shrine"></div></div><div class="mk-player-wrap behind"><div class="mk-player"></div></div>';
+      document.body.appendChild(box);
+      const [a, b, far, me] = [...box.children].map(e => e.firstChild), op = e => +getComputedStyle(e).opacity;
+      eq(op(a), 0.5, 'дух за домом:'); eq(op(b), 1, 'не за домом:'); eq(op(far), 0.5, 'дальнее место за домом:'); eq(op(me), 0.5, 'Ловчий за домом:');
+      ok(/opacity/.test(getComputedStyle(a).transitionProperty), 'тускнеет плавно');
+    } finally { document.adoptedStyleSheets = keep; box.remove(); }
   });
   test('5.1.30: объёмные дома — крыши разбиты на треугольники без пропусков и лишнего (невыпуклые, с дворами)', () => {
     const area = (d, t) => {
