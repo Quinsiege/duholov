@@ -2945,8 +2945,11 @@ body.stage-glass #map :is(.leaflet-zone-pane, .leaflet-overlay-pane, .leaflet-sh
 :is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift, .mk-player) { transition: opacity .25s; }
 .mk.behind > :is(.mk-spirit, .mk-spring, .mk-shrine, .mk-rift), .mk-player-wrap.behind > .mk-player { opacity: .5; }
 /* дымка горизонта: даль растворяется в цвете земли этого часа */
-#mapHaze { position: fixed; left: 0; right: 0; top: 0; height: 30%; z-index: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
-  background: linear-gradient(var(--haze, #120b25) 0%, color-mix(in srgb, var(--haze, #120b25) 70%, transparent) 30%, color-mix(in srgb, var(--haze, #120b25) 25%, transparent) 65%, transparent 100%); }
+/* 5.1.34: наклон камеры постоянный (75°) — горизонт на экране: выше него небо (--sky1 → --sky2, цвета палитры дня и ночи), ниже —
+   туман цвета земли до дальнего края карты (--far-y; дальше FAR карта не рисуется), а над картой туман растворяется
+   (--hz-y и --far-y ставит MapView.layout) */
+#mapHaze { position: fixed; left: 0; right: 0; top: 0; height: calc(var(--far-y, 0px) + 70px); z-index: 0; pointer-events: none; opacity: 0; transition: opacity .4s;
+  background: linear-gradient(var(--sky1, #5ea8e4) 0, var(--sky2, #cde5f5) calc(var(--hz-y, 0px) - 1px), color-mix(in srgb, var(--sky2, #cde5f5) 55%, var(--haze, #f1f3ee)) calc(var(--hz-y, 0px) + 6px), var(--haze, #f1f3ee) var(--far-y, 0px), transparent 100%); }
 body.tilt #mapHaze { opacity: 1; }
 #map.rot .leaflet-control-container { display: none; }
 #mapAttr { position: fixed; right: 0; bottom: var(--sb); z-index: 1; padding: 0 5px; font-size: 9px; line-height: 1.5; border-radius: 6px 0 0 0; background: rgba(18, 12, 36, .55); color: #cfc8e6; }

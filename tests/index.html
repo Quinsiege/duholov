@@ -4516,7 +4516,7 @@
       near(mid.e, 90 - MapView.TILT, 1e-6, 'в точке зрения — сверху, под углом наклона карты:');
       near(mid.az, 0, 1e-9, 'посередине — прямо:');
       const far = cam(200, 40), close = cam(200, 560);
-      ok(far.e < mid.e && mid.e < close.e && far.e > 20, `у горизонта — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
+      ok(far.e < mid.e && mid.e < close.e && far.e > 5, `у горизонта — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
       ok(cam(360, 300).az > 0.05 && cam(40, 300).az < -0.05, 'правее середины — виден чуть слева, левее — чуть справа');
       MapView.rot = 90; // повёрнутая карта: правее на экране — это «ниже» на её плоскости
       ok(cam(360, 300).e > mid.e, 'с поворотом карты — тоже по месту на экране');
@@ -4532,7 +4532,7 @@
       near((q.y + +m[2]) * d / (d - q.z - z), q.y * d / (d - q.z), 0.02, 'по вертикали — на своей точке:');
       // 5.1.32: размер — по расстоянию до камеры, перспектива у фигур сильнее, чем у земли (MapView.figScale)
       near(+m[4] * d / (d - q.z - z), f * MapView.figScale(f), 1e-3, 'и в размер расстояния до камеры:');
-      ok(f < 1 && MapView.figScale(f) < 1, 'дальняя фигура — мельче, чем её точка земли');
+      ok(f < 1, 'дальняя фигура — мельче'); near(MapView.figScale(f), 1, 1e-9, '5.1.34: у наклона 75° — в размер своей точки земли (своя перспектива сильная):');
       // место в доме — на его крыше: там, где её рисуют объёмные дома (точка на высоте дома — из точки зрения)
       const keepOn = Bld3D.on;
       try {
@@ -4551,24 +4551,37 @@
       eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
     } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
   });
-  test('5.1.30: камера одним пальцем — наклон в своих пределах, слой карты пересчитывается только без запаса; объём выключен — только облёт', () => {
-    const keep = { tilt: MapView.tilt, _tiltFor: MapView._tiltFor, layout: MapView.layout, reAim: MapView.reAim }, box = document.createElement('div');
-    let lay = 0, aim = 0;
+  test('5.1.34: камера — наклон постоянный (75°), палец её только поворачивает; карта — до дальнего края, выше горизонта небо', () => {
+    const keep = { map: MapView.map, setRot: MapView.setRot, northUp: MapView.northUp, rot: MapView.rot, tilt: MapView.tilt, _py: MapView._py, vw: MapView.vw, vh: MapView.vh };
+    const keepRaf = window.requestAnimationFrame, box = document.createElement('div');
     try {
+      eq(MapView.TILT, 75, 'наклон — выбор владельца:');
+      ok(typeof MapView.setPitch === 'undefined' && !('pitch' in MapView.ORBIT), 'наклонять пальцем нечем');
+      // палец: вверх-вниз — ничего, влево-вправо — облёт
       box.id = 'map'; document.body.appendChild(box);
-      MapView.layout = () => { lay++; MapView._tiltFor = Math.min(MapView.ORBIT.max, MapView.tilt + 6); };
-      MapView.reAim = () => { aim++; };
-      MapView.tilt = 32; MapView._tiltFor = 38;
-      MapView.setPitch(35);
-      eq(MapView.tilt, 35); eq(lay, 0, 'в запасе слоя — без пересчёта слоя:'); eq(box.style.getPropertyValue('--tilt'), '35deg'); ok(aim > 0, 'значки и модели — под новым углом');
-      MapView.setPitch(90);
-      eq(MapView.tilt, MapView.ORBIT.max, 'не выше предела:'); eq(lay, 1, 'вышел из запаса — слой шире:');
-      MapView.setPitch(-10);
-      eq(MapView.tilt, MapView.ORBIT.min, 'не ниже предела:');
+      const rots = [];
+      MapView.map = { dragging: null }; MapView.rot = 0; MapView.tilt = MapView.TILT; MapView._py = 520; MapView.vh = 870;
+      MapView.setRot = r => { rots.push(r); MapView.rot = r; }; MapView.northUp = () => {};
+      window.requestAnimationFrame = () => 1;
+      MapView.initOrbit();
+      const ev = (type, x, y) => (type === 'pointerdown' ? box : window).dispatchEvent(new PointerEvent(type, { pointerId: 7, pointerType: 'touch', clientX: x, clientY: y, bubbles: true }));
+      ev('pointerdown', 200, 300); ev('pointermove', 200, 500); ev('pointerup', 200, 500);
+      ok(rots.every(r => Math.abs(r) < 1e-9), 'палец вниз — камера не поворачивается и не наклоняется: ' + rots.join());
+      eq(MapView.tilt, MapView.TILT, 'наклон — прежний:');
+      rots.length = 0;
+      ev('pointerdown', 200, 300); ev('pointermove', 260, 300); ev('pointerup', 260, 300);
+      near(rots[rots.length - 1], 60 * MapView.ORBIT.yaw, 1e-9, 'палец вправо (над Ловчим) — облёт:');
+      eq(MapView.tilt, MapView.TILT, 'наклон всё тот же:');
+      // дальний край карты — FAR точек слоя впереди, ниже горизонта; плоскость там — ровно FAR
+      MapView.vw = 400; MapView.tilt = MapView.TILT;
+      const t = MapView.TILT * Math.PI / 180, hz = MapView._py - MapView.PD / Math.tan(t), fy = MapView.farY();
+      ok(fy > hz && fy < MapView._py, `край карты — между горизонтом и Ловчим: ${hz.toFixed(0)} < ${fy.toFixed(0)} < ${MapView._py}`);
+      near(MapView.planeUV(200, fy).y, -MapView.FAR, 1e-6, 'на краю — FAR точек слоя впереди:');
+      eq(MapView.topY(), fy, 'видимая земля — от края карты:');
+      near(MapView.viewUV(0).v0, -MapView.FAR, 1e-6, 'холст домов — до края карты, а не в бесконечность:');
       MapView.tilt = 0;
-      MapView.setPitch(40);
-      eq(MapView.tilt, 0, 'объём выключен в настройках — наклон пальцем не включается:');
-    } finally { Object.assign(MapView, keep); box.remove(); }
+      eq(MapView.farY(), -Infinity, 'плоская карта — без горизонта:'); eq(MapView.topY(), 0);
+    } finally { Object.assign(MapView, keep); window.requestAnimationFrame = keepRaf; box.remove(); }
   });
   test('5.1.30: подпись места — что это (по мифологии) и где; имя точки — как текст', () => {
     const lab = e => {
@@ -4805,7 +4818,7 @@
       ic._leaflet_pos = { x: 200 + 5000, y: 300 }; MapView.upright(mk);
       ok(ic.style.transform !== t1, 'новое место на слое карты — переставлен');
       ic._leaflet_pos = { x: 220, y: 300 }; MapView.upright(mk);
-      ok(/rotateX\(-37deg\)/.test(ic.style.transform), 'на экране — всегда по нынешнему наклону: ' + ic.style.transform.slice(0, 60));
+      ok(ic.style.transform.includes(`rotateX(-${MapView.TILT + 5}deg)`), 'на экране — всегда по нынешнему наклону: ' + ic.style.transform.slice(0, 60));
     } finally {
       Object.assign(MapView, keep); M3D.aim = keepAim; window.requestAnimationFrame = keepRaf;
       if (keepL) window.L = keepL; else delete window.L;
@@ -4820,8 +4833,10 @@
       MapView.map = { getZoom: () => z };
       ok(MapView.ZMIN >= 16.5 && MapView.ZMIN < MapView.Z0, 'отдалить — не дальше ' + MapView.ZMIN + ' (было 15)');
       near(MapView.figScale(1), 1, 1e-9, 'у Ловчего на исходном масштабе — прежний размер:');
-      const lo = 1.2 * MapView.figScale(1.2), hi = 0.7 * MapView.figScale(0.7);
-      ok(lo > 1.3 && hi < 0.6, `у нижнего края экрана — крупнее, у верхнего — мельче, чем у перспективы земли (1,2 и 0,7): ${lo.toFixed(2)}, ${hi.toFixed(2)}`);
+      // 5.1.34: у наклона 75° перспектива своя сильная — добавки нет (FIG 0); у самого низа экрана — не больше FIG_MAX
+      const lo = 2.2 * MapView.figScale(2.2), hi = 0.5 * MapView.figScale(0.5);
+      ok(lo > 1.5 && hi < 0.6, `у нижнего края экрана — крупнее, у дальнего — мельче: ${lo.toFixed(2)}, ${hi.toFixed(2)}`);
+      near(lo, MapView.FIG_MAX, 1e-9, 'у самого низа экрана — не больше FIG_MAX:');
       near(0.3 * MapView.figScale(0.3), MapView.FIG_MIN, 1e-9, 'у горизонта — не меньше FIG_MIN:');
       z = 19; const zin = MapView.figScale(1);
       z = MapView.ZMIN; const zout = MapView.figScale(1);

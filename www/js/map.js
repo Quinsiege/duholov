@@ -190,14 +190,15 @@ const MapView = {
   },
   /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави): днём — бело-зелёная с голубой водой и кремовыми улицами,
      ночью — тёмно-синяя. Цвета стиля — c (flavorOf; улицы у Protomaps для Leaflet — одного цвета, road); к ним — земля (фон карты
-     и дымка горизонта) и объёмные дома (Bld3D): крыша, стены в тени и на солнце, контраст стен */
+     и дымка горизонта), небо над горизонтом (5.1.34: sky — вверху и у горизонта) и объёмные дома (Bld3D): крыша, стены в тени и на
+     солнце, контраст стен */
   PALETTE: {
-    day: { earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
+    day: { earth: '#f1f3ee', sky: ['#5ea8e4', '#cde5f5'], roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
       park: '#cfe8c4', park2: '#b3dda3', wood: '#c7e1bb', wood2: '#a7d595', scrub: '#d8e8cc', water: '#9fd0f0', sand: '#f2ead2', ped: '#eceee8',
       urban: '#e8eae6', runway: '#f7f8fa', road: '#fdf2c6', rail: '#a8b1b7', bound: '#a7afa7', bld: '#e2e5df',
       lbl: '#5e6a65', halo: '#ffffff', city: '#2e3935', sub: '#7c8983', state: '#99a49e', ocean: '#4e8ec0',
       lc: ['#d6eccd', '#f5eeda', '#e8eae5', '#deeed2', '#ffffff', '#e2eed6', '#c4e2be'] } },
-    night: { earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
+    night: { earth: '#131b27', sky: ['#050a15', '#1d2c47'], roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
       park: '#13261f', park2: '#163024', wood: '#12221c', wood2: '#152a21', scrub: '#17231f', water: '#0a1626', sand: '#1c2228', ped: '#171f2b',
       urban: '#161e2a', runway: '#222c3a', road: '#3a4f73', rail: '#37435a', bound: '#46526a', bld: '#1a2332',
       lbl: '#9fb0cc', halo: '#0e1520', city: '#dbe5f5', sub: '#8a9ab4', state: '#6f7f99', ocean: '#6b8fc4',
@@ -260,6 +261,7 @@ const MapView = {
     if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(F); // объёмные дома — в тон карте
     document.body.classList.toggle('night', night);
     document.body.style.setProperty('--haze', F.earth); // 4.11: дымка горизонта у наклонённой карты — цвета земли
+    document.body.style.setProperty('--sky1', F.sky[0]); document.body.style.setProperty('--sky2', F.sky[1]); // 5.1.34: небо над горизонтом
     const bg = U.$('#mapBg'); if (bg) bg.style.background = F.earth; // и земля под ещё не нарисованными плитками (5.1.31: слоем позади карты)
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
   },
@@ -319,7 +321,7 @@ const MapView = {
     };
     return lay;
   },
-  // видимая земля — углы экрана на плоскости карты, в точках слоя; null — не посчитать (линия горизонта на экране)
+  // видимая земля — углы экрана на плоскости карты, в точках слоя (5.1.34: сверху — не дальше дальнего края карты, topY)
   seenPoly() {
     const m = this.map;
     if (!m || !this.vw || !this.vh) return null;
@@ -327,12 +329,8 @@ const MapView = {
     const pp = m._getMapPanePos(), key = `${pp.x},${pp.y},${this.rot},${this.tilt},${m.getZoom()},${this.vw},${this.vh},${this._py}`;
     if (this._spKey === key) return this._sp;
     this._spKey = key;
-    if (this.tilt) {
-      const t = this.tilt * Math.PI / 180, py = this._py || this.vh / 2;
-      if (this.PD * Math.cos(t) - py * Math.sin(t) < 40) return (this._sp = null); // верх экрана — у самого горизонта: без отсева
-    }
-    const c = m.containerPointToLayerPoint(m.getSize().divideBy(2)), W = this.vw, H = this.vh;
-    return (this._sp = [[0, 0], [W, 0], [W, H], [0, H]].map(([x, y]) => { const q = this.plane(x, y); return [c.x + q.x, c.y + q.y]; }));
+    const c = m.containerPointToLayerPoint(m.getSize().divideBy(2)), W = this.vw, H = this.vh, T = this.topY();
+    return (this._sp = [[0, T], [W, T], [W, H], [0, H]].map(([x, y]) => { const q = this.plane(x, y); return [c.x + q.x, c.y + q.y]; }));
   },
   // плитка co слоя lay задевает видимую землю с запасом pad плиток? (разделяющие оси: оси плитки и стороны четырёхугольника земли)
   tileSeen(lay, co, pad) {
@@ -520,17 +518,28 @@ const MapView = {
   },
   /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана,
      вдали — дымка горизонта. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
-     трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат). */
-  TILT: 32, PD: 1100, tilt: 0, _py: 0,
+     трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат).
+     5.1.34: наклон постоянный — TILT (75°, выбор владельца), пальцем камеру только поворачивают. Горизонт — на экране (у наклона 75°
+     — на четверти высоты сверху): выше него небо, у горизонта — туман; карта рисуется до FAR точек слоя впереди Ловчего (дальше —
+     туман), иначе слой карты и плитки уходили бы в бесконечность */
+  TILT: 75, PD: 1100, FAR: 1800, tilt: 0, _py: 0,
+  // дальний край карты на экране (y, CSS-пиксели; −∞ — у плоской карты): точка земли в FAR точках слоя впереди Ловчего
+  farY() {
+    if (!this.tilt) return -Infinity;
+    const t = this.tilt * Math.PI / 180, py = this._py || this.vh / 2, F = this.FAR;
+    return py - F * Math.cos(t) * this.PD / (this.PD + F * Math.sin(t));
+  },
+  // верх видимой земли на экране: дальний край карты или верх экрана, если край выше него
+  topY() { return Math.max(0, this.farY()); },
   layout() {
     const box = U.$('#map'), on = !!(this.tilt || this.rot), W = this.vw || innerWidth, H = this.vh || innerHeight;
     this._sq = on;
     this._py = this.tilt ? Math.round(H * .6) : H / 2;
     if (on) {
-      // 5.1.30: наклон меняют пальцем — слой карты — с запасом в 6° (до ORBIT.max): не пересчитывать его на каждом кадре жеста
-      const tf = this._tiltFor = this.tilt ? Math.min(this.ORBIT.max, this.tilt + 6) : 0;
-      const t = tf * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD, py = this._py;
-      const top = tf ? py * d / (d * cs - py * sn) : py, bot = tf ? (H - py) * d / (d * cs + (H - py) * sn) : H - py;
+      // слой карты — до дальнего края земли (не дальше FAR) и до нижнего края экрана, при повороте — квадрат вокруг этого
+      const tf = this._tiltFor = this.tilt;
+      const t = tf * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD, py = this._py, den = d * cs - py * sn;
+      const top = !tf ? py : den > 0 ? Math.min(this.FAR, py * d / den) : this.FAR, bot = tf ? (H - py) * d / (d * cs + (H - py) * sn) : H - py;
       const half = Math.max(top, bot), xw = tf ? (W / 2) * (d + top * sn) / d : W / 2;
       const mw = this.rot ? 2 * Math.hypot(xw, half) : 2 * xw, mh = this.rot ? mw : 2 * half;
       box.style.setProperty('--mw', Math.ceil(mw) + 4 + 'px');
@@ -538,6 +547,13 @@ const MapView = {
       box.style.setProperty('--py', this._py + 'px');
       box.style.setProperty('--tilt', this.tilt + 'deg');
       box.style.setProperty('--pd', this.PD + 'px');
+    }
+    // 5.1.34: небо и туман горизонта (style.css: #mapHaze) — горизонт и дальний край карты на экране
+    const hz = U.$('#mapHaze');
+    if (hz && this.tilt) {
+      const t = this.tilt * Math.PI / 180;
+      hz.style.setProperty('--hz-y', Math.round(this._py - this.PD / Math.tan(t)) + 'px');
+      hz.style.setProperty('--far-y', Math.round(this.farY()) + 'px');
     }
     box.classList.toggle('rot', on);
     box.classList.toggle('tilt', !!this.tilt);
@@ -554,21 +570,21 @@ const MapView = {
     this.layout();
     this.zoomMode();
   },
-  /* 5.1.30: камера одним пальцем (и мышью) — по всем осям, как в Pokémon GO: влево-вправо — облёт вокруг Ловчего (земля под
-     пальцем идёт за ним: над Ловчим и под ним — в разные стороны), вверх-вниз — наклон (ORBIT.min…max°; у плоской карты, если
-     объём выключен в настройках, — только облёт). Карта всегда за Ловчим: ходят джойстиком и Атласом, сдвигать её пальцем не нужно.
-     Два пальца — масштаб и поворот, как раньше; лёгкое касание — нажатие на значок. */
-  ORBIT: { yaw: 0.35, pitch: 0.18, min: 14, max: 50 }, // градусов на CSS-пиксель пальца; пределы наклона
+  /* 5.1.30: камера одним пальцем (и мышью), как в Pokémon GO: влево-вправо — облёт вокруг Ловчего (земля под пальцем идёт за ним:
+     над Ловчим и под ним — в разные стороны). 5.1.34: только облёт — наклон постоянный (TILT), вверх-вниз палец камеру не наклоняет.
+     Карта всегда за Ловчим: ходят джойстиком и Атласом, сдвигать её пальцем не нужно. Два пальца — масштаб и поворот, как раньше;
+     лёгкое касание — нажатие на значок. */
+  ORBIT: { yaw: 0.35 }, // градусов на CSS-пиксель пальца
   initOrbit() {
     const box = U.$('#map');
     if (this.map.dragging) this.map.dragging.disable();
     let g = null, ate = 0, want = null, raf = 0;
-    // палец двигается чаще, чем меняются кадры (на экранах 120 Гц — вдвое): поворот и наклон — один раз за кадр, по последней точке
-    const apply = () => { raf = 0; const w = want; want = null; if (!w) return; this.setRot(w.rot); if (w.tilt != null) this.setPitch(w.tilt); };
+    // палец двигается чаще, чем меняются кадры (на экранах 120 Гц — вдвое): поворот — один раз за кадр, по последней точке
+    const apply = () => { raf = 0; const w = want; want = null; if (w != null) this.setRot(w); };
     box.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (g) { g.multi = true; return; } // второй палец — жест двумя пальцами (масштаб, поворот)
-      g = { id: e.pointerId, x: e.clientX, y: e.clientY, rot: this.rot, tilt: this.tilt, on: false, multi: false, sg: e.clientY < (this._py || this.vh / 2) ? 1 : -1 };
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, rot: this.rot, on: false, multi: false, sg: e.clientY < (this._py || this.vh / 2) ? 1 : -1 };
     });
     addEventListener('pointermove', e => {
       if (!g || e.pointerId !== g.id || g.multi) return;
@@ -580,13 +596,13 @@ const MapView = {
         // или плиткой он теперь, и пересчитывать наведение (у пальца так и есть само по себе)
         if (e.pointerType !== 'touch') try { box.setPointerCapture(g.id); } catch (x) { /* не поддерживается */ }
       }
-      want = { rot: g.rot + g.sg * dx * this.ORBIT.yaw, tilt: this.tilt ? g.tilt - dy * this.ORBIT.pitch : null };
+      want = g.rot + g.sg * dx * this.ORBIT.yaw;
       if (!raf) raf = requestAnimationFrame(apply);
     });
     const end = e => {
       if (!g || e.pointerId !== g.id) return;
       if (raf) { cancelAnimationFrame(raf); apply(); } // последняя точка пальца — сразу
-      if (g.on && !g.multi) { ate = performance.now(); if (Math.abs(this.rot) < 4) this.northUp(); this.fitPitch(); }
+      if (g.on && !g.multi) { ate = performance.now(); if (Math.abs(this.rot) < 4) this.northUp(); }
       g = null;
     };
     addEventListener('pointerup', end);
@@ -594,17 +610,6 @@ const MapView = {
     // палец вёл камеру — значок под ним не нажимается
     box.addEventListener('click', e => { if (performance.now() - ate < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
   },
-  setPitch(t) {
-    t = Math.max(this.ORBIT.min, Math.min(this.ORBIT.max, t));
-    if (!this.tilt || Math.abs(t - this.tilt) < 0.05) return;
-    this.tilt = t;
-    if (t > (this._tiltFor || 0)) return this.layout(); // слою карты мало запаса для такого наклона — шире
-    U.$('#map').style.setProperty('--tilt', t + 'deg');
-    this.reAim();
-    this.tilesSoon();
-  },
-  // жест кончился, а наклон стал заметно меньше того, под который считан слой карты, — слой снова по размеру (меньше плиток)
-  fitPitch() { if (this.tilt && (this._tiltFor || 0) - this.tilt > 9) this.layout(); },
   // при повороте и наклоне масштаб — вокруг игрока (точку между пальцами Leaflet у такого слоя считает неверно)
   zoomMode() { const o = this.map.options, c = this.rot || this.tilt; o.touchZoom = o.scrollWheelZoom = o.doubleClickZoom = c ? 'center' : true; },
   // точка экрана → точка на плоскости карты (относительно игрока, в осях ненаклонённой и неповёрнутой карты)
@@ -625,8 +630,8 @@ const MapView = {
   // 5.1.30: видимая земля в осях экрана на плоскости карты (от точки зрения), с запасом pad — холст объёмных домов (Bld3D)
   viewUV(pad = 0) {
     let u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
-    const W = this.vw, H = this.vh;
-    for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) {
+    const W = this.vw, H = this.vh, T = this.topY(); // 5.1.34: сверху — до дальнего края карты
+    for (const [x, y] of [[0, T], [W, T], [0, H], [W, H]]) {
       const q = this.planeUV(x, y);
       u0 = Math.min(u0, q.x); v0 = Math.min(v0, q.y); u1 = Math.max(u1, q.x); v1 = Math.max(v1, q.y);
     }
@@ -660,8 +665,10 @@ const MapView = {
      у нижнего края экрана (ближе к камере) — крупнее, к горизонту — мельче. Земля наклонённой карты видна в перспективе, и значок на ней
      и так был в размер своей точки земли (f), но камера карты «длиннофокусная» (PD): у нижнего края экрана фигура была всего в 1,2 раза
      крупнее, чем у Ловчего, у верхнего — 0,7 его; теперь у фигур перспектива сильнее (FIG: размер f^(1+FIG)) — 1,4 и 0,5 (наклон 32°).
-     Размер на экране — не меньше FIG_MIN и не больше FIG_MAX от исходного */
-  ZMIN: 16.75, Z0: 17.5, ZK: 0.7, FIG: 0.8, FIG_MIN: 0.45, FIG_MAX: 2.4,
+     Размер на экране — не меньше FIG_MIN и не больше FIG_MAX от исходного.
+     5.1.34: у постоянного наклона 75° перспектива своя сильная (у нижнего края экрана — 2,2, у дальнего края карты — 0,4) — добавки
+     фигурам нет (FIG 0), а у самого низа экрана — не больше FIG_MAX: иначе ближние фигуры закрывали полэкрана */
+  ZMIN: 16.75, Z0: 17.5, ZK: 0.7, FIG: 0, FIG_MIN: 0.45, FIG_MAX: 1.8,
   // во сколько раз фигура на точке земли с перспективой f крупнее, чем её рисует сама перспектива карты
   figScale(f) {
     const m = this.map, z = m._animatingZoom ? m._animateToZoom : m.getZoom(); // масштаб анимируется — сразу к новому (значок — плавно, style.css)
@@ -738,8 +745,8 @@ const MapView = {
   viewBox(pad = 0) {
     const m = this.map, c = m.containerPointToLayerPoint(m.getSize().divideBy(2));
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    const W = this.vw, H = this.vh;
-    for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) {
+    const W = this.vw, H = this.vh, T = this.topY(); // 5.1.34: сверху — до дальнего края карты
+    for (const [x, y] of [[0, T], [W, T], [0, H], [W, H]]) {
       const q = this.plane(x, y);
       x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y);
     }
@@ -824,11 +831,13 @@ const MapView = {
       const x = cx + q.x * f, y = cy + q.y * f + off;
       if (x < -200 || x > W + 200 || y < -60 || y > H + 60) { hide(lb); continue; }
       if (lb._hid !== false) { lb.style.display = ''; lb._hid = false; }
-      const tf = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%) scale(${f.toFixed(3)})`, zi = Math.round(1000 + q.z);
+      // 5.1.34: у нижнего края экрана (наклон 75°) подпись не крупнее LBL_MAX — иначе она шириной в экран
+      const tf = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%) scale(${Math.min(f, this.LBL_MAX).toFixed(3)})`, zi = Math.round(1000 + q.z);
       if (lb._tf !== tf) { lb.style.transform = tf; lb._tf = tf; }
       if (lb._zi !== zi) { lb.style.zIndex = zi; lb._zi = zi; }
     }
   },
+  LBL_MAX: 1.2,
   lblSoon() { if (!this._lblRaf) this._lblRaf = requestAnimationFrame(() => { this._lblRaf = 0; this.placeLabels(); }); },
   /* 5.1.32: дом, за которым стоит фигура (место, дух, сам Ловчий), становится прозрачнее, а сама фигура — тусклее: её видно сквозь дом.
      Объёмные дома лежат на земле одним холстом (Bld3D), а значки стоят над ним: фигура за домом рисовалась поверх его стены, будто
