@@ -1,7 +1,7 @@
 'use strict';
 /* Прогон Ловчего с 1 по 40 уровень через настоящий сервер игры (server/game/core.js) с базой в памяти.
    Игрок — «активный»: каждый день ~5 км пешком в три выхода (утро, обед, вечер), ловит всех духов в радиусе,
-   заходит во все источники по пути, 2 разлома, 2 Капища, до 2 вторжений, 3 боя Лиги в день (с живым соперником своего уровня); вечером — усиление,
+   заходит во все источники по пути, 2 разлома, 2 Святилища, до 2 вторжений, 3 боя Лиги в день (с живым соперником своего уровня); вечером — усиление,
    превращения, коконы, поручения, задания, Летопись. Исход боёв — своя модель: игрок выжимает EFF от максимального
    урона (сервер проверяет только верхнюю границу), раны — по ударам соперника. */
 
@@ -48,7 +48,7 @@ const xpAdd = (src, before) => { const d = P.data.xp - before; if (d > 0) ST.xpB
 // ---------- карта: места по пути регистрируются в базе, как настоящие ----------
 let poiN = 100000;
 function poi(kind) {
-  const id = 'osm:n' + (++poiN), p = { id, lat: P.lat + (Math.random() - 0.5) * 0.0004, lng: P.lng + (Math.random() - 0.5) * 0.0006, name: kind === 'spring' ? 'Источник' : 'Капище', kind, active: true, imported: true };
+  const id = 'osm:n' + (++poiN), p = { id, lat: P.lat + (Math.random() - 0.5) * 0.0004, lng: P.lng + (Math.random() - 0.5) * 0.0006, name: kind === 'spring' ? 'Источник' : 'Святилище', kind, active: true, imported: true };
   DB.pois[id] = p;
   return { id, lat: p.lat, lng: p.lng, name: p.name };
 }
@@ -138,7 +138,8 @@ function raidOutcome(tm, rift) {
   let t = 0, dealt = 0; const hp = {};
   for (const sp of tm) {
     const x = bat(sp), max = x.hp * 5, cur0 = max * me(() => S.hpNow(sp));
-    const hit = Raid.dmg(bs.atk, x.def, bs.pw, bel, SP[sp.sid].el) * (CFG.DODGE * 0.2 + (1 - CFG.DODGE)); // средний удар с учётом уворотов
+    // средний удар с учётом уворотов; 5.1.39: с натиском по силе духа и уклоном до Rules.RAID_SIM.DODGE
+    const hit = Raid.dmg(bs.atk, x.def, bs.pw * Raid.press(bs, x.power), bel, SP[sp.sid].el) * (CFG.DODGE * Rules.RAID_SIM.DODGE + (1 - CFG.DODGE));
     const life = cur0 / (hit / 3.8); // секунд до падения
     const need = (bs.hp - dealt) / dps, use = Math.min(life, need, 90 - t);
     t += use; dealt += dps * use;
@@ -194,14 +195,14 @@ async function duelAt(p) {
   await heal(); await pickTeam();
   if (!ready()) return;
   const g = me(() => W.guardian(e)), o = duelOutcome(team(), g.team, SHRINE_TIERS[e.tier].speed);
-  if (!o.win) return; // слабая команда к Капищу не идёт — видно по силе хранителя
+  if (!o.win) return; // слабая команда к Святилищу не идёт — видно по силе хранителя
   if (!await act('duelStart', { shrine: p })) return;
   adv(o.t + Rules.COUNTDOWN);
   const xp0 = P.data.xp;
   const r = await act('duelEnd', { win: o.win, hp: o.hp });
   ST.ko += koCount(o.hp);
   if (r && r.win) {
-    xpAdd('Капище', xp0); ST.duels[0]++; ST.today.duels++;
+    xpAdd('Святилище', xp0); ST.duels[0]++; ST.today.duels++;
     if (P.data.clan) {
       const tm = new Set((P.data.team || [])), sp = me(() => [...S.d.spirits].filter(x => !tm.has(x.uid)).sort((a, b) => S.power(b) - S.power(a))[3]);
       if (sp && await act('shrineDefend', { shrine: p, uid: sp.uid })) ST.defend = (ST.defend || 0) + 1;
