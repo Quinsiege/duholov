@@ -301,7 +301,7 @@ const Bld3D = {
     // холст — в осях экрана на плоскости карты (повёрнут вместе с экраном), во всю видимую землю: раз в 5–8 меньше слоя карты
     const t0 = performance.now(), z = m.getZoom(), uv = MapView.viewUV(24), cw = uv.u1 - uv.u0, ch = uv.v1 - uv.v0;
     const piv = m.containerPointToLayerPoint(m.getSize().divideBy(2)), rot = MapView.rot || 0, r = rot * Math.PI / 180;
-    const dpr = Math.min(window.devicePixelRatio || 1, this.DPR, Math.sqrt(this.MAXPX / (cw * ch)));
+    const dpr = Math.min(Gfx.dpr(this.DPR), Math.sqrt(Gfx.px(this.MAXPX) / (cw * ch))); // 5.1.38: разрешение и предел точек — Gfx
     const W = Math.max(1, Math.round(cw * dpr)), H = Math.max(1, Math.round(ch * dpr)), cv = this.cv;
     // 5.1.31: буфер холста не пересоздаётся на каждом кадре жеста (наклон меняет видимую землю, а с ней — нужный размер): он
     // растёт с запасом и уменьшается, только когда стал намного больше нужного. Кадр — в левом верхнем углу буфера (остальное

@@ -225,6 +225,8 @@ const M3D = {
       if (vs.length && typeof MapView !== 'undefined' && MapView.seeSoon) MapView.seeSoon(); // 5.1.32: не за домом ли новая модель (тот — прозрачнее)
     });
   },
+  // 5.1.38: сменилось разрешение графики — холсты всех моделей в новом размере, кадр — сразу
+  relayout() { for (const v of this.views) { this.layout(v); v.t = 0; } this.last = 0; this.kick(); },
   // размер холста — чтобы модель помещалась при любом повороте карты и любом наклоне камеры: ширина — по самой дальней
   // от центра точке, высота — по самому высокому виду (5.1.30: у наклонённой карты наклон камеры свой у каждого места и меняется,
   // пока карта движется, — холст при этом не пересоздаётся, сдвигается только сама модель в нём)
@@ -232,7 +234,7 @@ const M3D = {
     const h0 = this.models[v.kind].head, S = v.pxm;
     const pad = this.OUTLINE_PX / S + (h0.walk ? 0.12 : 0.02), r = h0.r + pad, h = h0.h + pad; // Ловчему — запас на шаг и наклон
     const w = Math.ceil(2 * r * S) + 2, hh = Math.ceil(Math.hypot(h, 2 * r) * S) + 2;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5) * (v.res || 1); // 5.1.32: крупная у камеры фигура — больше точек (sharp)
+    const dpr = Gfx.dpr(2.5) * (v.res || 1); // 5.1.32: крупная у камеры фигура — больше точек (sharp); 5.1.38: разрешение — Gfx
     Object.assign(v, { pw: Math.round(w * dpr), ph: Math.round(hh * dpr), w, hh, r });
     Object.assign(v.c, { width: v.pw, height: v.ph });
     Object.assign(v.c.style, { width: w + 'px', height: hh + 'px', left: (v.ax - w / 2).toFixed(1) + 'px' });

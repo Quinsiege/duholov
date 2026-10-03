@@ -3497,6 +3497,26 @@
     asPlayer(A, () => { S.d.league.day = '2000-1-1'; S.d.league.w = 7; S.d.league.l = 3; League.st(); });
     eq(A.data.league.w + A.data.league.l, 0, 'новый день — форма с нуля:');
   });
+  atest('5.1.38: графика — разрешение (720p … родное телефона, «Авто», «Макс.») и частота кадров 30 / 40 / 60', async () => {
+    const keep = { short: Gfx.short, nat: Gfx.nat, res: Cfg.s.res, fps: Cfg.s.fps };
+    try {
+      Gfx.short = () => 393; Gfx.nat = () => 2.75; // телефон 1080 × 2400
+      eq(Gfx.native(), 1080, '393 × 2,75 — это 1080p:'); eq(Gfx.options().join(), 'auto,720,max', 'выше родного ступеней нет:');
+      Gfx.nat = () => 3.5; eq(Gfx.options().join(), 'auto,720,1080,max', 'у 1440p-экрана есть и 1080p:'); Gfx.nat = () => 2.75;
+      Cfg.s.res = 'auto'; eq(Gfx.dpr(), 2.75, '«Авто»: карта — в родном'); eq(Gfx.dpr(1.5), 1.5, 'дома — до своего потолка');
+      Cfg.s.res = 720; near(Gfx.dpr(), 720 / 393, 1e-9, '720p — 720 точек по ширине'); eq(Gfx.dpr(1.5), 1.5, 'и не выше потолка «Авто»');
+      Cfg.s.res = 1440; eq(Gfx.dpr(), 2.75, 'выше родного не бывает');
+      Cfg.s.res = 'max'; eq(Gfx.dpr(1.5), 2.75, '«Макс.» — родное везде, без потолков');
+      eq(Gfx.label('auto') + Gfx.label(720) + Gfx.label('max'), 'Авто720pМакс.');
+      // ограничитель кадров: при 30 к/с кадры — не чаще ~33 мс
+      Cfg.s.fps = 30;
+      const ts = await Promise.race([new Promise(res => { const a = []; const f = t => { a.push(t); if (a.length < 7) requestAnimationFrame(f); else res(a); }; requestAnimationFrame(f); }), U.wait(4000).then(() => null)]);
+      ok(ts, 'кадры идут');
+      const avg = ts ? (ts[ts.length - 1] - ts[0]) / (ts.length - 1) : 0;
+      ok(avg >= 28, `30 к/с — в среднем ${avg.toFixed(1)} мс между кадрами`);
+      let ran = 0; const id = requestAnimationFrame(() => { ran++; }); cancelAnimationFrame(id); await U.wait(120); eq(ran, 0, 'отменённый кадр не приходит:');
+    } finally { Gfx.short = keep.short; Gfx.nat = keep.nat; Cfg.s.res = keep.res; Cfg.s.fps = keep.fps; }
+  });
   test('5.1.15: строка Кампании на карте — без всплывашек: цели шага, «забери награду», «выбери духа» (5.1.24: значки и счётчики, без подложки)', () => {
     const d0 = S.d;
     // разметка → строки: название, счётчик, сделано ли, значок

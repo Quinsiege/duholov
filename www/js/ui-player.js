@@ -564,6 +564,15 @@ Object.assign(UI, {
         ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`)}
         ${row('awake', 'battery', ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`)}
       </div>
+      ${sec(ru`Графика`)}
+      <div class="list">
+        <div class="row set-row gfx-row"><span class="set-ico">${this.I.eye}</span><div class="row-main"><b>${ru`Разрешение`}</b>
+          <small>${ru`Экран телефона — ${Gfx.native()}p. «Авто» подбирает игра; ниже — плавнее и меньше греется, «Макс.» — чётче всего, но тяжелее для телефона.`}</small>
+          <div class="seg gfx-res">${Gfx.options().map(k => `<button data-res="${k}" class="${String(s.res) === String(k) ? 'on' : ''}">${Gfx.label(k)}</button>`).join('')}</div></div></div>
+        <div class="row set-row gfx-row"><span class="set-ico">${this.I.battery}</span><div class="row-main"><b>${ru`Частота кадров`}</b>
+          <small>${ru`Кадров в секунду. Меньше — телефон меньше греется и дольше держит заряд.`}</small>
+          <div class="seg gfx-fps">${Gfx.FPS.map(f => `<button data-fps="${f}" class="${+s.fps === f ? 'on' : ''}">${f}</button>`).join('')}</div></div></div>
+      </div>
       <div class="list install-list">
         <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное приложение`}</small></div><span class="set-chev">›</span></button>
         <a class="row link set-row inst-apk hidden" href="duholov.apk" download><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Скачать APK для Android`}</b><small>${ru`Приложение-обёртка: разреши установку из этого источника`}</small></div><span class="set-chev">›</span></a>
@@ -595,6 +604,20 @@ Object.assign(UI, {
       if (k === 'bigText' || k === 'calm') this.applyA11y();
       if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
       if (k === 'awake') Awake.apply();
+    });
+    // 5.1.38: графика — разрешение и частота кадров, сразу
+    scr.querySelector('.gfx-res').addEventListener('click', e => {
+      const b = e.target.closest('[data-res]'); if (!b) return;
+      const v = b.dataset.res, k = v === 'auto' || v === 'max' ? v : +v;
+      if (k === s.res) return;
+      Sfx.play('tap'); s.res = k; Cfg.save();
+      U.$$('[data-res]', scr).forEach(x => x.classList.toggle('on', x === b));
+      Gfx.apply();
+    });
+    scr.querySelector('.gfx-fps').addEventListener('click', e => {
+      const b = e.target.closest('[data-fps]'); if (!b) return;
+      Sfx.play('tap'); s.fps = +b.dataset.fps; Cfg.save();
+      U.$$('[data-fps]', scr).forEach(x => x.classList.toggle('on', x === b));
     });
     // 5.1: джойстик слева или справа
     scr.querySelector('.joy-side').addEventListener('click', e => {

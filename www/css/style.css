@@ -838,6 +838,10 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 
 .set-screen .seg { flex: none; }
 .set-screen .seg button { padding: 7px 10px; }
+/* 5.1.38: графика — переключатель во всю ширину под подписью */
+.set-screen .gfx-row { align-items: flex-start; }
+.set-screen .gfx-row .seg { display: flex; margin-top: 9px; }
+.set-screen .gfx-row .seg button { flex: 1 1 0; min-width: 0; padding: 7px 4px; white-space: nowrap; }
 
 /* экономия батареи: без анимаций на карте и погодных эффектов */
 .eco #map *, .eco #hud .orb svg { animation: none !important; }

@@ -228,6 +228,17 @@ const MapView = {
     const f = this.flavorOf(P.c), noPois = rules => rules.filter(r => r.dataLayer !== 'pois');
     return { paint: protomapsL.paintRules(f), label: noPois(protomapsL.labelRules(f, I18N.lang)), bg: f.background };
   },
+  // 5.1.38: сменилось разрешение графики (Gfx): слои Protomaps заводятся заново (разрешение у них — в размере плитки и в
+  // подписях, на ходу его не сменить; данные плиток — из кэша PMTiles), дома и 3D-модели — в новом размере холстов
+  applyRes() {
+    if (this.map && this.tiles && this.tiles.rerenderTiles) {
+      for (const l of [this.tiles, this.bldTiles]) if (l) this.map.removeLayer(l);
+      this.tiles = this.bldTiles = null; this._look = null;
+      this.setTiles();
+    }
+    if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.draw();
+    if (typeof M3D !== 'undefined' && M3D.relayout) M3D.relayout();
+  },
   setTiles() {
     if (this.tiles && Stage.busy) return; // 5.2: под сценой плитки не перерисовываются — облик сверится, когда она закроется (wake)
     const lk = this.look();
@@ -239,10 +250,10 @@ const MapView = {
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
         const url = this.tilesUrl(), st = this.flavorRules(F);
         this.tiles = this.cull(protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
-          paintRules: st.paint, labelRules: [], backgroundColor: st.bg })).addTo(this.map);
+          paintRules: st.paint, labelRules: [], backgroundColor: st.bg, devicePixelRatio: Gfx.dpr() })).addTo(this.map); // 5.1.38: разрешение — Gfx
         U.$('#map').classList.add('vecmap');
         // 4.13: подписи — вторым слоем над зоной Ловчего и объёмными домами; плитки читаются один раз (общий кэш)
-        this.bldTiles = this.cull(protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: [], labelRules: st.label }));
+        this.bldTiles = this.cull(protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: [], labelRules: st.label, devicePixelRatio: Gfx.dpr() }));
         this.bldTiles.views = this.tiles.views;
         // 5.1.31: плитка подписей, на которую не попала ни одна подпись (каждая третья в городе), — скрыта: пустой холст — всё равно
         // свой слой видеокарты, а их число — главное в цене каждого кадра, пока карта движется
