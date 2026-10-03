@@ -1360,7 +1360,7 @@ const GameCore = {
     water(a, ctx) {
       const b = ctx.srv.battle;
       this.need(b && b.type === 'raid', ru`Живая вода — только в бою`);
-      this.need(b.waters < 3, ru`За бой можно выпить не больше 3 флаконов`);
+      this.need(b.waters < Math.min(3, b.team.length), ru`Каждому духу — не больше одного флакона за бой`); // 5.1.39: было до 3 любому
       this.need(S.useItem('water'), ru`Живой воды нет`);
       b.waters++;
       return { left: S.d.items.water || 0 };

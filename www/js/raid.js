@@ -2,32 +2,50 @@
 /* Разломы: битва с боссом (тап — атака, свайп/кнопка — уклон), затем поимка босса */
 
 const Raid = {
-  /* 4.16: босс — по уровню Ловчего (rl; в совместном бою — средний уровень Ловчих комнаты): атака и защита — как у духа
-     уровня rl, умноженные на k; здоровье hp и сила удара pw — для Ловчего 20-го уровня, с уровнем растут вместе с силой
-     духов (Raid.grow). Раньше босс был один на все уровни (hp 600 / 1800 / 4500, атака и защита — как у духа 14 / 22 / 28
-     уровня): новичку не по силам, сильный закрывал 9 из 10, и легенды тоже. Ориентир побед живого игрока своей командой:
-     малый — ~85%, средний — ~55–60%, великий (легенды) — в одиночку ~25%, втроём ~70%. lvl — уровень пойманного босса */
+  /* 5.1.39: СИЛА БОССА — честная. Раньше показывалось здоровье × 1,5, а удар босса почти не ранил (12 из 570 здоровья):
+     великий разлом силой 7200 закрывал один дух силой 1600, исход решал только урон за 90 с. Теперь босс — это «опорная»
+     команда: три духа вида средней силы (FIGHT.REF, IV 10) уровня Ловчего rl (в совместном бою — средний уровень комнаты),
+     каждый в pow раз сильнее такого духа; СИЛА БОССА — сила этой команды (power). Здоровье — на FIGHT.T с её наибольшего
+     урона (тап без пропусков и приём, как только готов), неуклонённый удар срезает FIGHT.HIT здоровья её духа (здоровье × 5),
+     уклонённый — Rules.RAID_SIM.DODGE от него; по духу слабее опорного — сильнее (Raid.press). Ориентир по модели боя
+     (стихии без преимущества): Ловчий, что уклоняется от 3 ударов из 4, тапает на 90% темпа и пьёт Живую воду, побеждает
+     команду с силой как у босса примерно в 2 боях из 3, на 10% слабее — редко, на 20% слабее — никогда; уклоняясь от всех
+     ударов и тапая без пропусков — от ~0,85 силы босса, уклоняясь от 2 ударов из 5 и тапая на 75% — от ~1,3. Духи-противники
+     (их стихия бьёт босса) наносят в 1,6 раза больше урона и получают в 1,6 раза меньше — стоят примерно полуторной силы.
+     Атака и защита босса — как у духа его вида уровня rl (× k): от них только числа урона, трудность боя — от опорной
+     команды. lvl — уровень пойманного босса */
   // 5.1.36: sparks — искры за победу (было 350 × ступень); те же у Святилищ (SHRINE_TIERS)
   TIER: {
-    1: { hp: 3000, k: 1.35, lvl: 15, pw: 10, charms: 6, sparks: 750, name: ru`Малый разлом` },
-    2: { hp: 4500, k: 1,    lvl: 22, pw: 16, charms: 7, sparks: 1500, name: ru`Разлом` },
-    3: { hp: 6000, k: 0.72, lvl: 30, pw: 24, charms: 9, sparks: 3000, name: ru`Великий разлом` },
+    1: { pow: 0.45, k: 1.35, lvl: 15, charms: 6, sparks: 750, name: ru`Малый разлом` },
+    2: { pow: 0.9,  k: 1,    lvl: 22, charms: 7, sparks: 1500, name: ru`Разлом` },
+    3: { pow: 2.5,  k: 0.72, lvl: 30, charms: 9, sparks: 3000, name: ru`Великий разлом` },
   },
-  // здоровье босса в совместном бою: +COOP за каждого союзника (раньше +80% — втроём было почти как в одиночку)
-  COOP: 0.6,
+  FIGHT: { REF: [200, 185, 195], T: 67, HIT: 0.41 },
+  // здоровье босса в совместном бою: +COOP за каждого союзника (раньше +80% — втроём было почти как в одиночку).
+  // 5.1.39: +35% (было +60%) — слабому духу теперь не выстоять, и при +60% втроём было бы ненамного легче, чем одному
+  COOP: 0.35,
   coopHp(n) { return 1 + this.COOP * Math.max(0, (n | 0) - 1); },
   st: null,
 
   team() { return S.team(); },
-  // во сколько раз сильнее «опорного» (20-го уровня) дух уровня rl: здоровье босса растёт как урон духов, удар — как их здоровье
-  // после 30-го уровня босс растёт вдвое медленнее: сила духов там упирается в предел уровня
-  grow(rl) { const x = S.cpm(this.bossLvl(rl)) / S.cpm(20); return { hp: Math.pow(x, 1.2), pw: x }; },
+  // после 30-го уровня атака и защита босса растут вдвое медленнее: сила духов там упирается в предел уровня
   bossLvl(rl) { return rl <= 30 ? rl : 30 + (rl - 30) / 2; },
+  // сила духа вида FIGHT.REF уровня rl (формула S.stats)
+  refPower(rl) { const [a, d, s] = this.FIGHT.REF.map(x => x + 10), c = S.cpm(rl); return Math.max(10, Math.floor(a * Math.sqrt(d) * Math.sqrt(s) * c * c / 10)); },
   bossStats(r) {
     if (r.cs) return { ...r.cs }; // 5.1.15: хранитель Разлома кампании — по команде Ловчего (S.campBoss; в бою — от сервера, raidStart)
-    const T = this.TIER[r.tier], b = SP[r.boss].base, rl = U.clamp(Math.round(+r.rl || S.catchLvl()), 1, 40), c = S.cpm(this.bossLvl(rl)) * T.k, g = this.grow(rl);
-    return { atk: (b[0] + 15) * c, def: (b[1] + 15) * c, hp: Math.round(T.hp * g.hp), pw: T.pw * g.pw, rl };
+    const T = this.TIER[r.tier], F = this.FIGHT, b = SP[r.boss].base, rl = U.clamp(Math.round(+r.rl || S.catchLvl()), 1, 40);
+    const cb = S.cpm(this.bossLvl(rl)) * T.k, atk = (b[0] + 15) * cb, def = (b[1] + 15) * cb;
+    // опорный дух: сила — pow силы духа вида REF уровня rl (сила растёт как квадрат множителя уровня)
+    const [ra, rd, rs] = F.REF.map(x => x + 10), c = S.cpm(rl) * Math.sqrt(T.pow), a = ra * c, d = rd * c, h = Math.floor(rs * c) * 5;
+    const hit = (att, df, p) => Math.floor(0.6 * p * att / df) + 1; // удар без погоды и стихий (как Raid.dmg)
+    const dps = hit(a, def, 12) / 0.32 + hit(a, def, 75) / (50 / (6 / 0.32)); // тап раз в 0,32 с (+6 энергии), приём — на 50
+    return { atk, def, hp: Math.round(dps * F.T), pw: Math.max(0.5, (F.HIT * h - 0.5) / (0.6 * atk / d)), rl, power: Math.round(3 * T.pow * this.refPower(rl)) };
   },
+  // 5.1.39: по духу слабее опорного босс бьёт сильнее, по более сильному — слабее: сила удара × (сила опорного духа / сила
+  // духа), от ×0,25 до ×4. Сила решает больше: команда на 20% слабее босса не выстоит, а сильной — меньше ран после победы.
+  // Хранитель кампании (без power) — как прежде
+  press(bs, power) { return bs.power && power > 0 ? U.clamp(bs.power / 3 / power, 0.25, 4) : 1; },
   eff(att, def) {
     if (ELEMENTS[att].beats.includes(def)) return 1.6;
     if (ELEMENTS[def].beats.includes(att)) return 0.625;
@@ -64,7 +82,7 @@ const Raid = {
           <div class="dt-info">
             <div class="det-hp">${T.name} <span class="stars">${'★'.repeat(T2)}</span></div>
             <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
-            <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
+            <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.power || st.hp * 1.5)}</b></div>
             <div class="rift2-left">${camp ? ru`не закроется, пока не победишь` : ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
             ${r.place ? `<div class="rift2-place">${UI.I.pin}${U.esc(r.place)}</div>` : ''}
             ${camp ? '' : `<div class="rift2-place place-kind">${MYTH_PLACES[r.myth || 'slavic'].rift}</div>`}
@@ -374,14 +392,15 @@ const Raid = {
     const st = this.st;
     if (!st || !st.running || st.over || st.drinking) return;
     const m = this.cur();
-    if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }
+    // 5.1.39: по флакону на духа (было до 3 любому) — иначе один дух с тремя флаконами вытягивал бой за всю команду
+    if (m.drank) { UI.toast(ru`Каждому духу — не больше одного флакона за бой`); return; }
     if (m.cur >= m.lim) { UI.toast(m.lim < m.max ? ru`Дух устал — выше не поднять, нужен отдых` : ru`Дух и так полон сил`); return; }
     if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }
     st.drinking = true;
     const ok = await Game.try('water');
     st.drinking = false;
     if (!ok || this.st !== st || st.over) return;
-    st.waters++;
+    st.waters++; m.drank = true;
     m.cur = Math.min(m.lim, m.cur + m.max / 2);
     Sfx.play('heal');
     st.$('.raid-water span').textContent = S.d.items.water || 0;
@@ -409,9 +428,9 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-boss').classList.remove('charging');
     st.nextAtk = 2.2 + Math.random() * 1.4;
-    let n = this.dmg(st.bs.atk, m.def, st.bs.pw, st.s.el, SP[m.sp.sid].el);
+    let n = this.dmg(st.bs.atk, m.def, st.bs.pw * this.press(st.bs, m.power), st.s.el, SP[m.sp.sid].el);
     const dodged = st.dodgeT > 0;
-    if (dodged) n = Math.max(1, Math.floor(n * 0.2));
+    if (dodged) n = Math.max(1, Math.floor(n * Rules.RAID_SIM.DODGE)); // 5.1.39: уклон срезает удар до 40% (было до 20%)
     m.cur = Math.max(0, m.cur - n);
     const me = st.$('.raid-me').getBoundingClientRect();
     this.float(dodged ? ru`Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');

@@ -979,6 +979,49 @@
       ok(Raid.coopHp(3) / 3 < 0.75, 'втроём на каждого — меньше трёх четвертей здоровья босса');
     } finally { S.d.level = lv; }
   });
+  test('Разломы 5.1.39: сила босса честная — команде вдвое слабее не победить, одному духу — тем более', () => {
+    const wx = Sky.w;
+    Sky.w = null; // без погоды
+    try {
+      // сила босса — сила опорной команды: pow × три духа вида REF уровня Ловчего
+      const b = (tier, rl, boss = 'zharptica') => Raid.bossStats({ tier, boss, rl });
+      for (const t of [1, 2, 3]) eq(b(t, 13).power, Math.round(3 * Raid.TIER[t].pow * Raid.refPower(13)), `сила ★${t}:`);
+      ok(b(1, 13).power < b(2, 13).power && b(2, 13).power < b(3, 13).power && b(3, 30).power > b(3, 13).power, 'по ступеням и с уровнем');
+      near(b(3, 13, 'koschey').power, b(3, 13).power, 1e-9, 'у любого босса ступени — одна сила');
+      const bs = b(3, 13);
+      eq(Raid.press(bs, bs.power / 3), 1, 'по опорному духу — как есть'); near(Raid.press(bs, bs.power / 6), 2, 1e-9, 'вдвое слабее — вдвое больнее');
+      eq(Raid.press(bs, bs.power * 9), 0.25, 'сильнее — не меньше четверти'); eq(Raid.press({ hp: 100, pw: 1 }, 100), 1, 'хранитель кампании — без натиска');
+      // бой без ошибок: тап без пропусков, приём сразу, каждый удар босса уклонён, по флакону Живой воды на духа,
+      // удар босса раз в gap с (замах + пауза: 3,1…4,5 с)
+      const best = (team, r, gap) => {
+        const bs = Raid.bossStats(r), bel = SP[r.boss].el, T = team.map(sp => { const x = S.battle(sp); return { ...x, max: x.hp * 5, cur: x.hp * 5, el: SP[sp.sid].el }; });
+        let hp = bs.hp, t = 0, cool = 0, en = 0, i = 0, next = 4.1;
+        while (t < 90 && hp > 0 && i >= 0) {
+          t += 0.01; cool -= 0.01; const m = T[i];
+          if (cool <= 0) { cool = 0.32; en += 6; hp -= Raid.dmg(m.atk, bs.def, 12, m.el, bel); }
+          if (en >= 50) { en -= 50; hp -= Raid.dmg(m.atk, bs.def, 75, m.el, bel); }
+          if (t >= next) {
+            next += gap; m.cur -= Math.max(1, Math.floor(Raid.dmg(bs.atk, m.def, bs.pw * Raid.press(bs, m.power), bel, m.el) * Rules.RAID_SIM.DODGE));
+            if (m.cur <= 0) { i = T.findIndex(x => x.cur > 0); en = 0; } else if (!m.drank && m.cur <= m.max / 2) { m.drank = true; m.cur += m.max / 2; }
+          }
+        }
+        return hp <= 0;
+      };
+      // дух вида sid с силой около p
+      const at = (sid, p) => { let o = null; for (let l = 1; l <= 50; l += 0.5) { const sp = { sid, lvl: l, iv: [10, 10, 10], uid: sid + l }; if (!o || Math.abs(S.power(sp) - p) < Math.abs(S.power(o) - p)) o = sp; } return o; };
+      // великий разлом Ловчего 13-го уровня (сила ~7200), духи стихии тока — без преимущества против огня
+      const r = { tier: 3, boss: 'zharptica', rl: 13 }, P = Raid.bossStats(r).power, cur = SPECIES.filter(s => s.el === 'current' && !s.story && s.rar <= 4).sort((x, y) => x.base[0] + x.base[1] + x.base[2] - y.base[0] - y.base[1] - y.base[2]).slice(-3).map(s => s.id);
+      ok(P > 7000 && P < 7500, `сила босса ${P}`);
+      const team = k => cur.map(sid => at(sid, P * k / 3)), pw = t => t.reduce((a, x) => a + S.power(x), 0);
+      ok(!best([at(cur[2], 1600)], r, 4.5), 'один дух силой 1600 — нет, даже без ошибок и с самыми редкими ударами');
+      const u = [at(cur[2], 1600), at(cur[1], 1300), at(cur[0], 1100)];
+      ok(Math.abs(pw(u) - 4000) < 150 && !best(u, r, 4.5), 'команда силой 4000 — нет');
+      ok(!best(team(0.7), r, 4.5), 'на 30% слабее босса — нет');
+      const strong = team(1.2);
+      ok(best(strong, r, 3.8), `сильнее босса (${pw(strong)}) — да`);
+      ok(Rules.raidWinnable(strong, r, Raid.bossStats(r).hp, null, 3), 'и сервер такую победу засчитывает');
+    } finally { Sky.w = wx; }
+  });
   test('Усталость духа: бои подряд срезают предел здоровья, отдых возвращает (4.16)', () => {
     const T = Rules.HP.TIRED, t0 = 2e12, sp = { uid: 'tr1', sid: 'ugolek', lvl: 10, iv: [5, 5, 5] };
     for (let i = 0; i < T.FREE; i++) S.tire(sp, 1, t0);
@@ -1638,6 +1681,8 @@
   });
   atest('Сервер: разлом — нельзя победить мгновенно; награда и поимка босса', async () => {
     const A = await newPlayer('uf', 55.74, 37.60, 'Жар'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух — на уровне Ловчего, здесь он уже усилен до 5-го
+    // 5.1.39: босс — по силе, одному стартовому духу малый разлом не по силам; у новичка, как в кампании, ещё два редких
+    ['volk', 'liho'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 5, 'uf' + sid)))); A.data.team = A.data.spirits.map(x => x.uid);
     A.data.level = RAID_LEVEL; // 4.18: Разломы — с RAID_LEVEL
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }));
@@ -1661,6 +1706,7 @@
   });
   atest('Сервер: дальний Разлом — по Дальнему пропуску до 5 км, пропуск дня', async () => {
     const A = await newPlayer('vj', 55.52, 37.40, 'Дальний'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
+    ['volk', 'liho'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 5, 'vj' + sid)))); A.data.team = A.data.spirits.map(x => x.uid); // 5.1.39: как в кампании
     A.data.level = RAID_LEVEL; // 4.18: Разломы — с RAID_LEVEL
     A.data.tut = 0;
     const hour = Math.floor(Date.now() / 3600000);
@@ -2103,6 +2149,8 @@
     const B = await newPlayer('va', 59.93, 30.31, 'Гость из Питера'), C = await newPlayer('vb', 59.93, 30.31, 'Опоздавший');
     B.data.level = C.data.level = RAID_LEVEL;
     [B, C].forEach(P => P.data.spirits.forEach(x => { x.lvl = 5; }));
+    // 5.1.39: босс — по силе: одному стартовому духу и своей доли не одолеть; у гостя, как в кампании, ещё два редких
+    ['volk', 'liho'].forEach(sid => B.data.spirits.push(asPlayer(B, () => S.makeSpirit(sid, 5, 'va' + sid)))); B.data.team = B.data.spirits.map(x => x.uid);
     await refuse(B, 'roomCreate', { rift }, /далеко/);
     const room = await must(A, 'roomCreate', { rift });
     ok(/^[A-Z2-9]{5}$/.test(room.code), 'код комнаты'); ok(room.isHost); eq(room.members.length, 1);
@@ -2964,6 +3012,21 @@
     const d0 = S.d; S.d = A.data;
     try { eq(await GameCore.coopAllies({ env: envFor(A) }, { coop: { code: 'TST26', allies: 3 } }), 1, 'союзник — только вступивший в бой'); } finally { S.d = d0; }
     delete DB.rooms.TST26;
+  });
+  atest('Сервер 5.1.39: Живая вода в разломе — по флакону на духа', async () => {
+    const A = await newPlayer('wt1', 55.33, 37.13, 'Флакон'); A.data.tut = 0; A.data.level = 10;
+    const hour = Math.floor(Date.now() / 3600000);
+    const id = poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), 32000);
+    const rift = { id, lat: A.lat, lng: A.lng, name: 'Родник' };
+    A.data.items.water = 5;
+    await must(A, 'raidStart', { rift }); // в команде — один стартовый дух
+    await must(A, 'water'); await refuse(A, 'water', {}, /одного флакона/);
+    eq(A.data.items.water, 4, 'второй флакон одному духу — нет, и не списан');
+    await must(A, 'raidEnd', { win: false });
+    ['kapelka', 'mshonok'].forEach(sid => A.data.spirits.push(asPlayer(A, () => S.makeSpirit(sid, 10, 'wt' + sid)))); A.data.team = A.data.spirits.map(x => x.uid);
+    await must(A, 'raidStart', { rift });
+    for (let k = 0; k < 3; k++) await must(A, 'water');
+    await refuse(A, 'water', {}, /одного флакона/); eq(A.data.items.water, 1, 'трём духам — три флакона');
   });
   atest('Сервер 4.26: замок игрока, места не из базы, жалобы, чужие ключи, время друга', async () => {
     const A = await newPlayer('lk1', 55.34, 37.14, 'Замок'); A.data.tut = 0; A.data.level = 16;

@@ -470,16 +470,17 @@ const Rules = {
   /* 4.26: бой в разломе глазами сервера (как Raid.tick/bossStrike): первый удар босса — на FIRST с, дальше не реже раза в GAP с
      (замах 0,9 с + пауза до 3,6 с), уклон срезает удар до DODGE. Всё — в пользу игрока: каждый удар уклонён, погода боссу
      не помогает, урон духов — наибольший (как в raidMaxDamage), SLACK — запас сверху, LOSS — доля ран, которую сервер
-     засчитает после победы наверняка */
-  RAID_SIM: { FIRST: 4.1, GAP: 4.5, DODGE: 0.2, SLACK: 1.5, LOSS: 0.5 },
+     засчитает после победы наверняка. 5.1.39: DODGE 0,4 (было 0,2) — его же берёт и бой на телефоне (Raid.bossStrike) */
+  RAID_SIM: { FIRST: 4.1, GAP: 4.5, DODGE: 0.4, SLACK: 1.5, LOSS: 0.5 },
   // удар босса по духу sp с уклоном, без погоды; bs — Raid.bossStats, bel — стихия босса
   raidHit(bs, bel, sp) {
-    const n = Math.floor(0.5 * bs.pw * (bs.atk / S.battle(sp).def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
+    const x = S.battle(sp), n = Math.floor(0.5 * bs.pw * Raid.press(bs, x.power) * (bs.atk / x.def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
     return Math.max(1, Math.floor(n * this.RAID_SIM.DODGE));
   },
   // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Святилищ). Каждый дух живёт
   // не дольше, чем выдерживает уклонённые удары (здоровье на входе — hp0, { uid: доля }; нет — здоров), и бьёт с наибольшим
-  // уроном; выпитая Живая вода (waters) — полфлакона здоровья тому, кому она выгоднее всего. В совместном бою need — своя доля
+  // уроном; выпитая Живая вода (waters) — полфлакона здоровья тем, кому она выгоднее всего (5.1.39: по флакону на духа,
+  // было — все флаконы одному). В совместном бою need — своя доля
   raidWinnable(team, boss, need, hp0, waters = 0) {
     if (!team.length) return false;
     const R = this.RAID_SIM, bs = Raid.bossStats(boss), bel = SP[boss.boss].el;
@@ -488,7 +489,7 @@ const Rules = {
       const max = S.battle(sp).hp * 5, hit = this.raidHit(bs, bel, sp), dps = this.raidMaxDamage([sp], boss, 1) / 1.3;
       return { max, hit, dps, cap: dps * Math.ceil(Math.max(1, Math.round(max * h0(sp))) / hit) * R.GAP };
     });
-    const water = Math.max(0, ...me.map(m => m.dps * Math.ceil(m.max / 2 / m.hit) * R.GAP)) * U.clamp(waters | 0, 0, 3);
+    const water = me.map(m => m.dps * Math.ceil(m.max / 2 / m.hit) * R.GAP).sort((a, b) => b - a).slice(0, U.clamp(waters | 0, 0, 3)).reduce((a, x) => a + x, 0);
     return (me.reduce((a, m) => a + m.cap, 0) + water) * R.SLACK >= need;
   },
   // 4.26: сколько здоровья (в единицах разлома: здоровье духа × 5) команда потеряла наверняка, победив: быстрее need / (наибольший
