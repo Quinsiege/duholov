@@ -237,11 +237,13 @@ const League = {
     if ('run' in L) delete L.run;
     if (L.peak == null) L.peak = this.rank(L.pts);
     if (L.n == null) L.n = Math.max(0, this.TICKETS - (+L.tickets || 0));
+    if (L.w == null) L.w = 0; // 5.1.37: побед и поражений сегодня — форма дня для подбора соперника
+    if (L.l == null) L.l = 0;
     if (L.season !== this.season()) {
       if (L.peak > 0) L.prize = { season: L.season, rank: L.peak }; // сундук за прошлый сезон забирает сервер (leaguePrize)
       L.season = this.season(); L.pts = this.reset(L.pts); L.got = {}; L.peak = this.rank(L.pts);
     }
-    if (L.day !== U.today()) { L.day = U.today(); L.tickets = this.TICKETS; L.n = 0; }
+    if (L.day !== U.today()) { L.day = U.today(); L.tickets = this.TICKETS; L.n = 0; L.w = 0; L.l = 0; }
     return L;
   },
   st() { return (S.d.league = this.norm(S.d.league)); },                                      // сервер
@@ -267,6 +269,13 @@ const League = {
   // 5.1.11: соперник — в пределах ±RANGE очков рейтинга от Ловчего (независимо от лиг и времени ожидания); пара — взаимная
   RANGE: 150,
   BOT_WAIT: 10, // 5.1.15: живого соперника в окне нет столько секунд — соперником станет Ловчий Ордена (бот, PvP.botSide)
+  /* 5.1.37: форма дня — доля побед в сегодняшних боях Лиги (L.w / L.l; боёв в день — не больше жетонов), сглаженная:
+     без боёв — 0,5; 2 победы из 5 — 0,43; 5 из 5 — 0,86. Соперника подбирают с похожей формой: первые секунды поиска —
+     в допуске FORM_TOL (сек ожидания → допуск), потом — с любой (живой успевает найтись раньше Ловчего Ордена);
+     среди подходящих — ближе по форме, потом по рейтингу (база: league_find, 036_league_form.sql) */
+  FORM_TOL: [[3, 0.15], [6, 0.3]],
+  form(w, l) { w = Math.max(0, +w || 0); l = Math.max(0, +l || 0); return (w + 1) / (w + l + 2); },
+  formTol(waited) { const s = this.FORM_TOL.find(([t]) => waited < t); return s ? s[1] : 1; },
   window(pts) {
     pts = Math.max(0, Math.round(+pts || 0));
     const lo = Math.max(0, pts - this.RANGE), hi = Math.min(this.MAXPTS, pts + this.RANGE);
@@ -296,7 +305,7 @@ const League = {
   // 4.16: итоги боёв, которые сервер засчитал без экрана (телефон закрылся посреди боя), и сундук за прошлый сезон
   showDone(r) {
     if (!r) return;
-    if (r.prize) UI.modal({ title: ru`Итоги сезона`, html: `<div class="lg-prize"><span class="lg-badge">${this.badge(r.prize.rank)}</span><p>${ru`В прошлом сезоне ты дошёл до лиги «${LEAGUE_RANKS[r.prize.rank].name}». Награда Ордена:`}</p><div class="res-rw">${r.prize.got.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div></div>`, buttons: [{ label: ru`Забрать`, cls: 'primary' }] });
+    if (r.prize) UI.modal({ title: ru`Итоги сезона`, html: `<div class="lg-prize"><span class="lg-badge">${this.badge(r.prize.rank)}</span><p>${ru`В прошлом сезоне ты дошёл до лиги «${LEAGUE_RANKS[r.prize.rank].name}». Награда Ордена:`}</p><div class="res-rw">${r.prize.got.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div></div>`, buttons: [{ label: ru`Забрать`, cls: 'primary' }], tap: true });
     (r.done || []).forEach(x => UI.toast(x.win ? ru`Бой с ${U.esc(x.foe.name)} засчитан: победа, рейтинг +${x.d}` : x.draw ? ru`Бой с ${U.esc(x.foe.name)} засчитан: ничья` : ru`Бой с ${U.esc(x.foe.name)} засчитан: поражение, рейтинг −${Math.abs(x.d)}`, x.win ? 'good' : ''));
   },
 

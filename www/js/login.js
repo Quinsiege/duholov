@@ -272,21 +272,19 @@ const Login = {
   SKIP: 'duholov.justLogged',
   markLogged() { try { sessionStorage.setItem(this.SKIP, '1'); } catch (e) {} },
   justLogged() { let v = null; try { v = sessionStorage.getItem(this.SKIP); sessionStorage.removeItem(this.SKIP); } catch (e) {} return !!v; },
-  // 4.4: экран входа — сцена во весь экран (Scene, «3D» от наклона телефона), наверху знак Ордена, внизу стеклянная панель.
-  // Вход через сервисы — выезжающая снизу панель (sheet), а не всегда на экране
-  logo(sub) {
-    return `<div class="lg-top"><h1 class="lg-title"><img class="logo-img" src="img/logo.webp" width="883" height="391" alt="${ru`Духолов`}" decoding="async" fetchpriority="high"></h1><p>${sub}</p></div>`; // 4.22: логотип-картинка
-  },
-  // корень экрана входа: фон + содержимое
+  /* 5.1.35: экран входа переработан — фон как у экрана загрузки (ночь Нави: Loader.sky), название игры текстом (Loader.mark) —
+     картинки-логотипа нет; сверху «12+» и сервер (Realms.chip), посередине название, внизу кнопки (у вернувшегося Ловчего — «Коснись,
+     чтобы продолжить»). Вход через сервисы — выезжающая снизу панель (sheet) */
+  top() { return `<div class="ent-top"><span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${Realms.chip()}</div>`; },
+  // корень экрана входа (и шагов знакомства): фон + содержимое
   screenRoot() {
-    const root = U.el('<div class="onb lg"><div class="lg-scene"></div><div class="lg-body"></div></div>');
+    const root = U.el(`<div class="onb lg">${Loader.sky()}<div class="lg-body"></div></div>`);
     document.body.appendChild(root);
-    // 4.19: сцены нет — фон входа такой же, как у экранов игры (style.css: .onb.lg)
     return root;
   },
   close(root, done) {
     root.classList.add('out');
-    setTimeout(() => { if (root._scene) root._scene.stop(); root.remove(); }, 450);
+    setTimeout(() => root.remove(), 450);
     if (done) done();
   },
   // выезжающая панель входа поверх экрана
@@ -299,46 +297,30 @@ const Login = {
     const hide = () => { sh.classList.add('out'); setTimeout(() => sh.remove(), 260); };
     sh.onclick = e => { if (e.target === sh || e.target.closest('.lg-sheet-x')) hide(); };
     sh.querySelectorAll('[data-login]').forEach(b => { b.onclick = () => this.start(b.dataset.login, b.dataset.mode || 'link'); });
-    sh.querySelectorAll('[data-switch]').forEach(b => { b.onclick = () => this.switchTo(b.dataset.switch); });
     const mail = sh.querySelector('.mail-login');
     if (mail) mail.onclick = () => this.emailForm();
     return sh;
   },
-  // Вернувшийся Ловчий: «С возвращением», карточка (чей прогресс), «Продолжить»; другой аккаунт или привязка — в панели снизу
+  // Вернувшийся Ловчий: «С возвращением», чей прогресс, в игру — касанием. 5.1.35: кнопок «Продолжить» и «Сохрани прогресс» /
+  // «Другой аккаунт» нет — «Коснись, чтобы продолжить» (UI.tapGo); привязать вход — в профиле и настройках, другой аккаунт — «Выйти»
   gate(done) {
-    const d = S.d, avail = this.available(), guest = this.isGuest();
+    const d = S.d, guest = this.isGuest();
     const dex = Object.values(d.dex || {}).filter(x => x && x.caught).length;
     const root = this.screenRoot();
-    // 4.5: без коробки — карточка-медальон Ловчего, «оберег» «Продолжить», стеклянная кнопка; 12+ — значок в углу
-    root.querySelector('.lg-body').innerHTML = `<div class="lg-wrap"><span class="age-chip" title="${ru`Возрастная категория`}">12+</span>${this.logo(ru`С возвращением, Ловчий!`)}${Realms.banner(true)}
-      <div class="lg-cta">
-        <div class="hero ${guest ? 'is-guest' : ''}" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
-          <div class="hero-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="hero-lvl">${d.level}</span></div>
-          <div class="hero-main"><b>${U.esc(d.name)}</b><small>${UI.rank(d.level)} · ${ru`${d.level} уровень`}</small><div class="acc-tags">${this.accountTags()}</div></div>
-          ${Game.on() ? `<button class="hero-exit" aria-label="${ru`Выйти из учётной записи`}">${UI.I.logout}</button>` : ''}
-          <div class="hero-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>${ru`духов`}</span></div><div><b>${dex}<small>/${SPECIES.length}</small></b><span>${ru`бестиарий`}</span></div>
+    // 5.1.35: Ловчий — под названием игры, без подложки, прямо на небе: аватар в золотом кольце с уровнем, имя, звание, вход и «Выйти», три числа
+    root.querySelector('.lg-body').innerHTML = `<div class="ent ent-tap">${this.top()}<div class="ent-mid">${Loader.mark(ru`С возвращением, Ловчий!`)}
+        <div class="ent-hero" style="--cc:${d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24'}">
+          <div class="eh-ava"><div class="acc-ava">${Art.avatar(d.look)}</div><span class="eh-lvl">${d.level}</span></div>
+          <b class="eh-name">${U.esc(d.name)}</b><small class="eh-rank">${UI.rank(d.level)} · ${ru`${d.level} уровень`}</small>
+          <div class="eh-acc"><div class="acc-tags">${this.accountTags()}</div>${Game.on() ? `<button class="eh-exit" aria-label="${ru`Выйти из учётной записи`}">${UI.I.logout}<span>${ru`Выйти`}</span></button>` : ''}</div>
+          <div class="eh-stats"><div><b>${U.fmtNum(d.spirits.length)}</b><span>${ru`духов`}</span></div><div><b>${dex}<small>/${SPECIES.length}</small></b><span>${ru`бестиарий`}</span></div>
             <div><b>${U.fmtNum(d.stats.caught || 0)}</b><span>${ru`поймано`}</span></div></div>
-        </div>
-        ${UI.rune(ru`Продолжить`, 'lg-go')}
-        ${!Game.on() ? '' : guest ? UI.glass(ru`Сохрани прогресс`, 'lg-save', UI.I.cloud) : UI.glass(ru`Другой аккаунт`, 'lg-more', UI.I.swap)}
-        ${guest && Game.on() ? `<p class="lg-legal">${ru`Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс`}</p>` : ''}
-      </div></div>`;
-    root.querySelector('.lg-go').onclick = () => { Sfx.init(); Sfx.play('tap'); this.close(root, done); };
-    Realms.bind(root); // 4.6: выбор сервера (пока только интерфейс)
-    const save = root.querySelector('.lg-save');
-    if (save) save.onclick = () => this.sheet(root, `<b>${ru`Сохрани прогресс`}</b><small>${ru`Привяжи вход — и прогресс откроется на любом устройстве`}</small>`, this.buttons('link'));
-    const more = root.querySelector('.lg-more');
-    if (more) more.onclick = () => this.sheet(root, `<b>${ru`Другой аккаунт`}</b><small>${ru`Текущий прогресс останется в своей учётной записи`}</small>`,
-      avail.map(k => `<button class="btn login-btn" data-switch="${k}">${this.icon(k)}${this.NAMES[k]}</button>`).join(''));
-    const out = root.querySelector('.hero-exit');
+        </div></div>
+      ${guest && Game.on() ? `<div class="ent-cta"><p class="ent-legal">${ru`Гость играет только на этом устройстве — привяжи вход, чтобы не потерять прогресс`}</p></div>` : ''}</div>`;
+    UI.tapGo(root, () => this.close(root, done), root.querySelector('.ent')); // касание в любом месте, кроме значка сервера и «Выйти»
+    Realms.bind(root); // 4.6: выбор сервера (на боевом — состояние настоящего сервера)
+    const out = root.querySelector('.eh-exit');
     if (out) out.onclick = () => this.askSignOut();
-  },
-  async switchTo(provider) {
-    if (this.isGuest()) return this.start(provider, 'link');
-    this.leaving(provider);
-    await this.dropSession();
-    // новый гость создастся при возвращении; если вход через сервис уже привязан — игра сразу откроет ту учётную запись
-    return this.start(provider, 'start');
   },
   // 3.31.1: выйти только на этом устройстве и не дольше 1,5 с. Раньше sb.auth.signOut() шёл на сервер и ждал
   // внутреннюю блокировку клиента — после нажатия кнопки входа до 15 с ничего не происходило
