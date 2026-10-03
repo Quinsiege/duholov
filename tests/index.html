@@ -24,6 +24,7 @@
   <script src="../www/js/version.js"></script>
   <script src="../www/js/i18n.js" data-lang="ru"></script>
   <script src="../www/js/config.js"></script>
+  <script src="../www/js/metrics.js"></script>
   <script src="../www/js/settings.js"></script>
   <script src="../www/js/myth-greek.js"></script>
   <script src="../www/js/myth-norse.js"></script>
@@ -54,9 +55,10 @@
   <script src="../www/js/sky.js"></script>
   <script src="../www/js/music.js"></script>
   <script src="../www/js/world.js"></script>
-  <script src="../www/js/navmap.js"></script>
   <script src="../www/js/stage.js"></script>
   <script src="../www/js/walk.js"></script>
+  <script src="../www/js/m3d.js"></script>
+  <script src="../www/js/bld3d.js"></script>
   <script src="../www/js/map.js"></script>
   <script src="../www/js/encounter.js"></script>
   <script src="../www/js/raid.js"></script>
@@ -129,7 +131,7 @@
     eq(ru`Сила ${5}`, 'Сила 5');
     const was = { dict: I18N.dict, lang: I18N.lang, pats: I18N._pats };
     try {
-      I18N.dict = { 'Сила {0}': 'Power {0}', 'Нужна команда': 'Team needed', '{0} ускользнул': '{0} got away', 'Уголёк': 'Ugolyok', 'Дань с {0} Капищ': '{0} tribute' };
+      I18N.dict = { 'Сила {0}': 'Power {0}', 'Нужна команда': 'Team needed', '{0} ускользнул': '{0} got away', 'Уголёк': 'Ugolyok', 'Дань с {0} Святилищ': '{0} tribute' };
       I18N._pats = null; I18N.lang = 'en';
       eq(ru`Сила ${7}`, 'Power 7');
       eq(ru('Нужна команда'), 'Team needed');
@@ -217,11 +219,11 @@
     ok(Rules.koMs({ sid: 'koschey' }) === 24 * 3600000 && Rules.koMs({ sid: 'ugolek' }) === 2 * 3600000, 'от 2 до 24 часов');
     S.setHp(sp, 1, t0); ok(!('hpf' in sp) && !('ko' in sp), 'здоровый — без лишних полей');
   });
-  test('Регионы (4.28): вещие птицы — по всему миру (часть света — их родина по легенде)', () => {
+  test('Регионы (4.28): вещие птицы — славянские духи, водятся на славянской родине (5.1.26)', () => {
     eq(W.region(37), 'west'); eq(W.region(60), 'center'); eq(W.region(130), 'east');
-    ok(W.local(SP.sirin, 37) && W.local(SP.sirin, 100) && W.local(SP.sirin, -74), 'Сирин');
-    ok(W.local(SP.gamayun, 130) && W.local(SP.gamayun, 37), 'Гамаюн');
-    ok(W.local(SP.ugolek, 130), 'обычные духи везде');
+    ok(W.home(SP.sirin, 55.75, 37.62) && W.home(SP.sirin, 55.03, 82.92) && !W.home(SP.sirin, 40.71, -74), 'Сирин — в Москве и Новосибирске, не в Нью-Йорке');
+    ok(W.home(SP.gamayun, 43.12, 131.89) && !W.home(SP.gamayun, 35.68, 139.69), 'Гамаюн — во Владивостоке, не в Токио');
+    ok(W.home(SP.ugolek, 55.75, 37.62) && !W.home(SP.ugolek, 37.98, 23.73), 'Уголёк — дома, не в Афинах');
   });
   // Реальные объекты: подкладываем набор «с сервера»
   const fakePois = [];
@@ -230,16 +232,16 @@
     fakePois.push({ id, name: 'Объект ' + i, kind: i % 3 ? 'spring' : 'shrine', lat: 55.75 + (U.h('la', i) - 0.5) * 0.02, lng: 37.62 + (U.h('ln', i) - 0.5) * 0.03, photo: i === 1 ? 'u/p.jpg' : null });
   }
   fakePois.forEach(p => { p.t = Poi.tileId(p.lat, p.lng); Poi.list.set(p.id, p); });
-  test('Источники, разломы и капища стоят у реальных объектов', () => {
+  test('Источники, разломы и святилища стоят у реальных объектов', () => {
     const sp = W.springsAround(55.75, 37.62, 2000);
     ok(sp.length > 0, 'источники');
     ok(sp.every(s => Poi.list.get(s.id) && Poi.list.get(s.id).kind === 'spring'), 'источник = объект типа «источник»');
     const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
     ok(rf.every(r => SP[r.boss] && r.tier >= 1 && r.tier <= 3 && r.place), 'разломы');
-    ok(sh.length > 0, 'капища');
+    ok(sh.length > 0, 'святилища');
     const shrines = fakePois.filter(p => p.kind === 'shrine' && U.dist(55.75, 37.62, p.lat, p.lng) <= 3000).length;
-    eq(rf.length + sh.length, shrines, 'разлом открывается вместо капища');
-    ok(!sh.some(s => rf.some(r => r.id.startsWith(s.id + ':'))), 'капище с разломом скрыто');
+    eq(rf.length + sh.length, shrines, 'разлом открывается вместо святилища');
+    ok(!sh.some(s => rf.some(r => r.id.startsWith(s.id + ':'))), 'святилище с разломом скрыто');
     const g = W.guardian(sh[0]);
     eq(g.team.length, 3, 'команда хранителя');
     ok(g.team.every(x => !SP[x.sid].legend && !SP[x.sid].region), 'без легенд и региональных');
@@ -258,20 +260,20 @@
       // граница недели — как у событий недели (Ev.week: понедельник 00:00 UTC)
       const edge = (w0 + 1) * 7 - 3, p = ids.find(x => on[0].has(x.id));
       ok(W.awake(p, 'shrine', edge * 86400000 - 1) && !W.awake(p, 'shrine', edge * 86400000), 'засыпает ровно в понедельник 00:00 UTC');
-      ok(ids.slice(0, 50).every(x => W.awake(x, 'spring', t(0)) === W.awake(x, 'shrine', t(0))), 'правило одно для Источника и Капища');
+      ok(ids.slice(0, 50).every(x => W.awake(x, 'spring', t(0)) === W.awake(x, 'shrine', t(0))), 'правило одно для Источника и Святилища');
       ok([0, 1, 2, 3, 4].every(k => W.awake({ id: 'usr:00000000-0000-0000-0000-000000000001' }, 'shrine', t(k))), 'место игрока не спит');
       const sleeping = ids.find(x => !on[0].has(x.id));
       S.d.tut = 3;
       ok(W.awake(sleeping, 'spring', t(0)), 'новичку на обучении — все Источники');
-      ok(!W.awake(sleeping, 'shrine', t(0)), 'Капища у новичка — как у всех');
+      ok(!W.awake(sleeping, 'shrine', t(0)), 'Святилища у новичка — как у всех');
       S.d.tut = 0;
-      // на карте и в списках — только бодрствующие; у спящего Капища нет ни Капища, ни Разлома (и Великого — тоже)
+      // на карте и в списках — только бодрствующие; у спящего Святилища нет ни Святилища, ни Разлома (и Великого — тоже)
       const hour = Math.floor(U.now() / 3600000), aw = x => W.awake(x, x.kind);
       const sp = W.springsAround(55.75, 37.62, 3000), in3 = x => U.dist(55.75, 37.62, x.lat, x.lng) <= 3000;
       eq(sp.length, fakePois.filter(x => x.kind === 'spring' && in3(x) && aw(x)).length, 'Источники — только бодрствующие');
       ok(sp.length < fakePois.filter(x => x.kind === 'spring' && in3(x)).length, 'часть Источников спит');
       const rf = W.riftsAround(55.75, 37.62, 3000), sh = W.shrinesAround(55.75, 37.62, 3000);
-      eq(rf.length + sh.length, fakePois.filter(x => x.kind === 'shrine' && in3(x) && aw(x)).length, 'Капища и Разломы — только у бодрствующих');
+      eq(rf.length + sh.length, fakePois.filter(x => x.kind === 'shrine' && in3(x) && aw(x)).length, 'Святилища и Разломы — только у бодрствующих');
       const zz = fakePois.find(x => x.kind === 'shrine' && !aw(x)), rr = W.riftAt;
       W.riftAt = () => true;
       try { eq(W.riftFor(zz, 0, hour), null, 'у спящего места Разлома нет'); ok(W.riftFor(fakePois.find(x => x.kind === 'shrine' && aw(x)), 0, hour), 'у бодрствующего — есть'); }
@@ -475,10 +477,10 @@
       let x0 = S.d.xp; S.evolve(a); eq(S.d.xp - x0, 1000 * mul, 'новый вид');
       x0 = S.d.xp; S.evolve(b); eq(S.d.xp - x0, 200 * mul, 'повторное превращение');
     } finally { S.d = keep; }
-    // лестница открытий: Капища, Лига, кланы и Аукцион — с 5 уровня (5.1.11), вторжения — позже; всё — в «Пути Ловчего»
+    // лестница открытий: Святилища, Лига, кланы и Аукцион — с 5 уровня (5.1.11), вторжения — позже; всё — в «Пути Ловчего»
     ok(DUEL_LEVEL === 5 && League.LEVEL === 5 && CLAN_LEVEL === 5 && Rules.AUCTION.LEVEL === 5 && INVASION_LEVEL > 5, 'уровни открытия');
     const un = Path.unlocks();
-    [[DUEL_LEVEL, 'Капища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Клан'], [Rules.AUCTION.LEVEL, 'Аукцион']]
+    [[DUEL_LEVEL, 'Святилища предков'], [INVASION_LEVEL, 'Вторжения Нави'], [League.LEVEL, 'Лига Ордена'], [CLAN_LEVEL, 'Клан'], [Rules.AUCTION.LEVEL, 'Аукцион']]
       .forEach(([l, t]) => ok((un[l] || []).some(x => I18N.back(x.t) === t), `${t} — на ${l} уровне пути`));
     const d0 = S.d.level; S.d.level = INVASION_LEVEL - 1;
     try { ok(!Array.from({ length: 300 }, (_, i) => W.springFor({ id: 'osm:n' + (70000 + i), lat: 55.75, lng: 37.62, name: 'Р' }, 0)).some(e => e.invaded), 'до INVASION_LEVEL вторжений нет'); }
@@ -867,7 +869,7 @@
       Math.random = () => 0.1; S.riftSpoils('kostrovik', 2); eq(S.d.alatyr, 2, 'разлом — иногда');
       S.riftSpoils('koschey', 3); eq(S.d.alatyr, 2, `в бою — не больше ${S.ALATYR_DAY} осколков в день`);
       S.d.alaDay = { day: 'вчера', n: 9 };
-      eq(S.alatyrDrop('duel', 2).length, 0, 'Капище мастера — без осколков'); Math.random = () => 0.05; eq(S.alatyrDrop('duel', 3).length, 1, 'старейшина — изредка; новый день — новый счёт');
+      eq(S.alatyrDrop('duel', 2).length, 0, 'Святилище мастера — без осколков'); Math.random = () => 0.05; eq(S.alatyrDrop('duel', 3).length, 1, 'старейшина — изредка; новый день — новый счёт');
       S.d.alatyr = 3;
       const b0 = S.bagCount(), got = S.giveRewards({ alatyr: 2, rod: 5 }); eq(S.d.alatyr, 5); eq(got.length, 2); eq(S.bagCount(), b0, 'в сумку не идут');
     } finally { Math.random = m; }
@@ -877,15 +879,15 @@
     const PTS = [[55.75, 37.62], [55.8, 49.1], [43.3, 45.7], [56.8, 60.6], [55.0, 82.9], [43.1, 131.9], [68.9, 33.1], [52.3, 104.3], [48.8, 2.35],
       [37.98, 23.73], [59.91, 10.75], [30.04, 31.24], [39.9, 116.4], [19.43, -99.13]];
     SPECIES.forEach(s => {
-      const wild = !s.legend && PTS.some(([la, ln]) => W.local(s, ln, la)), evo = SPECIES.some(x => x.evo === s.id);
+      const wild = !s.legend && PTS.some(([la, ln]) => W.home(s, la, ln)), evo = SPECIES.some(x => x.evo === s.id); // 5.1.26: на родине
       const rift = s.legend; // 4.24: легенды бывшей Летописи — тоже в разломах
       ok(wild || evo || rift, 'недостижим: ' + s.id);
     });
-    // где бы ни был Ловчий, духа чужих краёв (и не своего сезона) приведёт поручение: он либо здешний, либо гость
+    // сезонного духа не в свой сезон приведёт поручение на его родине (5.1.26: только там — гости тоже здешние)
     PTS.forEach(([la, ln]) => {
       const g = new Set(S.guests(la, ln).map(s => s.id));
-      SPECIES.filter(s => s.stage === 1 && !s.legend && (s.region || s.land || s.season)).forEach(s =>
-        ok(g.has(s.id) !== (W.local(s, ln, la) && Ev.seasonal(s) > 0), `${s.id} в ${la},${ln}`));
+      SPECIES.filter(s => s.stage === 1 && !s.legend).forEach(s =>
+        ok(g.has(s.id) === (!!s.season && W.home(s, la, ln) && !(Ev.seasonal(s) > 0)), `${s.id} в ${la},${ln}`));
     });
   });
   test('Поручения (4.16): трудное поручение может привести гостя издалека', () => {
@@ -895,7 +897,7 @@
       const seq = [0.99, 0.5, 0.5, 0.1, 0.5]; let i = 0; Math.random = () => seq[i++ % seq.length];
       const t = S.makeTask({ lat: 55.75, lng: 37.62 }); eq(t.tier, 3); ok(t.guest, 'гость');
       ok(S.guests(55.75, 37.62).some(s => s.id === t.sid), 'гость — не здешний дух');
-      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].region && !SP[t2.sid].land && !SP[t2.sid].season, 'обычно — обычный дух');
+      i = 0; seq[3] = 0.9; const t2 = S.makeTask({ lat: 55.75, lng: 37.62 }); ok(!t2.guest && !SP[t2.sid].season && SP[t2.sid].myth === 'slavic', 'обычно — здешний дух, не гость (5.1.26: с родины источника)');
       i = 0; seq[3] = 0.1; ok(!S.makeTask().guest, 'без места — без гостей');
     } finally { Math.random = m; S.d.level = lv; }
   });
@@ -913,7 +915,7 @@
     try {
       const team = lvl => ['ugolek', 'kapelka', 'mshonok'].map((sid, i) => S.makeSpirit(sid, lvl, 'bt' + sid + lvl + i));
       S.d.spirits.push(...team(15)); // 4.16: хранитель — по силе сильнейших духов игрока
-      const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Капище' });
+      const g = W.guardian({ id: 'osm:n7773', tier: 3, name: 'Святилище' });
       ok(!Rules.duelWinnable(team(1), g.team, SHRINE_TIERS[3].speed), 'команда 1-го уровня против Старейшины — нет');
       ok(Rules.duelWinnable(team(15), g.team, SHRINE_TIERS[3].speed), 'сильная команда — да');
       // 4.16: здоровье на входе в бой — израненная команда не «побеждает» того, кого здоровая одолела бы
@@ -923,7 +925,7 @@
     } finally { S.d = saved; }
   });
   // 4.16: хранитель и прислужник — по силе духов игрока, а не по его уровню
-  test('Капища и вторжения: сила соперника — от силы духов игрока (4.16)', () => {
+  test('Святилища и вторжения: сила соперника — от силы духов игрока (4.16)', () => {
     const saved = S.d; S.newGame('Сила', 'ugolek'); S.d.level = 30;
     try {
       const pw = t => t.reduce((a, x) => a + S.power(x), 0);
@@ -1006,15 +1008,16 @@
     near(1 + 0.8 * (2 - 1), 1.8, 1e-9); near(1 + 0.8 * (4 - 1), 3.4, 1e-9);
     ok(!Cloud.configured() || typeof CLOUD_CONFIG.url === 'string', 'конфиг облака');
   });
-  test('Духи родных земель (4.28): у каждого края свой, а встречаются везде', () => {
+  test('Духи родных земель (4.28): у каждого края свой, водятся по всей славянской родине (5.1.26)', () => {
     const cities = [['Москва', 55.75, 37.62, 'center'], ['Калининград', 54.71, 20.51, 'center'], ['Мурманск', 68.97, 33.07, 'north'], ['Казань', 55.79, 49.12, 'volga'],
       ['Сочи', 43.59, 39.72, 'caucasus'], ['Екатеринбург', 56.84, 60.61, 'ural'], ['Новосибирск', 55.03, 82.92, 'siberia'], ['Владивосток', 43.12, 131.89, 'fareast']];
     cities.forEach(([n, lat, lng, land]) => eq(W.land(lat, lng), land, n));
     const lands = SPECIES.filter(s => s.land);
     eq(lands.length, Object.keys(LANDS).length, 'по духу на каждую землю');
     ok(lands.every(s => LANDS[s.land] && s.rar === 4 && Art.svgOf({ sid: s.id }).startsWith('<svg')), 'данные и рисунки');
-    // дух родной земли встречается в любом краю и за границей
-    cities.concat([['Нью-Йорк', 40.71, -74.0], ['Токио', 35.68, 139.69]]).forEach(([n, lat, lng]) => lands.forEach(s => eq(W.local(s, lng, lat), true, `${s.name} в ${n}`)));
+    // дух родной земли встречается в любом краю России, но не за границей славянской родины
+    cities.forEach(([n, lat, lng]) => lands.forEach(s => eq(W.home(s, lat, lng), true, `${s.name} в ${n}`)));
+    [['Нью-Йорк', 40.71, -74.0], ['Токио', 35.68, 139.69]].forEach(([n, lat, lng]) => lands.forEach(s => eq(W.home(s, lat, lng), false, `${s.name} в ${n}`)));
   });
   test('Советы (4.24 — без наставника): подсказки по делу и в нужном порядке', () => {
     const keep = S.d;
@@ -1082,7 +1085,9 @@
     ok(all.every(x => x.k === 'medal' || ['sparks', 'zlat', 'rod'].includes(x.k) || ITEMS[x.k]), 'только валюта, предметы и знак — без обликов');
     eq(R.roman(14), 'XIV'); eq(R.roman(49), 'XLIX'); eq(R.title(2), 'Итоги сезона Алатыря II', 'номер не отрывается');
     // выдача: один раз на сезон; знак — за сезоны с вкладом от MEDAL_MIN
-    const keep = S.d; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    const keep = S.d, addXP0 = S.addXP; S.d = JSON.parse(JSON.stringify(keep)); S.d.alaRw = undefined;
+    // 5.1.21: опыт за знаки (×10) поднимал уровень, и монеты нового уровня путали счёт — здесь проверяется только выдача сезона
+    S.addXP = () => 0;
     try {
       S.d.medals = {}; S.d.stats.alaSeasons = 0; S.d.sparks = 0; S.d.zlat = 0;
       const got = R.grant(S, 5, 31), z30 = T.filter(t => t.n <= 31).reduce((a, t) => a + (t.rw.zlat || 0), 0);
@@ -1093,7 +1098,7 @@
       eq(R.grant(S, 7, 0).length, 0); ok('7' in S.d.alaRw, 'пустой сезон тоже отмечен');
       R.grant(S, 8, 5); eq(S.d.stats.alaSeasons, 2);
       eq(R.grant(S, 0, 50).length, 0, 'сезона 0 нет'); eq(R.grant(S, 'x', 50).length, 0);
-    } finally { S.d = keep; }
+    } finally { S.d = keep; S.addXP = addXP0; }
   });
 
   test('Настройки и позиция на карте не входят в прогресс', () => {
@@ -1101,11 +1106,113 @@
     S.d = d; S.migrate(); S.d = keep;
     ok(!('settings' in d) && !('lastPos' in d) && !('tutPos' in d));
   });
-  test('Время игры: «сегодня», час и ночь — в часовом поясе игрока', () => {
-    const t = Date.UTC(2026, 8, 23, 22, 30), saved = U.tz;
-    U.tz = 180; eq(U.today(t), '2026-9-24'); eq(U.hour(t), 1); ok(U.isNight(t), 'ночь в Москве');
-    U.tz = -300; eq(U.today(t), '2026-9-23'); eq(U.hour(t), 17); ok(!U.isNight(t), 'вечер в Нью-Йорке');
-    U.tz = saved;
+  test('Время игры (5.1.26): «сегодня» — в поясе игрока, час и ночь — по солнцу там, где Ловчий', () => {
+    const t = Date.UTC(2026, 8, 23, 22, 30), saved = U.tz, pos = MapView.pos;
+    try {
+      U.tz = 180; eq(U.today(t), '2026-9-24'); U.tz = -300; eq(U.today(t), '2026-9-23'); // календарь — по поясу игрока, где бы он ни стоял
+      eq(U.hour(t, 37.62), 1, 'в Москве — час ночи'); eq(U.hour(t, -74), 17, 'в Нью-Йорке — пять вечера'); eq(U.hour(t, 139.7), 7, 'в Токио — семь утра');
+      ok(U.isNight(t, 55.75, 37.62), 'ночь в Москве'); ok(!U.isNight(t, 35.68, 139.69), 'утро в Токио');
+      ok(U.isNight(t, 40.71, -74), 'в Нью-Йорке вечерние сумерки — для духов уже ночь (карта тёмная)');
+      ok(!U.isNight(Date.UTC(2026, 8, 23, 20, 45), 35.68, 139.69), 'в Токио рассвет — уже день');
+      // без места — там, где Ловчий на карте: шаг во Врата меняет и время суток
+      MapView.pos = { lat: 55.75, lng: 37.62 }; ok(U.isNight(t)); eq(U.hour(t), 1);
+      MapView.pos = { lat: 35.68, lng: 139.69 }; ok(!U.isNight(t)); eq(U.hour(t), 7);
+      eq(U.phase(35.68, 139.69, t), 'day'); eq(U.phase(55.75, 37.62, t), 'night');
+    } finally { U.tz = saved; MapView.pos = pos; }
+  });
+  test('Родина (5.1.26): дух водится только у себя на родине', () => {
+    const at = (la, ln) => W.homes(la, ln).join('+');
+    [['Москва', 55.75, 37.62, 'slavic'], ['Прага', 50.09, 14.42, 'slavic'], ['Тбилиси', 41.72, 44.79, 'slavic'], ['Ташкент', 41.31, 69.28, 'slavic'],
+      ['Афины', 37.98, 23.73, 'greek'], ['Рим', 41.89, 12.49, 'greek'], ['Мадрид', 40.42, -3.7, 'greek'], ['Лиссабон', 38.72, -9.14, 'greek'], ['Анкара', 39.93, 32.86, 'greek'],
+      ['Осло', 59.91, 10.74, 'norse'], ['Берлин', 52.52, 13.4, 'norse'], ['Вена', 48.21, 16.37, 'norse'], ['Рига', 56.95, 24.11, 'norse'], ['Рейкьявик', 64.14, -21.93, 'norse'],
+      ['Дублин', 53.35, -6.26, 'celtic'], ['Лондон', 51.51, -0.13, 'celtic'], ['Париж', 48.86, 2.35, 'celtic'], ['Брюссель', 50.85, 4.35, 'celtic'], ['Амстердам', 52.37, 4.9, 'celtic'],
+      ['Каир', 30.04, 31.24, 'egypt'], ['Кейптаун', -33.92, 18.42, 'egypt'], ['Дубай', 25.2, 55.27, 'egypt'], ['Тегеран', 35.69, 51.39, 'egypt'],
+      ['Пекин', 39.9, 116.4, 'china'], ['Сеул', 37.57, 126.98, 'china'], ['Токио', 35.68, 139.69, 'china'], ['Дели', 28.61, 77.21, 'china'], ['Сидней', -33.87, 151.21, 'china'],
+      ['Мехико', 19.43, -99.13, 'aztec'], ['Нью-Йорк', 40.71, -74.0, 'aztec'], ['Буэнос-Айрес', -34.6, -58.38, 'aztec']].forEach(([n, la, ln, m]) => eq(at(la, ln), m, n));
+    // у городов Атласа родина — из мифологий их части света, и у каждой мифологии есть город Атласа на родине
+    const seen = new Set();
+    for (const L of WORLD_LANDS) for (const p of Atlas.PLACES[L.id] || []) {
+      const h = W.homes(p[3], p[4]); h.forEach(m => seen.add(m));
+      ok(h.length && h.every(m => L.myths.includes(m)), `${p[1]}: ${h.join('+')} — не из ${L.id}`);
+    }
+    MYTH_KEYS.forEach(m => ok(seen.has(m), 'нет города Атласа на родине: ' + m));
+    ok(Object.keys(MYTH_HOME).every(m => MYTHS[m]), 'точки — только у мифологий игры');
+    // японская мифология ещё закрыта — в Японии китайские духи; откроется — будут и те и другие
+    const keys = MYTH_KEYS.slice();
+    try { MYTH_KEYS.push('japan'); eq(at(35.68, 139.69), 'china+japan', 'Токио с японской'); eq(at(39.9, 116.4), 'china', 'Пекин с японской'); }
+    finally { MYTH_KEYS.length = 0; MYTH_KEYS.push(...keys); }
+    // духи на карте — только здешние
+    [[37.98, 23.73, 'greek'], [19.43, -99.13, 'aztec'], [-33.87, 151.21, 'china']].forEach(([la, ln, m]) => {
+      const a = W.spawnsAround(la, ln, 1500).filter(x => !x.tut); ok(a.length > 20, 'духов мало: ' + a.length);
+      ok(a.every(x => SP[x.sid].myth === m), `не только ${m}: ` + a.filter(x => SP[x.sid].myth !== m).map(x => x.sid).join(','));
+    });
+    // поручение у источника и отряд Нави — тоже здешние
+    const m = Math.random, lv = S.d.level;
+    try {
+      S.d.level = 30;
+      for (let k = 0; k < 40; k++) { const t = S.makeTask({ lat: 37.98, lng: 23.73 }); ok(SP[t.sid].myth === 'greek' && !SP[t.sid].time, 'поручение в Афинах: ' + t.sid); }
+    } finally { Math.random = m; S.d.level = lv; }
+    for (let k = 0; k < 20; k++) ok(W.grunt({ invId: 'g' + k, lat: 59.91, lng: 10.74 }).team.every(x => SP[x.sid].myth === 'norse'), 'прислужник в Осло');
+  });
+  test('Ночные духи — только ночью, дневные — только днём (5.1.26)', () => {
+    const skew = U.skew, at = t => { U.skew = t - Date.now(); return W.spawnsAround(55.75, 37.62, 2500).filter(x => !x.tut); };
+    try {
+      const night = at(Date.UTC(2026, 9, 1, 21, 0)), day = at(Date.UTC(2026, 9, 1, 9, 30)); // в Москве 23:30 и полдень по солнцу
+      ok(night.length > 300 && day.length > 300, 'духов мало');
+      ok(!night.some(x => SP[x.sid].time === 'day'), 'ночью дневных нет');
+      ok(night.some(x => SP[x.sid].time === 'night'), 'ночью выходят ночные');
+      ok(!day.some(x => SP[x.sid].time === 'night'), 'днём ночных нет');
+      // дух не меняется, пока живёт на карте: через 5 минут те же клетки — те же духи
+      const a = at(Date.UTC(2026, 9, 1, 21, 0)), b = new Map(at(Date.UTC(2026, 9, 1, 21, 5)).map(x => [x.id, x.sid]));
+      ok(a.filter(x => b.has(x.id)).every(x => b.get(x.id) === x.sid), 'дух сменился за время жизни');
+      // рассвело — ночной уходит сразу, не дожидаясь конца своих 15 минут
+      const t0 = Date.UTC(2026, 9, 1, 2, 0); let dawn = t0;
+      while (U.isNight(dawn, 55.75, 37.62)) dawn += 60000; // первая минута дня в Москве
+      const before = at(dawn - 60000).filter(x => SP[x.sid].time === 'night'), after = new Set(at(dawn + 60000).map(x => x.id));
+      ok(before.length, 'перед рассветом есть ночные'); ok(before.every(x => !after.has(x.id)), 'на рассвете ночные ушли');
+    } finally { U.skew = skew; }
+  });
+  test('Святилища и Разломы (5.1.26): в своих краях; учебный дух и хранитель Разлома Кампании — здешние', () => {
+    const at = (la, ln) => ({ id: 'osm:n' + Math.round(la * 1000) + ':' + Math.round(ln * 1000), lat: la, lng: ln, name: 'Место' });
+    [[55.75, 37.62, 'slavic'], [37.98, 23.73, 'greek'], [59.91, 10.74, 'norse'], [48.86, 2.35, 'celtic'], [30.04, 31.24, 'egypt'], [39.9, 116.4, 'china'], [19.43, -99.13, 'aztec']]
+      .forEach(([la, ln, m]) => {
+        for (let k = 0; k < 15; k++) {
+          const p = { ...at(la, ln), id: `osm:n${k}:${la}` };
+          eq(W.placeMyth(p), m, `место у ${la},${ln}`);
+          const s = W.shrineFor(p, 0); eq(s.myth, m); ok(MYTH_PLACES[m].gods.includes(s.god), 'бог святилища — этой мифологии');
+          const r = W.riftFor(p, 0, 500000 + k);
+          if (r && !r.fin) { eq(r.myth, m); ok(SP[r.boss].myth === m || r.boss === 'koschey', `босс Разлома у ${la},${ln}: ${r.boss}`); }
+        }
+      });
+    // без координат (удержания до 5.1.26) — как раньше, по id
+    ok(MYTH_KEYS.includes(W.placeMyth({ id: 'osm:n1' })), 'без координат — одна из мифологий');
+    // японская откроется — места Японии поделят китайская и японская
+    const keys = MYTH_KEYS.slice();
+    try {
+      MYTH_KEYS.push('japan');
+      const jp = [...Array(200)].map((_, k) => W.placeMyth({ id: 'osm:j' + k, lat: 35.68, lng: 139.69 })), nj = jp.filter(m => m === 'japan').length;
+      ok(jp.every(m => m === 'japan' || m === 'china') && nj > 60 && nj < 140, 'Япония — пополам: ' + nj);
+    } finally { MYTH_KEYS.length = 0; MYTH_KEYS.push(...keys); }
+    // дань клана: удержание с координатами — по родине места
+    const keep = S.d.clan;
+    try { S.d.clan = 'aztec'; ok(Clans.mine({ id: 'osm:x1', lat: 19.43, lng: -99.13 }) && !Clans.mine({ id: 'osm:x1', lat: 55.75, lng: 37.62 }), 'своё святилище — на родине клана'); }
+    finally { S.d.clan = keep; }
+    // учебный дух: в Москве — как в шаге, в Мехико — ацтекский малыш той же стихии; выбор постоянный
+    TUT.filter(s => s.kind === 'catch').forEach(st => {
+      eq(S.tutSid(st, 55.75, 37.62), st.sid, 'в Москве — ' + st.sid);
+      const a = SP[S.tutSid(st, 19.43, -99.13)];
+      ok(a.myth === 'aztec' && a.el === SP[st.sid].el && a.rar === 1 && a.stage === 1 && !a.time, 'в Мехико: ' + a.id);
+      eq(S.tutSid(st, 19.43, -99.13), a.id, 'тот же');
+      eq(SP[S.tutSid(st, 37.98, 23.73)].myth, 'greek', 'в Афинах');
+    });
+    // хранитель Разлома Кампании — из мифологии места; ушёл в другой край — хранитель новый
+    const d0 = S.d;
+    try {
+      S.d = JSON.parse(JSON.stringify(d0)); S.d.camp = { ch: 0, s: 0, p: [0], u: [], pick: null, t: 1, rn: 0 };
+      const r1 = S.campRiftPlace({ lat: 37.98, lng: 23.73 }); eq(SP[r1.boss].myth, 'greek', 'хранитель в Афинах');
+      const r2 = S.campRiftPlace({ lat: 37.99, lng: 23.74 }); eq(r2.boss, r1.boss, 'рядом — тот же');
+      const r3 = S.campRiftPlace({ lat: 19.43, lng: -99.13 }); eq(SP[r3.boss].myth, 'aztec', 'в Мехико — свой');
+    } finally { S.d = d0; }
   });
   test('Разница прогресса: запись, удаление, добавление в начало и в конец', () => {
     const a = { x: 1, o: { y: 2, z: [1, 2, 3] }, j: [{ t: 1 }, { t: 2 }], s: [1, 2], del: 5, sp: [{ uid: 'a', lvl: 1 }, { uid: 'b', lvl: 2 }] };
@@ -1117,7 +1224,7 @@
     eq(Diff.make(b, b).length, 0, 'без изменений — пусто');
   });
 
-  test('Правила 4.16: подсказка цены, залог, усталость защитников, вольные Капища, Золотая тропа на поздних уровнях', () => {
+  test('Правила 4.16: подсказка цены, залог, усталость защитников, вольные Святилища, Золотая тропа на поздних уровнях', () => {
     const h = Rules.auctionHint([{ cur: 'sparks', price: 100, lvl: 10 }, { cur: 'sparks', price: 300, lvl: 10 }, { cur: 'sparks', price: 200, lvl: 12 },
       { cur: 'zlat', price: 5, lvl: 30 }, { cur: 'sparks', price: 9000, lvl: 35 }], 10);
     eq(h.sparks.n, 3, 'только близкие по уровню'); eq(h.sparks.med, 200); eq(h.sparks.lo, 100); eq(h.sparks.hi, 300); eq(h.zlat.n, 1);
@@ -1130,11 +1237,10 @@
     eq(Rules.holdSpirit({ sid: 'kapelka', lvl: 30 }, now - H.MAX_H * 3600000 + 1000, now).lvl, Math.round(30 * (1 - H.WEAK)), 'к концу срока');
     ok(Rules.holdFresh({ t: now - 3600000 }, now) && !Rules.holdFresh({ t: now - H.MAX_H * 3600000 - 1 }, now), 'срок на посту');
     let free = 0; for (let i = 0; i < 4000; i++) if (Rules.shrineFree('osm:n' + i)) free++;
-    near(free / 4000, H.FREE, 0.03, 'доля вольных Капищ');
-    const late = Rules.passReward('gold', 1, Rules.PASS.LATE), early = Rules.passReward('gold', 1, 10);
-    ok(early.charm2 && !late.charm2 && late.charm3, 'на поздних уровнях — золото вместо серебра'); ok(late.sparks > early.sparks, 'и больше искр');
-    ok(Rules.passReward('gold', 10, 30).xpbrew, 'настой опыта'); eq(Rules.passReward('gold', 30, 30).look, 'trail', 'Знак Тропы остаётся');
-    eq(JSON.stringify(Rules.passReward('free', 5, 30)), JSON.stringify(Rules.passReward('free', 5, 10)), 'бесплатная тропа — как была');
+    near(free / 4000, H.FREE, 0.03, 'доля вольных Святилищ');
+    // 5.1.21: Тропа — одна таблица для всех уровней Ловчего (поздней Золотой тропы нет)
+    eq(JSON.stringify(Rules.passReward('gold', 1, 40)), JSON.stringify(Rules.passReward('gold', 1, 5)), 'Золотая — одна для всех уровней');
+    eq(Rules.passReward('gold', 30).look, 'trail', 'Знак Тропы — на вершине Золотой'); eq(Rules.passReward('gold', 15).look, '#065f46', 'плащ — на 15-й');
     ok(!Rules.SHOP.filter(x => x.day).some(x => x.id === Rules.shopDeal(U.today()).id), 'товары «раз в день» не бывают товаром дня');
   });
 
@@ -1168,8 +1274,8 @@
       ok(!Rules.raidWinnable([S.makeSpirit('mshonok', 1, 'r26w')], b3, Raid.bossStats(b3).hp), 'дух 1-го уровня против великого разлома — нет');
       ok(Rules.raidMinLoss(t10, b1, need) > 0, 'после победы раны есть наверняка'); eq(Rules.raidMinLoss(t10, b1, 0), 0);
       S.d.spirits.push(...t10); // хранитель — по силе духов игрока
-      const g = W.guardian({ id: 'osm:n7775', tier: 1, name: 'Капище' });
-      ok(Rules.duelMinLoss(t10, g.team, g.speed) > 0, 'на Капище — тоже');
+      const g = W.guardian({ id: 'osm:n7775', tier: 1, name: 'Святилище' });
+      ok(Rules.duelMinLoss(t10, g.team, g.speed) > 0, 'в Святилище — тоже');
     } finally { S.d = saved; }
     // Лига: в ответе сервера — бой без скрытого от соперника (4.26)
     const side = pid => ({ pid, name: pid, team: [{ uid: pid + '1', sid: 'ugolek', el: 'fire', atk: 120, def: 100, max: 90, cur: 90, emul: 1.3, move2: true, power: 500 }] });
@@ -1229,7 +1335,7 @@
     holdGet: async poi => { const h = DB.holds[poi]; return h && h.holders.length ? JSON.parse(JSON.stringify(h)) : null; },
     // как shrine_defend (023): защитники, чей срок вышел (Rules.HOLD.MAX_H), убираются перед проверками
     holdDefend: async (poi, lat, lng, clan, holder) => {
-      const h = DB.holds[poi] = DB.holds[poi] || { clan, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000;
+      const h = DB.holds[poi] = DB.holds[poi] || { clan, lat, lng, holders: [], ver: 1 }, cut = Date.now() - Rules.HOLD.MAX_H * 3600000; // как shrine_holds: и место
       h.holders = h.holders.filter(x => +x.t >= cut);
       if (h.holders.length && clanOf(h.clan) !== clanOf(clan)) return false; // 4.28: как clan_key в 031 — прежняя дружина и её клан — одно знамя
       if (h.holders.length >= HOLD_MAX || h.holders.some(x => x.pid === holder.pid)) return false;
@@ -1249,7 +1355,7 @@
     },
     roomStart: async (code, pid) => { const r = DB.rooms[code]; if (!r || r.host_pid !== pid || r.status !== 'lobby') return null; r.status = 'started'; r.started_at = new Date().toISOString(); return JSON.parse(JSON.stringify(r)); },
     roomLeave: async (code, pid) => { const r = DB.rooms[code]; if (!r) return; r.members = r.members.filter(x => x.pid !== pid); if (r.host_pid === pid && r.status === 'lobby') r.status = 'closed'; },
-    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Капище', lat: 0, lng: 0, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
+    myHoldsList: async pid => Object.entries(DB.holds).filter(([, h]) => h.holders.some(x => x.pid === pid && +x.t >= Date.now() - Rules.HOLD.MAX_H * 3600000)).map(([id, h]) => { const x = h.holders.find(y => y.pid === pid); return { id, name: 'Святилище', lat: h.lat, lng: h.lng, sid: x.sp.sid, sp: x.sp, t: x.t, n: h.holders.length }; }),
     clanCounts: async box => { const o = {}; MYTH_KEYS.forEach(k => { o[k] = 0; }); Object.values(DB.holds).forEach(h => { const k = clanOf(h.clan); if (h.holders.length && k in o) o[k]++; }); return o; },
     // аукцион — как в serve.js: смена статуса только из ожидаемого, повтор выдачи — если не выдан
     lotCreate: async row => { const l = { id: crypto.randomUUID(), status: 'open', delivered: false, settled: false, created_at: new Date().toISOString(), ...JSON.parse(JSON.stringify(row)) }; DB.lots.push(l); return { ...l }; },
@@ -1456,6 +1562,17 @@
     A.data.items.charm = 0; A.data.items.charm2 = 0; A.data.items.charm3 = 0;
     await refuse(A, 'encStart', { kind: 'wild', id: e.id }, /Обереги закончились/);
   });
+  atest('Сервер (5.1.26): учебные духи — с родины места, где начал Ловчий', async () => {
+    const A = await newPlayer('utm', 19.43, -99.13, 'Мехико');
+    for (const id of ['catch1', 'catch2']) {
+      const st = TUT[A.data.tut - 1]; eq(st.id, id);
+      await must(A, 'encStart', { kind: 'tut' });
+      const r = await withRandom(0.9999, () => must(A, 'encThrow', { item: 'charm', hit: true }));
+      const s = SP[A.data.spirits[A.data.spirits.length - 1].sid];
+      ok(r.caught && s.myth === 'aztec' && s.el === SP[st.sid].el, `${id}: ${s.id}`);
+      eq(s.id, S.tutSid(st, 19.43, -99.13), 'тот же, что рисует телефон');
+    }
+  });
   atest('Сервер: обучение подсказками (4.24) — пропустить нельзя, шаги строго по порядку, награды за этапы', async () => {
     const A = await newPlayer('ud', 55.73, 37.61, 'Дельта');
     const at = () => TUT[A.data.tut - 1], idx = id => TUT.findIndex(s => s.id === id) + 1;
@@ -1542,7 +1659,7 @@
     A.data.tut = 0;
     const hour = Math.floor(Date.now() / 3600000);
     const riftId = from => poiId(i => asPlayer(A, () => { const r = W.riftFor({ id: i, lat: A.lat, lng: A.lng }, 0, hour); return r && r.tier === 1; }), from);
-    const rift = { id: riftId(94000), lat: A.lat + 0.02, lng: A.lng, name: 'Дальнее Капище' }; // ≈ 2,2 км
+    const rift = { id: riftId(94000), lat: A.lat + 0.02, lng: A.lng, name: 'Дальнее Святилище' }; // ≈ 2,2 км
     const tooFar = { id: riftId(95000), lat: A.lat + 0.06, lng: A.lng, name: 'Совсем далеко' }; // ≈ 6,7 км
     await refuse(A, 'raidStart', { rift }, /далеко/);
     A.data.items.farpass = 0;
@@ -1561,13 +1678,13 @@
     // в Лавке — за искры
     A.data.sparks = 1000; await must(A, 'shopBuy', { id: 'farpass' }); eq(A.data.items.farpass, Rules.FAR.KEEP + 1);
   });
-  atest('Сервер: капище — с 3 уровня, раз в день, без мгновенных побед', async () => {
+  atest('Сервер: святилище — с 3 уровня, раз в день, без мгновенных побед', async () => {
     const A = await newPlayer('ug', 55.71, 37.59, 'Зоря'); A.data.spirits.forEach(x => { x.lvl = 5; }); // 4.15: стартовый дух выдаётся на уровне Ловчего — здесь он уже усилен до 5-го
     const hour = Math.floor(Date.now() / 3600000);
-    // Капище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
+    // Святилище «Ученика»: одинокий стартовый дух новичка побеждает его всегда (4.3: сервер проверяет, возможна ли победа)
     const id = poiId(i => !W.riftAt(i, hour) && asPlayer(A, () => W.shrineFor({ id: i, lat: A.lat, lng: A.lng, name: 'К' }, 0).tier) === 1, 50000);
     const shrine = { id, lat: A.lat, lng: A.lng, name: 'Старый дуб' };
-    await refuse(A, 'duelStart', { shrine }, new RegExp(DUEL_LEVEL + ' уровня')); // 4.16: Капища — с DUEL_LEVEL (было с 3)
+    await refuse(A, 'duelStart', { shrine }, new RegExp(DUEL_LEVEL + ' уровня')); // 4.16: Святилища — с DUEL_LEVEL (было с 3)
     A.data.level = DUEL_LEVEL;
     await must(A, 'duelStart', { shrine });
     await refuse(A, 'duelEnd', { win: true }, /слишком быстрая/);
@@ -1904,7 +2021,7 @@
     B.data.tut = 0;
     ok((await must(B, 'spring', { poi: { id: 'osm:n7003', lat: B.lat, lng: B.lng, name: 'Фонтан' } })).got.length > 0);
   });
-  atest('Сервер: кланы — защитник на Капище, бой с защитниками, дань', async () => {
+  atest('Сервер: кланы — защитник в Святилище, бой с защитниками, дань', async () => {
     const hour = Math.floor(Date.now() / 3600000);
     const id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), 61000); // 4.16: не вольное
     const [lat, lng] = [55.58, 37.46];
@@ -1924,10 +2041,10 @@
     await must(A, 'clanJoin', { clan: 'slavic' }); eq(A.data.clan, 'slavic');
     await refuse(A, 'clanJoin', { clan: 'norse' }, /уже выбран/);
     await must(B, 'clanJoin', { clan: 'celtic' }); await must(C, 'clanJoin', { clan: 'slavic' });
-    // 4.1: Капище, которого нет в базе мест (id и координаты — от телефона), защищать нельзя
+    // 4.1: Святилище, которого нет в базе мест (id и координаты — от телефона), защищать нельзя
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /известные Ордену/);
     DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Старый вяз', active: true };
-    // свободное Капище: сначала победа над хранителем, потом защитник
+    // свободное Святилище: сначала победа над хранителем, потом защитник
     await refuse(A, 'shrineDefend', { shrine, uid: A.data.spirits[0].uid }, /Сначала победи/);
     await must(A, 'duelStart', { shrine });
     A.srv.battle.start -= 200000;
@@ -1945,10 +2062,10 @@
     await must(B, 'duelStart', { shrine });
     B.srv.battle.start -= 200000;
     const r = await must(B, 'duelEnd', { win: true });
-    ok(r.win && r.freed, 'Капище освобождено'); eq(DB.holds[id].holders.length, 0);
+    ok(r.win && r.freed, 'Святилище освобождено'); eq(DB.holds[id].holders.length, 0);
     await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid });
     eq(DB.holds[id].clan, 'celtic');
-    // дань — раз в день за каждое Капище с моим защитником
+    // дань — раз в день за каждое Святилище с моим защитником
     // 4.16: только что поставленный защитник дань не приносит — нужно отстоять Rules.HOLD.TRIBUTE_H часов
     const t0 = await must(B, 'tribute'); eq(t0.n, 0); ok(t0.next > Date.now(), 'дань — позже'); ok(!B.data.tributeDay, 'день не закрыт');
     DB.holds[id].holders[0].t -= Rules.HOLD.TRIBUTE_H * 3600000; B.data.tributeNext = 0;
@@ -2312,15 +2429,15 @@
       ['kapelka', 'mshonok'].forEach(sid => B.data.spirits.push(asPlayer(B, () => S.makeSpirit(sid, 12, sid + 'mb'))));
       await must(B, 'team', { uids: B.data.spirits.map(x => x.uid) });
       eq(B.data.clan, 'slavic', 'сокол — Дружина Перуна'); eq(B.data.clanFree, 1, 'один бесплатный переход');
-      // Капище прежней дружины (до миграции 032) — своё: без боя, защитник встаёт рядом, счёт — клану
+      // Святилище прежней дружины (до миграции 032) — своё: без боя, защитник встаёт рядом, счёт — клану
       const hour = Math.floor(Date.now() / 3600000), id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), 63000); made.push(id);
       DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Сокольня', active: true };
       DB.holds[id] = { clan: 'sokol', holders: [{ pid: 'oldfalcon0', name: 'Сокольник', sp: { sid: 'ugolek', lvl: 10, iv: [5, 5, 5] }, t: Date.now() - 3600000 }], ver: 1 };
       const shrine = { id, lat, lng, name: 'Сокольня' };
       await refuse(B, 'duelStart', { shrine }, /твой клан/);
       await must(B, 'shrineDefend', { shrine, uid: B.data.spirits[0].uid }); eq(DB.holds[id].holders.length, 2, 'рядом с защитником прежней дружины');
-      eq((await must(B, 'clanStats')).all.slavic, 1, 'Капище прежней дружины — в счёте клана');
-      const eg = await must(A, 'duelStart', { shrine }); eq(eg.clan, 'slavic', 'для чужого клана — Капище Дружины Перуна'); A.srv.battle = null;
+      eq((await must(B, 'clanStats')).all.slavic, 1, 'Святилище прежней дружины — в счёте клана');
+      const eg = await must(A, 'duelStart', { shrine }); eq(eg.clan, 'slavic', 'для чужого клана — Святилище Дружины Перуна'); A.srv.battle = null;
       // переход — один раз и только в открытый клан
       await refuse(B, 'clanMove', { clan: 'slavic' }, /уже в этом клане/);
       await refuse(B, 'clanMove', { clan: 'japan' }, /закрыт/);
@@ -2331,9 +2448,10 @@
       // дань: святилище мифологии своего клана — ×1,5
       delete DB.holds[id];
       Ev.alaSync();
-      const own = poiId(i => W.placeMyth({ id: i }) === 'greek', 64000), other = poiId(i => W.placeMyth({ id: i }) !== 'greek', 64000);
+      // 5.1.26: мифология святилища — по родине места: храм в Афинах — свой, святилище в Москве — нет
+      const own = 'osm:n64001', other = 'osm:n64002';
       made.push(own, other);
-      [own, other].forEach(x => { DB.holds[x] = { clan: 'greek', holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
+      [[own, 37.98, 23.73], [other, 55.75, 37.62]].forEach(([x, lat, lng]) => { DB.holds[x] = { clan: 'greek', lat, lng, holders: [{ pid: B.data.pid, name: 'Старый сокол', sp: { sid: 'kapelka', lvl: 12, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; });
       B.data.tributeDay = ''; B.data.tributeNext = 0;
       const s0 = B.data.sparks, tr = await must(B, 'tribute');
       eq(tr.n, 2); eq(tr.own, 1, 'одно святилище своей мифологии'); eq(B.data.sparks - s0, Rules.tributeFor(2, 1).sparks, 'искры дани ×1,5 с храма');
@@ -2344,13 +2462,13 @@
       ok(Object.keys((await must(D, 'clanStats')).all).includes('japan'), 'японский клан — в счёте');
     } finally { made.forEach(x => delete DB.holds[x]); Ev.ala = a0; Ev.alaSync(); mythOpen(Ev.alaSeason(), true); }
   });
-  atest('Сервер: Капища 4.16 — защитники устают и уходят, вольные Капища, 3 на игрока, дань за активную защиту', async () => {
+  atest('Сервер: Святилища 4.16 — защитники устают и уходят, вольные Святилища, 3 на игрока, дань за активную защиту', async () => {
     const hour = Math.floor(Date.now() / 3600000), [lat, lng] = [55.57, 37.45], ids = [];
     let from = 62000;
     while (ids.length < 4) { const id = poiId(i => !W.riftAt(i, hour) && !Rules.shrineFree(i), from); ids.push(id); from = +id.slice(5) + 1; }
     const freeId = poiId(i => !W.riftAt(i, hour) && Rules.shrineFree(i), 62000);
-    [...ids, freeId].forEach((id, k) => { DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Капище ' + k, active: true }; });
-    const shrine = id => ({ id, lat, lng, name: 'Капище' });
+    [...ids, freeId].forEach((id, k) => { DB.pois[id] = { id, kind: 'shrine', lat, lng, name: 'Святилище ' + k, active: true }; });
+    const shrine = id => ({ id, lat, lng, name: 'Святилище' });
     const mk = async (uid, name, clan) => {
       const P = await newPlayer(uid, lat, lng, name);
       P.data.level = CLAN_LEVEL; P.data.tut = 0;
@@ -2364,19 +2482,19 @@
     const heal = P => P.data.spirits.forEach(x => { delete x.ko; delete x.hpf; delete x.hpt; });
     const win = async (P, id) => { P.srv.rl = {}; heal(P); const st = await must(P, 'duelStart', { shrine: shrine(id) }); P.srv.battle.start -= 200000; const r = await must(P, 'duelEnd', { win: true }); return { st, r }; };
     const guard = A.data.spirits.find(x => x.sid === 'kapelka' && x.lvl === 20).uid;
-    // вольное Капище: бой с хранителем есть, защитника не поставить
+    // вольное Святилище: бой с хранителем есть, защитника не поставить
     await win(A, freeId);
     await refuse(A, 'shrineDefend', { shrine: shrine(freeId), uid: guard }, /вольное/);
-    // не больше HOLD_MY_MAX Капищ с моими защитниками
+    // не больше HOLD_MY_MAX Святилищ с моими защитниками
     for (let k = 0; k < 4; k++) await win(A, ids[k]);
     for (let k = 0; k < HOLD_MY_MAX; k++) await must(A, 'shrineDefend', { shrine: shrine(ids[k]), uid: guard });
-    await refuse(A, 'shrineDefend', { shrine: shrine(ids[3]), uid: guard }, new RegExp(`на ${HOLD_MY_MAX} Капищах`));
+    await refuse(A, 'shrineDefend', { shrine: shrine(ids[3]), uid: guard }, new RegExp(`на ${HOLD_MY_MAX} Святилищах`));
     // усталость: через 48 ч на посту защитник слабее
     const aged = (id, h) => { DB.holds[id].holders[0].t = Date.now() - h * 3600000; const g = A.data.guards.find(x => x.id === id); if (g) g.t = DB.holds[id].holders[0].t; };
     aged(ids[0], 48);
     const b1 = await win(B, ids[0]);
     eq(b1.st.clan, 'slavic'); eq(b1.st.foe[0].lvl, Math.round(20 * Rules.holdK(Date.now() - 48 * 3600000)), 'уставший защитник');
-    ok(b1.r.freed, 'Капище освобождено');
+    ok(b1.r.freed, 'Святилище освобождено');
     // срок вышел — защитник ушёл: бьётся хранитель, место у игрока освободилось
     aged(ids[1], Rules.HOLD.MAX_H + 1);
     const b2 = await win(B, ids[1]);
@@ -2386,7 +2504,7 @@
     const t0 = await must(A, 'tribute'); eq(t0.n, 0); ok(t0.next, 'дань позже');
     aged(ids[2], Rules.HOLD.TRIBUTE_H + 1); A.data.tributeNext = 0;
     const z0 = A.data.zlat, t1 = await must(A, 'tribute');
-    eq(t1.n, 1, 'одно Капище с активной защитой'); eq(A.data.zlat - z0, Rules.ZLAT.tribute);
+    eq(t1.n, 1, 'одно Святилище с активной защитой'); eq(A.data.zlat - z0, Rules.ZLAT.tribute);
     ok((await must(A, 'tribute')).already, 'второй раз за день — нет');
     // домой: побеждённый — за время на посту, ушедший по сроку — за весь срок
     const g = await must(A, 'myGuards');
@@ -2416,7 +2534,7 @@
     A.data.xpUntil = Date.now() - 1;
     eq(gain(), base, 'настой кончился');
   });
-  atest('Сервер: дневные лимиты объектов — источники, разломы, капища, вторжения, поимки', async () => {
+  atest('Сервер: дневные лимиты объектов — источники, разломы, святилища, вторжения, поимки', async () => {
     const A = await newPlayer('da', 55.46, 37.34, 'Фармер');
     A.data.tut = 0; A.data.level = 10;
     // 30 источников в день: каждый — отдельный объект, откат не мешает
@@ -2436,7 +2554,7 @@
     await refuse(A, 'raidStart', { rift: { id: rid, lat: A.lat + 0.01, lng: A.lng, name: 'Разлом' }, far: true }, /Разломов/);
     eq(A.data.items.farpass, 2, 'пропуск не списан');
     const sid = poiId(i => asPlayer(A, () => !W.riftAt(i, hour)), 98000);
-    await refuse(A, 'duelStart', { shrine: { id: sid, lat: A.lat, lng: A.lng, name: 'Капище' } }, /Капищах/);
+    await refuse(A, 'duelStart', { shrine: { id: sid, lat: A.lat, lng: A.lng, name: 'Святилище' } }, /Святилищах/);
     const sp = asPlayer(A, () => W.spawnsAround(A.lat, A.lng, W.INTERACT).find(x => !x.tut));
     if (sp) await refuse(A, 'encStart', { kind: 'wild', id: sp.id }, /120 духов/);
     // новый день — счёт с нуля
@@ -2463,7 +2581,7 @@
     ok(/\*{3}/.test(GameCore.chatClean('ну ты и мудак')) && !/мудак/.test(GameCore.chatClean('ну ты и мудак')), 'грубое слово скрыто');
     // канал клана видят только свои
     A.data.clan = 'celtic'; B.data.clan = 'norse';
-    A.srv.chat.t -= 5000; await must(A, 'chatSend', { ch: 'clan', text: 'Братство, на Капище!' });
+    A.srv.chat.t -= 5000; await must(A, 'chatSend', { ch: 'clan', text: 'Братство, в Святилище!' });
     eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 0, 'чужой клан не видит');
     B.data.clan = 'celtic'; eq((await must(B, 'chatList', { ch: 'clan' })).msgs.length, 1, 'свой видит');
     // 4.28: до миграции 032 — и сообщения прежней дружины (clan:medved → Братство Дуба)
@@ -2584,9 +2702,17 @@
     A.data.zlat = Rules.PASS.GOLD;
     await must(A, 'passGold'); eq(A.data.zlat, 0); ok(A.data.pass.gold);
     await must(A, 'passClaim', { lvl: 1, track: 'gold' });
-    // вершина Золотой тропы — Знак Тропы
+    // вершина Золотой тропы — Знак Тропы и амулет на выбор (5.1.21): без выбора — нельзя, выбор — только из известных
     A.data.pass.pts = Rules.PASS.PER * Rules.PASS.LEVELS;
-    await must(A, 'passClaim', { lvl: 30, track: 'gold' }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold' }, /амулет/);
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am: 'constructor' }, /амулет/);
+    ok(!A.data.pass.got.gold.includes(30) && !A.data.owned.trail, 'без выбора ступень не засчитана');
+    const am = AMULET_KEYS[2], am0 = A.data.amulets[am] || 0;
+    const top = await must(A, 'passClaim', { lvl: 30, track: 'gold', am }); ok(A.data.owned.trail, 'Знак Тропы получен');
+    eq(A.data.amulets[am], am0 + 1, 'выбранный амулет — в сумке'); ok(top.got.some(x => x.k === 'amulet' && x.id === am));
+    await refuse(A, 'passClaim', { lvl: 30, track: 'gold', am }, /уже получена/);
+    // бесплатная 20-я — тоже амулет на выбор
+    await must(A, 'passClaim', { lvl: 20, track: 'free', am: AMULET_KEYS[0] }); eq(A.data.amulets[AMULET_KEYS[0]] >= 1, true);
     await must(A, 'look', { look: { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'trail' } });
     // новый сезон — тропа с нуля
     A.data.pass.season = '1999-1';
@@ -2638,13 +2764,13 @@
     A.data.sparks = 1e6; A.data.zlat = 0;
     await must(A, 'exchange', { n: Rules.EXCHANGE.DAY }); eq(A.data.zlat, Rules.EXCHANGE.ZLAT * Rules.EXCHANGE.DAY); eq(A.data.sparks, 1e6 - Rules.EXCHANGE.SPARKS * Rules.EXCHANGE.DAY);
     await refuse(A, 'exchange', { n: 1 }, /закрыт/);
-    // дань: монеты — не больше чем с Rules.ZLAT.tributeMax Капищ
+    // дань: монеты — не больше чем с Rules.ZLAT.tributeMax Святилищ
     A.data.clan = 'norse'; A.data.tributeDay = ''; A.data.zlat = 0;
     const ids = [1, 2, 3, 4, 5].map(i => 'osm:n9' + i + '0000');
     ids.forEach(id => { DB.holds[id] = { clan: 'volk', holders: [{ pid: A.data.pid, name: 'Хозяйка', sp: { sid: 'ugolek', lvl: 5, iv: [1, 1, 1] }, t: Date.now() - (Rules.HOLD.TRIBUTE_H + 1) * 3600000 }], ver: 1 }; }); // на посту дольше TRIBUTE_H
     try {
-      const tr = await must(A, 'tribute'); eq(tr.n, Math.min(5, HOLD_MY_MAX), 'дань — не больше чем с HOLD_MY_MAX Капищ');
-      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'монеты дани — с трёх Капищ');
+      const tr = await must(A, 'tribute'); eq(tr.n, Math.min(5, HOLD_MY_MAX), 'дань — не больше чем с HOLD_MY_MAX Святилищ');
+      eq(A.data.zlat, Rules.ZLAT.tribute * Rules.ZLAT.tributeMax, 'монеты дани — с трёх Святилищ');
     } finally { ids.forEach(id => delete DB.holds[id]); }
   });
 
@@ -2916,12 +3042,151 @@
       S.d.camp = null; eq(S.campExLeft(), 0); eq(S.exchangeZlat(2), 2, 'без Кампании — обычный курс');
     } finally { S.d.camp = c0; }
   });
-  test('5.1.20: искры Лиги и Сезонной тропы — ×10', () => {
+  test('5.1.20: искры Лиги — ×10', () => {
     eq(LEAGUE_RANKS.filter(r => r.reward && r.reward.sparks).map(r => r.reward.sparks).join(','), '5000,8000,15000,30000,50000,80000', 'награды за лиги');
     eq(League.prize(3).sparks, 12000, 'сундук сезона — ✦ 4 000 за лигу');
-    eq(Rules.passReward('free', 2, 10).sparks, 3000); eq(Rules.passReward('gold', 1, 10).sparks, 5000); eq(Rules.passReward('gold', 2, 10).sparks, 8000);
-    eq(Rules.passReward('gold', 1, 30).sparks, 15000); eq(Rules.passReward('gold', 2, 30).sparks, 25000); eq(Rules.passReward('gold', 10, 30).sparks, 30000); eq(Rules.passReward('gold', 15, 30).sparks, 30000);
-    eq(Rules.passReward('free', 3, 10).sparks, undefined, 'где искр не было — их и нет');
+  });
+  test('5.1.21: Знаки Ордена — опыт за ступени ×10, у каждого знака картинка, а не буква', () => {
+    eq(MEDAL_TIERS.map(t => t.xp).join(','), '1000,10000,20000', 'бронза, серебро, золото');
+    MEDALS.forEach(m => [0, 1, 3].forEach(t => { const s = Art.medal(m, t); ok(!/<text/.test(s) && !/undefined|NaN/.test(s), `${m.id}, ступень ${t}`); }));
+  });
+  test('5.1.24: лимиты дня — столбиком с таймером «До сброса»; поручение Источника — надписью со значком', () => {
+    const lim = document.createElement('div'); lim.innerHTML = UI.dayLimitsHtml();
+    ok(lim.firstElementChild.matches('h3.q-h') && lim.querySelector('h3 .dl-left'), 'заголовок как «Шаги главы», в нём — таймер до сброса');
+    ok(/^До сброса\s\d+\s(ч\s\d+\s)?мин$/.test(lim.querySelector('h3 small').textContent), '«До сброса … ч … мин», без секунд: ' + lim.querySelector('h3 small').textContent);
+    const rows = [...lim.querySelectorAll('.day-limits .dl-row')];
+    eq(rows.length, Object.keys(Rules.DAILY).length);
+    Object.keys(Rules.DAILY).forEach((k, i) => {
+      const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k], r = rows[i];
+      ok(r.querySelector('span').textContent === Rules.DAILY_NAMES[k] && r.querySelector('b').textContent === `${u} / ${m}`, `строка: ${k}`);
+      eq(r.querySelector('.pbar i').style.width, `${Math.min(100, u / m * 100)}%`, `полоска: ${k}`);
+    });
+    eq(U.fmtHm((5 * 3600 + 12 * 60 + 33) * 1000), '5 ч 12 мин'); eq(U.fmtHm(754500), '12 мин'); eq(U.fmtHm(-5), '0 мин');
+    // новое поручение у Источника: значок «Задания» слева и «Новое поручение!» — без кнопок
+    const box = document.createElement('div'); box.innerHTML = UI.taskNewHtml();
+    const lt = box.firstElementChild;
+    ok(lt.classList.contains('loot-task') && lt.firstElementChild.matches('.lt-ico') && lt.querySelector('.lt-ico svg.mi'), 'значок «Задания» слева');
+    eq(lt.querySelector('b').textContent, 'Новое поручение!');
+    ok(!lt.querySelector('button'), 'принимать и отказываться не нужно');
+  });
+  test('5.1.27: Кампания — полоски у целей, без шагов главы; задания дня без «Пройди км»; «Летописец»; «Орден» без топа и Алатыря; «Дух сбежал»', () => {
+    const d0 = S.d;
+    try {
+      S.d = { ...d0, camp: { ch: 0, s: 0, p: [5, 1, 0], u: [], pick: null, t: 1 } };
+      const box = document.createElement('div'); box.innerHTML = UI.campHtml();
+      ok(!box.querySelector('.cp-list, .cp-row'), 'шагов главы внизу нет');
+      const objs = [...box.querySelectorAll('.cp-obj')], st = CAMPAIGN[0].steps[0];
+      eq(objs.length, st.obj.length);
+      ok(objs.every(o => o.querySelector('.qd-bar .pbar i')), 'у каждой цели — полоска');
+      ok(objs[0].classList.contains('done') && objs[0].querySelector('.cp-ok') && objs[0].querySelector('.pbar i').style.width === '100%', 'сделано — полная, с галочкой');
+      near(parseFloat(objs[1].querySelector('.pbar i').style.width), 100 / 3, 0.01, 'треть пути');
+      eq(objs[1].querySelector('.qd-bar span').textContent, `1 / ${st.obj[1].n}`); ok(!objs[1].querySelector('.cp-ok'));
+    } finally { S.d = d0; }
+    // задания дня: GPS нет — вместо «Пройди N км» Врата, ночной дух, хранитель святилища; в поручениях тоже без километров
+    ok(!QUEST_TEMPLATES.some(q => q.t === 'walk') && !TASK_TEMPLATES.some(q => q.t === 'walk'), 'без «Пройди N км»');
+    ['gate', 'catchNight', 'duel'].forEach(t => eq(QUEST_TEMPLATES.filter(q => q.t === t).length, 1, 'задание дня: ' + t));
+    near(QUEST_TEMPLATES.reduce((a, q) => a + (q.reward.sparks || 0), 0) / QUEST_TEMPLATES.length, 400, 0.01, 'искр за задание в среднем — как раньше');
+    const q0 = S.d.quests;
+    try {
+      S.d.quests = { day: U.today(), bonus: false, list: ['gate', 'catchNight'].map(t => ({ t, n: 1, p: 0, claimed: false, text: t, reward: {} })) };
+      S.progress('gate', 1); S.progress('catchNight', 1);
+      ok(S.d.quests.list.every(q => q.p === 1), 'шаг во Врата и ночной дух засчитываются');
+    } finally { S.d.quests = q0; }
+    // знак «Летописец» — до всего бестиария (было 63 славянских)
+    eq(MEDALS.find(m => m.id === 'dex').tiers.join(), [30, 150, SPECIES.length].join());
+    ok(SPECIES.length > 300, 'золото — весь бестиарий');
+    // «Орден» в заданиях — без «Лучших Ловчих недели» и Алатыря
+    const I0 = Order.info;
+    try {
+      Order.info = { prev: null, cur: { total: 500, goal: 1000, got: [], week: 'w', n: 10, players: 3, endsAt: U.now() + 3600000, top: [{ name: 'Первый', n: 99, me: false }] } };
+      const b = document.createElement('div'); Order.render(b);
+      ok(b.querySelector('.o-card') && !b.querySelector('.o-top, .o-ala') && !/Лучшие Ловчие|Алатырь|Первый/.test(b.textContent), 'без топа и Алатыря');
+    } finally { Order.info = I0; }
+    // дух сбежал — без Нави
+    const v = J.view({ type: 'flee', sid: 'ugolek' }); eq(v.title, 'Дух сбежал'); eq(v.sub, SP.ugolek.name);
+  });
+  atest('5.1.33: окно итога — во весь экран без кнопки, «Коснись, чтобы продолжить»; касание сразу не считается, свои кнопки окна работают', async () => {
+    const keepSfx = Sfx.play, keepMs = UI.TAP_MS;
+    const box = document.createElement('div');
+    try {
+      Sfx.play = () => {}; UI.TAP_MS = 120;
+      // tapGo: любой элемент-оверлей
+      let went = 0, own = 0;
+      box.innerHTML = '<div class="raid-result"><div class="res-card"><div class="res-title">Победа!</div><button class="btn defend-now">Поставить защитника</button></div></div>';
+      document.body.appendChild(box);
+      const res = box.firstChild;
+      res.querySelector('.defend-now').onclick = () => { own++; };
+      UI.tapGo(res, () => { went++; });
+      ok(res.classList.contains('tap-go'), 'оформление окна итога');
+      eq(res.querySelector('.tap-hint').textContent, 'Коснись, чтобы продолжить', 'надпись вместо кнопки:');
+      res.querySelector('.res-title').click();
+      eq(went, 0, 'касание сразу после появления — не считается (палец ещё бросал оберег):');
+      await U.wait(150);
+      res.querySelector('.defend-now').click();
+      eq(own, 1, 'своя кнопка окна — своё действие:'); eq(went, 0, 'а не «дальше»:');
+      res.querySelector('.res-title').click(); res.click();
+      eq(went, 1, 'касание в любом месте — дальше, один раз:');
+      // UI.modal({ tap }): последняя кнопка — касанием, остальные — кнопками
+      let fn = 0, side = 0;
+      const m = UI.modal({ title: 'Сундук дня', html: '<p>Награда</p>', buttons: [{ label: 'Алатырь', fn: () => { side++; } }, { label: 'Забрать', cls: 'primary', fn: () => { fn++; } }], tap: true });
+      const btns = [...m.querySelectorAll('.modal-btns .btn')].map(b => b.textContent);
+      eq(btns.join(), 'Алатырь', 'кнопка «дальше» не рисуется, своя — остаётся:');
+      ok(m.classList.contains('tap-go') && m.querySelector('.tap-hint'), 'окно — во весь экран, с надписью');
+      await U.wait(150);
+      m.querySelector('.modal-body p').click(); await U.wait(250);
+      eq(fn, 1, 'касание — действие последней кнопки:'); eq(side, 0); ok(!m.isConnected, 'окно закрылось');
+      ok(Stage.GLASS.includes('.tut-final'), '«Обучение пройдено» — тоже на стекле, карта под ним видна размытой');
+    } finally { Sfx.play = keepSfx; UI.TAP_MS = keepMs; box.remove(); }
+  });
+  atest('5.1.27: выбранный в Кампании дух — сценой, а не всплывашкой', async () => {
+    const sp = S.makeSpirit('ugolek', 5, 'got-test', { ivMin: 10 });
+    UI.gotSpiritAnim(sp, { isNew: true, ess: 30 });
+    await U.wait(700);
+    const m = [...document.querySelectorAll('.modal.got-modal')].pop();
+    ok(m && m.querySelector('.hatch-stage.open .hatch-sp'), 'сцена с духом');
+    ok(/теперь твой дух/.test(m.querySelector('.evo-text').textContent) && /Новая запись/.test(m.textContent) && /\+30/.test(m.textContent), 'кто он, эссенция, новая запись');
+    // 5.1.33: окно итога — без кнопки, «Коснись, чтобы продолжить», дальше — касанием в любом месте
+    const wrap = m.closest('.modal-wrap'), hint = wrap.querySelector('.tap-hint');
+    ok(wrap.classList.contains('tap-go') && hint && /Коснись, чтобы продолжить/.test(hint.textContent), 'вместо кнопки — «Коснись, чтобы продолжить»');
+    ok(!m.querySelector('.modal-btns .btn'), 'кнопки нет');
+    await U.wait(UI.TAP_MS); wrap.click(); await U.wait(400);
+    ok(!m.isConnected, 'закрылась касанием');
+  });
+  test('5.1.21: Духи — сортировки «Редкие» и «Лучшие» вместо «Номер» и «Имя»', () => {
+    const sp = (r, iv, lvl) => ({ ...S.makeSpirit(SPECIES.find(s => s.rar === r).id, lvl, 1), iv });
+    const L = [sp(1, [15, 15, 15], 30), sp(5, [0, 0, 0], 5), sp(4, [10, 10, 10], 20), sp(5, [15, 15, 14], 25)];
+    const ord = k => [...L].sort(UI.colCmp(k)).map(x => L.indexOf(x)).join('');
+    eq(ord('rare'), '3120', 'легендарные первыми, внутри редкости — по силе');
+    eq(ord('best'), '0321', 'по оценке Ордена: 100%, 98%, 67%, 0%');
+    eq(ord('num'), ord('power'), 'неизвестная сортировка — по силе');
+    eq([0, 49, 50, 66, 67, 81, 82, 99, 100].map(v => UI.ivStars(v)).join(''), '001122334', 'звёзды оценки — как в карточке духа');
+    eq((UI.colTop(L[1], 'rare').match(/<i><\/i>/g) || []).length, 5, 'у легендарного — пять камней');
+    ok(UI.colTop(L[1], 'rare').includes(`--rc:${RARITY[5].color}`), 'камни — цвета редкости');
+    ok(/★★★★<s><\/s><\/i> <b>100%<\/b>/.test(UI.colTop(L[0], 'best')), 'оценка: четыре звезды и 100%');
+    ok(UI.colTop(L[0], 'power').includes(`<b>${S.power(L[0])}</b>`) && UI.colTop(L[0], 'new') === UI.colTop(L[0], 'power'), 'в «Силе» и «Новых» — сила');
+  });
+  test('5.1.21: Сезонная тропа — таблица наград 30 ступеней', () => {
+    const P = Rules.PASS, j = (t, l) => JSON.stringify(Rules.passReward(t, l));
+    eq(Rules.PASS_FREE.length, P.LEVELS); eq(Rules.PASS_GOLD.length, P.LEVELS);
+    // ступени из примера (по модели экономики: бесплатная — искры ÷3, обереги ÷3, мёд ÷4; Золотая — искры ÷2, Живая вода ÷3)
+    eq(j('free', 1), JSON.stringify({ charm: 7, sparks: 800 })); eq(j('free', 5), JSON.stringify({ incense: 5, sparks: 1300 }));
+    eq(j('free', 9), JSON.stringify({ water: 10, sparks: 1700 })); eq(j('free', 10), JSON.stringify({ zlat: 50, sparks: 1700, alatyr: 1 }));
+    eq(j('free', 20), JSON.stringify({ amuletPick: 1, sparks: 2300, alatyr: 1 })); eq(Rules.passReward('free', 30).deadwater, 1);
+    eq(j('gold', 1), JSON.stringify({ charm2: 20 })); eq(j('gold', 5), JSON.stringify({ amuletPick: 1 })); eq(j('gold', 6), JSON.stringify({ charm3: 10 }));
+    eq(j('gold', 9), JSON.stringify({ cocoon: 10, sparks: 2500 })); eq(j('gold', 10), JSON.stringify({ amuletPick: 1 }));
+    eq(JSON.stringify(Rules.passReward('free', 31)), '{}', 'за пределами — ничего');
+    // за сезон: бесплатная — ✦ 58 900, 100 монет, 150 оберегов, 49 мёда и 3 осколка Алатыря; Золотая — ✦ 58 600, 50 Живой воды,
+    // 2 осколка и 6 амулетов на выбор
+    const sum = (t, k) => Array.from({ length: P.LEVELS }, (_, i) => Rules.passReward(t, i + 1)[k] || 0).reduce((a, b) => a + b, 0);
+    eq(sum('free', 'sparks'), 58900); eq(sum('free', 'zlat'), 100); eq(sum('free', 'charm'), 150); eq(sum('free', 'honey'), 49); eq(sum('free', 'alatyr'), 3);
+    eq(sum('gold', 'sparks'), 58600); eq(sum('gold', 'water'), 50); eq(sum('gold', 'alatyr'), 2); eq(sum('gold', 'amuletPick'), 6); eq(sum('gold', 'zlat'), 0);
+    // осколки Алатыря на экране Тропы видны (Loot.parts) и начисляются (S.giveRewards)
+    eq(Loot.parts({ alatyr: 1 }).length, 1, 'осколок — в награде ступени');
+    { const a0 = S.d.alatyr || 0; S.giveRewards({ alatyr: 1 }); eq(S.d.alatyr, a0 + 1, 'осколок начислен'); S.d.alatyr = a0; }
+    // всё, что выдаётся, — известные награды (предметы, валюта, осколки, кокон, облик, амулет на выбор)
+    const known = k => ITEMS[k] || ['sparks', 'zlat', 'alatyr', 'cocoon', 'look', 'amuletPick'].includes(k);
+    ['free', 'gold'].forEach(t => { for (let l = 1; l <= P.LEVELS; l++) Object.keys(Rules.passReward(t, l)).forEach(k => ok(known(k), `${t} ${l}: ${k}`)); });
+    const r = Rules.passReward('free', 1); r.charm = 999; eq(Rules.passReward('free', 1).charm, 7, 'награда — копия, таблица не меняется');
   });
   atest('5.1.15: Кампания, глава I — девять шагов по порядку: цели, награды, дух на выбор, Разлом кампании, Врата', async () => {
     const P = await newPlayer('cp-a', 55.7539, 37.6208, 'Кампанец', 'kapelka');
@@ -3005,9 +3270,11 @@
     // 9 · дальний путь
     prog('walk', 60); prog('spring', 10); [[3, 5], [2, 10], [1, 20]].forEach(([r, n]) => { for (let i = 0; i < n; i++) prog('catchRar', 1, { rar: r }); });
     prog('catchRar', 1, { rar: 4 }); eq(P.data.camp.p.join(), '60,5,10,20,10', 'все цели шага 9');
-    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0;
+    const owned0 = Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length, s9 = P.data.sparks, z9 = P.data.zlat || 0, l9 = P.data.level;
     await must(P, 'campClaim', {});
-    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50, '30 000 искр и 50 монет');
+    // монеты новых уровней (опыт шага и знаков) — сверх награды шага
+    const zl = asPlayer(P, () => { let z = 0; for (let l = l9 + 1; l <= P.data.level; l++) z += S.levelRewards(l).zlat; return z; });
+    ok(Object.keys(P.data.owned).filter(k => k.startsWith('skin:')).length === owned0 + 1, 'случайный облик'); ok(P.data.sparks - s9 === 30000 && P.data.zlat - z9 === 50 + zl, '30 000 искр и 50 монет (и монеты новых уровней)');
     ok(!step() && P.data.camp.s === 9, 'глава I пройдена'); await refuse(P, 'campClaim', {}, /Глава пройдена/);
     ok(P.data.journal.some(j => j.type === 'camp'), 'шаги — в дневнике');
   });
@@ -3058,26 +3325,55 @@
     ok(mc.match && !DB.pvpM[mc.match].state.bot, 'пара с живым');
     eq((await must(B, 'pvpFind', {})).match, mc.match, 'и первый — в бою с живым, а не с ботом');
   });
-  test('5.1.15: строка Кампании на карте — мелко, без всплывашек: цели шага, «забери награду», «выбери духа»', () => {
+  test('5.1.15: строка Кампании на карте — без всплывашек: цели шага, «забери награду», «выбери духа» (5.1.24: значки и счётчики, без подложки)', () => {
     const d0 = S.d;
+    // разметка → строки: название, счётчик, сделано ли, значок
+    const rows = h => { const b = document.createElement('div'); b.innerHTML = h; return [...b.querySelectorAll('.cl-row')].map(r => ({ t: r.querySelector('.cl-t').textContent, n: (r.querySelector('i') || { textContent: '' }).textContent, ok: r.classList.contains('cl-ok'), go: r.classList.contains('cl-go'), ico: !!r.querySelector('.cl-ico svg') })); };
     try {
       S.d = { camp: { ch: 0, s: 0, p: [2, 3, 0], u: [], pick: null }, spirits: [], xp: 0 };
-      const h = UI.campLineHtml();
-      ok(/Первая охота/.test(h) && /<span class="">Поймай духов <i>2\/5<\/i>/.test(h) && /Разлом кампании/.test(h), 'цели с «сделано/нужно»');
-      ok(/<span class="cl-ok">✓ Духи 7 уровня <i>3\/3<\/i>/.test(h), '5.1.17: выполненная цель остаётся в списке — с галочкой');
-      S.d.camp.p = [2, 1, 0]; ok(/Духи 7 уровня <i>1\/3<\/i>/.test(UI.campLineHtml()), '5.1.16: «духи 7 уровня»');
-      S.d.camp.p = [5, 3, 1]; const hr = UI.campLineHtml(); ok(/забери награду/.test(hr) && (hr.match(/cl-ok/g) || []).length === 3, 'шаг выполнен — все цели с галочкой');
+      const h = UI.campLineHtml(), R = rows(h);
+      ok(/Первая охота/.test(h) && /class="cl-head"/.test(h), 'шапка «Кампания · шаг»');
+      ok(R[0].t === 'Поймай духов' && R[0].n === '2/5' && !R[0].ok, 'цели с «сделано/нужно»');
+      ok(R[1].t === 'Духи 7 уровня' && R[1].n === '3/3' && R[1].ok, '5.1.17: выполненная цель остаётся в списке — с галочкой');
+      ok(R.some(r => r.t === 'Разлом кампании') && R.every(r => r.ico), 'у каждой цели — значок');
+      S.d.camp.p = [2, 1, 0]; ok(rows(UI.campLineHtml())[1].n === '1/3', '5.1.16: «духи 7 уровня»');
+      S.d.camp.p = [5, 3, 1]; const R2 = rows(UI.campLineHtml());
+      ok(R2.filter(r => r.ok).length === 3 && R2.some(r => r.go && /забери награду/.test(r.t)), 'шаг выполнен — все цели с галочкой, «забери награду»');
       // 5.1.17: «выведи духа из кокона» — путь кокона, которому до вылупления осталось меньше всех (сперва — те, что греются)
       S.d.camp = { ch: 0, s: 1, p: [0], u: [], pick: null };
       S.d.cocoons = [{ km: 5, walked: 1.26, inc: true }, { km: 10, walked: 9.55, inc: true }, { km: 2, walked: 0, inc: false }];
-      ok(/Выведи духа из кокона <i>9.5 \/ 10 км<\/i>/.test(UI.campLineHtml()), 'ближе всех к вылуплению — 10 км, пройдено 9,5');
-      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; ok(/<i>0 \/ 2 км<\/i>/.test(UI.campLineHtml()), 'никто не греется — самый короткий');
-      S.d.cocoons = []; ok(/Выведи духа из кокона<\/span>/.test(UI.campLineHtml()), 'коконов нет — без пути');
+      ok(rows(UI.campLineHtml())[0].t === 'Выведи духа из кокона' && rows(UI.campLineHtml())[0].n === '9.5 / 10 км', 'ближе всех к вылуплению — 10 км, пройдено 9,5');
+      S.d.cocoons = [{ km: 2, walked: 0, inc: false }, { km: 5, walked: 0.4, inc: false }]; eq(rows(UI.campLineHtml())[0].n, '0 / 2 км', 'никто не греется — самый короткий');
+      S.d.cocoons = []; eq(rows(UI.campLineHtml())[0].n, '', 'коконов нет — без пути');
       S.d.camp.pick = { opts: ['ugolek', 'kapelka', 'mshonok'], lvl: 5, ess: 15 }; ok(/Выбери духа/.test(UI.campLineHtml()), 'ждёт выбор духа');
       S.d.camp = { ch: 0, s: 8, p: [12.34, 1, 0, 0, 0], u: [], pick: null };
-      const h9 = UI.campLineHtml(); ok(/Путь, км <i>12.3\/60<\/i>/.test(h9) && (h9.match(/<span/g) || []).length === 5, '5.1.17: все цели шага — без «и ещё»');
+      const R9 = rows(UI.campLineHtml()); ok(R9[0].t === 'Путь, км' && R9[0].n === '12.3/60' && R9.length === 5, '5.1.17: все цели шага — без «и ещё»');
       S.d.camp.s = 9; eq(UI.campLineHtml(), '', 'глава пройдена — строки нет');
     } finally { S.d = d0; }
+  });
+  test('5.1.24: Сундук дня — награда случайная: опыт и искры всегда, два разных приза из набора', () => {
+    const C = Rules.CHEST, r = U.rng(7), seen = {};
+    let good = true, coins = 0;
+    for (let i = 0; i < 3000; i++) {
+      const rw = Rules.chestRoll(r), extra = Object.keys(rw).filter(k => k !== 'xp' && k !== 'sparks');
+      if (!(rw.xp >= C.XP[0] && rw.xp <= C.XP[1] && rw.xp % 50 === 0 && rw.sparks >= C.SPARKS[0] && rw.sparks <= C.SPARKS[1])) good = false;
+      if (extra.length !== C.PICKS) good = false;
+      extra.forEach(k => { const p = C.POOL.find(x => x[0] === k); if (!p || rw[k] < p[2] || rw[k] > p[3]) good = false; seen[k] = (seen[k] || 0) + 1; });
+      coins += rw.zlat || 0;
+    }
+    ok(good, 'опыт и искры — всегда и в пределах; призов ровно два, разных, в своих пределах');
+    C.POOL.forEach(p => ok(seen[p[0]] > 0, `выпадает: ${p[0]}`));
+    ok(coins / 3000 > 1.5 && coins / 3000 < 2.5, `монет в среднем — как прежние 2 в день (${(coins / 3000).toFixed(2)})`);
+    ok(C.POOL.every(p => p[0] === 'zlat' || p[0] === 'alatyr' || p[0] === 'cocoon' || p[0] === 'amulet' || ITEMS[p[0]]), 'призы — известные игре');
+  });
+  atest('5.1.24: Сундук дня на сервере — опыт, искры и призы; второй раз не открыть', async () => {
+    const P = await newPlayer('chest-a', 55.75, 37.62, 'Сундучник');
+    await refuse(P, 'questBonus', {}, /Сундук ещё закрыт/);
+    P.data.quests.list.forEach(q => { q.p = q.n; q.claimed = true; });
+    const r = await withRandom(0.5, () => must(P, 'questBonus', {}));
+    ok(r.got.some(x => x.k === 'xp') && r.got.some(x => x.k === 'sparks'), 'опыт и искры — всегда');
+    ok(r.got.length >= 4, `и два приза (${r.got.map(x => x.k).join(', ')})`);
+    await refuse(P, 'questBonus', {}, /Сундук ещё закрыт/);
   });
   atest('5.1.18: эволюция — дух жив и с полным здоровьем: «без сил», раны и усталость к новой форме не переходят', async () => {
     const P = await newPlayer('ev-hp', 55.75, 37.62, 'Лекарь', 'ugolek');
@@ -3456,6 +3752,22 @@
     r = await must(A, 'teleport', { lat: 51.5007, lng: -0.1246 }); eq(r.used, null);
     eq(A.data.stats.km, km0, 'телепорт не засчитывает километры');
   });
+  atest('Сервер 5.1.27: задания дня — шаг во Врата и пойманный ночной дух засчитываются', async () => {
+    const A = await newPlayer('qd527', 55.30, 37.10, 'Ночник'); A.data.tut = 0;
+    const day = (tz => { const t0 = U.tz; U.tz = tz; try { return U.today(); } finally { U.tz = t0; } })(180); // как сервер в тестах (tz 180)
+    const quests = () => { A.data.quests = { day, bonus: false, list: ['gate', 'catchNight'].map(t => ({ t, n: 1, p: 0, claimed: false, text: t, reward: { sparks: 1 } })) }; };
+    await must(A, 'teleport', { lat: 48.8584, lng: 2.2945, first: true }); A.lat = 48.8584; A.lng = 2.2945;
+    quests();
+    A.data.tpAt = 0; // перезарядка прошла — шаг даром
+    await must(A, 'teleport', { lat: 41.89, lng: 12.49 }); A.lat = 41.89; A.lng = 12.49;
+    eq(A.data.quests.list[0].p, 1, 'шаг во Врата засчитан'); eq(A.data.quests.list[1].p, 0);
+    // ночной дух — встречей за поручение (её можно позвать когда угодно)
+    const night = SPECIES.find(s => s.time === 'night' && !s.legend);
+    A.data.taskMeet = [{ id: 'tm527', sid: night.id, lvl: 3 }];
+    await must(A, 'encStart', { kind: 'task', id: 'tm527' });
+    const r = await withRandom(0, () => must(A, 'encThrow', { item: 'charm', hit: true })); // дух за поручение не сбегает — при 0 ловится
+    ok(r.caught, 'пойман'); eq(A.data.quests.list[1].p, 1, 'ночной дух засчитан');
+  });
   atest('Сервер 5.1: джойстик — шаг и бег засчитываются, быстрее бега (подделка) — нет', async () => {
     const A = await newPlayer('jw51', 55.28, 37.08, 'Ходок');
     const sv = { add: Game.addPoint, flush: Game.flushMove, save: Walk.save, pos: Walk.pos, joy: Walk.joy, keys: Walk.keys, run: Rules.MOVE.RUN };
@@ -3653,20 +3965,20 @@
     await must(A, 'spring', { poi: { id: awakeSp, ...at, name: 'Источник' } });
     const invSp = poiId(i => !aw(i, 'spring') && !free(i), 96000);
     if (invSp) await refuse(A, 'invStart', { spring: { id: invSp, ...at, name: 'Источник' } }, /спит/);
-    // Капище и Разлом у спящего места: ни боя, ни защитника, ни Разлома (и совместного)
+    // Святилище и Разлом у спящего места: ни боя, ни защитника, ни Разлома (и совместного)
     const sleepSh = poiId(i => !aw(i, 'shrine'), 97000);
-    const shrine = { id: sleepSh, ...at, name: 'Капище' };
+    const shrine = { id: sleepSh, ...at, name: 'Святилище' };
     await refuse(A, 'duelStart', { shrine }, /спит/);
     await refuse(A, 'raidStart', { rift: shrine }, /спит/);
     await refuse(A, 'roomCreate', { rift: shrine }, /спит/);
     const known = poiId(i => !aw(i, 'shrine') && !Rules.shrineFree(i), 97500);
-    DB.pois[known] = { id: known, kind: 'shrine', ...at, name: 'Спящее Капище', active: true };
+    DB.pois[known] = { id: known, kind: 'shrine', ...at, name: 'Спящее Святилище', active: true };
     A.data.shrines[known] = U.today(); // «победил здесь сегодня» — защитника всё равно не поставить
     await refuse(A, 'shrineDefend', { shrine: { id: known, ...at }, uid: A.data.spirits[0].uid }, /спит/);
-    // бодрствующее Капище — как раньше (дальше проверки боя)
+    // бодрствующее Святилище — как раньше (дальше проверки боя)
     const awakeSh = poiId(i => aw(i, 'shrine') && !asPlayer(A, () => W.riftAt(i, hour)), 97000);
-    const r = await call(A, 'duelStart', { shrine: { id: awakeSh, ...at, name: 'Капище' } });
-    ok(r.ok || !/спит/.test(r.error), 'бодрствующее Капище не спит: ' + r.error);
+    const r = await call(A, 'duelStart', { shrine: { id: awakeSh, ...at, name: 'Святилище' } });
+    ok(r.ok || !/спит/.test(r.error), 'бодрствующее Святилище не спит: ' + r.error);
     // место игрока (usr:) не спит никогда
     const usr = 'usr:00000000-0000-0000-0000-0000000005a2';
     DB.pois[usr] = { id: usr, kind: 'spring', ...at, name: 'Источник игрока', active: true };
@@ -3684,6 +3996,1153 @@
     } finally { Poi.list = list0; }
     await must(N, 'spring', { poi: { id: sleepSp, ...at, name: 'Источник' } });
   }));
+
+  /* ---------- 5.1.22: своя аналитика (www/js/metrics.js, GameCore.anTrack, serve.js → an_put) ---------- */
+  // сервер проверяет пачку телефона этим же кодом (Metrics.clean): чужие имена, лишние поля, текст, время и размеры — долой
+  test('Аналитика 5.1.22: проверка пачки телефона — имена, поля, время, сессия', () => {
+    const now = Date.UTC(2026, 9, 2, 12), sid = 'AbCdEfGh1234';
+    [null, undefined, 5, 'x', [], {}, { ev: 'boot' }, { ev: [{ e: 'hack' }] }, { s: { id: 'коротко' } }].forEach(b => eq(Metrics.clean(b, now), null, 'нечего записать: ' + JSON.stringify(b)));
+    const c = Metrics.clean({ tok: 'T', v: APP_VERSION, sa: 1, s: { id: sid, t0: now - 60000, d: 59.6 }, ev: [
+      { e: 'boot', t: now - 5000, s: sid, p: { f: 1 } },
+      { e: 'reg', t: now }, { e: 'tut', t: now }, { e: '__proto__' }, { e: 'BOOT' }, // серверные и чужие имена — не от телефона
+      { e: 'onb', t: now + 3600000, p: { k: 'book', x: 'с пробелом', y: 'кириллица', Z: 1, ['a'.repeat(17)]: 1, n: 2.7, b: true, o: { a: 1 }, l: [1], big: 1e15 } },
+      { e: 'ready', t: now - 4 * 86400000, s: 'bad sid', p: { ms: 1234.4 } },
+      { e: 'onb', t: 'вчера', p: [1, 2] },
+    ] }, now);
+    eq(c.v, APP_VERSION); eq(c.sa, true); eq(c.ev.length, 4, 'только события телефона');
+    eq(JSON.stringify(c.s), JSON.stringify({ id: sid, t0: now - 60000, d: 60 }), 'сессия: секунды округлены');
+    eq(JSON.stringify(c.ev[0]), JSON.stringify({ e: 'boot', t: now - 5000, p: { f: 1 }, s: sid }));
+    eq(JSON.stringify(c.ev[1].p), JSON.stringify({ k: 'book', n: 3, b: 1, big: 1e9 }), 'только числа, да/нет и латиница; числа — целые и в пределах');
+    eq(c.ev[1].t, now, 'время из будущего — время приёма');
+    eq(c.ev[2].t, now, 'старше трёх суток — время приёма'); eq(c.ev[2].s, undefined, 'неверный номер сессии — без него');
+    eq(JSON.stringify(c.ev[2].p), JSON.stringify({ ms: 1234 }));
+    eq(c.ev[3].t, now, 'время не числом — время приёма'); eq(c.ev[3].p, undefined, 'параметры не объектом — без них');
+    // пределы: событий в пачке, полей в событии, длина строки; версия и сессия — только правильного вида
+    const many = Metrics.clean({ v: 'хак', ev: Array.from({ length: 100 }, () => ({ e: 'boot', t: now })), s: { id: sid, t0: 0, d: 1e9 } }, now);
+    eq(many.ev.length, Metrics.MAX_EV); eq(many.v, ''); eq(many.s.d, 86400, 'сессия не длиннее суток'); eq(many.s.t0, now);
+    eq(Object.keys(Metrics.params({ a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8 })).length, Metrics.MAX_P);
+    eq(Metrics.params({ s: 'x'.repeat(33) }), null, 'длинная строка не проходит'); eq(Metrics.params({ s: '<b>' }), null, 'разметка не проходит');
+    eq(Metrics.clean({ s: { id: sid, d: -5 } }, now).s.d, 0);
+    eq(Metrics.clean({ s: { id: sid, d: 'много' } }, now).s.d, 0);
+  });
+  test('Аналитика 5.1.22: платформа по User-Agent — грубо, без самого UA', () => {
+    const and = 'Mozilla/5.0 (Linux; Android 14; SM-A546B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36';
+    eq(Metrics.pf(and), 'web-android'); eq(Metrics.pf(and, true), 'pwa-android');
+    eq(Metrics.pf(and + ' DuholovApp/15'), 'apk-android'); eq(Metrics.pf(and + ' DuholovApp/15 (store=play)'), 'play-android');
+    eq(Metrics.pf(and + ' DuholovApp/15 (store=rustore)', true), 'rustore-android', 'приложение — не PWA');
+    eq(Metrics.pf('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'), 'web-ios');
+    eq(Metrics.pf('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0 Safari/537.36'), 'web-desktop');
+    eq(Metrics.pf(''), 'web-other'); eq(Metrics.pf(null), 'web-other');
+    ok(/^[a-z]+-[a-z]+$/.test(Metrics.pf('<script>')) && Metrics.pf('x'.repeat(5000)).length <= 20, 'в базу — только из известного набора');
+  });
+  // телефон: очередь, пачки по таймеру и при сворачивании (keepalive), сессии, тишина без входа, без связи и при сбоях
+  atest('Аналитика 5.1.22: очередь телефона — пачки, сессии, keepalive, тишина при сбоях', async () => {
+    const M = Metrics, keep = {};
+    ['on', 'clock', 'wall', 'now', 'send', 'standalone'].forEach(k => { keep[k] = M[k]; });
+    const fetch0 = window.fetch;
+    let clk = 1000, wall = Date.UTC(2026, 9, 2, 12), sent = [];
+    M.on = () => !M.off; M.clock = () => clk; M.wall = () => wall; M.now = () => wall + clk; M.standalone = () => false;
+    M.send = (body, final, ev) => sent.push({ b: JSON.parse(body), final, n: ev.length });
+    try {
+      M.start();
+      ok(M.SID.test(M.sid), 'номер сессии');
+      M.ev('boot', { f: 1 }); M.ev('hack', { a: 1 }); M.ev('reg');
+      eq(M.q.length, 1, 'только события телефона');
+      eq(M.flush(false), false, 'без ключа входа — ждём'); eq(M.q.length, 1, 'событие осталось в очереди');
+      M.tok = 'T1';
+      eq(M.flush(false), true); eq(sent.length, 1); eq(M.q.length, 0);
+      const b = sent[0].b;
+      eq(b.tok, 'T1'); eq(b.v, APP_VERSION); eq(b.sa, 0); eq(b.s.id, M.sid); eq(b.s.d, 0); eq(b.ev.length, 1); eq(b.ev[0].e, 'boot'); eq(b.ev[0].s, M.sid);
+      ok(Metrics.clean(b, M.now()), 'пачка телефона проходит проверку сервера');
+      eq(M.flush(false), false, 'нечего слать — не шлём'); eq(sent.length, 1);
+      clk += 45000;
+      ok(M.due(), 'сессия выросла — пора'); M.flush(false); eq(sent[1].b.s.d, 45);
+      clk += 10000; eq(M.due(), false, 'через 10 с — ещё рано (в начале сессии — раз в 30 с)');
+      // свернули: время на экране — в копилку, пачка — сразу и keepalive (final)
+      M.hide(); eq(sent.length, 3); eq(sent[2].final, true); eq(sent[2].b.s.d, 55);
+      clk += 100000; wall += 100000;
+      eq(M.dur(), 55, 'свёрнутое время не считается'); eq(M.flush(false), false);
+      M.hide(); eq(sent.length, 3, 'повторное сворачивание (pagehide следом) ничего не шлёт');
+      const sid1 = M.sid;
+      M.show(); clk += 5000; eq(M.sid, sid1, 'короткая пауза — та же сессия'); eq(M.dur(), 60);
+      M.hide(); clk += 1000; wall += M.SPLIT + 1000; M.show();
+      ok(M.sid !== sid1, 'пауза дольше 30 минут — новая сессия'); eq(M.dur(), 0); eq(M.sent, -1);
+      // очередь: не больше MAX_Q, пачка — не больше MAX_EV, остальное — следующей
+      for (let i = 0; i < 250; i++) M.ev('onb', { k: i });
+      eq(M.q.length, M.MAX_Q, 'старые выпали'); eq(M.q[0].p.k, 50);
+      M.flush(false); eq(sent[sent.length - 1].n, M.MAX_EV); eq(M.q.length, M.MAX_Q - M.MAX_EV);
+      M.q = [];
+      // сбои — молча: события с неудобными параметрами, отправка с ошибкой
+      M.ev('onb', { get k() { throw new Error('сломано'); } });
+      M.send = () => { throw new Error('нет сети'); };
+      M.ev('ready', { ms: 5 }); clk += 40000;
+      eq(M.flush(false), false, 'сбой отправки не выходит наружу');
+      // настоящая отправка: «простой» POST text/plain с keepalive; без связи — события обратно в очередь; off — молчать
+      M.send = keep.send;
+      const calls = [];
+      let mode = 'ok';
+      window.fetch = (url, o) => { calls.push({ url, o }); return mode === 'down' ? Promise.reject(new TypeError('Failed to fetch')) : Promise.resolve({ ok: true, json: async () => (mode === 'off' ? { ok: true, off: true } : { ok: true }) }); };
+      const wait = () => new Promise(r => setTimeout(r, 0));
+      M.ev('ready', { ms: 7 }); M.flush(false); await wait();
+      eq(calls.length, 1); ok(calls[0].url.endsWith('/functions/v1/game/an'), calls[0].url);
+      eq(calls[0].o.method, 'POST'); eq(calls[0].o.keepalive, true); eq(calls[0].o.headers['Content-Type'], 'text/plain'); eq(typeof calls[0].o.body, 'string');
+      ok(!('Authorization' in calls[0].o.headers), 'без своих заголовков — без предварительного запроса CORS');
+      mode = 'down'; M.ev('ready', { ms: 8 }); M.flush(false); await wait(); await wait();
+      eq(M.q.length, 1, 'без связи — событие вернулось в очередь'); eq(M.sent, -1);
+      M.q = []; M.ev('ready', { ms: 9 }); M.hide(); await wait(); await wait();
+      eq(M.q.length, 0, 'при закрытии — без повторов (ответа не будет)');
+      mode = 'off'; M.show(); M.ev('ready', { ms: 10 }); M.flush(false); await wait(); await wait();
+      eq(M.off, true, 'сервер без аналитики — телефон замолкает');
+      const n = calls.length; M.ev('ready', { ms: 11 }); clk += 60000;
+      eq(M.flush(false), false); eq(calls.length, n);
+      // вне игры (автотесты, нет облака) — не запускается вовсе
+      M.on = keep.on; M.started = false; M.off = false;
+      const cc = Cloud.configured;
+      Cloud.configured = () => false;
+      try { M.init(); } finally { Cloud.configured = cc; }
+      eq(M.started, false, 'Cloud.configured() ложно — аналитики нет');
+    } finally {
+      Object.assign(M, keep); window.fetch = fetch0;
+      Object.assign(M, { started: false, off: false, q: [], tok: '', sid: '', sent: -1, vis: 0, act: 0, hidAt: 0 });
+    }
+  });
+  // сервер: события из разницы прогресса, день активности — раз в день; запросы от имени сервера — не активность
+  atest('Аналитика 5.1.22: события сервера — новый Ловчий, обучение, место, первые успехи, день активности', async () => {
+    const A = { uid: 'uan1', lat: 55.7, lng: 37.6, data: null, srv: {} };
+    const evs = r => (r.an && r.an.ev || []).map(e => e.e + (e.p ? ':' + JSON.stringify(e.p) : ''));
+    let r = await call(A, 'load');
+    eq(r.an, null, 'гость без Ловчего — ни событий, ни дня');
+    r = await call(A, 'newGame', { name: 'Аналитик', starter: 'ugolek' });
+    eq(evs(r).join(' '), `reg:{"r":${SP.ugolek.rar},"inv":0}`);
+    eq(JSON.stringify(r.an.day), JSON.stringify({ t: r.now, reg: A.data.created, lvl: 1, tut: 1 }), 'день активности с днём создания');
+    eq(A.srv.an, GameCore.anDay(r.now), 'отметка дня — в служебных данных');
+    r = await call(A, 'tick'); eq(r.an, null, 'тот же день, ничего не изменилось — в базу ничего');
+    // обучение: шаги засчитывает сервер — событие с числом пройденных шагов
+    await must(A, 'encStart', { kind: 'tut' });
+    r = await withRandom(0.9999, () => call(A, 'encThrow', { item: 'charm', hit: true }));
+    ok(r.ok && r.results[0].caught, 'учебный дух пойман');
+    let e = evs(r).filter(x => !/^lvl:/.test(x)); // уровень мог и вырасти — его проверяет тест ниже
+    eq(e.join(' '), `tut:{"s":1,"n":${TUT.length},"id":"catch1"} first:{"k":"caught"}`);
+    eq(r.an.day, null);
+    await must(A, 'encStart', { kind: 'tut' });
+    r = await withRandom(0.9999, () => call(A, 'encThrow', { item: 'charm', hit: true }));
+    e = evs(r).filter(x => !/^lvl:/.test(x));
+    eq(e.join(' '), `tut:{"s":2,"n":${TUT.length},"id":"catch2"}`, 'первая поимка — один раз');
+    // первое место в Атласе
+    r = await call(A, 'teleport', { lat: 55.71, lng: 37.61, first: true });
+    ok(r.ok, r.error); ok(evs(r).includes('place'), evs(r).join(' '));
+    A.lat = 55.71; A.lng = 37.61;
+    // новый день — новая строка дня (с нынешним шагом обучения); от имени сервера (начисление оплаты) — ничего
+    A.srv.an = '2000-01-01';
+    const sys = await GameCore.run({ a: [{ type: 'tick' }], sys: true, tz: 180, pos: null, v: APP_VERSION }, { data: A.data, srv: A.srv }, envFor(A));
+    ok(sys.ok); eq(sys.an, null); eq(sys.srv.an, '2000-01-01', 'запрос сервера не отмечает день');
+    r = await call(A, 'tick');
+    eq(r.an.day.tut, A.data.tut); eq(r.an.day.reg, A.data.created); eq(A.srv.an, GameCore.anDay(r.now));
+    // все серверные события годятся для базы: имя — как в an_events, параметры — как у пачек телефона (Metrics.params)
+    const all = [];
+    for (const k of ['menu', 'spirits']) { r = await call(A, 'tutNext', { id: k }); all.push(...(r.an ? r.an.ev : [])); }
+    eq(all.filter(x => x.e === 'tut').map(x => x.p.id).join(), 'menu,spirits');
+    all.forEach(x => { ok(/^[a-z][a-z0-9_]{1,23}$/.test(x.e), x.e); eq(JSON.stringify(Metrics.params(x.p)), JSON.stringify(x.p), 'параметры ' + x.e); });
+    // отказ — без аналитики
+    r = await call(A, 'tutNext', { id: 'power' }); ok(!r.ok); eq(r.an, undefined);
+    // «начать заново»
+    const lvl = A.data.level;
+    r = await call(A, 'reset'); ok(r.ok && r.reset);
+    eq(evs(r).join(' '), `reset:{"l":${lvl}}`); eq(r.an.day, null);
+  });
+  test('Аналитика 5.1.22: уровень, Кампания, первые успехи, день по Москве; сбой аналитики не мешает', () => {
+    const d0 = S.d;
+    try {
+      eq(GameCore.anDay(Date.UTC(2026, 9, 1, 20, 59)), '2026-10-01'); eq(GameCore.anDay(Date.UTC(2026, 9, 1, 21, 0)), '2026-10-02', 'полночь по Москве');
+      const L = CAMPAIGN[0].steps.length;
+      eq(GameCore.anCamp(null), 0); eq(GameCore.anCamp({ ch: 0, s: 3 }), 3); eq(GameCore.anCamp({ ch: 1, s: 0 }), L);
+      eq(GameCore.anCampId(1), CAMPAIGN[0].steps[0].id); eq(GameCore.anCampId(0), ''); eq(GameCore.anCampId(L), CAMPAIGN[0].steps[L - 1].id);
+      S.d = JSON.parse(JSON.stringify(d0)); S.d.tut = 0; S.d.atlasV = 1; S.d.camp = { ch: 0, s: 1 }; S.d.level = 4;
+      const a0 = GameCore.anSnap();
+      S.d.level = 6; S.d.camp.s = 2; S.d.stats.raids = 0; S.d.stats.springs = (S.d.stats.springs || 0) + 1;
+      const was = a0.stats.springs; a0.stats.raids = 0; S.d.stats.raids = 1;
+      const ctx = { now: Date.now(), srv: { an: GameCore.anDay(Date.now()) } };
+      const r = GameCore.anTrack(ctx, a0), names = r.ev.map(e => e.e + ':' + JSON.stringify(e.p || {}));
+      ok(names.includes('lvl:{"l":6}'), names.join(' '));
+      ok(names.includes(`camp:{"k":2,"id":"${CAMPAIGN[0].steps[1].id}"}`), names.join(' '));
+      ok(names.includes('first:{"k":"raids"}'), 'первый Разлом');
+      eq(names.some(n => n === 'first:{"k":"springs"}'), !(was > 0), 'Источник — первый только если раньше не было');
+      eq(r.day, null, 'день уже отмечен');
+      eq(GameCore.anTrack(ctx, null), null);
+      eq(GameCore.anTrack(ctx, { ...a0, stats: null }), null, 'сломанный снимок — без аналитики, без ошибки');
+    } finally { S.d = d0; }
+  });
+
+  /* ---------- звук: сэмплы www/sfx и запасной синтез (util.js — SFX, Sfx) ---------- */
+  // имена звуков в исходнике: первый аргумент Sfx.play(…) — строки (и выбор «a ? 'x' : 'y'»); без строки — имя в переменной
+  const sfxCalls = src => {
+    const names = [], dyn = [];
+    for (let i = src.indexOf('Sfx.play('); i >= 0; i = src.indexOf('Sfx.play(', i + 1)) {
+      let depth = 1, q = null, end = -1;
+      for (let j = i + 9; j < src.length && end < 0; j++) {
+        const c = src[j];
+        if (q) { if (c === '\\') j++; else if (c === q) q = null; continue; }
+        if (c === "'" || c === '"' || c === '`') q = c;
+        else if ('([{'.includes(c)) depth++;
+        else if (')]}'.includes(c)) { if (--depth === 0) end = j; }
+        else if (c === ',' && depth === 1) end = j; // второй аргумент — параметры, не имя
+      }
+      const arg = src.slice(i + 9, end), alt = arg.includes('?') ? arg.slice(arg.indexOf('?') + 1) : arg; // условие — не имя
+      const lits = [...alt.matchAll(/'([^']+)'/g)].map(m => m[1]);
+      if (lits.length) names.push(...lits); else dyn.push(arg.trim());
+    }
+    return { names, dyn };
+  };
+  atest('Звук: у каждого звука, который вызывает игра, есть файл в www/sfx или осознанный синтез', async () => {
+    // скрипты игры: из www/index.html и из этой страницы (после tools/web/build.mjs в index.html остаётся один app.min.js,
+    // а исходники js/*.js на месте — этот же тест в CI идёт и по собранной версии)
+    const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
+    const own = [...document.querySelectorAll('script[src^="../www/js/"]')].map(s => s.getAttribute('src').slice(10).split('?')[0]);
+    const files = [...new Set([...html.matchAll(/<script src="js\/([\w.-]+\.js)/g)].map(m => m[1]).concat(own))].filter(f => f !== 'app.min.js');
+    ok(files.length > 40, 'скрипты игры: ' + files.length);
+    const used = new Map(); // имя звука → файл, где вызывается
+    const add = (n, f) => { if (!used.has(n)) used.set(n, f); };
+    for (const f of files) {
+      const src = await fetch(`../www/js/${f}?t=${Date.now()}`).then(r => r.text());
+      const { names, dyn } = sfxCalls(src);
+      names.forEach(n => add(n, f));
+      if (src.includes('Sfx.element(')) ELEMENT_KEYS.forEach(k => add('el:' + k, f));
+      for (const d of dyn) { // имя в переменной — только у наград заданий: claim(…, 'имя звука')
+        eq(f + ':' + d, 'ui-player.js:sound', 'имя звука в переменной');
+        [...src.matchAll(/claim\('\w+', [^\n]*?, '([a-z_]+)'\);/g)].forEach(m => add(m[1], f));
+      }
+    }
+    ok(used.size > 30, 'найдено имён звуков: ' + used.size);
+    eq([...used].filter(([n]) => !SFX[n]).map(([n, f]) => `${n} (${f})`).join(', '), '', 'имена без строки в SFX (util.js):');
+    // у каждой строки — файл и запасной синтез на случай, если файл не загрузится, или осознанный синтез
+    for (const [n, d] of Object.entries(SFX)) {
+      const el = n.startsWith('el:') ? n.slice(3) : null;
+      ok(el ? Sfx.voices[el] : Sfx.recipes[d.fb || n], `${n}: нет синтеза «${el || d.fb || n}»`);
+      if (d.synth) { ok(!d.f, `${n}: осознанный синтез — без файла`); continue; }
+      ok(d.f && d.vol > 0 && d.vol <= 1, `${n}: файл и громкость 0…1`);
+    }
+    const bad = [];
+    let total = 0;
+    for (const f of new Set(Object.values(SFX).map(d => d.f).filter(Boolean))) {
+      const r = await fetch(`../www/sfx/${f}.mp3?v=${SFX_VER}`);
+      const n = r.ok ? (await r.arrayBuffer()).byteLength : 0;
+      if (n < 500) bad.push(f);
+      total += n;
+    }
+    eq(bad.join(', '), '', 'нет файлов www/sfx/*.mp3:');
+    ok(total < 600 * 1024, `звуки занимают ${Math.round(total / 1024)} КБ — больше бюджета`);
+    // service worker: звуки — в своём постоянном кэше, правило для них — раньше «?v=цифра»
+    const sw = await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text());
+    ok(sw.includes('k !== SFX_CACHE'), 'sw.js: кэш звуков не удаляется при обновлении');
+    const at = sw.indexOf("includes('/sfx/')");
+    ok(at > 0 && at < sw.indexOf('[?&]v=\\d/.test(url.search)'), 'sw.js: правило для звуков — раньше правила «?v=цифра»'); // 5.1.24: то же выражение есть и у установки (installMode)
+  });
+  test('Звук: Sfx.play и Sfx.element не падают без AudioContext', () => {
+    const was = { ctx: Sfx.ctx, A: window.AudioContext, W: window.webkitAudioContext };
+    try {
+      Sfx.ctx = null;
+      [...Object.keys(SFX), 'нет-такого', undefined].forEach(n => Sfx.play(n));
+      ELEMENT_KEYS.forEach(k => { Sfx.element(k); Sfx.element(k, true); });
+      window.AudioContext = undefined; window.webkitAudioContext = undefined;
+      Sfx.init();
+      eq(Sfx.ctx, null, 'нет AudioContext — нет и звука');
+      Sfx.play('catch'); Sfx.element('fire'); Sfx.preload();
+    } finally { Sfx.ctx = was.ctx; window.AudioContext = was.A; window.webkitAudioContext = was.W; }
+  });
+  test('Звук: сэмпл, если загружен, иначе синтез; не больше 8 сразу; повтор не чаще gap; звук выключен — тишина', () => {
+    const log = [];
+    const param = () => ({ value: 1, setValueAtTime() {}, exponentialRampToValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} });
+    const node = (kind, extra) => Object.assign({ connect: n => n, disconnect() {}, start: () => log.push('start:' + kind), stop: () => log.push('stop:' + kind) }, extra);
+    const fake = {
+      currentTime: 10, state: 'running', sampleRate: 44100, destination: node('dest', {}),
+      createGain: () => node('gain', { gain: param() }),
+      createOscillator: () => { log.push('osc'); return node('osc', { frequency: param() }); },
+      createBufferSource: () => node('src', { playbackRate: param() }),
+      createBiquadFilter: () => node('filter', { frequency: param(), Q: param() }),
+      createBuffer: (c, n) => ({ getChannelData: () => new Float32Array(n) }),
+      resume: () => Promise.resolve(),
+    };
+    const keep = ['ctx', 'out', 'buf', 'bad', 'wait', 'last', 'live', 'load', 'nbuf', 'synth', 'synthElement'].reduce((o, k) => (o[k] = Sfx[k], o), {});
+    const was = { sound: Cfg.s.sound, duck: Music.duck }, ducks = [], synths = [], loads = [];
+    try {
+      Object.assign(Sfx, { ctx: fake, out: fake.destination, buf: {}, bad: {}, wait: {}, last: {}, live: [], nbuf: null });
+      Sfx.load = f => { loads.push(f); return Promise.resolve(null); };
+      Sfx.synth = function (n) { synths.push(n); return keep.synth.call(this, n); };
+      Sfx.synthElement = function (el, soft) { synths.push('el:' + el + (soft ? ':тихо' : '')); return keep.synthElement.call(this, el, soft); };
+      Music.duck = s => ducks.push(s);
+      Cfg.s.sound = true;
+      // файла ещё нет — прежний синтез (у нового имени — запасной), а файл попросили загрузить
+      Sfx.play('catch'); Sfx.play('error'); Sfx.element('fire', true); Sfx.element('shadow');
+      eq(synths.join(' '), 'catch miss el:fire:тихо el:shadow', 'синтез вместо сэмпла:');
+      ok(['catch', 'error', 'el-fire'].every(f => loads.includes(f)), 'файлы попросили загрузить: ' + loads);
+      ok(!loads.some(f => f.includes('shadow')), 'тень — осознанный синтез, файл не грузится');
+      ok(log.includes('osc'), 'синтез создал осцилляторы');
+      // файл загружен — сэмпл, мелодия приглушает музыку
+      fake.currentTime = 20; log.length = 0; synths.length = 0;
+      Sfx.buf.catch = { duration: 0.55 };
+      Sfx.play('catch');
+      eq(synths.length, 0, 'с файлом синтеза нет');
+      eq(log.filter(x => x === 'start:src').length, 1, 'сэмпл запущен');
+      eq(ducks.length, 1, 'музыка приглушена на время мелодии');
+      Sfx.play('catch');
+      eq(log.filter(x => x === 'start:src').length, 1, 'повтор в тот же миг пропущен');
+      // 10 разных звуков в один миг: звучат 8, два самых старых оборваны
+      fake.currentTime = 30; log.length = 0; Sfx.live = [];
+      ['tap', 'throw', 'hit', 'wobble', 'escape', 'flee', 'shiny', 'photo', 'heal', 'coins'].forEach(n => { Sfx.buf[SFX[n].f] = { duration: 1 }; Sfx.play(n); });
+      eq(log.filter(x => x === 'start:src').length, 10, 'запущены все 10');
+      eq(log.filter(x => x === 'stop:src').length, 2, 'оборваны два самых старых');
+      eq(Sfx.live.length, 8, 'звучат 8');
+      // неизвестное имя или без имени — тишина, без ошибок (как раньше)
+      fake.currentTime = 35; Sfx.play(undefined); Sfx.play('нет-такого');
+      // звук выключен в настройках — тишина
+      Cfg.s.sound = false; log.length = 0; fake.currentTime = 40;
+      Sfx.play('catch'); Sfx.element('water');
+      eq(log.length, 0, 'без звука в настройках ничего не создано');
+    } finally { Object.assign(Sfx, keep); Music.duck = was.duck; Cfg.s.sound = was.sound; }
+  });
+  test('Звук: короткая мелодия приглушает музыку и возвращает громкость', () => {
+    const calls = [], was = { ctx: Sfx.ctx, cur: Music.cur };
+    const gain = { value: 0.2, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime: (v, t) => calls.push([v, t]) };
+    try {
+      Sfx.ctx = { currentTime: 5 };
+      Music.cur = { a: { paused: false }, g: { gain } };
+      const v = Music.level();
+      Music.duck(1);
+      eq(calls.length, 2, 'вниз и обратно');
+      near(calls[0][0], v * 0.45, 1e-6, 'тише на ~7 дБ:');
+      near(calls[1][0], v, 1e-6, 'потом прежняя громкость:');
+      ok(calls[1][1] > 6, 'громкость возвращается после мелодии');
+      Music.cur = { a: { paused: true }, g: { gain } }; calls.length = 0;
+      Music.duck(1);
+      eq(calls.length, 0, 'музыка на паузе — не трогаем');
+    } finally { Sfx.ctx = was.ctx; Music.cur = was.cur; }
+  });
+
+  /* ---------- 5.1.24: быстрый запуск на слабых телефонах ---------- */
+  const frames = (n = 2) => new Promise(r => { const f = () => (--n > 0 ? requestAnimationFrame(f) : setTimeout(r, 30)); requestAnimationFrame(f); });
+  const waitFor = async (cond, ms = 2000) => { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > ms) return false; await frames(1); } return true; };
+  atest('5.1.24: «Духи» — рисунки карточек по мере прокрутки, адрес картинки — blob:', async () => {
+    const keep = { spirits: S.d.spirits, tut: S.d.tut, colSort: UI.colSort, colEl: UI.colEl };
+    const css = document.createElement('style'); // своя разметка экрана: прокручиваемое тело, карточки по 120 px
+    css.textContent = '.col-screen{position:fixed;left:0;top:0;width:360px;height:400px;display:flex;flex-direction:column;background:#120c24}'
+      + '.col-screen .screen-body{flex:1;overflow:auto}.col-screen .card{display:block;width:100%;height:120px}.col-screen .art{display:block;width:78px;height:78px}';
+    document.head.appendChild(css);
+    let scr = null;
+    try {
+      S.d.tut = 0; UI.colSort = 'power'; UI.colEl = 'all';
+      S.d.spirits = SPECIES.slice(0, 40).map((s, i) => Object.assign(S.makeSpirit(s.id, 10, 'lazy' + i), { shiny: i === 1 }));
+      UI.collection();
+      scr = [...document.querySelectorAll('.col-screen')].pop();
+      eq(scr.querySelectorAll('.card').length, 40, 'карточек:');
+      eq(scr.querySelectorAll('.card-art img').length, 0, 'сразу — ни одной картинки, только заглушки:');
+      eq(scr.querySelectorAll('.card-art i.art[data-art]').length, 40, 'заглушек:');
+      ok(scr.querySelector('.card-art i.art[data-sh="1"]'), 'сияющий дух помечен в заглушке');
+      ok(await waitFor(() => scr.querySelector('.card-art img')), 'видимые карточки получили рисунки');
+      const drawn = scr.querySelectorAll('.card-art img').length;
+      ok(drawn > 0 && drawn < 40, `рисунки — только у карточек у экрана: ${drawn} из 40`);
+      ok([...scr.querySelectorAll('.card-art img')].every(im => im.src.startsWith('blob:')), 'адрес картинки — blob:, не data:');
+      const body = scr.querySelector('.screen-body'), last = () => [...scr.querySelectorAll('.card')].pop();
+      ok(!last().querySelector('img'), 'последняя карточка ещё без рисунка');
+      body.scrollTop = body.scrollHeight;
+      ok(await waitFor(() => last().querySelector('img')), 'прокрутили вниз — последняя карточка с рисунком');
+      // другая сортировка — список заново, рисунки снова по мере прокрутки
+      scr.querySelector('[data-sort="new"]').click();
+      eq(scr.querySelectorAll('.card-art i.art[data-art]').length, 40, 'после сортировки — снова заглушки');
+      ok(await waitFor(() => scr.querySelector('.card-art img')), 'и снова рисунки у экрана');
+    } finally {
+      if (scr) { scr._close(); scr.remove(); }
+      css.remove();
+      Object.assign(S.d, { spirits: keep.spirits, tut: keep.tut }); UI.colSort = keep.colSort; UI.colEl = keep.colEl;
+    }
+  });
+  test('5.1.24: Art.img — адрес blob: один на вид (кэш), сияющий — свой', () => {
+    const a = Art.img('kapelka'), b = Art.img('kapelka'), c = Art.img('kapelka', true);
+    const src = h => (/src="([^"]+)"/.exec(h) || [])[1] || '';
+    ok(src(a).startsWith('blob:'), 'blob: — ' + src(a).slice(0, 30));
+    eq(src(a), src(b), 'тот же вид — тот же адрес:');
+    ok(src(c) !== src(a), 'сияющий — другой рисунок');
+    ok(a.length < 200, `разметка картинки короткая: ${a.length} символов`);
+  });
+  atest('5.1.24: карта — у каждого куска pmtiles свой адрес (?r=начало-длина), заголовок Range прежний', async () => {
+    if (typeof protomapsL === 'undefined') await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '../www/vendor/protomaps/protomaps-leaflet.min.js'; s.onload = res; s.onerror = () => rej(new Error('нет protomaps-leaflet.min.js')); document.head.appendChild(s); });
+    const was = window.fetch, calls = [];
+    window.fetch = async (url, opt) => { calls.push({ url: String(url), range: opt && opt.headers && opt.headers.get('range') }); return new Response(new Uint8Array(50), { status: 206, headers: { 'Content-Length': '50', 'ETag': '"t1"' } }); };
+    try {
+      const src = new protomapsL.PmtilesSource('https://duholov.ru/tiles/world-test.pmtiles', false).p.source;
+      const r = await src.getBytes(1000, 50);
+      eq(calls.length, 1, 'запросов:');
+      eq(calls[0].url, 'https://duholov.ru/tiles/world-test.pmtiles?r=1000-50', 'адрес куска:');
+      eq(calls[0].range, 'bytes=1000-1049', 'Range:');
+      eq(r.data.byteLength, 50, 'данные куска:');
+      await new protomapsL.PmtilesSource('https://x.test/a.pmtiles?k=1', false).p.source.getBytes(0, 16384);
+      eq(calls[1].url, 'https://x.test/a.pmtiles?k=1&r=0-16384', 'адрес уже с параметром — через &:');
+    } finally { window.fetch = was; }
+  });
+  atest('5.1.24: SRI — хэши библиотек верны, предзагрузка в head до CSP и с теми же integrity, preconnect к серверу игры', async () => {
+    const html = await fetch('../www/index.html?t=' + Date.now()).then(r => r.text());
+    const sha = async p => 'sha384-' + btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-384', await fetch('../www/' + p + '?t=' + Date.now()).then(r => r.arrayBuffer())))));
+    const tags = [...html.matchAll(/<(?:script|link)\b[^>]*?(?:src|href)="([^"?]+)[^"]*"[^>]*?integrity="([^"]+)"[^>]*>/g)].map(m => ({ path: m[1], sri: m[2], tag: m[0] }));
+    ok(tags.length >= 7, 'тегов с integrity: ' + tags.length); // 4 предзагрузки + стили и два скрипта карты
+    for (const t of tags) eq(t.sri, await sha(t.path), t.path + ':');
+    eq(Cloud.LIB_SRI, await sha('vendor/supabase.min.js'), 'cloud.js LIB_SRI:');
+    const pre = p => tags.find(t => t.path === p && t.tag.includes('rel="preload"'));
+    ['css/style.css', 'vendor/leaflet/leaflet.min.css', 'vendor/leaflet/leaflet.min.js', 'vendor/protomaps/protomaps-leaflet.min.js', 'js/version.js', 'js/i18n.js', 'vendor/supabase.min.js']
+      .forEach(p => ok(html.includes(`<link rel="preload" href="${p}`), 'нет предзагрузки ' + p));
+    ok(pre('vendor/supabase.min.js').tag.includes('crossorigin="anonymous"'), 'библиотека облака: crossorigin="anonymous", как у тега из cloud.js');
+    if (html.includes('<script src="js/app.min.js')) ok(html.includes('<link rel="preload" href="js/app.min.js'), 'сборка: предзагрузка app.min.js');
+    const csp = html.indexOf('http-equiv="Content-Security-Policy"');
+    ok(csp > 0 && [...html.matchAll(/<link rel="preload" href="(?:css|js|vendor\/(?:leaflet|protomaps|supabase))/g)].every(m => m.index < csp), 'предзагрузка — до <meta> с CSP');
+    ok(/<link rel="preconnect" href="https:\/\/api\.duholov\.ru" crossorigin>/.test(html), 'preconnect к серверу игры');
+    ok(!html.includes('dns-prefetch'), 'без dns-prefetch к сервисам входа');
+  });
+  atest('5.1.24: service worker — установка не перекачивает файлы с меткой версии, без icon-512; кэши звуков и плиток живут', async () => {
+    // sw.js — в песочнице: свои self, caches и importScripts; метки версии — как после tools/stamp-version.sh
+    const src = (await fetch('../www/sw.js?t=' + Date.now()).then(r => r.text())).split('?v=dev').join('?v=9.9.9-test');
+    const on = {}, put = [], deleted = [];
+    const fakeSelf = { addEventListener: (n, f) => { on[n] = f; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
+    const fakeCaches = { open: async () => ({ addAll: async reqs => { put.push(...reqs); } }), keys: async () => ['duholov-v9.9.8-old', 'duholov-v9.9.9-dev', 'duholov-tiles', 'duholov-sfx', 'duholov-models'], delete: async k => { deleted.push(k); return true; } };
+    new Function('self', 'importScripts', 'caches', 'APP_VERSION', src)(fakeSelf, () => {}, fakeCaches, '9.9.9');
+    let wait;
+    on.install({ waitUntil: p => { wait = p; } }); await wait;
+    ok(put.length > 8, 'установка кладёт в кэш основные файлы: ' + put.length);
+    const mode = end => { const r = put.find(q => q.url.endsWith(end)); ok(r, 'нет в кэше: ' + end); return r.cache; };
+    eq(mode('js/version.js?v=9.9.9-test'), 'default', 'файл с меткой версии — из HTTP-кэша:');
+    eq(mode('css/style.css?v=9.9.9-test'), 'default', 'стили с меткой версии:');
+    eq(mode('vendor/supabase.min.js'), 'no-cache', 'файл без метки — сверка с сервером:');
+    eq(mode('/index.html'), 'no-cache', 'страница — сверка с сервером:');
+    ok(!put.some(r => r.url.includes('icon-512')), 'icon-512.png игре не нужен — его нет в кэше');
+    ok(!put.some(r => r.cache === 'reload'), 'ничего не качается мимо HTTP-кэша');
+    on.activate({ waitUntil: p => { wait = p; } }); await wait;
+    eq(deleted.join(), 'duholov-v9.9.8-old', 'при обновлении удаляется только кэш прошлой версии (звуки, плитки и модели мест — нет):');
+  });
+  // 5.1.28: 3D-модели мест (www/models/*.m3d, js/m3d.js) — каждый файл читается, части ссылаются на свои вершины и материалы,
+  // у Разлома — вихрь портала (вращается), у святилища — пламя, у Источника — парящий осколок; рамка модели — правдоподобная
+  atest('5.1.28: 3D-модели мест — все файлы читаются, части целы, у Разломов вихрь, у святилищ пламя', async () => {
+    const need = { spring: 'float', shrine: 'flicker', rift: 'spin', catcher: 'leg' };
+    for (const kind of M3D.KINDS) {
+      const buf = await fetch('../www/models/' + kind + '.m3d?t=' + Date.now()).then(r => { ok(r.ok, kind + ': нет файла'); return r.arrayBuffer(); });
+      const m = M3D.parse(buf), h = m.head;
+      ok(h.prims.length > 3, kind + ': частей ' + h.prims.length);
+      ok(h.groups.some(g => g.t === need[kind.split('_')[0]]), kind + ': нет движения ' + need[kind.split('_')[0]]);
+      ok(h.r > 0.3 && h.r < 3.5 && h.h > 1.5 && h.h < 4.5, `${kind}: рамка ${h.r} × ${h.h}`);
+      if (kind.startsWith('catcher')) {
+        ok(h.mats.some(m => m.n === 'catcher_eyes'), kind + ': глаза — в цвет облика');
+        eq(h.mats.some(m => m.n === 'catcher_cloak'), kind === 'catcher', kind + ': цвет плаща из облика — только у обычного наряда:');
+      }
+      if (kind === 'catcher') {
+        const t = h.groups.map(g => g.t + (g.s > 0 ? '+' : g.s < 0 ? '-' : '')).sort().join();
+        eq(t, 'arm+,arm-,body,leg+,leg-,static', 'Ловчий: шарниры');
+        ok(h.groups.filter(g => g.t === 'arm').every(g => h.groups[g.pb] && h.groups[g.pb].t === 'body'), 'руки — от туловища');
+        ok(['catcher_cloak', 'catcher_cloak_dark', 'catcher_eyes'].every(n => h.mats.some(m => m.n === n)), 'материалы под цвета облика');
+      }
+      ok(h.top > 1 && h.low < 0, `${kind}: верх ${h.top}, низ ${h.low}`);
+      for (const p of h.prims) {
+        ok(h.mats[p.m] && h.groups[p.g], kind + ': часть без материала или группы');
+        eq(p.i[1] % 3, 0, kind + ': индексы не тройками —');
+        let mx = 0;
+        for (let i = p.i[0]; i < p.i[0] + p.i[1]; i++) mx = Math.max(mx, m.idx[i]);
+        ok(mx < p.v[1] && p.v[0] + p.v[1] <= m.pos.length / 4, kind + ': индекс за пределами вершин части');
+        if (p.c != null) ok((p.c + p.v[1]) * 4 <= m.col.length, kind + ': цвета вершин за пределами');
+        if (p.ol) ok(m.onr[p.v[0] * 4] || m.onr[p.v[0] * 4 + 1] || m.onr[p.v[0] * 4 + 2], kind + ': у обводки нет нормали');
+      }
+    }
+  });
+  // 5.1.28: 3D-Ловчий — цвета облика (плащ, его тень, глаза; у облика-скина — его цвет), походка плавно набирает и гасит размах,
+  // бег — из ходьбы; идёт — смотрит по ходу, постоял 3 с — лицом к игроку (к низу экрана, и при повёрнутой карте)
+  test('5.1.28: 3D-Ловчий — цвета облика, походка и поворот', () => {
+    const near3 = (a, b, m) => a.forEach((x, i) => near(x, b[i], 1e-6, m));
+    let tn = M3D.tintOf({ cloak: '#1d4ed8', eyes: '#fde047' });
+    near3(tn.catcher_cloak.c, M3D.lin('#1d4ed8'), 'плащ:');
+    near3(tn.catcher_cloak_dark.c, M3D.lin('#1d4ed8').map(x => x * 0.27), 'тень плаща:');
+    near3(tn.catcher_eyes.e, M3D.lin('#fde047').map(x => x * 1.6), 'глаза светятся своим цветом:');
+    // 5.1.29: у облика-скина — свой наряд (своя модель); неизвестный или обычный — капюшон
+    eq(M3D.kindOfLook({ skin: 'bogatyr' }), 'catcher_bogatyr', 'скин — свой наряд:');
+    eq(M3D.kindOfLook({ skin: 'hood' }), 'catcher', 'обычный облик:');
+    eq(M3D.kindOfLook({ skin: 'constructor' }), 'catcher', 'неизвестный скин:');
+    eq(M3D.kindOfLook(null), 'catcher', 'без облика:');
+    ok(LOOK.skin.filter(s => s.id !== 'hood').every(s => M3D.SKINS.includes(s.id)), 'у каждого скина из Гардероба есть 3D-наряд');
+    near3(M3D.tintOf({ cloak: 'red', eyes: 'url(x)' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'чужое значение — обычный плащ:');
+    near3(M3D.tintOf({ skin: 'constructor' }).catcher_cloak.c, M3D.lin('#6d28d9'), 'неизвестный скин — обычный плащ:');
+    const keepRot = M3D.rot, v = { gait: 2, yaw: 1 };
+    try {
+      M3D.rot = 30;
+      let t = 0;
+      M3D.step(v, t);
+      for (let i = 0; i < 20; i++) M3D.step(v, t += 100);
+      ok(v.walk.amp > 0.99 && v.walk.run > 0.99, 'бег набрал размах: ' + v.walk.amp.toFixed(3) + ' / ' + v.walk.run.toFixed(3));
+      near(v.walk.yaw, 1, 1e-3, 'бежит — смотрит по ходу:');
+      v.gait = 0;
+      for (let i = 0; i < 10; i++) M3D.step(v, t += 100);
+      ok(v.walk.amp < 0.01, 'остановился — руки и ноги вернулись: ' + v.walk.amp.toFixed(3));
+      near(v.walk.yaw, 1, 1e-3, 'постоял секунду — смотрит, куда шёл:');
+      for (let i = 0; i < 40; i++) M3D.step(v, t += 100);
+      near(v.walk.yaw, 30 * Math.PI / 180, 0.02, 'постоял 5 с — лицом к игроку (с поворотом карты):');
+    } finally { M3D.rot = keepRot; }
+    ok(M3D.html('catcher', 32, 32, '', 'me').includes('data-who="me"') || M3D.on !== true, 'холст Ловчего помечен как свой');
+  });
+  test('5.1.28: значки мест — холст 3D-модели в точке привязки значка; у исчерпанного Источника — без струи', () => {
+    const keep = M3D.on, keepL = window.L;
+    try {
+      M3D.on = true;
+      window.L = { divIcon: o => ({ options: o }) }; // в тестах Leaflet нет — значку хватит его настроек
+      const at = (e, kind, ax, ay) => {
+        const ic = MapView.icon(e), h = ic.options.html;
+        ok(h.includes(`data-m3d="${kind}"`), 'модель ' + kind);
+        eq(ic.options.iconAnchor.join(), ax + ',' + ay, kind + ': точка привязки значка');
+        ok(h.includes(`data-ax="${ax}" data-ay="${ay}"`), kind + ': модель — в точке привязки');
+        ok(h.indexOf('mk3d') < h.indexOf('class="art'), kind + ': холст — первым, рисунок — следом (запасной)');
+        return h;
+      };
+      ok(at({ type: 'spring', ready: false, invaded: false }, 'spring', 23, 60).includes('data-hide="jet"'), 'исчерпанный Источник — без струи');
+      ok(!at({ type: 'spring', ready: true, invaded: false }, 'spring', 23, 60).includes('data-hide'), 'полный — со струёй');
+      at({ type: 'shrine', tier: 2, myth: 'japan' }, 'shrine_japan', 27, 72);
+      at({ type: 'shrine', tier: 1 }, 'shrine_slavic', 27, 72);
+      at({ type: 'rift', tier: 3, myth: 'aztec', boss: Object.keys(SP)[0] }, 'rift_aztec', 42, 86);
+      M3D.on = null; // нет WebGL — прежний рисунок, без холста
+      ok(!MapView.icon({ type: 'rift', tier: 1, myth: 'greek', boss: Object.keys(SP)[0] }).options.html.includes('mk3d'), 'без WebGL — без холста');
+    } finally { M3D.on = keep; if (keepL) window.L = keepL; else delete window.L; }
+  });
+  test('5.1.30: наклонённая карта — 3D-место видно с той стороны, откуда на него смотрит игрок; значок стоит на своей точке земли', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot }, keepL = window.L;
+    try {
+      window.L = { point: (x, y) => ({ x, y }) }; // в тестах Leaflet нет
+      // карта-заглушка: точка слоя = точка контейнера; контейнер 400×600 — его середина и есть точка зрения
+      MapView.map = { layerPointToContainerPoint: p => p, containerPointToLayerPoint: p => p, getSize: () => ({ x: 400, y: 600, divideBy: k => ({ x: 400 / k, y: 600 / k }) }),
+        getZoom: () => 17.5, getCenter: () => ({ lat: 55.75 }) };
+      MapView.tilt = MapView.TILT; MapView.rot = 0;
+      const icon = (x, y) => { const d = document.createElement('div'); d.className = 'leaflet-marker-icon'; d._leaflet_pos = { x, y }; d.appendChild(document.createElement('canvas')); return d; };
+      const cam = (x, y) => MapView.camOf(icon(x, y).firstChild);
+      const mid = cam(200, 300);
+      near(mid.e, 90 - MapView.TILT, 1e-6, 'в точке зрения — сверху, под углом наклона карты:');
+      near(mid.az, 0, 1e-9, 'посередине — прямо:');
+      const far = cam(200, 40), close = cam(200, 560);
+      ok(far.e < mid.e && mid.e < close.e && far.e > 5, `у горизонта — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
+      ok(cam(360, 300).az > 0.05 && cam(40, 300).az < -0.05, 'правее середины — виден чуть слева, левее — чуть справа');
+      MapView.rot = 90; // повёрнутая карта: правее на экране — это «ниже» на её плоскости
+      ok(cam(360, 300).e > mid.e, 'с поворотом карты — тоже по месту на экране');
+      MapView.rot = 0;
+      // значок выдвинут к игроку по лучу взгляда: на экране точка опоры — ровно там, где точка земли
+      const ic = icon(320, 120), mk = { _icon: ic, _map: MapView.map, options: {} };
+      ic.style.marginLeft = '-27px'; ic.style.marginTop = '-72px';
+      MapView.upright(mk);
+      const m = ic.style.transform.match(/translate3d\(([-\d.]+)px, ([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/);
+      ok(m, 'выдвинут и уменьшен: ' + ic.style.transform);
+      const q = MapView.screen3d({ x: 320, y: 120 }), d = MapView.PD, z = +m[3], f = d / (d - q.z);
+      near((q.x + +m[1]) * d / (d - q.z - z), q.x * d / (d - q.z), 0.02, 'по горизонтали — на своей точке:');
+      near((q.y + +m[2]) * d / (d - q.z - z), q.y * d / (d - q.z), 0.02, 'по вертикали — на своей точке:');
+      // 5.1.32: размер — по расстоянию до камеры, перспектива у фигур сильнее, чем у земли (MapView.figScale)
+      near(+m[4] * d / (d - q.z - z), f * MapView.figScale(f), 1e-3, 'и в размер расстояния до камеры:');
+      ok(f < 1, 'дальняя фигура — мельче'); near(MapView.figScale(f), 1, 1e-9, '5.1.34: у наклона 75° — в размер своей точки земли (своя перспектива сильная):');
+      // место в доме — на его крыше: там, где её рисуют объёмные дома (точка на высоте дома — из точки зрения)
+      const keepOn = Bld3D.on;
+      try {
+        Bld3D.on = true;
+        mk._roofH = 21; MapView.upright(mk);
+        const h = Bld3D.hpx(21), sh = MapView.roofShift({ x: 320, y: 120 }, h);
+        near(h, 21 * Bld3D.mpx(MapView.map), 1e-9, 'дом — в настоящую высоту (в масштабе карты):');
+        ok(h > 40, 'двадцатиметровый дом — выше 40 точек: ' + h.toFixed(1));
+        const at = ic.style.transform.match(/^translate3d\(([-\d.]+)px, ([-\d.]+)px/);
+        ok(at && Math.abs(+at[1] - (320 + sh.x)) < 0.01 && Math.abs(+at[2] - (120 + sh.y)) < 0.01, 'на крыше: ' + ic.style.transform.slice(0, 40));
+        ok(cam(320, 120).e !== MapView.camOf(ic.firstChild).e, 'камера — на крышу, а не к земле под ней');
+        Bld3D.on = false; MapView.upright(mk);
+        ok(/^translate3d\(320px, 120px/.test(ic.style.transform), 'без объёмных домов (нет WebGL) — на земле: ' + ic.style.transform.slice(0, 30));
+      } finally { Bld3D.on = keepOn; }
+      MapView.tilt = 0;
+      eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
+  });
+  test('5.1.34: камера — наклон постоянный (50°), палец её только поворачивает; карта — на весь экран, без горизонта и дымки', () => {
+    const keep = { map: MapView.map, setRot: MapView.setRot, northUp: MapView.northUp, rot: MapView.rot, tilt: MapView.tilt, _py: MapView._py, vw: MapView.vw, vh: MapView.vh };
+    const keepRaf = window.requestAnimationFrame, box = document.createElement('div');
+    try {
+      eq(MapView.TILT, 50, 'наклон — выбор владельца:');
+      ok(typeof MapView.setPitch === 'undefined' && !('pitch' in MapView.ORBIT), 'наклонять пальцем нечем');
+      // палец: вверх-вниз — ничего, влево-вправо — облёт
+      box.id = 'map'; document.body.appendChild(box);
+      const rots = [];
+      MapView.map = { dragging: null }; MapView.rot = 0; MapView.tilt = MapView.TILT; MapView._py = 520; MapView.vh = 870;
+      MapView.setRot = r => { rots.push(r); MapView.rot = r; }; MapView.northUp = () => {};
+      window.requestAnimationFrame = () => 1;
+      MapView.initOrbit();
+      const ev = (type, x, y) => (type === 'pointerdown' ? box : window).dispatchEvent(new PointerEvent(type, { pointerId: 7, pointerType: 'touch', clientX: x, clientY: y, bubbles: true }));
+      ev('pointerdown', 200, 300); ev('pointermove', 200, 500); ev('pointerup', 200, 500);
+      ok(rots.every(r => Math.abs(r) < 1e-9), 'палец вниз — камера не поворачивается и не наклоняется: ' + rots.join());
+      eq(MapView.tilt, MapView.TILT, 'наклон — прежний:');
+      rots.length = 0;
+      ev('pointerdown', 200, 300); ev('pointermove', 260, 300); ev('pointerup', 260, 300);
+      near(rots[rots.length - 1], 60 * MapView.ORBIT.yaw, 1e-9, 'палец вправо (над Ловчим) — облёт:');
+      eq(MapView.tilt, MapView.TILT, 'наклон всё тот же:');
+      // дальний край карты (FAR точек слоя впереди) — за верхом экрана: земля — на весь экран, горизонта нет
+      MapView.vw = 400; MapView.tilt = MapView.TILT;
+      const t = MapView.TILT * Math.PI / 180, hz = MapView._py - MapView.PD / Math.tan(t), fy = MapView.farY();
+      ok(hz < 0, 'горизонт — выше экрана: ' + hz.toFixed(0));
+      ok(fy < 0, 'дальний край карты — за верхом экрана: ' + fy.toFixed(0));
+      near(MapView.planeUV(200, fy).y, -MapView.FAR, 1e-6, 'на краю — FAR точек слоя впереди:');
+      eq(MapView.topY(), 0, 'видимая земля — от верха экрана:');
+      ok(Number.isFinite(MapView.viewUV(0).v0) && MapView.viewUV(0).v0 > -MapView.FAR, 'холст домов — до верха экрана');
+      ok(!document.getElementById('mapHaze'), 'дымки у верха экрана нет');
+      MapView.tilt = 0;
+      eq(MapView.farY(), -Infinity, 'плоская карта — без горизонта:'); eq(MapView.topY(), 0);
+    } finally { Object.assign(MapView, keep); window.requestAnimationFrame = keepRaf; box.remove(); }
+  });
+  test('5.1.30: подпись места — что это (по мифологии) и где; имя точки — как текст', () => {
+    const lab = e => {
+      const d = document.createElement('div');
+      d.innerHTML = MapView.label(e);
+      const i = d.querySelector('.mk-lbl i');
+      return [d.querySelector('.mk-lbl b').textContent, i ? i.textContent : null];
+    };
+    const G = MYTH_PLACES.greek, god = G.gods[6];
+    eq(lab({ type: 'spring', name: 'Фонтан у ГУМа' }).join('|'), ru`Источник` + '|Фонтан у ГУМа', 'Источник:');
+    eq(lab({ type: 'shrine', myth: 'greek', god, name: 'Сквер у фонтана' }).join('|'), G.shrineOf(god) + '|Сквер у фонтана', 'святилище своей мифологии:');
+    eq(lab({ type: 'rift', myth: 'greek', place: 'Исторический музей' }).join('|'), G.rift + '|Исторический музей', 'Разлом своей мифологии:');
+    eq(lab({ type: 'shrine', myth: 'nope', name: 'X' })[0], MYTH_PLACES.slavic.shrine, 'неизвестная мифология — славянское:');
+    eq(lab({ type: 'rift', camp: true, myth: 'slavic', place: null })[1], null, 'без имени точки — одна строка');
+    ok(!MapView.label({ type: 'spring', name: '<img src=x onerror=alert(1)>' }).includes('<img'), 'имя точки — без разметки');
+  });
+  test('5.1.30: подписи мест — своим слоем поверх карты и моделей, под низом значка; уходят вместе со значком', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, markers: MapView.markers, _lblBox: MapView._lblBox, _py: MapView._py }, keepL = window.L;
+    const box = document.createElement('div');
+    try {
+      window.L = { point: (x, y) => ({ x, y }) }; // в тестах Leaflet нет
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
+      MapView.tilt = 0; MapView.rot = 0; MapView._py = 300;
+      box.id = 'mapLbl'; document.body.appendChild(box); MapView._lblBox = box;
+      const icon = (x, y) => { const d = document.createElement('div'); d._leaflet_pos = { x, y }; d.appendChild(document.createElement('div')); return d; };
+      const mk = ic => ({ _icon: ic, options: { icon: { options: { iconAnchor: [27, 72], iconSize: [54, 80] } } } });
+      const a = mk(icon(150, 200)), b = mk(icon(5000, 200));
+      MapView.markers = new Map([['a', a], ['b', b]]);
+      MapView.lblFor(a, { type: 'spring', name: 'Фонтан у ГУМа' }); MapView.lblFor(b, { type: 'spring', name: 'Далеко' });
+      ok(a._lbl && a._lbl.parentNode === box, 'подпись — в своём слое, не в значке');
+      eq(a._lbl.querySelector('i').textContent, 'Фонтан у ГУМа');
+      const el = a._lbl;
+      MapView.lblFor(a, { type: 'spring', name: 'Сквер' });
+      ok(a._lbl === el && el.querySelector('i').textContent === 'Сквер', 'новое имя — в той же подписи');
+      MapView.placeLabels();
+      const at = s => s.match(/translate3d\(([-\d.]+)px, ([-\d.]+)px, 0(?:px)?\) translateX\(-50%\) scale\(([\d.]+)\)/);
+      let m = at(a._lbl.style.transform);
+      ok(m, 'подпись стоит: ' + a._lbl.style.transform);
+      // плоская карта: точка значка на экране — середина + сдвиг от середины контейнера; подпись — под низом рисунка
+      near(+m[1], innerWidth / 2 - 50, 0.06, 'по горизонтали — под значком:');
+      near(+m[2], 300 - 100 + (80 - 72 + 4), 0.06, 'по вертикали — под низом рисунка:');
+      eq(+m[3], 1, 'плоская карта — без уменьшения:');
+      a._icon.firstChild.style.setProperty('--m3d-bot', '90px'); // у 3D-модели — под низом модели
+      MapView.placeLabels();
+      near(+at(a._lbl.style.transform)[2], 300 - 100 + (90 - 72 + 13), 0.06, 'под низом модели:');
+      eq(b._lbl.style.display, 'none', 'значок далеко за краем экрана — подпись не видна');
+      a._icon._leaflet_pos = null; MapView.placeLabels();
+      eq(a._lbl.style.display, 'none', 'значок ещё не на карте — подпись не видна');
+      MapView.dropLbl(a);
+      ok(!el.parentNode && !a._lbl, 'значок ушёл — и подпись');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; box.remove(); }
+  });
+  atest('5.1.30: палитра карты — день и ночь; её цвета дают все цвета, которые читает стиль карты', async () => {
+    if (typeof protomapsL === 'undefined') await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '../www/vendor/protomaps/protomaps-leaflet.min.js'; s.onload = res; s.onerror = () => rej(new Error('нет protomaps-leaflet.min.js')); document.head.appendChild(s); });
+    const hex = /^#[0-9a-f]{6}$/i;
+    for (const ph of ['day', 'night']) {
+      const F = MapView.PALETTE[ph];
+      ok(F, ph);
+      for (const k of ['earth', 'roof', 'wall', 'wall2']) ok(hex.test(F[k]), `${ph}.${k} = ${F[k]}`);
+      ok(F.light > 0 && F.light <= 1, `${ph}: контраст стен ${F.light}`);
+      // правила стиля читают цвета и сразу, и позже (на каждом масштабе) — прогнать их и проверить, что все цвета есть
+      const miss = new Set(), wrap = (o, pre) => new Proxy(o, { get: (t, k) => {
+        if (typeof k === 'string' && !(k in t)) miss.add(pre + k);
+        const v = t[k]; return v && typeof v === 'object' ? wrap(v, pre + k + '.') : v; } });
+      const f = MapView.flavorOf(F.c), w = wrap(f, '');
+      const feat = { props: { kind: 'park', kind_detail: 'park', 'pmap:kind': 'park', 'pmap:min_zoom': 0, name: 'x' }, geomType: 2, numVertices: 4, bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 }, geom: [] };
+      for (const r of [...protomapsL.paintRules(w), ...protomapsL.labelRules(w, 'ru')]) for (const z of [8, 13, 16, 18]) {
+        const walk = s => { if (!s || typeof s !== 'object') return; for (const v of Object.values(s)) { if (v && typeof v.get === 'function') { try { v.get(z, feat); } catch (e) {} } else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object' && v.constructor !== Object) walk(v); } };
+        walk(r.symbolizer);
+        if (typeof r.filter === 'function') { try { r.filter(z, feat); } catch (e) {} }
+      }
+      eq([...miss].join(','), '', `${ph}: все цвета стиля есть:`);
+      const bad = Object.entries({ ...f, ...f.landcover }).filter(([, v]) => typeof v === 'string' && !hex.test(v)).map(([k, v]) => k + '=' + v);
+      eq(bad.join(','), '', `${ph}: цвета — #rrggbb:`);
+      eq(MapView.flavorRules(F).bg, F.c.bg, `${ph}: фон стиля — из палитры:`);
+    }
+    eq(MapView.pal(false), MapView.PALETTE.day, 'днём — дневные цвета');
+    eq(MapView.pal(true), MapView.PALETTE.night, 'ночью — ночные');
+  });
+  // 5.1.31: без фризов — стили игры (временно на всю страницу тестов): наклон и поворот слоя карты не наследуются внутрь (иначе на
+  // каждом кадре жеста пересчитывались бы стили всей карты); под окном анимации карты на паузе, как раньше (правило :has() — с «>»);
+  // у значка духа с пульсом под тенью — неподвижная прозрачная рамка (иначе на каждом кадре заново раскладка карты по слоям)
+  atest('5.1.31: стили карты без фризов — наклон не наследуется, окно приостанавливает анимации, рамка у пульсирующих духов', async () => {
+    const css = await fetch('../www/css/style.css?t=' + Date.now()).then(r => r.text());
+    const sh = new CSSStyleSheet();
+    sh.replaceSync(css.replace(/@import[^;]+;/g, ''));
+    const keep = document.adoptedStyleSheets, box = document.createElement('div'), wrap = document.createElement('div');
+    document.adoptedStyleSheets = [...keep, sh];
+    try {
+      box.innerHTML = '<div id="map" class="rot tilt" style="--tilt: 31deg; --mrot: 12deg"><i class="rz-wave"></i><div class="mk-spirit r3"></div><div class="mk-spirit r1"></div><div class="mk-spirit r2 sp-tut"></div></div>';
+      document.body.appendChild(box);
+      const map = box.firstChild, wave = map.querySelector('.rz-wave'), [r3, r1, tut] = map.querySelectorAll('.mk-spirit');
+      eq(getComputedStyle(map).getPropertyValue('--tilt').trim(), '31deg', 'у самого слоя — свой наклон:');
+      eq(getComputedStyle(wave).getPropertyValue('--tilt').trim(), '0deg', 'внутрь слоя наклон не наследуется:');
+      eq(getComputedStyle(wave).getPropertyValue('--mrot').trim(), '0deg', 'и поворот:');
+      ok(/matrix3d/.test(getComputedStyle(map).transform), 'слой карты по-прежнему наклонён: ' + getComputedStyle(map).transform.slice(0, 40));
+      eq(getComputedStyle(wave).animationPlayState, 'running', 'без окна волна идёт:');
+      wrap.className = 'modal-wrap';
+      document.body.appendChild(wrap); // окна — прямые дети body (UI.modal)
+      eq(getComputedStyle(wave).animationPlayState, 'paused', 'под окном — на паузе:');
+      wrap.classList.add('out');
+      eq(getComputedStyle(wave).animationPlayState, 'running', 'окно закрывается — снова идёт:');
+      wrap.remove();
+      const b = el => getComputedStyle(el, '::before');
+      eq(b(r3).content, '""', 'у духа с пульсирующим свечением (r3) — рамка');
+      eq(b(r3).top, '-20px', 'с запасом на пульс:');
+      eq(b(r3).borderTopColor, 'rgba(0, 0, 0, 0)', 'рамка прозрачная:');
+      eq(b(r3).pointerEvents, 'none', 'и не ловит касаний:');
+      eq(b(tut).top, '-56px', 'у духа обучения — с запасом на кольцо:');
+      eq(b(r1).content, 'none', 'у обычного духа рамки нет');
+    } finally { document.adoptedStyleSheets = keep; box.remove(); wrap.remove(); }
+  });
+  atest('5.1.31: 3D-модели — пачкой в клетках общего холста; картинка каждой та же, что по одной', async () => {
+    if (!M3D.init()) { ok(true, 'нет WebGL — проверять нечего'); return; }
+    const host = document.createElement('div'), base = M3D.BASE, kinds = ['spring', 'shrine_greek', 'rift_norse', 'shrine_china'];
+    host.style.cssText = 'position: fixed; left: 0; top: 0; width: 320px; height: 320px; pointer-events: none';
+    document.body.appendChild(host);
+    try {
+      M3D.BASE = '../www/models/'; // файлы моделей — от страницы тестов
+      kinds.forEach(k => { if (M3D.models[k] && !M3D.models[k].ready) delete M3D.models[k]; });
+      host.innerHTML = ['spring', 'shrine_greek', 'rift_norse', 'shrine_china'].map(k => `<div style="position: relative; width: 80px; height: 80px">${M3D.html(k, 40, 70)}</div>`).join('');
+      M3D.bind(host);
+      const vs = [...host.querySelectorAll('canvas.mk3d')].map(c => c._m3d);
+      for (let i = 0; i < 200 && !vs.every(v => v.ready && v.t); i++) await new Promise(r => setTimeout(r, 25));
+      ok(vs.every(v => v.ready && v.t), 'модели загружены, первый кадр — в ближайшем кадре браузера');
+      ok(vs.every(v => v.c.classList.contains('on')), 'холсты видны');
+      const T = 4321.5, px = v => Array.from(v.ctx.getImageData(0, 0, v.pw, v.ph).data);
+      eq(M3D.drawSet(vs, T), vs.length, 'нарисованы все:');
+      eq(new Set(vs.map(v => v.slot.join())).size, vs.length, 'у каждой модели — своя клетка:');
+      const batch = vs.map(px);
+      vs.forEach(v => M3D.drawSet([v], T));
+      vs.forEach((v, i) => {
+        const a = batch[i], b = px(v);
+        let diff = 0;
+        for (let j = 0; j < a.length; j++) if (a[j] !== b[j]) diff++;
+        eq(diff, 0, v.kind + ': пачкой и по одной — одна и та же картинка, отличий:');
+        ok(a.some((x, j) => j % 4 === 3 && x > 0), v.kind + ': нарисована');
+      });
+    } finally { host.remove(); M3D.prune(); M3D.BASE = base; }
+  });
+  test('5.1.31: плитки карты — только под видимой землёй (с запасом), рамка — с серединой у игрока; проявление пишет прозрачность лишь при изменении', () => {
+    const keep = { seenPoly: MapView.seenPoly, TILE_PAD: MapView.TILE_PAD, TILE_KEEP: MapView.TILE_KEEP }, keepL = window.L;
+    try {
+      // видимая земля — ромб (повёрнутая карта): рамка ромба шире него самого
+      MapView.seenPoly = () => [[200, 0], [400, 200], [200, 400], [0, 200]];
+      const lay = { _map: { latLngToLayerPoint: p => p }, _tileCoordsToNwSe: co => [{ x: co.x * 80, y: co.y * 80 }, { x: co.x * 80 + 80, y: co.y * 80 + 80 }] };
+      ok(MapView.tileSeen(lay, { x: 2, y: 2 }, 0), 'плитка посередине — нужна');
+      ok(!MapView.tileSeen(lay, { x: 0, y: 0 }, 0), 'угол рамки мимо ромба — не нужна');
+      ok(MapView.tileSeen(lay, { x: 0, y: 0 }, 1), 'с запасом в плитку — нужна (подгрузится заранее)');
+      ok(!MapView.tileSeen(lay, { x: 9, y: 9 }, 2), 'далеко — не нужна и с запасом');
+      // рамка плиток — с серединой у игрока (Leaflet и Protomaps рисуют от середины), не шире слоя карты
+      const pts = [], writes = [];
+      window.L = {
+        bounds: (a, b) => ({ min: { x: a[0], y: a[1] }, max: { x: b[0], y: b[1] } }),
+        DomUtil: { setOpacity: (el, v) => { writes.push(v); el.style.opacity = v; } },
+        Util: { requestAnimFrame: () => 1, cancelAnimFrame() {} },
+      };
+      MapView.seenPoly = () => [[500, 300], [700, 300], [650, 600], [550, 600]]; // трапеция впереди игрока (он — в (600, 700))
+      const map = { getZoom: () => 18, getZoomScale: () => 1, project: () => ({ floor: () => ({ x: 600, y: 700 }) }), containerPointToLayerPoint: () => ({ x: 600, y: 700 }), getSize: () => ({ divideBy: () => ({}) }) };
+      const fake = { _map: map, _tileZoom: 18, _tiles: {}, options: { opacity: 1 }, _container: document.createElement('div'),
+        _getTiledPixelBounds: () => ({ min: { x: -5000, y: -5000 }, max: { x: 5000, y: 5000 } }), _isValidTile: () => true, _update() {}, _pruneTiles() {}, _onOpaqueTile() {} };
+      MapView.TILE_PAD = 1;
+      MapView.cull(fake);
+      const b = fake._getTiledPixelBounds({});
+      eq((b.min.x + b.max.x) / 2, 600, 'середина рамки по ширине — у игрока:'); eq((b.min.y + b.max.y) / 2, 700, 'и по высоте:');
+      ok(b.min.y <= 300 - 256 && b.max.x >= 700 + 256, 'рамка покрывает видимую землю с запасом');
+      // проявление: прозрачность — только тем, у кого она изменилась
+      const el1 = document.createElement('canvas'), el2 = document.createElement('canvas'), now = +new Date();
+      fake._tiles = { a: { current: true, loaded: now - 1000, el: el1, active: true }, b: { current: true, loaded: now, el: el2 } };
+      fake._updateOpacity(); const n1 = writes.length;
+      fake._updateOpacity(); const n2 = writes.length - n1;
+      ok(n1 >= 2, 'первый раз — слою и плиткам: ' + n1);
+      ok(n2 <= 1, 'дальше — только той, что проявляется: ' + n2);
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
+  });
+  test('5.1.31: объёмные дома — плитки строятся по одной, ближняя к игроку — первой', () => {
+    const keep = { map: Bld3D.map, buildOne: Bld3D.buildOne, queue: Bld3D.queue, busy: Bld3D.busy }, order = [];
+    try {
+      Bld3D.map = { getCenter: () => ({}), project: () => ({ divideBy: () => ({ x: 10.5, y: 20.5 }) }) };
+      let finish = null;
+      Bld3D.buildOne = (t, fs, done) => { order.push(t.x + ':' + t.y); finish = done; };
+      Bld3D.queue = []; Bld3D.busy = false;
+      Bld3D.build({ x: 14, y: 20 }, []); // строится сразу (очередь пуста)
+      Bld3D.build({ x: 13, y: 24 }, []); Bld3D.build({ x: 10, y: 21 }, []); Bld3D.build({ x: 11, y: 20 }, []);
+      eq(order.join(), '14:20', 'пока строится одна — остальные ждут:');
+      finish(); finish(); finish();
+      eq(order.join(), '14:20,10:21,11:20,13:24', 'дальше — от ближней к игроку:');
+      finish();
+      eq(Bld3D.busy, false, 'очередь пуста — свободен:');
+    } finally { Object.assign(Bld3D, keep); }
+  });
+  test('5.1.31: крыши и повороты моделей — одним кадром; пустые плитки подписей скрыты; значок далеко за экраном не переставляется', () => {
+    const keep = { markers: MapView.markers, upright: MapView.upright, reAim: MapView.reAim, bldTiles: MapView.bldTiles, map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py };
+    const keepAim = M3D.aim, keepRaf = window.requestAnimationFrame, keepL = window.L;
+    const raf = [];
+    try {
+      window.requestAnimationFrame = f => { raf.push(f); return raf.length; };
+      // крыши: пришли высоты — места встают на крыши одним кадром, без полного обновления значков
+      let up = 0, re = 0, aims = 0;
+      const e = { type: 'shrine', lat: 55.75, lng: 37.62 }, m = { _ent: e };
+      MapView.markers = new Map([['a', m]]);
+      MapView.upright = () => { up++; }; MapView.reAim = () => { re++; };
+      Roofs.at.set(e.lat.toFixed(6) + ',' + e.lng.toFixed(6), 21);
+      MapView.roofSoon(); MapView.roofSoon();
+      eq(raf.length, 1, 'две крыши подряд — один кадр:');
+      raf.shift()();
+      eq(m._roofH, 21, 'место — на крыше:'); eq(up, 1, 'значок переставлен:'); eq(re, 1, 'модели и подписи — под новую высоту:');
+      // модели — к игроку в ближайшем кадре, не в задаче обновления значков
+      M3D.aim = () => { aims++; };
+      MapView.aimSoon(); MapView.aimSoon();
+      eq(aims, 0, 'сразу не поворачивает'); eq(raf.length, 1, 'один кадр на два вызова:');
+      raf.shift()();
+      eq(aims, 1, 'повернул в кадре:');
+      // пустая плитка подписей — скрыта (у пустого холста всё равно свой слой видеокарты)
+      let labels = 0;
+      MapView.bldTiles = { labelers: { getIndex: () => ({ searchBbox: () => ({ size: labels }) }) } };
+      const tile = document.createElement('canvas');
+      MapView.lblTileVis({ x: 1, y: 2, z: 18 }, tile);
+      eq(tile.style.display, 'none', 'без подписей — скрыта:');
+      labels = 2; MapView.lblTileVis({ x: 1, y: 2, z: 18 }, tile);
+      eq(tile.style.display, '', 'появились подписи — видна:');
+      // значок далеко за краем экрана: первый раз ставится, дальше — до нового места на слое карты не переставляется
+      MapView.upright = keep.upright;
+      window.L = { point: (x, y) => ({ x, y }) };
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }), getZoom: () => 17.5 };
+      MapView.tilt = MapView.TILT; MapView.rot = 0; MapView._py = 300;
+      const ic = document.createElement('div'), mk = { _icon: ic, _map: MapView.map, options: {} };
+      ic._leaflet_pos = { x: 200 + 5000, y: 300 };
+      MapView.upright(mk);
+      const t1 = ic.style.transform;
+      ok(/rotateX/.test(t1), 'первый раз — поставлен: ' + t1.slice(0, 40));
+      MapView.tilt = MapView.TILT + 5; MapView.upright(mk);
+      eq(ic.style.transform, t1, 'далеко за экраном, то же место — не переставлен:');
+      ic._leaflet_pos = { x: 200 + 5000, y: 300 }; MapView.upright(mk);
+      ok(ic.style.transform !== t1, 'новое место на слое карты — переставлен');
+      ic._leaflet_pos = { x: 220, y: 300 }; MapView.upright(mk);
+      ok(ic.style.transform.includes(`rotateX(-${MapView.TILT + 5}deg)`), 'на экране — всегда по нынешнему наклону: ' + ic.style.transform.slice(0, 60));
+    } finally {
+      Object.assign(MapView, keep); M3D.aim = keepAim; window.requestAnimationFrame = keepRaf;
+      if (keepL) window.L = keepL; else delete window.L;
+      Roofs.at.clear();
+    }
+  });
+  test('5.1.32: камера как в Pokémon GO — отдалить можно до ZMIN; фигуры у камеры крупнее, к горизонту мельче; приблизили — крупнее', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py, markers: MapView.markers, _lblBox: MapView._lblBox }, keepL = window.L;
+    const box = document.createElement('div');
+    try {
+      let z = MapView.Z0;
+      MapView.map = { getZoom: () => z };
+      ok(MapView.ZMIN >= 16.5 && MapView.ZMIN < MapView.Z0, 'отдалить — не дальше ' + MapView.ZMIN + ' (было 15)');
+      near(MapView.figScale(1), 1, 1e-9, 'у Ловчего на исходном масштабе — прежний размер:');
+      // 5.1.34: у наклона 75° перспектива своя сильная — добавки нет (FIG 0); у самого низа экрана — не больше FIG_MAX
+      const lo = 2.2 * MapView.figScale(2.2), hi = 0.5 * MapView.figScale(0.5);
+      ok(lo > 1.5 && hi < 0.6, `у нижнего края экрана — крупнее, у дальнего — мельче: ${lo.toFixed(2)}, ${hi.toFixed(2)}`);
+      near(lo, MapView.FIG_MAX, 1e-9, 'у самого низа экрана — не больше FIG_MAX:');
+      near(0.3 * MapView.figScale(0.3), MapView.FIG_MIN, 1e-9, 'у горизонта — не меньше FIG_MIN:');
+      z = 19; const zin = MapView.figScale(1);
+      z = MapView.ZMIN; const zout = MapView.figScale(1);
+      ok(zin > 1.5 && zout < 0.8, `приблизили камеру — крупнее, отдалили — мельче: ${zin.toFixed(2)}, ${zout.toFixed(2)}`);
+      z = 19; near(1.4 * MapView.figScale(1.4), MapView.FIG_MAX, 1e-9, 'не больше FIG_MAX:');
+      MapView.map = { getZoom: () => 17.5, _animatingZoom: true, _animateToZoom: 18.5 };
+      near(MapView.figScale(1), Math.pow(2, MapView.ZK), 1e-9, 'масштаб анимируется — сразу к новому (значок догонит плавно):');
+      // подпись места — под низом крупной модели
+      window.L = { point: (x, y) => ({ x, y }) };
+      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
+      MapView.tilt = MapView.TILT; MapView.rot = 0; MapView._py = 300;
+      box.id = 'mapLbl'; document.body.appendChild(box); MapView._lblBox = box;
+      const ic = document.createElement('div'), m = { _icon: ic, options: { icon: { options: { iconAnchor: [27, 72], iconSize: [54, 80] } } } };
+      ic._leaflet_pos = { x: 200, y: 300 }; ic.appendChild(document.createElement('div'));
+      ic.firstChild._m3dBot = 90;
+      MapView.markers = new Map([['a', m]]);
+      MapView.lblFor(m, { type: 'spring', name: 'Фонтан' });
+      const y = g => { ic._g = g; MapView.placeLabels(); return +m._lbl.style.transform.match(/translate3d\([-\d.]+px, ([-\d.]+)px/)[1]; };
+      near(y(2) - y(1), 90 - 72, 0.11, 'модель вдвое крупнее — подпись ниже на её высоту под точкой опоры:');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; box.remove(); }
+  });
+  test('5.1.32: крупная у камеры 3D-модель — холст с запасом точек (без перескоков туда-обратно)', () => {
+    const keepT = MapView.tilt, keepLayout = M3D.layout;
+    try {
+      MapView.tilt = MapView.TILT;
+      const ic = document.createElement('div'), c = document.createElement('canvas');
+      ic.className = 'leaflet-marker-icon'; ic.appendChild(c);
+      let lays = 0;
+      M3D.layout = () => { lays++; };
+      const v = { c, res: 1 }, at = S => { ic._g = S; ic._f = 1; return M3D.sharp(v); };
+      eq(at(1.1), false, 'почти прежний размер — холст тот же:');
+      eq(at(1.3), true, 'крупнее — больше точек:'); eq(v.res, 1.5);
+      eq(at(1.15), false, 'чуть мельче — без перескока назад:'); eq(v.res, 1.5);
+      eq(at(1.9), true); eq(v.res, 2, 'ещё крупнее — вдвое:');
+      eq(at(1), true); eq(v.res, 1, 'снова прежний размер — как было:');
+      eq(lays, 3, 'холст пересчитан только при смене:');
+      MapView.tilt = 0;
+      eq(at(2.2), false, 'плоская карта — фигуры без увеличения:');
+    } finally { MapView.tilt = keepT; M3D.layout = keepLayout; }
+  });
+  test('5.1.32: дом между фигурой и игроком заслоняет её (позади, сбоку, низкий или далеко впереди — нет); у края плитки — обе его части', () => {
+    // точка зрения — над точкой (0, 1000) на высоте 900 (точки слоя); единицы плитки = точки слоя
+    const cam = { x: 0, y: 1000, w: 900 };
+    const sq = (x0, y0, x1, y1, H) => ({ b: { g: [[{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]], H, b: [x0, y0, x1, y1] }, ox: 0, oy: 0, s: 1 });
+    const hides = (c, base) => Bld3D.hides(c, 0, 0, cam, 1, base || 0); // фигура — в точке (0, 0)
+    ok(hides(sq(-20, 20, 20, 60, 40)), 'дом в 20 точках перед фигурой — заслоняет');
+    ok(!hides(sq(-20, -60, 20, -20, 40)), 'дом позади фигуры — нет');
+    ok(!hides(sq(200, 20, 240, 60, 40)), 'сбоку — нет');
+    ok(!hides(sq(-20, 20, 20, 60, 2)), 'низкий забор — нет');
+    ok(!hides(sq(-20, 400, 20, 440, 40)), 'невысокий дом далеко впереди — луч проходит над ним');
+    ok(hides(sq(-20, 400, 20, 440, 500)), 'а высокий — заслоняет');
+    ok(hides(sq(-10, -10, 10, 10, 30)), 'фигура в самом доме — заслоняет');
+    ok(!hides(sq(-10, -10, 10, 10, 30), 30), 'место на крыше этого дома — нет');
+    const ring = { b: { g: [[{ x: -30, y: -30 }, { x: 30, y: -30 }, { x: 30, y: 30 }, { x: -30, y: 30 }], [{ x: -10, y: -10 }, { x: 10, y: -10 }, { x: 10, y: 10 }, { x: -10, y: 10 }]], H: 40, b: [-30, -30, 30, 30] }, ox: 0, oy: 0, s: 1 };
+    ok(hides(ring), 'во дворе дома — заслоняет ближняя к игроку его часть');
+    // дом у края плитки — в обеих плитках (у каждой — своя часть): прозрачными — обе
+    const keepT = Bld3D.tiles, keepG = Bld3D.gen;
+    try {
+      Bld3D.tiles = new Map();
+      const tile = (x, y) => { const t = { x, y, st: 'ok', bs: [], ix: new Array(Bld3D.OG * Bld3D.OG), hi: 0 }; Bld3D.tiles.set(x + ':' + y, t); return t; };
+      const a = tile(5, 7), b = tile(6, 7), E = Bld3D.EXT, ch = { bl: [] };
+      const f = (x0, x1, H) => ({ geom: sq(x0, 100, x1, 140, 0).b.g, props: { height: H } });
+      Bld3D.keep(a, f(E - 30, E + 20, 25), ch, 0, 8); // доходит до края плитки a (с запасом за ним)
+      Bld3D.keep(a, f(100, 140, 25), ch, 8, 8);       // посередине той же плитки
+      Bld3D.keep(b, f(-20, 30, 25), ch, 0, 8);        // его часть в соседней плитке
+      Bld3D.keep(b, f(-20, 30, 12), ch, 8, 8);        // другой дом там же, ниже
+      Bld3D.gen++;
+      const tw = Bld3D.twins(a.bs[0]);
+      eq(tw.length, 1, 'у дома на краю — одна часть в соседней плитке:'); ok(tw[0] === b.bs[0], 'та же высота, рамки пересекаются');
+      eq(Bld3D.twins(a.bs[1]).length, 0, 'у дома посередине плитки — нет');
+      eq(a.hi, 25, 'самый высокий дом плитки:');
+    } finally { Bld3D.tiles = keepT; Bld3D.gen = keepG; }
+  });
+  test('5.1.32: фигура за домом — дом плавно прозрачнее, фигура тусклее; ушла — всё как было', () => {
+    const keep = { markers: MapView.markers, player: MapView.player, hiders: MapView.hiders, camLayer: MapView.camLayer, map: MapView.map, tilt: MapView.tilt };
+    const keepB = { on: Bld3D.on, tiles: Bld3D.tiles, mpx: Bld3D.mpx, hiPx: Bld3D.hiPx, dirty: Bld3D.dirty, fades: Bld3D.fades, fadeOn: Bld3D.fadeOn, fadeT: Bld3D.fadeT };
+    try {
+      Bld3D.on = true; Bld3D.tiles = new Map(); Bld3D.fades = new Map(); Bld3D.fadeOn = false;
+      Bld3D.mpx = () => 1; Bld3D.hiPx = () => 100; Bld3D.dirty = () => {};
+      MapView.map = { getZoom: () => 17.5 }; MapView.tilt = MapView.TILT; MapView.camLayer = () => ({ x: 0, y: 0, w: 900 });
+      const t = { x: 1, y: 2 }, p = { nf: 0, upd: null }, bld = { t, p, vs: 0, vn: 4, H: 30, b: [100, 100, 140, 140], g: [] };
+      Bld3D.tiles.set('1:2', t);
+      const icon = () => { const d = document.createElement('div'); d.className = 'mk'; return d; };
+      const a = { _icon: icon() }, b = { _icon: icon() };
+      MapView.markers = new Map([['a', a]]); MapView.player = b;
+      let behind = true;
+      MapView.hiders = m => (m === a && behind ? [bld] : []);
+      MapView.seeThrough();
+      ok(a._icon.classList.contains('behind'), 'фигура за домом — тусклее');
+      ok(!b._icon.classList.contains('behind'), 'Ловчий не за домом — как был');
+      const f = Bld3D.fades.get(bld);
+      ok(f && f.to === Bld3D.FADE, 'дом — к прозрачности FADE');
+      const T0 = Bld3D.fadeT;
+      Bld3D.fadeStep(T0 + 100);
+      near(f.a, 1 - (1 - Bld3D.FADE) * 100 / Bld3D.FADE_MS, 1e-9, 'плавно — за FADE_MS:');
+      ok(p.upd && p.upd.has(bld), 'новая прозрачность — в буфер куска');
+      eq(p.nf, 1, 'у куска — один прозрачный дом:');
+      ok(Bld3D.fadeOn, 'ещё меняется — нужен следующий кадр');
+      Bld3D.fadeStep(T0 + 200); Bld3D.fadeStep(T0 + 300);
+      eq(f.a, Bld3D.FADE, 'дошла до FADE:'); ok(!Bld3D.fadeOn, 'и больше не меняется');
+      behind = false;
+      MapView.seeThrough();
+      ok(!a._icon.classList.contains('behind'), 'фигура ушла из-за дома — снова яркая');
+      eq(f.to, 1, 'дом — обратно к непрозрачному:');
+      const T1 = Bld3D.fadeT;
+      for (let i = 1; i <= 3; i++) Bld3D.fadeStep(T1 + i * 100);
+      ok(!Bld3D.fades.has(bld), 'непрозрачный — больше не в списке');
+      eq(p.nf, 0, 'у куска прозрачных нет:');
+      behind = true; MapView.seeThrough(); ok(a._icon.classList.contains('behind'));
+      MapView.tilt = 0; MapView.seeThrough();
+      ok(!a._icon.classList.contains('behind'), 'плоская карта — дома не заслоняют');
+      eq(Bld3D.fades.get(bld).to, 1, 'и дома — непрозрачные:');
+    } finally { Object.assign(MapView, keep); Object.assign(Bld3D, keepB); }
+  });
+  test('5.1.32: Ловчий идёт (камера — за ним) — за какими домами он, считается на ходу, без поворота камеры', () => {
+    const keep = { rot: MapView.rot, figW: MapView.figW }, keepN = Bld3D.occNear;
+    try {
+      MapView.rot = 0; MapView.figW = () => 56;
+      let asked = 0;
+      Bld3D.occNear = () => { asked++; return []; };
+      const ctx = p => ({ cam: { x: p.x, y: p.y + 600, w: 900 }, mpx: 2, z: 17.5, gen: 1, hi: 100 }); // точка зрения — за Ловчим
+      const ic = { _leaflet_pos: { x: 500, y: 500 }, _g: 1 }, me = { _icon: ic };
+      MapView.hiders(me, ctx(ic._leaflet_pos)); MapView.hiders(me, ctx(ic._leaflet_pos));
+      eq(asked, 1, 'стоит — без пересчёта:');
+      ic._leaflet_pos = { x: 500, y: 499.5 }; MapView.hiders(me, ctx(ic._leaflet_pos));
+      eq(asked, 1, 'сдвинулся меньше чем на ¾ точки — тоже:');
+      ic._leaflet_pos = { x: 500, y: 498 }; MapView.hiders(me, ctx(ic._leaflet_pos));
+      eq(asked, 2, 'прошёл дальше — заново (относительно камеры он на месте, а по карте — идёт):');
+      const pl = { _icon: { _leaflet_pos: { x: 300, y: 300 }, _g: 1 } }; // место стоит, камера уехала за Ловчим
+      MapView.hiders(pl, ctx({ x: 500, y: 500 })); MapView.hiders(pl, ctx({ x: 500, y: 497 }));
+      eq(asked, 4, 'место — заново, когда камера сдвинулась:');
+    } finally { Object.assign(MapView, keep); Bld3D.occNear = keepN; }
+  });
+  test('5.1.32: шейдер объёмных домов собирается (прозрачные дома — своим проходом)', () => {
+    const cv = document.createElement('canvas'), gl = cv.getContext('webgl');
+    if (!gl) { ok(true, 'нет WebGL — проверять нечего'); return; }
+    const keep = { gl: Bld3D.gl, P: Bld3D.P };
+    try {
+      Bld3D.gl = gl;
+      ok(Bld3D.programs(), 'шейдеры собраны');
+      ok(Bld3D.P.u.uMode, 'есть проход прозрачных домов');
+      eq(gl.getAttribLocation(Bld3D.P.p, 'aA'), 3, 'прозрачность — своим буфером вершин (место 3):');
+    } finally { Object.assign(Bld3D, keep); }
+  });
+  atest('5.1.32: фигура за домом — тусклее (стили); дальняя — тоже, обучение — ещё тусклее', async () => {
+    const css = await fetch('../www/css/style.css?t=' + Date.now()).then(r => r.text());
+    const sh = new CSSStyleSheet();
+    sh.replaceSync(css.replace(/@import[^;]+;/g, ''));
+    const keep = document.adoptedStyleSheets, box = document.createElement('div');
+    document.adoptedStyleSheets = [...keep, sh];
+    try {
+      box.innerHTML = '<div class="mk behind"><div class="mk-spirit r1"></div></div><div class="mk"><div class="mk-spirit r1"></div></div>' +
+        '<div class="mk far behind"><div class="mk-shrine"></div></div><div class="mk-player-wrap behind"><div class="mk-player"></div></div>';
+      document.body.appendChild(box);
+      const [a, b, far, me] = [...box.children].map(e => e.firstChild), op = e => +getComputedStyle(e).opacity;
+      eq(op(a), 0.5, 'дух за домом:'); eq(op(b), 1, 'не за домом:'); eq(op(far), 0.5, 'дальнее место за домом:'); eq(op(me), 0.5, 'Ловчий за домом:');
+      ok(/opacity/.test(getComputedStyle(a).transitionProperty), 'тускнеет плавно');
+    } finally { document.adoptedStyleSheets = keep; box.remove(); }
+  });
+  atest('5.1.34: здание из частей (купола, башни) — рисуются части, а не коробка общего контура; крыша места — по частям', async () => {
+    const sq = (x0, y0, x1, y1) => [[{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]];
+    const cathedral = { geomType: 3, props: { kind: 'building', height: 67 }, geom: sq(100, 100, 200, 200) };      // контур собора — 67 м
+    const dome = { geomType: 3, props: { kind: 'building_part', height: 54.6, min_height: 40 }, geom: sq(140, 140, 160, 160) };
+    const nave = { geomType: 3, props: { kind: 'building_part', height: 18 }, geom: sq(105, 105, 195, 195) };
+    const house = { geomType: 3, props: { kind: 'building', height: 20 }, geom: sq(300, 300, 340, 340) };            // дом без частей
+    const shed = { geomType: 3, props: { kind: 'building_part', height: 5 }, geom: sq(400, 400, 410, 410) };          // часть чужая, вне контуров
+    const fs = [cathedral, dome, nave, house, shed];
+    const skip = Bld3D.outlines(fs);
+    ok(skip.has(cathedral), 'контур собора с частями — не рисуется');
+    ok(!skip.has(house), 'дом без частей — рисуется');
+    ok(!skip.has(dome) && !skip.has(nave) && !skip.has(shed), 'части — рисуются');
+    ok(Bld3D.outlines(fs) === skip, 'ответ — один раз на плитку данных');
+    // постройка плитки: в памяти (и в кадре) — части и дом, без контура собора
+    const keepQ = { queue: Bld3D.queue, busy: Bld3D.busy, map: Bld3D.map, dirty: Bld3D.dirty };
+    try {
+      Bld3D.dirty = () => {}; Bld3D.map = null;
+      const t = { x: 1, y: 1, st: 'wait', parts: [] };
+      await new Promise(res => Bld3D.buildOne(t, fs, res));
+      eq(t.bs.length, 4, 'в плитке — купол, неф, дом и сарай:'); ok(!t.bs.some(b => b.H === 67), 'коробки в 67 м нет');
+    } finally { Object.assign(Bld3D, keepQ); }
+    // крыша места внутри собора — по частям (купол), а не по коробке контура
+    const keepV = Hazard._view, keepR = MapView.roofSoon;
+    try {
+      const lat = 55.7525, lng = 37.6231, { px, py } = Hazard.tileOf(lat, lng);
+      const at = (dx, dy, f) => ({ ...f, geom: f.geom.map(r => r.map(p => ({ x: p.x - 150 + px + dx, y: p.y - 150 + py + dy }))) });
+      Hazard._view = { tileCache: { get: async () => new Map([['buildings', [at(0, 0, cathedral), at(0, 0, dome), at(0, 0, nave)]]]) } };
+      MapView.roofSoon = () => {};
+      Roofs.at.clear();
+      Roofs.height(lat, lng); await new Promise(r => setTimeout(r, 0));
+      eq(Roofs.height(lat, lng), 54.6, 'место — на куполе, а не на невидимой коробке в 67 м:');
+    } finally { Hazard._view = keepV; MapView.roofSoon = keepR; Roofs.at.clear(); }
+  });
+  test('5.1.30: объёмные дома — крыши разбиты на треугольники без пропусков и лишнего (невыпуклые, с дворами)', () => {
+    const area = (d, t) => {
+      let s = 0;
+      for (let i = 0; i < t.length; i += 3) {
+        const [a, b, c] = [t[i], t[i + 1], t[i + 2]].map(j => [d[2 * j], d[2 * j + 1]]);
+        s += Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;
+      }
+      return s;
+    };
+    const sq = [0, 0, 10, 0, 10, 10, 0, 10];
+    eq(Earcut.run(sq).length, 6, 'квадрат — два треугольника');
+    near(area(sq, Earcut.run(sq)), 100, 1e-9, 'квадрат:');
+    const gl = [0, 0, 10, 0, 10, 4, 4, 4, 4, 10, 0, 10]; // буква Г — невыпуклый
+    near(area(gl, Earcut.run(gl)), 64, 1e-9, 'невыпуклый — без лишней площади:');
+    const yard = [0, 0, 10, 0, 10, 10, 0, 10, 3, 3, 3, 7, 7, 7, 7, 3]; // дом с двором
+    near(area(yard, Earcut.run(yard, [4])), 84, 1e-9, 'двор — пустой:');
+    const rev = [0, 10, 10, 10, 10, 0, 0, 0]; // обход в другую сторону
+    near(area(rev, Earcut.run(rev)), 100, 1e-9, 'обход в любую сторону:');
+  });
+  test('5.1.30: объёмные дома — стены по рёбрам; общей стены соседей одной высоты и среза плитки нет', () => {
+    const sq = (x, y, s) => [[{ x, y }, { x: x + s, y }, { x: x + s, y: y + s }, { x, y: y + s }]];
+    const fs = [
+      { geomType: 3, props: { height: 20 }, geom: sq(100, 100, 20) },
+      { geomType: 3, props: { height: 20 }, geom: sq(120, 100, 20) }, // вплотную, той же высоты
+      { geomType: 3, props: { height: 30 }, geom: sq(140, 100, 20) }, // вплотную, выше — его стена над соседом видна
+      { geomType: 3, props: {}, geom: [[{ x: -30, y: 300 }, { x: 10, y: 300 }, { x: 10, y: 330 }, { x: -30, y: 330 }]] }, // срезан краем плитки
+    ];
+    fs.push({ geomType: 3, props: { height: 20, min_height: 6 }, geom: sq(300, 300, 10) }); // навес: стены — от шести метров
+    const E = Bld3D.edges(fs), make = f => { const c = { v: [], idx: [], bb: [Infinity, Infinity, -Infinity, -Infinity] }; Bld3D.house(c, f, -1, Bld3D.EXT + 1, E); return c; };
+    const walls = c => (c.idx.length - 6) / 6; // у прямоугольника крыша — два треугольника, стена — тоже два
+    const [a, b, hi, cut, arch] = fs.map(make);
+    eq(walls(a), 3, 'у первого — три стены (общая с соседом той же высоты не видна):');
+    eq(walls(b), 2, 'у среднего — две (с обеих сторон соседи не ниже):');
+    eq(walls(hi), 4, 'у высокого — все четыре (над низким соседом стена видна):');
+    eq(walls(cut), 3, 'у срезанного краем плитки — без стены по срезу:');
+    eq(cut.v[3], 8, 'нет высоты — восемь метров');
+    eq(arch.v[3], 20, 'высота дома — из данных карты'); eq(arch.v[6], 6, 'низ стен навеса — над землёй');
+  });
+  test('5.1.30: объёмные дома и места на крышах — одна и та же точка зрения (перспектива; у плоской карты — сверху)', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot }, keepL = window.L;
+    try {
+      window.L = { point: (x, y) => ({ x, y }) };
+      MapView.map = { getSize: () => ({ x: 400, y: 600, divideBy: k => ({ x: 400 / k, y: 600 / k }) }), containerPointToLayerPoint: p => p };
+      MapView.tilt = 32; MapView.rot = 0;
+      const c = MapView.camLayer(), a = 32 * Math.PI / 180;
+      near(c.x, 200, 1e-9); near(c.y, 300 + MapView.PD * Math.sin(a), 1e-9, 'точка зрения — ниже экрана:'); near(c.w, MapView.PD * Math.cos(a), 1e-9, 'на высоте:');
+      const p = { x: 260, y: 100 }, h = 12, s = MapView.roofShift(p, h);
+      // крыша — на луче из точки зрения через точку на высоте h: «тень» на земле дальше от точки зрения в w/(w−h) раз
+      near(s.x, (p.x - c.x) * h / (c.w - h), 1e-9); near(s.y, (p.y - c.y) * h / (c.w - h), 1e-9);
+      ok(s.y < 0 && s.x > 0, 'дальний дом правее середины «встаёт» вверх и вправо');
+      MapView.rot = 90;
+      const c2 = MapView.camLayer();
+      near(c2.x, 200 + MapView.PD * Math.sin(a), 1e-9, 'повёрнутая карта — точка зрения поворачивается с ней:');
+      MapView.tilt = 0; MapView.rot = 30;
+      const c0 = MapView.camLayer(), s0 = MapView.roofShift(p, 10);
+      near(c0.x, 200, 1e-9); near(c0.y, 300, 1e-9); near(c0.w, MapView.PD, 1e-9, 'плоская карта — точка зрения над серединой экрана:');
+      near(s0.x, (p.x - 200) * 10 / (MapView.PD - 10), 1e-9); near(s0.y, (p.y - 300) * 10 / (MapView.PD - 10), 1e-9, 'дома «встают» от середины:');
+    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
+  });
+  atest('5.1.30: крыши — высота дома, в котором стоит место (по плитке карты), без хранения домов', async () => {
+    const keepV = Hazard._view, keepR = MapView.roofSoon;
+    try {
+      const lat = 55.7547, lng = 37.6215, { px, py } = Hazard.tileOf(lat, lng);
+      const sq = (x, y, r) => [[{ x: x - r, y: y - r }, { x: x + r, y: y - r }, { x: x + r, y: y + r }, { x: x - r, y: y + r }]];
+      let asked = 0;
+      Hazard._view = { tileCache: { get: async () => { asked++; return new Map([['buildings', [
+        { geomType: 3, props: { height: 21 }, geom: sq(px, py, 6) },     // дом над точкой
+        { geomType: 3, props: { height: 40 }, geom: sq(px + 40, py, 6) }, // соседний — выше, но не тот
+      ]]]); } } };
+      let redraw = 0;
+      MapView.roofSoon = () => { redraw++; }; // 5.1.31: места — на крыши одним кадром, без полного обновления значков
+      Roofs.at.clear();
+      eq(Roofs.height(lat, lng), null, 'плитка читается — пока не знаем');
+      await new Promise(r => setTimeout(r, 0));
+      eq(Roofs.height(lat, lng), 21, 'на крыше своего дома');
+      eq(asked, 1, 'плитку спросили один раз');
+      ok(redraw > 0, 'места встают на крыши');
+      Hazard._view = { tileCache: { get: async () => new Map([['buildings', []]]) } };
+      eq(Roofs.height(lat + 0.01, lng), null);
+      await new Promise(r => setTimeout(r, 0));
+      eq(Roofs.height(lat + 0.01, lng), 0, 'не в доме — на земле');
+    } finally { Hazard._view = keepV; MapView.roofSoon = keepR; Roofs.at.clear(); }
+  });
+  test('5.1.24: обновление — удаляются кэши кода прошлых версий; кэш новой (его заполняет новый service worker), звуки и плитки остаются', () => {
+    eq(Updater.oldCaches(['duholov-v5.1.23-abc', 'duholov-v5.1.24-def', 'duholov-tiles', 'duholov-sfx', 'duholov-v5.1.2-x'], '5.1.24').join(), 'duholov-v5.1.23-abc,duholov-v5.1.2-x');
+    eq(Updater.oldCaches([], '5.1.24').length, 0);
+  });
+  atest('5.1.24: облако — один общий запуск клиента на параллельные запросы; ранний запуск без регистрации новичка', async () => {
+    const keep = { sb: Cloud.sb, cp: Cloud._cp, lib: Cloud._lib, sup: window.supabase, configured: Cloud.configured, client: Cloud.client, libF: Cloud.lib };
+    let made = 0;
+    const fakeSb = { auth: { getSession: async () => ({ data: { session: { user: { id: 'u' } } } }) } };
+    try {
+      window.supabase = { createClient: () => { made++; return fakeSb; } };
+      Cloud.sb = null; Cloud._cp = null;
+      const [a, b] = await Promise.all([Cloud.client(), Cloud.client()]);
+      eq(made, 1, 'клиент создан один раз:');
+      ok(a === fakeSb && b === fakeSb, 'оба запроса получили один и тот же клиент');
+      eq(await Cloud.client(), fakeSb, 'готовый клиент — сразу');
+      eq(made, 1, 'и больше не создаётся:');
+      // ранний запуск: есть сохранённый вход — готовим клиент; нет — только библиотеку (гостя не регистрируем до проверки версии)
+      const calls = [];
+      Cloud.configured = () => true;
+      Cloud.client = () => { calls.push('client'); return Promise.resolve(); };
+      Cloud.lib = () => { calls.push('lib'); return Promise.resolve(); };
+      const key = CLOUD_CONFIG.auth, saved = localStorage.getItem(key);
+      try {
+        localStorage.removeItem(key); Cloud.warm();
+        localStorage.setItem(key, '{}'); Cloud.warm();
+      } finally { if (saved == null) localStorage.removeItem(key); else localStorage.setItem(key, saved); }
+      eq(calls.join(), 'lib,client', 'без входа — библиотека, со входом — клиент:');
+    } finally { Object.assign(Cloud, { sb: keep.sb, _cp: keep.cp, _lib: keep.lib, configured: keep.configured, client: keep.client, lib: keep.libF }); window.supabase = keep.sup; }
+  });
   /* ---------- вывод ---------- */
   (async () => {
     for (const t of pending) {

@@ -80,18 +80,58 @@ const Hazard = {
   },
 };
 
+/* 5.1.30: крыши — высота дома (м), в котором стоит место: модель места встаёт на его крышу (MapView.upright). Дома — из тех же
+   плиток z15, что у Hazard; хранится только ответ на точку (сами дома плитки — у кэша Protomaps). 0 — не в доме (или карты домов
+   нет), null — плитка ещё читается (карта перерисует значки, когда прочтёт) */
+const Roofs = {
+  at: new Map(), // 'lat,lng' → высота
+  height(lat, lng) {
+    const key = lat.toFixed(6) + ',' + lng.toFixed(6);
+    if (this.at.has(key)) return this.at.get(key);
+    const v = Hazard.view();
+    if (!v) return 0;
+    if (this.at.size > 2000) this.at.clear();
+    this.at.set(key, null);
+    const { tx, ty, px, py } = Hazard.tileOf(lat, lng);
+    v.tileCache.get({ z: Hazard.Z, x: tx, y: ty }).then(data => {
+      let h = 0;
+      // 5.1.34: контур здания из частей не рисуется (Bld3D.outlines) — и крыша у места не его, а частей
+      const fs = data.get('buildings') || [], skip = typeof Bld3D !== 'undefined' ? Bld3D.outlines(fs) : null;
+      for (const f of fs) {
+        if (f.geomType !== 3 || f.props.is_underground || (skip && skip.has(f))) continue;
+        let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+        for (const r of f.geom) for (const p of r) { if (p.x < a) a = p.x; if (p.y < b) b = p.y; if (p.x > c) c = p.x; if (p.y > d) d = p.y; }
+        if (px >= a && px <= c && py >= b && py <= d && Hazard.inside(f.geom, px, py)) h = Math.max(h, f.props.height > 0 ? f.props.height : 8);
+      }
+      this.at.set(key, h);
+      if (h) MapView.roofSoon(); // 5.1.31: место встаёт на крышу — одним кадром на все пришедшие крыши, без полного обновления значков
+    }).catch(() => this.at.set(key, 0));
+    return null;
+  },
+};
+
 const MapView = {
   map: null, pos: null, follow: true, heading: 0, markers: new Map(), nearby: [], tiles: null, night: null,
+  // 5.1.31: размер окна — из запаса (vp): чтение innerWidth/innerHeight после записи стилей заставляет браузер тут же пересчитать
+  // раскладку всей страницы — на каждом кадре жеста это фриз; обновляется по resize
+  vw: typeof innerWidth !== 'undefined' ? innerWidth : 0, vh: typeof innerHeight !== 'undefined' ? innerHeight : 0,
+  vp() { this.vw = innerWidth; this.vh = innerHeight; },
 
   init() {
+    this.vp(); addEventListener('resize', () => this.vp()); // раньше всех, кто на resize пересчитывает слой карты (initRotate)
+    if (!U.$('#mapBg')) { const b = document.createElement('div'); b.id = 'mapBg'; U.$('#map').before(b); } // 5.1.31: земля — позади карты (style.css)
+    if (typeof M3D !== 'undefined') M3D.init(); // 5.1.28: 3D-модели мест (js/m3d.js) — до первых значков; нет WebGL — места остаются рисунками
     // 5.1: место Ловчего — Walk (телефон или прогресс); ещё нет (новичок до Атласа) — карта ждёт на Красной площади
     const start = Walk.load() || { lat: 55.7539, lng: 37.6208 };
     this.pos = { lat: start.lat, lng: start.lng };
-    this.map = L.map('map', { zoomControl: false, minZoom: 15, maxZoom: 19, zoomSnap: 0.25, tap: true })
-      .setView([this.pos.lat, this.pos.lng], 17.5);
+    this.map = L.map('map', { zoomControl: false, minZoom: this.ZMIN, maxZoom: 19, zoomSnap: 0.25, tap: true })
+      .setView([this.pos.lat, this.pos.lng], this.Z0);
     this.map.attributionControl.setPrefix(false);
+    // 5.1.30: подписи мест — своим плоским слоем поверх карты (их не закрывают ни модели, ни дома): placeLabels
+    this._lblBox = document.createElement('div'); this._lblBox.id = 'mapLbl'; U.$('#map').after(this._lblBox);
     // 4.13: свои слои между плитками земли и значками (порядок — по z-index, см. orderPanes)
     [['zone', 380], ['bld', 390]].forEach(([n, z]) => { const p = this.map.createPane(n); p.style.zIndex = z; p.style.pointerEvents = 'none'; });
+    if (typeof Bld3D !== 'undefined') Bld3D.init(this.map); // 5.1.30: дома — объёмные, в WebGL (свой слой между зоной и подписями)
     this.setTiles();
     setInterval(() => this.setTiles(), 60000);
 
@@ -101,19 +141,23 @@ const MapView = {
       icon: L.divIcon({ className: 'mk-range', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="rz"><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' }) }).addTo(this.map);
     this.map.on('zoomanim', e => { this.fitRange(e.zoom, true); this.fitZones(e.zoom, true); });
     this.map.on('zoomend viewreset resize', () => { this.fitRange(); this.fitZones(); });
+    this.map.on('move zoomend viewreset resize', () => this.reAim());
     this.fitRange();
     this.orderPanes();
     this.player = L.marker([this.pos.lat, this.pos.lng], {
       interactive: false, zIndexOffset: 1000,
       icon: L.divIcon({ className: 'mk-player-wrap', iconSize: [64, 64], iconAnchor: [32, 32],
-        html: '<div class="mk-player"><div class="pulse"></div><div class="arrow"></div><div class="dot"></div></div>' }),
+        // 5.1.28: сам Ловчий — 3D-модель (js/m3d.js): шагает и бежит, смотрит туда, куда идёт, в цветах облика; нет WebGL — точка со стрелкой
+        html: `<div class="mk-player">${typeof M3D !== 'undefined' ? M3D.html('catcher', 32, 32, '', 'me') : ''}<div class="pulse"></div><div class="arrow"></div><div class="dot"></div></div>` }),
     }).addTo(this.map);
+    if (typeof M3D !== 'undefined') { M3D.setMe({ heading: this.heading, gait: 0, look: S.d && S.d.look }); M3D.bind(this.player.getElement()); }
     // 4.23.2: спутник на карте рядом с Ловчим не показывается
     Bus.on('weather', () => { this.setWeatherFx(); this.setTiles(); this.refresh(true); });
 
     this.map.on('dragstart', () => { this.follow = false; U.$('#recenterBtn').classList.add('show'); });
     U.$('#recenterBtn').onclick = () => this.recenter();
     this.initRotate();
+    this.initOrbit();
 
     Walk.init(); // 5.1: мини-джойстик вместо GPS
     this.refresh();
@@ -140,56 +184,180 @@ const MapView = {
   // 5.1.12: адрес карты мира — на duholov.ru рядом с игрой (APK открывает её же), с других адресов (тестовый контур, GitHub Pages,
   // локальный сервер разработки — файла карты мира у него нет) — с duholov.ru (CORS разрешён)
   tilesUrl() { return location.hostname === 'duholov.ru' ? this.TILES : 'https://duholov.ru/' + this.TILES; },
-  // 4.10: облик карты — время суток по настоящему солнцу над игроком, время года и снег (зимой и в снегопад);
-  // в настройках можно закрепить день или ночь
+  // 4.10: облик карты — время суток по настоящему солнцу над местом Ловчего (5.1.26: закрепить день или ночь нельзя);
+  // 5.1.30: карта — по правилам стиля Protomaps в своей палитре (PALETTE), без своей отрисовки улиц, фонарей и цветов
   look() {
-    const theme = Cfg.s.mapTheme || 'auto', p = this.pos || { lat: 55.75, lng: 37.62 }, nav = typeof NavMap !== 'undefined';
-    const phase = theme === 'light' ? 'day' : theme === 'dark' ? 'night' : nav ? NavMap.phase(p.lat, p.lng) : U.isNight() ? 'night' : 'day';
-    const season = nav ? NavMap.season() : 'summer', snow = season === 'winter' || !!(Sky.w && Sky.w.key === 'snow');
-    return { phase, season, snow, night: phase === 'night' || phase === 'dusk', key: [phase, season, snow].join(':') };
+    const p = this.pos || { lat: 55.75, lng: 37.62 }, phase = U.phase(p.lat, p.lng), night = phase === 'night' || phase === 'dusk';
+    return { phase, night, key: night ? 'night' : 'day' };
+  },
+  /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави): днём — бело-зелёная с голубой водой и кремовыми улицами,
+     ночью — тёмно-синяя. Цвета стиля — c (flavorOf; улицы у Protomaps для Leaflet — одного цвета, road); к ним — земля (фон карты
+     под ещё не нарисованными плитками) и объёмные дома (Bld3D): крыша, стены в тени и на солнце, контраст стен */
+  PALETTE: {
+    day: { earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
+      park: '#cfe8c4', park2: '#b3dda3', wood: '#c7e1bb', wood2: '#a7d595', scrub: '#d8e8cc', water: '#9fd0f0', sand: '#f2ead2', ped: '#eceee8',
+      urban: '#e8eae6', runway: '#f7f8fa', road: '#fdf2c6', rail: '#a8b1b7', bound: '#a7afa7', bld: '#e2e5df',
+      lbl: '#5e6a65', halo: '#ffffff', city: '#2e3935', sub: '#7c8983', state: '#99a49e', ocean: '#4e8ec0',
+      lc: ['#d6eccd', '#f5eeda', '#e8eae5', '#deeed2', '#ffffff', '#e2eed6', '#c4e2be'] } },
+    night: { earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
+      park: '#13261f', park2: '#163024', wood: '#12221c', wood2: '#152a21', scrub: '#17231f', water: '#0a1626', sand: '#1c2228', ped: '#171f2b',
+      urban: '#161e2a', runway: '#222c3a', road: '#3a4f73', rail: '#37435a', bound: '#46526a', bld: '#1a2332',
+      lbl: '#9fb0cc', halo: '#0e1520', city: '#dbe5f5', sub: '#8a9ab4', state: '#6f7f99', ocean: '#6b8fc4',
+      lc: ['#162620', '#1e2228', '#181f2b', '#162621', '#28303c', '#182420', '#13221c'] } },
+  },
+  pal(night) { return night ? this.PALETTE.night : this.PALETTE.day; },
+  // цвета палитры → полный набор цветов стиля Protomaps (те же ключи, что у его light/dark; улицы, мосты и тоннели — цвета road)
+  flavorOf(c) {
+    const r = c.road, k = c.bg, u = c.urban;
+    return { background: c.bg, earth: c.earth, park_a: c.park, park_b: c.park2, hospital: u, industrial: u, school: u, wood_a: c.wood, wood_b: c.wood2,
+      pedestrian: c.ped, scrub_a: c.scrub, scrub_b: c.park2, glacier: c.lc[4], sand: c.sand, beach: c.sand, aerodrome: u, runway: c.runway, water: c.water,
+      zoo: c.park, military: u, tunnel_other_casing: k, tunnel_minor_casing: k, tunnel_link_casing: k, tunnel_major_casing: k, tunnel_highway_casing: k,
+      tunnel_other: r, tunnel_minor: r, tunnel_link: r, tunnel_major: r, tunnel_highway: r, pier: c.ped, buildings: c.bld,
+      minor_service_casing: k, minor_casing: k, link_casing: k, major_casing_late: k, highway_casing_late: k, other: r, minor_service: r,
+      minor_a: r, minor_b: r, link: r, major_casing_early: k, major: r, highway_casing_early: k, highway: r, railway: c.rail,
+      boundaries: c.bound, bridges_other_casing: k, bridges_minor_casing: k, bridges_link_casing: k, bridges_major_casing: k, bridges_highway_casing: k,
+      bridges_other: r, bridges_minor: r, bridges_link: r, bridges_major: r, bridges_highway: r,
+      roads_label_minor: c.lbl, roads_label_minor_halo: c.halo, roads_label_major: c.lbl, roads_label_major_halo: c.halo, ocean_label: c.ocean,
+      subplace_label: c.sub, subplace_label_halo: c.halo, city_label: c.city, city_label_halo: c.halo, state_label: c.state, state_label_halo: c.halo,
+      country_label: c.state, address_label: c.lbl, address_label_halo: c.halo,
+      pois: { blue: '#1A8CBD', green: '#20834D', lapis: '#315BCF', pink: '#EF56BA', red: '#F2567A', slategray: '#6A5B8F', tangerine: '#CB6704', turquoise: '#00C3D4' },
+      landcover: { grassland: c.lc[0], barren: c.lc[1], urban_area: c.lc[2], farmland: c.lc[3], glacier: c.lc[4], scrub: c.lc[5], forest: c.lc[6] } };
+  },
+  // правила рисования и подписей для цветов палитры P; подписей точек (pois) нет — у мест игры свои подписи (MapView.label)
+  flavorRules(P) {
+    const f = this.flavorOf(P.c), noPois = rules => rules.filter(r => r.dataLayer !== 'pois');
+    return { paint: protomapsL.paintRules(f), label: noPois(protomapsL.labelRules(f, I18N.lang)), bg: f.background };
   },
   setTiles() {
     if (this.tiles && Stage.busy) return; // 5.2: под сценой плитки не перерисовываются — облик сверится, когда она закроется (wake)
     const lk = this.look();
     if (lk.key === this._look) return;
     this._look = lk.key;
-    const night = this.night = lk.night;
-    const nav = typeof NavMap !== 'undefined';
+    const night = this.night = lk.night, F = this.pal(night);
     if (!this.tiles) {
       const osm = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
       if (typeof protomapsL !== 'undefined' && this.covered(this.pos)) {
-        // 4.9: «Карта Нави» — своя отрисовка (js/navmap.js); без неё — стандартная светлая с CSS-фильтром тонов Нави
-        const url = this.tilesUrl();
-        const th = nav ? NavMap.theme(lk.phase, lk.season, lk.snow) : null;
-        this.tiles = protomapsL.leafletLayer({
-          url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
-          ...(nav ? { paintRules: th.paintRules, labelRules: [], backgroundColor: th.backgroundColor } : { flavor: 'light' }),
-        }).addTo(this.map);
-        if (nav) {
-          U.$('#map').classList.add('navmap');
-          // 4.13: дома и подписи — вторым слоем над зоной Ловчего; плитки читаются один раз (общий кэш)
-          this.bldTiles = protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: th.bldRules, labelRules: th.labelRules });
-          this.bldTiles.views = this.tiles.views;
-          this.bldTiles.addTo(this.map);
-          // подписи — шрифтами игры: как только шрифты загрузились, перерисовать
-          if (document.fonts) Promise.all(["400 12px 'Rubik'", "700 12px 'Rubik'"].map(f => document.fonts.load(f).catch(() => {})))
-            .then(() => { this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); });
-        }
+        const url = this.tilesUrl(), st = this.flavorRules(F);
+        this.tiles = this.cull(protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: `${osm} · <a href="https://protomaps.com">Protomaps</a>`,
+          paintRules: st.paint, labelRules: [], backgroundColor: st.bg })).addTo(this.map);
+        U.$('#map').classList.add('vecmap');
+        // 4.13: подписи — вторым слоем над зоной Ловчего и объёмными домами; плитки читаются один раз (общий кэш)
+        this.bldTiles = this.cull(protomapsL.leafletLayer({ url, lang: I18N.lang, attribution: '', pane: 'bld', paintRules: [], labelRules: st.label }));
+        this.bldTiles.views = this.tiles.views;
+        // 5.1.31: плитка подписей, на которую не попала ни одна подпись (каждая третья в городе), — скрыта: пустой холст — всё равно
+        // свой слой видеокарты, а их число — главное в цене каждого кадра, пока карта движется
+        const lr = this.bldTiles.renderTile.bind(this.bldTiles);
+        this.bldTiles.renderTile = (c, el, key, done) => { const p = lr(c, el, key, done); if (p && p.then) p.then(() => this.lblTileVis(c, el)); return p; };
+        this.bldTiles.addTo(this.map);
       } else {
         this.tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: osm }).addTo(this.map);
       }
-    } else if (nav && this.tiles.rerenderTiles) {
-      // сменилось время суток, сезон или пошёл снег — другая палитра: перерисовать плитки и подписи
-      const th = NavMap.theme(lk.phase, lk.season, lk.snow);
-      Object.assign(this.tiles, { paintRules: th.paintRules, backgroundColor: th.backgroundColor });
+    } else if (this.tiles.rerenderTiles) {
+      // день сменился ночью (или наоборот) — другой стиль: перерисовать плитки и подписи
+      const st = this.flavorRules(F);
+      Object.assign(this.tiles, { paintRules: st.paint, backgroundColor: st.bg });
       this.tiles.rerenderTiles();
-      if (this.bldTiles) { Object.assign(this.bldTiles, { paintRules: th.bldRules, labelRules: th.labelRules }); this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
+      if (this.bldTiles) { this.bldTiles.labelRules = st.label; this.bldTiles.clearLayout(); this.bldTiles.rerenderTiles(); }
     }
+    if (typeof Bld3D !== 'undefined' && Bld3D.on) Bld3D.theme(F); // объёмные дома — в тон карте
     document.body.classList.toggle('night', night);
-    // 4.11: дымка горизонта у наклонённой карты — цвета земли этого часа
-    const hz = nav ? (lk.snow && NavMap.SEASON.snow[night ? 'dark' : 'light'].bg) || NavMap.P[lk.phase].bg : night ? '#1b1b1f' : '#d9d3c7';
-    document.body.style.setProperty('--haze', hz);
+    const bg = U.$('#mapBg'); if (bg) bg.style.background = F.earth; // и земля под ещё не нарисованными плитками (5.1.31: слоем позади карты)
     if (typeof Music !== 'undefined') Music.apply(); // 4.8: днём и ночью — разные мелодии карты
+  },
+
+  /* 5.1.31: плитки карты — только под видимой землёй (с запасом TILE_PAD плиток), а не во весь слой карты. Слой больше экрана:
+     у наклонённой карты его нижняя треть — под экраном, у повёрнутой это квадрат на любой поворот (в окне ПК — до 3700 точек), и
+     видна из него от силы пятая часть. Лишние плитки рисовались (каждая перебирает все дома и дороги своего куска данных) и держали
+     память видеокарты: местность долго прогружалась, при повороте камеры экран мерцал. Пока камера поворачивается — подгружаются
+     на ходу (tilesSoon); ушедшая из виду плитка выбрасывается дальше TILE_KEEP плиток (поворот туда-обратно её не перерисовывает) */
+  TILE_PAD: 1, TILE_KEEP: 2,
+  cull(lay) {
+    const self = this, bounds = lay._getTiledPixelBounds, valid = lay._isValidTile, upd = lay._update;
+    // диапазон плиток — рамка видимой земли с запасом (в точках масштаба плиток), не шире слоя карты. Рамка — с серединой у игрока:
+    // Leaflet заводит, а Protomaps рисует плитки от середины рамки — первой прогружается земля под ногами, даль — следом (лишние
+    // клетки рамки отсеивает _isValidTile)
+    lay._getTiledPixelBounds = function (center) {
+      const b = bounds.call(this, center), m = this._map, P = self.seenPoly();
+      if (!P || !m) return b;
+      const z = m._animatingZoom ? Math.max(m._animateToZoom, m.getZoom()) : m.getZoom(), k = m.getZoomScale(z, this._tileZoom);
+      const c = m.project(center, this._tileZoom).floor(), o = m.containerPointToLayerPoint(m.getSize().divideBy(2)), pad = 256 * self.TILE_PAD;
+      let hx = 0, hy = 0;
+      for (const [x, y] of P) { hx = Math.max(hx, Math.abs((x - o.x) / k)); hy = Math.max(hy, Math.abs((y - o.y) / k)); }
+      hx += pad; hy += pad;
+      return L.bounds([Math.max(b.min.x, c.x - hx), Math.max(b.min.y, c.y - hy)], [Math.min(b.max.x, c.x + hx), Math.min(b.max.y, c.y + hy)]);
+    };
+    // в рамке — только плитки, которые задевают саму видимую землю (у повёрнутой карты углы рамки — мимо)
+    lay._isValidTile = function (co) { return valid.call(this, co) && self.tileSeen(this, co, self.TILE_PAD); };
+    // ушедшие из виду дальше TILE_KEEP плиток — выбросить
+    lay._update = function (center) {
+      upd.call(this, center);
+      if (!this._map || this._tileZoom == null) return;
+      let drop = false;
+      for (const key in this._tiles) {
+        const t = this._tiles[key];
+        if (t.current && t.coords.z === this._tileZoom && !self.tileSeen(this, t.coords, self.TILE_KEEP)) { t.current = false; drop = true; }
+      }
+      if (drop) this._pruneTiles();
+    };
+    // проявление новых плиток (как в Leaflet 1.9.4): прозрачность пишется, только если изменилась — Leaflet переписывал её всем
+    // плиткам на каждом кадре, пока проявляется хоть одна, и браузер на каждом кадре пересчитывал стили сотен плиток
+    lay._updateOpacity = function () {
+      if (!this._map) return;
+      const op = (el, v) => { if (el._op !== v) { el._op = v; L.DomUtil.setOpacity(el, v); } };
+      op(this._container, this.options.opacity);
+      const now = +new Date();
+      let next = false, prune = false;
+      for (const key in this._tiles) {
+        const t = this._tiles[key];
+        if (!t.current || !t.loaded) continue;
+        const f = Math.min(1, (now - t.loaded) / 200);
+        op(t.el, f);
+        if (f < 1) next = true;
+        else { if (t.active) prune = true; else this._onOpaqueTile(t); t.active = true; }
+      }
+      if (prune && !this._noPrune) this._pruneTiles();
+      if (next) { L.Util.cancelAnimFrame(this._fadeFrame); this._fadeFrame = L.Util.requestAnimFrame(this._updateOpacity, this); }
+    };
+    return lay;
+  },
+  // видимая земля — углы экрана на плоскости карты, в точках слоя (5.1.34: сверху — не дальше дальнего края карты, topY)
+  seenPoly() {
+    const m = this.map;
+    if (!m || !this.vw || !this.vh) return null;
+    // один раз на положение карты (плиток в рамке — десятки, а карта между ними не двигается)
+    const pp = m._getMapPanePos(), key = `${pp.x},${pp.y},${this.rot},${this.tilt},${m.getZoom()},${this.vw},${this.vh},${this._py}`;
+    if (this._spKey === key) return this._sp;
+    this._spKey = key;
+    const c = m.containerPointToLayerPoint(m.getSize().divideBy(2)), W = this.vw, H = this.vh, T = this.topY();
+    return (this._sp = [[0, T], [W, T], [W, H], [0, H]].map(([x, y]) => { const q = this.plane(x, y); return [c.x + q.x, c.y + q.y]; }));
+  },
+  // плитка co слоя lay задевает видимую землю с запасом pad плиток? (разделяющие оси: оси плитки и стороны четырёхугольника земли)
+  tileSeen(lay, co, pad) {
+    const m = lay._map, P = this.seenPoly();
+    if (!P || !m) return true;
+    const b = lay._tileCoordsToNwSe(co), nw = m.latLngToLayerPoint(b[0]), se = m.latLngToLayerPoint(b[1]), M = (se.x - nw.x) * pad;
+    const R = [[nw.x - M, nw.y - M], [se.x + M, nw.y - M], [se.x + M, se.y + M], [nw.x - M, se.y + M]];
+    const axes = [[1, 0], [0, 1]];
+    for (let i = 0; i < 4; i++) { const a = P[i], q = P[(i + 1) % 4]; axes.push([q[1] - a[1], a[0] - q[0]]); }
+    for (const [nx, ny] of axes) {
+      let p0 = Infinity, p1 = -Infinity, r0 = Infinity, r1 = -Infinity;
+      for (const [x, y] of P) { const d = x * nx + y * ny; if (d < p0) p0 = d; if (d > p1) p1 = d; }
+      for (const [x, y] of R) { const d = x * nx + y * ny; if (d < r0) r0 = d; if (d > r1) r1 = d; }
+      if (p1 < r0 || r1 < p0) return false;
+    }
+    return true;
+  },
+  // камера повернулась или наклонилась — плитки под новую видимую землю (на жесте — не чаще раза в 90 мс)
+  tilesSoon() {
+    if (this._tilesT) return;
+    this._tilesT = setTimeout(() => { this._tilesT = 0; for (const l of [this.tiles, this.bldTiles]) if (l && l._map && l._update) l._update(); }, 90);
+  },
+
+  lblTileVis(c, el) {
+    const idx = this.bldTiles && this.bldTiles.labelers && this.bldTiles.labelers.getIndex(c.z);
+    if (!idx || !el) return;
+    const g = 16, n = idx.searchBbox({ minX: 256 * c.x - g, minY: 256 * c.y - g, maxX: 256 * (c.x + 1) + g, maxY: 256 * (c.y + 1) + g }, Infinity).size;
+    el.style.display = n ? '' : 'none';
   },
 
   setWeatherFx() {
@@ -236,6 +404,7 @@ const MapView = {
     this.drawAt(lat, lng, jump); // 5.2: точка приходит каждый кадр (Walk) — рисуем сразу, без плавной «езды» от точки к точке
     const el = this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + this.rot}deg)`; // с учётом поворота карты
+    if (typeof M3D !== 'undefined') M3D.setMe({ heading: this.heading }); // 5.1.28: 3D-Ловчий смотрит туда, куда идёт
     if (this.tracking) this.updateTracker();
   },
 
@@ -246,7 +415,7 @@ const MapView = {
     this.player.setLatLng(ll);
     this.range.setLatLng(ll);
     if (this.follow) {
-      if (jump) this.map.setView(ll, 17.5, { animate: false });
+      if (jump) this.map.setView(ll, this.Z0, { animate: false });
       else this.camTo(ll);
     }
   },
@@ -276,6 +445,7 @@ const MapView = {
   },
   // походка значка: 0 — стоит, 1 — шаг, 2 — бег (лёгкое покачивание, быстрее на бегу)
   setGait(m) {
+    if (typeof M3D !== 'undefined') M3D.setMe({ gait: m }); // 5.1.28: 3D-Ловчий стоит, шагает или бежит
     const el = this.player && this.player.getElement(), p = el && el.querySelector('.mk-player');
     if (!p) return;
     p.classList.toggle('walk', m === 1); p.classList.toggle('run', m === 2);
@@ -290,12 +460,12 @@ const MapView = {
     this.refresh(true);
     if (typeof Poi !== 'undefined') Poi.ensure();
     if (typeof Sky !== 'undefined' && Sky.update) Sky.update(true); // погода — нового места
-    if (typeof Clans !== 'undefined' && Clans.refresh) setTimeout(() => Clans.refresh(true), 1500); // чьи Капища вокруг
+    if (typeof Clans !== 'undefined' && Clans.refresh) setTimeout(() => Clans.refresh(true), 1500); // чьи Святилища вокруг
   },
   updateBuddy() {}, // 4.23.2: спутник на карте не показывается (ui-spirits.js зовёт после выбора спутника)
 
   /* ---------------- 4.7: ПОВОРОТ КАРТЫ И КОМПАС ---------------- */
-  // Карту крутят двумя пальцами; компас слева внизу показывает север, касание — вернуть север вверх.
+  // Карту крутят двумя пальцами (5.1.30: и одним — initOrbit); компас слева внизу показывает север, касание — вернуть север вверх.
   // Leaflet поворот не умеет: пока карта повёрнута, её слой — квадрат с диагональю экрана (углы не пустеют),
   // повёрнутый CSS; значки на ней стоят прямо, а сдвиг пальца пересчитывается в оси повёрнутой карты.
   rot: 0,
@@ -331,30 +501,43 @@ const MapView = {
       if (!g || e.touches.length !== 2) return;
       let da = norm(ang(e.touches) - g.a);
       if (!g.on) { if (Math.abs(da) < 14) return; g.on = true; g.a += Math.sign(da) * 14; da = norm(ang(e.touches) - g.a); }
-      this.setRot(g.r + da);
+      // 5.1.31: касания приходят чаще кадров (экраны 90–120 Гц) — поворот раз за кадр, по последнему положению пальцев
+      g.want = g.r + da;
+      if (!g.raf) g.raf = requestAnimationFrame(() => { if (!g) return; g.raf = 0; this.setRot(g.want); });
     }, { passive: true });
-    const end = e => { if (g && e.touches.length < 2) { const was = g.on; g = null; if (was && Math.abs(this.rot) < 6) this.northUp(); } };
+    const end = e => { if (g && e.touches.length < 2) { const was = g.on; if (g.raf) { cancelAnimationFrame(g.raf); this.setRot(g.want); } g = null; if (was && Math.abs(this.rot) < 6) this.northUp(); } };
     box.addEventListener('touchend', end, { passive: true });
     box.addEventListener('touchcancel', end, { passive: true });
     // компас
     const c = U.$('#compassBtn');
     if (c) { c.innerHTML = this.compassSvg(); c.onclick = () => { Sfx.play('tap'); this.northUp(); }; }
     addEventListener('resize', () => { if (this._sq) this.layout(); });
-    if (!U.$('#mapHaze')) { const h = document.createElement('div'); h.id = 'mapHaze'; box.after(h); }
     this.setTilt(Cfg.s.tilt3d !== false);
   },
-  /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана,
-     вдали — дымка горизонта. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
-     трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат). */
-  TILT: 32, PD: 1100, tilt: 0, _py: 0,
+  /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана. Слой карты становится больше экрана ровно настолько, чтобы закрыть его целиком:
+     трапеция экрана, спроецированная на плоскость карты (а при повороте — описанный вокруг неё квадрат).
+     5.1.34: наклон постоянный — TILT (50°, выбор владельца; было 14–50° пальцем), пальцем камеру только поворачивают; дымки у верха
+     экрана нет. Карта — не дальше FAR точек слоя впереди Ловчего: у наклона 50° это за верхом экрана (там ~1900), а у большего
+     наклона горизонт пришёл бы на экран — слой карты и плитки ушли бы в бесконечность */
+  TILT: 50, PD: 1100, FAR: 2400, tilt: 0, _py: 0,
+  // дальний край карты на экране (y, CSS-пиксели; −∞ — у плоской карты): точка земли в FAR точках слоя впереди Ловчего
+  farY() {
+    if (!this.tilt) return -Infinity;
+    const t = this.tilt * Math.PI / 180, py = this._py || this.vh / 2, F = this.FAR;
+    return py - F * Math.cos(t) * this.PD / (this.PD + F * Math.sin(t));
+  },
+  // верх видимой земли на экране: дальний край карты или верх экрана, если край выше него
+  topY() { return Math.max(0, this.farY()); },
   layout() {
-    const box = U.$('#map'), on = !!(this.tilt || this.rot), W = innerWidth, H = innerHeight;
+    const box = U.$('#map'), on = !!(this.tilt || this.rot), W = this.vw || innerWidth, H = this.vh || innerHeight;
     this._sq = on;
     this._py = this.tilt ? Math.round(H * .6) : H / 2;
     if (on) {
-      const t = this.tilt * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD, py = this._py;
-      const top = this.tilt ? py * d / (d * cs - py * sn) : py, bot = this.tilt ? (H - py) * d / (d * cs + (H - py) * sn) : H - py;
-      const half = Math.max(top, bot), xw = this.tilt ? (W / 2) * (d + top * sn) / d : W / 2;
+      // слой карты — до дальнего края земли (не дальше FAR) и до нижнего края экрана, при повороте — квадрат вокруг этого
+      const tf = this._tiltFor = this.tilt;
+      const t = tf * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD, py = this._py, den = d * cs - py * sn;
+      const top = !tf ? py : den > 0 ? Math.min(this.FAR, py * d / den) : this.FAR, bot = tf ? (H - py) * d / (d * cs + (H - py) * sn) : H - py;
+      const half = Math.max(top, bot), xw = tf ? (W / 2) * (d + top * sn) / d : W / 2;
       const mw = this.rot ? 2 * Math.hypot(xw, half) : 2 * xw, mh = this.rot ? mw : 2 * half;
       box.style.setProperty('--mw', Math.ceil(mw) + 4 + 'px');
       box.style.setProperty('--mh', Math.ceil(mh) + 4 + 'px');
@@ -367,6 +550,7 @@ const MapView = {
     document.body.classList.toggle('tilt', !!this.tilt);
     this.map.invalidateSize({ animate: false });
     this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
+    this.reAim(); // 5.1.30: наклон включили или выключили — 3D-модели мест под новым углом
     // подпись OpenStreetMap остаётся видна: у повёрнутой карты — копия в углу экрана
     const at = U.$('#mapAttr');
     if (at) { at.classList.toggle('hidden', !on); if (on) at.innerHTML = this.map.attributionControl.getContainer().innerHTML; }
@@ -376,41 +560,187 @@ const MapView = {
     this.layout();
     this.zoomMode();
   },
+  /* 5.1.30: камера одним пальцем (и мышью), как в Pokémon GO: влево-вправо — облёт вокруг Ловчего (земля под пальцем идёт за ним:
+     над Ловчим и под ним — в разные стороны). 5.1.34: только облёт — наклон постоянный (TILT), вверх-вниз палец камеру не наклоняет.
+     Карта всегда за Ловчим: ходят джойстиком и Атласом, сдвигать её пальцем не нужно. Два пальца — масштаб и поворот, как раньше;
+     лёгкое касание — нажатие на значок. */
+  ORBIT: { yaw: 0.35 }, // градусов на CSS-пиксель пальца
+  initOrbit() {
+    const box = U.$('#map');
+    if (this.map.dragging) this.map.dragging.disable();
+    let g = null, ate = 0, want = null, raf = 0;
+    // палец двигается чаще, чем меняются кадры (на экранах 120 Гц — вдвое): поворот — один раз за кадр, по последней точке
+    const apply = () => { raf = 0; const w = want; want = null; if (w != null) this.setRot(w); };
+    box.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (g) { g.multi = true; return; } // второй палец — жест двумя пальцами (масштаб, поворот)
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, rot: this.rot, on: false, multi: false, sg: e.clientY < (this._py || this.vh / 2) ? 1 : -1 };
+    });
+    addEventListener('pointermove', e => {
+      if (!g || e.pointerId !== g.id || g.multi) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.on) {
+        if (Math.hypot(dx, dy) < 8) return;
+        g.on = true;
+        // 5.1.31: мышь ведёт камеру — курсор «держится» за карту: браузеру не нужно на каждом движении искать, над каким значком
+        // или плиткой он теперь, и пересчитывать наведение (у пальца так и есть само по себе)
+        if (e.pointerType !== 'touch') try { box.setPointerCapture(g.id); } catch (x) { /* не поддерживается */ }
+      }
+      want = g.rot + g.sg * dx * this.ORBIT.yaw;
+      if (!raf) raf = requestAnimationFrame(apply);
+    });
+    const end = e => {
+      if (!g || e.pointerId !== g.id) return;
+      if (raf) { cancelAnimationFrame(raf); apply(); } // последняя точка пальца — сразу
+      if (g.on && !g.multi) { ate = performance.now(); if (Math.abs(this.rot) < 4) this.northUp(); }
+      g = null;
+    };
+    addEventListener('pointerup', end);
+    addEventListener('pointercancel', end);
+    // палец вёл камеру — значок под ним не нажимается
+    box.addEventListener('click', e => { if (performance.now() - ate < 350) { e.stopPropagation(); e.preventDefault(); } }, true);
+  },
   // при повороте и наклоне масштаб — вокруг игрока (точку между пальцами Leaflet у такого слоя считает неверно)
   zoomMode() { const o = this.map.options, c = this.rot || this.tilt; o.touchZoom = o.scrollWheelZoom = o.doubleClickZoom = c ? 'center' : true; },
   // точка экрана → точка на плоскости карты (относительно игрока, в осях ненаклонённой и неповёрнутой карты)
   plane(x, y) {
-    let X = x - innerWidth / 2, Y = y - (this._py || innerHeight / 2);
+    let { x: X, y: Y } = this.planeUV(x, y);
+    if (this.rot) { const a = -this.rot * Math.PI / 180; [X, Y] = [X * Math.cos(a) - Y * Math.sin(a), X * Math.sin(a) + Y * Math.cos(a)]; }
+    return { x: X, y: Y };
+  },
+  // то же, но в осях экрана (без поворота карты): x — вправо, y — вниз по плоскости
+  planeUV(x, y) {
+    let X = x - this.vw / 2, Y = y - (this._py || this.vh / 2);
     if (this.tilt) {
       const t = this.tilt * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t), d = this.PD;
       Y = Y * d / (cs * d + Y * sn); X = X * (d - Y * sn) / d;
     }
-    if (this.rot) { const a = -this.rot * Math.PI / 180; [X, Y] = [X * Math.cos(a) - Y * Math.sin(a), X * Math.sin(a) + Y * Math.cos(a)]; }
     return { x: X, y: Y };
+  },
+  // 5.1.30: видимая земля в осях экрана на плоскости карты (от точки зрения), с запасом pad — холст объёмных домов (Bld3D)
+  viewUV(pad = 0) {
+    let u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
+    const W = this.vw, H = this.vh, T = this.topY(); // 5.1.34: сверху — до дальнего края карты
+    for (const [x, y] of [[0, T], [W, T], [0, H], [W, H]]) {
+      const q = this.planeUV(x, y);
+      u0 = Math.min(u0, q.x); v0 = Math.min(v0, q.y); u1 = Math.max(u1, q.x); v1 = Math.max(v1, q.y);
+    }
+    return { u0: u0 - pad, v0: v0 - pad, u1: u1 + pad, v1: v1 + pad };
   },
   setRot(r) {
     r = ((r % 360) + 540) % 360 - 180;
     if (Math.abs(r) < 0.05) r = 0;
     const turned = !!r !== !!this.rot;
     this.rot = r;
+    if (typeof M3D !== 'undefined') M3D.setRot(r); // 5.1.28: 3D-модели мест поворачиваются вместе с картой
     if (turned) this.layout();
     U.$('#map').style.setProperty('--mrot', r + 'deg');
     this.zoomMode();
-    if (!turned) this.map.eachLayer(l => { if (l instanceof L.Marker) l.update(); });
+    // значки стоят прямо: им — только новый поворот (место на слое карты от поворота не меняется — без пересчёта Leaflet)
+    if (!turned) this.map.eachLayer(l => { if (l instanceof L.Marker) this.upright(l); });
     const el = this.player && this.player.getElement();
     if (el) el.querySelector('.arrow').style.transform = `rotate(${this.heading + r}deg)`;
     const c = U.$('#compassBtn');
     if (c) { c.firstElementChild.style.transform = `rotate(${r}deg)`; c.classList.toggle('turned', !!r); }
     if (this.tracking) this.updateTracker();
+    if (typeof Bld3D !== 'undefined') Bld3D.dirty(); // 5.1.30: объёмные дома поворачиваются вместе с картой — в этом же кадре
+    this.placeLabels(); // 5.1.31: подписи — тоже в этом кадре (раньше догоняли значки кадром позже — дёргались)
+    this.seeThrough(); // 5.1.32: дома, за которыми фигуры, — прозрачнее (с другой стороны — другие)
+    this.tilesSoon();
   },
   // значок на повёрнутой/наклонённой карте стоит прямо (см. initRotate)
+  LIFT_Z: 36, // насколько значок наклонённой карты выдвинут к игроку, CSS-пиксели: иначе нижняя половина ушла бы «под» плитки
+  /* 5.1.32: камера — как в Pokémon GO. Отдалить её можно до ZMIN (раньше — до 15: полрайона, фигуры терялись), исходный масштаб — Z0.
+     Фигуры (места, духи, Ловчий) — в размер расстояния до камеры: приблизили камеру — крупнее, отдалили — мельче (ZK: размер ×2^(ZK·Δz));
+     у нижнего края экрана (ближе к камере) — крупнее, к горизонту — мельче. Земля наклонённой карты видна в перспективе, и значок на ней
+     и так был в размер своей точки земли (f), но камера карты «длиннофокусная» (PD): у нижнего края экрана фигура была всего в 1,2 раза
+     крупнее, чем у Ловчего, у верхнего — 0,7 его; теперь у фигур перспектива сильнее (FIG: размер f^(1+FIG)) — 1,4 и 0,5 (наклон 32°).
+     Размер на экране — не меньше FIG_MIN и не больше FIG_MAX от исходного.
+     5.1.34: у постоянного наклона 50° перспектива своя сильная (у нижнего края экрана — 1,4, у верхнего — 0,4) — добавки фигурам
+     нет (FIG 0); с приближением камеры — не больше FIG_MAX */
+  ZMIN: 16.75, Z0: 17.5, ZK: 0.7, FIG: 0, FIG_MIN: 0.45, FIG_MAX: 1.8,
+  // во сколько раз фигура на точке земли с перспективой f крупнее, чем её рисует сама перспектива карты
+  figScale(f) {
+    const m = this.map, z = m._animatingZoom ? m._animateToZoom : m.getZoom(); // масштаб анимируется — сразу к новому (значок — плавно, style.css)
+    const s = Math.pow(f, this.FIG) * Math.pow(2, (z - this.Z0) * this.ZK);
+    return Math.max(this.FIG_MIN / f, Math.min(this.FIG_MAX / f, s));
+  },
   upright(mk) {
-    const el = mk._icon;
-    if (!el || mk._map !== this.map || (!this.rot && !this.tilt)) return;
-    el.style.transformOrigin = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
-    if (this.rot) el.style.transform += ` rotate(${-this.rot}deg)`;
-    // и чуть приподняты над землёй: иначе нижняя половина значка ушла бы «под» плитки карты
-    if (this.tilt && !mk.options.flat) el.style.transform += ` rotateX(${-this.tilt}deg) translateZ(36px)`;
+    const el = mk._icon, p = el && el._leaflet_pos;
+    if (!p || mk._map !== this.map || (!this.rot && !this.tilt)) return;
+    const to = `${-parseFloat(el.style.marginLeft) || 0}px ${-parseFloat(el.style.marginTop) || 0}px`;
+    if (el._to !== to) { el.style.transformOrigin = to; el._to = to; }
+    // 5.1.30: место в доме стоит на его крыше — там, где её видно из точки зрения (так рисует объёмные дома Bld3D; без WebGL
+    // дома плоские — и место на земле)
+    const h = this.tilt && mk._roofH && typeof Bld3D !== 'undefined' && Bld3D.on ? Bld3D.hpx(mk._roofH) : 0;
+    const lift = el._lift = h ? this.roofShift(p, h) : { x: 0, y: 0 };
+    let t = `translate3d(${p.x + lift.x}px, ${p.y + lift.y}px, 0px)`;
+    if (this.rot) t += ` rotate(${-this.rot}deg)`;
+    // встаёт с земли лицом к игроку и выдвинут к нему; 5.1.30: — по лучу взгляда, с уменьшением на ту же долю: на экране
+    // значок стоит ровно на своей точке земли и не «плывёт» над ней, пока карта движется (раньше — сдвиг до 10–15 точек)
+    if (this.tilt && !mk.options.flat) {
+      const q = this.screen3d(L.point(p.x + lift.x, p.y + lift.y)), k = this.LIFT_Z / (this.PD - q.z);
+      // 5.1.31: значок далеко за краем экрана (с запасом на высоту модели) — уже стоит, где стоял: переставим, когда подойдёт к экрану
+      const f = this.PD / (this.PD - q.z), sx = this.vw / 2 + q.x * f, sy = (this._py || this.vh / 2) + q.y * f;
+      const off = sx < -320 || sx > this.vw + 320 || sy < -420 || sy > this.vh + 320;
+      if (el._up === p && off) return;
+      el._up = p; el._off = off;
+      // 5.1.32: и в размер расстояния до камеры (figScale); _f, _g — перспектива точки земли и добавка фигуре (подписи, прозрачные дома, M3D)
+      const g = el._g = this.figScale(f);
+      el._f = f;
+      t += ` rotateX(${-this.tilt}deg) translate3d(${(-q.x * k).toFixed(2)}px, ${(-q.y * k).toFixed(2)}px, ${this.LIFT_Z}px) scale(${((1 - k) * g).toFixed(4)})`;
+    } else el._g = el._f = 1;
+    el.style.transform = t;
+  },
+  // точка слоя карты → где её рисует наклонённая карта: в пространстве экрана от точки зрения (середина по ширине, высота
+  // игрока; x — вправо, y — вниз, z — к игроку, CSS-пиксели) и на плоскости повёрнутой карты (u, v)
+  screen3d(lp) {
+    const cp = this.map.layerPointToContainerPoint(lp), s = this.map.getSize();
+    const r = this.rot * Math.PI / 180, a = this.tilt * Math.PI / 180, u0 = cp.x - s.x / 2, v0 = cp.y - s.y / 2;
+    const u = u0 * Math.cos(r) - v0 * Math.sin(r), v = u0 * Math.sin(r) + v0 * Math.cos(r);
+    return { x: u, y: v * Math.cos(a), z: v * Math.sin(a), u, v };
+  },
+  // 5.1.30: откуда игрок смотрит на значок (для 3D-модели места, js/m3d.js): высота взгляда над землёй e (градусы: у нижнего
+  // края экрана — почти сверху, у горизонта — сбоку) и поворот az (радианы: место правее середины видно чуть слева);
+  // у плоской карты — null (модель — под своим наклоном, как значки)
+  camOf(el) {
+    const ic = this.tilt && el ? el.closest('.leaflet-marker-icon') : null, p = ic && ic._leaflet_pos;
+    if (!p) return null;
+    const lf = ic._lift || { x: 0, y: 0 }, q = this.screen3d(L.point(p.x + lf.x, p.y + lf.y)), a = this.tilt * Math.PI / 180, d = this.PD;
+    return { e: Math.asin(Math.min(1, d * Math.cos(a) / Math.hypot(q.x, q.y, d - q.z))) * 180 / Math.PI, az: Math.atan2(q.u, d * Math.sin(a) - q.v) };
+  },
+  // 5.1.30: карта сдвинулась (игрок идёт, масштаб, наклон, поворот) — значки встают на свои точки земли заново,
+  // 3D-модели мест поворачиваются к игроку той стороной, с которой он теперь на них смотрит, дома — в новой перспективе
+  reAim() {
+    if (!this.map) return;
+    if (this.tilt) for (const m of [...this.markers.values(), this.player, this.range]) if (m) this.upright(m);
+    if (typeof M3D !== 'undefined') M3D.aim();
+    if (typeof Bld3D !== 'undefined') Bld3D.dirty();
+    this.placeLabels();
+    this.seeThrough(); // 5.1.32: и какие дома теперь заслоняют фигуры (они — прозрачнее)
+  },
+  // 5.1.30: точка зрения в точках слоя карты: (x, y) — над какой точкой земли (у наклонённой карты — ниже экрана: игрок смотрит
+  // наискосок; у плоской — над серединой экрана), w — высота над землёй
+  camLayer() {
+    const m = this.map, c = m.containerPointToLayerPoint(m.getSize().divideBy(2)), r = this.rot * Math.PI / 180;
+    const a = this.tilt * Math.PI / 180, d = this.PD * Math.sin(a);
+    return { x: c.x + d * Math.sin(r), y: c.y + d * Math.cos(r), w: this.PD * Math.cos(a) };
+  },
+  // куда на земле ложится точка на высоте hp (точек) над точкой слоя p — там игрок видит крышу дома над p (так рисует Bld3D)
+  roofShift(p, hp) {
+    const c = this.camLayer(), k = hp / (c.w - hp);
+    return { x: (p.x - c.x) * k, y: (p.y - c.y) * k };
+  },
+  // видимая земля — рамка в точках слоя: углы экрана, перенесённые на плоскость карты (с наклоном и поворотом), и запас pad
+  viewBox(pad = 0) {
+    const m = this.map, c = m.containerPointToLayerPoint(m.getSize().divideBy(2));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const W = this.vw, H = this.vh, T = this.topY(); // 5.1.34: сверху — до дальнего края карты
+    for (const [x, y] of [[0, T], [W, T], [0, H], [W, H]]) {
+      const q = this.plane(x, y);
+      x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y);
+    }
+    return { x0: c.x + x0 - pad, y0: c.y + y0 - pad, x1: c.x + x1 + pad, y1: c.y + y1 + pad };
   },
   northUp() {
     const from = this.rot, t0 = performance.now();
@@ -456,34 +786,129 @@ const MapView = {
   /* ---------------- МАРКЕРЫ ---------------- */
   // 4.24: дух уже в Бестиарии — встречался или пойман; иначе на карте он знак вопроса
   known(sid) { const x = S.d.dex[sid]; return !!(x && (x.seen || x.caught)); },
+  // 5.1.28: холст 3D-модели места (js/m3d.js) — первым в значке (звёзды, хранитель и флаг клана — поверх); центр основания
+  // модели встаёт в точку привязки значка (ax, ay = iconAnchor). Пока модель не нарисована (или WebGL нет) — прежний рисунок
+  m3d(e, ax, ay, hide) { return typeof M3D !== 'undefined' ? M3D.html(M3D.kindOf(e), ax, ay, hide) : ''; },
+  // 5.1.30: подпись места — что это (Источник, святилище своей мифологии, Разлом) и где (имя точки карты); под моделью (style.css),
+  // у дальних мест — одно «что»
+  label(e) {
+    const P = MYTH_PLACES[e.myth] || MYTH_PLACES.slavic;
+    const what = e.type === 'spring' ? ru`Источник` : e.type === 'shrine' ? (e.god ? P.shrineOf(e.god) : P.shrine) : e.camp ? ru`Разлом кампании` : P.rift;
+    const where = e.type === 'rift' ? e.place : e.name;
+    return `<div class="mk-lbl"><b><span>${U.esc(what)}</span></b>${where && where !== what ? `<i>${U.esc(where)}</i>` : ''}</div>`;
+  },
+  // подпись значка места — в слое подписей (создать или обновить текст)
+  lblFor(m, e) {
+    const h = this.label(e);
+    if (!m._lbl) { const t = document.createElement('div'); t.innerHTML = h; m._lbl = t.firstChild; this._lblBox.appendChild(m._lbl); m._lblH = h; }
+    else if (m._lblH !== h) { const t = document.createElement('div'); t.innerHTML = h; m._lbl.innerHTML = t.firstChild.innerHTML; m._lblH = h; }
+  },
+  dropLbl(m) { if (m && m._lbl) { m._lbl.remove(); m._lbl = null; } },
+  // подписи — под моделью своего места: точка опоры значка (с крышей) → на экран той же перспективой, что у карты; масштаб —
+  // как у значка (дальше — мельче); ближние — поверх дальних. Зовётся на каждом сдвиге карты (reAim) и когда модель встала (lblSoon)
+  placeLabels() {
+    if (!this.map || !this._lblBox) return;
+    const W = this.vw, H = this.vh, cx = W / 2, cy = this._py || H / 2, d = this.PD;
+    const hide = lb => { if (!lb._hid) { lb.style.display = 'none'; lb._hid = true; } };
+    for (const m of this.markers.values()) {
+      const lb = m._lbl, ic = m._icon, p = ic && ic._leaflet_pos;
+      if (!lb) continue;
+      if (!p) { hide(lb); continue; }
+      const lf = ic._lift || { x: 0, y: 0 }, q = this.screen3d(L.point(p.x + lf.x, p.y + lf.y)), f = this.tilt ? d / (d - q.z) : 1;
+      const box = ic.firstElementChild, ay = m.options.icon.options.iconAnchor[1], g = this.tilt ? ic._g || 1 : 1; // 5.1.32: фигура — в размер расстояния до камеры (upright), подпись — под её низом
+      const bot = box && (box._m3dBot != null ? box._m3dBot : parseFloat(box.style.getPropertyValue('--m3d-bot'))); // низ модели в значке (js/m3d.js), иначе — низ рисунка
+      const off = (Number.isFinite(bot) ? (bot - ay) * g + 13 : (m.options.icon.options.iconSize[1] - ay) * g + 4) * f;
+      const x = cx + q.x * f, y = cy + q.y * f + off;
+      if (x < -200 || x > W + 200 || y < -60 || y > H + 60) { hide(lb); continue; }
+      if (lb._hid !== false) { lb.style.display = ''; lb._hid = false; }
+      // 5.1.34: у нижнего края экрана подпись не крупнее LBL_MAX — иначе она шириной в экран
+      const tf = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translateX(-50%) scale(${Math.min(f, this.LBL_MAX).toFixed(3)})`, zi = Math.round(1000 + q.z);
+      if (lb._tf !== tf) { lb.style.transform = tf; lb._tf = tf; }
+      if (lb._zi !== zi) { lb.style.zIndex = zi; lb._zi = zi; }
+    }
+  },
+  LBL_MAX: 1.2,
+  lblSoon() { if (!this._lblRaf) this._lblRaf = requestAnimationFrame(() => { this._lblRaf = 0; this.placeLabels(); }); },
+  /* 5.1.32: дом, за которым стоит фигура (место, дух, сам Ловчий), становится прозрачнее, а сама фигура — тусклее: её видно сквозь дом.
+     Объёмные дома лежат на земле одним холстом (Bld3D), а значки стоят над ним: фигура за домом рисовалась поверх его стены, будто
+     стоит перед ним. За домом ли фигура — по лучам взгляда, так же, как дома рисует Bld3D: из точки зрения к XR_N вертикалям по ширине
+     фигуры — проходит ли луч сквозь дом ниже его крыши (Bld3D.hides); такие дома — полупрозрачные (Bld3D.setFade), фигура — с классом
+     behind (style.css) */
+  XR_N: 3,
+  seeThrough() {
+    if (typeof Bld3D === 'undefined' || !Bld3D.on) return;
+    const ctx = this.map && this.tilt ? { cam: this.camLayer(), mpx: Bld3D.mpx(this.map), z: this.map.getZoom(), gen: Bld3D.gen } : null, set = new Set();
+    if (ctx) ctx.hi = Bld3D.hiPx(ctx.mpx, ctx.cam);
+    for (const m of [...this.markers.values(), this.player]) {
+      if (!m || !m._icon) continue;
+      const hid = ctx ? this.hiders(m, ctx) : []; // плоская карта — дома не заслоняют ничего
+      for (const b of hid) set.add(b);
+      const dim = hid.length > 0;
+      if (m._dim !== dim || m._dimIc !== m._icon) { m._dim = dim; m._dimIc = m._icon; m._icon.classList.toggle('behind', dim); }
+    }
+    Bld3D.setFade(set);
+  },
+  seeSoon() { if (!this._seeRaf) this._seeRaf = requestAnimationFrame(() => { this._seeRaf = 0; this.seeThrough(); }); },
+  // ширина фигуры значка (её точки): холст 3D-модели (место, Ловчий) — пока модели нет, 0; дух — значок
+  figW(mk) {
+    const ic = mk._icon;
+    if (mk._figIc !== ic) { mk._figIc = ic; mk._xk = null; mk._fc = ic.querySelector('canvas.mk3d'); } // значок новый — где его фигура
+    if (mk._fc) { const v = mk._fc._m3d; return v && v.ready ? v.w : 0; }
+    const s = ic.firstElementChild;
+    return s && s.classList.contains('mk-spirit') ? mk.options.icon.options.iconSize[0] : 0;
+  },
+  // дома, которые заслоняют от игрока хотя бы низ фигуры значка mk
+  hiders(mk, ctx) {
+    const ic = mk._icon, p = ic._leaflet_pos, W = p && !ic._off ? this.figW(mk) : 0; // далеко за экраном — не считать
+    if (!W) { mk._xk = null; return (mk._hid = []); }
+    /* фигура почти не сдвинулась ни по карте, ни относительно точки зрения (меньше ¾ точки; камера, масштаб и дома — те же) — дома те же:
+       на ходу Ловчий проходит за кадр десятую долю точки, и фигуры пересчитываются раз в несколько кадров, а не на каждом. Проверять
+       нужно оба сдвига: камера идёт за Ловчим, и относительно неё он стоит на месте, а по карте — идёт (5.1.32: без сдвига по карте
+       дом, за который он зашёл, становился прозрачным только после поворота камеры) */
+    const cam = ctx.cam, kx = cam.x - p.x, ky = cam.y - p.y, g = ic._g || 1, o = mk._xk;
+    if (o && o.gen === ctx.gen && o.z === ctx.z && o.W === W && o.roof === mk._roofH && Math.abs(o.px - p.x) < 0.75 && Math.abs(o.py - p.y) < 0.75 &&
+      Math.abs(o.kx - kx) < 0.75 && Math.abs(o.ky - ky) < 0.75 && Math.abs(o.w - cam.w) < 0.5 && Math.abs(o.g - g) < 0.004 * g && Math.abs(o.r - this.rot) < 0.2) return mk._hid;
+    mk._xk = { gen: ctx.gen, z: ctx.z, W, roof: mk._roofH, px: p.x, py: p.y, kx, ky, w: cam.w, g, r: this.rot };
+    const out = mk._hid = [], base = mk._roofH ? Bld3D.hpx(mk._roofH) : 0; // место на крыше: низ фигуры — на высоте крыши
+    if (ctx.hi <= base) return out;
+    // вертикали фигуры — середина и по краям (0,3 ширины от середины), «вправо по экрану» на плоскости карты; дома — у лучей взгляда
+    // на них: рамка отрезков от крайних вертикалей к точке зрения — до доли пути, где луч уже выше самого высокого дома
+    const r = this.rot * Math.PI / 180, ux = Math.cos(r), uy = -Math.sin(r), half = 0.3 * W * g, N = this.XR_N, s = Math.min(1, ctx.hi / cam.w), xs = [], ys = [];
+    for (let i = 0; i < N; i++) { const d = (2 * i / (N - 1) - 1) * half; xs.push(p.x + ux * d); ys.push(p.y + uy * d); }
+    const ex = [xs[0], xs[N - 1]].flatMap(x => [x, x + (cam.x - x) * s]), ey = [ys[0], ys[N - 1]].flatMap(y => [y, y + (cam.y - y) * s]);
+    for (const c of Bld3D.occNear(Math.min(...ex), Math.min(...ey), Math.max(...ex), Math.max(...ey))) {
+      for (let i = 0; i < N; i++) if (Bld3D.hides(c, xs[i], ys[i], cam, ctx.mpx, base)) { out.push(c.b); break; }
+    }
+    return out;
+  },
   icon(e) {
     if (e.type === 'spirit') {
       const s = SP[e.sid], known = this.known(e.sid);
       return L.divIcon({ className: 'mk', iconSize: [68, 68], iconAnchor: [34, 62],
-        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
+        html: `<div class="mk-spirit r${s.rar}${known ? '' : ' unk'}${e.tut ? ' sp-tut' : ''}" style="--c:${known ? ELEMENTS[s.el].color : '#cbd5e1'}">${e.tut ? '<div class="tut-ring"></div>' : ''}<div class="mk-glow"></div>${known ? Art.img(e.sid) : '<span class="mk-q">?</span>'}${e.boost ? `<div class="mk-boost">${Art.wxIcon(Sky.w.key, 16)}</div>` : ''}</div>` });
     }
     if (e.type === 'spring') {
       return L.divIcon({ className: 'mk', iconSize: [46, 64], iconAnchor: [23, 60],
-        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}</div>` });
+        html: `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${this.m3d(e, 23, 60, !e.ready && !e.invaded ? 'jet' : '')}${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}</div>` });
     }
     if (e.type === 'shrine') {
       return L.divIcon({ className: 'mk', iconSize: [54, 76], iconAnchor: [27, 72],
-        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+        html: `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${this.m3d(e, 27, 72)}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
     }
     return L.divIcon({ className: 'mk', iconSize: [84, 96], iconAnchor: [42, 86],
-      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
+      html: `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${this.m3d(e, 42, 86)}${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>` });
   },
   refresh(rebuild) {
     if (!this.map) return;
     // 5.2: под полноэкранной сценой духи и места не пересчитываются — один раз, когда она закроется (wake)
     if (Stage.busy) { this._miss = Math.max(this._miss || 0, rebuild ? 2 : 1); return; }
     if (rebuild || this._miss !== 2) this._miss = 0; // пропущенное догнали (сцена, закрываясь, сама позвала пересчёт)
-    if (rebuild) { for (const m of this.markers.values()) m.remove(); this.markers.clear(); }
+    if (rebuild) { for (const m of this.markers.values()) { this.dropLbl(m); m.remove(); } this.markers.clear(); }
     const { lat, lng } = this.pos;
     // 4.21: Разломы видны с начала; до RAID_LEVEL — серые, с замком (нажатие скажет, с какого уровня)
     // 4.19: дух виден, только если он вне тумана Нави и не в опасном месте (вода, пути, трассы, стройки — см. Hazard)
     const spirits = W.spawnsAround(lat, lng).filter(e => e.tut || Hazard.bad(e.lat, e.lng) === false);
-    // 5.2: Источники, Капища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
+    // 5.2: Источники, Святилища и Разломы — только в радиусе Rules.PLACES.VIEW от Ловчего (уже показанное гаснет чуть дальше —
     // PLACE_HOLD м, чтобы значок на границе не мигал); Следопыт, «Рядом» и дальние Разломы по-прежнему берут места из данных
     const R = Rules.PLACES.VIEW, inView = e => e.d <= R || (e.d <= R + this.PLACE_HOLD && this.markers.has(e.id));
     const ce = this.campEnt(); // 5.1.15: личный Разлом кампании
@@ -495,22 +920,35 @@ const MapView = {
       const key = e.type === 'spring' ? `${e.ready}${e.invaded}` : e.type === 'rift' ? `${e.done}${S.d.level < RAID_LEVEL && !e.camp}` : e.type === 'shrine' ? `${e.won}${e.clan}${S.d.level < DUEL_LEVEL}` : e.type === 'spirit' ? this.known(e.sid) : 0;
       let m = this.markers.get(e.id);
       const fresh = !m; // появился впервые (а не сменил вид)
-      if (m && m._key !== key) { m.remove(); m = null; }
+      if (m && m._key !== key) { this.dropLbl(m); m.remove(); m = null; }
       if (!m) {
         m = L.marker([e.lat, e.lng], { icon: this.icon(e), zIndexOffset: e.type === 'spirit' ? 500 : 0 }).addTo(this.map);
         m.on('click', () => this.tap(m._ent));
+        if (typeof M3D !== 'undefined') M3D.bind(m.getElement());
         m._key = key;
         this.markers.set(e.id, m);
         if (fresh && !rebuild && e.type !== 'spirit') this.fadeIn(m);
       }
       m._ent = e;
+      if (e.type !== 'spirit') { // 5.1.30: место внутри дома — на его крыше (upright)
+        const h = Roofs.height(e.lat, e.lng) || 0;
+        if (h !== (m._roofH || 0)) { m._roofH = h; this.upright(m); }
+      }
       const el = m.getElement();
       if (el) {
         el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
         el.classList.toggle('tut-off', typeof Tut !== 'undefined' && !Tut.entOk(e)); // 5.2: фокус обучения — чужое приглушено
       }
+      if (e.type !== 'spirit') {
+        this.lblFor(m, e);
+        m._lbl.classList.toggle('far', !!(el && el.classList.contains('far')));
+        m._lbl.classList.toggle('tut-off', !!(el && el.classList.contains('tut-off')));
+      }
     });
-    for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
+    for (const [id, m] of this.markers) if (!seen.has(id)) { this.markers.delete(id); this.dropLbl(m); this.fadeOut(m, m._ent && m._ent.type !== 'spirit'); }
+    this.aimSoon(); // 5.1.28: место стало досягаемым — его модель снова движется; 5.1.30: и видна с нужной стороны
+    this.placeLabels();
+    this.seeSoon(); // 5.1.32: новые духи и места — за домами ли они
     this.syncZones(ents);
     this.nearby = ents.filter(e => e.type === 'spirit').sort((a, b) => a.d - b.d);
     const ids = new Set(this.nearby.map(e => e.id));
@@ -518,6 +956,26 @@ const MapView = {
     this._spIds = ids;
     UI.updateNearby(this.nearby);
     if (this.tracking) this.updateTracker();
+  },
+  /* 5.1.31: модели мест — к игроку в ближайшем кадре браузера, а не в задаче, где только что менялись значки: отрисовка модели
+     в холст значка заставляет браузер тут же досчитать стили страницы (в кадре этот расчёт и так нужен — без лишнего прохода) */
+  aimSoon() {
+    if (typeof M3D === 'undefined' || this._aimRaf) return;
+    this._aimRaf = requestAnimationFrame(() => { this._aimRaf = 0; M3D.aim(); M3D.kick(); });
+  },
+  // высоты крыш пришли (Roofs): места в домах — на крыши, одним кадром на все
+  roofSoon() {
+    if (this._roofRaf) return;
+    this._roofRaf = requestAnimationFrame(() => {
+      this._roofRaf = 0;
+      for (const m of this.markers.values()) {
+        const e = m._ent;
+        if (!e || e.type === 'spirit') continue;
+        const h = Roofs.height(e.lat, e.lng) || 0;
+        if (h !== (m._roofH || 0)) { m._roofH = h; this.upright(m); }
+      }
+      this.reAim();
+    });
   },
   // 5.2: место появляется и исчезает плавно (style.css: .pl-in, .pl-out); fade — false: сразу
   PLACE_HOLD: 20, FADE_MS: 450,
@@ -554,7 +1012,7 @@ const MapView = {
       Encounter.start({ mode: 'wild', sid: e.sid, lvl: e.lvl, seed: e.id, spawnId: e.id, shiny: e.shiny, boost: e.boost, tut: e.tut });
     } else if (e.type === 'spring') UI.spring(e); // 4.19: захваченный — откроется на вкладке «Вторжение»
     else if (e.type === 'shrine') {
-      if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Капища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }
+      if (S.d.level < DUEL_LEVEL) { UI.toast(ru`Святилища открываются с ${DUEL_LEVEL} уровня Ловчего`); return; }
       Duel.open(e);
     } else Raid.open(e);
   },
@@ -563,7 +1021,7 @@ const MapView = {
   pxR(ll, meters, z) {
     return Math.abs(this.map.project(ll, z).y - this.map.project(L.latLng(ll.lat + meters / 111320, ll.lng), z).y);
   },
-  // земли кланов (сияние цвета клана вокруг Капища) и марево Нави вокруг открытых разломов;
+  // земли кланов (сияние цвета клана вокруг Святилища) и марево Нави вокруг открытых разломов;
   // 4.24.1: под каждым духом — еле заметная волна, как от Ловчего, только в разы меньше (SPIRIT_R м); у каждого духа — свой такт
   SPIRIT_R: 25,
   zones: new Map(),
@@ -581,7 +1039,7 @@ const MapView = {
         icon: L.divIcon({ className: 'mk-zone', iconSize: [0, 0], iconAnchor: [0, 0], html: `<div class="zn ${w.cls}" style="${w.css}">${w.inner}</div>` }) }).addTo(this.map);
       this.zones.set(id, { m, r: w.r, css: w.css, cls: w.cls });
       this.fitZone(m, w.r);
-      if (w.cls === 'clan') this.fadeIn(m); // 5.2: земли клана — вместе со своим Капищем
+      if (w.cls === 'clan') this.fadeIn(m); // 5.2: земли клана — вместе со своим Святилищем
     }
   },
   fitZone(m, r, z, anim) {

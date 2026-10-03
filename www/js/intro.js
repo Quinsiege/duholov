@@ -124,13 +124,13 @@ const Intro = {
         aside: ru`Кощей уверяет, что камень треснул сам. Локи и Сунь Укун почему-то хихикают.`,
         art: () => this.roads(true) + this.o(this.stone('broken'), 50, 54, 44) + ring },
       { k: ru`Глава ${'IV'}`, t: ru`Духи повсюду`,
-        x: ru`Теперь Гиппокамп плещется в московском фонтане, Леший гуляет по токийскому парку, а Ниссе греет котов в Каире. А город рождает и своих духов — Вайфайку, Трамвайника, Фонарника.`,
-        art: () => this.sparks(6) + this.sp('gr_gippokamp', 25, 24, 46, 'in-big', -5) + this.chip(ru`Москва`, 25, 45) +
-          this.sp('leshiy', 76, 23, 44, 'in-big', 5, 0.6) + this.chip(ru`Токио`, 76, 45) +
-          this.sp('no_nisse', 50, 56, 42, 'in-big', 0, 1.2) + this.chip(ru`Каир`, 50, 76) +
+        x: ru`Теперь Гиппокамп плещется в фонтанах Рима, Леший гуляет по подмосковным паркам, а Ниссе греет котов в Осло: каждый дух — у себя на родине. А город рождает и своих духов — Вайфайку, Трамвайника, Фонарника.`,
+        art: () => this.sparks(6) + this.sp('gr_gippokamp', 25, 24, 46, 'in-big', -5) + this.chip(ru`Рим`, 25, 45) +
+          this.sp('leshiy', 76, 23, 44, 'in-big', 5, 0.6) + this.chip(ru`Москва`, 76, 45) +
+          this.sp('no_nisse', 50, 56, 42, 'in-big', 0, 1.2) + this.chip(ru`Осло`, 50, 76) +
           this.sp('vayfayka', 14, 70, 28, '', -8, 0.4) + this.sp('tramvaynik', 86, 70, 28, '', 8, 0.9) + this.sp('fonarnik', 50, 91, 24, '', 0, 1.5) },
       { k: ru`Глава ${'V'}`, t: ru`Разломы и святилища`,
-        x: ru`Трещины от камня — <b>Разломы</b> — открываются в каждом городе, в них застряли осколки Алатыря. А боги ставят святилища, где осели: Капище по соседству с Пагодой, Храм — через улицу от Пирамиды.`,
+        x: ru`Трещины от камня — <b>Разломы</b> — открываются в каждом городе, в них застряли осколки Алатыря. А боги ставят святилища у себя на родине: Святилища — на Руси, Храмы — в Греции, Пагоды — в Китае, Пирамиды — в Америке.`,
         art: () => this.sparks(8) + this.o(Art.riftIcon(3), 50, 36, 56) + this.o(Art.item('alatyr'), 50, 36, 17, 'fl in-shardi') +
           [['slavic', 14], ['china', 38], ['greek', 62], ['egypt', 86]].map(([m, x], k) => this.o(Art.shrineIcon(2, false, m), x, 81, 22, 'fl', `--in-d:${k * 0.5}s`)).join('') },
       { k: ru`Твоя глава`, t: ru`Ты — Ловчий Ордена Оберега`, last: true,
@@ -169,7 +169,7 @@ const Intro = {
     this.sync();
     el.querySelector('.in-skip').onclick = () => { Sfx.play('tap'); this.close(); };
     el.querySelector('.in-prev').onclick = () => this.go(this.i - 1);
-    el.querySelector('.in-nextw').onclick = () => { if (this.i >= N - 1) { Sfx.play('catch'); this.close(); } else this.go(this.i + 1); };
+    el.querySelector('.in-nextw').onclick = () => { if (this.i >= N - 1) { Sfx.play('success'); this.close(); } else this.go(this.i + 1); };
     el.querySelector('.in-dots').onclick = e => { const d = e.target.closest('[data-k]'); if (d) this.go(+d.dataset.k); };
     this.key = e => {
       if (e.key === 'ArrowRight') this.go(this.i + 1);
@@ -236,7 +236,7 @@ const Intro = {
   },
   go(n) {
     if (!this.el || this.flip || n === this.i || n < 0 || n >= this.P.length) return;
-    Sfx.play('tap');
+    Sfx.play('page');
     if (Math.abs(n - this.i) > 1) { // точка далеко — без листания всех страниц
       const np = this.pageEl(n); this.cur.replaceWith(np); this.cur = np; this.i = n; this.sync();
       np.classList.add('in-fade'); return;
@@ -271,7 +271,7 @@ const Intro = {
       if (!s.on || !this.flip) return;
       const dx = e.clientX - s.x, w = b.clientWidth || 360, v = Math.abs(dx) / Math.max(1, Date.now() - s.t);
       const done = !cancel && ((s.dir > 0 ? -dx : dx) > w * 0.3 || (v > 0.5 && (s.dir > 0 ? dx < 0 : dx > 0)));
-      if (done) Sfx.play('tap');
+      if (done) Sfx.play('page');
       this.end(done);
     };
     b.addEventListener('pointerup', e => up(e));

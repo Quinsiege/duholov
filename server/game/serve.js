@@ -20,12 +20,45 @@ const UUID = /^[0-9a-f-]{36}$/;
 // 4.3: запросы разных игроков выполняются одновременно — у каждого свои поля игрового кода (GameCore.isolate)
 GameCore.isolate(new AsyncLocalStorage());
 const must = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
-// 4.16: защитник Капища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
+// 4.16: защитник Святилища на посту не дольше Rules.HOLD.MAX_H часов — раньше этого момента (мс) он уже ушёл
 const holdCutoff = () => Date.now() - Rules.HOLD.MAX_H * 3600000;
 const verCmp = (a, b) => {
   const pa = String(a || '0').split('.').map(Number), pb = String(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return Math.sign(d); }
   return 0;
+};
+
+/* ---------- 5.1.22: своя аналитика (035_analytics.sql) ----------
+   Всё пишет одна функция базы an_put: серверные события и день активности (GameCore.anTrack — после сохранения прогресса)
+   и пачки телефона (POST …/game/an, Metrics.clean). Запись — в фоне: ответ игроку её не ждёт, сбой не мешает игре.
+   Миграции ещё нет (функции an_put нет в базе) — одно предупреждение в журнал и пауза OFF_MS: сервер не стучится в базу на
+   каждый запрос, телефонам отвечает off. Секрет ANALYTICS=off выключает аналитику совсем */
+const An = {
+  OFF_MS: 10 * 60000,
+  killed: Deno.env.get('ANALYTICS') === 'off',
+  off: 0, warned: false, errAt: 0,
+  live() { return !this.killed && Date.now() >= this.off; },
+  // x: { ev: [{ e, t, p, s }], s: сессия телефона, day: день активности } — что есть
+  put(uid, src, v, pf, x) {
+    if (!x || !this.live()) return;
+    try {
+      const p = db.rpc('an_put', { p_uid: uid, p_src: src, p_v: Metrics.VER.test(String(v || '')) ? String(v) : null, p_pf: pf || null, // версию присылает телефон
+        p_ev: x.ev && x.ev.length ? x.ev : null, p_sess: x.s || null, p_day: x.day || null })
+        .then(({ error }) => { if (error) this.fail(error); }, e => this.fail(e));
+      try { globalThis.EdgeRuntime?.waitUntil?.(p); } catch { /* в этой версии среды нет — запись и так закончится */ }
+    } catch (e) { this.fail(e); }
+  },
+  fail(e) {
+    const msg = String((e && e.message) || e);
+    // нет функции (PostgREST: PGRST202, «Could not find the function») или таблицы — миграция не применена. Прочие ошибки
+    // (например, учётную запись только что удалили) паузы не включают
+    if ((e && (e.code === 'PGRST202' || e.code === '42883' || e.code === '42P01')) || /Could not find the function/i.test(msg)) {
+      this.off = Date.now() + this.OFF_MS;
+      if (!this.warned) { this.warned = true; console.warn('Аналитика: в базе нет an_put — миграция 035_analytics.sql не применена; события не пишутся'); }
+      return;
+    }
+    if (Date.now() - this.errAt > this.OFF_MS) { this.errAt = Date.now(); console.error('Аналитика:', msg); } // не чаще раза в 10 минут
+  },
 };
 
 /* ---------- Казна: покупка монет через ЮKassa ----------
@@ -796,7 +829,7 @@ function makeEnv(uid) {
       must(await db.from('order_players').upsert({ week: x.week, pid: x.pid, name: String(x.name).slice(0, 20), n: Math.min(1e6, x.n), updated_at: new Date().toISOString() }, { onConflict: 'week,pid' }));
     },
     async orderStats(week, pid) { return must(await db.rpc('order_stats', { p_week: week, p_pid: pid })); },
-    // Кланы: кто держит Капище, поставить защитника, освободить после победы, сколько Капищ держит игрок
+    // Кланы: кто держит Святилище, поставить защитника, освободить после победы, сколько Святилищ держит игрок
     async holdGet(poi) {
       const r = must(await db.from('shrine_holds').select('clan, holders, ver').eq('poi_id', poi).maybeSingle());
       return r && Array.isArray(r.holders) && r.holders.length ? r : null;
@@ -812,7 +845,7 @@ function makeEnv(uid) {
       const cut = holdCutoff();
       return rows.filter(r => (r.holders || []).some(h => h.pid === pid && +h.t >= cut)).length;
     },
-    // Капища, где стоят защитники игрока: название — из таблицы мест
+    // Святилища, где стоят защитники игрока: название — из таблицы мест
     async myHoldsList(pid) {
       const cut = holdCutoff();
       const rows = (must(await db.from('shrine_holds').select('poi_id, lat, lng, holders').contains('holders', JSON.stringify([{ pid }])).limit(200)) || [])
@@ -822,10 +855,10 @@ function makeEnv(uid) {
       return rows.map(r => {
         const h = (r.holders || []).find(x => x.pid === pid) || {};
         const p = names.find(x => x.id === r.poi_id);
-        return { id: r.poi_id, name: p ? p.name : 'Капище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
+        return { id: r.poi_id, name: p ? p.name : 'Святилище', lat: r.lat, lng: r.lng, sid: h.sp && h.sp.sid, sp: h.sp || null, t: h.t || null, n: (r.holders || []).length };
       });
     },
-    // Сколько Капищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
+    // Сколько Святилищ держит каждый открытый клан (по всему свету или в прямоугольнике [s, w, n, e]).
     // 4.28: кланы — мифологии (MYTH_KEYS), считаются параллельно; до миграции 032 — вместе с прежними дружинами (clanIds)
     async clanCounts(box) {
       const out = {};
@@ -939,6 +972,9 @@ const pvpHits = new Map();
 // Замок игрока на время запроса: сам истекает через LOCK_MS (если функция упала); ждём его до LOCK_TRIES × 200 мс
 const LOCK_MS = 30000, LOCK_TRIES = 25;
 const hits = new Map(), badTokens = new Map(), errHits = new Map(), pingHits = new Map(), ykHits = new Map();
+// 5.1.22: аналитика — пачек телефона в минуту: от игрока (обычно 1–2) и с одного адреса (мобильные сети — много игроков за одним)
+const AN_FLOOD = 20, AN_IP = 600;
+const anHits = new Map(), anIpHits = new Map();
 // 4.26: тело запроса — не больше MAX_BODY байт (перед сервером — ещё и Caddy, 256 КБ)
 const MAX_BODY = 128 * 1024;
 let dbCheck = { at: 0, p: null };
@@ -999,13 +1035,17 @@ async function play(uid, body, env) {
       if (res.rl) await release({ ...srv, rl: res.rl });
       return R({ ok: false, error: res.error, rev: row ? row.rev : 0 });
     }
-    if (res.reset) return R({ ok: true, reset: true, results: res.results, events: [], now: res.now, wx: res.wx || null });
+    if (res.reset) {
+      An.put(uid, 's', body.v, env.pf, res.an); // 5.1.22: «начать заново» — в аналитику (в фоне)
+      return R({ ok: true, reset: true, results: res.results, events: [], now: res.now, wx: res.wx || null });
+    }
     // 4.1: прогресс не изменился (чат, Лига, комната разлома, tick) — пишем только служебные данные, без перезаписи прогресса
     const ops = row && res.data ? Diff.make(row.data, res.data) : null;
     const rev = must(await db.rpc('game_commit', { p_uid: uid, p_token: tok, p_rev: row ? row.rev : 0, p_data: ops && !ops.length ? null : (res.data || null),
       p_srv: res.srv, p_ver: String(body.v || '').slice(0, 20) }));
     if (rev == null) return R({ ok: false, error: ru`Прогресс изменился на другом устройстве — повтори действие` });
     locked = false; // замок снят вместе с сохранением
+    An.put(uid, 's', body.v, env.pf, res.an); // 5.1.22: события и день активности — в аналитику (в фоне, прогресс уже сохранён)
     for (const fn of res.after) { try { await fn(); } catch (e) { console.error('после сохранения:', String(e)); } }
     // разница — только если телефон знает предыдущую версию прогресса
     const patch = !res.full && row && body.rev === row.rev ? ops : null;
@@ -1052,6 +1092,28 @@ Deno.serve(async req => {
     }
     return reply({ ok: true });
   }
+  // 5.1.22: аналитика (www/js/metrics.js) — пачка событий и сессия телефона. Запрос «простой» (text/plain, ключ входа — в теле):
+  // его шлют и из закрывающейся игры, поэтому он до проверки ключа доступа закрытого контура; пишет только вошедший игрок
+  // (uid — из ключа входа). Пределы: тело Metrics.MAX_BODY, AN_FLOOD пачек в минуту от игрока, AN_IP с адреса (за одним
+  // адресом бывает много телефонов). Без IP и User-Agent в базе: платформа — грубо (Metrics.pf). Ответ короткий, сбой — молча
+  if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/an')) {
+    if (!An.live()) return reply({ ok: true, off: true }); // миграции нет или аналитика выключена — телефон замолчит
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+    const bad = badTokens.get(ip);
+    if (tooMany(anIpHits, ip, AN_IP) || (bad && bad.m === Math.floor(Date.now() / 60000) && bad.n > BAD_TOKENS)) return reply({ ok: false }, 429);
+    const text = await req.text().catch(() => '');
+    let b = null;
+    if (text.length <= Metrics.MAX_BODY) { try { b = JSON.parse(text); } catch { /* не JSON */ } }
+    const tok = b && typeof b.tok === 'string' && b.tok.length <= 4096 ? b.tok : '';
+    if (!tok) return reply({ ok: false }, 400);
+    let who = null;
+    try { who = (await db.auth.getUser(tok)).data; } catch { /* вход не проверить — как неверный */ }
+    if (!who || !who.user) { tooMany(badTokens, ip, BAD_TOKENS); return reply({ ok: false, auth: true }, 401); }
+    if (tooMany(anHits, who.user.id, AN_FLOOD)) return reply({ ok: false }, 429);
+    const c = Metrics.clean(b, Date.now());
+    if (c) An.put(who.user.id, 'c', c.v, Metrics.pf(req.headers.get('user-agent'), c.sa), { ev: c.ev, s: c.s });
+    return reply({ ok: true });
+  }
   // 4.21: состояние сервера для экрана входа — отвечает сразу; база проверяется не чаще раза в 5 с (db: мс ответа, -1 — не ответила за 3 с)
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/ping')) {
     const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
@@ -1082,6 +1144,8 @@ Deno.serve(async req => {
   if (body.pay) return reply(await Pay.handle(uid, String(body.pay), body.args));
   // Вход через сервисы: список, привязка и переключение учётной записи — тоже вне очереди игровых действий
   if (body.auth) { try { return reply(await Auth.handle(uid, String(body.auth), body.args || {})); } catch (e) { console.error('Вход:', String(e)); return reply({ ok: false, error: ru`Ошибка входа — попробуй ещё раз` }, 500); } }
-  const out = await play(uid, body, makeEnv(uid));
+  const env = makeEnv(uid);
+  env.pf = Metrics.pf(req.headers.get('user-agent')); // 5.1.22: платформа для аналитики (сам User-Agent не хранится)
+  const out = await play(uid, body, env);
   return reply(out.body, out.status);
 });

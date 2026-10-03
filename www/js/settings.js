@@ -5,7 +5,7 @@
 const Cfg = {
   KEY: 'duholov.settings',
   DEFAULTS: { joySide: 'right', ar: false, sound: true, vibro: true, music: true, musicVol: 0.6, eco: false,
-    bigText: false, tapThrow: false, calm: null, mapTheme: 'auto', tilt3d: true, awake: false },
+    bigText: false, tapThrow: false, calm: null, tilt3d: true, awake: false },
   s: null,
 
   load() {
@@ -20,6 +20,7 @@ const Cfg = {
     delete this.s.fog; // 5.1.6: тумана Нави больше нет
     delete this.s.cloud; // 5.1.11: в таблице Лиги — все Ловчие (настройки «Общая таблица Лиги» больше нет)
     delete this.s.weather; // 5.2: настройки «Настоящая погода» больше нет — погоду решает сервер игры
+    delete this.s.mapTheme; // 5.1.26: темы карты больше нет — день и ночь по солнцу там, где стоит Ловчий
     if (this.s.joySide !== 'left') this.s.joySide = 'right'; // 5.1: сторона джойстика на карте
     return this.s;
   },
