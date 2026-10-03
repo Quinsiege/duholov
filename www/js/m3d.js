@@ -13,12 +13,14 @@ const M3D = {
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
-  PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40 }, // CSS-пикселей на метр модели — по виду (значки разного размера)
+  PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40, spirit: 40 }, // CSS-пикселей на метр модели — по виду (значки разного размера)
   OUTLINE_PX: 1.25,  // толщина обводки на экране, CSS-пиксели (у модели — 0,03 м)
   OUTLINE: [0x1c / 255, 0x10 / 255, 0x30 / 255], // тёмно-фиолетовая, как у рисунков игры
   // 5.1.29: у каждого облика-скина (LOOK.skin) — свой наряд Ловчего (catcher_<скин>), у обычного — капюшон (catcher)
   SKINS: ['kupala', 'leshiy', 'moroz', 'volhv', 'bogatyr', 'voron', 'navstrazh', 'zharpero', 'knyaz'],
-  get KINDS() { return ['spring', 'catcher', ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
+  // 5.1.41: spirit_* — духи со скелетом (модели владельца из генератора): парят, летят и мчатся по походке (gait), как Ловчий
+  SPIRITS: ['blue'],
+  get KINDS() { return ['spring', 'catcher', ...this.SPIRITS.map(s => 'spirit_' + s), ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
   LIGHTS: [[[-3, -4, 6], '#fff4e0', 3.2], [[5, -2, 3], '#c7d2fe', 1.1], [[1, 6, 4], '#f0abfc', 2.0]],
   AMBIENT: '#2a2340',
@@ -175,7 +177,7 @@ const M3D = {
   /* 5.1.40: модель со скелетом: позиции int16×4, нормали int8×4, UV u16×2, кости и веса u8×4 + u8×4, индексы u16, клипы — матрицы
      костей f32 (кадр за кадром, кость за костью, 3×4 по строкам), текстура цвета (WebP). Для рамки на экране (span) — поза «стоит» */
   parseSkin(buf, head, b0) {
-    const B = head.buf, K = head.skin, nv = head.prims[0].v[1];
+    const B = head.buf, K = head.skin, nv = Math.max(...head.prims.map(p => p.v[0] + p.v[1])); // частей несколько, если вершин больше 65535
     const pos = new Int16Array(buf, b0 + B.pos, nv * 4), nrm = new Int8Array(buf, b0 + B.nrm, nv * 4);
     const uv = new Uint16Array(buf, b0 + K.uv, nv * 2), jw = new Uint8Array(buf, b0 + K.jw, nv * 8), idx = new Uint16Array(buf, b0 + B.idx, (B.len - B.idx) / 2);
     const clips = {};
@@ -198,7 +200,7 @@ const M3D = {
       }
     }
     for (const p of head.prims) p.blend = false;
-    head.walk = true; head.moving = false;
+    head.walk = true; head.moving = true; // не Ловчий (дух) — тоже живой: парит, пока виден и досягаем
     const m = { head, pos, nrm, uv, jw, idx, onr, col: new Uint8Array(0), clips, rest, gen: -1 };
     Object.assign(head, this.span(head, pos, this.ELEV, rest));
     m.img = new Blob([new Uint8Array(buf, b0 + K.tex.off, K.tex.len)], { type: K.tex.type });
@@ -598,7 +600,7 @@ const M3D = {
     return out;
   },
   renderSkin(v, m, w, Y) {
-    const gl = this.gl, h0 = m.head, q = h0.q, p = h0.prims[0], mt = h0.mats[p.m], B = this.pose(v, m, w);
+    const gl = this.gl, h0 = m.head, q = h0.q, P0 = h0.prims, mt = h0.mats[P0[0].m], B = this.pose(v, m, w);
     const N = new Float32Array([Y[0], Y[1], Y[2], Y[4], Y[5], Y[6], Y[8], Y[9], Y[10]]);
     const attr = (loc, b, size, type, norm, stride, off) => { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, type, norm, stride, off); };
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.bi);
@@ -607,10 +609,14 @@ const M3D = {
     gl.useProgram(this.SO.p);
     gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT);
     gl.uniformMatrix4fv(u.uVP, false, v.vp); gl.uniformMatrix4fv(u.uM, false, Y); gl.uniform3f(u.uQ0, q[0], q[1], q[2]); gl.uniform3f(u.uQs, q[3], q[4], q[5]);
-    gl.uniform3fv(u.uOC, this.OUTLINE); gl.uniform4fv(u['uB[0]'], B); gl.uniform1f(u.uOl, p.ol * v.ol);
-    attr(0, m.bp, 4, gl.SHORT, false, 0, 0); attr(1, m.bo, 4, gl.BYTE, true, 0, 0);
-    attr(2, m.bj, 4, gl.UNSIGNED_BYTE, false, 8, 0); attr(3, m.bj, 4, gl.UNSIGNED_BYTE, true, 8, 4);
-    gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, 0);
+    gl.uniform3fv(u.uOC, this.OUTLINE); gl.uniform4fv(u['uB[0]'], B);
+    for (const p of P0) { // части — каждая со своими вершинами (индексы — от первой вершины части)
+      const o = p.v[0];
+      gl.uniform1f(u.uOl, p.ol * v.ol);
+      attr(0, m.bp, 4, gl.SHORT, false, 0, o * 8); attr(1, m.bo, 4, gl.BYTE, true, 0, o * 4);
+      attr(2, m.bj, 4, gl.UNSIGNED_BYTE, false, 8, o * 8); attr(3, m.bj, 4, gl.UNSIGNED_BYTE, true, 8, o * 8 + 4);
+      gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, p.i[0] * 2);
+    }
     // 2) сама модель: цвет — из текстуры, свет — как у остальных моделей
     u = this.SP.u;
     gl.useProgram(this.SP.p);
@@ -624,9 +630,12 @@ const M3D = {
     gl.uniform3fv(u.uAmb, this.amb); gl.uniform3f(u.uV, 0, -Math.cos(e), Math.sin(e));
     gl.uniform3fv(u.uBase, mt.c); gl.uniform3fv(u.uEmit, mt.e); gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uRough, mt.ro); gl.uniform1f(u.uMetal, mt.mt);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, m.tex); gl.uniform1i(u.uTex, 0);
-    attr(0, m.bp, 4, gl.SHORT, false, 0, 0); attr(1, m.bn, 4, gl.BYTE, true, 0, 0); attr(2, m.bu, 2, gl.UNSIGNED_SHORT, true, 0, 0);
-    attr(3, m.bj, 4, gl.UNSIGNED_BYTE, false, 8, 0); attr(4, m.bj, 4, gl.UNSIGNED_BYTE, true, 8, 4);
-    gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, 0);
+    for (const p of P0) {
+      const o = p.v[0];
+      attr(0, m.bp, 4, gl.SHORT, false, 0, o * 8); attr(1, m.bn, 4, gl.BYTE, true, 0, o * 4); attr(2, m.bu, 2, gl.UNSIGNED_SHORT, true, 0, o * 4);
+      attr(3, m.bj, 4, gl.UNSIGNED_BYTE, false, 8, o * 8); attr(4, m.bj, 4, gl.UNSIGNED_BYTE, true, 8, o * 8 + 4);
+      gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, p.i[0] * 2);
+    }
     for (let i = 2; i <= 4; i++) gl.disableVertexAttribArray(i);
   },
 

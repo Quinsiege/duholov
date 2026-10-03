@@ -10,12 +10,16 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const [src, NAME = 'catcher', TEX = '1024'] = process.argv.slice(2);
-if (!src) { console.error('node skinned.mjs <файл.glb> [имя] [размер текстуры]'); process.exit(1); }
+// Ключи: --clips=idle:hover,walk:fly,run:dash — клип игры ← анимация файла (без idle — «стоит» собирается, как у Ловчего);
+// --drop=<regexp> — кости пальцев (по имени); --float — не ставить на землю (дух парит: высота — из анимации)
+const args = process.argv.slice(2), opt = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v] = a.slice(2).split('='); return [k, v ?? true]; }));
+const [src, NAME = 'catcher', TEX = '1024'] = args.filter(a => !a.startsWith('--'));
+if (!src) { console.error('node skinned.mjs <файл.glb> [имя] [размер текстуры] [--clips=…] [--drop=…] [--float]'); process.exit(1); }
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'www', 'models', NAME + '.m3d');
 const FPS = 30;
-const CLIPS = { walk: 'Walking', run: 'Running' }; // клип игры ← анимация файла
-const DROP = /Hand(Thumb|Index|Middle|Ring|Pinky)\d/; // кости пальцев
+const CLIPS = opt.clips ? Object.fromEntries(opt.clips.split(',').map(p => p.split(':'))) : { walk: 'Walking', run: 'Running' }; // клип игры ← анимация файла
+const DROP = new RegExp(opt.drop || 'Hand(Thumb|Index|Middle|Ring|Pinky)\\d'); // кости пальцев
+const MAXV = 65535; // вершин в части (индексы u16): больше — сетка делится на части, треугольники те же
 
 /* ---------- glTF ---------- */
 const glb = readFileSync(src);
@@ -120,8 +124,8 @@ for (const [k, nm] of Object.entries(CLIPS)) {
   clips[k] = { n, fps: n / c.dur, frames, src: c };
 }
 // стоит: ноги и бёдра — из исходной позы (прямо, чуть врозь), корпус, руки и голова — из кадра ходьбы, где ступни ближе всего
-// друг к другу (руки опущены вдоль тела); дыхание — грудь чуть поднимается, руки чуть покачиваются (2,6 с)
-{
+// друг к другу (руки опущены вдоль тела); дыхание — грудь чуть поднимается, руки чуть покачиваются (2,6 с). Если idle есть в файле — он
+if (!clips.idle) {
   const w = clips.walk.src, lf = node('mixamorig:LeftFoot'), rf = node('mixamorig:RightFoot');
   let best = 0, bd = Infinity;
   for (let f = 0; f < 40; f++) {
@@ -159,7 +163,8 @@ let R = 0, H = 0, Z0 = Infinity;
 const tmp = [0, 0, 0];
 for (const c of Object.values(clips)) for (const B of c.frames) for (let v = 0; v < NV; v += 3) { skinAt(B, v, tmp); R = Math.max(R, Math.hypot(tmp[0], tmp[1])); H = Math.max(H, tmp[2]); }
 for (let v = 0; v < NV; v++) { skinAt(clips.idle.frames[0], v, tmp); Z0 = Math.min(Z0, tmp[2]); }
-// стоящий — ступнями на земле (z = 0): все кадры на столько же вниз
+// стоящий — ступнями на земле (z = 0): все кадры на столько же вниз; --float — высота из анимации (дух парит)
+if (opt.float) Z0 = 0;
 for (const c of Object.values(clips)) for (const B of c.frames) for (let b = 0; b < NB; b++) B[b * 12 + 11] -= Z0;
 H -= Z0;
 console.log(`рамка: радиус ${R.toFixed(3)} м, высота ${H.toFixed(3)} м (стоящий опущен на ${Z0.toFixed(3)} м)`);
@@ -174,22 +179,37 @@ const TEXB = readFileSync(outF);
 rmSync(dir, { recursive: true, force: true });
 
 /* ---------- запись ---------- */
-const lo = [0, 1, 2].map(i => Math.min(...Array.from({ length: NV }, (_, v) => POS[v * 3 + i])));
-const hi = [0, 1, 2].map(i => Math.max(...Array.from({ length: NV }, (_, v) => POS[v * 3 + i])));
+const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+for (let v = 0; v < NV; v++) for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], POS[v * 3 + i]); hi[i] = Math.max(hi[i], POS[v * 3 + i]); }
 const qs = lo.map((l, i) => Math.max(hi[i] - l, 1e-6) / 65535);
-const pos = new Int16Array(NV * 4), nrm = new Int8Array(NV * 4), uv = new Uint16Array(NV * 2);
-for (let v = 0; v < NV; v++) {
-  for (let i = 0; i < 3; i++) pos[v * 4 + i] = Math.round((POS[v * 3 + i] - lo[i]) / qs[i]) - 32768;
-  const l = Math.hypot(NRM[v * 3], NRM[v * 3 + 1], NRM[v * 3 + 2]) || 1;
-  for (let i = 0; i < 3; i++) nrm[v * 4 + i] = Math.max(-127, Math.min(127, Math.round(NRM[v * 3 + i] / l * 127)));
-  for (let i = 0; i < 2; i++) uv[v * 2 + i] = Math.round(Math.max(0, Math.min(1, UV[v * 2 + i] - Math.floor(UV[v * 2 + i] === 1 ? 0 : UV[v * 2 + i]))) * 65535);
+// части по ≤ MAXV вершин (индексы u16 — от первой вершины своей части): треугольники идут по порядку, вершина на стыке частей —
+// своя копия в каждой части; число треугольников не меняется
+const order = [], prims = [], idxA = [];
+{
+  let map = new Map(), v0 = 0, i0 = 0;
+  const close = () => { if (idxA.length > i0) prims.push({ g: 0, m: 0, v: [v0, order.length - v0], i: [i0, idxA.length - i0], ol: 0.016 }); map = new Map(); v0 = order.length; i0 = idxA.length; };
+  for (let t = 0; t < IDX.length; t += 3) {
+    const tri = [IDX[t], IDX[t + 1], IDX[t + 2]];
+    if (map.size + tri.filter(v => !map.has(v)).length > MAXV) close();
+    for (const v of tri) { let k = map.get(v); if (k == null) { k = order.length - v0; map.set(v, k); order.push(v); } idxA.push(k); }
+  }
+  close();
 }
-const idx = Uint16Array.from(IDX);
+const N2 = order.length;
+const pos = new Int16Array(N2 * 4), nrm = new Int8Array(N2 * 4), uv = new Uint16Array(N2 * 2), jw = new Uint8Array(N2 * 8);
+order.forEach((v, j) => {
+  for (let i = 0; i < 3; i++) pos[j * 4 + i] = Math.round((POS[v * 3 + i] - lo[i]) / qs[i]) - 32768;
+  const l = Math.hypot(NRM[v * 3], NRM[v * 3 + 1], NRM[v * 3 + 2]) || 1;
+  for (let i = 0; i < 3; i++) nrm[j * 4 + i] = Math.max(-127, Math.min(127, Math.round(NRM[v * 3 + i] / l * 127)));
+  for (let i = 0; i < 2; i++) uv[j * 2 + i] = Math.round(Math.max(0, Math.min(1, UV[v * 2 + i] - Math.floor(UV[v * 2 + i] === 1 ? 0 : UV[v * 2 + i]))) * 65535);
+  jw.set(JW.subarray(v * 8, v * 8 + 8), j * 8);
+});
+const idx = Uint16Array.from(idxA);
 const pad4 = n => n + (-n % 4 + 4) % 4;
 const parts = [], offs = {};
 let o = 0;
 const put = (k, bytes) => { offs[k] = o; parts.push(bytes); o += bytes.length; const p = pad4(o) - o; if (p) { parts.push(new Uint8Array(p)); o += p; } };
-put('pos', new Uint8Array(pos.buffer)); put('nrm', new Uint8Array(nrm.buffer)); put('uv', new Uint8Array(uv.buffer)); put('jw', JW);
+put('pos', new Uint8Array(pos.buffer)); put('nrm', new Uint8Array(nrm.buffer)); put('uv', new Uint8Array(uv.buffer)); put('jw', jw);
 put('idx', new Uint8Array(idx.buffer));
 const cl = {};
 for (const k of ['idle', 'walk', 'run']) { const c = clips[k], f = new Float32Array(c.n * NB * 12); c.frames.forEach((B, i) => f.set(B, i * NB * 12)); cl[k] = { n: c.n, fps: +c.fps.toFixed(4), off: o }; put('a_' + k, new Uint8Array(f.buffer)); }
@@ -198,7 +218,7 @@ const head = {
   v: 2, name: NAME, q: [...lo, ...qs].map(x => +x.toFixed(7)), r: +R.toFixed(3), h: +H.toFixed(3),
   mats: [{ n: 'skin_tex', c: [1, 1, 1], e: [0, 0, 0], a: 1, ro: 0.75, mt: 0, ds: mt.doubleSided ? 1 : 0, tex: 1 }],
   groups: [{ t: 'static' }],
-  prims: [{ g: 0, m: 0, v: [0, NV], i: [0, idx.length], ol: 0.016 }],
+  prims,
   skin: { nb: NB, clips: cl, tex: { off: offs.tex, len: TEXB.length, type: 'image/webp' }, uv: offs.uv, jw: offs.jw },
   buf: { pos: offs.pos, nrm: offs.nrm, col: offs.uv, idx: offs.idx, len: offs.idx + idx.length * 2 },
 };
@@ -206,4 +226,4 @@ let js = Buffer.from(JSON.stringify(head));
 js = Buffer.concat([js, Buffer.alloc(pad4(js.length) - js.length, 0x20)]);
 const hdr = Buffer.alloc(8); hdr.write('M3D1', 0, 'ascii'); hdr.writeUInt32LE(js.length, 4);
 writeFileSync(OUT, Buffer.concat([hdr, js, ...parts.map(p => Buffer.from(p.buffer, p.byteOffset, p.byteLength))]));
-console.log(`${OUT}: ${(8 + js.length + o) / 1024 | 0} КБ — ${NV} вершин, ${idx.length / 3} треугольников, ${NB} костей, клипы ${Object.entries(cl).map(([k, c]) => `${k} ${c.n}`).join(', ')}, текстура ${TEXB.length / 1024 | 0} КБ`);
+console.log(`${OUT}: ${(8 + js.length + o) / 1024 | 0} КБ — ${N2} вершин (в исходнике ${NV}), ${idx.length / 3} треугольников (${prims.length} ч.), ${NB} костей, клипы ${Object.entries(cl).map(([k, c]) => `${k} ${c.n}`).join(', ')}, текстура ${TEXB.length / 1024 | 0} КБ`);

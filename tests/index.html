@@ -4679,11 +4679,12 @@
       const buf = await fetch('../www/models/' + kind + '.m3d?t=' + Date.now()).then(r => { ok(r.ok, kind + ': нет файла'); return r.arrayBuffer(); });
       const m = M3D.parse(buf), h = m.head;
       ok(h.r > 0.3 && h.r < 3.5 && h.h > 1.5 && h.h < 4.5, `${kind}: рамка ${h.r} × ${h.h}`);
-      ok(h.top > 1 && h.low < 0, `${kind}: верх ${h.top}, низ ${h.low}`);
-      if (h.skin) { // 5.1.40: Ловчий со скелетом (модель из генератора, tools/models3d/skinned.mjs)
-        eq(kind, 'catcher', 'со скелетом — обычный Ловчий:');
-        eq(h.prims.length, 1, 'одна сетка:');
-        eq(h.prims[0].i[1] / 3, 30830, 'треугольников — как в исходной модели:');
+      ok(h.top > 1 && h.low <= 0, `${kind}: верх ${h.top}, низ ${h.low}`); // низ — не выше земли (дух парит: ровно у земли)
+      if (h.skin) { // 5.1.40: модели со скелетом из генератора (tools/models3d/skinned.mjs): обычный Ловчий, духи
+        const TRIS = { catcher: 30830, spirit_blue: 103379 }; // треугольников в исходных моделях владельца — не меняются
+        ok(kind in TRIS, kind + ': со скелетом');
+        eq(h.prims.reduce((s, p) => s + p.i[1] / 3, 0), TRIS[kind], kind + ': треугольников — как в исходной модели:');
+        ok(h.prims.every(p => p.v[1] <= 65535), kind + ': части — не больше 65535 вершин');
         ok(h.skin.nb >= 20 && h.skin.nb <= M3D.MAXB, 'костей ' + h.skin.nb + ' (без пальцев, не больше ' + M3D.MAXB + ')');
         ok(['idle', 'walk', 'run'].every(k => m.clips[k] && m.clips[k].n > 1 && m.clips[k].m.length === m.clips[k].n * h.skin.nb * 12), 'клипы: стоит, идёт, бежит');
         let bad = 0, mx = 0;
@@ -4691,9 +4692,8 @@
           if (m.jw[i + 4] + m.jw[i + 5] + m.jw[i + 6] + m.jw[i + 7] !== 255) bad++;
           for (let c = 0; c < 4; c++) if (m.jw[i + c] >= h.skin.nb) bad++;
         }
-        for (const i of m.idx) mx = Math.max(mx, i);
-        eq(bad, 0, 'веса вершин — к сумме 1, кости — из скелета:');
-        ok(mx < h.prims[0].v[1], 'индексы — в пределах вершин');
+        for (const p of h.prims) { mx = 0; for (let i = p.i[0]; i < p.i[0] + p.i[1]; i++) mx = Math.max(mx, m.idx[i]); if (mx >= p.v[1]) bad++; }
+        eq(bad, 0, kind + ': веса вершин — к сумме 1, кости — из скелета, индексы — в пределах своей части:');
         ok(m.img instanceof Blob && m.img.size > 1000, 'текстура в файле');
         ok(m.onr.some(x => x), 'нормали обводки');
         continue;

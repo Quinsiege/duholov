@@ -56,8 +56,10 @@
   $('#day').onchange = e => document.body.classList.toggle('day', e.target.checked);
   $('#dot').onchange = e => document.querySelectorAll('.dot').forEach(d => d.style.display = e.target.checked ? '' : 'none');
   // Ловчий: походка, куда смотрит (градусы от севера), цвета облика — как их передаёт карта (MapView → M3D.setMe)
-  $('#gait').onchange = e => M3D.setMe({ gait: +e.target.value });
-  $('#hd').oninput = e => M3D.setMe({ heading: +e.target.value });
+  // духи со скелетом (spirit_*) — та же походка и поворот, что у Ловчего (в игре их задаст тот, кто ими управляет)
+  const spirits = () => document.querySelectorAll('canvas[data-m3d^="spirit_"]').forEach(c => { const v = c._m3d; if (v) { v.gait = +$('#gait').value; v.yaw = Math.PI - +$('#hd').value * Math.PI / 180; } });
+  $('#gait').onchange = e => { M3D.setMe({ gait: +e.target.value }); spirits(); M3D.kick(); };
+  $('#hd').oninput = e => { M3D.setMe({ heading: +e.target.value }); spirits(); M3D.kick(); };
   $('#cloak').oninput = $('#eyes').oninput = $('#skin').onchange = () => M3D.setMe({ look: { skin: $('#skin').value, cloak: $('#cloak').value, eyes: $('#eyes').value } });
   </script>
 </body>

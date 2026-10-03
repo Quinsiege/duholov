@@ -31,6 +31,19 @@ node tools/models3d/skinned.mjs ~/Blender/duholov-3d/src/catcher_shadow_seer.glb
 В игре её рисует тот же `m3d.js` (шейдер со скелетом: до `M3D.MAXB` костей), клипы смешиваются по походке (стоит / идёт / бежит).
 Цвет плаща из облика у неё не меняется — плащ в текстуре.
 
+### Духи со скелетом (5.1.41)
+
+Синий дух (`spirit_blue`) — модель владельца из генератора (скелет SmartRig `Bone_000…068`, без анимаций; исходник —
+`~/Blender/duholov-3d/src/spirit_blue.glb`). Анимации на месте делает Blender (`spirit_anim.py`): `hover` — левитация, `fly` —
+полёт с наклоном, `dash` — усиленный полёт; выгрузка — `~/Blender/duholov-3d/glb/spirit_blue_anim.glb`. Затем
+```
+node tools/models3d/bl.mjs tools/models3d/spirit_anim.py
+node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/spirit_blue_anim.glb spirit_blue 1024 --clips=idle:hover,walk:fly,run:dash "--drop=^Bone_0(29|[3-6][0-9])$" --float
+```
+Пальцы (`Bone_029…068`) — убраны (веса — кистям), `--float` — дух парит (высота — из анимации, на землю не ставится).
+Вершин больше 65535 — сетка делится на части (треугольники те же: 103 379). Походку (стоит / летит / мчится) у духа задаёт
+тот, кто им управляет (`v.gait`, `v.yaw` холста модели), как у Ловчего.
+
 Заменили файлы моделей — увеличить `M3D.VER` в `www/js/m3d.js`: у игроков модели лежат в своём кэше (`sw.js`, `duholov-models`)
 и обновятся только по новой метке.
 
