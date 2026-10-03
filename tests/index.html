@@ -4737,14 +4737,13 @@
     ok(M3D.html('catcher', 32, 32, '', 'me').includes('data-who="me"') || M3D.on !== true, 'холст Ловчего помечен как свой');
   });
   test('5.1.28: значки мест — холст 3D-модели в точке привязки значка; у исчерпанного Источника — без струи', () => {
-    const keep = M3D.on, keepL = window.L;
+    const keep = M3D.on;
     try {
       M3D.on = true;
-      window.L = { divIcon: o => ({ options: o }) }; // в тестах Leaflet нет — значку хватит его настроек
       const at = (e, kind, ax, ay) => {
-        const ic = MapView.icon(e), h = ic.options.html;
+        const ic = MapView.icon(e), h = ic.html;
         ok(h.includes(`data-m3d="${kind}"`), 'модель ' + kind);
-        eq(ic.options.iconAnchor.join(), ax + ',' + ay, kind + ': точка привязки значка');
+        eq(ic.ax + ',' + ic.ay, ax + ',' + ay, kind + ': точка привязки значка');
         ok(h.includes(`data-ax="${ax}" data-ay="${ay}"`), kind + ': модель — в точке привязки');
         ok(h.indexOf('mk3d') < h.indexOf('class="art'), kind + ': холст — первым, рисунок — следом (запасной)');
         return h;
@@ -4755,59 +4754,44 @@
       at({ type: 'shrine', tier: 1 }, 'shrine_slavic', 27, 72);
       at({ type: 'rift', tier: 3, myth: 'aztec', boss: Object.keys(SP)[0] }, 'rift_aztec', 42, 86);
       M3D.on = null; // нет WebGL — прежний рисунок, без холста
-      ok(!MapView.icon({ type: 'rift', tier: 1, myth: 'greek', boss: Object.keys(SP)[0] }).options.html.includes('mk3d'), 'без WebGL — без холста');
-    } finally { M3D.on = keep; if (keepL) window.L = keepL; else delete window.L; }
+      ok(!MapView.icon({ type: 'rift', tier: 1, myth: 'greek', boss: Object.keys(SP)[0] }).html.includes('mk3d'), 'без WebGL — без холста');
+    } finally { M3D.on = keep; }
   });
-  test('5.1.30: наклонённая карта — 3D-место видно с той стороны, откуда на него смотрит игрок; значок стоит на своей точке земли', () => {
-    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot }, keepL = window.L;
+  test('5.1.30: наклонённая карта — 3D-место видно с той стороны, откуда на него смотрит игрок; значок — в размер расстояния до камеры, место в доме — на крыше', () => {
+    const keep = { map: MapView.map, tilt: MapView.tilt, vw: MapView.vw, vh: MapView.vh, _py: MapView._py };
     try {
-      window.L = { point: (x, y) => ({ x, y }) }; // в тестах Leaflet нет
-      // карта-заглушка: точка слоя = точка контейнера; контейнер 400×600 — его середина и есть точка зрения
-      MapView.map = { layerPointToContainerPoint: p => p, containerPointToLayerPoint: p => p, getSize: () => ({ x: 400, y: 600, divideBy: k => ({ x: 400 / k, y: 600 / k }) }),
-        getZoom: () => 17.5, getCenter: () => ({ lat: 55.75 }) };
-      MapView.tilt = MapView.TILT; MapView.rot = 0;
-      const icon = (x, y) => { const d = document.createElement('div'); d.className = 'leaflet-marker-icon'; d._leaflet_pos = { x, y }; d.appendChild(document.createElement('canvas')); return d; };
+      // камера-заглушка MapLibre: экран 400×600, Ловчий — на 0,6 высоты (360), угол обзора 36,87° (dc = 900)
+      const fake = (pt, z) => ({ getPitch: () => MapView.tilt, getZoom: () => z || MapView.Z0, transform: { fov: 36.87 }, project: () => pt() });
+      let at = { x: 200, y: 360 };
+      MapView.map = fake(() => at); MapView.vw = 400; MapView.vh = 600; MapView._py = 360; MapView.tilt = MapView.TILT;
+      const icon = (x, y) => { const d = document.createElement('div'); d.className = 'maplibregl-marker'; d._mk = { p: { x, y }, lift: 0 }; d.appendChild(document.createElement('canvas')); return d; };
       const cam = (x, y) => MapView.camOf(icon(x, y).firstChild);
-      const mid = cam(200, 300);
-      near(mid.e, 90 - MapView.TILT, 1e-6, 'в точке зрения — сверху, под углом наклона карты:');
+      const mid = cam(200, 360);
+      near(mid.e, 90 - MapView.TILT, 1e-6, 'в точке Ловчего — под углом наклона карты:');
       near(mid.az, 0, 1e-9, 'посередине — прямо:');
-      const far = cam(200, 40), close = cam(200, 560);
-      ok(far.e < mid.e && mid.e < close.e && far.e > 5, `у горизонта — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
-      ok(cam(360, 300).az > 0.05 && cam(40, 300).az < -0.05, 'правее середины — виден чуть слева, левее — чуть справа');
-      MapView.rot = 90; // повёрнутая карта: правее на экране — это «ниже» на её плоскости
-      ok(cam(360, 300).e > mid.e, 'с поворотом карты — тоже по месту на экране');
-      MapView.rot = 0;
-      // значок выдвинут к игроку по лучу взгляда: на экране точка опоры — ровно там, где точка земли
-      const ic = icon(320, 120), mk = { _icon: ic, _map: MapView.map, options: {} };
-      ic.style.marginLeft = '-27px'; ic.style.marginTop = '-72px';
-      MapView.upright(mk);
-      const m = ic.style.transform.match(/translate3d\(([-\d.]+)px, ([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/);
-      ok(m, 'выдвинут и уменьшен: ' + ic.style.transform);
-      const q = MapView.screen3d({ x: 320, y: 120 }), d = MapView.PD, z = +m[3], f = d / (d - q.z);
-      near((q.x + +m[1]) * d / (d - q.z - z), q.x * d / (d - q.z), 0.02, 'по горизонтали — на своей точке:');
-      near((q.y + +m[2]) * d / (d - q.z - z), q.y * d / (d - q.z), 0.02, 'по вертикали — на своей точке:');
-      // 5.1.32: размер — по расстоянию до камеры, перспектива у фигур сильнее, чем у земли (MapView.figScale)
-      near(+m[4] * d / (d - q.z - z), f * MapView.figScale(f), 1e-3, 'и в размер расстояния до камеры:');
-      ok(f < 1, 'дальняя фигура — мельче'); near(MapView.figScale(f), 1, 1e-9, '5.1.34: у наклона 75° — в размер своей точки земли (своя перспектива сильная):');
-      // место в доме — на его крыше: там, где её рисуют объёмные дома (точка на высоте дома — из точки зрения)
-      const keepOn = Bld3D.on;
-      try {
-        Bld3D.on = true;
-        mk._roofH = 21; MapView.upright(mk);
-        const h = Bld3D.hpx(21), sh = MapView.roofShift({ x: 320, y: 120 }, h);
-        near(h, 21 * Bld3D.mpx(MapView.map), 1e-9, 'дом — в настоящую высоту (в масштабе карты):');
-        ok(h > 40, 'двадцатиметровый дом — выше 40 точек: ' + h.toFixed(1));
-        const at = ic.style.transform.match(/^translate3d\(([-\d.]+)px, ([-\d.]+)px/);
-        ok(at && Math.abs(+at[1] - (320 + sh.x)) < 0.01 && Math.abs(+at[2] - (120 + sh.y)) < 0.01, 'на крыше: ' + ic.style.transform.slice(0, 40));
-        ok(cam(320, 120).e !== MapView.camOf(ic.firstChild).e, 'камера — на крышу, а не к земле под ней');
-        Bld3D.on = false; MapView.upright(mk);
-        ok(/^translate3d\(320px, 120px/.test(ic.style.transform), 'без объёмных домов (нет WebGL) — на земле: ' + ic.style.transform.slice(0, 30));
-      } finally { Bld3D.on = keepOn; }
+      const far = cam(200, 40), close = cam(200, 580);
+      ok(far.e < mid.e && mid.e < close.e && far.e > 5, `вдали — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
+      ok(cam(360, 360).az > 0.05 && cam(40, 360).az < -0.05, 'правее середины — виден чуть слева, левее — чуть справа');
+      // размер значка: перспектива точки земли f и добавка фигуре (figScale)
+      const sc = document.createElement('div'), m = { lat: 55.75, lng: 37.62, flat: false, z: 0, roof: 0, sc, box: document.createElement('div') };
+      at = { x: 200, y: 100 };
+      MapView.place(m);
+      const dc = 0.5 * 600 / Math.tan(36.87 * Math.PI / 360), f = 1 + Math.tan(MapView.TILT * Math.PI / 180) * (100 - 360) / dc;
+      near(m.f, f, 1e-9, 'дальняя точка земли — мельче:'); ok(f < 1, 'f < 1');
+      near(m.S, f * MapView.figScale(f), 1e-9, 'размер фигуры:');
+      ok(sc.style.transform.includes('scale(' + m.S.toFixed(4) + ')'), 'в стиле: ' + sc.style.transform);
+      eq(m.box._f, f, 'для холста 3D-модели — перспектива'); eq(m.box._g, m.g, 'и добавка');
+      at = { x: 200, y: 360 }; MapView.place(m); near(m.f, 1, 1e-9, 'у Ловчего — без перспективы:');
+      m.roof = 21; MapView.place(m);
+      near(m.lift, 21 / MapView.mpp(MapView.Z0, 55.75) * Math.sin(MapView.TILT * Math.PI / 180), 1e-6, 'место на крыше — поднято на высоту дома:');
+      ok(m.lift > 20 && sc.style.transform.indexOf('-' + m.lift.toFixed(1) + 'px') > 0, 'вверх: ' + sc.style.transform);
+      at = { x: 5000, y: 360 }; const t1 = sc.style.transform; MapView.map = fake(() => at, MapView.Z0 + 1); MapView.place(m);
+      ok(m.off && sc.style.transform === t1, 'далеко за экраном — не переставляется');
       MapView.tilt = 0;
       eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
-    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
+    } finally { Object.assign(MapView, keep); }
   });
-  test('5.1.34: камера — наклон постоянный (50°), палец её только поворачивает; карта — на весь экран, без горизонта и дымки', () => {
+  test('5.1.34: камера — наклон постоянный (50°), палец её только поворачивает; карта — MapLibre', () => {
     const keep = { map: MapView.map, setRot: MapView.setRot, northUp: MapView.northUp, rot: MapView.rot, tilt: MapView.tilt, _py: MapView._py, vw: MapView.vw, vh: MapView.vh };
     const keepRaf = window.requestAnimationFrame, box = document.createElement('div');
     try {
@@ -4828,17 +4812,6 @@
       ev('pointerdown', 200, 300); ev('pointermove', 260, 300); ev('pointerup', 260, 300);
       near(rots[rots.length - 1], 60 * MapView.ORBIT.yaw, 1e-9, 'палец вправо (над Ловчим) — облёт:');
       eq(MapView.tilt, MapView.TILT, 'наклон всё тот же:');
-      // дальний край карты (FAR точек слоя впереди) — за верхом экрана: земля — на весь экран, горизонта нет
-      MapView.vw = 400; MapView.tilt = MapView.TILT;
-      const t = MapView.TILT * Math.PI / 180, hz = MapView._py - MapView.PD / Math.tan(t), fy = MapView.farY();
-      ok(hz < 0, 'горизонт — выше экрана: ' + hz.toFixed(0));
-      ok(fy < 0, 'дальний край карты — за верхом экрана: ' + fy.toFixed(0));
-      near(MapView.planeUV(200, fy).y, -MapView.FAR, 1e-6, 'на краю — FAR точек слоя впереди:');
-      eq(MapView.topY(), 0, 'видимая земля — от верха экрана:');
-      ok(Number.isFinite(MapView.viewUV(0).v0) && MapView.viewUV(0).v0 > -MapView.FAR, 'холст домов — до верха экрана');
-      ok(!document.getElementById('mapHaze'), 'дымки у верха экрана нет');
-      MapView.tilt = 0;
-      eq(MapView.farY(), -Infinity, 'плоская карта — без горизонта:'); eq(MapView.topY(), 0);
     } finally { Object.assign(MapView, keep); window.requestAnimationFrame = keepRaf; box.remove(); }
   });
   test('5.1.30: подпись места — что это (по мифологии) и где; имя точки — как текст', () => {
@@ -4857,16 +4830,13 @@
     ok(!MapView.label({ type: 'spring', name: '<img src=x onerror=alert(1)>' }).includes('<img'), 'имя точки — без разметки');
   });
   test('5.1.30: подписи мест — своим слоем поверх карты и моделей, под низом значка; уходят вместе со значком', () => {
-    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, markers: MapView.markers, _lblBox: MapView._lblBox, _py: MapView._py }, keepL = window.L;
+    const keep = { markers: MapView.markers, _lblBox: MapView._lblBox, map: MapView.map, vw: MapView.vw, vh: MapView.vh };
     const box = document.createElement('div');
     try {
-      window.L = { point: (x, y) => ({ x, y }) }; // в тестах Leaflet нет
-      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
-      MapView.tilt = 0; MapView.rot = 0; MapView._py = 300;
+      MapView.map = {}; MapView.vw = 400; MapView.vh = 600;
       box.id = 'mapLbl'; document.body.appendChild(box); MapView._lblBox = box;
-      const icon = (x, y) => { const d = document.createElement('div'); d._leaflet_pos = { x, y }; d.appendChild(document.createElement('div')); return d; };
-      const mk = ic => ({ _icon: ic, options: { icon: { options: { iconAnchor: [27, 72], iconSize: [54, 80] } } } });
-      const a = mk(icon(150, 200)), b = mk(icon(5000, 200));
+      const mk = (x, y) => { const ic = document.createElement('div'); ic.appendChild(document.createElement('div')); return { ic, p: { x, y }, f: 1, S: 1, lift: 0, o: { ay: 72, h: 80 } }; };
+      const a = mk(150, 200), b = mk(5000, 200);
       MapView.markers = new Map([['a', a], ['b', b]]);
       MapView.lblFor(a, { type: 'spring', name: 'Фонтан у ГУМа' }); MapView.lblFor(b, { type: 'spring', name: 'Далеко' });
       ok(a._lbl && a._lbl.parentNode === box, 'подпись — в своём слое, не в значке');
@@ -4876,21 +4846,24 @@
       ok(a._lbl === el && el.querySelector('i').textContent === 'Сквер', 'новое имя — в той же подписи');
       MapView.placeLabels();
       const at = s => s.match(/translate3d\(([-\d.]+)px, ([-\d.]+)px, 0(?:px)?\) translateX\(-50%\) scale\(([\d.]+)\)/);
-      let m = at(a._lbl.style.transform);
+      const m = at(a._lbl.style.transform);
       ok(m, 'подпись стоит: ' + a._lbl.style.transform);
-      // плоская карта: точка значка на экране — середина + сдвиг от середины контейнера; подпись — под низом рисунка
-      near(+m[1], innerWidth / 2 - 50, 0.06, 'по горизонтали — под значком:');
-      near(+m[2], 300 - 100 + (80 - 72 + 4), 0.06, 'по вертикали — под низом рисунка:');
-      eq(+m[3], 1, 'плоская карта — без уменьшения:');
-      a._icon.firstChild.style.setProperty('--m3d-bot', '90px'); // у 3D-модели — под низом модели
+      near(+m[1], 150, 0.06, 'по горизонтали — под значком:');
+      near(+m[2], 200 + (80 - 72 + 4), 0.06, 'по вертикали — под низом рисунка:');
+      eq(+m[3], 1, 'у Ловчего — без уменьшения:');
+      a.ic.firstChild.style.setProperty('--m3d-bot', '90px'); // у 3D-модели — под низом модели
       MapView.placeLabels();
-      near(+at(a._lbl.style.transform)[2], 300 - 100 + (90 - 72 + 13), 0.06, 'под низом модели:');
+      near(+at(a._lbl.style.transform)[2], 200 + (90 - 72 + 13), 0.06, 'под низом модели:');
+      a.S = 2; MapView.placeLabels();
+      near(+at(a._lbl.style.transform)[2], 200 + (90 - 72) * 2 + 13, 0.06, 'модель вдвое крупнее — подпись ниже на её высоту под точкой опоры:');
+      a.lift = 30; MapView.placeLabels();
+      near(+at(a._lbl.style.transform)[2], 200 - 30 + (90 - 72) * 2 + 13, 0.06, 'место на крыше — и подпись выше:');
       eq(b._lbl.style.display, 'none', 'значок далеко за краем экрана — подпись не видна');
-      a._icon._leaflet_pos = null; MapView.placeLabels();
+      a.p = null; MapView.placeLabels();
       eq(a._lbl.style.display, 'none', 'значок ещё не на карте — подпись не видна');
       MapView.dropLbl(a);
       ok(!el.parentNode && !a._lbl, 'значок ушёл — и подпись');
-    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; box.remove(); }
+    } finally { Object.assign(MapView, keep); box.remove(); }
   });
   atest('5.1.30: палитра карты — день и ночь; её цвета дают все цвета, которые читает стиль карты', async () => {
     if (typeof protomapsL === 'undefined') await new Promise((res, rej) => { const s = document.createElement('script'); s.src = '../www/vendor/protomaps/protomaps-leaflet.min.js'; s.onload = res; s.onerror = () => rej(new Error('нет protomaps-leaflet.min.js')); document.head.appendChild(s); });
@@ -4980,41 +4953,6 @@
       });
     } finally { host.remove(); M3D.prune(); M3D.BASE = base; }
   });
-  test('5.1.31: плитки карты — только под видимой землёй (с запасом), рамка — с серединой у игрока; проявление пишет прозрачность лишь при изменении', () => {
-    const keep = { seenPoly: MapView.seenPoly, TILE_PAD: MapView.TILE_PAD, TILE_KEEP: MapView.TILE_KEEP }, keepL = window.L;
-    try {
-      // видимая земля — ромб (повёрнутая карта): рамка ромба шире него самого
-      MapView.seenPoly = () => [[200, 0], [400, 200], [200, 400], [0, 200]];
-      const lay = { _map: { latLngToLayerPoint: p => p }, _tileCoordsToNwSe: co => [{ x: co.x * 80, y: co.y * 80 }, { x: co.x * 80 + 80, y: co.y * 80 + 80 }] };
-      ok(MapView.tileSeen(lay, { x: 2, y: 2 }, 0), 'плитка посередине — нужна');
-      ok(!MapView.tileSeen(lay, { x: 0, y: 0 }, 0), 'угол рамки мимо ромба — не нужна');
-      ok(MapView.tileSeen(lay, { x: 0, y: 0 }, 1), 'с запасом в плитку — нужна (подгрузится заранее)');
-      ok(!MapView.tileSeen(lay, { x: 9, y: 9 }, 2), 'далеко — не нужна и с запасом');
-      // рамка плиток — с серединой у игрока (Leaflet и Protomaps рисуют от середины), не шире слоя карты
-      const pts = [], writes = [];
-      window.L = {
-        bounds: (a, b) => ({ min: { x: a[0], y: a[1] }, max: { x: b[0], y: b[1] } }),
-        DomUtil: { setOpacity: (el, v) => { writes.push(v); el.style.opacity = v; } },
-        Util: { requestAnimFrame: () => 1, cancelAnimFrame() {} },
-      };
-      MapView.seenPoly = () => [[500, 300], [700, 300], [650, 600], [550, 600]]; // трапеция впереди игрока (он — в (600, 700))
-      const map = { getZoom: () => 18, getZoomScale: () => 1, project: () => ({ floor: () => ({ x: 600, y: 700 }) }), containerPointToLayerPoint: () => ({ x: 600, y: 700 }), getSize: () => ({ divideBy: () => ({}) }) };
-      const fake = { _map: map, _tileZoom: 18, _tiles: {}, options: { opacity: 1 }, _container: document.createElement('div'),
-        _getTiledPixelBounds: () => ({ min: { x: -5000, y: -5000 }, max: { x: 5000, y: 5000 } }), _isValidTile: () => true, _update() {}, _pruneTiles() {}, _onOpaqueTile() {} };
-      MapView.TILE_PAD = 1;
-      MapView.cull(fake);
-      const b = fake._getTiledPixelBounds({});
-      eq((b.min.x + b.max.x) / 2, 600, 'середина рамки по ширине — у игрока:'); eq((b.min.y + b.max.y) / 2, 700, 'и по высоте:');
-      ok(b.min.y <= 300 - 256 && b.max.x >= 700 + 256, 'рамка покрывает видимую землю с запасом');
-      // проявление: прозрачность — только тем, у кого она изменилась
-      const el1 = document.createElement('canvas'), el2 = document.createElement('canvas'), now = +new Date();
-      fake._tiles = { a: { current: true, loaded: now - 1000, el: el1, active: true }, b: { current: true, loaded: now, el: el2 } };
-      fake._updateOpacity(); const n1 = writes.length;
-      fake._updateOpacity(); const n2 = writes.length - n1;
-      ok(n1 >= 2, 'первый раз — слою и плиткам: ' + n1);
-      ok(n2 <= 1, 'дальше — только той, что проявляется: ' + n2);
-    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
-  });
   test('5.1.31: объёмные дома — плитки строятся по одной, ближняя к игроку — первой', () => {
     const keep = { map: Bld3D.map, buildOne: Bld3D.buildOne, queue: Bld3D.queue, busy: Bld3D.busy }, order = [];
     try {
@@ -5031,97 +4969,57 @@
       eq(Bld3D.busy, false, 'очередь пуста — свободен:');
     } finally { Object.assign(Bld3D, keep); }
   });
-  test('5.1.31: крыши и повороты моделей — одним кадром; пустые плитки подписей скрыты; значок далеко за экраном не переставляется', () => {
-    const keep = { markers: MapView.markers, upright: MapView.upright, reAim: MapView.reAim, bldTiles: MapView.bldTiles, map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py };
-    const keepAim = M3D.aim, keepRaf = window.requestAnimationFrame, keepL = window.L;
+  test('5.1.31: крыши и повороты моделей — одним кадром', () => {
+    const keep = { markers: MapView.markers, reAim: MapView.reAim };
+    const keepAim = M3D.aim, keepRaf = window.requestAnimationFrame;
     const raf = [];
     try {
       window.requestAnimationFrame = f => { raf.push(f); return raf.length; };
       // крыши: пришли высоты — места встают на крыши одним кадром, без полного обновления значков
-      let up = 0, re = 0, aims = 0;
-      const e = { type: 'shrine', lat: 55.75, lng: 37.62 }, m = { _ent: e };
+      let re = 0, aims = 0;
+      const e = { type: 'shrine', lat: 55.75, lng: 37.62 }, m = { _ent: e, roof: 0 };
       MapView.markers = new Map([['a', m]]);
-      MapView.upright = () => { up++; }; MapView.reAim = () => { re++; };
+      MapView.reAim = () => { re++; };
       Roofs.at.set(e.lat.toFixed(6) + ',' + e.lng.toFixed(6), 21);
       MapView.roofSoon(); MapView.roofSoon();
       eq(raf.length, 1, 'две крыши подряд — один кадр:');
       raf.shift()();
-      eq(m._roofH, 21, 'место — на крыше:'); eq(up, 1, 'значок переставлен:'); eq(re, 1, 'модели и подписи — под новую высоту:');
+      eq(m.roof, 21, 'место — на крыше:'); eq(re, 1, 'значки, модели и подписи — под новую высоту:');
       // модели — к игроку в ближайшем кадре, не в задаче обновления значков
       M3D.aim = () => { aims++; };
       MapView.aimSoon(); MapView.aimSoon();
       eq(aims, 0, 'сразу не поворачивает'); eq(raf.length, 1, 'один кадр на два вызова:');
       raf.shift()();
       eq(aims, 1, 'повернул в кадре:');
-      // пустая плитка подписей — скрыта (у пустого холста всё равно свой слой видеокарты)
-      let labels = 0;
-      MapView.bldTiles = { labelers: { getIndex: () => ({ searchBbox: () => ({ size: labels }) }) } };
-      const tile = document.createElement('canvas');
-      MapView.lblTileVis({ x: 1, y: 2, z: 18 }, tile);
-      eq(tile.style.display, 'none', 'без подписей — скрыта:');
-      labels = 2; MapView.lblTileVis({ x: 1, y: 2, z: 18 }, tile);
-      eq(tile.style.display, '', 'появились подписи — видна:');
-      // значок далеко за краем экрана: первый раз ставится, дальше — до нового места на слое карты не переставляется
-      MapView.upright = keep.upright;
-      window.L = { point: (x, y) => ({ x, y }) };
-      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }), getZoom: () => 17.5 };
-      MapView.tilt = MapView.TILT; MapView.rot = 0; MapView._py = 300;
-      const ic = document.createElement('div'), mk = { _icon: ic, _map: MapView.map, options: {} };
-      ic._leaflet_pos = { x: 200 + 5000, y: 300 };
-      MapView.upright(mk);
-      const t1 = ic.style.transform;
-      ok(/rotateX/.test(t1), 'первый раз — поставлен: ' + t1.slice(0, 40));
-      MapView.tilt = MapView.TILT + 5; MapView.upright(mk);
-      eq(ic.style.transform, t1, 'далеко за экраном, то же место — не переставлен:');
-      ic._leaflet_pos = { x: 200 + 5000, y: 300 }; MapView.upright(mk);
-      ok(ic.style.transform !== t1, 'новое место на слое карты — переставлен');
-      ic._leaflet_pos = { x: 220, y: 300 }; MapView.upright(mk);
-      ok(ic.style.transform.includes(`rotateX(-${MapView.TILT + 5}deg)`), 'на экране — всегда по нынешнему наклону: ' + ic.style.transform.slice(0, 60));
     } finally {
       Object.assign(MapView, keep); M3D.aim = keepAim; window.requestAnimationFrame = keepRaf;
-      if (keepL) window.L = keepL; else delete window.L;
       Roofs.at.clear();
     }
   });
   test('5.1.32: камера как в Pokémon GO — отдалить можно до ZMIN; фигуры у камеры крупнее, к горизонту мельче; приблизили — крупнее', () => {
-    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot, _py: MapView._py, markers: MapView.markers, _lblBox: MapView._lblBox }, keepL = window.L;
-    const box = document.createElement('div');
+    const keep = { map: MapView.map };
     try {
       let z = MapView.Z0;
       MapView.map = { getZoom: () => z };
-      ok(MapView.ZMIN >= 16.5 && MapView.ZMIN < MapView.Z0, 'отдалить — не дальше ' + MapView.ZMIN + ' (было 15)');
+      ok(MapView.ZMIN >= 15.5 && MapView.ZMIN < MapView.Z0 && MapView.Z0 < MapView.ZMAX, 'отдалить — не дальше ' + MapView.ZMIN + ' (масштабы MapLibre)');
       near(MapView.figScale(1), 1, 1e-9, 'у Ловчего на исходном масштабе — прежний размер:');
-      // 5.1.34: у наклона 75° перспектива своя сильная — добавки нет (FIG 0); у самого низа экрана — не больше FIG_MAX
       const lo = 2.2 * MapView.figScale(2.2), hi = 0.5 * MapView.figScale(0.5);
       ok(lo > 1.5 && hi < 0.6, `у нижнего края экрана — крупнее, у дальнего — мельче: ${lo.toFixed(2)}, ${hi.toFixed(2)}`);
       near(lo, MapView.FIG_MAX, 1e-9, 'у самого низа экрана — не больше FIG_MAX:');
-      near(0.3 * MapView.figScale(0.3), MapView.FIG_MIN, 1e-9, 'у горизонта — не меньше FIG_MIN:');
-      z = 19; const zin = MapView.figScale(1);
+      near(0.3 * MapView.figScale(0.3), MapView.FIG_MIN, 1e-9, 'вдали — не меньше FIG_MIN:');
+      z = MapView.ZMAX; const zin = MapView.figScale(1);
       z = MapView.ZMIN; const zout = MapView.figScale(1);
       ok(zin > 1.5 && zout < 0.8, `приблизили камеру — крупнее, отдалили — мельче: ${zin.toFixed(2)}, ${zout.toFixed(2)}`);
-      z = 19; near(1.4 * MapView.figScale(1.4), MapView.FIG_MAX, 1e-9, 'не больше FIG_MAX:');
-      MapView.map = { getZoom: () => 17.5, _animatingZoom: true, _animateToZoom: 18.5 };
-      near(MapView.figScale(1), Math.pow(2, MapView.ZK), 1e-9, 'масштаб анимируется — сразу к новому (значок догонит плавно):');
-      // подпись места — под низом крупной модели
-      window.L = { point: (x, y) => ({ x, y }) };
-      MapView.map = { layerPointToContainerPoint: p => p, getSize: () => ({ x: 400, y: 600 }) };
-      MapView.tilt = MapView.TILT; MapView.rot = 0; MapView._py = 300;
-      box.id = 'mapLbl'; document.body.appendChild(box); MapView._lblBox = box;
-      const ic = document.createElement('div'), m = { _icon: ic, options: { icon: { options: { iconAnchor: [27, 72], iconSize: [54, 80] } } } };
-      ic._leaflet_pos = { x: 200, y: 300 }; ic.appendChild(document.createElement('div'));
-      ic.firstChild._m3dBot = 90;
-      MapView.markers = new Map([['a', m]]);
-      MapView.lblFor(m, { type: 'spring', name: 'Фонтан' });
-      const y = g => { ic._g = g; MapView.placeLabels(); return +m._lbl.style.transform.match(/translate3d\([-\d.]+px, ([-\d.]+)px/)[1]; };
-      near(y(2) - y(1), 90 - 72, 0.11, 'модель вдвое крупнее — подпись ниже на её высоту под точкой опоры:');
-    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; box.remove(); }
+      z = MapView.ZMAX; near(1.4 * MapView.figScale(1.4), MapView.FIG_MAX, 1e-9, 'не больше FIG_MAX:');
+      near(MapView.figScale(1, MapView.Z0 + 1), Math.pow(2, MapView.ZK), 1e-9, 'масштаб можно передать:');
+    } finally { Object.assign(MapView, keep); }
   });
   test('5.1.32: крупная у камеры 3D-модель — холст с запасом точек (без перескоков туда-обратно)', () => {
     const keepT = MapView.tilt, keepLayout = M3D.layout;
     try {
       MapView.tilt = MapView.TILT;
       const ic = document.createElement('div'), c = document.createElement('canvas');
-      ic.className = 'leaflet-marker-icon'; ic.appendChild(c);
+      ic.className = 'maplibregl-marker'; ic.appendChild(c);
       let lays = 0;
       M3D.layout = () => { lays++; };
       const v = { c, res: 1 }, at = S => { ic._g = S; ic._f = 1; return M3D.sharp(v); };
@@ -5167,66 +5065,6 @@
       eq(Bld3D.twins(a.bs[1]).length, 0, 'у дома посередине плитки — нет');
       eq(a.hi, 25, 'самый высокий дом плитки:');
     } finally { Bld3D.tiles = keepT; Bld3D.gen = keepG; }
-  });
-  test('5.1.32: фигура за домом — дом плавно прозрачнее, фигура тусклее; ушла — всё как было', () => {
-    const keep = { markers: MapView.markers, player: MapView.player, hiders: MapView.hiders, camLayer: MapView.camLayer, map: MapView.map, tilt: MapView.tilt };
-    const keepB = { on: Bld3D.on, tiles: Bld3D.tiles, mpx: Bld3D.mpx, hiPx: Bld3D.hiPx, dirty: Bld3D.dirty, fades: Bld3D.fades, fadeOn: Bld3D.fadeOn, fadeT: Bld3D.fadeT };
-    try {
-      Bld3D.on = true; Bld3D.tiles = new Map(); Bld3D.fades = new Map(); Bld3D.fadeOn = false;
-      Bld3D.mpx = () => 1; Bld3D.hiPx = () => 100; Bld3D.dirty = () => {};
-      MapView.map = { getZoom: () => 17.5 }; MapView.tilt = MapView.TILT; MapView.camLayer = () => ({ x: 0, y: 0, w: 900 });
-      const t = { x: 1, y: 2 }, p = { nf: 0, upd: null }, bld = { t, p, vs: 0, vn: 4, H: 30, b: [100, 100, 140, 140], g: [] };
-      Bld3D.tiles.set('1:2', t);
-      const icon = () => { const d = document.createElement('div'); d.className = 'mk'; return d; };
-      const a = { _icon: icon() }, b = { _icon: icon() };
-      MapView.markers = new Map([['a', a]]); MapView.player = b;
-      let behind = true;
-      MapView.hiders = m => (m === a && behind ? [bld] : []);
-      MapView.seeThrough();
-      ok(a._icon.classList.contains('behind'), 'фигура за домом — тусклее');
-      ok(!b._icon.classList.contains('behind'), 'Ловчий не за домом — как был');
-      const f = Bld3D.fades.get(bld);
-      ok(f && f.to === Bld3D.FADE, 'дом — к прозрачности FADE');
-      const T0 = Bld3D.fadeT;
-      Bld3D.fadeStep(T0 + 100);
-      near(f.a, 1 - (1 - Bld3D.FADE) * 100 / Bld3D.FADE_MS, 1e-9, 'плавно — за FADE_MS:');
-      ok(p.upd && p.upd.has(bld), 'новая прозрачность — в буфер куска');
-      eq(p.nf, 1, 'у куска — один прозрачный дом:');
-      ok(Bld3D.fadeOn, 'ещё меняется — нужен следующий кадр');
-      Bld3D.fadeStep(T0 + 200); Bld3D.fadeStep(T0 + 300);
-      eq(f.a, Bld3D.FADE, 'дошла до FADE:'); ok(!Bld3D.fadeOn, 'и больше не меняется');
-      behind = false;
-      MapView.seeThrough();
-      ok(!a._icon.classList.contains('behind'), 'фигура ушла из-за дома — снова яркая');
-      eq(f.to, 1, 'дом — обратно к непрозрачному:');
-      const T1 = Bld3D.fadeT;
-      for (let i = 1; i <= 3; i++) Bld3D.fadeStep(T1 + i * 100);
-      ok(!Bld3D.fades.has(bld), 'непрозрачный — больше не в списке');
-      eq(p.nf, 0, 'у куска прозрачных нет:');
-      behind = true; MapView.seeThrough(); ok(a._icon.classList.contains('behind'));
-      MapView.tilt = 0; MapView.seeThrough();
-      ok(!a._icon.classList.contains('behind'), 'плоская карта — дома не заслоняют');
-      eq(Bld3D.fades.get(bld).to, 1, 'и дома — непрозрачные:');
-    } finally { Object.assign(MapView, keep); Object.assign(Bld3D, keepB); }
-  });
-  test('5.1.32: Ловчий идёт (камера — за ним) — за какими домами он, считается на ходу, без поворота камеры', () => {
-    const keep = { rot: MapView.rot, figW: MapView.figW }, keepN = Bld3D.occNear;
-    try {
-      MapView.rot = 0; MapView.figW = () => 56;
-      let asked = 0;
-      Bld3D.occNear = () => { asked++; return []; };
-      const ctx = p => ({ cam: { x: p.x, y: p.y + 600, w: 900 }, mpx: 2, z: 17.5, gen: 1, hi: 100 }); // точка зрения — за Ловчим
-      const ic = { _leaflet_pos: { x: 500, y: 500 }, _g: 1 }, me = { _icon: ic };
-      MapView.hiders(me, ctx(ic._leaflet_pos)); MapView.hiders(me, ctx(ic._leaflet_pos));
-      eq(asked, 1, 'стоит — без пересчёта:');
-      ic._leaflet_pos = { x: 500, y: 499.5 }; MapView.hiders(me, ctx(ic._leaflet_pos));
-      eq(asked, 1, 'сдвинулся меньше чем на ¾ точки — тоже:');
-      ic._leaflet_pos = { x: 500, y: 498 }; MapView.hiders(me, ctx(ic._leaflet_pos));
-      eq(asked, 2, 'прошёл дальше — заново (относительно камеры он на месте, а по карте — идёт):');
-      const pl = { _icon: { _leaflet_pos: { x: 300, y: 300 }, _g: 1 } }; // место стоит, камера уехала за Ловчим
-      MapView.hiders(pl, ctx({ x: 500, y: 500 })); MapView.hiders(pl, ctx({ x: 500, y: 497 }));
-      eq(asked, 4, 'место — заново, когда камера сдвинулась:');
-    } finally { Object.assign(MapView, keep); Bld3D.occNear = keepN; }
   });
   test('5.1.32: шейдер объёмных домов собирается (прозрачные дома — своим проходом)', () => {
     const cv = document.createElement('canvas'), gl = cv.getContext('webgl');
@@ -5324,27 +5162,6 @@
     eq(walls(cut), 3, 'у срезанного краем плитки — без стены по срезу:');
     eq(cut.v[3], 8, 'нет высоты — восемь метров');
     eq(arch.v[3], 20, 'высота дома — из данных карты'); eq(arch.v[6], 6, 'низ стен навеса — над землёй');
-  });
-  test('5.1.30: объёмные дома и места на крышах — одна и та же точка зрения (перспектива; у плоской карты — сверху)', () => {
-    const keep = { map: MapView.map, tilt: MapView.tilt, rot: MapView.rot }, keepL = window.L;
-    try {
-      window.L = { point: (x, y) => ({ x, y }) };
-      MapView.map = { getSize: () => ({ x: 400, y: 600, divideBy: k => ({ x: 400 / k, y: 600 / k }) }), containerPointToLayerPoint: p => p };
-      MapView.tilt = 32; MapView.rot = 0;
-      const c = MapView.camLayer(), a = 32 * Math.PI / 180;
-      near(c.x, 200, 1e-9); near(c.y, 300 + MapView.PD * Math.sin(a), 1e-9, 'точка зрения — ниже экрана:'); near(c.w, MapView.PD * Math.cos(a), 1e-9, 'на высоте:');
-      const p = { x: 260, y: 100 }, h = 12, s = MapView.roofShift(p, h);
-      // крыша — на луче из точки зрения через точку на высоте h: «тень» на земле дальше от точки зрения в w/(w−h) раз
-      near(s.x, (p.x - c.x) * h / (c.w - h), 1e-9); near(s.y, (p.y - c.y) * h / (c.w - h), 1e-9);
-      ok(s.y < 0 && s.x > 0, 'дальний дом правее середины «встаёт» вверх и вправо');
-      MapView.rot = 90;
-      const c2 = MapView.camLayer();
-      near(c2.x, 200 + MapView.PD * Math.sin(a), 1e-9, 'повёрнутая карта — точка зрения поворачивается с ней:');
-      MapView.tilt = 0; MapView.rot = 30;
-      const c0 = MapView.camLayer(), s0 = MapView.roofShift(p, 10);
-      near(c0.x, 200, 1e-9); near(c0.y, 300, 1e-9); near(c0.w, MapView.PD, 1e-9, 'плоская карта — точка зрения над серединой экрана:');
-      near(s0.x, (p.x - 200) * 10 / (MapView.PD - 10), 1e-9); near(s0.y, (p.y - 300) * 10 / (MapView.PD - 10), 1e-9, 'дома «встают» от середины:');
-    } finally { Object.assign(MapView, keep); if (keepL) window.L = keepL; else delete window.L; }
   });
   atest('5.1.30: крыши — высота дома, в котором стоит место (по плитке карты), без хранения домов', async () => {
     const keepV = Hazard._view, keepR = MapView.roofSoon;
