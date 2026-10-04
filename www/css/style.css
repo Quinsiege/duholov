@@ -5666,7 +5666,7 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 .det-art.art3d::after { display: none; }
 /* витрина Гардероба — без рамки и прямоугольника: круглое свечение, к краям гаснет */
 .wd-show, .wd-show.leg { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
-.wd-show::before { content: ""; position: absolute; left: 50%; top: 50%; width: min(115%, 470px); aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none;
+.wd-show::before { content: ""; position: absolute; left: 50%; top: 50%; height: 100%; width: auto; max-width: 100%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; /* не выше витрины: край круга не обрезается прокруткой */
   background: radial-gradient(circle, color-mix(in srgb, var(--rc) 30%, rgba(30, 18, 70, .9)) 0%, color-mix(in srgb, var(--rc) 14%, rgba(24, 14, 58, .6)) 38%, rgba(20, 12, 46, .25) 56%, transparent 70%); }
 .wd-hint { background: rgba(18, 12, 36, .35); border: 0; }
 /* карточки обликов — без подложек: портрет, имя, цена; выбранный — золотым кольцом вокруг портрета */
