@@ -44,22 +44,29 @@ node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/spirit_blue_anim.glb sp
 Вершин больше 65535 — сетка делится на части (треугольники те же: 103 379). Походку (стоит / летит / мчится) у духа задаёт
 тот, кто им управляет (`v.gait`, `v.yaw` холста модели), как у Ловчего.
 
-### Огненный бес (5.1.41)
+### Облики Огненный бес, Изумрудная странница, Самоварный джинн (5.1.41)
 
-Облик `ember_imp` — модель владельца из генератора (скелет Mixamo, анимации Walking и Running на месте; исходник —
-`~/Blender/duholov-3d/src/ember_imp.glb`). Анимацию «отдых стоя» делает Blender (`imp_anim.py`: руки опущены — поза из ходьбы,
-колени чуть согнуты, дыхание, оглядывается, пламя на голове подрагивает), выгрузка — `~/Blender/duholov-3d/glb/ember_imp_anim.glb`:
+Модели владельца из генератора (скелет Mixamo, Walking и Running на месте; исходники — `~/Blender/duholov-3d/src/<облик>.glb`).
+- «Отдых стоя» бесу и страннице — `idle_anim.py` (руки опущены — поза из ходьбы, колени чуть согнуты, дыхание, оглядывается;
+  у беса подрагивает пламя на голове).
+- Самоварному джинну все три анимации — `genie_anim.py`: самовар не гнётся, движется целиком (подскок, перевал с ножки на ножку,
+  наклон на бегу, верх-чайник с запаздыванием), машут маленькие ручки и шагают ножки.
+- Кости пальцев (у джинна — и цепочек ручек) — прочь из рига прямо в Blender: `strip_fingers.py` (их веса у самой руки — кисти,
+  у корпуса, плаща и волос — своим костям: автоскелет вешает пальцы и на соседнее, и всё тянулось; кусок сетки, что больше чем
+  наполовину кисть, — отдельно смоделированный большой палец — целиком руке), он же выгружает glb.
+- Сваренные перемычки руки — `cut_bridges.py`: генератор сращивает сетку, где кисть касается пояса и плаща; грань «рука — не рука»,
+  что в анимациях растягивается больше ×3, — прочь (в исходной позе её не видно, на бегу она — полоска). Треугольников чуть меньше.
 ```
-node tools/models3d/bl.mjs tools/models3d/imp_anim.py
-node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/ember_imp_anim.glb ember_imp 1024 --clips=idle:idle,walk:walk,run:run
+echo "NAME = 'emerald_wayfarer'" > n.py
+node tools/models3d/bl.mjs n.py tools/models3d/idle_anim.py
+node tools/models3d/bl.mjs n.py tools/models3d/strip_fingers.py
+node tools/models3d/bl.mjs n.py tools/models3d/cut_bridges.py
+node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/emerald_wayfarer_anim.glb emerald_wayfarer 1024 --clips=idle:idle,walk:walk,run:run
 ```
-Пальцы (цепочки Middle1–4) убраны — костей 31. Облики-модели перечислены в `M3D.LOOKS`; портрет для кружков аватаров —
-`www/img/skins/<облик>.webp` (снимок модели в Blender, 256 точек).
-
-Заменили файлы моделей — увеличить `M3D.VER` в `www/js/m3d.js`: у игроков модели лежат в своём кэше (`sw.js`, `duholov-models`)
-и обновятся только по новой метке.
-
-Просмотр тем же рисователем, что в игре: `tools/serve.ps1 -Dir .` → `/tools/models3d/preview.html` (поворот карты, крупнее, без движения).
+Бес — то же с `NAME = 'ember_imp'`; джинн — `genie_anim.py` вместо `idle_anim.py`, а в n.py ещё
+`DROP = r'Hand(Thumb|Index|Middle|Ring|Pinky)\d|^Bone_0(1[1-9]|3[12])$'`. Облики-модели перечислены в `M3D.LOOKS`; портрет для
+кружков аватаров — `www/img/skins/<облик>.webp` (снимок модели в Blender, 256 точек). Конвертер и сам переносит веса убранных
+костей по тому же правилу (`--drop`), если риг не чистили в Blender.
 
 ## Как устроены модели
 

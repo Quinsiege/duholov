@@ -11,7 +11,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Ключи: --clips=idle:hover,walk:fly,run:dash — клип игры ← анимация файла (без idle — «стоит» собирается, как у Ловчего);
-// --drop=<regexp> — кости пальцев (по имени); --float — не ставить на землю (дух парит: высота — из анимации)
+// --drop=<regexp> — кости пальцев (по имени); --handr=0.03 — вершина ближе к костям пальцев — рука; --float — не ставить на землю (дух парит: высота — из анимации)
 const args = process.argv.slice(2), opt = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v] = a.slice(2).split('='); return [k, v ?? true]; }));
 const [src, NAME = 'catcher', TEX = '1024'] = args.filter(a => !a.startsWith('--'));
 if (!src) { console.error('node skinned.mjs <файл.glb> [имя] [размер текстуры] [--clips=…] [--drop=…] [--float]'); process.exit(1); }
@@ -72,16 +72,76 @@ const NB = keep.length;
 console.log(`кости: ${JOINTS.length} → ${NB} (без пальцев)`);
 
 /* ---------- веса: до 4 на вершину ---------- */
+// Вес убранных костей (пальцев) у вершины. Автоскелет генератора вешает кости пальцев и на соседнее (полы плаща у бёдер,
+// волосы, корпус), а самим пальцам — бёдра: в исходной позе кисти висят у бёдер. Если больше половины веса вершины — пальцы,
+// кисть и предплечье, это рука: вершина — только руке (веса пальцев — кисти, случайные веса бедра и корпуса — прочь); иначе —
+// плащ, волосы, корпус: вес пальцев — её собственным костям, пропорционально. Иначе кусок плаща тянется за рукой, а палец —
+// остаётся у бедра и растягивается.
+const dropped = k => remap[k] !== keep.indexOf(k);
+const parentKept = b => { // оставшаяся кость-родитель оставшейся кости b (у кисти — предплечье)
+  let n = parent.get(JOINTS[keep[b]]);
+  while (n != null && !JOINTS.includes(n)) n = parent.get(n);
+  return n == null ? -1 : remap[JOINTS.indexOf(n)];
+};
+// и где кисть с пальцами в исходной позе: вершина ближе HAND_R к их костям (отрезки кисть → суставы пальцев) — рука, сколько бы
+// веса ни висело на бедре (кисти в исходной позе — у бёдер)
+const bindPos = k => { // начало кости k (индекс в skin.joints) в исходной позе: IBM·p = 0 → решить M p = −t (метод Гаусса)
+  const m = IBM.subarray(k * 16, k * 16 + 16), A = [0, 1, 2].map(r => [m[r], m[4 + r], m[8 + r], -m[12 + r]]);
+  for (let i = 0; i < 3; i++) {
+    let q = i;
+    for (let r = i + 1; r < 3; r++) if (Math.abs(A[r][i]) > Math.abs(A[q][i])) q = r;
+    [A[i], A[q]] = [A[q], A[i]];
+    for (let r = 0; r < 3; r++) if (r !== i) { const f = A[r][i] / A[i][i]; for (let c = i; c < 4; c++) A[r][c] -= f * A[i][c]; }
+  }
+  return [0, 1, 2].map(i => A[i][3] / A[i][i]);
+};
+const HAND_R = +(opt.handr || 0.03), HSEG = new Map(); // кисть → отрезки её пальцев
+JOINTS.forEach((ni, k) => {
+  if (!dropped(k)) return;
+  let pn = parent.get(ni);
+  while (pn != null && !JOINTS.includes(pn)) pn = parent.get(pn);
+  if (pn == null) return;
+  const t = remap[k];
+  if (!HSEG.has(t)) HSEG.set(t, []);
+  HSEG.get(t).push([bindPos(JOINTS.indexOf(pn)), bindPos(k)]);
+});
+const segD = (q, [a, b]) => {
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+  const t = l ? Math.max(0, Math.min(1, ((q[0] - a[0]) * d[0] + (q[1] - a[1]) * d[1] + (q[2] - a[2]) * d[2]) / l)) : 0;
+  return Math.hypot(q[0] - a[0] - d[0] * t, q[1] - a[1] - d[1] * t, q[2] - a[2] - d[2] * t);
+};
+const onHand = (v, t) => { const q = [POS[v * 3], POS[v * 3 + 1], POS[v * 3 + 2]]; return (HSEG.get(t) || []).some(sg => segD(q, sg) < HAND_R); };
 const sets = Object.keys(at).filter(k => k.startsWith('JOINTS_')).map(k => [acc(at[k]), acc(at['WEIGHTS_' + k.slice(7)])]);
 const JW = new Uint8Array(NV * 8);
+let nHand = 0, nOther = 0;
 for (let v = 0; v < NV; v++) {
-  const m = new Map();
-  for (const [jj, ww] of sets) for (let c = 0; c < 4; c++) { const w = ww[v * 4 + c]; if (w > 0) { const k = remap[jj[v * 4 + c]]; m.set(k, (m.get(k) || 0) + w); } }
-  const top = [...m].sort((a, b) => b[1] - a[1]).slice(0, 4), sum = top.reduce((s, x) => s + x[1], 0) || 1;
-  let q = top.map(x => Math.round(x[1] / sum * 255)), d = 255 - q.reduce((s, x) => s + x, 0);
+  let m = new Map();
+  const loose = new Map(); // кисть → вес её пальцев у вершины
+  for (const [jj, ww] of sets) for (let c = 0; c < 4; c++) {
+    const w = ww[v * 4 + c], k = jj[v * 4 + c];
+    if (!(w > 0)) continue;
+    if (dropped(k)) loose.set(remap[k], (loose.get(remap[k]) || 0) + w); else m.set(remap[k], (m.get(remap[k]) || 0) + w);
+  }
+  if (loose.size) {
+    const [t, lw] = [...loose].sort((x, y) => y[1] - x[1])[0], fa = parentKept(t);
+    const total = lw + [...m.values()].reduce((s0, x) => s0 + x, 0) + [...loose].filter(([k]) => k !== t).reduce((s0, x) => s0 + x[1], 0);
+    const arm = lw + (m.get(t) || 0) + (fa >= 0 ? m.get(fa) || 0 : 0);
+    if (arm >= 0.5 * total || m.size === 0 || onHand(v, t)) {
+      const n2 = new Map([[t, lw + (m.get(t) || 0)]]);
+      if (fa >= 0 && m.get(fa)) n2.set(fa, m.get(fa));
+      m = n2; nHand++;
+    } else {
+      const tot = [...m.values()].reduce((s0, x) => s0 + x, 0);
+      for (const [b0, ow] of m) m.set(b0, ow + lw * ow / tot);
+      nOther++;
+    }
+  }
+  const top = [...m].sort((a0, b0) => b0[1] - a0[1]).slice(0, 4), sum = top.reduce((s0, x) => s0 + x[1], 0) || 1;
+  let q = top.map(x => Math.round(x[1] / sum * 255)), d = 255 - q.reduce((s0, x) => s0 + x, 0);
   if (q.length) q[0] += d;
   for (let c = 0; c < 4; c++) { JW[v * 8 + c] = top[c] ? top[c][0] : 0; JW[v * 8 + 4 + c] = top[c] ? q[c] : 0; }
 }
+console.log(`вершины с весами пальцев: рука — ${nHand}, плащ, волосы, корпус — ${nOther}`);
 
 /* ---------- анимации: локальные TRS узлов к моменту t ---------- */
 function clipOf(name) {

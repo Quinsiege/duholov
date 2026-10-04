@@ -1,23 +1,27 @@
-# Огненный бес (облик ember_imp — модель владельца из Meshy, скелет Mixamo, анимации Walking / Running на месте) — к ним
-# анимация «отдых стоя» (idle, 4,8 с, цикл): руки опущены вдоль тела (поза из ходьбы, где ступни рядом), колени чуть согнуты,
-# дыхание — грудь и плечи, медленно оглядывается, голова чуть наклоняется, пламя на голове подрагивает.
-# Запуск: node bl.mjs imp_anim.py — сцена ember_imp (импорт ~/Blender/duholov-3d/src/ember_imp.glb), выгрузка
-# ~/Blender/duholov-3d/glb/ember_imp_anim.glb с анимациями idle, walk, run; дальше — node skinned.mjs … (см. README).
+# «Отдых стоя» (idle, 4,8 с, цикл) для облика из генератора со скелетом Mixamo и анимациями Walking / Running на месте:
+# руки опущены вдоль тела (поза из ходьбы, где ступни рядом), колени чуть согнуты, дыхание — грудь и плечи, медленно
+# оглядывается, голова чуть наклоняется; FLAME — пламя на голове подрагивает (у беса).
+# Запуск (bl.mjs склеивает файлы — имя облика первым, своим файлом): echo "NAME = 'emerald_wayfarer'" > n.py;
+# node bl.mjs n.py idle_anim.py. Сцена NAME (импорт ~/Blender/duholov-3d/src/NAME.glb), выгрузка
+# ~/Blender/duholov-3d/glb/NAME_anim.glb с анимациями idle, walk, run; дальше — node skinned.mjs … (см. README).
+# Облики: ember_imp (Огненный бес, FLAME), emerald_wayfarer (Изумрудная странница).
 import bpy, math, os
 from mathutils import Quaternion, Vector, Matrix
 
-SRC = os.path.join(os.path.expanduser('~'), 'Blender', 'duholov-3d', 'src', 'ember_imp.glb')
-OUT = os.path.join(os.path.expanduser('~'), 'Blender', 'duholov-3d', 'glb', 'ember_imp_anim.glb')
+NAME = globals().get('NAME', 'ember_imp')
+FLAME = globals().get('FLAME', NAME == 'ember_imp')
+SRC = os.path.join(os.path.expanduser('~'), 'Blender', 'duholov-3d', 'src', NAME + '.glb')
+OUT = os.path.join(os.path.expanduser('~'), 'Blender', 'duholov-3d', 'glb', NAME + '_anim.glb')
 FPS, DUR = 30, 4.8
 M = 'mixamorig:'
 
-old = bpy.data.scenes.get('ember_imp')
+old = bpy.data.scenes.get(NAME)
 if old:
     for o in list(old.objects):
         bpy.data.objects.remove(o, do_unlink=True)
     bpy.data.scenes.remove(old)
 before = set(bpy.data.actions)
-sc = bpy.data.scenes.new('ember_imp')
+sc = bpy.data.scenes.new(NAME)
 win = bpy.context.window_manager.windows[0]
 win.scene = sc
 sc.render.fps = FPS
@@ -77,12 +81,12 @@ def pose(t):
     rot(M + 'Head', (0, 1, 0), 0.05 * math.sin(tau * t / DUR + 1.2))  # и чуть наклоняет голову
     rot(M + 'Head', (1, 0, 0), -0.03 * br)
     top = M + 'HeadTop_End'  # пламя на голове подрагивает
-    if top in PB:
+    if FLAME and top in PB:
         rot(top, (1, 0, 0), 0.06 * math.sin(tau * t / 0.8))
         rot(top, (0, 1, 0), 0.05 * math.sin(tau * t / 1.2 + 0.7))
 
 
-idle = bpy.data.actions.new('idle')
+idle = bpy.data.actions.new(NAME + '_idle')
 arm.animation_data.action = idle
 n = round(DUR * FPS)
 for f in range(n + 1):
