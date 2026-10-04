@@ -87,7 +87,7 @@ const Encounter = {
     this.anim(550, p => { st.k = 1 - Math.pow(1 - p, 3) * 1; }).then(() => {
       if (this.st !== st) return;
       st.phase = 'aim';
-      if (sp.shiny) { this.flash(`✦ ${ru`Сияющий дух!`} ✦`, 'bonus'); Sfx.play('spin'); }
+      if (sp.shiny) { this.flash(`✦ ${ru`Сияющий дух!`} ✦`, 'bonus'); Sfx.play('shiny'); }
       if (o.tut) {
         st.$('.enc-hint').innerHTML = ru`<b>Зажми оберег и смахни вверх</b>, прямо к духу.<br>Чем быстрее свайп — тем дальше бросок.`;
         st.root.appendChild(U.el(`<div class="tut-hand" style="left:${st.rest.x}px;top:${st.rest.y}px"><i></i></div>`));
@@ -204,7 +204,7 @@ const Encounter = {
     st.honeyBusy = false;
     if (!r || this.st !== st) return;
     st.honey = true;
-    Sfx.play('spin');
+    Sfx.play('use_item');
     this.flash(ru`Дух ест мёд и успокаивается`);
     st.$('.enc-fx').appendChild(U.el(`<div class="fx-honey" style="left:${st.cx}px;top:${st.cy}px">${Art.item('honey')}</div>`));
     setTimeout(() => { const f = st.$('.fx-honey'); if (f) f.remove(); }, 1200);
@@ -322,7 +322,7 @@ const Encounter = {
   afterThrow() {
     const st = this.st; if (!st) return;
     if (!this.charmsLeft()) {
-      if (st.o.mode === 'raid') return this.fleeOut(ru`Обереги кончились — дух вернулся в Навь…`);
+      if (st.o.mode === 'raid') return this.fleeOut(ru`Обереги кончились — дух сбежал`);
       UI.toast(ru`Обереги закончились!`);
       return this.end('noCharms');
     }
@@ -402,10 +402,9 @@ const Encounter = {
         <div class="res-rw">
           <div>${ru`<b>+${U.fmtNum(r.xp)}</b> опыта`}${Ev.evXpMul() > 1 ? ` ${ru`(Звездопад ×2)`}` : ''}</div><div>${ru`<b>+${r.sparks}</b> искр`}</div><div>${ru`<b>+${r.ess}</b> эссенции «${SP[s.fam].name}»`}</div>
         </div>
-        <button class="btn primary wide">${ru`Отлично`}</button>
       </div></div>`);
-    card.querySelector('button').onclick = () => { Sfx.play('tap'); this.end('caught'); };
     st.root.appendChild(card);
+    UI.tapGo(card, () => this.end('caught')); // 5.1.33: во весь экран на матовом стекле, дальше — касанием
     if (st.o.tut) Tut.sync();
   },
   /* ---------------- ФОТО ---------------- */
@@ -448,7 +447,7 @@ const Encounter = {
       g.fillStyle = '#e2dcf7'; g.font = '500 13px Rubik, sans-serif';
       g.fillText(ru`Духолов · Ловчий ${S.d.name} · ${new Date().toLocaleDateString(I18N.locale)}`, 16, H - 14);
       // вспышка
-      Sfx.play('hit'); U.vibrate(30);
+      Sfx.play('photo'); U.vibrate(30);
       const fl = st.$('.enc-flash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
       const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
       const t = document.createElement('canvas'); t.width = 360; t.height = Math.round(360 * H / W);

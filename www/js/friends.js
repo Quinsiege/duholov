@@ -51,7 +51,7 @@ const Friends = {
     try {
       const r = await Game.act('friendsSync');
       r.added.forEach(n => UI.toast(ru`Новый друг: ${U.esc(n)} — вы теперь в друзьях друг у друга`, 'good'));
-      if (r.added.length) Sfx.play('catch');
+      if (r.added.length) Sfx.play('success');
       const before = this.inbox.length;
       this.inbox = r.inbox;
       if (r.inbox.length > before) UI.toast(ru`Тебе пришли подарки: ${r.inbox.length}. Открой «Меню → Друзья»`, 'good');
@@ -69,7 +69,7 @@ const Friends = {
         const p = this.unpack('DUHF1', txt);
         if (!p || !p.i) throw new Error(ru`В коде ошибка`);
         const r = await Game.act('friendAdd', { pid: p.i });
-        Sfx.play('catch');
+        Sfx.play('success');
         UI.toast(r.isNew ? ru`${U.esc(r.name)} теперь в друзьях!` : ru`Данные друга ${U.esc(r.name)} обновлены`, 'good');
       } else if (/DUHG1\./.test(txt)) {
         throw new Error(ru`Подарки теперь приходят сами — загляни в «Друзья»`);
@@ -78,7 +78,7 @@ const Friends = {
       } else throw new Error(ru`Не похоже на код Духолова`);
       after && after();
       UI.refreshHud();
-    } catch (e) { UI.toast(U.esc(e.message || ru`Не получилось`)); Sfx.play('miss'); }
+    } catch (e) { UI.toast(U.esc(e.message || ru`Не получилось`)); Sfx.play('error'); }
   },
 
   async openGift(g, done) {
@@ -91,7 +91,7 @@ const Friends = {
       title: g.invite ? ru`Подарок за приглашение: ${U.esc(r.name)}` : ru`Подарок от ${U.esc(r.name)}`, cls: 'gift-modal',
       html: `<div class="trade-sp">${Art.item('gift')}</div><div class="lvl-rw">${r.got.map(x => `<div>${x.k === 'xp' ? `<b class="big-n">+${U.fmtNum(x.n)}</b>` : x.k === 'cocoon' ? Art.cocoon(5) : Art.item(x.k)}<span>${I18N.back(x.label)}${x.k === 'xp' ? '' : ` ×${x.n}`}</span></div>`).join('')}</div>
         ${f ? `<p class="small">${ru`Дружба: ${FRIEND_LEVELS[this.level(f)].name} (${f.pts} ★)`}</p>` : ''}`,
-      buttons: [{ label: ru`Спасибо!`, cls: 'primary' }],
+      buttons: [{ label: ru`Спасибо!`, cls: 'primary' }], tap: true,
     });
     done && done();
     UI.refreshHud();
@@ -179,7 +179,7 @@ const Friends = {
       const f = this.find(row.dataset.id); if (!f) return;
       if (e.target.closest('.send-gift')) {
         if (await Game.try('giftSend', { pid: f.id })) {
-          Sfx.play('spin');
+          Sfx.play('send');
           UI.toast(ru`Подарок отправлен: ${U.esc(f.name)} получит его в «Друзьях»`, 'good');
           render();
         }
@@ -197,16 +197,17 @@ const Friends = {
   // звание, «УРОВЕНЬ ··· N», Лига отдельным блоком, метки; ниже главные действия и вкладки «Достижения · Духи · Дружба»
   async card(pid, o = {}) {
     Sfx.init(); Sfx.play('tap');
-    const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava"><div class="prof-ava">${Art.avatar(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
+    const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava art3d"><div class="prof-ava p3d">${M3D.stage(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
     const scr = UI.screen(U.esc(o.name || ru`Ловчий`), `<div class="det det2 prof2 pcard" style="--c:#a78bfa">
       ${hero(o.look, `<div class="det-hp">${ru`Загружаю карточку…`}</div>`)}<div class="pcard-load"><div class="pc-skel"></div><div class="pc-skel"></div></div></div>`, 'det-screen pcard-screen');
+    M3D.mount(scr); // 5.1.41: облик Ловчего — 3D-моделью (стоит)
     const close = () => UI.closeScreen(scr), changed = () => { if (o.render) o.render(); };
     const chatBtns = () => o.chat ? `<div class="dt-about-acts"><button class="btn ghost small pc-report">${ru`Пожаловаться`}</button><button class="btn ghost danger small pc-hide">${ru`Скрыть сообщения`}</button></div>` : '';
     let p;
     try { p = await Game.act('playerCard', { pid }); } catch (e) { p = { error: e.message }; }
     if (!scr.isConnected) return;
     const root = scr.querySelector('.pcard');
-    if (p.error) { root.innerHTML = hero(o.look, `<div class="det-hp">${U.esc(p.error)}</div>`) + `<div class="dt-panel"><div class="dt-pane on">${chatBtns()}</div></div>`; return; }
+    if (p.error) { root.innerHTML = hero(o.look, `<div class="det-hp">${U.esc(p.error)}</div>`) + `<div class="dt-panel"><div class="dt-pane on">${chatBtns()}</div></div>`; M3D.mount(root); return; }
     const cl = CLANS[p.clan], lg = p.league, rk = LEAGUE_RANKS[lg.rank], f = this.find(pid), today = U.today();
     const seen = { now: ru`в игре сейчас`, today: ru`заходил сегодня`, week: ru`заходил на неделе`, long: ru`давно не заходил` }[p.seen];
     if (f) { f.name = p.name; f.lvl = p.lvl; if (p.look) f.look = p.look; }
@@ -266,6 +267,7 @@ const Friends = {
           <div class="pcs-top"></div>` : `<div class="dx-none"><b>${ru`Духи скрыты`}</b><small>${ru`Ловчий ещё не выбрал спутника.`}</small></div>`)}
         ${pane('friend', friendPane())}
       </div>`;
+    M3D.mount(root);
     const redrawActs = () => { const a = root.querySelector('.pcard-acts'); if (a) a.innerHTML = actsHtml(); };
     // у взаимного друга — три сильнейших духа (для поединка)
     if (p.friend === 'mutual' && f) {
@@ -287,7 +289,7 @@ const Friends = {
         b.disabled = true;
         const r = await Game.try('friendAdd', { pid });
         if (!r) { b.disabled = false; return; }
-        Sfx.play('spin');
+        Sfx.play('send');
         UI.toast(p.friend === 'wants' ? ru`${U.esc(r.name)} теперь твой друг!` : ru`Заявка отправлена: когда ${U.esc(r.name)} добавит тебя в ответ, вы станете друзьями`, 'good');
         close(); changed();
         setTimeout(() => this.card(pid, o), 230); // открыть заново — уже как друга
@@ -295,7 +297,7 @@ const Friends = {
         close(); Duel.openSpar(this.find(pid), p.top);
       } else if (b.classList.contains('pc-gift')) {
         b.disabled = true;
-        if (await Game.try('giftSend', { pid })) { Sfx.play('spin'); UI.toast(ru`Подарок отправлен: ${U.esc(p.name)} получит его в «Друзьях»`, 'good'); changed(); }
+        if (await Game.try('giftSend', { pid })) { Sfx.play('send'); UI.toast(ru`Подарок отправлен: ${U.esc(p.name)} получит его в «Друзьях»`, 'good'); changed(); }
         redrawActs();
       } else if (b.classList.contains('pc-del')) {
         UI.confirm(U.esc(p.name), p.friend === 'mutual' ? ru`Удалить из друзей? Уровень дружбы пропадёт.` : ru`Отменить заявку в друзья?`, p.friend === 'mutual' ? ru`Удалить` : ru`Отменить`, async () => {

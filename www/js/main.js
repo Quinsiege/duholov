@@ -12,7 +12,8 @@ if (/[?&](u|ref)=/.test(location.search)) history.replaceState(null, '', locatio
 window.addEventListener('load', () => {
   Walk.load(); // 5.1.1: место Ловчего — когда все скрипты уже загружены
   if (Move.moving) return; // 4.1: старый адрес — браузер уже уходит на duholov.ru
-  if (typeof L === 'undefined') {
+  Metrics.init(); // 5.1.22: своя аналитика — сессия и запуск (игроку не видна, сбои — молча)
+  if (typeof L === 'undefined' || typeof maplibregl === 'undefined') { // 5.1.40: главная карта — MapLibre, Атлас — Leaflet
     const bl = document.getElementById('bootLoader'); if (bl) bl.remove(); // экран загрузки из index.html не должен закрыть ошибку
     const f = U.el(`<div class="fatal"><h2>${ru`Нет связи с Навью`}</h2><p>${ru`Не удалось загрузить карту. Проверь подключение к интернету.`}</p><button class="btn primary">${ru`Повторить`}</button></div>`);
     f.querySelector("button").onclick = () => location.reload();
@@ -30,7 +31,7 @@ window.addEventListener('load', () => {
     // карта не нужна. Раньше он открывался через секунду после загрузки карты — и мелькали карта и HUD
     if (S.d && typeof Atlas !== 'undefined' && !Walk.placed()) { Atlas.open({ first: true }); Loader.hide(); }
     // 4.28: уже играющим — книга-вступление один раз, когда нет других окон; 5.1: у кого нет места в мире игры — Атлас (один раз)
-    Loader.waitMap().then(() => { Loader.hide(); Intro.later(); Walk.ensurePlaced(); });
+    Loader.waitMap().then(() => { Loader.hide(); Metrics.ev('ready', { ms: performance.now() }); Intro.later(); Walk.ensurePlaced(); });
     setTimeout(() => Propose.checkResults(), 6000);
     setInterval(() => { if (!document.hidden) Propose.checkResults(); }, 3 * 60000);
     setTimeout(() => Friends.sync(), 4000); // взаимная дружба и подарки
@@ -47,7 +48,7 @@ window.addEventListener('load', () => {
     setInterval(() => { if (!document.hidden) Game.act('tick').then(() => { UI.refreshHud(); Order.daily(); Order.refresh(); }).catch(() => {}); }, 5 * 60000);
     setTimeout(() => Order.daily(), 2500); // серия дней: награда за первый вход за день
     setTimeout(() => Order.refresh(), 8000); // общее дело Ордена — для значка меню
-    // кто держит Капища вокруг — это нужно только карте: под полноэкранной сценой (stage.js) не спрашиваем, догоняем один раз после
+    // кто держит Святилища вокруг — это нужно только карте: под полноэкранной сценой (stage.js) не спрашиваем, догоняем один раз после
     let clansMiss = false;
     const clans = () => { if (Stage.busy) clansMiss = true; else Clans.refresh(); };
     Stage.on(busy => { if (!busy && clansMiss) { clansMiss = false; setTimeout(clans, 700); } });
@@ -67,21 +68,26 @@ window.addEventListener('load', () => {
     // 3.31: экран загрузки с прогрессом и подсказками — вместо заставки «Связь с Навью…»
     // 4.0.2: сначала — есть ли обновление: новая версия ставится прямо с экрана загрузки, до входа в игру
     Loader.show(ru`Проверяю обновления…`); Loader.set(6);
+    Cloud.warm(); // 5.1.24: библиотека облака и сохранённый вход готовятся, пока проверяется версия (раньше — только после неё)
     const upd = await Updater.boot();
     if (upd === 'apk') { Loader.hide(); Updater.promptApk(); return; }
     if (upd) { Loader.set(30, ru`Загружаю обновление ${upd.version}…`); await Updater.apply(upd.version); return; }
     Loader.show(ru`Связь с Навью…`); Loader.set(12);
+    // 5.1.24: подключённые сервисы входа и привязки спрашиваем вместе с прогрессом, а не следом за ним — на круг до сервера
+    // быстрее. Login.load не падает (без ответа — пустой список); не было связи — спросим заново после повтора
+    let auth = Game.on() ? Login.load() : null;
     if (Game.on()) {
       for (;;) {
         try { await Game.load(); break; }
-        catch (e) { Loader.hide(); await offline(e.message); Loader.show(ru`Связь с Навью…`); }
+        catch (e) { auth = null; Loader.hide(); await offline(e.message); Loader.show(ru`Связь с Навью…`); }
       }
+      Metrics.tick(); // 5.1.22: вход уже есть — первая пачка аналитики сразу (короткий визит тоже будет виден)
     }
     Loader.set(45, ru`Прогресс загружен`);
     // вернулись со страницы сервиса входа — довести вход до конца (учётная запись могла смениться — тогда заново)
     if (Game.on() && !Game.moved) {
+      await (auth || Login.load()); // экрану входа нужны подключённые сервисы и привязки
       if (await Login.resume()) { location.reload(); return; }
-      await Login.load(); // экрану входа нужны подключённые сервисы и привязки
     }
     Loader.set(58);
     Music.play('map'); // вход и знакомство — мелодия карты (зазвучит с первым касанием)

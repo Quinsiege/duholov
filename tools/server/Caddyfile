@@ -91,6 +91,10 @@ www.duholov.ru {
 test.duholov.ru {
 	import security
 	header X-Robots-Tag "noindex, nofollow"
+	# 5.1.41: плитки высот (рельеф мира) — кэш на диске сервера: служба duholov-dem (127.0.0.1:8096)
+	handle /dem/* {
+		reverse_proxy 127.0.0.1:8096
+	}
 	root * /srv/www/test
 	@html path / /*.html /sw.js /version.json
 	header @html Cache-Control "no-cache"

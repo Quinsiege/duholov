@@ -2,34 +2,56 @@
 /* Разломы: битва с боссом (тап — атака, свайп/кнопка — уклон), затем поимка босса */
 
 const Raid = {
-  /* 4.16: босс — по уровню Ловчего (rl; в совместном бою — средний уровень Ловчих комнаты): атака и защита — как у духа
-     уровня rl, умноженные на k; здоровье hp и сила удара pw — для Ловчего 20-го уровня, с уровнем растут вместе с силой
-     духов (Raid.grow). Раньше босс был один на все уровни (hp 600 / 1800 / 4500, атака и защита — как у духа 14 / 22 / 28
-     уровня): новичку не по силам, сильный закрывал 9 из 10, и легенды тоже. Ориентир побед живого игрока своей командой:
-     малый — ~85%, средний — ~55–60%, великий (легенды) — в одиночку ~25%, втроём ~70%. lvl — уровень пойманного босса */
+  /* 5.1.39: СИЛА БОССА — честная. Раньше показывалось здоровье × 1,5, а удар босса почти не ранил (12 из 570 здоровья):
+     великий разлом силой 7200 закрывал один дух силой 1600, исход решал только урон за 90 с. Теперь босс — это «опорная»
+     команда: три духа вида средней силы (FIGHT.REF, IV 10) уровня Ловчего rl (в совместном бою — средний уровень комнаты),
+     каждый в pow раз сильнее такого духа; СИЛА БОССА — сила этой команды (power). Здоровье — на FIGHT.T с её наибольшего
+     урона (тап без пропусков и приём, как только готов), неуклонённый удар срезает FIGHT.HIT здоровья её духа (здоровье × 5),
+     уклонённый — Rules.RAID_SIM.DODGE от него; по духу слабее опорного — сильнее (Raid.press). Ориентир по модели боя
+     (стихии без преимущества): Ловчий, что уклоняется от 3 ударов из 4, тапает на 90% темпа и пьёт Живую воду, побеждает
+     команду с силой как у босса примерно в 2 боях из 3, на 10% слабее — редко, на 20% слабее — никогда; уклоняясь от всех
+     ударов и тапая без пропусков — от ~0,85 силы босса, уклоняясь от 2 ударов из 5 и тапая на 75% — от ~1,3. Духи-противники
+     (их стихия бьёт босса) наносят в 1,5 раза больше урона и получают в 1,5 раза меньше (Raid.EL) — стоят примерно 1,4 силы.
+     Атака и защита босса — как у духа его вида уровня rl (× k): от них только числа урона, трудность боя — от опорной
+     команды. lvl — уровень пойманного босса */
+  // 5.1.36: sparks — искры за победу (было 350 × ступень); те же у Святилищ (SHRINE_TIERS)
   TIER: {
-    1: { hp: 3000, k: 1.35, lvl: 15, pw: 10, charms: 6, name: ru`Малый разлом` },
-    2: { hp: 4500, k: 1,    lvl: 22, pw: 16, charms: 7, name: ru`Разлом` },
-    3: { hp: 6000, k: 0.72, lvl: 30, pw: 24, charms: 9, name: ru`Великий разлом` },
+    1: { pow: 0.45, k: 1.35, lvl: 15, charms: 6, sparks: 750, name: ru`Малый разлом` },
+    2: { pow: 0.9,  k: 1,    lvl: 22, charms: 7, sparks: 1500, name: ru`Разлом` },
+    3: { pow: 2.5,  k: 0.72, lvl: 30, charms: 9, sparks: 3000, name: ru`Великий разлом` },
   },
-  // здоровье босса в совместном бою: +COOP за каждого союзника (раньше +80% — втроём было почти как в одиночку)
-  COOP: 0.6,
+  FIGHT: { REF: [200, 185, 195], T: 67, HIT: 0.41 },
+  // здоровье босса в совместном бою: +COOP за каждого союзника (раньше +80% — втроём было почти как в одиночку).
+  // 5.1.39: +35% (было +60%) — слабому духу теперь не выстоять, и при +60% втроём было бы ненамного легче, чем одному
+  COOP: 0.35,
   coopHp(n) { return 1 + this.COOP * Math.max(0, (n | 0) - 1); },
   st: null,
 
   team() { return S.team(); },
-  // во сколько раз сильнее «опорного» (20-го уровня) дух уровня rl: здоровье босса растёт как урон духов, удар — как их здоровье
-  // после 30-го уровня босс растёт вдвое медленнее: сила духов там упирается в предел уровня
-  grow(rl) { const x = S.cpm(this.bossLvl(rl)) / S.cpm(20); return { hp: Math.pow(x, 1.2), pw: x }; },
+  // после 30-го уровня атака и защита босса растут вдвое медленнее: сила духов там упирается в предел уровня
   bossLvl(rl) { return rl <= 30 ? rl : 30 + (rl - 30) / 2; },
+  // сила духа вида FIGHT.REF уровня rl (формула S.stats)
+  refPower(rl) { const [a, d, s] = this.FIGHT.REF.map(x => x + 10), c = S.cpm(rl); return Math.max(10, Math.floor(a * Math.sqrt(d) * Math.sqrt(s) * c * c / 10)); },
   bossStats(r) {
     if (r.cs) return { ...r.cs }; // 5.1.15: хранитель Разлома кампании — по команде Ловчего (S.campBoss; в бою — от сервера, raidStart)
-    const T = this.TIER[r.tier], b = SP[r.boss].base, rl = U.clamp(Math.round(+r.rl || S.catchLvl()), 1, 40), c = S.cpm(this.bossLvl(rl)) * T.k, g = this.grow(rl);
-    return { atk: (b[0] + 15) * c, def: (b[1] + 15) * c, hp: Math.round(T.hp * g.hp), pw: T.pw * g.pw, rl };
+    const T = this.TIER[r.tier], F = this.FIGHT, b = SP[r.boss].base, rl = U.clamp(Math.round(+r.rl || S.catchLvl()), 1, 40);
+    const cb = S.cpm(this.bossLvl(rl)) * T.k, atk = (b[0] + 15) * cb, def = (b[1] + 15) * cb;
+    // опорный дух: сила — pow силы духа вида REF уровня rl (сила растёт как квадрат множителя уровня)
+    const [ra, rd, rs] = F.REF.map(x => x + 10), c = S.cpm(rl) * Math.sqrt(T.pow), a = ra * c, d = rd * c, h = Math.floor(rs * c) * 5;
+    const hit = (att, df, p) => Math.floor(0.6 * p * att / df) + 1; // удар без погоды и стихий (как Raid.dmg)
+    const dps = hit(a, def, 12) / 0.32 + hit(a, def, 75) / (50 / (6 / 0.32)); // тап раз в 0,32 с (+6 энергии), приём — на 50
+    return { atk, def, hp: Math.round(dps * F.T), pw: Math.max(0.5, (F.HIT * h - 0.5) / (0.6 * atk / d)), rl, power: Math.round(3 * T.pow * this.refPower(rl)) };
   },
+  // 5.1.39: по духу слабее опорного босс бьёт сильнее, по более сильному — слабее: сила удара × (сила опорного духа / сила
+  // духа), от ×0,25 до ×4. Сила решает больше: команда на 20% слабее босса не выстоит, а сильной — меньше ран после победы.
+  // Хранитель кампании (без power) — как прежде
+  press(bs, power) { return bs.power && power > 0 ? U.clamp(bs.power / 3 / power, 0.25, 4) : 1; },
+  // стихии во всех боях (разломы, Святилища, вторжения, поединки, Лига): бьющая наносит ×EL, битая — ×1/EL.
+  // 5.1.39: 1,5 (было 1,6 и 0,625) — команда духов-противников стоила почти полуторной силы и проходила босса заметно сильнее себя
+  EL: 1.5,
   eff(att, def) {
-    if (ELEMENTS[att].beats.includes(def)) return 1.6;
-    if (ELEMENTS[def].beats.includes(att)) return 0.625;
+    if (ELEMENTS[att].beats.includes(def)) return this.EL;
+    if (ELEMENTS[def].beats.includes(att)) return 1 / this.EL;
     return 1;
   },
 
@@ -63,7 +85,7 @@ const Raid = {
           <div class="dt-info">
             <div class="det-hp">${T.name} <span class="stars">${'★'.repeat(T2)}</span></div>
             <div class="rift2-name">${Art.elIcon(el, 18)} ${s.name}</div>
-            <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.hp * 1.5)}</b></div>
+            <div class="det-power"><small>${ru`СИЛА БОССА`}</small><b>${U.fmtNum(st.power || st.hp * 1.5)}</b></div>
             <div class="rift2-left">${camp ? ru`не закроется, пока не победишь` : ru`закроется через ${`<b class="rift-left">${U.fmtTime(Math.max(0, r.endsAt - U.now()))}</b>`}`}</div>
             ${r.place ? `<div class="rift2-place">${UI.I.pin}${U.esc(r.place)}</div>` : ''}
             ${camp ? '' : `<div class="rift2-place place-kind">${MYTH_PLACES[r.myth || 'slavic'].rift}</div>`}
@@ -76,7 +98,7 @@ const Raid = {
             <div class="dt-scroll rift2-fight">
               <div class="pf-mh lg2-th"><span>${ru`Твоя команда`}</span><b class="rift2-pw">${team.length ? ru`сила ${U.fmtNum(power(team))}` : ''}</b><button class="lg2-edit team-edit">${ru`Изменить`}</button></div>
               <div class="lg2-team rift-team">${teamHtml(team)}</div>
-              ${far ? `<div class="rift-tip rift-far">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Капищу.`}</div>` : ''}
+              ${far ? `<div class="rift-tip rift-far">${camp ? ru`До Разлома ${U.fmtDist(d)}. Подойди ближе — нужно ${W.BATTLE_R} м.` : ru`До Разлома ${U.fmtDist(d)}. Дальний пропуск: один Орден дарит каждый день, ещё — в Лавке. Позвать друзей можно, только подойдя к Святилищу.`}</div>` : ''}
               ${camp ? `<div class="rift-tip">${ru`Хранитель — по силе твоей команды: тапай без остановки, и он падёт.`}</div>` : Rules.dayLine(S.d, 'raids', ru`Разломов закрыто`)}
             </div>
             <div class="rift2-acts">${goBtn}${far || camp ? '' : `<button class="btn ghost wide rift-coop">${ru`Позвать друзей`}</button>`}</div>`}
@@ -95,7 +117,7 @@ const Raid = {
             <div class="dt-scroll dt-rows">
               ${camp ? row(ru`Кампания`, ru`цель шага`) : ''}
               ${row(ru`Опыт`, U.fmtNum(1000 * T2) + (far || camp ? '' : ru` · с друзьями +25%`))}
-              ${row(ru`Искры`, it('sparks', U.fmtNum(350 * T2)))}
+              ${row(ru`Искры`, it('sparks', U.fmtNum(Raid.TIER[T2].sparks)))}
               ${row(ru`Обереги`, it('charm', 5) + (T2 >= 2 ? ' · ' + it('charm2', 3) : ''))}
               ${row(ru`Припасы`, it('honey', T2) + ' · ' + (T2 === 1 ? it('herb', 1) : it('water', 1)))}
               ${row(ru`Эссенция Рода`, it('rod', S.RIFT_ESS[T2] || 0))}
@@ -145,7 +167,7 @@ const Raid = {
   async list() {
     Sfx.init(); Sfx.play('tap');
     if (S.d.level < RAID_LEVEL) { UI.toast(ru`Разломы открываются с ${RAID_LEVEL} уровня Ловчего`); return; } // 4.18
-    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Капищ вокруг…`}</div></div>`, 'rifts-screen');
+    const scr = UI.screen(ru`Разломы вокруг`, `<div class="rift-list"><div class="q-note">${ru`Ищу Разломы у Святилищ вокруг…`}</div></div>`, 'rifts-screen');
     const box = scr.querySelector('.rift-list'), pos = MapView.pos;
     if (!pos) { box.innerHTML = `<div class="q-note">${ru`Жду, когда найдётся твоё место на карте…`}</div>`; return; }
     const shrines = await Poi.shrinesFar(pos.lat, pos.lng, Rules.FAR.R);
@@ -169,7 +191,7 @@ const Raid = {
           <div class="rr-d">${r.done ? `✓ ${ru`закрыт`}` : r.d <= W.BATTLE_R ? ru`рядом` : U.fmtDist(r.d)}</div></button>`).join('')
           : `<div class="q-note">${ru`Сейчас вокруг нет открытых Разломов. Новые открываются в начале каждого часа.`}</div>`}
         ${more ? `<div class="q-note">${ru`…и ещё ${more} дальше`}</div>` : ''}
-        <div class="q-note">${ru`Разломы открываются у Капищ каждый час. Подойди к Капищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
+        <div class="q-note">${ru`Разломы открываются у Святилищ каждый час. Подойди к Святилищу на 100 м — или закрой Разлом издалека (до 5 км) по Дальнему пропуску.`}</div>`;
     };
     box.addEventListener('click', e => {
       const c = e.target.closest('.chip'); if (c) { tier = +c.dataset.t; render(); return; }
@@ -259,7 +281,7 @@ const Raid = {
 
     // обратный отсчёт
     (async () => {
-      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('tap'); await U.wait(650); if (this.st !== st) return; }
+      for (let i = 3; i > 0; i--) { $('.raid-count').textContent = i; Sfx.play('count'); await U.wait(650); if (this.st !== st) return; }
       $('.raid-count').textContent = ru`В бой!`;
       await U.wait(500);
       $('.raid-count').remove();
@@ -373,16 +395,17 @@ const Raid = {
     const st = this.st;
     if (!st || !st.running || st.over || st.drinking) return;
     const m = this.cur();
-    if (st.waters >= 3) { UI.toast(ru`За бой можно выпить не больше 3 флаконов`); return; }
+    // 5.1.39: по флакону на духа (было до 3 любому) — иначе один дух с тремя флаконами вытягивал бой за всю команду
+    if (m.drank) { UI.toast(ru`Каждому духу — не больше одного флакона за бой`); return; }
     if (m.cur >= m.lim) { UI.toast(m.lim < m.max ? ru`Дух устал — выше не поднять, нужен отдых` : ru`Дух и так полон сил`); return; }
     if (!(S.d.items.water > 0)) { UI.toast(ru`Живой воды нет`); return; }
     st.drinking = true;
     const ok = await Game.try('water');
     st.drinking = false;
     if (!ok || this.st !== st || st.over) return;
-    st.waters++;
+    st.waters++; m.drank = true;
     m.cur = Math.min(m.lim, m.cur + m.max / 2);
-    Sfx.play('hatch');
+    Sfx.play('heal');
     st.$('.raid-water span').textContent = S.d.items.water || 0;
     this.render();
   },
@@ -408,9 +431,9 @@ const Raid = {
     const st = this.st, m = this.cur();
     st.$('.raid-boss').classList.remove('charging');
     st.nextAtk = 2.2 + Math.random() * 1.4;
-    let n = this.dmg(st.bs.atk, m.def, st.bs.pw, st.s.el, SP[m.sp.sid].el);
+    let n = this.dmg(st.bs.atk, m.def, st.bs.pw * this.press(st.bs, m.power), st.s.el, SP[m.sp.sid].el);
     const dodged = st.dodgeT > 0;
-    if (dodged) n = Math.max(1, Math.floor(n * 0.2));
+    if (dodged) n = Math.max(1, Math.floor(n * Rules.RAID_SIM.DODGE)); // 5.1.39: уклон срезает удар до 40% (было до 20%)
     m.cur = Math.max(0, m.cur - n);
     const me = st.$('.raid-me').getBoundingClientRect();
     this.float(dodged ? ru`Уклон! −${n}` : `−${n}`, me.left + me.width / 2, me.top + 10, dodged ? 'dodged' : 'hurt');
@@ -465,29 +488,27 @@ const Raid = {
         <div class="res-title">${ru`Разлом закрыт!`}</div>
         <div class="res-art">${Art.spirit(st.s.id)}</div>
         <div class="res-rw">${rw.map(x => `<div><b>+${U.fmtNum(x.n)}</b> ${I18N.back(x.label)}</div>`).join('')}</div>
-        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div>
-        <button class="btn primary wide">${ru`Ловить!`}</button></div></div>`);
-      res.querySelector('button').onclick = () => {
+        <div class="res-note">${ru`Ослабленный ${st.s.name} остался в нашем мире. У тебя <b>${charms}</b> оберегов разлома${bonus ? ru` (+${bonus} за скорость)` : ''}${allies ? ru` (+${allies * 2} за союзников)` : ''}.`}</div></div></div>`);
+      st.root.appendChild(res);
+      // 5.1.33: окна итога — во весь экран на матовом стекле, дальше — касанием (после победы — ловить ослабленного босса)
+      UI.tapGo(res, () => {
         this.close();
         Encounter.start({ mode: 'raid', seed: st.r.id });
-      };
-      st.root.appendChild(res);
+      });
     } else if (win) {
       // сервер не засчитал победу (нет связи или неправдоподобный бой)
       const res = U.el(`<div class="raid-result"><div class="res-card"><div class="res-title lose">${ru`Победа не засчитана`}</div>
-        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div>
-        <button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+        <div class="res-note">${ru`Сервер не подтвердил этот бой. Проверь интернет и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close());
     } else {
       Sfx.play('lose');
       const res = U.el(`<div class="raid-result"><div class="res-card">
         <div class="res-title lose">${ru`Разлом устоял`}</div>
         <div class="res-art dim">${Art.spirit(st.s.id)}</div>
-        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div>
-        <button class="btn wide">${ru`На карту`}</button></div></div>`);
-      res.querySelector('button').onclick = () => this.close();
+        <div class="res-note">${ru`Осталось сил у босса: ${Math.round(st.bossHp / st.bs.hp * 100)}%. Усиль духов, возьми стихию-противника и попробуй снова — разлом открыт до конца часа.`}</div></div></div>`);
       st.root.appendChild(res);
+      UI.tapGo(res, () => this.close());
     }
     UI.refreshHud();
   },

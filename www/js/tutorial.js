@@ -43,7 +43,7 @@ const Tut = {
     const run = () => {
       if (this.step() !== s) return; // пока ждали, шаг уже сменился — покажет следующий вызов
       this._pending = false;
-      if (!first) Sfx.play('spin');
+      if (!first) Sfx.play('hint');
       go();
     };
     if (first) { run(); return; }
@@ -69,7 +69,7 @@ const Tut = {
     path: ['.tile[data-k="path"]', '#menuBtn'],
   },
   // важное, что наставник не должен закрывать (кроме самой цели)
-  KEEP: ['.hud-top', '#tracker', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.rm-h > span', '.menu-dots', '.screen .spring-disc'],
+  KEEP: ['.hud-top', '#tracker', '#menuBtn', '#nearbyBtn', '#recenterBtn', '.sheet', '.screen-head', '.screen .toolbar', '.screen .seg', '.screen .chips', '.screen .tabs', '.menu-grid .tile', '.menu-dots', '.screen .spring-disc'],
   coach(st) {
     if (!this.el) {
       this.el = U.el(`<div id="coach" class="tut-coach pos-bottom"><div class="coach-ava">${UI.menuIcon('orderbook')}</div>
@@ -229,20 +229,20 @@ const Tut = {
   chapterDone({ ch, got, done }) {
     const list = got.map(x => `<div class="lvl-rw-i">${I18N.back(x.label)} <b>+${U.fmtNum(x.n)}</b></div>`).join('');
     if (!done) {
-      Sfx.play('levelup');
+      Sfx.play('reward_big');
       UI.toast(ru`Обучение: «${TUT_CHAPTERS[ch].title}» — готово! ${got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}`, 'good');
       return;
     }
     // Финал: обучение пройдено. 5.2: экраны последнего шага закрываются — после «В путь!» игрок на карте,
     // а не в «Пути Ловчего», нарисованном до награды за обучение (там был прежний уровень)
     U.$$('.screen').filter(s => !s.classList.contains('out') && s._close).forEach(s => s._close());
-    Sfx.play('levelup');
+    Sfx.play('reward_big');
     const root = U.el(`<div class="tut-final"><div class="tf-rays"></div>
       <div class="tf-me"><div class="tf-ring"></div><div class="ts-me-ring">${Art.avatar(S.d.look)}</div></div>
       <small>${ru`Обучение`}</small><h2>${ru`Обучение пройдено!`}</h2><p>${ru`Теперь ты знаешь главное. Дальше — Кампания: её шаг виден на карте под твоим именем.`}</p>
-      <div class="tf-got">${list}</div>${UI.rune(ru`В путь!`, 'tf-go')}</div>`);
+      <div class="tf-got">${list}</div></div>`);
     document.body.appendChild(root);
-    root.querySelector('.tf-go').onclick = () => { Sfx.play('tap'); root.classList.add('out'); setTimeout(() => root.remove(), 400); };
+    UI.tapGo(root, () => { root.classList.add('out'); setTimeout(() => root.remove(), 400); }); // 5.1.33: окно итога — дальше касанием
   },
 
   close() {
@@ -260,9 +260,9 @@ const Tut = {
   // и «Обучение пройдено» — работает как обычно: в чужие окна без разрешённого действия всё равно не попасть.
   ZONES: '#hud, .rm-wrap, .screen',
   FREE_SCR: '.set-screen, .offer-screen', // экраны, где можно всё: настройки (язык, звук, учётная запись) и документы
-  // «К себе», «Назад» и «В сумку» после источника; читать — всегда: вкладки карточки духа («О духе», «Где искать»…),
+  // «К себе», «Назад» и касание экрана после награды источника («Коснись, чтобы продолжить», 5.1.35); читать — всегда: вкладки карточки духа («О духе», «Где искать»…),
   // виды и мифологии в Бестиарии (шаг «Бестиарий» сам предлагает «коснись вида, чтобы прочитать о нём»)
-  ALWAYS: ['#recenterBtn', '.screen-head .back', '.spr2.taken .spring-go', '.dt-tabs button', '.dex-screen .dex-cell', '.dex-screen [data-myth]'],
+  ALWAYS: ['#recenterBtn', '.screen-head .back', '.spring-screen.tap-go', '.dt-tabs button', '.dex-screen .dex-cell', '.dex-screen [data-myth]'],
   NEVER: ['#tracker .tr-x'],               // стрелку Следопыта на шаге «источник» не снять
   // что можно на шаге: hud — кнопки карты, tile — раздел меню, scr — кнопки внутри экранов
   FOCUS: {
@@ -302,7 +302,7 @@ const Tut = {
     if (st.id === 'spring' && t.closest('#atlasBtn') && typeof MapView !== 'undefined' && MapView.map && !MapView.nearest('spring')) return true;
     return hit(f.hud || []);
   },
-  // объект карты (дух, источник, капище, разлом): на шаге «поймай» — только учебный дух, на шаге «источник» — источники
+  // объект карты (дух, источник, святилище, разлом): на шаге «поймай» — только учебный дух, на шаге «источник» — источники
   entOk(e) {
     const st = this.focusOn() && this.at();
     if (!st || !e) return true;
@@ -331,7 +331,7 @@ const Tut = {
   TAPPABLE: 'button, a, input, select, textarea, label, [role="button"], .chip, .card, .tile, [data-tab], #joystick, #tracker',
   // толчок: подсказка вздрагивает, и (не чаще раза в 2 с) всплывашка — что сначала шаг обучения
   nudge() {
-    if (typeof Sfx !== 'undefined') Sfx.play('miss');
+    if (typeof Sfx !== 'undefined') Sfx.play('nudge');
     if (this.el && !this.el.classList.contains('hidden')) {
       const c = this.el;
       c.classList.remove('nudge'); void c.offsetWidth; c.classList.add('nudge');
@@ -401,6 +401,6 @@ const Tut = {
       p = this.pos = [lat + Math.sin(a) * 22 / 111320, lng + Math.cos(a) * 22 / (111320 * Math.cos(lat * Math.PI / 180))];
       p.n = this.step();
     }
-    return { type: 'spirit', id: 'tut' + this.step(), tut: true, sid: st.sid, lvl: Math.min(2, S.catchLvl()), lat: p[0], lng: p[1], d: U.dist(lat, lng, p[0], p[1]), expires: U.now() + 3600000 };
+    return { type: 'spirit', id: 'tut' + this.step(), tut: true, sid: S.tutSid(st, lat, lng), lvl: Math.min(2, S.catchLvl()), lat: p[0], lng: p[1], d: U.dist(lat, lng, p[0], p[1]), expires: U.now() + 3600000 };
   },
 };

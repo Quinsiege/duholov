@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Модели мест — просмотр</title>
+<!-- Просмотр моделей мест (www/models/*.m3d) тем же рисователем, что в игре (www/js/m3d.js).
+     Запуск: tools/serve.ps1 -Dir . → http://localhost:8780/tools/models3d/preview.html -->
+<style>
+  :root { --bg: #2b2a3f; --fg: #e9e6f5; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+  body.day { --bg: #d9d3c7; --fg: #2b2a3f; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; padding: 12px 16px; position: sticky; top: 0; background: var(--bg); z-index: 2; }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cell, 170px), 1fr)); gap: 8px; padding: 8px 16px 24px; }
+  .cell { position: relative; height: var(--ch, 190px); border-radius: 10px; background: rgba(127, 127, 127, .12); overflow: hidden; }
+  .cell b { position: absolute; left: 8px; top: 6px; font-weight: 600; font-size: 12px; opacity: .75; }
+  .mk3d { position: absolute; pointer-events: none; }
+  .mk3d:not(.on) { visibility: hidden; }
+  .dot { position: absolute; width: 5px; height: 5px; margin: -2px 0 0 -2px; border-radius: 50%; background: #f43f5e; }
+</style>
+</head>
+<body>
+<header>
+  <label>Поворот карты <input id="rot" type="range" min="-180" max="180" value="0"> <span id="rv">0°</span></label>
+  <label>Крупнее <select id="k"><option value="1">×1 (как в игре)</option><option value="2">×2</option><option value="3">×3</option></select></label>
+  <label><input id="calm" type="checkbox"> без движения</label>
+  <label><input id="day" type="checkbox"> светлый фон</label>
+  <label><input id="dot" type="checkbox"> точка привязки</label>
+  <label>Ловчий <select id="gait"><option value="0">стоит</option><option value="1">идёт</option><option value="2">бежит</option></select></label>
+  <label>смотрит <input id="hd" type="range" min="-180" max="180" value="0"></label>
+  <label>облик <select id="skin"><option value="hood">обычный</option><option>kupala</option><option>leshiy</option><option>moroz</option><option>volhv</option><option>bogatyr</option><option>voron</option><option>navstrazh</option><option>zharpero</option><option>knyaz</option></select></label>
+  <label>плащ <input id="cloak" type="color" value="#6d28d9"></label> <label>глаза <input id="eyes" type="color" value="#5eead4"></label>
+  <span id="info"></span>
+</header>
+<main id="grid"></main>
+<script>window.Gfx = window.Gfx || { dpr: cap => Math.min(devicePixelRatio || 1, cap || Infinity) }; // разрешение холстов (в игре — settings.js)</script>
+<script src="../../www/js/m3d.js"></script>
+<script>
+  M3D.BASE = '../../www/models/';
+  const base = { ...M3D.PXM };
+  const $ = s => document.querySelector(s);
+  function build() {
+    const k = +$('#k').value, grid = $('#grid');
+    for (const t in base) M3D.PXM[t] = base[t] * k;
+    grid.style.setProperty('--cell', 170 * k + 'px'); grid.style.setProperty('--ch', 190 * k + 'px');
+    grid.innerHTML = M3D.KINDS.map(kind => `<div class="cell"><b>${kind}</b>${M3D.html(kind, 85 * k, 165 * k, '', kind === 'catcher' ? 'me' : '')}<i class="dot" style="left:${85 * k}px;top:${165 * k}px"></i></div>`).join('');
+    M3D.bind(grid);
+    grid.querySelectorAll('.dot').forEach(d => d.style.display = $('#dot').checked ? '' : 'none');
+    $('#info').textContent = M3D.on ? '' : 'WebGL недоступен';
+  }
+  M3D.init();
+  build();
+  $('#rot').oninput = e => { $('#rv').textContent = e.target.value + '°'; M3D.setRot(+e.target.value); };
+  $('#k').onchange = build;
+  $('#calm').onchange = e => { document.body.classList.toggle('calm', e.target.checked); M3D.kick(); };
+  $('#day').onchange = e => document.body.classList.toggle('day', e.target.checked);
+  $('#dot').onchange = e => document.querySelectorAll('.dot').forEach(d => d.style.display = e.target.checked ? '' : 'none');
+  // Ловчий: походка, куда смотрит (градусы от севера), цвета облика — как их передаёт карта (MapView → M3D.setMe)
+  // облики-модели со скелетом (M3D.LOOKS) — та же походка и поворот, что у Ловчего (в игре их задаст тот, кто ими управляет)
+  const spirits = () => document.querySelectorAll('canvas.mk3d').forEach(c => { if (!M3D.LOOKS.includes(c.dataset.m3d)) return; const v = c._m3d; if (v) { v.gait = +$('#gait').value; v.yaw = Math.PI - +$('#hd').value * Math.PI / 180; } });
+  $('#gait').onchange = e => { M3D.setMe({ gait: +e.target.value }); spirits(); M3D.kick(); };
+  $('#hd').oninput = e => { M3D.setMe({ heading: +e.target.value }); spirits(); M3D.kick(); };
+  $('#cloak').oninput = $('#eyes').oninput = $('#skin').onchange = () => M3D.setMe({ look: { skin: $('#skin').value, cloak: $('#cloak').value, eyes: $('#eyes').value } });
+  </script>
+</body>
+</html>

@@ -7,13 +7,21 @@ Object.assign(UI, {
   quests(tab) {
     Tut.ui('quests'); // 4.0: шаг обучения
     // 5.1.15: «Кампания» — первая вкладка (после обучения); пока в ней есть шаг или выбор награды — открывается она
-    const camp = !!S.d.camp, tabs = camp ? ['camp', 'day', 'order'] : ['day', 'order'];
-    this.qTab = tab && tabs.includes(tab) ? tab : this.qTab === 'order' ? 'order' : camp && (S.campStep() || S.d.camp.pick) ? 'camp' : 'day';
+    // 5.1.24: поручения источников — своей вкладкой
+    const camp = !!S.d.camp, tabs = camp ? ['camp', 'day', 'tasks', 'order'] : ['day', 'tasks', 'order'];
+    this.qTab = tab && tabs.includes(tab) ? tab : ['order', 'tasks'].includes(this.qTab) ? this.qTab : camp && (S.campStep() || S.d.camp.pick) ? 'camp' : 'day';
     const dot = '<i class="dt-dot"></i>'; // 4.21: вкладки как у духа и источника — есть что забрать → зелёная точка
-    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs">${camp ? `<button data-tab="camp">${ru`Кампания`}${S.campClaimable() ? dot : ''}</button>` : ''}<button data-tab="day">${ru`Задания дня`}${S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
-    const BONUS = Rules.QUEST_BONUS;
+    const want = { day: () => { const Q = S.d.quests; return Q.list.some(q => q.p >= q.n && !q.claimed) || (Q.list.every(q => q.claimed) && !Q.bonus); },
+      tasks: () => S.d.tasks.some(q => q.p >= q.n) || S.d.taskMeet.length > 0 };
+    const scr = this.screen(ru`Задания`, `<div class="seg dt-tabs q-tabs">${camp ? `<button data-tab="camp">${ru`Кампания`}${S.campClaimable() ? dot : ''}</button>` : ''}<button data-tab="day">${ru`Сегодня`}${want.day() ? dot : ''}</button><button data-tab="tasks">${ru`Поручения`}${want.tasks() ? dot : ''}</button><button data-tab="order">${ru`Орден`}${Order.claimable() ? dot : ''}</button></div><div class="quests"></div>`, 'q-screen');
     const render = () => {
       U.$$('[data-tab]', scr).forEach(b => b.classList.toggle('on', b.dataset.tab === this.qTab));
+      // точки «есть что забрать» у «Заданий дня» и «Поручений» — по текущему состоянию
+      for (const k of ['day', 'tasks']) {
+        const b = scr.querySelector(`[data-tab="${k}"]`), d = b && b.querySelector('.dt-dot'), w = want[k]();
+        if (b && !w && d) d.remove(); else if (b && w && !d) b.insertAdjacentHTML('beforeend', dot);
+      }
+      if (this.qTab === 'tasks') { scr.querySelector('.quests').innerHTML = this.tasksHtml(); return; }
       if (this.qTab === 'camp') {
         scr.querySelector('.quests').innerHTML = this.campHtml();
         const cd = scr.querySelector('[data-tab="camp"] .dt-dot'), want = S.campClaimable();
@@ -30,7 +38,7 @@ Object.assign(UI, {
       const rwChips = rw => this.rwChips(rw, false), ico = q => this.qIcon(q.t, q.el);
       const ring = (n, of) => { const L = 2 * Math.PI * 22; return `<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" class="qd-bg"/><circle cx="26" cy="26" r="22" class="qd-fg" style="stroke-dasharray:${L};stroke-dashoffset:${L * (1 - n / of)}"/></svg><b>${n}<small>/${of}</small></b>`; };
       scr.querySelector('.quests').innerHTML = `
-        <div class="qd-head ${doneN >= Q.list.length ? 'full' : ''}"><div class="qd-ring">${ring(doneN, Q.list.length)}</div>
+        <div class="qd-head ${doneN >= Q.list.length ? 'full' : ''}">${doneN >= Q.list.length ? this.dayChestHtml(Q) : `<div class="qd-ring">${ring(doneN, Q.list.length)}</div>`}
           <div class="row-main"><b>${doneN >= Q.list.length ? (Q.bonus ? ru`Все задания дня выполнены` : ru`Все задания выполнены — забери награды`) : ru`Выполнено ${doneN} из ${Q.list.length}`}</b>
           <small>${ru`Новые задания через ${`<span class="qd-left">${U.fmtTime(this.toMidnight())}</span>`}`}</small></div></div>`
         + Q.list.map((q, i) => {
@@ -39,13 +47,10 @@ Object.assign(UI, {
             <div class="q-main"><b>${I18N.back(q.text)}</b><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, q.p / q.n * 100)}%"></i></div><span>${pv}</span></div><div class="qd-rws">${rwChips(q.reward)}</div></div>
             ${q.claimed ? `<span class="q-ok" aria-label="${ru`Получено`}">✓</span>` : done ? `<button class="btn small primary claim" data-i="${i}">${ru`Забрать`}</button>` : ''}</div>`;
         }).join('')
-        + `<div class="quest bonus qd-chest ${Q.bonus ? 'claimed' : all ? 'done' : ''}"><div class="qd-ico chest">${Art.item('gift')}</div>
-          <div class="q-main"><b>${ru`Сундук дня`}</b><div class="qd-pips">${Q.list.map(q => `<i class="${q.claimed ? 'on' : q.p >= q.n ? 'half' : ''}"></i>`).join('')}<small>${Q.bonus ? ru`открыт` : all ? ru`можно открыть` : ru`забери награды всех трёх заданий`}</small></div><div class="qd-rws">${rwChips(BONUS)}</div></div>
-          ${Q.bonus ? `<span class="q-ok" aria-label="${ru`Открыт`}">✓</span>` : all ? `<button class="btn small primary claim-bonus">${ru`Открыть`}</button>` : ''}</div>`
-        + this.dayLimitsHtml() + this.tasksHtml();
+        + this.dayLimitsHtml();
     };
     scr.addEventListener('click', e => {
-      const c = e.target.closest('.claim'), b = e.target.closest('.claim-bonus');
+      const c = e.target.closest('.claim'), b = e.target.closest('.day-chest.ready');
       const tab = e.target.closest('[data-tab]');
       if (tab) {
         const dir = Math.sign(tabs.indexOf(tab.dataset.tab) - tabs.indexOf(this.qTab));
@@ -56,7 +61,7 @@ Object.assign(UI, {
       if (cc) {
         cc.disabled = true;
         Game.try('campClaim').then(r => {
-          if (r) { Sfx.play('levelup'); this.toast(ru`Кампания: ${r.got.map(x => `${I18N.back(x.label)} +${U.fmtNum(x.n)}`).join(', ')}`, 'good'); if (r.pick) this.campPick(render); }
+          if (r) { Sfx.play('reward_big'); this.toast(ru`Кампания: ${r.got.map(x => `${I18N.back(x.label)} +${U.fmtNum(x.n)}`).join(', ')}`, 'good'); if (r.pick) this.campPick(render); }
           render(); this.refreshHud();
         });
         return;
@@ -69,7 +74,7 @@ Object.assign(UI, {
       if (tc) {
         tc.disabled = true;
         Game.try('taskClaim', { id: tc.dataset.id }).then(r => {
-          if (r) { Sfx.play('spin'); this.toast(ru`Поручение сдано: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }
+          if (r) { Sfx.play('reward'); this.toast(ru`Поручение сдано: ${r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')}. Тебя ждёт ${SP[r.meet.sid].name}!`, 'good'); }
           render(); this.refreshHud();
         });
         return;
@@ -88,13 +93,44 @@ Object.assign(UI, {
         Sfx.play(sound); this.toast(title(r.got.map(x => `${I18N.back(x.label)} +${x.n}`).join(', ')), 'good');
         render(); this.refreshHud();
       });
-      if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'spin');
-      else if (b) claim('questBonus', {}, t => ru`Сундук: ${t}`, 'levelup');
+      if (c) claim('questClaim', { i: +c.dataset.i }, t => ru`Получено: ${t}`, 'reward');
+      else if (b && !b.disabled) {
+        // 5.1.24: сундук на месте кружка «3/3». Касание: незабранные награды заданий — сразу, затем сундук открывается
+        // (подпрыгивает), всё выпавшее — одним окном (награда сундука каждый раз разная)
+        b.disabled = true;
+        (async () => {
+          const got = [];
+          for (const [i, q] of S.d.quests.list.entries()) {
+            if (q.p < q.n || q.claimed) continue;
+            const r = await Game.try('questClaim', { i });
+            if (!r) { b.disabled = false; render(); return; }
+            got.push(...r.got);
+          }
+          const r = await Game.try('questBonus');
+          if (!r) { b.disabled = false; render(); return; }
+          got.push(...r.got);
+          Sfx.play('reward_big'); U.vibrate([30, 50, 80]);
+          b.classList.remove('ready'); b.classList.add('opening');
+          // одинаковое — одной плиткой (обереги из задания и из сундука)
+          const sum = new Map();
+          for (const x of got) { const k = x.k === 'amulet' ? 'amulet:' + x.id : x.k === 'cocoon' ? 'cocoon:' + x.km : x.k, o = sum.get(k); if (o) o.n += x.n; else sum.set(k, { ...x }); }
+          setTimeout(() => {
+            render(); this.refreshHud();
+            this.modal({ title: ru`Сундук дня`, html: Loot.cells([...sum.values()]), cls: 'chest-modal', buttons: [{ label: ru`Забрать`, cls: 'primary' }], tap: true });
+          }, document.body.classList.contains('calm') ? 0 : 650);
+        })();
+      }
     });
     this.swipeTabs(scr, tabs, () => this.qTab, (k, dir) => { this.qTab = k; render(); this.slideIn(scr.querySelector('.quests'), dir); });
     render();
     // таймер до новых заданий — каждую секунду, пока экран открыт
-    const tm = setInterval(() => { if (!scr.isConnected) { clearInterval(tm); return; } const el = scr.querySelector('.qd-left'); if (el) el.textContent = U.fmtTime(this.toMidnight()); }, 1000);
+    // 5.1.24: и до обновления лимитов дня — с секундами
+    const tm = setInterval(() => {
+      if (!scr.isConnected) { clearInterval(tm); return; }
+      const el = scr.querySelector('.qd-left'), dl = scr.querySelector('.dl-left'), left = this.toMidnight();
+      if (el) el.textContent = U.fmtTime(left);
+      if (dl) dl.textContent = U.fmtHm(left);
+    }, 1000);
   },
   toMidnight() { return 86400000 - U.local().getTime() % 86400000; },
 
@@ -112,8 +148,9 @@ Object.assign(UI, {
         // 5.1.17: «выведи духа из кокона» — путь кокона, которому до вылупления осталось меньше всех
         const v = Math.min(c.p[i] || 0, o.n), ok = v >= o.n, cc = o.t === 'hatch' && !ok ? S.campCocoon() : null;
         const num = cc ? ru`${Math.floor(cc.walked * 10) / 10} / ${cc.km} км` : o.t === 'walk' ? ru`${Math.floor(v * 10) / 10} / ${o.n} км` : `${Math.floor(v)} / ${o.n}`;
-        const bar = cc ? cc.walked / cc.km : o.n > 1 ? v / o.n : -1;
-        return `<div class="cp-obj ${ok ? 'done' : ''}"><div class="cp-ot"><span>${CAMP_OBJ[o.t](o)}</span><b>${ok ? '✓' : num}</b></div>${bar >= 0 && !ok ? `<div class="pbar"><i style="width:${Math.min(100, bar * 100)}%"></i></div>` : ''}</div>`;
+        // 5.1.27: у каждой цели — полоска со счётчиком, как у заданий дня; сделано — полная и с галочкой
+        const bar = ok ? 1 : cc ? cc.walked / cc.km : v / o.n;
+        return `<div class="cp-obj ${ok ? 'done' : ''}"><span class="cp-on">${CAMP_OBJ[o.t](o)}</span><div class="qd-bar"><div class="pbar"><i style="width:${Math.min(100, bar * 100)}%"></i></div><span>${num}</span>${ok ? '<b class="cp-ok" aria-hidden="true">✓</b>' : ''}</div></div>`;
       }).join('');
       const gift = c.gift && SP[c.gift.fam] ? `<small class="cp-gift">${ru`Орден прислал ${c.gift.n} эссенции «${SP[c.gift.fam].name}» — хватит на эволюцию`}</small>` : '';
       html += `<div class="quest cp-step ${ready ? 'done' : ''}"><div class="q-main"><b class="cp-name">${st.name}</b>${objs}${gift}
@@ -121,7 +158,6 @@ Object.assign(UI, {
         <small class="cp-rwh">${ru`Награда`}</small><div class="qd-rws">${this.campRwHtml(st.reward)}</div></div></div>
         ${ready && !c.pick ? `<button class="btn primary wide cp-claim">${ru`Забрать награду`}</button>` : ''}`;
     } else html += `<div class="q-note">${ru`Глава пройдена! Новая глава Кампании — скоро.`}</div>`;
-    html += `<h3 class="q-h">${ru`Шаги главы`}</h3><div class="cp-list">${ch.steps.map((x, i) => `<div class="cp-row ${i < c.s ? 'done' : i === c.s ? 'cur' : 'lock'}"><i>${i < c.s ? '✓' : i + 1}</i><span>${x.name}</span></div>`).join('')}</div>`;
     return html;
   },
   // награда шага — плашками: дух на выбор, эссенция, кокон, опыт (или «до N уровня»), искры, монеты, Врата, облик
@@ -153,10 +189,11 @@ Object.assign(UI, {
       const i = +b.dataset.i, sid = P.opts[i];
       this.confirm(ru`Выбрать: ${SP[sid].name}?`, ru`Выбор — один раз: двое других вернутся в Навь.`, ru`Выбрать`, () => Game.try('campPick', { i }).then(r => {
         if (!r) return;
-        m.close(); Sfx.play('hatch');
-        this.toast(ru`${SP[r.sid].name} — теперь твой дух!` + (r.isNew ? ' ' + ru`Новая запись в Бестиарии!` : ''), 'good');
+        m.close();
         if (after) after();
         this.refreshHud();
+        // 5.1.27: не всплывашка, а сцена с новым духом (как из кокона)
+        this.gotSpiritAnim(S.findSpirit(r.uid) || S.makeSpirit(r.sid, 1, 'x'), r);
       }));
     });
   },
@@ -171,17 +208,26 @@ Object.assign(UI, {
   // Следопыта; все цели шага, выполненные — с галочкой; у «выведи духа из кокона» — путь кокона, которому осталось меньше всех.
   // Касание — «Задания» → «Кампания». Раз в секунду вместе с HUD; здесь же: Разлом кампании нужен, а рядом его нет —
   // сервер ставит его рядом с Ловчим (не чаще раза в 20 с)
+  // 5.1.24: карточкой, как задания — шапка «Кампания · шаг» со звездой, цели строками: значок в круге, название, счётчик под ним,
+  // справа галочка (сделано) или стрелка. Значок цели — по её типу
+  CAMP_ICO: { catch: 'spirits', catchRar: 'spirits', spLvl: 'star', campRift: 'rift', hatch: 'egg', leagueWin: 'trophy', clan: 'shield', evolve: 'swap',
+    exchange: 'shop', buyIncense: 'shop', gateLand: 'map', walk: 'trail', spring: 'target' },
   campLineHtml() {
     const c = S.d.camp, st = S.campStep();
-    if (c.pick) return `<b>${ru`Кампания`}</b><span class="cl-go">${ru`Выбери духа — награда шага`}</span>`;
+    const svg = d => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const chev = svg('<path d="M9 6l6 6-6 6"/>'), check = svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
+    const head = t => `<span class="cl-head"><span class="cl-badge">${this.I.star}</span><b>${t}</b><span class="cl-chev">${chev}</span></span>`;
+    const line = (ico, title, num, cls, end) => `<span class="cl-row${cls ? ' ' + cls : ''}"><span class="cl-ico">${this.I[ico] || this.I.scroll}</span>` +
+      `<span class="cl-txt"><span class="cl-t">${title}</span>${num ? `<i>${num}</i>` : ''}</span><span class="cl-end">${end}</span></span>`;
+    if (c.pick) return head(ru`Кампания`) + line('spirits', ru`Выбери духа — награда шага`, '', 'cl-go', chev);
     if (!st) return '';
     const km = x => Math.floor(x * 10) / 10;
     const row = (o, i) => {
       const v = Math.min(c.p[i] || 0, o.n), ok = v >= o.n, cc = o.t === 'hatch' && !ok ? S.campCocoon() : null;
       const num = cc ? ru`${km(cc.walked)} / ${cc.km} км` : o.n > 1 ? `${o.t === 'walk' ? km(v) : Math.floor(v)}/${o.n}` : '';
-      return `<span class="${ok ? 'cl-ok' : ''}">${ok ? '✓ ' : ''}${(CAMP_SHORT[o.t] || CAMP_OBJ[o.t])(o)}${num ? ` <i>${num}</i>` : ''}</span>`;
+      return line(this.CAMP_ICO[o.t] || 'scroll', (CAMP_SHORT[o.t] || CAMP_OBJ[o.t])(o), num, ok ? 'cl-ok' : '', ok ? check : chev);
     };
-    return `<b>${ru`Кампания · ${st.name}`}</b>${st.obj.map(row).join('')}${S.campReady() ? `<span class="cl-go">${ru`Шаг выполнен — забери награду`}</span>` : ''}`;
+    return head(ru`Кампания · ${st.name}`) + st.obj.map(row).join('') + (S.campReady() ? line('gift', ru`Шаг выполнен — забери награду`, '', 'cl-go', chev) : '');
   },
   refreshCampLine() {
     const el = U.$('#campLine');
@@ -208,14 +254,27 @@ Object.assign(UI, {
   // Значок задания по его типу
   qIcon(t, el) {
     if (t === 'catchEl' && el) return Art.elIcon(el, 22);
-    return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin', awaken: 'star' }[t] || 'scroll'];
+    if (t === 'catchNight') return Art.elIcon('shadow', 22); // 5.1.27: месяц
+    return this.I[{ catch: 'spirits', catchEl: 'spirits', spring: 'target', throw: 'target', walk: 'trail', power: 'star', evolve: 'swap', raid: 'rift', gate: 'pin', duel: 'shield', photo: 'book', hatch: 'egg', buddy: 'user', friend: 'swap', invasion: 'shield', defend: 'shield', league: 'trophy', task: 'scroll', purify: 'star', land: 'pin', awaken: 'star' }[t] || 'scroll'];
   },
-  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня
+  // Лимиты дня (Rules.DAILY): сколько объектов карты уже пройдено сегодня. 5.1.24 — заголовок как «Шаги главы», справа — сколько
+  // осталось до сброса (5.1.27: «До сброса 17 ч 50 мин», без секунд; обновляется вместе с таймером заданий, .dl-left); строки — название, полоска, как у заданий дня, и счётчик
   dayLimitsHtml() {
-    return `<h3 class="prof-h">${ru`Лимиты дня`} <small>${ru`обновятся в полночь`}</small></h3><div class="day-limits">${Object.keys(Rules.DAILY).map(k => {
-      const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
-      return `<div class="${u >= m ? 'out' : ''}"><b>${u}/${m}</b><small>${Rules.DAILY_NAMES[k]}</small></div>`;
-    }).join('')}</div>`;
+    return `<h3 class="q-h dl-h">${ru`Лимиты дня`}<small>${ru`До сброса ${`<span class="dl-left">${U.fmtHm(this.toMidnight())}</span>`}`}</small></h3><div class="day-limits">` +
+      Object.keys(Rules.DAILY).map(k => {
+        const u = Rules.dayUsed(S.d, k), m = Rules.DAILY[k];
+        return `<div class="dl-row${u >= m ? ' out' : ''}"><span>${Rules.DAILY_NAMES[k]}</span><div class="pbar"><i style="width:${Math.min(100, u / m * 100)}%"></i></div><b>${u} / ${m}</b></div>`;
+      }).join('') + `</div>`;
+  },
+  // 5.1.24: все задания дня сделаны — на месте кружка «3/3» Сундук дня в жёлтом круге. Не открыт — «дышит» и ждёт касания
+  // (награда случайная, Rules.CHEST: опыт и искры всегда, плюс призы); открыт — открытый сундук, без движения
+  dayChestHtml(Q) {
+    return `<button class="day-chest ${Q.bonus ? 'opened' : 'ready'}"${Q.bonus ? ' disabled' : ''} aria-label="${ru`Сундук дня`}">${Art.chest(!!Q.bonus)}</button>`;
+  },
+  // 5.1.24: новое поручение у Источника — под наградой одной надписью без подложки, слева значок «Задания» из меню.
+  // Поручение уже в «Заданиях → Поручения»: принимать не нужно, отказаться можно там
+  taskNewHtml() {
+    return `<div class="loot-task"><span class="lt-ico">${this.menuIcon('scroll')}</span><b>${ru`Новое поручение!`}</b></div>`;
   },
   // Поручения из источников: задание → предметы и встреча с духом
   tasksHtml() {
@@ -244,10 +303,10 @@ Object.assign(UI, {
     const cc = d.clan && CLANS[d.clan] ? CLANS[d.clan].color : '#fbbf24', maxed = d.level >= MAX_LEVEL;
     const row = (t, v, cls = '') => `<div class="dt-row ${cls}"><span>${t}</span><b>${v}</b></div>`;
     const ach = [
-      [ru`Пробуждений`, d.stats.awakened || 0], [ru`Источников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед на Капищах`, d.stats.duels],
+      [ru`Пробуждений`, d.stats.awakened || 0], [ru`Источников`, d.stats.springs], [ru`Закрыто разломов`, d.stats.raids], [ru`Побед в Святилищах`, d.stats.duels],
       [ru`Вторжений отбито`, d.stats.invasions], [ru`Превращений`, d.stats.evolved], [ru`Из коконов`, d.stats.hatched], [ru`Сияющих`, d.stats.shiny],
       [ru`Очищено духов`, d.stats.purified], [ru`Отличных бросков`, d.stats.throwsGreat],
-      ...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Капищ освобождено`, d.stats.freed || 0]] : []),
+      ...(d.clan ? [[ru`Защитников поставлено`, d.stats.defends || 0], [ru`Святилищ освобождено`, d.stats.freed || 0]] : []),
     ];
     const medalsHtml = MEDALS.map(m => {
       const tier = d.medals[m.id] || 0, v = S.medalValue(m), nx = m.tiers[tier];
@@ -258,7 +317,7 @@ Object.assign(UI, {
     const scr = this.screen(U.esc(d.name), `
       <div class="det det2 prof2" style="--c:${cc}">
         <div class="dt-hero">
-          <div class="det-art pf-ava"><div class="prof-ava">${this.avatar()}</div></div>
+          <div class="det-art pf-ava art3d"><div class="prof-ava p3d">${M3D.stage(d.look)}</div></div>
           <div class="dt-info">
             <div class="det-hp">${ru`${this.rank(d.level)} Ордена Оберега`}</div>
             <div class="det-power"><small>${ru`УРОВЕНЬ`}</small><b>${d.level}</b></div>
@@ -304,6 +363,7 @@ Object.assign(UI, {
             <div class="album-box">${Album.html()}</div>`)}
         </div>
       </div>`, 'prof-screen det-screen');
+    M3D.mount(scr); // 5.1.41: облик Ловчего — 3D-моделью (стоит, поворот пальцем)
     scr.addEventListener('click', e => {
       const tb = e.target.closest('[data-tab]');
       if (tb) { Sfx.play('tap'); U.$$('[data-tab]', scr).forEach(x => x.classList.toggle('on', x === tb)); U.$$('.dt-pane', scr).forEach(p => p.classList.toggle('on', p.dataset.pane === tb.dataset.tab)); return; }
@@ -313,7 +373,7 @@ Object.assign(UI, {
       if (e.target.closest('.clan-btn')) { Clans.choose(() => { this.closeScreen(scr); this.profile(); }); return; }
       if (e.target.closest('.clan-open')) { Clans.screen(); return; }
       if (e.target.closest('.look-btn')) {
-        this.editLook(() => { scr.querySelector('.prof-ava').innerHTML = this.avatar(); this.refreshHud(); });
+        this.editLook(() => { const pa = scr.querySelector('.prof-ava'); pa.innerHTML = M3D.stage(S.d.look); M3D.mount(pa); this.refreshHud(); });
         return;
       }
       const ai = e.target.closest('.album-item');
@@ -328,7 +388,7 @@ Object.assign(UI, {
       this.modal({
         cls: 'medal-modal', title: m.name,
         html: `<div class="medal-big">${Art.medal(m, tier)}</div><p>${m.desc}: <b>${m.stat === 'km' ? v.toFixed(1) : v}</b></p>
-          <div class="medal-tiers">${m.tiers.map((t, i) => `<div class="${tier > i ? 'got' : ''}"><i style="background:${MEDAL_TIERS[i].color}"></i>${MEDAL_TIERS[i].name}: ${t}<small>${ru`+${MEDAL_TIERS[i].xp} опыта`}</small></div>`).join('')}</div>`,
+          <div class="medal-tiers">${m.tiers.map((t, i) => `<div class="${tier > i ? 'got' : ''}"><i style="background:${MEDAL_TIERS[i].color}"></i>${MEDAL_TIERS[i].name}: ${t}<small>${ru`+${U.fmtNum(MEDAL_TIERS[i].xp)} опыта`}</small></div>`).join('')}</div>`,
         buttons: [{ label: ru`Закрыть` }],
       });
     });
@@ -340,12 +400,13 @@ Object.assign(UI, {
     const look = { cloak: '#6d28d9', eyes: '#5eead4', emblem: 'charm', ...S.d.look };
     const DEF = { skin: 'hood', bg: 'night', frame: 'none' };
     for (const k in DEF) look[k] = look[k] || DEF[k];
+    if (LOOK.skin.some(x => x.id === look.skin && x.off)) look.skin = 'hood'; // 5.1.41: снятый с продажи облик — не примерить
     const lvl = S.d.level;
     const KIND = { skin: ru`Облик`, bg: ru`Фон`, frame: ru`Рамка` };
     let tab = 'skin';
-    const scr = this.screen(ru`Гардероб`, `<div class="wd">
-      <div class="wd-hero"><div class="wd-stage"><i class="wd-ring"></i><div class="wd-ava"></div></div>
-        <div class="wd-cardprev pc-hero"><div class="pc-ava"><div class="wd-cp-ava"></div><span class="pc-lvl">${S.d.level}</span></div><div class="pc-id"><b class="pc-name">${U.esc(S.d.name)}</b><small>${ru`${this.rank(S.d.level)} Ордена Оберега`}</small></div></div>
+    // 5.1.41: витрина — облик 3D-моделью во весь рост (стоит, поворот пальцем): подсветка — цвет редкости, под ногами — рунный круг
+    const scr = this.screen(ru`Гардероб`, `<div class="wd wd3">
+      <div class="wd-hero"><div class="wd-show"><i class="wd-glow"></i><i class="wd-floor"></i><div class="wd-model"></div><span class="wd-hint">${ru`Поверни пальцем`}</span></div>
         <div class="wd-title"><b class="wd-name"></b><span class="wd-rar"></span></div><p class="wd-desc"></p></div>
       <div class="seg wd-tabs"><button data-t="skin" class="on">${ru`Облики`}</button><button data-t="more">${ru`Детали`}</button></div>
       <div class="wd-body"></div>
@@ -358,20 +419,18 @@ Object.assign(UI, {
     // что ещё не куплено из примеряемого — сначала облик, потом фон, потом рамка
     const pending = () => Object.keys(DEF).map(k => [k, item(k, look[k])]).find(([k, x]) => x.shop && !has(k, x));
     const hero = () => {
-      // на вкладках фона и рамки — всегда превью карточки; на остальных — облик (или то, что ждёт покупки)
-      const [k, x] = tab === 'bg' || tab === 'frame' ? [tab, item(tab, look[tab])] : pending() || ['skin', item('skin', look.skin)];
-      const R = SKIN_RAR[x.rar || 0];
-      const cardMode = k === 'bg' || k === 'frame';
-      $('.wd-hero').classList.toggle('card-mode', cardMode);
-      $('.wd-ava').innerHTML = Art.avatar(look);
-      $('.wd-cp-ava').innerHTML = Art.avatar(look); Art.cardSkin($('.wd-cardprev'), look);
-      $('.wd-stage').style.setProperty('--rc', R.c);
+      // облик (или то, что ждёт покупки); модель — заново, только если сменилась (цвета плаща и глаз модель не меняют)
+      const [k, x] = pending() || ['skin', item('skin', look.skin)];
+      const R = SKIN_RAR[x.rar || 0], show = $('.wd-show'), mdl = $('.wd-model'), st = mdl.firstElementChild;
+      show.style.setProperty('--rc', R.c); show.classList.toggle('leg', (x.rar || 0) >= 3);
+      if (!st || st.dataset.kind !== M3D.kindOfLook(look)) { mdl.innerHTML = M3D.stage(look, { yaw: -0.45, e: 6 }); M3D.mount(mdl); }
+      else { const f = st.querySelector('.m3d-flat'); if (f) f.innerHTML = Art.avatar(look); }
       $('.wd-name').textContent = x.name;
       $('.wd-rar').textContent = `${KIND[k]} · ${R.name}`; $('.wd-rar').style.color = R.c;
       $('.wd-desc').textContent = x.desc || (k === 'bg' ? ru`Фон твоей карточки Ловчего — его видят все, кто её откроет: из чата, Лиги и списка друзей.` : k === 'frame' ? ru`Рамка твоей карточки Ловчего — её видят все, кто откроет карточку.` : '');
     };
     const wide = kind => kind === 'bg' || kind === 'frame';
-    const cards = kind => `<div class="wd-grid ${wide(kind) ? 'wide' : ''}">${LOOK[kind].map(x => {
+    const cards = kind => `<div class="wd-grid ${wide(kind) ? 'wide' : ''}">${LOOK[kind].filter(x => !x.off).map(x => {
       const R = SKIN_RAR[x.rar || 0], own = has(kind, x), on = look[kind] === x.id, lvLock = !x.shop && !own;
       const tag = own ? (worn(kind, x.id) ? ru`✓ Надет` : on ? ru`Примеряешь` : ru`Твой`) : lvLock ? ru`с ${x.lvl} ур.` : `<span class="cur">${Art.item('zlat')}</span> ${U.fmtNum(x.shop)}`;
       return `<button class="wd-card ${on ? 'on' : ''} ${own ? 'own' : ''} ${lvLock ? 'lv' : ''} r${x.rar || 0}" data-kind="${kind}" data-id="${x.id}" data-lv="${lvLock ? x.lvl : ''}" style="--rc:${R.c}">
@@ -427,13 +486,13 @@ Object.assign(UI, {
         this.confirm(`${KIND[k]} «${x.name}»`, `${x.desc ? x.desc + '<br><br>' : ''}${ru`Цена: <b>${U.fmtNum(x.shop)}</b> монет.`}`, ru`Купить`, async () => {
           const r = await Game.try('shopBuy', { id: `${k}:${x.id}` });
           if (!r) return;
-          Sfx.play('catch'); this.toast(ru`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
+          Sfx.play('coins'); this.toast(ru`${KIND[k]} «${x.name}» — теперь твой!`, 'good'); render();
         });
         return;
       }
       if (e.target.closest('.wd-save') && !saved()) {
         const send = { cloak: look.cloak, eyes: look.eyes, emblem: look.emblem, skin: look.skin, bg: look.bg, frame: look.frame };
-        if (await Game.try('look', { look: send })) { Sfx.play('levelup'); this.toast(ru`Облик надет`, 'good'); render(); done && done(); }
+        if (await Game.try('look', { look: send })) { Sfx.play('equip'); this.toast(ru`Облик надет`, 'good'); render(); done && done(); }
       }
     });
     render();
@@ -499,13 +558,20 @@ Object.assign(UI, {
       </div>
       ${sec(ru`Вид`)}
       <div class="list">
-        <div class="row set-row"><span class="set-ico">${this.I.map}</span><div class="row-main"><b>${ru`Тема карты`}</b><small>${ru`Авто — по солнцу: рассвет, день, закат и ночь`}</small></div>
-          <div class="seg map-theme">${[['auto', ru`Авто`], ['light', ru`День`], ['dark', ru`Ночь`]].map(([k, t]) => `<button data-theme="${k}" class="${(s.mapTheme || 'auto') === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         ${row('tilt3d', 'map', ru`Объёмная карта`, ru`Наклон камеры: дома стоят, духи поднимаются с земли. Выключи, если телефон греется.`)}
         ${row('bigText', 'text', ru`Крупный текст`, ru`Увеличенный шрифт в меню, карточках и подсказках.`)}
         ${row('calm', 'calm', ru`Меньше движения`, ru`Без покачиваний, мерцания и погодных эффектов.`)}
         ${row('eco', 'battery', ru`Экономия батареи`, ru`Меньше анимаций на карте и реже её обновление.`)}
         ${row('awake', 'battery', ru`Не гасить экран`, ru`Экран не гаснет, пока игра открыта: удобно на прогулке, но телефон сильнее греется и быстрее садится.`)}
+      </div>
+      ${sec(ru`Графика`)}
+      <div class="list">
+        <div class="row set-row gfx-row"><span class="set-ico">${this.I.eye}</span><div class="row-main"><b>${ru`Разрешение`}</b>
+          <small>${ru`Экран телефона — ${Gfx.native()}p. «Авто» подбирает игра; ниже — плавнее и меньше греется, «Макс.» — чётче всего, но тяжелее для телефона.`}</small>
+          <div class="seg gfx-res">${Gfx.options().map(k => `<button data-res="${k}" class="${String(s.res) === String(k) ? 'on' : ''}">${Gfx.label(k)}</button>`).join('')}</div></div></div>
+        <div class="row set-row gfx-row"><span class="set-ico">${this.I.battery}</span><div class="row-main"><b>${ru`Частота кадров`}</b>
+          <small>${ru`Кадров в секунду. Меньше — телефон меньше греется и дольше держит заряд.`}</small>
+          <div class="seg gfx-fps">${Gfx.FPS.map(f => `<button data-fps="${f}" class="${+s.fps === f ? 'on' : ''}">${f}</button>`).join('')}</div></div></div>
       </div>
       <div class="list install-list">
         <button class="row link set-row inst-pwa hidden"><span class="set-ico">${this.I.download}</span><div class="row-main"><b>${ru`Установить на главный экран`}</b><small>${ru`Духолов откроется на весь экран, как обычное приложение`}</small></div><span class="set-chev">›</span></button>
@@ -539,18 +605,26 @@ Object.assign(UI, {
       if (k === 'tilt3d') MapView.setTilt(s.tilt3d);
       if (k === 'awake') Awake.apply();
     });
+    // 5.1.38: графика — разрешение и частота кадров, сразу
+    scr.querySelector('.gfx-res').addEventListener('click', e => {
+      const b = e.target.closest('[data-res]'); if (!b) return;
+      const v = b.dataset.res, k = v === 'auto' || v === 'max' ? v : +v;
+      if (k === s.res) return;
+      Sfx.play('tap'); s.res = k; Cfg.save();
+      U.$$('[data-res]', scr).forEach(x => x.classList.toggle('on', x === b));
+      Gfx.apply();
+    });
+    scr.querySelector('.gfx-fps').addEventListener('click', e => {
+      const b = e.target.closest('[data-fps]'); if (!b) return;
+      Sfx.play('tap'); s.fps = +b.dataset.fps; Cfg.save();
+      U.$$('[data-fps]', scr).forEach(x => x.classList.toggle('on', x === b));
+    });
     // 5.1: джойстик слева или справа
     scr.querySelector('.joy-side').addEventListener('click', e => {
       const b = e.target.closest('[data-side]'); if (!b) return;
       Sfx.play('tap'); s.joySide = b.dataset.side; Cfg.save();
       U.$$('[data-side]', scr).forEach(x => x.classList.toggle('on', x === b));
       Walk.side();
-    });
-    scr.querySelector('.map-theme').addEventListener('click', e => {
-      const b = e.target.closest('[data-theme]'); if (!b) return;
-      s.mapTheme = b.dataset.theme; Cfg.save();
-      U.$$('[data-theme]', scr).forEach(x => x.classList.toggle('on', x === b));
-      MapView._look = null; MapView.setTiles();
     });
     // установка: кнопка PWA (если браузер предложил) и APK (если он собран и лежит рядом с сайтом)
     const pwa = scr.querySelector('.inst-pwa'), apk = scr.querySelector('.inst-apk');

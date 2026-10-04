@@ -4,10 +4,10 @@
 Вход:  объекты в GeoJSON Sequence (osmium export -a type,id) после фильтра filter.txt.
 Выход: CSV id,name,kind,cat,lat,lng для таблицы pois (загрузка — load.sql).
 
-Правила отбора те же, что у телефона (www/js/osm.js): категории, названия, будущие Капища
+Правила отбора те же, что у телефона (www/js/osm.js): категории, названия, будущие Святилища
 по хэшу id, не ближе 35 м друг к другу. Сверх того — у каждого населённого пункта есть место:
 если рядом с центром деревни нет ни одного объекта, там появляется Родник «Околица …»,
-а в сёлах и городках с двумя и более местами одно обязательно становится Капищем.
+а в сёлах и городках с двумя и более местами одно обязательно становится Святилищем.
 
     python3 build.py objects.geojsonseq pois.csv [мин. число мест]
 """
@@ -18,7 +18,7 @@ import re
 import sys
 from collections import defaultdict
 
-# категория → название по умолчанию и может ли объект стать Капищем (как в osm.js)
+# категория → название по умолчанию и может ли объект стать Святилищем (как в osm.js)
 CATS = {
     'monument': ('Памятник', 1), 'memorial': ('Памятный знак', 0), 'castle': ('Крепость', 1), 'ruins': ('Руины', 1),
     'archaeological_site': ('Древнее место', 1), 'manor': ('Усадьба', 1), 'city_gate': ('Городские ворота', 1),
@@ -34,7 +34,7 @@ CATS = {
 KEYS = ('historic', 'tourism', 'amenity', 'natural', 'leisure', 'man_made', 'railway')
 NEED_NAME = {'garden', 'boundary_stone', 'park', 'station', 'halt', 'peak'}  # без названия почти не видны на местности
 MIN_GAP = 35
-# населённые пункты: радиус, в котором уже должно быть место; радиус, в котором должно быть Капище
+# населённые пункты: радиус, в котором уже должно быть место; радиус, в котором должно быть Святилище
 PLACES = {'city': (3000, 0), 'town': (1500, 2500), 'village': (700, 1500), 'hamlet': (400, 0)}
 SETTLEMENT_WORD = {'city': 'Центр', 'town': 'Центр', 'village': 'Околица', 'hamlet': 'Околица'}
 MARK = re.compile(r'памят|мемориал|бюст|стел|обелиск|монумент|скульптур|статуя|знак|доска|крест|камень', re.IGNORECASE)
@@ -147,7 +147,7 @@ def main():
             score = (2 if named else 0) + (1 if kind == 'shrine' else 0) + (0.5 if typ != 'node' else 0) + fnv(id_ + 's') * 0.1
             cand.append({'id': id_, 'name': title(cat, t, named)[:80], 'kind': kind, 'cat': cat, 'lat': lat, 'lng': lng, 'score': score})
 
-    # не ближе 35 м друг к другу: сначала заметные (именованные, будущие Капища, крупные)
+    # не ближе 35 м друг к другу: сначала заметные (именованные, будущие Святилища, крупные)
     cand.sort(key=lambda o: (-o['score'], o['id']))
     fine = Grid(0.001)
     kept = []
@@ -173,7 +173,7 @@ def main():
         kept.append(o)
         added += 1
 
-    # в сёлах и городках с двумя и более местами — хотя бы одно Капище (у Капищ открываются Разломы)
+    # в сёлах и городках с двумя и более местами — хотя бы одно Святилище (у Святилищ открываются Разломы)
     promoted = 0
     for s in settlements:
         r = PLACES[s['type']][1]
@@ -197,8 +197,8 @@ def main():
     for o in kept:
         by_kind[o['kind']] += 1
         by_cat[o['cat']] += 1
-    print(f'Мест: {len(kept)} (Родников {by_kind["spring"]}, Капищ {by_kind["shrine"]})')
-    print(f'Населённых пунктов: {len(settlements)}, из них без объектов OSM — место у центра: {added}; Капищ назначено: {promoted}')
+    print(f'Мест: {len(kept)} (Родников {by_kind["spring"]}, Святилищ {by_kind["shrine"]})')
+    print(f'Населённых пунктов: {len(settlements)}, из них без объектов OSM — место у центра: {added}; Святилищ назначено: {promoted}')
     print('По категориям: ' + ', '.join(f'{k} {v}' for k, v in sorted(by_cat.items(), key=lambda x: -x[1])))
     if len(kept) < need:
         sys.exit(f'Слишком мало мест: {len(kept)} < {need} — выгрузка неполная, в базу не загружаю')

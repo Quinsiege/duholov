@@ -3,9 +3,29 @@
    телефон — показывает (цвет кольца, награды, подсказки). */
 
 const Rules = {
-  QUEST_BONUS: { charm: 10, honey: 2, sparks: 500 }, // 4.16: без ладана (был каждый день — копился десятками) и меньше искр
-  // 4.16: опыт за задание дня и за сундук дня (было 300 и 1000) — ежедневные цели заметнее для тех, кто играет понемногу
-  QUEST_XP: 500, QUEST_BONUS_XP: 2500,
+  // 4.16: опыт за задание дня (было 300) — ежедневные цели заметнее для тех, кто играет понемногу
+  QUEST_XP: 500,
+  // 5.1.24: Сундук дня — награда каждый раз разная: опыт и искры всегда (в пределах XP и SPARKS), плюс PICKS разных призов
+  // из POOL по весам: [что, вес, от, до]. В среднем — как прежняя (2 500 опыта, ✦ 500, 10 оберегов, 2 мёда, 2 монеты), но
+  // меньше расходников и иногда редкое: осколок Алатыря, кокон, амулет. Тянет сервер (Rules.chestRoll в questBonus)
+  CHEST: {
+    XP: [2000, 3000], SPARKS: [400, 700], PICKS: 2,
+    POOL: [['charm', 24, 8, 14], ['zlat', 18, 4, 7], ['charm2', 15, 3, 6], ['honey', 13, 2, 4], ['charm3', 6, 1, 2], ['water', 6, 1, 2],
+      ['incense', 4, 1, 1], ['gate', 3.5, 1, 1], ['xpbrew', 3.5, 1, 1], ['cocoon', 3, 5, 5], ['alatyr', 2.5, 1, 1], ['amulet', 1.5, 1, 1]],
+  },
+  // r — случайное 0…1 (сервер — Math.random; тесты — с зерном). Опыт кратен 50, искры — 10; призы не повторяются
+  chestRoll(r = Math.random) {
+    const C = this.CHEST, num = (a, b) => a + Math.floor(r() * (b - a + 1));
+    const rw = { xp: Math.round(num(C.XP[0], C.XP[1]) / 50) * 50, sparks: Math.round(num(C.SPARKS[0], C.SPARKS[1]) / 10) * 10 };
+    const pool = C.POOL.slice();
+    for (let k = 0; k < C.PICKS && pool.length; k++) {
+      let x = r() * pool.reduce((s, p) => s + p[1], 0), i = 0;
+      while (i < pool.length - 1 && (x -= pool[i][1]) >= 0) i++;
+      const [key, , a, b] = pool.splice(i, 1)[0];
+      rw[key] = num(a, b);
+    }
+    return rw;
+  },
   PLACE_REWARD: { xp: 1000, sparks: 500, charm: 10 },
   SUPPLY: { charm: 15, honey: 2, water: 1 },
   THROWABLE: ['charm', 'charm2', 'charm3'],
@@ -159,9 +179,9 @@ const Rules = {
   // Монеты — вторая валюта: за серию дней, сундук дня, уровни, дань и Тропу.
   // 4.16: бесплатных монет было 60–80 в день у активного (к 40 уровню — 2–4 тыс. без покупок, Казна не нужна) — теперь ~5–10:
   // серия 1 в день и 10 на 7-й (было 5 и 30), сундук дня 2 (10), уровень 3, каждый пятый — 15 (всегда 20),
-  // глава Летописи 15 (50), дань 1 за Капище, но не больше чем с tributeMax Капищ (было 3 за каждое, до 30 в день)
+  // глава Летописи 15 (50), дань 1 за Святилище, но не больше чем с tributeMax Святилищ (было 3 за каждое, до 30 в день)
   // 4.16.0: бесплатных монет у активного игрока ~5–6 в день (было ~8 без учёта продаж на аукционе): 7-й день серии 10 → 5, глава Летописи 15 → 10
-  ZLAT: { streak: 1, streak7: 5, questBonus: 2, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 },
+  ZLAT: { streak: 1, streak7: 5, level: 3, level5: 15, story: 10, tribute: 1, tributeMax: 3 }, // 5.1.24: монеты сундука дня — в CHEST.POOL
   BAG_STEP: 50, BAG_MAX_UP: 10,
   // 3.15: Казна — монеты за рубли (оплата через ЮKassa; цену и число монет сервер берёт отсюда, а не с телефона)
   PAY: [
@@ -172,10 +192,10 @@ const Rules = {
     { id: 'z2600', zlat: 2600, rub: 1990, bonus: 30 },
   ],
   // 3.20: дневные лимиты объектов карты (сутки — по часам игрока). Считаются только успехи: зачерпнутый источник,
-  // победа в Разломе, на Капище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
+  // победа в Разломе, в Святилище и во вторжении, пойманный дикий дух. Обычной игре не мешают (20–40 поимок,
   // 10–20 источников в день), а бесконечный фарм и боты упираются в потолок
-  DAILY: { springs: 30, raids: 6, duels: 8, invasions: 6, catches: 120 },
-  DAILY_NAMES: { springs: ru`Источники`, raids: ru`Разломы`, duels: ru`Капища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
+  DAILY: { springs: 30, raids: 10, duels: 10, invasions: 6, catches: 120 }, // 5.1.36: Разломов и Святилищ — по 10 (было 6 и 8)
+  DAILY_NAMES: { springs: ru`Источники`, raids: ru`Разломы`, duels: ru`Святилища`, invasions: ru`Вторжения`, catches: ru`Поимки` },
   // 4.16: сколько раз товар Лавки с недельным пределом (week) куплен на этой неделе (неделя — как у событий, Ev.week)
   dayUsed(d, key) { return d && d.dayc && d.dayc.day === U.today() ? (d.dayc[key] || 0) : 0; },
   weekUsed(d, key) { return d && d.weekc && d.weekc.w === Ev.week() ? (d.weekc[key] || 0) : 0; }, // 4.16: за неделю (с понедельника)
@@ -305,7 +325,7 @@ const Rules = {
   MELT: { N: 3, SPARKS: 3000 },
   // 3.13: Дальний пропуск — Разлом до R м от игрока; каждый день Орден дарит один, если их меньше KEEP
   FAR: { R: 5000, KEEP: 3 },
-  // 5.2: места (Источники, Капища и Разломы у них): каждую неделю бодрствует доля SHARE, остальные спят (W.awake);
+  // 5.2: места (Источники, Святилища и Разломы у них): каждую неделю бодрствует доля SHARE, остальные спят (W.awake);
   // на карте места видны в радиусе VIEW м от Ловчего (подойти, чтобы открыть, — как раньше: W.INTERACT, W.BATTLE_R)
   PLACES: { SHARE: 0.4, VIEW: 200 },
   // cur — валюта: sparks (искры) или zlat (монеты). give — предметы; cocoon — кокон; amulet — случайный амулет
@@ -341,7 +361,7 @@ const Rules = {
   // 4.15: здоровье духов — общее на всю игру. После боя раны остаются; раненый дух сам восстанавливает REGEN в час,
   // без сил (здоровье 0) — в бой не идёт и поднимается сам на BACK через KO_H часов (по редкости духа: от 2 до 24);
   // 4.15.1: Мёртвая вода сокращает ожидание на ITEMS.deadwater.revive часов, Живая вода духа без сил не поднимает
-  // 4.16: усталость — каждый бой (разлом, Капище, вторжение) даёт духам команды очко; очко уходит за REST часов отдыха.
+  // 4.16: усталость — каждый бой (разлом, Святилище, вторжение) даёт духам команды очко; очко уходит за REST часов отдыха.
   // Первые FREE боёв подряд даются даром, дальше каждое очко срезает STEP от предела здоровья (не ниже MIN) — ни лечение,
   // ни время выше предела не поднимут: одной командой весь день не провоевать, нужны сменщики
   HP: { REGEN: 0.1, KO_H: { 1: 2, 2: 5, 3: 9, 4: 15, 5: 24 }, BACK: 0.1, TIRED: { FREE: 3, STEP: 0.15, MIN: 0.4, REST: 1 } },
@@ -353,60 +373,61 @@ const Rules = {
     return { ...it, price: Math.max(1, Math.round(it.price * 0.6)), deal: true };
   },
   // Сезонная тропа: сезон — календарный месяц, 30 ступеней по 40 очков (очки — как в общем деле Ордена)
-  PASS: { LEVELS: 30, PER: 40, GOLD: 600, LATE: 25 },
+  PASS: { LEVELS: 30, PER: 40, GOLD: 600 },
   passLevel(pts) { return Math.min(this.PASS.LEVELS, Math.floor((pts || 0) / this.PASS.PER)); },
-  // Награда ступени: free — всем, gold — на Золотой тропе. plvl — уровень Ловчего (4.16: на поздних уровнях
-  // Золотая тропа не должна давать то, что уже некуда девать, — см. passGoldLate)
-  // 4.16: на бесплатной тропе 55 монет за сезон (было 135), зато на 30-й ступени — Мёртвая вода (редкая, раз в месяц)
-  // 5.1.20: искры на Тропе (и на Золотой) — ×10
-  passReward(track, lvl, plvl) {
-    if (track === 'gold' && plvl >= this.PASS.LATE) return this.passGoldLate(lvl);
-    if (track === 'free') {
-      // 4.16.0: бесплатная тропа — 29 монет за сезон (было 55)
-      if (lvl === 30) return { charm3: 5, deadwater: 1, zlat: 10 };
-      if (lvl % 10 === 0) return { cocoon: 5, zlat: 5 };
-      if (lvl % 5 === 0) return { incense: 1, zlat: 3 };
-      return lvl % 2 ? { charm: 8 } : { honey: 3, sparks: 3000 };
-    }
-    if (lvl === 30) return { look: 'trail', charm3: 10, cocoon: 10 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50 };
-    if (lvl % 10 === 0) return { cocoon: 10, zlat: 40 };
-    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
-    if (lvl % 3 === 0) return { charm3: 3, zlat: 15 };
-    return lvl % 2 ? { charm2: 5, sparks: 5000 } : { water: 3, sparks: 8000 };
-  },
-  // 4.16: Золотая тропа с LATE уровня: вместо серебряных оберегов и мелочи — то, что нужно на поздних уровнях:
-  // искры на усиление (втрое больше), золотые обереги, целебный отвар, настои опыта; облик и Знак Тропы — как раньше
-  passGoldLate(lvl) {
-    if (lvl === 30) return { look: 'trail', charm3: 10, xpbrew: 1 };
-    if (lvl === 15) return { look: '#065f46', zlat: 50, sparks: 30000 };
-    if (lvl % 10 === 0) return { xpbrew: 1, zlat: 40, sparks: 30000 };
-    if (lvl % 5 === 0) return { amulet: 1, zlat: 30 };
-    if (lvl % 3 === 0) return { charm3: 5, zlat: 15 };
-    return lvl % 2 ? { charm3: 3, sparks: 15000 } : { brew: 2, sparks: 25000 };
-  },
-  // Защитник вернулся с Капища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
+  // 5.1.21: награды ступеней — таблицей, одна для всех уровней Ловчего (прежней «поздней» Золотой тропы с 25 уровня нет).
+  // Три круга по десять ступеней, в каждом награды растут: бесплатная — обереги и мёд по очереди, на 5-й ступени круга ладан,
+  // на 9-й Живая вода, на 10-й, 20-й и 30-й — большая награда; Золотая — серебряные обереги и Живая вода, на 6-й — золотые
+  // обереги, на 9-й — кокон 10 км, на каждой пятой — амулет на выбор (amuletPick: выбирает Ловчий, когда забирает),
+  // на 15-й — плащ «Сезонная тропа», на 30-й — Знак Тропы. cocoon — кокон на столько км, look — облик.
+  // По модели экономики (tools/economy: искры копились миллионами, сумка переполнялась, не хватало только осколков Алатыря):
+  // бесплатная — искры ÷3, обереги ÷3, мёд ÷4 и осколок Алатыря на 10-й, 20-й и 30-й; Золотая — искры ÷2, Живая вода ÷3 и
+  // осколок на 15-й и 25-й. За сезон: бесплатная — ✦ 58 900, Золотая — ✦ 58 600 (было 177 000 и 116 500)
+  PASS_FREE: [
+    { charm: 7, sparks: 800 }, { honey: 4, sparks: 800 }, { charm: 7, sparks: 1200 }, { honey: 4, sparks: 1200 }, { incense: 5, sparks: 1300 },
+    { charm: 10, sparks: 1300 }, { honey: 5, sparks: 1300 }, { charm: 13, sparks: 1300 }, { water: 10, sparks: 1700 }, { zlat: 50, sparks: 1700, alatyr: 1 },
+    { charm: 10, sparks: 1700 }, { honey: 5, sparks: 1700 }, { charm: 10, sparks: 1800 }, { honey: 5, sparks: 1800 }, { incense: 5, sparks: 2000 },
+    { charm: 13, sparks: 2000 }, { honey: 6, sparks: 2000 }, { charm: 17, sparks: 2000 }, { water: 15, sparks: 2300 }, { amuletPick: 1, sparks: 2300, alatyr: 1 },
+    { charm: 13, sparks: 2300 }, { honey: 6, sparks: 2300 }, { charm: 13, sparks: 2500 }, { honey: 6, sparks: 2500 }, { incense: 5, sparks: 2700 },
+    { charm: 17, sparks: 2700 }, { honey: 8, sparks: 2700 }, { charm: 20, sparks: 2700 }, { water: 20, sparks: 3000 }, { deadwater: 1, zlat: 50, sparks: 3300, alatyr: 1 },
+  ],
+  PASS_GOLD: [
+    { charm2: 20 }, { water: 3, sparks: 1300 }, { charm2: 20, sparks: 1800 }, { water: 3, sparks: 1800 }, { amuletPick: 1 },
+    { charm3: 10 }, { water: 5, sparks: 2000 }, { charm2: 20, sparks: 2000 }, { cocoon: 10, sparks: 2500 }, { amuletPick: 1 },
+    { charm2: 25, sparks: 2500 }, { water: 5, sparks: 2500 }, { charm2: 25, sparks: 2800 }, { water: 5, sparks: 2800 }, { look: '#065f46', amuletPick: 1, alatyr: 1 },
+    { charm3: 15 }, { water: 7, sparks: 3000 }, { charm2: 30, sparks: 3000 }, { cocoon: 10, sparks: 3500 }, { amuletPick: 1, charm3: 10 },
+    { charm2: 30, sparks: 3500 }, { water: 7, sparks: 3500 }, { charm2: 30, sparks: 3800 }, { water: 7, sparks: 3800 }, { amuletPick: 1, alatyr: 1 },
+    { charm3: 20 }, { water: 8, sparks: 4000 }, { charm2: 40, sparks: 4000 }, { cocoon: 10, sparks: 4500 }, { look: 'trail', amuletPick: 1, charm3: 20 },
+  ],
+  // награда ступени lvl (1…30): free — всем, gold — на Золотой тропе; копия — её можно менять
+  passReward(track, lvl) { return { ...((track === 'gold' ? this.PASS_GOLD : this.PASS_FREE)[lvl - 1] || {}) }; },
+  // Защитник вернулся со Святилища: искры за время на посту (25 в час, не меньше 25 и не больше 1500)
   guardPay(hours) { return Math.min(1500, Math.max(25, Math.round(25 * (hours || 0)))); },
-  /* 4.16: Капища не должны навсегда оставаться за кланами.
+  /* 4.16: Святилища не должны навсегда оставаться за кланами.
      Защитник первые FRESH_H часов на посту в полной силе, потом устаёт: к MAX_H часам его уровень падает до (1 − WEAK)
      от своего, а в MAX_H часов он уходит домой (с искрами за службу, как побеждённый). Дань (Rules.ZLAT.tribute и TRIBUTE) —
      только за защитников, которые простояли не меньше TRIBUTE_H часов и ещё на посту («активная защита»), и не больше чем
-     за HOLD_MY_MAX Капищ. Доля FREE Капищ — вольные: их не держит ни один клан, там всегда бьётся хранитель.
+     за HOLD_MY_MAX Святилищ. Доля FREE Святилищ — вольные: их не держит ни один клан, там всегда бьётся хранитель.
      4.28: кланы — мифологии; защитник на святилище мифологии своего клана (W.placeMyth) приносит дань ×MYTH (искры и обереги;
-     монеты — как с любого Капища). Кланов стало 7+ при тех же Ловчих — на удержание Капищ это не влияет: защитников на
-     Капище и Капищ у Ловчего столько же, вольных — та же доля. */
-  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25, MYTH: 1.5 },
+     монеты — как с любого Святилища). Кланов стало 7+ при тех же Ловчих — на удержание Святилищ это не влияет: защитников в
+     Святилище и Святилищ у Ловчего столько же, вольных — та же доля. */
+  HOLD: { FRESH_H: 24, MAX_H: 72, WEAK: 0.5, TRIBUTE_H: 4, FREE: 0.25, MYTH: 1.5, SAFE_H: 24 },
   holdHours(t, now) { return Math.max(0, ((now == null ? Date.now() : now) - (+t || 0)) / 3600000); },
   holdFresh(h, now) { return !!h && this.holdHours(h.t, now) < this.HOLD.MAX_H; },
+  // 5.1.36: занятое кланом Святилище первые HOLD.SAFE_H часов не отбить — сколько мс ещё (0 — можно); since — когда клан его занял
+  holdSafeLeft(since, now) {
+    const t = typeof since === 'number' ? since : Date.parse(since);
+    return Number.isFinite(t) ? Math.max(0, t + this.HOLD.SAFE_H * 3600000 - (now == null ? Date.now() : now)) : 0;
+  },
   // во сколько раз уменьшен уровень защитника (1 — в полной силе)
   holdK(t, now) { const H = this.HOLD, h = this.holdHours(t, now); return 1 - H.WEAK * U.clamp((h - H.FRESH_H) / (H.MAX_H - H.FRESH_H), 0, 1); },
   // отражение духа на посту: уровень — с учётом усталости
   holdSpirit(sp, t, now) { return { ...sp, lvl: Math.max(1, Math.round((sp.lvl || 1) * this.holdK(t, now))) }; },
   shrineFree(id) { return U.h('freeShrine', String(id)) < this.HOLD.FREE; },
-  // 4.28: дань за n Капищ, из них own — святилища мифологии своего клана (там ×HOLD.MYTH; обереги — с округлением вверх)
+  // 4.28: дань за n Святилищ, из них own — святилища мифологии своего клана (там ×HOLD.MYTH; обереги — с округлением вверх)
   tributeFor(n, own) { const k = n + Math.min(own, n) * (this.HOLD.MYTH - 1); return { sparks: Math.round(TRIBUTE.sparks * k), charm: Math.ceil(TRIBUTE.charm * k - 1e-9) }; },
   ORDER_RULES: [
-    [ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в капище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
+    [ru`Поимка духа`, 1], [ru`Источник`, 1], [ru`500 м пути`, 1], [ru`Кокон`, 3], [ru`Победа в святилище`, 3], [ru`Вторжение`, 3], [ru`Разлом`, 5],
   ],
 
   // Шанс поимки за один бросок. o: { mode, sid, lvl, item, honey, mul }
@@ -449,16 +470,17 @@ const Rules = {
   /* 4.26: бой в разломе глазами сервера (как Raid.tick/bossStrike): первый удар босса — на FIRST с, дальше не реже раза в GAP с
      (замах 0,9 с + пауза до 3,6 с), уклон срезает удар до DODGE. Всё — в пользу игрока: каждый удар уклонён, погода боссу
      не помогает, урон духов — наибольший (как в raidMaxDamage), SLACK — запас сверху, LOSS — доля ран, которую сервер
-     засчитает после победы наверняка */
-  RAID_SIM: { FIRST: 4.1, GAP: 4.5, DODGE: 0.2, SLACK: 1.5, LOSS: 0.5 },
+     засчитает после победы наверняка. 5.1.39: DODGE 0,4 (было 0,2) — его же берёт и бой на телефоне (Raid.bossStrike) */
+  RAID_SIM: { FIRST: 4.1, GAP: 4.5, DODGE: 0.4, SLACK: 1.5, LOSS: 0.5 },
   // удар босса по духу sp с уклоном, без погоды; bs — Raid.bossStats, bel — стихия босса
   raidHit(bs, bel, sp) {
-    const n = Math.floor(0.5 * bs.pw * (bs.atk / S.battle(sp).def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
+    const x = S.battle(sp), n = Math.floor(0.5 * bs.pw * Raid.press(bs, x.power) * (bs.atk / x.def) * 1.2 * Raid.eff(bel, SP[sp.sid].el)) + 1;
     return Math.max(1, Math.floor(n * this.RAID_SIM.DODGE));
   },
-  // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Капищ). Каждый дух живёт
+  // 4.26: может ли команда вообще выстоять, пока наносит нужный урон need (как duelWinnable для Святилищ). Каждый дух живёт
   // не дольше, чем выдерживает уклонённые удары (здоровье на входе — hp0, { uid: доля }; нет — здоров), и бьёт с наибольшим
-  // уроном; выпитая Живая вода (waters) — полфлакона здоровья тому, кому она выгоднее всего. В совместном бою need — своя доля
+  // уроном; выпитая Живая вода (waters) — полфлакона здоровья тем, кому она выгоднее всего (5.1.39: по флакону на духа,
+  // было — все флаконы одному). В совместном бою need — своя доля
   raidWinnable(team, boss, need, hp0, waters = 0) {
     if (!team.length) return false;
     const R = this.RAID_SIM, bs = Raid.bossStats(boss), bel = SP[boss.boss].el;
@@ -467,7 +489,7 @@ const Rules = {
       const max = S.battle(sp).hp * 5, hit = this.raidHit(bs, bel, sp), dps = this.raidMaxDamage([sp], boss, 1) / 1.3;
       return { max, hit, dps, cap: dps * Math.ceil(Math.max(1, Math.round(max * h0(sp))) / hit) * R.GAP };
     });
-    const water = Math.max(0, ...me.map(m => m.dps * Math.ceil(m.max / 2 / m.hit) * R.GAP)) * U.clamp(waters | 0, 0, 3);
+    const water = me.map(m => m.dps * Math.ceil(m.max / 2 / m.hit) * R.GAP).sort((a, b) => b - a).slice(0, U.clamp(waters | 0, 0, 3)).reduce((a, x) => a + x, 0);
     return (me.reduce((a, m) => a + m.cap, 0) + water) * R.SLACK >= need;
   },
   // 4.26: сколько здоровья (в единицах разлома: здоровье духа × 5) команда потеряла наверняка, победив: быстрее need / (наибольший
@@ -478,7 +500,7 @@ const Rules = {
     const t = Math.min(90, need / Math.max(1e-9, dps)), strikes = t < R.FIRST ? 0 : Math.floor((t - R.FIRST) / R.GAP) + 1;
     return strikes * Math.min(...team.map(sp => this.raidHit(bs, bel, sp))) * R.LOSS;
   },
-  // 4.26: то же на Капище и во вторжении (здоровье духа × Duel.HPX): быстрее, чем за duelFoeHp / наибольший урон, соперника не
+  // 4.26: то же в Святилище и во вторжении (здоровье духа × Duel.HPX): быстрее, чем за duelFoeHp / наибольший урон, соперника не
   // победить; он бьёт раз в speed…speed+0,25 с игрового времени (первый удар — на 1,5 с, пауза после каждого побеждённого
   // бойца — 1,2 с); два удара могут уйти в щиты, остальные — не слабее быстрого удара без погоды
   duelMinLoss(team, foe, speed) {
