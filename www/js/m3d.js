@@ -128,6 +128,31 @@ const M3D = {
       gl_Position = uVP * uM * vec4(p + normalize(n) * uOl, 1.0);
     }`;
   },
+  /* 5.1.41: обводка модели со скелетом — на видеочипе, одним проходом (было: в 2D-холсте значка 9 копирований кадра на каждую модель
+     в каждом кадре). Кадр модели (из общего холста, со сглаживанием) — в текстуре; на каждую точку клетки: силуэт кадра, сдвинутый
+     на толщину обводки в 8 сторон (объединение, как 8 наложений «source-over»), цвета OUTLINE, а сверху — сам кадр. Цвета —
+     с умноженной прозрачностью (как в холсте WebGL); чтение — только внутри своей клетки (соседняя модель не попадает) */
+  OLVS: `attribute vec2 aP; void main() { gl_Position = vec4(aP, 0.0, 1.0); }`, // точка — gl_FragCoord (общих переменных с шейдером точек нет: точность)
+  OLFS: `#ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
+    precision mediump float;
+    #endif
+    uniform sampler2D uT; uniform vec2 uTex; uniform vec4 uCell; uniform float uD; uniform vec3 uOC;
+    float A(vec2 p) {
+      if (p.x < uCell.x + 0.5 || p.y < uCell.y + 0.5 || p.x > uCell.x + uCell.z - 0.5 || p.y > uCell.y + uCell.w - 0.5) return 0.0;
+      return texture2D(uT, p * uTex).a;
+    }
+    void main() {
+      vec2 vP = gl_FragCoord.xy;
+      vec4 s = texture2D(uT, vP * uTex);
+      float k = 0.7071 * uD, acc = 0.0, a;
+      a = A(vP + vec2(uD, 0.0)); acc += a - acc * a;   a = A(vP - vec2(uD, 0.0)); acc += a - acc * a;
+      a = A(vP + vec2(0.0, uD)); acc += a - acc * a;   a = A(vP - vec2(0.0, uD)); acc += a - acc * a;
+      a = A(vP + vec2(k, k)); acc += a - acc * a;      a = A(vP + vec2(-k, k)); acc += a - acc * a;
+      a = A(vP + vec2(k, -k)); acc += a - acc * a;     a = A(vP - vec2(k, k)); acc += a - acc * a;
+      gl_FragColor = vec4(s.rgb + uOC * acc * (1.0 - s.a), s.a + acc * (1.0 - s.a));
+    }`,
   get SFS() {
     return this.FS.replace('varying vec3 vN; varying vec3 vC;', 'varying vec3 vN; varying vec3 vC; varying vec2 vUV; uniform sampler2D uTex; varying float vD; uniform vec4 uDC;')
       .replace('vec3 base = uBase * vC;', 'vec3 tx = pow(texture2D(uTex, vUV).rgb, vec3(2.2)); vec3 dc = mix(uDC.rgb, uDC.rgb * 2.2 * dot(tx, vec3(0.3, 0.55, 0.15)), uDC.w); vec3 base = uBase * mix(tx, dc, clamp(vD, 0.0, 1.0));');
@@ -152,6 +177,8 @@ const M3D = {
     // со скелетом: не собрались (старый телефон — мало uniform) — Ловчий остаётся рисунком, места — 3D
     this.SP = prog(this.SVS, this.SFS, ['aPos', 'aNrm', 'aUV', 'aJ', 'aW']);
     this.SO = prog(this.SOVS, this.OFS, ['aPos', 'aONrm', 'aJ', 'aW']);
+    this.OL = prog(this.OLVS, this.OLFS, ['aP']);
+    this.olTex = null; this.olQuad = null; // текстура кадров и четырёхугольник — заново (контекст мог смениться)
     return !!(this.P && this.O);
   },
 
@@ -569,32 +596,50 @@ const M3D = {
     for (let i = 0; i < vs.length; i += N) {
       const pass = vs.slice(i, i + N);
       pass.forEach((v, j) => this.render(v, now, (j % C) * cw, Math.floor(j / C) * ch));
+      // модели со скелетом — обводка по контуру, на видеочипе (outline)
+      const sk = pass.filter(v => this.models[v.kind].head.skin);
+      if (sk.length) this.outline(sk, cols * cw, Math.min(R, Math.ceil(pass.length / C)) * ch);
       // кадры — в холсты значков (WebGL считает снизу вверх: клетка (x, y) — от нижнего левого угла общего холста)
       for (const v of pass) {
         const W = v.pw, H = v.ph;
         v.ctx.clearRect(0, 0, W, H);
-        if (this.models[v.kind].head.skin) this.outline(v, cv.height - v.slot[1] - H);
-        else v.ctx.drawImage(cv, v.slot[0], cv.height - v.slot[1] - H, W, H, 0, 0, W, H);
+        v.ctx.drawImage(cv, v.slot[0], cv.height - v.slot[1] - H, W, H, 0, 0, W, H);
         v.t = now;
       }
     }
     return vs.length;
   },
-  /* 5.1.41: обводка модели со скелетом — по контуру кадра (телефон грелся: оболочка рисовала всю модель второй раз): силуэт
-     (кадр, залитый цветом обводки) восемь раз со сдвигом на толщину обводки, сверху — сам кадр. Внешний контур — как у оболочки;
-     линий внутри фигуры (рука на фоне тела) нет */
-  outline(v, sy) {
-    // толщина — OUTLINE_PX на экране, как у модели в окне (Гардероб): на карте значок увеличен (масштаб и перспектива — _g, _f у
-    // значка), и без поправки обводка толстела вместе с ним
-    const ic = v.ui ? null : v.ic || (v.ic = v.c.closest('.maplibregl-marker')), up = ic ? Math.max(0.5, (ic._g || 1) * (ic._f || 1)) : 1;
-    const W = v.pw, H = v.ph, sx = v.slot[0], d = Math.max(0.75, this.OUTLINE_PX * W / v.w / up), k = 0.7071 * d;
-    const t = this.olc || (this.olc = document.createElement('canvas')), g = t.getContext('2d');
-    if (t.width < W || t.height < H) { t.width = Math.max(t.width, W); t.height = Math.max(t.height, H); }
-    g.globalCompositeOperation = 'copy'; g.drawImage(this.cv, sx, sy, W, H, 0, 0, W, H);
-    g.globalCompositeOperation = 'source-in'; g.fillStyle = this.olcss || (this.olcss = 'rgb(' + this.OUTLINE.map(x => Math.round(x * 255)).join(',') + ')'); g.fillRect(0, 0, W, H);
-    g.globalCompositeOperation = 'source-over';
-    for (const [x, y] of [[d, 0], [-d, 0], [0, d], [0, -d], [k, k], [-k, k], [k, -k], [-k, -k]]) v.ctx.drawImage(t, 0, 0, W, H, x, y, W, H);
-    v.ctx.drawImage(this.cv, sx, sy, W, H, 0, 0, W, H);
+  // кадры моделей пачки уже в общем холсте (со сглаживанием): они — одной копией в текстуру, поверх каждой клетки со скелетом —
+  // её же кадр с обводкой (шейдер OL). Толщина — OUTLINE_PX на экране, как у модели в окне (Гардероб): на карте значок увеличен
+  // (масштаб и перспектива — _g, _f у значка), и без поправки обводка толстела вместе с ним
+  outline(list, w, h) {
+    const gl = this.gl, P = this.OL, cv = this.cv;
+    if (!P) return;
+    if (!this.olTex || this.olTW < cv.width || this.olTH < cv.height) {
+      if (this.olTex) gl.deleteTexture(this.olTex);
+      this.olTex = gl.createTexture(); this.olTW = cv.width; this.olTH = cv.height;
+      gl.bindTexture(gl.TEXTURE_2D, this.olTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, cv.width, cv.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+    gl.disable(gl.SCISSOR_TEST);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.olTex);
+    gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, Math.min(w, cv.width), Math.min(h, cv.height));
+    if (!this.olQuad) { this.olQuad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.olQuad); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW); }
+    gl.useProgram(P.p);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.olQuad); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    for (let i = 1; i <= 4; i++) gl.disableVertexAttribArray(i);
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.depthMask(false);
+    gl.uniform1i(P.u.uT, 0); gl.uniform2f(P.u.uTex, 1 / this.olTW, 1 / this.olTH); gl.uniform3fv(P.u.uOC, this.OUTLINE);
+    for (const v of list) {
+      const ic = v.ui ? null : v.ic || (v.ic = v.c.closest('.maplibregl-marker')), up = ic ? Math.max(0.5, (ic._g || 1) * (ic._f || 1)) : 1;
+      const W = v.pw, H = v.ph, d = Math.max(0.75, this.OUTLINE_PX * W / v.w / up);
+      gl.viewport(v.slot[0], v.slot[1], W, H);
+      gl.uniform4f(P.u.uCell, v.slot[0], v.slot[1], W, H); gl.uniform1f(P.u.uD, d);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    gl.depthMask(true);
   },
   // кадр модели — в клетку (x, y) общего холста
   render(v, now, x, y) {
