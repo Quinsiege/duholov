@@ -4833,7 +4833,7 @@
     ok(MapView.WORLD, 'мир включён');
     eq(JSON.stringify(MapView.scaleW(['interpolate', ['exponential', 1.6], ['zoom'], 14, 2, 18, 10], 0.5)), JSON.stringify(['interpolate', ['exponential', 1.6], ['zoom'], 14, 1, 18, 5]), 'ширина по масштабу — каждое значение:');
     eq(MapView.scaleW(4, 0.5), 2, 'число:');
-    ok(MapView.WORLD_DROP.test('buildings') && MapView.WORLD_DROP.test('roads_minor_casing') && !MapView.WORLD_DROP.test('roads_minor') && !MapView.WORLD_DROP.test('water'), 'дома и обводки — прочь, тропинки и вода — остаются');
+    ok(MapView.WORLD_DROP.test('buildings') && MapView.WORLD_DROP.test('roads_minor_casing') && !MapView.WORLD_DROP.test('roads_minor') && !MapView.WORLD_DROP.test('water') && MapView.WORLD_DROP.test('roads_labels_minor') && !MapView.WORLD_DROP.test('places_subplace'), 'дома, обводки и подписи улиц — прочь, тропинки, вода и названия районов — остаются');
     // модели флоры: у каждого вида — треугольники, нормали и цвета той же длины
     const K = Flora.build();
     for (const k of ['grass', 'flower_r', 'flower_y', 'flower_b', 'rock', 'bush', 'pine', 'tree']) {
@@ -4845,9 +4845,10 @@
     const n = { g: {}, o: {} };
     for (let i = 0; i < 4000; i++) { const h = U.h('t', i), h2 = U.h('t2', i); for (const [z, key] of [[true, 'g'], [false, 'o']]) { const k = Flora.pick(h, h2, z); if (k) n[key][k] = (n[key][k] || 0) + 1; } }
     ok(n.g.tree && n.g.pine && n.g.bush && n.g.grass, 'в парке — деревья, кусты, трава');
-    ok(!n.o.tree && !n.o.pine && n.o.rock && n.o.grass, 'на открытой земле — без деревьев, с камнями и травой');
+    const trees = o => (o.tree || 0) + (o.pine || 0);
+    ok(trees(n.o) * 2 < trees(n.g) && n.o.rock && n.o.grass && n.o.bush, 'на открытой земле — деревья реже, камни, кусты и трава: ' + trees(n.o) + ' против ' + trees(n.g));
     const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
-    ok(sum(n.g) > 2.5 * sum(n.o), 'в зелени гуще: ' + sum(n.g) + ' против ' + sum(n.o));
+    ok(sum(n.g) > 1.3 * sum(n.o), 'в зелени гуще: ' + sum(n.g) + ' против ' + sum(n.o));
     ok(Flora.inPoly(0.5, 0.5, [[[0, 0], [1, 0], [1, 1], [0, 1]]]) && !Flora.inPoly(1.5, 0.5, [[[0, 0], [1, 0], [1, 1], [0, 1]]]), 'точка в многоугольнике');
   });
   test('5.1.41: камера — наклон за масштабом: исходный (ближе нельзя) 75°, отдалили до предела 40°; палец только поворачивает', () => {

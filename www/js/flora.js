@@ -88,9 +88,12 @@ const Flora = {
       if (h < 0.5) return 'grass';
       return null;
     }
-    if (h < 0.012) return 'rock';
-    if (h < 0.035) return h2 < 0.5 ? 'flower_y' : 'flower_r';
-    if (h < 0.14) return 'grass';
+    // 5.1.41: открытая земля — тоже живая (в центре города парков мало): кое-где деревья и кусты, камни, цветы, трава
+    if (h < 0.012) return h2 < 0.5 ? 'tree' : 'pine';
+    if (h < 0.04) return 'bush';
+    if (h < 0.06) return 'rock';
+    if (h < 0.13) return h2 < 0.34 ? 'flower_y' : h2 < 0.67 ? 'flower_r' : 'flower_b';
+    if (h < 0.34) return 'grass';
     return null;
   },
   inPoly(x, y, rings) { // чётность пересечений по всем кольцам (дыры — тоже кольца)
@@ -238,7 +241,7 @@ const Flora = {
         gl.useProgram(self.prog.p);
         gl.uniformMatrix4fv(self.prog.mvp, false, M);
         gl.uniform1f(self.prog.unit, self.unit);
-        gl.uniform3fv(self.prog.tint, MapView.night ? [0.42, 0.5, 0.7] : [1, 1, 1]);
+        gl.uniform3fv(self.prog.tint, MapView.night ? [0.55, 0.7, 0.82] : [1, 1, 1]);
         // глубина — только между растениями: глубина рельефа MapLibre с этим слоем несовместима (с ней пропадали даже верхушки деревьев);
         // холм не прячет растение за собой — флора лишь в R вокруг Ловчего, там это почти не бывает
         gl.depthMask(true); gl.clear(gl.DEPTH_BUFFER_BIT);

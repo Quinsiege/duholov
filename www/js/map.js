@@ -238,15 +238,16 @@ const MapView = {
      к ним — земля (фон под ещё не нарисованными плитками), небо и горизонт (sky) */
   PALETTE: {
     day: { path: '#ecdcae', shade: '#4f8a45', lit: '#f6ffe9', sky: '#86cff2', horizon: '#e4f6fc', earth: '#b2e39d', roof: '#c4ebb4', wall: '#8fbf7e', wall2: '#a9d697', light: 0.7, c: { bg: '#b2e39d', earth: '#b2e39d',
-      park: '#93d77e', park2: '#83cf6f', wood: '#86cf73', wood2: '#77c665', scrub: '#a3dc8e', water: '#5fc4f0', sand: '#efe6b0', ped: '#c9ebb9',
-      urban: '#afe19a', runway: '#d6efcb', road: '#fbf7df', casing: '#97c785', rail: '#94b98a', bound: '#86b47b', bld: '#c4ebb4',
+      park: '#93d77e', park2: '#83cf6f', wood: '#86cf73', wood2: '#77c665', scrub: '#a3dc8e', water: '#5fc4f0', sand: '#efe6b0', ped: '#b2e39d',
+      urban: '#b2e39d', runway: '#d6efcb', road: '#fbf7df', casing: '#97c785', rail: '#94b98a', bound: '#86b47b', bld: '#c4ebb4',
       lbl: '#4b6a47', halo: '#e8f7e0', city: '#2a4628', sub: '#6c8a66', state: '#7f9c79', ocean: '#2d7cb6',
       lc: ['#a8df93', '#d6e5ad', '#afe19a', '#b7e49e', '#ffffff', '#a2db8d', '#86cf73'] } },
-    night: { path: '#58779a', shade: '#0b1d2e', lit: '#3b5f80', sky: '#0a1830', horizon: '#26496b', earth: '#1d3a56', roof: '#26445f', wall: '#16283b', wall2: '#203a52', light: 0.55, c: { bg: '#1b3651', earth: '#1d3a56',
-      park: '#1d4a4f', park2: '#1a4549', wood: '#1b464a', wood2: '#173f43', scrub: '#1f4352', water: '#0d2640', sand: '#2c3f58', ped: '#23425e',
-      urban: '#1e3c59', runway: '#294765', road: '#6b8db6', casing: '#2a4a6b', rail: '#3c5a7b', bound: '#4a6a8d', bld: '#24435f',
-      lbl: '#a8c1df', halo: '#13283e', city: '#e2edf9', sub: '#92aac7', state: '#7c94b2', ocean: '#7ea5d5',
-      lc: ['#1f4152', '#283e55', '#1e3c59', '#21445a', '#3a5878', '#1f4352', '#1b464a'] } },
+    // 5.1.41: ночь мира — лунная, сине-зелёная, светлее прежней; тропинки — мягко, почти в тон земли
+    night: { path: '#4d7488', shade: '#132a33', lit: '#5a8a96', sky: '#0d1d36', horizon: '#2f5672', earth: '#2a5260', roof: '#2f5866', wall: '#1b3540', wall2: '#244653', light: 0.55, c: { bg: '#2a5260', earth: '#2a5260',
+      park: '#2c615a', park2: '#2a5b54', wood: '#285c50', wood2: '#24554a', scrub: '#2e5c5c', water: '#12324f', sand: '#3a5a62', ped: '#2a5260',
+      urban: '#2a5260', runway: '#2e5866', road: '#4d7488', casing: '#2a5260', rail: '#3c6272', bound: '#4a7080', bld: '#2f5866',
+      lbl: '#b6d3dc', halo: '#173540', city: '#e8f4f6', sub: '#9fbfc8', state: '#86a8b2', ocean: '#86b4d4',
+      lc: ['#2c5a5c', '#365a60', '#2a5260', '#2e5c5a', '#5a8090', '#2e5c5c', '#285c50'] } },
   },
   pal(night) { return night ? this.PALETTE.night : this.PALETTE.day; },
   // цвета палитры → полный набор цветов стиля Protomaps (те же ключи у его light/dark; улицы, мосты и тоннели — цвета road)
@@ -282,7 +283,8 @@ const MapView = {
   DEM: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
   // тестовый сайт — плитки высот из кэша своего сервера (служба duholov-dem; на боевой перенесём позже), остальные — из Terrarium напрямую
   demUrl() { return location.hostname === 'test.duholov.ru' ? this.base() + 'dem/{z}/{x}/{y}.png' : this.DEM; },
-  WORLD_DROP: /_casing|^roads_tunnels|^roads_rail$|^roads_runway$|^roads_taxiway$|^landuse_runway$|^boundaries|^buildings$/,
+  // 5.1.41: и мелкие проезды, пешеходные дорожки, подписи улиц, адреса и речек — мир, а не схема города (названия районов, озёр — остаются)
+  WORLD_DROP: /_casing|^roads_tunnels|^roads_rail$|^roads_runway$|^roads_taxiway$|^landuse_runway$|^boundaries|^buildings$|^roads_minor_service$|^roads_other$|^roads_bridges_other$|^roads_pier$|^roads_labels|^roads_shields$|^roads_oneway$|^address_label$|^water_waterway_label$/,
   // ширина линии × k: у выражения по масштабу (interpolate, step) — каждое значение, иначе — умножение
   scaleW(e, k) {
     if (typeof e === 'number') return e * k;
@@ -302,7 +304,7 @@ const MapView = {
     if (this.WORLD) {
       all = all.filter(l => !this.WORLD_DROP.test(l.id));
       for (const l of all) if (l.type === 'line' && l['source-layer'] === 'roads' && l.paint && l.paint['line-width'] != null) {
-        l.paint = Object.assign({}, l.paint, { 'line-width': this.scaleW(l.paint['line-width'], this.WORLD_PATH), 'line-color': P.path || P.c.road });
+        l.paint = Object.assign({}, l.paint, { 'line-width': this.scaleW(l.paint['line-width'], this.WORLD_PATH), 'line-color': P.path || P.c.road, 'line-opacity': 0.7 });
       }
       const k = all.findIndex(l => l.id === 'water') + 1; // светотень — по земле и воде, под тропинками
       all.splice(k, 0, { id: 'relief', type: 'hillshade', source: 'demh', paint: { 'hillshade-exaggeration': 0.45,
