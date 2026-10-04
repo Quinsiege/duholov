@@ -9,7 +9,7 @@
    В «Экономии батареи» и «Меньше движения» модели неподвижны. Нет WebGL или файл не загрузился — остаётся
    прежний рисунок (SVG). */
 const M3D = {
-  VER: 4,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками); 2 — 5.1.29: оберег Ловчего на груди, облики; 3 — 5.1.40: Ловчий со скелетом и текстурой; 4 — 5.1.41: Источник-колодец со скелетом, облики пересобраны
+  VER: 5,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками); 2 — 5.1.29: оберег Ловчего на груди, облики; 3 — 5.1.40: Ловчий со скелетом и текстурой; 4 — 5.1.41: Источник-колодец со скелетом, облики пересобраны; 5 — исчерпанный Источник (клип «пересох», кость dry)
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
@@ -23,6 +23,8 @@ const M3D = {
   SKINS: ['kupala', 'leshiy', 'moroz', 'volhv', 'bogatyr', 'voron', 'navstrazh', 'zharpero', 'knyaz'],
   // 5.1.41: облики-модели со скелетом (модели владельца из генератора): парят / ходят, летят / идут, мчатся / бегут по походке, как Ловчий
   LOOKS: ['spirit_blue', 'ember_imp', 'emerald_wayfarer', 'clockwork_genie', 'wolf'],
+  // 5.1.41: исчерпанный Источник (у значка data-hide=jet): клип walk — «пересох» (осколок падает в чашу), вода — сухой камень
+  DRY: { bones: ['water', 'dry'], c: [0.62 ** 2.2, 0.57 ** 2.2, 0.5 ** 2.2] }, // dry — неподвижная метка воды (spring_anim.py)
   isPlace(v) { return !v.ui && !v.player && /^(spring|shrine|rift)/.test(v.kind); },
   get KINDS() { return ['spring', 'catcher', ...this.LOOKS, ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
@@ -107,9 +109,12 @@ const M3D = {
   get SVS() {
     return this.SKIN + `
     attribute vec4 aNrm; attribute vec2 aUV; uniform mat4 uM, uVP; uniform mat3 uN; varying vec3 vN; varying vec2 vUV; varying vec3 vC;
+    uniform vec2 uDJ; varying float vD; // 5.1.41: кости, чьи вершины «пересыхают» (вода исчерпанного Источника), −1 — нет; vD — доля их веса
+    float dw(float j, float w) { return abs(j - uDJ.x) < 0.5 || abs(j - uDJ.y) < 0.5 ? w : 0.0; }
     void main() {
       vec3 p = sk(vec4(uQ0 + (aPos.xyz + 32768.0) * uQs, 1.0));
       vN = uN * sk(vec4(aNrm.xyz, 0.0)); vUV = aUV; vC = vec3(1.0);
+      vD = dw(aJ.x, aW.x) + dw(aJ.y, aW.y) + dw(aJ.z, aW.z) + dw(aJ.w, aW.w);
       gl_Position = uVP * uM * vec4(p, 1.0);
     }`;
   },
@@ -122,8 +127,8 @@ const M3D = {
     }`;
   },
   get SFS() {
-    return this.FS.replace('varying vec3 vN; varying vec3 vC;', 'varying vec3 vN; varying vec3 vC; varying vec2 vUV; uniform sampler2D uTex;')
-      .replace('vec3 base = uBase * vC;', 'vec3 base = uBase * pow(texture2D(uTex, vUV).rgb, vec3(2.2));');
+    return this.FS.replace('varying vec3 vN; varying vec3 vC;', 'varying vec3 vN; varying vec3 vC; varying vec2 vUV; uniform sampler2D uTex; varying float vD; uniform vec3 uDC;')
+      .replace('vec3 base = uBase * vC;', 'vec3 base = uBase * mix(pow(texture2D(uTex, vUV).rgb, vec3(2.2)), uDC, clamp(vD, 0.0, 1.0));');
   },
   programs() {
     const gl = this.gl;
@@ -298,6 +303,7 @@ const M3D = {
       hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me', e: this.ELEV, az: 0,
       ui: !!c.dataset.ui, fitH: +c.dataset.fit || 0, fitW: +c.dataset.fitw || 0 }; // 5.1.41: ui — модель в окне (stage): своя камера и поворот, не с картой
     if (v.ui) { v.e = +c.dataset.e || 8; v.yaw = +c.dataset.yaw || 0; }
+    if (v.hide && v.hide.has('jet')) { v.dry = true; v.gait = 1; } // исчерпанный Источник — клип «пересох»
     if (!v.ctx) return;
     c._m3d = v;
     this.views.add(v);
@@ -686,6 +692,9 @@ const M3D = {
     gl.uniform3fv(u.uC0, L[0].c); gl.uniform3fv(u.uC1, L[1].c); gl.uniform3fv(u.uC2, L[2].c);
     gl.uniform3fv(u.uAmb, this.amb); gl.uniform3f(u.uV, 0, -Math.cos(e), Math.sin(e));
     gl.uniform3fv(u.uBase, mt.c); gl.uniform3fv(u.uEmit, mt.e); gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uRough, mt.ro); gl.uniform1f(u.uMetal, mt.mt);
+    // 5.1.41: исчерпанный Источник — вода пересохла: её вершины (кость DRY.bone) — цвета сухого камня
+    const nm = v.dry && h0.skin.names, dj = b => (nm ? nm.indexOf(b) : -1);
+    gl.uniform2f(u.uDJ, dj(this.DRY.bones[0]), dj(this.DRY.bones[1])); gl.uniform3fv(u.uDC, this.DRY.c);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, m.tex); gl.uniform1i(u.uTex, 0);
     for (const p of P0) {
       const o = p.v[0];

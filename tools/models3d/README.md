@@ -73,10 +73,11 @@ node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/emerald_wayfarer_anim.g
 Модель владельца из генератора (`~/Blender/duholov-3d/src/spring_well.glb`, 55 621 треугольник): каменная чаша на резном
 постаменте, бирюзовая вода, над ней парит осколок Алатыря. Скелет генератора не годится — `spring_anim.py` ставит свой из трёх костей:
 `root` (стоит), `crystal` (куски сетки выше чаши — парит, вращается, покачивается), `water` (бирюзовая внутренность чаши по
-текстуре — середина «дышит», у бортика вес спадает до нуля). Клип один — idle, он же walk и run.
+текстуре — середина «дышит», у бортика вес спадает до нуля), `dry` — неподвижная метка воды. Клипы: idle и dry (в игре — walk/run):
+исчерпанный Источник переходит на «пересох» — осколок падает в чашу, вода — цвета сухого камня (шейдер по костям water и dry, `M3D.DRY`).
 ```
 node tools/models3d/bl.mjs tools/models3d/spring_anim.py
-node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/spring_anim.glb spring 1024 --clips=idle:idle,walk:idle,run:idle
+node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/spring_anim.glb spring 1024 --clips=idle:idle,walk:dry,run:dry
 ```
 На карте — ростом с Ловчего до края чаши (`M3D.PLACE_KS`, `PLACE_H`), поворачивается вместе с картой. `export_all.py` его не трогает.
 

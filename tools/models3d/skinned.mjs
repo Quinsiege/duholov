@@ -279,7 +279,7 @@ const head = {
   mats: [{ n: 'skin_tex', c: [1, 1, 1], e: [0, 0, 0], a: 1, ro: 0.75, mt: 0, ds: mt.doubleSided ? 1 : 0, tex: 1 }],
   groups: [{ t: 'static' }],
   prims,
-  skin: { nb: NB, clips: cl, tex: { off: offs.tex, len: TEXB.length, type: 'image/webp' }, uv: offs.uv, jw: offs.jw },
+  skin: { nb: NB, names: keep.map(k => J.nodes[JOINTS[k]].name || ''), clips: cl, tex: { off: offs.tex, len: TEXB.length, type: 'image/webp' }, uv: offs.uv, jw: offs.jw },
   buf: { pos: offs.pos, nrm: offs.nrm, col: offs.uv, idx: offs.idx, len: offs.idx + idx.length * 2 },
 };
 let js = Buffer.from(JSON.stringify(head));

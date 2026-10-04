@@ -1,12 +1,14 @@
 # Источник (5.1.41) — модель владельца из генератора («колодец»: каменная чаша на резном постаменте, в чаше — бирюзовая вода,
-# над ней парит осколок Алатыря). Скелет генератора (15 костей у постамента) для анимации не годится — свой, из трёх костей:
+# над ней парит осколок Алатыря). Скелет генератора (15 костей у постамента) для анимации не годится — свой, из четырёх костей:
 #   root    — всё, что стоит (постамент, чаша);
 #   crystal — осколок Алатыря (куски сетки выше чаши): парит вверх-вниз, медленно вращается и покачивается;
 #   water   — вода (бирюзовая внутренность чаши по текстуре): середина «дышит» вверх-вниз и чуть кружится, у бортика — неподвижна
+#   dry     — неподвижная метка воды: у её вершин вес, что не у water, — ей (шейдер перекрашивает всю воду у исчерпанного);
 #             (вес к краю спадает — сетка не рвётся).
-# Клип один — idle (4 с, цикл без шва); в игре он же и для walk/run. Сетка и текстура — как есть (лишний шар генератора — прочь).
+# Клипы: idle (4 с, цикл без шва) и dry — исчерпанный Источник: осколок лежит на боку на дне чаши (в игре — клип walk/run:
+# исчерпанный переходит на него — осколок падает; вода в нём пересыхает — перекраска по кости water в шейдере, M3D.DRY). Сетка и текстура — как есть (лишний шар генератора — прочь).
 # Запуск: node bl.mjs spring_anim.py (или в фоне: blender -b --factory-startup --python spring_anim.py), затем
-#   node skinned.mjs ~/Blender/duholov-3d/glb/spring_anim.glb spring 1024 --clips=idle:idle,walk:idle,run:idle
+#   node skinned.mjs ~/Blender/duholov-3d/glb/spring_anim.glb spring 1024 --clips=idle:idle,walk:dry,run:dry
 import bpy, bmesh, math, os
 from mathutils import Quaternion, Vector
 
@@ -118,8 +120,10 @@ with ctx(active_object=arm, object=arm, selected_objects=[arm], selected_editabl
     root = eb.new('root'); root.head = (0, 0, 0); root.tail = (0, 0, 0.3)
     b = eb.new('crystal'); b.head = cc; b.tail = cc + Vector((0, 0, 0.12)); b.parent = root
     b = eb.new('water'); b.head = (0, 0, wz); b.tail = (0, 0, wz + 0.1); b.parent = root
+    # dry — неподвижная метка воды (как root): у вершин воды вес не «стоящих» — ей; так шейдер знает всю воду целиком (пересыхает)
+    b = eb.new('dry'); b.head = (0, 0, wz); b.tail = (0, 0, wz + 0.05); b.parent = root
     bpy.ops.object.mode_set(mode='OBJECT')
-g_root, g_cr, g_wa = (me.vertex_groups.new(name=n) for n in ('root', 'crystal', 'water'))
+g_root, g_cr, g_wa, g_dry = (me.vertex_groups.new(name=n) for n in ('root', 'crystal', 'water', 'dry'))
 for v in me.data.vertices:
     i = v.index
     if i in crystal:
@@ -132,7 +136,7 @@ for v in me.data.vertices:
     if w > 0:
         g_wa.add([i], w, 'REPLACE')
     if w < 1:
-        g_root.add([i], 1 - w, 'REPLACE')
+        (g_dry if i in water else g_root).add([i], 1 - w, 'REPLACE')
 me.parent = arm
 mod = me.modifiers.new('rig', 'ARMATURE')
 mod.object = arm
@@ -168,18 +172,31 @@ def pose(t):
     rot('water', (0, 0, 1), 0.12 * math.sin(tau * t / DUR))
 
 
-a = bpy.data.actions.new(f'{NAME}_idle')
-arm.animation_data.action = a
-for f in range(round(DUR * FPS) + 1):  # последний кадр = первому
-    pose(f / FPS)
+def dry(t):
+    """исчерпан: осколок лежит на боку на дне чаши (чуть наискось), вода — ниже на пару сантиметров"""
     for b in PB:
-        b.keyframe_insert('rotation_quaternion', frame=f)
-        b.keyframe_insert('location', frame=f)
-a.use_fake_user = True
-arm.animation_data.action = None
-tr = arm.animation_data.nla_tracks.new()
-tr.name = 'idle'
-tr.strips.new('idle', 0, a)
+        b.rotation_mode = 'QUATERNION'
+        b.rotation_quaternion = (1, 0, 0, 0)
+        b.location = (0, 0, 0)
+    lift('crystal', (wz + 0.07) - cc.z)
+    rot('crystal', (0, 0, 1), 0.6)
+    rot('crystal', (1, 0, 0), 1.35)
+    lift('water', -0.02)
+
+
+for kind, fn, dur in (('idle', pose, DUR), ('dry', dry, 1.0)):
+    a = bpy.data.actions.new(f'{NAME}_{kind}')
+    arm.animation_data.action = a
+    for f in range(round(dur * FPS) + 1):  # последний кадр = первому
+        fn(f / FPS)
+        for b in PB:
+            b.keyframe_insert('rotation_quaternion', frame=f)
+            b.keyframe_insert('location', frame=f)
+    a.use_fake_user = True
+    arm.animation_data.action = None
+    tr = arm.animation_data.nla_tracks.new()
+    tr.name = kind
+    tr.strips.new(kind, 0, a)
 for b in PB:
     b.matrix_basis.identity()
 with ctx():
