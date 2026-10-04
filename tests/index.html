@@ -4780,6 +4780,7 @@
       ok(at({ type: 'spring', ready: false, invaded: false }, 'spring', 23, 60).includes('data-hide="jet"'), 'исчерпанный Источник — без струи');
       ok(!at({ type: 'spring', ready: true, invaded: false }, 'spring', 23, 60).includes('data-hide'), 'полный — со струёй');
       ok(at({ type: 'spring', ready: true, invaded: true }, 'spring', 23, 60).includes('data-hide="inv"'), '5.1.41: захваченный — с меткой inv (вода фиолетовая)');
+      ok(at({ type: 'rift', tier: 1, myth: 'slavic', boss: 'ugolek', done: true }, 'rift_slavic', 42, 86).includes('data-hide="hollow"'), '5.1.41: пройденный Разлом — метка hollow (портала нет)');
       at({ type: 'shrine', tier: 2, myth: 'japan' }, 'shrine_japan', 27, 72);
       at({ type: 'shrine', tier: 1 }, 'shrine_slavic', 27, 72);
       at({ type: 'rift', tier: 3, myth: 'aztec', boss: Object.keys(SP)[0] }, 'rift_aztec', 42, 86);

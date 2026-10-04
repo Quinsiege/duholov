@@ -61,6 +61,7 @@ bm.verts.ensure_lookup_table()
 P = [mw @ v.co for v in bm.verts]
 isl = [-1] * len(bm.verts)
 portal = set()
+parts = []
 k = 0
 for v0 in bm.verts:
     if isl[v0.index] >= 0:
@@ -79,11 +80,23 @@ for v0 in bm.verts:
     hi = [max(P[i][a] for i in part) for a in range(3)]
     if hi[0] - lo[0] > 0.45 and hi[2] - lo[2] > 0.45 and hi[1] - lo[1] < 0.2:
         portal.update(part)
+    else:
+        parts.append(part)
     k += 1
 bm.free()
+# и мелкие куски на диске портала (завитки вихря, блики): целиком в его круге и в его тонком слое по глубине — тоже портал
+# (крутятся вместе с ним, у пройденного — исчезают вместе с ним)
+xs, zs, ys = [P[i].x for i in portal], [P[i].z for i in portal], [P[i].y for i in portal]
+c0, R = Vector(((min(xs) + max(xs)) / 2, 0, (min(zs) + max(zs)) / 2)), min(max(xs) - min(xs), max(zs) - min(zs)) / 2
+y0, y1 = min(ys) - 0.03, max(ys) + 0.03
+n_small = 0
+for part in parts:
+    if all(math.hypot(P[i].x - c0.x, P[i].z - c0.z) < R * 0.98 and y0 < P[i].y < y1 for i in part):
+        portal.update(part)
+        n_small += 1
 xs, zs = [P[i].x for i in portal], [P[i].z for i in portal]
 pc = Vector(((min(xs) + max(xs)) / 2, sum(P[i].y for i in portal) / len(portal), (min(zs) + max(zs)) / 2))
-print(f'{NAME}: портал {len(portal)} вершин, центр {tuple(round(c, 2) for c in pc)}, ширина {max(xs) - min(xs):.2f} м')
+print(f'{NAME}: портал {len(portal)} вершин (мелких кусков на нём {n_small}), центр {tuple(round(c, 2) for c in pc)}, ширина {max(xs) - min(xs):.2f} м')
 
 ad = bpy.data.armatures.new(NAME + '_rig')
 arm = bpy.data.objects.new(NAME + '_rig', ad)
