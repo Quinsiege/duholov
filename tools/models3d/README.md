@@ -79,7 +79,7 @@ node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/emerald_wayfarer_anim.g
 node tools/models3d/bl.mjs tools/models3d/spring_anim.py
 node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/spring_anim.glb spring 1024 --clips=idle:idle,walk:dry,run:dry
 ```
-На карте — ростом с Ловчего до края чаши (`M3D.PLACE_KS`, `PLACE_H`), поворачивается вместе с картой. `export_all.py` его не трогает.
+На карте — как все места, 0,7 роста Ловчего (`M3D.PLACE_K`), поворачивается вместе с картой. `export_all.py` его не трогает.
 
 ### Разлом — модель владельца со скелетом (5.1.41, пока славянский)
 
