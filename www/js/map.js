@@ -640,6 +640,7 @@ const MapView = {
   m3d(e, ax, ay, hide) { return typeof M3D !== 'undefined' ? M3D.html(M3D.kindOf(e), ax, ay, hide) : ''; },
   // 5.1.30: подпись места — что это (Источник, святилище своей мифологии, Разлом) и где (имя точки карты); под моделью (style.css),
   // у дальних мест — одно «что»
+  LABELS: false, // 5.1.41 (выбор владельца): подписей у мест на карте нет (слой подписей не считается)
   label(e) {
     const P = MYTH_PLACES[e.myth] || MYTH_PLACES.slavic;
     const what = e.type === 'spring' ? ru`Источник` : e.type === 'shrine' ? (e.god ? P.shrineOf(e.god) : P.shrine) : e.camp ? ru`Разлом кампании` : P.rift;
@@ -656,7 +657,7 @@ const MapView = {
   // подписи — под моделью своего места (точка опоры значка, с крышей), в размер значка (дальше — мельче); ближние — поверх дальних.
   // Зовётся на каждом сдвиге карты (reAim) и когда модель встала (lblSoon)
   placeLabels() {
-    if (!this.map || !this._lblBox) return;
+    if (!this.map || !this._lblBox || !this.LABELS) return;
     const W = this.vw, H = this.vh;
     const hide = lb => { if (!lb._hid) { lb.style.display = 'none'; lb._hid = true; } };
     for (const m of this.markers.values()) {
@@ -694,10 +695,10 @@ const MapView = {
     }
     if (e.type === 'shrine') {
       return this.ico(54, 76, 27, 72,
-        `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${this.m3d(e, 27, 72)}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}<div class="mk-tier">${'★'.repeat(e.tier)}</div></div>`);
+        `<div class="mk-shrine ${e.won ? 'won' : ''} ${e.clan ? 'held' : ''} ${S.d.level < DUEL_LEVEL ? 'locked' : ''}"${e.clan ? ` style="--cc:${CLANS[e.clan].color}"` : ''}>${e.clan ? '<div class="mk-flag"></div>' : ''}${this.m3d(e, 27, 72)}${Art.asImg(Art.shrineIcon(e.tier, e.won, e.myth), `shrine:${e.myth || 'slavic'}:${e.tier}:${!!e.won}`)}</div>`);
     }
     return this.ico(84, 96, 42, 86,
-      `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${this.m3d(e, 42, 86, e.done ? 'hollow' : '')}${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div><div class="mk-tier">${'★'.repeat(e.tier)}</div></div>`);
+      `<div class="mk-rift t${e.tier} ${e.done ? 'done' : ''} ${S.d.level < RAID_LEVEL && !e.camp ? 'locked' : ''} ${e.camp ? 'camp' : ''}">${this.m3d(e, 42, 86, e.done ? 'hollow' : '')}${Art.asImg(Art.riftIcon(e.tier, e.myth), `rift:${e.myth || 'slavic'}:${e.tier}`)}<div class="mk-boss">${Art.img(e.boss)}</div></div>`);
   },
   refresh(rebuild) {
     if (!this.map) return;
@@ -737,7 +738,7 @@ const MapView = {
       const el = m.getElement();
       el.classList.toggle('far', e.d > (e.type === 'rift' || e.type === 'shrine' ? 100 : W.INTERACT));
       el.classList.toggle('tut-off', typeof Tut !== 'undefined' && !Tut.entOk(e)); // 5.2: фокус обучения — чужое приглушено
-      if (e.type !== 'spirit') {
+      if (e.type !== 'spirit' && this.LABELS) {
         this.lblFor(m, e);
         m._lbl.classList.toggle('far', el.classList.contains('far'));
         m._lbl.classList.toggle('tut-off', el.classList.contains('tut-off'));

@@ -4886,10 +4886,10 @@
     ok(!MapView.label({ type: 'spring', name: '<img src=x onerror=alert(1)>' }).includes('<img'), 'имя точки — без разметки');
   });
   test('5.1.30: подписи мест — своим слоем поверх карты и моделей, под низом значка; уходят вместе со значком', () => {
-    const keep = { markers: MapView.markers, _lblBox: MapView._lblBox, map: MapView.map, vw: MapView.vw, vh: MapView.vh };
+    const keep = { markers: MapView.markers, _lblBox: MapView._lblBox, map: MapView.map, vw: MapView.vw, vh: MapView.vh, LABELS: MapView.LABELS };
     const box = document.createElement('div');
     try {
-      MapView.map = {}; MapView.vw = 400; MapView.vh = 600;
+      MapView.map = {}; MapView.vw = 400; MapView.vh = 600; eq(keep.LABELS, false, '5.1.41: в игре подписей у мест нет:'); MapView.LABELS = true; // слой проверяется включённым
       box.id = 'mapLbl'; document.body.appendChild(box); MapView._lblBox = box;
       const mk = (x, y) => { const ic = document.createElement('div'); ic.appendChild(document.createElement('div')); return { ic, p: { x, y }, f: 1, S: 1, lift: 0, o: { ay: 72, h: 80 } }; };
       const a = mk(150, 200), b = mk(5000, 200);
