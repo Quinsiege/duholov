@@ -317,7 +317,7 @@ Object.assign(UI, {
     const scr = this.screen(U.esc(d.name), `
       <div class="det det2 prof2" style="--c:${cc}">
         <div class="dt-hero">
-          <div class="det-art pf-ava"><div class="prof-ava p3d">${M3D.stage(d.look)}</div></div>
+          <div class="det-art pf-ava art3d"><div class="prof-ava p3d">${M3D.stage(d.look)}</div></div>
           <div class="dt-info">
             <div class="det-hp">${ru`${this.rank(d.level)} Ордена Оберега`}</div>
             <div class="det-power"><small>${ru`УРОВЕНЬ`}</small><b>${d.level}</b></div>

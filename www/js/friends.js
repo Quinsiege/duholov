@@ -197,7 +197,7 @@ const Friends = {
   // звание, «УРОВЕНЬ ··· N», Лига отдельным блоком, метки; ниже главные действия и вкладки «Достижения · Духи · Дружба»
   async card(pid, o = {}) {
     Sfx.init(); Sfx.play('tap');
-    const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava"><div class="prof-ava p3d">${M3D.stage(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
+    const hero = (look, info) => `<div class="dt-hero"><div class="det-art pf-ava art3d"><div class="prof-ava p3d">${M3D.stage(look || undefined)}</div></div><div class="dt-info">${info}</div></div>`;
     const scr = UI.screen(U.esc(o.name || ru`Ловчий`), `<div class="det det2 prof2 pcard" style="--c:#a78bfa">
       ${hero(o.look, `<div class="det-hp">${ru`Загружаю карточку…`}</div>`)}<div class="pcard-load"><div class="pc-skel"></div><div class="pc-skel"></div></div></div>`, 'det-screen pcard-screen');
     M3D.mount(scr); // 5.1.41: облик Ловчего — 3D-моделью (стоит)
