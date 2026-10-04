@@ -5657,9 +5657,9 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 .wd3 .wd-title { display: flex; flex-direction: column; align-items: center; align-self: center; gap: 2px; margin-top: 6px; text-align: center; }
 .wd3 .wd-desc { margin: 0 6px; min-height: 0; text-align: center; }
 /* карточки обликов — крупнее: портрет, имя, цена или «надет» */
-.wd3 .wd-grid:not(.wide) { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.wd3 .wd-grid:not(.wide) { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .wd3 .wd-grid:not(.wide) .wd-card { padding: 14px 8px 10px; gap: 7px; }
-.wd3 .wd-grid:not(.wide) .wd-c-ava { width: 84px; height: 84px; }
+.wd3 .wd-grid:not(.wide) .wd-c-ava { width: 76px; height: 76px; }
 .wd3 .wd-grid:not(.wide) .wd-card b { font-size: 15px; }
 /* 5.1.41 (правки владельца): у Ловчего моделью — без рунного круга и без покачивания (модель и так дышит) */
 .det-art.art3d { animation: none; }

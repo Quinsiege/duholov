@@ -1353,6 +1353,8 @@ I18N.dict = {
 "Плащ Ордена Оберега — с него начинает каждый Ловчий.":"Tılsım Tarikatı'nın pelerini — her Avcı onunla başlar.",
 "Синий дух":"Mavi Ruh",
 "Ловчий сам становится духом: синее пламя вместо плаща, полёт вместо шагов.":"Avcı ruha dönüşür: pelerin yerine mavi alev, adım yerine uçuş.",
+"Огненный бес":"Kor İblisi",
+"Бесёнок из пекла: вместо волос — живое пламя, когти тлеют углями.":"Cehennemden bir iblis yavrusu: saç yerine canlı alev, kor gibi için için yanan pençeler.",
 "Купальский":"Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"Yalnızca Kupala gecesi açan eğreltiotu çiçeğinden bir çelenk.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"Yosundan kapüşon ve geyik boynuzları — ormanlar seni kendilerinden sayar.",

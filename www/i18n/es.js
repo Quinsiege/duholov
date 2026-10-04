@@ -1353,6 +1353,8 @@ I18N.dict = {
 "Плащ Ордена Оберега — с него начинает каждый Ловчий.":"La capa de la Orden del Talismán: con ella empieza todo Cazador.",
 "Синий дух":"Espíritu Azul",
 "Ловчий сам становится духом: синее пламя вместо плаща, полёт вместо шагов.":"El Cazador se convierte en espíritu: llama azul en lugar de capa, vuelo en lugar de pasos.",
+"Огненный бес":"Diablillo de Brasa",
+"Бесёнок из пекла: вместо волос — живое пламя, когти тлеют углями.":"Un diablillo del averno: en vez de pelo, una llama viva; las garras arden como brasas.",
 "Купальский":"De Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"Una corona con la flor del helecho, que solo florece en la noche de Kupala.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"Capucha de musgo y cuernos de ciervo: los bosques te reconocen como uno de los suyos.",

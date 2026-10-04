@@ -2595,6 +2595,7 @@ const LOOK = {
   skin: [
     { id: 'hood', name: ru`Ловчий`, rar: 0, desc: ru`Плащ Ордена Оберега — с него начинает каждый Ловчий.` },
     { id: 'spirit_blue', name: ru`Синий дух`, rar: 3, shop: 1500, paid: true, m3d: 'spirit_blue', desc: ru`Ловчий сам становится духом: синее пламя вместо плаща, полёт вместо шагов.` },
+    { id: 'ember_imp', name: ru`Огненный бес`, rar: 2, shop: 1200, paid: true, m3d: 'ember_imp', desc: ru`Бесёнок из пекла: вместо волос — живое пламя, когти тлеют углями.` },
     { id: 'kupala', off: true, name: ru`Купальский`, rar: 1, shop: 300, desc: ru`Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.` },
     { id: 'leshiy', off: true, name: ru`Лесной`, rar: 1, shop: 300, desc: ru`Капюшон из мха и оленьи рога — леса признают тебя своим.` },
     { id: 'moroz', off: true, name: ru`Морозный`, rar: 1, shop: 400, desc: ru`Ледяной венец и иней на плаще. Подарок самого Морозко.` },

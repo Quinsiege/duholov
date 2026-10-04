@@ -1353,6 +1353,8 @@ I18N.dict = {
 "Плащ Ордена Оберега — с него начинает каждый Ловчий.":"The cloak of the Order of the Charm — every Catcher starts with it.",
 "Синий дух":"Blue Spirit",
 "Ловчий сам становится духом: синее пламя вместо плаща, полёт вместо шагов.":"The Catcher becomes a spirit: blue flame instead of a cloak, flight instead of steps.",
+"Огненный бес":"Ember Imp",
+"Бесёнок из пекла: вместо волос — живое пламя, когти тлеют углями.":"An imp from the inferno: living flame for hair, claws smouldering like embers.",
 "Купальский":"Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"A wreath with a fern flower that blooms only on Kupala Night.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"A hood of moss and deer antlers — the forests accept you as one of their own.",

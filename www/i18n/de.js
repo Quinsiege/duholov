@@ -1353,6 +1353,8 @@ I18N.dict = {
 "Плащ Ордена Оберега — с него начинает каждый Ловчий.":"Der Umhang des Ordens des Talismans — damit fängt jeder Fänger an.",
 "Синий дух":"Blauer Geist",
 "Ловчий сам становится духом: синее пламя вместо плаща, полёт вместо шагов.":"Der Fänger wird selbst zum Geist: blaue Flamme statt Umhang, Flug statt Schritte.",
+"Огненный бес":"Glutteufel",
+"Бесёнок из пекла: вместо волос — живое пламя, когти тлеют углями.":"Ein Teufelchen aus der Hölle: lebendige Flamme statt Haaren, Krallen, die wie Glut glimmen.",
 "Купальский":"Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"Ein Kranz mit Farnblüte, die nur in der Kupala-Nacht aufblüht.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"Eine Kapuze aus Moos und ein Hirschgeweih — die Wälder erkennen dich als einen der Ihren.",

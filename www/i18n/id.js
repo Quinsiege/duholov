@@ -1353,6 +1353,8 @@ I18N.dict = {
 "Плащ Ордена Оберега — с него начинает каждый Ловчий.":"Jubah Ordo Jimat — setiap Pemburu memulai dengan ini.",
 "Синий дух":"Roh Biru",
 "Ловчий сам становится духом: синее пламя вместо плаща, полёт вместо шагов.":"Pemburu menjadi roh: api biru sebagai ganti jubah, terbang sebagai ganti melangkah.",
+"Огненный бес":"Iblis Bara",
+"Бесёнок из пекла: вместо волос — живое пламя, когти тлеют углями.":"Iblis kecil dari neraka: rambutnya api hidup, cakarnya membara seperti arang.",
 "Купальский":"Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"Mahkota bunga dengan bunga pakis yang hanya mekar di Malam Kupala.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"Tudung dari lumut dan tanduk rusa — hutan mengakuimu sebagai bagian darinya.",

@@ -13,14 +13,14 @@ const M3D = {
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
-  PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40, spirit: 40 }, // CSS-пикселей на метр модели — по виду (значки разного размера)
+  PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40, spirit: 40, ember: 31 }, // ember — бес: с пламенем на голове он выше — мельче, ростом с Ловчего // CSS-пикселей на метр модели — по виду (значки разного размера)
   OUTLINE_PX: 1.25,  // толщина обводки на экране, CSS-пиксели (у модели — 0,03 м)
   OUTLINE: [0x1c / 255, 0x10 / 255, 0x30 / 255], // тёмно-фиолетовая, как у рисунков игры
   // 5.1.29: у каждого облика-скина (LOOK.skin) — свой наряд Ловчего (catcher_<скин>), у обычного — капюшон (catcher)
   SKINS: ['kupala', 'leshiy', 'moroz', 'volhv', 'bogatyr', 'voron', 'navstrazh', 'zharpero', 'knyaz'],
-  // 5.1.41: spirit_* — духи со скелетом (модели владельца из генератора): парят, летят и мчатся по походке (gait), как Ловчий
-  SPIRITS: ['blue'],
-  get KINDS() { return ['spring', 'catcher', ...this.SPIRITS.map(s => 'spirit_' + s), ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
+  // 5.1.41: облики-модели со скелетом (модели владельца из генератора): парят / ходят, летят / идут, мчатся / бегут по походке, как Ловчий
+  LOOKS: ['spirit_blue', 'ember_imp'],
+  get KINDS() { return ['spring', 'catcher', ...this.LOOKS, ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
   LIGHTS: [[[-3, -4, 6], '#fff4e0', 3.2], [[5, -2, 3], '#c7d2fe', 1.1], [[1, 6, 4], '#f0abfc', 2.0]],
   AMBIENT: '#2a2340',
@@ -421,7 +421,7 @@ const M3D = {
     const x = typeof LOOK !== 'undefined' ? LOOK.skin.find(k => k.id === s) : null;
     if (x && x.off) return 'catcher';
     if (x && x.m3d) return x.m3d;
-    return this.SKINS.includes(s) ? 'catcher_' + s : s.startsWith('spirit_') && this.SPIRITS.includes(s.slice(7)) ? s : 'catcher';
+    return this.SKINS.includes(s) ? 'catcher_' + s : this.LOOKS.includes(s) ? s : 'catcher';
   },
   /* 5.1.41: облик Ловчего моделью в окне (профиль, Гардероб, карточка друга): стоит и дышит, вполоборота к игроку, поворачивается
      пальцем; анимация — и под открытым окном (карта в это время стоит). Нет WebGL или модели — прежний рисунок (Art.avatar).
