@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+# Духолов: плитки высот (рельеф мира, 5.1.41) — кэш на диске сервера. Caddy передаёт сюда /dem/{z}/{x}/{y}.png (пока только
+# test.duholov.ru); плитка есть в кэше — отдаётся с диска, нет — один раз скачивается из открытого набора Terrarium (Mapzen, SRTM;
+# хранилище Amazon, из России открывается не у всех игроков) и сохраняется. Плитка ~25 КБ; весь мир до масштаба 13 не качается —
+# только то, где ходят игроки.
+# Служба: /etc/systemd/system/duholov-dem.service (копия — tools/server/duholov-dem.service), слушает 127.0.0.1:8096.
+import os, re, threading, urllib.request
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+
+SRC = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+DIR = os.environ.get('DEM_DIR', '/var/cache/duholov-dem')
+PORT = int(os.environ.get('DEM_PORT', '8096'))
+ZMAX = 15
+PATH = re.compile(r'^/dem/(\d{1,2})/(\d{1,6})/(\d{1,6})\.png$')
+locks, guard = {}, threading.Lock()
+
+
+def lock_for(key):
+    with guard:
+        return locks.setdefault(key, threading.Lock())
+
+
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def send(self, code, body=b'', kind='text/plain'):
+        self.send_response(code)
+        self.send_header('Content-Type', kind)
+        self.send_header('Content-Length', str(len(body)))
+        if code == 200:
+            self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+            self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        if self.command != 'HEAD':
+            self.wfile.write(body)
+
+    def do_HEAD(self):
+        self.do_GET()
+
+    def do_GET(self):
+        m = PATH.match(self.path.split('?')[0])
+        if not m:
+            return self.send(404)
+        z, x, y = (int(g) for g in m.groups())
+        if z > ZMAX or x >= 2 ** z or y >= 2 ** z:
+            return self.send(404)
+        f = os.path.join(DIR, str(z), str(x), f'{y}.png')
+        with lock_for(f):  # одну плитку качает один запрос, остальные ждут его
+            if not os.path.exists(f):
+                try:
+                    req = urllib.request.Request(SRC.format(z=z, x=x, y=y), headers={'User-Agent': 'duholov-dem'})
+                    with urllib.request.urlopen(req, timeout=20) as r:
+                        data = r.read()
+                except Exception as e:
+                    code = getattr(e, 'code', 502)
+                    return self.send(404 if code == 404 else 502)
+                os.makedirs(os.path.dirname(f), exist_ok=True)
+                tmp = f + '.tmp'
+                with open(tmp, 'wb') as o:
+                    o.write(data)
+                os.replace(tmp, f)
+        with open(f, 'rb') as i:
+            self.send(200, i.read(), 'image/png')
+
+
+if __name__ == '__main__':
+    os.makedirs(DIR, exist_ok=True)
+    ThreadingHTTPServer(('127.0.0.1', PORT), H).serve_forever()

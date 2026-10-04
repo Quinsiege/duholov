@@ -272,6 +272,8 @@ const MapView = {
      дорог и границ нет. Места игры стоят на рельефе (маркеры MapLibre — на высоте земли). DEM — адрес плиток высот */
   WORLD: true, RELIEF: 2, WORLD_PATH: 0.55,
   DEM: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+  // тестовый сайт — плитки высот из кэша своего сервера (служба duholov-dem; на боевой перенесём позже), остальные — из Terrarium напрямую
+  demUrl() { return location.hostname === 'test.duholov.ru' ? this.base() + 'dem/{z}/{x}/{y}.png' : this.DEM; },
   WORLD_DROP: /_casing|^roads_tunnels|^roads_rail$|^roads_runway$|^roads_taxiway$|^landuse_runway$|^boundaries|^buildings$/,
   // ширина линии × k: у выражения по масштабу (interpolate, step) — каждое значение, иначе — умножение
   scaleW(e, k) {
@@ -308,7 +310,7 @@ const MapView = {
         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0], 'fill-extrusion-vertical-gradient': true } };
     const sources = { pm: { type: 'vector', url: this._pmUrl, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>' } };
     if (this.WORLD) { // высоты — два источника с теми же плитками: рельеф и светотень (MapLibre советует не делить один)
-      const dem = { type: 'raster-dem', tiles: [this.DEM], tileSize: 256, encoding: 'terrarium', maxzoom: 13, attribution: 'Рельеф: Mapzen, SRTM' };
+      const dem = { type: 'raster-dem', tiles: [this.demUrl()], tileSize: 256, encoding: 'terrarium', maxzoom: 13, attribution: 'Рельеф: Mapzen, SRTM' };
       sources.dem = dem; sources.demh = Object.assign({}, dem);
     }
     return { version: 8, glyphs: this.base() + 'vendor/glyphs/{fontstack}/{range}.pbf', sources,
