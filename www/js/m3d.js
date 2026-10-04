@@ -25,6 +25,8 @@ const M3D = {
   LOOKS: ['spirit_blue', 'ember_imp', 'emerald_wayfarer', 'clockwork_genie', 'wolf'],
   // 5.1.41: исчерпанный Источник (у значка data-hide=jet): клип walk — «пересох» (осколок падает в чашу), вода — сухой камень
   DRY: { bones: ['water', 'dry'], c: [0.62 ** 2.2, 0.57 ** 2.2, 0.5 ** 2.2] }, // dry — неподвижная метка воды (spring_anim.py)
+  // захваченный Навью Источник: вода — фиолетовая (светлые круги на ней остаются: цвет по яркости текстуры)
+  INV: [0.62 ** 2.2, 0.22 ** 2.2, 0.95 ** 2.2],
   isPlace(v) { return !v.ui && !v.player && /^(spring|shrine|rift)/.test(v.kind); },
   get KINDS() { return ['spring', 'catcher', ...this.LOOKS, ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
@@ -127,8 +129,8 @@ const M3D = {
     }`;
   },
   get SFS() {
-    return this.FS.replace('varying vec3 vN; varying vec3 vC;', 'varying vec3 vN; varying vec3 vC; varying vec2 vUV; uniform sampler2D uTex; varying float vD; uniform vec3 uDC;')
-      .replace('vec3 base = uBase * vC;', 'vec3 base = uBase * mix(pow(texture2D(uTex, vUV).rgb, vec3(2.2)), uDC, clamp(vD, 0.0, 1.0));');
+    return this.FS.replace('varying vec3 vN; varying vec3 vC;', 'varying vec3 vN; varying vec3 vC; varying vec2 vUV; uniform sampler2D uTex; varying float vD; uniform vec4 uDC;')
+      .replace('vec3 base = uBase * vC;', 'vec3 tx = pow(texture2D(uTex, vUV).rgb, vec3(2.2)); vec3 dc = mix(uDC.rgb, uDC.rgb * 2.2 * dot(tx, vec3(0.3, 0.55, 0.15)), uDC.w); vec3 base = uBase * mix(tx, dc, clamp(vD, 0.0, 1.0));');
   },
   programs() {
     const gl = this.gl;
@@ -304,6 +306,7 @@ const M3D = {
       ui: !!c.dataset.ui, fitH: +c.dataset.fit || 0, fitW: +c.dataset.fitw || 0 }; // 5.1.41: ui — модель в окне (stage): своя камера и поворот, не с картой
     if (v.ui) { v.e = +c.dataset.e || 8; v.yaw = +c.dataset.yaw || 0; }
     if (v.hide && v.hide.has('jet')) { v.dry = true; v.gait = 1; } // исчерпанный Источник — клип «пересох»
+    if (v.hide && v.hide.has('inv')) v.inv = true; // захваченный Навью — вода фиолетовая
     if (!v.ctx) return;
     c._m3d = v;
     this.views.add(v);
@@ -693,8 +696,9 @@ const M3D = {
     gl.uniform3fv(u.uAmb, this.amb); gl.uniform3f(u.uV, 0, -Math.cos(e), Math.sin(e));
     gl.uniform3fv(u.uBase, mt.c); gl.uniform3fv(u.uEmit, mt.e); gl.uniform1f(u.uAlpha, 1); gl.uniform1f(u.uRough, mt.ro); gl.uniform1f(u.uMetal, mt.mt);
     // 5.1.41: исчерпанный Источник — вода пересохла: её вершины (кость DRY.bone) — цвета сухого камня
-    const nm = v.dry && h0.skin.names, dj = b => (nm ? nm.indexOf(b) : -1);
-    gl.uniform2f(u.uDJ, dj(this.DRY.bones[0]), dj(this.DRY.bones[1])); gl.uniform3fv(u.uDC, this.DRY.c);
+    const nm = (v.dry || v.inv) && h0.skin.names, dj = b => (nm ? nm.indexOf(b) : -1);
+    gl.uniform2f(u.uDJ, dj(this.DRY.bones[0]), dj(this.DRY.bones[1]));
+    gl.uniform4f(u.uDC, ...(v.dry ? this.DRY.c : this.INV), v.dry ? 0 : 1); // w: 0 — цвет вместо текстуры, 1 — оттенок по её яркости
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, m.tex); gl.uniform1i(u.uTex, 0);
     for (const p of P0) {
       const o = p.v[0];

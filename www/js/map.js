@@ -690,7 +690,7 @@ const MapView = {
     }
     if (e.type === 'spring') {
       return this.ico(46, 64, 23, 60,
-        `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${this.m3d(e, 23, 60, !e.ready && !e.invaded ? 'jet' : '')}${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}</div>`);
+        `<div class="mk-spring ${e.invaded ? 'invaded' : e.ready ? '' : 'used'}">${this.m3d(e, 23, 60, e.invaded ? 'inv' : !e.ready ? 'jet' : '')}${Art.asImg(Art.springIcon(!e.ready, e.invaded), `spring:${!e.ready}:${!!e.invaded}`, 'mk-spring')}</div>`);
     }
     if (e.type === 'shrine') {
       return this.ico(54, 76, 27, 72,

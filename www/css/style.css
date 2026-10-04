@@ -800,7 +800,7 @@ body.night .enc-sky { background: linear-gradient(180deg, #0b0628 0%, #2e1065 45
 .avatar { border-color: var(--pc, var(--gold)); }
 .mk-player .dot { border-color: var(--pc, #fff); }
 .chip.hol { border-color: rgba(94, 234, 212, .6); }
-.mk-spring.invaded { filter: drop-shadow(0 0 8px #c026d3); animation: bob 1.6s ease-in-out infinite; }
+/* 5.1.41: захваченный Источник — без свечения по контуру и без покачивания (выбор владельца): вода в чаше — фиолетовая (M3D.INV) */
 .invasion-screen { background: radial-gradient(90% 60% at 50% 25%, #4a044e 0%, #1a0524 55%, var(--bg) 100%); }
 .shrine-view.invasion .shrine-idol { width: 110px; height: 150px; }
 .guard-ava.dark { border-color: #c026d3; box-shadow: 0 0 16px rgba(192, 38, 211, .5); }
