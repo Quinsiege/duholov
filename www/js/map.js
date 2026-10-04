@@ -378,7 +378,7 @@ const MapView = {
     let S, lift = 0;
     if (m.flat) S = f * (m.zf != null ? 2 ** (c.z - m.zf) : 1); // круг на земле: его размер в точках — на масштабе zf (fitZone)
     else {
-      const g = this.figScale(f, c.z);
+      const g = this.figScale(f, c.z) * (m === this.player ? this.meScale(c.z) : 1);
       S = f * g; m.g = m.box._g = g; m.box._f = f;
       if (m.roof && c.t) lift = m.roof / this.mpp(c.z, m.lat) * c.sin * f;
     }
@@ -576,6 +576,10 @@ const MapView = {
      ×2^(ZK·Δz)); у нижнего края экрана (ближе к камере) — крупнее, к горизонту — мельче (перспектива f, place). Размер на экране —
      не меньше FIG_MIN и не больше FIG_MAX от исходного */
   ZMIN: 15.75, Z0: 16.5, ZMAX: 16.5, ZK: 0.7, FIG: 0, FIG_MIN: 0.45, FIG_MAX: 1.8,
+  // 5.1.41 (выбор владельца): сам Ловчий — у исходного масштаба (наклон 75°) вдвое крупнее, отдалили до предела (40°) — прежний
+  // размер, между ними — плавно. Места и духи — как были
+  ME_BIG: 2,
+  meScale(z) { return 1 + (this.ME_BIG - 1) * Math.max(0, Math.min(1, (z - this.ZMIN) / (this.Z0 - this.ZMIN))); },
   // во сколько раз фигура на точке земли с перспективой f крупнее, чем её рисует сама перспектива карты
   figScale(f, z) {
     if (z == null) z = this.map.getZoom();

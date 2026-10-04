@@ -4834,6 +4834,7 @@
       MapView.map = null; MapView.vh = 800; MapView.tilt = 75; MapView.pad();
       eq(MapView._py, 800 - MapView.JOY_UP, 'исходный масштаб — Ловчий чуть выше джойстика, а не посередине экрана:');
       eq(MapView.pyAt(MapView.ZMIN, 800), 400, 'отдалили до предела — посередине высоты экрана:');
+      eq(MapView.meScale(MapView.Z0), 2, 'Ловчий у 75° — вдвое крупнее:'); eq(MapView.meScale(MapView.ZMIN), 1, 'у 40° — прежний размер:');
       ok(MapView.pyAt((MapView.ZMIN + MapView.Z0) / 2, 800) === 475, 'между ними — плавно');
       let pad = null; const cu = MapView.camUpdate({ zoom: MapView.ZMIN, setPadding: p => { pad = p; } });
       eq(pad.top, 0, 'шаг камеры на дальнем масштабе — без отступа:'); near(cu.pitch, 40, 1e-9, 'и наклон 40°:');
