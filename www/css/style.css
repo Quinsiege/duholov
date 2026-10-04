@@ -5645,7 +5645,7 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
   background: radial-gradient(120% 70% at 50% 100%, color-mix(in srgb, var(--rc) 30%, transparent), transparent 62%), linear-gradient(180deg, #0f0a22 0%, #1a1140 55%, #23164f 100%);
   border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent); box-shadow: inset 0 0 50px rgba(0, 0, 0, .5), 0 12px 30px rgba(6, 3, 18, .45); }
 .wd-show.leg { border-color: color-mix(in srgb, #fbbf24 60%, transparent); box-shadow: inset 0 0 50px rgba(0, 0, 0, .5), 0 0 0 1px rgba(251, 191, 36, .25), 0 12px 34px rgba(251, 191, 36, .18); }
-.wd-glow { position: absolute; left: 50%; top: 44%; width: 78%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none;
+.wd-glow { position: absolute; left: 50%; top: 46%; height: 88%; width: auto; max-width: 100%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle, color-mix(in srgb, var(--rc) 42%, transparent) 0%, color-mix(in srgb, var(--rc) 12%, transparent) 45%, transparent 68%); }
 .wd-floor { position: absolute; left: 50%; bottom: 1%; width: 70%; aspect-ratio: 1; translate: -50% 0; transform: perspective(500px) rotateX(74deg); transform-origin: 50% 100%;
   background: radial-gradient(circle, color-mix(in srgb, var(--rc) 35%, transparent) 0%, transparent 60%), var(--ring) center / contain no-repeat; opacity: .7; pointer-events: none; }
@@ -5665,7 +5665,7 @@ body.tut-focus .mk.tut-off > * { filter: grayscale(.85) brightness(.8); opacity:
 .det-art.art3d { animation: none; }
 .det-art.art3d::after { display: none; }
 /* витрина Гардероба — без рамки и прямоугольника: круглое свечение, к краям гаснет */
-.wd-show, .wd-show.leg { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.wd-show, .wd-show.leg { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: hidden; } /* свечения гаснут раньше края — обрезки не видно */
 .wd-show::before { content: ""; position: absolute; left: 50%; top: 50%; height: 100%; width: auto; max-width: 100%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; /* не выше витрины: край круга не обрезается прокруткой */
   background: radial-gradient(circle, color-mix(in srgb, var(--rc) 30%, rgba(30, 18, 70, .9)) 0%, color-mix(in srgb, var(--rc) 14%, rgba(24, 14, 58, .6)) 38%, rgba(20, 12, 46, .25) 56%, transparent 70%); }
 .wd-hint { background: rgba(18, 12, 36, .35); border: 0; }
