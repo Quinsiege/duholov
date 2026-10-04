@@ -14,6 +14,7 @@ const M3D = {
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
   PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40, spirit: 40, ember: 31, emerald: 40, clockwork: 31, wolf: 27 }, // ember — бес: с пламенем на голове он выше — мельче, ростом с Ловчего // CSS-пикселей на метр модели — по виду (значки разного размера)
+  PLACE_K: 1.2, ME_PX: 1.67 * 40, // места — в 1,2 роста обычного Ловчего (его модель 1,67 м × PXM.catcher 40 точек на метр)
   OUTLINE_PX: 1.25,  // толщина обводки на экране, CSS-пиксели (у модели — 0,03 м)
   OUTLINE: [0x1c / 255, 0x10 / 255, 0x30 / 255], // тёмно-фиолетовая, как у рисунков игры
   // 5.1.29: у каждого облика-скина (LOOK.skin) — свой наряд Ловчего (catcher_<скин>), у обычного — капюшон (catcher)
@@ -333,6 +334,8 @@ const M3D = {
   layout(v) {
     const h0 = this.models[v.kind].head;
     if (v.fitH) v.pxm = v.fitH / Math.max(h0.h, 0.5); // модель окна — во всю высоту места под неё
+    // 5.1.41 (выбор владельца): модель места на карте — в PLACE_K роста обычного Ловчего (растут с приближением вместе — MapView.meScale)
+    else if (!v.ui && !v.player && this.PLACE_K && /^(spring|shrine|rift)/.test(v.kind)) v.pxm = this.PLACE_K * this.ME_PX / Math.max(h0.h, 0.3);
     // ...но и не шире него при любом повороте пальцем (волк втрое длиннее, чем высок, — резался по краям)
     if (v.fitW) v.pxm = Math.min(v.pxm, v.fitW / Math.max(2 * h0.r, 0.5));
     const S = v.pxm;
@@ -563,7 +566,10 @@ const M3D = {
      (кадр, залитый цветом обводки) восемь раз со сдвигом на толщину обводки, сверху — сам кадр. Внешний контур — как у оболочки;
      линий внутри фигуры (рука на фоне тела) нет */
   outline(v, sy) {
-    const W = v.pw, H = v.ph, sx = v.slot[0], d = Math.max(1, this.OUTLINE_PX * W / v.w), k = 0.7071 * d;
+    // толщина — OUTLINE_PX на экране, как у модели в окне (Гардероб): на карте значок увеличен (масштаб и перспектива — _g, _f у
+    // значка), и без поправки обводка толстела вместе с ним
+    const ic = v.ui ? null : v.ic || (v.ic = v.c.closest('.maplibregl-marker')), up = ic ? Math.max(0.5, (ic._g || 1) * (ic._f || 1)) : 1;
+    const W = v.pw, H = v.ph, sx = v.slot[0], d = Math.max(0.75, this.OUTLINE_PX * W / v.w / up), k = 0.7071 * d;
     const t = this.olc || (this.olc = document.createElement('canvas')), g = t.getContext('2d');
     if (t.width < W || t.height < H) { t.width = Math.max(t.width, W); t.height = Math.max(t.height, H); }
     g.globalCompositeOperation = 'copy'; g.drawImage(this.cv, sx, sy, W, H, 0, 0, W, H);
