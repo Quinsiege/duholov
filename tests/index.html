@@ -4798,14 +4798,16 @@
       const mid = cam(200, 360);
       near(mid.e, 90 - MapView.TILT, 1e-6, 'в точке Ловчего — под углом наклона карты:');
       near(mid.az, 0, 1e-9, 'посередине — прямо:');
-      const far = cam(200, 40), close = cam(200, 580);
-      ok(far.e < mid.e && mid.e < close.e && far.e > 5, `вдали — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
+      // 5.1.41: у наклона 75° горизонт — на экране: дальние точки берём ниже него (hz — горизонт над Ловчим, точки)
+      const hz = 900 * Math.tan((90 - MapView.TILT) * Math.PI / 180), yFar = Math.round(360 - 0.7 * hz), yMid = Math.round(360 - 0.4 * hz);
+      const far = cam(200, yFar), close = cam(200, 580);
+      ok(far.e < mid.e && mid.e < close.e && far.e > 2, `вдали — сбоку, у края экрана — сверху: ${far.e.toFixed(1)} < ${mid.e.toFixed(1)} < ${close.e.toFixed(1)}`);
       ok(cam(360, 360).az > 0.05 && cam(40, 360).az < -0.05, 'правее середины — виден чуть слева, левее — чуть справа');
       // размер значка: перспектива точки земли f и добавка фигуре (figScale)
       const sc = document.createElement('div'), m = { lat: 55.75, lng: 37.62, flat: false, z: 0, roof: 0, sc, box: document.createElement('div') };
-      at = { x: 200, y: 100 };
+      at = { x: 200, y: yMid };
       MapView.place(m);
-      const dc = 0.5 * 600 / Math.tan(36.87 * Math.PI / 360), f = 1 + Math.tan(MapView.TILT * Math.PI / 180) * (100 - 360) / dc;
+      const dc = 0.5 * 600 / Math.tan(36.87 * Math.PI / 360), f = 1 + Math.tan(MapView.TILT * Math.PI / 180) * (yMid - 360) / dc;
       near(m.f, f, 1e-9, 'дальняя точка земли — мельче:'); ok(f < 1, 'f < 1');
       near(m.S, f * MapView.figScale(f), 1e-9, 'размер фигуры:');
       ok(sc.style.transform.includes('scale(' + m.S.toFixed(4) + ')'), 'в стиле: ' + sc.style.transform);
