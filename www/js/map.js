@@ -130,7 +130,7 @@ const MapView = {
     // 5.1: место Ловчего — Walk (телефон или прогресс); ещё нет (новичок до Атласа) — карта ждёт на Красной площади
     const start = Walk.load() || { lat: 55.7539, lng: 37.6208 };
     this.pos = { lat: start.lat, lng: start.lng };
-    this.tilt = Cfg.s.tilt3d !== false ? this.TILT : 0;
+    this.tilt = Cfg.s.tilt3d !== false ? this.tiltAt(this.Z0) : 0;
     this.pad();
     this.proto();
     maplibregl.setWorkerUrl(this.base() + 'vendor/maplibre/maplibre-gl-csp-worker.js');
@@ -138,7 +138,7 @@ const MapView = {
     this._look = lk.key; this.night = lk.night;
     try {
       this.map = new maplibregl.Map({ container: 'map', style: this.style(F), center: [this.pos.lng, this.pos.lat], zoom: this.Z0,
-        minZoom: this.ZMIN, maxZoom: this.ZMAX, pitch: this.tilt, maxPitch: 60, bearing: 0, padding: { top: this._top || 0, bottom: 0, left: 0, right: 0 },
+        minZoom: this.ZMIN, maxZoom: this.ZMAX, pitch: this.tilt, maxPitch: 85, bearing: 0, padding: { top: this._top || 0, bottom: 0, left: 0, right: 0 },
         pixelRatio: Gfx.dpr(), attributionControl: { compact: true }, renderWorldCopies: false, validateStyle: false, fadeDuration: 150,
         // жесты: одним пальцем — облёт камеры вокруг Ловчего (initOrbit), двумя — масштаб и поворот вокруг него; карта всегда за Ловчим
         dragPan: false, dragRotate: false, touchPitch: false, doubleClickZoom: false, boxZoom: false, keyboard: false });
@@ -163,13 +163,14 @@ const MapView = {
 
     // 4.8.1: зона досягаемости — круг Ловчего (свечение, кольцо рун, волна); размер — радиус взаимодействия на текущем масштабе
     this.range = this.mk(this.pos.lat, this.pos.lng, { cls: 'mk-range', w: 0, h: 0, ax: 0, ay: 0, flat: true, z: 2,
-      html: '<div class="rz"><i class="rz-fill"></i><i class="rz-wave"></i><i class="rz-runes"></i><i class="rz-ring"></i><i class="rz-edge"></i></div>' });
+      html: '<div class="rz"><i class="rz-wave"></i></div>' }); // 5.1.41: под Ловчим — только расходящаяся волна (без рунного круга)
     this.fitRange();
     this.player = this.mk(this.pos.lat, this.pos.lng, { cls: 'mk-player-wrap', w: 64, h: 64, ax: 32, ay: 32, z: 1000,
       // 5.1.28: сам Ловчий — 3D-модель (js/m3d.js): шагает и бежит, смотрит туда, куда идёт, в цветах облика; нет WebGL — точка со стрелкой
       html: `<div class="mk-player">${typeof M3D !== 'undefined' ? M3D.html('catcher', 32, 32, '', 'me') : ''}<div class="pulse"></div><div class="arrow"></div><div class="dot"></div></div>` });
     if (typeof M3D !== 'undefined') { M3D.setMe({ heading: this.heading, gait: 0, look: S.d && S.d.look }); M3D.bind(this.player.getElement()); }
     this.map.on('move', () => this.reAim());
+    this.map.on('zoom', () => this.tiltZoom());
     this.map.on('zoomend', () => { this.fitRange(); this.fitZones(); });
     // 4.23.2: спутник на карте рядом с Ловчим не показывается
     Bus.on('weather', () => { this.setWeatherFx(); this.setTiles(); this.refresh(true); });
@@ -226,12 +227,12 @@ const MapView = {
      ночью — тёмно-синяя. Цвета стиля — c (flavorOf; улицы — одного цвета, road); к ним — земля (фон карты под ещё не нарисованными
      плитками) и объёмные дома: крыша (их цвет; стены темнее — по свету light) */
   PALETTE: {
-    day: { earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
+    day: { sky: '#8fc3ec', horizon: '#e4f0f8', earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
       park: '#cfe8c4', park2: '#b3dda3', wood: '#c7e1bb', wood2: '#a7d595', scrub: '#d8e8cc', water: '#9fd0f0', sand: '#f2ead2', ped: '#eceee8',
       urban: '#e8eae6', runway: '#f7f8fa', road: '#fdf2c6', rail: '#a8b1b7', bound: '#a7afa7', bld: '#e2e5df',
       lbl: '#5e6a65', halo: '#ffffff', city: '#2e3935', sub: '#7c8983', state: '#99a49e', ocean: '#4e8ec0',
       lc: ['#d6eccd', '#f5eeda', '#e8eae5', '#deeed2', '#ffffff', '#e2eed6', '#c4e2be'] } },
-    night: { earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
+    night: { sky: '#070d1a', horizon: '#1f2b42', earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
       park: '#13261f', park2: '#163024', wood: '#12221c', wood2: '#152a21', scrub: '#17231f', water: '#0a1626', sand: '#1c2228', ped: '#171f2b',
       urban: '#161e2a', runway: '#222c3a', road: '#3a4f73', rail: '#37435a', bound: '#46526a', bld: '#1a2332',
       lbl: '#9fb0cc', halo: '#0e1520', city: '#dbe5f5', sub: '#8a9ab4', state: '#6f7f99', ocean: '#6b8fc4',
@@ -277,6 +278,8 @@ const MapView = {
     return { version: 8, glyphs: this.base() + 'vendor/glyphs/{fontstack}/{range}.pbf',
       sources: { pm: { type: 'vector', url: this._pmUrl, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>' } },
       light: { anchor: 'viewport', color: '#ffffff', intensity: P.light, position: [1.15, 210, 30] },
+      // 5.1.41: у наклона 75° горизонт — на экране: над ним небо, у горизонта даль тает в дымке цвета земли
+      sky: { 'sky-color': P.sky, 'horizon-color': P.horizon, 'fog-color': P.earth, 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.6, 'atmosphere-blend': 0 },
       layers: [...ground, bld, ...lbl] };
   },
   // дома объёмные — у наклонённой карты, плоские — у плоской
@@ -473,17 +476,28 @@ const MapView = {
     if (c) { c.innerHTML = this.compassSvg(); c.onclick = () => { Sfx.play('tap'); this.northUp(); }; }
     this.setTilt(this.tilt > 0);
   },
-  /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива), игрок — чуть ниже середины экрана (на 0,6 его высоты).
-     5.1.34: наклон постоянный — TILT (50°, выбор владельца), пальцем камеру только поворачивают */
-  TILT: 50, tilt: 0, _py: 0,
-  // точка Ловчего на экране: у наклонённой карты — ниже середины (отступ сверху у камеры MapLibre)
+  /* 4.11: наклон камеры, как в Pokémon GO: карта ложится вдаль (перспектива). 5.1.41 (выбор владельца): наклон — за масштабом:
+     исходный масштаб он же самый близкий (Z0, ближе нельзя) — TILT (75°, горизонт с небом на экране), отдалили до предела (ZMIN) —
+     TILT_MIN (40°), между ними — плавно. Пальцем камеру только поворачивают и отдаляют-приближают */
+  TILT: 75, TILT_MIN: 40, tilt: 0, _py: 0,
+  tiltAt(z) { return this.TILT_MIN + (this.TILT - this.TILT_MIN) * Math.max(0, Math.min(1, (z - this.ZMIN) / (this.Z0 - this.ZMIN))); },
+  tiltZoom() {
+    if (!this.tilt || !this.map) return;
+    const p = this.tiltAt(this.map.getZoom());
+    if (Math.abs(p - this.map.getPitch()) < 0.05) return;
+    this.tilt = p;
+    this.map.setPitch(p);
+  },
+  // точка Ловчего на экране: у наклонённой карты — по центру, чуть выше джойстика (он внизу, верх — в 212 px от низа экрана);
+  // это отступ сверху у камеры MapLibre (центр карты — середина того, что ниже отступа)
+  JOY_UP: 250,
   pad() {
-    const H = this.vh || innerHeight, top = this.tilt ? Math.round(H * 0.2) : 0;
+    const H = this.vh || innerHeight, py = this.tilt ? Math.max(H / 2, H - this.JOY_UP) : H / 2, top = Math.round(2 * py - H);
     this._top = top; this._py = top + (H - top) / 2;
     if (this.map) this.map.setPadding({ top, bottom: 0, left: 0, right: 0 });
   },
   setTilt(on) {
-    this.tilt = on ? this.TILT : 0;
+    this.tilt = on ? this.tiltAt(this.map ? this.map.getZoom() : this.Z0) : 0;
     this.pad();
     if (!this.map) return;
     this.map.setPitch(this.tilt);
@@ -551,7 +565,7 @@ const MapView = {
      прежних). Фигуры (места, духи, Ловчий) — в размер расстояния до камеры: приблизили камеру — крупнее, отдалили — мельче (ZK: размер
      ×2^(ZK·Δz)); у нижнего края экрана (ближе к камере) — крупнее, к горизонту — мельче (перспектива f, place). Размер на экране —
      не меньше FIG_MIN и не больше FIG_MAX от исходного */
-  ZMIN: 15.75, Z0: 16.5, ZMAX: 18, ZK: 0.7, FIG: 0, FIG_MIN: 0.45, FIG_MAX: 1.8,
+  ZMIN: 15.75, Z0: 16.5, ZMAX: 16.5, ZK: 0.7, FIG: 0, FIG_MIN: 0.45, FIG_MAX: 1.8,
   // во сколько раз фигура на точке земли с перспективой f крупнее, чем её рисует сама перспектива карты
   figScale(f, z) {
     if (z == null) z = this.map.getZoom();

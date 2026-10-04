@@ -4820,11 +4820,17 @@
       eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
     } finally { Object.assign(MapView, keep); }
   });
-  test('5.1.34: камера — наклон постоянный (50°), палец её только поворачивает; карта — MapLibre', () => {
+  test('5.1.41: камера — наклон за масштабом: исходный (ближе нельзя) 75°, отдалили до предела 40°; палец только поворачивает', () => {
     const keep = { map: MapView.map, setRot: MapView.setRot, northUp: MapView.northUp, rot: MapView.rot, tilt: MapView.tilt, _py: MapView._py, vw: MapView.vw, vh: MapView.vh };
     const keepRaf = window.requestAnimationFrame, box = document.createElement('div');
     try {
-      eq(MapView.TILT, 50, 'наклон — выбор владельца:');
+      eq(MapView.TILT, 75, 'наклон у исходного масштаба — выбор владельца:');
+      eq(MapView.ZMAX, MapView.Z0, 'ближе исходного масштаба не приблизить:');
+      near(MapView.tiltAt(MapView.Z0), 75, 1e-9, 'исходный масштаб — 75°:');
+      near(MapView.tiltAt(MapView.ZMIN), 40, 1e-9, 'отдалили до предела — 40°:');
+      near(MapView.tiltAt((MapView.ZMIN + MapView.Z0) / 2), 57.5, 1e-9, 'между ними — плавно:');
+      MapView.map = null; MapView.vh = 800; MapView.tilt = 75; MapView.pad();
+      eq(MapView._py, 800 - MapView.JOY_UP, 'Ловчий — чуть выше джойстика, а не посередине экрана:');
       ok(typeof MapView.setPitch === 'undefined' && !('pitch' in MapView.ORBIT), 'наклонять пальцем нечем');
       // палец: вверх-вниз — ничего, влево-вправо — облёт
       box.id = 'map'; document.body.appendChild(box);
@@ -5025,12 +5031,12 @@
       Roofs.at.clear();
     }
   });
-  test('5.1.32: камера как в Pokémon GO — отдалить можно до ZMIN; фигуры у камеры крупнее, к горизонту мельче; приблизили — крупнее', () => {
+  test('5.1.32: камера как в Pokémon GO — отдалить можно до ZMIN, приблизить — не ближе исходного (5.1.41); фигуры у камеры крупнее, к горизонту мельче; отдалили — мельче', () => {
     const keep = { map: MapView.map };
     try {
       let z = MapView.Z0;
       MapView.map = { getZoom: () => z };
-      ok(MapView.ZMIN >= 15.5 && MapView.ZMIN < MapView.Z0 && MapView.Z0 < MapView.ZMAX, 'отдалить — не дальше ' + MapView.ZMIN + ' (масштабы MapLibre)');
+      ok(MapView.ZMIN >= 15.5 && MapView.ZMIN < MapView.Z0 && MapView.Z0 === MapView.ZMAX, 'отдалить — не дальше ' + MapView.ZMIN + ', приблизить — не ближе исходного (масштабы MapLibre)');
       near(MapView.figScale(1), 1, 1e-9, 'у Ловчего на исходном масштабе — прежний размер:');
       const lo = 2.2 * MapView.figScale(2.2), hi = 0.5 * MapView.figScale(0.5);
       ok(lo > 1.5 && hi < 0.6, `у нижнего края экрана — крупнее, у дальнего — мельче: ${lo.toFixed(2)}, ${hi.toFixed(2)}`);
@@ -5038,8 +5044,8 @@
       near(0.3 * MapView.figScale(0.3), MapView.FIG_MIN, 1e-9, 'вдали — не меньше FIG_MIN:');
       z = MapView.ZMAX; const zin = MapView.figScale(1);
       z = MapView.ZMIN; const zout = MapView.figScale(1);
-      ok(zin > 1.5 && zout < 0.8, `приблизили камеру — крупнее, отдалили — мельче: ${zin.toFixed(2)}, ${zout.toFixed(2)}`);
-      z = MapView.ZMAX; near(1.4 * MapView.figScale(1.4), MapView.FIG_MAX, 1e-9, 'не больше FIG_MAX:');
+      ok(Math.abs(zin - 1) < 1e-9 && zout < 0.8, `ближе всего — исходный размер, отдалили — мельче: ${zin.toFixed(2)}, ${zout.toFixed(2)}`);
+      z = MapView.ZMAX; near(2 * MapView.figScale(2), MapView.FIG_MAX, 1e-9, 'не больше FIG_MAX:');
       near(MapView.figScale(1, MapView.Z0 + 1), Math.pow(2, MapView.ZK), 1e-9, 'масштаб можно передать:');
     } finally { Object.assign(MapView, keep); }
   });
