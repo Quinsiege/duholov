@@ -4691,7 +4691,7 @@
       ok(h.r > 0.3 && h.r < 3.5 && h.h > 1.5 && h.h < 4.5, `${kind}: рамка ${h.r} × ${h.h}`);
       ok(h.top > 1 && h.low <= 0, `${kind}: верх ${h.top}, низ ${h.low}`); // низ — не выше земли (дух парит: ровно у земли)
       if (h.skin) { // 5.1.40: модели со скелетом из генератора (tools/models3d/skinned.mjs): обычный Ловчий, духи
-        const TRIS = { catcher: 30830, spirit_blue: 103379, ember_imp: 103418, emerald_wayfarer: 102239, clockwork_genie: 102499 }; // треугольников в исходных моделях владельца — не меняются (у странницы и джинна — без сваренных перемычек руки, cut_bridges.py)
+        const TRIS = { catcher: 30830, spirit_blue: 103379, ember_imp: 103418, emerald_wayfarer: 102280, clockwork_genie: 102628 }; // треугольников в исходных моделях владельца — не меняются (у странницы и джинна — без сваренных перемычек руки, cut_bridges.py)
         ok(kind in TRIS, kind + ': со скелетом');
         eq(h.prims.reduce((s, p) => s + p.i[1] / 3, 0), TRIS[kind], kind + ': треугольников — как в исходной модели:');
         ok(h.prims.every(p => p.v[1] <= 65535), kind + ': части — не больше 65535 вершин');

@@ -6,6 +6,8 @@
 #   иначе (корпус, плащ, волосы) — её собственным костям, пропорционально.
 # Кусок сетки (связная часть), у которого больше половины веса — кисть с пальцами (палец, отдельно смоделированный большой палец),
 # — целиком руке: автоскелет вешает такие куски и на бедро, у которого кисть висит, — палец оставался у бедра и тянулся полосой.
+# Так же — кусок, что лежит у самой кисти (в среднем ближе 2·HAND_R к её костям и вчетверо ближе, чем к остальным), хоть в его
+# весе больше бедра, — только если в n.py NEAR = True (джинн: у странницы так к руке уходят куски плаща у кисти).
 # Запуск после *_anim.py (сцена уже есть): файл с NAME (и DROP) первым — node bl.mjs n.py strip_fingers.py; затем — выгрузка
 # glb той же сцены (в конце этого файла) и skinned.mjs без --drop.
 import bpy, bmesh, re, os
@@ -15,6 +17,7 @@ from mathutils.geometry import intersect_point_line
 NAME = globals()['NAME']
 DROP = re.compile(globals().get('DROP', r'Hand(Thumb|Index|Middle|Ring|Pinky)\d'))
 HAND_R = 0.03
+NEAR = globals().get('NEAR', False)
 sc = bpy.data.scenes[NAME]
 win = bpy.context.window_manager.windows[0]
 win.scene = sc
@@ -72,11 +75,33 @@ for v in me.data.vertices:
     for g in v.groups:
         key = hand_of.get(G[g.group], '')
         m[key] = m.get(key, 0) + g.weight
+pts = {}
+for v in me.data.vertices:
+    pts.setdefault(isl[v.index], []).append(mw @ v.co)
+for h in fa_of:  # и сама кисть
+    segs[h].append((arm.matrix_world @ B[h].head_local, arm.matrix_world @ B[h].tail_local))
+other = [(arm.matrix_world @ b.head_local, arm.matrix_world @ b.tail_local) for b in B
+         if b.use_deform and b.name not in hand_of and b.name not in fa_of.values()]
+
+
+def mean_d(P, S):
+    return sum(min(seg_d(q, a, b) for a, b in S) for q in P) / len(P)
+
+
 isl_hand = {}
+n_near = 0
 for i, m in mass.items():
     h = max((x for x in m if x), key=lambda x: m[x], default=None)
-    if h and m[h] > 0.5 * sum(m.values()):
+    if not h:
+        continue
+    if m[h] > 0.5 * sum(m.values()):
         isl_hand[i] = h
+    elif NEAR and m[h] > 0.02 * sum(m.values()) and len(pts[i]) <= 2000:
+        # кусок у самой кисти (большой палец джинна: в весе больше бедра, но лежит у кости кисти, от бедра — далеко)
+        dh = mean_d(pts[i], segs[h])
+        if dh < 2 * HAND_R and dh < 0.25 * mean_d(pts[i], other):
+            isl_hand[i] = h
+            n_near += 1
 nh = no = ni = 0
 for v in me.data.vertices:
     w = {G[g.group]: g.weight for g in v.groups if g.weight > 0}
@@ -134,7 +159,7 @@ with bpy.context.temp_override(window=win, active_object=arm, object=arm, select
         if eb:
             arm.data.edit_bones.remove(eb)
     bpy.ops.object.mode_set(mode='OBJECT')
-print(f'{NAME}: убрано костей {len(drop)}; куски кисти {len(isl_hand)} ({ni} вершин); вершины с весами пальцев — рука {nh}, остальное {no}; костей осталось {len(arm.data.bones)}')
+print(f'{NAME}: убрано костей {len(drop)}; куски кисти {len(isl_hand)}, из них по близости {n_near} ({ni} вершин); вершины с весами пальцев — рука {nh}, остальное {no}; костей осталось {len(arm.data.bones)}')
 # выгрузка — та же, что у *_anim.py (анимации — треки NLA idle, walk, run)
 OUT = os.path.join(os.path.expanduser('~'), 'Blender', 'duholov-3d', 'glb', NAME + '_anim.glb')
 for b in arm.pose.bones:

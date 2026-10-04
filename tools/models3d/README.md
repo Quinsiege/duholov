@@ -64,7 +64,7 @@ node tools/models3d/bl.mjs n.py tools/models3d/cut_bridges.py
 node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/emerald_wayfarer_anim.glb emerald_wayfarer 1024 --clips=idle:idle,walk:walk,run:run
 ```
 Бес — то же с `NAME = 'ember_imp'`; джинн — `genie_anim.py` вместо `idle_anim.py`, а в n.py ещё
-`DROP = r'Hand(Thumb|Index|Middle|Ring|Pinky)\d|^Bone_0(1[1-9]|3[12])$'`. Облики-модели перечислены в `M3D.LOOKS`; портрет для
+`DROP = r'Hand(Thumb|Index|Middle|Ring|Pinky)\d|^Bone_0(1[1-9]|3[12])$'` и `NEAR = True` (кусок сетки у самой кисти — к руке: большой палец генератор привесил к бедру). Облики-модели перечислены в `M3D.LOOKS`; портрет для
 кружков аватаров — `www/img/skins/<облик>.webp` (снимок модели в Blender, 256 точек). Конвертер и сам переносит веса убранных
 костей по тому же правилу (`--drop`), если риг не чистили в Blender.
 
