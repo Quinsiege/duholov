@@ -229,12 +229,12 @@ const MapView = {
      сине-бирюзовая земля, светло-синие дороги, тёмная вода. Цвета стиля — c (flavorOf; улицы — одного цвета road, обводка — casing);
      к ним — земля (фон под ещё не нарисованными плитками), небо и горизонт (sky) */
   PALETTE: {
-    day: { sky: '#86cff2', horizon: '#e4f6fc', earth: '#b2e39d', roof: '#c4ebb4', wall: '#8fbf7e', wall2: '#a9d697', light: 0.7, c: { bg: '#b2e39d', earth: '#b2e39d',
+    day: { path: '#ecdcae', shade: '#4f8a45', lit: '#f6ffe9', sky: '#86cff2', horizon: '#e4f6fc', earth: '#b2e39d', roof: '#c4ebb4', wall: '#8fbf7e', wall2: '#a9d697', light: 0.7, c: { bg: '#b2e39d', earth: '#b2e39d',
       park: '#93d77e', park2: '#83cf6f', wood: '#86cf73', wood2: '#77c665', scrub: '#a3dc8e', water: '#5fc4f0', sand: '#efe6b0', ped: '#c9ebb9',
       urban: '#afe19a', runway: '#d6efcb', road: '#fbf7df', casing: '#97c785', rail: '#94b98a', bound: '#86b47b', bld: '#c4ebb4',
       lbl: '#4b6a47', halo: '#e8f7e0', city: '#2a4628', sub: '#6c8a66', state: '#7f9c79', ocean: '#2d7cb6',
       lc: ['#a8df93', '#d6e5ad', '#afe19a', '#b7e49e', '#ffffff', '#a2db8d', '#86cf73'] } },
-    night: { sky: '#0a1830', horizon: '#26496b', earth: '#1d3a56', roof: '#26445f', wall: '#16283b', wall2: '#203a52', light: 0.55, c: { bg: '#1b3651', earth: '#1d3a56',
+    night: { path: '#58779a', shade: '#0b1d2e', lit: '#3b5f80', sky: '#0a1830', horizon: '#26496b', earth: '#1d3a56', roof: '#26445f', wall: '#16283b', wall2: '#203a52', light: 0.55, c: { bg: '#1b3651', earth: '#1d3a56',
       park: '#1d4a4f', park2: '#1a4549', wood: '#1b464a', wood2: '#173f43', scrub: '#1f4352', water: '#0d2640', sand: '#2c3f58', ped: '#23425e',
       urban: '#1e3c59', runway: '#294765', road: '#6b8db6', casing: '#2a4a6b', rail: '#3c5a7b', bound: '#4a6a8d', bld: '#24435f',
       lbl: '#a8c1df', halo: '#13283e', city: '#e2edf9', sub: '#92aac7', state: '#7c94b2', ocean: '#7ea5d5',
@@ -267,10 +267,38 @@ const MapView = {
      объёмные (fill-extrusion, высота из данных карты, без высоты — 8 м) у наклонённой — после всей земли и дорог, под подписями.
      Шрифты подписей — свои (vendor/glyphs, Noto Sans); китайские, японские и корейские знаки браузер рисует сам */
   LANG: { zh: 'zh-Hans' },
+  /* 5.1.41 (выбор владельца): мир вместо карты — рельеф всего мира (высоты Terrarium: Mapzen, SRTM — RELIEF раз выше настоящего, иначе
+     в городе холмов не видно), светотень на склонах, дороги — узкие тропинки без обводки (WORLD_PATH ширины), домов, рельсов, подземных
+     дорог и границ нет. Места игры стоят на рельефе (маркеры MapLibre — на высоте земли). DEM — адрес плиток высот */
+  WORLD: true, RELIEF: 2, WORLD_PATH: 0.55,
+  DEM: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+  WORLD_DROP: /_casing|^roads_tunnels|^roads_rail$|^roads_runway$|^roads_taxiway$|^landuse_runway$|^boundaries|^buildings$/,
+  // ширина линии × k: у выражения по масштабу (interpolate, step) — каждое значение, иначе — умножение
+  scaleW(e, k) {
+    if (typeof e === 'number') return e * k;
+    if (Array.isArray(e) && (e[0] === 'interpolate' || e[0] === 'step')) {
+      const out = e.slice(), from = e[0] === 'interpolate' ? 4 : 2;
+      if (e[0] === 'step') out[2] = this.scaleW(e[2], k);
+      for (let i = from; i < e.length; i += 2) out[i] = this.scaleW(e[i], k);
+      return out;
+    }
+    if (e && typeof e === 'object' && Array.isArray(e.stops)) return Object.assign({}, e, { stops: e.stops.map(([z, w]) => [z, this.scaleW(w, k)]) });
+    return ['*', e, k];
+  },
   style(P) {
     const f = Object.assign(this.flavorOf(P.c), { regular: 'Noto Sans Regular', bold: 'Noto Sans Medium', italic: 'Noto Sans Italic' });
-    const all = basemaps.layers('pm', f, { lang: this.LANG[I18N.lang] || I18N.lang })
+    let all = basemaps.layers('pm', f, { lang: this.LANG[I18N.lang] || I18N.lang })
       .filter(l => l['source-layer'] !== 'pois' && !(l.layout && l.layout['icon-image']));
+    if (this.WORLD) {
+      all = all.filter(l => !this.WORLD_DROP.test(l.id));
+      for (const l of all) if (l.type === 'line' && l['source-layer'] === 'roads' && l.paint && l.paint['line-width'] != null) {
+        l.paint = Object.assign({}, l.paint, { 'line-width': this.scaleW(l.paint['line-width'], this.WORLD_PATH), 'line-color': P.path || P.c.road });
+      }
+      const k = all.findIndex(l => l.id === 'water') + 1; // светотень — по земле и воде, под тропинками
+      all.splice(k, 0, { id: 'relief', type: 'hillshade', source: 'demh', paint: { 'hillshade-exaggeration': 0.45,
+        'hillshade-shadow-color': P.shade || '#5d8a4e', 'hillshade-highlight-color': P.lit || '#f4ffe8', 'hillshade-accent-color': P.shade || '#5d8a4e',
+        'hillshade-illumination-direction': 315 } });
+    }
     const t = !!this.tilt, ground = all.filter(l => l.type !== 'symbol'), lbl = all.filter(l => l.type === 'symbol');
     // 5.1.41: дома — плоские и у наклонённой карты (выбор владельца: как в Pokémon GO), объёмные (bld3d) выключены
     for (const l of ground) if (l.id === 'buildings') l.layout = Object.assign({}, l.layout, { visibility: this.BLD3D && t ? 'none' : 'visible' });
@@ -278,8 +306,13 @@ const MapView = {
       layout: { visibility: this.BLD3D && t ? 'visible' : 'none' },
       paint: { 'fill-extrusion-color': P.roof, 'fill-extrusion-height': ['case', ['>', ['coalesce', ['get', 'height'], 0], 0], ['get', 'height'], 8],
         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0], 'fill-extrusion-vertical-gradient': true } };
-    return { version: 8, glyphs: this.base() + 'vendor/glyphs/{fontstack}/{range}.pbf',
-      sources: { pm: { type: 'vector', url: this._pmUrl, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>' } },
+    const sources = { pm: { type: 'vector', url: this._pmUrl, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://protomaps.com">Protomaps</a>' } };
+    if (this.WORLD) { // высоты — два источника с теми же плитками: рельеф и светотень (MapLibre советует не делить один)
+      const dem = { type: 'raster-dem', tiles: [this.DEM], tileSize: 256, encoding: 'terrarium', maxzoom: 13, attribution: 'Рельеф: Mapzen, SRTM' };
+      sources.dem = dem; sources.demh = Object.assign({}, dem);
+    }
+    return { version: 8, glyphs: this.base() + 'vendor/glyphs/{fontstack}/{range}.pbf', sources,
+      ...(this.WORLD ? { terrain: { source: 'dem', exaggeration: this.RELIEF } } : {}),
       light: { anchor: 'viewport', color: '#ffffff', intensity: P.light, position: [1.15, 210, 30] },
       // 5.1.41: у наклона 75° горизонт — на экране: над ним небо, у горизонта даль тает в дымке цвета земли
       sky: { 'sky-color': P.sky, 'horizon-color': P.horizon, 'fog-color': P.earth, 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.6, 'atmosphere-blend': 0 },
@@ -291,7 +324,7 @@ const MapView = {
     const m = this.map, t = !!this.tilt;
     if (!m || !m.getLayer('bld3d')) return;
     m.setLayoutProperty('bld3d', 'visibility', this.BLD3D && t ? 'visible' : 'none');
-    m.setLayoutProperty('buildings', 'visibility', this.BLD3D && t ? 'none' : 'visible');
+    if (m.getLayer('buildings')) m.setLayoutProperty('buildings', 'visibility', this.BLD3D && t ? 'none' : 'visible'); // у мира (WORLD) домов нет
   },
   // 5.1.38: сменилось разрешение графики (Gfx): холст карты и 3D-модели — в новом размере
   applyRes() {
