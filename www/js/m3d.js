@@ -292,7 +292,7 @@ const M3D = {
     const kind = c.dataset.m3d, type = kind.split('_')[0];
     const v = { c, ctx: c.getContext('2d'), kind, pxm: this.PXM[type] || 20, ax: +c.dataset.ax || 0, ay: +c.dataset.ay || 0,
       hide: c.dataset.hide ? new Set(c.dataset.hide.split(' ')) : null, vis: true, ready: false, player: c.dataset.who === 'me', e: this.ELEV, az: 0,
-      ui: !!c.dataset.ui, fitH: +c.dataset.fit || 0 }; // 5.1.41: ui — модель в окне (stage): своя камера и поворот, не с картой
+      ui: !!c.dataset.ui, fitH: +c.dataset.fit || 0, fitW: +c.dataset.fitw || 0 }; // 5.1.41: ui — модель в окне (stage): своя камера и поворот, не с картой
     if (v.ui) { v.e = +c.dataset.e || 8; v.yaw = +c.dataset.yaw || 0; }
     if (!v.ctx) return;
     c._m3d = v;
@@ -333,6 +333,8 @@ const M3D = {
   layout(v) {
     const h0 = this.models[v.kind].head;
     if (v.fitH) v.pxm = v.fitH / Math.max(h0.h, 0.5); // модель окна — во всю высоту места под неё
+    // ...но и не шире него при любом повороте пальцем (волк втрое длиннее, чем высок, — резался по краям)
+    if (v.fitW) v.pxm = Math.min(v.pxm, v.fitW / Math.max(2 * h0.r, 0.5));
     const S = v.pxm;
     const pad = this.OUTLINE_PX / S + (h0.walk ? 0.12 : 0.02), r = h0.r + pad, h = h0.h + pad; // Ловчему — запас на шаг и наклон
     const w = Math.ceil(2 * r * S) + 2, hh = Math.ceil(Math.hypot(h, 2 * r) * S) + 2;
@@ -438,7 +440,7 @@ const M3D = {
       const c = st.querySelector('canvas.mk3d'), w = st.clientWidth, h = st.clientHeight;
       if (!c || c._m3d || !st.isConnected) return;
       if (!w || !h) { if (tries < 20) setTimeout(() => this.mount(root, tries + 1), 120); return; } // окно ещё раскладывается — позже
-      Object.assign(c.dataset, { ax: (w / 2).toFixed(1), ay: (h * 0.97).toFixed(1), fit: (h * 0.88).toFixed(1) });
+      Object.assign(c.dataset, { ax: (w / 2).toFixed(1), ay: (h * 0.97).toFixed(1), fit: (h * 0.88).toFixed(1), fitw: (w * 0.94).toFixed(1) });
       this.add(c);
       let x0 = null, y0 = 0; // поворот пальцем (или мышью): влево-вправо — вокруг себя
       st.addEventListener('pointerdown', e => { const v = c._m3d; if (!v) return; x0 = e.clientX; y0 = v.yaw; try { st.setPointerCapture(e.pointerId); } catch (x) { /* нет — и ладно */ } });
