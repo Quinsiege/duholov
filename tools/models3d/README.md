@@ -68,6 +68,18 @@ node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/emerald_wayfarer_anim.g
 кружков аватаров — `www/img/skins/<облик>.webp` (снимок модели в Blender, 256 точек). Конвертер и сам переносит веса убранных
 костей по тому же правилу (`--drop`), если риг не чистили в Blender.
 
+### Источник — колодец со скелетом (5.1.41)
+
+Модель владельца из генератора (`~/Blender/duholov-3d/src/spring_well.glb`, 55 621 треугольник): каменная чаша на резном
+постаменте, бирюзовая вода, над ней парит осколок Алатыря. Скелет генератора не годится — `spring_anim.py` ставит свой из трёх костей:
+`root` (стоит), `crystal` (куски сетки выше чаши — парит, вращается, покачивается), `water` (бирюзовая внутренность чаши по
+текстуре — середина «дышит», у бортика вес спадает до нуля). Клип один — idle, он же walk и run.
+```
+node tools/models3d/bl.mjs tools/models3d/spring_anim.py
+node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/spring_anim.glb spring 1024 --clips=idle:idle,walk:idle,run:idle
+```
+На карте — ростом с Ловчего до края чаши (`M3D.PLACE_KS`, `PLACE_H`), поворачивается вместе с картой. `export_all.py` его не трогает.
+
 ### Облик Призрачный волк (5.1.41)
 
 Модель владельца из генератора — четвероногий, автоскелет SmartRig на 51 кость, анимаций нет. Всё — `wolf_anim.py`:

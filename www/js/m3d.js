@@ -9,18 +9,21 @@
    В «Экономии батареи» и «Меньше движения» модели неподвижны. Нет WebGL или файл не загрузился — остаётся
    прежний рисунок (SVG). */
 const M3D = {
-  VER: 3,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками); 2 — 5.1.29: оберег Ловчего на груди, облики; 3 — 5.1.40: Ловчий со скелетом и текстурой
+  VER: 4,            // метка файлов моделей (?v=): заменили файлы — увеличить (sw.js держит их в своём кэше между выпусками); 2 — 5.1.29: оберег Ловчего на груди, облики; 3 — 5.1.40: Ловчий со скелетом и текстурой; 4 — 5.1.41: Источник-колодец со скелетом, облики пересобраны
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
   PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40, spirit: 40, ember: 31, emerald: 40, clockwork: 31, wolf: 27 }, // ember — бес: с пламенем на голове он выше — мельче, ростом с Ловчего // CSS-пикселей на метр модели — по виду (значки разного размера)
   PLACE_K: 1.2, ME_PX: 1.67 * 40, // места — в 1,2 роста обычного Ловчего (его модель 1,67 м × PXM.catcher 40 точек на метр)
+  // 5.1.41: Источник (колодец) — ростом с Ловчего до края чаши (1,19 м; осколок Алатыря парит выше)
+  PLACE_KS: { spring: 1 }, PLACE_H: { spring: 1.19 },
   OUTLINE_PX: 1.25,  // толщина обводки на экране, CSS-пиксели (у модели — 0,03 м)
   OUTLINE: [0x1c / 255, 0x10 / 255, 0x30 / 255], // тёмно-фиолетовая, как у рисунков игры
   // 5.1.29: у каждого облика-скина (LOOK.skin) — свой наряд Ловчего (catcher_<скин>), у обычного — капюшон (catcher)
   SKINS: ['kupala', 'leshiy', 'moroz', 'volhv', 'bogatyr', 'voron', 'navstrazh', 'zharpero', 'knyaz'],
   // 5.1.41: облики-модели со скелетом (модели владельца из генератора): парят / ходят, летят / идут, мчатся / бегут по походке, как Ловчий
   LOOKS: ['spirit_blue', 'ember_imp', 'emerald_wayfarer', 'clockwork_genie', 'wolf'],
+  isPlace(v) { return !v.ui && !v.player && /^(spring|shrine|rift)/.test(v.kind); },
   get KINDS() { return ['spring', 'catcher', ...this.LOOKS, ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
   LIGHTS: [[[-3, -4, 6], '#fff4e0', 3.2], [[5, -2, 3], '#c7d2fe', 1.1], [[1, 6, 4], '#f0abfc', 2.0]],
@@ -335,7 +338,10 @@ const M3D = {
     const h0 = this.models[v.kind].head;
     if (v.fitH) v.pxm = v.fitH / Math.max(h0.h, 0.5); // модель окна — во всю высоту места под неё
     // 5.1.41 (выбор владельца): модель места на карте — в PLACE_K роста обычного Ловчего (растут с приближением вместе — MapView.meScale)
-    else if (!v.ui && !v.player && this.PLACE_K && /^(spring|shrine|rift)/.test(v.kind)) v.pxm = this.PLACE_K * this.ME_PX / Math.max(h0.h, 0.3);
+    else if (this.PLACE_K && this.isPlace(v)) {
+      const t = v.kind.split('_')[0];
+      v.pxm = (this.PLACE_KS[t] || this.PLACE_K) * this.ME_PX / Math.max(this.PLACE_H[t] || h0.h, 0.3);
+    }
     // ...но и не шире него при любом повороте пальцем (волк втрое длиннее, чем высок, — резался по краям)
     if (v.fitW) v.pxm = Math.min(v.pxm, v.fitW / Math.max(2 * h0.r, 0.5));
     const S = v.pxm;
@@ -595,7 +601,8 @@ const M3D = {
     // поворот вместе с картой (и у Ловчего — туда, куда он смотрит)
     const h0 = m.head, w = h0.walk ? this.step(v, now) : null, G = [];
     v.ya = v.ui ? 0 : -this.rot * Math.PI / 180 + (v.az || 0); // поворот модели на экране (без шага Ловчего) — для setRot; в окне — без карты
-    const a = v.ya + (w ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
+    // 5.1.41: место со скелетом (Источник) — лицом к игроку, как прочие места: поворот походки (за картой и за Ловчим) — не ему
+    const a = v.ya + (w && !this.isPlace(v) ? w.yaw : 0), ca = Math.cos(a), sa = Math.sin(a);
     const Y = new Float32Array([ca, sa, 0, 0, -sa, ca, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     if (h0.skin) { this.renderSkin(v, m, w, Y); return; }
     h0.groups.forEach((g, i) => G.push(g.t === 'static' ? null : w && (g.t === 'body' || g.t === 'leg' || g.t === 'arm') ? this.walkMat(g, h0.groups, G, w) : this.groupMat(g, i, t)));
