@@ -550,11 +550,25 @@ const M3D = {
       for (const v of pass) {
         const W = v.pw, H = v.ph;
         v.ctx.clearRect(0, 0, W, H);
-        v.ctx.drawImage(cv, v.slot[0], cv.height - v.slot[1] - H, W, H, 0, 0, W, H);
+        if (this.models[v.kind].head.skin) this.outline(v, cv.height - v.slot[1] - H);
+        else v.ctx.drawImage(cv, v.slot[0], cv.height - v.slot[1] - H, W, H, 0, 0, W, H);
         v.t = now;
       }
     }
     return vs.length;
+  },
+  /* 5.1.41: обводка модели со скелетом — по контуру кадра (телефон грелся: оболочка рисовала всю модель второй раз): силуэт
+     (кадр, залитый цветом обводки) восемь раз со сдвигом на толщину обводки, сверху — сам кадр. Внешний контур — как у оболочки;
+     линий внутри фигуры (рука на фоне тела) нет */
+  outline(v, sy) {
+    const W = v.pw, H = v.ph, sx = v.slot[0], d = Math.max(1, this.OUTLINE_PX * W / v.w), k = 0.7071 * d;
+    const t = this.olc || (this.olc = document.createElement('canvas')), g = t.getContext('2d');
+    if (t.width < W || t.height < H) { t.width = Math.max(t.width, W); t.height = Math.max(t.height, H); }
+    g.globalCompositeOperation = 'copy'; g.drawImage(this.cv, sx, sy, W, H, 0, 0, W, H);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = this.olcss || (this.olcss = 'rgb(' + this.OUTLINE.map(x => Math.round(x * 255)).join(',') + ')'); g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'source-over';
+    for (const [x, y] of [[d, 0], [-d, 0], [0, d], [0, -d], [k, k], [-k, k], [k, -k], [-k, -k]]) v.ctx.drawImage(t, 0, 0, W, H, x, y, W, H);
+    v.ctx.drawImage(this.cv, sx, sy, W, H, 0, 0, W, H);
   },
   // кадр модели — в клетку (x, y) общего холста
   render(v, now, x, y) {
@@ -641,21 +655,10 @@ const M3D = {
     const N = new Float32Array([Y[0], Y[1], Y[2], Y[4], Y[5], Y[6], Y[8], Y[9], Y[10]]);
     const attr = (loc, b, size, type, norm, stride, off) => { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, type, norm, stride, off); };
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.bi);
-    // 1) обводка: задние грани раздутой по нормалям оболочки — после костей
-    let u = this.SO.u;
-    gl.useProgram(this.SO.p);
-    gl.disable(gl.BLEND); gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT);
-    gl.uniformMatrix4fv(u.uVP, false, v.vp); gl.uniformMatrix4fv(u.uM, false, Y); gl.uniform3f(u.uQ0, q[0], q[1], q[2]); gl.uniform3f(u.uQs, q[3], q[4], q[5]);
-    gl.uniform3fv(u.uOC, this.OUTLINE); gl.uniform4fv(u['uB[0]'], B);
-    for (const p of P0) { // части — каждая со своими вершинами (индексы — от первой вершины части)
-      const o = p.v[0];
-      gl.uniform1f(u.uOl, p.ol * v.ol);
-      attr(0, m.bp, 4, gl.SHORT, false, 0, o * 8); attr(1, m.bo, 4, gl.BYTE, true, 0, o * 4);
-      attr(2, m.bj, 4, gl.UNSIGNED_BYTE, false, 8, o * 8); attr(3, m.bj, 4, gl.UNSIGNED_BYTE, true, 8, o * 8 + 4);
-      gl.drawElements(gl.TRIANGLES, p.i[1], gl.UNSIGNED_SHORT, p.i[0] * 2);
-    }
+    // обводка — не второй оболочкой (вдвое больше работы видеочипу), а по контуру готового кадра (outline, в drawSet)
+    gl.disable(gl.BLEND);
     // 2) сама модель: цвет — из текстуры, свет — как у остальных моделей
-    u = this.SP.u;
+    const u = this.SP.u;
     gl.useProgram(this.SP.p);
     gl.cullFace(gl.BACK);
     if (mt.ds) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
@@ -723,13 +726,13 @@ const M3D = {
     this.raf = 0;
     this.prune();
     if (!this.moving()) return;
-    // Ловчий — 30 кадров в секунду на ходу, 10 — когда стоит
+    // Ловчий — 15 кадров в секунду на ходу (5.1.41: было 30 — с моделью со скелетом телефон грелся), 10 — когда стоит
     let next = Infinity, places = false;
     const due = [], gaps = new Map();
     for (const v of this.views) {
       if (!this.live(v)) continue;
       if (!v.player && !v.ui) { places = true; continue; }
-      const gap = (this.going(v) || v.ui ? 33 : 100) - 2; // модель в окне — плавно, 30 кадров
+      const gap = (v.ui ? 33 : this.going(v) ? 66 : 100) - 2; // модель в окне — плавно, 30 кадров
       if (now - (v.t || 0) >= gap) due.push(v);
       gaps.set(v, gap);
     }
