@@ -1359,6 +1359,8 @@ I18N.dict = {
 "Странница в изумрудном плаще: обошла все тропы Нави и знает дорогу к любому духу.":"Pengembara berjubah zamrud: telah menempuh semua jalan Nav dan tahu jalan menuju roh mana pun.",
 "Самоварный джинн":"Jin Samovar",
 "Заводной самовар с джинном внутри: пыхтит паром, топает ножками и наливает чай духам.":"Samovar mekanis dengan jin di dalamnya: mengepulkan uap, menghentakkan kaki kecilnya, dan menuangkan teh untuk para roh.",
+"Призрачный волк":"Serigala Hantu",
+"Ловчий оборачивается волком-духом: шерсть — ночная мгла, лапы светятся, как лунный лёд.":"Pemburu berubah menjadi serigala roh: bulunya kabut malam, cakarnya bercahaya seperti es di bawah bulan.",
 "Купальский":"Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"Mahkota bunga dengan bunga pakis yang hanya mekar di Malam Kupala.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"Tudung dari lumut dan tanduk rusa — hutan mengakuimu sebagai bagian darinya.",

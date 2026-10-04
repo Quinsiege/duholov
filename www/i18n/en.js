@@ -1359,6 +1359,8 @@ I18N.dict = {
 "Странница в изумрудном плаще: обошла все тропы Нави и знает дорогу к любому духу.":"A wanderer in an emerald cloak: she has walked every path of Nav and knows the way to any spirit.",
 "Самоварный джинн":"Samovar Genie",
 "Заводной самовар с джинном внутри: пыхтит паром, топает ножками и наливает чай духам.":"A clockwork samovar with a genie inside: it puffs steam, stomps its little feet and pours tea for spirits.",
+"Призрачный волк":"Phantom Wolf",
+"Ловчий оборачивается волком-духом: шерсть — ночная мгла, лапы светятся, как лунный лёд.":"The Catcher turns into a spirit wolf: fur of night mist, paws glowing like moonlit ice.",
 "Купальский":"Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"A wreath with a fern flower that blooms only on Kupala Night.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"A hood of moss and deer antlers — the forests accept you as one of their own.",

@@ -13,13 +13,13 @@ const M3D = {
   BASE: 'models/',   // папка моделей (просмотрщик tools/models3d/preview.html берёт их из www/models)
   ELEV: 30,          // наклон камеры над моделью, градусы
   FPS: 20,           // до стольких кадров в секунду движутся места; дорого (слабый телефон) — реже, до 8
-  PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40, spirit: 40, ember: 31, emerald: 40, clockwork: 31 }, // ember — бес: с пламенем на голове он выше — мельче, ростом с Ловчего // CSS-пикселей на метр модели — по виду (значки разного размера)
+  PXM: { spring: 30, shrine: 20, rift: 19, catcher: 40, spirit: 40, ember: 31, emerald: 40, clockwork: 31, wolf: 27 }, // ember — бес: с пламенем на голове он выше — мельче, ростом с Ловчего // CSS-пикселей на метр модели — по виду (значки разного размера)
   OUTLINE_PX: 1.25,  // толщина обводки на экране, CSS-пиксели (у модели — 0,03 м)
   OUTLINE: [0x1c / 255, 0x10 / 255, 0x30 / 255], // тёмно-фиолетовая, как у рисунков игры
   // 5.1.29: у каждого облика-скина (LOOK.skin) — свой наряд Ловчего (catcher_<скин>), у обычного — капюшон (catcher)
   SKINS: ['kupala', 'leshiy', 'moroz', 'volhv', 'bogatyr', 'voron', 'navstrazh', 'zharpero', 'knyaz'],
   // 5.1.41: облики-модели со скелетом (модели владельца из генератора): парят / ходят, летят / идут, мчатся / бегут по походке, как Ловчий
-  LOOKS: ['spirit_blue', 'ember_imp', 'emerald_wayfarer', 'clockwork_genie'],
+  LOOKS: ['spirit_blue', 'ember_imp', 'emerald_wayfarer', 'clockwork_genie', 'wolf'],
   get KINDS() { return ['spring', 'catcher', ...this.LOOKS, ...this.SKINS.map(s => 'catcher_' + s), ...['slavic', 'greek', 'norse', 'celtic', 'egypt', 'china', 'aztec', 'japan'].flatMap(m => ['shrine_' + m, 'rift_' + m])]; },
   // свет — как у превью в Blender: ключевой слева спереди сверху, заполняющий справа, контровой сзади (сила / π — по Ламберту)
   LIGHTS: [[[-3, -4, 6], '#fff4e0', 3.2], [[5, -2, 3], '#c7d2fe', 1.1], [[1, 6, 4], '#f0abfc', 2.0]],

@@ -906,6 +906,7 @@ const LOOK = {
     { id: 'ember_imp', name: ru`Огненный бес`, rar: 2, shop: 1200, paid: true, m3d: 'ember_imp', desc: ru`Бесёнок из пекла: вместо волос — живое пламя, когти тлеют углями.` },
     { id: 'emerald_wayfarer', name: ru`Изумрудная странница`, rar: 2, shop: 1000, paid: true, m3d: 'emerald_wayfarer', desc: ru`Странница в изумрудном плаще: обошла все тропы Нави и знает дорогу к любому духу.` },
     { id: 'clockwork_genie', name: ru`Самоварный джинн`, rar: 3, shop: 1500, paid: true, m3d: 'clockwork_genie', desc: ru`Заводной самовар с джинном внутри: пыхтит паром, топает ножками и наливает чай духам.` },
+    { id: 'wolf', name: ru`Призрачный волк`, rar: 3, shop: 1500, paid: true, m3d: 'wolf', desc: ru`Ловчий оборачивается волком-духом: шерсть — ночная мгла, лапы светятся, как лунный лёд.` },
     { id: 'kupala', off: true, name: ru`Купальский`, rar: 1, shop: 300, desc: ru`Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.` },
     { id: 'leshiy', off: true, name: ru`Лесной`, rar: 1, shop: 300, desc: ru`Капюшон из мха и оленьи рога — леса признают тебя своим.` },
     { id: 'moroz', off: true, name: ru`Морозный`, rar: 1, shop: 400, desc: ru`Ледяной венец и иней на плаще. Подарок самого Морозко.` },

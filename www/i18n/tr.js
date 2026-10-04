@@ -1359,6 +1359,8 @@ I18N.dict = {
 "Странница в изумрудном плаще: обошла все тропы Нави и знает дорогу к любому духу.":"Zümrüt pelerinli bir gezgin: Nav’ın tüm patikalarını yürüdü ve her ruha giden yolu bilir.",
 "Самоварный джинн":"Semaver Cini",
 "Заводной самовар с джинном внутри: пыхтит паром, топает ножками и наливает чай духам.":"İçinde cin olan kurmalı bir semaver: buhar püskürtür, minik ayaklarıyla tepinir ve ruhlara çay koyar.",
+"Призрачный волк":"Hayalet Kurt",
+"Ловчий оборачивается волком-духом: шерсть — ночная мгла, лапы светятся, как лунный лёд.":"Avcı bir ruh kurda dönüşür: kürkü gece sisi, pençeleri ay ışığındaki buz gibi parlar.",
 "Купальский":"Kupala",
 "Венок с цветком папоротника, что расцветает лишь в Купальскую ночь.":"Yalnızca Kupala gecesi açan eğreltiotu çiçeğinden bir çelenk.",
 "Капюшон из мха и оленьи рога — леса признают тебя своим.":"Yosundan kapüşon ve geyik boynuzları — ormanlar seni kendilerinden sayar.",
