@@ -118,13 +118,42 @@ const Flora = {
     }
     return out;
   },
-  place(lat, lng) {
+  /* высота земли — как у MapLibre (map.queryTerrainElevation), но быстро: тот на каждый запрос заново перебирает видимые плитки,
+     чтобы выбрать уровень плиток высот; здесь уровень выбирается один раз на расстановку (тот же, что выбрал бы MapLibre) */
+  elevFn() {
+    const m = this.map, t = m.terrain;
+    if (!t) return () => 0;
+    if (!t.getElevationForLngLatZoom || !t.getElevationForLngLat || !t.tileManager) return ll => m.queryTerrainElevation(ll) || 0;
+    const c = m.getCenter(), want = t.getElevationForLngLat(c, m.transform);
+    let z = t.tileManager.maxzoom;
+    while (z > t.tileManager.minzoom && Math.abs(t.getElevationForLngLatZoom(c, z) - want) > 1e-6) z--;
+    return ll => t.getElevationForLngLatZoom(new maplibregl.LngLat(ll[0], ll[1]), z) || 0;
+  },
+  // многоугольники — в клетки сетки по CELL м вокруг Ловчего (точка проверяется только по многоугольникам своей клетки)
+  CELL: 40,
+  index(list, lat, lng, kx, ky) {
+    const C = this.CELL, R = this.R + C, g = new Map();
+    const cx = x => Math.floor((x - lng) * kx / C), cy = y => Math.floor((y - lat) * ky / C);
+    const lo = Math.floor(-R / C), hi = Math.floor(R / C);
+    for (const p of list) {
+      const x0 = Math.max(lo, cx(p.x0)), x1 = Math.min(hi, cx(p.x1)), y0 = Math.max(lo, cy(p.y0)), y1 = Math.min(hi, cy(p.y1));
+      for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) { const k = i * 4096 + j; (g.get(k) || g.set(k, []).get(k)).push(p); }
+    }
+    return (x, y) => {
+      const L = g.get(cx(x) * 4096 + cy(y));
+      return !!L && L.some(p => x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1 && this.inPoly(x, y, p.rings));
+    };
+  },
+  // расстановка по шагам (генератор): place — целиком сразу, placeSoft — кусочками по SLICE мс между кадрами (ходьба не дёргается)
+  * steps(lat, lng) {
     const m = this.map;
     if (!m || !m.getSource('pm')) return;
-    const green = this.polys('landuse', k => this.ZELEN.test(k)).concat(this.polys('landcover', k => this.ZELEN.test(k)));
-    const bare = this.polys('water', () => true).concat(this.polys('landuse', k => this.BARE.test(k)));
-    // тропинки: отрезки — в клетки по 20 м (поиск ближних)
     const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540, C = 20, seg = new Map();
+    const green = this.index(this.polys('landuse', k => this.ZELEN.test(k)).concat(this.polys('landcover', k => this.ZELEN.test(k))), lat, lng, kx, ky);
+    yield;
+    const bare = this.index(this.polys('water', () => true).concat(this.polys('landuse', k => this.BARE.test(k))), lat, lng, kx, ky);
+    yield;
+    // тропинки: отрезки — в клетки по 20 м (поиск ближних)
     const toM = (x, y) => [(x - lng) * kx, (y - lat) * ky];
     for (const f of m.querySourceFeatures('pm', { sourceLayer: 'roads' })) {
       const g = f.geometry, L = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
@@ -136,6 +165,7 @@ const Flora = {
         for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) { const key = cx + ':' + cy; (seg.get(key) || seg.set(key, []).get(key)).push([a, b]); }
       }
     }
+    yield;
     const nearPath = (x, y) => {
       const s = seg.get(Math.floor(x / C) + ':' + Math.floor(y / C));
       if (!s) return false;
@@ -145,30 +175,47 @@ const Flora = {
       }
       return false;
     };
-    const hit = (list, x, y) => list.some(p => x >= p.x0 && x <= p.x1 && y >= p.y0 && y <= p.y1 && this.inPoly(x, y, p.rings));
+    const elev = this.elevFn();
     const S = this.STEP, dLat = S / ky, dLng = S / kx, out = {}, o0 = maplibregl.MercatorCoordinate.fromLngLat([lng, lat]);
     const i0 = Math.floor((lat - this.R / ky) / dLat), i1 = Math.ceil((lat + this.R / ky) / dLat);
     const j0 = Math.floor((lng - this.R / kx) / dLng), j1 = Math.ceil((lng + this.R / kx) / dLng);
-    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
-      const h = U.h('fl', i, j), h2 = U.h('fl2', i, j);
-      if (h > 0.5) continue; // больше половины точек пусты при любом виде земли — не считаем дальше
-      const la = (i + 0.2 + U.h('fy', i, j) * 0.6) * dLat, ln = (j + 0.2 + U.h('fx', i, j) * 0.6) * dLng;
-      const [x, y] = toM(ln, la), d = Math.hypot(x, y);
-      if (d > this.R) continue;
-      if (hit(bare, ln, la) || nearPath(x, y)) continue;
-      const kind = this.pick(h, h2, hit(green, ln, la));
-      if (!kind) continue;
-      const e = m.queryTerrainElevation ? m.queryTerrainElevation([ln, la]) || 0 : 0;
-      const fade = d < this.R * this.FADE ? 1 : Math.max(0, (this.R - d) / (this.R * (1 - this.FADE)));
-      const mc = maplibregl.MercatorCoordinate.fromLngLat([ln, la], e);
-      // от точки отсчёта o0: числа малые — без дрожания (точность float)
-      (out[kind] || (out[kind] = [])).push(mc.x - o0.x, mc.y - o0.y, mc.z, (0.8 + U.h('fs', i, j) * 0.45) * fade, U.h('fr', i, j) * 6.2832);
+    for (let i = i0; i <= i1; i++) {
+      for (let j = j0; j <= j1; j++) {
+        const h = U.h('fl', i, j), h2 = U.h('fl2', i, j);
+        if (h > 0.5) continue; // больше половины точек пусты при любом виде земли — не считаем дальше
+        const la = (i + 0.2 + U.h('fy', i, j) * 0.6) * dLat, ln = (j + 0.2 + U.h('fx', i, j) * 0.6) * dLng;
+        const [x, y] = toM(ln, la), d = Math.hypot(x, y);
+        if (d > this.R) continue;
+        if (bare(ln, la) || nearPath(x, y)) continue;
+        const kind = this.pick(h, h2, green(ln, la));
+        if (!kind) continue;
+        const e = elev([ln, la]);
+        const fade = d < this.R * this.FADE ? 1 : Math.max(0, (this.R - d) / (this.R * (1 - this.FADE)));
+        const mc = maplibregl.MercatorCoordinate.fromLngLat([ln, la], e);
+        // от точки отсчёта o0: числа малые — без дрожания (точность float)
+        (out[kind] || (out[kind] = [])).push(mc.x - o0.x, mc.y - o0.y, mc.z, (0.8 + U.h('fs', i, j) * 0.45) * fade, U.h('fr', i, j) * 6.2832);
+      }
+      yield;
     }
     this.inst = out; this.o0 = o0;
     this.unit = maplibregl.MercatorCoordinate.fromLngLat([lng, lat]).meterInMercatorCoordinateUnits();
     this.at = { lat, lng };
     this.upload();
     m.triggerRepaint();
+  },
+  place(lat, lng) { for (const _ of this.steps(lat, lng)) { /* целиком */ } },
+  SLICE: 6,
+  placeSoft(lat, lng) {
+    const run = this.run = this.steps(lat, lng); // новая расстановка отменяет начатую
+    const tick = () => {
+      if (this.run !== run) return;
+      const t0 = performance.now();
+      try {
+        while (performance.now() - t0 < this.SLICE) if (run.next().done) { this.run = null; return; }
+      } catch (e) { this.run = null; if (typeof Errors !== 'undefined') Errors.report('flora: ' + e.message, 'flora.js', 0); return; }
+      setTimeout(tick, 0);
+    };
+    tick();
   },
   // Ловчий сдвинулся (MapView.drawAt) или пришли плитки карты — расставить заново, не чаще раза в полсекунды
   soon(force) {
@@ -178,7 +225,7 @@ const Flora = {
     if (!force && this.at && U.dist(p.lat, p.lng, this.at.lat, this.at.lng) < this.MOVE) return;
     clearTimeout(this.timer);
     const wait = force ? Math.max(500, 2000 - (Date.now() - (this.t || 0))) : 50; // плитки ещё идут — не чаще раза в 2 с
-    this.timer = setTimeout(() => { this.t = Date.now(); try { const q = MapView.shown || MapView.pos; this.place(q.lat, q.lng); } catch (e) { if (typeof Errors !== 'undefined') Errors.report('flora: ' + e.message, 'flora.js', 0); } }, wait);
+    this.timer = setTimeout(() => { this.t = Date.now(); const q = MapView.shown || MapView.pos; this.placeSoft(q.lat, q.lng); }, wait);
   },
 
   /* ---------- отрисовка ---------- */
