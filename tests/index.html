@@ -4839,6 +4839,13 @@
       eq(pad.top, 0, 'шаг камеры на дальнем масштабе — без отступа:'); near(cu.pitch, 40, 1e-9, 'и наклон 40°:');
       MapView.camUpdate({ zoom: MapView.Z0, setPadding: p => { pad = p; } });
       eq(pad.top, 300, 'на исходном — отступ сверху (Ловчий ниже):');
+      const kf = { follow: MapView.follow, shown: MapView.shown }, noML = typeof maplibregl === 'undefined';
+      if (noML) window.maplibregl = { LngLat: function (lng, lat) { this.lng = lng; this.lat = lat; } }; // страница тестов MapLibre не грузит
+      MapView.follow = true; MapView.shown = { lat: 55.75, lng: 37.62 };
+      const cc = MapView.camUpdate({ zoom: MapView.Z0, setPadding: () => {} }).center;
+      ok(cc && Math.abs(cc.lat - 55.75) < 1e-12 && Math.abs(cc.lng - 37.62) < 1e-12, 'карта за Ловчим — центр на каждом шаге камеры ровно на нём (масштаб пальцами не уводит)');
+      MapView.follow = false; ok(!('center' in MapView.camUpdate({ zoom: MapView.Z0, setPadding: () => {} })), 'перелёт к месту — центр не трогается');
+      Object.assign(MapView, kf); if (noML) delete window.maplibregl;
       ok(typeof MapView.setPitch === 'undefined' && !('pitch' in MapView.ORBIT), 'наклонять пальцем нечем');
       // палец: вверх-вниз — ничего, влево-вправо — облёт
       box.id = 'map'; document.body.appendChild(box);

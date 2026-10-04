@@ -490,14 +490,16 @@ const MapView = {
     const k = Math.max(0, Math.min(1, (z - this.ZMIN) / (this.Z0 - this.ZMIN)));
     return H / 2 + (Math.max(H / 2, H - this.JOY_UP) - H / 2) * k;
   },
-  // шаг камеры (transformCameraUpdate): наклон и отступ — из её масштаба
+  // шаг камеры (transformCameraUpdate): наклон и отступ — из её масштаба; карта за Ловчим — центр ровно на нём (масштаб пальцами
+  // идёт вокруг середины экрана, а отступ её сдвигает — без этого центр съезжал с Ловчего и возвращался только с его шагом)
   camUpdate(tr) {
-    const H = this.vh || innerHeight, z = tr.zoom, py = this.pyAt(z, H), top = Math.round(2 * py - H);
+    const H = this.vh || innerHeight, z = tr.zoom, py = this.pyAt(z, H), top = Math.round(2 * py - H), out = {};
     this._top = top; this._py = top + (H - top) / 2;
     tr.setPadding({ top, bottom: 0, left: 0, right: 0 });
-    if (!this.tilt) return {};
-    this.tilt = this.tiltAt(z);
-    return { pitch: this.tilt };
+    const p = this.follow && this.shown;
+    if (p && typeof maplibregl !== 'undefined') out.center = new maplibregl.LngLat(p.lng, p.lat);
+    if (this.tilt) out.pitch = this.tilt = this.tiltAt(z);
+    return out;
   },
   pad() {
     const H = this.vh || innerHeight, top = Math.round(2 * this.pyAt(this.map ? this.map.getZoom() : this.Z0, H) - H);
