@@ -81,6 +81,17 @@ node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/spring_anim.glb spring 
 ```
 На карте — ростом с Ловчего до края чаши (`M3D.PLACE_KS`, `PLACE_H`), поворачивается вместе с картой. `export_all.py` его не трогает.
 
+### Разлом — модель владельца со скелетом (5.1.41, пока славянский)
+
+Исходник — `~/Blender/duholov-3d/src/rift_<мифология>.glb` (генератор: каменное кольцо, в нём портал-вихрь — отдельные куски сетки).
+`rift_anim.py` ставит свой скелет из двух костей: `root` и `portal` (куски шириной и высотой с проём, тонкие по глубине) —
+портал вращается по часовой стрелке, если смотреть спереди (оборот за 4 с). Клип один — idle.
+```
+RIFT=rift_slavic blender -b --factory-startup --python tools/models3d/rift_anim.py
+node tools/models3d/skinned.mjs ~/Blender/duholov-3d/glb/rift_slavic_anim.glb rift_slavic 1024 --clips=idle:idle,walk:idle,run:idle
+```
+Такие Разломы — в `SKINNED` у `export_all.py` (он их не трогает).
+
 ### Облик Призрачный волк (5.1.41)
 
 Модель владельца из генератора — четвероногий, автоскелет SmartRig на 51 кость, анимаций нет. Всё — `wolf_anim.py`:
