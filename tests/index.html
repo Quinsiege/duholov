@@ -59,6 +59,7 @@
   <script src="../www/js/walk.js"></script>
   <script src="../www/js/m3d.js"></script>
   <script src="../www/js/bld3d.js"></script>
+  <script src="../www/js/flora.js"></script>
   <script src="../www/js/map.js"></script>
   <script src="../www/js/encounter.js"></script>
   <script src="../www/js/raid.js"></script>
@@ -4826,6 +4827,28 @@
       MapView.tilt = 0;
       eq(MapView.camOf(icon(200, 40).firstChild), null, 'плоская карта — без перспективы (модель под своим наклоном)');
     } finally { Object.assign(MapView, keep); }
+  });
+  test('5.1.41: мир — рельеф, тропинки без домов; флора: модели, расстановка по правилу, ширина тропинок', () => {
+    // стиль мира: рельеф (terrain), светотень, без домов и обводок дорог; тропинки — уже
+    ok(MapView.WORLD, 'мир включён');
+    eq(JSON.stringify(MapView.scaleW(['interpolate', ['exponential', 1.6], ['zoom'], 14, 2, 18, 10], 0.5)), JSON.stringify(['interpolate', ['exponential', 1.6], ['zoom'], 14, 1, 18, 5]), 'ширина по масштабу — каждое значение:');
+    eq(MapView.scaleW(4, 0.5), 2, 'число:');
+    ok(MapView.WORLD_DROP.test('buildings') && MapView.WORLD_DROP.test('roads_minor_casing') && !MapView.WORLD_DROP.test('roads_minor') && !MapView.WORLD_DROP.test('water'), 'дома и обводки — прочь, тропинки и вода — остаются');
+    // модели флоры: у каждого вида — треугольники, нормали и цвета той же длины
+    const K = Flora.build();
+    for (const k of ['grass', 'flower_r', 'flower_y', 'flower_b', 'rock', 'bush', 'pine', 'tree']) {
+      ok(K[k] && K[k].cnt > 0 && K[k].cnt % 3 === 0, k + ': треугольники');
+      ok(K[k].p.length === K[k].n.length && K[k].p.length === K[k].c.length && K[k].p.every(Number.isFinite), k + ': нормали и цвета на каждую вершину');
+    }
+    ok(K.pine.cnt / 3 <= 120 && K.grass.cnt / 3 <= 20, 'простые модели (нагрев): ель ' + K.pine.cnt / 3 + ', трава ' + K.grass.cnt / 3 + ' треугольников');
+    // расстановка: в зелени гуще и с деревьями, на открытой земле — редко и без деревьев
+    const n = { g: {}, o: {} };
+    for (let i = 0; i < 4000; i++) { const h = U.h('t', i), h2 = U.h('t2', i); for (const [z, key] of [[true, 'g'], [false, 'o']]) { const k = Flora.pick(h, h2, z); if (k) n[key][k] = (n[key][k] || 0) + 1; } }
+    ok(n.g.tree && n.g.pine && n.g.bush && n.g.grass, 'в парке — деревья, кусты, трава');
+    ok(!n.o.tree && !n.o.pine && n.o.rock && n.o.grass, 'на открытой земле — без деревьев, с камнями и травой');
+    const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
+    ok(sum(n.g) > 2.5 * sum(n.o), 'в зелени гуще: ' + sum(n.g) + ' против ' + sum(n.o));
+    ok(Flora.inPoly(0.5, 0.5, [[[0, 0], [1, 0], [1, 1], [0, 1]]]) && !Flora.inPoly(1.5, 0.5, [[[0, 0], [1, 0], [1, 1], [0, 1]]]), 'точка в многоугольнике');
   });
   test('5.1.41: камера — наклон за масштабом: исходный (ближе нельзя) 75°, отдалили до предела 40°; палец только поворачивает', () => {
     const keep = { map: MapView.map, setRot: MapView.setRot, northUp: MapView.northUp, rot: MapView.rot, tilt: MapView.tilt, _py: MapView._py, vw: MapView.vw, vh: MapView.vh };

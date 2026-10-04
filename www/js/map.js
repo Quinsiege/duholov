@@ -153,6 +153,7 @@ const MapView = {
       setTimeout(() => UI.toast(ru`Карта не загрузилась: телефон не поддерживает WebGL`), 3000);
       return;
     }
+    if (typeof Flora !== 'undefined') Flora.attach(this.map); // 5.1.41: трава, цветы, камни, деревья на рельефе вокруг Ловчего
     this.map.touchZoomRotate.enable({ around: 'center' });
     this.map.scrollZoom.enable({ around: 'center' });
     U.$('#map').classList.add('vecmap');
@@ -172,7 +173,14 @@ const MapView = {
       html: `<div class="mk-player">${typeof M3D !== 'undefined' ? M3D.html('catcher', 32, 32, '', 'me') : ''}<div class="pulse"></div><div class="arrow"></div><div class="dot"></div></div>` });
     if (typeof M3D !== 'undefined') { M3D.setMe({ heading: this.heading, gait: 0, look: S.d && S.d.look }); M3D.bind(this.player.getElement()); }
     this.map.on('move', () => this.reAim());
-    this.map.on('zoomend', () => { this.fitRange(); this.fitZones(); });
+    this.map.on('zoomend', e => { this.fitRange(); this.fitZones(); if (e && e.originalEvent) this.zUser = this.map.getZoom(); });
+    // 5.1.41: рельеф — пока плитки высот не пришли, земля считается на нуле; пришли — камера оказалась в склоне, и MapLibre её отдалил.
+    // Высоты загрузились — масштаб, что выбрал игрок, обратно
+    this.map.on('sourcedata', e => {
+      if (e.sourceId !== 'dem' || !e.isSourceLoaded || this.map.isMoving()) return;
+      const z = this.zUser || this.Z0;
+      if (this.map.getZoom() < z - 0.01) this.map.jumpTo({ zoom: z });
+    });
     // 4.23.2: спутник на карте рядом с Ловчим не показывается
     Bus.on('weather', () => { this.setWeatherFx(); this.setTiles(); this.refresh(true); });
 
@@ -469,6 +477,7 @@ const MapView = {
   drawAt(lat, lng, jump) {
     const m = this.map;
     this.shown = { lat, lng };
+    if (typeof Flora !== 'undefined') Flora.soon();
     this.player.setLatLng(lat, lng);
     this.range.setLatLng(lat, lng);
     if (!this.follow) return;
