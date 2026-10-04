@@ -141,7 +141,9 @@ const MapView = {
         minZoom: this.ZMIN, maxZoom: this.ZMAX, pitch: this.tilt, maxPitch: 85, bearing: 0, padding: { top: this._top || 0, bottom: 0, left: 0, right: 0 },
         pixelRatio: Gfx.dpr(), attributionControl: { compact: true }, renderWorldCopies: false, validateStyle: false, fadeDuration: 150,
         // жесты: одним пальцем — облёт камеры вокруг Ловчего (initOrbit), двумя — масштаб и поворот вокруг него; карта всегда за Ловчим
-        dragPan: false, dragRotate: false, touchPitch: false, doubleClickZoom: false, boxZoom: false, keyboard: false });
+        dragPan: false, dragRotate: false, touchPitch: false, doubleClickZoom: false, boxZoom: false, keyboard: false,
+        // 5.1.41: наклон и точка Ловчего на экране — за масштабом, на каждом шаге камеры (жест, плавное приближение, полёт) — не обрывая его
+        transformCameraUpdate: tr => this.camUpdate(tr) });
     } catch (e) {
       // нет WebGL (очень старый телефон или он выключен) — карты нет, остальная игра работает
       console.warn('MapLibre:', e && e.message);
@@ -170,7 +172,6 @@ const MapView = {
       html: `<div class="mk-player">${typeof M3D !== 'undefined' ? M3D.html('catcher', 32, 32, '', 'me') : ''}<div class="pulse"></div><div class="arrow"></div><div class="dot"></div></div>` });
     if (typeof M3D !== 'undefined') { M3D.setMe({ heading: this.heading, gait: 0, look: S.d && S.d.look }); M3D.bind(this.player.getElement()); }
     this.map.on('move', () => this.reAim());
-    this.map.on('zoom', () => this.tiltZoom());
     this.map.on('zoomend', () => { this.fitRange(); this.fitZones(); });
     // 4.23.2: спутник на карте рядом с Ловчим не показывается
     Bus.on('weather', () => { this.setWeatherFx(); this.setTiles(); this.refresh(true); });
@@ -481,18 +482,25 @@ const MapView = {
      TILT_MIN (40°), между ними — плавно. Пальцем камеру только поворачивают и отдаляют-приближают */
   TILT: 75, TILT_MIN: 40, tilt: 0, _py: 0,
   tiltAt(z) { return this.TILT_MIN + (this.TILT - this.TILT_MIN) * Math.max(0, Math.min(1, (z - this.ZMIN) / (this.Z0 - this.ZMIN))); },
-  tiltZoom() {
-    if (!this.tilt || !this.map) return;
-    const p = this.tiltAt(this.map.getZoom());
-    if (Math.abs(p - this.map.getPitch()) < 0.05) return;
-    this.tilt = p;
-    this.map.setPitch(p);
-  },
-  // точка Ловчего на экране: у наклонённой карты — по центру, чуть выше джойстика (он внизу, верх — в 212 px от низа экрана);
-  // это отступ сверху у камеры MapLibre (центр карты — середина того, что ниже отступа)
+  /* точка Ловчего на экране — по центру по ширине, по высоте — за масштабом: отдалили до предела — посередине экрана, приблизили —
+     ниже, у исходного (самого близкого) — чуть выше джойстика (он внизу, верх — в 212 px от низа), но не ниже. Это отступ сверху у камеры
+     MapLibre (центр карты — середина того, что ниже отступа) */
   JOY_UP: 250,
+  pyAt(z, H) {
+    const k = Math.max(0, Math.min(1, (z - this.ZMIN) / (this.Z0 - this.ZMIN)));
+    return H / 2 + (Math.max(H / 2, H - this.JOY_UP) - H / 2) * k;
+  },
+  // шаг камеры (transformCameraUpdate): наклон и отступ — из её масштаба
+  camUpdate(tr) {
+    const H = this.vh || innerHeight, z = tr.zoom, py = this.pyAt(z, H), top = Math.round(2 * py - H);
+    this._top = top; this._py = top + (H - top) / 2;
+    tr.setPadding({ top, bottom: 0, left: 0, right: 0 });
+    if (!this.tilt) return {};
+    this.tilt = this.tiltAt(z);
+    return { pitch: this.tilt };
+  },
   pad() {
-    const H = this.vh || innerHeight, py = this.tilt ? Math.max(H / 2, H - this.JOY_UP) : H / 2, top = Math.round(2 * py - H);
+    const H = this.vh || innerHeight, top = Math.round(2 * this.pyAt(this.map ? this.map.getZoom() : this.Z0, H) - H);
     this._top = top; this._py = top + (H - top) / 2;
     if (this.map) this.map.setPadding({ top, bottom: 0, left: 0, right: 0 });
   },
