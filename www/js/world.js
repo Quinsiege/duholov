@@ -5,6 +5,7 @@
 
 const W = {
   SPAWN_CELL: 0.00055,   // ≈ 60 м
+  SPAWN_RARE: 7,         // 5.1.41 (выбор владельца): духи на карте — в 7 раз реже (шанс в клетке 0,14 → 0,02, с благовонием 0,3 → ≈0,043)
   BIOME_CELL: 0.006,     // ≈ 650 м — «район» с любимой стихией
   SLOT: 15 * 60 * 1000,  // дух живёт на карте 15 минут
   get SPRING_COOLDOWN() { return Ev.springCooldown(); },
@@ -145,7 +146,7 @@ const W = {
   spawnsAround(lat, lng, radius = this.VIEW) {
     const now = U.now(), out = [];
     Ev.alaSync(now); // 4.28: духи — только открытых в этом сезоне мифологий
-    const P = S.incenseActive() ? 0.3 : 0.14;
+    const P = (S.incenseActive() ? 0.3 : 0.14) / this.SPAWN_RARE;
     this.cells(lat, lng, this.SPAWN_CELL, radius, (i, j, la, ln, sz, lsz) => {
       const phase = U.h('ph', i, j) * this.SLOT;
       const slot = Math.floor((now + phase) / this.SLOT);

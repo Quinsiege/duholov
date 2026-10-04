@@ -1188,7 +1188,7 @@
     finally { MYTH_KEYS.length = 0; MYTH_KEYS.push(...keys); }
     // духи на карте — только здешние
     [[37.98, 23.73, 'greek'], [19.43, -99.13, 'aztec'], [-33.87, 151.21, 'china']].forEach(([la, ln, m]) => {
-      const a = W.spawnsAround(la, ln, 1500).filter(x => !x.tut); ok(a.length > 20, 'духов мало: ' + a.length);
+      const a = W.spawnsAround(la, ln, 1500).filter(x => !x.tut); ok(a.length > 5, 'духов мало: ' + a.length); // 5.1.41: духи в 7 раз реже
       ok(a.every(x => SP[x.sid].myth === m), `не только ${m}: ` + a.filter(x => SP[x.sid].myth !== m).map(x => x.sid).join(','));
     });
     // поручение у источника и отряд Нави — тоже здешние
@@ -1203,7 +1203,7 @@
     const skew = U.skew, at = t => { U.skew = t - Date.now(); return W.spawnsAround(55.75, 37.62, 2500).filter(x => !x.tut); };
     try {
       const night = at(Date.UTC(2026, 9, 1, 21, 0)), day = at(Date.UTC(2026, 9, 1, 9, 30)); // в Москве 23:30 и полдень по солнцу
-      ok(night.length > 300 && day.length > 300, 'духов мало');
+      ok(night.length > 40 && day.length > 40, 'духов мало: ' + night.length + ', ' + day.length); // 5.1.41: духи в 7 раз реже (W.SPAWN_RARE)
       ok(!night.some(x => SP[x.sid].time === 'day'), 'ночью дневных нет');
       ok(night.some(x => SP[x.sid].time === 'night'), 'ночью выходят ночные');
       ok(!day.some(x => SP[x.sid].time === 'night'), 'днём ночных нет');
@@ -1589,7 +1589,7 @@
     const probe = { data: asPlayer({ data: S.d }, () => JSON.parse(JSON.stringify(S.d))) };
     probe.data.level = 1; probe.data.caught = {}; probe.data.incenseUntil = 0; probe.data.tut = 0;
     let e = null;
-    for (let k = 0; k < 40 && !e; k++) {
+    for (let k = 0; k < 150 && !e; k++) { // 5.1.41: духи в 7 раз реже — проб больше
       const lat = 55.75 + k * 0.001;
       e = asPlayer(probe, () => W.spawnsAround(lat, 37.62, 60).find(x => !x.tut));
     }
