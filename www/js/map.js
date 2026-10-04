@@ -224,25 +224,26 @@ const MapView = {
     const p = this.pos || { lat: 55.75, lng: 37.62 }, phase = U.phase(p.lat, p.lng), night = phase === 'night' || phase === 'dusk';
     return { phase, night, key: night ? 'night' : 'day' };
   },
-  /* 5.1.30: палитра карты «Свежая» (выбор владельца из пяти, без Нави): днём — бело-зелёная с голубой водой и кремовыми улицами,
-     ночью — тёмно-синяя. Цвета стиля — c (flavorOf; улицы — одного цвета, road); к ним — земля (фон карты под ещё не нарисованными
-     плитками) и объёмные дома: крыша (их цвет; стены темнее — по свету light) */
+  /* 5.1.41: палитра карты — как в Pokémon GO (выбор владельца): днём светло-зелёная земля, парки и леса зеленее, яркая голубая вода,
+     светлые кремовые дороги с зеленоватой обводкой, плоские дома чуть светлее земли, над горизонтом — голубое небо; ночью — тёмная
+     сине-бирюзовая земля, светло-синие дороги, тёмная вода. Цвета стиля — c (flavorOf; улицы — одного цвета road, обводка — casing);
+     к ним — земля (фон под ещё не нарисованными плитками), небо и горизонт (sky) */
   PALETTE: {
-    day: { sky: '#8fc3ec', horizon: '#e4f0f8', earth: '#f1f3ee', roof: '#ecefe9', wall: '#b3b9b1', wall2: '#e0e5dd', light: 0.7, c: { bg: '#e7ebe5', earth: '#f1f3ee',
-      park: '#cfe8c4', park2: '#b3dda3', wood: '#c7e1bb', wood2: '#a7d595', scrub: '#d8e8cc', water: '#9fd0f0', sand: '#f2ead2', ped: '#eceee8',
-      urban: '#e8eae6', runway: '#f7f8fa', road: '#fdf2c6', rail: '#a8b1b7', bound: '#a7afa7', bld: '#e2e5df',
-      lbl: '#5e6a65', halo: '#ffffff', city: '#2e3935', sub: '#7c8983', state: '#99a49e', ocean: '#4e8ec0',
-      lc: ['#d6eccd', '#f5eeda', '#e8eae5', '#deeed2', '#ffffff', '#e2eed6', '#c4e2be'] } },
-    night: { sky: '#070d1a', horizon: '#1f2b42', earth: '#131b27', roof: '#253145', wall: '#111926', wall2: '#334159', light: 0.55, c: { bg: '#0e1520', earth: '#131b27',
-      park: '#13261f', park2: '#163024', wood: '#12221c', wood2: '#152a21', scrub: '#17231f', water: '#0a1626', sand: '#1c2228', ped: '#171f2b',
-      urban: '#161e2a', runway: '#222c3a', road: '#3a4f73', rail: '#37435a', bound: '#46526a', bld: '#1a2332',
-      lbl: '#9fb0cc', halo: '#0e1520', city: '#dbe5f5', sub: '#8a9ab4', state: '#6f7f99', ocean: '#6b8fc4',
-      lc: ['#162620', '#1e2228', '#181f2b', '#162621', '#28303c', '#182420', '#13221c'] } },
+    day: { sky: '#86cff2', horizon: '#e4f6fc', earth: '#b2e39d', roof: '#c4ebb4', wall: '#8fbf7e', wall2: '#a9d697', light: 0.7, c: { bg: '#b2e39d', earth: '#b2e39d',
+      park: '#93d77e', park2: '#83cf6f', wood: '#86cf73', wood2: '#77c665', scrub: '#a3dc8e', water: '#5fc4f0', sand: '#efe6b0', ped: '#c9ebb9',
+      urban: '#afe19a', runway: '#d6efcb', road: '#fbf7df', casing: '#97c785', rail: '#94b98a', bound: '#86b47b', bld: '#c4ebb4',
+      lbl: '#4b6a47', halo: '#e8f7e0', city: '#2a4628', sub: '#6c8a66', state: '#7f9c79', ocean: '#2d7cb6',
+      lc: ['#a8df93', '#d6e5ad', '#afe19a', '#b7e49e', '#ffffff', '#a2db8d', '#86cf73'] } },
+    night: { sky: '#0a1830', horizon: '#26496b', earth: '#1d3a56', roof: '#26445f', wall: '#16283b', wall2: '#203a52', light: 0.55, c: { bg: '#1b3651', earth: '#1d3a56',
+      park: '#1d4a4f', park2: '#1a4549', wood: '#1b464a', wood2: '#173f43', scrub: '#1f4352', water: '#0d2640', sand: '#2c3f58', ped: '#23425e',
+      urban: '#1e3c59', runway: '#294765', road: '#6b8db6', casing: '#2a4a6b', rail: '#3c5a7b', bound: '#4a6a8d', bld: '#24435f',
+      lbl: '#a8c1df', halo: '#13283e', city: '#e2edf9', sub: '#92aac7', state: '#7c94b2', ocean: '#7ea5d5',
+      lc: ['#1f4152', '#283e55', '#1e3c59', '#21445a', '#3a5878', '#1f4352', '#1b464a'] } },
   },
   pal(night) { return night ? this.PALETTE.night : this.PALETTE.day; },
   // цвета палитры → полный набор цветов стиля Protomaps (те же ключи у его light/dark; улицы, мосты и тоннели — цвета road)
   flavorOf(c) {
-    const r = c.road, k = c.bg, u = c.urban;
+    const r = c.road, k = c.casing || c.bg, u = c.urban;
     return { background: c.bg, earth: c.earth, park_a: c.park, park_b: c.park2, hospital: u, industrial: u, school: u, wood_a: c.wood, wood_b: c.wood2,
       pedestrian: c.ped, scrub_a: c.scrub, scrub_b: c.park2, glacier: c.lc[4], sand: c.sand, beach: c.sand, aerodrome: u, runway: c.runway, water: c.water,
       zoo: c.park, military: u, tunnel_other_casing: k, tunnel_minor_casing: k, tunnel_link_casing: k, tunnel_major_casing: k, tunnel_highway_casing: k,
@@ -271,9 +272,10 @@ const MapView = {
     const all = basemaps.layers('pm', f, { lang: this.LANG[I18N.lang] || I18N.lang })
       .filter(l => l['source-layer'] !== 'pois' && !(l.layout && l.layout['icon-image']));
     const t = !!this.tilt, ground = all.filter(l => l.type !== 'symbol'), lbl = all.filter(l => l.type === 'symbol');
-    for (const l of ground) if (l.id === 'buildings') l.layout = Object.assign({}, l.layout, { visibility: t ? 'none' : 'visible' });
+    // 5.1.41: дома — плоские и у наклонённой карты (выбор владельца: как в Pokémon GO), объёмные (bld3d) выключены
+    for (const l of ground) if (l.id === 'buildings') l.layout = Object.assign({}, l.layout, { visibility: this.BLD3D && t ? 'none' : 'visible' });
     const bld = { id: 'bld3d', type: 'fill-extrusion', source: 'pm', 'source-layer': 'buildings', minzoom: 14, filter: ['in', 'kind', 'building', 'building_part'],
-      layout: { visibility: t ? 'visible' : 'none' },
+      layout: { visibility: this.BLD3D && t ? 'visible' : 'none' },
       paint: { 'fill-extrusion-color': P.roof, 'fill-extrusion-height': ['case', ['>', ['coalesce', ['get', 'height'], 0], 0], ['get', 'height'], 8],
         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0], 'fill-extrusion-vertical-gradient': true } };
     return { version: 8, glyphs: this.base() + 'vendor/glyphs/{fontstack}/{range}.pbf',
@@ -283,12 +285,13 @@ const MapView = {
       sky: { 'sky-color': P.sky, 'horizon-color': P.horizon, 'fog-color': P.earth, 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.6, 'atmosphere-blend': 0 },
       layers: [...ground, bld, ...lbl] };
   },
-  // дома объёмные — у наклонённой карты, плоские — у плоской
+  // дома объёмные — у наклонённой карты, плоские — у плоской; 5.1.41: объёмных нет совсем (BLD3D), места на крыши не поднимаются
+  BLD3D: false,
   bldMode() {
     const m = this.map, t = !!this.tilt;
     if (!m || !m.getLayer('bld3d')) return;
-    m.setLayoutProperty('bld3d', 'visibility', t ? 'visible' : 'none');
-    m.setLayoutProperty('buildings', 'visibility', t ? 'none' : 'visible');
+    m.setLayoutProperty('bld3d', 'visibility', this.BLD3D && t ? 'visible' : 'none');
+    m.setLayoutProperty('buildings', 'visibility', this.BLD3D && t ? 'none' : 'visible');
   },
   // 5.1.38: сменилось разрешение графики (Gfx): холст карты и 3D-модели — в новом размере
   applyRes() {
@@ -380,7 +383,7 @@ const MapView = {
     else {
       const g = this.figScale(f, c.z) * (m === this.player ? this.meScale(c.z) : 1);
       S = f * g; m.g = m.box._g = g; m.box._f = f;
-      if (m.roof && c.t) lift = m.roof / this.mpp(c.z, m.lat) * c.sin * f;
+      if (m.roof && c.t && this.BLD3D) lift = m.roof / this.mpp(c.z, m.lat) * c.sin * f;
     }
     m.f = f; m.S = S; m.lift = lift;
     // 5.1.31: значок далеко за краем экрана (с запасом на высоту модели) — уже стоит, где стоял: переставим, когда подойдёт к экрану

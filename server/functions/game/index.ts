@@ -3584,14 +3584,15 @@ const W = {
     // Ученик — первые стадии, Мастер — до второй, Старейшина — любые, включая редких (слабый вид сильному Ловчему выходит уже превращённым)
     const rars = e.tier === 1 ? [1, 2] : e.tier === 2 ? [1, 2, 3] : [2, 3, 4];
     const maxStage = e.tier === 1 ? 1 : e.tier === 2 ? 2 : 3;
-    const pool = this.ofMyth(SPECIES.filter(s => !s.legend && !s.season && rars.includes(s.rar) && s.stage <= maxStage), myth);
+    // без легенд, сезонных и региональных (5.1.41: Старейшине выпадал региональный — через «сильнейшие виды»)
+    const pool = this.ofMyth(SPECIES.filter(s => !s.legend && !s.season && !s.region && rars.includes(s.rar) && s.stage <= maxStage), myth);
     const pw = this.topPower() * T.pow;
     const team = [];
     while (team.length < 3) {
       const s = pool[Math.floor(r() * pool.length)];
       if (team.some(x => SP[x.sid].fam === s.fam)) continue;
       // сильному Ловчему — сильнейшие виды (у Старейшины — и эпические), без повторов семейств
-      const strong = this.ofMyth(SPECIES.filter(x => !x.legend && !x.season && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), myth);
+      const strong = this.ofMyth(SPECIES.filter(x => !x.legend && !x.season && !x.region && !x.evo && x.rar >= 2 && x.rar <= (e.tier === 3 ? 4 : 3) && !team.some(y => SP[y.sid].fam === x.fam)), myth);
       team.push(this.foeSpirit(s.id, pw * (0.9 + r() * 0.2), e.id + U.today() + team.length, e.tier * 4, strong));
     }
     return { name, color, title: T.title, team, speed: this.foeSpeed(T.speed, team, pw) };

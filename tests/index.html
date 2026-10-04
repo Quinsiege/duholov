@@ -4814,8 +4814,11 @@
       eq(m.box._f, f, 'для холста 3D-модели — перспектива'); eq(m.box._g, m.g, 'и добавка');
       at = { x: 200, y: 360 }; MapView.place(m); near(m.f, 1, 1e-9, 'у Ловчего — без перспективы:');
       m.roof = 21; MapView.place(m);
+      eq(m.lift, 0, '5.1.41: дома плоские — место на земле, не на крыше:');
+      const keepB = MapView.BLD3D; MapView.BLD3D = true; MapView.place(m); // объёмные дома (сейчас выключены) — место на крыше
       near(m.lift, 21 / MapView.mpp(MapView.Z0, 55.75) * Math.sin(MapView.TILT * Math.PI / 180), 1e-6, 'место на крыше — поднято на высоту дома:');
       ok(m.lift > 20 && sc.style.transform.indexOf('-' + m.lift.toFixed(1) + 'px') > 0, 'вверх: ' + sc.style.transform);
+      MapView.BLD3D = keepB;
       at = { x: 5000, y: 360 }; const t1 = sc.style.transform; MapView.map = fake(() => at, MapView.Z0 + 1); MapView.place(m);
       ok(m.off && sc.style.transform === t1, 'далеко за экраном — не переставляется');
       MapView.tilt = 0;
