@@ -5001,8 +5001,10 @@
       vs.forEach((v, i) => {
         const a = batch[i], b = px(v);
         let diff = 0;
-        for (let j = 0; j < a.length; j++) if (a[j] !== b[j]) diff++;
-        eq(diff, 0, v.kind + ': пачкой и по одной — одна и та же картинка, отличий:');
+        // 5.1.41: ±2 уровня на канал — округление видеочипа (в другой клетке холста — 68 вместо 67), не другая картинка
+        let big = 0;
+        for (let j = 0; j < a.length; j++) { const d = Math.abs(a[j] - b[j]); if (d > 2) diff++; if (d > big) big = d; }
+        eq(diff, 0, v.kind + ': пачкой и по одной — одна и та же картинка (наибольшее расхождение ' + big + '), отличий больше округления:');
         ok(a.some((x, j) => j % 4 === 3 && x > 0), v.kind + ': нарисована');
       });
     } finally { host.remove(); M3D.prune(); M3D.BASE = base; }

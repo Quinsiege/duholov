@@ -546,6 +546,8 @@ const M3D = {
     const [C, R] = this.CELLS, N = C * R, cv = this.cv;
     let cw = 0, ch = 0;
     for (const v of vs) { cw = Math.max(cw, v.pw); ch = Math.max(ch, v.ph); }
+    cw += cw & 1; ch += ch & 1; // 5.1.41: клетки — чётного размера: видеочип считает точки квадратами 2×2, и у клетки с нечётного края
+    // картинка модели чуть отличалась от нарисованной по одной (края, выбор текстуры)
     const cols = Math.min(C, vs.length), rows = Math.min(R, Math.ceil(vs.length / C));
     if (cv.width < cols * cw || cv.height < rows * ch) { cv.width = Math.max(cv.width, cols * cw); cv.height = Math.max(cv.height, rows * ch); }
     for (let i = 0; i < vs.length; i += N) {
